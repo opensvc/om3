@@ -52,6 +52,16 @@ func remoteClient(p naming.Path, c *client.T) (*client.T, error) {
 	return c, nil
 }
 
+func fetchNodeConfig(nodename string, c *client.T) ([]byte, error) {
+	resp, err := c.GetNodeConfigFileWithResponse(context.Background(), nodename)
+	if err != nil {
+		return nil, err
+	} else if resp.StatusCode() != http.StatusOK {
+		return nil, fmt.Errorf("get node %s file from %s: %s", nodename, c.URL(), resp.Status())
+	}
+	return resp.Body, nil
+}
+
 func fetchConfig(p naming.Path, c *client.T) ([]byte, error) {
 	resp, err := c.GetObjectConfigFileWithResponse(context.Background(), p.Namespace, p.Kind, p.Name)
 	if err != nil {

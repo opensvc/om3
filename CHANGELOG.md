@@ -183,6 +183,13 @@
 	daemon down       ->  daemon-down
     ```
 
+* **`om ... config show`:**
+
+    * Only one node config can be shown at a time
+    * Only one object config can be shown at a time
+    * The config can not longer be rendered as map[section]map[option]string, only text output is supported
+    * These commands not longer support --impersonate and --eval. Use `config get` for those.
+
 * **`om create`:**
     * Simplify the flags
         ```

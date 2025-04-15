@@ -3,98 +3,97 @@ package daemonapi
 import (
 	"net/http"
 
-	"github.com/iancoleman/orderedmap"
 	"github.com/labstack/echo/v4"
 
-	"github.com/opensvc/om3/core/client"
 	"github.com/opensvc/om3/core/instance"
 	"github.com/opensvc/om3/core/naming"
 	"github.com/opensvc/om3/core/object"
-	"github.com/opensvc/om3/core/rawconfig"
 	"github.com/opensvc/om3/daemon/api"
-	"github.com/opensvc/om3/util/file"
+	"github.com/opensvc/om3/util/key"
 )
 
 func (a *DaemonAPI) GetObjectConfig(ctx echo.Context, namespace string, kind naming.Kind, name string, params api.GetObjectConfigParams) error {
 	if v, err := assertGuest(ctx, namespace); !v {
 		return err
 	}
-	var (
-		evaluate    bool
-		impersonate string
-	)
-	if params.Evaluate != nil {
-		evaluate = *params.Evaluate
+	log := LogHandler(ctx, "GetObjectConfig")
+	r := api.KeywordList{
+		Kind:  "KeywordList",
+		Items: make(api.KeywordItems, 0),
 	}
-	if params.Impersonate != nil {
-		impersonate = *params.Impersonate
-	}
-	var err error
-	var data *orderedmap.OrderedMap
-	logName := "GetObjectConfig"
-	log := LogHandler(ctx, logName)
-	log.Debugf("%s: starting", logName)
 
-	objPath, err := naming.NewPath(namespace, kind, name)
+	p, err := naming.NewPath(namespace, kind, name)
 	if err != nil {
-		log.Infof("%s: %s", logName, err)
-		return JSONProblemf(ctx, http.StatusBadRequest, "Invalid Parameter", "invalid path: %s", err)
+		return JSONProblemf(ctx, http.StatusBadRequest, "Invalid parameters", "%s", err)
 	}
-	if impersonate != "" && !evaluate {
-		// Force evaluate when impersonate
-		evaluate = true
-	}
+	log = naming.LogWithPath(log, p)
 
-	if instConfig := instance.ConfigData.GetByPathAndNode(objPath, a.localhost); instConfig != nil {
-		filename := objPath.ConfigFile()
-		mtime := file.ModTime(filename)
-		if mtime.IsZero() {
-			log.Errorf("config file not found: %s", filename)
-			return JSONProblemf(ctx, http.StatusNotFound, "Not Found", "config file no found: %s", filename)
-		}
+	instanceConfigData := instance.ConfigData.GetByPath(p)
 
-		data, err = configData(objPath, evaluate, impersonate)
+	if _, ok := instanceConfigData[a.localhost]; ok {
+		oc, err := object.NewCore(p)
 		if err != nil {
-			log.Errorf("can't get configData for %s %s", objPath, filename)
-			return JSONProblemf(ctx, http.StatusInternalServerError, "Internal Server Error", "can't get configData for %s %s", objPath, filename)
+			return JSONProblemf(ctx, http.StatusInternalServerError, "NewCore", "%s", err)
 		}
-		if file.ModTime(filename) != mtime {
-			log.Errorf("file has changed: %s", filename)
-			return JSONProblemf(ctx, http.StatusInternalServerError, "Internal Server Error", "file has changed: %s", filename)
+		var (
+			isEvaluated bool
+			evaluatedAs string
+		)
+		if params.Evaluate != nil {
+			isEvaluated = *params.Evaluate
 		}
-		data.Set("metadata", objPath.ToMetadata())
-		resp := api.ObjectConfig{
-			Data:  *data,
-			Mtime: mtime,
+		if params.Impersonate != nil {
+			evaluatedAs = *params.Impersonate
+		} else if isEvaluated {
+			evaluatedAs = a.localhost
 		}
-		return ctx.JSON(http.StatusOK, resp)
-	}
-	for nodename := range instance.ConfigData.GetByPath(objPath) {
-		return a.proxy(ctx, nodename, func(c *client.T) (*http.Response, error) {
-			return c.GetObjectConfig(ctx.Request().Context(), namespace, kind, name, &params)
-		})
-	}
-	return JSONProblemf(ctx, http.StatusNotFound, "Not found", "Object not found: %s", objPath)
-
-}
-
-func configData(p naming.Path, eval bool, impersonate string) (data *orderedmap.OrderedMap, err error) {
-	var o object.Configurer
-	var config rawconfig.T
-	if o, err = object.NewConfigurer(p, object.WithVolatile(true)); err != nil {
-		return
-	}
-	if eval {
-		if impersonate != "" {
-			config, err = o.EvalConfigAs(impersonate)
+		if !isEvaluated && evaluatedAs != "" {
+			return JSONProblemf(ctx, http.StatusBadRequest, "Bad request", "impersonate can only be specified with evaluate=true")
+		}
+		conf := oc.Config()
+		var keys key.L
+		if params.Kw == nil {
+			keys = conf.KeyList()
 		} else {
-			config, err = o.EvalConfig()
+			for _, s := range *params.Kw {
+				keys = append(keys, key.Parse(s))
+			}
 		}
-	} else {
-		config, err = o.RawConfig()
+		for _, k := range keys {
+			item := api.KeywordItem{
+				Object:  p.String(),
+				Keyword: k.String(),
+			}
+			if s, err := conf.GetStrict(k); err != nil {
+				continue
+			} else {
+				item.Value = s
+			}
+
+			if isEvaluated {
+				if i, err := oc.EvalAs(k, evaluatedAs); err != nil {
+					return JSONProblemf(ctx, http.StatusInternalServerError, "EvalAs", "%s", err)
+				} else {
+					item.Evaluated = &i
+					item.EvaluatedAs = evaluatedAs
+				}
+			}
+			r.Items = append(r.Items, item)
+		}
+		return ctx.JSON(http.StatusOK, r)
 	}
-	if err != nil {
-		return
+
+	for nodename := range instanceConfigData {
+		c, err := a.newProxyClient(ctx, nodename)
+		if err != nil {
+			return JSONProblemf(ctx, http.StatusInternalServerError, "New client", "%s: %s", nodename, err)
+		}
+		if resp, err := c.GetObjectConfigWithResponse(ctx.Request().Context(), namespace, kind, name, &params); err != nil {
+			return JSONProblemf(ctx, http.StatusInternalServerError, "Request peer", "%s: %s", nodename, err)
+		} else if len(resp.Body) > 0 {
+			return ctx.JSONBlob(resp.StatusCode(), resp.Body)
+		}
 	}
-	return config.Data, nil
+
+	return ctx.JSON(http.StatusOK, r)
 }

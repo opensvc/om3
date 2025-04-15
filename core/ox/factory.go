@@ -1414,11 +1414,8 @@ func newCmdNodeConfigShow() *cobra.Command {
 		},
 	}
 	flags := cmd.Flags()
-	commoncmd.FlagNodeSelector(flags, &options.NodeSelector)
-	addFlagsGlobal(flags, &options.OptsGlobal)
-	commoncmd.FlagEval(flags, &options.Eval)
-	commoncmd.FlagImpersonate(flags, &options.Impersonate)
 	commoncmd.FlagSections(flags, &options.Sections)
+	commoncmd.FlagNodeSelector(flags, &options.NodeSelector)
 	return cmd
 }
 
@@ -2059,9 +2056,6 @@ func newCmdObjectConfigShow(kind string) *cobra.Command {
 		},
 	}
 	flags := cmd.Flags()
-	addFlagsGlobal(flags, &options.OptsGlobal)
-	commoncmd.FlagEval(flags, &options.Eval)
-	commoncmd.FlagImpersonate(flags, &options.Impersonate)
 	commoncmd.FlagSections(flags, &options.Sections)
 	return cmd
 }
@@ -3289,6 +3283,7 @@ func newCmdObjectGet(kind string) *cobra.Command {
 func newCmdObjectPrintConfig(kind string) *cobra.Command {
 	cmd := newCmdObjectConfigShow(kind)
 	cmd.Hidden = true
+	cmd.Use = "config"
 	cmd.Aliases = []string{"conf", "co", "cf", "cfg"}
 	return cmd
 }

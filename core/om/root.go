@@ -21,6 +21,7 @@ import (
 	"github.com/opensvc/om3/util/fcache"
 	"github.com/opensvc/om3/util/hostname"
 	"github.com/opensvc/om3/util/logging"
+	"github.com/opensvc/om3/util/render"
 	"github.com/opensvc/om3/util/version"
 	"github.com/opensvc/om3/util/xsession"
 )
@@ -107,6 +108,7 @@ func persistentPreRunE(cmd *cobra.Command, _ []string) error {
 	}
 	if flag := cmd.Flags().Lookup("color"); flag != nil {
 		colorFlag = flag.Value.String()
+		render.SetColor(colorFlag)
 	}
 	logging.WithCaller = callerFlag
 	if err := hostname.Error(); err != nil {

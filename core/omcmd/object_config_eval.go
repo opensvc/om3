@@ -39,14 +39,14 @@ func (t *CmdObjectConfigEval) Run(selector, kind string) error {
 	}
 	l := make(api.KeywordItems, 0)
 	for _, p := range paths {
-		params := api.GetObjectConfigGetParams{}
+		params := api.GetObjectConfigParams{}
 		params.Kw = &t.Keywords
 		v := true
 		params.Evaluate = &v
 		if t.Impersonate != "" {
 			params.Impersonate = &t.Impersonate
 		}
-		response, err := c.GetObjectConfigGetWithResponse(context.Background(), p.Namespace, p.Kind, p.Name, &params)
+		response, err := c.GetObjectConfigWithResponse(context.Background(), p.Namespace, p.Kind, p.Name, &params)
 		if err != nil {
 			return err
 		}

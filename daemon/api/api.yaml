@@ -1258,15 +1258,16 @@ paths:
         - bearerAuth: []
       parameters:
         - $ref: '#/components/parameters/inPathNodeName'
-        - $ref: '#/components/parameters/Evaluate'
-        - $ref: '#/components/parameters/Impersonate'
+        - $ref: '#/components/parameters/inQueryKeywords'
+        - $ref: '#/components/parameters/inQueryEvaluate'
+        - $ref: '#/components/parameters/inQueryImpersonate'
       responses:
         200:
           description: OK
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/ObjectConfig'
+                $ref: '#/components/schemas/KeywordList'
         400:
           $ref: '#/components/responses/400'
         401:
@@ -1367,36 +1368,6 @@ paths:
           $ref: '#/components/responses/404'
         409:
           $ref: '#/components/responses/409'
-        500:
-          $ref: '#/components/responses/500'
-
-  /node/name/{nodename}/config/get:
-    get:
-      operationId: GetNodeConfigGet
-      tags:
-        - node
-      security:
-        - basicAuth: []
-        - bearerAuth: []
-      description: Get or evaluate a keyword in the node configuration file.
-      parameters:
-        - $ref: '#/components/parameters/inPathNodeName'
-        - $ref: '#/components/parameters/inQueryKeywords'
-        - $ref: '#/components/parameters/inQueryEvaluate'
-        - $ref: '#/components/parameters/inQueryImpersonate'
-      responses:
-        200:
-          description: OK
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/KeywordList'
-        400:
-          $ref: '#/components/responses/400'
-        401:
-          $ref: '#/components/responses/401'
-        403:
-          $ref: '#/components/responses/403'
         500:
           $ref: '#/components/responses/500'
 
@@ -3673,15 +3644,16 @@ paths:
         - $ref: '#/components/parameters/inPathNamespace'
         - $ref: '#/components/parameters/inPathKind'
         - $ref: '#/components/parameters/inPathName'
-        - $ref: '#/components/parameters/Evaluate'
-        - $ref: '#/components/parameters/Impersonate'
+        - $ref: '#/components/parameters/inQueryEvaluate'
+        - $ref: '#/components/parameters/inQueryImpersonate'
+        - $ref: '#/components/parameters/inQueryKeywords'
       responses:
         200:
           description: OK
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/ObjectConfig'
+                $ref: '#/components/schemas/KeywordList'
         400:
           $ref: '#/components/responses/400'
         401:
@@ -3833,42 +3805,6 @@ paths:
           $ref: '#/components/responses/404'
         409:
           $ref: '#/components/responses/409'
-        500:
-          $ref: '#/components/responses/500'
-
-  /object/path/{namespace}/{kind}/{name}/config/get:
-    get:
-      operationId: GetObjectConfigGet
-      tags:
-        - object / svc
-        - object / vol
-        - object / cfg
-        - object / sec
-        - object / usr
-      security:
-        - basicAuth: []
-        - bearerAuth: []
-      description: Get or evaluate a keyword in the object configuration file.
-      parameters:
-        - $ref: '#/components/parameters/inPathNamespace'
-        - $ref: '#/components/parameters/inPathKind'
-        - $ref: '#/components/parameters/inPathName'
-        - $ref: '#/components/parameters/inQueryKeywords'
-        - $ref: '#/components/parameters/inQueryEvaluate'
-        - $ref: '#/components/parameters/inQueryImpersonate'
-      responses:
-        200:
-          description: OK
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/KeywordList'
-        400:
-          $ref: '#/components/responses/400'
-        401:
-          $ref: '#/components/responses/401'
-        403:
-          $ref: '#/components/responses/403'
         500:
           $ref: '#/components/responses/500'
 
@@ -5077,44 +5013,22 @@ components:
     KeywordItem:
       type: object
       required:
-        - kind
-        - meta
-        - data
-      properties:
-        kind:
-          type: string
-          enum:
-            - KeywordItem
-        meta:
-          $ref: '#/components/schemas/KeywordMeta'
-        data:
-          $ref: '#/components/schemas/KeywordData'
-
-    KeywordData:
-      type: object
-      required:
+        - node
+        - object
+        - keyword
+        - evaluated_as
         - value
       properties:
-        value:
+        evaluated:
           x-go-type: any
-
-    KeywordMeta:
-      type: object
-      required:
-        - object
-        - node
-        - keyword
-        - is_evaluated
-        - evaluated_as
-      properties:
+        node:
+          type: string
         object:
           type: string
-        node:
+        value:
           type: string
         keyword:
           type: string
-        is_evaluated:
-          type: boolean
         evaluated_as:
           type: string
 
@@ -7036,18 +6950,6 @@ components:
         type: string
         format: duration
 
-    Evaluate:
-      name: evaluate
-      in: query
-      description: evaluate
-      schema:
-        type: boolean
-    Impersonate:
-      name: impersonate
-      in: query
-      description: impersonate the evaluation as node
-      schema:
-        type: string
     Duration:
       name: duration
       in: query

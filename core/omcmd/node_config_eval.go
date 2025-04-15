@@ -46,14 +46,14 @@ func (t *CmdNodeConfigEval) Run() error {
 	}
 	l := make(api.KeywordItems, 0)
 	for _, nodename := range nodenames {
-		params := api.GetNodeConfigGetParams{}
+		params := api.GetNodeConfigParams{}
 		params.Kw = &t.Keywords
 		v := true
 		params.Evaluate = &v
 		if t.Impersonate != "" {
 			params.Impersonate = &t.Impersonate
 		}
-		response, err := c.GetNodeConfigGetWithResponse(context.Background(), nodename, &params)
+		response, err := c.GetNodeConfigWithResponse(context.Background(), nodename, &params)
 		if err != nil {
 			return err
 		}
