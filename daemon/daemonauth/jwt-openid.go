@@ -47,16 +47,13 @@ func (i IDTokenGrant) Resolve() auth.Info {
 // Authenticate verifies user credentials using the base strategy and maps
 // the ID token to user information with extensions with grant.
 func (s *k) Authenticate(ctx context.Context, r *http.Request) (auth.Info, error) {
-	baseInfo, err := s.baseStrategy.Authenticate(ctx, r)
+	info, err := s.baseStrategy.Authenticate(ctx, r)
 	if err != nil {
 		return nil, err
 	}
-	token := baseInfo.(IDTokenGrant)
-	info := token.Resolve()
-
-	extensions := authenticatedExtensions(StrategyJWTOpenID, token.Issuer, token.Grant...)
-	info = auth.NewUserInfo(info.GetUserName(), info.GetUserName(), nil, *extensions)
-	return info, nil
+	tk := info.(IDTokenGrant)
+	extensions := authenticatedExtensions(StrategyJWTOpenID, tk.Issuer, tk.Grant...)
+	return auth.NewUserInfo(info.GetUserName(), info.GetUserName(), nil, *extensions), nil
 }
 
 // initJWTOpenID initializes the JWT OpenID authentication strategy from the
