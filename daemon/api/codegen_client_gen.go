@@ -107,6 +107,12 @@ type ClientInterface interface {
 	// PostClusterActionUnfreeze request
 	PostClusterActionUnfreeze(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error)
 
+	// GetClusterConfig request
+	GetClusterConfig(ctx context.Context, params *GetClusterConfigParams, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// PatchClusterConfig request
+	PatchClusterConfig(ctx context.Context, params *PatchClusterConfigParams, reqEditors ...RequestEditorFn) (*http.Response, error)
+
 	// GetClusterConfigFile request
 	GetClusterConfigFile(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error)
 
@@ -557,6 +563,30 @@ func (c *Client) PostClusterActionFreeze(ctx context.Context, reqEditors ...Requ
 
 func (c *Client) PostClusterActionUnfreeze(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error) {
 	req, err := NewPostClusterActionUnfreezeRequest(c.Server)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+func (c *Client) GetClusterConfig(ctx context.Context, params *GetClusterConfigParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewGetClusterConfigRequest(c.Server, params)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+func (c *Client) PatchClusterConfig(ctx context.Context, params *PatchClusterConfigParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewPatchClusterConfigRequest(c.Server, params)
 	if err != nil {
 		return nil, err
 	}
@@ -2376,6 +2406,168 @@ func NewPostClusterActionUnfreezeRequest(server string) (*http.Request, error) {
 	}
 
 	req, err := http.NewRequest("POST", queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
+// NewGetClusterConfigRequest generates requests for GetClusterConfig
+func NewGetClusterConfigRequest(server string, params *GetClusterConfigParams) (*http.Request, error) {
+	var err error
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/cluster/config")
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	if params != nil {
+		queryValues := queryURL.Query()
+
+		if params.Evaluate != nil {
+
+			if queryFrag, err := runtime.StyleParamWithLocation("form", true, "evaluate", runtime.ParamLocationQuery, *params.Evaluate); err != nil {
+				return nil, err
+			} else if parsed, err := url.ParseQuery(queryFrag); err != nil {
+				return nil, err
+			} else {
+				for k, v := range parsed {
+					for _, v2 := range v {
+						queryValues.Add(k, v2)
+					}
+				}
+			}
+
+		}
+
+		if params.Impersonate != nil {
+
+			if queryFrag, err := runtime.StyleParamWithLocation("form", true, "impersonate", runtime.ParamLocationQuery, *params.Impersonate); err != nil {
+				return nil, err
+			} else if parsed, err := url.ParseQuery(queryFrag); err != nil {
+				return nil, err
+			} else {
+				for k, v := range parsed {
+					for _, v2 := range v {
+						queryValues.Add(k, v2)
+					}
+				}
+			}
+
+		}
+
+		if params.Kw != nil {
+
+			if queryFrag, err := runtime.StyleParamWithLocation("form", true, "kw", runtime.ParamLocationQuery, *params.Kw); err != nil {
+				return nil, err
+			} else if parsed, err := url.ParseQuery(queryFrag); err != nil {
+				return nil, err
+			} else {
+				for k, v := range parsed {
+					for _, v2 := range v {
+						queryValues.Add(k, v2)
+					}
+				}
+			}
+
+		}
+
+		queryURL.RawQuery = queryValues.Encode()
+	}
+
+	req, err := http.NewRequest("GET", queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
+// NewPatchClusterConfigRequest generates requests for PatchClusterConfig
+func NewPatchClusterConfigRequest(server string, params *PatchClusterConfigParams) (*http.Request, error) {
+	var err error
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/cluster/config")
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	if params != nil {
+		queryValues := queryURL.Query()
+
+		if params.Delete != nil {
+
+			if queryFrag, err := runtime.StyleParamWithLocation("form", true, "delete", runtime.ParamLocationQuery, *params.Delete); err != nil {
+				return nil, err
+			} else if parsed, err := url.ParseQuery(queryFrag); err != nil {
+				return nil, err
+			} else {
+				for k, v := range parsed {
+					for _, v2 := range v {
+						queryValues.Add(k, v2)
+					}
+				}
+			}
+
+		}
+
+		if params.Unset != nil {
+
+			if queryFrag, err := runtime.StyleParamWithLocation("form", true, "unset", runtime.ParamLocationQuery, *params.Unset); err != nil {
+				return nil, err
+			} else if parsed, err := url.ParseQuery(queryFrag); err != nil {
+				return nil, err
+			} else {
+				for k, v := range parsed {
+					for _, v2 := range v {
+						queryValues.Add(k, v2)
+					}
+				}
+			}
+
+		}
+
+		if params.Set != nil {
+
+			if queryFrag, err := runtime.StyleParamWithLocation("form", true, "set", runtime.ParamLocationQuery, *params.Set); err != nil {
+				return nil, err
+			} else if parsed, err := url.ParseQuery(queryFrag); err != nil {
+				return nil, err
+			} else {
+				for k, v := range parsed {
+					for _, v2 := range v {
+						queryValues.Add(k, v2)
+					}
+				}
+			}
+
+		}
+
+		queryURL.RawQuery = queryValues.Encode()
+	}
+
+	req, err := http.NewRequest("PATCH", queryURL.String(), nil)
 	if err != nil {
 		return nil, err
 	}
@@ -10307,6 +10499,12 @@ type ClientWithResponsesInterface interface {
 	// PostClusterActionUnfreezeWithResponse request
 	PostClusterActionUnfreezeWithResponse(ctx context.Context, reqEditors ...RequestEditorFn) (*PostClusterActionUnfreezeResponse, error)
 
+	// GetClusterConfigWithResponse request
+	GetClusterConfigWithResponse(ctx context.Context, params *GetClusterConfigParams, reqEditors ...RequestEditorFn) (*GetClusterConfigResponse, error)
+
+	// PatchClusterConfigWithResponse request
+	PatchClusterConfigWithResponse(ctx context.Context, params *PatchClusterConfigParams, reqEditors ...RequestEditorFn) (*PatchClusterConfigResponse, error)
+
 	// GetClusterConfigFileWithResponse request
 	GetClusterConfigFileWithResponse(ctx context.Context, reqEditors ...RequestEditorFn) (*GetClusterConfigFileResponse, error)
 
@@ -10847,6 +11045,57 @@ func (r PostClusterActionUnfreezeResponse) Status() string {
 
 // StatusCode returns HTTPResponse.StatusCode
 func (r PostClusterActionUnfreezeResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+type GetClusterConfigResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	JSON200      *KeywordList
+	JSON400      *N400
+	JSON401      *N401
+	JSON403      *N403
+	JSON500      *N500
+}
+
+// Status returns HTTPResponse.Status
+func (r GetClusterConfigResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r GetClusterConfigResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+type PatchClusterConfigResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	JSON400      *N400
+	JSON401      *N401
+	JSON403      *N403
+	JSON500      *N500
+}
+
+// Status returns HTTPResponse.Status
+func (r PatchClusterConfigResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r PatchClusterConfigResponse) StatusCode() int {
 	if r.HTTPResponse != nil {
 		return r.HTTPResponse.StatusCode
 	}
@@ -14106,6 +14355,24 @@ func (c *ClientWithResponses) PostClusterActionUnfreezeWithResponse(ctx context.
 	return ParsePostClusterActionUnfreezeResponse(rsp)
 }
 
+// GetClusterConfigWithResponse request returning *GetClusterConfigResponse
+func (c *ClientWithResponses) GetClusterConfigWithResponse(ctx context.Context, params *GetClusterConfigParams, reqEditors ...RequestEditorFn) (*GetClusterConfigResponse, error) {
+	rsp, err := c.GetClusterConfig(ctx, params, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseGetClusterConfigResponse(rsp)
+}
+
+// PatchClusterConfigWithResponse request returning *PatchClusterConfigResponse
+func (c *ClientWithResponses) PatchClusterConfigWithResponse(ctx context.Context, params *PatchClusterConfigParams, reqEditors ...RequestEditorFn) (*PatchClusterConfigResponse, error) {
+	rsp, err := c.PatchClusterConfig(ctx, params, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParsePatchClusterConfigResponse(rsp)
+}
+
 // GetClusterConfigFileWithResponse request returning *GetClusterConfigFileResponse
 func (c *ClientWithResponses) GetClusterConfigFileWithResponse(ctx context.Context, reqEditors ...RequestEditorFn) (*GetClusterConfigFileResponse, error) {
 	rsp, err := c.GetClusterConfigFile(ctx, reqEditors...)
@@ -15610,6 +15877,107 @@ func ParsePostClusterActionUnfreezeResponse(rsp *http.Response) (*PostClusterAct
 			return nil, err
 		}
 		response.JSON409 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
+		var dest N500
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON500 = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseGetClusterConfigResponse parses an HTTP response from a GetClusterConfigWithResponse call
+func ParseGetClusterConfigResponse(rsp *http.Response) (*GetClusterConfigResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &GetClusterConfigResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest KeywordList
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
+		var dest N400
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON400 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest N401
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest N403
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON403 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
+		var dest N500
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON500 = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParsePatchClusterConfigResponse parses an HTTP response from a PatchClusterConfigWithResponse call
+func ParsePatchClusterConfigResponse(rsp *http.Response) (*PatchClusterConfigResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &PatchClusterConfigResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
+		var dest N400
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON400 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest N401
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest N403
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON403 = &dest
 
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
 		var dest N500

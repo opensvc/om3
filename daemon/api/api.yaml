@@ -197,6 +197,57 @@ paths:
       tags:
         - cluster
 
+  /cluster/config:
+    get:
+      operationId: GetClusterConfig
+      tags:
+        - cluster
+      security:
+        - basicAuth: []
+        - bearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/inQueryEvaluate'
+        - $ref: '#/components/parameters/inQueryImpersonate'
+        - $ref: '#/components/parameters/inQueryKeywords'
+      responses:
+        200:
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/KeywordList'
+        400:
+          $ref: '#/components/responses/400'
+        401:
+          $ref: '#/components/responses/401'
+        403:
+          $ref: '#/components/responses/403'
+        500:
+          $ref: '#/components/responses/500'
+    patch:
+      operationId: PatchClusterConfig
+      tags:
+        - cluster
+      security:
+        - basicAuth: []
+        - bearerAuth: []
+      description: Delete sections, unset and set keywords in the object configuration file.
+      parameters:
+        - $ref: '#/components/parameters/inQueryDeletes'
+        - $ref: '#/components/parameters/inQueryUnsets'
+        - $ref: '#/components/parameters/inQuerySets'
+      responses:
+        204:
+          $ref: '#/components/responses/204'
+        400:
+          $ref: '#/components/responses/400'
+        401:
+          $ref: '#/components/responses/401'
+        403:
+          $ref: '#/components/responses/403'
+        500:
+          $ref: '#/components/responses/500'
+
   /cluster/config/file:
     get:
       description: |

@@ -1541,6 +1541,20 @@ type PostAuthTokenParams struct {
 	Scope *string `form:"scope,omitempty" json:"scope,omitempty"`
 }
 
+// GetClusterConfigParams defines parameters for GetClusterConfig.
+type GetClusterConfigParams struct {
+	Evaluate    *InQueryEvaluate    `form:"evaluate,omitempty" json:"evaluate,omitempty"`
+	Impersonate *InQueryImpersonate `form:"impersonate,omitempty" json:"impersonate,omitempty"`
+	Kw          *InQueryKeywords    `form:"kw,omitempty" json:"kw,omitempty"`
+}
+
+// PatchClusterConfigParams defines parameters for PatchClusterConfig.
+type PatchClusterConfigParams struct {
+	Delete *InQueryDeletes `form:"delete,omitempty" json:"delete,omitempty"`
+	Unset  *InQueryUnsets  `form:"unset,omitempty" json:"unset,omitempty"`
+	Set    *InQuerySets    `form:"set,omitempty" json:"set,omitempty"`
+}
+
 // PostDaemonJoinParams defines parameters for PostDaemonJoin.
 type PostDaemonJoinParams struct {
 	// Node The node to add to cluster nodes
