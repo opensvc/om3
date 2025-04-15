@@ -23,7 +23,7 @@ import (
 )
 
 type (
-	CmdDaemonJoin struct {
+	CmdClusterJoin struct {
 		CmdDaemonCommon
 
 		Node  string
@@ -35,18 +35,18 @@ type (
 )
 
 var (
-	ErrCmdDaemonJoin = errors.New("command daemon join")
+	ErrCmdClusterJoin = errors.New("command daemon join")
 )
 
-func (t *CmdDaemonJoin) Run() error {
+func (t *CmdClusterJoin) Run() error {
 	err := t.run()
 	if err != nil {
-		return fmt.Errorf("%w: %w", ErrCmdDaemonJoin, err)
+		return fmt.Errorf("%w: %w", ErrCmdClusterJoin, err)
 	}
 	return nil
 }
 
-func (t *CmdDaemonJoin) run() error {
+func (t *CmdClusterJoin) run() error {
 	var (
 		certFile string
 		cli      *client.T
@@ -112,10 +112,10 @@ func (t *CmdDaemonJoin) run() error {
 
 	_, _ = fmt.Fprintf(os.Stdout, "Add localhost node to the remote cluster configuration on %s\n", t.Node)
 	_, _ = fmt.Fprintf(os.Stdout, "Daemon join\n")
-	params := api.PostDaemonJoinParams{
+	params := api.PostClusterJoinParams{
 		Node: hostname.Hostname(),
 	}
-	if resp, err := cli.PostDaemonJoin(context.Background(), &params); err != nil {
+	if resp, err := cli.PostClusterJoin(context.Background(), &params); err != nil {
 		return fmt.Errorf("%w: %w", ErrClientRequest, err)
 	} else if resp.StatusCode != http.StatusOK {
 		return fmt.Errorf("%w: got %d wanted %d", ErrClientStatusCode, resp.StatusCode, http.StatusOK)
@@ -131,7 +131,7 @@ func (t *CmdDaemonJoin) run() error {
 	return err
 }
 
-func (t *CmdDaemonJoin) checkParams() error {
+func (t *CmdClusterJoin) checkParams() error {
 	if t.Node == "" {
 		return fmt.Errorf("%w: node is empty", ErrFlagInvalid)
 	}
@@ -141,7 +141,7 @@ func (t *CmdDaemonJoin) checkParams() error {
 	return nil
 }
 
-func (t *CmdDaemonJoin) extractCaClaim() (ca []byte, err error) {
+func (t *CmdClusterJoin) extractCaClaim() (ca []byte, err error) {
 	type (
 		joinClaim struct {
 			Ca string `json:"ca"`
@@ -168,7 +168,7 @@ func (t *CmdDaemonJoin) extractCaClaim() (ca []byte, err error) {
 	return
 }
 
-func (t *CmdDaemonJoin) createTmpCertFile(b []byte) (certFile string, err error) {
+func (t *CmdClusterJoin) createTmpCertFile(b []byte) (certFile string, err error) {
 	var (
 		tmpFile *os.File
 	)
@@ -190,7 +190,7 @@ func (t *CmdDaemonJoin) createTmpCertFile(b []byte) (certFile string, err error)
 	return
 }
 
-func (t *CmdDaemonJoin) onJoined(ctx context.Context, cli *client.T) (err error) {
+func (t *CmdClusterJoin) onJoined(ctx context.Context, cli *client.T) (err error) {
 	filePaths := make(map[string]naming.Path)
 	toFetch := []naming.Path{
 		naming.Cluster,
@@ -258,7 +258,7 @@ func (t *CmdDaemonJoin) onJoined(ctx context.Context, cli *client.T) (err error)
 	return nil
 }
 
-func (t *CmdDaemonJoin) waitJoinResult(ctx context.Context, evReader event.Reader) error {
+func (t *CmdClusterJoin) waitJoinResult(ctx context.Context, evReader event.Reader) error {
 	for {
 		for {
 			select {

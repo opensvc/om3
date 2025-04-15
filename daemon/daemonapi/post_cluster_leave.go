@@ -10,15 +10,15 @@ import (
 	"github.com/opensvc/om3/daemon/rbac"
 )
 
-// PostDaemonLeave publishes msgbus.LeaveRequest{Node: node} with label node=<apinode>.
+// PostClusterLeave publishes msgbus.LeaveRequest{Node: node} with label node=<apinode>.
 // It requires non empty params.Node
-func (a *DaemonAPI) PostDaemonLeave(ctx echo.Context, params api.PostDaemonLeaveParams) error {
+func (a *DaemonAPI) PostClusterLeave(ctx echo.Context, params api.PostClusterLeaveParams) error {
 	if v, err := assertRole(ctx, rbac.RoleRoot, rbac.RoleLeave); err != nil {
 		return err
 	} else if !v {
 		return nil
 	}
-	log := LogHandler(ctx, "PostDaemonLeave")
+	log := LogHandler(ctx, "PostClusterLeave")
 	node := params.Node
 	// TODO verify is node value is a valid nodename
 	if node == "" {

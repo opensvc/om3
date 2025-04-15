@@ -17,7 +17,7 @@ import (
 )
 
 type (
-	CmdDaemonLeave struct {
+	CmdClusterLeave struct {
 		CmdDaemonCommon
 
 		// Timeout is the maximum duration for leave
@@ -32,7 +32,7 @@ type (
 	}
 )
 
-func (t *CmdDaemonLeave) Run() (err error) {
+func (t *CmdClusterLeave) Run() (err error) {
 	var (
 		tk string
 
@@ -123,7 +123,7 @@ func (t *CmdDaemonLeave) Run() (err error) {
 	return nil
 }
 
-func (t *CmdDaemonLeave) setEvReader(duration time.Duration) (err error) {
+func (t *CmdClusterLeave) setEvReader(duration time.Duration) (err error) {
 	filters := []string{
 		"LeaveSuccess,removed=" + t.localhost + ",node=" + t.APINode,
 		"LeaveError,leave-node=" + t.localhost,
@@ -142,7 +142,7 @@ func (t *CmdDaemonLeave) setEvReader(duration time.Duration) (err error) {
 	return
 }
 
-func (t *CmdDaemonLeave) waitResult(ctx context.Context) error {
+func (t *CmdClusterLeave) waitResult(ctx context.Context) error {
 	for {
 		for {
 			select {
@@ -172,12 +172,12 @@ func (t *CmdDaemonLeave) waitResult(ctx context.Context) error {
 	}
 }
 
-func (t *CmdDaemonLeave) leave(ctx context.Context, c *client.T) error {
+func (t *CmdClusterLeave) leave(ctx context.Context, c *client.T) error {
 	_, _ = fmt.Fprintf(os.Stdout, "Daemon leave\n")
-	params := api.PostDaemonLeaveParams{
+	params := api.PostClusterLeaveParams{
 		Node: t.localhost,
 	}
-	if resp, err := c.PostDaemonLeave(ctx, &params); err != nil {
+	if resp, err := c.PostClusterLeave(ctx, &params); err != nil {
 		return fmt.Errorf("daemon leave error: %w", err)
 	} else if resp.StatusCode != http.StatusOK {
 		return fmt.Errorf("daemon leave unexpected status code %s", resp.Status)
@@ -185,7 +185,7 @@ func (t *CmdDaemonLeave) leave(ctx context.Context, c *client.T) error {
 	return nil
 }
 
-func (t *CmdDaemonLeave) peerClusterNode() (string, error) {
+func (t *CmdClusterLeave) peerClusterNode() (string, error) {
 	if ccfg, err := object.NewCluster(object.WithVolatile(true)); err != nil {
 		return "", err
 	} else if clusterNodes, err := ccfg.Nodes(); err != nil {

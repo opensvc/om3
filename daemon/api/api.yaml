@@ -336,7 +336,7 @@ paths:
       tags:
         - cluster
 
-  /daemon/action/join:
+  /cluster/join:
     post:
       description: |
         For internal use only.
@@ -354,7 +354,7 @@ paths:
         - JoinSuccess,node=<api_node>,added=<node> (the new node has been added to cluster nodes)
         - JoinIgnored,node=<api_node>,join-node=<node> (the new node was already a cluster node)
         - JoinError,node=<api_node>,join-node=<node> (an error occur during update cluster node list)
-      operationId: PostDaemonJoin
+      operationId: PostClusterJoin
       parameters:
         - in: query
           name: node
@@ -379,10 +379,10 @@ paths:
         - basicAuth: [ ]
         - bearerAuth: [ ]
       tags:
-        - daemon
+        - cluster
       x-internal: true
 
-  /daemon/action/leave:
+  /cluster/leave:
     post:
       description: |
         Register a leave request to remove a cluster node member.
@@ -397,7 +397,7 @@ paths:
         - LeaveSuccess,node=<api_node>,removed=<node> (node has been removed to cluster nodes)
         - LeaveIgnored,node=<api_node>,leave-node=<node> (node is not a cluster node)
         - LeaveError,node=<api_node>,leave-node=<node> (an error occur during update cluster node list)
-      operationId: PostDaemonLeave
+      operationId: PostClusterLeave
       parameters:
         - in: query
           name: node
@@ -416,7 +416,7 @@ paths:
         - basicAuth: [ ]
         - bearerAuth: [ ]
       tags:
-        - daemon
+        - cluster
 
   /node/name/{nodename}/capabilities:
     get:

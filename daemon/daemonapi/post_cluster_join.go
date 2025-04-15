@@ -10,13 +10,13 @@ import (
 	"github.com/opensvc/om3/daemon/rbac"
 )
 
-// PostDaemonJoin publishes msgbus.JoinRequest{Node: node} with label node=<apinode>.
+// PostClusterJoin publishes msgbus.JoinRequest{Node: node} with label node=<apinode>.
 // It requires non empty params.Node
-func (a *DaemonAPI) PostDaemonJoin(ctx echo.Context, params api.PostDaemonJoinParams) error {
+func (a *DaemonAPI) PostClusterJoin(ctx echo.Context, params api.PostClusterJoinParams) error {
 	if v, err := assertRole(ctx, rbac.RoleRoot, rbac.RoleJoin); !v {
 		return err
 	}
-	log := LogHandler(ctx, "PostDaemonJoin")
+	log := LogHandler(ctx, "PostClusterJoin")
 	node := params.Node
 	// TODO verify is node value is a valid nodename
 	if node == "" {

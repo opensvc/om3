@@ -1526,6 +1526,18 @@ type PatchClusterConfigParams struct {
 	Set    *InQuerySets    `form:"set,omitempty" json:"set,omitempty"`
 }
 
+// PostClusterJoinParams defines parameters for PostClusterJoin.
+type PostClusterJoinParams struct {
+	// Node The node to add to cluster nodes
+	Node string `form:"node" json:"node"`
+}
+
+// PostClusterLeaveParams defines parameters for PostClusterLeave.
+type PostClusterLeaveParams struct {
+	// Node The leaving cluster node
+	Node string `form:"node" json:"node"`
+}
+
 // GetClusterStatusParams defines parameters for GetClusterStatus.
 type GetClusterStatusParams struct {
 	// Namespace namespace
@@ -1533,18 +1545,6 @@ type GetClusterStatusParams struct {
 
 	// Selector selector
 	Selector *SelectorOptional `form:"selector,omitempty" json:"selector,omitempty"`
-}
-
-// PostDaemonJoinParams defines parameters for PostDaemonJoin.
-type PostDaemonJoinParams struct {
-	// Node The node to add to cluster nodes
-	Node string `form:"node" json:"node"`
-}
-
-// PostDaemonLeaveParams defines parameters for PostDaemonLeave.
-type PostDaemonLeaveParams struct {
-	// Node The leaving cluster node
-	Node string `form:"node" json:"node"`
 }
 
 // GetInstancesParams defines parameters for GetInstances.

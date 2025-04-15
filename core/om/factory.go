@@ -312,8 +312,8 @@ func newCmdDaemonDNSDump() *cobra.Command {
 	return cmd
 }
 
-func newCmdDaemonJoin() *cobra.Command {
-	var options commands.CmdDaemonJoin
+func newCmdClusterJoin() *cobra.Command {
+	var options commands.CmdClusterJoin
 	cmd := &cobra.Command{
 		Use:   "join",
 		Short: "add this node to a cluster",
@@ -339,8 +339,8 @@ func newCmdDaemonJoin() *cobra.Command {
 	return cmd
 }
 
-func newCmdDaemonLeave() *cobra.Command {
-	var options commands.CmdDaemonLeave
+func newCmdClusterLeave() *cobra.Command {
+	var options commands.CmdClusterLeave
 	cmd := &cobra.Command{
 		Use:   "leave",
 		Short: "remove this node from a cluster",
@@ -3646,6 +3646,18 @@ func newCmdObjectGenCert(kind string) *cobra.Command {
 
 func newCmdObjectPKCS(kind string) *cobra.Command {
 	cmd := newCmdObjectCertificatePKCS(kind)
+	cmd.Hidden = true
+	return cmd
+}
+
+func newCmdDaemonJoin() *cobra.Command {
+	cmd := newCmdClusterJoin()
+	cmd.Hidden = true
+	return cmd
+}
+
+func newCmdDaemonLeave() *cobra.Command {
+	cmd := newCmdClusterLeave()
 	cmd.Hidden = true
 	return cmd
 }

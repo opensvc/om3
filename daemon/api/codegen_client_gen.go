@@ -119,14 +119,14 @@ type ClientInterface interface {
 	// PutClusterConfigFileWithBody request with any body
 	PutClusterConfigFileWithBody(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
 
+	// PostClusterJoin request
+	PostClusterJoin(ctx context.Context, params *PostClusterJoinParams, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// PostClusterLeave request
+	PostClusterLeave(ctx context.Context, params *PostClusterLeaveParams, reqEditors ...RequestEditorFn) (*http.Response, error)
+
 	// GetClusterStatus request
 	GetClusterStatus(ctx context.Context, params *GetClusterStatusParams, reqEditors ...RequestEditorFn) (*http.Response, error)
-
-	// PostDaemonJoin request
-	PostDaemonJoin(ctx context.Context, params *PostDaemonJoinParams, reqEditors ...RequestEditorFn) (*http.Response, error)
-
-	// PostDaemonLeave request
-	PostDaemonLeave(ctx context.Context, params *PostDaemonLeaveParams, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// GetDNSDump request
 	GetDNSDump(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error)
@@ -621,32 +621,32 @@ func (c *Client) PutClusterConfigFileWithBody(ctx context.Context, contentType s
 	return c.Client.Do(req)
 }
 
+func (c *Client) PostClusterJoin(ctx context.Context, params *PostClusterJoinParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewPostClusterJoinRequest(c.Server, params)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+func (c *Client) PostClusterLeave(ctx context.Context, params *PostClusterLeaveParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewPostClusterLeaveRequest(c.Server, params)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
 func (c *Client) GetClusterStatus(ctx context.Context, params *GetClusterStatusParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
 	req, err := NewGetClusterStatusRequest(c.Server, params)
-	if err != nil {
-		return nil, err
-	}
-	req = req.WithContext(ctx)
-	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
-		return nil, err
-	}
-	return c.Client.Do(req)
-}
-
-func (c *Client) PostDaemonJoin(ctx context.Context, params *PostDaemonJoinParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
-	req, err := NewPostDaemonJoinRequest(c.Server, params)
-	if err != nil {
-		return nil, err
-	}
-	req = req.WithContext(ctx)
-	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
-		return nil, err
-	}
-	return c.Client.Do(req)
-}
-
-func (c *Client) PostDaemonLeave(ctx context.Context, params *PostDaemonLeaveParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
-	req, err := NewPostDaemonLeaveRequest(c.Server, params)
 	if err != nil {
 		return nil, err
 	}
@@ -2631,6 +2631,96 @@ func NewPutClusterConfigFileRequestWithBody(server string, contentType string, b
 	return req, nil
 }
 
+// NewPostClusterJoinRequest generates requests for PostClusterJoin
+func NewPostClusterJoinRequest(server string, params *PostClusterJoinParams) (*http.Request, error) {
+	var err error
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/cluster/join")
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	if params != nil {
+		queryValues := queryURL.Query()
+
+		if queryFrag, err := runtime.StyleParamWithLocation("form", true, "node", runtime.ParamLocationQuery, params.Node); err != nil {
+			return nil, err
+		} else if parsed, err := url.ParseQuery(queryFrag); err != nil {
+			return nil, err
+		} else {
+			for k, v := range parsed {
+				for _, v2 := range v {
+					queryValues.Add(k, v2)
+				}
+			}
+		}
+
+		queryURL.RawQuery = queryValues.Encode()
+	}
+
+	req, err := http.NewRequest("POST", queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
+// NewPostClusterLeaveRequest generates requests for PostClusterLeave
+func NewPostClusterLeaveRequest(server string, params *PostClusterLeaveParams) (*http.Request, error) {
+	var err error
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/cluster/leave")
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	if params != nil {
+		queryValues := queryURL.Query()
+
+		if queryFrag, err := runtime.StyleParamWithLocation("form", true, "node", runtime.ParamLocationQuery, params.Node); err != nil {
+			return nil, err
+		} else if parsed, err := url.ParseQuery(queryFrag); err != nil {
+			return nil, err
+		} else {
+			for k, v := range parsed {
+				for _, v2 := range v {
+					queryValues.Add(k, v2)
+				}
+			}
+		}
+
+		queryURL.RawQuery = queryValues.Encode()
+	}
+
+	req, err := http.NewRequest("POST", queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
 // NewGetClusterStatusRequest generates requests for GetClusterStatus
 func NewGetClusterStatusRequest(server string, params *GetClusterStatusParams) (*http.Request, error) {
 	var err error
@@ -2689,96 +2779,6 @@ func NewGetClusterStatusRequest(server string, params *GetClusterStatusParams) (
 	}
 
 	req, err := http.NewRequest("GET", queryURL.String(), nil)
-	if err != nil {
-		return nil, err
-	}
-
-	return req, nil
-}
-
-// NewPostDaemonJoinRequest generates requests for PostDaemonJoin
-func NewPostDaemonJoinRequest(server string, params *PostDaemonJoinParams) (*http.Request, error) {
-	var err error
-
-	serverURL, err := url.Parse(server)
-	if err != nil {
-		return nil, err
-	}
-
-	operationPath := fmt.Sprintf("/daemon/action/join")
-	if operationPath[0] == '/' {
-		operationPath = "." + operationPath
-	}
-
-	queryURL, err := serverURL.Parse(operationPath)
-	if err != nil {
-		return nil, err
-	}
-
-	if params != nil {
-		queryValues := queryURL.Query()
-
-		if queryFrag, err := runtime.StyleParamWithLocation("form", true, "node", runtime.ParamLocationQuery, params.Node); err != nil {
-			return nil, err
-		} else if parsed, err := url.ParseQuery(queryFrag); err != nil {
-			return nil, err
-		} else {
-			for k, v := range parsed {
-				for _, v2 := range v {
-					queryValues.Add(k, v2)
-				}
-			}
-		}
-
-		queryURL.RawQuery = queryValues.Encode()
-	}
-
-	req, err := http.NewRequest("POST", queryURL.String(), nil)
-	if err != nil {
-		return nil, err
-	}
-
-	return req, nil
-}
-
-// NewPostDaemonLeaveRequest generates requests for PostDaemonLeave
-func NewPostDaemonLeaveRequest(server string, params *PostDaemonLeaveParams) (*http.Request, error) {
-	var err error
-
-	serverURL, err := url.Parse(server)
-	if err != nil {
-		return nil, err
-	}
-
-	operationPath := fmt.Sprintf("/daemon/action/leave")
-	if operationPath[0] == '/' {
-		operationPath = "." + operationPath
-	}
-
-	queryURL, err := serverURL.Parse(operationPath)
-	if err != nil {
-		return nil, err
-	}
-
-	if params != nil {
-		queryValues := queryURL.Query()
-
-		if queryFrag, err := runtime.StyleParamWithLocation("form", true, "node", runtime.ParamLocationQuery, params.Node); err != nil {
-			return nil, err
-		} else if parsed, err := url.ParseQuery(queryFrag); err != nil {
-			return nil, err
-		} else {
-			for k, v := range parsed {
-				for _, v2 := range v {
-					queryValues.Add(k, v2)
-				}
-			}
-		}
-
-		queryURL.RawQuery = queryValues.Encode()
-	}
-
-	req, err := http.NewRequest("POST", queryURL.String(), nil)
 	if err != nil {
 		return nil, err
 	}
@@ -10518,14 +10518,14 @@ type ClientWithResponsesInterface interface {
 	// PutClusterConfigFileWithBodyWithResponse request with any body
 	PutClusterConfigFileWithBodyWithResponse(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*PutClusterConfigFileResponse, error)
 
+	// PostClusterJoinWithResponse request
+	PostClusterJoinWithResponse(ctx context.Context, params *PostClusterJoinParams, reqEditors ...RequestEditorFn) (*PostClusterJoinResponse, error)
+
+	// PostClusterLeaveWithResponse request
+	PostClusterLeaveWithResponse(ctx context.Context, params *PostClusterLeaveParams, reqEditors ...RequestEditorFn) (*PostClusterLeaveResponse, error)
+
 	// GetClusterStatusWithResponse request
 	GetClusterStatusWithResponse(ctx context.Context, params *GetClusterStatusParams, reqEditors ...RequestEditorFn) (*GetClusterStatusResponse, error)
-
-	// PostDaemonJoinWithResponse request
-	PostDaemonJoinWithResponse(ctx context.Context, params *PostDaemonJoinParams, reqEditors ...RequestEditorFn) (*PostDaemonJoinResponse, error)
-
-	// PostDaemonLeaveWithResponse request
-	PostDaemonLeaveWithResponse(ctx context.Context, params *PostDaemonLeaveParams, reqEditors ...RequestEditorFn) (*PostDaemonLeaveResponse, error)
 
 	// GetDNSDumpWithResponse request
 	GetDNSDumpWithResponse(ctx context.Context, reqEditors ...RequestEditorFn) (*GetDNSDumpResponse, error)
@@ -11161,6 +11161,53 @@ func (r PutClusterConfigFileResponse) StatusCode() int {
 	return 0
 }
 
+type PostClusterJoinResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	JSON400      *N400
+	JSON401      *N401
+	JSON403      *N403
+	JSON500      *N500
+}
+
+// Status returns HTTPResponse.Status
+func (r PostClusterJoinResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r PostClusterJoinResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+type PostClusterLeaveResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	JSON400      *N400
+}
+
+// Status returns HTTPResponse.Status
+func (r PostClusterLeaveResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r PostClusterLeaveResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
 type GetClusterStatusResponse struct {
 	Body         []byte
 	HTTPResponse *http.Response
@@ -11180,53 +11227,6 @@ func (r GetClusterStatusResponse) Status() string {
 
 // StatusCode returns HTTPResponse.StatusCode
 func (r GetClusterStatusResponse) StatusCode() int {
-	if r.HTTPResponse != nil {
-		return r.HTTPResponse.StatusCode
-	}
-	return 0
-}
-
-type PostDaemonJoinResponse struct {
-	Body         []byte
-	HTTPResponse *http.Response
-	JSON400      *N400
-	JSON401      *N401
-	JSON403      *N403
-	JSON500      *N500
-}
-
-// Status returns HTTPResponse.Status
-func (r PostDaemonJoinResponse) Status() string {
-	if r.HTTPResponse != nil {
-		return r.HTTPResponse.Status
-	}
-	return http.StatusText(0)
-}
-
-// StatusCode returns HTTPResponse.StatusCode
-func (r PostDaemonJoinResponse) StatusCode() int {
-	if r.HTTPResponse != nil {
-		return r.HTTPResponse.StatusCode
-	}
-	return 0
-}
-
-type PostDaemonLeaveResponse struct {
-	Body         []byte
-	HTTPResponse *http.Response
-	JSON400      *N400
-}
-
-// Status returns HTTPResponse.Status
-func (r PostDaemonLeaveResponse) Status() string {
-	if r.HTTPResponse != nil {
-		return r.HTTPResponse.Status
-	}
-	return http.StatusText(0)
-}
-
-// StatusCode returns HTTPResponse.StatusCode
-func (r PostDaemonLeaveResponse) StatusCode() int {
 	if r.HTTPResponse != nil {
 		return r.HTTPResponse.StatusCode
 	}
@@ -14398,6 +14398,24 @@ func (c *ClientWithResponses) PutClusterConfigFileWithBodyWithResponse(ctx conte
 	return ParsePutClusterConfigFileResponse(rsp)
 }
 
+// PostClusterJoinWithResponse request returning *PostClusterJoinResponse
+func (c *ClientWithResponses) PostClusterJoinWithResponse(ctx context.Context, params *PostClusterJoinParams, reqEditors ...RequestEditorFn) (*PostClusterJoinResponse, error) {
+	rsp, err := c.PostClusterJoin(ctx, params, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParsePostClusterJoinResponse(rsp)
+}
+
+// PostClusterLeaveWithResponse request returning *PostClusterLeaveResponse
+func (c *ClientWithResponses) PostClusterLeaveWithResponse(ctx context.Context, params *PostClusterLeaveParams, reqEditors ...RequestEditorFn) (*PostClusterLeaveResponse, error) {
+	rsp, err := c.PostClusterLeave(ctx, params, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParsePostClusterLeaveResponse(rsp)
+}
+
 // GetClusterStatusWithResponse request returning *GetClusterStatusResponse
 func (c *ClientWithResponses) GetClusterStatusWithResponse(ctx context.Context, params *GetClusterStatusParams, reqEditors ...RequestEditorFn) (*GetClusterStatusResponse, error) {
 	rsp, err := c.GetClusterStatus(ctx, params, reqEditors...)
@@ -14405,24 +14423,6 @@ func (c *ClientWithResponses) GetClusterStatusWithResponse(ctx context.Context, 
 		return nil, err
 	}
 	return ParseGetClusterStatusResponse(rsp)
-}
-
-// PostDaemonJoinWithResponse request returning *PostDaemonJoinResponse
-func (c *ClientWithResponses) PostDaemonJoinWithResponse(ctx context.Context, params *PostDaemonJoinParams, reqEditors ...RequestEditorFn) (*PostDaemonJoinResponse, error) {
-	rsp, err := c.PostDaemonJoin(ctx, params, reqEditors...)
-	if err != nil {
-		return nil, err
-	}
-	return ParsePostDaemonJoinResponse(rsp)
-}
-
-// PostDaemonLeaveWithResponse request returning *PostDaemonLeaveResponse
-func (c *ClientWithResponses) PostDaemonLeaveWithResponse(ctx context.Context, params *PostDaemonLeaveParams, reqEditors ...RequestEditorFn) (*PostDaemonLeaveResponse, error) {
-	rsp, err := c.PostDaemonLeave(ctx, params, reqEditors...)
-	if err != nil {
-		return nil, err
-	}
-	return ParsePostDaemonLeaveResponse(rsp)
 }
 
 // GetDNSDumpWithResponse request returning *GetDNSDumpResponse
@@ -16106,6 +16106,79 @@ func ParsePutClusterConfigFileResponse(rsp *http.Response) (*PutClusterConfigFil
 	return response, nil
 }
 
+// ParsePostClusterJoinResponse parses an HTTP response from a PostClusterJoinWithResponse call
+func ParsePostClusterJoinResponse(rsp *http.Response) (*PostClusterJoinResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &PostClusterJoinResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
+		var dest N400
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON400 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest N401
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest N403
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON403 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
+		var dest N500
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON500 = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParsePostClusterLeaveResponse parses an HTTP response from a PostClusterLeaveWithResponse call
+func ParsePostClusterLeaveResponse(rsp *http.Response) (*PostClusterLeaveResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &PostClusterLeaveResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
+		var dest N400
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON400 = &dest
+
+	}
+
+	return response, nil
+}
+
 // ParseGetClusterStatusResponse parses an HTTP response from a GetClusterStatusWithResponse call
 func ParseGetClusterStatusResponse(rsp *http.Response) (*GetClusterStatusResponse, error) {
 	bodyBytes, err := io.ReadAll(rsp.Body)
@@ -16147,79 +16220,6 @@ func ParseGetClusterStatusResponse(rsp *http.Response) (*GetClusterStatusRespons
 			return nil, err
 		}
 		response.JSON500 = &dest
-
-	}
-
-	return response, nil
-}
-
-// ParsePostDaemonJoinResponse parses an HTTP response from a PostDaemonJoinWithResponse call
-func ParsePostDaemonJoinResponse(rsp *http.Response) (*PostDaemonJoinResponse, error) {
-	bodyBytes, err := io.ReadAll(rsp.Body)
-	defer func() { _ = rsp.Body.Close() }()
-	if err != nil {
-		return nil, err
-	}
-
-	response := &PostDaemonJoinResponse{
-		Body:         bodyBytes,
-		HTTPResponse: rsp,
-	}
-
-	switch {
-	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
-		var dest N400
-		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
-			return nil, err
-		}
-		response.JSON400 = &dest
-
-	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
-		var dest N401
-		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
-			return nil, err
-		}
-		response.JSON401 = &dest
-
-	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
-		var dest N403
-		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
-			return nil, err
-		}
-		response.JSON403 = &dest
-
-	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
-		var dest N500
-		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
-			return nil, err
-		}
-		response.JSON500 = &dest
-
-	}
-
-	return response, nil
-}
-
-// ParsePostDaemonLeaveResponse parses an HTTP response from a PostDaemonLeaveWithResponse call
-func ParsePostDaemonLeaveResponse(rsp *http.Response) (*PostDaemonLeaveResponse, error) {
-	bodyBytes, err := io.ReadAll(rsp.Body)
-	defer func() { _ = rsp.Body.Close() }()
-	if err != nil {
-		return nil, err
-	}
-
-	response := &PostDaemonLeaveResponse{
-		Body:         bodyBytes,
-		HTTPResponse: rsp,
-	}
-
-	switch {
-	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
-		var dest N400
-		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
-			return nil, err
-		}
-		response.JSON400 = &dest
 
 	}
 

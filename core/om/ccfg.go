@@ -24,6 +24,8 @@ func init() {
 		cmdObjectValidate,
 		newCmdClusterAbort(),
 		newCmdClusterFreeze(),
+		newCmdClusterJoin(),
+		newCmdClusterLeave(),
 		newCmdClusterLogs(),
 		newCmdClusterStatus(),
 		newCmdClusterThaw(),
