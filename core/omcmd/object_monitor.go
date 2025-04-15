@@ -43,7 +43,7 @@ func (t *CmdObjectMonitor) Run(selector, kind string) error {
 			return err
 		}
 		for {
-			statusGetter := cli.NewGetDaemonStatus().SetSelector(mergedSelector)
+			statusGetter := cli.NewGetClusterStatus().SetSelector(mergedSelector)
 			err := m.DoWatch(statusGetter, evReader, os.Stdout)
 			if err1 := evReader.Close(); err1 != nil {
 				return fmt.Errorf("object monitor watch error '%s' + close event reader error '%s'", err, err1)
@@ -69,7 +69,7 @@ func (t *CmdObjectMonitor) Run(selector, kind string) error {
 			}
 		}
 	} else {
-		getter := cli.NewGetDaemonStatus().SetSelector(mergedSelector)
+		getter := cli.NewGetClusterStatus().SetSelector(mergedSelector)
 		if err := m.Do(getter, os.Stdout); err != nil {
 			return err
 		}

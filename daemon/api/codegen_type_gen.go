@@ -350,23 +350,6 @@ type CapabilityList struct {
 // CapabilityListKind defines model for CapabilityList.Kind.
 type CapabilityListKind string
 
-// Cluster defines model for Cluster.
-type Cluster struct {
-	Config ClusterConfig `json:"config"`
-	Node   ClusterNode   `json:"node"`
-	Object ClusterObject `json:"object"`
-	Status ClusterStatus `json:"status"`
-}
-
-// ClusterConfig defines model for ClusterConfig.
-type ClusterConfig = map[string]interface{}
-
-// ClusterNode defines model for ClusterNode.
-type ClusterNode = map[string]interface{}
-
-// ClusterObject defines model for ClusterObject.
-type ClusterObject = map[string]interface{}
-
 // ClusterStatus defines model for ClusterStatus.
 type ClusterStatus = map[string]interface{}
 
@@ -406,21 +389,9 @@ type DaemonHeartbeatName = string
 // DaemonListenerName Listener name
 type DaemonListenerName = string
 
-// DaemonLocal defines model for DaemonLocal.
-type DaemonLocal struct {
-	Nodename string `json:"nodename"`
-	Routines int    `json:"routines"`
-}
-
 // DaemonPid defines model for DaemonPid.
 type DaemonPid struct {
 	Pid int `json:"pid"`
-}
-
-// DaemonStatus defines model for DaemonStatus.
-type DaemonStatus struct {
-	Cluster Cluster     `json:"cluster"`
-	Daemon  DaemonLocal `json:"daemon"`
 }
 
 // DataKey defines model for DataKey.
@@ -1555,6 +1526,15 @@ type PatchClusterConfigParams struct {
 	Set    *InQuerySets    `form:"set,omitempty" json:"set,omitempty"`
 }
 
+// GetClusterStatusParams defines parameters for GetClusterStatus.
+type GetClusterStatusParams struct {
+	// Namespace namespace
+	Namespace *NamespaceOptional `form:"namespace,omitempty" json:"namespace,omitempty"`
+
+	// Selector selector
+	Selector *SelectorOptional `form:"selector,omitempty" json:"selector,omitempty"`
+}
+
 // PostDaemonJoinParams defines parameters for PostDaemonJoin.
 type PostDaemonJoinParams struct {
 	// Node The node to add to cluster nodes
@@ -1565,15 +1545,6 @@ type PostDaemonJoinParams struct {
 type PostDaemonLeaveParams struct {
 	// Node The leaving cluster node
 	Node string `form:"node" json:"node"`
-}
-
-// GetDaemonStatusParams defines parameters for GetDaemonStatus.
-type GetDaemonStatusParams struct {
-	// Namespace namespace
-	Namespace *NamespaceOptional `form:"namespace,omitempty" json:"namespace,omitempty"`
-
-	// Selector selector
-	Selector *SelectorOptional `form:"selector,omitempty" json:"selector,omitempty"`
 }
 
 // GetInstancesParams defines parameters for GetInstances.

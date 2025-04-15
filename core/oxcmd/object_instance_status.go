@@ -33,7 +33,7 @@ func (t *CmdObjectInstanceStatus) extract(selector string, c *client.T) ([]objec
 		b             []byte
 		clusterStatus clusterdump.Data
 	)
-	b, err = c.NewGetDaemonStatus().
+	b, err = c.NewGetClusterStatus().
 		SetSelector(selector).
 		Get()
 	if err != nil {

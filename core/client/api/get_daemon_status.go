@@ -9,37 +9,37 @@ import (
 	"github.com/opensvc/om3/daemon/api"
 )
 
-type GetDaemonStatus struct {
+type GetClusterStatus struct {
 	client    api.ClientInterface
 	namespace *string
 	selector  *string
 	relatives *bool
 }
 
-func (t *GetDaemonStatus) SetNamespace(s string) *GetDaemonStatus {
+func (t *GetClusterStatus) SetNamespace(s string) *GetClusterStatus {
 	t.namespace = &s
 	return t
 }
 
-func (t *GetDaemonStatus) SetSelector(s string) *GetDaemonStatus {
+func (t *GetClusterStatus) SetSelector(s string) *GetClusterStatus {
 	t.selector = &s
 	return t
 }
 
-func NewGetDaemonStatus(t api.ClientInterface) *GetDaemonStatus {
-	options := &GetDaemonStatus{
+func NewGetClusterStatus(t api.ClientInterface) *GetClusterStatus {
+	options := &GetClusterStatus{
 		client: t,
 	}
 	return options
 }
 
 // Get fetches the daemon status structure from the agent api
-func (t GetDaemonStatus) Get() ([]byte, error) {
-	params := api.GetDaemonStatusParams{
+func (t GetClusterStatus) Get() ([]byte, error) {
+	params := api.GetClusterStatusParams{
 		Namespace: t.namespace,
 		Selector:  t.selector,
 	}
-	resp, err := t.client.GetDaemonStatus(context.Background(), &params)
+	resp, err := t.client.GetClusterStatus(context.Background(), &params)
 	if err != nil {
 		return nil, err
 	}

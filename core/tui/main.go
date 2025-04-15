@@ -491,7 +491,7 @@ func (t *App) runEventReader() {
 			continue
 		}
 
-		statusGetter := t.client.NewGetDaemonStatus().SetSelector(t.Selector)
+		statusGetter := t.client.NewGetClusterStatus().SetSelector(t.Selector)
 		err = t.do(statusGetter, evReader)
 		_ = evReader.Close()
 		if t.exitFlag.Load() {

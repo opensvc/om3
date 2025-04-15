@@ -25,6 +25,7 @@ func init() {
 		newCmdClusterAbort(),
 		newCmdClusterFreeze(),
 		newCmdClusterLogs(),
+		newCmdClusterStatus(),
 		newCmdClusterThaw(),
 		newCmdClusterUnfreeze(),
 		newCmdObjectCreate(kind),
@@ -33,7 +34,6 @@ func init() {
 		newCmdObjectLogs(kind),
 		newCmdObjectList(kind),
 		newCmdObjectMonitor(kind),
-		newCmdObjectStatus(kind),
 		newCmdObjectUnset(kind),
 	)
 	cmdObjectConfig.AddCommand(

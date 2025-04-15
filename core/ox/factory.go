@@ -430,7 +430,7 @@ func newCmdDaemonShutdown() *cobra.Command {
 	return cmd
 }
 
-func newCmdDaemonStatus() *cobra.Command {
+func newCmdClusterStatus() *cobra.Command {
 	var options commands.CmdObjectMonitor
 	cmd := &cobra.Command{
 		Use:     "status",
@@ -3169,6 +3169,12 @@ func newCmdTUI(kind string) *cobra.Command {
 }
 
 // Hidden commands. Kept for backward compatibility.
+func newCmdDaemonStatus() *cobra.Command {
+	cmd := newCmdClusterStatus()
+	cmd.Hidden = true
+	return cmd
+}
+
 func newCmdNodeEdit() *cobra.Command {
 	cmd := newCmdNodeConfigEdit()
 	cmd.Hidden = true

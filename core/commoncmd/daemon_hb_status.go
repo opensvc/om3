@@ -26,7 +26,7 @@ func (t *CmdDaemonHeartbeatStatus) Run() error {
 	if err != nil {
 		return err
 	}
-	getter := cli.NewGetDaemonStatus()
+	getter := cli.NewGetClusterStatus()
 	b, err := getter.Get()
 	if err != nil {
 		return err

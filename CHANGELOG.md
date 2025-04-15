@@ -131,6 +131,7 @@
         Replaced by `om cluster abort` to abort the pending cluster action orchestration.
 
 * **Moved** (with backward compatibility)
+    * `om daemon status` => `om cluster status`
     * `om xx edit` => `om xx config edit`
     * `om xx set` => `om xx config update --set`
     * `om xx unset` => `om xx config update --unset`

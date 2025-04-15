@@ -2,7 +2,7 @@ openapi: 3.0.0
 
 info:
   title: opensvc agent api
-  version: 3.13.6
+  version: 3.14.6
 
 paths:
   /auth/info:
@@ -308,6 +308,33 @@ paths:
           $ref: '#/components/responses/409'
         500:
           $ref: '#/components/responses/500'
+
+  /cluster/status:
+    get:
+      description: |
+        Dump all the information available to the daemon.
+      operationId: GetClusterStatus
+      security:
+        - basicAuth: []
+        - bearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/NamespaceOptional'
+        - $ref: '#/components/parameters/SelectorOptional'
+      responses:
+        200:
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ClusterStatus'
+        401:
+          $ref: '#/components/responses/401'
+        403:
+          $ref: '#/components/responses/403'
+        500:
+          $ref: '#/components/responses/500'
+      tags:
+        - cluster
 
   /daemon/action/join:
     post:
@@ -879,31 +906,6 @@ paths:
           $ref: '#/components/responses/200'
         400:
           $ref: '#/components/responses/400'
-        401:
-          $ref: '#/components/responses/401'
-        403:
-          $ref: '#/components/responses/403'
-        500:
-          $ref: '#/components/responses/500'
-
-  /daemon/status:
-    get:
-      operationId: GetDaemonStatus
-      tags:
-        - daemon
-      security:
-        - basicAuth: []
-        - bearerAuth: []
-      parameters:
-        - $ref: '#/components/parameters/NamespaceOptional'
-        - $ref: '#/components/parameters/SelectorOptional'
-      responses:
-        200:
-          description: OK
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/DaemonStatus'
         401:
           $ref: '#/components/responses/401'
         403:

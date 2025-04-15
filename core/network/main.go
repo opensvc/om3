@@ -396,7 +396,7 @@ func getClusterIPList(c *client.T, selector string) (clusterip.L, error) {
 		b             []byte
 		clusterStatus clusterdump.Data
 	)
-	b, err = c.NewGetDaemonStatus().
+	b, err = c.NewGetClusterStatus().
 		SetSelector(selector).
 		Get()
 	if err != nil {

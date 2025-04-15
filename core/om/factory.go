@@ -520,7 +520,7 @@ func newCmdDaemonStart() *cobra.Command {
 	return cmd
 }
 
-func newCmdDaemonStatus() *cobra.Command {
+func newCmdClusterStatus() *cobra.Command {
 	var options commands.CmdObjectMonitor
 	cmd := &cobra.Command{
 		Use:     "status",
@@ -3335,6 +3335,12 @@ func newCmdPoolVolumeList() *cobra.Command {
 }
 
 // Hidden commands. Kept for backward compatibility.
+func newCmdDaemonStatus() *cobra.Command {
+	cmd := newCmdClusterStatus()
+	cmd.Hidden = true
+	return cmd
+}
+
 func newCmdNodeEval() *cobra.Command {
 	cmd := newCmdNodeConfigEval()
 	cmd.Hidden = true

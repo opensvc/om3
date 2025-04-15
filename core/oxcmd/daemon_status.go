@@ -8,14 +8,14 @@ import (
 )
 
 type (
-	CmdDaemonStatus struct {
+	CmdClusterStatus struct {
 		OptsGlobal
 		Watch    bool
 		Sections string
 	}
 )
 
-func (t *CmdDaemonStatus) Run() error {
+func (t *CmdClusterStatus) Run() error {
 	m := monitor.New()
 	m.SetColor(t.Color)
 	m.SetFormat(t.Output)
@@ -26,14 +26,14 @@ func (t *CmdDaemonStatus) Run() error {
 		return err
 	}
 	if t.Watch {
-		statusGetter := cli.NewGetDaemonStatus().SetSelector(t.ObjectSelector)
+		statusGetter := cli.NewGetClusterStatus().SetSelector(t.ObjectSelector)
 		evReader, err := cli.NewGetEvents().SetSelector(t.ObjectSelector).GetReader()
 		if err != nil {
 			return err
 		}
 		return m.DoWatch(statusGetter, evReader, os.Stdout)
 	} else {
-		getter := cli.NewGetDaemonStatus().SetSelector(t.ObjectSelector)
+		getter := cli.NewGetClusterStatus().SetSelector(t.ObjectSelector)
 		return m.Do(getter, os.Stdout)
 	}
 }
