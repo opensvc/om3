@@ -1954,9 +1954,6 @@ type GetResourcesParams struct {
 	Resource *RidOptional `form:"resource,omitempty" json:"resource,omitempty"`
 }
 
-// PostDaemonLogControlJSONRequestBody defines body for PostDaemonLogControl for application/json ContentType.
-type PostDaemonLogControlJSONRequestBody = LogControlBody
-
 // PostInstanceProgressJSONRequestBody defines body for PostInstanceProgress for application/json ContentType.
 type PostInstanceProgressJSONRequestBody = PostInstanceProgress
 
@@ -1965,6 +1962,9 @@ type PostInstanceStatusJSONRequestBody = InstanceStatus
 
 // PostDaemonListenerLogControlJSONRequestBody defines body for PostDaemonListenerLogControl for application/json ContentType.
 type PostDaemonListenerLogControlJSONRequestBody = LogControlBody
+
+// PostDaemonLogControlJSONRequestBody defines body for PostDaemonLogControl for application/json ContentType.
+type PostDaemonLogControlJSONRequestBody = LogControlBody
 
 // PostNodeDRBDConfigJSONRequestBody defines body for PostNodeDRBDConfig for application/json ContentType.
 type PostNodeDRBDConfigJSONRequestBody = PostNodeDRBDConfigRequest

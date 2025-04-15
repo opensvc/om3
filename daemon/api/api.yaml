@@ -756,6 +756,35 @@ paths:
         500:
           $ref: '#/components/responses/500'
 
+  /node/name/{nodename}/daemon/log/control:
+    post:
+      operationId: PostDaemonLogControl
+      parameters:
+        - $ref: '#/components/parameters/inPathNodeName'
+      security:
+        - basicAuth: []
+        - bearerAuth: []
+      requestBody:
+        description: set daemon log level
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/LogControlBody'
+      responses:
+        200:
+          $ref: '#/components/responses/200'
+        400:
+          $ref: '#/components/responses/400'
+        401:
+          $ref: '#/components/responses/401'
+        403:
+          $ref: '#/components/responses/403'
+        500:
+          $ref: '#/components/responses/500'
+      tags:
+        - node / daemon
+
   /node/name/{nodename}/schedule:
     get:
       operationId: GetNodeSchedule
@@ -885,33 +914,6 @@ paths:
         - bearerAuth: []
       tags:
         - dns
-
-  /daemon/log/control:
-    post:
-      operationId: PostDaemonLogControl
-      tags:
-        - daemon
-      security:
-        - basicAuth: []
-        - bearerAuth: []
-      requestBody:
-        description: set daemon log level
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/LogControlBody'
-      responses:
-        200:
-          $ref: '#/components/responses/200'
-        400:
-          $ref: '#/components/responses/400'
-        401:
-          $ref: '#/components/responses/401'
-        403:
-          $ref: '#/components/responses/403'
-        500:
-          $ref: '#/components/responses/500'
 
   /network:
     get:
