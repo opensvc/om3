@@ -1,4 +1,4 @@
-package oxcmd
+package commoncmd
 
 import (
 	"context"
@@ -7,28 +7,27 @@ import (
 	"net/http"
 
 	"github.com/opensvc/om3/core/client"
+	"github.com/opensvc/om3/core/clientcontext"
 	"github.com/opensvc/om3/core/nodeselector"
 	"github.com/opensvc/om3/util/hostname"
 )
 
 type (
 	CmdDaemonSubAction struct {
-		OptsGlobal
+		Debug        bool
 		NodeSelector string
-		Name         string
 	}
 
 	apiFuncWithNode func(context.Context, *client.T, string) (*http.Response, error)
 )
 
-// Run executes api function `fn` on multiple nodes concurrently based on the
-// `t.NodeSelector`.
+// Run daemon sub-component action
 func (t *CmdDaemonSubAction) Run(fn apiFuncWithNode) error {
-	if t.Name == "" {
-		return fmt.Errorf("--name must be specified")
-	}
 	if t.NodeSelector == "" {
-		return fmt.Errorf("--node must be specified")
+		if clientcontext.IsSet() {
+			return fmt.Errorf("--node must be set")
+		}
+		t.NodeSelector = hostname.Hostname()
 	}
 	c, err := client.New()
 	if err != nil {
@@ -43,16 +42,15 @@ func (t *CmdDaemonSubAction) Run(fn apiFuncWithNode) error {
 	errC := make(chan error)
 	ctx := context.Background()
 	running := 0
+	localLast := false
 	for _, nodename := range nodenames {
+		if nodename == hostname.Hostname() {
+			localLast = true
+			continue
+		}
 		running++
 		go func(nodename string) {
-			resp, err := fn(ctx, c, nodename)
-			if err != nil {
-				err = fmt.Errorf("action failed on node %s: %w", nodename, err)
-			} else if resp.StatusCode != http.StatusOK {
-				errC <- fmt.Errorf("action failed on node %s: unexpected status code %d", nodename, resp.StatusCode)
-			}
-			errC <- err
+			errC <- t.doNode(ctx, c, nodename, fn)
 		}(nodename)
 	}
 	var (
@@ -66,5 +64,19 @@ func (t *CmdDaemonSubAction) Run(fn apiFuncWithNode) error {
 		errs = errors.Join(errs, err)
 		running--
 	}
+	if localLast {
+		err := t.doNode(ctx, c, hostname.Hostname(), fn)
+		errs = errors.Join(errs, err)
+	}
 	return errs
+}
+
+func (t *CmdDaemonSubAction) doNode(ctx context.Context, cli *client.T, nodename string, fn apiFuncWithNode) error {
+	resp, err := fn(ctx, cli, nodename)
+	if err != nil {
+		return fmt.Errorf("action failed on node %s: %w", nodename, err)
+	} else if resp.StatusCode != http.StatusOK {
+		return fmt.Errorf("action failed on node %s: unexpected status code %d", nodename, resp.StatusCode)
+	}
+	return nil
 }
