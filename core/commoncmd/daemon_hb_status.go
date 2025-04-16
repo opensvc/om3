@@ -2,6 +2,7 @@ package commoncmd
 
 import (
 	"encoding/json"
+	"fmt"
 	"strings"
 
 	"github.com/opensvc/om3/core/client"
@@ -10,16 +11,38 @@ import (
 	"github.com/opensvc/om3/core/output"
 	"github.com/opensvc/om3/core/rawconfig"
 	"github.com/opensvc/om3/daemon/daemonsubsystem"
+	"github.com/spf13/cobra"
 )
 
 type (
 	CmdDaemonHeartbeatStatus struct {
-		OptsGlobal
+		Color        string
+		Output       string
 		NodeSelector string
 		PeerSelector string
 		Name         string
 	}
 )
+
+func NewCmdDaemonHeartbeatStatus(defaultNodeSelectorFilter string) *cobra.Command {
+	options := CmdDaemonHeartbeatStatus{
+		NodeSelector: defaultNodeSelectorFilter,
+	}
+	cmd := &cobra.Command{
+		Use:   "status",
+		Short: fmt.Sprintf("daemon heartbeat status"),
+		RunE: func(cmd *cobra.Command, args []string) error {
+			return options.Run()
+		},
+	}
+	flags := cmd.Flags()
+	FlagOutput(flags, &options.Output)
+	FlagColor(flags, &options.Color)
+	FlagNodeSelectorFilter(flags, &options.NodeSelector)
+	FlagPeerSelectorFilter(flags, &options.PeerSelector)
+	FlagDaemonHeartbeatFilter(flags, &options.Name)
+	return cmd
+}
 
 func (t *CmdDaemonHeartbeatStatus) Run() error {
 	cli, err := client.New()

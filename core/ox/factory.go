@@ -3,7 +3,6 @@ package ox
 import (
 	// Necessary to use go:embed
 	_ "embed"
-	"fmt"
 	"time"
 
 	"github.com/spf13/cobra"
@@ -223,23 +222,6 @@ func newCmdDaemonAuth() *cobra.Command {
 	commoncmd.FlagRoles(flags, &options.Roles)
 	flags.DurationVar(&options.Duration, "duration", 60*time.Second, "token duration.")
 	flags.StringSliceVar(&options.Out, "out", []string{"token"}, "the fields to display: [token,expired_at]")
-	return cmd
-}
-
-func newCmdDaemonHeartbeatStatus() *cobra.Command {
-	options := commands.CmdDaemonHeartbeatStatus{}
-	cmd := &cobra.Command{
-		Use:   "status",
-		Short: fmt.Sprintf("daemon heartbeat status"),
-		RunE: func(cmd *cobra.Command, args []string) error {
-			return options.Run()
-		},
-	}
-	flags := cmd.Flags()
-	addFlagsGlobal(flags, &options.OptsGlobal)
-	commoncmd.FlagNodeSelectorFilter(flags, &options.NodeSelector)
-	commoncmd.FlagPeerSelectorFilter(flags, &options.PeerSelector)
-	commoncmd.FlagDaemonHeartbeatFilter(flags, &options.Name)
 	return cmd
 }
 

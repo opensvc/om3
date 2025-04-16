@@ -2,6 +2,7 @@ package om
 
 import (
 	"github.com/opensvc/om3/core/commoncmd"
+	"github.com/opensvc/om3/util/hostname"
 )
 
 func init() {
@@ -38,7 +39,7 @@ func init() {
 	)
 
 	cmdDaemonHeartbeat.AddCommand(
-		newCmdDaemonHeartbeatStatus(),
+		commoncmd.NewCmdDaemonHeartbeatStatus(hostname.Hostname()),
 		commoncmd.NewCmdDaemonHeartbeatRestart(),
 		commoncmd.NewCmdDaemonHeartbeatStart(),
 		commoncmd.NewCmdDaemonHeartbeatStop(),

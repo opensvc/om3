@@ -230,22 +230,6 @@ func newCmdDaemonAuth() *cobra.Command {
 	return cmd
 }
 
-func newCmdDaemonHeartbeatStatus() *cobra.Command {
-	options := commands.CmdDaemonHeartbeatStatus{}
-	cmd := &cobra.Command{
-		Use:   "status",
-		Short: fmt.Sprintf("daemon heartbeat status"),
-		RunE: func(cmd *cobra.Command, args []string) error {
-			return options.Run()
-		},
-	}
-	flags := cmd.Flags()
-	commoncmd.FlagNodeSelectorFilter(flags, &options.NodeSelector)
-	commoncmd.FlagPeerSelectorFilter(flags, &options.PeerSelector)
-	commoncmd.FlagDaemonHeartbeatFilter(flags, &options.Name)
-	return cmd
-}
-
 func newCmdDaemonDNSDump() *cobra.Command {
 	var options commands.CmdDNSDump
 	cmd := &cobra.Command{
