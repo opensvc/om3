@@ -18,8 +18,8 @@ type (
 	}
 )
 
-func (t *CmdObjectInstanceList) Run(selector, kind string) error {
-	mergedSelector := commoncmd.MergeSelector(selector, t.ObjectSelector, kind, "*/"+kind+"/*")
+func (t *CmdObjectInstanceList) Run(kind string) error {
+	mergedSelector := commoncmd.MergeSelector("", t.ObjectSelector, kind, "*/"+kind+"/*")
 
 	c, err := client.New()
 	if err != nil {

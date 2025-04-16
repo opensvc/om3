@@ -34,8 +34,8 @@ func (t *CmdObjectInstanceDeviceList) extractFromDaemon(selector string, c *clie
 	return data, fmt.Errorf("todo")
 }
 
-func (t *CmdObjectInstanceDeviceList) Run(selector, kind string) error {
-	mergedSelector := commoncmd.MergeSelector(selector, t.ObjectSelector, kind, "")
+func (t *CmdObjectInstanceDeviceList) Run(kind string) error {
+	mergedSelector := commoncmd.MergeSelector("", t.ObjectSelector, kind, "")
 	c, err := client.New()
 	if err != nil {
 		return err

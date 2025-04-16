@@ -78,8 +78,8 @@ func (t *CmdObjectResourceInfoList) extractLocal(selector string) (api.ResourceI
 	return data, errs
 }
 
-func (t *CmdObjectResourceInfoList) Run(selector, kind string) error {
-	mergedSelector := commoncmd.MergeSelector(selector, t.ObjectSelector, kind, "")
+func (t *CmdObjectResourceInfoList) Run(kind string) error {
+	mergedSelector := commoncmd.MergeSelector("", t.ObjectSelector, kind, "")
 	data, err := t.extractLocal(mergedSelector)
 	if err != nil {
 		return err

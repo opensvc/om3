@@ -11,8 +11,8 @@ type (
 	}
 )
 
-func (t *CmdSecGenCert) Run(selector, kind string) error {
-	mergedSelector := commoncmd.MergeSelector(selector, t.ObjectSelector, kind, "")
+func (t *CmdSecGenCert) Run(kind string) error {
+	mergedSelector := commoncmd.MergeSelector("", t.ObjectSelector, kind, "")
 	return objectaction.New(
 		objectaction.WithColor(t.Color),
 		objectaction.WithOutput(t.Output),

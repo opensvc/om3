@@ -15,8 +15,8 @@ type (
 	}
 )
 
-func (t *CmdObjectTakeover) Run(selector, kind string) error {
-	mergedSelector := commoncmd.MergeSelector(selector, t.ObjectSelector, kind, "")
+func (t *CmdObjectTakeover) Run(kind string) error {
+	mergedSelector := commoncmd.MergeSelector("", t.ObjectSelector, kind, "")
 	target := instance.MonitorGlobalExpectPlacedAt.String()
 	options := instance.MonitorGlobalExpectOptionsPlacedAt{
 		Destination: []string{hostname.Hostname()},

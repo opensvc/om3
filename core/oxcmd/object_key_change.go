@@ -54,7 +54,8 @@ func makeDataPatch(name string, value, from *string, action api.PatchDataKeyActi
 	return data, nil
 }
 
-func (t *CmdObjectKeyChange) Run(selector, kind string) error {
+func (t *CmdObjectKeyChange) Run(kind string) error {
+	mergedSelector := commoncmd.MergeSelector("", t.ObjectSelector, kind, "")
 	if t.Value == nil && t.From == nil {
 		return fmt.Errorf("a value or value source mut be specified for a change action")
 	}
@@ -69,7 +70,7 @@ func (t *CmdObjectKeyChange) Run(selector, kind string) error {
 		return err
 	}
 	paths, err := objectselector.New(
-		selector,
+		mergedSelector,
 		objectselector.WithClient(c),
 	).Expand()
 	if err != nil {

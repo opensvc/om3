@@ -16,8 +16,8 @@ type (
 	}
 )
 
-func (t *CmdObjectComplianceAttachRuleset) Run(selector, kind string) error {
-	mergedSelector := commoncmd.MergeSelector(selector, t.ObjectSelector, kind, "")
+func (t *CmdObjectComplianceAttachRuleset) Run(kind string) error {
+	mergedSelector := commoncmd.MergeSelector("", t.ObjectSelector, kind, "")
 	return objectaction.New(
 		objectaction.LocalFirst(),
 		objectaction.WithLocal(t.Local),

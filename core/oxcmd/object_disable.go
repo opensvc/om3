@@ -18,8 +18,8 @@ type (
 	}
 )
 
-func (t *CmdObjectDisable) Run(selector, kind string) error {
-	mergedSelector := commoncmd.MergeSelector(selector, t.ObjectSelector, kind, "")
+func (t *CmdObjectDisable) Run(kind string) error {
+	mergedSelector := commoncmd.MergeSelector("", t.ObjectSelector, kind, "")
 	c, err := client.New()
 	if err != nil {
 		return err

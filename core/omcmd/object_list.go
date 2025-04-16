@@ -17,12 +17,12 @@ type (
 	}
 )
 
-func (t *CmdObjectList) Run(selector, kind string) error {
+func (t *CmdObjectList) Run(kind string) error {
 	defaultSelector := ""
 	if kind != "" {
 		defaultSelector = fmt.Sprintf("*/%s/*", kind)
 	}
-	mergedSelector := commoncmd.MergeSelector(selector, t.ObjectSelector, kind, defaultSelector)
+	mergedSelector := commoncmd.MergeSelector("", t.ObjectSelector, kind, defaultSelector)
 
 	c, err := client.New()
 	if err != nil {
@@ -35,7 +35,7 @@ func (t *CmdObjectList) Run(selector, kind string) error {
 	}
 	switch resp.StatusCode() {
 	case 200:
-		if len(resp.JSON200.Items) == 0 && selector != "" {
+		if len(resp.JSON200.Items) == 0 && mergedSelector != "" {
 			return fmt.Errorf("%s: no such object", mergedSelector)
 		}
 		output.Renderer{

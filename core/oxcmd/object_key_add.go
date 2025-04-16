@@ -23,7 +23,8 @@ type (
 	}
 )
 
-func (t *CmdObjectKeyAdd) Run(selector, kind string) error {
+func (t *CmdObjectKeyAdd) Run(kind string) error {
+	mergedSelector := commoncmd.MergeSelector("", t.ObjectSelector, kind, "")
 	if t.Value == nil && t.From == nil {
 		s := ""
 		t.Value = &s
@@ -39,7 +40,7 @@ func (t *CmdObjectKeyAdd) Run(selector, kind string) error {
 		return err
 	}
 	paths, err := objectselector.New(
-		selector,
+		mergedSelector,
 		objectselector.WithClient(c),
 	).Expand()
 	if err != nil {

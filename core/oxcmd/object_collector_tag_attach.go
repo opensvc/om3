@@ -13,8 +13,8 @@ type (
 	}
 )
 
-func (t *CmdObjectCollectorTagAttach) Run(selector, kind string) error {
-	mergedSelector := commoncmd.MergeSelector(selector, t.ObjectSelector, kind, "")
+func (t *CmdObjectCollectorTagAttach) Run(kind string) error {
+	mergedSelector := commoncmd.MergeSelector("", t.ObjectSelector, kind, "")
 	return objectaction.New(
 		objectaction.WithObjectSelector(mergedSelector),
 		objectaction.WithOutput(t.Output),

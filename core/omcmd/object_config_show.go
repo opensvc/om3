@@ -15,7 +15,8 @@ import (
 
 type (
 	CmdObjectConfigShow struct {
-		Sections []string
+		ObjectSelector string
+		Sections       []string
 	}
 )
 
@@ -63,8 +64,8 @@ func (t *CmdObjectConfigShow) extractFromDaemon(p naming.Path, c *client.T) ([]b
 	return resp.Body, nil
 }
 
-func (t *CmdObjectConfigShow) Run(selector, kind string) error {
-	mergedSelector := commoncmd.MergeSelector(selector, "", kind, "")
+func (t *CmdObjectConfigShow) Run(kind string) error {
+	mergedSelector := commoncmd.MergeSelector("", t.ObjectSelector, kind, "")
 	b, err := t.extract(mergedSelector)
 	if err != nil {
 		return err

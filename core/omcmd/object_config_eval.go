@@ -24,8 +24,8 @@ type (
 	}
 )
 
-func (t *CmdObjectConfigEval) Run(selector, kind string) error {
-	mergedSelector := commoncmd.MergeSelector(selector, t.ObjectSelector, kind, "")
+func (t *CmdObjectConfigEval) Run(kind string) error {
+	mergedSelector := commoncmd.MergeSelector("", t.ObjectSelector, kind, "")
 	if t.Local {
 		return t.doObjectAction(mergedSelector)
 	}

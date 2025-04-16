@@ -23,8 +23,8 @@ type (
 	}
 )
 
-func (t *CmdObjectShutdown) Run(selector, kind string) error {
-	mergedSelector := commoncmd.MergeSelector(selector, t.ObjectSelector, kind, "")
+func (t *CmdObjectShutdown) Run(kind string) error {
+	mergedSelector := commoncmd.MergeSelector("", t.ObjectSelector, kind, "")
 	return objectaction.New(
 		objectaction.WithObjectSelector(mergedSelector),
 		objectaction.WithRID(t.RID),

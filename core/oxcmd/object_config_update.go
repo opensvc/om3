@@ -23,8 +23,8 @@ type (
 	}
 )
 
-func (t *CmdObjectConfigUpdate) Run(selector, kind string) error {
-	mergedSelector := commoncmd.MergeSelector(selector, t.ObjectSelector, kind, "")
+func (t *CmdObjectConfigUpdate) Run(kind string) error {
+	mergedSelector := commoncmd.MergeSelector("", t.ObjectSelector, kind, "")
 	c, err := client.New()
 	if err != nil {
 		return err

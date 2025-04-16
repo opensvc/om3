@@ -107,12 +107,12 @@ func (t *CmdObjectKeyEdit) DoRemote(p naming.Path, c *client.T) error {
 	return nil
 }
 
-func (t *CmdObjectKeyEdit) Run(selector, kind string) error {
+func (t *CmdObjectKeyEdit) Run(kind string) error {
 	var (
 		c   *client.T
 		err error
 	)
-	mergedSelector := commoncmd.MergeSelector(selector, t.ObjectSelector, kind, "")
+	mergedSelector := commoncmd.MergeSelector("", t.ObjectSelector, kind, "")
 	if c, err = client.New(); err != nil {
 		return err
 	}

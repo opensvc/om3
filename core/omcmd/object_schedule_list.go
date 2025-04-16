@@ -131,8 +131,8 @@ func (t *CmdObjectScheduleList) extractFromDaemon(nodename string, path naming.P
 	}
 }
 
-func (t *CmdObjectScheduleList) Run(selector, kind string) error {
-	mergedSelector := commoncmd.MergeSelector(selector, t.ObjectSelector, kind, "")
+func (t *CmdObjectScheduleList) Run(kind string) error {
+	mergedSelector := commoncmd.MergeSelector("", t.ObjectSelector, kind, "")
 	c, err := client.New()
 	if err != nil {
 		return err

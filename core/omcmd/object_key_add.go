@@ -21,8 +21,8 @@ type (
 	}
 )
 
-func (t *CmdObjectKeyAdd) Run(selector, kind string) error {
-	mergedSelector := commoncmd.MergeSelector(selector, t.ObjectSelector, kind, "")
+func (t *CmdObjectKeyAdd) Run(kind string) error {
+	mergedSelector := commoncmd.MergeSelector("", t.ObjectSelector, kind, "")
 	return objectaction.New(
 		objectaction.LocalFirst(),
 		objectaction.WithLocal(t.Local),

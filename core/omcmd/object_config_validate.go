@@ -22,8 +22,8 @@ type (
 	}
 )
 
-func (t *CmdObjectConfigValidate) Run(selector, kind string) error {
-	mergedSelector := commoncmd.MergeSelector(selector, t.ObjectSelector, kind, "")
+func (t *CmdObjectConfigValidate) Run(kind string) error {
+	mergedSelector := commoncmd.MergeSelector("", t.ObjectSelector, kind, "")
 	alerts := make(xconfig.Alerts, 0)
 	alertsQ := make(chan xconfig.Alerts)
 	done := make(chan bool)

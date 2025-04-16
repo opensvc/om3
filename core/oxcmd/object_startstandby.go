@@ -24,8 +24,8 @@ type (
 	}
 )
 
-func (t *CmdObjectStartStandby) Run(selector, kind string) error {
-	mergedSelector := commoncmd.MergeSelector(selector, t.ObjectSelector, kind, "")
+func (t *CmdObjectStartStandby) Run(kind string) error {
+	mergedSelector := commoncmd.MergeSelector("", t.ObjectSelector, kind, "")
 	return objectaction.New(
 		objectaction.WithObjectSelector(mergedSelector),
 		objectaction.WithRID(t.RID),

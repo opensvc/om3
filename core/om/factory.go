@@ -305,7 +305,7 @@ func newCmdObjectKeyAdd(kind string) *cobra.Command {
 			if cmd.Flag("value").Changed {
 				options.Value = &value
 			}
-			return options.Run(selectorFlag, kind)
+			return options.Run(kind)
 		},
 	}
 	flags := cmd.Flags()
@@ -331,7 +331,7 @@ func newCmdObjectKeyChange(kind string) *cobra.Command {
 			if cmd.Flag("value").Changed {
 				options.Value = &value
 			}
-			return options.Run(selectorFlag, kind)
+			return options.Run(kind)
 		},
 	}
 	flags := cmd.Flags()
@@ -349,7 +349,7 @@ func newCmdObjectKeyDecode(kind string) *cobra.Command {
 		Use:   "decode",
 		Short: "decode a key value",
 		RunE: func(cmd *cobra.Command, args []string) error {
-			return options.Run(selectorFlag, kind)
+			return options.Run(kind)
 		},
 	}
 	flags := cmd.Flags()
@@ -365,7 +365,7 @@ func newCmdObjectKeyEdit(kind string) *cobra.Command {
 		Short:   "edit a key value",
 		Aliases: []string{"ed"},
 		RunE: func(cmd *cobra.Command, args []string) error {
-			return options.Run(selectorFlag, kind)
+			return options.Run(kind)
 		},
 	}
 	flags := cmd.Flags()
@@ -381,7 +381,7 @@ func newCmdObjectKeyInstall(kind string) *cobra.Command {
 		Short: "install keys as files in volumes",
 		Long:  "Keys of sec and cfg can be projected to volumes via the configs and secrets keywords of volume resources. When a key value change all projections are automatically refreshed. This command triggers manually the same operations.",
 		RunE: func(cmd *cobra.Command, args []string) error {
-			return options.Run(selectorFlag, kind)
+			return options.Run(kind)
 		},
 	}
 	flags := cmd.Flags()
@@ -398,7 +398,7 @@ func newCmdObjectKeyList(kind string) *cobra.Command {
 		Short:   "list the keys",
 		Aliases: []string{"ls"},
 		RunE: func(cmd *cobra.Command, args []string) error {
-			return options.Run(selectorFlag, kind)
+			return options.Run(kind)
 		},
 	}
 	flags := cmd.Flags()
@@ -413,7 +413,7 @@ func newCmdObjectKeyRemove(kind string) *cobra.Command {
 		Use:   "remove",
 		Short: "remove a key",
 		RunE: func(cmd *cobra.Command, args []string) error {
-			return options.Run(selectorFlag, kind)
+			return options.Run(kind)
 		},
 	}
 	flags := cmd.Flags()
@@ -428,7 +428,7 @@ func newCmdObjectKeyRename(kind string) *cobra.Command {
 		Use:   "rename",
 		Short: "rename a key",
 		RunE: func(cmd *cobra.Command, args []string) error {
-			return options.Run(selectorFlag, kind)
+			return options.Run(kind)
 		},
 	}
 	flags := cmd.Flags()
@@ -1171,7 +1171,7 @@ func newCmdObjectPrintResourceInfo(kind string) *cobra.Command {
 		Use:    "resinfo",
 		Short:  "list the key-values reported by the resources",
 		RunE: func(cmd *cobra.Command, args []string) error {
-			return options.Run(selectorFlag, kind)
+			return options.Run(kind)
 		},
 	}
 	flags := cmd.Flags()
@@ -1455,7 +1455,7 @@ func newCmdObjectAbort(kind string) *cobra.Command {
 		Use:   "abort",
 		Short: "abort the running orchestration",
 		RunE: func(cmd *cobra.Command, args []string) error {
-			return options.Run(selectorFlag, kind)
+			return options.Run(kind)
 		},
 	}
 	flags := cmd.Flags()
@@ -1472,7 +1472,7 @@ func newCmdObjectBoot(kind string) *cobra.Command {
 		Short:  "clean up actions executed on boot only",
 		Long:   "SCSI reservation release, vg tags removal, ... Never execute this action manually.",
 		RunE: func(cmd *cobra.Command, args []string) error {
-			return options.Run(selectorFlag, kind)
+			return options.Run(kind)
 		},
 	}
 	flags := cmd.Flags()
@@ -1522,7 +1522,7 @@ func newCmdObjectCertificateCreate(kind string) *cobra.Command {
 		Short: "create a certificate and store as a keyset",
 		Long:  "Never change an existing private key. Only create a new certificate and renew the certificate chain.",
 		RunE: func(cmd *cobra.Command, args []string) error {
-			return options.Run(selectorFlag, kind)
+			return options.Run(kind)
 		},
 	}
 	flags := cmd.Flags()
@@ -1538,7 +1538,7 @@ func newCmdObjectCertificatePKCS(kind string) *cobra.Command {
 		Short:   "dump the private key and certificate chain in PKCS#12 format",
 		Long:    "A sec can contain a certificate, created by the `certificate create` command. The private_key, certificate and certificate_chain are stored as sec keys. The pkcs12 command decodes the private_key and certificate_chain keys, prepares and print the encrypted, password-protected PKCS#12 format. As this result is bytes-formatted, the stream should be redirected to a file.",
 		RunE: func(cmd *cobra.Command, args []string) error {
-			return options.Run(selectorFlag, kind)
+			return options.Run(kind)
 		},
 	}
 	flags := cmd.Flags()
@@ -1552,7 +1552,7 @@ func newCmdObjectClear(kind string) *cobra.Command {
 		Use:   "clear",
 		Short: "clear errors in the monitor state",
 		RunE: func(cmd *cobra.Command, args []string) error {
-			return options.Run(selectorFlag, kind)
+			return options.Run(kind)
 		},
 	}
 	flags := cmd.Flags()
@@ -1618,7 +1618,7 @@ func newCmdObjectCollectorTagAttach(kind string) *cobra.Command {
 			if cmd.Flag("attach-data").Changed {
 				options.AttachData = &attachData
 			}
-			return options.Run(selectorFlag, kind)
+			return options.Run(kind)
 		},
 	}
 	flags := cmd.Flags()
@@ -1644,7 +1644,7 @@ func newCmdObjectCollectorTagCreate(kind string) *cobra.Command {
 			if cmd.Flag("exclude").Changed {
 				options.Exclude = &exclude
 			}
-			return options.Run(selectorFlag, kind)
+			return options.Run(kind)
 		},
 	}
 	flags := cmd.Flags()
@@ -1662,7 +1662,7 @@ func newCmdObjectCollectorTagDetach(kind string) *cobra.Command {
 		Short:   "detach a tag from this node",
 		Aliases: []string{"deta", "det", "de", "d"},
 		RunE: func(cmd *cobra.Command, args []string) error {
-			return options.Run(selectorFlag, kind)
+			return options.Run(kind)
 		},
 	}
 	flags := cmd.Flags()
@@ -1678,7 +1678,7 @@ func newCmdObjectCollectorTagList(kind string) *cobra.Command {
 		Short:   "list available tags",
 		Aliases: []string{"ls"},
 		RunE: func(cmd *cobra.Command, args []string) error {
-			return options.Run(selectorFlag, kind)
+			return options.Run(kind)
 		},
 	}
 	flags := cmd.Flags()
@@ -1692,7 +1692,7 @@ func newCmdObjectCollectorTagShow(kind string) *cobra.Command {
 		Use:   "show",
 		Short: "show tags attached to this node",
 		RunE: func(cmd *cobra.Command, args []string) error {
-			return options.Run(selectorFlag, kind)
+			return options.Run(kind)
 		},
 	}
 	flags := cmd.Flags()
@@ -1782,10 +1782,10 @@ func newCmdObjectEdit(kind string) *cobra.Command {
 		RunE: func(cmd *cobra.Command, args []string) error {
 			if optionsKey.Name != "" {
 				optionsKey.OptsGlobal = optionsGlobal
-				return optionsKey.Run(selectorFlag, kind)
+				return optionsKey.Run(kind)
 			} else {
 				optionsConfig.OptsGlobal = optionsGlobal
-				return optionsConfig.Run(selectorFlag, kind)
+				return optionsConfig.Run(kind)
 			}
 		},
 	}
@@ -1807,7 +1807,7 @@ func newCmdObjectConfigEdit(kind string) *cobra.Command {
 		Short:   "edit selected object and instance configuration",
 		Aliases: []string{"ed"},
 		RunE: func(cmd *cobra.Command, args []string) error {
-			return options.Run(selectorFlag, kind)
+			return options.Run(kind)
 		},
 	}
 	flags := cmd.Flags()
@@ -1826,7 +1826,7 @@ func newCmdObjectEditConfig(kind string) *cobra.Command {
 		Hidden:  true,
 		Aliases: []string{"conf", "co", "cf", "cfg"},
 		RunE: func(cmd *cobra.Command, args []string) error {
-			return options.Run(selectorFlag, kind)
+			return options.Run(kind)
 		},
 	}
 	flags := cmd.Flags()
@@ -1845,7 +1845,7 @@ func newCmdObjectComplianceAttachModuleset(kind string) *cobra.Command {
 		Long:    "Modules of attached modulesets are checked on schedule.",
 		Aliases: []string{"modulese", "modules", "module", "modul", "modu", "mod", "mo"},
 		RunE: func(cmd *cobra.Command, args []string) error {
-			return options.Run(selectorFlag, kind)
+			return options.Run(kind)
 		},
 	}
 	flags := cmd.Flags()
@@ -1862,7 +1862,7 @@ func newCmdObjectComplianceAttachRuleset(kind string) *cobra.Command {
 		Long:    "Rules of attached rulesets are exposed to modules.",
 		Aliases: []string{"rulese", "rules", "rule", "rul", "ru"},
 		RunE: func(cmd *cobra.Command, args []string) error {
-			return options.Run(selectorFlag, kind)
+			return options.Run(kind)
 		},
 	}
 	flags := cmd.Flags()
@@ -1878,7 +1878,7 @@ func newCmdObjectComplianceAuto(kind string) *cobra.Command {
 		Short: "run modules fixes or checks",
 		Long:  "If the module is has the 'autofix' property set, do a fix, else do a check.",
 		RunE: func(cmd *cobra.Command, args []string) error {
-			return options.Run(selectorFlag, kind)
+			return options.Run(kind)
 		},
 	}
 	flags := cmd.Flags()
@@ -1898,7 +1898,7 @@ func newCmdObjectComplianceCheck(kind string) *cobra.Command {
 		Short:   "run modules checks",
 		Aliases: []string{"chec", "che", "ch"},
 		RunE: func(cmd *cobra.Command, args []string) error {
-			return options.Run(selectorFlag, kind)
+			return options.Run(kind)
 		},
 	}
 	flags := cmd.Flags()
@@ -1917,7 +1917,7 @@ func newCmdObjectComplianceFix(kind string) *cobra.Command {
 		Use:   "fix",
 		Short: "run modules fixes",
 		RunE: func(cmd *cobra.Command, args []string) error {
-			return options.Run(selectorFlag, kind)
+			return options.Run(kind)
 		},
 	}
 	flags := cmd.Flags()
@@ -1937,7 +1937,7 @@ func newCmdObjectComplianceFixable(kind string) *cobra.Command {
 		Short:   "run modules fixable-tests",
 		Aliases: []string{"fixabl", "fixab", "fixa"},
 		RunE: func(cmd *cobra.Command, args []string) error {
-			return options.Run(selectorFlag, kind)
+			return options.Run(kind)
 		},
 	}
 	flags := cmd.Flags()
@@ -1958,7 +1958,7 @@ func newCmdObjectComplianceDetachModuleset(kind string) *cobra.Command {
 		Long:    "Modules of attached modulesets are checked on schedule.",
 		Aliases: []string{"modulese", "modules", "module", "modul", "modu", "mod", "mo"},
 		RunE: func(cmd *cobra.Command, args []string) error {
-			return options.Run(selectorFlag, kind)
+			return options.Run(kind)
 		},
 	}
 	flags := cmd.Flags()
@@ -1975,7 +1975,7 @@ func newCmdObjectComplianceDetachRuleset(kind string) *cobra.Command {
 		Long:    "Rules of attached rulesets are made available to their module.",
 		Aliases: []string{"rulese", "rules", "rule", "rul", "ru"},
 		RunE: func(cmd *cobra.Command, args []string) error {
-			return options.Run(selectorFlag, kind)
+			return options.Run(kind)
 		},
 	}
 	flags := cmd.Flags()
@@ -1991,7 +1991,7 @@ func newCmdObjectComplianceEnv(kind string) *cobra.Command {
 		Short:   "show the env variables set for a module run",
 		Aliases: []string{"en"},
 		RunE: func(cmd *cobra.Command, args []string) error {
-			return options.Run(selectorFlag, kind)
+			return options.Run(kind)
 		},
 	}
 	flags := cmd.Flags()
@@ -2009,7 +2009,7 @@ func newCmdObjectComplianceListModules(kind string) *cobra.Command {
 		Short:   "list modules available on this object",
 		Aliases: []string{"module", "modul", "modu", "mod"},
 		RunE: func(cmd *cobra.Command, args []string) error {
-			return options.Run(selectorFlag, kind)
+			return options.Run(kind)
 		},
 	}
 	flags := cmd.Flags()
@@ -2024,7 +2024,7 @@ func newCmdObjectComplianceListModuleset(kind string) *cobra.Command {
 		Short:   "list modulesets available to this object",
 		Aliases: []string{"modulesets"},
 		RunE: func(cmd *cobra.Command, args []string) error {
-			return options.Run(selectorFlag, kind)
+			return options.Run(kind)
 		},
 	}
 	flags := cmd.Flags()
@@ -2040,7 +2040,7 @@ func newCmdObjectComplianceListRuleset(kind string) *cobra.Command {
 		Short:   "list rulesets available to this object",
 		Aliases: []string{"rulese", "rules", "rule", "rul", "ru"},
 		RunE: func(cmd *cobra.Command, args []string) error {
-			return options.Run(selectorFlag, kind)
+			return options.Run(kind)
 		},
 	}
 	flags := cmd.Flags()
@@ -2056,7 +2056,7 @@ func newCmdObjectComplianceShowModuleset(kind string) *cobra.Command {
 		Short:   "show modulesets and modules attached to this object",
 		Aliases: []string{"modulese", "modules", "module", "modul", "modu", "mod", "mo"},
 		RunE: func(cmd *cobra.Command, args []string) error {
-			return options.Run(selectorFlag, kind)
+			return options.Run(kind)
 		},
 	}
 	flags := cmd.Flags()
@@ -2072,7 +2072,7 @@ func newCmdObjectComplianceShowRuleset(kind string) *cobra.Command {
 		Short:   "show rules contextualized for to this object",
 		Aliases: []string{"rulese", "rules", "rule", "rul", "ru"},
 		RunE: func(cmd *cobra.Command, args []string) error {
-			return options.Run(selectorFlag, kind)
+			return options.Run(kind)
 		},
 	}
 	flags := cmd.Flags()
@@ -2087,7 +2087,7 @@ func newCmdObjectCreate(kind string) *cobra.Command {
 		Use:   "create",
 		Short: "create a new object",
 		RunE: func(cmd *cobra.Command, args []string) error {
-			return options.Run(selectorFlag, kind)
+			return options.Run(kind)
 		},
 	}
 	flags := cmd.Flags()
@@ -2117,7 +2117,7 @@ func newCmdObjectDelete(kind string) *cobra.Command {
 			" are deleted. The delete command is not responsible for stopping or unprovisioning." +
 			" The deletion happens whatever the object status.",
 		RunE: func(cmd *cobra.Command, args []string) error {
-			return options.Run(selectorFlag, kind)
+			return options.Run(kind)
 		},
 	}
 	flags := cmd.Flags()
@@ -2135,7 +2135,7 @@ func newCmdObjectDeploy(kind string) *cobra.Command {
 		Short: "create and provision a new object",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			options.Provision = true
-			return options.Run(selectorFlag, kind)
+			return options.Run(kind)
 		},
 	}
 	flags := cmd.Flags()
@@ -2157,7 +2157,7 @@ func newCmdObjectConfigDoc(kind string) *cobra.Command {
 		Use:   "doc",
 		Short: "print the keyword documentation",
 		RunE: func(cmd *cobra.Command, args []string) error {
-			return options.Run(selectorFlag, kind)
+			return options.Run(kind)
 		},
 	}
 	flags := cmd.Flags()
@@ -2177,7 +2177,7 @@ func newCmdObjectDisable(kind string) *cobra.Command {
 		Short: "disable a svc or resources",
 		Long:  "Disabled svc or resources are skipped on actions.",
 		RunE: func(cmd *cobra.Command, args []string) error {
-			return options.Run(selectorFlag, kind)
+			return options.Run(kind)
 		},
 	}
 	flags := cmd.Flags()
@@ -2194,7 +2194,7 @@ func newCmdObjectEnable(kind string) *cobra.Command {
 		Short: "enable a svc or resources",
 		Long:  "Disabled svc or resources are skipped on actions.",
 		RunE: func(cmd *cobra.Command, args []string) error {
-			return options.Run(selectorFlag, kind)
+			return options.Run(kind)
 		},
 	}
 	flags := cmd.Flags()
@@ -2211,7 +2211,7 @@ func newCmdObjectEnter(kind string) *cobra.Command {
 		Short: "open a shell in a container resource",
 		Long:  "Enter any container resource if --rid is not set.",
 		RunE: func(cmd *cobra.Command, args []string) error {
-			return options.Run(selectorFlag, kind)
+			return options.Run(kind)
 		},
 	}
 	flags := cmd.Flags()
@@ -2226,7 +2226,7 @@ func newCmdObjectConfigEval(kind string) *cobra.Command {
 		Use:   "eval",
 		Short: "evaluate a configuration key value",
 		RunE: func(cmd *cobra.Command, args []string) error {
-			return options.Run(selectorFlag, kind)
+			return options.Run(kind)
 		},
 	}
 	flags := cmd.Flags()
@@ -2243,7 +2243,7 @@ func newCmdObjectFreeze(kind string) *cobra.Command {
 		Use:   "freeze",
 		Short: "block ha automatic start",
 		RunE: func(cmd *cobra.Command, args []string) error {
-			return options.Run(selectorFlag, kind)
+			return options.Run(kind)
 		},
 	}
 	flags := cmd.Flags()
@@ -2259,7 +2259,7 @@ func newCmdObjectConfigGet(kind string) *cobra.Command {
 		Use:   "get",
 		Short: "get a configuration key value",
 		RunE: func(cmd *cobra.Command, args []string) error {
-			return options.Run(selectorFlag, kind)
+			return options.Run(kind)
 		},
 	}
 	flags := cmd.Flags()
@@ -2277,7 +2277,7 @@ func newCmdObjectGiveback(kind string) *cobra.Command {
 		Short: "orchestrate to reach optimal placement",
 		Long:  "Stop the misplaced service instances and start on the preferred nodes.",
 		RunE: func(cmd *cobra.Command, args []string) error {
-			return options.Run(selectorFlag, kind)
+			return options.Run(kind)
 		},
 	}
 	flags := cmd.Flags()
@@ -2294,7 +2294,7 @@ func newCmdObjectLogs(kind string) *cobra.Command {
 		Aliases: []string{"logs", "log", "lo"},
 		Short:   "show object logs",
 		RunE: func(cmd *cobra.Command, args []string) error {
-			return options.Run(selectorFlag, kind)
+			return options.Run(kind)
 		},
 	}
 	flags := cmd.Flags()
@@ -2311,7 +2311,7 @@ func newCmdObjectList(kind string) *cobra.Command {
 		Short:   "print the selected objects path",
 		Aliases: []string{"ls"},
 		RunE: func(cmd *cobra.Command, args []string) error {
-			return options.Run(selectorFlag, kind)
+			return options.Run(kind)
 		},
 	}
 	flags := cmd.Flags()
@@ -2325,10 +2325,11 @@ func newCmdObjectConfigShow(kind string) *cobra.Command {
 		Use:   "show",
 		Short: "show the object configuration",
 		RunE: func(cmd *cobra.Command, args []string) error {
-			return options.Run(selectorFlag, kind)
+			return options.Run(kind)
 		},
 	}
 	flags := cmd.Flags()
+	commoncmd.FlagObjectSelector(flags, &options.ObjectSelector)
 	commoncmd.FlagSections(flags, &options.Sections)
 	return cmd
 }
@@ -2340,7 +2341,7 @@ func newCmdObjectConfigMtime(kind string) *cobra.Command {
 		Short:   "print the object configuration file modification time",
 		Aliases: []string{"mtim", "mti", "mt", "m"},
 		RunE: func(cmd *cobra.Command, args []string) error {
-			return options.Run(selectorFlag, kind)
+			return options.Run(kind)
 		},
 	}
 	flags := cmd.Flags()
@@ -2364,7 +2365,7 @@ func newCmdObjectScheduleList(kind string) *cobra.Command {
 		Short:   "list the object scheduler entries",
 		Aliases: []string{"ls"},
 		RunE: func(cmd *cobra.Command, args []string) error {
-			return options.Run(selectorFlag, kind)
+			return options.Run(kind)
 		},
 	}
 	flags := cmd.Flags()
@@ -2380,7 +2381,7 @@ func newCmdObjectInstanceDeviceList(kind string) *cobra.Command {
 		Short:   "print the object's exposed, used, base and claimed block devices",
 		Aliases: []string{"ls"},
 		RunE: func(cmd *cobra.Command, args []string) error {
-			return options.Run(selectorFlag, kind)
+			return options.Run(kind)
 		},
 	}
 	flags := cmd.Flags()
@@ -2397,7 +2398,7 @@ func newCmdObjectInstanceList(kind string) *cobra.Command {
 		Aliases: []string{"ls"},
 		Short:   "object instances list",
 		RunE: func(cmd *cobra.Command, args []string) error {
-			return options.Run(selectorFlag, kind)
+			return options.Run(kind)
 		},
 	}
 	flags := cmd.Flags()
@@ -2425,7 +2426,7 @@ func newCmdObjectInstanceStatus(kind string) *cobra.Command {
 
 `,
 		RunE: func(cmd *cobra.Command, args []string) error {
-			return options.Run(selectorFlag, kind)
+			return options.Run(kind)
 		},
 	}
 	flags := cmd.Flags()
@@ -2444,7 +2445,7 @@ func newCmdObjectProvision(kind string) *cobra.Command {
 		Long:    "For example, provision a fs.ext3 resource means format the device with the mkfs.ext3 command.",
 		Aliases: []string{"prov"},
 		RunE: func(cmd *cobra.Command, args []string) error {
-			return options.Run(selectorFlag, kind)
+			return options.Run(kind)
 		},
 	}
 	flags := cmd.Flags()
@@ -2467,7 +2468,7 @@ func newCmdObjectSyncIngest(kind string) *cobra.Command {
 		Short: "ingest files received from the active instance",
 		Long:  "Resource drivers can send files from the active instance to the stand-by instances via the update action.",
 		RunE: func(cmd *cobra.Command, args []string) error {
-			return options.Run(selectorFlag, kind)
+			return options.Run(kind)
 		},
 	}
 	flags := cmd.Flags()
@@ -2483,7 +2484,7 @@ func newCmdObjectPRStart(kind string) *cobra.Command {
 		Use:   "prstart",
 		Short: "preempt devices exclusive write access reservation",
 		RunE: func(cmd *cobra.Command, args []string) error {
-			return options.Run(selectorFlag, kind)
+			return options.Run(kind)
 		},
 	}
 	flags := cmd.Flags()
@@ -2502,7 +2503,7 @@ func newCmdObjectPRStop(kind string) *cobra.Command {
 		Use:   "prstop",
 		Short: "release devices exclusive write access reservation",
 		RunE: func(cmd *cobra.Command, args []string) error {
-			return options.Run(selectorFlag, kind)
+			return options.Run(kind)
 		},
 	}
 	flags := cmd.Flags()
@@ -2521,7 +2522,7 @@ func newCmdObjectPurge(kind string) *cobra.Command {
 		Use:   "purge",
 		Short: "unprovision and delete",
 		RunE: func(cmd *cobra.Command, args []string) error {
-			return options.Run(selectorFlag, kind)
+			return options.Run(kind)
 		},
 	}
 	flags := cmd.Flags()
@@ -2543,7 +2544,7 @@ func newCmdObjectPushResourceInfo(kind string) *cobra.Command {
 		Use:    "resinfo",
 		Short:  "push key-values reported by resources",
 		RunE: func(cmd *cobra.Command, args []string) error {
-			return options.Run(selectorFlag, kind)
+			return options.Run(kind)
 		},
 	}
 	flags := cmd.Flags()
@@ -2559,7 +2560,7 @@ func newCmdObjectRestart(kind string) *cobra.Command {
 		Use:   "restart",
 		Short: "restart the selected objects, instances or resources",
 		RunE: func(cmd *cobra.Command, args []string) error {
-			return options.Run(selectorFlag, kind)
+			return options.Run(kind)
 		},
 	}
 	flags := cmd.Flags()
@@ -2581,7 +2582,7 @@ func newCmdObjectSyncFull(kind string) *cobra.Command {
 		Short: "full copy of the local dataset on peers",
 		Long:  "This update can use only full copy.",
 		RunE: func(cmd *cobra.Command, args []string) error {
-			return options.Run(selectorFlag, kind)
+			return options.Run(kind)
 		},
 	}
 	flags := cmd.Flags()
@@ -2600,7 +2601,7 @@ func newCmdObjectSyncResync(kind string) *cobra.Command {
 		Short: "restore optimal synchronization",
 		Long:  "Only a subset of drivers support this interface. For example, the disk.md driver re-adds removed disks.",
 		RunE: func(cmd *cobra.Command, args []string) error {
-			return options.Run(selectorFlag, kind)
+			return options.Run(kind)
 		},
 	}
 	flags := cmd.Flags()
@@ -2618,7 +2619,7 @@ func newCmdObjectSyncUpdate(kind string) *cobra.Command {
 		Short: "synchronize the copy of the local dataset on peers",
 		Long:  "This update can use either full or incremental copy, depending on the resource drivers and host capabilities. This is the action executed by the scheduler.",
 		RunE: func(cmd *cobra.Command, args []string) error {
-			return options.Run(selectorFlag, kind)
+			return options.Run(kind)
 		},
 	}
 	flags := cmd.Flags()
@@ -2652,7 +2653,7 @@ func newCmdObjectResourceInfoList(kind string) *cobra.Command {
 		Short:   "list the key-values reported by the resources",
 		Aliases: []string{"ls"},
 		RunE: func(cmd *cobra.Command, args []string) error {
-			return options.Run(selectorFlag, kind)
+			return options.Run(kind)
 		},
 	}
 	flags := cmd.Flags()
@@ -2667,7 +2668,7 @@ func newCmdObjectResourceInfoPush(kind string) *cobra.Command {
 		Use:   "push",
 		Short: "push key-values reported by resources",
 		RunE: func(cmd *cobra.Command, args []string) error {
-			return options.Run(selectorFlag, kind)
+			return options.Run(kind)
 		},
 	}
 	flags := cmd.Flags()
@@ -2684,7 +2685,7 @@ func newCmdObjectResourceList(kind string) *cobra.Command {
 		Short:   "list the selected resource (config, monitor, status)",
 		Aliases: []string{"ls"},
 		RunE: func(cmd *cobra.Command, args []string) error {
-			return options.Run(selectorFlag, kind)
+			return options.Run(kind)
 		},
 	}
 	flags := cmd.Flags()
@@ -2701,7 +2702,7 @@ func newCmdObjectRun(kind string) *cobra.Command {
 		Short: "run tasks now",
 		Long:  "The svc and vol objects can define task resources. Tasks are usually run on a schedule, but this command can trigger a run now.",
 		RunE: func(cmd *cobra.Command, args []string) error {
-			return options.Run(selectorFlag, kind)
+			return options.Run(kind)
 		},
 	}
 	flags := cmd.Flags()
@@ -2723,7 +2724,7 @@ func newCmdObjectSetProvisioned(kind string) *cobra.Command {
 		Long:    "This action does not provision the resources (fs are not formatted, disk not allocated, ...). This is just a resources provisioned flag create. Necessary to allow the unprovision action, which is bypassed if the provisioned flag is not set.",
 		Aliases: []string{"provision", "prov"},
 		RunE: func(cmd *cobra.Command, args []string) error {
-			return options.Run(selectorFlag, kind)
+			return options.Run(kind)
 		},
 	}
 	flags := cmd.Flags()
@@ -2742,7 +2743,7 @@ func newCmdObjectSetUnprovisioned(kind string) *cobra.Command {
 		Long:    "This action does not unprovision the resources (fs are not wiped, disk not removed, ...). This is just a resources provisioned flag remove. Necessary to allow the provision action, which is bypassed if the provisioned flag is set.",
 		Aliases: []string{"unprovision", "unprov"},
 		RunE: func(cmd *cobra.Command, args []string) error {
-			return options.Run(selectorFlag, kind)
+			return options.Run(kind)
 		},
 	}
 	flags := cmd.Flags()
@@ -2759,7 +2760,7 @@ func newCmdObjectShutdown(kind string) *cobra.Command {
 		Use:   "shutdown",
 		Short: "shutdown the object or instance",
 		RunE: func(cmd *cobra.Command, args []string) error {
-			return options.Run(selectorFlag, kind)
+			return options.Run(kind)
 		},
 	}
 	flags := cmd.Flags()
@@ -2778,7 +2779,7 @@ func newCmdObjectStart(kind string) *cobra.Command {
 		Use:   "start",
 		Short: "start objects or instances",
 		RunE: func(cmd *cobra.Command, args []string) error {
-			return options.Run(selectorFlag, kind)
+			return options.Run(kind)
 		},
 	}
 	flags := cmd.Flags()
@@ -2799,7 +2800,7 @@ func newCmdObjectStartStandby(kind string) *cobra.Command {
 		Use:   "startstandby",
 		Short: "activate resources for standby",
 		RunE: func(cmd *cobra.Command, args []string) error {
-			return options.Run(selectorFlag, kind)
+			return options.Run(kind)
 		},
 	}
 	flags := cmd.Flags()
@@ -2821,7 +2822,7 @@ func newCmdObjectStatus(kind string) *cobra.Command {
 		Short:   "set the exitcode to the instance status",
 		Long:    "This command is silent. Only the exitcode holds information.",
 		RunE: func(cmd *cobra.Command, args []string) error {
-			return options.Run(selectorFlag, kind)
+			return options.Run(kind)
 		},
 	}
 	flags := cmd.Flags()
@@ -2840,7 +2841,7 @@ func newCmdObjectStop(kind string) *cobra.Command {
 		Use:   "stop",
 		Short: "stop objects or instances",
 		RunE: func(cmd *cobra.Command, args []string) error {
-			return options.Run(selectorFlag, kind)
+			return options.Run(kind)
 		},
 	}
 	flags := cmd.Flags()
@@ -2861,7 +2862,7 @@ func newCmdObjectSwitch(kind string) *cobra.Command {
 		Short: "orchestrate a running instance move-out",
 		Long:  "Stop the running object instance and start on the next preferred node.",
 		RunE: func(cmd *cobra.Command, args []string) error {
-			return options.Run(selectorFlag, kind)
+			return options.Run(kind)
 		},
 	}
 	flags := cmd.Flags()
@@ -2879,7 +2880,7 @@ func newCmdObjectUnfreeze(kind string) *cobra.Command {
 		Hidden: false,
 		Short:  "unblock ha automatic start",
 		RunE: func(cmd *cobra.Command, args []string) error {
-			return options.Run(selectorFlag, kind)
+			return options.Run(kind)
 		},
 	}
 	flags := cmd.Flags()
@@ -2896,7 +2897,7 @@ func newCmdObjectTakeover(kind string) *cobra.Command {
 		Short: "orchestrate a running instance bring-in",
 		Long:  "Stop a object instance and start one on the local node.",
 		RunE: func(cmd *cobra.Command, args []string) error {
-			return options.Run(selectorFlag, kind)
+			return options.Run(kind)
 		},
 	}
 	flags := cmd.Flags()
@@ -2922,7 +2923,7 @@ func newCmdObjectUnprovision(kind string) *cobra.Command {
 		Short:   "free system resources (data-loss danger)",
 		Aliases: []string{"unprov"},
 		RunE: func(cmd *cobra.Command, args []string) error {
-			return options.Run(selectorFlag, kind)
+			return options.Run(kind)
 		},
 	}
 	flags := cmd.Flags()
@@ -2944,7 +2945,7 @@ func newCmdObjectConfigUpdate(kind string) *cobra.Command {
 		Short: "update configuration",
 		Long:  "Apply section deletes, keyword unsets then sets. Validate the new configuration and commit.",
 		RunE: func(cmd *cobra.Command, args []string) error {
-			return options.Run(selectorFlag, kind)
+			return options.Run(kind)
 		},
 	}
 	flags := cmd.Flags()
@@ -2963,7 +2964,7 @@ func newCmdObjectConfigValidate(kind string) *cobra.Command {
 		Short:   "verify the object configuration syntax",
 		Aliases: []string{"val", "valid"},
 		RunE: func(cmd *cobra.Command, args []string) error {
-			return options.Run(selectorFlag, kind)
+			return options.Run(kind)
 		},
 	}
 	flags := cmd.Flags()
@@ -2980,7 +2981,7 @@ func newCmdObjectValidateConfig(kind string) *cobra.Command {
 		Hidden:  true,
 		Aliases: []string{"conf", "co", "cf", "cfg"},
 		RunE: func(cmd *cobra.Command, args []string) error {
-			return options.Run(selectorFlag, kind)
+			return options.Run(kind)
 		},
 	}
 	flags := cmd.Flags()
@@ -3117,7 +3118,7 @@ func newCmdObjectSet(kind string) *cobra.Command {
 		Short:  "set a configuration key value",
 		Hidden: true,
 		RunE: func(cmd *cobra.Command, args []string) error {
-			return options.Run(selectorFlag, kind)
+			return options.Run(kind)
 		},
 	}
 	flags := cmd.Flags()
@@ -3134,7 +3135,7 @@ func newCmdObjectUnset(kind string) *cobra.Command {
 		Short:  "unset configuration keywords or sections",
 		Hidden: true,
 		RunE: func(cmd *cobra.Command, args []string) error {
-			return options.Run(selectorFlag, kind)
+			return options.Run(kind)
 		},
 	}
 	flags := cmd.Flags()
@@ -3188,7 +3189,7 @@ func newCmdDataStoreAdd(kind string) *cobra.Command {
 			if cmd.Flag("value").Changed {
 				options.Value = &value
 			}
-			return options.Run(selectorFlag, kind)
+			return options.Run(kind)
 		},
 	}
 	flags := cmd.Flags()
@@ -3215,7 +3216,7 @@ func newCmdDataStoreChange(kind string) *cobra.Command {
 			if cmd.Flag("value").Changed {
 				options.Value = &value
 			}
-			return options.Run(selectorFlag, kind)
+			return options.Run(kind)
 		},
 	}
 	flags := cmd.Flags()
@@ -3234,7 +3235,7 @@ func newCmdDataStoreDecode(kind string) *cobra.Command {
 		Use:    "decode",
 		Short:  "decode a key value",
 		RunE: func(cmd *cobra.Command, args []string) error {
-			return options.Run(selectorFlag, kind)
+			return options.Run(kind)
 		},
 	}
 	flags := cmd.Flags()
@@ -3251,7 +3252,7 @@ func newCmdDataStoreInstall(kind string) *cobra.Command {
 		Short:  "install keys as files in volumes",
 		Long:   "Keys of sec and cfg can be projected to volumes via the configs and secrets keywords of volume resources. When a key value change all projections are automatically refreshed. This command triggers manually the same operations.",
 		RunE: func(cmd *cobra.Command, args []string) error {
-			return options.Run(selectorFlag, kind)
+			return options.Run(kind)
 		},
 	}
 	flags := cmd.Flags()
@@ -3268,7 +3269,7 @@ func newCmdDataStoreKeys(kind string) *cobra.Command {
 		Use:    "keys",
 		Short:  "list the keys",
 		RunE: func(cmd *cobra.Command, args []string) error {
-			return options.Run(selectorFlag, kind)
+			return options.Run(kind)
 		},
 	}
 	flags := cmd.Flags()
@@ -3284,7 +3285,7 @@ func newCmdDataStoreRemove(kind string) *cobra.Command {
 		Use:    "remove",
 		Short:  "remove a key",
 		RunE: func(cmd *cobra.Command, args []string) error {
-			return options.Run(selectorFlag, kind)
+			return options.Run(kind)
 		},
 	}
 	flags := cmd.Flags()
@@ -3300,7 +3301,7 @@ func newCmdDataStoreRename(kind string) *cobra.Command {
 		Use:    "rename",
 		Short:  "rename a key",
 		RunE: func(cmd *cobra.Command, args []string) error {
-			return options.Run(selectorFlag, kind)
+			return options.Run(kind)
 		},
 	}
 	flags := cmd.Flags()

@@ -148,12 +148,12 @@ func (t *CmdObjectInstanceStatus) getNodenames(c *client.T) ([]string, error) {
 	return []string{hostname.Hostname()}, nil
 }
 
-func (t *CmdObjectInstanceStatus) Run(selector, kind string) error {
+func (t *CmdObjectInstanceStatus) Run(kind string) error {
 	var (
 		data []object.Digest
 		err  error
 	)
-	mergedSelector := commoncmd.MergeSelector(selector, t.ObjectSelector, kind, "")
+	mergedSelector := commoncmd.MergeSelector("", t.ObjectSelector, kind, "")
 	c, err := client.New()
 	if err != nil {
 		return err

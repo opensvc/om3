@@ -18,8 +18,8 @@ type (
 	}
 )
 
-func (t *CmdObjectCollectorTagShow) Run(selector, kind string) error {
-	mergedSelector := commoncmd.MergeSelector(selector, t.ObjectSelector, kind, "")
+func (t *CmdObjectCollectorTagShow) Run(kind string) error {
+	mergedSelector := commoncmd.MergeSelector("", t.ObjectSelector, kind, "")
 	return objectaction.New(
 		objectaction.LocalFirst(),
 		objectaction.WithObjectSelector(mergedSelector),

@@ -22,12 +22,12 @@ type (
 	}
 )
 
-func (t *CmdObjectScheduleList) Run(selector, kind string) error {
+func (t *CmdObjectScheduleList) Run(kind string) error {
 	c, err := client.New()
 	if err != nil {
 		return err
 	}
-	mergedSelector := commoncmd.MergeSelector(selector, t.ObjectSelector, kind, "")
+	mergedSelector := commoncmd.MergeSelector("", t.ObjectSelector, kind, "")
 	paths, err := objectselector.New(mergedSelector, objectselector.WithClient(c)).MustExpand()
 	if err != nil {
 		return err

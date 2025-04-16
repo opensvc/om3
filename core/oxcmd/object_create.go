@@ -52,7 +52,7 @@ var (
 	schemeObject   string = "object://"
 )
 
-func (t *CmdObjectCreate) Run(selector, kind string) error {
+func (t *CmdObjectCreate) Run(kind string) error {
 	for _, e := range t.Env {
 		t.Keywords = append(t.Keywords, "env."+e)
 	}
@@ -61,7 +61,7 @@ func (t *CmdObjectCreate) Run(selector, kind string) error {
 	} else {
 		t.client = c
 	}
-	if p, err := t.parseSelector(selector, kind); err != nil {
+	if p, err := t.parseSelector(kind); err != nil {
 		return err
 	} else {
 		t.path = p
@@ -87,22 +87,15 @@ func (t *CmdObjectCreate) Run(selector, kind string) error {
 			OptsAsync:  t.OptsAsync,
 			OptsLock:   t.OptsLock,
 		}
-		if err := provisionOptions.Run(selector, kind); err != nil {
+		if err := provisionOptions.Run(kind); err != nil {
 			return err
 		}
 	}
 	return nil
 }
 
-func (t *CmdObjectCreate) parseSelector(selector, kind string) (naming.Path, error) {
-	var objectPath string
-	if selector != "" && t.ObjectSelector != "" {
-		return naming.Path{}, fmt.Errorf("use either 'om <path> create' or 'om <kind> create -s <path>', not 'om <path> create -s <path>'")
-	} else if selector == "" && t.ObjectSelector != "" {
-		objectPath = t.ObjectSelector
-	} else {
-		objectPath = selector
-	}
+func (t *CmdObjectCreate) parseSelector(kind string) (naming.Path, error) {
+	objectPath := t.ObjectSelector
 	if objectPath == "" {
 		// allowed with multi-definitions fed via stdin
 		return naming.Path{}, nil

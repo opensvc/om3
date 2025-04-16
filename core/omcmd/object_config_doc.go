@@ -21,9 +21,9 @@ type (
 	}
 )
 
-func (t *CmdObjectConfigDoc) Run(selector, kind string) error {
-	mergedSelector := commoncmd.MergeSelector(selector, t.ObjectSelector, kind, "")
-	if selector != "" {
+func (t *CmdObjectConfigDoc) Run(kind string) error {
+	mergedSelector := commoncmd.MergeSelector("", t.ObjectSelector, kind, "")
+	if t.ObjectSelector != "" {
 		return objectaction.New(
 			objectaction.LocalFirst(),
 			objectaction.WithColor(t.Color),
