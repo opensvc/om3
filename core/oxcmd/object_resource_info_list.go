@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/opensvc/om3/core/client"
+	"github.com/opensvc/om3/core/commoncmd"
 	"github.com/opensvc/om3/core/naming"
 	"github.com/opensvc/om3/core/objectselector"
 	"github.com/opensvc/om3/core/output"
@@ -26,7 +27,7 @@ func (t *CmdObjectResourceInfoList) Run(selector, kind string) error {
 	if err != nil {
 		return err
 	}
-	mergedSelector := mergeSelector(selector, t.ObjectSelector, kind, "")
+	mergedSelector := commoncmd.MergeSelector(selector, t.ObjectSelector, kind, "")
 	paths, err := objectselector.New(mergedSelector, objectselector.WithClient(c)).MustExpand()
 	if err != nil {
 		return err

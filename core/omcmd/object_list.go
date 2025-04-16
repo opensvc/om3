@@ -5,6 +5,7 @@ import (
 	"fmt"
 
 	"github.com/opensvc/om3/core/client"
+	"github.com/opensvc/om3/core/commoncmd"
 	"github.com/opensvc/om3/core/output"
 	"github.com/opensvc/om3/core/rawconfig"
 	"github.com/opensvc/om3/daemon/api"
@@ -21,7 +22,7 @@ func (t *CmdObjectList) Run(selector, kind string) error {
 	if kind != "" {
 		defaultSelector = fmt.Sprintf("*/%s/*", kind)
 	}
-	mergedSelector := mergeSelector(selector, t.ObjectSelector, kind, defaultSelector)
+	mergedSelector := commoncmd.MergeSelector(selector, t.ObjectSelector, kind, defaultSelector)
 
 	c, err := client.New()
 	if err != nil {

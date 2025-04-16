@@ -81,7 +81,7 @@ func (t *CmdObjectInstanceStatus) Run(selector, kind string) error {
 	if t.Refresh {
 		return fmt.Errorf("todo: honor --refresh")
 	}
-	mergedSelector := mergeSelector(selector, t.ObjectSelector, kind, "")
+	mergedSelector := commoncmd.MergeSelector(selector, t.ObjectSelector, kind, "")
 	c, err := client.New()
 	if err != nil {
 		return err

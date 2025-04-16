@@ -22,10 +22,10 @@ func init() {
 		cmdDaemonRelay,
 		newCmdDaemonRestart(),
 		newCmdDaemonShutdown(),
-		newCmdDaemonStatus(),
 		newCmdDaemonStop(),
 		commoncmd.NewCmdDaemonAuth(),
 		commoncmd.NewCmdDaemonLog(),
+		commoncmd.NewCmdDaemonStatus(),
 	)
 
 	cmdDaemonDNS.AddCommand(

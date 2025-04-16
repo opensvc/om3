@@ -64,7 +64,7 @@ func (t *CmdObjectConfigShow) extractFromDaemon(p naming.Path, c *client.T) ([]b
 }
 
 func (t *CmdObjectConfigShow) Run(selector, kind string) error {
-	mergedSelector := mergeSelector(selector, "", kind, "")
+	mergedSelector := commoncmd.MergeSelector(selector, "", kind, "")
 	b, err := t.extract(mergedSelector)
 	if err != nil {
 		return err

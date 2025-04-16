@@ -25,7 +25,7 @@ type (
 )
 
 func (t *CmdObjectBoot) Run(selector, kind string) error {
-	mergedSelector := mergeSelector(selector, t.ObjectSelector, kind, "")
+	mergedSelector := commoncmd.MergeSelector(selector, t.ObjectSelector, kind, "")
 	return objectaction.New(
 		objectaction.LocalFirst(),
 		objectaction.WithRID(t.RID),

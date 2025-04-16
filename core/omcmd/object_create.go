@@ -112,7 +112,7 @@ func (t *CmdObjectCreate) parseSelector(selector, kind string) (naming.Path, err
 		return p, err
 	}
 	// now we know the path is valid. Verify it is non-existing or matches only one object.
-	objectSelector := mergeSelector(objectPath, "", kind, "**")
+	objectSelector := commoncmd.MergeSelector(objectPath, "", kind, "**")
 	paths, err := objectselector.New(
 		objectSelector,
 		objectselector.WithLocal(t.Local),

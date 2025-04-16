@@ -153,7 +153,7 @@ func (t *CmdObjectInstanceStatus) Run(selector, kind string) error {
 		data []object.Digest
 		err  error
 	)
-	mergedSelector := mergeSelector(selector, t.ObjectSelector, kind, "")
+	mergedSelector := commoncmd.MergeSelector(selector, t.ObjectSelector, kind, "")
 	c, err := client.New()
 	if err != nil {
 		return err

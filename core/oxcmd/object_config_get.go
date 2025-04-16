@@ -5,6 +5,7 @@ import (
 	"fmt"
 
 	"github.com/opensvc/om3/core/client"
+	"github.com/opensvc/om3/core/commoncmd"
 	"github.com/opensvc/om3/core/objectselector"
 	"github.com/opensvc/om3/core/output"
 	"github.com/opensvc/om3/core/rawconfig"
@@ -21,7 +22,7 @@ type (
 )
 
 func (t *CmdObjectConfigGet) Run(selector, kind string) error {
-	mergedSelector := mergeSelector(selector, t.ObjectSelector, kind, "")
+	mergedSelector := commoncmd.MergeSelector(selector, t.ObjectSelector, kind, "")
 	c, err := client.New()
 	if err != nil {
 		return err

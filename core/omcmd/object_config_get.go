@@ -5,6 +5,7 @@ import (
 	"fmt"
 
 	"github.com/opensvc/om3/core/client"
+	"github.com/opensvc/om3/core/commoncmd"
 	"github.com/opensvc/om3/core/naming"
 	"github.com/opensvc/om3/core/object"
 	"github.com/opensvc/om3/core/objectaction"
@@ -25,7 +26,7 @@ type (
 )
 
 func (t *CmdObjectConfigGet) Run(selector, kind string) error {
-	mergedSelector := mergeSelector(selector, t.ObjectSelector, kind, "")
+	mergedSelector := commoncmd.MergeSelector(selector, t.ObjectSelector, kind, "")
 	if t.Local {
 		return t.doObjectAction(mergedSelector)
 	}

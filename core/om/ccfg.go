@@ -1,5 +1,7 @@
 package om
 
+import "github.com/opensvc/om3/core/commoncmd"
+
 func init() {
 	kind := "ccfg"
 
@@ -27,7 +29,7 @@ func init() {
 		newCmdClusterJoin(),
 		newCmdClusterLeave(),
 		newCmdClusterLogs(),
-		newCmdClusterStatus(),
+		commoncmd.NewCmdClusterStatus(),
 		newCmdClusterThaw(),
 		newCmdClusterUnfreeze(),
 		newCmdObjectCreate(kind),
@@ -35,7 +37,7 @@ func init() {
 		newCmdObjectGet(kind),
 		newCmdObjectLogs(kind),
 		newCmdObjectList(kind),
-		newCmdObjectMonitor(kind),
+		commoncmd.NewCmdObjectMonitor("", kind),
 		newCmdObjectUnset(kind),
 	)
 	cmdObjectConfig.AddCommand(

@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 
+	"github.com/opensvc/om3/core/commoncmd"
 	"github.com/opensvc/om3/core/naming"
 	"github.com/opensvc/om3/core/object"
 	"github.com/opensvc/om3/core/objectaction"
@@ -21,7 +22,7 @@ type (
 )
 
 func (t *CmdObjectConfigDoc) Run(selector, kind string) error {
-	mergedSelector := mergeSelector(selector, t.ObjectSelector, kind, "")
+	mergedSelector := commoncmd.MergeSelector(selector, t.ObjectSelector, kind, "")
 	if selector != "" {
 		return objectaction.New(
 			objectaction.LocalFirst(),

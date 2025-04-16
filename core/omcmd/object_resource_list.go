@@ -24,7 +24,7 @@ func (t *CmdObjectResourceList) Run(selector, kind string) error {
 	if kind != "" {
 		defaultSelector = fmt.Sprintf("*/%s/*", kind)
 	}
-	mergedSelector := mergeSelector(selector, t.ObjectSelector, kind, defaultSelector)
+	mergedSelector := commoncmd.MergeSelector(selector, t.ObjectSelector, kind, defaultSelector)
 
 	c, err := client.New()
 	if err != nil {

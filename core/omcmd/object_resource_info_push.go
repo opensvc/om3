@@ -62,7 +62,7 @@ func (t *CmdObjectResourceInfoPush) doLocal(selector string) (api.ResourceInfoLi
 }
 
 func (t *CmdObjectResourceInfoPush) Run(selector, kind string) error {
-	mergedSelector := mergeSelector(selector, t.ObjectSelector, kind, "")
+	mergedSelector := commoncmd.MergeSelector(selector, t.ObjectSelector, kind, "")
 	data, err := t.doLocal(mergedSelector)
 	if err != nil {
 		return err

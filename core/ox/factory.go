@@ -7,7 +7,6 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/opensvc/om3/core/commoncmd"
-	"github.com/opensvc/om3/core/monitor"
 	commands "github.com/opensvc/om3/core/oxcmd"
 	"github.com/opensvc/om3/core/tui"
 )
@@ -254,24 +253,6 @@ func newCmdDaemonShutdown() *cobra.Command {
 	return cmd
 }
 
-func newCmdClusterStatus() *cobra.Command {
-	var options commands.CmdObjectMonitor
-	cmd := &cobra.Command{
-		Use:     "status",
-		Short:   "show the cluster status",
-		Long:    monitor.CmdLong,
-		Aliases: []string{"statu"},
-		RunE: func(cmd *cobra.Command, args []string) error {
-			return options.Run("**", "")
-		},
-	}
-	flags := cmd.Flags()
-	addFlagsGlobal(flags, &options.OptsGlobal)
-	commoncmd.FlagWatch(flags, &options.Watch)
-	commoncmd.FlagOutputSections(flags, &options.Sections)
-	return cmd
-}
-
 func newCmdDaemonStop() *cobra.Command {
 	var options commands.CmdDaemonStop
 	cmd := &cobra.Command{
@@ -430,24 +411,6 @@ func newCmdObjectKeyRename(kind string) *cobra.Command {
 	addFlagsGlobal(flags, &options.OptsGlobal)
 	commoncmd.FlagKeyName(flags, &options.Name)
 	commoncmd.FlagKeyTo(flags, &options.To)
-	return cmd
-}
-
-func newCmdMonitor() *cobra.Command {
-	var options commands.CmdObjectMonitor
-	cmd := &cobra.Command{
-		Use:     "monitor",
-		Aliases: []string{"m", "mo", "mon", "moni", "monit", "monito"},
-		Short:   "show the cluster status",
-		Long:    monitor.CmdLong,
-		RunE: func(cmd *cobra.Command, args []string) error {
-			return options.Run("*", "")
-		},
-	}
-	flags := cmd.Flags()
-	addFlagsGlobal(flags, &options.OptsGlobal)
-	commoncmd.FlagWatch(flags, &options.Watch)
-	commoncmd.FlagOutputSections(flags, &options.Sections)
 	return cmd
 }
 
@@ -2348,24 +2311,6 @@ func newCmdObjectList(kind string) *cobra.Command {
 	return cmd
 }
 
-func newCmdObjectMonitor(kind string) *cobra.Command {
-	var options commands.CmdObjectMonitor
-	cmd := &cobra.Command{
-		Use:     "monitor",
-		Aliases: []string{"mon", "moni", "monit", "monito"},
-		Short:   "print the selected objects and instances status summary",
-		Long:    monitor.CmdLong,
-		RunE: func(cmd *cobra.Command, args []string) error {
-			return options.Run(selectorFlag, kind)
-		},
-	}
-	flags := cmd.Flags()
-	addFlagsGlobal(flags, &options.OptsGlobal)
-	commoncmd.FlagWatch(flags, &options.Watch)
-	commoncmd.FlagOutputSections(flags, &options.Sections)
-	return cmd
-}
-
 func newCmdObjectPrintResourceInfo(kind string) *cobra.Command {
 	var options commands.CmdObjectResourceInfoList
 	cmd := &cobra.Command{
@@ -2993,12 +2938,6 @@ func newCmdTUI(kind string) *cobra.Command {
 }
 
 // Hidden commands. Kept for backward compatibility.
-func newCmdDaemonStatus() *cobra.Command {
-	cmd := newCmdClusterStatus()
-	cmd.Hidden = true
-	return cmd
-}
-
 func newCmdNodeEdit() *cobra.Command {
 	cmd := newCmdNodeConfigEdit()
 	cmd.Hidden = true

@@ -1,6 +1,6 @@
-package omcmd
+package commoncmd
 
-func mergeSelector(selector string, subsysSelector string, kind string, defaultSelector string) string {
+func MergeSelector(selector string, subsysSelector string, kind string, defaultSelector string) string {
 	var s string
 	switch {
 	case selector != "":

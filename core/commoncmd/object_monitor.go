@@ -1,4 +1,4 @@
-package oxcmd
+package commoncmd
 
 import (
 	"fmt"
@@ -7,22 +7,49 @@ import (
 
 	"github.com/opensvc/om3/core/client"
 	"github.com/opensvc/om3/core/monitor"
+	"github.com/spf13/cobra"
 )
 
 type (
 	CmdObjectMonitor struct {
-		OptsGlobal
-		Watch    bool
-		Sections string
+		Color          string
+		ObjectSelector string
+		Output         string
+		Sections       string
+		Watch          bool
 	}
 )
+
+func NewCmdMonitor() *cobra.Command {
+	return NewCmdObjectMonitor("*", "")
+}
+
+func NewCmdObjectMonitor(selector, kind string) *cobra.Command {
+	var options CmdObjectMonitor
+	cmd := &cobra.Command{
+		Use:     "monitor",
+		Aliases: []string{"m", "mo", "mon", "moni", "monit", "monito"},
+		Short:   "show the cluster status",
+		Long:    monitor.CmdLong,
+		RunE: func(cmd *cobra.Command, args []string) error {
+			return options.Run(selector, kind)
+		},
+	}
+	flags := cmd.Flags()
+	FlagColor(flags, &options.Color)
+	FlagObjectSelector(flags, &options.ObjectSelector)
+	FlagOutput(flags, &options.Output)
+	FlagOutputSections(flags, &options.Sections)
+	FlagWatch(flags, &options.Watch)
+	return cmd
+}
 
 func (t *CmdObjectMonitor) Run(selector, kind string) error {
 	defaultSelector := ""
 	if kind != "" {
 		defaultSelector = fmt.Sprintf("*/%s/*", kind)
 	}
-	mergedSelector := mergeSelector(selector, t.ObjectSelector, kind, defaultSelector)
+	mergedSelector := MergeSelector(selector, t.ObjectSelector, kind, defaultSelector)
 
 	cli, err := client.New(client.WithTimeout(0))
 	if err != nil {

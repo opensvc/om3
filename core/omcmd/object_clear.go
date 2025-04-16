@@ -22,7 +22,7 @@ func (t *CmdObjectClear) Run(selector, kind string) error {
 	if err != nil {
 		return err
 	}
-	mergedSelector := mergeSelector(selector, t.ObjectSelector, kind, "")
+	mergedSelector := commoncmd.MergeSelector(selector, t.ObjectSelector, kind, "")
 	sel := objectselector.New(mergedSelector, objectselector.WithClient(c))
 	paths, err := sel.MustExpand()
 	if err != nil {

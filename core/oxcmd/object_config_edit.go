@@ -5,6 +5,7 @@ import (
 	"os"
 
 	"github.com/opensvc/om3/core/client"
+	"github.com/opensvc/om3/core/commoncmd"
 	"github.com/opensvc/om3/core/naming"
 	"github.com/opensvc/om3/core/objectselector"
 	"github.com/opensvc/om3/util/editor"
@@ -67,7 +68,7 @@ func (t *CmdObjectConfigEdit) Run(selector, kind string) error {
 		c   *client.T
 		err error
 	)
-	mergedSelector := mergeSelector(selector, t.ObjectSelector, kind, "")
+	mergedSelector := commoncmd.MergeSelector(selector, t.ObjectSelector, kind, "")
 	if c, err = client.New(); err != nil {
 		return err
 	}

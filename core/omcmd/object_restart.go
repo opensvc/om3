@@ -25,7 +25,7 @@ type (
 )
 
 func (t *CmdObjectRestart) Run(selector, kind string) error {
-	mergedSelector := mergeSelector(selector, t.ObjectSelector, kind, "")
+	mergedSelector := commoncmd.MergeSelector(selector, t.ObjectSelector, kind, "")
 	options := instance.MonitorGlobalExpectOptionsRestarted{
 		Force: t.Force,
 	}

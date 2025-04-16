@@ -20,7 +20,7 @@ type (
 
 func (t *CmdObjectLogs) Run(selector, kind string) error {
 	render.SetColor(t.Color)
-	mergedSelector := mergeSelector(selector, t.ObjectSelector, kind, "**")
+	mergedSelector := commoncmd.MergeSelector(selector, t.ObjectSelector, kind, "**")
 	if t.Local {
 		return t.local(mergedSelector)
 	} else {

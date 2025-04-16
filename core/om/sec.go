@@ -1,5 +1,7 @@
 package om
 
+import "github.com/opensvc/om3/core/commoncmd"
+
 func init() {
 	kind := "sec"
 
@@ -41,7 +43,7 @@ func init() {
 		newCmdObjectGet(kind),
 		newCmdObjectLogs(kind),
 		newCmdObjectList(kind),
-		newCmdObjectMonitor(kind),
+		commoncmd.NewCmdObjectMonitor("", kind),
 		newCmdObjectPurge(kind),
 		newCmdObjectUnset(kind),
 		newCmdObjectPKCS(kind),

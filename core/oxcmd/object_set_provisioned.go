@@ -15,7 +15,7 @@ type (
 )
 
 func (t *CmdObjectSetProvisioned) Run(selector, kind string) error {
-	mergedSelector := mergeSelector(selector, t.ObjectSelector, kind, "")
+	mergedSelector := commoncmd.MergeSelector(selector, t.ObjectSelector, kind, "")
 	return objectaction.New(
 		objectaction.WithColor(t.Color),
 		objectaction.WithOutput(t.Output),
