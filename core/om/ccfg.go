@@ -24,14 +24,14 @@ func init() {
 		cmdObjectSSH,
 		cmdObjectPrint,
 		cmdObjectValidate,
-		commoncmd.NewCmdClusterAbort(),
-		newCmdClusterFreeze(),
 		newCmdClusterJoin(),
 		newCmdClusterLeave(),
-		newCmdClusterLogs(),
+		commoncmd.NewCmdClusterAbort(),
+		commoncmd.NewCmdClusterFreeze(),
+		commoncmd.NewCmdClusterLogs(),
 		commoncmd.NewCmdClusterStatus(),
-		newCmdClusterThaw(),
-		newCmdClusterUnfreeze(),
+		commoncmd.NewCmdClusterThaw(),
+		commoncmd.NewCmdClusterUnfreeze(),
 		newCmdObjectCreate(kind),
 		newCmdObjectEval(kind),
 		newCmdObjectGet(kind),
@@ -60,7 +60,7 @@ func init() {
 		newCmdObjectConfigMtime(kind),
 	)
 	cmdObjectSSH.AddCommand(
-		newCmdClusterSSHTrust(),
+		commoncmd.NewCmdClusterSSHTrust(),
 	)
 	cmdObjectValidate.AddCommand(
 		newCmdObjectValidateConfig(kind),

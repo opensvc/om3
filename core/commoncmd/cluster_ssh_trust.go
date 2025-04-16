@@ -1,4 +1,4 @@
-package oxcmd
+package commoncmd
 
 import (
 	"context"
@@ -7,13 +7,28 @@ import (
 
 	"github.com/opensvc/om3/core/client"
 	"github.com/opensvc/om3/core/nodeselector"
+	"github.com/spf13/cobra"
 )
 
 type (
 	CmdClusterSSHTrust struct {
-		OptsGlobal
 	}
 )
+
+func NewCmdClusterSSHTrust() *cobra.Command {
+	var options CmdClusterSSHTrust
+	cmd := &cobra.Command{
+		Use:   "trust",
+		Short: "ssh-trust all the node mesh",
+		Long: "Configure all nodes to allow SSH communication from their peers." +
+			" By default, the trusted SSH key is opensvc, but this can be customized using the node.sshkey setting." +
+			" If the key does not exist, OpenSVC automatically generates it.",
+		RunE: func(cmd *cobra.Command, args []string) error {
+			return options.Run()
+		},
+	}
+	return cmd
+}
 
 func (t *CmdClusterSSHTrust) Run() error {
 	c, err := client.New()

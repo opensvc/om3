@@ -1,4 +1,4 @@
-package omcmd
+package commoncmd
 
 import (
 	"errors"
@@ -8,19 +8,38 @@ import (
 	"sync"
 
 	"github.com/opensvc/om3/core/client"
-	"github.com/opensvc/om3/core/commoncmd"
 	"github.com/opensvc/om3/core/nodeselector"
 	"github.com/opensvc/om3/core/streamlog"
 	"github.com/opensvc/om3/util/render"
+	"github.com/spf13/cobra"
 )
 
 type (
 	CmdClusterLogs struct {
-		OptsGlobal
-		commoncmd.OptsLogs
+		OptsLogs
+		Color        string
 		NodeSelector string
+		Output       string
 	}
 )
+
+func NewCmdClusterLogs() *cobra.Command {
+	var options CmdClusterLogs
+	cmd := &cobra.Command{
+		Use:     "logs",
+		Aliases: []string{"logs", "log", "lo"},
+		Short:   "show all nodes logs",
+		RunE: func(cmd *cobra.Command, args []string) error {
+			return options.Run()
+		},
+	}
+	flags := cmd.Flags()
+	FlagColor(flags, &options.Color)
+	FlagOutput(flags, &options.Output)
+	FlagsLogs(flags, &options.OptsLogs)
+	FlagNodeSelector(flags, &options.NodeSelector)
+	return cmd
+}
 
 func (t *CmdClusterLogs) stream(node string) {
 	c, err := client.New(client.WithURL(node), client.WithTimeout(0))

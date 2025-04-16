@@ -138,62 +138,6 @@ func newCmdArrayList() *cobra.Command {
 	return cmd
 }
 
-func newCmdClusterFreeze() *cobra.Command {
-	var options commands.CmdClusterFreeze
-	cmd := &cobra.Command{
-		Use:   "freeze",
-		Short: "block ha automatic start and split action on all nodes",
-		RunE: func(cmd *cobra.Command, args []string) error {
-			return options.Run()
-		},
-	}
-	flags := cmd.Flags()
-	addFlagsGlobal(flags, &options.OptsGlobal)
-	commoncmd.FlagsAsync(flags, &options.OptsAsync)
-	return cmd
-}
-
-func newCmdClusterLogs() *cobra.Command {
-	var options commands.CmdClusterLogs
-	cmd := &cobra.Command{
-		Use:     "logs",
-		Aliases: []string{"logs", "log", "lo"},
-		Short:   "show all nodes logs",
-		RunE: func(cmd *cobra.Command, args []string) error {
-			return options.Run()
-		},
-	}
-	flags := cmd.Flags()
-	addFlagsGlobal(flags, &options.OptsGlobal)
-	commoncmd.FlagsLogs(flags, &options.OptsLogs)
-	commoncmd.FlagNodeSelector(flags, &options.NodeSelector)
-	return cmd
-}
-
-// newCmdClusterThaw creates a hidden 'thaw' subcommand alias for 'unfreeze' to unblock HA automatic and split actions.
-func newCmdClusterThaw() *cobra.Command {
-	cmd := newCmdClusterUnfreeze()
-	cmd.Use = "thaw"
-	cmd.Hidden = true
-	return cmd
-}
-
-func newCmdClusterUnfreeze() *cobra.Command {
-	var options commands.CmdClusterUnfreeze
-	cmd := &cobra.Command{
-		Use:    "unfreeze",
-		Hidden: false,
-		Short:  "unblock ha automatic and split action start on all nodes",
-		RunE: func(cmd *cobra.Command, args []string) error {
-			return options.Run()
-		},
-	}
-	flags := cmd.Flags()
-	addFlagsGlobal(flags, &options.OptsGlobal)
-	commoncmd.FlagsAsync(flags, &options.OptsAsync)
-	return cmd
-}
-
 func newCmdDaemonDNSDump() *cobra.Command {
 	var options commands.CmdDNSDump
 	cmd := &cobra.Command{
@@ -1560,23 +1504,6 @@ func newCmdNodeUpdateSSHKeys() *cobra.Command {
 	cmd.Use = "keys"
 	program := os.Args[0]
 	cmd.Deprecated = fmt.Sprintf("use the \"%s node ssh trust\" or \"%s cluster ssh trust\" command instead.", program, program)
-	return cmd
-}
-
-func newCmdClusterSSHTrust() *cobra.Command {
-	var options commands.CmdClusterSSHTrust
-	cmd := &cobra.Command{
-		Use:   "trust",
-		Short: "ssh-trust all the node mesh",
-		Long: "Configure all nodes to allow SSH communication from their peers." +
-			" By default, the trusted SSH key is opensvc, but this can be customized using the node.sshkey setting." +
-			" If the key does not exist, OpenSVC automatically generates it.",
-		RunE: func(cmd *cobra.Command, args []string) error {
-			return options.Run()
-		},
-	}
-	flags := cmd.Flags()
-	addFlagsGlobal(flags, &options.OptsGlobal)
 	return cmd
 }
 
