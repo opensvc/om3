@@ -138,21 +138,6 @@ func newCmdArrayList() *cobra.Command {
 	return cmd
 }
 
-func newCmdClusterAbort() *cobra.Command {
-	var options commands.CmdClusterAbort
-	cmd := &cobra.Command{
-		Use:   "abort",
-		Short: "abort the running orchestration",
-		RunE: func(cmd *cobra.Command, args []string) error {
-			return options.Run()
-		},
-	}
-	flags := cmd.Flags()
-	commoncmd.FlagsAsync(flags, &options.OptsAsync)
-	addFlagsGlobal(flags, &options.OptsGlobal)
-	return cmd
-}
-
 func newCmdClusterFreeze() *cobra.Command {
 	var options commands.CmdClusterFreeze
 	cmd := &cobra.Command{

@@ -25,7 +25,7 @@ func init() {
 		cmdObjectPrint,
 		cmdObjectSSH,
 		cmdObjectValidate,
-		newCmdClusterAbort(),
+		commoncmd.NewCmdClusterAbort(),
 		newCmdClusterFreeze(),
 		newCmdClusterLogs(),
 		newCmdClusterThaw(),
