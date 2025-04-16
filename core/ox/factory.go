@@ -257,20 +257,6 @@ func newCmdDaemonDNSDump() *cobra.Command {
 	return cmd
 }
 
-func newCmdDaemonRelayStatus() *cobra.Command {
-	var options commands.CmdDaemonRelayStatus
-	cmd := &cobra.Command{
-		Use:   "status",
-		Short: "show the local daemon relay clients and last data update time",
-		RunE: func(cmd *cobra.Command, args []string) error {
-			return options.Run()
-		},
-	}
-	flags := cmd.Flags()
-	addFlagsGlobal(flags, &options.OptsGlobal)
-	return cmd
-}
-
 func newCmdDaemonRestart() *cobra.Command {
 	var options commands.CmdDaemonRestart
 	cmd := &cobra.Command{

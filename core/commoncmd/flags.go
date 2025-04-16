@@ -345,3 +345,19 @@ func FlagWaitLock(flagSet *pflag.FlagSet, p *time.Duration) {
 func FlagWatch(flagSet *pflag.FlagSet, p *bool) {
 	flagSet.BoolVarP(p, "watch", "w", false, "watch the monitor changes")
 }
+
+func FlagColor(flagSet *pflag.FlagSet, p *string) {
+	flagSet.StringVar(p, "color", "auto", "output colorization yes|no|auto")
+}
+
+func FlagOutput(flagSet *pflag.FlagSet, p *string) {
+	flagSet.StringVarP(p, "output", "o", "auto", "output format json|flat|auto|tab=<header>:<jsonpath>,...")
+	flagSet.StringVar(p, "format", "auto", "output format json|flat|auto|tab=<header>:<jsonpath>,...")
+	flagSet.MarkHidden("format")
+}
+
+func FlagObjectSelector(flagSet *pflag.FlagSet, p *string) {
+	flagSet.StringVarP(p, "service", "", "", "execute on a list of objects")
+	flagSet.StringVarP(p, "selector", "s", "", "execute on a list of objects")
+	flagSet.MarkHidden("service")
+}

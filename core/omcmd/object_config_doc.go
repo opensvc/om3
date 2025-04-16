@@ -11,10 +11,12 @@ import (
 
 type (
 	CmdObjectConfigDoc struct {
-		OptsGlobal
-		Keyword string
-		Driver  string
-		Depth   int
+		ObjectSelector string
+		Color          string
+		Output         string
+		Keyword        string
+		Driver         string
+		Depth          int
 	}
 )
 
@@ -23,7 +25,6 @@ func (t *CmdObjectConfigDoc) Run(selector, kind string) error {
 	if selector != "" {
 		return objectaction.New(
 			objectaction.LocalFirst(),
-			objectaction.WithLocal(t.Local),
 			objectaction.WithColor(t.Color),
 			objectaction.WithOutput(t.Output),
 			objectaction.WithObjectSelector(mergedSelector),

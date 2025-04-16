@@ -302,20 +302,6 @@ func newCmdClusterLeave() *cobra.Command {
 	return cmd
 }
 
-func newCmdDaemonRelayStatus() *cobra.Command {
-	var options commands.CmdDaemonRelayStatus
-	cmd := &cobra.Command{
-		Use:   "status",
-		Short: "show the local daemon relay clients and last data update time",
-		RunE: func(cmd *cobra.Command, args []string) error {
-			return options.Run()
-		},
-	}
-	flags := cmd.Flags()
-	addFlagsGlobal(flags, &options.OptsGlobal)
-	return cmd
-}
-
 func newCmdDaemonRestart() *cobra.Command {
 	var options commands.CmdDaemonRestart
 	cmd := &cobra.Command{
@@ -1084,8 +1070,8 @@ func newCmdNodeDoc() *cobra.Command {
 		},
 	}
 	flags := cmd.Flags()
-	addFlagsGlobalColor(flags, &options.OptsGlobal)
-	addFlagsGlobalOutput(flags, &options.OptsGlobal)
+	commoncmd.FlagColor(flags, &options.Color)
+	commoncmd.FlagOutput(flags, &options.Output)
 	commoncmd.FlagKeyword(flags, &options.Keyword)
 	commoncmd.FlagDriver(flags, &options.Driver)
 	commoncmd.FlagDepth(flags, &options.Depth)
@@ -1121,8 +1107,8 @@ func newCmdNodeDrivers() *cobra.Command {
 		},
 	}
 	flags := cmd.Flags()
-	addFlagsGlobalColor(flags, &options.OptsGlobal)
-	addFlagsGlobalOutput(flags, &options.OptsGlobal)
+	commoncmd.FlagColor(flags, &options.Color)
+	commoncmd.FlagOutput(flags, &options.Output)
 	return cmd
 }
 
@@ -2336,8 +2322,9 @@ func newCmdObjectConfigDoc(kind string) *cobra.Command {
 		},
 	}
 	flags := cmd.Flags()
-	addFlagsGlobalColor(flags, &options.OptsGlobal)
-	addFlagsGlobalOutput(flags, &options.OptsGlobal)
+	commoncmd.FlagObjectSelector(flags, &options.ObjectSelector)
+	commoncmd.FlagColor(flags, &options.Color)
+	commoncmd.FlagOutput(flags, &options.Output)
 	commoncmd.FlagKeyword(flags, &options.Keyword)
 	commoncmd.FlagDriver(flags, &options.Driver)
 	commoncmd.FlagDepth(flags, &options.Depth)

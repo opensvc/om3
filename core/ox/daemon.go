@@ -47,6 +47,6 @@ func init() {
 	)
 
 	cmdDaemonRelay.AddCommand(
-		newCmdDaemonRelayStatus(),
+		commoncmd.NewCmdDaemonRelayStatus(),
 	)
 }
