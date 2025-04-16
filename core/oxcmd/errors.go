@@ -7,8 +7,6 @@ var (
 
 	ErrPrint = errors.New("print")
 
-	ErrClientRequest = errors.New("client request")
-
 	ErrClientStatusCode = errors.New("client request unexpected status code")
 
 	ErrEventKindUnexpected = errors.New("unexpected event kind")

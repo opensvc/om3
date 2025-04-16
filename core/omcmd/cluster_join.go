@@ -12,6 +12,7 @@ import (
 	"github.com/golang-jwt/jwt/v5"
 
 	"github.com/opensvc/om3/core/client"
+	"github.com/opensvc/om3/core/commoncmd"
 	"github.com/opensvc/om3/core/event"
 	"github.com/opensvc/om3/core/naming"
 	"github.com/opensvc/om3/core/object"
@@ -116,9 +117,9 @@ func (t *CmdClusterJoin) run() error {
 		Node: hostname.Hostname(),
 	}
 	if resp, err := cli.PostClusterJoin(context.Background(), &params); err != nil {
-		return fmt.Errorf("%w: %w", ErrClientRequest, err)
+		return fmt.Errorf("%w: %w", commoncmd.ErrClientRequest, err)
 	} else if resp.StatusCode != http.StatusOK {
-		return fmt.Errorf("%w: got %d wanted %d", ErrClientStatusCode, resp.StatusCode, http.StatusOK)
+		return fmt.Errorf("%w: got %d wanted %d", commoncmd.ErrClientStatusCode, resp.StatusCode, http.StatusOK)
 	}
 
 	if err := t.waitJoinResult(ctx, evReader); err != nil {
@@ -133,10 +134,10 @@ func (t *CmdClusterJoin) run() error {
 
 func (t *CmdClusterJoin) checkParams() error {
 	if t.Node == "" {
-		return fmt.Errorf("%w: node is empty", ErrFlagInvalid)
+		return fmt.Errorf("%w: node is empty", commoncmd.ErrFlagInvalid)
 	}
 	if t.Token == "" {
-		return fmt.Errorf("%w: token is empty", ErrFlagInvalid)
+		return fmt.Errorf("%w: token is empty", commoncmd.ErrFlagInvalid)
 	}
 	return nil
 }
@@ -210,12 +211,12 @@ func (t *CmdClusterJoin) onJoined(ctx context.Context, cli *client.T) (err error
 		_, _ = fmt.Fprintf(os.Stdout, "Fetch %s from %s\n", p, t.Node)
 		file, _, err = remoteconfig.FetchObjectConfigFile(cli, p)
 		if err != nil {
-			return fmt.Errorf("%w: for path %s: %w", ErrFetchFile, p, err)
+			return fmt.Errorf("%w: for path %s: %w", commoncmd.ErrFetchFile, p, err)
 		}
 		downloadedFiles = append(downloadedFiles, file)
 		fetchObjectConfigData[p], err = os.ReadFile(file)
 		if err != nil {
-			return fmt.Errorf("%w: for path %s: %w", ErrFetchFile, p, err)
+			return fmt.Errorf("%w: for path %s: %w", commoncmd.ErrFetchFile, p, err)
 		}
 		filePaths[file] = p
 	}
@@ -243,10 +244,10 @@ func (t *CmdClusterJoin) onJoined(ctx context.Context, cli *client.T) (err error
 		configFile := p.ConfigFile()
 		dir := filepath.Dir(configFile)
 		if err := os.MkdirAll(dir, os.ModePerm); err != nil {
-			return fmt.Errorf("%w: config %s from file %s: %w", ErrInstallFile, p, fileName, err)
+			return fmt.Errorf("%w: config %s from file %s: %w", commoncmd.ErrInstallFile, p, fileName, err)
 		}
 		if err := os.WriteFile(configFile, fetchObjectConfigData[p], 0600); err != nil {
-			return fmt.Errorf("%w: config %s from file %s: %w", ErrInstallFile, p, fileName, err)
+			return fmt.Errorf("%w: config %s from file %s: %w", commoncmd.ErrInstallFile, p, fileName, err)
 		}
 	}
 
@@ -282,7 +283,7 @@ func (t *CmdClusterJoin) waitJoinResult(ctx context.Context, evReader event.Read
 				_, _ = fmt.Fprintf(os.Stdout, "Join ignored: %s", ev.Data)
 				return nil
 			default:
-				return fmt.Errorf("%w: %s data: %v", ErrEventKindUnexpected, ev.Kind, ev.Data)
+				return fmt.Errorf("%w: %s data: %v", commoncmd.ErrEventKindUnexpected, ev.Kind, ev.Data)
 			}
 		}
 	}

@@ -1,4 +1,4 @@
-package omcmd
+package commoncmd
 
 import (
 	"context"
@@ -9,11 +9,11 @@ import (
 
 	"github.com/opensvc/om3/core/client"
 	"github.com/opensvc/om3/daemon/api"
+	"github.com/spf13/cobra"
 )
 
 type (
 	CmdDaemonAuth struct {
-		OptsGlobal
 		Roles    []string
 		Subject  string
 		Scope    string
@@ -25,6 +25,24 @@ type (
 var (
 	ErrCmdDaemonAuth = errors.New("command daemon auth")
 )
+
+func NewCmdDaemonAuth() *cobra.Command {
+	var options CmdDaemonAuth
+	cmd := &cobra.Command{
+		Use:   "auth",
+		Short: "create new token",
+		RunE: func(cmd *cobra.Command, args []string) error {
+			return options.Run()
+		},
+	}
+	flags := cmd.Flags()
+	FlagRoles(flags, &options.Roles)
+	flags.DurationVar(&options.Duration, "duration", 60*time.Second, "token duration.")
+	flags.StringSliceVar(&options.Out, "out", []string{"token"}, "the fields to display: [token,expired_at]")
+	flags.StringVar(&options.Subject, "subject", "", "the subject of the token")
+	flags.StringVar(&options.Scope, "scope", "", "the scope of the token grant")
+	return cmd
+}
 
 func (t *CmdDaemonAuth) Run() error {
 	if err := t.checkParams(); err != nil {
@@ -41,8 +59,8 @@ func (t *CmdDaemonAuth) Run() error {
 	}
 	params := api.PostAuthTokenParams{
 		Duration: &duration,
-		Subject: &t.Subject,
-		Scope: &t.Scope,
+		Subject:  &t.Subject,
+		Scope:    &t.Scope,
 	}
 	if len(roles) > 0 {
 		// Don't set params.Role when --role isn't used

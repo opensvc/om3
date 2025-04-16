@@ -16,7 +16,6 @@ func init() {
 	)
 
 	cmdDaemon.AddCommand(
-		newCmdDaemonAuth(),
 		cmdDaemonDNS,
 		cmdDaemonHeartbeat,
 		cmdDaemonListener,
@@ -25,6 +24,7 @@ func init() {
 		newCmdDaemonShutdown(),
 		newCmdDaemonStatus(),
 		newCmdDaemonStop(),
+		commoncmd.NewCmdDaemonAuth(),
 		commoncmd.NewCmdDaemonLog(),
 	)
 

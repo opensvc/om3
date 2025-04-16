@@ -3,7 +3,6 @@ package ox
 import (
 	// Necessary to use go:embed
 	_ "embed"
-	"time"
 
 	"github.com/spf13/cobra"
 
@@ -205,23 +204,6 @@ func newCmdClusterUnfreeze() *cobra.Command {
 	flags := cmd.Flags()
 	addFlagsGlobal(flags, &options.OptsGlobal)
 	commoncmd.FlagsAsync(flags, &options.OptsAsync)
-	return cmd
-}
-
-func newCmdDaemonAuth() *cobra.Command {
-	var options commands.CmdDaemonAuth
-	cmd := &cobra.Command{
-		Use:   "auth",
-		Short: "create new token",
-		RunE: func(cmd *cobra.Command, args []string) error {
-			return options.Run()
-		},
-	}
-	flags := cmd.Flags()
-	addFlagsGlobal(flags, &options.OptsGlobal)
-	commoncmd.FlagRoles(flags, &options.Roles)
-	flags.DurationVar(&options.Duration, "duration", 60*time.Second, "token duration.")
-	flags.StringSliceVar(&options.Out, "out", []string{"token"}, "the fields to display: [token,expired_at]")
 	return cmd
 }
 

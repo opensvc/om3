@@ -210,26 +210,6 @@ func newCmdClusterUnfreeze() *cobra.Command {
 	return cmd
 }
 
-func newCmdDaemonAuth() *cobra.Command {
-	var options commands.CmdDaemonAuth
-	cmd := &cobra.Command{
-		Use:   "auth",
-		Short: "create new token",
-		RunE: func(cmd *cobra.Command, args []string) error {
-			return options.Run()
-		},
-	}
-	flags := cmd.Flags()
-	addFlagsGlobal(flags, &options.OptsGlobal)
-	commoncmd.FlagRoles(flags, &options.Roles)
-	flags.DurationVar(&options.Duration, "duration", 60*time.Second, "token duration.")
-	flags.StringSliceVar(&options.Out, "out", []string{"token"}, "the fields to display: [token,expired_at]")
-	flags.StringVar(&options.Subject, "subject", "", "the subject of the token")
-	flags.StringVar(&options.Scope, "scope", "", "the scope of the token grant")
-
-	return cmd
-}
-
 func newCmdDaemonDNSDump() *cobra.Command {
 	var options commands.CmdDNSDump
 	cmd := &cobra.Command{
