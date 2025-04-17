@@ -542,6 +542,32 @@ paths:
       tags:
         - node / daemon
 
+  /node/name/{nodename}/daemon/dns/dump:
+    get:
+      description: |
+        Dump the cluster DNS zone content.
+      operationId: GetDaemonDNSDump
+      parameters:
+        - $ref: '#/components/parameters/inPathNodeName'
+      responses:
+        200:
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DNSZone'
+        401:
+          $ref: '#/components/responses/401'
+        403:
+          $ref: '#/components/responses/403'
+        500:
+          $ref: '#/components/responses/500'
+      security:
+        - basicAuth: []
+        - bearerAuth: []
+      tags:
+        - node / daemon
+
   /node/name/{nodename}/daemon/event:
     get:
       operationId: GetDaemonEvents
@@ -890,30 +916,6 @@ paths:
         - bearerAuth: []
       tags:
         - node
-
-  /dns/dump:
-    get:
-      description: |
-        Dump the cluster DNS zone content.
-      operationId: GetDNSDump
-      responses:
-        200:
-          description: OK
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/DNSZone'
-        401:
-          $ref: '#/components/responses/401'
-        403:
-          $ref: '#/components/responses/403'
-        500:
-          $ref: '#/components/responses/500'
-      security:
-        - basicAuth: []
-        - bearerAuth: []
-      tags:
-        - dns
 
   /network:
     get:

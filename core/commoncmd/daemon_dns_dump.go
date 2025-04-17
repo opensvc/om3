@@ -1,4 +1,4 @@
-package omcmd
+package commoncmd
 
 import (
 	"context"
@@ -11,20 +11,43 @@ import (
 	"github.com/opensvc/om3/core/output"
 	"github.com/opensvc/om3/core/rawconfig"
 	"github.com/opensvc/om3/daemon/dns"
+	"github.com/spf13/cobra"
 )
 
 type (
-	CmdDNSDump struct {
-		OptsGlobal
+	CmdDaemonDNSDump struct {
+		Color        string
+		Output       string
+		NodeSelector string
 	}
 )
 
-func (t *CmdDNSDump) Run() error {
+func NewCmdDaemonDNSDump() *cobra.Command {
+	var options CmdDaemonDNSDump
+	cmd := &cobra.Command{
+		Use:   "dump",
+		Short: "dump the content of the cluster zone",
+		RunE: func(cmd *cobra.Command, args []string) error {
+			return options.Run()
+		},
+	}
+	flags := cmd.Flags()
+	FlagColor(flags, &options.Color)
+	FlagOutput(flags, &options.Output)
+	FlagNodeSelector(flags, &options.NodeSelector)
+	return cmd
+}
+
+func (t *CmdDaemonDNSDump) Run() error {
 	c, err := client.New()
 	if err != nil {
 		return err
 	}
-	resp, err := c.GetDNSDump(context.Background())
+	nodename, err := AnySingleNode(t.NodeSelector, c)
+	if err != nil {
+		return err
+	}
+	resp, err := c.GetDaemonDNSDump(context.Background(), nodename)
 	if err != nil {
 		return err
 	} else if resp.StatusCode != http.StatusOK {

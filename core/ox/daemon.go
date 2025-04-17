@@ -29,7 +29,7 @@ func init() {
 	)
 
 	cmdDaemonDNS.AddCommand(
-		newCmdDaemonDNSDump(),
+		commoncmd.NewCmdDaemonDNSDump(),
 	)
 
 	cmdDaemonHeartbeat.AddCommand(

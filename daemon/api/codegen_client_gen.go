@@ -128,9 +128,6 @@ type ClientInterface interface {
 	// GetClusterStatus request
 	GetClusterStatus(ctx context.Context, params *GetClusterStatusParams, reqEditors ...RequestEditorFn) (*http.Response, error)
 
-	// GetDNSDump request
-	GetDNSDump(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error)
-
 	// GetInstances request
 	GetInstances(ctx context.Context, params *GetInstancesParams, reqEditors ...RequestEditorFn) (*http.Response, error)
 
@@ -212,6 +209,9 @@ type ClientInterface interface {
 
 	// PostDaemonStop request
 	PostDaemonStop(ctx context.Context, nodename InPathNodeName, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// GetDaemonDNSDump request
+	GetDaemonDNSDump(ctx context.Context, nodename InPathNodeName, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// GetDaemonEvents request
 	GetDaemonEvents(ctx context.Context, nodename InPathNodeName, params *GetDaemonEventsParams, reqEditors ...RequestEditorFn) (*http.Response, error)
@@ -657,18 +657,6 @@ func (c *Client) GetClusterStatus(ctx context.Context, params *GetClusterStatusP
 	return c.Client.Do(req)
 }
 
-func (c *Client) GetDNSDump(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error) {
-	req, err := NewGetDNSDumpRequest(c.Server)
-	if err != nil {
-		return nil, err
-	}
-	req = req.WithContext(ctx)
-	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
-		return nil, err
-	}
-	return c.Client.Do(req)
-}
-
 func (c *Client) GetInstances(ctx context.Context, params *GetInstancesParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
 	req, err := NewGetInstancesRequest(c.Server, params)
 	if err != nil {
@@ -995,6 +983,18 @@ func (c *Client) PostDaemonShutdown(ctx context.Context, nodename InPathNodeName
 
 func (c *Client) PostDaemonStop(ctx context.Context, nodename InPathNodeName, reqEditors ...RequestEditorFn) (*http.Response, error) {
 	req, err := NewPostDaemonStopRequest(c.Server, nodename)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+func (c *Client) GetDaemonDNSDump(ctx context.Context, nodename InPathNodeName, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewGetDaemonDNSDumpRequest(c.Server, nodename)
 	if err != nil {
 		return nil, err
 	}
@@ -2786,33 +2786,6 @@ func NewGetClusterStatusRequest(server string, params *GetClusterStatusParams) (
 	return req, nil
 }
 
-// NewGetDNSDumpRequest generates requests for GetDNSDump
-func NewGetDNSDumpRequest(server string) (*http.Request, error) {
-	var err error
-
-	serverURL, err := url.Parse(server)
-	if err != nil {
-		return nil, err
-	}
-
-	operationPath := fmt.Sprintf("/dns/dump")
-	if operationPath[0] == '/' {
-		operationPath = "." + operationPath
-	}
-
-	queryURL, err := serverURL.Parse(operationPath)
-	if err != nil {
-		return nil, err
-	}
-
-	req, err := http.NewRequest("GET", queryURL.String(), nil)
-	if err != nil {
-		return nil, err
-	}
-
-	return req, nil
-}
-
 // NewGetInstancesRequest generates requests for GetInstances
 func NewGetInstancesRequest(server string, params *GetInstancesParams) (*http.Request, error) {
 	var err error
@@ -4137,6 +4110,40 @@ func NewPostDaemonStopRequest(server string, nodename InPathNodeName) (*http.Req
 	}
 
 	req, err := http.NewRequest("POST", queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
+// NewGetDaemonDNSDumpRequest generates requests for GetDaemonDNSDump
+func NewGetDaemonDNSDumpRequest(server string, nodename InPathNodeName) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithLocation("simple", false, "nodename", runtime.ParamLocationPath, nodename)
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/node/name/%s/daemon/dns/dump", pathParam0)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest("GET", queryURL.String(), nil)
 	if err != nil {
 		return nil, err
 	}
@@ -10527,9 +10534,6 @@ type ClientWithResponsesInterface interface {
 	// GetClusterStatusWithResponse request
 	GetClusterStatusWithResponse(ctx context.Context, params *GetClusterStatusParams, reqEditors ...RequestEditorFn) (*GetClusterStatusResponse, error)
 
-	// GetDNSDumpWithResponse request
-	GetDNSDumpWithResponse(ctx context.Context, reqEditors ...RequestEditorFn) (*GetDNSDumpResponse, error)
-
 	// GetInstancesWithResponse request
 	GetInstancesWithResponse(ctx context.Context, params *GetInstancesParams, reqEditors ...RequestEditorFn) (*GetInstancesResponse, error)
 
@@ -10611,6 +10615,9 @@ type ClientWithResponsesInterface interface {
 
 	// PostDaemonStopWithResponse request
 	PostDaemonStopWithResponse(ctx context.Context, nodename InPathNodeName, reqEditors ...RequestEditorFn) (*PostDaemonStopResponse, error)
+
+	// GetDaemonDNSDumpWithResponse request
+	GetDaemonDNSDumpWithResponse(ctx context.Context, nodename InPathNodeName, reqEditors ...RequestEditorFn) (*GetDaemonDNSDumpResponse, error)
 
 	// GetDaemonEventsWithResponse request
 	GetDaemonEventsWithResponse(ctx context.Context, nodename InPathNodeName, params *GetDaemonEventsParams, reqEditors ...RequestEditorFn) (*GetDaemonEventsResponse, error)
@@ -11227,31 +11234,6 @@ func (r GetClusterStatusResponse) Status() string {
 
 // StatusCode returns HTTPResponse.StatusCode
 func (r GetClusterStatusResponse) StatusCode() int {
-	if r.HTTPResponse != nil {
-		return r.HTTPResponse.StatusCode
-	}
-	return 0
-}
-
-type GetDNSDumpResponse struct {
-	Body         []byte
-	HTTPResponse *http.Response
-	JSON200      *DNSZone
-	JSON401      *N401
-	JSON403      *N403
-	JSON500      *N500
-}
-
-// Status returns HTTPResponse.Status
-func (r GetDNSDumpResponse) Status() string {
-	if r.HTTPResponse != nil {
-		return r.HTTPResponse.Status
-	}
-	return http.StatusText(0)
-}
-
-// StatusCode returns HTTPResponse.StatusCode
-func (r GetDNSDumpResponse) StatusCode() int {
 	if r.HTTPResponse != nil {
 		return r.HTTPResponse.StatusCode
 	}
@@ -11922,6 +11904,31 @@ func (r PostDaemonStopResponse) Status() string {
 
 // StatusCode returns HTTPResponse.StatusCode
 func (r PostDaemonStopResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+type GetDaemonDNSDumpResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	JSON200      *DNSZone
+	JSON401      *N401
+	JSON403      *N403
+	JSON500      *N500
+}
+
+// Status returns HTTPResponse.Status
+func (r GetDaemonDNSDumpResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r GetDaemonDNSDumpResponse) StatusCode() int {
 	if r.HTTPResponse != nil {
 		return r.HTTPResponse.StatusCode
 	}
@@ -14425,15 +14432,6 @@ func (c *ClientWithResponses) GetClusterStatusWithResponse(ctx context.Context, 
 	return ParseGetClusterStatusResponse(rsp)
 }
 
-// GetDNSDumpWithResponse request returning *GetDNSDumpResponse
-func (c *ClientWithResponses) GetDNSDumpWithResponse(ctx context.Context, reqEditors ...RequestEditorFn) (*GetDNSDumpResponse, error) {
-	rsp, err := c.GetDNSDump(ctx, reqEditors...)
-	if err != nil {
-		return nil, err
-	}
-	return ParseGetDNSDumpResponse(rsp)
-}
-
 // GetInstancesWithResponse request returning *GetInstancesResponse
 func (c *ClientWithResponses) GetInstancesWithResponse(ctx context.Context, params *GetInstancesParams, reqEditors ...RequestEditorFn) (*GetInstancesResponse, error) {
 	rsp, err := c.GetInstances(ctx, params, reqEditors...)
@@ -14682,6 +14680,15 @@ func (c *ClientWithResponses) PostDaemonStopWithResponse(ctx context.Context, no
 		return nil, err
 	}
 	return ParsePostDaemonStopResponse(rsp)
+}
+
+// GetDaemonDNSDumpWithResponse request returning *GetDaemonDNSDumpResponse
+func (c *ClientWithResponses) GetDaemonDNSDumpWithResponse(ctx context.Context, nodename InPathNodeName, reqEditors ...RequestEditorFn) (*GetDaemonDNSDumpResponse, error) {
+	rsp, err := c.GetDaemonDNSDump(ctx, nodename, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseGetDaemonDNSDumpResponse(rsp)
 }
 
 // GetDaemonEventsWithResponse request returning *GetDaemonEventsResponse
@@ -16226,53 +16233,6 @@ func ParseGetClusterStatusResponse(rsp *http.Response) (*GetClusterStatusRespons
 	return response, nil
 }
 
-// ParseGetDNSDumpResponse parses an HTTP response from a GetDNSDumpWithResponse call
-func ParseGetDNSDumpResponse(rsp *http.Response) (*GetDNSDumpResponse, error) {
-	bodyBytes, err := io.ReadAll(rsp.Body)
-	defer func() { _ = rsp.Body.Close() }()
-	if err != nil {
-		return nil, err
-	}
-
-	response := &GetDNSDumpResponse{
-		Body:         bodyBytes,
-		HTTPResponse: rsp,
-	}
-
-	switch {
-	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
-		var dest DNSZone
-		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
-			return nil, err
-		}
-		response.JSON200 = &dest
-
-	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
-		var dest N401
-		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
-			return nil, err
-		}
-		response.JSON401 = &dest
-
-	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
-		var dest N403
-		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
-			return nil, err
-		}
-		response.JSON403 = &dest
-
-	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
-		var dest N500
-		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
-			return nil, err
-		}
-		response.JSON500 = &dest
-
-	}
-
-	return response, nil
-}
-
 // ParseGetInstancesResponse parses an HTTP response from a GetInstancesWithResponse call
 func ParseGetInstancesResponse(rsp *http.Response) (*GetInstancesResponse, error) {
 	bodyBytes, err := io.ReadAll(rsp.Body)
@@ -17608,6 +17568,53 @@ func ParsePostDaemonStopResponse(rsp *http.Response) (*PostDaemonStopResponse, e
 			return nil, err
 		}
 		response.JSON400 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest N401
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest N403
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON403 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
+		var dest N500
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON500 = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseGetDaemonDNSDumpResponse parses an HTTP response from a GetDaemonDNSDumpWithResponse call
+func ParseGetDaemonDNSDumpResponse(rsp *http.Response) (*GetDaemonDNSDumpResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &GetDaemonDNSDumpResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest DNSZone
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
 
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
 		var dest N401
