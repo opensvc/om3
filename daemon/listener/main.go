@@ -2,8 +2,11 @@ package listener
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
+	"io"
+	"net/http"
 
 	"github.com/opensvc/om3/core/cluster"
 	"github.com/opensvc/om3/core/object"
@@ -45,6 +48,33 @@ func (a *authOption) SignKeyFile() string {
 
 func (a *authOption) VerifyKeyFile() string {
 	return daemonenv.CAsCertFile()
+}
+
+// JwksUri fetches the JWKS URI from the OpenID Connect well-known configuration
+// and returns it as a string.
+func (a *authOption) JwksUri() (string, error) {
+	OpenIDWellKnown := cluster.ConfigData.Get().Listener.OpenIDWellKnown
+	if OpenIDWellKnown == "" {
+		return "", nil
+	}
+	resp, err := http.Get(OpenIDWellKnown)
+	if err != nil {
+		return "", err
+	}
+	defer resp.Body.Close()
+
+	b, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return "", err
+	}
+	type IDWellKnown struct {
+		JwksUri string `json:"jwks_uri"`
+	}
+	var idWellKnown IDWellKnown
+	if err = json.Unmarshal(b, &idWellKnown); err != nil {
+		return "", err
+	}
+	return idWellKnown.JwksUri, nil
 }
 
 func New(opts ...funcopt.O) *T {

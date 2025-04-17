@@ -34,11 +34,12 @@ var (
 )
 
 const (
-	StrategyUX   = "ux"
-	StrategyJWT  = "jwt"
-	StrategyNode = "node"
-	StrategyUser = "user"
-	StrategyX509 = "x509"
+	StrategyUX        = "ux"
+	StrategyJWT       = "jwt"
+	StrategyJWTOpenID = "jwt-openid"
+	StrategyNode      = "node"
+	StrategyUser      = "user"
+	StrategyX509      = "x509"
 )
 
 // authenticatedExtensions returns extensions with grants and used strategy
@@ -95,15 +96,16 @@ func InitStategies(ctx context.Context, i any) (union.Union, error) {
 	for _, fn := range []func(i interface{}) (string, auth.Strategy, error){
 		initUX,
 		initJWT,
+		initJWTOpenID,
 		initX509,
 		initBasicNode,
 		initBasicUser,
 	} {
 		name, s, err := fn(i)
 		if err != nil {
-			log.Errorf("init strategy %s error: %s", name, err)
-		} else {
-			log.Infof("init strategy %s", name)
+			log.Warnf("ignored authentication strategy %s: %s", name, err)
+		} else if s != nil {
+			log.Infof("initialized authentication strategy %s", name)
 			if name == "jwt" {
 				log.Infof("jwt verify key sig: %s", jwtVerifyKeySign)
 			}
