@@ -6,4 +6,4 @@ The value can be:
 
 * A size expression
 
-* A multiplier of the size keyword value (ex: `x2`).
+* A multiplier of the `size` keyword value (ex: `x2`), , the `size` parameter must be explicitly defined.

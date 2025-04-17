@@ -47,12 +47,12 @@ func (t *T) Manifest() *manifest.T {
 		},
 		keywords.Keyword{
 			Attr:         "RefQuota",
-			Default:      "x1",
 			Option:       "refquota",
 			Provisioning: true,
 			Required:     false,
 			Scopable:     true,
 			Text:         keywords.NewText(fs, "text/kw/refquota"),
+			Example:      "x1",
 		},
 		keywords.Keyword{
 			Attr:         "Quota",

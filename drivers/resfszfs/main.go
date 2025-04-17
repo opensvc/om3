@@ -10,6 +10,8 @@ import (
 	"strings"
 	"time"
 
+	"github.com/rs/zerolog"
+
 	"github.com/opensvc/om3/core/actionrollback"
 	"github.com/opensvc/om3/core/provisioned"
 	"github.com/opensvc/om3/core/resource"
@@ -23,7 +25,6 @@ import (
 	"github.com/opensvc/om3/util/funcopt"
 	"github.com/opensvc/om3/util/sizeconv"
 	"github.com/opensvc/om3/util/zfs"
-	"github.com/rs/zerolog"
 )
 
 type (
@@ -391,27 +392,27 @@ func (t *T) ProvisionAsLeader(ctx context.Context) error {
 	fopts := make([]funcopt.O, 0)
 	fopts = append(fopts, zfs.FilesystemCreateWithArgs(t.mkfsOptions()))
 	if v, err := t.refquota(); err != nil {
-		return err
+		return fmt.Errorf("refquota: %w", err)
 	} else {
 		fopts = append(fopts, zfs.FilesystemCreateWithRefQuota(v))
 	}
 	if v, err := t.quota(); err != nil {
-		return err
+		return fmt.Errorf("quota: %w", err)
 	} else {
 		fopts = append(fopts, zfs.FilesystemCreateWithQuota(v))
 	}
 	if v, err := t.refreservation(); err != nil {
-		return err
+		return fmt.Errorf("refreservation: %w", err)
 	} else {
 		fopts = append(fopts, zfs.FilesystemCreateWithRefReservation(v))
 	}
 	if v, err := t.reservation(); err != nil {
-		return err
+		return fmt.Errorf("refreservation: %w", err)
 	} else {
 		fopts = append(fopts, zfs.FilesystemCreateWithReservation(v))
 	}
 	if err := t.fs().Create(fopts...); err != nil {
-		return err
+		return fmt.Errorf("create: %w", err)
 	}
 	return nil
 }
