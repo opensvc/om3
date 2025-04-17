@@ -76,7 +76,7 @@ func GetDaemonStatus(t *testing.T) (clusterdump.Data, error) {
 	t.Helper()
 	cli, err := GetClient(t)
 	require.Nil(t, err)
-	b, err := cli.NewGetDaemonStatus().Get()
+	b, err := cli.NewGetClusterStatus().Get()
 	require.Nil(t, err)
 	require.Greater(t, len(b), 0)
 	cData := clusterdump.Data{}

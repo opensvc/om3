@@ -281,8 +281,8 @@ func (t *T) NewGetLogs(nodename string) *api.GetLogs {
 	return api.NewGetLogs(t, nodename)
 }
 
-func (t *T) NewGetDaemonStatus() *api.GetDaemonStatus {
-	return api.NewGetDaemonStatus(t)
+func (t *T) NewGetClusterStatus() *api.GetClusterStatus {
+	return api.NewGetClusterStatus(t)
 }
 
 func (t *T) Hostname() string {

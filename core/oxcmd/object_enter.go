@@ -9,6 +9,6 @@ type (
 	}
 )
 
-func (t *CmdObjectEnter) Run(selector, kind string) error {
+func (t *CmdObjectEnter) Run(kind string) error {
 	return fmt.Errorf("TODO")
 }

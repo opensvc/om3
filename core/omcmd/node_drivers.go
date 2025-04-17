@@ -7,7 +7,8 @@ import (
 
 type (
 	CmdNodeDrivers struct {
-		OptsGlobal
+		Color  string
+		Output string
 	}
 )
 
@@ -15,7 +16,6 @@ func (t *CmdNodeDrivers) Run() error {
 	return nodeaction.New(
 		nodeaction.WithFormat(t.Output),
 		nodeaction.WithColor(t.Color),
-		nodeaction.WithLocal(t.Local),
 		nodeaction.WithLocalFunc(func() (interface{}, error) {
 			n, err := object.NewNode()
 			if err != nil {

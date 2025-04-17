@@ -17,8 +17,8 @@ type (
 	}
 )
 
-func (t *CmdObjectSwitch) Run(selector, kind string) error {
-	mergedSelector := mergeSelector(selector, t.ObjectSelector, kind, "")
+func (t *CmdObjectSwitch) Run(kind string) error {
+	mergedSelector := commoncmd.MergeSelector("", t.ObjectSelector, kind, "")
 	target := instance.MonitorGlobalExpectPlacedAt.String()
 	options := instance.MonitorGlobalExpectOptionsPlacedAt{}
 	if t.To != "" {

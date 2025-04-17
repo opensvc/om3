@@ -1,5 +1,7 @@
 package om
 
+import "github.com/opensvc/om3/core/commoncmd"
+
 func init() {
 	kind := "ccfg"
 
@@ -22,18 +24,20 @@ func init() {
 		cmdObjectSSH,
 		cmdObjectPrint,
 		cmdObjectValidate,
-		newCmdClusterAbort(),
-		newCmdClusterFreeze(),
-		newCmdClusterLogs(),
-		newCmdClusterThaw(),
-		newCmdClusterUnfreeze(),
+		newCmdClusterJoin(),
+		newCmdClusterLeave(),
+		commoncmd.NewCmdClusterAbort(),
+		commoncmd.NewCmdClusterFreeze(),
+		commoncmd.NewCmdClusterLogs(),
+		commoncmd.NewCmdClusterStatus(),
+		commoncmd.NewCmdClusterThaw(),
+		commoncmd.NewCmdClusterUnfreeze(),
 		newCmdObjectCreate(kind),
 		newCmdObjectEval(kind),
 		newCmdObjectGet(kind),
 		newCmdObjectLogs(kind),
 		newCmdObjectList(kind),
-		newCmdObjectMonitor(kind),
-		newCmdObjectStatus(kind),
+		commoncmd.NewCmdObjectMonitor("", kind),
 		newCmdObjectUnset(kind),
 	)
 	cmdObjectConfig.AddCommand(
@@ -56,7 +60,7 @@ func init() {
 		newCmdObjectConfigMtime(kind),
 	)
 	cmdObjectSSH.AddCommand(
-		newCmdClusterSSHTrust(),
+		commoncmd.NewCmdClusterSSHTrust(),
 	)
 	cmdObjectValidate.AddCommand(
 		newCmdObjectValidateConfig(kind),

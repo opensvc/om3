@@ -23,8 +23,8 @@ type (
 	}
 )
 
-func (t *CmdObjectSet) Run(selector, kind string) error {
-	mergedSelector := mergeSelector(selector, t.ObjectSelector, kind, "")
+func (t *CmdObjectSet) Run(kind string) error {
+	mergedSelector := commoncmd.MergeSelector("", t.ObjectSelector, kind, "")
 	if t.Local {
 		return t.doObjectAction(mergedSelector)
 	}
@@ -38,9 +38,9 @@ func (t *CmdObjectSet) Run(selector, kind string) error {
 		return err
 	}
 	for _, p := range paths {
-		params := api.PostObjectConfigUpdateParams{}
+		params := api.PatchObjectConfigParams{}
 		params.Set = &t.KeywordOps
-		response, err := c.PostObjectConfigUpdateWithResponse(context.Background(), p.Namespace, p.Kind, p.Name, &params)
+		response, err := c.PatchObjectConfigWithResponse(context.Background(), p.Namespace, p.Kind, p.Name, &params)
 		if err != nil {
 			return err
 		}

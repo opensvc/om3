@@ -1,72 +1,52 @@
 package ox
 
 import (
-	"github.com/spf13/cobra"
-)
-
-var (
-	cmdDaemon = &cobra.Command{
-		Use:   "daemon",
-		Short: "manage the opensvc daemon",
-	}
-
-	cmdDaemonDNS = &cobra.Command{
-		Use:   "dns",
-		Short: "dns subsystem commands",
-	}
-
-	cmdDaemonHeartbeat = &cobra.Command{
-		Use:   "hb",
-		Short: "manage opensvc daemon heartbeat",
-	}
-
-	cmdDaemonListener = &cobra.Command{
-		Use:   "listener",
-		Short: "manage opensvc daemon listener",
-	}
-
-	cmdDaemonRelay = &cobra.Command{
-		Use:   "relay",
-		Short: "relay subsystem commands",
-	}
+	"github.com/opensvc/om3/core/commoncmd"
 )
 
 func init() {
+	cmdDaemon := commoncmd.NewCmdDaemon()
+	cmdDaemonDNS := commoncmd.NewCmdDaemonDNS()
+	cmdDaemonHeartbeat := commoncmd.NewCmdDaemonHeartbeat()
+	cmdDaemonListener := commoncmd.NewCmdDaemonListener()
+	cmdDaemonRelay := commoncmd.NewCmdDaemonRelay()
+
 	root.AddCommand(
 		cmdDaemon,
 	)
 
 	cmdDaemon.AddCommand(
-		newCmdDaemonAuth(),
 		cmdDaemonDNS,
 		cmdDaemonHeartbeat,
 		cmdDaemonListener,
 		cmdDaemonRelay,
 		newCmdDaemonRestart(),
 		newCmdDaemonShutdown(),
-		newCmdDaemonStatus(),
 		newCmdDaemonStop(),
+		commoncmd.NewCmdDaemonAuth(),
+		commoncmd.NewCmdDaemonLog(),
+		commoncmd.NewCmdDaemonStatus(),
 	)
 
 	cmdDaemonDNS.AddCommand(
-		newCmdDaemonDNSDump(),
+		commoncmd.NewCmdDaemonDNSDump(),
 	)
 
 	cmdDaemonHeartbeat.AddCommand(
-		newCmdDaemonHeartbeatRestart(),
-		newCmdDaemonHeartbeatStart(),
-		newCmdDaemonHeartbeatStatus(),
-		newCmdDaemonHeartbeatStop(),
+		commoncmd.NewCmdDaemonHeartbeatRestart(),
+		commoncmd.NewCmdDaemonHeartbeatStart(),
+		commoncmd.NewCmdDaemonHeartbeatStop(),
+		commoncmd.NewCmdDaemonHeartbeatStatus(""),
 	)
 
 	cmdDaemonListener.AddCommand(
-		newCmdDaemonListenerLog(),
-		newCmdDaemonListenerRestart(),
-		newCmdDaemonListenerStart(),
-		newCmdDaemonListenerStop(),
+		commoncmd.NewCmdDaemonListenerRestart(),
+		commoncmd.NewCmdDaemonListenerStart(),
+		commoncmd.NewCmdDaemonListenerStop(),
+		commoncmd.NewCmdDaemonListenerLog(),
 	)
 
 	cmdDaemonRelay.AddCommand(
-		newCmdDaemonRelayStatus(),
+		commoncmd.NewCmdDaemonRelayStatus(),
 	)
 }

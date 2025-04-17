@@ -1,6 +1,7 @@
 package oxcmd
 
 import (
+	"github.com/opensvc/om3/core/commoncmd"
 	"github.com/opensvc/om3/core/objectaction"
 )
 
@@ -11,8 +12,8 @@ type (
 	}
 )
 
-func (t *CmdObjectComplianceListRuleset) Run(selector, kind string) error {
-	mergedSelector := mergeSelector(selector, t.ObjectSelector, kind, "")
+func (t *CmdObjectComplianceListRuleset) Run(kind string) error {
+	mergedSelector := commoncmd.MergeSelector("", t.ObjectSelector, kind, "")
 	return objectaction.New(
 		objectaction.WithColor(t.Color),
 		objectaction.WithOutput(t.Output),

@@ -1,5 +1,9 @@
 package ox
 
+import "github.com/opensvc/om3/core/commoncmd"
+
 func init() {
-	root.AddCommand(newCmdMonitor())
+	root.AddCommand(
+		commoncmd.NewCmdMonitor(),
+	)
 }

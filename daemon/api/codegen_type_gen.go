@@ -6,7 +6,6 @@ package api
 import (
 	"time"
 
-	"github.com/iancoleman/orderedmap"
 	openapi_types "github.com/oapi-codegen/runtime/types"
 	"github.com/opensvc/om3/core/instance"
 	"github.com/opensvc/om3/core/naming"
@@ -100,11 +99,6 @@ const (
 // Defines values for InstanceListKind.
 const (
 	InstanceListKindInstanceList InstanceListKind = "InstanceList"
-)
-
-// Defines values for KeywordItemKind.
-const (
-	KeywordItemKindKeywordItem KeywordItemKind = "KeywordItem"
 )
 
 // Defines values for KeywordListKind.
@@ -356,23 +350,6 @@ type CapabilityList struct {
 // CapabilityListKind defines model for CapabilityList.Kind.
 type CapabilityListKind string
 
-// Cluster defines model for Cluster.
-type Cluster struct {
-	Config ClusterConfig `json:"config"`
-	Node   ClusterNode   `json:"node"`
-	Object ClusterObject `json:"object"`
-	Status ClusterStatus `json:"status"`
-}
-
-// ClusterConfig defines model for ClusterConfig.
-type ClusterConfig = map[string]interface{}
-
-// ClusterNode defines model for ClusterNode.
-type ClusterNode = map[string]interface{}
-
-// ClusterObject defines model for ClusterObject.
-type ClusterObject = map[string]interface{}
-
 // ClusterStatus defines model for ClusterStatus.
 type ClusterStatus = map[string]interface{}
 
@@ -412,21 +389,9 @@ type DaemonHeartbeatName = string
 // DaemonListenerName Listener name
 type DaemonListenerName = string
 
-// DaemonLocal defines model for DaemonLocal.
-type DaemonLocal struct {
-	Nodename string `json:"nodename"`
-	Routines int    `json:"routines"`
-}
-
 // DaemonPid defines model for DaemonPid.
 type DaemonPid struct {
 	Pid int `json:"pid"`
-}
-
-// DaemonStatus defines model for DaemonStatus.
-type DaemonStatus struct {
-	Cluster Cluster     `json:"cluster"`
-	Daemon  DaemonLocal `json:"daemon"`
 }
 
 // DataKey defines model for DataKey.
@@ -664,20 +629,15 @@ type InstanceMonitor = instance.Monitor
 // InstanceStatus defines model for InstanceStatus.
 type InstanceStatus = instance.Status
 
-// KeywordData defines model for KeywordData.
-type KeywordData struct {
-	Value any `json:"value"`
-}
-
 // KeywordItem defines model for KeywordItem.
 type KeywordItem struct {
-	Data KeywordData     `json:"data"`
-	Kind KeywordItemKind `json:"kind"`
-	Meta KeywordMeta     `json:"meta"`
+	Evaluated   *any   `json:"evaluated,omitempty"`
+	EvaluatedAs string `json:"evaluated_as"`
+	Keyword     string `json:"keyword"`
+	Node        string `json:"node"`
+	Object      string `json:"object"`
+	Value       string `json:"value"`
 }
-
-// KeywordItemKind defines model for KeywordItem.Kind.
-type KeywordItemKind string
 
 // KeywordItems defines model for KeywordItems.
 type KeywordItems = []KeywordItem
@@ -690,15 +650,6 @@ type KeywordList struct {
 
 // KeywordListKind defines model for KeywordList.Kind.
 type KeywordListKind string
-
-// KeywordMeta defines model for KeywordMeta.
-type KeywordMeta struct {
-	EvaluatedAs string `json:"evaluated_as"`
-	IsEvaluated bool   `json:"is_evaluated"`
-	Keyword     string `json:"keyword"`
-	Node        string `json:"node"`
-	Object      string `json:"object"`
-}
 
 // Kind defines model for Kind.
 type Kind = naming.Kind
@@ -822,12 +773,6 @@ type NodeStatus = node.Status
 
 // NodesInfo defines model for NodesInfo.
 type NodesInfo = node.NodesInfo
-
-// ObjectConfig defines model for ObjectConfig.
-type ObjectConfig struct {
-	Data  orderedmap.OrderedMap `json:"data"`
-	Mtime time.Time             `json:"mtime"`
-}
 
 // ObjectData defines model for ObjectData.
 type ObjectData struct {
@@ -1395,17 +1340,11 @@ type DRBDConfigName = string
 // Duration defines model for Duration.
 type Duration = string
 
-// Evaluate defines model for Evaluate.
-type Evaluate = bool
-
 // EventCache defines model for EventCache.
 type EventCache = bool
 
 // EventFilter defines model for EventFilter.
 type EventFilter = []string
-
-// Impersonate defines model for Impersonate.
-type Impersonate = string
 
 // Limit defines model for Limit.
 type Limit = int64
@@ -1573,20 +1512,34 @@ type PostAuthTokenParams struct {
 	Scope *string `form:"scope,omitempty" json:"scope,omitempty"`
 }
 
-// PostDaemonJoinParams defines parameters for PostDaemonJoin.
-type PostDaemonJoinParams struct {
+// GetClusterConfigParams defines parameters for GetClusterConfig.
+type GetClusterConfigParams struct {
+	Evaluate    *InQueryEvaluate    `form:"evaluate,omitempty" json:"evaluate,omitempty"`
+	Impersonate *InQueryImpersonate `form:"impersonate,omitempty" json:"impersonate,omitempty"`
+	Kw          *InQueryKeywords    `form:"kw,omitempty" json:"kw,omitempty"`
+}
+
+// PatchClusterConfigParams defines parameters for PatchClusterConfig.
+type PatchClusterConfigParams struct {
+	Delete *InQueryDeletes `form:"delete,omitempty" json:"delete,omitempty"`
+	Unset  *InQueryUnsets  `form:"unset,omitempty" json:"unset,omitempty"`
+	Set    *InQuerySets    `form:"set,omitempty" json:"set,omitempty"`
+}
+
+// PostClusterJoinParams defines parameters for PostClusterJoin.
+type PostClusterJoinParams struct {
 	// Node The node to add to cluster nodes
 	Node string `form:"node" json:"node"`
 }
 
-// PostDaemonLeaveParams defines parameters for PostDaemonLeave.
-type PostDaemonLeaveParams struct {
+// PostClusterLeaveParams defines parameters for PostClusterLeave.
+type PostClusterLeaveParams struct {
 	// Node The leaving cluster node
 	Node string `form:"node" json:"node"`
 }
 
-// GetDaemonStatusParams defines parameters for GetDaemonStatus.
-type GetDaemonStatusParams struct {
+// GetClusterStatusParams defines parameters for GetClusterStatus.
+type GetClusterStatusParams struct {
 	// Namespace namespace
 	Namespace *NamespaceOptional `form:"namespace,omitempty" json:"namespace,omitempty"`
 
@@ -1664,22 +1617,13 @@ type PostPeerActionUnfreezeParams struct {
 
 // GetNodeConfigParams defines parameters for GetNodeConfig.
 type GetNodeConfigParams struct {
-	// Evaluate evaluate
-	Evaluate *Evaluate `form:"evaluate,omitempty" json:"evaluate,omitempty"`
-
-	// Impersonate impersonate the evaluation as node
-	Impersonate *Impersonate `form:"impersonate,omitempty" json:"impersonate,omitempty"`
-}
-
-// GetNodeConfigGetParams defines parameters for GetNodeConfigGet.
-type GetNodeConfigGetParams struct {
 	Kw          *InQueryKeywords    `form:"kw,omitempty" json:"kw,omitempty"`
 	Evaluate    *InQueryEvaluate    `form:"evaluate,omitempty" json:"evaluate,omitempty"`
 	Impersonate *InQueryImpersonate `form:"impersonate,omitempty" json:"impersonate,omitempty"`
 }
 
-// PostNodeConfigUpdateParams defines parameters for PostNodeConfigUpdate.
-type PostNodeConfigUpdateParams struct {
+// PatchNodeConfigParams defines parameters for PatchNodeConfig.
+type PatchNodeConfigParams struct {
 	Delete *InQueryDeletes `form:"delete,omitempty" json:"delete,omitempty"`
 	Unset  *InQueryUnsets  `form:"unset,omitempty" json:"unset,omitempty"`
 	Set    *InQuerySets    `form:"set,omitempty" json:"set,omitempty"`
@@ -1928,22 +1872,13 @@ type PostSvcEnableParams struct {
 
 // GetObjectConfigParams defines parameters for GetObjectConfig.
 type GetObjectConfigParams struct {
-	// Evaluate evaluate
-	Evaluate *Evaluate `form:"evaluate,omitempty" json:"evaluate,omitempty"`
-
-	// Impersonate impersonate the evaluation as node
-	Impersonate *Impersonate `form:"impersonate,omitempty" json:"impersonate,omitempty"`
-}
-
-// GetObjectConfigGetParams defines parameters for GetObjectConfigGet.
-type GetObjectConfigGetParams struct {
-	Kw          *InQueryKeywords    `form:"kw,omitempty" json:"kw,omitempty"`
 	Evaluate    *InQueryEvaluate    `form:"evaluate,omitempty" json:"evaluate,omitempty"`
 	Impersonate *InQueryImpersonate `form:"impersonate,omitempty" json:"impersonate,omitempty"`
+	Kw          *InQueryKeywords    `form:"kw,omitempty" json:"kw,omitempty"`
 }
 
-// PostObjectConfigUpdateParams defines parameters for PostObjectConfigUpdate.
-type PostObjectConfigUpdateParams struct {
+// PatchObjectConfigParams defines parameters for PatchObjectConfig.
+type PatchObjectConfigParams struct {
 	Delete *InQueryDeletes `form:"delete,omitempty" json:"delete,omitempty"`
 	Unset  *InQueryUnsets  `form:"unset,omitempty" json:"unset,omitempty"`
 	Set    *InQuerySets    `form:"set,omitempty" json:"set,omitempty"`
@@ -2019,9 +1954,6 @@ type GetResourcesParams struct {
 	Resource *RidOptional `form:"resource,omitempty" json:"resource,omitempty"`
 }
 
-// PostDaemonLogControlJSONRequestBody defines body for PostDaemonLogControl for application/json ContentType.
-type PostDaemonLogControlJSONRequestBody = LogControlBody
-
 // PostInstanceProgressJSONRequestBody defines body for PostInstanceProgress for application/json ContentType.
 type PostInstanceProgressJSONRequestBody = PostInstanceProgress
 
@@ -2030,6 +1962,9 @@ type PostInstanceStatusJSONRequestBody = InstanceStatus
 
 // PostDaemonListenerLogControlJSONRequestBody defines body for PostDaemonListenerLogControl for application/json ContentType.
 type PostDaemonListenerLogControlJSONRequestBody = LogControlBody
+
+// PostDaemonLogControlJSONRequestBody defines body for PostDaemonLogControl for application/json ContentType.
+type PostDaemonLogControlJSONRequestBody = LogControlBody
 
 // PostNodeDRBDConfigJSONRequestBody defines body for PostNodeDRBDConfig for application/json ContentType.
 type PostNodeDRBDConfigJSONRequestBody = PostNodeDRBDConfigRequest

@@ -100,7 +100,7 @@ func (t *CmdNodeAbort) doRemote() error {
 				_, _ = fmt.Fprintln(os.Stderr, e)
 				return
 			}
-			statusGetter := cli.NewGetDaemonStatus().SetSelector(t.ObjectSelector)
+			statusGetter := cli.NewGetClusterStatus().SetSelector(t.ObjectSelector)
 			evReader, err := cli.NewGetEvents().SetSelector(t.ObjectSelector).GetReader()
 			if err != nil {
 				_, _ = fmt.Fprintln(os.Stderr, err)

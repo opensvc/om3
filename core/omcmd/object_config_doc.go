@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 
+	"github.com/opensvc/om3/core/commoncmd"
 	"github.com/opensvc/om3/core/naming"
 	"github.com/opensvc/om3/core/object"
 	"github.com/opensvc/om3/core/objectaction"
@@ -11,19 +12,20 @@ import (
 
 type (
 	CmdObjectConfigDoc struct {
-		OptsGlobal
-		Keyword string
-		Driver  string
-		Depth   int
+		ObjectSelector string
+		Color          string
+		Output         string
+		Keyword        string
+		Driver         string
+		Depth          int
 	}
 )
 
-func (t *CmdObjectConfigDoc) Run(selector, kind string) error {
-	mergedSelector := mergeSelector(selector, t.ObjectSelector, kind, "")
-	if selector != "" {
+func (t *CmdObjectConfigDoc) Run(kind string) error {
+	mergedSelector := commoncmd.MergeSelector("", t.ObjectSelector, kind, "")
+	if t.ObjectSelector != "" {
 		return objectaction.New(
 			objectaction.LocalFirst(),
-			objectaction.WithLocal(t.Local),
 			objectaction.WithColor(t.Color),
 			objectaction.WithOutput(t.Output),
 			objectaction.WithObjectSelector(mergedSelector),

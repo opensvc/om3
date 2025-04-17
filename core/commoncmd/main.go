@@ -8,6 +8,7 @@ import (
 	"fmt"
 
 	"github.com/opensvc/om3/core/client"
+	"github.com/opensvc/om3/core/nodeselector"
 	"github.com/opensvc/om3/daemon/api"
 	"github.com/opensvc/om3/util/xmap"
 )
@@ -36,4 +37,22 @@ func NodesFromPaths(c *client.T, selector string) ([]string, error) {
 		}
 	}
 	return xmap.Keys(m), nil
+}
+
+func AnySingleNode(selector string, c *client.T) (string, error) {
+	if selector == "" {
+		return "localhost", nil
+	}
+	nodenames, err := nodeselector.New(selector, nodeselector.WithClient(c)).Expand()
+	if err != nil {
+		return "", err
+	}
+	switch len(nodenames) {
+	case 0:
+		return "", fmt.Errorf("no matching node")
+	case 1:
+	default:
+		return "", fmt.Errorf("more than one matching node: %s", nodenames)
+	}
+	return nodenames[0], nil
 }

@@ -21,6 +21,7 @@ import (
 	"github.com/opensvc/om3/util/fcache"
 	"github.com/opensvc/om3/util/hostname"
 	"github.com/opensvc/om3/util/logging"
+	"github.com/opensvc/om3/util/render"
 	"github.com/opensvc/om3/util/version"
 	"github.com/opensvc/om3/util/xsession"
 )
@@ -107,6 +108,7 @@ func persistentPreRunE(cmd *cobra.Command, _ []string) error {
 	}
 	if flag := cmd.Flags().Lookup("color"); flag != nil {
 		colorFlag = flag.Value.String()
+		render.SetColor(colorFlag)
 	}
 	logging.WithCaller = callerFlag
 	if err := hostname.Error(); err != nil {
@@ -169,6 +171,7 @@ func setExecuteArgs(args []string) {
 			subsystem := guessSubsystem(selectorFlag)
 			args := append([]string{}, cobraArgs...)
 			args = append(args, subsystem)
+			args = append(args, "-s", selectorFlag)
 			args = append(args, lookupArgs[1:]...)
 			root.SetArgs(args)
 			cobra.CompDebug(fmt.Sprintf("modified args: %s\n", args), false)
@@ -199,6 +202,8 @@ func init() {
 	root.PersistentFlags().BoolVarP(&quietFlag, "quiet", "q", false, "do not display logs on the console")
 	root.PersistentFlags().BoolVar(&debugFlag, "debug", false, "display logs at debug level")
 	root.PersistentFlags().BoolVar(&callerFlag, "caller", false, "show the caller file and linenum in logs")
+	root.PersistentFlags().StringVarP(&selectorFlag, "selector", "s", "", "object selector")
+	root.PersistentFlags().Lookup("selector").Hidden = true
 }
 
 // mergeSelector returns the selector from argv[1], or falls back to

@@ -2,6 +2,7 @@ package omcmd
 
 import (
 	"github.com/opensvc/om3/core/client"
+	"github.com/opensvc/om3/core/commoncmd"
 	"github.com/opensvc/om3/core/object"
 	"github.com/opensvc/om3/core/objectdevice"
 	"github.com/opensvc/om3/core/objectselector"
@@ -75,8 +76,8 @@ func (t *CmdObjectInstanceDeviceList) extractFromDaemon(selector string, c *clie
 	return data, nil
 }
 
-func (t *CmdObjectInstanceDeviceList) Run(selector, kind string) error {
-	mergedSelector := mergeSelector(selector, t.ObjectSelector, kind, "")
+func (t *CmdObjectInstanceDeviceList) Run(kind string) error {
+	mergedSelector := commoncmd.MergeSelector("", t.ObjectSelector, kind, "")
 	c, err := client.New()
 	if err != nil {
 		return err

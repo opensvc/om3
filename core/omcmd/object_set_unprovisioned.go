@@ -19,8 +19,8 @@ type (
 	}
 )
 
-func (t *CmdObjectSetUnprovisioned) Run(selector, kind string) error {
-	mergedSelector := mergeSelector(selector, t.ObjectSelector, kind, "")
+func (t *CmdObjectSetUnprovisioned) Run(kind string) error {
+	mergedSelector := commoncmd.MergeSelector("", t.ObjectSelector, kind, "")
 	return objectaction.New(
 		objectaction.LocalFirst(),
 		objectaction.WithLocal(t.Local),

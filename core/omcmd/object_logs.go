@@ -18,9 +18,9 @@ type (
 	}
 )
 
-func (t *CmdObjectLogs) Run(selector, kind string) error {
+func (t *CmdObjectLogs) Run(kind string) error {
 	render.SetColor(t.Color)
-	mergedSelector := mergeSelector(selector, t.ObjectSelector, kind, "**")
+	mergedSelector := commoncmd.MergeSelector("", t.ObjectSelector, kind, "**")
 	if t.Local {
 		return t.local(mergedSelector)
 	} else {

@@ -17,12 +17,12 @@ type (
 	}
 )
 
-func (t *CmdObjectClear) Run(selector, kind string) error {
+func (t *CmdObjectClear) Run(kind string) error {
 	c, err := client.New()
 	if err != nil {
 		return err
 	}
-	mergedSelector := mergeSelector(selector, t.ObjectSelector, kind, "")
+	mergedSelector := commoncmd.MergeSelector("", t.ObjectSelector, kind, "")
 	sel := objectselector.New(mergedSelector, objectselector.WithClient(c))
 	paths, err := sel.MustExpand()
 	if err != nil {

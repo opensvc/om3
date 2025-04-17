@@ -5,6 +5,7 @@ import (
 	"fmt"
 
 	"github.com/opensvc/om3/core/client"
+	"github.com/opensvc/om3/core/commoncmd"
 	"github.com/opensvc/om3/core/naming"
 	"github.com/opensvc/om3/core/object"
 	"github.com/opensvc/om3/core/objectaction"
@@ -23,8 +24,8 @@ type (
 	}
 )
 
-func (t *CmdObjectConfigEval) Run(selector, kind string) error {
-	mergedSelector := mergeSelector(selector, t.ObjectSelector, kind, "")
+func (t *CmdObjectConfigEval) Run(kind string) error {
+	mergedSelector := commoncmd.MergeSelector("", t.ObjectSelector, kind, "")
 	if t.Local {
 		return t.doObjectAction(mergedSelector)
 	}
@@ -39,14 +40,14 @@ func (t *CmdObjectConfigEval) Run(selector, kind string) error {
 	}
 	l := make(api.KeywordItems, 0)
 	for _, p := range paths {
-		params := api.GetObjectConfigGetParams{}
+		params := api.GetObjectConfigParams{}
 		params.Kw = &t.Keywords
 		v := true
 		params.Evaluate = &v
 		if t.Impersonate != "" {
 			params.Impersonate = &t.Impersonate
 		}
-		response, err := c.GetObjectConfigGetWithResponse(context.Background(), p.Namespace, p.Kind, p.Name, &params)
+		response, err := c.GetObjectConfigWithResponse(context.Background(), p.Namespace, p.Kind, p.Name, &params)
 		if err != nil {
 			return err
 		}

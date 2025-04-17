@@ -2,7 +2,7 @@ openapi: 3.0.0
 
 info:
   title: opensvc agent api
-  version: 3.12.6
+  version: 3.14.6
 
 paths:
   /auth/info:
@@ -197,6 +197,57 @@ paths:
       tags:
         - cluster
 
+  /cluster/config:
+    get:
+      operationId: GetClusterConfig
+      tags:
+        - cluster
+      security:
+        - basicAuth: []
+        - bearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/inQueryEvaluate'
+        - $ref: '#/components/parameters/inQueryImpersonate'
+        - $ref: '#/components/parameters/inQueryKeywords'
+      responses:
+        200:
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/KeywordList'
+        400:
+          $ref: '#/components/responses/400'
+        401:
+          $ref: '#/components/responses/401'
+        403:
+          $ref: '#/components/responses/403'
+        500:
+          $ref: '#/components/responses/500'
+    patch:
+      operationId: PatchClusterConfig
+      tags:
+        - cluster
+      security:
+        - basicAuth: []
+        - bearerAuth: []
+      description: Delete sections, unset and set keywords in the object configuration file.
+      parameters:
+        - $ref: '#/components/parameters/inQueryDeletes'
+        - $ref: '#/components/parameters/inQueryUnsets'
+        - $ref: '#/components/parameters/inQuerySets'
+      responses:
+        204:
+          $ref: '#/components/responses/204'
+        400:
+          $ref: '#/components/responses/400'
+        401:
+          $ref: '#/components/responses/401'
+        403:
+          $ref: '#/components/responses/403'
+        500:
+          $ref: '#/components/responses/500'
+
   /cluster/config/file:
     get:
       description: |
@@ -258,7 +309,34 @@ paths:
         500:
           $ref: '#/components/responses/500'
 
-  /daemon/action/join:
+  /cluster/status:
+    get:
+      description: |
+        Dump all the information available to the daemon.
+      operationId: GetClusterStatus
+      security:
+        - basicAuth: []
+        - bearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/NamespaceOptional'
+        - $ref: '#/components/parameters/SelectorOptional'
+      responses:
+        200:
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ClusterStatus'
+        401:
+          $ref: '#/components/responses/401'
+        403:
+          $ref: '#/components/responses/403'
+        500:
+          $ref: '#/components/responses/500'
+      tags:
+        - cluster
+
+  /cluster/join:
     post:
       description: |
         For internal use only.
@@ -276,7 +354,7 @@ paths:
         - JoinSuccess,node=<api_node>,added=<node> (the new node has been added to cluster nodes)
         - JoinIgnored,node=<api_node>,join-node=<node> (the new node was already a cluster node)
         - JoinError,node=<api_node>,join-node=<node> (an error occur during update cluster node list)
-      operationId: PostDaemonJoin
+      operationId: PostClusterJoin
       parameters:
         - in: query
           name: node
@@ -301,10 +379,10 @@ paths:
         - basicAuth: [ ]
         - bearerAuth: [ ]
       tags:
-        - daemon
+        - cluster
       x-internal: true
 
-  /daemon/action/leave:
+  /cluster/leave:
     post:
       description: |
         Register a leave request to remove a cluster node member.
@@ -319,7 +397,7 @@ paths:
         - LeaveSuccess,node=<api_node>,removed=<node> (node has been removed to cluster nodes)
         - LeaveIgnored,node=<api_node>,leave-node=<node> (node is not a cluster node)
         - LeaveError,node=<api_node>,leave-node=<node> (an error occur during update cluster node list)
-      operationId: PostDaemonLeave
+      operationId: PostClusterLeave
       parameters:
         - in: query
           name: node
@@ -338,7 +416,7 @@ paths:
         - basicAuth: [ ]
         - bearerAuth: [ ]
       tags:
-        - daemon
+        - cluster
 
   /node/name/{nodename}/capabilities:
     get:
@@ -452,6 +530,32 @@ paths:
                 $ref: '#/components/schemas/DaemonPid'
         400:
           $ref: '#/components/responses/400'
+        401:
+          $ref: '#/components/responses/401'
+        403:
+          $ref: '#/components/responses/403'
+        500:
+          $ref: '#/components/responses/500'
+      security:
+        - basicAuth: []
+        - bearerAuth: []
+      tags:
+        - node / daemon
+
+  /node/name/{nodename}/daemon/dns/dump:
+    get:
+      description: |
+        Dump the cluster DNS zone content.
+      operationId: GetDaemonDNSDump
+      parameters:
+        - $ref: '#/components/parameters/inPathNodeName'
+      responses:
+        200:
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DNSZone'
         401:
           $ref: '#/components/responses/401'
         403:
@@ -678,6 +782,35 @@ paths:
         500:
           $ref: '#/components/responses/500'
 
+  /node/name/{nodename}/daemon/log/control:
+    post:
+      operationId: PostDaemonLogControl
+      parameters:
+        - $ref: '#/components/parameters/inPathNodeName'
+      security:
+        - basicAuth: []
+        - bearerAuth: []
+      requestBody:
+        description: set daemon log level
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/LogControlBody'
+      responses:
+        200:
+          $ref: '#/components/responses/200'
+        400:
+          $ref: '#/components/responses/400'
+        401:
+          $ref: '#/components/responses/401'
+        403:
+          $ref: '#/components/responses/403'
+        500:
+          $ref: '#/components/responses/500'
+      tags:
+        - node / daemon
+
   /node/name/{nodename}/schedule:
     get:
       operationId: GetNodeSchedule
@@ -784,82 +917,6 @@ paths:
       tags:
         - node
 
-  /dns/dump:
-    get:
-      description: |
-        Dump the cluster DNS zone content.
-      operationId: GetDNSDump
-      responses:
-        200:
-          description: OK
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/DNSZone'
-        401:
-          $ref: '#/components/responses/401'
-        403:
-          $ref: '#/components/responses/403'
-        500:
-          $ref: '#/components/responses/500'
-      security:
-        - basicAuth: []
-        - bearerAuth: []
-      tags:
-        - dns
-
-  /daemon/log/control:
-    post:
-      operationId: PostDaemonLogControl
-      tags:
-        - daemon
-      security:
-        - basicAuth: []
-        - bearerAuth: []
-      requestBody:
-        description: set daemon log level
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/LogControlBody'
-      responses:
-        200:
-          $ref: '#/components/responses/200'
-        400:
-          $ref: '#/components/responses/400'
-        401:
-          $ref: '#/components/responses/401'
-        403:
-          $ref: '#/components/responses/403'
-        500:
-          $ref: '#/components/responses/500'
-
-  /daemon/status:
-    get:
-      operationId: GetDaemonStatus
-      tags:
-        - daemon
-      security:
-        - basicAuth: []
-        - bearerAuth: []
-      parameters:
-        - $ref: '#/components/parameters/NamespaceOptional'
-        - $ref: '#/components/parameters/SelectorOptional'
-      responses:
-        200:
-          description: OK
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/DaemonStatus'
-        401:
-          $ref: '#/components/responses/401'
-        403:
-          $ref: '#/components/responses/403'
-        500:
-          $ref: '#/components/responses/500'
-
   /network:
     get:
       operationId: GetNetworks
@@ -920,6 +977,8 @@ paths:
 
   /node:
     get:
+      description: |
+        Return the monitor, status and config data of all nodes.
       operationId: GetNodes
       tags:
         - node
@@ -930,7 +989,6 @@ paths:
         - $ref: '#/components/parameters/NodeOptional'
       responses:
         200:
-          description: get node config, monitor and status
           content:
             application/json:
               schema:
@@ -1258,15 +1316,16 @@ paths:
         - bearerAuth: []
       parameters:
         - $ref: '#/components/parameters/inPathNodeName'
-        - $ref: '#/components/parameters/Evaluate'
-        - $ref: '#/components/parameters/Impersonate'
+        - $ref: '#/components/parameters/inQueryKeywords'
+        - $ref: '#/components/parameters/inQueryEvaluate'
+        - $ref: '#/components/parameters/inQueryImpersonate'
       responses:
         200:
           description: OK
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/ObjectConfig'
+                $ref: '#/components/schemas/KeywordList'
         400:
           $ref: '#/components/responses/400'
         401:
@@ -1275,6 +1334,35 @@ paths:
           $ref: '#/components/responses/403'
         500:
           $ref: '#/components/responses/500'
+    patch:
+      operationId: PatchNodeConfig
+      tags:
+        - node
+      security:
+        - basicAuth: []
+        - bearerAuth: []
+      description: Delete sections, unset and set keywords in the node configuration file.
+      parameters:
+        - $ref: '#/components/parameters/inPathNodeName'
+        - $ref: '#/components/parameters/inQueryDeletes'
+        - $ref: '#/components/parameters/inQueryUnsets'
+        - $ref: '#/components/parameters/inQuerySets'
+      responses:
+        200:
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Committed'
+        400:
+          $ref: '#/components/responses/400'
+        401:
+          $ref: '#/components/responses/401'
+        403:
+          $ref: '#/components/responses/403'
+        500:
+          $ref: '#/components/responses/500'
+
 
   /node/name/{nodename}/config/file:
     get:
@@ -1338,66 +1426,6 @@ paths:
           $ref: '#/components/responses/404'
         409:
           $ref: '#/components/responses/409'
-        500:
-          $ref: '#/components/responses/500'
-
-  /node/name/{nodename}/config/get:
-    get:
-      operationId: GetNodeConfigGet
-      tags:
-        - node
-      security:
-        - basicAuth: []
-        - bearerAuth: []
-      description: Get or evaluate a keyword in the node configuration file.
-      parameters:
-        - $ref: '#/components/parameters/inPathNodeName'
-        - $ref: '#/components/parameters/inQueryKeywords'
-        - $ref: '#/components/parameters/inQueryEvaluate'
-        - $ref: '#/components/parameters/inQueryImpersonate'
-      responses:
-        200:
-          description: OK
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/KeywordList'
-        400:
-          $ref: '#/components/responses/400'
-        401:
-          $ref: '#/components/responses/401'
-        403:
-          $ref: '#/components/responses/403'
-        500:
-          $ref: '#/components/responses/500'
-
-  /node/name/{nodename}/config/update:
-    post:
-      operationId: PostNodeConfigUpdate
-      tags:
-        - node
-      security:
-        - basicAuth: []
-        - bearerAuth: []
-      description: Delete sections, unset and set keywords in the node configuration file.
-      parameters:
-        - $ref: '#/components/parameters/inPathNodeName'
-        - $ref: '#/components/parameters/inQueryDeletes'
-        - $ref: '#/components/parameters/inQueryUnsets'
-        - $ref: '#/components/parameters/inQuerySets'
-      responses:
-        200:
-          description: OK
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Committed'
-        400:
-          $ref: '#/components/responses/400'
-        401:
-          $ref: '#/components/responses/401'
-        403:
-          $ref: '#/components/responses/403'
         500:
           $ref: '#/components/responses/500'
 
@@ -2730,6 +2758,8 @@ paths:
 
   /object/path:
     get:
+      description: |
+        Return the list of object paths matching the selector expression given by the path parameter.
       operationId: GetObjectPaths
       tags:
         - object
@@ -3674,15 +3704,16 @@ paths:
         - $ref: '#/components/parameters/inPathNamespace'
         - $ref: '#/components/parameters/inPathKind'
         - $ref: '#/components/parameters/inPathName'
-        - $ref: '#/components/parameters/Evaluate'
-        - $ref: '#/components/parameters/Impersonate'
+        - $ref: '#/components/parameters/inQueryEvaluate'
+        - $ref: '#/components/parameters/inQueryImpersonate'
+        - $ref: '#/components/parameters/inQueryKeywords'
       responses:
         200:
           description: OK
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/ObjectConfig'
+                $ref: '#/components/schemas/KeywordList'
         400:
           $ref: '#/components/responses/400'
         401:
@@ -3691,6 +3722,37 @@ paths:
           $ref: '#/components/responses/403'
         500:
           $ref: '#/components/responses/500'
+    patch:
+      operationId: PatchObjectConfig
+      tags:
+        - object / svc
+        - object / vol
+        - object / cfg
+        - object / sec
+        - object / usr
+      security:
+        - basicAuth: []
+        - bearerAuth: []
+      description: Delete sections, unset and set keywords in the object configuration file.
+      parameters:
+        - $ref: '#/components/parameters/inPathNamespace'
+        - $ref: '#/components/parameters/inPathKind'
+        - $ref: '#/components/parameters/inPathName'
+        - $ref: '#/components/parameters/inQueryDeletes'
+        - $ref: '#/components/parameters/inQueryUnsets'
+        - $ref: '#/components/parameters/inQuerySets'
+      responses:
+        204:
+          $ref: '#/components/responses/204'
+        400:
+          $ref: '#/components/responses/400'
+        401:
+          $ref: '#/components/responses/401'
+        403:
+          $ref: '#/components/responses/403'
+        500:
+          $ref: '#/components/responses/500'
+
 
   /object/path/{namespace}/{kind}/{name}/config/file:
     get:
@@ -3803,74 +3865,6 @@ paths:
           $ref: '#/components/responses/404'
         409:
           $ref: '#/components/responses/409'
-        500:
-          $ref: '#/components/responses/500'
-
-  /object/path/{namespace}/{kind}/{name}/config/get:
-    get:
-      operationId: GetObjectConfigGet
-      tags:
-        - object / svc
-        - object / vol
-        - object / cfg
-        - object / sec
-        - object / usr
-      security:
-        - basicAuth: []
-        - bearerAuth: []
-      description: Get or evaluate a keyword in the object configuration file.
-      parameters:
-        - $ref: '#/components/parameters/inPathNamespace'
-        - $ref: '#/components/parameters/inPathKind'
-        - $ref: '#/components/parameters/inPathName'
-        - $ref: '#/components/parameters/inQueryKeywords'
-        - $ref: '#/components/parameters/inQueryEvaluate'
-        - $ref: '#/components/parameters/inQueryImpersonate'
-      responses:
-        200:
-          description: OK
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/KeywordList'
-        400:
-          $ref: '#/components/responses/400'
-        401:
-          $ref: '#/components/responses/401'
-        403:
-          $ref: '#/components/responses/403'
-        500:
-          $ref: '#/components/responses/500'
-
-  /object/path/{namespace}/{kind}/{name}/config/update:
-    post:
-      operationId: PostObjectConfigUpdate
-      tags:
-        - object / svc
-        - object / vol
-        - object / cfg
-        - object / sec
-        - object / usr
-      security:
-        - basicAuth: []
-        - bearerAuth: []
-      description: Delete sections, unset and set keywords in the object configuration file.
-      parameters:
-        - $ref: '#/components/parameters/inPathNamespace'
-        - $ref: '#/components/parameters/inPathKind'
-        - $ref: '#/components/parameters/inPathName'
-        - $ref: '#/components/parameters/inQueryDeletes'
-        - $ref: '#/components/parameters/inQueryUnsets'
-        - $ref: '#/components/parameters/inQuerySets'
-      responses:
-        204:
-          $ref: '#/components/responses/204'
-        400:
-          $ref: '#/components/responses/400'
-        401:
-          $ref: '#/components/responses/401'
-        403:
-          $ref: '#/components/responses/403'
         500:
           $ref: '#/components/responses/500'
 
@@ -5079,44 +5073,22 @@ components:
     KeywordItem:
       type: object
       required:
-        - kind
-        - meta
-        - data
-      properties:
-        kind:
-          type: string
-          enum:
-            - KeywordItem
-        meta:
-          $ref: '#/components/schemas/KeywordMeta'
-        data:
-          $ref: '#/components/schemas/KeywordData'
-
-    KeywordData:
-      type: object
-      required:
+        - node
+        - object
+        - keyword
+        - evaluated_as
         - value
       properties:
-        value:
+        evaluated:
           x-go-type: any
-
-    KeywordMeta:
-      type: object
-      required:
-        - object
-        - node
-        - keyword
-        - is_evaluated
-        - evaluated_as
-      properties:
+        node:
+          type: string
         object:
           type: string
-        node:
+        value:
           type: string
         keyword:
           type: string
-        is_evaluated:
-          type: boolean
         evaluated_as:
           type: string
 
@@ -7038,18 +7010,6 @@ components:
         type: string
         format: duration
 
-    Evaluate:
-      name: evaluate
-      in: query
-      description: evaluate
-      schema:
-        type: boolean
-    Impersonate:
-      name: impersonate
-      in: query
-      description: impersonate the evaluation as node
-      schema:
-        type: string
     Duration:
       name: duration
       in: query

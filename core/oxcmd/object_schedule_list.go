@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/opensvc/om3/core/client"
+	"github.com/opensvc/om3/core/commoncmd"
 	"github.com/opensvc/om3/core/naming"
 	"github.com/opensvc/om3/core/objectselector"
 	"github.com/opensvc/om3/core/output"
@@ -21,12 +22,12 @@ type (
 	}
 )
 
-func (t *CmdObjectScheduleList) Run(selector, kind string) error {
+func (t *CmdObjectScheduleList) Run(kind string) error {
 	c, err := client.New()
 	if err != nil {
 		return err
 	}
-	mergedSelector := mergeSelector(selector, t.ObjectSelector, kind, "")
+	mergedSelector := commoncmd.MergeSelector("", t.ObjectSelector, kind, "")
 	paths, err := objectselector.New(mergedSelector, objectselector.WithClient(c)).MustExpand()
 	if err != nil {
 		return err

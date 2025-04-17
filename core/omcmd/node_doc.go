@@ -7,7 +7,8 @@ import (
 
 type (
 	CmdNodeDoc struct {
-		OptsGlobal
+		Color   string
+		Output  string
 		Keyword string
 		Driver  string
 		Depth   int

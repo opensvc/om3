@@ -4,6 +4,7 @@ import (
 	"fmt"
 
 	"github.com/opensvc/om3/core/client"
+	"github.com/opensvc/om3/core/commoncmd"
 	"github.com/opensvc/om3/core/objectdevice"
 	"github.com/opensvc/om3/core/output"
 	"github.com/opensvc/om3/core/rawconfig"
@@ -33,8 +34,8 @@ func (t *CmdObjectInstanceDeviceList) extractFromDaemon(selector string, c *clie
 	return data, fmt.Errorf("todo")
 }
 
-func (t *CmdObjectInstanceDeviceList) Run(selector, kind string) error {
-	mergedSelector := mergeSelector(selector, t.ObjectSelector, kind, "")
+func (t *CmdObjectInstanceDeviceList) Run(kind string) error {
+	mergedSelector := commoncmd.MergeSelector("", t.ObjectSelector, kind, "")
 	c, err := client.New()
 	if err != nil {
 		return err

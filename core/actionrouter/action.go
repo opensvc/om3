@@ -161,7 +161,7 @@ func Do(t Actioner) error {
 			_, _ = fmt.Fprintln(os.Stderr, e)
 			return e
 		}
-		statusGetter := cli.NewGetDaemonStatus().SetSelector(o.ObjectSelector)
+		statusGetter := cli.NewGetClusterStatus().SetSelector(o.ObjectSelector)
 		evReader, err := cli.NewGetEvents().SetSelector(o.ObjectSelector).GetReader()
 		errs = errors.Join(errs, err)
 		err = m.DoWatch(statusGetter, evReader, os.Stdout)

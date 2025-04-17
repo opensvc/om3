@@ -109,6 +109,7 @@ func setExecuteArgs(args []string) {
 			subsystem := guessSubsystem(selectorFlag)
 			args := append([]string{}, cobraArgs...)
 			args = append(args, subsystem)
+			args = append(args, "-s", selectorFlag)
 			if len(lookupArgs[1:]) == 0 {
 				args = append(args, "tui")
 			} else {
@@ -134,6 +135,8 @@ func ExecuteArgs(args []string) {
 func init() {
 	root.PersistentFlags().StringVar(&colorFlag, "color", "auto", "Output colorization yes|no|auto.")
 	root.PersistentFlags().StringVar(&serverFlag, "server", "", "URI of the opensvc api server.")
+	root.PersistentFlags().StringVarP(&selectorFlag, "selector", "s", "", "object selector")
+	root.PersistentFlags().Lookup("selector").Hidden = true
 	root.AddCommand(newCmdTUI("svc"))
 }
 

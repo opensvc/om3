@@ -981,6 +981,16 @@ func (t *T) descope(k key.T, kw keywords.Keyword, impersonate string) (string, e
 	return "", fmt.Errorf("%w: key '%s' not found (all scopes tried)", ErrExist, k)
 }
 
+func (t T) KeyList() key.L {
+	keys := make(key.L, 0)
+	for _, section := range t.file.SectionStrings() {
+		for _, option := range t.Keys(section) {
+			keys = append(keys, key.New(section, option))
+		}
+	}
+	return keys
+}
+
 func (t T) Raw() rawconfig.T {
 	r := rawconfig.T{}
 	r.Data = orderedmap.New()

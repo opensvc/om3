@@ -10,6 +10,7 @@ import (
 	"slices"
 
 	"github.com/opensvc/om3/core/client"
+	"github.com/opensvc/om3/core/commoncmd"
 	"github.com/opensvc/om3/core/naming"
 	"github.com/opensvc/om3/core/objectselector"
 	"github.com/opensvc/om3/daemon/api"
@@ -22,14 +23,15 @@ type (
 	}
 )
 
-func (t *CmdObjectKeyDecode) Run(selector, kind string) error {
+func (t *CmdObjectKeyDecode) Run(kind string) error {
+	mergedSelector := commoncmd.MergeSelector("", t.ObjectSelector, kind, "")
 	ctx := context.Background()
 	c, err := client.New()
 	if err != nil {
 		return err
 	}
 	paths, err := objectselector.New(
-		selector,
+		mergedSelector,
 		objectselector.WithClient(c),
 	).Expand()
 	if err != nil {

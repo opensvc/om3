@@ -30,7 +30,7 @@ var (
 // GetDaemonStatus returns daemon data status
 //
 // Serve 2s cached data.
-func (a *DaemonAPI) GetDaemonStatus(ctx echo.Context, params api.GetDaemonStatusParams) error {
+func (a *DaemonAPI) GetClusterStatus(ctx echo.Context, params api.GetClusterStatusParams) error {
 	// Require at least "guest" on any namespace.
 	if v, err := assertRole(ctx, rbac.RoleGuest, rbac.RoleOperator, rbac.RoleAdmin, rbac.RoleRoot, rbac.RoleJoin, rbac.RoleLeave); !v {
 		return err

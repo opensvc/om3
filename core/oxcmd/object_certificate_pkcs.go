@@ -22,14 +22,15 @@ type (
 	}
 )
 
-func (t *CmdObjectCertificatePKCS) Run(selector, kind string) error {
+func (t *CmdObjectCertificatePKCS) Run(kind string) error {
+	mergedSelector := commoncmd.MergeSelector("", t.ObjectSelector, kind, "")
 	ctx := context.Background()
 	c, err := client.New()
 	if err != nil {
 		return err
 	}
 	paths, err := objectselector.New(
-		selector,
+		mergedSelector,
 		objectselector.WithClient(c),
 	).Expand()
 	if err != nil {

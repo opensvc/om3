@@ -21,8 +21,8 @@ type (
 	}
 )
 
-func (t *CmdObjectSet) Run(selector, kind string) error {
-	mergedSelector := mergeSelector(selector, t.ObjectSelector, kind, "")
+func (t *CmdObjectSet) Run(kind string) error {
+	mergedSelector := commoncmd.MergeSelector("", t.ObjectSelector, kind, "")
 	c, err := client.New()
 	if err != nil {
 		return err
@@ -44,9 +44,9 @@ func (t *CmdObjectSet) Run(selector, kind string) error {
 	for _, path := range paths {
 		go func(p naming.Path) {
 			defer func() { doneC <- p.String() }()
-			params := api.PostObjectConfigUpdateParams{}
+			params := api.PatchObjectConfigParams{}
 			params.Set = &t.KeywordOps
-			response, err := c.PostObjectConfigUpdateWithResponse(ctx, p.Namespace, p.Kind, p.Name, &params)
+			response, err := c.PatchObjectConfigWithResponse(ctx, p.Namespace, p.Kind, p.Name, &params)
 			if err != nil {
 				errC <- err
 				return

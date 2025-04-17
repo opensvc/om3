@@ -130,7 +130,7 @@ func runTestDaemonStartup(t *testing.T, hasConfig bool) {
 			SetDuration(1 * time.Second).
 			GetReader()
 		require.NoError(t, err)
-		_, _ = cli.NewGetDaemonStatus().Get()
+		_, _ = cli.NewGetClusterStatus().Get()
 		events := make([]event.Event, 0)
 		for {
 			if ev, err := readEv.Read(); err != nil {
@@ -154,7 +154,7 @@ func runTestDaemonStartup(t *testing.T, hasConfig bool) {
 		time.Sleep(150 * time.Millisecond)
 
 		var b []byte
-		b, err = cli.NewGetDaemonStatus().Get()
+		b, err = cli.NewGetClusterStatus().Get()
 		require.NoError(t, err)
 		logf("get daemon status response: %s", b)
 		cData := clusterdump.Data{}

@@ -7,6 +7,7 @@ import (
 	"slices"
 
 	"github.com/opensvc/om3/core/client"
+	"github.com/opensvc/om3/core/commoncmd"
 	"github.com/opensvc/om3/core/naming"
 	"github.com/opensvc/om3/core/objectselector"
 	"github.com/opensvc/om3/daemon/api"
@@ -20,7 +21,9 @@ type (
 	}
 )
 
-func (t *CmdObjectKeyRename) Run(selector, kind string) error {
+func (t *CmdObjectKeyRename) Run(kind string) error {
+	mergedSelector := commoncmd.MergeSelector("", t.ObjectSelector, kind, "")
+
 	data := api.PatchObjectDataJSONRequestBody{
 		api.PatchDataKey{
 			Name:   t.Name,
@@ -35,7 +38,7 @@ func (t *CmdObjectKeyRename) Run(selector, kind string) error {
 		return err
 	}
 	paths, err := objectselector.New(
-		selector,
+		mergedSelector,
 		objectselector.WithClient(c),
 	).Expand()
 	if err != nil {

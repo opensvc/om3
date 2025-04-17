@@ -1,5 +1,7 @@
 package ox
 
+import "github.com/opensvc/om3/core/commoncmd"
+
 func init() {
 	kind := "vol"
 
@@ -47,7 +49,7 @@ func init() {
 		newCmdObjectGiveback(kind),
 		newCmdObjectLogs(kind),
 		newCmdObjectList(kind),
-		newCmdObjectMonitor(kind),
+		commoncmd.NewCmdObjectMonitor("", kind),
 		newCmdObjectPurge(kind),
 		newCmdObjectProvision(kind),
 		newCmdObjectPRStart(kind),

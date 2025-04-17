@@ -156,7 +156,7 @@ func (t *T) isInstanceSufficientlyStarted(ctx context.Context) bool {
 func (t *T) CommonStatus(ctx context.Context) status.T {
 	var opts []funcopt.O
 	var err error
-	if opts, err = t.GetFuncOpts(ctx, t.CheckCmd, "check"); err != nil {
+	if opts, err = t.GetFuncOpts(ctx, t.CheckCmd, "status"); err != nil {
 		t.Log().Errorf("prepare 'status' command: %s", err)
 		if t.StatusLogKw {
 			t.StatusLog().Error("prepare cmd %s", err)

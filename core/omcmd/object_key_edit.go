@@ -7,6 +7,7 @@ import (
 	"os"
 
 	"github.com/opensvc/om3/core/client"
+	"github.com/opensvc/om3/core/commoncmd"
 	"github.com/opensvc/om3/core/naming"
 	"github.com/opensvc/om3/core/object"
 	"github.com/opensvc/om3/core/objectselector"
@@ -126,12 +127,12 @@ func (t *CmdObjectKeyEdit) doRemote(p naming.Path, c *client.T) error {
 	return nil
 }
 
-func (t *CmdObjectKeyEdit) Run(selector, kind string) error {
+func (t *CmdObjectKeyEdit) Run(kind string) error {
 	var (
 		c   *client.T
 		err error
 	)
-	mergedSelector := mergeSelector(selector, t.ObjectSelector, kind, "")
+	mergedSelector := commoncmd.MergeSelector("", t.ObjectSelector, kind, "")
 	if c, err = client.New(); err != nil {
 		return err
 	}

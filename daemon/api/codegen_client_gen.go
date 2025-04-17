@@ -107,28 +107,26 @@ type ClientInterface interface {
 	// PostClusterActionUnfreeze request
 	PostClusterActionUnfreeze(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error)
 
+	// GetClusterConfig request
+	GetClusterConfig(ctx context.Context, params *GetClusterConfigParams, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// PatchClusterConfig request
+	PatchClusterConfig(ctx context.Context, params *PatchClusterConfigParams, reqEditors ...RequestEditorFn) (*http.Response, error)
+
 	// GetClusterConfigFile request
 	GetClusterConfigFile(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// PutClusterConfigFileWithBody request with any body
 	PutClusterConfigFileWithBody(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
 
-	// PostDaemonJoin request
-	PostDaemonJoin(ctx context.Context, params *PostDaemonJoinParams, reqEditors ...RequestEditorFn) (*http.Response, error)
+	// PostClusterJoin request
+	PostClusterJoin(ctx context.Context, params *PostClusterJoinParams, reqEditors ...RequestEditorFn) (*http.Response, error)
 
-	// PostDaemonLeave request
-	PostDaemonLeave(ctx context.Context, params *PostDaemonLeaveParams, reqEditors ...RequestEditorFn) (*http.Response, error)
+	// PostClusterLeave request
+	PostClusterLeave(ctx context.Context, params *PostClusterLeaveParams, reqEditors ...RequestEditorFn) (*http.Response, error)
 
-	// PostDaemonLogControlWithBody request with any body
-	PostDaemonLogControlWithBody(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
-
-	PostDaemonLogControl(ctx context.Context, body PostDaemonLogControlJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
-
-	// GetDaemonStatus request
-	GetDaemonStatus(ctx context.Context, params *GetDaemonStatusParams, reqEditors ...RequestEditorFn) (*http.Response, error)
-
-	// GetDNSDump request
-	GetDNSDump(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error)
+	// GetClusterStatus request
+	GetClusterStatus(ctx context.Context, params *GetClusterStatusParams, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// GetInstances request
 	GetInstances(ctx context.Context, params *GetInstancesParams, reqEditors ...RequestEditorFn) (*http.Response, error)
@@ -194,17 +192,14 @@ type ClientInterface interface {
 	// GetNodeConfig request
 	GetNodeConfig(ctx context.Context, nodename InPathNodeName, params *GetNodeConfigParams, reqEditors ...RequestEditorFn) (*http.Response, error)
 
+	// PatchNodeConfig request
+	PatchNodeConfig(ctx context.Context, nodename InPathNodeName, params *PatchNodeConfigParams, reqEditors ...RequestEditorFn) (*http.Response, error)
+
 	// GetNodeConfigFile request
 	GetNodeConfigFile(ctx context.Context, nodename InPathNodeName, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// PutNodeConfigFileWithBody request with any body
 	PutNodeConfigFileWithBody(ctx context.Context, nodename InPathNodeName, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
-
-	// GetNodeConfigGet request
-	GetNodeConfigGet(ctx context.Context, nodename InPathNodeName, params *GetNodeConfigGetParams, reqEditors ...RequestEditorFn) (*http.Response, error)
-
-	// PostNodeConfigUpdate request
-	PostNodeConfigUpdate(ctx context.Context, nodename InPathNodeName, params *PostNodeConfigUpdateParams, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// PostDaemonRestart request
 	PostDaemonRestart(ctx context.Context, nodename InPathNodeName, reqEditors ...RequestEditorFn) (*http.Response, error)
@@ -214,6 +209,9 @@ type ClientInterface interface {
 
 	// PostDaemonStop request
 	PostDaemonStop(ctx context.Context, nodename InPathNodeName, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// GetDaemonDNSDump request
+	GetDaemonDNSDump(ctx context.Context, nodename InPathNodeName, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// GetDaemonEvents request
 	GetDaemonEvents(ctx context.Context, nodename InPathNodeName, params *GetDaemonEventsParams, reqEditors ...RequestEditorFn) (*http.Response, error)
@@ -240,6 +238,11 @@ type ClientInterface interface {
 	PostDaemonListenerLogControlWithBody(ctx context.Context, nodename InPathNodeName, name InPathListenerName, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	PostDaemonListenerLogControl(ctx context.Context, nodename InPathNodeName, name InPathListenerName, body PostDaemonListenerLogControlJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// PostDaemonLogControlWithBody request with any body
+	PostDaemonLogControlWithBody(ctx context.Context, nodename InPathNodeName, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	PostDaemonLogControl(ctx context.Context, nodename InPathNodeName, body PostDaemonLogControlJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// GetNodeDRBDAllocation request
 	GetNodeDRBDAllocation(ctx context.Context, nodename InPathNodeName, reqEditors ...RequestEditorFn) (*http.Response, error)
@@ -433,6 +436,9 @@ type ClientInterface interface {
 	// GetObjectConfig request
 	GetObjectConfig(ctx context.Context, namespace InPathNamespace, kind InPathKind, name InPathName, params *GetObjectConfigParams, reqEditors ...RequestEditorFn) (*http.Response, error)
 
+	// PatchObjectConfig request
+	PatchObjectConfig(ctx context.Context, namespace InPathNamespace, kind InPathKind, name InPathName, params *PatchObjectConfigParams, reqEditors ...RequestEditorFn) (*http.Response, error)
+
 	// GetObjectConfigFile request
 	GetObjectConfigFile(ctx context.Context, namespace InPathNamespace, kind InPathKind, name InPathName, reqEditors ...RequestEditorFn) (*http.Response, error)
 
@@ -441,12 +447,6 @@ type ClientInterface interface {
 
 	// PutObjectConfigFileWithBody request with any body
 	PutObjectConfigFileWithBody(ctx context.Context, namespace InPathNamespace, kind InPathKind, name InPathName, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
-
-	// GetObjectConfigGet request
-	GetObjectConfigGet(ctx context.Context, namespace InPathNamespace, kind InPathKind, name InPathName, params *GetObjectConfigGetParams, reqEditors ...RequestEditorFn) (*http.Response, error)
-
-	// PostObjectConfigUpdate request
-	PostObjectConfigUpdate(ctx context.Context, namespace InPathNamespace, kind InPathKind, name InPathName, params *PostObjectConfigUpdateParams, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// GetObjectData request
 	GetObjectData(ctx context.Context, namespace InPathNamespace, kind InPathKind, name InPathName, params *GetObjectDataParams, reqEditors ...RequestEditorFn) (*http.Response, error)
@@ -573,6 +573,30 @@ func (c *Client) PostClusterActionUnfreeze(ctx context.Context, reqEditors ...Re
 	return c.Client.Do(req)
 }
 
+func (c *Client) GetClusterConfig(ctx context.Context, params *GetClusterConfigParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewGetClusterConfigRequest(c.Server, params)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+func (c *Client) PatchClusterConfig(ctx context.Context, params *PatchClusterConfigParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewPatchClusterConfigRequest(c.Server, params)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
 func (c *Client) GetClusterConfigFile(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error) {
 	req, err := NewGetClusterConfigFileRequest(c.Server)
 	if err != nil {
@@ -597,8 +621,8 @@ func (c *Client) PutClusterConfigFileWithBody(ctx context.Context, contentType s
 	return c.Client.Do(req)
 }
 
-func (c *Client) PostDaemonJoin(ctx context.Context, params *PostDaemonJoinParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
-	req, err := NewPostDaemonJoinRequest(c.Server, params)
+func (c *Client) PostClusterJoin(ctx context.Context, params *PostClusterJoinParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewPostClusterJoinRequest(c.Server, params)
 	if err != nil {
 		return nil, err
 	}
@@ -609,8 +633,8 @@ func (c *Client) PostDaemonJoin(ctx context.Context, params *PostDaemonJoinParam
 	return c.Client.Do(req)
 }
 
-func (c *Client) PostDaemonLeave(ctx context.Context, params *PostDaemonLeaveParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
-	req, err := NewPostDaemonLeaveRequest(c.Server, params)
+func (c *Client) PostClusterLeave(ctx context.Context, params *PostClusterLeaveParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewPostClusterLeaveRequest(c.Server, params)
 	if err != nil {
 		return nil, err
 	}
@@ -621,44 +645,8 @@ func (c *Client) PostDaemonLeave(ctx context.Context, params *PostDaemonLeavePar
 	return c.Client.Do(req)
 }
 
-func (c *Client) PostDaemonLogControlWithBody(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
-	req, err := NewPostDaemonLogControlRequestWithBody(c.Server, contentType, body)
-	if err != nil {
-		return nil, err
-	}
-	req = req.WithContext(ctx)
-	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
-		return nil, err
-	}
-	return c.Client.Do(req)
-}
-
-func (c *Client) PostDaemonLogControl(ctx context.Context, body PostDaemonLogControlJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
-	req, err := NewPostDaemonLogControlRequest(c.Server, body)
-	if err != nil {
-		return nil, err
-	}
-	req = req.WithContext(ctx)
-	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
-		return nil, err
-	}
-	return c.Client.Do(req)
-}
-
-func (c *Client) GetDaemonStatus(ctx context.Context, params *GetDaemonStatusParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
-	req, err := NewGetDaemonStatusRequest(c.Server, params)
-	if err != nil {
-		return nil, err
-	}
-	req = req.WithContext(ctx)
-	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
-		return nil, err
-	}
-	return c.Client.Do(req)
-}
-
-func (c *Client) GetDNSDump(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error) {
-	req, err := NewGetDNSDumpRequest(c.Server)
+func (c *Client) GetClusterStatus(ctx context.Context, params *GetClusterStatusParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewGetClusterStatusRequest(c.Server, params)
 	if err != nil {
 		return nil, err
 	}
@@ -933,6 +921,18 @@ func (c *Client) GetNodeConfig(ctx context.Context, nodename InPathNodeName, par
 	return c.Client.Do(req)
 }
 
+func (c *Client) PatchNodeConfig(ctx context.Context, nodename InPathNodeName, params *PatchNodeConfigParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewPatchNodeConfigRequest(c.Server, nodename, params)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
 func (c *Client) GetNodeConfigFile(ctx context.Context, nodename InPathNodeName, reqEditors ...RequestEditorFn) (*http.Response, error) {
 	req, err := NewGetNodeConfigFileRequest(c.Server, nodename)
 	if err != nil {
@@ -947,30 +947,6 @@ func (c *Client) GetNodeConfigFile(ctx context.Context, nodename InPathNodeName,
 
 func (c *Client) PutNodeConfigFileWithBody(ctx context.Context, nodename InPathNodeName, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
 	req, err := NewPutNodeConfigFileRequestWithBody(c.Server, nodename, contentType, body)
-	if err != nil {
-		return nil, err
-	}
-	req = req.WithContext(ctx)
-	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
-		return nil, err
-	}
-	return c.Client.Do(req)
-}
-
-func (c *Client) GetNodeConfigGet(ctx context.Context, nodename InPathNodeName, params *GetNodeConfigGetParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
-	req, err := NewGetNodeConfigGetRequest(c.Server, nodename, params)
-	if err != nil {
-		return nil, err
-	}
-	req = req.WithContext(ctx)
-	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
-		return nil, err
-	}
-	return c.Client.Do(req)
-}
-
-func (c *Client) PostNodeConfigUpdate(ctx context.Context, nodename InPathNodeName, params *PostNodeConfigUpdateParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
-	req, err := NewPostNodeConfigUpdateRequest(c.Server, nodename, params)
 	if err != nil {
 		return nil, err
 	}
@@ -1007,6 +983,18 @@ func (c *Client) PostDaemonShutdown(ctx context.Context, nodename InPathNodeName
 
 func (c *Client) PostDaemonStop(ctx context.Context, nodename InPathNodeName, reqEditors ...RequestEditorFn) (*http.Response, error) {
 	req, err := NewPostDaemonStopRequest(c.Server, nodename)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+func (c *Client) GetDaemonDNSDump(ctx context.Context, nodename InPathNodeName, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewGetDaemonDNSDumpRequest(c.Server, nodename)
 	if err != nil {
 		return nil, err
 	}
@@ -1115,6 +1103,30 @@ func (c *Client) PostDaemonListenerLogControlWithBody(ctx context.Context, noden
 
 func (c *Client) PostDaemonListenerLogControl(ctx context.Context, nodename InPathNodeName, name InPathListenerName, body PostDaemonListenerLogControlJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
 	req, err := NewPostDaemonListenerLogControlRequest(c.Server, nodename, name, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+func (c *Client) PostDaemonLogControlWithBody(ctx context.Context, nodename InPathNodeName, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewPostDaemonLogControlRequestWithBody(c.Server, nodename, contentType, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+func (c *Client) PostDaemonLogControl(ctx context.Context, nodename InPathNodeName, body PostDaemonLogControlJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewPostDaemonLogControlRequest(c.Server, nodename, body)
 	if err != nil {
 		return nil, err
 	}
@@ -1905,6 +1917,18 @@ func (c *Client) GetObjectConfig(ctx context.Context, namespace InPathNamespace,
 	return c.Client.Do(req)
 }
 
+func (c *Client) PatchObjectConfig(ctx context.Context, namespace InPathNamespace, kind InPathKind, name InPathName, params *PatchObjectConfigParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewPatchObjectConfigRequest(c.Server, namespace, kind, name, params)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
 func (c *Client) GetObjectConfigFile(ctx context.Context, namespace InPathNamespace, kind InPathKind, name InPathName, reqEditors ...RequestEditorFn) (*http.Response, error) {
 	req, err := NewGetObjectConfigFileRequest(c.Server, namespace, kind, name)
 	if err != nil {
@@ -1931,30 +1955,6 @@ func (c *Client) PostObjectConfigFileWithBody(ctx context.Context, namespace InP
 
 func (c *Client) PutObjectConfigFileWithBody(ctx context.Context, namespace InPathNamespace, kind InPathKind, name InPathName, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
 	req, err := NewPutObjectConfigFileRequestWithBody(c.Server, namespace, kind, name, contentType, body)
-	if err != nil {
-		return nil, err
-	}
-	req = req.WithContext(ctx)
-	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
-		return nil, err
-	}
-	return c.Client.Do(req)
-}
-
-func (c *Client) GetObjectConfigGet(ctx context.Context, namespace InPathNamespace, kind InPathKind, name InPathName, params *GetObjectConfigGetParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
-	req, err := NewGetObjectConfigGetRequest(c.Server, namespace, kind, name, params)
-	if err != nil {
-		return nil, err
-	}
-	req = req.WithContext(ctx)
-	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
-		return nil, err
-	}
-	return c.Client.Do(req)
-}
-
-func (c *Client) PostObjectConfigUpdate(ctx context.Context, namespace InPathNamespace, kind InPathKind, name InPathName, params *PostObjectConfigUpdateParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
-	req, err := NewPostObjectConfigUpdateRequest(c.Server, namespace, kind, name, params)
 	if err != nil {
 		return nil, err
 	}
@@ -2413,6 +2413,168 @@ func NewPostClusterActionUnfreezeRequest(server string) (*http.Request, error) {
 	return req, nil
 }
 
+// NewGetClusterConfigRequest generates requests for GetClusterConfig
+func NewGetClusterConfigRequest(server string, params *GetClusterConfigParams) (*http.Request, error) {
+	var err error
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/cluster/config")
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	if params != nil {
+		queryValues := queryURL.Query()
+
+		if params.Evaluate != nil {
+
+			if queryFrag, err := runtime.StyleParamWithLocation("form", true, "evaluate", runtime.ParamLocationQuery, *params.Evaluate); err != nil {
+				return nil, err
+			} else if parsed, err := url.ParseQuery(queryFrag); err != nil {
+				return nil, err
+			} else {
+				for k, v := range parsed {
+					for _, v2 := range v {
+						queryValues.Add(k, v2)
+					}
+				}
+			}
+
+		}
+
+		if params.Impersonate != nil {
+
+			if queryFrag, err := runtime.StyleParamWithLocation("form", true, "impersonate", runtime.ParamLocationQuery, *params.Impersonate); err != nil {
+				return nil, err
+			} else if parsed, err := url.ParseQuery(queryFrag); err != nil {
+				return nil, err
+			} else {
+				for k, v := range parsed {
+					for _, v2 := range v {
+						queryValues.Add(k, v2)
+					}
+				}
+			}
+
+		}
+
+		if params.Kw != nil {
+
+			if queryFrag, err := runtime.StyleParamWithLocation("form", true, "kw", runtime.ParamLocationQuery, *params.Kw); err != nil {
+				return nil, err
+			} else if parsed, err := url.ParseQuery(queryFrag); err != nil {
+				return nil, err
+			} else {
+				for k, v := range parsed {
+					for _, v2 := range v {
+						queryValues.Add(k, v2)
+					}
+				}
+			}
+
+		}
+
+		queryURL.RawQuery = queryValues.Encode()
+	}
+
+	req, err := http.NewRequest("GET", queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
+// NewPatchClusterConfigRequest generates requests for PatchClusterConfig
+func NewPatchClusterConfigRequest(server string, params *PatchClusterConfigParams) (*http.Request, error) {
+	var err error
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/cluster/config")
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	if params != nil {
+		queryValues := queryURL.Query()
+
+		if params.Delete != nil {
+
+			if queryFrag, err := runtime.StyleParamWithLocation("form", true, "delete", runtime.ParamLocationQuery, *params.Delete); err != nil {
+				return nil, err
+			} else if parsed, err := url.ParseQuery(queryFrag); err != nil {
+				return nil, err
+			} else {
+				for k, v := range parsed {
+					for _, v2 := range v {
+						queryValues.Add(k, v2)
+					}
+				}
+			}
+
+		}
+
+		if params.Unset != nil {
+
+			if queryFrag, err := runtime.StyleParamWithLocation("form", true, "unset", runtime.ParamLocationQuery, *params.Unset); err != nil {
+				return nil, err
+			} else if parsed, err := url.ParseQuery(queryFrag); err != nil {
+				return nil, err
+			} else {
+				for k, v := range parsed {
+					for _, v2 := range v {
+						queryValues.Add(k, v2)
+					}
+				}
+			}
+
+		}
+
+		if params.Set != nil {
+
+			if queryFrag, err := runtime.StyleParamWithLocation("form", true, "set", runtime.ParamLocationQuery, *params.Set); err != nil {
+				return nil, err
+			} else if parsed, err := url.ParseQuery(queryFrag); err != nil {
+				return nil, err
+			} else {
+				for k, v := range parsed {
+					for _, v2 := range v {
+						queryValues.Add(k, v2)
+					}
+				}
+			}
+
+		}
+
+		queryURL.RawQuery = queryValues.Encode()
+	}
+
+	req, err := http.NewRequest("PATCH", queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
 // NewGetClusterConfigFileRequest generates requests for GetClusterConfigFile
 func NewGetClusterConfigFileRequest(server string) (*http.Request, error) {
 	var err error
@@ -2469,8 +2631,8 @@ func NewPutClusterConfigFileRequestWithBody(server string, contentType string, b
 	return req, nil
 }
 
-// NewPostDaemonJoinRequest generates requests for PostDaemonJoin
-func NewPostDaemonJoinRequest(server string, params *PostDaemonJoinParams) (*http.Request, error) {
+// NewPostClusterJoinRequest generates requests for PostClusterJoin
+func NewPostClusterJoinRequest(server string, params *PostClusterJoinParams) (*http.Request, error) {
 	var err error
 
 	serverURL, err := url.Parse(server)
@@ -2478,7 +2640,7 @@ func NewPostDaemonJoinRequest(server string, params *PostDaemonJoinParams) (*htt
 		return nil, err
 	}
 
-	operationPath := fmt.Sprintf("/daemon/action/join")
+	operationPath := fmt.Sprintf("/cluster/join")
 	if operationPath[0] == '/' {
 		operationPath = "." + operationPath
 	}
@@ -2514,8 +2676,8 @@ func NewPostDaemonJoinRequest(server string, params *PostDaemonJoinParams) (*htt
 	return req, nil
 }
 
-// NewPostDaemonLeaveRequest generates requests for PostDaemonLeave
-func NewPostDaemonLeaveRequest(server string, params *PostDaemonLeaveParams) (*http.Request, error) {
+// NewPostClusterLeaveRequest generates requests for PostClusterLeave
+func NewPostClusterLeaveRequest(server string, params *PostClusterLeaveParams) (*http.Request, error) {
 	var err error
 
 	serverURL, err := url.Parse(server)
@@ -2523,7 +2685,7 @@ func NewPostDaemonLeaveRequest(server string, params *PostDaemonLeaveParams) (*h
 		return nil, err
 	}
 
-	operationPath := fmt.Sprintf("/daemon/action/leave")
+	operationPath := fmt.Sprintf("/cluster/leave")
 	if operationPath[0] == '/' {
 		operationPath = "." + operationPath
 	}
@@ -2559,19 +2721,8 @@ func NewPostDaemonLeaveRequest(server string, params *PostDaemonLeaveParams) (*h
 	return req, nil
 }
 
-// NewPostDaemonLogControlRequest calls the generic PostDaemonLogControl builder with application/json body
-func NewPostDaemonLogControlRequest(server string, body PostDaemonLogControlJSONRequestBody) (*http.Request, error) {
-	var bodyReader io.Reader
-	buf, err := json.Marshal(body)
-	if err != nil {
-		return nil, err
-	}
-	bodyReader = bytes.NewReader(buf)
-	return NewPostDaemonLogControlRequestWithBody(server, "application/json", bodyReader)
-}
-
-// NewPostDaemonLogControlRequestWithBody generates requests for PostDaemonLogControl with any type of body
-func NewPostDaemonLogControlRequestWithBody(server string, contentType string, body io.Reader) (*http.Request, error) {
+// NewGetClusterStatusRequest generates requests for GetClusterStatus
+func NewGetClusterStatusRequest(server string, params *GetClusterStatusParams) (*http.Request, error) {
 	var err error
 
 	serverURL, err := url.Parse(server)
@@ -2579,36 +2730,7 @@ func NewPostDaemonLogControlRequestWithBody(server string, contentType string, b
 		return nil, err
 	}
 
-	operationPath := fmt.Sprintf("/daemon/log/control")
-	if operationPath[0] == '/' {
-		operationPath = "." + operationPath
-	}
-
-	queryURL, err := serverURL.Parse(operationPath)
-	if err != nil {
-		return nil, err
-	}
-
-	req, err := http.NewRequest("POST", queryURL.String(), body)
-	if err != nil {
-		return nil, err
-	}
-
-	req.Header.Add("Content-Type", contentType)
-
-	return req, nil
-}
-
-// NewGetDaemonStatusRequest generates requests for GetDaemonStatus
-func NewGetDaemonStatusRequest(server string, params *GetDaemonStatusParams) (*http.Request, error) {
-	var err error
-
-	serverURL, err := url.Parse(server)
-	if err != nil {
-		return nil, err
-	}
-
-	operationPath := fmt.Sprintf("/daemon/status")
+	operationPath := fmt.Sprintf("/cluster/status")
 	if operationPath[0] == '/' {
 		operationPath = "." + operationPath
 	}
@@ -2654,33 +2776,6 @@ func NewGetDaemonStatusRequest(server string, params *GetDaemonStatusParams) (*h
 		}
 
 		queryURL.RawQuery = queryValues.Encode()
-	}
-
-	req, err := http.NewRequest("GET", queryURL.String(), nil)
-	if err != nil {
-		return nil, err
-	}
-
-	return req, nil
-}
-
-// NewGetDNSDumpRequest generates requests for GetDNSDump
-func NewGetDNSDumpRequest(server string) (*http.Request, error) {
-	var err error
-
-	serverURL, err := url.Parse(server)
-	if err != nil {
-		return nil, err
-	}
-
-	operationPath := fmt.Sprintf("/dns/dump")
-	if operationPath[0] == '/' {
-		operationPath = "." + operationPath
-	}
-
-	queryURL, err := serverURL.Parse(operationPath)
-	if err != nil {
-		return nil, err
 	}
 
 	req, err := http.NewRequest("GET", queryURL.String(), nil)
@@ -3681,6 +3776,22 @@ func NewGetNodeConfigRequest(server string, nodename InPathNodeName, params *Get
 	if params != nil {
 		queryValues := queryURL.Query()
 
+		if params.Kw != nil {
+
+			if queryFrag, err := runtime.StyleParamWithLocation("form", true, "kw", runtime.ParamLocationQuery, *params.Kw); err != nil {
+				return nil, err
+			} else if parsed, err := url.ParseQuery(queryFrag); err != nil {
+				return nil, err
+			} else {
+				for k, v := range parsed {
+					for _, v2 := range v {
+						queryValues.Add(k, v2)
+					}
+				}
+			}
+
+		}
+
 		if params.Evaluate != nil {
 
 			if queryFrag, err := runtime.StyleParamWithLocation("form", true, "evaluate", runtime.ParamLocationQuery, *params.Evaluate); err != nil {
@@ -3717,6 +3828,94 @@ func NewGetNodeConfigRequest(server string, nodename InPathNodeName, params *Get
 	}
 
 	req, err := http.NewRequest("GET", queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
+// NewPatchNodeConfigRequest generates requests for PatchNodeConfig
+func NewPatchNodeConfigRequest(server string, nodename InPathNodeName, params *PatchNodeConfigParams) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithLocation("simple", false, "nodename", runtime.ParamLocationPath, nodename)
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/node/name/%s/config", pathParam0)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	if params != nil {
+		queryValues := queryURL.Query()
+
+		if params.Delete != nil {
+
+			if queryFrag, err := runtime.StyleParamWithLocation("form", true, "delete", runtime.ParamLocationQuery, *params.Delete); err != nil {
+				return nil, err
+			} else if parsed, err := url.ParseQuery(queryFrag); err != nil {
+				return nil, err
+			} else {
+				for k, v := range parsed {
+					for _, v2 := range v {
+						queryValues.Add(k, v2)
+					}
+				}
+			}
+
+		}
+
+		if params.Unset != nil {
+
+			if queryFrag, err := runtime.StyleParamWithLocation("form", true, "unset", runtime.ParamLocationQuery, *params.Unset); err != nil {
+				return nil, err
+			} else if parsed, err := url.ParseQuery(queryFrag); err != nil {
+				return nil, err
+			} else {
+				for k, v := range parsed {
+					for _, v2 := range v {
+						queryValues.Add(k, v2)
+					}
+				}
+			}
+
+		}
+
+		if params.Set != nil {
+
+			if queryFrag, err := runtime.StyleParamWithLocation("form", true, "set", runtime.ParamLocationQuery, *params.Set); err != nil {
+				return nil, err
+			} else if parsed, err := url.ParseQuery(queryFrag); err != nil {
+				return nil, err
+			} else {
+				for k, v := range parsed {
+					for _, v2 := range v {
+						queryValues.Add(k, v2)
+					}
+				}
+			}
+
+		}
+
+		queryURL.RawQuery = queryValues.Encode()
+	}
+
+	req, err := http.NewRequest("PATCH", queryURL.String(), nil)
 	if err != nil {
 		return nil, err
 	}
@@ -3790,182 +3989,6 @@ func NewPutNodeConfigFileRequestWithBody(server string, nodename InPathNodeName,
 	}
 
 	req.Header.Add("Content-Type", contentType)
-
-	return req, nil
-}
-
-// NewGetNodeConfigGetRequest generates requests for GetNodeConfigGet
-func NewGetNodeConfigGetRequest(server string, nodename InPathNodeName, params *GetNodeConfigGetParams) (*http.Request, error) {
-	var err error
-
-	var pathParam0 string
-
-	pathParam0, err = runtime.StyleParamWithLocation("simple", false, "nodename", runtime.ParamLocationPath, nodename)
-	if err != nil {
-		return nil, err
-	}
-
-	serverURL, err := url.Parse(server)
-	if err != nil {
-		return nil, err
-	}
-
-	operationPath := fmt.Sprintf("/node/name/%s/config/get", pathParam0)
-	if operationPath[0] == '/' {
-		operationPath = "." + operationPath
-	}
-
-	queryURL, err := serverURL.Parse(operationPath)
-	if err != nil {
-		return nil, err
-	}
-
-	if params != nil {
-		queryValues := queryURL.Query()
-
-		if params.Kw != nil {
-
-			if queryFrag, err := runtime.StyleParamWithLocation("form", true, "kw", runtime.ParamLocationQuery, *params.Kw); err != nil {
-				return nil, err
-			} else if parsed, err := url.ParseQuery(queryFrag); err != nil {
-				return nil, err
-			} else {
-				for k, v := range parsed {
-					for _, v2 := range v {
-						queryValues.Add(k, v2)
-					}
-				}
-			}
-
-		}
-
-		if params.Evaluate != nil {
-
-			if queryFrag, err := runtime.StyleParamWithLocation("form", true, "evaluate", runtime.ParamLocationQuery, *params.Evaluate); err != nil {
-				return nil, err
-			} else if parsed, err := url.ParseQuery(queryFrag); err != nil {
-				return nil, err
-			} else {
-				for k, v := range parsed {
-					for _, v2 := range v {
-						queryValues.Add(k, v2)
-					}
-				}
-			}
-
-		}
-
-		if params.Impersonate != nil {
-
-			if queryFrag, err := runtime.StyleParamWithLocation("form", true, "impersonate", runtime.ParamLocationQuery, *params.Impersonate); err != nil {
-				return nil, err
-			} else if parsed, err := url.ParseQuery(queryFrag); err != nil {
-				return nil, err
-			} else {
-				for k, v := range parsed {
-					for _, v2 := range v {
-						queryValues.Add(k, v2)
-					}
-				}
-			}
-
-		}
-
-		queryURL.RawQuery = queryValues.Encode()
-	}
-
-	req, err := http.NewRequest("GET", queryURL.String(), nil)
-	if err != nil {
-		return nil, err
-	}
-
-	return req, nil
-}
-
-// NewPostNodeConfigUpdateRequest generates requests for PostNodeConfigUpdate
-func NewPostNodeConfigUpdateRequest(server string, nodename InPathNodeName, params *PostNodeConfigUpdateParams) (*http.Request, error) {
-	var err error
-
-	var pathParam0 string
-
-	pathParam0, err = runtime.StyleParamWithLocation("simple", false, "nodename", runtime.ParamLocationPath, nodename)
-	if err != nil {
-		return nil, err
-	}
-
-	serverURL, err := url.Parse(server)
-	if err != nil {
-		return nil, err
-	}
-
-	operationPath := fmt.Sprintf("/node/name/%s/config/update", pathParam0)
-	if operationPath[0] == '/' {
-		operationPath = "." + operationPath
-	}
-
-	queryURL, err := serverURL.Parse(operationPath)
-	if err != nil {
-		return nil, err
-	}
-
-	if params != nil {
-		queryValues := queryURL.Query()
-
-		if params.Delete != nil {
-
-			if queryFrag, err := runtime.StyleParamWithLocation("form", true, "delete", runtime.ParamLocationQuery, *params.Delete); err != nil {
-				return nil, err
-			} else if parsed, err := url.ParseQuery(queryFrag); err != nil {
-				return nil, err
-			} else {
-				for k, v := range parsed {
-					for _, v2 := range v {
-						queryValues.Add(k, v2)
-					}
-				}
-			}
-
-		}
-
-		if params.Unset != nil {
-
-			if queryFrag, err := runtime.StyleParamWithLocation("form", true, "unset", runtime.ParamLocationQuery, *params.Unset); err != nil {
-				return nil, err
-			} else if parsed, err := url.ParseQuery(queryFrag); err != nil {
-				return nil, err
-			} else {
-				for k, v := range parsed {
-					for _, v2 := range v {
-						queryValues.Add(k, v2)
-					}
-				}
-			}
-
-		}
-
-		if params.Set != nil {
-
-			if queryFrag, err := runtime.StyleParamWithLocation("form", true, "set", runtime.ParamLocationQuery, *params.Set); err != nil {
-				return nil, err
-			} else if parsed, err := url.ParseQuery(queryFrag); err != nil {
-				return nil, err
-			} else {
-				for k, v := range parsed {
-					for _, v2 := range v {
-						queryValues.Add(k, v2)
-					}
-				}
-			}
-
-		}
-
-		queryURL.RawQuery = queryValues.Encode()
-	}
-
-	req, err := http.NewRequest("POST", queryURL.String(), nil)
-	if err != nil {
-		return nil, err
-	}
 
 	return req, nil
 }
@@ -4087,6 +4110,40 @@ func NewPostDaemonStopRequest(server string, nodename InPathNodeName) (*http.Req
 	}
 
 	req, err := http.NewRequest("POST", queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
+// NewGetDaemonDNSDumpRequest generates requests for GetDaemonDNSDump
+func NewGetDaemonDNSDumpRequest(server string, nodename InPathNodeName) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithLocation("simple", false, "nodename", runtime.ParamLocationPath, nodename)
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/node/name/%s/daemon/dns/dump", pathParam0)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest("GET", queryURL.String(), nil)
 	if err != nil {
 		return nil, err
 	}
@@ -4495,6 +4552,53 @@ func NewPostDaemonListenerLogControlRequestWithBody(server string, nodename InPa
 	}
 
 	operationPath := fmt.Sprintf("/node/name/%s/daemon/listener/name/%s/log/control", pathParam0, pathParam1)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest("POST", queryURL.String(), body)
+	if err != nil {
+		return nil, err
+	}
+
+	req.Header.Add("Content-Type", contentType)
+
+	return req, nil
+}
+
+// NewPostDaemonLogControlRequest calls the generic PostDaemonLogControl builder with application/json body
+func NewPostDaemonLogControlRequest(server string, nodename InPathNodeName, body PostDaemonLogControlJSONRequestBody) (*http.Request, error) {
+	var bodyReader io.Reader
+	buf, err := json.Marshal(body)
+	if err != nil {
+		return nil, err
+	}
+	bodyReader = bytes.NewReader(buf)
+	return NewPostDaemonLogControlRequestWithBody(server, nodename, "application/json", bodyReader)
+}
+
+// NewPostDaemonLogControlRequestWithBody generates requests for PostDaemonLogControl with any type of body
+func NewPostDaemonLogControlRequestWithBody(server string, nodename InPathNodeName, contentType string, body io.Reader) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithLocation("simple", false, "nodename", runtime.ParamLocationPath, nodename)
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/node/name/%s/daemon/log/control", pathParam0)
 	if operationPath[0] == '/' {
 		operationPath = "." + operationPath
 	}
@@ -9144,10 +9248,128 @@ func NewGetObjectConfigRequest(server string, namespace InPathNamespace, kind In
 
 		}
 
+		if params.Kw != nil {
+
+			if queryFrag, err := runtime.StyleParamWithLocation("form", true, "kw", runtime.ParamLocationQuery, *params.Kw); err != nil {
+				return nil, err
+			} else if parsed, err := url.ParseQuery(queryFrag); err != nil {
+				return nil, err
+			} else {
+				for k, v := range parsed {
+					for _, v2 := range v {
+						queryValues.Add(k, v2)
+					}
+				}
+			}
+
+		}
+
 		queryURL.RawQuery = queryValues.Encode()
 	}
 
 	req, err := http.NewRequest("GET", queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
+// NewPatchObjectConfigRequest generates requests for PatchObjectConfig
+func NewPatchObjectConfigRequest(server string, namespace InPathNamespace, kind InPathKind, name InPathName, params *PatchObjectConfigParams) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithLocation("simple", false, "namespace", runtime.ParamLocationPath, namespace)
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam1 string
+
+	pathParam1, err = runtime.StyleParamWithLocation("simple", false, "kind", runtime.ParamLocationPath, kind)
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam2 string
+
+	pathParam2, err = runtime.StyleParamWithLocation("simple", false, "name", runtime.ParamLocationPath, name)
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/object/path/%s/%s/%s/config", pathParam0, pathParam1, pathParam2)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	if params != nil {
+		queryValues := queryURL.Query()
+
+		if params.Delete != nil {
+
+			if queryFrag, err := runtime.StyleParamWithLocation("form", true, "delete", runtime.ParamLocationQuery, *params.Delete); err != nil {
+				return nil, err
+			} else if parsed, err := url.ParseQuery(queryFrag); err != nil {
+				return nil, err
+			} else {
+				for k, v := range parsed {
+					for _, v2 := range v {
+						queryValues.Add(k, v2)
+					}
+				}
+			}
+
+		}
+
+		if params.Unset != nil {
+
+			if queryFrag, err := runtime.StyleParamWithLocation("form", true, "unset", runtime.ParamLocationQuery, *params.Unset); err != nil {
+				return nil, err
+			} else if parsed, err := url.ParseQuery(queryFrag); err != nil {
+				return nil, err
+			} else {
+				for k, v := range parsed {
+					for _, v2 := range v {
+						queryValues.Add(k, v2)
+					}
+				}
+			}
+
+		}
+
+		if params.Set != nil {
+
+			if queryFrag, err := runtime.StyleParamWithLocation("form", true, "set", runtime.ParamLocationQuery, *params.Set); err != nil {
+				return nil, err
+			} else if parsed, err := url.ParseQuery(queryFrag); err != nil {
+				return nil, err
+			} else {
+				for k, v := range parsed {
+					for _, v2 := range v {
+						queryValues.Add(k, v2)
+					}
+				}
+			}
+
+		}
+
+		queryURL.RawQuery = queryValues.Encode()
+	}
+
+	req, err := http.NewRequest("PATCH", queryURL.String(), nil)
 	if err != nil {
 		return nil, err
 	}
@@ -9299,210 +9521,6 @@ func NewPutObjectConfigFileRequestWithBody(server string, namespace InPathNamesp
 	}
 
 	req.Header.Add("Content-Type", contentType)
-
-	return req, nil
-}
-
-// NewGetObjectConfigGetRequest generates requests for GetObjectConfigGet
-func NewGetObjectConfigGetRequest(server string, namespace InPathNamespace, kind InPathKind, name InPathName, params *GetObjectConfigGetParams) (*http.Request, error) {
-	var err error
-
-	var pathParam0 string
-
-	pathParam0, err = runtime.StyleParamWithLocation("simple", false, "namespace", runtime.ParamLocationPath, namespace)
-	if err != nil {
-		return nil, err
-	}
-
-	var pathParam1 string
-
-	pathParam1, err = runtime.StyleParamWithLocation("simple", false, "kind", runtime.ParamLocationPath, kind)
-	if err != nil {
-		return nil, err
-	}
-
-	var pathParam2 string
-
-	pathParam2, err = runtime.StyleParamWithLocation("simple", false, "name", runtime.ParamLocationPath, name)
-	if err != nil {
-		return nil, err
-	}
-
-	serverURL, err := url.Parse(server)
-	if err != nil {
-		return nil, err
-	}
-
-	operationPath := fmt.Sprintf("/object/path/%s/%s/%s/config/get", pathParam0, pathParam1, pathParam2)
-	if operationPath[0] == '/' {
-		operationPath = "." + operationPath
-	}
-
-	queryURL, err := serverURL.Parse(operationPath)
-	if err != nil {
-		return nil, err
-	}
-
-	if params != nil {
-		queryValues := queryURL.Query()
-
-		if params.Kw != nil {
-
-			if queryFrag, err := runtime.StyleParamWithLocation("form", true, "kw", runtime.ParamLocationQuery, *params.Kw); err != nil {
-				return nil, err
-			} else if parsed, err := url.ParseQuery(queryFrag); err != nil {
-				return nil, err
-			} else {
-				for k, v := range parsed {
-					for _, v2 := range v {
-						queryValues.Add(k, v2)
-					}
-				}
-			}
-
-		}
-
-		if params.Evaluate != nil {
-
-			if queryFrag, err := runtime.StyleParamWithLocation("form", true, "evaluate", runtime.ParamLocationQuery, *params.Evaluate); err != nil {
-				return nil, err
-			} else if parsed, err := url.ParseQuery(queryFrag); err != nil {
-				return nil, err
-			} else {
-				for k, v := range parsed {
-					for _, v2 := range v {
-						queryValues.Add(k, v2)
-					}
-				}
-			}
-
-		}
-
-		if params.Impersonate != nil {
-
-			if queryFrag, err := runtime.StyleParamWithLocation("form", true, "impersonate", runtime.ParamLocationQuery, *params.Impersonate); err != nil {
-				return nil, err
-			} else if parsed, err := url.ParseQuery(queryFrag); err != nil {
-				return nil, err
-			} else {
-				for k, v := range parsed {
-					for _, v2 := range v {
-						queryValues.Add(k, v2)
-					}
-				}
-			}
-
-		}
-
-		queryURL.RawQuery = queryValues.Encode()
-	}
-
-	req, err := http.NewRequest("GET", queryURL.String(), nil)
-	if err != nil {
-		return nil, err
-	}
-
-	return req, nil
-}
-
-// NewPostObjectConfigUpdateRequest generates requests for PostObjectConfigUpdate
-func NewPostObjectConfigUpdateRequest(server string, namespace InPathNamespace, kind InPathKind, name InPathName, params *PostObjectConfigUpdateParams) (*http.Request, error) {
-	var err error
-
-	var pathParam0 string
-
-	pathParam0, err = runtime.StyleParamWithLocation("simple", false, "namespace", runtime.ParamLocationPath, namespace)
-	if err != nil {
-		return nil, err
-	}
-
-	var pathParam1 string
-
-	pathParam1, err = runtime.StyleParamWithLocation("simple", false, "kind", runtime.ParamLocationPath, kind)
-	if err != nil {
-		return nil, err
-	}
-
-	var pathParam2 string
-
-	pathParam2, err = runtime.StyleParamWithLocation("simple", false, "name", runtime.ParamLocationPath, name)
-	if err != nil {
-		return nil, err
-	}
-
-	serverURL, err := url.Parse(server)
-	if err != nil {
-		return nil, err
-	}
-
-	operationPath := fmt.Sprintf("/object/path/%s/%s/%s/config/update", pathParam0, pathParam1, pathParam2)
-	if operationPath[0] == '/' {
-		operationPath = "." + operationPath
-	}
-
-	queryURL, err := serverURL.Parse(operationPath)
-	if err != nil {
-		return nil, err
-	}
-
-	if params != nil {
-		queryValues := queryURL.Query()
-
-		if params.Delete != nil {
-
-			if queryFrag, err := runtime.StyleParamWithLocation("form", true, "delete", runtime.ParamLocationQuery, *params.Delete); err != nil {
-				return nil, err
-			} else if parsed, err := url.ParseQuery(queryFrag); err != nil {
-				return nil, err
-			} else {
-				for k, v := range parsed {
-					for _, v2 := range v {
-						queryValues.Add(k, v2)
-					}
-				}
-			}
-
-		}
-
-		if params.Unset != nil {
-
-			if queryFrag, err := runtime.StyleParamWithLocation("form", true, "unset", runtime.ParamLocationQuery, *params.Unset); err != nil {
-				return nil, err
-			} else if parsed, err := url.ParseQuery(queryFrag); err != nil {
-				return nil, err
-			} else {
-				for k, v := range parsed {
-					for _, v2 := range v {
-						queryValues.Add(k, v2)
-					}
-				}
-			}
-
-		}
-
-		if params.Set != nil {
-
-			if queryFrag, err := runtime.StyleParamWithLocation("form", true, "set", runtime.ParamLocationQuery, *params.Set); err != nil {
-				return nil, err
-			} else if parsed, err := url.ParseQuery(queryFrag); err != nil {
-				return nil, err
-			} else {
-				for k, v := range parsed {
-					for _, v2 := range v {
-						queryValues.Add(k, v2)
-					}
-				}
-			}
-
-		}
-
-		queryURL.RawQuery = queryValues.Encode()
-	}
-
-	req, err := http.NewRequest("POST", queryURL.String(), nil)
-	if err != nil {
-		return nil, err
-	}
 
 	return req, nil
 }
@@ -10495,28 +10513,26 @@ type ClientWithResponsesInterface interface {
 	// PostClusterActionUnfreezeWithResponse request
 	PostClusterActionUnfreezeWithResponse(ctx context.Context, reqEditors ...RequestEditorFn) (*PostClusterActionUnfreezeResponse, error)
 
+	// GetClusterConfigWithResponse request
+	GetClusterConfigWithResponse(ctx context.Context, params *GetClusterConfigParams, reqEditors ...RequestEditorFn) (*GetClusterConfigResponse, error)
+
+	// PatchClusterConfigWithResponse request
+	PatchClusterConfigWithResponse(ctx context.Context, params *PatchClusterConfigParams, reqEditors ...RequestEditorFn) (*PatchClusterConfigResponse, error)
+
 	// GetClusterConfigFileWithResponse request
 	GetClusterConfigFileWithResponse(ctx context.Context, reqEditors ...RequestEditorFn) (*GetClusterConfigFileResponse, error)
 
 	// PutClusterConfigFileWithBodyWithResponse request with any body
 	PutClusterConfigFileWithBodyWithResponse(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*PutClusterConfigFileResponse, error)
 
-	// PostDaemonJoinWithResponse request
-	PostDaemonJoinWithResponse(ctx context.Context, params *PostDaemonJoinParams, reqEditors ...RequestEditorFn) (*PostDaemonJoinResponse, error)
+	// PostClusterJoinWithResponse request
+	PostClusterJoinWithResponse(ctx context.Context, params *PostClusterJoinParams, reqEditors ...RequestEditorFn) (*PostClusterJoinResponse, error)
 
-	// PostDaemonLeaveWithResponse request
-	PostDaemonLeaveWithResponse(ctx context.Context, params *PostDaemonLeaveParams, reqEditors ...RequestEditorFn) (*PostDaemonLeaveResponse, error)
+	// PostClusterLeaveWithResponse request
+	PostClusterLeaveWithResponse(ctx context.Context, params *PostClusterLeaveParams, reqEditors ...RequestEditorFn) (*PostClusterLeaveResponse, error)
 
-	// PostDaemonLogControlWithBodyWithResponse request with any body
-	PostDaemonLogControlWithBodyWithResponse(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*PostDaemonLogControlResponse, error)
-
-	PostDaemonLogControlWithResponse(ctx context.Context, body PostDaemonLogControlJSONRequestBody, reqEditors ...RequestEditorFn) (*PostDaemonLogControlResponse, error)
-
-	// GetDaemonStatusWithResponse request
-	GetDaemonStatusWithResponse(ctx context.Context, params *GetDaemonStatusParams, reqEditors ...RequestEditorFn) (*GetDaemonStatusResponse, error)
-
-	// GetDNSDumpWithResponse request
-	GetDNSDumpWithResponse(ctx context.Context, reqEditors ...RequestEditorFn) (*GetDNSDumpResponse, error)
+	// GetClusterStatusWithResponse request
+	GetClusterStatusWithResponse(ctx context.Context, params *GetClusterStatusParams, reqEditors ...RequestEditorFn) (*GetClusterStatusResponse, error)
 
 	// GetInstancesWithResponse request
 	GetInstancesWithResponse(ctx context.Context, params *GetInstancesParams, reqEditors ...RequestEditorFn) (*GetInstancesResponse, error)
@@ -10582,17 +10598,14 @@ type ClientWithResponsesInterface interface {
 	// GetNodeConfigWithResponse request
 	GetNodeConfigWithResponse(ctx context.Context, nodename InPathNodeName, params *GetNodeConfigParams, reqEditors ...RequestEditorFn) (*GetNodeConfigResponse, error)
 
+	// PatchNodeConfigWithResponse request
+	PatchNodeConfigWithResponse(ctx context.Context, nodename InPathNodeName, params *PatchNodeConfigParams, reqEditors ...RequestEditorFn) (*PatchNodeConfigResponse, error)
+
 	// GetNodeConfigFileWithResponse request
 	GetNodeConfigFileWithResponse(ctx context.Context, nodename InPathNodeName, reqEditors ...RequestEditorFn) (*GetNodeConfigFileResponse, error)
 
 	// PutNodeConfigFileWithBodyWithResponse request with any body
 	PutNodeConfigFileWithBodyWithResponse(ctx context.Context, nodename InPathNodeName, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*PutNodeConfigFileResponse, error)
-
-	// GetNodeConfigGetWithResponse request
-	GetNodeConfigGetWithResponse(ctx context.Context, nodename InPathNodeName, params *GetNodeConfigGetParams, reqEditors ...RequestEditorFn) (*GetNodeConfigGetResponse, error)
-
-	// PostNodeConfigUpdateWithResponse request
-	PostNodeConfigUpdateWithResponse(ctx context.Context, nodename InPathNodeName, params *PostNodeConfigUpdateParams, reqEditors ...RequestEditorFn) (*PostNodeConfigUpdateResponse, error)
 
 	// PostDaemonRestartWithResponse request
 	PostDaemonRestartWithResponse(ctx context.Context, nodename InPathNodeName, reqEditors ...RequestEditorFn) (*PostDaemonRestartResponse, error)
@@ -10602,6 +10615,9 @@ type ClientWithResponsesInterface interface {
 
 	// PostDaemonStopWithResponse request
 	PostDaemonStopWithResponse(ctx context.Context, nodename InPathNodeName, reqEditors ...RequestEditorFn) (*PostDaemonStopResponse, error)
+
+	// GetDaemonDNSDumpWithResponse request
+	GetDaemonDNSDumpWithResponse(ctx context.Context, nodename InPathNodeName, reqEditors ...RequestEditorFn) (*GetDaemonDNSDumpResponse, error)
 
 	// GetDaemonEventsWithResponse request
 	GetDaemonEventsWithResponse(ctx context.Context, nodename InPathNodeName, params *GetDaemonEventsParams, reqEditors ...RequestEditorFn) (*GetDaemonEventsResponse, error)
@@ -10628,6 +10644,11 @@ type ClientWithResponsesInterface interface {
 	PostDaemonListenerLogControlWithBodyWithResponse(ctx context.Context, nodename InPathNodeName, name InPathListenerName, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*PostDaemonListenerLogControlResponse, error)
 
 	PostDaemonListenerLogControlWithResponse(ctx context.Context, nodename InPathNodeName, name InPathListenerName, body PostDaemonListenerLogControlJSONRequestBody, reqEditors ...RequestEditorFn) (*PostDaemonListenerLogControlResponse, error)
+
+	// PostDaemonLogControlWithBodyWithResponse request with any body
+	PostDaemonLogControlWithBodyWithResponse(ctx context.Context, nodename InPathNodeName, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*PostDaemonLogControlResponse, error)
+
+	PostDaemonLogControlWithResponse(ctx context.Context, nodename InPathNodeName, body PostDaemonLogControlJSONRequestBody, reqEditors ...RequestEditorFn) (*PostDaemonLogControlResponse, error)
 
 	// GetNodeDRBDAllocationWithResponse request
 	GetNodeDRBDAllocationWithResponse(ctx context.Context, nodename InPathNodeName, reqEditors ...RequestEditorFn) (*GetNodeDRBDAllocationResponse, error)
@@ -10821,6 +10842,9 @@ type ClientWithResponsesInterface interface {
 	// GetObjectConfigWithResponse request
 	GetObjectConfigWithResponse(ctx context.Context, namespace InPathNamespace, kind InPathKind, name InPathName, params *GetObjectConfigParams, reqEditors ...RequestEditorFn) (*GetObjectConfigResponse, error)
 
+	// PatchObjectConfigWithResponse request
+	PatchObjectConfigWithResponse(ctx context.Context, namespace InPathNamespace, kind InPathKind, name InPathName, params *PatchObjectConfigParams, reqEditors ...RequestEditorFn) (*PatchObjectConfigResponse, error)
+
 	// GetObjectConfigFileWithResponse request
 	GetObjectConfigFileWithResponse(ctx context.Context, namespace InPathNamespace, kind InPathKind, name InPathName, reqEditors ...RequestEditorFn) (*GetObjectConfigFileResponse, error)
 
@@ -10829,12 +10853,6 @@ type ClientWithResponsesInterface interface {
 
 	// PutObjectConfigFileWithBodyWithResponse request with any body
 	PutObjectConfigFileWithBodyWithResponse(ctx context.Context, namespace InPathNamespace, kind InPathKind, name InPathName, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*PutObjectConfigFileResponse, error)
-
-	// GetObjectConfigGetWithResponse request
-	GetObjectConfigGetWithResponse(ctx context.Context, namespace InPathNamespace, kind InPathKind, name InPathName, params *GetObjectConfigGetParams, reqEditors ...RequestEditorFn) (*GetObjectConfigGetResponse, error)
-
-	// PostObjectConfigUpdateWithResponse request
-	PostObjectConfigUpdateWithResponse(ctx context.Context, namespace InPathNamespace, kind InPathKind, name InPathName, params *PostObjectConfigUpdateParams, reqEditors ...RequestEditorFn) (*PostObjectConfigUpdateResponse, error)
 
 	// GetObjectDataWithResponse request
 	GetObjectDataWithResponse(ctx context.Context, namespace InPathNamespace, kind InPathKind, name InPathName, params *GetObjectDataParams, reqEditors ...RequestEditorFn) (*GetObjectDataResponse, error)
@@ -11047,6 +11065,57 @@ func (r PostClusterActionUnfreezeResponse) StatusCode() int {
 	return 0
 }
 
+type GetClusterConfigResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	JSON200      *KeywordList
+	JSON400      *N400
+	JSON401      *N401
+	JSON403      *N403
+	JSON500      *N500
+}
+
+// Status returns HTTPResponse.Status
+func (r GetClusterConfigResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r GetClusterConfigResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+type PatchClusterConfigResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	JSON400      *N400
+	JSON401      *N401
+	JSON403      *N403
+	JSON500      *N500
+}
+
+// Status returns HTTPResponse.Status
+func (r PatchClusterConfigResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r PatchClusterConfigResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
 type GetClusterConfigFileResponse struct {
 	Body         []byte
 	HTTPResponse *http.Response
@@ -11099,7 +11168,7 @@ func (r PutClusterConfigFileResponse) StatusCode() int {
 	return 0
 }
 
-type PostDaemonJoinResponse struct {
+type PostClusterJoinResponse struct {
 	Body         []byte
 	HTTPResponse *http.Response
 	JSON400      *N400
@@ -11109,7 +11178,7 @@ type PostDaemonJoinResponse struct {
 }
 
 // Status returns HTTPResponse.Status
-func (r PostDaemonJoinResponse) Status() string {
+func (r PostClusterJoinResponse) Status() string {
 	if r.HTTPResponse != nil {
 		return r.HTTPResponse.Status
 	}
@@ -11117,21 +11186,21 @@ func (r PostDaemonJoinResponse) Status() string {
 }
 
 // StatusCode returns HTTPResponse.StatusCode
-func (r PostDaemonJoinResponse) StatusCode() int {
+func (r PostClusterJoinResponse) StatusCode() int {
 	if r.HTTPResponse != nil {
 		return r.HTTPResponse.StatusCode
 	}
 	return 0
 }
 
-type PostDaemonLeaveResponse struct {
+type PostClusterLeaveResponse struct {
 	Body         []byte
 	HTTPResponse *http.Response
 	JSON400      *N400
 }
 
 // Status returns HTTPResponse.Status
-func (r PostDaemonLeaveResponse) Status() string {
+func (r PostClusterLeaveResponse) Status() string {
 	if r.HTTPResponse != nil {
 		return r.HTTPResponse.Status
 	}
@@ -11139,25 +11208,24 @@ func (r PostDaemonLeaveResponse) Status() string {
 }
 
 // StatusCode returns HTTPResponse.StatusCode
-func (r PostDaemonLeaveResponse) StatusCode() int {
+func (r PostClusterLeaveResponse) StatusCode() int {
 	if r.HTTPResponse != nil {
 		return r.HTTPResponse.StatusCode
 	}
 	return 0
 }
 
-type PostDaemonLogControlResponse struct {
+type GetClusterStatusResponse struct {
 	Body         []byte
 	HTTPResponse *http.Response
-	JSON200      *N200
-	JSON400      *N400
+	JSON200      *ClusterStatus
 	JSON401      *N401
 	JSON403      *N403
 	JSON500      *N500
 }
 
 // Status returns HTTPResponse.Status
-func (r PostDaemonLogControlResponse) Status() string {
+func (r GetClusterStatusResponse) Status() string {
 	if r.HTTPResponse != nil {
 		return r.HTTPResponse.Status
 	}
@@ -11165,57 +11233,7 @@ func (r PostDaemonLogControlResponse) Status() string {
 }
 
 // StatusCode returns HTTPResponse.StatusCode
-func (r PostDaemonLogControlResponse) StatusCode() int {
-	if r.HTTPResponse != nil {
-		return r.HTTPResponse.StatusCode
-	}
-	return 0
-}
-
-type GetDaemonStatusResponse struct {
-	Body         []byte
-	HTTPResponse *http.Response
-	JSON200      *DaemonStatus
-	JSON401      *N401
-	JSON403      *N403
-	JSON500      *N500
-}
-
-// Status returns HTTPResponse.Status
-func (r GetDaemonStatusResponse) Status() string {
-	if r.HTTPResponse != nil {
-		return r.HTTPResponse.Status
-	}
-	return http.StatusText(0)
-}
-
-// StatusCode returns HTTPResponse.StatusCode
-func (r GetDaemonStatusResponse) StatusCode() int {
-	if r.HTTPResponse != nil {
-		return r.HTTPResponse.StatusCode
-	}
-	return 0
-}
-
-type GetDNSDumpResponse struct {
-	Body         []byte
-	HTTPResponse *http.Response
-	JSON200      *DNSZone
-	JSON401      *N401
-	JSON403      *N403
-	JSON500      *N500
-}
-
-// Status returns HTTPResponse.Status
-func (r GetDNSDumpResponse) Status() string {
-	if r.HTTPResponse != nil {
-		return r.HTTPResponse.Status
-	}
-	return http.StatusText(0)
-}
-
-// StatusCode returns HTTPResponse.StatusCode
-func (r GetDNSDumpResponse) StatusCode() int {
+func (r GetClusterStatusResponse) StatusCode() int {
 	if r.HTTPResponse != nil {
 		return r.HTTPResponse.StatusCode
 	}
@@ -11713,7 +11731,7 @@ func (r GetNodeCapabilitiesResponse) StatusCode() int {
 type GetNodeConfigResponse struct {
 	Body         []byte
 	HTTPResponse *http.Response
-	JSON200      *ObjectConfig
+	JSON200      *KeywordList
 	JSON400      *N400
 	JSON401      *N401
 	JSON403      *N403
@@ -11730,6 +11748,32 @@ func (r GetNodeConfigResponse) Status() string {
 
 // StatusCode returns HTTPResponse.StatusCode
 func (r GetNodeConfigResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+type PatchNodeConfigResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	JSON200      *Committed
+	JSON400      *N400
+	JSON401      *N401
+	JSON403      *N403
+	JSON500      *N500
+}
+
+// Status returns HTTPResponse.Status
+func (r PatchNodeConfigResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r PatchNodeConfigResponse) StatusCode() int {
 	if r.HTTPResponse != nil {
 		return r.HTTPResponse.StatusCode
 	}
@@ -11782,58 +11826,6 @@ func (r PutNodeConfigFileResponse) Status() string {
 
 // StatusCode returns HTTPResponse.StatusCode
 func (r PutNodeConfigFileResponse) StatusCode() int {
-	if r.HTTPResponse != nil {
-		return r.HTTPResponse.StatusCode
-	}
-	return 0
-}
-
-type GetNodeConfigGetResponse struct {
-	Body         []byte
-	HTTPResponse *http.Response
-	JSON200      *KeywordList
-	JSON400      *N400
-	JSON401      *N401
-	JSON403      *N403
-	JSON500      *N500
-}
-
-// Status returns HTTPResponse.Status
-func (r GetNodeConfigGetResponse) Status() string {
-	if r.HTTPResponse != nil {
-		return r.HTTPResponse.Status
-	}
-	return http.StatusText(0)
-}
-
-// StatusCode returns HTTPResponse.StatusCode
-func (r GetNodeConfigGetResponse) StatusCode() int {
-	if r.HTTPResponse != nil {
-		return r.HTTPResponse.StatusCode
-	}
-	return 0
-}
-
-type PostNodeConfigUpdateResponse struct {
-	Body         []byte
-	HTTPResponse *http.Response
-	JSON200      *Committed
-	JSON400      *N400
-	JSON401      *N401
-	JSON403      *N403
-	JSON500      *N500
-}
-
-// Status returns HTTPResponse.Status
-func (r PostNodeConfigUpdateResponse) Status() string {
-	if r.HTTPResponse != nil {
-		return r.HTTPResponse.Status
-	}
-	return http.StatusText(0)
-}
-
-// StatusCode returns HTTPResponse.StatusCode
-func (r PostNodeConfigUpdateResponse) StatusCode() int {
 	if r.HTTPResponse != nil {
 		return r.HTTPResponse.StatusCode
 	}
@@ -11912,6 +11904,31 @@ func (r PostDaemonStopResponse) Status() string {
 
 // StatusCode returns HTTPResponse.StatusCode
 func (r PostDaemonStopResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+type GetDaemonDNSDumpResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	JSON200      *DNSZone
+	JSON401      *N401
+	JSON403      *N403
+	JSON500      *N500
+}
+
+// Status returns HTTPResponse.Status
+func (r GetDaemonDNSDumpResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r GetDaemonDNSDumpResponse) StatusCode() int {
 	if r.HTTPResponse != nil {
 		return r.HTTPResponse.StatusCode
 	}
@@ -12119,6 +12136,32 @@ func (r PostDaemonListenerLogControlResponse) Status() string {
 
 // StatusCode returns HTTPResponse.StatusCode
 func (r PostDaemonListenerLogControlResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+type PostDaemonLogControlResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	JSON200      *N200
+	JSON400      *N400
+	JSON401      *N401
+	JSON403      *N403
+	JSON500      *N500
+}
+
+// Status returns HTTPResponse.Status
+func (r PostDaemonLogControlResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r PostDaemonLogControlResponse) StatusCode() int {
 	if r.HTTPResponse != nil {
 		return r.HTTPResponse.StatusCode
 	}
@@ -13734,7 +13777,7 @@ func (r PostObjectActionUnprovisionResponse) StatusCode() int {
 type GetObjectConfigResponse struct {
 	Body         []byte
 	HTTPResponse *http.Response
-	JSON200      *ObjectConfig
+	JSON200      *KeywordList
 	JSON400      *N400
 	JSON401      *N401
 	JSON403      *N403
@@ -13751,6 +13794,31 @@ func (r GetObjectConfigResponse) Status() string {
 
 // StatusCode returns HTTPResponse.StatusCode
 func (r GetObjectConfigResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+type PatchObjectConfigResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	JSON400      *N400
+	JSON401      *N401
+	JSON403      *N403
+	JSON500      *N500
+}
+
+// Status returns HTTPResponse.Status
+func (r PatchObjectConfigResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r PatchObjectConfigResponse) StatusCode() int {
 	if r.HTTPResponse != nil {
 		return r.HTTPResponse.StatusCode
 	}
@@ -13830,57 +13898,6 @@ func (r PutObjectConfigFileResponse) Status() string {
 
 // StatusCode returns HTTPResponse.StatusCode
 func (r PutObjectConfigFileResponse) StatusCode() int {
-	if r.HTTPResponse != nil {
-		return r.HTTPResponse.StatusCode
-	}
-	return 0
-}
-
-type GetObjectConfigGetResponse struct {
-	Body         []byte
-	HTTPResponse *http.Response
-	JSON200      *KeywordList
-	JSON400      *N400
-	JSON401      *N401
-	JSON403      *N403
-	JSON500      *N500
-}
-
-// Status returns HTTPResponse.Status
-func (r GetObjectConfigGetResponse) Status() string {
-	if r.HTTPResponse != nil {
-		return r.HTTPResponse.Status
-	}
-	return http.StatusText(0)
-}
-
-// StatusCode returns HTTPResponse.StatusCode
-func (r GetObjectConfigGetResponse) StatusCode() int {
-	if r.HTTPResponse != nil {
-		return r.HTTPResponse.StatusCode
-	}
-	return 0
-}
-
-type PostObjectConfigUpdateResponse struct {
-	Body         []byte
-	HTTPResponse *http.Response
-	JSON400      *N400
-	JSON401      *N401
-	JSON403      *N403
-	JSON500      *N500
-}
-
-// Status returns HTTPResponse.Status
-func (r PostObjectConfigUpdateResponse) Status() string {
-	if r.HTTPResponse != nil {
-		return r.HTTPResponse.Status
-	}
-	return http.StatusText(0)
-}
-
-// StatusCode returns HTTPResponse.StatusCode
-func (r PostObjectConfigUpdateResponse) StatusCode() int {
 	if r.HTTPResponse != nil {
 		return r.HTTPResponse.StatusCode
 	}
@@ -14352,6 +14369,24 @@ func (c *ClientWithResponses) PostClusterActionUnfreezeWithResponse(ctx context.
 	return ParsePostClusterActionUnfreezeResponse(rsp)
 }
 
+// GetClusterConfigWithResponse request returning *GetClusterConfigResponse
+func (c *ClientWithResponses) GetClusterConfigWithResponse(ctx context.Context, params *GetClusterConfigParams, reqEditors ...RequestEditorFn) (*GetClusterConfigResponse, error) {
+	rsp, err := c.GetClusterConfig(ctx, params, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseGetClusterConfigResponse(rsp)
+}
+
+// PatchClusterConfigWithResponse request returning *PatchClusterConfigResponse
+func (c *ClientWithResponses) PatchClusterConfigWithResponse(ctx context.Context, params *PatchClusterConfigParams, reqEditors ...RequestEditorFn) (*PatchClusterConfigResponse, error) {
+	rsp, err := c.PatchClusterConfig(ctx, params, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParsePatchClusterConfigResponse(rsp)
+}
+
 // GetClusterConfigFileWithResponse request returning *GetClusterConfigFileResponse
 func (c *ClientWithResponses) GetClusterConfigFileWithResponse(ctx context.Context, reqEditors ...RequestEditorFn) (*GetClusterConfigFileResponse, error) {
 	rsp, err := c.GetClusterConfigFile(ctx, reqEditors...)
@@ -14370,57 +14405,31 @@ func (c *ClientWithResponses) PutClusterConfigFileWithBodyWithResponse(ctx conte
 	return ParsePutClusterConfigFileResponse(rsp)
 }
 
-// PostDaemonJoinWithResponse request returning *PostDaemonJoinResponse
-func (c *ClientWithResponses) PostDaemonJoinWithResponse(ctx context.Context, params *PostDaemonJoinParams, reqEditors ...RequestEditorFn) (*PostDaemonJoinResponse, error) {
-	rsp, err := c.PostDaemonJoin(ctx, params, reqEditors...)
+// PostClusterJoinWithResponse request returning *PostClusterJoinResponse
+func (c *ClientWithResponses) PostClusterJoinWithResponse(ctx context.Context, params *PostClusterJoinParams, reqEditors ...RequestEditorFn) (*PostClusterJoinResponse, error) {
+	rsp, err := c.PostClusterJoin(ctx, params, reqEditors...)
 	if err != nil {
 		return nil, err
 	}
-	return ParsePostDaemonJoinResponse(rsp)
+	return ParsePostClusterJoinResponse(rsp)
 }
 
-// PostDaemonLeaveWithResponse request returning *PostDaemonLeaveResponse
-func (c *ClientWithResponses) PostDaemonLeaveWithResponse(ctx context.Context, params *PostDaemonLeaveParams, reqEditors ...RequestEditorFn) (*PostDaemonLeaveResponse, error) {
-	rsp, err := c.PostDaemonLeave(ctx, params, reqEditors...)
+// PostClusterLeaveWithResponse request returning *PostClusterLeaveResponse
+func (c *ClientWithResponses) PostClusterLeaveWithResponse(ctx context.Context, params *PostClusterLeaveParams, reqEditors ...RequestEditorFn) (*PostClusterLeaveResponse, error) {
+	rsp, err := c.PostClusterLeave(ctx, params, reqEditors...)
 	if err != nil {
 		return nil, err
 	}
-	return ParsePostDaemonLeaveResponse(rsp)
+	return ParsePostClusterLeaveResponse(rsp)
 }
 
-// PostDaemonLogControlWithBodyWithResponse request with arbitrary body returning *PostDaemonLogControlResponse
-func (c *ClientWithResponses) PostDaemonLogControlWithBodyWithResponse(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*PostDaemonLogControlResponse, error) {
-	rsp, err := c.PostDaemonLogControlWithBody(ctx, contentType, body, reqEditors...)
+// GetClusterStatusWithResponse request returning *GetClusterStatusResponse
+func (c *ClientWithResponses) GetClusterStatusWithResponse(ctx context.Context, params *GetClusterStatusParams, reqEditors ...RequestEditorFn) (*GetClusterStatusResponse, error) {
+	rsp, err := c.GetClusterStatus(ctx, params, reqEditors...)
 	if err != nil {
 		return nil, err
 	}
-	return ParsePostDaemonLogControlResponse(rsp)
-}
-
-func (c *ClientWithResponses) PostDaemonLogControlWithResponse(ctx context.Context, body PostDaemonLogControlJSONRequestBody, reqEditors ...RequestEditorFn) (*PostDaemonLogControlResponse, error) {
-	rsp, err := c.PostDaemonLogControl(ctx, body, reqEditors...)
-	if err != nil {
-		return nil, err
-	}
-	return ParsePostDaemonLogControlResponse(rsp)
-}
-
-// GetDaemonStatusWithResponse request returning *GetDaemonStatusResponse
-func (c *ClientWithResponses) GetDaemonStatusWithResponse(ctx context.Context, params *GetDaemonStatusParams, reqEditors ...RequestEditorFn) (*GetDaemonStatusResponse, error) {
-	rsp, err := c.GetDaemonStatus(ctx, params, reqEditors...)
-	if err != nil {
-		return nil, err
-	}
-	return ParseGetDaemonStatusResponse(rsp)
-}
-
-// GetDNSDumpWithResponse request returning *GetDNSDumpResponse
-func (c *ClientWithResponses) GetDNSDumpWithResponse(ctx context.Context, reqEditors ...RequestEditorFn) (*GetDNSDumpResponse, error) {
-	rsp, err := c.GetDNSDump(ctx, reqEditors...)
-	if err != nil {
-		return nil, err
-	}
-	return ParseGetDNSDumpResponse(rsp)
+	return ParseGetClusterStatusResponse(rsp)
 }
 
 // GetInstancesWithResponse request returning *GetInstancesResponse
@@ -14619,6 +14628,15 @@ func (c *ClientWithResponses) GetNodeConfigWithResponse(ctx context.Context, nod
 	return ParseGetNodeConfigResponse(rsp)
 }
 
+// PatchNodeConfigWithResponse request returning *PatchNodeConfigResponse
+func (c *ClientWithResponses) PatchNodeConfigWithResponse(ctx context.Context, nodename InPathNodeName, params *PatchNodeConfigParams, reqEditors ...RequestEditorFn) (*PatchNodeConfigResponse, error) {
+	rsp, err := c.PatchNodeConfig(ctx, nodename, params, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParsePatchNodeConfigResponse(rsp)
+}
+
 // GetNodeConfigFileWithResponse request returning *GetNodeConfigFileResponse
 func (c *ClientWithResponses) GetNodeConfigFileWithResponse(ctx context.Context, nodename InPathNodeName, reqEditors ...RequestEditorFn) (*GetNodeConfigFileResponse, error) {
 	rsp, err := c.GetNodeConfigFile(ctx, nodename, reqEditors...)
@@ -14635,24 +14653,6 @@ func (c *ClientWithResponses) PutNodeConfigFileWithBodyWithResponse(ctx context.
 		return nil, err
 	}
 	return ParsePutNodeConfigFileResponse(rsp)
-}
-
-// GetNodeConfigGetWithResponse request returning *GetNodeConfigGetResponse
-func (c *ClientWithResponses) GetNodeConfigGetWithResponse(ctx context.Context, nodename InPathNodeName, params *GetNodeConfigGetParams, reqEditors ...RequestEditorFn) (*GetNodeConfigGetResponse, error) {
-	rsp, err := c.GetNodeConfigGet(ctx, nodename, params, reqEditors...)
-	if err != nil {
-		return nil, err
-	}
-	return ParseGetNodeConfigGetResponse(rsp)
-}
-
-// PostNodeConfigUpdateWithResponse request returning *PostNodeConfigUpdateResponse
-func (c *ClientWithResponses) PostNodeConfigUpdateWithResponse(ctx context.Context, nodename InPathNodeName, params *PostNodeConfigUpdateParams, reqEditors ...RequestEditorFn) (*PostNodeConfigUpdateResponse, error) {
-	rsp, err := c.PostNodeConfigUpdate(ctx, nodename, params, reqEditors...)
-	if err != nil {
-		return nil, err
-	}
-	return ParsePostNodeConfigUpdateResponse(rsp)
 }
 
 // PostDaemonRestartWithResponse request returning *PostDaemonRestartResponse
@@ -14680,6 +14680,15 @@ func (c *ClientWithResponses) PostDaemonStopWithResponse(ctx context.Context, no
 		return nil, err
 	}
 	return ParsePostDaemonStopResponse(rsp)
+}
+
+// GetDaemonDNSDumpWithResponse request returning *GetDaemonDNSDumpResponse
+func (c *ClientWithResponses) GetDaemonDNSDumpWithResponse(ctx context.Context, nodename InPathNodeName, reqEditors ...RequestEditorFn) (*GetDaemonDNSDumpResponse, error) {
+	rsp, err := c.GetDaemonDNSDump(ctx, nodename, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseGetDaemonDNSDumpResponse(rsp)
 }
 
 // GetDaemonEventsWithResponse request returning *GetDaemonEventsResponse
@@ -14760,6 +14769,23 @@ func (c *ClientWithResponses) PostDaemonListenerLogControlWithResponse(ctx conte
 		return nil, err
 	}
 	return ParsePostDaemonListenerLogControlResponse(rsp)
+}
+
+// PostDaemonLogControlWithBodyWithResponse request with arbitrary body returning *PostDaemonLogControlResponse
+func (c *ClientWithResponses) PostDaemonLogControlWithBodyWithResponse(ctx context.Context, nodename InPathNodeName, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*PostDaemonLogControlResponse, error) {
+	rsp, err := c.PostDaemonLogControlWithBody(ctx, nodename, contentType, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParsePostDaemonLogControlResponse(rsp)
+}
+
+func (c *ClientWithResponses) PostDaemonLogControlWithResponse(ctx context.Context, nodename InPathNodeName, body PostDaemonLogControlJSONRequestBody, reqEditors ...RequestEditorFn) (*PostDaemonLogControlResponse, error) {
+	rsp, err := c.PostDaemonLogControl(ctx, nodename, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParsePostDaemonLogControlResponse(rsp)
 }
 
 // GetNodeDRBDAllocationWithResponse request returning *GetNodeDRBDAllocationResponse
@@ -15344,6 +15370,15 @@ func (c *ClientWithResponses) GetObjectConfigWithResponse(ctx context.Context, n
 	return ParseGetObjectConfigResponse(rsp)
 }
 
+// PatchObjectConfigWithResponse request returning *PatchObjectConfigResponse
+func (c *ClientWithResponses) PatchObjectConfigWithResponse(ctx context.Context, namespace InPathNamespace, kind InPathKind, name InPathName, params *PatchObjectConfigParams, reqEditors ...RequestEditorFn) (*PatchObjectConfigResponse, error) {
+	rsp, err := c.PatchObjectConfig(ctx, namespace, kind, name, params, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParsePatchObjectConfigResponse(rsp)
+}
+
 // GetObjectConfigFileWithResponse request returning *GetObjectConfigFileResponse
 func (c *ClientWithResponses) GetObjectConfigFileWithResponse(ctx context.Context, namespace InPathNamespace, kind InPathKind, name InPathName, reqEditors ...RequestEditorFn) (*GetObjectConfigFileResponse, error) {
 	rsp, err := c.GetObjectConfigFile(ctx, namespace, kind, name, reqEditors...)
@@ -15369,24 +15404,6 @@ func (c *ClientWithResponses) PutObjectConfigFileWithBodyWithResponse(ctx contex
 		return nil, err
 	}
 	return ParsePutObjectConfigFileResponse(rsp)
-}
-
-// GetObjectConfigGetWithResponse request returning *GetObjectConfigGetResponse
-func (c *ClientWithResponses) GetObjectConfigGetWithResponse(ctx context.Context, namespace InPathNamespace, kind InPathKind, name InPathName, params *GetObjectConfigGetParams, reqEditors ...RequestEditorFn) (*GetObjectConfigGetResponse, error) {
-	rsp, err := c.GetObjectConfigGet(ctx, namespace, kind, name, params, reqEditors...)
-	if err != nil {
-		return nil, err
-	}
-	return ParseGetObjectConfigGetResponse(rsp)
-}
-
-// PostObjectConfigUpdateWithResponse request returning *PostObjectConfigUpdateResponse
-func (c *ClientWithResponses) PostObjectConfigUpdateWithResponse(ctx context.Context, namespace InPathNamespace, kind InPathKind, name InPathName, params *PostObjectConfigUpdateParams, reqEditors ...RequestEditorFn) (*PostObjectConfigUpdateResponse, error) {
-	rsp, err := c.PostObjectConfigUpdate(ctx, namespace, kind, name, params, reqEditors...)
-	if err != nil {
-		return nil, err
-	}
-	return ParsePostObjectConfigUpdateResponse(rsp)
 }
 
 // GetObjectDataWithResponse request returning *GetObjectDataResponse
@@ -15887,6 +15904,107 @@ func ParsePostClusterActionUnfreezeResponse(rsp *http.Response) (*PostClusterAct
 	return response, nil
 }
 
+// ParseGetClusterConfigResponse parses an HTTP response from a GetClusterConfigWithResponse call
+func ParseGetClusterConfigResponse(rsp *http.Response) (*GetClusterConfigResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &GetClusterConfigResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest KeywordList
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
+		var dest N400
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON400 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest N401
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest N403
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON403 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
+		var dest N500
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON500 = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParsePatchClusterConfigResponse parses an HTTP response from a PatchClusterConfigWithResponse call
+func ParsePatchClusterConfigResponse(rsp *http.Response) (*PatchClusterConfigResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &PatchClusterConfigResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
+		var dest N400
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON400 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest N401
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest N403
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON403 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
+		var dest N500
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON500 = &dest
+
+	}
+
+	return response, nil
+}
+
 // ParseGetClusterConfigFileResponse parses an HTTP response from a GetClusterConfigFileWithResponse call
 func ParseGetClusterConfigFileResponse(rsp *http.Response) (*GetClusterConfigFileResponse, error) {
 	bodyBytes, err := io.ReadAll(rsp.Body)
@@ -15995,15 +16113,15 @@ func ParsePutClusterConfigFileResponse(rsp *http.Response) (*PutClusterConfigFil
 	return response, nil
 }
 
-// ParsePostDaemonJoinResponse parses an HTTP response from a PostDaemonJoinWithResponse call
-func ParsePostDaemonJoinResponse(rsp *http.Response) (*PostDaemonJoinResponse, error) {
+// ParsePostClusterJoinResponse parses an HTTP response from a PostClusterJoinWithResponse call
+func ParsePostClusterJoinResponse(rsp *http.Response) (*PostClusterJoinResponse, error) {
 	bodyBytes, err := io.ReadAll(rsp.Body)
 	defer func() { _ = rsp.Body.Close() }()
 	if err != nil {
 		return nil, err
 	}
 
-	response := &PostDaemonJoinResponse{
+	response := &PostClusterJoinResponse{
 		Body:         bodyBytes,
 		HTTPResponse: rsp,
 	}
@@ -16042,15 +16160,15 @@ func ParsePostDaemonJoinResponse(rsp *http.Response) (*PostDaemonJoinResponse, e
 	return response, nil
 }
 
-// ParsePostDaemonLeaveResponse parses an HTTP response from a PostDaemonLeaveWithResponse call
-func ParsePostDaemonLeaveResponse(rsp *http.Response) (*PostDaemonLeaveResponse, error) {
+// ParsePostClusterLeaveResponse parses an HTTP response from a PostClusterLeaveWithResponse call
+func ParsePostClusterLeaveResponse(rsp *http.Response) (*PostClusterLeaveResponse, error) {
 	bodyBytes, err := io.ReadAll(rsp.Body)
 	defer func() { _ = rsp.Body.Close() }()
 	if err != nil {
 		return nil, err
 	}
 
-	response := &PostDaemonLeaveResponse{
+	response := &PostClusterLeaveResponse{
 		Body:         bodyBytes,
 		HTTPResponse: rsp,
 	}
@@ -16068,123 +16186,22 @@ func ParsePostDaemonLeaveResponse(rsp *http.Response) (*PostDaemonLeaveResponse,
 	return response, nil
 }
 
-// ParsePostDaemonLogControlResponse parses an HTTP response from a PostDaemonLogControlWithResponse call
-func ParsePostDaemonLogControlResponse(rsp *http.Response) (*PostDaemonLogControlResponse, error) {
+// ParseGetClusterStatusResponse parses an HTTP response from a GetClusterStatusWithResponse call
+func ParseGetClusterStatusResponse(rsp *http.Response) (*GetClusterStatusResponse, error) {
 	bodyBytes, err := io.ReadAll(rsp.Body)
 	defer func() { _ = rsp.Body.Close() }()
 	if err != nil {
 		return nil, err
 	}
 
-	response := &PostDaemonLogControlResponse{
+	response := &GetClusterStatusResponse{
 		Body:         bodyBytes,
 		HTTPResponse: rsp,
 	}
 
 	switch {
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
-		var dest N200
-		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
-			return nil, err
-		}
-		response.JSON200 = &dest
-
-	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
-		var dest N400
-		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
-			return nil, err
-		}
-		response.JSON400 = &dest
-
-	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
-		var dest N401
-		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
-			return nil, err
-		}
-		response.JSON401 = &dest
-
-	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
-		var dest N403
-		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
-			return nil, err
-		}
-		response.JSON403 = &dest
-
-	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
-		var dest N500
-		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
-			return nil, err
-		}
-		response.JSON500 = &dest
-
-	}
-
-	return response, nil
-}
-
-// ParseGetDaemonStatusResponse parses an HTTP response from a GetDaemonStatusWithResponse call
-func ParseGetDaemonStatusResponse(rsp *http.Response) (*GetDaemonStatusResponse, error) {
-	bodyBytes, err := io.ReadAll(rsp.Body)
-	defer func() { _ = rsp.Body.Close() }()
-	if err != nil {
-		return nil, err
-	}
-
-	response := &GetDaemonStatusResponse{
-		Body:         bodyBytes,
-		HTTPResponse: rsp,
-	}
-
-	switch {
-	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
-		var dest DaemonStatus
-		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
-			return nil, err
-		}
-		response.JSON200 = &dest
-
-	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
-		var dest N401
-		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
-			return nil, err
-		}
-		response.JSON401 = &dest
-
-	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
-		var dest N403
-		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
-			return nil, err
-		}
-		response.JSON403 = &dest
-
-	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
-		var dest N500
-		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
-			return nil, err
-		}
-		response.JSON500 = &dest
-
-	}
-
-	return response, nil
-}
-
-// ParseGetDNSDumpResponse parses an HTTP response from a GetDNSDumpWithResponse call
-func ParseGetDNSDumpResponse(rsp *http.Response) (*GetDNSDumpResponse, error) {
-	bodyBytes, err := io.ReadAll(rsp.Body)
-	defer func() { _ = rsp.Body.Close() }()
-	if err != nil {
-		return nil, err
-	}
-
-	response := &GetDNSDumpResponse{
-		Body:         bodyBytes,
-		HTTPResponse: rsp,
-	}
-
-	switch {
-	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
-		var dest DNSZone
+		var dest ClusterStatus
 		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
 			return nil, err
 		}
@@ -17215,7 +17232,61 @@ func ParseGetNodeConfigResponse(rsp *http.Response) (*GetNodeConfigResponse, err
 
 	switch {
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
-		var dest ObjectConfig
+		var dest KeywordList
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
+		var dest N400
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON400 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest N401
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest N403
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON403 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
+		var dest N500
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON500 = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParsePatchNodeConfigResponse parses an HTTP response from a PatchNodeConfigWithResponse call
+func ParsePatchNodeConfigResponse(rsp *http.Response) (*PatchNodeConfigResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &PatchNodeConfigResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest Committed
 		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
 			return nil, err
 		}
@@ -17349,114 +17420,6 @@ func ParsePutNodeConfigFileResponse(rsp *http.Response) (*PutNodeConfigFileRespo
 			return nil, err
 		}
 		response.JSON409 = &dest
-
-	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
-		var dest N500
-		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
-			return nil, err
-		}
-		response.JSON500 = &dest
-
-	}
-
-	return response, nil
-}
-
-// ParseGetNodeConfigGetResponse parses an HTTP response from a GetNodeConfigGetWithResponse call
-func ParseGetNodeConfigGetResponse(rsp *http.Response) (*GetNodeConfigGetResponse, error) {
-	bodyBytes, err := io.ReadAll(rsp.Body)
-	defer func() { _ = rsp.Body.Close() }()
-	if err != nil {
-		return nil, err
-	}
-
-	response := &GetNodeConfigGetResponse{
-		Body:         bodyBytes,
-		HTTPResponse: rsp,
-	}
-
-	switch {
-	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
-		var dest KeywordList
-		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
-			return nil, err
-		}
-		response.JSON200 = &dest
-
-	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
-		var dest N400
-		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
-			return nil, err
-		}
-		response.JSON400 = &dest
-
-	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
-		var dest N401
-		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
-			return nil, err
-		}
-		response.JSON401 = &dest
-
-	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
-		var dest N403
-		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
-			return nil, err
-		}
-		response.JSON403 = &dest
-
-	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
-		var dest N500
-		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
-			return nil, err
-		}
-		response.JSON500 = &dest
-
-	}
-
-	return response, nil
-}
-
-// ParsePostNodeConfigUpdateResponse parses an HTTP response from a PostNodeConfigUpdateWithResponse call
-func ParsePostNodeConfigUpdateResponse(rsp *http.Response) (*PostNodeConfigUpdateResponse, error) {
-	bodyBytes, err := io.ReadAll(rsp.Body)
-	defer func() { _ = rsp.Body.Close() }()
-	if err != nil {
-		return nil, err
-	}
-
-	response := &PostNodeConfigUpdateResponse{
-		Body:         bodyBytes,
-		HTTPResponse: rsp,
-	}
-
-	switch {
-	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
-		var dest Committed
-		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
-			return nil, err
-		}
-		response.JSON200 = &dest
-
-	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
-		var dest N400
-		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
-			return nil, err
-		}
-		response.JSON400 = &dest
-
-	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
-		var dest N401
-		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
-			return nil, err
-		}
-		response.JSON401 = &dest
-
-	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
-		var dest N403
-		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
-			return nil, err
-		}
-		response.JSON403 = &dest
 
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
 		var dest N500
@@ -17605,6 +17568,53 @@ func ParsePostDaemonStopResponse(rsp *http.Response) (*PostDaemonStopResponse, e
 			return nil, err
 		}
 		response.JSON400 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest N401
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest N403
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON403 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
+		var dest N500
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON500 = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseGetDaemonDNSDumpResponse parses an HTTP response from a GetDaemonDNSDumpWithResponse call
+func ParseGetDaemonDNSDumpResponse(rsp *http.Response) (*GetDaemonDNSDumpResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &GetDaemonDNSDumpResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest DNSZone
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
 
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
 		var dest N401
@@ -18012,6 +18022,60 @@ func ParsePostDaemonListenerLogControlResponse(rsp *http.Response) (*PostDaemonL
 	}
 
 	response := &PostDaemonListenerLogControlResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest N200
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
+		var dest N400
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON400 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest N401
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest N403
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON403 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
+		var dest N500
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON500 = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParsePostDaemonLogControlResponse parses an HTTP response from a PostDaemonLogControlWithResponse call
+func ParsePostDaemonLogControlResponse(rsp *http.Response) (*PostDaemonLogControlResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &PostDaemonLogControlResponse{
 		Body:         bodyBytes,
 		HTTPResponse: rsp,
 	}
@@ -21506,12 +21570,59 @@ func ParseGetObjectConfigResponse(rsp *http.Response) (*GetObjectConfigResponse,
 
 	switch {
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
-		var dest ObjectConfig
+		var dest KeywordList
 		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
 			return nil, err
 		}
 		response.JSON200 = &dest
 
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
+		var dest N400
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON400 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest N401
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest N403
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON403 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
+		var dest N500
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON500 = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParsePatchObjectConfigResponse parses an HTTP response from a PatchObjectConfigWithResponse call
+func ParsePatchObjectConfigResponse(rsp *http.Response) (*PatchObjectConfigResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &PatchObjectConfigResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
 		var dest N400
 		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
@@ -21701,107 +21812,6 @@ func ParsePutObjectConfigFileResponse(rsp *http.Response) (*PutObjectConfigFileR
 			return nil, err
 		}
 		response.JSON409 = &dest
-
-	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
-		var dest N500
-		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
-			return nil, err
-		}
-		response.JSON500 = &dest
-
-	}
-
-	return response, nil
-}
-
-// ParseGetObjectConfigGetResponse parses an HTTP response from a GetObjectConfigGetWithResponse call
-func ParseGetObjectConfigGetResponse(rsp *http.Response) (*GetObjectConfigGetResponse, error) {
-	bodyBytes, err := io.ReadAll(rsp.Body)
-	defer func() { _ = rsp.Body.Close() }()
-	if err != nil {
-		return nil, err
-	}
-
-	response := &GetObjectConfigGetResponse{
-		Body:         bodyBytes,
-		HTTPResponse: rsp,
-	}
-
-	switch {
-	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
-		var dest KeywordList
-		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
-			return nil, err
-		}
-		response.JSON200 = &dest
-
-	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
-		var dest N400
-		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
-			return nil, err
-		}
-		response.JSON400 = &dest
-
-	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
-		var dest N401
-		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
-			return nil, err
-		}
-		response.JSON401 = &dest
-
-	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
-		var dest N403
-		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
-			return nil, err
-		}
-		response.JSON403 = &dest
-
-	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
-		var dest N500
-		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
-			return nil, err
-		}
-		response.JSON500 = &dest
-
-	}
-
-	return response, nil
-}
-
-// ParsePostObjectConfigUpdateResponse parses an HTTP response from a PostObjectConfigUpdateWithResponse call
-func ParsePostObjectConfigUpdateResponse(rsp *http.Response) (*PostObjectConfigUpdateResponse, error) {
-	bodyBytes, err := io.ReadAll(rsp.Body)
-	defer func() { _ = rsp.Body.Close() }()
-	if err != nil {
-		return nil, err
-	}
-
-	response := &PostObjectConfigUpdateResponse{
-		Body:         bodyBytes,
-		HTTPResponse: rsp,
-	}
-
-	switch {
-	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
-		var dest N400
-		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
-			return nil, err
-		}
-		response.JSON400 = &dest
-
-	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
-		var dest N401
-		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
-			return nil, err
-		}
-		response.JSON401 = &dest
-
-	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
-		var dest N403
-		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
-			return nil, err
-		}
-		response.JSON403 = &dest
 
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
 		var dest N500

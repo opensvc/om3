@@ -53,14 +53,14 @@ func (t *CmdNodeConfigEval) Run() error {
 	for _, nodename := range nodenames {
 		go func(nodename string) {
 			defer func() { doneC <- nodename }()
-			params := api.GetNodeConfigGetParams{}
+			params := api.GetNodeConfigParams{}
 			params.Kw = &t.Keywords
 			v := true
 			params.Evaluate = &v
 			if t.Impersonate != "" {
 				params.Impersonate = &t.Impersonate
 			}
-			response, err := c.GetNodeConfigGetWithResponse(ctx, nodename, &params)
+			response, err := c.GetNodeConfigWithResponse(ctx, nodename, &params)
 			if err != nil {
 				errC <- err
 				return
@@ -104,9 +104,9 @@ func (t *CmdNodeConfigEval) Run() error {
 	}
 
 out:
-	defaultOutput := "tab=data.value"
+	defaultOutput := "tab=evaluated"
 	if len(l) > 1 {
-		defaultOutput = "tab=NODE:meta.node,KEYWORD:meta.keyword,VALUE:data.value,EVALUATED_AS:meta.evaluated_as"
+		defaultOutput = "tab=NODE:node,KEYWORD:keyword,VALUE:value,EVALUATED:evaluated,EVALUATED_AS:evaluated_as"
 	}
 
 	output.Renderer{

@@ -5,6 +5,7 @@ import (
 	"fmt"
 
 	"github.com/opensvc/om3/core/client"
+	"github.com/opensvc/om3/core/commoncmd"
 	"github.com/opensvc/om3/core/objectselector"
 	"github.com/opensvc/om3/core/output"
 	"github.com/opensvc/om3/core/rawconfig"
@@ -20,8 +21,8 @@ type (
 	}
 )
 
-func (t *CmdObjectConfigGet) Run(selector, kind string) error {
-	mergedSelector := mergeSelector(selector, t.ObjectSelector, kind, "")
+func (t *CmdObjectConfigGet) Run(kind string) error {
+	mergedSelector := commoncmd.MergeSelector("", t.ObjectSelector, kind, "")
 	c, err := client.New()
 	if err != nil {
 		return err
@@ -33,8 +34,10 @@ func (t *CmdObjectConfigGet) Run(selector, kind string) error {
 	}
 	l := make(api.KeywordItems, 0)
 	for _, p := range paths {
-		params := api.GetObjectConfigGetParams{}
-		params.Kw = &t.Keywords
+		params := api.GetObjectConfigParams{}
+		if len(t.Keywords) > 0 {
+			params.Kw = &t.Keywords
+		}
 		if t.Eval {
 			v := true
 			params.Evaluate = &v
@@ -42,7 +45,7 @@ func (t *CmdObjectConfigGet) Run(selector, kind string) error {
 		if t.Impersonate != "" {
 			params.Impersonate = &t.Impersonate
 		}
-		response, err := c.GetObjectConfigGetWithResponse(context.Background(), p.Namespace, p.Kind, p.Name, &params)
+		response, err := c.GetObjectConfigWithResponse(context.Background(), p.Namespace, p.Kind, p.Name, &params)
 		if err != nil {
 			return err
 		}
@@ -62,11 +65,11 @@ func (t *CmdObjectConfigGet) Run(selector, kind string) error {
 		}
 	}
 
-	defaultOutput := "tab=data.value"
+	defaultOutput := "tab=value"
 	if len(l) > 1 {
-		defaultOutput = "tab=OBJECT:meta.object,NODE=meta.node,KEYWORD:meta.keyword,VALUE:data.value"
+		defaultOutput = "tab=OBJECT:object,KEYWORD:keyword,VALUE:value"
 		if t.Eval {
-			defaultOutput += ",EVALUATED_AS:meta.evaluated_as"
+			defaultOutput += ",EVALUATED:evaluated,EVALUATED_AS:evaluated_as"
 		}
 	}
 

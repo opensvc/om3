@@ -6,6 +6,7 @@ import (
 
 	"github.com/spf13/pflag"
 
+	"github.com/opensvc/om3/core/commoncmd"
 	commands "github.com/opensvc/om3/core/omcmd"
 )
 
@@ -21,16 +22,6 @@ func addFlagsGlobalDebug(flagSet *pflag.FlagSet, p *commands.OptsGlobal) {
 	flagSet.BoolVar(&p.Debug, "debug", false, "show debug log entries")
 }
 
-func addFlagsGlobalColor(flagSet *pflag.FlagSet, p *commands.OptsGlobal) {
-	flagSet.StringVar(&p.Color, "color", "auto", "output colorization yes|no|auto")
-}
-
-func addFlagsGlobalOutput(flagSet *pflag.FlagSet, p *commands.OptsGlobal) {
-	flagSet.StringVarP(&p.Output, "output", "o", "auto", "output format json|flat|auto|tab=<header>:<jsonpath>,...")
-	flagSet.StringVar(&p.Output, "format", "auto", "output format json|flat|auto|tab=<header>:<jsonpath>,...")
-	flagSet.MarkHidden("format")
-}
-
 func addFlagsGlobalObjectSelector(flagSet *pflag.FlagSet, p *commands.OptsGlobal) {
 	flagSet.StringVarP(&p.ObjectSelector, "service", "", "", "execute on a list of objects")
 	flagSet.StringVarP(&p.ObjectSelector, "selector", "s", "", "execute on a list of objects")
@@ -41,9 +32,9 @@ func addFlagsGlobal(flagSet *pflag.FlagSet, p *commands.OptsGlobal) {
 	addFlagsGlobalLocal(flagSet, p)
 	addFlagsGlobalQuiet(flagSet, p)
 	addFlagsGlobalDebug(flagSet, p)
-	addFlagsGlobalColor(flagSet, p)
-	addFlagsGlobalOutput(flagSet, p)
-	addFlagsGlobalObjectSelector(flagSet, p)
+	commoncmd.FlagColor(flagSet, &p.Color)
+	commoncmd.FlagOutput(flagSet, &p.Output)
+	commoncmd.FlagObjectSelector(flagSet, &p.ObjectSelector)
 }
 
 func addFlagMonitor(flagSet *pflag.FlagSet, p *bool) {

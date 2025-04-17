@@ -1,5 +1,7 @@
 package ox
 
+import "github.com/opensvc/om3/core/commoncmd"
+
 func init() {
 	kind := "ccfg"
 
@@ -14,6 +16,7 @@ func init() {
 
 	root.AddCommand(
 		cmdObject,
+		commoncmd.NewCmdMonitor(),
 	)
 	cmdObject.AddCommand(
 		cmdObjectConfig,
@@ -22,18 +25,18 @@ func init() {
 		cmdObjectPrint,
 		cmdObjectSSH,
 		cmdObjectValidate,
-		newCmdClusterAbort(),
-		newCmdClusterFreeze(),
-		newCmdClusterLogs(),
-		newCmdClusterThaw(),
-		newCmdClusterUnfreeze(),
+		commoncmd.NewCmdClusterAbort(),
+		commoncmd.NewCmdClusterFreeze(),
+		commoncmd.NewCmdClusterLogs(),
+		commoncmd.NewCmdClusterThaw(),
+		commoncmd.NewCmdClusterStatus(),
+		commoncmd.NewCmdClusterUnfreeze(),
 		newCmdObjectCreate(kind),
 		newCmdObjectEval(kind),
 		newCmdObjectGet(kind),
 		newCmdObjectLogs(kind),
 		newCmdObjectList(kind),
-		newCmdObjectMonitor(kind),
-		newCmdObjectStatus(kind),
+		commoncmd.NewCmdObjectMonitor("", kind),
 		newCmdObjectUnset(kind),
 		newCmdObjectUpdate(kind),
 		newCmdTUI(kind),
@@ -53,7 +56,7 @@ func init() {
 		cmdObjectPrintConfig,
 	)
 	cmdObjectSSH.AddCommand(
-		newCmdClusterSSHTrust(),
+		commoncmd.NewCmdClusterSSHTrust(),
 	)
 	cmdObjectValidate.AddCommand(
 		newCmdObjectValidateConfig(kind),
