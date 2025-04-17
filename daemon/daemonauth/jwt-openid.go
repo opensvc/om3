@@ -2,8 +2,6 @@ package daemonauth
 
 import (
 	"context"
-	"encoding/json"
-	"io"
 	"net/http"
 	"time"
 
@@ -77,35 +75,16 @@ func initJWTOpenID(i interface{}) (string, auth.Strategy, error) {
 	if jwksUri == "" {
 		return StrategyJWTOpenID, nil, nil
 	}
-	cache := libcache.FIFO.New(0)
-	cache.SetTTL(time.Minute)
+	cache := libcache.FIFO.New(100)
+	cache.SetTTL(time.Second)
+	verifyOptionTime := func() time.Time {
+		return time.Now().Add(time.Second * 5)
+	}
 	opt := []auth.Option{
 		token.SetParser(token.AuthorizationParser("Bearer")),
+		jwt.SetVerifyOptions(claims.VerifyOptions{Time: verifyOptionTime}),
 		jwt.SetClaimResolver(&IDTokenGrant{}),
 	}
 	strategy := jwt.New(jwksUri, cache, opt...)
 	return StrategyJWTOpenID, &k{baseStrategy: strategy}, nil
-}
-
-// jwksUriFromOpenIDWellKnown fetches the JWKS URI from an OpenID Connect `.well-known` configuration URL.
-// Returns the JWKS URI as a string or an error if the URI cannot be fetched or parsed.
-func jwksUriFromOpenIDWellKnown(s string) (string, error) {
-	resp, err := http.Get(s)
-	if err != nil {
-		return "", err
-	}
-	defer resp.Body.Close()
-
-	b, err := io.ReadAll(resp.Body)
-	if err != nil {
-		return "", err
-	}
-	type IDWellKnown struct {
-		JwksUri string `json:"jwks_uri"`
-	}
-	var idWellKnown IDWellKnown
-	if err = json.Unmarshal(b, &idWellKnown); err != nil {
-		return "", err
-	}
-	return idWellKnown.JwksUri, nil
 }
