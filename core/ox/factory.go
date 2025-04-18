@@ -2268,6 +2268,27 @@ func newCmdObjectInstanceList(kind string) *cobra.Command {
 	return cmd
 }
 
+func newCmdObjectInstanceStart(kind string) *cobra.Command {
+	var options commands.CmdObjectInstanceStart
+	cmd := &cobra.Command{
+		Use: "start",
+		RunE: func(cmd *cobra.Command, args []string) error {
+			return options.Run(kind)
+		},
+	}
+	flags := cmd.Flags()
+	addFlagsGlobal(flags, &options.OptsGlobal)
+	commoncmd.FlagsLock(flags, &options.OptsLock)
+	commoncmd.FlagsResourceSelector(flags, &options.OptsResourceSelector)
+	commoncmd.FlagsTo(flags, &options.OptTo)
+	commoncmd.FlagForce(flags, &options.Force)
+	commoncmd.FlagDisableRollback(flags, &options.DisableRollback)
+	commoncmd.FlagNodeSelector(flags, &options.NodeSelector)
+	cmd.MarkFlagsMutuallyExclusive("no-lock", "node")
+	cmd.MarkFlagsMutuallyExclusive("waitlock", "node")
+	return cmd
+}
+
 func newCmdObjectInstanceStatus(kind string) *cobra.Command {
 	var options commands.CmdObjectInstanceStatus
 	cmd := &cobra.Command{
@@ -2636,20 +2657,25 @@ func newCmdObjectStart(kind string) *cobra.Command {
 	var options commands.CmdObjectStart
 	cmd := &cobra.Command{
 		Use:   "start",
-		Short: "start objects or instances",
+		Short: "orchestrate start",
+		Long:  "Request the daemon to orchestrate object start.\n\nUse the `instance start` command to start a specific instance.",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return options.Run(kind)
 		},
 	}
 	flags := cmd.Flags()
-	addFlagsGlobal(flags, &options.OptsGlobal)
+	commoncmd.FlagColor(flags, &options.OptsGlobal.Color)
+	commoncmd.FlagOutput(flags, &options.OptsGlobal.Output)
+	commoncmd.FlagObjectSelector(flags, &options.OptsGlobal.ObjectSelector)
+
+	// hidden (backward compat)
 	commoncmd.FlagsAsync(flags, &options.OptsAsync)
-	commoncmd.FlagsLock(flags, &options.OptsLock)
-	commoncmd.FlagsResourceSelector(flags, &options.OptsResourceSelector)
-	commoncmd.FlagsTo(flags, &options.OptTo)
-	commoncmd.FlagForce(flags, &options.Force)
-	commoncmd.FlagDisableRollback(flags, &options.DisableRollback)
-	commoncmd.FlagNodeSelector(flags, &options.NodeSelector)
+	commoncmd.HiddenFlagsLock(flags, &options.OptsLock)
+	commoncmd.HiddenFlagsResourceSelector(flags, &options.OptsResourceSelector)
+	commoncmd.HiddenFlagsTo(flags, &options.OptTo)
+	commoncmd.HiddenFlagForce(flags, &options.Force)
+	commoncmd.HiddenFlagDisableRollback(flags, &options.DisableRollback)
+	commoncmd.HiddenFlagNodeSelector(flags, &options.NodeSelector)
 	return cmd
 }
 

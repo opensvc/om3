@@ -15,37 +15,30 @@ import (
 )
 
 type (
-	CmdObjectStart struct {
-		commoncmd.OptsAsync
+	CmdObjectInstanceStart struct {
 		commoncmd.OptsLock
 		commoncmd.OptsResourceSelector
 		commoncmd.OptTo
-		Force           bool
-		DisableRollback bool
-		NodeSelector    string
 		Color           string
 		Output          string
-		Local           bool
 		ObjectSelector  string
 		Quiet           bool
 		Debug           bool
+		Force           bool
+		DisableRollback bool
+		NodeSelector    string
 	}
 )
 
-func (t *CmdObjectStart) Run(kind string) error {
+func (t *CmdObjectInstanceStart) Run(kind string) error {
 	mergedSelector := commoncmd.MergeSelector("", t.ObjectSelector, kind, "")
 	return objectaction.New(
 		objectaction.WithObjectSelector(mergedSelector),
 		objectaction.WithRID(t.RID),
 		objectaction.WithTag(t.Tag),
 		objectaction.WithSubset(t.Subset),
-		objectaction.WithLocal(t.Local),
 		objectaction.WithOutput(t.Output),
 		objectaction.WithColor(t.Color),
-		objectaction.WithAsyncTarget("started"),
-		objectaction.WithAsyncTime(t.Time),
-		objectaction.WithAsyncWait(t.Wait),
-		objectaction.WithAsyncWatch(t.Watch),
 		objectaction.WithRemoteNodes(t.NodeSelector),
 		objectaction.WithRemoteFunc(func(ctx context.Context, p naming.Path, nodename string) (interface{}, error) {
 			c, err := client.New()

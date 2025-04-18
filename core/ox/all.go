@@ -84,6 +84,7 @@ func init() {
 		cmdObjectInstanceDevice,
 		newCmdObjectInstanceList(kind),
 		newCmdObjectInstanceStatus(kind),
+		newCmdObjectInstanceStart(kind),
 	)
 	cmdObjectInstanceDevice.AddCommand(
 		newCmdObjectInstanceDeviceList(kind),

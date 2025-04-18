@@ -1,21 +1,20 @@
-package omcmd
+package oxcmd
 
 import (
 	"context"
 	"fmt"
 
-	"github.com/opensvc/om3/core/actioncontext"
 	"github.com/opensvc/om3/core/client"
 	"github.com/opensvc/om3/core/commoncmd"
 	"github.com/opensvc/om3/core/naming"
-	"github.com/opensvc/om3/core/object"
 	"github.com/opensvc/om3/core/objectaction"
 	"github.com/opensvc/om3/daemon/api"
 	"github.com/opensvc/om3/util/xsession"
 )
 
 type (
-	CmdObjectStart struct {
+	CmdObjectInstanceStart struct {
+		OptsGlobal
 		commoncmd.OptsAsync
 		commoncmd.OptsLock
 		commoncmd.OptsResourceSelector
@@ -23,29 +22,18 @@ type (
 		Force           bool
 		DisableRollback bool
 		NodeSelector    string
-		Color           string
-		Output          string
-		Local           bool
-		ObjectSelector  string
-		Quiet           bool
-		Debug           bool
 	}
 )
 
-func (t *CmdObjectStart) Run(kind string) error {
+func (t *CmdObjectInstanceStart) Run(kind string) error {
 	mergedSelector := commoncmd.MergeSelector("", t.ObjectSelector, kind, "")
 	return objectaction.New(
 		objectaction.WithObjectSelector(mergedSelector),
 		objectaction.WithRID(t.RID),
 		objectaction.WithTag(t.Tag),
 		objectaction.WithSubset(t.Subset),
-		objectaction.WithLocal(t.Local),
 		objectaction.WithOutput(t.Output),
 		objectaction.WithColor(t.Color),
-		objectaction.WithAsyncTarget("started"),
-		objectaction.WithAsyncTime(t.Time),
-		objectaction.WithAsyncWait(t.Wait),
-		objectaction.WithAsyncWatch(t.Watch),
 		objectaction.WithRemoteNodes(t.NodeSelector),
 		objectaction.WithRemoteFunc(func(ctx context.Context, p naming.Path, nodename string) (interface{}, error) {
 			c, err := client.New()
@@ -93,18 +81,6 @@ func (t *CmdObjectStart) Run(kind string) error {
 			default:
 				return nil, fmt.Errorf("%s: node %s: unexpected response: %s", p, nodename, response.Status())
 			}
-		}),
-		objectaction.WithLocalFunc(func(ctx context.Context, p naming.Path) (interface{}, error) {
-			o, err := object.NewActor(p)
-			if err != nil {
-				return nil, err
-			}
-			ctx = actioncontext.WithLockDisabled(ctx, t.Disable)
-			ctx = actioncontext.WithLockTimeout(ctx, t.Timeout)
-			ctx = actioncontext.WithTo(ctx, t.To)
-			ctx = actioncontext.WithForce(ctx, t.Force)
-			ctx = actioncontext.WithRollbackDisabled(ctx, t.DisableRollback)
-			return nil, o.Start(ctx)
 		}),
 	).Do()
 }

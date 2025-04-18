@@ -19,6 +19,14 @@ var (
 	usageFlagEventFilter string
 )
 
+func FlagQuiet(flagSet *pflag.FlagSet, p *bool) {
+	flagSet.BoolVarP(p, "quiet", "q", false, "don't print the logs on the console")
+}
+
+func FlagDebug(flagSet *pflag.FlagSet, p *bool) {
+	flagSet.BoolVar(p, "debug", false, "show debug log entries")
+}
+
 func FlagsAsync(flagSet *pflag.FlagSet, p *OptsAsync) {
 	FlagTime(flagSet, &p.Time)
 	FlagWait(flagSet, &p.Wait)
@@ -119,6 +127,7 @@ func FlagDiscard(flagSet *pflag.FlagSet, p *bool) {
 func FlagDownTo(flagSet *pflag.FlagSet, p *string) {
 	flagSet.StringVar(p, "downto", "", "stop down to the specified rid or driver group")
 	flagSet.Lookup("downto").Deprecated = "Use --to."
+	flagSet.Lookup("downto").Hidden = true
 }
 
 func FlagDriver(flagSet *pflag.FlagSet, p *string) {
@@ -206,7 +215,7 @@ func FlagPeerSelectorFilter(flagSet *pflag.FlagSet, p *string) {
 }
 
 func FlagNodeSelector(flagSet *pflag.FlagSet, p *string) {
-	flagSet.StringVar(p, "node", "", "execute on a list of nodes")
+	flagSet.StringVar(p, "node", "", "submit the action to the selected nodes")
 }
 
 func FlagNoLock(flagSet *pflag.FlagSet, p *bool) {
@@ -294,7 +303,7 @@ func FlagSwitchTo(flagSet *pflag.FlagSet, p *string) {
 }
 
 func FlagTo(flagSet *pflag.FlagSet, p *string) {
-	flagSet.StringVar(p, "to", "", "start or stop the service until this rid or driver group is done")
+	flagSet.StringVar(p, "to", "", "process until the specified rid or driver group is done")
 }
 
 func FlagTag(flagSet *pflag.FlagSet, p *string) {
@@ -320,6 +329,7 @@ func FlagUpdateUnset(flagSet *pflag.FlagSet, p *[]string) {
 func FlagUpTo(flagSet *pflag.FlagSet, p *string) {
 	flagSet.StringVar(p, "upto", "", "start up to the specified rid or driver group")
 	flagSet.Lookup("upto").Deprecated = "Use --to."
+	flagSet.Lookup("upto").Hidden = true
 }
 
 func FlagFrom(flagSet *pflag.FlagSet, p *string) {
@@ -360,4 +370,81 @@ func FlagObjectSelector(flagSet *pflag.FlagSet, p *string) {
 	flagSet.StringVarP(p, "service", "", "", "execute on a list of objects")
 	flagSet.StringVarP(p, "selector", "s", "", "execute on a list of objects")
 	flagSet.MarkHidden("service")
+}
+
+func HiddenFlagsLock(flagSet *pflag.FlagSet, p *OptsLock) {
+	HiddenFlagNoLock(flagSet, &p.Disable)
+	HiddenFlagWaitLock(flagSet, &p.Timeout)
+}
+
+func HiddenFlagsResourceSelector(flagSet *pflag.FlagSet, p *OptsResourceSelector) {
+	HiddenFlagRID(flagSet, &p.RID)
+	HiddenFlagSubset(flagSet, &p.Subset)
+	HiddenFlagTag(flagSet, &p.Tag)
+}
+
+func HiddenFlagsTo(flagSet *pflag.FlagSet, p *OptTo) {
+	HiddenFlagTo(flagSet, &p.To)
+	HiddenFlagUpTo(flagSet, &p.UpTo)
+	HiddenFlagDownTo(flagSet, &p.DownTo)
+}
+
+func HiddenFlagDisableRollback(flagSet *pflag.FlagSet, p *bool) {
+	FlagDisableRollback(flagSet, p)
+	flagSet.Lookup("disable-rollback").Hidden = true
+}
+
+func HiddenFlagDownTo(flagSet *pflag.FlagSet, p *string) {
+	FlagDownTo(flagSet, p)
+	flagSet.Lookup("downto").Hidden = true
+}
+
+func HiddenFlagForce(flagSet *pflag.FlagSet, p *bool) {
+	FlagForce(flagSet, p)
+	flagSet.Lookup("force").Hidden = true
+}
+
+func HiddenFlagNodeSelector(flagSet *pflag.FlagSet, p *string) {
+	FlagNodeSelector(flagSet, p)
+	flagSet.Lookup("node").Hidden = true
+}
+
+func HiddenFlagNoLock(flagSet *pflag.FlagSet, p *bool) {
+	FlagNoLock(flagSet, p)
+	flagSet.Lookup("no-lock").Hidden = true
+}
+
+func HiddenFlagRID(flagSet *pflag.FlagSet, p *string) {
+	FlagRID(flagSet, p)
+	flagSet.Lookup("rid").Hidden = true
+}
+
+func HiddenFlagSubset(flagSet *pflag.FlagSet, p *string) {
+	FlagSubset(flagSet, p)
+	flagSet.Lookup("subset").Hidden = true
+}
+
+func HiddenFlagTo(flagSet *pflag.FlagSet, p *string) {
+	FlagTo(flagSet, p)
+	flagSet.Lookup("to").Hidden = true
+}
+
+func HiddenFlagTag(flagSet *pflag.FlagSet, p *string) {
+	FlagTag(flagSet, p)
+	flagSet.Lookup("tag").Hidden = true
+}
+
+func HiddenFlagUpTo(flagSet *pflag.FlagSet, p *string) {
+	FlagUpTo(flagSet, p)
+	flagSet.Lookup("upto").Hidden = true
+}
+
+func HiddenFlagWaitLock(flagSet *pflag.FlagSet, p *time.Duration) {
+	flagSet.DurationVar(p, "waitlock", 30*time.Second, "lock acquire timeout")
+	flagSet.Lookup("waitlock").Hidden = true
+}
+
+func HiddenFlagObjectSelector(flagSet *pflag.FlagSet, p *string) {
+	FlagObjectSelector(flagSet, p)
+	flagSet.MarkHidden("selector")
 }
