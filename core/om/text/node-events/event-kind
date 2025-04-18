@@ -19,7 +19,7 @@
    Exec, ExecFailed, ExecSuccess
 
  heartbeat:
-   HbMessageTypeUpdated, HbNodePing, HbPing, HbStale, HbStatusUpdated
+   HbMessageTypeUpdated, HbNodePing, HbPing, HbStale
 
  instance:
    InstanceConfigDeleted, InstanceConfigManagerDone, InstanceConfigUpdated

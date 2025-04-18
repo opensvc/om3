@@ -104,8 +104,6 @@ var (
 
 		"HbStale": func() any { return &HbStale{} },
 
-		"HbStatusUpdated": func() any { return &HbStatusUpdated{} },
-
 		"InstanceConfigDeleted": func() any { return &InstanceConfigDeleted{} },
 
 		"InstanceConfigDeleting": func() any { return &InstanceConfigDeleting{} },
@@ -441,13 +439,6 @@ type (
 		Nodename   string    `json:"node" yaml:"node"`
 		HbID       string    `json:"hb_id" yaml:"hb_id"`
 		Time       time.Time `json:"at" yaml:"at"`
-	}
-
-	HbStatusUpdated struct {
-		pubsub.Msg `yaml:",inline"`
-		Node       string `json:"node" yaml:"node"`
-
-		Value daemonsubsystem.HeartbeatStream `json:"stream" yaml:"stream"`
 	}
 
 	InstanceConfigDeleted struct {
@@ -1015,10 +1006,6 @@ func (e *HbStale) String() string {
 
 func (e *HbStale) Kind() string {
 	return "HbStale"
-}
-
-func (e *HbStatusUpdated) Kind() string {
-	return "HbStatusUpdated"
 }
 
 func (e *InstanceConfigDeleted) Kind() string {
