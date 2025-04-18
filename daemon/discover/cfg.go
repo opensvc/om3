@@ -36,7 +36,7 @@ func (t *Manager) startSubscriptions() *pubsub.Subscription {
 	sub.AddFilter(&msgbus.ClusterConfigUpdated{})
 	sub.AddFilter(&msgbus.ConfigFileUpdated{})
 
-	sub.AddFilter(&msgbus.HbMessageTypeUpdated{}, t.labelLocalhost)
+	sub.AddFilter(&msgbus.HeartbeatMessageTypeUpdated{}, t.labelLocalhost)
 
 	sub.AddFilter(&msgbus.InstanceConfigDeleting{}, t.labelLocalhost)
 	sub.AddFilter(&msgbus.InstanceConfigFor{})
@@ -93,8 +93,8 @@ func (t *Manager) cfg(started chan<- bool) {
 			case *msgbus.ConfigFileUpdated:
 				t.onConfigFileUpdated(c)
 
-			case *msgbus.HbMessageTypeUpdated:
-				t.onHbMessageTypeUpdated(c)
+			case *msgbus.HeartbeatMessageTypeUpdated:
+				t.onHeartbeatMessageTypeUpdated(c)
 
 			case *msgbus.InstanceConfigDeleting:
 				t.onInstanceConfigDeleting(c)
@@ -468,10 +468,10 @@ func (t *Manager) removeConfigFileAndDisableRecover(p naming.Path, updatedAt tim
 	}
 }
 
-// onHbMessageTypeUpdated must re-emit pending instanceConfigFor event when the
-// HbMessageTypeUpdated.To is "patch".
+// onHeartbeatMessageTypeUpdated must re-emit pending instanceConfigFor event when the
+// HeartbeatMessageTypeUpdated.To is "patch".
 // instanceConfigFor are not applied during apply full.
-func (t *Manager) onHbMessageTypeUpdated(c *msgbus.HbMessageTypeUpdated) {
+func (t *Manager) onHeartbeatMessageTypeUpdated(c *msgbus.HeartbeatMessageTypeUpdated) {
 	if c.To != "patch" {
 		return
 	}

@@ -367,7 +367,7 @@ func missingNodes(nodes, joinedNodes []string) []string {
 	return l
 }
 
-func (t *Manager) onHbMessageTypeUpdated(c *msgbus.HbMessageTypeUpdated) {
+func (t *Manager) onHeartbeatMessageTypeUpdated(c *msgbus.HeartbeatMessageTypeUpdated) {
 	if t.state.State != node.MonitorStateRejoin {
 		return
 	}

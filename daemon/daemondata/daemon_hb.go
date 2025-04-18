@@ -50,7 +50,7 @@ func (d *data) setHbMsgPatchLength(node string, length int) {
 }
 
 // setHbMsgType update the sub.hb.mode.x.Type for node,
-// if value is changed publish msgbus.HbMessageTypeUpdated
+// if value is changed publish msgbus.HeartbeatMessageTypeUpdated
 func (d *data) setHbMsgType(node string, msgType string) {
 	previous := d.hbMsgType[node]
 	if msgType != previous {
@@ -61,7 +61,7 @@ func (d *data) setHbMsgType(node string, msgType string) {
 				joinedNodes = append(joinedNodes, n)
 			}
 		}
-		d.publisher.Pub(&msgbus.HbMessageTypeUpdated{
+		d.publisher.Pub(&msgbus.HeartbeatMessageTypeUpdated{
 			Node:          node,
 			From:          previous,
 			To:            msgType,

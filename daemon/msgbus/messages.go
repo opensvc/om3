@@ -96,15 +96,13 @@ var (
 		// TODO: remove when CHANGELOG.md: forget_peer (b2.1) -> ForgetPeer
 		"forget_peer": func() any { return &ForgetPeer{} },
 
-		"HbMessageTypeUpdated": func() any { return &HbMessageTypeUpdated{} },
+		"HeartbeatMessageTypeUpdated": func() any { return &HeartbeatMessageTypeUpdated{} },
 
-		"HbNodePing": func() any { return &HbNodePing{} },
+		"HeartbeatNodePing": func() any { return &HeartbeatNodePing{} },
 
-		"HbPing": func() any { return &HbPing{} },
+		"HeartbeatPing": func() any { return &HeartbeatPing{} },
 
-		"HbStale": func() any { return &HbStale{} },
-
-		"HbStatusUpdated": func() any { return &HbStatusUpdated{} },
+		"HeartbeatStale": func() any { return &HeartbeatStale{} },
 
 		"InstanceConfigDeleted": func() any { return &InstanceConfigDeleted{} },
 
@@ -322,7 +320,7 @@ type (
 		pubsub.Msg `yaml:",inline"`
 		Node       string `json:"node" yaml:"node"`
 
-		Value daemonsubsystem.Heartbeat `json:"hb" yaml:"hb"`
+		Value daemonsubsystem.Heartbeat `json:"heartbeat" yaml:"heartbeat"`
 	}
 
 	DaemonListenerUpdated struct {
@@ -408,21 +406,20 @@ type (
 		pubsub.Msg `yaml:",inline"`
 		Node       string `json:"node" yaml:"node"`
 	}
-
-	HbNodePing struct {
+	HeartbeatNodePing struct {
 		pubsub.Msg `yaml:",inline"`
 		Node       string `json:"node" yaml:"node"`
 		IsAlive    bool   `json:"is_alive" yaml:"is_alive"`
 	}
 
-	HbPing struct {
+	HeartbeatPing struct {
 		pubsub.Msg `yaml:",inline"`
 		Nodename   string    `json:"to" yaml:"to"`
 		HbID       string    `json:"hb_id" yaml:"hb_id"`
 		Time       time.Time `json:"at" yaml:"at"`
 	}
 
-	HbMessageTypeUpdated struct {
+	HeartbeatMessageTypeUpdated struct {
 		pubsub.Msg `yaml:",inline"`
 		Node       string   `json:"node" yaml:"node"`
 		From       string   `json:"old_type" yaml:"old_type"`
@@ -436,18 +433,11 @@ type (
 		InstalledGens node.Gen `json:"installed_gens" yaml:"installed_gens"`
 	}
 
-	HbStale struct {
+	HeartbeatStale struct {
 		pubsub.Msg `yaml:",inline"`
 		Nodename   string    `json:"node" yaml:"node"`
 		HbID       string    `json:"hb_id" yaml:"hb_id"`
 		Time       time.Time `json:"at" yaml:"at"`
-	}
-
-	HbStatusUpdated struct {
-		pubsub.Msg `yaml:",inline"`
-		Node       string `json:"node" yaml:"node"`
-
-		Value daemonsubsystem.HeartbeatStream `json:"stream" yaml:"stream"`
 	}
 
 	InstanceConfigDeleted struct {
@@ -985,40 +975,36 @@ func (e *ForgetPeer) Kind() string {
 	return "forget_peer"
 }
 
-func (e *HbMessageTypeUpdated) Kind() string {
-	return "HbMessageTypeUpdated"
+func (e *HeartbeatMessageTypeUpdated) Kind() string {
+	return "HeartbeatMessageTypeUpdated"
 }
 
-func (e *HbNodePing) String() string {
+func (e *HeartbeatNodePing) String() string {
 	if e.IsAlive {
-		return "HbNodePing: " + e.Node + " ok"
+		return "HeartbeatNodePing: " + e.Node + " ok"
 	} else {
-		return "HbNodePing: " + e.Node + " stale"
+		return "HeartbeatNodePing: " + e.Node + " stale"
 	}
 }
 
-func (e *HbNodePing) Kind() string {
-	return "HbNodePing"
+func (e *HeartbeatNodePing) Kind() string {
+	return "HeartbeatNodePing"
 }
 
-func (e *HbPing) String() string {
-	return fmt.Sprintf("HbPing: node %s ping detected from %s %s", e.Nodename, e.HbID, e.Time)
+func (e *HeartbeatPing) String() string {
+	return fmt.Sprintf("HeartbeatPing: node %s ping detected from %s %s", e.Nodename, e.HbID, e.Time)
 }
 
-func (e *HbPing) Kind() string {
-	return "HbPing"
+func (e *HeartbeatPing) Kind() string {
+	return "HeartbeatPing"
 }
 
-func (e *HbStale) String() string {
-	return fmt.Sprintf("HbStale: node %s stale detected from %s %s", e.Nodename, e.HbID, e.Time)
+func (e *HeartbeatStale) String() string {
+	return fmt.Sprintf("HeartbeatStale: node %s stale detected from %s %s", e.Nodename, e.HbID, e.Time)
 }
 
-func (e *HbStale) Kind() string {
-	return "HbStale"
-}
-
-func (e *HbStatusUpdated) Kind() string {
-	return "HbStatusUpdated"
+func (e *HeartbeatStale) Kind() string {
+	return "HeartbeatStale"
 }
 
 func (e *InstanceConfigDeleted) Kind() string {
