@@ -2271,7 +2271,8 @@ func newCmdObjectInstanceList(kind string) *cobra.Command {
 func newCmdObjectInstanceStart(kind string) *cobra.Command {
 	var options commands.CmdObjectInstanceStart
 	cmd := &cobra.Command{
-		Use: "start",
+		Use:  "start",
+		Long: "Start a selection of instances asynchronously using --node=<selector>.",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return options.Run(kind)
 		},
@@ -2283,6 +2284,27 @@ func newCmdObjectInstanceStart(kind string) *cobra.Command {
 	commoncmd.FlagsTo(flags, &options.OptTo)
 	commoncmd.FlagForce(flags, &options.Force)
 	commoncmd.FlagDisableRollback(flags, &options.DisableRollback)
+	commoncmd.FlagNodeSelector(flags, &options.NodeSelector)
+	cmd.MarkFlagsMutuallyExclusive("no-lock", "node")
+	cmd.MarkFlagsMutuallyExclusive("waitlock", "node")
+	return cmd
+}
+
+func newCmdObjectInstanceStop(kind string) *cobra.Command {
+	var options commands.CmdObjectInstanceStop
+	cmd := &cobra.Command{
+		Use:  "stop",
+		Long: "Stop a selection of instances asynchronously using --node=<selector>.",
+		RunE: func(cmd *cobra.Command, args []string) error {
+			return options.Run(kind)
+		},
+	}
+	flags := cmd.Flags()
+	addFlagsGlobal(flags, &options.OptsGlobal)
+	commoncmd.FlagsLock(flags, &options.OptsLock)
+	commoncmd.FlagsResourceSelector(flags, &options.OptsResourceSelector)
+	commoncmd.FlagsTo(flags, &options.OptTo)
+	commoncmd.FlagForce(flags, &options.Force)
 	commoncmd.FlagNodeSelector(flags, &options.NodeSelector)
 	cmd.MarkFlagsMutuallyExclusive("no-lock", "node")
 	cmd.MarkFlagsMutuallyExclusive("waitlock", "node")
@@ -2703,19 +2725,25 @@ func newCmdObjectStop(kind string) *cobra.Command {
 	var options commands.CmdObjectStop
 	cmd := &cobra.Command{
 		Use:   "stop",
-		Short: "stop objects or instances",
+		Short: "orchestrate stop",
+		Long:  "Request the daemon to orchestrate object stop.\n\nUse the `instance stop` command to stop a specific instance.",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return options.Run(kind)
 		},
 	}
+
 	flags := cmd.Flags()
-	addFlagsGlobal(flags, &options.OptsGlobal)
+	commoncmd.FlagColor(flags, &options.OptsGlobal.Color)
+	commoncmd.FlagOutput(flags, &options.OptsGlobal.Output)
+	commoncmd.FlagObjectSelector(flags, &options.OptsGlobal.ObjectSelector)
+
+	// hidden (backward compat)
 	commoncmd.FlagsAsync(flags, &options.OptsAsync)
-	commoncmd.FlagsLock(flags, &options.OptsLock)
-	commoncmd.FlagsResourceSelector(flags, &options.OptsResourceSelector)
-	commoncmd.FlagsTo(flags, &options.OptTo)
-	commoncmd.FlagForce(flags, &options.Force)
-	commoncmd.FlagNodeSelector(flags, &options.NodeSelector)
+	commoncmd.HiddenFlagsLock(flags, &options.OptsLock)
+	commoncmd.HiddenFlagsResourceSelector(flags, &options.OptsResourceSelector)
+	commoncmd.HiddenFlagsTo(flags, &options.OptTo)
+	commoncmd.HiddenFlagForce(flags, &options.Force)
+	commoncmd.HiddenFlagNodeSelector(flags, &options.NodeSelector)
 	return cmd
 }
 

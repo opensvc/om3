@@ -2418,6 +2418,30 @@ func newCmdObjectInstanceStart(kind string) *cobra.Command {
 	return cmd
 }
 
+func newCmdObjectInstanceStop(kind string) *cobra.Command {
+	var options commands.CmdObjectInstanceStop
+	cmd := &cobra.Command{
+		Use:  "stop",
+		Long: "Stop the local instance inline, or a selection of instances asynchronously using --node=<selector>.",
+		RunE: func(cmd *cobra.Command, args []string) error {
+			return options.Run(kind)
+		},
+	}
+	flags := cmd.Flags()
+	flagQuiet(flags, &options.Quiet)
+	flagDebug(flags, &options.Debug)
+	commoncmd.FlagColor(flags, &options.Color)
+	commoncmd.FlagObjectSelector(flags, &options.ObjectSelector)
+	commoncmd.FlagsLock(flags, &options.OptsLock)
+	commoncmd.FlagsResourceSelector(flags, &options.OptsResourceSelector)
+	commoncmd.FlagsTo(flags, &options.OptTo)
+	commoncmd.FlagForce(flags, &options.Force)
+	commoncmd.FlagNodeSelector(flags, &options.NodeSelector)
+	cmd.MarkFlagsMutuallyExclusive("no-lock", "node")
+	cmd.MarkFlagsMutuallyExclusive("waitlock", "node")
+	return cmd
+}
+
 func newCmdObjectInstanceStatus(kind string) *cobra.Command {
 	var options commands.CmdObjectInstanceStatus
 	cmd := &cobra.Command{
@@ -2789,7 +2813,7 @@ func newCmdObjectStart(kind string) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "start",
 		Short: "orchestrate start",
-		Long:  "Request the daemon to orchestrate object start.\n\nUse the `instance start` command to start a specific instance.",
+		Long:  "Request the daemon to orchestrate the start of an object.\n\nUse the `instance start` command to start a specific instance directly.",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return options.Run(kind)
 		},
@@ -2859,19 +2883,28 @@ func newCmdObjectStop(kind string) *cobra.Command {
 	var options commands.CmdObjectStop
 	cmd := &cobra.Command{
 		Use:   "stop",
-		Short: "stop objects or instances",
+		Short: "orchestrate stop",
+		Long:  "Request the daemon to orchestrate the stop of an object.\n\nUse the `instance stop` command to stop a specific instance directly.",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return options.Run(kind)
 		},
 	}
 	flags := cmd.Flags()
-	addFlagsGlobal(flags, &options.OptsGlobal)
+	commoncmd.FlagQuiet(flags, &options.Quiet)
+	commoncmd.FlagDebug(flags, &options.Debug)
+	commoncmd.FlagColor(flags, &options.Color)
+	commoncmd.FlagOutput(flags, &options.Output)
+	commoncmd.FlagObjectSelector(flags, &options.ObjectSelector)
+
+	// hidden (backward compat)
+	hiddenFlagLocal(flags, &options.Local)
 	commoncmd.FlagsAsync(flags, &options.OptsAsync)
-	commoncmd.FlagsLock(flags, &options.OptsLock)
-	commoncmd.FlagsResourceSelector(flags, &options.OptsResourceSelector)
-	commoncmd.FlagsTo(flags, &options.OptTo)
-	commoncmd.FlagForce(flags, &options.Force)
-	commoncmd.FlagNodeSelector(flags, &options.NodeSelector)
+	commoncmd.HiddenFlagsLock(flags, &options.OptsLock)
+	commoncmd.HiddenFlagsResourceSelector(flags, &options.OptsResourceSelector)
+	commoncmd.HiddenFlagsTo(flags, &options.OptTo)
+	commoncmd.HiddenFlagForce(flags, &options.Force)
+	commoncmd.HiddenFlagNodeSelector(flags, &options.NodeSelector)
+	flags.Lookup("local").Hidden = true
 	return cmd
 }
 
