@@ -43,7 +43,7 @@ func setupCtrl(ctx context.Context) *C {
 	return c
 }
 
-func TestCmdSetPeerSuccessCreatesPublishHbNodePing(t *testing.T) {
+func TestCmdSetPeerSuccessCreatesPublishHeartbeatNodePing(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 	ctx = bootstrapDaemon(ctx, t)
@@ -64,7 +64,7 @@ func TestCmdSetPeerSuccessCreatesPublishHbNodePing(t *testing.T) {
 			node             string
 			events           []event
 			readPingDuration time.Duration
-			expected         []msgbus.HbNodePing
+			expected         []msgbus.HeartbeatNodePing
 		}
 	)
 	cases := map[string]testCase{
@@ -77,7 +77,7 @@ func TestCmdSetPeerSuccessCreatesPublishHbNodePing(t *testing.T) {
 				{ping: true, hb: "hb#0.rx", node: "node5", delay: 1 * time.Millisecond},
 			},
 			readPingDuration: 200 * time.Millisecond,
-			expected: []msgbus.HbNodePing{
+			expected: []msgbus.HeartbeatNodePing{
 				{Msg: pubsub.Msg{Labels: pubsub.NewLabels("node", "node5")}, Node: "node5", IsAlive: true},
 			},
 		},
@@ -93,7 +93,7 @@ func TestCmdSetPeerSuccessCreatesPublishHbNodePing(t *testing.T) {
 				{ping: true, hb: "hb#1.rx", node: "node6", delay: 13 * time.Millisecond},
 			},
 			readPingDuration: 200 * time.Millisecond,
-			expected: []msgbus.HbNodePing{
+			expected: []msgbus.HeartbeatNodePing{
 				{Msg: pubsub.Msg{Labels: pubsub.NewLabels("node", "node6")}, Node: "node6", IsAlive: true},
 				{Msg: pubsub.Msg{Labels: pubsub.NewLabels("node", "node6")}, Node: "node6", IsAlive: false},
 				{Msg: pubsub.Msg{Labels: pubsub.NewLabels("node", "node6")}, Node: "node6", IsAlive: true},
@@ -130,7 +130,7 @@ func TestCmdSetPeerSuccessCreatesPublishHbNodePing(t *testing.T) {
 				{delay: 3 * time.Millisecond, node: "node7", hb: "hb#2.rx", ping: true},
 			},
 			readPingDuration: 200 * time.Millisecond,
-			expected: []msgbus.HbNodePing{
+			expected: []msgbus.HeartbeatNodePing{
 				{Msg: pubsub.Msg{Labels: pubsub.NewLabels("node", "node7")}, Node: "node7", IsAlive: true},
 			},
 		},
@@ -146,7 +146,7 @@ func TestCmdSetPeerSuccessCreatesPublishHbNodePing(t *testing.T) {
 				{delay: 13 * time.Millisecond, node: "node8", hb: "hb#5.rx", ping: false},
 			},
 			readPingDuration: 200 * time.Millisecond,
-			expected: []msgbus.HbNodePing{
+			expected: []msgbus.HeartbeatNodePing{
 				{Msg: pubsub.Msg{Labels: pubsub.NewLabels("node", "node8")}, Node: "node8", IsAlive: true},
 				{Msg: pubsub.Msg{Labels: pubsub.NewLabels("node", "node8")}, Node: "node8", IsAlive: false},
 			},
@@ -168,7 +168,7 @@ func TestCmdSetPeerSuccessCreatesPublishHbNodePing(t *testing.T) {
 				{delay: 13 * time.Millisecond, node: "node9", hb: "hb#6.rx", ping: false},
 			},
 			readPingDuration: 500 * time.Millisecond,
-			expected: []msgbus.HbNodePing{
+			expected: []msgbus.HeartbeatNodePing{
 				{Msg: pubsub.Msg{Labels: pubsub.NewLabels("node", "node9")}, Node: "node9", IsAlive: true},
 				{Msg: pubsub.Msg{Labels: pubsub.NewLabels("node", "node9")}, Node: "node9", IsAlive: false},
 				{Msg: pubsub.Msg{Labels: pubsub.NewLabels("node", "node9")}, Node: "node9", IsAlive: true},
@@ -185,25 +185,25 @@ func TestCmdSetPeerSuccessCreatesPublishHbNodePing(t *testing.T) {
 			tNode := tc.node
 
 			sub := pubsub.SubFromContext(ctx, name, pubsub.Timeout(time.Second))
-			sub.AddFilter(&msgbus.HbNodePing{}, pubsub.Label{"node", tNode})
+			sub.AddFilter(&msgbus.HeartbeatNodePing{}, pubsub.Label{"node", tNode})
 			sub.Start()
 			defer func() {
 				_ = sub.Stop()
 			}()
 
-			pingMsgC := make(chan []msgbus.HbNodePing)
+			pingMsgC := make(chan []msgbus.HeartbeatNodePing)
 			go func() {
-				pingMsgs := make([]msgbus.HbNodePing, 0)
-				t.Log("read HbNodePing messages ...")
+				pingMsgs := make([]msgbus.HeartbeatNodePing, 0)
+				t.Log("read HeartbeatNodePing messages ...")
 				timeout := time.After(tc.readPingDuration)
 				for {
 					select {
 					case i := <-sub.C:
-						msg := i.(*msgbus.HbNodePing)
-						t.Logf("receive msgbus.HbNodePing notification: ---- %+v", msg)
+						msg := i.(*msgbus.HeartbeatNodePing)
+						t.Logf("receive msgbus.HeartbeatNodePing notification: ---- %+v", msg)
 						pingMsgs = append(pingMsgs, *msg)
 					case <-timeout:
-						t.Logf("timeout reached, HbNodePing messages are: %+v", pingMsgs)
+						t.Logf("timeout reached, HeartbeatNodePing messages are: %+v", pingMsgs)
 						pingMsgC <- pingMsgs
 						return
 					}
@@ -234,7 +234,7 @@ func TestCmdSetPeerSuccessCreatesPublishHbNodePing(t *testing.T) {
 
 			found := <-pingMsgC
 			require.Equalf(t, tc.expected, found,
-				"unexpected published HbNodePing from %s\n%v",
+				"unexpected published HeartbeatNodePing from %s\n%v",
 				name, tc.events)
 		})
 	}

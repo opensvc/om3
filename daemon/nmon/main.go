@@ -314,7 +314,7 @@ func (t *Manager) startSubscriptions() {
 	sub.AddFilter(&msgbus.DaemonListenerUpdated{})
 
 	sub.AddFilter(&msgbus.ForgetPeer{})
-	sub.AddFilter(&msgbus.HbMessageTypeUpdated{})
+	sub.AddFilter(&msgbus.HeartbeatMessageTypeUpdated{})
 	sub.AddFilter(&msgbus.JoinRequest{}, t.labelLocalhost)
 	sub.AddFilter(&msgbus.LeaveRequest{}, t.labelLocalhost)
 	sub.AddFilter(&msgbus.NodeConfigUpdated{}, pubsub.Label{"from", "peer"})
@@ -342,7 +342,7 @@ func (t *Manager) startRejoin() {
 	} else {
 		// Begin the rejoin state phase.
 		// Arm the re-join grace period ticker.
-		// The onHbMessageTypeUpdated() event handler can stop it.
+		// The onHeartbeatMessageTypeUpdated() event handler can stop it.
 		rejoinGracePeriod := t.nodeConfig.RejoinGracePeriod
 		t.rejoinTicker = time.NewTicker(rejoinGracePeriod)
 		t.log.Infof("rejoin grace period timer set to %s", rejoinGracePeriod)
@@ -429,8 +429,8 @@ func (t *Manager) worker() {
 				t.onForgetPeer(c)
 			case *msgbus.JoinRequest:
 				t.onJoinRequest(c)
-			case *msgbus.HbMessageTypeUpdated:
-				t.onHbMessageTypeUpdated(c)
+			case *msgbus.HeartbeatMessageTypeUpdated:
+				t.onHeartbeatMessageTypeUpdated(c)
 			case *msgbus.NodeConfigUpdated:
 				t.onPeerNodeConfigUpdated(c)
 			case *msgbus.NodeMonitorDeleted:
