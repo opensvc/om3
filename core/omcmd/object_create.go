@@ -3,6 +3,7 @@ package omcmd
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"os"
@@ -66,22 +67,30 @@ func (t *CmdObjectCreate) Run(kind string) error {
 	} else {
 		t.client = c
 	}
-	errC := make(chan error)
+	errC := make(chan error, 1)
 
-	// Don't return until the instance is ready to accept an orchestration request.
 	ctx, cancel := context.WithTimeout(context.Background(), t.Time)
 	defer cancel()
 	if err := cmd.WaitInstanceMonitor(ctx, t.client, t.path, 0, errC); err != nil {
-		return err
+		if errors.Is(err, os.ErrNotExist) {
+			// Don't wait if he daemon is not running.
+			errC <- nil
+		} else {
+			return err
+		}
 	}
 
 	if err := t.do(); err != nil {
 		return err
 	}
+
+	// Don't return until the instance is ready to accept an orchestration request.
 	err := <-errC
+
 	if err != nil {
 		return err
 	}
+
 	if t.Provision {
 		provisionOptions := CmdObjectProvision{
 			OptsGlobal: t.OptsGlobal,
