@@ -320,7 +320,7 @@ type (
 		pubsub.Msg `yaml:",inline"`
 		Node       string `json:"node" yaml:"node"`
 
-		Value daemonsubsystem.Heartbeat `json:"hb" yaml:"hb"`
+		Value daemonsubsystem.Heartbeat `json:"heartbeat" yaml:"heartbeat"`
 	}
 
 	DaemonListenerUpdated struct {
