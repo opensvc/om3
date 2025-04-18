@@ -48,7 +48,9 @@ func (t *CmdNodeConfigGet) Run() error {
 	l := make(api.KeywordItems, 0)
 	for _, nodename := range nodenames {
 		params := api.GetNodeConfigParams{}
-		params.Kw = &t.Keywords
+		if len(t.Keywords) > 0 {
+			params.Kw = &t.Keywords
+		}
 		if t.Eval {
 			v := true
 			params.Evaluate = &v
@@ -76,11 +78,18 @@ func (t *CmdNodeConfigGet) Run() error {
 		}
 	}
 
-	defaultOutput := "tab=data.value"
-	if len(l) > 1 {
-		defaultOutput = "tab=NODE:meta.node,KEYWORD:meta.keyword,VALUE:data.value"
-		if t.Eval {
-			defaultOutput += ",EVALUATED_AS:meta.evaluated_as"
+	var defaultOutput string
+	if t.Eval {
+		if len(l) > 1 {
+			defaultOutput = "tab=NODE:node,KEYWORD:keyword,VALUE:value,EVALUATED:evaluated,EVALUATED_AS:evaluated_as"
+		} else {
+			defaultOutput = "tab=evaluated"
+		}
+	} else {
+		if len(l) > 1 {
+			defaultOutput = "tab=NODE:node,KEYWORD:keyword,VALUE:value"
+		} else {
+			defaultOutput = "tab=value"
 		}
 	}
 
