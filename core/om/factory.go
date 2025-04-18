@@ -2804,6 +2804,7 @@ func newCmdObjectStatus(kind string) *cobra.Command {
 	var options commands.CmdObjectStatus
 	cmd := &cobra.Command{
 		Use:     "status",
+		Hidden:  true,
 		Aliases: []string{"statu", "stat", "sta", "st"},
 		Short:   "set the exitcode to the instance status",
 		Long:    "This command is silent. Only the exitcode holds information.",
@@ -2812,11 +2813,10 @@ func newCmdObjectStatus(kind string) *cobra.Command {
 		},
 	}
 	flags := cmd.Flags()
-	addFlagsGlobal(flags, &options.OptsGlobal)
 	commoncmd.FlagsLock(flags, &options.OptsLock)
+	commoncmd.FlagObjectSelector(flags, &options.ObjectSelector)
 	commoncmd.FlagRefresh(flags, &options.Refresh)
 	addFlagMonitor(flags, &options.Monitor)
-	commoncmd.FlagNodeSelector(flags, &options.NodeSelector)
 	cmd.MarkFlagsMutuallyExclusive("refresh", "monitor")
 	return cmd
 }

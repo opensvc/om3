@@ -27,39 +27,39 @@ func (o *T) action(e schedule.Entry) error {
 	}
 	switch e.Action {
 	case "status":
-		cmdArgs = append(cmdArgs, "status", "-r", "--local")
+		cmdArgs = append(cmdArgs, "status", "-r")
 	case "resource_monitor":
-		cmdArgs = append(cmdArgs, "status", "-m", "--local")
+		cmdArgs = append(cmdArgs, "status", "-m")
 	case "push_resinfo":
-		cmdArgs = append(cmdArgs, "push", "resinfo", "--local")
+		cmdArgs = append(cmdArgs, "push", "resinfo")
 	case "run":
-		cmdArgs = append(cmdArgs, "run", "--rid", e.RID(), "--local")
+		cmdArgs = append(cmdArgs, "run", "--rid", e.RID())
 	case "pushasset":
-		cmdArgs = append(cmdArgs, "push", "asset", "--local")
+		cmdArgs = append(cmdArgs, "push", "asset")
 	case "reboot":
-		cmdArgs = append(cmdArgs, "reboot", "--local")
+		cmdArgs = append(cmdArgs, "reboot")
 	case "checks":
-		cmdArgs = append(cmdArgs, "checks", "--local")
+		cmdArgs = append(cmdArgs, "checks")
 	case "compliance_auto":
-		cmdArgs = append(cmdArgs, "compliance", "auto", "--local")
+		cmdArgs = append(cmdArgs, "compliance", "auto")
 	case "pushdisks":
-		cmdArgs = append(cmdArgs, "push", "disk", "--local")
+		cmdArgs = append(cmdArgs, "push", "disk")
 	case "pushpkg":
-		cmdArgs = append(cmdArgs, "push", "pkg", "--local")
+		cmdArgs = append(cmdArgs, "push", "pkg")
 	case "pushpatch":
-		cmdArgs = append(cmdArgs, "push", "patch", "--local")
+		cmdArgs = append(cmdArgs, "push", "patch")
 	case "pushstats":
-		cmdArgs = append(cmdArgs, "push", "stats", "--local")
+		cmdArgs = append(cmdArgs, "push", "stats")
 	case "sysreport":
-		cmdArgs = append(cmdArgs, "sysreport", "--local")
+		cmdArgs = append(cmdArgs, "sysreport")
 	case "sync_update":
 		cmdArgs = append(cmdArgs, "sync", "update", "--local")
 	//case "collect_stats":
-	//	cmdArgs = append(cmdArgs, "collect", "stats", "--local")
+	//	cmdArgs = append(cmdArgs, "collect", "stats")
 	//case "dequeue_actions":
-	//	cmdArgs = append(cmdArgs, "dequeue", "--local")
+	//	cmdArgs = append(cmdArgs, "dequeue")
 	//case "rotate_root_pw":
-	//	cmdArgs = append(cmdArgs, "rotate", "root", "pw", "--local")
+	//	cmdArgs = append(cmdArgs, "rotate", "root", "pw")
 	default:
 		o.log.Attr("action", e.Action).Attr("path", e.Path.String()).Errorf("unknown scheduler action")
 		return fmt.Errorf("unknown scheduler action")

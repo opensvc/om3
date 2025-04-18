@@ -2673,25 +2673,6 @@ func newCmdObjectStartStandby(kind string) *cobra.Command {
 	return cmd
 }
 
-func newCmdObjectStatus(kind string) *cobra.Command {
-	var options commands.CmdObjectStatus
-	cmd := &cobra.Command{
-		Use:     "status",
-		Aliases: []string{"statu", "stat", "sta", "st"},
-		Short:   "set the exitcode to the instance status",
-		Long:    "This command is silent. Only the exitcode holds information.",
-		RunE: func(cmd *cobra.Command, args []string) error {
-			return options.Run(kind)
-		},
-	}
-	flags := cmd.Flags()
-	addFlagsGlobal(flags, &options.OptsGlobal)
-	commoncmd.FlagsLock(flags, &options.OptsLock)
-	commoncmd.FlagRefresh(flags, &options.Refresh)
-	commoncmd.FlagNodeSelector(flags, &options.NodeSelector)
-	return cmd
-}
-
 func newCmdObjectStop(kind string) *cobra.Command {
 	var options commands.CmdObjectStop
 	cmd := &cobra.Command{

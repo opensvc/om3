@@ -70,7 +70,6 @@ func init() {
 		newCmdObjectRun(kind),
 		newCmdObjectShutdown(kind),
 		newCmdObjectStart(kind),
-		newCmdObjectStatus(kind),
 		newCmdObjectStop(kind),
 		newCmdObjectSwitch(kind),
 		newCmdObjectTakeover(kind),
