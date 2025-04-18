@@ -14,7 +14,6 @@ import (
 	"github.com/iancoleman/orderedmap"
 
 	"github.com/opensvc/om3/core/client"
-	"github.com/opensvc/om3/core/cmd"
 	"github.com/opensvc/om3/core/commoncmd"
 	"github.com/opensvc/om3/core/keyop"
 	"github.com/opensvc/om3/core/naming"
@@ -70,7 +69,7 @@ func (t *CmdObjectCreate) Run(kind string) error {
 
 	ctx, cancel := context.WithTimeout(context.Background(), t.Time)
 	defer cancel()
-	if err := cmd.WaitInstanceMonitor(ctx, t.client, t.path, 0, errC); err != nil {
+	if err := commoncmd.WaitInstanceMonitor(ctx, t.client, t.path, 0, errC); err != nil {
 		return err
 	}
 
