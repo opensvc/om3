@@ -1011,11 +1011,12 @@ func newCmdNodeEditConfig() *cobra.Command {
 }
 
 func newCmdNodeConfigEval() *cobra.Command {
-	var options commands.CmdNodeConfigEval
+	var options commands.CmdNodeConfigGet
 	cmd := &cobra.Command{
 		Use:   "eval",
 		Short: "evaluate a configuration key value",
 		RunE: func(cmd *cobra.Command, args []string) error {
+			options.Eval = true
 			return options.Run()
 		},
 	}
@@ -1025,7 +1026,6 @@ func newCmdNodeConfigEval() *cobra.Command {
 	commoncmd.FlagImpersonate(flags, &options.Impersonate)
 	commoncmd.FlagKeywords(flags, &options.Keywords)
 	commoncmd.FlagNodeSelector(flags, &options.NodeSelector)
-	cmd.MarkFlagRequired("kw")
 	return cmd
 }
 
@@ -2207,11 +2207,12 @@ func newCmdObjectEnter(kind string) *cobra.Command {
 }
 
 func newCmdObjectConfigEval(kind string) *cobra.Command {
-	var options commands.CmdObjectConfigEval
+	var options commands.CmdObjectConfigGet
 	cmd := &cobra.Command{
 		Use:   "eval",
 		Short: "evaluate a configuration key value",
 		RunE: func(cmd *cobra.Command, args []string) error {
+			options.Eval = true
 			return options.Run(kind)
 		},
 	}
@@ -2219,7 +2220,6 @@ func newCmdObjectConfigEval(kind string) *cobra.Command {
 	addFlagsGlobal(flags, &options.OptsGlobal)
 	commoncmd.FlagKeywords(flags, &options.Keywords)
 	commoncmd.FlagImpersonate(flags, &options.Impersonate)
-	cmd.MarkFlagRequired("kw")
 	return cmd
 }
 
