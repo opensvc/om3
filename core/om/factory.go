@@ -2393,6 +2393,57 @@ func newCmdObjectInstanceList(kind string) *cobra.Command {
 	return cmd
 }
 
+func newCmdObjectInstancePRStart(kind string) *cobra.Command {
+	var options commands.CmdObjectInstancePRStart
+	cmd := &cobra.Command{
+		Use:   "prstart",
+		Short: "preempt devices exclusive write access reservation",
+		RunE: func(cmd *cobra.Command, args []string) error {
+			return options.Run(kind)
+		},
+	}
+	flags := cmd.Flags()
+	flagQuiet(flags, &options.Quiet)
+	flagDebug(flags, &options.Debug)
+	commoncmd.FlagOutput(flags, &options.Output)
+	commoncmd.FlagColor(flags, &options.Color)
+	commoncmd.FlagObjectSelector(flags, &options.ObjectSelector)
+	commoncmd.FlagsLock(flags, &options.OptsLock)
+	commoncmd.FlagsResourceSelector(flags, &options.OptsResourceSelector)
+	commoncmd.FlagsTo(flags, &options.OptTo)
+	commoncmd.FlagForce(flags, &options.Force)
+	commoncmd.FlagDisableRollback(flags, &options.DisableRollback)
+	commoncmd.FlagNodeSelector(flags, &options.NodeSelector)
+	cmd.MarkFlagsMutuallyExclusive("no-lock", "node")
+	cmd.MarkFlagsMutuallyExclusive("waitlock", "node")
+	return cmd
+}
+
+func newCmdObjectInstancePRStop(kind string) *cobra.Command {
+	var options commands.CmdObjectInstancePRStop
+	cmd := &cobra.Command{
+		Use:   "prstop",
+		Short: "release devices exclusive write access reservation",
+		RunE: func(cmd *cobra.Command, args []string) error {
+			return options.Run(kind)
+		},
+	}
+	flags := cmd.Flags()
+	flagQuiet(flags, &options.Quiet)
+	flagDebug(flags, &options.Debug)
+	commoncmd.FlagOutput(flags, &options.Output)
+	commoncmd.FlagColor(flags, &options.Color)
+	commoncmd.FlagObjectSelector(flags, &options.ObjectSelector)
+	commoncmd.FlagsLock(flags, &options.OptsLock)
+	commoncmd.FlagsResourceSelector(flags, &options.OptsResourceSelector)
+	commoncmd.FlagsTo(flags, &options.OptTo)
+	commoncmd.FlagForce(flags, &options.Force)
+	commoncmd.FlagNodeSelector(flags, &options.NodeSelector)
+	cmd.MarkFlagsMutuallyExclusive("no-lock", "node")
+	cmd.MarkFlagsMutuallyExclusive("waitlock", "node")
+	return cmd
+}
+
 func newCmdObjectInstanceStart(kind string) *cobra.Command {
 	var options commands.CmdObjectInstanceStart
 	cmd := &cobra.Command{
@@ -2405,6 +2456,7 @@ func newCmdObjectInstanceStart(kind string) *cobra.Command {
 	flags := cmd.Flags()
 	flagQuiet(flags, &options.Quiet)
 	flagDebug(flags, &options.Debug)
+	commoncmd.FlagOutput(flags, &options.Output)
 	commoncmd.FlagColor(flags, &options.Color)
 	commoncmd.FlagObjectSelector(flags, &options.ObjectSelector)
 	commoncmd.FlagsLock(flags, &options.OptsLock)
@@ -2430,6 +2482,7 @@ func newCmdObjectInstanceStop(kind string) *cobra.Command {
 	flags := cmd.Flags()
 	flagQuiet(flags, &options.Quiet)
 	flagDebug(flags, &options.Debug)
+	commoncmd.FlagOutput(flags, &options.Output)
 	commoncmd.FlagColor(flags, &options.Color)
 	commoncmd.FlagObjectSelector(flags, &options.ObjectSelector)
 	commoncmd.FlagsLock(flags, &options.OptsLock)
@@ -2516,8 +2569,10 @@ func newCmdObjectSyncIngest(kind string) *cobra.Command {
 func newCmdObjectPRStart(kind string) *cobra.Command {
 	var options commands.CmdObjectPRStart
 	cmd := &cobra.Command{
-		Use:   "prstart",
-		Short: "preempt devices exclusive write access reservation",
+		Use:        "prstart",
+		Short:      "preempt devices exclusive write access reservation",
+		Deprecated: "use \"instance prstart\"",
+		Hidden:     true,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return options.Run(kind)
 		},
@@ -2535,8 +2590,9 @@ func newCmdObjectPRStart(kind string) *cobra.Command {
 func newCmdObjectPRStop(kind string) *cobra.Command {
 	var options commands.CmdObjectPRStop
 	cmd := &cobra.Command{
-		Use:   "prstop",
-		Short: "release devices exclusive write access reservation",
+		Use:        "prstop",
+		Short:      "release devices exclusive write access reservation",
+		Deprecated: "use \"instance prstop\"",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return options.Run(kind)
 		},
