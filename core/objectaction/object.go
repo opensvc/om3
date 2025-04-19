@@ -781,6 +781,9 @@ func (t T) DoRemote() error {
 	if t.RemoteFunc == nil {
 		return fmt.Errorf("no remote function defined")
 	}
+	if t.NodeSelector == "" {
+		return fmt.Errorf("remote execution requires a node selector expression")
+	}
 
 	c, err := client.New(client.WithTimeout(0))
 	if err != nil {
@@ -802,6 +805,9 @@ func (t T) DoRemote() error {
 		for _, s := range l {
 			nodenames[s] = nil
 		}
+	}
+	if len(nodenames) == 0 {
+		return fmt.Errorf("the node selection is empty")
 	}
 
 	results := make([]actionrouter.Result, 0)

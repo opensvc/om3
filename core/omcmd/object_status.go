@@ -2,47 +2,53 @@ package omcmd
 
 import (
 	"context"
+	"fmt"
+	"os"
 
 	"github.com/opensvc/om3/core/actioncontext"
 	"github.com/opensvc/om3/core/commoncmd"
+	"github.com/opensvc/om3/core/env"
+	"github.com/opensvc/om3/core/instance"
 	"github.com/opensvc/om3/core/naming"
 	"github.com/opensvc/om3/core/object"
-	"github.com/opensvc/om3/core/objectaction"
 )
 
 type (
 	CmdObjectStatus struct {
-		OptsGlobal
 		commoncmd.OptsLock
-		Refresh      bool
-		Monitor      bool
-		NodeSelector string
+		ObjectSelector string
+		Refresh        bool
+		Monitor        bool
 	}
 )
 
 func (t *CmdObjectStatus) Run(kind string) error {
-	mergedSelector := commoncmd.MergeSelector("", t.ObjectSelector, kind, "")
-	return objectaction.New(
-		objectaction.LocalFirst(),
-		objectaction.WithObjectSelector(mergedSelector),
-		objectaction.WithLocal(t.Local),
-		objectaction.WithOutput(t.Output),
-		objectaction.WithColor(t.Color),
-		objectaction.WithRemoteNodes(t.NodeSelector),
-		objectaction.WithLocalFunc(func(ctx context.Context, p naming.Path) (interface{}, error) {
-			o, err := object.NewCore(p)
-			if err != nil {
-				return nil, err
-			}
-			ctx = actioncontext.WithLockDisabled(ctx, t.Disable)
-			ctx = actioncontext.WithLockTimeout(ctx, t.Timeout)
-			if t.Monitor {
-				return o.MonitorStatus(ctx)
-			} else if t.Refresh {
-				return o.FreshStatus(ctx)
-			} else {
-				return o.Status(ctx)
-			}
-		}),
-	).Do()
+	p, err := naming.ParsePath(t.ObjectSelector)
+	if err != nil {
+		return err
+	}
+	o, err := object.NewCore(p)
+	if err != nil {
+		return err
+	}
+	ctx := context.Background()
+	ctx = actioncontext.WithLockDisabled(ctx, t.Disable)
+	ctx = actioncontext.WithLockTimeout(ctx, t.Timeout)
+	var instanceStatus instance.Status
+	if t.Monitor {
+		instanceStatus, err = o.MonitorStatus(ctx)
+	} else if t.Refresh {
+		instanceStatus, err = o.FreshStatus(ctx)
+	} else {
+		instanceStatus, err = o.Status(ctx)
+	}
+	if env.HasDaemonOrigin() {
+		return err
+	}
+	// backward compat
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "Error: %s\n", err)
+	}
+	os.Exit(int(instanceStatus.Avail))
+	return err
 }

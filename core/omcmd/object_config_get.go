@@ -42,7 +42,9 @@ func (t *CmdObjectConfigGet) Run(kind string) error {
 	l := make(api.KeywordItems, 0)
 	for _, p := range paths {
 		params := api.GetObjectConfigParams{}
-		params.Kw = &t.Keywords
+		if len(t.Keywords) > 0 {
+			params.Kw = &t.Keywords
+		}
 		if t.Eval {
 			v := true
 			params.Evaluate = &v
@@ -70,11 +72,18 @@ func (t *CmdObjectConfigGet) Run(kind string) error {
 		}
 	}
 
-	defaultOutput := "tab=data.value"
-	if len(l) > 1 {
-		defaultOutput = "tab=OBJECT:meta.object,NODE=meta.node,KEYWORD:meta.keyword,VALUE:data.value"
-		if t.Eval {
-			defaultOutput += ",EVALUATED_AS:meta.evaluated_as"
+	var defaultOutput string
+	if t.Eval {
+		if len(l) > 1 {
+			defaultOutput = "tab=OBJECT:object,KEYWORD:keyword,VALUE:value,EVALUATED:evaluated,EVALUATED_AS:evaluated_as"
+		} else {
+			defaultOutput = "tab=evaluated"
+		}
+	} else {
+		if len(l) > 1 {
+			defaultOutput = "tab=OBJECT:object,KEYWORD:keyword,VALUE:value"
+		} else {
+			defaultOutput = "tab=value"
 		}
 	}
 

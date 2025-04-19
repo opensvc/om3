@@ -223,13 +223,17 @@ func (t KeywordList) GetItems() any {
 }
 
 func (t KeywordItem) Unstructured() map[string]any {
-	return map[string]any{
+	m := map[string]any{
+		"node":         t.Node,
 		"object":       t.Object,
 		"keyword":      t.Keyword,
 		"value":        t.Value,
-		"evaluated":    t.Evaluated,
 		"evaluated_as": t.EvaluatedAs,
 	}
+	if t.Evaluated != nil {
+		m["evaluated"] = *t.Evaluated
+	}
+	return m
 }
 
 func (t PackageList) GetItems() any {

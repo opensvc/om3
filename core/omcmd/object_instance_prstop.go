@@ -15,51 +15,36 @@ import (
 )
 
 type (
-	CmdObjectStart struct {
-		commoncmd.OptsAsync
+	CmdObjectInstancePRStop struct {
+		OptsGlobal
 		commoncmd.OptsLock
 		commoncmd.OptsResourceSelector
 		commoncmd.OptTo
-		Force           bool
-		DisableRollback bool
-		NodeSelector    string
-		Color           string
-		Output          string
-		Local           bool
-		ObjectSelector  string
-		Quiet           bool
-		Debug           bool
+		NodeSelector string
+		Force        bool
 	}
 )
 
-func (t *CmdObjectStart) Run(kind string) error {
+func (t *CmdObjectInstancePRStop) Run(kind string) error {
 	mergedSelector := commoncmd.MergeSelector("", t.ObjectSelector, kind, "")
 	return objectaction.New(
 		objectaction.WithObjectSelector(mergedSelector),
 		objectaction.WithRID(t.RID),
 		objectaction.WithTag(t.Tag),
 		objectaction.WithSubset(t.Subset),
-		objectaction.WithLocal(t.Local),
+		objectaction.WithLocal(true),
 		objectaction.WithOutput(t.Output),
 		objectaction.WithColor(t.Color),
-		objectaction.WithAsyncTarget("started"),
-		objectaction.WithAsyncTime(t.Time),
-		objectaction.WithAsyncWait(t.Wait),
-		objectaction.WithAsyncWatch(t.Watch),
 		objectaction.WithRemoteNodes(t.NodeSelector),
 		objectaction.WithRemoteFunc(func(ctx context.Context, p naming.Path, nodename string) (interface{}, error) {
 			c, err := client.New()
 			if err != nil {
 				return nil, err
 			}
-			params := api.PostInstanceActionStartParams{}
+			params := api.PostInstanceActionPRStopParams{}
 			if t.Force {
 				v := true
 				params.Force = &v
-			}
-			if t.DisableRollback {
-				v := true
-				params.DisableRollback = &v
 			}
 			if t.OptsResourceSelector.RID != "" {
 				params.Rid = &t.OptsResourceSelector.RID
@@ -77,7 +62,7 @@ func (t *CmdObjectStart) Run(kind string) error {
 				sid := xsession.ID
 				params.RequesterSid = &sid
 			}
-			response, err := c.PostInstanceActionStartWithResponse(ctx, nodename, p.Namespace, p.Kind, p.Name, &params)
+			response, err := c.PostInstanceActionPRStopWithResponse(ctx, nodename, p.Namespace, p.Kind, p.Name, &params)
 			if err != nil {
 				return nil, err
 			}
@@ -94,7 +79,7 @@ func (t *CmdObjectStart) Run(kind string) error {
 				return nil, fmt.Errorf("%s: node %s: unexpected response: %s", p, nodename, response.Status())
 			}
 		}),
-		objectaction.WithLocalFunc(func(ctx context.Context, p naming.Path) (interface{}, error) {
+		objectaction.WithLocalFunc(func(ctx context.Context, p naming.Path) (any, error) {
 			o, err := object.NewActor(p)
 			if err != nil {
 				return nil, err
@@ -103,8 +88,7 @@ func (t *CmdObjectStart) Run(kind string) error {
 			ctx = actioncontext.WithLockTimeout(ctx, t.Timeout)
 			ctx = actioncontext.WithTo(ctx, t.To)
 			ctx = actioncontext.WithForce(ctx, t.Force)
-			ctx = actioncontext.WithRollbackDisabled(ctx, t.DisableRollback)
-			return nil, o.Start(ctx)
+			return nil, o.PRStop(ctx)
 		}),
 	).Do()
 }
