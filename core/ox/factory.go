@@ -2314,8 +2314,9 @@ func newCmdObjectInstancePRStop(kind string) *cobra.Command {
 func newCmdObjectInstanceStart(kind string) *cobra.Command {
 	var options commands.CmdObjectInstanceStart
 	cmd := &cobra.Command{
-		Use:  "start",
-		Long: "Start a selection of instances asynchronously using --node=<selector>.",
+		Use:   "start",
+		Short: "inline start",
+		Long:  "Start a selection of instances asynchronously using --node=<selector>.",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return options.Run(kind)
 		},
@@ -2336,8 +2337,9 @@ func newCmdObjectInstanceStart(kind string) *cobra.Command {
 func newCmdObjectInstanceStop(kind string) *cobra.Command {
 	var options commands.CmdObjectInstanceStop
 	cmd := &cobra.Command{
-		Use:  "stop",
-		Long: "Stop a selection of instances asynchronously using --node=<selector>.",
+		Use:   "stop",
+		Short: "inline stop",
+		Long:  "Stop a selection of instances asynchronously using --node=<selector>.",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return options.Run(kind)
 		},
