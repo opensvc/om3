@@ -2427,18 +2427,25 @@ func newCmdObjectInstanceFreeze(kind string) *cobra.Command {
 	return cmd
 }
 
-func newCmdObjectInstanceUnfreeze(kind string) *cobra.Command {
-	var options commands.CmdObjectInstanceUnfreeze
+func newCmdObjectInstanceProvision(kind string) *cobra.Command {
+	var options commands.CmdObjectInstanceProvision
 	cmd := &cobra.Command{
-		Use:   "unfreeze",
-		Short: "unblock ha automatic start and monitor action",
+		Use:     "provision",
+		Short:   "inline provision",
+		Long:    "Allocate the system resources required by the object instance resources.\n\nFor example, provision a fs.ext3 resource means format the device with the mkfs.ext3 command.\n\nOperate on a selection of instances asynchronously using --node=<selector>.",
+		Aliases: []string{"prov"},
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return options.Run(kind)
 		},
 	}
 	flags := cmd.Flags()
 	addFlagsGlobal(flags, &options.OptsGlobal)
+	commoncmd.FlagsResourceSelector(flags, &options.OptsResourceSelector)
+	commoncmd.FlagsTo(flags, &options.OptTo)
+	commoncmd.FlagForce(flags, &options.Force)
+	commoncmd.FlagLeader(flags, &options.Leader)
 	commoncmd.FlagNodeSelector(flags, &options.NodeSelector)
+	commoncmd.FlagDisableRollback(flags, &options.DisableRollback)
 	return cmd
 }
 
@@ -2582,12 +2589,48 @@ func newCmdObjectInstanceStatus(kind string) *cobra.Command {
 	return cmd
 }
 
+func newCmdObjectInstanceUnfreeze(kind string) *cobra.Command {
+	var options commands.CmdObjectInstanceUnfreeze
+	cmd := &cobra.Command{
+		Use:   "unfreeze",
+		Short: "unblock ha automatic start and monitor action",
+		RunE: func(cmd *cobra.Command, args []string) error {
+			return options.Run(kind)
+		},
+	}
+	flags := cmd.Flags()
+	addFlagsGlobal(flags, &options.OptsGlobal)
+	commoncmd.FlagNodeSelector(flags, &options.NodeSelector)
+	return cmd
+}
+
+func newCmdObjectInstanceUnprovision(kind string) *cobra.Command {
+	var options commands.CmdObjectInstanceUnprovision
+	cmd := &cobra.Command{
+		Use:     "unprovision",
+		Short:   "inline unprovision (data-loss danger)",
+		Long:    "Free the system resources required by the object instance resources.\n\nOperate on a selection of instances asynchronously using --node=<selector>.",
+		Aliases: []string{"prov"},
+		RunE: func(cmd *cobra.Command, args []string) error {
+			return options.Run(kind)
+		},
+	}
+	flags := cmd.Flags()
+	addFlagsGlobal(flags, &options.OptsGlobal)
+	commoncmd.FlagsResourceSelector(flags, &options.OptsResourceSelector)
+	commoncmd.FlagsTo(flags, &options.OptTo)
+	commoncmd.FlagForce(flags, &options.Force)
+	commoncmd.FlagLeader(flags, &options.Leader)
+	commoncmd.FlagNodeSelector(flags, &options.NodeSelector)
+	return cmd
+}
+
 func newCmdObjectProvision(kind string) *cobra.Command {
 	var options commands.CmdObjectProvision
 	cmd := &cobra.Command{
 		Use:     "provision",
 		Short:   "allocate system resources for object resources",
-		Long:    "For example, provision a fs.ext3 resource means format the device with the mkfs.ext3 command.",
+		Long:    "Allocate the system resources required by the object instance resources.\n\nFor example, provision a fs.ext3 resource means format the device with the mkfs.ext3 command.\n\nOperate on a selection of instances asynchronously using --node=<selector>.",
 		Aliases: []string{"prov"},
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return options.Run(kind)
@@ -3064,6 +3107,7 @@ func newCmdObjectUnprovision(kind string) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:     "unprovision",
 		Short:   "free system resources (data-loss danger)",
+		Long:    "Free the system resources required by the object instance resources.\n\nOperate on a selection of instances asynchronously using --node=<selector>.",
 		Aliases: []string{"unprov"},
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return options.Run(kind)

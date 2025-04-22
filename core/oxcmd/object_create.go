@@ -86,7 +86,6 @@ func (t *CmdObjectCreate) Run(kind string) error {
 		provisionOptions := CmdObjectProvision{
 			OptsGlobal: t.OptsGlobal,
 			OptsAsync:  t.OptsAsync,
-			OptsLock:   t.OptsLock,
 		}
 		if err := provisionOptions.Run(kind); err != nil {
 			return err
