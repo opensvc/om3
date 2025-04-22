@@ -13,6 +13,7 @@ import (
 type (
 	CmdObjectLogs struct {
 		OptsGlobal
+		Local bool
 		commoncmd.OptsLogs
 		NodeSelector string
 	}

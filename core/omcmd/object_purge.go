@@ -17,9 +17,10 @@ type (
 		commoncmd.OptsLock
 		commoncmd.OptsResourceSelector
 		commoncmd.OptTo
-		NodeSelector string
 		Force        bool
 		Leader       bool
+		Local        bool
+		NodeSelector string
 	}
 )
 

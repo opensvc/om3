@@ -26,7 +26,6 @@ func (t *CmdObjectSyncResync) Run(kind string) error {
 		objectaction.WithRID(t.RID),
 		objectaction.WithTag(t.Tag),
 		objectaction.WithSubset(t.Subset),
-		objectaction.WithLocal(t.Local),
 		objectaction.WithOutput(t.Output),
 		objectaction.WithColor(t.Color),
 		objectaction.WithLocalFunc(func(ctx context.Context, p naming.Path) (interface{}, error) {

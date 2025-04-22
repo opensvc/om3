@@ -18,6 +18,7 @@ type (
 	CmdNodeUnset struct {
 		OptsGlobal
 		commoncmd.OptsLock
+		Local        bool
 		Keywords     []string
 		Sections     []string
 		NodeSelector string

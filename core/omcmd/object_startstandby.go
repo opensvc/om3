@@ -20,8 +20,9 @@ type (
 		commoncmd.OptsLock
 		commoncmd.OptsResourceSelector
 		commoncmd.OptTo
-		Force           bool
 		DisableRollback bool
+		Force           bool
+		Local           bool
 		NodeSelector    string
 	}
 )

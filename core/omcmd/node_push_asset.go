@@ -14,6 +14,7 @@ import (
 type (
 	CmdNodePushAsset struct {
 		OptsGlobal
+		Local        bool
 		NodeSelector string
 	}
 )

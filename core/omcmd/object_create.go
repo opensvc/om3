@@ -32,6 +32,7 @@ type (
 		OptsGlobal
 		commoncmd.OptsAsync
 		commoncmd.OptsLock
+		Local     bool
 		Config    string
 		Keywords  []string
 		Env       []string

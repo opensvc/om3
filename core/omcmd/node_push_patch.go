@@ -14,6 +14,7 @@ import (
 type (
 	CmdNodePushPatch struct {
 		OptsGlobal
+		Local        bool
 		NodeSelector string
 	}
 )

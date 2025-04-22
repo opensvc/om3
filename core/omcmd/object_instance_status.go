@@ -27,6 +27,7 @@ type (
 		commoncmd.OptsLock
 		NodeSelector string
 		Refresh      bool
+		Local        bool
 	}
 )
 

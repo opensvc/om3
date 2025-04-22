@@ -22,6 +22,7 @@ type (
 		commoncmd.OptsResourceSelector
 		commoncmd.OptTo
 		Force        bool
+		Local        bool
 		NodeSelector string
 	}
 )

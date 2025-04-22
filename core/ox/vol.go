@@ -90,12 +90,14 @@ func init() {
 	)
 	cmdObjectInstance.AddCommand(
 		cmdObjectInstanceDevice,
+		newCmdObjectInstanceFreeze(kind),
 		newCmdObjectInstanceList(kind),
 		newCmdObjectInstanceStatus(kind),
 		newCmdObjectInstancePRStart(kind),
 		newCmdObjectInstancePRStop(kind),
 		newCmdObjectInstanceStart(kind),
 		newCmdObjectInstanceStop(kind),
+		newCmdObjectInstanceUnfreeze(kind),
 	)
 	cmdObjectInstanceDevice.AddCommand(
 		newCmdObjectInstanceDeviceList(kind),

@@ -2150,7 +2150,7 @@ func newCmdObjectFreeze(kind string) *cobra.Command {
 	var options commands.CmdObjectFreeze
 	cmd := &cobra.Command{
 		Use:   "freeze",
-		Short: "block ha automatic start",
+		Short: "block ha automatic start and monitor action",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return options.Run(kind)
 		},
@@ -2158,7 +2158,7 @@ func newCmdObjectFreeze(kind string) *cobra.Command {
 	flags := cmd.Flags()
 	addFlagsGlobal(flags, &options.OptsGlobal)
 	commoncmd.FlagsAsync(flags, &options.OptsAsync)
-	commoncmd.FlagNodeSelector(flags, &options.NodeSelector)
+	commoncmd.HiddenFlagNodeSelector(flags, &options.NodeSelector)
 	return cmd
 }
 
@@ -2249,6 +2249,36 @@ func newCmdObjectInstanceDeviceList(kind string) *cobra.Command {
 	addFlagsGlobal(flags, &options.OptsGlobal)
 	commoncmd.FlagNodeSelector(flags, &options.NodeSelector)
 	commoncmd.FlagDevRoles(flags, &options.Roles)
+	return cmd
+}
+
+func newCmdObjectInstanceFreeze(kind string) *cobra.Command {
+	var options commands.CmdObjectInstanceFreeze
+	cmd := &cobra.Command{
+		Use:   "freeze",
+		Short: "block ha automatic start and monitor action",
+		RunE: func(cmd *cobra.Command, args []string) error {
+			return options.Run(kind)
+		},
+	}
+	flags := cmd.Flags()
+	addFlagsGlobal(flags, &options.OptsGlobal)
+	commoncmd.FlagNodeSelector(flags, &options.NodeSelector)
+	return cmd
+}
+
+func newCmdObjectInstanceUnfreeze(kind string) *cobra.Command {
+	var options commands.CmdObjectInstanceUnfreeze
+	cmd := &cobra.Command{
+		Use:   "unfreeze",
+		Short: "unblock ha automatic start and monitor action",
+		RunE: func(cmd *cobra.Command, args []string) error {
+			return options.Run(kind)
+		},
+	}
+	flags := cmd.Flags()
+	addFlagsGlobal(flags, &options.OptsGlobal)
+	commoncmd.HiddenFlagNodeSelector(flags, &options.NodeSelector)
 	return cmd
 }
 
@@ -2818,7 +2848,7 @@ func newCmdObjectUnfreeze(kind string) *cobra.Command {
 	var options commands.CmdObjectUnfreeze
 	cmd := &cobra.Command{
 		Use:   "unfreeze",
-		Short: "unblock ha automatic start",
+		Short: "unblock ha automatic start and monitor action",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return options.Run(kind)
 		},

@@ -35,8 +35,6 @@ func (t *CmdNodeConfigValidate) Run() error {
 	var wg sync.WaitGroup
 
 	err := nodeaction.New(
-		nodeaction.LocalFirst(),
-		nodeaction.WithLocal(t.Local),
 		nodeaction.WithRemoteNodes(t.NodeSelector),
 		nodeaction.WithFormat(t.Output),
 		nodeaction.WithColor(t.Color),

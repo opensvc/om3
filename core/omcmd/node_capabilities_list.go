@@ -73,7 +73,7 @@ func (t *CmdNodeCapabilitiesList) remote() error {
 }
 
 func (t *CmdNodeCapabilitiesList) Run() error {
-	if t.Local || t.NodeSelector == "" {
+	if t.NodeSelector == "" {
 		return t.local()
 	} else {
 		return t.remote()

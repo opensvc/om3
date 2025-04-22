@@ -12,6 +12,7 @@ import (
 type (
 	CmdArrayList struct {
 		OptsGlobal
+		Local bool
 	}
 )
 

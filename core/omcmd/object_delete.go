@@ -19,6 +19,7 @@ type (
 		OptsGlobal
 		commoncmd.OptsAsync
 		commoncmd.OptsLock
+		Local        bool
 		NodeSelector string
 	}
 )

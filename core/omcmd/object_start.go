@@ -16,6 +16,7 @@ import (
 
 type (
 	CmdObjectStart struct {
+		OptsGlobal
 		commoncmd.OptsAsync
 		commoncmd.OptsLock
 		commoncmd.OptsResourceSelector
@@ -23,12 +24,7 @@ type (
 		Force           bool
 		DisableRollback bool
 		NodeSelector    string
-		Color           string
-		Output          string
 		Local           bool
-		ObjectSelector  string
-		Quiet           bool
-		Debug           bool
 	}
 )
 

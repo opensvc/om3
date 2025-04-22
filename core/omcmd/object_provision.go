@@ -21,6 +21,7 @@ type (
 		commoncmd.OptsLock
 		commoncmd.OptsResourceSelector
 		commoncmd.OptTo
+		Local           bool
 		DisableRollback bool
 		Force           bool
 		Leader          bool

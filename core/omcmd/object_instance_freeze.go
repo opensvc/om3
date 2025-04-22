@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/opensvc/om3/core/actioncontext"
 	"github.com/opensvc/om3/core/client"
 	"github.com/opensvc/om3/core/commoncmd"
 	"github.com/opensvc/om3/core/naming"
@@ -15,65 +14,30 @@ import (
 )
 
 type (
-	CmdObjectUnprovision struct {
+	CmdObjectInstanceFreeze struct {
 		OptsGlobal
-		commoncmd.OptsAsync
-		commoncmd.OptsLock
-		commoncmd.OptsResourceSelector
-		commoncmd.OptTo
-		Local        bool
-		Force        bool
-		Leader       bool
 		NodeSelector string
 	}
 )
 
-func (t *CmdObjectUnprovision) Run(kind string) error {
+func (t *CmdObjectInstanceFreeze) Run(kind string) error {
 	mergedSelector := commoncmd.MergeSelector("", t.ObjectSelector, kind, "")
 	return objectaction.New(
 		objectaction.WithObjectSelector(mergedSelector),
-		objectaction.WithRID(t.RID),
-		objectaction.WithTag(t.Tag),
-		objectaction.WithSubset(t.Subset),
-		objectaction.WithLocal(t.Local),
 		objectaction.WithOutput(t.Output),
 		objectaction.WithColor(t.Color),
-		objectaction.WithAsyncTarget("unprovisioned"),
-		objectaction.WithAsyncTime(t.Time),
-		objectaction.WithAsyncWait(t.Wait),
-		objectaction.WithAsyncWatch(t.Watch),
 		objectaction.WithRemoteNodes(t.NodeSelector),
 		objectaction.WithRemoteFunc(func(ctx context.Context, p naming.Path, nodename string) (interface{}, error) {
 			c, err := client.New()
 			if err != nil {
 				return nil, err
 			}
-			params := api.PostInstanceActionUnprovisionParams{}
-			if t.Force {
-				v := true
-				params.Force = &v
-			}
-			if t.Leader {
-				v := true
-				params.Leader = &v
-			}
-			if t.OptsResourceSelector.RID != "" {
-				params.Rid = &t.OptsResourceSelector.RID
-			}
-			if t.OptsResourceSelector.Subset != "" {
-				params.Subset = &t.OptsResourceSelector.Subset
-			}
-			if t.OptsResourceSelector.Tag != "" {
-				params.Tag = &t.OptsResourceSelector.Tag
-			}
-			if t.OptTo.To != "" {
-				params.To = &t.OptTo.To
-			}
+			params := api.PostInstanceActionFreezeParams{}
 			{
 				sid := xsession.ID
 				params.RequesterSid = &sid
 			}
-			response, err := c.PostInstanceActionUnprovisionWithResponse(ctx, nodename, p.Namespace, p.Kind, p.Name, &params)
+			response, err := c.PostInstanceActionFreezeWithResponse(ctx, nodename, p.Namespace, p.Kind, p.Name, &params)
 			if err != nil {
 				return nil, err
 			}
@@ -95,12 +59,7 @@ func (t *CmdObjectUnprovision) Run(kind string) error {
 			if err != nil {
 				return nil, err
 			}
-			ctx = actioncontext.WithLockDisabled(ctx, t.Disable)
-			ctx = actioncontext.WithLockTimeout(ctx, t.Timeout)
-			ctx = actioncontext.WithTo(ctx, t.To)
-			ctx = actioncontext.WithForce(ctx, t.Force)
-			ctx = actioncontext.WithLeader(ctx, t.Leader)
-			return nil, o.Unprovision(ctx)
+			return nil, o.Freeze(ctx)
 		}),
 	).Do()
 }

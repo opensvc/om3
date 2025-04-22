@@ -20,7 +20,7 @@ func init() {
 	cmdObjectResource := newCmdObjectResource(kind)
 	cmdObjectResourceInfo := newCmdObjectResourceInfo(kind)
 	cmdObjectSet := newCmdObjectSet(kind)
-	cmdObjectSchedule := newCmdObjectSchedule(kind)
+	cmdObjectSchedule := commoncmd.NewCmdObjectSchedule(kind)
 	cmdObjectPrint := newCmdObjectPrint(kind)
 	cmdObjectPrintConfig := newCmdObjectPrintConfig(kind)
 	cmdObjectPush := newCmdObjectPush(kind)
@@ -100,12 +100,14 @@ func init() {
 	)
 	cmdObjectInstance.AddCommand(
 		cmdObjectInstanceDevice,
+		newCmdObjectInstanceFreeze(kind),
 		newCmdObjectInstanceList(kind),
 		newCmdObjectInstanceStatus(kind),
 		newCmdObjectInstancePRStart(kind),
 		newCmdObjectInstancePRStop(kind),
 		newCmdObjectInstanceStart(kind),
 		newCmdObjectInstanceStop(kind),
+		newCmdObjectInstanceUnfreeze(kind),
 	)
 	cmdObjectInstanceDevice.AddCommand(
 		newCmdObjectInstanceDeviceList(kind),

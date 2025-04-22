@@ -19,6 +19,7 @@ type (
 		OptsGlobal
 		commoncmd.OptsLock
 		commoncmd.OptsResourceSelector
+		Local bool
 	}
 )
 

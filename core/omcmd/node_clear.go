@@ -13,6 +13,7 @@ import (
 
 type CmdNodeClear struct {
 	OptsGlobal
+	Local        bool
 	NodeSelector string
 }
 

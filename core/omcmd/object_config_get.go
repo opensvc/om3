@@ -19,6 +19,7 @@ import (
 type (
 	CmdObjectConfigGet struct {
 		OptsGlobal
+		Local       bool
 		Eval        bool
 		Impersonate string
 		Keywords    []string

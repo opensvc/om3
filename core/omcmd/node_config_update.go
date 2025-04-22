@@ -18,6 +18,7 @@ type (
 	CmdNodeConfigUpdate struct {
 		OptsGlobal
 		commoncmd.OptsLock
+		Local        bool
 		Delete       []string
 		Set          []string
 		Unset        []string

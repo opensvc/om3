@@ -20,6 +20,7 @@ type (
 	CmdNodeConfigGet struct {
 		OptsGlobal
 		commoncmd.OptsLock
+		Local        bool
 		Eval         bool
 		Impersonate  string
 		Keywords     []string

@@ -20,6 +20,7 @@ type (
 		commoncmd.OptsResourceSelector
 		commoncmd.OptTo
 		commoncmd.OptsLock
+		Local        bool
 		NodeSelector string
 	}
 )

@@ -23,9 +23,6 @@ type CmdNodeAbort struct {
 }
 
 func (t *CmdNodeAbort) Run() error {
-	if t.Local {
-		t.NodeSelector = hostname.Hostname()
-	}
 	if t.NodeSelector == "" {
 		t.NodeSelector = hostname.Hostname()
 	}

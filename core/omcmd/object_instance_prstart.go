@@ -16,14 +16,10 @@ import (
 
 type (
 	CmdObjectInstancePRStart struct {
+		OptsGlobal
 		commoncmd.OptsLock
 		commoncmd.OptsResourceSelector
 		commoncmd.OptTo
-		Color           string
-		Output          string
-		ObjectSelector  string
-		Quiet           bool
-		Debug           bool
 		Force           bool
 		DisableRollback bool
 		NodeSelector    string

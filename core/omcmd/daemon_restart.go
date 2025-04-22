@@ -28,9 +28,6 @@ type (
 //
 // The daemon restart is asynchronous when node selector is used
 func (t *CmdDaemonRestart) Run() error {
-	if t.Local {
-		t.NodeSelector = hostname.Hostname()
-	}
 	if t.NodeSelector == "" {
 		t.NodeSelector = hostname.Hostname()
 	}
