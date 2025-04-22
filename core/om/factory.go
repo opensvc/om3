@@ -2485,6 +2485,27 @@ func newCmdObjectInstancePRStop(kind string) *cobra.Command {
 	return cmd
 }
 
+func newCmdObjectInstanceRun(kind string) *cobra.Command {
+	var options commands.CmdObjectInstanceRun
+	cmd := &cobra.Command{
+		Use:   "run",
+		Short: "inline task run",
+		Long:  "The svc and vol objects can define task resources. Tasks are usually run on a schedule, but this command can trigger a run now.",
+		RunE: func(cmd *cobra.Command, args []string) error {
+			return options.Run(kind)
+		},
+	}
+	flags := cmd.Flags()
+	addFlagsGlobal(flags, &options.OptsGlobal)
+	commoncmd.FlagsLock(flags, &options.OptsLock)
+	commoncmd.FlagsResourceSelector(flags, &options.OptsResourceSelector)
+	commoncmd.FlagConfirm(flags, &options.Confirm)
+	commoncmd.FlagCron(flags, &options.Cron)
+	commoncmd.FlagEnv(flags, &options.Env)
+	commoncmd.FlagNodeSelector(flags, &options.NodeSelector)
+	return cmd
+}
+
 func newCmdObjectInstanceStart(kind string) *cobra.Command {
 	var options commands.CmdObjectInstanceStart
 	cmd := &cobra.Command{
@@ -2821,27 +2842,6 @@ func newCmdObjectResourceList(kind string) *cobra.Command {
 	flags := cmd.Flags()
 	addFlagsGlobal(flags, &options.OptsGlobal)
 	commoncmd.FlagRID(flags, &options.RID)
-	commoncmd.FlagNodeSelector(flags, &options.NodeSelector)
-	return cmd
-}
-
-func newCmdObjectRun(kind string) *cobra.Command {
-	var options commands.CmdObjectRun
-	cmd := &cobra.Command{
-		Use:   "run",
-		Short: "run tasks now",
-		Long:  "The svc and vol objects can define task resources. Tasks are usually run on a schedule, but this command can trigger a run now.",
-		RunE: func(cmd *cobra.Command, args []string) error {
-			return options.Run(kind)
-		},
-	}
-	flags := cmd.Flags()
-	addFlagsGlobal(flags, &options.OptsGlobal)
-	commoncmd.FlagsLock(flags, &options.OptsLock)
-	commoncmd.FlagsResourceSelector(flags, &options.OptsResourceSelector)
-	commoncmd.FlagConfirm(flags, &options.Confirm)
-	commoncmd.FlagCron(flags, &options.Cron)
-	commoncmd.FlagEnv(flags, &options.Env)
 	commoncmd.FlagNodeSelector(flags, &options.NodeSelector)
 	return cmd
 }
@@ -3477,6 +3477,12 @@ func newCmdObjectGenCert(kind string) *cobra.Command {
 
 func newCmdObjectPKCS(kind string) *cobra.Command {
 	cmd := newCmdObjectCertificatePKCS(kind)
+	cmd.Hidden = true
+	return cmd
+}
+
+func newCmdObjectRun(kind string) *cobra.Command {
+	cmd := newCmdObjectInstanceRun(kind)
 	cmd.Hidden = true
 	return cmd
 }

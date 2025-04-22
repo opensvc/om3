@@ -2677,8 +2677,8 @@ func newCmdObjectResourceList(kind string) *cobra.Command {
 	return cmd
 }
 
-func newCmdObjectRun(kind string) *cobra.Command {
-	var options commands.CmdObjectRun
+func newCmdObjectInstanceRun(kind string) *cobra.Command {
+	var options commands.CmdObjectInstanceRun
 	cmd := &cobra.Command{
 		Use:   "run",
 		Short: "run tasks now",

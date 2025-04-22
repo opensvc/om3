@@ -76,6 +76,7 @@ func init() {
 		cmdObjectInstanceDevice,
 		newCmdObjectInstanceFreeze(kind),
 		newCmdObjectInstanceList(kind),
+		newCmdObjectInstanceRun(kind),
 		newCmdObjectInstanceStatus(kind),
 		newCmdObjectInstancePRStart(kind),
 		newCmdObjectInstancePRStop(kind),

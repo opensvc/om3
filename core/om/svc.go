@@ -103,6 +103,7 @@ func init() {
 		newCmdObjectInstanceFreeze(kind),
 		newCmdObjectInstanceList(kind),
 		newCmdObjectInstanceStatus(kind),
+		newCmdObjectInstanceRun(kind),
 		newCmdObjectInstancePRStart(kind),
 		newCmdObjectInstancePRStop(kind),
 		newCmdObjectInstanceStart(kind),
