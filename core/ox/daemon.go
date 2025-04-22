@@ -14,7 +14,9 @@ func init() {
 	root.AddCommand(
 		cmdDaemon,
 	)
-
+	cmdDaemon.AddGroup(
+		commoncmd.NewGroupQuery(),
+	)
 	cmdDaemon.AddCommand(
 		cmdDaemonDNS,
 		cmdDaemonHeartbeat,

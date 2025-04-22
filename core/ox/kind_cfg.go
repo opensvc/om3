@@ -1,4 +1,4 @@
-package om
+package ox
 
 import "github.com/opensvc/om3/core/commoncmd"
 
@@ -6,10 +6,10 @@ func init() {
 	kind := "cfg"
 
 	cmdObject := newCmdCfg()
-	cmdObjectConfig := newCmdObjectConfig(kind)
+	cmdObjectConfig := commoncmd.NewCmdObjectConfig(kind)
 	cmdObjectEdit := newCmdObjectEdit(kind)
-	cmdObjectKey := newCmdObjectKey(kind)
-	cmdObjectInstance := newCmdObjectInstance(kind)
+	cmdObjectKey := commoncmd.NewCmdObjectKey(kind)
+	cmdObjectInstance := commoncmd.NewCmdObjectInstance(kind)
 	cmdObjectSet := newCmdObjectSet(kind)
 	cmdObjectPrint := newCmdObjectPrint(kind)
 	cmdObjectPrintConfig := newCmdObjectPrintConfig(kind)
@@ -17,6 +17,11 @@ func init() {
 
 	root.AddCommand(
 		cmdObject,
+	)
+	cmdObject.AddGroup(
+		commoncmd.NewGroupOrchestratedActions(),
+		commoncmd.NewGroupQuery(),
+		commoncmd.NewGroupSubsystems(),
 	)
 	cmdObject.AddCommand(
 		cmdObjectConfig,
@@ -42,13 +47,13 @@ func init() {
 		commoncmd.NewCmdObjectMonitor("", kind),
 		newCmdObjectPurge(kind),
 		newCmdObjectUnset(kind),
+		newCmdObjectUpdate(kind),
+		newCmdTUI(kind),
 	)
 	cmdObjectConfig.AddCommand(
-		newCmdObjectConfigDoc(kind),
 		newCmdObjectConfigEdit(kind),
 		newCmdObjectConfigEval(kind),
 		newCmdObjectConfigGet(kind),
-		newCmdObjectConfigMtime(kind),
 		newCmdObjectConfigShow(kind),
 		newCmdObjectConfigUpdate(kind),
 		newCmdObjectConfigValidate(kind),
@@ -71,9 +76,6 @@ func init() {
 	)
 	cmdObjectPrint.AddCommand(
 		cmdObjectPrintConfig,
-	)
-	cmdObjectPrintConfig.AddCommand(
-		newCmdObjectConfigMtime(kind),
 	)
 	cmdObjectValidate.AddCommand(
 		newCmdObjectValidateConfig(kind),

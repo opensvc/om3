@@ -5,6 +5,7 @@ import (
 	"strings"
 
 	"github.com/opensvc/om3/core/array"
+	"github.com/opensvc/om3/core/commoncmd"
 	"github.com/opensvc/om3/core/object"
 	"github.com/opensvc/om3/util/key"
 	"github.com/spf13/cobra"
@@ -28,6 +29,9 @@ var (
 func init() {
 	root.AddCommand(
 		cmdArray,
+	)
+	cmdArray.AddGroup(
+		commoncmd.NewGroupQuery(),
 	)
 	cmdArray.AddCommand(
 		newCmdArrayList(),

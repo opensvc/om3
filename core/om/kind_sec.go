@@ -1,4 +1,4 @@
-package ox
+package om
 
 import "github.com/opensvc/om3/core/commoncmd"
 
@@ -7,11 +7,11 @@ func init() {
 
 	cmdObject := newCmdSec()
 	cmdObjectCertificate := newCmdObjectCertificate(kind)
-	cmdObjectConfig := newCmdObjectConfig(kind)
+	cmdObjectConfig := commoncmd.NewCmdObjectConfig(kind)
 	cmdObjectEdit := newCmdObjectEdit(kind)
 	cmdObjectGen := newCmdObjectGen(kind)
-	cmdObjectKey := newCmdObjectKey(kind)
-	cmdObjectInstance := newCmdObjectInstance(kind)
+	cmdObjectKey := commoncmd.NewCmdObjectKey(kind)
+	cmdObjectInstance := commoncmd.NewCmdObjectInstance(kind)
 	cmdObjectSet := newCmdObjectSet(kind)
 	cmdObjectPrint := newCmdObjectPrint(kind)
 	cmdObjectPrintConfig := newCmdObjectPrintConfig(kind)
@@ -20,12 +20,17 @@ func init() {
 	root.AddCommand(
 		cmdObject,
 	)
+	cmdObject.AddGroup(
+		commoncmd.NewGroupOrchestratedActions(),
+		commoncmd.NewGroupQuery(),
+		commoncmd.NewGroupSubsystems(),
+	)
 	cmdObject.AddCommand(
-		cmdObjectCertificate,
 		cmdObjectConfig,
+		cmdObjectCertificate,
 		cmdObjectEdit,
-		cmdObjectGen,
 		cmdObjectKey,
+		cmdObjectGen,
 		cmdObjectInstance,
 		cmdObjectPrint,
 		cmdObjectSet,
@@ -46,27 +51,21 @@ func init() {
 		commoncmd.NewCmdObjectMonitor("", kind),
 		newCmdObjectPurge(kind),
 		newCmdObjectUnset(kind),
-		newCmdObjectUpdate(kind),
 		newCmdObjectPKCS(kind),
-		newCmdTUI(kind),
 	)
 	cmdObjectCertificate.AddCommand(
 		newCmdObjectCertificateCreate(kind),
 		newCmdObjectCertificatePKCS(kind),
 	)
 	cmdObjectConfig.AddCommand(
+		newCmdObjectConfigDoc(kind),
 		newCmdObjectConfigEdit(kind),
 		newCmdObjectConfigEval(kind),
 		newCmdObjectConfigGet(kind),
+		newCmdObjectConfigMtime(kind),
 		newCmdObjectConfigShow(kind),
 		newCmdObjectConfigUpdate(kind),
 		newCmdObjectConfigValidate(kind),
-	)
-	cmdObjectEdit.AddCommand(
-		newCmdObjectEditConfig(kind),
-	)
-	cmdObjectGen.AddCommand(
-		newCmdObjectGenCert(kind),
 	)
 	cmdObjectKey.AddCommand(
 		newCmdObjectKeyAdd(kind),
@@ -78,11 +77,20 @@ func init() {
 		newCmdObjectKeyRemove(kind),
 		newCmdObjectKeyRename(kind),
 	)
+	cmdObjectEdit.AddCommand(
+		newCmdObjectEditConfig(kind),
+	)
+	cmdObjectGen.AddCommand(
+		newCmdObjectGenCert(kind),
+	)
 	cmdObjectInstance.AddCommand(
 		newCmdObjectInstanceList(kind),
 	)
 	cmdObjectPrint.AddCommand(
 		cmdObjectPrintConfig,
+	)
+	cmdObjectPrintConfig.AddCommand(
+		newCmdObjectConfigMtime(kind),
 	)
 	cmdObjectValidate.AddCommand(
 		newCmdObjectValidateConfig(kind),

@@ -3,13 +3,14 @@ package ox
 import "github.com/opensvc/om3/core/commoncmd"
 
 func init() {
-	kind := "cfg"
+	kind := "usr"
 
-	cmdObject := newCmdCfg()
-	cmdObjectConfig := newCmdObjectConfig(kind)
+	cmdObject := newCmdUsr()
+	cmdObjectCertificate := newCmdObjectCertificate(kind)
+	cmdObjectConfig := commoncmd.NewCmdObjectConfig(kind)
 	cmdObjectEdit := newCmdObjectEdit(kind)
-	cmdObjectKey := newCmdObjectKey(kind)
-	cmdObjectInstance := newCmdObjectInstance(kind)
+	cmdObjectKey := commoncmd.NewCmdObjectKey(kind)
+	cmdObjectInstance := commoncmd.NewCmdObjectInstance(kind)
 	cmdObjectSet := newCmdObjectSet(kind)
 	cmdObjectPrint := newCmdObjectPrint(kind)
 	cmdObjectPrintConfig := newCmdObjectPrintConfig(kind)
@@ -18,7 +19,13 @@ func init() {
 	root.AddCommand(
 		cmdObject,
 	)
+	cmdObject.AddGroup(
+		commoncmd.NewGroupOrchestratedActions(),
+		commoncmd.NewGroupQuery(),
+		commoncmd.NewGroupSubsystems(),
+	)
 	cmdObject.AddCommand(
+		cmdObjectCertificate,
 		cmdObjectConfig,
 		cmdObjectEdit,
 		cmdObjectKey,
@@ -30,7 +37,6 @@ func init() {
 		newCmdDataStoreChange(kind),
 		newCmdDataStoreDecode(kind),
 		newCmdDataStoreKeys(kind),
-		newCmdDataStoreInstall(kind),
 		newCmdDataStoreRemove(kind),
 		newCmdDataStoreRename(kind),
 		newCmdObjectCreate(kind),
@@ -43,7 +49,13 @@ func init() {
 		newCmdObjectPurge(kind),
 		newCmdObjectUnset(kind),
 		newCmdObjectUpdate(kind),
+		newCmdObjectGenCert(kind),
+		newCmdObjectCertificatePKCS(kind),
 		newCmdTUI(kind),
+	)
+	cmdObjectCertificate.AddCommand(
+		newCmdObjectCertificateCreate(kind),
+		newCmdObjectCertificatePKCS(kind),
 	)
 	cmdObjectConfig.AddCommand(
 		newCmdObjectConfigEdit(kind),

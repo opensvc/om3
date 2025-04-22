@@ -3,15 +3,13 @@ package om
 import "github.com/opensvc/om3/core/commoncmd"
 
 func init() {
-	kind := "sec"
+	kind := "cfg"
 
-	cmdObject := newCmdSec()
-	cmdObjectCertificate := newCmdObjectCertificate(kind)
-	cmdObjectConfig := newCmdObjectConfig(kind)
+	cmdObject := newCmdCfg()
+	cmdObjectConfig := commoncmd.NewCmdObjectConfig(kind)
 	cmdObjectEdit := newCmdObjectEdit(kind)
-	cmdObjectGen := newCmdObjectGen(kind)
-	cmdObjectKey := newCmdObjectKey(kind)
-	cmdObjectInstance := newCmdObjectInstance(kind)
+	cmdObjectKey := commoncmd.NewCmdObjectKey(kind)
+	cmdObjectInstance := commoncmd.NewCmdObjectInstance(kind)
 	cmdObjectSet := newCmdObjectSet(kind)
 	cmdObjectPrint := newCmdObjectPrint(kind)
 	cmdObjectPrintConfig := newCmdObjectPrintConfig(kind)
@@ -20,12 +18,15 @@ func init() {
 	root.AddCommand(
 		cmdObject,
 	)
+	cmdObject.AddGroup(
+		commoncmd.NewGroupOrchestratedActions(),
+		commoncmd.NewGroupQuery(),
+		commoncmd.NewGroupSubsystems(),
+	)
 	cmdObject.AddCommand(
 		cmdObjectConfig,
-		cmdObjectCertificate,
 		cmdObjectEdit,
 		cmdObjectKey,
-		cmdObjectGen,
 		cmdObjectInstance,
 		cmdObjectPrint,
 		cmdObjectSet,
@@ -46,11 +47,6 @@ func init() {
 		commoncmd.NewCmdObjectMonitor("", kind),
 		newCmdObjectPurge(kind),
 		newCmdObjectUnset(kind),
-		newCmdObjectPKCS(kind),
-	)
-	cmdObjectCertificate.AddCommand(
-		newCmdObjectCertificateCreate(kind),
-		newCmdObjectCertificatePKCS(kind),
 	)
 	cmdObjectConfig.AddCommand(
 		newCmdObjectConfigDoc(kind),
@@ -62,6 +58,9 @@ func init() {
 		newCmdObjectConfigUpdate(kind),
 		newCmdObjectConfigValidate(kind),
 	)
+	cmdObjectEdit.AddCommand(
+		newCmdObjectEditConfig(kind),
+	)
 	cmdObjectKey.AddCommand(
 		newCmdObjectKeyAdd(kind),
 		newCmdObjectKeyChange(kind),
@@ -71,12 +70,6 @@ func init() {
 		newCmdObjectKeyList(kind),
 		newCmdObjectKeyRemove(kind),
 		newCmdObjectKeyRename(kind),
-	)
-	cmdObjectEdit.AddCommand(
-		newCmdObjectEditConfig(kind),
-	)
-	cmdObjectGen.AddCommand(
-		newCmdObjectGenCert(kind),
 	)
 	cmdObjectInstance.AddCommand(
 		newCmdObjectInstanceList(kind),

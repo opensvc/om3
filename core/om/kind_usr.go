@@ -1,4 +1,4 @@
-package ox
+package om
 
 import "github.com/opensvc/om3/core/commoncmd"
 
@@ -7,10 +7,10 @@ func init() {
 
 	cmdObject := newCmdUsr()
 	cmdObjectCertificate := newCmdObjectCertificate(kind)
-	cmdObjectConfig := newCmdObjectConfig(kind)
+	cmdObjectConfig := commoncmd.NewCmdObjectConfig(kind)
 	cmdObjectEdit := newCmdObjectEdit(kind)
-	cmdObjectKey := newCmdObjectKey(kind)
-	cmdObjectInstance := newCmdObjectInstance(kind)
+	cmdObjectKey := commoncmd.NewCmdObjectKey(kind)
+	cmdObjectInstance := commoncmd.NewCmdObjectInstance(kind)
 	cmdObjectSet := newCmdObjectSet(kind)
 	cmdObjectPrint := newCmdObjectPrint(kind)
 	cmdObjectPrintConfig := newCmdObjectPrintConfig(kind)
@@ -18,6 +18,11 @@ func init() {
 
 	root.AddCommand(
 		cmdObject,
+	)
+	cmdObject.AddGroup(
+		commoncmd.NewGroupOrchestratedActions(),
+		commoncmd.NewGroupQuery(),
+		commoncmd.NewGroupSubsystems(),
 	)
 	cmdObject.AddCommand(
 		cmdObjectCertificate,
@@ -43,19 +48,19 @@ func init() {
 		commoncmd.NewCmdObjectMonitor("", kind),
 		newCmdObjectPurge(kind),
 		newCmdObjectUnset(kind),
-		newCmdObjectUpdate(kind),
 		newCmdObjectGenCert(kind),
-		newCmdObjectCertificatePKCS(kind),
-		newCmdTUI(kind),
+		newCmdObjectPKCS(kind),
 	)
 	cmdObjectCertificate.AddCommand(
 		newCmdObjectCertificateCreate(kind),
 		newCmdObjectCertificatePKCS(kind),
 	)
 	cmdObjectConfig.AddCommand(
+		newCmdObjectConfigDoc(kind),
 		newCmdObjectConfigEdit(kind),
 		newCmdObjectConfigEval(kind),
 		newCmdObjectConfigGet(kind),
+		newCmdObjectConfigMtime(kind),
 		newCmdObjectConfigShow(kind),
 		newCmdObjectConfigUpdate(kind),
 		newCmdObjectConfigValidate(kind),
@@ -78,6 +83,9 @@ func init() {
 	)
 	cmdObjectPrint.AddCommand(
 		cmdObjectPrintConfig,
+	)
+	cmdObjectPrintConfig.AddCommand(
+		newCmdObjectConfigMtime(kind),
 	)
 	cmdObjectValidate.AddCommand(
 		newCmdObjectValidateConfig(kind),

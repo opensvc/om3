@@ -380,8 +380,9 @@ func newCmdNetworkIPList() *cobra.Command {
 func newCmdNodeAbort() *cobra.Command {
 	var options commands.CmdNodeAbort
 	cmd := &cobra.Command{
-		Use:   "abort",
-		Short: "abort the running orchestration",
+		GroupID: commoncmd.GroupIDOrchestratedActions,
+		Use:     "abort",
+		Short:   "abort the running orchestration",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return options.Run()
 		},
@@ -814,9 +815,10 @@ func newCmdNodeComplianceShowRuleset() *cobra.Command {
 func newCmdNodeDrain() *cobra.Command {
 	var options commands.CmdNodeDrain
 	cmd := &cobra.Command{
-		Use:   "drain",
-		Short: "freeze node and shutdown all its object instances",
-		Long:  "If not specified with --node, the local node is selected for drain.",
+		GroupID: commoncmd.GroupIDOrchestratedActions,
+		Use:     "drain",
+		Short:   "freeze node and shutdown all its object instances",
+		Long:    "If not specified with --node, the local node is selected for drain.",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return options.Run()
 		},
@@ -1197,6 +1199,7 @@ func newCmdNodeFreeze() *cobra.Command {
 func newCmdNodeLogs() *cobra.Command {
 	var options commands.CmdNodeLogs
 	cmd := &cobra.Command{
+		GroupID: commoncmd.GroupIDQuery,
 		Use:     "logs",
 		Aliases: []string{"logs", "log", "lo"},
 		Short:   "show this node logs",
@@ -1214,6 +1217,7 @@ func newCmdNodeLogs() *cobra.Command {
 func newCmdNodeList() *cobra.Command {
 	var options commands.CmdNodeList
 	cmd := &cobra.Command{
+		GroupID: commoncmd.GroupIDQuery,
 		Aliases: []string{"ls"},
 		Use:     "list",
 		Short:   "list the cluster nodes",
@@ -1418,8 +1422,9 @@ func newCmdNodeVersion() *cobra.Command {
 func newCmdObjectAbort(kind string) *cobra.Command {
 	var options commands.CmdObjectAbort
 	cmd := &cobra.Command{
-		Use:   "abort",
-		Short: "abort the running orchestration",
+		GroupID: commoncmd.GroupIDOrchestratedActions,
+		Use:     "abort",
+		Short:   "abort the running orchestration",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return options.Run(kind)
 		},
@@ -1518,13 +1523,6 @@ func newCmdObjectClear(kind string) *cobra.Command {
 	return cmd
 }
 
-func newCmdObjectConfig(kind string) *cobra.Command {
-	return &cobra.Command{
-		Use:   "config",
-		Short: "object configuration commands",
-	}
-}
-
 func newCmdObjectPrint(kind string) *cobra.Command {
 	return &cobra.Command{
 		Use:     "print",
@@ -1538,29 +1536,6 @@ func newCmdObjectPush(kind string) *cobra.Command {
 		Use:     "push",
 		Short:   "push information about the object to the collector",
 		Aliases: []string{"push", "pus", "pu"},
-	}
-}
-
-func newCmdObjectSSH(kind string) *cobra.Command {
-	return &cobra.Command{
-		Use:   "ssh",
-		Short: "ssh command group",
-	}
-}
-
-func newCmdObjectSync(kind string) *cobra.Command {
-	return &cobra.Command{
-		Use:     "sync",
-		Short:   "data synchronization command group",
-		Aliases: []string{"syn", "sy"},
-	}
-}
-
-func newCmdObjectCollector(kind string) *cobra.Command {
-	return &cobra.Command{
-		Use:     "collector",
-		Short:   "collector data management commands",
-		Aliases: []string{"coll"},
 	}
 }
 
@@ -1625,14 +1600,6 @@ func newCmdObjectCollectorTagShow(kind string) *cobra.Command {
 	return cmd
 }
 
-func newCmdObjectCompliance(kind string) *cobra.Command {
-	return &cobra.Command{
-		Use:     "compliance",
-		Short:   "node configuration expectations analysis and application",
-		Aliases: []string{"compli", "comp", "com", "co"},
-	}
-}
-
 func newCmdObjectComplianceAttach(kind string) *cobra.Command {
 	return &cobra.Command{
 		Use:     "attach",
@@ -1654,21 +1621,6 @@ func newCmdObjectComplianceList(kind string) *cobra.Command {
 		Aliases: []string{"ls"},
 		Use:     "list",
 		Short:   "list modules, modulesets and rulesets available",
-	}
-}
-
-func newCmdObjectInstance(kind string) *cobra.Command {
-	return &cobra.Command{
-		Use:     "instance",
-		Short:   "config, status, monitor, list",
-		Aliases: []string{"inst", "in"},
-	}
-}
-
-func newCmdObjectKey(kind string) *cobra.Command {
-	return &cobra.Command{
-		Use:   "key",
-		Short: "data key commands",
 	}
 }
 
@@ -2052,6 +2004,7 @@ func newCmdObjectCreate(kind string) *cobra.Command {
 func newCmdObjectDelete(kind string) *cobra.Command {
 	var options commands.CmdObjectDelete
 	cmd := &cobra.Command{
+		GroupID: commoncmd.GroupIDOrchestratedActions,
 		Use:     "delete",
 		Aliases: []string{"del"},
 		Short:   "orchestrate delete of the object configuration",
@@ -2073,8 +2026,9 @@ func newCmdObjectDelete(kind string) *cobra.Command {
 func newCmdObjectDeploy(kind string) *cobra.Command {
 	var options commands.CmdObjectCreate
 	cmd := &cobra.Command{
-		Use:   "deploy",
-		Short: "create a new object and orchestrate provision",
+		GroupID: commoncmd.GroupIDOrchestratedActions,
+		Use:     "deploy",
+		Short:   "create a new object and orchestrate provision",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			options.Provision = true
 			return options.Run(kind)
@@ -2146,8 +2100,9 @@ func newCmdObjectEnter(kind string) *cobra.Command {
 func newCmdObjectFreeze(kind string) *cobra.Command {
 	var options commands.CmdObjectFreeze
 	cmd := &cobra.Command{
-		Use:   "freeze",
-		Short: "orchestrate block ha automatic start and monitor action",
+		GroupID: commoncmd.GroupIDOrchestratedActions,
+		Use:     "freeze",
+		Short:   "orchestrate block ha automatic start and monitor action",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return options.Run(kind)
 		},
@@ -2162,9 +2117,10 @@ func newCmdObjectFreeze(kind string) *cobra.Command {
 func newCmdObjectGiveback(kind string) *cobra.Command {
 	var options commands.CmdObjectGiveback
 	cmd := &cobra.Command{
-		Use:   "giveback",
-		Short: "orchestrate to reach optimal placement",
-		Long:  "Stop the misplaced service instances and start on the preferred nodes.",
+		GroupID: commoncmd.GroupIDOrchestratedActions,
+		Use:     "giveback",
+		Short:   "orchestrate to reach optimal placement",
+		Long:    "Stop the misplaced service instances and start on the preferred nodes.",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return options.Run(kind)
 		},
@@ -2181,6 +2137,7 @@ func newCmdObjectLogs(kind string) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:     "logs",
 		Aliases: []string{"logs", "log", "lo"},
+		GroupID: commoncmd.GroupIDQuery,
 		Short:   "show object logs",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return options.Run(kind)
@@ -2197,6 +2154,7 @@ func newCmdObjectList(kind string) *cobra.Command {
 	var options commands.CmdObjectList
 	cmd := &cobra.Command{
 		Aliases: []string{"ls"},
+		GroupID: commoncmd.GroupIDQuery,
 		Use:     "list",
 		Short:   "print the selected objects path",
 		RunE: func(cmd *cobra.Command, args []string) error {
@@ -2459,6 +2417,7 @@ func newCmdObjectInstanceStatus(kind string) *cobra.Command {
 func newCmdObjectProvision(kind string) *cobra.Command {
 	var options commands.CmdObjectProvision
 	cmd := &cobra.Command{
+		GroupID: commoncmd.GroupIDOrchestratedActions,
 		Use:     "provision",
 		Short:   "orchestrate provision",
 		Long:    "Allocate the system resources required by the object instance resources.\n\nFor example, provision a fs.ext3 resource means format the device with the mkfs.ext3 command.\n\nOperate on a selection of instances asynchronously using --node=<selector>.",
@@ -2518,8 +2477,9 @@ func newCmdObjectPRStop(kind string) *cobra.Command {
 func newCmdObjectPurge(kind string) *cobra.Command {
 	var options commands.CmdObjectPurge
 	cmd := &cobra.Command{
-		Use:   "purge",
-		Short: "orchestrate unprovision and delete",
+		GroupID: commoncmd.GroupIDOrchestratedActions,
+		Use:     "purge",
+		Short:   "orchestrate unprovision and delete",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return options.Run(kind)
 		},
@@ -2556,8 +2516,9 @@ func newCmdObjectPushResourceInfo(kind string) *cobra.Command {
 func newCmdObjectRestart(kind string) *cobra.Command {
 	var options commands.CmdObjectRestart
 	cmd := &cobra.Command{
-		Use:   "orchestrate restart",
-		Short: "restart the selected objects, instances or resources",
+		GroupID: commoncmd.GroupIDOrchestratedActions,
+		Use:     "orchestrate restart",
+		Short:   "restart the selected objects, instances or resources",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return options.Run(kind)
 		},
@@ -2790,9 +2751,10 @@ func newCmdObjectShutdown(kind string) *cobra.Command {
 func newCmdObjectStart(kind string) *cobra.Command {
 	var options commands.CmdObjectStart
 	cmd := &cobra.Command{
-		Use:   "start",
-		Short: "orchestrate start",
-		Long:  "Request the daemon to orchestrate object start.\n\nUse the `instance start` command to start a specific instance.",
+		GroupID: commoncmd.GroupIDOrchestratedActions,
+		Use:     "start",
+		Short:   "orchestrate start",
+		Long:    "Request the daemon to orchestrate object start.\n\nUse the `instance start` command to start a specific instance.",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return options.Run(kind)
 		},
@@ -2836,9 +2798,10 @@ func newCmdObjectStartStandby(kind string) *cobra.Command {
 func newCmdObjectStop(kind string) *cobra.Command {
 	var options commands.CmdObjectStop
 	cmd := &cobra.Command{
-		Use:   "stop",
-		Short: "orchestrate stop",
-		Long:  "Request the daemon to orchestrate object stop.\n\nUse the `instance stop` command to stop a specific instance.",
+		GroupID: commoncmd.GroupIDOrchestratedActions,
+		Use:     "stop",
+		Short:   "orchestrate stop",
+		Long:    "Request the daemon to orchestrate object stop.\n\nUse the `instance stop` command to stop a specific instance.",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return options.Run(kind)
 		},
@@ -2862,9 +2825,10 @@ func newCmdObjectStop(kind string) *cobra.Command {
 func newCmdObjectSwitch(kind string) *cobra.Command {
 	var options commands.CmdObjectSwitch
 	cmd := &cobra.Command{
-		Use:   "switch",
-		Short: "orchestrate a running instance move-out",
-		Long:  "Stop the running object instance and start on the next preferred node.",
+		GroupID: commoncmd.GroupIDOrchestratedActions,
+		Use:     "switch",
+		Short:   "orchestrate a running instance move-out",
+		Long:    "Stop the running object instance and start on the next preferred node.",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return options.Run(kind)
 		},
@@ -2880,8 +2844,9 @@ func newCmdObjectSwitch(kind string) *cobra.Command {
 func newCmdObjectUnfreeze(kind string) *cobra.Command {
 	var options commands.CmdObjectUnfreeze
 	cmd := &cobra.Command{
-		Use:   "unfreeze",
-		Short: "orchestrate unblock ha automatic start and monitor action",
+		GroupID: commoncmd.GroupIDOrchestratedActions,
+		Use:     "unfreeze",
+		Short:   "orchestrate unblock ha automatic start and monitor action",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return options.Run(kind)
 		},
@@ -2896,9 +2861,10 @@ func newCmdObjectUnfreeze(kind string) *cobra.Command {
 func newCmdObjectTakeover(kind string) *cobra.Command {
 	var options commands.CmdObjectTakeover
 	cmd := &cobra.Command{
-		Use:   "takeover",
-		Short: "orchestrate a running instance move-in",
-		Long:  "Stop a object instance and start one on the local node.",
+		GroupID: commoncmd.GroupIDOrchestratedActions,
+		Use:     "takeover",
+		Short:   "orchestrate a running instance move-in",
+		Long:    "Stop a object instance and start one on the local node.",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return options.Run(kind)
 		},
@@ -2920,6 +2886,7 @@ func newCmdObjectThaw(kind string) *cobra.Command {
 func newCmdObjectUnprovision(kind string) *cobra.Command {
 	var options commands.CmdObjectUnprovision
 	cmd := &cobra.Command{
+		GroupID: commoncmd.GroupIDOrchestratedActions,
 		Use:     "unprovision",
 		Short:   "orchestrate free system resources (data-loss danger)",
 		Long:    "Free the system resources required by the object instances resources.",

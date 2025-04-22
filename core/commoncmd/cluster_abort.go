@@ -14,8 +14,9 @@ type CmdClusterAbort struct {
 func NewCmdClusterAbort() *cobra.Command {
 	var options CmdClusterAbort
 	cmd := &cobra.Command{
-		Use:   "abort",
-		Short: "abort the running orchestration",
+		GroupID: GroupIDOrchestratedActions,
+		Use:     "abort",
+		Short:   "abort the running orchestration",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return options.Run()
 		},

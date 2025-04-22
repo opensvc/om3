@@ -1,33 +1,38 @@
-package om
+package ox
 
 import "github.com/opensvc/om3/core/commoncmd"
 
 func init() {
 	kind := ""
 	cmdObject := newCmdAll()
-	cmdObjectCollector := newCmdObjectCollector(kind)
+	cmdObjectCollector := commoncmd.NewCmdObjectCollector(kind)
 	cmdObjectCollectorTag := newCmdObjectCollectorTag(kind)
-	cmdObjectCompliance := newCmdObjectCompliance(kind)
+	cmdObjectCompliance := commoncmd.NewCmdObjectCompliance(kind)
 	cmdObjectComplianceAttach := newCmdObjectComplianceAttach(kind)
 	cmdObjectComplianceDetach := newCmdObjectComplianceDetach(kind)
 	cmdObjectComplianceShow := newCmdObjectComplianceShow(kind)
 	cmdObjectComplianceList := newCmdObjectComplianceList(kind)
-	cmdObjectConfig := newCmdObjectConfig(kind)
 	cmdObjectEdit := newCmdObjectEdit(kind)
-	cmdObjectInstance := newCmdObjectInstance(kind)
+	cmdObjectInstance := commoncmd.NewCmdObjectInstance(kind)
 	cmdObjectInstanceDevice := newCmdObjectInstanceDevice(kind)
-	cmdObjectSchedule := commoncmd.NewCmdObjectSchedule(kind)
+	cmdObjectSchedule := newCmdObjectSchedule(kind)
 	cmdObjectSet := newCmdObjectSet(kind)
+	cmdObjectConfig := commoncmd.NewCmdObjectConfig(kind)
 	cmdObjectPrint := newCmdObjectPrint(kind)
 	cmdObjectPrintConfig := newCmdObjectPrintConfig(kind)
 	cmdObjectResource := newCmdObjectResource(kind)
 	cmdObjectResourceInfo := newCmdObjectResourceInfo(kind)
 	cmdObjectPush := newCmdObjectPush(kind)
-	cmdObjectSync := newCmdObjectSync(kind)
+	cmdObjectSync := commoncmd.NewCmdObjectSync(kind)
 	cmdObjectValidate := newCmdObjectValidate(kind)
 
 	root.AddCommand(
 		cmdObject,
+	)
+	cmdObject.AddGroup(
+		commoncmd.NewGroupOrchestratedActions(),
+		commoncmd.NewGroupQuery(),
+		commoncmd.NewGroupSubsystems(),
 	)
 	cmdObject.AddCommand(
 		cmdObjectCollector,
@@ -42,6 +47,13 @@ func init() {
 		cmdObjectSchedule,
 		cmdObjectSync,
 		cmdObjectValidate,
+		newCmdDataStoreAdd(kind),
+		newCmdDataStoreChange(kind),
+		newCmdDataStoreDecode(kind),
+		newCmdDataStoreKeys(kind),
+		newCmdDataStoreInstall(kind),
+		newCmdDataStoreRemove(kind),
+		newCmdDataStoreRename(kind),
 		newCmdObjectAbort(kind),
 		newCmdObjectBoot(kind),
 		newCmdObjectClear(kind),
@@ -60,10 +72,8 @@ func init() {
 		newCmdObjectPRStart(kind),
 		newCmdObjectPRStop(kind),
 		newCmdObjectRestart(kind),
-		newCmdObjectRun(kind),
 		newCmdObjectShutdown(kind),
 		newCmdObjectStart(kind),
-		newCmdObjectStatus(kind),
 		newCmdObjectStop(kind),
 		newCmdObjectSwitch(kind),
 		newCmdObjectTakeover(kind),
@@ -71,16 +81,18 @@ func init() {
 		newCmdObjectUnfreeze(kind),
 		newCmdObjectUnprovision(kind),
 		newCmdObjectUnset(kind),
+		newCmdObjectUpdate(kind),
+		newCmdTUI(kind),
 	)
 	cmdObjectInstance.AddCommand(
 		cmdObjectInstanceDevice,
 		newCmdObjectInstanceFreeze(kind),
 		newCmdObjectInstanceList(kind),
-		newCmdObjectInstanceRun(kind),
 		newCmdObjectInstanceStatus(kind),
 		newCmdObjectInstanceProvision(kind),
 		newCmdObjectInstancePRStart(kind),
 		newCmdObjectInstancePRStop(kind),
+		newCmdObjectInstanceRun(kind),
 		newCmdObjectInstanceStart(kind),
 		newCmdObjectInstanceStop(kind),
 		newCmdObjectInstanceUnfreeze(kind),
@@ -98,11 +110,9 @@ func init() {
 		newCmdObjectResourceInfoPush(kind),
 	)
 	cmdObjectConfig.AddCommand(
-		newCmdObjectConfigDoc(kind),
 		newCmdObjectConfigEdit(kind),
 		newCmdObjectConfigEval(kind),
 		newCmdObjectConfigGet(kind),
-		newCmdObjectConfigMtime(kind),
 		newCmdObjectConfigShow(kind),
 		newCmdObjectConfigUpdate(kind),
 		newCmdObjectConfigValidate(kind),
@@ -123,15 +133,12 @@ func init() {
 		newCmdObjectPrintSchedule(kind),
 		newCmdObjectPrintStatus(kind),
 	)
-	cmdObjectPrintConfig.AddCommand(
-		newCmdObjectConfigMtime(kind),
-	)
 	cmdObjectPush.AddCommand(
 		newCmdObjectPushResourceInfo(kind),
 	)
 	cmdObjectSync.AddCommand(
-		newCmdObjectSyncFull(kind),
 		newCmdObjectSyncIngest(kind),
+		newCmdObjectSyncFull(kind),
 		newCmdObjectSyncResync(kind),
 		newCmdObjectSyncUpdate(kind),
 	)
@@ -143,9 +150,7 @@ func init() {
 	)
 	cmdObjectCollectorTag.AddCommand(
 		newCmdObjectCollectorTagAttach(kind),
-		newCmdObjectCollectorTagCreate(kind),
 		newCmdObjectCollectorTagDetach(kind),
-		newCmdObjectCollectorTagList(kind),
 		newCmdObjectCollectorTagShow(kind),
 	)
 	cmdObjectCompliance.AddCommand(

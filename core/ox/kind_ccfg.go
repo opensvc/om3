@@ -6,17 +6,22 @@ func init() {
 	kind := "ccfg"
 
 	cmdObject := newCmdCcfg()
-	cmdObjectConfig := newCmdObjectConfig(kind)
+	cmdObjectConfig := commoncmd.NewCmdObjectConfig(kind)
 	cmdObjectEdit := newCmdObjectEdit(kind)
 	cmdObjectSet := newCmdObjectSet(kind)
 	cmdObjectPrint := newCmdObjectPrint(kind)
 	cmdObjectPrintConfig := newCmdObjectPrintConfig(kind)
-	cmdObjectSSH := newCmdObjectSSH(kind)
+	cmdObjectSSH := commoncmd.NewCmdObjectSSH(kind)
 	cmdObjectValidate := newCmdObjectValidate(kind)
 
 	root.AddCommand(
 		cmdObject,
 		commoncmd.NewCmdMonitor(),
+	)
+	cmdObject.AddGroup(
+		commoncmd.NewGroupOrchestratedActions(),
+		commoncmd.NewGroupQuery(),
+		commoncmd.NewGroupSubsystems(),
 	)
 	cmdObject.AddCommand(
 		cmdObjectConfig,
@@ -34,7 +39,6 @@ func init() {
 		newCmdObjectCreate(kind),
 		newCmdObjectEval(kind),
 		newCmdObjectGet(kind),
-		newCmdObjectLogs(kind),
 		newCmdObjectList(kind),
 		commoncmd.NewCmdObjectMonitor("", kind),
 		newCmdObjectUnset(kind),

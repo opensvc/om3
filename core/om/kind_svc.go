@@ -3,38 +3,49 @@ package om
 import "github.com/opensvc/om3/core/commoncmd"
 
 func init() {
-	kind := "vol"
+	kind := "svc"
 
-	cmdObject := newCmdVol()
-	cmdObjectCollector := newCmdObjectCollector(kind)
+	cmdObject := newCmdSVC()
+	cmdObjectCollector := commoncmd.NewCmdObjectCollector(kind)
 	cmdObjectCollectorTag := newCmdObjectCollectorTag(kind)
+	cmdObjectCompliance := commoncmd.NewCmdObjectCompliance(kind)
+	cmdObjectComplianceAttach := newCmdObjectComplianceAttach(kind)
+	cmdObjectComplianceDetach := newCmdObjectComplianceDetach(kind)
+	cmdObjectComplianceShow := newCmdObjectComplianceShow(kind)
+	cmdObjectComplianceList := newCmdObjectComplianceList(kind)
+	cmdObjectConfig := commoncmd.NewCmdObjectConfig(kind)
 	cmdObjectEdit := newCmdObjectEdit(kind)
-	cmdObjectConfig := newCmdObjectConfig(kind)
-	cmdObjectInstance := newCmdObjectInstance(kind)
+	cmdObjectInstance := commoncmd.NewCmdObjectInstance(kind)
 	cmdObjectInstanceDevice := newCmdObjectInstanceDevice(kind)
-	cmdObjectSchedule := commoncmd.NewCmdObjectSchedule(kind)
+	cmdObjectResource := newCmdObjectResource(kind)
+	cmdObjectResourceInfo := newCmdObjectResourceInfo(kind)
 	cmdObjectSet := newCmdObjectSet(kind)
+	cmdObjectSchedule := commoncmd.NewCmdObjectSchedule(kind)
 	cmdObjectPrint := newCmdObjectPrint(kind)
 	cmdObjectPrintConfig := newCmdObjectPrintConfig(kind)
 	cmdObjectPush := newCmdObjectPush(kind)
-	cmdObjectResource := newCmdObjectResource(kind)
-	cmdObjectResourceInfo := newCmdObjectResourceInfo(kind)
-	cmdObjectSync := newCmdObjectSync(kind)
+	cmdObjectSync := commoncmd.NewCmdObjectSync(kind)
 	cmdObjectValidate := newCmdObjectValidate(kind)
 
 	root.AddCommand(
 		cmdObject,
 	)
+	cmdObject.AddGroup(
+		commoncmd.NewGroupOrchestratedActions(),
+		commoncmd.NewGroupQuery(),
+		commoncmd.NewGroupSubsystems(),
+	)
 	cmdObject.AddCommand(
 		cmdObjectCollector,
+		cmdObjectCompliance,
 		cmdObjectConfig,
 		cmdObjectEdit,
 		cmdObjectInstance,
 		cmdObjectPrint,
 		cmdObjectPush,
 		cmdObjectResource,
-		cmdObjectSet,
 		cmdObjectSchedule,
+		cmdObjectSet,
 		cmdObjectSync,
 		cmdObjectValidate,
 		newCmdObjectAbort(kind),
@@ -42,8 +53,11 @@ func init() {
 		newCmdObjectClear(kind),
 		newCmdObjectCreate(kind),
 		newCmdObjectDelete(kind),
-		newCmdObjectEval(kind),
+		newCmdObjectDeploy(kind),
+		newCmdObjectDisable(kind),
+		newCmdObjectEnable(kind),
 		newCmdObjectEnter(kind),
+		newCmdObjectEval(kind),
 		newCmdObjectFreeze(kind),
 		newCmdObjectGet(kind),
 		newCmdObjectGiveback(kind),
@@ -68,16 +82,6 @@ func init() {
 		newCmdObjectUnprovision(kind),
 		newCmdObjectUnset(kind),
 	)
-	cmdObjectCollector.AddCommand(
-		cmdObjectCollectorTag,
-	)
-	cmdObjectCollectorTag.AddCommand(
-		newCmdObjectCollectorTagAttach(kind),
-		newCmdObjectCollectorTagCreate(kind),
-		newCmdObjectCollectorTagDetach(kind),
-		newCmdObjectCollectorTagList(kind),
-		newCmdObjectCollectorTagShow(kind),
-	)
 	cmdObjectConfig.AddCommand(
 		newCmdObjectConfigDoc(kind),
 		newCmdObjectConfigEdit(kind),
@@ -91,12 +95,20 @@ func init() {
 	cmdObjectEdit.AddCommand(
 		newCmdObjectEditConfig(kind),
 	)
+	cmdObjectResource.AddCommand(
+		cmdObjectResourceInfo,
+		newCmdObjectResourceList(kind),
+	)
+	cmdObjectResourceInfo.AddCommand(
+		newCmdObjectResourceInfoList(kind),
+		newCmdObjectResourceInfoPush(kind),
+	)
 	cmdObjectInstance.AddCommand(
 		cmdObjectInstanceDevice,
 		newCmdObjectInstanceFreeze(kind),
 		newCmdObjectInstanceList(kind),
-		newCmdObjectInstanceRun(kind),
 		newCmdObjectInstanceStatus(kind),
+		newCmdObjectInstanceRun(kind),
 		newCmdObjectInstanceProvision(kind),
 		newCmdObjectInstancePRStart(kind),
 		newCmdObjectInstancePRStop(kind),
@@ -107,14 +119,6 @@ func init() {
 	)
 	cmdObjectInstanceDevice.AddCommand(
 		newCmdObjectInstanceDeviceList(kind),
-	)
-	cmdObjectResource.AddCommand(
-		cmdObjectResourceInfo,
-		newCmdObjectResourceList(kind),
-	)
-	cmdObjectResourceInfo.AddCommand(
-		newCmdObjectResourceInfoList(kind),
-		newCmdObjectResourceInfoPush(kind),
 	)
 	cmdObjectSchedule.AddCommand(
 		newCmdObjectScheduleList(kind),
@@ -143,5 +147,43 @@ func init() {
 	)
 	cmdObjectValidate.AddCommand(
 		newCmdObjectValidateConfig(kind),
+	)
+	cmdObjectCollector.AddCommand(
+		cmdObjectCollectorTag,
+	)
+	cmdObjectCollectorTag.AddCommand(
+		newCmdObjectCollectorTagAttach(kind),
+		newCmdObjectCollectorTagCreate(kind),
+		newCmdObjectCollectorTagDetach(kind),
+		newCmdObjectCollectorTagList(kind),
+		newCmdObjectCollectorTagShow(kind),
+	)
+	cmdObjectCompliance.AddCommand(
+		cmdObjectComplianceAttach,
+		cmdObjectComplianceDetach,
+		cmdObjectComplianceShow,
+		cmdObjectComplianceList,
+		newCmdObjectComplianceEnv(kind),
+		newCmdObjectComplianceAuto(kind),
+		newCmdObjectComplianceCheck(kind),
+		newCmdObjectComplianceFix(kind),
+		newCmdObjectComplianceFixable(kind),
+	)
+	cmdObjectComplianceAttach.AddCommand(
+		newCmdObjectComplianceAttachModuleset(kind),
+		newCmdObjectComplianceAttachRuleset(kind),
+	)
+	cmdObjectComplianceDetach.AddCommand(
+		newCmdObjectComplianceDetachModuleset(kind),
+		newCmdObjectComplianceDetachRuleset(kind),
+	)
+	cmdObjectComplianceShow.AddCommand(
+		newCmdObjectComplianceShowRuleset(kind),
+		newCmdObjectComplianceShowModuleset(kind),
+	)
+	cmdObjectComplianceList.AddCommand(
+		newCmdObjectComplianceListModules(kind),
+		newCmdObjectComplianceListModuleset(kind),
+		newCmdObjectComplianceListRuleset(kind),
 	)
 }

@@ -1,16 +1,17 @@
-package om
+package ox
 
 import "github.com/opensvc/om3/core/commoncmd"
 
 func init() {
-	kind := "usr"
+	kind := "sec"
 
-	cmdObject := newCmdUsr()
+	cmdObject := newCmdSec()
 	cmdObjectCertificate := newCmdObjectCertificate(kind)
-	cmdObjectConfig := newCmdObjectConfig(kind)
+	cmdObjectConfig := commoncmd.NewCmdObjectConfig(kind)
 	cmdObjectEdit := newCmdObjectEdit(kind)
-	cmdObjectKey := newCmdObjectKey(kind)
-	cmdObjectInstance := newCmdObjectInstance(kind)
+	cmdObjectGen := newCmdObjectGen(kind)
+	cmdObjectKey := commoncmd.NewCmdObjectKey(kind)
+	cmdObjectInstance := commoncmd.NewCmdObjectInstance(kind)
 	cmdObjectSet := newCmdObjectSet(kind)
 	cmdObjectPrint := newCmdObjectPrint(kind)
 	cmdObjectPrintConfig := newCmdObjectPrintConfig(kind)
@@ -19,10 +20,16 @@ func init() {
 	root.AddCommand(
 		cmdObject,
 	)
+	cmdObject.AddGroup(
+		commoncmd.NewGroupOrchestratedActions(),
+		commoncmd.NewGroupQuery(),
+		commoncmd.NewGroupSubsystems(),
+	)
 	cmdObject.AddCommand(
 		cmdObjectCertificate,
 		cmdObjectConfig,
 		cmdObjectEdit,
+		cmdObjectGen,
 		cmdObjectKey,
 		cmdObjectInstance,
 		cmdObjectPrint,
@@ -32,6 +39,7 @@ func init() {
 		newCmdDataStoreChange(kind),
 		newCmdDataStoreDecode(kind),
 		newCmdDataStoreKeys(kind),
+		newCmdDataStoreInstall(kind),
 		newCmdDataStoreRemove(kind),
 		newCmdDataStoreRename(kind),
 		newCmdObjectCreate(kind),
@@ -43,25 +51,27 @@ func init() {
 		commoncmd.NewCmdObjectMonitor("", kind),
 		newCmdObjectPurge(kind),
 		newCmdObjectUnset(kind),
-		newCmdObjectGenCert(kind),
+		newCmdObjectUpdate(kind),
 		newCmdObjectPKCS(kind),
+		newCmdTUI(kind),
 	)
 	cmdObjectCertificate.AddCommand(
 		newCmdObjectCertificateCreate(kind),
 		newCmdObjectCertificatePKCS(kind),
 	)
 	cmdObjectConfig.AddCommand(
-		newCmdObjectConfigDoc(kind),
 		newCmdObjectConfigEdit(kind),
 		newCmdObjectConfigEval(kind),
 		newCmdObjectConfigGet(kind),
-		newCmdObjectConfigMtime(kind),
 		newCmdObjectConfigShow(kind),
 		newCmdObjectConfigUpdate(kind),
 		newCmdObjectConfigValidate(kind),
 	)
 	cmdObjectEdit.AddCommand(
 		newCmdObjectEditConfig(kind),
+	)
+	cmdObjectGen.AddCommand(
+		newCmdObjectGenCert(kind),
 	)
 	cmdObjectKey.AddCommand(
 		newCmdObjectKeyAdd(kind),
@@ -78,9 +88,6 @@ func init() {
 	)
 	cmdObjectPrint.AddCommand(
 		cmdObjectPrintConfig,
-	)
-	cmdObjectPrintConfig.AddCommand(
-		newCmdObjectConfigMtime(kind),
 	)
 	cmdObjectValidate.AddCommand(
 		newCmdObjectValidateConfig(kind),

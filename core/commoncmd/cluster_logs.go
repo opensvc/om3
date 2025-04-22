@@ -26,6 +26,7 @@ type (
 func NewCmdClusterLogs() *cobra.Command {
 	var options CmdClusterLogs
 	cmd := &cobra.Command{
+		GroupID: GroupIDQuery,
 		Use:     "logs",
 		Aliases: []string{"logs", "log", "lo"},
 		Short:   "show all nodes logs",
