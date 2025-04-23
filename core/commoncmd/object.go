@@ -6,7 +6,7 @@ func NewCmdObjectCollector(kind string) *cobra.Command {
 	cmd := &cobra.Command{
 		GroupID: GroupIDSubsystems,
 		Use:     "collector",
-		Short:   "collector data management commands",
+		Short:   "query, push collector data",
 		Aliases: []string{"coll"},
 	}
 	return cmd
@@ -16,7 +16,7 @@ func NewCmdObjectCompliance(kind string) *cobra.Command {
 	return &cobra.Command{
 		GroupID: GroupIDSubsystems,
 		Use:     "compliance",
-		Short:   "node configuration expectations analysis and application",
+		Short:   "analyze, enforce node configuration compliance",
 		Aliases: []string{"compli", "comp", "com", "co"},
 	}
 }
@@ -25,7 +25,7 @@ func NewCmdObjectConfig(kind string) *cobra.Command {
 	return &cobra.Command{
 		GroupID: GroupIDSubsystems,
 		Use:     "config",
-		Short:   "object configuration commands",
+		Short:   "show, alter object configuration",
 	}
 }
 
@@ -33,7 +33,7 @@ func NewCmdObjectInstance(kind string) *cobra.Command {
 	cmd := &cobra.Command{
 		GroupID: GroupIDSubsystems,
 		Use:     "instance",
-		Short:   "config, status, monitor, list",
+		Short:   "query, action object instances",
 		Aliases: []string{"inst", "in"},
 	}
 	cmd.AddGroup(
@@ -46,7 +46,7 @@ func NewCmdObjectKey(kind string) *cobra.Command {
 	return &cobra.Command{
 		GroupID: GroupIDSubsystems,
 		Use:     "key",
-		Short:   "data key commands",
+		Short:   "query, alter datastore keys",
 	}
 }
 
@@ -54,7 +54,7 @@ func NewCmdObjectSSH(kind string) *cobra.Command {
 	return &cobra.Command{
 		GroupID: GroupIDSubsystems,
 		Use:     "ssh",
-		Short:   "ssh command group",
+		Short:   "deploy cluster nodes ssh trust",
 	}
 }
 
@@ -62,7 +62,16 @@ func NewCmdObjectSync(kind string) *cobra.Command {
 	return &cobra.Command{
 		GroupID: GroupIDSubsystems,
 		Use:     "sync",
-		Short:   "data synchronization command group",
+		Hidden:  true,
+		Aliases: []string{"syn", "sy"},
+	}
+}
+
+func NewCmdObjectInstanceSync(kind string) *cobra.Command {
+	return &cobra.Command{
+		GroupID: GroupIDSubsystems,
+		Use:     "sync",
+		Short:   "replicate object instance data",
 		Aliases: []string{"syn", "sy"},
 	}
 }
@@ -71,7 +80,7 @@ func NewCmdObjectResource(kind string) *cobra.Command {
 	return &cobra.Command{
 		GroupID: GroupIDSubsystems,
 		Use:     "resource",
-		Short:   "config, status, monitor, list",
+		Short:   "query object instance resources",
 		Aliases: []string{"res"},
 	}
 }
