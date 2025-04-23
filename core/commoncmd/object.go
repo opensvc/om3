@@ -66,3 +66,12 @@ func NewCmdObjectSync(kind string) *cobra.Command {
 		Aliases: []string{"syn", "sy"},
 	}
 }
+
+func NewCmdObjectResource(kind string) *cobra.Command {
+	return &cobra.Command{
+		GroupID: GroupIDSubsystems,
+		Use:     "resource",
+		Short:   "config, status, monitor, list",
+		Aliases: []string{"res"},
+	}
+}

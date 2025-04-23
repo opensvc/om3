@@ -2793,14 +2793,6 @@ func newCmdObjectSyncUpdate(kind string) *cobra.Command {
 	return cmd
 }
 
-func newCmdObjectResource(kind string) *cobra.Command {
-	return &cobra.Command{
-		Use:     "resource",
-		Short:   "config, status, monitor, list",
-		Aliases: []string{"res"},
-	}
-}
-
 func newCmdObjectResourceInfo(kind string) *cobra.Command {
 	return &cobra.Command{
 		Use:   "info",
