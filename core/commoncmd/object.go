@@ -86,7 +86,6 @@ func NewCmdObjectInstanceSync(kind string) *cobra.Command {
 		GroupID: GroupIDSubsystems,
 		Use:     "sync",
 		Short:   "replicate object instance data",
-		Aliases: []string{"syn", "sy"},
 	}
 }
 
