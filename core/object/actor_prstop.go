@@ -9,7 +9,7 @@ import (
 
 // PRStop stops the exclusive write access to devices of the local instance of the object
 func (t *actor) PRStop(ctx context.Context) error {
-	ctx = actioncontext.WithProps(ctx, actioncontext.Stop)
+	ctx = actioncontext.WithProps(ctx, actioncontext.PRStop)
 	if err := t.validateAction(); err != nil {
 		return err
 	}
