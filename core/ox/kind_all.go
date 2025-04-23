@@ -94,6 +94,7 @@ func init() {
 		newCmdObjectInstancePRStop(kind),
 		newCmdObjectInstanceRun(kind),
 		newCmdObjectInstanceStart(kind),
+		newCmdObjectInstanceStartStandby(kind),
 		newCmdObjectInstanceStop(kind),
 		newCmdObjectInstanceUnfreeze(kind),
 		newCmdObjectInstanceUnprovision(kind),

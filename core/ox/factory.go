@@ -2775,8 +2775,8 @@ func newCmdObjectStart(kind string) *cobra.Command {
 	return cmd
 }
 
-func newCmdObjectStartStandby(kind string) *cobra.Command {
-	var options commands.CmdObjectStartStandby
+func newCmdObjectInstanceStartStandby(kind string) *cobra.Command {
+	var options commands.CmdObjectInstanceStartStandby
 	cmd := &cobra.Command{
 		Use:   "startstandby",
 		Short: "activate resources for standby",
