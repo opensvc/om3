@@ -38,6 +38,20 @@ func NewCmdObjectInstance(kind string) *cobra.Command {
 	}
 	cmd.AddGroup(
 		NewGroupQuery(),
+		NewGroupSubsystems(),
+	)
+	return cmd
+}
+
+func NewCmdObjectInstanceDevice(kind string) *cobra.Command {
+	cmd := &cobra.Command{
+		GroupID: GroupIDSubsystems,
+		Use:     "device",
+		Short:   "block device commands",
+		Aliases: []string{"dev"},
+	}
+	cmd.AddGroup(
+		NewGroupQuery(),
 	)
 	return cmd
 }

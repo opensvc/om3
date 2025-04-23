@@ -2182,14 +2182,6 @@ func newCmdObjectPrintResourceInfo(kind string) *cobra.Command {
 	return cmd
 }
 
-func newCmdObjectInstanceDevice(kind string) *cobra.Command {
-	return &cobra.Command{
-		Use:     "device",
-		Short:   "block device commands",
-		Aliases: []string{"dev"},
-	}
-}
-
 func newCmdObjectInstanceDeviceList(kind string) *cobra.Command {
 	var options commands.CmdObjectInstanceDeviceList
 	cmd := &cobra.Command{
@@ -2242,7 +2234,7 @@ func newCmdObjectInstanceProvision(kind string) *cobra.Command {
 	var options commands.CmdObjectInstanceProvision
 	cmd := &cobra.Command{
 		Use:     "provision",
-		Short:   "inline provision",
+		Short:   "allocate the system resources of the instance resources",
 		Long:    "Allocate the system resources required by the object instance resources.\n\nFor example, provision a fs.ext3 resource means format the device with the mkfs.ext3 command.\n\nOperate on a selection of instances asynchronously using --node=<selector>.",
 		Aliases: []string{"prov"},
 		RunE: func(cmd *cobra.Command, args []string) error {
@@ -2307,7 +2299,7 @@ func newCmdObjectInstanceStart(kind string) *cobra.Command {
 	var options commands.CmdObjectInstanceStart
 	cmd := &cobra.Command{
 		Use:   "start",
-		Short: "inline start",
+		Short: "bring up instance resources",
 		Long:  "Start a selection of instances asynchronously using --node=<selector>.",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return options.Run(kind)
@@ -2330,7 +2322,7 @@ func newCmdObjectInstanceStop(kind string) *cobra.Command {
 	var options commands.CmdObjectInstanceStop
 	cmd := &cobra.Command{
 		Use:   "stop",
-		Short: "inline stop",
+		Short: "bring down instance resources",
 		Long:  "Stop a selection of instances asynchronously using --node=<selector>.",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return options.Run(kind)
@@ -2367,7 +2359,7 @@ func newCmdObjectInstanceUnprovision(kind string) *cobra.Command {
 	var options commands.CmdObjectInstanceUnprovision
 	cmd := &cobra.Command{
 		Use:     "unprovision",
-		Short:   "inline unprovision (data-loss danger)",
+		Short:   "free the system resources of the instance resources (data-loss danger)",
 		Long:    "Free the system resources required by the object instance resources.\n\nOperate on a selection of instances asynchronously using --node=<selector>.",
 		Aliases: []string{"prov"},
 		RunE: func(cmd *cobra.Command, args []string) error {
@@ -2535,8 +2527,8 @@ func newCmdObjectRestart(kind string) *cobra.Command {
 	return cmd
 }
 
-func newCmdObjectSyncIngest(kind string) *cobra.Command {
-	var options commands.CmdObjectSyncIngest
+func newCmdObjectInstanceSyncIngest(kind string) *cobra.Command {
+	var options commands.CmdObjectInstanceSyncIngest
 	cmd := &cobra.Command{
 		Use:   "Ingest",
 		Short: "ingest files received from the active instance",
@@ -2552,8 +2544,8 @@ func newCmdObjectSyncIngest(kind string) *cobra.Command {
 	return cmd
 }
 
-func newCmdObjectSyncFull(kind string) *cobra.Command {
-	var options commands.CmdObjectSyncFull
+func newCmdObjectInstanceSyncFull(kind string) *cobra.Command {
+	var options commands.CmdObjectInstanceSyncFull
 	cmd := &cobra.Command{
 		Use:   "full",
 		Short: "full copy of the local dataset on peers",
@@ -2571,8 +2563,8 @@ func newCmdObjectSyncFull(kind string) *cobra.Command {
 	return cmd
 }
 
-func newCmdObjectSyncResync(kind string) *cobra.Command {
-	var options commands.CmdObjectSyncResync
+func newCmdObjectInstanceSyncResync(kind string) *cobra.Command {
+	var options commands.CmdObjectInstanceSyncResync
 	cmd := &cobra.Command{
 		Use:   "resync",
 		Short: "restore optimal synchronization",
@@ -2589,8 +2581,8 @@ func newCmdObjectSyncResync(kind string) *cobra.Command {
 	return cmd
 }
 
-func newCmdObjectSyncUpdate(kind string) *cobra.Command {
-	var options commands.CmdObjectSyncUpdate
+func newCmdObjectInstanceSyncUpdate(kind string) *cobra.Command {
+	var options commands.CmdObjectInstanceSyncUpdate
 	cmd := &cobra.Command{
 		Use:   "update",
 		Short: "synchronize the copy of the local dataset on peers",
@@ -2667,7 +2659,7 @@ func newCmdObjectInstanceRun(kind string) *cobra.Command {
 	var options commands.CmdObjectInstanceRun
 	cmd := &cobra.Command{
 		Use:   "run",
-		Short: "run tasks now",
+		Short: "execute instance tasks",
 		Long:  "The svc and vol objects can define task resources. Tasks are usually run on a schedule, but this command can trigger a run now.",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return options.Run(kind)

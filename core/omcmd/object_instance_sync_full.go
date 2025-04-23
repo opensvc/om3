@@ -11,7 +11,7 @@ import (
 )
 
 type (
-	CmdObjectSyncUpdate struct {
+	CmdObjectInstanceSyncFull struct {
 		OptsGlobal
 		commoncmd.OptsLock
 		commoncmd.OptsResourceSelector
@@ -20,7 +20,7 @@ type (
 	}
 )
 
-func (t *CmdObjectSyncUpdate) Run(kind string) error {
+func (t *CmdObjectInstanceSyncFull) Run(kind string) error {
 	mergedSelector := commoncmd.MergeSelector("", t.ObjectSelector, kind, "")
 	return objectaction.New(
 		objectaction.WithObjectSelector(mergedSelector),
@@ -38,7 +38,7 @@ func (t *CmdObjectSyncUpdate) Run(kind string) error {
 			ctx = actioncontext.WithLockTimeout(ctx, t.Timeout)
 			ctx = actioncontext.WithForce(ctx, t.Force)
 			ctx = actioncontext.WithTarget(ctx, t.Target)
-			return nil, o.SyncUpdate(ctx)
+			return nil, o.SyncFull(ctx)
 		}),
 	).Do()
 }

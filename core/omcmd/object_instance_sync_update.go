@@ -11,15 +11,16 @@ import (
 )
 
 type (
-	CmdObjectSyncResync struct {
+	CmdObjectInstanceSyncUpdate struct {
 		OptsGlobal
 		commoncmd.OptsLock
 		commoncmd.OptsResourceSelector
-		Force bool
+		Force  bool
+		Target []string
 	}
 )
 
-func (t *CmdObjectSyncResync) Run(kind string) error {
+func (t *CmdObjectInstanceSyncUpdate) Run(kind string) error {
 	mergedSelector := commoncmd.MergeSelector("", t.ObjectSelector, kind, "")
 	return objectaction.New(
 		objectaction.WithObjectSelector(mergedSelector),
@@ -36,7 +37,8 @@ func (t *CmdObjectSyncResync) Run(kind string) error {
 			ctx = actioncontext.WithLockDisabled(ctx, t.Disable)
 			ctx = actioncontext.WithLockTimeout(ctx, t.Timeout)
 			ctx = actioncontext.WithForce(ctx, t.Force)
-			return nil, o.SyncResync(ctx)
+			ctx = actioncontext.WithTarget(ctx, t.Target)
+			return nil, o.SyncUpdate(ctx)
 		}),
 	).Do()
 }

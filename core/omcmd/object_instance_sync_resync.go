@@ -11,31 +11,32 @@ import (
 )
 
 type (
-	CmdObjectSyncIngest struct {
+	CmdObjectInstanceSyncResync struct {
 		OptsGlobal
 		commoncmd.OptsLock
 		commoncmd.OptsResourceSelector
+		Force bool
 	}
 )
 
-func (t *CmdObjectSyncIngest) Run(kind string) error {
+func (t *CmdObjectInstanceSyncResync) Run(kind string) error {
 	mergedSelector := commoncmd.MergeSelector("", t.ObjectSelector, kind, "")
 	return objectaction.New(
 		objectaction.WithObjectSelector(mergedSelector),
 		objectaction.WithRID(t.RID),
 		objectaction.WithTag(t.Tag),
 		objectaction.WithSubset(t.Subset),
-		objectaction.WithLocal(true),
 		objectaction.WithOutput(t.Output),
 		objectaction.WithColor(t.Color),
-		objectaction.WithLocalFunc(func(ctx context.Context, p naming.Path) (any, error) {
+		objectaction.WithLocalFunc(func(ctx context.Context, p naming.Path) (interface{}, error) {
 			o, err := object.NewActor(p)
 			if err != nil {
 				return nil, err
 			}
 			ctx = actioncontext.WithLockDisabled(ctx, t.Disable)
 			ctx = actioncontext.WithLockTimeout(ctx, t.Timeout)
-			return nil, o.SyncIngest(ctx)
+			ctx = actioncontext.WithForce(ctx, t.Force)
+			return nil, o.SyncResync(ctx)
 		}),
 	).Do()
 }
