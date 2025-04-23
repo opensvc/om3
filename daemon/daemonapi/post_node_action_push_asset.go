@@ -27,7 +27,7 @@ func (a *DaemonAPI) PostNodeActionPushAsset(ctx echo.Context, nodename string, p
 func (a *DaemonAPI) localNodeActionPushAsset(ctx echo.Context, params api.PostNodeActionPushAssetParams) error {
 	log := LogHandler(ctx, "PostNodeActionPushAsset")
 	var requesterSid uuid.UUID
-	args := []string{"node", "push", "asset", "--local"}
+	args := []string{"node", "push", "asset"}
 	if params.RequesterSid != nil {
 		requesterSid = *params.RequesterSid
 	}

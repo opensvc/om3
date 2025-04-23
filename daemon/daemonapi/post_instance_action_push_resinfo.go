@@ -32,7 +32,7 @@ func (a *DaemonAPI) postLocalInstanceActionPushResourceInfo(ctx echo.Context, na
 		return JSONProblemf(ctx, http.StatusBadRequest, "Invalid parameters", "%s", err)
 	}
 	log = naming.LogWithPath(log, p)
-	args := []string{p.String(), "push", "resinfo", "--local"}
+	args := []string{p.String(), "instance", "push", "resinfo"}
 	if params.RequesterSid != nil {
 		requesterSid = *params.RequesterSid
 	}

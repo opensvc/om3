@@ -2167,7 +2167,7 @@ func newCmdObjectList(kind string) *cobra.Command {
 }
 
 func newCmdObjectPrintResourceInfo(kind string) *cobra.Command {
-	var options commands.CmdObjectResourceInfoList
+	var options commands.CmdObjectInstanceResourceInfoList
 	cmd := &cobra.Command{
 		Use:    "resinfo",
 		Short:  "list the key-values reported by resources",
@@ -2489,7 +2489,7 @@ func newCmdObjectPurge(kind string) *cobra.Command {
 }
 
 func newCmdObjectPushResourceInfo(kind string) *cobra.Command {
-	var options commands.CmdObjectResourceInfoPush
+	var options commands.CmdObjectInstanceResourceInfoPush
 	cmd := &cobra.Command{
 		Hidden:  true,
 		Use:     "resinfo",
@@ -2600,15 +2600,8 @@ func newCmdObjectInstanceSyncUpdate(kind string) *cobra.Command {
 	return cmd
 }
 
-func newCmdObjectResourceInfo(kind string) *cobra.Command {
-	return &cobra.Command{
-		Use:   "info",
-		Short: "list, push the key-values reported by resources",
-	}
-}
-
-func newCmdObjectResourceInfoList(kind string) *cobra.Command {
-	var options commands.CmdObjectResourceInfoList
+func newCmdObjectInstanceResourceInfoList(kind string) *cobra.Command {
+	var options commands.CmdObjectInstanceResourceInfoList
 	cmd := &cobra.Command{
 		Use:     "list",
 		Short:   "list the key-values reported by resources",
@@ -2623,8 +2616,8 @@ func newCmdObjectResourceInfoList(kind string) *cobra.Command {
 	return cmd
 }
 
-func newCmdObjectResourceInfoPush(kind string) *cobra.Command {
-	var options commands.CmdObjectResourceInfoPush
+func newCmdObjectInstanceResourceInfoPush(kind string) *cobra.Command {
+	var options commands.CmdObjectInstanceResourceInfoPush
 	cmd := &cobra.Command{
 		Use:   "push",
 		Short: "push key-values reported by resources",
@@ -2672,6 +2665,7 @@ func newCmdObjectInstanceRun(kind string) *cobra.Command {
 	commoncmd.FlagConfirm(flags, &options.Confirm)
 	commoncmd.FlagCron(flags, &options.Cron)
 	commoncmd.FlagNodeSelector(flags, &options.NodeSelector)
+	commoncmd.FlagEnv(flags, &options.Env)
 	return cmd
 }
 

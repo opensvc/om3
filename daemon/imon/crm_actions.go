@@ -99,7 +99,7 @@ func (t *Manager) queueUnfreeze() error {
 }
 
 func (t *Manager) crmBoot() error {
-	return t.crmAction("boot", t.path.String(), "boot", "--local")
+	return t.crmAction("boot", t.path.String(), "instance", "boot")
 }
 
 func (t *Manager) crmDelete() error {
@@ -107,61 +107,61 @@ func (t *Manager) crmDelete() error {
 		Path: t.path,
 		Node: t.localhost,
 	}, t.pubLabels...)
-	return t.crmAction("delete", t.path.String(), "delete", "--local")
+	return t.crmAction("delete", t.path.String(), "instance", "delete")
 }
 
 func (t *Manager) crmFreeze() error {
-	return t.crmAction("freeze", t.path.String(), "freeze", "--local")
+	return t.crmAction("freeze", t.path.String(), "instance", "freeze")
 }
 
 func (t *Manager) crmProvisionNonLeader() error {
-	return t.crmAction("provision non leader", t.path.String(), "provision", "--local")
+	return t.crmAction("provision non leader", t.path.String(), "instance", "provision")
 }
 
 func (t *Manager) crmProvisionLeader() error {
-	return t.crmAction("provision leader", t.path.String(), "provision", "--local", "--leader", "--disable-rollback")
+	return t.crmAction("provision leader", t.path.String(), "instance", "provision", "--leader", "--disable-rollback")
 }
 
 func (t *Manager) crmStartStandby() error {
-	return t.crmAction("start", t.path.String(), "startstandby", "--local")
+	return t.crmAction("start", t.path.String(), "instance", "startstandby")
 }
 
 func (t *Manager) crmResourceStartStandby(rids []string) error {
 	s := strings.Join(rids, ",")
-	return t.crmAction("start", t.path.String(), "startstandby", "--local", "--rid", s)
+	return t.crmAction("start", t.path.String(), "instance", "startstandby", "--rid", s)
 }
 
 func (t *Manager) crmResourceStart(rids []string) error {
 	s := strings.Join(rids, ",")
-	return t.crmAction("start", t.path.String(), "start", "--local", "--rid", s)
+	return t.crmAction("start", t.path.String(), "instance", "start", "--rid", s)
 }
 
 func (t *Manager) crmShutdown() error {
-	return t.crmAction("shutdown", t.path.String(), "shutdown")
+	return t.crmAction("shutdown", t.path.String(), "instance", "shutdown")
 }
 
 func (t *Manager) crmStart() error {
-	return t.crmAction("start", t.path.String(), "start", "--local")
+	return t.crmAction("start", t.path.String(), "instance", "start")
 }
 
 func (t *Manager) crmStatus() error {
-	return t.crmAction("status", t.path.String(), "status", "-r")
+	return t.crmAction("status", t.path.String(), "instance", "status", "-r")
 }
 
 func (t *Manager) crmStop() error {
-	return t.crmAction("stop", t.path.String(), "stop", "--local")
+	return t.crmAction("stop", t.path.String(), "instance", "stop")
 }
 
 func (t *Manager) crmUnfreeze() error {
-	return t.crmAction("unfreeze", t.path.String(), "unfreeze", "--local")
+	return t.crmAction("unfreeze", t.path.String(), "instance", "unfreeze")
 }
 
 func (t *Manager) crmUnprovisionNonLeader() error {
-	return t.crmAction("unprovision non leader", t.path.String(), "unprovision", "--local")
+	return t.crmAction("unprovision non leader", t.path.String(), "instance", "unprovision")
 }
 
 func (t *Manager) crmUnprovisionLeader() error {
-	return t.crmAction("unprovision leader", t.path.String(), "unprovision", "--local", "--leader")
+	return t.crmAction("unprovision leader", t.path.String(), "instance", "unprovision", "--leader")
 }
 
 func (t *Manager) crmAction(title string, cmdArgs ...string) error {

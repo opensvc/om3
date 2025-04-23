@@ -16,13 +16,13 @@ import (
 )
 
 type (
-	CmdObjectResourceInfoList struct {
+	CmdObjectInstanceResourceInfoList struct {
 		OptsGlobal
 		NodeSelector string
 	}
 )
 
-func (t *CmdObjectResourceInfoList) Run(kind string) error {
+func (t *CmdObjectInstanceResourceInfoList) Run(kind string) error {
 	c, err := client.New()
 	if err != nil {
 		return err

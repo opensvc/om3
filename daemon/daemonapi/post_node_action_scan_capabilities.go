@@ -27,7 +27,7 @@ func (a *DaemonAPI) PostNodeActionScanCapabilities(ctx echo.Context, nodename st
 func (a *DaemonAPI) localNodeActionScanCapabilities(ctx echo.Context, params api.PostNodeActionScanCapabilitiesParams) error {
 	log := LogHandler(ctx, "PostNodeActionScanCapabilities")
 	var requesterSid uuid.UUID
-	args := []string{"node", "scan", "capabilities", "--local"}
+	args := []string{"node", "scan", "capabilities"}
 	if params.RequesterSid != nil {
 		requesterSid = *params.RequesterSid
 	}

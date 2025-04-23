@@ -26,7 +26,7 @@ func (a *DaemonAPI) PostNodeActionPushPkg(ctx echo.Context, nodename string, par
 func (a *DaemonAPI) localNodeActionPushPkg(ctx echo.Context, params api.PostNodeActionPushPkgParams) error {
 	log := LogHandler(ctx, "PostNodeActionPushPkg")
 	var requesterSid uuid.UUID
-	args := []string{"node", "push", "pkg", "--local"}
+	args := []string{"node", "push", "pkg"}
 	if params.RequesterSid != nil {
 		requesterSid = *params.RequesterSid
 	}

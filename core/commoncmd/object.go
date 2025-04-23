@@ -97,3 +97,23 @@ func NewCmdObjectResource(kind string) *cobra.Command {
 		Aliases: []string{"res"},
 	}
 }
+
+func NewCmdObjectInstanceResource(kind string) *cobra.Command {
+	cmd := &cobra.Command{
+		GroupID: GroupIDSubsystems,
+		Use:     "resource",
+		Short:   "query, push instance resources",
+	}
+	cmd.AddGroup(
+		NewGroupSubsystems(),
+	)
+	return cmd
+}
+
+func NewCmdObjectInstanceResourceInfo(kind string) *cobra.Command {
+	return &cobra.Command{
+		GroupID: GroupIDSubsystems,
+		Use:     "info",
+		Short:   "list, push the key-values reported by resources",
+	}
+}

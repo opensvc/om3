@@ -22,7 +22,7 @@ func (o *T) action(e schedule.Entry) error {
 		cmdArgs = append(cmdArgs, "node")
 	} else {
 		p := e.Path.String()
-		cmdArgs = append(cmdArgs, p)
+		cmdArgs = append(cmdArgs, p, "instance")
 		labels = append(labels, pubsub.Label{"namespace", e.Path.Namespace}, pubsub.Label{"path", p})
 	}
 	switch e.Action {
@@ -31,7 +31,7 @@ func (o *T) action(e schedule.Entry) error {
 	case "resource_monitor":
 		cmdArgs = append(cmdArgs, "status", "-m")
 	case "push_resinfo":
-		cmdArgs = append(cmdArgs, "push", "resinfo")
+		cmdArgs = append(cmdArgs, "resource", "info", "push")
 	case "run":
 		cmdArgs = append(cmdArgs, "run", "--rid", e.RID())
 	case "pushasset":
@@ -53,13 +53,9 @@ func (o *T) action(e schedule.Entry) error {
 	case "sysreport":
 		cmdArgs = append(cmdArgs, "sysreport")
 	case "sync_update":
-		cmdArgs = append(cmdArgs, "sync", "update", "--local")
-	//case "collect_stats":
-	//	cmdArgs = append(cmdArgs, "collect", "stats")
+		cmdArgs = append(cmdArgs, "sync", "update")
 	//case "dequeue_actions":
 	//	cmdArgs = append(cmdArgs, "dequeue")
-	//case "rotate_root_pw":
-	//	cmdArgs = append(cmdArgs, "rotate", "root", "pw")
 	default:
 		o.log.Attr("action", e.Action).Attr("path", e.Path.String()).Errorf("unknown scheduler action")
 		return fmt.Errorf("unknown scheduler action")

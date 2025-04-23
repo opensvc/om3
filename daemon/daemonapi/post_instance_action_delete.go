@@ -32,7 +32,7 @@ func (a *DaemonAPI) postLocalInstanceActionDelete(ctx echo.Context, namespace st
 		return JSONProblemf(ctx, http.StatusBadRequest, "Invalid parameters", "%s", err)
 	}
 	log = naming.LogWithPath(log, p)
-	args := []string{p.String(), "delete", "--local"}
+	args := []string{p.String(), "instance", "delete"}
 	if params.RequesterSid != nil {
 		requesterSid = *params.RequesterSid
 	}

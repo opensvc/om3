@@ -23,6 +23,7 @@ type (
 		Force           bool
 		DisableRollback bool
 		NodeSelector    string
+		Local           bool
 	}
 )
 
@@ -36,6 +37,7 @@ func (t *CmdObjectInstancePRStart) Run(kind string) error {
 		objectaction.WithLocal(true),
 		objectaction.WithOutput(t.Output),
 		objectaction.WithColor(t.Color),
+		objectaction.WithLocal(t.Local),
 		objectaction.WithRemoteNodes(t.NodeSelector),
 		objectaction.WithRemoteFunc(func(ctx context.Context, p naming.Path, nodename string) (interface{}, error) {
 			c, err := client.New()

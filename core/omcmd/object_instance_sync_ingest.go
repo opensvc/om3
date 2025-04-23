@@ -15,6 +15,7 @@ type (
 		OptsGlobal
 		commoncmd.OptsLock
 		commoncmd.OptsResourceSelector
+		Local bool
 	}
 )
 
@@ -25,7 +26,7 @@ func (t *CmdObjectInstanceSyncIngest) Run(kind string) error {
 		objectaction.WithRID(t.RID),
 		objectaction.WithTag(t.Tag),
 		objectaction.WithSubset(t.Subset),
-		objectaction.WithLocal(true),
+		objectaction.WithLocal(t.Local),
 		objectaction.WithOutput(t.Output),
 		objectaction.WithColor(t.Color),
 		objectaction.WithLocalFunc(func(ctx context.Context, p naming.Path) (any, error) {

@@ -32,7 +32,7 @@ func (a *DaemonAPI) postLocalInstanceActionShutdown(ctx echo.Context, namespace 
 		return JSONProblemf(ctx, http.StatusBadRequest, "Invalid parameters", "%s", err)
 	}
 	log = naming.LogWithPath(log, p)
-	args := []string{p.String(), "shutdown", "--local"}
+	args := []string{p.String(), "instance", "shutdown"}
 	if params.Force != nil && *params.Force {
 		args = append(args, "--force")
 	}

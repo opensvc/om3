@@ -45,7 +45,7 @@ func (a *DaemonAPI) postLocalInstanceActionStop(ctx echo.Context, namespace stri
 		return JSONProblemf(ctx, http.StatusBadRequest, "Invalid parameters", "%s", err)
 	}
 	log = naming.LogWithPath(log, p)
-	args := []string{p.String(), "stop", "--local"}
+	args := []string{p.String(), "instance", "stop"}
 	if params.Force != nil && *params.Force {
 		args = append(args, "--force")
 	}

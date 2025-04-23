@@ -22,6 +22,7 @@ type (
 		Force        bool
 		Cron         bool
 		Confirm      bool
+		Env          []string
 	}
 )
 
@@ -52,6 +53,9 @@ func (t *CmdObjectInstanceRun) Run(kind string) error {
 			if t.Force {
 				v := true
 				params.Force = &v
+			}
+			if len(t.Env) > 0 {
+				params.Env = &t.Env
 			}
 			if t.OptsResourceSelector.RID != "" {
 				params.Rid = &t.OptsResourceSelector.RID

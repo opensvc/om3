@@ -32,7 +32,7 @@ func (a *DaemonAPI) postLocalInstanceActionUnprovision(ctx echo.Context, namespa
 		return JSONProblemf(ctx, http.StatusBadRequest, "Invalid parameters", "%s", err)
 	}
 	log = naming.LogWithPath(log, p)
-	args := []string{p.String(), "unprovision", "--local"}
+	args := []string{p.String(), "instance", "unprovision"}
 	if params.Leader != nil && *params.Leader {
 		args = append(args, "--leader")
 	}

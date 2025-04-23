@@ -27,7 +27,7 @@ func (a *DaemonAPI) PostNodeActionPushDisk(ctx echo.Context, nodename string, pa
 func (a *DaemonAPI) localNodeActionPushDisk(ctx echo.Context, params api.PostNodeActionPushDiskParams) error {
 	log := LogHandler(ctx, "PostNodeActionPushDisk")
 	var requesterSID uuid.UUID
-	args := []string{"node", "push", "disk", "--local"}
+	args := []string{"node", "push", "disk"}
 	if params.RequesterSid != nil {
 		requesterSID = *params.RequesterSid
 	}

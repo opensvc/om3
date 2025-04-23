@@ -29,15 +29,15 @@ func SetCmdPathForTest(s string) {
 }
 
 func (t *Manager) crmDrain() error {
-	return t.crmAction("*/svc/*", "shutdown", "--local")
+	return t.crmAction("*/svc/*", "instance", "shutdown")
 }
 
 func (t *Manager) crmFreeze() error {
-	return t.crmAction("node", "freeze", "--local")
+	return t.crmAction("node", "freeze")
 }
 
 func (t *Manager) crmUnfreeze() error {
-	return t.crmAction("node", "unfreeze", "--local")
+	return t.crmAction("node", "unfreeze")
 }
 
 func (t *Manager) crmAction(cmdArgs ...string) error {

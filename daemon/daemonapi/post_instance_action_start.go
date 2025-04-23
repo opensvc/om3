@@ -31,7 +31,7 @@ func (a *DaemonAPI) postLocalInstanceActionStart(ctx echo.Context, namespace str
 		return JSONProblemf(ctx, http.StatusBadRequest, "Invalid parameters", "%s", err)
 	}
 	log = naming.LogWithPath(log, p)
-	args := []string{p.String(), "start", "--local"}
+	args := []string{p.String(), "instance", "start"}
 	if params.DisableRollback != nil && *params.DisableRollback {
 		args = append(args, "--disable-rollback")
 	}

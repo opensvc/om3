@@ -16,6 +16,7 @@ type (
 		commoncmd.OptsLock
 		commoncmd.OptsResourceSelector
 		Force  bool
+		Local  bool
 		Target []string
 	}
 )
@@ -29,6 +30,7 @@ func (t *CmdObjectInstanceSyncUpdate) Run(kind string) error {
 		objectaction.WithSubset(t.Subset),
 		objectaction.WithOutput(t.Output),
 		objectaction.WithColor(t.Color),
+		objectaction.WithLocal(t.Local),
 		objectaction.WithLocalFunc(func(ctx context.Context, p naming.Path) (interface{}, error) {
 			o, err := object.NewActor(p)
 			if err != nil {

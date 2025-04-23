@@ -2,7 +2,7 @@ openapi: 3.0.0
 
 info:
   title: opensvc agent api
-  version: 3.14.6
+  version: 3.15.6
 
 paths:
   /auth/info:
@@ -1876,6 +1876,7 @@ paths:
         - $ref: '#/components/parameters/inQuerySubset'
         - $ref: '#/components/parameters/inQueryTag'
         - $ref: '#/components/parameters/inQueryTo'
+        - $ref: '#/components/parameters/inQueryEnvs'
       responses:
         200:
           content:
@@ -6947,6 +6948,16 @@ components:
           type: string
           description: A keyword to remove.
           example: env.unwanted
+
+    inQueryEnvs:
+      in: query
+      name: env
+      schema:
+        type: array
+        items:
+          type: string
+          description: An environment variable to set in the task commands execution context.
+          example: MYVAR=myval
 
     inQueryKeywordOps:
       in: query

@@ -32,7 +32,7 @@ func (a *DaemonAPI) postLocalInstanceActionStartStandby(ctx echo.Context, namesp
 		return JSONProblemf(ctx, http.StatusBadRequest, "Invalid parameters", "%s", err)
 	}
 	log = naming.LogWithPath(log, p)
-	args := []string{p.String(), "startstandby", "--local"}
+	args := []string{p.String(), "instance", "startstandby"}
 	if params.DisableRollback != nil && *params.DisableRollback {
 		args = append(args, "--disable-rollback")
 	}

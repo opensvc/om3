@@ -1161,7 +1161,7 @@ func newCmdNodeConfigShow() *cobra.Command {
 }
 
 func newCmdObjectPrintResourceInfo(kind string) *cobra.Command {
-	var options commands.CmdObjectResourceInfoList
+	var options commands.CmdObjectInstanceResourceInfoList
 	cmd := &cobra.Command{
 		Hidden: true,
 		Use:    "resinfo",
@@ -2423,6 +2423,7 @@ func newCmdObjectInstancePRStart(kind string) *cobra.Command {
 	commoncmd.FlagForce(flags, &options.Force)
 	commoncmd.FlagDisableRollback(flags, &options.DisableRollback)
 	commoncmd.FlagNodeSelector(flags, &options.NodeSelector)
+	hiddenFlagLocal(flags, &options.Local)
 	cmd.MarkFlagsMutuallyExclusive("no-lock", "node")
 	cmd.MarkFlagsMutuallyExclusive("waitlock", "node")
 	return cmd
@@ -2444,6 +2445,7 @@ func newCmdObjectInstancePRStop(kind string) *cobra.Command {
 	commoncmd.FlagsTo(flags, &options.OptTo)
 	commoncmd.FlagForce(flags, &options.Force)
 	commoncmd.FlagNodeSelector(flags, &options.NodeSelector)
+	hiddenFlagLocal(flags, &options.Local)
 	cmd.MarkFlagsMutuallyExclusive("no-lock", "node")
 	cmd.MarkFlagsMutuallyExclusive("waitlock", "node")
 	return cmd
@@ -2463,10 +2465,13 @@ func newCmdObjectInstanceRun(kind string) *cobra.Command {
 	addFlagsGlobal(flags, &options.OptsGlobal)
 	commoncmd.FlagsLock(flags, &options.OptsLock)
 	commoncmd.FlagsResourceSelector(flags, &options.OptsResourceSelector)
+	commoncmd.FlagsTo(flags, &options.OptTo)
 	commoncmd.FlagConfirm(flags, &options.Confirm)
 	commoncmd.FlagCron(flags, &options.Cron)
 	commoncmd.FlagEnv(flags, &options.Env)
+	commoncmd.FlagForce(flags, &options.Force)
 	commoncmd.FlagNodeSelector(flags, &options.NodeSelector)
+	hiddenFlagLocal(flags, &options.Local)
 	return cmd
 }
 
@@ -2609,23 +2614,6 @@ func newCmdObjectProvision(kind string) *cobra.Command {
 	return cmd
 }
 
-func newCmdObjectInstanceSyncIngest(kind string) *cobra.Command {
-	var options commands.CmdObjectInstanceSyncIngest
-	cmd := &cobra.Command{
-		Use:   "ingest",
-		Short: "ingest files received from the active instance",
-		Long:  "Resource drivers can send files from the active instance to the stand-by instances via the update action.",
-		RunE: func(cmd *cobra.Command, args []string) error {
-			return options.Run(kind)
-		},
-	}
-	flags := cmd.Flags()
-	addFlagsGlobal(flags, &options.OptsGlobal)
-	commoncmd.FlagsLock(flags, &options.OptsLock)
-	commoncmd.FlagsResourceSelector(flags, &options.OptsResourceSelector)
-	return cmd
-}
-
 func newCmdObjectPRStart(kind string) *cobra.Command {
 	var options commands.CmdObjectPRStart
 	cmd := &cobra.Command{
@@ -2691,7 +2679,7 @@ func newCmdObjectPurge(kind string) *cobra.Command {
 }
 
 func newCmdObjectPushResourceInfo(kind string) *cobra.Command {
-	var options commands.CmdObjectResourceInfoPush
+	var options commands.CmdObjectInstanceResourceInfoPush
 	cmd := &cobra.Command{
 		Hidden: true,
 		Use:    "resinfo",
@@ -2730,6 +2718,24 @@ func newCmdObjectRestart(kind string) *cobra.Command {
 	return cmd
 }
 
+func newCmdObjectInstanceSyncIngest(kind string) *cobra.Command {
+	var options commands.CmdObjectInstanceSyncIngest
+	cmd := &cobra.Command{
+		Use:   "ingest",
+		Short: "ingest files received from the active instance",
+		Long:  "Resource drivers can send files from the active instance to the stand-by instances via the update action.",
+		RunE: func(cmd *cobra.Command, args []string) error {
+			return options.Run(kind)
+		},
+	}
+	flags := cmd.Flags()
+	addFlagsGlobal(flags, &options.OptsGlobal)
+	commoncmd.FlagsLock(flags, &options.OptsLock)
+	commoncmd.FlagsResourceSelector(flags, &options.OptsResourceSelector)
+	hiddenFlagLocal(flags, &options.Local)
+	return cmd
+}
+
 func newCmdObjectInstanceSyncFull(kind string) *cobra.Command {
 	var options commands.CmdObjectInstanceSyncFull
 	cmd := &cobra.Command{
@@ -2746,6 +2752,7 @@ func newCmdObjectInstanceSyncFull(kind string) *cobra.Command {
 	commoncmd.FlagsResourceSelector(flags, &options.OptsResourceSelector)
 	commoncmd.FlagForce(flags, &options.Force)
 	commoncmd.FlagTarget(flags, &options.Target)
+	hiddenFlagLocal(flags, &options.Local)
 	return cmd
 }
 
@@ -2764,6 +2771,7 @@ func newCmdObjectInstanceSyncResync(kind string) *cobra.Command {
 	commoncmd.FlagsLock(flags, &options.OptsLock)
 	commoncmd.FlagsResourceSelector(flags, &options.OptsResourceSelector)
 	commoncmd.FlagForce(flags, &options.Force)
+	hiddenFlagLocal(flags, &options.Local)
 	return cmd
 }
 
@@ -2783,18 +2791,12 @@ func newCmdObjectInstanceSyncUpdate(kind string) *cobra.Command {
 	commoncmd.FlagsResourceSelector(flags, &options.OptsResourceSelector)
 	commoncmd.FlagForce(flags, &options.Force)
 	commoncmd.FlagTarget(flags, &options.Target)
+	hiddenFlagLocal(flags, &options.Local)
 	return cmd
 }
 
-func newCmdObjectResourceInfo(kind string) *cobra.Command {
-	return &cobra.Command{
-		Use:   "info",
-		Short: "list, push the key-values reported by resources",
-	}
-}
-
-func newCmdObjectResourceInfoList(kind string) *cobra.Command {
-	var options commands.CmdObjectResourceInfoList
+func newCmdObjectInstanceResourceInfoList(kind string) *cobra.Command {
+	var options commands.CmdObjectInstanceResourceInfoList
 	cmd := &cobra.Command{
 		Use:     "list",
 		Short:   "list the key-values reported by the resources",
@@ -2809,8 +2811,8 @@ func newCmdObjectResourceInfoList(kind string) *cobra.Command {
 	return cmd
 }
 
-func newCmdObjectResourceInfoPush(kind string) *cobra.Command {
-	var options commands.CmdObjectResourceInfoPush
+func newCmdObjectInstanceResourceInfoPush(kind string) *cobra.Command {
+	var options commands.CmdObjectInstanceResourceInfoPush
 	cmd := &cobra.Command{
 		Use:   "push",
 		Short: "push key-values reported by resources",

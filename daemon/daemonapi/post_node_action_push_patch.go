@@ -27,7 +27,7 @@ func (a *DaemonAPI) PostNodeActionPushPatch(ctx echo.Context, nodename string, p
 func (a *DaemonAPI) localNodeActionPushPatch(ctx echo.Context, params api.PostNodeActionPushPatchParams) error {
 	log := LogHandler(ctx, "PostNodeActionPushPatch")
 	var requesterSID uuid.UUID
-	args := []string{"node", "push", "patch", "--local"}
+	args := []string{"node", "push", "patch"}
 	if params.RequesterSid != nil {
 		requesterSID = *params.RequesterSid
 	}

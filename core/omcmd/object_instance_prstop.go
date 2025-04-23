@@ -22,6 +22,7 @@ type (
 		commoncmd.OptTo
 		NodeSelector string
 		Force        bool
+		Local        bool
 	}
 )
 
@@ -32,7 +33,7 @@ func (t *CmdObjectInstancePRStop) Run(kind string) error {
 		objectaction.WithRID(t.RID),
 		objectaction.WithTag(t.Tag),
 		objectaction.WithSubset(t.Subset),
-		objectaction.WithLocal(true),
+		objectaction.WithLocal(t.Local),
 		objectaction.WithOutput(t.Output),
 		objectaction.WithColor(t.Color),
 		objectaction.WithRemoteNodes(t.NodeSelector),
