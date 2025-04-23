@@ -2729,8 +2729,8 @@ func newCmdObjectSetUnprovisioned(kind string) *cobra.Command {
 	return cmd
 }
 
-func newCmdObjectShutdown(kind string) *cobra.Command {
-	var options commands.CmdObjectShutdown
+func newCmdObjectInstanceShutdown(kind string) *cobra.Command {
+	var options commands.CmdObjectInstanceShutdown
 	cmd := &cobra.Command{
 		Use:   "shutdown",
 		Short: "shutdown the object or instance",

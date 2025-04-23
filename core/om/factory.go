@@ -2895,8 +2895,8 @@ func newCmdObjectSetUnprovisioned(kind string) *cobra.Command {
 	return cmd
 }
 
-func newCmdObjectShutdown(kind string) *cobra.Command {
-	var options commands.CmdObjectShutdown
+func newCmdObjectInstanceShutdown(kind string) *cobra.Command {
+	var options commands.CmdObjectInstanceShutdown
 	cmd := &cobra.Command{
 		Use:   "shutdown",
 		Short: "shutdown the object or instance",
@@ -3339,6 +3339,12 @@ func newCmdObjectPrintConfig(kind string) *cobra.Command {
 	cmd.Use = "config"
 	cmd.Hidden = true
 	cmd.Aliases = []string{"conf", "co", "cf", "cfg"}
+	return cmd
+}
+
+func newCmdObjectShutdown(kind string) *cobra.Command {
+	cmd := newCmdObjectInstanceShutdown(kind)
+	cmd.Hidden = true
 	return cmd
 }
 

@@ -105,6 +105,7 @@ func init() {
 		newCmdObjectInstanceProvision(kind),
 		newCmdObjectInstancePRStart(kind),
 		newCmdObjectInstancePRStop(kind),
+		newCmdObjectInstanceShutdown(kind),
 		newCmdObjectInstanceStart(kind),
 		newCmdObjectInstanceStartStandby(kind),
 		newCmdObjectInstanceStop(kind),
