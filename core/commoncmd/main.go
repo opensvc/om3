@@ -27,6 +27,37 @@ type (
 	}
 )
 
+func MergeSelector(selector string, subsysSelector string, kind string, defaultSelector string) string {
+	var s string
+	switch {
+	case selector != "":
+		s = selector
+	case subsysSelector != "":
+		s = subsysSelector
+	default:
+		s = defaultSelector
+	}
+	if p, err := naming.ParsePath(s); err == nil {
+		if err == nil {
+			if kind == "" {
+				return s
+			}
+			if p.Kind.String() == kind {
+				return s
+			}
+		}
+	}
+	if (subsysSelector != "") && (kind != "") {
+		kindSelector := "*/" + kind + "/*"
+		if s == "" {
+			s = kindSelector
+		} else {
+			s += "+" + kindSelector
+		}
+	}
+	return s
+}
+
 func NodesFromPaths(c *client.T, selector string) ([]string, error) {
 	m := make(map[string]any)
 	params := api.GetObjectsParams{Path: &selector}
