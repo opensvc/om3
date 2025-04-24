@@ -11,26 +11,19 @@ import (
 )
 
 type (
-	CmdObjectDelete struct {
+	CmdObjectInstanceDelete struct {
 		OptsGlobal
-		commoncmd.OptsAsync
 		commoncmd.OptsLock
-		Local        bool
 		NodeSelector string
 	}
 )
 
-func (t *CmdObjectDelete) Run(kind string) error {
+func (t *CmdObjectInstanceDelete) Run(kind string) error {
 	mergedSelector := commoncmd.MergeSelector("", t.ObjectSelector, kind, "")
 	return objectaction.New(
-		objectaction.WithLocal(t.Local),
 		objectaction.WithColor(t.Color),
 		objectaction.WithOutput(t.Output),
 		objectaction.WithObjectSelector(mergedSelector),
-		objectaction.WithAsyncTarget("deleted"),
-		objectaction.WithAsyncTime(t.Time),
-		objectaction.WithAsyncWait(t.Wait),
-		objectaction.WithAsyncWatch(t.Watch),
 		objectaction.WithRemoteNodes(t.NodeSelector),
 		objectaction.WithRemoteFunc(commoncmd.ObjectInstanceDeleteRemoteFunc),
 		objectaction.WithLocalFunc(func(ctx context.Context, p naming.Path) (interface{}, error) {

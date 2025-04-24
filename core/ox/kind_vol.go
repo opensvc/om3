@@ -94,12 +94,14 @@ func init() {
 		cmdObjectInstanceDevice,
 		cmdObjectInstanceResource,
 		cmdObjectInstanceSync,
+		newCmdObjectInstanceDelete(kind),
 		newCmdObjectInstanceFreeze(kind),
 		newCmdObjectInstanceList(kind),
 		newCmdObjectInstanceStatus(kind),
 		newCmdObjectInstanceProvision(kind),
 		newCmdObjectInstancePRStart(kind),
 		newCmdObjectInstancePRStop(kind),
+		newCmdObjectInstanceRestart(kind),
 		newCmdObjectInstanceRun(kind),
 		newCmdObjectInstanceShutdown(kind),
 		newCmdObjectInstanceStart(kind),
@@ -107,6 +109,7 @@ func init() {
 		newCmdObjectInstanceStop(kind),
 		newCmdObjectInstanceUnfreeze(kind),
 		newCmdObjectInstanceUnprovision(kind),
+		commoncmd.NewCmdObjectInstanceClear(kind, ""),
 	)
 	cmdObjectInstanceDevice.AddCommand(
 		newCmdObjectInstanceDeviceList(kind),

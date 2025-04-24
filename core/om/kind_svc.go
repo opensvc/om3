@@ -1,6 +1,9 @@
 package om
 
-import "github.com/opensvc/om3/core/commoncmd"
+import (
+	"github.com/opensvc/om3/core/commoncmd"
+	"github.com/opensvc/om3/util/hostname"
+)
 
 func init() {
 	kind := "svc"
@@ -104,9 +107,11 @@ func init() {
 		cmdObjectInstanceDevice,
 		cmdObjectInstanceSync,
 		cmdObjectInstanceResource,
+		newCmdObjectInstanceDelete(kind),
 		newCmdObjectInstanceFreeze(kind),
 		newCmdObjectInstanceList(kind),
 		newCmdObjectInstanceStatus(kind),
+		newCmdObjectInstanceRestart(kind),
 		newCmdObjectInstanceRun(kind),
 		newCmdObjectInstanceProvision(kind),
 		newCmdObjectInstancePRStart(kind),
@@ -117,6 +122,7 @@ func init() {
 		newCmdObjectInstanceStop(kind),
 		newCmdObjectInstanceUnfreeze(kind),
 		newCmdObjectInstanceUnprovision(kind),
+		commoncmd.NewCmdObjectInstanceClear(kind, hostname.Hostname()),
 	)
 	cmdObjectInstanceDevice.AddCommand(
 		newCmdObjectInstanceDeviceList(kind),

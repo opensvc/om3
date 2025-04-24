@@ -5,40 +5,77 @@ import (
 	"errors"
 	"fmt"
 	"net/http"
+	"slices"
 	"time"
 
 	"github.com/opensvc/om3/core/client"
 	"github.com/opensvc/om3/core/naming"
+	"github.com/opensvc/om3/core/nodeselector"
 	"github.com/opensvc/om3/core/objectselector"
 	"github.com/spf13/cobra"
 )
 
 type (
-	CmdObjectClear struct {
+	CmdObjectInstanceClear struct {
 		ObjectSelector string
-		NodeSelector   string
+		NodeSelector   *string
 	}
 )
 
 func NewCmdObjectClear(kind string) *cobra.Command {
-	var options CmdObjectClear
+	var options CmdObjectInstanceClear
+	var nodeSelector string
 	cmd := &cobra.Command{
 		Use:   "clear",
 		Short: "reset the instance monitor state to idle",
 		RunE: func(cmd *cobra.Command, args []string) error {
+			if cmd.Flags().Lookup("node").Changed {
+				options.NodeSelector = &nodeSelector
+			}
 			return options.Run(kind)
 		},
 	}
 	flags := cmd.Flags()
 	FlagObjectSelector(flags, &options.ObjectSelector)
-	FlagNodeSelector(flags, &options.NodeSelector)
+	HiddenFlagNodeSelector(flags, &nodeSelector)
 	return cmd
 }
 
-func (t *CmdObjectClear) Run(kind string) error {
+func NewCmdObjectInstanceClear(kind, defaultNodeSelector string) *cobra.Command {
+	var options CmdObjectInstanceClear
+	var nodeSelector string
+	cmd := &cobra.Command{
+		Use:   "clear",
+		Short: "reset the instance monitor state to idle",
+		RunE: func(cmd *cobra.Command, args []string) error {
+			if cmd.Flags().Lookup("node").Changed {
+				options.NodeSelector = &nodeSelector
+			} else {
+				options.NodeSelector = &defaultNodeSelector
+			}
+			return options.Run(kind)
+		},
+	}
+	flags := cmd.Flags()
+	FlagObjectSelector(flags, &options.ObjectSelector)
+	FlagNodeSelector(flags, &nodeSelector)
+	return cmd
+}
+
+func (t *CmdObjectInstanceClear) Run(kind string) error {
+	var nodenames []string
 	c, err := client.New()
 	if err != nil {
 		return err
+	}
+	if t.NodeSelector != nil {
+		nodenames, err = nodeselector.New(*t.NodeSelector, nodeselector.WithClient(c)).Expand()
+		if err != nil {
+			return err
+		}
+		if len(nodenames) == 0 {
+			return fmt.Errorf("no instance selected")
+		}
 	}
 	mergedSelector := MergeSelector("", t.ObjectSelector, kind, "")
 	sel := objectselector.New(mergedSelector, objectselector.WithClient(c))
@@ -60,6 +97,15 @@ func (t *CmdObjectClear) Run(kind string) error {
 		nodes, err := NodesFromPaths(c, path.String())
 		if err != nil {
 			errC <- fmt.Errorf("%s: %w", path, err)
+		}
+		if t.NodeSelector != nil {
+			filteredNodes := make([]string, 0)
+			for _, nodename := range nodes {
+				if slices.Contains(nodenames, nodename) {
+					filteredNodes = append(filteredNodes, nodename)
+				}
+			}
+			nodes = filteredNodes
 		}
 
 		todoN += len(nodes)
