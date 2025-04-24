@@ -50,14 +50,15 @@ func (a *authOption) VerifyKeyFile() string {
 	return daemonenv.CAsCertFile()
 }
 
-// JwksUri fetches the JWKS URI from the OpenID Connect well-known configuration
+// JwksUri fetches the JWKS URI from the OpenID Connect authority configuration
 // and returns it as a string.
 func (a *authOption) JwksUri() (string, error) {
-	OpenIDWellKnown := cluster.ConfigData.Get().Listener.OpenIDWellKnown
-	if OpenIDWellKnown == "" {
+	authority := cluster.ConfigData.Get().Listener.OpenIDAuthority
+	if authority == "" {
 		return "", nil
 	}
-	resp, err := http.Get(OpenIDWellKnown)
+	wellKnown := authority + "/.well-known/openid-configuration"
+	resp, err := http.Get(wellKnown)
 	if err != nil {
 		return "", err
 	}

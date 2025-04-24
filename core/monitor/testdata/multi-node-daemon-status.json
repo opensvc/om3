@@ -14,7 +14,7 @@
                 "crl": "/var/lib/opensvc/certs/ca_crl",
                 "addr": "",
                 "port": 1215,
-                "openid_well_known": "",
+                "openid_authority": "",
                 "dns_sock_gid": "953",
                 "dns_sock_uid": "953"
             },
