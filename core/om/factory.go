@@ -1556,20 +1556,6 @@ func newCmdObjectCertificatePKCS(kind string) *cobra.Command {
 	return cmd
 }
 
-func newCmdObjectClear(kind string) *cobra.Command {
-	var options commands.CmdObjectClear
-	cmd := &cobra.Command{
-		Use:   "clear",
-		Short: "clear errors in the monitor state",
-		RunE: func(cmd *cobra.Command, args []string) error {
-			return options.Run(kind)
-		},
-	}
-	flags := cmd.Flags()
-	addFlagsGlobal(flags, &options.OptsGlobal)
-	return cmd
-}
-
 func newCmdObjectPrint(kind string) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:     "print",

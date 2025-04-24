@@ -44,7 +44,7 @@ func init() {
 		cmdObjectValidate,
 		newCmdObjectAbort(kind),
 		newCmdObjectBoot(kind),
-		newCmdObjectClear(kind),
+		commoncmd.NewCmdObjectClear(kind),
 		newCmdObjectCreate(kind),
 		newCmdObjectDelete(kind),
 		newCmdObjectEval(kind),

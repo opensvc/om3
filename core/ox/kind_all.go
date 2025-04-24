@@ -56,7 +56,7 @@ func init() {
 		newCmdDataStoreRename(kind),
 		newCmdObjectAbort(kind),
 		newCmdObjectBoot(kind),
-		newCmdObjectClear(kind),
+		commoncmd.NewCmdObjectClear(kind),
 		newCmdObjectCreate(kind),
 		newCmdObjectDelete(kind),
 		newCmdObjectDeploy(kind),

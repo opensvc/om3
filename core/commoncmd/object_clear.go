@@ -1,4 +1,4 @@
-package oxcmd
+package commoncmd
 
 import (
 	"context"
@@ -8,23 +8,39 @@ import (
 	"time"
 
 	"github.com/opensvc/om3/core/client"
-	"github.com/opensvc/om3/core/commoncmd"
 	"github.com/opensvc/om3/core/naming"
 	"github.com/opensvc/om3/core/objectselector"
+	"github.com/spf13/cobra"
 )
 
 type (
 	CmdObjectClear struct {
-		OptsGlobal
+		ObjectSelector string
+		NodeSelector   string
 	}
 )
+
+func NewCmdObjectClear(kind string) *cobra.Command {
+	var options CmdObjectClear
+	cmd := &cobra.Command{
+		Use:   "clear",
+		Short: "reset the instance monitor state to idle",
+		RunE: func(cmd *cobra.Command, args []string) error {
+			return options.Run(kind)
+		},
+	}
+	flags := cmd.Flags()
+	FlagObjectSelector(flags, &options.ObjectSelector)
+	FlagNodeSelector(flags, &options.NodeSelector)
+	return cmd
+}
 
 func (t *CmdObjectClear) Run(kind string) error {
 	c, err := client.New()
 	if err != nil {
 		return err
 	}
-	mergedSelector := commoncmd.MergeSelector("", t.ObjectSelector, kind, "")
+	mergedSelector := MergeSelector("", t.ObjectSelector, kind, "")
 	sel := objectselector.New(mergedSelector, objectselector.WithClient(c))
 	paths, err := sel.MustExpand()
 	if err != nil {
@@ -41,7 +57,7 @@ func (t *CmdObjectClear) Run(kind string) error {
 	var todoN int
 
 	for _, path := range paths {
-		nodes, err := commoncmd.NodesFromPaths(c, path.String())
+		nodes, err := NodesFromPaths(c, path.String())
 		if err != nil {
 			errC <- fmt.Errorf("%s: %w", path, err)
 		}
