@@ -19,6 +19,7 @@ type (
 	CmdObjectSet struct {
 		OptsGlobal
 		commoncmd.OptsLock
+		Local      bool
 		KeywordOps []string
 	}
 )

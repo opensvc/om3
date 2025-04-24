@@ -126,6 +126,7 @@ grants are embedded in the trusted bearer tokens.`,
 func newCmdArrayList() *cobra.Command {
 	var options commands.CmdArrayList
 	cmd := &cobra.Command{
+		GroupID: commoncmd.GroupIDQuery,
 		Use:     "list",
 		Short:   "list the cluster-managed storage arrays",
 		Aliases: []string{"ls"},
@@ -135,6 +136,7 @@ func newCmdArrayList() *cobra.Command {
 	}
 	flags := cmd.Flags()
 	addFlagsGlobal(flags, &options.OptsGlobal)
+	flagLocal(flags, &options.Local)
 	return cmd
 }
 
@@ -474,8 +476,9 @@ func newCmdNetworkIPList() *cobra.Command {
 func newCmdNodeAbort() *cobra.Command {
 	var options commands.CmdNodeAbort
 	cmd := &cobra.Command{
-		Use:   "abort",
-		Short: "abort the running orchestration",
+		GroupID: commoncmd.GroupIDOrchestratedActions,
+		Use:     "abort",
+		Short:   "abort the running orchestration",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return options.Run()
 		},
@@ -551,6 +554,7 @@ func newCmdNodeClear() *cobra.Command {
 	}
 	flags := cmd.Flags()
 	addFlagsGlobal(flags, &options.OptsGlobal)
+	flagLocal(flags, &options.Local)
 	commoncmd.FlagNodeSelector(flags, &options.NodeSelector)
 	return cmd
 }
@@ -924,9 +928,10 @@ func newCmdNodeDoc() *cobra.Command {
 func newCmdNodeDrain() *cobra.Command {
 	var options commands.CmdNodeDrain
 	cmd := &cobra.Command{
-		Use:   "drain",
-		Short: "freeze node and shutdown all its object instances",
-		Long:  "If not specified with --node, the local node is selected for drain.",
+		GroupID: commoncmd.GroupIDOrchestratedActions,
+		Use:     "drain",
+		Short:   "freeze node and shutdown all its object instances",
+		Long:    "If not specified with --node, the local node is selected for drain.",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return options.Run()
 		},
@@ -1011,11 +1016,12 @@ func newCmdNodeEditConfig() *cobra.Command {
 }
 
 func newCmdNodeConfigEval() *cobra.Command {
-	var options commands.CmdNodeConfigEval
+	var options commands.CmdNodeConfigGet
 	cmd := &cobra.Command{
 		Use:   "eval",
 		Short: "evaluate a configuration key value",
 		RunE: func(cmd *cobra.Command, args []string) error {
+			options.Eval = true
 			return options.Run()
 		},
 	}
@@ -1025,7 +1031,7 @@ func newCmdNodeConfigEval() *cobra.Command {
 	commoncmd.FlagImpersonate(flags, &options.Impersonate)
 	commoncmd.FlagKeywords(flags, &options.Keywords)
 	commoncmd.FlagNodeSelector(flags, &options.NodeSelector)
-	cmd.MarkFlagRequired("kw")
+	flagLocal(flags, &options.Local)
 	return cmd
 }
 
@@ -1063,6 +1069,7 @@ func newCmdNodeFreeze() *cobra.Command {
 	flags := cmd.Flags()
 	addFlagsGlobal(flags, &options.OptsGlobal)
 	commoncmd.FlagNodeSelector(flags, &options.NodeSelector)
+	flagLocal(flags, &options.Local)
 	return cmd
 }
 
@@ -1088,6 +1095,7 @@ func newCmdNodeConfigGet() *cobra.Command {
 func newCmdNodeLogs() *cobra.Command {
 	var options commands.CmdNodeLogs
 	cmd := &cobra.Command{
+		GroupID: commoncmd.GroupIDQuery,
 		Use:     "logs",
 		Aliases: []string{"logs", "log", "lo"},
 		Short:   "show this node logs",
@@ -1099,12 +1107,14 @@ func newCmdNodeLogs() *cobra.Command {
 	addFlagsGlobal(flags, &options.OptsGlobal)
 	commoncmd.FlagsLogs(flags, &options.OptsLogs)
 	commoncmd.FlagNodeSelector(flags, &options.NodeSelector)
+	flagLocal(flags, &options.Local)
 	return cmd
 }
 
 func newCmdNodeList() *cobra.Command {
 	var options commands.CmdNodeList
 	cmd := &cobra.Command{
+		GroupID: commoncmd.GroupIDQuery,
 		Use:     "list",
 		Short:   "list the cluster nodes",
 		Long:    "The list can be filtered using the --node selector. This command can be used to validate node selector expressions.",
@@ -1151,7 +1161,7 @@ func newCmdNodeConfigShow() *cobra.Command {
 }
 
 func newCmdObjectPrintResourceInfo(kind string) *cobra.Command {
-	var options commands.CmdObjectResourceInfoList
+	var options commands.CmdObjectInstanceResourceInfoList
 	cmd := &cobra.Command{
 		Hidden: true,
 		Use:    "resinfo",
@@ -1179,6 +1189,7 @@ func newCmdNodeScheduleList() *cobra.Command {
 	flags := cmd.Flags()
 	addFlagsGlobal(flags, &options.OptsGlobal)
 	commoncmd.FlagNodeSelector(flags, &options.NodeSelector)
+	flagLocal(flags, &options.Local)
 	return cmd
 }
 
@@ -1196,6 +1207,7 @@ func newCmdNodePushasset() *cobra.Command {
 	flags := cmd.Flags()
 	addFlagsGlobal(flags, &options.OptsGlobal)
 	commoncmd.FlagNodeSelector(flags, &options.NodeSelector)
+	flagLocal(flags, &options.Local)
 	return cmd
 }
 
@@ -1212,6 +1224,7 @@ func newCmdNodePushAsset() *cobra.Command {
 	flags := cmd.Flags()
 	addFlagsGlobal(flags, &options.OptsGlobal)
 	commoncmd.FlagNodeSelector(flags, &options.NodeSelector)
+	flagLocal(flags, &options.Local)
 	return cmd
 }
 
@@ -1229,6 +1242,7 @@ func newCmdNodePushdisk() *cobra.Command {
 	flags := cmd.Flags()
 	addFlagsGlobal(flags, &options.OptsGlobal)
 	commoncmd.FlagNodeSelector(flags, &options.NodeSelector)
+	flagLocal(flags, &options.Local)
 	return cmd
 }
 
@@ -1245,6 +1259,7 @@ func newCmdNodePushDisk() *cobra.Command {
 	flags := cmd.Flags()
 	addFlagsGlobal(flags, &options.OptsGlobal)
 	commoncmd.FlagNodeSelector(flags, &options.NodeSelector)
+	flagLocal(flags, &options.Local)
 	return cmd
 }
 
@@ -1262,6 +1277,7 @@ func newCmdNodePushpatch() *cobra.Command {
 	flags := cmd.Flags()
 	addFlagsGlobal(flags, &options.OptsGlobal)
 	commoncmd.FlagNodeSelector(flags, &options.NodeSelector)
+	flagLocal(flags, &options.Local)
 	return cmd
 }
 
@@ -1278,6 +1294,7 @@ func newCmdNodePushPatch() *cobra.Command {
 	flags := cmd.Flags()
 	addFlagsGlobal(flags, &options.OptsGlobal)
 	commoncmd.FlagNodeSelector(flags, &options.NodeSelector)
+	flagLocal(flags, &options.Local)
 	return cmd
 }
 
@@ -1295,6 +1312,7 @@ func newCmdNodePushpkg() *cobra.Command {
 	flags := cmd.Flags()
 	addFlagsGlobal(flags, &options.OptsGlobal)
 	commoncmd.FlagNodeSelector(flags, &options.NodeSelector)
+	flagLocal(flags, &options.Local)
 	return cmd
 }
 
@@ -1311,6 +1329,7 @@ func newCmdNodePushPkg() *cobra.Command {
 	flags := cmd.Flags()
 	addFlagsGlobal(flags, &options.OptsGlobal)
 	commoncmd.FlagNodeSelector(flags, &options.NodeSelector)
+	flagLocal(flags, &options.Local)
 	return cmd
 }
 
@@ -1344,9 +1363,9 @@ func newCmdNodeRelayStatus() *cobra.Command {
 			return options.Run()
 		},
 	}
-	flagSet := cmd.Flags()
-	addFlagsGlobal(flagSet, &options.OptsGlobal)
-	commoncmd.FlagRelay(flagSet, &options.Relays)
+	flags := cmd.Flags()
+	addFlagsGlobal(flags, &options.OptsGlobal)
+	commoncmd.FlagRelay(flags, &options.Relays)
 	return cmd
 }
 
@@ -1367,6 +1386,7 @@ func newCmdNodeConfigUpdate() *cobra.Command {
 	commoncmd.FlagUpdateDelete(flags, &options.Delete)
 	commoncmd.FlagUpdateSet(flags, &options.Set)
 	commoncmd.FlagUpdateUnset(flags, &options.Unset)
+	flagLocal(flags, &options.Local)
 	return cmd
 }
 
@@ -1385,6 +1405,7 @@ func newCmdNodeSysreport() *cobra.Command {
 	addFlagsGlobal(flags, &options.OptsGlobal)
 	commoncmd.FlagForce(flags, &options.Force)
 	commoncmd.FlagNodeSelector(flags, &options.NodeSelector)
+	flagLocal(flags, &options.Local)
 	return cmd
 }
 
@@ -1401,6 +1422,7 @@ func newCmdNodeUnfreeze() *cobra.Command {
 	flags := cmd.Flags()
 	addFlagsGlobal(flags, &options.OptsGlobal)
 	commoncmd.FlagNodeSelector(flags, &options.NodeSelector)
+	flagLocal(flags, &options.Local)
 	return cmd
 }
 
@@ -1438,8 +1460,9 @@ func newCmdNodeValidateConfig() *cobra.Command {
 func newCmdObjectAbort(kind string) *cobra.Command {
 	var options commands.CmdObjectAbort
 	cmd := &cobra.Command{
-		Use:   "abort",
-		Short: "abort the running orchestration",
+		GroupID: commoncmd.GroupIDOrchestratedActions,
+		Use:     "abort",
+		Short:   "abort the running orchestration",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return options.Run(kind)
 		},
@@ -1464,6 +1487,7 @@ func newCmdObjectBoot(kind string) *cobra.Command {
 	flags := cmd.Flags()
 	addFlagsGlobal(flags, &options.OptsGlobal)
 	commoncmd.FlagNodeSelector(flags, &options.NodeSelector)
+	hiddenFlagLocal(flags, &options.Local)
 	return cmd
 }
 
@@ -1532,26 +1556,16 @@ func newCmdObjectCertificatePKCS(kind string) *cobra.Command {
 	return cmd
 }
 
-func newCmdObjectClear(kind string) *cobra.Command {
-	var options commands.CmdObjectClear
-	cmd := &cobra.Command{
-		Use:   "clear",
-		Short: "clear errors in the monitor state",
-		RunE: func(cmd *cobra.Command, args []string) error {
-			return options.Run(kind)
-		},
-	}
-	flags := cmd.Flags()
-	addFlagsGlobal(flags, &options.OptsGlobal)
-	return cmd
-}
-
 func newCmdObjectPrint(kind string) *cobra.Command {
-	return &cobra.Command{
+	cmd := &cobra.Command{
 		Use:     "print",
 		Short:   "print information about the object",
 		Aliases: []string{"prin", "pri", "pr"},
 	}
+	cmd.AddGroup(
+		commoncmd.NewGroupQuery(),
+	)
+	return cmd
 }
 
 func newCmdObjectPush(kind string) *cobra.Command {
@@ -1559,29 +1573,6 @@ func newCmdObjectPush(kind string) *cobra.Command {
 		Use:     "push",
 		Short:   "push information about the object to the collector",
 		Aliases: []string{"push", "pus", "pu"},
-	}
-}
-
-func newCmdObjectSSH(kind string) *cobra.Command {
-	return &cobra.Command{
-		Use:   "ssh",
-		Short: "ssh command group",
-	}
-}
-
-func newCmdObjectSync(kind string) *cobra.Command {
-	return &cobra.Command{
-		Use:     "sync",
-		Short:   "data synchronization command group",
-		Aliases: []string{"syn", "sy"},
-	}
-}
-
-func newCmdObjectCollector(kind string) *cobra.Command {
-	return &cobra.Command{
-		Use:     "collector",
-		Short:   "collector data management commands",
-		Aliases: []string{"coll"},
 	}
 }
 
@@ -1687,14 +1678,6 @@ func newCmdObjectCollectorTagShow(kind string) *cobra.Command {
 	return cmd
 }
 
-func newCmdObjectCompliance(kind string) *cobra.Command {
-	return &cobra.Command{
-		Use:     "compliance",
-		Short:   "node configuration expectations analysis and application",
-		Aliases: []string{"compli", "comp", "com", "co"},
-	}
-}
-
 func newCmdObjectComplianceAttach(kind string) *cobra.Command {
 	return &cobra.Command{
 		Use:     "attach",
@@ -1719,40 +1702,10 @@ func newCmdObjectComplianceList(kind string) *cobra.Command {
 	}
 }
 
-func newCmdObjectInstance(kind string) *cobra.Command {
-	return &cobra.Command{
-		Use:     "instance",
-		Short:   "config, status, monitor, list",
-		Aliases: []string{"inst", "in"},
-	}
-}
-
-func newCmdObjectInstanceDevice(kind string) *cobra.Command {
-	return &cobra.Command{
-		Use:     "device",
-		Short:   "block device commands",
-		Aliases: []string{"dev"},
-	}
-}
-
-func newCmdObjectKey(kind string) *cobra.Command {
-	return &cobra.Command{
-		Use:   "key",
-		Short: "data key commands",
-	}
-}
-
 func newCmdObjectComplianceShow(kind string) *cobra.Command {
 	return &cobra.Command{
 		Use:   "show",
 		Short: "show current modulesets and rulesets attachments, modules last check",
-	}
-}
-
-func newCmdObjectConfig(kind string) *cobra.Command {
-	return &cobra.Command{
-		Use:   "config",
-		Short: "object configuration commands",
 	}
 }
 
@@ -2093,6 +2046,7 @@ func newCmdObjectCreate(kind string) *cobra.Command {
 func newCmdObjectDelete(kind string) *cobra.Command {
 	var options commands.CmdObjectDelete
 	cmd := &cobra.Command{
+		GroupID: commoncmd.GroupIDOrchestratedActions,
 		Use:     "delete",
 		Aliases: []string{"del"},
 		Short:   "delete configuration object or instances (with --local)",
@@ -2108,6 +2062,7 @@ func newCmdObjectDelete(kind string) *cobra.Command {
 	}
 	flags := cmd.Flags()
 	addFlagsGlobal(flags, &options.OptsGlobal)
+	flagLocal(flags, &options.Local)
 	commoncmd.FlagsAsync(flags, &options.OptsAsync)
 	commoncmd.FlagsLock(flags, &options.OptsLock)
 	commoncmd.FlagNodeSelector(flags, &options.NodeSelector)
@@ -2117,8 +2072,9 @@ func newCmdObjectDelete(kind string) *cobra.Command {
 func newCmdObjectDeploy(kind string) *cobra.Command {
 	var options commands.CmdObjectCreate
 	cmd := &cobra.Command{
-		Use:   "deploy",
-		Short: "create and provision a new object",
+		GroupID: commoncmd.GroupIDOrchestratedActions,
+		Use:     "deploy",
+		Short:   "create and provision a new object",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			options.Provision = true
 			return options.Run(kind)
@@ -2126,6 +2082,7 @@ func newCmdObjectDeploy(kind string) *cobra.Command {
 	}
 	flags := cmd.Flags()
 	addFlagsGlobal(flags, &options.OptsGlobal)
+	flagLocal(flags, &options.Local)
 	commoncmd.FlagsAsync(flags, &options.OptsAsync)
 	commoncmd.FlagsLock(flags, &options.OptsLock)
 	commoncmd.FlagCreateConfig(flags, &options.Config)
@@ -2170,6 +2127,7 @@ func newCmdObjectDisable(kind string) *cobra.Command {
 	addFlagsGlobal(flags, &options.OptsGlobal)
 	commoncmd.FlagsLock(flags, &options.OptsLock)
 	commoncmd.FlagsResourceSelector(flags, &options.OptsResourceSelector)
+	flagLocal(flags, &options.Local)
 	return cmd
 }
 
@@ -2187,6 +2145,7 @@ func newCmdObjectEnable(kind string) *cobra.Command {
 	addFlagsGlobal(flags, &options.OptsGlobal)
 	commoncmd.FlagsLock(flags, &options.OptsLock)
 	commoncmd.FlagsResourceSelector(flags, &options.OptsResourceSelector)
+	flagLocal(flags, &options.Local)
 	return cmd
 }
 
@@ -2207,11 +2166,12 @@ func newCmdObjectEnter(kind string) *cobra.Command {
 }
 
 func newCmdObjectConfigEval(kind string) *cobra.Command {
-	var options commands.CmdObjectConfigEval
+	var options commands.CmdObjectConfigGet
 	cmd := &cobra.Command{
 		Use:   "eval",
 		Short: "evaluate a configuration key value",
 		RunE: func(cmd *cobra.Command, args []string) error {
+			options.Eval = true
 			return options.Run(kind)
 		},
 	}
@@ -2219,15 +2179,16 @@ func newCmdObjectConfigEval(kind string) *cobra.Command {
 	addFlagsGlobal(flags, &options.OptsGlobal)
 	commoncmd.FlagKeywords(flags, &options.Keywords)
 	commoncmd.FlagImpersonate(flags, &options.Impersonate)
-	cmd.MarkFlagRequired("kw")
+	flagLocal(flags, &options.Local)
 	return cmd
 }
 
 func newCmdObjectFreeze(kind string) *cobra.Command {
 	var options commands.CmdObjectFreeze
 	cmd := &cobra.Command{
-		Use:   "freeze",
-		Short: "block ha automatic start",
+		GroupID: commoncmd.GroupIDOrchestratedActions,
+		Use:     "freeze",
+		Short:   "block ha automatic start and monitor action",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return options.Run(kind)
 		},
@@ -2236,6 +2197,7 @@ func newCmdObjectFreeze(kind string) *cobra.Command {
 	addFlagsGlobal(flags, &options.OptsGlobal)
 	commoncmd.FlagsAsync(flags, &options.OptsAsync)
 	commoncmd.FlagNodeSelector(flags, &options.NodeSelector)
+	hiddenFlagLocal(flags, &options.Local)
 	return cmd
 }
 
@@ -2253,15 +2215,17 @@ func newCmdObjectConfigGet(kind string) *cobra.Command {
 	commoncmd.FlagEval(flags, &options.Eval)
 	commoncmd.FlagImpersonate(flags, &options.Impersonate)
 	commoncmd.FlagKeywords(flags, &options.Keywords)
+	flagLocal(flags, &options.Local)
 	return cmd
 }
 
 func newCmdObjectGiveback(kind string) *cobra.Command {
 	var options commands.CmdObjectGiveback
 	cmd := &cobra.Command{
-		Use:   "giveback",
-		Short: "orchestrate to reach optimal placement",
-		Long:  "Stop the misplaced service instances and start on the preferred nodes.",
+		GroupID: commoncmd.GroupIDOrchestratedActions,
+		Use:     "giveback",
+		Short:   "orchestrate to reach optimal placement",
+		Long:    "Stop the misplaced service instances and start on the preferred nodes.",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return options.Run(kind)
 		},
@@ -2276,6 +2240,7 @@ func newCmdObjectGiveback(kind string) *cobra.Command {
 func newCmdObjectLogs(kind string) *cobra.Command {
 	var options commands.CmdObjectLogs
 	cmd := &cobra.Command{
+		GroupID: commoncmd.GroupIDQuery,
 		Use:     "logs",
 		Aliases: []string{"logs", "log", "lo"},
 		Short:   "show object logs",
@@ -2287,12 +2252,14 @@ func newCmdObjectLogs(kind string) *cobra.Command {
 	addFlagsGlobal(flags, &options.OptsGlobal)
 	commoncmd.FlagsLogs(flags, &options.OptsLogs)
 	commoncmd.FlagNodeSelector(flags, &options.NodeSelector)
+	flagLocal(flags, &options.Local)
 	return cmd
 }
 
 func newCmdObjectList(kind string) *cobra.Command {
 	var options commands.CmdObjectList
 	cmd := &cobra.Command{
+		GroupID: commoncmd.GroupIDQuery,
 		Use:     "list",
 		Short:   "print the selected objects path",
 		Aliases: []string{"ls"},
@@ -2335,15 +2302,6 @@ func newCmdObjectConfigMtime(kind string) *cobra.Command {
 	return cmd
 }
 
-func newCmdObjectSchedule(kind string) *cobra.Command {
-	cmd := &cobra.Command{
-		Use:     "schedule",
-		Short:   "object scheduler commands",
-		Aliases: []string{"sched"},
-	}
-	return cmd
-}
-
 func newCmdObjectScheduleList(kind string) *cobra.Command {
 	var options commands.CmdObjectScheduleList
 	cmd := &cobra.Command{
@@ -2357,12 +2315,14 @@ func newCmdObjectScheduleList(kind string) *cobra.Command {
 	flags := cmd.Flags()
 	addFlagsGlobal(flags, &options.OptsGlobal)
 	commoncmd.FlagNodeSelector(flags, &options.NodeSelector)
+	flagLocal(flags, &options.Local)
 	return cmd
 }
 
 func newCmdObjectInstanceDeviceList(kind string) *cobra.Command {
 	var options commands.CmdObjectInstanceDeviceList
 	cmd := &cobra.Command{
+		GroupID: commoncmd.GroupIDQuery,
 		Use:     "list",
 		Short:   "print the object's exposed, used, base and claimed block devices",
 		Aliases: []string{"ls"},
@@ -2374,12 +2334,14 @@ func newCmdObjectInstanceDeviceList(kind string) *cobra.Command {
 	addFlagsGlobal(flags, &options.OptsGlobal)
 	commoncmd.FlagNodeSelector(flags, &options.NodeSelector)
 	commoncmd.FlagDevRoles(flags, &options.Roles)
+	flagLocal(flags, &options.Local)
 	return cmd
 }
 
 func newCmdObjectInstanceList(kind string) *cobra.Command {
 	var options commands.CmdObjectInstanceList
 	cmd := &cobra.Command{
+		GroupID: commoncmd.GroupIDQuery,
 		Use:     "list",
 		Aliases: []string{"ls"},
 		Short:   "object instances list",
@@ -2393,9 +2355,161 @@ func newCmdObjectInstanceList(kind string) *cobra.Command {
 	return cmd
 }
 
+func newCmdObjectInstanceFreeze(kind string) *cobra.Command {
+	var options commands.CmdObjectInstanceFreeze
+	cmd := &cobra.Command{
+		Use:   "freeze",
+		Short: "block ha automatic start and monitor action",
+		RunE: func(cmd *cobra.Command, args []string) error {
+			return options.Run(kind)
+		},
+	}
+	flags := cmd.Flags()
+	addFlagsGlobal(flags, &options.OptsGlobal)
+	commoncmd.FlagNodeSelector(flags, &options.NodeSelector)
+	return cmd
+}
+
+func newCmdObjectInstanceProvision(kind string) *cobra.Command {
+	var options commands.CmdObjectInstanceProvision
+	cmd := &cobra.Command{
+		Use:     "provision",
+		Short:   "allocate and start instance resources",
+		Long:    "Allocate the system resources required by the object instance resources.\n\nFor example, provision a fs.ext3 resource means format the device with the mkfs.ext3 command.\n\nOperate on a selection of instances asynchronously using --node=<selector>.",
+		Aliases: []string{"prov"},
+		RunE: func(cmd *cobra.Command, args []string) error {
+			return options.Run(kind)
+		},
+	}
+	flags := cmd.Flags()
+	addFlagsGlobal(flags, &options.OptsGlobal)
+	commoncmd.FlagsResourceSelector(flags, &options.OptsResourceSelector)
+	commoncmd.FlagsTo(flags, &options.OptTo)
+	commoncmd.FlagForce(flags, &options.Force)
+	commoncmd.FlagLeader(flags, &options.Leader)
+	commoncmd.FlagNodeSelector(flags, &options.NodeSelector)
+	commoncmd.FlagDisableRollback(flags, &options.DisableRollback)
+	return cmd
+}
+
+func newCmdObjectInstancePRStart(kind string) *cobra.Command {
+	var options commands.CmdObjectInstancePRStart
+	cmd := &cobra.Command{
+		Use:   "prstart",
+		Short: "preempt devices exclusive write access reservation",
+		RunE: func(cmd *cobra.Command, args []string) error {
+			return options.Run(kind)
+		},
+	}
+	flags := cmd.Flags()
+	addFlagsGlobal(flags, &options.OptsGlobal)
+	commoncmd.FlagsLock(flags, &options.OptsLock)
+	commoncmd.FlagsResourceSelector(flags, &options.OptsResourceSelector)
+	commoncmd.FlagsTo(flags, &options.OptTo)
+	commoncmd.FlagForce(flags, &options.Force)
+	commoncmd.FlagDisableRollback(flags, &options.DisableRollback)
+	commoncmd.FlagNodeSelector(flags, &options.NodeSelector)
+	hiddenFlagLocal(flags, &options.Local)
+	cmd.MarkFlagsMutuallyExclusive("no-lock", "node")
+	cmd.MarkFlagsMutuallyExclusive("waitlock", "node")
+	return cmd
+}
+
+func newCmdObjectInstancePRStop(kind string) *cobra.Command {
+	var options commands.CmdObjectInstancePRStop
+	cmd := &cobra.Command{
+		Use:   "prstop",
+		Short: "release devices exclusive write access reservation",
+		RunE: func(cmd *cobra.Command, args []string) error {
+			return options.Run(kind)
+		},
+	}
+	flags := cmd.Flags()
+	addFlagsGlobal(flags, &options.OptsGlobal)
+	commoncmd.FlagsLock(flags, &options.OptsLock)
+	commoncmd.FlagsResourceSelector(flags, &options.OptsResourceSelector)
+	commoncmd.FlagsTo(flags, &options.OptTo)
+	commoncmd.FlagForce(flags, &options.Force)
+	commoncmd.FlagNodeSelector(flags, &options.NodeSelector)
+	hiddenFlagLocal(flags, &options.Local)
+	cmd.MarkFlagsMutuallyExclusive("no-lock", "node")
+	cmd.MarkFlagsMutuallyExclusive("waitlock", "node")
+	return cmd
+}
+
+func newCmdObjectInstanceRun(kind string) *cobra.Command {
+	var options commands.CmdObjectInstanceRun
+	cmd := &cobra.Command{
+		Use:   "run",
+		Short: "execute instance tasks",
+		Long:  "The svc and vol objects can define task resources. Tasks are usually run on a schedule, but this command can trigger a run now.",
+		RunE: func(cmd *cobra.Command, args []string) error {
+			return options.Run(kind)
+		},
+	}
+	flags := cmd.Flags()
+	addFlagsGlobal(flags, &options.OptsGlobal)
+	commoncmd.FlagsLock(flags, &options.OptsLock)
+	commoncmd.FlagsResourceSelector(flags, &options.OptsResourceSelector)
+	commoncmd.FlagsTo(flags, &options.OptTo)
+	commoncmd.FlagConfirm(flags, &options.Confirm)
+	commoncmd.FlagCron(flags, &options.Cron)
+	commoncmd.FlagEnv(flags, &options.Env)
+	commoncmd.FlagForce(flags, &options.Force)
+	commoncmd.FlagNodeSelector(flags, &options.NodeSelector)
+	hiddenFlagLocal(flags, &options.Local)
+	return cmd
+}
+
+func newCmdObjectInstanceStart(kind string) *cobra.Command {
+	var options commands.CmdObjectInstanceStart
+	cmd := &cobra.Command{
+		Use:   "start",
+		Short: "bring up instance resources",
+		Long:  "Start the local instance inline, or a selection of instances asynchronously using --node=<selector>.",
+		RunE: func(cmd *cobra.Command, args []string) error {
+			return options.Run(kind)
+		},
+	}
+	flags := cmd.Flags()
+	addFlagsGlobal(flags, &options.OptsGlobal)
+	commoncmd.FlagsLock(flags, &options.OptsLock)
+	commoncmd.FlagsResourceSelector(flags, &options.OptsResourceSelector)
+	commoncmd.FlagsTo(flags, &options.OptTo)
+	commoncmd.FlagForce(flags, &options.Force)
+	commoncmd.FlagDisableRollback(flags, &options.DisableRollback)
+	commoncmd.FlagNodeSelector(flags, &options.NodeSelector)
+	cmd.MarkFlagsMutuallyExclusive("no-lock", "node")
+	cmd.MarkFlagsMutuallyExclusive("waitlock", "node")
+	return cmd
+}
+
+func newCmdObjectInstanceStop(kind string) *cobra.Command {
+	var options commands.CmdObjectInstanceStop
+	cmd := &cobra.Command{
+		Use:   "stop",
+		Short: "bring down instance resources",
+		Long:  "Stop the local instance inline, or a selection of instances asynchronously using --node=<selector>.",
+		RunE: func(cmd *cobra.Command, args []string) error {
+			return options.Run(kind)
+		},
+	}
+	flags := cmd.Flags()
+	addFlagsGlobal(flags, &options.OptsGlobal)
+	commoncmd.FlagsLock(flags, &options.OptsLock)
+	commoncmd.FlagsResourceSelector(flags, &options.OptsResourceSelector)
+	commoncmd.FlagsTo(flags, &options.OptTo)
+	commoncmd.FlagForce(flags, &options.Force)
+	commoncmd.FlagNodeSelector(flags, &options.NodeSelector)
+	cmd.MarkFlagsMutuallyExclusive("no-lock", "node")
+	cmd.MarkFlagsMutuallyExclusive("waitlock", "node")
+	return cmd
+}
+
 func newCmdObjectInstanceStatus(kind string) *cobra.Command {
 	var options commands.CmdObjectInstanceStatus
 	cmd := &cobra.Command{
+		GroupID: commoncmd.GroupIDQuery,
 		Use:     "status",
 		Aliases: []string{"statu", "stat", "sta", "st"},
 		Short:   "print the object instances status",
@@ -2420,15 +2534,53 @@ func newCmdObjectInstanceStatus(kind string) *cobra.Command {
 	commoncmd.FlagsLock(flags, &options.OptsLock)
 	commoncmd.FlagRefresh(flags, &options.Refresh)
 	commoncmd.FlagNodeSelector(flags, &options.NodeSelector)
+	flagLocal(flags, &options.Local)
+	return cmd
+}
+
+func newCmdObjectInstanceUnfreeze(kind string) *cobra.Command {
+	var options commands.CmdObjectInstanceUnfreeze
+	cmd := &cobra.Command{
+		Use:   "unfreeze",
+		Short: "unblock ha automatic start and monitor action",
+		RunE: func(cmd *cobra.Command, args []string) error {
+			return options.Run(kind)
+		},
+	}
+	flags := cmd.Flags()
+	addFlagsGlobal(flags, &options.OptsGlobal)
+	commoncmd.FlagNodeSelector(flags, &options.NodeSelector)
+	return cmd
+}
+
+func newCmdObjectInstanceUnprovision(kind string) *cobra.Command {
+	var options commands.CmdObjectInstanceUnprovision
+	cmd := &cobra.Command{
+		Use:     "unprovision",
+		Short:   "free the system resources of the instance resources (data-loss danger)",
+		Long:    "Free the system resources required by the object instance resources.\n\nOperate on a selection of instances asynchronously using --node=<selector>.",
+		Aliases: []string{"prov"},
+		RunE: func(cmd *cobra.Command, args []string) error {
+			return options.Run(kind)
+		},
+	}
+	flags := cmd.Flags()
+	addFlagsGlobal(flags, &options.OptsGlobal)
+	commoncmd.FlagsResourceSelector(flags, &options.OptsResourceSelector)
+	commoncmd.FlagsTo(flags, &options.OptTo)
+	commoncmd.FlagForce(flags, &options.Force)
+	commoncmd.FlagLeader(flags, &options.Leader)
+	commoncmd.FlagNodeSelector(flags, &options.NodeSelector)
 	return cmd
 }
 
 func newCmdObjectProvision(kind string) *cobra.Command {
 	var options commands.CmdObjectProvision
 	cmd := &cobra.Command{
+		GroupID: commoncmd.GroupIDOrchestratedActions,
 		Use:     "provision",
-		Short:   "allocate system resources for object resources",
-		Long:    "For example, provision a fs.ext3 resource means format the device with the mkfs.ext3 command.",
+		Short:   "allocate the system resources of the instance resources",
+		Long:    "Allocate the system resources required by the object instance resources.\n\nFor example, provision a fs.ext3 resource means format the device with the mkfs.ext3 command.\n\nOperate on a selection of instances asynchronously using --node=<selector>.",
 		Aliases: []string{"prov"},
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return options.Run(kind)
@@ -2444,31 +2596,17 @@ func newCmdObjectProvision(kind string) *cobra.Command {
 	commoncmd.FlagLeader(flags, &options.Leader)
 	commoncmd.FlagNodeSelector(flags, &options.NodeSelector)
 	commoncmd.FlagDisableRollback(flags, &options.DisableRollback)
-	return cmd
-}
-
-func newCmdObjectSyncIngest(kind string) *cobra.Command {
-	var options commands.CmdObjectSyncIngest
-	cmd := &cobra.Command{
-		Use:   "ingest",
-		Short: "ingest files received from the active instance",
-		Long:  "Resource drivers can send files from the active instance to the stand-by instances via the update action.",
-		RunE: func(cmd *cobra.Command, args []string) error {
-			return options.Run(kind)
-		},
-	}
-	flags := cmd.Flags()
-	addFlagsGlobal(flags, &options.OptsGlobal)
-	commoncmd.FlagsLock(flags, &options.OptsLock)
-	commoncmd.FlagsResourceSelector(flags, &options.OptsResourceSelector)
+	hiddenFlagLocal(flags, &options.Local)
 	return cmd
 }
 
 func newCmdObjectPRStart(kind string) *cobra.Command {
 	var options commands.CmdObjectPRStart
 	cmd := &cobra.Command{
-		Use:   "prstart",
-		Short: "preempt devices exclusive write access reservation",
+		Use:        "prstart",
+		Short:      "preempt devices exclusive write access reservation",
+		Deprecated: "use \"instance prstart\"",
+		Hidden:     true,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return options.Run(kind)
 		},
@@ -2486,8 +2624,9 @@ func newCmdObjectPRStart(kind string) *cobra.Command {
 func newCmdObjectPRStop(kind string) *cobra.Command {
 	var options commands.CmdObjectPRStop
 	cmd := &cobra.Command{
-		Use:   "prstop",
-		Short: "release devices exclusive write access reservation",
+		Use:        "prstop",
+		Short:      "release devices exclusive write access reservation",
+		Deprecated: "use \"instance prstop\"",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return options.Run(kind)
 		},
@@ -2505,8 +2644,9 @@ func newCmdObjectPRStop(kind string) *cobra.Command {
 func newCmdObjectPurge(kind string) *cobra.Command {
 	var options commands.CmdObjectPurge
 	cmd := &cobra.Command{
-		Use:   "purge",
-		Short: "unprovision and delete",
+		GroupID: commoncmd.GroupIDOrchestratedActions,
+		Use:     "purge",
+		Short:   "unprovision and delete",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return options.Run(kind)
 		},
@@ -2520,11 +2660,12 @@ func newCmdObjectPurge(kind string) *cobra.Command {
 	commoncmd.FlagForce(flags, &options.Force)
 	commoncmd.FlagLeader(flags, &options.Leader)
 	commoncmd.FlagNodeSelector(flags, &options.NodeSelector)
+	hiddenFlagLocal(flags, &options.Local)
 	return cmd
 }
 
 func newCmdObjectPushResourceInfo(kind string) *cobra.Command {
-	var options commands.CmdObjectResourceInfoPush
+	var options commands.CmdObjectInstanceResourceInfoPush
 	cmd := &cobra.Command{
 		Hidden: true,
 		Use:    "resinfo",
@@ -2543,8 +2684,9 @@ func newCmdObjectPushResourceInfo(kind string) *cobra.Command {
 func newCmdObjectRestart(kind string) *cobra.Command {
 	var options commands.CmdObjectRestart
 	cmd := &cobra.Command{
-		Use:   "restart",
-		Short: "restart the selected objects, instances or resources",
+		GroupID: commoncmd.GroupIDOrchestratedActions,
+		Use:     "restart",
+		Short:   "restart the selected objects, instances or resources",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return options.Run(kind)
 		},
@@ -2558,11 +2700,30 @@ func newCmdObjectRestart(kind string) *cobra.Command {
 	commoncmd.FlagForce(flags, &options.Force)
 	commoncmd.FlagDisableRollback(flags, &options.DisableRollback)
 	commoncmd.FlagNodeSelector(flags, &options.NodeSelector)
+	hiddenFlagLocal(flags, &options.Local)
 	return cmd
 }
 
-func newCmdObjectSyncFull(kind string) *cobra.Command {
-	var options commands.CmdObjectSyncFull
+func newCmdObjectInstanceSyncIngest(kind string) *cobra.Command {
+	var options commands.CmdObjectInstanceSyncIngest
+	cmd := &cobra.Command{
+		Use:   "ingest",
+		Short: "ingest files received from the active instance",
+		Long:  "Resource drivers can send files from the active instance to the stand-by instances via the update action.",
+		RunE: func(cmd *cobra.Command, args []string) error {
+			return options.Run(kind)
+		},
+	}
+	flags := cmd.Flags()
+	addFlagsGlobal(flags, &options.OptsGlobal)
+	commoncmd.FlagsLock(flags, &options.OptsLock)
+	commoncmd.FlagsResourceSelector(flags, &options.OptsResourceSelector)
+	hiddenFlagLocal(flags, &options.Local)
+	return cmd
+}
+
+func newCmdObjectInstanceSyncFull(kind string) *cobra.Command {
+	var options commands.CmdObjectInstanceSyncFull
 	cmd := &cobra.Command{
 		Use:   "full",
 		Short: "full copy of the local dataset on peers",
@@ -2577,11 +2738,12 @@ func newCmdObjectSyncFull(kind string) *cobra.Command {
 	commoncmd.FlagsResourceSelector(flags, &options.OptsResourceSelector)
 	commoncmd.FlagForce(flags, &options.Force)
 	commoncmd.FlagTarget(flags, &options.Target)
+	hiddenFlagLocal(flags, &options.Local)
 	return cmd
 }
 
-func newCmdObjectSyncResync(kind string) *cobra.Command {
-	var options commands.CmdObjectSyncResync
+func newCmdObjectInstanceSyncResync(kind string) *cobra.Command {
+	var options commands.CmdObjectInstanceSyncResync
 	cmd := &cobra.Command{
 		Use:   "resync",
 		Short: "restore optimal synchronization",
@@ -2595,11 +2757,12 @@ func newCmdObjectSyncResync(kind string) *cobra.Command {
 	commoncmd.FlagsLock(flags, &options.OptsLock)
 	commoncmd.FlagsResourceSelector(flags, &options.OptsResourceSelector)
 	commoncmd.FlagForce(flags, &options.Force)
+	hiddenFlagLocal(flags, &options.Local)
 	return cmd
 }
 
-func newCmdObjectSyncUpdate(kind string) *cobra.Command {
-	var options commands.CmdObjectSyncUpdate
+func newCmdObjectInstanceSyncUpdate(kind string) *cobra.Command {
+	var options commands.CmdObjectInstanceSyncUpdate
 	cmd := &cobra.Command{
 		Use:   "update",
 		Short: "synchronize the copy of the local dataset on peers",
@@ -2614,26 +2777,12 @@ func newCmdObjectSyncUpdate(kind string) *cobra.Command {
 	commoncmd.FlagsResourceSelector(flags, &options.OptsResourceSelector)
 	commoncmd.FlagForce(flags, &options.Force)
 	commoncmd.FlagTarget(flags, &options.Target)
+	hiddenFlagLocal(flags, &options.Local)
 	return cmd
 }
 
-func newCmdObjectResource(kind string) *cobra.Command {
-	return &cobra.Command{
-		Use:     "resource",
-		Short:   "config, status, monitor, list",
-		Aliases: []string{"res"},
-	}
-}
-
-func newCmdObjectResourceInfo(kind string) *cobra.Command {
-	return &cobra.Command{
-		Use:   "info",
-		Short: "list, push the key-values reported by resources",
-	}
-}
-
-func newCmdObjectResourceInfoList(kind string) *cobra.Command {
-	var options commands.CmdObjectResourceInfoList
+func newCmdObjectInstanceResourceInfoList(kind string) *cobra.Command {
+	var options commands.CmdObjectInstanceResourceInfoList
 	cmd := &cobra.Command{
 		Use:     "list",
 		Short:   "list the key-values reported by the resources",
@@ -2648,8 +2797,8 @@ func newCmdObjectResourceInfoList(kind string) *cobra.Command {
 	return cmd
 }
 
-func newCmdObjectResourceInfoPush(kind string) *cobra.Command {
-	var options commands.CmdObjectResourceInfoPush
+func newCmdObjectInstanceResourceInfoPush(kind string) *cobra.Command {
+	var options commands.CmdObjectInstanceResourceInfoPush
 	cmd := &cobra.Command{
 		Use:   "push",
 		Short: "push key-values reported by resources",
@@ -2677,27 +2826,6 @@ func newCmdObjectResourceList(kind string) *cobra.Command {
 	flags := cmd.Flags()
 	addFlagsGlobal(flags, &options.OptsGlobal)
 	commoncmd.FlagRID(flags, &options.RID)
-	commoncmd.FlagNodeSelector(flags, &options.NodeSelector)
-	return cmd
-}
-
-func newCmdObjectRun(kind string) *cobra.Command {
-	var options commands.CmdObjectRun
-	cmd := &cobra.Command{
-		Use:   "run",
-		Short: "run tasks now",
-		Long:  "The svc and vol objects can define task resources. Tasks are usually run on a schedule, but this command can trigger a run now.",
-		RunE: func(cmd *cobra.Command, args []string) error {
-			return options.Run(kind)
-		},
-	}
-	flags := cmd.Flags()
-	addFlagsGlobal(flags, &options.OptsGlobal)
-	commoncmd.FlagsLock(flags, &options.OptsLock)
-	commoncmd.FlagsResourceSelector(flags, &options.OptsResourceSelector)
-	commoncmd.FlagConfirm(flags, &options.Confirm)
-	commoncmd.FlagCron(flags, &options.Cron)
-	commoncmd.FlagEnv(flags, &options.Env)
 	commoncmd.FlagNodeSelector(flags, &options.NodeSelector)
 	return cmd
 }
@@ -2740,8 +2868,8 @@ func newCmdObjectSetUnprovisioned(kind string) *cobra.Command {
 	return cmd
 }
 
-func newCmdObjectShutdown(kind string) *cobra.Command {
-	var options commands.CmdObjectShutdown
+func newCmdObjectInstanceShutdown(kind string) *cobra.Command {
+	var options commands.CmdObjectInstanceShutdown
 	cmd := &cobra.Command{
 		Use:   "shutdown",
 		Short: "shutdown the object or instance",
@@ -2756,32 +2884,39 @@ func newCmdObjectShutdown(kind string) *cobra.Command {
 	commoncmd.FlagsTo(flags, &options.OptTo)
 	commoncmd.FlagForce(flags, &options.Force)
 	commoncmd.FlagNodeSelector(flags, &options.NodeSelector)
+	hiddenFlagLocal(flags, &options.Local)
 	return cmd
 }
 
 func newCmdObjectStart(kind string) *cobra.Command {
 	var options commands.CmdObjectStart
 	cmd := &cobra.Command{
-		Use:   "start",
-		Short: "start objects or instances",
+		GroupID: commoncmd.GroupIDOrchestratedActions,
+		Use:     "start",
+		Short:   "orchestrate start",
+		Long:    "Request the daemon to orchestrate the start of an object.\n\nUse the `instance start` command to start a specific instance directly.",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return options.Run(kind)
 		},
 	}
 	flags := cmd.Flags()
 	addFlagsGlobal(flags, &options.OptsGlobal)
+
+	// hidden (backward compat)
+	hiddenFlagLocal(flags, &options.Local)
 	commoncmd.FlagsAsync(flags, &options.OptsAsync)
-	commoncmd.FlagsLock(flags, &options.OptsLock)
-	commoncmd.FlagsResourceSelector(flags, &options.OptsResourceSelector)
-	commoncmd.FlagsTo(flags, &options.OptTo)
-	commoncmd.FlagForce(flags, &options.Force)
-	commoncmd.FlagDisableRollback(flags, &options.DisableRollback)
-	commoncmd.FlagNodeSelector(flags, &options.NodeSelector)
+	commoncmd.HiddenFlagsLock(flags, &options.OptsLock)
+	commoncmd.HiddenFlagsResourceSelector(flags, &options.OptsResourceSelector)
+	commoncmd.HiddenFlagsTo(flags, &options.OptTo)
+	commoncmd.HiddenFlagForce(flags, &options.Force)
+	commoncmd.HiddenFlagDisableRollback(flags, &options.DisableRollback)
+	commoncmd.HiddenFlagNodeSelector(flags, &options.NodeSelector)
+	flags.Lookup("local").Hidden = true
 	return cmd
 }
 
-func newCmdObjectStartStandby(kind string) *cobra.Command {
-	var options commands.CmdObjectStartStandby
+func newCmdObjectInstanceStartStandby(kind string) *cobra.Command {
+	var options commands.CmdObjectInstanceStartStandby
 	cmd := &cobra.Command{
 		Use:   "startstandby",
 		Short: "activate resources for standby",
@@ -2797,6 +2932,7 @@ func newCmdObjectStartStandby(kind string) *cobra.Command {
 	commoncmd.FlagForce(flags, &options.Force)
 	commoncmd.FlagDisableRollback(flags, &options.DisableRollback)
 	commoncmd.FlagNodeSelector(flags, &options.NodeSelector)
+	hiddenFlagLocal(flags, &options.Local)
 	return cmd
 }
 
@@ -2804,6 +2940,7 @@ func newCmdObjectStatus(kind string) *cobra.Command {
 	var options commands.CmdObjectStatus
 	cmd := &cobra.Command{
 		Use:     "status",
+		Hidden:  true,
 		Aliases: []string{"statu", "stat", "sta", "st"},
 		Short:   "set the exitcode to the instance status",
 		Long:    "This command is silent. Only the exitcode holds information.",
@@ -2812,11 +2949,10 @@ func newCmdObjectStatus(kind string) *cobra.Command {
 		},
 	}
 	flags := cmd.Flags()
-	addFlagsGlobal(flags, &options.OptsGlobal)
 	commoncmd.FlagsLock(flags, &options.OptsLock)
+	commoncmd.FlagObjectSelector(flags, &options.ObjectSelector)
 	commoncmd.FlagRefresh(flags, &options.Refresh)
 	addFlagMonitor(flags, &options.Monitor)
-	commoncmd.FlagNodeSelector(flags, &options.NodeSelector)
 	cmd.MarkFlagsMutuallyExclusive("refresh", "monitor")
 	return cmd
 }
@@ -2824,29 +2960,36 @@ func newCmdObjectStatus(kind string) *cobra.Command {
 func newCmdObjectStop(kind string) *cobra.Command {
 	var options commands.CmdObjectStop
 	cmd := &cobra.Command{
-		Use:   "stop",
-		Short: "stop objects or instances",
+		GroupID: commoncmd.GroupIDOrchestratedActions,
+		Use:     "stop",
+		Short:   "orchestrate stop",
+		Long:    "Request the daemon to orchestrate the stop of an object.\n\nUse the `instance stop` command to stop a specific instance directly.",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return options.Run(kind)
 		},
 	}
 	flags := cmd.Flags()
 	addFlagsGlobal(flags, &options.OptsGlobal)
+
+	// hidden (backward compat)
+	hiddenFlagLocal(flags, &options.Local)
 	commoncmd.FlagsAsync(flags, &options.OptsAsync)
-	commoncmd.FlagsLock(flags, &options.OptsLock)
-	commoncmd.FlagsResourceSelector(flags, &options.OptsResourceSelector)
-	commoncmd.FlagsTo(flags, &options.OptTo)
-	commoncmd.FlagForce(flags, &options.Force)
-	commoncmd.FlagNodeSelector(flags, &options.NodeSelector)
+	commoncmd.HiddenFlagsLock(flags, &options.OptsLock)
+	commoncmd.HiddenFlagsResourceSelector(flags, &options.OptsResourceSelector)
+	commoncmd.HiddenFlagsTo(flags, &options.OptTo)
+	commoncmd.HiddenFlagForce(flags, &options.Force)
+	commoncmd.HiddenFlagNodeSelector(flags, &options.NodeSelector)
+	flags.Lookup("local").Hidden = true
 	return cmd
 }
 
 func newCmdObjectSwitch(kind string) *cobra.Command {
 	var options commands.CmdObjectSwitch
 	cmd := &cobra.Command{
-		Use:   "switch",
-		Short: "orchestrate a running instance move-out",
-		Long:  "Stop the running object instance and start on the next preferred node.",
+		GroupID: commoncmd.GroupIDOrchestratedActions,
+		Use:     "switch",
+		Short:   "orchestrate a running instance move-out",
+		Long:    "Stop the running object instance and start on the next preferred node.",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return options.Run(kind)
 		},
@@ -2862,9 +3005,10 @@ func newCmdObjectSwitch(kind string) *cobra.Command {
 func newCmdObjectUnfreeze(kind string) *cobra.Command {
 	var options commands.CmdObjectUnfreeze
 	cmd := &cobra.Command{
-		Use:    "unfreeze",
-		Hidden: false,
-		Short:  "unblock ha automatic start",
+		GroupID: commoncmd.GroupIDOrchestratedActions,
+		Use:     "unfreeze",
+		Hidden:  false,
+		Short:   "unblock ha automatic start and monitor action",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return options.Run(kind)
 		},
@@ -2873,15 +3017,17 @@ func newCmdObjectUnfreeze(kind string) *cobra.Command {
 	addFlagsGlobal(flags, &options.OptsGlobal)
 	commoncmd.FlagsAsync(flags, &options.OptsAsync)
 	commoncmd.FlagNodeSelector(flags, &options.NodeSelector)
+	hiddenFlagLocal(flags, &options.Local)
 	return cmd
 }
 
 func newCmdObjectTakeover(kind string) *cobra.Command {
 	var options commands.CmdObjectTakeover
 	cmd := &cobra.Command{
-		Use:   "takeover",
-		Short: "orchestrate a running instance bring-in",
-		Long:  "Stop a object instance and start one on the local node.",
+		GroupID: commoncmd.GroupIDOrchestratedActions,
+		Use:     "takeover",
+		Short:   "orchestrate a running instance bring-in",
+		Long:    "Stop a object instance and start one on the local node.",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return options.Run(kind)
 		},
@@ -2905,8 +3051,10 @@ func newCmdObjectThaw(kind string) *cobra.Command {
 func newCmdObjectUnprovision(kind string) *cobra.Command {
 	var options commands.CmdObjectUnprovision
 	cmd := &cobra.Command{
+		GroupID: commoncmd.GroupIDOrchestratedActions,
 		Use:     "unprovision",
 		Short:   "free system resources (data-loss danger)",
+		Long:    "Free the system resources required by the object instance resources.\n\nOperate on a selection of instances asynchronously using --node=<selector>.",
 		Aliases: []string{"unprov"},
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return options.Run(kind)
@@ -2921,6 +3069,7 @@ func newCmdObjectUnprovision(kind string) *cobra.Command {
 	commoncmd.FlagForce(flags, &options.Force)
 	commoncmd.FlagLeader(flags, &options.Leader)
 	commoncmd.FlagNodeSelector(flags, &options.NodeSelector)
+	hiddenFlagLocal(flags, &options.Local)
 	return cmd
 }
 
@@ -2940,6 +3089,7 @@ func newCmdObjectConfigUpdate(kind string) *cobra.Command {
 	commoncmd.FlagUpdateDelete(flags, &options.Delete)
 	commoncmd.FlagUpdateSet(flags, &options.Set)
 	commoncmd.FlagUpdateUnset(flags, &options.Unset)
+	hiddenFlagLocal(flags, &options.Local)
 	return cmd
 }
 
@@ -3044,6 +3194,7 @@ func newCmdNodeSet() *cobra.Command {
 	commoncmd.FlagsLock(flags, &options.OptsLock)
 	commoncmd.FlagKeywordOps(flags, &options.KeywordOps)
 	commoncmd.FlagNodeSelector(flags, &options.NodeSelector)
+	flagLocal(flags, &options.Local)
 	return cmd
 }
 
@@ -3063,6 +3214,7 @@ func newCmdNodeUnset() *cobra.Command {
 	commoncmd.FlagKeywords(flags, &options.Keywords)
 	commoncmd.FlagNodeSelector(flags, &options.NodeSelector)
 	commoncmd.FlagSections(flags, &options.Sections)
+	flagLocal(flags, &options.Local)
 	return cmd
 }
 
@@ -3111,6 +3263,7 @@ func newCmdObjectSet(kind string) *cobra.Command {
 	addFlagsGlobal(flags, &options.OptsGlobal)
 	commoncmd.FlagsLock(flags, &options.OptsLock)
 	commoncmd.FlagKeywordOps(flags, &options.KeywordOps)
+	flagLocal(flags, &options.Local)
 	return cmd
 }
 
@@ -3129,6 +3282,7 @@ func newCmdObjectUnset(kind string) *cobra.Command {
 	commoncmd.FlagsLock(flags, &options.OptsLock)
 	commoncmd.FlagKeywords(flags, &options.Keywords)
 	commoncmd.FlagSections(flags, &options.Sections)
+	flagLocal(flags, &options.Local)
 	return cmd
 }
 
@@ -3158,6 +3312,18 @@ func newCmdObjectPrintConfig(kind string) *cobra.Command {
 	cmd.Use = "config"
 	cmd.Hidden = true
 	cmd.Aliases = []string{"conf", "co", "cf", "cfg"}
+	return cmd
+}
+
+func newCmdObjectShutdown(kind string) *cobra.Command {
+	cmd := newCmdObjectInstanceShutdown(kind)
+	cmd.Hidden = true
+	return cmd
+}
+
+func newCmdObjectStartStandby(kind string) *cobra.Command {
+	cmd := newCmdObjectInstanceStartStandby(kind)
+	cmd.Hidden = true
 	return cmd
 }
 
@@ -3314,6 +3480,12 @@ func newCmdObjectGenCert(kind string) *cobra.Command {
 
 func newCmdObjectPKCS(kind string) *cobra.Command {
 	cmd := newCmdObjectCertificatePKCS(kind)
+	cmd.Hidden = true
+	return cmd
+}
+
+func newCmdObjectRun(kind string) *cobra.Command {
+	cmd := newCmdObjectInstanceRun(kind)
 	cmd.Hidden = true
 	return cmd
 }

@@ -15,6 +15,7 @@ type (
 		OptsGlobal
 		NodeSelector string
 		Roles        string
+		Local        bool
 	}
 
 	devicer interface {
@@ -23,8 +24,11 @@ type (
 )
 
 func (t *CmdObjectInstanceDeviceList) extract(selector string, c *client.T) (objectdevice.L, error) {
-	if t.Local || t.NodeSelector == "" {
+	if t.Local {
 		return t.extractLocal(selector)
+	}
+	if t.NodeSelector == "" {
+		t.NodeSelector = "localhost"
 	}
 	if data, err := t.extractFromDaemon(selector, c); err == nil {
 		return data, nil

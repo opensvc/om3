@@ -65,11 +65,18 @@ func (t *CmdObjectConfigGet) Run(kind string) error {
 		}
 	}
 
-	defaultOutput := "tab=value"
-	if len(l) > 1 {
-		defaultOutput = "tab=OBJECT:object,KEYWORD:keyword,VALUE:value"
-		if t.Eval {
-			defaultOutput += ",EVALUATED:evaluated,EVALUATED_AS:evaluated_as"
+	var defaultOutput string
+	if t.Eval {
+		if len(l) > 1 {
+			defaultOutput = "tab=OBJECT:object,KEYWORD:keyword,VALUE:value,EVALUATED:evaluated,EVALUATED_AS:evaluated_as"
+		} else {
+			defaultOutput = "tab=evaluated"
+		}
+	} else {
+		if len(l) > 1 {
+			defaultOutput = "tab=OBJECT:object,KEYWORD:keyword,VALUE:value"
+		} else {
+			defaultOutput = "tab=value"
 		}
 	}
 

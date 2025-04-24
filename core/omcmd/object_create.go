@@ -3,6 +3,7 @@ package omcmd
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"os"
@@ -13,7 +14,6 @@ import (
 	"github.com/iancoleman/orderedmap"
 
 	"github.com/opensvc/om3/core/client"
-	"github.com/opensvc/om3/core/cmd"
 	"github.com/opensvc/om3/core/commoncmd"
 	"github.com/opensvc/om3/core/freeze"
 	"github.com/opensvc/om3/core/keyop"
@@ -32,6 +32,7 @@ type (
 		OptsGlobal
 		commoncmd.OptsAsync
 		commoncmd.OptsLock
+		Local     bool
 		Config    string
 		Keywords  []string
 		Env       []string
@@ -66,22 +67,31 @@ func (t *CmdObjectCreate) Run(kind string) error {
 	} else {
 		t.client = c
 	}
-	errC := make(chan error)
-	if t.Provision {
-		ctx, cancel := context.WithTimeout(context.Background(), t.Time)
-		defer cancel()
-		if err := cmd.WaitInstanceMonitor(ctx, t.client, t.path, 0, errC); err != nil {
+	errC := make(chan error, 1)
+
+	ctx, cancel := context.WithTimeout(context.Background(), t.Time)
+	defer cancel()
+	if err := commoncmd.WaitInstanceMonitor(ctx, t.client, t.path, 0, errC); err != nil {
+		if errors.Is(err, os.ErrNotExist) {
+			// Don't wait if he daemon is not running.
+			errC <- nil
+		} else {
 			return err
 		}
 	}
+
 	if err := t.do(); err != nil {
 		return err
 	}
+
+	// Don't return until the instance is ready to accept an orchestration request.
+	err := <-errC
+
+	if err != nil {
+		return err
+	}
+
 	if t.Provision {
-		err := <-errC
-		if err != nil {
-			return err
-		}
 		provisionOptions := CmdObjectProvision{
 			OptsGlobal: t.OptsGlobal,
 			OptsAsync:  t.OptsAsync,

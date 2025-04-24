@@ -75,7 +75,6 @@ func TestSecDecodeKeys(t *testing.T) {
 	getCmd := func(name string) []string {
 		args := []string{"test/sec/sec1", "decode", "--key"}
 		args = append(args, cases[name].extraArgs...)
-		args = append(args, "--local")
 		return args
 	}
 

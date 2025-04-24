@@ -14,7 +14,6 @@ import (
 	"github.com/iancoleman/orderedmap"
 
 	"github.com/opensvc/om3/core/client"
-	"github.com/opensvc/om3/core/cmd"
 	"github.com/opensvc/om3/core/commoncmd"
 	"github.com/opensvc/om3/core/keyop"
 	"github.com/opensvc/om3/core/naming"
@@ -67,25 +66,26 @@ func (t *CmdObjectCreate) Run(kind string) error {
 		t.path = p
 	}
 	errC := make(chan error)
-	if t.Provision {
-		ctx, cancel := context.WithTimeout(context.Background(), t.Time)
-		defer cancel()
-		if err := cmd.WaitInstanceMonitor(ctx, t.client, t.path, 0, errC); err != nil {
-			return err
-		}
+
+	ctx, cancel := context.WithTimeout(context.Background(), t.Time)
+	defer cancel()
+	if err := commoncmd.WaitInstanceMonitor(ctx, t.client, t.path, 0, errC); err != nil {
+		return err
 	}
+
 	if err := t.do(); err != nil {
 		return err
 	}
+
+	err := <-errC
+	if err != nil {
+		return err
+	}
+
 	if t.Provision {
-		err := <-errC
-		if err != nil {
-			return err
-		}
 		provisionOptions := CmdObjectProvision{
 			OptsGlobal: t.OptsGlobal,
 			OptsAsync:  t.OptsAsync,
-			OptsLock:   t.OptsLock,
 		}
 		if err := provisionOptions.Run(kind); err != nil {
 			return err

@@ -32,7 +32,7 @@ func (a *DaemonAPI) postLocalInstanceActionRun(ctx echo.Context, namespace strin
 		return JSONProblemf(ctx, http.StatusBadRequest, "Invalid parameters", "%s", err)
 	}
 	log = naming.LogWithPath(log, p)
-	args := []string{p.String(), "run", "--local"}
+	args := []string{p.String(), "instance", "run"}
 	if params.Force != nil && *params.Force {
 		args = append(args, "--force")
 	}
@@ -53,6 +53,11 @@ func (a *DaemonAPI) postLocalInstanceActionRun(ctx echo.Context, namespace strin
 	}
 	if params.Tag != nil && *params.Tag != "" {
 		args = append(args, "--tag", *params.Tag)
+	}
+	if params.Env != nil {
+		for _, s := range *params.Env {
+			args = append(args, "--env", s)
+		}
 	}
 	if params.RequesterSid != nil {
 		requesterSid = *params.RequesterSid

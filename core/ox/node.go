@@ -1,15 +1,12 @@
 package ox
 
 import (
+	"github.com/opensvc/om3/core/commoncmd"
 	"github.com/spf13/cobra"
 )
 
 var (
-	cmdNode = &cobra.Command{
-		Use:   "node",
-		Short: "manage a opensvc cluster node",
-	}
-
+	cmdNode             = commoncmd.NewCmdNode()
 	cmdNodeCapabilities = &cobra.Command{
 		Use:     "capabilities",
 		Short:   "scan and list what the node is capable of",

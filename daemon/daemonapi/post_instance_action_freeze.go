@@ -32,7 +32,7 @@ func (a *DaemonAPI) postLocalInstanceActionFreeze(ctx echo.Context, namespace st
 		return JSONProblemf(ctx, http.StatusBadRequest, "Invalid parameters", "%s", err)
 	}
 	log = naming.LogWithPath(log, p)
-	args := []string{p.String(), "freeze", "--local"}
+	args := []string{p.String(), "instance", "freeze"}
 	if params.RequesterSid != nil {
 		requesterSid = *params.RequesterSid
 	}

@@ -13,6 +13,7 @@ type (
 	CmdNodeLogs struct {
 		OptsGlobal
 		commoncmd.OptsLogs
+		Local        bool
 		NodeSelector string
 	}
 )

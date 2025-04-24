@@ -27,6 +27,7 @@ func NewCmdMonitor() *cobra.Command {
 func NewCmdObjectMonitor(selector, kind string) *cobra.Command {
 	var options CmdObjectMonitor
 	cmd := &cobra.Command{
+		GroupID: GroupIDQuery,
 		Use:     "monitor",
 		Aliases: []string{"m", "mo", "mon", "moni", "monit", "monito"},
 		Short:   "show the cluster status",

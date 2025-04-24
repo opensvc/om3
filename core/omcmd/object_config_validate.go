@@ -41,8 +41,6 @@ func (t *CmdObjectConfigValidate) Run(kind string) error {
 	var wg sync.WaitGroup
 
 	err := objectaction.New(
-		objectaction.LocalFirst(),
-		objectaction.WithLocal(t.Local),
 		objectaction.WithColor(t.Color),
 		objectaction.WithObjectSelector(mergedSelector),
 		objectaction.WithLocalFunc(func(ctx context.Context, p naming.Path) (interface{}, error) {

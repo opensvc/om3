@@ -9,7 +9,7 @@ import (
 
 // PRStart starts the scsi reservations of the local instance of the object
 func (t *actor) PRStart(ctx context.Context) error {
-	ctx = actioncontext.WithProps(ctx, actioncontext.Start)
+	ctx = actioncontext.WithProps(ctx, actioncontext.PRStart)
 	if err := t.validateAction(); err != nil {
 		return err
 	}

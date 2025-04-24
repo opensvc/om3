@@ -21,6 +21,7 @@ import (
 type (
 	CmdObjectScheduleList struct {
 		OptsGlobal
+		Local        bool
 		NodeSelector string
 	}
 )

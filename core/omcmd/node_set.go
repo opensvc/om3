@@ -18,6 +18,7 @@ type (
 		OptsGlobal
 		commoncmd.OptsLock
 		KeywordOps   []string
+		Local        bool
 		NodeSelector string
 	}
 )

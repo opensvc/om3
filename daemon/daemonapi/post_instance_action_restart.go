@@ -32,7 +32,7 @@ func (a *DaemonAPI) postLocalInstanceActionRestart(ctx echo.Context, namespace s
 		return JSONProblemf(ctx, http.StatusBadRequest, "Invalid parameters", "%s", err)
 	}
 	log = naming.LogWithPath(log, p)
-	args := []string{p.String(), "restart", "--local"}
+	args := []string{p.String(), "instance", "restart"}
 	if params.DisableRollback != nil && *params.DisableRollback {
 		args = append(args, "--disable-rollback")
 	}

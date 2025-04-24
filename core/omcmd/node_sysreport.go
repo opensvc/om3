@@ -15,6 +15,7 @@ type (
 	CmdNodeSysreport struct {
 		OptsGlobal
 		Force        bool
+		Local        bool
 		NodeSelector string
 	}
 )

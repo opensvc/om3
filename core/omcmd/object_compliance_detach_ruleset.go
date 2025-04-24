@@ -19,8 +19,6 @@ type (
 func (t *CmdObjectComplianceDetachRuleset) Run(kind string) error {
 	mergedSelector := commoncmd.MergeSelector("", t.ObjectSelector, kind, "")
 	return objectaction.New(
-		objectaction.LocalFirst(),
-		objectaction.WithLocal(t.Local),
 		objectaction.WithColor(t.Color),
 		objectaction.WithOutput(t.Output),
 		objectaction.WithObjectSelector(mergedSelector),

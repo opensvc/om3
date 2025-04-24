@@ -19,345 +19,432 @@ var (
 	usageFlagEventFilter string
 )
 
-func FlagsAsync(flagSet *pflag.FlagSet, p *OptsAsync) {
-	FlagTime(flagSet, &p.Time)
-	FlagWait(flagSet, &p.Wait)
-	FlagWatch(flagSet, &p.Watch)
+func FlagQuiet(flags *pflag.FlagSet, p *bool) {
+	flags.BoolVarP(p, "quiet", "q", false, "don't print the logs on the console")
 }
 
-func FlagsLogs(flagSet *pflag.FlagSet, p *OptsLogs) {
-	flagSet.BoolVarP(&p.Follow, "follow", "f", false, "follow the log feed")
-	flagSet.IntVarP(&p.Lines, "lines", "n", 50, "report the last n log entries")
-	flagSet.StringArrayVar(&p.Filter, "filter", []string{}, "report only log entries matching labels (path=svc1)")
+func FlagDebug(flags *pflag.FlagSet, p *bool) {
+	flags.BoolVar(p, "debug", false, "show debug log entries")
 }
 
-func FlagsLock(flagSet *pflag.FlagSet, p *OptsLock) {
-	FlagNoLock(flagSet, &p.Disable)
-	FlagWaitLock(flagSet, &p.Timeout)
+func FlagsAsync(flags *pflag.FlagSet, p *OptsAsync) {
+	FlagTime(flags, &p.Time)
+	FlagWait(flags, &p.Wait)
+	FlagWatch(flags, &p.Watch)
 }
 
-func FlagsResourceSelector(flagSet *pflag.FlagSet, p *OptsResourceSelector) {
-	FlagRID(flagSet, &p.RID)
-	FlagSubset(flagSet, &p.Subset)
-	FlagTag(flagSet, &p.Tag)
+func FlagsLogs(flags *pflag.FlagSet, p *OptsLogs) {
+	flags.BoolVarP(&p.Follow, "follow", "f", false, "follow the log feed")
+	flags.IntVarP(&p.Lines, "lines", "n", 50, "report the last n log entries")
+	flags.StringArrayVar(&p.Filter, "filter", []string{}, "report only log entries matching labels (path=svc1)")
 }
 
-func FlagsTo(flagSet *pflag.FlagSet, p *OptTo) {
-	FlagTo(flagSet, &p.To)
-	FlagUpTo(flagSet, &p.UpTo)
-	FlagDownTo(flagSet, &p.DownTo)
+func FlagsLock(flags *pflag.FlagSet, p *OptsLock) {
+	FlagNoLock(flags, &p.Disable)
+	FlagWaitLock(flags, &p.Timeout)
 }
 
-func FlagComplianceAttach(flagSet *pflag.FlagSet, p *bool) {
-	flagSet.BoolVar(p, "attach", false, "attach the modulesets selected for the compliance run")
+func FlagsResourceSelector(flags *pflag.FlagSet, p *OptsResourceSelector) {
+	FlagRID(flags, &p.RID)
+	FlagSubset(flags, &p.Subset)
+	FlagTag(flags, &p.Tag)
 }
 
-func FlagComplianceForce(flagSet *pflag.FlagSet, p *bool) {
-	flagSet.BoolVar(p, "force", false, "don't check before fix")
+func FlagsTo(flags *pflag.FlagSet, p *OptTo) {
+	FlagTo(flags, &p.To)
+	FlagUpTo(flags, &p.UpTo)
+	FlagDownTo(flags, &p.DownTo)
 }
 
-func FlagCPUProfile(flagSet *pflag.FlagSet, p *string) {
-	flagSet.StringVar(p, "cpuprofile", "", "dump a cpu pprof in this file on exit")
+func FlagComplianceAttach(flags *pflag.FlagSet, p *bool) {
+	flags.BoolVar(p, "attach", false, "attach the modulesets selected for the compliance run")
 }
 
-func FlagCreateConfig(flagSet *pflag.FlagSet, p *string) {
-	flagSet.StringVar(p, "config", "", "the initial configuration source: -, /dev/stdin, file path, url, object path or template://<name>")
+func FlagComplianceForce(flags *pflag.FlagSet, p *bool) {
+	flags.BoolVar(p, "force", false, "don't check before fix")
 }
 
-func FlagConfirm(flagSet *pflag.FlagSet, p *bool) {
-	flagSet.BoolVar(p, "confirm", false, "confirm a run action configured to ask for confirmation")
+func FlagCPUProfile(flags *pflag.FlagSet, p *string) {
+	flags.StringVar(p, "cpuprofile", "", "dump a cpu pprof in this file on exit")
 }
 
-func FlagCreateForce(flagSet *pflag.FlagSet, p *bool) {
-	flagSet.BoolVar(p, "force", false, "allow overwriting existing configuration files (dangerous)")
+func FlagCreateConfig(flags *pflag.FlagSet, p *string) {
+	flags.StringVar(p, "config", "", "the initial configuration source: -, /dev/stdin, file path, url, object path or template://<name>")
 }
 
-func FlagCreateNamespace(flagSet *pflag.FlagSet, p *string) {
-	flagSet.StringVar(p, "namespace", "", "where to create the new objects")
+func FlagConfirm(flags *pflag.FlagSet, p *bool) {
+	flags.BoolVar(p, "confirm", false, "confirm a run action configured to ask for confirmation")
 }
 
-func FlagCreateRestore(flagSet *pflag.FlagSet, p *bool) {
-	flagSet.BoolVar(p, "restore", false, "keep the object id defined in the source config")
+func FlagCreateForce(flags *pflag.FlagSet, p *bool) {
+	flags.BoolVar(p, "force", false, "allow overwriting existing configuration files (dangerous)")
 }
 
-func FlagCron(flagSet *pflag.FlagSet, p *bool) {
-	flagSet.BoolVar(p, "cron", false, "run the action as if executed by the daemon")
+func FlagCreateNamespace(flags *pflag.FlagSet, p *string) {
+	flags.StringVar(p, "namespace", "", "where to create the new objects")
 }
 
-func FlagDaemonHeartbeatFilter(flagSet *pflag.FlagSet, p *string) {
-	flagSet.StringVar(p, "name", "", "filter on heartbeat name or stream name (ex: hb#1, hb#1.rx, 1, 1.rx)")
+func FlagCreateRestore(flags *pflag.FlagSet, p *bool) {
+	flags.BoolVar(p, "restore", false, "keep the object id defined in the source config")
 }
 
-func FlagDaemonHeartbeatName(flagSet *pflag.FlagSet, p *string) {
-	flagSet.StringVar(p, "name", "", "stream name (ex: 1.rx)")
+func FlagCron(flags *pflag.FlagSet, p *bool) {
+	flags.BoolVar(p, "cron", false, "run the action as if executed by the daemon")
 }
 
-func FlagDaemonListenerName(flagSet *pflag.FlagSet, p *string) {
-	flagSet.StringVar(p, "name", "", "listener name http-inet|http-ux")
+func FlagDaemonHeartbeatFilter(flags *pflag.FlagSet, p *string) {
+	flags.StringVar(p, "name", "", "filter on heartbeat name or stream name (ex: hb#1, hb#1.rx, 1, 1.rx)")
 }
 
-func FlagDaemonLogLevel(flagSet *pflag.FlagSet, p *string) {
-	flagSet.StringVar(p, "level", "", "trace, debug, info, warn, error, fatal, panic")
+func FlagDaemonHeartbeatName(flags *pflag.FlagSet, p *string) {
+	flags.StringVar(p, "name", "", "stream name (ex: 1.rx)")
 }
 
-func FlagDepth(flagSet *pflag.FlagSet, p *int) {
-	flagSet.IntVar(p, "depth", 0, "format markdown titles so they can be rooted inside a chapter nested at the specified depth")
+func FlagDaemonListenerName(flags *pflag.FlagSet, p *string) {
+	flags.StringVar(p, "name", "", "listener name http-inet|http-ux")
 }
 
-func FlagDevRoles(flagSet *pflag.FlagSet, p *string) {
-	flagSet.StringVar(p, "roles", "all", "display only devices matching these roles all=exposed,sub,base")
+func FlagDaemonLogLevel(flags *pflag.FlagSet, p *string) {
+	flags.StringVar(p, "level", "", "trace, debug, info, warn, error, fatal, panic")
 }
 
-func FlagDisableRollback(flagSet *pflag.FlagSet, p *bool) {
-	flagSet.BoolVar(p, "disable-rollback", false, "on action error, do not return activated resources to their previous state")
+func FlagDepth(flags *pflag.FlagSet, p *int) {
+	flags.IntVar(p, "depth", 0, "format markdown titles so they can be rooted inside a chapter nested at the specified depth")
 }
 
-func FlagDiscard(flagSet *pflag.FlagSet, p *bool) {
-	flagSet.BoolVar(p, "discard", false, "discard the stashed, invalid, configuration file leftover of a previous execution")
+func FlagDevRoles(flags *pflag.FlagSet, p *string) {
+	flags.StringVar(p, "roles", "all", "display only devices matching these roles all=exposed,sub,base")
 }
 
-func FlagDownTo(flagSet *pflag.FlagSet, p *string) {
-	flagSet.StringVar(p, "downto", "", "stop down to the specified rid or driver group")
-	flagSet.Lookup("downto").Deprecated = "Use --to."
+func FlagDisableRollback(flags *pflag.FlagSet, p *bool) {
+	flags.BoolVar(p, "disable-rollback", false, "on action error, do not return activated resources to their previous state")
 }
 
-func FlagDriver(flagSet *pflag.FlagSet, p *string) {
-	flagSet.StringVar(p, "driver", "", "a driver identifier, <group>.<name> (ex: ip.host)")
+func FlagDiscard(flags *pflag.FlagSet, p *bool) {
+	flags.BoolVar(p, "discard", false, "discard the stashed, invalid, configuration file leftover of a previous execution")
 }
 
-func FlagDryRun(flagSet *pflag.FlagSet, p *bool) {
-	flagSet.BoolVar(p, "dry-run", false, "show the action execution plan")
+func FlagDownTo(flags *pflag.FlagSet, p *string) {
+	flags.StringVar(p, "downto", "", "stop down to the specified rid or driver group")
+	flags.Lookup("downto").Deprecated = "Use --to."
+	flags.Lookup("downto").Hidden = true
 }
 
-func FlagDuration(flagSet *pflag.FlagSet, p *time.Duration) {
-	flagSet.DurationVar(p, "duration", 0*time.Second, "duration")
+func FlagDriver(flags *pflag.FlagSet, p *string) {
+	flags.StringVar(p, "driver", "", "a driver identifier, <group>.<name> (ex: ip.host)")
 }
 
-func FlagEnv(flagSet *pflag.FlagSet, p *[]string) {
-	flagSet.StringSliceVar(p, "env", []string{}, "export the variable in the action environment")
+func FlagDryRun(flags *pflag.FlagSet, p *bool) {
+	flags.BoolVar(p, "dry-run", false, "show the action execution plan")
 }
 
-func FlagCreateEnv(flagSet *pflag.FlagSet, p *[]string) {
-	flagSet.StringSliceVar(p, "env", []string{}, "set a env section parameter in the service configuration file")
+func FlagDuration(flags *pflag.FlagSet, p *time.Duration) {
+	flags.DurationVar(p, "duration", 0*time.Second, "duration")
 }
 
-func FlagEval(flagSet *pflag.FlagSet, p *bool) {
-	flagSet.BoolVar(p, "eval", false, "dereference and evaluate arythmetic expressions in value")
+func FlagEnv(flags *pflag.FlagSet, p *[]string) {
+	flags.StringSliceVar(p, "env", []string{}, "export the variable in the action environment")
 }
 
-func FlagEventFilters(flagSet *pflag.FlagSet, p *[]string) {
-	flagSet.StringArrayVar(p, "filter", []string{}, usageFlagEventFilter)
+func FlagCreateEnv(flags *pflag.FlagSet, p *[]string) {
+	flags.StringSliceVar(p, "env", []string{}, "set a env section parameter in the service configuration file")
 }
 
-func FlagForce(flagSet *pflag.FlagSet, p *bool) {
-	flagSet.BoolVar(p, "force", false, "allow dangerous operations")
+func FlagEval(flags *pflag.FlagSet, p *bool) {
+	flags.BoolVar(p, "eval", false, "dereference and evaluate arythmetic expressions in value")
 }
 
-func FlagImpersonate(flagSet *pflag.FlagSet, p *string) {
-	flagSet.StringVar(p, "impersonate", "", "the name of a peer node to impersonate when evaluating keywords")
+func FlagEventFilters(flags *pflag.FlagSet, p *[]string) {
+	flags.StringArrayVar(p, "filter", []string{}, usageFlagEventFilter)
 }
 
-func FlagKey(flagSet *pflag.FlagSet, p *string) {
-	flagSet.StringVar(p, "key", "", "a data key name")
+func FlagForce(flags *pflag.FlagSet, p *bool) {
+	flags.BoolVar(p, "force", false, "allow dangerous operations")
 }
 
-func FlagKeyTo(flagSet *pflag.FlagSet, p *string) {
-	flagSet.StringVar(p, "to", "", "the new data key name")
+func FlagImpersonate(flags *pflag.FlagSet, p *string) {
+	flags.StringVar(p, "impersonate", "", "the name of a peer node to impersonate when evaluating keywords")
 }
 
-func FlagKeyword(flagSet *pflag.FlagSet, p *string) {
-	flagSet.StringVar(p, "kw", "", "a configuration keyword: [<section>.]<option>")
+func FlagKey(flags *pflag.FlagSet, p *string) {
+	flags.StringVar(p, "key", "", "a data key name")
 }
 
-func FlagKeywordOps(flagSet *pflag.FlagSet, p *[]string) {
-	flagSet.StringSliceVar(p, "kw", []string{}, "a configuration keyword operation: [<section>.]<option><op><value>, with op in = |= += -= ^=")
+func FlagKeyTo(flags *pflag.FlagSet, p *string) {
+	flags.StringVar(p, "to", "", "the new data key name")
 }
 
-func FlagKeywords(flagSet *pflag.FlagSet, p *[]string) {
-	flagSet.StringSliceVar(p, "kw", []string{}, "a configuration keyword: [<section>.]<option>")
+func FlagKeyword(flags *pflag.FlagSet, p *string) {
+	flags.StringVar(p, "kw", "", "a configuration keyword: [<section>.]<option>")
 }
 
-func FlagLeader(flagSet *pflag.FlagSet, p *bool) {
-	flagSet.BoolVar(p, "leader", false, "provision all resources, including shared resources that must be provisioned only once")
+func FlagKeywordOps(flags *pflag.FlagSet, p *[]string) {
+	flags.StringSliceVar(p, "kw", []string{}, "a configuration keyword operation: [<section>.]<option><op><value>, with op in = |= += -= ^=")
 }
 
-func FlagLocal(flagSet *pflag.FlagSet, p *bool) {
-	flagSet.BoolVar(p, "local", false, "inline action on local instance")
+func FlagKeywords(flags *pflag.FlagSet, p *[]string) {
+	flags.StringSliceVar(p, "kw", []string{}, "a configuration keyword: [<section>.]<option>")
 }
 
-func FlagMatch(flagSet *pflag.FlagSet, p *string) {
-	flagSet.StringVar(p, "match", "**", "a fnmatch key name filter")
+func FlagLeader(flags *pflag.FlagSet, p *bool) {
+	flags.BoolVar(p, "leader", false, "provision all resources, including shared resources that must be provisioned only once")
 }
 
-func FlagNetworkStatusName(flagSet *pflag.FlagSet, p *string) {
-	flagSet.StringVar(p, "name", "", "filter on a network name")
+func FlagLocal(flags *pflag.FlagSet, p *bool) {
+	flags.BoolVar(p, "local", false, "inline action on local instance")
 }
 
-func FlagNetworkStatusExtended(flagSet *pflag.FlagSet, p *bool) {
-	flagSet.BoolVarP(p, "extended", "x", false, "include network addresses")
+func FlagMatch(flags *pflag.FlagSet, p *string) {
+	flags.StringVar(p, "match", "**", "a fnmatch key name filter")
 }
 
-func FlagNodeSelectorFilter(flagSet *pflag.FlagSet, p *string) {
-	flagSet.StringVar(p, "node", "", "filter on a list of nodes (ex: *, az=fr1)")
+func FlagNetworkStatusName(flags *pflag.FlagSet, p *string) {
+	flags.StringVar(p, "name", "", "filter on a network name")
 }
 
-func FlagPeerSelectorFilter(flagSet *pflag.FlagSet, p *string) {
-	flagSet.StringVar(p, "peer", "", "filter on a list of remote nodes (ex: *, az=fr1)")
+func FlagNetworkStatusExtended(flags *pflag.FlagSet, p *bool) {
+	flags.BoolVarP(p, "extended", "x", false, "include network addresses")
 }
 
-func FlagNodeSelector(flagSet *pflag.FlagSet, p *string) {
-	flagSet.StringVar(p, "node", "", "execute on a list of nodes")
+func FlagNodeSelectorFilter(flags *pflag.FlagSet, p *string) {
+	flags.StringVar(p, "node", "", "filter on a list of nodes (ex: *, az=fr1)")
 }
 
-func FlagNoLock(flagSet *pflag.FlagSet, p *bool) {
-	flagSet.BoolVar(p, "no-lock", false, "don't acquire the action lock (dangerous)")
+func FlagPeerSelectorFilter(flags *pflag.FlagSet, p *string) {
+	flags.StringVar(p, "peer", "", "filter on a list of remote nodes (ex: *, az=fr1)")
 }
 
-func FlagPoolName(flagSet *pflag.FlagSet, p *string) {
-	flagSet.StringVar(p, "name", "", "filter on a pool name")
+func FlagNodeSelector(flags *pflag.FlagSet, p *string) {
+	flags.StringVar(p, "node", "", "submit the action to the selected nodes")
 }
 
-func FlagPoolStatusExtended(flagSet *pflag.FlagSet, p *bool) {
-	flagSet.BoolVarP(p, "extended", "x", false, "include pool volumes")
+func FlagNoLock(flags *pflag.FlagSet, p *bool) {
+	flags.BoolVar(p, "no-lock", false, "don't acquire the action lock (dangerous)")
 }
 
-func FlagProvision(flagSet *pflag.FlagSet, p *bool) {
-	flagSet.BoolVar(p, "provision", false, "provision the object after create")
+func FlagPoolName(flags *pflag.FlagSet, p *string) {
+	flags.StringVar(p, "name", "", "filter on a pool name")
 }
 
-func FlagRefresh(flagSet *pflag.FlagSet, p *bool) {
-	flagSet.BoolVarP(p, "refresh", "r", false, "refresh the status data")
+func FlagPoolStatusExtended(flags *pflag.FlagSet, p *bool) {
+	flags.BoolVarP(p, "extended", "x", false, "include pool volumes")
 }
 
-func FlagRecover(flagSet *pflag.FlagSet, p *bool) {
-	flagSet.BoolVar(p, "recover", false, "recover the stashed, invalid, configuration file leftover of a previous execution")
+func FlagProvision(flags *pflag.FlagSet, p *bool) {
+	flags.BoolVar(p, "provision", false, "provision the object after create")
 }
 
-func FlagRelay(flagSet *pflag.FlagSet, p *string) {
-	flagSet.StringVar(p, "relay", "", "the name of a relay to query")
+func FlagRefresh(flags *pflag.FlagSet, p *bool) {
+	flags.BoolVarP(p, "refresh", "r", false, "refresh the status data")
 }
 
-func FlagRID(flagSet *pflag.FlagSet, p *string) {
-	flagSet.StringVar(p, "rid", "", "a resource selector expression (ex: ip#1,app,disk.type=zvol)")
+func FlagRecover(flags *pflag.FlagSet, p *bool) {
+	flags.BoolVar(p, "recover", false, "recover the stashed, invalid, configuration file leftover of a previous execution")
 }
 
-func FlagEventTemplate(flagSet *pflag.FlagSet, p *string) {
-	flagSet.StringVar(p, "template", "", usageFlagEventTemplate)
+func FlagRelay(flags *pflag.FlagSet, p *string) {
+	flags.StringVar(p, "relay", "", "the name of a relay to query")
 }
 
-func FlagTime(flagSet *pflag.FlagSet, p *time.Duration) {
-	flagSet.DurationVar(p, "time", 5*time.Minute, "stop waiting for the object to reach the target state after a duration")
+func FlagRID(flags *pflag.FlagSet, p *string) {
+	flags.StringVar(p, "rid", "", "a resource selector expression (ex: ip#1,app,disk.type=zvol)")
 }
 
-func FlagCollectorUser(flagSet *pflag.FlagSet, p *string) {
-	flagSet.StringVar(p, "user", "", "authenticate with the collector using this user")
+func FlagEventTemplate(flags *pflag.FlagSet, p *string) {
+	flags.StringVar(p, "template", "", usageFlagEventTemplate)
 }
 
-func FlagCollectorPassword(flagSet *pflag.FlagSet, p *string) {
-	flagSet.StringVar(p, "password", "", "authenticate with the collector using this password")
+func FlagTime(flags *pflag.FlagSet, p *time.Duration) {
+	flags.DurationVar(p, "time", 5*time.Minute, "stop waiting for the object to reach the target state after a duration")
 }
 
-func FlagCollectorApp(flagSet *pflag.FlagSet, p *string) {
-	flagSet.StringVar(p, "app", "", "register the node in the this app (or the collector picks a random app owned by the user)")
+func FlagCollectorUser(flags *pflag.FlagSet, p *string) {
+	flags.StringVar(p, "user", "", "authenticate with the collector using this user")
 }
 
-func FlagModule(flagSet *pflag.FlagSet, p *string) {
-	flagSet.StringVar(p, "module", "", "the attached modules to limit the action to")
+func FlagCollectorPassword(flags *pflag.FlagSet, p *string) {
+	flags.StringVar(p, "password", "", "authenticate with the collector using this password")
 }
 
-func FlagModuleset(flagSet *pflag.FlagSet, p *string) {
-	flagSet.StringVar(p, "moduleset", "", "the modulesets to limit the action to (ex: modset1, all)")
+func FlagCollectorApp(flags *pflag.FlagSet, p *string) {
+	flags.StringVar(p, "app", "", "register the node in the this app (or the collector picks a random app owned by the user)")
 }
 
-func FlagOutputSections(flagSet *pflag.FlagSet, p *string) {
-	flagSet.StringVar(p, "sections", "", "sections to include in the output (ex: threads,nodes,objects)")
+func FlagModule(flags *pflag.FlagSet, p *string) {
+	flags.StringVar(p, "module", "", "the attached modules to limit the action to")
 }
 
-func FlagRoles(flagSet *pflag.FlagSet, p *[]string) {
-	flagSet.StringSliceVar(p, "role", nil, fmt.Sprintf("roles to include as a token claim (ex: %s)", strings.Join(rbac.Roles(), ",")))
+func FlagModuleset(flags *pflag.FlagSet, p *string) {
+	flags.StringVar(p, "moduleset", "", "the modulesets to limit the action to (ex: modset1, all)")
 }
 
-func FlagRuleset(flagSet *pflag.FlagSet, p *string) {
-	flagSet.StringVar(p, "ruleset", "", "the rulesets to limit the action to (ex: rset1, all)")
+func FlagOutputSections(flags *pflag.FlagSet, p *string) {
+	flags.StringVar(p, "sections", "", "sections to include in the output (ex: threads,nodes,objects)")
 }
 
-func FlagSections(flagSet *pflag.FlagSet, p *[]string) {
-	flagSet.StringSliceVar(p, "section", []string{}, "a configuration section")
+func FlagRoles(flags *pflag.FlagSet, p *[]string) {
+	flags.StringSliceVar(p, "role", nil, fmt.Sprintf("roles to include as a token claim (ex: %s)", strings.Join(rbac.Roles(), ",")))
 }
 
-func FlagSubset(flagSet *pflag.FlagSet, p *string) {
-	flagSet.StringVar(p, "subset", "", "a subset selector expression (ex: g1,g2)")
+func FlagRuleset(flags *pflag.FlagSet, p *string) {
+	flags.StringVar(p, "ruleset", "", "the rulesets to limit the action to (ex: rset1, all)")
 }
 
-func FlagSwitchTo(flagSet *pflag.FlagSet, p *string) {
-	flagSet.StringVar(p, "to", "", "a remote node to switch the service to")
+func FlagSections(flags *pflag.FlagSet, p *[]string) {
+	flags.StringSliceVar(p, "section", []string{}, "a configuration section")
 }
 
-func FlagTo(flagSet *pflag.FlagSet, p *string) {
-	flagSet.StringVar(p, "to", "", "start or stop the service until this rid or driver group is done")
+func FlagSubset(flags *pflag.FlagSet, p *string) {
+	flags.StringVar(p, "subset", "", "a subset selector expression (ex: g1,g2)")
 }
 
-func FlagTag(flagSet *pflag.FlagSet, p *string) {
-	flagSet.StringVar(p, "tag", "", "a tag selector expression (ex: t1,t2)")
+func FlagSwitchTo(flags *pflag.FlagSet, p *string) {
+	flags.StringVar(p, "to", "", "a remote node to switch the service to")
 }
 
-func FlagTarget(flagSet *pflag.FlagSet, p *[]string) {
-	flagSet.StringSliceVar(p, "target", []string{}, "the peers to sync to (ex: nodes or drpnodes)")
+func FlagTo(flags *pflag.FlagSet, p *string) {
+	flags.StringVar(p, "to", "", "process until the specified rid or driver group is done")
 }
 
-func FlagUpdateDelete(flagSet *pflag.FlagSet, p *[]string) {
-	flagSet.StringSliceVar(p, "delete", []string{}, "a configuration section to delete")
+func FlagTag(flags *pflag.FlagSet, p *string) {
+	flags.StringVar(p, "tag", "", "a tag selector expression (ex: t1,t2)")
 }
 
-func FlagUpdateSet(flagSet *pflag.FlagSet, p *[]string) {
-	flagSet.StringSliceVar(p, "set", []string{}, "a keyword operation to apply to the configuration")
+func FlagTarget(flags *pflag.FlagSet, p *[]string) {
+	flags.StringSliceVar(p, "target", []string{}, "the peers to sync to (ex: nodes or drpnodes)")
 }
 
-func FlagUpdateUnset(flagSet *pflag.FlagSet, p *[]string) {
-	flagSet.StringSliceVar(p, "unset", []string{}, "a keyword to unset from the configuration")
+func FlagUpdateDelete(flags *pflag.FlagSet, p *[]string) {
+	flags.StringSliceVar(p, "delete", []string{}, "a configuration section to delete")
 }
 
-func FlagUpTo(flagSet *pflag.FlagSet, p *string) {
-	flagSet.StringVar(p, "upto", "", "start up to the specified rid or driver group")
-	flagSet.Lookup("upto").Deprecated = "Use --to."
+func FlagUpdateSet(flags *pflag.FlagSet, p *[]string) {
+	flags.StringSliceVar(p, "set", []string{}, "a keyword operation to apply to the configuration")
 }
 
-func FlagFrom(flagSet *pflag.FlagSet, p *string) {
-	flagSet.StringVar(p, "from", "", "the key value source (ex: uri, file, /dev/stdin)")
+func FlagUpdateUnset(flags *pflag.FlagSet, p *[]string) {
+	flags.StringSliceVar(p, "unset", []string{}, "a keyword to unset from the configuration")
 }
 
-func FlagKeyName(flagSet *pflag.FlagSet, p *string) {
-	flagSet.StringVar(p, "name", "", "the key name")
+func FlagUpTo(flags *pflag.FlagSet, p *string) {
+	flags.StringVar(p, "upto", "", "start up to the specified rid or driver group")
+	flags.Lookup("upto").Deprecated = "Use --to."
+	flags.Lookup("upto").Hidden = true
 }
 
-func FlagKeyValue(flagSet *pflag.FlagSet, p *string) {
-	flagSet.StringVar(p, "value", "", "the key value")
+func FlagFrom(flags *pflag.FlagSet, p *string) {
+	flags.StringVar(p, "from", "", "the key value source (ex: uri, file, /dev/stdin)")
 }
 
-func FlagWait(flagSet *pflag.FlagSet, p *bool) {
-	flagSet.BoolVar(p, "wait", false, "wait for the object to reach the target state")
+func FlagKeyName(flags *pflag.FlagSet, p *string) {
+	flags.StringVar(p, "name", "", "the key name")
 }
 
-func FlagWaitLock(flagSet *pflag.FlagSet, p *time.Duration) {
-	flagSet.DurationVar(p, "waitlock", 30*time.Second, "lock acquire timeout")
+func FlagKeyValue(flags *pflag.FlagSet, p *string) {
+	flags.StringVar(p, "value", "", "the key value")
 }
 
-func FlagWatch(flagSet *pflag.FlagSet, p *bool) {
-	flagSet.BoolVarP(p, "watch", "w", false, "watch the monitor changes")
+func FlagWait(flags *pflag.FlagSet, p *bool) {
+	flags.BoolVar(p, "wait", false, "wait for the object to reach the target state")
 }
 
-func FlagColor(flagSet *pflag.FlagSet, p *string) {
-	flagSet.StringVar(p, "color", "auto", "output colorization yes|no|auto")
+func FlagWaitLock(flags *pflag.FlagSet, p *time.Duration) {
+	flags.DurationVar(p, "waitlock", 30*time.Second, "lock acquire timeout")
 }
 
-func FlagOutput(flagSet *pflag.FlagSet, p *string) {
-	flagSet.StringVarP(p, "output", "o", "auto", "output format json|flat|auto|tab=<header>:<jsonpath>,...")
-	flagSet.StringVar(p, "format", "auto", "output format json|flat|auto|tab=<header>:<jsonpath>,...")
-	flagSet.MarkHidden("format")
+func FlagWatch(flags *pflag.FlagSet, p *bool) {
+	flags.BoolVarP(p, "watch", "w", false, "watch the monitor changes")
 }
 
-func FlagObjectSelector(flagSet *pflag.FlagSet, p *string) {
-	flagSet.StringVarP(p, "service", "", "", "execute on a list of objects")
-	flagSet.StringVarP(p, "selector", "s", "", "execute on a list of objects")
-	flagSet.MarkHidden("service")
+func FlagColor(flags *pflag.FlagSet, p *string) {
+	flags.StringVar(p, "color", "auto", "output colorization yes|no|auto")
+}
+
+func FlagOutput(flags *pflag.FlagSet, p *string) {
+	flags.StringVarP(p, "output", "o", "auto", "output format json|flat|auto|tab=<header>:<jsonpath>,...")
+	flags.StringVar(p, "format", "auto", "output format json|flat|auto|tab=<header>:<jsonpath>,...")
+	flags.MarkHidden("format")
+}
+
+func FlagObjectSelector(flags *pflag.FlagSet, p *string) {
+	flags.StringVarP(p, "service", "", "", "execute on a list of objects")
+	flags.StringVarP(p, "selector", "s", "", "execute on a list of objects")
+	flags.MarkHidden("service")
+}
+
+func HiddenFlagsLock(flags *pflag.FlagSet, p *OptsLock) {
+	HiddenFlagNoLock(flags, &p.Disable)
+	HiddenFlagWaitLock(flags, &p.Timeout)
+}
+
+func HiddenFlagsResourceSelector(flags *pflag.FlagSet, p *OptsResourceSelector) {
+	HiddenFlagRID(flags, &p.RID)
+	HiddenFlagSubset(flags, &p.Subset)
+	HiddenFlagTag(flags, &p.Tag)
+}
+
+func HiddenFlagsTo(flags *pflag.FlagSet, p *OptTo) {
+	HiddenFlagTo(flags, &p.To)
+	HiddenFlagUpTo(flags, &p.UpTo)
+	HiddenFlagDownTo(flags, &p.DownTo)
+}
+
+func HiddenFlagDisableRollback(flags *pflag.FlagSet, p *bool) {
+	FlagDisableRollback(flags, p)
+	flags.Lookup("disable-rollback").Hidden = true
+}
+
+func HiddenFlagDownTo(flags *pflag.FlagSet, p *string) {
+	FlagDownTo(flags, p)
+	flags.Lookup("downto").Hidden = true
+}
+
+func HiddenFlagForce(flags *pflag.FlagSet, p *bool) {
+	FlagForce(flags, p)
+	flags.Lookup("force").Hidden = true
+}
+
+func HiddenFlagNodeSelector(flags *pflag.FlagSet, p *string) {
+	FlagNodeSelector(flags, p)
+	flags.Lookup("node").Hidden = true
+}
+
+func HiddenFlagNoLock(flags *pflag.FlagSet, p *bool) {
+	FlagNoLock(flags, p)
+	flags.Lookup("no-lock").Hidden = true
+}
+
+func HiddenFlagRID(flags *pflag.FlagSet, p *string) {
+	FlagRID(flags, p)
+	flags.Lookup("rid").Hidden = true
+}
+
+func HiddenFlagSubset(flags *pflag.FlagSet, p *string) {
+	FlagSubset(flags, p)
+	flags.Lookup("subset").Hidden = true
+}
+
+func HiddenFlagTo(flags *pflag.FlagSet, p *string) {
+	FlagTo(flags, p)
+	flags.Lookup("to").Hidden = true
+}
+
+func HiddenFlagTag(flags *pflag.FlagSet, p *string) {
+	FlagTag(flags, p)
+	flags.Lookup("tag").Hidden = true
+}
+
+func HiddenFlagUpTo(flags *pflag.FlagSet, p *string) {
+	FlagUpTo(flags, p)
+	flags.Lookup("upto").Hidden = true
+}
+
+func HiddenFlagWaitLock(flags *pflag.FlagSet, p *time.Duration) {
+	flags.DurationVar(p, "waitlock", 30*time.Second, "lock acquire timeout")
+	flags.Lookup("waitlock").Hidden = true
+}
+
+func HiddenFlagObjectSelector(flags *pflag.FlagSet, p *string) {
+	FlagObjectSelector(flags, p)
+	flags.MarkHidden("selector")
 }

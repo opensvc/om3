@@ -112,8 +112,8 @@ func Test_Orchestrate_HA_that_dont_call_start(t *testing.T) {
 			expectedIsLeader:     true,
 			expectedIsHALeader:   true,
 			expectedCrm: [][]string{
-				{"obj", "status", "-r"},
-				{"obj", "boot", "--local"},
+				{"obj", "instance", "status", "-r"},
+				{"obj", "instance", "boot"},
 			},
 			expectedDeleteSuccess: true,
 		},
@@ -141,8 +141,8 @@ func Test_Orchestrate_HA_that_dont_call_start(t *testing.T) {
 			expectedIsLeader:     true,
 			expectedIsHALeader:   true,
 			expectedCrm: [][]string{
-				{"obj", "status", "-r"},
-				{"obj", "boot", "--local"},
+				{"obj", "instance", "status", "-r"},
+				{"obj", "instance", "boot"},
 			},
 			expectedDeleteSuccess: true,
 		},
@@ -164,7 +164,7 @@ func Test_Orchestrate_HA_that_dont_call_start(t *testing.T) {
 			expectedIsLeader:     true,
 			expectedIsHALeader:   true,
 			expectedCrm: [][]string{
-				{"obj", "status", "-r"},
+				{"obj", "instance", "status", "-r"},
 			},
 			expectedDeleteSuccess: true,
 		},
@@ -187,7 +187,7 @@ func Test_Orchestrate_HA_that_dont_call_start(t *testing.T) {
 			expectedIsLeader:     false,
 			expectedIsHALeader:   false,
 			expectedCrm: [][]string{
-				{"obj", "status", "-r"},
+				{"obj", "instance", "status", "-r"},
 			},
 			expectedDeleteSuccess: true,
 		},
@@ -209,7 +209,7 @@ func Test_Orchestrate_HA_that_dont_call_start(t *testing.T) {
 			expectedIsLeader:     false,
 			expectedIsHALeader:   false,
 			expectedCrm: [][]string{
-				{"obj", "status", "-r"},
+				{"obj", "instance", "status", "-r"},
 			},
 		},
 
@@ -230,7 +230,7 @@ func Test_Orchestrate_HA_that_dont_call_start(t *testing.T) {
 			expectedIsLeader:     false,
 			expectedIsHALeader:   false,
 			expectedCrm: [][]string{
-				{"obj", "status", "-r"},
+				{"obj", "instance", "status", "-r"},
 			},
 		},
 
@@ -251,7 +251,7 @@ func Test_Orchestrate_HA_that_dont_call_start(t *testing.T) {
 			expectedIsLeader:     true,
 			expectedIsHALeader:   false,
 			expectedCrm: [][]string{
-				{"obj", "status", "-r"},
+				{"obj", "instance", "status", "-r"},
 			},
 			expectedDeleteSuccess: true,
 		},
@@ -305,9 +305,9 @@ func Test_Orchestrate_HA_that_calls_start(t *testing.T) {
 			expectedIsLeader:     true,
 			expectedIsHALeader:   true,
 			expectedCrm: [][]string{
-				{"obj", "status", "-r"},
-				{"obj", "boot", "--local"},
-				{"obj", "start", "--local"},
+				{"obj", "instance", "status", "-r"},
+				{"obj", "instance", "boot"},
+				{"obj", "instance", "start"},
 			},
 			expectedDeleteSuccess: true,
 		},
@@ -339,9 +339,9 @@ func Test_Orchestrate_HA_that_calls_start(t *testing.T) {
 			expectedIsLeader:     true,
 			expectedIsHALeader:   true,
 			expectedCrm: [][]string{
-				{"obj", "status", "-r"},
-				{"obj", "boot", "--local"},
-				{"obj", "start", "--local"},
+				{"obj", "instance", "status", "-r"},
+				{"obj", "instance", "boot"},
+				{"obj", "instance", "start"},
 			},
 			expectedDeleteSuccess: true,
 		},
@@ -367,8 +367,8 @@ func Test_Orchestrate_HA_that_calls_start(t *testing.T) {
 			expectedIsLeader:     true,
 			expectedIsHALeader:   true,
 			expectedCrm: [][]string{
-				{"obj", "status", "-r"},
-				{"obj", "start", "--local"},
+				{"obj", "instance", "status", "-r"},
+				{"obj", "instance", "start"},
 			},
 			expectedDeleteSuccess: true,
 		},
@@ -396,8 +396,8 @@ func Test_Orchestrate_HA_that_calls_start(t *testing.T) {
 			expectedIsLeader:     true,
 			expectedIsHALeader:   true,
 			expectedCrm: [][]string{
-				{"obj", "status", "-r"},
-				{"obj", "start", "--local"},
+				{"obj", "instance", "status", "-r"},
+				{"obj", "instance", "start"},
 			},
 			expectedDeleteSuccess: true,
 		},
@@ -425,8 +425,8 @@ func Test_Orchestrate_HA_that_calls_start(t *testing.T) {
 			expectedIsLeader:     true,
 			expectedIsHALeader:   true,
 			expectedCrm: [][]string{
-				{"obj", "status", "-r"},
-				{"obj", "start", "--local"},
+				{"obj", "instance", "status", "-r"},
+				{"obj", "instance", "start"},
 			},
 			expectedDeleteSuccess: true,
 		},
@@ -453,8 +453,8 @@ func Test_Orchestrate_HA_that_calls_start(t *testing.T) {
 			expectedIsHALeader:   false,
 
 			expectedCrm: [][]string{
-				{"obj", "status", "-r"},
-				{"obj", "start", "--local"},
+				{"obj", "instance", "status", "-r"},
+				{"obj", "instance", "start"},
 			},
 			expectedDeleteSuccess: true,
 		},
@@ -498,7 +498,7 @@ func Test_Orchestrate_No(t *testing.T) {
 			expectedIsLeader:     true,
 			expectedIsHALeader:   true,
 			expectedCrm: [][]string{
-				{"obj", "status", "-r"},
+				{"obj", "instance", "status", "-r"},
 			},
 			expectedDeleteSuccess: true,
 		},
@@ -673,7 +673,7 @@ func orchestrateTestFunc(t *testing.T, c tCase) {
 			calls = crm.getCalls()
 			t.Logf("crm calls: %v", calls)
 			t.Logf("verify last call is a delete call")
-			expectedCalls := [][]string{[]string{"obj", "delete", "--local"}}
+			expectedCalls := [][]string{[]string{"obj", "instance", "delete"}}
 			assert.Equalf(t, expectedCalls, calls,
 				"expected calls %v, found %v", expectedCalls, calls)
 		})
@@ -724,13 +724,13 @@ func crmBuilder(t *testing.T, setup *daemonhelper.D, p naming.Path, sideEffect m
 	c.action = func(title string, cmdArgs ...string) error {
 		t.Logf("--- crmAction %s %s", title, cmdArgs)
 		c.addCall(cmdArgs...)
-		if len(cmdArgs) < 2 {
+		if len(cmdArgs) < 3 {
 			err := fmt.Errorf("unexpected command %s", cmdArgs)
 			t.Logf("--- crmAction error %s", err)
 			return err
 		}
 		name := cmdArgs[0]
-		action := cmdArgs[1]
+		action := cmdArgs[2]
 		if name != p.Name {
 			err := fmt.Errorf("unexpected object %s vs %s", name, p.Name)
 			t.Logf("--- crmAction error %s", err)

@@ -32,7 +32,7 @@ func (a *DaemonAPI) postLocalInstanceActionStatus(ctx echo.Context, namespace st
 		return JSONProblemf(ctx, http.StatusBadRequest, "Invalid parameters", "%s", err)
 	}
 	log = naming.LogWithPath(log, p)
-	args := []string{p.String(), "status", "-r"}
+	args := []string{p.String(), "instance", "status", "-r"}
 	if params.RequesterSid != nil {
 		requesterSid = *params.RequesterSid
 	}

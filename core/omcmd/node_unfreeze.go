@@ -16,6 +16,7 @@ import (
 
 type CmdNodeUnfreeze struct {
 	OptsGlobal
+	Local        bool
 	NodeSelector string
 }
 

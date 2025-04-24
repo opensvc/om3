@@ -1428,6 +1428,9 @@ type InQueryDeletes = []string
 // InQueryDisableRollback defines model for inQueryDisableRollback.
 type InQueryDisableRollback = bool
 
+// InQueryEnvs defines model for inQueryEnvs.
+type InQueryEnvs = []string
+
 // InQueryEvaluate Dereference, scope and convert the keyword raw value.
 type InQueryEvaluate = bool
 
@@ -1744,6 +1747,7 @@ type PostInstanceActionRunParams struct {
 	Subset       *InQuerySubset       `form:"subset,omitempty" json:"subset,omitempty"`
 	Tag          *InQueryTag          `form:"tag,omitempty" json:"tag,omitempty"`
 	To           *InQueryTo           `form:"to,omitempty" json:"to,omitempty"`
+	Env          *InQueryEnvs         `form:"env,omitempty" json:"env,omitempty"`
 }
 
 // PostInstanceActionShutdownParams defines parameters for PostInstanceActionShutdown.

@@ -8,6 +8,7 @@ import (
 func NewCmdClusterStatus() *cobra.Command {
 	var options CmdObjectMonitor
 	cmd := &cobra.Command{
+		GroupID: GroupIDQuery,
 		Use:     "status",
 		Short:   "show the cluster status",
 		Long:    monitor.CmdLong,

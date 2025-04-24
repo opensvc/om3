@@ -21,9 +21,7 @@ type (
 func (t *CmdObjectCollectorTagAttach) Run(kind string) error {
 	mergedSelector := commoncmd.MergeSelector("", t.ObjectSelector, kind, "")
 	return objectaction.New(
-		objectaction.LocalFirst(),
 		objectaction.WithObjectSelector(mergedSelector),
-		objectaction.WithLocal(t.Local),
 		objectaction.WithOutput(t.Output),
 		objectaction.WithColor(t.Color),
 		objectaction.WithLocalFunc(func(ctx context.Context, p naming.Path) (interface{}, error) {

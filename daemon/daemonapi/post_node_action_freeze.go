@@ -27,7 +27,7 @@ func (a *DaemonAPI) PostPeerActionFreeze(ctx echo.Context, nodename string, para
 func (a *DaemonAPI) localNodeActionFreeze(ctx echo.Context, params api.PostPeerActionFreezeParams) error {
 	log := LogHandler(ctx, "PostPeerActionFreeze")
 	var requesterSid uuid.UUID
-	args := []string{"node", "freeze", "--local"}
+	args := []string{"node", "freeze"}
 	if params.RequesterSid != nil {
 		requesterSid = *params.RequesterSid
 	}

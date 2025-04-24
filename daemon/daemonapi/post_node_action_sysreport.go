@@ -27,7 +27,7 @@ func (a *DaemonAPI) PostNodeActionSysreport(ctx echo.Context, nodename string, p
 func (a *DaemonAPI) localNodeActionSysreport(ctx echo.Context, params api.PostNodeActionSysreportParams) error {
 	log := LogHandler(ctx, "PostNodeActionSysreport")
 	var requesterSid uuid.UUID
-	args := []string{"node", "sysreport", "--local"}
+	args := []string{"node", "sysreport"}
 	if params.Force != nil && *params.Force {
 		args = append(args, "--force")
 	}

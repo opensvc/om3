@@ -5,7 +5,6 @@ type (
 	OptsGlobal struct {
 		Color          string
 		Output         string
-		Local          bool
 		ObjectSelector string
 		Quiet          bool
 		Debug          bool

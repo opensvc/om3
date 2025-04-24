@@ -47,6 +47,23 @@ var (
 		Failure:  "freeze failed",
 		PG:       true,
 	}
+	PRStart = Properties{
+		Name:            "prstart",
+		Failure:         "start failed",
+		Progress:        "starting",
+		Rollback:        true,
+		TimeoutKeywords: []string{"start_timeout", "timeout"},
+		PG:              true,
+	}
+	PRStop = Properties{
+		Name:            "prstop",
+		Failure:         "stop failed",
+		MustLock:        true,
+		Order:           ordering.Desc,
+		Progress:        "stopping",
+		TimeoutKeywords: []string{"stop_timeout", "timeout"},
+		PG:              true,
+	}
 	Set = Properties{
 		Name:     "set",
 		MustLock: true,

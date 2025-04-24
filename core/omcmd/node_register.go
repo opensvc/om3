@@ -17,7 +17,6 @@ type (
 
 func (t *CmdNodeRegister) Run() error {
 	return nodeaction.New(
-		nodeaction.WithLocal(t.Local),
 		nodeaction.WithFormat(t.Output),
 		nodeaction.WithColor(t.Color),
 		nodeaction.WithLocalFunc(func() (interface{}, error) {

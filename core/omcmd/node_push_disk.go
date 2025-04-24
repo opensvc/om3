@@ -14,6 +14,7 @@ import (
 type (
 	CmdNodePushDisks struct {
 		OptsGlobal
+		Local        bool
 		NodeSelector string
 	}
 )
