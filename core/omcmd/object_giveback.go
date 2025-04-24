@@ -9,7 +9,6 @@ type (
 	CmdObjectGiveback struct {
 		OptsGlobal
 		commoncmd.OptsAsync
-		commoncmd.OptsLock
 	}
 )
 
