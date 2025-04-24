@@ -10,26 +10,21 @@ import (
 	"github.com/opensvc/om3/core/nodeselector"
 	"github.com/opensvc/om3/core/object"
 	"github.com/opensvc/om3/daemon/api"
-	"github.com/opensvc/om3/util/hostname"
 	"github.com/opensvc/om3/util/xsession"
 )
 
 type CmdNodeUnfreeze struct {
 	OptsGlobal
-	Local        bool
 	NodeSelector string
 }
 
 func (t *CmdNodeUnfreeze) Run() error {
-	if t.Local {
+	if t.NodeSelector == "" {
 		n, err := object.NewNode()
 		if err != nil {
 			return err
 		}
 		return n.Unfreeze()
-	}
-	if t.NodeSelector == "" {
-		t.NodeSelector = hostname.Hostname()
 	}
 	return t.doRemote()
 }

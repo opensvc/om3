@@ -1070,7 +1070,8 @@ func newCmdNodeFreeze() *cobra.Command {
 	flags := cmd.Flags()
 	addFlagsGlobal(flags, &options.OptsGlobal)
 	commoncmd.FlagNodeSelector(flags, &options.NodeSelector)
-	flagLocal(flags, &options.Local)
+	var local bool // backward compat
+	hiddenFlagLocal(flags, &local)
 	return cmd
 }
 
@@ -1423,7 +1424,8 @@ func newCmdNodeUnfreeze() *cobra.Command {
 	flags := cmd.Flags()
 	addFlagsGlobal(flags, &options.OptsGlobal)
 	commoncmd.FlagNodeSelector(flags, &options.NodeSelector)
-	flagLocal(flags, &options.Local)
+	var local bool // backward compat
+	flagLocal(flags, &local)
 	return cmd
 }
 
