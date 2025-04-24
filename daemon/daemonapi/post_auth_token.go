@@ -49,7 +49,7 @@ func (a *DaemonAPI) PostAuthToken(ctx echo.Context, params api.PostAuthTokenPara
 		if v, err := converters.Duration.Convert(*params.Duration); err != nil {
 			log.Infof("%s: invalid duration: %s: %s", name, *params.Duration, err)
 			return JSONProblemf(ctx, http.StatusBadRequest, "Invalid parameters", "Invalid duration: %s", *params.Duration)
-		} else {
+		} else if v != nil {
 			duration = *v.(*time.Duration)
 			if duration > durationMax {
 				duration = durationMax
