@@ -468,10 +468,16 @@ var nodeCommonKeywords = []keywords.Keyword{
 		Text:      keywords.NewText(fs, "text/kw/node/listener.port"),
 	},
 	{
-		Example: "https://keycloak.opensvc.com/auth/realms/clusters/.well-known/openid-configuration",
-		Option:  "openid_well_known",
+		Example: "https://keycloak.opensvc.com/auth/realms/clusters",
+		Option:  "openid_authority",
 		Section: "listener",
-		Text:    keywords.NewText(fs, "text/kw/node/listener.openid_well_known"),
+		Text:    keywords.NewText(fs, "text/kw/node/listener.openid_authority"),
+	},
+	{
+		Default: "om3",
+		Option:  "openid_client_id",
+		Section: "listener",
+		Text:    keywords.NewText(fs, "text/kw/node/listener.openid_client_id"),
 	},
 	{
 		Default: "daemon",

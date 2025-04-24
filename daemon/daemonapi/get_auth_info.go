@@ -16,14 +16,14 @@ func (a *DaemonAPI) GetAuthInfo(ctx echo.Context) error {
 		Openid:  nil,
 	}
 
-	if config.Listener.OpenIDWellKnown != "" {
+	if config.Listener.OpenIDAuthority != "" {
 		data.Methods = append(data.Methods, "openid")
 		data.Openid = &struct {
-			ClientId     string `json:"client_id"`
-			WellKnownUri string `json:"well_known_uri"`
+			Authority string `json:"authority"`
+			ClientId  string `json:"client_id"`
 		}{
-			ClientId:     config.Name,
-			WellKnownUri: config.Listener.OpenIDWellKnown,
+			Authority: config.Listener.OpenIDAuthority,
+			ClientId:  config.Listener.OpenIDClientID,
 		}
 	}
 	return ctx.JSON(http.StatusOK, data)

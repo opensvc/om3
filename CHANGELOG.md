@@ -23,6 +23,9 @@
 * **`node.default_mon_format` removed:**
     It should be a user-level setting, not a node-level config.
 
+* **`listener.openid_well_known` removed:**
+    Now the **`listener.openid_authority`** has replaced `listener.openid_well_known`. Previously, `listener.openid_well_known` was used to specify the .well-known/openid-configuration endpoint. Now, `listener.openid_authority` defines the base URL from which the OpenID configuration is derived.
+
 * **`reboot` section removed:**
     * `reboot.schedule`
     

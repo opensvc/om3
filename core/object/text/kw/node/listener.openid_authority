@@ -1,4 +1,4 @@
-The URL serving the well-known configuration of an openid provider.
+The base URL of the identity provider. It is used to detect the metadata location: `openid_authority`/.well-known/openid-configuration.
 
 If set, the http listener will try to validate the Bearer token provided in
 the requests headers.
@@ -8,3 +8,5 @@ If the token is valid,
 * the user name is fetched from the `preferred_username` claim (fallback on `name`)
 
 * the user grant list is obtained by joining the multiple `grant` claims.
+
+The keyword replaced deprecated `openid_well_known`.

@@ -4121,10 +4121,10 @@ components:
               - session
         openid:
           required:
-            - well_known_uri
+            - authority
             - client_id
           properties:
-            well_known_uri:
+            authority:
               type: string
             client_id:
               type: string
