@@ -11,6 +11,7 @@ import (
 
 	"github.com/opensvc/om3/core/commoncmd"
 	commands "github.com/opensvc/om3/core/omcmd"
+	"github.com/opensvc/om3/util/hostname"
 )
 
 var (
@@ -1707,6 +1708,12 @@ func newCmdObjectComplianceShow(kind string) *cobra.Command {
 		Use:   "show",
 		Short: "show current modulesets and rulesets attachments, modules last check",
 	}
+}
+
+func newCmdObjectInstanceClear(kind string) *cobra.Command {
+	cmd := commoncmd.NewCmdObjectClear(kind)
+	cmd.Flags().Lookup("node").DefValue = hostname.Hostname()
+	return cmd
 }
 
 func newCmdObjectEdit(kind string) *cobra.Command {
