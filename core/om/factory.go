@@ -2056,11 +2056,10 @@ func newCmdObjectDelete(kind string) *cobra.Command {
 		GroupID: commoncmd.GroupIDOrchestratedActions,
 		Use:     "delete",
 		Aliases: []string{"del"},
-		Short:   "delete configuration object or instances (with --local)",
-		Long: "Delete configuration object or instances (with --local)\n\n" +
-			"Beware: --local only removes the local instance config." +
-			" The config may be recreated by the daemon from a remote instance copy." +
-			" Without --local the delete is orchestrated so all instance configurations" +
+		Short:   "delete object configuration",
+		Long: "Delete object configuration.\n\n" +
+			"Beware:" +
+			" The delete is orchestrated so all instance configurations" +
 			" are deleted. The delete command is not responsible for stopping or unprovisioning." +
 			" The deletion happens whatever the object status.",
 		RunE: func(cmd *cobra.Command, args []string) error {
@@ -2069,10 +2068,10 @@ func newCmdObjectDelete(kind string) *cobra.Command {
 	}
 	flags := cmd.Flags()
 	addFlagsGlobal(flags, &options.OptsGlobal)
-	flagLocal(flags, &options.Local)
+	hiddenFlagLocal(flags, &options.Local)
 	commoncmd.FlagsAsync(flags, &options.OptsAsync)
-	commoncmd.FlagsLock(flags, &options.OptsLock)
-	commoncmd.FlagNodeSelector(flags, &options.NodeSelector)
+	commoncmd.HiddenFlagsLock(flags, &options.OptsLock)
+	commoncmd.HiddenFlagNodeSelector(flags, &options.NodeSelector)
 	return cmd
 }
 
@@ -2326,6 +2325,28 @@ func newCmdObjectScheduleList(kind string) *cobra.Command {
 	return cmd
 }
 
+func newCmdObjectInstanceDelete(kind string) *cobra.Command {
+	var options commands.CmdObjectInstanceDelete
+	cmd := &cobra.Command{
+		Use:     "delete",
+		Aliases: []string{"del"},
+		Short:   "delete the instance configuration",
+		Long: "Delete the instance configuration\n\n" +
+			"Beware: this command only removes the selected instances configuration and states." +
+			" The config may be recreated by the daemon from a remote instance copy." +
+			" The delete command is not responsible for stopping or unprovisioning." +
+			" The deletion happens whatever the object status.",
+		RunE: func(cmd *cobra.Command, args []string) error {
+			return options.Run(kind)
+		},
+	}
+	flags := cmd.Flags()
+	addFlagsGlobal(flags, &options.OptsGlobal)
+	commoncmd.FlagsLock(flags, &options.OptsLock)
+	commoncmd.FlagNodeSelector(flags, &options.NodeSelector)
+	return cmd
+}
+
 func newCmdObjectInstanceDeviceList(kind string) *cobra.Command {
 	var options commands.CmdObjectInstanceDeviceList
 	cmd := &cobra.Command{
@@ -2439,6 +2460,29 @@ func newCmdObjectInstancePRStop(kind string) *cobra.Command {
 	commoncmd.FlagForce(flags, &options.Force)
 	commoncmd.FlagNodeSelector(flags, &options.NodeSelector)
 	hiddenFlagLocal(flags, &options.Local)
+	cmd.MarkFlagsMutuallyExclusive("no-lock", "node")
+	cmd.MarkFlagsMutuallyExclusive("waitlock", "node")
+	return cmd
+}
+
+func newCmdObjectInstanceRestart(kind string) *cobra.Command {
+	var options commands.CmdObjectInstanceRestart
+	cmd := &cobra.Command{
+		Use:   "restart",
+		Short: "restart the selected instances or resources",
+		Long:  "Restart the local instance inline, or a selection of instances asynchronously using --node=<selector>.",
+		RunE: func(cmd *cobra.Command, args []string) error {
+			return options.Run(kind)
+		},
+	}
+	flags := cmd.Flags()
+	addFlagsGlobal(flags, &options.OptsGlobal)
+	commoncmd.FlagsLock(flags, &options.OptsLock)
+	commoncmd.FlagsResourceSelector(flags, &options.OptsResourceSelector)
+	commoncmd.FlagsTo(flags, &options.OptTo)
+	commoncmd.FlagForce(flags, &options.Force)
+	commoncmd.FlagDisableRollback(flags, &options.DisableRollback)
+	commoncmd.FlagNodeSelector(flags, &options.NodeSelector)
 	cmd.MarkFlagsMutuallyExclusive("no-lock", "node")
 	cmd.MarkFlagsMutuallyExclusive("waitlock", "node")
 	return cmd
@@ -2693,7 +2737,7 @@ func newCmdObjectRestart(kind string) *cobra.Command {
 	cmd := &cobra.Command{
 		GroupID: commoncmd.GroupIDOrchestratedActions,
 		Use:     "restart",
-		Short:   "restart the selected objects, instances or resources",
+		Short:   "restart the selected objects",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return options.Run(kind)
 		},
@@ -2701,12 +2745,12 @@ func newCmdObjectRestart(kind string) *cobra.Command {
 	flags := cmd.Flags()
 	addFlagsGlobal(flags, &options.OptsGlobal)
 	commoncmd.FlagsAsync(flags, &options.OptsAsync)
-	commoncmd.FlagsLock(flags, &options.OptsLock)
-	commoncmd.FlagsResourceSelector(flags, &options.OptsResourceSelector)
-	commoncmd.FlagsTo(flags, &options.OptTo)
-	commoncmd.FlagForce(flags, &options.Force)
-	commoncmd.FlagDisableRollback(flags, &options.DisableRollback)
-	commoncmd.FlagNodeSelector(flags, &options.NodeSelector)
+	commoncmd.HiddenFlagsLock(flags, &options.OptsLock)
+	commoncmd.HiddenFlagsResourceSelector(flags, &options.OptsResourceSelector)
+	commoncmd.HiddenFlagsTo(flags, &options.OptTo)
+	commoncmd.HiddenFlagForce(flags, &options.Force)
+	commoncmd.HiddenFlagDisableRollback(flags, &options.DisableRollback)
+	commoncmd.HiddenFlagNodeSelector(flags, &options.NodeSelector)
 	hiddenFlagLocal(flags, &options.Local)
 	return cmd
 }

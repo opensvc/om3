@@ -7,7 +7,6 @@ import (
 	"github.com/opensvc/om3/core/actioncontext"
 	"github.com/opensvc/om3/core/client"
 	"github.com/opensvc/om3/core/commoncmd"
-	"github.com/opensvc/om3/core/instance"
 	"github.com/opensvc/om3/core/naming"
 	"github.com/opensvc/om3/core/object"
 	"github.com/opensvc/om3/core/objectaction"
@@ -16,9 +15,8 @@ import (
 )
 
 type (
-	CmdObjectRestart struct {
+	CmdObjectInstanceRestart struct {
 		OptsGlobal
-		commoncmd.OptsAsync
 		commoncmd.OptsLock
 		commoncmd.OptsResourceSelector
 		commoncmd.OptTo
@@ -29,12 +27,8 @@ type (
 	}
 )
 
-func (t *CmdObjectRestart) Run(kind string) error {
+func (t *CmdObjectInstanceRestart) Run(kind string) error {
 	mergedSelector := commoncmd.MergeSelector("", t.ObjectSelector, kind, "")
-	options := instance.MonitorGlobalExpectOptionsRestarted{
-		Force: t.Force,
-	}
-
 	return objectaction.New(
 		objectaction.WithObjectSelector(mergedSelector),
 		objectaction.WithRID(t.RID),
@@ -44,11 +38,6 @@ func (t *CmdObjectRestart) Run(kind string) error {
 		objectaction.WithOutput(t.Output),
 		objectaction.WithColor(t.Color),
 		objectaction.WithRemoteNodes(t.NodeSelector),
-		objectaction.WithAsyncTarget("restarted"),
-		objectaction.WithAsyncTime(t.Time),
-		objectaction.WithAsyncWait(t.Wait),
-		objectaction.WithAsyncTargetOptions(options),
-		objectaction.WithAsyncWatch(t.Watch),
 		objectaction.WithLocalFunc(func(ctx context.Context, p naming.Path) (interface{}, error) {
 			o, err := object.NewActor(p)
 			if err != nil {
