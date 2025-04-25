@@ -2204,7 +2204,7 @@ func newCmdObjectFreeze(kind string) *cobra.Command {
 	flags := cmd.Flags()
 	addFlagsGlobal(flags, &options.OptsGlobal)
 	commoncmd.FlagsAsync(flags, &options.OptsAsync)
-	commoncmd.FlagNodeSelector(flags, &options.NodeSelector)
+	commoncmd.HiddenFlagNodeSelector(flags, &options.NodeSelector)
 	hiddenFlagLocal(flags, &options.Local)
 	return cmd
 }
@@ -2241,7 +2241,6 @@ func newCmdObjectGiveback(kind string) *cobra.Command {
 	flags := cmd.Flags()
 	addFlagsGlobal(flags, &options.OptsGlobal)
 	commoncmd.FlagsAsync(flags, &options.OptsAsync)
-	commoncmd.FlagsLock(flags, &options.OptsLock)
 	return cmd
 }
 
@@ -3050,7 +3049,6 @@ func newCmdObjectSwitch(kind string) *cobra.Command {
 	flags := cmd.Flags()
 	addFlagsGlobal(flags, &options.OptsGlobal)
 	commoncmd.FlagsAsync(flags, &options.OptsAsync)
-	commoncmd.FlagsLock(flags, &options.OptsLock)
 	commoncmd.FlagSwitchTo(flags, &options.To)
 	return cmd
 }
@@ -3088,7 +3086,6 @@ func newCmdObjectTakeover(kind string) *cobra.Command {
 	flags := cmd.Flags()
 	addFlagsGlobal(flags, &options.OptsGlobal)
 	commoncmd.FlagsAsync(flags, &options.OptsAsync)
-	commoncmd.FlagsLock(flags, &options.OptsLock)
 	return cmd
 }
 

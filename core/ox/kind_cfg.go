@@ -73,6 +73,7 @@ func init() {
 	)
 	cmdObjectInstance.AddCommand(
 		newCmdObjectInstanceList(kind),
+		newCmdObjectInstanceDelete(kind),
 	)
 	cmdObjectPrint.AddCommand(
 		cmdObjectPrintConfig,

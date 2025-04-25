@@ -18,6 +18,7 @@ import (
 	"github.com/opensvc/om3/core/naming"
 	"github.com/opensvc/om3/core/status"
 	"github.com/opensvc/om3/util/file"
+	"github.com/opensvc/om3/util/plog"
 )
 
 type (
@@ -31,6 +32,7 @@ type (
 
 	KVInstall struct {
 		Required      bool
+		ToLog         *plog.Logger
 		ToHead        string
 		ToPath        string
 		FromPattern   string
@@ -62,6 +64,11 @@ const (
 var (
 	ErrKeyNotFound = errors.New("key not found")
 )
+
+func (t KVInstall) RelativeToPath() string {
+	relativePath, _ := strings.CutPrefix(t.ToPath, t.ToHead)
+	return relativePath
+}
 
 func (t KVInstall) IsEmpty() bool {
 	return t.ToPath == "" && t.FromPattern == ""
@@ -171,9 +178,9 @@ func (t *dataStore) installFileKey(vk vKey, opt KVInstall) (bool, error) {
 		return false, err
 	}
 	if v, err := file.ExistsAndDir(opt.ToPath); err != nil {
-		t.Log().Errorf("install key %s directory at location %s: %s", vk.Key, opt.ToPath, err)
+		opt.ToLog.Errorf("install key %s directory at location %s: %s", vk.Key, opt.ToPath, err)
 	} else if v {
-		t.Log().Infof("remove key %s directory at location %s", vk.Key, opt.ToPath)
+		opt.ToLog.Infof("remove key %s directory at location %s", vk.Key, opt.ToPath)
 		if err := os.RemoveAll(opt.ToPath); err != nil {
 			return false, err
 		}
@@ -182,20 +189,20 @@ func (t *dataStore) installFileKey(vk vKey, opt KVInstall) (bool, error) {
 	info, err := os.Stat(vdir)
 	switch {
 	case os.IsNotExist(err):
-		t.Log().Infof("create directory %s to host key %s", vdir, vk.Key)
-		if err := t.makedir(vdir, opt.AccessControl); err != nil {
+		opt.ToLog.Infof("create directory %s to host key %s", vdir, vk.Key)
+		if err := t.makedir(vdir, opt.AccessControl, opt.ToLog); err != nil {
 			return false, err
 		}
 	case file.IsNotDir(err):
 	case err != nil:
 		return false, err
 	case info.Mode().IsRegular() || info.Mode()&os.ModeSymlink != 0:
-		t.Log().Infof("remove key %s file at parent location %s", vk.Key, vdir)
+		opt.ToLog.Infof("remove key %s file at parent location %s", vk.Key, vdir)
 		if err := os.Remove(vdir); err != nil {
 			return false, err
 		}
 	}
-	return t.writeKey(vk, opt.ToPath, b, opt.AccessControl.Perm, opt.AccessControl.User, opt.AccessControl.Group)
+	return t.writeKey(vk, b, opt)
 }
 
 // installDirKey creates a directory to host projected keys
@@ -204,7 +211,7 @@ func (t *dataStore) installDirKey(vk vKey, opt KVInstall) (bool, error) {
 		dirname := filepath.Base(vk.Key)
 		opt.ToPath = filepath.Join(opt.ToPath, dirname) + "/"
 	}
-	if err := t.makedir(opt.ToPath, opt.AccessControl); err != nil {
+	if err := t.makedir(opt.ToPath, opt.AccessControl, opt.ToLog); err != nil {
 		return false, err
 	}
 	changed := false
@@ -218,7 +225,7 @@ func (t *dataStore) installDirKey(vk vKey, opt KVInstall) (bool, error) {
 	return changed, nil
 }
 
-func (t *dataStore) chmod(p string, mode *os.FileMode, info os.FileInfo) error {
+func (t *dataStore) chmod(p string, mode *os.FileMode, info os.FileInfo, log *plog.Logger) error {
 	if mode == nil {
 		return nil
 	}
@@ -226,14 +233,14 @@ func (t *dataStore) chmod(p string, mode *os.FileMode, info os.FileInfo) error {
 		if *mode == info.Mode().Perm() {
 			return nil
 		}
-		t.Log().Infof("change %s permissions from %s to %s", p, info.Mode().Perm(), mode)
+		log.Infof("change %s permissions from %s to %s", p, info.Mode().Perm(), mode)
 	} else {
-		t.Log().Debugf("set %s permissions to %s", p, mode)
+		log.Debugf("set %s permissions to %s", p, mode)
 	}
 	return os.Chmod(p, *mode)
 }
 
-func (t *dataStore) chown(p string, usr, grp string, info os.FileInfo) error {
+func (t *dataStore) chown(p string, usr, grp string, info os.FileInfo, log *plog.Logger) error {
 	var uid, gid int
 	if usr != "" {
 		if i, err := strconv.Atoi(usr); err == nil {
@@ -268,14 +275,14 @@ func (t *dataStore) chown(p string, usr, grp string, info os.FileInfo) error {
 				gid = currentGID
 			}
 			if uid != currentUID || gid != currentGID {
-				t.Log().Infof("change %s owner from %d:%d to %d:%d", p, currentUID, currentGID, uid, gid)
+				log.Infof("change %s owner from %d:%d to %d:%d", p, currentUID, currentGID, uid, gid)
 				return os.Chown(p, uid, gid)
 			} else {
 				return nil
 			}
 		}
 	} else if uid > 0 || gid > 0 {
-		t.Log().Debugf("set %s owner to %d:%d", p, uid, gid)
+		log.Debugf("set %s owner to %d:%d", p, uid, gid)
 		return os.Chown(p, uid, gid)
 	}
 	return nil
@@ -283,7 +290,11 @@ func (t *dataStore) chown(p string, usr, grp string, info os.FileInfo) error {
 
 // writeKey reads the r Reader and writes the byte stream to the file at dst.
 // This function return false if the dst content didn't change.
-func (t *dataStore) writeKey(vk vKey, dst string, b []byte, mode *os.FileMode, usr, grp string) (bool, error) {
+func (t *dataStore) writeKey(vk vKey, b []byte, opt KVInstall) (bool, error) {
+	dst := opt.ToPath
+	mode := opt.AccessControl.Perm
+	usr := opt.AccessControl.User
+	grp := opt.AccessControl.Group
 	mtime := t.configModTime()
 	info, err := os.Stat(dst)
 	if errors.Is(err, os.ErrNotExist) {
@@ -291,21 +302,21 @@ func (t *dataStore) writeKey(vk vKey, dst string, b []byte, mode *os.FileMode, u
 		if mode != nil {
 			perm = *mode
 		}
-		t.log.Infof("install key %s to %s with owner %s:%s perm %v", vk.Key, dst, usr, grp, perm)
+		opt.ToLog.Infof("install key %s from %s to %s with owner %s:%s perm %v", vk.Key, t.path, dst, usr, grp, perm)
 		if err := os.WriteFile(dst, b, perm); err != nil {
 			return true, err
 		}
-		if err := t.chown(dst, usr, grp, nil); err != nil {
+		if err := t.chown(dst, usr, grp, nil, opt.ToLog); err != nil {
 			return true, err
 		}
 		return true, os.Chtimes(dst, mtime, mtime)
 	} else if err != nil {
 		return false, err
 	}
-	if err := t.chmod(dst, mode, info); err != nil {
+	if err := t.chmod(dst, mode, info, opt.ToLog); err != nil {
 		return false, err
 	}
-	if err := t.chown(dst, usr, grp, info); err != nil {
+	if err := t.chown(dst, usr, grp, info, opt.ToLog); err != nil {
 		return false, err
 	}
 	if mtime == file.ModTime(dst) {
@@ -317,7 +328,7 @@ func (t *dataStore) writeKey(vk vKey, dst string, b []byte, mode *os.FileMode, u
 		return false, err
 	}
 	if string(currentMD5) == string(targetMD5) {
-		t.log.Debugf("%s from key %s already installed and same md5: set access and modification times to %s", dst, vk.Key, mtime)
+		opt.ToLog.Debugf("%s from key %s already installed and same md5: set access and modification times to %s", dst, vk.Key, mtime)
 		return false, os.Chtimes(dst, mtime, mtime)
 	}
 	return false, nil
@@ -327,22 +338,22 @@ func (t *dataStore) InstallKey(keyName string) error {
 	return t.postInstall(keyName)
 }
 
-func (t *dataStore) makedir(path string, opt KVInstallAccessControl) error {
+func (t *dataStore) makedir(path string, opt KVInstallAccessControl, log *plog.Logger) error {
 	info, err := os.Stat(path)
 	if err == nil {
-		if err := t.chmod(path, opt.DirPerm, info); err != nil {
+		if err := t.chmod(path, opt.DirPerm, info, log); err != nil {
 			return err
 		}
-		if err := t.chown(path, opt.DirUser, opt.DirGroup, info); err != nil {
+		if err := t.chown(path, opt.DirUser, opt.DirGroup, info, log); err != nil {
 			return err
 		}
 		return nil
 	} else {
-		t.log.Infof("install dir %s with owner %s:%s perm %v", path, opt.MakedirUser, opt.MakedirGroup, *opt.MakedirPerm)
+		log.Infof("install dir %s with owner %s:%s perm %v", path, opt.MakedirUser, opt.MakedirGroup, *opt.MakedirPerm)
 		if err := os.MkdirAll(path, *opt.MakedirPerm); err != nil {
 			return err
 		}
-		if err := t.chown(path, opt.MakedirUser, opt.MakedirGroup, nil); err != nil {
+		if err := t.chown(path, opt.MakedirUser, opt.MakedirGroup, nil, log); err != nil {
 			return err
 		}
 	}
@@ -355,7 +366,7 @@ func (t *dataStore) makedirs(opt KVInstall) error {
 	}
 	relPath := strings.TrimPrefix(opt.ToPath, opt.ToHead)
 	for _, dir := range pathChain(relPath) {
-		if err := t.makedir(filepath.Join(opt.ToHead, dir), opt.AccessControl); err != nil {
+		if err := t.makedir(filepath.Join(opt.ToHead, dir), opt.AccessControl, opt.ToLog); err != nil {
 			return err
 		}
 	}
@@ -363,7 +374,10 @@ func (t *dataStore) makedirs(opt KVInstall) error {
 }
 
 func (t *dataStore) InstallKeyTo(opt KVInstall) error {
-	t.log.Debugf("install key %s to %s", opt.FromPattern, opt.ToPath)
+	if opt.ToLog == nil {
+		opt.ToLog = t.log
+	}
+	opt.ToLog.Debugf("install key %s to %s", opt.FromPattern, opt.ToPath)
 	keys, err := t.resolveKey(opt.FromPattern)
 	if err != nil {
 		return fmt.Errorf("resolve %s key %s: %w", t.path, opt.FromPattern, err)
@@ -387,13 +401,15 @@ func (t *dataStore) InstallKeyTo(opt KVInstall) error {
 }
 
 func (t *dataStore) postInstall(k string) error {
-	changedVolumes := make(map[naming.Path]interface{})
 	type resvoler interface {
+		InstallFromDatastore(DataStore) (bool, error)
 		InstallDataByKind(naming.Kind) (bool, error)
 		HasMetadata(p naming.Path, k string) bool
 		Volume() (Vol, error)
 		SendSignals(context.Context) error
 	}
+	ctx := context.Background()
+	changedVolumes := make(map[naming.Path]resvoler)
 	paths, err := naming.InstalledPaths()
 	if err != nil {
 		return err
@@ -420,7 +436,6 @@ func (t *dataStore) postInstall(k string) error {
 				t.log.Warnf("post install %s %s: %s", p, r.RID(), err)
 				continue
 			}
-			ctx := context.Background()
 			st, err := vol.Status(ctx)
 			if err != nil {
 				t.log.Warnf("post install %s %s: %s", p, r.RID(), err)
@@ -429,21 +444,29 @@ func (t *dataStore) postInstall(k string) error {
 			if st.Avail != status.Up {
 				continue
 			}
-			changed, err := v.InstallDataByKind(t.path.Kind)
+
+			changed, err := v.InstallFromDatastore(t)
 			if err != nil {
 				return err
 			}
 			if changed {
-				changedVolumes[vol.Path()] = nil
+				changedVolumes[vol.Path()] = v
 			}
-			if _, ok := changedVolumes[vol.Path()]; !ok {
-				continue
+
+			changed, err = v.InstallDataByKind(t.path.Kind)
+			if err != nil {
+				return err
 			}
-			t.log.Debugf("signal key %s referrer: %s (%s)", k, p, r.RID())
-			if err := v.SendSignals(ctx); err != nil {
-				t.log.Warnf("post install %s %s: %s", p, r.RID(), err)
-				continue
+			if changed {
+				changedVolumes[vol.Path()] = v
 			}
+		}
+	}
+	for p, v := range changedVolumes {
+		t.log.Debugf("signal key %s referrer: %s", k, p)
+		if err := v.SendSignals(ctx); err != nil {
+			t.log.Warnf("post install %s: %s", p, err)
+			continue
 		}
 	}
 	return nil

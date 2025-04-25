@@ -11,7 +11,6 @@ type (
 	CmdObjectTakeover struct {
 		OptsGlobal
 		commoncmd.OptsAsync
-		commoncmd.OptsLock
 	}
 )
 

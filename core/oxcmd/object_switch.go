@@ -12,7 +12,6 @@ type (
 	CmdObjectSwitch struct {
 		OptsGlobal
 		commoncmd.OptsAsync
-		commoncmd.OptsLock
 		To string
 	}
 )
