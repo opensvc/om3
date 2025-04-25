@@ -81,6 +81,15 @@ func (t *T) getMetadataByKind(kind naming.Kind) []object.KVInstall {
 // HasMetadata returns true if the volume has a configs or secrets reference to
 // <namespace>/<kind>/<name>[/<key>]
 func (t *T) HasMetadata(p naming.Path, k string) bool {
+	_, installMetadata := t.getInstallMetadata()
+	for _, md := range installMetadata {
+		if md.FromStore != p {
+			continue
+		}
+		if k == "" || md.FromPattern == k {
+			return true
+		}
+	}
 	for _, md := range t.getMetadataByKind(p.Kind) {
 		if md.FromStore.Name != p.Name {
 			continue
@@ -213,6 +222,49 @@ type dirDefinition struct {
 	Required bool
 }
 
+func (t *T) InstallFromDatastore(dataStore object.DataStore) (bool, error) {
+	changed := false
+	head := t.Head()
+	if head == "" {
+		return false, fmt.Errorf("refuse to install in empty (ie /) head")
+	}
+
+	dirs, files := t.getInstallMetadata()
+
+	for _, dir := range dirs {
+		if err := t.installDir(dir.Path, head, *dir.Perm, dir.User, dir.Group); err != nil && dir.Required {
+			return false, err
+		}
+	}
+
+	for _, md := range files {
+		if md.FromStore != dataStore.Path() {
+			continue
+		}
+		if !md.FromStore.Exists() {
+			err := fmt.Errorf("store %s does not exist: key %s data can not be installed in the volume", md.FromStore, md.FromPattern)
+			if md.Required {
+				return false, err
+			} else {
+				t.Log().Warnf("%s", err)
+				continue
+			}
+		}
+		shares := dataStore.Shares()
+		if !slices.Contains(shares, "*") && !slices.Contains(shares, t.Path.Namespace) {
+			path := strings.TrimPrefix(md.ToPath, md.ToHead)
+			return false, fmt.Errorf("unauthorized install ...%s from %s key %s", path, md.FromStore, md.FromPattern)
+		}
+		md.ToLog = t.Log()
+		if err := dataStore.InstallKeyTo(md); err != nil && md.Required {
+			return false, err
+		}
+		changed = true
+	}
+
+	return changed, nil
+}
+
 func (t *T) install(ctx context.Context) (bool, error) {
 	changed := false
 	head := t.Head()
@@ -247,6 +299,7 @@ func (t *T) install(ctx context.Context) (bool, error) {
 			path := strings.TrimPrefix(md.ToPath, md.ToHead)
 			return false, fmt.Errorf("unauthorized install ...%s from %s key %s", path, md.FromStore, md.FromPattern)
 		}
+		md.ToLog = t.Log()
 		if err = dataStore.InstallKeyTo(md); err != nil && md.Required {
 			return false, err
 		}
@@ -523,6 +576,7 @@ func (t *T) InstallDataByKind(filter naming.Kind) (bool, error) {
 			path := strings.TrimPrefix(md.ToPath, md.ToHead)
 			return false, fmt.Errorf("unauthorized install ...%s from %s key %s", path, md.FromStore, md.FromPattern)
 		}
+		md.ToLog = t.Log()
 		if err = dataStore.InstallKeyTo(md); err != nil {
 			return changed, err
 		}
