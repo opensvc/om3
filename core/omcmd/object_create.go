@@ -71,12 +71,14 @@ func (t *CmdObjectCreate) Run(kind string) error {
 
 	ctx, cancel := context.WithTimeout(context.Background(), t.Time)
 	defer cancel()
-	if err := commoncmd.WaitInstanceMonitor(ctx, t.client, t.path, 0, errC); err != nil {
-		if errors.Is(err, os.ErrNotExist) {
-			// Don't wait if he daemon is not running.
-			errC <- nil
-		} else {
-			return err
+	if t.Wait || t.Provision {
+		if err := commoncmd.WaitInstanceMonitor(ctx, t.client, t.path, 0, errC); err != nil {
+			if errors.Is(err, os.ErrNotExist) {
+				// Don't wait if he daemon is not running.
+				errC <- nil
+			} else {
+				return err
+			}
 		}
 	}
 
@@ -84,11 +86,11 @@ func (t *CmdObjectCreate) Run(kind string) error {
 		return err
 	}
 
-	// Don't return until the instance is ready to accept an orchestration request.
-	err := <-errC
-
-	if err != nil {
-		return err
+	if t.Wait || t.Provision {
+		err := <-errC
+		if err != nil {
+			return err
+		}
 	}
 
 	if t.Provision {

@@ -67,19 +67,23 @@ func (t *CmdObjectCreate) Run(kind string) error {
 	}
 	errC := make(chan error)
 
-	ctx, cancel := context.WithTimeout(context.Background(), t.Time)
-	defer cancel()
-	if err := commoncmd.WaitInstanceMonitor(ctx, t.client, t.path, 0, errC); err != nil {
-		return err
+	if t.Wait || t.Provision {
+		ctx, cancel := context.WithTimeout(context.Background(), t.Time)
+		defer cancel()
+		if err := commoncmd.WaitInstanceMonitor(ctx, t.client, t.path, 0, errC); err != nil {
+			return err
+		}
 	}
 
 	if err := t.do(); err != nil {
 		return err
 	}
 
-	err := <-errC
-	if err != nil {
-		return err
+	if t.Wait || t.Provision {
+		err := <-errC
+		if err != nil {
+			return err
+		}
 	}
 
 	if t.Provision {
