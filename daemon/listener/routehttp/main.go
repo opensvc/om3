@@ -39,6 +39,7 @@ func New(ctx context.Context, enableUI bool) *T {
 	e.Use(mwProm)
 	e.GET("/metrics", echoprometheus.NewHandler())
 	e.File("/", filepath.Join(rawconfig.Paths.HTML, "index.html"))
+	e.File("/auth-callback", filepath.Join(rawconfig.Paths.HTML, "index.html"))
 	e.File("/index.js", filepath.Join(rawconfig.Paths.HTML, "index.js"))
 	e.File("/favicon.ico", filepath.Join(rawconfig.Paths.HTML, "favicon.ico"))
 	e.Use(daemonapi.LogMiddleware(ctx))
