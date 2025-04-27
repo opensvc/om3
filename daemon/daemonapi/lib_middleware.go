@@ -84,6 +84,8 @@ func AuthMiddleware(parent context.Context) echo.MiddlewareFunc {
 				return true
 			case strings.HasPrefix(usrPath, "/auth/info"):
 				return true
+			case strings.HasPrefix(usrPath, "/auth-callback"):
+				return true
 			case usrPath == "/index.js":
 				return true
 			case usrPath == "/favicon.ico":
