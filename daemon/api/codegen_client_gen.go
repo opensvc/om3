@@ -477,14 +477,14 @@ type ClientInterface interface {
 	// GetObjectSchedule request
 	GetObjectSchedule(ctx context.Context, namespace InPathNamespace, kind InPathKind, name InPathName, reqEditors ...RequestEditorFn) (*http.Response, error)
 
+	// GetSwagger request
+	GetSwagger(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error)
+
 	// GetPools request
 	GetPools(ctx context.Context, params *GetPoolsParams, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// GetPoolVolumes request
 	GetPoolVolumes(ctx context.Context, params *GetPoolVolumesParams, reqEditors ...RequestEditorFn) (*http.Response, error)
-
-	// GetSwagger request
-	GetSwagger(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// GetRelayMessage request
 	GetRelayMessage(ctx context.Context, params *GetRelayMessageParams, reqEditors ...RequestEditorFn) (*http.Response, error)
@@ -2085,6 +2085,18 @@ func (c *Client) GetObjectSchedule(ctx context.Context, namespace InPathNamespac
 	return c.Client.Do(req)
 }
 
+func (c *Client) GetSwagger(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewGetSwaggerRequest(c.Server)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
 func (c *Client) GetPools(ctx context.Context, params *GetPoolsParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
 	req, err := NewGetPoolsRequest(c.Server, params)
 	if err != nil {
@@ -2099,18 +2111,6 @@ func (c *Client) GetPools(ctx context.Context, params *GetPoolsParams, reqEditor
 
 func (c *Client) GetPoolVolumes(ctx context.Context, params *GetPoolVolumesParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
 	req, err := NewGetPoolVolumesRequest(c.Server, params)
-	if err != nil {
-		return nil, err
-	}
-	req = req.WithContext(ctx)
-	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
-		return nil, err
-	}
-	return c.Client.Do(req)
-}
-
-func (c *Client) GetSwagger(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error) {
-	req, err := NewGetSwaggerRequest(c.Server)
 	if err != nil {
 		return nil, err
 	}
@@ -2190,7 +2190,7 @@ func NewGetAuthInfoRequest(server string) (*http.Request, error) {
 		return nil, err
 	}
 
-	operationPath := fmt.Sprintf("/auth/info")
+	operationPath := fmt.Sprintf("/api/auth/info")
 	if operationPath[0] == '/' {
 		operationPath = "." + operationPath
 	}
@@ -2217,7 +2217,7 @@ func NewPostAuthTokenRequest(server string, params *PostAuthTokenParams) (*http.
 		return nil, err
 	}
 
-	operationPath := fmt.Sprintf("/auth/token")
+	operationPath := fmt.Sprintf("/api/auth/token")
 	if operationPath[0] == '/' {
 		operationPath = "." + operationPath
 	}
@@ -2314,7 +2314,7 @@ func NewGetAuthWhoAmIRequest(server string) (*http.Request, error) {
 		return nil, err
 	}
 
-	operationPath := fmt.Sprintf("/auth/whoami")
+	operationPath := fmt.Sprintf("/api/auth/whoami")
 	if operationPath[0] == '/' {
 		operationPath = "." + operationPath
 	}
@@ -2341,7 +2341,7 @@ func NewPostClusterActionAbortRequest(server string) (*http.Request, error) {
 		return nil, err
 	}
 
-	operationPath := fmt.Sprintf("/cluster/action/abort")
+	operationPath := fmt.Sprintf("/api/cluster/action/abort")
 	if operationPath[0] == '/' {
 		operationPath = "." + operationPath
 	}
@@ -2368,7 +2368,7 @@ func NewPostClusterActionFreezeRequest(server string) (*http.Request, error) {
 		return nil, err
 	}
 
-	operationPath := fmt.Sprintf("/cluster/action/freeze")
+	operationPath := fmt.Sprintf("/api/cluster/action/freeze")
 	if operationPath[0] == '/' {
 		operationPath = "." + operationPath
 	}
@@ -2395,7 +2395,7 @@ func NewPostClusterActionUnfreezeRequest(server string) (*http.Request, error) {
 		return nil, err
 	}
 
-	operationPath := fmt.Sprintf("/cluster/action/unfreeze")
+	operationPath := fmt.Sprintf("/api/cluster/action/unfreeze")
 	if operationPath[0] == '/' {
 		operationPath = "." + operationPath
 	}
@@ -2422,7 +2422,7 @@ func NewGetClusterConfigRequest(server string, params *GetClusterConfigParams) (
 		return nil, err
 	}
 
-	operationPath := fmt.Sprintf("/cluster/config")
+	operationPath := fmt.Sprintf("/api/cluster/config")
 	if operationPath[0] == '/' {
 		operationPath = "." + operationPath
 	}
@@ -2503,7 +2503,7 @@ func NewPatchClusterConfigRequest(server string, params *PatchClusterConfigParam
 		return nil, err
 	}
 
-	operationPath := fmt.Sprintf("/cluster/config")
+	operationPath := fmt.Sprintf("/api/cluster/config")
 	if operationPath[0] == '/' {
 		operationPath = "." + operationPath
 	}
@@ -2584,7 +2584,7 @@ func NewGetClusterConfigFileRequest(server string) (*http.Request, error) {
 		return nil, err
 	}
 
-	operationPath := fmt.Sprintf("/cluster/config/file")
+	operationPath := fmt.Sprintf("/api/cluster/config/file")
 	if operationPath[0] == '/' {
 		operationPath = "." + operationPath
 	}
@@ -2611,7 +2611,7 @@ func NewPutClusterConfigFileRequestWithBody(server string, contentType string, b
 		return nil, err
 	}
 
-	operationPath := fmt.Sprintf("/cluster/config/file")
+	operationPath := fmt.Sprintf("/api/cluster/config/file")
 	if operationPath[0] == '/' {
 		operationPath = "." + operationPath
 	}
@@ -2640,7 +2640,7 @@ func NewPostClusterJoinRequest(server string, params *PostClusterJoinParams) (*h
 		return nil, err
 	}
 
-	operationPath := fmt.Sprintf("/cluster/join")
+	operationPath := fmt.Sprintf("/api/cluster/join")
 	if operationPath[0] == '/' {
 		operationPath = "." + operationPath
 	}
@@ -2685,7 +2685,7 @@ func NewPostClusterLeaveRequest(server string, params *PostClusterLeaveParams) (
 		return nil, err
 	}
 
-	operationPath := fmt.Sprintf("/cluster/leave")
+	operationPath := fmt.Sprintf("/api/cluster/leave")
 	if operationPath[0] == '/' {
 		operationPath = "." + operationPath
 	}
@@ -2730,7 +2730,7 @@ func NewGetClusterStatusRequest(server string, params *GetClusterStatusParams) (
 		return nil, err
 	}
 
-	operationPath := fmt.Sprintf("/cluster/status")
+	operationPath := fmt.Sprintf("/api/cluster/status")
 	if operationPath[0] == '/' {
 		operationPath = "." + operationPath
 	}
@@ -2795,7 +2795,7 @@ func NewGetInstancesRequest(server string, params *GetInstancesParams) (*http.Re
 		return nil, err
 	}
 
-	operationPath := fmt.Sprintf("/instance")
+	operationPath := fmt.Sprintf("/api/instance")
 	if operationPath[0] == '/' {
 		operationPath = "." + operationPath
 	}
@@ -2892,7 +2892,7 @@ func NewPostInstanceProgressRequestWithBody(server string, namespace InPathNames
 		return nil, err
 	}
 
-	operationPath := fmt.Sprintf("/instance/path/%s/%s/%s/progress", pathParam0, pathParam1, pathParam2)
+	operationPath := fmt.Sprintf("/api/instance/path/%s/%s/%s/progress", pathParam0, pathParam1, pathParam2)
 	if operationPath[0] == '/' {
 		operationPath = "." + operationPath
 	}
@@ -2953,7 +2953,7 @@ func NewPostInstanceStatusRequestWithBody(server string, namespace InPathNamespa
 		return nil, err
 	}
 
-	operationPath := fmt.Sprintf("/instance/path/%s/%s/%s/status", pathParam0, pathParam1, pathParam2)
+	operationPath := fmt.Sprintf("/api/instance/path/%s/%s/%s/status", pathParam0, pathParam1, pathParam2)
 	if operationPath[0] == '/' {
 		operationPath = "." + operationPath
 	}
@@ -2982,7 +2982,7 @@ func NewGetNetworksRequest(server string, params *GetNetworksParams) (*http.Requ
 		return nil, err
 	}
 
-	operationPath := fmt.Sprintf("/network")
+	operationPath := fmt.Sprintf("/api/network")
 	if operationPath[0] == '/' {
 		operationPath = "." + operationPath
 	}
@@ -3031,7 +3031,7 @@ func NewGetNetworkIPRequest(server string, params *GetNetworkIPParams) (*http.Re
 		return nil, err
 	}
 
-	operationPath := fmt.Sprintf("/network/ip")
+	operationPath := fmt.Sprintf("/api/network/ip")
 	if operationPath[0] == '/' {
 		operationPath = "." + operationPath
 	}
@@ -3080,7 +3080,7 @@ func NewGetNodesRequest(server string, params *GetNodesParams) (*http.Request, e
 		return nil, err
 	}
 
-	operationPath := fmt.Sprintf("/node")
+	operationPath := fmt.Sprintf("/api/node")
 	if operationPath[0] == '/' {
 		operationPath = "." + operationPath
 	}
@@ -3129,7 +3129,7 @@ func NewGetNodesInfoRequest(server string) (*http.Request, error) {
 		return nil, err
 	}
 
-	operationPath := fmt.Sprintf("/node/info")
+	operationPath := fmt.Sprintf("/api/node/info")
 	if operationPath[0] == '/' {
 		operationPath = "." + operationPath
 	}
@@ -3163,7 +3163,7 @@ func NewPostPeerActionAbortRequest(server string, nodename InPathNodeName) (*htt
 		return nil, err
 	}
 
-	operationPath := fmt.Sprintf("/node/name/%s/action/abort", pathParam0)
+	operationPath := fmt.Sprintf("/api/node/name/%s/action/abort", pathParam0)
 	if operationPath[0] == '/' {
 		operationPath = "." + operationPath
 	}
@@ -3197,7 +3197,7 @@ func NewPostNodeActionClearRequest(server string, nodename InPathNodeName) (*htt
 		return nil, err
 	}
 
-	operationPath := fmt.Sprintf("/node/name/%s/action/clear", pathParam0)
+	operationPath := fmt.Sprintf("/api/node/name/%s/action/clear", pathParam0)
 	if operationPath[0] == '/' {
 		operationPath = "." + operationPath
 	}
@@ -3231,7 +3231,7 @@ func NewPostPeerActionDrainRequest(server string, nodename InPathNodeName) (*htt
 		return nil, err
 	}
 
-	operationPath := fmt.Sprintf("/node/name/%s/action/drain", pathParam0)
+	operationPath := fmt.Sprintf("/api/node/name/%s/action/drain", pathParam0)
 	if operationPath[0] == '/' {
 		operationPath = "." + operationPath
 	}
@@ -3265,7 +3265,7 @@ func NewPostPeerActionFreezeRequest(server string, nodename InPathNodeName, para
 		return nil, err
 	}
 
-	operationPath := fmt.Sprintf("/node/name/%s/action/freeze", pathParam0)
+	operationPath := fmt.Sprintf("/api/node/name/%s/action/freeze", pathParam0)
 	if operationPath[0] == '/' {
 		operationPath = "." + operationPath
 	}
@@ -3321,7 +3321,7 @@ func NewPostNodeActionPushAssetRequest(server string, nodename InPathNodeName, p
 		return nil, err
 	}
 
-	operationPath := fmt.Sprintf("/node/name/%s/action/push/asset", pathParam0)
+	operationPath := fmt.Sprintf("/api/node/name/%s/action/push/asset", pathParam0)
 	if operationPath[0] == '/' {
 		operationPath = "." + operationPath
 	}
@@ -3377,7 +3377,7 @@ func NewPostNodeActionPushDiskRequest(server string, nodename InPathNodeName, pa
 		return nil, err
 	}
 
-	operationPath := fmt.Sprintf("/node/name/%s/action/push/disk", pathParam0)
+	operationPath := fmt.Sprintf("/api/node/name/%s/action/push/disk", pathParam0)
 	if operationPath[0] == '/' {
 		operationPath = "." + operationPath
 	}
@@ -3433,7 +3433,7 @@ func NewPostNodeActionPushPatchRequest(server string, nodename InPathNodeName, p
 		return nil, err
 	}
 
-	operationPath := fmt.Sprintf("/node/name/%s/action/push/patch", pathParam0)
+	operationPath := fmt.Sprintf("/api/node/name/%s/action/push/patch", pathParam0)
 	if operationPath[0] == '/' {
 		operationPath = "." + operationPath
 	}
@@ -3489,7 +3489,7 @@ func NewPostNodeActionPushPkgRequest(server string, nodename InPathNodeName, par
 		return nil, err
 	}
 
-	operationPath := fmt.Sprintf("/node/name/%s/action/push/pkg", pathParam0)
+	operationPath := fmt.Sprintf("/api/node/name/%s/action/push/pkg", pathParam0)
 	if operationPath[0] == '/' {
 		operationPath = "." + operationPath
 	}
@@ -3545,7 +3545,7 @@ func NewPostNodeActionScanCapabilitiesRequest(server string, nodename InPathNode
 		return nil, err
 	}
 
-	operationPath := fmt.Sprintf("/node/name/%s/action/scan/capabilities", pathParam0)
+	operationPath := fmt.Sprintf("/api/node/name/%s/action/scan/capabilities", pathParam0)
 	if operationPath[0] == '/' {
 		operationPath = "." + operationPath
 	}
@@ -3601,7 +3601,7 @@ func NewPostNodeActionSysreportRequest(server string, nodename InPathNodeName, p
 		return nil, err
 	}
 
-	operationPath := fmt.Sprintf("/node/name/%s/action/sysreport", pathParam0)
+	operationPath := fmt.Sprintf("/api/node/name/%s/action/sysreport", pathParam0)
 	if operationPath[0] == '/' {
 		operationPath = "." + operationPath
 	}
@@ -3673,7 +3673,7 @@ func NewPostPeerActionUnfreezeRequest(server string, nodename InPathNodeName, pa
 		return nil, err
 	}
 
-	operationPath := fmt.Sprintf("/node/name/%s/action/unfreeze", pathParam0)
+	operationPath := fmt.Sprintf("/api/node/name/%s/action/unfreeze", pathParam0)
 	if operationPath[0] == '/' {
 		operationPath = "." + operationPath
 	}
@@ -3729,7 +3729,7 @@ func NewGetNodeCapabilitiesRequest(server string, nodename InPathNodeName) (*htt
 		return nil, err
 	}
 
-	operationPath := fmt.Sprintf("/node/name/%s/capabilities", pathParam0)
+	operationPath := fmt.Sprintf("/api/node/name/%s/capabilities", pathParam0)
 	if operationPath[0] == '/' {
 		operationPath = "." + operationPath
 	}
@@ -3763,7 +3763,7 @@ func NewGetNodeConfigRequest(server string, nodename InPathNodeName, params *Get
 		return nil, err
 	}
 
-	operationPath := fmt.Sprintf("/node/name/%s/config", pathParam0)
+	operationPath := fmt.Sprintf("/api/node/name/%s/config", pathParam0)
 	if operationPath[0] == '/' {
 		operationPath = "." + operationPath
 	}
@@ -3851,7 +3851,7 @@ func NewPatchNodeConfigRequest(server string, nodename InPathNodeName, params *P
 		return nil, err
 	}
 
-	operationPath := fmt.Sprintf("/node/name/%s/config", pathParam0)
+	operationPath := fmt.Sprintf("/api/node/name/%s/config", pathParam0)
 	if operationPath[0] == '/' {
 		operationPath = "." + operationPath
 	}
@@ -3939,7 +3939,7 @@ func NewGetNodeConfigFileRequest(server string, nodename InPathNodeName) (*http.
 		return nil, err
 	}
 
-	operationPath := fmt.Sprintf("/node/name/%s/config/file", pathParam0)
+	operationPath := fmt.Sprintf("/api/node/name/%s/config/file", pathParam0)
 	if operationPath[0] == '/' {
 		operationPath = "." + operationPath
 	}
@@ -3973,7 +3973,7 @@ func NewPutNodeConfigFileRequestWithBody(server string, nodename InPathNodeName,
 		return nil, err
 	}
 
-	operationPath := fmt.Sprintf("/node/name/%s/config/file", pathParam0)
+	operationPath := fmt.Sprintf("/api/node/name/%s/config/file", pathParam0)
 	if operationPath[0] == '/' {
 		operationPath = "." + operationPath
 	}
@@ -4009,7 +4009,7 @@ func NewPostDaemonRestartRequest(server string, nodename InPathNodeName) (*http.
 		return nil, err
 	}
 
-	operationPath := fmt.Sprintf("/node/name/%s/daemon/action/restart", pathParam0)
+	operationPath := fmt.Sprintf("/api/node/name/%s/daemon/action/restart", pathParam0)
 	if operationPath[0] == '/' {
 		operationPath = "." + operationPath
 	}
@@ -4043,7 +4043,7 @@ func NewPostDaemonShutdownRequest(server string, nodename InPathNodeName, params
 		return nil, err
 	}
 
-	operationPath := fmt.Sprintf("/node/name/%s/daemon/action/shutdown", pathParam0)
+	operationPath := fmt.Sprintf("/api/node/name/%s/daemon/action/shutdown", pathParam0)
 	if operationPath[0] == '/' {
 		operationPath = "." + operationPath
 	}
@@ -4099,7 +4099,7 @@ func NewPostDaemonStopRequest(server string, nodename InPathNodeName) (*http.Req
 		return nil, err
 	}
 
-	operationPath := fmt.Sprintf("/node/name/%s/daemon/action/stop", pathParam0)
+	operationPath := fmt.Sprintf("/api/node/name/%s/daemon/action/stop", pathParam0)
 	if operationPath[0] == '/' {
 		operationPath = "." + operationPath
 	}
@@ -4133,7 +4133,7 @@ func NewGetDaemonDNSDumpRequest(server string, nodename InPathNodeName) (*http.R
 		return nil, err
 	}
 
-	operationPath := fmt.Sprintf("/node/name/%s/daemon/dns/dump", pathParam0)
+	operationPath := fmt.Sprintf("/api/node/name/%s/daemon/dns/dump", pathParam0)
 	if operationPath[0] == '/' {
 		operationPath = "." + operationPath
 	}
@@ -4167,7 +4167,7 @@ func NewGetDaemonEventsRequest(server string, nodename InPathNodeName, params *G
 		return nil, err
 	}
 
-	operationPath := fmt.Sprintf("/node/name/%s/daemon/event", pathParam0)
+	operationPath := fmt.Sprintf("/api/node/name/%s/daemon/event", pathParam0)
 	if operationPath[0] == '/' {
 		operationPath = "." + operationPath
 	}
@@ -4294,7 +4294,7 @@ func NewPostDaemonHeartbeatRestartRequest(server string, nodename InPathNodeName
 		return nil, err
 	}
 
-	operationPath := fmt.Sprintf("/node/name/%s/daemon/hb/name/%s/action/restart", pathParam0, pathParam1)
+	operationPath := fmt.Sprintf("/api/node/name/%s/daemon/hb/name/%s/action/restart", pathParam0, pathParam1)
 	if operationPath[0] == '/' {
 		operationPath = "." + operationPath
 	}
@@ -4335,7 +4335,7 @@ func NewPostDaemonHeartbeatStartRequest(server string, nodename InPathNodeName, 
 		return nil, err
 	}
 
-	operationPath := fmt.Sprintf("/node/name/%s/daemon/hb/name/%s/action/start", pathParam0, pathParam1)
+	operationPath := fmt.Sprintf("/api/node/name/%s/daemon/hb/name/%s/action/start", pathParam0, pathParam1)
 	if operationPath[0] == '/' {
 		operationPath = "." + operationPath
 	}
@@ -4376,7 +4376,7 @@ func NewPostDaemonHeartbeatStopRequest(server string, nodename InPathNodeName, n
 		return nil, err
 	}
 
-	operationPath := fmt.Sprintf("/node/name/%s/daemon/hb/name/%s/action/stop", pathParam0, pathParam1)
+	operationPath := fmt.Sprintf("/api/node/name/%s/daemon/hb/name/%s/action/stop", pathParam0, pathParam1)
 	if operationPath[0] == '/' {
 		operationPath = "." + operationPath
 	}
@@ -4417,7 +4417,7 @@ func NewPostDaemonListenerRestartRequest(server string, nodename InPathNodeName,
 		return nil, err
 	}
 
-	operationPath := fmt.Sprintf("/node/name/%s/daemon/listener/name/%s/action/restart", pathParam0, pathParam1)
+	operationPath := fmt.Sprintf("/api/node/name/%s/daemon/listener/name/%s/action/restart", pathParam0, pathParam1)
 	if operationPath[0] == '/' {
 		operationPath = "." + operationPath
 	}
@@ -4458,7 +4458,7 @@ func NewPostDaemonListenerStartRequest(server string, nodename InPathNodeName, n
 		return nil, err
 	}
 
-	operationPath := fmt.Sprintf("/node/name/%s/daemon/listener/name/%s/action/start", pathParam0, pathParam1)
+	operationPath := fmt.Sprintf("/api/node/name/%s/daemon/listener/name/%s/action/start", pathParam0, pathParam1)
 	if operationPath[0] == '/' {
 		operationPath = "." + operationPath
 	}
@@ -4499,7 +4499,7 @@ func NewPostDaemonListenerStopRequest(server string, nodename InPathNodeName, na
 		return nil, err
 	}
 
-	operationPath := fmt.Sprintf("/node/name/%s/daemon/listener/name/%s/action/stop", pathParam0, pathParam1)
+	operationPath := fmt.Sprintf("/api/node/name/%s/daemon/listener/name/%s/action/stop", pathParam0, pathParam1)
 	if operationPath[0] == '/' {
 		operationPath = "." + operationPath
 	}
@@ -4551,7 +4551,7 @@ func NewPostDaemonListenerLogControlRequestWithBody(server string, nodename InPa
 		return nil, err
 	}
 
-	operationPath := fmt.Sprintf("/node/name/%s/daemon/listener/name/%s/log/control", pathParam0, pathParam1)
+	operationPath := fmt.Sprintf("/api/node/name/%s/daemon/listener/name/%s/log/control", pathParam0, pathParam1)
 	if operationPath[0] == '/' {
 		operationPath = "." + operationPath
 	}
@@ -4598,7 +4598,7 @@ func NewPostDaemonLogControlRequestWithBody(server string, nodename InPathNodeNa
 		return nil, err
 	}
 
-	operationPath := fmt.Sprintf("/node/name/%s/daemon/log/control", pathParam0)
+	operationPath := fmt.Sprintf("/api/node/name/%s/daemon/log/control", pathParam0)
 	if operationPath[0] == '/' {
 		operationPath = "." + operationPath
 	}
@@ -4634,7 +4634,7 @@ func NewGetNodeDRBDAllocationRequest(server string, nodename InPathNodeName) (*h
 		return nil, err
 	}
 
-	operationPath := fmt.Sprintf("/node/name/%s/drbd/allocation", pathParam0)
+	operationPath := fmt.Sprintf("/api/node/name/%s/drbd/allocation", pathParam0)
 	if operationPath[0] == '/' {
 		operationPath = "." + operationPath
 	}
@@ -4668,7 +4668,7 @@ func NewGetNodeDRBDConfigRequest(server string, nodename InPathNodeName, params 
 		return nil, err
 	}
 
-	operationPath := fmt.Sprintf("/node/name/%s/drbd/config", pathParam0)
+	operationPath := fmt.Sprintf("/api/node/name/%s/drbd/config", pathParam0)
 	if operationPath[0] == '/' {
 		operationPath = "." + operationPath
 	}
@@ -4731,7 +4731,7 @@ func NewPostNodeDRBDConfigRequestWithBody(server string, nodename InPathNodeName
 		return nil, err
 	}
 
-	operationPath := fmt.Sprintf("/node/name/%s/drbd/config", pathParam0)
+	operationPath := fmt.Sprintf("/api/node/name/%s/drbd/config", pathParam0)
 	if operationPath[0] == '/' {
 		operationPath = "." + operationPath
 	}
@@ -4785,7 +4785,7 @@ func NewGetNodeDriverRequest(server string, nodename InPathNodeName) (*http.Requ
 		return nil, err
 	}
 
-	operationPath := fmt.Sprintf("/node/name/%s/drivers", pathParam0)
+	operationPath := fmt.Sprintf("/api/node/name/%s/drivers", pathParam0)
 	if operationPath[0] == '/' {
 		operationPath = "." + operationPath
 	}
@@ -4840,7 +4840,7 @@ func NewGetInstanceRequest(server string, nodename InPathNodeName, namespace InP
 		return nil, err
 	}
 
-	operationPath := fmt.Sprintf("/node/name/%s/instance/path/%s/%s/%s", pathParam0, pathParam1, pathParam2, pathParam3)
+	operationPath := fmt.Sprintf("/api/node/name/%s/instance/path/%s/%s/%s", pathParam0, pathParam1, pathParam2, pathParam3)
 	if operationPath[0] == '/' {
 		operationPath = "." + operationPath
 	}
@@ -4895,7 +4895,7 @@ func NewPostInstanceActionBootRequest(server string, nodename InPathNodeName, na
 		return nil, err
 	}
 
-	operationPath := fmt.Sprintf("/node/name/%s/instance/path/%s/%s/%s/action/boot", pathParam0, pathParam1, pathParam2, pathParam3)
+	operationPath := fmt.Sprintf("/api/node/name/%s/instance/path/%s/%s/%s/action/boot", pathParam0, pathParam1, pathParam2, pathParam3)
 	if operationPath[0] == '/' {
 		operationPath = "." + operationPath
 	}
@@ -5036,7 +5036,7 @@ func NewPostInstanceActionDeleteRequest(server string, nodename InPathNodeName, 
 		return nil, err
 	}
 
-	operationPath := fmt.Sprintf("/node/name/%s/instance/path/%s/%s/%s/action/delete", pathParam0, pathParam1, pathParam2, pathParam3)
+	operationPath := fmt.Sprintf("/api/node/name/%s/instance/path/%s/%s/%s/action/delete", pathParam0, pathParam1, pathParam2, pathParam3)
 	if operationPath[0] == '/' {
 		operationPath = "." + operationPath
 	}
@@ -5113,7 +5113,7 @@ func NewPostInstanceActionFreezeRequest(server string, nodename InPathNodeName, 
 		return nil, err
 	}
 
-	operationPath := fmt.Sprintf("/node/name/%s/instance/path/%s/%s/%s/action/freeze", pathParam0, pathParam1, pathParam2, pathParam3)
+	operationPath := fmt.Sprintf("/api/node/name/%s/instance/path/%s/%s/%s/action/freeze", pathParam0, pathParam1, pathParam2, pathParam3)
 	if operationPath[0] == '/' {
 		operationPath = "." + operationPath
 	}
@@ -5190,7 +5190,7 @@ func NewPostInstanceActionProvisionRequest(server string, nodename InPathNodeNam
 		return nil, err
 	}
 
-	operationPath := fmt.Sprintf("/node/name/%s/instance/path/%s/%s/%s/action/provision", pathParam0, pathParam1, pathParam2, pathParam3)
+	operationPath := fmt.Sprintf("/api/node/name/%s/instance/path/%s/%s/%s/action/provision", pathParam0, pathParam1, pathParam2, pathParam3)
 	if operationPath[0] == '/' {
 		operationPath = "." + operationPath
 	}
@@ -5379,7 +5379,7 @@ func NewPostInstanceActionPRStartRequest(server string, nodename InPathNodeName,
 		return nil, err
 	}
 
-	operationPath := fmt.Sprintf("/node/name/%s/instance/path/%s/%s/%s/action/prstart", pathParam0, pathParam1, pathParam2, pathParam3)
+	operationPath := fmt.Sprintf("/api/node/name/%s/instance/path/%s/%s/%s/action/prstart", pathParam0, pathParam1, pathParam2, pathParam3)
 	if operationPath[0] == '/' {
 		operationPath = "." + operationPath
 	}
@@ -5552,7 +5552,7 @@ func NewPostInstanceActionPRStopRequest(server string, nodename InPathNodeName, 
 		return nil, err
 	}
 
-	operationPath := fmt.Sprintf("/node/name/%s/instance/path/%s/%s/%s/action/prstop", pathParam0, pathParam1, pathParam2, pathParam3)
+	operationPath := fmt.Sprintf("/api/node/name/%s/instance/path/%s/%s/%s/action/prstop", pathParam0, pathParam1, pathParam2, pathParam3)
 	if operationPath[0] == '/' {
 		operationPath = "." + operationPath
 	}
@@ -5725,7 +5725,7 @@ func NewPostInstanceActionPushResourceInfoRequest(server string, nodename InPath
 		return nil, err
 	}
 
-	operationPath := fmt.Sprintf("/node/name/%s/instance/path/%s/%s/%s/action/push/resource/info", pathParam0, pathParam1, pathParam2, pathParam3)
+	operationPath := fmt.Sprintf("/api/node/name/%s/instance/path/%s/%s/%s/action/push/resource/info", pathParam0, pathParam1, pathParam2, pathParam3)
 	if operationPath[0] == '/' {
 		operationPath = "." + operationPath
 	}
@@ -5802,7 +5802,7 @@ func NewPostInstanceActionRestartRequest(server string, nodename InPathNodeName,
 		return nil, err
 	}
 
-	operationPath := fmt.Sprintf("/node/name/%s/instance/path/%s/%s/%s/action/restart", pathParam0, pathParam1, pathParam2, pathParam3)
+	operationPath := fmt.Sprintf("/api/node/name/%s/instance/path/%s/%s/%s/action/restart", pathParam0, pathParam1, pathParam2, pathParam3)
 	if operationPath[0] == '/' {
 		operationPath = "." + operationPath
 	}
@@ -5975,7 +5975,7 @@ func NewPostInstanceActionRunRequest(server string, nodename InPathNodeName, nam
 		return nil, err
 	}
 
-	operationPath := fmt.Sprintf("/node/name/%s/instance/path/%s/%s/%s/action/run", pathParam0, pathParam1, pathParam2, pathParam3)
+	operationPath := fmt.Sprintf("/api/node/name/%s/instance/path/%s/%s/%s/action/run", pathParam0, pathParam1, pathParam2, pathParam3)
 	if operationPath[0] == '/' {
 		operationPath = "." + operationPath
 	}
@@ -6180,7 +6180,7 @@ func NewPostInstanceActionShutdownRequest(server string, nodename InPathNodeName
 		return nil, err
 	}
 
-	operationPath := fmt.Sprintf("/node/name/%s/instance/path/%s/%s/%s/action/shutdown", pathParam0, pathParam1, pathParam2, pathParam3)
+	operationPath := fmt.Sprintf("/api/node/name/%s/instance/path/%s/%s/%s/action/shutdown", pathParam0, pathParam1, pathParam2, pathParam3)
 	if operationPath[0] == '/' {
 		operationPath = "." + operationPath
 	}
@@ -6337,7 +6337,7 @@ func NewPostInstanceActionStartRequest(server string, nodename InPathNodeName, n
 		return nil, err
 	}
 
-	operationPath := fmt.Sprintf("/node/name/%s/instance/path/%s/%s/%s/action/start", pathParam0, pathParam1, pathParam2, pathParam3)
+	operationPath := fmt.Sprintf("/api/node/name/%s/instance/path/%s/%s/%s/action/start", pathParam0, pathParam1, pathParam2, pathParam3)
 	if operationPath[0] == '/' {
 		operationPath = "." + operationPath
 	}
@@ -6510,7 +6510,7 @@ func NewPostInstanceActionStartStandbyRequest(server string, nodename InPathNode
 		return nil, err
 	}
 
-	operationPath := fmt.Sprintf("/node/name/%s/instance/path/%s/%s/%s/action/startstandby", pathParam0, pathParam1, pathParam2, pathParam3)
+	operationPath := fmt.Sprintf("/api/node/name/%s/instance/path/%s/%s/%s/action/startstandby", pathParam0, pathParam1, pathParam2, pathParam3)
 	if operationPath[0] == '/' {
 		operationPath = "." + operationPath
 	}
@@ -6683,7 +6683,7 @@ func NewPostInstanceActionStatusRequest(server string, nodename InPathNodeName, 
 		return nil, err
 	}
 
-	operationPath := fmt.Sprintf("/node/name/%s/instance/path/%s/%s/%s/action/status", pathParam0, pathParam1, pathParam2, pathParam3)
+	operationPath := fmt.Sprintf("/api/node/name/%s/instance/path/%s/%s/%s/action/status", pathParam0, pathParam1, pathParam2, pathParam3)
 	if operationPath[0] == '/' {
 		operationPath = "." + operationPath
 	}
@@ -6760,7 +6760,7 @@ func NewPostInstanceActionStopRequest(server string, nodename InPathNodeName, na
 		return nil, err
 	}
 
-	operationPath := fmt.Sprintf("/node/name/%s/instance/path/%s/%s/%s/action/stop", pathParam0, pathParam1, pathParam2, pathParam3)
+	operationPath := fmt.Sprintf("/api/node/name/%s/instance/path/%s/%s/%s/action/stop", pathParam0, pathParam1, pathParam2, pathParam3)
 	if operationPath[0] == '/' {
 		operationPath = "." + operationPath
 	}
@@ -6917,7 +6917,7 @@ func NewPostInstanceActionSyncIngestRequest(server string, nodename InPathNodeNa
 		return nil, err
 	}
 
-	operationPath := fmt.Sprintf("/node/name/%s/instance/path/%s/%s/%s/action/sync/ingest", pathParam0, pathParam1, pathParam2, pathParam3)
+	operationPath := fmt.Sprintf("/api/node/name/%s/instance/path/%s/%s/%s/action/sync/ingest", pathParam0, pathParam1, pathParam2, pathParam3)
 	if operationPath[0] == '/' {
 		operationPath = "." + operationPath
 	}
@@ -7042,7 +7042,7 @@ func NewPostInstanceActionUnfreezeRequest(server string, nodename InPathNodeName
 		return nil, err
 	}
 
-	operationPath := fmt.Sprintf("/node/name/%s/instance/path/%s/%s/%s/action/unfreeze", pathParam0, pathParam1, pathParam2, pathParam3)
+	operationPath := fmt.Sprintf("/api/node/name/%s/instance/path/%s/%s/%s/action/unfreeze", pathParam0, pathParam1, pathParam2, pathParam3)
 	if operationPath[0] == '/' {
 		operationPath = "." + operationPath
 	}
@@ -7119,7 +7119,7 @@ func NewPostInstanceActionUnprovisionRequest(server string, nodename InPathNodeN
 		return nil, err
 	}
 
-	operationPath := fmt.Sprintf("/node/name/%s/instance/path/%s/%s/%s/action/unprovision", pathParam0, pathParam1, pathParam2, pathParam3)
+	operationPath := fmt.Sprintf("/api/node/name/%s/instance/path/%s/%s/%s/action/unprovision", pathParam0, pathParam1, pathParam2, pathParam3)
 	if operationPath[0] == '/' {
 		operationPath = "." + operationPath
 	}
@@ -7292,7 +7292,7 @@ func NewPostInstanceClearRequest(server string, nodename InPathNodeName, namespa
 		return nil, err
 	}
 
-	operationPath := fmt.Sprintf("/node/name/%s/instance/path/%s/%s/%s/clear", pathParam0, pathParam1, pathParam2, pathParam3)
+	operationPath := fmt.Sprintf("/api/node/name/%s/instance/path/%s/%s/%s/clear", pathParam0, pathParam1, pathParam2, pathParam3)
 	if operationPath[0] == '/' {
 		operationPath = "." + operationPath
 	}
@@ -7347,7 +7347,7 @@ func NewGetInstanceConfigFileRequest(server string, nodename InPathNodeName, nam
 		return nil, err
 	}
 
-	operationPath := fmt.Sprintf("/node/name/%s/instance/path/%s/%s/%s/config/file", pathParam0, pathParam1, pathParam2, pathParam3)
+	operationPath := fmt.Sprintf("/api/node/name/%s/instance/path/%s/%s/%s/config/file", pathParam0, pathParam1, pathParam2, pathParam3)
 	if operationPath[0] == '/' {
 		operationPath = "." + operationPath
 	}
@@ -7402,7 +7402,7 @@ func NewGetInstanceLogsRequest(server string, nodename InPathNodeName, namespace
 		return nil, err
 	}
 
-	operationPath := fmt.Sprintf("/node/name/%s/instance/path/%s/%s/%s/log", pathParam0, pathParam1, pathParam2, pathParam3)
+	operationPath := fmt.Sprintf("/api/node/name/%s/instance/path/%s/%s/%s/log", pathParam0, pathParam1, pathParam2, pathParam3)
 	if operationPath[0] == '/' {
 		operationPath = "." + operationPath
 	}
@@ -7511,7 +7511,7 @@ func NewGetInstanceResourceInfoRequest(server string, nodename InPathNodeName, n
 		return nil, err
 	}
 
-	operationPath := fmt.Sprintf("/node/name/%s/instance/path/%s/%s/%s/resource/info", pathParam0, pathParam1, pathParam2, pathParam3)
+	operationPath := fmt.Sprintf("/api/node/name/%s/instance/path/%s/%s/%s/resource/info", pathParam0, pathParam1, pathParam2, pathParam3)
 	if operationPath[0] == '/' {
 		operationPath = "." + operationPath
 	}
@@ -7566,7 +7566,7 @@ func NewGetInstanceScheduleRequest(server string, nodename InPathNodeName, names
 		return nil, err
 	}
 
-	operationPath := fmt.Sprintf("/node/name/%s/instance/path/%s/%s/%s/schedule", pathParam0, pathParam1, pathParam2, pathParam3)
+	operationPath := fmt.Sprintf("/api/node/name/%s/instance/path/%s/%s/%s/schedule", pathParam0, pathParam1, pathParam2, pathParam3)
 	if operationPath[0] == '/' {
 		operationPath = "." + operationPath
 	}
@@ -7621,7 +7621,7 @@ func NewPostInstanceStateFileRequestWithBody(server string, nodename InPathNodeN
 		return nil, err
 	}
 
-	operationPath := fmt.Sprintf("/node/name/%s/instance/path/%s/%s/%s/state/file", pathParam0, pathParam1, pathParam2, pathParam3)
+	operationPath := fmt.Sprintf("/api/node/name/%s/instance/path/%s/%s/%s/state/file", pathParam0, pathParam1, pathParam2, pathParam3)
 	if operationPath[0] == '/' {
 		operationPath = "." + operationPath
 	}
@@ -7657,7 +7657,7 @@ func NewGetNodeLogsRequest(server string, nodename InPathNodeName, params *GetNo
 		return nil, err
 	}
 
-	operationPath := fmt.Sprintf("/node/name/%s/log", pathParam0)
+	operationPath := fmt.Sprintf("/api/node/name/%s/log", pathParam0)
 	if operationPath[0] == '/' {
 		operationPath = "." + operationPath
 	}
@@ -7761,7 +7761,7 @@ func NewGetNodePingRequest(server string, nodename InPathNodeName) (*http.Reques
 		return nil, err
 	}
 
-	operationPath := fmt.Sprintf("/node/name/%s/ping", pathParam0)
+	operationPath := fmt.Sprintf("/api/node/name/%s/ping", pathParam0)
 	if operationPath[0] == '/' {
 		operationPath = "." + operationPath
 	}
@@ -7795,7 +7795,7 @@ func NewGetNodeScheduleRequest(server string, nodename InPathNodeName) (*http.Re
 		return nil, err
 	}
 
-	operationPath := fmt.Sprintf("/node/name/%s/schedule", pathParam0)
+	operationPath := fmt.Sprintf("/api/node/name/%s/schedule", pathParam0)
 	if operationPath[0] == '/' {
 		operationPath = "." + operationPath
 	}
@@ -7829,7 +7829,7 @@ func NewGetNodeSSHHostkeysRequest(server string, nodename InPathNodeName) (*http
 		return nil, err
 	}
 
-	operationPath := fmt.Sprintf("/node/name/%s/ssh/hostkeys", pathParam0)
+	operationPath := fmt.Sprintf("/api/node/name/%s/ssh/hostkeys", pathParam0)
 	if operationPath[0] == '/' {
 		operationPath = "." + operationPath
 	}
@@ -7863,7 +7863,7 @@ func NewGetNodeSSHKeyRequest(server string, nodename InPathNodeName) (*http.Requ
 		return nil, err
 	}
 
-	operationPath := fmt.Sprintf("/node/name/%s/ssh/key", pathParam0)
+	operationPath := fmt.Sprintf("/api/node/name/%s/ssh/key", pathParam0)
 	if operationPath[0] == '/' {
 		operationPath = "." + operationPath
 	}
@@ -7897,7 +7897,7 @@ func NewPutNodeSSHTrustRequest(server string, nodename InPathNodeName) (*http.Re
 		return nil, err
 	}
 
-	operationPath := fmt.Sprintf("/node/name/%s/ssh/trust", pathParam0)
+	operationPath := fmt.Sprintf("/api/node/name/%s/ssh/trust", pathParam0)
 	if operationPath[0] == '/' {
 		operationPath = "." + operationPath
 	}
@@ -7931,7 +7931,7 @@ func NewGetNodeSystemDiskRequest(server string, nodename InPathNodeName) (*http.
 		return nil, err
 	}
 
-	operationPath := fmt.Sprintf("/node/name/%s/system/disk", pathParam0)
+	operationPath := fmt.Sprintf("/api/node/name/%s/system/disk", pathParam0)
 	if operationPath[0] == '/' {
 		operationPath = "." + operationPath
 	}
@@ -7965,7 +7965,7 @@ func NewGetNodeSystemGroupRequest(server string, nodename InPathNodeName) (*http
 		return nil, err
 	}
 
-	operationPath := fmt.Sprintf("/node/name/%s/system/group", pathParam0)
+	operationPath := fmt.Sprintf("/api/node/name/%s/system/group", pathParam0)
 	if operationPath[0] == '/' {
 		operationPath = "." + operationPath
 	}
@@ -7999,7 +7999,7 @@ func NewGetNodeSystemHardwareRequest(server string, nodename InPathNodeName) (*h
 		return nil, err
 	}
 
-	operationPath := fmt.Sprintf("/node/name/%s/system/hardware", pathParam0)
+	operationPath := fmt.Sprintf("/api/node/name/%s/system/hardware", pathParam0)
 	if operationPath[0] == '/' {
 		operationPath = "." + operationPath
 	}
@@ -8033,7 +8033,7 @@ func NewGetNodeSystemIPAddressRequest(server string, nodename InPathNodeName) (*
 		return nil, err
 	}
 
-	operationPath := fmt.Sprintf("/node/name/%s/system/ipaddress", pathParam0)
+	operationPath := fmt.Sprintf("/api/node/name/%s/system/ipaddress", pathParam0)
 	if operationPath[0] == '/' {
 		operationPath = "." + operationPath
 	}
@@ -8067,7 +8067,7 @@ func NewGetNodeSystemPackageRequest(server string, nodename InPathNodeName) (*ht
 		return nil, err
 	}
 
-	operationPath := fmt.Sprintf("/node/name/%s/system/package", pathParam0)
+	operationPath := fmt.Sprintf("/api/node/name/%s/system/package", pathParam0)
 	if operationPath[0] == '/' {
 		operationPath = "." + operationPath
 	}
@@ -8101,7 +8101,7 @@ func NewGetNodeSystemPatchRequest(server string, nodename InPathNodeName) (*http
 		return nil, err
 	}
 
-	operationPath := fmt.Sprintf("/node/name/%s/system/patch", pathParam0)
+	operationPath := fmt.Sprintf("/api/node/name/%s/system/patch", pathParam0)
 	if operationPath[0] == '/' {
 		operationPath = "." + operationPath
 	}
@@ -8135,7 +8135,7 @@ func NewGetNodeSystemPropertyRequest(server string, nodename InPathNodeName) (*h
 		return nil, err
 	}
 
-	operationPath := fmt.Sprintf("/node/name/%s/system/property", pathParam0)
+	operationPath := fmt.Sprintf("/api/node/name/%s/system/property", pathParam0)
 	if operationPath[0] == '/' {
 		operationPath = "." + operationPath
 	}
@@ -8169,7 +8169,7 @@ func NewGetNodeSystemSANInitiatorRequest(server string, nodename InPathNodeName)
 		return nil, err
 	}
 
-	operationPath := fmt.Sprintf("/node/name/%s/system/san/initiator", pathParam0)
+	operationPath := fmt.Sprintf("/api/node/name/%s/system/san/initiator", pathParam0)
 	if operationPath[0] == '/' {
 		operationPath = "." + operationPath
 	}
@@ -8203,7 +8203,7 @@ func NewGetNodeSystemSANPathRequest(server string, nodename InPathNodeName) (*ht
 		return nil, err
 	}
 
-	operationPath := fmt.Sprintf("/node/name/%s/system/san/path", pathParam0)
+	operationPath := fmt.Sprintf("/api/node/name/%s/system/san/path", pathParam0)
 	if operationPath[0] == '/' {
 		operationPath = "." + operationPath
 	}
@@ -8237,7 +8237,7 @@ func NewGetNodeSystemUserRequest(server string, nodename InPathNodeName) (*http.
 		return nil, err
 	}
 
-	operationPath := fmt.Sprintf("/node/name/%s/system/user", pathParam0)
+	operationPath := fmt.Sprintf("/api/node/name/%s/system/user", pathParam0)
 	if operationPath[0] == '/' {
 		operationPath = "." + operationPath
 	}
@@ -8264,7 +8264,7 @@ func NewGetObjectsRequest(server string, params *GetObjectsParams) (*http.Reques
 		return nil, err
 	}
 
-	operationPath := fmt.Sprintf("/object")
+	operationPath := fmt.Sprintf("/api/object")
 	if operationPath[0] == '/' {
 		operationPath = "." + operationPath
 	}
@@ -8313,7 +8313,7 @@ func NewGetObjectPathsRequest(server string, params *GetObjectPathsParams) (*htt
 		return nil, err
 	}
 
-	operationPath := fmt.Sprintf("/object/path")
+	operationPath := fmt.Sprintf("/api/object/path")
 	if operationPath[0] == '/' {
 		operationPath = "." + operationPath
 	}
@@ -8372,7 +8372,7 @@ func NewPostSvcDisableRequest(server string, namespace InPathNamespace, name InP
 		return nil, err
 	}
 
-	operationPath := fmt.Sprintf("/object/path/%s/svc/%s/disable", pathParam0, pathParam1)
+	operationPath := fmt.Sprintf("/api/object/path/%s/svc/%s/disable", pathParam0, pathParam1)
 	if operationPath[0] == '/' {
 		operationPath = "." + operationPath
 	}
@@ -8467,7 +8467,7 @@ func NewPostSvcEnableRequest(server string, namespace InPathNamespace, name InPa
 		return nil, err
 	}
 
-	operationPath := fmt.Sprintf("/object/path/%s/svc/%s/enable", pathParam0, pathParam1)
+	operationPath := fmt.Sprintf("/api/object/path/%s/svc/%s/enable", pathParam0, pathParam1)
 	if operationPath[0] == '/' {
 		operationPath = "." + operationPath
 	}
@@ -8569,7 +8569,7 @@ func NewGetObjectRequest(server string, namespace InPathNamespace, kind InPathKi
 		return nil, err
 	}
 
-	operationPath := fmt.Sprintf("/object/path/%s/%s/%s", pathParam0, pathParam1, pathParam2)
+	operationPath := fmt.Sprintf("/api/object/path/%s/%s/%s", pathParam0, pathParam1, pathParam2)
 	if operationPath[0] == '/' {
 		operationPath = "." + operationPath
 	}
@@ -8617,7 +8617,7 @@ func NewPostObjectActionAbortRequest(server string, namespace InPathNamespace, k
 		return nil, err
 	}
 
-	operationPath := fmt.Sprintf("/object/path/%s/%s/%s/action/abort", pathParam0, pathParam1, pathParam2)
+	operationPath := fmt.Sprintf("/api/object/path/%s/%s/%s/action/abort", pathParam0, pathParam1, pathParam2)
 	if operationPath[0] == '/' {
 		operationPath = "." + operationPath
 	}
@@ -8665,7 +8665,7 @@ func NewPostObjectActionDeleteRequest(server string, namespace InPathNamespace, 
 		return nil, err
 	}
 
-	operationPath := fmt.Sprintf("/object/path/%s/%s/%s/action/delete", pathParam0, pathParam1, pathParam2)
+	operationPath := fmt.Sprintf("/api/object/path/%s/%s/%s/action/delete", pathParam0, pathParam1, pathParam2)
 	if operationPath[0] == '/' {
 		operationPath = "." + operationPath
 	}
@@ -8713,7 +8713,7 @@ func NewPostObjectActionFreezeRequest(server string, namespace InPathNamespace, 
 		return nil, err
 	}
 
-	operationPath := fmt.Sprintf("/object/path/%s/%s/%s/action/freeze", pathParam0, pathParam1, pathParam2)
+	operationPath := fmt.Sprintf("/api/object/path/%s/%s/%s/action/freeze", pathParam0, pathParam1, pathParam2)
 	if operationPath[0] == '/' {
 		operationPath = "." + operationPath
 	}
@@ -8761,7 +8761,7 @@ func NewPostObjectActionGivebackRequest(server string, namespace InPathNamespace
 		return nil, err
 	}
 
-	operationPath := fmt.Sprintf("/object/path/%s/%s/%s/action/giveback", pathParam0, pathParam1, pathParam2)
+	operationPath := fmt.Sprintf("/api/object/path/%s/%s/%s/action/giveback", pathParam0, pathParam1, pathParam2)
 	if operationPath[0] == '/' {
 		operationPath = "." + operationPath
 	}
@@ -8809,7 +8809,7 @@ func NewPostObjectActionProvisionRequest(server string, namespace InPathNamespac
 		return nil, err
 	}
 
-	operationPath := fmt.Sprintf("/object/path/%s/%s/%s/action/provision", pathParam0, pathParam1, pathParam2)
+	operationPath := fmt.Sprintf("/api/object/path/%s/%s/%s/action/provision", pathParam0, pathParam1, pathParam2)
 	if operationPath[0] == '/' {
 		operationPath = "." + operationPath
 	}
@@ -8857,7 +8857,7 @@ func NewPostObjectActionPurgeRequest(server string, namespace InPathNamespace, k
 		return nil, err
 	}
 
-	operationPath := fmt.Sprintf("/object/path/%s/%s/%s/action/purge", pathParam0, pathParam1, pathParam2)
+	operationPath := fmt.Sprintf("/api/object/path/%s/%s/%s/action/purge", pathParam0, pathParam1, pathParam2)
 	if operationPath[0] == '/' {
 		operationPath = "." + operationPath
 	}
@@ -8916,7 +8916,7 @@ func NewPostObjectActionRestartRequestWithBody(server string, namespace InPathNa
 		return nil, err
 	}
 
-	operationPath := fmt.Sprintf("/object/path/%s/%s/%s/action/restart", pathParam0, pathParam1, pathParam2)
+	operationPath := fmt.Sprintf("/api/object/path/%s/%s/%s/action/restart", pathParam0, pathParam1, pathParam2)
 	if operationPath[0] == '/' {
 		operationPath = "." + operationPath
 	}
@@ -8966,7 +8966,7 @@ func NewPostObjectActionStartRequest(server string, namespace InPathNamespace, k
 		return nil, err
 	}
 
-	operationPath := fmt.Sprintf("/object/path/%s/%s/%s/action/start", pathParam0, pathParam1, pathParam2)
+	operationPath := fmt.Sprintf("/api/object/path/%s/%s/%s/action/start", pathParam0, pathParam1, pathParam2)
 	if operationPath[0] == '/' {
 		operationPath = "." + operationPath
 	}
@@ -9014,7 +9014,7 @@ func NewPostObjectActionStopRequest(server string, namespace InPathNamespace, ki
 		return nil, err
 	}
 
-	operationPath := fmt.Sprintf("/object/path/%s/%s/%s/action/stop", pathParam0, pathParam1, pathParam2)
+	operationPath := fmt.Sprintf("/api/object/path/%s/%s/%s/action/stop", pathParam0, pathParam1, pathParam2)
 	if operationPath[0] == '/' {
 		operationPath = "." + operationPath
 	}
@@ -9073,7 +9073,7 @@ func NewPostObjectActionSwitchRequestWithBody(server string, namespace InPathNam
 		return nil, err
 	}
 
-	operationPath := fmt.Sprintf("/object/path/%s/%s/%s/action/switch", pathParam0, pathParam1, pathParam2)
+	operationPath := fmt.Sprintf("/api/object/path/%s/%s/%s/action/switch", pathParam0, pathParam1, pathParam2)
 	if operationPath[0] == '/' {
 		operationPath = "." + operationPath
 	}
@@ -9123,7 +9123,7 @@ func NewPostObjectActionUnfreezeRequest(server string, namespace InPathNamespace
 		return nil, err
 	}
 
-	operationPath := fmt.Sprintf("/object/path/%s/%s/%s/action/unfreeze", pathParam0, pathParam1, pathParam2)
+	operationPath := fmt.Sprintf("/api/object/path/%s/%s/%s/action/unfreeze", pathParam0, pathParam1, pathParam2)
 	if operationPath[0] == '/' {
 		operationPath = "." + operationPath
 	}
@@ -9171,7 +9171,7 @@ func NewPostObjectActionUnprovisionRequest(server string, namespace InPathNamesp
 		return nil, err
 	}
 
-	operationPath := fmt.Sprintf("/object/path/%s/%s/%s/action/unprovision", pathParam0, pathParam1, pathParam2)
+	operationPath := fmt.Sprintf("/api/object/path/%s/%s/%s/action/unprovision", pathParam0, pathParam1, pathParam2)
 	if operationPath[0] == '/' {
 		operationPath = "." + operationPath
 	}
@@ -9219,7 +9219,7 @@ func NewGetObjectConfigRequest(server string, namespace InPathNamespace, kind In
 		return nil, err
 	}
 
-	operationPath := fmt.Sprintf("/object/path/%s/%s/%s/config", pathParam0, pathParam1, pathParam2)
+	operationPath := fmt.Sprintf("/api/object/path/%s/%s/%s/config", pathParam0, pathParam1, pathParam2)
 	if operationPath[0] == '/' {
 		operationPath = "." + operationPath
 	}
@@ -9321,7 +9321,7 @@ func NewPatchObjectConfigRequest(server string, namespace InPathNamespace, kind 
 		return nil, err
 	}
 
-	operationPath := fmt.Sprintf("/object/path/%s/%s/%s/config", pathParam0, pathParam1, pathParam2)
+	operationPath := fmt.Sprintf("/api/object/path/%s/%s/%s/config", pathParam0, pathParam1, pathParam2)
 	if operationPath[0] == '/' {
 		operationPath = "." + operationPath
 	}
@@ -9423,7 +9423,7 @@ func NewGetObjectConfigFileRequest(server string, namespace InPathNamespace, kin
 		return nil, err
 	}
 
-	operationPath := fmt.Sprintf("/object/path/%s/%s/%s/config/file", pathParam0, pathParam1, pathParam2)
+	operationPath := fmt.Sprintf("/api/object/path/%s/%s/%s/config/file", pathParam0, pathParam1, pathParam2)
 	if operationPath[0] == '/' {
 		operationPath = "." + operationPath
 	}
@@ -9471,7 +9471,7 @@ func NewPostObjectConfigFileRequestWithBody(server string, namespace InPathNames
 		return nil, err
 	}
 
-	operationPath := fmt.Sprintf("/object/path/%s/%s/%s/config/file", pathParam0, pathParam1, pathParam2)
+	operationPath := fmt.Sprintf("/api/object/path/%s/%s/%s/config/file", pathParam0, pathParam1, pathParam2)
 	if operationPath[0] == '/' {
 		operationPath = "." + operationPath
 	}
@@ -9521,7 +9521,7 @@ func NewPutObjectConfigFileRequestWithBody(server string, namespace InPathNamesp
 		return nil, err
 	}
 
-	operationPath := fmt.Sprintf("/object/path/%s/%s/%s/config/file", pathParam0, pathParam1, pathParam2)
+	operationPath := fmt.Sprintf("/api/object/path/%s/%s/%s/config/file", pathParam0, pathParam1, pathParam2)
 	if operationPath[0] == '/' {
 		operationPath = "." + operationPath
 	}
@@ -9571,7 +9571,7 @@ func NewGetObjectDataRequest(server string, namespace InPathNamespace, kind InPa
 		return nil, err
 	}
 
-	operationPath := fmt.Sprintf("/object/path/%s/%s/%s/data", pathParam0, pathParam1, pathParam2)
+	operationPath := fmt.Sprintf("/api/object/path/%s/%s/%s/data", pathParam0, pathParam1, pathParam2)
 	if operationPath[0] == '/' {
 		operationPath = "." + operationPath
 	}
@@ -9652,7 +9652,7 @@ func NewPatchObjectDataRequestWithBody(server string, namespace InPathNamespace,
 		return nil, err
 	}
 
-	operationPath := fmt.Sprintf("/object/path/%s/%s/%s/data", pathParam0, pathParam1, pathParam2)
+	operationPath := fmt.Sprintf("/api/object/path/%s/%s/%s/data", pathParam0, pathParam1, pathParam2)
 	if operationPath[0] == '/' {
 		operationPath = "." + operationPath
 	}
@@ -9702,7 +9702,7 @@ func NewDeleteObjectDataKeyRequest(server string, namespace InPathNamespace, kin
 		return nil, err
 	}
 
-	operationPath := fmt.Sprintf("/object/path/%s/%s/%s/data/key", pathParam0, pathParam1, pathParam2)
+	operationPath := fmt.Sprintf("/api/object/path/%s/%s/%s/data/key", pathParam0, pathParam1, pathParam2)
 	if operationPath[0] == '/' {
 		operationPath = "." + operationPath
 	}
@@ -9768,7 +9768,7 @@ func NewGetObjectDataKeyRequest(server string, namespace InPathNamespace, kind I
 		return nil, err
 	}
 
-	operationPath := fmt.Sprintf("/object/path/%s/%s/%s/data/key", pathParam0, pathParam1, pathParam2)
+	operationPath := fmt.Sprintf("/api/object/path/%s/%s/%s/data/key", pathParam0, pathParam1, pathParam2)
 	if operationPath[0] == '/' {
 		operationPath = "." + operationPath
 	}
@@ -9834,7 +9834,7 @@ func NewPostObjectDataKeyRequestWithBody(server string, namespace InPathNamespac
 		return nil, err
 	}
 
-	operationPath := fmt.Sprintf("/object/path/%s/%s/%s/data/key", pathParam0, pathParam1, pathParam2)
+	operationPath := fmt.Sprintf("/api/object/path/%s/%s/%s/data/key", pathParam0, pathParam1, pathParam2)
 	if operationPath[0] == '/' {
 		operationPath = "." + operationPath
 	}
@@ -9902,7 +9902,7 @@ func NewPutObjectDataKeyRequestWithBody(server string, namespace InPathNamespace
 		return nil, err
 	}
 
-	operationPath := fmt.Sprintf("/object/path/%s/%s/%s/data/key", pathParam0, pathParam1, pathParam2)
+	operationPath := fmt.Sprintf("/api/object/path/%s/%s/%s/data/key", pathParam0, pathParam1, pathParam2)
 	if operationPath[0] == '/' {
 		operationPath = "." + operationPath
 	}
@@ -9970,7 +9970,7 @@ func NewGetObjectDataKeysRequest(server string, namespace InPathNamespace, kind 
 		return nil, err
 	}
 
-	operationPath := fmt.Sprintf("/object/path/%s/%s/%s/data/keys", pathParam0, pathParam1, pathParam2)
+	operationPath := fmt.Sprintf("/api/object/path/%s/%s/%s/data/keys", pathParam0, pathParam1, pathParam2)
 	if operationPath[0] == '/' {
 		operationPath = "." + operationPath
 	}
@@ -10018,7 +10018,7 @@ func NewGetObjectResourceInfoRequest(server string, namespace InPathNamespace, k
 		return nil, err
 	}
 
-	operationPath := fmt.Sprintf("/object/path/%s/%s/%s/resource/info", pathParam0, pathParam1, pathParam2)
+	operationPath := fmt.Sprintf("/api/object/path/%s/%s/%s/resource/info", pathParam0, pathParam1, pathParam2)
 	if operationPath[0] == '/' {
 		operationPath = "." + operationPath
 	}
@@ -10066,7 +10066,34 @@ func NewGetObjectScheduleRequest(server string, namespace InPathNamespace, kind 
 		return nil, err
 	}
 
-	operationPath := fmt.Sprintf("/object/path/%s/%s/%s/schedule", pathParam0, pathParam1, pathParam2)
+	operationPath := fmt.Sprintf("/api/object/path/%s/%s/%s/schedule", pathParam0, pathParam1, pathParam2)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest("GET", queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
+// NewGetSwaggerRequest generates requests for GetSwagger
+func NewGetSwaggerRequest(server string) (*http.Request, error) {
+	var err error
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/api/openapi")
 	if operationPath[0] == '/' {
 		operationPath = "." + operationPath
 	}
@@ -10093,7 +10120,7 @@ func NewGetPoolsRequest(server string, params *GetPoolsParams) (*http.Request, e
 		return nil, err
 	}
 
-	operationPath := fmt.Sprintf("/pool")
+	operationPath := fmt.Sprintf("/api/pool")
 	if operationPath[0] == '/' {
 		operationPath = "." + operationPath
 	}
@@ -10142,7 +10169,7 @@ func NewGetPoolVolumesRequest(server string, params *GetPoolVolumesParams) (*htt
 		return nil, err
 	}
 
-	operationPath := fmt.Sprintf("/pool/volume")
+	operationPath := fmt.Sprintf("/api/pool/volume")
 	if operationPath[0] == '/' {
 		operationPath = "." + operationPath
 	}
@@ -10182,33 +10209,6 @@ func NewGetPoolVolumesRequest(server string, params *GetPoolVolumesParams) (*htt
 	return req, nil
 }
 
-// NewGetSwaggerRequest generates requests for GetSwagger
-func NewGetSwaggerRequest(server string) (*http.Request, error) {
-	var err error
-
-	serverURL, err := url.Parse(server)
-	if err != nil {
-		return nil, err
-	}
-
-	operationPath := fmt.Sprintf("/public/openapi")
-	if operationPath[0] == '/' {
-		operationPath = "." + operationPath
-	}
-
-	queryURL, err := serverURL.Parse(operationPath)
-	if err != nil {
-		return nil, err
-	}
-
-	req, err := http.NewRequest("GET", queryURL.String(), nil)
-	if err != nil {
-		return nil, err
-	}
-
-	return req, nil
-}
-
 // NewGetRelayMessageRequest generates requests for GetRelayMessage
 func NewGetRelayMessageRequest(server string, params *GetRelayMessageParams) (*http.Request, error) {
 	var err error
@@ -10218,7 +10218,7 @@ func NewGetRelayMessageRequest(server string, params *GetRelayMessageParams) (*h
 		return nil, err
 	}
 
-	operationPath := fmt.Sprintf("/relay/message")
+	operationPath := fmt.Sprintf("/api/relay/message")
 	if operationPath[0] == '/' {
 		operationPath = "." + operationPath
 	}
@@ -10302,7 +10302,7 @@ func NewPostRelayMessageRequestWithBody(server string, contentType string, body 
 		return nil, err
 	}
 
-	operationPath := fmt.Sprintf("/relay/message")
+	operationPath := fmt.Sprintf("/api/relay/message")
 	if operationPath[0] == '/' {
 		operationPath = "." + operationPath
 	}
@@ -10331,7 +10331,7 @@ func NewGetRelayStatusRequest(server string, params *GetRelayStatusParams) (*htt
 		return nil, err
 	}
 
-	operationPath := fmt.Sprintf("/relay/status")
+	operationPath := fmt.Sprintf("/api/relay/status")
 	if operationPath[0] == '/' {
 		operationPath = "." + operationPath
 	}
@@ -10396,7 +10396,7 @@ func NewGetResourcesRequest(server string, params *GetResourcesParams) (*http.Re
 		return nil, err
 	}
 
-	operationPath := fmt.Sprintf("/resource")
+	operationPath := fmt.Sprintf("/api/resource")
 	if operationPath[0] == '/' {
 		operationPath = "." + operationPath
 	}
@@ -10899,14 +10899,14 @@ type ClientWithResponsesInterface interface {
 	// GetObjectScheduleWithResponse request
 	GetObjectScheduleWithResponse(ctx context.Context, namespace InPathNamespace, kind InPathKind, name InPathName, reqEditors ...RequestEditorFn) (*GetObjectScheduleResponse, error)
 
+	// GetSwaggerWithResponse request
+	GetSwaggerWithResponse(ctx context.Context, reqEditors ...RequestEditorFn) (*GetSwaggerResponse, error)
+
 	// GetPoolsWithResponse request
 	GetPoolsWithResponse(ctx context.Context, params *GetPoolsParams, reqEditors ...RequestEditorFn) (*GetPoolsResponse, error)
 
 	// GetPoolVolumesWithResponse request
 	GetPoolVolumesWithResponse(ctx context.Context, params *GetPoolVolumesParams, reqEditors ...RequestEditorFn) (*GetPoolVolumesResponse, error)
-
-	// GetSwaggerWithResponse request
-	GetSwaggerWithResponse(ctx context.Context, reqEditors ...RequestEditorFn) (*GetSwaggerResponse, error)
 
 	// GetRelayMessageWithResponse request
 	GetRelayMessageWithResponse(ctx context.Context, params *GetRelayMessageParams, reqEditors ...RequestEditorFn) (*GetRelayMessageResponse, error)
@@ -14154,6 +14154,31 @@ func (r GetObjectScheduleResponse) StatusCode() int {
 	return 0
 }
 
+type GetSwaggerResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	JSON200      *map[string]interface{}
+	JSON401      *N401
+	JSON403      *N403
+	JSON500      *N500
+}
+
+// Status returns HTTPResponse.Status
+func (r GetSwaggerResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r GetSwaggerResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
 type GetPoolsResponse struct {
 	Body         []byte
 	HTTPResponse *http.Response
@@ -14198,31 +14223,6 @@ func (r GetPoolVolumesResponse) Status() string {
 
 // StatusCode returns HTTPResponse.StatusCode
 func (r GetPoolVolumesResponse) StatusCode() int {
-	if r.HTTPResponse != nil {
-		return r.HTTPResponse.StatusCode
-	}
-	return 0
-}
-
-type GetSwaggerResponse struct {
-	Body         []byte
-	HTTPResponse *http.Response
-	JSON200      *map[string]interface{}
-	JSON401      *N401
-	JSON403      *N403
-	JSON500      *N500
-}
-
-// Status returns HTTPResponse.Status
-func (r GetSwaggerResponse) Status() string {
-	if r.HTTPResponse != nil {
-		return r.HTTPResponse.Status
-	}
-	return http.StatusText(0)
-}
-
-// StatusCode returns HTTPResponse.StatusCode
-func (r GetSwaggerResponse) StatusCode() int {
 	if r.HTTPResponse != nil {
 		return r.HTTPResponse.StatusCode
 	}
@@ -15511,6 +15511,15 @@ func (c *ClientWithResponses) GetObjectScheduleWithResponse(ctx context.Context,
 	return ParseGetObjectScheduleResponse(rsp)
 }
 
+// GetSwaggerWithResponse request returning *GetSwaggerResponse
+func (c *ClientWithResponses) GetSwaggerWithResponse(ctx context.Context, reqEditors ...RequestEditorFn) (*GetSwaggerResponse, error) {
+	rsp, err := c.GetSwagger(ctx, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseGetSwaggerResponse(rsp)
+}
+
 // GetPoolsWithResponse request returning *GetPoolsResponse
 func (c *ClientWithResponses) GetPoolsWithResponse(ctx context.Context, params *GetPoolsParams, reqEditors ...RequestEditorFn) (*GetPoolsResponse, error) {
 	rsp, err := c.GetPools(ctx, params, reqEditors...)
@@ -15527,15 +15536,6 @@ func (c *ClientWithResponses) GetPoolVolumesWithResponse(ctx context.Context, pa
 		return nil, err
 	}
 	return ParseGetPoolVolumesResponse(rsp)
-}
-
-// GetSwaggerWithResponse request returning *GetSwaggerResponse
-func (c *ClientWithResponses) GetSwaggerWithResponse(ctx context.Context, reqEditors ...RequestEditorFn) (*GetSwaggerResponse, error) {
-	rsp, err := c.GetSwagger(ctx, reqEditors...)
-	if err != nil {
-		return nil, err
-	}
-	return ParseGetSwaggerResponse(rsp)
 }
 
 // GetRelayMessageWithResponse request returning *GetRelayMessageResponse
@@ -22327,6 +22327,53 @@ func ParseGetObjectScheduleResponse(rsp *http.Response) (*GetObjectScheduleRespo
 	return response, nil
 }
 
+// ParseGetSwaggerResponse parses an HTTP response from a GetSwaggerWithResponse call
+func ParseGetSwaggerResponse(rsp *http.Response) (*GetSwaggerResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &GetSwaggerResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest map[string]interface{}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest N401
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest N403
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON403 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
+		var dest N500
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON500 = &dest
+
+	}
+
+	return response, nil
+}
+
 // ParseGetPoolsResponse parses an HTTP response from a GetPoolsWithResponse call
 func ParseGetPoolsResponse(rsp *http.Response) (*GetPoolsResponse, error) {
 	bodyBytes, err := io.ReadAll(rsp.Body)
@@ -22390,53 +22437,6 @@ func ParseGetPoolVolumesResponse(rsp *http.Response) (*GetPoolVolumesResponse, e
 	switch {
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
 		var dest PoolVolumeList
-		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
-			return nil, err
-		}
-		response.JSON200 = &dest
-
-	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
-		var dest N401
-		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
-			return nil, err
-		}
-		response.JSON401 = &dest
-
-	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
-		var dest N403
-		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
-			return nil, err
-		}
-		response.JSON403 = &dest
-
-	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
-		var dest N500
-		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
-			return nil, err
-		}
-		response.JSON500 = &dest
-
-	}
-
-	return response, nil
-}
-
-// ParseGetSwaggerResponse parses an HTTP response from a GetSwaggerWithResponse call
-func ParseGetSwaggerResponse(rsp *http.Response) (*GetSwaggerResponse, error) {
-	bodyBytes, err := io.ReadAll(rsp.Body)
-	defer func() { _ = rsp.Body.Close() }()
-	if err != nil {
-		return nil, err
-	}
-
-	response := &GetSwaggerResponse{
-		Body:         bodyBytes,
-		HTTPResponse: rsp,
-	}
-
-	switch {
-	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
-		var dest map[string]interface{}
 		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
 			return nil, err
 		}
