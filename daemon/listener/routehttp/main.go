@@ -46,6 +46,7 @@ func New(ctx context.Context, enableUI bool) *T {
 	e.Use(daemonapi.AuthMiddleware(ctx))
 	e.Use(daemonapi.LogUserMiddleware(ctx))
 	e.Use(daemonapi.LogRequestMiddleWare(ctx))
+	api.RegisterHandlersWithBaseURL(e, daemonapi.New(ctx), "/api")
 	api.RegisterHandlers(e, daemonapi.New(ctx))
 	g := e.Group("/public/ui")
 	if enableUI {
