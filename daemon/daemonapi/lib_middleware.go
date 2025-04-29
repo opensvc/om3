@@ -76,27 +76,15 @@ func AuthMiddleware(parent context.Context) echo.MiddlewareFunc {
 		}
 		usrPath := c.Path()
 		// TODO confirm no auth GET /metrics
-		isPublicPath := func(usrPath string) bool {
-			switch {
-			case strings.HasPrefix(usrPath, "/public/"):
+		if strings.HasPrefix(usrPath, "/api/docs") {
+			return true
+		} else if strings.HasPrefix(usrPath, "/api/") {
+			if usrPath == "/api/auth/info" || usrPath == "/api/openapi" {
 				return true
-			case strings.HasPrefix(usrPath, "/metrics"):
-				return true
-			case strings.HasPrefix(usrPath, "/auth/info"):
-				return true
-			case strings.HasPrefix(usrPath, "/auth-callback"):
-				return true
-			case usrPath == "/index.js":
-				return true
-			case usrPath == "/favicon.ico":
-				return true
-			case usrPath == "/":
-				return true
-			default:
-				return false
 			}
+			return false
 		}
-		return isPublicPath(usrPath)
+		return true
 	}
 
 	return func(next echo.HandlerFunc) echo.HandlerFunc {
@@ -182,8 +170,9 @@ func LogRequestMiddleWare(parent context.Context) echo.MiddlewareFunc {
 	}
 }
 
-func UIMiddleware(_ context.Context) echo.MiddlewareFunc {
-	uiHandler := http.StripPrefix("/public/ui", swaggerui.Handler("/public/openapi"))
+func UIMiddleware(_ context.Context, prefix string, specURL string) echo.MiddlewareFunc {
+	uiHandler := http.StripPrefix(prefix, swaggerui.Handler(specURL))
+	//uiHandler := swaggerui.Handler(specURL)
 	echoUI := echo.WrapHandler(uiHandler)
 
 	return func(next echo.HandlerFunc) echo.HandlerFunc {
