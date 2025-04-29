@@ -16,7 +16,6 @@ import (
 
 	"github.com/opensvc/om3/core/driver"
 	"github.com/opensvc/om3/core/naming"
-	"github.com/opensvc/om3/core/status"
 	"github.com/opensvc/om3/util/file"
 	"github.com/opensvc/om3/util/plog"
 )
@@ -401,15 +400,14 @@ func (t *dataStore) InstallKeyTo(opt KVInstall) error {
 }
 
 func (t *dataStore) postInstall(k string) error {
-	type resvoler interface {
+	type receiver interface {
+		CanInstall(context.Context) (bool, error)
 		InstallFromDatastore(DataStore) (bool, error)
 		InstallDataByKind(naming.Kind) (bool, error)
-		HasMetadata(p naming.Path, k string) bool
-		Volume() (Vol, error)
+		HasMetadata(naming.Path, string) bool
 		SendSignals(context.Context) error
 	}
 	ctx := context.Background()
-	changedVolumes := make(map[naming.Path]resvoler)
 	paths, err := naming.InstalledPaths()
 	if err != nil {
 		return err
@@ -425,48 +423,39 @@ func (t *dataStore) postInstall(k string) error {
 		if err != nil {
 			return err
 		}
-		for _, r := range resourcesByDrivergroups(o, []driver.Group{driver.GroupVolume}) {
+		var onChange func(context.Context) error
+		for _, r := range resourcesByDrivergroups(o, []driver.Group{driver.GroupVolume, driver.GroupFS}) {
 			var i interface{} = r
-			v := i.(resvoler)
-			if !v.HasMetadata(t.path, k) {
+			receiverResource, ok := i.(receiver)
+			if !ok {
 				continue
 			}
-			vol, err := v.Volume()
-			if err != nil {
-				t.log.Warnf("post install %s %s: %s", p, r.RID(), err)
+			if !receiverResource.HasMetadata(t.path, k) {
 				continue
 			}
-			st, err := vol.Status(ctx)
-			if err != nil {
-				t.log.Warnf("post install %s %s: %s", p, r.RID(), err)
-				continue
-			}
-			if st.Avail != status.Up {
+			if ok, err := receiverResource.CanInstall(ctx); err != nil {
+				return err
+			} else if !ok {
 				continue
 			}
 
-			changed, err := v.InstallFromDatastore(t)
-			if err != nil {
+			if v, err := receiverResource.InstallFromDatastore(t); err != nil {
 				return err
-			}
-			if changed {
-				changedVolumes[vol.Path()] = v
+			} else if v {
+				onChange = receiverResource.SendSignals
 			}
 
-			changed, err = v.InstallDataByKind(t.path.Kind)
-			if err != nil {
+			if v, err := receiverResource.InstallDataByKind(t.path.Kind); err != nil {
 				return err
-			}
-			if changed {
-				changedVolumes[vol.Path()] = v
+			} else if v {
+				onChange = receiverResource.SendSignals
 			}
 		}
-	}
-	for p, v := range changedVolumes {
-		t.log.Debugf("signal key %s referrer: %s", k, p)
-		if err := v.SendSignals(ctx); err != nil {
-			t.log.Warnf("post install %s: %s", p, err)
-			continue
+		if onChange != nil {
+			t.log.Debugf("signal key %s referrer: %s", k, p)
+			if err := onChange(ctx); err != nil {
+				return err
+			}
 		}
 	}
 	return nil

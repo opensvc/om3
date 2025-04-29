@@ -31,6 +31,7 @@ func (t *T) Manifest() *manifest.T {
 		manifest.ContextObjectPath,
 		manifest.ContextObjectParents,
 		manifest.ContextTopology,
+		manifest.KWToInstall,
 		keywords.Keyword{
 			Attr:     "Name",
 			Default:  "{name}-vol-{rindex}",
@@ -86,14 +87,6 @@ func (t *T) Manifest() *manifest.T {
 			Provisioning: true,
 			Scopable:     true,
 			Text:         keywords.NewText(fs, "text/kw/format"),
-		},
-		keywords.Keyword{
-			Attr:      "ToInstall",
-			Converter: converters.Shlex,
-			Example:   "file from sec {name} key password to path /data/password mode 0600 user 1000 group 1000",
-			Option:    "install",
-			Scopable:  true,
-			Text:      keywords.NewText(fs, "text/kw/install"),
 		},
 		keywords.Keyword{
 			Attr:      "Configs",

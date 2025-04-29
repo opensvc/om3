@@ -51,24 +51,14 @@ import (
 type (
 	T struct {
 		resource.T
-		Name      string       `json:"name"`
-		Access    string       `json:"access"`
-		Pool      string       `json:"pool"`
-		PoolType  string       `json:"type"`
-		Size      *int64       `json:"size"`
-		Format    bool         `json:"format"`
-		ToInstall []string     `json:"install"`
-		User      string       `json:"user"`
-		Group     string       `json:"group"`
-		Perm      *os.FileMode `json:"perm"`
-		DirPerm   *os.FileMode `json:"dirperm"`
-		Signal    string       `json:"signal"`
-		VolNodes  []string
-
-		// Deprecated
-		Configs     []string `json:"configs"`
-		Secrets     []string `json:"secrets"`
-		Directories []string `json:"directories"`
+		DataStoreInstall
+		Name     string `json:"name"`
+		Access   string `json:"access"`
+		Pool     string `json:"pool"`
+		PoolType string `json:"type"`
+		Size     *int64 `json:"size"`
+		Format   bool   `json:"format"`
+		VolNodes []string
 
 		// Context
 		Path          naming.Path
@@ -149,7 +139,7 @@ func (t *T) Start(ctx context.Context) error {
 	if err = t.startFlag(ctx); err != nil {
 		return err
 	}
-	if err = t.installData(ctx); err != nil {
+	if err = t.DataStoreInstall.Do(ctx); err != nil {
 		return err
 	}
 	return nil
@@ -199,6 +189,21 @@ func (t *T) name() string {
 	return t.Path.Name + "-vol-" + t.ResourceID.Index()
 }
 
+func (t *T) CanInstall(ctx context.Context) (bool, error) {
+	volume, err := t.Volume()
+	if err != nil {
+		return false, err
+	}
+	st, err := volume.Status(ctx)
+	if err != nil {
+		return false, err
+	}
+	if st.Avail != status.Up {
+		return false, nil
+	}
+	return true, nil
+}
+
 func (t *T) Status(ctx context.Context) status.T {
 	volume, err := t.Volume()
 	if err != nil {
@@ -218,7 +223,7 @@ func (t *T) Status(ctx context.Context) status.T {
 	if data.Overall == status.Warn {
 		t.StatusLog().Error("Volume %s has warnings", volume.Path())
 	}
-	t.statusData()
+	t.DataStoreInstall.Status()
 	if !t.flagInstalled() {
 		if data.Avail == status.Warn {
 			t.StatusLog().Error("%s avail %s", volume.Path(), data.Avail)
@@ -575,11 +580,8 @@ func (t *T) ExposedDevices() device.L {
 	return volume.Devices()
 }
 
-// getDirPerm returns the driver dir perm value. When t.DirPerm is nil (when kw
-// has no default value or unexpected value) the defaultDirPerm is returned.
-func (t *T) getDirPerm() *os.FileMode {
-	if t.DirPerm == nil {
-		return &defaultDirPerm
-	}
-	return t.DirPerm
+// Configure installs a resource backpointer in the DataStoreInstall
+func (t *T) Configure() error {
+	t.DataStoreInstall.SetReceiver(t)
+	return nil
 }
