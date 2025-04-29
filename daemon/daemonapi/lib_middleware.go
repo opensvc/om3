@@ -76,7 +76,9 @@ func AuthMiddleware(parent context.Context) echo.MiddlewareFunc {
 		}
 		usrPath := c.Path()
 		// TODO confirm no auth GET /metrics
-		if strings.HasPrefix(usrPath, "/api/") {
+		if strings.HasPrefix(usrPath, "/api/docs") {
+			return true
+		} else if strings.HasPrefix(usrPath, "/api/") {
 			if usrPath == "/api/auth/info" || usrPath == "/api/openapi" {
 				return true
 			}
@@ -170,6 +172,7 @@ func LogRequestMiddleWare(parent context.Context) echo.MiddlewareFunc {
 
 func UIMiddleware(_ context.Context, prefix string, specURL string) echo.MiddlewareFunc {
 	uiHandler := http.StripPrefix(prefix, swaggerui.Handler(specURL))
+	//uiHandler := swaggerui.Handler(specURL)
 	echoUI := echo.WrapHandler(uiHandler)
 
 	return func(next echo.HandlerFunc) echo.HandlerFunc {
