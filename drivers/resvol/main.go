@@ -30,6 +30,7 @@ import (
 
 	"github.com/opensvc/om3/core/actioncontext"
 	"github.com/opensvc/om3/core/actionrollback"
+	"github.com/opensvc/om3/core/datarecv"
 	"github.com/opensvc/om3/core/instance"
 	"github.com/opensvc/om3/core/keyop"
 	"github.com/opensvc/om3/core/naming"
@@ -51,7 +52,7 @@ import (
 type (
 	T struct {
 		resource.T
-		DataStoreInstall
+		datarecv.DataRecv
 		Name     string `json:"name"`
 		Access   string `json:"access"`
 		Pool     string `json:"pool"`
@@ -71,19 +72,6 @@ type (
 const (
 	Usage int = iota
 	NoUsage
-)
-
-var (
-	// defaultSecPerm is the default KVInstall.AccessControl.Perm for
-	// secrets parseReference when driver perm is undefined.
-	defaultSecPerm = os.FileMode(0600)
-
-	// defaultCfgPerm is the default KVInstall.AccessControl.Perm for
-	// configs parseReference when driver perm is undefined.
-	defaultCfgPerm = os.FileMode(0644)
-
-	// defaultDirPerm
-	defaultDirPerm = os.FileMode(0700)
 )
 
 func New() resource.Driver {
@@ -139,7 +127,7 @@ func (t *T) Start(ctx context.Context) error {
 	if err = t.startFlag(ctx); err != nil {
 		return err
 	}
-	if err = t.DataStoreInstall.Do(ctx); err != nil {
+	if err = t.DataRecv.Do(ctx); err != nil {
 		return err
 	}
 	return nil
@@ -223,7 +211,7 @@ func (t *T) Status(ctx context.Context) status.T {
 	if data.Overall == status.Warn {
 		t.StatusLog().Error("Volume %s has warnings", volume.Path())
 	}
-	t.DataStoreInstall.Status()
+	t.DataRecv.Status()
 	if !t.flagInstalled() {
 		if data.Avail == status.Warn {
 			t.StatusLog().Error("%s avail %s", volume.Path(), data.Avail)
@@ -582,6 +570,6 @@ func (t *T) ExposedDevices() device.L {
 
 // Configure installs a resource backpointer in the DataStoreInstall
 func (t *T) Configure() error {
-	t.DataStoreInstall.SetReceiver(t)
+	t.DataRecv.SetReceiver(t)
 	return nil
 }

@@ -313,15 +313,6 @@ var (
 		Text:    keywords.NewText(fs, "text/kw/unprovision_requires"),
 	}
 
-	KWToInstall = keywords.Keyword{
-		Attr:      "ToInstall",
-		Converter: converters.Shlex,
-		Example:   "file from sec {name} key password to path /data/password mode 0600 user 1000 group 1000",
-		Option:    "install",
-		Scopable:  true,
-		Text:      keywords.NewText(fs, "text/kw/install"),
-	}
-
 	SCSIPersistentReservationKeywords = []keywords.Keyword{
 		KWSCSIPersistentReservationEnabled,
 		KWSCSIPersistentReservationKey,

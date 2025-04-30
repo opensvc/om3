@@ -425,8 +425,7 @@ func (t *dataStore) postInstall(k string) error {
 		}
 		var onChange func(context.Context) error
 		for _, r := range resourcesByDrivergroups(o, []driver.Group{driver.GroupVolume, driver.GroupFS}) {
-			var i interface{} = r
-			receiverResource, ok := i.(receiver)
+			receiverResource, ok := any(r).(receiver)
 			if !ok {
 				continue
 			}

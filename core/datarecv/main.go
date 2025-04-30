@@ -1,7 +1,8 @@
-package resvol
+package datarecv
 
 import (
 	"context"
+	"embed"
 	"fmt"
 	"os"
 	"os/user"
@@ -13,21 +14,23 @@ import (
 
 	"golang.org/x/sys/unix"
 
+	"github.com/opensvc/om3/core/keywords"
 	"github.com/opensvc/om3/core/naming"
 	"github.com/opensvc/om3/core/object"
 	"github.com/opensvc/om3/core/resource"
 	"github.com/opensvc/om3/core/volsignal"
+	"github.com/opensvc/om3/util/converters"
 	"github.com/opensvc/om3/util/plog"
 )
 
 type (
-	DataStoreInstall struct {
-		ToInstall []string     `json:"install"`
-		User      string       `json:"user"`
-		Group     string       `json:"group"`
-		Perm      *os.FileMode `json:"perm"`
-		DirPerm   *os.FileMode `json:"dirperm"`
-		Signal    string       `json:"signal"`
+	DataRecv struct {
+		Install []string     `json:"install"`
+		User    string       `json:"user"`
+		Group   string       `json:"group"`
+		Perm    *os.FileMode `json:"perm"`
+		DirPerm *os.FileMode `json:"dirperm"`
+		Signal  string       `json:"signal"`
 
 		// Deprecated
 		Configs     []string `json:"configs"`
@@ -36,10 +39,6 @@ type (
 
 		to receiver
 	}
-
-	// Reference is an element of the Configs and Secrets T field.
-	// This type exists to host the parsing functions.
-	Reference string
 
 	// SigRoute is a relation between a signal number and the id of a resource supporting signaling
 	SigRoute struct {
@@ -60,27 +59,122 @@ type (
 	}
 )
 
-func (t *DataStoreInstall) SetReceiver(to receiver) {
+var (
+	//go:embed text
+	fs embed.FS
+
+	// defaultSecPerm is the default KVInstall.AccessControl.Perm for
+	// secrets parseReference when driver perm is undefined.
+	defaultSecPerm = os.FileMode(0600)
+
+	// defaultCfgPerm is the default KVInstall.AccessControl.Perm for
+	// configs parseReference when driver perm is undefined.
+	defaultCfgPerm = os.FileMode(0644)
+
+	// defaultDirPerm
+	defaultDirPerm = os.FileMode(0700)
+)
+
+func Keywords(prefix string) []keywords.Keyword {
+	return []keywords.Keyword{
+		keywords.Keyword{
+			Attr:      prefix + "Install",
+			Converter: converters.Shlex,
+			Example:   "file from sec {name} key password to path /data/password mode 0600 user 1000 group 1000",
+			Option:    "install",
+			Scopable:  true,
+			Text:      keywords.NewText(fs, "text/kw/install"),
+		},
+		keywords.Keyword{
+			Attr:      prefix + "Configs",
+			Converter: converters.Shlex,
+			Example:   "conf/mycnf:/etc/mysql/my.cnf:ro conf/sysctl:/etc/sysctl.d/01-db.conf",
+			Option:    "configs",
+			Scopable:  true,
+			Text:      keywords.NewText(fs, "text/kw/configs"),
+		},
+		keywords.Keyword{
+			Attr:      prefix + "Secrets",
+			Converter: converters.Shlex,
+			Default:   "",
+			Example:   "cert/pem:server.pem cert/key:server.key",
+			Option:    "secrets",
+			Scopable:  true,
+			Text:      keywords.NewText(fs, "text/kw/secrets"),
+			Types:     []string{"shm"},
+		},
+		keywords.Keyword{
+			Attr:      prefix + "Directories",
+			Converter: converters.List,
+			Default:   "",
+			Example:   "a/b/c d /e",
+			Option:    "directories",
+			Scopable:  true,
+			Text:      keywords.NewText(fs, "text/kw/directories"),
+		},
+		keywords.Keyword{
+			Attr:     prefix + "User",
+			Example:  "1001",
+			Option:   "user",
+			Scopable: true,
+			Text:     keywords.NewText(fs, "text/kw/user"),
+		},
+		keywords.Keyword{
+			Attr:     prefix + "Group",
+			Example:  "1001",
+			Option:   "group",
+			Scopable: true,
+			Text:     keywords.NewText(fs, "text/kw/group"),
+		},
+		keywords.Keyword{
+			Attr:      prefix + "Perm",
+			Converter: converters.FileMode,
+			Example:   "660",
+			Option:    "perm",
+			Scopable:  true,
+			Text:      keywords.NewText(fs, "text/kw/perm"),
+		},
+		keywords.Keyword{
+			Attr:      prefix + "DirPerm",
+			Converter: converters.FileMode,
+			// Default value is fmt.Sprintf("%o", defaultDirPerm)
+			Default:  "700",
+			Example:  "750",
+			Option:   "dirperm",
+			Scopable: true,
+			Text:     keywords.NewText(fs, "text/kw/dirperm"),
+		},
+		keywords.Keyword{
+			Attr:     prefix + "Signal",
+			Example:  "hup:container#1",
+			Option:   "signal",
+			Scopable: true,
+			Text:     keywords.NewText(fs, "text/kw/signal"),
+		},
+	}
+}
+
+func (t *DataRecv) SetReceiver(to receiver) {
 	t.to = to
 }
 
 // getDirPerm returns the driver dir perm value. When t.DirPerm is nil (when kw
 // has no default value or unexpected value) the defaultDirPerm is returned.
-func (t *DataStoreInstall) getDirPerm() *os.FileMode {
+func (t *DataRecv) getDirPerm() *os.FileMode {
 	if t.DirPerm == nil {
 		return &defaultDirPerm
 	}
 	return t.DirPerm
 }
 
-func (t *DataStoreInstall) getRefs() []string {
+func (t *DataRecv) getRefs() []string {
 	refs := make([]string, 0)
 	refs = append(refs, t.getRefsByKind(naming.KindSec)...)
 	refs = append(refs, t.getRefsByKind(naming.KindCfg)...)
 	return refs
 }
 
-func (t *DataStoreInstall) getRefsByKind(kind naming.Kind) []string {
+func (t *DataRecv) getRefsByKind(kind naming.Kind) []string {
 	refs := make([]string, 0)
 	switch kind {
 	case naming.KindSec:
@@ -91,7 +185,7 @@ func (t *DataStoreInstall) getRefsByKind(kind naming.Kind) []string {
 	return refs
 }
 
-func (t *DataStoreInstall) getMetadata() []object.KVInstall {
+func (t *DataRecv) getMetadata() []object.KVInstall {
 	head := t.to.Head()
 	l := make([]object.KVInstall, 0)
 	_, files := t.getInstallMetadata(head)
@@ -100,7 +194,7 @@ func (t *DataStoreInstall) getMetadata() []object.KVInstall {
 	return l
 }
 
-func (t *DataStoreInstall) getMetadataByKind(head string, kinds ...naming.Kind) []object.KVInstall {
+func (t *DataRecv) getMetadataByKind(head string, kinds ...naming.Kind) []object.KVInstall {
 	l := make([]object.KVInstall, 0)
 	for _, kind := range kinds {
 		refs := t.getRefsByKind(kind)
@@ -123,7 +217,7 @@ func (t *DataStoreInstall) getMetadataByKind(head string, kinds ...naming.Kind) 
 
 // HasMetadata returns true if the volume has a configs or secrets reference to
 // <namespace>/<kind>/<name>[/<key>]
-func (t *DataStoreInstall) HasMetadata(path naming.Path, k string) bool {
+func (t *DataRecv) HasMetadata(path naming.Path, k string) bool {
 	head := t.to.Head()
 	_, installMetadata := t.getInstallMetadata(head)
 	for _, md := range installMetadata {
@@ -145,7 +239,7 @@ func (t *DataStoreInstall) HasMetadata(path naming.Path, k string) bool {
 	return false
 }
 
-func (t *DataStoreInstall) parseReference(s string, withKind naming.Kind, head string) object.KVInstall {
+func (t *DataRecv) parseReference(s string, withKind naming.Kind, head string) object.KVInstall {
 	path := t.to.GetObject().(object.Core).Path()
 	if head == "" {
 		return object.KVInstall{}
@@ -231,7 +325,7 @@ func (t *DataStoreInstall) parseReference(s string, withKind naming.Kind, head s
 	}
 }
 
-func (t *DataStoreInstall) Status() {
+func (t *DataRecv) Status() {
 	path := t.to.GetObject().(object.Core).Path()
 	for _, md := range t.getMetadata() {
 		if !md.FromStore.Exists() {
@@ -268,7 +362,7 @@ type dirDefinition struct {
 	Required bool
 }
 
-func (t *DataStoreInstall) InstallFromDatastore(from object.DataStore) (bool, error) {
+func (t *DataRecv) InstallFromDatastore(from object.DataStore) (bool, error) {
 	changed := false
 	head := t.to.Head()
 	path := t.to.GetObject().(object.Core).Path()
@@ -312,7 +406,7 @@ func (t *DataStoreInstall) InstallFromDatastore(from object.DataStore) (bool, er
 	return changed, nil
 }
 
-func (t *DataStoreInstall) install(ctx context.Context) (bool, error) {
+func (t *DataRecv) install(ctx context.Context) (bool, error) {
 	changed := false
 	head := t.to.Head()
 	path := t.to.GetObject().(object.Core).Path()
@@ -358,7 +452,7 @@ func (t *DataStoreInstall) install(ctx context.Context) (bool, error) {
 	return changed, nil
 }
 
-func (t *DataStoreInstall) getInstallMetadata(head string) ([]dirDefinition, []object.KVInstall) {
+func (t *DataRecv) getInstallMetadata(head string) ([]dirDefinition, []object.KVInstall) {
 	path := t.to.GetObject().(object.Core).Path()
 	files := make([]object.KVInstall, 0)
 	dirs := make([]dirDefinition, 0)
@@ -370,14 +464,14 @@ func (t *DataStoreInstall) getInstallMetadata(head string) ([]dirDefinition, []o
 		if !strings.HasPrefix(word, "/") {
 			return false
 		}
-		return i < 1 || t.ToInstall[i-1] != "key"
+		return i < 1 || t.Install[i-1] != "key"
 	}
 
 	split := func() [][]string {
 		var line []string
 		lines := make([][]string, 0)
 		in := false
-		for i, word := range t.ToInstall {
+		for i, word := range t.Install {
 			if isSep(word, i) {
 				if in {
 					lines = append(lines, line)
@@ -547,7 +641,7 @@ func (t *DataStoreInstall) getInstallMetadata(head string) ([]dirDefinition, []o
 	return dirs, files
 }
 
-func (t *DataStoreInstall) Do(ctx context.Context) error {
+func (t *DataRecv) Do(ctx context.Context) error {
 	changed := false
 
 	if v, err := t.install(ctx); err != nil {
@@ -574,7 +668,7 @@ func (t *DataStoreInstall) Do(ctx context.Context) error {
 	return nil
 }
 
-func (t *DataStoreInstall) signalData() []SigRoute {
+func (t *DataRecv) signalData() []SigRoute {
 	routes := make([]SigRoute, 0)
 	for i, ridmap := range volsignal.Parse(t.Signal) {
 		for rid := range ridmap {
@@ -587,7 +681,7 @@ func (t *DataStoreInstall) signalData() []SigRoute {
 	return routes
 }
 
-func (t *DataStoreInstall) SendSignals(ctx context.Context) error {
+func (t *DataRecv) SendSignals(ctx context.Context) error {
 	o, ok := t.to.GetObject().(signaler)
 	if !ok {
 		return fmt.Errorf("%s does not implement SignalResource()", o.Path())
@@ -601,7 +695,7 @@ func (t *DataStoreInstall) SendSignals(ctx context.Context) error {
 	return nil
 }
 
-func (t *DataStoreInstall) InstallDataByKind(kind naming.Kind) (bool, error) {
+func (t *DataRecv) InstallDataByKind(kind naming.Kind) (bool, error) {
 	var changed bool
 	head := t.to.Head()
 	path := t.to.GetObject().(object.Core).Path()
@@ -629,14 +723,14 @@ func (t *DataStoreInstall) InstallDataByKind(kind naming.Kind) (bool, error) {
 	return changed, nil
 }
 
-func (t *DataStoreInstall) chmod(p string, mode *os.FileMode) error {
+func (t *DataRecv) chmod(p string, mode *os.FileMode) error {
 	if mode == nil {
 		return nil
 	}
 	return os.Chmod(p, *mode)
 }
 
-func (t *DataStoreInstall) chown(p string, usr, grp string, info os.FileInfo) error {
+func (t *DataRecv) chown(p string, usr, grp string, info os.FileInfo) error {
 	var uid, gid int
 	if usr != "" {
 		if i, err := strconv.Atoi(usr); err == nil {
@@ -674,7 +768,7 @@ func (t *DataStoreInstall) chown(p string, usr, grp string, info os.FileInfo) er
 	return os.Chown(p, uid, gid)
 }
 
-func (t *DataStoreInstall) installDir(path string, head string, perm os.FileMode, user, group string) error {
+func (t *DataRecv) installDir(path string, head string, perm os.FileMode, user, group string) error {
 	if head == "" {
 		return fmt.Errorf("refuse to install dir %s in /", path)
 	}
@@ -708,7 +802,7 @@ func (t *DataStoreInstall) installDir(path string, head string, perm os.FileMode
 	return nil
 }
 
-func (t *DataStoreInstall) installDirs() error {
+func (t *DataRecv) installDirs() error {
 	if len(t.Directories) == 0 {
 		return nil
 	}
