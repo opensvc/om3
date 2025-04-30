@@ -172,6 +172,7 @@ func init() {
 		newCmdNodeConfigEval(),
 		newCmdNodeConfigGet(),
 		newCmdNodeConfigShow(),
+		newCmdNodeConfigUpdate(),
 		newCmdNodeConfigValidate(),
 	)
 	cmdNodePrint.AddCommand(

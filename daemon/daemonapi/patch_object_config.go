@@ -91,13 +91,12 @@ func (a *DaemonAPI) PatchObjectConfig(ctx echo.Context, namespace string, kind n
 			log.Debugf("Validate has errors %s", p)
 			return JSONProblemf(ctx, http.StatusBadRequest, "Validate config", "%s", alerts.StringWithoutMeta())
 		}
-		log.Infof("committing %s", p)
+		changed := oc.Config().Changed()
 		if err := oc.Config().CommitInvalid(); err != nil {
 			log.Errorf("CommitInvalid %s: %s", p, err)
 			return JSONProblemf(ctx, http.StatusInternalServerError, "Commit", "%s", err)
 		}
-		log.Infof("committed %s", p)
-		return ctx.NoContent(http.StatusNoContent)
+		return ctx.JSON(http.StatusOK, api.Committed{IsChanged: changed})
 	}
 
 	for nodename := range instanceConfigData {

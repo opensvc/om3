@@ -47,6 +47,9 @@ func (t *CmdObjectConfigUpdate) Run(kind string) error {
 	doneC := make(chan string)
 	todo := len(paths)
 
+	prefix := ""
+	noPrefix := len(paths) == 1
+
 	for _, path := range paths {
 		go func(p naming.Path) {
 			defer func() { doneC <- p.String() }()
@@ -60,8 +63,15 @@ func (t *CmdObjectConfigUpdate) Run(kind string) error {
 				return
 			}
 			switch response.StatusCode() {
-			case 204:
-				fmt.Printf("%s: committed\n", p)
+			case 200:
+				if !noPrefix {
+					prefix = path.String() + ": "
+				}
+				if response.JSON200.IsChanged {
+					fmt.Printf("%scommitted\n", prefix)
+				} else {
+					fmt.Printf("%sunchanged\n", prefix)
+				}
 			case 400:
 				errC <- fmt.Errorf("%s: %s", p, *response.JSON400)
 			case 401:
