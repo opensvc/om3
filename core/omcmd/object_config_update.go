@@ -28,6 +28,10 @@ type (
 )
 
 func (t *CmdObjectConfigUpdate) Run(kind string) error {
+	if len(t.Delete) == 0 && len(t.Set) == 0 && len(t.Unset) == 0 {
+		fmt.Println("no changes requested")
+		return nil
+	}
 	mergedSelector := commoncmd.MergeSelector("", t.ObjectSelector, kind, "")
 	if t.Local {
 		return t.doObjectAction(mergedSelector)
