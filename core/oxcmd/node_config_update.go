@@ -24,6 +24,10 @@ type (
 )
 
 func (t *CmdNodeConfigUpdate) Run() error {
+	if len(t.Set) == 0 && len(t.Unset) == 0 && len(t.Delete) == 0 {
+		fmt.Println("no change requested")
+		return nil
+	}
 	if t.NodeSelector != "" {
 		return t.doRemote()
 	}
@@ -52,6 +56,9 @@ func (t *CmdNodeConfigUpdate) doRemote() error {
 	doneC := make(chan string)
 	todo := len(nodenames)
 
+	noPrefix := len(nodenames) == 1
+	prefix := ""
+
 	for _, nodename := range nodenames {
 		go func(nodename string) {
 			defer func() { doneC <- nodename }()
@@ -62,6 +69,14 @@ func (t *CmdNodeConfigUpdate) doRemote() error {
 			}
 			switch {
 			case response.JSON200 != nil:
+				if !noPrefix {
+					prefix = nodename + ": "
+				}
+				if response.JSON200.IsChanged {
+					fmt.Printf("%scommitted\n", prefix)
+				} else {
+					fmt.Printf("%sunchanged\n", prefix)
+				}
 			case response.JSON400 != nil:
 				errC <- fmt.Errorf("%s: %s", nodename, *response.JSON400)
 			case response.JSON401 != nil:

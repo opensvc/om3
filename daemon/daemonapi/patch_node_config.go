@@ -37,8 +37,16 @@ func (a *DaemonAPI) patchLocalNodeConfig(ctx echo.Context, params api.PatchNodeC
 		unsets = key.ParseStrings(*params.Unset)
 	}
 	if params.Delete != nil {
-		deletes = *params.Delete
+		for _, section := range *params.Delete {
+			if section == "" {
+				// Prevents from accidental remove DEFAULT section. SectionsByName("")
+				// return "DEFAULT". Use explicit section="DEFAULT" to remove DEFAULT section.
+				continue
+			}
+			deletes = append(deletes, section)
+		}
 	}
+
 	if len(sets)+len(unsets)+len(deletes) == 0 {
 		return JSONProblemf(ctx, http.StatusBadRequest, "No valid update requested", "")
 	}
@@ -58,7 +66,6 @@ func (a *DaemonAPI) patchLocalNodeConfig(ctx echo.Context, params api.PatchNodeC
 	if alerts.HasError() {
 		return JSONProblemf(ctx, http.StatusBadRequest, "Validate config", "%s", alerts)
 	}
-
 	changed := oc.Config().Changed()
 
 	err = oc.Config().CommitInvalid()
@@ -66,5 +73,5 @@ func (a *DaemonAPI) patchLocalNodeConfig(ctx echo.Context, params api.PatchNodeC
 		return JSONProblemf(ctx, http.StatusInternalServerError, "Commit", "%s", err)
 	}
 
-	return ctx.JSON(http.StatusOK, api.Committed{Ischanged: changed})
+	return ctx.JSON(http.StatusOK, api.Committed{IsChanged: changed})
 }

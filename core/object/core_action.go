@@ -361,7 +361,10 @@ func (t *actor) action(ctx context.Context, fn resourceset.DoFunc) error {
 	defer stop()
 	defer func() {
 		sb := statusbus.FromContext(ctx)
-		statusIcon := instanceStatusIcon(sb.Get("avail"), sb.Get("overall"))
+		statusIcon := sb.Get("avail").String()
+		if overallStatus := sb.Get("overall"); overallStatus == status.Warn {
+			statusIcon += ", with warnings"
+		}
 		logger.Attr("duration", time.Now().Sub(beginTime)).Infof("■ done %s %s in %s, instance status is now %s", action.Name, os.Args, time.Now().Sub(beginTime), statusIcon)
 	}()
 

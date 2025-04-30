@@ -3,6 +3,7 @@ package resvol
 import (
 	"embed"
 
+	"github.com/opensvc/om3/core/datarecv"
 	"github.com/opensvc/om3/core/driver"
 	"github.com/opensvc/om3/core/keywords"
 	"github.com/opensvc/om3/core/manifest"
@@ -26,6 +27,7 @@ func init() {
 func (t *T) Manifest() *manifest.T {
 	m := manifest.New(drvID, t)
 	m.Kinds.Or(naming.KindSvc, naming.KindVol)
+	m.AddKeywords(datarecv.Keywords("DataRecv.")...)
 	m.Add(
 		manifest.ContextNodes,
 		manifest.ContextObjectPath,
@@ -86,80 +88,6 @@ func (t *T) Manifest() *manifest.T {
 			Provisioning: true,
 			Scopable:     true,
 			Text:         keywords.NewText(fs, "text/kw/format"),
-		},
-		keywords.Keyword{
-			Attr:      "ToInstall",
-			Converter: converters.Shlex,
-			Example:   "file from sec {name} key password to path /data/password mode 0600 user 1000 group 1000",
-			Option:    "install",
-			Scopable:  true,
-			Text:      keywords.NewText(fs, "text/kw/install"),
-		},
-		keywords.Keyword{
-			Attr:      "Configs",
-			Converter: converters.Shlex,
-			Example:   "conf/mycnf:/etc/mysql/my.cnf:ro conf/sysctl:/etc/sysctl.d/01-db.conf",
-			Option:    "configs",
-			Scopable:  true,
-			Text:      keywords.NewText(fs, "text/kw/configs"),
-		},
-		keywords.Keyword{
-			Attr:      "Secrets",
-			Converter: converters.Shlex,
-			Default:   "",
-			Example:   "cert/pem:server.pem cert/key:server.key",
-			Option:    "secrets",
-			Scopable:  true,
-			Text:      keywords.NewText(fs, "text/kw/secrets"),
-			Types:     []string{"shm"},
-		},
-		keywords.Keyword{
-			Attr:      "Directories",
-			Converter: converters.List,
-			Default:   "",
-			Example:   "a/b/c d /e",
-			Option:    "directories",
-			Scopable:  true,
-			Text:      keywords.NewText(fs, "text/kw/directories"),
-		},
-		keywords.Keyword{
-			Attr:     "User",
-			Example:  "1001",
-			Option:   "user",
-			Scopable: true,
-			Text:     keywords.NewText(fs, "text/kw/user"),
-		},
-		keywords.Keyword{
-			Attr:     "Group",
-			Example:  "1001",
-			Option:   "group",
-			Scopable: true,
-			Text:     keywords.NewText(fs, "text/kw/group"),
-		},
-		keywords.Keyword{
-			Attr:      "Perm",
-			Converter: converters.FileMode,
-			Example:   "660",
-			Option:    "perm",
-			Scopable:  true,
-			Text:      keywords.NewText(fs, "text/kw/perm"),
-		},
-		keywords.Keyword{
-			Attr:      "DirPerm",
-			Converter: converters.FileMode,
-			// Default value is fmt.Sprintf("%o", defaultDirPerm)
-			Default:  "700",
-			Example:  "750",
-			Option:   "dirperm",
-			Scopable: true,
-			Text:     keywords.NewText(fs, "text/kw/dirperm"),
-		},
-		keywords.Keyword{
-			Attr:     "Signal",
-			Example:  "hup:container#1",
-			Option:   "signal",
-			Scopable: true,
-			Text:     keywords.NewText(fs, "text/kw/signal"),
 		},
 	)
 	return m

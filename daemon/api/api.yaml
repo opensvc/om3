@@ -2,7 +2,7 @@ openapi: 3.0.0
 
 info:
   title: opensvc agent api
-  version: 3.15.6
+  version: 3.16.0
 
 paths:
   /api/auth/info:
@@ -237,8 +237,12 @@ paths:
         - $ref: '#/components/parameters/inQueryUnsets'
         - $ref: '#/components/parameters/inQuerySets'
       responses:
-        204:
-          $ref: '#/components/responses/204'
+        200:
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Committed'
         400:
           $ref: '#/components/responses/400'
         401:
@@ -3743,8 +3747,12 @@ paths:
         - $ref: '#/components/parameters/inQueryUnsets'
         - $ref: '#/components/parameters/inQuerySets'
       responses:
-        204:
-          $ref: '#/components/responses/204'
+        200:
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Committed'
         400:
           $ref: '#/components/responses/400'
         401:
@@ -4214,9 +4222,9 @@ components:
     Committed:
       type: object
       required:
-        - ischanged
+        - is_changed
       properties:
-        ischanged:
+        is_changed:
           type: boolean
 
     Daemon:

@@ -1,7 +1,8 @@
-package resvol
+package datarecv
 
 import (
 	"context"
+	"embed"
 	"fmt"
 	"os"
 	"os/user"
@@ -13,33 +14,169 @@ import (
 
 	"golang.org/x/sys/unix"
 
+	"github.com/opensvc/om3/core/keywords"
 	"github.com/opensvc/om3/core/naming"
 	"github.com/opensvc/om3/core/object"
+	"github.com/opensvc/om3/core/resource"
 	"github.com/opensvc/om3/core/volsignal"
+	"github.com/opensvc/om3/util/converters"
+	"github.com/opensvc/om3/util/plog"
 )
 
 type (
-	// Reference is an element of the Configs and Secrets T field.
-	// This type exists to host the parsing functions.
-	Reference string
+	DataRecv struct {
+		Install []string     `json:"install"`
+		User    string       `json:"user"`
+		Group   string       `json:"group"`
+		Perm    *os.FileMode `json:"perm"`
+		DirPerm *os.FileMode `json:"dirperm"`
+		Signal  string       `json:"signal"`
+
+		// Deprecated
+		Configs     []string `json:"configs"`
+		Secrets     []string `json:"secrets"`
+		Directories []string `json:"directories"`
+
+		to receiver
+	}
 
 	// SigRoute is a relation between a signal number and the id of a resource supporting signaling
 	SigRoute struct {
 		Signum syscall.Signal
 		RID    string
 	}
+
+	receiver interface {
+		Head() string
+		Log() *plog.Logger
+		StatusLog() resource.StatusLogger
+		GetObject() any
+	}
+
+	signaler interface {
+		SignalResource(context.Context, string, syscall.Signal) error
+		Path() naming.Path
+	}
 )
 
-func (t *T) getRefs() []string {
+var (
+	//go:embed text
+	fs embed.FS
+
+	// defaultSecPerm is the default KVInstall.AccessControl.Perm for
+	// secrets parseReference when driver perm is undefined.
+	defaultSecPerm = os.FileMode(0600)
+
+	// defaultCfgPerm is the default KVInstall.AccessControl.Perm for
+	// configs parseReference when driver perm is undefined.
+	defaultCfgPerm = os.FileMode(0644)
+
+	// defaultDirPerm
+	defaultDirPerm = os.FileMode(0700)
+)
+
+func Keywords(prefix string) []keywords.Keyword {
+	return []keywords.Keyword{
+		keywords.Keyword{
+			Attr:      prefix + "Install",
+			Converter: converters.Shlex,
+			Example:   "file from sec {name} key password to path /data/password mode 0600 user 1000 group 1000",
+			Option:    "install",
+			Scopable:  true,
+			Text:      keywords.NewText(fs, "text/kw/install"),
+		},
+		keywords.Keyword{
+			Attr:      prefix + "Configs",
+			Converter: converters.Shlex,
+			Example:   "conf/mycnf:/etc/mysql/my.cnf:ro conf/sysctl:/etc/sysctl.d/01-db.conf",
+			Option:    "configs",
+			Scopable:  true,
+			Text:      keywords.NewText(fs, "text/kw/configs"),
+		},
+		keywords.Keyword{
+			Attr:      prefix + "Secrets",
+			Converter: converters.Shlex,
+			Default:   "",
+			Example:   "cert/pem:server.pem cert/key:server.key",
+			Option:    "secrets",
+			Scopable:  true,
+			Text:      keywords.NewText(fs, "text/kw/secrets"),
+			Types:     []string{"shm"},
+		},
+		keywords.Keyword{
+			Attr:      prefix + "Directories",
+			Converter: converters.List,
+			Default:   "",
+			Example:   "a/b/c d /e",
+			Option:    "directories",
+			Scopable:  true,
+			Text:      keywords.NewText(fs, "text/kw/directories"),
+		},
+		keywords.Keyword{
+			Attr:     prefix + "User",
+			Example:  "1001",
+			Option:   "user",
+			Scopable: true,
+			Text:     keywords.NewText(fs, "text/kw/user"),
+		},
+		keywords.Keyword{
+			Attr:     prefix + "Group",
+			Example:  "1001",
+			Option:   "group",
+			Scopable: true,
+			Text:     keywords.NewText(fs, "text/kw/group"),
+		},
+		keywords.Keyword{
+			Attr:      prefix + "Perm",
+			Converter: converters.FileMode,
+			Example:   "660",
+			Option:    "perm",
+			Scopable:  true,
+			Text:      keywords.NewText(fs, "text/kw/perm"),
+		},
+		keywords.Keyword{
+			Attr:      prefix + "DirPerm",
+			Converter: converters.FileMode,
+			// Default value is fmt.Sprintf("%o", defaultDirPerm)
+			Default:  "700",
+			Example:  "750",
+			Option:   "dirperm",
+			Scopable: true,
+			Text:     keywords.NewText(fs, "text/kw/dirperm"),
+		},
+		keywords.Keyword{
+			Attr:     prefix + "Signal",
+			Example:  "hup:container#1",
+			Option:   "signal",
+			Scopable: true,
+			Text:     keywords.NewText(fs, "text/kw/signal"),
+		},
+	}
+}
+
+func (t *DataRecv) SetReceiver(to receiver) {
+	t.to = to
+}
+
+// getDirPerm returns the driver dir perm value. When t.DirPerm is nil (when kw
+// has no default value or unexpected value) the defaultDirPerm is returned.
+func (t *DataRecv) getDirPerm() *os.FileMode {
+	if t.DirPerm == nil {
+		return &defaultDirPerm
+	}
+	return t.DirPerm
+}
+
+func (t *DataRecv) getRefs() []string {
 	refs := make([]string, 0)
 	refs = append(refs, t.getRefsByKind(naming.KindSec)...)
 	refs = append(refs, t.getRefsByKind(naming.KindCfg)...)
 	return refs
 }
 
-func (t *T) getRefsByKind(filter naming.Kind) []string {
+func (t *DataRecv) getRefsByKind(kind naming.Kind) []string {
 	refs := make([]string, 0)
-	switch filter {
+	switch kind {
 	case naming.KindSec:
 		refs = append(refs, t.Secrets...)
 	case naming.KindCfg:
@@ -48,50 +185,51 @@ func (t *T) getRefsByKind(filter naming.Kind) []string {
 	return refs
 }
 
-func (t *T) getMetadata() []object.KVInstall {
+func (t *DataRecv) getMetadata() []object.KVInstall {
+	head := t.to.Head()
 	l := make([]object.KVInstall, 0)
-	_, files := t.getInstallMetadata()
+	_, files := t.getInstallMetadata(head)
 	l = append(l, files...)
-	l = append(l, t.getMetadataByKind(naming.KindSec)...)
-	l = append(l, t.getMetadataByKind(naming.KindCfg)...)
+	l = append(l, t.getMetadataByKind(head, naming.KindSec, naming.KindCfg)...)
 	return l
 }
 
-func (t *T) getMetadataByKind(kind naming.Kind) []object.KVInstall {
+func (t *DataRecv) getMetadataByKind(head string, kinds ...naming.Kind) []object.KVInstall {
 	l := make([]object.KVInstall, 0)
-	refs := t.getRefsByKind(kind)
-	if len(refs) == 0 {
-		// avoid the Head() call when possible
-		return l
-	}
-	head := t.Head()
-	if head == "" {
-		return l
-	}
-	for _, ref := range refs {
-		md := t.parseReference(ref, kind, head)
-		if md.IsEmpty() {
-			continue
+	for _, kind := range kinds {
+		refs := t.getRefsByKind(kind)
+		if len(refs) == 0 {
+			return l
 		}
-		l = append(l, md)
+		if head == "" {
+			return l
+		}
+		for _, ref := range refs {
+			md := t.parseReference(ref, kind, head)
+			if md.IsEmpty() {
+				continue
+			}
+			l = append(l, md)
+		}
 	}
 	return l
 }
 
 // HasMetadata returns true if the volume has a configs or secrets reference to
 // <namespace>/<kind>/<name>[/<key>]
-func (t *T) HasMetadata(p naming.Path, k string) bool {
-	_, installMetadata := t.getInstallMetadata()
+func (t *DataRecv) HasMetadata(path naming.Path, k string) bool {
+	head := t.to.Head()
+	_, installMetadata := t.getInstallMetadata(head)
 	for _, md := range installMetadata {
-		if md.FromStore != p {
+		if md.FromStore != path {
 			continue
 		}
 		if k == "" || md.FromPattern == k {
 			return true
 		}
 	}
-	for _, md := range t.getMetadataByKind(p.Kind) {
-		if md.FromStore.Name != p.Name {
+	for _, md := range t.getMetadataByKind(head, path.Kind) {
+		if md.FromStore != path {
 			continue
 		}
 		if k == "" || md.FromPattern == k {
@@ -101,7 +239,8 @@ func (t *T) HasMetadata(p naming.Path, k string) bool {
 	return false
 }
 
-func (t *T) parseReference(s string, filter naming.Kind, head string) object.KVInstall {
+func (t *DataRecv) parseReference(s string, withKind naming.Kind, head string) object.KVInstall {
+	path := t.to.GetObject().(object.Core).Path()
 	if head == "" {
 		return object.KVInstall{}
 	}
@@ -123,25 +262,25 @@ func (t *T) parseReference(s string, filter naming.Kind, head string) object.KVI
 	from := strings.TrimLeft(l[0], "/")
 	// from = "sec/s1/k[12]"
 
-	kind := filter
+	kind := withKind
 
 	switch {
 	case strings.HasPrefix(from, "usr/"):
 		kind = naming.KindUsr
 		from = from[4:]
-		if filter == naming.KindCfg {
+		if withKind == naming.KindCfg {
 			return object.KVInstall{}
 		}
 	case strings.HasPrefix(from, "sec/"):
 		kind = naming.KindSec
 		from = from[4:]
-		if filter == naming.KindCfg {
+		if withKind == naming.KindCfg {
 			return object.KVInstall{}
 		}
 	case strings.HasPrefix(from, "cfg/"):
 		kind = naming.KindCfg
 		from = from[4:]
-		if filter == naming.KindSec {
+		if withKind == naming.KindSec {
 			return object.KVInstall{}
 		}
 	}
@@ -152,7 +291,7 @@ func (t *T) parseReference(s string, filter naming.Kind, head string) object.KVI
 	if len(l) != 2 {
 		return object.KVInstall{}
 	}
-	if p, err := naming.NewPath(t.Path.Namespace, kind, l[0]); err != nil {
+	if p, err := naming.NewPath(path.Namespace, kind, l[0]); err != nil {
 		return object.KVInstall{}
 	} else {
 		var perm *os.FileMode
@@ -186,30 +325,31 @@ func (t *T) parseReference(s string, filter naming.Kind, head string) object.KVI
 	}
 }
 
-func (t *T) statusData() {
+func (t *DataRecv) Status() {
+	path := t.to.GetObject().(object.Core).Path()
 	for _, md := range t.getMetadata() {
 		if !md.FromStore.Exists() {
-			t.StatusLog().Warn("store %s does not exist: key %s data can not be installed in the volume", md.FromStore, md.FromPattern)
+			t.to.StatusLog().Warn("store %s does not exist: key %s data can not be installed in the volume", md.FromStore, md.FromPattern)
 			continue
 		}
 		dataStore, err := object.NewDataStore(md.FromStore, object.WithVolatile(true))
 		if err != nil {
-			t.StatusLog().Warn("store %s init error: %s", md.FromStore, err)
+			t.to.StatusLog().Warn("store %s init error: %s", md.FromStore, err)
 			continue
 		}
 		shares := dataStore.Shares()
-		if !slices.Contains(shares, "*") && !slices.Contains(shares, t.Path.Namespace) {
+		if !slices.Contains(shares, "*") && !slices.Contains(shares, path.Namespace) {
 			path := strings.TrimPrefix(md.ToPath, md.ToHead)
-			t.StatusLog().Warn("unauthorized install ...%s from %s key %s", path, md.FromStore, md.FromPattern)
+			t.to.StatusLog().Warn("unauthorized install ...%s from %s key %s", path, md.FromStore, md.FromPattern)
 			continue
 		}
 		matches, err := dataStore.MatchingKeys(md.FromPattern)
 		if err != nil {
-			t.StatusLog().Error("store %s keymatch %s: %s", md.FromStore, md.FromPattern, err)
+			t.to.StatusLog().Error("store %s keymatch %s: %s", md.FromStore, md.FromPattern, err)
 			continue
 		}
 		if len(matches) == 0 {
-			t.StatusLog().Warn("store %s has no keys matching %s: data can not be installed in the volume", md.FromStore, md.FromPattern)
+			t.to.StatusLog().Warn("store %s has no keys matching %s: data can not be installed in the volume", md.FromStore, md.FromPattern)
 		}
 	}
 }
@@ -222,14 +362,15 @@ type dirDefinition struct {
 	Required bool
 }
 
-func (t *T) InstallFromDatastore(dataStore object.DataStore) (bool, error) {
+func (t *DataRecv) InstallFromDatastore(from object.DataStore) (bool, error) {
 	changed := false
-	head := t.Head()
+	head := t.to.Head()
+	path := t.to.GetObject().(object.Core).Path()
 	if head == "" {
 		return false, fmt.Errorf("refuse to install in empty (ie /) head")
 	}
 
-	dirs, files := t.getInstallMetadata()
+	dirs, files := t.getInstallMetadata(head)
 
 	for _, dir := range dirs {
 		if err := t.installDir(dir.Path, head, *dir.Perm, dir.User, dir.Group); err != nil && dir.Required {
@@ -238,7 +379,7 @@ func (t *T) InstallFromDatastore(dataStore object.DataStore) (bool, error) {
 	}
 
 	for _, md := range files {
-		if md.FromStore != dataStore.Path() {
+		if md.FromStore != from.Path() {
 			continue
 		}
 		if !md.FromStore.Exists() {
@@ -246,17 +387,17 @@ func (t *T) InstallFromDatastore(dataStore object.DataStore) (bool, error) {
 			if md.Required {
 				return false, err
 			} else {
-				t.Log().Warnf("%s", err)
+				t.to.Log().Warnf("%s", err)
 				continue
 			}
 		}
-		shares := dataStore.Shares()
-		if !slices.Contains(shares, "*") && !slices.Contains(shares, t.Path.Namespace) {
+		shares := from.Shares()
+		if !slices.Contains(shares, "*") && !slices.Contains(shares, path.Namespace) {
 			path := strings.TrimPrefix(md.ToPath, md.ToHead)
 			return false, fmt.Errorf("unauthorized install ...%s from %s key %s", path, md.FromStore, md.FromPattern)
 		}
-		md.ToLog = t.Log()
-		if err := dataStore.InstallKeyTo(md); err != nil && md.Required {
+		md.ToLog = t.to.Log()
+		if err := from.InstallKeyTo(md); err != nil && md.Required {
 			return false, err
 		}
 		changed = true
@@ -265,14 +406,16 @@ func (t *T) InstallFromDatastore(dataStore object.DataStore) (bool, error) {
 	return changed, nil
 }
 
-func (t *T) install(ctx context.Context) (bool, error) {
+func (t *DataRecv) install(ctx context.Context) (bool, error) {
 	changed := false
-	head := t.Head()
+	head := t.to.Head()
+	path := t.to.GetObject().(object.Core).Path()
+
 	if head == "" {
 		return false, fmt.Errorf("refuse to install in empty (ie /) head")
 	}
 
-	dirs, files := t.getInstallMetadata()
+	dirs, files := t.getInstallMetadata(head)
 
 	for _, dir := range dirs {
 		if err := t.installDir(dir.Path, head, *dir.Perm, dir.User, dir.Group); err != nil && dir.Required {
@@ -286,20 +429,20 @@ func (t *T) install(ctx context.Context) (bool, error) {
 			if md.Required {
 				return false, err
 			} else {
-				t.Log().Warnf("%s", err)
+				t.to.Log().Warnf("%s", err)
 				continue
 			}
 		}
 		dataStore, err := object.NewDataStore(md.FromStore, object.WithVolatile(true))
 		if err != nil {
-			t.Log().Warnf("store %s init error: %s", md.FromStore, err)
+			t.to.Log().Warnf("store %s init error: %s", md.FromStore, err)
 		}
 		shares := dataStore.Shares()
-		if !slices.Contains(shares, "*") && !slices.Contains(shares, t.Path.Namespace) {
+		if !slices.Contains(shares, "*") && !slices.Contains(shares, path.Namespace) {
 			path := strings.TrimPrefix(md.ToPath, md.ToHead)
 			return false, fmt.Errorf("unauthorized install ...%s from %s key %s", path, md.FromStore, md.FromPattern)
 		}
-		md.ToLog = t.Log()
+		md.ToLog = t.to.Log()
 		if err = dataStore.InstallKeyTo(md); err != nil && md.Required {
 			return false, err
 		}
@@ -309,10 +452,10 @@ func (t *T) install(ctx context.Context) (bool, error) {
 	return changed, nil
 }
 
-func (t *T) getInstallMetadata() ([]dirDefinition, []object.KVInstall) {
+func (t *DataRecv) getInstallMetadata(head string) ([]dirDefinition, []object.KVInstall) {
+	path := t.to.GetObject().(object.Core).Path()
 	files := make([]object.KVInstall, 0)
 	dirs := make([]dirDefinition, 0)
-	head := t.Head()
 	if head == "" {
 		return dirs, files
 	}
@@ -321,14 +464,14 @@ func (t *T) getInstallMetadata() ([]dirDefinition, []object.KVInstall) {
 		if !strings.HasPrefix(word, "/") {
 			return false
 		}
-		return i < 1 || t.ToInstall[i-1] != "key"
+		return i < 1 || t.Install[i-1] != "key"
 	}
 
 	split := func() [][]string {
 		var line []string
 		lines := make([][]string, 0)
 		in := false
-		for i, word := range t.ToInstall {
+		for i, word := range t.Install {
 			if isSep(word, i) {
 				if in {
 					lines = append(lines, line)
@@ -445,11 +588,10 @@ func (t *T) getInstallMetadata() ([]dirDefinition, []object.KVInstall) {
 		}
 
 		name, line := pop(line)
-		namespace := t.Path.Namespace
 
 		item.FromStore = naming.Path{
 			Name:      name,
-			Namespace: namespace,
+			Namespace: path.Namespace,
 			Kind:      kind,
 		}
 
@@ -499,8 +641,9 @@ func (t *T) getInstallMetadata() ([]dirDefinition, []object.KVInstall) {
 	return dirs, files
 }
 
-func (t *T) installData(ctx context.Context) error {
+func (t *DataRecv) Do(ctx context.Context) error {
 	changed := false
+
 	if v, err := t.install(ctx); err != nil {
 		return err
 	} else {
@@ -525,7 +668,7 @@ func (t *T) installData(ctx context.Context) error {
 	return nil
 }
 
-func (t *T) signalData() []SigRoute {
+func (t *DataRecv) signalData() []SigRoute {
 	routes := make([]SigRoute, 0)
 	for i, ridmap := range volsignal.Parse(t.Signal) {
 		for rid := range ridmap {
@@ -538,45 +681,40 @@ func (t *T) signalData() []SigRoute {
 	return routes
 }
 
-func (t *T) SendSignals(ctx context.Context) error {
-	type signaler interface {
-		SignalResource(context.Context, string, syscall.Signal) error
-	}
-	i, err := object.New(t.Path)
-	if err != nil {
-		return err
-	}
-	o, ok := i.(signaler)
+func (t *DataRecv) SendSignals(ctx context.Context) error {
+	o, ok := t.to.GetObject().(signaler)
 	if !ok {
-		return fmt.Errorf("%s does not implement SignalResource()", t.Path)
+		return fmt.Errorf("%s does not implement SignalResource()", o.Path())
 	}
 	for _, sd := range t.signalData() {
 		if err := o.SignalResource(ctx, sd.RID, sd.Signum); err != nil {
 			return err
 		}
-		t.Log().Debugf("resource %s has been sent a signal %s", sd.RID, unix.SignalName(sd.Signum))
+		t.to.Log().Debugf("resource %s has been sent a signal %s", sd.RID, unix.SignalName(sd.Signum))
 	}
 	return nil
 }
 
-func (t *T) InstallDataByKind(filter naming.Kind) (bool, error) {
+func (t *DataRecv) InstallDataByKind(kind naming.Kind) (bool, error) {
 	var changed bool
+	head := t.to.Head()
+	path := t.to.GetObject().(object.Core).Path()
 
-	for _, md := range t.getMetadataByKind(filter) {
+	for _, md := range t.getMetadataByKind(head, kind) {
 		if !md.FromStore.Exists() {
-			t.Log().Warnf("store %s does not exist: key %s data can not be installed in the volume", md.FromStore, md.FromPattern)
+			t.to.Log().Warnf("store %s does not exist: key %s data can not be installed in the volume", md.FromStore, md.FromPattern)
 			continue
 		}
 		dataStore, err := object.NewDataStore(md.FromStore, object.WithVolatile(true))
 		if err != nil {
-			t.Log().Warnf("store %s init error: %s", md.FromStore, err)
+			t.to.Log().Warnf("store %s init error: %s", md.FromStore, err)
 		}
 		shares := dataStore.Shares()
-		if !slices.Contains(shares, "*") && !slices.Contains(shares, t.Path.Namespace) {
+		if !slices.Contains(shares, "*") && !slices.Contains(shares, path.Namespace) {
 			path := strings.TrimPrefix(md.ToPath, md.ToHead)
 			return false, fmt.Errorf("unauthorized install ...%s from %s key %s", path, md.FromStore, md.FromPattern)
 		}
-		md.ToLog = t.Log()
+		md.ToLog = t.to.Log()
 		if err = dataStore.InstallKeyTo(md); err != nil {
 			return changed, err
 		}
@@ -585,14 +723,14 @@ func (t *T) InstallDataByKind(filter naming.Kind) (bool, error) {
 	return changed, nil
 }
 
-func (t *T) chmod(p string, mode *os.FileMode) error {
+func (t *DataRecv) chmod(p string, mode *os.FileMode) error {
 	if mode == nil {
 		return nil
 	}
 	return os.Chmod(p, *mode)
 }
 
-func (t *T) chown(p string, usr, grp string, info os.FileInfo) error {
+func (t *DataRecv) chown(p string, usr, grp string, info os.FileInfo) error {
 	var uid, gid int
 	if usr != "" {
 		if i, err := strconv.Atoi(usr); err == nil {
@@ -619,7 +757,7 @@ func (t *T) chown(p string, usr, grp string, info os.FileInfo) error {
 			currentGID := int(stat.Gid)
 
 			if uid != currentUID || gid != currentGID {
-				t.Log().Infof("change %s owner from %d:%d to %d:%d", p, currentUID, currentGID, uid, gid)
+				t.to.Log().Infof("change %s owner from %d:%d to %d:%d", p, currentUID, currentGID, uid, gid)
 				return os.Chown(p, uid, gid)
 			} else {
 				return nil
@@ -630,7 +768,7 @@ func (t *T) chown(p string, usr, grp string, info os.FileInfo) error {
 	return os.Chown(p, uid, gid)
 }
 
-func (t *T) installDir(path string, head string, perm os.FileMode, user, group string) error {
+func (t *DataRecv) installDir(path string, head string, perm os.FileMode, user, group string) error {
 	if head == "" {
 		return fmt.Errorf("refuse to install dir %s in /", path)
 	}
@@ -638,7 +776,7 @@ func (t *T) installDir(path string, head string, perm os.FileMode, user, group s
 	info, err := os.Stat(p)
 	switch {
 	case os.IsNotExist(err):
-		t.Log().Infof("install directory %s with ower %s:%s and perm %s", p, user, group, perm)
+		t.to.Log().Infof("install directory %s with ower %s:%s and perm %s", p, user, group, perm)
 		if err := os.MkdirAll(p, perm); err != nil {
 			return err
 		}
@@ -652,7 +790,7 @@ func (t *T) installDir(path string, head string, perm os.FileMode, user, group s
 			return fmt.Errorf("directory path %s is already occupied by a non-directory", p)
 		}
 		if info.Mode().Perm() != perm {
-			t.Log().Infof("change directory %s permissions from %s to %s", p, info.Mode().Perm(), perm)
+			t.to.Log().Infof("change directory %s permissions from %s to %s", p, info.Mode().Perm(), perm)
 			if err := t.chmod(p, &perm); err != nil {
 				return err
 			}
@@ -664,11 +802,11 @@ func (t *T) installDir(path string, head string, perm os.FileMode, user, group s
 	return nil
 }
 
-func (t *T) installDirs() error {
+func (t *DataRecv) installDirs() error {
 	if len(t.Directories) == 0 {
 		return nil
 	}
-	head := t.Head()
+	head := t.to.Head()
 	if head == "" {
 		return fmt.Errorf("refuse to install dirs in empty (ie /) head")
 	}

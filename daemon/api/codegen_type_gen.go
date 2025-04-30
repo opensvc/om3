@@ -355,7 +355,7 @@ type ClusterStatus = map[string]interface{}
 
 // Committed defines model for Committed.
 type Committed struct {
-	Ischanged bool `json:"ischanged"`
+	IsChanged bool `json:"is_changed"`
 }
 
 // DNSRecord defines model for DNSRecord.

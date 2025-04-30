@@ -11110,6 +11110,7 @@ func (r GetClusterConfigResponse) StatusCode() int {
 type PatchClusterConfigResponse struct {
 	Body         []byte
 	HTTPResponse *http.Response
+	JSON200      *Committed
 	JSON400      *N400
 	JSON401      *N401
 	JSON403      *N403
@@ -13819,6 +13820,7 @@ func (r GetObjectConfigResponse) StatusCode() int {
 type PatchObjectConfigResponse struct {
 	Body         []byte
 	HTTPResponse *http.Response
+	JSON200      *Committed
 	JSON400      *N400
 	JSON401      *N401
 	JSON403      *N403
@@ -15988,6 +15990,13 @@ func ParsePatchClusterConfigResponse(rsp *http.Response) (*PatchClusterConfigRes
 	}
 
 	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest Committed
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
 		var dest N400
 		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
@@ -21639,6 +21648,13 @@ func ParsePatchObjectConfigResponse(rsp *http.Response) (*PatchObjectConfigRespo
 	}
 
 	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest Committed
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
 		var dest N400
 		if err := json.Unmarshal(bodyBytes, &dest); err != nil {

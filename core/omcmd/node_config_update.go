@@ -27,6 +27,10 @@ type (
 )
 
 func (t *CmdNodeConfigUpdate) Run() error {
+	if len(t.Set) == 0 && len(t.Unset) == 0 && len(t.Delete) == 0 {
+		fmt.Println("no change requested")
+		return nil
+	}
 	if t.Local {
 		return t.doLocal()
 	}
@@ -49,6 +53,10 @@ func (t *CmdNodeConfigUpdate) doRemote() error {
 	if err != nil {
 		return err
 	}
+
+	noPrefix := len(nodenames) == 1
+	prefix := ""
+
 	for _, nodename := range nodenames {
 		response, err := c.PatchNodeConfigWithResponse(context.Background(), nodename, &params)
 		if err != nil {
@@ -56,6 +64,14 @@ func (t *CmdNodeConfigUpdate) doRemote() error {
 		}
 		switch response.StatusCode() {
 		case 200:
+			if !noPrefix {
+				prefix = nodename + ": "
+			}
+			if response.JSON200.IsChanged {
+				fmt.Printf("%scommitted\n", prefix)
+			} else {
+				fmt.Printf("%sunchanged\n", prefix)
+			}
 		case 400:
 			return fmt.Errorf("%s: %s", nodename, *response.JSON400)
 		case 401:
@@ -79,5 +95,18 @@ func (t *CmdNodeConfigUpdate) doLocal() error {
 	ctx := context.Background()
 	ctx = actioncontext.WithLockDisabled(ctx, t.Disable)
 	ctx = actioncontext.WithLockTimeout(ctx, t.Timeout)
-	return o.Update(ctx, t.Delete, key.ParseStrings(t.Unset), keyop.ParseOps(t.Set))
+	config := o.Config()
+	if err := config.PrepareUpdate(t.Delete, key.ParseStrings(t.Unset), keyop.ParseOps(t.Set)); err != nil {
+		return err
+	}
+	changed := config.Changed()
+	if err := config.Commit(); err != nil {
+		return err
+	}
+	if changed {
+		fmt.Println("committed")
+	} else {
+		fmt.Println("unchanged")
+	}
+	return nil
 }

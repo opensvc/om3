@@ -1437,6 +1437,9 @@ func (t *T) DeleteSections(sections ...string) error {
 // PrepareDeleteSections deletes sections from the config without committing changes.
 func (t *T) PrepareDeleteSections(sections ...string) error {
 	for _, section := range sections {
+		if section == "" {
+			continue
+		}
 		if _, err := t.file.GetSection(section); err != nil {
 			continue
 		}
