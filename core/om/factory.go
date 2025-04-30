@@ -1373,13 +1373,9 @@ func newCmdNodeRelayStatus() *cobra.Command {
 
 func newCmdNodeConfigUpdate() *cobra.Command {
 	var options commands.CmdNodeConfigUpdate
-	cmd := &cobra.Command{
-		Use:   "update",
-		Short: "update the node configuration",
-		Long:  "Apply section deletes, keyword unsets then sets. Validate the new configuration and commit.",
-		RunE: func(cmd *cobra.Command, args []string) error {
-			return options.Run()
-		},
+	cmd := commoncmd.NewCmdAnyConfigUpdate()
+	cmd.RunE = func(cmd *cobra.Command, args []string) error {
+		return options.Run()
 	}
 	flags := cmd.Flags()
 	addFlagsGlobal(flags, &options.OptsGlobal)
@@ -3125,13 +3121,9 @@ func newCmdObjectUnprovision(kind string) *cobra.Command {
 
 func newCmdObjectConfigUpdate(kind string) *cobra.Command {
 	var options commands.CmdObjectConfigUpdate
-	cmd := &cobra.Command{
-		Use:   "update",
-		Short: "update configuration",
-		Long:  "Apply section deletes, keyword unsets then sets. Validate the new configuration and commit.",
-		RunE: func(cmd *cobra.Command, args []string) error {
-			return options.Run(kind)
-		},
+	cmd := commoncmd.NewCmdAnyConfigUpdate()
+	cmd.RunE = func(cmd *cobra.Command, args []string) error {
+		return options.Run(kind)
 	}
 	flags := cmd.Flags()
 	addFlagsGlobal(flags, &options.OptsGlobal)
