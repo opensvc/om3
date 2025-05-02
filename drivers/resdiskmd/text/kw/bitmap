@@ -1,0 +1,1 @@
+'none' disables the write-intent bitmap, 'internal' writes the bitmap on the md legs, a file path may write the bitmap to a file (deprecated upstream).
