@@ -59,6 +59,9 @@ func (t *sec) genSelfSigned() error {
 	if err := t.addKey("fullpem", append(privBytes, certBytes...)); err != nil {
 		return err
 	}
+	if err := t.addKey("serial_number", []byte(tmpl.SerialNumber.String())); err != nil {
+		return err
+	}
 	return nil
 }
 
@@ -98,6 +101,9 @@ func (t *sec) genCASigned(ca string) error {
 	if err := t.addKey("fullpem", append(privBytes, chainBytes...)); err != nil {
 		return err
 	}
+	if err := t.addKey("serial_number", []byte(tmpl.SerialNumber.String())); err != nil {
+		return err
+	}
 	return nil
 }
 
@@ -108,6 +114,17 @@ func (t *sec) CertInfo(name string) string {
 func (t *sec) CertInfoBits() int {
 	sz := t.config.GetSize(key.Parse("bits"))
 	return int(*sz)
+}
+
+func (t *sec) CertSerial() *big.Int {
+	bi := big.NewInt(int64(0))
+	if b, err := t.DecodeKey("serial_number"); err != nil {
+		return bi
+	} else if v, ok := bi.SetString(string(b), 10); ok && v != nil {
+		return v
+	} else {
+		return bi
+	}
 }
 
 func (t *sec) CertInfoNotAfter() (time.Time, error) {
@@ -170,8 +187,11 @@ func (t *sec) template(isCA bool, priv interface{}) (x509.Certificate, error) {
 	if err != nil {
 		return x509.Certificate{}, err
 	}
+	inc := big.NewInt(1)
+	serial := t.CertSerial()
+	serial = serial.Add(serial, inc)
 	template := x509.Certificate{
-		SerialNumber:          big.NewInt(1),
+		SerialNumber:          serial,
 		Subject:               t.subject(),
 		NotBefore:             time.Now().Add(-10 * time.Second),
 		NotAfter:              notAfter,
