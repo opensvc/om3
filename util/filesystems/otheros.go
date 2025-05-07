@@ -11,3 +11,7 @@ func (t T) Mount(dev string, mnt string, options string) error {
 func (t T) Umount(mnt string) error {
 	return nil
 }
+
+func (t T) KillUsers(mnt string) error {
+	return nil
+}
