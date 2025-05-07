@@ -77,6 +77,14 @@ func (t *T) Manifest() *manifest.T {
 			Scopable:     true,
 			Text:         keywords.NewText(fs, "text/kw/spares"),
 		},
+		keywords.Keyword{
+			Attr:         "Bitmap",
+			Example:      "internal",
+			Option:       "bitmap",
+			Provisioning: true,
+			Scopable:     true,
+			Text:         keywords.NewText(fs, "text/kw/bitmap"),
+		},
 	)
 	return m
 }

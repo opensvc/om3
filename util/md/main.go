@@ -387,7 +387,7 @@ func (t T) devpathFromName() string {
 	return "/dev/md/" + t.name
 }
 
-func (t *T) Create(level string, devs []string, spares int, layout string, chunk *int64) error {
+func (t *T) Create(level string, devs []string, spares int, layout string, chunk *int64, bitmap string) error {
 	dataDevsCount := len(devs) - spares
 	if dataDevsCount < 1 {
 		return fmt.Errorf("at least 1 device must be set in the 'devs' provisioning")
@@ -410,6 +410,9 @@ func (t *T) Create(level string, devs []string, spares int, layout string, chunk
 	}
 	if layout != "" {
 		args = append(args, "-p", layout)
+	}
+	if bitmap == "none" || bitmap == "internal" {
+		args = append(args, "--bitmap="+bitmap)
 	}
 	args = append(args, devs...)
 

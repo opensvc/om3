@@ -27,15 +27,16 @@ import (
 type (
 	T struct {
 		resdisk.T
-		UUID   string      `json:"uuid"`
-		Size   string      `json:"size"`
-		Spares int         `json:"spares"`
+		Bitmap string      `json:"bitmap"`
 		Chunk  *int64      `json:"chunk"`
+		Devs   []string    `json:"devs"`
 		Layout string      `json:"layout"`
 		Level  string      `json:"level"`
-		Devs   []string    `json:"devs"`
-		Path   naming.Path `json:"path"`
 		Nodes  []string    `json:"nodes"`
+		Path   naming.Path `json:"path"`
+		Size   string      `json:"size"`
+		Spares int         `json:"spares"`
+		UUID   string      `json:"uuid"`
 	}
 	MDDriver interface {
 		Activate() error
@@ -49,7 +50,7 @@ type (
 		DisableAutoActivation() error
 	}
 	MDDriverProvisioner interface {
-		Create(level string, devs []string, spares int, layout string, chunk *int64) error
+		Create(level string, devs []string, spares int, layout string, chunk *int64, bitmap string) error
 		Remove() error
 		Wipe() error
 	}
@@ -179,7 +180,7 @@ func (t *T) ProvisionAsLeader(ctx context.Context) error {
 		t.Log().Infof("md is already created")
 		return nil
 	}
-	if err := devIntf.Create(t.Level, t.Devs, t.Spares, t.Layout, t.Chunk); err != nil {
+	if err := devIntf.Create(t.Level, t.Devs, t.Spares, t.Layout, t.Chunk, t.Bitmap); err != nil {
 		return err
 	}
 	actionrollback.Register(ctx, func(ctx context.Context) error {
