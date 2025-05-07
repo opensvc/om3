@@ -36,6 +36,7 @@ type (
 		IsMultiDevice() bool
 		Mount(string, string, string) error
 		Umount(string) error
+		KillUsers(string) error
 		Log() *plog.Logger
 		SetLog(*plog.Logger)
 	}

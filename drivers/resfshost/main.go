@@ -2,6 +2,7 @@ package resfshost
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"os"
 	"os/exec"
@@ -9,6 +10,7 @@ import (
 	"path"
 	"path/filepath"
 	"strings"
+	"syscall"
 	"time"
 
 	"golang.org/x/sys/unix"
@@ -86,7 +88,20 @@ func (t *T) Stop(ctx context.Context) error {
 		t.Log().Infof("%s already umounted from %s", t.devpath(), t.mountPoint())
 		return nil
 	}
-	if err := t.fs().Umount(t.mountPoint()); err != nil {
+	mnt := t.mountPoint()
+	fs := t.fs()
+	if err := fs.Umount(mnt); err != nil {
+		if file.IsProtected(mnt) {
+			return err
+		}
+		if errors.Is(err, syscall.EBUSY) {
+			for _ = range 4 {
+				fs.KillUsers(mnt)
+				if err := fs.Umount(mnt); err == nil {
+					return nil
+				}
+			}
+		}
 		return err
 	}
 	return nil
