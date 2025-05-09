@@ -242,7 +242,7 @@ func RefreshInstanceStatusFromClusterStatus(ctx context.Context, clusterStatus c
 			switch response.StatusCode() {
 			case 200:
 			default:
-				return fmt.Errorf("%s: %s: post status refresh: %s", nodename, path, response.StatusCode())
+				return fmt.Errorf("%s: %s: post status refresh: %d", nodename, path, response.StatusCode())
 			}
 		}
 	}
