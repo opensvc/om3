@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"os"
+	"strings"
 
 	"github.com/opensvc/om3/core/actioncontext"
 	"github.com/opensvc/om3/core/client"
@@ -31,17 +32,17 @@ type (
 	}
 )
 
-func (t *CmdObjectInstanceStatus) extract(selector string, c *client.T) (data []object.Digest, err error) {
+func (t *CmdObjectInstanceStatus) extract(nodenames []string, paths naming.Paths, c *client.T) (data []object.Digest, err error) {
 	var localData []object.Digest
-	if t.Refresh || t.Local {
-		localData, err = t.extractLocal(selector)
+	if t.Local || (t.Refresh && t.NodeSelector == "") {
+		localData, err = t.extractLocal(paths)
 		if err != nil {
 			return
 		}
 	}
 
 	// try daemon
-	data, err = t.extractFromDaemon(selector, c)
+	data, err = t.extractFromDaemon(paths, c)
 	if err == nil {
 		return
 	}
@@ -50,21 +51,13 @@ func (t *CmdObjectInstanceStatus) extract(selector string, c *client.T) (data []
 		return localData, nil
 	}
 
-	data, err = t.extractLocal(selector)
+	data, err = t.extractLocal(paths)
 	return
 }
 
-func (t *CmdObjectInstanceStatus) extractLocal(selector string) ([]object.Digest, error) {
+func (t *CmdObjectInstanceStatus) extractLocal(paths naming.Paths) ([]object.Digest, error) {
 	data := make([]object.Digest, 0)
-	sel := objectselector.New(
-		selector,
-		objectselector.WithLocal(true),
-	)
 	h := hostname.Hostname()
-	paths, err := sel.MustExpand()
-	if err != nil {
-		return data, err
-	}
 	n, err := object.NewNode()
 	if err != nil {
 		return data, err
@@ -110,22 +103,46 @@ func (t *CmdObjectInstanceStatus) extractLocal(selector string) ([]object.Digest
 	return data, errs
 }
 
-func (t *CmdObjectInstanceStatus) extractFromDaemon(selector string, c *client.T) ([]object.Digest, error) {
+func (t *CmdObjectInstanceStatus) extractFromDaemon(paths naming.Paths, c *client.T) ([]object.Digest, error) {
 	var (
 		err           error
 		b             []byte
 		clusterStatus clusterdump.Data
 	)
-	b, err = c.NewGetClusterStatus().
-		SetSelector(selector).
-		Get()
-	if err != nil {
+	getClusterStatus := func(selector string) error {
+		b, err = c.NewGetClusterStatus().
+			SetSelector(selector).
+			Get()
+		if err != nil {
+			return err
+		}
+		err = json.Unmarshal(b, &clusterStatus)
+		if err != nil {
+			return err
+		}
+		return nil
+	}
+
+	ctx := context.Background()
+	strSlice := make([]string, len(paths))
+	for i, path := range paths {
+		strSlice[i] = path.String()
+	}
+	selector := strings.Join(strSlice, ",")
+
+	if err := getClusterStatus(selector); err != nil {
 		return []object.Digest{}, err
 	}
-	err = json.Unmarshal(b, &clusterStatus)
-	if err != nil {
-		return []object.Digest{}, err
+
+	if t.Refresh {
+		if err := commoncmd.RefreshInstanceStatusFromClusterStatus(ctx, clusterStatus); err != nil {
+			return []object.Digest{}, err
+		}
+		if err := getClusterStatus(selector); err != nil {
+			return []object.Digest{}, err
+		}
 	}
+
 	data := make([]object.Digest, 0)
 	for ps := range clusterStatus.Cluster.Object {
 		p, err := naming.ParsePath(ps)
@@ -172,7 +189,7 @@ func (t *CmdObjectInstanceStatus) Run(kind string) error {
 	if err != nil {
 		return err
 	}
-	data, err = t.extract(mergedSelector, c)
+	data, err = t.extract(nodenames, paths, c)
 	if err != nil {
 		return err
 	}

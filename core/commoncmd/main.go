@@ -8,15 +8,18 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"sync"
 	"time"
 
 	"github.com/opensvc/om3/core/client"
+	"github.com/opensvc/om3/core/clusterdump"
 	"github.com/opensvc/om3/core/event"
 	"github.com/opensvc/om3/core/naming"
 	"github.com/opensvc/om3/core/nodeselector"
 	"github.com/opensvc/om3/daemon/api"
 	"github.com/opensvc/om3/daemon/msgbus"
 	"github.com/opensvc/om3/util/xmap"
+	"github.com/opensvc/om3/util/xsession"
 )
 
 type (
@@ -138,11 +141,111 @@ func WaitInstanceMonitor(ctx context.Context, c *client.T, p naming.Path, timeou
 				} else {
 					err = readError
 				}
+				errC <- err
 				return
 			}
 			_, err = msgbus.EventToMessage(*ev)
+			errC <- err
 			return
 		}
 	}()
+	return nil
+}
+
+func WaitInstanceStatusUpdated(ctx context.Context, c *client.T, nodename string, p naming.Path, timeout time.Duration, errC chan error) error {
+	var (
+		err      error
+		evReader event.ReadCloser
+	)
+	filters := []string{
+		fmt.Sprintf("InstanceStatusUpdated,path=%s,node=%s", p.String(), nodename),
+	}
+	getEvents := c.NewGetEvents().SetFilters(filters).SetLimit(1)
+	if timeout > 0 {
+		getEvents = getEvents.SetDuration(timeout)
+	}
+	evReader, err = getEvents.GetReader()
+	if err != nil {
+		return err
+	}
+
+	if x, ok := evReader.(event.ContextSetter); ok {
+		x.SetContext(ctx)
+	}
+	go func() {
+		defer func() {
+			if err != nil {
+				err = fmt.Errorf("wait instance status update failed on object %s: %w", p, err)
+			}
+			select {
+			case <-ctx.Done():
+			case errC <- err:
+			}
+		}()
+
+		go func() {
+			// close reader when ctx is done
+			select {
+			case <-ctx.Done():
+				_ = evReader.Close()
+			}
+		}()
+		for {
+			ev, readError := evReader.Read()
+			if readError != nil {
+				if errors.Is(readError, io.EOF) {
+					err = fmt.Errorf("no more events, wait %v failed %s: %w", p, time.Now(), err)
+				} else {
+					err = readError
+				}
+				errC <- err
+				return
+			}
+			_, err = msgbus.EventToMessage(*ev)
+			errC <- err
+			return
+		}
+	}()
+	return nil
+}
+
+func RefreshInstanceStatusFromClusterStatus(ctx context.Context, clusterStatus clusterdump.Data) error {
+	var wg sync.WaitGroup
+	sid := api.InQueryRequesterSid(xsession.ID)
+	params := &api.PostInstanceActionStatusParams{
+		RequesterSid: &sid,
+	}
+	c, err := client.New(client.WithTimeout(0))
+	if err != nil {
+		return err
+	}
+
+	for nodename, node := range clusterStatus.Cluster.Node {
+		for ps, _ := range node.Instance {
+			path, _ := naming.ParsePath(ps)
+			wg.Add(1)
+			go func() {
+				errC := make(chan error)
+				WaitInstanceStatusUpdated(ctx, c, nodename, path, 0, errC)
+				_ = <-errC
+				wg.Done()
+			}()
+		}
+	}
+	for nodename, node := range clusterStatus.Cluster.Node {
+		for ps, _ := range node.Instance {
+			path, _ := naming.ParsePath(ps)
+			response, err := c.PostInstanceActionStatusWithResponse(ctx, nodename, path.Namespace, path.Kind, path.Name, params)
+			if err != nil {
+				return err
+			}
+			switch response.StatusCode() {
+			case 200:
+			default:
+				return fmt.Errorf("%s: %s: post status refresh: %s", nodename, path, response.StatusCode())
+			}
+		}
+	}
+	wg.Wait()
 	return nil
 }
