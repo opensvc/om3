@@ -72,9 +72,9 @@ func (t HeartbeatStreamPeerStatusTableEntry) Unstructured() map[string]any {
 	var isBeatingIcon string
 	var hasAlertsIcon string
 	if t.IsBeating {
-		isBeatingIcon = "🟢"
+		isBeatingIcon = "✅"
 	} else {
-		isBeatingIcon = "🔴"
+		isBeatingIcon = "❌"
 	}
 	if len(t.Alerts) > 0 {
 		hasAlertsIcon = "⚠️ "

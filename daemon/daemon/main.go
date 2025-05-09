@@ -103,7 +103,7 @@ func (t *T) Start(ctx context.Context) error {
 	if t.Running() {
 		return fmt.Errorf("can't start again, daemon is already running")
 	}
-	t.logTransition("starting 🟢")
+	t.logTransition("starting ...")
 
 	// When started by the systemd unit, HOME is empty.
 	// os.UserHomeDir() uses $HOME, so we want HOME initialized once and for all, early.
@@ -230,7 +230,7 @@ func (t *T) Start(ctx context.Context) error {
 		}
 	}
 
-	t.logTransition("started 🟢")
+	t.logTransition("✅ started")
 	t.publisher.Pub(&msgbus.DaemonStatusUpdated{
 		Node:    localhost,
 		Version: version.Version(),
@@ -253,7 +253,7 @@ func (t *T) Stop() error {
 	}
 	var errs error
 	// stop goroutines without cancel context
-	t.logTransition("stopping 🟡")
+	t.logTransition("stopping ...")
 	if ok, err := t.notifyDaemonSys(t.ctx, daemonSysManagerStopping); err != nil {
 		t.log.Warnf("sd notify stopping: %s", err)
 	} else if !ok {
@@ -264,7 +264,7 @@ func (t *T) Stop() error {
 	localhost := hostname.Hostname()
 	t.publisher.Pub(&msgbus.DaemonStatusUpdated{Node: localhost, Version: version.Version(), Status: "stopping"}, pubsub.Label{"node", localhost})
 	time.Sleep(300 * time.Millisecond)
-	defer t.logTransition("stopped 🟡")
+	defer t.logTransition("❌ stopped")
 	for i := len(t.stopFuncs) - 1; i >= 0; i-- {
 		if err := t.stopFuncs[i](); err != nil {
 			t.log.Errorf("stop component %d: %s", i, err)
