@@ -12,6 +12,7 @@ import (
 	"github.com/opensvc/om3/core/client"
 	"github.com/opensvc/om3/core/clusterdump"
 	"github.com/opensvc/om3/core/commoncmd"
+	"github.com/opensvc/om3/core/env"
 	"github.com/opensvc/om3/core/instance"
 	"github.com/opensvc/om3/core/naming"
 	"github.com/opensvc/om3/core/nodeselector"
@@ -35,8 +36,13 @@ type (
 func (t *CmdObjectInstanceStatus) extract(nodenames []string, paths naming.Paths, c *client.T) (data []object.Digest, err error) {
 	var localData []object.Digest
 	if t.Local || (t.Refresh && t.NodeSelector == "") {
-		localData, err = t.extractLocal(paths)
+		data, err = t.extractLocal(paths)
 		if err != nil {
+			return
+		}
+		if env.HasDaemonOrigin() {
+			// avoid exec loop.
+			// The daemon doesn't need more.
 			return
 		}
 	}
