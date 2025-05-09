@@ -105,18 +105,7 @@ func formatObject(data object.Status) string {
 }
 
 func formatStatus(data status.T) string {
-	var s string
-	switch data {
-	case status.Up, status.StandbyUp:
-		s = "🟢"
-	case status.Warn:
-		s = "🟠"
-	case status.Down, status.StandbyDown:
-		s = "🔴"
-	default:
-		s = "⚪"
-	}
-	return s + " " + data.String()
+	return tview.TranslateANSI(colorstatus.Sprint(data, rawconfig.Colorize))
 }
 
 func formatExpect(instanceMonitor instance.Monitor) string {
