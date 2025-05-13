@@ -152,11 +152,14 @@ func WaitInstanceMonitor(ctx context.Context, c *client.T, p naming.Path, timeou
 	return nil
 }
 
+// WaitInstanceStatusUpdated launches a go routine that waits for a specific
+// instance status update event within a given timeout, or ctx.Done() reached.
+// The result of the wait is sent to the errC channel: nil if the
+// InstanceStatusUpdated event occurs, or a non-nil error otherwise.
+//
+// If acquiring the event reader fails, WaitInstanceStatusUpdated returns
+// the error immediately and does not send anything to errC.
 func WaitInstanceStatusUpdated(ctx context.Context, c *client.T, nodename string, p naming.Path, timeout time.Duration, errC chan error) error {
-	var (
-		err      error
-		evReader event.ReadCloser
-	)
 	filters := []string{
 		fmt.Sprintf("InstanceStatusUpdated,path=%s,node=%s", p.String(), nodename),
 	}
@@ -164,47 +167,45 @@ func WaitInstanceStatusUpdated(ctx context.Context, c *client.T, nodename string
 	if timeout > 0 {
 		getEvents = getEvents.SetDuration(timeout)
 	}
-	evReader, err = getEvents.GetReader()
+	evReader, err := getEvents.GetReader()
 	if err != nil {
 		return err
 	}
 
+	var closeOnce sync.Once
+	closeReader := func() {
+		closeOnce.Do(func() {
+			_ = evReader.Close()
+		})
+	}
+
 	if x, ok := evReader.(event.ContextSetter); ok {
 		x.SetContext(ctx)
-	}
-	go func() {
-		defer func() {
-			if err != nil {
-				err = fmt.Errorf("wait instance status update failed on object %s: %w", p, err)
-			}
-			select {
-			case <-ctx.Done():
-			case errC <- err:
-			}
-		}()
-
+	} else {
+		// evReader is not an event.ContextSetter, we have to early closeReader
+		// to early stop evReader.Read() within the wait event routine.
 		go func() {
-			// close reader when ctx is done
 			select {
 			case <-ctx.Done():
-				_ = evReader.Close()
+				closeReader()
 			}
 		}()
-		for {
-			ev, readError := evReader.Read()
-			if readError != nil {
-				if errors.Is(readError, io.EOF) {
-					err = fmt.Errorf("no more events, wait %v failed %s: %w", p, time.Now(), err)
-				} else {
-					err = readError
-				}
-				errC <- err
-				return
+	}
+
+	go func() {
+		defer closeReader()
+		ev, err := evReader.Read()
+		if err != nil {
+			if errors.Is(err, io.EOF) {
+				err = fmt.Errorf("no more events: %w", err)
 			}
+		} else {
 			_, err = msgbus.EventToMessage(*ev)
-			errC <- err
-			return
 		}
+		if err != nil {
+			err = fmt.Errorf("wait instance status update failed on %s@%s: %w", p, nodename, err)
+		}
+		errC <- err
 	}()
 	return nil
 }
