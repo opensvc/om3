@@ -3255,7 +3255,6 @@ func newCmdNodeUnset() *cobra.Command {
 	commoncmd.FlagsLock(flags, &options.OptsLock)
 	commoncmd.FlagKeywords(flags, &options.Keywords)
 	commoncmd.FlagNodeSelector(flags, &options.NodeSelector)
-	commoncmd.FlagSections(flags, &options.Sections)
 	flagLocal(flags, &options.Local)
 	return cmd
 }
@@ -3323,7 +3322,6 @@ func newCmdObjectUnset(kind string) *cobra.Command {
 	addFlagsGlobal(flags, &options.OptsGlobal)
 	commoncmd.FlagsLock(flags, &options.OptsLock)
 	commoncmd.FlagKeywords(flags, &options.Keywords)
-	commoncmd.FlagSections(flags, &options.Sections)
 	flagLocal(flags, &options.Local)
 	return cmd
 }
