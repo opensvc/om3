@@ -1,9 +1,11 @@
 package oxcmd
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"os"
+	"strings"
 
 	"github.com/opensvc/om3/core/client"
 	"github.com/opensvc/om3/core/clientcontext"
@@ -27,22 +29,46 @@ type (
 	}
 )
 
-func (t *CmdObjectInstanceStatus) extract(selector string, c *client.T) ([]object.Digest, error) {
+func (t *CmdObjectInstanceStatus) extract(paths naming.Paths, c *client.T) ([]object.Digest, error) {
 	var (
 		err           error
 		b             []byte
 		clusterStatus clusterdump.Data
 	)
-	b, err = c.NewGetClusterStatus().
-		SetSelector(selector).
-		Get()
-	if err != nil {
+	getClusterStatus := func(selector string) error {
+		b, err = c.NewGetClusterStatus().
+			SetSelector(selector).
+			Get()
+		if err != nil {
+			return err
+		}
+		err = json.Unmarshal(b, &clusterStatus)
+		if err != nil {
+			return err
+		}
+		return nil
+	}
+
+	ctx := context.Background()
+	strSlice := make([]string, len(paths))
+	for i, path := range paths {
+		strSlice[i] = path.String()
+	}
+	selector := strings.Join(strSlice, ",")
+
+	if err := getClusterStatus(selector); err != nil {
 		return []object.Digest{}, err
 	}
-	err = json.Unmarshal(b, &clusterStatus)
-	if err != nil {
-		return []object.Digest{}, err
+
+	if t.Refresh {
+		if err := commoncmd.RefreshInstanceStatusFromClusterStatus(ctx, clusterStatus); err != nil {
+			return []object.Digest{}, err
+		}
+		if err := getClusterStatus(selector); err != nil {
+			return []object.Digest{}, err
+		}
 	}
+
 	data := make([]object.Digest, 0)
 	for ps := range clusterStatus.Cluster.Object {
 		p, err := naming.ParsePath(ps)
@@ -78,9 +104,6 @@ func (t *CmdObjectInstanceStatus) Run(kind string) error {
 		data []object.Digest
 		err  error
 	)
-	if t.Refresh {
-		return fmt.Errorf("todo: honor --refresh")
-	}
 	mergedSelector := commoncmd.MergeSelector("", t.ObjectSelector, kind, "")
 	c, err := client.New()
 	if err != nil {
@@ -99,7 +122,7 @@ func (t *CmdObjectInstanceStatus) Run(kind string) error {
 	if err != nil {
 		return err
 	}
-	data, err = t.extract(mergedSelector, c)
+	data, err = t.extract(paths, c)
 	if err != nil {
 		return err
 	}

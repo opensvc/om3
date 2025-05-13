@@ -355,7 +355,7 @@ func (t *actor) action(ctx context.Context, fn resourceset.DoFunc) error {
 		Attr("action", action.Name).
 		Attr("origin", env.Origin()).
 		Attr("crm", "true")
-	logger.Infof("▶ do %s %s (origin %s, sid %s)", action.Name, os.Args, env.Origin(), xsession.ID)
+	logger.Infof(">>> do %s %s (origin %s, sid %s)", action.Name, os.Args, env.Origin(), xsession.ID)
 	beginTime := time.Now()
 	ctx, stop := statusbus.WithContext(ctx, t.path)
 	defer stop()
@@ -365,7 +365,7 @@ func (t *actor) action(ctx context.Context, fn resourceset.DoFunc) error {
 		if overallStatus := sb.Get("overall"); overallStatus == status.Warn {
 			statusIcon += ", with warnings"
 		}
-		logger.Attr("duration", time.Now().Sub(beginTime)).Infof("■ done %s %s in %s, instance status is now %s", action.Name, os.Args, time.Now().Sub(beginTime), statusIcon)
+		logger.Attr("duration", time.Now().Sub(beginTime)).Infof("<<< done %s %s in %s, instance status is now %s", action.Name, os.Args, time.Now().Sub(beginTime), statusIcon)
 	}()
 
 	// daemon instance monitor updates
