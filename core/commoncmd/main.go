@@ -209,6 +209,9 @@ func WaitInstanceStatusUpdated(ctx context.Context, c *client.T, nodename string
 	return nil
 }
 
+// RefreshInstanceStatusFromClusterStatus updates instance statuses for all nodes using cluster status data.
+// It ensures instance status updates before return.
+// Returns an error if client creation, API calls, or processing fails.
 func RefreshInstanceStatusFromClusterStatus(ctx context.Context, clusterStatus clusterdump.Data) error {
 	var wg sync.WaitGroup
 	sid := api.InQueryRequesterSid(xsession.ID)
@@ -220,16 +223,22 @@ func RefreshInstanceStatusFromClusterStatus(ctx context.Context, clusterStatus c
 		return err
 	}
 
+	// serialize the WaitInstanceStatusUpdated calls and go wait for its
+	// completion: The WaitInstanceStatusUpdated have to be called before refresh
+	// calls.
 	for nodename, node := range clusterStatus.Cluster.Node {
 		for ps, _ := range node.Instance {
 			path, _ := naming.ParsePath(ps)
-			wg.Add(1)
-			go func() {
-				errC := make(chan error)
-				WaitInstanceStatusUpdated(ctx, c, nodename, path, 0, errC)
-				_ = <-errC
-				wg.Done()
-			}()
+			errC := make(chan error)
+			if err := WaitInstanceStatusUpdated(ctx, c, nodename, path, 0, errC); err != nil {
+				// TODO: accumulate or ignore error ?
+			} else {
+				wg.Add(1)
+				go func(c <-chan error) {
+					_ = <-c
+					wg.Done()
+				}(errC)
+			}
 		}
 	}
 	for nodename, node := range clusterStatus.Cluster.Node {
