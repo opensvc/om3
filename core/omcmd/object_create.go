@@ -67,18 +67,22 @@ func (t *CmdObjectCreate) Run(kind string) error {
 	} else {
 		t.client = c
 	}
+
+	// errC must be buffered because of early return if an error occurs during t.do()
 	errC := make(chan error, 1)
 
 	ctx, cancel := context.WithTimeout(context.Background(), t.Time)
 	defer cancel()
+	var needWait bool
 	if t.Wait || t.Provision {
 		if err := commoncmd.WaitInstanceMonitor(ctx, t.client, t.path, 0, errC); err != nil {
 			if errors.Is(err, os.ErrNotExist) {
-				// Don't wait if he daemon is not running.
-				errC <- nil
+				// the daemon is not running.
 			} else {
 				return err
 			}
+		} else {
+			needWait = true
 		}
 	}
 
@@ -86,7 +90,7 @@ func (t *CmdObjectCreate) Run(kind string) error {
 		return err
 	}
 
-	if t.Wait || t.Provision {
+	if needWait {
 		err := <-errC
 		if err != nil {
 			return err

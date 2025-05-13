@@ -50,7 +50,7 @@ func (t *CmdObjectUnset) Run(kind string) error {
 			return err
 		}
 		switch response.StatusCode() {
-		case 204:
+		case 200:
 			fmt.Printf("%s: committed\n", p)
 		case 400:
 			return fmt.Errorf("%s: %s", p, *response.JSON400)

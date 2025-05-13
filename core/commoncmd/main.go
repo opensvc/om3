@@ -97,66 +97,70 @@ func AnySingleNode(selector string, c *client.T) (string, error) {
 	return nodenames[0], nil
 }
 
+// WaitInstanceMonitor launches a go routine that waits for a specific
+// instance monitor update event within a given timeout, or ctx.Done() reached.
+// The result of the wait is sent to the errC channel: nil if the
+// InstanceMonitorUpdated event occurs, or a non-nil error otherwise.
+//
+// If acquiring the event reader fails, WaitInstanceMonitor returns
+// the error immediately and does not send anything to errC.
 func WaitInstanceMonitor(ctx context.Context, c *client.T, p naming.Path, timeout time.Duration, errC chan error) error {
-	var (
-		err      error
-		evReader event.ReadCloser
-	)
 	filters := []string{"InstanceMonitorUpdated,path=" + p.String()}
 	getEvents := c.NewGetEvents().SetFilters(filters).SetLimit(1)
 	if timeout > 0 {
 		getEvents = getEvents.SetDuration(timeout)
 	}
-	evReader, err = getEvents.GetReader()
+	evReader, err := getEvents.GetReader()
 	if err != nil {
 		return err
 	}
 
+	var closeOnce sync.Once
+	closeReader := func() {
+		closeOnce.Do(func() {
+			_ = evReader.Close()
+		})
+	}
+
 	if x, ok := evReader.(event.ContextSetter); ok {
 		x.SetContext(ctx)
+	} else {
+		// evReader is not an event.ContextSetter, we have to early closeReader
+		// to early stop evReader.Read() within the wait event routine.
+		go func() {
+			select {
+			case <-ctx.Done():
+				closeReader()
+			}
+		}()
 	}
 	go func() {
-		defer func() {
-			if err != nil {
-				err = fmt.Errorf("wait instance monitor update failed on object %s: %w", p, err)
+		defer closeReader()
+		ev, err := evReader.Read()
+		if err != nil {
+			if errors.Is(err, io.EOF) {
+				err = fmt.Errorf("no more events: %w", err)
 			}
-			select {
-			case <-ctx.Done():
-			case errC <- err:
-			}
-		}()
-
-		go func() {
-			// close reader when ctx is done
-			select {
-			case <-ctx.Done():
-				_ = evReader.Close()
-			}
-		}()
-		for {
-			ev, readError := evReader.Read()
-			if readError != nil {
-				if errors.Is(readError, io.EOF) {
-					err = fmt.Errorf("no more events, wait %v failed %s: %w", p, time.Now(), err)
-				} else {
-					err = readError
-				}
-				errC <- err
-				return
-			}
+		} else {
 			_, err = msgbus.EventToMessage(*ev)
-			errC <- err
-			return
 		}
+		if err != nil {
+			err = fmt.Errorf("wait instance monitor update failed on object %s: %w", p, err)
+		}
+		errC <- err
+		return
 	}()
 	return nil
 }
 
+// WaitInstanceStatusUpdated launches a go routine that waits for a specific
+// instance status update event within a given timeout, or ctx.Done() reached.
+// The result of the wait is sent to the errC channel: nil if the
+// InstanceStatusUpdated event occurs, or a non-nil error otherwise.
+//
+// If acquiring the event reader fails, WaitInstanceStatusUpdated returns
+// the error immediately and does not send anything to errC.
 func WaitInstanceStatusUpdated(ctx context.Context, c *client.T, nodename string, p naming.Path, timeout time.Duration, errC chan error) error {
-	var (
-		err      error
-		evReader event.ReadCloser
-	)
 	filters := []string{
 		fmt.Sprintf("InstanceStatusUpdated,path=%s,node=%s", p.String(), nodename),
 	}
@@ -164,51 +168,52 @@ func WaitInstanceStatusUpdated(ctx context.Context, c *client.T, nodename string
 	if timeout > 0 {
 		getEvents = getEvents.SetDuration(timeout)
 	}
-	evReader, err = getEvents.GetReader()
+	evReader, err := getEvents.GetReader()
 	if err != nil {
 		return err
 	}
 
+	var closeOnce sync.Once
+	closeReader := func() {
+		closeOnce.Do(func() {
+			_ = evReader.Close()
+		})
+	}
+
 	if x, ok := evReader.(event.ContextSetter); ok {
 		x.SetContext(ctx)
-	}
-	go func() {
-		defer func() {
-			if err != nil {
-				err = fmt.Errorf("wait instance status update failed on object %s: %w", p, err)
-			}
-			select {
-			case <-ctx.Done():
-			case errC <- err:
-			}
-		}()
-
+	} else {
+		// evReader is not an event.ContextSetter, we have to early closeReader
+		// to early stop evReader.Read() within the wait event routine.
 		go func() {
-			// close reader when ctx is done
 			select {
 			case <-ctx.Done():
-				_ = evReader.Close()
+				closeReader()
 			}
 		}()
-		for {
-			ev, readError := evReader.Read()
-			if readError != nil {
-				if errors.Is(readError, io.EOF) {
-					err = fmt.Errorf("no more events, wait %v failed %s: %w", p, time.Now(), err)
-				} else {
-					err = readError
-				}
-				errC <- err
-				return
+	}
+
+	go func() {
+		defer closeReader()
+		ev, err := evReader.Read()
+		if err != nil {
+			if errors.Is(err, io.EOF) {
+				err = fmt.Errorf("no more events: %w", err)
 			}
+		} else {
 			_, err = msgbus.EventToMessage(*ev)
-			errC <- err
-			return
 		}
+		if err != nil {
+			err = fmt.Errorf("wait instance status update failed on %s@%s: %w", p, nodename, err)
+		}
+		errC <- err
 	}()
 	return nil
 }
 
+// RefreshInstanceStatusFromClusterStatus updates instance statuses for all nodes using cluster status data.
+// It ensures instance status updates before return.
+// Returns an error if client creation, API calls, or processing fails.
 func RefreshInstanceStatusFromClusterStatus(ctx context.Context, clusterStatus clusterdump.Data) error {
 	var wg sync.WaitGroup
 	sid := api.InQueryRequesterSid(xsession.ID)
@@ -220,16 +225,26 @@ func RefreshInstanceStatusFromClusterStatus(ctx context.Context, clusterStatus c
 		return err
 	}
 
+	// serialize the WaitInstanceStatusUpdated calls and go wait for its
+	// completion: The WaitInstanceStatusUpdated have to be called before refresh
+	// calls.
 	for nodename, node := range clusterStatus.Cluster.Node {
 		for ps, _ := range node.Instance {
 			path, _ := naming.ParsePath(ps)
-			wg.Add(1)
-			go func() {
-				errC := make(chan error)
-				WaitInstanceStatusUpdated(ctx, c, nodename, path, 0, errC)
-				_ = <-errC
-				wg.Done()
-			}()
+
+			// errC must be buffered because of early return if an error occurs
+			// during PostInstanceActionStatusWithResponse
+			errC := make(chan error, 1)
+
+			if err := WaitInstanceStatusUpdated(ctx, c, nodename, path, 0, errC); err != nil {
+				// TODO: accumulate or ignore error ?
+			} else {
+				wg.Add(1)
+				go func(c <-chan error) {
+					_ = <-c
+					wg.Done()
+				}(errC)
+			}
 		}
 	}
 	for nodename, node := range clusterStatus.Cluster.Node {

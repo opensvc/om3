@@ -65,7 +65,9 @@ func (t *CmdObjectCreate) Run(kind string) error {
 	} else {
 		t.path = p
 	}
-	errC := make(chan error)
+
+	// errC must be buffered because of early return if an error occurs during t.do()
+	errC := make(chan error, 1)
 
 	if t.Wait || t.Provision {
 		ctx, cancel := context.WithTimeout(context.Background(), t.Time)
