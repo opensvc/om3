@@ -9,18 +9,23 @@ import (
 	"github.com/opensvc/om3/util/key"
 	"github.com/opensvc/om3/util/pg"
 	"github.com/opensvc/om3/util/stringslice"
+	"github.com/opensvc/om3/util/systemd"
 )
 
 func pgNameObject(p naming.Path) string {
-	return fmt.Sprintf("%s.%s", p.Kind, p.Name)
+	return systemd.Escape(fmt.Sprintf("%s.%s", p.Kind, p.Name))
+}
+
+func pgNameNamespace(s string) string {
+	return systemd.Escape(fmt.Sprintf("ns.%s", s))
 }
 
 func pgNameSubset(s string) string {
-	return fmt.Sprintf("subset.%s", strings.ReplaceAll(s, ":", "."))
+	return systemd.Escape(fmt.Sprintf("subset.%s", strings.ReplaceAll(s, ":", ".")))
 }
 
 func pgNameResource(s string) string {
-	return strings.ReplaceAll(s, "#", ".")
+	return systemd.Escape(strings.ReplaceAll(s, "#", "."))
 }
 
 // CGroup path must be systemd compliant so docker --parent-cgroup can be
@@ -76,10 +81,11 @@ func (t *core) pgConfig(section string) *pg.Config {
 		if t.path.Namespace == "root" {
 			return []string{"opensvc", "opensvc-" + s}
 		}
+		ns := pgNameNamespace(t.path.Namespace)
 		return []string{
 			"opensvc",
-			"opensvc-ns." + t.path.Namespace,
-			"opensvc-ns." + t.path.Namespace + "-" + s,
+			"opensvc-" + ns,
+			"opensvc-" + ns + "-" + s,
 		}
 	}
 	subsetPGName := func(s string) []string {

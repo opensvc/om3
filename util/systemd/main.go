@@ -16,14 +16,6 @@ func HasSystemd() bool {
 	return true
 }
 
-func PGID2Slice(s string) string {
-	slice := ""
-	for _, e := range strings.Split(s, ".slice") {
-		slice += Escape(e)
-	}
-	return slice + ".slice"
-}
-
 func Escape(s string) string {
 	var result strings.Builder
 
@@ -31,11 +23,12 @@ func Escape(s string) string {
 		switch r {
 		case '/':
 			result.WriteString("-")
-		case '-', '_':
+		case '_':
 			result.WriteRune(r)
+		case '-':
 			//		case '.', '\\', '\n', '\r', '\t':
 			// Escape special characters with C-style backslash escaping
-			//			result.WriteString(fmt.Sprintf("\\x%02x", r))
+			result.WriteString(fmt.Sprintf("\\x%02x", r))
 		default:
 			// Check if the character is printable ASCII
 			if r >= 32 && r <= 126 {
