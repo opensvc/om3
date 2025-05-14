@@ -518,6 +518,10 @@ func (t *BT) Start(ctx context.Context) error {
 		return t.logMainAction("start", errors.New("undefined executer"))
 	}
 
+	if err := t.ApplyPGChain(ctx); err != nil {
+		return err
+	}
+
 	inspect, err := t.executer.Inspect(ctx)
 	if err != nil {
 		return t.logMainAction("start", fmt.Errorf("inspect: %s", err))

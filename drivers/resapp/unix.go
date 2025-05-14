@@ -237,19 +237,14 @@ func (t *T) CmdArgs(s string, action string) ([]string, error) {
 	if err != nil || baseCommandSlice == nil {
 		return nil, err
 	}
-	if t.Limit.NeedApply() {
-		wrapArgs := t.toCaps().Argv()
-		prog := ""
-		if prog, err = os.Executable(); err != nil {
-			return nil, fmt.Errorf("lookup prog: %w", err)
-		}
-		if len(wrapArgs) > 0 {
-			wrap := append([]string{prog, "exec"}, wrapArgs...)
-			wrap = append(wrap, "--")
-			return append(wrap, baseCommandSlice...), nil
-		}
+	prog := ""
+	if prog, err = os.Executable(); err != nil {
+		return nil, fmt.Errorf("lookup prog: %w", err)
 	}
-	return baseCommandSlice, nil
+	args := append([]string{prog, "exec"}, t.toCaps().Argv()...)
+	args = append(args, "--")
+	args = append(args, baseCommandSlice...)
+	return args, nil
 }
 
 // GetFuncOpts returns a list of functional options to use with command.New()
@@ -268,8 +263,6 @@ func (t *T) GetFuncOpts(ctx context.Context, s string, action string) ([]funcopt
 	options := []funcopt.O{
 		command.WithName(cmdArgs[0]),
 		command.WithArgs(cmdArgs[1:]),
-		command.WithUser(t.User),
-		command.WithGroup(t.Group),
 		command.WithCWD(t.Cwd),
 		command.WithEnv(env),
 	}

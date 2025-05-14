@@ -230,10 +230,16 @@ func (ea *ExecutorArg) WaitRemoved(ctx context.Context) error {
 }
 
 func (ea *ExecutorArg) runArgsCGroupParent() []string {
-	if !ea.RunArgsCGroupParentDisable || ea.BT.PG.ID == "" {
+	if ea.RunArgsCGroupParentDisable {
 		return nil
 	}
-	return []string{"--cgroup-parent", ea.BT.PG.ID}
+	pgID := ea.BT.GetPGID()
+	if pgID == "" {
+		return nil
+	}
+	// format the cgroup as systemd expects
+	l := strings.Split(pgID, "/")
+	return []string{"--cgroup-parent", l[len(l)-1]}
 }
 
 func (ea *ExecutorArg) runArgsDNS() []string {

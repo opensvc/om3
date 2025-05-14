@@ -4,6 +4,8 @@ import (
 	"fmt"
 	"os"
 	"os/exec"
+	"os/user"
+	"strconv"
 	"syscall"
 	"time"
 
@@ -36,6 +38,8 @@ type (
 		LimitRSS        *string
 		LimitStack      *string
 		LimitVMem       *string
+		User            *string
+		Group           *string
 	}
 )
 
@@ -103,6 +107,12 @@ func (t T) Argv() []string {
 	}
 	if t.LimitVMem != nil {
 		argv = append(argv, "--limit-vmem", *t.LimitVMem)
+	}
+	if t.User != nil {
+		argv = append(argv, "--user", *t.User)
+	}
+	if t.Group != nil {
+		argv = append(argv, "--group", *t.Group)
 	}
 	return argv
 }
@@ -304,6 +314,40 @@ func (t *T) FlagSet(flags *pflag.FlagSet) {
 	t.LimitRSS = flags.String("limit-rss", "", "the maximum resident set size that should be made available to the process")
 	t.LimitStack = flags.String("limit-stack", "", "the maximum size (in bytes) of the call stack for the current process")
 	t.LimitVMem = flags.String("limit-vmem", "", "the largest area of mapped memory which the process may occupy")
+	t.User = flags.String("user", "", "execute the command as user")
+	t.Group = flags.String("group", "", "execute the command as group")
+}
+
+func (t T) demote() error {
+	if t.Group != nil && *t.Group != "" {
+		g, err := user.LookupGroup("nogroup")
+		if err != nil {
+			return err
+		}
+		gid, err := strconv.Atoi(g.Gid)
+		if err != nil {
+			return err
+		}
+		err = syscall.Setgid(gid)
+		if err != nil {
+			return err
+		}
+	}
+	if t.User != nil && *t.User != "" {
+		u, err := user.Lookup(*t.User)
+		if err != nil {
+			return err
+		}
+		uid, err := strconv.Atoi(u.Uid)
+		if err != nil {
+			return err
+		}
+		err = syscall.Setuid(uid)
+		if err != nil {
+			return err
+		}
+	}
+	return nil
 }
 
 func (t T) Exec(args []string) {
@@ -322,6 +366,10 @@ func (t T) Exec(args []string) {
 		os.Exit(1)
 	}
 	if err := t.toPG().Apply(); err != nil {
+		fmt.Fprintln(os.Stderr, err)
+		os.Exit(1)
+	}
+	if err := t.demote(); err != nil {
 		fmt.Fprintln(os.Stderr, err)
 		os.Exit(1)
 	}
