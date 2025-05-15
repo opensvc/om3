@@ -33,7 +33,7 @@ func Test_Status_Unmarshal(t *testing.T) {
 			"volume#1": {
 				ResourceID: (*resourceid.T)(nil),
 				Label:      "data2",
-				Log: []*resource.StatusLogEntry{
+				Log: []resource.StatusLogEntry{
 					{
 						Level:   "info",
 						Message: "vol/data2 avail down",
@@ -59,7 +59,7 @@ func Test_Status_Unmarshal(t *testing.T) {
 			"app#1": {
 				ResourceID: (*resourceid.T)(nil),
 				Label:      "forking app.forking",
-				Log: []*resource.StatusLogEntry{
+				Log: []resource.StatusLogEntry{
 					{
 						Level:   "info",
 						Message: "not evaluated (fs#1 is down)",

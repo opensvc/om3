@@ -15,6 +15,8 @@ import (
 	"github.com/opensvc/om3/core/object"
 	"github.com/opensvc/om3/core/rawconfig"
 	"github.com/opensvc/om3/drivers/resapp"
+	"github.com/opensvc/om3/testhelper"
+	"github.com/opensvc/om3/util/executable"
 	"github.com/opensvc/om3/util/file"
 	"github.com/opensvc/om3/util/pg"
 	"github.com/opensvc/om3/util/plog"
@@ -54,6 +56,8 @@ func WithLoggerAndPgApp(app T) T {
 }
 
 func TestStart(t *testing.T) {
+	testhelper.SetExecutable(t, "../..")
+	defer executable.Unset()
 	startReturnMsg := "Start(...) returned value"
 
 	t.Run("execute start command", func(t *testing.T) {
@@ -95,7 +99,7 @@ func TestStart(t *testing.T) {
 		app := WithLoggerAndPgApp(
 			T{T: resapp.T{
 				StartCmd: "echo",
-				CheckCmd: "exit 2",
+				CheckCmd: "sh -c \"exit 2\"",
 				StopCmd:  "touch " + filename,
 			}})
 		ctx, cancel := getActionContext()
@@ -154,13 +158,15 @@ func TestStop(t *testing.T) {
 	if os.Getuid() != 0 {
 		t.Skip("skipped for non root user")
 	}
+	testhelper.SetExecutable(t, "../..")
+	defer executable.Unset()
 	t.Run("execute stop command", func(t *testing.T) {
 		td, cleanup := prepareConfig(t)
 		defer cleanup()
 
 		filename := filepath.Join(td, "trace")
 		app := WithLoggerAndPgApp(T{T: resapp.T{
-			CheckCmd: "exit 2",
+			CheckCmd: "sh -c \"exit 2\"",
 			StopCmd:  "touch " + filename,
 		}})
 		ctx, cancel := getActionContext()

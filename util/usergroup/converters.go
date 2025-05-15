@@ -14,13 +14,13 @@ func UIDFromString(s string) (uint32, error) {
 	if err != nil {
 		lookup, err = user.LookupId(s)
 		if err != nil {
-			return 0, fmt.Errorf("unable to find user info for '%v'", s)
+			return 0, fmt.Errorf("unknown user %s", s)
 		}
 	}
 	var id int64
 	id, err = strconv.ParseInt(lookup.Uid, 10, 32)
 	if err != nil {
-		return 0, fmt.Errorf("unable to get userid info for '%v' (%v)", s, lookup.Uid)
+		return 0, fmt.Errorf("unable to convert to user %s id %v to integer", s, lookup.Uid)
 	}
 	userID := uint32(id)
 	return userID, nil
@@ -33,13 +33,13 @@ func GIDFromString(s string) (uint32, error) {
 	if err != nil {
 		lookup, err = user.LookupGroupId(s)
 		if err != nil {
-			return 0, fmt.Errorf("unable to find group info for '%v'", s)
+			return 0, fmt.Errorf("unknown group %s", s)
 		}
 	}
 	var id int64
 	id, err = strconv.ParseInt(lookup.Gid, 10, 32)
 	if err != nil {
-		return 0, fmt.Errorf("unable to get groupid info for '%v' (%v)", s, lookup.Gid)
+		return 0, fmt.Errorf("unable to convert group %s id %v to integer", s, lookup.Gid)
 	}
 	userID := uint32(id)
 	return userID, nil

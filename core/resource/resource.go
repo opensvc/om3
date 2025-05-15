@@ -49,8 +49,10 @@ type (
 		Info(string, ...any)
 		Warn(string, ...any)
 		Error(string, ...any)
+		Len() int
 		Reset()
-		Entries() []*StatusLogEntry
+		Entries() []StatusLogEntry
+		Merge(StatusLogger)
 	}
 
 	// Driver exposes what can be done with a resource
@@ -211,17 +213,17 @@ type (
 	// Status is the structure representing the resource status,
 	// which is embedded in the instance status.
 	Status struct {
-		ResourceID  *resourceid.T     `json:"-"`
-		Label       string            `json:"label"`
-		Log         []*StatusLogEntry `json:"log,omitempty"`
-		Status      status.T          `json:"status"`
-		Type        string            `json:"type"`
-		Provisioned ProvisionStatus   `json:"provisioned,omitempty"`
-		Monitor     MonitorFlag       `json:"monitor,omitempty"`
-		Disable     DisableFlag       `json:"disable,omitempty"`
-		Optional    OptionalFlag      `json:"optional,omitempty"`
-		Encap       EncapFlag         `json:"encap,omitempty"`
-		Standby     StandbyFlag       `json:"standby,omitempty"`
+		ResourceID  *resourceid.T    `json:"-"`
+		Label       string           `json:"label"`
+		Log         []StatusLogEntry `json:"log,omitempty"`
+		Status      status.T         `json:"status"`
+		Type        string           `json:"type"`
+		Provisioned ProvisionStatus  `json:"provisioned,omitempty"`
+		Monitor     MonitorFlag      `json:"monitor,omitempty"`
+		Disable     DisableFlag      `json:"disable,omitempty"`
+		Optional    OptionalFlag     `json:"optional,omitempty"`
+		Encap       EncapFlag        `json:"encap,omitempty"`
+		Standby     StandbyFlag      `json:"standby,omitempty"`
 
 		// Subset is the name of the subset this resource is assigned to.
 		Subset string `json:"subset,omitempty"`

@@ -34,9 +34,9 @@
     "fs#2": {
       "label": "fs.flag",
       "log": [
-        "info: info msg",
-        "warn: warning msg1",
-        "error: warning msg"
+	      {"message": "info msg", "level": "info"},
+	      {"message": "warning msg1", "level": "warn"},
+	      {"message": "warning msg", "level": "error"}
       ],
       "provisioned": {
         "mtime": "2020-03-04T16:33:23.16700383+01:00",
@@ -48,7 +48,7 @@
     "sync#i0": {
       "label": "rsync svc config to nodes",
       "log": [
-        "warn: need update"
+	      {"message": "need update", "level": "warn"}
       ],
       "optional": true,
       "status": "down",

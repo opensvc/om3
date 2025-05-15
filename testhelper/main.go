@@ -11,9 +11,11 @@ import (
 
 	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
 	"github.com/opensvc/om3/core/rawconfig"
+	"github.com/opensvc/om3/util/executable"
 	"github.com/opensvc/om3/util/file"
 	"github.com/opensvc/om3/util/hostname"
 )
@@ -150,4 +152,13 @@ func Trace(t *testing.T) {
 		pid := os.Getpid()
 		RunCmd(t, "ls", "-l", fmt.Sprintf("/proc/%d/fd", pid))
 	}
+}
+
+func SetExecutable(t *testing.T, head string) string {
+	execProgram := filepath.Join(t.TempDir(), "om")
+	cmd := exec.Command("go", "build", "-o", execProgram, head+"/cmd/exec")
+	b, err := cmd.CombinedOutput()
+	assert.NoErrorf(t, err, "build executable program: %s", string(b))
+	executable.Set(execProgram)
+	return execProgram
 }

@@ -4,14 +4,13 @@ import (
 	"fmt"
 	"os"
 	"os/exec"
-	"os/user"
-	"strconv"
 	"syscall"
 	"time"
 
 	"github.com/opensvc/om3/util/pg"
 	"github.com/opensvc/om3/util/sizeconv"
 	"github.com/opensvc/om3/util/ulimit"
+	"github.com/opensvc/om3/util/usergroup"
 	"github.com/spf13/pflag"
 )
 
@@ -320,29 +319,21 @@ func (t *T) FlagSet(flags *pflag.FlagSet) {
 
 func (t T) demote() error {
 	if t.Group != nil && *t.Group != "" {
-		g, err := user.LookupGroup("nogroup")
+		gid, err := usergroup.GIDFromString(*t.Group)
 		if err != nil {
 			return err
 		}
-		gid, err := strconv.Atoi(g.Gid)
-		if err != nil {
-			return err
-		}
-		err = syscall.Setgid(gid)
+		err = syscall.Setgid(int(gid))
 		if err != nil {
 			return err
 		}
 	}
 	if t.User != nil && *t.User != "" {
-		u, err := user.Lookup(*t.User)
+		uid, err := usergroup.UIDFromString(*t.User)
 		if err != nil {
 			return err
 		}
-		uid, err := strconv.Atoi(u.Uid)
-		if err != nil {
-			return err
-		}
-		err = syscall.Setuid(uid)
+		err = syscall.Setuid(int(uid))
 		if err != nil {
 			return err
 		}
@@ -365,9 +356,11 @@ func (t T) Exec(args []string) {
 		fmt.Fprintln(os.Stderr, err)
 		os.Exit(1)
 	}
-	if err := t.toPG().Apply(); err != nil {
-		fmt.Fprintln(os.Stderr, err)
-		os.Exit(1)
+	if t.PGID != nil && *t.PGID != "" {
+		if err := t.toPG().Apply(); err != nil {
+			fmt.Fprintln(os.Stderr, err)
+			os.Exit(1)
+		}
 	}
 	if err := t.demote(); err != nil {
 		fmt.Fprintln(os.Stderr, err)

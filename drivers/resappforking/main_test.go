@@ -18,6 +18,8 @@ import (
 	"github.com/opensvc/om3/core/rawconfig"
 	"github.com/opensvc/om3/core/status"
 	"github.com/opensvc/om3/drivers/resapp"
+	"github.com/opensvc/om3/testhelper"
+	"github.com/opensvc/om3/util/executable"
 	"github.com/opensvc/om3/util/file"
 	"github.com/opensvc/om3/util/pg"
 	"github.com/opensvc/om3/util/plog"
@@ -57,6 +59,8 @@ func WithLoggerAndPgApp(app T) T {
 
 func TestStart(t *testing.T) {
 	startReturnMsg := "Start(...) returned value"
+	testhelper.SetExecutable(t, "../..")
+	defer executable.Unset()
 
 	t.Run("execute start command", func(t *testing.T) {
 		td, cleanup := prepareConfig(t)
@@ -147,6 +151,9 @@ func TestStart(t *testing.T) {
 }
 
 func TestStop(t *testing.T) {
+	testhelper.SetExecutable(t, "../..")
+	defer executable.Unset()
+
 	t.Run("execute stop command", func(t *testing.T) {
 		td, cleanup := prepareConfig(t)
 		defer cleanup()
@@ -178,6 +185,9 @@ func TestStatus(t *testing.T) {
 	if os.Getuid() != 0 {
 		t.Skip("skipped for non root user")
 	}
+	testhelper.SetExecutable(t, "../..")
+	defer executable.Unset()
+
 	ctx := context.Background()
 	t.Run("execute check command", func(t *testing.T) {
 		td, cleanup := prepareConfig(t)

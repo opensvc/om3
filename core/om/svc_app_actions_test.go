@@ -49,19 +49,19 @@ func TestAppStop(t *testing.T) {
 		},
 		"badUser": {
 			[]string{"--rid", "app#badUser", "--debug"},
-			[]string{"unable to find user info for 'badUser'"},
+			[]string{"unknown user badUser"},
 		},
 		"badGroup": {
 			[]string{"--rid", "app#badGroup", "--debug"},
-			[]string{"unable to find group info for 'badGroup'"},
+			[]string{"unknown group badGroup"},
 		},
 		"badUserGroup": {
-			[]string{"--rid", "app#badUserGroup", "--debug"},
-			[]string{"unable to find user info for 'badUser'"},
+			[]string{"--rid", "app#badUserGroup"},
+			[]string{"unknown group badGroup"},
 		},
 		"root": {
 			[]string{"--rid", "app#root", "--debug"},
-			[]string{"uid=0(root) gid=1"}, // daemon may be 12 on solaris
+			[]string{"--user root --group daemon"}, // daemon may be 12 on solaris
 		},
 		"nonRoot": {
 			[]string{"--rid", "app#root", "--debug"},
