@@ -25,7 +25,7 @@ require (
 	github.com/fsnotify/fsnotify v1.6.0
 	github.com/g8rswimmer/error-chain v1.0.0
 	github.com/gdamore/tcell/v2 v2.7.1
-	github.com/getkin/kin-openapi v0.127.0
+	github.com/getkin/kin-openapi v0.131.0
 	github.com/go-chi/jwtauth/v5 v5.0.2
 	github.com/go-ping/ping v0.0.0-20210506233800-ff8be3320020
 	github.com/goccy/go-json v0.10.2
@@ -116,7 +116,6 @@ require (
 	github.com/golang/protobuf v1.5.3 // indirect
 	github.com/goombaio/orderedmap v0.0.0-20180924084748-ba921b7e2419 // indirect
 	github.com/inconshreveable/mousetrap v1.1.0 // indirect
-	github.com/invopop/yaml v0.3.1 // indirect
 	github.com/josharian/intern v1.0.0 // indirect
 	github.com/josharian/native v0.0.0-20200817173448-b6b71def0850 // indirect
 	github.com/koneu/natend v0.0.0-20150829182554-ec0926ea948d // indirect
@@ -137,6 +136,8 @@ require (
 	github.com/mitchellh/go-ps v1.0.0 // indirect
 	github.com/mohae/deepcopy v0.0.0-20170929034955-c48cc78d4826 // indirect
 	github.com/nxadm/tail v1.4.8 // indirect
+	github.com/oasdiff/yaml v0.0.0-20250309154309-f31be36b4037 // indirect
+	github.com/oasdiff/yaml3 v0.0.0-20250309153720-d2182401db90 // indirect
 	github.com/opensvc/locker v1.0.3 // indirect
 	github.com/perimeterx/marshmallow v1.1.5 // indirect
 	github.com/pmezard/go-difflib v1.0.0 // indirect
