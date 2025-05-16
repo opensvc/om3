@@ -3,7 +3,9 @@
 package systemd
 
 import (
+	"fmt"
 	"os"
+	"strings"
 )
 
 // HasSystemd return true if systemd is detected on current os
@@ -12,4 +14,31 @@ func HasSystemd() bool {
 		return false
 	}
 	return true
+}
+
+func Escape(s string) string {
+	var result strings.Builder
+
+	for _, r := range s {
+		switch r {
+		case '/':
+			result.WriteString("-")
+		case '_':
+			result.WriteRune(r)
+		case '-':
+			//		case '.', '\\', '\n', '\r', '\t':
+			// Escape special characters with C-style backslash escaping
+			result.WriteString(fmt.Sprintf("\\x%02x", r))
+		default:
+			// Check if the character is printable ASCII
+			if r >= 32 && r <= 126 {
+				result.WriteRune(r)
+			} else {
+				// Escape non-printable ASCII characters
+				result.WriteString(fmt.Sprintf("\\x%02x", r))
+			}
+		}
+	}
+
+	return result.String()
 }

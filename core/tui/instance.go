@@ -237,7 +237,7 @@ func (t *App) updateInstanceView() {
 		}
 		return cell
 	}
-	cellLog := func(entry *resource.StatusLogEntry) *tview.TableCell {
+	cellLog := func(entry resource.StatusLogEntry) *tview.TableCell {
 		s := entry.String()
 		switch entry.Level {
 		case "error":

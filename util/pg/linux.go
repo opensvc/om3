@@ -18,9 +18,6 @@ import (
 // ApplyProc creates the cgroup, set caps, and add the specified process
 func (c Config) ApplyProc(pid int) error {
 	var errs error
-	if !c.needApply() {
-		return nil
-	}
 	if c.ID == "" {
 		return fmt.Errorf("the pg config application requires a non empty pg id")
 	}

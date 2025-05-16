@@ -23,10 +23,12 @@ import (
 	"github.com/opensvc/om3/core/statusbus"
 	"github.com/opensvc/om3/util/command"
 	"github.com/opensvc/om3/util/converters"
+	"github.com/opensvc/om3/util/executable"
 	"github.com/opensvc/om3/util/funcopt"
 	"github.com/opensvc/om3/util/pg"
 	"github.com/opensvc/om3/util/retcodes"
 	"github.com/opensvc/om3/util/ulimit"
+	"github.com/opensvc/om3/util/usergroup"
 )
 
 type (
@@ -104,7 +106,6 @@ func (t *T) isInstanceSufficientlyStarted(ctx context.Context) bool {
 		driver.GroupFS,
 		driver.GroupShare,
 		driver.GroupDisk,
-		driver.GroupContainer,
 	})
 	aggStatus := status.Undef
 	aggCount := 0
@@ -120,7 +121,6 @@ func (t *T) isInstanceSufficientlyStarted(ctx context.Context) bool {
 			case "scsireserv":
 				continue
 			}
-		case driver.GroupContainer:
 		default:
 			continue
 		}
@@ -156,11 +156,29 @@ func (t *T) isInstanceSufficientlyStarted(ctx context.Context) bool {
 func (t *T) CommonStatus(ctx context.Context) status.T {
 	var opts []funcopt.O
 	var err error
+	var cannotExec bool
+	if t.User != "" {
+		_, err := usergroup.UIDFromString(t.User)
+		if err != nil {
+			t.StatusLog().Error("%s", err)
+			cannotExec = true
+		}
+	}
+	if t.Group != "" {
+		_, err := usergroup.GIDFromString(t.Group)
+		if err != nil {
+			t.StatusLog().Error("%s", err)
+			cannotExec = true
+		}
+	}
 	if opts, err = t.GetFuncOpts(ctx, t.CheckCmd, "status"); err != nil {
 		t.Log().Errorf("prepare 'status' command: %s", err)
 		if t.StatusLogKw {
 			t.StatusLog().Error("prepare cmd %s", err)
+			cannotExec = true
 		}
+	}
+	if cannotExec {
 		return status.Undef
 	}
 	if len(opts) == 0 {
@@ -169,7 +187,6 @@ func (t *T) CommonStatus(ctx context.Context) status.T {
 	if !t.isInstanceSufficientlyStarted(ctx) {
 		return status.NotApplicable
 	}
-
 	opts = append(opts,
 		command.WithLogger(t.Log()),
 		command.WithStdoutLogLevel(zerolog.Disabled),
@@ -237,19 +254,14 @@ func (t *T) CmdArgs(s string, action string) ([]string, error) {
 	if err != nil || baseCommandSlice == nil {
 		return nil, err
 	}
-	if t.Limit.NeedApply() {
-		wrapArgs := t.toCaps().Argv()
-		prog := ""
-		if prog, err = os.Executable(); err != nil {
-			return nil, fmt.Errorf("lookup prog: %w", err)
-		}
-		if len(wrapArgs) > 0 {
-			wrap := append([]string{prog, "exec"}, wrapArgs...)
-			wrap = append(wrap, "--")
-			return append(wrap, baseCommandSlice...), nil
-		}
+	prog := ""
+	if prog, err = executable.Path(); err != nil {
+		return nil, fmt.Errorf("lookup prog: %w", err)
 	}
-	return baseCommandSlice, nil
+	args := append([]string{prog, "exec"}, t.toCaps().Argv()...)
+	args = append(args, "--")
+	args = append(args, baseCommandSlice...)
+	return args, nil
 }
 
 // GetFuncOpts returns a list of functional options to use with command.New()
@@ -268,8 +280,6 @@ func (t *T) GetFuncOpts(ctx context.Context, s string, action string) ([]funcopt
 	options := []funcopt.O{
 		command.WithName(cmdArgs[0]),
 		command.WithArgs(cmdArgs[1:]),
-		command.WithUser(t.User),
-		command.WithGroup(t.Group),
 		command.WithCWD(t.Cwd),
 		command.WithEnv(env),
 	}
