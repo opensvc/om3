@@ -17,6 +17,11 @@ func (t *Manager) orchestrateUnprovisioned() {
 		t.UnprovisionedFromWaitNonLeader()
 	case instance.MonitorStateWaitChildren:
 		t.setWaitChildren()
+	case instance.MonitorStateUnprovisionSuccess,
+		instance.MonitorStateUnprovisionFailure:
+		if t.unprovisionedClearIfReached() {
+			return
+		}
 	}
 }
 
@@ -31,11 +36,11 @@ func (t *Manager) UnprovisionedFromIdle() {
 		if t.hasNonLeaderProvisioned() {
 			t.transitionTo(instance.MonitorStateWaitNonLeader)
 		} else {
-			t.queueLastAction(t.crmUnprovisionLeader, instance.MonitorStateUnprovisionProgress, instance.MonitorStateIdle, instance.MonitorStateUnprovisionFailure)
+			t.queueAction(t.crmUnprovisionLeader, instance.MonitorStateUnprovisionProgress, instance.MonitorStateUnprovisionSuccess, instance.MonitorStateUnprovisionFailure)
 		}
 	} else {
 		// immediate action on non-leaders
-		t.queueLastAction(t.crmUnprovisionNonLeader, instance.MonitorStateUnprovisionProgress, instance.MonitorStateIdle, instance.MonitorStateUnprovisionFailure)
+		t.queueAction(t.crmUnprovisionNonLeader, instance.MonitorStateUnprovisionProgress, instance.MonitorStateUnprovisionSuccess, instance.MonitorStateUnprovisionFailure)
 	}
 }
 
@@ -48,10 +53,32 @@ func (t *Manager) UnprovisionedFromWaitNonLeader() {
 		t.transitionTo(instance.MonitorStateIdle)
 		return
 	}
+	if t.hasNonLeaderWithState(instance.MonitorStateUnprovisionFailure) {
+		t.transitionTo(instance.MonitorStateUnprovisionFailure)
+		return
+	}
 	if t.hasNonLeaderProvisioned() {
 		return
 	}
-	t.queueLastAction(t.crmUnprovisionLeader, instance.MonitorStateUnprovisionProgress, instance.MonitorStateIdle, instance.MonitorStateUnprovisionFailure)
+	t.queueAction(t.crmUnprovisionLeader, instance.MonitorStateUnprovisionProgress, instance.MonitorStateUnprovisionSuccess, instance.MonitorStateUnprovisionFailure)
+}
+
+func (t *Manager) hasNonLeaderWithState(states ...instance.MonitorState) bool {
+	for node, instMon := range t.instMonitor {
+		var isLeader bool
+		if node == t.localhost {
+			isLeader = t.state.IsLeader
+		} else {
+			isLeader = instMon.IsLeader
+		}
+		if isLeader {
+			continue
+		}
+		if instMon.State.Is(states...) {
+			return true
+		}
+	}
+	return false
 }
 
 func (t *Manager) hasNonLeaderProvisioned() bool {
@@ -73,18 +100,25 @@ func (t *Manager) hasNonLeaderProvisioned() bool {
 }
 
 func (t *Manager) unprovisionedClearIfReached() bool {
-	reached := func(msg string) bool {
+	reached := func(msg string, toIdle bool) bool {
 		t.log.Infof("%s -> set reached", msg)
-		t.doneAndIdle()
+		if toIdle {
+			t.doneAndIdle()
+		} else {
+			t.done()
+		}
 		t.disableMonitor(msg)
 		t.updateIfChange()
 		return true
 	}
 	if t.instStatus[t.localhost].Provisioned.IsOneOf(provisioned.False, provisioned.NotApplicable) {
-		return reached("unprovisioned orchestration: instance is not provisioned")
+		return reached("unprovisioned orchestration: instance is not provisioned", true)
 	}
 	if t.instStatus[t.localhost].Avail == status.NotApplicable {
-		return reached("unprovisioned orchestration: instance availability is n/a")
+		return reached("unprovisioned orchestration: instance availability is n/a", true)
+	}
+	if t.isAllState(instance.MonitorStateUnprovisionFailure) {
+		return reached("unprovisioned orchestration: all instances unprovision failed", false)
 	}
 	return false
 }
