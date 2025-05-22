@@ -1758,7 +1758,7 @@ paths:
 
   /api/node/name/{nodename}/instance/path/{namespace}/{kind}/{name}/action/provision:
     post:
-      description: Provision the object instance.
+      description: Provision the object instance. When state_only parameter is true, only internal provisioned state is changed.
       operationId: PostInstanceActionProvision
       parameters:
         - $ref: '#/components/parameters/inPathNodeName'
@@ -1770,6 +1770,7 @@ paths:
         - $ref: '#/components/parameters/inQueryLeader'
         - $ref: '#/components/parameters/inQueryRequesterSid'
         - $ref: '#/components/parameters/inQueryRid'
+        - $ref: '#/components/parameters/inQueryStateOnly'
         - $ref: '#/components/parameters/inQuerySubset'
         - $ref: '#/components/parameters/inQueryTag'
         - $ref: '#/components/parameters/inQueryTo'
@@ -2154,7 +2155,7 @@ paths:
 
   /api/node/name/{nodename}/instance/path/{namespace}/{kind}/{name}/action/unprovision:
     post:
-      description: Unprovision the object instance.
+      description: Unprovision the object instance. When state_only parameter is true, only internal provisioned state is changed.
       operationId: PostInstanceActionUnprovision
       parameters:
         - $ref: '#/components/parameters/inPathNodeName'
@@ -2165,6 +2166,7 @@ paths:
         - $ref: '#/components/parameters/inQueryLeader'
         - $ref: '#/components/parameters/inQueryRequesterSid'
         - $ref: '#/components/parameters/inQueryRid'
+        - $ref: '#/components/parameters/inQueryStateOnly'
         - $ref: '#/components/parameters/inQuerySubset'
         - $ref: '#/components/parameters/inQueryTag'
         - $ref: '#/components/parameters/inQueryTo'
@@ -7003,6 +7005,12 @@ components:
       schema:
         type: string
         x-go-name: RID
+
+    inQueryStateOnly:
+      in: query
+      name: state_only
+      schema:
+        type: boolean
 
     inQuerySubset:
       in: query

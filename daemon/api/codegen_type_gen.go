@@ -1461,6 +1461,9 @@ type InQueryRid = string
 // InQuerySets defines model for inQuerySets.
 type InQuerySets = []string
 
+// InQueryStateOnly defines model for inQueryStateOnly.
+type InQueryStateOnly = bool
+
 // InQuerySubset defines model for inQuerySubset.
 type InQuerySubset = string
 
@@ -1694,6 +1697,7 @@ type PostInstanceActionProvisionParams struct {
 	Leader          *InQueryLeader          `form:"leader,omitempty" json:"leader,omitempty"`
 	RequesterSid    *InQueryRequesterSid    `form:"requester_sid,omitempty" json:"requester_sid,omitempty"`
 	Rid             *InQueryRid             `form:"rid,omitempty" json:"rid,omitempty"`
+	StateOnly       *InQueryStateOnly       `form:"state_only,omitempty" json:"state_only,omitempty"`
 	Subset          *InQuerySubset          `form:"subset,omitempty" json:"subset,omitempty"`
 	Tag             *InQueryTag             `form:"tag,omitempty" json:"tag,omitempty"`
 	To              *InQueryTo              `form:"to,omitempty" json:"to,omitempty"`
@@ -1816,6 +1820,7 @@ type PostInstanceActionUnprovisionParams struct {
 	Leader       *InQueryLeader       `form:"leader,omitempty" json:"leader,omitempty"`
 	RequesterSid *InQueryRequesterSid `form:"requester_sid,omitempty" json:"requester_sid,omitempty"`
 	Rid          *InQueryRid          `form:"rid,omitempty" json:"rid,omitempty"`
+	StateOnly    *InQueryStateOnly    `form:"state_only,omitempty" json:"state_only,omitempty"`
 	Subset       *InQuerySubset       `form:"subset,omitempty" json:"subset,omitempty"`
 	Tag          *InQueryTag          `form:"tag,omitempty" json:"tag,omitempty"`
 	To           *InQueryTo           `form:"to,omitempty" json:"to,omitempty"`
