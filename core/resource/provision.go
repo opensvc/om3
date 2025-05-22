@@ -111,6 +111,13 @@ func Unprovision(ctx context.Context, r Driver, leader bool) error {
 	}
 	Setenv(r)
 	if r.IsUnprovisionDisabled() {
+		if prov, err := Provisioned(r); err != nil {
+			return fmt.Errorf("unprovision is disabled, can't detect the provisioned state: %w", err)
+		} else if !prov.IsOneOf(provisioned.False, provisioned.NotApplicable) {
+			return fmt.Errorf("unprovision is disabled, the current resource provisioning state is %s: sysadmins may unprovision manually and execute 'instance unprovision --state --rid %s'", prov, r.RID())
+		} else {
+			r.Log().Infof("unprovision is disabled, the current resource provisioning state is %s", prov)
+		}
 		if err := unprovisionStop(ctx, r); err != nil {
 			return err
 		}
