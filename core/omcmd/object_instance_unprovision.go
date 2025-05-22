@@ -24,6 +24,11 @@ type (
 		Force        bool
 		Leader       bool
 		NodeSelector string
+
+		// StateOnly indicates that the command will only change the instance-selected
+		// resources provisioned state value to `unprovisioned` without any unprovisioning
+		// actions.
+		StateOnly bool
 	}
 )
 
@@ -54,6 +59,9 @@ func (t *CmdObjectInstanceUnprovision) Run(kind string) error {
 			}
 			if t.OptsResourceSelector.RID != "" {
 				params.Rid = &t.OptsResourceSelector.RID
+			}
+			if t.StateOnly {
+				params.StateOnly = &t.StateOnly
 			}
 			if t.OptsResourceSelector.Subset != "" {
 				params.Subset = &t.OptsResourceSelector.Subset
@@ -95,7 +103,11 @@ func (t *CmdObjectInstanceUnprovision) Run(kind string) error {
 			ctx = actioncontext.WithTo(ctx, t.To)
 			ctx = actioncontext.WithForce(ctx, t.Force)
 			ctx = actioncontext.WithLeader(ctx, t.Leader)
-			return nil, o.Unprovision(ctx)
+			if t.StateOnly {
+				return nil, o.SetUnprovisioned(ctx)
+			} else {
+				return nil, o.Unprovision(ctx)
+			}
 		}),
 	).Do()
 }

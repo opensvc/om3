@@ -21,6 +21,11 @@ type (
 		Force           bool
 		Leader          bool
 		NodeSelector    string
+
+		// StateOnly indicates that the command will only change the instance-selected
+		// resources provisioned state value to `provisioned` without any provisioning
+		// actions.
+		StateOnly bool
 	}
 )
 
@@ -58,6 +63,9 @@ func (t *CmdObjectInstanceProvision) Run(kind string) error {
 			}
 			if t.OptsResourceSelector.RID != "" {
 				params.Rid = &t.OptsResourceSelector.RID
+			}
+			if t.StateOnly {
+				params.StateOnly = &t.StateOnly
 			}
 			if t.OptsResourceSelector.Subset != "" {
 				params.Subset = &t.OptsResourceSelector.Subset

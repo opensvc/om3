@@ -144,6 +144,7 @@ func init() {
 		newCmdObjectScheduleList(kind),
 	)
 	cmdObjectSet.AddCommand(
+		//deprecated...
 		newCmdObjectSetProvisioned(kind),
 		newCmdObjectSetUnprovisioned(kind),
 	)

@@ -2414,6 +2414,7 @@ func newCmdObjectInstanceProvision(kind string) *cobra.Command {
 	commoncmd.FlagLeader(flags, &options.Leader)
 	commoncmd.FlagNodeSelector(flags, &options.NodeSelector)
 	commoncmd.FlagDisableRollback(flags, &options.DisableRollback)
+	commoncmd.FlagStateOnly(flags, &options.StateOnly)
 	return cmd
 }
 
@@ -2619,6 +2620,7 @@ func newCmdObjectInstanceUnprovision(kind string) *cobra.Command {
 	commoncmd.FlagForce(flags, &options.Force)
 	commoncmd.FlagLeader(flags, &options.Leader)
 	commoncmd.FlagNodeSelector(flags, &options.NodeSelector)
+	commoncmd.FlagStateOnly(flags, &options.StateOnly)
 	return cmd
 }
 
@@ -2882,6 +2884,7 @@ func newCmdObjectSetProvisioned(kind string) *cobra.Command {
 	var options commands.CmdObjectSetProvisioned
 	cmd := &cobra.Command{
 		Use:     "provisioned",
+		Hidden:  true,
 		Short:   "set the resources provisioned property",
 		Long:    "This action does not provision the resources (fs are not formatted, disk not allocated, ...). This is just a resources provisioned flag create. Necessary to allow the unprovision action, which is bypassed if the provisioned flag is not set.",
 		Aliases: []string{"provision", "prov"},
@@ -2901,6 +2904,7 @@ func newCmdObjectSetUnprovisioned(kind string) *cobra.Command {
 	var options commands.CmdObjectSetUnprovisioned
 	cmd := &cobra.Command{
 		Use:     "unprovisioned",
+		Hidden:  true,
 		Short:   "unset the resources provisioned property",
 		Long:    "This action does not unprovision the resources (fs are not wiped, disk not removed, ...). This is just a resources provisioned flag remove. Necessary to allow the provision action, which is bypassed if the provisioned flag is set.",
 		Aliases: []string{"unprovision", "unprov"},
