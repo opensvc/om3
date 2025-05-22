@@ -45,6 +45,9 @@ func (a *DaemonAPI) postLocalInstanceActionProvision(ctx echo.Context, namespace
 	if params.Rid != nil && *params.Rid != "" {
 		args = append(args, "--rid", *params.Rid)
 	}
+	if params.StateOnly != nil && *params.StateOnly {
+		args = append(args, "--state-only")
+	}
 	if params.Subset != nil && *params.Subset != "" {
 		args = append(args, "--subset", *params.Subset)
 	}
