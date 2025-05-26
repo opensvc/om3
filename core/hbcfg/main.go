@@ -170,6 +170,14 @@ func (t *T) GetInt(s string) int {
 	return t.Config().GetInt(k)
 }
 
+func (t *T) GetIntAs(s, impersonate string) int {
+	k := key.New(t.name, s)
+	if i, err := t.Config().EvalAs(k, impersonate); err == nil {
+		return i.(int)
+	}
+	return 0
+}
+
 func (t *T) GetDuration(s string, defaultValue time.Duration) time.Duration {
 	k := key.New(t.name, s)
 	found := t.Config().GetDuration(k)

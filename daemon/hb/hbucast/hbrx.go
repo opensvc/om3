@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"net"
+	"strings"
 	"sync"
 	"time"
 
@@ -76,6 +77,7 @@ func (t *rx) Stop() error {
 }
 
 func (t *rx) streamPeerDesc(addr string) string {
+	addr, _, _ = strings.Cut(addr, ":")
 	if len(t.addr) > 0 {
 		if t.intf != "" {
 			return fmt.Sprintf("%s:%s@%s ← %s", t.addr, t.port, t.intf, addr)
@@ -123,6 +125,7 @@ func (t *rx) Start(cmdC chan<- interface{}, msgC chan<- *hbtype.Msg) error {
 				Timeout:  t.timeout,
 				Desc:     t.streamPeerDesc(addr),
 			}
+			addr, _, _ := strings.Cut(addr, ":")
 			addrs, err := resolver.LookupHost(ctx, addr)
 			if err != nil {
 				continue

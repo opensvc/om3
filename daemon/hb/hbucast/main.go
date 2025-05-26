@@ -24,6 +24,7 @@ import (
 	"context"
 	"fmt"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/opensvc/om3/core/hbcfg"
@@ -67,26 +68,38 @@ func (t *T) Configure(ctx context.Context) {
 		nodes = t.Config().GetStrings(k)
 	}
 	peerList := hostname.OtherNodes(nodes)
-	peerMap := make(map[string]string)
-	for _, peer := range peerList {
-		if s := t.GetStringAs("addr", peer); s != "" {
-			peerMap[peer] = s
+	nodeMap := make(map[string]string)
+	for _, node := range nodes {
+		if s := t.GetStringAs("addr", node); s != "" {
+			nodeMap[node] = s
 		} else {
-			peerMap[peer] = peer
+			nodeMap[node] = node
+		}
+		if port := t.GetIntAs("port", node); port != 0 {
+			nodeMap[node] = fmt.Sprintf("%s:%d", nodeMap[node], port)
 		}
 	}
+	nodesSig := func() string {
+		l := make([]string, len(peerList))
+		for node, s := range nodeMap {
+			l = append(l, fmt.Sprintf("%s(%s)", node, s))
+		}
+		return strings.Join(l, ",")
+	}()
+	delete(nodeMap, hostname.Hostname())
+
 	log.Debugf("timeout=%s interval=%s port=%s nodes=%s onodes=%s", timeout, interval,
 		port, nodes, peerList)
 	t.SetNodes(peerList)
 	t.SetInterval(interval)
 	t.SetTimeout(timeout)
 	intf := t.GetString("intf")
-	signature := fmt.Sprintf("type: hb.ucast, port: %s nodes: %s timeout: %s interval: %s intf: %s",
-		port, nodes, timeout, interval, intf)
+	signature := fmt.Sprintf("type: hb.ucast, nodes: %s timeout: %s interval: %s intf: %s",
+		nodesSig, timeout, interval, intf)
 	t.SetSignature(signature)
 	name := t.Name()
-	tx := newTx(ctx, name, peerMap, addr, port, intf, timeout, interval)
+	tx := newTx(ctx, name, nodeMap, addr, port, intf, timeout, interval)
 	t.SetTx(tx)
-	rx := newRx(ctx, name, peerMap, addr, port, intf, timeout)
+	rx := newRx(ctx, name, nodeMap, addr, port, intf, timeout)
 	t.SetRx(rx)
 }
