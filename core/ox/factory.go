@@ -2248,6 +2248,7 @@ func newCmdObjectInstanceProvision(kind string) *cobra.Command {
 	commoncmd.FlagLeader(flags, &options.Leader)
 	commoncmd.FlagNodeSelector(flags, &options.NodeSelector)
 	commoncmd.FlagDisableRollback(flags, &options.DisableRollback)
+	commoncmd.FlagStateOnly(flags, &options.StateOnly)
 	return cmd
 }
 
@@ -2395,6 +2396,7 @@ func newCmdObjectInstanceUnprovision(kind string) *cobra.Command {
 	commoncmd.FlagForce(flags, &options.Force)
 	commoncmd.FlagLeader(flags, &options.Leader)
 	commoncmd.FlagNodeSelector(flags, &options.NodeSelector)
+	commoncmd.FlagStateOnly(flags, &options.StateOnly)
 	return cmd
 }
 

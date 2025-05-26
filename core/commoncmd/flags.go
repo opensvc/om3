@@ -1,14 +1,14 @@
 package commoncmd
 
 import (
+	_ "embed"
 	"fmt"
 	"strings"
 	"time"
 
-	_ "embed"
+	"github.com/spf13/pflag"
 
 	"github.com/opensvc/om3/daemon/rbac"
-	"github.com/spf13/pflag"
 )
 
 var (
@@ -248,6 +248,10 @@ func FlagRelay(flags *pflag.FlagSet, p *string) {
 
 func FlagRID(flags *pflag.FlagSet, p *string) {
 	flags.StringVar(p, "rid", "", "a resource selector expression (ex: ip#1,app,disk.type=zvol)")
+}
+
+func FlagStateOnly(flags *pflag.FlagSet, p *bool) {
+	flags.BoolVar(p, "state-only", false, "change only internal state")
 }
 
 func FlagEventTemplate(flags *pflag.FlagSet, p *string) {

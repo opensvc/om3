@@ -75,34 +75,43 @@ func (t *Manager) provisionedFromWaitLeader() {
 }
 
 func (t *Manager) provisionedClearIfReached() bool {
-	reached := func(msg string) bool {
-		if t.instStatus[t.localhost].IsFrozen() {
+	reached := func(msg string, succeed bool) bool {
+		if succeed && t.instStatus[t.localhost].IsFrozen() {
 			t.doUnfreeze()
 		}
-		t.log.Infof(msg)
-		t.doneAndIdle()
-		if t.isLocalStarted() {
+		if succeed {
+			t.log.Infof("provisioned orchestration reached: %s", msg)
+			t.doneAndIdle()
+		} else {
+			t.log.Infof("provisioned orchestration done: %s", msg)
+			t.done()
+		}
+		if succeed && t.isLocalStarted() {
 			t.enableMonitor("instance is now started")
 		}
 		t.updateIfChange()
 		return true
 	}
+
+	// failures
 	if t.isAllState(instance.MonitorStateProvisionFailure) {
-		t.loggerWithState().Infof("all instances provision failed -> set done")
-		t.done()
-		return true
+		return reached("all instances provision failed", false)
+	} else if t.hasLeaderProvisionedFailed() {
+		return reached("leader instance is provision failed", false)
+	} else if t.state.State.Is(instance.MonitorStateProvisionFailure) {
+		return reached("instance is provision failed", false)
 	}
+
+	// succeeds
 	if t.instStatus[t.localhost].Provisioned == provisioned.True {
-		return reached("provisioned orchestration: instance is provisioned -> set reached")
-	}
-	if t.instStatus[t.localhost].Avail == status.NotApplicable {
-		return reached("provisioned orchestration: instance availability is n/a -> set reached, clear local expect")
-	}
-	if t.instStatus[t.localhost].Provisioned == provisioned.NotApplicable {
+		return reached("instance is provisioned", true)
+	} else if t.instStatus[t.localhost].Avail == status.NotApplicable {
+		return reached("instance availability is n/a", true)
+	} else if t.instStatus[t.localhost].Provisioned == provisioned.NotApplicable {
 		if t.isProvisioningLeader() && t.instStatus[t.localhost].Avail.Is(status.Up) {
-			return reached("provisioned orchestration: unprovisionable leader instance is up -> set reached, clear local expect")
+			return reached("unprovisionable leader instance is up", true)
 		} else if !t.isProvisioningLeader() && t.instStatus[t.localhost].Avail.Is(status.Down, status.StandbyUp, status.StandbyUpWithDown, status.StandbyUpWithUp) {
-			return reached("provisioned orchestration: unprovisionable leader instance is up -> set reached, clear local expect")
+			return reached("unprovisionable leader instance is up", true)
 		}
 	}
 	return false
@@ -152,6 +161,14 @@ func (t *Manager) hasLeaderProvisioned() bool {
 	if leaderInstanceStatus, ok := t.instStatus[leader]; !ok {
 		return false
 	} else if leaderInstanceStatus.Provisioned.IsOneOf(provisioned.True, provisioned.NotApplicable) {
+		return true
+	}
+	return false
+}
+
+func (t *Manager) hasLeaderProvisionedFailed() bool {
+	leader := t.provisioningLeader()
+	if t.instMonitor[leader].State.Is(instance.MonitorStateProvisionFailure) {
 		return true
 	}
 	return false
