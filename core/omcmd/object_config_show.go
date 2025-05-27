@@ -10,7 +10,6 @@ import (
 	"github.com/opensvc/om3/core/commoncmd"
 	"github.com/opensvc/om3/core/naming"
 	"github.com/opensvc/om3/core/objectselector"
-	"github.com/opensvc/om3/core/rawconfig"
 )
 
 type (
@@ -19,8 +18,6 @@ type (
 		Sections       []string
 	}
 )
-
-type result map[string]rawconfig.T
 
 func (t *CmdObjectConfigShow) extract(selector string) ([]byte, error) {
 	c, err := client.New()
@@ -42,8 +39,10 @@ func (t *CmdObjectConfigShow) extract(selector string) ([]byte, error) {
 		return nil, fmt.Errorf("more than one match: %s", paths)
 	}
 
-	p := paths[0]
+	return t.extractPath(paths[0], c)
+}
 
+func (t *CmdObjectConfigShow) extractPath(p naming.Path, c *client.T) ([]byte, error) {
 	if b, err := t.extractFromDaemon(p, c); err == nil {
 		return b, nil
 	} else if p.Exists() {
