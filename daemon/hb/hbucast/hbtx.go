@@ -59,15 +59,15 @@ func (t *tx) Stop() error {
 func (t *tx) streamPeerDesc(addr string) string {
 	if len(t.localIP) > 0 {
 		if t.intf != "" {
-			return fmt.Sprintf("%s@%s → %s:%s", t.localIP, t.intf, addr, t.port)
+			return fmt.Sprintf("%s@%s → %s", t.localIP, t.intf, addr)
 		} else {
-			return fmt.Sprintf("%s → %s:%s", t.localIP, addr, t.port)
+			return fmt.Sprintf("%s → %s", t.localIP, addr)
 		}
 	} else {
 		if t.intf != "" {
-			return fmt.Sprintf("@%s → %s:%s", t.intf, addr, t.port)
+			return fmt.Sprintf("@%s → %s", t.intf, addr)
 		} else {
-			return fmt.Sprintf("→ %s:%s", addr, t.port)
+			return fmt.Sprintf("→ %s", addr)
 		}
 	}
 	return ""
@@ -175,7 +175,7 @@ func (t *tx) send(node, addr string, b []byte) {
 		LocalAddr: &localAddr,
 	}
 	send := func() error {
-		conn, err := dialer.Dial("tcp", addr+":"+t.port)
+		conn, err := dialer.Dial("tcp", addr)
 		if err != nil {
 			return err
 		}
