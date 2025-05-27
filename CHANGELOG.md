@@ -208,6 +208,8 @@
         --from "template://my tmpl 111"
         ```
 
+    * Drop the "--from <multi-source selector>" feature. Only single-source selector is allowed by om3.
+
 *  **`om node get|eval`:**
     In previous releases, `om node get --kw node.env` returned the keyword's raw string value from `cluster.conf` if it is not defined in `node.conf`:
 

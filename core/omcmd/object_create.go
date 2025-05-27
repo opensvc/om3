@@ -2,16 +2,13 @@ package omcmd
 
 import (
 	"context"
-	"encoding/json"
 	"errors"
 	"fmt"
-	"io"
 	"os"
 	"strconv"
 	"strings"
 
 	"github.com/google/uuid"
-	"github.com/iancoleman/orderedmap"
 
 	"github.com/opensvc/om3/core/client"
 	"github.com/opensvc/om3/core/commoncmd"
@@ -21,7 +18,6 @@ import (
 	"github.com/opensvc/om3/core/object"
 	"github.com/opensvc/om3/core/objectselector"
 	"github.com/opensvc/om3/core/rawconfig"
-	"github.com/opensvc/om3/core/xconfig"
 	"github.com/opensvc/om3/util/file"
 	"github.com/opensvc/om3/util/key"
 	"github.com/opensvc/om3/util/uri"
@@ -61,6 +57,9 @@ func (t *CmdObjectCreate) Run(kind string) error {
 		return err
 	} else {
 		t.path = p
+	}
+	if t.path.IsZero() {
+		return fmt.Errorf("the path of the new object is required")
 	}
 	if c, err := client.New(); err != nil {
 		return err
@@ -155,6 +154,7 @@ func (t *CmdObjectCreate) getSourcePaths() naming.Paths {
 func (t *CmdObjectCreate) do() error {
 	template := t.getTemplate()
 	paths := t.getSourcePaths()
+	pathsCount := len(paths)
 	switch {
 	case t.Config == "":
 		return t.fromScratch()
@@ -162,240 +162,77 @@ func (t *CmdObjectCreate) do() error {
 		return t.fromStdin()
 	case template != "":
 		return t.fromTemplate(template)
-	case len(paths) > 0:
-		return t.fromPaths(paths)
+	case pathsCount == 1:
+		return t.fromPath(paths[0])
+	case pathsCount > 1:
+		return fmt.Errorf("can't create from multiple existing object: %s", paths)
 	default:
 		return t.fromConfig()
 	}
 }
 
-func (t *CmdObjectCreate) configFromRaw(p naming.Path, c rawconfig.T) (string, error) {
-	o, err := object.New(p, object.WithVolatile(true))
+func (t CmdObjectCreate) fromPath(p naming.Path) error {
+	cmd := CmdObjectConfigShow{}
+	b, err := cmd.extractPath(p, t.client)
 	if err != nil {
-		return "", err
+		return err
 	}
-	oc := o.(object.Configurer)
-	if err := oc.Config().LoadRaw(c); err != nil {
-		return "", err
+	if t.path.IsZero() {
+		return fmt.Errorf("need a target object path")
 	}
-
-	ops := keyop.ParseOps(t.Keywords)
-	if !t.Restore {
-		op := keyop.Parse("id=" + uuid.New().String())
-		if op == nil {
-			return "", fmt.Errorf("invalid id reset op")
-		}
-		ops = append(ops, *op)
+	p = t.path
+	if t.Namespace != "" {
+		p.Namespace = t.Namespace
 	}
-
-	if err := oc.Config().Set(ops...); err != nil {
-		return "", err
-	}
-	return oc.Config().Raw().String(), nil
-}
-
-func (t CmdObjectCreate) fromPaths(paths naming.Paths) error {
-	pivot := make(Pivot)
-	multi := len(paths) > 1
-	for _, p := range paths {
-		obj, err := object.NewConfigurer(p, object.WithVolatile(true))
-		if err != nil {
-			return err
-		}
-		if multi {
-			if t.Namespace != "" {
-				p.Namespace = t.Namespace
-			} else {
-				return fmt.Errorf("can not create multiple objects without a target namespace")
-			}
-		} else {
-			if t.path.IsZero() {
-				return fmt.Errorf("need a target object path")
-			}
-			p = t.path
-			if t.Namespace != "" {
-				p.Namespace = t.Namespace
-			}
-		}
-		pivot[p.String()] = obj.Config().Raw()
-	}
-	return t.fromData(pivot)
+	return t.fromData(p, b)
 }
 
 func (t CmdObjectCreate) fromTemplate(template string) error {
-	if pivot, err := t.rawFromTemplate(template); err != nil {
+	if b, err := commoncmd.DataFromTemplate(template); err != nil {
 		return err
 	} else {
-		return t.fromData(pivot)
+		return t.fromData(t.path, b)
 	}
 }
 
 func (t CmdObjectCreate) fromConfig() error {
-	if pivot, err := t.rawFromConfig(); err != nil {
+	b, err := t.dataFromConfig()
+	if err != nil {
 		return err
-	} else {
-		return t.fromData(pivot)
 	}
+	return t.fromData(t.path, b)
 }
 
 func (t CmdObjectCreate) fromScratch() error {
-	if pivot, err := rawFromScratch(t.path); err != nil {
-		return err
-	} else {
-		return t.fromData(pivot)
-	}
+	return t.fromData(t.path, nil)
 }
 
 func (t CmdObjectCreate) fromStdin() error {
-	var (
-		pivot Pivot
-		err   error
-	)
-	if t.path.IsZero() {
-		pivot, err = rawFromStdinNested(t.Namespace)
-	} else {
-		pivot, err = rawFromStdinFlat(t.path)
-	}
+	b, err := commoncmd.DataFromStdin()
 	if err != nil {
 		return err
-	} else {
-		return t.fromData(pivot)
 	}
+	return t.fromData(t.path, b)
 }
 
-func (t CmdObjectCreate) fromData(pivot Pivot) error {
-	return t.localFromData(pivot)
-}
-
-func (t CmdObjectCreate) rawFromTemplate(template string) (Pivot, error) {
-	return nil, fmt.Errorf("todo: collector requester")
-}
-
-func (t CmdObjectCreate) rawFromConfig() (Pivot, error) {
+func (t CmdObjectCreate) dataFromConfig() ([]byte, error) {
 	u := uri.New(t.Config)
 	switch {
 	case file.Exists(t.Config):
-		return rawFromConfigFile(t.path, t.Config)
+		return commoncmd.DataFromConfigFile(t.Config)
 	case u.IsValid():
-		return rawFromConfigURI(t.path, u)
+		return commoncmd.DataFromConfigURI(u)
 	default:
 		return nil, fmt.Errorf("invalid configuration: %s is not a file, nor an uri", t.Config)
 	}
 }
 
-func rawFromConfigURI(p naming.Path, u uri.T) (Pivot, error) {
-	fpath, err := u.Fetch()
-	if err != nil {
-		return make(Pivot), nil
-	}
-	defer os.Remove(fpath)
-	return rawFromConfigFile(p, fpath)
-}
-
-func rawFromConfigFile(p naming.Path, fpath string) (Pivot, error) {
-	pivot := make(Pivot)
-	c, err := xconfig.NewObject("", fpath)
-	if err != nil {
-		return pivot, err
-	}
-	pivot[p.String()] = c.Raw()
-	return pivot, nil
-}
-
-func rawFromScratch(p naming.Path) (Pivot, error) {
-	pivot := make(Pivot)
-	pivot[p.String()] = rawconfig.T{}
-	return pivot, nil
-}
-
-func rawFromStdinNested(namespace string) (Pivot, error) {
-	pivot := make(Pivot)
-	b, err := io.ReadAll(os.Stdin)
-	if err != nil {
-		return pivot, err
-	}
-	if err = json.Unmarshal(b, &pivot); err != nil {
-		return pivot, err
-	}
-	if md, ok := pivot["metadata"]; ok {
-		p, err := pathFromMetadata(md.Data)
-		if err != nil {
-			return pivot, err
-		}
-		if namespace != "" {
-			p.Namespace = namespace
-		}
-		return rawFromBytesFlat(p, b)
-	}
-	return pivot, nil
-}
-
-func pathFromMetadata(data *orderedmap.OrderedMap) (naming.Path, error) {
-	var name, namespace, kind string
-	if s, ok := data.Get("name"); ok {
-		if name, ok = s.(string); !ok {
-			return naming.Path{}, fmt.Errorf("metadata format error: name")
-		}
-	}
-	if s, ok := data.Get("kind"); ok {
-		if kind, ok = s.(string); !ok {
-			return naming.Path{}, fmt.Errorf("metadata format error: kind")
-		}
-	}
-	if s, ok := data.Get("namespace"); ok {
-		switch k := s.(type) {
-		case nil:
-			namespace = ""
-		case string:
-			namespace = k
-		default:
-			return naming.Path{}, fmt.Errorf("metadata format error: namespace")
-		}
-	}
-	return naming.NewPathFromStrings(namespace, kind, name)
-}
-
-func rawFromStdinFlat(p naming.Path) (Pivot, error) {
-	b, err := io.ReadAll(os.Stdin)
-	if err != nil {
-		return nil, err
-	}
-	return rawFromBytesFlat(p, b)
-}
-
-func rawFromBytesFlat(p naming.Path, b []byte) (Pivot, error) {
-	pivot := make(Pivot)
-	c := &rawconfig.T{}
-	if err := json.Unmarshal(b, c); err != nil {
-		return pivot, err
-	}
-	pivot[p.String()] = *c
-	return pivot, nil
-}
-
-func (t CmdObjectCreate) localFromData(pivot Pivot) error {
-	for opath, c := range pivot {
-		p, err := naming.ParsePath(opath)
-		if err != nil {
-			return err
-		}
-		if err = t.localFromRaw(p, c); err != nil {
-			return err
-		}
-	}
-	return nil
-}
-
-func (t CmdObjectCreate) localFromRaw(p naming.Path, c rawconfig.T) error {
+func (t CmdObjectCreate) fromData(p naming.Path, b []byte) error {
 	if !t.Force && p.Exists() {
 		return fmt.Errorf("%s already exists", p)
 	}
-	o, err := object.New(p)
+	oc, err := object.NewConfigurer(p, object.WithConfigData(b))
 	if err != nil {
-		return err
-	}
-	oc := o.(object.Configurer)
-	if err := oc.Config().LoadRaw(c); err != nil {
 		return err
 	}
 
