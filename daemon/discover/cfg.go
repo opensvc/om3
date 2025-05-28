@@ -648,6 +648,13 @@ func (t *Manager) onRemoteConfigFetched(c *msgbus.RemoteFileConfig) {
 			log.Errorf("cfg: can't install %s config fetched from node %s to %s: %s", c.Path, c.Node, confFile, err)
 			c.Err <- err
 		} else {
+			// Prevents from absent or empty config on reboot before the config file is
+			// synched to stable storage.
+			if err := file.Sync(confFile); err != nil {
+				log.Errorf("cfg: can't install %s config fetched from node %s to %s sync: %s", c.Path, c.Node, confFile, err)
+				c.Err <- err
+				return
+			}
 			log.Infof("cfg: install %s config fetched from node %s", c.Path, c.Node)
 		}
 		c.Err <- nil
