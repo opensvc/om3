@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"io/fs"
 	"net/http"
 	"os"
 	"path/filepath"
@@ -157,6 +158,10 @@ func (t *T) LoadManager(ctx context.Context) error {
 	var i any
 	i, err := daemonsys.New(ctx)
 	if err != nil {
+		if errors.Is(err, fs.ErrNotExist) {
+			// skip: Error: dial unix /run/systemd/private: connect: no such file or directory
+			return nil
+		}
 		return err
 	}
 	if mgr, ok := i.(Manager); ok {
