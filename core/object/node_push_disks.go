@@ -1,17 +1,37 @@
 package object
 
 import (
+	"bytes"
+	"context"
 	"encoding/json"
 	"fmt"
+	"io"
+	"net/http"
 	"os"
 	"path/filepath"
 
 	"github.com/opensvc/om3/core/rawconfig"
 
-	"github.com/opensvc/om3/core/collector"
 	"github.com/opensvc/om3/core/naming"
 	"github.com/opensvc/om3/util/disks"
-	"github.com/opensvc/om3/util/hostname"
+)
+
+type (
+	oc3Disk struct {
+		ID         string `json:"id"`
+		ObjectPath string `json:"object_path"`
+		Size       uint64 `json:"size"`
+		Used       uint64 `json:"used"`
+		Vendor     string `json:"vendor"`
+		Model      string `json:"model"`
+		Group      string `json:"group"`
+		Nodename   string `json:"nodename"`
+		Region     string `json:"region"`
+	}
+
+	oc3DiskBody struct {
+		Data []oc3Disk `json:"data"`
+	}
 )
 
 func (t Node) nodeDisksCacheFile() string {
@@ -71,78 +91,63 @@ func (t Node) LoadDisks() (disks.Disks, error) {
 	return data, err
 }
 
-func pushSvcDisks(client *collector.Client, data disks.Disks) error {
-	nodename := hostname.Hostname()
-	diskAsList := func(d disks.Disk, r disks.Region) []interface{} {
-		return []interface{}{
-			d.ID,
-			r.Object,
-			r.Size / 1024 / 1024,
-			r.Size / 1024 / 1024,
-			d.Vendor,
-			d.Model,
-			r.Group,
-			nodename,
-			0,
+func toOc3Disk(l disks.Disks) []oc3Disk {
+	result := make([]oc3Disk, 0)
+	for _, dsk := range l {
+		for _, region := range dsk.Regions {
+			result = append(result, oc3Disk{
+				ID:         dsk.ID,
+				ObjectPath: region.Object,
+				Size:       region.Size / 1024 / 1024,
+				Used:       region.Size / 1024 / 1024,
+				Vendor:     dsk.Vendor,
+				Model:      dsk.Model,
+				Group:      region.Group,
+				Region:     "0",
+			})
 		}
 	}
-	disksAsList := func(t disks.Disks) [][]interface{} {
-		l := make([][]interface{}, 0)
-		for _, disk := range t {
-			for _, region := range disk.Regions {
-				l = append(l, diskAsList(disk, region))
-			}
-		}
-		return l
-	}
-	vars := []string{
-		"disk_id",
-		"disk_svcname",
-		"disk_size",
-		"disk_used",
-		"disk_vendor",
-		"disk_model",
-		"disk_dg",
-		"disk_nodename",
-		"disk_region",
-	}
-	if response, err := client.Call("register_disks", vars, disksAsList(data)); err != nil {
-		return err
-	} else if response.Error != nil {
-		return fmt.Errorf("rpc: %s %s", response.Error.Message, response.Error.Data)
-	}
-
-	return nil
-}
-
-func pushDiskInfo(client *collector.Client, data disks.Disks) error {
-	vars := []string{
-		"disk_id",
-		"disk_arrayid",
-		"disk_devid",
-		"disk_size",
-		"disk_raid",
-		"disk_group",
-	}
-	vals := [][]string{}
-	if response, err := client.Call("register_diskinfo", vars, vals); err != nil {
-		return err
-	} else if response.Error != nil {
-		return fmt.Errorf("rpc: %s %s", response.Error.Message, response.Error.Data)
-	}
-	return nil
+	return result
 }
 
 func (t Node) pushDisks(data disks.Disks) error {
-	client, err := t.CollectorFeedClient()
+	var (
+		req  *http.Request
+		resp *http.Response
+
+		ioReader io.Reader
+
+		method = http.MethodPost
+		path   = "/oc3/feed/node/disk"
+	)
+	oc3, err := t.CollectorClient()
 	if err != nil {
 		return err
 	}
-	if err := pushSvcDisks(client, data); err != nil {
-		return err
+	if b, err := json.MarshalIndent(oc3DiskBody{Data: toOc3Disk(data)}, "  ", "  "); err != nil {
+		return fmt.Errorf("encode request body: %w", err)
+	} else {
+		ioReader = bytes.NewBuffer(b)
 	}
-	if err := pushDiskInfo(client, data); err != nil {
-		return err
+
+	ctx, cancel := context.WithTimeout(context.Background(), defaultPostCollectorTimeout)
+	defer cancel()
+
+	req, err = oc3.NewRequestWithContext(ctx, method, path, ioReader)
+	if err != nil {
+		return fmt.Errorf("create collector request %s %s: %w", method, path, err)
 	}
+
+	resp, err = oc3.Do(req)
+	if err != nil {
+		return fmt.Errorf("collector %s %s: %w", method, path, err)
+	}
+	defer func() { _ = resp.Body.Close() }()
+
+	if resp.StatusCode != http.StatusAccepted {
+		return fmt.Errorf("unexpected collector response status code for %s %s: wanted %d got %d",
+			method, path, http.StatusAccepted, resp.StatusCode)
+	}
+
 	return nil
 }
