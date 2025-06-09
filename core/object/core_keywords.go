@@ -211,7 +211,7 @@ var keywordStore = keywords.Store{
 		Text:      keywords.NewText(fs, "text/kw/core/drpnodes"),
 	},
 	{
-		Converter: xconfig.OtherNodesConverter,
+		Converter: converters.List,
 		Example:   "n1 n2",
 		Inherit:   keywords.InheritHead,
 		Kind:      naming.NewKinds(naming.KindSvc),
