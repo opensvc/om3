@@ -11,7 +11,7 @@ import (
 // RunArgsBase append extra args for podman
 func (ea *ExecutorArg) RunArgsBase(ctx context.Context) (*args.T, error) {
 	a := args.New()
-	// TODO: "--cgroup-manager", "cgroupfs", "cni-config-dir", ..., for other Args ?
+	// TODO: "cni-config-dir", ..., for other Args ?
 	if base, err := ea.ExecutorArg.RunArgsBase(ctx); err != nil {
 		return nil, err
 	} else {
