@@ -20,6 +20,6 @@ func Test_ExecBaseArgs(t *testing.T) {
 		ExecutorArgser().(rescontainerocibase.ExecutorBaseArgser).
 		ExecBaseArgs()
 
-	expectedBaseArgs := []string{"--cgroup-manager", "cgroupfs", "--cni-config-dir", "/test-cni-config.d"}
+	expectedBaseArgs := []string{"--cni-config-dir", "/test-cni-config.d"}
 	require.ElementsMatchf(t, expectedBaseArgs, baseArgs, "want: %s\ngot:  %s", expectedBaseArgs, baseArgs)
 }

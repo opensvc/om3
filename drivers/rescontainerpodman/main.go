@@ -34,9 +34,7 @@ func (t *T) configure(ea *ExecutorArg) {
 }
 
 func (t *T) executorArg() *ExecutorArg {
-	baseArgs := []string{
-		"--cgroup-manager", "cgroupfs",
-	}
+	var baseArgs []string
 	if t.CNIConfig != "" {
 		baseArgs = append(baseArgs, "--cni-config-dir", t.CNIConfig)
 	}
