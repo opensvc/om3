@@ -6,6 +6,8 @@ import (
 	"github.com/opensvc/om3/core/colorstatus"
 	"github.com/opensvc/om3/core/provisioned"
 	"github.com/opensvc/om3/core/rawconfig"
+	"github.com/opensvc/om3/core/resource"
+	"github.com/opensvc/om3/core/resourceid"
 	"github.com/opensvc/om3/core/resourceset"
 	"github.com/opensvc/om3/core/status"
 	"github.com/opensvc/om3/util/render/tree"
@@ -73,20 +75,31 @@ func (t States) LoadTreeNode(head *tree.Node) {
 			}
 			lastSubset = r.Subset
 		}
-		flags := t.Status.ResourceFlagsString(*r.ResourceID, r) + t.Monitor.ResourceFlagRestartString(*r.ResourceID, r)
+		doResource := func(n *tree.Node, resourceID *resourceid.T, r resource.Status) {
+			flags := t.Status.ResourceFlagsString(*resourceID, r) + t.Monitor.ResourceFlagRestartString(*resourceID, r)
+			n.AddColumn().AddText(resourceID.Name)
+			n.AddColumn().AddText(flags)
+			n.AddColumn().AddText(colorstatus.Sprint(r.Status, rawconfig.Colorize))
+			desc := n.AddColumn()
+			desc.AddText(r.Label)
+			for _, entry := range r.Log {
+				t := desc.AddText(entry.String())
+				switch entry.Level {
+				case "error":
+					t.SetColor(rawconfig.Color.Error)
+				case "warn":
+					t.SetColor(rawconfig.Color.Warning)
+				}
+			}
+		}
 		n := subsetNode.AddNode()
-		n.AddColumn().AddText(r.ResourceID.Name)
-		n.AddColumn().AddText(flags)
-		n.AddColumn().AddText(colorstatus.Sprint(r.Status, rawconfig.Colorize))
-		desc := n.AddColumn()
-		desc.AddText(r.Label)
-		for _, entry := range r.Log {
-			t := desc.AddText(entry.String())
-			switch entry.Level {
-			case "error":
-				t.SetColor(rawconfig.Color.Error)
-			case "warn":
-				t.SetColor(rawconfig.Color.Warning)
+		doResource(n, r.ResourceID, r)
+		if encapStatus, ok := t.Status.Encap[r.ResourceID.Name]; ok {
+			encapNode := n.AddNode()
+			for rid, r := range encapStatus.Resources {
+				if resourceID, _ := resourceid.Parse(rid); resourceID != nil {
+					doResource(encapNode, resourceID, r)
+				}
 			}
 		}
 	}
