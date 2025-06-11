@@ -521,11 +521,7 @@ func (t *actor) action(ctx context.Context, fn resourceset.DoFunc) error {
 		ctxWithTimeout, cancelCtxWithTimeout = t.withStatusTimeout(ctx)
 		defer cancelCtxWithTimeout()
 		_, _ = t.statusEval(ctxWithTimeout)
-		if err == nil {
-			t.announceIdle(ctxWithTimeout)
-		} else {
-			t.announceFailure(ctxWithTimeout)
-		}
+		t.announceFailure(ctxWithTimeout)
 		return err
 	}
 
