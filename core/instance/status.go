@@ -16,6 +16,7 @@ type (
 	// Status describes the instance status.
 	Status struct {
 		Avail         status.T           `json:"avail"`
+		Encap         EncapMap           `json:"encap,omitempty"`
 		FrozenAt      time.Time          `json:"frozen_at,omitempty"`
 		LastStartedAt time.Time          `json:"last_started_at"`
 		Optional      status.T           `json:"optional,omitempty"`
@@ -26,6 +27,8 @@ type (
 		UpdatedAt     time.Time          `json:"updated_at"`
 	}
 
+	EncapMap map[string]Status
+
 	ResourceStatuses map[string]resource.Status
 
 	// ResourceRunningSet is the list of resource currently running (sync and task).
@@ -35,6 +38,14 @@ type (
 	// instance status resources map.
 	ResourceOrder []resource.Status
 )
+
+func (m EncapMap) DeepCopy() EncapMap {
+	n := make(EncapMap)
+	for k, v := range m {
+		n[k] = *v.DeepCopy()
+	}
+	return n
+}
 
 func (m ResourceStatuses) DeepCopy() ResourceStatuses {
 	n := make(ResourceStatuses)
@@ -84,6 +95,7 @@ func (t Status) DeepCopy() *Status {
 	n := t
 	n.Running = append(ResourceRunningSet{}, t.Running...)
 	n.Resources = t.Resources.DeepCopy()
+	n.Encap = t.Encap.DeepCopy()
 	return &n
 }
 
@@ -134,6 +146,14 @@ func (t Status) ResourceFlagsString(rid resourceid.T, r resource.Status) string 
 	return flags
 }
 
+func (t EncapMap) Unstructured() map[string]map[string]any {
+	m := make(map[string]map[string]any)
+	for k, v := range t {
+		m[k] = v.Unstructured()
+	}
+	return m
+}
+
 func (t ResourceStatuses) Unstructured() map[string]map[string]any {
 	m := make(map[string]map[string]any)
 	for k, v := range t {
@@ -151,6 +171,9 @@ func (t Status) Unstructured() map[string]any {
 		"provisioned":     t.Provisioned,
 		"running":         t.Running,
 		"updated_at":      t.UpdatedAt,
+	}
+	if len(t.Encap) > 0 {
+		m["encap"] = t.Encap.Unstructured()
 	}
 	if len(t.Resources) > 0 {
 		m["resources"] = t.Resources.Unstructured()

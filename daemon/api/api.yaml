@@ -4956,6 +4956,7 @@ components:
       required:
         - avail
         - csum
+        - encap
         - frozen_at
         - last_started_at
         - optional
@@ -4971,6 +4972,10 @@ components:
           $ref: '#/components/schemas/Status'
         csum:
           type: string
+        encap:
+          type: object
+          additionalProperties:
+            $ref: '#/components/schemas/InstanceStatus'
         frozen_at:
           type: string
           format: date-time

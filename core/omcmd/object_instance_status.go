@@ -20,6 +20,7 @@ import (
 	"github.com/opensvc/om3/core/objectselector"
 	"github.com/opensvc/om3/core/output"
 	"github.com/opensvc/om3/core/rawconfig"
+	"github.com/opensvc/om3/util/file"
 	"github.com/opensvc/om3/util/hostname"
 )
 
@@ -34,7 +35,6 @@ type (
 )
 
 func (t *CmdObjectInstanceStatus) extract(nodenames []string, paths naming.Paths, c *client.T) (data []object.Digest, err error) {
-	var localData []object.Digest
 	if t.Local || (t.Refresh && t.NodeSelector == "") {
 		data, err = t.extractLocal(paths)
 		if err != nil {
@@ -51,10 +51,6 @@ func (t *CmdObjectInstanceStatus) extract(nodenames []string, paths naming.Paths
 	data, err = t.extractFromDaemon(paths, c)
 	if err == nil {
 		return
-	}
-
-	if localData != nil {
-		return localData, nil
 	}
 
 	data, err = t.extractLocal(paths)
@@ -89,6 +85,12 @@ func (t *CmdObjectInstanceStatus) extractLocal(paths naming.Paths) ([]object.Dig
 			errs = errors.Join(errs, fmt.Errorf("%s: %w", p, err))
 			continue
 		}
+		checksum, err := file.MD5(p.ConfigFile())
+		if err != nil {
+			errs = errors.Join(errs, fmt.Errorf("configFile no present(md5sum)"))
+			continue
+		}
+
 		o := object.Digest{
 			Path:     p,
 			IsCompat: true,
@@ -101,6 +103,9 @@ func (t *CmdObjectInstanceStatus) extractLocal(paths naming.Paths) ([]object.Dig
 					},
 					Path:   p,
 					Status: status,
+					Config: instance.Config{
+						Checksum: fmt.Sprintf("%x", checksum), // so encap knows if a config push is needed
+					},
 				},
 			},
 		}
@@ -199,6 +204,7 @@ func (t *CmdObjectInstanceStatus) Run(kind string) error {
 	if err != nil {
 		return err
 	}
+
 	renderer := output.Renderer{
 		Output: t.Output,
 		Color:  t.Color,

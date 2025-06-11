@@ -3,6 +3,7 @@ package ox
 import (
 	// Necessary to use go:embed
 	_ "embed"
+	"errors"
 
 	"fmt"
 	"os"
@@ -126,9 +127,19 @@ func setExecuteArgs(args []string) {
 //
 //	ExecuteArgs([]string{"mysvc*", "ls"})
 func ExecuteArgs(args []string) {
+	type exitcoder interface {
+		ExitCode() int
+	}
+	var xc int
+	var xerr exitcoder
 	setExecuteArgs(args)
 	if err := root.Execute(); err != nil {
-		os.Exit(1)
+		if errors.As(err, &xerr) {
+			xc = xerr.ExitCode()
+		} else {
+			xc = 1
+		}
+		os.Exit(xc)
 	}
 }
 
