@@ -3,7 +3,6 @@ package objectselector
 import (
 	"context"
 	"encoding/json"
-	"errors"
 	"fmt"
 	"net/http"
 	"regexp"
@@ -17,6 +16,7 @@ import (
 	"github.com/opensvc/om3/core/keyop"
 	"github.com/opensvc/om3/core/naming"
 	"github.com/opensvc/om3/core/object"
+	"github.com/opensvc/om3/core/xerrors"
 	"github.com/opensvc/om3/daemon/api"
 	"github.com/opensvc/om3/util/funcopt"
 )
@@ -51,7 +51,6 @@ const (
 var (
 	fnmatchExpressionRegex = regexp.MustCompile(`[?*\[\]]`)
 	configExpressionRegex  = regexp.MustCompile(`[=:><]`)
-	ErrExist               = errors.New("no such object")
 )
 
 // New allocates a new object selection
@@ -158,7 +157,7 @@ func (t *Selection) MustExpand() (naming.Paths, error) {
 	if paths, err := t.Expand(); err != nil {
 		return paths, err
 	} else if len(paths) == 0 {
-		return paths, fmt.Errorf("%s: %w", t.selectorExpression, ErrExist)
+		return paths, fmt.Errorf("%s: %w", t.selectorExpression, xerrors.ObjectNotFound)
 	} else {
 		return paths, nil
 	}

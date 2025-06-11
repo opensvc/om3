@@ -8,6 +8,7 @@ import (
 	"github.com/opensvc/om3/core/commoncmd"
 	"github.com/opensvc/om3/core/output"
 	"github.com/opensvc/om3/core/rawconfig"
+	"github.com/opensvc/om3/core/xerrors"
 	"github.com/opensvc/om3/daemon/api"
 )
 
@@ -36,7 +37,7 @@ func (t *CmdObjectList) Run(kind string) error {
 	switch resp.StatusCode() {
 	case 200:
 		if len(resp.JSON200.Items) == 0 && mergedSelector != "" {
-			return fmt.Errorf("%s: no such object", mergedSelector)
+			return fmt.Errorf("%s: %w", mergedSelector, xerrors.ObjectNotFound)
 		}
 		output.Renderer{
 			DefaultOutput: "tab=OBJECT:meta.object,AVAIL:data.avail,OVERALL:data.overall",
