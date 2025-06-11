@@ -137,8 +137,17 @@ func (f Frame) StrNodeHbStatus(hbStatus daemonsubsystem.HeartbeatStream, peer st
 	return s
 }
 
+// StrThreadAlerts evaluates a slice of alerts and returns "!" in yellow color if
+// any alert severity is not "info".
 func StrThreadAlerts(data []daemonsubsystem.Alert) string {
-	if len(data) > 0 {
+	var ok = true
+	for _, alert := range data {
+		if alert.Severity != "info" {
+			ok = false
+			break
+		}
+	}
+	if !ok {
 		return yellow("!")
 	}
 	return ""
