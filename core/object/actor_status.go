@@ -2,8 +2,12 @@ package object
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
+	"fmt"
 	"os"
+	"os/exec"
+	"strings"
 	"sync"
 	"time"
 
@@ -14,8 +18,16 @@ import (
 	"github.com/opensvc/om3/core/resource"
 	"github.com/opensvc/om3/core/status"
 	"github.com/opensvc/om3/core/statusbus"
+	"github.com/opensvc/om3/util/file"
 	"github.com/opensvc/om3/util/hostname"
 )
+
+type encaper interface {
+	GetHostname() string
+	GetOsvcRootPath() string
+	EncapCp(context.Context, string, string) error
+	EncapCmd(context.Context, ...string) *exec.Cmd
+}
 
 func (t *actor) FreshStatus(ctx context.Context) (instance.Status, error) {
 	ctx = actioncontext.WithProps(ctx, actioncontext.Status)
@@ -171,41 +183,62 @@ func (t *actor) resourceStatusEval(ctx context.Context, data *instance.Status, m
 	var mu sync.Mutex
 	sb := statusbus.FromContext(ctx)
 	err := t.ResourceSets().Do(ctx, t, "", "status", func(ctx context.Context, r resource.Driver) error {
-		var xd resource.Status
+		var (
+			resourceStatus      resource.Status
+			encapInstanceStatus *instance.Status
+			err                 error
+		)
+
 		if v, err := t.isEncapNodeMatchingResource(r); err != nil {
 			return err
 		} else if !v {
 			return nil
 		}
+
 		if monitoredOnly && !r.IsMonitored() {
-			xd = data.Resources[r.RID()]
-			sb.Post(r.RID(), xd.Status, false)
+			resourceStatus = data.Resources[r.RID()]
+			sb.Post(r.RID(), resourceStatus.Status, false)
 		} else {
-			xd = resource.GetStatus(ctx, r)
+			resourceStatus = resource.GetStatus(ctx, r)
 		}
 
 		// If the resource is up but the provisioned flag is unset, set
 		// the provisioned flag.
-		if xd.Provisioned.State == provisioned.False {
-			switch xd.Status {
+		if resourceStatus.Provisioned.State == provisioned.False {
+			switch resourceStatus.Status {
 			case status.Up, status.StandbyUp:
 				resource.SetProvisioned(ctx, r)
-				xd.Provisioned.State = provisioned.True
+				resourceStatus.Provisioned.State = provisioned.True
+			}
+		}
+
+		// If the resource is a encap capable container, evaluate the encap instance
+		if encapContainer, ok := r.(encaper); ok && resourceStatus.Status.Is(status.Up, status.StandbyUp) {
+			if encapInstanceStatus, err = t.resourceStatusEvalEncap(ctx, encapContainer, false); err != nil {
+				return err
 			}
 		}
 
 		mu.Lock()
-		data.Resources[r.RID()] = xd
-		data.Overall.Add(xd.Status)
-		if !xd.Optional {
+		data.Resources[r.RID()] = resourceStatus
+
+		if encapInstanceStatus != nil {
+			if data.Encap == nil {
+				data.Encap = make(instance.EncapMap)
+			}
+			data.Encap[r.RID()] = *encapInstanceStatus
+		}
+
+		data.Overall.Add(resourceStatus.Status)
+		if !resourceStatus.Optional {
 			switch r.ID().DriverGroup() {
 			case driver.GroupSync:
 			case driver.GroupTask:
 			default:
-				data.Avail.Add(xd.Status)
+				data.Avail.Add(resourceStatus.Status)
 			}
 		}
-		data.Provisioned.Add(xd.Provisioned.State)
+		data.Provisioned.Add(resourceStatus.Provisioned.State)
 		mu.Unlock()
 		return nil
 	})
@@ -214,4 +247,78 @@ func (t *actor) resourceStatusEval(ctx context.Context, data *instance.Status, m
 	sb.Post("overall", data.Overall, false)
 	mu.Unlock()
 	return err
+}
+
+func (t *actor) resourceStatusEvalEncap(ctx context.Context, encapContainer encaper, pushed bool) (*instance.Status, error) {
+	var (
+		encapInstanceStates *instance.States
+		checksum            string
+	)
+
+	hostname := encapContainer.GetHostname()
+	configFile := t.path.ConfigFile()
+
+	if v, err := t.Config().IsInEncapNodes(hostname); err != nil {
+		return nil, err
+	} else if !v {
+		return nil, nil
+	}
+
+	cmd := encapContainer.EncapCmd(ctx, encapContainer.GetOsvcRootPath(), t.path.String(), "instance", "status", "-r", "-o", "json")
+	b, err := cmd.CombinedOutput()
+	if err != nil {
+		if cmd.ProcessState.ExitCode() == 2 {
+			if pushed {
+				return nil, fmt.Errorf("no encap instance config: already pushed")
+			}
+			t.log.Debugf("%s: no encap instance config: push the config", t.path)
+			if err := encapContainer.EncapCp(ctx, configFile, configFile); err != nil {
+				return nil, nil
+			}
+			return t.resourceStatusEvalEncap(ctx, encapContainer, true)
+		}
+		return nil, fmt.Errorf("encap instance status: %w (%s)", err, strings.TrimSpace(string(b)))
+	}
+	var encapInstanceStatesList instance.StatesList
+	if err := json.Unmarshal(b, &encapInstanceStatesList); err != nil {
+		return nil, err
+	}
+	if len(encapInstanceStatesList) == 0 {
+		if pushed {
+			return nil, fmt.Errorf("no encap instance status: already pushed")
+		}
+		t.log.Debugf("%s: no encap instance status: push the config", t.path)
+		if err := encapContainer.EncapCp(ctx, configFile, configFile); err != nil {
+			return nil, nil
+		}
+		return t.resourceStatusEvalEncap(ctx, encapContainer, true)
+	}
+	for _, e := range encapInstanceStatesList {
+		if hostname == e.Node.Name {
+			encapInstanceStates = &e
+			break
+		}
+	}
+	if encapInstanceStates == nil {
+		return nil, fmt.Errorf("no instance states found for node %s", hostname)
+	}
+	if checksum == "" {
+		if b, err := file.MD5(configFile); err != nil {
+			return nil, fmt.Errorf("config file %s not found for md5sum", configFile)
+		} else {
+			checksum = fmt.Sprintf("%x", b)
+		}
+	}
+	if encapInstanceStates.Config.Checksum != checksum {
+		if pushed {
+			return nil, fmt.Errorf("encap instance config checksum (%s) is different than host's (%s): already pushed", encapInstanceStates.Config.Checksum, checksum)
+		}
+		t.log.Debugf("%s: encap instance config checksum (%s) is different than host's (%s): push the config", t.path, encapInstanceStates.Config.Checksum, checksum)
+		if err := encapContainer.EncapCp(ctx, configFile, configFile); err != nil {
+			return nil, err
+		}
+		return t.resourceStatusEvalEncap(ctx, encapContainer, true)
+	}
+
+	return &encapInstanceStates.Status, nil
 }
