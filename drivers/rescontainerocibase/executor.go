@@ -43,6 +43,18 @@ func NewExecutor(exe string, args ExecutorArgser, log Logger) *Executor {
 	return &Executor{bin: exe, args: args, logger: log, mutex: &sync.RWMutex{}}
 }
 
+func (e *Executor) EncapCmd(ctx context.Context, args ...string) *exec.Cmd {
+	args = append(e.args.ExecCmdArgs(), args...)
+	cmd := exec.CommandContext(ctx, e.bin, args...)
+	cmd.Stdin = os.Stdin
+	return cmd
+}
+
+func (e *Executor) EncapCp(ctx context.Context, src, dst string) error {
+	args := e.args.CpCmdArgs(src, dst)
+	return e.doExecRun(ctx, nil, args...)
+}
+
 func (e *Executor) Enter() error {
 	var enterCmd string
 	candidates := []string{"/bin/bash", "/bin/sh"}

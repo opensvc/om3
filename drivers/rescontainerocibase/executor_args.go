@@ -33,8 +33,16 @@ type (
 	}
 )
 
+func (ea *ExecutorArg) CpCmdArgs(src, dst string) []string {
+	return []string{"cp", "-q", src, ea.BT.ContainerName() + ":" + dst}
+}
+
 func (ea *ExecutorArg) EnterCmdArgs() []string {
 	return []string{"exec", "-it", ea.BT.ContainerName()}
+}
+
+func (ea *ExecutorArg) ExecCmdArgs() []string {
+	return []string{"exec", ea.BT.ContainerName()}
 }
 
 func (ea *ExecutorArg) EnterCmdCheckArgs() []string {

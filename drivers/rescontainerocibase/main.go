@@ -13,6 +13,8 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"os/exec"
+	"path/filepath"
 	"slices"
 	"strings"
 	"syscall"
@@ -27,6 +29,7 @@ import (
 	"github.com/opensvc/om3/core/naming"
 	"github.com/opensvc/om3/core/object"
 	"github.com/opensvc/om3/core/provisioned"
+	"github.com/opensvc/om3/core/rawconfig"
 	"github.com/opensvc/om3/core/resource"
 	"github.com/opensvc/om3/core/resourceid"
 	"github.com/opensvc/om3/core/status"
@@ -108,6 +111,11 @@ type (
 		Run(context.Context) error
 	}
 
+	ExecuteEncaper interface {
+		EncapCp(context.Context, string, string) error
+		EncapCmd(context.Context, ...string) *exec.Cmd
+	}
+
 	// ExecuteImager interface defines the functions used to manage container
 	// image lifecycle.
 	ExecuteImager interface {
@@ -136,6 +144,7 @@ type (
 		ExecuteImager
 		ExecuteInspecter
 		ExecuteWaiter
+		ExecuteEncaper
 	}
 
 	// ExecutorBaseArgser is an optional interface executor may implement to
@@ -147,8 +156,10 @@ type (
 	// ExecutorContainerArgser defines interfaces functions that provides
 	// args for container resource operations.
 	ExecutorContainerArgser interface {
+		CpCmdArgs(string, string) []string
 		EnterCmdArgs() []string
 		EnterCmdCheckArgs() []string
+		ExecCmdArgs() []string
 		RemoveArgs() *args.T
 		RunArgsBase(ctx context.Context) (*args.T, error)
 		RunArgsImage() (*args.T, error)
@@ -941,4 +952,19 @@ func mangleVolMountOptions(initialOptions string, vol object.Vol) (string, error
 	}
 
 	return strings.Join(newOpts, ","), nil
+}
+
+func (t *BT) EncapCmd(ctx context.Context, args ...string) *exec.Cmd {
+	return t.executer.EncapCmd(ctx, args...)
+}
+
+func (t *BT) EncapCp(ctx context.Context, src, dst string) error {
+	return t.executer.EncapCp(ctx, src, dst)
+}
+
+func (t *BT) GetOsvcRootPath() string {
+	if t.OsvcRootPath != "" {
+		return filepath.Join(t.OsvcRootPath, "bin", "om")
+	}
+	return filepath.Join(rawconfig.Paths.Bin, "om")
 }
