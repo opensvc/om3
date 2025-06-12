@@ -95,8 +95,8 @@ func (t States) LoadTreeNode(head *tree.Node) {
 		n := subsetNode.AddNode()
 		doResource(n, r.ResourceID, r)
 		if encapStatus, ok := t.Status.Encap[r.ResourceID.Name]; ok {
-			encapNode := n.AddNode()
 			for rid, r := range encapStatus.Resources {
+				encapNode := n.AddNode()
 				if resourceID, _ := resourceid.Parse(rid); resourceID != nil {
 					doResource(encapNode, resourceID, r)
 				}
