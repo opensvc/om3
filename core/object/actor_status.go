@@ -281,7 +281,7 @@ func (t *actor) resourceStatusEvalEncap(ctx context.Context, encapContainer enca
 			}
 			t.log.Debugf("%s: no encap instance config: push the config", t.path)
 			if err := encapContainer.EncapCp(ctx, configFile, configFile); err != nil {
-				return nil, nil
+				return nil, err
 			}
 			return t.resourceStatusEvalEncap(ctx, encapContainer, true)
 		}
@@ -297,7 +297,7 @@ func (t *actor) resourceStatusEvalEncap(ctx context.Context, encapContainer enca
 		}
 		t.log.Debugf("%s: no encap instance status: push the config", t.path)
 		if err := encapContainer.EncapCp(ctx, configFile, configFile); err != nil {
-			return nil, nil
+			return nil, err
 		}
 		return t.resourceStatusEvalEncap(ctx, encapContainer, true)
 	}

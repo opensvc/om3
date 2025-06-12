@@ -97,9 +97,9 @@ func InitStategies(ctx context.Context, i any) (union.Union, error) {
 		initUX,
 		initJWT,
 		initJWTOpenID,
-		initX509,
 		initBasicNode,
 		initBasicUser,
+		//initX509,
 	} {
 		name, s, err := fn(i)
 		if err != nil {

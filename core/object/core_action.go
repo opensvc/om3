@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"os"
 	"slices"
+	"strings"
 	"sync"
 	"time"
 
@@ -408,6 +409,90 @@ func (t *actor) action(ctx context.Context, fn resourceset.DoFunc) error {
 		return err
 	}
 
+	doEncap := func(ctx context.Context, r resource.Driver) error {
+		encapContainer, ok := r.(encaper)
+		if !ok {
+			return nil
+		}
+
+		hostname := encapContainer.GetHostname()
+		configFile := t.path.ConfigFile()
+
+		if v, err := t.Config().IsInEncapNodes(hostname); err != nil {
+			return err
+		} else if !v {
+			return nil
+		}
+
+		args := append([]string{encapContainer.GetOsvcRootPath(), t.path.String()}, "config", "mtime")
+		cmd := encapContainer.EncapCmd(ctx, args...)
+		b, err := cmd.CombinedOutput()
+		if err != nil {
+			switch cmd.ProcessState.ExitCode() {
+			case 2:
+				if err := encapContainer.EncapCp(ctx, configFile, configFile); err != nil {
+					return err
+				}
+			case 128:
+				return fmt.Errorf("opensvc is not installed in the container")
+			default:
+				return err
+			}
+		}
+
+		options := make([]string, 0)
+		if s := actioncontext.RID(ctx); s != "" {
+			options = append(options, "--rid", s)
+		}
+		if s := actioncontext.Subset(ctx); s != "" {
+			options = append(options, "--subset", s)
+		}
+		if s := actioncontext.Tag(ctx); s != "" {
+			options = append(options, "--tag", s)
+		}
+		if s := actioncontext.To(ctx); s != "" {
+			options = append(options, "--to", s)
+		}
+		if s := actioncontext.IsLeader(ctx); s {
+			options = append(options, "--leader")
+		}
+		if s := actioncontext.IsRollbackDisabled(ctx); s {
+			options = append(options, "--disable-rollback")
+		}
+		args = append([]string{encapContainer.GetOsvcRootPath(), t.path.String(), "instance", action.Name}, options...)
+		cmd = encapContainer.EncapCmd(ctx, args...)
+		t.log.Infof("%s", strings.Join(cmd.Args, " "))
+		b, err = cmd.CombinedOutput()
+		if err != nil {
+			return err
+		}
+		t.log.Infof("outputs: %s", string(b))
+		return nil
+	}
+
+	encapWrap := func(fn resourceset.DoFunc) resourceset.DoFunc {
+		return func(ctx context.Context, r resource.Driver) error {
+			// do host action before encap if ascending
+			if !isDesc {
+				if err := fn(ctx, r); err != nil {
+					return err
+				}
+			}
+
+			if err := doEncap(ctx, r); err != nil {
+				return nil
+			}
+
+			// do host action after encap if descending
+			if isDesc {
+				if err := fn(ctx, r); err != nil {
+					return err
+				}
+			}
+			return nil
+		}
+	}
+
 	progressWrap := func(fn resourceset.DoFunc) resourceset.DoFunc {
 		return func(ctx context.Context, r resource.Driver) error {
 			if v, err := t.isEncapNodeMatchingResource(r); err != nil {
@@ -507,7 +592,7 @@ func (t *actor) action(ctx context.Context, fn resourceset.DoFunc) error {
 		t.announceIdle(ctxWithTimeout)
 		return err
 	}
-	if err := t.ResourceSets().Do(ctxWithTimeout, resourceSelector, barrier, action.Name, progressWrap(linkWrap(fn))); err != nil {
+	if err := t.ResourceSets().Do(ctxWithTimeout, resourceSelector, barrier, action.Name, progressWrap(linkWrap(encapWrap(fn)))); err != nil {
 		if t.needRollback(ctxWithTimeout) {
 			if rb := actionrollback.FromContext(ctxWithTimeout); rb != nil {
 				t.Log().Infof("rollback")
