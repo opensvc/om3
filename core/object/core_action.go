@@ -1,9 +1,11 @@
 package object
 
 import (
+	"bufio"
 	"context"
 	"errors"
 	"fmt"
+	"io"
 	"net/http"
 	"os"
 	"slices"
@@ -417,6 +419,7 @@ func (t *actor) action(ctx context.Context, fn resourceset.DoFunc) error {
 
 		hostname := encapContainer.GetHostname()
 		configFile := t.path.ConfigFile()
+		rid := r.RID()
 
 		if v, err := t.Config().IsInEncapNodes(hostname); err != nil {
 			return err
@@ -426,7 +429,7 @@ func (t *actor) action(ctx context.Context, fn resourceset.DoFunc) error {
 
 		args := append([]string{encapContainer.GetOsvcRootPath(), t.path.String()}, "config", "mtime")
 		cmd := encapContainer.EncapCmd(ctx, args...)
-		b, err := cmd.CombinedOutput()
+		err := cmd.Run()
 		if err != nil {
 			switch cmd.ProcessState.ExitCode() {
 			case 2:
@@ -459,15 +462,52 @@ func (t *actor) action(ctx context.Context, fn resourceset.DoFunc) error {
 		if s := actioncontext.IsRollbackDisabled(ctx); s {
 			options = append(options, "--disable-rollback")
 		}
+
 		args = append([]string{encapContainer.GetOsvcRootPath(), t.path.String(), "instance", action.Name}, options...)
 		cmd = encapContainer.EncapCmd(ctx, args...)
 		t.log.Infof("%s", strings.Join(cmd.Args, " "))
-		b, err = cmd.CombinedOutput()
+
+		stderrPipe, err := cmd.StderrPipe()
 		if err != nil {
-			return err
+			return fmt.Errorf("error creating StderrPipe: %w", err)
 		}
-		t.log.Infof("outputs: %s", string(b))
-		return nil
+
+		if err := cmd.Start(); err != nil {
+			return fmt.Errorf("Error starting command: %w", err)
+		}
+
+		var wg sync.WaitGroup
+
+		// Goroutine to read stderr line by line
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			scanner := bufio.NewScanner(stderrPipe)
+			for scanner.Scan() {
+				line := scanner.Text()
+				l := strings.Fields(line)
+				if len(l) > 2 {
+					switch {
+					case strings.Contains(l[1], "DBG"):
+						t.log.Debugf("%s: %s", rid, line)
+					case strings.Contains(l[1], "INF"):
+						t.log.Infof("%s: %s", rid, line)
+					case strings.Contains(l[1], "WRN"):
+						t.log.Warnf("%s: %s", rid, line)
+					case strings.Contains(l[1], "ERR"):
+						t.log.Errorf("%s: %s", rid, line)
+					}
+				} else {
+					t.log.Errorf("%s: %s", rid, line)
+				}
+			}
+			if err := scanner.Err(); err != nil && err != io.EOF {
+				t.log.Errorf("error reading stderr: %v", err)
+			}
+		}()
+
+		wg.Wait()
+		return cmd.Wait()
 	}
 
 	encapWrap := func(fn resourceset.DoFunc) resourceset.DoFunc {
