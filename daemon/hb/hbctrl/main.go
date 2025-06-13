@@ -186,6 +186,7 @@ func (c *C) Stop() error {
 
 func (c *C) run() {
 	c.log.Infof("start")
+	changed := false
 	events := make(EventStats)
 	remotes := make(map[string]RemoteBeating)
 	heartbeat := make(map[string]daemonsubsystem.HeartbeatStream)
@@ -223,7 +224,8 @@ func (c *C) run() {
 					Alerts: append([]daemonsubsystem.Alert(nil), heartbeat[key].Alerts...),
 				})
 			}
-			hbcache.SetHeartbeats(heartbeats)
+			hbcache.SetHeartbeats(heartbeats, changed)
+			changed = false
 		case i := <-c.cmd:
 			switch o := i.(type) {
 			case CmdRegister:
@@ -238,6 +240,7 @@ func (c *C) run() {
 					Type:  o.Type,
 					Peers: make(map[string]daemonsubsystem.HeartbeatStreamPeerStatus),
 				}
+				changed = true
 			case CmdUnregister:
 				if hbStatus, ok := heartbeat[o.ID]; ok {
 					if strings.HasSuffix(o.ID, ".rx") {
@@ -255,6 +258,7 @@ func (c *C) run() {
 					}
 					delete(heartbeat, o.ID)
 				}
+				changed = true
 			case CmdSetState:
 				if hbToChange, ok := heartbeat[o.ID]; ok {
 					hbToChange.State = o.State
@@ -278,9 +282,11 @@ func (c *C) run() {
 				label := pubsub.Label{"hb", "ping/stale"}
 				if o.Name == evStale {
 					c.log.Warnf("event %s for %s from %s", o.Name, o.Nodename, o.HbID)
+					changed = true
 					pub.Pub(&msgbus.HeartbeatStale{Nodename: o.Nodename, HbID: o.HbID, Time: time.Now()}, label)
 				} else {
 					c.log.Infof("event %s for %s from %s", o.Name, o.Nodename, o.HbID)
+					changed = true
 					pub.Pub(&msgbus.HeartbeatPing{Nodename: o.Nodename, HbID: o.HbID, Time: time.Now()}, label)
 				}
 				if remote, ok := remotes[o.Nodename]; ok {
@@ -289,6 +295,7 @@ func (c *C) run() {
 						case evBeating:
 							if remote.rxBeating == 0 {
 								c.log.Infof("beating node %s", o.Nodename)
+								changed = true
 								pub.Pub(&msgbus.HeartbeatNodePing{Node: o.Nodename, IsAlive: true}, pubsub.Label{"node", o.Nodename})
 							}
 							remote.rxBeating++
@@ -300,6 +307,7 @@ func (c *C) run() {
 						}
 						if remote.rxBeating == 0 {
 							c.log.Infof("stale node %s", o.Nodename)
+							changed = true
 							pub.Pub(&msgbus.HeartbeatNodePing{Node: o.Nodename, IsAlive: false}, pubsub.Label{"node", o.Nodename})
 						}
 						remotes[o.Nodename] = remote
