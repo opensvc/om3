@@ -31,8 +31,9 @@ func (d *data) setDaemonHeartbeat() {
 		})
 	}
 
+	streams, changed := hbcache.Heartbeats()
 	subHb := daemonsubsystem.Heartbeat{
-		Streams:      hbcache.Heartbeats(),
+		Streams:      streams,
 		LastMessages: lastMessages,
 		LastMessage: daemonsubsystem.HeartbeatLastMessage{
 			From:        d.localNode,
@@ -42,7 +43,9 @@ func (d *data) setDaemonHeartbeat() {
 	}
 	subHb.UpdatedAt = time.Now()
 	daemonsubsystem.DataHeartbeat.Set(d.localNode, subHb.DeepCopy())
-	d.publisher.Pub(&msgbus.DaemonHeartbeatUpdated{Node: d.localNode, Value: *subHb.DeepCopy()}, d.labelLocalhost)
+	labels := []pubsub.Label{d.labelLocalhost}
+	if changed {labels = append(labels, pubsub.Label{"changed", "true"})}
+	d.publisher.Pub(&msgbus.DaemonHeartbeatUpdated{Node: d.localNode, Value: *subHb.DeepCopy()}, labels...)
 }
 
 func (d *data) setHbMsgPatchLength(node string, length int) {

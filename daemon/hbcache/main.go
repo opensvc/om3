@@ -54,6 +54,7 @@ func (t *T) Stop() error {
 }
 
 func (t *T) run(ctx context.Context) {
+	changed := false
 	gens := make(map[string]node.Gen)
 	heartbeats := make([]daemonsubsystem.HeartbeatStream, 0)
 	log := plog.NewDefaultLogger().WithPrefix("daemon: hbcache: ").Attr("pkg", "daemon/hbcache")
@@ -74,10 +75,15 @@ func (t *T) run(ctx context.Context) {
 				}
 				cmd.errC <- nil
 				cmd.response <- result
+				cmd.changed <- changed
+				changed = false
 			case dropPeer:
 				delete(gens, string(cmd))
 			case setHeartbeats:
-				heartbeats = cmd
+				heartbeats = cmd.hbs
+				if cmd.changed {
+					changed = true
+				}
 			default:
 				log.Errorf("invalid command: %i", i)
 			}
@@ -87,19 +93,23 @@ func (t *T) run(ctx context.Context) {
 
 // Getters
 
-func Heartbeats() []daemonsubsystem.HeartbeatStream {
+// Heartbeats retrieves the current list of heartbeat streams and their status,
+// returning a boolean indicating changes since last cammand call.
+func Heartbeats() ([]daemonsubsystem.HeartbeatStream, bool) {
 	err := make(chan error, 1)
 	response := make(chan []daemonsubsystem.HeartbeatStream)
+	changed := make(chan bool)
 	cmd := getHeartbeats{
 		errC:     err,
 		response: response,
+		changed:  changed,
 	}
 	var i interface{} = cmd
 	cmdI <- i
 	if <-err != nil {
-		return nil
+		return nil, false
 	}
-	return <-response
+	return <-response, <-changed
 }
 
 // Setters
@@ -113,8 +123,8 @@ func DropPeer(peer string) {
 // SetHeartbeats updates the heartbeats status cache
 //
 // can be used from a heartbeat controller
-func SetHeartbeats(hbs []daemonsubsystem.HeartbeatStream) {
-	var i interface{} = setHeartbeats(hbs)
+func SetHeartbeats(hbs []daemonsubsystem.HeartbeatStream, changed bool) {
+	var i interface{} = setHeartbeats{hbs: hbs, changed: changed}
 	cmdI <- i
 }
 
@@ -126,9 +136,13 @@ type (
 	getHeartbeats struct {
 		errC
 		response chan<- []daemonsubsystem.HeartbeatStream
+		changed  chan<- bool
 	}
 
 	// setters
 	dropPeer      string
-	setHeartbeats []daemonsubsystem.HeartbeatStream
+	setHeartbeats struct {
+		hbs     []daemonsubsystem.HeartbeatStream
+		changed bool
+	}
 )

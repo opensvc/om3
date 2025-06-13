@@ -314,6 +314,8 @@ func (t *T) startSubscriptions() *pubsub.Subscription {
 	sub.AddFilter(&msgbus.ObjectStatusUpdated{})
 	sub.AddFilter(&msgbus.ObjectStatusDeleted{})
 
+	sub.AddFilter(&msgbus.DaemonHeartbeatUpdated{}, pubsub.Label{"changed", "true"})
+
 	sub.Start()
 	return sub
 }
@@ -354,6 +356,8 @@ func (t *T) loop() {
 				t.onInstanceStatusUpdated(c)
 			case *msgbus.NodeConfigUpdated:
 				t.onNodeConfigUpdated(c)
+			case *msgbus.DaemonHeartbeatUpdated:
+				t.daemonStatusChange[c.Node] = struct{}{}
 			case *msgbus.NodeMonitorDeleted:
 				t.onNodeMonitorDeleted(c)
 			case *msgbus.NodeStatusUpdated:
