@@ -77,7 +77,12 @@ func (t HeartbeatStreamPeerStatusTableEntry) Unstructured() map[string]any {
 		isBeatingIcon = "❌"
 	}
 	if len(t.Alerts) > 0 {
-		hasAlertsIcon = "⚠️ "
+		for _, alert := range t.Alerts {
+			if alert.Severity != "info" {
+				hasAlertsIcon = "⚠️ "
+				break
+			}
+		}
 	}
 	return map[string]any{
 		"node":          t.Node,
