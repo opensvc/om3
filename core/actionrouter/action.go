@@ -29,9 +29,12 @@ type (
 		//
 		NodeSelector string
 
-		RID    string
-		Subset string
-		Tag    string
+		RID         string
+		Subset      string
+		Tag         string
+		Slaves      []string
+		IsAllSlaves bool
+		IsMaster    bool
 
 		//
 		// Local routes the action to the CRM instead of remoting it via

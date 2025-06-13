@@ -16,6 +16,7 @@ import (
 	"github.com/opensvc/om3/core/instance"
 	"github.com/opensvc/om3/core/provisioned"
 	"github.com/opensvc/om3/core/resource"
+	"github.com/opensvc/om3/core/resourceid"
 	"github.com/opensvc/om3/core/status"
 	"github.com/opensvc/om3/core/statusbus"
 	"github.com/opensvc/om3/util/file"
@@ -180,6 +181,18 @@ func (t *actor) resourceStatusEval(ctx context.Context, data *instance.Status, m
 	if !monitoredOnly {
 		data.Resources = make(instance.ResourceStatuses)
 	}
+	doResourceStatus := func(group driver.Group, resourceStatus resource.Status) {
+		data.Overall.Add(resourceStatus.Status)
+		if !resourceStatus.Optional {
+			switch group {
+			case driver.GroupSync:
+			case driver.GroupTask:
+			default:
+				data.Avail.Add(resourceStatus.Status)
+			}
+		}
+		data.Provisioned.Add(resourceStatus.Provisioned.State)
+	}
 	var mu sync.Mutex
 	sb := statusbus.FromContext(ctx)
 	err := t.ResourceSets().Do(ctx, t, "", "status", func(ctx context.Context, r resource.Driver) error {
@@ -227,18 +240,13 @@ func (t *actor) resourceStatusEval(ctx context.Context, data *instance.Status, m
 				data.Encap = make(instance.EncapMap)
 			}
 			data.Encap[r.RID()] = *encapInstanceStatus
-		}
-
-		data.Overall.Add(resourceStatus.Status)
-		if !resourceStatus.Optional {
-			switch r.ID().DriverGroup() {
-			case driver.GroupSync:
-			case driver.GroupTask:
-			default:
-				data.Avail.Add(resourceStatus.Status)
+			for rid, encapResourceStatus := range encapInstanceStatus.Resources {
+				resourceID, _ := resourceid.Parse(rid)
+				doResourceStatus(resourceID.DriverGroup(), encapResourceStatus)
 			}
 		}
-		data.Provisioned.Add(resourceStatus.Provisioned.State)
+		doResourceStatus(r.ID().DriverGroup(), resourceStatus)
+
 		mu.Unlock()
 		return nil
 	})
@@ -273,7 +281,7 @@ func (t *actor) resourceStatusEvalEncap(ctx context.Context, encapContainer enca
 			}
 			t.log.Debugf("%s: no encap instance config: push the config", t.path)
 			if err := encapContainer.EncapCp(ctx, configFile, configFile); err != nil {
-				return nil, nil
+				return nil, err
 			}
 			return t.resourceStatusEvalEncap(ctx, encapContainer, true)
 		}
@@ -289,7 +297,7 @@ func (t *actor) resourceStatusEvalEncap(ctx context.Context, encapContainer enca
 		}
 		t.log.Debugf("%s: no encap instance status: push the config", t.path)
 		if err := encapContainer.EncapCp(ctx, configFile, configFile); err != nil {
-			return nil, nil
+			return nil, err
 		}
 		return t.resourceStatusEvalEncap(ctx, encapContainer, true)
 	}

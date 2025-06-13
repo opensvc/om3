@@ -119,6 +119,33 @@ func WithSubset(s string) funcopt.O {
 	})
 }
 
+// WithSlaves expands into a selection of encap nodes to execute the action on.
+func WithSlaves(s []string) funcopt.O {
+	return funcopt.F(func(i any) error {
+		t := i.(*T)
+		t.Slaves = s
+		return nil
+	})
+}
+
+// WithIsAllSlaves select only encap nodes to execute the action on.
+func WithIsAllSlaves(s bool) funcopt.O {
+	return funcopt.F(func(i any) error {
+		t := i.(*T)
+		t.IsAllSlaves = s
+		return nil
+	})
+}
+
+// WithIsMaster do to execute the action on encap nodes.
+func WithIsMaster(s bool) funcopt.O {
+	return funcopt.F(func(i any) error {
+		t := i.(*T)
+		t.IsMaster = s
+		return nil
+	})
+}
+
 // WithLocal routes the action to the CRM instead of remoting it via
 // orchestration or remote execution.
 func WithLocal(v bool) funcopt.O {
@@ -347,6 +374,9 @@ func (t T) DoLocal() error {
 	ctx = actioncontext.WithRID(ctx, t.RID)
 	ctx = actioncontext.WithTag(ctx, t.Tag)
 	ctx = actioncontext.WithSubset(ctx, t.Subset)
+	ctx = actioncontext.WithSlaves(ctx, t.Slaves)
+	ctx = actioncontext.WithAllSlaves(ctx, t.IsAllSlaves)
+	ctx = actioncontext.WithMaster(ctx, t.IsMaster)
 
 	for _, path := range paths {
 		t.instanceDo(ctx, resultQ, hostname.Hostname(), path, func(ctx context.Context, n string, p naming.Path) (any, error) {

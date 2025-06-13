@@ -26,6 +26,12 @@ func (t *CmdObjectSetProvisioned) Run(kind string) error {
 		objectaction.WithOutput(t.Output),
 		objectaction.WithObjectSelector(mergedSelector),
 		objectaction.WithRemoteNodes(t.NodeSelector),
+		objectaction.WithRID(t.RID),
+		objectaction.WithTag(t.Tag),
+		objectaction.WithSubset(t.Subset),
+		objectaction.WithSlaves(t.Slaves),
+		objectaction.WithIsAllSlaves(t.IsAllSlaves),
+		objectaction.WithIsMaster(t.IsMaster),
 		objectaction.WithLocalFunc(func(ctx context.Context, p naming.Path) (interface{}, error) {
 			o, err := object.NewActor(p)
 			if err != nil {

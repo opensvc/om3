@@ -2,6 +2,7 @@ package actioncontext
 
 import (
 	"context"
+	"slices"
 	"time"
 
 	"github.com/opensvc/om3/core/actionrollback"
@@ -20,10 +21,13 @@ const (
 	leaderKey
 	lockTimeoutKey
 	lockDisabledKey
+	masterKey
 	propsKey
 	quietKey
 	ridKey
 	rollbackDisabledKey
+	slaveKey
+	slavesKey
 	subsetKey
 	tagKey
 	targetKey
@@ -76,6 +80,16 @@ func WithLeader(ctx context.Context, v bool) context.Context {
 }
 func IsLeader(ctx context.Context) bool {
 	if i := ctx.Value(leaderKey); i != nil {
+		return i.(bool)
+	}
+	return false
+}
+
+func WithMaster(ctx context.Context, v bool) context.Context {
+	return context.WithValue(ctx, masterKey, v)
+}
+func IsMaster(ctx context.Context) bool {
+	if i := ctx.Value(masterKey); i != nil {
 		return i.(bool)
 	}
 	return false
@@ -141,6 +155,26 @@ func Env(ctx context.Context) []string {
 	return []string{}
 }
 
+func WithSlaves(ctx context.Context, s []string) context.Context {
+	return context.WithValue(ctx, slaveKey, s)
+}
+func Slaves(ctx context.Context) []string {
+	if i := ctx.Value(slaveKey); i != nil {
+		return i.([]string)
+	}
+	return []string{}
+}
+
+func WithAllSlaves(ctx context.Context, v bool) context.Context {
+	return context.WithValue(ctx, slavesKey, v)
+}
+func IsAllSlaves(ctx context.Context) bool {
+	if i := ctx.Value(slavesKey); i != nil {
+		return i.(bool)
+	}
+	return false
+}
+
 func WithTag(ctx context.Context, s string) context.Context {
 	return context.WithValue(ctx, tagKey, s)
 }
@@ -194,4 +228,28 @@ func WithProps(ctx context.Context, props Properties) context.Context {
 
 func Props(ctx context.Context) Properties {
 	return ctx.Value(propsKey).(Properties)
+}
+
+func IsActionForSlave(ctx context.Context, nodename string) bool {
+	if IsAllSlaves(ctx) {
+		return true
+	}
+	slaves := Slaves(ctx)
+	if slices.Contains(slaves, nodename) {
+		return true
+	}
+	if !IsMaster(ctx) && len(slaves) == 0 {
+		return true
+	}
+	return false
+}
+
+func IsActionForMaster(ctx context.Context) bool {
+	if IsMaster(ctx) {
+		return true
+	}
+	if !IsAllSlaves(ctx) && len(Slaves(ctx)) == 0 {
+		return true
+	}
+	return false
 }

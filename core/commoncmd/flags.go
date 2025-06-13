@@ -48,6 +48,9 @@ func FlagsResourceSelector(flags *pflag.FlagSet, p *OptsResourceSelector) {
 	FlagRID(flags, &p.RID)
 	FlagSubset(flags, &p.Subset)
 	FlagTag(flags, &p.Tag)
+	FlagSlave(flags, &p.Slaves)
+	FlagSlaves(flags, &p.IsAllSlaves)
+	FlagMaster(flags, &p.IsMaster)
 }
 
 func FlagsTo(flags *pflag.FlagSet, p *OptTo) {
@@ -274,6 +277,10 @@ func FlagCollectorApp(flags *pflag.FlagSet, p *string) {
 	flags.StringVar(p, "app", "", "register the node in the this app (or the collector picks a random app owned by the user)")
 }
 
+func FlagMaster(flags *pflag.FlagSet, p *bool) {
+	flags.BoolVar(p, "master", false, "do not execute on encap nodes")
+}
+
 func FlagModule(flags *pflag.FlagSet, p *string) {
 	flags.StringVar(p, "module", "", "the attached modules to limit the action to")
 }
@@ -292,6 +299,14 @@ func FlagRoles(flags *pflag.FlagSet, p *[]string) {
 
 func FlagRuleset(flags *pflag.FlagSet, p *string) {
 	flags.StringVar(p, "ruleset", "", "the rulesets to limit the action to (ex: rset1, all)")
+}
+
+func FlagSlave(flags *pflag.FlagSet, p *[]string) {
+	flags.StringSliceVar(p, "slave", []string{}, "execute only on the selected encap nodes")
+}
+
+func FlagSlaves(flags *pflag.FlagSet, p *bool) {
+	flags.BoolVar(p, "slaves", false, "execute only on encap nodes")
 }
 
 func FlagSections(flags *pflag.FlagSet, p *[]string) {
