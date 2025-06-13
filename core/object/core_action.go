@@ -347,6 +347,7 @@ func (t *actor) action(ctx context.Context, fn resourceset.DoFunc) error {
 	resourceSelector := resourceselector.FromContext(ctx, t)
 	resources := resourceSelector.Resources()
 	isDesc := resourceSelector.IsDesc()
+	isActionForMaster := actioncontext.IsActionForMaster(ctx)
 
 	if len(resources) == 0 && !resourceSelector.IsZero() {
 		return fmt.Errorf("resource does not exist")
@@ -418,6 +419,11 @@ func (t *actor) action(ctx context.Context, fn resourceset.DoFunc) error {
 		}
 
 		hostname := encapContainer.GetHostname()
+
+		if !actioncontext.IsActionForSlave(ctx, hostname) {
+			return nil
+		}
+
 		configFile := t.path.ConfigFile()
 		rid := r.RID()
 
@@ -513,7 +519,7 @@ func (t *actor) action(ctx context.Context, fn resourceset.DoFunc) error {
 	encapWrap := func(fn resourceset.DoFunc) resourceset.DoFunc {
 		return func(ctx context.Context, r resource.Driver) error {
 			// do host action before encap if ascending
-			if !isDesc {
+			if !isDesc && isActionForMaster {
 				if err := fn(ctx, r); err != nil {
 					return err
 				}
@@ -524,7 +530,7 @@ func (t *actor) action(ctx context.Context, fn resourceset.DoFunc) error {
 			}
 
 			// do host action after encap if descending
-			if isDesc {
+			if isDesc && isActionForMaster {
 				if err := fn(ctx, r); err != nil {
 					return err
 				}

@@ -25,6 +25,12 @@ func (t *CmdObjectSetUnprovisioned) Run(kind string) error {
 		objectaction.WithColor(t.Color),
 		objectaction.WithOutput(t.Output),
 		objectaction.WithObjectSelector(mergedSelector),
+		objectaction.WithRID(t.RID),
+		objectaction.WithTag(t.Tag),
+		objectaction.WithSubset(t.Subset),
+		objectaction.WithSlaves(t.Slaves),
+		objectaction.WithIsAllSlaves(t.IsAllSlaves),
+		objectaction.WithIsMaster(t.IsMaster),
 		objectaction.WithRemoteNodes(t.NodeSelector),
 		objectaction.WithLocalFunc(func(ctx context.Context, p naming.Path) (interface{}, error) {
 			o, err := object.NewActor(p)
