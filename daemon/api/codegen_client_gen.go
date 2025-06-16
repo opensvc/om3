@@ -4908,6 +4908,38 @@ func NewPostInstanceActionBootRequest(server string, nodename InPathNodeName, na
 	if params != nil {
 		queryValues := queryURL.Query()
 
+		if params.Slaves != nil {
+
+			if queryFrag, err := runtime.StyleParamWithLocation("form", true, "slaves", runtime.ParamLocationQuery, *params.Slaves); err != nil {
+				return nil, err
+			} else if parsed, err := url.ParseQuery(queryFrag); err != nil {
+				return nil, err
+			} else {
+				for k, v := range parsed {
+					for _, v2 := range v {
+						queryValues.Add(k, v2)
+					}
+				}
+			}
+
+		}
+
+		if params.Master != nil {
+
+			if queryFrag, err := runtime.StyleParamWithLocation("form", true, "master", runtime.ParamLocationQuery, *params.Master); err != nil {
+				return nil, err
+			} else if parsed, err := url.ParseQuery(queryFrag); err != nil {
+				return nil, err
+			} else {
+				for k, v := range parsed {
+					for _, v2 := range v {
+						queryValues.Add(k, v2)
+					}
+				}
+			}
+
+		}
+
 		if params.RequesterSid != nil {
 
 			if queryFrag, err := runtime.StyleParamWithLocation("form", true, "requester_sid", runtime.ParamLocationQuery, *params.RequesterSid); err != nil {
@@ -4927,6 +4959,22 @@ func NewPostInstanceActionBootRequest(server string, nodename InPathNodeName, na
 		if params.Rid != nil {
 
 			if queryFrag, err := runtime.StyleParamWithLocation("form", true, "rid", runtime.ParamLocationQuery, *params.Rid); err != nil {
+				return nil, err
+			} else if parsed, err := url.ParseQuery(queryFrag); err != nil {
+				return nil, err
+			} else {
+				for k, v := range parsed {
+					for _, v2 := range v {
+						queryValues.Add(k, v2)
+					}
+				}
+			}
+
+		}
+
+		if params.Slave != nil {
+
+			if queryFrag, err := runtime.StyleParamWithLocation("form", true, "slave", runtime.ParamLocationQuery, *params.Slave); err != nil {
 				return nil, err
 			} else if parsed, err := url.ParseQuery(queryFrag); err != nil {
 				return nil, err
@@ -5126,6 +5174,54 @@ func NewPostInstanceActionFreezeRequest(server string, nodename InPathNodeName, 
 	if params != nil {
 		queryValues := queryURL.Query()
 
+		if params.Slaves != nil {
+
+			if queryFrag, err := runtime.StyleParamWithLocation("form", true, "slaves", runtime.ParamLocationQuery, *params.Slaves); err != nil {
+				return nil, err
+			} else if parsed, err := url.ParseQuery(queryFrag); err != nil {
+				return nil, err
+			} else {
+				for k, v := range parsed {
+					for _, v2 := range v {
+						queryValues.Add(k, v2)
+					}
+				}
+			}
+
+		}
+
+		if params.Master != nil {
+
+			if queryFrag, err := runtime.StyleParamWithLocation("form", true, "master", runtime.ParamLocationQuery, *params.Master); err != nil {
+				return nil, err
+			} else if parsed, err := url.ParseQuery(queryFrag); err != nil {
+				return nil, err
+			} else {
+				for k, v := range parsed {
+					for _, v2 := range v {
+						queryValues.Add(k, v2)
+					}
+				}
+			}
+
+		}
+
+		if params.Slave != nil {
+
+			if queryFrag, err := runtime.StyleParamWithLocation("form", true, "slave", runtime.ParamLocationQuery, *params.Slave); err != nil {
+				return nil, err
+			} else if parsed, err := url.ParseQuery(queryFrag); err != nil {
+				return nil, err
+			} else {
+				for k, v := range parsed {
+					for _, v2 := range v {
+						queryValues.Add(k, v2)
+					}
+				}
+			}
+
+		}
+
 		if params.RequesterSid != nil {
 
 			if queryFrag, err := runtime.StyleParamWithLocation("form", true, "requester_sid", runtime.ParamLocationQuery, *params.RequesterSid); err != nil {
@@ -5203,6 +5299,22 @@ func NewPostInstanceActionProvisionRequest(server string, nodename InPathNodeNam
 	if params != nil {
 		queryValues := queryURL.Query()
 
+		if params.Slaves != nil {
+
+			if queryFrag, err := runtime.StyleParamWithLocation("form", true, "slaves", runtime.ParamLocationQuery, *params.Slaves); err != nil {
+				return nil, err
+			} else if parsed, err := url.ParseQuery(queryFrag); err != nil {
+				return nil, err
+			} else {
+				for k, v := range parsed {
+					for _, v2 := range v {
+						queryValues.Add(k, v2)
+					}
+				}
+			}
+
+		}
+
 		if params.DisableRollback != nil {
 
 			if queryFrag, err := runtime.StyleParamWithLocation("form", true, "disable_rollback", runtime.ParamLocationQuery, *params.DisableRollback); err != nil {
@@ -5251,6 +5363,22 @@ func NewPostInstanceActionProvisionRequest(server string, nodename InPathNodeNam
 
 		}
 
+		if params.Master != nil {
+
+			if queryFrag, err := runtime.StyleParamWithLocation("form", true, "master", runtime.ParamLocationQuery, *params.Master); err != nil {
+				return nil, err
+			} else if parsed, err := url.ParseQuery(queryFrag); err != nil {
+				return nil, err
+			} else {
+				for k, v := range parsed {
+					for _, v2 := range v {
+						queryValues.Add(k, v2)
+					}
+				}
+			}
+
+		}
+
 		if params.RequesterSid != nil {
 
 			if queryFrag, err := runtime.StyleParamWithLocation("form", true, "requester_sid", runtime.ParamLocationQuery, *params.RequesterSid); err != nil {
@@ -5270,6 +5398,22 @@ func NewPostInstanceActionProvisionRequest(server string, nodename InPathNodeNam
 		if params.Rid != nil {
 
 			if queryFrag, err := runtime.StyleParamWithLocation("form", true, "rid", runtime.ParamLocationQuery, *params.Rid); err != nil {
+				return nil, err
+			} else if parsed, err := url.ParseQuery(queryFrag); err != nil {
+				return nil, err
+			} else {
+				for k, v := range parsed {
+					for _, v2 := range v {
+						queryValues.Add(k, v2)
+					}
+				}
+			}
+
+		}
+
+		if params.Slave != nil {
+
+			if queryFrag, err := runtime.StyleParamWithLocation("form", true, "slave", runtime.ParamLocationQuery, *params.Slave); err != nil {
 				return nil, err
 			} else if parsed, err := url.ParseQuery(queryFrag); err != nil {
 				return nil, err
@@ -5408,6 +5552,22 @@ func NewPostInstanceActionPRStartRequest(server string, nodename InPathNodeName,
 	if params != nil {
 		queryValues := queryURL.Query()
 
+		if params.Slaves != nil {
+
+			if queryFrag, err := runtime.StyleParamWithLocation("form", true, "slaves", runtime.ParamLocationQuery, *params.Slaves); err != nil {
+				return nil, err
+			} else if parsed, err := url.ParseQuery(queryFrag); err != nil {
+				return nil, err
+			} else {
+				for k, v := range parsed {
+					for _, v2 := range v {
+						queryValues.Add(k, v2)
+					}
+				}
+			}
+
+		}
+
 		if params.DisableRollback != nil {
 
 			if queryFrag, err := runtime.StyleParamWithLocation("form", true, "disable_rollback", runtime.ParamLocationQuery, *params.DisableRollback); err != nil {
@@ -5440,6 +5600,22 @@ func NewPostInstanceActionPRStartRequest(server string, nodename InPathNodeName,
 
 		}
 
+		if params.Master != nil {
+
+			if queryFrag, err := runtime.StyleParamWithLocation("form", true, "master", runtime.ParamLocationQuery, *params.Master); err != nil {
+				return nil, err
+			} else if parsed, err := url.ParseQuery(queryFrag); err != nil {
+				return nil, err
+			} else {
+				for k, v := range parsed {
+					for _, v2 := range v {
+						queryValues.Add(k, v2)
+					}
+				}
+			}
+
+		}
+
 		if params.RequesterSid != nil {
 
 			if queryFrag, err := runtime.StyleParamWithLocation("form", true, "requester_sid", runtime.ParamLocationQuery, *params.RequesterSid); err != nil {
@@ -5459,6 +5635,22 @@ func NewPostInstanceActionPRStartRequest(server string, nodename InPathNodeName,
 		if params.Rid != nil {
 
 			if queryFrag, err := runtime.StyleParamWithLocation("form", true, "rid", runtime.ParamLocationQuery, *params.Rid); err != nil {
+				return nil, err
+			} else if parsed, err := url.ParseQuery(queryFrag); err != nil {
+				return nil, err
+			} else {
+				for k, v := range parsed {
+					for _, v2 := range v {
+						queryValues.Add(k, v2)
+					}
+				}
+			}
+
+		}
+
+		if params.Slave != nil {
+
+			if queryFrag, err := runtime.StyleParamWithLocation("form", true, "slave", runtime.ParamLocationQuery, *params.Slave); err != nil {
 				return nil, err
 			} else if parsed, err := url.ParseQuery(queryFrag); err != nil {
 				return nil, err
@@ -5581,6 +5773,22 @@ func NewPostInstanceActionPRStopRequest(server string, nodename InPathNodeName, 
 	if params != nil {
 		queryValues := queryURL.Query()
 
+		if params.Slaves != nil {
+
+			if queryFrag, err := runtime.StyleParamWithLocation("form", true, "slaves", runtime.ParamLocationQuery, *params.Slaves); err != nil {
+				return nil, err
+			} else if parsed, err := url.ParseQuery(queryFrag); err != nil {
+				return nil, err
+			} else {
+				for k, v := range parsed {
+					for _, v2 := range v {
+						queryValues.Add(k, v2)
+					}
+				}
+			}
+
+		}
+
 		if params.DisableRollback != nil {
 
 			if queryFrag, err := runtime.StyleParamWithLocation("form", true, "disable_rollback", runtime.ParamLocationQuery, *params.DisableRollback); err != nil {
@@ -5613,6 +5821,22 @@ func NewPostInstanceActionPRStopRequest(server string, nodename InPathNodeName, 
 
 		}
 
+		if params.Master != nil {
+
+			if queryFrag, err := runtime.StyleParamWithLocation("form", true, "master", runtime.ParamLocationQuery, *params.Master); err != nil {
+				return nil, err
+			} else if parsed, err := url.ParseQuery(queryFrag); err != nil {
+				return nil, err
+			} else {
+				for k, v := range parsed {
+					for _, v2 := range v {
+						queryValues.Add(k, v2)
+					}
+				}
+			}
+
+		}
+
 		if params.RequesterSid != nil {
 
 			if queryFrag, err := runtime.StyleParamWithLocation("form", true, "requester_sid", runtime.ParamLocationQuery, *params.RequesterSid); err != nil {
@@ -5632,6 +5856,22 @@ func NewPostInstanceActionPRStopRequest(server string, nodename InPathNodeName, 
 		if params.Rid != nil {
 
 			if queryFrag, err := runtime.StyleParamWithLocation("form", true, "rid", runtime.ParamLocationQuery, *params.Rid); err != nil {
+				return nil, err
+			} else if parsed, err := url.ParseQuery(queryFrag); err != nil {
+				return nil, err
+			} else {
+				for k, v := range parsed {
+					for _, v2 := range v {
+						queryValues.Add(k, v2)
+					}
+				}
+			}
+
+		}
+
+		if params.Slave != nil {
+
+			if queryFrag, err := runtime.StyleParamWithLocation("form", true, "slave", runtime.ParamLocationQuery, *params.Slave); err != nil {
 				return nil, err
 			} else if parsed, err := url.ParseQuery(queryFrag); err != nil {
 				return nil, err
@@ -5831,6 +6071,22 @@ func NewPostInstanceActionRestartRequest(server string, nodename InPathNodeName,
 	if params != nil {
 		queryValues := queryURL.Query()
 
+		if params.Slaves != nil {
+
+			if queryFrag, err := runtime.StyleParamWithLocation("form", true, "slaves", runtime.ParamLocationQuery, *params.Slaves); err != nil {
+				return nil, err
+			} else if parsed, err := url.ParseQuery(queryFrag); err != nil {
+				return nil, err
+			} else {
+				for k, v := range parsed {
+					for _, v2 := range v {
+						queryValues.Add(k, v2)
+					}
+				}
+			}
+
+		}
+
 		if params.DisableRollback != nil {
 
 			if queryFrag, err := runtime.StyleParamWithLocation("form", true, "disable_rollback", runtime.ParamLocationQuery, *params.DisableRollback); err != nil {
@@ -5863,6 +6119,22 @@ func NewPostInstanceActionRestartRequest(server string, nodename InPathNodeName,
 
 		}
 
+		if params.Master != nil {
+
+			if queryFrag, err := runtime.StyleParamWithLocation("form", true, "master", runtime.ParamLocationQuery, *params.Master); err != nil {
+				return nil, err
+			} else if parsed, err := url.ParseQuery(queryFrag); err != nil {
+				return nil, err
+			} else {
+				for k, v := range parsed {
+					for _, v2 := range v {
+						queryValues.Add(k, v2)
+					}
+				}
+			}
+
+		}
+
 		if params.RequesterSid != nil {
 
 			if queryFrag, err := runtime.StyleParamWithLocation("form", true, "requester_sid", runtime.ParamLocationQuery, *params.RequesterSid); err != nil {
@@ -5882,6 +6154,22 @@ func NewPostInstanceActionRestartRequest(server string, nodename InPathNodeName,
 		if params.Rid != nil {
 
 			if queryFrag, err := runtime.StyleParamWithLocation("form", true, "rid", runtime.ParamLocationQuery, *params.Rid); err != nil {
+				return nil, err
+			} else if parsed, err := url.ParseQuery(queryFrag); err != nil {
+				return nil, err
+			} else {
+				for k, v := range parsed {
+					for _, v2 := range v {
+						queryValues.Add(k, v2)
+					}
+				}
+			}
+
+		}
+
+		if params.Slave != nil {
+
+			if queryFrag, err := runtime.StyleParamWithLocation("form", true, "slave", runtime.ParamLocationQuery, *params.Slave); err != nil {
 				return nil, err
 			} else if parsed, err := url.ParseQuery(queryFrag); err != nil {
 				return nil, err
@@ -6004,6 +6292,22 @@ func NewPostInstanceActionRunRequest(server string, nodename InPathNodeName, nam
 	if params != nil {
 		queryValues := queryURL.Query()
 
+		if params.Slaves != nil {
+
+			if queryFrag, err := runtime.StyleParamWithLocation("form", true, "slaves", runtime.ParamLocationQuery, *params.Slaves); err != nil {
+				return nil, err
+			} else if parsed, err := url.ParseQuery(queryFrag); err != nil {
+				return nil, err
+			} else {
+				for k, v := range parsed {
+					for _, v2 := range v {
+						queryValues.Add(k, v2)
+					}
+				}
+			}
+
+		}
+
 		if params.Confirm != nil {
 
 			if queryFrag, err := runtime.StyleParamWithLocation("form", true, "confirm", runtime.ParamLocationQuery, *params.Confirm); err != nil {
@@ -6052,6 +6356,22 @@ func NewPostInstanceActionRunRequest(server string, nodename InPathNodeName, nam
 
 		}
 
+		if params.Master != nil {
+
+			if queryFrag, err := runtime.StyleParamWithLocation("form", true, "master", runtime.ParamLocationQuery, *params.Master); err != nil {
+				return nil, err
+			} else if parsed, err := url.ParseQuery(queryFrag); err != nil {
+				return nil, err
+			} else {
+				for k, v := range parsed {
+					for _, v2 := range v {
+						queryValues.Add(k, v2)
+					}
+				}
+			}
+
+		}
+
 		if params.RequesterSid != nil {
 
 			if queryFrag, err := runtime.StyleParamWithLocation("form", true, "requester_sid", runtime.ParamLocationQuery, *params.RequesterSid); err != nil {
@@ -6071,6 +6391,22 @@ func NewPostInstanceActionRunRequest(server string, nodename InPathNodeName, nam
 		if params.Rid != nil {
 
 			if queryFrag, err := runtime.StyleParamWithLocation("form", true, "rid", runtime.ParamLocationQuery, *params.Rid); err != nil {
+				return nil, err
+			} else if parsed, err := url.ParseQuery(queryFrag); err != nil {
+				return nil, err
+			} else {
+				for k, v := range parsed {
+					for _, v2 := range v {
+						queryValues.Add(k, v2)
+					}
+				}
+			}
+
+		}
+
+		if params.Slave != nil {
+
+			if queryFrag, err := runtime.StyleParamWithLocation("form", true, "slave", runtime.ParamLocationQuery, *params.Slave); err != nil {
 				return nil, err
 			} else if parsed, err := url.ParseQuery(queryFrag); err != nil {
 				return nil, err
@@ -6209,9 +6545,41 @@ func NewPostInstanceActionShutdownRequest(server string, nodename InPathNodeName
 	if params != nil {
 		queryValues := queryURL.Query()
 
+		if params.Slaves != nil {
+
+			if queryFrag, err := runtime.StyleParamWithLocation("form", true, "slaves", runtime.ParamLocationQuery, *params.Slaves); err != nil {
+				return nil, err
+			} else if parsed, err := url.ParseQuery(queryFrag); err != nil {
+				return nil, err
+			} else {
+				for k, v := range parsed {
+					for _, v2 := range v {
+						queryValues.Add(k, v2)
+					}
+				}
+			}
+
+		}
+
 		if params.Force != nil {
 
 			if queryFrag, err := runtime.StyleParamWithLocation("form", true, "force", runtime.ParamLocationQuery, *params.Force); err != nil {
+				return nil, err
+			} else if parsed, err := url.ParseQuery(queryFrag); err != nil {
+				return nil, err
+			} else {
+				for k, v := range parsed {
+					for _, v2 := range v {
+						queryValues.Add(k, v2)
+					}
+				}
+			}
+
+		}
+
+		if params.Master != nil {
+
+			if queryFrag, err := runtime.StyleParamWithLocation("form", true, "master", runtime.ParamLocationQuery, *params.Master); err != nil {
 				return nil, err
 			} else if parsed, err := url.ParseQuery(queryFrag); err != nil {
 				return nil, err
@@ -6244,6 +6612,22 @@ func NewPostInstanceActionShutdownRequest(server string, nodename InPathNodeName
 		if params.Rid != nil {
 
 			if queryFrag, err := runtime.StyleParamWithLocation("form", true, "rid", runtime.ParamLocationQuery, *params.Rid); err != nil {
+				return nil, err
+			} else if parsed, err := url.ParseQuery(queryFrag); err != nil {
+				return nil, err
+			} else {
+				for k, v := range parsed {
+					for _, v2 := range v {
+						queryValues.Add(k, v2)
+					}
+				}
+			}
+
+		}
+
+		if params.Slave != nil {
+
+			if queryFrag, err := runtime.StyleParamWithLocation("form", true, "slave", runtime.ParamLocationQuery, *params.Slave); err != nil {
 				return nil, err
 			} else if parsed, err := url.ParseQuery(queryFrag); err != nil {
 				return nil, err
@@ -6366,6 +6750,22 @@ func NewPostInstanceActionStartRequest(server string, nodename InPathNodeName, n
 	if params != nil {
 		queryValues := queryURL.Query()
 
+		if params.Slaves != nil {
+
+			if queryFrag, err := runtime.StyleParamWithLocation("form", true, "slaves", runtime.ParamLocationQuery, *params.Slaves); err != nil {
+				return nil, err
+			} else if parsed, err := url.ParseQuery(queryFrag); err != nil {
+				return nil, err
+			} else {
+				for k, v := range parsed {
+					for _, v2 := range v {
+						queryValues.Add(k, v2)
+					}
+				}
+			}
+
+		}
+
 		if params.DisableRollback != nil {
 
 			if queryFrag, err := runtime.StyleParamWithLocation("form", true, "disable_rollback", runtime.ParamLocationQuery, *params.DisableRollback); err != nil {
@@ -6398,6 +6798,22 @@ func NewPostInstanceActionStartRequest(server string, nodename InPathNodeName, n
 
 		}
 
+		if params.Master != nil {
+
+			if queryFrag, err := runtime.StyleParamWithLocation("form", true, "master", runtime.ParamLocationQuery, *params.Master); err != nil {
+				return nil, err
+			} else if parsed, err := url.ParseQuery(queryFrag); err != nil {
+				return nil, err
+			} else {
+				for k, v := range parsed {
+					for _, v2 := range v {
+						queryValues.Add(k, v2)
+					}
+				}
+			}
+
+		}
+
 		if params.RequesterSid != nil {
 
 			if queryFrag, err := runtime.StyleParamWithLocation("form", true, "requester_sid", runtime.ParamLocationQuery, *params.RequesterSid); err != nil {
@@ -6417,6 +6833,22 @@ func NewPostInstanceActionStartRequest(server string, nodename InPathNodeName, n
 		if params.Rid != nil {
 
 			if queryFrag, err := runtime.StyleParamWithLocation("form", true, "rid", runtime.ParamLocationQuery, *params.Rid); err != nil {
+				return nil, err
+			} else if parsed, err := url.ParseQuery(queryFrag); err != nil {
+				return nil, err
+			} else {
+				for k, v := range parsed {
+					for _, v2 := range v {
+						queryValues.Add(k, v2)
+					}
+				}
+			}
+
+		}
+
+		if params.Slave != nil {
+
+			if queryFrag, err := runtime.StyleParamWithLocation("form", true, "slave", runtime.ParamLocationQuery, *params.Slave); err != nil {
 				return nil, err
 			} else if parsed, err := url.ParseQuery(queryFrag); err != nil {
 				return nil, err
@@ -6539,6 +6971,22 @@ func NewPostInstanceActionStartStandbyRequest(server string, nodename InPathNode
 	if params != nil {
 		queryValues := queryURL.Query()
 
+		if params.Slaves != nil {
+
+			if queryFrag, err := runtime.StyleParamWithLocation("form", true, "slaves", runtime.ParamLocationQuery, *params.Slaves); err != nil {
+				return nil, err
+			} else if parsed, err := url.ParseQuery(queryFrag); err != nil {
+				return nil, err
+			} else {
+				for k, v := range parsed {
+					for _, v2 := range v {
+						queryValues.Add(k, v2)
+					}
+				}
+			}
+
+		}
+
 		if params.DisableRollback != nil {
 
 			if queryFrag, err := runtime.StyleParamWithLocation("form", true, "disable_rollback", runtime.ParamLocationQuery, *params.DisableRollback); err != nil {
@@ -6571,6 +7019,22 @@ func NewPostInstanceActionStartStandbyRequest(server string, nodename InPathNode
 
 		}
 
+		if params.Master != nil {
+
+			if queryFrag, err := runtime.StyleParamWithLocation("form", true, "master", runtime.ParamLocationQuery, *params.Master); err != nil {
+				return nil, err
+			} else if parsed, err := url.ParseQuery(queryFrag); err != nil {
+				return nil, err
+			} else {
+				for k, v := range parsed {
+					for _, v2 := range v {
+						queryValues.Add(k, v2)
+					}
+				}
+			}
+
+		}
+
 		if params.RequesterSid != nil {
 
 			if queryFrag, err := runtime.StyleParamWithLocation("form", true, "requester_sid", runtime.ParamLocationQuery, *params.RequesterSid); err != nil {
@@ -6590,6 +7054,22 @@ func NewPostInstanceActionStartStandbyRequest(server string, nodename InPathNode
 		if params.Rid != nil {
 
 			if queryFrag, err := runtime.StyleParamWithLocation("form", true, "rid", runtime.ParamLocationQuery, *params.Rid); err != nil {
+				return nil, err
+			} else if parsed, err := url.ParseQuery(queryFrag); err != nil {
+				return nil, err
+			} else {
+				for k, v := range parsed {
+					for _, v2 := range v {
+						queryValues.Add(k, v2)
+					}
+				}
+			}
+
+		}
+
+		if params.Slave != nil {
+
+			if queryFrag, err := runtime.StyleParamWithLocation("form", true, "slave", runtime.ParamLocationQuery, *params.Slave); err != nil {
 				return nil, err
 			} else if parsed, err := url.ParseQuery(queryFrag); err != nil {
 				return nil, err
@@ -6789,9 +7269,41 @@ func NewPostInstanceActionStopRequest(server string, nodename InPathNodeName, na
 	if params != nil {
 		queryValues := queryURL.Query()
 
+		if params.Slaves != nil {
+
+			if queryFrag, err := runtime.StyleParamWithLocation("form", true, "slaves", runtime.ParamLocationQuery, *params.Slaves); err != nil {
+				return nil, err
+			} else if parsed, err := url.ParseQuery(queryFrag); err != nil {
+				return nil, err
+			} else {
+				for k, v := range parsed {
+					for _, v2 := range v {
+						queryValues.Add(k, v2)
+					}
+				}
+			}
+
+		}
+
 		if params.Force != nil {
 
 			if queryFrag, err := runtime.StyleParamWithLocation("form", true, "force", runtime.ParamLocationQuery, *params.Force); err != nil {
+				return nil, err
+			} else if parsed, err := url.ParseQuery(queryFrag); err != nil {
+				return nil, err
+			} else {
+				for k, v := range parsed {
+					for _, v2 := range v {
+						queryValues.Add(k, v2)
+					}
+				}
+			}
+
+		}
+
+		if params.Master != nil {
+
+			if queryFrag, err := runtime.StyleParamWithLocation("form", true, "master", runtime.ParamLocationQuery, *params.Master); err != nil {
 				return nil, err
 			} else if parsed, err := url.ParseQuery(queryFrag); err != nil {
 				return nil, err
@@ -6824,6 +7336,22 @@ func NewPostInstanceActionStopRequest(server string, nodename InPathNodeName, na
 		if params.Rid != nil {
 
 			if queryFrag, err := runtime.StyleParamWithLocation("form", true, "rid", runtime.ParamLocationQuery, *params.Rid); err != nil {
+				return nil, err
+			} else if parsed, err := url.ParseQuery(queryFrag); err != nil {
+				return nil, err
+			} else {
+				for k, v := range parsed {
+					for _, v2 := range v {
+						queryValues.Add(k, v2)
+					}
+				}
+			}
+
+		}
+
+		if params.Slave != nil {
+
+			if queryFrag, err := runtime.StyleParamWithLocation("form", true, "slave", runtime.ParamLocationQuery, *params.Slave); err != nil {
 				return nil, err
 			} else if parsed, err := url.ParseQuery(queryFrag); err != nil {
 				return nil, err
@@ -7071,6 +7599,54 @@ func NewPostInstanceActionUnfreezeRequest(server string, nodename InPathNodeName
 	if params != nil {
 		queryValues := queryURL.Query()
 
+		if params.Slaves != nil {
+
+			if queryFrag, err := runtime.StyleParamWithLocation("form", true, "slaves", runtime.ParamLocationQuery, *params.Slaves); err != nil {
+				return nil, err
+			} else if parsed, err := url.ParseQuery(queryFrag); err != nil {
+				return nil, err
+			} else {
+				for k, v := range parsed {
+					for _, v2 := range v {
+						queryValues.Add(k, v2)
+					}
+				}
+			}
+
+		}
+
+		if params.Master != nil {
+
+			if queryFrag, err := runtime.StyleParamWithLocation("form", true, "master", runtime.ParamLocationQuery, *params.Master); err != nil {
+				return nil, err
+			} else if parsed, err := url.ParseQuery(queryFrag); err != nil {
+				return nil, err
+			} else {
+				for k, v := range parsed {
+					for _, v2 := range v {
+						queryValues.Add(k, v2)
+					}
+				}
+			}
+
+		}
+
+		if params.Slave != nil {
+
+			if queryFrag, err := runtime.StyleParamWithLocation("form", true, "slave", runtime.ParamLocationQuery, *params.Slave); err != nil {
+				return nil, err
+			} else if parsed, err := url.ParseQuery(queryFrag); err != nil {
+				return nil, err
+			} else {
+				for k, v := range parsed {
+					for _, v2 := range v {
+						queryValues.Add(k, v2)
+					}
+				}
+			}
+
+		}
+
 		if params.RequesterSid != nil {
 
 			if queryFrag, err := runtime.StyleParamWithLocation("form", true, "requester_sid", runtime.ParamLocationQuery, *params.RequesterSid); err != nil {
@@ -7148,6 +7724,22 @@ func NewPostInstanceActionUnprovisionRequest(server string, nodename InPathNodeN
 	if params != nil {
 		queryValues := queryURL.Query()
 
+		if params.Slaves != nil {
+
+			if queryFrag, err := runtime.StyleParamWithLocation("form", true, "slaves", runtime.ParamLocationQuery, *params.Slaves); err != nil {
+				return nil, err
+			} else if parsed, err := url.ParseQuery(queryFrag); err != nil {
+				return nil, err
+			} else {
+				for k, v := range parsed {
+					for _, v2 := range v {
+						queryValues.Add(k, v2)
+					}
+				}
+			}
+
+		}
+
 		if params.Force != nil {
 
 			if queryFrag, err := runtime.StyleParamWithLocation("form", true, "force", runtime.ParamLocationQuery, *params.Force); err != nil {
@@ -7167,6 +7759,22 @@ func NewPostInstanceActionUnprovisionRequest(server string, nodename InPathNodeN
 		if params.Leader != nil {
 
 			if queryFrag, err := runtime.StyleParamWithLocation("form", true, "leader", runtime.ParamLocationQuery, *params.Leader); err != nil {
+				return nil, err
+			} else if parsed, err := url.ParseQuery(queryFrag); err != nil {
+				return nil, err
+			} else {
+				for k, v := range parsed {
+					for _, v2 := range v {
+						queryValues.Add(k, v2)
+					}
+				}
+			}
+
+		}
+
+		if params.Master != nil {
+
+			if queryFrag, err := runtime.StyleParamWithLocation("form", true, "master", runtime.ParamLocationQuery, *params.Master); err != nil {
 				return nil, err
 			} else if parsed, err := url.ParseQuery(queryFrag); err != nil {
 				return nil, err
@@ -7215,6 +7823,22 @@ func NewPostInstanceActionUnprovisionRequest(server string, nodename InPathNodeN
 		if params.StateOnly != nil {
 
 			if queryFrag, err := runtime.StyleParamWithLocation("form", true, "state_only", runtime.ParamLocationQuery, *params.StateOnly); err != nil {
+				return nil, err
+			} else if parsed, err := url.ParseQuery(queryFrag); err != nil {
+				return nil, err
+			} else {
+				for k, v := range parsed {
+					for _, v2 := range v {
+						queryValues.Add(k, v2)
+					}
+				}
+			}
+
+		}
+
+		if params.Slave != nil {
+
+			if queryFrag, err := runtime.StyleParamWithLocation("form", true, "slave", runtime.ParamLocationQuery, *params.Slave); err != nil {
 				return nil, err
 			} else if parsed, err := url.ParseQuery(queryFrag); err != nil {
 				return nil, err

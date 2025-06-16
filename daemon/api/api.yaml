@@ -1662,8 +1662,11 @@ paths:
         - $ref: '#/components/parameters/inPathNamespace'
         - $ref: '#/components/parameters/inPathKind'
         - $ref: '#/components/parameters/inPathName'
+        - $ref: '#/components/parameters/inQueryAllSlaves'
+        - $ref: '#/components/parameters/inQueryMaster'
         - $ref: '#/components/parameters/inQueryRequesterSid'
         - $ref: '#/components/parameters/inQueryRid'
+        - $ref: '#/components/parameters/inQuerySlaves'
         - $ref: '#/components/parameters/inQuerySubset'
         - $ref: '#/components/parameters/inQueryTag'
         - $ref: '#/components/parameters/inQueryTo'
@@ -1733,6 +1736,9 @@ paths:
         - $ref: '#/components/parameters/inPathNamespace'
         - $ref: '#/components/parameters/inPathKind'
         - $ref: '#/components/parameters/inPathName'
+        - $ref: '#/components/parameters/inQueryAllSlaves'
+        - $ref: '#/components/parameters/inQueryMaster'
+        - $ref: '#/components/parameters/inQuerySlaves'
         - $ref: '#/components/parameters/inQueryRequesterSid'
       responses:
         200:
@@ -1765,11 +1771,14 @@ paths:
         - $ref: '#/components/parameters/inPathNamespace'
         - $ref: '#/components/parameters/inPathKind'
         - $ref: '#/components/parameters/inPathName'
+        - $ref: '#/components/parameters/inQueryAllSlaves'
         - $ref: '#/components/parameters/inQueryDisableRollback'
         - $ref: '#/components/parameters/inQueryForce'
         - $ref: '#/components/parameters/inQueryLeader'
+        - $ref: '#/components/parameters/inQueryMaster'
         - $ref: '#/components/parameters/inQueryRequesterSid'
         - $ref: '#/components/parameters/inQueryRid'
+        - $ref: '#/components/parameters/inQuerySlaves'
         - $ref: '#/components/parameters/inQueryStateOnly'
         - $ref: '#/components/parameters/inQuerySubset'
         - $ref: '#/components/parameters/inQueryTag'
@@ -1835,10 +1844,13 @@ paths:
         - $ref: '#/components/parameters/inPathNamespace'
         - $ref: '#/components/parameters/inPathKind'
         - $ref: '#/components/parameters/inPathName'
+        - $ref: '#/components/parameters/inQueryAllSlaves'
         - $ref: '#/components/parameters/inQueryDisableRollback'
         - $ref: '#/components/parameters/inQueryForce'
+        - $ref: '#/components/parameters/inQueryMaster'
         - $ref: '#/components/parameters/inQueryRequesterSid'
         - $ref: '#/components/parameters/inQueryRid'
+        - $ref: '#/components/parameters/inQuerySlaves'
         - $ref: '#/components/parameters/inQuerySubset'
         - $ref: '#/components/parameters/inQueryTag'
         - $ref: '#/components/parameters/inQueryTo'
@@ -1873,11 +1885,14 @@ paths:
         - $ref: '#/components/parameters/inPathNamespace'
         - $ref: '#/components/parameters/inPathKind'
         - $ref: '#/components/parameters/inPathName'
+        - $ref: '#/components/parameters/inQueryAllSlaves'
         - $ref: '#/components/parameters/inQueryConfirm'
         - $ref: '#/components/parameters/inQueryCron'
         - $ref: '#/components/parameters/inQueryForce'
+        - $ref: '#/components/parameters/inQueryMaster'
         - $ref: '#/components/parameters/inQueryRequesterSid'
         - $ref: '#/components/parameters/inQueryRid'
+        - $ref: '#/components/parameters/inQuerySlaves'
         - $ref: '#/components/parameters/inQuerySubset'
         - $ref: '#/components/parameters/inQueryTag'
         - $ref: '#/components/parameters/inQueryTo'
@@ -1913,10 +1928,13 @@ paths:
         - $ref: '#/components/parameters/inPathNamespace'
         - $ref: '#/components/parameters/inPathKind'
         - $ref: '#/components/parameters/inPathName'
+        - $ref: '#/components/parameters/inQueryAllSlaves'
         - $ref: '#/components/parameters/inQueryDisableRollback'
         - $ref: '#/components/parameters/inQueryForce'
+        - $ref: '#/components/parameters/inQueryMaster'
         - $ref: '#/components/parameters/inQueryRequesterSid'
         - $ref: '#/components/parameters/inQueryRid'
+        - $ref: '#/components/parameters/inQuerySlaves'
         - $ref: '#/components/parameters/inQuerySubset'
         - $ref: '#/components/parameters/inQueryTag'
         - $ref: '#/components/parameters/inQueryTo'
@@ -1951,10 +1969,13 @@ paths:
         - $ref: '#/components/parameters/inPathNamespace'
         - $ref: '#/components/parameters/inPathKind'
         - $ref: '#/components/parameters/inPathName'
+        - $ref: '#/components/parameters/inQueryAllSlaves'
         - $ref: '#/components/parameters/inQueryDisableRollback'
         - $ref: '#/components/parameters/inQueryForce'
+        - $ref: '#/components/parameters/inQueryMaster'
         - $ref: '#/components/parameters/inQueryRequesterSid'
         - $ref: '#/components/parameters/inQueryRid'
+        - $ref: '#/components/parameters/inQuerySlaves'
         - $ref: '#/components/parameters/inQuerySubset'
         - $ref: '#/components/parameters/inQueryTag'
         - $ref: '#/components/parameters/inQueryTo'
@@ -2021,9 +2042,12 @@ paths:
         - $ref: '#/components/parameters/inPathNamespace'
         - $ref: '#/components/parameters/inPathKind'
         - $ref: '#/components/parameters/inPathName'
+        - $ref: '#/components/parameters/inQueryAllSlaves'
         - $ref: '#/components/parameters/inQueryForce'
+        - $ref: '#/components/parameters/inQueryMaster'
         - $ref: '#/components/parameters/inQueryRequesterSid'
         - $ref: '#/components/parameters/inQueryRid'
+        - $ref: '#/components/parameters/inQuerySlaves'
         - $ref: '#/components/parameters/inQuerySubset'
         - $ref: '#/components/parameters/inQueryTag'
         - $ref: '#/components/parameters/inQueryTo'
@@ -2058,9 +2082,12 @@ paths:
         - $ref: '#/components/parameters/inPathNamespace'
         - $ref: '#/components/parameters/inPathKind'
         - $ref: '#/components/parameters/inPathName'
+        - $ref: '#/components/parameters/inQueryAllSlaves'
         - $ref: '#/components/parameters/inQueryForce'
+        - $ref: '#/components/parameters/inQueryMaster'
         - $ref: '#/components/parameters/inQueryRequesterSid'
         - $ref: '#/components/parameters/inQueryRid'
+        - $ref: '#/components/parameters/inQuerySlaves'
         - $ref: '#/components/parameters/inQuerySubset'
         - $ref: '#/components/parameters/inQueryTag'
         - $ref: '#/components/parameters/inQueryTo'
@@ -2130,6 +2157,9 @@ paths:
         - $ref: '#/components/parameters/inPathNamespace'
         - $ref: '#/components/parameters/inPathKind'
         - $ref: '#/components/parameters/inPathName'
+        - $ref: '#/components/parameters/inQueryAllSlaves'
+        - $ref: '#/components/parameters/inQueryMaster'
+        - $ref: '#/components/parameters/inQuerySlaves'
         - $ref: '#/components/parameters/inQueryRequesterSid'
       responses:
         200:
@@ -2162,11 +2192,14 @@ paths:
         - $ref: '#/components/parameters/inPathNamespace'
         - $ref: '#/components/parameters/inPathKind'
         - $ref: '#/components/parameters/inPathName'
+        - $ref: '#/components/parameters/inQueryAllSlaves'
         - $ref: '#/components/parameters/inQueryForce'
         - $ref: '#/components/parameters/inQueryLeader'
+        - $ref: '#/components/parameters/inQueryMaster'
         - $ref: '#/components/parameters/inQueryRequesterSid'
         - $ref: '#/components/parameters/inQueryRid'
         - $ref: '#/components/parameters/inQueryStateOnly'
+        - $ref: '#/components/parameters/inQuerySlaves'
         - $ref: '#/components/parameters/inQuerySubset'
         - $ref: '#/components/parameters/inQueryTag'
         - $ref: '#/components/parameters/inQueryTo'
@@ -3361,10 +3394,13 @@ paths:
         - $ref: '#/components/parameters/inPathNamespace'
         - $ref: '#/components/parameters/inPathKind'
         - $ref: '#/components/parameters/inPathName'
+        - $ref: '#/components/parameters/inQueryAllSlaves'
         - $ref: '#/components/parameters/inQueryDisableRollback'
         - $ref: '#/components/parameters/inQueryForce'
+        - $ref: '#/components/parameters/inQueryMaster'
         - $ref: '#/components/parameters/inQueryRequesterSid'
         - $ref: '#/components/parameters/inQueryRid'
+        - $ref: '#/components/parameters/inQuerySlaves'
         - $ref: '#/components/parameters/inQuerySubset'
         - $ref: '#/components/parameters/inQueryTag'
         - $ref: '#/components/parameters/inQueryTo'
@@ -3400,10 +3436,13 @@ paths:
         - $ref: '#/components/parameters/inPathNamespace'
         - $ref: '#/components/parameters/inPathKind'
         - $ref: '#/components/parameters/inPathName'
+        - $ref: '#/components/parameters/inQueryAllSlaves'
         - $ref: '#/components/parameters/inQueryDisableRollback'
         - $ref: '#/components/parameters/inQueryForce'
+        - $ref: '#/components/parameters/inQueryMaster'
         - $ref: '#/components/parameters/inQueryRequesterSid'
         - $ref: '#/components/parameters/inQueryRid'
+        - $ref: '#/components/parameters/inQuerySlaves'
         - $ref: '#/components/parameters/inQuerySubset'
         - $ref: '#/components/parameters/inQueryTag'
         - $ref: '#/components/parameters/inQueryTo'
@@ -6984,6 +7023,13 @@ components:
           description: An operation and value to do on a keyword.
           example: env.unwanted=removeMe
 
+    inQueryMaster:
+      in: query
+      name: master
+      schema:
+        type: boolean
+        description: Act on the host instance of the service, and don't act on encap instance if not asked for explicitely.
+
     inQueryNoLock:
       in: query
       name: no_lock
@@ -7016,6 +7062,22 @@ components:
       name: state_only
       schema:
         type: boolean
+
+    inQuerySlaves:
+      in: query
+      name: slave
+      schema:
+        type: array
+        items:
+          type: string
+          description: Act on the encap instances specified by hostname, and don't act on the host instance if not asked for explicitely.
+
+    inQueryAllSlaves:
+      in: query
+      name: slaves
+      schema:
+        type: boolean
+        description: Act on all encap instances, and don't act on the host instance if not asked for explicitely.
 
     inQuerySubset:
       in: query

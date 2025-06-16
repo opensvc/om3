@@ -128,8 +128,8 @@ func WithSlaves(s []string) funcopt.O {
 	})
 }
 
-// WithIsAllSlaves select only encap nodes to execute the action on.
-func WithIsAllSlaves(s bool) funcopt.O {
+// WithAllSlaves select only encap nodes to execute the action on.
+func WithAllSlaves(s bool) funcopt.O {
 	return funcopt.F(func(i any) error {
 		t := i.(*T)
 		t.IsAllSlaves = s
@@ -137,8 +137,8 @@ func WithIsAllSlaves(s bool) funcopt.O {
 	})
 }
 
-// WithIsMaster do to execute the action on encap nodes.
-func WithIsMaster(s bool) funcopt.O {
+// WithMaster do to execute the action on encap nodes.
+func WithMaster(s bool) funcopt.O {
 	return funcopt.F(func(i any) error {
 		t := i.(*T)
 		t.IsMaster = s

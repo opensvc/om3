@@ -30,8 +30,8 @@ func (t *CmdObjectSetProvisioned) Run(kind string) error {
 		objectaction.WithTag(t.Tag),
 		objectaction.WithSubset(t.Subset),
 		objectaction.WithSlaves(t.Slaves),
-		objectaction.WithIsAllSlaves(t.IsAllSlaves),
-		objectaction.WithIsMaster(t.IsMaster),
+		objectaction.WithAllSlaves(t.AllSlaves),
+		objectaction.WithMaster(t.Master),
 		objectaction.WithLocalFunc(func(ctx context.Context, p naming.Path) (interface{}, error) {
 			o, err := object.NewActor(p)
 			if err != nil {

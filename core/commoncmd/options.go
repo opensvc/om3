@@ -21,12 +21,12 @@ type (
 	// OptsResourceSelector contains options needed to initialize a
 	// resourceselector.Options struct
 	OptsResourceSelector struct {
-		RID         string
-		Subset      string
-		Tag         string
-		Slaves      []string
-		IsMaster    bool
-		IsAllSlaves bool
+		RID       string
+		Subset    string
+		Tag       string
+		Slaves    []string
+		Master    bool
+		AllSlaves bool
 	}
 
 	// OptsLock contains options accepted by all actions using an action lock

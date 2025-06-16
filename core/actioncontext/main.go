@@ -88,7 +88,7 @@ func IsLeader(ctx context.Context) bool {
 func WithMaster(ctx context.Context, v bool) context.Context {
 	return context.WithValue(ctx, masterKey, v)
 }
-func IsMaster(ctx context.Context) bool {
+func Master(ctx context.Context) bool {
 	if i := ctx.Value(masterKey); i != nil {
 		return i.(bool)
 	}
@@ -168,7 +168,7 @@ func Slaves(ctx context.Context) []string {
 func WithAllSlaves(ctx context.Context, v bool) context.Context {
 	return context.WithValue(ctx, slavesKey, v)
 }
-func IsAllSlaves(ctx context.Context) bool {
+func AllSlaves(ctx context.Context) bool {
 	if i := ctx.Value(slavesKey); i != nil {
 		return i.(bool)
 	}
@@ -231,24 +231,24 @@ func Props(ctx context.Context) Properties {
 }
 
 func IsActionForSlave(ctx context.Context, nodename string) bool {
-	if IsAllSlaves(ctx) {
+	if AllSlaves(ctx) {
 		return true
 	}
 	slaves := Slaves(ctx)
 	if slices.Contains(slaves, nodename) {
 		return true
 	}
-	if !IsMaster(ctx) && len(slaves) == 0 {
+	if !Master(ctx) && len(slaves) == 0 {
 		return true
 	}
 	return false
 }
 
 func IsActionForMaster(ctx context.Context) bool {
-	if IsMaster(ctx) {
+	if Master(ctx) {
 		return true
 	}
-	if !IsAllSlaves(ctx) && len(Slaves(ctx)) == 0 {
+	if !AllSlaves(ctx) && len(Slaves(ctx)) == 0 {
 		return true
 	}
 	return false

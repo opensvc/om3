@@ -49,8 +49,8 @@ func FlagsResourceSelector(flags *pflag.FlagSet, p *OptsResourceSelector) {
 	FlagSubset(flags, &p.Subset)
 	FlagTag(flags, &p.Tag)
 	FlagSlave(flags, &p.Slaves)
-	FlagSlaves(flags, &p.IsAllSlaves)
-	FlagMaster(flags, &p.IsMaster)
+	FlagSlaves(flags, &p.AllSlaves)
+	FlagMaster(flags, &p.Master)
 }
 
 func FlagsTo(flags *pflag.FlagSet, p *OptTo) {

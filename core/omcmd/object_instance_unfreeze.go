@@ -27,8 +27,8 @@ func (t *CmdObjectInstanceUnfreeze) Run(kind string) error {
 		objectaction.WithObjectSelector(mergedSelector),
 		objectaction.WithOutput(t.Output),
 		objectaction.WithColor(t.Color),
-		objectaction.WithIsAllSlaves(t.IsAllSlaves),
-		objectaction.WithIsMaster(t.IsMaster),
+		objectaction.WithAllSlaves(t.AllSlaves),
+		objectaction.WithMaster(t.Master),
 		objectaction.WithSlaves(t.Slaves),
 		objectaction.WithRemoteNodes(t.NodeSelector),
 		objectaction.WithRemoteFunc(func(ctx context.Context, p naming.Path, nodename string) (interface{}, error) {
@@ -37,6 +37,15 @@ func (t *CmdObjectInstanceUnfreeze) Run(kind string) error {
 				return nil, err
 			}
 			params := api.PostInstanceActionUnfreezeParams{}
+			if t.OptsResourceSelector.Master {
+				params.Master = &t.OptsResourceSelector.Master
+			}
+			if t.OptsResourceSelector.AllSlaves {
+				params.Slaves = &t.OptsResourceSelector.AllSlaves
+			}
+			if len(t.OptsResourceSelector.Slaves) > 0 {
+				params.Slave = &t.OptsResourceSelector.Slaves
+			}
 			{
 				sid := xsession.ID
 				params.RequesterSid = &sid

@@ -707,6 +707,10 @@ func (t *actor) postStartStopStatusEval(ctx context.Context) error {
 		// don't verify instance avail if a resource selection was requested
 		return nil
 	}
+	if len(actioncontext.Slaves(ctx)) > 0 || actioncontext.AllSlaves(ctx) || actioncontext.Master(ctx) {
+		// don't verify instance avail if a encap selection was requested
+		return nil
+	}
 	switch action.Name {
 	case "stop":
 		switch instStatus.Avail {

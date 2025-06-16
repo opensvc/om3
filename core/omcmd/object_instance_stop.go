@@ -32,8 +32,8 @@ func (t *CmdObjectInstanceStop) Run(kind string) error {
 		objectaction.WithRID(t.RID),
 		objectaction.WithTag(t.Tag),
 		objectaction.WithSlaves(t.Slaves),
-		objectaction.WithIsAllSlaves(t.IsAllSlaves),
-		objectaction.WithIsMaster(t.IsMaster),
+		objectaction.WithAllSlaves(t.AllSlaves),
+		objectaction.WithMaster(t.Master),
 		objectaction.WithSubset(t.Subset),
 		objectaction.WithOutput(t.Output),
 		objectaction.WithColor(t.Color),
@@ -56,6 +56,15 @@ func (t *CmdObjectInstanceStop) Run(kind string) error {
 			}
 			if t.OptsResourceSelector.Tag != "" {
 				params.Tag = &t.OptsResourceSelector.Tag
+			}
+			if t.OptsResourceSelector.Master {
+				params.Master = &t.OptsResourceSelector.Master
+			}
+			if t.OptsResourceSelector.AllSlaves {
+				params.Slaves = &t.OptsResourceSelector.AllSlaves
+			}
+			if len(t.OptsResourceSelector.Slaves) > 0 {
+				params.Slave = &t.OptsResourceSelector.Slaves
 			}
 			if t.OptTo.To != "" {
 				params.To = &t.OptTo.To
