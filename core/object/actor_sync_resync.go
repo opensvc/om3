@@ -23,21 +23,7 @@ func (t *actor) SyncResync(ctx context.Context) error {
 }
 
 func (t *actor) lockedSyncResync(ctx context.Context) error {
-	if err := t.masterSyncResync(ctx); err != nil {
-		return err
-	}
-	if err := t.slaveSyncResync(ctx); err != nil {
-		return err
-	}
-	return nil
-}
-
-func (t *actor) masterSyncResync(ctx context.Context) error {
 	return t.action(ctx, func(ctx context.Context, r resource.Driver) error {
 		return resource.Resync(ctx, r)
 	})
-}
-
-func (t *actor) slaveSyncResync(ctx context.Context) error {
-	return nil
 }

@@ -23,21 +23,7 @@ func (t *actor) SetProvisioned(ctx context.Context) error {
 }
 
 func (t *actor) lockedSetProvisioned(ctx context.Context) error {
-	if err := t.masterSetProvisioned(ctx); err != nil {
-		return err
-	}
-	if err := t.slaveSetProvisioned(ctx); err != nil {
-		return err
-	}
-	return nil
-}
-
-func (t *actor) masterSetProvisioned(ctx context.Context) error {
 	return t.action(ctx, func(ctx context.Context, r resource.Driver) error {
 		return resource.SetProvisioned(ctx, r)
 	})
-}
-
-func (t *actor) slaveSetProvisioned(ctx context.Context) error {
-	return nil
 }

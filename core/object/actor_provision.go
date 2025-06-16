@@ -31,24 +31,10 @@ func (t *actor) Provision(ctx context.Context) error {
 }
 
 func (t *actor) lockedProvision(ctx context.Context) error {
-	if err := t.masterProvision(ctx); err != nil {
-		return err
-	}
-	if err := t.slaveProvision(ctx); err != nil {
-		return err
-	}
-	return nil
-}
-
-func (t *actor) masterProvision(ctx context.Context) error {
 	return t.action(ctx, func(ctx context.Context, r resource.Driver) error {
 		rid := r.RID()
 		t.log.Attr("rid", rid).Debugf("%s: provision resource", rid)
 		leader := actioncontext.IsLeader(ctx)
 		return resource.Provision(ctx, r, leader)
 	})
-}
-
-func (t *actor) slaveProvision(ctx context.Context) error {
-	return nil
 }

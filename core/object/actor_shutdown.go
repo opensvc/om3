@@ -27,9 +27,6 @@ func (t *actor) lockedShutdown(ctx context.Context) error {
 	if err := t.masterShutdown(ctx); err != nil && !errors.Is(err, ErrDisabled) {
 		return err
 	}
-	if err := t.slaveShutdown(ctx); err != nil && !errors.Is(err, ErrDisabled) {
-		return err
-	}
 	return nil
 }
 
@@ -38,8 +35,4 @@ func (t *actor) masterShutdown(ctx context.Context) error {
 		t.log.Attr("rid", r.RID()).Debugf("shutdown resource")
 		return resource.Shutdown(ctx, r)
 	})
-}
-
-func (t *actor) slaveShutdown(ctx context.Context) error {
-	return nil
 }
