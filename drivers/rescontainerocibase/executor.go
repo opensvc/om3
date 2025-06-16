@@ -43,8 +43,8 @@ func NewExecutor(exe string, args ExecutorArgser, log Logger) *Executor {
 	return &Executor{bin: exe, args: args, logger: log, mutex: &sync.RWMutex{}}
 }
 
-func (e *Executor) EncapCmd(ctx context.Context, args ...string) *exec.Cmd {
-	args = append(e.args.ExecCmdArgs(), args...)
+func (e *Executor) EncapCmd(ctx context.Context, args []string, env []string) *exec.Cmd {
+	args = e.args.ExecCmdArgs(args, env)
 	cmd := exec.CommandContext(ctx, e.bin, args...)
 	cmd.Stdin = os.Stdin
 	return cmd

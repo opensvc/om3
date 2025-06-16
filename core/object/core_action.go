@@ -451,7 +451,14 @@ func (t *actor) action(ctx context.Context, fn resourceset.DoFunc) error {
 		}
 
 		args := append([]string{encapContainer.GetOsvcRootPath(), t.path.String()}, "config", "mtime")
-		cmd := encapContainer.EncapCmd(ctx, args...)
+		envs := []string{
+			"OSVC_SESSION_ID=" + xsession.ID.String(),
+			env.OriginSetenvArg(env.Origin()),
+		}
+		if s := os.Getenv(env.ActionOrchestrationIDVar); s != "" {
+			envs = append(envs, env.ActionOrchestrationIDVar+"="+s)
+		}
+		cmd := encapContainer.EncapCmd(ctx, args, envs)
 		err := cmd.Run()
 		if err != nil {
 			switch cmd.ProcessState.ExitCode() {
@@ -487,7 +494,7 @@ func (t *actor) action(ctx context.Context, fn resourceset.DoFunc) error {
 		}
 
 		args = append([]string{encapContainer.GetOsvcRootPath(), t.path.String(), "instance", action.Name}, options...)
-		cmd = encapContainer.EncapCmd(ctx, args...)
+		cmd = encapContainer.EncapCmd(ctx, args, envs)
 		t.log.Infof("%s", strings.Join(cmd.Args, " "))
 
 		stderrPipe, err := cmd.StderrPipe()

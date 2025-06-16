@@ -13,6 +13,7 @@ import (
 
 	"github.com/opensvc/om3/core/actioncontext"
 	"github.com/opensvc/om3/core/driver"
+	"github.com/opensvc/om3/core/env"
 	"github.com/opensvc/om3/core/instance"
 	"github.com/opensvc/om3/core/provisioned"
 	"github.com/opensvc/om3/core/resource"
@@ -21,13 +22,14 @@ import (
 	"github.com/opensvc/om3/core/statusbus"
 	"github.com/opensvc/om3/util/file"
 	"github.com/opensvc/om3/util/hostname"
+	"github.com/opensvc/om3/util/xsession"
 )
 
 type encaper interface {
 	GetHostname() string
 	GetOsvcRootPath() string
 	EncapCp(context.Context, string, string) error
-	EncapCmd(context.Context, ...string) *exec.Cmd
+	EncapCmd(context.Context, []string, []string) *exec.Cmd
 }
 
 func (t *actor) FreshStatus(ctx context.Context) (instance.Status, error) {
@@ -272,7 +274,13 @@ func (t *actor) resourceStatusEvalEncap(ctx context.Context, encapContainer enca
 		return nil, nil
 	}
 
-	cmd := encapContainer.EncapCmd(ctx, encapContainer.GetOsvcRootPath(), t.path.String(), "instance", "status", "-r", "-o", "json")
+	args := []string{encapContainer.GetOsvcRootPath(), t.path.String(), "instance", "status", "-r", "-o", "json"}
+	envs := []string{
+		"OSVC_SESSION_ID=" + xsession.ID.String(),
+		env.ActionOrchestrationIDVar + "=" + os.Getenv(env.ActionOrchestrationIDVar),
+		env.OriginSetenvArg(env.Origin()),
+	}
+	cmd := encapContainer.EncapCmd(ctx, args, envs)
 	b, err := cmd.CombinedOutput()
 	if err != nil {
 		if cmd.ProcessState.ExitCode() == 2 {

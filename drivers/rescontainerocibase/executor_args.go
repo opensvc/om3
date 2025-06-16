@@ -41,8 +41,13 @@ func (ea *ExecutorArg) EnterCmdArgs() []string {
 	return []string{"exec", "-it", ea.BT.ContainerName()}
 }
 
-func (ea *ExecutorArg) ExecCmdArgs() []string {
-	return []string{"exec", ea.BT.ContainerName()}
+func (ea *ExecutorArg) ExecCmdArgs(args []string, env []string) []string {
+	l := []string{"exec"}
+	for _, e := range env {
+		l = append(l, "--env", e)
+	}
+	l = append(l, ea.BT.ContainerName())
+	return append(l, args...)
 }
 
 func (ea *ExecutorArg) EnterCmdCheckArgs() []string {

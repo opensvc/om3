@@ -113,7 +113,7 @@ type (
 
 	ExecuteEncaper interface {
 		EncapCp(context.Context, string, string) error
-		EncapCmd(context.Context, ...string) *exec.Cmd
+		EncapCmd(context.Context, []string, []string) *exec.Cmd
 	}
 
 	// ExecuteImager interface defines the functions used to manage container
@@ -159,7 +159,7 @@ type (
 		CpCmdArgs(string, string) []string
 		EnterCmdArgs() []string
 		EnterCmdCheckArgs() []string
-		ExecCmdArgs() []string
+		ExecCmdArgs([]string, []string) []string
 		RemoveArgs() *args.T
 		RunArgsBase(ctx context.Context) (*args.T, error)
 		RunArgsImage() (*args.T, error)
@@ -954,8 +954,8 @@ func mangleVolMountOptions(initialOptions string, vol object.Vol) (string, error
 	return strings.Join(newOpts, ","), nil
 }
 
-func (t *BT) EncapCmd(ctx context.Context, args ...string) *exec.Cmd {
-	return t.executer.EncapCmd(ctx, args...)
+func (t *BT) EncapCmd(ctx context.Context, args []string, env []string) *exec.Cmd {
+	return t.executer.EncapCmd(ctx, args, env)
 }
 
 func (t *BT) EncapCp(ctx context.Context, src, dst string) error {
