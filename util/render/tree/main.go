@@ -541,14 +541,20 @@ func formatPrefix(lasts []bool, nChildren int, firstLine bool) (string, int) {
 			}
 		}
 		last := lasts[len(lasts)-1]
-		if nChildren > 0 || !last {
-			if last {
-				buff += defaultSeparator
+		if last {
+			if nChildren > 0 {
+				buff += defaultSeparator + contNode
 				adjust = -1
+			} else {
+				buff += contLastNode
 			}
-			buff += contNode
 		} else {
-			buff += contLastNode
+			if nChildren > 0 {
+				buff += contNode + contNode
+				adjust = -1
+			} else {
+				buff += contNode
+			}
 		}
 	}
 	return buff, adjust
