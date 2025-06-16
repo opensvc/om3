@@ -2391,6 +2391,9 @@ func newCmdObjectInstanceFreeze(kind string) *cobra.Command {
 	}
 	flags := cmd.Flags()
 	addFlagsGlobal(flags, &options.OptsGlobal)
+	commoncmd.FlagSlave(flags, &options.Slaves)
+	commoncmd.FlagSlaves(flags, &options.IsAllSlaves)
+	commoncmd.FlagMaster(flags, &options.IsMaster)
 	commoncmd.FlagNodeSelector(flags, &options.NodeSelector)
 	return cmd
 }
@@ -2598,6 +2601,9 @@ func newCmdObjectInstanceUnfreeze(kind string) *cobra.Command {
 	}
 	flags := cmd.Flags()
 	addFlagsGlobal(flags, &options.OptsGlobal)
+	commoncmd.FlagSlave(flags, &options.Slaves)
+	commoncmd.FlagSlaves(flags, &options.IsAllSlaves)
+	commoncmd.FlagMaster(flags, &options.IsMaster)
 	commoncmd.FlagNodeSelector(flags, &options.NodeSelector)
 	return cmd
 }

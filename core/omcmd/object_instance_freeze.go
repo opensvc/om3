@@ -16,6 +16,7 @@ import (
 type (
 	CmdObjectInstanceFreeze struct {
 		OptsGlobal
+		commoncmd.OptsResourceSelector
 		NodeSelector string
 	}
 )
@@ -26,6 +27,9 @@ func (t *CmdObjectInstanceFreeze) Run(kind string) error {
 		objectaction.WithObjectSelector(mergedSelector),
 		objectaction.WithOutput(t.Output),
 		objectaction.WithColor(t.Color),
+		objectaction.WithIsAllSlaves(t.IsAllSlaves),
+		objectaction.WithIsMaster(t.IsMaster),
+		objectaction.WithSlaves(t.Slaves),
 		objectaction.WithRemoteNodes(t.NodeSelector),
 		objectaction.WithRemoteFunc(func(ctx context.Context, p naming.Path, nodename string) (interface{}, error) {
 			c, err := client.New()
