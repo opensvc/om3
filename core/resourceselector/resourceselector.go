@@ -86,6 +86,15 @@ func (t *T) SetResourceLister(l ResourceLister) {
 	t.lister = l
 }
 
+func (t *T) SelectRIDs(l []string) {
+	s := strings.Join(l, ",")
+	if t.rid == "" {
+		t.rid = s
+	} else {
+		t.rid += "," + s
+	}
+}
+
 func (t T) IsDesc() bool {
 	return t.order.IsDesc()
 }
