@@ -75,7 +75,7 @@ func (t States) LoadTreeNode(head *tree.Node) {
 			}
 			lastSubset = r.Subset
 		}
-		doResource := func(n *tree.Node, resourceID *resourceid.T, r resource.Status) {
+		doResource := func(n *tree.Node, resourceID *resourceid.T, r resource.Status) *tree.Column {
 			flags := t.Status.ResourceFlagsString(*resourceID, r) + t.Monitor.ResourceFlagRestartString(*resourceID, r)
 			n.AddColumn().AddText(resourceID.Name)
 			n.AddColumn().AddText(flags)
@@ -91,10 +91,18 @@ func (t States) LoadTreeNode(head *tree.Node) {
 					t.SetColor(rawconfig.Color.Warning)
 				}
 			}
+			return desc
 		}
 		n := subsetNode.AddNode()
-		doResource(n, r.ResourceID, r)
+		lastDesc := doResource(n, r.ResourceID, r)
 		if encapStatus, ok := t.Status.Encap[r.ResourceID.Name]; ok {
+			var l []string
+			if encapStatus.IsFrozen() {
+				l = append(l, rawconfig.Colorize.Frozen("frozen"))
+			}
+			if len(l) > 0 {
+				lastDesc.AddText(strings.Join(l, " "))
+			}
 			for rid, r := range encapStatus.Resources {
 				encapNode := n.AddNode()
 				if resourceID, _ := resourceid.Parse(rid); resourceID != nil {

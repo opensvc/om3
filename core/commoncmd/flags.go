@@ -44,13 +44,16 @@ func FlagsLock(flags *pflag.FlagSet, p *OptsLock) {
 	FlagWaitLock(flags, &p.Timeout)
 }
 
+func FlagsEncap(flags *pflag.FlagSet, p *OptsEncap) {
+	FlagSlave(flags, &p.Slaves)
+	FlagSlaves(flags, &p.AllSlaves)
+	FlagMaster(flags, &p.Master)
+}
+
 func FlagsResourceSelector(flags *pflag.FlagSet, p *OptsResourceSelector) {
 	FlagRID(flags, &p.RID)
 	FlagSubset(flags, &p.Subset)
 	FlagTag(flags, &p.Tag)
-	FlagSlave(flags, &p.Slaves)
-	FlagSlaves(flags, &p.IsAllSlaves)
-	FlagMaster(flags, &p.IsMaster)
 }
 
 func FlagsTo(flags *pflag.FlagSet, p *OptTo) {
@@ -391,6 +394,12 @@ func FlagObjectSelector(flags *pflag.FlagSet, p *string) {
 	flags.MarkHidden("service")
 }
 
+func HiddenFlagsEncap(flags *pflag.FlagSet, p *OptsEncap) {
+	HiddenFlagSlave(flags, &p.Slaves)
+	HiddenFlagSlaves(flags, &p.AllSlaves)
+	HiddenFlagMaster(flags, &p.Master)
+}
+
 func HiddenFlagsLock(flags *pflag.FlagSet, p *OptsLock) {
 	HiddenFlagNoLock(flags, &p.Disable)
 	HiddenFlagWaitLock(flags, &p.Timeout)
@@ -408,6 +417,11 @@ func HiddenFlagsTo(flags *pflag.FlagSet, p *OptTo) {
 	HiddenFlagDownTo(flags, &p.DownTo)
 }
 
+func HiddenFlagLeader(flags *pflag.FlagSet, p *bool) {
+	FlagLeader(flags, p)
+	flags.Lookup("leader").Hidden = true
+}
+
 func HiddenFlagDisableRollback(flags *pflag.FlagSet, p *bool) {
 	FlagDisableRollback(flags, p)
 	flags.Lookup("disable-rollback").Hidden = true
@@ -423,6 +437,11 @@ func HiddenFlagForce(flags *pflag.FlagSet, p *bool) {
 	flags.Lookup("force").Hidden = true
 }
 
+func HiddenFlagMaster(flags *pflag.FlagSet, p *bool) {
+	FlagMaster(flags, p)
+	flags.Lookup("master").Hidden = true
+}
+
 func HiddenFlagNodeSelector(flags *pflag.FlagSet, p *string) {
 	FlagNodeSelector(flags, p)
 	flags.Lookup("node").Hidden = true
@@ -436,6 +455,16 @@ func HiddenFlagNoLock(flags *pflag.FlagSet, p *bool) {
 func HiddenFlagRID(flags *pflag.FlagSet, p *string) {
 	FlagRID(flags, p)
 	flags.Lookup("rid").Hidden = true
+}
+
+func HiddenFlagSlave(flags *pflag.FlagSet, p *[]string) {
+	FlagSlave(flags, p)
+	flags.Lookup("slave").Hidden = true
+}
+
+func HiddenFlagSlaves(flags *pflag.FlagSet, p *bool) {
+	FlagSlaves(flags, p)
+	flags.Lookup("slaves").Hidden = true
 }
 
 func HiddenFlagSubset(flags *pflag.FlagSet, p *string) {

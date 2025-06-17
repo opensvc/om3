@@ -23,22 +23,8 @@ func (t *actor) Stop(ctx context.Context) error {
 }
 
 func (t *actor) lockedStop(ctx context.Context) error {
-	if err := t.masterStop(ctx); err != nil {
-		return err
-	}
-	if err := t.slaveStop(ctx); err != nil {
-		return err
-	}
-	return nil
-}
-
-func (t *actor) masterStop(ctx context.Context) error {
 	return t.action(ctx, func(ctx context.Context, r resource.Driver) error {
 		t.log.Attr("rid", r.RID()).Debugf("stop resource")
 		return resource.Stop(ctx, r)
 	})
-}
-
-func (t *actor) slaveStop(ctx context.Context) error {
-	return nil
 }

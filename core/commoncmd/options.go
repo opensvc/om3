@@ -21,12 +21,22 @@ type (
 	// OptsResourceSelector contains options needed to initialize a
 	// resourceselector.Options struct
 	OptsResourceSelector struct {
-		RID         string
-		Subset      string
-		Tag         string
-		Slaves      []string
-		IsMaster    bool
-		IsAllSlaves bool
+		RID    string
+		Subset string
+		Tag    string
+	}
+
+	// OptsEncap contains options to select where a instance action runs
+	// with a encap enabled service
+	OptsEncap struct {
+		// A list of encap instance, identified by hostname of the container
+		Slaves []string
+
+		// The host instance
+		Master bool
+
+		// All encap instances
+		AllSlaves bool
 	}
 
 	// OptsLock contains options accepted by all actions using an action lock

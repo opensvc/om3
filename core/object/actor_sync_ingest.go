@@ -22,22 +22,8 @@ func (t *actor) SyncIngest(ctx context.Context) error {
 }
 
 func (t *actor) lockedSyncIngest(ctx context.Context) error {
-	if err := t.masterSyncIngest(ctx); err != nil {
-		return err
-	}
-	if err := t.slaveSyncIngest(ctx); err != nil {
-		return err
-	}
-	return nil
-}
-
-func (t *actor) masterSyncIngest(ctx context.Context) error {
 	return t.action(ctx, func(ctx context.Context, r resource.Driver) error {
 		t.log.Attr("rid", r.RID()).Debugf("ingest resource data")
 		return resource.Ingest(ctx, r)
 	})
-}
-
-func (t *actor) slaveSyncIngest(ctx context.Context) error {
-	return nil
 }

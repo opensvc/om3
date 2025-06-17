@@ -143,34 +143,48 @@
     * `om xx get` => `om xx config get`
     * `om xx update` => `om xx config update`
     * `om xx validate` => `om xx config validate`
-    * `om xx print schedule` => `om xx instance schedule`
-    * `om xx print status` => `om xx instance status`
     * `om xx print config` => `om xx config show`
     * `om xx print config mtime` => `om xx config mtime`
+    * `om xx print schedule` => `om xx instance schedule`
+    * `om xx print status` => `om xx instance status`
     * `om xx print devs` => `om xx instance device`
     * `om xx print resinfo` => `om xx resource info list`
     * `om xx push resinfo` => `om xx resource info push`
+    * `om xx clear --local` => `om xx instance clear`
+    * `om xx delete --local` => `om xx instance delete`
+    * `om xx provision --local` => `om xx instance provision`
+    * `om xx prstart --local` => `om xx instance prstart`
+    * `om xx prstop --local` => `om xx instance prstop`
+    * `om xx restart --local` => `om xx instance restart`
+    * `om xx run --local` => `om xx instance run`
+    * `om xx shutdown --local` => `om xx instance shutdown`
+    * `om xx start --local` => `om xx instance start`
+    * `om xx startstandby --local` => `om xx instance startstandby`
+    * `om xx stop --local` => `om xx instance stop`
+    * `om xx freeze --local` => `om xx instance freeze`
+    * `om xx unfreeze --local` => `om xx instance unfreeze`
+    * `om xx unprovision --local` => `om xx instance unprovision`
 
 * **Flags Added:**
 
-    * `om <selector> <action> --local -q|--quiet`
+    * `om <selector> instance <action> -q|--quiet`
         Don't print the logs on the console.
 
 * **Flags Removed:**
 
     * `om get --eval`
-        Replaced by `om eval`
+        Replaced by `om <selector> config eval`
 
-    * `om foo set|unset --param ... --value`
+    * `om <selector> config set|unset --param ... --value`
         Replaced by `--kw`, which was also supported in v2.
 
-    * `om delete --unprovision`
-        Replaced by the `om unprovision` and `om delete` sequence or by `om purge`.
+    * `om <selector> instance delete --unprovision`
+        Replaced by the `om <selector> instance unprovision` and `om <selector> instance delete` sequence or by `om <selector> purge`.
 
-    * `om delete --rid`
-        Replaced by `om unset --section <name>`.
+    * `om <selector> instance delete --rid <name>`
+        Replaced by `om <selector> config unset --section <name>`.
         
-    * `om <sel> <action> --dry-run`
+    * `om <selector> <action> --dry-run`
 
 * **Duration flags now require a unit:**
     ```
@@ -178,7 +192,7 @@
 	--time=10      ->  --time=10s
     ```
     
-* **`instance status`**:
+* **Instance state strings in `instance status`**:
     Change the instance-level errors and warnings (to no-whitespace words):
     ```
 	part provisioned  ->  mix-provisioned
@@ -187,14 +201,14 @@
 	daemon down       ->  daemon-down
     ```
 
-* **`om ... config show`:**
+* **`om <selector> config show`:**
 
     * Only one node config can be shown at a time
     * Only one object config can be shown at a time
     * The config can not longer be rendered as map[section]map[option]string, only text output is supported
     * These commands not longer support --impersonate and --eval. Use `config get` for those.
 
-* **`om create`:**
+* **`om <path> create`:**
     * Simplify the flags
         ```
         --config           ->  --from
@@ -234,7 +248,7 @@
 	-         -            -           -            -              -               
     ```
 
-* **`om foo run` and `om foo sync *`:**
+* **`om <selector> run` and `om <selector> sync *`:**
     Propagate the task run and sync errors to a non-zero exitcode.
     
     The `task` and `sync` resources are now `optional=false` by default, but their status is not aggregated in the instance availability status whatever the `optional` value. Errors in the run produce a non-zero exitcode if optional=false, zero if optional=true.
@@ -242,6 +256,10 @@
 
 * **`om <kvstore> key change`:**
     This action is no longer failing if the key does not exist. The key is added instead.
+
+* **`om <selector> instance freeze|unfreeze`:**
+    If none of --slave, --slaves or --master is specified, act on both encap and host instances. The v2 agent only acted on the host instance.
+    This aligns freeze|unfreeze with all other actions encap behaviour.
 
 * **`om node freeze`:**
     This command is now local only.
@@ -252,7 +270,7 @@
     Now display only local logs.
     A new `om cluster logs` command displays all cluster nodes logs.
 
-* **`om <sel> config unset`:**
+* **`om <selector> config unset`:**
     Now accepts `--section <name>` to remove a cluster, node or object configuration section.
 
 * **`om monitor`:**

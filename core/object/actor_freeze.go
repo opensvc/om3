@@ -6,6 +6,7 @@ import (
 
 	"github.com/opensvc/om3/core/actioncontext"
 	"github.com/opensvc/om3/core/freeze"
+	"github.com/opensvc/om3/core/resource"
 	"github.com/opensvc/om3/core/statusbus"
 )
 
@@ -24,6 +25,9 @@ func (t *actor) Freeze(ctx context.Context) error {
 	if err := freeze.Freeze(t.path.FrozenFile()); err != nil {
 		return err
 	}
+	return t.action(ctx, func(ctx context.Context, r resource.Driver) error {
+		return nil
+	})
 	t.log.Infof("now frozen")
 	return nil
 }
@@ -38,6 +42,9 @@ func (t *actor) Unfreeze(ctx context.Context) error {
 	if err := freeze.Unfreeze(t.path.FrozenFile()); err != nil {
 		return err
 	}
+	return t.action(ctx, func(ctx context.Context, r resource.Driver) error {
+		return nil
+	})
 	t.log.Infof("now unfrozen")
 	return nil
 }

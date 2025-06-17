@@ -16,6 +16,7 @@ import (
 type (
 	CmdObjectInstanceUnfreeze struct {
 		OptsGlobal
+		commoncmd.OptsEncap
 		NodeSelector string
 	}
 )
@@ -26,6 +27,9 @@ func (t *CmdObjectInstanceUnfreeze) Run(kind string) error {
 		objectaction.WithObjectSelector(mergedSelector),
 		objectaction.WithOutput(t.Output),
 		objectaction.WithColor(t.Color),
+		objectaction.WithAllSlaves(t.AllSlaves),
+		objectaction.WithMaster(t.Master),
+		objectaction.WithSlaves(t.Slaves),
 		objectaction.WithRemoteNodes(t.NodeSelector),
 		objectaction.WithRemoteFunc(func(ctx context.Context, p naming.Path, nodename string) (interface{}, error) {
 			c, err := client.New()
@@ -33,6 +37,15 @@ func (t *CmdObjectInstanceUnfreeze) Run(kind string) error {
 				return nil, err
 			}
 			params := api.PostInstanceActionUnfreezeParams{}
+			if t.OptsEncap.Master {
+				params.Master = &t.OptsEncap.Master
+			}
+			if t.OptsEncap.AllSlaves {
+				params.Slaves = &t.OptsEncap.AllSlaves
+			}
+			if len(t.OptsEncap.Slaves) > 0 {
+				params.Slave = &t.OptsEncap.Slaves
+			}
 			{
 				sid := xsession.ID
 				params.RequesterSid = &sid

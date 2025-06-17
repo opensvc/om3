@@ -18,9 +18,6 @@ func (t *actor) Run(ctx context.Context) error {
 	if err := t.masterRun(ctx); err != nil {
 		return err
 	}
-	if err := t.slaveRun(ctx); err != nil {
-		return err
-	}
 	return nil
 }
 
@@ -33,8 +30,4 @@ func (t *actor) masterRun(ctx context.Context) error {
 		}
 		return err
 	})
-}
-
-func (t *actor) slaveRun(ctx context.Context) error {
-	return nil
 }

@@ -2,6 +2,7 @@ package daemonapi
 
 import (
 	"net/http"
+	"strings"
 
 	"github.com/google/uuid"
 	"github.com/labstack/echo/v4"
@@ -33,6 +34,15 @@ func (a *DaemonAPI) postLocalInstanceActionFreeze(ctx echo.Context, namespace st
 	}
 	log = naming.LogWithPath(log, p)
 	args := []string{p.String(), "instance", "freeze"}
+	if params.Slave != nil && len(*params.Slave) > 0 {
+		args = append(args, "--slave", strings.Join(*params.Slave, ","))
+	}
+	if params.Slaves != nil && *params.Slaves {
+		args = append(args, "--slaves")
+	}
+	if params.Master != nil && *params.Master {
+		args = append(args, "--master")
+	}
 	if params.RequesterSid != nil {
 		requesterSid = *params.RequesterSid
 	}

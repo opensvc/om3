@@ -4,11 +4,9 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/opensvc/om3/core/actioncontext"
 	"github.com/opensvc/om3/core/client"
 	"github.com/opensvc/om3/core/commoncmd"
 	"github.com/opensvc/om3/core/naming"
-	"github.com/opensvc/om3/core/object"
 	"github.com/opensvc/om3/core/objectaction"
 	"github.com/opensvc/om3/daemon/api"
 	"github.com/opensvc/om3/util/xsession"
@@ -17,6 +15,7 @@ import (
 type (
 	CmdObjectInstanceRestart struct {
 		OptsGlobal
+		commoncmd.OptsEncap
 		commoncmd.OptsLock
 		commoncmd.OptsResourceSelector
 		commoncmd.OptTo
@@ -38,18 +37,6 @@ func (t *CmdObjectInstanceRestart) Run(kind string) error {
 		objectaction.WithOutput(t.Output),
 		objectaction.WithColor(t.Color),
 		objectaction.WithRemoteNodes(t.NodeSelector),
-		objectaction.WithLocalFunc(func(ctx context.Context, p naming.Path) (interface{}, error) {
-			o, err := object.NewActor(p)
-			if err != nil {
-				return nil, err
-			}
-			ctx = actioncontext.WithLockDisabled(ctx, t.Disable)
-			ctx = actioncontext.WithLockTimeout(ctx, t.Timeout)
-			ctx = actioncontext.WithTo(ctx, t.To)
-			ctx = actioncontext.WithForce(ctx, t.Force)
-			ctx = actioncontext.WithRollbackDisabled(ctx, t.DisableRollback)
-			return nil, o.Restart(ctx)
-		}),
 		objectaction.WithRemoteFunc(func(ctx context.Context, p naming.Path, nodename string) (interface{}, error) {
 			c, err := client.New()
 			if err != nil {
@@ -72,6 +59,15 @@ func (t *CmdObjectInstanceRestart) Run(kind string) error {
 			}
 			if t.OptsResourceSelector.Tag != "" {
 				params.Tag = &t.OptsResourceSelector.Tag
+			}
+			if t.OptsEncap.Master {
+				params.Master = &t.OptsEncap.Master
+			}
+			if t.OptsEncap.AllSlaves {
+				params.Slaves = &t.OptsEncap.AllSlaves
+			}
+			if len(t.OptsEncap.Slaves) > 0 {
+				params.Slave = &t.OptsEncap.Slaves
 			}
 			if t.OptTo.To != "" {
 				params.To = &t.OptTo.To

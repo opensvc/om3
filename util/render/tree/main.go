@@ -184,13 +184,13 @@ func (t *Tree) renderRecurse(n *Node, buff string, depth int, lasts []bool) stri
 	nChildren := len(n.children)
 	lastChildIndex := nChildren - 1
 	for j := 0; j < n.cellCount; j++ {
-		prefix := formatPrefix(lasts, nChildren, j == 0)
+		prefix, adjust := formatPrefix(lasts, nChildren, j == 0)
 		buff += prefix
 		for i, col = range n.columns {
 			width := t.pads[i]
 			if i == 0 {
 				// adjust for col0 alignment shifting due to the prefix
-				width += (t.depth - depth) * prefixLen
+				width += (t.depth - depth + adjust) * prefixLen
 			}
 			if j >= len(col.Cells) {
 				cell = &Cell{}
@@ -202,7 +202,8 @@ func (t *Tree) renderRecurse(n *Node, buff string, depth int, lasts []bool) stri
 		buff += "\n"
 	}
 	for i, child = range n.children {
-		cLasts := append(lasts, i == lastChildIndex)
+		last := i == lastChildIndex
+		cLasts := append(lasts, last)
 		buff = t.renderRecurse(child, buff, depth+1, cLasts)
 	}
 	return buff
@@ -510,9 +511,10 @@ func assignNode(parent, child *Node) {
 }
 
 // formatPrefix returns the tree markers as a string for a line.
-func formatPrefix(lasts []bool, nChildren int, firstLine bool) string {
+func formatPrefix(lasts []bool, nChildren int, firstLine bool) (string, int) {
+	var adjust int
 	if len(lasts) == 0 {
-		return ""
+		return "", adjust
 	}
 	buff := ""
 	if firstLine {
@@ -539,13 +541,23 @@ func formatPrefix(lasts []bool, nChildren int, firstLine bool) string {
 			}
 		}
 		last := lasts[len(lasts)-1]
-		if nChildren > 0 || !last {
-			buff += contNode
+		if last {
+			if nChildren > 0 {
+				buff += defaultSeparator + contNode
+				adjust = -1
+			} else {
+				buff += contLastNode
+			}
 		} else {
-			buff += contLastNode
+			if nChildren > 0 {
+				buff += contNode + contNode
+				adjust = -1
+			} else {
+				buff += contNode
+			}
 		}
 	}
-	return buff
+	return buff, adjust
 }
 
 // loadRecurse switches between data loaders

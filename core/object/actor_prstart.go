@@ -23,22 +23,8 @@ func (t *actor) PRStart(ctx context.Context) error {
 }
 
 func (t *actor) lockedPRStart(ctx context.Context) error {
-	if err := t.masterPRStart(ctx); err != nil {
-		return err
-	}
-	if err := t.slavePRStart(ctx); err != nil {
-		return err
-	}
-	return nil
-}
-
-func (t *actor) masterPRStart(ctx context.Context) error {
 	return t.action(ctx, func(ctx context.Context, r resource.Driver) error {
 		t.log.Attr("rid", r.RID()).Debugf("start resource")
 		return resource.PRStart(ctx, r)
 	})
-}
-
-func (t *actor) slavePRStart(ctx context.Context) error {
-	return nil
 }

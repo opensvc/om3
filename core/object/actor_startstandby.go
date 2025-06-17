@@ -23,21 +23,7 @@ func (t *actor) StartStandby(ctx context.Context) error {
 }
 
 func (t *actor) lockedStartStandby(ctx context.Context) error {
-	if err := t.masterStartStandby(ctx); err != nil {
-		return err
-	}
-	if err := t.slaveStartStandby(ctx); err != nil {
-		return err
-	}
-	return nil
-}
-
-func (t *actor) masterStartStandby(ctx context.Context) error {
 	return t.action(ctx, func(ctx context.Context, r resource.Driver) error {
 		return resource.StartStandby(ctx, r)
 	})
-}
-
-func (t *actor) slaveStartStandby(ctx context.Context) error {
-	return nil
 }

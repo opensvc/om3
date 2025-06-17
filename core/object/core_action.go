@@ -348,9 +348,26 @@ func (t *actor) action(ctx context.Context, fn resourceset.DoFunc) error {
 	resources := resourceSelector.Resources()
 	isDesc := resourceSelector.IsDesc()
 	isActionForMaster := actioncontext.IsActionForMaster(ctx)
+	hasEncapResourcesSelected := false
+	encaperRIDsAddedForSelectedEncapResources := make([]string, 0)
 
 	if len(resources) == 0 && !resourceSelector.IsZero() {
 		return fmt.Errorf("resource does not exist")
+	}
+
+	for _, r := range t.Resources() {
+		if !hasEncapResourcesSelected && r.IsEncap() {
+			hasEncapResourcesSelected = true
+		}
+		if _, ok := r.(encaper); ok {
+			if !resources.HasRID(r.RID()) {
+				encaperRIDsAddedForSelectedEncapResources = append(encaperRIDsAddedForSelectedEncapResources, r.RID())
+			}
+		}
+	}
+
+	if hasEncapResourcesSelected {
+		resourceSelector.SelectRIDs(encaperRIDsAddedForSelectedEncapResources)
 	}
 
 	logger := t.log.
@@ -420,7 +437,7 @@ func (t *actor) action(ctx context.Context, fn resourceset.DoFunc) error {
 
 		hostname := encapContainer.GetHostname()
 
-		if !actioncontext.IsActionForSlave(ctx, hostname) {
+		if !actioncontext.IsActionForSlave(ctx, hostname) && !hasEncapResourcesSelected {
 			return nil
 		}
 
@@ -434,7 +451,14 @@ func (t *actor) action(ctx context.Context, fn resourceset.DoFunc) error {
 		}
 
 		args := append([]string{encapContainer.GetOsvcRootPath(), t.path.String()}, "config", "mtime")
-		cmd := encapContainer.EncapCmd(ctx, args...)
+		envs := []string{
+			"OSVC_SESSION_ID=" + xsession.ID.String(),
+			env.OriginSetenvArg(env.Origin()),
+		}
+		if s := os.Getenv(env.ActionOrchestrationIDVar); s != "" {
+			envs = append(envs, env.ActionOrchestrationIDVar+"="+s)
+		}
+		cmd := encapContainer.EncapCmd(ctx, args, envs)
 		err := cmd.Run()
 		if err != nil {
 			switch cmd.ProcessState.ExitCode() {
@@ -470,7 +494,7 @@ func (t *actor) action(ctx context.Context, fn resourceset.DoFunc) error {
 		}
 
 		args = append([]string{encapContainer.GetOsvcRootPath(), t.path.String(), "instance", action.Name}, options...)
-		cmd = encapContainer.EncapCmd(ctx, args...)
+		cmd = encapContainer.EncapCmd(ctx, args, envs)
 		t.log.Infof("%s", strings.Join(cmd.Args, " "))
 
 		stderrPipe, err := cmd.StderrPipe()
@@ -519,7 +543,7 @@ func (t *actor) action(ctx context.Context, fn resourceset.DoFunc) error {
 	encapWrap := func(fn resourceset.DoFunc) resourceset.DoFunc {
 		return func(ctx context.Context, r resource.Driver) error {
 			// do host action before encap if ascending
-			if !isDesc && isActionForMaster {
+			if !isDesc && isActionForMaster && !slices.Contains(encaperRIDsAddedForSelectedEncapResources, r.RID()) {
 				if err := fn(ctx, r); err != nil {
 					return err
 				}
@@ -530,7 +554,7 @@ func (t *actor) action(ctx context.Context, fn resourceset.DoFunc) error {
 			}
 
 			// do host action after encap if descending
-			if isDesc && isActionForMaster {
+			if isDesc && isActionForMaster && !slices.Contains(encaperRIDsAddedForSelectedEncapResources, r.RID()) {
 				if err := fn(ctx, r); err != nil {
 					return err
 				}
@@ -681,6 +705,10 @@ func (t *actor) postStartStopStatusEval(ctx context.Context) error {
 	}
 	if !resourceselector.FromContext(ctx, nil).IsZero() {
 		// don't verify instance avail if a resource selection was requested
+		return nil
+	}
+	if len(actioncontext.Slaves(ctx)) > 0 || actioncontext.AllSlaves(ctx) || actioncontext.Master(ctx) {
+		// don't verify instance avail if a encap selection was requested
 		return nil
 	}
 	switch action.Name {

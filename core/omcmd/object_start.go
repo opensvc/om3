@@ -18,6 +18,7 @@ type (
 	CmdObjectStart struct {
 		OptsGlobal
 		commoncmd.OptsAsync
+		commoncmd.OptsEncap
 		commoncmd.OptsLock
 		commoncmd.OptsResourceSelector
 		commoncmd.OptTo
@@ -36,8 +37,8 @@ func (t *CmdObjectStart) Run(kind string) error {
 		objectaction.WithTag(t.Tag),
 		objectaction.WithSubset(t.Subset),
 		objectaction.WithSlaves(t.Slaves),
-		objectaction.WithIsAllSlaves(t.IsAllSlaves),
-		objectaction.WithIsMaster(t.IsMaster),
+		objectaction.WithAllSlaves(t.AllSlaves),
+		objectaction.WithMaster(t.Master),
 		objectaction.WithLocal(t.Local),
 		objectaction.WithOutput(t.Output),
 		objectaction.WithColor(t.Color),
@@ -68,6 +69,15 @@ func (t *CmdObjectStart) Run(kind string) error {
 			}
 			if t.OptsResourceSelector.Tag != "" {
 				params.Tag = &t.OptsResourceSelector.Tag
+			}
+			if t.OptsEncap.Master {
+				params.Master = &t.OptsEncap.Master
+			}
+			if t.OptsEncap.AllSlaves {
+				params.Slaves = &t.OptsEncap.AllSlaves
+			}
+			if len(t.OptsEncap.Slaves) > 0 {
+				params.Slave = &t.OptsEncap.Slaves
 			}
 			if t.OptTo.To != "" {
 				params.To = &t.OptTo.To

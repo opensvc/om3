@@ -23,21 +23,7 @@ func (t *actor) SyncFull(ctx context.Context) error {
 }
 
 func (t *actor) lockedSyncFull(ctx context.Context) error {
-	if err := t.masterSyncFull(ctx); err != nil {
-		return err
-	}
-	if err := t.slaveSyncFull(ctx); err != nil {
-		return err
-	}
-	return nil
-}
-
-func (t *actor) masterSyncFull(ctx context.Context) error {
 	return t.action(ctx, func(ctx context.Context, r resource.Driver) error {
 		return resource.Full(ctx, r)
 	})
-}
-
-func (t *actor) slaveSyncFull(ctx context.Context) error {
-	return nil
 }

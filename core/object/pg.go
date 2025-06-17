@@ -2,7 +2,9 @@ package object
 
 import (
 	"context"
+	"errors"
 	"fmt"
+	"os"
 	"strings"
 
 	"github.com/opensvc/om3/core/naming"
@@ -127,9 +129,13 @@ func (t *core) CleanPG(ctx context.Context) {
 	}
 	for _, run := range mgr.Clean() {
 		if run.Err != nil {
-			t.log.Errorf("clean pg %s: %s", run.Config.ID, run.Err)
+			if errors.Is(run.Err, os.ErrPermission) {
+				t.log.Debugf("remove pg %s: still active", run.Config.ID)
+			} else {
+				t.log.Errorf("remove pg %s error: %s", run.Config.ID, run.Err)
+			}
 		} else if run.Changed {
-			t.log.Infof("clean pg %s", run.Config.ID)
+			t.log.Infof("remove pg %s", run.Config.ID)
 		}
 	}
 }

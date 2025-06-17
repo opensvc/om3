@@ -23,22 +23,8 @@ func (t *actor) PRStop(ctx context.Context) error {
 }
 
 func (t *actor) lockedPRStop(ctx context.Context) error {
-	if err := t.masterPRStop(ctx); err != nil {
-		return err
-	}
-	if err := t.slavePRStop(ctx); err != nil {
-		return err
-	}
-	return nil
-}
-
-func (t *actor) masterPRStop(ctx context.Context) error {
 	return t.action(ctx, func(ctx context.Context, r resource.Driver) error {
 		t.log.Attr("rid", r.RID()).Debugf("start resource")
 		return resource.PRStop(ctx, r)
 	})
-}
-
-func (t *actor) slavePRStop(ctx context.Context) error {
-	return nil
 }

@@ -26,20 +26,6 @@ func (t *actor) Start(ctx context.Context) error {
 }
 
 func (t *actor) lockedStart(ctx context.Context) error {
-	if err := t.masterStart(ctx); err != nil {
-		return err
-	}
-	if err := t.slaveStart(ctx); err != nil {
-		return err
-	}
-	return nil
-}
-
-func (t *actor) lastStartFile() string {
-	return filepath.Join(t.varDir(), "last_start")
-}
-
-func (t *actor) masterStart(ctx context.Context) error {
 	if err := file.Touch(t.lastStartFile(), time.Now()); err != nil {
 		return err
 	}
@@ -48,6 +34,6 @@ func (t *actor) masterStart(ctx context.Context) error {
 	})
 }
 
-func (t *actor) slaveStart(ctx context.Context) error {
-	return nil
+func (t *actor) lastStartFile() string {
+	return filepath.Join(t.varDir(), "last_start")
 }

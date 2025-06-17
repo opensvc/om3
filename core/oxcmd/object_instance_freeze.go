@@ -16,6 +16,7 @@ type (
 	CmdObjectInstanceFreeze struct {
 		OptsGlobal
 		NodeSelector string
+		commoncmd.OptsEncap
 	}
 )
 
