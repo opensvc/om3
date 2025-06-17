@@ -17,9 +17,10 @@ import (
 type (
 	CmdObjectInstanceRun struct {
 		OptsGlobal
-		commoncmd.OptTo
+		commoncmd.OptsEncap
 		commoncmd.OptsLock
 		commoncmd.OptsResourceSelector
+		commoncmd.OptTo
 		Env          []string
 		NodeSelector string
 		Local        bool
@@ -73,14 +74,14 @@ func (t *CmdObjectInstanceRun) Run(kind string) error {
 			if t.OptsResourceSelector.Tag != "" {
 				params.Tag = &t.OptsResourceSelector.Tag
 			}
-			if t.OptsResourceSelector.Master {
-				params.Master = &t.OptsResourceSelector.Master
+			if t.OptsEncap.Master {
+				params.Master = &t.OptsEncap.Master
 			}
-			if t.OptsResourceSelector.AllSlaves {
-				params.Slaves = &t.OptsResourceSelector.AllSlaves
+			if t.OptsEncap.AllSlaves {
+				params.Slaves = &t.OptsEncap.AllSlaves
 			}
-			if len(t.OptsResourceSelector.Slaves) > 0 {
-				params.Slave = &t.OptsResourceSelector.Slaves
+			if len(t.OptsEncap.Slaves) > 0 {
+				params.Slave = &t.OptsEncap.Slaves
 			}
 			if t.OptTo.To != "" {
 				params.To = &t.OptTo.To

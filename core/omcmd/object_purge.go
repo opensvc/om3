@@ -15,6 +15,7 @@ type (
 		OptsGlobal
 		commoncmd.OptsAsync
 		commoncmd.OptsLock
+		commoncmd.OptsEncap
 		commoncmd.OptsResourceSelector
 		commoncmd.OptTo
 		Force        bool

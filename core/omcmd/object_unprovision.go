@@ -18,6 +18,7 @@ type (
 	CmdObjectUnprovision struct {
 		OptsGlobal
 		commoncmd.OptsAsync
+		commoncmd.OptsEncap
 		commoncmd.OptsLock
 		commoncmd.OptsResourceSelector
 		commoncmd.OptTo
@@ -68,6 +69,15 @@ func (t *CmdObjectUnprovision) Run(kind string) error {
 			}
 			if t.OptsResourceSelector.Tag != "" {
 				params.Tag = &t.OptsResourceSelector.Tag
+			}
+			if t.OptsEncap.Master {
+				params.Master = &t.OptsEncap.Master
+			}
+			if t.OptsEncap.AllSlaves {
+				params.Slaves = &t.OptsEncap.AllSlaves
+			}
+			if len(t.OptsEncap.Slaves) > 0 {
+				params.Slave = &t.OptsEncap.Slaves
 			}
 			if t.OptTo.To != "" {
 				params.To = &t.OptTo.To

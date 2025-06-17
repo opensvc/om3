@@ -16,6 +16,7 @@ type (
 	CmdObjectInstanceUnfreeze struct {
 		OptsGlobal
 		NodeSelector string
+		commoncmd.OptsEncap
 	}
 )
 
@@ -35,6 +36,15 @@ func (t *CmdObjectInstanceUnfreeze) Run(kind string) error {
 			{
 				sid := xsession.ID
 				params.RequesterSid = &sid
+			}
+			if t.OptsEncap.Master {
+				params.Master = &t.OptsEncap.Master
+			}
+			if t.OptsEncap.AllSlaves {
+				params.Slaves = &t.OptsEncap.AllSlaves
+			}
+			if len(t.OptsEncap.Slaves) > 0 {
+				params.Slave = &t.OptsEncap.Slaves
 			}
 			response, err := c.PostInstanceActionUnfreezeWithResponse(ctx, nodename, p.Namespace, p.Kind, p.Name, &params)
 			if err != nil {

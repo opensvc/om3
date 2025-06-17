@@ -16,7 +16,7 @@ import (
 type (
 	CmdObjectInstanceFreeze struct {
 		OptsGlobal
-		commoncmd.OptsResourceSelector
+		commoncmd.OptsEncap
 		NodeSelector string
 	}
 )
@@ -37,14 +37,14 @@ func (t *CmdObjectInstanceFreeze) Run(kind string) error {
 				return nil, err
 			}
 			params := api.PostInstanceActionFreezeParams{}
-			if t.OptsResourceSelector.Master {
-				params.Master = &t.OptsResourceSelector.Master
+			if t.OptsEncap.Master {
+				params.Master = &t.OptsEncap.Master
 			}
-			if t.OptsResourceSelector.AllSlaves {
-				params.Slaves = &t.OptsResourceSelector.AllSlaves
+			if t.OptsEncap.AllSlaves {
+				params.Slaves = &t.OptsEncap.AllSlaves
 			}
-			if len(t.OptsResourceSelector.Slaves) > 0 {
-				params.Slave = &t.OptsResourceSelector.Slaves
+			if len(t.OptsEncap.Slaves) > 0 {
+				params.Slave = &t.OptsEncap.Slaves
 			}
 			{
 				sid := xsession.ID
