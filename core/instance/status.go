@@ -27,7 +27,12 @@ type (
 		UpdatedAt     time.Time          `json:"updated_at"`
 	}
 
-	EncapMap map[string]Status
+	EncapStatus struct {
+		Status
+		Hostname string `json:"hostname"`
+	}
+
+	EncapMap map[string]EncapStatus
 
 	ResourceStatuses map[string]resource.Status
 
@@ -89,6 +94,12 @@ func (t Status) IsFrozen() bool {
 
 func (t Status) IsUnfrozen() bool {
 	return t.FrozenAt.IsZero()
+}
+
+func (t EncapStatus) DeepCopy() *EncapStatus {
+	n := t
+	n.Status = *t.Status.DeepCopy()
+	return &n
 }
 
 func (t Status) DeepCopy() *Status {
@@ -159,6 +170,12 @@ func (t ResourceStatuses) Unstructured() map[string]map[string]any {
 	for k, v := range t {
 		m[k] = v.Unstructured()
 	}
+	return m
+}
+
+func (t EncapStatus) Unstructured() map[string]any {
+	m := t.Status.Unstructured()
+	m["hostname"] = t.Hostname
 	return m
 }
 

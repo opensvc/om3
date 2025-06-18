@@ -29,7 +29,7 @@ type encaper interface {
 	GetHostname() string
 	GetOsvcRootPath() string
 	EncapCp(context.Context, string, string) error
-	EncapCmd(context.Context, []string, []string) *exec.Cmd
+	EncapCmd(context.Context, []string, []string) (*exec.Cmd, error)
 }
 
 func (t *actor) FreshStatus(ctx context.Context) (instance.Status, error) {
@@ -200,7 +200,7 @@ func (t *actor) resourceStatusEval(ctx context.Context, data *instance.Status, m
 	err := t.ResourceSets().Do(ctx, t, "", "status", func(ctx context.Context, r resource.Driver) error {
 		var (
 			resourceStatus      resource.Status
-			encapInstanceStatus *instance.Status
+			encapInstanceStatus *instance.EncapStatus
 			err                 error
 		)
 
@@ -259,7 +259,7 @@ func (t *actor) resourceStatusEval(ctx context.Context, data *instance.Status, m
 	return err
 }
 
-func (t *actor) resourceStatusEvalEncap(ctx context.Context, encapContainer encaper, pushed bool) (*instance.Status, error) {
+func (t *actor) resourceStatusEvalEncap(ctx context.Context, encapContainer encaper, pushed bool) (*instance.EncapStatus, error) {
 	var (
 		encapInstanceStates *instance.States
 		checksum            string
@@ -280,7 +280,10 @@ func (t *actor) resourceStatusEvalEncap(ctx context.Context, encapContainer enca
 		env.ActionOrchestrationIDVar + "=" + os.Getenv(env.ActionOrchestrationIDVar),
 		env.OriginSetenvArg(env.Origin()),
 	}
-	cmd := encapContainer.EncapCmd(ctx, args, envs)
+	cmd, err := encapContainer.EncapCmd(ctx, args, envs)
+	if err != nil {
+		return nil, err
+	}
 	b, err := cmd.CombinedOutput()
 	if err != nil {
 		if cmd.ProcessState.ExitCode() == 2 {
@@ -336,5 +339,9 @@ func (t *actor) resourceStatusEvalEncap(ctx context.Context, encapContainer enca
 		return t.resourceStatusEvalEncap(ctx, encapContainer, true)
 	}
 
-	return &encapInstanceStates.Status, nil
+	encapInstanceStatus := instance.EncapStatus{
+		Hostname: hostname,
+		Status:   encapInstanceStates.Status,
+	}
+	return &encapInstanceStatus, nil
 }

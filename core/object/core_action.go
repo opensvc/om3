@@ -6,17 +6,20 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"net"
 	"net/http"
 	"os"
 	"slices"
 	"strings"
 	"sync"
+	"syscall"
 	"time"
 
 	"github.com/opensvc/om3/core/actioncontext"
 	"github.com/opensvc/om3/core/actionrollback"
 	"github.com/opensvc/om3/core/client"
 	"github.com/opensvc/om3/core/env"
+	"github.com/opensvc/om3/core/freeze"
 	"github.com/opensvc/om3/core/naming"
 	"github.com/opensvc/om3/core/resource"
 	"github.com/opensvc/om3/core/resourceselector"
@@ -203,7 +206,16 @@ func (t *actor) announceProgress(ctx context.Context, progress string) error {
 		t.log.Debugf("skip announce progress: the daemon is not running")
 		return nil
 	case err != nil:
-		t.log.Errorf("announced %s state: %s", progress, err)
+		var opErr *net.OpError
+		if errors.As(err, &opErr) {
+			if sysErr, ok := opErr.Err.(*os.SyscallError); ok {
+				if sysErr.Err == syscall.ECONNREFUSED {
+					t.log.Debugf("skip announce progress: the daemon connection is refused")
+					return nil
+				}
+			}
+		}
+		t.log.Errorf("announcing %s state: %s", progress, err)
 		return err
 	case resp.StatusCode() == http.StatusBadRequest:
 		err := fmt.Errorf("announcing state %s: post instance progress request status: %s: %s", progress, resp.JSON400.Title, resp.JSON400.Detail)
@@ -289,6 +301,12 @@ func (t *actor) abortStartDrivers(ctx context.Context, resources resource.Driver
 	q := make(chan bool, len(resources))
 	var wg sync.WaitGroup
 	for _, r := range resources {
+		if v, err := t.isEncapNodeMatchingResource(r); err != nil {
+			return err
+		} else if !v {
+			return nil
+		}
+
 		currentState := sb.Get(r.RID())
 		if currentState.Is(status.Up, status.StandbyUp) {
 			continue
@@ -420,7 +438,10 @@ func (t *actor) action(ctx context.Context, fn resourceset.DoFunc) error {
 			t.log.Debugf("skip freeze: action has daemon origin")
 			return nil
 		}
-		return t.Freeze(ctxWithTimeout)
+		if err := freeze.Freeze(t.path.FrozenFile()); err != nil {
+			return err
+		}
+		return nil
 	}
 
 	if err := freeze(); err != nil {
@@ -458,8 +479,11 @@ func (t *actor) action(ctx context.Context, fn resourceset.DoFunc) error {
 		if s := os.Getenv(env.ActionOrchestrationIDVar); s != "" {
 			envs = append(envs, env.ActionOrchestrationIDVar+"="+s)
 		}
-		cmd := encapContainer.EncapCmd(ctx, args, envs)
-		err := cmd.Run()
+		cmd, err := encapContainer.EncapCmd(ctx, args, envs)
+		if err != nil {
+			return err
+		}
+		err = cmd.Run()
 		if err != nil {
 			switch cmd.ProcessState.ExitCode() {
 			case 2:
@@ -494,7 +518,10 @@ func (t *actor) action(ctx context.Context, fn resourceset.DoFunc) error {
 		}
 
 		args = append([]string{encapContainer.GetOsvcRootPath(), t.path.String(), "instance", action.Name}, options...)
-		cmd = encapContainer.EncapCmd(ctx, args, envs)
+		cmd, err = encapContainer.EncapCmd(ctx, args, envs)
+		if err != nil {
+			return err
+		}
 		t.log.Infof("%s", strings.Join(cmd.Args, " "))
 
 		stderrPipe, err := cmd.StderrPipe()

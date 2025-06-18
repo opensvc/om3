@@ -17,7 +17,7 @@ func (t *actor) Restart(ctx context.Context) error {
 		return err
 	}
 	if initialFrozenAt.IsZero() {
-		return t.Unfreeze(ctx)
+		return freeze.Unfreeze(t.path.FrozenFile())
 	}
 	return nil
 }
