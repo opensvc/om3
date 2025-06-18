@@ -25,6 +25,7 @@ import (
 	"github.com/opensvc/om3/core/naming"
 	"github.com/opensvc/om3/core/object"
 	"github.com/opensvc/om3/core/provisioned"
+	"github.com/opensvc/om3/core/rawconfig"
 	"github.com/opensvc/om3/core/resource"
 	"github.com/opensvc/om3/core/status"
 	"github.com/opensvc/om3/core/vpath"
@@ -395,19 +396,30 @@ func (t *T) copyTo(src, dst string) error {
 	return file.Copy(src, dst)
 }
 
-func (t *T) rcmd() ([]string, error) {
+func (t *T) rcmd(envs []string) ([]string, error) {
+	var args []string
 	if len(t.RCmd) > 0 {
-		return t.RCmd, nil
-	}
-	hasPIDNS := file.Exists("/proc/1/ns/pid")
-	if exe, err := exec.LookPath("lxc-attach"); err == nil && hasPIDNS {
-		if p, err := t.dataDir(); err == nil && p != "" {
-			return []string{exe, "-n", t.Name, "-P", p, "--clear-env", "--"}, nil
-		} else {
-			return []string{exe, "-n", t.Name, "--clear-env", "--"}, nil
+		args = t.RCmd
+	} else {
+		hasPIDNS := file.Exists("/proc/1/ns/pid")
+		if exe, err := exec.LookPath("lxc-attach"); err == nil && hasPIDNS {
+			if p, err := t.dataDir(); err == nil && p != "" {
+				args = []string{exe, "-n", t.Name, "-P", p, "--clear-env"}
+			} else {
+				args = []string{exe, "-n", t.Name, "--clear-env"}
+			}
 		}
 	}
-	return nil, fmt.Errorf("unable to identify a remote command method. install lxc-attach or set the rcmd keyword")
+	if len(args) == 0 {
+		return nil, fmt.Errorf("unable to identify a remote command method. install lxc-attach or set the rcmd keyword")
+	}
+	for _, e := range envs {
+		args = append(args, "-v", e)
+	}
+	if args[len(args)-1] != "--" {
+		args = append(args, "--")
+	}
+	return args, nil
 }
 
 // SetEncapFileOwnership sets the ownership of the file to be the
@@ -423,7 +435,7 @@ func (t *T) SetEncapFileOwnership(p string) error {
 
 func (t *T) Enter() error {
 	sh := "/bin/bash"
-	rcmd, err := t.rcmd()
+	rcmd, err := t.rcmd([]string{})
 	if err != nil {
 		return err
 	}
@@ -1244,4 +1256,29 @@ func (t *T) upPeer() (string, error) {
 		}
 	}
 	return "", nil
+}
+
+func (t *T) EncapCmd(ctx context.Context, args []string, envs []string) (*exec.Cmd, error) {
+	baseArgs, err := t.rcmd(envs)
+	if err != nil {
+		return nil, err
+	}
+	cmd := exec.Command(baseArgs[0], append(baseArgs[1:], args...)...)
+	return cmd, nil
+}
+
+func (t *T) EncapCp(ctx context.Context, src, dst string) error {
+	rootDir, err := t.rootDir()
+	if err != nil {
+		return err
+	}
+	dst = filepath.Join(rootDir, dst)
+	return file.Copy2(src, dst)
+}
+
+func (t *T) GetOsvcRootPath() string {
+	if t.OsvcRootPath != "" {
+		return filepath.Join(t.OsvcRootPath, "bin", "om")
+	}
+	return filepath.Join(rawconfig.Paths.Bin, "om")
 }
