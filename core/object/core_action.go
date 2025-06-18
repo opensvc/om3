@@ -31,6 +31,7 @@ import (
 	"github.com/opensvc/om3/util/key"
 	"github.com/opensvc/om3/util/pg"
 	"github.com/opensvc/om3/util/xsession"
+	"github.com/rs/zerolog"
 )
 
 // Resources implementing setters
@@ -515,6 +516,12 @@ func (t *actor) action(ctx context.Context, fn resourceset.DoFunc) error {
 		}
 		if s := actioncontext.IsRollbackDisabled(ctx); s {
 			options = append(options, "--disable-rollback")
+		}
+		if s := actioncontext.IsForce(ctx); s {
+			options = append(options, "--force")
+		}
+		if zerolog.GlobalLevel() == zerolog.DebugLevel {
+			options = append(options, "--debug")
 		}
 
 		args = append([]string{encapContainer.GetOsvcRootPath(), t.path.String(), "instance", action.Name}, options...)
