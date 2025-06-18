@@ -301,6 +301,12 @@ func (t *actor) abortStartDrivers(ctx context.Context, resources resource.Driver
 	q := make(chan bool, len(resources))
 	var wg sync.WaitGroup
 	for _, r := range resources {
+		if v, err := t.isEncapNodeMatchingResource(r); err != nil {
+			return err
+		} else if !v {
+			return nil
+		}
+
 		currentState := sb.Get(r.RID())
 		if currentState.Is(status.Up, status.StandbyUp) {
 			continue
