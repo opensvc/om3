@@ -479,8 +479,11 @@ func (t *actor) action(ctx context.Context, fn resourceset.DoFunc) error {
 		if s := os.Getenv(env.ActionOrchestrationIDVar); s != "" {
 			envs = append(envs, env.ActionOrchestrationIDVar+"="+s)
 		}
-		cmd := encapContainer.EncapCmd(ctx, args, envs)
-		err := cmd.Run()
+		cmd, err := encapContainer.EncapCmd(ctx, args, envs)
+		if err != nil {
+			return err
+		}
+		err = cmd.Run()
 		if err != nil {
 			switch cmd.ProcessState.ExitCode() {
 			case 2:
@@ -515,7 +518,10 @@ func (t *actor) action(ctx context.Context, fn resourceset.DoFunc) error {
 		}
 
 		args = append([]string{encapContainer.GetOsvcRootPath(), t.path.String(), "instance", action.Name}, options...)
-		cmd = encapContainer.EncapCmd(ctx, args, envs)
+		cmd, err = encapContainer.EncapCmd(ctx, args, envs)
+		if err != nil {
+			return err
+		}
 		t.log.Infof("%s", strings.Join(cmd.Args, " "))
 
 		stderrPipe, err := cmd.StderrPipe()

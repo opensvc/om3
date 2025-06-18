@@ -29,7 +29,7 @@ type encaper interface {
 	GetHostname() string
 	GetOsvcRootPath() string
 	EncapCp(context.Context, string, string) error
-	EncapCmd(context.Context, []string, []string) *exec.Cmd
+	EncapCmd(context.Context, []string, []string) (*exec.Cmd, error)
 }
 
 func (t *actor) FreshStatus(ctx context.Context) (instance.Status, error) {
@@ -280,7 +280,10 @@ func (t *actor) resourceStatusEvalEncap(ctx context.Context, encapContainer enca
 		env.ActionOrchestrationIDVar + "=" + os.Getenv(env.ActionOrchestrationIDVar),
 		env.OriginSetenvArg(env.Origin()),
 	}
-	cmd := encapContainer.EncapCmd(ctx, args, envs)
+	cmd, err := encapContainer.EncapCmd(ctx, args, envs)
+	if err != nil {
+		return nil, err
+	}
 	b, err := cmd.CombinedOutput()
 	if err != nil {
 		if cmd.ProcessState.ExitCode() == 2 {
