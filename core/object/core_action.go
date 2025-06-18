@@ -6,11 +6,13 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"net"
 	"net/http"
 	"os"
 	"slices"
 	"strings"
 	"sync"
+	"syscall"
 	"time"
 
 	"github.com/opensvc/om3/core/actioncontext"
@@ -204,7 +206,16 @@ func (t *actor) announceProgress(ctx context.Context, progress string) error {
 		t.log.Debugf("skip announce progress: the daemon is not running")
 		return nil
 	case err != nil:
-		t.log.Errorf("announced %s state: %s", progress, err)
+		var opErr *net.OpError
+		if errors.As(err, &opErr) {
+			if sysErr, ok := opErr.Err.(*os.SyscallError); ok {
+				if sysErr.Err == syscall.ECONNREFUSED {
+					t.log.Debugf("skip announce progress: the daemon connection is refused")
+					return nil
+				}
+			}
+		}
+		t.log.Errorf("announcing %s state: %s", progress, err)
 		return err
 	case resp.StatusCode() == http.StatusBadRequest:
 		err := fmt.Errorf("announcing state %s: post instance progress request status: %s: %s", progress, resp.JSON400.Title, resp.JSON400.Detail)
