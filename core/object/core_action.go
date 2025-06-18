@@ -17,6 +17,7 @@ import (
 	"github.com/opensvc/om3/core/actionrollback"
 	"github.com/opensvc/om3/core/client"
 	"github.com/opensvc/om3/core/env"
+	"github.com/opensvc/om3/core/freeze"
 	"github.com/opensvc/om3/core/naming"
 	"github.com/opensvc/om3/core/resource"
 	"github.com/opensvc/om3/core/resourceselector"
@@ -420,7 +421,10 @@ func (t *actor) action(ctx context.Context, fn resourceset.DoFunc) error {
 			t.log.Debugf("skip freeze: action has daemon origin")
 			return nil
 		}
-		return t.Freeze(ctxWithTimeout)
+		if err := freeze.Freeze(t.path.FrozenFile()); err != nil {
+			return err
+		}
+		return nil
 	}
 
 	if err := freeze(); err != nil {
