@@ -890,7 +890,7 @@ func (t *T) setCpusetCloneChildren() error {
 
 // cgroupDir returns the container resource cgroup path, relative to a controller head.
 func (t *T) cgroupDir() string {
-	return t.GetPGID()
+	return strings.TrimPrefix(t.GetPGID(), "/")
 }
 
 func (t *T) cgroupDirCapable() bool {
