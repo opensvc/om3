@@ -55,6 +55,13 @@ func (t *T) Manifest() *manifest.T {
 			},
 		*/
 		keywords.Keyword{
+			Option:    "qga",
+			Attr:      "QGA",
+			Converter: converters.Bool,
+			Text:      keywords.NewText(fs, "text/kw/qga"),
+			Scopable:  true,
+		},
+		keywords.Keyword{
 			Option:       "virtinst",
 			Attr:         "VirtInst",
 			Provisioning: true,

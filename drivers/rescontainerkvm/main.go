@@ -26,6 +26,7 @@ import (
 	"github.com/opensvc/om3/core/naming"
 	"github.com/opensvc/om3/core/object"
 	"github.com/opensvc/om3/core/provisioned"
+	"github.com/opensvc/om3/core/rawconfig"
 	"github.com/opensvc/om3/core/resource"
 	"github.com/opensvc/om3/core/status"
 	"github.com/opensvc/om3/core/topology"
@@ -69,6 +70,7 @@ type (
 		StartTimeout *time.Duration `json:"start_timeout"`
 		StopTimeout  *time.Duration `json:"stop_timeout"`
 		VirtInst     []string       `json:"virtinst"`
+		QGA          bool           `json:"qga"`
 		//Snap           string         `json:"snap"`
 		//SnapOf         string         `json:"snapof"`
 
@@ -82,6 +84,8 @@ type (
 		Resources() resource.Drivers
 	}
 )
+
+var _ resource.Encaper = (*T)(nil)
 
 func isPartitionsCapable() bool {
 	cmd := command.New(
@@ -366,6 +370,9 @@ func (t *T) waitForUp(ctx context.Context, timeout, interval time.Duration) bool
 }
 
 func (t *T) waitForPing(ctx context.Context, timeout, interval time.Duration) bool {
+	if t.QGA {
+		return true
+	}
 	t.Log().Attr("timeout", timeout).Infof("wait for %s ping (timeout %s)", t.Name, timeout)
 	return waitfor.TrueCtx(ctx, timeout, interval, func() bool {
 		v, err := t.isPinging()
@@ -797,15 +804,22 @@ func (t *Path) SetEncapFileOwnership(p string) error {
 
 */
 
-func (t *T) rcmd() ([]string, error) {
+func (t *T) rcmd(envs []string) ([]string, error) {
+	var args []string
 	if len(t.RCmd) > 0 {
-		return t.RCmd, nil
+		args = t.RCmd
 	}
-	return nil, fmt.Errorf("unable to identify a remote command method, install ssh or set the rcmd keyword")
+	if len(args) == 0 {
+		return nil, fmt.Errorf("unable to identify a remote command method, install ssh or set the rcmd keyword")
+	}
+	for _, e := range envs {
+		args = append(args, "-v", e)
+	}
+	return args, nil
 }
 
 func (t *T) rexec(cmd string) error {
-	if rcmd, err := t.rcmd(); err == nil {
+	if rcmd, err := t.rcmd(nil); err == nil {
 		rcmd = append(rcmd, cmd)
 		return t.execViaRCmd(rcmd)
 	}
@@ -813,7 +827,7 @@ func (t *T) rexec(cmd string) error {
 }
 
 func (t *T) Enter() error {
-	if rcmd, err := t.rcmd(); err == nil {
+	if rcmd, err := t.rcmd(nil); err == nil {
 		return t.enterViaRCmd(rcmd)
 	}
 	return t.enterViaInternalSSH()
@@ -1041,4 +1055,43 @@ func (t *T) upPeer() (string, error) {
 		}
 	}
 	return "", nil
+}
+
+func (t *T) EncapCmd(ctx context.Context, args []string, envs []string) (resource.Commander, error) {
+	if t.QGA {
+		return t.EncapCmdWithQGA(ctx, args, envs)
+	} else {
+		return t.EncapCmdWithRCmd(ctx, args, envs)
+	}
+}
+
+func (t *T) EncapCmdWithQGA(ctx context.Context, args []string, envs []string) (*qgaCommand, error) {
+	if len(args) < 1 {
+		return nil, fmt.Errorf("EncapCmdWithQGA call with empty a 'args []string' argument")
+	}
+	cmd := newQGACommand(ctx, t.Name, args[0], args[1:], envs)
+	return cmd, nil
+}
+
+func (t *T) EncapCmdWithRCmd(ctx context.Context, args []string, envs []string) (*exec.Cmd, error) {
+	baseArgs, err := t.rcmd(envs)
+	if err != nil {
+		return nil, err
+	}
+	cmd := exec.Command(baseArgs[0], append(baseArgs[1:], args...)...)
+	return cmd, nil
+}
+
+func (t *T) EncapCp(ctx context.Context, src, dst string) error {
+	if t.QGA {
+		return qgaCp(ctx, t.Name, src, dst)
+	}
+	return fmt.Errorf("TODO: EncapCp with qga=false")
+}
+
+func (t *T) GetOsvcRootPath() string {
+	if t.OsvcRootPath != "" {
+		return filepath.Join(t.OsvcRootPath, "bin", "om")
+	}
+	return filepath.Join(rawconfig.Paths.Bin, "om")
 }

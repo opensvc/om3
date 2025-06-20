@@ -6,7 +6,6 @@ import (
 	"errors"
 	"fmt"
 	"os"
-	"os/exec"
 	"strings"
 	"sync"
 	"time"
@@ -25,11 +24,8 @@ import (
 	"github.com/opensvc/om3/util/xsession"
 )
 
-type encaper interface {
-	GetHostname() string
-	GetOsvcRootPath() string
-	EncapCp(context.Context, string, string) error
-	EncapCmd(context.Context, []string, []string) (*exec.Cmd, error)
+type exitcoder interface {
+	ExitCode() int
 }
 
 func (t *actor) FreshStatus(ctx context.Context) (instance.Status, error) {
@@ -228,7 +224,7 @@ func (t *actor) resourceStatusEval(ctx context.Context, data *instance.Status, m
 		}
 
 		// If the resource is a encap capable container, evaluate the encap instance
-		if encapContainer, ok := r.(encaper); ok && resourceStatus.Status.Is(status.Up, status.StandbyUp) {
+		if encapContainer, ok := r.(resource.Encaper); ok && resourceStatus.Status.Is(status.Up, status.StandbyUp) {
 			if encapInstanceStatus, err = t.resourceStatusEvalEncap(ctx, encapContainer, false); err != nil {
 				return err
 			}
@@ -259,7 +255,7 @@ func (t *actor) resourceStatusEval(ctx context.Context, data *instance.Status, m
 	return err
 }
 
-func (t *actor) resourceStatusEvalEncap(ctx context.Context, encapContainer encaper, pushed bool) (*instance.EncapStatus, error) {
+func (t *actor) resourceStatusEvalEncap(ctx context.Context, encapContainer resource.Encaper, pushed bool) (*instance.EncapStatus, error) {
 	var (
 		encapInstanceStates *instance.States
 		checksum            string
@@ -286,15 +282,17 @@ func (t *actor) resourceStatusEvalEncap(ctx context.Context, encapContainer enca
 	}
 	b, err := cmd.CombinedOutput()
 	if err != nil {
-		if cmd.ProcessState.ExitCode() == 2 {
-			if pushed {
-				return nil, fmt.Errorf("no encap instance config: already pushed")
+		if exitErr, ok := err.(exitcoder); ok {
+			if exitErr.ExitCode() == 2 {
+				if pushed {
+					return nil, fmt.Errorf("no encap instance config: already pushed")
+				}
+				t.log.Debugf("%s: no encap instance config: push the config", t.path)
+				if err := encapContainer.EncapCp(ctx, configFile, configFile); err != nil {
+					return nil, err
+				}
+				return t.resourceStatusEvalEncap(ctx, encapContainer, true)
 			}
-			t.log.Debugf("%s: no encap instance config: push the config", t.path)
-			if err := encapContainer.EncapCp(ctx, configFile, configFile); err != nil {
-				return nil, err
-			}
-			return t.resourceStatusEvalEncap(ctx, encapContainer, true)
 		}
 		return nil, fmt.Errorf("encap instance status: %w (%s)", err, strings.TrimSpace(string(b)))
 	}

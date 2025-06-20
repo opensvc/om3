@@ -9,6 +9,7 @@ import (
 	"net"
 	"net/http"
 	"os"
+	"os/exec"
 	"slices"
 	"strings"
 	"sync"
@@ -378,7 +379,7 @@ func (t *actor) action(ctx context.Context, fn resourceset.DoFunc) error {
 		if !hasEncapResourcesSelected && r.IsEncap() {
 			hasEncapResourcesSelected = true
 		}
-		if _, ok := r.(encaper); ok {
+		if _, ok := r.(resource.Encaper); ok {
 			if !resources.HasRID(r.RID()) {
 				encaperRIDsAddedForSelectedEncapResources = append(encaperRIDsAddedForSelectedEncapResources, r.RID())
 			}
@@ -452,7 +453,7 @@ func (t *actor) action(ctx context.Context, fn resourceset.DoFunc) error {
 	}
 
 	doEncap := func(ctx context.Context, r resource.Driver) error {
-		encapContainer, ok := r.(encaper)
+		encapContainer, ok := r.(resource.Encaper)
 		if !ok {
 			return nil
 		}
@@ -486,15 +487,17 @@ func (t *actor) action(ctx context.Context, fn resourceset.DoFunc) error {
 		}
 		err = cmd.Run()
 		if err != nil {
-			switch cmd.ProcessState.ExitCode() {
-			case 2:
-				if err := encapContainer.EncapCp(ctx, configFile, configFile); err != nil {
+			if exitErr, ok := err.(exitcoder); ok {
+				switch exitErr.ExitCode() {
+				case 2:
+					if err := encapContainer.EncapCp(ctx, configFile, configFile); err != nil {
+						return err
+					}
+				case 128:
+					return fmt.Errorf("opensvc is not installed in the container")
+				default:
 					return err
 				}
-			case 128:
-				return fmt.Errorf("opensvc is not installed in the container")
-			default:
-				return err
 			}
 		}
 
@@ -529,7 +532,9 @@ func (t *actor) action(ctx context.Context, fn resourceset.DoFunc) error {
 		if err != nil {
 			return err
 		}
-		t.log.Infof("%s", strings.Join(cmd.Args, " "))
+		if i, ok := cmd.(*exec.Cmd); ok {
+			t.log.Infof("%s", strings.Join(i.Args, " "))
+		}
 
 		stderrPipe, err := cmd.StderrPipe()
 		if err != nil {
