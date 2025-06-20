@@ -259,7 +259,6 @@ func (t T) doSerial(ctx context.Context, l ResourceLister, resources resource.Dr
 			r.Log().Warnf("error from optional resource: %s", err)
 			continue
 		default:
-			r.Log().Errorf("%s", err)
 			return fmt.Errorf("%s: %w", rid, err)
 		}
 	}
