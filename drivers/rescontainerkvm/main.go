@@ -772,39 +772,7 @@ func (t *T) Provisioned() (provisioned.T, error) {
 	return provisioned.False, nil
 }
 
-/*
-func (t *Path) copyFrom(src, dst string) error {
-	rootDir, err := t.rootDir()
-	if err != nil {
-		return err
-	}
-	src = filepath.Join(rootDir, src)
-	return file.Copy(src, dst)
-}
-
-func (t *Path) copyTo(src, dst string) error {
-	rootDir, err := t.rootDir()
-	if err != nil {
-		return err
-	}
-	dst = filepath.Join(rootDir, dst)
-	return file.Copy(src, dst)
-}
-
-// SetEncapFileOwnership sets the ownership of the file to be the
-// same ownership than the container root dir, which may be not root
-// for unprivileged containers.
-func (t *Path) SetEncapFileOwnership(p string) error {
-	rootDir, err := t.rootDir()
-	if err != nil {
-		return err
-	}
-	return file.CopyOwnership(rootDir, p)
-}
-
-*/
-
-func (t *T) rcmd(envs []string) ([]string, error) {
+func (t *T) rcmd() ([]string, error) {
 	var args []string
 	if len(t.RCmd) > 0 {
 		args = t.RCmd
@@ -812,14 +780,12 @@ func (t *T) rcmd(envs []string) ([]string, error) {
 	if len(args) == 0 {
 		return nil, fmt.Errorf("unable to identify a remote command method, install ssh or set the rcmd keyword")
 	}
-	for _, e := range envs {
-		args = append(args, "-v", e)
-	}
+	args = append(args, t.GetHostname())
 	return args, nil
 }
 
 func (t *T) rexec(cmd string) error {
-	if rcmd, err := t.rcmd(nil); err == nil {
+	if rcmd, err := t.rcmd(); err == nil {
 		rcmd = append(rcmd, cmd)
 		return t.execViaRCmd(rcmd)
 	}
@@ -827,7 +793,7 @@ func (t *T) rexec(cmd string) error {
 }
 
 func (t *T) Enter() error {
-	if rcmd, err := t.rcmd(nil); err == nil {
+	if rcmd, err := t.rcmd(); err == nil {
 		return t.enterViaRCmd(rcmd)
 	}
 	return t.enterViaInternalSSH()
@@ -909,17 +875,7 @@ func (t *T) enterViaInternalSSH() error {
 }
 
 func (t *T) enterViaRCmd(rcmd []string) error {
-	sh := "/bin/bash"
-	args := append(rcmd, sh)
-	cmd := exec.Command(args[0], args[1:]...)
-	_ = cmd.Run()
-
-	switch cmd.ProcessState.ExitCode() {
-	case 126, 127:
-		sh = "/bin/sh"
-	}
-	args = append(rcmd, sh)
-	return syscall.Exec(args[0], args, os.Environ())
+	return syscall.Exec(rcmd[0], rcmd, os.Environ())
 }
 
 func (t *T) GetHostname() string {
@@ -1074,19 +1030,32 @@ func (t *T) EncapCmdWithQGA(ctx context.Context, args []string, envs []string) (
 }
 
 func (t *T) EncapCmdWithRCmd(ctx context.Context, args []string, envs []string) (*exec.Cmd, error) {
-	baseArgs, err := t.rcmd(envs)
+	baseArgs, err := t.rcmd()
 	if err != nil {
 		return nil, err
 	}
-	cmd := exec.Command(baseArgs[0], append(baseArgs[1:], args...)...)
+	baseArgs = append(baseArgs, envs...)
+	baseArgs = append(baseArgs, args...)
+	cmd := exec.CommandContext(ctx, baseArgs[0], baseArgs[1:]...)
 	return cmd, nil
+}
+
+func (t *T) rcmdCp(ctx context.Context, src, dst string) error {
+	baseArgs, err := t.rcmd()
+	if err != nil {
+		return err
+	}
+	baseArgs[0] = strings.Replace(baseArgs[0], "ssh", "scp", 1)
+	baseArgs = append(baseArgs[:len(baseArgs)-1], src, t.GetHostname()+":"+dst)
+	cmd := exec.CommandContext(ctx, baseArgs[0], baseArgs[1:]...)
+	return cmd.Run()
 }
 
 func (t *T) EncapCp(ctx context.Context, src, dst string) error {
 	if t.QGA {
 		return qgaCp(ctx, t.Name, src, dst)
 	}
-	return fmt.Errorf("TODO: EncapCp with qga=false")
+	return t.rcmdCp(ctx, src, dst)
 }
 
 func (t *T) GetOsvcRootPath() string {
