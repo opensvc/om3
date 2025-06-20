@@ -979,6 +979,12 @@ func (t *T) EncapCmdWithRCmd(ctx context.Context, args []string, envs []string) 
 	if err != nil {
 		return nil, err
 	}
+	if strings.Contains(baseArgs[0], "ssh") {
+		sshKeyFile := t.GetSSHKeyFile()
+		if sshKeyFile != "" {
+			baseArgs = append(baseArgs, "-i", sshKeyFile)
+		}
+	}
 	baseArgs = append(baseArgs, envs...)
 	baseArgs = append(baseArgs, args...)
 	cmd := exec.CommandContext(ctx, baseArgs[0], baseArgs[1:]...)
