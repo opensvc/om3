@@ -26,6 +26,7 @@ import (
 	"github.com/opensvc/om3/core/naming"
 	"github.com/opensvc/om3/core/object"
 	"github.com/opensvc/om3/core/provisioned"
+	"github.com/opensvc/om3/core/rawconfig"
 	"github.com/opensvc/om3/core/resource"
 	"github.com/opensvc/om3/core/status"
 	"github.com/opensvc/om3/core/topology"
@@ -69,6 +70,7 @@ type (
 		StartTimeout *time.Duration `json:"start_timeout"`
 		StopTimeout  *time.Duration `json:"stop_timeout"`
 		VirtInst     []string       `json:"virtinst"`
+		QGA          bool           `json:"qga"`
 		//Snap           string         `json:"snap"`
 		//SnapOf         string         `json:"snapof"`
 
@@ -82,6 +84,8 @@ type (
 		Resources() resource.Drivers
 	}
 )
+
+var _ resource.Encaper = (*T)(nil)
 
 func isPartitionsCapable() bool {
 	cmd := command.New(
@@ -366,6 +370,9 @@ func (t *T) waitForUp(ctx context.Context, timeout, interval time.Duration) bool
 }
 
 func (t *T) waitForPing(ctx context.Context, timeout, interval time.Duration) bool {
+	if t.QGA {
+		return true
+	}
 	t.Log().Attr("timeout", timeout).Infof("wait for %s ping (timeout %s)", t.Name, timeout)
 	return waitfor.TrueCtx(ctx, timeout, interval, func() bool {
 		v, err := t.isPinging()
@@ -765,43 +772,16 @@ func (t *T) Provisioned() (provisioned.T, error) {
 	return provisioned.False, nil
 }
 
-/*
-func (t *Path) copyFrom(src, dst string) error {
-	rootDir, err := t.rootDir()
-	if err != nil {
-		return err
-	}
-	src = filepath.Join(rootDir, src)
-	return file.Copy(src, dst)
-}
-
-func (t *Path) copyTo(src, dst string) error {
-	rootDir, err := t.rootDir()
-	if err != nil {
-		return err
-	}
-	dst = filepath.Join(rootDir, dst)
-	return file.Copy(src, dst)
-}
-
-// SetEncapFileOwnership sets the ownership of the file to be the
-// same ownership than the container root dir, which may be not root
-// for unprivileged containers.
-func (t *Path) SetEncapFileOwnership(p string) error {
-	rootDir, err := t.rootDir()
-	if err != nil {
-		return err
-	}
-	return file.CopyOwnership(rootDir, p)
-}
-
-*/
-
 func (t *T) rcmd() ([]string, error) {
+	var args []string
 	if len(t.RCmd) > 0 {
-		return t.RCmd, nil
+		args = t.RCmd
 	}
-	return nil, fmt.Errorf("unable to identify a remote command method, install ssh or set the rcmd keyword")
+	if len(args) == 0 {
+		return nil, fmt.Errorf("unable to identify a remote command method, install ssh or set the rcmd keyword")
+	}
+	args = append(args, t.GetHostname())
+	return args, nil
 }
 
 func (t *T) rexec(cmd string) error {
@@ -895,17 +875,7 @@ func (t *T) enterViaInternalSSH() error {
 }
 
 func (t *T) enterViaRCmd(rcmd []string) error {
-	sh := "/bin/bash"
-	args := append(rcmd, sh)
-	cmd := exec.Command(args[0], args[1:]...)
-	_ = cmd.Run()
-
-	switch cmd.ProcessState.ExitCode() {
-	case 126, 127:
-		sh = "/bin/sh"
-	}
-	args = append(rcmd, sh)
-	return syscall.Exec(args[0], args, os.Environ())
+	return syscall.Exec(rcmd[0], rcmd, os.Environ())
 }
 
 func (t *T) GetHostname() string {
@@ -1041,4 +1011,56 @@ func (t *T) upPeer() (string, error) {
 		}
 	}
 	return "", nil
+}
+
+func (t *T) EncapCmd(ctx context.Context, args []string, envs []string) (resource.Commander, error) {
+	if t.QGA {
+		return t.EncapCmdWithQGA(ctx, args, envs)
+	} else {
+		return t.EncapCmdWithRCmd(ctx, args, envs)
+	}
+}
+
+func (t *T) EncapCmdWithQGA(ctx context.Context, args []string, envs []string) (*qgaCommand, error) {
+	if len(args) < 1 {
+		return nil, fmt.Errorf("EncapCmdWithQGA call with empty a 'args []string' argument")
+	}
+	cmd := newQGACommand(ctx, t.Name, args[0], args[1:], envs)
+	return cmd, nil
+}
+
+func (t *T) EncapCmdWithRCmd(ctx context.Context, args []string, envs []string) (*exec.Cmd, error) {
+	baseArgs, err := t.rcmd()
+	if err != nil {
+		return nil, err
+	}
+	baseArgs = append(baseArgs, envs...)
+	baseArgs = append(baseArgs, args...)
+	cmd := exec.CommandContext(ctx, baseArgs[0], baseArgs[1:]...)
+	return cmd, nil
+}
+
+func (t *T) rcmdCp(ctx context.Context, src, dst string) error {
+	baseArgs, err := t.rcmd()
+	if err != nil {
+		return err
+	}
+	baseArgs[0] = strings.Replace(baseArgs[0], "ssh", "scp", 1)
+	baseArgs = append(baseArgs[:len(baseArgs)-1], src, t.GetHostname()+":"+dst)
+	cmd := exec.CommandContext(ctx, baseArgs[0], baseArgs[1:]...)
+	return cmd.Run()
+}
+
+func (t *T) EncapCp(ctx context.Context, src, dst string) error {
+	if t.QGA {
+		return qgaCp(ctx, t.Name, src, dst)
+	}
+	return t.rcmdCp(ctx, src, dst)
+}
+
+func (t *T) GetOsvcRootPath() string {
+	if t.OsvcRootPath != "" {
+		return filepath.Join(t.OsvcRootPath, "bin", "om")
+	}
+	return filepath.Join(rawconfig.Paths.Bin, "om")
 }

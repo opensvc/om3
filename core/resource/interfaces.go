@@ -2,6 +2,7 @@ package resource
 
 import (
 	"context"
+	"io"
 
 	"github.com/opensvc/om3/core/actionresdeps"
 	"github.com/opensvc/om3/core/schedule"
@@ -128,5 +129,19 @@ type (
 	}
 	SubDeviceser interface {
 		SubDevices() device.L
+	}
+
+	Commander interface {
+		CombinedOutput() ([]byte, error)
+		Run() error
+		Start() error
+		StderrPipe() (io.ReadCloser, error)
+		Wait() error
+	}
+	Encaper interface {
+		GetHostname() string
+		GetOsvcRootPath() string
+		EncapCp(context.Context, string, string) error
+		EncapCmd(context.Context, []string, []string) (Commander, error)
 	}
 )

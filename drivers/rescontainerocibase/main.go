@@ -244,6 +244,8 @@ const (
 	imagePullPolicyOnce   = "once"
 )
 
+var _ resource.Encaper = (*BT)(nil)
+
 func (t *BT) Configure() error {
 	l := t.T.Log().Attr("container_name", t.ContainerName())
 	t.SetLoggerForTest(l)
@@ -954,7 +956,7 @@ func mangleVolMountOptions(initialOptions string, vol object.Vol) (string, error
 	return strings.Join(newOpts, ","), nil
 }
 
-func (t *BT) EncapCmd(ctx context.Context, args []string, env []string) (*exec.Cmd, error) {
+func (t *BT) EncapCmd(ctx context.Context, args []string, env []string) (resource.Commander, error) {
 	return t.executer.EncapCmd(ctx, args, env)
 }
 

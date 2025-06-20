@@ -42,6 +42,7 @@ var (
 		Option:    "rcmd",
 		Scopable:  true,
 		Text:      keywords.NewText(fs, "text/kw/rcmd"),
+		Default:   "/usr/bin/ssh -q -o StrictHostKeyChecking=accept-new -o ForwardX11=no",
 	}
 	KWName = keywords.Keyword{
 		Attr:     "Name",

@@ -49,6 +49,8 @@ var (
 	}
 )
 
+var _ resource.Encaper = (*T)(nil)
+
 type (
 	T struct {
 		resource.T
@@ -1258,7 +1260,7 @@ func (t *T) upPeer() (string, error) {
 	return "", nil
 }
 
-func (t *T) EncapCmd(ctx context.Context, args []string, envs []string) (*exec.Cmd, error) {
+func (t *T) EncapCmd(ctx context.Context, args []string, envs []string) (resource.Commander, error) {
 	baseArgs, err := t.rcmd(envs)
 	if err != nil {
 		return nil, err
