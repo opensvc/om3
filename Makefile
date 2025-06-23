@@ -7,6 +7,9 @@ GOTEST := $(GOCMD) test
 GOGEN := $(GOCMD) generate
 GOVET := $(GOCMD) vet
 GOINSTALL := $(GOCMD) install
+SSHKEY ?= /root/.ssh/opensvc
+SCP := scp -i $(SSHKEY)
+SSH := ssh -i $(SSHKEY)
 
 STRIP := /usr/bin/strip
 MKDIR := /usr/bin/mkdir
@@ -18,8 +21,9 @@ OM := bin/om
 OX := bin/ox
 COMPOBJ := bin/compobj
 COMPOBJ_D := share/opensvc/compliance
+LOCAL_HOSTNAME := $(shell hostname)
 
-.PHONY: version dist
+.PHONY: version dist deploy restart
 
 all: clean vet test race build dist
 
@@ -78,4 +82,23 @@ dist:
 	$(STRIP) --strip-all $(DIST)/$(OM) $(DIST)/$(OX) $(DIST)/$(COMPOBJ)
 	VERSION=`git describe --tags --abbrev` && cd $(DIST) && tar czvf opensvc-$$VERSION.tar.gz $(OM) $(OX) $(COMPOBJ) $(COMPOBJ_D) && cd -
 
+restart:
+	$(PREFIX)/$(OM) daemon restart
+
+deploy: om
+	@for node in $(shell $(OM) node ls); do \
+		echo "Deploying $(OM) to $$node..."; \
+		TEMP_OM_FILE="/tmp/om-$(shell head /dev/urandom | tr -dc A-Za-z0-9 | head -c 10)"; \
+		if [ "$$node" = "$(LOCAL_HOSTNAME)" ]; then \
+			$(INSTALL) -m 755 $(OM) $(PREFIX)/$(OM); \
+			$(PREFIX)/$(OM) daemon restart; \
+		else \
+			$(SCP) "$(OM)" "$$node:$$TEMP_OM_FILE" && \
+			$(SSH) "$$node" "sudo install -m 755 $$TEMP_OM_FILE $(PREFIX)/$(OM) && rm $$TEMP_OM_FILE && $(PREFIX)/$(OM) daemon restart" || { \
+				echo "Deployment failed for $$node. Aborting."; \
+				exit 1; \
+			}; \
+		fi; \
+	done
+	@echo "Deployment to all nodes completed successfully."
 
