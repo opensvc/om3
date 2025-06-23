@@ -135,7 +135,7 @@ func (t *core) CleanPG(ctx context.Context) {
 				t.log.Errorf("remove pg %s error: %s", run.Config.ID, run.Err)
 			}
 		} else if run.Changed {
-			t.log.Infof("remove pg %s", run.Config.ID)
+			t.log.Debugf("remove pg %s", run.Config.ID)
 		}
 	}
 }
