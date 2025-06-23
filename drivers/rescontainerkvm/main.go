@@ -30,6 +30,7 @@ import (
 	"github.com/opensvc/om3/core/resource"
 	"github.com/opensvc/om3/core/status"
 	"github.com/opensvc/om3/core/topology"
+	"github.com/opensvc/om3/util/args"
 	"github.com/opensvc/om3/util/capabilities"
 	"github.com/opensvc/om3/util/command"
 	"github.com/opensvc/om3/util/device"
@@ -773,15 +774,22 @@ func (t *T) Provisioned() (provisioned.T, error) {
 }
 
 func (t *T) rcmd() ([]string, error) {
-	var args []string
+	var l []string
 	if len(t.RCmd) > 0 {
-		args = t.RCmd
+		l = t.RCmd
 	}
-	if len(args) == 0 {
+	if len(l) == 0 {
 		return nil, fmt.Errorf("unable to identify a remote command method, install ssh or set the rcmd keyword")
 	}
-	args = append(args, t.GetHostname())
-	return args, nil
+	a := args.New(l...)
+	if strings.Contains(l[0], "ssh") {
+		a.DropOptionAndAnyValue("-i")
+		if sshKeyFile := t.GetSSHKeyFile(); sshKeyFile != "" {
+			a.Append("-i", sshKeyFile)
+		}
+	}
+	a.Append(t.GetHostname())
+	return a.Get(), nil
 }
 
 func (t *T) rexec(cmd string) error {
@@ -978,12 +986,6 @@ func (t *T) EncapCmdWithRCmd(ctx context.Context, args []string, envs []string) 
 	baseArgs, err := t.rcmd()
 	if err != nil {
 		return nil, err
-	}
-	if strings.Contains(baseArgs[0], "ssh") {
-		sshKeyFile := t.GetSSHKeyFile()
-		if sshKeyFile != "" {
-			baseArgs = append(baseArgs, "-i", sshKeyFile)
-		}
 	}
 	baseArgs = append(baseArgs, envs...)
 	baseArgs = append(baseArgs, args...)
