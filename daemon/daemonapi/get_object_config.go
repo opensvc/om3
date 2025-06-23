@@ -65,7 +65,7 @@ func (a *DaemonAPI) GetObjectConfig(ctx echo.Context, namespace string, kind nam
 				Keyword: k.String(),
 			}
 			if s, err := conf.GetStrict(k); err != nil {
-				continue
+				item.Value = ""
 			} else {
 				item.Value = s
 			}

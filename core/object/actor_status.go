@@ -226,7 +226,9 @@ func (t *actor) resourceStatusEval(ctx context.Context, data *instance.Status, m
 		// If the resource is a encap capable container, evaluate the encap instance
 		if encapContainer, ok := r.(resource.Encaper); ok && resourceStatus.Status.Is(status.Up, status.StandbyUp) {
 			if encapInstanceStatus, err = t.resourceStatusEvalEncap(ctx, encapContainer, false); err != nil {
-				return err
+				log := resource.NewStatusLog(resourceStatus.Log...)
+				log.Error("%s", err)
+				resourceStatus.Log = log.Entries()
 			}
 		}
 
@@ -294,7 +296,7 @@ func (t *actor) resourceStatusEvalEncap(ctx context.Context, encapContainer reso
 				return t.resourceStatusEvalEncap(ctx, encapContainer, true)
 			}
 		}
-		return nil, fmt.Errorf("encap instance status: %w (%s)", err, strings.TrimSpace(string(b)))
+		return nil, fmt.Errorf("encap instance status: %w: %s", err, strings.TrimSpace(string(b)))
 	}
 	var encapInstanceStatesList instance.StatesList
 	if err := json.Unmarshal(b, &encapInstanceStatesList); err != nil {

@@ -30,6 +30,7 @@ import (
 	"github.com/opensvc/om3/core/resource"
 	"github.com/opensvc/om3/core/status"
 	"github.com/opensvc/om3/core/topology"
+	"github.com/opensvc/om3/util/args"
 	"github.com/opensvc/om3/util/capabilities"
 	"github.com/opensvc/om3/util/command"
 	"github.com/opensvc/om3/util/device"
@@ -773,59 +774,39 @@ func (t *T) Provisioned() (provisioned.T, error) {
 }
 
 func (t *T) rcmd() ([]string, error) {
-	var args []string
+	var l []string
 	if len(t.RCmd) > 0 {
-		args = t.RCmd
+		l = t.RCmd
 	}
-	if len(args) == 0 {
+	if len(l) == 0 {
 		return nil, fmt.Errorf("unable to identify a remote command method, install ssh or set the rcmd keyword")
 	}
-	args = append(args, t.GetHostname())
-	return args, nil
+	a := args.New(l...)
+	if strings.Contains(l[0], "ssh") {
+		a.DropOptionAndAnyValue("-i")
+		if sshKeyFile := t.GetSSHKeyFile(); sshKeyFile != "" {
+			a.Append("-i", sshKeyFile)
+		}
+	}
+	a.Append(t.GetHostname())
+	return a.Get(), nil
 }
 
 func (t *T) rexec(cmd string) error {
-	if rcmd, err := t.rcmd(); err == nil {
-		rcmd = append(rcmd, cmd)
-		return t.execViaRCmd(rcmd)
+	rcmd, err := t.rcmd()
+	if err != nil {
+		return err
 	}
-	return t.execViaInternalSSH(cmd)
+	rcmd = append(rcmd, cmd)
+	return t.execViaRCmd(rcmd)
 }
 
 func (t *T) Enter() error {
-	if rcmd, err := t.rcmd(); err == nil {
-		return t.enterViaRCmd(rcmd)
-	}
-	return t.enterViaInternalSSH()
-}
-
-func (t *T) execViaInternalSSH(cmd string) error {
-	hn := t.GetHostname()
-	client, err := t.NewSSHClient(hn)
+	rcmd, err := t.rcmd()
 	if err != nil {
 		return err
 	}
-	defer client.Close()
-	session, err := client.NewSession()
-	if err != nil {
-		return err
-	}
-	defer session.Close()
-
-	session.Stdout = os.Stdout
-	session.Stderr = os.Stderr
-	session.Stdin = os.Stdin
-	if err := session.Run(cmd); err != nil {
-		ee := err.(*ssh.ExitError)
-		ec := ee.Waitmsg.ExitStatus()
-		t.Log().
-			Attr("exitcode", ec).
-			Attr("cmd", cmd).
-			Attr("host", hn).
-			Debugf("rexec '%s' on host %s exited with code %d", cmd, hn, ec)
-		return err
-	}
-	return nil
+	return t.enterViaRCmd(rcmd)
 }
 
 func (t *T) execViaRCmd(args []string) error {
@@ -840,41 +821,13 @@ func (t *T) execViaRCmd(args []string) error {
 	return cmd.Run()
 }
 
-func (t *T) enterViaInternalSSH() error {
-	client, err := t.NewSSHClient(t.GetHostname())
-	if err != nil {
-		return err
-	}
-	defer client.Close()
-	session, err := client.NewSession()
-	if err != nil {
-		return err
-	}
-	defer session.Close()
-	termState, err := terminal.MakeRaw(int(os.Stdin.Fd()))
-	defer terminal.Restore(int(os.Stdin.Fd()), termState)
-
-	session.Stdout = os.Stdout
-	session.Stderr = os.Stderr
-	session.Stdin = os.Stdin
-	modes := ssh.TerminalModes{
-		//	ssh.ECHO: 0,
-	}
+func (t *T) enterViaRCmd(rcmd []string) error {
 	width, height, err := terminal.GetSize(0)
 	if err != nil {
 		return err
 	}
-	if err := session.RequestPty("xterm", width, height, modes); err != nil {
-		return err
-	}
-	if err := session.Shell(); err != nil {
-		return err
-	}
-	_ = session.Wait()
-	return nil
-}
-
-func (t *T) enterViaRCmd(rcmd []string) error {
+	_ = width
+	_ = height
 	return syscall.Exec(rcmd[0], rcmd, os.Environ())
 }
 
