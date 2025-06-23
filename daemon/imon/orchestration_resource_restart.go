@@ -190,21 +190,21 @@ func (t *Manager) orchestrateResourceRestart() {
 		return
 	}
 
-	// discard if the instance status does not exist
+	// ignore if the instance status does not exist
 	if _, ok := t.instStatus[t.localhost]; !ok {
 		t.log.Infof("skip restart: missing instance status")
 		t.cancelResourceOrchestrateSchedules()
 		return
 	}
 
-	// don't run on frozen nodes
+	// ignore if the node is frozen
 	if t.nodeStatus[t.localhost].IsFrozen() {
 		t.log.Debugf("skip restart: node is frozen")
 		t.cancelResourceOrchestrateSchedules()
 		return
 	}
 
-	// don't run when the node is not idle
+	// ignore if the node is not idle
 	if t.nodeMonitor[t.localhost].State != node.MonitorStateIdle {
 		t.log.Debugf("skip restart: node is %s", t.nodeMonitor[t.localhost].State)
 		t.cancelResourceOrchestrateSchedules()
@@ -220,21 +220,21 @@ func (t *Manager) orchestrateResourceRestart() {
 		}
 	}
 
-	// don't run on frozen instances
+	// ignore if the instance is frozen
 	if t.instStatus[t.localhost].IsFrozen() {
 		t.log.Debugf("skip restart: instance is frozen")
 		t.cancelResourceOrchestrateSchedules()
 		return
 	}
 
-	// discard not provisioned
+	// ignore if the instance is not provisioned
 	if instanceStatus := t.instStatus[t.localhost]; instanceStatus.Provisioned.IsOneOf(provisioned.False, provisioned.Mixed, provisioned.Undef) {
 		t.log.Debugf("skip restart: provisioned is %s", instanceStatus.Provisioned)
 		t.cancelResourceOrchestrateSchedules()
 		return
 	}
 
-	// discard if the instance has no monitor data
+	// ignore if the instance has no monitor data
 	instMonitor, ok := t.GetInstanceMonitor(t.localhost)
 	if !ok {
 		t.log.Debugf("skip restart: no instance monitor")
@@ -242,7 +242,7 @@ func (t *Manager) orchestrateResourceRestart() {
 		return
 	}
 
-	// discard if the instance is not idle, start failed or stop failed.
+	// ignore if the instance is not idle, start failed or stop failed.
 	switch instMonitor.State {
 	case instance.MonitorStateIdle, instance.MonitorStateStartFailure, instance.MonitorStateStopFailure:
 		// pass
@@ -257,6 +257,11 @@ func (t *Manager) orchestrateResourceRestart() {
 	started := t.state.LocalExpect == instance.MonitorLocalExpectStarted
 
 	for rid, rstat := range t.instStatus[t.localhost].Resources {
+		// Encap node don't manage restart restart for encap resources. The
+		// master node will manage.
+		if rstat.Encap {
+			continue
+		}
 		rcfg := t.instConfig.Resources.Get(rid)
 		if rcfg == nil {
 			continue
@@ -279,6 +284,39 @@ func (t *Manager) orchestrateResourceRestart() {
 				todoStandby.Add(rid)
 			} else {
 				todoRestart.Add(rid)
+			}
+		}
+	}
+
+	for rid, encapStatus := range t.instStatus[t.localhost].Encap {
+		if rStatus, ok := t.instStatus[t.localhost].Resources[rid]; ok && !rStatus.Status.Is(status.Up, status.StandbyUp) {
+			continue
+		}
+		for rid, rstat := range encapStatus.Resources {
+			rcfg := t.instConfig.Resources.Get(rid)
+			if rcfg == nil {
+				continue
+			}
+			rmon := t.state.Resources.Get(rid)
+			if rmon == nil {
+				continue
+			}
+			needRestart, needMonitorAction, err := t.orchestrateResourcePlan(rid, rcfg, rmon, rstat.Status, started)
+			t.log.Warnf("xx encap rid %s: %v %v %s", rid, needRestart, needMonitorAction, err)
+			if err != nil {
+				t.log.Errorf("orchestrate resource plan for resource %s: %s", rid, err)
+				t.cancelResourceOrchestrateSchedules()
+				return
+			} else if needMonitorAction {
+				t.setLocalExpect(instance.MonitorLocalExpectEvicted, "monitor action evicting: %s", disableMonitorMsg)
+				t.doMonitorAction(rid, t.initialMonitorAction)
+				t.cancelResourceOrchestrateSchedules()
+			} else if needRestart {
+				if rcfg.IsStandby {
+					todoStandby.Add(rid)
+				} else {
+					todoRestart.Add(rid)
+				}
 			}
 		}
 	}
