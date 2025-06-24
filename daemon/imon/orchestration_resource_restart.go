@@ -302,7 +302,6 @@ func (t *Manager) orchestrateResourceRestart() {
 				continue
 			}
 			needRestart, needMonitorAction, err := t.orchestrateResourcePlan(rid, rcfg, rmon, rstat.Status, started)
-			t.log.Warnf("xx encap rid %s: %v %v %s", rid, needRestart, needMonitorAction, err)
 			if err != nil {
 				t.log.Errorf("orchestrate resource plan for resource %s: %s", rid, err)
 				t.cancelResourceOrchestrateSchedules()
