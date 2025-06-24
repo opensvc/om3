@@ -11,7 +11,6 @@ import (
 
 	"github.com/opensvc/om3/core/rawconfig"
 	"github.com/opensvc/om3/core/resource"
-	"github.com/opensvc/om3/core/resourceid"
 	"github.com/opensvc/om3/core/status"
 	"github.com/opensvc/om3/util/xmap"
 )
@@ -224,10 +223,10 @@ func (m ResourceMonitors) DeepCopy() ResourceMonitors {
 	return xmap.Copy(m)
 }
 
-func (mon Monitor) ResourceFlagRestartString(rid resourceid.T, r resource.Status) string {
+func (mon Monitor) ResourceFlagRestartString(rid string, r resource.Status) string {
 	// Restart and retries
 	retries := 0
-	if rmon := mon.Resources.Get(rid.Name); rmon != nil {
+	if rmon := mon.Resources.Get(rid); rmon != nil {
 		retries = rmon.Restart.Remaining
 	}
 	s := r.Restart.FlagString(retries)

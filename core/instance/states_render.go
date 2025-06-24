@@ -1,16 +1,17 @@
 package instance
 
 import (
+	"slices"
 	"strings"
 
 	"github.com/opensvc/om3/core/colorstatus"
 	"github.com/opensvc/om3/core/provisioned"
 	"github.com/opensvc/om3/core/rawconfig"
 	"github.com/opensvc/om3/core/resource"
-	"github.com/opensvc/om3/core/resourceid"
 	"github.com/opensvc/om3/core/resourceset"
 	"github.com/opensvc/om3/core/status"
 	"github.com/opensvc/om3/util/render/tree"
+	"github.com/opensvc/om3/util/xmap"
 )
 
 // Render returns a human friendly string representation of the type instance.
@@ -75,9 +76,9 @@ func (t States) LoadTreeNode(head *tree.Node) {
 			}
 			lastSubset = r.Subset
 		}
-		doResource := func(n *tree.Node, resourceID *resourceid.T, r resource.Status) *tree.Column {
-			flags := t.Status.ResourceFlagsString(*resourceID, r) + t.Monitor.ResourceFlagRestartString(*resourceID, r)
-			n.AddColumn().AddText(resourceID.Name)
+		doResource := func(n *tree.Node, r resource.Status) *tree.Column {
+			flags := t.Status.ResourceFlagsString(r.ResourceID.Name, r) + t.Monitor.ResourceFlagRestartString(r.ResourceID.Name, r)
+			n.AddColumn().AddText(r.ResourceID.Name)
 			n.AddColumn().AddText(flags)
 			n.AddColumn().AddText(colorstatus.Sprint(r.Status, rawconfig.Colorize))
 			desc := n.AddColumn()
@@ -94,7 +95,7 @@ func (t States) LoadTreeNode(head *tree.Node) {
 			return desc
 		}
 		n := subsetNode.AddNode()
-		lastDesc := doResource(n, r.ResourceID, r)
+		lastDesc := doResource(n, r)
 		if encapStatus, ok := t.Status.Encap[r.ResourceID.Name]; ok {
 			var l []string
 			if encapStatus.IsFrozen() {
@@ -103,11 +104,11 @@ func (t States) LoadTreeNode(head *tree.Node) {
 			if len(l) > 0 {
 				lastDesc.AddText(strings.Join(l, " "))
 			}
-			for rid, r := range encapStatus.Resources {
+			rids := xmap.Keys(encapStatus.Resources)
+			slices.Sort(rids)
+			for _, r := range encapStatus.SortedResources() {
 				encapNode := n.AddNode()
-				if resourceID, _ := resourceid.Parse(rid); resourceID != nil {
-					doResource(encapNode, resourceID, r)
-				}
+				doResource(encapNode, r)
 			}
 		}
 	}
