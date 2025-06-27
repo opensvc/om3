@@ -9,6 +9,7 @@ import (
 
 	"github.com/opensvc/om3/util/args"
 	"github.com/opensvc/om3/util/funcopt"
+	"github.com/opensvc/om3/util/hostname"
 )
 
 type (
@@ -56,7 +57,7 @@ func (t *Filesystem) Rename(dst string, fopts ...funcopt.O) error {
 	cmdStr := cmd.String()
 	cmd.Stdout = &b
 	cmd.Stderr = &b
-	if opts.Node == "" {
+	if opts.Node == "" || opts.Node == hostname.Hostname() {
 		err := cmd.Run()
 		if err != nil {
 			t.Log.
@@ -67,7 +68,7 @@ func (t *Filesystem) Rename(dst string, fopts ...funcopt.O) error {
 		} else {
 			t.Log.
 				Attr("cmd", cmdStr).
-				Infof("%s renamed as %s", t.Name, opts.Node)
+				Infof("%s renamed as %s", t.Name, dst)
 		}
 		return err
 	}
