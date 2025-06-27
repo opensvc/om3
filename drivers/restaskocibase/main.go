@@ -112,20 +112,23 @@ func (t *T) lockedRun(ctx context.Context) (err error) {
 		return fmt.Errorf("unable to get task container")
 	}
 
-	if err := container.Start(ctx); err != nil {
-		t.Log().Errorf("%s", err)
-		return err
-	}
+	startErr := container.Start(ctx)
 
 	// TODO: handle rm = true, detach = true ?
 
 	inspect, err := container.ContainerInspectRefresh(ctx)
 	if err != nil {
+		if startErr != nil {
+			return fmt.Errorf("inspect error: %w after a start error: %w", err, startErr)
+		}
 		return err
 	}
 
 	if inspect == nil {
 		err := fmt.Errorf("unable to inspect task container to retrieve its exit code")
+		if startErr != nil {
+			return fmt.Errorf("inspect error: %w after a start error: %w", err, startErr)
+		}
 		return err
 	}
 	exitCode := inspect.ExitCode()
