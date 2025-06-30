@@ -258,16 +258,16 @@ func (t *Manager) updateConfig(newConfig *instance.Config) {
 func (t *Manager) configFileCheck() error {
 	mtime := file.ModTime(t.filename)
 	if mtime.IsZero() {
-		t.log.Infof("configFile no mtime %s", t.filename)
+		t.log.Infof("the config file mtime is zero")
 		return errConfigFileCheck
 	}
 	if mtime.Equal(t.lastMtime) && !t.forceRefresh {
-		t.log.Debugf("same mtime, skip")
+		t.log.Debugf("the config file mtime has not changed, keep the cached icfg")
 		return nil
 	}
 	checksum, err := file.MD5(t.filename)
 	if err != nil {
-		t.log.Infof("configFile no present(md5sum)")
+		t.log.Infof("the config file md5sum failed: %s", err)
 		return errConfigFileCheck
 	}
 	if err := t.setConfigure(); err != nil {
@@ -277,24 +277,24 @@ func (t *Manager) configFileCheck() error {
 	cf := t.configure.Config()
 	scope, err := t.getScope(cf)
 	if err != nil {
-		t.log.Errorf("can't get scope: %s", err)
+		t.log.Errorf("the config file scope evaluation failed: %s", err)
 		return errConfigFileCheck
 	}
 	if len(scope) == 0 {
-		t.log.Infof("empty scope")
+		t.log.Infof("the config file scope is empty")
 		return errConfigFileCheck
 	}
 	newMtime := file.ModTime(t.filename)
 	if newMtime.IsZero() {
-		t.log.Infof("configFile no more mtime %s", t.filename)
+		t.log.Infof("the config file mtime has changed to zero")
 		return errConfigFileCheck
 	}
 	if !newMtime.Equal(mtime) {
-		t.log.Infof("configFile changed(wait next evaluation)")
+		t.log.Infof("the config file mtime changed, rescan after the storm")
 		return nil
 	}
 	if !slices.Contains(scope, t.localhost) {
-		t.log.Infof("foreign config file for peers (%s)", strings.Join(scope, ","))
+		t.log.Infof("the local node is not in the config file scope (%s)", strings.Join(scope, ","))
 		cfg := t.instanceConfig
 		cfg.Scope = scope
 		cfg.UpdatedAt = mtime

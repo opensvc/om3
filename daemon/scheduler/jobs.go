@@ -80,7 +80,7 @@ func (o *T) action(e schedule.Entry) error {
 	if err := cmd.Run(); err != nil {
 		duration := time.Now().Sub(startTime)
 		o.publisher.Pub(&msgbus.ExecFailed{Command: cmd.String(), Duration: duration, ErrS: err.Error(), Node: o.localhost, Origin: "scheduler", SessionID: sid}, labels...)
-		o.log.Attr("cmd", cmd.String()).Errorf("exec error: %s", err)
+		o.log.Attr("cmd", cmd.String()).Errorf("%s: %s", cmd, err)
 		return err
 	}
 	duration := time.Now().Sub(startTime)
