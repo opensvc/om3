@@ -31,11 +31,12 @@ type (
 		NodeSelector string
 		Refresh      bool
 		Local        bool
+		Monitor      bool
 	}
 )
 
 func (t *CmdObjectInstanceStatus) extract(nodenames []string, paths naming.Paths, c *client.T) (data []object.Digest, err error) {
-	if t.Local || (t.Refresh && t.NodeSelector == "") {
+	if t.Local || t.Monitor || (t.Refresh && t.NodeSelector == "") {
 		data, err = t.extractLocal(paths)
 		if err != nil {
 			return
@@ -76,7 +77,9 @@ func (t *CmdObjectInstanceStatus) extractLocal(paths naming.Paths) ([]object.Dig
 			continue
 		}
 		var status instance.Status
-		if t.Refresh {
+		if t.Monitor {
+			status, err = obj.MonitorStatus(ctx)
+		} else if t.Refresh {
 			status, err = obj.FreshStatus(ctx)
 		} else {
 			status, err = obj.Status(ctx)
@@ -87,7 +90,7 @@ func (t *CmdObjectInstanceStatus) extractLocal(paths naming.Paths) ([]object.Dig
 		}
 		checksum, err := file.MD5(p.ConfigFile())
 		if err != nil {
-			errs = errors.Join(errs, fmt.Errorf("configFile no present(md5sum)"))
+			errs = errors.Join(errs, fmt.Errorf("%s: md5sum error: %s", p.ConfigFile(), err))
 			continue
 		}
 

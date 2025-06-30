@@ -2594,6 +2594,7 @@ func newCmdObjectInstanceStatus(kind string) *cobra.Command {
 	commoncmd.FlagRefresh(flags, &options.Refresh)
 	commoncmd.FlagNodeSelector(flags, &options.NodeSelector)
 	flagLocal(flags, &options.Local)
+	addFlagMonitor(flags, &options.Monitor)
 	return cmd
 }
 
