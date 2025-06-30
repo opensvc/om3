@@ -8,6 +8,7 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
+	"slices"
 	"time"
 
 	"github.com/opensvc/om3/core/client"
@@ -197,8 +198,11 @@ func (t *T) lastSyncFile(nodename string) string {
 func (t *T) GetTargetPeernames(target, nodes, drpNodes []string) []string {
 	nodenames := make([]string, 0)
 	localhost := hostname.Hostname()
+	withLocal := slices.Contains(target, "local")
 	for _, nodename := range t.GetTargetNodenames(target, nodes, drpNodes) {
 		if nodename != localhost {
+			nodenames = append(nodenames, nodename)
+		} else if withLocal {
 			nodenames = append(nodenames, nodename)
 		}
 	}
@@ -207,15 +211,21 @@ func (t *T) GetTargetPeernames(target, nodes, drpNodes []string) []string {
 
 func (t *T) GetTargetNodenames(target, nodes, drpNodes []string) []string {
 	nodenames := make([]string, 0)
-	targetMap := make(map[string]any)
-	for _, target := range target {
-		targetMap[target] = nil
+	targetMap := make(map[string]bool)
+	for _, t := range target {
+		targetMap[t] = false
 	}
-	if _, ok := targetMap["nodes"]; ok {
+	if done, ok := targetMap["local"]; ok && !done {
+		nodenames = append(nodenames, hostname.Hostname())
+		targetMap["local"] = true
+	}
+	if done, ok := targetMap["nodes"]; ok && !done {
 		nodenames = append(nodenames, nodes...)
+		targetMap["nodes"] = true
 	}
-	if _, ok := targetMap["drpnodes"]; ok {
+	if done, ok := targetMap["drpnodes"]; ok && !done {
 		nodenames = append(nodenames, drpNodes...)
+		targetMap["drpnodes"] = true
 	}
 	return nodenames
 }

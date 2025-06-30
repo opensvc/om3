@@ -1,0 +1,2 @@
+The name of the md device. This name must have 32 characters max.
+Beware not to set a name already in use by another md resource.

@@ -138,11 +138,11 @@ func (a ResourceOrder) Less(i, j int) bool {
 //	E  Encap
 //	P  Provisioned
 //	S  Standby
-func (t Status) ResourceFlagsString(rid resourceid.T, r resource.Status) string {
+func (t Status) ResourceFlagsString(rid string, r resource.Status) string {
 	flags := ""
 
 	// Running task or sync
-	if t.Running.Has(rid.Name) {
+	if t.Running.Has(rid) {
 		flags += "R"
 	} else {
 		flags += "."

@@ -2,6 +2,7 @@ package restask
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -9,6 +10,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/google/uuid"
 	"github.com/mattn/go-isatty"
 
 	"github.com/opensvc/om3/core/actioncontext"
@@ -25,18 +27,26 @@ const (
 	lockName = "run.lock"
 )
 
-type BaseTask struct {
-	resource.T
-	Check        string
-	Confirmation bool
-	LogOutputs   bool
-	MaxParallel  int
-	OnErrorCmd   string
-	RetCodes     string
-	RunTimeout   *time.Duration
-	Schedule     string
-	Snooze       *time.Duration
-}
+type (
+	BaseTask struct {
+		resource.T
+		Check        string
+		Confirmation bool
+		LogOutputs   bool
+		MaxParallel  int
+		OnErrorCmd   string
+		RetCodes     string
+		RunTimeout   *time.Duration
+		Schedule     string
+		Snooze       *time.Duration
+	}
+
+	LastRun struct {
+		At        time.Time `json:"at"`
+		ExitCode  int       `json:"exitcode"`
+		SessionID uuid.UUID `json:"session_id"`
+	}
+)
 
 func (t *BaseTask) ScheduleOptions() resource.ScheduleOptions {
 	return resource.ScheduleOptions{
@@ -88,17 +98,19 @@ Enter "yes" if you really want to run.`, t.RID())
 }
 
 func (t *BaseTask) lastRunFile() string {
+	return filepath.Join(t.VarDir(), "last_run")
+}
+
+func (t *BaseTask) lastRunRetcodeFile() string {
 	return filepath.Join(t.VarDir(), "last_run_retcode")
 }
 
 func (t *BaseTask) StatusInfo(ctx context.Context) map[string]any {
 	m := make(map[string]any)
-	if i, err := t.readLastRun(); err == nil {
-		m["last_run_exitcode"] = i
-	}
-	if i, err := t.readLastRunAt(); err == nil {
-		m["last_run_at"] = i
-	}
+	lastRun := t.readLastRun()
+	m["last_run_exitcode"] = lastRun.ExitCode
+	m["last_run_at"] = lastRun.At
+	m["last_run_session_id"] = lastRun.SessionID
 	return m
 }
 
@@ -107,16 +119,16 @@ func (t *BaseTask) statusLastRunWarn(ctx context.Context) status.T {
 		t.StatusLog().Info("requirements not met")
 		return status.NotApplicable
 	}
-	if i, err := t.readLastRun(); err != nil {
+	if lastRun := t.readLastRun(); lastRun.At.IsZero() {
 		t.StatusLog().Info("never run")
 		return status.NotApplicable
 	} else {
-		s, err := t.ExitCodeToStatus(i)
+		s, err := t.ExitCodeToStatus(lastRun.ExitCode)
 		if err != nil {
 			t.StatusLog().Info("%s", err)
 		}
 		if s != status.Up {
-			t.StatusLog().Warn("last run failed (%d)", i)
+			t.StatusLog().Warn("last run failed (%d)", lastRun.ExitCode)
 		}
 		return status.NotApplicable
 	}
@@ -127,23 +139,23 @@ func (t *BaseTask) statusLastRun(ctx context.Context) status.T {
 		t.StatusLog().Info("requirements not met")
 		return status.NotApplicable
 	}
-	if i, err := t.readLastRun(); err != nil {
+	if lastRun := t.readLastRun(); lastRun.At.IsZero() {
 		t.StatusLog().Info("never run")
 		return status.NotApplicable
 	} else {
-		s, err := t.ExitCodeToStatus(i)
+		s, err := t.ExitCodeToStatus(lastRun.ExitCode)
 		if err != nil {
 			t.StatusLog().Info("%s", err)
 		}
 		if s != status.Up {
-			t.StatusLog().Info("last run failed (%d)", i)
+			t.StatusLog().Info("last run failed (%d)", lastRun.ExitCode)
 		}
 		return s
 	}
 }
 
 func (t *BaseTask) readLastRunAt() (time.Time, error) {
-	p := t.lastRunFile()
+	p := t.lastRunRetcodeFile()
 	if stat, err := os.Stat(p); err != nil {
 		return time.Time{}, err
 	} else {
@@ -151,8 +163,8 @@ func (t *BaseTask) readLastRunAt() (time.Time, error) {
 	}
 }
 
-func (t *BaseTask) readLastRun() (int, error) {
-	p := t.lastRunFile()
+func (t *BaseTask) readLastRunRetcode() (int, error) {
+	p := t.lastRunRetcodeFile()
 	if b, err := os.ReadFile(p); err != nil {
 		return 0, err
 	} else {
@@ -160,15 +172,57 @@ func (t *BaseTask) readLastRun() (int, error) {
 	}
 }
 
+func (t *BaseTask) readLastRun() LastRun {
+	if lastRun, err := t.readLastRunV2(); err == nil {
+		return lastRun
+	}
+	if lastRun, err := t.readLastRunV1(); err == nil {
+		return lastRun
+	}
+	return LastRun{}
+}
+
+func (t *BaseTask) readLastRunV1() (LastRun, error) {
+	var lastRun LastRun
+	ret, err := t.readLastRunRetcode()
+	if err != nil {
+		return lastRun, err
+	}
+	lastRun.ExitCode = ret
+
+	at, err := t.readLastRunAt()
+	if err != nil {
+		return lastRun, err
+	}
+	lastRun.At = at
+
+	return lastRun, nil
+}
+
+func (t *BaseTask) readLastRunV2() (LastRun, error) {
+	var lastRun LastRun
+	b, err := os.ReadFile(t.lastRunFile())
+	if err != nil {
+		return lastRun, err
+	}
+	err = json.Unmarshal(b, &lastRun)
+	if err != nil {
+		return lastRun, err
+	}
+	return lastRun, nil
+}
+
 func (t *BaseTask) WriteLastRun(retcode int) error {
-	p := t.lastRunFile()
-	f, err := os.Create(p)
+	lastRun := LastRun{
+		ExitCode:  retcode,
+		At:        time.Now(),
+		SessionID: xsession.ID,
+	}
+	b, err := json.Marshal(lastRun)
 	if err != nil {
 		return err
 	}
-	defer f.Close()
-	fmt.Fprintf(f, "%d\n", retcode)
-	return nil
+	return os.WriteFile(t.lastRunFile(), b, os.FileMode(0644))
 }
 
 func (t *BaseTask) IsRunning() bool {
@@ -203,7 +257,7 @@ func (t *BaseTask) RunIf(ctx context.Context, fn func(context.Context) error) er
 		if n >= t.MaxParallel {
 			return fmt.Errorf("task is already running %d times", n)
 		}
-		if err := runDir.Create(xsession.ID[:]); err != nil {
+		if err := runDir.Create([]byte(xsession.ID.String())); err != nil {
 			return err
 		}
 		return nil

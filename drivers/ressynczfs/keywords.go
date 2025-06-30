@@ -46,7 +46,7 @@ var (
 		},
 		{
 			Attr:       "Target",
-			Candidates: []string{"nodes", "drpnodes"},
+			Candidates: []string{"nodes", "drpnodes", "local"},
 			Converter:  converters.List,
 			Option:     "target",
 			Scopable:   true,

@@ -51,6 +51,14 @@ func (t *T) Manifest() *manifest.T {
 			Text:         keywords.NewText(fs, "text/kw/devs"),
 		},
 		keywords.Keyword{
+			Attr:        "Name",
+			Example:     "prettyname",
+			Option:      "name",
+			Scopable:    true,
+			Text:        keywords.NewText(fs, "text/kw/name"),
+			DefaultText: keywords.NewText(fs, "text/kw/name.default"),
+		},
+		keywords.Keyword{
 			Attr:         "Level",
 			Example:      "raid1",
 			Option:       "level",

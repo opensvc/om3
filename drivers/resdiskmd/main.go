@@ -37,6 +37,7 @@ type (
 		Size   string      `json:"size"`
 		Spares int         `json:"spares"`
 		UUID   string      `json:"uuid"`
+		Name   string      `json:"name"`
 	}
 	MDDriver interface {
 		Activate() error
@@ -61,8 +62,10 @@ func New() resource.Driver {
 	return t
 }
 
-func (t *T) Name() string {
-	if t.Path.Namespace != "root" {
+func (t *T) GetName() string {
+	if t.Name != "" {
+		return t.Name
+	} else if t.Path.Namespace != "root" {
 		return fmt.Sprintf(
 			"%s.%s.%s",
 			strings.ToLower(t.Path.Namespace),
@@ -80,6 +83,7 @@ func (t *T) Name() string {
 
 func (t *T) Info(ctx context.Context) (resource.InfoKeys, error) {
 	m := resource.InfoKeys{
+		{Key: "name", Value: t.GetName()},
 		{Key: "uuid", Value: t.UUID},
 	}
 	return m, nil
@@ -275,7 +279,7 @@ func (t *T) ExposedDevices() device.L {
 		return device.L{}
 	}
 	if v, err := t.isUp(); err == nil && v {
-		return device.L{device.New("/dev/md/"+t.Name(), device.WithLogger(t.Log()))}
+		return device.L{device.New("/dev/md/"+t.GetName(), device.WithLogger(t.Log()))}
 	}
 	return device.L{}
 }

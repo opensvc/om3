@@ -6,7 +6,7 @@ import "github.com/opensvc/om3/util/md"
 
 func (t *T) md() MDDriver {
 	d := md.New(
-		t.Name(),
+		t.GetName(),
 		t.UUID,
 		md.WithLogger(t.Log()),
 	)
