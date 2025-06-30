@@ -1,0 +1,5 @@
+The default value depends of the object namespacing and tries to be
+as short as possible:
+
+* `<namespace>.<basename>.disk.<rindex>` if the object is namespaced.
+* `<basename>.disk.<rindex>` if the object is not namespaced.
