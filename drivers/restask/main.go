@@ -257,7 +257,7 @@ func (t *BaseTask) RunIf(ctx context.Context, fn func(context.Context) error) er
 		if n >= t.MaxParallel {
 			return fmt.Errorf("task is already running %d times", n)
 		}
-		if err := runDir.Create(xsession.ID[:]); err != nil {
+		if err := runDir.Create([]byte(xsession.ID.String())); err != nil {
 			return err
 		}
 		return nil
