@@ -4172,10 +4172,13 @@ components:
           required:
             - authority
             - client_id
+            - scope
           properties:
             authority:
               type: string
             client_id:
+              type: string
+            scope:
               type: string
     AuthToken:
       type: object

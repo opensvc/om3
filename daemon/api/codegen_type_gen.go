@@ -311,6 +311,7 @@ type AuthInfo struct {
 	Openid  *struct {
 		Authority string `json:"authority"`
 		ClientId  string `json:"client_id"`
+		Scope     string `json:"scope"`
 	} `json:"openid,omitempty"`
 }
 

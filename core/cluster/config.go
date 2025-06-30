@@ -32,6 +32,7 @@ type (
 		Port            int    `json:"port"`
 		OpenIDAuthority string `json:"openid_authority"`
 		OpenIDClientID  string `json:"openid_client_id"`
+		OpenIDScope     string `json:"openid_scope"`
 		DNSSockGID      string `json:"dns_sock_gid"`
 		DNSSockUID      string `json:"dns_sock_uid"`
 	}
