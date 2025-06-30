@@ -8,7 +8,6 @@ import (
 	"os"
 	"time"
 
-	"github.com/go-chi/jwtauth/v5"
 	"github.com/golang-jwt/jwt/v5"
 	"github.com/shaj13/go-guardian/v2/auth"
 	"github.com/shaj13/go-guardian/v2/auth/strategies/token"
@@ -34,8 +33,7 @@ type (
 )
 
 var (
-	jwtAuth *jwtauth.JWTAuth
-
+	jwtSignKey *rsa.PrivateKey // Stores the RSA private key for signing
 	// jwtVerifyKeySign is the jwt verify key signature initialized during initAuthJWT
 	jwtVerifyKeySign string
 )
@@ -47,10 +45,12 @@ func initJWT(i interface{}) (string, auth.Strategy, error) {
 		name      = "jwt"
 	)
 
-	verifyKey, jwtAuth, err = initAuthJWT(i)
+	var signKey *rsa.PrivateKey // Temporary variable to capture the signKey
+	verifyKey, signKey, err = initAuthJWT(i)
 	if err != nil {
 		return name, nil, err
 	}
+	jwtSignKey = signKey // Assign to the global variable
 	validate := func(ctx context.Context, r *http.Request, s string) (info auth.Info, exp time.Time, err error) {
 		var tk *jwt.Token
 
@@ -72,8 +72,8 @@ func initJWT(i interface{}) (string, auth.Strategy, error) {
 	return name, token.New(validate, cache), nil
 }
 
-// initAuthJWT initialize auth JWT and returns verify key and *jwtauth.JWTAuth
-func initAuthJWT(i interface{}) (*rsa.PublicKey, *jwtauth.JWTAuth, error) {
+// initAuthJWT initialize auth JWT and returns verify key and sign key
+func initAuthJWT(i interface{}) (*rsa.PublicKey, *rsa.PrivateKey, error) {
 	var (
 		err error
 
@@ -96,8 +96,6 @@ func initAuthJWT(i interface{}) (*rsa.PublicKey, *jwtauth.JWTAuth, error) {
 		return nil, nil, fmt.Errorf("jwt undefined files: sign key and verify key")
 	} else if signKeyFile == "" {
 		return nil, nil, fmt.Errorf("jwt undefined file: sign key")
-		// If we want to support less secure HMAC token from a static sign key:
-		//	jwtAuth = jwtauth.New("HMAC", []byte(jwtSignKey), nil)
 	} else if verifyKeyFile == "" {
 		return nil, nil, fmt.Errorf("jwt undefined file: verify key")
 	}
@@ -119,25 +117,30 @@ func initAuthJWT(i interface{}) (*rsa.PublicKey, *jwtauth.JWTAuth, error) {
 	} else {
 		jwtVerifyKeySign = ssh.FingerprintLegacyMD5(pk)
 	}
-	return verifyKey, jwtauth.New("RS256", signKey, verifyKey), nil
+	return verifyKey, signKey, nil
 }
 
 // CreateUserToken implements CreateUserToken interface for JWTCreator.
-// empty token is returned if jwtAuth is not initialized
+// empty token is returned if jwtSignKey is not initialized
 func (*JWTCreator) CreateUserToken(userInfo auth.Info, duration time.Duration, xClaims map[string]interface{}) (tk string, expiredAt time.Time, err error) {
-	if jwtAuth == nil {
+	if jwtSignKey == nil {
 		return
 	}
 	expiredAt = time.Now().Add(duration)
-	claims := map[string]interface{}{
-		"sub":   userInfo.GetUserName(),
-		"exp":   expiredAt.Unix(),
-		"grant": userInfo.GetExtensions()["grant"],
-	}
+	allClaims := make(jwt.MapClaims)
+	allClaims["sub"] = userInfo.GetUserName()
+	allClaims["exp"] = expiredAt.Unix()
+	allClaims["grant"] = userInfo.GetExtensions()["grant"]
+
 	for c, v := range xClaims {
-		claims[c] = v
+		allClaims[c] = v
 	}
-	if _, tk, err = jwtAuth.Encode(claims); err != nil {
+
+	// Create a new token with RS256 signing method and the claims
+	token := jwt.NewWithClaims(jwt.SigningMethodRS256, allClaims)
+
+	// Sign the token using the RSA private key
+	if tk, err = token.SignedString(jwtSignKey); err != nil {
 		return
 	}
 	return
