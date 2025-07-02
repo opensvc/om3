@@ -2,11 +2,9 @@ package listener
 
 import (
 	"context"
-	"encoding/json"
 	"errors"
 	"fmt"
-	"io"
-	"net/http"
+	"time"
 
 	"github.com/opensvc/om3/core/cluster"
 	"github.com/opensvc/om3/core/object"
@@ -31,7 +29,12 @@ type (
 	authOption struct {
 		*ccfg.NodeDB
 		*object.UsrDB
+		*daemonauth.OpenIDAuthority
 	}
+)
+
+var (
+	discoverOpenIDTimeout = time.Second
 )
 
 func (a *authOption) ListenAddr(ctx context.Context) string {
@@ -48,34 +51,6 @@ func (a *authOption) SignKeyFile() string {
 
 func (a *authOption) VerifyKeyFile() string {
 	return daemonenv.CAsCertFile()
-}
-
-// JwksUri fetches the JWKS URI from the OpenID Connect authority configuration
-// and returns it as a string.
-func (a *authOption) JwksUri() (string, error) {
-	authority := cluster.ConfigData.Get().Listener.OpenIDAuthority
-	if authority == "" {
-		return "", nil
-	}
-	wellKnown := authority + "/.well-known/openid-configuration"
-	resp, err := http.Get(wellKnown)
-	if err != nil {
-		return "", err
-	}
-	defer resp.Body.Close()
-
-	b, err := io.ReadAll(resp.Body)
-	if err != nil {
-		return "", err
-	}
-	type IDWellKnown struct {
-		JwksUri string `json:"jwks_uri"`
-	}
-	var idWellKnown IDWellKnown
-	if err = json.Unmarshal(b, &idWellKnown); err != nil {
-		return "", err
-	}
-	return idWellKnown.JwksUri, nil
 }
 
 func New(opts ...funcopt.O) *T {
@@ -103,11 +78,21 @@ func (t *T) Start(ctx context.Context) error {
 	} else {
 		t.stopFunc = append(t.stopFunc, t.stopCertFS)
 	}
-	if strategies, err := daemonauth.InitStategies(ctx, &authOption{}); err != nil {
+	authOpt := authOption{}
+	if authUrl := cluster.ConfigData.Get().Listener.OpenIDAuthority; authUrl != "" {
+		if authority, err := daemonauth.FetchOpenIDAuthority(ctx, discoverOpenIDTimeout, authUrl); err != nil {
+			t.log.Errorf("fetch openid authority from %s: %s", authUrl, err)
+		} else {
+			t.log.Debugf("discovered openid authority from %s: %#v", authUrl, *authority)
+			authOpt.OpenIDAuthority = authority
+		}
+	}
+	if strategies, err := daemonauth.InitStategies(ctx, &authOpt); err != nil {
 		return err
 	} else {
 		ctx = daemonauth.ContextWithStrategies(ctx, strategies)
 		ctx = daemonauth.ContextWithJWTCreator(ctx)
+		ctx = daemonauth.ContextWithOpenIDAuthority(ctx, authOpt.OpenIDAuthority)
 	}
 	clusterConfig := cluster.ConfigData.Get()
 	for _, lsnr := range []startStopper{

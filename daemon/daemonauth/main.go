@@ -28,9 +28,10 @@ type (
 )
 
 var (
-	cache                libcache.Cache
-	strategiesContextKey contextKey = 0
-	jwtCreatorContextKey contextKey = 1
+	cache                     libcache.Cache
+	strategiesContextKey      contextKey = 0
+	jwtCreatorContextKey      contextKey = 1
+	OpenIDAuthorityContextKey contextKey = 2
 )
 
 const (
@@ -85,7 +86,14 @@ func JWTCreatorFromContext(ctx context.Context) *JWTCreator {
 	return ctx.Value(jwtCreatorContextKey).(*JWTCreator)
 }
 
-// InitStategies initialize and returns strategies
+func ContextWithOpenIDAuthority(ctx context.Context, oAuth *OpenIDAuthority) context.Context {
+	return context.WithValue(ctx, OpenIDAuthorityContextKey, oAuth)
+}
+
+func OpenIDAuthorityFromContext(ctx context.Context) *OpenIDAuthority {
+	return ctx.Value(OpenIDAuthorityContextKey).(*OpenIDAuthority)
+}
+
 // to enable all strategies, i has to implement AllStrategieser
 func InitStategies(ctx context.Context, i any) (union.Union, error) {
 	if err := initCache(); err != nil {

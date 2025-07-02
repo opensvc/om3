@@ -2,6 +2,8 @@ package daemonapi
 
 import (
 	"net/http"
+	"slices"
+	"strings"
 
 	"github.com/labstack/echo/v4"
 
@@ -18,6 +20,14 @@ func (a *DaemonAPI) GetAuthInfo(ctx echo.Context) error {
 
 	if config.Listener.OpenIDAuthority != "" {
 		data.Methods = append(data.Methods, "openid")
+		var scopes []string
+		if a.OpenIDAuthority != nil {
+			for _, candidate := range strings.Fields(config.Listener.OpenIDScope) {
+				if slices.Contains(a.OpenIDAuthority.ScopesSupported, candidate) {
+					scopes = append(scopes, candidate)
+				}
+			}
+		}
 		data.Openid = &struct {
 			Authority string `json:"authority"`
 			ClientId  string `json:"client_id"`
@@ -25,7 +35,7 @@ func (a *DaemonAPI) GetAuthInfo(ctx echo.Context) error {
 		}{
 			Authority: config.Listener.OpenIDAuthority,
 			ClientId:  config.Listener.OpenIDClientID,
-			Scope:     config.Listener.OpenIDScope,
+			Scope:     strings.Join(scopes, " "),
 		}
 	}
 	return ctx.JSON(http.StatusOK, data)
