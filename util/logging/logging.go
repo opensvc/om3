@@ -11,6 +11,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/fatih/color"
 	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/journald"
 	"github.com/rs/zerolog/log"
@@ -83,6 +84,37 @@ func marshalStack(err error) interface{} {
 	return f
 }
 
+func FormatLevel(i interface{}) string {
+	var l string
+	if ll, ok := i.(string); ok {
+		switch ll {
+		case "trace":
+			l = color.New(color.FgMagenta).Sprint("TRC")
+		case "debug":
+			l = color.New(color.FgYellow).Sprint("DBG")
+		case "info":
+			l = color.New(color.FgGreen).Sprint("INF")
+		case "warn":
+			l = color.New(color.FgHiYellow).Sprint("WRN")
+		case "error":
+			l = color.New(color.FgRed, color.Bold).Sprint("ERR")
+		case "fatal":
+			l = color.New(color.FgRed, color.Bold).Sprint("FTL")
+		case "panic":
+			l = color.New(color.FgRed, color.Bold).Sprint("PNC")
+		default:
+			l = color.New(color.Bold).Sprint("???")
+		}
+	} else {
+		if i == nil {
+			l = color.New(color.Bold).Sprint("???")
+		} else {
+			l = strings.ToUpper(fmt.Sprintf("%s", i))[0:3]
+		}
+	}
+	return l
+}
+
 // Configure sets up the logging framework
 func Configure(config Config) error {
 	var writers []io.Writer
@@ -109,6 +141,7 @@ func Configure(config Config) error {
 			Out:              os.Stderr,
 			TimeFormat:       TimeFormat,
 			NoColor:          !config.WithColor,
+			FormatLevel:      FormatLevel,
 			FormatFieldName:  func(i any) string { return "" },
 			FormatFieldValue: func(i any) string { return "" },
 			FormatMessage: func(i any) string {

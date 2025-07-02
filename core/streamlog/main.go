@@ -13,6 +13,7 @@ import (
 
 	"github.com/opensvc/om3/core/rawconfig"
 	"github.com/opensvc/om3/util/command"
+	"github.com/opensvc/om3/util/logging"
 )
 
 type (
@@ -45,6 +46,7 @@ func (event *Event) RenderConsole() {
 	w := zerolog.NewConsoleWriter()
 	w.TimeFormat = "2006-01-02T15:04:05.000Z07:00"
 	w.NoColor = color.NoColor
+	w.FormatLevel = logging.FormatLevel
 	w.FormatFieldName = func(i any) string { return "" }
 	w.FormatFieldValue = func(i any) string { return "" }
 	w.FormatMessage = func(i any) string {
@@ -72,6 +74,7 @@ func (event *Event) Render(format string) {
 func (events Events) RenderConsole() {
 	w := zerolog.NewConsoleWriter()
 	w.TimeFormat = "2006-01-02T15:04:05.000Z07:00"
+	w.FormatLevel = logging.FormatLevel
 	w.NoColor = color.NoColor
 	for _, event := range events {
 		_, _ = w.Write(event.B)
