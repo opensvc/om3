@@ -649,23 +649,24 @@ func (t *T) cgroupDir() string {
 
 func (t *T) abortPing() bool {
 	hn := t.GetHostname()
-	t.Log().Infof("abort test: ping %s", hn)
+	t.Log().Infof("abort? ping %s", hn)
 
 	if pinger, err := ping.NewPinger(hn); err == nil {
 		pinger.SetPrivileged(true)
 		pinger.Timeout = time.Second * 5
 		pinger.Count = 1
 		if err := pinger.Run(); err != nil {
-			t.Log().Warnf("no-abort: pinger err: %s", err)
+			t.Log().Warnf("abort? pinger run failed: %s", err)
 			return false
 		}
 		if pinger.Statistics().PacketsRecv > 0 {
-			t.Log().Infof("abort: %s is alive", hn)
+			t.Log().Infof("abort! %s is alive", hn)
 			return true
 		}
+		t.Log().Debugf("abort? %s is not alive", hn)
 		return false
 	} else {
-		t.Log().Debugf("disable ping abort check: %s", err)
+		t.Log().Debugf("abort? pinger init failed: %s", err)
 	}
 	return false
 }
@@ -674,7 +675,7 @@ func (t *T) abortPeerUp() bool {
 	if n, err := t.upPeer(); err != nil {
 		return false
 	} else if n != "" {
-		t.Log().Infof("abort: %s is up on %s", t.GetHostname(), n)
+		t.Log().Infof("abort! %s is up on %s", t.GetHostname(), n)
 		return true
 	}
 	return false
