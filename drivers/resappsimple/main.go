@@ -11,6 +11,7 @@ import (
 
 	"github.com/opensvc/om3/core/actionrollback"
 	"github.com/opensvc/om3/core/resource"
+	"github.com/opensvc/om3/core/resourceselector"
 	"github.com/opensvc/om3/core/status"
 	"github.com/opensvc/om3/drivers/resapp"
 	"github.com/opensvc/om3/util/command"
@@ -95,8 +96,13 @@ func (t *T) Stop(ctx context.Context) error {
 		err = t.stop(ctx)
 	}
 	if err != nil {
-		// compat b2.1: ignore app resource stop error
-		t.Log().Warnf("ignored stop failure: %s", err)
+		if resourceselector.FromContext(ctx, nil).IsZero() {
+			// compat b2.1: ignore app resource stop error
+			t.Log().Warnf("ignored stop failure: %s", err)
+			return nil
+		} else {
+			return err
+		}
 	}
 	return nil
 }
