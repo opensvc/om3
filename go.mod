@@ -57,7 +57,7 @@ require (
 	github.com/opencontainers/runtime-spec v1.0.2
 	github.com/opensvc/fcache v1.0.3
 	github.com/opensvc/fcntllock v1.0.3
-	github.com/opensvc/flock v1.0.3
+	github.com/opensvc/flock v1.1.1
 	github.com/opensvc/testhelper v1.0.0
 	github.com/pbar1/pkill-go v1.0.0
 	github.com/pkg/errors v0.9.1

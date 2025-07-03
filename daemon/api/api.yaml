@@ -5045,12 +5045,30 @@ components:
         running:
           type: array
           items:
-            type: string
+            $ref: '#/components/schemas/RunningInfo'
         scale:
           type: integer
         updated_at:
           type: string
           format: date-time
+
+    RunningInfo:
+      type: object
+      required:
+        - rid
+        - session_id
+        - pid
+        - at
+      properties:
+        at:
+          type: string
+          format: date-time
+        rid:
+          type: string
+        session_id:
+          type: string
+        pid:
+          type: integer
 
     IPAddressList:
       type: object

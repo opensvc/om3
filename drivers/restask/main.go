@@ -225,12 +225,15 @@ func (t *BaseTask) WriteLastRun(retcode int) error {
 	return os.WriteFile(t.lastRunFile(), b, os.FileMode(0644))
 }
 
-func (t *BaseTask) IsRunning() bool {
-	hasRunning, err := t.RunDir().HasRunning()
+func (t *BaseTask) Running() (resource.RunningInfoList, error) {
+	var l resource.RunningInfoList
+	runDir := t.RunDir()
+	rid := t.RID()
+	err := l.LoadRunDir(rid, runDir)
 	if err != nil {
-		return false
+		return l, fmt.Errorf("rundir %s info load reported errors: %w", runDir.Path, err)
 	}
-	return hasRunning
+	return l, nil
 }
 
 func (t *BaseTask) RunDir() runfiles.Dir {

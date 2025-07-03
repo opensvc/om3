@@ -5,6 +5,8 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"strconv"
+	"time"
 
 	"github.com/opensvc/om3/util/plog"
 )
@@ -13,6 +15,12 @@ type (
 	Dir struct {
 		Path string
 		Log  *plog.Logger
+	}
+	List []Info
+	Info struct {
+		At      time.Time
+		PID     int
+		Content []byte
 	}
 	cleaning int
 )
@@ -63,6 +71,50 @@ func (t Dir) create(pid int, content []byte) error {
 	defer file.Sync()
 	_, err = file.Write(content)
 	return err
+}
+
+func (t Dir) List() (l List, err error) {
+	var v bool
+	err = filepath.WalkDir(t.Path, func(path string, e os.DirEntry, err error) error {
+		if errors.Is(err, os.ErrNotExist) {
+			return nil
+		} else if err != nil {
+			return err
+		}
+		if path == t.Path {
+			return nil
+		}
+		if e.IsDir() {
+			return filepath.SkipDir
+		}
+		v, err = IsValid(path)
+		if errors.Is(err, ErrProcNotFound) || errors.Is(err, ErrProcTooYoung) {
+			return nil
+		} else if err != nil {
+			return err
+		}
+		if v {
+			pid, err := strconv.Atoi(filepath.Base(path))
+			if err != nil {
+				return nil
+			}
+			info, err := os.Stat(path)
+			if err != nil {
+				return err
+			}
+			content, err := os.ReadFile(path)
+			if err != nil {
+				return err
+			}
+			l = append(l, Info{
+				PID:     pid,
+				Content: content,
+				At:      info.ModTime(),
+			})
+		}
+		return nil
+	})
+	return
 }
 
 func (t Dir) HasRunning() (bool, error) {

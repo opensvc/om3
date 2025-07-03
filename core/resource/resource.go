@@ -12,6 +12,7 @@ import (
 	"time"
 
 	"github.com/golang-collections/collections/set"
+	"github.com/google/uuid"
 	"github.com/opensvc/fcntllock"
 	"github.com/opensvc/flock"
 	"github.com/rs/zerolog"
@@ -29,6 +30,7 @@ import (
 	"github.com/opensvc/om3/util/device"
 	"github.com/opensvc/om3/util/pg"
 	"github.com/opensvc/om3/util/plog"
+	"github.com/opensvc/om3/util/runfiles"
 	"github.com/opensvc/om3/util/scsi"
 	"github.com/opensvc/om3/util/xsession"
 )
@@ -237,6 +239,17 @@ type (
 
 		// Tags is a set of words attached to the resource.
 		Tags TagSet `json:"tags,omitempty"`
+	}
+
+	// RunningInfoList is the list of the in-progress run info (for sync and task).
+	RunningInfoList []RunningInfo
+
+	// RunningInfo describes a run in progress (for sync and task).
+	RunningInfo struct {
+		PID       int       `json:"pid"`
+		RID       string    `json:"rid"`
+		SessionID uuid.UUID `json:"session_id"`
+		At        time.Time `json:"at"`
 	}
 
 	Hook int
@@ -1232,6 +1245,27 @@ func (t *T) SetLoggerForTest(l *plog.Logger) {
 	t.log = *l
 }
 
+func (t *T) RunningFromLock(intent string) (RunningInfoList, error) {
+	var l RunningInfoList
+	p := filepath.Join(t.VarDir(), intent)
+	lock := flock.New(p, xsession.ID.String(), fcntllock.New)
+	meta, err := lock.Probe()
+	if err != nil {
+		return l, nil
+	}
+	if meta.SessionID == "" {
+		return l, nil
+	}
+	sessionID, _ := uuid.Parse(meta.SessionID)
+	l = append(l, RunningInfo{
+		At:        meta.At,
+		PID:       meta.PID,
+		RID:       t.RID(),
+		SessionID: sessionID,
+	})
+	return l, nil
+}
+
 func (t *T) Lock(disable bool, timeout time.Duration, intent string) (func(), error) {
 	if disable {
 		// --nolock
@@ -1317,4 +1351,35 @@ func (t Status) Unstructured() map[string]any {
 		m["info"] = t.Info
 	}
 	return m
+}
+
+// Has is true if the rid is found running in the Instance Monitor data sent by the daemon.
+func (t *RunningInfoList) Has(rid string) bool {
+	for _, r := range *t {
+		if r.RID == rid {
+			return true
+		}
+	}
+	return false
+}
+
+func (t *RunningInfoList) LoadRunDir(rid string, runDir runfiles.Dir) error {
+	runDirList, err := runDir.List()
+	if err != nil {
+		return err
+	}
+	var errs error
+	for _, runfileInfo := range runDirList {
+		sessionID, err := uuid.ParseBytes(runfileInfo.Content)
+		if err != nil {
+			errs = errors.Join(errs, fmt.Errorf("runfile content parsing to uuid failed: %s", err))
+		}
+		*t = append(*t, RunningInfo{
+			At:        runfileInfo.At,
+			PID:       runfileInfo.PID,
+			RID:       rid,
+			SessionID: sessionID,
+		})
+	}
+	return errs
 }

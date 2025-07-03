@@ -7,6 +7,8 @@ import (
 	"fmt"
 	"os"
 	"strings"
+	"sync"
+	"time"
 
 	"github.com/opensvc/om3/core/actioncontext"
 	"github.com/opensvc/om3/core/client"
@@ -36,22 +38,41 @@ type (
 )
 
 func (t *CmdObjectInstanceStatus) extract(nodenames []string, paths naming.Paths, c *client.T) (data []object.Digest, err error) {
+	if env.HasDaemonOrigin() {
+		// avoid exec loop.
+		// The daemon doesn't need more.
+		data, err = t.extractLocal(paths)
+		return
+	}
 	if t.Local || t.Monitor || (t.Refresh && t.NodeSelector == "") {
+		var wg sync.WaitGroup
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			clusterStatus, err := getClusterStatus(paths, c)
+			if err != nil {
+				return
+			}
+			ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+			defer cancel()
+			commoncmd.RefreshInstanceStatusFromClusterStatus(ctx, clusterStatus)
+		}()
+
 		data, err = t.extractLocal(paths)
 		if err != nil {
 			return
 		}
-		if env.HasDaemonOrigin() {
-			// avoid exec loop.
-			// The daemon doesn't need more.
-			return
+		wg.Wait()
+		// try daemon
+		if data, err := t.extractFromDaemon(paths, c); err == nil {
+			return data, err
 		}
+		return
 	}
 
 	// try daemon
-	data, err = t.extractFromDaemon(paths, c)
-	if err == nil {
-		return
+	if data, err := t.extractFromDaemon(paths, c); err == nil {
+		return data, err
 	}
 
 	data, err = t.extractLocal(paths)
@@ -117,44 +138,31 @@ func (t *CmdObjectInstanceStatus) extractLocal(paths naming.Paths) ([]object.Dig
 	return data, errs
 }
 
-func (t *CmdObjectInstanceStatus) extractFromDaemon(paths naming.Paths, c *client.T) ([]object.Digest, error) {
-	var (
-		err           error
-		b             []byte
-		clusterStatus clusterdump.Data
-	)
-	getClusterStatus := func(selector string) error {
-		b, err = c.NewGetClusterStatus().
-			SetSelector(selector).
-			Get()
-		if err != nil {
-			return err
-		}
-		err = json.Unmarshal(b, &clusterStatus)
-		if err != nil {
-			return err
-		}
-		return nil
-	}
-
-	ctx := context.Background()
+func getClusterStatus(paths naming.Paths, c *client.T) (clusterdump.Data, error) {
+	var clusterStatus clusterdump.Data
 	strSlice := make([]string, len(paths))
 	for i, path := range paths {
 		strSlice[i] = path.String()
 	}
 	selector := strings.Join(strSlice, ",")
 
-	if err := getClusterStatus(selector); err != nil {
-		return []object.Digest{}, err
+	b, err := c.NewGetClusterStatus().
+		SetSelector(selector).
+		Get()
+	if err != nil {
+		return clusterStatus, err
 	}
+	err = json.Unmarshal(b, &clusterStatus)
+	if err != nil {
+		return clusterStatus, err
+	}
+	return clusterStatus, nil
+}
 
-	if t.Refresh {
-		if err := commoncmd.RefreshInstanceStatusFromClusterStatus(ctx, clusterStatus); err != nil {
-			return []object.Digest{}, err
-		}
-		if err := getClusterStatus(selector); err != nil {
-			return []object.Digest{}, err
-		}
+func (t *CmdObjectInstanceStatus) extractFromDaemon(paths naming.Paths, c *client.T) ([]object.Digest, error) {
+	clusterStatus, err := getClusterStatus(paths, c)
+	if err != nil {
+		return []object.Digest{}, err
 	}
 
 	data := make([]object.Digest, 0)

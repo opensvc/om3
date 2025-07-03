@@ -3,6 +3,7 @@ package ressyncrsync
 import (
 	"context"
 	"fmt"
+	"path/filepath"
 	"sort"
 	"strconv"
 	"strings"
@@ -53,7 +54,8 @@ type (
 )
 
 const (
-	rsync = "rsync"
+	rsync    = "rsync"
+	lockName = "sync"
 
 	modeFull modeT = iota
 	modeIncr
@@ -63,17 +65,15 @@ func New() resource.Driver {
 	return &T{}
 }
 
-func (t *T) IsRunning() bool {
-	unlock, err := t.Lock(false, time.Second*0, "sync")
-	defer unlock()
-	return err != nil
+func (t *T) Running() (resource.RunningInfoList, error) {
+	return t.RunningFromLock(lockName)
 }
 
 func (t *T) Full(ctx context.Context) error {
 	disable := actioncontext.IsLockDisabled(ctx)
 	timeout := actioncontext.LockTimeout(ctx)
 	target := actioncontext.Target(ctx)
-	unlock, err := t.Lock(disable, timeout, "sync")
+	unlock, err := t.Lock(disable, timeout, lockName)
 	if err != nil {
 		return err
 	}
@@ -85,7 +85,7 @@ func (t *T) Update(ctx context.Context) error {
 	disable := actioncontext.IsLockDisabled(ctx)
 	timeout := actioncontext.LockTimeout(ctx)
 	target := actioncontext.Target(ctx)
-	unlock, err := t.Lock(disable, timeout, "sync")
+	unlock, err := t.Lock(disable, timeout, lockName)
 	if err != nil {
 		return err
 	}
@@ -110,6 +110,10 @@ func (t *T) lockedSync(ctx context.Context, mode modeT, target []string) (err er
 		return fmt.Errorf("the instance is not sufficiently started (%s). refuse to sync to protect the data of the started remote instance", strings.Join(rids, ","))
 	}
 	nodenames := t.GetTargetPeernames(target, t.Nodes, t.DRPNodes)
+	if len(nodenames) == 0 {
+		t.Log().Infof("no peer to sync")
+		return nil
+	}
 	for _, nodename := range nodenames {
 		if err := t.isSendAllowedToPeerEnv(nodename); err != nil {
 			if isCron {
@@ -242,7 +246,7 @@ func (t *T) fullOptions() []string {
 
 func (t *T) bandwitdthLimitOptions() []string {
 	if t.BandwidthLimit != "" {
-		return []string{"-bwlimit=" + t.BandwidthLimit}
+		return []string{"--bwlimit=" + t.BandwidthLimit}
 	} else {
 		return []string{}
 	}
@@ -266,7 +270,12 @@ func (t *T) peerSync(ctx context.Context, mode modeT, nodename string) (err erro
 	options := t.fullOptions()
 	dst := t.user() + "@" + nodename + ":" + t.Dst
 	args := append([]string{}, options...)
-	args = append(args, t.Src, dst)
+	if matches, err := filepath.Glob(t.Src); err != nil {
+		return err
+	} else {
+		args = append(args, matches...)
+	}
+	args = append(args, dst)
 	var timeout time.Duration
 	if t.Timeout != nil {
 		timeout = *t.Timeout

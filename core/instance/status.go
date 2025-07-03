@@ -15,16 +15,16 @@ type (
 
 	// Status describes the instance status.
 	Status struct {
-		Avail         status.T           `json:"avail"`
-		Encap         EncapMap           `json:"encap,omitempty"`
-		FrozenAt      time.Time          `json:"frozen_at,omitempty"`
-		LastStartedAt time.Time          `json:"last_started_at"`
-		Optional      status.T           `json:"optional,omitempty"`
-		Overall       status.T           `json:"overall"`
-		Provisioned   provisioned.T      `json:"provisioned"`
-		Resources     ResourceStatuses   `json:"resources,omitempty"`
-		Running       ResourceRunningSet `json:"running,omitempty"`
-		UpdatedAt     time.Time          `json:"updated_at"`
+		Avail         status.T                 `json:"avail"`
+		Encap         EncapMap                 `json:"encap,omitempty"`
+		FrozenAt      time.Time                `json:"frozen_at,omitempty"`
+		LastStartedAt time.Time                `json:"last_started_at"`
+		Optional      status.T                 `json:"optional,omitempty"`
+		Overall       status.T                 `json:"overall"`
+		Provisioned   provisioned.T            `json:"provisioned"`
+		Resources     ResourceStatuses         `json:"resources,omitempty"`
+		Running       resource.RunningInfoList `json:"running,omitempty"`
+		UpdatedAt     time.Time                `json:"updated_at"`
 	}
 
 	EncapStatus struct {
@@ -35,9 +35,6 @@ type (
 	EncapMap map[string]EncapStatus
 
 	ResourceStatuses map[string]resource.Status
-
-	// ResourceRunningSet is the list of resource currently running (sync and task).
-	ResourceRunningSet []string
 
 	// ResourceOrder is a sortable list representation of the
 	// instance status resources map.
@@ -58,16 +55,6 @@ func (m ResourceStatuses) DeepCopy() ResourceStatuses {
 		n[k] = *v.DeepCopy()
 	}
 	return n
-}
-
-// Has is true if the rid is found running in the Instance Monitor data sent by the daemon.
-func (t ResourceRunningSet) Has(rid string) bool {
-	for _, r := range t {
-		if r == rid {
-			return true
-		}
-	}
-	return false
 }
 
 // SortedResources returns a list of resource identifiers sorted by:
@@ -104,7 +91,7 @@ func (t EncapStatus) DeepCopy() *EncapStatus {
 
 func (t Status) DeepCopy() *Status {
 	n := t
-	n.Running = append(ResourceRunningSet{}, t.Running...)
+	n.Running = append(resource.RunningInfoList{}, t.Running...)
 	n.Resources = t.Resources.DeepCopy()
 	n.Encap = t.Encap.DeepCopy()
 	return &n

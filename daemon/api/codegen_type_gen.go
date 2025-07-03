@@ -1188,6 +1188,14 @@ type ResourceStatus = resource.Status
 // Role defines model for Role.
 type Role string
 
+// RunningInfo defines model for RunningInfo.
+type RunningInfo struct {
+	At        time.Time `json:"at"`
+	Pid       int       `json:"pid"`
+	Rid       string    `json:"rid"`
+	SessionId string    `json:"session_id"`
+}
+
 // SANPath defines model for SANPath.
 type SANPath struct {
 	// Initiator initiator is the host side san path endpoint.
