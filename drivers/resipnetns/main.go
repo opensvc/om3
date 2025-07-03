@@ -394,15 +394,24 @@ func (t *T) abortPing() bool {
 	ip := t.ipaddr()
 	pinger, err := ping.NewPinger(ip.String())
 	if err != nil {
-		t.Log().Errorf("abort: ping: %s", err)
+		t.Log().Errorf("abort? pinger init failed: %s", err)
 		return true
 	}
 	pinger.Count = 5
 	pinger.Timeout = 5 * time.Second
 	pinger.Interval = time.Second
-	t.Log().Infof("checking %s availability (5s)", ip)
-	pinger.Run()
-	return pinger.Statistics().PacketsRecv > 0
+	t.Log().Infof("abort? checking %s availability with ping (5s)", ip)
+	err = pinger.Run()
+	if err != nil {
+		t.Log().Warnf("abort? pinger run failed: %s", err)
+		return false
+	}
+	if pinger.Statistics().PacketsRecv > 0 {
+		t.Log().Errorf("abort! %s is alive", ip)
+		return true
+	}
+	t.Log().Debugf("abort? %s is not alive", ip)
+	return false
 }
 
 func (t *T) ipnet() *net.IPNet {

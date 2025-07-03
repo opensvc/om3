@@ -185,14 +185,14 @@ func TestAppStop(t *testing.T) {
 		}
 	})
 
-	t.Run("exit without error", func(t *testing.T) {
+	t.Run("exit with error", func(t *testing.T) {
 		name := "logError"
 		args := getCmd(name)
 		t.Logf("run 'om %v'", strings.Join(args, " "))
 		cmd := exec.Command(os.Args[0], args...)
 		cmd.Env = append(os.Environ(), "GO_TEST_MODE=off", "OSVC_ROOT_PATH="+env.Root)
 		_, err := cmd.CombinedOutput()
-		assert.Nil(t, err)
+		assert.NotNil(t, err)
 	})
 
 	t.Run("environment", func(t *testing.T) {
@@ -257,7 +257,7 @@ func TestAppStop(t *testing.T) {
 			cmd := exec.Command(os.Args[0], args...)
 			cmd.Env = append(os.Environ(), "GO_TEST_MODE=off", "OSVC_ROOT_PATH="+env.Root)
 			out, err := cmd.CombinedOutput()
-			assert.Nil(t, err, "app failure has not been ignored as expected", string(out))
+			assert.NotNil(t, err, "scoped app action error was ignored", string(out))
 			for _, expected := range cases[name].expectedResults {
 				assert.Containsf(t, string(out), expected, "got: '\n%v'", string(out))
 			}
@@ -300,7 +300,7 @@ func TestAppStop(t *testing.T) {
 		cmd := exec.Command(os.Args[0], args...)
 		cmd.Env = append(os.Environ(), "GO_TEST_MODE=off", "OSVC_ROOT_PATH="+env.Root)
 		out, err := cmd.CombinedOutput()
-		require.Nil(t, err, "app failure has not been ignored as expected", string(out))
+		assert.NotNil(t, err, "scoped app action error was ignored", string(out))
 		for _, expected := range cases[name].expectedResults {
 			assert.Containsf(t, string(out), env.Root+"/etc/svcappforking.d/"+expected+": no such file or directory", "got: '%v'", string(out))
 		}
@@ -378,7 +378,7 @@ func TestAppStop(t *testing.T) {
 		cmd := exec.Command(os.Args[0], args...)
 		cmd.Env = append(os.Environ(), "GO_TEST_MODE=off", "OSVC_ROOT_PATH="+env.Root)
 		out, err := cmd.CombinedOutput()
-		require.Nil(t, err, "app failure should not return exit code failed", string(out))
+		require.Errorf(t, err, "app failure should return exit code failed\ncombined output:\n%s", string(out))
 		for _, expected := range cases[name].expectedResults {
 			assert.Containsf(t, string(out), expected, "got: '%v'", string(out))
 		}
@@ -609,8 +609,8 @@ func TestAppStopTimeout(t *testing.T) {
 	cases := map[string]bool{
 		"no_timeout":           true,
 		"stop_timeout_succeed": true,
-		"stop_timeout_failure": true,
-		"timeout_failure":      true,
+		"stop_timeout_failure": false,
+		"timeout_failure":      false,
 	}
 	getCmd := func(name string) []string {
 		args := []string{"svcapp", "stop", "--local", "--rid", "app#" + name}
@@ -683,11 +683,11 @@ func TestAppStartRollback(t *testing.T) {
 			expectedStart: []string{"1ok", "2ok", "4rollbackFail", "5fail"},
 			// do not continue start after one app fails
 			unexpectedStart:  []string{"6ok"},
-			expectedRollback: []string{"1ok", "4rollbackFail"},
+			expectedRollback: []string{"4rollbackFail"},
 			// do not continue  rollbacks when one rollback fails
 
 			// app#2ok is not called (it is a simple app without checker => app#2ok: already down, so rollback is skipped)
-			unexpectedRollback: []string{"2ok", "5fail", "6ok"},
+			unexpectedRollback: []string{"1ok", "2ok", "5fail", "6ok"},
 			exitCode:           1,
 		},
 	}

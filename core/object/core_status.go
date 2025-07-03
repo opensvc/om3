@@ -56,10 +56,13 @@ func (t *core) statusEval(ctx context.Context) (instance.Status, error) {
 
 func (t *core) lockedStatusEval() (data instance.Status, err error) {
 	data.UpdatedAt = time.Now()
-	data.Running = runningRIDList(t)
 	data.Avail = status.NotApplicable
 	data.Overall = status.NotApplicable
 	data.Optional = status.NotApplicable
+	data.Running, err = mergedRunningInfoList(t)
+	if err != nil {
+		return
+	}
 	err = t.statusDump(data)
 	return
 }

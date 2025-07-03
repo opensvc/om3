@@ -112,7 +112,6 @@ func (t *actor) lockedMonitorStatusEval(ctx context.Context, data instance.Statu
 	t.setLastStartedAt(&data)
 	data.UpdatedAt = time.Now()
 	data.FrozenAt = t.Frozen()
-	data.Running = runningRIDList(t)
 
 	// reset fields that t.resourceStatusEval() will re-evaluate
 	data.Avail = status.Undef
@@ -120,44 +119,57 @@ func (t *actor) lockedMonitorStatusEval(ctx context.Context, data instance.Statu
 	data.Provisioned = provisioned.Undef
 
 	if err := t.resourceStatusEval(ctx, &data, true); err != nil {
-		return data, err
+		return data, fmt.Errorf("resource status eval: %w", err)
 	}
 	if len(data.Resources) == 0 {
 		data.Avail = status.NotApplicable
 		data.Overall = status.NotApplicable
 		data.Optional = status.NotApplicable
+	}
+	var err error
+	data.Running, err = mergedRunningInfoList(t)
+	if err != nil {
+		return data, fmt.Errorf("merge running resource: %w", err)
 	}
 	return data, t.statusDump(data)
 }
 
-func (t *actor) lockedStatusEval(ctx context.Context) (data instance.Status, err error) {
+func (t *actor) lockedStatusEval(ctx context.Context) (instance.Status, error) {
+	var data instance.Status
 	t.setLastStartedAt(&data)
 	data.UpdatedAt = time.Now()
 	data.FrozenAt = t.Frozen()
-	data.Running = runningRIDList(t)
-	if err = t.resourceStatusEval(ctx, &data, false); err != nil {
-		return
+	if err := t.resourceStatusEval(ctx, &data, false); err != nil {
+		return data, fmt.Errorf("resource status eval: %w", err)
 	}
 	if len(data.Resources) == 0 {
 		data.Avail = status.NotApplicable
 		data.Overall = status.NotApplicable
 		data.Optional = status.NotApplicable
 	}
+	var err error
+	data.Running, err = mergedRunningInfoList(t)
+	if err != nil {
+		return data, fmt.Errorf("merge running resource: %w", err)
+	}
 	err = t.statusDump(data)
-	return
+	return data, err
 }
 
-func runningRIDList(t interface{}) []string {
-	l := make([]string, 0)
+func mergedRunningInfoList(t interface{}) (resource.RunningInfoList, error) {
+	var errs error
+	l := make(resource.RunningInfoList, 0)
 	for _, r := range listResources(t) {
-		if i, ok := r.(resource.IsRunninger); !ok {
-			continue
-		} else if !i.IsRunning() {
-			continue
+		if i, ok := r.(resource.Runninger); ok {
+			runningInfoList, err := i.Running()
+			if err != nil {
+				errs = errors.Join(errs, fmt.Errorf("%s: %w", r.RID(), err))
+			} else {
+				l = append(l, runningInfoList...)
+			}
 		}
-		l = append(l, r.RID())
 	}
-	return l
+	return l, errs
 }
 
 func (t *actor) isEncapNodeMatchingResource(r resource.Driver) (bool, error) {

@@ -27,6 +27,7 @@ import (
 	"github.com/opensvc/om3/daemon/api"
 	"github.com/opensvc/om3/daemon/msgbus"
 	"github.com/opensvc/om3/util/hostname"
+	"github.com/opensvc/om3/util/logging"
 	"github.com/rivo/tview"
 	"github.com/rs/zerolog"
 )
@@ -1567,6 +1568,7 @@ func (t *App) updateLogTextView() {
 	w := zerolog.NewConsoleWriter()
 	w.Out = tview.ANSIWriter(t.textView)
 	w.TimeFormat = "2006-01-02T15:04:05.000Z07:00"
+	w.FormatLevel = logging.FormatLevel
 	w.FormatFieldName = func(i any) string { return "" }
 	w.FormatFieldValue = func(i any) string { return "" }
 	w.FormatMessage = func(i any) string {

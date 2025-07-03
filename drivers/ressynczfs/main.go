@@ -67,13 +67,8 @@ func New() resource.Driver {
 	return &T{}
 }
 
-func (t *T) IsRunning() bool {
-	unlock, err := t.Lock(false, time.Second*0, lockName)
-	if err != nil {
-		return true
-	}
-	defer unlock()
-	return false
+func (t *T) Running() (resource.RunningInfoList, error) {
+	return t.RunningFromLock(lockName)
 }
 
 func (t *T) Full(ctx context.Context) error {

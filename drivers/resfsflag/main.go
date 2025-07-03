@@ -51,13 +51,13 @@ func (t *T) Abort(ctx context.Context) bool {
 	test := func(n string) bool {
 		client, err := t.NewSSHClient(n)
 		if err != nil {
-			t.Log().Warnf("peer %s: no abort: new ssh client: %s", n, err)
+			t.Log().Warnf("abort? peer %s: new ssh client failed: %s", n, err)
 			return false
 		}
 		defer client.Close()
 		session, err := client.NewSession()
 		if err != nil {
-			t.Log().Warnf("peer %s: no abort: new ssh session: %s", n, err)
+			t.Log().Warnf("abort? peer %s: new ssh session failed: %s", n, err)
 			return false
 		}
 		defer session.Close()
@@ -77,7 +77,7 @@ func (t *T) Abort(ctx context.Context) bool {
 			continue
 		}
 		if test(n) {
-			t.Log().Infof("peer %s: abort: conflict", n)
+			t.Log().Infof("abort! already up on peer %s", n)
 			return true
 		}
 	}

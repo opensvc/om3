@@ -47,12 +47,12 @@ type (
 	}
 
 	//
-	// IsRunninger implements the IsRunning func, which the core calls
+	// Runninger implements the Running func, which the core calls
 	// when evaluating an object instance status to build the "running"
-	// rid list.
+	// list: [{"pid": 123, "rid": "task#1", "session_id": "abcd..."}]
 	//
-	IsRunninger interface {
-		IsRunning() bool
+	Runninger interface {
+		Running() (RunningInfoList, error)
 	}
 
 	//

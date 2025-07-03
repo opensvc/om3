@@ -47,13 +47,8 @@ func (t *T) SortKey() string {
 	return "+" + t.ResourceID.Name
 }
 
-func (t *T) IsRunning() bool {
-	unlock, err := t.Lock(false, time.Second*0, lockName)
-	if err != nil {
-		return true
-	}
-	defer unlock()
-	return false
+func (t *T) Running() (resource.RunningInfoList, error) {
+	return t.RunningFromLock(lockName)
 }
 
 func (t *T) Update(ctx context.Context) error {

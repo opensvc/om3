@@ -4,15 +4,20 @@ package istat
 import (
 	"context"
 	"errors"
+	"os"
+	"path/filepath"
+	"slices"
+	"strconv"
 	"sync"
 	"time"
 
+	"github.com/google/uuid"
 	"github.com/opensvc/om3/core/instance"
+	"github.com/opensvc/om3/core/resource"
 	"github.com/opensvc/om3/daemon/msgbus"
 	"github.com/opensvc/om3/util/hostname"
 	"github.com/opensvc/om3/util/plog"
 	"github.com/opensvc/om3/util/pubsub"
-	"github.com/opensvc/om3/util/stringslice"
 )
 
 type (
@@ -175,7 +180,12 @@ func (t *T) onRunFileUpdated(msg *msgbus.RunFileUpdated) {
 	if iStatus.Running.Has(msg.RID) {
 		return
 	}
-	iStatus.Running = append(iStatus.Running, msg.RID)
+	runningInfo, err := LoadRunningInfo(msg.RID, msg.File)
+	if err != nil {
+		t.log.Warnf("%s load running info failed: %s", msg.RID, err)
+	} else {
+		iStatus.Running = append(iStatus.Running, runningInfo)
+	}
 	iStatus.UpdatedAt = msg.At
 	t.iStatusM[s] = iStatus
 	instance.StatusData.Set(msg.Path, t.localhost, iStatus.DeepCopy())
@@ -184,6 +194,25 @@ func (t *T) onRunFileUpdated(msg *msgbus.RunFileUpdated) {
 		pubsub.Label{"namespace", msg.Path.Namespace},
 		pubsub.Label{"path", s},
 	)
+}
+
+func LoadRunningInfo(rid, file string) (data resource.RunningInfo, errs error) {
+	data.RID = rid
+	if b, err := os.ReadFile(file); err != nil {
+		errors.Join(errs, err)
+	} else {
+		if sessionID, err := uuid.ParseBytes(b); err != nil {
+			errors.Join(errs, err)
+		} else {
+			data.SessionID = sessionID
+		}
+	}
+	if pid, err := strconv.Atoi(filepath.Base(file)); err != nil {
+		errors.Join(errs, err)
+	} else {
+		data.PID = pid
+	}
+	return
 }
 
 func (t *T) onRunFileDeleted(msg *msgbus.RunFileRemoved) {
@@ -198,11 +227,12 @@ func (t *T) onRunFileDeleted(msg *msgbus.RunFileRemoved) {
 		// skip event from past
 		return
 	}
-	i := stringslice.Index(msg.RID, iStatus.Running)
-	if i < 0 {
+	if !iStatus.Running.Has(msg.RID) {
 		return
 	}
-	iStatus.Running = append(iStatus.Running[:i], iStatus.Running[i+1:]...)
+	iStatus.Running = slices.DeleteFunc(iStatus.Running, func(data resource.RunningInfo) bool {
+		return data.RID == msg.RID
+	})
 	iStatus.UpdatedAt = msg.At
 	t.iStatusM[s] = iStatus
 	instance.StatusData.Set(msg.Path, t.localhost, iStatus.DeepCopy())
