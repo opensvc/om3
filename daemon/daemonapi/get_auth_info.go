@@ -15,14 +15,14 @@ func (a *DaemonAPI) GetAuthInfo(ctx echo.Context) error {
 		Methods: []api.AuthInfoMethods{"basic", "x509"},
 	}
 
-	if config.Listener.OpenIDAuthority != "" {
+	if config.Listener.OpenIDIssuer != "" {
 		data.Methods = append(data.Methods, "openid")
 		data.Openid = &struct {
-			Authority string `json:"authority"`
-			ClientId  string `json:"client_id"`
+			ClientId string `json:"client_id"`
+			Issuer   string `json:"issuer"`
 		}{
-			Authority: config.Listener.OpenIDAuthority,
-			ClientId:  config.Listener.OpenIDClientID,
+			ClientId: config.Listener.OpenIDClientID,
+			Issuer:   config.Listener.OpenIDIssuer,
 		}
 	}
 	return ctx.JSON(http.StatusOK, data)

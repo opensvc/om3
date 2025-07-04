@@ -102,7 +102,7 @@ func Start(ctx context.Context, authCfg any) error {
 		if !ok {
 			return ""
 		}
-		return fmt.Sprintf("%s-%s", cfg.OpenIDProvider(), cfg.OpenIDClientID())
+		return fmt.Sprintf("%s-%s", cfg.OpenIDIssuer(), cfg.OpenIDClientID())
 	}
 
 	currentSetting := signature(authCfg)
@@ -191,4 +191,3 @@ func (m *StrategyManager) setStrategy(s union.Union) {
 	defer m.Mutex.Unlock()
 	m.Value = s
 }
-

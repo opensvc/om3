@@ -35,7 +35,7 @@ type (
 	}
 
 	OpenIDSettings interface {
-		OpenIDProvider() string
+		OpenIDIssuer() string
 		OpenIDClientID() string
 	}
 )
@@ -77,7 +77,7 @@ func initJWTOpenID(cxt context.Context, i interface{}) (string, auth.Strategy, e
 	if !ok {
 		return StrategyJWTOpenID, nil, nil
 	}
-	providerURL := settings.OpenIDProvider()
+	providerURL := settings.OpenIDIssuer()
 	if providerURL == "" {
 		return StrategyJWTOpenID, nil, nil
 	}
@@ -114,7 +114,7 @@ func initJWTOpenID(cxt context.Context, i interface{}) (string, auth.Strategy, e
 	return StrategyJWTOpenID, &k{baseStrategy: strategy}, nil
 }
 
-// fetchOpenIDConfiguration retrieves OpenID authority configuration from the given configuration URL.
+// fetchOpenIDConfiguration retrieves OpenID issuer configuration from the given configuration URL.
 // It fetches the OpenID discovery document, parses the JSON response, and returns the OpenIDConfiguration struct.
 // Returns an error if the URL is invalid, the request fails, or if the response cannot be processed correctly.
 func fetchOpenIDConfiguration(ctx context.Context, timeout time.Duration, configURL string) (*OpenIDConfiguration, error) {
@@ -146,10 +146,10 @@ func fetchOpenIDConfiguration(ctx context.Context, timeout time.Duration, config
 		return nil, fmt.Errorf("unexpected HTTP status %d from %s", resp.StatusCode, req.URL)
 	}
 
-	return decodeOpenIDAuthority(resp.Body, req.URL.String())
+	return decodeOpenIDConfiguration(resp.Body, req.URL.String())
 }
 
-func decodeOpenIDAuthority(body io.Reader, source string) (*OpenIDConfiguration, error) {
+func decodeOpenIDConfiguration(body io.Reader, source string) (*OpenIDConfiguration, error) {
 	var openID OpenIDConfiguration
 	if err := json.NewDecoder(body).Decode(&openID); err != nil {
 		return nil, fmt.Errorf("failed to decode OpenID configuration from %s: %w", source, err)

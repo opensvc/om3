@@ -24,7 +24,23 @@
     It should be a user-level setting, not a node-level config.
 
 * **`listener.openid_well_known` removed:**
-    Now the **`listener.openid_authority`** has replaced `listener.openid_well_known`. Previously, `listener.openid_well_known` was used to specify the .well-known/openid-configuration endpoint. Now, `listener.openid_authority` defines the base URL from which the OpenID configuration is derived.
+    Now the **`listener.openid_issuer`** has replaced `listener.openid_well_known`. Previously, `listener.openid_well_known` was used to specify the .well-known/openid-configuration endpoint. Now, `listener.openid_issuer` defines the base URL from which the OpenID configuration is derived.
+    The value is used to define the auth strategy `jwt-openid` (to verify token against the `jwks_uri` and `issuer`).
+    The strategy will pickup `grants` from the claim `entitlements`.
+    It is available from `GET /api/auth/info`:
+        
+      GET /api/auth/info
+      {
+        "methods": [ "openid" ],
+        "openid": {
+          "authority": "https://auth.example.com/realms/myrealm/",
+          "client_id": "clientxxx"
+        }
+      }
+
+* **`listener.openid_client_id` added:**
+   The value is used to define the auth strategy `jwt-openid` (to verify token against the `aud`).
+   The value is served threw the GET /api/auth/info.
 
 * **`reboot` section removed:**
     * `reboot.schedule`
@@ -516,7 +532,6 @@ Where the password is the value of the `þassword` key in `system/sec/relay-v3`.
 ### sec
 
 * Add "o[mx] rename --key old --to new" commands
-
 
 ## Upgrade from b2.1
 
