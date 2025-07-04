@@ -309,8 +309,8 @@ type ArbitratorStatus struct {
 type AuthInfo struct {
 	Methods []AuthInfoMethods `json:"methods"`
 	Openid  *struct {
-		Authority string `json:"authority"`
-		ClientId  string `json:"client_id"`
+		ClientId string `json:"client_id"`
+		Issuer   string `json:"issuer"`
 	} `json:"openid,omitempty"`
 }
 

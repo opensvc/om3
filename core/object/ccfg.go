@@ -103,13 +103,13 @@ func getClusterConfig() (*cluster.Config, error) {
 		keyCASecPaths = key.New("cluster", "ca")
 		keyQuorum     = key.New("cluster", "quorum")
 
-		keyListenerCRL             = key.New("listener", "crl")
-		keyListenerAddr            = key.New("listener", "addr")
-		keyListenerPort            = key.New("listener", "port")
-		keyListenerOpenIDAuthority = key.New("listener", "openid_authority")
-		keyListenerOpenIDClientID  = key.New("listener", "openid_client_id")
-		keyListenerDNSSockUID      = key.New("listener", "dns_sock_uid")
-		keyListenerDNSSockGID      = key.New("listener", "dns_sock_gid")
+		keyListenerCRL            = key.New("listener", "crl")
+		keyListenerAddr           = key.New("listener", "addr")
+		keyListenerPort           = key.New("listener", "port")
+		keyListenerOpenIDIssuer   = key.New("listener", "openid_issuer")
+		keyListenerOpenIDClientID = key.New("listener", "openid_client_id")
+		keyListenerDNSSockUID     = key.New("listener", "dns_sock_uid")
+		keyListenerDNSSockGID     = key.New("listener", "dns_sock_gid")
 
 		keyNodeSSHKey = key.New("node", "sshkey")
 	)
@@ -138,7 +138,7 @@ func getClusterConfig() (*cluster.Config, error) {
 	} else {
 		cfg.Listener.Port = v.(int)
 	}
-	cfg.Listener.OpenIDAuthority = c.GetString(keyListenerOpenIDAuthority)
+	cfg.Listener.OpenIDIssuer = c.GetString(keyListenerOpenIDIssuer)
 	cfg.Listener.OpenIDClientID = c.GetString(keyListenerOpenIDClientID)
 	cfg.Listener.DNSSockGID = c.GetString(keyListenerDNSSockGID)
 	cfg.Listener.DNSSockUID = c.GetString(keyListenerDNSSockUID)

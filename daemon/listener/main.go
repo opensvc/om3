@@ -114,11 +114,11 @@ func (t *T) Stop() error {
 	return errs
 }
 
-func (authOpt *authOption) OpenIDProvider() string {
+func (authOpt *authOption) OpenIDIssuer() string {
 	if cfg := cluster.ConfigData.Get(); cfg == nil {
 		return ""
 	} else {
-		return cfg.Listener.OpenIDAuthority
+		return cfg.Listener.OpenIDIssuer
 	}
 }
 

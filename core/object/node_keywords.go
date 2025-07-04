@@ -469,9 +469,9 @@ var nodeCommonKeywords = []keywords.Keyword{
 	},
 	{
 		Example: "https://keycloak.opensvc.com/auth/realms/clusters",
-		Option:  "openid_authority",
+		Option:  "openid_issuer",
 		Section: "listener",
-		Text:    keywords.NewText(fs, "text/kw/node/listener.openid_authority"),
+		Text:    keywords.NewText(fs, "text/kw/node/listener.openid_issuer"),
 	},
 	{
 		Default: "om3",

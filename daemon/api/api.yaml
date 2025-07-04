@@ -4170,10 +4170,10 @@ components:
               - session
         openid:
           required:
-            - authority
+            - issuer
             - client_id
           properties:
-            authority:
+            issuer:
               type: string
             client_id:
               type: string
