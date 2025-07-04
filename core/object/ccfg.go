@@ -108,7 +108,6 @@ func getClusterConfig() (*cluster.Config, error) {
 		keyListenerPort            = key.New("listener", "port")
 		keyListenerOpenIDAuthority = key.New("listener", "openid_authority")
 		keyListenerOpenIDClientID  = key.New("listener", "openid_client_id")
-		keyListenerOpenIDScope     = key.New("listener", "openid_scope")
 		keyListenerDNSSockUID      = key.New("listener", "dns_sock_uid")
 		keyListenerDNSSockGID      = key.New("listener", "dns_sock_gid")
 
@@ -141,7 +140,6 @@ func getClusterConfig() (*cluster.Config, error) {
 	}
 	cfg.Listener.OpenIDAuthority = c.GetString(keyListenerOpenIDAuthority)
 	cfg.Listener.OpenIDClientID = c.GetString(keyListenerOpenIDClientID)
-	cfg.Listener.OpenIDScope = c.GetString(keyListenerOpenIDScope)
 	cfg.Listener.DNSSockGID = c.GetString(keyListenerDNSSockGID)
 	cfg.Listener.DNSSockUID = c.GetString(keyListenerDNSSockUID)
 	if homedir, err := os.UserHomeDir(); err != nil {

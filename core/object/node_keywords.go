@@ -480,12 +480,6 @@ var nodeCommonKeywords = []keywords.Keyword{
 		Text:    keywords.NewText(fs, "text/kw/node/listener.openid_client_id"),
 	},
 	{
-		Default: "openid profile email offline_access grant",
-		Option:  "openid_scope",
-		Section: "listener",
-		Text:    keywords.NewText(fs, "text/kw/node/listener.openid_scope"),
-	},
-	{
 		Default: "daemon",
 		Option:  "facility",
 		Section: "syslog",

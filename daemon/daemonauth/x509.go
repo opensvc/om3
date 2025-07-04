@@ -37,7 +37,7 @@ func (s *X509Strategy) Authenticate(ctx context.Context, r *http.Request) (auth.
 	return auth.NewUserInfo(username, "", nil, *authenticatedExtensions(StrategyX509, "", grants...)), nil
 }
 
-func initX509(i interface{}) (string, auth.Strategy, error) {
+func initX509(_ context.Context, i interface{}) (string, auth.Strategy, error) {
 	name := "x509"
 	caFiler, ok := i.(X509CACertFiler)
 	if !ok {

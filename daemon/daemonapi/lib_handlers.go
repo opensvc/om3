@@ -24,11 +24,10 @@ type (
 	}
 
 	DaemonAPI struct {
-		Daemondata      *daemondata.T
-		SubFactory      pubsub.Subscriber
-		Publisher       pubsub.Publisher
-		JWTcreator      JWTCreater
-		OpenIDAuthority *daemonauth.OpenIDAuthority
+		Daemondata *daemondata.T
+		SubFactory pubsub.Subscriber
+		Publisher  pubsub.Publisher
+		JWTcreator JWTCreater
 
 		LabelLocalhost pubsub.Label
 
@@ -49,14 +48,13 @@ func New(ctx context.Context) *DaemonAPI {
 	localhost := hostname.Hostname()
 
 	return &DaemonAPI{
-		Daemondata:      daemondata.FromContext(ctx),
-		SubFactory:      pubsub.BusFromContext(ctx),
-		Publisher:       pubsub.PubFromContext(ctx),
-		JWTcreator:      daemonauth.JWTCreatorFromContext(ctx),
-		OpenIDAuthority: daemonauth.OpenIDAuthorityFromContext(ctx),
-		LabelLocalhost:  pubsub.Label{"node", localhost},
-		localhost:       localhost,
-		SubQS:           SubQS(ctx),
+		Daemondata:     daemondata.FromContext(ctx),
+		SubFactory:     pubsub.BusFromContext(ctx),
+		Publisher:      pubsub.PubFromContext(ctx),
+		JWTcreator:     daemonauth.JWTCreatorFromContext(ctx),
+		LabelLocalhost: pubsub.Label{"node", localhost},
+		localhost:      localhost,
+		SubQS:          SubQS(ctx),
 	}
 }
 

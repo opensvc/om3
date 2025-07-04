@@ -28,7 +28,7 @@ type (
 	}
 )
 
-func initBasicUser(i any) (string, auth.Strategy, error) {
+func initBasicUser(_ context.Context, i any) (string, auth.Strategy, error) {
 	name := "basicauth user"
 	userDB, ok := i.(UserAndPasswordGranter)
 	if !ok {
@@ -44,7 +44,7 @@ func initBasicUser(i any) (string, auth.Strategy, error) {
 	return name, basic.NewCached(validateUser, cache), nil
 }
 
-func initBasicNode(i interface{}) (string, auth.Strategy, error) {
+func initBasicNode(_ context.Context, i interface{}) (string, auth.Strategy, error) {
 	name := "basicauth node"
 	n, ok := i.(NodeAuthenticater)
 	if !ok {

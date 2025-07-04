@@ -29,7 +29,7 @@ func (t uxStrategy) Authenticate(ctx context.Context, _ *http.Request) (auth.Inf
 	return info, nil
 }
 
-func initUX(i interface{}) (string, auth.Strategy, error) {
+func initUX(_ context.Context, i interface{}) (string, auth.Strategy, error) {
 	name := "ux auth"
 	fn, ok := i.(ListenAddresser)
 	if !ok {
