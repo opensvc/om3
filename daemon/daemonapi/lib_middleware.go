@@ -65,7 +65,6 @@ func LogMiddleware(parent context.Context) echo.MiddlewareFunc {
 
 func AuthMiddleware(parent context.Context) echo.MiddlewareFunc {
 	serverAddr := daemonctx.ListenAddr(parent)
-	strategies := daemonauth.StrategiesFromContext(parent)
 	newExtensions := func(strategy string) *auth.Extensions {
 		return &auth.Extensions{"strategy": []string{strategy}}
 	}
@@ -100,6 +99,16 @@ func AuthMiddleware(parent context.Context) echo.MiddlewareFunc {
 			req := c.Request()
 			// serverAddr is used by AuthenticateRequest
 			reqCtx := daemonctx.WithListenAddr(req.Context(), serverAddr)
+			daemonauth.Strategy.Mutex.RLock()
+			strategies := daemonauth.Strategy.Value
+			daemonauth.Strategy.Mutex.RUnlock()
+
+			if strategies == nil {
+				err := fmt.Errorf("can't authenticate from undefined stategies")
+				code := http.StatusInternalServerError
+				return JSONProblem(c, code, http.StatusText(code), err.Error())
+			}
+
 			_, user, err := strategies.AuthenticateRequest(req.WithContext(reqCtx))
 			if err != nil {
 				r := c.Request()

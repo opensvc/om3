@@ -4,7 +4,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"time"
 
 	"github.com/opensvc/om3/core/cluster"
 	"github.com/opensvc/om3/core/object"
@@ -29,12 +28,7 @@ type (
 	authOption struct {
 		*ccfg.NodeDB
 		*object.UsrDB
-		*daemonauth.OpenIDAuthority
 	}
-)
-
-var (
-	discoverOpenIDTimeout = time.Second
 )
 
 func (a *authOption) ListenAddr(ctx context.Context) string {
@@ -78,21 +72,10 @@ func (t *T) Start(ctx context.Context) error {
 	} else {
 		t.stopFunc = append(t.stopFunc, t.stopCertFS)
 	}
-	authOpt := authOption{}
-	if authUrl := cluster.ConfigData.Get().Listener.OpenIDAuthority; authUrl != "" {
-		if authority, err := daemonauth.FetchOpenIDAuthority(ctx, discoverOpenIDTimeout, authUrl); err != nil {
-			t.log.Errorf("fetch openid authority from %s: %s", authUrl, err)
-		} else {
-			t.log.Debugf("discovered openid authority from %s: %#v", authUrl, *authority)
-			authOpt.OpenIDAuthority = authority
-		}
-	}
-	if strategies, err := daemonauth.InitStategies(ctx, &authOpt); err != nil {
-		return err
+	if err := daemonauth.Start(ctx, &authOption{}); err != nil {
+		return fmt.Errorf("can't start daemon auth: %w", err)
 	} else {
-		ctx = daemonauth.ContextWithStrategies(ctx, strategies)
 		ctx = daemonauth.ContextWithJWTCreator(ctx)
-		ctx = daemonauth.ContextWithOpenIDAuthority(ctx, authOpt.OpenIDAuthority)
 	}
 	clusterConfig := cluster.ConfigData.Get()
 	for _, lsnr := range []startStopper{
@@ -129,4 +112,20 @@ func (t *T) Stop() error {
 		}
 	}
 	return errs
+}
+
+func (authOpt *authOption) OpenIDProvider() string {
+	if cfg := cluster.ConfigData.Get(); cfg == nil {
+		return ""
+	} else {
+		return cfg.Listener.OpenIDAuthority
+	}
+}
+
+func (authOpt *authOption) OpenIDClientID() string {
+	if cfg := cluster.ConfigData.Get(); cfg == nil {
+		return ""
+	} else {
+		return cfg.Listener.OpenIDClientID
+	}
 }
