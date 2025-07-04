@@ -47,7 +47,7 @@ func (t *Manager) provisionedFromIdle() {
 		return
 	}
 	if t.isProvisioningLeader() {
-		if t.instStatus[t.localhost].Provisioned == provisioned.NotApplicable {
+		if t.instStatus[t.localhost].Provisioned.IsOneOf(provisioned.NotApplicable, provisioned.True) {
 			t.queueAction(t.crmStart, instance.MonitorStateStartProgress, instance.MonitorStateStartSuccess, instance.MonitorStateStartFailure)
 		} else {
 			t.queueAction(t.crmProvisionLeader, instance.MonitorStateProvisionProgress, instance.MonitorStateProvisionSuccess, instance.MonitorStateProvisionFailure)
@@ -66,7 +66,7 @@ func (t *Manager) provisionedFromWaitLeader() {
 	if !t.hasLeaderProvisioned() {
 		return
 	}
-	if t.instStatus[t.localhost].Provisioned == provisioned.NotApplicable {
+	if t.instStatus[t.localhost].Provisioned.IsOneOf(provisioned.NotApplicable, provisioned.True) {
 		t.queueAction(t.crmStartStandby, instance.MonitorStateStartProgress, instance.MonitorStateStartSuccess, instance.MonitorStateStartFailure)
 	} else {
 		t.queueAction(t.crmProvisionNonLeader, instance.MonitorStateProvisionProgress, instance.MonitorStateProvisionSuccess, instance.MonitorStateProvisionFailure)
@@ -100,6 +100,10 @@ func (t *Manager) provisionedClearIfReached() bool {
 		return reached("leader instance is provision failed", false)
 	} else if t.state.State.Is(instance.MonitorStateProvisionFailure) {
 		return reached("instance is provision failed", false)
+	}
+
+	if !t.isStarted() && !t.objStatus.Avail.Is(status.NotApplicable) {
+		return false
 	}
 
 	// succeeds
