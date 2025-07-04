@@ -18,9 +18,8 @@ import (
 	"github.com/opensvc/om3/drivers/resip"
 	"github.com/opensvc/om3/util/hostname"
 	"github.com/opensvc/om3/util/netif"
+	"github.com/opensvc/om3/util/ping"
 	"github.com/vishvananda/netlink"
-
-	"github.com/go-ping/ping"
 )
 
 const (
@@ -243,27 +242,21 @@ func (t *T) hasCarrier() (bool, error) {
 }
 
 func (t *T) abortPing() bool {
-	ip := t.ipaddr()
-	pinger, err := ping.NewPinger(ip.String())
+	timeout := 5 * time.Second
+	ip := t.ipaddr().String()
+	t.Log().Infof("abort? checking %s availability with ping (%s)", ip, timeout)
+	isAlive, err := ping.Ping(ip, timeout)
 	if err != nil {
-		t.Log().Errorf("abort? pinger init failed: %s", err)
+		t.Log().Errorf("abort? ping failed: %s", err)
 		return true
 	}
-	pinger.Count = 5
-	pinger.Timeout = 5 * time.Second
-	pinger.Interval = time.Second
-	t.Log().Infof("abort? checking %s availability with ping (5s)", ip)
-	err = pinger.Run()
-	if err != nil {
-		t.Log().Warnf("abort? pinger run failed: %s", err)
-		return false
-	}
-	if pinger.Statistics().PacketsRecv > 0 {
+	if isAlive {
 		t.Log().Errorf("abort! %s is alive", ip)
 		return true
+	} else {
+		t.Log().Debugf("abort? %s is not alive", ip)
+		return false
 	}
-	t.Log().Debugf("abort? %s is not alive", ip)
-	return false
 }
 
 func (t *T) ipnet() *net.IPNet {
