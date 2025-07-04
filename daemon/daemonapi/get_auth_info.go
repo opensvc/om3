@@ -13,7 +13,6 @@ func (a *DaemonAPI) GetAuthInfo(ctx echo.Context) error {
 	config := cluster.ConfigData.Get()
 	data := api.AuthInfo{
 		Methods: []api.AuthInfoMethods{"basic", "x509"},
-		Openid:  nil,
 	}
 
 	if config.Listener.OpenIDAuthority != "" {
@@ -21,11 +20,9 @@ func (a *DaemonAPI) GetAuthInfo(ctx echo.Context) error {
 		data.Openid = &struct {
 			Authority string `json:"authority"`
 			ClientId  string `json:"client_id"`
-			Scope     string `json:"scope"`
 		}{
 			Authority: config.Listener.OpenIDAuthority,
 			ClientId:  config.Listener.OpenIDClientID,
-			Scope:     config.Listener.OpenIDScope,
 		}
 	}
 	return ctx.JSON(http.StatusOK, data)

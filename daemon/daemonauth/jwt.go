@@ -38,7 +38,7 @@ var (
 	jwtVerifyKeySign string
 )
 
-func initJWT(i interface{}) (string, auth.Strategy, error) {
+func initJWT(_ context.Context, i interface{}) (string, auth.Strategy, error) {
 	var (
 		err       error
 		verifyKey *rsa.PublicKey

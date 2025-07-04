@@ -2,11 +2,8 @@ package listener
 
 import (
 	"context"
-	"encoding/json"
 	"errors"
 	"fmt"
-	"io"
-	"net/http"
 
 	"github.com/opensvc/om3/core/cluster"
 	"github.com/opensvc/om3/core/object"
@@ -50,34 +47,6 @@ func (a *authOption) VerifyKeyFile() string {
 	return daemonenv.CAsCertFile()
 }
 
-// JwksUri fetches the JWKS URI from the OpenID Connect authority configuration
-// and returns it as a string.
-func (a *authOption) JwksUri() (string, error) {
-	authority := cluster.ConfigData.Get().Listener.OpenIDAuthority
-	if authority == "" {
-		return "", nil
-	}
-	wellKnown := authority + "/.well-known/openid-configuration"
-	resp, err := http.Get(wellKnown)
-	if err != nil {
-		return "", err
-	}
-	defer resp.Body.Close()
-
-	b, err := io.ReadAll(resp.Body)
-	if err != nil {
-		return "", err
-	}
-	type IDWellKnown struct {
-		JwksUri string `json:"jwks_uri"`
-	}
-	var idWellKnown IDWellKnown
-	if err = json.Unmarshal(b, &idWellKnown); err != nil {
-		return "", err
-	}
-	return idWellKnown.JwksUri, nil
-}
-
 func New(opts ...funcopt.O) *T {
 	t := &T{
 		log: plog.NewDefaultLogger().Attr("pkg", "daemon/listener").WithPrefix("daemon: listener: "),
@@ -103,10 +72,9 @@ func (t *T) Start(ctx context.Context) error {
 	} else {
 		t.stopFunc = append(t.stopFunc, t.stopCertFS)
 	}
-	if strategies, err := daemonauth.InitStategies(ctx, &authOption{}); err != nil {
-		return err
+	if err := daemonauth.Start(ctx, &authOption{}); err != nil {
+		return fmt.Errorf("can't start daemon auth: %w", err)
 	} else {
-		ctx = daemonauth.ContextWithStrategies(ctx, strategies)
 		ctx = daemonauth.ContextWithJWTCreator(ctx)
 	}
 	clusterConfig := cluster.ConfigData.Get()
@@ -144,4 +112,20 @@ func (t *T) Stop() error {
 		}
 	}
 	return errs
+}
+
+func (authOpt *authOption) OpenIDProvider() string {
+	if cfg := cluster.ConfigData.Get(); cfg == nil {
+		return ""
+	} else {
+		return cfg.Listener.OpenIDAuthority
+	}
+}
+
+func (authOpt *authOption) OpenIDClientID() string {
+	if cfg := cluster.ConfigData.Get(); cfg == nil {
+		return ""
+	} else {
+		return cfg.Listener.OpenIDClientID
+	}
 }
