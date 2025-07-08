@@ -4,7 +4,6 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"os"
 	"os/exec"
 	"slices"
 	"strings"
@@ -194,44 +193,22 @@ func (t *Manager) update() {
 	}
 }
 
-func (t *Manager) hookExec(event any, args []string) error {
+func (t *Manager) hookExec(ctx context.Context, event any, args []string) error {
 	b, err := json.Marshal(event)
 	if err != nil {
 		return fmt.Errorf("failed to json-encode event: %w", err)
 	}
-
-	cmd := exec.Command(args[0], args[1:]...)
+	cmd := exec.CommandContext(ctx, args[0], args[1:]...)
 	cmd.Env = []string{
 		"EVENT=" + string(b),
 	}
 	cmd.SysProcAttr = &syscall.SysProcAttr{
 		Setpgid: true, // Create a new process group
 	}
-	stdinFile, err := os.OpenFile(os.DevNull, os.O_RDONLY, 0)
-	if err != nil {
-		return fmt.Errorf("failed to open os.DevNull for stdin: %w", err)
-	}
-	cmd.Stdin = stdinFile
-	defer stdinFile.Close()
-
-	stdoutFile, err := os.OpenFile(os.DevNull, os.O_RDONLY, 0)
-	if err != nil {
-		return fmt.Errorf("failed to open os.DevNull for stdout: %w", err)
-	}
-	cmd.Stdout = stdoutFile
-	defer stdoutFile.Close()
-
-	stderrFile, err := os.OpenFile(os.DevNull, os.O_RDONLY, 0)
-	if err != nil {
-		return fmt.Errorf("failed to open os.DevNull for stderr: %w", err)
-	}
-	cmd.Stderr = stderrFile
-	defer stderrFile.Close()
-
 	if err := cmd.Start(); err != nil {
 		return fmt.Errorf("failed to start cmd: %w", err)
 	}
-	return nil
+	return cmd.Wait()
 }
 
 func (t *Manager) hookLoop(ctx context.Context, sub *pubsub.Subscription, name, kind string, args []string) {
@@ -243,7 +220,7 @@ func (t *Manager) hookLoop(ctx context.Context, sub *pubsub.Subscription, name, 
 			return
 		case event := <-sub.C:
 			t.log.Infof("%s: %s => exec %s", name, kind, args)
-			if err := t.hookExec(event, args); err != nil {
+			if err := t.hookExec(ctx, event, args); err != nil {
 				t.log.Warnf("%s: %s", name, err)
 			}
 		}
