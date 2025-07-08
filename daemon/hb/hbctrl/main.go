@@ -287,7 +287,7 @@ func (c *C) run() {
 				} else {
 					c.log.Infof("event %s for %s from %s", o.Name, o.Nodename, o.HbID)
 					changed = true
-					pub.Pub(&msgbus.HeartbeatPing{Nodename: o.Nodename, HbID: o.HbID, Time: time.Now()}, label)
+					pub.Pub(&msgbus.HeartbeatAlive{Nodename: o.Nodename, HbID: o.HbID, Time: time.Now()}, label)
 				}
 				if remote, ok := remotes[o.Nodename]; ok {
 					if strings.HasSuffix(o.HbID, ".rx") {
@@ -296,7 +296,7 @@ func (c *C) run() {
 							if remote.rxBeating == 0 {
 								c.log.Infof("beating node %s", o.Nodename)
 								changed = true
-								pub.Pub(&msgbus.HeartbeatNodePing{Node: o.Nodename, IsAlive: true}, pubsub.Label{"node", o.Nodename})
+								pub.Pub(&msgbus.NodeAlive{Node: o.Nodename}, pubsub.Label{"node", o.Nodename})
 							}
 							remote.rxBeating++
 						case evStale:
@@ -308,7 +308,7 @@ func (c *C) run() {
 						if remote.rxBeating == 0 {
 							c.log.Infof("stale node %s", o.Nodename)
 							changed = true
-							pub.Pub(&msgbus.HeartbeatNodePing{Node: o.Nodename, IsAlive: false}, pubsub.Label{"node", o.Nodename})
+							pub.Pub(&msgbus.NodeStale{Node: o.Nodename}, pubsub.Label{"node", o.Nodename})
 						}
 						remotes[o.Nodename] = remote
 					}

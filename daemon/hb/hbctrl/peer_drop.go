@@ -14,16 +14,17 @@ import (
 	"github.com/opensvc/om3/util/pubsub"
 )
 
-// peerDropWorker is responsible for dropping peer data on msgbus.HeartbeatNodePing{isAlive: false, Node: <peer>}.
+// peerDropWorker is responsible for dropping peer data on msgbus.NodeStale{Node: <peer>}.
 // If <peer> node is in MonitorStateMaintenance state, the drop is delayed until maintenanceGracePeriod is reached.
-// The delayed <peer> node drop is canceled on msgbus.HeartbeatNodePing{isAlive: true, Node: <peer>}.
+// The delayed <peer> node drop is canceled on msgbus.NodeAlive{Node: <peer>}.
 func peerDropWorker(ctx context.Context) {
 	databus := daemondata.FromContext(ctx)
 	log := plog.NewDefaultLogger().Attr("pkg", "daemon/hbctrl:peerDropWorker").WithPrefix("daemon: hbctrl: peer drop: ")
 	sub := pubsub.SubFromContext(ctx, "daemon.hb.peer_drop_worker")
 	sub.AddFilter(&msgbus.ConfigFileUpdated{}, pubsub.Label{"path", "cluster"})
 	sub.AddFilter(&msgbus.ConfigFileUpdated{}, pubsub.Label{"path", ""})
-	sub.AddFilter(&msgbus.HeartbeatNodePing{})
+	sub.AddFilter(&msgbus.NodeAlive{})
+	sub.AddFilter(&msgbus.NodeStale{})
 	sub.Start()
 	defer sub.Stop()
 
@@ -90,16 +91,16 @@ func peerDropWorker(ctx context.Context) {
 		}
 	}
 
-	onHeartbeatNodePing := func(c *msgbus.HeartbeatNodePing) {
+	onNodeAlive := func(c *msgbus.NodeAlive) {
 		peer := c.Node
-		if c.IsAlive {
-			if drop, ok := dropM[peer]; ok {
-				drop.cancel()
-			}
-			delete(dropM, peer)
-		} else {
-			delayDropPeer(peer)
+		if drop, ok := dropM[peer]; ok {
+			drop.cancel()
 		}
+		delete(dropM, peer)
+	}
+
+	onNodeStale := func(c *msgbus.NodeStale) {
+		delayDropPeer(c.Node)
 	}
 
 	for {
@@ -110,8 +111,10 @@ func peerDropWorker(ctx context.Context) {
 			switch c := i.(type) {
 			case *msgbus.ConfigFileUpdated:
 				onConfigFileUpdated(c)
-			case *msgbus.HeartbeatNodePing:
-				onHeartbeatNodePing(c)
+			case *msgbus.NodeAlive:
+				onNodeAlive(c)
+			case *msgbus.NodeStale:
+				onNodeStale(c)
 			}
 		}
 	}

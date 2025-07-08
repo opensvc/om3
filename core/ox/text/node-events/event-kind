@@ -19,7 +19,7 @@
    Exec, ExecFailed, ExecSuccess
 
  heartbeat:
-   HeartbeatMessageTypeUpdated, HeartbeatNodePing, HeartbeatPing, HeartbeatStale
+   HeartbeatMessageTypeUpdated, HeartbeatAlive, HeartbeatStale
 
  instance:
    InstanceConfigDeleted, InstanceConfigManagerDone, InstanceConfigUpdated
@@ -30,6 +30,7 @@
    RunFileUpdated, RunFileRemoved
 
  node:
+   NodeAlive, NodeStale
    NodeConfigUpdated, NodeDataUpdated, NodeFrozen
    NodeFrozenFileRemoved, NodeFrozenFileUpdated
    NodeMonitorDeleted, NodeMonitorUpdated
