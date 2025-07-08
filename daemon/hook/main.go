@@ -52,6 +52,22 @@ type (
 	hooks map[string]hook
 )
 
+var (
+	AllowedEvents = []string{
+		"ForgetPeer",
+		"NodeAlive",
+		"NodeStale",
+		"HeartbeatAlive",
+		"HeartbeatStale",
+		"HeartbeatMessageTypeUpdated",
+		"EnterOverloadPeriod",
+		"LeaveOverloadPeriod",
+		"NodeFrozen",
+		"NodeSplitAction",
+		"ArbitratorError",
+	}
+)
+
 func NewManager(drainDuration time.Duration, subQS pubsub.QueueSizer) *Manager {
 	localhost := hostname.Hostname()
 	return &Manager{
@@ -118,7 +134,8 @@ func (t *Manager) update() {
 		return
 	}
 	currentHookNames := xmap.Keys(t.hooks)
-	var hooksToStart, hooksToStop, scannedHooks []string
+	var hooksToStop, scannedHooks []string
+	hooksToStart := make(map[string]string)
 	for _, name := range t.config.SectionStrings() {
 		if !strings.HasPrefix(name, "hook#") {
 			continue
@@ -126,13 +143,13 @@ func (t *Manager) update() {
 		scannedHooks = append(scannedHooks, name)
 		currentHook, ok := t.hooks[name]
 		if !ok {
-			hooksToStart = append(hooksToStart, name)
+			hooksToStart[name] = ""
 			continue
 		}
 		sig := t.config.SectionSig(name)
 		if sig != currentHook.sig {
 			hooksToStop = append(hooksToStop, name)
-			hooksToStart = append(hooksToStart, name)
+			hooksToStart[name] = sig
 		}
 
 	}
@@ -142,28 +159,38 @@ func (t *Manager) update() {
 		}
 	}
 	for _, name := range hooksToStop {
-		t.hooks[name].cancel()
+		if t.hooks[name].cancel != nil {
+			t.hooks[name].cancel()
+		}
 		delete(t.hooks, name)
 	}
-	for _, name := range hooksToStart {
+	for name, sig := range hooksToStart {
 		kind := t.config.Get(key.New(name, "event"))
+		h := hook{
+			sig: sig,
+		}
+		t.hooks[name] = h
+		if !slices.Contains(AllowedEvents, kind) {
+			t.log.Warnf("%s: event %s is not allowed in hooks", name, kind)
+			continue
+		}
 		s := t.config.Get(key.New(name, "command"))
 		args, err := command.CmdArgsFromString(s)
 		if err != nil {
 			t.log.Warnf("%s: failed to split command: %s", name, err)
+			continue
 		}
 		if len(args) < 1 {
 			t.log.Warnf("%s: empty command", name)
+			continue
 		}
 		msg, err := msgbus.KindToT(kind)
 		if err != nil {
 			t.log.Warnf("%s: invalid event %s: %s", name, kind, err)
 			continue
 		}
-		t.hooks[name] = hook{
-			sig:    t.config.SectionSig(name),
-			cancel: t.startHook(name, kind, msg, args),
-		}
+		h.cancel = t.startHook(name, kind, msg, args)
+		t.hooks[name] = h
 	}
 }
 
