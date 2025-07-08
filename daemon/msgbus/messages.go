@@ -93,9 +93,6 @@ var (
 
 		"ForgetPeer": func() any { return &ForgetPeer{} },
 
-		// TODO: remove when CHANGELOG.md: forget_peer (b2.1) -> ForgetPeer
-		"forget_peer": func() any { return &ForgetPeer{} },
-
 		"HeartbeatMessageTypeUpdated": func() any { return &HeartbeatMessageTypeUpdated{} },
 
 		"HeartbeatNodePing": func() any { return &HeartbeatNodePing{} },
@@ -967,12 +964,8 @@ func (e *Exit) Kind() string {
 	return "Exit"
 }
 
-// Kind returns the kind value for ForgetPeer
-// TODO: change to "ForgetPeer"
-// TODO: document CHANGELOG.md: forget_peer (b2.1) -> ForgetPeer
-// TODO: remove "forget_peer" from core/om/text/node-events/event-kind
 func (e *ForgetPeer) Kind() string {
-	return "forget_peer"
+	return "ForgetPeer"
 }
 
 func (e *HeartbeatMessageTypeUpdated) Kind() string {
