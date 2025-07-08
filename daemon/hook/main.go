@@ -8,6 +8,7 @@ import (
 	"slices"
 	"strings"
 	"sync"
+	"sync/atomic"
 	"syscall"
 	"time"
 
@@ -214,15 +215,25 @@ func (t *Manager) hookExec(ctx context.Context, event any, args []string) error 
 func (t *Manager) hookLoop(ctx context.Context, sub *pubsub.Subscription, name, kind string, args []string) {
 	t.log.Infof("%s: listening for event %s", name, kind)
 	defer t.log.Infof("%s: stop listening for event %s", name, kind)
+	var running atomic.Bool
+
 	for {
 		select {
 		case <-ctx.Done():
 			return
 		case event := <-sub.C:
-			t.log.Infof("%s: %s => exec %s", name, kind, args)
-			if err := t.hookExec(ctx, event, args); err != nil {
-				t.log.Warnf("%s: %s", name, err)
+			if running.Load() {
+				t.log.Warnf("%s: on %s command is too slow => skip exec", name, kind)
+				continue
 			}
+			running.Store(true)
+			go func() {
+				defer running.Store(false)
+				t.log.Infof("%s: on %s exec %s", name, kind, args)
+				if err := t.hookExec(ctx, event, args); err != nil {
+					t.log.Warnf("%s: %s", name, err)
+				}
+			}()
 		}
 	}
 }

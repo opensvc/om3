@@ -217,7 +217,7 @@ func (t *T) Start(ctx context.Context) error {
 		istat.New(qsLarge),
 		listener.New(),
 		nmon.NewManager(daemonenv.DrainChanDuration, qsMedium),
-		hook.NewManager(daemonenv.DrainChanDuration, qsMedium),
+		hook.NewManager(daemonenv.DrainChanDuration, qsSmall),
 		dns.NewManager(daemonenv.DrainChanDuration, qsMedium),
 		discover.NewManager(daemonenv.DrainChanDuration, qsHuge).
 			WithOmonSubQS(qsMedium).
