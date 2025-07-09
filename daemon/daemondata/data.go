@@ -411,6 +411,7 @@ func (d *data) startSubscriptions(ctx context.Context, qs pubsub.QueueSizer) {
 	sub.AddFilter(&msgbus.NodeOsPathsUpdated{}, d.labelLocalhost)
 	sub.AddFilter(&msgbus.NodeStatsUpdated{}, d.labelLocalhost)
 	sub.AddFilter(&msgbus.NodeStatusUpdated{}, d.labelLocalhost)
+	sub.AddFilter(&msgbus.NodeStatusLabelsUpdated{}, d.labelLocalhost)
 
 	// need forward to peers
 	sub.AddFilter(&msgbus.ObjectCreated{}, d.labelLocalhost)
@@ -469,6 +470,7 @@ func localEventMustBeForwarded(i interface{}) bool {
 	case *msgbus.NodeOsPathsUpdated:
 	case *msgbus.NodeStatsUpdated:
 	case *msgbus.NodeStatusUpdated:
+	case *msgbus.NodeStatusLabelsUpdated:
 	// object...
 	case *msgbus.ObjectCreated:
 	case *msgbus.ObjectOrchestrationEnd:
