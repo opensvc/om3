@@ -2,9 +2,11 @@ package object
 
 import (
 	"context"
+	"fmt"
 
 	"github.com/opensvc/om3/core/actioncontext"
 	"github.com/opensvc/om3/core/resource"
+	"github.com/opensvc/om3/util/key"
 )
 
 // Provision allocates and starts the local instance of the object
@@ -12,6 +14,10 @@ func (t *actor) Provision(ctx context.Context) error {
 	ctx2 := actioncontext.WithProps(ctx, actioncontext.Provision)
 	if err := t.validateAction(); err != nil {
 		return err
+	}
+	provision := t.config.GetBool(key.New("", "provision"))
+	if !provision {
+		return fmt.Errorf("provision is disabled: make sure all resources have been provisioned by a sysadmin and execute 'instance provision --state-only")
 	}
 	t.setenv("provision", actioncontext.IsLeader(ctx2))
 	unlock, err := t.lockAction(ctx2)

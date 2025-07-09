@@ -2,9 +2,11 @@ package object
 
 import (
 	"context"
+	"fmt"
 
 	"github.com/opensvc/om3/core/actioncontext"
 	"github.com/opensvc/om3/core/resource"
+	"github.com/opensvc/om3/util/key"
 )
 
 // Unprovision stops and frees the local instance of the object
@@ -13,6 +15,11 @@ func (t *actor) Unprovision(ctx context.Context) error {
 	if err := t.validateAction(); err != nil {
 		return err
 	}
+	unprovision := t.config.GetBool(key.New("", "unprovision"))
+	if !unprovision {
+		return fmt.Errorf("unprovision is disabled: make sure all resources have been unprovisioned by a sysadmin and execute 'instance unprovision --state-only")
+	}
+
 	t.setenv("unprovision", actioncontext.IsLeader(ctx))
 	unlock, err := t.lockAction(ctx)
 	if err != nil {
