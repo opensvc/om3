@@ -15,7 +15,6 @@ import (
 	"time"
 
 	"github.com/antchfx/xmlquery"
-	"github.com/go-ping/ping"
 	"github.com/google/uuid"
 	"github.com/hashicorp/go-version"
 	"github.com/rs/zerolog"
@@ -35,6 +34,7 @@ import (
 	"github.com/opensvc/om3/util/command"
 	"github.com/opensvc/om3/util/device"
 	"github.com/opensvc/om3/util/file"
+	"github.com/opensvc/om3/util/ping"
 	"github.com/opensvc/om3/util/waitfor"
 )
 
@@ -188,19 +188,9 @@ func (t *T) isOperational() (bool, error) {
 }
 
 func (t *T) isPinging() (bool, error) {
-	pinger, err := ping.NewPinger(t.GetHostname())
-	if err != nil {
-		return false, err
-	}
-	pinger.Timeout = time.Second * 1
-	pinger.Count = 1
-	if err := pinger.Run(); err != nil {
-		return false, err
-	}
-	if pinger.Statistics().PacketsRecv > 0 {
-		return true, nil
-	}
-	return false, nil
+	timeout := 1 * time.Second
+	ip := t.GetHostname()
+	return ping.Ping(ip, timeout)
 }
 
 func (t *T) define() error {
@@ -889,38 +879,33 @@ func (t *T) Abort(ctx context.Context) bool {
 		// but skip further abort tests
 		return false
 	} else {
-		return t.abortPing() || t.abortPeerUp()
+		hn := t.GetHostname()
+		return t.abortPing(hn) || t.abortPeerUp(hn)
 	}
 }
 
-func (t *T) abortPing() bool {
-	hn := t.GetHostname()
-	t.Log().Infof("abort? ping %s", hn)
-
-	if pinger, err := ping.NewPinger(hn); err == nil {
-		pinger.Timeout = time.Second * 5
-		pinger.Count = 1
-		if err := pinger.Run(); err != nil {
-			t.Log().Warnf("abort? pinger run failed: %s", err)
-			return false
-		}
-		if pinger.Statistics().PacketsRecv > 0 {
-			t.Log().Infof("abort! %s is alive", hn)
-			return true
-		}
-		t.Log().Debugf("abort? %s is alive", hn)
-		return false
+func (t *T) abortPing(hn string) bool {
+	timeout := 5 * time.Second
+	t.Log().Infof("abort? checking %s availability with ping (%s)", hn, timeout)
+	isAlive, err := ping.Ping(hn, timeout)
+	if err != nil {
+		t.Log().Errorf("abort? ping failed: %s", err)
+		return true
+	}
+	if isAlive {
+		t.Log().Errorf("abort! %s is alive", hn)
+		return true
 	} else {
-		t.Log().Debugf("abort? pinger init failed: %s", err)
+		t.Log().Debugf("abort? %s is not alive", hn)
+		return false
 	}
-	return false
 }
 
-func (t *T) abortPeerUp() bool {
+func (t *T) abortPeerUp(hn string) bool {
 	if n, err := t.upPeer(); err != nil {
 		return false
 	} else if n != "" {
-		t.Log().Infof("abort! %s is up on %s", t.GetHostname(), n)
+		t.Log().Infof("abort! %s is up on %s", hn, n)
 		return true
 	}
 	return false

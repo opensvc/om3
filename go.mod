@@ -26,7 +26,6 @@ require (
 	github.com/g8rswimmer/error-chain v1.0.0
 	github.com/gdamore/tcell/v2 v2.7.1
 	github.com/getkin/kin-openapi v0.131.0
-	github.com/go-ping/ping v0.0.0-20210506233800-ff8be3320020
 	github.com/goccy/go-json v0.10.2
 	github.com/golang-collections/collections v0.0.0-20130729185459-604e922904d3
 	github.com/golang-jwt/jwt/v5 v5.2.2

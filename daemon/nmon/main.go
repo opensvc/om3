@@ -25,6 +25,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"maps"
 	"math"
 	"os"
 	"path/filepath"
@@ -765,7 +766,9 @@ func (t *Manager) loadConfigAndPublish() error {
 	}
 
 	localNodeInfo := t.cacheNodesInfo[t.localhost]
-	t.publisher.Pub(&msgbus.NodeStatusLabelsUpdated{Node: t.localhost, Value: localNodeInfo.Labels.DeepCopy()}, t.labelLocalhost)
+	if !maps.Equal(localNodeInfo.Labels, t.nodeStatus.Labels) {
+		t.publisher.Pub(&msgbus.NodeStatusLabelsUpdated{Node: t.localhost, Value: localNodeInfo.Labels.DeepCopy()}, t.labelLocalhost)
+	}
 
 	t.updateSpeaker()
 	t.nodeStatus.Labels = localNodeInfo.Labels

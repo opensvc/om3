@@ -93,14 +93,9 @@ var (
 
 		"ForgetPeer": func() any { return &ForgetPeer{} },
 
-		// TODO: remove when CHANGELOG.md: forget_peer (b2.1) -> ForgetPeer
-		"forget_peer": func() any { return &ForgetPeer{} },
-
 		"HeartbeatMessageTypeUpdated": func() any { return &HeartbeatMessageTypeUpdated{} },
 
-		"HeartbeatNodePing": func() any { return &HeartbeatNodePing{} },
-
-		"HeartbeatPing": func() any { return &HeartbeatPing{} },
+		"HeartbeatAlive": func() any { return &HeartbeatAlive{} },
 
 		"HeartbeatStale": func() any { return &HeartbeatStale{} },
 
@@ -148,6 +143,8 @@ var (
 
 		"Log": func() any { return &Log{} },
 
+		"NodeAlive": func() any { return &NodeAlive{} },
+
 		"NodeConfigUpdated": func() any { return &NodeConfigUpdated{} },
 
 		"NodeDataUpdated": func() any { return &NodeDataUpdated{} },
@@ -163,6 +160,8 @@ var (
 		"NodeMonitorUpdated": func() any { return &NodeMonitorUpdated{} },
 
 		"NodeOsPathsUpdated": func() any { return &NodeOsPathsUpdated{} },
+
+		"NodeStale": func() any { return &NodeStale{} },
 
 		"NodeStatsUpdated": func() any { return &NodeStatsUpdated{} },
 
@@ -406,13 +405,8 @@ type (
 		pubsub.Msg `yaml:",inline"`
 		Node       string `json:"node" yaml:"node"`
 	}
-	HeartbeatNodePing struct {
-		pubsub.Msg `yaml:",inline"`
-		Node       string `json:"node" yaml:"node"`
-		IsAlive    bool   `json:"is_alive" yaml:"is_alive"`
-	}
 
-	HeartbeatPing struct {
+	HeartbeatAlive struct {
 		pubsub.Msg `yaml:",inline"`
 		Nodename   string    `json:"to" yaml:"to"`
 		HbID       string    `json:"hb_id" yaml:"hb_id"`
@@ -654,6 +648,11 @@ type (
 		Value      node.Monitor `json:"node_monitor" yaml:"node_monitor"`
 	}
 
+	NodeAlive struct {
+		pubsub.Msg `yaml:",inline"`
+		Node       string `json:"node" yaml:"node"`
+	}
+
 	NodeOsPathsUpdated struct {
 		pubsub.Msg `yaml:",inline"`
 		Node       string    `json:"node" yaml:"node"`
@@ -668,6 +667,11 @@ type (
 		ArbitratorVotes int    `json:"arbitrator_votes" yaml:"arbitrator_votes"`
 		Voting          int    `json:"voting" yaml:"voting"`
 		ProVoters       int    `json:"pro_voters" yaml:"pro_voters"`
+	}
+
+	NodeStale struct {
+		pubsub.Msg `yaml:",inline"`
+		Node       string `json:"node" yaml:"node"`
 	}
 
 	NodeStatsUpdated struct {
@@ -967,36 +971,20 @@ func (e *Exit) Kind() string {
 	return "Exit"
 }
 
-// Kind returns the kind value for ForgetPeer
-// TODO: change to "ForgetPeer"
-// TODO: document CHANGELOG.md: forget_peer (b2.1) -> ForgetPeer
-// TODO: remove "forget_peer" from core/om/text/node-events/event-kind
 func (e *ForgetPeer) Kind() string {
-	return "forget_peer"
+	return "ForgetPeer"
 }
 
 func (e *HeartbeatMessageTypeUpdated) Kind() string {
 	return "HeartbeatMessageTypeUpdated"
 }
 
-func (e *HeartbeatNodePing) String() string {
-	if e.IsAlive {
-		return "HeartbeatNodePing: " + e.Node + " ok"
-	} else {
-		return "HeartbeatNodePing: " + e.Node + " stale"
-	}
+func (e *HeartbeatAlive) String() string {
+	return fmt.Sprintf("HeartbeatAlive: node %s ping detected from %s %s", e.Nodename, e.HbID, e.Time)
 }
 
-func (e *HeartbeatNodePing) Kind() string {
-	return "HeartbeatNodePing"
-}
-
-func (e *HeartbeatPing) String() string {
-	return fmt.Sprintf("HeartbeatPing: node %s ping detected from %s %s", e.Nodename, e.HbID, e.Time)
-}
-
-func (e *HeartbeatPing) Kind() string {
-	return "HeartbeatPing"
+func (e *HeartbeatAlive) Kind() string {
+	return "HeartbeatAlive"
 }
 
 func (e *HeartbeatStale) String() string {
@@ -1095,6 +1083,10 @@ func (e *Log) Kind() string {
 	return "Log"
 }
 
+func (e *NodeAlive) Kind() string {
+	return "NodeAlive"
+}
+
 func (e *NodeConfigUpdated) Kind() string {
 	return "NodeConfigUpdated"
 }
@@ -1145,6 +1137,10 @@ func (e *NodeStatusGenUpdates) Kind() string {
 
 func (e *NodeStatusLabelsUpdated) Kind() string {
 	return "NodeStatusLabelsUpdated"
+}
+
+func (e *NodeStale) Kind() string {
+	return "NodeStale"
 }
 
 func (e *NodeStatusUpdated) Kind() string {

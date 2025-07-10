@@ -31,6 +31,7 @@ import (
 	"github.com/opensvc/om3/daemon/dns"
 	"github.com/opensvc/om3/daemon/hb"
 	"github.com/opensvc/om3/daemon/hbcache"
+	"github.com/opensvc/om3/daemon/hook"
 	"github.com/opensvc/om3/daemon/imon"
 	"github.com/opensvc/om3/daemon/istat"
 	"github.com/opensvc/om3/daemon/listener"
@@ -216,6 +217,7 @@ func (t *T) Start(ctx context.Context) error {
 		istat.New(qsLarge),
 		listener.New(),
 		nmon.NewManager(daemonenv.DrainChanDuration, qsMedium),
+		hook.NewManager(daemonenv.DrainChanDuration, qsSmall),
 		dns.NewManager(daemonenv.DrainChanDuration, qsMedium),
 		discover.NewManager(daemonenv.DrainChanDuration, qsHuge).
 			WithOmonSubQS(qsMedium).

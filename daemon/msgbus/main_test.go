@@ -20,7 +20,7 @@ func TestSubscriptionFilter(t *testing.T) {
 	defer bus.Stop()
 
 	sub := pubsub.SubFromContext(ctx, t.Name())
-	sub.AddFilter(&HeartbeatNodePing{}, pubsub.Label{"node", "node10"})
+	sub.AddFilter(&NodeAlive{}, pubsub.Label{"node", "node10"})
 	sub.Start()
 	defer sub.Stop()
 
@@ -30,28 +30,25 @@ func TestSubscriptionFilter(t *testing.T) {
 	pub.Pub(&HeartbeatStale{}, pubsub.Label{"node", "node1"})
 
 	// publish message with watched type but not watched label
-	pub.Pub(&HeartbeatNodePing{
-		Node:    "node1",
-		IsAlive: true,
+	pub.Pub(&NodeAlive{
+		Node: "node1",
 	}, pubsub.Label{"node", "node1"})
 
 	// publish message with watched type but without label
-	pub.Pub(&HeartbeatNodePing{
-		Node:    "node1",
-		IsAlive: true,
+	pub.Pub(&NodeAlive{
+		Node: "node1",
 	})
 
 	// publish message with the watched type and label
-	pub.Pub(&HeartbeatNodePing{
-		Node:    "node10",
-		IsAlive: true,
+	pub.Pub(&NodeAlive{
+		Node: "node10",
 	}, pubsub.Label{"node", "node10"})
 
 	receiveMsgTimeout := 50 * time.Millisecond
 	t.Logf("verify received message from correct label (timeout: %s)", receiveMsgTimeout)
 	select {
 	case i := <-sub.C:
-		require.Equal(t, "node10", i.(*HeartbeatNodePing).Node)
+		require.Equal(t, "node10", i.(*NodeAlive).Node)
 	case <-time.After(receiveMsgTimeout):
 		t.Fatalf("timeout, no message received")
 	}

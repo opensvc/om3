@@ -10,6 +10,10 @@
 
 ### Cluster and Node Configuration
 
+* **Hook**
+    The event is no longer passed via stdin.
+    The om3 daemon feeds the event as a json-formatted EVENT environment variable instead.
+
 * **Time format change:**
     OpenSVC now uses RFC3339 time format for all internal and exposed data, replacing the Unix timestamps.
 

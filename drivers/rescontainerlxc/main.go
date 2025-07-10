@@ -14,7 +14,6 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/go-ping/ping"
 	"github.com/google/uuid"
 	"github.com/rs/zerolog"
 	"github.com/vishvananda/netlink"
@@ -35,6 +34,7 @@ import (
 	"github.com/opensvc/om3/util/file"
 	"github.com/opensvc/om3/util/funcopt"
 	"github.com/opensvc/om3/util/hostname"
+	"github.com/opensvc/om3/util/ping"
 )
 
 const (
@@ -1187,6 +1187,23 @@ func (t *T) LinkNames() []string {
 	return []string{t.RID()}
 }
 
+func (t *T) abortPing(hn string) bool {
+	timeout := 5 * time.Second
+	t.Log().Infof("abort? checking %s availability with ping (%s)", hn, timeout)
+	isAlive, err := ping.Ping(hn, timeout)
+	if err != nil {
+		t.Log().Errorf("abort? ping failed: %s", err)
+		return true
+	}
+	if isAlive {
+		t.Log().Errorf("abort! %s is alive", hn)
+		return true
+	} else {
+		t.Log().Debugf("abort? %s is not alive", hn)
+		return false
+	}
+}
+
 func (t *T) Abort(ctx context.Context) bool {
 	if v, err := t.isUp(); err != nil {
 		t.Log().Warnf("abort? %s", err)
@@ -1197,23 +1214,8 @@ func (t *T) Abort(ctx context.Context) bool {
 		return false
 	}
 	hn := t.GetHostname()
-	t.Log().Infof("abort? ping %s", hn)
-
-	if pinger, err := ping.NewPinger(t.GetHostname()); err == nil {
-		pinger.Timeout = time.Second * 5
-		pinger.Count = 1
-		if err := pinger.Run(); err != nil {
-			t.Log().Warnf("abort? pinger err: %s", err)
-			return false
-		}
-		if pinger.Statistics().PacketsRecv > 0 {
-			t.Log().Infof("abort! %s is alive", hn)
-			return true
-		}
-		t.Log().Debugf("abort? %s is not alive", hn)
-		return false
-	} else {
-		t.Log().Debugf("abort? pinger init failed: %s", err)
+	if t.abortPing(hn) {
+		return true
 	}
 	if n, err := t.upPeer(); err != nil {
 		return false
