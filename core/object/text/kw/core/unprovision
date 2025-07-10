@@ -1,0 +1,4 @@
+Set in the default section, `unprovision=false` cancels the instance provision action before looping over the resources.
+In this case, the action returns an error.
+
+This acts like a glass the user has to break to access the unprovision button.
