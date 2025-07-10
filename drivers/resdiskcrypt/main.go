@@ -162,6 +162,7 @@ func (t *T) exists() (bool, error) {
 	cmd := command.New(
 		command.WithName(cryptsetup),
 		command.WithVarArgs("isLuks", dev),
+		command.WithIgnoredExitCodes(0, 1, 4),
 	)
 	if err := cmd.Run(); err != nil {
 		return false, err
