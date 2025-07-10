@@ -672,7 +672,7 @@ func (t *actor) action(ctx context.Context, fn resourceset.DoFunc) error {
 	// Pre action resource evaluation.
 	// For action requirements like fs#1(up)
 	var evaluated sync.Map
-	t.ResourceSets().Do(ctxWithTimeout, resourceSelector, barrier, "pre-"+action.Name+" status", func(ctx context.Context, r resource.Driver) error {
+	t.ResourceSets().Do(ctxWithTimeout, t, barrier, "pre-"+action.Name+" status", func(ctx context.Context, r resource.Driver) error {
 		if v, err := t.isEncapNodeMatchingResource(r); err != nil {
 			return err
 		} else if !v {
