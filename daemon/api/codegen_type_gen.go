@@ -101,6 +101,11 @@ const (
 	InstanceListKindInstanceList InstanceListKind = "InstanceList"
 )
 
+// Defines values for KeywordDefinitionListKind.
+const (
+	KeywordDefinitionListKindKeywordDefinitionList KeywordDefinitionListKind = "KeywordDefinitionList"
+)
+
 // Defines values for KeywordListKind.
 const (
 	KeywordListKindKeywordList KeywordListKind = "KeywordList"
@@ -628,6 +633,39 @@ type InstanceMonitor = instance.Monitor
 
 // InstanceStatus defines model for InstanceStatus.
 type InstanceStatus = instance.Status
+
+// KeywordDefinitionItem defines model for KeywordDefinitionItem.
+type KeywordDefinitionItem struct {
+	Aliases       *[]string `json:"aliases,omitempty"`
+	Candidates    *[]string `json:"candidates,omitempty"`
+	Converter     *string   `json:"converter,omitempty"`
+	Default       *string   `json:"default,omitempty"`
+	DefaultOption *string   `json:"defaultOption,omitempty"`
+	DefaultText   *string   `json:"defaultText,omitempty"`
+	Depends       *[]string `json:"depends,omitempty"`
+	Deprecated    *string   `json:"deprecated,omitempty"`
+	Example       *string   `json:"example,omitempty"`
+	Inherit       *string   `json:"inherit,omitempty"`
+	Kind          *[]string `json:"kind,omitempty"`
+	Option        string    `json:"option"`
+	Provisioning  *bool     `json:"provisioning,omitempty"`
+	Scopable      *bool     `json:"scopable,omitempty"`
+	Section       string    `json:"section"`
+	Text          *string   `json:"text,omitempty"`
+	Types         *[]string `json:"types,omitempty"`
+}
+
+// KeywordDefinitionItems defines model for KeywordDefinitionItems.
+type KeywordDefinitionItems = []KeywordDefinitionItem
+
+// KeywordDefinitionList defines model for KeywordDefinitionList.
+type KeywordDefinitionList struct {
+	Items KeywordDefinitionItems    `json:"items"`
+	Kind  KeywordDefinitionListKind `json:"kind"`
+}
+
+// KeywordDefinitionListKind defines model for KeywordDefinitionList.Kind.
+type KeywordDefinitionListKind string
 
 // KeywordItem defines model for KeywordItem.
 type KeywordItem struct {

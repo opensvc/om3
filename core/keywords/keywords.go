@@ -104,6 +104,21 @@ const (
 	InheritHead
 )
 
+func (t Inherit) String() string {
+	switch t {
+	case InheritLeaf2Head:
+		return "leaf2head"
+	case InheritHead2Leaf:
+		return "head2leaf"
+	case InheritLeaf:
+		return "leaf"
+	case InheritHead:
+		return "head"
+	default:
+		return "unknown"
+	}
+}
+
 func NewText(fs embed.FS, path string) Text {
 	return Text{fs, path}
 }
