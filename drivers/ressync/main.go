@@ -264,7 +264,7 @@ func (t *T) IsInstanceSufficientlyStarted(ctx context.Context) (v bool, rids []s
 		case status.NotApplicable:
 		default:
 			// required resource is not up
-			rids = append(rids, r.RID())
+			rids = append(rids, fmt.Sprintf("%s:%s", r.RID(), st))
 			v = false
 		}
 	}
