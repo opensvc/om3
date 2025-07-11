@@ -1477,6 +1477,9 @@ type InQueryDeletes = []string
 // InQueryDisableRollback defines model for inQueryDisableRollback.
 type InQueryDisableRollback = bool
 
+// InQueryDriver defines model for inQueryDriver.
+type InQueryDriver = string
+
 // InQueryEnvs defines model for inQueryEnvs.
 type InQueryEnvs = []string
 
@@ -1504,11 +1507,17 @@ type InQueryLeader = bool
 // InQueryMaster Act on the host instance of the service, and don't act on encap instance if not asked for explicitely.
 type InQueryMaster = bool
 
+// InQueryOption defines model for inQueryOption.
+type InQueryOption = string
+
 // InQueryRequesterSid defines model for inQueryRequesterSid.
 type InQueryRequesterSid = openapi_types.UUID
 
 // InQueryRid defines model for inQueryRid.
 type InQueryRid = string
+
+// InQuerySection defines model for inQuerySection.
+type InQuerySection = string
 
 // InQuerySets defines model for inQuerySets.
 type InQuerySets = []string
@@ -1585,6 +1594,18 @@ type PatchClusterConfigParams struct {
 	Delete *InQueryDeletes `form:"delete,omitempty" json:"delete,omitempty"`
 	Unset  *InQueryUnsets  `form:"unset,omitempty" json:"unset,omitempty"`
 	Set    *InQuerySets    `form:"set,omitempty" json:"set,omitempty"`
+}
+
+// GetClusterConfigKeywordsParams defines parameters for GetClusterConfigKeywords.
+type GetClusterConfigKeywordsParams struct {
+	// Driver show only keywords of this driver
+	Driver *InQueryDriver `form:"driver,omitempty" json:"driver,omitempty"`
+
+	// Section show supported keywords of this configuration section
+	Section *InQuerySection `form:"section,omitempty" json:"section,omitempty"`
+
+	// Option show the keyword referenced by section and option
+	Option *InQueryOption `form:"option,omitempty" json:"option,omitempty"`
 }
 
 // PostClusterJoinParams defines parameters for PostClusterJoin.
@@ -1688,6 +1709,18 @@ type PatchNodeConfigParams struct {
 	Delete *InQueryDeletes `form:"delete,omitempty" json:"delete,omitempty"`
 	Unset  *InQueryUnsets  `form:"unset,omitempty" json:"unset,omitempty"`
 	Set    *InQuerySets    `form:"set,omitempty" json:"set,omitempty"`
+}
+
+// GetNodeConfigKeywordsParams defines parameters for GetNodeConfigKeywords.
+type GetNodeConfigKeywordsParams struct {
+	// Driver show only keywords of this driver
+	Driver *InQueryDriver `form:"driver,omitempty" json:"driver,omitempty"`
+
+	// Section show supported keywords of this configuration section
+	Section *InQuerySection `form:"section,omitempty" json:"section,omitempty"`
+
+	// Option show the keyword referenced by section and option
+	Option *InQueryOption `form:"option,omitempty" json:"option,omitempty"`
 }
 
 // PostDaemonShutdownParams defines parameters for PostDaemonShutdown.
@@ -1985,6 +2018,18 @@ type PatchObjectConfigParams struct {
 	Delete *InQueryDeletes `form:"delete,omitempty" json:"delete,omitempty"`
 	Unset  *InQueryUnsets  `form:"unset,omitempty" json:"unset,omitempty"`
 	Set    *InQuerySets    `form:"set,omitempty" json:"set,omitempty"`
+}
+
+// GetObjectConfigKeywordsParams defines parameters for GetObjectConfigKeywords.
+type GetObjectConfigKeywordsParams struct {
+	// Driver show only keywords of this driver
+	Driver *InQueryDriver `form:"driver,omitempty" json:"driver,omitempty"`
+
+	// Section show supported keywords of this configuration section
+	Section *InQuerySection `form:"section,omitempty" json:"section,omitempty"`
+
+	// Option show the keyword referenced by section and option
+	Option *InQueryOption `form:"option,omitempty" json:"option,omitempty"`
 }
 
 // GetObjectDataParams defines parameters for GetObjectData.

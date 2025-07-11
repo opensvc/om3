@@ -231,6 +231,15 @@ func (t Store) KeywordDoc(section, typ, option string, kind naming.Kind, depth i
 	return kw.Doc(depth), nil
 }
 
+func (t Store) DriverKeywords(section, typ string, kind naming.Kind) ([]Keyword, error) {
+	index := Index{section, typ}
+	m, ok := t.KeywordsByDriver(kind)[index]
+	if !ok {
+		return nil, fmt.Errorf("driver not found")
+	}
+	return maps.Values(m), nil
+}
+
 func (t Store) DriverDoc(section, typ string, kind naming.Kind, depth int) (string, error) {
 	depth += 1
 	index := Index{section, typ}

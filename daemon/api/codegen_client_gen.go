@@ -120,7 +120,7 @@ type ClientInterface interface {
 	PutClusterConfigFileWithBody(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// GetClusterConfigKeywords request
-	GetClusterConfigKeywords(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error)
+	GetClusterConfigKeywords(ctx context.Context, params *GetClusterConfigKeywordsParams, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// PostClusterJoin request
 	PostClusterJoin(ctx context.Context, params *PostClusterJoinParams, reqEditors ...RequestEditorFn) (*http.Response, error)
@@ -203,6 +203,9 @@ type ClientInterface interface {
 
 	// PutNodeConfigFileWithBody request with any body
 	PutNodeConfigFileWithBody(ctx context.Context, nodename InPathNodeName, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// GetNodeConfigKeywords request
+	GetNodeConfigKeywords(ctx context.Context, nodename InPathNodeName, params *GetNodeConfigKeywordsParams, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// PostDaemonRestart request
 	PostDaemonRestart(ctx context.Context, nodename InPathNodeName, reqEditors ...RequestEditorFn) (*http.Response, error)
@@ -381,9 +384,6 @@ type ClientInterface interface {
 	// GetNodeSystemUser request
 	GetNodeSystemUser(ctx context.Context, nodename InPathNodeName, reqEditors ...RequestEditorFn) (*http.Response, error)
 
-	// GetNodeConfigKeywords request
-	GetNodeConfigKeywords(ctx context.Context, nodename InPathNodeName, reqEditors ...RequestEditorFn) (*http.Response, error)
-
 	// GetObjects request
 	GetObjects(ctx context.Context, params *GetObjectsParams, reqEditors ...RequestEditorFn) (*http.Response, error)
 
@@ -455,7 +455,7 @@ type ClientInterface interface {
 	PutObjectConfigFileWithBody(ctx context.Context, namespace InPathNamespace, kind InPathKind, name InPathName, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// GetObjectConfigKeywords request
-	GetObjectConfigKeywords(ctx context.Context, namespace InPathNamespace, kind InPathKind, name InPathName, reqEditors ...RequestEditorFn) (*http.Response, error)
+	GetObjectConfigKeywords(ctx context.Context, namespace InPathNamespace, kind InPathKind, name InPathName, params *GetObjectConfigKeywordsParams, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// GetObjectData request
 	GetObjectData(ctx context.Context, namespace InPathNamespace, kind InPathKind, name InPathName, params *GetObjectDataParams, reqEditors ...RequestEditorFn) (*http.Response, error)
@@ -630,8 +630,8 @@ func (c *Client) PutClusterConfigFileWithBody(ctx context.Context, contentType s
 	return c.Client.Do(req)
 }
 
-func (c *Client) GetClusterConfigKeywords(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error) {
-	req, err := NewGetClusterConfigKeywordsRequest(c.Server)
+func (c *Client) GetClusterConfigKeywords(ctx context.Context, params *GetClusterConfigKeywordsParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewGetClusterConfigKeywordsRequest(c.Server, params)
 	if err != nil {
 		return nil, err
 	}
@@ -968,6 +968,18 @@ func (c *Client) GetNodeConfigFile(ctx context.Context, nodename InPathNodeName,
 
 func (c *Client) PutNodeConfigFileWithBody(ctx context.Context, nodename InPathNodeName, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
 	req, err := NewPutNodeConfigFileRequestWithBody(c.Server, nodename, contentType, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+func (c *Client) GetNodeConfigKeywords(ctx context.Context, nodename InPathNodeName, params *GetNodeConfigKeywordsParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewGetNodeConfigKeywordsRequest(c.Server, nodename, params)
 	if err != nil {
 		return nil, err
 	}
@@ -1698,18 +1710,6 @@ func (c *Client) GetNodeSystemUser(ctx context.Context, nodename InPathNodeName,
 	return c.Client.Do(req)
 }
 
-func (c *Client) GetNodeConfigKeywords(ctx context.Context, nodename InPathNodeName, reqEditors ...RequestEditorFn) (*http.Response, error) {
-	req, err := NewGetNodeConfigKeywordsRequest(c.Server, nodename)
-	if err != nil {
-		return nil, err
-	}
-	req = req.WithContext(ctx)
-	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
-		return nil, err
-	}
-	return c.Client.Do(req)
-}
-
 func (c *Client) GetObjects(ctx context.Context, params *GetObjectsParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
 	req, err := NewGetObjectsRequest(c.Server, params)
 	if err != nil {
@@ -1998,8 +1998,8 @@ func (c *Client) PutObjectConfigFileWithBody(ctx context.Context, namespace InPa
 	return c.Client.Do(req)
 }
 
-func (c *Client) GetObjectConfigKeywords(ctx context.Context, namespace InPathNamespace, kind InPathKind, name InPathName, reqEditors ...RequestEditorFn) (*http.Response, error) {
-	req, err := NewGetObjectConfigKeywordsRequest(c.Server, namespace, kind, name)
+func (c *Client) GetObjectConfigKeywords(ctx context.Context, namespace InPathNamespace, kind InPathKind, name InPathName, params *GetObjectConfigKeywordsParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewGetObjectConfigKeywordsRequest(c.Server, namespace, kind, name, params)
 	if err != nil {
 		return nil, err
 	}
@@ -2677,7 +2677,7 @@ func NewPutClusterConfigFileRequestWithBody(server string, contentType string, b
 }
 
 // NewGetClusterConfigKeywordsRequest generates requests for GetClusterConfigKeywords
-func NewGetClusterConfigKeywordsRequest(server string) (*http.Request, error) {
+func NewGetClusterConfigKeywordsRequest(server string, params *GetClusterConfigKeywordsParams) (*http.Request, error) {
 	var err error
 
 	serverURL, err := url.Parse(server)
@@ -2693,6 +2693,60 @@ func NewGetClusterConfigKeywordsRequest(server string) (*http.Request, error) {
 	queryURL, err := serverURL.Parse(operationPath)
 	if err != nil {
 		return nil, err
+	}
+
+	if params != nil {
+		queryValues := queryURL.Query()
+
+		if params.Driver != nil {
+
+			if queryFrag, err := runtime.StyleParamWithLocation("form", true, "driver", runtime.ParamLocationQuery, *params.Driver); err != nil {
+				return nil, err
+			} else if parsed, err := url.ParseQuery(queryFrag); err != nil {
+				return nil, err
+			} else {
+				for k, v := range parsed {
+					for _, v2 := range v {
+						queryValues.Add(k, v2)
+					}
+				}
+			}
+
+		}
+
+		if params.Section != nil {
+
+			if queryFrag, err := runtime.StyleParamWithLocation("form", true, "section", runtime.ParamLocationQuery, *params.Section); err != nil {
+				return nil, err
+			} else if parsed, err := url.ParseQuery(queryFrag); err != nil {
+				return nil, err
+			} else {
+				for k, v := range parsed {
+					for _, v2 := range v {
+						queryValues.Add(k, v2)
+					}
+				}
+			}
+
+		}
+
+		if params.Option != nil {
+
+			if queryFrag, err := runtime.StyleParamWithLocation("form", true, "option", runtime.ParamLocationQuery, *params.Option); err != nil {
+				return nil, err
+			} else if parsed, err := url.ParseQuery(queryFrag); err != nil {
+				return nil, err
+			} else {
+				for k, v := range parsed {
+					for _, v2 := range v {
+						queryValues.Add(k, v2)
+					}
+				}
+			}
+
+		}
+
+		queryURL.RawQuery = queryValues.Encode()
 	}
 
 	req, err := http.NewRequest("GET", queryURL.String(), nil)
@@ -4061,6 +4115,94 @@ func NewPutNodeConfigFileRequestWithBody(server string, nodename InPathNodeName,
 	}
 
 	req.Header.Add("Content-Type", contentType)
+
+	return req, nil
+}
+
+// NewGetNodeConfigKeywordsRequest generates requests for GetNodeConfigKeywords
+func NewGetNodeConfigKeywordsRequest(server string, nodename InPathNodeName, params *GetNodeConfigKeywordsParams) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithLocation("simple", false, "nodename", runtime.ParamLocationPath, nodename)
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/api/node/name/%s/config/keywords", pathParam0)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	if params != nil {
+		queryValues := queryURL.Query()
+
+		if params.Driver != nil {
+
+			if queryFrag, err := runtime.StyleParamWithLocation("form", true, "driver", runtime.ParamLocationQuery, *params.Driver); err != nil {
+				return nil, err
+			} else if parsed, err := url.ParseQuery(queryFrag); err != nil {
+				return nil, err
+			} else {
+				for k, v := range parsed {
+					for _, v2 := range v {
+						queryValues.Add(k, v2)
+					}
+				}
+			}
+
+		}
+
+		if params.Section != nil {
+
+			if queryFrag, err := runtime.StyleParamWithLocation("form", true, "section", runtime.ParamLocationQuery, *params.Section); err != nil {
+				return nil, err
+			} else if parsed, err := url.ParseQuery(queryFrag); err != nil {
+				return nil, err
+			} else {
+				for k, v := range parsed {
+					for _, v2 := range v {
+						queryValues.Add(k, v2)
+					}
+				}
+			}
+
+		}
+
+		if params.Option != nil {
+
+			if queryFrag, err := runtime.StyleParamWithLocation("form", true, "option", runtime.ParamLocationQuery, *params.Option); err != nil {
+				return nil, err
+			} else if parsed, err := url.ParseQuery(queryFrag); err != nil {
+				return nil, err
+			} else {
+				for k, v := range parsed {
+					for _, v2 := range v {
+						queryValues.Add(k, v2)
+					}
+				}
+			}
+
+		}
+
+		queryURL.RawQuery = queryValues.Encode()
+	}
+
+	req, err := http.NewRequest("GET", queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
 
 	return req, nil
 }
@@ -8983,40 +9125,6 @@ func NewGetNodeSystemUserRequest(server string, nodename InPathNodeName) (*http.
 	return req, nil
 }
 
-// NewGetNodeConfigKeywordsRequest generates requests for GetNodeConfigKeywords
-func NewGetNodeConfigKeywordsRequest(server string, nodename InPathNodeName) (*http.Request, error) {
-	var err error
-
-	var pathParam0 string
-
-	pathParam0, err = runtime.StyleParamWithLocation("simple", false, "nodename", runtime.ParamLocationPath, nodename)
-	if err != nil {
-		return nil, err
-	}
-
-	serverURL, err := url.Parse(server)
-	if err != nil {
-		return nil, err
-	}
-
-	operationPath := fmt.Sprintf("/api/node/%s/config/keywords", pathParam0)
-	if operationPath[0] == '/' {
-		operationPath = "." + operationPath
-	}
-
-	queryURL, err := serverURL.Parse(operationPath)
-	if err != nil {
-		return nil, err
-	}
-
-	req, err := http.NewRequest("GET", queryURL.String(), nil)
-	if err != nil {
-		return nil, err
-	}
-
-	return req, nil
-}
-
 // NewGetObjectsRequest generates requests for GetObjects
 func NewGetObjectsRequest(server string, params *GetObjectsParams) (*http.Request, error) {
 	var err error
@@ -10304,7 +10412,7 @@ func NewPutObjectConfigFileRequestWithBody(server string, namespace InPathNamesp
 }
 
 // NewGetObjectConfigKeywordsRequest generates requests for GetObjectConfigKeywords
-func NewGetObjectConfigKeywordsRequest(server string, namespace InPathNamespace, kind InPathKind, name InPathName) (*http.Request, error) {
+func NewGetObjectConfigKeywordsRequest(server string, namespace InPathNamespace, kind InPathKind, name InPathName, params *GetObjectConfigKeywordsParams) (*http.Request, error) {
 	var err error
 
 	var pathParam0 string
@@ -10341,6 +10449,60 @@ func NewGetObjectConfigKeywordsRequest(server string, namespace InPathNamespace,
 	queryURL, err := serverURL.Parse(operationPath)
 	if err != nil {
 		return nil, err
+	}
+
+	if params != nil {
+		queryValues := queryURL.Query()
+
+		if params.Driver != nil {
+
+			if queryFrag, err := runtime.StyleParamWithLocation("form", true, "driver", runtime.ParamLocationQuery, *params.Driver); err != nil {
+				return nil, err
+			} else if parsed, err := url.ParseQuery(queryFrag); err != nil {
+				return nil, err
+			} else {
+				for k, v := range parsed {
+					for _, v2 := range v {
+						queryValues.Add(k, v2)
+					}
+				}
+			}
+
+		}
+
+		if params.Section != nil {
+
+			if queryFrag, err := runtime.StyleParamWithLocation("form", true, "section", runtime.ParamLocationQuery, *params.Section); err != nil {
+				return nil, err
+			} else if parsed, err := url.ParseQuery(queryFrag); err != nil {
+				return nil, err
+			} else {
+				for k, v := range parsed {
+					for _, v2 := range v {
+						queryValues.Add(k, v2)
+					}
+				}
+			}
+
+		}
+
+		if params.Option != nil {
+
+			if queryFrag, err := runtime.StyleParamWithLocation("form", true, "option", runtime.ParamLocationQuery, *params.Option); err != nil {
+				return nil, err
+			} else if parsed, err := url.ParseQuery(queryFrag); err != nil {
+				return nil, err
+			} else {
+				for k, v := range parsed {
+					for _, v2 := range v {
+						queryValues.Add(k, v2)
+					}
+				}
+			}
+
+		}
+
+		queryURL.RawQuery = queryValues.Encode()
 	}
 
 	req, err := http.NewRequest("GET", queryURL.String(), nil)
@@ -11352,7 +11514,7 @@ type ClientWithResponsesInterface interface {
 	PutClusterConfigFileWithBodyWithResponse(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*PutClusterConfigFileResponse, error)
 
 	// GetClusterConfigKeywordsWithResponse request
-	GetClusterConfigKeywordsWithResponse(ctx context.Context, reqEditors ...RequestEditorFn) (*GetClusterConfigKeywordsResponse, error)
+	GetClusterConfigKeywordsWithResponse(ctx context.Context, params *GetClusterConfigKeywordsParams, reqEditors ...RequestEditorFn) (*GetClusterConfigKeywordsResponse, error)
 
 	// PostClusterJoinWithResponse request
 	PostClusterJoinWithResponse(ctx context.Context, params *PostClusterJoinParams, reqEditors ...RequestEditorFn) (*PostClusterJoinResponse, error)
@@ -11435,6 +11597,9 @@ type ClientWithResponsesInterface interface {
 
 	// PutNodeConfigFileWithBodyWithResponse request with any body
 	PutNodeConfigFileWithBodyWithResponse(ctx context.Context, nodename InPathNodeName, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*PutNodeConfigFileResponse, error)
+
+	// GetNodeConfigKeywordsWithResponse request
+	GetNodeConfigKeywordsWithResponse(ctx context.Context, nodename InPathNodeName, params *GetNodeConfigKeywordsParams, reqEditors ...RequestEditorFn) (*GetNodeConfigKeywordsResponse, error)
 
 	// PostDaemonRestartWithResponse request
 	PostDaemonRestartWithResponse(ctx context.Context, nodename InPathNodeName, reqEditors ...RequestEditorFn) (*PostDaemonRestartResponse, error)
@@ -11613,9 +11778,6 @@ type ClientWithResponsesInterface interface {
 	// GetNodeSystemUserWithResponse request
 	GetNodeSystemUserWithResponse(ctx context.Context, nodename InPathNodeName, reqEditors ...RequestEditorFn) (*GetNodeSystemUserResponse, error)
 
-	// GetNodeConfigKeywordsWithResponse request
-	GetNodeConfigKeywordsWithResponse(ctx context.Context, nodename InPathNodeName, reqEditors ...RequestEditorFn) (*GetNodeConfigKeywordsResponse, error)
-
 	// GetObjectsWithResponse request
 	GetObjectsWithResponse(ctx context.Context, params *GetObjectsParams, reqEditors ...RequestEditorFn) (*GetObjectsResponse, error)
 
@@ -11687,7 +11849,7 @@ type ClientWithResponsesInterface interface {
 	PutObjectConfigFileWithBodyWithResponse(ctx context.Context, namespace InPathNamespace, kind InPathKind, name InPathName, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*PutObjectConfigFileResponse, error)
 
 	// GetObjectConfigKeywordsWithResponse request
-	GetObjectConfigKeywordsWithResponse(ctx context.Context, namespace InPathNamespace, kind InPathKind, name InPathName, reqEditors ...RequestEditorFn) (*GetObjectConfigKeywordsResponse, error)
+	GetObjectConfigKeywordsWithResponse(ctx context.Context, namespace InPathNamespace, kind InPathKind, name InPathName, params *GetObjectConfigKeywordsParams, reqEditors ...RequestEditorFn) (*GetObjectConfigKeywordsResponse, error)
 
 	// GetObjectDataWithResponse request
 	GetObjectDataWithResponse(ctx context.Context, namespace InPathNamespace, kind InPathKind, name InPathName, params *GetObjectDataParams, reqEditors ...RequestEditorFn) (*GetObjectDataResponse, error)
@@ -12687,6 +12849,31 @@ func (r PutNodeConfigFileResponse) Status() string {
 
 // StatusCode returns HTTPResponse.StatusCode
 func (r PutNodeConfigFileResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+type GetNodeConfigKeywordsResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	JSON200      *KeywordDefinitionList
+	JSON400      *N400
+	JSON401      *N401
+	JSON500      *N500
+}
+
+// Status returns HTTPResponse.Status
+func (r GetNodeConfigKeywordsResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r GetNodeConfigKeywordsResponse) StatusCode() int {
 	if r.HTTPResponse != nil {
 		return r.HTTPResponse.StatusCode
 	}
@@ -14161,31 +14348,6 @@ func (r GetNodeSystemUserResponse) StatusCode() int {
 	return 0
 }
 
-type GetNodeConfigKeywordsResponse struct {
-	Body         []byte
-	HTTPResponse *http.Response
-	JSON200      *KeywordDefinitionList
-	JSON400      *N400
-	JSON401      *N401
-	JSON500      *N500
-}
-
-// Status returns HTTPResponse.Status
-func (r GetNodeConfigKeywordsResponse) Status() string {
-	if r.HTTPResponse != nil {
-		return r.HTTPResponse.Status
-	}
-	return http.StatusText(0)
-}
-
-// StatusCode returns HTTPResponse.StatusCode
-func (r GetNodeConfigKeywordsResponse) StatusCode() int {
-	if r.HTTPResponse != nil {
-		return r.HTTPResponse.StatusCode
-	}
-	return 0
-}
-
 type GetObjectsResponse struct {
 	Body         []byte
 	HTTPResponse *http.Response
@@ -15317,8 +15479,8 @@ func (c *ClientWithResponses) PutClusterConfigFileWithBodyWithResponse(ctx conte
 }
 
 // GetClusterConfigKeywordsWithResponse request returning *GetClusterConfigKeywordsResponse
-func (c *ClientWithResponses) GetClusterConfigKeywordsWithResponse(ctx context.Context, reqEditors ...RequestEditorFn) (*GetClusterConfigKeywordsResponse, error) {
-	rsp, err := c.GetClusterConfigKeywords(ctx, reqEditors...)
+func (c *ClientWithResponses) GetClusterConfigKeywordsWithResponse(ctx context.Context, params *GetClusterConfigKeywordsParams, reqEditors ...RequestEditorFn) (*GetClusterConfigKeywordsResponse, error) {
+	rsp, err := c.GetClusterConfigKeywords(ctx, params, reqEditors...)
 	if err != nil {
 		return nil, err
 	}
@@ -15573,6 +15735,15 @@ func (c *ClientWithResponses) PutNodeConfigFileWithBodyWithResponse(ctx context.
 		return nil, err
 	}
 	return ParsePutNodeConfigFileResponse(rsp)
+}
+
+// GetNodeConfigKeywordsWithResponse request returning *GetNodeConfigKeywordsResponse
+func (c *ClientWithResponses) GetNodeConfigKeywordsWithResponse(ctx context.Context, nodename InPathNodeName, params *GetNodeConfigKeywordsParams, reqEditors ...RequestEditorFn) (*GetNodeConfigKeywordsResponse, error) {
+	rsp, err := c.GetNodeConfigKeywords(ctx, nodename, params, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseGetNodeConfigKeywordsResponse(rsp)
 }
 
 // PostDaemonRestartWithResponse request returning *PostDaemonRestartResponse
@@ -16112,15 +16283,6 @@ func (c *ClientWithResponses) GetNodeSystemUserWithResponse(ctx context.Context,
 	return ParseGetNodeSystemUserResponse(rsp)
 }
 
-// GetNodeConfigKeywordsWithResponse request returning *GetNodeConfigKeywordsResponse
-func (c *ClientWithResponses) GetNodeConfigKeywordsWithResponse(ctx context.Context, nodename InPathNodeName, reqEditors ...RequestEditorFn) (*GetNodeConfigKeywordsResponse, error) {
-	rsp, err := c.GetNodeConfigKeywords(ctx, nodename, reqEditors...)
-	if err != nil {
-		return nil, err
-	}
-	return ParseGetNodeConfigKeywordsResponse(rsp)
-}
-
 // GetObjectsWithResponse request returning *GetObjectsResponse
 func (c *ClientWithResponses) GetObjectsWithResponse(ctx context.Context, params *GetObjectsParams, reqEditors ...RequestEditorFn) (*GetObjectsResponse, error) {
 	rsp, err := c.GetObjects(ctx, params, reqEditors...)
@@ -16336,8 +16498,8 @@ func (c *ClientWithResponses) PutObjectConfigFileWithBodyWithResponse(ctx contex
 }
 
 // GetObjectConfigKeywordsWithResponse request returning *GetObjectConfigKeywordsResponse
-func (c *ClientWithResponses) GetObjectConfigKeywordsWithResponse(ctx context.Context, namespace InPathNamespace, kind InPathKind, name InPathName, reqEditors ...RequestEditorFn) (*GetObjectConfigKeywordsResponse, error) {
-	rsp, err := c.GetObjectConfigKeywords(ctx, namespace, kind, name, reqEditors...)
+func (c *ClientWithResponses) GetObjectConfigKeywordsWithResponse(ctx context.Context, namespace InPathNamespace, kind InPathKind, name InPathName, params *GetObjectConfigKeywordsParams, reqEditors ...RequestEditorFn) (*GetObjectConfigKeywordsResponse, error) {
+	rsp, err := c.GetObjectConfigKeywords(ctx, namespace, kind, name, params, reqEditors...)
 	if err != nil {
 		return nil, err
 	}
@@ -18412,6 +18574,53 @@ func ParsePutNodeConfigFileResponse(rsp *http.Response) (*PutNodeConfigFileRespo
 			return nil, err
 		}
 		response.JSON409 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
+		var dest N500
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON500 = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseGetNodeConfigKeywordsResponse parses an HTTP response from a GetNodeConfigKeywordsWithResponse call
+func ParseGetNodeConfigKeywordsResponse(rsp *http.Response) (*GetNodeConfigKeywordsResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &GetNodeConfigKeywordsResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest KeywordDefinitionList
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
+		var dest N400
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON400 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest N401
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON401 = &dest
 
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
 		var dest N500
@@ -21392,53 +21601,6 @@ func ParseGetNodeSystemUserResponse(rsp *http.Response) (*GetNodeSystemUserRespo
 			return nil, err
 		}
 		response.JSON403 = &dest
-
-	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
-		var dest N500
-		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
-			return nil, err
-		}
-		response.JSON500 = &dest
-
-	}
-
-	return response, nil
-}
-
-// ParseGetNodeConfigKeywordsResponse parses an HTTP response from a GetNodeConfigKeywordsWithResponse call
-func ParseGetNodeConfigKeywordsResponse(rsp *http.Response) (*GetNodeConfigKeywordsResponse, error) {
-	bodyBytes, err := io.ReadAll(rsp.Body)
-	defer func() { _ = rsp.Body.Close() }()
-	if err != nil {
-		return nil, err
-	}
-
-	response := &GetNodeConfigKeywordsResponse{
-		Body:         bodyBytes,
-		HTTPResponse: rsp,
-	}
-
-	switch {
-	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
-		var dest KeywordDefinitionList
-		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
-			return nil, err
-		}
-		response.JSON200 = &dest
-
-	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
-		var dest N400
-		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
-			return nil, err
-		}
-		response.JSON400 = &dest
-
-	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
-		var dest N401
-		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
-			return nil, err
-		}
-		response.JSON401 = &dest
 
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
 		var dest N500
