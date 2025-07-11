@@ -187,11 +187,14 @@ func (t *CmdNodeEvents) doNodes() error {
 	}
 
 	ctx := context.Background()
+	var cancel context.CancelFunc
 	if t.Duration > 0 {
-		var cancel context.CancelFunc
 		ctx, cancel = context.WithTimeout(ctx, t.Duration)
-		defer cancel()
+	} else {
+		ctx, cancel = context.WithCancel(ctx)
 	}
+	defer cancel()
+
 	for _, nodename := range nodenames {
 		go t.nodeEventLoop(ctx, nodename)
 	}
@@ -284,6 +287,15 @@ func (t *CmdNodeEvents) nodeEventLoop(ctx context.Context, nodename string) {
 				return
 			default:
 			}
+			// wait time before reconnecting, it is short to avoid losing daemon
+			// restart events (filter DaemonStatusUpdated events and restart daemon)
+			time.Sleep(100 * time.Millisecond)
+			select {
+			case <-ctx.Done():
+				t.errC <- ctx.Err()
+				return
+			default:
+			}
 			retries++
 			if retries > maxRetries {
 				t.errC <- errEventRead
@@ -291,15 +303,6 @@ func (t *CmdNodeEvents) nodeEventLoop(ctx context.Context, nodename string) {
 			} else if retries == 1 {
 				_, _ = fmt.Fprintf(os.Stderr, "event read failed for node %s: '%s'\n", nodename, err)
 				_, _ = fmt.Fprintln(os.Stderr, "press ctrl+c to interrupt retries")
-			}
-			// wait time before reconnect, it is short to avoid losing daemon
-			// restart events.
-			time.Sleep(100 * time.Millisecond)
-			select {
-			case <-ctx.Done():
-				t.errC <- ctx.Err()
-				return
-			default:
 			}
 			evReader, err = t.getEvReader(nodename)
 			if err == nil {
