@@ -1516,8 +1516,8 @@ var nodeCommonKeywords = []keywords.Keyword{
 	},
 }
 
-var nodeKeywordStore = keywords.Store(append(nodePrivateKeywords, nodeCommonKeywords...))
+var NodeKeywordStore = keywords.Store(append(nodePrivateKeywords, nodeCommonKeywords...))
 
 func (t Node) KeywordLookup(k key.T, sectionType string) keywords.Keyword {
-	return keywordLookup(nodeKeywordStore, k, naming.KindInvalid, sectionType)
+	return keywordLookup(NodeKeywordStore, k, naming.KindInvalid, sectionType)
 }

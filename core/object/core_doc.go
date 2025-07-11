@@ -10,7 +10,7 @@ import (
 	"github.com/opensvc/om3/util/key"
 )
 
-func storeWithDriverKeywords(kind naming.Kind) keywords.Store {
+func KeywordStoreWithDrivers(kind naming.Kind) keywords.Store {
 	var store keywords.Store
 	if kind == naming.KindCcfg {
 		store = append(store, ccfgKeywordStore...)
@@ -38,7 +38,7 @@ func storeWithDriverKeywords(kind naming.Kind) keywords.Store {
 }
 
 func (t *core) Doc(drvStr, kwStr string, depth int) (string, error) {
-	store := storeWithDriverKeywords(t.path.Kind)
+	store := KeywordStoreWithDrivers(t.path.Kind)
 	switch {
 	case drvStr == "" && kwStr == "":
 		return store.Doc(t.path.Kind, depth)

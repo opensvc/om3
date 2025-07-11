@@ -9,7 +9,7 @@ import (
 )
 
 func (t *Node) Doc(drvStr, kwStr string, depth int) (string, error) {
-	store := nodeKeywordStore
+	store := NodeKeywordStore
 	switch {
 	case drvStr == "" && kwStr == "":
 		return store.Doc(naming.KindInvalid, depth)
