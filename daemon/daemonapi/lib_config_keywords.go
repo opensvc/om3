@@ -56,86 +56,42 @@ func convertKeywordStore(store keywords.Store) api.KeywordDefinitionItems {
 	l := make(api.KeywordDefinitionItems, 0)
 	for _, kw := range store {
 		item := api.KeywordDefinitionItem{
-			Option:  kw.Option,
-			Section: kw.Section,
+			Option:        kw.Option,
+			Section:       kw.Section,
+			Default:       kw.Default,
+			DefaultOption: kw.DefaultOption,
+			DefaultText:   kw.DefaultText.String(),
+			Text:          kw.Text.String(),
+			Example:       kw.Example,
+			Deprecated:    kw.Deprecated,
+			Provisioning:  kw.Provisioning,
+			Scopable:      kw.Scopable,
+			Required:      kw.Required,
+			Inherit:       kw.Inherit.String(),
+			Aliases:       append([]string{}, kw.Aliases...),
+			Candidates:    append([]string{}, kw.Candidates...),
+			Types:         append([]string{}, kw.Types...),
 		}
 
-		if len(kw.Aliases) > 0 {
-			aliases := append([]string{}, kw.Aliases...)
-			item.Aliases = &aliases
+		for _, d := range kw.Depends {
+			item.Depends = append(item.Depends, d.String())
 		}
 
-		if len(kw.Candidates) > 0 {
-			candidates := append([]string{}, kw.Candidates...)
-			item.Candidates = &candidates
-		}
-
-		if len(kw.Depends) > 0 {
-			var depends []string
-			for _, d := range kw.Depends {
-				depends = append(depends, d.String())
+		for _, k := range kw.Kind {
+			switch v := k.(type) {
+			case string:
+				item.Kind = append(item.Kind, v)
+			case fmt.Stringer:
+				item.Kind = append(item.Kind, v.String())
+			default:
+				item.Kind = append(item.Kind, fmt.Sprintf("%v", v))
 			}
-			item.Depends = &depends
-		}
-
-		if len(kw.Kind) > 0 {
-			var kind []string
-			for _, k := range kw.Kind {
-				switch v := k.(type) {
-				case string:
-					kind = append(kind, v)
-				case fmt.Stringer:
-					kind = append(kind, v.String())
-				default:
-					kind = append(kind, fmt.Sprintf("%v", v))
-				}
-			}
-			item.Kind = &kind
-		}
-
-		if len(kw.Types) > 0 {
-			types := append([]string{}, kw.Types...)
-			item.Types = &types
 		}
 
 		if kw.Converter != nil {
-			convType := fmt.Sprintf("%T", kw.Converter)
-			item.Converter = &convType
+			item.Converter = fmt.Sprintf("%T", kw.Converter)
 		}
 
-		if kw.Default != "" {
-			item.Default = &kw.Default
-		}
-
-		if kw.DefaultOption != "" {
-			item.DefaultOption = &kw.DefaultOption
-		}
-
-		if s := kw.DefaultText.String(); s != "" {
-			item.DefaultText = &s
-		}
-
-		if s := kw.Text.String(); s != "" {
-			item.Text = &s
-		}
-
-		if kw.Example != "" {
-			item.Example = &kw.Example
-		}
-
-		if kw.Deprecated != "" {
-			item.Deprecated = &kw.Deprecated
-		}
-
-		if kw.Provisioning {
-			item.Provisioning = &kw.Provisioning
-		}
-
-		if kw.Scopable {
-			item.Scopable = &kw.Scopable
-		}
-		s := kw.Inherit.String()
-		item.Inherit = &s
 		l = append(l, item)
 	}
 	return l

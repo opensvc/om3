@@ -14957,6 +14957,7 @@ type GetObjectConfigKeywordsResponse struct {
 	Body         []byte
 	HTTPResponse *http.Response
 	JSON200      *KeywordDefinitionList
+	JSON400      *N400
 	JSON401      *N401
 	JSON500      *N500
 }
@@ -23053,6 +23054,13 @@ func ParseGetObjectConfigKeywordsResponse(rsp *http.Response) (*GetObjectConfigK
 			return nil, err
 		}
 		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
+		var dest N400
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON400 = &dest
 
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
 		var dest N401
