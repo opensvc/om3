@@ -4,6 +4,7 @@ import (
 	"context"
 	"crypto/tls"
 	"fmt"
+	"maps"
 	"net"
 	"net/http"
 	"strings"
@@ -19,6 +20,7 @@ type (
 	arbitratorConfig struct {
 		Name     string `json:"name"`
 		URI      string `json:"uri"`
+		Weight   int    `json:"weight"`
 		Insecure bool
 	}
 )
@@ -35,6 +37,7 @@ func (t *Manager) setArbitratorConfig() {
 			Name:     name,
 			URI:      t.config.GetString(key.New(s, "uri")),
 			Insecure: t.config.GetBool(key.New(s, "insecure")),
+			Weight:   t.config.GetInt(key.New(s, "weight")),
 		}
 		if a.URI == "" {
 			t.log.Debugf("arbitrator keyword 'name' is deprecated, use 'uri' instead")
@@ -67,7 +70,6 @@ func (t *Manager) getStatusArbitrators() map[string]node.ArbitratorStatus {
 	for i := 0; i < len(t.arbitrators); i++ {
 		r := <-c
 		name := r.name
-		url := t.arbitrators[name].URI
 		aStatus := status.Up
 		if r.err != nil {
 			t.log.Warnf("arbitrator#%s is down", name)
@@ -79,38 +81,18 @@ func (t *Manager) getStatusArbitrators() map[string]node.ArbitratorStatus {
 				ErrS: r.err.Error(),
 			})
 		}
-		result[name] = node.ArbitratorStatus{URL: url, Status: aStatus}
+		result[name] = node.ArbitratorStatus{
+			URL:    t.arbitrators[name].URI,
+			Status: aStatus,
+			Weight: t.arbitrators[name].Weight,
+		}
 	}
 	return result
 }
 
-func compareArbitratorStatusMap(a, b map[string]node.ArbitratorStatus) bool {
-	for key, status := range a {
-		target, ok := b[key]
-		if !ok {
-			// key in a but not in b
-			return false
-		}
-		// key in a and b
-		if status.URL != target.URL || status.Status != target.Status {
-			return false
-		}
-	}
-	for key, _ := range b {
-		_, ok := a[key]
-		if !ok {
-			// key in a but not in b
-			return false
-		}
-		// key in b but not in a
-	}
-	return true
-
-}
-
 func (t *Manager) getAndUpdateStatusArbitrator() {
 	arbitrators := t.getStatusArbitrators()
-	if compareArbitratorStatusMap(arbitrators, t.nodeStatus.Arbitrators) {
+	if maps.Equal(arbitrators, t.nodeStatus.Arbitrators) {
 		return
 	}
 	t.nodeStatus.Arbitrators = arbitrators
@@ -122,10 +104,20 @@ func (t *Manager) getAndUpdateStatusArbitrator() {
 	t.publisher.Pub(&msgbus.NodeStatusArbitratorsUpdated{Node: t.localhost, Value: pubValue}, t.labelLocalhost)
 }
 
+func (t *Manager) arbitratorTotal() int {
+	i := 0
+	for _, v := range t.getStatusArbitrators() {
+		i += v.Weight
+	}
+	return i
+}
+
 func (t *Manager) arbitratorVotes() (votes []string) {
 	for s, v := range t.getStatusArbitrators() {
 		if v.Status == status.Up {
-			votes = append(votes, s)
+			for i := 0; i < v.Weight; i++ {
+				votes = append(votes, s)
+			}
 		}
 	}
 	return

@@ -600,6 +600,13 @@ var nodeCommonKeywords = []keywords.Keyword{
 		Text:      keywords.NewText(fs, "text/kw/node/arbitrator.insecure"),
 	},
 	{
+		Converter: converters.Int,
+		Default:   "1",
+		Option:    "weight",
+		Section:   "arbitrator",
+		Text:      keywords.NewText(fs, "text/kw/node/arbitrator.weight"),
+	},
+	{
 		Converter: converters.Shlex,
 		Example:   "/bin/true",
 		Option:    "cmd",

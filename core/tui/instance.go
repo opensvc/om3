@@ -247,8 +247,7 @@ func (t *App) updateInstanceView() {
 		}
 		return tview.NewTableCell(s).SetSelectable(false)
 	}
-	cellFlags := func(resourceStatus resource.Status, instanceState instance.States) *tview.TableCell {
-		rid := resourceStatus.ResourceID.String()
+	cellFlags := func(rid string, resourceStatus resource.Status, instanceState instance.States) *tview.TableCell {
 		s := instanceState.Status.ResourceFlagsString(rid, resourceStatus)
 		s += instanceState.Monitor.ResourceFlagRestartString(rid, resourceStatus)
 		s = tview.TranslateANSI(s)
@@ -256,19 +255,24 @@ func (t *App) updateInstanceView() {
 	}
 
 	i := 0
-	instanceState, ok := digest.Instances.ByNode()[t.viewNode]
-	if !ok {
-		goto end
+
+	postamble := func() {
+		t.flex.Clear()
+		t.flex.AddItem(t.head, 1, 0, false)
+		t.flex.AddItem(table1, i+2, 0, false)
+		t.flex.AddItem(table, 0, 1, true)
+		t.app.SetFocus(table)
 	}
 
-	table.SetCell(i, 0, tview.NewTableCell("RID").SetTextColor(colorTitle).SetSelectable(false))
-	table.SetCell(i, 1, tview.NewTableCell("FLAGS").SetTextColor(colorTitle).SetSelectable(false))
-	table.SetCell(i, 2, tview.NewTableCell("STATUS").SetTextColor(colorTitle).SetSelectable(false))
-	table.SetCell(i, 3, tview.NewTableCell("LABEL").SetTextColor(colorTitle).SetSelectable(false))
-	for _, resourceStatus := range instanceState.Status.SortedResources() {
+	instanceState, ok := digest.Instances.ByNode()[t.viewNode]
+	if !ok {
+		postamble()
+	}
+
+	setRow := func(prefix, rid string, resourceStatus resource.Status) {
 		i += 1
-		table.SetCell(i, 0, cellResourceId(resourceStatus.ResourceID.String()))
-		table.SetCell(i, 1, cellFlags(resourceStatus, instanceState))
+		table.SetCell(i, 0, cellResourceId(prefix+rid))
+		table.SetCell(i, 1, cellFlags(rid, resourceStatus, instanceState))
 		table.SetCell(i, 2, tview.NewTableCell(tview.TranslateANSI(colorstatus.Sprint(resourceStatus.Status, rawconfig.Colorize))).SetSelectable(false))
 		table.SetCell(i, 3, tview.NewTableCell(resourceStatus.Label).SetSelectable(false))
 		for _, entry := range resourceStatus.Log {
@@ -277,6 +281,20 @@ func (t *App) updateInstanceView() {
 			table.SetCell(i, 1, tview.NewTableCell("").SetSelectable(false))
 			table.SetCell(i, 2, tview.NewTableCell("").SetSelectable(false))
 			table.SetCell(i, 3, cellLog(entry))
+		}
+	}
+
+	table.SetCell(i, 0, tview.NewTableCell("RID").SetTextColor(colorTitle).SetSelectable(false))
+	table.SetCell(i, 1, tview.NewTableCell("FLAGS").SetTextColor(colorTitle).SetSelectable(false))
+	table.SetCell(i, 2, tview.NewTableCell("STATUS").SetTextColor(colorTitle).SetSelectable(false))
+	table.SetCell(i, 3, tview.NewTableCell("LABEL").SetTextColor(colorTitle).SetSelectable(false))
+	for _, resourceStatus := range instanceState.Status.SortedResources() {
+		rid := resourceStatus.ResourceID.String()
+		setRow("", rid, resourceStatus)
+		if encapStatus, ok := instanceState.Status.Encap[rid]; ok {
+			for rid, encapResourceStatus := range encapStatus.Resources {
+				setRow(" ", rid, encapResourceStatus)
+			}
 		}
 	}
 
@@ -314,10 +332,5 @@ func (t *App) updateInstanceView() {
 		table1.SetCell(i, 1, tview.NewTableCell(formatRel(instanceState.Monitor.Children)).SetSelectable(false))
 	}
 
-end:
-	t.flex.Clear()
-	t.flex.AddItem(t.head, 1, 0, false)
-	t.flex.AddItem(table1, i+2, 0, false)
-	t.flex.AddItem(table, 0, 1, true)
-	t.app.SetFocus(table)
+	postamble()
 }

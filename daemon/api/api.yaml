@@ -4239,11 +4239,14 @@ components:
       required:
         - url
         - status
+        - weight
       properties:
-        url:
-          type: string
         status:
           $ref: '#/components/schemas/Status'
+        url:
+          type: string
+        weight:
+          type: integer
     AuthInfo:
       type: object
       required:
