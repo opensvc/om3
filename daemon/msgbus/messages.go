@@ -169,6 +169,8 @@ var (
 
 		"NodeStatusGenUpdates": func() any { return &NodeStatusGenUpdates{} },
 
+		"NodeStatusLabelsCommited": func() any { return &NodeStatusLabelsCommited{} },
+
 		"NodeStatusLabelsUpdated": func() any { return &NodeStatusLabelsUpdated{} },
 
 		"NodeSplitAction": func() any { return &NodeSplitAction{} },
@@ -694,6 +696,12 @@ type (
 		Value node.Gen `json:"gens" yaml:"gens"`
 	}
 
+	NodeStatusLabelsCommited struct {
+		pubsub.Msg `yaml:",inline"`
+		Node       string      `json:"node" yaml:"node"`
+		Value      node.Labels `json:"node_labels" yaml:"node_labels"`
+	}
+
 	NodeStatusLabelsUpdated struct {
 		pubsub.Msg `yaml:",inline"`
 		Node       string      `json:"node" yaml:"node"`
@@ -1133,6 +1141,10 @@ func (e *NodeStatusArbitratorsUpdated) Kind() string {
 
 func (e *NodeStatusGenUpdates) Kind() string {
 	return "NodeStatusGenUpdates"
+}
+
+func (e *NodeStatusLabelsCommited) Kind() string {
+	return "NodeStatusLabelsCommited"
 }
 
 func (e *NodeStatusLabelsUpdated) Kind() string {

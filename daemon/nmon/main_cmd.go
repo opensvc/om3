@@ -62,9 +62,6 @@ func (t *Manager) onConfigFileUpdated(_ *msgbus.ConfigFileUpdated) {
 		return
 	}
 
-	// env might have changed. nmon is responsible for updating nodes_info.json
-	t.saveNodesInfo()
-
 	// recompute rejoin ticker, perhaps RejoinGracePeriod has been changed
 	t.checkRejoinTicker()
 }

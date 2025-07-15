@@ -30,6 +30,7 @@ import (
 	"os"
 	"path/filepath"
 	"runtime"
+	"slices"
 	"sync"
 	"time"
 
@@ -216,9 +217,6 @@ func (t *Manager) Start(parent context.Context) error {
 	if err := t.loadConfigAndPublish(); err != nil {
 		return err
 	}
-
-	// ensure saveNodesInfo is called once.
-	t.saveNodesInfo()
 
 	bootID := bootid.Get()
 	if len(bootID) > 0 {
@@ -684,9 +682,13 @@ func (t *Manager) onPeerNodeOsPathsUpdated(m *msgbus.NodeOsPathsUpdated) {
 
 func (t *Manager) onPeerNodeStatusLabelsUpdated(m *msgbus.NodeStatusLabelsUpdated) {
 	peerNodeInfo := t.cacheNodesInfo[m.Node]
+	changed := !maps.Equal(peerNodeInfo.Labels, m.Value)
 	peerNodeInfo.Labels = m.Value
 	t.cacheNodesInfo[m.Node] = peerNodeInfo
 	t.saveNodesInfo()
+	if changed {
+		t.publisher.Pub(&msgbus.NodeStatusLabelsCommited{Node: m.Node, Value: m.Value.DeepCopy()}, t.labelLocalhost)
+	}
 }
 
 // onNodeStatusGenUpdates updates the localhost node status gen from daemondata
@@ -765,17 +767,31 @@ func (t *Manager) loadConfigAndPublish() error {
 		t.updateIsOverloaded(*stats)
 	}
 
+	var labelsChanged, pathsChanged bool
+
 	localNodeInfo := t.cacheNodesInfo[t.localhost]
 	if !maps.Equal(localNodeInfo.Labels, t.nodeStatus.Labels) {
+		t.nodeStatus.Labels = localNodeInfo.Labels
+		labelsChanged = true
+	}
+	paths := node.OsPathsData.GetByNode(t.localhost)
+	if paths == nil || !slices.Equal(localNodeInfo.Paths, *paths) {
+		node.OsPathsData.Set(t.localhost, localNodeInfo.Paths.DeepCopy())
+		pathsChanged = true
+	}
+	if labelsChanged || pathsChanged {
+		t.saveNodesInfo()
+	}
+	if labelsChanged {
 		t.publisher.Pub(&msgbus.NodeStatusLabelsUpdated{Node: t.localhost, Value: localNodeInfo.Labels.DeepCopy()}, t.labelLocalhost)
+		t.publisher.Pub(&msgbus.NodeStatusLabelsCommited{Node: t.localhost, Value: localNodeInfo.Labels.DeepCopy()}, t.labelLocalhost)
+	}
+	if pathsChanged {
+		t.publisher.Pub(&msgbus.NodeOsPathsUpdated{Node: t.localhost, Value: *localNodeInfo.Paths.DeepCopy()}, t.labelLocalhost)
 	}
 
 	t.updateSpeaker()
-	t.nodeStatus.Labels = localNodeInfo.Labels
 	t.publishNodeStatus()
-
-	node.OsPathsData.Set(t.localhost, localNodeInfo.Paths.DeepCopy())
-	t.publisher.Pub(&msgbus.NodeOsPathsUpdated{Node: t.localhost, Value: *localNodeInfo.Paths.DeepCopy()}, t.labelLocalhost)
 
 	select {
 	case t.poolC <- nil:
