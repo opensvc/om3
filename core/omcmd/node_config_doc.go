@@ -11,7 +11,7 @@ import (
 )
 
 type (
-	CmdNodeDoc struct {
+	CmdNodeConfigDoc struct {
 		Color   string
 		Output  string
 		Keyword string
@@ -20,7 +20,7 @@ type (
 	}
 )
 
-func (t *CmdNodeDoc) Run() error {
+func (t *CmdNodeConfigDoc) Run() error {
 	c, err := client.New()
 	if err != nil {
 		return err
