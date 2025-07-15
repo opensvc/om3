@@ -452,6 +452,96 @@ paths:
       tags:
         - node
 
+  /api/cluster/config/keywords:
+    get:
+      operationId: GetClusterConfigKeywords
+      description: |
+        Return the list of supported keywords in cluster.conf
+      parameters:
+        - $ref: '#/components/parameters/inQueryDriver'
+        - $ref: '#/components/parameters/inQuerySection'
+        - $ref: '#/components/parameters/inQueryOption'
+      responses:
+        200:
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/KeywordDefinitionList'
+        400:
+          $ref: '#/components/responses/400'
+        401:
+          $ref: '#/components/responses/401'
+        500:
+          $ref: '#/components/responses/500'
+      security:
+        - basicAuth: [ ]
+        - bearerAuth: [ ]
+      tags:
+        - cluster
+
+  /api/node/name/{nodename}/config/keywords:
+    get:
+      operationId: GetNodeConfigKeywords
+      description: |
+        Return the list of supported keywords in node
+      parameters:
+        - $ref: '#/components/parameters/inPathNodeName'
+        - $ref: '#/components/parameters/inQueryDriver'
+        - $ref: '#/components/parameters/inQuerySection'
+        - $ref: '#/components/parameters/inQueryOption'
+      responses:
+        200:
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/KeywordDefinitionList'
+        400:
+          $ref: '#/components/responses/400'
+        401:
+          $ref: '#/components/responses/401'
+        500:
+          $ref: '#/components/responses/500'
+      security:
+        - basicAuth: [ ]
+        - bearerAuth: [ ]
+      tags:
+        - node
+
+  /api/object/path/{namespace}/{kind}/{name}/config/keywords:
+    get:
+      operationId: GetObjectConfigKeywords
+      description: |
+        Return the list of supported keywords in object
+      parameters:
+        - $ref: '#/components/parameters/inPathNamespace'
+        - $ref: '#/components/parameters/inPathKind'
+        - $ref: '#/components/parameters/inPathName'
+        - $ref: '#/components/parameters/inQueryDriver'
+        - $ref: '#/components/parameters/inQuerySection'
+        - $ref: '#/components/parameters/inQueryOption'
+      tags:
+        - object / svc
+        - object / vol
+        - object / cfg
+        - object / sec
+        - object / usr
+      security:
+        - basicAuth: [ ]
+        - bearerAuth: [ ]
+      responses:
+        200:
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/KeywordDefinitionList'
+        401:
+          $ref: '#/components/responses/401'
+        500:
+          $ref: '#/components/responses/500'
+
   /api/node/name/{nodename}/daemon/action/restart:
     post:
       description: |
@@ -3085,7 +3175,7 @@ paths:
           $ref: '#/components/responses/409'
         500:
           $ref: '#/components/responses/500'
- 
+
   /api/object/path/{namespace}/{kind}/{name}/data/keys:
     get:
       description: |
@@ -4201,11 +4291,27 @@ components:
             - CapabilityList
         items:
           $ref: '#/components/schemas/CapabilityItems'
+    KeywordDefinitionList:
+      type: object
+      required:
+        - kind
+        - items
+      properties:
+        kind:
+          type: string
+          enum:
+            - KeywordDefinitionList
+        items:
+          $ref: '#/components/schemas/KeywordDefinitionItems'
 
     CapabilityItems:
       type: array
       items:
         $ref: '#/components/schemas/CapabilityItem'
+    KeywordDefinitionItems:
+      type: array
+      items:
+        $ref: '#/components/schemas/KeywordDefinitionItem'
 
     CapabilityItem:
       type: object
@@ -4222,6 +4328,56 @@ components:
           $ref: '#/components/schemas/NodeMeta'
         data:
           $ref: '#/components/schemas/Capability'
+    KeywordDefinitionItem:
+      type: object
+      required:
+        - section
+        - option
+      properties:
+        section:
+          type: string
+        option:
+          type: string
+        scopable:
+          type: boolean
+        converter:
+          type: string
+        text:
+          type: string
+        defaultText:
+          type: string
+        example:
+          type: string
+        default:
+          type: string
+        defaultOption:
+          type: string
+        candidates:
+          type: array
+          items:
+            type: string
+        depends:
+          type : array
+          items:
+            type: string
+        kind:
+          type: array
+          items:
+            type: string
+        provisioning:
+          type: boolean
+        types:
+          type: array
+          items:
+            type: string
+        aliases:
+          type: array
+          items:
+            type: string
+        inherit:
+          type: string
+        deprecated:
+          type: string
 
     Capability:
       type: object
@@ -4675,7 +4831,7 @@ components:
         expired_at:
           type: string
           format: date-time
-    
+
     DriverList:
       type: object
       required:
@@ -7121,6 +7277,30 @@ components:
       schema:
         type: string
         format: duration
+
+    inQueryDriver:
+      in: query
+      name: driver
+      description: show only keywords of this driver
+      schema:
+        type: string
+        example: fs.ext4
+
+    inQuerySection:   
+      in: query
+      name: section
+      description: show supported keywords of this configuration section
+      schema:
+        type: string
+        example: fs#2
+
+    inQueryOption:
+      in: query
+      name: option
+      description: show the keyword referenced by section and option
+      schema:
+        type: string
+        example: fs#2
 
     Duration:
       name: duration

@@ -101,6 +101,11 @@ const (
 	InstanceListKindInstanceList InstanceListKind = "InstanceList"
 )
 
+// Defines values for KeywordDefinitionListKind.
+const (
+	KeywordDefinitionListKindKeywordDefinitionList KeywordDefinitionListKind = "KeywordDefinitionList"
+)
+
 // Defines values for KeywordListKind.
 const (
 	KeywordListKindKeywordList KeywordListKind = "KeywordList"
@@ -628,6 +633,39 @@ type InstanceMonitor = instance.Monitor
 
 // InstanceStatus defines model for InstanceStatus.
 type InstanceStatus = instance.Status
+
+// KeywordDefinitionItem defines model for KeywordDefinitionItem.
+type KeywordDefinitionItem struct {
+	Aliases       *[]string `json:"aliases,omitempty"`
+	Candidates    *[]string `json:"candidates,omitempty"`
+	Converter     *string   `json:"converter,omitempty"`
+	Default       *string   `json:"default,omitempty"`
+	DefaultOption *string   `json:"defaultOption,omitempty"`
+	DefaultText   *string   `json:"defaultText,omitempty"`
+	Depends       *[]string `json:"depends,omitempty"`
+	Deprecated    *string   `json:"deprecated,omitempty"`
+	Example       *string   `json:"example,omitempty"`
+	Inherit       *string   `json:"inherit,omitempty"`
+	Kind          *[]string `json:"kind,omitempty"`
+	Option        string    `json:"option"`
+	Provisioning  *bool     `json:"provisioning,omitempty"`
+	Scopable      *bool     `json:"scopable,omitempty"`
+	Section       string    `json:"section"`
+	Text          *string   `json:"text,omitempty"`
+	Types         *[]string `json:"types,omitempty"`
+}
+
+// KeywordDefinitionItems defines model for KeywordDefinitionItems.
+type KeywordDefinitionItems = []KeywordDefinitionItem
+
+// KeywordDefinitionList defines model for KeywordDefinitionList.
+type KeywordDefinitionList struct {
+	Items KeywordDefinitionItems    `json:"items"`
+	Kind  KeywordDefinitionListKind `json:"kind"`
+}
+
+// KeywordDefinitionListKind defines model for KeywordDefinitionList.Kind.
+type KeywordDefinitionListKind string
 
 // KeywordItem defines model for KeywordItem.
 type KeywordItem struct {
@@ -1439,6 +1477,9 @@ type InQueryDeletes = []string
 // InQueryDisableRollback defines model for inQueryDisableRollback.
 type InQueryDisableRollback = bool
 
+// InQueryDriver defines model for inQueryDriver.
+type InQueryDriver = string
+
 // InQueryEnvs defines model for inQueryEnvs.
 type InQueryEnvs = []string
 
@@ -1466,11 +1507,17 @@ type InQueryLeader = bool
 // InQueryMaster Act on the host instance of the service, and don't act on encap instance if not asked for explicitely.
 type InQueryMaster = bool
 
+// InQueryOption defines model for inQueryOption.
+type InQueryOption = string
+
 // InQueryRequesterSid defines model for inQueryRequesterSid.
 type InQueryRequesterSid = openapi_types.UUID
 
 // InQueryRid defines model for inQueryRid.
 type InQueryRid = string
+
+// InQuerySection defines model for inQuerySection.
+type InQuerySection = string
 
 // InQuerySets defines model for inQuerySets.
 type InQuerySets = []string
@@ -1547,6 +1594,18 @@ type PatchClusterConfigParams struct {
 	Delete *InQueryDeletes `form:"delete,omitempty" json:"delete,omitempty"`
 	Unset  *InQueryUnsets  `form:"unset,omitempty" json:"unset,omitempty"`
 	Set    *InQuerySets    `form:"set,omitempty" json:"set,omitempty"`
+}
+
+// GetClusterConfigKeywordsParams defines parameters for GetClusterConfigKeywords.
+type GetClusterConfigKeywordsParams struct {
+	// Driver show only keywords of this driver
+	Driver *InQueryDriver `form:"driver,omitempty" json:"driver,omitempty"`
+
+	// Section show supported keywords of this configuration section
+	Section *InQuerySection `form:"section,omitempty" json:"section,omitempty"`
+
+	// Option show the keyword referenced by section and option
+	Option *InQueryOption `form:"option,omitempty" json:"option,omitempty"`
 }
 
 // PostClusterJoinParams defines parameters for PostClusterJoin.
@@ -1650,6 +1709,18 @@ type PatchNodeConfigParams struct {
 	Delete *InQueryDeletes `form:"delete,omitempty" json:"delete,omitempty"`
 	Unset  *InQueryUnsets  `form:"unset,omitempty" json:"unset,omitempty"`
 	Set    *InQuerySets    `form:"set,omitempty" json:"set,omitempty"`
+}
+
+// GetNodeConfigKeywordsParams defines parameters for GetNodeConfigKeywords.
+type GetNodeConfigKeywordsParams struct {
+	// Driver show only keywords of this driver
+	Driver *InQueryDriver `form:"driver,omitempty" json:"driver,omitempty"`
+
+	// Section show supported keywords of this configuration section
+	Section *InQuerySection `form:"section,omitempty" json:"section,omitempty"`
+
+	// Option show the keyword referenced by section and option
+	Option *InQueryOption `form:"option,omitempty" json:"option,omitempty"`
 }
 
 // PostDaemonShutdownParams defines parameters for PostDaemonShutdown.
@@ -1947,6 +2018,18 @@ type PatchObjectConfigParams struct {
 	Delete *InQueryDeletes `form:"delete,omitempty" json:"delete,omitempty"`
 	Unset  *InQueryUnsets  `form:"unset,omitempty" json:"unset,omitempty"`
 	Set    *InQuerySets    `form:"set,omitempty" json:"set,omitempty"`
+}
+
+// GetObjectConfigKeywordsParams defines parameters for GetObjectConfigKeywords.
+type GetObjectConfigKeywordsParams struct {
+	// Driver show only keywords of this driver
+	Driver *InQueryDriver `form:"driver,omitempty" json:"driver,omitempty"`
+
+	// Section show supported keywords of this configuration section
+	Section *InQuerySection `form:"section,omitempty" json:"section,omitempty"`
+
+	// Option show the keyword referenced by section and option
+	Option *InQueryOption `form:"option,omitempty" json:"option,omitempty"`
 }
 
 // GetObjectDataParams defines parameters for GetObjectData.
