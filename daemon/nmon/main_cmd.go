@@ -277,7 +277,7 @@ func (t *Manager) onForgetPeer(c *msgbus.ForgetPeer) {
 		return
 	}
 	t.log.Warnf("cluster is split, check for arbitrator votes")
-	total := len(t.clusterConfig.Nodes) + len(t.arbitrators)
+	total := len(t.clusterConfig.Nodes) + t.arbitratorTotal()
 	arbitratorVotes := t.arbitratorVotes()
 	votes := len(t.livePeers) + len(arbitratorVotes)
 	livePeers := make([]string, 0)

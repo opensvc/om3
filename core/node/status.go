@@ -34,6 +34,7 @@ type (
 	ArbitratorStatus struct {
 		URL    string   `json:"url"`
 		Status status.T `json:"status"`
+		Weight int      `json:"weight"`
 	}
 
 	// NodesInfo is the dataset exposed via the GET /nodes_info handler,
