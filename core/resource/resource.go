@@ -1090,8 +1090,12 @@ func stop(ctx context.Context, r Driver) error {
 func EvalStatus(ctx context.Context, r Driver) status.T {
 	r.StatusLog().Reset()
 	s := status.NotApplicable
+	var tags []string
+	if r.IsActionDisabled() {
+		tags = append(tags, "actions disabled")
+	}
 	if r.IsStatusDisabled() {
-		r.StatusLog().Info("nostatus")
+		tags = append(tags, "status disabled")
 	} else if !r.IsDisabled() {
 		Setenv(r)
 		s = r.Status(ctx)
@@ -1107,6 +1111,9 @@ func EvalStatus(ctx context.Context, r Driver) status.T {
 				s = status.StandbyDown
 			}
 		}
+	}
+	if tags != nil {
+		r.StatusLog().Info("%s", strings.Join(tags, ", "))
 	}
 	sb := statusbus.FromContext(ctx)
 	sb.Post(r.RID(), s, false)
