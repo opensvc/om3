@@ -21,11 +21,6 @@ type (
 		Convert(string) (interface{}, error)
 	}
 
-	Text struct {
-		fs   embed.FS
-		path string
-	}
-
 	// Keyword represents a configuration option in an object or node configuration file
 	Keyword struct {
 		Section string
@@ -42,10 +37,10 @@ type (
 		Converter Converter
 
 		// Text is a text explaining the role of the keyword.
-		Text Text
+		Text string
 
 		// DefaultText is a text explaining the default value.
-		DefaultText Text
+		DefaultText string
 
 		// Example demonstrates the keyword usage.
 		Example string
@@ -119,8 +114,9 @@ func (t Inherit) String() string {
 	}
 }
 
-func NewText(fs embed.FS, path string) Text {
-	return Text{fs, path}
+func NewText(fs embed.FS, path string) string {
+	b, _ := fs.ReadFile(path)
+	return string(b)
 }
 
 func ParseIndex(s string) Index {
@@ -156,17 +152,6 @@ func (t Indices) Less(i, j int) bool {
 
 func (t Indices) Swap(i, j int) {
 	t[i], t[j] = t[j], t[i]
-}
-
-func (t Text) String() string {
-	if t.path == "" {
-		return ""
-	}
-	if b, err := t.fs.ReadFile(t.path); err != nil {
-		return "TODO"
-	} else {
-		return string(b)
-	}
 }
 
 // Name is a func required by the resource manifest Attr interface
@@ -378,10 +363,6 @@ func (t Keyword) DefaultKey() key.T {
 	return k
 }
 
-func (t Text) IsZero() bool {
-	return t.path == ""
-}
-
 func (t Keyword) IsZero() bool {
 	return t.Option == ""
 }
@@ -403,8 +384,8 @@ func (t Keyword) Doc(depth int) string {
 		}
 		buff += sprintProp("depends", strings.Join(l, ", "))
 	}
-	if !t.DefaultText.IsZero() {
-		buff += sprintProp("default", t.DefaultText.String())
+	if t.DefaultText != "" {
+		buff += sprintProp("default", t.DefaultText)
 	} else if t.Default != "" {
 		buff += sprintProp("default", t.Default)
 	}
@@ -418,7 +399,7 @@ func (t Keyword) Doc(depth int) string {
 		buff += "\t" + t.Option + " = " + t.Example + "\n"
 		buff += "\n"
 	}
-	buff += t.Text.String()
+	buff += t.Text
 	buff += "\n"
 	return buff
 }
