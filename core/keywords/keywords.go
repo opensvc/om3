@@ -159,6 +159,9 @@ func (t Indices) Swap(i, j int) {
 }
 
 func (t Text) String() string {
+	if t.path == "" {
+		return ""
+	}
 	if b, err := t.fs.ReadFile(t.path); err != nil {
 		return "TODO"
 	} else {
