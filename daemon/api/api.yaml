@@ -537,6 +537,8 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/KeywordDefinitionList'
+        400:
+          $ref: '#/components/responses/400'
         401:
           $ref: '#/components/responses/401'
         500:
@@ -4336,6 +4338,22 @@ components:
       required:
         - section
         - option
+        - scopable
+        - converter
+        - text
+        - defaultText
+        - example
+        - default
+        - defaultOption
+        - candidates
+        - depends
+        - kind
+        - provisioning
+        - types
+        - aliases
+        - inherit
+        - deprecated
+        - required
       properties:
         section:
           type: string
@@ -4381,6 +4399,8 @@ components:
           type: string
         deprecated:
           type: string
+        required:
+          type: boolean
 
     Capability:
       type: object

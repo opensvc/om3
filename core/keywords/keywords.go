@@ -125,10 +125,14 @@ func NewText(fs embed.FS, path string) Text {
 
 func ParseIndex(s string) Index {
 	l := strings.SplitN(s, ".", 2)
-	if len(l) == 1 {
+	n := len(l)
+	switch n {
+	case 1:
 		return Index{s, ""}
-	} else {
+	case 2:
 		return Index{l[0], l[1]}
+	default:
+		return Index{"", ""}
 	}
 }
 

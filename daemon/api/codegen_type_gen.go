@@ -636,23 +636,24 @@ type InstanceStatus = instance.Status
 
 // KeywordDefinitionItem defines model for KeywordDefinitionItem.
 type KeywordDefinitionItem struct {
-	Aliases       *[]string `json:"aliases,omitempty"`
-	Candidates    *[]string `json:"candidates,omitempty"`
-	Converter     *string   `json:"converter,omitempty"`
-	Default       *string   `json:"default,omitempty"`
-	DefaultOption *string   `json:"defaultOption,omitempty"`
-	DefaultText   *string   `json:"defaultText,omitempty"`
-	Depends       *[]string `json:"depends,omitempty"`
-	Deprecated    *string   `json:"deprecated,omitempty"`
-	Example       *string   `json:"example,omitempty"`
-	Inherit       *string   `json:"inherit,omitempty"`
-	Kind          *[]string `json:"kind,omitempty"`
-	Option        string    `json:"option"`
-	Provisioning  *bool     `json:"provisioning,omitempty"`
-	Scopable      *bool     `json:"scopable,omitempty"`
-	Section       string    `json:"section"`
-	Text          *string   `json:"text,omitempty"`
-	Types         *[]string `json:"types,omitempty"`
+	Aliases       []string `json:"aliases"`
+	Candidates    []string `json:"candidates"`
+	Converter     string   `json:"converter"`
+	Default       string   `json:"default"`
+	DefaultOption string   `json:"defaultOption"`
+	DefaultText   string   `json:"defaultText"`
+	Depends       []string `json:"depends"`
+	Deprecated    string   `json:"deprecated"`
+	Example       string   `json:"example"`
+	Inherit       string   `json:"inherit"`
+	Kind          []string `json:"kind"`
+	Option        string   `json:"option"`
+	Provisioning  bool     `json:"provisioning"`
+	Required      bool     `json:"required"`
+	Scopable      bool     `json:"scopable"`
+	Section       string   `json:"section"`
+	Text          string   `json:"text"`
+	Types         []string `json:"types"`
 }
 
 // KeywordDefinitionItems defines model for KeywordDefinitionItems.

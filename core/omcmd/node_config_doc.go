@@ -7,13 +7,11 @@ import (
 	"github.com/opensvc/om3/core/client"
 	"github.com/opensvc/om3/core/commoncmd"
 	"github.com/opensvc/om3/core/keywords"
-	"github.com/opensvc/om3/core/naming"
 	"github.com/opensvc/om3/daemon/api"
 )
 
 type (
-	CmdObjectConfigDoc struct {
-		OptsGlobal
+	CmdNodeConfigDoc struct {
 		Color   string
 		Output  string
 		Keyword string
@@ -22,11 +20,7 @@ type (
 	}
 )
 
-func (t *CmdObjectConfigDoc) Run(kind string) error {
-	path, err := naming.ParsePath(t.OptsGlobal.ObjectSelector)
-	if err != nil {
-		return err
-	}
+func (t *CmdNodeConfigDoc) Run() error {
 	c, err := client.New()
 	if err != nil {
 		return err
@@ -34,8 +28,7 @@ func (t *CmdObjectConfigDoc) Run(kind string) error {
 
 	items := make(api.KeywordDefinitionItems, 0)
 	index := keywords.ParseIndex(t.Keyword)
-	params := api.GetObjectConfigKeywordsParams{}
-
+	params := api.GetNodeConfigKeywordsParams{}
 	if index[0] != "" {
 		params.Section = &index[0]
 	}
@@ -46,17 +39,10 @@ func (t *CmdObjectConfigDoc) Run(kind string) error {
 		params.Driver = &t.Driver
 	}
 
-	response, err := c.GetObjectConfigKeywordsWithResponse(
-		context.Background(),
-		api.InPathNamespace(path.Namespace),
-		api.InPathKind(path.Kind),
-		api.InPathName(path.Name),
-		&params,
-	)
+	response, err := c.GetNodeConfigKeywordsWithResponse(context.Background(), "localhost", &params)
 	if err != nil {
 		return err
 	}
-
 	switch {
 	case response.JSON200 != nil:
 		items = append(items, response.JSON200.Items...)
@@ -69,7 +55,8 @@ func (t *CmdObjectConfigDoc) Run(kind string) error {
 	default:
 		return fmt.Errorf("unexpected response: %s", response.Status())
 	}
-	fmt.Println(commoncmd.Doc(items, path.Kind, t.Driver, t.Keyword, t.Depth))
+
+	fmt.Println(commoncmd.Doc(items, "node", t.Driver, t.Keyword, t.Depth))
 
 	return nil
 }

@@ -908,7 +908,7 @@ func newCmdNodeComplianceShowRuleset() *cobra.Command {
 }
 
 func newCmdNodeDoc() *cobra.Command {
-	var options commands.CmdNodeDoc
+	var options commands.CmdNodeConfigDoc
 	cmd := &cobra.Command{
 		Use:   "doc",
 		Short: "print the documentation of the selected keywords",
