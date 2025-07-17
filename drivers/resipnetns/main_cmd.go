@@ -8,6 +8,17 @@ import (
 	"github.com/rs/zerolog"
 )
 
+func (t *T) sysctlEnableIPV6NdiscNotifyIn(dev, path string) error {
+	cmd := command.New(
+		command.WithName("nsenter"),
+		command.WithArgs([]string{"--net=" + path, "sysctl", "-w", fmt.Sprintf("net.ipv6.conf.%s.ndisc_notify=1", dev)}),
+		command.WithLogger(t.Log()),
+		command.WithCommandLogLevel(zerolog.InfoLevel),
+		command.WithStderrLogLevel(zerolog.WarnLevel),
+	)
+	return cmd.Run()
+}
+
 func (t *T) sysctlEnableIPV6In(dev, path string) error {
 	cmd := command.New(
 		command.WithName("nsenter"),
