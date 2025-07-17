@@ -907,25 +907,6 @@ func newCmdNodeComplianceShowRuleset() *cobra.Command {
 	return cmd
 }
 
-func newCmdNodeConfigDoc() *cobra.Command {
-	var options commands.CmdNodeConfigDoc
-	cmd := &cobra.Command{
-		Use:   "doc",
-		Short: "print the documentation of the selected keywords",
-		RunE: func(cmd *cobra.Command, args []string) error {
-			return options.Run()
-		},
-	}
-	flags := cmd.Flags()
-	commoncmd.FlagColor(flags, &options.Color)
-	commoncmd.FlagOutput(flags, &options.Output)
-	commoncmd.FlagKeyword(flags, &options.Keyword)
-	commoncmd.FlagDriver(flags, &options.Driver)
-	commoncmd.FlagDepth(flags, &options.Depth)
-	cmd.MarkFlagsMutuallyExclusive("driver", "kw")
-	return cmd
-}
-
 func newCmdNodeDrain() *cobra.Command {
 	var options commands.CmdNodeDrain
 	cmd := &cobra.Command{
@@ -2095,25 +2076,6 @@ func newCmdObjectDeploy(kind string) *cobra.Command {
 	commoncmd.FlagCreateNamespace(flags, &options.Namespace)
 	commoncmd.FlagCreateRestore(flags, &options.Restore)
 	commoncmd.FlagKeywords(flags, &options.Keywords)
-	return cmd
-}
-
-func newCmdObjectConfigDoc(kind string) *cobra.Command {
-	var options commands.CmdObjectConfigDoc
-	cmd := &cobra.Command{
-		Use:   "doc",
-		Short: "print the keyword documentation",
-		RunE: func(cmd *cobra.Command, args []string) error {
-			return options.Run(kind)
-		},
-	}
-	flags := cmd.Flags()
-	commoncmd.FlagObjectSelector(flags, &options.ObjectSelector)
-	commoncmd.FlagColor(flags, &options.Color)
-	commoncmd.FlagOutput(flags, &options.Output)
-	commoncmd.FlagKeyword(flags, &options.Keyword)
-	commoncmd.FlagDriver(flags, &options.Driver)
-	commoncmd.FlagDepth(flags, &options.Depth)
 	return cmd
 }
 

@@ -51,6 +51,7 @@ func init() {
 		newCmdTUI(kind),
 	)
 	cmdObjectConfig.AddCommand(
+		commoncmd.NewCmdObjectConfigDoc(kind),
 		newCmdObjectConfigEdit(kind),
 		newCmdObjectConfigEval(kind),
 		newCmdObjectConfigGet(kind),

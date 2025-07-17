@@ -60,6 +60,7 @@ func init() {
 		newCmdObjectCertificatePKCS(kind),
 	)
 	cmdObjectConfig.AddCommand(
+		commoncmd.NewCmdObjectConfigDoc(kind),
 		newCmdObjectConfigEdit(kind),
 		newCmdObjectConfigEval(kind),
 		newCmdObjectConfigGet(kind),

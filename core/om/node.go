@@ -167,7 +167,7 @@ func init() {
 		newCmdNodeVersion(),
 	)
 	cmdNodeConfig.AddCommand(
-		newCmdNodeConfigDoc(),
+		commoncmd.NewCmdNodeConfigDoc(),
 		newCmdNodeConfigEdit(),
 		newCmdNodeConfigEval(),
 		newCmdNodeConfigGet(),

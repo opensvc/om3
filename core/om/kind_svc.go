@@ -88,7 +88,7 @@ func init() {
 		newCmdObjectUnset(kind),
 	)
 	cmdObjectConfig.AddCommand(
-		newCmdObjectConfigDoc(kind),
+		commoncmd.NewCmdObjectConfigDoc(kind),
 		newCmdObjectConfigEdit(kind),
 		newCmdObjectConfigEval(kind),
 		newCmdObjectConfigGet(kind),

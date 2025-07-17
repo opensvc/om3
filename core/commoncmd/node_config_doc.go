@@ -1,4 +1,4 @@
-package omcmd
+package commoncmd
 
 import (
 	"context"
@@ -6,14 +6,13 @@ import (
 	"os"
 
 	"github.com/opensvc/om3/core/client"
-	"github.com/opensvc/om3/core/commoncmd"
 	"github.com/opensvc/om3/core/keywords"
-	"github.com/opensvc/om3/core/naming"
 	"github.com/opensvc/om3/daemon/api"
+	"github.com/spf13/cobra"
 )
 
 type (
-	CmdClusterConfigDoc struct {
+	CmdNodeConfigDoc struct {
 		Color   string
 		Output  string
 		Keyword string
@@ -22,7 +21,26 @@ type (
 	}
 )
 
-func (t *CmdClusterConfigDoc) Run() error {
+func NewCmdNodeConfigDoc() *cobra.Command {
+	var options CmdNodeConfigDoc
+	cmd := &cobra.Command{
+		Use:   "doc",
+		Short: "print the documentation of the selected keywords",
+		RunE: func(cmd *cobra.Command, args []string) error {
+			return options.Run()
+		},
+	}
+	flags := cmd.Flags()
+	FlagColor(flags, &options.Color)
+	FlagOutput(flags, &options.Output)
+	FlagKeyword(flags, &options.Keyword)
+	FlagDriver(flags, &options.Driver)
+	FlagDepth(flags, &options.Depth)
+	cmd.MarkFlagsMutuallyExclusive("driver", "kw")
+	return cmd
+}
+
+func (t *CmdNodeConfigDoc) Run() error {
 	c, err := client.New()
 	if err != nil {
 		return err
@@ -30,7 +48,7 @@ func (t *CmdClusterConfigDoc) Run() error {
 
 	items := make(api.KeywordDefinitionItems, 0)
 	index := keywords.ParseIndex(t.Keyword)
-	params := api.GetClusterConfigKeywordsParams{}
+	params := api.GetNodeConfigKeywordsParams{}
 	if index[0] != "" {
 		params.Section = &index[0]
 	}
@@ -41,7 +59,7 @@ func (t *CmdClusterConfigDoc) Run() error {
 		params.Driver = &t.Driver
 	}
 
-	response, err := c.GetClusterConfigKeywordsWithResponse(context.Background(), &params)
+	response, err := c.GetNodeConfigKeywordsWithResponse(context.Background(), "localhost", &params)
 	if err != nil {
 		return err
 	}
@@ -58,5 +76,5 @@ func (t *CmdClusterConfigDoc) Run() error {
 		return fmt.Errorf("unexpected response: %s", response.Status())
 	}
 
-	return commoncmd.Doc(os.Stdout, items, naming.KindCcfg, t.Depth)
+	return Doc(os.Stdout, items, "node", t.Depth)
 }
