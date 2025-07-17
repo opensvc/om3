@@ -7,7 +7,6 @@ import (
 	"github.com/opensvc/om3/core/naming"
 	"github.com/opensvc/om3/core/rawconfig"
 	"github.com/opensvc/om3/daemon/daemonenv"
-	"github.com/opensvc/om3/util/converters"
 	"github.com/opensvc/om3/util/key"
 )
 
@@ -39,21 +38,21 @@ var nodePrivateKeywords = []keywords.Keyword{
 		Text:    keywords.NewText(fs, "text/kw/node/node.connect_to"),
 	},
 	{
-		Converter: converters.Size,
+		Converter: "size",
 		Example:   "256mb",
 		Option:    "mem_bytes",
 		Section:   "node",
 		Text:      keywords.NewText(fs, "text/kw/node/node.mem_bytes"),
 	},
 	{
-		Converter: converters.Int,
+		Converter: "int",
 		Example:   "4",
 		Option:    "mem_banks",
 		Section:   "node",
 		Text:      keywords.NewText(fs, "text/kw/node/node.mem_banks"),
 	},
 	{
-		Converter: converters.Int,
+		Converter: "int",
 		Example:   "4",
 		Option:    "mem_slots",
 		Section:   "node",
@@ -90,21 +89,21 @@ var nodePrivateKeywords = []keywords.Keyword{
 		Text:    keywords.NewText(fs, "text/kw/node/node.cpu_freq"),
 	},
 	{
-		Converter: converters.Int,
+		Converter: "int",
 		Example:   "4",
 		Option:    "cpu_threads",
 		Section:   "node",
 		Text:      keywords.NewText(fs, "text/kw/node/node.cpu_threads"),
 	},
 	{
-		Converter: converters.Int,
+		Converter: "int",
 		Example:   "2",
 		Option:    "cpu_cores",
 		Section:   "node",
 		Text:      keywords.NewText(fs, "text/kw/node/node.cpu_cores"),
 	},
 	{
-		Converter: converters.Int,
+		Converter: "int",
 		Example:   "1",
 		Option:    "cpu_dies",
 		Section:   "node",
@@ -184,7 +183,7 @@ var nodePrivateKeywords = []keywords.Keyword{
 
 var nodeCommonKeywords = []keywords.Keyword{
 	{
-		Converter: converters.Bool,
+		Converter: "bool",
 		Default:   "true",
 		Option:    "secure_fetch",
 		Section:   "node",
@@ -192,7 +191,7 @@ var nodeCommonKeywords = []keywords.Keyword{
 	},
 	{
 		Aliases:   []string{"min_avail_mem"},
-		Converter: converters.Int,
+		Converter: "int",
 		Default:   "2",
 		Option:    "min_avail_mem_pct",
 		Section:   "node",
@@ -200,7 +199,7 @@ var nodeCommonKeywords = []keywords.Keyword{
 	},
 	{
 		Aliases:   []string{"min_avail_swap"},
-		Converter: converters.Int,
+		Converter: "int",
 		Default:   "10",
 		Option:    "min_avail_swap_pct",
 		Section:   "node",
@@ -213,14 +212,14 @@ var nodeCommonKeywords = []keywords.Keyword{
 		Text:    keywords.NewText(fs, "text/kw/node/node.env"),
 	},
 	{
-		Converter: converters.Int,
+		Converter: "int",
 		Default:   fmt.Sprintf("%d", DefaultNodeMaxParallel),
 		Option:    "max_parallel",
 		Section:   "node",
 		Text:      keywords.NewText(fs, "text/kw/node/node.max_parallel"),
 	},
 	{
-		Converter: converters.List,
+		Converter: "list",
 		Default:   "10.0.0.0/8 172.16.0.0/24 192.168.0.0/16",
 		Option:    "allowed_networks",
 		Section:   "node",
@@ -305,7 +304,7 @@ var nodeCommonKeywords = []keywords.Keyword{
 		Text:    keywords.NewText(fs, "text/kw/node/node.dbopensvc"),
 	},
 	{
-		Converter: converters.Bool,
+		Converter: "bool",
 		Option:    "dbinsecure",
 		Section:   "node",
 		Text:      keywords.NewText(fs, "text/kw/node/node.dbinsecure"),
@@ -318,7 +317,7 @@ var nodeCommonKeywords = []keywords.Keyword{
 		Text:        keywords.NewText(fs, "text/kw/node/node.dbcompliance"),
 	},
 	{
-		Converter: converters.Bool,
+		Converter: "bool",
 		Default:   "true",
 		Option:    "dblog",
 		Section:   "node",
@@ -357,20 +356,20 @@ var nodeCommonKeywords = []keywords.Keyword{
 	},
 	{
 		Default:   "60",
-		Converter: converters.Duration,
+		Converter: "duration",
 		Option:    "maintenance_grace_period",
 		Section:   "node",
 		Text:      keywords.NewText(fs, "text/kw/node/node.maintenance_grace_period"),
 	},
 	{
-		Converter: converters.Duration,
+		Converter: "duration",
 		Default:   "90s",
 		Option:    "rejoin_grace_period",
 		Section:   "node",
 		Text:      keywords.NewText(fs, "text/kw/node/node.rejoin_grace_period"),
 	},
 	{
-		Converter: converters.Duration,
+		Converter: "duration",
 		Default:   "5s",
 		Option:    "ready_period",
 		Section:   "node",
@@ -394,7 +393,7 @@ var nodeCommonKeywords = []keywords.Keyword{
 		Text:    keywords.NewText(fs, "text/kw/node/compliance.schedule"),
 	},
 	{
-		Converter: converters.Bool,
+		Converter: "bool",
 		Default:   "false",
 		Option:    "auto_update",
 		Section:   "compliance",
@@ -460,7 +459,7 @@ var nodeCommonKeywords = []keywords.Keyword{
 	},
 	{
 		Aliases:   []string{"tls_port"},
-		Converter: converters.Int,
+		Converter: "int",
 		Default:   fmt.Sprintf("%d", daemonenv.HTTPPort),
 		Option:    "port",
 		Scopable:  true,
@@ -505,7 +504,7 @@ var nodeCommonKeywords = []keywords.Keyword{
 		Text:    keywords.NewText(fs, "text/kw/node/syslog.port"),
 	},
 	{
-		Converter: converters.List,
+		Converter: "list",
 		Option:    "dns",
 		Scopable:  true,
 		Section:   "cluster",
@@ -513,7 +512,7 @@ var nodeCommonKeywords = []keywords.Keyword{
 	},
 	{
 		DefaultText: keywords.NewText(fs, "text/kw/node/cluster.ca.default"),
-		Converter:   converters.List,
+		Converter:   "list",
 		Option:      "ca",
 		Section:     "cluster",
 		Text:        keywords.NewText(fs, "text/kw/node/cluster.ca"),
@@ -545,26 +544,26 @@ var nodeCommonKeywords = []keywords.Keyword{
 		Text:        keywords.NewText(fs, "text/kw/node/cluster.secret"),
 	},
 	{
-		Converter: converters.List,
+		Converter: "list",
 		Option:    "nodes",
 		Section:   "cluster",
 		Text:      keywords.NewText(fs, "text/kw/node/cluster.nodes"),
 	},
 	{
-		Converter: converters.List,
+		Converter: "list",
 		Option:    "drpnodes",
 		Section:   "cluster",
 		Text:      keywords.NewText(fs, "text/kw/node/cluster.drpnodes"),
 	},
 	{
-		Converter: converters.List,
+		Converter: "list",
 		Option:    "envs",
 		Default:   "CERT DEV DRP FOR INT PRA PRD PRJ PPRD QUAL REC STG TMP TST UAT",
 		Section:   "cluster",
 		Text:      keywords.NewText(fs, "text/kw/node/cluster.envs"),
 	},
 	{
-		Converter: converters.Bool,
+		Converter: "bool",
 		Default:   "false",
 		Option:    "quorum",
 		Section:   "cluster",
@@ -593,21 +592,21 @@ var nodeCommonKeywords = []keywords.Keyword{
 		Text:     keywords.NewText(fs, "text/kw/node/arbitrator.uri"),
 	},
 	{
-		Converter: converters.Bool,
+		Converter: "bool",
 		Default:   "false",
 		Option:    "insecure",
 		Section:   "arbitrator",
 		Text:      keywords.NewText(fs, "text/kw/node/arbitrator.insecure"),
 	},
 	{
-		Converter: converters.Int,
+		Converter: "int",
 		Default:   "1",
 		Option:    "weight",
 		Section:   "arbitrator",
 		Text:      keywords.NewText(fs, "text/kw/node/arbitrator.weight"),
 	},
 	{
-		Converter: converters.Shlex,
+		Converter: "shlex",
 		Example:   "/bin/true",
 		Option:    "cmd",
 		Required:  true,
@@ -641,7 +640,7 @@ var nodeCommonKeywords = []keywords.Keyword{
 		Types:       []string{"unicast"},
 	},
 	{
-		Converter: converters.Int,
+		Converter: "int",
 		Default:   "10000",
 		Option:    "port",
 		Scopable:  true,
@@ -650,7 +649,7 @@ var nodeCommonKeywords = []keywords.Keyword{
 		Types:     []string{"unicast"},
 	},
 	{
-		Converter: converters.Duration,
+		Converter: "duration",
 		Default:   "15s",
 		Option:    "timeout",
 		Scopable:  true,
@@ -658,7 +657,7 @@ var nodeCommonKeywords = []keywords.Keyword{
 		Text:      keywords.NewText(fs, "text/kw/node/hb.timeout"),
 	},
 	{
-		Converter: converters.Duration,
+		Converter: "duration",
 		Default:   "5s",
 		Option:    "interval",
 		Scopable:  true,
@@ -683,7 +682,7 @@ var nodeCommonKeywords = []keywords.Keyword{
 		Types:       []string{"multicast"},
 	},
 	{
-		Converter: converters.Int,
+		Converter: "int",
 		Default:   "10000",
 		Option:    "port",
 		Scopable:  true,
@@ -692,7 +691,7 @@ var nodeCommonKeywords = []keywords.Keyword{
 		Types:     []string{"multicast"},
 	},
 	{
-		Converter:   converters.List,
+		Converter:   "list",
 		DefaultText: keywords.NewText(fs, "text/kw/node/hb.unicast.nodes.default"),
 		Option:      "nodes",
 		Scopable:    true,
@@ -710,7 +709,7 @@ var nodeCommonKeywords = []keywords.Keyword{
 		Types:    []string{"disk"},
 	},
 	{
-		Converter: converters.Int,
+		Converter: "int",
 		Example:   "1024",
 		Default:   "1024",
 		Option:    "max_slots",
@@ -719,7 +718,7 @@ var nodeCommonKeywords = []keywords.Keyword{
 		Types:     []string{"disk"},
 	},
 	{
-		Converter: converters.Bool,
+		Converter: "bool",
 		Default:   "false",
 		Option:    "insecure",
 		Section:   "hb",
@@ -795,7 +794,7 @@ var nodeCommonKeywords = []keywords.Keyword{
 		Types:   []string{"hoc", "pure"},
 	},
 	{
-		Converter: converters.Bool,
+		Converter: "bool",
 		Default:   "true",
 		Option:    "delete_now",
 		Section:   "pool",
@@ -853,7 +852,7 @@ var nodeCommonKeywords = []keywords.Keyword{
 		Types:   []string{"symmetrix"},
 	},
 	{
-		Converter: converters.Bool,
+		Converter: "bool",
 		Default:   "false",
 		Option:    "srdf",
 		Section:   "pool",
@@ -874,7 +873,7 @@ var nodeCommonKeywords = []keywords.Keyword{
 		Types:    []string{"freenas", "dorado", "hoc", "pure"},
 	},
 	{
-		Converter: converters.Bool,
+		Converter: "bool",
 		Default:   "false",
 		Option:    "insecure_tpc",
 		Section:   "pool",
@@ -891,14 +890,14 @@ var nodeCommonKeywords = []keywords.Keyword{
 	},
 	{
 		Default:   "false",
-		Converter: converters.Bool,
+		Converter: "bool",
 		Option:    "sparse",
 		Section:   "pool",
 		Text:      keywords.NewText(fs, "text/kw/node/pool.freenas.sparse"),
 		Types:     []string{"freenas"},
 	},
 	{
-		Converter: converters.Size,
+		Converter: "size",
 		Default:   "512",
 		Option:    "blocksize",
 		Section:   "pool",
@@ -966,7 +965,7 @@ var nodeCommonKeywords = []keywords.Keyword{
 		Types:   []string{"virtual"},
 	},
 	{
-		Converter: converters.List,
+		Converter: "list",
 		Example:   "container#1.name:container_name env.foo:foo",
 		Option:    "volume_env",
 		Section:   "pool",
@@ -974,7 +973,7 @@ var nodeCommonKeywords = []keywords.Keyword{
 		Types:     []string{"virtual"},
 	},
 	{
-		Converter: converters.List,
+		Converter: "list",
 		Example:   "container#1.name:container_name env.foo:foo",
 		Option:    "optional_volume_env",
 		Section:   "pool",
@@ -982,7 +981,7 @@ var nodeCommonKeywords = []keywords.Keyword{
 		Types:     []string{"virtual"},
 	},
 	{
-		Converter: converters.List,
+		Converter: "list",
 		Default:   "roo rwo rox rwx",
 		Option:    "capabilities",
 		Section:   "pool",
@@ -1022,13 +1021,13 @@ var nodeCommonKeywords = []keywords.Keyword{
 		Text:    keywords.NewText(fs, "text/kw/node/pool.mkblk_opt"),
 	},
 	{
-		Converter: converters.List,
+		Converter: "list",
 		Option:    "events",
 		Section:   "hook",
 		Text:      keywords.NewText(fs, "text/kw/node/hook.events"),
 	},
 	{
-		Converter: converters.Shlex,
+		Converter: "shlex",
 		Option:    "command",
 		Section:   "hook",
 		Text:      keywords.NewText(fs, "text/kw/node/hook.command"),
@@ -1055,7 +1054,7 @@ var nodeCommonKeywords = []keywords.Keyword{
 		Types:    []string{"routed_bridge"},
 	},
 	{
-		Converter: converters.Int,
+		Converter: "int",
 		Default:   "1024",
 		Option:    "ips_per_node",
 		Section:   "network",
@@ -1063,7 +1062,7 @@ var nodeCommonKeywords = []keywords.Keyword{
 		Types:     []string{"routed_bridge"},
 	},
 	{
-		Converter: converters.List,
+		Converter: "list",
 		Default:   "main",
 		Example:   "main custom1 custom2",
 		Option:    "tables",
@@ -1154,7 +1153,7 @@ var nodeCommonKeywords = []keywords.Keyword{
 		Text:       keywords.NewText(fs, "text/kw/node/array.type"),
 	},
 	{
-		Converter: converters.Bool,
+		Converter: "bool",
 		Default:   "false",
 		Option:    "compression",
 		Section:   "pool",
@@ -1169,7 +1168,7 @@ var nodeCommonKeywords = []keywords.Keyword{
 		Types:   []string{"freenas"},
 	},
 	{
-		Converter: converters.Bool,
+		Converter: "bool",
 		Default:   "false",
 		Option:    "dedup",
 		Section:   "pool",
@@ -1207,7 +1206,7 @@ var nodeCommonKeywords = []keywords.Keyword{
 		Types:   []string{"hoc"},
 	},
 	{
-		Converter: converters.Int,
+		Converter: "int",
 		Default:   "30",
 		Option:    "retry",
 		Section:   "array",
@@ -1215,7 +1214,7 @@ var nodeCommonKeywords = []keywords.Keyword{
 		Types:     []string{"hoc"},
 	},
 	{
-		Converter: converters.Duration,
+		Converter: "duration",
 		Default:   "10s",
 		Option:    "delay",
 		Section:   "array",
@@ -1263,7 +1262,7 @@ var nodeCommonKeywords = []keywords.Keyword{
 		Types:    []string{"pure"},
 	},
 	{
-		Converter: converters.Bool,
+		Converter: "bool",
 		Default:   "false",
 		Option:    "insecure",
 		Example:   "true",
@@ -1311,7 +1310,7 @@ var nodeCommonKeywords = []keywords.Keyword{
 		Types:   []string{"emcvnx", "symmetrix"},
 	},
 	{
-		Converter: converters.Duration,
+		Converter: "duration",
 		Default:   "120s",
 		Example:   "10s",
 		Option:    "timeout",
@@ -1513,7 +1512,7 @@ var nodeCommonKeywords = []keywords.Keyword{
 		Types:    []string{"netapp", "ibmsvc", "vioserver"},
 	},
 	{
-		Converter: converters.Int,
+		Converter: "int",
 		Default:   "2000",
 		Example:   "2000",
 		Option:    "port",

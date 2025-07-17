@@ -56,7 +56,10 @@ func (t *CmdNodeConfigDoc) Run() error {
 		return fmt.Errorf("unexpected response: %s", response.Status())
 	}
 
-	fmt.Println(commoncmd.Doc(items, "node", t.Driver, t.Keyword, t.Depth))
-
+	buff, err := commoncmd.Doc(items, "node", t.Depth)
+	if err != nil {
+		return err
+	}
+	fmt.Println(buff)
 	return nil
 }

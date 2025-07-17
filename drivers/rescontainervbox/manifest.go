@@ -5,7 +5,6 @@ import (
 
 	"github.com/opensvc/om3/core/keywords"
 	"github.com/opensvc/om3/core/naming"
-	"github.com/opensvc/om3/util/converters"
 
 	"github.com/opensvc/om3/core/driver"
 	"github.com/opensvc/om3/core/manifest"
@@ -43,7 +42,7 @@ func (t *T) Manifest() *manifest.T {
 		rescontainer.KWGuestOS,
 		keywords.Keyword{
 			Attr:       "Headless",
-			Converter:  converters.Bool,
+			Converter:  "bool",
 			Default:    "false",
 			Deprecated: "3.0",
 			Option:     "headless",

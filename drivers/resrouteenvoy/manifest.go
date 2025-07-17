@@ -7,7 +7,6 @@ import (
 	"github.com/opensvc/om3/core/keywords"
 	"github.com/opensvc/om3/core/manifest"
 	"github.com/opensvc/om3/core/naming"
-	"github.com/opensvc/om3/util/converters"
 )
 
 var (
@@ -47,7 +46,7 @@ func (t *T) Manifest() *manifest.T {
 		},
 		keywords.Keyword{
 			Attr:      "MatchCaseSensitive",
-			Converter: converters.Bool,
+			Converter: "bool",
 			Default:   "true",
 			Option:    "match_case_sensitive",
 			Scopable:  true,
@@ -73,7 +72,7 @@ func (t *T) Manifest() *manifest.T {
 		},
 		keywords.Keyword{
 			Attr:      "RouteTimeout",
-			Converter: converters.Duration,
+			Converter: "duration",
 			Default:   "15s",
 			Option:    "route_timeout",
 			Scopable:  true,
@@ -105,21 +104,21 @@ func (t *T) Manifest() *manifest.T {
 		},
 		keywords.Keyword{
 			Attr:      "RedirectHTTPSRedirect",
-			Converter: converters.Bool,
+			Converter: "bool",
 			Option:    "redirect_https_redirect",
 			Scopable:  true,
 			Text:      keywords.NewText(fs, "text/kw/redirect_https_redirect"),
 		},
 		keywords.Keyword{
 			Attr:      "RedirectStripQuery",
-			Converter: converters.Bool,
+			Converter: "bool",
 			Option:    "redirect_strip_query",
 			Scopable:  true,
 			Text:      keywords.NewText(fs, "text/kw/redirect_strip_query"),
 		},
 		keywords.Keyword{
 			Attr:      "HashPolicies",
-			Converter: converters.List,
+			Converter: "list",
 			Option:    "hash_policies",
 			Scopable:  true,
 			Text:      keywords.NewText(fs, "text/kw/hash_policies"),

@@ -4,7 +4,6 @@ import (
 	"embed"
 
 	"github.com/opensvc/om3/core/keywords"
-	"github.com/opensvc/om3/util/converters"
 )
 
 var (
@@ -21,7 +20,7 @@ var (
 		},
 		{
 			Attr:      "Dataset",
-			Converter: converters.List,
+			Converter: "list",
 			Example:   "svc1fs/data svc1fs/log",
 			Option:    "dataset",
 			Required:  true,
@@ -30,7 +29,7 @@ var (
 		},
 		{
 			Attr:      "Keep",
-			Converter: converters.Int,
+			Converter: "int",
 			Default:   "3",
 			Example:   "3",
 			Option:    "keep",
@@ -39,7 +38,7 @@ var (
 		},
 		{
 			Attr:      "Recursive",
-			Converter: converters.Bool,
+			Converter: "bool",
 			Default:   "true",
 			Option:    "recursive",
 			Scopable:  true,

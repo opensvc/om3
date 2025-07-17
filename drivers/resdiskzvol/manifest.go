@@ -8,7 +8,6 @@ import (
 	"github.com/opensvc/om3/core/manifest"
 	"github.com/opensvc/om3/core/naming"
 	"github.com/opensvc/om3/drivers/resdisk"
-	"github.com/opensvc/om3/util/converters"
 )
 
 var (
@@ -38,7 +37,7 @@ func (t *T) Manifest() *manifest.T {
 		},
 		keywords.Keyword{
 			Attr:         "CreateOptions",
-			Converter:    converters.Shlex,
+			Converter:    "shlex",
 			Example:      "-o dedup=on",
 			Option:       "create_options",
 			Provisioning: true,
@@ -47,7 +46,7 @@ func (t *T) Manifest() *manifest.T {
 		},
 		keywords.Keyword{
 			Attr:         "Size",
-			Converter:    converters.Size,
+			Converter:    "size",
 			Example:      "10m",
 			Option:       "size",
 			Provisioning: true,
@@ -56,7 +55,7 @@ func (t *T) Manifest() *manifest.T {
 		},
 		keywords.Keyword{
 			Attr:         "BlockSize",
-			Converter:    converters.Size,
+			Converter:    "size",
 			Example:      "256k",
 			Option:       "blocksize",
 			Provisioning: true,

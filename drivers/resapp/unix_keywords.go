@@ -6,7 +6,6 @@ import (
 	"embed"
 
 	"github.com/opensvc/om3/core/keywords"
-	"github.com/opensvc/om3/util/converters"
 )
 
 var (
@@ -46,7 +45,7 @@ var (
 	}
 	UnixKeywordStatusLogKw = keywords.Keyword{
 		Attr:      "StatusLogKw",
-		Converter: converters.Bool,
+		Converter: "bool",
 		Default:   "false",
 		Option:    "status_log",
 		Scopable:  true,
@@ -54,7 +53,7 @@ var (
 	}
 	UnixKeywordCheckTimeout = keywords.Keyword{
 		Attr:      "CheckTimeout",
-		Converter: converters.Duration,
+		Converter: "duration",
 		Example:   "180",
 		Option:    "check_timeout",
 		Scopable:  true,
@@ -62,7 +61,7 @@ var (
 	}
 	UnixKeywordInfoTimeout = keywords.Keyword{
 		Attr:      "InfoTimeout",
-		Converter: converters.Duration,
+		Converter: "duration",
 		Example:   "180",
 		Option:    "info_timeout",
 		Scopable:  true,
@@ -88,7 +87,7 @@ var (
 	}
 	UnixKeywordLimitCPU = keywords.Keyword{
 		Attr:      "Limit.CPU",
-		Converter: converters.Duration,
+		Converter: "duration",
 		Example:   "30s",
 		Option:    "limit_cpu",
 		Scopable:  true,
@@ -96,70 +95,70 @@ var (
 	}
 	UnixKeywordLimitCore = keywords.Keyword{
 		Attr:      "Limit.Core",
-		Converter: converters.Size,
+		Converter: "size",
 		Option:    "limit_core",
 		Scopable:  true,
 		Text:      keywords.NewText(fs, "text/kw/limit_core"),
 	}
 	UnixKeywordLimitData = keywords.Keyword{
 		Attr:      "Limit.Data",
-		Converter: converters.Size,
+		Converter: "size",
 		Option:    "limit_data",
 		Scopable:  true,
 		Text:      keywords.NewText(fs, "text/kw/limit_data"),
 	}
 	UnixKeywordLimitFSize = keywords.Keyword{
 		Attr:      "Limit.FSize",
-		Converter: converters.Size,
+		Converter: "size",
 		Option:    "limit_fsize",
 		Scopable:  true,
 		Text:      keywords.NewText(fs, "text/kw/limit_fsize"),
 	}
 	UnixKeywordLimitMemLock = keywords.Keyword{
 		Attr:      "Limit.MemLock",
-		Converter: converters.Size,
+		Converter: "size",
 		Option:    "limit_memlock",
 		Scopable:  true,
 		Text:      keywords.NewText(fs, "text/kw/limit_memlock"),
 	}
 	UnixKeywordLimitNoFile = keywords.Keyword{
 		Attr:      "Limit.NoFile",
-		Converter: converters.Size,
+		Converter: "size",
 		Option:    "limit_nofile",
 		Scopable:  true,
 		Text:      keywords.NewText(fs, "text/kw/limit_nofile"),
 	}
 	UnixKeywordLimitNProc = keywords.Keyword{
 		Attr:      "Limit.NProc",
-		Converter: converters.Size,
+		Converter: "size",
 		Option:    "limit_nproc",
 		Scopable:  true,
 		Text:      keywords.NewText(fs, "text/kw/limit_nproc"),
 	}
 	UnixKeywordLimitRSS = keywords.Keyword{
 		Attr:      "Limit.RSS",
-		Converter: converters.Size,
+		Converter: "size",
 		Option:    "limit_rss",
 		Scopable:  true,
 		Text:      keywords.NewText(fs, "text/kw/limit_rss"),
 	}
 	UnixKeywordLimitStack = keywords.Keyword{
 		Attr:      "Limit.Stack",
-		Converter: converters.Size,
+		Converter: "size",
 		Option:    "limit_stack",
 		Scopable:  true,
 		Text:      keywords.NewText(fs, "text/kw/limit_stack"),
 	}
 	UnixKeywordLimitVmem = keywords.Keyword{
 		Attr:      "Limit.VMem",
-		Converter: converters.Size,
+		Converter: "size",
 		Option:    "limit_vmem",
 		Scopable:  true,
 		Text:      keywords.NewText(fs, "text/kw/limit_vmem"),
 	}
 	UnixKeywordLimitAS = keywords.Keyword{
 		Attr:      "Limit.AS",
-		Converter: converters.Size,
+		Converter: "size",
 		Option:    "limit_as",
 		Scopable:  true,
 		Text:      keywords.NewText(fs, "text/kw/limit_as"),

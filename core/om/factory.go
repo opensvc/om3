@@ -907,7 +907,7 @@ func newCmdNodeComplianceShowRuleset() *cobra.Command {
 	return cmd
 }
 
-func newCmdNodeDoc() *cobra.Command {
+func newCmdNodeConfigDoc() *cobra.Command {
 	var options commands.CmdNodeConfigDoc
 	cmd := &cobra.Command{
 		Use:   "doc",

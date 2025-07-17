@@ -6,14 +6,14 @@ import (
 )
 
 type (
-	TUser  string
-	TGroup string
+	TUser  struct{}
+	TGroup struct{}
 )
 
-var (
-	User  TUser
-	Group TGroup
-)
+func init() {
+	Register(TUser{})
+	Register(TGroup{})
+}
 
 func (t TUser) Convert(s string) (interface{}, error) {
 	return t.convert(s)

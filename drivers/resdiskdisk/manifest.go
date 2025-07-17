@@ -8,7 +8,6 @@ import (
 	"github.com/opensvc/om3/core/manifest"
 	"github.com/opensvc/om3/core/naming"
 	"github.com/opensvc/om3/drivers/resdisk"
-	"github.com/opensvc/om3/util/converters"
 )
 
 var (
@@ -41,7 +40,7 @@ func (t *T) Manifest() *manifest.T {
 		},
 		keywords.Keyword{
 			Attr:         "Size",
-			Converter:    converters.Size,
+			Converter:    "size",
 			Example:      "20g",
 			Option:       "size",
 			Provisioning: true,

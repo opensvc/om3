@@ -8,7 +8,6 @@ import (
 	"github.com/opensvc/om3/core/manifest"
 	"github.com/opensvc/om3/core/naming"
 	"github.com/opensvc/om3/drivers/resfshost"
-	"github.com/opensvc/om3/util/converters"
 )
 
 var (
@@ -38,7 +37,7 @@ func (t *T) Manifest() *manifest.T {
 		resfshost.KeywordPerm,
 		keywords.Keyword{
 			Attr:         "Size",
-			Converter:    converters.Size,
+			Converter:    "size",
 			Option:       "size",
 			Provisioning: true,
 			Required:     false,

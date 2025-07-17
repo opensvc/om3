@@ -10,7 +10,6 @@ import (
 	"github.com/opensvc/om3/core/manifest"
 	"github.com/opensvc/om3/core/naming"
 	"github.com/opensvc/om3/drivers/resdisk"
-	"github.com/opensvc/om3/util/converters"
 )
 
 var (
@@ -49,7 +48,7 @@ func (t *T) Manifest() *manifest.T {
 		},
 		keywords.Keyword{
 			Attr:         "ManagePassphrase",
-			Converter:    converters.Bool,
+			Converter:    "bool",
 			Default:      "true",
 			Option:       "manage_passphrase",
 			Provisioning: true,

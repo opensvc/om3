@@ -22,6 +22,7 @@ import (
 	"github.com/opensvc/om3/core/keywords"
 	"github.com/opensvc/om3/core/naming"
 	"github.com/opensvc/om3/core/rawconfig"
+	"github.com/opensvc/om3/util/converters"
 	"github.com/opensvc/om3/util/file"
 	"github.com/opensvc/om3/util/hostname"
 	"github.com/opensvc/om3/util/key"
@@ -30,8 +31,6 @@ import (
 )
 
 type (
-	Converter func(string) (interface{}, error)
-
 	// T exposes methods to read and write configurations.
 	T struct {
 		ConfigFilePath string
@@ -311,18 +310,19 @@ func (t *T) HasKeyMatchingOp(kop keyop.T) bool {
 				return true
 			}
 		}
-		if kw.Converter == nil {
+		converter := converters.Lookup(kw.Converter)
+		if converter == nil {
 			iv := v
 			it := kop.Value
 			if comp(iv, it, kop.Op) {
 				return true
 			}
 		} else {
-			iv, err := kw.Converter.Convert(v)
+			iv, err := converter.Convert(v)
 			if err != nil {
 				continue
 			}
-			it, err := kw.Converter.Convert(kop.Value)
+			it, err := converter.Convert(kop.Value)
 			if err != nil {
 				continue
 			}
@@ -854,11 +854,12 @@ func (t *T) evalDescopeStringAs(k key.T, kw keywords.Keyword, impersonate string
 	return t.replaceReferences(v, k.Section, impersonate, count, trace)
 }
 
-func (t *T) convert(v string, kw keywords.Keyword) (interface{}, error) {
-	if kw.Converter == nil {
+func (t *T) convert(v string, kw keywords.Keyword) (any, error) {
+	converter := converters.Lookup(kw.Converter)
+	if converter == nil {
 		return v, nil
 	}
-	return kw.Converter.Convert(v)
+	return converter.Convert(v)
 }
 
 func (t *T) mayDescope(k key.T, kw keywords.Keyword, impersonate string) (string, error) {

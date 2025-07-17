@@ -69,7 +69,10 @@ func (t *CmdObjectConfigDoc) Run(kind string) error {
 	default:
 		return fmt.Errorf("unexpected response: %s", response.Status())
 	}
-	fmt.Println(commoncmd.Doc(items, path.Kind, t.Driver, t.Keyword, t.Depth))
-
+	buff, err := commoncmd.Doc(items, path.Kind, t.Depth)
+	if err != nil {
+		return err
+	}
+	fmt.Println(buff)
 	return nil
 }

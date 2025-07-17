@@ -58,6 +58,7 @@ func convertKeywordStore(store keywords.Store) api.KeywordDefinitionItems {
 		item := api.KeywordDefinitionItem{
 			Option:        kw.Option,
 			Section:       kw.Section,
+			Converter:     kw.Converter,
 			Default:       kw.Default,
 			DefaultOption: kw.DefaultOption,
 			DefaultText:   kw.DefaultText,
@@ -86,10 +87,6 @@ func convertKeywordStore(store keywords.Store) api.KeywordDefinitionItems {
 			default:
 				item.Kind = append(item.Kind, fmt.Sprintf("%v", v))
 			}
-		}
-
-		if kw.Converter != nil {
-			item.Converter = fmt.Sprintf("%T", kw.Converter)
 		}
 
 		l = append(l, item)

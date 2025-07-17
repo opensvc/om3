@@ -4,7 +4,6 @@ import (
 	"embed"
 
 	"github.com/opensvc/om3/core/keywords"
-	"github.com/opensvc/om3/util/converters"
 )
 
 var (
@@ -13,7 +12,7 @@ var (
 
 	KWPromoteRW = keywords.Keyword{
 		Attr:      "PromoteRW",
-		Converter: converters.Bool,
+		Converter: "bool",
 		Option:    "promote_rw",
 		Scopable:  true,
 		Text:      keywords.NewText(fs, "text/kw/promote_rw"),
@@ -37,7 +36,7 @@ var (
 	}
 	KWRCmd = keywords.Keyword{
 		Attr:      "RCmd",
-		Converter: converters.Shlex,
+		Converter: "shlex",
 		Example:   "lxc-attach -e -n osvtavnprov01 -- ",
 		Option:    "rcmd",
 		Scopable:  true,
@@ -60,7 +59,7 @@ var (
 	}
 	KWStartTimeout = keywords.Keyword{
 		Attr:      "StartTimeout",
-		Converter: converters.Duration,
+		Converter: "duration",
 		Default:   "4m",
 		Example:   "1m5s",
 		Option:    "start_timeout",
@@ -69,7 +68,7 @@ var (
 	}
 	KWStopTimeout = keywords.Keyword{
 		Attr:      "StopTimeout",
-		Converter: converters.Duration,
+		Converter: "duration",
 		Default:   "2m",
 		Example:   "2m30s",
 		Option:    "stop_timeout",

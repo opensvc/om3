@@ -433,7 +433,7 @@ func (t *T) sdWatchDogInterval() (interval time.Duration) {
 	if s == "" {
 		return
 	}
-	if i, err := converters.Duration.Convert(s + "us"); err != nil {
+	if i, err := converters.Lookup("duration").Convert(s + "us"); err != nil {
 		t.log.Warnf("sd-watchdog: disable due to invalid %s value: %s", WatchdogUsecEnv, s)
 		return
 	} else {

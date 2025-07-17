@@ -4,7 +4,6 @@ import (
 	"embed"
 
 	"github.com/opensvc/om3/core/keywords"
-	"github.com/opensvc/om3/util/converters"
 )
 
 var (
@@ -14,7 +13,7 @@ var (
 	Keywords = []keywords.Keyword{
 		{
 			Attr:      "Timeout",
-			Converter: converters.Duration,
+			Converter: "duration",
 			Example:   "5m",
 			Option:    "timeout",
 			Scopable:  true,
@@ -38,7 +37,7 @@ var (
 		},
 		{
 			Attr:      "Intermediary",
-			Converter: converters.Bool,
+			Converter: "bool",
 			Default:   "true",
 			Option:    "intermediary",
 			Scopable:  true,
@@ -47,14 +46,14 @@ var (
 		{
 			Attr:       "Target",
 			Candidates: []string{"nodes", "drpnodes", "local"},
-			Converter:  converters.List,
+			Converter:  "list",
 			Option:     "target",
 			Scopable:   true,
 			Text:       keywords.NewText(fs, "text/kw/target"),
 		},
 		{
 			Attr:      "Recursive",
-			Converter: converters.Bool,
+			Converter: "bool",
 			Default:   "true",
 			Option:    "recursive",
 			Scopable:  true,

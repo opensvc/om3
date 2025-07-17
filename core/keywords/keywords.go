@@ -17,10 +17,6 @@ import (
 )
 
 type (
-	Converter interface {
-		Convert(string) (interface{}, error)
-	}
-
 	// Keyword represents a configuration option in an object or node configuration file
 	Keyword struct {
 		Section string
@@ -33,8 +29,8 @@ type (
 		// Required means the keyword mean be set, and thus disregards the default value.
 		Required bool
 
-		// Converter is the routine converting from string a the keyword expected type.
-		Converter Converter
+		// Converter is the name of a registered routine converting a string into the keyword expected type.
+		Converter string
 
 		// Text is a text explaining the role of the keyword.
 		Text string
@@ -111,6 +107,21 @@ func (t Inherit) String() string {
 		return "head"
 	default:
 		return "unknown"
+	}
+}
+
+func ParseInherit(s string) Inherit {
+	switch s {
+	case "leaf2head":
+		return InheritLeaf2Head
+	case "head2leaf":
+		return InheritHead2Leaf
+	case "leaf":
+		return InheritLeaf
+	case "head":
+		return InheritHead
+	default:
+		return -1
 	}
 }
 
@@ -389,8 +400,8 @@ func (t Keyword) Doc(depth int) string {
 	} else if t.Default != "" {
 		buff += sprintProp("default", t.Default)
 	}
-	if t.Converter != nil {
-		buff += sprintProp("convert", fmt.Sprint(t.Converter))
+	if t.Converter != "" {
+		buff += sprintProp("convert", t.Converter)
 	}
 	buff += "\n"
 	if t.Example != "" {

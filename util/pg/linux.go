@@ -66,7 +66,7 @@ func (c Config) ApplyProc(pid int) error {
 		}
 	}
 	if c.MemOOMControl != "" {
-		if n, err := converters.Bool.Convert(c.MemOOMControl); err != nil {
+		if n, err := converters.Lookup("bool").Convert(c.MemOOMControl); err != nil {
 			errs = errors.Join(errs, fmt.Errorf("pg_mem_oom_control: %w", err))
 		} else {
 			disable := n.(bool)

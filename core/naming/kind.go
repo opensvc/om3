@@ -91,6 +91,14 @@ func ParseKind(s string) Kind {
 	}
 }
 
+func ParseKinds(kinds ...string) Kinds {
+	m := make(Kinds)
+	for _, kind := range kinds {
+		m[ParseKind(kind)] = nil
+	}
+	return m
+}
+
 func NewKinds(kinds ...Kind) Kinds {
 	m := make(Kinds)
 	for _, kind := range kinds {
@@ -104,6 +112,9 @@ func (t Kinds) Has(kind Kind) bool {
 		return true
 	}
 	if t == nil {
+		return true
+	}
+	if len(t) == 0 {
 		return true
 	}
 	_, ok := t[kind]

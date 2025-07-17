@@ -16,40 +16,63 @@ import (
 )
 
 type (
-	TString        string
-	TInt           string
-	TInt64         string
-	TFloat64       string
-	TBool          string
-	TList          string
-	TListLowercase string
-	TSet           string
-	TShlex         string
-	TDuration      string
-	TUmask         string
-	TSize          string
-	TFileMode      string
-	TTristate      string
+	TString        struct{}
+	TInt           struct{}
+	TInt64         struct{}
+	TFloat64       struct{}
+	TBool          struct{}
+	TList          struct{}
+	TListLowercase struct{}
+	TSet           struct{}
+	TShlex         struct{}
+	TDuration      struct{}
+	TUmask         struct{}
+	TSize          struct{}
+	TFileMode      struct{}
+	TTristate      struct{}
+
+	Converter interface {
+		Convert(s string) (any, error)
+		String() string
+	}
 )
 
 var (
-	String        TString
-	Int           TInt
-	Int64         TInt64
-	Float64       TFloat64
-	Bool          TBool
-	List          TList
-	ListLowercase TListLowercase
-	Set           TSet
-	Shlex         TShlex
-	Duration      TDuration
-	Umask         TUmask
-	Size          TSize
-	FileMode      TFileMode
-	Tristate      TTristate
+	DB map[string]Converter
 )
 
-func (t TTristate) Convert(s string) (interface{}, error) {
+func init() {
+	DB = make(map[string]Converter)
+	DB[""] = TString{}
+	Register(TString{})
+	Register(TInt{})
+	Register(TInt64{})
+	Register(TFloat64{})
+	Register(TBool{})
+	Register(TList{})
+	Register(TListLowercase{})
+	Register(TSet{})
+	Register(TShlex{})
+	Register(TDuration{})
+	Register(TUmask{})
+	Register(TSize{})
+	Register(TFileMode{})
+	Register(TTristate{})
+}
+
+func Register(c Converter) {
+	DB[c.String()] = c
+}
+
+func Lookup(s string) Converter {
+	c, ok := DB[s]
+	if !ok {
+		panic(fmt.Sprintf("converter '%s' is not registered", s))
+	}
+	return c
+}
+
+func (t TTristate) Convert(s string) (any, error) {
 	if s == "" {
 		return "", nil
 	}
@@ -65,7 +88,7 @@ func (t TTristate) String() string {
 	return "tristate"
 }
 
-func (t TString) Convert(s string) (interface{}, error) {
+func (t TString) Convert(s string) (any, error) {
 	return s, nil
 }
 
@@ -73,7 +96,7 @@ func (t TString) String() string {
 	return "string"
 }
 
-func (t TInt) Convert(s string) (interface{}, error) {
+func (t TInt) Convert(s string) (any, error) {
 	if i, err := strconv.Atoi(s); err != nil {
 		//fmt.Println(string(debug.Stack()))
 		return 0, fmt.Errorf("int convert error: %s", err)
@@ -86,7 +109,7 @@ func (t TInt) String() string {
 	return "int"
 }
 
-func (t TInt64) Convert(s string) (interface{}, error) {
+func (t TInt64) Convert(s string) (any, error) {
 	return strconv.ParseInt(s, 10, 64)
 }
 
@@ -94,7 +117,7 @@ func (t TInt64) String() string {
 	return "int64"
 }
 
-func (t TFloat64) Convert(s string) (interface{}, error) {
+func (t TFloat64) Convert(s string) (any, error) {
 	return strconv.ParseFloat(s, 64)
 }
 
@@ -102,7 +125,7 @@ func (t TFloat64) String() string {
 	return "float64"
 }
 
-func (t TBool) Convert(s string) (interface{}, error) {
+func (t TBool) Convert(s string) (any, error) {
 	if s == "" {
 		return false, nil
 	}
@@ -114,7 +137,7 @@ func (t TBool) String() string {
 	return "bool"
 }
 
-func (t TList) Convert(s string) (interface{}, error) {
+func (t TList) Convert(s string) (any, error) {
 	return strings.Fields(s), nil
 }
 
@@ -122,7 +145,7 @@ func (t TList) String() string {
 	return "list"
 }
 
-func (t TListLowercase) Convert(s string) (interface{}, error) {
+func (t TListLowercase) Convert(s string) (any, error) {
 	l := strings.Fields(s)
 	for i := 0; i < len(l); i++ {
 		l[i] = strings.ToLower(l[i])
@@ -131,10 +154,10 @@ func (t TListLowercase) Convert(s string) (interface{}, error) {
 }
 
 func (t TListLowercase) String() string {
-	return "list-lowercase"
+	return "listlowercase"
 }
 
-func (t TSet) Convert(s string) (interface{}, error) {
+func (t TSet) Convert(s string) (any, error) {
 	aSet := set.New()
 	for _, e := range strings.Fields(s) {
 		aSet.Insert(e)
@@ -146,7 +169,7 @@ func (t TSet) String() string {
 	return "set"
 }
 
-func (t TShlex) Convert(s string) (interface{}, error) {
+func (t TShlex) Convert(s string) (any, error) {
 	return shlex.Split(s, true)
 }
 
@@ -158,7 +181,7 @@ func (t TShlex) String() string {
 //
 // nil is returned when duration is unset
 // Default unit is second when not specified
-func (t TDuration) Convert(s string) (interface{}, error) {
+func (t TDuration) Convert(s string) (any, error) {
 	return t.convert(s)
 }
 
@@ -180,7 +203,7 @@ func (t TDuration) String() string {
 	return "duration"
 }
 
-func (t TUmask) Convert(s string) (interface{}, error) {
+func (t TUmask) Convert(s string) (any, error) {
 	return t.convert(s)
 }
 
@@ -200,7 +223,7 @@ func (t TUmask) String() string {
 	return "umask"
 }
 
-func (t TSize) Convert(s string) (interface{}, error) {
+func (t TSize) Convert(s string) (any, error) {
 	return t.convert(s)
 }
 
@@ -225,7 +248,7 @@ func (t TSize) String() string {
 	return "size"
 }
 
-func (t TFileMode) Convert(s string) (interface{}, error) {
+func (t TFileMode) Convert(s string) (any, error) {
 	return t.convert(s)
 }
 
@@ -274,7 +297,7 @@ func (t TFileMode) convert(s string) (*os.FileMode, error) {
 }
 
 func (t TFileMode) String() string {
-	return "file-mode"
+	return "filemode"
 }
 
 func ReadFile(fs embed.FS, s string) string {

@@ -8,7 +8,6 @@ import (
 	"github.com/opensvc/om3/core/manifest"
 	"github.com/opensvc/om3/core/naming"
 	"github.com/opensvc/om3/drivers/rescontainer"
-	"github.com/opensvc/om3/util/converters"
 )
 
 var (
@@ -63,7 +62,7 @@ func (t *T) Manifest() *manifest.T {
 		},
 		keywords.Keyword{
 			Attr:         "TemplateOptions",
-			Converter:    converters.Shlex,
+			Converter:    "shlex",
 			Example:      "--release focal",
 			Option:       "template_options",
 			Provisioning: true,
@@ -71,7 +70,7 @@ func (t *T) Manifest() *manifest.T {
 		},
 		keywords.Keyword{
 			Attr:         "CreateSecretsEnvironment",
-			Converter:    converters.Shlex,
+			Converter:    "shlex",
 			Example:      "CRT=cert1/server.crt PEM=cert1/server.pem",
 			Option:       "create_secrets_environment",
 			Provisioning: true,
@@ -80,7 +79,7 @@ func (t *T) Manifest() *manifest.T {
 		},
 		keywords.Keyword{
 			Attr:         "CreateConfigsEnvironment",
-			Converter:    converters.Shlex,
+			Converter:    "shlex",
 			Example:      "CRT=cert1/server.crt PEM=cert1/server.pem",
 			Option:       "create_configs_environment",
 			Provisioning: true,
@@ -89,7 +88,7 @@ func (t *T) Manifest() *manifest.T {
 		},
 		keywords.Keyword{
 			Attr:         "CreateEnvironment",
-			Converter:    converters.Shlex,
+			Converter:    "shlex",
 			Example:      "FOO=bar BAR=baz",
 			Option:       "create_environment",
 			Provisioning: true,

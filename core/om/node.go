@@ -146,7 +146,6 @@ func init() {
 		newCmdNodeAbort(),
 		newCmdNodeChecks(),
 		newCmdNodeClear(),
-		newCmdNodeDoc(),
 		newCmdNodeDrain(),
 		newCmdNodeDrivers(),
 		newCmdNodeLogs(),
@@ -168,6 +167,7 @@ func init() {
 		newCmdNodeVersion(),
 	)
 	cmdNodeConfig.AddCommand(
+		newCmdNodeConfigDoc(),
 		newCmdNodeConfigEdit(),
 		newCmdNodeConfigEval(),
 		newCmdNodeConfigGet(),

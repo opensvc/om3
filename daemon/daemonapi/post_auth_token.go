@@ -46,7 +46,7 @@ func (a *DaemonAPI) PostAuthToken(ctx echo.Context, params api.PostAuthTokenPara
 	name := "PostAuthToken"
 	log := LogHandler(ctx, name)
 	if params.Duration != nil {
-		if v, err := converters.Duration.Convert(*params.Duration); err != nil {
+		if v, err := converters.Lookup("duration").Convert(*params.Duration); err != nil {
 			log.Infof("%s: invalid duration: %s: %s", name, *params.Duration, err)
 			return JSONProblemf(ctx, http.StatusBadRequest, "Invalid parameters", "Invalid duration: %s", *params.Duration)
 		} else if v != nil {

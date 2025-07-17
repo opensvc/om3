@@ -4,7 +4,6 @@ import (
 	"embed"
 
 	"github.com/opensvc/om3/core/keywords"
-	"github.com/opensvc/om3/util/converters"
 )
 
 var (
@@ -22,13 +21,13 @@ var (
 		},
 		{
 			Attr:      "Confirmation",
-			Converter: converters.Bool,
+			Converter: "bool",
 			Option:    "confirmation",
 			Text:      keywords.NewText(fs, "text/kw/confirmation"),
 		},
 		{
 			Attr:      "LogOutputs",
-			Converter: converters.Bool,
+			Converter: "bool",
 			Default:   "true",
 			Option:    "log",
 			Scopable:  true,
@@ -36,7 +35,7 @@ var (
 		},
 		{
 			Attr:      "MaxParallel",
-			Converter: converters.Int,
+			Converter: "int",
 			Default:   "1",
 			Example:   "2",
 			Option:    "max_parallel",
@@ -61,7 +60,7 @@ var (
 		},
 		{
 			Attr:      "RunTimeout",
-			Converter: converters.Duration,
+			Converter: "duration",
 			Example:   "1m30s",
 			Option:    "run_timeout",
 			Scopable:  true,
@@ -77,7 +76,7 @@ var (
 		},
 		{
 			Attr:      "Snooze",
-			Converter: converters.Duration,
+			Converter: "duration",
 			Example:   "10m",
 			Option:    "snooze",
 			Scopable:  true,
@@ -85,7 +84,7 @@ var (
 		},
 		{
 			Attr:      "Timeout",
-			Converter: converters.Duration,
+			Converter: "duration",
 			Example:   "5m",
 			Option:    "timeout",
 			Scopable:  true,

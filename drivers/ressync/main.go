@@ -18,7 +18,6 @@ import (
 	"github.com/opensvc/om3/core/resource"
 	"github.com/opensvc/om3/core/status"
 	"github.com/opensvc/om3/core/statusbus"
-	"github.com/opensvc/om3/util/converters"
 	"github.com/opensvc/om3/util/file"
 	"github.com/opensvc/om3/util/hostname"
 	"github.com/opensvc/om3/util/schedule"
@@ -40,7 +39,7 @@ var (
 	KWMaxDelay = keywords.Keyword{
 		Aliases:       []string{"sync_max_delay"},
 		Attr:          "MaxDelay",
-		Converter:     converters.Duration,
+		Converter:     "duration",
 		DefaultOption: "sync_max_delay",
 		Option:        "max_delay",
 		Text:          keywords.NewText(fs, "text/kw/max_delay"),

@@ -389,7 +389,7 @@ func (t *T) getScript() string {
 // boolRule return bool, ok
 // detect if s is a bool like, or sequence number
 func boolRule(s string) (bool, bool) {
-	if v, err := converters.Bool.Convert(s); err == nil {
+	if v, err := converters.Lookup("bool").Convert(s); err == nil {
 		return v.(bool), true
 	}
 	if isSequenceNumber(s) {

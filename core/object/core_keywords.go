@@ -13,8 +13,6 @@ import (
 	"github.com/opensvc/om3/core/priority"
 	"github.com/opensvc/om3/core/resource"
 	"github.com/opensvc/om3/core/resourceid"
-	"github.com/opensvc/om3/core/xconfig"
-	"github.com/opensvc/om3/util/converters"
 	"github.com/opensvc/om3/util/key"
 )
 
@@ -24,7 +22,7 @@ var fs embed.FS
 var keywordStore = keywords.Store{
 	{
 		Aliases:   []string{"affinity"},
-		Converter: converters.ListLowercase,
+		Converter: "listlowercase",
 		Example:   "svc1 svc2",
 		Inherit:   keywords.InheritHead,
 		Kind:      naming.NewKinds(naming.KindSvc, naming.KindVol),
@@ -34,7 +32,7 @@ var keywordStore = keywords.Store{
 	},
 	{
 		Aliases:   []string{"anti_affinity"},
-		Converter: converters.ListLowercase,
+		Converter: "listlowercase",
 		Example:   "svc1 svc2",
 		Inherit:   keywords.InheritHead,
 		Kind:      naming.NewKinds(naming.KindSvc, naming.KindVol),
@@ -43,7 +41,7 @@ var keywordStore = keywords.Store{
 		Text:      keywords.NewText(fs, "text/kw/core/hard_anti_affinity"),
 	},
 	{
-		Converter: converters.ListLowercase,
+		Converter: "listlowercase",
 		Example:   "svc1 svc2",
 		Inherit:   keywords.InheritHead,
 		Kind:      naming.NewKinds(naming.KindSvc, naming.KindVol),
@@ -52,7 +50,7 @@ var keywordStore = keywords.Store{
 		Text:      keywords.NewText(fs, "text/kw/core/soft_affinity"),
 	},
 	{
-		Converter: converters.ListLowercase,
+		Converter: "listlowercase",
 		Example:   "svc1 svc2",
 		Inherit:   keywords.InheritHead,
 		Kind:      naming.NewKinds(naming.KindSvc, naming.KindVol),
@@ -72,7 +70,7 @@ var keywordStore = keywords.Store{
 		Text:   keywords.NewText(fs, "text/kw/core/comment"),
 	},
 	{
-		Converter: converters.Bool,
+		Converter: "bool",
 		Kind:      naming.NewKinds(naming.KindSvc, naming.KindVol),
 		Option:    "disable",
 		Scopable:  true,
@@ -80,7 +78,7 @@ var keywordStore = keywords.Store{
 		Text:      keywords.NewText(fs, "text/kw/core/disable"),
 	},
 	{
-		Converter: converters.Bool,
+		Converter: "bool",
 		Default:   "true",
 		Kind:      naming.NewKinds(naming.KindSvc, naming.KindVol),
 		Option:    "create_pg",
@@ -109,7 +107,7 @@ var keywordStore = keywords.Store{
 	},
 	{
 		Attr:      "PG.CpuShares",
-		Converter: converters.Size,
+		Converter: "size",
 		Example:   "512",
 		Inherit:   keywords.InheritLeaf,
 		Kind:      naming.NewKinds(naming.KindSvc, naming.KindVol),
@@ -137,7 +135,7 @@ var keywordStore = keywords.Store{
 	},
 	{
 		Attr:      "PG.MemLimit",
-		Converter: converters.Size,
+		Converter: "size",
 		Example:   "512m",
 		Inherit:   keywords.InheritLeaf,
 		Kind:      naming.NewKinds(naming.KindSvc, naming.KindVol),
@@ -147,7 +145,7 @@ var keywordStore = keywords.Store{
 	},
 	{
 		Attr:      "PG.VMemLimit",
-		Converter: converters.Size,
+		Converter: "size",
 		Example:   "1g",
 		Inherit:   keywords.InheritLeaf,
 		Kind:      naming.NewKinds(naming.KindSvc, naming.KindVol),
@@ -174,14 +172,14 @@ var keywordStore = keywords.Store{
 		Text:     keywords.NewText(fs, "text/kw/core/pg_blkio_weight"),
 	},
 	{
-		Converter: converters.Duration,
+		Converter: "duration",
 		Kind:      naming.NewKinds(naming.KindSvc, naming.KindVol),
 		Option:    "stat_timeout",
 		Scopable:  true,
 		Text:      keywords.NewText(fs, "text/kw/core/stat_timeout"),
 	},
 	{
-		Converter:   xconfig.NodesConverter,
+		Converter:   "nodes",
 		DefaultText: keywords.NewText(fs, "text/kw/core/nodes.default"),
 		Example:     "n1 n*",
 		Inherit:     keywords.InheritHead,
@@ -192,7 +190,7 @@ var keywordStore = keywords.Store{
 		Text:        keywords.NewText(fs, "text/kw/core/nodes"),
 	},
 	{
-		Converter: xconfig.NodesConverter,
+		Converter: "nodes",
 		Default:   "*",
 		Inherit:   keywords.InheritHead,
 		Kind:      naming.NewKinds(naming.KindCfg, naming.KindSec, naming.KindUsr, naming.KindNscfg),
@@ -202,7 +200,7 @@ var keywordStore = keywords.Store{
 		Text:      keywords.NewText(fs, "text/kw/core/nodes"),
 	},
 	{
-		Converter: xconfig.OtherNodesConverter,
+		Converter: "peers",
 		Example:   "n1 n2",
 		Inherit:   keywords.InheritHead,
 		Option:    "drpnodes",
@@ -211,7 +209,7 @@ var keywordStore = keywords.Store{
 		Text:      keywords.NewText(fs, "text/kw/core/drpnodes"),
 	},
 	{
-		Converter: converters.List,
+		Converter: "list",
 		Example:   "n1 n2",
 		Inherit:   keywords.InheritHead,
 		Kind:      naming.NewKinds(naming.KindSvc),
@@ -227,7 +225,7 @@ var keywordStore = keywords.Store{
 			string(instance.MonitorActionReboot),
 			string(instance.MonitorActionSwitch),
 		},
-		Converter: converters.List,
+		Converter: "list",
 		Default:   string(instance.MonitorActionNone),
 		Kind:      naming.NewKinds(naming.KindSvc, naming.KindVol),
 		Example:   string(instance.MonitorActionReboot),
@@ -262,7 +260,7 @@ var keywordStore = keywords.Store{
 		Text:        keywords.NewText(fs, "text/kw/core/env"),
 	},
 	{
-		Converter: converters.Bool,
+		Converter: "bool",
 		Default:   "false",
 		Depends:   keyop.ParseList("topology=failover"),
 		Inherit:   keywords.InheritHead,
@@ -293,7 +291,7 @@ var keywordStore = keywords.Store{
 		Text:       keywords.NewText(fs, "text/kw/core/topology"),
 	},
 	{
-		Converter:   converters.ListLowercase,
+		Converter:   "listlowercase",
 		DefaultText: keywords.NewText(fs, "text/kw/core/flex_primary.default"),
 		Depends:     keyop.ParseList("topology=flex"),
 		Inherit:     keywords.InheritHead,
@@ -304,7 +302,7 @@ var keywordStore = keywords.Store{
 		Text:        keywords.NewText(fs, "text/kw/core/flex_primary"),
 	},
 	{
-		Converter: converters.Bool,
+		Converter: "bool",
 		Default:   "true",
 		Kind:      naming.NewKinds(naming.KindSvc, naming.KindVol),
 		Option:    "shared",
@@ -314,7 +312,7 @@ var keywordStore = keywords.Store{
 	},
 	{
 		Aliases:   []string{"flex_min_nodes"},
-		Converter: converters.Int,
+		Converter: "int",
 		Default:   "1",
 		Depends:   keyop.ParseList("topology=flex"),
 		Inherit:   keywords.InheritHead,
@@ -325,7 +323,7 @@ var keywordStore = keywords.Store{
 	},
 	{
 		Aliases:     []string{"flex_max_nodes"},
-		Converter:   converters.Int,
+		Converter:   "int",
 		Default:     "{#nodes}",
 		DefaultText: keywords.NewText(fs, "text/kw/core/flex_max.default"),
 		Depends:     keyop.ParseList("topology=flex"),
@@ -336,7 +334,7 @@ var keywordStore = keywords.Store{
 		Text:        keywords.NewText(fs, "text/kw/core/flex_max"),
 	},
 	{
-		Converter:   converters.Int,
+		Converter:   "int",
 		Default:     "{flex_min}",
 		DefaultText: keywords.NewText(fs, "text/kw/core/flex_target.default"),
 		Depends:     keyop.ParseList("topology=flex"),
@@ -347,7 +345,7 @@ var keywordStore = keywords.Store{
 		Text:        keywords.NewText(fs, "text/kw/core/flex_target"),
 	},
 	{
-		Converter: converters.ListLowercase,
+		Converter: "listlowercase",
 		Inherit:   keywords.InheritHead,
 		Kind:      naming.NewKinds(naming.KindSvc, naming.KindVol),
 		Option:    "parents",
@@ -355,7 +353,7 @@ var keywordStore = keywords.Store{
 		Text:      keywords.NewText(fs, "text/kw/core/parents"),
 	},
 	{
-		Converter: converters.ListLowercase,
+		Converter: "listlowercase",
 		Inherit:   keywords.InheritHead,
 		Kind:      naming.NewKinds(naming.KindSvc, naming.KindVol),
 		Option:    "children",
@@ -372,7 +370,7 @@ var keywordStore = keywords.Store{
 		Text:       keywords.NewText(fs, "text/kw/core/orchestrate"),
 	},
 	{
-		Converter: converters.Int,
+		Converter: "int",
 		Default:   fmt.Sprint(priority.Default),
 		Inherit:   keywords.InheritHead,
 		Kind:      naming.NewKinds(naming.KindSvc),
@@ -382,7 +380,7 @@ var keywordStore = keywords.Store{
 		Text:      keywords.NewText(fs, "text/kw/core/priority"),
 	},
 	{
-		Converter: converters.Bool,
+		Converter: "bool",
 		Kind:      naming.NewKinds(naming.KindSvc, naming.KindVol),
 		Option:    "parallel",
 		Scopable:  true,
@@ -392,7 +390,7 @@ var keywordStore = keywords.Store{
 
 	// DataStores
 	{
-		Converter: converters.List,
+		Converter: "list",
 		Default:   "{namespace}",
 		Example:   "ns1 ns2",
 		Kind:      naming.NewKinds(naming.KindSec, naming.KindCfg),
@@ -460,7 +458,7 @@ var keywordStore = keywords.Store{
 		Text:     keywords.NewText(fs, "text/kw/core/email"),
 	},
 	{
-		Converter: converters.List,
+		Converter: "list",
 		Example:   "www.opensvc.com opensvc.com",
 		Kind:      naming.NewKinds(naming.KindSec, naming.KindUsr),
 		Option:    "alt_names",
@@ -469,7 +467,7 @@ var keywordStore = keywords.Store{
 		Text:      keywords.NewText(fs, "text/kw/core/alt_names"),
 	},
 	{
-		Converter: converters.Size,
+		Converter: "size",
 		Default:   "4kib",
 		Example:   "8192",
 		Kind:      naming.NewKinds(naming.KindSec, naming.KindUsr),
@@ -481,7 +479,7 @@ var keywordStore = keywords.Store{
 
 	// Usr
 	{
-		Converter: converters.ListLowercase,
+		Converter: "listlowercase",
 		Example:   "admin:test* guest:*",
 		Inherit:   keywords.InheritHead,
 		Kind:      naming.NewKinds(naming.KindUsr),
@@ -491,7 +489,7 @@ var keywordStore = keywords.Store{
 		Text:      keywords.NewText(fs, "text/kw/core/grant"),
 	},
 	{
-		Converter: converters.Bool,
+		Converter: "bool",
 		Default:   "true",
 		Kind:      naming.NewKinds(naming.KindSvc, naming.KindVol),
 		Option:    "rollback",
@@ -500,7 +498,7 @@ var keywordStore = keywords.Store{
 		Text:      keywords.NewText(fs, "text/kw/core/rollback"),
 	},
 	{
-		Converter: converters.Duration,
+		Converter: "duration",
 		Default:   "1y",
 		Example:   "10y",
 		Kind:      naming.NewKinds(naming.KindSec, naming.KindUsr),
@@ -566,7 +564,7 @@ var keywordStore = keywords.Store{
 	},
 	{
 		Attr:      "Timeout",
-		Converter: converters.Duration,
+		Converter: "duration",
 		Default:   "1h",
 		Example:   "2h",
 		Kind:      naming.NewKinds(naming.KindSvc, naming.KindVol),
@@ -576,7 +574,7 @@ var keywordStore = keywords.Store{
 	},
 	{
 		Attr:      "StatusTimeout",
-		Converter: converters.Duration,
+		Converter: "duration",
 		Default:   "1m",
 		Example:   "10s",
 		Kind:      naming.NewKinds(naming.KindSvc, naming.KindVol),
@@ -586,7 +584,7 @@ var keywordStore = keywords.Store{
 	},
 	{
 		Attr:      "StartTimeout",
-		Converter: converters.Duration,
+		Converter: "duration",
 		Example:   "1m30s",
 		Kind:      naming.NewKinds(naming.KindSvc, naming.KindVol),
 		Option:    "start_timeout",
@@ -595,7 +593,7 @@ var keywordStore = keywords.Store{
 	},
 	{
 		Attr:      "StopTimeout",
-		Converter: converters.Duration,
+		Converter: "duration",
 		Example:   "1m30s",
 		Kind:      naming.NewKinds(naming.KindSvc, naming.KindVol),
 		Option:    "stop_timeout",
@@ -604,7 +602,7 @@ var keywordStore = keywords.Store{
 	},
 	{
 		Attr:      "Provision",
-		Converter: converters.Bool,
+		Converter: "bool",
 		Default:   "true",
 		Kind:      naming.NewKinds(naming.KindSvc, naming.KindVol),
 		Option:    "provision",
@@ -613,7 +611,7 @@ var keywordStore = keywords.Store{
 	},
 	{
 		Attr:      "Unprovision",
-		Converter: converters.Bool,
+		Converter: "bool",
 		Default:   "true",
 		Kind:      naming.NewKinds(naming.KindSvc, naming.KindVol),
 		Option:    "unprovision",
@@ -622,7 +620,7 @@ var keywordStore = keywords.Store{
 	},
 	{
 		Attr:      "ProvisionTimeout",
-		Converter: converters.Duration,
+		Converter: "duration",
 		Example:   "1m30s",
 		Kind:      naming.NewKinds(naming.KindSvc, naming.KindVol),
 		Option:    "provision_timeout",
@@ -631,7 +629,7 @@ var keywordStore = keywords.Store{
 	},
 	{
 		Attr:      "UnprovisionTimeout",
-		Converter: converters.Duration,
+		Converter: "duration",
 		Example:   "1m30s",
 		Kind:      naming.NewKinds(naming.KindSvc, naming.KindVol),
 		Option:    "unprovision_timeout",
@@ -640,7 +638,7 @@ var keywordStore = keywords.Store{
 	},
 	{
 		Attr:      "SyncTimeout",
-		Converter: converters.Duration,
+		Converter: "duration",
 		Example:   "1m30s",
 		Kind:      naming.NewKinds(naming.KindSvc, naming.KindVol),
 		Option:    "sync_timeout",
@@ -662,12 +660,12 @@ var keywordStore = keywords.Store{
 		Inherit:   keywords.InheritHead,
 		Kind:      naming.NewKinds(naming.KindVol),
 		Option:    "devices_from",
-		Converter: converters.List,
+		Converter: "list",
 		Text:      keywords.NewText(fs, "text/kw/core/devices_from"),
 	},
 	{
 		Attr:      "Size",
-		Converter: converters.Size,
+		Converter: "size",
 		Inherit:   keywords.InheritHead,
 		Kind:      naming.NewKinds(naming.KindVol),
 		Option:    "size",
@@ -748,4 +746,33 @@ func keywordLookup(store keywords.Store, k key.T, kind naming.Kind, sectionType 
 		}
 	}
 	return keywords.Keyword{}
+}
+
+// KeywordStoreWithDrivers return the keywords supported by a specific
+// object kind, including all resource drivers keywords.
+func KeywordStoreWithDrivers(kind naming.Kind) keywords.Store {
+	var store keywords.Store
+	if kind == naming.KindCcfg {
+		store = append(store, ccfgKeywordStore...)
+	} else {
+		store = append(store, keywordStore...)
+	}
+	for _, drvID := range driver.List() {
+		factory := resource.NewResourceFunc(drvID)
+		if factory == nil {
+			// node drivers don't have a factory, skip them
+			continue
+		}
+		r := factory()
+		manifest := r.Manifest()
+		if !manifest.Kinds.Has(kind) {
+			continue
+		}
+		for _, kw := range manifest.Keywords() {
+			kw.Section = drvID.Group.String()
+			kw.Types = []string{drvID.Name}
+			store = append(store, kw)
+		}
+	}
+	return store
 }

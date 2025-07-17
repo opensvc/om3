@@ -4,7 +4,6 @@ import (
 	"embed"
 
 	"github.com/opensvc/om3/core/keywords"
-	"github.com/opensvc/om3/util/converters"
 )
 
 var (
@@ -14,7 +13,7 @@ var (
 	Keywords = []keywords.Keyword{
 		{
 			Attr:      "StartTimeout",
-			Converter: converters.Duration,
+			Converter: "duration",
 			Example:   "180",
 			Option:    "start_timeout",
 			Scopable:  true,
