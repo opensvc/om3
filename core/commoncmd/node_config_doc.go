@@ -76,5 +76,5 @@ func (t *CmdNodeConfigDoc) Run() error {
 		return fmt.Errorf("unexpected response: %s", response.Status())
 	}
 
-	return Doc(os.Stdout, items, "node", t.Depth)
+	return Doc(os.Stdout, items, "node", t.Driver, t.Keyword, t.Depth)
 }

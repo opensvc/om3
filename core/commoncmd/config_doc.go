@@ -36,7 +36,7 @@ func KeywordStoreFromAPI(items api.KeywordDefinitionItems) (store keywords.Store
 	return
 }
 
-func Doc(w io.Writer, items api.KeywordDefinitionItems, kind naming.Kind, depth int) error {
+func Doc(w io.Writer, items api.KeywordDefinitionItems, kind naming.Kind, driver, kw string, depth int) error {
 	store := KeywordStoreFromAPI(items)
-	return store.Doc(w, kind, depth)
+	return store.Doc(w, kind, driver, kw, depth)
 }

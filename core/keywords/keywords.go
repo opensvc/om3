@@ -211,13 +211,27 @@ func (t Store) Lookup(k key.T, kind naming.Kind, sectionType string) Keyword {
 	return Keyword{}
 }
 
-func (t Store) Doc(w io.Writer, kind naming.Kind, depth int) error {
+func (t Store) Doc(w io.Writer, kind naming.Kind, driver, kw string, depth int) error {
 	depth += 1
+	if kw != "" {
+		if len(t) == 0 {
+			return fmt.Errorf("keyword '%s' not found", kw)
+		}
+		return t[0].Doc(w, depth)
+	}
 	m := t.KeywordsByDriver(kind)
+	if driver != "" {
+		index := ParseIndex(driver)
+		if i, ok := m[index]; ok {
+			return driverDoc(w, i, index, kind, depth)
+		} else {
+			return fmt.Errorf("driver '%s' not found", driver)
+		}
+	}
 	l := Indices(maps.Keys(m))
 	sort.Sort(l)
 	for _, index := range l {
-		err := driverDoc(w, m[index], index[0], index[1], kind, depth)
+		err := driverDoc(w, m[index], index, kind, depth)
 		if err != nil {
 			return err
 		}
@@ -234,11 +248,12 @@ func (t Store) DriverKeywords(section, typ string, kind naming.Kind) ([]Keyword,
 	return maps.Values(m), nil
 }
 
-func driverDoc(w io.Writer, m map[string]Keyword, section, typ string, kind naming.Kind, depth int) error {
-	index := Index{section, typ}
-	_, err := fmt.Fprintf(w, "%s %s\n\n", strings.Repeat("#", depth), index)
-	if err != nil {
-		return err
+func driverDoc(w io.Writer, m map[string]Keyword, index Index, kind naming.Kind, depth int) error {
+	section := index[0]
+	typ := index[1]
+	title := index.String()
+	if title != "" {
+		fmt.Fprintf(w, "%s %s\n\n", strings.Repeat("#", depth), index)
 	}
 	optL := maps.Keys(m)
 	sort.Strings(optL)

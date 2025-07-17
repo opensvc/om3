@@ -89,5 +89,5 @@ func (t *CmdObjectConfigDoc) Run(kind string) error {
 	default:
 		return fmt.Errorf("unexpected response: %s", response.Status())
 	}
-	return Doc(os.Stdout, items, path.Kind, t.Depth)
+	return Doc(os.Stdout, items, path.Kind, t.Driver, t.Keyword, t.Depth)
 }

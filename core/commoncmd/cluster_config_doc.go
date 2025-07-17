@@ -57,5 +57,5 @@ func (t *CmdClusterConfigDoc) Run() error {
 		return fmt.Errorf("unexpected response: %s", response.Status())
 	}
 
-	return Doc(os.Stdout, items, naming.KindCcfg, t.Depth)
+	return Doc(os.Stdout, items, naming.KindCcfg, t.Driver, t.Keyword, t.Depth)
 }
