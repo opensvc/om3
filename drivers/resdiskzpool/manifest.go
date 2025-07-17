@@ -8,7 +8,6 @@ import (
 	"github.com/opensvc/om3/core/manifest"
 	"github.com/opensvc/om3/core/naming"
 	"github.com/opensvc/om3/drivers/resdisk"
-	"github.com/opensvc/om3/util/converters"
 )
 
 var (
@@ -39,7 +38,7 @@ func (t *T) Manifest() *manifest.T {
 		},
 		keywords.Keyword{
 			Attr:      "Multihost",
-			Converter: converters.Tristate,
+			Converter: "tristate",
 			Example:   "yes",
 			Option:    "multihost",
 			Scopable:  true,
@@ -47,7 +46,7 @@ func (t *T) Manifest() *manifest.T {
 		},
 		keywords.Keyword{
 			Attr:         "VDev",
-			Converter:    converters.List,
+			Converter:    "list",
 			Example:      "/dev/mapper/23 /dev/mapper/24",
 			Option:       "vdev",
 			Provisioning: true,
@@ -56,7 +55,7 @@ func (t *T) Manifest() *manifest.T {
 		},
 		keywords.Keyword{
 			Attr:         "CreateOptions",
-			Converter:    converters.Shlex,
+			Converter:    "shlex",
 			Example:      "-O dedup=on",
 			Option:       "create_options",
 			Provisioning: true,

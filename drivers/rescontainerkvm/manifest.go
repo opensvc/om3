@@ -8,7 +8,6 @@ import (
 	"github.com/opensvc/om3/core/manifest"
 	"github.com/opensvc/om3/core/naming"
 	"github.com/opensvc/om3/drivers/rescontainer"
-	"github.com/opensvc/om3/util/converters"
 )
 
 var (
@@ -57,7 +56,7 @@ func (t *T) Manifest() *manifest.T {
 		keywords.Keyword{
 			Option:    "qga",
 			Attr:      "QGA",
-			Converter: converters.Bool,
+			Converter: "bool",
 			Text:      keywords.NewText(fs, "text/kw/qga"),
 			Scopable:  true,
 		},
@@ -65,7 +64,7 @@ func (t *T) Manifest() *manifest.T {
 			Option:       "virtinst",
 			Attr:         "VirtInst",
 			Provisioning: true,
-			Converter:    converters.Shlex,
+			Converter:    "shlex",
 			Text:         keywords.NewText(fs, "text/kw/virtinst"),
 			Example:      "--release focal",
 		},

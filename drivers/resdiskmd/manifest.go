@@ -10,7 +10,6 @@ import (
 	"github.com/opensvc/om3/core/manifest"
 	"github.com/opensvc/om3/core/naming"
 	"github.com/opensvc/om3/drivers/resdisk"
-	"github.com/opensvc/om3/util/converters"
 )
 
 var (
@@ -43,7 +42,7 @@ func (t *T) Manifest() *manifest.T {
 		},
 		keywords.Keyword{
 			Attr:         "Devs",
-			Converter:    converters.List,
+			Converter:    "list",
 			Example:      "/dev/mapper/23 /dev/mapper/24",
 			Option:       "devs",
 			Provisioning: true,
@@ -68,7 +67,7 @@ func (t *T) Manifest() *manifest.T {
 		},
 		keywords.Keyword{
 			Attr:         "Chunk",
-			Converter:    converters.Size,
+			Converter:    "size",
 			Example:      "128k",
 			Option:       "chunk",
 			Provisioning: true,
@@ -77,7 +76,7 @@ func (t *T) Manifest() *manifest.T {
 		},
 		keywords.Keyword{
 			Attr:         "Spares",
-			Converter:    converters.Int,
+			Converter:    "int",
 			Default:      "0",
 			Example:      "1",
 			Option:       "spares",

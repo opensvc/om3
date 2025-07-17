@@ -1,13 +1,14 @@
-package omcmd
+package commoncmd
 
 import (
 	"context"
 	"fmt"
+	"os"
 
 	"github.com/opensvc/om3/core/client"
-	"github.com/opensvc/om3/core/commoncmd"
 	"github.com/opensvc/om3/core/keywords"
 	"github.com/opensvc/om3/daemon/api"
+	"github.com/spf13/cobra"
 )
 
 type (
@@ -19,6 +20,25 @@ type (
 		Depth   int
 	}
 )
+
+func NewCmdNodeConfigDoc() *cobra.Command {
+	var options CmdNodeConfigDoc
+	cmd := &cobra.Command{
+		Use:   "doc",
+		Short: "print the documentation of the selected keywords",
+		RunE: func(cmd *cobra.Command, args []string) error {
+			return options.Run()
+		},
+	}
+	flags := cmd.Flags()
+	FlagColor(flags, &options.Color)
+	FlagOutput(flags, &options.Output)
+	FlagKeyword(flags, &options.Keyword)
+	FlagDriver(flags, &options.Driver)
+	FlagDepth(flags, &options.Depth)
+	cmd.MarkFlagsMutuallyExclusive("driver", "kw")
+	return cmd
+}
 
 func (t *CmdNodeConfigDoc) Run() error {
 	c, err := client.New()
@@ -56,7 +76,5 @@ func (t *CmdNodeConfigDoc) Run() error {
 		return fmt.Errorf("unexpected response: %s", response.Status())
 	}
 
-	fmt.Println(commoncmd.Doc(items, "node", t.Driver, t.Keyword, t.Depth))
-
-	return nil
+	return Doc(os.Stdout, items, "node", t.Driver, t.Keyword, t.Depth)
 }

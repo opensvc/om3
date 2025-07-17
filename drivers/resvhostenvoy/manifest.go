@@ -7,7 +7,6 @@ import (
 	"github.com/opensvc/om3/core/keywords"
 	"github.com/opensvc/om3/core/manifest"
 	"github.com/opensvc/om3/core/naming"
-	"github.com/opensvc/om3/util/converters"
 )
 
 var (
@@ -30,7 +29,7 @@ func (t *T) Manifest() *manifest.T {
 			Option:    "domains",
 			Attr:      "Domains",
 			Scopable:  true,
-			Converter: converters.List,
+			Converter: "list",
 			Default:   "{name}",
 			Example:   "{name}",
 			Text:      keywords.NewText(fs, "text/kw/domains"),
@@ -39,7 +38,7 @@ func (t *T) Manifest() *manifest.T {
 			Option:    "routes",
 			Attr:      "Routes",
 			Scopable:  true,
-			Converter: converters.List,
+			Converter: "list",
 			Example:   "route#1 route#2",
 			Text:      keywords.NewText(fs, "text/kw/routes"),
 		},

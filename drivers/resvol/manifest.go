@@ -8,8 +8,6 @@ import (
 	"github.com/opensvc/om3/core/keywords"
 	"github.com/opensvc/om3/core/manifest"
 	"github.com/opensvc/om3/core/naming"
-	"github.com/opensvc/om3/core/xconfig"
-	"github.com/opensvc/om3/util/converters"
 )
 
 var (
@@ -58,7 +56,7 @@ func (t *T) Manifest() *manifest.T {
 		},
 		keywords.Keyword{
 			Attr:         "Size",
-			Converter:    converters.Size,
+			Converter:    "size",
 			Option:       "size",
 			Provisioning: true,
 			Scopable:     true,
@@ -73,7 +71,7 @@ func (t *T) Manifest() *manifest.T {
 		},
 		keywords.Keyword{
 			Attr:         "VolNodes",
-			Converter:    xconfig.NodesConverter,
+			Converter:    "nodes",
 			Default:      "{.nodes}",
 			Option:       "nodes",
 			Provisioning: true,
@@ -82,7 +80,7 @@ func (t *T) Manifest() *manifest.T {
 		},
 		keywords.Keyword{
 			Attr:         "Format",
-			Converter:    converters.Bool,
+			Converter:    "bool",
 			Default:      "true",
 			Option:       "format",
 			Provisioning: true,

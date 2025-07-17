@@ -8,7 +8,6 @@ import (
 	"github.com/opensvc/om3/core/manifest"
 	"github.com/opensvc/om3/core/naming"
 	"github.com/opensvc/om3/drivers/resdisk"
-	"github.com/opensvc/om3/util/converters"
 )
 
 var (
@@ -30,7 +29,7 @@ func (t *T) Manifest() *manifest.T {
 	m.Add(
 		keywords.Keyword{
 			Attr:      "Devices",
-			Converter: converters.List,
+			Converter: "list",
 			Example:   "/dev/mapper/svc.d0:/dev/oracle/redo001 /dev/mapper/svc.d1",
 			Option:    "devs",
 			Required:  true,
@@ -39,7 +38,7 @@ func (t *T) Manifest() *manifest.T {
 		},
 		keywords.Keyword{
 			Attr:      "CreateCharDevices",
-			Converter: converters.Bool,
+			Converter: "bool",
 			Default:   "true",
 			Example:   "false",
 			Option:    "create_char_devices",
@@ -48,7 +47,7 @@ func (t *T) Manifest() *manifest.T {
 		},
 		keywords.Keyword{
 			Attr:      "User",
-			Converter: converters.User,
+			Converter: "user",
 			Example:   "root",
 			Option:    "user",
 			Scopable:  true,
@@ -56,7 +55,7 @@ func (t *T) Manifest() *manifest.T {
 		},
 		keywords.Keyword{
 			Attr:      "Group",
-			Converter: converters.Group,
+			Converter: "group",
 			Example:   "sys",
 			Option:    "group",
 			Scopable:  true,
@@ -64,7 +63,7 @@ func (t *T) Manifest() *manifest.T {
 		},
 		keywords.Keyword{
 			Attr:      "Perm",
-			Converter: converters.FileMode,
+			Converter: "filemode",
 			Example:   "600",
 			Option:    "perm",
 			Scopable:  true,

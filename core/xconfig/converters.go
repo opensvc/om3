@@ -3,23 +3,24 @@ package xconfig
 import (
 	"github.com/opensvc/om3/core/env"
 	"github.com/opensvc/om3/core/nodeselector"
+	"github.com/opensvc/om3/util/converters"
 	"github.com/opensvc/om3/util/hostname"
 )
 
 type (
 	// TNodesConverter is the type of converter used for the nodes keyword,
 	// which makes sure the local nodename is in the resulting []string.
-	TNodesConverter string
+	TNodesConverter struct{}
 
-	// TOtherNodesConverter is the type of converter used for the drpnodes and
+	// TPeersConverter is the type of converter used for the drpnodes and
 	// encapnodes keyword, which accepts to return an empty list.
-	TOtherNodesConverter string
+	TPeersConverter struct{}
 )
 
-var (
-	NodesConverter      TNodesConverter
-	OtherNodesConverter TOtherNodesConverter
-)
+func init() {
+	converters.Register(TNodesConverter{})
+	converters.Register(TPeersConverter{})
+}
 
 func (t TNodesConverter) String() string {
 	return "nodes"
@@ -36,10 +37,10 @@ func (t TNodesConverter) Convert(s string) (interface{}, error) {
 	return l, nil
 }
 
-func (t TOtherNodesConverter) String() string {
-	return "other-nodes"
+func (t TPeersConverter) String() string {
+	return "peers"
 }
 
-func (t TOtherNodesConverter) Convert(s string) (interface{}, error) {
+func (t TPeersConverter) Convert(s string) (interface{}, error) {
 	return nodeselector.Expand(s)
 }

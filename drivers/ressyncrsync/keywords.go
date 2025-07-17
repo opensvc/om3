@@ -4,7 +4,6 @@ import (
 	"embed"
 
 	"github.com/opensvc/om3/core/keywords"
-	"github.com/opensvc/om3/util/converters"
 )
 
 var (
@@ -14,7 +13,7 @@ var (
 	Keywords = []keywords.Keyword{
 		{
 			Attr:      "Timeout",
-			Converter: converters.Duration,
+			Converter: "duration",
 			Example:   "5m",
 			Option:    "timeout",
 			Scopable:  true,
@@ -44,7 +43,7 @@ var (
 		},
 		{
 			Attr:      "Options",
-			Converter: converters.Shlex,
+			Converter: "shlex",
 			Example:   "--acls --xattrs --exclude foo/bar",
 			Option:    "options",
 			Scopable:  true,
@@ -52,14 +51,14 @@ var (
 		},
 		{
 			Attr:      "ResetOptions",
-			Converter: converters.Bool,
+			Converter: "bool",
 			Option:    "reset_options",
 			Text:      keywords.NewText(fs, "text/kw/reset_options"),
 		},
 		{
 			Attr:       "Target",
 			Candidates: []string{"nodes", "drpnodes", "local"},
-			Converter:  converters.List,
+			Converter:  "list",
 			Option:     "target",
 			//Required:   true,
 			Scopable: true,
@@ -67,7 +66,7 @@ var (
 		},
 		{
 			Attr:      "Snap",
-			Converter: converters.Bool,
+			Converter: "bool",
 			Option:    "snap",
 			Text:      keywords.NewText(fs, "text/kw/snap"),
 		},

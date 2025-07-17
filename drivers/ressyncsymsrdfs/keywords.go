@@ -4,7 +4,6 @@ import (
 	"embed"
 
 	"github.com/opensvc/om3/core/keywords"
-	"github.com/opensvc/om3/util/converters"
 )
 
 var (
@@ -30,7 +29,7 @@ var (
 		},
 		{
 			Attr:      "RDFG",
-			Converter: converters.Int,
+			Converter: "int",
 			Example:   "5",
 			Option:    "rdfg",
 			Scopable:  false,

@@ -10,7 +10,6 @@ import (
 	"github.com/opensvc/om3/core/manifest"
 	"github.com/opensvc/om3/core/naming"
 	"github.com/opensvc/om3/drivers/resip"
-	"github.com/opensvc/om3/util/converters"
 )
 
 var (
@@ -45,7 +44,7 @@ func (t *T) Manifest() *manifest.T {
 		},
 		keywords.Keyword{
 			Attr:      "Expose",
-			Converter: converters.List,
+			Converter: "list",
 			Example:   "443/tcp:8443 53/udp",
 			Option:    "expose",
 			Scopable:  true,

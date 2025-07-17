@@ -7,7 +7,6 @@ import (
 	"github.com/opensvc/om3/core/keywords"
 	"github.com/opensvc/om3/core/manifest"
 	"github.com/opensvc/om3/core/naming"
-	"github.com/opensvc/om3/util/converters"
 )
 
 var (
@@ -40,7 +39,7 @@ func (t *T) Manifest() *manifest.T {
 		},
 		keywords.Keyword{
 			Attr:      "Port",
-			Converter: converters.Int,
+			Converter: "int",
 			Option:    "port",
 			Required:  true,
 			Scopable:  true,
@@ -63,7 +62,7 @@ func (t *T) Manifest() *manifest.T {
 		},
 		keywords.Keyword{
 			Attr:        "ListenerPort",
-			Converter:   converters.Int,
+			Converter:   "int",
 			DefaultText: keywords.NewText(fs, "text/kw/listener_port.default"),
 			Option:      "listener_port",
 			Scopable:    true,
@@ -71,7 +70,7 @@ func (t *T) Manifest() *manifest.T {
 		},
 		keywords.Keyword{
 			Attr:      "SNI",
-			Converter: converters.List,
+			Converter: "list",
 			Option:    "sni",
 			Scopable:  true,
 			Text:      keywords.NewText(fs, "text/kw/sni"),
@@ -92,21 +91,21 @@ func (t *T) Manifest() *manifest.T {
 		},
 		keywords.Keyword{
 			Attr:      "Vhosts",
-			Converter: converters.List,
+			Converter: "list",
 			Option:    "vhosts",
 			Scopable:  true,
 			Text:      keywords.NewText(fs, "text/kw/vhosts"),
 		},
 		keywords.Keyword{
 			Attr:      "ListenerCertificates",
-			Converter: converters.List,
+			Converter: "list",
 			Option:    "listener_certificates",
 			Scopable:  true,
 			Text:      keywords.NewText(fs, "text/kw/listener_certificates"),
 		},
 		keywords.Keyword{
 			Attr:      "ClusterCertificates",
-			Converter: converters.List,
+			Converter: "list",
 			Option:    "cluster_certificates",
 			Scopable:  true,
 			Text:      keywords.NewText(fs, "text/kw/cluster_certificates"),

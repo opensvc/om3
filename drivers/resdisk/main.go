@@ -6,7 +6,6 @@ import (
 	"github.com/opensvc/om3/core/keywords"
 	"github.com/opensvc/om3/core/manifest"
 	"github.com/opensvc/om3/core/resource"
-	"github.com/opensvc/om3/util/converters"
 )
 
 type (
@@ -23,7 +22,7 @@ var (
 
 	KWPromoteRW = keywords.Keyword{
 		Attr:      "PromoteRW",
-		Converter: converters.Bool,
+		Converter: "bool",
 		Option:    "promote_rw",
 		Text:      keywords.NewText(fs, "text/kw/promote_rw"),
 	}

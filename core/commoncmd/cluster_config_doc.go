@@ -1,11 +1,11 @@
-package omcmd
+package commoncmd
 
 import (
 	"context"
 	"fmt"
+	"os"
 
 	"github.com/opensvc/om3/core/client"
-	"github.com/opensvc/om3/core/commoncmd"
 	"github.com/opensvc/om3/core/keywords"
 	"github.com/opensvc/om3/core/naming"
 	"github.com/opensvc/om3/daemon/api"
@@ -57,7 +57,5 @@ func (t *CmdClusterConfigDoc) Run() error {
 		return fmt.Errorf("unexpected response: %s", response.Status())
 	}
 
-	fmt.Println(commoncmd.Doc(items, naming.KindCcfg, t.Driver, t.Keyword, t.Depth))
-
-	return nil
+	return Doc(os.Stdout, items, naming.KindCcfg, t.Driver, t.Keyword, t.Depth)
 }

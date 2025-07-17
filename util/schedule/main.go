@@ -815,7 +815,7 @@ func parseTimeranges(s string) (timeranges, error) {
 				// assume minutes for backward compat
 				elements[1] += "m"
 			}
-			if interval, err := converters.Duration.Convert(elements[1]); err != nil {
+			if interval, err := converters.Lookup("duration").Convert(elements[1]); err != nil {
 				return nil, fmt.Errorf("%w: %s", ErrInvalid, err)
 			} else {
 				tr.interval = *interval.(*time.Duration)

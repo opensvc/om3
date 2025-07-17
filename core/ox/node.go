@@ -140,6 +140,7 @@ func init() {
 		newCmdNodeSystemSANPath(),
 	)
 	cmdNodeConfig.AddCommand(
+		commoncmd.NewCmdNodeConfigDoc(),
 		newCmdNodeConfigEdit(),
 		newCmdNodeConfigEval(),
 		newCmdNodeConfigGet(),

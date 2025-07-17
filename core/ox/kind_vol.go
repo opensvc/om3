@@ -80,6 +80,7 @@ func init() {
 		newCmdObjectCollectorTagShow(kind),
 	)
 	cmdObjectConfig.AddCommand(
+		commoncmd.NewCmdObjectConfigDoc(kind),
 		newCmdObjectConfigEdit(kind),
 		newCmdObjectConfigEval(kind),
 		newCmdObjectConfigGet(kind),

@@ -10,7 +10,6 @@ import (
 	"github.com/opensvc/om3/core/manifest"
 	"github.com/opensvc/om3/core/naming"
 	"github.com/opensvc/om3/drivers/resdisk"
-	"github.com/opensvc/om3/util/converters"
 )
 
 var (
@@ -56,7 +55,7 @@ func (t *T) Manifest() *manifest.T {
 		},
 		keywords.Keyword{
 			Attr:         "CreateOptions",
-			Converter:    converters.Shlex,
+			Converter:    "shlex",
 			Example:      "--contiguous y",
 			Option:       "create_options",
 			Provisioning: true,

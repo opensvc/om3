@@ -19,7 +19,6 @@ import (
 	"github.com/opensvc/om3/core/object"
 	"github.com/opensvc/om3/core/resource"
 	"github.com/opensvc/om3/core/volsignal"
-	"github.com/opensvc/om3/util/converters"
 	"github.com/opensvc/om3/util/plog"
 )
 
@@ -79,7 +78,7 @@ func Keywords(prefix string) []keywords.Keyword {
 	return []keywords.Keyword{
 		keywords.Keyword{
 			Attr:      prefix + "Install",
-			Converter: converters.Shlex,
+			Converter: "shlex",
 			Example:   "file from sec {name} key password to path /data/password mode 0600 user 1000 group 1000",
 			Option:    "install",
 			Scopable:  true,
@@ -87,7 +86,7 @@ func Keywords(prefix string) []keywords.Keyword {
 		},
 		keywords.Keyword{
 			Attr:      prefix + "Configs",
-			Converter: converters.Shlex,
+			Converter: "shlex",
 			Example:   "conf/mycnf:/etc/mysql/my.cnf:ro conf/sysctl:/etc/sysctl.d/01-db.conf",
 			Option:    "configs",
 			Scopable:  true,
@@ -95,7 +94,7 @@ func Keywords(prefix string) []keywords.Keyword {
 		},
 		keywords.Keyword{
 			Attr:      prefix + "Secrets",
-			Converter: converters.Shlex,
+			Converter: "shlex",
 			Default:   "",
 			Example:   "cert/pem:server.pem cert/key:server.key",
 			Option:    "secrets",
@@ -105,7 +104,7 @@ func Keywords(prefix string) []keywords.Keyword {
 		},
 		keywords.Keyword{
 			Attr:      prefix + "Directories",
-			Converter: converters.List,
+			Converter: "list",
 			Default:   "",
 			Example:   "a/b/c d /e",
 			Option:    "directories",
@@ -128,7 +127,7 @@ func Keywords(prefix string) []keywords.Keyword {
 		},
 		keywords.Keyword{
 			Attr:      prefix + "Perm",
-			Converter: converters.FileMode,
+			Converter: "filemode",
 			Example:   "660",
 			Option:    "perm",
 			Scopable:  true,
@@ -136,7 +135,7 @@ func Keywords(prefix string) []keywords.Keyword {
 		},
 		keywords.Keyword{
 			Attr:      prefix + "DirPerm",
-			Converter: converters.FileMode,
+			Converter: "filemode",
 			// Default value is fmt.Sprintf("%o", defaultDirPerm)
 			Default:  "700",
 			Example:  "750",

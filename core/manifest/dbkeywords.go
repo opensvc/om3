@@ -4,7 +4,6 @@ import (
 	"embed"
 
 	"github.com/opensvc/om3/core/keywords"
-	"github.com/opensvc/om3/util/converters"
 )
 
 //go:embed text
@@ -83,7 +82,7 @@ var (
 
 	KWDisable = keywords.Keyword{
 		Attr:      "Disable",
-		Converter: converters.Bool,
+		Converter: "bool",
 		Option:    "disable",
 		Scopable:  true,
 		Text:      keywords.NewText(fs, "text/kw/disable"),
@@ -91,7 +90,7 @@ var (
 
 	KWEnableProvision = keywords.Keyword{
 		Attr:      "EnableProvision",
-		Converter: converters.Bool,
+		Converter: "bool",
 		Default:   "true",
 		Option:    "provision",
 		Text:      keywords.NewText(fs, "text/kw/provision"),
@@ -99,7 +98,7 @@ var (
 
 	KWEnableUnprovision = keywords.Keyword{
 		Attr:      "EnableUnprovision",
-		Converter: converters.Bool,
+		Converter: "bool",
 		Default:   "true",
 		Option:    "unprovision",
 		Text:      keywords.NewText(fs, "text/kw/unprovision"),
@@ -107,14 +106,14 @@ var (
 
 	KWEncap = keywords.Keyword{
 		Attr:      "Encap",
-		Converter: converters.Bool,
+		Converter: "bool",
 		Option:    "encap",
 		Text:      keywords.NewText(fs, "text/kw/encap"),
 	}
 
 	KWMonitor = keywords.Keyword{
 		Attr:      "Monitor",
-		Converter: converters.Bool,
+		Converter: "bool",
 		Option:    "monitor",
 		Scopable:  true,
 		Text:      keywords.NewText(fs, "text/kw/monitor"),
@@ -122,7 +121,7 @@ var (
 
 	KWOptional = keywords.Keyword{
 		Attr:      "Optional",
-		Converter: converters.Bool,
+		Converter: "bool",
 		Inherit:   keywords.InheritHead2Leaf,
 		Option:    "optional",
 		Scopable:  true,
@@ -209,7 +208,7 @@ var (
 	KWRestart = keywords.Keyword{
 		Attr:      "Restart",
 		Default:   "0",
-		Converter: converters.Int,
+		Converter: "int",
 		Option:    "restart",
 		Scopable:  true,
 		Text:      keywords.NewText(fs, "text/kw/restart"),
@@ -217,7 +216,7 @@ var (
 
 	KWRestartDelay = keywords.Keyword{
 		Attr:      "RestartDelay",
-		Converter: converters.Duration,
+		Converter: "duration",
 		Default:   "500ms",
 		Option:    "restart_delay",
 		Scopable:  true,
@@ -233,7 +232,7 @@ var (
 
 	KWSCSIPersistentReservationEnabled = keywords.Keyword{
 		Attr:      "SCSIPersistentReservation.Enabled",
-		Converter: converters.Bool,
+		Converter: "bool",
 		Option:    "scsireserv",
 		Text:      keywords.NewText(fs, "text/kw/scsireserv"),
 	}
@@ -248,7 +247,7 @@ var (
 
 	KWSCSIPersistentReservationNoPreemptAbort = keywords.Keyword{
 		Attr:      "SCSIPersistentReservation.NoPreemptAbort",
-		Converter: converters.Bool,
+		Converter: "bool",
 		Option:    "no_preempt_abort",
 		Scopable:  true,
 		Text:      keywords.NewText(fs, "text/kw/no_preempt_abort"),
@@ -256,7 +255,7 @@ var (
 
 	KWShared = keywords.Keyword{
 		Attr:      "Shared",
-		Converter: converters.Bool,
+		Converter: "bool",
 		Option:    "shared",
 		Scopable:  true,
 		Text:      keywords.NewText(fs, "text/kw/shared"),
@@ -264,7 +263,7 @@ var (
 
 	KWStandby = keywords.Keyword{
 		Attr:      "Standby",
-		Converter: converters.Bool,
+		Converter: "bool",
 		Option:    "standby",
 		Scopable:  true,
 		Text:      keywords.NewText(fs, "text/kw/standby"),
@@ -300,7 +299,7 @@ var (
 
 	KWTags = keywords.Keyword{
 		Attr:      "Tags",
-		Converter: converters.Set,
+		Converter: "set",
 		Option:    "tags",
 		Scopable:  true,
 		Text:      keywords.NewText(fs, "text/kw/tags"),

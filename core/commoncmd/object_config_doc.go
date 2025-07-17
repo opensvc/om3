@@ -1,14 +1,15 @@
-package omcmd
+package commoncmd
 
 import (
 	"context"
 	"fmt"
+	"os"
 
 	"github.com/opensvc/om3/core/client"
-	"github.com/opensvc/om3/core/commoncmd"
 	"github.com/opensvc/om3/core/keywords"
 	"github.com/opensvc/om3/core/naming"
 	"github.com/opensvc/om3/daemon/api"
+	"github.com/spf13/cobra"
 )
 
 type (
@@ -21,6 +22,25 @@ type (
 		Depth   int
 	}
 )
+
+func NewCmdObjectConfigDoc(kind string) *cobra.Command {
+	var options CmdObjectConfigDoc
+	cmd := &cobra.Command{
+		Use:   "doc",
+		Short: "print the keyword documentation",
+		RunE: func(cmd *cobra.Command, args []string) error {
+			return options.Run(kind)
+		},
+	}
+	flags := cmd.Flags()
+	FlagObjectSelector(flags, &options.ObjectSelector)
+	FlagColor(flags, &options.Color)
+	FlagOutput(flags, &options.Output)
+	FlagKeyword(flags, &options.Keyword)
+	FlagDriver(flags, &options.Driver)
+	FlagDepth(flags, &options.Depth)
+	return cmd
+}
 
 func (t *CmdObjectConfigDoc) Run(kind string) error {
 	path, err := naming.ParsePath(t.OptsGlobal.ObjectSelector)
@@ -69,7 +89,5 @@ func (t *CmdObjectConfigDoc) Run(kind string) error {
 	default:
 		return fmt.Errorf("unexpected response: %s", response.Status())
 	}
-	fmt.Println(commoncmd.Doc(items, path.Kind, t.Driver, t.Keyword, t.Depth))
-
-	return nil
+	return Doc(os.Stdout, items, path.Kind, t.Driver, t.Keyword, t.Depth)
 }

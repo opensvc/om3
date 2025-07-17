@@ -10,7 +10,6 @@ import (
 	"github.com/opensvc/om3/core/manifest"
 	"github.com/opensvc/om3/core/naming"
 	"github.com/opensvc/om3/drivers/resdisk"
-	"github.com/opensvc/om3/util/converters"
 )
 
 var (
@@ -59,7 +58,7 @@ func (t *T) Manifest() *manifest.T {
 		},
 		keywords.Keyword{
 			Attr:         "Port",
-			Converter:    converters.Int,
+			Converter:    "int",
 			Example:      "1.2.3.4",
 			Option:       "port",
 			Provisioning: true,
@@ -68,7 +67,7 @@ func (t *T) Manifest() *manifest.T {
 		},
 		keywords.Keyword{
 			Attr:         "MaxPeers",
-			Converter:    converters.Int,
+			Converter:    "int",
 			DefaultText:  keywords.NewText(fs, "text/kw/max_peers.default"),
 			Example:      "8",
 			Option:       "max_peers",

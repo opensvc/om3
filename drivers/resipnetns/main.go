@@ -571,6 +571,20 @@ func (t *T) arpAnnounce(dev string) error {
 		return nil
 	}
 	if ip.To4() == nil {
+		if t.Gateway != "" {
+			ctx, cancel := context.WithTimeout(context.Background(), 100*time.Millisecond)
+			defer cancel()
+			t.Log().Infof("ping gateway %s to announce %s over %s", t.Gateway, t.ipaddr(), dev)
+			pinger := ping.T{
+				Ctx:   ctx,
+				Count: 1,
+				Dst:   t.Gateway,
+				Dev:   dev,
+				V:     6,
+			}
+			_, err := pinger.Ping()
+			return err
+		}
 		t.Log().Debugf("skip arp announce on non-ip4 address %s", ip)
 		return nil
 	}

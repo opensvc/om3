@@ -10,7 +10,6 @@ import (
 	"github.com/opensvc/om3/core/naming"
 	"github.com/opensvc/om3/core/resourceid"
 	"github.com/opensvc/om3/util/capabilities"
-	"github.com/opensvc/om3/util/converters"
 	"github.com/opensvc/om3/util/key"
 )
 
@@ -304,12 +303,11 @@ func (t T) Validate() (Alerts, error) {
 			}
 			if len(kw.Candidates) > 0 {
 				switch kw.Converter {
-				case nil,
-					converters.Int:
+				case "", "int":
 					if !slices.Contains(kw.Candidates, v) {
 						alerts = append(alerts, t.NewAlertCandidates(k, did, v))
 					}
-				case converters.List:
+				case "list":
 					for _, e := range strings.Fields(v) {
 						if !slices.Contains(kw.Candidates, e) {
 							alerts = append(alerts, t.NewAlertCandidates(k, did, e))

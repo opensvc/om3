@@ -124,6 +124,7 @@ func init() {
 		newCmdObjectResourceList(kind),
 	)
 	cmdObjectConfig.AddCommand(
+		commoncmd.NewCmdObjectConfigDoc(kind),
 		newCmdObjectConfigEdit(kind),
 		newCmdObjectConfigEval(kind),
 		newCmdObjectConfigGet(kind),

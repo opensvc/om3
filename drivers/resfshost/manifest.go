@@ -7,7 +7,6 @@ import (
 	"github.com/opensvc/om3/core/keywords"
 	"github.com/opensvc/om3/core/manifest"
 	"github.com/opensvc/om3/core/naming"
-	"github.com/opensvc/om3/util/converters"
 	"github.com/opensvc/om3/util/filesystems"
 )
 
@@ -25,7 +24,7 @@ var (
 	}
 	KeywordMKFSOptions = keywords.Keyword{
 		Attr:         "MKFSOptions",
-		Converter:    converters.Shlex,
+		Converter:    "shlex",
 		Default:      "",
 		Option:       "mkfs_opt",
 		Provisioning: true,
@@ -34,7 +33,7 @@ var (
 	}
 	KeywordStatTimeout = keywords.Keyword{
 		Attr:      "StatTimeout",
-		Converter: converters.Duration,
+		Converter: "duration",
 		Default:   "5s",
 		Option:    "stat_timeout",
 		Scopable:  true,
@@ -56,7 +55,7 @@ var (
 	}
 	KeywordPromoteRW = keywords.Keyword{
 		Attr:      "PromoteRW",
-		Converter: converters.Bool,
+		Converter: "bool",
 		Option:    "promote_rw",
 		Text:      keywords.NewText(fs, "text/kw/promote_rw"),
 	}
@@ -68,7 +67,7 @@ var (
 	}
 	KeywordUser = keywords.Keyword{
 		Attr:      "User",
-		Converter: converters.User,
+		Converter: "user",
 		Example:   "root",
 		Option:    "user",
 		Scopable:  true,
@@ -76,7 +75,7 @@ var (
 	}
 	KeywordGroup = keywords.Keyword{
 		Attr:      "Group",
-		Converter: converters.Group,
+		Converter: "group",
 		Example:   "sys",
 		Option:    "group",
 		Scopable:  true,
@@ -84,7 +83,7 @@ var (
 	}
 	KeywordPerm = keywords.Keyword{
 		Attr:      "Perm",
-		Converter: converters.FileMode,
+		Converter: "filemode",
 		Example:   "1777",
 		Option:    "perm",
 		Scopable:  true,
@@ -92,7 +91,7 @@ var (
 	}
 	KeywordCheckRead = keywords.Keyword{
 		Attr:      "CheckRead",
-		Converter: converters.Bool,
+		Converter: "bool",
 		Option:    "check_read",
 		Scopable:  true,
 		Text:      keywords.NewText(fs, "text/kw/check_read"),
