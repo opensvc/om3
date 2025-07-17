@@ -1,6 +1,8 @@
 package commoncmd
 
 import (
+	"io"
+
 	"github.com/opensvc/om3/core/keyop"
 	"github.com/opensvc/om3/core/keywords"
 	"github.com/opensvc/om3/core/naming"
@@ -34,7 +36,7 @@ func KeywordStoreFromAPI(items api.KeywordDefinitionItems) (store keywords.Store
 	return
 }
 
-func Doc(items api.KeywordDefinitionItems, kind naming.Kind, depth int) (string, error) {
+func Doc(w io.Writer, items api.KeywordDefinitionItems, kind naming.Kind, depth int) error {
 	store := KeywordStoreFromAPI(items)
-	return store.Doc(kind, depth)
+	return store.Doc(w, kind, depth)
 }

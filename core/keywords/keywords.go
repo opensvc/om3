@@ -3,6 +3,7 @@ package keywords
 import (
 	"embed"
 	"fmt"
+	"io"
 	"reflect"
 	"slices"
 	"sort"
@@ -210,28 +211,18 @@ func (t Store) Lookup(k key.T, kind naming.Kind, sectionType string) Keyword {
 	return Keyword{}
 }
 
-func (t Store) Doc(kind naming.Kind, depth int) (string, error) {
+func (t Store) Doc(w io.Writer, kind naming.Kind, depth int) error {
 	depth += 1
-	buff := ""
 	m := t.KeywordsByDriver(kind)
 	l := Indices(maps.Keys(m))
 	sort.Sort(l)
 	for _, index := range l {
-		s, err := driverDoc(m[index], index[0], index[1], kind, depth)
+		err := driverDoc(w, m[index], index[0], index[1], kind, depth)
 		if err != nil {
-			return buff, err
+			return err
 		}
-		buff += s
 	}
-	return buff, nil
-}
-
-func (t Store) KeywordDoc(section, typ, option string, kind naming.Kind, depth int) (string, error) {
-	kw := t.Lookup(key.T{Section: section, Option: option}, kind, typ)
-	if kw.IsZero() {
-		return "", fmt.Errorf("keyword not found")
-	}
-	return kw.Doc(depth), nil
+	return nil
 }
 
 func (t Store) DriverKeywords(section, typ string, kind naming.Kind) ([]Keyword, error) {
@@ -243,19 +234,12 @@ func (t Store) DriverKeywords(section, typ string, kind naming.Kind) ([]Keyword,
 	return maps.Values(m), nil
 }
 
-func (t Store) DriverDoc(section, typ string, kind naming.Kind, depth int) (string, error) {
-	depth += 1
+func driverDoc(w io.Writer, m map[string]Keyword, section, typ string, kind naming.Kind, depth int) error {
 	index := Index{section, typ}
-	m, ok := t.KeywordsByDriver(kind)[index]
-	if !ok {
-		return "", fmt.Errorf("driver not found")
+	_, err := fmt.Fprintf(w, "%s %s\n\n", strings.Repeat("#", depth), index)
+	if err != nil {
+		return err
 	}
-	return driverDoc(m, section, typ, kind, depth)
-}
-
-func driverDoc(m map[string]Keyword, section, typ string, kind naming.Kind, depth int) (string, error) {
-	index := Index{section, typ}
-	buff := fmt.Sprintf("%s %s\n\n", strings.Repeat("#", depth), index)
 	optL := maps.Keys(m)
 	sort.Strings(optL)
 
@@ -280,17 +264,17 @@ func driverDoc(m map[string]Keyword, section, typ string, kind naming.Kind, dept
 	}
 
 	if len(cfgL) > 0 {
-		buff += fmt.Sprint("Minimal configlet:\n\n")
+		fmt.Fprint(w, "Minimal configlet:\n\n")
 		if driver.NewGroup(section) == driver.GroupUnknown {
-			buff += fmt.Sprintf("\t[%s]\n", section)
+			fmt.Fprintf(w, "\t[%s]\n", section)
 		} else {
-			buff += fmt.Sprintf("\t[%s#1]\n", section)
+			fmt.Fprintf(w, "\t[%s#1]\n", section)
 		}
-		buff += strings.Join(cfgL, "") + "\n"
+		fmt.Fprintln(w, strings.Join(cfgL, ""))
 	}
 
 	if len(cmdL) > 0 {
-		buff += fmt.Sprint("Minimal setup command:\n\n")
+		fmt.Fprint(w, "Minimal setup command:\n\n")
 		var selector string
 		switch kind {
 		case naming.KindInvalid:
@@ -300,18 +284,18 @@ func driverDoc(m map[string]Keyword, section, typ string, kind naming.Kind, dept
 			selector = path.String()
 		}
 		if len(cmdL) > 1 {
-			buff += fmt.Sprintf("\tom %s set \\\n\t\t", selector) + strings.Join(cmdL, " \\\n\t\t") + "\n\n"
+			fmt.Fprintf(w, "\tom %s set \\\n\t\t%s\n\n", selector, strings.Join(cmdL, " \\\n\t\t"))
 		} else {
-			buff += fmt.Sprintf("\tom %s set %s\n\n", selector, cmdL[0])
+			fmt.Fprintf(w, "\tom %s set %s\n\n", selector, cmdL[0])
 		}
 	}
 
 	for _, opt := range optL {
 		kw := m[opt]
-		buff += kw.Doc(depth)
-		buff += "\n"
+		kw.Doc(w, depth)
+		fmt.Fprintln(w, "")
 	}
-	return buff, nil
+	return nil
 }
 
 func (t Store) KeywordsByDriver(kind naming.Kind) map[Index]map[string]Keyword {
@@ -378,41 +362,39 @@ func (t Keyword) IsZero() bool {
 	return t.Option == ""
 }
 
-func (t Keyword) Doc(depth int) string {
-	sprintProp := func(a, b string) string {
-		return fmt.Sprintf("\t%-12s %s\n", a+":", b)
+func (t Keyword) Doc(w io.Writer, depth int) error {
+	fprintProp := func(a, b string) {
+		fmt.Fprintf(w, "\t%-12s %s\n", a+":", b)
 	}
-	buff := fmt.Sprintf("%s %s\n\n", strings.Repeat("#", depth+1), t.Option)
-	buff += sprintProp("required", fmt.Sprint(t.Required))
-	buff += sprintProp("scopable", fmt.Sprint(t.Scopable))
+	fmt.Fprintf(w, "%s %s\n\n", strings.Repeat("#", depth+1), t.Option)
+	fprintProp("required", fmt.Sprint(t.Required))
+	fprintProp("scopable", fmt.Sprint(t.Scopable))
 	if len(t.Candidates) > 0 {
-		buff += sprintProp("candidates", strings.Join(t.Candidates, ", "))
+		fprintProp("candidates", strings.Join(t.Candidates, ", "))
 	}
 	if len(t.Depends) > 0 {
 		l := make([]string, len(t.Depends))
 		for i, kop := range t.Depends {
 			l[i] = kop.String()
 		}
-		buff += sprintProp("depends", strings.Join(l, ", "))
+		fprintProp("depends", strings.Join(l, ", "))
 	}
 	if t.DefaultText != "" {
-		buff += sprintProp("default", t.DefaultText)
+		fprintProp("default", t.DefaultText)
 	} else if t.Default != "" {
-		buff += sprintProp("default", t.Default)
+		fprintProp("default", t.Default)
 	}
 	if t.Converter != "" {
-		buff += sprintProp("convert", t.Converter)
+		fprintProp("convert", t.Converter)
 	}
-	buff += "\n"
+	fmt.Fprintln(w, "")
 	if t.Example != "" {
-		buff += "Example:\n"
-		buff += "\n"
-		buff += "\t" + t.Option + " = " + t.Example + "\n"
-		buff += "\n"
+		fmt.Fprintln(w, "Example:")
+		fmt.Fprintln(w, "")
+		fmt.Fprintf(w, "\t%s=%s\n\n", t.Option, t.Example)
 	}
-	buff += t.Text
-	buff += "\n"
-	return buff
+	fmt.Fprintln(w, t.Text)
+	return nil
 }
 
 func (t *Keyword) SetValue(r, v interface{}) error {

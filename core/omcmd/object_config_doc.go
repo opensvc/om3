@@ -3,6 +3,7 @@ package omcmd
 import (
 	"context"
 	"fmt"
+	"os"
 
 	"github.com/opensvc/om3/core/client"
 	"github.com/opensvc/om3/core/commoncmd"
@@ -69,10 +70,5 @@ func (t *CmdObjectConfigDoc) Run(kind string) error {
 	default:
 		return fmt.Errorf("unexpected response: %s", response.Status())
 	}
-	buff, err := commoncmd.Doc(items, path.Kind, t.Depth)
-	if err != nil {
-		return err
-	}
-	fmt.Println(buff)
-	return nil
+	return commoncmd.Doc(os.Stdout, items, path.Kind, t.Depth)
 }
