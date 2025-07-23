@@ -137,6 +137,11 @@
 * **Configuration updates use the daemon api by default:**
     `om set`, `om unset`, `om get`, `om eval` now need `--local` to operate on the local configurations without api calls.
 
+* `om xx status`
+    This command no longer accepts a selector, because:
+    1/ it is documented the exitcode is the instance status so we can not be ambiguous.
+    2/ it is optimized for efficiency as the daemon executes this frequently to refresh instances status data.
+
 * **Removed:**
     * `om node reboot`
 
