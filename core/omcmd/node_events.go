@@ -328,6 +328,9 @@ func (t *CmdNodeEvents) getEvReader(nodename string) (event.ReadCloser, error) {
 }
 
 func (t *CmdNodeEvents) doEvent(e event.Event) {
+	if t.Quiet {
+		return
+	}
 	msg, err := msgbus.EventToMessage(e)
 	if err != nil {
 		return
