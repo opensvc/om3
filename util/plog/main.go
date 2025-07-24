@@ -3,6 +3,8 @@ package plog
 import (
 	"context"
 	"fmt"
+	"io"
+	"strings"
 	"time"
 
 	"github.com/rs/zerolog"
@@ -137,4 +139,23 @@ func Ctx(ctx context.Context) *Logger {
 		return l
 	}
 	return nil
+}
+
+type levelWriter struct {
+	level  zerolog.Level
+	logger zerolog.Logger
+}
+
+// Write implements the io.Writer interface.
+func (t *levelWriter) Write(p []byte) (n int, err error) {
+	event := t.logger.WithLevel(t.level)
+	event.Msg(strings.TrimSuffix(string(p), "\n"))
+	return len(p), nil
+}
+
+func (t *Logger) Writer(level zerolog.Level) io.Writer {
+	return &levelWriter{
+		level:  level,
+		logger: t.logger,
+	}
 }
