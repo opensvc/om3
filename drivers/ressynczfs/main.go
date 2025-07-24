@@ -177,7 +177,8 @@ func (t *T) sendIncrementalLocal(ctx context.Context, nodename string) error {
 	}
 	defer stdoutPipe.Close()
 
-	rargs := t.receiveCmd([]string{"mountpoint", "canmount"})
+	discardFirst, dst := t.receiveDst()
+	rargs := t.receiveCmd([]string{"mountpoint", "canmount"}, discardFirst, dst)
 	rcmd := exec.CommandContext(ctx, rargs[0], rargs[1:]...)
 	rstdinPipe, err := rcmd.StdinPipe()
 	if err != nil {
@@ -269,7 +270,8 @@ func (t *T) sendIncrementalTo(ctx context.Context, nodename string) error {
 	session.Stderr = errWriter
 	session.Stdout = nfoWriter
 
-	rargs := t.receiveCmd(nil)
+	discardFirst, dst := t.receiveDst()
+	rargs := t.receiveCmd(nil, discardFirst, dst)
 	rcmdStr := exec.Command(rargs[0], rargs[1:]...).String()
 	cmdStr := cmd.String()
 	t.Log().Infof("%s | ssh %s '%s'", cmdStr, nodename, rcmdStr)
@@ -326,7 +328,13 @@ func (t *T) sendInitialLocal(ctx context.Context, nodename string) error {
 	}
 	defer stdoutPipe.Close()
 
-	rargs := t.receiveCmd([]string{"mountpoint", "canmount"})
+	discardFirst, dst := t.receiveDst()
+	if !discardFirst {
+		if err := t.zfs(dst).Create(); err != nil {
+			return err
+		}
+	}
+	rargs := t.receiveCmd([]string{"mountpoint", "canmount"}, discardFirst, dst)
 	rcmd := exec.CommandContext(ctx, rargs[0], rargs[1:]...)
 	rstdinPipe, err := rcmd.StdinPipe()
 	if err != nil {
@@ -411,7 +419,13 @@ func (t *T) sendInitialTo(ctx context.Context, nodename string) error {
 	session.Stdout = nfoWriter
 	session.Stderr = errWriter
 
-	rargs := t.receiveCmd(nil)
+	discardFirst, dst := t.receiveDst()
+	if !discardFirst {
+		if err := t.zfs(dst).Create(zfs.FilesystemCreateWithNode(nodename)); err != nil {
+			return err
+		}
+	}
+	rargs := t.receiveCmd(nil, discardFirst, dst)
 	rcmdStr := exec.Command(rargs[0], rargs[1:]...).String()
 	cmdStr := cmd.String()
 	t.Log().Infof("%s | ssh %s '%s'", cmdStr, nodename, rcmdStr)
@@ -476,18 +490,26 @@ func getUpperFs(s string) string {
 	return filepath.Dir(s)
 }
 
-func (t *T) receiveCmd(inherit []string) []string {
+func (t *T) receiveDst() (discardFirst bool, dst string) {
+	srcPool := t.zfs(t.Src).PoolName()
+	dstPool := t.zfs(t.Dst).PoolName()
+	if t.Src == t.Dst || (t.Src == srcPool && t.Dst == dstPool) {
+		return true, dstPool
+	} else {
+		upperFs := getUpperFs(t.Dst)
+		return false, upperFs
+	}
+}
+
+func (t *T) receiveCmd(inherit []string, discardFirst bool, dst string) []string {
 	cmd := []string{"/usr/bin/zfs", "receive"}
 	for _, prop := range inherit {
 		cmd = append(cmd, "-x", prop)
 	}
-	srcPool := t.zfs(t.Src).PoolName()
-	dstPool := t.zfs(t.Dst).PoolName()
-	if t.Src == t.Dst || (t.Src == srcPool && t.Dst == dstPool) {
-		cmd = append(cmd, "-dF", dstPool)
+	if discardFirst {
+		cmd = append(cmd, "-dF", dst)
 	} else {
-		upperFs := getUpperFs(t.Dst)
-		cmd = append(cmd, "-eF", upperFs)
+		cmd = append(cmd, "-eF", dst)
 	}
 	return cmd
 }
