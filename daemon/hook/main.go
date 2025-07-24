@@ -12,6 +12,7 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/opensvc/om3/core/event"
 	"github.com/opensvc/om3/core/object"
 	"github.com/opensvc/om3/core/xconfig"
 	"github.com/opensvc/om3/daemon/msgbus"
@@ -166,15 +167,11 @@ func (t *Manager) update() {
 		delete(t.hooks, name)
 	}
 	for name, sig := range hooksToStart {
-		kind := t.config.Get(key.New(name, "events"))
+		kinds := t.config.GetStrings(key.New(name, "events"))
 		h := hook{
 			sig: sig,
 		}
 		t.hooks[name] = h
-		if !slices.Contains(AllowedEvents, kind) {
-			t.log.Warnf("%s: event %s is not allowed in hooks", name, kind)
-			continue
-		}
 		s := t.config.Get(key.New(name, "command"))
 		args, err := command.CmdArgsFromString(s)
 		if err != nil {
@@ -185,18 +182,13 @@ func (t *Manager) update() {
 			t.log.Warnf("%s: empty command", name)
 			continue
 		}
-		msg, err := msgbus.KindToT(kind)
-		if err != nil {
-			t.log.Warnf("%s: invalid event %s: %s", name, kind, err)
-			continue
-		}
-		h.cancel = t.startHook(name, kind, msg, args)
+		h.cancel = t.startHook(name, kinds, args)
 		t.hooks[name] = h
 	}
 }
 
-func (t *Manager) hookExec(ctx context.Context, event any, args []string) error {
-	b, err := json.Marshal(event)
+func (t *Manager) hookExec(ctx context.Context, ev *event.Event, args []string) error {
+	b, err := json.Marshal(ev)
 	if err != nil {
 		return fmt.Errorf("failed to json-encode event: %w", err)
 	}
@@ -213,25 +205,33 @@ func (t *Manager) hookExec(ctx context.Context, event any, args []string) error 
 	return cmd.Wait()
 }
 
-func (t *Manager) hookLoop(ctx context.Context, sub *pubsub.Subscription, name, kind string, args []string) {
-	t.log.Infof("%s: listening for event %s", name, kind)
-	defer t.log.Infof("%s: stop listening for event %s", name, kind)
-	var running atomic.Bool
+func (t *Manager) hookLoop(ctx context.Context, sub *pubsub.Subscription, name string, kinds, args []string) {
+	t.log.Infof("%s: listening for events %s", name, kinds)
+	defer t.log.Infof("%s: stop listening for events %s", name, kinds)
+	var (
+		running atomic.Bool
+		j       uint64
+	)
 
 	for {
 		select {
 		case <-ctx.Done():
 			return
-		case event := <-sub.C:
+		case i := <-sub.C:
+			j += 1
+			ev := event.ToEvent(i, j)
+			if ev == nil {
+				continue
+			}
 			if running.Load() {
-				t.log.Warnf("%s: on %s command is too slow => skip exec", name, kind)
+				t.log.Warnf("%s: on %s command is too slow => skip exec", name, ev.Kind)
 				continue
 			}
 			running.Store(true)
 			go func() {
 				defer running.Store(false)
-				t.log.Infof("%s: on %s exec %s", name, kind, args)
-				if err := t.hookExec(ctx, event, args); err != nil {
+				t.log.Infof("%s: on %s exec %s", name, ev.Kind, args)
+				if err := t.hookExec(ctx, ev, args); err != nil {
 					t.log.Warnf("%s: %s", name, err)
 				}
 			}()
@@ -239,14 +239,30 @@ func (t *Manager) hookLoop(ctx context.Context, sub *pubsub.Subscription, name, 
 	}
 }
 
-func (t *Manager) startHook(name, kind string, event any, args []string) func() {
+func (t *Manager) startHook(name string, kinds []string, args []string) func() {
 	ctx, cancel := context.WithCancel(t.ctx)
 	sub := pubsub.SubFromContext(ctx, "daemon.hook", t.subQS, pubsub.Timeout(time.Second))
-	sub.AddFilter(event, t.labelLocalhost)
+	added := 0
+	for _, kind := range kinds {
+		if !slices.Contains(AllowedEvents, kind) {
+			t.log.Warnf("%s: event %s is not allowed in hooks", name, kind)
+			continue
+		}
+		event, err := msgbus.KindToT(kind)
+		if err != nil {
+			t.log.Warnf("%s: invalid event %s: %s", name, kind, err)
+			continue
+		}
+		sub.AddFilter(event)
+		added += 1
+	}
+	if added == 0 {
+		return nil
+	}
 	sub.Start()
 
 	go func() {
-		t.hookLoop(ctx, sub, name, kind, args)
+		t.hookLoop(ctx, sub, name, kinds, args)
 		sub.Stop()
 	}()
 	return cancel
