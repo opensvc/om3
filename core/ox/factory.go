@@ -1173,6 +1173,7 @@ func newCmdNodeEvents() *cobra.Command {
 	commoncmd.FlagEventTemplate(flags, &options.Template)
 	commoncmd.FlagNodeSelector(flags, &options.NodeSelector)
 	commoncmd.FlagObjectSelector(flags, &options.ObjectSelector)
+	commoncmd.FlagOutput(flags, &options.Output)
 	commoncmd.FlagQuiet(flags, &options.Quiet)
 	commoncmd.FlagWait(flags, &options.Wait)
 	flags.Uint64Var(&options.Limit, "limit", 0, "stop listening when <limit> events are received, the default is 0 (unlimited) or 1 if --wait is set")
