@@ -516,7 +516,7 @@ var keywordStore = keywords.Store{
 		Text:     keywords.NewText(fs, "text/kw/core/ca"),
 	},
 	{
-		Default:  "@5m",
+		Default:  "@1m",
 		Kind:     naming.NewKinds(naming.KindSvc, naming.KindVol),
 		Option:   "monitor_schedule",
 		Scopable: true,
