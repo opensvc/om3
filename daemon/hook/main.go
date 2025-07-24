@@ -54,17 +54,18 @@ type (
 
 var (
 	AllowedEvents = []string{
+		"ArbitratorError",
+		"EnterOverloadPeriod",
 		"ForgetPeer",
-		"NodeAlive",
-		"NodeStale",
 		"HeartbeatAlive",
 		"HeartbeatStale",
 		"HeartbeatMessageTypeUpdated",
-		"EnterOverloadPeriod",
+		"InstanceMonitorAction",
 		"LeaveOverloadPeriod",
+		"NodeAlive",
 		"NodeFrozen",
 		"NodeSplitAction",
-		"ArbitratorError",
+		"NodeStale",
 	}
 )
 
