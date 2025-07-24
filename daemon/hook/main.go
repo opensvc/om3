@@ -165,7 +165,7 @@ func (t *Manager) update() {
 		delete(t.hooks, name)
 	}
 	for name, sig := range hooksToStart {
-		kind := t.config.Get(key.New(name, "event"))
+		kind := t.config.Get(key.New(name, "events"))
 		h := hook{
 			sig: sig,
 		}
