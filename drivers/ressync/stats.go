@@ -17,12 +17,15 @@ type (
 )
 
 func (t *T) CopyWithStats(ctx context.Context, dst io.Writer, src io.Reader, stats *Stats) (uint64, error) {
-	defer t.Log().
-		Attr("speed_bps", stats.SpeedBPS()).
-		Attr("duration", stats.Duration()).
-		Attr("sent_b", stats.SentBytes).
-		Attr("received_b", stats.ReceivedBytes).
-		Infof("sync stat: copied %d bytes in %s (%.2f bps)", stats.SentBytes, stats.Duration(), stats.SpeedBPS())
+	defer func() {
+		stats.Close()
+		t.Log().
+			Attr("speed_bps", stats.SpeedBPS()).
+			Attr("duration", stats.Duration()).
+			Attr("sent_b", stats.SentBytes).
+			Attr("received_b", stats.ReceivedBytes).
+			Infof("sync stat: copied %dB in %s (%.2fB/s)", stats.SentBytes, stats.Duration(), stats.SpeedBPS())
+	}()
 
 	n, err := io.Copy(dst, src)
 	stats.SentBytes += uint64(n)

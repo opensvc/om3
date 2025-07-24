@@ -61,14 +61,10 @@ func (t *Filesystem) Rename(dst string, fopts ...funcopt.O) error {
 		err := cmd.Run()
 		if err != nil {
 			t.Log.
-				Attr("exitcode", cmd.ProcessState.ExitCode()).
-				Attr("cmd", cmdStr).
 				Attr("outputs", string(b.Bytes())).
-				Errorf("%s rename as %s exited with code %d", t.Name, dst, cmd.ProcessState.ExitCode())
+				Errorf("%s: exited with code %d", cmdStr, cmd.ProcessState.ExitCode())
 		} else {
-			t.Log.
-				Attr("cmd", cmdStr).
-				Infof("%s renamed as %s", t.Name, dst)
+			t.Log.Infof(cmdStr)
 		}
 		return err
 	}
@@ -95,18 +91,11 @@ func (t *Filesystem) Rename(dst string, fopts ...funcopt.O) error {
 		if strings.Contains(string(b.Bytes()), "does not exist") {
 			return nil
 		}
-		t.Log.
-			Attr("exitcode", ec).
-			Attr("cmd", cmd).
-			Attr("peer", opts.Node).
-			Errorf("%s rename as %s on node %s exited with code %d", t.Name, dst, opts.Node, ec)
+		t.Log.Errorf("ssh %s %s: exited with code %d", opts.Node, cmdStr, ec)
 		return err
 	} else {
 		if t.Log != nil {
-			t.Log.
-				Attr("cmd", cmdStr).
-				Attr("peer", opts.Node).
-				Infof("%s renamed as %s on node %s", t.Name, dst, opts.Node)
+			t.Log.Infof("ssh %s %s", opts.Node, cmdStr)
 		}
 	}
 	return nil

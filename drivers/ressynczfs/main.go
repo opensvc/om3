@@ -1,20 +1,17 @@
 package ressynczfs
 
 import (
-	"bufio"
-	"bytes"
 	"context"
 	"errors"
 	"fmt"
-	"io"
 	"os/exec"
 	"path/filepath"
 	"sort"
 	"strings"
-	"sync"
 	"time"
 
 	"github.com/google/uuid"
+	"github.com/rs/zerolog"
 	"golang.org/x/crypto/ssh"
 
 	"github.com/opensvc/om3/core/actioncontext"
@@ -122,16 +119,11 @@ func (t *T) lockedSync(ctx context.Context, mode modeT, target []string) (err er
 		return err
 	}
 
-	if !hasSnapSent {
+	if mode != modeFull && !hasSnapSent {
 		t.Log().Infof("%s does not exist: can't send delta, send full", t.srcSnapSent)
 		mode = modeFull
-		if err := t.zfs(t.srcSnapTosend).Destroy(zfs.FilesystemDestroyWithRecurse(t.Recursive)); err != nil {
-			return err
-		}
-		if err := t.zfs(t.srcSnapTosend).Snapshot(zfs.FilesystemSnapshotWithRecursive(t.Recursive)); err != nil {
-			return err
-		}
-	} else if mode == modeFull {
+	}
+	if mode == modeFull {
 		if err := t.zfs(t.srcSnapSent).Destroy(zfs.FilesystemDestroyWithRecurse(t.Recursive)); err != nil {
 			return err
 		}
@@ -157,14 +149,6 @@ func (t *T) lockedSync(ctx context.Context, mode modeT, target []string) (err er
 			}
 			continue
 		}
-		if mode == modeFull {
-			if err := t.zfs(t.dstSnapSent).Destroy(zfs.FilesystemDestroyWithRecurse(t.Recursive), zfs.FilesystemDestroyWithNode(nodename)); err != nil {
-				return err
-			}
-		}
-		if err := t.zfs(t.dstSnapTosend).Destroy(zfs.FilesystemDestroyWithRecurse(t.Recursive), zfs.FilesystemDestroyWithNode(nodename)); err != nil {
-			return err
-		}
 		if err := t.peerSync(ctx, mode, nodename); err != nil {
 			return err
 		}
@@ -182,6 +166,9 @@ func (t *T) lockedSync(ctx context.Context, mode modeT, target []string) (err er
 }
 
 func (t *T) sendIncrementalLocal(ctx context.Context, nodename string) error {
+	nfoWriter := t.Log().Writer(zerolog.InfoLevel)
+	errWriter := t.Log().Writer(zerolog.ErrorLevel)
+
 	args := t.sendIncrementalCmd()
 	cmd := exec.Command(args[0], args[1:]...)
 	stdoutPipe, err := cmd.StdoutPipe()
@@ -189,51 +176,17 @@ func (t *T) sendIncrementalLocal(ctx context.Context, nodename string) error {
 		return fmt.Errorf("error creating stdout pipe for zfs send: %w", err)
 	}
 	defer stdoutPipe.Close()
-	stderrPipe, err := cmd.StderrPipe()
-	if err != nil {
-		return fmt.Errorf("error creating stderr pipe for zfs send: %w", err)
-	}
-	defer stderrPipe.Close()
 
 	rargs := t.receiveCmd([]string{"mountpoint", "canmount"})
-	rcmd := exec.Command(rargs[0], rargs[1:]...)
+	rcmd := exec.CommandContext(ctx, rargs[0], rargs[1:]...)
 	rstdinPipe, err := rcmd.StdinPipe()
 	if err != nil {
 		return fmt.Errorf("error creating stdin pipe for zfs recv: %w", err)
 	}
-	rstderrPipe, err := rcmd.StderrPipe()
-	if err != nil {
-		return fmt.Errorf("error creating stderr pipe for zfs recv: %w", err)
-	}
-	defer rstderrPipe.Close()
 
-	var wg sync.WaitGroup
-
-	wg.Add(1)
-	go func() {
-		defer wg.Done()
-		scanner := bufio.NewScanner(stderrPipe)
-		for scanner.Scan() {
-			line := scanner.Text()
-			t.Log().Errorf("%s", line)
-		}
-		if err := scanner.Err(); err != nil && err != io.EOF {
-			t.Log().Errorf("error reading stderr: %v", err)
-		}
-	}()
-
-	wg.Add(1)
-	go func() {
-		defer wg.Done()
-		scanner := bufio.NewScanner(rstderrPipe)
-		for scanner.Scan() {
-			line := scanner.Text()
-			t.Log().Errorf("%s", line)
-		}
-		if err := scanner.Err(); err != nil && err != io.EOF {
-			t.Log().Errorf("error reading stderr: %v", err)
-		}
-	}()
+	cmd.Stderr = errWriter
+	rcmd.Stdout = nfoWriter
+	rcmd.Stderr = errWriter
 
 	rcmdStr := rcmd.String()
 	cmdStr := cmd.String()
@@ -246,30 +199,35 @@ func (t *T) sendIncrementalLocal(ctx context.Context, nodename string) error {
 		return err
 	}
 	stats := ressync.NewStats(nodename)
-	wg.Add(1)
-	go func() {
-		defer wg.Done()
-		defer stdoutPipe.Close()
-		defer rstdinPipe.Close()
-		if _, err := t.CopyWithStats(ctx, rstdinPipe, stdoutPipe, stats); err != nil {
-			return
-		}
-	}()
 
-	wg.Wait()
-	err = cmd.Wait()
-	var ee *exec.ExitError
-	if errors.As(err, &ee) {
-		ec := ee.ExitCode()
-		t.Log().
-			Attr("exitcode", ec).
-			Attr("cmd", cmdStr).
-			Errorf("exec '%s' on localhost exited with code %d", cmdStr, ec)
+	if _, err := t.CopyWithStats(ctx, rstdinPipe, stdoutPipe, stats); err != nil {
+		return err
 	}
-	return err
+
+	if err := rcmd.Wait(); err != nil {
+		var ee *exec.ExitError
+		if errors.As(err, &ee) {
+			ec := ee.ExitCode()
+			t.Log().Errorf("exec '%s' on localhost exited with code %d", cmdStr, ec)
+		}
+		return err
+	}
+
+	if err := cmd.Wait(); err != nil {
+		var ee *exec.ExitError
+		if errors.As(err, &ee) {
+			ec := ee.ExitCode()
+			t.Log().Errorf("exec '%s' on localhost exited with code %d", cmdStr, ec)
+		}
+		return err
+	}
+	return nil
 }
 
 func (t *T) sendIncremental(ctx context.Context, nodename string) error {
+	if err := t.zfs(t.dstSnapTosend).Destroy(zfs.FilesystemDestroyWithRecurse(t.Recursive), zfs.FilesystemDestroyWithNode(nodename)); err != nil {
+		return err
+	}
 	if hostname.Hostname() == nodename {
 		return t.sendIncrementalLocal(ctx, nodename)
 	} else {
@@ -278,10 +236,11 @@ func (t *T) sendIncremental(ctx context.Context, nodename string) error {
 }
 
 func (t *T) sendIncrementalTo(ctx context.Context, nodename string) error {
-	var b bytes.Buffer
+	nfoWriter := t.Log().Writer(zerolog.InfoLevel)
+	errWriter := t.Log().Writer(zerolog.ErrorLevel)
 
 	args := t.sendIncrementalCmd()
-	cmd := exec.Command(args[0], args[1:]...)
+	cmd := exec.CommandContext(ctx, args[0], args[1:]...)
 
 	client, err := t.NewSSHClient(nodename)
 	if err != nil {
@@ -306,22 +265,20 @@ func (t *T) sendIncrementalTo(ctx context.Context, nodename string) error {
 	}
 	defer stdoutPipe.Close()
 
+	cmd.Stderr = errWriter
+	session.Stderr = errWriter
+	session.Stdout = nfoWriter
+
 	rargs := t.receiveCmd(nil)
-	rcmd := exec.Command(rargs[0], rargs[1:]...)
-	rcmdStr := rcmd.String()
+	rcmdStr := exec.Command(rargs[0], rargs[1:]...).String()
 	cmdStr := cmd.String()
-	t.Log().Attr("cmd", fmt.Sprintf("%s | ssh %s '%s'", cmdStr, nodename, rcmdStr)).Infof("%s send delta to node %s", t.Src, nodename)
+	t.Log().Infof("%s | ssh %s '%s'", cmdStr, nodename, rcmdStr)
 	if err := session.Start(rcmdStr); err != nil {
 		ee := err.(*ssh.ExitError)
 		ec := ee.Waitmsg.ExitStatus()
-		t.Log().
-			Attr("exitcode", ec).
-			Attr("cmd", rcmdStr).
-			Attr("host", nodename).
-			Errorf("rexec '%s' on host %s exited with code %d: %s", rcmdStr, nodename, ec, string(b.Bytes()))
+		t.Log().Errorf("rexec '%s' on host %s exited with code %d", rcmdStr, nodename, ec)
 		return err
 	}
-	cmd.Stderr = &b
 	if err := cmd.Start(); err != nil {
 		return err
 	}
@@ -330,18 +287,25 @@ func (t *T) sendIncrementalTo(ctx context.Context, nodename string) error {
 		return err
 	}
 
-	err = cmd.Wait()
-	if ee, ok := err.(*exec.ExitError); ok {
-		ec := ee.ExitCode()
-		t.Log().
-			Attr("exitcode", ec).
-			Attr("cmd", cmdStr).
-			Errorf("exec '%s' on host %s exited with code %d: %s", cmdStr, nodename, ec, string(b.Bytes()))
+	if err := cmd.Wait(); err != nil {
+		if ee, ok := err.(*exec.ExitError); ok {
+			ec := ee.ExitCode()
+			t.Log().Errorf("exec '%s' on host %s exited with code %d: %s", cmdStr, nodename, ec)
+		}
+		return err
 	}
-	return err
+
+	if err := session.Wait(); err != nil {
+		return err
+	}
+
+	return nil
 }
 
 func (t *T) sendInitial(ctx context.Context, nodename string) error {
+	if err := t.zfs(t.Dst+"@%").Destroy(zfs.FilesystemDestroyWithRecurse(t.Recursive), zfs.FilesystemDestroyWithNode(nodename)); err != nil {
+		return err
+	}
 	if hostname.Hostname() == nodename {
 		return t.sendInitialLocal(ctx, nodename)
 	} else {
@@ -350,13 +314,11 @@ func (t *T) sendInitial(ctx context.Context, nodename string) error {
 }
 
 func (t *T) sendInitialLocal(ctx context.Context, nodename string) error {
+	nfoWriter := t.Log().Writer(zerolog.InfoLevel)
+	errWriter := t.Log().Writer(zerolog.ErrorLevel)
+
 	args := t.sendInitialCmd()
-	cmd := exec.Command(args[0], args[1:]...)
-	stderrPipe, err := cmd.StderrPipe()
-	if err != nil {
-		return fmt.Errorf("error creating stderr pipe for zfs send: %w", err)
-	}
-	defer stderrPipe.Close()
+	cmd := exec.CommandContext(ctx, args[0], args[1:]...)
 
 	stdoutPipe, err := cmd.StdoutPipe()
 	if err != nil {
@@ -365,44 +327,15 @@ func (t *T) sendInitialLocal(ctx context.Context, nodename string) error {
 	defer stdoutPipe.Close()
 
 	rargs := t.receiveCmd([]string{"mountpoint", "canmount"})
-	rcmd := exec.Command(rargs[0], rargs[1:]...)
+	rcmd := exec.CommandContext(ctx, rargs[0], rargs[1:]...)
 	rstdinPipe, err := rcmd.StdinPipe()
 	if err != nil {
 		return fmt.Errorf("error creating stdin pipe for zfs recv: %w", err)
 	}
-	rstderrPipe, err := rcmd.StderrPipe()
-	if err != nil {
-		return fmt.Errorf("error creating stderr pipe for zfs recv: %w", err)
-	}
-	defer rstderrPipe.Close()
 
-	var wg sync.WaitGroup
-
-	wg.Add(1)
-	go func() {
-		defer wg.Done()
-		scanner := bufio.NewScanner(stderrPipe)
-		for scanner.Scan() {
-			line := scanner.Text()
-			t.Log().Errorf("%s", line)
-		}
-		if err := scanner.Err(); err != nil && err != io.EOF {
-			t.Log().Errorf("error reading stderr: %v", err)
-		}
-	}()
-
-	wg.Add(1)
-	go func() {
-		defer wg.Done()
-		scanner := bufio.NewScanner(rstderrPipe)
-		for scanner.Scan() {
-			line := scanner.Text()
-			t.Log().Errorf("%s", line)
-		}
-		if err := scanner.Err(); err != nil && err != io.EOF {
-			t.Log().Errorf("error reading stderr: %v", err)
-		}
-	}()
+	cmd.Stderr = errWriter
+	rcmd.Stdout = nfoWriter
+	rcmd.Stderr = errWriter
 
 	rcmdStr := rcmd.String()
 	cmdStr := cmd.String()
@@ -415,34 +348,41 @@ func (t *T) sendInitialLocal(ctx context.Context, nodename string) error {
 		return err
 	}
 	stats := ressync.NewStats(nodename)
-	wg.Add(1)
-	go func() {
-		defer wg.Done()
-		defer stdoutPipe.Close()
-		defer rstdinPipe.Close()
-		if _, err := t.CopyWithStats(ctx, rstdinPipe, stdoutPipe, stats); err != nil {
-			return
-		}
-	}()
 
-	wg.Wait()
-	err = cmd.Wait()
-	var ee *exec.ExitError
-	if errors.As(err, &ee) {
-		ec := ee.ExitCode()
-		t.Log().
-			Attr("exitcode", ec).
-			Attr("cmd", cmdStr).
-			Errorf("exec '%s' on localhost exited with code %d", cmdStr, ec)
+	if _, err := t.CopyWithStats(ctx, rstdinPipe, stdoutPipe, stats); err != nil {
+		return err
 	}
-	return err
+
+	if err := rcmd.Wait(); err != nil {
+		var ee *exec.ExitError
+		if errors.As(err, &ee) {
+			ec := ee.ExitCode()
+			t.Log().
+				Attr("exitcode", ec).
+				Errorf("exec '%s' on %s exited with code %d", rcmdStr, nodename, ec)
+		}
+		return err
+	}
+
+	if err := cmd.Wait(); err != nil {
+		var ee *exec.ExitError
+		if errors.As(err, &ee) {
+			ec := ee.ExitCode()
+			t.Log().
+				Attr("exitcode", ec).
+				Errorf("exec '%s' on localhost exited with code %d", cmdStr, ec)
+		}
+		return err
+	}
+	return nil
 }
 
 func (t *T) sendInitialTo(ctx context.Context, nodename string) error {
-	var b bytes.Buffer
+	nfoWriter := t.Log().Writer(zerolog.InfoLevel)
+	errWriter := t.Log().Writer(zerolog.ErrorLevel)
 
 	args := t.sendInitialCmd()
-	cmd := exec.Command(args[0], args[1:]...)
+	cmd := exec.CommandContext(ctx, args[0], args[1:]...)
 
 	client, err := t.NewSSHClient(nodename)
 	if err != nil {
@@ -467,43 +407,43 @@ func (t *T) sendInitialTo(ctx context.Context, nodename string) error {
 	}
 	defer stdoutPipe.Close()
 
-	session.Stdout = &b
-	session.Stderr = &b
+	cmd.Stderr = errWriter
+	session.Stdout = nfoWriter
+	session.Stderr = errWriter
 
 	rargs := t.receiveCmd(nil)
-	rcmd := exec.Command(rargs[0], rargs[1:]...)
-	rcmdStr := rcmd.String()
+	rcmdStr := exec.Command(rargs[0], rargs[1:]...).String()
 	cmdStr := cmd.String()
-	t.Log().Attr("cmd", fmt.Sprintf("%s | ssh %s '%s'", cmdStr, nodename, rcmdStr)).Infof("%s send full to node %s", t.Src, nodename)
+	t.Log().Infof("%s | ssh %s '%s'", cmdStr, nodename, rcmdStr)
 	if err := session.Start(rcmdStr); err != nil {
 		ee := err.(*ssh.ExitError)
 		ec := ee.Waitmsg.ExitStatus()
 		t.Log().
-			Attr("exitcode", ec).
-			Attr("cmd", rcmdStr).
 			Attr("host", nodename).
 			Errorf("rexec '%s' on host %s exited with code %d", rcmdStr, nodename, ec)
 		return err
 	}
-	cmd.Stderr = &b
 	if err := cmd.Start(); err != nil {
 		return err
 	}
+
 	stats := ressync.NewStats(nodename)
 	if _, err := t.CopyWithStats(ctx, stdinPipe, stdoutPipe, stats); err != nil {
 		return err
 	}
 
-	err = cmd.Wait()
-	if ee, ok := err.(*exec.ExitError); ok {
-		ec := ee.ExitCode()
-		t.Log().
-			Attr("exitcode", ec).
-			Attr("cmd", cmd.String()).
-			Errorf("exec '%s' on host %s exited with code %d: %s", cmdStr, nodename, ec, string(b.Bytes()))
-	} else if err != nil {
+	if err := session.Wait(); err != nil {
 		return err
 	}
+
+	if err := cmd.Wait(); err != nil {
+		if ee, ok := err.(*exec.ExitError); ok {
+			ec := ee.ExitCode()
+			t.Log().Errorf("exec '%s' on host %s exited with code %d", cmdStr, nodename, ec)
+		}
+		return err
+	}
+
 	return nil
 }
 
@@ -662,7 +602,6 @@ func (t *T) dstSnapshotExistsLocal(name, nodename string) (bool, error) {
 			}
 			t.Log().
 				Attr("exitcode", ec).
-				Attr("cmd", cmd).
 				Attr("host", nodename).
 				Debugf("rexec '%s' on host %s exited with code %d", cmd, nodename, ec)
 			return false, err
@@ -701,7 +640,6 @@ func (t *T) dstSnapshotExists(name, nodename string) (bool, error) {
 		}
 		t.Log().
 			Attr("exitcode", ec).
-			Attr("cmd", cmd).
 			Attr("host", nodename).
 			Debugf("rexec '%s' on host %s exited with code %d", cmd, nodename, ec)
 		return false, err
