@@ -64,7 +64,7 @@ require (
 	github.com/prometheus/procfs v0.9.0
 	github.com/retailnext/cannula v0.0.0-20160516234737-f1c21e7f5695
 	github.com/rivo/tview v0.0.0-20240921122403-a64fc48d7654
-	github.com/rs/zerolog v1.20.0
+	github.com/rs/zerolog v1.34.0
 	github.com/shaj13/go-guardian/v2 v2.11.6
 	github.com/shaj13/libcache v1.0.5
 	github.com/spf13/cobra v1.9.1
