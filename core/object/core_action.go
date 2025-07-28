@@ -588,8 +588,11 @@ func (t *actor) action(ctx context.Context, fn resourceset.DoFunc) error {
 				}
 			}
 
-			if err := doEncap(ctx, r); err != nil {
-				return nil
+			sb := statusbus.FromContext(ctx)
+			if sb.Get(r.RID()).Is(status.Up, status.StandbyUp) {
+				if err := doEncap(ctx, r); err != nil {
+					return err
+				}
 			}
 
 			// do host action after encap if descending
