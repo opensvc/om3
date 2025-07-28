@@ -50,9 +50,13 @@ func (t *actor) PrintDevices(roles objectdevice.Role) objectdevice.L {
 			}
 		}
 		if roles&objectdevice.RoleBase != 0 {
-			if o, ok := i.(devBaser); ok {
-				for _, dev := range o.BaseDevices() {
-					l = l.Add(t.newObjectdevice(dev, objectdevice.RoleBase, r))
+			if o, ok := i.(devUser); ok {
+				subDevs := o.SubDevices()
+				baseDevs, err := subDevs.HolderEndpoints()
+				if err == nil {
+					for _, dev := range baseDevs {
+						l = l.Add(t.newObjectdevice(dev, objectdevice.RoleBase, r))
+					}
 				}
 			}
 		}
