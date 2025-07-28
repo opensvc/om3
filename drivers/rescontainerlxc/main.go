@@ -174,7 +174,7 @@ func (t *T) NetNSPath(ctx context.Context) (string, error) {
 	if pid, err := t.getPID(ctx); err != nil {
 		return "", err
 	} else if pid == 0 {
-		return "", fmt.Errorf("container %s is not running", t.Name)
+		return "", nil
 	} else {
 		return fmt.Sprintf("/proc/%d/ns/net", pid), nil
 	}
@@ -1041,6 +1041,7 @@ func (t *T) getPID(ctx context.Context) (int, error) {
 		command.WithName("lxc-info"),
 		command.WithArgs(args),
 		command.WithBufferedStdout(),
+		command.WithIgnoredExitCodes(1),
 	}
 	if ctx != nil {
 		opts = append(opts, command.WithContext(ctx))
@@ -1049,6 +1050,10 @@ func (t *T) getPID(ctx context.Context) (int, error) {
 	b, err := cmd.Output()
 	if err != nil {
 		return 0, err
+	}
+	if cmd.ExitCode() == 1 {
+		// container is not running
+		return 0, nil
 	}
 	scanner := bufio.NewScanner(bytes.NewReader(b))
 	for scanner.Scan() {
