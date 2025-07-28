@@ -171,7 +171,7 @@ func ListFilesystems(fopts ...funcopt.O) (Filesystems, error) {
 		command.WithCommandLogLevel(zerolog.DebugLevel),
 		command.WithStdoutLogLevel(zerolog.DebugLevel),
 		command.WithStderrLogLevel(zerolog.DebugLevel),
-		command.WithIgnoredExitCodes(1),
+		command.WithIgnoredExitCodes(0, 1),
 	)
 	err := cmd.Run()
 	if err != nil {

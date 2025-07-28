@@ -1041,7 +1041,7 @@ func (t *T) getPID(ctx context.Context) (int, error) {
 		command.WithName("lxc-info"),
 		command.WithArgs(args),
 		command.WithBufferedStdout(),
-		command.WithIgnoredExitCodes(1),
+		command.WithIgnoredExitCodes(0, 1),
 	}
 	if ctx != nil {
 		opts = append(opts, command.WithContext(ctx))
