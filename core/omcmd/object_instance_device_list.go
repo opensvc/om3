@@ -1,6 +1,8 @@
 package omcmd
 
 import (
+	"fmt"
+
 	"github.com/opensvc/om3/core/client"
 	"github.com/opensvc/om3/core/commoncmd"
 	"github.com/opensvc/om3/core/object"
@@ -15,7 +17,6 @@ type (
 		OptsGlobal
 		NodeSelector string
 		Roles        string
-		Local        bool
 	}
 
 	devicer interface {
@@ -24,16 +25,10 @@ type (
 )
 
 func (t *CmdObjectInstanceDeviceList) extract(selector string, c *client.T) (objectdevice.L, error) {
-	if t.Local {
+	if t.NodeSelector == "" {
 		return t.extractLocal(selector)
 	}
-	if t.NodeSelector == "" {
-		t.NodeSelector = "localhost"
-	}
-	if data, err := t.extractFromDaemon(selector, c); err == nil {
-		return data, nil
-	}
-	return t.extractLocal(selector)
+	return t.extractFromDaemon(selector, c)
 }
 
 func (t *CmdObjectInstanceDeviceList) extractLocal(selector string) (objectdevice.L, error) {
@@ -64,20 +59,7 @@ func (t *CmdObjectInstanceDeviceList) extractLocal(selector string) (objectdevic
 
 func (t *CmdObjectInstanceDeviceList) extractFromDaemon(selector string, c *client.T) (objectdevice.L, error) {
 	data := objectdevice.NewList()
-	/*
-		req := c.NewGetDevicess()
-		req.ObjectSelector = selector
-		b, err := req.Do()
-		if err != nil {
-			return data, err
-		}
-		err = json.Unmarshal(b, &data)
-		if err != nil {
-			log.Debug().Err(err).Msg("unmarshal GET /schedules")
-			return data, err
-		}
-	*/
-	return data, nil
+	return data, fmt.Errorf("TODO")
 }
 
 func (t *CmdObjectInstanceDeviceList) Run(kind string) error {

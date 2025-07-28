@@ -2324,7 +2324,6 @@ func newCmdObjectInstanceDeviceList(kind string) *cobra.Command {
 	addFlagsGlobal(flags, &options.OptsGlobal)
 	commoncmd.FlagNodeSelector(flags, &options.NodeSelector)
 	commoncmd.FlagDevRoles(flags, &options.Roles)
-	flagLocal(flags, &options.Local)
 	return cmd
 }
 
