@@ -1066,7 +1066,7 @@ func (t *T) getPID(ctx context.Context) (int, error) {
 			return strconv.Atoi(fields[1])
 		}
 	}
-	return 0, fmt.Errorf("pid not found")
+	return 0, nil
 }
 
 func (t *T) getLinks() []string {
