@@ -2,7 +2,9 @@ package ressynczfs
 
 import (
 	"context"
+	"errors"
 	"fmt"
+	"os"
 	"strings"
 	"time"
 
@@ -105,6 +107,9 @@ func (t *T) status(ctx context.Context, dataset string) status.T {
 		zfs.ListWithLogger(t.Log()),
 	)
 	if err != nil {
+		if errors.Is(err, os.ErrNotExist) {
+			return status.NotApplicable
+		}
 		t.StatusLog().Error("%s", err)
 		return status.Undef
 	}

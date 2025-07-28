@@ -3,6 +3,8 @@ package zfs
 import (
 	"bufio"
 	"bytes"
+	"fmt"
+	"os"
 	"strconv"
 	"strings"
 
@@ -164,17 +166,24 @@ func ListFilesystems(fopts ...funcopt.O) (Filesystems, error) {
 		command.WithName("zfs"),
 		command.WithArgs(args),
 		command.WithBufferedStdout(),
+		command.WithBufferedStderr(),
 		command.WithLogger(opts.Log),
 		command.WithCommandLogLevel(zerolog.DebugLevel),
 		command.WithStdoutLogLevel(zerolog.DebugLevel),
 		command.WithStderrLogLevel(zerolog.DebugLevel),
+		command.WithIgnoredExitCodes(1),
 	)
-	b, err := cmd.Output()
+	err := cmd.Run()
 	if err != nil {
 		return nil, err
 	}
-
-	return parseFilesystem(b, opts), nil
+	if bytes.Contains(cmd.Stderr(), []byte("does not exist")) {
+		return Filesystems{}, os.ErrNotExist
+	}
+	if cmd.ExitCode() != 0 {
+		return Filesystems{}, fmt.Errorf("exit status %d", cmd.ExitCode())
+	}
+	return parseFilesystem(cmd.Stdout(), opts), nil
 }
 
 func ListVolumes(fopts ...funcopt.O) (Vols, error) {
