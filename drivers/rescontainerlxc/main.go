@@ -295,7 +295,7 @@ func (t *T) ProvisionAsLeader(ctx context.Context) error {
 	if t.Template != "" {
 		args = append(args, "-t", t.Template)
 		if len(t.TemplateOptions) > 0 {
-			args = append(args, "..")
+			args = append(args, "--")
 			args = append(args, t.TemplateOptions...)
 		}
 	} else {
