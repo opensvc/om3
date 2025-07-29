@@ -8,6 +8,8 @@ import (
 	"github.com/opensvc/om3/core/client"
 	"github.com/opensvc/om3/core/keywords"
 	"github.com/opensvc/om3/core/naming"
+	"github.com/opensvc/om3/core/output"
+	"github.com/opensvc/om3/core/rawconfig"
 	"github.com/opensvc/om3/daemon/api"
 	"github.com/spf13/cobra"
 )
@@ -89,5 +91,15 @@ func (t *CmdObjectConfigDoc) Run(kind string) error {
 	default:
 		return fmt.Errorf("unexpected response: %s", response.Status())
 	}
-	return Doc(os.Stdout, items, path.Kind, t.Driver, t.Keyword, t.Depth)
+	output.Renderer{
+		HumanRenderer: func() string {
+			Doc(os.Stdout, items, path.Kind, t.Driver, t.Keyword, t.Depth)
+			return ""
+		},
+		Output:   t.Output,
+		Color:    t.Color,
+		Data:     items,
+		Colorize: rawconfig.Colorize,
+	}.Print()
+	return nil
 }

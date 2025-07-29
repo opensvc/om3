@@ -7,6 +7,8 @@ import (
 
 	"github.com/opensvc/om3/core/client"
 	"github.com/opensvc/om3/core/keywords"
+	"github.com/opensvc/om3/core/output"
+	"github.com/opensvc/om3/core/rawconfig"
 	"github.com/opensvc/om3/daemon/api"
 	"github.com/spf13/cobra"
 )
@@ -76,5 +78,15 @@ func (t *CmdNodeConfigDoc) Run() error {
 		return fmt.Errorf("unexpected response: %s", response.Status())
 	}
 
-	return Doc(os.Stdout, items, "node", t.Driver, t.Keyword, t.Depth)
+	output.Renderer{
+		HumanRenderer: func() string {
+			Doc(os.Stdout, items, "node", t.Driver, t.Keyword, t.Depth)
+			return ""
+		},
+		Output:   t.Output,
+		Color:    t.Color,
+		Data:     items,
+		Colorize: rawconfig.Colorize,
+	}.Print()
+	return nil
 }
