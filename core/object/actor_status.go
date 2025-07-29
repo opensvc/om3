@@ -202,6 +202,13 @@ func (t *actor) resourceStatusEval(ctx context.Context, data *instance.Status, m
 			}
 		}
 		data.Provisioned.Add(resourceStatus.Provisioned.State)
+		for _, entry := range resourceStatus.Log {
+			switch entry.Level {
+			case resource.WarnLevel, resource.ErrorLevel:
+				data.Overall.Add(status.Warn)
+				break
+			}
+		}
 	}
 	var mu sync.Mutex
 	sb := statusbus.FromContext(ctx)

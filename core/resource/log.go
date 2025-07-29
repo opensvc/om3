@@ -20,6 +20,12 @@ type (
 	}
 )
 
+var (
+	InfoLevel  Level = "info"
+	WarnLevel  Level = "warn"
+	ErrorLevel Level = "error"
+)
+
 func (t StatusLogEntry) String() string {
 	return fmt.Sprintf("%s: %s", t.Level, t.Message)
 }
