@@ -487,6 +487,7 @@ func (t *actor) action(ctx context.Context, fn resourceset.DoFunc) error {
 		}
 		err = cmd.Run()
 		if err != nil {
+			r.Log().Errorf("%s", cmd)
 			if exitErr, ok := err.(exitcoder); ok {
 				switch exitErr.ExitCode() {
 				case 2:

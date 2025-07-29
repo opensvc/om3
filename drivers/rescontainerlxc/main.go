@@ -402,18 +402,19 @@ func (t *T) rcmd(envs []string) ([]string, error) {
 	var args []string
 	if len(t.RCmd) > 0 {
 		args = t.RCmd
-	} else {
-		hasPIDNS := file.Exists("/proc/1/ns/pid")
-		if exe, err := exec.LookPath("lxc-attach"); err == nil && hasPIDNS {
-			if p, err := t.dataDir(); err == nil && p != "" {
-				args = []string{exe, "-n", t.Name, "-P", p, "--clear-env"}
-			} else {
-				args = []string{exe, "-n", t.Name, "--clear-env"}
-			}
+		args = append(args, t.GetHostname())
+                args = append(args, "--")
+		args = append(args, envs...)
+		return args, nil
+        }
+
+	hasPIDNS := file.Exists("/proc/1/ns/pid")
+	if exe, err := exec.LookPath("lxc-attach"); err == nil && hasPIDNS {
+		if p, err := t.dataDir(); err == nil && p != "" {
+			args = []string{exe, "-n", t.Name, "-P", p, "--clear-env"}
+		} else {
+			args = []string{exe, "-n", t.Name, "--clear-env"}
 		}
-	}
-	if len(args) == 0 {
-		return nil, fmt.Errorf("unable to identify a remote command method. install lxc-attach or set the rcmd keyword")
 	}
 	for _, e := range envs {
 		args = append(args, "-v", e)
