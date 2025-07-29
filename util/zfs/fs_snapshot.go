@@ -53,7 +53,7 @@ func (t *Filesystem) Snapshot(fopts ...funcopt.O) error {
 	opts := &fsSnapshotOpts{Name: t.Name}
 	funcopt.Apply(opts, fopts...)
 	args := fsSnapshotOptsToArgs(*opts)
-	cmd := exec.Command("zfs", args...)
+	cmd := exec.Command("/usr/sbin/zfs", args...)
 	cmdStr := cmd.String()
 	if t.Log != nil {
 		t.Log.Debugf("exec '%s'", cmdStr)

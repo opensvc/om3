@@ -18,7 +18,7 @@ func (t *Filesystem) SnapshotExists() (bool, error) {
 
 func (t *Filesystem) existsWithType(s string) (bool, error) {
 	cmd := command.New(
-		command.WithName("zfs"),
+		command.WithName("/usr/sbin/zfs"),
 		command.WithVarArgs("list", "-t", s, t.Name),
 		command.WithLogger(t.Log),
 		command.WithBufferedStderr(),

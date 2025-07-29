@@ -131,7 +131,7 @@ func (t *Filesystem) Create(fopts ...funcopt.O) error {
 	opts := &fsCreateOpts{Name: t.Name}
 	funcopt.Apply(opts, fopts...)
 	args := fsCreateOptsToArgs(*opts)
-	cmd := exec.Command("zfs", args...)
+	cmd := exec.Command("/usr/sbin/zfs", args...)
 	if opts.Node == "" {
 		if t.Log != nil {
 			t.Log.Infof("%s", cmd)

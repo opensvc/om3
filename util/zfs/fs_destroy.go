@@ -81,7 +81,7 @@ func (t *Filesystem) Destroy(fopts ...funcopt.O) error {
 	opts := &fsDestroyOpts{Name: t.Name}
 	funcopt.Apply(opts, fopts...)
 	args := fsDestroyOptsToArgs(*opts)
-	cmd := exec.Command("zfs", args...)
+	cmd := exec.Command("/usr/sbin/zfs", args...)
 	cmdStr := cmd.String()
 	if opts.Node == "" {
 		b, err := cmd.CombinedOutput()

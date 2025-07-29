@@ -39,7 +39,7 @@ func (t *Filesystem) Umount(fopts ...funcopt.O) error {
 	funcopt.Apply(opts, fopts...)
 	args := fsUmountOptsToArgs(*opts)
 	cmd := command.New(
-		command.WithName("zfs"),
+		command.WithName("/usr/sbin/zfs"),
 		command.WithArgs(args),
 		command.WithBufferedStdout(),
 		command.WithLogger(t.Log),

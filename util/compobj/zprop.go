@@ -78,14 +78,9 @@ func (t CompZprops) getProp(rule CompZprop) (string, error) {
 }
 
 func (t CompZprops) checkZbin() ExitCode {
-	cmd := exec.Command("which", zpropZbin)
-	output, err := cmd.CombinedOutput()
+	_, err := exec.LookPath(zpropZbin)
 	if err != nil {
-		if len(output) == 0 {
-			t.Errorf("%s not found\n", zpropZbin)
-			return ExitNok
-		}
-		t.Errorf("%s: %s\n", err, output)
+		t.Errorf("%s not found\n", zpropZbin)
 		return ExitNok
 	}
 	return ExitOk

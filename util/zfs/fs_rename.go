@@ -53,7 +53,7 @@ func (t *Filesystem) Rename(dst string, fopts ...funcopt.O) error {
 	funcopt.Apply(opts, fopts...)
 	args := fsRenameOptsToArgs(*opts)
 	args = append(args, dst)
-	cmd := exec.Command("zfs", args...)
+	cmd := exec.Command("/usr/sbin/zfs", args...)
 	cmdStr := cmd.String()
 	cmd.Stdout = &b
 	cmd.Stderr = &b

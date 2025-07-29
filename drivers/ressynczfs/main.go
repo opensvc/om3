@@ -462,7 +462,7 @@ func (t *T) sendInitialTo(ctx context.Context, nodename string) error {
 }
 
 func (t *T) sendInitialCmd() []string {
-	cmd := []string{"/usr/bin/zfs", "send"}
+	cmd := []string{"/usr/sbin/zfs", "send"}
 	if t.Recursive {
 		cmd = append(cmd, "-R")
 	} else {
@@ -473,7 +473,7 @@ func (t *T) sendInitialCmd() []string {
 }
 
 func (t *T) sendIncrementalCmd() []string {
-	cmd := []string{"/usr/bin/zfs", "send"}
+	cmd := []string{"/usr/sbin/zfs", "send"}
 	if t.Recursive {
 		cmd = append(cmd, "-R")
 	}
@@ -502,7 +502,7 @@ func (t *T) receiveDst() (discardFirst bool, dst string) {
 }
 
 func (t *T) receiveCmd(inherit []string, discardFirst bool, dst string) []string {
-	cmd := []string{"/usr/bin/zfs", "receive"}
+	cmd := []string{"/usr/sbin/zfs", "receive"}
 	for _, prop := range inherit {
 		cmd = append(cmd, "-x", prop)
 	}
@@ -611,7 +611,7 @@ func (t *T) snapshotExists(name string) (bool, error) {
 
 func (t *T) dstSnapshotExistsLocal(name, nodename string) (bool, error) {
 	var ee *exec.ExitError
-	cmd := exec.Command("/usr/bin/zfs", "list", "-t", "snapshot", name)
+	cmd := exec.Command("/usr/sbin/zfs", "list", "-t", "snapshot", name)
 
 	if b, err := cmd.CombinedOutput(); err != nil {
 		if errors.As(err, &ee) {
