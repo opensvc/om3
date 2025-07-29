@@ -214,10 +214,20 @@ func (t Store) Lookup(k key.T, kind naming.Kind, sectionType string) Keyword {
 func (t Store) Doc(w io.Writer, kind naming.Kind, driver, kw string, depth int) error {
 	depth += 1
 	if kw != "" {
-		if len(t) == 0 {
+		switch len(t) {
+		case 0:
 			return fmt.Errorf("keyword '%s' not found", kw)
+		case 1:
+			return t[0].Doc(w, depth)
+		default:
+			sort.Sort(t)
+			for _, kw := range t {
+				if err := kw.Doc(w, depth); err != nil {
+					return err
+				}
+			}
+			return nil
 		}
-		return t[0].Doc(w, depth)
 	}
 	m := t.KeywordsByDriver(kind)
 	if driver != "" {
