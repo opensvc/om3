@@ -311,7 +311,7 @@ func (t *T) ProvisionAsLeader(ctx context.Context) error {
 		command.WithLogger(t.Log()),
 		command.WithCommandLogLevel(zerolog.InfoLevel),
 		command.WithStdoutLogLevel(zerolog.InfoLevel),
-		command.WithStderrLogLevel(zerolog.ErrorLevel),
+		command.WithStderrLogLevel(zerolog.InfoLevel),
 		//command.WithTimeout(*t.StartTimeout),
 		command.WithEnv(env),
 	)
@@ -403,10 +403,10 @@ func (t *T) rcmd(envs []string) ([]string, error) {
 	if len(t.RCmd) > 0 {
 		args = t.RCmd
 		args = append(args, t.GetHostname())
-                args = append(args, "--")
+		args = append(args, "--")
 		args = append(args, envs...)
 		return args, nil
-        }
+	}
 
 	hasPIDNS := file.Exists("/proc/1/ns/pid")
 	if exe, err := exec.LookPath("lxc-attach"); err == nil && hasPIDNS {
