@@ -719,12 +719,16 @@ func keywordLookup(store keywords.Store, k key.T, kind naming.Kind, sectionType 
 		driverGroup = rid.DriverGroup()
 	}
 
+	if driverGroup == driver.GroupVolume {
+		sectionType = ""
+	}
+
 	// driver keyword
 	var drivers driver.Registry
 	if k.Section == "*" && driverGroup == driver.GroupUnknown {
 		drivers = driver.All
 	} else if sectionType != "" {
-		drivers = driver.All.WithGroupAndSection(driverGroup, sectionType)
+		drivers = driver.All.WithID(driverGroup, sectionType)
 	} else {
 		drivers = driver.All.WithGroup(driverGroup)
 	}

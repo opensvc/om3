@@ -58,7 +58,7 @@ func NamesByGroup() map[Group][]string {
 	return m
 }
 
-func (t Registry) WithGroupAndSection(group Group, section string) Registry {
+func (t Registry) WithID(group Group, section string) Registry {
 	m := NewRegistry()
 	did := NewID(group, section)
 	allocator, ok := t[did]
