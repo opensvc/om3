@@ -21,10 +21,11 @@ type (
 )
 
 var (
-	drvID = driver.NewID(driver.GroupPool, "freenas")
+	drvID = driver.NewID(driver.GroupPool, "truenas")
 )
 
 func init() {
+	driver.Register(driver.NewID(driver.GroupPool, "freenas"), NewPooler)
 	driver.Register(drvID, NewPooler)
 }
 
