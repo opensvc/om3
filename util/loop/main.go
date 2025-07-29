@@ -106,6 +106,9 @@ func (t T) Data() (InfoEntries, error) {
 	if out, err = fcache.Output(cmd, "losetup"); err != nil {
 		return nil, err
 	}
+	if len(out) == 0 {
+		return InfoEntries{}, nil
+	}
 	if err = json.Unmarshal(out, &data); err != nil {
 		return nil, err
 	}
