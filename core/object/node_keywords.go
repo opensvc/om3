@@ -917,7 +917,6 @@ var nodeCommonKeywords = []keywords.Keyword{
 		Option:      "addr",
 		Section:     "pool",
 		Scopable:    true,
-		Section:     "pool",
 		Text:        keywords.NewText(fs, "text/kw/node/pool.drbd.addr"),
 		Types:       []string{"drbd"},
 	},
