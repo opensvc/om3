@@ -3,6 +3,7 @@ package objectselector
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"net/http"
 	"os"
@@ -343,6 +344,9 @@ func (t *Selection) localExactExpand(s string) (*orderedset.OrderedSet, error) {
 		return matching, err
 	}
 	_, err = os.Stat(path.ConfigFile())
+	if errors.Is(err, os.ErrNotExist) {
+		return matching, xerrors.ObjectNotFound
+	}
 	if err != nil {
 		return matching, err
 	}
