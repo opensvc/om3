@@ -812,7 +812,7 @@ func (t *T) scheduleNode() {
 		return
 	}
 
-	table := o.PrintSchedule()
+	table := o.Schedules()
 	defer schedule.TableData.Set(naming.Path{}, &table)
 
 	for _, e := range table {
@@ -838,7 +838,7 @@ func (t *T) scheduleObject(path naming.Path) {
 		return
 	}
 
-	table := o.PrintSchedule()
+	table := o.Schedules()
 	defer schedule.TableData.Set(path, &table)
 
 	isProvisioned, ok := t.provisioned[path]

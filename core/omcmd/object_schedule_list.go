@@ -45,7 +45,7 @@ func (t *CmdObjectScheduleList) extractLocal(selector string) (api.ScheduleList,
 		objectselector.WithLocal(true),
 	)
 	type scheduler interface {
-		PrintSchedule() schedule.Table
+		Schedules() schedule.Table
 	}
 	paths, err := sel.MustExpand()
 	if err != nil {
@@ -60,7 +60,7 @@ func (t *CmdObjectScheduleList) extractLocal(selector string) (api.ScheduleList,
 		if !ok {
 			continue
 		}
-		for _, e := range i.PrintSchedule() {
+		for _, e := range i.Schedules() {
 			item := api.ScheduleItem{
 				Kind: "ScheduleItem",
 				Meta: api.InstanceMeta{

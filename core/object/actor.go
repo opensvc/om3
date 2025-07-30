@@ -78,7 +78,7 @@ type (
 		SyncIngest(context.Context) error
 		Enter(context.Context, string) error
 
-		PrintSchedule() schedule.Table
+		Schedules() schedule.Table
 		PushResInfo(context.Context) (resource.Infos, error)
 
 		HardAffinity() []string

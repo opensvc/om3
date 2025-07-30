@@ -105,7 +105,7 @@ var (
 		Failure:         "provision failed",
 		MustLock:        true,
 		Rollback:        true,
-		TimeoutKeywords: []string{"unprovision_timeout", "timeout"},
+		TimeoutKeywords: []string{"provision_timeout", "timeout"},
 		PG:              true,
 	}
 	PushResInfo = Properties{
