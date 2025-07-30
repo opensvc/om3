@@ -70,7 +70,7 @@ type (
 		reqUnsatisfied timeMap
 	}
 
-	Schedules map[string]map[string]schedule.Entry
+	Schedules map[naming.Path]map[string]schedule.Entry
 
 	Jobs map[string]Job
 	Job  struct {
@@ -117,19 +117,29 @@ func needProvisionedInstance(action string) bool {
 }
 
 func (t Schedules) DelByPath(path naming.Path) {
-	delete(t, path.String())
+	delete(t, path)
 }
 
 func (t Schedules) Add(path naming.Path, e schedule.Entry) {
-	pathStr := path.String()
-	if _, ok := t[pathStr]; !ok {
-		t[pathStr] = make(map[string]schedule.Entry)
+	if _, ok := t[path]; !ok {
+		t[path] = make(map[string]schedule.Entry)
 	}
-	t[pathStr][e.Key] = e
+	t[path][e.Key] = e
+}
+
+func (t Schedules) Table(path naming.Path) (l schedule.Table) {
+	m, ok := t[path]
+	if !ok {
+		return
+	}
+	for _, entry := range m {
+		l = append(l, entry)
+	}
+	return
 }
 
 func (t Schedules) Get(path naming.Path, k string) (schedule.Entry, bool) {
-	if m, ok := t[path.String()]; !ok {
+	if m, ok := t[path]; !ok {
 		return schedule.Entry{}, false
 	} else if e, ok := m[k]; !ok {
 		return schedule.Entry{}, false
@@ -193,9 +203,9 @@ func (t Jobs) Add(e schedule.Entry, delay time.Duration, bus chan any) {
 	if !ok {
 		job = Job{
 			CreatedAt: time.Now(),
-			schedule:  e,
 		}
 	}
+	job.schedule = e
 	job.cancel = append(job.cancel, cancel)
 	t[jobId] = job
 }
@@ -510,6 +520,7 @@ func (t *T) recreateJobFrom(prev schedule.Entry, lastRunAt time.Time) {
 	}
 	e.LastRunAt = lastRunAt
 	t.createJob(e)
+	t.updateExposedSchedules(prev.Path)
 }
 
 func (t *T) onInstanceStatusDeleted(c *msgbus.InstanceStatusDeleted) {
@@ -526,8 +537,8 @@ func (t *T) onInstanceStatusUpdated(c *msgbus.InstanceStatusUpdated) bool {
 }
 
 func (t *T) onLocalInstanceStatusUpdated(c *msgbus.InstanceStatusUpdated) bool {
-	schedules := schedule.TableData.GetByPath(c.Path)
-	if schedules == nil {
+	schedules, ok := t.schedules[c.Path]
+	if !ok {
 		return false
 	}
 
@@ -545,7 +556,7 @@ func (t *T) onLocalInstanceStatusUpdated(c *msgbus.InstanceStatusUpdated) bool {
 	log := t.loggerWithPath(c.Path)
 	changed := false
 
-	for _, e := range *schedules {
+	for _, e := range schedules {
 		if e.Require == "" {
 			continue
 		}
@@ -572,7 +583,7 @@ func (t *T) onLocalInstanceStatusUpdated(c *msgbus.InstanceStatusUpdated) bool {
 }
 
 func (t *T) onPeerInstanceStatusUpdated(c *msgbus.InstanceStatusUpdated) bool {
-	if _, ok := t.schedules[c.Path.String()]; !ok {
+	if _, ok := t.schedules[c.Path]; !ok {
 		// we don't have a local instance
 		return false
 	}
@@ -812,14 +823,14 @@ func (t *T) scheduleNode() {
 		return
 	}
 
+	path := naming.Path{}
 	table := o.Schedules()
-	defer schedule.TableData.Set(naming.Path{}, &table)
+	defer t.updateExposedSchedules(path)
 
 	for _, e := range table {
-		t.schedules.Add(naming.Path{}, e)
+		t.schedules.Add(path, e)
 		t.createJob(e)
 	}
-	table = table.Merge(t.jobs.Table(naming.Path{}))
 }
 
 func (t *T) scheduleObject(path naming.Path) {
@@ -839,7 +850,7 @@ func (t *T) scheduleObject(path naming.Path) {
 	}
 
 	table := o.Schedules()
-	defer schedule.TableData.Set(path, &table)
+	defer t.updateExposedSchedules(path)
 
 	isProvisioned, ok := t.provisioned[path]
 	if !ok {
@@ -870,12 +881,20 @@ func (t *T) scheduleObject(path naming.Path) {
 		t.schedules.Add(path, e)
 		t.createJob(e)
 	}
-	table = table.Merge(t.jobs.Table(path))
 }
 
-func (t *T) unschedule(p naming.Path) {
-	t.schedules.DelByPath(p)
-	t.jobs.DelPath(p)
+func (t *T) updateExposedSchedules(path naming.Path) {
+	table := t.schedules.Table(path)
+	if table == nil {
+		return
+	}
+	table = table.Merge(t.jobs.Table(path))
+	schedule.TableData.Set(path, &table)
+}
+
+func (t *T) unschedule(path naming.Path) {
+	t.schedules.DelByPath(path)
+	t.jobs.DelPath(path)
 }
 
 func (t *T) publishUpdate() {
