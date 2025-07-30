@@ -3220,6 +3220,14 @@ func newCmdNodePrintConfig() *cobra.Command {
 	return cmd
 }
 
+func newCmdNodePrintSchedule() *cobra.Command {
+	cmd := newCmdNodeScheduleList()
+	cmd.Hidden = true
+	cmd.Use = "schedule"
+	cmd.Aliases = []string{"schedul", "schedu", "sched", "sche", "sch", "sc"}
+	return cmd
+}
+
 func newCmdNodeSet() *cobra.Command {
 	var options commands.CmdNodeSet
 	cmd := &cobra.Command{

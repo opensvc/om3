@@ -177,7 +177,7 @@ func init() {
 	)
 	cmdNodePrint.AddCommand(
 		newCmdNodePrintConfig(),
-		newCmdNodeScheduleList(),
+		newCmdNodePrintSchedule(),
 	)
 	cmdNodePush.AddCommand(
 		newCmdNodePushAsset(),
