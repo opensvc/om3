@@ -57,6 +57,7 @@ func (t *T) startSubscriptions() *pubsub.Subscription {
 
 // TODO: expose queue len via prometheus
 func (t *T) run() {
+	imStarted := make(chan bool)
 	for {
 		running := t.running.Load()
 		if running >= int32(t.maxRunning) {
@@ -72,9 +73,11 @@ func (t *T) run() {
 		t.running.Add(1)
 		//t.log.Debugf("priority run dequeue from p%d: %d running %d waiting", item.priority, running, t.queue.Len())
 		go func() {
+			imStarted <- true
 			item.errC <- item.f()
 			t.running.Add(-1)
 		}()
+		<-imStarted
 	}
 }
 
