@@ -101,7 +101,7 @@ var (
 	ErrSameGlobalExpect    = errors.New("instance monitor global expect is already set to the same value")
 )
 
-func (t MonitorState) Is(states ...MonitorState) bool {
+func (t MonitorState) IsOneOf(states ...MonitorState) bool {
 	for _, s := range states {
 		if s == t {
 			return true

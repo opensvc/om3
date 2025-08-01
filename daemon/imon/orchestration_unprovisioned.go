@@ -74,7 +74,7 @@ func (t *Manager) hasNonLeaderWithState(states ...instance.MonitorState) bool {
 		if isLeader {
 			continue
 		}
-		if instMon.State.Is(states...) {
+		if instMon.State.IsOneOf(states...) {
 			return true
 		}
 	}
