@@ -3376,6 +3376,20 @@ func newCmdObjectStartStandby(kind string) *cobra.Command {
 	return cmd
 }
 
+func newCmdNodePrintCapabilities() *cobra.Command {
+	cmd := newCmdNodeCapabilitiesList()
+	cmd.Hidden = true
+	cmd.Aliases = []string{"cap", "caps", "capa"}
+	return cmd
+}
+
+func newCmdNodeScanCapabilities() *cobra.Command {
+	cmd := newCmdNodeCapabilitiesScan()
+	cmd.Hidden = true
+	cmd.Aliases = []string{"cap", "caps", "capa"}
+	return cmd
+}
+
 func newCmdDataStoreAdd(kind string) *cobra.Command {
 	var options commands.CmdObjectKeyAdd
 	var from, value string

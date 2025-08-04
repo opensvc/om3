@@ -53,7 +53,6 @@ var (
 	}
 	cmdNodePrint = &cobra.Command{
 		Use:     "print",
-		Short:   "print node discover information",
 		Hidden:  true,
 		Aliases: []string{"prin", "pri", "pr"},
 	}
@@ -64,6 +63,10 @@ var (
 	cmdNodeRelay = &cobra.Command{
 		Use:   "relay",
 		Short: "relay subsystem commands",
+	}
+	cmdNodeScan = &cobra.Command{
+		Use:    "scan",
+		Hidden: true,
 	}
 	cmdNodeSchedule = &cobra.Command{
 		Use:   "schedule",
@@ -139,6 +142,7 @@ func init() {
 		cmdNodePrint,
 		cmdNodePush,
 		cmdNodeRelay,
+		cmdNodeScan,
 		cmdNodeSchedule,
 		cmdNodeSSH,
 		cmdNodeUpdate,
@@ -176,6 +180,7 @@ func init() {
 		newCmdNodeConfigValidate(),
 	)
 	cmdNodePrint.AddCommand(
+		newCmdNodePrintCapabilities(),
 		newCmdNodePrintConfig(),
 		newCmdNodePrintSchedule(),
 	)
@@ -187,6 +192,9 @@ func init() {
 	)
 	cmdNodeRelay.AddCommand(
 		newCmdNodeRelayStatus(),
+	)
+	cmdNodeScan.AddCommand(
+		newCmdNodeScanCapabilities(),
 	)
 	cmdNodeSchedule.AddCommand(
 		newCmdNodeScheduleList(),
