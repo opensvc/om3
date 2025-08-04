@@ -745,7 +745,7 @@ func (t *Manager) sortCandidates(candidates []string) []string {
 	case placement.LastStart:
 		return t.sortWithLastStartPolicy(candidates)
 	default:
-		return candidates
+		return []string{}
 	}
 }
 

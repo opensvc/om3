@@ -273,7 +273,7 @@ var keywordStore = keywords.Store{
 		Candidates: placement.PolicyNames(),
 		Default:    "nodes order",
 		Inherit:    keywords.InheritHead,
-		Kind:       naming.NewKinds(naming.KindSvc),
+		Kind:       naming.NewKinds(naming.KindSvc, naming.KindVol),
 		Option:     "placement",
 		Scopable:   false,
 		Section:    "DEFAULT",
