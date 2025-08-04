@@ -1,4 +1,0 @@
-If specified, the route is an exact path rule meaning that the path must
-exactly match the `:path` header once the query string is removed.
-
-Precisely one of `prefix`, `path`, `regex` must be set.

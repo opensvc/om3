@@ -1,4 +1,0 @@
-Indicates that during redirection, the matched prefix (or path) should be
-swapped with this value.
-
-This option allows redirect URLs dynamically created based on the request.

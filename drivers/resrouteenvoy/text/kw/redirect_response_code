@@ -1,3 +1,0 @@
-The HTTP status code to use in the redirect response.
-
-The default response code is `MOVED_PERMANENTLY (301)`.

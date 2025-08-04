@@ -1,3 +1,0 @@
-The public port number to expose on.
-
-The special value `0` is interpreted as a request for auto-allocation.

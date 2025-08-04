@@ -1,7 +1,0 @@
-Indicates that the route is a redirect rule.
-
-If there is a match, a 301 redirect response will be sent which swaps the
-path portion of the URL with this value.
-
-The `host_redirect` keyword can also be set alongside
-`redirect_path_redirect`.
