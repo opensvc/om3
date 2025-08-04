@@ -339,6 +339,11 @@
     curl -o- -X GET -H "Content-Type: application/json" --unix-socket /var/lib/opensvc/lsnr/http.sock http://localhost/daemon/status
     ```
 
+* **Change the quotation mark in the `flat` renderer keys**
+    
+    Use double quotes instead of quotes, as the strings in the value part already use double quotes.
+    Not mixing single and double quotes helps formatting the --filter for `om node events`.
+
 ### Driver: disk.lvm
 
 * **Removed feature:**

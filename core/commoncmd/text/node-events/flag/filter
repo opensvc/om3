@@ -20,3 +20,4 @@ Examples:
   InstanceStatusUpdated,path=svc1,node=n1,.instance_status.frozen_at="0001-01-01T00:00:00Z"
   InstanceStatusUpdated,path=svc1,node=n1,.instance_status.frozen_at>"0001-01-01T00:00:00Z"
   InstanceStatusUpdated,path=svc1,node=n1,.instance_status.avail="up"
+  InstanceStatusUpdated,path=svc1,node=n1,.instance_status.resources."fs#1".avail="up"
