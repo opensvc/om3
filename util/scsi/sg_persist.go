@@ -38,7 +38,7 @@ func (t SGPersistDriver) readRegistrations(dev device.T) ([]string, error) {
 	l := make([]string, 0)
 	cmd := command.New(
 		command.WithName("sg_persist"),
-		command.WithVarArgs("--in", "--read-keys", dev.Path()),
+		command.WithVarArgs("-n", "--in", "--read-keys", dev.Path()),
 		command.WithBufferedStdout(),
 		command.WithEnv(t.env("1")),
 	)
@@ -68,7 +68,7 @@ func (t SGPersistDriver) Register(dev device.T, key string) error {
 }
 
 func (t SGPersistDriver) registerPath(dev device.T, key string) error {
-	option := command.WithVarArgs("--out", "--register-ignore", "--param-sark", key, dev.Path())
+	option := command.WithVarArgs("-n", "--out", "--register-ignore", "--param-sark", key, dev.Path())
 	return t.retryOnUnitAttention(dev, option)
 }
 
@@ -86,7 +86,7 @@ func (t SGPersistDriver) Unregister(dev device.T, key string) error {
 }
 
 func (t SGPersistDriver) unregisterPath(dev device.T, key string) error {
-	option := command.WithVarArgs("--out", "--register-ignore", "--param-rk", key, dev.Path())
+	option := command.WithVarArgs("-n", "--out", "--register-ignore", "--param-rk", key, dev.Path())
 	return t.retryOnUnitAttention(dev, option)
 }
 
@@ -106,7 +106,7 @@ func (t SGPersistDriver) ReadReservation(dev device.T) (string, error) {
 func (t SGPersistDriver) readReservation(dev device.T) (string, error) {
 	cmd := command.New(
 		command.WithName("sg_persist"),
-		command.WithVarArgs("--in", "--read-reservation", dev.Path()),
+		command.WithVarArgs("-n", "--in", "--read-reservation", dev.Path()),
 		command.WithEnv(t.env("1")),
 		command.WithBufferedStdout(),
 	)
@@ -139,7 +139,7 @@ func (t SGPersistDriver) Reserve(dev device.T, key string) error {
 }
 
 func (t SGPersistDriver) reserve(dev device.T, key string) error {
-	option := command.WithVarArgs("--out", "--reserve", "--param-rk", key, "--prout-type", DefaultPersistentReservationType, dev.Path())
+	option := command.WithVarArgs("-n", "--out", "--reserve", "--param-rk", key, "--prout-type", DefaultPersistentReservationType, dev.Path())
 	return t.retryOnUnitAttention(dev, option)
 }
 
@@ -160,7 +160,7 @@ func (t SGPersistDriver) Release(dev device.T, key string) error {
 }
 
 func (t SGPersistDriver) release(dev device.T, key string) error {
-	option := command.WithVarArgs("--out", "--release", "--param-rk", key, "--prout-type", DefaultPersistentReservationType, dev.Path())
+	option := command.WithVarArgs("-n", "--out", "--release", "--param-rk", key, "--prout-type", DefaultPersistentReservationType, dev.Path())
 	return t.retryOnUnitAttention(dev, option)
 }
 
@@ -181,7 +181,7 @@ func (t SGPersistDriver) Clear(dev device.T, key string) error {
 }
 
 func (t SGPersistDriver) clear(dev device.T, key string) error {
-	option := command.WithVarArgs("--out", "--clear", "--param-rk", key, dev.Path())
+	option := command.WithVarArgs("-n", "--out", "--clear", "--param-rk", key, dev.Path())
 	return t.retryOnUnitAttention(dev, option)
 }
 
@@ -202,7 +202,7 @@ func (t SGPersistDriver) Preempt(dev device.T, oldKey, newKey string) error {
 }
 
 func (t SGPersistDriver) preempt(dev device.T, oldKey, newKey string) error {
-	option := command.WithVarArgs("--out", "--preempt", "--param-sark", oldKey, "--param-rk", newKey, "--prout-type", DefaultPersistentReservationType, dev.Path())
+	option := command.WithVarArgs("-n", "--out", "--preempt", "--param-sark", oldKey, "--param-rk", newKey, "--prout-type", DefaultPersistentReservationType, dev.Path())
 	return t.retryOnUnitAttention(dev, option)
 }
 
@@ -223,7 +223,7 @@ func (t SGPersistDriver) PreemptAbort(dev device.T, oldKey, newKey string) error
 }
 
 func (t SGPersistDriver) preemptAbort(dev device.T, oldKey, newKey string) error {
-	option := command.WithVarArgs("--out", "--preempt-abort", "--param-sark", oldKey, "--param-rk", newKey, "--prout-type", DefaultPersistentReservationType, dev.Path())
+	option := command.WithVarArgs("-n", "--out", "--preempt-abort", "--param-sark", oldKey, "--param-rk", newKey, "--prout-type", DefaultPersistentReservationType, dev.Path())
 	return t.retryOnUnitAttention(dev, option)
 }
 
