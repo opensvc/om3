@@ -363,6 +363,8 @@
         # pvs = {disk#0.file}            <- ⛔️: pvs evaluation is not a block device
         pvs = {disk#0.exposed_devs[0]}   <- ✅: pvs evaluation is /dev/loop... block device
 
+* Drop support for `metad` era pvscan. Always use `--cache`.
+
 ### Driver: ip
 
 * **Removed keywords:**
