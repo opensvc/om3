@@ -25,6 +25,7 @@ import (
 	"github.com/opensvc/om3/drivers/resip"
 	"github.com/opensvc/om3/util/command"
 	"github.com/opensvc/om3/util/file"
+	"github.com/rs/zerolog"
 
 	"github.com/containernetworking/plugins/pkg/ns"
 	"github.com/google/uuid"
@@ -206,11 +207,15 @@ func (t *T) addObjectNetNS() error {
 		t.Log().Infof("netns %s already added", nsPID)
 		return nil
 	}
-	t.Log().Infof("create new netns %s", nsPID)
-	if _, err := netns.NewNamed(nsPID); err != nil {
-		return err
-	}
-	return nil
+	cmd := command.New(
+		command.WithName("ip"),
+		command.WithVarArgs("netns", "add", nsPID),
+		command.WithLogger(t.Log()),
+		command.WithStdoutLogLevel(zerolog.InfoLevel),
+		command.WithStderrLogLevel(zerolog.ErrorLevel),
+		command.WithCommandLogLevel(zerolog.InfoLevel),
+	)
+	return cmd.Run()
 }
 
 func (t *T) delObjectNetNS() error {
@@ -218,13 +223,20 @@ func (t *T) delObjectNetNS() error {
 		// the container is expected to already have a netns. don't even care to log info.
 		return nil
 	}
-	nsPIDFile := t.objectNSPIDFile()
+	nsPID := t.objectNSPID()
 	if !t.hasNetNS() {
-		t.Log().Infof("netns %s already deleted", nsPIDFile)
+		t.Log().Infof("netns %s already deleted", nsPID)
 		return nil
 	}
-	_ = netns.DeleteNamed(t.objectNSPID())
-	return nil
+	cmd := command.New(
+		command.WithName("ip"),
+		command.WithVarArgs("netns", "del", nsPID),
+		command.WithLogger(t.Log()),
+		command.WithStdoutLogLevel(zerolog.InfoLevel),
+		command.WithStderrLogLevel(zerolog.ErrorLevel),
+		command.WithCommandLogLevel(zerolog.InfoLevel),
+	)
+	return cmd.Run()
 }
 
 func (t *T) purgeCNIVarDir() error {
@@ -548,10 +560,8 @@ func (t *T) stop(ctx context.Context) error {
 	}
 	cmd.Cmd().Stdin = bytes.NewReader(stdinData)
 	t.Log().
-		Attr("cmd", cmd.Cmd().String()).
 		Attr("input", string(stdinData)).
-		Attr("env", env).
-		Infof("del cni network %s ip from container %s interface %s", t.Network, containerID, dev)
+		Infof("%s %s <%s", strings.Join(env, " "), bin, t.netConfFile())
 	err = cmd.Run()
 	if outB := cmd.Stdout(); len(outB) > 0 {
 		var resp response
@@ -624,10 +634,8 @@ func (t *T) start(ctx context.Context) error {
 			command.WithBufferedStderr(),
 		)
 		t.Log().
-			Attr("cmd", cmd.Cmd().String()).
 			Attr("input", string(stdinData)).
-			Attr("env", env).
-			Infof("add cni network %s ip from container %s interface %s", t.Network, containerID, dev)
+			Infof("%s %s <%s", strings.Join(env, " "), bin, t.netConfFile())
 
 		cmd.Cmd().Stdin = bytes.NewReader(stdinData)
 		err := cmd.Run()
