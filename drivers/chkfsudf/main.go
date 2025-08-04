@@ -38,7 +38,7 @@ func (t *fsChecker) ResultSet(entry *df.Entry, objs []interface{}) *check.Result
 	})
 	rs.Push(check.Result{
 		Instance:    entry.MountPoint + ".free",
-		Value:       entry.Free,
+		Value:       entry.Free / 1024,
 		Path:        path,
 		Unit:        "kb",
 		DriverGroup: DriverGroup,
@@ -46,7 +46,7 @@ func (t *fsChecker) ResultSet(entry *df.Entry, objs []interface{}) *check.Result
 	})
 	rs.Push(check.Result{
 		Instance:    entry.MountPoint + ".size",
-		Value:       entry.Total,
+		Value:       entry.Total / 1024,
 		Path:        path,
 		Unit:        "kb",
 		DriverGroup: DriverGroup,
