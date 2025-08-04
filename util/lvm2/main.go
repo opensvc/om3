@@ -60,7 +60,7 @@ func IsCapable() bool {
 	return false
 }
 
-func pvscan(log *plog.Logger) error {
+func PVScan(log *plog.Logger) error {
 	cmd := command.New(
 		command.WithName("pvscan"),
 		command.WithVarArgs("--cache"),
