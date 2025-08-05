@@ -50,6 +50,7 @@ type (
 		Group        string         `json:"group"`
 		PG           pg.Config      `json:"pg"`
 		Limit        ulimit.Config  `json:"limit"`
+		NetNS        string         `json:"netns"`
 	}
 
 	statuser interface {
@@ -245,7 +246,7 @@ func (t *T) BaseCmdArgs(s string, action string) ([]string, error) {
 }
 
 // CmdArgs returns the command argv of an action
-func (t *T) CmdArgs(s string, action string) ([]string, error) {
+func (t *T) CmdArgs(ctx context.Context, s string, action string) ([]string, error) {
 	if len(s) == 0 {
 		t.Log().Debugf("nothing to do for action '%v'", action)
 		return nil, nil
@@ -258,15 +259,24 @@ func (t *T) CmdArgs(s string, action string) ([]string, error) {
 	if prog, err = executable.Path(); err != nil {
 		return nil, fmt.Errorf("lookup prog: %w", err)
 	}
-	args := append([]string{prog, "exec"}, t.toCaps().Argv()...)
+	var args []string
+	args = append(args, prog, "exec")
+	args = append(args, t.toCaps().Argv()...)
 	args = append(args, "--")
+	if t.NetNS != "" {
+		netNS, err := t.NetNSPath(ctx)
+		if err != nil {
+			return args, err
+		}
+		args = append(args, "ip", "netns", "exec", filepath.Base(netNS))
+	}
 	args = append(args, baseCommandSlice...)
 	return args, nil
 }
 
 // GetFuncOpts returns a list of functional options to use with command.New()
 func (t *T) GetFuncOpts(ctx context.Context, s string, action string) ([]funcopt.O, error) {
-	cmdArgs, err := t.CmdArgs(s, action)
+	cmdArgs, err := t.CmdArgs(ctx, s, action)
 	if err != nil || cmdArgs == nil {
 		return nil, err
 	}
@@ -435,4 +445,14 @@ func (t *T) ExitCodeToStatus(exitCode int) (status.T, error) {
 		t.Log().Warnf("retcode parsing: %s", err)
 	}
 	return m.Status(exitCode), nil
+}
+
+func (t *T) NetNSPath(ctx context.Context) (string, error) {
+	if r := t.GetObjectDriver().ResourceByID(t.NetNS); r == nil {
+		return "", fmt.Errorf("resource %s pointed by the netns keyword not found", t.NetNS)
+	} else if o, ok := r.(resource.NetNSPather); ok {
+		return o.NetNSPath(ctx)
+	} else {
+		return "", fmt.Errorf("resource %s pointed by the netns keyword does not expose a netns path", t.NetNS)
+	}
 }

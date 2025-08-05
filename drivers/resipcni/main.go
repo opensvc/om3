@@ -85,8 +85,8 @@ func (t *T) pluginFile(plugin string) string {
 	return ""
 }
 
-// getCNINetNS returns the value of the CNI_NETNS env var of cni commands
-func (t *T) getCNINetNS(ctx context.Context) (string, error) {
+// NetNSPath returns the value of the CNI_NETNS env var of cni commands
+func (t *T) NetNSPath(ctx context.Context) (string, error) {
 	if t.NetNS != "" {
 		return t.getResourceNSPathCtx(ctx)
 	} else {
@@ -168,7 +168,7 @@ func (t *T) getResourceNSPath(ctx context.Context) (string, error) {
 	}
 }
 func (t *T) getNS(ctx context.Context) (ns.NetNS, error) {
-	if path, err := t.getCNINetNS(ctx); err != nil {
+	if path, err := t.NetNSPath(ctx); err != nil {
 		return nil, err
 	} else if path == "" {
 		return nil, nil
@@ -596,7 +596,7 @@ func (t *T) start(ctx context.Context) error {
 	}
 	bin := t.pluginFile(netConf.Type)
 
-	cniNetNS, err := t.getCNINetNS(ctx)
+	cniNetNS, err := t.NetNSPath(ctx)
 	if err != nil {
 		return err
 	}

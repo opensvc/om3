@@ -163,6 +163,13 @@ var (
 		Scopable:  true,
 		Text:      keywords.NewText(fs, "text/kw/limit_as"),
 	}
+	UnixKeywordNetNS = keywords.Keyword{
+		Attr:     "NetNS",
+		Example:  "ip#0",
+		Option:   "netns",
+		Scopable: true,
+		Text:     keywords.NewText(fs, "text/kw/netns"),
+	}
 	UnixKeywords = []keywords.Keyword{
 		UnixKeywordScriptPath,
 		UnixKeywordStartCmd,
@@ -186,5 +193,6 @@ var (
 		UnixKeywordLimitStack,
 		UnixKeywordLimitVmem,
 		UnixKeywordLimitAS,
+		UnixKeywordNetNS,
 	}
 )

@@ -1,0 +1,6 @@
+Start the application process in a netns another resource is known to use.
+
+For example a service with a cni-type `ip#0` resource that doesn't set a `netns` value will create a private netns named after the object id.
+A app#0 resource can use this netns by setting `app#0.netns=ip#0`.
+
+The starter program is executed via `ip netns exec`.
