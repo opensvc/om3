@@ -136,14 +136,13 @@ func (t *rx) Start(cmdC chan<- interface{}, msgC chan<- *hbtype.Msg) error {
 				otherNodeIPL = append(otherNodeIPL, addr)
 			}
 		}
-		t.Add(1)
+		var wg sync.WaitGroup
+		wg.Add(1)
 		go func() {
-			defer t.Done()
+			defer wg.Done()
 			select {
 			case <-ctx.Done():
-				t.log.Debugf("closing listener")
 				_ = listener.Close()
-				t.log.Debugf("closed listener")
 				t.cancel()
 				return
 			}
@@ -182,9 +181,13 @@ func (t *rx) Start(cmdC chan<- interface{}, msgC chan<- *hbtype.Msg) error {
 				ClusterName: clusterConfig.Name,
 				Key:         clusterConfig.Secret(),
 			})
-			t.Add(1)
-			go t.handle(clearConn)
+			wg.Add(1)
+			go func() {
+				defer wg.Done()
+				t.handle(clearConn)
+			}()
 		}
+		wg.Wait()
 		t.log.Infof("stopped %s", t.addr)
 	}()
 	<-started
@@ -193,7 +196,6 @@ func (t *rx) Start(cmdC chan<- interface{}, msgC chan<- *hbtype.Msg) error {
 }
 
 func (t *rx) handle(conn encryptconn.ConnNoder) {
-	defer t.Done()
 	defer func() {
 		if err := conn.Close(); err != nil {
 			t.log.Warnf("unexpected error while closing connection from %s: %s", conn.RemoteAddr(), err)
