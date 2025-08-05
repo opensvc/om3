@@ -197,6 +197,28 @@ func (t *T) hasNetNS() bool {
 	return true
 }
 
+func (t *T) purgeCNIVarWithNetNS(ns string) error {
+	pattern := fmt.Sprintf("/var/lib/cni/networks/%s/*.*.*.*", t.Network)
+	paths, err := filepath.Glob(pattern)
+	if err != nil {
+		return err
+	}
+	for _, p := range paths {
+		buff, err := os.ReadFile(p)
+		if err != nil {
+			return err
+		}
+		line := strings.Fields(string(buff))[0]
+		if line == ns {
+			t.Log().Infof("remove leftover %s", p)
+			if err := os.Remove(p); err != nil {
+				return err
+			}
+		}
+	}
+	return nil
+}
+
 func (t *T) addObjectNetNS() error {
 	if t.NetNS != "" {
 		// the container is expected to already have a netns. don't even care to log info.
@@ -206,6 +228,9 @@ func (t *T) addObjectNetNS() error {
 	if t.hasNetNS() {
 		t.Log().Infof("netns %s already added", nsPID)
 		return nil
+	}
+	if err := t.purgeCNIVarWithNetNS(nsPID); err != nil {
+		return err
 	}
 	cmd := command.New(
 		command.WithName("ip"),
