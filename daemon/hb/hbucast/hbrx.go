@@ -8,6 +8,7 @@ import (
 	"net"
 	"strings"
 	"sync"
+	"syscall"
 	"time"
 
 	"github.com/opensvc/om3/core/cluster"
@@ -104,11 +105,26 @@ func (t *rx) Start(cmdC chan<- interface{}, msgC chan<- *hbtype.Msg) error {
 	t.msgC = msgC
 	t.cancel = cancel
 	t.log.Infof("starting: timeout %s", t.timeout)
-	listener, err := net.Listen("tcp", t.addr+":"+t.port)
+
+	listenConfig := net.ListenConfig{
+		Control: func(network, address string, c syscall.RawConn) error {
+			var err error
+			err = c.Control(func(fd uintptr) {
+				err = syscall.SetsockoptInt(int(fd), syscall.SOL_SOCKET, syscall.SO_REUSEADDR, 1)
+			})
+			if err != nil {
+				return fmt.Errorf("failed to set SO_REUSEADDR: %w", err)
+			}
+			return nil
+		},
+	}
+
+	listener, err := listenConfig.Listen(t.ctx, "tcp", t.addr+":"+t.port)
 	if err != nil {
 		t.log.Errorf("listen failed: %s", err)
 		return err
 	}
+
 	started := make(chan bool)
 	t.Add(1)
 	go func() {
