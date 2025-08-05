@@ -94,11 +94,16 @@ func Provision(ctx context.Context, r Driver, leader bool) error {
 	if err := provision(ctx, r, leader); err != nil {
 		return fmt.Errorf("provision: %w", err)
 	}
-	if err := r.Trigger(ctx, trigger.Block, trigger.Post, trigger.Provision); err != nil {
-		return fmt.Errorf("post provision trigger: %w", err)
-	}
-	if err := r.Trigger(ctx, trigger.NoBlock, trigger.Post, trigger.Provision); err != nil {
-		r.Log().Warnf("trigger: %s (exitcode %d)", err, exitCode(err))
+	if leader {
+		// This is strange a om2 policy. Why prevent post trigger on non leaders but allow
+		// pre triggers ? Why don't we let the trigger decide using the OPENSVC_LEADER
+		// environment variable ?
+		if err := r.Trigger(ctx, trigger.Block, trigger.Post, trigger.Provision); err != nil {
+			return fmt.Errorf("post provision trigger: %w", err)
+		}
+		if err := r.Trigger(ctx, trigger.NoBlock, trigger.Post, trigger.Provision); err != nil {
+			r.Log().Warnf("trigger: %s (exitcode %d)", err, exitCode(err))
+		}
 	}
 	return nil
 }
@@ -136,11 +141,13 @@ func Unprovision(ctx context.Context, r Driver, leader bool) error {
 	if err := unprovision(ctx, r, leader); err != nil {
 		return fmt.Errorf("unprovision: %w", err)
 	}
-	if err := r.Trigger(ctx, trigger.Block, trigger.Post, trigger.Unprovision); err != nil {
-		return fmt.Errorf("post unprovision trigger: %w", err)
-	}
-	if err := r.Trigger(ctx, trigger.NoBlock, trigger.Post, trigger.Unprovision); err != nil {
-		r.Log().Warnf("trigger: %s (exitcode %d)", err, exitCode(err))
+	if leader {
+		if err := r.Trigger(ctx, trigger.Block, trigger.Post, trigger.Unprovision); err != nil {
+			return fmt.Errorf("post unprovision trigger: %w", err)
+		}
+		if err := r.Trigger(ctx, trigger.NoBlock, trigger.Post, trigger.Unprovision); err != nil {
+			r.Log().Warnf("trigger: %s (exitcode %d)", err, exitCode(err))
+		}
 	}
 	return nil
 }

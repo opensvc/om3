@@ -60,25 +60,10 @@ func IsCapable() bool {
 	return false
 }
 
-func hasMetad() bool {
-	cmd := command.New(
-		command.WithName("pgrep"),
-		command.WithVarArgs("metad"),
-	)
-	if err := cmd.Run(); err != nil {
-		return false
-	}
-	return true
-}
-
-func pvscan(log *plog.Logger) error {
-	args := make([]string, 0)
-	if hasMetad() {
-		args = append(args, "--cache")
-	}
+func PVScan(log *plog.Logger) error {
 	cmd := command.New(
 		command.WithName("pvscan"),
-		command.WithArgs(args),
+		command.WithVarArgs("--cache"),
 		command.WithLogger(log),
 		command.WithCommandLogLevel(zerolog.DebugLevel),
 		command.WithStdoutLogLevel(zerolog.DebugLevel),

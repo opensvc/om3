@@ -85,7 +85,7 @@ dist:
 restart:
 	$(PREFIX)/$(OM) daemon restart
 
-deploy: om
+deploy:
 	@for node in $(shell $(OM) node ls); do \
 		echo "Deploying $(OM) to $$node..."; \
 		TEMP_OM_FILE="/tmp/om-$(shell head /dev/urandom | tr -dc A-Za-z0-9 | head -c 10)"; \

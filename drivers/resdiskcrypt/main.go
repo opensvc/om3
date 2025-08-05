@@ -109,10 +109,12 @@ func (t *T) passphraseNew() ([]byte, error) {
 	if err != nil {
 		return nil, err
 	}
-	b := genPassphrase()
 	keyname := t.passphraseKeyname()
-	if err := sec.AddKey(keyname, b); err != nil {
-		return nil, err
+	if !sec.HasKey(keyname) {
+		b := genPassphrase()
+		if err := sec.AddKey(keyname, b); err != nil {
+			return nil, err
+		}
 	}
 	return sec.DecodeKey(keyname)
 }
@@ -127,7 +129,7 @@ func (t *T) passphraseStrict() ([]byte, error) {
 	}
 	keyname := t.passphraseKeyname()
 	if !sec.HasKey(keyname) {
-		return nil, fmt.Errorf("%s does not exist", sec.Path())
+		return nil, fmt.Errorf("%s:%s does not exist", sec.Path(), keyname)
 	}
 	return sec.DecodeKey(keyname)
 }
@@ -275,10 +277,9 @@ func (t *T) Start(ctx context.Context) error {
 }
 
 func (t *T) Stop(ctx context.Context) error {
-	if v, err := t.isUp(); err != nil {
-		return err
-	} else if !v {
-		t.Log().Infof("%s is already down", t.exposedDevpath())
+	devPath := t.exposedDevpath()
+	if !file.Exists(devPath) {
+		t.Log().Infof("%s is already down", devPath)
 		return nil
 	}
 	if err := t.removeHolders(); err != nil {

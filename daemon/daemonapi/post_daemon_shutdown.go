@@ -168,7 +168,7 @@ func (a *DaemonAPI) localPostDaemonShutdown(eCtx echo.Context, params api.PostDa
 		}
 		// TODO: perhaps here we should shutdown all local instance that are not shutdown ?
 		//       if !state.Is(instance.MonitorStateShutdown)
-		if state.Is(instance.MonitorStateIdle) || state.Is(instance.MonitorStatesFailure...) {
+		if state.IsOneOf(instance.MonitorStateIdle) || state.IsOneOf(instance.MonitorStatesFailure...) {
 			logP.Infof("ask '%s' to shutdown (current state is %s)", p, state)
 
 			ctx, cancel := context.WithTimeout(shutdownCtx, time.Second)

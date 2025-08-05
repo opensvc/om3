@@ -23,15 +23,12 @@ type (
 )
 
 func (t *CmdObjectInstanceDeviceList) extract(selector string, c *client.T) (objectdevice.L, error) {
-	if data, err := t.extractFromDaemon(selector, c); err == nil {
-		return data, nil
-	}
-	return objectdevice.NewList(), fmt.Errorf("can not fetch daemon data")
+	return t.extractFromDaemon(selector, c)
 }
 
 func (t *CmdObjectInstanceDeviceList) extractFromDaemon(selector string, c *client.T) (objectdevice.L, error) {
 	data := objectdevice.NewList()
-	return data, fmt.Errorf("todo")
+	return data, fmt.Errorf("TODO")
 }
 
 func (t *CmdObjectInstanceDeviceList) Run(kind string) error {

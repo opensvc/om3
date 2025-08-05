@@ -1,4 +1,0 @@
-The public ip address to expose from.
-
-In case the envoy server has multiple front-facing ip addresses, and the
-service must not be exposed on all of these addresses.

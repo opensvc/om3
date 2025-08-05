@@ -63,21 +63,21 @@ var (
 // GetMaxDelay return the configured max_delay if set.
 // If not set, return the duration from now to the end of the
 // next schedule period.
-func (t *T) GetMaxDelay(lastSync time.Time) *time.Duration {
+func (t *T) GetMaxDelay(lastSync time.Time) time.Duration {
 	if t.MaxDelay != nil {
-		return t.MaxDelay
+		return *t.MaxDelay
 	}
 	sched := schedule.New(t.Schedule)
 	begin, duration, err := sched.Next(schedule.NextWithLast(lastSync))
 	if err != nil {
-		return nil
+		return 0
 	}
 	end := begin.Add(duration)
 	maxDelay := end.Sub(time.Now())
 	if maxDelay < 0 {
-		maxDelay = 0
+		return 0
 	}
-	return &maxDelay
+	return maxDelay
 }
 
 func (t *T) StatusLastSync(nodenames []string) status.T {
@@ -95,12 +95,12 @@ func (t *T) StatusLastSync(nodenames []string) status.T {
 			t.StatusLog().Warn("%s never synced", nodename)
 		} else {
 			maxDelay := t.GetMaxDelay(tm)
-			if maxDelay == nil || *maxDelay == 0 {
+			if maxDelay == 0 {
 				t.StatusLog().Info("no schedule and no max delay")
 				continue
 			}
 			age := time.Since(tm)
-			if age > *maxDelay {
+			if age > maxDelay {
 				t.StatusLog().Warn("%s last sync is too old, at %s (>%s ago)", nodename, tm, maxDelay)
 				state.Add(status.Warn)
 			} else {

@@ -1167,12 +1167,15 @@ func newCmdNodeEvents() *cobra.Command {
 		},
 	}
 	flags := cmd.Flags()
-	addFlagsGlobal(flags, &options.OptsGlobal)
-	commoncmd.FlagEventFilters(flags, &options.Filters)
+	commoncmd.FlagColor(flags, &options.Color)
 	commoncmd.FlagDuration(flags, &options.Duration)
+	commoncmd.FlagEventFilters(flags, &options.Filters)
 	commoncmd.FlagEventTemplate(flags, &options.Template)
-	commoncmd.FlagWait(flags, &options.Wait)
 	commoncmd.FlagNodeSelector(flags, &options.NodeSelector)
+	commoncmd.FlagObjectSelector(flags, &options.ObjectSelector)
+	commoncmd.FlagOutput(flags, &options.Output)
+	commoncmd.FlagQuiet(flags, &options.Quiet)
+	commoncmd.FlagWait(flags, &options.Wait)
 	flags.Uint64Var(&options.Limit, "limit", 0, "stop listening when <limit> events are received, the default is 0 (unlimited) or 1 if --wait is set")
 	return cmd
 }
@@ -2244,6 +2247,7 @@ func newCmdObjectInstanceProvision(kind string) *cobra.Command {
 	flags := cmd.Flags()
 	addFlagsGlobal(flags, &options.OptsGlobal)
 	commoncmd.FlagsEncap(flags, &options.OptsEncap)
+	commoncmd.FlagsLock(flags, &options.OptsLock)
 	commoncmd.FlagsResourceSelector(flags, &options.OptsResourceSelector)
 	commoncmd.FlagsTo(flags, &options.OptTo)
 	commoncmd.FlagDisableRollback(flags, &options.DisableRollback)
@@ -2400,6 +2404,7 @@ func newCmdObjectInstanceUnprovision(kind string) *cobra.Command {
 	flags := cmd.Flags()
 	addFlagsGlobal(flags, &options.OptsGlobal)
 	commoncmd.FlagsEncap(flags, &options.OptsEncap)
+	commoncmd.FlagsLock(flags, &options.OptsLock)
 	commoncmd.FlagsResourceSelector(flags, &options.OptsResourceSelector)
 	commoncmd.FlagsTo(flags, &options.OptTo)
 	commoncmd.FlagForce(flags, &options.Force)

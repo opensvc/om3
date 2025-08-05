@@ -564,14 +564,15 @@ func (t *Status) HasCapability(s string) bool {
 
 func (t *Status) DeepCopy() *Status {
 	return &Status{
-		Name:        t.Name,
-		Type:        t.Type,
-		Head:        t.Head,
-		VolumeCount: t.VolumeCount,
+		Name:         t.Name,
+		Type:         t.Type,
+		Head:         t.Head,
+		VolumeCount:  t.VolumeCount,
 		Capabilities: append([]string{}, t.Capabilities...),
 		Usage: Usage{
-			Size:  t.Usage.Size,
-			Used:  t.Usage.Used,
+			Free: t.Usage.Free,
+			Size: t.Usage.Size,
+			Used: t.Usage.Used,
 		},
 		Errors: append([]string{}, t.Errors...),
 	}

@@ -273,7 +273,7 @@ var keywordStore = keywords.Store{
 		Candidates: placement.PolicyNames(),
 		Default:    "nodes order",
 		Inherit:    keywords.InheritHead,
-		Kind:       naming.NewKinds(naming.KindSvc),
+		Kind:       naming.NewKinds(naming.KindSvc, naming.KindVol),
 		Option:     "placement",
 		Scopable:   false,
 		Section:    "DEFAULT",
@@ -516,7 +516,7 @@ var keywordStore = keywords.Store{
 		Text:     keywords.NewText(fs, "text/kw/core/ca"),
 	},
 	{
-		Default:  "@5m",
+		Default:  "@1m",
 		Kind:     naming.NewKinds(naming.KindSvc, naming.KindVol),
 		Option:   "monitor_schedule",
 		Scopable: true,
@@ -719,15 +719,16 @@ func keywordLookup(store keywords.Store, k key.T, kind naming.Kind, sectionType 
 		driverGroup = rid.DriverGroup()
 	}
 
-	// base keyword
-	if kw := store.Lookup(k, kind, sectionType); !kw.IsZero() {
-		return kw
+	if driverGroup == driver.GroupVolume {
+		sectionType = ""
 	}
 
 	// driver keyword
 	var drivers driver.Registry
 	if k.Section == "*" && driverGroup == driver.GroupUnknown {
 		drivers = driver.All
+	} else if sectionType != "" {
+		drivers = driver.All.WithID(driverGroup, sectionType)
 	} else {
 		drivers = driver.All.WithGroup(driverGroup)
 	}
@@ -745,6 +746,12 @@ func keywordLookup(store keywords.Store, k key.T, kind naming.Kind, sectionType 
 			return kw
 		}
 	}
+
+	// base keyword
+	if kw := store.Lookup(k, kind, sectionType); !kw.IsZero() {
+		return kw
+	}
+
 	return keywords.Keyword{}
 }
 

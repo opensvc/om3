@@ -14,6 +14,7 @@ import (
 	"github.com/opensvc/om3/core/vpath"
 	"github.com/opensvc/om3/drivers/resdisk"
 	"github.com/opensvc/om3/util/device"
+	"github.com/opensvc/om3/util/lvm2"
 	"github.com/opensvc/om3/util/udevadm"
 )
 
@@ -137,6 +138,10 @@ func (t *T) Status(ctx context.Context) status.T {
 // it returns a formatted short description of the Resource
 func (t *T) Label(_ context.Context) string {
 	return t.VGName
+}
+
+func (t *T) ProvisionAsFollower(ctx context.Context) error {
+	return lvm2.PVScan(t.Log())
 }
 
 func (t *T) ProvisionAsLeader(ctx context.Context) error {

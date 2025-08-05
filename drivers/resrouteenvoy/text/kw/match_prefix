@@ -1,4 +1,0 @@
-If specified, the route is a prefix rule meaning that the prefix must match
-the beginning of the `:path` header.
-
-Precisely one of `prefix`, `path`, `regex` must be set.

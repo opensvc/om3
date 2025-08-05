@@ -2,7 +2,9 @@ package ressynczfs
 
 import (
 	"context"
+	"errors"
 	"fmt"
+	"os"
 	"strings"
 	"time"
 
@@ -105,6 +107,9 @@ func (t *T) status(ctx context.Context, dataset string) status.T {
 		zfs.ListWithLogger(t.Log()),
 	)
 	if err != nil {
+		if errors.Is(err, os.ErrNotExist) {
+			return status.NotApplicable
+		}
 		t.StatusLog().Error("%s", err)
 		return status.Undef
 	}
@@ -129,12 +134,12 @@ func (t *T) status(ctx context.Context, dataset string) status.T {
 				continue
 			}
 			maxDelay := t.GetMaxDelay(createdAt)
-			if maxDelay == nil {
+			if maxDelay == 0 {
 				continue
 			}
 			age := time.Since(createdAt)
-			if age > *maxDelay {
-				t.StatusLog().Warn("%s last snap is too old, created at %s (>%s ago)", t.Name, createdAt, *t.MaxDelay)
+			if age > maxDelay {
+				t.StatusLog().Warn("%s last snap is too old, created at %s (>%s ago)", t.Name, createdAt, maxDelay)
 				issueCount++
 			}
 		}

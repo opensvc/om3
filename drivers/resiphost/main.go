@@ -105,7 +105,7 @@ func (t *T) Start(ctx context.Context) error {
 		return err
 	}
 	actionrollback.Register(ctx, func(ctx context.Context) error {
-		return t.stop()
+		return t.stopAddr(ctx, dev)
 	})
 	if err := t.arpAnnounce(dev); err != nil {
 		return err
@@ -118,24 +118,13 @@ func (t *T) Start(ctx context.Context) error {
 
 func (t *T) Stop(ctx context.Context) error {
 	dev, _ := resip.SplitDevLabel(t.Dev)
-	if initialStatus := t.Status(ctx); initialStatus == status.Down {
-		t.Log().Infof("%s is already down on %s", t.Name, dev)
-		return nil
-	}
-	if err := t.stop(); err != nil {
+	if err := t.stopAddr(ctx, dev); err != nil {
 		return err
 	}
 	return nil
 }
 
 func (t *T) Status(ctx context.Context) status.T {
-	var (
-		i       *net.Interface
-		err     error
-		addrs   Addrs
-		carrier bool
-	)
-	ip := t.ipaddr()
 	if t.Name == "" {
 		t.StatusLog().Warn("name not set")
 		return status.NotApplicable
@@ -145,6 +134,36 @@ func (t *T) Status(ctx context.Context) status.T {
 		return status.NotApplicable
 	}
 	dev, _ := resip.SplitDevLabel(t.Dev)
+	if t.statusOfCarrier(ctx, dev) == status.Down {
+		return status.Down
+	}
+	return t.statusOfAddr(ctx, dev)
+}
+
+func (t *T) statusOfCarrier(ctx context.Context, dev string) status.T {
+	if !t.CheckCarrier {
+		return status.NotApplicable
+	}
+	if carrier, err := t.hasCarrier(); err == nil && carrier == false {
+		t.StatusLog().Error("interface %s no-carrier.", dev)
+		return status.Down
+	} else if err != nil {
+		t.StatusLog().Warn("carrier: %s", err)
+		return status.Undef
+	}
+	return status.Up
+}
+
+func (t *T) statusOfAddr(ctx context.Context, dev string) status.T {
+	var (
+		i     *net.Interface
+		err   error
+		addrs Addrs
+	)
+	ip := t.ipaddr()
+	if t.Name == "" {
+		return status.NotApplicable
+	}
 	if i, err = net.InterfaceByName(dev); err != nil {
 		if fmt.Sprint(err.(*net.OpError).Unwrap()) == "no such network interface" {
 			t.StatusLog().Warn("interface %s not found", dev)
@@ -152,12 +171,6 @@ func (t *T) Status(ctx context.Context) status.T {
 			t.StatusLog().Error("%s", err)
 		}
 		return status.Down
-	}
-	if t.CheckCarrier {
-		if carrier, err = t.hasCarrier(); err == nil && carrier == false {
-			t.StatusLog().Error("interface %s no-carrier.", dev)
-			return status.Down
-		}
 	}
 	if addrs, err = i.Addrs(); err != nil {
 		t.StatusLog().Error("%s", err)
@@ -439,7 +452,11 @@ func (t *T) start(dev, label string) error {
 	return t.addrAdd(addr, dev, label)
 }
 
-func (t *T) stop() error {
+func (t *T) stopAddr(ctx context.Context, dev string) error {
+	if t.statusOfAddr(ctx, dev) == status.Down {
+		t.Log().Infof("%s is already down on %s", t.Name, t.Dev)
+		return nil
+	}
 	addr := fmt.Sprintf("%s/%d", t.ipaddr(), t.ipmaskOnes())
 	return t.addrDel(addr, t.Dev)
 }

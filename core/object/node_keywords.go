@@ -762,7 +762,7 @@ var nodeCommonKeywords = []keywords.Keyword{
 		Text:    keywords.NewText(fs, "text/kw/node/cni.config"),
 	},
 	{
-		Candidates: []string{"directory", "loop", "vg", "zpool", "freenas", "share", "shm", "symmetrix", "virtual", "dorado", "hoc", "drbd", "pure"},
+		Candidates: []string{"directory", "loop", "vg", "zpool", "freenas", "share", "shm", "symmetrix", "truenas", "virtual", "dorado", "hoc", "drbd", "pure"},
 		Default:    "directory",
 		Option:     "type",
 		Section:    "pool",
@@ -785,7 +785,7 @@ var nodeCommonKeywords = []keywords.Keyword{
 		Scopable: true,
 		Section:  "pool",
 		Text:     keywords.NewText(fs, "text/kw/node/pool.array"),
-		Types:    []string{"freenas", "symmetrix", "dorado", "hoc", "pure"},
+		Types:    []string{"freenas", "symmetrix", "dorado", "hoc", "pure", "truenas"},
 	},
 	{
 		Option:  "label_prefix",
@@ -870,7 +870,7 @@ var nodeCommonKeywords = []keywords.Keyword{
 		Required: true,
 		Section:  "pool",
 		Text:     keywords.NewText(fs, "text/kw/node/pool.diskgroup"),
-		Types:    []string{"freenas", "dorado", "hoc", "pure"},
+		Types:    []string{"freenas", "dorado", "hoc", "pure", "truenas"},
 	},
 	{
 		Converter: "bool",
@@ -878,7 +878,7 @@ var nodeCommonKeywords = []keywords.Keyword{
 		Option:    "insecure_tpc",
 		Section:   "pool",
 		Text:      keywords.NewText(fs, "text/kw/node/pool.freenas.insecure_tpc"),
-		Types:     []string{"freenas"},
+		Types:     []string{"freenas", "truenas"},
 	},
 	{
 		Candidates: []string{"inherit", "none", "lz4", "gzip-1", "gzip-2", "gzip-3", "gzip-4", "gzip-5", "gzip-6", "gzip-7", "gzip-8", "gzip-9", "zle", "lzjb"},
@@ -886,7 +886,7 @@ var nodeCommonKeywords = []keywords.Keyword{
 		Option:     "compression",
 		Section:    "pool",
 		Text:       keywords.NewText(fs, "text/kw/node/pool.freenas.compression"),
-		Types:      []string{"freenas"},
+		Types:      []string{"freenas", "truenas"},
 	},
 	{
 		Default:   "false",
@@ -894,7 +894,7 @@ var nodeCommonKeywords = []keywords.Keyword{
 		Option:    "sparse",
 		Section:   "pool",
 		Text:      keywords.NewText(fs, "text/kw/node/pool.freenas.sparse"),
-		Types:     []string{"freenas"},
+		Types:     []string{"freenas", "truenas"},
 	},
 	{
 		Converter: "size",
@@ -902,7 +902,7 @@ var nodeCommonKeywords = []keywords.Keyword{
 		Option:    "blocksize",
 		Section:   "pool",
 		Text:      keywords.NewText(fs, "text/kw/node/pool.freenas.blocksize"),
-		Types:     []string{"freenas"},
+		Types:     []string{"freenas", "truenas"},
 	},
 	{
 		Option:   "name",
@@ -915,8 +915,10 @@ var nodeCommonKeywords = []keywords.Keyword{
 		DefaultText: keywords.NewText(fs, "text/kw/node/pool.drbd.addr.default"),
 		Example:     "1.2.3.4",
 		Option:      "addr",
+		Section:     "pool",
 		Scopable:    true,
 		Text:        keywords.NewText(fs, "text/kw/node/pool.drbd.addr"),
+		Types:       []string{"drbd"},
 	},
 	{
 		Option:  "vg",
@@ -1007,7 +1009,7 @@ var nodeCommonKeywords = []keywords.Keyword{
 		Option:  "fs_type",
 		Section: "pool",
 		Text:    keywords.NewText(fs, "text/kw/node/pool.fs_type"),
-		Types:   []string{"freenas", "dorado", "hoc", "symmetrix", "drbd", "loop", "vg", "pure"},
+		Types:   []string{"freenas", "dorado", "hoc", "symmetrix", "drbd", "loop", "vg", "pure", "truenas"},
 	},
 	{
 		Example: "-O largefile",
@@ -1146,7 +1148,7 @@ var nodeCommonKeywords = []keywords.Keyword{
 		Types:   []string{"brocade"},
 	},
 	{
-		Candidates: []string{"freenas", "hds", "eva", "nexenta", "vioserver", "centera", "symmetrix", "emcvnx", "netapp", "hp3par", "ibmds", "ibmsvc", "xtremio", "dorado", "hoc"},
+		Candidates: []string{"freenas", "hds", "eva", "nexenta", "vioserver", "centera", "symmetrix", "emcvnx", "netapp", "hp3par", "ibmds", "ibmsvc", "xtremio", "dorado", "hoc", "truenas"},
 		Option:     "type",
 		Required:   true,
 		Section:    "array",
@@ -1165,7 +1167,7 @@ var nodeCommonKeywords = []keywords.Keyword{
 		Option:  "dedup",
 		Section: "pool",
 		Text:    keywords.NewText(fs, "text/kw/node/pool.freenas.dedup"),
-		Types:   []string{"freenas"},
+		Types:   []string{"freenas", "truenas"},
 	},
 	{
 		Converter: "bool",
@@ -1189,7 +1191,7 @@ var nodeCommonKeywords = []keywords.Keyword{
 		Required: true,
 		Section:  "array",
 		Text:     keywords.NewText(fs, "text/kw/node/array.api"),
-		Types:    []string{"dorado", "freenas", "hoc", "pure", "xtremio"},
+		Types:    []string{"dorado", "freenas", "hoc", "pure", "truenas", "xtremio"},
 	},
 	{
 		Example: "http://proxy.mycorp:3158",
@@ -1236,7 +1238,7 @@ var nodeCommonKeywords = []keywords.Keyword{
 		Required: true,
 		Section:  "array",
 		Text:     keywords.NewText(fs, "text/kw/node/array.username,required"),
-		Types:    []string{"centera", "eva", "hds", "ibmds", "ibmsvc", "freenas", "netapp", "nexenta", "vioserver", "xtremio", "dorado", "hoc"},
+		Types:    []string{"centera", "eva", "hds", "ibmds", "ibmsvc", "freenas", "netapp", "nexenta", "vioserver", "xtremio", "dorado", "hoc", "truenas"},
 	},
 	{
 		Example: "root",
@@ -1268,7 +1270,7 @@ var nodeCommonKeywords = []keywords.Keyword{
 		Example:   "true",
 		Section:   "array",
 		Text:      keywords.NewText(fs, "text/kw/node/array.pure.insecure"),
-		Types:     []string{"pure", "hoc"},
+		Types:     []string{"pure", "hoc", "freenas", "truenas"},
 	},
 	{
 		Example:  "opensvc",
@@ -1300,7 +1302,7 @@ var nodeCommonKeywords = []keywords.Keyword{
 		Required: true,
 		Section:  "array",
 		Text:     keywords.NewText(fs, "text/kw/node/array.password,required"),
-		Types:    []string{"centera", "eva", "hds", "freenas", "nexenta", "xtremio", "dorado", "hoc"},
+		Types:    []string{"centera", "eva", "hds", "freenas", "nexenta", "xtremio", "truenas", "dorado", "hoc"},
 	},
 	{
 		Example: "system/sec/array1",
@@ -1316,7 +1318,7 @@ var nodeCommonKeywords = []keywords.Keyword{
 		Option:    "timeout",
 		Section:   "array",
 		Text:      keywords.NewText(fs, "text/kw/node/array.timeout"),
-		Types:     []string{"freenas", "dorado", "hoc"},
+		Types:     []string{"freenas", "dorado", "hoc", "truenas"},
 	},
 	{
 		Example: "a09",

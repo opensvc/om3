@@ -53,7 +53,7 @@ func (t *Filesystem) Snapshot(fopts ...funcopt.O) error {
 	opts := &fsSnapshotOpts{Name: t.Name}
 	funcopt.Apply(opts, fopts...)
 	args := fsSnapshotOptsToArgs(*opts)
-	cmd := exec.Command("zfs", args...)
+	cmd := exec.Command("/usr/sbin/zfs", args...)
 	cmdStr := cmd.String()
 	if t.Log != nil {
 		t.Log.Debugf("exec '%s'", cmdStr)
@@ -61,16 +61,11 @@ func (t *Filesystem) Snapshot(fopts ...funcopt.O) error {
 	b, err := cmd.CombinedOutput()
 	if err != nil {
 		t.Log.
-			Attr("exitcode", cmd.ProcessState.ExitCode()).
-			Attr("cmd", cmdStr).
 			Attr("outputs", string(b)).
-			Errorf("%s create exited with code %d", t.Name, cmd.ProcessState.ExitCode())
+			Errorf("%s: exited with code %d", cmdStr, cmd.ProcessState.ExitCode())
 	} else {
 		if t.Log != nil {
-			t.Log.
-				Attr("exitcode", cmd.ProcessState.ExitCode()).
-				Attr("cmd", cmdStr).
-				Infof("%s created", t.Name)
+			t.Log.Infof(cmdStr)
 		}
 	}
 	return err

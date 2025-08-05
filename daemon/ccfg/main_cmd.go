@@ -63,7 +63,7 @@ func (t *Manager) handleConfigChanges() {
 	var change bool
 
 	for _, name := range clu.Config().SectionStrings() {
-		if strings.HasPrefix(name, "network#") {
+		if strings.HasPrefix(name, "network#") || name == "cni" {
 			lastSig, _ := t.networkSigs[name]
 			sig := clu.Config().SectionSig(name)
 			if sig != lastSig {

@@ -12,11 +12,13 @@ type (
 	// Entry represents a parsed line of the df unix command
 	Entry struct {
 		Device      string
-		Total       int64
-		Used        int64
-		Free        int64
-		UsedPercent int64
 		MountPoint  string
+		UsedPercent int64
+
+		// In bytes
+		Total int64
+		Used  int64
+		Free  int64
 	}
 )
 

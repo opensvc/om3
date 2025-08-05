@@ -158,9 +158,9 @@ func (t T) usageFile() (pool.Usage, error) {
 		return pool.Usage{}, fmt.Errorf("not mounted")
 	}
 	usage := pool.Usage{
-		Size: entries[0].Total * 1024,
-		Free: entries[0].Free * 1024,
-		Used: entries[0].Used * 1024,
+		Size: entries[0].Total,
+		Free: entries[0].Free,
+		Used: entries[0].Used,
 	}
 	return usage, nil
 }

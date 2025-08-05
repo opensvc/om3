@@ -1,5 +1,0 @@
-The envoy protocol compliant data in json format used to bootstrap the
-Cluster config messages.
-
-Parts of this structure, like endpoints, are amended to reflect the actual
-cluster state.

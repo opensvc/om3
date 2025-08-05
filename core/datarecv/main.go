@@ -362,14 +362,22 @@ type dirDefinition struct {
 }
 
 func (t *DataRecv) InstallFromDatastore(from object.DataStore) (bool, error) {
+	if len(t.Install) == 0 {
+		return false, nil
+	}
+
 	changed := false
 	head := t.to.Head()
 	path := t.to.GetObject().(object.Core).Path()
+	dirs, files := t.getInstallMetadata(head)
+
+	if len(dirs) == 0 && len(files) == 0 {
+		return false, nil
+	}
+
 	if head == "" {
 		return false, fmt.Errorf("refuse to install in empty (ie /) head")
 	}
-
-	dirs, files := t.getInstallMetadata(head)
 
 	for _, dir := range dirs {
 		if err := t.installDir(dir.Path, head, *dir.Perm, dir.User, dir.Group); err != nil && dir.Required {
@@ -406,15 +414,22 @@ func (t *DataRecv) InstallFromDatastore(from object.DataStore) (bool, error) {
 }
 
 func (t *DataRecv) install(ctx context.Context) (bool, error) {
+	if len(t.Install) == 0 {
+		return false, nil
+	}
+
 	changed := false
 	head := t.to.Head()
 	path := t.to.GetObject().(object.Core).Path()
+	dirs, files := t.getInstallMetadata(head)
+
+	if len(dirs) == 0 && len(files) == 0 {
+		return false, nil
+	}
 
 	if head == "" {
 		return false, fmt.Errorf("refuse to install in empty (ie /) head")
 	}
-
-	dirs, files := t.getInstallMetadata(head)
 
 	for _, dir := range dirs {
 		if err := t.installDir(dir.Path, head, *dir.Perm, dir.User, dir.Group); err != nil && dir.Required {

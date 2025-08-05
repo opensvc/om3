@@ -46,14 +46,14 @@ func TestAppPrintStatusFlatJson(t *testing.T) {
 	for rid, c := range cases {
 		t.Logf("check rid %s, expected %v", rid, c)
 		for i, log := range c {
-			prefix := fmt.Sprintf("[0].status.resources.'%s'.log[%d]", rid, i)
-			searched := fmt.Sprintf("%s.message = %s%s%s", prefix, string('"'), log.Message, string('"'))
+			prefix := fmt.Sprintf("[0].status.resources.\"%s\".log[%d]", rid, i)
+			searched := fmt.Sprintf("%s.message = \"%s\"", prefix, log.Message)
 			assert.Containsf(t, outS, searched, "%s not found in \n%s", searched, outS)
 
-			searched = fmt.Sprintf("%s.level = %s%s%s", prefix, string('"'), log.Level, string('"'))
+			searched = fmt.Sprintf("%s.level = \"%s\"", prefix, log.Level)
 			assert.Containsf(t, outS, searched, "%s not found in \n%s", searched, outS)
 		}
-		mustNotExist := fmt.Sprintf("[0].status.resources.'%s'.log[%d]", rid, len(c)+1)
-		assert.NotContainsf(t, outS, mustNotExist, "extra log has been found: '%s' in \n'%s'", mustNotExist, outS)
+		mustNotExist := fmt.Sprintf("[0].status.resources.\"%s\".log[%d]", rid, len(c)+1)
+		assert.NotContainsf(t, outS, mustNotExist, "extra log has been found: \"%s\" in \n\"%s\"", mustNotExist, outS)
 	}
 }

@@ -8,6 +8,7 @@ import (
 	"net"
 	"strings"
 	"sync"
+	"syscall"
 	"time"
 
 	"github.com/opensvc/om3/core/cluster"
@@ -104,11 +105,26 @@ func (t *rx) Start(cmdC chan<- interface{}, msgC chan<- *hbtype.Msg) error {
 	t.msgC = msgC
 	t.cancel = cancel
 	t.log.Infof("starting: timeout %s", t.timeout)
-	listener, err := net.Listen("tcp", t.addr+":"+t.port)
+
+	listenConfig := net.ListenConfig{
+		Control: func(network, address string, c syscall.RawConn) error {
+			var err error
+			err = c.Control(func(fd uintptr) {
+				err = syscall.SetsockoptInt(int(fd), syscall.SOL_SOCKET, syscall.SO_REUSEADDR, 1)
+			})
+			if err != nil {
+				return fmt.Errorf("failed to set SO_REUSEADDR: %w", err)
+			}
+			return nil
+		},
+	}
+
+	listener, err := listenConfig.Listen(t.ctx, "tcp", t.addr+":"+t.port)
 	if err != nil {
 		t.log.Errorf("listen failed: %s", err)
 		return err
 	}
+
 	started := make(chan bool)
 	t.Add(1)
 	go func() {
@@ -136,14 +152,13 @@ func (t *rx) Start(cmdC chan<- interface{}, msgC chan<- *hbtype.Msg) error {
 				otherNodeIPL = append(otherNodeIPL, addr)
 			}
 		}
-		t.Add(1)
+		var wg sync.WaitGroup
+		wg.Add(1)
 		go func() {
-			defer t.Done()
+			defer wg.Done()
 			select {
 			case <-ctx.Done():
-				t.log.Debugf("closing listener")
 				_ = listener.Close()
-				t.log.Debugf("closed listener")
 				t.cancel()
 				return
 			}
@@ -182,9 +197,13 @@ func (t *rx) Start(cmdC chan<- interface{}, msgC chan<- *hbtype.Msg) error {
 				ClusterName: clusterConfig.Name,
 				Key:         clusterConfig.Secret(),
 			})
-			t.Add(1)
-			go t.handle(clearConn)
+			wg.Add(1)
+			go func() {
+				defer wg.Done()
+				t.handle(clearConn)
+			}()
 		}
+		wg.Wait()
 		t.log.Infof("stopped %s", t.addr)
 	}()
 	<-started
@@ -193,7 +212,6 @@ func (t *rx) Start(cmdC chan<- interface{}, msgC chan<- *hbtype.Msg) error {
 }
 
 func (t *rx) handle(conn encryptconn.ConnNoder) {
-	defer t.Done()
 	defer func() {
 		if err := conn.Close(); err != nil {
 			t.log.Warnf("unexpected error while closing connection from %s: %s", conn.RemoteAddr(), err)

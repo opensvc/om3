@@ -1,3 +1,0 @@
-Specifies the timeout for the route.
-
-> **Note**: This timeout includes all retries.

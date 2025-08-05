@@ -1,16 +1,19 @@
 package zfs
 
 import (
+	"os/exec"
+	"strings"
+
 	"github.com/opensvc/om3/util/args"
-	"github.com/opensvc/om3/util/command"
 	"github.com/opensvc/om3/util/funcopt"
 	"github.com/opensvc/om3/util/sizeconv"
-	"github.com/rs/zerolog"
+	"golang.org/x/crypto/ssh"
 )
 
 type (
 	fsCreateOpts struct {
 		Name           string
+		Node           string
 		RefQuota       *int64
 		Quota          *int64
 		RefReservation *int64
@@ -18,6 +21,14 @@ type (
 		Args           []string
 	}
 )
+
+func FilesystemCreateWithNode(s string) funcopt.O {
+	return funcopt.F(func(i interface{}) error {
+		t := i.(*fsCreateOpts)
+		t.Node = s
+		return nil
+	})
+}
 
 // FilesystemCreateWithArgs defines the shlex split list of arguments to prepend
 // to the command.
@@ -92,7 +103,7 @@ func FilesystemCreateWithReservation(size *int64) funcopt.O {
 
 func fsCreateOptsToArgs(t fsCreateOpts) []string {
 	a := args.New()
-	a.Append("create")
+	a.Append("create", "-p")
 	if t.RefQuota != nil {
 		a.DropOptionAndMatchingValue("-o", "^refquota=.*")
 		a.Append("-o", "refquota="+sizeconv.ExactBSizeCompact(float64(*t.RefQuota)))
@@ -120,14 +131,46 @@ func (t *Filesystem) Create(fopts ...funcopt.O) error {
 	opts := &fsCreateOpts{Name: t.Name}
 	funcopt.Apply(opts, fopts...)
 	args := fsCreateOptsToArgs(*opts)
-	cmd := command.New(
-		command.WithName("zfs"),
-		command.WithArgs(args),
-		command.WithBufferedStdout(),
-		command.WithLogger(t.Log),
-		command.WithCommandLogLevel(zerolog.InfoLevel),
-		command.WithStdoutLogLevel(zerolog.InfoLevel),
-		command.WithStderrLogLevel(zerolog.ErrorLevel),
-	)
-	return cmd.Run()
+	cmd := exec.Command("/usr/sbin/zfs", args...)
+	if opts.Node == "" {
+		if t.Log != nil {
+			t.Log.Infof("%s", cmd)
+		}
+		b, err := cmd.CombinedOutput()
+		if strings.Contains(string(b), "dataset already exists") {
+			return nil
+		}
+		return err
+
+	}
+	client, err := t.newSSHClient(opts.Node)
+	if err != nil {
+		return err
+	}
+	defer client.Close()
+	session, err := client.NewSession()
+	if err != nil {
+		return err
+	}
+	defer session.Close()
+
+	if t.Log != nil {
+		t.Log.Infof("ssh %s %s", opts.Node, cmd)
+	}
+	if b, err := session.CombinedOutput(cmd.String()); err != nil {
+		if ee, ok := err.(*ssh.ExitError); ok {
+			ec := ee.Waitmsg.ExitStatus()
+			if ec == 0 {
+				return nil
+			}
+			if strings.Contains(string(b), "dataset already exists") {
+				return nil
+			}
+			if t.Log != nil {
+				t.Log.Errorf("ssh %s %s: exited with code %d", opts.Node, cmd, ec)
+			}
+		}
+		return err
+	}
+	return nil
 }

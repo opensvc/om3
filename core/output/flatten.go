@@ -79,6 +79,16 @@ func PrintFlat(b []byte) {
 }
 
 func flatten(value interface{}, lkey string, flattened *map[string]string) {
+	hasDigitPrefix := func(s string) bool {
+		if s == "" {
+			return false
+		}
+		var r = ' '
+		for _, r = range s {
+			break
+		}
+		return r >= '0' && r <= '9'
+	}
 	v := reflect.ValueOf(value)
 	if value == nil {
 		return
@@ -91,8 +101,8 @@ func flatten(value interface{}, lkey string, flattened *map[string]string) {
 		}
 	case reflect.Map:
 		for rkey, rval := range value.(map[string]interface{}) {
-			if strings.ContainsAny(rkey, ".#$/") {
-				rkey = fmt.Sprintf("'%s'", rkey)
+			if strings.ContainsAny(rkey, ".#$/") || hasDigitPrefix(rkey) {
+				rkey = fmt.Sprintf("\"%s\"", rkey)
 			}
 			k := fmt.Sprintf("%s.%s", lkey, rkey)
 			flatten(rval, k, flattened)

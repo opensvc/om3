@@ -174,7 +174,7 @@ func (t *T) NetNSPath(ctx context.Context) (string, error) {
 	if pid, err := t.getPID(ctx); err != nil {
 		return "", err
 	} else if pid == 0 {
-		return "", fmt.Errorf("container %s is not running", t.Name)
+		return "", nil
 	} else {
 		return fmt.Sprintf("/proc/%d/ns/net", pid), nil
 	}
@@ -295,7 +295,7 @@ func (t *T) ProvisionAsLeader(ctx context.Context) error {
 	if t.Template != "" {
 		args = append(args, "-t", t.Template)
 		if len(t.TemplateOptions) > 0 {
-			args = append(args, "..")
+			args = append(args, "--")
 			args = append(args, t.TemplateOptions...)
 		}
 	} else {
@@ -311,7 +311,7 @@ func (t *T) ProvisionAsLeader(ctx context.Context) error {
 		command.WithLogger(t.Log()),
 		command.WithCommandLogLevel(zerolog.InfoLevel),
 		command.WithStdoutLogLevel(zerolog.InfoLevel),
-		command.WithStderrLogLevel(zerolog.ErrorLevel),
+		command.WithStderrLogLevel(zerolog.InfoLevel),
 		//command.WithTimeout(*t.StartTimeout),
 		command.WithEnv(env),
 	)
@@ -402,18 +402,19 @@ func (t *T) rcmd(envs []string) ([]string, error) {
 	var args []string
 	if len(t.RCmd) > 0 {
 		args = t.RCmd
-	} else {
-		hasPIDNS := file.Exists("/proc/1/ns/pid")
-		if exe, err := exec.LookPath("lxc-attach"); err == nil && hasPIDNS {
-			if p, err := t.dataDir(); err == nil && p != "" {
-				args = []string{exe, "-n", t.Name, "-P", p, "--clear-env"}
-			} else {
-				args = []string{exe, "-n", t.Name, "--clear-env"}
-			}
-		}
+		args = append(args, t.GetHostname())
+		args = append(args, "--")
+		args = append(args, envs...)
+		return args, nil
 	}
-	if len(args) == 0 {
-		return nil, fmt.Errorf("unable to identify a remote command method. install lxc-attach or set the rcmd keyword")
+
+	hasPIDNS := file.Exists("/proc/1/ns/pid")
+	if exe, err := exec.LookPath("lxc-attach"); err == nil && hasPIDNS {
+		if p, err := t.dataDir(); err == nil && p != "" {
+			args = []string{exe, "-n", t.Name, "-P", p, "--clear-env"}
+		} else {
+			args = []string{exe, "-n", t.Name, "--clear-env"}
+		}
 	}
 	for _, e := range envs {
 		args = append(args, "-v", e)
@@ -1041,6 +1042,7 @@ func (t *T) getPID(ctx context.Context) (int, error) {
 		command.WithName("lxc-info"),
 		command.WithArgs(args),
 		command.WithBufferedStdout(),
+		command.WithIgnoredExitCodes(0, 1),
 	}
 	if ctx != nil {
 		opts = append(opts, command.WithContext(ctx))
@@ -1049,6 +1051,10 @@ func (t *T) getPID(ctx context.Context) (int, error) {
 	b, err := cmd.Output()
 	if err != nil {
 		return 0, err
+	}
+	if cmd.ExitCode() == 1 {
+		// container is not running
+		return 0, nil
 	}
 	scanner := bufio.NewScanner(bytes.NewReader(b))
 	for scanner.Scan() {
@@ -1061,7 +1067,7 @@ func (t *T) getPID(ctx context.Context) (int, error) {
 			return strconv.Atoi(fields[1])
 		}
 	}
-	return 0, fmt.Errorf("pid not found")
+	return 0, nil
 }
 
 func (t *T) getLinks() []string {

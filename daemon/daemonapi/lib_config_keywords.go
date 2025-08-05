@@ -42,7 +42,7 @@ func filterKeywordStore(ctx echo.Context, store keywords.Store, driver, section,
 		}
 		sectionType := o.Config().GetString(key.New(*section, "type"))
 		k := key.New(*section, *option)
-		kw := store.Lookup(k, path.Kind, sectionType)
+		kw := o.Config().Referrer.KeywordLookup(k, sectionType)
 		if kw.IsZero() {
 			store = []keywords.Keyword{}
 		} else {

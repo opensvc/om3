@@ -905,7 +905,7 @@ func waitNmonStates(ctx context.Context, desc string, d time.Duration, p naming.
 				return
 			case i := <-sub.C:
 				if msg, ok := i.(*msgbus.InstanceMonitorUpdated); ok {
-					if msg.Value.State.Is(states...) {
+					if msg.Value.State.IsOneOf(states...) {
 						stateC <- msg.Value.State
 						errC <- ctx.Err()
 						return

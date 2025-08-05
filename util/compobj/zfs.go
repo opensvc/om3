@@ -406,7 +406,7 @@ func NewCompZfss() interface{} {
 }
 
 func (t CompZfss) Add(s string) error {
-	zpropZbin = "zfs"
+	zpropZbin = "/usr/sbin/zfs"
 	return t.add(s)
 }
 

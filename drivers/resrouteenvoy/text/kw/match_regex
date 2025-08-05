@@ -1,6 +1,0 @@
-If specified, the route is a regular expression rule meaning that the regex
-must match the `:path` header once the query string is removed. The entire
-path (without the query string) must match the regex.
-
-The rule will not match if only a subsequence of the `:path` header matches
-the regex.

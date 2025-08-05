@@ -1029,12 +1029,15 @@ func newCmdNodeEvents() *cobra.Command {
 		},
 	}
 	flags := cmd.Flags()
-	addFlagsGlobal(flags, &options.OptsGlobal)
-	commoncmd.FlagEventFilters(flags, &options.Filters)
+	commoncmd.FlagColor(flags, &options.Color)
 	commoncmd.FlagDuration(flags, &options.Duration)
+	commoncmd.FlagEventFilters(flags, &options.Filters)
 	commoncmd.FlagEventTemplate(flags, &options.Template)
-	commoncmd.FlagWait(flags, &options.Wait)
 	commoncmd.FlagNodeSelector(flags, &options.NodeSelector)
+	commoncmd.FlagObjectSelector(flags, &options.ObjectSelector)
+	commoncmd.FlagOutput(flags, &options.Output)
+	commoncmd.FlagQuiet(flags, &options.Quiet)
+	commoncmd.FlagWait(flags, &options.Wait)
 	flags.Uint64Var(&options.Limit, "limit", 0, "stop listening when <limit> events are received, the default is 0 (unlimited) or 1 if --wait is set")
 	return cmd
 }
@@ -2321,7 +2324,6 @@ func newCmdObjectInstanceDeviceList(kind string) *cobra.Command {
 	addFlagsGlobal(flags, &options.OptsGlobal)
 	commoncmd.FlagNodeSelector(flags, &options.NodeSelector)
 	commoncmd.FlagDevRoles(flags, &options.Roles)
-	flagLocal(flags, &options.Local)
 	return cmd
 }
 
@@ -2373,6 +2375,7 @@ func newCmdObjectInstanceProvision(kind string) *cobra.Command {
 	}
 	flags := cmd.Flags()
 	addFlagsGlobal(flags, &options.OptsGlobal)
+	commoncmd.FlagsLock(flags, &options.OptsLock)
 	commoncmd.FlagsEncap(flags, &options.OptsEncap)
 	commoncmd.FlagsResourceSelector(flags, &options.OptsResourceSelector)
 	commoncmd.FlagsTo(flags, &options.OptTo)
@@ -2591,6 +2594,7 @@ func newCmdObjectInstanceUnprovision(kind string) *cobra.Command {
 	}
 	flags := cmd.Flags()
 	addFlagsGlobal(flags, &options.OptsGlobal)
+	commoncmd.FlagsLock(flags, &options.OptsLock)
 	commoncmd.FlagsEncap(flags, &options.OptsEncap)
 	commoncmd.FlagsResourceSelector(flags, &options.OptsResourceSelector)
 	commoncmd.FlagsTo(flags, &options.OptTo)
@@ -3216,6 +3220,14 @@ func newCmdNodePrintConfig() *cobra.Command {
 	return cmd
 }
 
+func newCmdNodePrintSchedule() *cobra.Command {
+	cmd := newCmdNodeScheduleList()
+	cmd.Hidden = true
+	cmd.Use = "schedule"
+	cmd.Aliases = []string{"schedul", "schedu", "sched", "sche", "sch", "sc"}
+	return cmd
+}
+
 func newCmdNodeSet() *cobra.Command {
 	var options commands.CmdNodeSet
 	cmd := &cobra.Command{
@@ -3361,6 +3373,20 @@ func newCmdObjectShutdown(kind string) *cobra.Command {
 func newCmdObjectStartStandby(kind string) *cobra.Command {
 	cmd := newCmdObjectInstanceStartStandby(kind)
 	cmd.Hidden = true
+	return cmd
+}
+
+func newCmdNodePrintCapabilities() *cobra.Command {
+	cmd := newCmdNodeCapabilitiesList()
+	cmd.Hidden = true
+	cmd.Aliases = []string{"cap", "caps", "capa"}
+	return cmd
+}
+
+func newCmdNodeScanCapabilities() *cobra.Command {
+	cmd := newCmdNodeCapabilitiesScan()
+	cmd.Hidden = true
+	cmd.Aliases = []string{"cap", "caps", "capa"}
 	return cmd
 }
 

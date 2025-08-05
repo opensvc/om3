@@ -46,8 +46,9 @@ type (
 )
 
 var (
-	ErrInvalidNode = errors.New("invalid node")
-	ErrDisabled    = errors.New("object instance is disabled")
+	ErrInvalidNode            = errors.New("invalid node")
+	ErrDisabled               = errors.New("object instance is disabled")
+	ErrEncapAgentNotInstalled = errors.New("opensvc is not installed in the container")
 )
 
 func (t *actor) validateAction() error {
@@ -485,6 +486,7 @@ func (t *actor) action(ctx context.Context, fn resourceset.DoFunc) error {
 		if err != nil {
 			return err
 		}
+		r.Log().Debugf("%s", cmd)
 		err = cmd.Run()
 		if err != nil {
 			if exitErr, ok := err.(exitcoder); ok {
@@ -493,8 +495,8 @@ func (t *actor) action(ctx context.Context, fn resourceset.DoFunc) error {
 					if err := encapContainer.EncapCp(ctx, configFile, configFile); err != nil {
 						return err
 					}
-				case 128:
-					return fmt.Errorf("opensvc is not installed in the container")
+				case 127, 128:
+					return ErrEncapAgentNotInstalled
 				default:
 					return err
 				}
@@ -588,8 +590,15 @@ func (t *actor) action(ctx context.Context, fn resourceset.DoFunc) error {
 				}
 			}
 
-			if err := doEncap(ctx, r); err != nil {
-				return nil
+			sb := statusbus.FromContext(ctx)
+			if sb.Get(r.RID()).Is(status.Up, status.StandbyUp) {
+				err := doEncap(ctx, r)
+				switch {
+				case errors.Is(err, ErrEncapAgentNotInstalled):
+					r.Log().Warnf("%s: continue anyway", err)
+				case err != nil:
+					return err
+				}
 			}
 
 			// do host action after encap if descending

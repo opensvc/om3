@@ -2,6 +2,7 @@ package resdiskloop
 
 import (
 	"context"
+	"fmt"
 	"os"
 	"path/filepath"
 
@@ -43,10 +44,19 @@ func (t *T) isUp(lo *loop.T) (bool, error) {
 
 func (t *T) Start(ctx context.Context) error {
 	lo := t.loop()
-	if v, err := t.isUp(lo); err != nil {
+	isUp, err := t.isUp(lo)
+	if err != nil {
 		return err
-	} else if v {
-		t.Log().Infof("%s is already up", t.Label(ctx))
+	}
+	if isUp {
+		stat, err := os.Stat(t.File)
+		if err != nil {
+			return err
+		}
+		if stat.Size() == 0 {
+			return fmt.Errorf("%s exists but is empty", t.File)
+		}
+		t.Log().Infof("%s is already setup", t.Label(ctx))
 		return nil
 	}
 	if err := t.autoProvision(ctx); err != nil {
@@ -78,22 +88,51 @@ func (t *T) Stop(ctx context.Context) error {
 
 func (t *T) Status(ctx context.Context) status.T {
 	lo := t.loop()
-	if v, err := t.isUp(lo); err != nil {
+	loInfo, err := lo.FileGet(t.File)
+	if err != nil {
 		t.StatusLog().Warn("%s", err)
 		return status.Undef
-	} else if v {
-		return status.Up
 	}
-	return status.Down
+	if loInfo == nil {
+		return status.Down
+	}
+	stat, err := os.Stat(t.File)
+	if err != nil {
+		t.StatusLog().Warn("backend file deleted")
+		return status.Warn
+	}
+	if stat.Size() == 0 {
+		t.StatusLog().Warn("file exists but is empty")
+		return status.Warn
+	}
+	return status.Up
 }
 
-func (t *T) fileExists() (bool, error) {
-	return file.ExistsAndRegular(t.File)
+func (t *T) fileExists() (os.FileInfo, error) {
+	info, err := os.Stat(t.File)
+	switch {
+	case os.IsNotExist(err):
+		return nil, nil
+	case file.IsNotDir(err):
+		return nil, nil
+	case err != nil:
+		return nil, err
+	}
+	if !info.Mode().IsRegular() {
+		return nil, nil
+	}
+	return info, nil
 }
 
 func (t *T) Provisioned() (provisioned.T, error) {
-	v, err := t.fileExists()
-	return provisioned.FromBool(v), err
+	stat, err := t.fileExists()
+	if err != nil {
+		return provisioned.Undef, err
+	}
+	if stat == nil {
+		return provisioned.False, nil
+	}
+	return provisioned.True, nil
 }
 
 // Label implements Label from resource.Driver interface,
@@ -116,13 +155,17 @@ func (t *T) isVolatile() bool {
 // autoProvision provisions the loop on start if the backing file is
 // hosted on a tmpfs
 func (t *T) autoProvision(ctx context.Context) error {
-	if v, err := t.fileExists(); err != nil {
-		return err
-	} else if v {
-		return nil
-	}
 	if !t.isVolatile() {
 		return nil
+	}
+	stat, err := t.fileExists()
+	if err != nil {
+		return err
+	}
+	if stat != nil {
+		if err := t.removeEmptyBackendFile(); err != nil {
+			return err
+		}
 	}
 	return t.provision(ctx)
 }
@@ -130,9 +173,9 @@ func (t *T) autoProvision(ctx context.Context) error {
 // autoUnprovision unprovisions the loop on stop if the backing file is
 // hosted on a tmpfs
 func (t *T) autoUnprovision(ctx context.Context) error {
-	if v, err := t.fileExists(); err != nil {
+	if stat, err := t.fileExists(); err != nil {
 		return err
-	} else if !v {
+	} else if stat == nil {
 		return nil
 	}
 	if !t.isVolatile() {
@@ -141,19 +184,35 @@ func (t *T) autoUnprovision(ctx context.Context) error {
 	return t.unprovision(ctx)
 }
 
-func (t *T) ProvisionAsLeader(ctx context.Context) error {
-	if v, err := t.fileExists(); err != nil {
+func (t *T) removeEmptyBackendFile() error {
+	lo := t.loop()
+	if err := lo.Delete(t.File); err != nil {
 		return err
-	} else if v {
-		return nil
+	}
+	t.Log().Infof("remove empty existing file %s", t.File)
+	if err := os.Remove(t.File); err != nil {
+		return err
+	}
+	return nil
+}
+
+func (t *T) ProvisionAsLeader(ctx context.Context) error {
+	if stat, err := t.fileExists(); err != nil {
+		return err
+	} else if stat != nil {
+		if stat.Size() == 0 {
+			if err := t.removeEmptyBackendFile(); err != nil {
+				return err
+			}
+		}
 	}
 	return t.provision(ctx)
 }
 
 func (t *T) UnprovisionAsLeader(ctx context.Context) error {
-	if v, err := t.fileExists(); err != nil {
+	if stat, err := t.fileExists(); err != nil {
 		return err
-	} else if !v {
+	} else if stat == nil {
 		return nil
 	}
 	return t.unprovision(ctx)
@@ -183,6 +242,9 @@ func (t *T) provision(ctx context.Context) error {
 		f    *os.File
 		size int64
 	)
+	if size, err = sizeconv.FromSize(t.Size); err != nil {
+		return err
+	}
 	if err = t.provisionDir(ctx); err != nil {
 		return err
 	}
@@ -195,9 +257,6 @@ func (t *T) provision(ctx context.Context) error {
 		t.Log().Infof("unlink file %s", t.File)
 		return os.Remove(t.File)
 	})
-	if size, err = sizeconv.FromSize(t.Size); err != nil {
-		return err
-	}
 	offset := (size / 512 * 512) - 1
 	t.Log().Infof("seek/write file, offset %d", offset)
 	if _, err = f.Seek(offset, 0); err != nil {
@@ -223,6 +282,9 @@ func (t *T) unprovision(ctx context.Context) error {
 func (t *T) exposedDevice(lo *loop.T) *device.T {
 	i, err := lo.FileGet(t.File)
 	if err != nil {
+		return nil
+	}
+	if i == nil {
 		return nil
 	}
 	dev := device.New(i.Name, device.WithLogger(t.Log()))

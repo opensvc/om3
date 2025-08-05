@@ -81,12 +81,9 @@ func (t *Filesystem) Destroy(fopts ...funcopt.O) error {
 	opts := &fsDestroyOpts{Name: t.Name}
 	funcopt.Apply(opts, fopts...)
 	args := fsDestroyOptsToArgs(*opts)
-	cmd := exec.Command("zfs", args...)
+	cmd := exec.Command("/usr/sbin/zfs", args...)
 	cmdStr := cmd.String()
 	if opts.Node == "" {
-		if t.Log != nil {
-			t.Log.Attr("cmd", cmdStr).Debugf("destroy zfs '%s'", t.Name)
-		}
 		b, err := cmd.CombinedOutput()
 		if strings.Contains(string(b), "could not find") {
 			return nil
@@ -96,16 +93,13 @@ func (t *Filesystem) Destroy(fopts ...funcopt.O) error {
 		}
 		if err != nil {
 			t.Log.
-				Attr("exitcode", cmd.ProcessState.ExitCode()).
-				Attr("cmd", cmdStr).
 				Attr("outputs", string(b)).
-				Errorf("%s destroy exited with code %d", t.Name, cmd.ProcessState.ExitCode())
+				Errorf("%s: exited with code %d", cmdStr, cmd.ProcessState.ExitCode())
 		} else {
 			if t.Log != nil {
 				t.Log.
 					Attr("exitcode", cmd.ProcessState.ExitCode()).
-					Attr("cmd", cmdStr).
-					Infof("%s destroyed", t.Name)
+					Infof(cmdStr)
 			}
 		}
 		return err
@@ -121,9 +115,6 @@ func (t *Filesystem) Destroy(fopts ...funcopt.O) error {
 	}
 	defer session.Close()
 
-	if t.Log != nil {
-		t.Log.Debugf("rexec '%s' on node %s", cmdStr, opts.Node)
-	}
 	if b, err := session.CombinedOutput(cmdStr); err != nil {
 		ee := err.(*ssh.ExitError)
 		ec := ee.Waitmsg.ExitStatus()
@@ -137,18 +128,12 @@ func (t *Filesystem) Destroy(fopts ...funcopt.O) error {
 			return nil
 		}
 		t.Log.
-			Attr("exitcode", ec).
-			Attr("cmd", cmdStr).
-			Attr("peer", opts.Node).
 			Attr("outputs", string(b)).
-			Errorf("destroy %s on node %s exited with code %d", t.Name, opts.Node, ec)
+			Errorf("ssh %s %s: exited with code %d", opts.Node, cmdStr, ec)
 		return err
 	} else {
 		if t.Log != nil {
-			t.Log.
-				Attr("cmd", cmdStr).
-				Attr("peer", opts.Node).
-				Infof("%s destroyed on node %s", t.Name, opts.Node)
+			t.Log.Infof("ssh %s %s", opts.Node, cmdStr)
 		}
 	}
 	return nil

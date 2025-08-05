@@ -26,12 +26,6 @@ var (
 		GroupTask:      "host",
 		GroupVolume:    "",
 		GroupSync:      "rsync",
-
-		// data resources
-		GroupVhost:       "envoy",
-		GroupCertificate: "tls",
-		GroupRoute:       "envoy",
-		GroupExpose:      "envoy",
 	}
 )
 

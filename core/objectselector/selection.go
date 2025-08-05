@@ -3,8 +3,10 @@ package objectselector
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"net/http"
+	"os"
 	"regexp"
 	"strings"
 
@@ -337,13 +339,18 @@ func (t *Selection) localConfigExpand(s string) (*orderedset.OrderedSet, error) 
 
 func (t *Selection) localExactExpand(s string) (*orderedset.OrderedSet, error) {
 	matching := orderedset.NewOrderedSet()
-	paths, err := t.getPaths()
+	path, err := naming.ParsePath(s)
 	if err != nil {
 		return matching, err
 	}
-	if _, ok := paths.StrMap()[s]; ok {
-		matching.Add(s)
+	_, err = os.Stat(path.ConfigFile())
+	if errors.Is(err, os.ErrNotExist) {
+		return matching, xerrors.ObjectNotFound
 	}
+	if err != nil {
+		return matching, err
+	}
+	matching.Add(s)
 	return matching, nil
 }
 

@@ -196,7 +196,7 @@ func (t *Manager) isAnyPeerState(states ...instance.MonitorState) (string, insta
 
 func (t *Manager) isAllState(state ...instance.MonitorState) bool {
 	for _, instMon := range t.AllInstanceMonitors() {
-		if !instMon.State.Is(state...) {
+		if !instMon.State.IsOneOf(state...) {
 			return false
 		}
 	}

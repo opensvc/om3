@@ -1,4 +1,0 @@
-The envoy protocol compliant data in json format used to bootstrap the
-Listener filter config messages.
-
-Parts of this structure, like routes, are amended by more specific keywords.

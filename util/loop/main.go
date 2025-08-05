@@ -13,6 +13,7 @@ import (
 	"github.com/opensvc/om3/util/fcache"
 	"github.com/opensvc/om3/util/funcopt"
 	"github.com/opensvc/om3/util/plog"
+	"github.com/opensvc/om3/util/udevadm"
 )
 
 const (
@@ -65,6 +66,9 @@ func (t T) FileDelete(filePath string) error {
 	if err != nil {
 		return err
 	}
+	if i == nil {
+		return nil
+	}
 	return t.Delete(i.Name)
 }
 
@@ -73,11 +77,15 @@ func (t T) FileGet(filePath string) (*InfoEntry, error) {
 	if err != nil {
 		return nil, err
 	}
-	e := data.File(filePath)
-	if e == nil {
-		return nil, fmt.Errorf("no loop info for %s", filePath)
+	return data.File(filePath), nil
+}
+
+func (t T) Get(name string) (*InfoEntry, error) {
+	data, err := t.Data()
+	if err != nil {
+		return nil, err
 	}
-	return e, nil
+	return data.Name(name), nil
 }
 
 func (t T) Data() (InfoEntries, error) {
@@ -97,6 +105,9 @@ func (t T) Data() (InfoEntries, error) {
 	)
 	if out, err = fcache.Output(cmd, "losetup"); err != nil {
 		return nil, err
+	}
+	if len(out) == 0 {
+		return InfoEntries{}, nil
 	}
 	if err = json.Unmarshal(out, &data); err != nil {
 		return nil, err
@@ -145,13 +156,36 @@ func (t T) Delete(devPath string) error {
 	if cmd.ExitCode() != 0 {
 		return fmt.Errorf("%s error %d", cmd, cmd.ExitCode())
 	}
-	return nil
+	udevadm.Settle()
+	limit := time.Now().Add(5 * time.Second)
+	for {
+		info, _ := t.Get(devPath)
+		if info == nil {
+			return nil
+		}
+		if time.Now().After(limit) {
+			break
+		}
+		time.Sleep(500 * time.Millisecond)
+	}
+	return fmt.Errorf("losetup silently failed to delete %s", devPath)
+}
 
+func (t InfoEntries) Name(s string) *InfoEntry {
+	for _, i := range t {
+		if i.Name == s {
+			return &i
+		}
+	}
+	return nil
 }
 
 func (t InfoEntries) File(s string) *InfoEntry {
 	for _, i := range t {
 		if i.BackFile == s {
+			return &i
+		}
+		if i.BackFile == s+" (deleted)" {
 			return &i
 		}
 	}

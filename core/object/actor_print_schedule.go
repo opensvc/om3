@@ -12,11 +12,6 @@ import (
 	"github.com/opensvc/om3/util/key"
 )
 
-// PrintSchedule display the object scheduling table
-func (t *actor) PrintSchedule() schedule.Table {
-	return t.Schedules()
-}
-
 func (t *actor) lastRunFile(action, rid, desc string) string {
 	base := "last"
 	if desc != "" {

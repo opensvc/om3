@@ -13,6 +13,8 @@
 * **Hook**
     The event is no longer passed via stdin.
     The om3 daemon feeds the event as a json-formatted EVENT environment variable instead.
+    The events name and payload structure changed too.
+    See `om node events --help` for the list of event names.
 
 * **Time format change:**
     OpenSVC now uses RFC3339 time format for all internal and exposed data, replacing the Unix timestamps.
@@ -136,6 +138,11 @@
 
 * **Configuration updates use the daemon api by default:**
     `om set`, `om unset`, `om get`, `om eval` now need `--local` to operate on the local configurations without api calls.
+
+* `om xx status`
+    This command no longer accepts a selector, because:
+    1/ it is documented the exitcode is the instance status so we can not be ambiguous.
+    2/ it is optimized for efficiency as the daemon executes this frequently to refresh instances status data.
 
 * **Removed:**
     * `om node reboot`
@@ -332,6 +339,11 @@
     curl -o- -X GET -H "Content-Type: application/json" --unix-socket /var/lib/opensvc/lsnr/http.sock http://localhost/daemon/status
     ```
 
+* **Change the quotation mark in the `flat` renderer keys**
+    
+    Use double quotes instead of quotes, as the strings in the value part already use double quotes.
+    Not mixing single and double quotes helps formatting the --filter for `om node events`.
+
 ### Driver: disk.lvm
 
 * **Removed feature:**
@@ -350,6 +362,8 @@
         vgname = vg1
         # pvs = {disk#0.file}            <- ⛔️: pvs evaluation is not a block device
         pvs = {disk#0.exposed_devs[0]}   <- ✅: pvs evaluation is /dev/loop... block device
+
+* Drop support for `metad` era pvscan. Always use `--cache`.
 
 ### Driver: ip
 

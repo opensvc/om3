@@ -33,7 +33,11 @@ func (t *Manager) orchestrateProvisioned() {
 }
 
 func (t *Manager) provisionedFromProvisioned() {
-	t.doTransitionAction(t.unfreeze, instance.MonitorStateUnfreezeProgress, instance.MonitorStateUnfreezeSuccess, instance.MonitorStateUnfreezeFailure)
+	if t.instStatus[t.localhost].IsFrozen() {
+		t.doTransitionAction(t.unfreeze, instance.MonitorStateUnfreezeProgress, instance.MonitorStateUnfreezeSuccess, instance.MonitorStateUnfreezeFailure)
+	} else {
+		t.doneAndIdle()
+	}
 }
 
 func (t *Manager) provisionedFromProvisionFailed() {
@@ -98,7 +102,7 @@ func (t *Manager) provisionedClearIfReached() bool {
 		return reached("all instances provision failed", false)
 	} else if t.hasLeaderProvisionedFailed() {
 		return reached("leader instance is provision failed", false)
-	} else if t.state.State.Is(instance.MonitorStateProvisionFailure) {
+	} else if t.state.State.IsOneOf(instance.MonitorStateProvisionFailure) {
 		return reached("instance is provision failed", false)
 	}
 
@@ -172,7 +176,7 @@ func (t *Manager) hasLeaderProvisioned() bool {
 
 func (t *Manager) hasLeaderProvisionedFailed() bool {
 	leader := t.provisioningLeader()
-	if t.instMonitor[leader].State.Is(instance.MonitorStateProvisionFailure) {
+	if t.instMonitor[leader].State.IsOneOf(instance.MonitorStateProvisionFailure) {
 		return true
 	}
 	return false

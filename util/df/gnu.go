@@ -41,9 +41,9 @@ func parse(b []byte) ([]Entry, error) {
 		}
 		r = append(r, Entry{
 			Device:      l[0],
-			Total:       total,
-			Used:        used,
-			Free:        free,
+			Total:       total * 1024,
+			Used:        used * 1024,
+			Free:        free * 1024,
 			UsedPercent: 100 * used / total,
 			MountPoint:  l[5],
 		})
