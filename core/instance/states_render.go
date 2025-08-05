@@ -152,8 +152,10 @@ func (t States) descString() string {
 	// Monitor state
 	if t.Monitor.UpdatedAt.IsZero() {
 		// Daemon down
+		// *or* imon deleted
+		// *or* imon not yet started
 		if t.Monitor.UpdatedAt.IsZero() {
-			l = append(l, rawconfig.Colorize.Warning("daemon-down"))
+			l = append(l, rawconfig.Colorize.Warning("unknown"))
 		}
 	} else {
 		switch t.Monitor.State {
