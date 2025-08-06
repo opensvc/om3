@@ -206,12 +206,18 @@ func (t *Selection) expand() error {
 }
 
 func (t *Selection) localExpand() error {
-	for _, s := range strings.Split(t.selectorExpression, ",") {
+	selectors := strings.Split(t.selectorExpression, ",")
+	multi := len(selectors) > 1
+	for _, s := range selectors {
 		if len(s) == 0 {
 			continue
 		}
 		pset, err := t.localExpandIntersector(s)
-		if err != nil {
+		if errors.Is(err, xerrors.ObjectNotFound) {
+			if !multi {
+				return err
+			}
+		} else if err != nil {
 			return err
 		}
 		for _, i := range pset.Values() {
@@ -224,9 +230,15 @@ func (t *Selection) localExpand() error {
 
 func (t *Selection) localExpandIntersector(s string) (*orderedset.OrderedSet, error) {
 	pset := orderedset.NewOrderedSet()
-	for i, selector := range strings.Split(s, "+") {
+	selectors := strings.Split(s, "+")
+	multi := len(selectors) > 1
+	for i, selector := range selectors {
 		ps, err := t.localExpandOne(selector)
-		if err != nil {
+		if errors.Is(err, xerrors.ObjectNotFound) {
+			if !multi {
+				return pset, err
+			}
+		} else if err != nil {
 			return pset, err
 		}
 		if i == 0 {
