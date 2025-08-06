@@ -75,7 +75,16 @@ func (t *Manager) queueStatus() error {
 		t.publisher.Pub(&msgbus.InstanceStatusPost{Path: t.path, Node: t.localhost, Value: naStatus}, t.pubLabels...)
 		return nil
 	}
+	if t.statusQueued.Load() {
+		t.needStatus.Store(true)
+		return nil
+	} else {
+		t.statusQueued.Store(true)
+	}
+
 	return runner.Run(t.instConfig.Priority, func() error {
+		t.statusQueued.Store(false)
+		t.needStatus.Store(false)
 		return t.crmStatus()
 	})
 }

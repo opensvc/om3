@@ -24,6 +24,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"sync/atomic"
 	"time"
 
 	"github.com/google/uuid"
@@ -89,6 +90,11 @@ type (
 		cancelReady context.CancelFunc
 		localhost   string
 		change      bool
+
+		// needStatus and statusQueued are used to coalesce status refresh commands so
+		// we don't run one per InstanceConfigUpdated event.
+		needStatus   atomic.Bool
+		statusQueued atomic.Bool
 
 		// priors is the list of peer instance nodenames that need restarting before we can restart locally
 		priors []string
@@ -386,7 +392,7 @@ func (t *Manager) worker(initialNodes []string) {
 			case *msgbus.InstanceStatusDeleted:
 				t.onInstanceStatusDeleted(c)
 			case *msgbus.InstanceStatusUpdated:
-				t.onRelationInstanceStatusUpdated(c)
+				t.onInstanceStatusUpdated(c)
 			case *msgbus.ObjectStatusDeleted:
 				t.onObjectStatusDeleted(c)
 			case *msgbus.ObjectStatusUpdated:

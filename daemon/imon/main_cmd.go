@@ -188,11 +188,20 @@ func (t *Manager) onRelationObjectStatusUpdated(c *msgbus.ObjectStatusUpdated) {
 	}
 }
 
-func (t *Manager) onRelationInstanceStatusUpdated(c *msgbus.InstanceStatusUpdated) {
+func (t *Manager) onInstanceStatusUpdated(c *msgbus.InstanceStatusUpdated) {
 	if c.Path == t.path {
-		// Can't relate to self. This case is handled by onInstanceStatusUpdated.
-		return
+		if t.needStatus.Load() {
+			err := t.queueStatus()
+			if err != nil {
+				t.log.Warnf("requeue status refresh: %s", err)
+			}
+		}
+	} else {
+		t.onRelationInstanceStatusUpdated(c)
 	}
+}
+
+func (t *Manager) onRelationInstanceStatusUpdated(c *msgbus.InstanceStatusUpdated) {
 	changes := false
 	relation := c.Path.String() + "@" + c.Node
 	do := func(relation string, name string, cache map[string]status.T) {
