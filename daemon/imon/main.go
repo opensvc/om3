@@ -317,7 +317,7 @@ func (t *Manager) worker(initialNodes []string) {
 	// queueStatus => publish instance status update
 	//   => data update (so available from next GetInstanceStatus)
 	//   => omon update with srcEvent: instance status update (we watch omon updates)
-	if err := t.queueStatus(); err != nil {
+	if err := t.runStatus(); err != nil {
 		t.log.Errorf("error during initial crm status: %s", err)
 	}
 

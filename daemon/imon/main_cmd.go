@@ -191,10 +191,7 @@ func (t *Manager) onRelationObjectStatusUpdated(c *msgbus.ObjectStatusUpdated) {
 func (t *Manager) onInstanceStatusUpdated(c *msgbus.InstanceStatusUpdated) {
 	if c.Path == t.path {
 		if t.needStatus.Load() {
-			err := t.queueStatus()
-			if err != nil {
-				t.log.Warnf("requeue status refresh: %s", err)
-			}
+			t.queueStatus(nil)
 		}
 	} else {
 		t.onRelationInstanceStatusUpdated(c)
@@ -318,9 +315,7 @@ func (t *Manager) onInstanceConfigUpdated(srcNode string, srcCmd *msgbus.Instanc
 
 	if srcCmd.Node == t.localhost {
 		defer func() {
-			if err := t.queueStatus(); err != nil {
-				t.log.Warnf("evaluate instance status via CRM: %s", err)
-			}
+			t.queueStatus(nil)
 		}()
 		t.instConfig = srcCmd.Value
 		t.log.Debugf("refresh resource monitor states on local instance config updated")

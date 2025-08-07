@@ -74,7 +74,10 @@ func (t *T) run() {
 		//t.log.Debugf("priority run dequeue from p%d: %d running %d waiting", item.priority, running, t.queue.Len())
 		go func() {
 			imStarted <- true
-			item.errC <- item.f()
+			err := item.f()
+			if item.errC != nil {
+				item.errC <- err
+			}
 			t.running.Add(-1)
 		}()
 		<-imStarted
@@ -185,14 +188,19 @@ func (t *T) Start(ctx context.Context) error {
 	return nil
 }
 
-func (t *T) Run(p priority.T, f func() error) error {
+func (t *T) Enqueue(p priority.T, errC chan error, f func() error) {
 	item := Item{
 		f:        f,
 		priority: p,
-		errC:     make(chan error),
+		errC:     errC,
 	}
 	t.stage <- item
-	return <-item.errC
+}
+
+func (t *T) Run(p priority.T, f func() error) error {
+	errC := make(chan error)
+	t.Enqueue(p, errC, f)
+	return <-errC
 }
 
 func (t *T) SetMaxRunning(n int) {
@@ -220,6 +228,10 @@ func Start(ctx context.Context) error {
 
 func Run(p priority.T, f func() error) error {
 	return def.Run(p, f)
+}
+
+func Enqueue(p priority.T, errC chan error, f func() error) {
+	def.Enqueue(p, errC, f)
 }
 
 func SetMaxRunning(n int) {

@@ -62,7 +62,13 @@ func (t *Manager) queueFreeze() error {
 	})
 }
 
-func (t *Manager) queueStatus() error {
+func (t *Manager) runStatus() error {
+	errC := make(chan error)
+	t.queueStatus(errC)
+	return <-errC
+}
+
+func (t *Manager) queueStatus(errC chan error) {
 	if !kindWithNotApplicableStatus.Has(t.path.Kind) {
 		// no need for crm status action, intead simulate status with post status event
 		naStatus := instance.Status{
@@ -73,20 +79,26 @@ func (t *Manager) queueStatus() error {
 			UpdatedAt:   time.Now(),
 		}
 		t.publisher.Pub(&msgbus.InstanceStatusPost{Path: t.path, Node: t.localhost, Value: naStatus}, t.pubLabels...)
-		return nil
+		return
 	}
 	if t.statusQueued.Load() {
 		t.needStatus.Store(true)
-		return nil
+		return
 	} else {
 		t.statusQueued.Store(true)
 	}
 
-	return runner.Run(t.instConfig.Priority, func() error {
+	fn := func() error {
 		t.statusQueued.Store(false)
 		t.needStatus.Store(false)
-		return t.crmStatus()
-	})
+		err := t.crmStatus()
+		if err != nil && errC == nil {
+			// if errC is not nil, let the caller decide if/how he wants to log the err
+			t.log.Warnf("status evaluation command: %s", err)
+		}
+		return err
+	}
+	runner.Enqueue(t.instConfig.Priority, errC, fn)
 }
 
 func (t *Manager) queueResourceStartStandby(rids []string) error {

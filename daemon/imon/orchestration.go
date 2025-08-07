@@ -38,6 +38,10 @@ func (t *Manager) orchestrate() {
 		t.log.Debugf("orchestrate return on not isConvergedGlobalExpect")
 		return
 	}
+	if t.statusQueued.Load() {
+		t.log.Debugf("orchestrate return on t.statusQueued")
+		return
+	}
 
 	switch t.state.GlobalExpect {
 	case instance.MonitorGlobalExpectAborted:
