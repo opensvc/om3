@@ -8,6 +8,7 @@ import (
 	"net/http"
 	"os"
 	"regexp"
+	"slices"
 	"strings"
 
 	"github.com/goombaio/orderedset"
@@ -195,7 +196,7 @@ func (t *Selection) expand() error {
 		usedExpand = "daemon"
 		err = t.daemonExpand()
 		if err != nil && !clientcontext.IsSet() {
-			usedExpand = "fallback local"
+			usedExpand = fmt.Sprintf("local (fallback caused by: %s)", err)
 			err = t.localExpand()
 		}
 	}
@@ -355,12 +356,19 @@ func (t *Selection) localExactExpand(s string) (*orderedset.OrderedSet, error) {
 	if err != nil {
 		return matching, err
 	}
-	_, err = os.Stat(path.ConfigFile())
-	if errors.Is(err, os.ErrNotExist) {
-		return matching, xerrors.ObjectNotFound
-	}
-	if err != nil {
-		return matching, err
+	if t.paths != nil {
+		// fake local, the daemon fed us a paths list already validated
+		if !slices.Contains(t.paths, path) {
+			return matching, xerrors.ObjectNotFound
+		}
+	} else {
+		_, err = os.Stat(path.ConfigFile())
+		if errors.Is(err, os.ErrNotExist) {
+			return matching, xerrors.ObjectNotFound
+		}
+		if err != nil {
+			return matching, err
+		}
 	}
 	matching.Add(s)
 	return matching, nil
