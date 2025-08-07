@@ -11,6 +11,7 @@ import (
 	"time"
 
 	"github.com/opensvc/om3/core/driver"
+	"github.com/opensvc/om3/core/instance"
 	"github.com/opensvc/om3/core/naming"
 	"github.com/opensvc/om3/core/node"
 	"github.com/opensvc/om3/core/object"
@@ -799,7 +800,7 @@ func (t *T) hasAnyJob(p naming.Path) bool {
 }
 
 func (t *T) scheduleAll() {
-	for _, p := range object.StatusData.GetPaths() {
+	for p, _ := range instance.StatusData.GetByNode(t.localhost) {
 		t.scheduleObject(p)
 	}
 	t.scheduleNode()
@@ -899,9 +900,8 @@ func (t *T) unschedule(path naming.Path) {
 
 func (t *T) publishUpdate() {
 	t.status.UpdatedAt = time.Now()
-	localhost := hostname.Hostname()
-	daemonsubsystem.DataScheduler.Set(localhost, t.status.DeepCopy())
-	t.publisher.Pub(&msgbus.DaemonSchedulerUpdated{Node: localhost, Value: *t.status.DeepCopy()}, pubsub.Label{"node", localhost})
+	daemonsubsystem.DataScheduler.Set(t.localhost, t.status.DeepCopy())
+	t.publisher.Pub(&msgbus.DaemonSchedulerUpdated{Node: t.localhost, Value: *t.status.DeepCopy()}, pubsub.Label{"node", t.localhost})
 }
 
 func (t timeMap) key(path naming.Path, s string) string {
