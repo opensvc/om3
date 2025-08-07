@@ -24,7 +24,7 @@ var (
 	// testCRMAction can be used to define alternate testCRMAction for tests
 	testCRMAction func(title string, cmdArgs ...string) error
 
-	kindWithNotApplicableStatus = naming.NewKinds(naming.KindSvc, naming.KindVol)
+	statefullKinds = naming.NewKinds(naming.KindSvc, naming.KindVol)
 )
 
 func init() {
@@ -64,26 +64,31 @@ func (t *Manager) queueFreeze() error {
 
 func (t *Manager) runStatus() error {
 	errC := make(chan error)
-	t.queueStatus(errC)
-	return <-errC
+	if ok := t.queueStatus(errC); ok {
+		return <-errC
+	}
+	return nil
 }
 
-func (t *Manager) queueStatus(errC chan error) {
-	if !kindWithNotApplicableStatus.Has(t.path.Kind) {
-		// no need for crm status action, intead simulate status with post status event
-		naStatus := instance.Status{
-			Avail:       status.NotApplicable,
-			Optional:    status.NotApplicable,
-			Overall:     status.NotApplicable,
-			Provisioned: provisioned.NotApplicable,
-			UpdatedAt:   time.Now(),
-		}
-		t.publisher.Pub(&msgbus.InstanceStatusPost{Path: t.path, Node: t.localhost, Value: naStatus}, t.pubLabels...)
-		return
+func (t *Manager) pubStatelessInstanceStatus() {
+	instStatus := instance.Status{
+		Avail:       status.NotApplicable,
+		Optional:    status.NotApplicable,
+		Overall:     status.NotApplicable,
+		Provisioned: provisioned.NotApplicable,
+		UpdatedAt:   time.Now(),
+	}
+	t.publisher.Pub(&msgbus.InstanceStatusPost{Path: t.path, Node: t.localhost, Value: instStatus}, t.pubLabels...)
+}
+
+func (t *Manager) queueStatus(errC chan error) (ok bool) {
+	if !t.statefull {
+		t.pubStatelessInstanceStatus()
+		return false
 	}
 	if t.statusQueued.Load() {
 		t.needStatus.Store(true)
-		return
+		return false
 	} else {
 		t.statusQueued.Store(true)
 	}
@@ -99,6 +104,7 @@ func (t *Manager) queueStatus(errC chan error) {
 		return err
 	}
 	runner.Enqueue(t.instConfig.Priority, errC, fn)
+	return true
 }
 
 func (t *Manager) queueResourceStartStandby(rids []string) error {

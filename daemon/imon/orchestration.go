@@ -38,10 +38,6 @@ func (t *Manager) orchestrate() {
 		t.log.Debugf("orchestrate return on not isConvergedGlobalExpect")
 		return
 	}
-	if t.statusQueued.Load() {
-		t.log.Debugf("orchestrate return on t.statusQueued")
-		return
-	}
 
 	switch t.state.GlobalExpect {
 	case instance.MonitorGlobalExpectAborted:
@@ -71,6 +67,12 @@ func (t *Manager) orchestrate() {
 		return
 	default:
 		t.log.Debugf("orchestrate return on nodeMonitor.State: %s", t.nodeMonitor[t.localhost].State)
+		return
+	}
+
+	if t.statusQueued.Load() {
+		// a new orchestrate() call will be fired by the InstanceStatusUpdated at the end of the running status evaluation
+		t.log.Debugf("orchestrate return on t.statusQueued")
 		return
 	}
 

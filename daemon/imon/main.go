@@ -50,6 +50,10 @@ type (
 		state         instance.Monitor
 		previousState instance.Monitor
 
+		// only svc and vol support "status -r", if not statefull skip status
+		// evaluations
+		statefull bool
+
 		// abortedOrchestration represents the state of an orchestration process
 		// that was prematurely aborted.
 		abortedOrchestration *orchestrationEnd
@@ -245,6 +249,7 @@ func start(parent context.Context, qs pubsub.QueueSizer, p naming.Path, nodes []
 		scopeNodes:    nodes,
 		change:        true,
 		readyDuration: defaultReadyDuration,
+		statefull:     statefullKinds.Has(p.Kind),
 
 		waitConvergedOrchestrationMsg: make(map[string]string),
 
@@ -314,7 +319,7 @@ func (t *Manager) worker(initialNodes []string) {
 
 	// Initiate a CRM status refresh first, this will update our instance status cache
 	// as soon as possible.
-	// queueStatus => publish instance status update
+	// runStatus => publish instance status update
 	//   => data update (so available from next GetInstanceStatus)
 	//   => omon update with srcEvent: instance status update (we watch omon updates)
 	if err := t.runStatus(); err != nil {
