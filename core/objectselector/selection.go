@@ -130,6 +130,13 @@ func (t *Selection) Expand() (naming.Paths, error) {
 	err := t.expand()
 	return t.cache, err
 }
+func (t *Selection) ExpandRelaxed() (naming.Paths, error) {
+	paths, err := t.Expand()
+	if errors.Is(err, xerrors.ObjectNotFound) {
+		return naming.Paths{}, nil
+	}
+	return paths, err
+}
 
 // CheckFilters checks the filters
 func (t *Selection) CheckFilters() error {
