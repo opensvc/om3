@@ -44,7 +44,7 @@ func (t *Manager) orchestrate() {
 		t.orchestrateAborted()
 	}
 
-	if t.state.OrchestrationID != uuid.Nil && t.state.OrchestrationIsDone {
+	if t.state.OrchestrationID != uuid.Nil && t.state.OrchestrationIsDone && !t.statusQueued.Load() {
 		if t.orchestrationIsAllDone() {
 			t.endOrchestration()
 		}
