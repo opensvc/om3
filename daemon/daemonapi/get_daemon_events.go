@@ -539,12 +539,12 @@ func parseFilter(filterStr string) ([]Filter, error) {
 	parseLabelFilter := func(s string) (pubsub.Label, error) {
 		split := strings.SplitN(s, "=", 2)
 		if len(split) != 2 {
-			return pubsub.Label{}, fmt.Errorf("invalid label filter expression: %s (expecting <key><op><value>)", filterStr)
+			return pubsub.Label{}, fmt.Errorf("invalid label filter expression: %s (expecting <key><op><value>)", s)
 		}
 		key := strings.TrimSpace(split[0])
 		value := strings.TrimSpace(split[1])
 		if len(key) == 0 {
-			return pubsub.Label{}, fmt.Errorf("invalid label filter expression: %s (empty key)", filterStr)
+			return pubsub.Label{}, fmt.Errorf("invalid label filter expression: %s (empty key)", s)
 		}
 		return pubsub.Label{key, value}, nil
 	}
