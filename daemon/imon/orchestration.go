@@ -44,7 +44,7 @@ func (t *Manager) orchestrate() {
 		t.orchestrateAborted()
 	}
 
-	if t.state.OrchestrationID != uuid.Nil && t.state.OrchestrationIsDone {
+	if t.state.OrchestrationID != uuid.Nil && t.state.OrchestrationIsDone && !t.statusQueued.Load() {
 		if t.orchestrationIsAllDone() {
 			t.endOrchestration()
 		}
@@ -67,6 +67,12 @@ func (t *Manager) orchestrate() {
 		return
 	default:
 		t.log.Debugf("orchestrate return on nodeMonitor.State: %s", t.nodeMonitor[t.localhost].State)
+		return
+	}
+
+	if t.statusQueued.Load() {
+		// a new orchestrate() call will be fired by the InstanceStatusUpdated at the end of the running status evaluation
+		t.log.Debugf("orchestrate return on t.statusQueued")
 		return
 	}
 

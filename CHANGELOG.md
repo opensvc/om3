@@ -225,7 +225,7 @@
 	part provisioned  ->  mix-provisioned
 	not provisioned   ->  not-provisioned
 	node frozen       ->  node-frozen
-	daemon down       ->  daemon-down
+	daemon down       ->  unknown
     ```
 
 * **`om <selector> config show`:**

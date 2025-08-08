@@ -1,11 +1,12 @@
 Receive only events matching the filtering expression formatted as:
 
-<kind>[,filter[,...]]
+<element>[,...]
 where:
-  <kind> is the required event kind
-  <filter> can be:
-    <key>=<value> is a required event label
-    <jsonpath><op><value> is required condition on the event data
+  <element> is one of:
+    <kind>                keep events of this kind
+    <key>=<value>         discard events of matching kinds not thus labeled
+    <jsonpath><op><value> discard events of matching kinds that don't pass
+                          this data assertion
     where:
       <jsonpath> starts with a dot and is relative to .data
       <op> can be
@@ -14,8 +15,10 @@ where:
         >= or <=
 
 Examples:
+  path=svc1,node=n1
   InstanceStatusUpdated
-  InstanceStatusUpdated,path=svc1
+  InstanceStatusUpdated,ObjectOrchestrationEnd
+  InstanceStatusUpdated,path=svc1,ObjectOrchestrationEnd
   InstanceStatusUpdated,path=svc1,node=n1
   InstanceStatusUpdated,path=svc1,node=n1,.instance_status.frozen_at="0001-01-01T00:00:00Z"
   InstanceStatusUpdated,path=svc1,node=n1,.instance_status.frozen_at>"0001-01-01T00:00:00Z"

@@ -141,6 +141,9 @@ func (t *T) Label(_ context.Context) string {
 }
 
 func (t *T) ProvisionAsFollower(ctx context.Context) error {
+	if !t.IsShared() {
+		return t.ProvisionAsLeader(ctx)
+	}
 	return lvm2.PVScan(t.Log())
 }
 

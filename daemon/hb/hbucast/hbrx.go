@@ -108,21 +108,30 @@ func (t *rx) Start(cmdC chan<- interface{}, msgC chan<- *hbtype.Msg) error {
 
 	listenConfig := net.ListenConfig{
 		Control: func(network, address string, c syscall.RawConn) error {
-			var err error
-			err = c.Control(func(fd uintptr) {
-				err = syscall.SetsockoptInt(int(fd), syscall.SOL_SOCKET, syscall.SO_REUSEADDR, 1)
+			return c.Control(func(fd uintptr) {
+				syscall.SetsockoptInt(int(fd), syscall.SOL_SOCKET, syscall.SO_REUSEADDR, 1)
 			})
-			if err != nil {
-				return fmt.Errorf("failed to set SO_REUSEADDR: %w", err)
-			}
-			return nil
 		},
 	}
 
-	listener, err := listenConfig.Listen(t.ctx, "tcp", t.addr+":"+t.port)
-	if err != nil {
-		t.log.Errorf("listen failed: %s", err)
-		return err
+	var (
+		listener net.Listener
+		err      error
+	)
+
+	for i := 1; i < 5; i++ {
+		listener, err = listenConfig.Listen(t.ctx, "tcp", t.addr+":"+t.port)
+		if err != nil {
+			if strings.Contains(err.Error(), "address already in use") {
+				delay := time.Duration(int(time.Millisecond) * 100 * i)
+				t.log.Infof("%s: retry in %s", err, delay)
+				time.Sleep(delay)
+				continue
+			}
+			t.log.Errorf("listen failed: %s", err)
+			return err
+		}
+		break
 	}
 
 	started := make(chan bool)
@@ -158,12 +167,14 @@ func (t *rx) Start(cmdC chan<- interface{}, msgC chan<- *hbtype.Msg) error {
 			defer wg.Done()
 			select {
 			case <-ctx.Done():
+				t.log.Infof("close listener %s for %s", t.addr+":"+t.port, otherNodeIPL)
 				_ = listener.Close()
+				time.Sleep(100 * time.Millisecond)
 				t.cancel()
 				return
 			}
 		}()
-		t.log.Infof("listen to %s for connection from %s", t.addr+":"+t.port, otherNodeIPL)
+		t.log.Infof("listen to %s for %s", t.addr+":"+t.port, otherNodeIPL)
 		started <- true
 		for {
 			conn, err := listener.Accept()

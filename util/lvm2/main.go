@@ -65,9 +65,9 @@ func PVScan(log *plog.Logger) error {
 		command.WithName("pvscan"),
 		command.WithVarArgs("--cache"),
 		command.WithLogger(log),
-		command.WithCommandLogLevel(zerolog.DebugLevel),
-		command.WithStdoutLogLevel(zerolog.DebugLevel),
-		command.WithStderrLogLevel(zerolog.DebugLevel),
+		command.WithCommandLogLevel(zerolog.InfoLevel),
+		//command.WithStdoutLogLevel(zerolog.InfoLevel),
+		//command.WithStderrLogLevel(zerolog.ErrorLevel),
 	)
 	return cmd.Run()
 }
