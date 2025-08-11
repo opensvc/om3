@@ -11,14 +11,6 @@ import (
 	"github.com/opensvc/om3/daemon/rbac"
 )
 
-var (
-	//go:embed text/node-events/flag/template
-	usageFlagEventTemplate string
-
-	//go:embed text/node-events/flag/filter
-	usageFlagEventFilter string
-)
-
 func FlagQuiet(flags *pflag.FlagSet, p *bool) {
 	flags.BoolVarP(p, "quiet", "q", false, "don't print the logs on the console")
 }
@@ -161,7 +153,17 @@ func FlagEval(flags *pflag.FlagSet, p *bool) {
 }
 
 func FlagEventFilters(flags *pflag.FlagSet, p *[]string) {
-	flags.StringArrayVar(p, "filter", []string{}, usageFlagEventFilter)
+	flags.StringArrayVar(p, "filter", []string{}, "filter events on kind, labels and data (see above)")
+}
+
+func FlagEventOutput(flags *pflag.FlagSet, p *string) {
+	flags.StringVarP(p, "output", "o", "auto", "output format json|flat|delta|auto|tab=<header>:<jsonpath>,...")
+	flags.StringVar(p, "format", "auto", "output format json|flat|delta|auto|tab=<header>:<jsonpath>,...")
+	flags.MarkHidden("format")
+}
+
+func FlagEventTemplate(flags *pflag.FlagSet, p *string) {
+	flags.StringVar(p, "template", "", "a go template with custom functions (see above)")
 }
 
 func FlagForce(flags *pflag.FlagSet, p *bool) {
@@ -258,10 +260,6 @@ func FlagRID(flags *pflag.FlagSet, p *string) {
 
 func FlagStateOnly(flags *pflag.FlagSet, p *bool) {
 	flags.BoolVar(p, "state-only", false, "change only internal state")
-}
-
-func FlagEventTemplate(flags *pflag.FlagSet, p *string) {
-	flags.StringVar(p, "template", "", usageFlagEventTemplate)
 }
 
 func FlagTime(flags *pflag.FlagSet, p *time.Duration) {
@@ -364,6 +362,10 @@ func FlagKeyName(flags *pflag.FlagSet, p *string) {
 
 func FlagKeyValue(flags *pflag.FlagSet, p *string) {
 	flags.StringVar(p, "value", "", "the key value")
+}
+
+func FlagEventLimit(flags *pflag.FlagSet, p *uint64) {
+	flags.Uint64Var(p, "limit", 0, "exit when <limit> events are received, the default is 0 (unlimited) or 1 if --wait is set")
 }
 
 func FlagWait(flags *pflag.FlagSet, p *bool) {

@@ -80,15 +80,18 @@ Wait template examples:
 
 * Node is frozen:
 
-      --wait --filter NodeStatusUpdated,node=dev1n1 --template '{{if setSuccess (eq .data.instance_status.frozen_at "0001-01-01T00:00:00Z")}}{{end}}'
+      --wait --filter NodeStatusUpdated,node=dev1n1 --template \
+	  '{{if setSuccess (eq .data.instance_status.frozen_at "0001-01-01T00:00:00Z")}}{{end}}'
 
 * All cluster nodes are frozen:
 
-      --wait --filter ClusterStatusUpdated --template '{{if setSuccess .data.cluster_status.is_frozen}}{{end}}'
+      --wait --filter ClusterStatusUpdated --template \
+	  '{{if setSuccess .data.cluster_status.is_frozen}}{{end}}'
 
 * All cluster nodes are unfrozen:
 
-      --wait --filter ClusterStatusUpdated --template '{{if setSuccess (not .data.cluster_status.is_frozen)}}{{end}}'
+      --wait --filter ClusterStatusUpdated --template \
+	  '{{if setSuccess (not .data.cluster_status.is_frozen)}}{{end}}'
 
 * Object avail is up on 3 objects:
 

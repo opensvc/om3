@@ -2,6 +2,7 @@ package commoncmd
 
 import (
 	"context"
+	_ "embed"
 	"encoding/json"
 	"fmt"
 	"os"
@@ -35,6 +36,7 @@ type (
 		NodeSelector string
 		errC         chan error
 		evC          chan *event.Event
+		delta        *output.Delta
 	}
 
 	templateHelper struct {
@@ -45,7 +47,21 @@ type (
 
 var (
 	errEventRead = fmt.Errorf("event read error")
+
+	//go:embed text/node-events/flag/template
+	usageFlagEventTemplate string
+
+	//go:embed text/node-events/flag/filter
+	usageFlagEventFilter string
 )
+
+func UsageFlagEventTemplate() string {
+	return usageFlagEventTemplate
+}
+
+func UsageFlagEventFilter() string {
+	return usageFlagEventFilter
+}
 
 func (c *templateHelper) passSet(s string, b bool) (changed bool) {
 	if b {
@@ -139,6 +155,26 @@ func (t *CmdNodeEvents) DoNodes() error {
 		now       = time.Now()
 		nodenames []string
 	)
+	if t.Output == "delta" {
+		fmtKey := func(i any) string {
+			ce := i.(*event.ConcreteEvent)
+			s := ce.Kind
+			msg, ok := ce.Data.(pubsub.Messager)
+			if !ok {
+				return ""
+			}
+			labels := msg.GetLabels()
+			if v, ok := labels["node"]; ok {
+				s += "," + v
+			}
+			if v, ok := labels["path"]; ok {
+				s += "," + v
+			}
+			return s
+		}
+		t.delta = output.NewDelta(fmtKey)
+	}
+
 	t.evC = make(chan *event.Event)
 	if t.Template != "" {
 		t.Output = "json"
@@ -339,14 +375,19 @@ func (t *CmdNodeEvents) doEvent(e event.Event) {
 		}
 		return
 	}
-	if t.Output == output.JSON.String() {
-		t.Output = output.JSONLine.String()
+	if t.Output == "delta" {
+		t.delta.Fprint(os.Stdout, ce)
+
+	} else {
+		if t.Output == output.JSON.String() {
+			t.Output = output.JSONLine.String()
+		}
+		output.Renderer{
+			Output:   t.Output,
+			Color:    t.Color,
+			Data:     ce,
+			Colorize: rawconfig.Colorize,
+			Stream:   true,
+		}.Print()
 	}
-	output.Renderer{
-		Output:   t.Output,
-		Color:    t.Color,
-		Data:     ce,
-		Colorize: rawconfig.Colorize,
-		Stream:   true,
-	}.Print()
 }

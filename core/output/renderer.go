@@ -93,14 +93,18 @@ func (t Renderer) Sprint() (string, error) {
 	}
 	switch formatID {
 	case Flat:
+		var sep string
+		if t.Stream {
+			sep = "---\n"
+		}
 		b, err := json.Marshal(t.Data)
 		if err != nil {
 			panic(err)
 		}
 		if color.NoColor {
-			return SprintFlat(b), nil
+			return sep + SprintFlat(b), nil
 		} else {
-			return SprintFlatColor(b, t.Colorize), nil
+			return sep + SprintFlatColor(b, t.Colorize), nil
 		}
 	case JSON:
 		b, err := json.MarshalIndent(t.Data, "", indent)
