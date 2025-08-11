@@ -429,11 +429,12 @@ func (t T) DoAsync() error {
 		return err
 	}
 	var (
-		ctx    context.Context
-		cancel context.CancelFunc
-		errs   error
-		waitC  chan error
-		toWait int
+		ctx          context.Context
+		cancel       context.CancelFunc
+		errs         error
+		postErrCount int
+		waitC        chan error
+		toWait       int
 	)
 	if t.WaitDuration > 0 {
 		ctx, cancel = context.WithTimeout(context.Background(), t.WaitDuration)
@@ -752,6 +753,7 @@ func (t T) DoAsync() error {
 		}
 		var r asyncResult
 		if err != nil {
+			postErrCount += 1
 			r = asyncResult{
 				Error: err,
 				Path:  p.String(),
@@ -801,6 +803,9 @@ func (t T) DoAsync() error {
 				}
 			}
 		}
+	}
+	if postErrCount > 0 {
+		errs = errors.Join(errs, fmt.Errorf("actions rejected: %d", postErrCount))
 	}
 	return errs
 }

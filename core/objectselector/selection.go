@@ -8,6 +8,7 @@ import (
 	"net/http"
 	"os"
 	"regexp"
+	"slices"
 	"strings"
 
 	"github.com/goombaio/orderedset"
@@ -129,6 +130,13 @@ func (t *Selection) Expand() (naming.Paths, error) {
 	err := t.expand()
 	return t.cache, err
 }
+func (t *Selection) ExpandRelaxed() (naming.Paths, error) {
+	paths, err := t.Expand()
+	if errors.Is(err, xerrors.ObjectNotFound) {
+		return naming.Paths{}, nil
+	}
+	return paths, err
+}
 
 // CheckFilters checks the filters
 func (t *Selection) CheckFilters() error {
@@ -195,7 +203,7 @@ func (t *Selection) expand() error {
 		usedExpand = "daemon"
 		err = t.daemonExpand()
 		if err != nil && !clientcontext.IsSet() {
-			usedExpand = "fallback local"
+			usedExpand = fmt.Sprintf("local (fallback caused by: %s)", err)
 			err = t.localExpand()
 		}
 	}
@@ -206,12 +214,18 @@ func (t *Selection) expand() error {
 }
 
 func (t *Selection) localExpand() error {
-	for _, s := range strings.Split(t.selectorExpression, ",") {
+	selectors := strings.Split(t.selectorExpression, ",")
+	multi := len(selectors) > 1
+	for _, s := range selectors {
 		if len(s) == 0 {
 			continue
 		}
 		pset, err := t.localExpandIntersector(s)
-		if err != nil {
+		if errors.Is(err, xerrors.ObjectNotFound) {
+			if !multi {
+				return err
+			}
+		} else if err != nil {
 			return err
 		}
 		for _, i := range pset.Values() {
@@ -224,9 +238,15 @@ func (t *Selection) localExpand() error {
 
 func (t *Selection) localExpandIntersector(s string) (*orderedset.OrderedSet, error) {
 	pset := orderedset.NewOrderedSet()
-	for i, selector := range strings.Split(s, "+") {
+	selectors := strings.Split(s, "+")
+	multi := len(selectors) > 1
+	for i, selector := range selectors {
 		ps, err := t.localExpandOne(selector)
-		if err != nil {
+		if errors.Is(err, xerrors.ObjectNotFound) {
+			if !multi {
+				return pset, err
+			}
+		} else if err != nil {
 			return pset, err
 		}
 		if i == 0 {
@@ -343,12 +363,19 @@ func (t *Selection) localExactExpand(s string) (*orderedset.OrderedSet, error) {
 	if err != nil {
 		return matching, err
 	}
-	_, err = os.Stat(path.ConfigFile())
-	if errors.Is(err, os.ErrNotExist) {
-		return matching, xerrors.ObjectNotFound
-	}
-	if err != nil {
-		return matching, err
+	if t.paths != nil {
+		// fake local, the daemon fed us a paths list already validated
+		if !slices.Contains(t.paths, path) {
+			return matching, xerrors.ObjectNotFound
+		}
+	} else {
+		_, err = os.Stat(path.ConfigFile())
+		if errors.Is(err, os.ErrNotExist) {
+			return matching, xerrors.ObjectNotFound
+		}
+		if err != nil {
+			return matching, err
+		}
 	}
 	matching.Add(s)
 	return matching, nil

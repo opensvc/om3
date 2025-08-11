@@ -1,23 +1,96 @@
+# Filtering
+
 Receive only events matching the filtering expression formatted as:
 
-<kind>[,filter[,...]]
-where:
-  <kind> is the required event kind
-  <filter> can be:
-    <key>=<value> is a required event label
-    <jsonpath><op><value> is required condition on the event data
+    <element>[,...]
     where:
-      <jsonpath> starts with a dot and is relative to .data
-      <op> can be
-        = or !=
-        > or <
-        >= or <=
+      <element> is one of:
+        <kind>                keep events of this kind
+        <key>=<value>         discard events of matching kinds not thus labeled
+        <jsonpath><op><value> discard events of matching kinds that don't pass
+                              this data assertion
+        where:
+          <jsonpath> starts with a dot and is relative to .data
+          <op> can be
+            = or !=
+            > or <
+            >= or <=
 
-Examples:
-  InstanceStatusUpdated
-  InstanceStatusUpdated,path=svc1
-  InstanceStatusUpdated,path=svc1,node=n1
-  InstanceStatusUpdated,path=svc1,node=n1,.instance_status.frozen_at="0001-01-01T00:00:00Z"
-  InstanceStatusUpdated,path=svc1,node=n1,.instance_status.frozen_at>"0001-01-01T00:00:00Z"
-  InstanceStatusUpdated,path=svc1,node=n1,.instance_status.avail="up"
-  InstanceStatusUpdated,path=svc1,node=n1,.instance_status.resources."fs#1".avail="up"
+## Event Kinds
+
+### Cluster
+ 
+     ClusterConfigUpdated, ClusterStatusUpdated
+     JoinError, JoinIgnored, JoinRequest, JoinSuccess
+     LeaveError, LeaveIgnored, LeaveRequest, LeaveSuccess
+     ArbitratorError, ForgetPeer
+
+### Config File Updates
+
+     ConfigFileRemoved, ConfigFileUpdated, RemoteFileConfig
+
+### Daemon
+
+     DaemonCollectorUpdated, DaemonCtl, DaemonDataUpdated
+     DaemonDnsUpdated, DaemonHeartbeatUpdated, DaemonListenerUpdated
+     DaemonRunnerImonUpdated, DaemonSchedulerUpdated, DaemonStatusUpdated
+     WatchDog
+     
+### DNS
+
+     ZoneRecordDeleted, ZoneRecordUpdated
+
+### Execs
+
+     Exec, ExecFailed, ExecSuccess
+
+###  Heartbeat
+
+    HeartbeatMessageTypeUpdated, HeartbeatAlive, HeartbeatStale
+
+### Instance
+
+     InstanceConfigDeleted, InstanceConfigManagerDone, InstanceConfigUpdated
+     InstanceFrozenFileRemoved, InstanceFrozenFileUpdated
+     InstanceMonitorAction, InstanceMonitorDeleted, InstanceMonitorUpdated
+     InstanceStatusDeleted, InstanceStatusPost, InstanceStatusUpdated
+     ProgressInstanceMonitor, SetInstanceMonitorRefused
+     RunFileUpdated, RunFileRemoved
+     SetInstanceMonitor
+
+### Node
+
+     NodeAlive, NodeStale
+     NodeConfigUpdated, NodeDataUpdated, NodeFrozen
+     NodeFrozenFileRemoved, NodeFrozenFileUpdated
+     NodeMonitorDeleted, NodeMonitorUpdated
+     NodeOsPathsUpdated
+     NodeRejoin, NodeSplitAction
+     NodeStatsUpdated
+     NodeStatusUpdated
+     NodeStatusArbitratorsUpdated, NodeStatusGenUpdates, NodeStatusLabelsUpdated
+     SetNodeMonitor
+     
+### Object
+
+     ObjectOrchestrationEnd, ObjectOrchestrationRefused
+     ObjectStatusDeleted, ObjectStatusDone, ObjectStatusUpdated
+
+### Event Subscription
+
+     ClientSubscribed, ClientUnsubscribed, SubscriptionError, SubscriptionQueueThreshold
+
+### Misc
+
+     Log
+
+## Examples
+    path=svc1,node=n1
+    InstanceStatusUpdated
+    InstanceStatusUpdated,ObjectOrchestrationEnd
+    InstanceStatusUpdated,path=svc1,ObjectOrchestrationEnd
+    InstanceStatusUpdated,path=svc1,node=n1
+    InstanceStatusUpdated,path=svc1,node=n1,.instance_status.frozen_at="0001-01-01T00:00:00Z"
+    InstanceStatusUpdated,path=svc1,node=n1,.instance_status.frozen_at>"0001-01-01T00:00:00Z"
+    InstanceStatusUpdated,path=svc1,node=n1,.instance_status.avail="up"
+    InstanceStatusUpdated,path=svc1,node=n1,.instance_status.resources."fs#1".avail="up"

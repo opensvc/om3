@@ -188,11 +188,17 @@ func (t *Manager) onRelationObjectStatusUpdated(c *msgbus.ObjectStatusUpdated) {
 	}
 }
 
-func (t *Manager) onRelationInstanceStatusUpdated(c *msgbus.InstanceStatusUpdated) {
+func (t *Manager) onInstanceStatusUpdated(c *msgbus.InstanceStatusUpdated) {
 	if c.Path == t.path {
-		// Can't relate to self. This case is handled by onInstanceStatusUpdated.
-		return
+		if t.needStatus.Load() {
+			t.queueStatus(nil)
+		}
+	} else {
+		t.onRelationInstanceStatusUpdated(c)
 	}
+}
+
+func (t *Manager) onRelationInstanceStatusUpdated(c *msgbus.InstanceStatusUpdated) {
 	changes := false
 	relation := c.Path.String() + "@" + c.Node
 	do := func(relation string, name string, cache map[string]status.T) {
@@ -309,9 +315,7 @@ func (t *Manager) onInstanceConfigUpdated(srcNode string, srcCmd *msgbus.Instanc
 
 	if srcCmd.Node == t.localhost {
 		defer func() {
-			if err := t.queueStatus(); err != nil {
-				t.log.Warnf("evaluate instance status via CRM: %s", err)
-			}
+			t.queueStatus(nil)
 		}()
 		t.instConfig = srcCmd.Value
 		t.log.Debugf("refresh resource monitor states on local instance config updated")

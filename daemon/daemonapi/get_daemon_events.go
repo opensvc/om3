@@ -9,7 +9,6 @@ import (
 	"strconv"
 	"strings"
 	"time"
-	"unicode"
 
 	"github.com/labstack/echo/v4"
 
@@ -495,7 +494,7 @@ func (a *DaemonAPI) getLocalDaemonEvents(ctx echo.Context, params api.GetDaemonE
 
 // parseFilters return filters from b.Filter
 func parseFilters(params api.GetDaemonEventsParams) (filters []Filter, err error) {
-	var filter Filter
+	var more []Filter
 	matchKind := make(map[string]bool)
 
 	if params.Filter == nil {
@@ -506,22 +505,24 @@ func parseFilters(params api.GetDaemonEventsParams) (filters []Filter, err error
 		if len(s) == 0 {
 			continue
 		}
-		filter, err = parseFilter(s)
+		more, err = parseFilter(s)
 		if err != nil {
 			return
 		}
-		if filter.IsZero() {
-			continue
-		}
-		if k, ok := filter.Kind.(kinder); ok {
-			kind := k.Kind()
-			hasMatcher, alreadyFiltered := matchKind[kind]
-			if hasMatcher || (alreadyFiltered && len(filter.DataFilters) > 0) {
-				return nil, fmt.Errorf("can't filter same kind multiple times when it has a value matcher: %s", kind)
+		for _, filter := range more {
+			if filter.IsZero() {
+				continue
 			}
-			matchKind[kind] = len(filter.DataFilters) > 0
+			if k, ok := filter.Kind.(kinder); ok {
+				kind := k.Kind()
+				hasMatcher, alreadyFiltered := matchKind[kind]
+				if hasMatcher || (alreadyFiltered && len(filter.DataFilters) > 0) {
+					return nil, fmt.Errorf("can't filter same kind multiple times when it has a value matcher: %s", kind)
+				}
+				matchKind[kind] = len(filter.DataFilters) > 0
+			}
+			filters = append(filters, filter)
 		}
-		filters = append(filters, filter)
 	}
 	return
 }
@@ -529,62 +530,21 @@ func parseFilters(params api.GetDaemonEventsParams) (filters []Filter, err error
 // parseFilter return filter from s
 //
 // filter syntax is: [kind][,label=value][,.abcd.efgh=value]*
-func parseFilter(filterStr string) (Filter, error) {
-	var filter Filter
-
-	isAlphanumeric := func(s string) bool {
-		for _, r := range s {
-			if !unicode.IsLetter(r) && !unicode.IsDigit(r) {
-				return false
-			}
-		}
-		return true
-	}
-
-	parseKind := func(s string) (rest string, kind any, err error) {
-		if i := strings.Index(s, ","); i < 0 {
-			if isAlphanumeric(s) {
-				// <kind> => match the specified kind
-				rest = ""
-				kind, err = msgbus.KindToT(s)
-			} else {
-				// <filter>,... => match all kinds
-				rest = s
-				kind = nil
-			}
-		} else if i == 0 {
-			// ,<filter>,... => match all kinds
-			rest = s[1:]
-			kind = nil
-		} else {
-			// <kind>,<filter>,... => match the specified kind
-			rest = s[i+1:]
-			kind, err = msgbus.KindToT(s[0:i])
-		}
-		return
-	}
-
-	if rest, kind, err := parseKind(filterStr); err != nil {
-		return Filter{}, err
-	} else {
-		filter.Kind = kind
-		filterStr = rest
-	}
-
-	if len(filterStr) == 0 {
-		// no label filters
-		return filter, nil
-	}
+func parseFilter(filterStr string) ([]Filter, error) {
+	var (
+		filter Filter
+		kinds  []any
+	)
 
 	parseLabelFilter := func(s string) (pubsub.Label, error) {
 		split := strings.SplitN(s, "=", 2)
 		if len(split) != 2 {
-			return pubsub.Label{}, fmt.Errorf("invalid label filter expression: %s (expecting <key><op><value>)", filterStr)
+			return pubsub.Label{}, fmt.Errorf("invalid label filter expression: %s (expecting <key><op><value>)", s)
 		}
 		key := strings.TrimSpace(split[0])
 		value := strings.TrimSpace(split[1])
 		if len(key) == 0 {
-			return pubsub.Label{}, fmt.Errorf("invalid label filter expression: %s (empty key)", filterStr)
+			return pubsub.Label{}, fmt.Errorf("invalid label filter expression: %s (empty key)", s)
 		}
 		return pubsub.Label{key, value}, nil
 	}
@@ -613,18 +573,35 @@ func parseFilter(filterStr string) (Filter, error) {
 		case strings.HasPrefix(filterElement, "."):
 			dataFilter, err := parseDataFilter(filterElement)
 			if err != nil {
-				return filter, err
+				return nil, err
 			}
 			filter.DataFilters = append(filter.DataFilters, dataFilter)
-		default:
+		case strings.Contains(filterElement, "="):
 			label, err := parseLabelFilter(filterElement)
 			if err != nil {
-				return filter, err
+				return nil, err
 			}
 			filter.Labels = append(filter.Labels, label)
+		default:
+			kind, err := msgbus.KindToT(filterElement)
+			if err != nil {
+				return nil, err
+			}
+			kinds = append(kinds, kind)
 		}
 	}
-	return filter, nil
+	if kinds == nil {
+		return []Filter{filter}, nil
+	}
+	var filters []Filter
+	for _, kind := range kinds {
+		filters = append(filters, Filter{
+			Kind:        kind,
+			Labels:      filter.Labels,
+			DataFilters: filter.DataFilters,
+		})
+	}
+	return filters, nil
 }
 
 func (f Filter) IsZero() bool {

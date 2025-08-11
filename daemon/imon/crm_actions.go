@@ -24,7 +24,7 @@ var (
 	// testCRMAction can be used to define alternate testCRMAction for tests
 	testCRMAction func(title string, cmdArgs ...string) error
 
-	kindWithNotApplicableStatus = naming.NewKinds(naming.KindSvc, naming.KindVol)
+	statefullKinds = naming.NewKinds(naming.KindSvc, naming.KindVol)
 )
 
 func init() {
@@ -62,22 +62,49 @@ func (t *Manager) queueFreeze() error {
 	})
 }
 
-func (t *Manager) queueStatus() error {
-	if !kindWithNotApplicableStatus.Has(t.path.Kind) {
-		// no need for crm status action, intead simulate status with post status event
-		naStatus := instance.Status{
-			Avail:       status.NotApplicable,
-			Optional:    status.NotApplicable,
-			Overall:     status.NotApplicable,
-			Provisioned: provisioned.NotApplicable,
-			UpdatedAt:   time.Now(),
-		}
-		t.publisher.Pub(&msgbus.InstanceStatusPost{Path: t.path, Node: t.localhost, Value: naStatus}, t.pubLabels...)
-		return nil
+func (t *Manager) runStatus() error {
+	errC := make(chan error)
+	if ok := t.queueStatus(errC); ok {
+		return <-errC
 	}
-	return runner.Run(t.instConfig.Priority, func() error {
-		return t.crmStatus()
-	})
+	return nil
+}
+
+func (t *Manager) pubStatelessInstanceStatus() {
+	instStatus := instance.Status{
+		Avail:       status.NotApplicable,
+		Optional:    status.NotApplicable,
+		Overall:     status.NotApplicable,
+		Provisioned: provisioned.NotApplicable,
+		UpdatedAt:   time.Now(),
+	}
+	t.publisher.Pub(&msgbus.InstanceStatusPost{Path: t.path, Node: t.localhost, Value: instStatus}, t.pubLabels...)
+}
+
+func (t *Manager) queueStatus(errC chan error) (ok bool) {
+	if !t.statefull {
+		t.pubStatelessInstanceStatus()
+		return false
+	}
+	if t.statusQueued.Load() {
+		t.needStatus.Store(true)
+		return false
+	} else {
+		t.statusQueued.Store(true)
+	}
+
+	fn := func() error {
+		t.statusQueued.Store(false)
+		t.needStatus.Store(false)
+		err := t.crmStatus()
+		if err != nil && errC == nil {
+			// if errC is not nil, let the caller decide if/how he wants to log the err
+			t.log.Warnf("status evaluation command: %s", err)
+		}
+		return err
+	}
+	runner.Enqueue(t.instConfig.Priority, errC, fn)
+	return true
 }
 
 func (t *Manager) queueResourceStartStandby(rids []string) error {

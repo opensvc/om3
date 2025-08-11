@@ -24,6 +24,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"sync/atomic"
 	"time"
 
 	"github.com/google/uuid"
@@ -48,6 +49,10 @@ type (
 	Manager struct {
 		state         instance.Monitor
 		previousState instance.Monitor
+
+		// only svc and vol support "status -r", if not statefull skip status
+		// evaluations
+		statefull bool
 
 		// abortedOrchestration represents the state of an orchestration process
 		// that was prematurely aborted.
@@ -89,6 +94,11 @@ type (
 		cancelReady context.CancelFunc
 		localhost   string
 		change      bool
+
+		// needStatus and statusQueued are used to coalesce status refresh commands so
+		// we don't run one per InstanceConfigUpdated event.
+		needStatus   atomic.Bool
+		statusQueued atomic.Bool
 
 		// priors is the list of peer instance nodenames that need restarting before we can restart locally
 		priors []string
@@ -239,6 +249,7 @@ func start(parent context.Context, qs pubsub.QueueSizer, p naming.Path, nodes []
 		scopeNodes:    nodes,
 		change:        true,
 		readyDuration: defaultReadyDuration,
+		statefull:     statefullKinds.Has(p.Kind),
 
 		waitConvergedOrchestrationMsg: make(map[string]string),
 
@@ -308,10 +319,10 @@ func (t *Manager) worker(initialNodes []string) {
 
 	// Initiate a CRM status refresh first, this will update our instance status cache
 	// as soon as possible.
-	// queueStatus => publish instance status update
+	// runStatus => publish instance status update
 	//   => data update (so available from next GetInstanceStatus)
 	//   => omon update with srcEvent: instance status update (we watch omon updates)
-	if err := t.queueStatus(); err != nil {
+	if err := t.runStatus(); err != nil {
 		t.log.Errorf("error during initial crm status: %s", err)
 	}
 
@@ -386,7 +397,7 @@ func (t *Manager) worker(initialNodes []string) {
 			case *msgbus.InstanceStatusDeleted:
 				t.onInstanceStatusDeleted(c)
 			case *msgbus.InstanceStatusUpdated:
-				t.onRelationInstanceStatusUpdated(c)
+				t.onInstanceStatusUpdated(c)
 			case *msgbus.ObjectStatusDeleted:
 				t.onObjectStatusDeleted(c)
 			case *msgbus.ObjectStatusUpdated:

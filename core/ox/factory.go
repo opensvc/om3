@@ -11,11 +11,6 @@ import (
 	"github.com/opensvc/om3/core/tui"
 )
 
-var (
-	//go:embed text/node-events/event-kind
-	eventKindTemplate string
-)
-
 func newCmdAll() *cobra.Command {
 	return &cobra.Command{
 		Use:   "all",
@@ -1158,9 +1153,10 @@ func newCmdNodeConfigValidate() *cobra.Command {
 func newCmdNodeEvents() *cobra.Command {
 	var options commands.CmdNodeEvents
 	cmd := &cobra.Command{
-		Use:     "events",
-		Short:   "print the node event stream",
-		Long:    "print the node event stream\n\nAvailable kinds: \n" + eventKindTemplate,
+		Use:   "events",
+		Short: "print the node event stream",
+		Long:  "Print the node event stream\n\n" + commoncmd.UsageFlagEventFilter() + "\n" + commoncmd.UsageFlagEventTemplate(),
+
 		Aliases: []string{"eve", "even", "event"},
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return options.Run()
@@ -1170,13 +1166,13 @@ func newCmdNodeEvents() *cobra.Command {
 	commoncmd.FlagColor(flags, &options.Color)
 	commoncmd.FlagDuration(flags, &options.Duration)
 	commoncmd.FlagEventFilters(flags, &options.Filters)
+	commoncmd.FlagEventOutput(flags, &options.Output)
 	commoncmd.FlagEventTemplate(flags, &options.Template)
 	commoncmd.FlagNodeSelector(flags, &options.NodeSelector)
 	commoncmd.FlagObjectSelector(flags, &options.ObjectSelector)
-	commoncmd.FlagOutput(flags, &options.Output)
 	commoncmd.FlagQuiet(flags, &options.Quiet)
 	commoncmd.FlagWait(flags, &options.Wait)
-	flags.Uint64Var(&options.Limit, "limit", 0, "stop listening when <limit> events are received, the default is 0 (unlimited) or 1 if --wait is set")
+	commoncmd.FlagEventLimit(flags, &options.Limit)
 	return cmd
 }
 
