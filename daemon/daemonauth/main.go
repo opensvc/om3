@@ -129,7 +129,7 @@ func Start(ctx context.Context, authCfg any) error {
 				return
 			case <-ticker.C:
 				if currentSetting != "" {
-					log.Debugf("listener auth config refreshing strategies")
+					log.Infof("listener auth config refreshing strategies")
 					s, err := initStategies(ctx, authCfg)
 					if err != nil {
 						log.Errorf("failed to refresh authentication strategies: %s", err)
@@ -176,9 +176,9 @@ func initStategies(ctx context.Context, i any) (union.Union, error) {
 		if err != nil {
 			log.Warnf("ignored authentication strategy %s: %s", name, err)
 		} else if s != nil {
-			log.Debugf("initialized authentication strategy %s", name)
+			log.Infof("initialized authentication strategy %s", name)
 			if name == "jwt" {
-				log.Debugf("jwt verify key sig: %s", jwtVerifyKeySign)
+				log.Infof("jwt verify key sig: %s", jwtVerifyKeySign)
 			}
 			l = append(l, s)
 		}
