@@ -2988,8 +2988,7 @@ func newCmdObjectStatus(kind string) *cobra.Command {
 		Use:     "status",
 		Hidden:  true,
 		Aliases: []string{"statu", "stat", "sta", "st"},
-		Short:   "set the exitcode to the instance status",
-		Long:    "This command is silent. Only the exitcode holds information.",
+		Long:    "Internal, for use by the daemon scheduler. This command is silent. Only the exitcode holds information. The exitcode is set to the instance avail status.",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return options.Run(kind)
 		},
