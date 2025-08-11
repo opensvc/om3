@@ -1,4 +1,8 @@
-`string` is a Go template string with custom extra functions:
+# Templating
+
+The template syntax follows the go template standard, with a few custom extra functions.
+
+## Custom Functions
 
 * `hasNodeLabel(labels []pubsub.Label, expected ...string) bool`
 
@@ -36,35 +40,36 @@
 
   Alias of strings.HasSuffix.
 
+## Common templates
 
-Simple template examples:
+### Simple event formatting:
 
     --filter InstanceMonitorUpdated --template \
-        '{{printf "instance %s@%s monitor state is %s\n" .data.path .data.node .data.instance_monitor.state}}'
+      '{{printf "instance %s@%s monitor state is %s\n" .data.path .data.node .data.instance_monitor.state}}'
 
 
-Label filtering examples:
+### Label filtering:
 
 * By node:
 
       --filter InstanceMonitorUpdated,path=foo --template \
-          '{{if hasNodeLabel .data.labels "dev1n1" "dev1n2" -}}
-              {{printf "instance %s@%s monitor state is %s\n" .data.path .data.node .data.instance_monitor.state}}{{end}}'
+        '{{if hasNodeLabel .data.labels "dev1n1" "dev1n2" -}}
+            {{printf "instance %s@%s monitor state is %s\n" .data.path .data.node .data.instance_monitor.state}}{{end}}'
 
 * By path:
 
       --filter InstanceMonitorUpdated,node=dev1n1 --template \
-          '{{if hasPathLabel .data.labels "foo001" "foo002" -}}
-              {{printf "instance %s@%s monitor state is %s\n" .data.path .data.node .data.instance_monitor.state}}{{end}}'
+        '{{if hasPathLabel .data.labels "foo001" "foo002" -}}
+            {{printf "instance %s@%s monitor state is %s\n" .data.path .data.node .data.instance_monitor.state}}{{end}}'
 
 * By instance:
 
       --filter InstanceMonitorUpdated --template \
-          '{{if hasInstanceLabel .data.labels "foo001@dev1n1" "foo002@dev1n2" -}}
-              {{printf "instance %s@%s monitor state is %s\n" .data.path .data.node .data.instance_monitor.state}}{{end}}'
+        '{{if hasInstanceLabel .data.labels "foo001@dev1n1" "foo002@dev1n2" -}}
+            {{printf "instance %s@%s monitor state is %s\n" .data.path .data.node .data.instance_monitor.state}}{{end}}'
 
 
-Wait template examples:
+### Wait templates:
 
 * Object is avail up and provisioned true:
 
@@ -81,28 +86,28 @@ Wait template examples:
 * Node is frozen:
 
       --wait --filter NodeStatusUpdated,node=dev1n1 --template \
-	  '{{if setSuccess (eq .data.instance_status.frozen_at "0001-01-01T00:00:00Z")}}{{end}}'
+        '{{if setSuccess (eq .data.instance_status.frozen_at "0001-01-01T00:00:00Z")}}{{end}}'
 
 * All cluster nodes are frozen:
 
       --wait --filter ClusterStatusUpdated --template \
-	  '{{if setSuccess .data.cluster_status.is_frozen}}{{end}}'
+        '{{if setSuccess .data.cluster_status.is_frozen}}{{end}}'
 
 * All cluster nodes are unfrozen:
 
       --wait --filter ClusterStatusUpdated --template \
-	  '{{if setSuccess (not .data.cluster_status.is_frozen)}}{{end}}'
+        '{{if setSuccess (not .data.cluster_status.is_frozen)}}{{end}}'
 
 * Object avail is up on 3 objects:
 
       --wait --filter ObjectStatusUpdated --template \
-          '{{if passSet (toInst .data.path .data.node) (eq .data.object_status.avail "up") -}}
+        '{{if passSet (toInst .data.path .data.node) (eq .data.object_status.avail "up") -}}
               {{with setSuccess (eq passCount 3)}}{{end}}{{end}}'
 
 * Object avail is up on 3 objects that starts with "foo":
 
       --wait --filter ObjectStatusUpdated --template \
-          '{{if eq (slice .data.path 0 3) "foo" -}}
+        '{{if eq (slice .data.path 0 3) "foo" -}}
               {{if passSet .data.path (eq .data.object_status.avail "up") -}}
                   {{with setSuccess (eq passCount 3)}}{{end}}{{end}}{{end}}'
 

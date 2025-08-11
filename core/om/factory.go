@@ -14,11 +14,6 @@ import (
 	"github.com/opensvc/om3/util/hostname"
 )
 
-var (
-	//go:embed text/node-events/event-kind
-	eventKindTemplate string
-)
-
 func newCmdAll() *cobra.Command {
 	return &cobra.Command{
 		Use:   "all",
@@ -1022,7 +1017,7 @@ func newCmdNodeEvents() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:     "events",
 		Short:   "print the node event stream",
-		Long:    "Print the node event stream\n\nEvent Kinds:\n\n" + eventKindTemplate + "\n\nEvent Filtering:\n\n" + commoncmd.UsageFlagEventFilter() + "\n\nTemplating:\n\n" + commoncmd.UsageFlagEventTemplate(),
+		Long:    "Print the node event stream\n\n" + commoncmd.UsageFlagEventFilter() + "\n" + commoncmd.UsageFlagEventTemplate(),
 		Aliases: []string{"eve", "even", "event"},
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return options.Run()
