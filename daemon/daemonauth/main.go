@@ -43,7 +43,7 @@ var (
 	discoverOpenIDTimeout = time.Second
 
 	// authRefreshInterval defines the duration between periodic authentication strategy refresh operations.
-	authRefreshInterval = 60 * time.Second
+	authRefreshInterval = 30 * 24 * time.Hour
 )
 
 var (
