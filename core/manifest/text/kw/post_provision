@@ -1,3 +1,5 @@
 A command or script to execute after the resource `provision` action.
 
 Errors do not interrupt the action.
+
+This trigger is only executed on leaders.

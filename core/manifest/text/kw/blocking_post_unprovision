@@ -1,3 +1,5 @@
 A command or script to execute after the resource `unprovision` action.
 
 Errors interrupt the action.
+
+This trigger is only executed on leaders.
