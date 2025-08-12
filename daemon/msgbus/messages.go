@@ -45,6 +45,12 @@ import (
 	"github.com/opensvc/om3/util/san"
 )
 
+type (
+	Keyer interface {
+		Key() string
+	}
+)
+
 var (
 	kindToT = map[string]func() any{
 		"ArbitratorError": func() any { return &ArbitratorError{} },
@@ -891,6 +897,10 @@ func (e *ClusterConfigUpdated) Kind() string {
 	return "ClusterConfigUpdated"
 }
 
+func (e *ClusterConfigUpdated) Key() string {
+	return "ClusterConfigUpdated"
+}
+
 func (e *ClusterStatusUpdated) Kind() string {
 	return "ClusterStatusUpdated"
 }
@@ -908,7 +918,7 @@ func (e *ClientSubscribed) Kind() string {
 }
 
 func (e *ClientSubscribed) String() string {
-	return fmt.Sprintf("%s %s", e.Name, e.Time)
+	return fmt.Sprintf("ClientSubscribed,name=%s,time=%s", e.Name, e.Time)
 }
 
 func (e *ClientUnsubscribed) Kind() string {
@@ -916,11 +926,15 @@ func (e *ClientUnsubscribed) Kind() string {
 }
 
 func (e *ClientUnsubscribed) String() string {
-	return fmt.Sprintf("%s %s", e.Name, e.Time)
+	return fmt.Sprintf("ClientUnsubscribed,name=%s,time=%s", e.Name, e.Time)
 }
 
 func (e *DaemonCollectorUpdated) Kind() string {
 	return "DaemonCollectorUpdated"
+}
+
+func (e *DaemonCollectorUpdated) Key() string {
+	return fmt.Sprintf("DaemonCollectorUpdated,node=%s", e.Node)
 }
 
 func (e *DaemonCtl) Kind() string {
@@ -935,24 +949,48 @@ func (e *DaemonDnsUpdated) Kind() string {
 	return "DaemonDnsUpdated"
 }
 
+func (e *DaemonDnsUpdated) Key() string {
+	return fmt.Sprintf("DaemonDnsUpdated,node=%s", e.Node)
+}
+
 func (e *DaemonHeartbeatUpdated) Kind() string {
 	return "DaemonHeartbeatUpdated"
+}
+
+func (e *DaemonHeartbeatUpdated) Key() string {
+	return fmt.Sprintf("DaemonHeartbeatUpdated,node=%s", e.Node)
 }
 
 func (e *DaemonListenerUpdated) Kind() string {
 	return "DaemonListenerUpdated"
 }
 
+func (e *DaemonListenerUpdated) Key() string {
+	return fmt.Sprintf("DaemonListenerUpdated,node=%s", e.Node)
+}
+
 func (e *DaemonRunnerImonUpdated) Kind() string {
 	return "DaemonRunnerImonUpdated"
+}
+
+func (e *DaemonRunnerImonUpdated) Key() string {
+	return fmt.Sprintf("DaemonRunnerImonUpdated,node=%s", e.Node)
 }
 
 func (e *DaemonSchedulerUpdated) Kind() string {
 	return "DaemonSchedulerUpdated"
 }
 
+func (e *DaemonSchedulerUpdated) Key() string {
+	return fmt.Sprintf("DaemonSchedulerUpdated,node=%s", e.Node)
+}
+
 func (e *DaemonStatusUpdated) Kind() string {
 	return "DaemonStatusUpdated"
+}
+
+func (e *DaemonStatusUpdated) Key() string {
+	return fmt.Sprintf("DaemonStatusUpdated,node=%s", e.Node)
 }
 
 func (e *EnterOverloadPeriod) Kind() string {
@@ -987,6 +1025,10 @@ func (e *HeartbeatMessageTypeUpdated) Kind() string {
 	return "HeartbeatMessageTypeUpdated"
 }
 
+func (e *HeartbeatMessageTypeUpdated) Key() string {
+	return fmt.Sprintf("HeartbeatMessageTypeUpdated,node=%s", e.Node)
+}
+
 func (e *HeartbeatAlive) String() string {
 	return fmt.Sprintf("HeartbeatAlive: node %s ping detected from %s %s", e.Nodename, e.HbID, e.Time)
 }
@@ -1007,6 +1049,12 @@ func (e *InstanceConfigDeleted) Kind() string {
 	return "InstanceConfigDeleted"
 }
 
+func (e *InstanceConfigDeleted) KeysToDelete() []string {
+	return []string{
+		fmt.Sprintf("InstanceConfigUpdated,path=%s,node=%s", e.Path, e.Node),
+	}
+}
+
 func (e *InstanceConfigDeleting) Kind() string {
 	return "InstanceConfigDeleting"
 }
@@ -1017,6 +1065,10 @@ func (e *InstanceConfigFor) Kind() string {
 
 func (e *InstanceConfigUpdated) Kind() string {
 	return "InstanceConfigUpdated"
+}
+
+func (e *InstanceConfigUpdated) Key() string {
+	return fmt.Sprintf("InstanceConfigUpdated,path=%s,node=%s", e.Path, e.Node)
 }
 
 func (e *InstanceFrozenFileRemoved) Kind() string {
@@ -1035,12 +1087,28 @@ func (e *InstanceMonitorDeleted) Kind() string {
 	return "InstanceMonitorDeleted"
 }
 
+func (e *InstanceMonitorDeleted) KeysToDelete() []string {
+	return []string{
+		fmt.Sprintf("InstanceMonitorUpdated,path=%s,node=%s", e.Path, e.Node),
+	}
+}
+
 func (e *InstanceMonitorUpdated) Kind() string {
 	return "InstanceMonitorUpdated"
 }
 
+func (e *InstanceMonitorUpdated) Key() string {
+	return fmt.Sprintf("InstanceMonitorUpdated,path=%s,node=%s", e.Path, e.Node)
+}
+
 func (e *InstanceStatusDeleted) Kind() string {
 	return "InstanceStatusDeleted"
+}
+
+func (e *InstanceStatusDeleted) KeysToDelete() []string {
+	return []string{
+		fmt.Sprintf("InstanceStatusUpdated,path=%s,node=%s", e.Path, e.Node),
+	}
 }
 
 func (e *InstanceStatusPost) Kind() string {
@@ -1049,6 +1117,10 @@ func (e *InstanceStatusPost) Kind() string {
 
 func (e *InstanceStatusUpdated) Kind() string {
 	return "InstanceStatusUpdated"
+}
+
+func (e *InstanceStatusUpdated) Key() string {
+	return fmt.Sprintf("InstanceStatusUpdated,path=%s,node=%s", e.Path, e.Node)
 }
 
 func (e *InstanceConfigManagerDone) Kind() string {
@@ -1099,8 +1171,16 @@ func (e *NodeConfigUpdated) Kind() string {
 	return "NodeConfigUpdated"
 }
 
+func (e *NodeConfigUpdated) Key() string {
+	return fmt.Sprintf("NodeConfigUpdated,node=%", e.Node)
+}
+
 func (e *NodeDataUpdated) Kind() string {
 	return "NodeDataUpdated"
+}
+
+func (e *NodeDataUpdated) Key() string {
+	return fmt.Sprintf("NodeDataUpdated,node=%", e.Node)
 }
 
 func (e *NodeFrozen) Kind() string {
@@ -1119,12 +1199,26 @@ func (e *NodeMonitorDeleted) Kind() string {
 	return "NodeMonitorDeleted"
 }
 
+func (e *NodeMonitorDeleted) KeysToDelete() []string {
+	return []string{
+		fmt.Sprintf("NodeMonitorUpdated,node=%s", e.Node),
+	}
+}
+
 func (e *NodeMonitorUpdated) Kind() string {
 	return "NodeMonitorUpdated"
 }
 
+func (e *NodeMonitorUpdated) Key() string {
+	return fmt.Sprintf("NodeMonitorUpdated,node=%s", e.Node)
+}
+
 func (e *NodeOsPathsUpdated) Kind() string {
 	return "NodeOsPathsUpdated"
+}
+
+func (e *NodeOsPathsUpdated) Key() string {
+	return fmt.Sprintf("NodeOsPathsUpdated,node=%s", e.Node)
 }
 
 func (e *NodeSplitAction) Kind() string {
@@ -1135,12 +1229,24 @@ func (e *NodeStatsUpdated) Kind() string {
 	return "NodeStatsUpdated"
 }
 
+func (e *NodeStatsUpdated) Key() string {
+	return fmt.Sprintf("NodeStatsUpdated,node=%s", e.Node)
+}
+
 func (e *NodeStatusArbitratorsUpdated) Kind() string {
 	return "NodeStatusArbitratorsUpdated"
 }
 
+func (e *NodeStatusArbitratorsUpdated) Key() string {
+	return fmt.Sprintf("NodeStatusArbitratorsUpdated,node=%s", e.Node)
+}
+
 func (e *NodeStatusGenUpdates) Kind() string {
 	return "NodeStatusGenUpdates"
+}
+
+func (e *NodeStatusGenUpdates) Key() string {
+	return fmt.Sprintf("NodeStatusGenUpdates,node=%s", e.Node)
 }
 
 func (e *NodeStatusLabelsCommited) Kind() string {
@@ -1151,12 +1257,20 @@ func (e *NodeStatusLabelsUpdated) Kind() string {
 	return "NodeStatusLabelsUpdated"
 }
 
+func (e *NodeStatusLabelsUpdated) Key() string {
+	return fmt.Sprintf("NodeStatusLabelsUpdated,node=%s", e.Node)
+}
+
 func (e *NodeStale) Kind() string {
 	return "NodeStale"
 }
 
 func (e *NodeStatusUpdated) Kind() string {
 	return "NodeStatusUpdated"
+}
+
+func (e *NodeStatusUpdated) Key() string {
+	return fmt.Sprintf("NodeStatusUpdated,node=%s", e.Node)
 }
 
 func (e *ObjectCreated) Kind() string {
@@ -1179,6 +1293,12 @@ func (e *ObjectStatusDeleted) Kind() string {
 	return "ObjectStatusDeleted"
 }
 
+func (e *ObjectStatusDeleted) KeysToDelete() []string {
+	return []string{
+		fmt.Sprintf("ObjectStatusUpdated,path=%s", e.Path),
+	}
+}
+
 func (e *ObjectStatusDone) Kind() string {
 	return "ObjectStatusDone"
 }
@@ -1191,6 +1311,10 @@ func (e *ObjectStatusUpdated) String() string {
 
 func (e *ObjectStatusUpdated) Kind() string {
 	return "ObjectStatusUpdated"
+}
+
+func (e *ObjectStatusUpdated) Key() string {
+	return fmt.Sprintf("ObjectStatusUpdated,path=%s", e.Path)
 }
 
 func (e *ProgressInstanceMonitor) Kind() string {
@@ -1237,8 +1361,18 @@ func (e *ZoneRecordDeleted) Kind() string {
 	return "ZoneRecordDeleted"
 }
 
+func (e *ZoneRecordDeleted) KeysToDelete() []string {
+	return []string{
+		fmt.Sprintf("ZoneRecordUpdated,path=%s,node=%s,name=%s,type=%s", e.Path, e.Node, e.Name, e.Type),
+	}
+}
+
 func (e *ZoneRecordUpdated) Kind() string {
 	return "ZoneRecordUpdated"
+}
+
+func (e *ZoneRecordUpdated) Key() string {
+	return fmt.Sprintf("ZoneRecordUpdated,path=%s,node=%s,name=%s,type=%s", e.Path, e.Node, e.Name, e.Type)
 }
 
 func NewSetInstanceMonitorWithErr(ctx context.Context, p naming.Path, nodename string, value instance.MonitorUpdate) (*SetInstanceMonitor, errcontext.ErrReceiver) {

@@ -6,6 +6,7 @@ import (
 	"io"
 	"os"
 	"reflect"
+	"slices"
 	"sort"
 	"strings"
 
@@ -121,17 +122,48 @@ func flatten(value any, lkey string, flattened *map[string]string) {
 }
 
 type Delta struct {
-	key      func(any) string
 	cache    map[string]map[string]string
 	colorize *palette.ColorPaletteFunc
 }
 
-func NewDelta(key func(any) string) *Delta {
+func NewDelta() *Delta {
 	return &Delta{
 		colorize: palette.DefaultFuncPalette(),
 		cache:    make(map[string]map[string]string),
-		key:      key,
 	}
+}
+
+func (t *Delta) Key(data any) string {
+	type keyer interface {
+		Key() string
+	}
+	i, ok := data.(keyer)
+	if !ok {
+		return ""
+	}
+	return i.Key()
+}
+
+func (t *Delta) KeysToDelete(data any) []string {
+	type keysToDeleter interface {
+		KeysToDelete() []string
+	}
+	i, ok := data.(keysToDeleter)
+	if !ok {
+		return []string{}
+	}
+	return i.KeysToDelete()
+}
+
+func (t *Delta) Highlight(data any) []string {
+	type highlighter interface {
+		Highlight() []string
+	}
+	i, ok := data.(highlighter)
+	if !ok {
+		return []string{}
+	}
+	return i.Highlight()
 }
 
 func (t *Delta) Fprint(w io.Writer, data any) error {
@@ -146,47 +178,94 @@ func (t *Delta) Fprint(w io.Writer, data any) error {
 	}
 
 	next := Flatten(m)
-	key := t.key(data)
-	last, ok := t.cache[key]
-	fmt.Fprintln(w, "---")
-	if !ok || key == "" {
-		t.cache[key] = next
+	key := t.Key(data)
+	keysToDelete := t.KeysToDelete(data)
+	highlight := t.Highlight(data)
+	if len(keysToDelete) > 0 {
+		for _, key := range keysToDelete {
+			_, ok := t.cache[key]
+			if !ok || key == "" {
+				continue
+			}
+			delete(t.cache, key)
+		}
+		fmt.Fprintln(w, "---")
 		for k, v := range next {
-			fmt.Fprintf(w, " %s %s\n", t.colorize.Primary(k+" ="), v)
+			if slices.Contains(highlight, k) {
+				v = t.colorize.Bold(v)
+			}
+			fmt.Fprintf(w, " %s %s\n", t.colorize.Frozen(k+" ="), v)
 		}
 	} else {
-		allKeys := make([]string, 0)
-		dedupedKeys := make(map[string]any)
-		for key := range next {
-			dedupedKeys[key] = nil
-		}
-		for key := range last {
-			dedupedKeys[key] = nil
-		}
-		for key := range dedupedKeys {
-			allKeys = append(allKeys, key)
-		}
-		sort.Strings(allKeys)
-		for _, k := range allKeys {
-			lastValue, lastOk := last[k]
-			nextValue, nextOk := next[k]
-			s := t.colorize.Primary(k + " =")
+		fmt.Fprintln(w, "---")
+		last, ok := t.cache[key]
+		if key == "" {
+			// does not want caching, display in blue
+			for k, v := range next {
+				if slices.Contains(highlight, k) {
+					v = t.colorize.Bold(v)
+				}
+				fmt.Fprintf(w, " %s %s\n", t.colorize.Frozen(k+" ="), v)
+			}
+		} else if !ok {
+			// wants caching but not yet cached, display in green
+			t.cache[key] = next
+			for k, v := range next {
+				s := t.colorize.Primary(k + " =")
+				if slices.Contains(highlight, k) {
+					v = t.colorize.Bold(v)
+				}
+				fmt.Fprintf(w, "%s%s %s\n", t.colorize.Optimal("+"), s, t.colorize.Optimal(v))
+			}
+		} else {
+			allKeys := make([]string, 0)
+			dedupedKeys := make(map[string]any)
+			for key := range next {
+				dedupedKeys[key] = nil
+			}
+			for key := range last {
+				dedupedKeys[key] = nil
+			}
+			for key := range dedupedKeys {
+				allKeys = append(allKeys, key)
+			}
+			sort.Strings(allKeys)
+			for _, k := range allKeys {
+				lastValue, lastOk := last[k]
+				nextValue, nextOk := next[k]
+				s := t.colorize.Primary(k + " =")
 
-			switch {
-			case nextOk && !lastOk:
-				fmt.Fprintf(w, "%s%s %s\n", t.colorize.Optimal("+"), s, t.colorize.Optimal(nextValue))
-			case !nextOk && lastOk:
-				fmt.Fprintf(w, "%s%s %s\n", t.colorize.Error("-"), s, t.colorize.Error(lastValue))
-			case nextOk && lastOk:
-				if lastValue != nextValue {
-					fmt.Fprintf(w, "%s%s %s\n", t.colorize.Error("-"), s, t.colorize.Error(lastValue))
+				switch {
+				case nextOk && !lastOk:
+					if slices.Contains(highlight, k) {
+						nextValue = t.colorize.Bold(nextValue)
+					}
 					fmt.Fprintf(w, "%s%s %s\n", t.colorize.Optimal("+"), s, t.colorize.Optimal(nextValue))
-				} else {
-					fmt.Fprintf(w, " %s %s\n", s, nextValue)
+				case !nextOk && lastOk:
+					if slices.Contains(highlight, k) {
+						lastValue = t.colorize.Bold(lastValue)
+					}
+					fmt.Fprintf(w, "%s%s %s\n", t.colorize.Error("-"), s, t.colorize.Error(lastValue))
+				case nextOk && lastOk:
+					if lastValue != nextValue {
+						if slices.Contains(highlight, k) {
+							lastValue = t.colorize.Bold(lastValue)
+						}
+						fmt.Fprintf(w, "%s%s %s\n", t.colorize.Error("-"), s, t.colorize.Error(lastValue))
+						if slices.Contains(highlight, k) {
+							nextValue = t.colorize.Bold(nextValue)
+						}
+						fmt.Fprintf(w, "%s%s %s\n", t.colorize.Optimal("+"), s, t.colorize.Optimal(nextValue))
+					} else {
+						if slices.Contains(highlight, k) {
+							nextValue = t.colorize.Bold(nextValue)
+						}
+						fmt.Fprintf(w, " %s %s\n", s, nextValue)
+					}
 				}
 			}
+			t.cache[key] = next
 		}
-		t.cache[key] = next
 	}
 	return nil
 }

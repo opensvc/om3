@@ -156,23 +156,7 @@ func (t *CmdNodeEvents) DoNodes() error {
 		nodenames []string
 	)
 	if t.Output == "delta" {
-		fmtKey := func(i any) string {
-			ce := i.(*event.ConcreteEvent)
-			s := ce.Kind
-			msg, ok := ce.Data.(pubsub.Messager)
-			if !ok {
-				return ""
-			}
-			labels := msg.GetLabels()
-			if v, ok := labels["node"]; ok {
-				s += "," + v
-			}
-			if v, ok := labels["path"]; ok {
-				s += "," + v
-			}
-			return s
-		}
-		t.delta = output.NewDelta(fmtKey)
+		t.delta = output.NewDelta()
 	}
 
 	t.evC = make(chan *event.Event)
