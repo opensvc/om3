@@ -1172,7 +1172,7 @@ func (e *NodeConfigUpdated) Kind() string {
 }
 
 func (e *NodeConfigUpdated) Key() string {
-	return fmt.Sprintf("NodeConfigUpdated,node=%", e.Node)
+	return fmt.Sprintf("NodeConfigUpdated,node=%s", e.Node)
 }
 
 func (e *NodeDataUpdated) Kind() string {
@@ -1180,7 +1180,7 @@ func (e *NodeDataUpdated) Kind() string {
 }
 
 func (e *NodeDataUpdated) Key() string {
-	return fmt.Sprintf("NodeDataUpdated,node=%", e.Node)
+	return fmt.Sprintf("NodeDataUpdated,node=%s", e.Node)
 }
 
 func (e *NodeFrozen) Kind() string {
