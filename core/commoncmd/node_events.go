@@ -36,7 +36,7 @@ type (
 		NodeSelector string
 		errC         chan error
 		evC          chan *event.Event
-		delta        *output.Delta
+		diff         *output.Delta
 	}
 
 	templateHelper struct {
@@ -155,8 +155,8 @@ func (t *CmdNodeEvents) DoNodes() error {
 		now       = time.Now()
 		nodenames []string
 	)
-	if t.Output == "delta" {
-		t.delta = output.NewDelta()
+	if t.Output == "diff" {
+		t.diff = output.NewDiff()
 	}
 
 	t.evC = make(chan *event.Event)
@@ -359,8 +359,8 @@ func (t *CmdNodeEvents) doEvent(e event.Event) {
 		}
 		return
 	}
-	if t.Output == "delta" {
-		t.delta.Fprint(os.Stdout, ce)
+	if t.Output == "diff" {
+		t.diff.Fprint(os.Stdout, ce)
 
 	} else {
 		if t.Output == output.JSON.String() {

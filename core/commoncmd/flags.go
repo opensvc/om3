@@ -157,8 +157,8 @@ func FlagEventFilters(flags *pflag.FlagSet, p *[]string) {
 }
 
 func FlagEventOutput(flags *pflag.FlagSet, p *string) {
-	flags.StringVarP(p, "output", "o", "auto", "output format json|flat|delta|auto|tab=<header>:<jsonpath>,...")
-	flags.StringVar(p, "format", "auto", "output format json|flat|delta|auto|tab=<header>:<jsonpath>,...")
+	flags.StringVarP(p, "output", "o", "auto", "output format json|flat|diff|auto|tab=<header>:<jsonpath>,...")
+	flags.StringVar(p, "format", "auto", "output format json|flat|diff|auto|tab=<header>:<jsonpath>,...")
 	flags.MarkHidden("format")
 }
 

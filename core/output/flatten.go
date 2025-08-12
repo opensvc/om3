@@ -126,7 +126,7 @@ type Delta struct {
 	colorize *palette.ColorPaletteFunc
 }
 
-func NewDelta() *Delta {
+func NewDiff() *Delta {
 	return &Delta{
 		colorize: palette.DefaultFuncPalette(),
 		cache:    make(map[string]map[string]string),
