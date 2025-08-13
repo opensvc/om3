@@ -85,7 +85,7 @@ func (t *device) writeMetaSlot(slot int, b []byte) error {
 	block := directio.AlignedBlock(PageSize)
 	copy(block, b)
 	if _, err := t.file.Write(block); err != nil {
-		fmt.Errorf("write at offset %d: %w", offset, err)
+		return fmt.Errorf("write at offset %d: %w", offset, err)
 	}
 	return nil
 }
