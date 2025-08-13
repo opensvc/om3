@@ -105,6 +105,7 @@ func AnySingleNode(selector string, c *client.T) (string, error) {
 // If acquiring the event reader fails, WaitInstanceMonitor returns
 // the error immediately and does not send anything to errC.
 func WaitInstanceMonitor(ctx context.Context, c *client.T, p naming.Path, timeout time.Duration, errC chan error) error {
+	waitingAt := time.Now()
 	filters := []string{"InstanceMonitorUpdated,path=" + p.String()}
 	getEvents := c.NewGetEvents().SetFilters(filters).SetLimit(1)
 	if timeout > 0 {
@@ -145,7 +146,8 @@ func WaitInstanceMonitor(ctx context.Context, c *client.T, p naming.Path, timeou
 			_, err = msgbus.EventToMessage(*ev)
 		}
 		if err != nil {
-			err = fmt.Errorf("wait instance monitor update failed on object %s: %w", p, err)
+			elapsed := time.Now().Sub(waitingAt)
+			err = fmt.Errorf("wait instance monitor update failed on object %s after %s: %w", p, elapsed, err)
 		}
 		errC <- err
 		return
@@ -161,6 +163,7 @@ func WaitInstanceMonitor(ctx context.Context, c *client.T, p naming.Path, timeou
 // If acquiring the event reader fails, WaitInstanceStatusUpdated returns
 // the error immediately and does not send anything to errC.
 func WaitInstanceStatusUpdated(ctx context.Context, c *client.T, nodename string, p naming.Path, timeout time.Duration, errC chan error) error {
+	waitingAt := time.Now()
 	filters := []string{
 		fmt.Sprintf("InstanceStatusUpdated,path=%s,node=%s", p.String(), nodename),
 	}
@@ -204,7 +207,8 @@ func WaitInstanceStatusUpdated(ctx context.Context, c *client.T, nodename string
 			_, err = msgbus.EventToMessage(*ev)
 		}
 		if err != nil {
-			err = fmt.Errorf("wait instance status update failed on %s@%s: %w", p, nodename, err)
+			elapsed := time.Now().Sub(waitingAt)
+			err = fmt.Errorf("wait instance status update failed on %s@%s after %s: %w", p, nodename, elapsed, err)
 		}
 		errC <- err
 	}()
