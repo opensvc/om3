@@ -257,6 +257,7 @@ func (t *Manager) startHook(name string, kinds []string, args []string) func() {
 		added += 1
 	}
 	if added == 0 {
+		cancel()
 		return nil
 	}
 	sub.Start()
