@@ -28,8 +28,6 @@ func (t *actor) Freeze(ctx context.Context) error {
 	return t.action(ctx, func(ctx context.Context, r resource.Driver) error {
 		return nil
 	})
-	t.log.Infof("now frozen")
-	return nil
 }
 
 // Unfreeze removes the persistent flag file that prevents orchestration
@@ -45,6 +43,4 @@ func (t *actor) Unfreeze(ctx context.Context) error {
 	return t.action(ctx, func(ctx context.Context, r resource.Driver) error {
 		return nil
 	})
-	t.log.Infof("now unfrozen")
-	return nil
 }

@@ -70,7 +70,6 @@ func (t *tx) streamPeerDesc(addr string) string {
 			return fmt.Sprintf("→ %s", addr)
 		}
 	}
-	return ""
 }
 
 // Start implements the Start function of Transmitter interface for tx
