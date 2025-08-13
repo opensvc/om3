@@ -74,7 +74,10 @@ func (t *CmdObjectCreate) Run(kind string) error {
 	defer cancel()
 	var needWait bool
 	if t.Wait || t.Provision {
-		if err := commoncmd.WaitInstanceMonitor(ctx, t.client, t.path, 0, errC); err != nil {
+		// need dedicated client that override default client timeout with t.Timeout (zero means no timeout).
+		if c, err := client.New(client.WithTimeout(t.Timeout)); err != nil {
+			return err
+		} else if err := commoncmd.WaitInstanceMonitor(ctx, c, t.path, t.Time, errC); err != nil {
 			if errors.Is(err, os.ErrNotExist) {
 				// the daemon is not running.
 			} else {
