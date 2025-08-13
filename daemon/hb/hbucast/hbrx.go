@@ -92,7 +92,6 @@ func (t *rx) streamPeerDesc(addr string) string {
 			return fmt.Sprintf(":%s ← %s", t.port, addr)
 		}
 	}
-	return ""
 }
 
 // Start implements the Start function of the Receiver interface for rx

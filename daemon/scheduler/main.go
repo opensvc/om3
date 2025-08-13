@@ -63,12 +63,12 @@ type (
 		// job execution for the local node.
 		lastRunOnAllPeers timeMap
 
-		// reqUnsatisfied stores which schedule entry has unsatisfied
+		// reqSatisfied stores which schedule entry has unsatisfied
 		// requirements, blocking its scheduling.
 		//
 		// This map is updated from the InstanceStatusUpdated events
 		// received via ObjectStatusUpdated.SrcEv for the local node.
-		reqUnsatisfied timeMap
+		reqSatisfied boolMap
 	}
 
 	Schedules map[naming.Path]map[string]schedule.Entry
@@ -93,6 +93,7 @@ type (
 	}
 
 	timeMap map[string]time.Time
+	boolMap map[string]bool
 )
 
 var (
@@ -159,7 +160,7 @@ func New(subQS pubsub.QueueSizer, opts ...funcopt.O) *T {
 		provisioned:       make(map[naming.Path]bool),
 		subQS:             subQS,
 		lastRunOnAllPeers: make(timeMap),
-		reqUnsatisfied:    make(timeMap),
+		reqSatisfied:      make(boolMap),
 
 		status: daemonsubsystem.Scheduler{
 			Status:     daemonsubsystem.Status{CreatedAt: time.Now(), ID: "scheduler"},
@@ -274,7 +275,7 @@ func (t *T) createJob(e schedule.Entry) {
 	if e.RequireCollector && !t.isCollectorJoinable {
 		return
 	}
-	if _, ok := t.reqUnsatisfied.Get(e.Path, e.Key); ok {
+	if isSatisfied, ok := t.reqSatisfied.Get(e.Path, e.Key); !ok || !isSatisfied {
 		return
 	}
 
@@ -302,7 +303,7 @@ func (t *T) createJob(e schedule.Entry) {
 	}
 	e.NextRunAt = next
 	delay := next.Sub(now)
-	if delay >= time.Second {
+	if e.LastRunAt.IsZero() || delay >= time.Second {
 		logger.Debugf("next at %s (in %s)", next, delay)
 	}
 	t.jobs.Add(e, delay, t.events)
@@ -564,16 +565,24 @@ func (t *T) onLocalInstanceStatusUpdated(c *msgbus.InstanceStatusUpdated) bool {
 		reqs := resourcereqs.New(e.Require)
 		for requiredRID, requiredStatusList := range reqs.Requirements() {
 			err := checkReq(requiredRID, requiredStatusList)
-			_, currentlyUnsatisfied := t.reqUnsatisfied.Get(c.Path, e.Key)
+			currentlySatisfied, ok := t.reqSatisfied.Get(c.Path, e.Key)
 			if err != nil {
-				if !currentlyUnsatisfied {
-					t.reqUnsatisfied.Set(c.Path, e.Key, c.Value.UpdatedAt)
+				if !ok {
+					t.reqSatisfied.Set(c.Path, e.Key, false)
+					log.Infof("%s: %s: requirement unsatisfied: %s", c.Path, e.RID(), err)
+					changed = true
+				} else if currentlySatisfied {
+					t.reqSatisfied.Set(c.Path, e.Key, false)
 					log.Infof("%s: %s: requirement no longer satisfied: %s", c.Path, e.RID(), err)
 					changed = true
 				}
 			} else {
-				if currentlyUnsatisfied {
-					t.reqUnsatisfied.Unset(c.Path, e.Key)
+				if !ok {
+					t.reqSatisfied.Set(c.Path, e.Key, true)
+					log.Infof("%s: %s: requirement satisfied", c.Path, e.RID())
+					changed = true
+				} else if !currentlySatisfied {
+					t.reqSatisfied.Set(c.Path, e.Key, true)
 					log.Infof("%s: %s: requirement now satisfied", c.Path, e.RID())
 					changed = true
 				}
@@ -716,7 +725,7 @@ func (t *T) onDaemonCollectorUpdated(c *msgbus.DaemonCollectorUpdated) {
 
 func (t *T) onObjectStatusDeleted(c *msgbus.ObjectStatusDeleted) {
 	t.lastRunOnAllPeers.UnsetPath(c.Path)
-	t.reqUnsatisfied.UnsetPath(c.Path)
+	t.reqSatisfied.UnsetPath(c.Path)
 }
 
 func (t *T) onObjectStatusUpdated(c *msgbus.ObjectStatusUpdated) {
@@ -860,6 +869,14 @@ func (t *T) scheduleObject(path naming.Path) {
 	}
 
 	for _, e := range table {
+		t.schedules.Add(path, e)
+		if e.Schedule == "" || e.Schedule == "@0" {
+			if t.jobs.Has(e) {
+				log.Infof("%s: unschedule %s (schedule is now @0)", e.RID(), e.Action)
+				t.jobs.Del(e)
+			}
+			continue
+		}
 		if !isProvisioned && needProvisionedInstance(e.Action) {
 			if t.jobs.Has(e) {
 				log.Infof("%s: unschedule %s (instance no longer provisionned)", e.RID(), e.Action)
@@ -869,17 +886,26 @@ func (t *T) scheduleObject(path naming.Path) {
 			}
 			continue
 		}
-		if _, ok := t.reqUnsatisfied.Get(path, e.Key); ok {
+		if isSatisfied, ok := t.reqSatisfied.Get(path, e.Key); ok {
+			if !isSatisfied {
+				if t.jobs.Has(e) {
+					log.Infof("%s: unschedule %s (requirements no longer met)", e.RID(), e.Action)
+					t.jobs.Del(e)
+				} else {
+					log.Infof("%s: skip schedule %s (requirements not met)", e.RID(), e.Action)
+				}
+				continue
+			}
+
+		} else if !ok && e.Require != "" {
 			if t.jobs.Has(e) {
-				log.Infof("%s: unschedule %s (requirements no longer met)", e.RID(), e.Action)
+				log.Infof("%s: unschedule %s (requirements not yet evaluated)", e.RID(), e.Action)
 				t.jobs.Del(e)
 			} else {
-				log.Infof("%s: skip schedule %s (requirements not met)", e.RID(), e.Action)
+				log.Infof("%s: skip schedule %s (requirements not yet evaluated)", e.RID(), e.Action)
 			}
 			continue
-
 		}
-		t.schedules.Add(path, e)
 		t.createJob(e)
 	}
 }
@@ -902,6 +928,35 @@ func (t *T) publishUpdate() {
 	t.status.UpdatedAt = time.Now()
 	daemonsubsystem.DataScheduler.Set(t.localhost, t.status.DeepCopy())
 	t.publisher.Pub(&msgbus.DaemonSchedulerUpdated{Node: t.localhost, Value: *t.status.DeepCopy()}, pubsub.Label{"node", t.localhost})
+}
+
+func (t boolMap) key(path naming.Path, s string) string {
+	return fmt.Sprintf("%s:%s", path.String(), s)
+}
+
+func (t boolMap) Get(path naming.Path, s string) (bool, bool) {
+	id := t.key(path, s)
+	v, ok := t[id]
+	return v, ok
+}
+
+func (t boolMap) Set(path naming.Path, s string, v bool) {
+	id := t.key(path, s)
+	t[id] = v
+}
+
+func (t boolMap) Unset(path naming.Path, s string) {
+	id := t.key(path, s)
+	delete(t, id)
+}
+
+func (t boolMap) UnsetPath(path naming.Path) {
+	prefix := t.key(path, "")
+	for k, _ := range t {
+		if strings.HasPrefix(k, prefix) {
+			t.Unset(path, k)
+		}
+	}
 }
 
 func (t timeMap) key(path naming.Path, s string) string {

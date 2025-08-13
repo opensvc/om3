@@ -162,7 +162,6 @@ func (t *qgaCommand) Wait() error {
 			}
 		}
 	}
-	return nil
 }
 
 func (t *qgaCommand) StderrPipe() (io.ReadCloser, error) {

@@ -96,3 +96,37 @@ func (e Event) AsConcreteEvent(data any) *ConcreteEvent {
 		Data: data,
 	}
 }
+
+// Key relays Data.Key if implemented.
+// The keyer interface is used by the diff output of `node events` command.
+func (e *ConcreteEvent) Key() string {
+	type keyer interface {
+		Key() string
+	}
+	i, ok := e.Data.(keyer)
+	if !ok {
+		return ""
+	}
+	return i.Key()
+}
+
+// KeysToDelete relays Data.KeysToDelete if implemented.
+// The keysToDeleter interface is used by the diff output of `node events` command.
+func (e *ConcreteEvent) KeysToDelete() []string {
+	type keysToDeleter interface {
+		KeysToDelete() []string
+	}
+	i, ok := e.Data.(keysToDeleter)
+	if !ok {
+		return []string{}
+	}
+	return i.KeysToDelete()
+}
+
+// Highlight informs the diff renderer of a list of event data keys that it should
+// make more visible in the data flow.
+func (e *ConcreteEvent) Highlight() []string {
+	return []string{
+		".kind",
+	}
+}

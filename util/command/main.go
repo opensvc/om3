@@ -108,7 +108,7 @@ func (t *T) Run() error {
 // Output returns stdout results of command (meaningful after Wait() or Run()),
 // command created without funcopt WithBufferedStdout() return nil
 // valid results
-func (t T) Output() ([]byte, error) {
+func (t *T) Output() ([]byte, error) {
 	if err := t.Run(); err != nil {
 		return []byte{}, err
 	}
@@ -118,13 +118,13 @@ func (t T) Output() ([]byte, error) {
 // Stdout returns stdout results of command (meaningful after Wait() or Run()),
 // command created without funcopt WithBufferedStdout() return nil
 // valid results
-func (t T) Stdout() []byte {
+func (t *T) Stdout() []byte {
 	return t.stdout
 }
 
 // Stderr returns stderr results of command (meaningful after Wait() or Run())
 // command created without funcopt WithBufferedStderr() return nil
-func (t T) Stderr() []byte {
+func (t *T) Stderr() []byte {
 	return t.stderr
 }
 
@@ -305,7 +305,7 @@ func (t *T) Wait() error {
 	return t.checkExitCode(t.ExitCode())
 }
 
-func (t T) checkExitCode(exitCode int) error {
+func (t *T) checkExitCode(exitCode int) error {
 	if len(t.okExitCodes) == 0 {
 		t.logExitCode(exitCode)
 		return nil
@@ -329,13 +329,13 @@ func (e *ErrExitCode) Error() string {
 	return fmt.Sprintf("%s exit code %v not in success codes: %v", e.name, e.exitCode, e.successCodes)
 }
 
-func (t T) logExitCode(exitCode int) {
+func (t *T) logExitCode(exitCode int) {
 	if t.log != nil {
 		t.log.Attr("cmd", t.cmd.String()).Attr("exit_code", exitCode).Levelf(t.logLevel, "pid %d exited with code %d", t.pid, exitCode)
 	}
 }
 
-func (t T) logErrorExitCode(exitCode int, err error) {
+func (t *T) logErrorExitCode(exitCode int, err error) {
 	if t.log != nil {
 		t.log.Attr("cmd", t.cmd.String()).Attr("exit_code", exitCode).Levelf(t.errorExitCodeLogLevel, "pid %d exited with code %d", t.pid, exitCode)
 	}
