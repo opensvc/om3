@@ -97,6 +97,88 @@ func AnySingleNode(selector string, c *client.T) (string, error) {
 	return nodenames[0], nil
 }
 
+// WaitAllInstanceMonitor launches a go routine that waits for all instance monitor
+// updated events are received for an object within a given timeout, or ctx.Done() reached.
+// The result of the wait is sent to the errC channel: nil if the
+// InstanceMonitorUpdated event occurs, or a non-nil error otherwise.
+//
+// It also filters the ObjectConfigUpdated events to get the expected Instance monitor
+// updated events from the instance config scope nodes.
+//
+// If acquiring the event reader fails, WaitInstanceMonitor returns
+// the error immediately and does not send anything to errC.
+func WaitAllInstanceMonitor(ctx context.Context, c *client.T, p naming.Path, timeout time.Duration, errC chan error) error {
+	waitingAt := time.Now()
+	filters := []string{
+		"InstanceMonitorUpdated,path=" + p.String(),
+		"InstanceConfigUpdated,path=" + p.String(),
+	}
+	getEvents := c.NewGetEvents().SetFilters(filters)
+	if timeout > 0 {
+		getEvents = getEvents.SetDuration(timeout)
+	}
+	evReader, err := getEvents.GetReader()
+	if err != nil {
+		return err
+	}
+
+	var closeOnce sync.Once
+	closeReader := func() {
+		closeOnce.Do(func() {
+			_ = evReader.Close()
+		})
+	}
+
+	if x, ok := evReader.(event.ContextSetter); ok {
+		x.SetContext(ctx)
+	} else {
+		// evReader is not an event.ContextSetter, we have to early closeReader
+		// to early stop evReader.Read() within the wait event routine.
+		go func() {
+			select {
+			case <-ctx.Done():
+				closeReader()
+			}
+		}()
+	}
+	go func() {
+		defer closeReader()
+		var msgEvent any
+		monM := make(map[string]struct{})
+		nodeM := make(map[string]struct{})
+		for {
+			rawEvent, err := evReader.Read()
+			if err != nil {
+				if errors.Is(err, io.EOF) {
+					err = fmt.Errorf("no more events: %w", err)
+				}
+			} else {
+				msgEvent, err = msgbus.EventToMessage(*rawEvent)
+			}
+			if err != nil {
+				elapsed := time.Now().Sub(waitingAt)
+				err = fmt.Errorf("wait instance monitor update failed on object %s after %s: %w", p, elapsed, err)
+				errC <- err
+				break
+			}
+			switch ev := msgEvent.(type) {
+			case *msgbus.InstanceConfigUpdated:
+				for _, n := range ev.Value.Scope {
+					nodeM[n] = struct{}{}
+				}
+			case *msgbus.InstanceMonitorUpdated:
+				monM[ev.Node] = struct{}{}
+			}
+			if len(monM) == len(nodeM) {
+				errC <- nil
+				break
+			}
+		}
+		return
+	}()
+	return nil
+}
+
 // WaitInstanceMonitor launches a go routine that waits for a specific
 // instance monitor update event within a given timeout, or ctx.Done() reached.
 // The result of the wait is sent to the errC channel: nil if the
