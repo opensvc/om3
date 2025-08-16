@@ -10,6 +10,7 @@ import (
 	"github.com/opensvc/om3/core/env"
 	"github.com/opensvc/om3/core/instance"
 	"github.com/opensvc/om3/core/naming"
+	"github.com/opensvc/om3/core/priority"
 	"github.com/opensvc/om3/core/provisioned"
 	"github.com/opensvc/om3/core/status"
 	"github.com/opensvc/om3/daemon/msgbus"
@@ -62,12 +63,18 @@ func (t *Manager) queueFreeze() error {
 	})
 }
 
-func (t *Manager) runStatus() error {
-	errC := make(chan error)
-	if ok := t.queueStatus(errC); ok {
-		return <-errC
+// runStatus updates the CRM status for the manager based on the provided priority.
+// If the manager is stateless, it publishes the instance status directly.
+// Otherwise, it executes the status update through a priority-specific runner.
+func (t *Manager) runStatus(prio priority.T) error {
+	if !t.statefull {
+		t.pubStatelessInstanceStatus()
+		return nil
 	}
-	return nil
+	return runner.Run(prio, func() error {
+		return t.crmStatus()
+	})
+
 }
 
 func (t *Manager) pubStatelessInstanceStatus() {
@@ -81,30 +88,22 @@ func (t *Manager) pubStatelessInstanceStatus() {
 	t.publisher.Pub(&msgbus.InstanceStatusPost{Path: t.path, Node: t.localhost, Value: instStatus}, t.pubLabels...)
 }
 
-func (t *Manager) queueStatus(errC chan error) (ok bool) {
+// requestStatusRefresh requests the current status for a specific priority queue in a thread-safe manner.
+// If the manager is stateless, it publishes the instance status directly.
+func (t *Manager) requestStatusRefresh(prio priority.T) {
 	if !t.statefull {
 		t.pubStatelessInstanceStatus()
-		return false
-	}
-	if t.statusQueued.Load() {
-		t.needStatus.Store(true)
-		return false
-	} else {
-		t.statusQueued.Store(true)
+		return
 	}
 
-	fn := func() error {
-		t.statusQueued.Store(false)
-		t.needStatus.Store(false)
-		err := t.crmStatus()
-		if err != nil && errC == nil {
-			// if errC is not nil, let the caller decide if/how he wants to log the err
-			t.log.Warnf("status evaluation command: %s", err)
-		}
-		return err
+	select {
+	case <-t.ctx.Done():
+	case t.needStatusQ <- prio:
+		t.statusQueued.Store(true)
+	default:
+		// skipped, there is already a pending request
 	}
-	runner.Enqueue(t.instConfig.Priority, errC, fn)
-	return true
+	return
 }
 
 func (t *Manager) queueResourceStartStandby(rids []string) error {

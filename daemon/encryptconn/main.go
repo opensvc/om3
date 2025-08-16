@@ -127,6 +127,8 @@ func getMessage(r io.Reader) ([]byte, error) {
 	scanner.Buffer(*sharedBuffer, msgMaxSize)
 	scanner.Split(splitFunc)
 	scanner.Scan()
-	b := scanner.Bytes()
+	sharedB := scanner.Bytes()
+	b := make([]byte, len(sharedB))
+	copy(b, sharedB)
 	return b, scanner.Err()
 }

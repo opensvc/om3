@@ -275,8 +275,10 @@ func (t *T) createJob(e schedule.Entry) {
 	if e.RequireCollector && !t.isCollectorJoinable {
 		return
 	}
-	if isSatisfied, ok := t.reqSatisfied.Get(e.Path, e.Key); !ok || !isSatisfied {
-		return
+	if e.Require != "" {
+		if isSatisfied, ok := t.reqSatisfied.Get(e.Path, e.Key); !ok || !isSatisfied {
+			return
+		}
 	}
 
 	logger := t.jobLogger(e)
@@ -862,11 +864,7 @@ func (t *T) scheduleObject(path naming.Path) {
 	table := o.Schedules()
 	defer t.updateExposedSchedules(path)
 
-	isProvisioned, ok := t.provisioned[path]
-	if !ok {
-		log.Infof("provisioned state has not been discovered yet")
-		return
-	}
+	isProvisioned, hasProvisioned := t.provisioned[path]
 
 	for _, e := range table {
 		t.schedules.Add(path, e)
@@ -877,12 +875,18 @@ func (t *T) scheduleObject(path naming.Path) {
 			}
 			continue
 		}
-		if !isProvisioned && needProvisionedInstance(e.Action) {
-			if t.jobs.Has(e) {
-				log.Infof("%s: unschedule %s (instance no longer provisionned)", e.RID(), e.Action)
-				t.jobs.Del(e)
-			} else {
-				log.Infof("%s: skip schedule %s (instance not provisioned)", e.RID(), e.Action)
+		if needProvisionedInstance(e.Action) {
+			if !hasProvisioned {
+				log.Infof("%s: skip schedule %s (instance provisioned state is still unknown)", e.RID(), e.Action)
+				continue
+			}
+			if !isProvisioned {
+				if t.jobs.Has(e) {
+					log.Infof("%s: unschedule %s (instance no longer provisionned)", e.RID(), e.Action)
+					t.jobs.Del(e)
+				} else {
+					log.Infof("%s: skip schedule %s (instance not provisioned)", e.RID(), e.Action)
+				}
 			}
 			continue
 		}
@@ -906,6 +910,7 @@ func (t *T) scheduleObject(path naming.Path) {
 			}
 			continue
 		}
+		t.schedules.Add(path, e)
 		t.createJob(e)
 	}
 }

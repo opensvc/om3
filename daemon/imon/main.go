@@ -34,6 +34,7 @@ import (
 	"github.com/opensvc/om3/core/naming"
 	"github.com/opensvc/om3/core/node"
 	"github.com/opensvc/om3/core/object"
+	"github.com/opensvc/om3/core/priority"
 	"github.com/opensvc/om3/core/rawconfig"
 	"github.com/opensvc/om3/core/status"
 	"github.com/opensvc/om3/daemon/daemondata"
@@ -95,10 +96,15 @@ type (
 		localhost   string
 		change      bool
 
-		// needStatus and statusQueued are used to coalesce status refresh commands so
-		// we don't run one per InstanceConfigUpdated event.
-		needStatus   atomic.Bool
+		// statusQueued is true when a background status is running
+		// TODO: need review
 		statusQueued atomic.Bool
+
+		// needStatusQ is the status refresh pending request queue. A buffered
+		// channel with 1 slot (If a status refresh is triggered twice (or more) before
+		// the previous one starts, the extra status refresh is skipped). This happen
+		// on sequential InstanceConfigUpdated events.
+		needStatusQ chan priority.T
 
 		// priors is the list of peer instance nodenames that need restarting before we can restart locally
 		priors []string
@@ -265,6 +271,8 @@ func start(parent context.Context, qs pubsub.QueueSizer, p naming.Path, nodes []
 			{"path", id},
 			{"node", localhost},
 		},
+
+		needStatusQ: make(chan priority.T, 1),
 	}
 
 	t.log = t.newLogger(uuid.Nil)
@@ -311,10 +319,13 @@ func (t *Manager) startSubscriptions(qs pubsub.QueueSizer) {
 func (t *Manager) worker(initialNodes []string) {
 	defer t.log.Debugf("worker stopped")
 
-	// queueStatus() will need instance config Priority
+	// runStatus and requestStatusRefresh will need instance config Priority
 	if iConfig := instance.ConfigData.GetByPathAndNode(t.path, t.localhost); iConfig != nil {
 		t.instConfig = *iConfig
 		t.scopeNodes = append([]string{}, t.instConfig.Scope...)
+	} else {
+		t.log.Infof("return on empty instance config")
+		return
 	}
 
 	// Initiate a CRM status refresh first, this will update our instance status cache
@@ -322,9 +333,11 @@ func (t *Manager) worker(initialNodes []string) {
 	// runStatus => publish instance status update
 	//   => data update (so available from next GetInstanceStatus)
 	//   => omon update with srcEvent: instance status update (we watch omon updates)
-	if err := t.runStatus(); err != nil {
+	if err := t.runStatus(t.instConfig.Priority); err != nil {
 		t.log.Errorf("error during initial crm status: %s", err)
 	}
+
+	t.statusRunner()
 
 	if t.bootAble() {
 		t.ensureBooted()
@@ -397,7 +410,7 @@ func (t *Manager) worker(initialNodes []string) {
 			case *msgbus.InstanceStatusDeleted:
 				t.onInstanceStatusDeleted(c)
 			case *msgbus.InstanceStatusUpdated:
-				t.onInstanceStatusUpdated(c)
+				t.onRelationInstanceStatusUpdated(c)
 			case *msgbus.ObjectStatusDeleted:
 				t.onObjectStatusDeleted(c)
 			case *msgbus.ObjectStatusUpdated:
