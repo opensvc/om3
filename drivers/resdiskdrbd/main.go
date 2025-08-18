@@ -154,6 +154,40 @@ func (t *T) WaitKnownDiskStates(dev DRBDDriver) error {
 	}
 }
 
+func (t *T) WaitForNonLocalDiskless(dev DRBDDriver) error {
+	check := func() (bool, error) {
+		states, err := dev.DiskStates()
+		if err != nil {
+			return false, err
+		}
+		if len(states) == 0 {
+			t.Log().Infof("waiting for drbd %s disk local dstate", t.Res)
+			return false, nil
+		}
+		state := states[0]
+		if state == "Diskless" || state == "DUnknown" {
+			t.Log().Infof("drbd %s disk local dstate %s (%s) is not yet valid", t.Res, state, states)
+			return false, nil
+		}
+		t.Log().Infof("drbd %s found local dstate %s from states: %s", t.Res, state, states)
+		return true, nil
+	}
+	limit := time.Now().Add(WaitKnownDiskStatesTimeout)
+	for {
+		ok, err := check()
+		if err != nil {
+			return err
+		}
+		if ok {
+			return nil
+		}
+		if time.Now().Add(WaitKnownDiskStatesDelay).After(limit) {
+			return fmt.Errorf("timeout waiting for localhost to have a known dstate")
+		}
+		time.Sleep(WaitKnownDiskStatesDelay)
+	}
+}
+
 // DownForce is called by the unprovisioner. Dataloss is not an issue there,
 // so forced detach can be tried.
 func (t *T) DownForce(ctx context.Context) error {
@@ -184,7 +218,7 @@ func (t *T) Up(ctx context.Context) error {
 	if err := dev.Up(); err != nil {
 		return err
 	}
-	if err := t.WaitKnownDiskStates(dev); err != nil {
+	if err := t.WaitForNonLocalDiskless(dev); err != nil {
 		return err
 	}
 	// flush devtree caches
