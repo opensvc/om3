@@ -129,11 +129,13 @@ func (t *T) WaitKnownDiskStates(dev DRBDDriver) error {
 		if err != nil {
 			return false, err
 		}
-		for _, state := range states {
-			if state == "Diskless/DUnknown" {
+		for idx, state := range states {
+			if state == "Diskless" || state == "DUnknown" {
+				t.Log().Infof("drbd %s disk %d dstate %s from %s is not yet valid", t.Res, idx, state, states)
 				return false, nil
 			}
 		}
+		t.Log().Infof("drbd %s disk states: %s", t.Res, states)
 		return true, nil
 	}
 	limit := time.Now().Add(WaitKnownDiskStatesTimeout)
