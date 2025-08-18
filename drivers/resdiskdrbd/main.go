@@ -790,10 +790,9 @@ func (t *T) ProvisionAsFollower(ctx context.Context) error {
 	if err := t.provisionCommon(ctx); err != nil {
 		return err
 	}
-	if err := t.drbd().Disconnect(); err != nil {
-		return err
-	}
-	if err := t.drbd().Connect(); err != nil {
+	// Use StartConnection to wait for an expected in progress connecting called
+	// from the provisionCommon steps: CreateMD -> Down -> Up
+	if err := t.StartConnection(ctx); err != nil {
 		return err
 	}
 	return nil
