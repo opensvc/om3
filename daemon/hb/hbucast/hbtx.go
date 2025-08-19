@@ -198,7 +198,7 @@ func (t *tx) send(node, addr string, b []byte) {
 		if lastErr, ok := t.lastNodeErr.Load(node); !ok {
 			return
 		} else {
-			t.log.Infof("end a send error period: %s", lastErr)
+			t.log.Infof("end a send error period for node %s: %s", node, lastErr)
 			t.lastNodeErr.Delete(node)
 		}
 	}
@@ -214,11 +214,11 @@ func (t *tx) send(node, addr string, b []byte) {
 			if lastErr == newErr {
 				return
 			} else if lastErr != "" {
-				t.log.Infof("end a send error period: %s", lastErr)
+				t.log.Infof("end a send error period for node %s: %s", node, lastErr)
 			}
 		}
 		if newErr != "" {
-			t.log.Warnf("begin a send error period: %s", newErr)
+			t.log.Warnf("begin a send error period for node %s: %s", node, newErr)
 			t.lastNodeErr.Store(node, newErr)
 		} else {
 			t.lastNodeErr.Delete(node)
