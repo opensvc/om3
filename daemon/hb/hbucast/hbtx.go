@@ -137,8 +137,10 @@ func (t *tx) Start(cmdC chan<- interface{}, msgC <-chan []byte) error {
 				continue
 			} else {
 				t.log.Debugf(reason)
+				protectedB := make([]byte, len(b))
+				copy(protectedB, b)
 				for node, addr := range t.nodes {
-					go t.send(node, addr, b)
+					go t.send(node, addr, protectedB)
 				}
 			}
 		}
