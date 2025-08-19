@@ -2,6 +2,7 @@ package rttables
 
 import (
 	"bufio"
+	"errors"
 	"fmt"
 	"os"
 	"strconv"
@@ -16,17 +17,40 @@ type (
 	L []T
 )
 
-const rtTablesFile = "/etc/iproute2/rt_tables"
-
+// List parses routing table files and returns a list of routing table entries (L). It scans predefined file paths sequentially.
+//
+// Extract from man ip-route:
+//
+//	Route tables: Linux-2.x can pack routes into several routing tables identified by a number in the range
+//	from 1 to 2^32-1 or by name from /usr/share/iproute2/rt_tables or /etc/iproute2/rt_tables (has precedence
+//	if exists).
+//
+// TODO: add support for rt_tables.d ? (also use <CONF_USR_DIR>/iproute2/rt_tables.d/X.conf files unless
+// <CONF_ETC_DIR>/iproute2/rt_tables.d/X.conf exists)
 func List() (L, error) {
+	const (
+		rtTablesFile1 = "/etc/iproute2/rt_tables"
+		rtTablesFile2 = "/usr/share/iproute2/rt_tables"
+	)
+	var (
+		scanner *bufio.Scanner
+		errs    error
+	)
 	l := make(L, 0)
-	file, err := os.Open(rtTablesFile)
-	if err != nil {
-		return l, err
+	for _, filename := range []string{rtTablesFile1, rtTablesFile2} {
+		file, err := os.Open(filename)
+		if err != nil {
+			errs = errors.Join(errs, err)
+			continue
+		}
+		defer func() { _ = file.Close() }()
+		scanner = bufio.NewScanner(file)
+		break
 	}
-	defer file.Close()
+	if scanner == nil {
+		return l, fmt.Errorf("no rt_tables file found: %w", errs)
+	}
 
-	scanner := bufio.NewScanner(file)
 	for scanner.Scan() {
 		s := scanner.Text()
 		fields := strings.Fields(s)

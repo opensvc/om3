@@ -17,6 +17,7 @@ import (
 	"github.com/opensvc/om3/core/nodeselector"
 	"github.com/opensvc/om3/core/object"
 	"github.com/opensvc/om3/core/placement"
+	"github.com/opensvc/om3/core/priority"
 	"github.com/opensvc/om3/core/provisioned"
 	"github.com/opensvc/om3/core/status"
 	"github.com/opensvc/om3/core/topology"
@@ -26,6 +27,30 @@ import (
 	"github.com/opensvc/om3/util/pubsub"
 	"github.com/opensvc/om3/util/stringslice"
 )
+
+// statusRunner is a goroutine that ensures status updates are processed sequentially based on priority.
+// It listens to needStatusQ channel to manage and process status update requests.
+// It handles cancellation via the context and logs warnings for any errors during status evaluation.
+func (t *Manager) statusRunner() {
+	started := make(chan bool)
+	go func(started chan<- bool) {
+		started <- true
+		var prio priority.T
+		for {
+			select {
+			case <-t.ctx.Done():
+				return
+			case prio = <-t.needStatusQ:
+				t.statusQueued.Store(true)
+				if err := t.runStatus(prio); err != nil {
+					t.log.Warnf("status evaluation command: %s", err)
+				}
+				t.statusQueued.Store(false)
+			}
+		}
+	}(started)
+	<-started
+}
 
 func (t *Manager) onChange() {
 	t.enableDelayTimer()
@@ -188,17 +213,11 @@ func (t *Manager) onRelationObjectStatusUpdated(c *msgbus.ObjectStatusUpdated) {
 	}
 }
 
-func (t *Manager) onInstanceStatusUpdated(c *msgbus.InstanceStatusUpdated) {
-	if c.Path == t.path {
-		if t.needStatus.Load() {
-			t.queueStatus(nil)
-		}
-	} else {
-		t.onRelationInstanceStatusUpdated(c)
-	}
-}
-
 func (t *Manager) onRelationInstanceStatusUpdated(c *msgbus.InstanceStatusUpdated) {
+	if c.Path == t.path {
+		// Can't relate to self. This case is handled by onInstanceStatusUpdated.
+		return
+	}
 	changes := false
 	relation := c.Path.String() + "@" + c.Node
 	do := func(relation string, name string, cache map[string]status.T) {
@@ -315,7 +334,7 @@ func (t *Manager) onInstanceConfigUpdated(srcNode string, srcCmd *msgbus.Instanc
 
 	if srcCmd.Node == t.localhost {
 		defer func() {
-			t.queueStatus(nil)
+			t.requestStatusRefresh(t.instConfig.Priority)
 		}()
 		t.instConfig = srcCmd.Value
 		t.log.Debugf("refresh resource monitor states on local instance config updated")

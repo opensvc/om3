@@ -74,7 +74,12 @@ func (t *CmdObjectCreate) Run(kind string) error {
 	defer cancel()
 	var needWait bool
 	if t.Wait || t.Provision {
-		if err := commoncmd.WaitInstanceMonitor(ctx, t.client, t.path, 0, errC); err != nil {
+		// need dedicated client that override default client timeout with t.Timeout (zero means no timeout).
+		if c, err := client.New(client.WithTimeout(t.Timeout)); err != nil {
+			return err
+		} else if err := commoncmd.WaitAllInstanceMonitor(ctx, c, t.path, t.Time, errC); err != nil {
+			// Wait until all instance monitors are registered before continuing, otherwise the next orchestration
+			// step may return early due to missing cluster monitors.
 			if errors.Is(err, os.ErrNotExist) {
 				// the daemon is not running.
 			} else {

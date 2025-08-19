@@ -66,7 +66,9 @@ func (t *CmdObjectCreate) Run(kind string) error {
 	if t.Wait || t.Provision {
 		ctx, cancel := context.WithTimeout(context.Background(), t.Time)
 		defer cancel()
-		if err := commoncmd.WaitInstanceMonitor(ctx, t.client, t.path, 0, errC); err != nil {
+		if err := commoncmd.WaitAllInstanceMonitor(ctx, t.client, t.path, 0, errC); err != nil {
+			// Wait until all instance monitors are registered before continuing, otherwise the next orchestration
+			// step may return early due to missing cluster monitors.
 			return err
 		}
 	}

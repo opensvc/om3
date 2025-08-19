@@ -129,11 +129,13 @@ func (t *T) WaitKnownDiskStates(dev DRBDDriver) error {
 		if err != nil {
 			return false, err
 		}
-		for _, state := range states {
-			if state == "Diskless/DUnknown" {
+		for idx, state := range states {
+			if state == "Diskless" || state == "DUnknown" {
+				t.Log().Infof("drbd %s disk %d dstate %s from %s is not yet valid", t.Res, idx, state, states)
 				return false, nil
 			}
 		}
+		t.Log().Infof("drbd %s disk states: %s", t.Res, states)
 		return true, nil
 	}
 	limit := time.Now().Add(WaitKnownDiskStatesTimeout)
@@ -147,6 +149,40 @@ func (t *T) WaitKnownDiskStates(dev DRBDDriver) error {
 		}
 		if time.Now().Add(WaitKnownDiskStatesDelay).After(limit) {
 			return fmt.Errorf("timeout waiting for peers to have a known dstate")
+		}
+		time.Sleep(WaitKnownDiskStatesDelay)
+	}
+}
+
+func (t *T) WaitForNonLocalDiskless(dev DRBDDriver) error {
+	check := func() (bool, error) {
+		states, err := dev.DiskStates()
+		if err != nil {
+			return false, err
+		}
+		if len(states) == 0 {
+			t.Log().Infof("waiting for drbd %s disk local dstate", t.Res)
+			return false, nil
+		}
+		state := states[0]
+		if state == "Diskless" || state == "DUnknown" {
+			t.Log().Infof("drbd %s disk local dstate %s (%s) is not yet valid", t.Res, state, states)
+			return false, nil
+		}
+		t.Log().Infof("drbd %s found local dstate %s from states: %s", t.Res, state, states)
+		return true, nil
+	}
+	limit := time.Now().Add(WaitKnownDiskStatesTimeout)
+	for {
+		ok, err := check()
+		if err != nil {
+			return err
+		}
+		if ok {
+			return nil
+		}
+		if time.Now().Add(WaitKnownDiskStatesDelay).After(limit) {
+			return fmt.Errorf("timeout waiting for localhost to have a known dstate")
 		}
 		time.Sleep(WaitKnownDiskStatesDelay)
 	}
@@ -182,7 +218,7 @@ func (t *T) Up(ctx context.Context) error {
 	if err := dev.Up(); err != nil {
 		return err
 	}
-	if err := t.WaitKnownDiskStates(dev); err != nil {
+	if err := t.WaitForNonLocalDiskless(dev); err != nil {
 		return err
 	}
 	// flush devtree caches
@@ -754,10 +790,9 @@ func (t *T) ProvisionAsFollower(ctx context.Context) error {
 	if err := t.provisionCommon(ctx); err != nil {
 		return err
 	}
-	if err := t.drbd().Disconnect(); err != nil {
-		return err
-	}
-	if err := t.drbd().Connect(); err != nil {
+	// Use StartConnection to wait for an expected in progress connecting called
+	// from the provisionCommon steps: CreateMD -> Down -> Up
+	if err := t.StartConnection(ctx); err != nil {
 		return err
 	}
 	return nil

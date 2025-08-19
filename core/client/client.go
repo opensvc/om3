@@ -36,7 +36,7 @@ type (
 
 var (
 	// DefaultClientTimeout is the default client timeout value used by New
-	DefaultClientTimeout = 5 * time.Second
+	DefaultClientTimeout = 30 * time.Second
 )
 
 // New allocates a new client configuration and returns the reference

@@ -188,7 +188,7 @@ func (t *Manager) getOrchestrationEnd() *orchestrationEnd {
 	}
 }
 
-// publishObjectOrchestrationEnd publishes orchestration end message
+// publishObjectOrchestrationEnd publishes the orchestration end message
 func (t *Manager) publishObjectOrchestrationEnd(o *orchestrationEnd, aborted bool) {
 	t.publisher.Pub(&msgbus.ObjectOrchestrationEnd{
 		Node:                  t.localhost,
