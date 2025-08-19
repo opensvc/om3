@@ -44,18 +44,17 @@ var (
 	// messageTimeout
 	messageTimeout = 500 * time.Millisecond
 
-	msgBufferCount = 4
-	msgMaxSize     = 10000000 // max kind=full msg size
-	msgBufferChan  = make(chan []byte, msgBufferCount)
-)
+	msgMaxSize = 10000000 // max kind=full msg size
 
-func init() {
-	// Use cached buffers to reduce cpu when many message are scanned
-	for i := 0; i < msgBufferCount; i++ {
-		b := make([]byte, msgMaxSize)
-		msgBufferChan <- b
+	// Create a new sync.Pool to manage the byte buffers. Used to reduce memory usage
+	// during handling the messages.
+	msgPool = sync.Pool{
+		New: func() interface{} {
+			// This creates a new byte slice of the specified size.
+			return make([]byte, msgMaxSize)
+		},
 	}
-}
+)
 
 // ID implements the ID function of the Receiver interface for rx
 func (t *rx) ID() string {
@@ -227,8 +226,8 @@ func (t *rx) handle(conn encryptconn.ConnNoder) {
 			t.log.Warnf("unexpected error while closing connection from %s: %s", conn.RemoteAddr(), err)
 		}
 	}()
-	data := <-msgBufferChan
-	defer func() { msgBufferChan <- data }()
+	data := msgPool.Get().([]byte)
+	defer func() { msgPool.Put(data) }()
 	i, nodename, err := conn.ReadWithNode(data)
 	if err != nil {
 		t.log.Warnf("read failed from %s: %s", conn.RemoteAddr(), err)
