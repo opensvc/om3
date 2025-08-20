@@ -8,6 +8,7 @@ import (
 	"bytes"
 	"io"
 	"net"
+	"sync"
 )
 
 type (
@@ -32,19 +33,19 @@ type (
 )
 
 var (
-	msgBufferCount = 2
-	msgUsualSize   = 1000     // usual event size
-	msgMaxSize     = 10000000 // max kind=full event size
-	msgBufferChan  = make(chan *[]byte, msgBufferCount)
-)
+	msgUsualSize = 1000 // usual event size
 
-func init() {
-	// Use cached buffers to reduce cpu when many message are scanned
-	for i := 0; i < msgBufferCount; i++ {
-		b := make([]byte, msgUsualSize, msgMaxSize)
-		msgBufferChan <- &b
+	msgMaxSize = 10000000 // max kind=full event size
+
+	// Create a new sync.Pool to manage the byte buffers. Used to reduce memory usage
+	// when many messages are scanned.
+	msgPool = sync.Pool{
+		New: func() interface{} {
+			// This creates a new byte slice of the specified size.
+			return make([]byte, msgMaxSize)
+		},
 	}
-}
+)
 
 // New returns a new *T that will use encrypted net.Conn
 func New(encConn net.Conn, ed encryptDecrypter) *T {
@@ -122,9 +123,9 @@ func splitFunc(data []byte, atEOF bool) (advance int, token []byte, err error) {
 
 func getMessage(r io.Reader) ([]byte, error) {
 	scanner := bufio.NewScanner(r)
-	sharedBuffer := <-msgBufferChan
-	defer func() { msgBufferChan <- sharedBuffer }()
-	scanner.Buffer(*sharedBuffer, msgMaxSize)
+	sharedBuffer := msgPool.Get().([]byte)
+	defer func() { msgPool.Put(sharedBuffer) }()
+	scanner.Buffer(sharedBuffer, msgMaxSize)
 	scanner.Split(splitFunc)
 	scanner.Scan()
 	sharedB := scanner.Bytes()

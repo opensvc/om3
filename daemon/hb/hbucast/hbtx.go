@@ -26,7 +26,7 @@ type (
 		interval    time.Duration
 		timeout     time.Duration
 		localIP     net.IP
-		lastNodeErr map[string]string
+		lastNodeErr sync.Map
 
 		name   string
 		log    *plog.Logger
@@ -137,8 +137,10 @@ func (t *tx) Start(cmdC chan<- interface{}, msgC <-chan []byte) error {
 				continue
 			} else {
 				t.log.Debugf(reason)
+				protectedB := make([]byte, len(b))
+				copy(protectedB, b)
 				for node, addr := range t.nodes {
-					go t.send(node, addr, b)
+					go t.send(node, addr, protectedB)
 				}
 			}
 		}
@@ -193,22 +195,33 @@ func (t *tx) send(node, addr string, b []byte) {
 	}
 
 	clearDedupLog := func() {
-		if _, ok := t.lastNodeErr[node]; !ok {
+		if lastErr, ok := t.lastNodeErr.Load(node); !ok {
 			return
+		} else {
+			t.log.Infof("end a send error period for node %s: %s", node, lastErr)
+			t.lastNodeErr.Delete(node)
 		}
-		t.log.Infof("end a send error period: %s", t.lastNodeErr[node])
-		delete(t.lastNodeErr, node)
 	}
+
+	// setDedupLog manages the logging of consecutive errors for a specific node.
+	// It is designed to prevent log spam by only reporting the start and end of an
+	// error "period" and not every single occurrence of the same error.
+	// The function uses a sync.Map (t.lastNodeErr) to safely store the last
+	// recorded error string for each node, which is essential for concurrent access.
 	setDedupLog := func(err error) {
-		lastErr, _ := t.lastNodeErr[node]
 		newErr := err.Error()
-		if newErr != lastErr {
-			if lastErr != "" {
-				t.log.Infof("end a send error period: %s", lastErr)
-			} else {
-				t.log.Warnf("begin a send error period: %s", newErr)
+		if lastErr, ok := t.lastNodeErr.Load(node); ok {
+			if lastErr == newErr {
+				return
+			} else if lastErr != "" {
+				t.log.Infof("end a send error period for node %s: %s", node, lastErr)
 			}
-			t.lastNodeErr[node] = newErr
+		}
+		if newErr != "" {
+			t.log.Warnf("begin a send error period for node %s: %s", node, newErr)
+			t.lastNodeErr.Store(node, newErr)
+		} else {
+			t.lastNodeErr.Delete(node)
 		}
 	}
 
@@ -229,15 +242,14 @@ func (t *tx) send(node, addr string, b []byte) {
 func newTx(ctx context.Context, name string, nodes map[string]string, addr, port, intf string, timeout, interval time.Duration) *tx {
 	id := name + ".tx"
 	return &tx{
-		ctx:         ctx,
-		id:          id,
-		nodes:       nodes,
-		lastNodeErr: make(map[string]string),
-		addr:        addr,
-		port:        port,
-		intf:        intf,
-		interval:    interval,
-		timeout:     timeout,
+		ctx:      ctx,
+		id:       id,
+		nodes:    nodes,
+		addr:     addr,
+		port:     port,
+		intf:     intf,
+		interval: interval,
+		timeout:  timeout,
 		log: plog.NewDefaultLogger().Attr("pkg", "daemon/hb/hbucast").
 			Attr("hb_func", "tx").
 			Attr("hb_name", name).

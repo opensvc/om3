@@ -20,6 +20,7 @@ import (
 	"github.com/opensvc/om3/daemon/daemonenv"
 	"github.com/opensvc/om3/daemon/msgbus"
 	"github.com/opensvc/om3/daemon/remoteconfig"
+	"github.com/opensvc/om3/util/file"
 	"github.com/opensvc/om3/util/hostname"
 )
 
@@ -248,6 +249,9 @@ func (t *CmdClusterJoin) onJoined(ctx context.Context, cli *client.T) (err error
 		}
 		if err := os.WriteFile(configFile, fetchObjectConfigData[p], 0600); err != nil {
 			return fmt.Errorf("%w: config %s from file %s: %w", commoncmd.ErrInstallFile, p, fileName, err)
+		}
+		if err := file.Sync(configFile); err != nil {
+			return fmt.Errorf("%w: config %s sync file %s: %w", commoncmd.ErrInstallFile, p, fileName, err)
 		}
 	}
 
