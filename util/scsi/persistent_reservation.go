@@ -49,6 +49,26 @@ func StripPRKey(s string) string {
 	return "0x" + strings.ToLower(strings.TrimLeft(strings.TrimPrefix(s, "0x"), "0"))
 }
 
+// formatKey formats a string key by stripping a leading "0x", truncating it to 16 characters if necessary,
+// and padding it with leading zeroes. The formatted key is returned with a "0x" prefix.
+// It is used to format the reservation or registration key read from device and the
+// configured node scsi key.
+//
+//	"0xa"                   -> "0x000000000000000a"
+//	"0xab"                  -> "0x00000000000000ab"
+//	"0x1234567890123456789" -> "0x1234567890123456"
+//	"0x1234567890123456"    -> "0x1234567890123456"
+func formatKey(s string) string {
+	// Strip leading 0x
+	s = s[2:]
+	if len(s) > 16 {
+		// Truncate to 16 bytes
+		s = s[:16]
+	}
+	// add leading 0x and Pad with 0
+	return fmt.Sprintf("0x%016s", s)
+}
+
 func (t PersistentReservationHandle) countHandledRegistrations(registrations []string) int {
 	n := 0
 	for _, r := range registrations {
