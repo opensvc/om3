@@ -122,7 +122,7 @@ func (t *LV) change(args []string) error {
 
 	// deactivating the last lv of a vg changes it's activation state
 	fcache.Clear("vgs")
-	fcache.Clear("vgs-device")
+	fcache.Clear("vgs-devices")
 
 	if cmd.ExitCode() != 0 {
 		return fmt.Errorf("%s error %d", cmd, cmd.ExitCode())

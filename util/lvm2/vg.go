@@ -97,7 +97,7 @@ func (t *VG) ImportDevices() error {
 		return nil
 	}
 	fcache.Clear("vgs")
-	fcache.Clear("vgs-device")
+	fcache.Clear("vgs-devices")
 	if cmd.ExitCode() != 0 {
 		return fmt.Errorf("%s error %d", cmd, cmd.ExitCode())
 	}
@@ -115,7 +115,7 @@ func (t *VG) change(args []string) error {
 	)
 	cmd.Run()
 	fcache.Clear("vgs")
-	fcache.Clear("vgs-device")
+	fcache.Clear("vgs-devices")
 	if cmd.ExitCode() != 0 {
 		return fmt.Errorf("%s error %d", cmd, cmd.ExitCode())
 	}
@@ -141,7 +141,7 @@ func (t *VG) DelTag(s string) error {
 	)
 	cmd.Run()
 	fcache.Clear("vgs")
-	fcache.Clear("vgs-device")
+	fcache.Clear("vgs-devices")
 	if cmd.ExitCode() != 0 {
 		return fmt.Errorf("%s error %d", cmd, cmd.ExitCode())
 	}
@@ -159,7 +159,7 @@ func (t *VG) AddTag(s string) error {
 	)
 	cmd.Run()
 	fcache.Clear("vgs")
-	fcache.Clear("vgs-device")
+	fcache.Clear("vgs-devices")
 	if cmd.ExitCode() != 0 {
 		return fmt.Errorf("%s error %d", cmd, cmd.ExitCode())
 	}
@@ -198,11 +198,23 @@ func (t *VG) CachedDevicesShow() (*VGInfo, error) {
 	return nil, fmt.Errorf("%w: %s", ErrExist, t.VGName)
 }
 
-func (t *VG) CachedNormalShow() (*VGInfo, error) {
-	var (
-		err error
-		out []byte
-	)
+// CachedNormalShow retrieves cached volume group information, unmarshals the output data,
+// and filters by the specified VGName.
+//
+// It uses the command: vgs --reportformat json -o "+tags,pv_name".
+// => The following cmd output will return 2 entries when t.VGName == "data"
+//
+//	{
+//	  "report": [
+//	    {"vg": [
+//	       {"vg_name": "data", "pv_count": "1", "lv_count": "0", "snap_count": "0", "vg_attr": "wz--n-","vg_size": "<5.00g", "vg_free": "<5.00g", "vg_tags": "local", "pv_name": "/dev/vdb"},
+//	       {"vg_name": "data", "pv_count": "1", "lv_count": "0", "snap_count": "0", "vg_attr": "wz--n-","vg_size": "<5.00g", "vg_free": "<5.00g", "vg_tags": "local", "pv_name": "/dev/vdc"},
+//	       {"vg_name": "root", "pv_count": "1", "lv_count": "2", "snap_count": "0", "vg_attr": "wz--n-","vg_size": "<38.75g", "vg_free": "0 ", "vg_tags": "local", "pv_name": "/dev/vda3"}
+//	   ]}
+//	  ]
+//	}
+func (t *VG) CachedNormalShow() (l []VGInfo, err error) {
+	var out []byte
 	data := ShowData{}
 	cmd := command.New(
 		command.WithName("vgs"),
@@ -214,20 +226,24 @@ func (t *VG) CachedNormalShow() (*VGInfo, error) {
 		command.WithBufferedStdout(),
 	)
 	if out, err = fcache.Output(cmd, "vgs"); err != nil {
-		return nil, err
+		return
 	}
-	if err := json.Unmarshal(out, &data); err != nil {
-		return nil, err
+	if err = json.Unmarshal(out, &data); err != nil {
+		return
 	}
 	if len(data.Report) != 1 {
-		return nil, fmt.Errorf("vgs: no report")
+		err = fmt.Errorf("vgs: no report")
+		return
 	}
 	for _, d := range data.Report[0].VG {
 		if d.VGName == t.VGName {
-			return &d, nil
+			l = append(l, d)
 		}
 	}
-	return nil, fmt.Errorf("%w: %s", ErrExist, t.VGName)
+	if len(l) == 0 {
+		err = fmt.Errorf("%w: %s", ErrExist, t.VGName)
+	}
+	return
 }
 
 func (t *VG) Show(fields string) (*VGInfo, error) {
@@ -257,26 +273,32 @@ func (t *VG) Show(fields string) (*VGInfo, error) {
 }
 
 func (t *VG) Attrs() (VGAttrs, error) {
-	vgInfo, err := t.CachedNormalShow()
+	vgL, err := t.CachedNormalShow()
 	switch {
 	case errors.Is(err, ErrExist):
 		return "", nil
 	case err != nil:
 		return "", err
 	default:
-		return VGAttrs(vgInfo.VGAttr), nil
+		if len(vgL) == 0 {
+			return "", ErrExist
+		}
+		return VGAttrs(vgL[0].VGAttr), nil
 	}
 }
 
 func (t *VG) Tags() ([]string, error) {
-	vgInfo, err := t.CachedNormalShow()
+	vgL, err := t.CachedNormalShow()
 	switch {
 	case errors.Is(err, ErrExist):
 		return []string{}, nil
 	case err != nil:
 		return []string{}, err
 	default:
-		return strings.Split(vgInfo.VGTags, ","), nil
+		if len(vgL) == 0 {
+			return []string{}, nil
+		}
+		return strings.Split(vgL[0].VGTags, ","), nil
 	}
 }
 
@@ -361,7 +383,7 @@ func (t *VG) Create(size string, pvs []string, options []string) error {
 	)
 	cmd.Run()
 	fcache.Clear("vgs")
-	fcache.Clear("vgs-device")
+	fcache.Clear("vgs-devices")
 	if cmd.ExitCode() != 0 {
 		return fmt.Errorf("%s error %d", cmd, cmd.ExitCode())
 	}
@@ -383,7 +405,7 @@ func (t *VG) Remove(args []string) error {
 	)
 	cmd.Run()
 	fcache.Clear("vgs")
-	fcache.Clear("vgs-device")
+	fcache.Clear("vgs-devices")
 	if cmd.ExitCode() != 0 {
 		return fmt.Errorf("%s error %d", cmd, cmd.ExitCode())
 	}
@@ -392,15 +414,17 @@ func (t *VG) Remove(args []string) error {
 
 func (t *VG) PVs() (device.L, error) {
 	l := make(device.L, 0)
-	vgInfo, err := t.CachedNormalShow()
+	vgL, err := t.CachedNormalShow()
 	switch {
 	case errors.Is(err, ErrExist):
 		return l, nil
 	case err != nil:
 		return l, err
 	}
-	for _, s := range strings.Split(vgInfo.PVName, ",") {
-		l = append(l, device.New(s, device.WithLogger(t.Log())))
+	for _, vg := range vgL {
+		for _, s := range strings.Split(vg.PVName, ",") {
+			l = append(l, device.New(s, device.WithLogger(t.Log())))
+		}
 	}
 	return l, nil
 }
