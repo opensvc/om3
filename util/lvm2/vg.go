@@ -97,7 +97,7 @@ func (t *VG) ImportDevices() error {
 		return nil
 	}
 	fcache.Clear("vgs")
-	fcache.Clear("vgs-device")
+	fcache.Clear("vgs-devices")
 	if cmd.ExitCode() != 0 {
 		return fmt.Errorf("%s error %d", cmd, cmd.ExitCode())
 	}
@@ -115,7 +115,7 @@ func (t *VG) change(args []string) error {
 	)
 	cmd.Run()
 	fcache.Clear("vgs")
-	fcache.Clear("vgs-device")
+	fcache.Clear("vgs-devices")
 	if cmd.ExitCode() != 0 {
 		return fmt.Errorf("%s error %d", cmd, cmd.ExitCode())
 	}
@@ -141,7 +141,7 @@ func (t *VG) DelTag(s string) error {
 	)
 	cmd.Run()
 	fcache.Clear("vgs")
-	fcache.Clear("vgs-device")
+	fcache.Clear("vgs-devices")
 	if cmd.ExitCode() != 0 {
 		return fmt.Errorf("%s error %d", cmd, cmd.ExitCode())
 	}
@@ -159,7 +159,7 @@ func (t *VG) AddTag(s string) error {
 	)
 	cmd.Run()
 	fcache.Clear("vgs")
-	fcache.Clear("vgs-device")
+	fcache.Clear("vgs-devices")
 	if cmd.ExitCode() != 0 {
 		return fmt.Errorf("%s error %d", cmd, cmd.ExitCode())
 	}
@@ -383,7 +383,7 @@ func (t *VG) Create(size string, pvs []string, options []string) error {
 	)
 	cmd.Run()
 	fcache.Clear("vgs")
-	fcache.Clear("vgs-device")
+	fcache.Clear("vgs-devices")
 	if cmd.ExitCode() != 0 {
 		return fmt.Errorf("%s error %d", cmd, cmd.ExitCode())
 	}
@@ -405,7 +405,7 @@ func (t *VG) Remove(args []string) error {
 	)
 	cmd.Run()
 	fcache.Clear("vgs")
-	fcache.Clear("vgs-device")
+	fcache.Clear("vgs-devices")
 	if cmd.ExitCode() != 0 {
 		return fmt.Errorf("%s error %d", cmd, cmd.ExitCode())
 	}
