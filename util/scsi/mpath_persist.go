@@ -5,10 +5,11 @@ package scsi
 import (
 	"strings"
 
+	"github.com/rs/zerolog"
+
 	"github.com/opensvc/om3/util/command"
 	"github.com/opensvc/om3/util/device"
 	"github.com/opensvc/om3/util/plog"
-	"github.com/rs/zerolog"
 )
 
 type (
@@ -30,7 +31,7 @@ func (t MpathPersistDriver) ReadRegistrations(dev device.T) ([]string, error) {
 	}
 	for _, line := range strings.Split(string(b), "\n") {
 		if strings.HasPrefix(line, "    0x") {
-			l = append(l, line[4:])
+			l = append(l, formatKey(line[4:]))
 		}
 	}
 	return l, nil
@@ -72,7 +73,7 @@ func (t MpathPersistDriver) ReadReservation(dev device.T) (string, error) {
 	}
 	for _, line := range strings.Split(string(b), "\n") {
 		if strings.HasPrefix(line, "   Key = 0x") {
-			return line[9:], nil
+			return formatKey(line[9:]), nil
 		}
 	}
 	return "", nil
