@@ -165,7 +165,7 @@ func (t *rx) Start(cmdC chan<- interface{}, msgC chan<- *hbtype.Msg) error {
 			defer wg.Done()
 			select {
 			case <-ctx.Done():
-				t.log.Infof("close listener %s for %s", t.addr+":"+t.port, otherNodeIPL)
+				t.log.Infof("closing listener %s for %s", t.addr+":"+t.port, otherNodeIPL)
 				_ = listener.Close()
 				time.Sleep(100 * time.Millisecond)
 				t.cancel()
@@ -241,12 +241,20 @@ func (t *rx) handle(conn encryptconn.ConnNoder) {
 		t.log.Warnf("unmarshal message failed from node %s:%s: %s", nodename, conn.RemoteAddr(), err)
 		return
 	}
-	t.cmdC <- hbctrl.CmdSetPeerSuccess{
+	cmdPeerSuccess := hbctrl.CmdSetPeerSuccess{
 		Nodename: msg.Nodename,
 		HbID:     t.id,
 		Success:  true,
 	}
-	t.msgC <- &msg
+	select {
+	case <-t.ctx.Done():
+		return
+	case t.cmdC <- cmdPeerSuccess:
+	}
+	select {
+	case <-t.ctx.Done():
+	case t.msgC <- &msg:
+	}
 }
 
 func newRx(ctx context.Context, name string, nodes map[string]string, addr, port, intf string, timeout time.Duration) *rx {
