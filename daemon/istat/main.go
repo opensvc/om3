@@ -12,7 +12,9 @@ import (
 	"time"
 
 	"github.com/google/uuid"
+
 	"github.com/opensvc/om3/core/instance"
+	"github.com/opensvc/om3/core/naming"
 	"github.com/opensvc/om3/core/resource"
 	"github.com/opensvc/om3/daemon/msgbus"
 	"github.com/opensvc/om3/util/hostname"
@@ -157,6 +159,7 @@ func (t *T) onInstanceFrozenFileRemoved(msg *msgbus.InstanceFrozenFileRemoved) {
 		iStatus.UpdatedAt = msg.At
 	}
 	t.iStatusM[s] = iStatus
+	naming.LogWithPath(t.log, msg.Path).Infof("%s: change frozen to false", s)
 	instance.StatusData.Set(msg.Path, t.localhost, iStatus.DeepCopy())
 	t.publisher.Pub(&msgbus.InstanceStatusUpdated{Path: msg.Path, Node: t.localhost, Value: *iStatus.DeepCopy()},
 		t.labelLocalhost,
@@ -260,6 +263,7 @@ func (t *T) onInstanceFrozenFileUpdated(msg *msgbus.InstanceFrozenFileUpdated) {
 	if msg.At.After(iStatus.UpdatedAt) {
 		iStatus.UpdatedAt = msg.At
 	}
+	naming.LogWithPath(t.log, msg.Path).Infof("%s: change frozen to true", s)
 	t.iStatusM[s] = iStatus
 	instance.StatusData.Set(msg.Path, t.localhost, iStatus.DeepCopy())
 	t.publisher.Pub(&msgbus.InstanceStatusUpdated{Path: msg.Path, Node: t.localhost, Value: *iStatus.DeepCopy()},
@@ -274,6 +278,16 @@ func (t *T) onInstanceStatusPost(msg *msgbus.InstanceStatusPost) {
 		return
 	}
 	s := msg.Path.String()
+	prev := t.iStatusM[s]
+	if prev.Avail != msg.Value.Avail {
+		naming.LogWithPath(t.log, msg.Path).Infof("%s: change avail %s -> %s", s, prev.Avail, msg.Value.Avail)
+	}
+	if prev.Overall != msg.Value.Overall {
+		naming.LogWithPath(t.log, msg.Path).Infof("%s: change overall %s -> %s", s, prev.Overall, msg.Value.Overall)
+	}
+	if prev.IsFrozen() != msg.Value.IsFrozen() {
+		naming.LogWithPath(t.log, msg.Path).Infof("%s: change frozen to %v", s, msg.Value.IsFrozen())
+	}
 	t.iStatusM[s] = msg.Value
 	instance.StatusData.Set(msg.Path, msg.Node, msg.Value.DeepCopy())
 	t.publisher.Pub(&msgbus.InstanceStatusUpdated{Path: msg.Path, Node: msg.Node, Value: msg.Value},
