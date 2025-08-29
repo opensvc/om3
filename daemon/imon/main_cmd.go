@@ -249,10 +249,10 @@ func (t *Manager) onMyInstanceStatusUpdated(srcNode string, srcCmd *msgbus.Insta
 		t.instStatus[srcCmd.Node] = srcCmd.Value
 	case instStatus.UpdatedAt.Before(srcCmd.Value.UpdatedAt):
 		// only update if more recent
-		t.log.Debugf("ObjectStatusUpdated %s from InstanceStatusUpdated on %s update instance status", srcNode, srcCmd.Node)
+		t.log.Debugf("ObjectStatusUpdated %s from InstanceStatusUpdated on %s update instance status with avail %s", srcNode, srcCmd.Node, srcCmd.Value.Avail)
 		t.instStatus[srcCmd.Node] = srcCmd.Value
 	default:
-		t.log.Debugf("ObjectStatusUpdated %s from InstanceStatusUpdated on %s skip update instance from obsolete status", srcNode, srcCmd.Node)
+		t.log.Debugf("ObjectStatusUpdated %s from InstanceStatusUpdated on %s skip update instance from obsolete status avail %s", srcNode, srcCmd.Node, srcCmd.Value.Avail)
 	}
 }
 
