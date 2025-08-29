@@ -510,8 +510,32 @@ func (t *Manager) updateIfChange() {
 		t.state.State == instance.MonitorStateIdle &&
 		t.state.LocalExpect != instance.MonitorLocalExpectStarted &&
 		t.instStatus[t.localhost].Avail.Is(status.Up) {
-		// no orchestration, state is idle, avail is up and monitor is nor yet enabled
-		t.enableMonitor("local instance is up and idle")
+		if t.instStatus[t.localhost].UpdatedAt.After(t.state.LocalExpectUpdatedAt) {
+			// no orchestration, state is idle, avail is up, monitor is not yet enabled
+			// and instance status is more recent than the `LocalExpectUpdatedAt`.
+			//
+			// Must wait for status UpdatedAt After localExpectUpdatedAt to avoid the following scenario:
+			//   time 0 daemon: imon: obj1 knows local instance avail as UP
+			//   11:50:17.982808 om[1849638]: instance: obj1 >>> do stop [om obj1 stop --rid app#1] (origin user,...
+			//   11:50:17.984207 om[1846732]: daemon: imon: obj1 progress instance monitor state idle -> stopping
+			//   11:50:17.984262 om[1846732]: daemon: imon: obj1 user is stopping some instance resources: disable resource restart and monitoring ✅
+			//                            =>  daemon: imon: obj1 change local expect started -> none
+			//                            =>  daemon: imon: obj1 change state idle -> stopping
+			//   11:50:18.444875 om[1849638]: instance: obj1 app#1: run: ...
+			//                            =>  daemon: istat: obj1 change avail up -> warn
+			//                                instance avail is warn from istat, but imon doesn't know it yet.
+			//   11:50:19.689713 om[1846732]: daemon: imon: obj1 progress instance monitor state stopping -> idle
+			//   11:50:19.689771 om[1846732]: daemon: imon: obj1 local instance is up and idle: enable resource restart and monitoring
+			//  						     🐞unexpected local expect started rearmed, we should have waited for fresher instance status
+			// 			 				     before enable resource restart and monitoring
+			//   11:50:19.689814 om[1846732]: daemon: imon: obj1 change local expect none -> started
+			//   11:50:19.689857 om[1846732]: daemon: imon: obj1 change state stopping -> idle
+			//   11:50:19.690198 om[1846732]: daemon: imon: obj1 ObjectStatusUpdated node1 from InstanceStatusUpdated on node1 update instance status with avail warn
+			//							    ✅now, the instance status updated at is newer than the local expect updated at
+			t.enableMonitor("local instance is up and idle")
+		} else {
+			t.log.Debugf("wait for fresher instance status before enable enable resource restart and monitoring")
+		}
 	}
 	if !t.change {
 		return
