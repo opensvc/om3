@@ -19,6 +19,7 @@ import (
 
 	"github.com/opensvc/om3/core/actioncontext"
 	"github.com/opensvc/om3/core/driver"
+	"github.com/opensvc/om3/core/env"
 	"github.com/opensvc/om3/core/manifest"
 	"github.com/opensvc/om3/core/provisioned"
 	"github.com/opensvc/om3/core/resourceid"
@@ -1099,7 +1100,7 @@ func EvalStatus(ctx context.Context, r Driver) status.T {
 	} else if !r.IsDisabled() {
 		Setenv(r)
 		s = r.Status(ctx)
-		prStatus := SCSIPersistentReservationStatus(r)
+		prStatus := SCSIPersistentReservationStatus(ctx, r)
 		if s == status.NotApplicable {
 			s.Add(prStatus)
 		}
@@ -1120,7 +1121,7 @@ func EvalStatus(ctx context.Context, r Driver) status.T {
 	return s
 }
 
-func newSCSIPersistentRerservationHandle(r Driver) *scsi.PersistentReservationHandle {
+func newSCSIPersistentRerservationHandle(ctx context.Context, r Driver) *scsi.PersistentReservationHandle {
 	var i any = r
 	o, ok := i.(devReservabler)
 	if !ok {
@@ -1135,6 +1136,7 @@ func newSCSIPersistentRerservationHandle(r Driver) *scsi.PersistentReservationHa
 		Key:            o.PersistentReservationKey(),
 		Devices:        o.ReservableDevices(),
 		NoPreemptAbort: o.IsSCSIPersistentReservationPreemptAbortDisabled(),
+		Force:          actioncontext.IsForce(ctx) || env.HasDaemonMonitorOrigin(),
 		Log:            r.Log(),
 		StatusLogger:   r.StatusLog(),
 	}
@@ -1142,7 +1144,7 @@ func newSCSIPersistentRerservationHandle(r Driver) *scsi.PersistentReservationHa
 }
 
 func SCSIPersistentReservationStop(ctx context.Context, r Driver) error {
-	if hdl := newSCSIPersistentRerservationHandle(r); hdl == nil {
+	if hdl := newSCSIPersistentRerservationHandle(ctx, r); hdl == nil {
 		return nil
 	} else {
 		return hdl.Stop()
@@ -1167,15 +1169,15 @@ func SCSIPersistentReservationStart(ctx context.Context, r Driver) error {
 		return err
 	}
 
-	if hdl := newSCSIPersistentRerservationHandle(r); hdl == nil {
+	if hdl := newSCSIPersistentRerservationHandle(ctx, r); hdl == nil {
 		return nil
 	} else {
 		return hdl.Start()
 	}
 }
 
-func SCSIPersistentReservationStatus(r Driver) status.T {
-	if hdl := newSCSIPersistentRerservationHandle(r); hdl == nil {
+func SCSIPersistentReservationStatus(ctx context.Context, r Driver) status.T {
+	if hdl := newSCSIPersistentRerservationHandle(ctx, r); hdl == nil {
 		return status.NotApplicable
 	} else {
 		return hdl.Status()

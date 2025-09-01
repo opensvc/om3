@@ -34,9 +34,15 @@ type (
 		Key                         string
 		Devices                     device.L
 		NoPreemptAbort              bool
+		Force                       bool
 		Log                         *plog.Logger
 		StatusLogger                statusLogger
 		persistentReservationDriver PersistentReservationDriver
+		CurrentStatus		    PersistentReservationStatus
+	}
+
+	PersistentReservationStatus struct {
+		ReservedBy *string
 	}
 )
 
@@ -142,6 +148,7 @@ func (t *PersistentReservationHandle) DeviceExpectedRegistrationCount(dev device
 
 func (t *PersistentReservationHandle) DeviceStatus(dev device.T) status.T {
 	var reservationMsg string
+	t.CurrentStatus = PersistentReservationStatus{}
 	s := status.Down
 	_, err := os.Stat(dev.Path())
 	switch {
@@ -152,20 +159,23 @@ func (t *PersistentReservationHandle) DeviceStatus(dev device.T) status.T {
 		t.StatusLogger.Error("%s exist: %s", dev, err)
 	}
 	if v, err := dev.IsReservable(); err != nil {
-		t.StatusLogger.Error("%s is reservable: %s", dev, err)
+		t.StatusLogger.Error("%s is reservable? %s", dev, err)
 	} else if !v {
 		t.StatusLogger.Info("%s is not reservable: not a scsi or mpath device", dev)
 		return status.NotApplicable
 	}
 	if reservation, err := t.persistentReservationDriver.ReadReservation(dev); err != nil {
 		t.StatusLogger.Error("%s read reservation: %s", dev, err)
-	} else if reservation == "" {
-		reservationMsg = fmt.Sprintf("%s is not reserved", dev)
-	} else if reservation != t.Key {
-		reservationMsg = fmt.Sprintf("%s is reserved by %s", dev, reservation)
 	} else {
-		reservationMsg = fmt.Sprintf("%s is reserved", dev)
-		s = status.Up
+		t.CurrentStatus.ReservedBy = &reservation
+		if reservation == "" {
+			reservationMsg = fmt.Sprintf("%s is not reserved", dev)
+		} else if reservation != t.Key {
+			reservationMsg = fmt.Sprintf("%s is reserved by %s", dev, reservation)
+		} else {
+			reservationMsg = fmt.Sprintf("%s is reserved", dev)
+			s = status.Up
+		}
 	}
 
 	var expectedRegistrationCount int
@@ -223,7 +233,11 @@ func (t *PersistentReservationHandle) Start() error {
 		return err
 	}
 	for _, dev := range t.Devices {
-		if s := t.DeviceStatus(dev); s == status.Up {
+		deviceStatus := t.DeviceStatus(dev)
+		if t.CurrentStatus.ReservedBy != nil && *t.CurrentStatus.ReservedBy != "" && *t.CurrentStatus.ReservedBy != t.Key && !t.Force {
+			return fmt.Errorf("%s is already reserved by the foreign key %s: use --force to preempt if you are sure the key owner can be fenced", dev, *t.CurrentStatus.ReservedBy)
+		}
+		if deviceStatus == status.Up {
 			t.Log.Infof("%s is already registered and reserved", dev)
 			continue
 		}
@@ -236,7 +250,7 @@ func (t *PersistentReservationHandle) Start() error {
 		} else if reservation == t.Key {
 			// already reserved
 		} else if reservation == "" {
-			// not reserved => Reserve action
+			// not reserved or preempt not allowed => Reserve action
 			if err := t.persistentReservationDriver.Reserve(dev, t.Key); err != nil {
 				return fmt.Errorf("%s spr reserve: %w", dev.Path(), err)
 			}
