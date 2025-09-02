@@ -155,7 +155,11 @@ func (s *Data) GetObjectStatus(p naming.Path) object.Digest {
 	data.Path = p
 	data.IsCompat = s.Cluster.Status.IsCompat
 	data.Object, _ = s.Cluster.Object[ps]
-	for nodename, ndata := range s.Cluster.Node {
+	for _, nodename := range data.Object.Scope {
+		ndata, ok := s.Cluster.Node[nodename]
+		if !ok {
+			continue
+		}
 		instanceStates := instance.States{}
 		instanceStates.Path = p
 		instanceStates.Node.FrozenAt = ndata.Status.FrozenAt
