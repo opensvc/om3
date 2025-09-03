@@ -572,6 +572,8 @@ func (t *App) do(statusGetter getter, evReader event.ReadCloser) error {
 					t.updateConfigView()
 				case viewKeys:
 					t.updateKeysView()
+				case viewKey:
+					t.updateKeyTextView()
 				default:
 					t.updateObjects()
 				}
