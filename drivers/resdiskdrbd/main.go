@@ -353,10 +353,15 @@ func (t *T) StartConnection(ctx context.Context) error {
 
 	doWait := func(candidates ...string) (bool, error) {
 		t.Log().Infof("wait %s for cstate in (%s)", t.Res, strings.Join(candidates, ","))
-		var state string
+		var state, lastState string
 		ok, err := waitfor.TrueNoErrorCtx(ctx, 5*time.Second, time.Second, func() (bool, error) {
 			var err error
-			if state, err = dev.ConnState(); err != nil {
+			state, err = dev.ConnState()
+			if state != lastState {
+				t.Log().Infof("wait %s cstate in (%s), found current cstate %s", t.Res, strings.Join(candidates, ","), state)
+				lastState = state
+			}
+			if err != nil {
 				return false, err
 			} else if slices.Contains(candidates, state) {
 				return true, nil
@@ -369,6 +374,9 @@ func (t *T) StartConnection(ctx context.Context) error {
 				t.Res, strings.Join(candidates, ","), err)
 		} else if !ok {
 			t.Log().Warnf("wait for %s cstate in (%s): timeout, last state was: %s",
+				t.Res, strings.Join(candidates, ","), state)
+		} else {
+			t.Log().Infof("wait for %s cstate in (%s): succeed found %s",
 				t.Res, strings.Join(candidates, ","), state)
 		}
 		return ok, err
