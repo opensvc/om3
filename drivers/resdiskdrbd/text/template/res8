@@ -8,7 +8,4 @@ resource {{.Name}} {
         node-id   {{$host.NodeId}};
     }
     {{end}}
-    connection-mesh {
-        hosts{{range $host := .Hosts}} {{$host.Name}}{{end}};
-    }
 }
