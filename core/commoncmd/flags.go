@@ -226,6 +226,14 @@ func FlagNodeSelector(flags *pflag.FlagSet, p *string) {
 	flags.StringVar(p, "node", "", "submit the action to the selected nodes")
 }
 
+func FlagNodeSelectorOrLocalhost(flags *pflag.FlagSet, p *string) {
+	flags.StringVar(p, "node", "localhost", "submit the action to the selected nodes")
+}
+
+func FlagNodeSelectorOrAll(flags *pflag.FlagSet, p *string) {
+	flags.StringVar(p, "node", "*", "submit the action to the selected nodes")
+}
+
 func FlagNoLock(flags *pflag.FlagSet, p *bool) {
 	flags.BoolVar(p, "no-lock", false, "don't acquire the action lock (dangerous)")
 }

@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 
 	"github.com/opensvc/om3/core/instance"
+	"github.com/opensvc/om3/core/pool"
 	"github.com/opensvc/om3/daemon/daemonsubsystem"
 )
 
@@ -11,6 +12,7 @@ type (
 	// Node holds a node DataSet.
 	Node struct {
 		Instance map[string]instance.Instance `json:"instance"`
+		Pool     map[string]pool.Status       `json:"pool"`
 		Monitor  Monitor                      `json:"monitor"`
 		Stats    Stats                        `json:"stats"`
 		Status   Status                       `json:"status"`

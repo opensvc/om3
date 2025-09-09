@@ -22,18 +22,3 @@ func (t *Config) DeepCopy() *Config {
 	return &data
 
 }
-
-func (t *Config) Unstructured() map[string]any {
-	return map[string]any{
-		"env":                      t.Env,
-		"maintenance_grace_period": t.MaintenanceGracePeriod,
-		"min_avail_mem_pct":        t.MinAvailMemPct,
-		"min_avail_swap_pct":       t.MinAvailSwapPct,
-		"max_parallel":             t.MaxParallel,
-		"ready_period":             t.ReadyPeriod,
-		"rejoin_grace_period":      t.RejoinGracePeriod,
-		"split_action":             t.SplitAction,
-		"sshkey":                   t.SSHKey,
-		"pr_key":                   t.PRKey,
-	}
-}

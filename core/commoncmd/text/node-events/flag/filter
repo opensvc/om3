@@ -65,6 +65,7 @@ Receive only events matching the filtering expression formatted as:
      NodeFrozenFileRemoved, NodeFrozenFileUpdated
      NodeMonitorDeleted, NodeMonitorUpdated
      NodeOsPathsUpdated
+     NodePoolStatusUpdated, NodePoolStatusDeleted
      NodeRejoin, NodeSplitAction
      NodeStatsUpdated
      NodeStatusUpdated

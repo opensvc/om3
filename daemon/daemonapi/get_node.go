@@ -1,6 +1,7 @@
 package daemonapi
 
 import (
+	"fmt"
 	"net/http"
 
 	"github.com/labstack/echo/v4"
@@ -36,11 +37,61 @@ func (a *DaemonAPI) GetNodes(ctx echo.Context, params api.GetNodesParams) error 
 			Meta: api.NodeMeta{
 				Node: config.Node,
 			},
-			Data: api.Node{
-				Config:  config.Value,
-				Monitor: monitor,
-				Status:  status,
-			},
+			Data: api.Node{},
+		}
+		if config.Value != nil {
+			d.Data.Config = &api.NodeConfig{
+				Env:                    config.Value.Env,
+				MaintenanceGracePeriod: config.Value.MaintenanceGracePeriod,
+				MaxParallel:            config.Value.MaxParallel,
+				MinAvailMemPct:         config.Value.MinAvailMemPct,
+				MinAvailSwapPct:        config.Value.MinAvailSwapPct,
+				PRKey:                  config.Value.PRKey,
+				SSHKey:                 config.Value.SSHKey,
+				ReadyPeriod:            config.Value.ReadyPeriod,
+				RejoinGracePeriod:      config.Value.RejoinGracePeriod,
+				SplitAction:            config.Value.SplitAction,
+			}
+		}
+		if status != nil {
+			d.Data.Status = &api.NodeStatus{
+				Agent:        status.Agent,
+				API:          fmt.Sprint(status.API),
+				Arbitrators:  make(map[string]api.ArbitratorStatus),
+				Compat:       status.Compat,
+				FrozenAt:     status.FrozenAt,
+				Gen:          make(map[string]uint64),
+				IsLeader:     status.IsLeader,
+				IsOverloaded: status.IsOverloaded,
+				Labels:       make(map[string]string),
+			}
+			for k, v := range status.Arbitrators {
+				d.Data.Status.Arbitrators[k] = api.ArbitratorStatus{
+					Status: api.Status(v.Status.String()),
+					Url:    v.URL,
+					Weight: v.Weight,
+				}
+			}
+			for k, v := range status.Gen {
+				d.Data.Status.Gen[k] = v
+			}
+			for k, v := range status.Labels {
+				d.Data.Status.Labels[k] = v
+			}
+		}
+		if monitor != nil {
+			d.Data.Monitor = &api.NodeMonitor{
+				GlobalExpect:          monitor.GlobalExpect.String(),
+				GlobalExpectUpdatedAt: monitor.GlobalExpectUpdatedAt,
+				LocalExpect:           monitor.LocalExpect.String(),
+				LocalExpectUpdatedAt:  monitor.LocalExpectUpdatedAt,
+				OrchestrationID:       monitor.OrchestrationID.String(),
+				OrchestrationIsDone:   monitor.OrchestrationIsDone,
+				SessionID:             monitor.SessionID.String(),
+				State:                 monitor.State.String(),
+				StateUpdatedAt:        monitor.StateUpdatedAt,
+				UpdatedAt:             monitor.UpdatedAt,
+			}
 		}
 		l = append(l, d)
 	}

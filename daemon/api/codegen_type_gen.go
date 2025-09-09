@@ -9,7 +9,7 @@ import (
 	openapi_types "github.com/oapi-codegen/runtime/types"
 	"github.com/opensvc/om3/core/instance"
 	"github.com/opensvc/om3/core/naming"
-	"github.com/opensvc/om3/core/node"
+	"github.com/opensvc/om3/core/nodesinfo"
 	"github.com/opensvc/om3/core/resource"
 )
 
@@ -308,6 +308,7 @@ const (
 type ArbitratorStatus struct {
 	Status Status `json:"status"`
 	Url    string `json:"url"`
+	Weight int    `json:"weight"`
 }
 
 // AuthInfo defines model for AuthInfo.
@@ -391,12 +392,33 @@ type DRBDConfig struct {
 // DaemonHeartbeatName Heartbeat name, example '1.rx' for heartbeat receiver of 'hb#1' section
 type DaemonHeartbeatName = string
 
+// DaemonListener defines model for DaemonListener.
+type DaemonListener struct {
+	Addr         string    `json:"addr"`
+	ConfiguredAt time.Time `json:"configured_at"`
+	CreatedAt    time.Time `json:"created_at"`
+	ID           string    `json:"id"`
+	Port         string    `json:"port"`
+	State        string    `json:"state"`
+	UpdatedAt    time.Time `json:"updated_at"`
+}
+
 // DaemonListenerName Listener name
 type DaemonListenerName = string
 
 // DaemonPid defines model for DaemonPid.
 type DaemonPid struct {
 	Pid int `json:"pid"`
+}
+
+// DaemonSubsystemStatus Describes a OpenSVC daemon subsystem: when it was last created,
+// configured an updated, what its current state is and its id.
+type DaemonSubsystemStatus struct {
+	ConfiguredAt time.Time `json:"configured_at"`
+	CreatedAt    time.Time `json:"created_at"`
+	ID           string    `json:"id"`
+	State        string    `json:"state"`
+	UpdatedAt    time.Time `json:"updated_at"`
 }
 
 // DataKey defines model for DataKey.
@@ -763,10 +785,31 @@ type NodeActionAccepted struct {
 }
 
 // NodeConfig defines model for NodeConfig.
-type NodeConfig = node.Config
+type NodeConfig struct {
+	Env                    string        `json:"env"`
+	MaintenanceGracePeriod time.Duration `json:"maintenance_grace_period"`
+	MaxParallel            int           `json:"max_parallel"`
+	MinAvailMemPct         int           `json:"min_avail_mem_pct"`
+	MinAvailSwapPct        int           `json:"min_avail_swap_pct"`
+	PRKey                  string        `json:"pr_key"`
+	ReadyPeriod            time.Duration `json:"ready_period"`
+	RejoinGracePeriod      time.Duration `json:"rejoin_grace_period"`
+	SplitAction            string        `json:"split_action"`
+	SSHKey                 string        `json:"sshkey"`
+}
 
 // NodeInfo defines model for NodeInfo.
-type NodeInfo = node.NodeInfo
+type NodeInfo struct {
+	// Labels labels is the list of node labels.
+	Labels   []NodeLabel            `json:"labels"`
+	Listener map[string]interface{} `json:"listener"`
+
+	// Nodename nodename is the name of the node where the labels and paths are coming from.
+	Nodename string `json:"nodename"`
+
+	// Paths paths is the list of node to storage array san paths.
+	Paths []SANPath `json:"paths"`
+}
 
 // NodeItem defines model for NodeItem.
 type NodeItem struct {
@@ -805,13 +848,34 @@ type NodeMeta struct {
 }
 
 // NodeMonitor defines model for NodeMonitor.
-type NodeMonitor = node.Monitor
+type NodeMonitor struct {
+	GlobalExpect          string    `json:"global_expect"`
+	GlobalExpectUpdatedAt time.Time `json:"global_expect_updated_at"`
+	LocalExpect           string    `json:"local_expect"`
+	LocalExpectUpdatedAt  time.Time `json:"local_expect_updated_at"`
+	OrchestrationID       string    `json:"orchestration_id"`
+	OrchestrationIsDone   bool      `json:"orchestration_is_done"`
+	SessionID             string    `json:"session_id"`
+	State                 string    `json:"state"`
+	StateUpdatedAt        time.Time `json:"state_updated_at"`
+	UpdatedAt             time.Time `json:"updated_at"`
+}
 
 // NodeStatus defines model for NodeStatus.
-type NodeStatus = node.Status
+type NodeStatus struct {
+	Agent        string                      `json:"agent"`
+	API          string                      `json:"api"`
+	Arbitrators  map[string]ArbitratorStatus `json:"arbitrators"`
+	Compat       uint64                      `json:"compat"`
+	FrozenAt     time.Time                   `json:"frozen_at"`
+	Gen          map[string]uint64           `json:"gen"`
+	IsLeader     bool                        `json:"is_leader"`
+	IsOverloaded bool                        `json:"is_overloaded"`
+	Labels       map[string]string           `json:"labels"`
+}
 
 // NodesInfo defines model for NodesInfo.
-type NodesInfo = node.NodesInfo
+type NodesInfo = nodesinfo.M
 
 // ObjectData defines model for ObjectData.
 type ObjectData struct {
@@ -970,8 +1034,11 @@ type Pool struct {
 	Free         int64     `json:"free"`
 	Head         string    `json:"head"`
 	Name         string    `json:"name"`
+	Node         string    `json:"node"`
+	Shared       bool      `json:"shared"`
 	Size         int64     `json:"size"`
 	Type         string    `json:"type"`
+	UpdatedAt    time.Time `json:"updated_at"`
 	Used         int64     `json:"used"`
 	VolumeCount  int       `json:"volume_count"`
 }
@@ -1508,8 +1575,14 @@ type InQueryLeader = bool
 // InQueryMaster Act on the host instance of the service, and don't act on encap instance if not asked for explicitely.
 type InQueryMaster = bool
 
+// InQueryNodeSelector defines model for inQueryNodeSelector.
+type InQueryNodeSelector = string
+
 // InQueryOption defines model for inQueryOption.
 type InQueryOption = string
+
+// InQueryPoolName defines model for inQueryPoolName.
+type InQueryPoolName = string
 
 // InQueryRequesterSid defines model for inQueryRequesterSid.
 type InQueryRequesterSid = openapi_types.UUID
@@ -2061,13 +2134,16 @@ type PutObjectDataKeyParams struct {
 // GetPoolsParams defines parameters for GetPools.
 type GetPoolsParams struct {
 	// Name the name of a backend storage pool
-	Name *string `form:"name,omitempty" json:"name,omitempty"`
+	Name *InQueryPoolName `form:"name,omitempty" json:"name,omitempty"`
+
+	// Node a node selector expression like `n[123]`, `n*`, `mylabel=myvalue`
+	Node *InQueryNodeSelector `form:"node,omitempty" json:"node,omitempty"`
 }
 
 // GetPoolVolumesParams defines parameters for GetPoolVolumes.
 type GetPoolVolumesParams struct {
 	// Name the name of a backend storage pool
-	Name *string `form:"name,omitempty" json:"name,omitempty"`
+	Name *InQueryPoolName `form:"name,omitempty" json:"name,omitempty"`
 }
 
 // GetRelayMessageParams defines parameters for GetRelayMessage.

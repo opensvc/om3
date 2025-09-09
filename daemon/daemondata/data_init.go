@@ -14,6 +14,7 @@ import (
 	"github.com/opensvc/om3/daemon/msgbus"
 	"github.com/opensvc/om3/util/file"
 	"github.com/opensvc/om3/util/hostname"
+	"github.com/opensvc/om3/util/label"
 	"github.com/opensvc/om3/util/pubsub"
 	"github.com/opensvc/om3/util/san"
 )
@@ -94,7 +95,7 @@ func newNodeData(localNode string) node.Node {
 			Compat:   12,
 			FrozenAt: frozen,
 			Gen:      node.Gen{localNode: 1},
-			Labels:   node.Labels{},
+			Labels:   label.M{},
 		},
 		Os: node.Os{
 			Paths: san.Paths{},

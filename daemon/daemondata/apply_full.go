@@ -8,6 +8,7 @@ import (
 	"github.com/opensvc/om3/core/instance"
 	"github.com/opensvc/om3/core/naming"
 	"github.com/opensvc/om3/core/node"
+	"github.com/opensvc/om3/core/pool"
 	"github.com/opensvc/om3/daemon/daemonsubsystem"
 	"github.com/opensvc/om3/daemon/msgbus"
 	"github.com/opensvc/om3/util/pubsub"
@@ -38,6 +39,7 @@ func (d *data) refreshPreviousUpdated(peer string) *remoteInfo {
 		imonUpdated:       make(map[string]time.Time),
 		instConfigUpdated: make(map[string]time.Time),
 		instStatusUpdated: make(map[string]time.Time),
+		poolStatusUpdated: make(map[string]time.Time),
 	}
 
 	result.nmonUpdated = c.Monitor.UpdatedAt
@@ -69,6 +71,10 @@ func (d *data) refreshPreviousUpdated(peer string) *remoteInfo {
 		}
 	}
 
+	for poolName, poolStatus := range c.Pool {
+		result.poolStatusUpdated[poolName] = poolStatus.UpdatedAt
+	}
+
 	return &result
 }
 
@@ -90,6 +96,7 @@ func (d *data) pubPeerDataChanges(peer string) {
 	d.pubMsgFromNodeSchedulerDiffForNode(peer, current)
 	d.pubMsgFromNodeMonitorDiffForNode(peer, current)
 	d.pubMsgFromNodeInstanceDiffForNode(peer, current)
+	d.pubMsgFromNodePoolDiffForNode(peer, current)
 	d.previousRemoteInfo[peer] = *current
 }
 
@@ -429,5 +436,30 @@ func (d *data) pubMsgFromNodeInstanceDiffForNode(peer string, current *remoteInf
 			pubsub.Label{"node", peer},
 			labelFromPeer,
 		)
+	}
+}
+
+func (d *data) pubMsgFromNodePoolDiffForNode(peer string, current *remoteInfo) {
+	previous, ok := d.previousRemoteInfo[peer]
+	if !ok {
+		previous = remoteInfo{
+			poolStatusUpdated: make(map[string]time.Time),
+		}
+	}
+	for poolName, prevPoolStatusUpdated := range previous.poolStatusUpdated {
+		poolStatus, ok := d.clusterData.Cluster.Node[peer].Pool[poolName]
+		if !ok {
+			pool.StatusData.Unset(poolName, peer)
+			d.publisher.Pub(&msgbus.NodePoolStatusDeleted{Name: poolName, Node: peer},
+				pubsub.Label{"node", peer},
+				labelFromPeer,
+			)
+		} else if poolStatus.UpdatedAt.After(prevPoolStatusUpdated) {
+			pool.StatusData.Set(poolName, peer, poolStatus.DeepCopy())
+			d.publisher.Pub(&msgbus.NodePoolStatusUpdated{Name: poolName, Node: peer, Value: *poolStatus.DeepCopy()},
+				pubsub.Label{"node", peer},
+				labelFromPeer,
+			)
+		}
 	}
 }

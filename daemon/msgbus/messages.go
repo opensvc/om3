@@ -1,26 +1,44 @@
 // Package msgbus defines the Opensvc messages
 //
-//		 Add new message msgX: msgbus/messages.go
-//			- defines the new message: type <msgX> struct ....
-//	          add kindToT["msgX"]
-//			- msgX should implement event.Kinder
-//			- if msgX can change ClusterData:
-//		       - create ClusterData.onMsgX function
-//		       - update ClusterData.ApplyMessage function
-//			- msgX must be sent to peers (to patch):
-//				- update daemondata.startSubscriptions function
-//				- update daemondata.localEventMustBeForwarded function
-//			- peer msgX is received from peer (from patch):
-//				- update setCacheAndPublish function:
-//					- can update some caches
-//					- republish event with label from: peer
-//			- peer msgX may be published from full diff during applyNodeData
-//			- dropPeer may also publish associated messages:
-//	          examples:
-//	         	- drop peer node must also publish InstanceConfigDeleted, ...
-//	              => InstanceConfigUpdated needs publish InstanceConfigDeleted
-//				- drop peer node may publish empty DaemonXXXUpdated to reset
-//				  daemon subsystem state
+// HOWTO Add a new msgX:
+//
+// - [daemon/msgbus/messages.go] Add the msgX type
+// - [daemon/msgbus/messages.go] Add the kindToT["msgX"] mapping
+// - [daemon/msgbus/messages.go] Add the `Kind() string` implementation
+// - [daemon/msgbus/messages.go] Add the `Key() string` implementation to activate the diff event renderer
+// - [core/commoncmd/text/node-events/flag/filter] Document msgX
+//
+// msgX is waitable (om node events --filter msgX --wait)
+//
+// - [daemon/msgbus/event_cache.go] add a event cache feeder
+//
+// msgX is exposed in the daemon data:
+//
+// - [daemon/msgbus/xxx.go] create the ClusterData.onMsgX function
+// - [daemon/msgbus/main.go] update the ClusterData.ApplyMessage function
+//
+// msgX must be sent to peers (to patch):
+//
+// - [daemon/daemondata/data.go] update the startSubscriptions function
+// - [daemon/daemondata/data.go] update the localEventMustBeForwarded function
+//
+// msgX is received from peer (from patch):
+//
+// - [daemon/daemondata/apply_patch.go] update the setCacheAndPublish function:
+//
+// "full" is received from peer, which contains a msgX data
+//
+// - [daemon/daemondata/apply_full.go] update the applyNodeData function
+//
+// on peer node delete, we may need to publish msgX delete events
+//
+// - [daemon/daemondata/node_data.go] update data.dropPeer function
+//
+// Note:
+//
+//   - drop peer node must also publish InstanceConfigDeleted, ...
+//     => InstanceConfigUpdated needs publish InstanceConfigDeleted
+//   - drop peer node may publish empty DaemonXXXUpdated to reset daemon subsystem state
 package msgbus
 
 import (
@@ -39,8 +57,10 @@ import (
 	"github.com/opensvc/om3/core/naming"
 	"github.com/opensvc/om3/core/node"
 	"github.com/opensvc/om3/core/object"
+	"github.com/opensvc/om3/core/pool"
 	"github.com/opensvc/om3/daemon/daemonsubsystem"
 	"github.com/opensvc/om3/util/errcontext"
+	"github.com/opensvc/om3/util/label"
 	"github.com/opensvc/om3/util/pubsub"
 	"github.com/opensvc/om3/util/san"
 )
@@ -166,6 +186,10 @@ var (
 		"NodeMonitorUpdated": func() any { return &NodeMonitorUpdated{} },
 
 		"NodeOsPathsUpdated": func() any { return &NodeOsPathsUpdated{} },
+
+		"NodePoolStatusDeleted": func() any { return &NodePoolStatusDeleted{} },
+
+		"NodePoolStatusUpdated": func() any { return &NodePoolStatusUpdated{} },
 
 		"NodeStale": func() any { return &NodeStale{} },
 
@@ -667,6 +691,19 @@ type (
 		Value      san.Paths `json:"san_paths" yaml:"san_paths"`
 	}
 
+	NodePoolStatusDeleted struct {
+		pubsub.Msg `yaml:",inline"`
+		Node       string `json:"node" yaml:"node"`
+		Name       string `json:"name" yaml:"name"`
+	}
+
+	NodePoolStatusUpdated struct {
+		pubsub.Msg `yaml:",inline"`
+		Node       string      `json:"node" yaml:"node"`
+		Name       string      `json:"name" yaml:"name"`
+		Value      pool.Status `json:"pool_status" yaml:"pool_status"`
+	}
+
 	NodeSplitAction struct {
 		pubsub.Msg      `yaml:",inline"`
 		Node            string `json:"node" yaml:"node"`
@@ -704,14 +741,14 @@ type (
 
 	NodeStatusLabelsCommited struct {
 		pubsub.Msg `yaml:",inline"`
-		Node       string      `json:"node" yaml:"node"`
-		Value      node.Labels `json:"node_labels" yaml:"node_labels"`
+		Node       string  `json:"node" yaml:"node"`
+		Value      label.M `json:"node_labels" yaml:"node_labels"`
 	}
 
 	NodeStatusLabelsUpdated struct {
 		pubsub.Msg `yaml:",inline"`
-		Node       string      `json:"node" yaml:"node"`
-		Value      node.Labels `json:"node_labels" yaml:"node_labels"`
+		Node       string  `json:"node" yaml:"node"`
+		Value      label.M `json:"node_labels" yaml:"node_labels"`
 	}
 
 	// NodeStatusUpdated is the message that nmon publish when node status is modified.
@@ -1309,12 +1346,24 @@ func (e *ObjectStatusUpdated) String() string {
 	return s
 }
 
+func (e *ObjectStatusUpdated) Key() string {
+	return fmt.Sprintf("ObjectStatusUpdated,path=%s", e.Path)
+}
+
 func (e *ObjectStatusUpdated) Kind() string {
 	return "ObjectStatusUpdated"
 }
 
-func (e *ObjectStatusUpdated) Key() string {
-	return fmt.Sprintf("ObjectStatusUpdated,path=%s", e.Path)
+func (e *NodePoolStatusDeleted) Kind() string {
+	return "NodePoolStatusDeleted"
+}
+
+func (e *NodePoolStatusUpdated) Key() string {
+	return fmt.Sprintf("PoolStatusUpdated,node=%s,name=%s", e.Node, e.Name)
+}
+
+func (e *NodePoolStatusUpdated) Kind() string {
+	return "NodePoolStatusUpdated"
 }
 
 func (e *ProgressInstanceMonitor) Kind() string {

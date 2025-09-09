@@ -113,6 +113,50 @@ func (t Node) Unstructured() map[string]any {
 	}
 }
 
+func (t *NodeConfig) Unstructured() map[string]any {
+	return map[string]any{
+		"env":                      t.Env,
+		"maintenance_grace_period": t.MaintenanceGracePeriod,
+		"min_avail_mem_pct":        t.MinAvailMemPct,
+		"min_avail_swap_pct":       t.MinAvailSwapPct,
+		"max_parallel":             t.MaxParallel,
+		"ready_period":             t.ReadyPeriod,
+		"rejoin_grace_period":      t.RejoinGracePeriod,
+		"split_action":             t.SplitAction,
+		"sshkey":                   t.SSHKey,
+		"pr_key":                   t.PRKey,
+	}
+}
+
+func (t *NodeStatus) Unstructured() map[string]any {
+	return map[string]any{
+		"agent":         t.Agent,
+		"api":           t.API,
+		"arbitrators":   t.Arbitrators,
+		"compat":        t.Compat,
+		"frozen_at":     t.FrozenAt,
+		"gen":           t.Gen,
+		"is_leader":     t.IsLeader,
+		"is_overloaded": t.IsOverloaded,
+		"labels":        t.Labels,
+	}
+}
+
+func (t *NodeMonitor) Unstructured() map[string]any {
+	return map[string]any{
+		"global_expect":            t.GlobalExpect,
+		"local_expect":             t.LocalExpect,
+		"state":                    t.State,
+		"global_expect_updated_at": t.GlobalExpectUpdatedAt,
+		"local_expect_updated_at":  t.LocalExpectUpdatedAt,
+		"state_updated_at":         t.StateUpdatedAt,
+		"updated_at":               t.UpdatedAt,
+		"orchestration_id":         t.OrchestrationID,
+		"orchestration_is_done":    t.OrchestrationIsDone,
+		"session_id":               t.SessionID,
+	}
+}
+
 func (t GroupList) GetItems() any {
 	return t.Items
 }
@@ -475,11 +519,13 @@ func (t Pool) Unstructured() map[string]any {
 	return map[string]any{
 		"type":         t.Type,
 		"name":         t.Name,
+		"node":         t.Node,
 		"capabilities": t.Capabilities,
 		"head":         t.Head,
 		"errors":       t.Errors,
 		"volume_count": t.VolumeCount,
 		"free":         t.Free,
+		"updated_at":   t.UpdatedAt,
 		"used":         t.Used,
 		"size":         t.Size,
 	}

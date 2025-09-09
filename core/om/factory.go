@@ -3162,18 +3162,21 @@ func newCmdObjectValidateConfig(kind string) *cobra.Command {
 }
 
 func newCmdPoolList() *cobra.Command {
-	var options commands.CmdPoolList
+	var options commoncmd.CmdPoolList
 	cmd := &cobra.Command{
 		Use:     "list",
-		Short:   "list the cluster pools",
+		Short:   "list the storage pools",
+		Long:    "If --node is set each pool will show one line per node, with the free/used/size being the pool usage on the node. Else, free/used/size are total values.",
 		Aliases: []string{"ls"},
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return options.Run()
 		},
 	}
 	flags := cmd.Flags()
-	addFlagsGlobal(flags, &options.OptsGlobal)
+	commoncmd.FlagColor(flags, &options.Color)
+	commoncmd.FlagOutput(flags, &options.Output)
 	commoncmd.FlagPoolName(flags, &options.Name)
+	commoncmd.FlagNodeSelector(flags, &options.NodeSelector)
 	return cmd
 }
 

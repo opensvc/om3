@@ -4059,12 +4059,8 @@ paths:
         - basicAuth: []
         - bearerAuth: []
       parameters:
-      - in: query
-        name: name
-        description: the name of a backend storage pool
-        required: false
-        schema:
-          type: string
+        - $ref: '#/components/parameters/inQueryPoolName'
+        - $ref: '#/components/parameters/inQueryNodeSelector'
       responses:
         200:
           description: OK
@@ -4088,12 +4084,7 @@ paths:
         - basicAuth: []
         - bearerAuth: []
       parameters:
-      - in: query
-        name: name
-        description: the name of a backend storage pool
-        required: false
-        schema:
-          type: string
+        - $ref: '#/components/parameters/inQueryPoolName'
       responses:
         200:
           description: OK
@@ -5667,41 +5658,43 @@ components:
           $ref: '#/components/schemas/Node'
 
     NodeConfig:
-      x-go-type: node.Config
-      x-go-type-import:
-          path: github.com/opensvc/om3/core/node
       type: object
       required:
         - env
         - maintenance_grace_period
-        - min_avail_mem
-        - min_avail_swap
+        - max_parallel
+        - min_avail_mem_pct
+        - min_avail_swap_pct
         - ready_period
         - rejoin_grace_period
         - split_action
+        - sshkey
+        - pr_key
       properties:
         env:
           type: string
         maintenance_grace_period:
-          type: string
-          format: duration
-        min_avail_mem:
+          x-go-type: time.Duration
+        max_parallel:
           type: integer
-        min_avail_swap:
+        min_avail_mem_pct:
+          type: integer
+        min_avail_swap_pct:
           type: integer
         ready_period:
-          type: string
-          format: duration
+          x-go-type: time.Duration
         rejoin_grace_period:
-          type: string
-          format: duration
+          x-go-type: time.Duration
         split_action:
           type: string
+        sshkey:
+          type: string
+          x-go-name: SSHKey
+        pr_key:
+          type: string
+          x-go-name: PRKey
 
     NodeMonitor:
-      x-go-type: node.Monitor
-      x-go-type-import:
-          path: github.com/opensvc/om3/core/node
       type: object
       required:
         - global_expect
@@ -5743,9 +5736,6 @@ components:
           format: date-time
 
     NodeStatus:
-      x-go-type: node.Status
-      x-go-type-import:
-          path: github.com/opensvc/om3/core/node
       type: object
       required:
         - agent
@@ -5762,34 +5752,36 @@ components:
           type: string
         api:
           type: string
+          x-go-name: API
         arbitrators:
           type: object
           additionalProperties:
             $ref: '#/components/schemas/ArbitratorStatus'
         compat:
-          type: boolean
+          type: integer
+          format: uint64
         frozen_at:
           type: string
           format: date-time
         gen:
           additionalProperties:
             type: integer
+            format: uint64
         is_leader:
           type: boolean
         is_overloaded:
           type: boolean
         labels:
-          type: object
+          additionalProperties:
+            type: string
 
     NodeInfo:
-      x-go-type: node.NodeInfo
-      x-go-type-import:
-          path: github.com/opensvc/om3/core/node
       type: object
       required:
         - labels
         - nodename
         - paths
+        - listener
       properties:
         labels:
           type: array
@@ -5804,6 +5796,10 @@ components:
           description: paths is the list of node to storage array san paths.
           items:
             $ref: '#/components/schemas/SANPath'
+        listener:
+          type: object
+          items:
+            $ref: '#/components/schemas/DaemonListener'
 
     NodeLabel:
       type: object
@@ -5827,10 +5823,10 @@ components:
           type: string
 
     NodesInfo:
-      x-go-type: node.NodesInfo
+      x-go-type: nodesinfo.M
       x-go-type-import:
-          path: github.com/opensvc/om3/core/node
-      type: array
+          path: github.com/opensvc/om3/core/nodesinfo
+      type: object
       items:
         $ref: '#/components/schemas/NodeInfo'
 
@@ -6181,15 +6177,20 @@ components:
       type: object
       required:
         - name
+        - node
         - type
         - head
         - capabilities
         - volume_count
+        - shared
         - free
         - used
         - size
+        - updated_at
       properties:
         name:
+          type: string
+        node:
           type: string
         type:
           type: string
@@ -6209,11 +6210,16 @@ components:
         used:
           type: integer
           format: int64
+        shared:
+          type: boolean
         size:
           type: integer
           format: int64
         volume_count:
           type: integer
+        updated_at:
+          type: string
+          format: date-time
 
     # ========================================================================
     # pool volume schemas
@@ -7169,6 +7175,22 @@ components:
         items:
           type: string
           description: A datastore key name
+
+    inQueryNodeSelector:
+      in: query
+      name: node
+      description: a node selector expression like `n[123]`, `n*`, `mylabel=myvalue`
+      required: false
+      schema:
+        type: string
+
+    inQueryPoolName:
+      in: query
+      name: name
+      description: the name of a backend storage pool
+      required: false
+      schema:
+        type: string
 
     inQuerySets:
       in: query

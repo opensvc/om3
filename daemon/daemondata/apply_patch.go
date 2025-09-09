@@ -9,6 +9,7 @@ import (
 	"github.com/opensvc/om3/core/hbtype"
 	"github.com/opensvc/om3/core/instance"
 	"github.com/opensvc/om3/core/node"
+	"github.com/opensvc/om3/core/pool"
 	"github.com/opensvc/om3/daemon/daemonsubsystem"
 	"github.com/opensvc/om3/daemon/msgbus"
 )
@@ -206,6 +207,10 @@ func (d *data) setCacheAndPublish(ev event.Event) error {
 	case *msgbus.ObjectOrchestrationRefused:
 		d.publisher.Pub(c, labelFromPeer)
 	case *msgbus.ObjectStatusDeleted:
+		d.publisher.Pub(c, labelFromPeer)
+	// pool...
+	case *msgbus.NodePoolStatusUpdated:
+		pool.StatusData.Set(c.Name, c.Node, &c.Value)
 		d.publisher.Pub(c, labelFromPeer)
 	// overload
 	case *msgbus.EnterOverloadPeriod:
