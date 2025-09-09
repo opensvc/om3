@@ -53,7 +53,7 @@ func Version() (string, error) {
 	for scanner.Scan() {
 		s := scanner.Text()
 		if strings.HasPrefix(s, "Version: ") {
-			return s[8:], nil
+			return s[9:], nil
 		}
 	}
 	return "", fmt.Errorf("could not parse drbd version")
