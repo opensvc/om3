@@ -81,9 +81,35 @@ type (
 	}
 )
 
+const (
+	cStandAlone        = "StandAlone"
+	cDisconnecting     = "Disconnecting"
+	cUnconnected       = "Unconnected"
+	cTimeout           = "Timeout"
+	cBrokenPipe        = "BrokenPipe"
+	cNetworkFailure    = "NetworkFailure"
+	cProtocolError     = "ProtocolError"
+	cTearDow           = "TearDown"
+	cConnecting        = "Connecting"
+	cConnected         = "Connected"
+	cLegacycConnecting = "WFConnection"
+)
+
 var (
-	WaitKnownDiskStatesDelay   = time.Second * 1
-	WaitKnownDiskStatesTimeout = time.Second * 5
+	// waitConnectionStateDelay defines the periodic delay used when polling for
+	// connection state changes.
+	waitConnectionStateDelay = time.Second * 1
+
+	// waitConnectedTimeout defines the maximum duration to wait for a connection
+	// state change to connected before timing out.
+	waitConnectedTimeout = time.Second * 20
+
+	// waitConnectingOrConnectedTimeout defines the maximum duration to wait for
+	// a connection state change to connecting or connected before timing out.
+	waitConnectingOrConnectedTimeout = time.Second * 20
+
+	waitDiskStatesDelay   = time.Second * 1
+	waitDiskStatesTimeout = time.Second * 20
 
 	MaxNodes = 32
 
@@ -123,69 +149,8 @@ func (t *T) Info(ctx context.Context) (resource.InfoKeys, error) {
 	return m, nil
 }
 
-func (t *T) WaitKnownDiskStates(dev DRBDDriver) error {
-	check := func() (bool, error) {
-		states, err := dev.DiskStates()
-		if err != nil {
-			return false, err
-		}
-		for idx, state := range states {
-			if state == "Diskless" || state == "DUnknown" {
-				t.Log().Infof("drbd %s disk %d dstate %s from %s is not yet valid", t.Res, idx, state, states)
-				return false, nil
-			}
-		}
-		t.Log().Infof("drbd %s disk states: %s", t.Res, states)
-		return true, nil
-	}
-	limit := time.Now().Add(WaitKnownDiskStatesTimeout)
-	for {
-		ok, err := check()
-		if err != nil {
-			return err
-		}
-		if ok {
-			return nil
-		}
-		if time.Now().Add(WaitKnownDiskStatesDelay).After(limit) {
-			return fmt.Errorf("timeout waiting for peers to have a known dstate")
-		}
-		time.Sleep(WaitKnownDiskStatesDelay)
-	}
-}
-
-func (t *T) WaitForNonLocalDiskless(dev DRBDDriver) error {
-	check := func() (bool, error) {
-		states, err := dev.DiskStates()
-		if err != nil {
-			return false, err
-		}
-		if len(states) == 0 {
-			t.Log().Infof("waiting for drbd %s disk local dstate", t.Res)
-			return false, nil
-		}
-		state := states[0]
-		if state == "Diskless" || state == "DUnknown" {
-			t.Log().Infof("drbd %s disk local dstate %s (%s) is not yet valid", t.Res, state, states)
-			return false, nil
-		}
-		t.Log().Infof("drbd %s found local dstate %s from states: %s", t.Res, state, states)
-		return true, nil
-	}
-	limit := time.Now().Add(WaitKnownDiskStatesTimeout)
-	for {
-		ok, err := check()
-		if err != nil {
-			return err
-		}
-		if ok {
-			return nil
-		}
-		if time.Now().Add(WaitKnownDiskStatesDelay).After(limit) {
-			return fmt.Errorf("timeout waiting for localhost to have a known dstate")
-		}
-		time.Sleep(WaitKnownDiskStatesDelay)
-	}
+func (t *T) Connect(ctx context.Context) error {
+	return t.drbd().Connect()
 }
 
 // DownForce is called by the unprovisioner. Dataloss is not an issue there,
@@ -213,12 +178,14 @@ func (t *T) Down(ctx context.Context) error {
 	return nil
 }
 
+// Up function brings up the DRBD device and waits until its state is stable and
+// not in a diskless configuration.
 func (t *T) Up(ctx context.Context) error {
 	dev := t.drbd()
 	if err := dev.Up(); err != nil {
 		return err
 	}
-	if err := t.WaitForNonLocalDiskless(dev); err != nil {
+	if err := t.waitForNonLocalDiskless(dev); err != nil {
 		return err
 	}
 	// flush devtree caches
@@ -260,7 +227,7 @@ func (t *T) StopStandby(ctx context.Context) error {
 		t.Log().Infof("skip: resource not defined (for this host)")
 		return nil
 	}
-	if err := t.StartConnection(ctx); err != nil {
+	if err := t.startConnection(ctx); err != nil {
 		return fmt.Errorf("start connection: %s", err)
 	}
 	return t.GoSecondary(ctx)
@@ -268,7 +235,7 @@ func (t *T) StopStandby(ctx context.Context) error {
 
 func (t *T) StartStandby(ctx context.Context) error {
 	dev := t.drbd()
-	if err := t.StartConnection(ctx); err != nil {
+	if err := t.startConnection(ctx); err != nil {
 		return fmt.Errorf("start connection: %s", err)
 	}
 	role, err := dev.Role()
@@ -287,7 +254,7 @@ func (t *T) Start(ctx context.Context) error {
 		return nil
 	}
 	dev := t.drbd()
-	if err := t.StartConnection(ctx); err != nil {
+	if err := t.startConnection(ctx); err != nil {
 		return fmt.Errorf("start connection: %s", err)
 	}
 	role, err := dev.Role()
@@ -336,98 +303,38 @@ func (t *T) Shutdown(ctx context.Context) error {
 	return t.DownForce(ctx)
 }
 
-// StartConnection ensures cstate is Connecting or Connected.
-//
-// on cstate StandAlone: try Down then Up
-//
-// transient ctates: https://github.com/LINBIT/drbd-headers/blob/master/linux/drbd.h
-//
-//	example: Unconnected, Timeout, ... wait for Connecting or Connected reached
-//	example: Disconnecting: wait for StandAlone reached before try Down, Up
-func (t *T) StartConnection(ctx context.Context) error {
+// startConnection establishes a connection for the DRBD resource, managing its state transitions as needed.
+// It returns an error if the connection process fails.
+func (t *T) startConnection(ctx context.Context) error {
 	dev := t.drbd()
 	state, err := dev.ConnState()
 	if err != nil {
 		return err
 	}
 
-	doWait := func(candidates ...string) (bool, error) {
-		t.Log().Infof("wait %s for cstate in (%s)", t.Res, strings.Join(candidates, ","))
-		var state, lastState string
-		ok, err := waitfor.TrueNoErrorCtx(ctx, 5*time.Second, time.Second, func() (bool, error) {
-			var err error
-			state, err = dev.ConnState()
-			if state != lastState {
-				t.Log().Infof("wait %s cstate in (%s), found current cstate %s", t.Res, strings.Join(candidates, ","), state)
-				lastState = state
-			}
-			if err != nil {
-				return false, err
-			} else if slices.Contains(candidates, state) {
-				return true, nil
-			} else {
-				return false, nil
-			}
-		})
-		if err != nil {
-			t.Log().Warnf("wait for %s cstate in (%s): %s",
-				t.Res, strings.Join(candidates, ","), err)
-		} else if !ok {
-			t.Log().Warnf("wait for %s cstate in (%s): timeout, last state was: %s",
-				t.Res, strings.Join(candidates, ","), state)
-		} else {
-			t.Log().Infof("wait for %s cstate in (%s): succeed found %s",
-				t.Res, strings.Join(candidates, ","), state)
-		}
-		return ok, err
-	}
-
-	doWaitConnected := func() error {
-		if ok, err := doWait("Connecting", "Connected"); err != nil {
-			return fmt.Errorf("wait for cstate in (Connecting, Connected): %s", err)
-		} else if !ok {
-			return fmt.Errorf("wait for cstate in (Connecting, Connected): timeout")
-		} else {
-			return nil
-		}
-	}
-
-	restartConnection := func(doDown bool) error {
-		t.Log().Infof("drbd %s restart connection", t.Res)
-		if doDown {
-			_ = t.Down(ctx)
-		}
-		if err := t.Up(ctx); err != nil {
-			return fmt.Errorf("drbd %s restart connection: Up: %s", t.Res, err)
-		}
-		return doWaitConnected()
-	}
-
 	t.Log().Infof("drbd resource %s cstate %s", t.Res, state)
 	switch state {
-	case "Connecting", "Connected":
-		// expected state is reached
+	case cConnecting, cConnected, cLegacycConnecting:
+		// the expected state is reached
 		return nil
-	case "Unconnected", "Timeout", "BrokenPipe", "NetworkFailure", "ProtocolError", "TearDown":
-		return doWaitConnected()
-	case "Disconnecting":
+	case cUnconnected, cTimeout, cBrokenPipe, cNetworkFailure, cProtocolError, cTearDow:
+		// Temporary state from C_CONNECTED to C_UNCONNECTED
+		_, err = t.waitConnectingOrConnected(ctx)
+		return err
+	case cDisconnecting:
+		// Temporary state to cStandAlone
 		t.Log().Infof("drbd resource %s: wants cstate StandAlone before restart connection", t.Res)
-		if ok, err := doWait("StandAlone"); err != nil {
-			return fmt.Errorf("drbd resource %s: waiting for cstate StandAlone: %s", t.Res, err)
-		} else if !ok {
-			return fmt.Errorf("drbd resource %s: waiting for cstate StandAlone: timeout", t.Res)
-		} else {
-			t.Log().Infof("drbd resource %s: cstate StandAlone: restart connection", t.Res)
-			return restartConnection(true)
+		if _, err := t.waitCState(ctx, 5*time.Second, cStandAlone); err != nil {
+			return fmt.Errorf("drbd resource %s: waiting for cstate StandAlone: %w", t.Res, err)
 		}
-	case "StandAlone":
-		return restartConnection(true)
-	case "WFConnection":
-		t.Log().Warnf("drbd resource %s peer node is not listening", t.Res)
-		return nil
+		_, err = t.connectAndWaitConnectingOrConnected(ctx)
+		return err
+	case cStandAlone:
+		_, err = t.connectAndWaitConnectingOrConnected(ctx)
+		return err
 	default:
-		// TODO: prefer instead restartConnection(true) ?
-		return restartConnection(false)
+		return fmt.Errorf("drbd resource %s cstate %s unexpected while waiting for %s or %s",
+			t.Res, state, cConnecting, cConnected)
 	}
 }
 
@@ -532,7 +439,7 @@ func (t *T) getDRBDAllocations() (map[string]api.DRBDAllocation, error) {
 
 func (t *T) formatConfig(wr io.Writer, res ConfRes) error {
 	var text string
-	if capabilities.Has("disk.drbd.mesh") {
+	if capabilities.Has("drivers.resource.disk.drbd.mesh") {
 		text = resTemplateTextV9
 	} else {
 		text = resTemplateTextV8
@@ -798,9 +705,10 @@ func (t *T) ProvisionAsFollower(ctx context.Context) error {
 	if err := t.provisionCommon(ctx); err != nil {
 		return err
 	}
-	// Use StartConnection to wait for an expected in progress connecting called
-	// from the provisionCommon steps: CreateMD -> Down -> Up
-	if err := t.StartConnection(ctx); err != nil {
+	if err := t.startConnection(ctx); err != nil {
+		return err
+	}
+	if err := t.waitConnected(ctx); err != nil {
 		return err
 	}
 	return nil
@@ -819,14 +727,11 @@ func (t *T) ProvisionAsLeader(ctx context.Context) error {
 	if err := t.drbd().PrimaryForce(); err != nil {
 		return err
 	}
-	return nil
+	return t.startConnection(ctx)
 }
 
 func (t *T) provisionCommon(ctx context.Context) error {
 	if err := t.CreateMD(); err != nil {
-		return err
-	}
-	if err := t.Down(ctx); err != nil {
 		return err
 	}
 	if err := t.Up(ctx); err != nil {
@@ -983,6 +888,113 @@ func (t *T) ReservableDevices() device.L {
 
 func (t *T) ClaimedDevices() device.L {
 	return t.SubDevices()
+}
+
+func (t *T) connectAndWaitConnectingOrConnected(ctx context.Context) (string, error) {
+	if err := t.Connect(ctx); err != nil {
+		return "", fmt.Errorf("drbd resource %s: connect: %w", t.Res, err)
+	}
+	return t.waitConnectingOrConnected(ctx)
+}
+
+func (t *T) waitCState(ctx context.Context, timeout time.Duration, candidates ...string) (string, error) {
+	t.Log().Infof("wait %s for cstate in (%s)", t.Res, strings.Join(candidates, ","))
+	dev := t.drbd()
+	var state, lastState string
+	ok, err := waitfor.TrueNoErrorCtx(ctx, timeout, waitConnectionStateDelay, func() (bool, error) {
+		var err error
+		state, err = dev.ConnState()
+
+		if err != nil {
+			return false, err
+		}
+
+		if slices.Contains(candidates, state) {
+			return true, nil
+		} else {
+			if state != lastState {
+				t.Log().Infof("wait %s cstate in (%s), found current cstate %s", t.Res, strings.Join(candidates, ","), state)
+				lastState = state
+			}
+			return false, nil
+		}
+	})
+	if err != nil {
+		return state, fmt.Errorf("wait for %s cstate in (%s): %w",
+			t.Res, strings.Join(candidates, ","), err)
+	} else if !ok {
+		return state, fmt.Errorf("wait for %s cstate in (%s): timeout, last state was: %s",
+			t.Res, strings.Join(candidates, ","), state)
+	}
+	t.Log().Infof("wait for %s cstate in (%s): succeed found %s",
+		t.Res, strings.Join(candidates, ","), state)
+	return state, nil
+}
+
+func (t *T) waitConnectingOrConnected(ctx context.Context) (string, error) {
+	return t.waitCState(ctx, waitConnectingOrConnectedTimeout, cConnecting, cConnected)
+}
+
+// waitConnected ensures the DRBD resource transitions to the "Connected" state,
+// attempting reconnection if in "StandAlone".
+func (t *T) waitConnected(ctx context.Context) error {
+	state, err := t.waitCState(ctx, waitConnectedTimeout, cStandAlone, cConnected)
+	if err != nil {
+		return err
+	} else if state == cConnected {
+		return nil
+	}
+
+	// state is cStandAlone
+	t.Log().Infof("drbd %s is in cStandAlone state, trying to connect", t.Res)
+	state, err = t.connectAndWaitConnectingOrConnected(ctx)
+	if err != nil {
+		return err
+	} else if state == cConnected {
+		return nil
+	}
+
+	state, err = t.waitCState(ctx, waitConnectedTimeout, cConnected)
+	if err != nil {
+		return err
+	} else if state == cConnected {
+		return nil
+	}
+	return fmt.Errorf("drbd %s is in %s state, but not connected", t.Res, state)
+}
+
+func (t *T) waitForNonLocalDiskless(dev DRBDDriver) error {
+	check := func() (bool, error) {
+		states, err := dev.DiskStates()
+		if err != nil {
+			return false, err
+		}
+		if len(states) == 0 {
+			t.Log().Infof("waiting for drbd %s disk local dstate", t.Res)
+			return false, nil
+		}
+		state := states[0]
+		if state == "Diskless" || state == "DUnknown" {
+			t.Log().Infof("drbd %s disk local dstate %s (%s) is not yet valid", t.Res, state, states)
+			return false, nil
+		}
+		t.Log().Infof("drbd %s found local dstate %s from states: %s", t.Res, state, states)
+		return true, nil
+	}
+	limit := time.Now().Add(waitDiskStatesTimeout)
+	for {
+		ok, err := check()
+		if err != nil {
+			return err
+		}
+		if ok {
+			return nil
+		}
+		if time.Now().Add(waitDiskStatesDelay).After(limit) {
+			return fmt.Errorf("timeout waiting for localhost to have a known dstate")
+		}
+		time.Sleep(waitDiskStatesDelay)
+	}
 }
 
 /*
