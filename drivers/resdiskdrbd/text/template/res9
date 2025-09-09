@@ -11,4 +11,7 @@ resource {{.Name}} {
     connection-mesh {
         hosts{{range $host := .Hosts}} {{$host.Name}}{{end}};
     }
+    net {
+        rr-conflict retry-connect;
+    }
 }
