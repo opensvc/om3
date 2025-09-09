@@ -95,6 +95,10 @@ const (
 	cLegacycConnecting = "WFConnection"
 )
 
+const (
+	dOutdated = "Outdated"
+)
+
 var (
 	// waitConnectionStateDelay defines the periodic delay used when polling for
 	// connection state changes.
@@ -235,6 +239,9 @@ func (t *T) StopStandby(ctx context.Context) error {
 
 func (t *T) StartStandby(ctx context.Context) error {
 	dev := t.drbd()
+	if err := t.prepareUp(ctx, dev); err != nil {
+		return err
+	}
 	if err := t.startConnection(ctx); err != nil {
 		return fmt.Errorf("start connection: %s", err)
 	}
@@ -254,6 +261,9 @@ func (t *T) Start(ctx context.Context) error {
 		return nil
 	}
 	dev := t.drbd()
+	if err := t.prepareUp(ctx, dev); err != nil {
+		return err
+	}
 	if err := t.startConnection(ctx); err != nil {
 		return fmt.Errorf("start connection: %s", err)
 	}
@@ -895,6 +905,20 @@ func (t *T) connectAndWaitConnectingOrConnected(ctx context.Context) (string, er
 		return "", fmt.Errorf("drbd resource %s: connect: %w", t.Res, err)
 	}
 	return t.waitConnectingOrConnected(ctx)
+}
+
+func (t *T) prepareUp(ctx context.Context, dev DRBDDriver) error {
+	if ok, err := dev.IsDefined(); err != nil {
+		return err
+	} else if !ok {
+		if err := t.Up(ctx); err != nil {
+			return err
+		}
+	}
+	if err := t.waitForNonLocalDiskless(dev); err != nil {
+		return err
+	}
+	return nil
 }
 
 func (t *T) waitCState(ctx context.Context, timeout time.Duration, candidates ...string) (string, error) {
