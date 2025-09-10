@@ -229,7 +229,7 @@ func (mon Monitor) ResourceFlagRestartString(rid string, r resource.Status) stri
 	if rmon := mon.Resources.Get(rid); rmon != nil {
 		retries = rmon.Restart.Remaining
 	}
-	s := r.Restart.FlagString(retries)
+	s := r.RestartFlag(retries)
 	if s == "." {
 		return s
 	}

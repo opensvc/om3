@@ -135,12 +135,12 @@ func (t Status) ResourceFlagsString(rid string, r resource.Status) string {
 		flags += "."
 	}
 
-	flags += r.Monitor.FlagString()
-	flags += r.Disable.FlagString()
-	flags += r.Optional.FlagString()
-	flags += r.Encap.FlagString()
-	flags += r.Provisioned.State.FlagString()
-	flags += r.Standby.FlagString()
+	flags += r.IsMonitoredFlag()
+	flags += r.IsDisabledFlag()
+	flags += r.IsOptionalFlag()
+	flags += r.IsEncapFlag()
+	flags += r.IsProvisionedFlag()
+	flags += r.IsStandbyFlag()
 	return flags
 }
 

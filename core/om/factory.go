@@ -2541,7 +2541,7 @@ func newCmdObjectInstanceStatus(kind string) *cobra.Command {
 (5) E   Encap,             . Not Encap
 (6) P   Not Provisioned,   . Provisioned
 (7) S   Standby,           . Not Standby
-(8) <n> Remaining Restart, + if more than 10,   . No Restart
+(8) <n> Remaining Restart, + if more than 10,   . No Restart, X Stopped
 
 `,
 		RunE: func(cmd *cobra.Command, args []string) error {
