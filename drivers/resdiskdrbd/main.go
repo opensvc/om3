@@ -48,6 +48,7 @@ type (
 		Addr     string      `json:"addr"`
 		Port     int         `json:"port"`
 		Network  string      `json:"network"`
+		Template string      `json:"template"`
 	}
 	DRBDDriver interface {
 		Adjust() error
@@ -68,11 +69,38 @@ type (
 		Up() error
 		WipeMD() error
 	}
-	ConfRes struct {
+
+	// ResTemplateData represents template data for a resource configuration, it is exported (public)
+	// to help template designers to use it.
+	//
+	// It defines the available fields that template designers can use.
+	// Example usage in a template:
+	//     resource {{.Name}} {
+	//        {{range $node := .Nodes}}
+	//        on {{$node.Name}} {
+	//            device    {{$node.Device}};
+	//            disk      {{$node.Disk}};
+	//            meta-disk internal;
+	//            address   {{$node.Addr}};
+	//            node-id   {{$node.NodeId}};
+	//        }
+	//        {{end}}
+	//        connection-mesh {
+	//            hosts{{range $node := .Nodes}} {{$node.Name}}{{end}};
+	//        }
+	//        net {
+	//            rr-conflict retry-connect;
+	//        }
+	//    }
+	ResTemplateData struct {
 		Name  string
-		Hosts []ConfResOn
+		Nodes []NodeTemplateData
 	}
-	ConfResOn struct {
+
+	// NodeTemplateData represents a structure to hold template data for individual nodes,
+	// including their name, address, device, and disk information.
+	// It is exported (public) to help template designers to use it.
+	NodeTemplateData struct {
 		Name   string
 		Addr   string
 		Device string
@@ -122,6 +150,8 @@ var (
 
 	//go:embed text/template/res8
 	resTemplateTextV8 string
+
+	drbdCfgPath = naming.Path{Name: "drbd", Namespace: "system", Kind: naming.KindCfg}
 )
 
 func New() resource.Driver {
@@ -447,25 +477,19 @@ func (t *T) getDRBDAllocations() (map[string]api.DRBDAllocation, error) {
 	return allocations, nil
 }
 
-func (t *T) formatConfig(wr io.Writer, res ConfRes) error {
-	var text string
-	if capabilities.Has("drivers.resource.disk.drbd.mesh") {
-		text = resTemplateTextV9
-	} else {
-		text = resTemplateTextV8
+func (t *T) formatConfig(wr io.Writer, text string, data ResTemplateData) error {
+	if text == "" {
+		return fmt.Errorf("empty template")
 	}
 	templ, err := template.New("res").Parse(text)
 	if err != nil {
 		return err
 	}
-	return templ.Execute(wr, res)
+	return templ.Execute(wr, data)
 }
 
-func (t *T) makeConfRes(allocations map[string]api.DRBDAllocation) (ConfRes, error) {
-	res := ConfRes{
-		Name:  t.Res,
-		Hosts: make([]ConfResOn, 0),
-	}
+func (t *T) getTemplateData(allocations map[string]api.DRBDAllocation) (ResTemplateData, error) {
+	nodesData := make([]NodeTemplateData, 0)
 	obj := t.GetObject().(object.Configurer)
 	for nodeID, nodename := range t.Nodes {
 		var (
@@ -474,21 +498,21 @@ func (t *T) makeConfRes(allocations map[string]api.DRBDAllocation) (ConfRes, err
 		)
 		allocation, ok := allocations[nodename]
 		if !ok {
-			return ConfRes{}, fmt.Errorf("drbd allocation for node %s not found", nodename)
+			return ResTemplateData{}, fmt.Errorf("drbd allocation for node %s not found", nodename)
 		}
 		if time.Now().After(allocation.ExpiredAt) {
-			return ConfRes{}, fmt.Errorf("drbd allocation for node %s has expired", nodename)
+			return ResTemplateData{}, fmt.Errorf("drbd allocation for node %s has expired", nodename)
 		}
 		device := fmt.Sprintf("/dev/drbd%d", allocation.Minor)
 		if s, err := obj.Config().EvalAs(key.T{Section: t.RID(), Option: "disk"}, nodename); err != nil {
-			return res, err
+			return ResTemplateData{}, err
 		} else {
 			disk = s.(string)
 		}
 
 		if s, err := obj.Config().EvalAs(key.T{Section: t.RID(), Option: "addr"}, nodename); (err != nil) || (s == "") {
 			if ip, err := t.getNodeIP(nodename); err != nil {
-				return res, err
+				return ResTemplateData{}, err
 			} else {
 				addr = ip.String()
 			}
@@ -512,16 +536,36 @@ func (t *T) makeConfRes(allocations map[string]api.DRBDAllocation) (ConfRes, err
 			ipVer = "ipv4"
 		}
 
-		host := ConfResOn{
+		nodeData := NodeTemplateData{
 			Name:   nodename,
 			Addr:   fmt.Sprintf("%s %s:%d", ipVer, ip, port),
 			Disk:   disk,
 			Device: device,
 			NodeId: nodeID,
 		}
-		res.Hosts = append(res.Hosts, host)
+		nodesData = append(nodesData, nodeData)
 	}
-	return res, nil
+	return ResTemplateData{Name: t.Res, Nodes: nodesData}, nil
+}
+
+func (t *T) getTemplateText() (string, error) {
+	if t.Template == "" {
+		if capabilities.Has("drivers.resource.disk.drbd.mesh") {
+			return resTemplateTextV9, nil
+		} else {
+			return resTemplateTextV8, nil
+		}
+	}
+	t.Log().Infof("creating resource configuration from the %s %s template", drbdCfgPath, t.Template)
+	if drbdCfg, err := object.NewCfg(drbdCfgPath, object.WithVolatile(true)); err != nil {
+		return "", fmt.Errorf("retrieve template object %s: %w", drbdCfg, err)
+	} else if !drbdCfg.HasKey(t.Template) {
+		return "", fmt.Errorf("missing template object %s key %s", drbdCfg, t.Template)
+	} else if b, err := drbdCfg.DecodeKey(t.Template); err != nil {
+		return "", fmt.Errorf("decode template object %s key %s: %w", drbdCfgPath, t.Template, err)
+	} else {
+		return string(b), nil
+	}
 }
 
 func (t *T) getNodeIP(nodename string) (net.IP, error) {
@@ -618,6 +662,7 @@ func (t *T) fetchConfig() error {
 }
 
 func (t *T) writeConfig(ctx context.Context) error {
+	var templateText string
 	cf := drbd.ResConfigFile(t.Res)
 	if file.Exists(cf) {
 		t.Log().Infof("%s already exists", cf)
@@ -633,16 +678,22 @@ func (t *T) writeConfig(ctx context.Context) error {
 	if err != nil {
 		return err
 	}
-	res, err := t.makeConfRes(allocations)
+	templateData, err := t.getTemplateData(allocations)
 	if err != nil {
 		return err
 	}
-	file, err := os.OpenFile(cf, os.O_WRONLY|os.O_CREATE|os.O_TRUNC, os.ModePerm)
+
+	templateText, err = t.getTemplateText()
+	if err != nil {
+		return fmt.Errorf("get template text: %w", err)
+	}
+
+	f, err := os.OpenFile(cf, os.O_WRONLY|os.O_CREATE|os.O_TRUNC, os.ModePerm)
 	if err != nil {
 		return err
 	}
-	defer file.Close()
-	if err := t.formatConfig(file, res); err != nil {
+	defer f.Close()
+	if err := t.formatConfig(f, templateText, templateData); err != nil {
 		return err
 	}
 	b, err := os.ReadFile(cf)

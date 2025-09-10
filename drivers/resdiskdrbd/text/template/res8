@@ -1,11 +1,11 @@
 resource {{.Name}} {
-    {{range $host := .Hosts}}
-    on {{$host.Name}} {
-        device    {{$host.Device}};
-        disk      {{$host.Disk}};
+    {{range $node := .Nodes}}
+    on {{$node.Name}} {
+        device    {{$node.Device}};
+        disk      {{$node.Disk}};
         meta-disk internal;
-        address   {{$host.Addr}};
-        node-id   {{$host.NodeId}};
+        address   {{$node.Addr}};
+        node-id   {{$node.NodeId}};
     }
     {{end}}
 }
