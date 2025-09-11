@@ -15,18 +15,17 @@ import (
 )
 
 type (
-	CmdObjectBoot struct {
+	CmdObjectInstanceBoot struct {
 		OptsGlobal
 		commoncmd.OptsEncap
 		commoncmd.OptsResourceSelector
 		commoncmd.OptTo
 		commoncmd.OptsLock
-		Local        bool
 		NodeSelector string
 	}
 )
 
-func (t *CmdObjectBoot) Run(kind string) error {
+func (t *CmdObjectInstanceBoot) Run(kind string) error {
 	mergedSelector := commoncmd.MergeSelector("", t.ObjectSelector, kind, "")
 	return objectaction.New(
 		objectaction.LocalFirst(),
@@ -36,7 +35,6 @@ func (t *CmdObjectBoot) Run(kind string) error {
 		objectaction.WithSlaves(t.Slaves),
 		objectaction.WithAllSlaves(t.AllSlaves),
 		objectaction.WithMaster(t.Master),
-		objectaction.WithLocal(t.Local),
 		objectaction.WithColor(t.Color),
 		objectaction.WithOutput(t.Output),
 		objectaction.WithObjectSelector(mergedSelector),

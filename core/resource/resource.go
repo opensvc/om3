@@ -972,6 +972,9 @@ func boot(ctx context.Context, r Driver) error {
 		i  any = r
 		fn func(context.Context) error
 	)
+	if err := RemoveStopped(r); err != nil {
+		return err
+	}
 	if s, ok := i.(booter); ok {
 		fn = s.Boot
 	} else {
@@ -981,9 +984,6 @@ func boot(ctx context.Context, r Driver) error {
 		return ErrDisabled
 	}
 	Setenv(r)
-	if err := RemoveStopped(r); err != nil {
-		return err
-	}
 	if err := fn(ctx); err != nil {
 		return err
 	}

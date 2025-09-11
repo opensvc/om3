@@ -1451,24 +1451,6 @@ func newCmdObjectAbort(kind string) *cobra.Command {
 	return cmd
 }
 
-func newCmdObjectBoot(kind string) *cobra.Command {
-	var options commands.CmdObjectBoot
-	cmd := &cobra.Command{
-		Use:    "boot",
-		Hidden: true,
-		Short:  "clean up actions executed on boot only",
-		Long:   "SCSI reservation release, vg tags removal, ... Never execute this action manually.",
-		RunE: func(cmd *cobra.Command, args []string) error {
-			return options.Run(kind)
-		},
-	}
-	flags := cmd.Flags()
-	addFlagsGlobal(flags, &options.OptsGlobal)
-	commoncmd.FlagNodeSelector(flags, &options.NodeSelector)
-	hiddenFlagLocal(flags, &options.Local)
-	return cmd
-}
-
 func newCmdNodeSSHTrust() *cobra.Command {
 	var options commands.CmdNodeSSHTrust
 	cmd := &cobra.Command{
@@ -2279,6 +2261,23 @@ func newCmdObjectScheduleList(kind string) *cobra.Command {
 	addFlagsGlobal(flags, &options.OptsGlobal)
 	commoncmd.FlagNodeSelector(flags, &options.NodeSelector)
 	flagLocal(flags, &options.Local)
+	return cmd
+}
+
+func newCmdObjectInstanceBoot(kind string) *cobra.Command {
+	var options commands.CmdObjectInstanceBoot
+	cmd := &cobra.Command{
+		Use:    "boot",
+		Hidden: true,
+		Short:  "clean up actions executed on boot only",
+		Long:   "SCSI reservation release, vg tags removal, ... Never execute this action manually.",
+		RunE: func(cmd *cobra.Command, args []string) error {
+			return options.Run(kind)
+		},
+	}
+	flags := cmd.Flags()
+	addFlagsGlobal(flags, &options.OptsGlobal)
+	commoncmd.FlagNodeSelector(flags, &options.NodeSelector)
 	return cmd
 }
 

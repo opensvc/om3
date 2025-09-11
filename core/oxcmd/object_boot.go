@@ -13,7 +13,7 @@ import (
 )
 
 type (
-	CmdObjectBoot struct {
+	CmdObjectInstanceBoot struct {
 		OptsGlobal
 		commoncmd.OptsResourceSelector
 		commoncmd.OptTo
@@ -22,7 +22,7 @@ type (
 	}
 )
 
-func (t *CmdObjectBoot) Run(kind string) error {
+func (t *CmdObjectInstanceBoot) Run(kind string) error {
 	mergedSelector := commoncmd.MergeSelector("", t.ObjectSelector, kind, "")
 	return objectaction.New(
 		objectaction.WithRID(t.RID),
