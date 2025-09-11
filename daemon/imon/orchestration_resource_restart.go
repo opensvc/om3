@@ -512,7 +512,7 @@ func (t *Manager) orchestrateResourcePlan(rid string, rcfg *instance.ResourceCon
 		dropScheduled(rid, reason)
 		resetRemaining(rid, reason)
 	case rStatus.Status.Is(status.NotApplicable, status.Undef, status.Up, status.StandbyUp):
-		reason := fmt.Sprintf("status is %s", rStatus)
+		reason := fmt.Sprintf("status is %s", rStatus.Status)
 		or.log.Debugf("planFor rid %s skipped: %s", rid, reason)
 		dropScheduled(rid, reason)
 		resetRemaining(rid, reason)
@@ -522,7 +522,7 @@ func (t *Manager) orchestrateResourcePlan(rid string, rcfg *instance.ResourceCon
 		or.log.Debugf("planFor rid %s skipped: monitor action has been already called", rid)
 	case rcfg.IsStandby || started:
 		if rmon.Restart.Remaining == 0 && rcfg.IsMonitored {
-			or.log.Infof("rid %s status %s, restart remaining %d out of %d: need monitor action", rid, rStatus, rmon.Restart.Remaining, rcfg.Restart)
+			or.log.Infof("rid %s status %s, restart remaining %d out of %d: need monitor action", rid, rStatus.Status, rmon.Restart.Remaining, rcfg.Restart)
 			needMonitorAction = true
 		} else if rmon.Restart.Remaining > 0 {
 			or.log.Infof("rid %s status %s, restart remaining %d out of %d", rid, rStatus, rmon.Restart.Remaining, rcfg.Restart)
