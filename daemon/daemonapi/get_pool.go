@@ -27,7 +27,7 @@ func (a *DaemonAPI) GetPools(ctx echo.Context, params api.GetPoolsParams) error 
 		selection := nodeselector.New(selector)
 		nodeMap, err = selection.ExpandMap()
 		if err != nil {
-			return JSONProblemf(ctx, http.StatusInternalServerError, "Internal Server Error", "expand node selection %s: %w", selector, err)
+			return JSONProblemf(ctx, http.StatusInternalServerError, "Internal Server Error", "expand node selection %s: %s", selector, err)
 		}
 	}
 
