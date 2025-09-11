@@ -737,6 +737,10 @@ func (t *T) onObjectStatusUpdated(c *msgbus.ObjectStatusUpdated) {
 			changed = true
 		}
 	}
+	if c.Value.Provisioned == provisioned.Undef {
+		delete(t.provisioned, c.Path)
+		return
+	}
 	isProvisioned := c.Value.Provisioned.IsOneOf(provisioned.True, provisioned.NotApplicable)
 	wasProvisioned, ok := t.provisioned[c.Path]
 	t.provisioned[c.Path] = isProvisioned
