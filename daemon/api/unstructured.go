@@ -124,7 +124,7 @@ func (t *NodeConfig) Unstructured() map[string]any {
 		"rejoin_grace_period":      t.RejoinGracePeriod,
 		"split_action":             t.SplitAction,
 		"sshkey":                   t.SSHKey,
-		"pr_key":                   t.PRKey,
+		"prkey":                    t.PRKey,
 	}
 }
 

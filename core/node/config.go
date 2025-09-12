@@ -13,7 +13,7 @@ type (
 		RejoinGracePeriod      time.Duration `json:"rejoin_grace_period"`
 		SplitAction            string        `json:"split_action"`
 		SSHKey                 string        `json:"sshkey"`
-		PRKey                  string        `json:"pr_key"`
+		PRKey                  string        `json:"prkey"`
 	}
 )
 

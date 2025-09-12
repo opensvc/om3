@@ -791,7 +791,7 @@ type NodeConfig struct {
 	MaxParallel            int           `json:"max_parallel"`
 	MinAvailMemPct         int           `json:"min_avail_mem_pct"`
 	MinAvailSwapPct        int           `json:"min_avail_swap_pct"`
-	PRKey                  string        `json:"pr_key"`
+	PRKey                  string        `json:"prkey"`
 	ReadyPeriod            time.Duration `json:"ready_period"`
 	RejoinGracePeriod      time.Duration `json:"rejoin_grace_period"`
 	SplitAction            string        `json:"split_action"`
