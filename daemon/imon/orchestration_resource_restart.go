@@ -525,7 +525,7 @@ func (t *Manager) orchestrateResourcePlan(rid string, rcfg *instance.ResourceCon
 			or.log.Infof("rid %s status %s, restart remaining %d out of %d: need monitor action", rid, rStatus.Status, rmon.Restart.Remaining, rcfg.Restart)
 			needMonitorAction = true
 		} else if rmon.Restart.Remaining > 0 {
-			or.log.Infof("rid %s status %s, restart remaining %d out of %d", rid, rStatus, rmon.Restart.Remaining, rcfg.Restart)
+			or.log.Infof("rid %s status %s, restart remaining %d out of %d", rid, rStatus.Status, rmon.Restart.Remaining, rcfg.Restart)
 			needRestart = true
 		}
 	default:
