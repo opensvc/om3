@@ -808,6 +808,9 @@ func StartStandby(ctx context.Context, r Driver) error {
 	} else {
 		return ErrActionNotSupported
 	}
+	if err := removeStopped(r); err != nil {
+		return err
+	}
 	if !r.IsStandby() {
 		return nil
 	}
@@ -824,9 +827,6 @@ func StartStandby(ctx context.Context, r Driver) error {
 	}
 	if err := r.Trigger(ctx, trigger.NoBlock, trigger.Pre, trigger.Start); err != nil {
 		r.Log().Warnf("trigger: %s (exitcode %d)", err, exitCode(err))
-	}
-	if err := RemoveStopped(r); err != nil {
-		return err
 	}
 	if err := SCSIPersistentReservationStart(ctx, r); err != nil {
 		return err
@@ -850,6 +850,9 @@ func Start(ctx context.Context, r Driver) error {
 	if !ok {
 		return ErrActionNotSupported
 	}
+	if err := removeStopped(r); err != nil {
+		return err
+	}
 	defer EvalStatus(ctx, r)
 	if r.IsDisabled() || r.IsActionDisabled() {
 		return ErrDisabled
@@ -863,9 +866,6 @@ func Start(ctx context.Context, r Driver) error {
 	}
 	if err := r.Trigger(ctx, trigger.NoBlock, trigger.Pre, trigger.Start); err != nil {
 		r.Log().Warnf("trigger: %s (exitcode %s)", err, exitCode(err))
-	}
-	if err := RemoveStopped(r); err != nil {
-		return err
 	}
 	if err := SCSIPersistentReservationStart(ctx, r); err != nil {
 		return err
@@ -972,7 +972,7 @@ func boot(ctx context.Context, r Driver) error {
 		i  any = r
 		fn func(context.Context) error
 	)
-	if err := RemoveStopped(r); err != nil {
+	if err := removeStopped(r); err != nil {
 		return err
 	}
 	if s, ok := i.(booter); ok {
@@ -1006,6 +1006,9 @@ func shutdown(ctx context.Context, r Driver) error {
 	} else {
 		return ErrActionNotSupported
 	}
+	if err := removeStoppedIfNoResourceSelector(ctx, r); err != nil {
+		return err
+	}
 	if r.IsDisabled() || r.IsActionDisabled() {
 		return ErrDisabled
 	}
@@ -1019,7 +1022,7 @@ func shutdown(ctx context.Context, r Driver) error {
 	if err := r.Trigger(ctx, trigger.NoBlock, trigger.Pre, trigger.Shutdown); err != nil {
 		r.Log().Warnf("trigger: %s (exitcode %d)", err, exitCode(err))
 	}
-	if err := SetStopped(ctx, r); err != nil {
+	if err := createStoppedIfHasResourceSelector(ctx, r); err != nil {
 		return err
 	}
 	if err := fn(ctx); err != nil {
@@ -1050,6 +1053,9 @@ func stop(ctx context.Context, r Driver) error {
 		if s, ok := i.(stopstandbyer); ok {
 			fn = s.StopStandby
 		} else {
+			if err := removeStoppedIfNoResourceSelector(ctx, r); err != nil {
+				return err
+			}
 			r.Log().Infof("skip 'stop' on standby resource (--force to override)")
 			return ErrActionNotSupported
 		}
@@ -1059,6 +1065,9 @@ func stop(ctx context.Context, r Driver) error {
 		} else {
 			return ErrActionNotSupported
 		}
+	}
+	if err := removeStoppedIfNoResourceSelector(ctx, r); err != nil {
+		return err
 	}
 	if r.IsDisabled() || r.IsActionDisabled() {
 		return ErrDisabled
@@ -1073,7 +1082,7 @@ func stop(ctx context.Context, r Driver) error {
 	if err := r.Trigger(ctx, trigger.NoBlock, trigger.Pre, trigger.Stop); err != nil {
 		r.Log().Warnf("trigger: %s (exitcode %d)", err, exitCode(err))
 	}
-	if err := SetStopped(ctx, r); err != nil {
+	if err := createStoppedIfHasResourceSelector(ctx, r); err != nil {
 		return err
 	}
 	if err := fn(ctx); err != nil {
@@ -1422,17 +1431,15 @@ func IsStopped(r Driver) (bool, error) {
 	}
 }
 
-// SetStopped creates or remove the flag file preventing resource restarts by the daemon
-func SetStopped(ctx context.Context, r Driver) error {
-	if !actioncontext.HasResourceSelector(ctx) {
-		return RemoveStopped(r)
-	} else {
-		return CreateStopped(r)
+// removeStoppedIfNoResourceSelector removes the flag file preventing resource restarts by the daemon
+func removeStoppedIfNoResourceSelector(ctx context.Context, r Driver) error {
+	if actioncontext.HasResourceSelector(ctx) {
+		return nil
 	}
+	return removeStopped(r)
 }
 
-// RemoveStopped removes the flag file preventing resource restarts by the daemon
-func RemoveStopped(r Driver) error {
+func removeStopped(r Driver) error {
 	path := stoppedFlag(r)
 	err := os.Remove(path)
 	if os.IsNotExist(err) {
@@ -1441,8 +1448,11 @@ func RemoveStopped(r Driver) error {
 	return err
 }
 
-// CreateStopped creates the flag file preventing resource restarts by the daemon
-func CreateStopped(r Driver) error {
+// createStoppedIfHasResourceSelector creates the flag file preventing resource restarts by the daemon
+func createStoppedIfHasResourceSelector(ctx context.Context, r Driver) error {
+	if !actioncontext.HasResourceSelector(ctx) {
+		return nil
+	}
 	perm := os.FileMode(0o644)
 	path := stoppedFlag(r)
 	mkfile := func() (*os.File, error) {
