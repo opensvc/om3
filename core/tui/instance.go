@@ -248,8 +248,7 @@ func (t *App) updateInstanceView() {
 		return tview.NewTableCell(s).SetSelectable(false)
 	}
 	cellFlags := func(rid string, resourceStatus resource.Status, instanceState instance.States) *tview.TableCell {
-		s := instanceState.Status.ResourceFlagsString(rid, resourceStatus)
-		s += instanceState.Monitor.ResourceFlagRestartString(rid, resourceStatus)
+		s := instance.ResourceFlagsString(rid, instanceState.Monitor, instanceState.Status, resourceStatus)
 		s = tview.TranslateANSI(s)
 		return tview.NewTableCell(s).SetSelectable(false)
 	}

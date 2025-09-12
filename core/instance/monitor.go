@@ -9,8 +9,6 @@ import (
 
 	"github.com/google/uuid"
 
-	"github.com/opensvc/om3/core/rawconfig"
-	"github.com/opensvc/om3/core/resource"
 	"github.com/opensvc/om3/core/status"
 	"github.com/opensvc/om3/util/xmap"
 )
@@ -221,22 +219,6 @@ func (m ResourceMonitors) Get(rid string) *ResourceMonitor {
 
 func (m ResourceMonitors) DeepCopy() ResourceMonitors {
 	return xmap.Copy(m)
-}
-
-func (mon Monitor) ResourceFlagRestartString(rid string, r resource.Status) string {
-	// Restart and retries
-	retries := 0
-	if rmon := mon.Resources.Get(rid); rmon != nil {
-		retries = rmon.Restart.Remaining
-	}
-	s := r.RestartFlag(retries)
-	if s == "." {
-		return s
-	}
-	if mon.LocalExpect != MonitorLocalExpectStarted {
-		s = rawconfig.Colorize.Secondary(s)
-	}
-	return s
 }
 
 func (mon Monitor) DeepCopy() *Monitor {
