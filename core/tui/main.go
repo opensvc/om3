@@ -9,6 +9,7 @@ import (
 	"net/http"
 	"os"
 	"sort"
+	"strconv"
 	"strings"
 	"sync"
 	"sync/atomic"
@@ -28,6 +29,7 @@ import (
 	"github.com/opensvc/om3/daemon/msgbus"
 	"github.com/opensvc/om3/util/hostname"
 	"github.com/opensvc/om3/util/logging"
+	"github.com/opensvc/om3/util/sizeconv"
 	"github.com/rivo/tview"
 	"github.com/rs/zerolog"
 )
@@ -930,6 +932,9 @@ func (t *App) onRuneColumn(event *tcell.EventKey) {
 						t.setFilter("*/vol/*")
 						clean()
 						return
+					case "pool":
+						t.listPool()
+						return
 					}
 				case "do":
 					if len(args) < 2 {
@@ -1499,7 +1504,7 @@ func (t *App) onRuneH(event *tcell.EventKey) {
 
    go <to>
 
-     sec, cfg, vol
+     sec, cfg, vol, pool
 
    filter <expression>
 `
@@ -1854,6 +1859,92 @@ func (t *App) navFromTo(from, to viewId) {
 	}
 	t.updateHead()
 	t.flex.AddItem(t.errs, 1, 0, false)
+}
+
+func (t *App) listPool() {
+	// Create a new table for displaying storage pools
+	v := tview.NewTable()
+	v.SetSelectable(true, false)
+	v.SetTitle("Storage Pools")
+	titles := []string{"NAME", "TYPE", "CAPABILITIES", "HEAD", "VOLUME_COUNT", "BIN_SIZE", "BIN_USED", "BIN_FREE"}
+	// Add titles in our tables
+	for i, title := range titles {
+		v.SetCell(0, i, tview.NewTableCell(title).SetTextColor(colorTitle).SetSelectable(false))
+	}
+
+	// Create a new API client
+	c, err := client.New()
+	if err != nil {
+		t.errorf("failed to create client: %s", err)
+		return
+	}
+
+	// Fetch the list of pools from the API
+	params := api.GetPoolsParams{}
+	resp, err := c.GetPoolsWithResponse(context.Background(), &params)
+	if err != nil {
+		t.errorf("failed to get pool volumes: %s", err)
+		return
+	}
+	// Return error if status code is not 200 OK
+	if resp.StatusCode() != http.StatusOK {
+		switch resp.StatusCode() {
+		case 401:
+			t.errorf("%s", resp.JSON401)
+		case 403:
+			t.errorf("%s", resp.JSON403)
+		case 500:
+			t.errorf("%s", resp.JSON500)
+		default:
+			t.errorf("unexpected status code: %d", resp.StatusCode())
+		}
+		return
+	}
+	// Populate the table with pool data
+	data := resp.JSON200
+	for i, pool := range data.Items {
+		row := i + 1
+		// Regroup elements to display in our table
+		elements := []string{
+			pool.Name,
+			pool.Type,
+			strings.Join(pool.Capabilities, ","),
+			pool.Head,
+			strconv.FormatInt(int64(pool.VolumeCount), 10),
+			sizeconv.BSizeCompact(float64(pool.Size)),
+			sizeconv.BSizeCompact(float64(pool.Used)),
+			sizeconv.BSizeCompact(float64(pool.Free)),
+		}
+		for j, element := range elements {
+			selectable := j == 0
+			v.SetCell(row, j, tview.NewTableCell(element).SetSelectable(selectable))
+		}
+	}
+
+	v.SetInputCapture(func(event *tcell.EventKey) *tcell.EventKey {
+		if event.Key() == tcell.KeyESC {
+			t.flex.Clear()
+			t.flex.AddItem(t.head, 1, 0, false)
+			t.flex.AddItem(t.objects, 0, 1, true)
+			t.app.SetFocus(t.objects)
+			t.updateHead()
+
+			t.flex.RemoveItem(t.command)
+			t.command = nil
+			t.app.SetFocus(t.flex.GetItem(1))
+		}
+		return event
+	})
+
+	// Updating current table with our new table
+	// Clearing previous table
+	t.flex.Clear()
+	// Add header back and the new table
+	t.flex.AddItem(t.head, 1, 0, false)
+	t.flex.AddItem(v, 0, 1, true)
+	t.app.SetFocus(v)
+	t.updateHead()
+	return
 }
 
 func (t *App) selectedString() string {
