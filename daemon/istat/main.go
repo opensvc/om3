@@ -285,6 +285,9 @@ func (t *T) onInstanceStatusPost(msg *msgbus.InstanceStatusPost) {
 	if prev.Overall != msg.Value.Overall {
 		naming.LogWithPath(t.log, msg.Path).Infof("%s: change overall %s -> %s", s, prev.Overall, msg.Value.Overall)
 	}
+	if prev.Provisioned != msg.Value.Provisioned {
+		naming.LogWithPath(t.log, msg.Path).Infof("%s: change provisioned %s -> %s", s, prev.Provisioned, &msg.Value.Provisioned)
+	}
 	if prev.IsFrozen() != msg.Value.IsFrozen() {
 		naming.LogWithPath(t.log, msg.Path).Infof("%s: change frozen to %v", s, msg.Value.IsFrozen())
 	}

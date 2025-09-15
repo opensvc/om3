@@ -355,18 +355,33 @@ func (t *Manager) updateStatus() {
 		}
 
 		t.status.UpInstancesCount = statusAvailCount[status.Up]
+
+		prev := t.status.Avail
 		t.status.Avail = agregateStatus(statusAvailCount)
+		if prev != t.status.Avail {
+			t.log.Infof("change avail from %s -> %s", prev, t.status.Avail)
+		}
+
+		prev = t.status.Overall
 		t.status.Overall = agregateStatus(statusOverallCount)
+		if prev != t.status.Overall {
+			t.log.Infof("change overall from %s -> %s", prev, t.status.Overall)
+		}
 	}
 
 	updateProvisioned := func() {
+		prev := t.status.Provisioned
 		t.status.Provisioned = provisioned.Undef
 		for _, instStatus := range t.instStatus {
 			t.status.Provisioned = t.status.Provisioned.And(instStatus.Provisioned)
 		}
+		if prev != t.status.Provisioned {
+			t.log.Infof("change provisioned from %s -> %s", prev, t.status.Provisioned)
+		}
 	}
 
 	updateFrozen := func() {
+		prev := t.status.Frozen
 		m := map[bool]int{
 			true:  0,
 			false: 0,
@@ -384,6 +399,9 @@ func (t *Manager) updateStatus() {
 			t.status.Frozen = "unfrozen"
 		default:
 			t.status.Frozen = "mixed"
+		}
+		if prev != t.status.Frozen {
+			t.log.Infof("change frozen from %s -> %s", prev, t.status.Frozen)
 		}
 	}
 
