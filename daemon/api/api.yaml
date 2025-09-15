@@ -2,7 +2,7 @@ openapi: 3.0.0
 
 info:
   title: opensvc agent api
-  version: 3.17.0
+  version: 3.17.1
 
 paths:
   /api/auth/info:
@@ -5022,6 +5022,7 @@ components:
         - placement_policy
         - priority
         - resources
+        - schedules
         - scope
         - subsets
         - topology
@@ -5071,6 +5072,10 @@ components:
           type: object
           additionalProperties:
             $ref: '#/components/schemas/ResourceConfig'
+        schedules:
+          type: array
+          items:
+            $ref: '#/components/schemas/ScheduleConfig'
         scope:
           type: array
           items:
@@ -6900,6 +6905,7 @@ components:
         - action
         - schedule
         - key
+        - max_parallel
         - last_run_at
         - last_run_file
         - last_success_file
@@ -6921,9 +6927,43 @@ components:
           type: string
         last_success_file:
           type: string
+        max_parallel:
+          type: integer
         next_run_at:
           type: string
           format: date-time
+        require:
+          type: string
+        require_collector:
+          type: boolean
+        require_provisioned:
+          type: boolean
+
+    ScheduleConfig:
+      type: object
+      required:
+        - action
+        - schedule
+        - key
+        - last_run_file
+        - last_success_file
+        - max_parallel
+        - require
+        - require_collector
+        - require_provisioned
+      properties:
+        action:
+          type: string
+        schedule:
+          type: string
+        key:
+          type: string
+        last_run_file:
+          type: string
+        last_success_file:
+          type: string
+        max_parallel:
+          type: integer
         require:
           type: string
         require_collector:

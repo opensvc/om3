@@ -39,16 +39,19 @@ func (t *actor) newScheduleEntry(action, keyStr, rid, base string, reqCol, reqPr
 		panic(err)
 	}
 	return schedule.Entry{
-		Node:               hostname.Hostname(),
-		Path:               t.path,
-		Action:             action,
-		LastRunAt:          t.loadLast(action, rid, base),
-		Key:                k.String(),
-		Schedule:           def,
-		LastRunFile:        t.lastRunFile(action, rid, base),
-		LastSuccessFile:    t.lastSuccessFile(action, rid, base),
-		RequireCollector:   reqCol,
-		RequireProvisioned: reqProv,
+		Config: schedule.Config{
+			Action:             action,
+			Key:                k.String(),
+			LastRunFile:        t.lastRunFile(action, rid, base),
+			LastSuccessFile:    t.lastSuccessFile(action, rid, base),
+			MaxParallel:        1,
+			RequireCollector:   reqCol,
+			RequireProvisioned: reqProv,
+			Schedule:           def,
+		},
+		LastRunAt: t.loadLast(action, rid, base),
+		Node:      hostname.Hostname(),
+		Path:      t.path,
 	}
 }
 

@@ -38,14 +38,17 @@ func (t *Node) newScheduleEntry(action, section, rid, base string) schedule.Entr
 		panic(err)
 	}
 	return schedule.Entry{
-		Node:             hostname.Hostname(),
-		Action:           action,
-		LastRunAt:        t.loadLast(action, rid, base),
-		Key:              k.String(),
-		Schedule:         def,
-		LastRunFile:      t.lastRunFile(action, rid, base),
-		LastSuccessFile:  t.lastSuccessFile(action, rid, base),
-		RequireCollector: true,
+		Config: schedule.Config{
+			Action:           action,
+			Key:              k.String(),
+			LastRunFile:      t.lastRunFile(action, rid, base),
+			LastSuccessFile:  t.lastSuccessFile(action, rid, base),
+			MaxParallel:      1,
+			RequireCollector: true,
+			Schedule:         def,
+		},
+		LastRunAt: t.loadLast(action, rid, base),
+		Node:      hostname.Hostname(),
 	}
 }
 

@@ -12,21 +12,25 @@ import (
 type (
 	Table []Entry
 
+	Config struct {
+		Action             string `json:"action"`
+		Schedule           string `json:"schedule"`
+		Key                string `json:"key"`
+		LastRunFile        string `json:"last_run_file"`
+		LastSuccessFile    string `json:"last_success_file"`
+		MaxParallel        int    `json:"max_parallel"`
+		Require            string `json:"require"`
+		RequireCollector   bool   `json:"require_collector"`
+		RequireProvisioned bool   `json:"require_provisioned"`
+	}
+
 	Entry struct {
-		Action             string      `json:"action"`
-		Schedule           string      `json:"schedule"`
-		Key                string      `json:"key"`
-		LastRunAt          time.Time   `json:"last_run_at"`
-		LastRunFile        string      `json:"last_run_file"`
-		LastSuccessFile    string      `json:"last_success_file"`
-		MaxParallel        int         `json:"max_parallel"`
-		NextRunAt          time.Time   `json:"next_run_at"`
-		Node               string      `json:"node"`
-		Path               naming.Path `json:"path"`
-		Require            string      `json:"require"`
-		RequireCollector   bool        `json:"require_collector"`
-		RequireProvisioned bool        `json:"require_provisioned"`
-		RunDir             string      `json:"run_dir"`
+		Config
+		LastRunAt time.Time   `json:"last_run_at"`
+		NextRunAt time.Time   `json:"next_run_at"`
+		Node      string      `json:"node"`
+		Path      naming.Path `json:"path"`
+		RunDir    string      `json:"run_dir"`
 	}
 )
 
@@ -99,20 +103,22 @@ func (t Table) DeepCopy() *Table {
 	r := make(Table, 0, len(t))
 	for _, x := range t {
 		r = append(r, Entry{
-			Action:             x.Action,
-			Schedule:           x.Schedule,
-			Key:                x.Key,
-			LastRunAt:          x.LastRunAt,
-			LastRunFile:        x.LastRunFile,
-			LastSuccessFile:    x.LastSuccessFile,
-			MaxParallel:        x.MaxParallel,
-			NextRunAt:          x.NextRunAt,
-			Node:               x.Node,
-			Path:               x.Path,
-			Require:            x.Require,
-			RequireCollector:   x.RequireCollector,
-			RequireProvisioned: x.RequireProvisioned,
-			RunDir:             x.RunDir,
+			Config: Config{
+				Action:             x.Action,
+				Key:                x.Key,
+				LastRunFile:        x.LastRunFile,
+				LastSuccessFile:    x.LastSuccessFile,
+				MaxParallel:        x.MaxParallel,
+				Require:            x.Require,
+				RequireCollector:   x.RequireCollector,
+				RequireProvisioned: x.RequireProvisioned,
+				Schedule:           x.Schedule,
+			},
+			LastRunAt: x.LastRunAt,
+			NextRunAt: x.NextRunAt,
+			Node:      x.Node,
+			Path:      x.Path,
+			RunDir:    x.RunDir,
 		})
 	}
 	return &r

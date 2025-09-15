@@ -97,13 +97,6 @@ type (
 )
 
 var (
-	needProvisionedInstanceMap = map[string]any{
-		"sync_update":      nil,
-		"compliance_auto":  nil,
-		"resource_monitor": nil,
-		"run":              nil,
-	}
-
 	incompatibleNodeMonitorStatus = map[node.MonitorState]any{
 		node.MonitorStateInit:             nil,
 		node.MonitorStateMaintenance:      nil,
@@ -112,11 +105,6 @@ var (
 		node.MonitorStateUpgrade:          nil,
 	}
 )
-
-func needProvisionedInstance(action string) bool {
-	_, ok := needProvisionedInstanceMap[action]
-	return ok
-}
 
 func (t Schedules) DelByPath(path naming.Path) {
 	delete(t, path)
@@ -854,23 +842,23 @@ func (t *T) scheduleObject(path naming.Path) {
 		return
 	}
 	log := t.loggerWithPath(path).WithPrefix(t.log.Prefix() + path.String() + ": ")
-	i, err := object.New(path, object.WithVolatile(true))
-	if err != nil {
-		log.Errorf("%s", err)
-		return
-	}
-	o, ok := i.(object.Actor)
-	if !ok {
+
+	instanceConfig := instance.ConfigData.GetByPathAndNode(path, t.localhost)
+	if instanceConfig == nil || instanceConfig.Schedules == nil || len(instanceConfig.Schedules) == 0 {
 		// only actor objects have scheduled actions
 		return
 	}
 
-	table := o.Schedules()
 	defer t.updateExposedSchedules(path)
 
 	isProvisioned, hasProvisioned := t.provisioned[path]
 
-	for _, e := range table {
+	for _, scheduleConfig := range instanceConfig.Schedules {
+		e := schedule.Entry{
+			Node:   t.localhost,
+			Path:   path,
+			Config: scheduleConfig,
+		}
 		t.schedules.Add(path, e)
 		if e.Schedule == "" || e.Schedule == "@0" {
 			if t.jobs.Has(e) {
@@ -879,7 +867,7 @@ func (t *T) scheduleObject(path naming.Path) {
 			}
 			continue
 		}
-		if needProvisionedInstance(e.Action) {
+		if e.RequireProvisioned {
 			if !hasProvisioned {
 				log.Infof("%s: skip schedule %s (instance provisioned state is still unknown)", e.RID(), e.Action)
 				continue
@@ -891,8 +879,8 @@ func (t *T) scheduleObject(path naming.Path) {
 				} else {
 					log.Infof("%s: skip schedule %s (instance not provisioned)", e.RID(), e.Action)
 				}
+				continue
 			}
-			continue
 		}
 		if isSatisfied, ok := t.reqSatisfied.Get(path, e.Key); ok {
 			if !isSatisfied {

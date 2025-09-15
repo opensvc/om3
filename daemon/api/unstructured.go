@@ -80,6 +80,7 @@ func (t Schedule) Unstructured() map[string]any {
 		"last_run_at":         t.LastRunAt,
 		"last_run_file":       t.LastRunFile,
 		"last_success_file":   t.LastSuccessFile,
+		"max_parallel":        t.MaxParallel,
 		"next_run_at":         t.NextRunAt,
 		"require":             t.Require,
 		"require_collector":   t.RequireCollector,

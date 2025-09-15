@@ -1370,11 +1370,25 @@ type Schedule struct {
 	LastRunAt          time.Time `json:"last_run_at"`
 	LastRunFile        string    `json:"last_run_file"`
 	LastSuccessFile    string    `json:"last_success_file"`
+	MaxParallel        int       `json:"max_parallel"`
 	NextRunAt          time.Time `json:"next_run_at"`
 	Require            string    `json:"require"`
 	RequireCollector   bool      `json:"require_collector"`
 	RequireProvisioned bool      `json:"require_provisioned"`
 	Schedule           string    `json:"schedule"`
+}
+
+// ScheduleConfig defines model for ScheduleConfig.
+type ScheduleConfig struct {
+	Action             string `json:"action"`
+	Key                string `json:"key"`
+	LastRunFile        string `json:"last_run_file"`
+	LastSuccessFile    string `json:"last_success_file"`
+	MaxParallel        int    `json:"max_parallel"`
+	Require            string `json:"require"`
+	RequireCollector   bool   `json:"require_collector"`
+	RequireProvisioned bool   `json:"require_provisioned"`
+	Schedule           string `json:"schedule"`
 }
 
 // ScheduleItem defines model for ScheduleItem.
