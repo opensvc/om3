@@ -2,6 +2,7 @@ package tui
 
 import (
 	"fmt"
+	"strconv"
 	"strings"
 	"time"
 
@@ -103,6 +104,17 @@ func (t *App) initObjectsTable() {
 			setSelection(table)
 		}
 		return event
+	})
+
+	table.SetSelectionChangedFunc(func(row, column int) {
+		numeric := func(s string) bool {
+			_, err := strconv.ParseFloat(s, 64)
+			return err == nil
+		}
+		text := table.GetCell(row, column).Text
+		if text == "PATH" || text == "" || numeric(text) {
+			table.Select(0, column)
+		}
 	})
 	t.objects = table
 }
