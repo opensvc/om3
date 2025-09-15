@@ -72,7 +72,7 @@ func (cfg Config) DeepCopy() *Config {
 	newCfg.Scope = append([]string{}, cfg.Scope...)
 	newCfg.Subsets = cfg.Subsets.DeepCopy()
 	newCfg.Resources = cfg.Resources.DeepCopy()
-	copy(newCfg.Schedules, cfg.Schedules)
+	newCfg.Schedules = append([]schedule.Config{}, cfg.Schedules...)
 	return &newCfg
 }
 
