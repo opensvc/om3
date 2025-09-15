@@ -933,7 +933,7 @@ func (t *App) onRuneColumn(event *tcell.EventKey) {
 						clean()
 						return
 					case "pool":
-						t.listPool()
+						t.showPoolList()
 						return
 					}
 				case "do":
@@ -1861,32 +1861,23 @@ func (t *App) navFromTo(from, to viewId) {
 	t.flex.AddItem(t.errs, 1, 0, false)
 }
 
-func (t *App) listPool() {
-	// Create a new table for displaying storage pools
-	v := tview.NewTable()
-	v.SetSelectable(true, false)
-	v.SetTitle("Storage Pools")
+func (t *App) showPoolList() {
+	title := "Storage Pools"
 	titles := []string{"NAME", "TYPE", "CAPABILITIES", "HEAD", "VOLUME_COUNT", "BIN_SIZE", "BIN_USED", "BIN_FREE"}
-	// Add titles in our tables
-	for i, title := range titles {
-		v.SetCell(0, i, tview.NewTableCell(title).SetTextColor(colorTitle).SetSelectable(false))
-	}
-
-	// Create a new API client
+	var elementsList [][]string
 	c, err := client.New()
 	if err != nil {
 		t.errorf("failed to create client: %s", err)
 		return
 	}
 
-	// Fetch the list of pools from the API
 	params := api.GetPoolsParams{}
 	resp, err := c.GetPoolsWithResponse(context.Background(), &params)
 	if err != nil {
 		t.errorf("failed to get pool volumes: %s", err)
 		return
 	}
-	// Return error if status code is not 200 OK
+
 	if resp.StatusCode() != http.StatusOK {
 		switch resp.StatusCode() {
 		case 401:
@@ -1900,11 +1891,9 @@ func (t *App) listPool() {
 		}
 		return
 	}
-	// Populate the table with pool data
+
 	data := resp.JSON200
-	for i, pool := range data.Items {
-		row := i + 1
-		// Regroup elements to display in our table
+	for _, pool := range data.Items {
 		elements := []string{
 			pool.Name,
 			pool.Type,
@@ -1915,14 +1904,12 @@ func (t *App) listPool() {
 			sizeconv.BSizeCompact(float64(pool.Used)),
 			sizeconv.BSizeCompact(float64(pool.Free)),
 		}
-		for j, element := range elements {
-			selectable := j == 0
-			v.SetCell(row, j, tview.NewTableCell(element).SetSelectable(selectable))
-		}
+		elementsList = append(elementsList, elements)
 	}
 
-	v.SetInputCapture(func(event *tcell.EventKey) *tcell.EventKey {
-		if event.Key() == tcell.KeyESC {
+	t.createTable(title, titles, elementsList, func(event *tcell.EventKey, v *tview.Table) *tcell.EventKey {
+		switch event.Key() {
+		case tcell.KeyESC:
 			t.flex.Clear()
 			t.flex.AddItem(t.head, 1, 0, false)
 			t.flex.AddItem(t.objects, 0, 1, true)
@@ -1932,12 +1919,95 @@ func (t *App) listPool() {
 			t.flex.RemoveItem(t.command)
 			t.command = nil
 			t.app.SetFocus(t.flex.GetItem(1))
+		case tcell.KeyEnter:
+			row, _ := v.GetSelection()
+			if row == 0 {
+				break
+			}
+			poolName := v.GetCell(row, 0).Text
+			t.showPoolVolume(poolName)
+		}
+
+		return event
+	})
+}
+func (t *App) showPoolVolume(name string) {
+	title := fmt.Sprintf("Storage Pool %s Volumes", name)
+	titles := []string{"POOL", "PATH", "SIZE", "CHILDREN", "IS_ORPHAN"}
+	var elementsList [][]string
+
+	c, err := client.New()
+	if err != nil {
+		t.errorf("failed to create client: %s", err)
+		return
+	}
+
+	params := api.GetPoolVolumesParams{}
+	params.Name = &name
+	resp, err := c.GetPoolVolumesWithResponse(context.Background(), &params)
+	if err != nil {
+		t.errorf("failed to get pool volumes: %s", err)
+		return
+	}
+
+	if resp.StatusCode() != http.StatusOK {
+		switch resp.StatusCode() {
+		case 401:
+			t.errorf("%s", resp.JSON401)
+		case 403:
+			t.errorf("%s", resp.JSON403)
+		case 500:
+			t.errorf("%s", resp.JSON500)
+		default:
+			t.errorf("unexpected status code: %d", resp.StatusCode())
+		}
+	}
+
+	data := resp.JSON200
+	for _, volume := range data.Items {
+		elements := []string{
+			volume.Pool,
+			volume.Path,
+			sizeconv.BSizeCompact(float64(volume.Size)),
+			strings.Join(volume.Children, ","),
+			strconv.FormatBool(volume.IsOrphan),
+		}
+		elementsList = append(elementsList, elements)
+	}
+
+	t.createTable(title, titles, elementsList, func(event *tcell.EventKey, _ *tview.Table) *tcell.EventKey {
+		if event.Key() == tcell.KeyESC {
+			t.showPoolList()
+		}
+		return event
+	})
+}
 		}
 		return event
 	})
 
 	// Updating current table with our new table
 	// Clearing previous table
+func (t *App) createTable(title string, titles []string, elementsList [][]string, capture func(event *tcell.EventKey, v *tview.Table) *tcell.EventKey) {
+	v := tview.NewTable()
+	v.SetSelectable(true, false)
+	v.SetTitle(title)
+	for i, title := range titles {
+		v.SetCell(0, i, tview.NewTableCell(title).SetTextColor(colorTitle).SetSelectable(false))
+	}
+
+	v.SetInputCapture(func(event *tcell.EventKey) *tcell.EventKey {
+		return capture(event, v)
+	})
+
+	for i, elements := range elementsList {
+		row := i + 1
+		for j, element := range elements {
+			selectable := j == 0
+			v.SetCell(row, j, tview.NewTableCell(element).SetSelectable(selectable))
+		}
+	}
+
 	t.flex.Clear()
 	// Add header back and the new table
 	t.flex.AddItem(t.head, 1, 0, false)
