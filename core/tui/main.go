@@ -935,6 +935,10 @@ func (t *App) onRuneColumn(event *tcell.EventKey) {
 					case "pool":
 						t.showPoolList()
 						return
+					case "network":
+						t.showNetworkList()
+						return
+
 					}
 				case "do":
 					if len(args) < 2 {
@@ -1931,6 +1935,7 @@ func (t *App) showPoolList() {
 		return event
 	})
 }
+
 func (t *App) showPoolVolume(name string) {
 	title := fmt.Sprintf("Storage Pool %s Volumes", name)
 	titles := []string{"POOL", "PATH", "SIZE", "CHILDREN", "IS_ORPHAN"}
@@ -1982,12 +1987,128 @@ func (t *App) showPoolVolume(name string) {
 		return event
 	})
 }
+
+func (t *App) showNetworkList() {
+	title := "Networks"
+	titles := []string{"NAME", "TYPE", "NETWORK", "SIZE", "USED", "FREE"}
+	var elementsList [][]string
+
+	c, err := client.New()
+	if err != nil {
+		t.errorf("failed to create client: %s", err)
+	}
+
+	params := api.GetNetworksParams{}
+	resp, err := c.GetNetworksWithResponse(context.Background(), &params)
+	if err != nil {
+		t.errorf("failed to get networks: %s", err)
+		return
+	}
+
+	if resp.StatusCode() != http.StatusOK {
+		switch resp.StatusCode() {
+		case 401:
+			t.errorf("%s", resp.JSON401)
+		case 403:
+			t.errorf("%s", resp.JSON403)
+		case 500:
+			t.errorf("%s", resp.JSON500)
+		default:
+			t.errorf("unexpected status code: %d", resp.StatusCode())
+		}
+		return
+	}
+
+	data := resp.JSON200
+	for _, network := range data.Items {
+		elements := []string{
+			network.Name,
+			network.Type,
+			network.Network,
+			sizeconv.BSizeCompact(float64(network.Size)),
+			sizeconv.BSizeCompact(float64(network.Used)),
+			sizeconv.BSizeCompact(float64(network.Free)),
+		}
+		elementsList = append(elementsList, elements)
+	}
+
+	t.createTable(title, titles, elementsList, func(event *tcell.EventKey, v *tview.Table) *tcell.EventKey {
+		switch event.Key() {
+		case tcell.KeyESC:
+			t.flex.Clear()
+			t.flex.AddItem(t.head, 1, 0, false)
+			t.flex.AddItem(t.objects, 0, 1, true)
+			t.app.SetFocus(t.objects)
+			t.updateHead()
+
+			t.flex.RemoveItem(t.command)
+			t.command = nil
+			t.app.SetFocus(t.flex.GetItem(1))
+		case tcell.KeyEnter:
+			row, _ := v.GetSelection()
+			if row == 0 {
+				break
+			}
+			networkName := v.GetCell(row, 0).Text
+			t.showNetworkIpList(networkName)
+		}
+
+		return event
+	})
+}
+
+func (t *App) showNetworkIpList(name string) {
+	title := fmt.Sprintf("Network %s IPs", name)
+	titles := []string{"OBJECT", "NODE", "RID", "IP", "NET_NAME", "NET_TYPE"}
+	var elementsList [][]string
+
+	c, err := client.New()
+	if err != nil {
+		t.errorf("failed to create client: %s", err)
+	}
+
+	params := api.GetNetworkIPParams{}
+	params.Name = &name
+	resp, err := c.GetNetworkIPWithResponse(context.Background(), &params)
+	if err != nil {
+		t.errorf("failed to get network ips: %s", err)
+		return
+	}
+
+	if resp.StatusCode() != http.StatusOK {
+		switch resp.StatusCode() {
+		case 401:
+			t.errorf("%s", resp.JSON401)
+		case 403:
+			t.errorf("%s", resp.JSON403)
+		case 500:
+			t.errorf("%s", resp.JSON500)
+		default:
+			t.errorf("unexpected status code: %d", resp.StatusCode())
+		}
+	}
+
+	data := resp.JSON200
+	for _, ip := range data.Items {
+		elements := []string{
+			ip.Path,
+			ip.Node,
+			ip.RID,
+			ip.IP,
+			ip.Network.Name,
+			ip.Network.Type,
+		}
+		elementsList = append(elementsList, elements)
+	}
+
+	t.createTable(title, titles, elementsList, func(event *tcell.EventKey, _ *tview.Table) *tcell.EventKey {
+		if event.Key() == tcell.KeyESC {
+			t.showNetworkList()
 		}
 		return event
 	})
+}
 
-	// Updating current table with our new table
-	// Clearing previous table
 func (t *App) createTable(title string, titles []string, elementsList [][]string, capture func(event *tcell.EventKey, v *tview.Table) *tcell.EventKey) {
 	v := tview.NewTable()
 	v.SetSelectable(true, false)
@@ -2009,12 +2130,10 @@ func (t *App) createTable(title string, titles []string, elementsList [][]string
 	}
 
 	t.flex.Clear()
-	// Add header back and the new table
 	t.flex.AddItem(t.head, 1, 0, false)
 	t.flex.AddItem(v, 0, 1, true)
 	t.app.SetFocus(v)
 	t.updateHead()
-	return
 }
 
 func (t *App) selectedString() string {
