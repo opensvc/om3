@@ -905,6 +905,7 @@ func (t *App) onRuneColumn(event *tcell.EventKey) {
 					clean()
 					return
 				case "go":
+					// TODO fkoeizjkf
 					if len(args) < 2 {
 						t.errorf("not enough arguments: go <to>")
 						return
