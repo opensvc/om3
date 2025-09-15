@@ -10,6 +10,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/labstack/gommon/log"
 	"github.com/opensvc/om3/core/driver"
 	"github.com/opensvc/om3/core/instance"
 	"github.com/opensvc/om3/core/naming"
@@ -317,6 +318,11 @@ func (t *T) jobLogger(e schedule.Entry) *plog.Logger {
 	return logger.WithPrefix(prefix)
 }
 
+func (t *T) isProvisioned(path naming.Path) bool {
+	isProvisioned, hasProvisioned := t.provisioned[path]
+	return hasProvisioned && isProvisioned
+}
+
 func (t *T) onJobAlarm(c eventJobAlarm) {
 	logger := t.jobLogger(c.schedule)
 	e, ok := t.schedules.Get(c.schedule.Path, c.schedule.Key)
@@ -324,6 +330,26 @@ func (t *T) onJobAlarm(c eventJobAlarm) {
 		logger.Infof("aborted, schedule is gone")
 		return
 	}
+	if e.RequireCollector && !t.isCollectorJoinable {
+		logger.Infof("aborted, the collector is not joinable")
+		return
+	}
+	if !e.Path.IsZero() {
+		if e.RequireProvisioned && !t.isProvisioned(e.Path) {
+			logger.Infof("%s: aborted, the object is no longer provisioned", e.RID())
+			return
+		}
+		if isSatisfied, ok := t.reqSatisfied.Get(e.Path, e.Key); ok {
+			if !isSatisfied {
+				log.Infof("%s: aborted, requirements no longer met", e.RID())
+				return
+			}
+		} else if e.Require != "" {
+			log.Infof("%s: aborted, requirements not yet evaluated", e.RID())
+			return
+		}
+	}
+
 	// plan the next run before exec, so another exec can be done
 	// even if another is running
 	e.LastRunAt = c.schedule.LastRunAt
@@ -337,11 +363,6 @@ func (t *T) onJobAlarm(c eventJobAlarm) {
 		logger.Infof("aborted, %d/%d jobs already running", n, e.MaxParallel)
 		return
 	}
-	if e.RequireCollector && !t.isCollectorJoinable {
-		logger.Infof("aborted, the collector is not joinable")
-		return
-	}
-
 	go func() {
 		t.events <- eventJobRun{
 			schedule: e,
@@ -870,6 +891,7 @@ func (t *T) scheduleObject(path naming.Path) {
 		if e.RequireProvisioned {
 			if !hasProvisioned {
 				log.Infof("%s: skip schedule %s (instance provisioned state is still unknown)", e.RID(), e.Action)
+				t.jobs.Del(e)
 				continue
 			}
 			if !isProvisioned {
@@ -893,7 +915,7 @@ func (t *T) scheduleObject(path naming.Path) {
 				continue
 			}
 
-		} else if !ok && e.Require != "" {
+		} else if e.Require != "" {
 			if t.jobs.Has(e) {
 				log.Infof("%s: unschedule %s (requirements not yet evaluated)", e.RID(), e.Action)
 				t.jobs.Del(e)
