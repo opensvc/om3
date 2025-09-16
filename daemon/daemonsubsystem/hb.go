@@ -84,6 +84,21 @@ func (t HeartbeatStreamPeerStatusTableEntry) Unstructured() map[string]any {
 			}
 		}
 	}
+
+	// derive a state icon from the stream's state (e.g. running -> ✅)
+	var stateIcon string
+	if t.Status.State == "running" {
+		stateIcon = "✅"
+	} else {
+		stateIcon = "❌"
+	}
+
+	// beating icon (visible separately from combined icon)
+	beatingIcon := isBeatingIcon
+
+	// keep the legacy combined icon (isBeating + alerts) for backward compatibility
+	combinedIcon := isBeatingIcon + hasAlertsIcon
+
 	return map[string]any{
 		"node":          t.Node,
 		"peer":          t.Peer,
@@ -91,13 +106,15 @@ func (t HeartbeatStreamPeerStatusTableEntry) Unstructured() map[string]any {
 		"alerts":        t.Alerts,
 		"id":            t.Status.ID,
 		"state":         t.Status.State,
+		"state_icon":    stateIcon,
 		"configured_at": t.Status.ConfiguredAt,
 		"updated_at":    t.Status.UpdatedAt,
 		"created_at":    t.Status.CreatedAt,
 		"desc":          t.Desc,
 		"last_at":       t.LastAt,
 		"is_beating":    t.IsBeating,
-		"icon":          isBeatingIcon + hasAlertsIcon,
+		"beating_icon":  beatingIcon,
+		"icon":          combinedIcon,
 	}
 }
 

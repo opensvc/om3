@@ -102,7 +102,7 @@ func (t *CmdDaemonHeartbeatStatus) Run() error {
 		}
 	}
 	output.Renderer{
-		DefaultOutput: "tab=STATUS:.icon,ID:.id,NODE:.node,PEER:.peer,TYPE:.type,DESC:.desc,LAST_AT:.last_at",
+		DefaultOutput: "tab=RUNNING:.state_icon,BEATING:.beating_icon,ID:.id,NODE:.node,PEER:.peer,TYPE:.type,DESC:.desc,LAST_AT:.last_at",
 		Output:        t.Output,
 		Color:         t.Color,
 		Data:          table,
