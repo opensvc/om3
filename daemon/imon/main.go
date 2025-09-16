@@ -291,7 +291,7 @@ func start(parent context.Context, qs pubsub.QueueSizer, p naming.Path, nodes []
 func (t *Manager) newResourceLogger(s string) *plog.Logger {
 	return naming.LogWithPath(plog.NewDefaultLogger(), t.path).
 		Attr("pkg", "daemon/imon").
-		WithPrefix(fmt.Sprintf("daemon: imon: %s: %s: ", t.path.String(), s))
+		WithPrefix(fmt.Sprintf("daemon: imon: %s: %s: ", t.path, s))
 }
 
 func (t *Manager) newLogger(i uuid.UUID) *plog.Logger {

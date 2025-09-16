@@ -5,8 +5,7 @@ import (
 
 	"github.com/opensvc/om3/core/instance"
 	"github.com/opensvc/om3/core/status"
-	"github.com/opensvc/om3/daemon/daemonsubsystem"
-	"github.com/opensvc/om3/util/san"
+	"github.com/opensvc/om3/util/label"
 )
 
 type (
@@ -19,7 +18,7 @@ type (
 		Gen          Gen                         `json:"gen"`
 		IsLeader     bool                        `json:"is_leader"`
 		IsOverloaded bool                        `json:"is_overloaded"`
-		Labels       Labels                      `json:"labels"`
+		Labels       label.M                     `json:"labels"`
 	}
 
 	// Instances groups instances configuration digest and status
@@ -35,20 +34,6 @@ type (
 		URL    string   `json:"url"`
 		Status status.T `json:"status"`
 		Weight int      `json:"weight"`
-	}
-
-	// NodesInfo is the dataset exposed via the GET /nodes_info handler,
-	// used by nodes to:
-	// * expand node selector expressions based on labels
-	// * setup clusterwide lun mapping from pools backed by san arrays
-	NodesInfo map[string]NodeInfo
-
-	NodeInfo struct {
-		Env    string    `json:"env"`
-		Labels Labels    `json:"labels"`
-		Paths  san.Paths `json:"paths"`
-
-		Lsnr daemonsubsystem.Listener `json:"listener"`
 	}
 )
 
@@ -76,39 +61,4 @@ func (t *Status) DeepCopy() *Status {
 	result.Labels = t.Labels.DeepCopy()
 
 	return &result
-}
-
-// GetNodesWithAnyPaths return the list of nodes having any of the given paths.
-func (t NodesInfo) GetNodesWithAnyPaths(paths san.Paths) []string {
-	l := make([]string, 0)
-	for nodename, node := range t {
-		if paths.HasAnyOf(node.Paths) {
-			l = append(l, nodename)
-		}
-	}
-	return l
-}
-
-func (t NodesInfo) Keys() []string {
-	l := make([]string, len(t))
-	i := 0
-	for k := range t {
-		l[i] = k
-		i++
-	}
-	return l
-}
-
-func (t *Status) Unstructured() map[string]any {
-	return map[string]any{
-		"agent":         t.Agent,
-		"api":           t.API,
-		"arbitrators":   t.Arbitrators,
-		"compat":        t.Compat,
-		"frozen_at":     t.FrozenAt,
-		"gen":           t.Gen,
-		"is_leader":     t.IsLeader,
-		"is_overloaded": t.IsOverloaded,
-		"labels":        t.Labels,
-	}
 }

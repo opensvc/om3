@@ -113,7 +113,7 @@ type (
 		// local values are computed by nmon.
 		// peer values are updated from msgbus events NodeStatusLabelsUpdated, NodeConfigUpdated, NodeOsPathsUpdated
 		// and ForgetPeer.
-		cacheNodesInfo node.NodesInfo
+		cacheNodesInfo nodesinfo.M
 
 		// nodeStatus is the node.Status for localhost that is the source of publication of msgbus.NodeStatusUpdated for
 		// localhost.
@@ -178,7 +178,7 @@ func NewManager(drainDuration time.Duration, subQS pubsub.QueueSizer) *Manager {
 		frozen:    true, // ensure initial frozen
 		livePeers: map[string]bool{localhost: true},
 
-		cacheNodesInfo: node.NodesInfo{localhost: {}},
+		cacheNodesInfo: nodesinfo.M{localhost: {}},
 		labelLocalhost: pubsub.Label{"node", localhost},
 
 		subQS: subQS,
@@ -808,13 +808,15 @@ func (t *Manager) loadPools() {
 	}
 	renewed := make(map[string]any)
 	for _, p := range n.Pools() {
+		poolName := p.Name()
 		data := pool.GetStatus(p, true)
-		renewed[data.Name] = nil
-		pool.StatusData.Set(data.Name, &data)
+		renewed[poolName] = nil
+		pool.StatusData.Set(poolName, t.localhost, &data)
+		t.publisher.Pub(&msgbus.NodePoolStatusUpdated{Node: t.localhost, Name: poolName, Value: data}, t.labelLocalhost)
 	}
-	for _, e := range pool.StatusData.GetAll() {
+	for _, e := range pool.StatusData.GetByNode(t.localhost) {
 		if _, ok := renewed[e.Name]; !ok {
-			pool.StatusData.Unset(e.Name)
+			pool.StatusData.Unset(e.Name, t.localhost)
 		}
 	}
 }

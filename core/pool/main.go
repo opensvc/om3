@@ -3,20 +3,17 @@ package pool
 import (
 	"fmt"
 	"path/filepath"
-	"sort"
-	"strconv"
 	"strings"
+	"time"
 
 	"github.com/opensvc/om3/core/array"
 	"github.com/opensvc/om3/core/driver"
 	"github.com/opensvc/om3/core/keyop"
 	"github.com/opensvc/om3/core/naming"
 	"github.com/opensvc/om3/core/nodesinfo"
-	"github.com/opensvc/om3/core/rawconfig"
 	"github.com/opensvc/om3/core/volaccess"
 	"github.com/opensvc/om3/core/xconfig"
 	"github.com/opensvc/om3/util/key"
-	"github.com/opensvc/om3/util/render/tree"
 	"github.com/opensvc/om3/util/san"
 	"github.com/opensvc/om3/util/sizeconv"
 )
@@ -29,6 +26,7 @@ type (
 	}
 
 	Usage struct {
+		Shared bool `json:"shared"`
 		// Free unit is Bytes
 		Free int64 `json:"free"`
 		// Used unit is Bytes
@@ -38,15 +36,20 @@ type (
 	}
 
 	Status struct {
-		Type         string   `json:"type"`
-		Name         string   `json:"name"`
-		Capabilities []string `json:"capabilities"`
-		Head         string   `json:"head"`
-		Errors       []string `json:"errors"`
-		VolumeCount  int      `json:"volume_count"`
 		Usage
+		Capabilities []string  `json:"capabilities"`
+		Errors       []string  `json:"errors"`
+		Head         string    `json:"head"`
+		Type         string    `json:"type"`
+		UpdatedAt    time.Time `json:"updated_at"`
+		VolumeCount  int       `json:"volume_count"`
 	}
-	StatusList   []Status
+	StatusItem struct {
+		Status
+		Name string `json:"name"`
+	}
+
+	StatusList   []StatusItem
 	Capabilities []string
 
 	VolumeStatus struct {
@@ -222,9 +225,9 @@ func (t *T) SetConfig(c Config) {
 func GetStatus(t Pooler, withUsage bool) Status {
 	data := NewStatus()
 	data.Type = t.Type()
-	data.Name = t.Name()
 	data.Capabilities = t.Capabilities()
 	data.Head = t.Head()
+	data.UpdatedAt = time.Now()
 	if withUsage {
 		if usage, err := t.Usage(); err != nil {
 			data.Errors = append(data.Errors, err.Error())
@@ -425,7 +428,7 @@ func translate(p Pooler, name string, size int64, format bool, shared bool) ([]s
 }
 
 func NewStatusList() StatusList {
-	return make([]Status, 0)
+	return make(StatusList, 0)
 }
 
 func (t StatusList) Len() int {
@@ -441,56 +444,11 @@ func (t StatusList) Swap(i, j int) {
 }
 
 func (t StatusList) Add(p Pooler, withUsage bool) StatusList {
-	s := GetStatus(p, withUsage)
-	l := []Status(t)
-	l = append(l, s)
-	return l
-}
-
-func (t StatusList) Render(verbose bool) string {
-	return t.Tree().Render()
-}
-
-// Tree returns a tree loaded with the type instance.
-func (t StatusList) Tree() *tree.Tree {
-	tree := tree.New()
-	t.LoadTreeNode(tree.Head())
-	return tree
-}
-
-// LoadTreeNode add the tree nodes representing the type instance into another.
-func (t StatusList) LoadTreeNode(head *tree.Node) {
-	head.AddColumn().AddText("name").SetColor(rawconfig.Color.Bold)
-	head.AddColumn().AddText("type").SetColor(rawconfig.Color.Bold)
-	head.AddColumn().AddText("caps").SetColor(rawconfig.Color.Bold)
-	head.AddColumn().AddText("head").SetColor(rawconfig.Color.Bold)
-	head.AddColumn().AddText("vols").SetColor(rawconfig.Color.Bold)
-	head.AddColumn().AddText("size").SetColor(rawconfig.Color.Bold)
-	head.AddColumn().AddText("used").SetColor(rawconfig.Color.Bold)
-	head.AddColumn().AddText("free").SetColor(rawconfig.Color.Bold)
-	sort.Sort(t)
-	for _, data := range t {
-		n := head.AddNode()
-		data.LoadTreeNode(n)
-	}
-}
-
-// LoadTreeNode add the tree nodes representing the type instance into another.
-func (t *Status) LoadTreeNode(head *tree.Node) {
-	head.AddColumn().AddText(t.Name).SetColor(rawconfig.Color.Primary)
-	head.AddColumn().AddText(t.Type)
-	head.AddColumn().AddText(strings.Join(t.Capabilities, ","))
-	head.AddColumn().AddText(t.Head)
-	head.AddColumn().AddText(fmt.Sprint(t.VolumeCount))
-	if t.Usage.Size == 0 {
-		head.AddColumn().AddText("-")
-		head.AddColumn().AddText("-")
-		head.AddColumn().AddText("-")
-	} else {
-		head.AddColumn().AddText(sizeconv.BSizeCompact(float64(t.Usage.Size)))
-		head.AddColumn().AddText(sizeconv.BSizeCompact(float64(t.Usage.Used)))
-		head.AddColumn().AddText(sizeconv.BSizeCompact(float64(t.Usage.Free)))
-	}
+	t = append(t, StatusItem{
+		Name:   p.Name(),
+		Status: GetStatus(p, withUsage),
+	})
+	return t
 }
 
 func (t VolumeStatusList) Len() int {
@@ -503,35 +461,6 @@ func (t VolumeStatusList) Less(i, j int) bool {
 
 func (t VolumeStatusList) Swap(i, j int) {
 	t[i], t[j] = t[j], t[i]
-}
-
-// LoadTreeNode add the tree nodes representing the type instance into another.
-func (t VolumeStatusList) LoadTreeNode(head *tree.Node) {
-	head.AddColumn().AddText("volume").SetColor(rawconfig.Color.Bold)
-	head.AddColumn().AddText("").SetColor(rawconfig.Color.Bold)
-	head.AddColumn().AddText("children").SetColor(rawconfig.Color.Bold)
-	head.AddColumn().AddText("orphan").SetColor(rawconfig.Color.Bold)
-	head.AddColumn().AddText("").SetColor(rawconfig.Color.Bold)
-	head.AddColumn().AddText("").SetColor(rawconfig.Color.Bold)
-	head.AddColumn().AddText("").SetColor(rawconfig.Color.Bold)
-	head.AddColumn().AddText("").SetColor(rawconfig.Color.Bold)
-	sort.Sort(t)
-	for _, data := range t {
-		n := head.AddNode()
-		data.LoadTreeNode(n)
-	}
-}
-
-// LoadTreeNode add the tree nodes representing the type instance into another.
-func (t VolumeStatus) LoadTreeNode(head *tree.Node) {
-	head.AddColumn().AddText(t.Path.String())
-	head.AddColumn().AddText("")
-	head.AddColumn().AddText(naming.Paths(t.Children).String())
-	head.AddColumn().AddText(strconv.FormatBool(t.IsOrphan))
-	head.AddColumn().AddText("")
-	head.AddColumn().AddText(sizeconv.BSizeCompact(float64(t.Size)))
-	head.AddColumn().AddText("")
-	head.AddColumn().AddText("")
 }
 
 func HasAccess(p Pooler, acs volaccess.T) bool {
@@ -564,7 +493,6 @@ func (t *Status) HasCapability(s string) bool {
 
 func (t *Status) DeepCopy() *Status {
 	return &Status{
-		Name:         t.Name,
 		Type:         t.Type,
 		Head:         t.Head,
 		VolumeCount:  t.VolumeCount,

@@ -15,7 +15,6 @@ import (
 	"github.com/opensvc/om3/core/client"
 	"github.com/opensvc/om3/core/clientcontext"
 	"github.com/opensvc/om3/core/cluster"
-	"github.com/opensvc/om3/core/node"
 	"github.com/opensvc/om3/core/nodesinfo"
 	"github.com/opensvc/om3/util/funcopt"
 	"github.com/opensvc/om3/util/hostname"
@@ -27,7 +26,7 @@ type (
 		nodes              []string
 		knownNodes         []string
 		knownNodesSet      *orderedset.OrderedSet
-		info               node.NodesInfo
+		info               nodesinfo.M
 		log                zerolog.Logger
 		client             *client.T
 	}
@@ -67,7 +66,7 @@ func WithLogger(log zerolog.Logger) funcopt.O {
 
 // WithNodesInfo allow in-daemon callers to bypass nodesinfo.Load
 // as they can access the NodesInfo faster from the data bus.
-func WithNodesInfo(v node.NodesInfo) funcopt.O {
+func WithNodesInfo(v nodesinfo.M) funcopt.O {
 	return funcopt.F(func(i any) error {
 		t := i.(*T)
 		t.info = v
@@ -271,7 +270,7 @@ func (t T) KnownLocalNodes() ([]string, error) {
 	return l, nil
 }
 
-func (t *T) getNodesInfoFromAPI() (node.NodesInfo, error) {
+func (t *T) getNodesInfoFromAPI() (nodesinfo.M, error) {
 	if t.client == nil {
 		return nil, fmt.Errorf("no client")
 	}
@@ -281,13 +280,13 @@ func (t *T) getNodesInfoFromAPI() (node.NodesInfo, error) {
 	}
 	switch resp.StatusCode() {
 	case 200:
-		return node.NodesInfo(*resp.JSON200), nil
+		return nodesinfo.M(*resp.JSON200), nil
 	default:
 		return nil, fmt.Errorf("%s", resp.Status())
 	}
 }
 
-func (t *T) getNodesInfo() (node.NodesInfo, error) {
+func (t *T) getNodesInfo() (nodesinfo.M, error) {
 	if t.info != nil {
 		return t.info, nil
 	}

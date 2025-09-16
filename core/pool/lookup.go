@@ -28,14 +28,14 @@ type (
 		manager manager
 	}
 	WeightedPools []Pooler
-	By            func(p1, p2 *Status) bool
+	By            func(p1, p2 *StatusItem) bool
 	statusSorter  struct {
-		data []Status
-		by   func(p1, p2 *Status) bool // Closure used in the Less method.
+		data StatusList
+		by   func(p1, p2 *StatusItem) bool // Closure used in the Less method.
 	}
 )
 
-func (by By) Sort(l []Status) {
+func (by By) Sort(l StatusList) {
 	s := &statusSorter{
 		data: l,
 		by:   by, // The Sort method's receiver is the function (closure) that defines the sort order.
@@ -109,7 +109,7 @@ func (t Lookup) Do() (Pooler, error) {
 	if len(l) == 0 {
 		return nil, fmt.Errorf("no pool matching criteria: %s", strings.Join(cause, " "))
 	}
-	weight := func(p1, p2 *Status) bool {
+	weight := func(p1, p2 *StatusItem) bool {
 		if !t.Shared {
 			p1shared := p1.HasCapability("shared")
 			p2shared := p2.HasCapability("shared")

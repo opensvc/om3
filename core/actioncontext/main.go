@@ -253,3 +253,7 @@ func IsActionForMaster(ctx context.Context) bool {
 	}
 	return false
 }
+
+func HasResourceSelector(ctx context.Context) bool {
+	return RID(ctx) != "" || Tag(ctx) != "" || Subset(ctx) != ""
+}

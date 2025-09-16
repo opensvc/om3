@@ -432,9 +432,7 @@ func (t *Manager) onProgressInstanceMonitor(c *msgbus.ProgressInstanceMonitor) {
 
 		switch t.state.LocalExpect {
 		case instance.MonitorLocalExpectStarted:
-			if c.IsPartial {
-				t.disableMonitor("user is stopping some instance resources")
-			} else {
+			if !c.IsPartial {
 				t.disableMonitor("user is stopping the instance")
 			}
 		}

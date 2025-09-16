@@ -77,7 +77,7 @@ func (t States) LoadTreeNode(head *tree.Node) {
 			lastSubset = r.Subset
 		}
 		doResource := func(n *tree.Node, r resource.Status) *tree.Column {
-			flags := t.Status.ResourceFlagsString(r.ResourceID.Name, r) + t.Monitor.ResourceFlagRestartString(r.ResourceID.Name, r)
+			flags := ResourceFlagsString(r.ResourceID.Name, t.Monitor, t.Status, r)
 			n.AddColumn().AddText(r.ResourceID.Name)
 			n.AddColumn().AddText(flags)
 			n.AddColumn().AddText(colorstatus.Sprint(r.Status, rawconfig.Colorize))

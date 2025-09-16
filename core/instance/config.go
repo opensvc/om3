@@ -6,6 +6,7 @@ import (
 	"github.com/opensvc/om3/core/naming"
 	"github.com/opensvc/om3/core/placement"
 	"github.com/opensvc/om3/core/priority"
+	"github.com/opensvc/om3/core/schedule"
 	"github.com/opensvc/om3/core/topology"
 	"github.com/opensvc/om3/util/stringslice"
 	"github.com/opensvc/om3/util/xmap"
@@ -15,26 +16,27 @@ type (
 	// Config describes a configuration file content checksum,
 	// timestamp of last change and the nodes it should be installed on.
 	Config struct {
-		App              string           `json:"app,omitempty"`
-		Checksum         string           `json:"csum"`
-		Children         naming.Relations `json:"children,omitempty"`
-		DRP              bool             `json:"drp,omitempty"`
-		Env              string           `json:"env,omitempty"`
-		FlexMax          int              `json:"flex_max,omitempty"`
-		FlexMin          int              `json:"flex_min,omitempty"`
-		FlexTarget       int              `json:"flex_target,omitempty"`
-		MonitorAction    []MonitorAction  `json:"monitor_action,omitempty"`
-		PreMonitorAction string           `json:"pre_monitor_action,omitempty"`
-		Orchestrate      string           `json:"orchestrate"`
-		Path             naming.Path      `json:"-"`
-		Parents          naming.Relations `json:"parents,omitempty"`
-		PlacementPolicy  placement.Policy `json:"placement_policy"`
-		Priority         priority.T       `json:"priority,omitempty"`
-		Resources        ResourceConfigs  `json:"resources"`
-		Scope            []string         `json:"scope"`
-		Subsets          SubsetConfigs    `json:"subsets"`
-		Topology         topology.T       `json:"topology"`
-		UpdatedAt        time.Time        `json:"updated_at"`
+		App              string            `json:"app,omitempty"`
+		Checksum         string            `json:"csum"`
+		Children         naming.Relations  `json:"children,omitempty"`
+		DRP              bool              `json:"drp,omitempty"`
+		Env              string            `json:"env,omitempty"`
+		FlexMax          int               `json:"flex_max,omitempty"`
+		FlexMin          int               `json:"flex_min,omitempty"`
+		FlexTarget       int               `json:"flex_target,omitempty"`
+		MonitorAction    []MonitorAction   `json:"monitor_action,omitempty"`
+		PreMonitorAction string            `json:"pre_monitor_action,omitempty"`
+		Orchestrate      string            `json:"orchestrate"`
+		Path             naming.Path       `json:"-"`
+		Parents          naming.Relations  `json:"parents,omitempty"`
+		PlacementPolicy  placement.Policy  `json:"placement_policy"`
+		Priority         priority.T        `json:"priority,omitempty"`
+		Resources        ResourceConfigs   `json:"resources"`
+		Schedules        []schedule.Config `json:"schedules"`
+		Scope            []string          `json:"scope"`
+		Subsets          SubsetConfigs     `json:"subsets"`
+		Topology         topology.T        `json:"topology"`
+		UpdatedAt        time.Time         `json:"updated_at"`
 
 		// IsDisabled is true when DEFAULT.disable is true
 		IsDisabled bool `json:"is_disabled"`
@@ -70,6 +72,7 @@ func (cfg Config) DeepCopy() *Config {
 	newCfg.Scope = append([]string{}, cfg.Scope...)
 	newCfg.Subsets = cfg.Subsets.DeepCopy()
 	newCfg.Resources = cfg.Resources.DeepCopy()
+	newCfg.Schedules = append([]schedule.Config{}, cfg.Schedules...)
 	return &newCfg
 }
 

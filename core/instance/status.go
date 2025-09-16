@@ -5,6 +5,7 @@ import (
 	"time"
 
 	"github.com/opensvc/om3/core/provisioned"
+	"github.com/opensvc/om3/core/rawconfig"
 	"github.com/opensvc/om3/core/resource"
 	"github.com/opensvc/om3/core/resourceid"
 	"github.com/opensvc/om3/core/status"
@@ -118,30 +119,47 @@ func (a ResourceOrder) Less(i, j int) bool {
 
 // ResourceFlagsString formats resource flags as a vector of characters.
 //
-//	R  Running
-//	M  Monitored
-//	D  Disabled
-//	O  Optional
-//	E  Encap
-//	P  Provisioned
-//	S  Standby
-func (t Status) ResourceFlagsString(rid string, r resource.Status) string {
-	flags := ""
-
-	// Running task or sync
-	if t.Running.Has(rid) {
-		flags += "R"
-	} else {
-		flags += "."
+// R   Running
+// M   Monitored
+// D   Disabled
+// O   Optional
+// E   Encap
+// P   Provisioned
+// S   Standby
+// <n> Restart remaining, + More than 9 remaining, X UserStopped
+func ResourceFlagsString(rid string, mon Monitor, status Status, rstatus resource.Status) string {
+	runningFlag := func() string {
+		if status.Running.Has(rid) {
+			return "R"
+		} else {
+			return "."
+		}
 	}
-
-	flags += r.Monitor.FlagString()
-	flags += r.Disable.FlagString()
-	flags += r.Optional.FlagString()
-	flags += r.Encap.FlagString()
-	flags += r.Provisioned.State.FlagString()
-	flags += r.Standby.FlagString()
+	restartFlag := func() string {
+		retries := 0
+		if rmon := mon.Resources.Get(rid); rmon != nil {
+			retries = rmon.Restart.Remaining
+		}
+		s := rstatus.RestartFlag(retries)
+		if s == "." {
+			return s
+		}
+		if mon.LocalExpect != MonitorLocalExpectStarted || status.IsFrozen() {
+			s = rawconfig.Colorize.Secondary(s)
+		}
+		return s
+	}
+	flags := ""
+	flags += runningFlag()
+	flags += rstatus.IsMonitoredFlag()
+	flags += rstatus.IsDisabledFlag()
+	flags += rstatus.IsOptionalFlag()
+	flags += rstatus.IsEncapFlag()
+	flags += rstatus.IsProvisionedFlag()
+	flags += rstatus.IsStandbyFlag()
+	flags += restartFlag()
 	return flags
+
 }
 
 func (t EncapMap) Unstructured() map[string]map[string]any {

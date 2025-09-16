@@ -41,7 +41,7 @@ func Test_Status_Unmarshal(t *testing.T) {
 				},
 				Status: status.Down,
 				Type:   "volume",
-				Provisioned: resource.ProvisionStatus{
+				IsProvisioned: resource.ProvisionStatus{
 					Mtime: time.Date(2022, time.November, 29, 18, 10, 46, 524120074, time.UTC),
 					State: provisioned.True,
 				},
@@ -51,7 +51,7 @@ func Test_Status_Unmarshal(t *testing.T) {
 				Label:      "flag /dev/shm/opensvc/svc/svc2/fs#1.flag",
 				Status:     status.Down,
 				Type:       "fs.flag",
-				Provisioned: resource.ProvisionStatus{
+				IsProvisioned: resource.ProvisionStatus{
 					Mtime: time.Date(2022, time.November, 28, 21, 46, 25, 853702101, time.UTC),
 					State: provisioned.False,
 				},
@@ -67,7 +67,7 @@ func Test_Status_Unmarshal(t *testing.T) {
 				},
 				Status: 1,
 				Type:   "app.forking",
-				Provisioned: resource.ProvisionStatus{
+				IsProvisioned: resource.ProvisionStatus{
 					Mtime: time.Date(2022, time.November, 28, 21, 46, 25, 849702075, time.UTC),
 					State: provisioned.False,
 				},

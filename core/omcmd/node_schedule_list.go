@@ -64,6 +64,7 @@ func (t *CmdNodeScheduleList) extractLocal() (api.ScheduleItems, error) {
 				LastRunAt:          e.LastRunAt,
 				LastRunFile:        e.LastRunFile,
 				LastSuccessFile:    e.LastSuccessFile,
+				MaxParallel:        e.MaxParallel,
 				NextRunAt:          e.NextRunAt,
 				RequireCollector:   e.RequireCollector,
 				RequireProvisioned: e.RequireProvisioned,

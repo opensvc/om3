@@ -5,6 +5,7 @@ import (
 
 	"github.com/opensvc/om3/core/instance"
 	"github.com/opensvc/om3/core/node"
+	"github.com/opensvc/om3/core/pool"
 	"github.com/opensvc/om3/daemon/daemonsubsystem"
 	"github.com/opensvc/om3/daemon/hbcache"
 	"github.com/opensvc/om3/daemon/msgbus"
@@ -95,6 +96,10 @@ func (d *data) dropPeer(peer string) {
 	for p := range instance.MonitorData.GetByNode(peer) {
 		instance.MonitorData.Unset(p, peer)
 		d.publisher.Pub(&msgbus.InstanceMonitorDeleted{Node: peer, Path: p}, append(peerLabels, pubsub.Label{"namespace", p.Namespace}, pubsub.Label{"path", p.String()})...)
+	}
+	for _, p := range pool.StatusData.GetByNode(peer) {
+		pool.StatusData.Unset(p.Name, peer)
+		d.publisher.Pub(&msgbus.NodePoolStatusDeleted{Node: peer, Name: p.Name}, peerLabels...)
 	}
 	if v := node.MonitorData.GetByNode(peer); v != nil {
 		node.DropNode(peer)

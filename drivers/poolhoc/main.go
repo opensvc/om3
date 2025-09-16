@@ -87,7 +87,9 @@ func (t T) Capabilities() []string {
 }
 
 func (t T) Usage() (pool.Usage, error) {
-	usage := pool.Usage{}
+	usage := pool.Usage{
+		Shared: true,
+	}
 	a := t.array()
 	data, err := a.GetStorageSystem()
 	if err != nil {

@@ -6,6 +6,7 @@ import (
 	"net/http"
 
 	"github.com/gdamore/tcell/v2"
+	"github.com/opensvc/om3/daemon/api"
 	"github.com/opensvc/om3/util/sizeconv"
 	"github.com/rivo/tview"
 )
@@ -64,4 +65,34 @@ func (t *App) updateKeysView() {
 		t.keys.SetCell(row, 0, tview.NewTableCell(key.Name).SetSelectable(true))
 		t.keys.SetCell(row, 1, tview.NewTableCell(sizeconv.BSizeCompact(float64(key.Size))).SetSelectable(false))
 	}
+}
+
+func (t *App) updateKeyTextView() {
+	if t.viewPath.IsZero() {
+		return
+	}
+	if t.viewKey == "" {
+		return
+	}
+	if t.skipIfConfigNotUpdated() {
+		return
+	}
+	resp, err := t.client.GetObjectDataKeyWithResponse(context.Background(), t.viewPath.Namespace, t.viewPath.Kind, t.viewPath.Name, &api.GetObjectDataKeyParams{
+		Name: t.viewKey,
+	})
+	if err != nil {
+		t.errorf("%s", err)
+		return
+	}
+	if resp.StatusCode() != http.StatusOK {
+		t.errorf("status code: %s", resp.Status())
+		return
+	}
+
+	t.initTextView()
+	text := string(resp.Body)
+	title := fmt.Sprintf("%s key %s", t.viewPath, t.viewKey)
+	t.textView.SetTitle(title)
+	t.textView.Clear()
+	fmt.Fprint(t.textView, text)
 }

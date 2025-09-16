@@ -131,21 +131,6 @@ func (t *MonitorGlobalExpect) UnmarshalText(b []byte) error {
 	}
 }
 
-func (t *Monitor) Unstructured() map[string]any {
-	return map[string]any{
-		"global_expect":            t.GlobalExpect,
-		"local_expect":             t.LocalExpect,
-		"state":                    t.State,
-		"global_expect_updated_at": t.GlobalExpectUpdatedAt,
-		"local_expect_updated_at":  t.LocalExpectUpdatedAt,
-		"state_updated_at":         t.StateUpdatedAt,
-		"updated_at":               t.UpdatedAt,
-		"orchestration_id":         t.OrchestrationID,
-		"orchestration_is_done":    t.OrchestrationIsDone,
-		"session_id":               t.SessionID,
-	}
-}
-
 func (t MonitorUpdate) String() string {
 	s := fmt.Sprintf("CandidateOrchestrationID=%s", t.CandidateOrchestrationID)
 	if t.State != nil {

@@ -104,6 +104,7 @@ type (
 		imonUpdated       map[string]time.Time
 		instConfigUpdated map[string]time.Time
 		instStatusUpdated map[string]time.Time
+		poolStatusUpdated map[string]time.Time
 	}
 
 	errC chan<- error
@@ -419,6 +420,8 @@ func (d *data) startSubscriptions(ctx context.Context, qs pubsub.QueueSizer) {
 	sub.AddFilter(&msgbus.ObjectOrchestrationEnd{}, d.labelLocalhost)
 	sub.AddFilter(&msgbus.ObjectOrchestrationRefused{}, d.labelLocalhost)
 	sub.AddFilter(&msgbus.ObjectStatusUpdated{}, d.labelLocalhost)
+	sub.AddFilter(&msgbus.NodePoolStatusDeleted{}, d.labelLocalhost)
+	sub.AddFilter(&msgbus.NodePoolStatusUpdated{}, d.labelLocalhost)
 
 	sub.AddFilter(&msgbus.EnterOverloadPeriod{}, d.labelLocalhost)
 	sub.AddFilter(&msgbus.LeaveOverloadPeriod{}, d.labelLocalhost)
@@ -476,7 +479,12 @@ func localEventMustBeForwarded(i interface{}) bool {
 	case *msgbus.ObjectOrchestrationEnd:
 	case *msgbus.ObjectOrchestrationRefused:
 	case *msgbus.ObjectStatusDeleted:
-		// overload
+
+	// pool...
+	case *msgbus.NodePoolStatusDeleted:
+	case *msgbus.NodePoolStatusUpdated:
+
+	// overload
 	case *msgbus.EnterOverloadPeriod:
 	case *msgbus.LeaveOverloadPeriod:
 	default:

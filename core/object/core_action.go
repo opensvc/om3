@@ -197,7 +197,7 @@ func (t *actor) announceProgress(ctx context.Context, progress string) error {
 	if err != nil {
 		return err
 	}
-	isPartial := !resourceselector.FromContext(ctx, nil).IsZero()
+	isPartial := actioncontext.HasResourceSelector(ctx)
 	p := t.Path()
 	resp, err := c.PostInstanceProgressWithResponse(ctx, p.Namespace, p.Kind, p.Name, api.PostInstanceProgress{
 		State:     progress,
@@ -751,7 +751,7 @@ func (t *actor) postStartStopStatusEval(ctx context.Context) error {
 	if err != nil {
 		return err
 	}
-	if !resourceselector.FromContext(ctx, nil).IsZero() {
+	if actioncontext.HasResourceSelector(ctx) {
 		// don't verify instance avail if a resource selection was requested
 		return nil
 	}

@@ -28,6 +28,7 @@ import (
 	"github.com/opensvc/om3/core/placement"
 	"github.com/opensvc/om3/core/priority"
 	"github.com/opensvc/om3/core/resourceset"
+	"github.com/opensvc/om3/core/schedule"
 	"github.com/opensvc/om3/core/topology"
 	"github.com/opensvc/om3/core/xconfig"
 	"github.com/opensvc/om3/daemon/msgbus"
@@ -344,6 +345,12 @@ func (t *Manager) configFileCheck() error {
 		cfg.FlexMin = t.getFlexMin(cf, instanceCount)
 		cfg.FlexMax = t.getFlexMax(cf, cfg.FlexMin, instanceCount)
 		cfg.FlexTarget = t.getFlexTarget(cf, cfg.FlexMin, cfg.FlexMax)
+	}
+	if actor, ok := any(t.configure).(object.Actor); ok {
+		cfg.Schedules = make([]schedule.Config, 0)
+		for _, e := range actor.Schedules() {
+			cfg.Schedules = append(cfg.Schedules, e.Config)
+		}
 	}
 
 	t.lastMtime = mtime

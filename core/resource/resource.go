@@ -19,6 +19,7 @@ import (
 
 	"github.com/opensvc/om3/core/actioncontext"
 	"github.com/opensvc/om3/core/driver"
+	"github.com/opensvc/om3/core/env"
 	"github.com/opensvc/om3/core/manifest"
 	"github.com/opensvc/om3/core/provisioned"
 	"github.com/opensvc/om3/core/resourceid"
@@ -79,6 +80,7 @@ type (
 		IsUnprovisionDisabled() bool
 		IsShared() bool
 		IsStandby() bool
+		IsStopped() bool
 		IsStatusDisabled() bool
 
 		// Label returns a formatted short description of the Resource
@@ -185,47 +187,24 @@ type (
 		State provisioned.T `json:"state"`
 	}
 
-	// MonitorFlag tells the daemon if it should trigger a monitor action
-	// when the resource is not up.
-	MonitorFlag bool
-
-	// RestartFlag is the number of times the monitor will try restarting a
-	// resource gone down in a well-known started instance.
-	RestartFlag int
-
-	// DisableFlag hints the resource ignores all state transition actions
-	DisableFlag bool
-
-	// OptionalFlag makes this resource status aggregated into Overall
-	// instead of Avail instance status. Errors in optional resource don't stop
-	// a state transition action.
-	OptionalFlag bool
-
-	// EncapFlag indicates that the resource is handled by the encapsulated
-	// agents, and ignored at the hypervisor level.
-	EncapFlag bool
-
-	// StandbyFlag tells the daemon this resource should always be up,
-	// even after a stop state transition action.
-	StandbyFlag bool
-
 	// TagSet is the list of unique tag names found in the resource definition.
 	TagSet []string
 
 	// Status is the structure representing the resource status,
 	// which is embedded in the instance status.
 	Status struct {
-		ResourceID  *resourceid.T    `json:"-"`
-		Label       string           `json:"label"`
-		Log         []StatusLogEntry `json:"log,omitempty"`
-		Status      status.T         `json:"status"`
-		Type        string           `json:"type"`
-		Provisioned ProvisionStatus  `json:"provisioned,omitempty"`
-		Monitor     MonitorFlag      `json:"monitor,omitempty"`
-		Disable     DisableFlag      `json:"disable,omitempty"`
-		Optional    OptionalFlag     `json:"optional,omitempty"`
-		Encap       EncapFlag        `json:"encap,omitempty"`
-		Standby     StandbyFlag      `json:"standby,omitempty"`
+		ResourceID    *resourceid.T    `json:"-"`
+		Label         string           `json:"label"`
+		Log           []StatusLogEntry `json:"log,omitempty"`
+		Status        status.T         `json:"status"`
+		Type          string           `json:"type"`
+		IsProvisioned ProvisionStatus  `json:"provisioned,omitempty"`
+		IsMonitored   bool             `json:"monitor,omitempty"`
+		IsDisabled    bool             `json:"disable,omitempty"`
+		IsOptional    bool             `json:"optional,omitempty"`
+		IsEncap       bool             `json:"encap,omitempty"`
+		IsStandby     bool             `json:"standby,omitempty"`
+		IsStopped     bool             `json:"stopped,omitempty"`
 
 		// Subset is the name of the subset this resource is assigned to.
 		Subset string `json:"subset,omitempty"`
@@ -235,7 +214,7 @@ type (
 		Info map[string]any `json:"info,omitempty"`
 
 		// Restart is the number of restart to be tried before giving up.
-		Restart RestartFlag `json:"restart,omitempty"`
+		Restart int `json:"restart,omitempty"`
 
 		// Tags is a set of words attached to the resource.
 		Tags TagSet `json:"tags,omitempty"`
@@ -285,60 +264,65 @@ var (
 	ErrActionReqNotMet         = errors.New("the resource action requirements are not met")
 )
 
-// FlagString returns a one character representation of the type instance.
-func (t MonitorFlag) FlagString() string {
-	if t {
+// IsMonitoredFlag returns a one character representation of the IsMonitored state.
+func (t *Status) IsMonitoredFlag() string {
+	if t.IsMonitored {
 		return "M"
 	}
 	return "."
 }
 
-// FlagString returns a one character representation of the type instance.
-func (t DisableFlag) FlagString() string {
-	if t {
+// IsDisabledFlag returns a one character representation of the IsDisabled state.
+func (t *Status) IsDisabledFlag() string {
+	if t.IsDisabled {
 		return "D"
 	}
 	return "."
 }
 
-// FlagString returns a one character representation of the type instance.
-func (t RestartFlag) FlagString(retries int) string {
-	restart := int(t)
-	remaining := retries
+// RestartFlag returns a one character representation of the Restart state.
+func (t *Status) RestartFlag(retries int) string {
 	switch {
-	case restart <= 0:
+	case t.IsStopped:
+		return "X"
+	case t.Restart <= 0:
 		return "."
-	case remaining <= 0:
+	case retries <= 0:
 		return "0"
-	case remaining < 10:
-		return fmt.Sprintf("%d", remaining)
+	case retries < 10:
+		return fmt.Sprintf("%d", retries)
 	default:
 		return "+"
 	}
 }
 
-// FlagString returns a one character representation of the type instance.
-func (t OptionalFlag) FlagString() string {
-	if t {
+// IsOptionalFlag returns a one character representation of the IsOptional state.
+func (t *Status) IsOptionalFlag() string {
+	if t.IsOptional {
 		return "O"
 	}
 	return "."
 }
 
-// FlagString returns a one character representation of the type instance.
-func (t EncapFlag) FlagString() string {
-	if t {
+// IsEncapFlag returns a one character representation of the IsEncap state.
+func (t *Status) IsEncapFlag() string {
+	if t.IsEncap {
 		return "E"
 	}
 	return "."
 }
 
-// FlagString returns a one character representation of the type instance.
-func (t StandbyFlag) FlagString() string {
-	if t {
+// IsStandbyFlag returns a one character representation of the IsStandby state.
+func (t *Status) IsStandbyFlag() string {
+	if t.IsStandby {
 		return "S"
 	}
 	return "."
+}
+
+// IsProvisionedFlag returns a one character representation of the IsProvisioned state.
+func (t *Status) IsProvisionedFlag() string {
+	return t.IsProvisioned.State.FlagString()
 }
 
 func NewResourceFunc(drvID driver.ID) func() Driver {
@@ -358,7 +342,7 @@ func NewResourceFunc(drvID driver.ID) func() Driver {
 // Resource having actions disabled are always considered optional, because
 // there is nothing we can do to change the state, which would cause
 // orchestration loops.
-func (t T) IsOptional() bool {
+func (t *T) IsOptional() bool {
 	if t.IsActionDisabled() {
 		return true
 	}
@@ -366,59 +350,65 @@ func (t T) IsOptional() bool {
 }
 
 // IsEncap returns true if the resource definition contains encap=true.
-func (t T) IsEncap() bool {
+func (t *T) IsEncap() bool {
 	return t.Encap || t.Tags.Has("encap")
 }
 
 // IsDisabled returns true if the resource definition contains disable=true.
-func (t T) IsDisabled() bool {
+func (t *T) IsDisabled() bool {
 	return t.Disable
 }
 
 // IsProvisionDisabled returns true if the resource definition contains provision=false.
-func (t T) IsProvisionDisabled() bool {
+func (t *T) IsProvisionDisabled() bool {
 	return !t.EnableProvision
 }
 
 // IsUnprovisionDisabled returns true if the resource definition contains unprovision=false.
-func (t T) IsUnprovisionDisabled() bool {
+func (t *T) IsUnprovisionDisabled() bool {
 	return !t.EnableUnprovision
 }
 
 // IsStandby returns true if the resource definition contains standby=true.
-func (t T) IsStandby() bool {
+func (t *T) IsStandby() bool {
 	return t.Standby
 }
 
+// IsStopped returns true if the stopped flag file exists.
+func (t *T) IsStopped() bool {
+	v, _ := IsStopped(t)
+	return v
+}
+
 // IsShared returns true if the resource definition contains shared=true.
-func (t T) IsShared() bool {
+func (t *T) IsShared() bool {
 	return t.Shared
 }
 
 // IsMonitored returns true if the resource definition contains monitor=true.
-func (t T) IsMonitored() bool {
+func (t *T) IsMonitored() bool {
 	return t.Monitor
 }
 
 // IsStatusDisabled returns true if the resource definition contains tag=nostatus ...
 // In this case, the resource status is always n/a
-func (t T) IsStatusDisabled() bool {
+func (t *T) IsStatusDisabled() bool {
 	return t.MatchTag("nostatus")
 }
 
 // IsActionDisabled returns true if the resource definition contains tag=noaction ...
 // In this case, the resource actions like stop and start are skipped.
-func (t T) IsActionDisabled() bool {
+func (t *T) IsActionDisabled() bool {
 	return t.MatchTag("noaction")
 }
 
 // RestartCount returns the value of the Restart field
-func (t T) RestartCount() int {
+func (t *T) RestartCount() int {
 	return t.Restart
 }
 
 // GetRestartDelay returns the duration between 2 restarts
-func (t T) GetRestartDelay() time.Duration {
+func (t *T) GetRestartDelay() time.Duration {
 	if t.RestartDelay == nil {
 		return 500 * time.Millisecond
 	}
@@ -426,7 +416,7 @@ func (t T) GetRestartDelay() time.Duration {
 }
 
 // RSubset returns the resource subset name
-func (t T) RSubset() string {
+func (t *T) RSubset() string {
 	return t.Subset
 }
 
@@ -436,12 +426,12 @@ func (t *T) StatusLog() StatusLogger {
 }
 
 // RID returns the string representation of the resource id
-func (t T) RID() string {
+func (t *T) RID() string {
 	return t.ResourceID.String()
 }
 
 // ID returns the resource id struct
-func (t T) ID() *resourceid.T {
+func (t *T) ID() *resourceid.T {
 	return t.ResourceID
 }
 
@@ -509,7 +499,7 @@ func (t *T) SetObject(o any) {
 }
 
 // GetObject returns the object interface set by SetObjectriver upon configure.
-func (t T) GetObject() any {
+func (t *T) GetObject() any {
 	return t.object
 }
 
@@ -540,25 +530,25 @@ func (t *T) Log() *plog.Logger {
 //   - the pattern is a fully qualified resourceid, and its string representation equals the
 //     pattern.
 //     ex: fs#1 matches fs#1
-func (t T) MatchRID(s string) bool {
+func (t *T) MatchRID(s string) bool {
 	return t.ResourceID.Match(s)
 
 }
 
 // MatchSubset returns true if the resource subset equals the pattern.
-func (t T) MatchSubset(s string) bool {
+func (t *T) MatchSubset(s string) bool {
 	return t.Subset == s
 }
 
 // MatchTag returns true if one of the resource tags equals the pattern.
-func (t T) MatchTag(s string) bool {
+func (t *T) MatchTag(s string) bool {
 	if t.Tags == nil {
 		return false
 	}
 	return t.Tags.Has(s)
 }
 
-func (t T) TagSet() TagSet {
+func (t *T) TagSet() TagSet {
 	s := make(TagSet, 0)
 	t.Tags.Do(func(e any) { s = append(s, e.(string)) })
 	return s
@@ -573,7 +563,7 @@ func formatResourceLabel(ctx context.Context, r Driver) string {
 	}
 }
 
-func (t T) trigger(ctx context.Context, s string) error {
+func (t *T) trigger(ctx context.Context, s string) error {
 	cmdArgs, err := command.CmdArgsFromString(s)
 	if err != nil {
 		return err
@@ -590,7 +580,7 @@ func (t T) trigger(ctx context.Context, s string) error {
 	return cmd.Run()
 }
 
-func (t T) Trigger(ctx context.Context, blocking trigger.Blocking, hook trigger.Hook, action trigger.Action) error {
+func (t *T) Trigger(ctx context.Context, blocking trigger.Blocking, hook trigger.Hook, action trigger.Action) error {
 	var cmd string
 	hookID := trigger.Format(blocking, hook, action)
 	switch hookID {
@@ -648,7 +638,7 @@ func (t T) Trigger(ctx context.Context, blocking trigger.Blocking, hook trigger.
 	return t.trigger(ctx, cmd)
 }
 
-func (t T) Requires(action string) *resourcereqs.T {
+func (t *T) Requires(action string) *resourcereqs.T {
 	reqs := ""
 	switch action {
 	case "start":
@@ -818,6 +808,9 @@ func StartStandby(ctx context.Context, r Driver) error {
 	} else {
 		return ErrActionNotSupported
 	}
+	if err := removeStopped(r); err != nil {
+		return err
+	}
 	if !r.IsStandby() {
 		return nil
 	}
@@ -856,6 +849,9 @@ func Start(ctx context.Context, r Driver) error {
 	s, ok := i.(starter)
 	if !ok {
 		return ErrActionNotSupported
+	}
+	if err := removeStopped(r); err != nil {
+		return err
 	}
 	defer EvalStatus(ctx, r)
 	if r.IsDisabled() || r.IsActionDisabled() {
@@ -976,6 +972,9 @@ func boot(ctx context.Context, r Driver) error {
 		i  any = r
 		fn func(context.Context) error
 	)
+	if err := removeStopped(r); err != nil {
+		return err
+	}
 	if s, ok := i.(booter); ok {
 		fn = s.Boot
 	} else {
@@ -1007,6 +1006,9 @@ func shutdown(ctx context.Context, r Driver) error {
 	} else {
 		return ErrActionNotSupported
 	}
+	if err := removeStoppedIfNoResourceSelector(ctx, r); err != nil {
+		return err
+	}
 	if r.IsDisabled() || r.IsActionDisabled() {
 		return ErrDisabled
 	}
@@ -1019,6 +1021,9 @@ func shutdown(ctx context.Context, r Driver) error {
 	}
 	if err := r.Trigger(ctx, trigger.NoBlock, trigger.Pre, trigger.Shutdown); err != nil {
 		r.Log().Warnf("trigger: %s (exitcode %d)", err, exitCode(err))
+	}
+	if err := createStoppedIfHasResourceSelector(ctx, r); err != nil {
+		return err
 	}
 	if err := fn(ctx); err != nil {
 		return err
@@ -1048,6 +1053,9 @@ func stop(ctx context.Context, r Driver) error {
 		if s, ok := i.(stopstandbyer); ok {
 			fn = s.StopStandby
 		} else {
+			if err := removeStoppedIfNoResourceSelector(ctx, r); err != nil {
+				return err
+			}
 			r.Log().Infof("skip 'stop' on standby resource (--force to override)")
 			return ErrActionNotSupported
 		}
@@ -1057,6 +1065,9 @@ func stop(ctx context.Context, r Driver) error {
 		} else {
 			return ErrActionNotSupported
 		}
+	}
+	if err := removeStoppedIfNoResourceSelector(ctx, r); err != nil {
+		return err
 	}
 	if r.IsDisabled() || r.IsActionDisabled() {
 		return ErrDisabled
@@ -1070,6 +1081,9 @@ func stop(ctx context.Context, r Driver) error {
 	}
 	if err := r.Trigger(ctx, trigger.NoBlock, trigger.Pre, trigger.Stop); err != nil {
 		r.Log().Warnf("trigger: %s (exitcode %d)", err, exitCode(err))
+	}
+	if err := createStoppedIfHasResourceSelector(ctx, r); err != nil {
+		return err
 	}
 	if err := fn(ctx); err != nil {
 		return err
@@ -1099,9 +1113,16 @@ func EvalStatus(ctx context.Context, r Driver) status.T {
 	} else if !r.IsDisabled() {
 		Setenv(r)
 		s = r.Status(ctx)
-		prStatus := SCSIPersistentReservationStatus(r)
+		prStatus := SCSIPersistentReservationStatus(ctx, r)
 		if s == status.NotApplicable {
 			s.Add(prStatus)
+		}
+		if s == status.Up {
+			if isStopped, err := IsStopped(r); err != nil {
+				r.StatusLog().Error("%s", err)
+			} else if isStopped {
+				r.StatusLog().Warn("unmanaged start")
+			}
 		}
 		if r.IsStandby() {
 			switch {
@@ -1120,7 +1141,7 @@ func EvalStatus(ctx context.Context, r Driver) status.T {
 	return s
 }
 
-func newSCSIPersistentRerservationHandle(r Driver) *scsi.PersistentReservationHandle {
+func newSCSIPersistentRerservationHandle(ctx context.Context, r Driver) *scsi.PersistentReservationHandle {
 	var i any = r
 	o, ok := i.(devReservabler)
 	if !ok {
@@ -1135,6 +1156,7 @@ func newSCSIPersistentRerservationHandle(r Driver) *scsi.PersistentReservationHa
 		Key:            o.PersistentReservationKey(),
 		Devices:        o.ReservableDevices(),
 		NoPreemptAbort: o.IsSCSIPersistentReservationPreemptAbortDisabled(),
+		Force:          actioncontext.IsForce(ctx) || env.HasDaemonMonitorOrigin(),
 		Log:            r.Log(),
 		StatusLogger:   r.StatusLog(),
 	}
@@ -1142,7 +1164,7 @@ func newSCSIPersistentRerservationHandle(r Driver) *scsi.PersistentReservationHa
 }
 
 func SCSIPersistentReservationStop(ctx context.Context, r Driver) error {
-	if hdl := newSCSIPersistentRerservationHandle(r); hdl == nil {
+	if hdl := newSCSIPersistentRerservationHandle(ctx, r); hdl == nil {
 		return nil
 	} else {
 		return hdl.Stop()
@@ -1167,15 +1189,15 @@ func SCSIPersistentReservationStart(ctx context.Context, r Driver) error {
 		return err
 	}
 
-	if hdl := newSCSIPersistentRerservationHandle(r); hdl == nil {
+	if hdl := newSCSIPersistentRerservationHandle(ctx, r); hdl == nil {
 		return nil
 	} else {
 		return hdl.Start()
 	}
 }
 
-func SCSIPersistentReservationStatus(r Driver) status.T {
-	if hdl := newSCSIPersistentRerservationHandle(r); hdl == nil {
+func SCSIPersistentReservationStatus(ctx context.Context, r Driver) status.T {
+	if hdl := newSCSIPersistentRerservationHandle(ctx, r); hdl == nil {
 		return status.NotApplicable
 	} else {
 		return hdl.Status()
@@ -1188,21 +1210,22 @@ func GetStatus(ctx context.Context, r Driver) Status {
 	// on containers it will set the initial inspect.
 	resStatus := EvalStatus(ctx, r)
 	return Status{
-		Label:       formatResourceLabel(ctx, r),
-		Type:        r.Manifest().DriverID.String(),
-		Status:      resStatus,
-		Subset:      r.RSubset(),
-		Tags:        r.TagSet(),
-		Log:         r.StatusLog().Entries(),
-		Provisioned: getProvisionStatus(r),
-		Info:        getStatusInfo(ctx, r),
+		Label:         formatResourceLabel(ctx, r),
+		Type:          r.Manifest().DriverID.String(),
+		Status:        resStatus,
+		Subset:        r.RSubset(),
+		Tags:          r.TagSet(),
+		Log:           r.StatusLog().Entries(),
+		IsProvisioned: getProvisionStatus(r),
+		Info:          getStatusInfo(ctx, r),
 
-		Monitor:  MonitorFlag(r.IsMonitored()),
-		Restart:  RestartFlag(r.RestartCount()),
-		Optional: OptionalFlag(r.IsOptional()),
-		Standby:  StandbyFlag(r.IsStandby()),
-		Disable:  DisableFlag(r.IsDisabled()),
-		Encap:    EncapFlag(r.IsEncap()),
+		IsStopped:   r.IsStopped(),
+		IsMonitored: r.IsMonitored(),
+		Restart:     r.RestartCount(),
+		IsOptional:  r.IsOptional(),
+		IsStandby:   r.IsStandby(),
+		IsDisabled:  r.IsDisabled(),
+		IsEncap:     r.IsEncap(),
 	}
 }
 
@@ -1322,7 +1345,7 @@ func (t SCSIPersistentReservation) PersistentReservationKey() string {
 	return t.Key
 }
 
-func (t Status) DeepCopy() *Status {
+func (t *Status) DeepCopy() *Status {
 	newValue := Status{}
 	if b, err := json.Marshal(t); err != nil {
 		return &Status{}
@@ -1332,18 +1355,19 @@ func (t Status) DeepCopy() *Status {
 	return &Status{}
 }
 
-func (t Status) Unstructured() map[string]any {
+func (t *Status) Unstructured() map[string]any {
 	m := map[string]any{
 		"label":       t.Label,
 		"status":      t.Status,
 		"type":        t.Type,
-		"provisioned": t.Provisioned,
-		"monitor":     t.Monitor,
-		"disable":     t.Disable,
-		"optional":    t.Optional,
-		"encap":       t.Encap,
+		"provisioned": t.IsProvisioned,
+		"monitor":     t.IsMonitored,
+		"disable":     t.IsDisabled,
+		"optional":    t.IsOptional,
+		"encap":       t.IsEncap,
 		"restart":     t.Restart,
-		"standby":     t.Standby,
+		"standby":     t.IsStandby,
+		"stopped":     t.IsStopped,
 	}
 	if len(t.Log) > 0 {
 		m["log"] = t.Log
@@ -1389,4 +1413,60 @@ func (t *RunningInfoList) LoadRunDir(rid string, runDir runfiles.Dir) error {
 		})
 	}
 	return errs
+}
+
+func stoppedFlag(r Driver) string {
+	return filepath.Join(r.VarDir(), "stopped")
+}
+
+func IsStopped(r Driver) (bool, error) {
+	path := stoppedFlag(r)
+	_, err := os.Stat(path)
+	if err == nil {
+		return true, nil
+	} else if os.IsNotExist(err) {
+		return false, nil
+	} else {
+		return false, err
+	}
+}
+
+// removeStoppedIfNoResourceSelector removes the flag file preventing resource restarts by the daemon
+func removeStoppedIfNoResourceSelector(ctx context.Context, r Driver) error {
+	if actioncontext.HasResourceSelector(ctx) {
+		return nil
+	}
+	return removeStopped(r)
+}
+
+func removeStopped(r Driver) error {
+	path := stoppedFlag(r)
+	err := os.Remove(path)
+	if os.IsNotExist(err) {
+		return nil
+	}
+	return err
+}
+
+// createStoppedIfHasResourceSelector creates the flag file preventing resource restarts by the daemon
+func createStoppedIfHasResourceSelector(ctx context.Context, r Driver) error {
+	if !actioncontext.HasResourceSelector(ctx) {
+		return nil
+	}
+	perm := os.FileMode(0o644)
+	path := stoppedFlag(r)
+	mkfile := func() (*os.File, error) {
+		return os.OpenFile(path, os.O_CREATE|os.O_WRONLY, perm)
+	}
+	file, err := mkfile()
+	if os.IsNotExist(err) {
+		if err := os.MkdirAll(filepath.Dir(path), perm); err != nil {
+			return err
+		}
+		file, err = mkfile()
+	}
+	if err != nil {
+		return err
+	}
+	return file.Close()
 }

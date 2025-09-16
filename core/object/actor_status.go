@@ -193,7 +193,7 @@ func (t *actor) resourceStatusEval(ctx context.Context, data *instance.Status, m
 	}
 	doResourceStatus := func(group driver.Group, resourceStatus resource.Status) {
 		data.Overall.Add(resourceStatus.Status)
-		if !resourceStatus.Optional {
+		if !resourceStatus.IsOptional {
 			switch group {
 			case driver.GroupSync:
 			case driver.GroupTask:
@@ -201,7 +201,7 @@ func (t *actor) resourceStatusEval(ctx context.Context, data *instance.Status, m
 				data.Avail.Add(resourceStatus.Status)
 			}
 		}
-		data.Provisioned.Add(resourceStatus.Provisioned.State)
+		data.Provisioned.Add(resourceStatus.IsProvisioned.State)
 		for _, entry := range resourceStatus.Log {
 			switch entry.Level {
 			case resource.WarnLevel, resource.ErrorLevel:
@@ -234,11 +234,11 @@ func (t *actor) resourceStatusEval(ctx context.Context, data *instance.Status, m
 
 		// If the resource is up but the provisioned flag is unset, set
 		// the provisioned flag.
-		if resourceStatus.Provisioned.State == provisioned.False {
+		if resourceStatus.IsProvisioned.State == provisioned.False {
 			switch resourceStatus.Status {
 			case status.Up, status.StandbyUp:
 				resource.SetProvisioned(ctx, r)
-				resourceStatus.Provisioned.State = provisioned.True
+				resourceStatus.IsProvisioned.State = provisioned.True
 			}
 		}
 

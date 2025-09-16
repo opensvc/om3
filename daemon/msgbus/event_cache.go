@@ -24,6 +24,8 @@ func (data *ClusterData) ExtractEvents(m any, labels pubsub.Labels) ([]any, erro
 		return data.daemonSchedulerUpdated(labels)
 	case *ObjectStatusUpdated:
 		return data.objectStatusUpdated(labels)
+	case *NodePoolStatusUpdated:
+		return data.poolStatusUpdated(labels)
 	case *InstanceConfigUpdated:
 		return data.instanceConfigUpdated(labels)
 	case *InstanceMonitorUpdated:

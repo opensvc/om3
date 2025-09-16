@@ -44,6 +44,8 @@ func (data *ClusterData) ApplyMessage(m pubsub.Messager) {
 		if c.Node == data.localhost {
 			data.onObjectStatusUpdated(c)
 		}
+	case *NodePoolStatusUpdated:
+		data.onPoolStatusUpdated(c)
 	case *InstanceConfigDeleted:
 		data.onInstanceConfigDeleted(c)
 	case *InstanceConfigUpdated:

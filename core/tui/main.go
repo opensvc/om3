@@ -248,36 +248,6 @@ func (t *App) resetAllSelected() {
 	t.resetSelectedRIDs()
 }
 
-func (t *App) updateKeyTextView() {
-	if t.viewPath.IsZero() {
-		return
-	}
-	if t.viewKey == "" {
-		return
-	}
-	if t.skipIfConfigNotUpdated() {
-		return
-	}
-	resp, err := t.client.GetObjectDataKeyWithResponse(context.Background(), t.viewPath.Namespace, t.viewPath.Kind, t.viewPath.Name, &api.GetObjectDataKeyParams{
-		Name: t.viewKey,
-	})
-	if err != nil {
-		t.errorf("%s", err)
-		return
-	}
-	if resp.StatusCode() != http.StatusOK {
-		t.errorf("status code: %s", resp.Status())
-		return
-	}
-
-	t.initTextView()
-	text := string(resp.Body)
-	title := fmt.Sprintf("%s key %s", t.viewPath, t.viewKey)
-	t.textView.SetTitle(title)
-	t.textView.Clear()
-	fmt.Fprint(t.textView, text)
-}
-
 func (t *App) initHeadTextView() {
 	t.head = tview.NewTable()
 	t.head.SetBorder(false)
@@ -572,6 +542,8 @@ func (t *App) do(statusGetter getter, evReader event.ReadCloser) error {
 					t.updateConfigView()
 				case viewKeys:
 					t.updateKeysView()
+				case viewKey:
+					t.updateKeyTextView()
 				default:
 					t.updateObjects()
 				}

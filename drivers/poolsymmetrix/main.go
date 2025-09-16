@@ -148,7 +148,9 @@ func (t T) getSRP() (arraysymmetrix.SRP, error) {
 }
 
 func (t T) Usage() (pool.Usage, error) {
-	usage := pool.Usage{}
+	usage := pool.Usage{
+		Shared: true,
+	}
 
 	srp, err := t.getSRP()
 	if err != nil {

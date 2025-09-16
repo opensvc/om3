@@ -10,6 +10,7 @@ import (
 	"github.com/opensvc/om3/core/naming"
 	"github.com/opensvc/om3/core/node"
 	"github.com/opensvc/om3/core/provisioned"
+	"github.com/opensvc/om3/core/resource"
 	"github.com/opensvc/om3/core/status"
 	"github.com/opensvc/om3/daemon/msgbus"
 	"github.com/opensvc/om3/util/command"
@@ -259,7 +260,7 @@ func (t *Manager) orchestrateResourceRestart() {
 	for rid, rstat := range t.instStatus[t.localhost].Resources {
 		// Encap node don't manage restart restart for encap resources. The
 		// master node will manage.
-		if rstat.Encap {
+		if rstat.IsEncap {
 			continue
 		}
 		rcfg := t.instConfig.Resources.Get(rid)
@@ -270,7 +271,7 @@ func (t *Manager) orchestrateResourceRestart() {
 		if rmon == nil {
 			continue
 		}
-		needRestart, needMonitorAction, err := t.orchestrateResourcePlan(rid, rcfg, rmon, rstat.Status, started)
+		needRestart, needMonitorAction, err := t.orchestrateResourcePlan(rid, rcfg, rmon, rstat, started)
 		if err != nil {
 			t.log.Errorf("orchestrate resource plan for resource %s: %s", rid, err)
 			t.cancelResourceOrchestrateSchedules()
@@ -301,7 +302,7 @@ func (t *Manager) orchestrateResourceRestart() {
 			if rmon == nil {
 				continue
 			}
-			needRestart, needMonitorAction, err := t.orchestrateResourcePlan(rid, rcfg, rmon, rstat.Status, started)
+			needRestart, needMonitorAction, err := t.orchestrateResourcePlan(rid, rcfg, rmon, rstat, started)
 			if err != nil {
 				t.log.Errorf("orchestrate resource plan for resource %s: %s", rid, err)
 				t.cancelResourceOrchestrateSchedules()
@@ -471,7 +472,7 @@ func (t *Manager) cancelResourceOrchestrateSchedules() {
 //	    the remaining restarts is 0
 //		the `monitor` value is true
 //		the `monitor_action` is not `MonitorActionNone`
-func (t *Manager) orchestrateResourcePlan(rid string, rcfg *instance.ResourceConfig, rmon *instance.ResourceMonitor, rStatus status.T, started bool) (needRestart, needMonitorAction bool, err error) {
+func (t *Manager) orchestrateResourcePlan(rid string, rcfg *instance.ResourceConfig, rmon *instance.ResourceMonitor, rStatus resource.Status, started bool) (needRestart, needMonitorAction bool, err error) {
 	if rcfg == nil {
 		err = fmt.Errorf("orchestrate resource plan called with nil resource monitor")
 		return
@@ -505,8 +506,13 @@ func (t *Manager) orchestrateResourcePlan(rid string, rcfg *instance.ResourceCon
 		or.log.Debugf("planFor rid %s skipped: %s", rid, reason)
 		dropScheduled(rid, reason)
 		resetRemaining(rid, reason)
-	case rStatus.Is(status.NotApplicable, status.Undef, status.Up, status.StandbyUp):
-		reason := fmt.Sprintf("status is %s", rStatus)
+	case rStatus.IsStopped:
+		reason := fmt.Sprintf("resource is explicitely stopped")
+		or.log.Debugf("planFor rid %s skipped: %s", rid, reason)
+		dropScheduled(rid, reason)
+		resetRemaining(rid, reason)
+	case rStatus.Status.Is(status.NotApplicable, status.Undef, status.Up, status.StandbyUp):
+		reason := fmt.Sprintf("status is %s", rStatus.Status)
 		or.log.Debugf("planFor rid %s skipped: %s", rid, reason)
 		dropScheduled(rid, reason)
 		resetRemaining(rid, reason)
@@ -516,10 +522,10 @@ func (t *Manager) orchestrateResourcePlan(rid string, rcfg *instance.ResourceCon
 		or.log.Debugf("planFor rid %s skipped: monitor action has been already called", rid)
 	case rcfg.IsStandby || started:
 		if rmon.Restart.Remaining == 0 && rcfg.IsMonitored {
-			or.log.Infof("rid %s status %s, restart remaining %d out of %d: need monitor action", rid, rStatus, rmon.Restart.Remaining, rcfg.Restart)
+			or.log.Infof("rid %s status %s, restart remaining %d out of %d: need monitor action", rid, rStatus.Status, rmon.Restart.Remaining, rcfg.Restart)
 			needMonitorAction = true
 		} else if rmon.Restart.Remaining > 0 {
-			or.log.Infof("rid %s status %s, restart remaining %d out of %d", rid, rStatus, rmon.Restart.Remaining, rcfg.Restart)
+			or.log.Infof("rid %s status %s, restart remaining %d out of %d", rid, rStatus.Status, rmon.Restart.Remaining, rcfg.Restart)
 			needRestart = true
 		}
 	default:
