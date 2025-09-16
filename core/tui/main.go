@@ -935,7 +935,7 @@ func (t *App) onRuneColumn(event *tcell.EventKey) {
 					case "pool":
 						t.showPoolList()
 						return
-					case "network":
+					case "network", "net":
 						t.showNetworkList()
 						return
 
