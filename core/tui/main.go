@@ -23,6 +23,7 @@ import (
 	"github.com/opensvc/om3/core/monitor"
 	"github.com/opensvc/om3/core/naming"
 	"github.com/opensvc/om3/core/oxcmd"
+	"github.com/opensvc/om3/core/pool"
 	"github.com/opensvc/om3/core/rawconfig"
 	"github.com/opensvc/om3/core/streamlog"
 	"github.com/opensvc/om3/daemon/api"
@@ -62,6 +63,8 @@ type (
 
 		lastDraw time.Time
 
+		selectedElement string
+
 		viewPath naming.Path
 		viewNode string
 		viewKey  string
@@ -99,6 +102,10 @@ const (
 	viewKeys
 	viewInstance
 	viewLog
+	viewPool
+	viewPoolVolume
+	viewNetwork
+	viewNetworkIpList
 	viewLast // marker, not a real view
 )
 
@@ -184,6 +191,14 @@ func (t viewId) String() string {
 		return "instance"
 	case viewLog:
 		return "log"
+	case viewPool:
+		return "pool"
+	case viewPoolVolume:
+		return "pool volume"
+	case viewNetwork:
+		return "network"
+	case viewNetworkIpList:
+		return "network ip list"
 	default:
 		return ""
 	}
@@ -542,8 +557,14 @@ func (t *App) do(statusGetter getter, evReader event.ReadCloser) error {
 					t.updateConfigView()
 				case viewKeys:
 					t.updateKeysView()
-				case viewKey:
-					t.updateKeyTextView()
+				case viewPool:
+					t.updatePoolList()
+				case viewPoolVolume:
+					t.updatePoolVolume(t.selectedElement)
+				case viewNetwork:
+					t.updateNetworkList()
+				case viewNetworkIpList:
+					t.updateNetworkIpList(t.selectedElement)
 				default:
 					t.updateObjects()
 				}
@@ -905,12 +926,13 @@ func (t *App) onRuneColumn(event *tcell.EventKey) {
 						clean()
 						return
 					case "pool":
-						t.showPoolList()
+						t.nav(viewPool)
+						clean()
 						return
 					case "network", "net":
-						t.showNetworkList()
+						t.nav(viewNetwork)
+						clean()
 						return
-
 					}
 				case "do":
 					if len(args) < 2 {
@@ -1480,7 +1502,7 @@ func (t *App) onRuneH(event *tcell.EventKey) {
 
    go <to>
 
-     sec, cfg, vol, pool
+     sec, cfg, vol, pool, net
 
    filter <expression>
 `
@@ -1832,12 +1854,21 @@ func (t *App) navFromTo(from, to viewId) {
 		t.flex.AddItem(t.objects, 0, 1, true)
 		t.app.SetFocus(t.objects)
 		t.updateObjects()
+	case viewNetwork:
+		t.updateNetworkList()
+	case viewPool:
+		t.updatePoolList()
+	case viewNetworkIpList:
+		t.updateNetworkIpList(t.selectedElement)
+	case viewPoolVolume:
+		t.updatePoolVolume(t.selectedElement)
 	}
 	t.updateHead()
 	t.flex.AddItem(t.errs, 1, 0, false)
 }
 
 func (t *App) showPoolList() {
+func (t *App) updatePoolList() {
 	title := "Storage Pools"
 	titles := []string{"NAME", "TYPE", "CAPABILITIES", "HEAD", "VOLUME_COUNT", "BIN_SIZE", "BIN_USED", "BIN_FREE"}
 	var elementsList [][]string
@@ -1883,32 +1914,23 @@ func (t *App) showPoolList() {
 		elementsList = append(elementsList, elements)
 	}
 
-	t.createTable(title, titles, elementsList, func(event *tcell.EventKey, v *tview.Table) *tcell.EventKey {
+	t.createTableE(title, titles, elementsList, func(event *tcell.EventKey, v *tview.Table) *tcell.EventKey {
 		switch event.Key() {
-		case tcell.KeyESC:
-			t.flex.Clear()
-			t.flex.AddItem(t.head, 1, 0, false)
-			t.flex.AddItem(t.objects, 0, 1, true)
-			t.app.SetFocus(t.objects)
-			t.updateHead()
-
-			t.flex.RemoveItem(t.command)
-			t.command = nil
-			t.app.SetFocus(t.flex.GetItem(1))
 		case tcell.KeyEnter:
 			row, _ := v.GetSelection()
 			if row == 0 {
 				break
 			}
 			poolName := v.GetCell(row, 0).Text
-			t.showPoolVolume(poolName)
+			t.selectedElement = poolName
+			t.nav(viewPoolVolume)
 		}
 
 		return event
 	})
 }
 
-func (t *App) showPoolVolume(name string) {
+func (t *App) updatePoolVolume(name string) {
 	title := fmt.Sprintf("Storage Pool %s Volumes", name)
 	titles := []string{"POOL", "PATH", "SIZE", "CHILDREN", "IS_ORPHAN"}
 	var elementsList [][]string
@@ -1952,15 +1974,10 @@ func (t *App) showPoolVolume(name string) {
 		elementsList = append(elementsList, elements)
 	}
 
-	t.createTable(title, titles, elementsList, func(event *tcell.EventKey, _ *tview.Table) *tcell.EventKey {
-		if event.Key() == tcell.KeyESC {
-			t.showPoolList()
-		}
-		return event
-	})
+	t.createTable(title, titles, elementsList)
 }
 
-func (t *App) showNetworkList() {
+func (t *App) updateNetworkList() {
 	title := "Networks"
 	titles := []string{"NAME", "TYPE", "NETWORK", "SIZE", "USED", "FREE"}
 	var elementsList [][]string
@@ -2004,32 +2021,22 @@ func (t *App) showNetworkList() {
 		elementsList = append(elementsList, elements)
 	}
 
-	t.createTable(title, titles, elementsList, func(event *tcell.EventKey, v *tview.Table) *tcell.EventKey {
+	t.createTableE(title, titles, elementsList, func(event *tcell.EventKey, v *tview.Table) *tcell.EventKey {
 		switch event.Key() {
-		case tcell.KeyESC:
-			t.flex.Clear()
-			t.flex.AddItem(t.head, 1, 0, false)
-			t.flex.AddItem(t.objects, 0, 1, true)
-			t.app.SetFocus(t.objects)
-			t.updateHead()
-
-			t.flex.RemoveItem(t.command)
-			t.command = nil
-			t.app.SetFocus(t.flex.GetItem(1))
 		case tcell.KeyEnter:
 			row, _ := v.GetSelection()
 			if row == 0 {
 				break
 			}
 			networkName := v.GetCell(row, 0).Text
-			t.showNetworkIpList(networkName)
+			t.selectedElement = networkName
+			t.nav(viewNetworkIpList)
 		}
-
 		return event
 	})
 }
 
-func (t *App) showNetworkIpList(name string) {
+func (t *App) updateNetworkIpList(name string) {
 	title := fmt.Sprintf("Network %s IPs", name)
 	titles := []string{"OBJECT", "NODE", "RID", "IP", "NET_NAME", "NET_TYPE"}
 	var elementsList [][]string
@@ -2073,15 +2080,14 @@ func (t *App) showNetworkIpList(name string) {
 		elementsList = append(elementsList, elements)
 	}
 
-	t.createTable(title, titles, elementsList, func(event *tcell.EventKey, _ *tview.Table) *tcell.EventKey {
-		if event.Key() == tcell.KeyESC {
-			t.showNetworkList()
-		}
-		return event
-	})
+	t.createTable(title, titles, elementsList)
 }
 
-func (t *App) createTable(title string, titles []string, elementsList [][]string, capture func(event *tcell.EventKey, v *tview.Table) *tcell.EventKey) {
+func (t *App) createTable(title string, titles []string, elementsList [][]string) {
+	t.createTableE(title, titles, elementsList, nil)
+}
+
+func (t *App) createTableE(title string, titles []string, elementsList [][]string, capture func(event *tcell.EventKey, v *tview.Table) *tcell.EventKey) {
 	v := tview.NewTable()
 	v.SetSelectable(true, false)
 	v.SetTitle(title)
@@ -2090,7 +2096,13 @@ func (t *App) createTable(title string, titles []string, elementsList [][]string
 	}
 
 	v.SetInputCapture(func(event *tcell.EventKey) *tcell.EventKey {
-		return capture(event, v)
+		if event.Rune() == 'q' {
+			t.stop()
+		}
+		if capture != nil {
+			return capture(event, v)
+		}
+		return event
 	})
 
 	for i, elements := range elementsList {
