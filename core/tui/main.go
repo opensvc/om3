@@ -9,6 +9,7 @@ import (
 	"net/http"
 	"os"
 	"sort"
+	"strconv"
 	"strings"
 	"sync"
 	"sync/atomic"
@@ -28,6 +29,7 @@ import (
 	"github.com/opensvc/om3/daemon/msgbus"
 	"github.com/opensvc/om3/util/hostname"
 	"github.com/opensvc/om3/util/logging"
+	"github.com/opensvc/om3/util/sizeconv"
 	"github.com/rivo/tview"
 	"github.com/rs/zerolog"
 )
@@ -930,6 +932,13 @@ func (t *App) onRuneColumn(event *tcell.EventKey) {
 						t.setFilter("*/vol/*")
 						clean()
 						return
+					case "pool":
+						t.showPoolList()
+						return
+					case "network", "net":
+						t.showNetworkList()
+						return
+
 					}
 				case "do":
 					if len(args) < 2 {
@@ -1499,7 +1508,7 @@ func (t *App) onRuneH(event *tcell.EventKey) {
 
    go <to>
 
-     sec, cfg, vol
+     sec, cfg, vol, pool
 
    filter <expression>
 `
@@ -1854,6 +1863,277 @@ func (t *App) navFromTo(from, to viewId) {
 	}
 	t.updateHead()
 	t.flex.AddItem(t.errs, 1, 0, false)
+}
+
+func (t *App) showPoolList() {
+	title := "Storage Pools"
+	titles := []string{"NAME", "TYPE", "CAPABILITIES", "HEAD", "VOLUME_COUNT", "BIN_SIZE", "BIN_USED", "BIN_FREE"}
+	var elementsList [][]string
+	c, err := client.New()
+	if err != nil {
+		t.errorf("failed to create client: %s", err)
+		return
+	}
+
+	params := api.GetPoolsParams{}
+	resp, err := c.GetPoolsWithResponse(context.Background(), &params)
+	if err != nil {
+		t.errorf("failed to get pool volumes: %s", err)
+		return
+	}
+
+	if resp.StatusCode() != http.StatusOK {
+		switch resp.StatusCode() {
+		case 401:
+			t.errorf("%s", resp.JSON401)
+		case 403:
+			t.errorf("%s", resp.JSON403)
+		case 500:
+			t.errorf("%s", resp.JSON500)
+		default:
+			t.errorf("unexpected status code: %d", resp.StatusCode())
+		}
+		return
+	}
+
+	data := resp.JSON200
+	for _, pool := range data.Items {
+		elements := []string{
+			pool.Name,
+			pool.Type,
+			strings.Join(pool.Capabilities, ","),
+			pool.Head,
+			strconv.FormatInt(int64(pool.VolumeCount), 10),
+			sizeconv.BSizeCompact(float64(pool.Size)),
+			sizeconv.BSizeCompact(float64(pool.Used)),
+			sizeconv.BSizeCompact(float64(pool.Free)),
+		}
+		elementsList = append(elementsList, elements)
+	}
+
+	t.createTable(title, titles, elementsList, func(event *tcell.EventKey, v *tview.Table) *tcell.EventKey {
+		switch event.Key() {
+		case tcell.KeyESC:
+			t.flex.Clear()
+			t.flex.AddItem(t.head, 1, 0, false)
+			t.flex.AddItem(t.objects, 0, 1, true)
+			t.app.SetFocus(t.objects)
+			t.updateHead()
+
+			t.flex.RemoveItem(t.command)
+			t.command = nil
+			t.app.SetFocus(t.flex.GetItem(1))
+		case tcell.KeyEnter:
+			row, _ := v.GetSelection()
+			if row == 0 {
+				break
+			}
+			poolName := v.GetCell(row, 0).Text
+			t.showPoolVolume(poolName)
+		}
+
+		return event
+	})
+}
+
+func (t *App) showPoolVolume(name string) {
+	title := fmt.Sprintf("Storage Pool %s Volumes", name)
+	titles := []string{"POOL", "PATH", "SIZE", "CHILDREN", "IS_ORPHAN"}
+	var elementsList [][]string
+
+	c, err := client.New()
+	if err != nil {
+		t.errorf("failed to create client: %s", err)
+		return
+	}
+
+	params := api.GetPoolVolumesParams{}
+	params.Name = &name
+	resp, err := c.GetPoolVolumesWithResponse(context.Background(), &params)
+	if err != nil {
+		t.errorf("failed to get pool volumes: %s", err)
+		return
+	}
+
+	if resp.StatusCode() != http.StatusOK {
+		switch resp.StatusCode() {
+		case 401:
+			t.errorf("%s", resp.JSON401)
+		case 403:
+			t.errorf("%s", resp.JSON403)
+		case 500:
+			t.errorf("%s", resp.JSON500)
+		default:
+			t.errorf("unexpected status code: %d", resp.StatusCode())
+		}
+	}
+
+	data := resp.JSON200
+	for _, volume := range data.Items {
+		elements := []string{
+			volume.Pool,
+			volume.Path,
+			sizeconv.BSizeCompact(float64(volume.Size)),
+			strings.Join(volume.Children, ","),
+			strconv.FormatBool(volume.IsOrphan),
+		}
+		elementsList = append(elementsList, elements)
+	}
+
+	t.createTable(title, titles, elementsList, func(event *tcell.EventKey, _ *tview.Table) *tcell.EventKey {
+		if event.Key() == tcell.KeyESC {
+			t.showPoolList()
+		}
+		return event
+	})
+}
+
+func (t *App) showNetworkList() {
+	title := "Networks"
+	titles := []string{"NAME", "TYPE", "NETWORK", "SIZE", "USED", "FREE"}
+	var elementsList [][]string
+
+	c, err := client.New()
+	if err != nil {
+		t.errorf("failed to create client: %s", err)
+	}
+
+	params := api.GetNetworksParams{}
+	resp, err := c.GetNetworksWithResponse(context.Background(), &params)
+	if err != nil {
+		t.errorf("failed to get networks: %s", err)
+		return
+	}
+
+	if resp.StatusCode() != http.StatusOK {
+		switch resp.StatusCode() {
+		case 401:
+			t.errorf("%s", resp.JSON401)
+		case 403:
+			t.errorf("%s", resp.JSON403)
+		case 500:
+			t.errorf("%s", resp.JSON500)
+		default:
+			t.errorf("unexpected status code: %d", resp.StatusCode())
+		}
+		return
+	}
+
+	data := resp.JSON200
+	for _, network := range data.Items {
+		elements := []string{
+			network.Name,
+			network.Type,
+			network.Network,
+			sizeconv.BSizeCompact(float64(network.Size)),
+			sizeconv.BSizeCompact(float64(network.Used)),
+			sizeconv.BSizeCompact(float64(network.Free)),
+		}
+		elementsList = append(elementsList, elements)
+	}
+
+	t.createTable(title, titles, elementsList, func(event *tcell.EventKey, v *tview.Table) *tcell.EventKey {
+		switch event.Key() {
+		case tcell.KeyESC:
+			t.flex.Clear()
+			t.flex.AddItem(t.head, 1, 0, false)
+			t.flex.AddItem(t.objects, 0, 1, true)
+			t.app.SetFocus(t.objects)
+			t.updateHead()
+
+			t.flex.RemoveItem(t.command)
+			t.command = nil
+			t.app.SetFocus(t.flex.GetItem(1))
+		case tcell.KeyEnter:
+			row, _ := v.GetSelection()
+			if row == 0 {
+				break
+			}
+			networkName := v.GetCell(row, 0).Text
+			t.showNetworkIpList(networkName)
+		}
+
+		return event
+	})
+}
+
+func (t *App) showNetworkIpList(name string) {
+	title := fmt.Sprintf("Network %s IPs", name)
+	titles := []string{"OBJECT", "NODE", "RID", "IP", "NET_NAME", "NET_TYPE"}
+	var elementsList [][]string
+
+	c, err := client.New()
+	if err != nil {
+		t.errorf("failed to create client: %s", err)
+	}
+
+	params := api.GetNetworkIPParams{}
+	params.Name = &name
+	resp, err := c.GetNetworkIPWithResponse(context.Background(), &params)
+	if err != nil {
+		t.errorf("failed to get network ips: %s", err)
+		return
+	}
+
+	if resp.StatusCode() != http.StatusOK {
+		switch resp.StatusCode() {
+		case 401:
+			t.errorf("%s", resp.JSON401)
+		case 403:
+			t.errorf("%s", resp.JSON403)
+		case 500:
+			t.errorf("%s", resp.JSON500)
+		default:
+			t.errorf("unexpected status code: %d", resp.StatusCode())
+		}
+	}
+
+	data := resp.JSON200
+	for _, ip := range data.Items {
+		elements := []string{
+			ip.Path,
+			ip.Node,
+			ip.RID,
+			ip.IP,
+			ip.Network.Name,
+			ip.Network.Type,
+		}
+		elementsList = append(elementsList, elements)
+	}
+
+	t.createTable(title, titles, elementsList, func(event *tcell.EventKey, _ *tview.Table) *tcell.EventKey {
+		if event.Key() == tcell.KeyESC {
+			t.showNetworkList()
+		}
+		return event
+	})
+}
+
+func (t *App) createTable(title string, titles []string, elementsList [][]string, capture func(event *tcell.EventKey, v *tview.Table) *tcell.EventKey) {
+	v := tview.NewTable()
+	v.SetSelectable(true, false)
+	v.SetTitle(title)
+	for i, title := range titles {
+		v.SetCell(0, i, tview.NewTableCell(title).SetTextColor(colorTitle).SetSelectable(false))
+	}
+
+	v.SetInputCapture(func(event *tcell.EventKey) *tcell.EventKey {
+		return capture(event, v)
+	})
+
+	for i, elements := range elementsList {
+		row := i + 1
+		for j, element := range elements {
+			selectable := j == 0
+			v.SetCell(row, j, tview.NewTableCell(element).SetSelectable(selectable))
+		}
+	}
+
+	t.flex.Clear()
+	t.flex.AddItem(t.head, 1, 0, false)
+	t.flex.AddItem(v, 0, 1, true)
+	t.app.SetFocus(v)
+	t.updateHead()
 }
 
 func (t *App) selectedString() string {

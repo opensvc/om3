@@ -69,6 +69,22 @@ func (t *App) initObjectsTable() {
 		}
 	}
 
+	handleCursorPosition := func(row, column int) {
+		cell := table.GetCell(row, column)
+		if cell.NotSelectable {
+			for i := 0; i < table.GetRowCount(); i++ {
+				if i == row {
+					continue
+				}
+				c := table.GetCell(i, column)
+				if !c.NotSelectable {
+					table.Select(i, column)
+					return
+				}
+			}
+		}
+	}
+
 	table.SetSelectionChangedFunc(func(row, col int) {
 		t.viewNode = ""
 		t.viewPath = naming.Path{}
@@ -83,6 +99,7 @@ func (t *App) initObjectsTable() {
 		if col >= t.firstInstanceCol {
 			t.viewNode = t.objects.GetCell(0, col).Text
 		}
+		handleCursorPosition(row, col)
 	})
 	table.SetInputCapture(func(event *tcell.EventKey) *tcell.EventKey {
 		switch event.Key() {
