@@ -1867,49 +1867,65 @@ func (t *App) navFromTo(from, to viewId) {
 	t.flex.AddItem(t.errs, 1, 0, false)
 }
 
-func (t *App) showPoolList() {
+func (t *App) getPoolList() map[string]pool.Status {
+	m := make(map[string]pool.Status)
+	for _, nodeData := range t.Current.Cluster.Node {
+		for poolName, poolData := range nodeData.Pool {
+			item, ok := m[poolName]
+			if !ok {
+				item = poolData
+			} else if !poolData.Shared {
+				item.Free += poolData.Free
+				item.Used += poolData.Used
+				item.Size += poolData.Size
+				if item.UpdatedAt.Before(poolData.UpdatedAt) {
+					item.UpdatedAt = poolData.UpdatedAt
+				}
+			}
+			m[poolName] = item
+		}
+	}
+	return m
+}
+
+func (t *App) skipIfPoolNotUpdated() bool {
+	m := t.getPoolList()
+	var lastUpdate time.Time
+	for _, poolData := range m {
+		if poolData.UpdatedAt.After(lastUpdate) {
+			lastUpdate = poolData.UpdatedAt
+		}
+	}
+	if lastUpdate.IsZero() {
+		return true
+	}
+	if lastUpdate.After(t.lastUpdatedAt) {
+		t.lastUpdatedAt = lastUpdate
+		return false
+	}
+	return true
+}
+
 func (t *App) updatePoolList() {
+	if t.skipIfPoolNotUpdated() {
+		return
+	}
 	title := "Storage Pools"
 	titles := []string{"NAME", "TYPE", "CAPABILITIES", "HEAD", "VOLUME_COUNT", "BIN_SIZE", "BIN_USED", "BIN_FREE"}
 	var elementsList [][]string
-	c, err := client.New()
-	if err != nil {
-		t.errorf("failed to create client: %s", err)
-		return
-	}
 
-	params := api.GetPoolsParams{}
-	resp, err := c.GetPoolsWithResponse(context.Background(), &params)
-	if err != nil {
-		t.errorf("failed to get pool volumes: %s", err)
-		return
-	}
+	m := t.getPoolList()
 
-	if resp.StatusCode() != http.StatusOK {
-		switch resp.StatusCode() {
-		case 401:
-			t.errorf("%s", resp.JSON401)
-		case 403:
-			t.errorf("%s", resp.JSON403)
-		case 500:
-			t.errorf("%s", resp.JSON500)
-		default:
-			t.errorf("unexpected status code: %d", resp.StatusCode())
-		}
-		return
-	}
-
-	data := resp.JSON200
-	for _, pool := range data.Items {
+	for poolName, poolData := range m {
 		elements := []string{
-			pool.Name,
-			pool.Type,
-			strings.Join(pool.Capabilities, ","),
-			pool.Head,
-			strconv.FormatInt(int64(pool.VolumeCount), 10),
-			sizeconv.BSizeCompact(float64(pool.Size)),
-			sizeconv.BSizeCompact(float64(pool.Used)),
-			sizeconv.BSizeCompact(float64(pool.Free)),
+			poolName,
+			poolData.Type,
+			strings.Join(poolData.Capabilities, ","),
+			poolData.Head,
+			strconv.FormatInt(int64(poolData.VolumeCount), 10),
+			sizeconv.BSizeCompact(float64(poolData.Size)),
+			sizeconv.BSizeCompact(float64(poolData.Used)),
+			sizeconv.BSizeCompact(float64(poolData.Free)),
 		}
 		elementsList = append(elementsList, elements)
 	}
