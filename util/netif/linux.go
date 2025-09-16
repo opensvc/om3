@@ -12,6 +12,8 @@ import (
 )
 
 func HasCarrier(ifName string) (bool, error) {
+	// Labeled interface don't have a separate /sys/class/net/ subdir.
+	ifName, _, _ = strings.Cut(ifName, ":")
 	p := fmt.Sprintf("/sys/class/net/%s/carrier", ifName)
 	b, err := os.ReadFile(p)
 	if err != nil {
