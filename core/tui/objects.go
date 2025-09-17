@@ -26,6 +26,8 @@ func (t *App) initObjectsTable() {
 			t.nav(viewKeys)
 		case row == 0 && col == 1:
 			t.listContexts()
+		case row == 1 && col == 1:
+			t.nav(viewEvents)
 		}
 	}
 
@@ -203,7 +205,7 @@ func (t *App) updateObjects() {
 
 	row++
 	t.objects.SetCell(row, 0, tview.NewTableCell("EVENT").SetTextColor(colorTitle).SetSelectable(false))
-	t.objects.SetCell(row, 1, tview.NewTableCell(fmt.Sprintf("%d", t.eventCount)).SetSelectable(false))
+	t.objects.SetCell(row, 1, tview.NewTableCell(fmt.Sprintf("%d", t.eventCount)).SetSelectable(true))
 	t.objects.SetCell(row, 2, tview.NewTableCell("").SetSelectable(false))
 	t.objects.SetCell(row, 3, tview.NewTableCell("SCORE").SetTextColor(colorTitle).SetSelectable(false))
 	t.objects.SetCell(row, 4, tview.NewTableCell("│").SetTextColor(colorTitle).SetSelectable(false))
