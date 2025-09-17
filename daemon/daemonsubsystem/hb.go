@@ -65,70 +65,103 @@ type (
 		Type   string  `json:"type"`
 		Alerts []Alert `json:"alerts"`
 		HeartbeatStreamPeerStatus
+		IsSingleNode bool `json:"-"`
 	}
 )
 
 func (t HeartbeatStreamPeerStatusTableEntry) Unstructured() map[string]any {
-	var isBeatingIcon string
-	var hasAlertsIcon string
-	if t.IsBeating {
-		isBeatingIcon = "✅"
-	} else {
-		isBeatingIcon = "❌"
+	stateText := t.Status.State
+	if stateText == "" {
+		stateText = "unknown"
 	}
-	if len(t.Alerts) > 0 {
-		for _, alert := range t.Alerts {
-			if alert.Severity != "info" {
-				hasAlertsIcon = "⚠️ "
-				break
-			}
+	var beatingText string
+	if t.IsSingleNode {
+		beatingText = "beating"
+	} else {
+		if t.IsBeating {
+			beatingText = "beating"
+		} else {
+			beatingText = "stale"
 		}
 	}
 
-	// derive a state icon from the stream's state (e.g. running -> ✅)
 	var stateIcon string
-	if t.Status.State == "running" {
+	switch t.Status.State {
+	case "running":
 		stateIcon = "✅"
-	} else {
+	case "stopped", "failed":
 		stateIcon = "❌"
+	case "warning":
+		stateIcon = "⚠️"
+	default:
+		stateIcon = "❓"
 	}
 
-	// beating icon (visible separately from combined icon)
-	beatingIcon := isBeatingIcon
+	var beatingIcon string
+	if t.IsSingleNode || t.IsBeating {
+		beatingIcon = "✅"
+	} else {
+		beatingIcon = "❌"
+	}
 
-	// keep the legacy combined icon (isBeating + alerts) for backward compatibility
-	combinedIcon := isBeatingIcon + hasAlertsIcon
+	peer := t.Peer
+	if peer == "" {
+		peer = "N/A"
+	}
+	desc := t.Desc
+	if desc == "" {
+		desc = "N/A"
+	}
+
+	lastAt := "N/A"
+	if !t.LastAt.IsZero() {
+		lastAt = t.LastAt.Format(time.RFC3339Nano)
+	}
 
 	return map[string]any{
 		"node":          t.Node,
-		"peer":          t.Peer,
+		"peer":          peer,
 		"type":          t.Type,
 		"alerts":        t.Alerts,
 		"id":            t.Status.ID,
-		"state":         t.Status.State,
+		"state":         stateText,
 		"state_icon":    stateIcon,
+		"state_text":    stateText,
 		"configured_at": t.Status.ConfiguredAt,
 		"updated_at":    t.Status.UpdatedAt,
 		"created_at":    t.Status.CreatedAt,
-		"desc":          t.Desc,
-		"last_at":       t.LastAt,
+		"desc":          desc,
+		"last_at":       lastAt,
 		"is_beating":    t.IsBeating,
+		"beating":       beatingText,
 		"beating_icon":  beatingIcon,
-		"icon":          combinedIcon,
 	}
 }
 
-func (c *Heartbeat) Table(nodeName string) HeartbeatStreamPeerStatusTable {
+func (c *Heartbeat) Table(nodeName string, isSingleNode bool) HeartbeatStreamPeerStatusTable {
 	table := make(HeartbeatStreamPeerStatusTable, 0)
 	for _, stream := range c.Streams {
-		for peerName, peerStatus := range stream.Peers {
+		if len(stream.Peers) > 0 {
+			for peerName, peerStatus := range stream.Peers {
+				table = append(table, HeartbeatStreamPeerStatusTableEntry{
+					Node:                      nodeName,
+					Peer:                      peerName,
+					Status:                    stream.Status,
+					Type:                      stream.Type,
+					Alerts:                    append([]Alert{}, stream.Alerts...),
+					HeartbeatStreamPeerStatus: peerStatus,
+					IsSingleNode:              isSingleNode,
+				})
+			}
+		} else {
 			table = append(table, HeartbeatStreamPeerStatusTableEntry{
 				Node:                      nodeName,
-				Peer:                      peerName,
+				Peer:                      "",
 				Status:                    stream.Status,
 				Type:                      stream.Type,
 				Alerts:                    append([]Alert{}, stream.Alerts...),
-				HeartbeatStreamPeerStatus: peerStatus,
+				HeartbeatStreamPeerStatus: HeartbeatStreamPeerStatus{},
+				IsSingleNode:              isSingleNode,
 			})
 		}
 	}

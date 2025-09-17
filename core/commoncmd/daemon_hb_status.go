@@ -3,6 +3,7 @@ package commoncmd
 import (
 	"encoding/json"
 	"fmt"
+	"sort"
 	"strings"
 
 	"github.com/opensvc/om3/core/client"
@@ -74,6 +75,9 @@ func (t *CmdDaemonHeartbeatStatus) Run() error {
 	if t.Name != "" && !strings.HasPrefix(t.Name, "hb#") {
 		t.Name = "hb#" + t.Name
 	}
+
+	isSingleNode := len(data.Cluster.Node) == 1
+
 	table := make(daemonsubsystem.HeartbeatStreamPeerStatusTable, 0)
 	for nodename, nodeData := range data.Cluster.Node {
 		if nodeMap != nil {
@@ -81,7 +85,7 @@ func (t *CmdDaemonHeartbeatStatus) Run() error {
 				continue
 			}
 		}
-		for _, e := range nodeData.Daemon.Heartbeat.Table(nodename) {
+		for _, e := range nodeData.Daemon.Heartbeat.Table(nodename, isSingleNode) {
 			if peerMap != nil {
 				if _, ok := peerMap[e.Peer]; !ok {
 					continue
@@ -101,6 +105,18 @@ func (t *CmdDaemonHeartbeatStatus) Run() error {
 			table = append(table, e)
 		}
 	}
+
+	sort.Slice(table, func(i, j int) bool {
+		if table[i].Node != table[j].Node {
+			return table[i].Node < table[j].Node
+		}
+		idi := strings.TrimPrefix(table[i].ID, "hb#")
+		idj := strings.TrimPrefix(table[j].ID, "hb#")
+		if idi != idj {
+			return idi < idj
+		}
+		return table[i].Peer < table[j].Peer
+	})
 	output.Renderer{
 		DefaultOutput: "tab=RUNNING:.state_icon,BEATING:.beating_icon,ID:.id,NODE:.node,PEER:.peer,TYPE:.type,DESC:.desc,LAST_AT:.last_at",
 		Output:        t.Output,
