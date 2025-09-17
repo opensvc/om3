@@ -68,6 +68,7 @@ func (a *DaemonAPI) getNodePools(ctx echo.Context, name *string, nodeMap nodesel
 			Size:         stat.Size,
 			Type:         stat.Type,
 			Used:         stat.Used,
+			UpdatedAt:    stat.UpdatedAt,
 			VolumeCount:  len(getPoolVolumes(&e.Name)),
 		}
 		if len(stat.Errors) > 0 {

@@ -497,6 +497,7 @@ func (t *Status) DeepCopy() *Status {
 		Head:         t.Head,
 		VolumeCount:  t.VolumeCount,
 		Capabilities: append([]string{}, t.Capabilities...),
+		UpdatedAt:    t.UpdatedAt,
 		Usage: Usage{
 			Free: t.Usage.Free,
 			Size: t.Usage.Size,
