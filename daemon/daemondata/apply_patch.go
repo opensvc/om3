@@ -210,7 +210,7 @@ func (d *data) setCacheAndPublish(ev event.Event) error {
 		d.publisher.Pub(c, labelFromPeer)
 	// pool...
 	case *msgbus.NodePoolStatusUpdated:
-		pool.StatusData.Set(c.Name, c.Node, &c.Value)
+		pool.StatusData.Set(c.Name, c.Node, c.Value.DeepCopy())
 		d.publisher.Pub(c, labelFromPeer)
 	// overload
 	case *msgbus.EnterOverloadPeriod:

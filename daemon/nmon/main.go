@@ -811,7 +811,7 @@ func (t *Manager) loadPools() {
 		poolName := p.Name()
 		data := pool.GetStatus(p, true)
 		renewed[poolName] = nil
-		pool.StatusData.Set(poolName, t.localhost, &data)
+		pool.StatusData.Set(poolName, t.localhost, data.DeepCopy())
 		t.publisher.Pub(&msgbus.NodePoolStatusUpdated{Node: t.localhost, Name: poolName, Value: data}, t.labelLocalhost)
 	}
 	for _, e := range pool.StatusData.GetByNode(t.localhost) {
