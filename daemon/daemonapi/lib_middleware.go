@@ -165,12 +165,10 @@ func LogRequestMiddleWare(parent context.Context) echo.MiddlewareFunc {
 				if iss, ok := c.Get("iss").(string); ok && iss != "" {
 					userDesc += " iss " + iss
 				}
-				GetLogger(c).Levelf(
+				GetLogger(c).Attr("method", c.Request().Method).Attr("path", c.Path()).Levelf(
 					level,
-					"new request %s: %s %s from user %s address %s",
+					"new request %s from user %s address %s",
 					c.Get("uuid"),
-					c.Request().Method,
-					c.Path(),
 					userDesc,
 					c.Request().RemoteAddr)
 			}
