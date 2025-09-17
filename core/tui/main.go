@@ -83,6 +83,12 @@ type (
 		previousSelectedElement string
 		position                Position
 
+		events       chan event.Event
+		onEventView  atomic.Bool
+		stopEvents   bool
+		eventsCtx    context.Context
+		eventsCancel context.CancelFunc
+
 		viewPath naming.Path
 		viewNode string
 		viewKey  string
@@ -124,6 +130,7 @@ const (
 	viewPoolVolume
 	viewNetwork
 	viewNetworkIpList
+	viewEvents
 	viewLast // marker, not a real view
 )
 
@@ -263,6 +270,7 @@ func NewApp() *App {
 		selectedRIDs:      make(map[[3]string]any),
 		errC:              make(chan error),
 		restartC:          make(chan error),
+		events:            make(chan event.Event, 100),
 	}
 }
 
@@ -298,7 +306,7 @@ func (t *App) initErrsTextView() {
 
 func (t *App) viewPrimitive(v viewId) tview.Primitive {
 	switch v {
-	case viewConfig, viewInstance, viewKey, viewLog:
+	case viewConfig, viewInstance, viewKey, viewLog, viewEvents:
 		return t.textView
 	case viewKeys:
 		return t.keys
@@ -588,6 +596,8 @@ func (t *App) do(statusGetter getter, evReader event.ReadCloser) error {
 					t.updateNetworkList()
 				case viewNetworkIpList:
 					t.updateNetworkIpList(t.selectedElement)
+				case viewEvents:
+					t.updateEventsView()
 				default:
 					t.updateObjects()
 				}
@@ -607,6 +617,9 @@ func (t *App) do(statusGetter getter, evReader event.ReadCloser) error {
 		case err := <-t.errC:
 			return err
 		case e := <-eventC:
+			if t.onEventView.Load() {
+				t.events <- e
+			}
 			if nextEventID == 0 {
 				nextEventID = e.ID
 			} else if e.ID != nextEventID {
@@ -1845,6 +1858,12 @@ func (t *App) navFromTo(from, to viewId) {
 		t.textView = nil
 	case viewKeys:
 		t.keys = nil
+	case viewEvents:
+		t.textView = nil
+		if t.eventsCancel != nil {
+			t.eventsCancel()
+		}
+		t.onEventView.Store(false)
 	}
 	switch to {
 	case viewLog:
@@ -1883,6 +1902,13 @@ func (t *App) navFromTo(from, to viewId) {
 		t.updateNetworkIpList(t.selectedElement)
 	case viewPoolVolume:
 		t.updatePoolVolume(t.selectedElement)
+	case viewEvents:
+		t.onEventView.Store(true)
+		t.initTextView()
+		t.initEventsView()
+		t.flex.AddItem(t.textView, 0, 1, true)
+		t.app.SetFocus(t.textView)
+		t.updateEventsView()
 	}
 	t.updateHead()
 	t.flex.AddItem(t.errs, 1, 0, false)
@@ -1965,5 +1991,6 @@ func (t *App) stop() {
 	default:
 	}
 
+	close(t.events)
 	t.app.Stop()
 }
