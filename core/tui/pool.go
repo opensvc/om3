@@ -4,25 +4,28 @@ import (
 	"context"
 	"fmt"
 	"net/http"
+	"sort"
 	"strconv"
 	"strings"
 	"time"
 
 	"github.com/gdamore/tcell/v2"
 	"github.com/opensvc/om3/core/client"
-	"github.com/opensvc/om3/core/pool"
 	"github.com/opensvc/om3/daemon/api"
 	"github.com/opensvc/om3/util/sizeconv"
 	"github.com/rivo/tview"
 )
 
-func (t *App) getPoolList() map[string]pool.Status {
-	m := make(map[string]pool.Status)
-	for _, nodeData := range t.Current.Cluster.Node {
+func (t *App) getPoolList() map[string]PoolData {
+	m := make(map[string]PoolData)
+	for nodeName, nodeData := range t.Current.Cluster.Node {
 		for poolName, poolData := range nodeData.Pool {
 			item, ok := m[poolName]
 			if !ok {
-				item = poolData
+				item = PoolData{
+					Status: poolData,
+					Node:   nodeName,
+				}
 			} else if !poolData.Shared {
 				item.Free += poolData.Free
 				item.Used += poolData.Used
@@ -35,6 +38,22 @@ func (t *App) getPoolList() map[string]pool.Status {
 		}
 	}
 	return m
+}
+
+func (t *App) getPool(name string) []PoolData {
+	var items []PoolData
+	for nodeName, nodeData := range t.Current.Cluster.Node {
+		for poolName, poolData := range nodeData.Pool {
+			if name != "" && name != poolName {
+				continue
+			}
+			items = append(items, PoolData{
+				Status: poolData,
+				Node:   nodeName,
+			})
+		}
+	}
+	return items
 }
 
 func (t *App) skipIfPoolNotUpdated() bool {
@@ -56,17 +75,23 @@ func (t *App) skipIfPoolNotUpdated() bool {
 }
 
 func (t *App) updatePoolList() {
-	if t.skipIfPoolNotUpdated() {
+	t.updatePoolListS(false)
+}
+
+func (t *App) updatePoolListS(forceUpdate bool) {
+	if !forceUpdate && t.skipIfPoolNotUpdated() {
 		return
 	}
-	title := "Storage Pools"
+	title := "pools"
 	titles := []string{"NAME", "TYPE", "CAPABILITIES", "HEAD", "VOLUME_COUNT", "BIN_SIZE", "BIN_USED", "BIN_FREE"}
+	if t.selectedElement != "" {
+		title = fmt.Sprintf("%s pool", t.selectedElement)
+		titles[0] = "NODE"
+	}
 	var elementsList [][]string
 
-	m := t.getPoolList()
-
-	for poolName, poolData := range m {
-		elements := []string{
+	buildElements := func(poolName string, poolData PoolData) []string {
+		return []string{
 			poolName,
 			poolData.Type,
 			strings.Join(poolData.Capabilities, ","),
@@ -76,27 +101,66 @@ func (t *App) updatePoolList() {
 			sizeconv.BSizeCompact(float64(poolData.Used)),
 			sizeconv.BSizeCompact(float64(poolData.Free)),
 		}
-		elementsList = append(elementsList, elements)
 	}
 
-	t.createTableE(title, titles, elementsList, func(event *tcell.EventKey, v *tview.Table) *tcell.EventKey {
+	if t.selectedElement == "" {
+		m := t.getPoolList()
+
+		poolNames := make([]string, 0, len(m))
+		for poolName, _ := range m {
+			poolNames = append(poolNames, poolName)
+		}
+
+		sort.Strings(poolNames)
+
+		for _, poolName := range poolNames {
+			elementsList = append(elementsList, buildElements(poolName, m[poolName]))
+		}
+	} else {
+		pools := t.getPool(t.selectedElement)
+
+		sort.Slice(pools, func(i, j int) bool {
+			return pools[i].Size > pools[j].Size
+		})
+
+		for _, poolData := range pools {
+			elements := buildElements(t.selectedElement, poolData)
+			elements[0] = poolData.Node
+			elementsList = append(elementsList, elements)
+		}
+	}
+
+	var selectables []int
+	if t.selectedElement == "" {
+		selectables = []int{4}
+	}
+
+	t.createTableB(title, titles, elementsList, selectables, func(event *tcell.EventKey, v *tview.Table) *tcell.EventKey {
 		switch event.Key() {
 		case tcell.KeyEnter:
-			row, _ := v.GetSelection()
+			row, col := v.GetSelection()
 			if row == 0 {
 				break
 			}
 			poolName := v.GetCell(row, 0).Text
+			if col == 0 && t.selectedElement != "" {
+				t.previousSelectedElement = t.selectedElement
+			}
 			t.selectedElement = poolName
-			t.nav(viewPoolVolume)
+			if col == 0 {
+				t.nav(viewPool)
+				t.position = Position{row: 0, col: 0}
+				t.updatePoolListS(true)
+			} else if col == 4 {
+				t.nav(viewPoolVolume)
+			}
 		}
-
 		return event
 	})
 }
 
 func (t *App) updatePoolVolume(name string) {
-	title := fmt.Sprintf("Storage Pool %s Volumes", name)
+	title := fmt.Sprintf("%s volumes", name)
 	titles := []string{"POOL", "PATH", "SIZE", "CHILDREN", "IS_ORPHAN"}
 	var elementsList [][]string
 

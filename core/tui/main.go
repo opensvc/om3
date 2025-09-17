@@ -8,6 +8,7 @@ import (
 	"io"
 	"net/http"
 	"os"
+	"slices"
 	"sort"
 	"strings"
 	"sync"
@@ -22,6 +23,7 @@ import (
 	"github.com/opensvc/om3/core/monitor"
 	"github.com/opensvc/om3/core/naming"
 	"github.com/opensvc/om3/core/oxcmd"
+	"github.com/opensvc/om3/core/pool"
 	"github.com/opensvc/om3/core/rawconfig"
 	"github.com/opensvc/om3/core/streamlog"
 	"github.com/opensvc/om3/daemon/api"
@@ -35,6 +37,16 @@ import (
 type (
 	viewId    int
 	viewStack []viewId
+
+	Position struct {
+		row int
+		col int
+	}
+
+	PoolData struct {
+		pool.Status
+		Node string
+	}
 
 	App struct {
 		*monitor.Frame
@@ -60,7 +72,9 @@ type (
 
 		lastDraw time.Time
 
-		selectedElement string
+		selectedElement         string
+		previousSelectedElement string
+		position                Position
 
 		viewPath naming.Path
 		viewNode string
@@ -243,6 +257,8 @@ func NewApp() *App {
 }
 
 func (t *App) resetSelected() int {
+	t.selectedElement = t.previousSelectedElement
+	t.previousSelectedElement = ""
 	switch t.focus() {
 	case viewInstance:
 		n := len(t.selectedRIDs)
@@ -1799,9 +1815,6 @@ func (t *App) nav(to viewId) {
 func (t *App) back() {
 	from := t.pop()
 	to := t.focus()
-	if to == from {
-		return
-	}
 	t.navFromTo(from, to)
 }
 
@@ -1809,6 +1822,7 @@ func (t *App) navFromTo(from, to viewId) {
 	t.flex.Clear()
 	t.flex.AddItem(t.head, 1, 0, false)
 	t.lastUpdatedAt = time.Time{}
+	t.position = Position{row: 0, col: 0}
 	switch from {
 	case viewObject:
 	case viewLog:
@@ -1854,7 +1868,7 @@ func (t *App) navFromTo(from, to viewId) {
 	case viewNetwork:
 		t.updateNetworkList()
 	case viewPool:
-		t.updatePoolList()
+		t.updatePoolListS(true)
 	case viewNetworkIpList:
 		t.updateNetworkIpList(t.selectedElement)
 	case viewPoolVolume:
@@ -1869,8 +1883,12 @@ func (t *App) createTable(title string, titles []string, elementsList [][]string
 }
 
 func (t *App) createTableE(title string, titles []string, elementsList [][]string, capture func(event *tcell.EventKey, v *tview.Table) *tcell.EventKey) {
+	t.createTableB(title, titles, elementsList, nil, capture)
+}
+
+func (t *App) createTableB(title string, titles []string, elementsList [][]string, selectables []int, capture func(event *tcell.EventKey, v *tview.Table) *tcell.EventKey) {
 	v := tview.NewTable()
-	v.SetSelectable(true, false)
+	v.SetSelectable(true, true)
 	v.SetTitle(title)
 	for i, title := range titles {
 		v.SetCell(0, i, tview.NewTableCell(title).SetTextColor(colorTitle).SetSelectable(false))
@@ -1886,13 +1904,19 @@ func (t *App) createTableE(title string, titles []string, elementsList [][]strin
 		return event
 	})
 
+	v.SetSelectionChangedFunc(func(row, column int) {
+		t.position = Position{row: row, col: column}
+	})
+
 	for i, elements := range elementsList {
 		row := i + 1
 		for j, element := range elements {
-			selectable := j == 0
+			selectable := j == 0 || (selectables != nil && slices.Contains(selectables, j))
 			v.SetCell(row, j, tview.NewTableCell(element).SetSelectable(selectable))
 		}
 	}
+
+	v.Select(t.position.row, t.position.col)
 
 	t.flex.Clear()
 	t.flex.AddItem(t.head, 1, 0, false)

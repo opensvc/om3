@@ -99,6 +99,7 @@ func (t *App) initObjectsTable() {
 		if col >= t.firstInstanceCol {
 			t.viewNode = t.objects.GetCell(0, col).Text
 		}
+		t.position = Position{row: row, col: col}
 		handleCursorPosition(row, col)
 	})
 	table.SetInputCapture(func(event *tcell.EventKey) *tcell.EventKey {
