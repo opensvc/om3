@@ -56,18 +56,23 @@ func (t *App) updateNetworkList() {
 		elementsList = append(elementsList, elements)
 	}
 
-	t.createTableE(title, titles, elementsList, func(event *tcell.EventKey, v *tview.Table) *tcell.EventKey {
-		switch event.Key() {
-		case tcell.KeyEnter:
-			row, _ := v.GetSelection()
-			if row == 0 {
-				break
+	t.createTable(CreateTableOptions{
+		title:        title,
+		titles:       titles,
+		elementsList: elementsList,
+		capture: func(event *tcell.EventKey, v *tview.Table) *tcell.EventKey {
+			switch event.Key() {
+			case tcell.KeyEnter:
+				row, _ := v.GetSelection()
+				if row == 0 {
+					break
+				}
+				networkName := v.GetCell(row, 0).Text
+				t.selectedElement = networkName
+				t.nav(viewNetworkIpList)
 			}
-			networkName := v.GetCell(row, 0).Text
-			t.selectedElement = networkName
-			t.nav(viewNetworkIpList)
-		}
-		return event
+			return event
+		},
 	})
 }
 
@@ -115,5 +120,9 @@ func (t *App) updateNetworkIpList(name string) {
 		elementsList = append(elementsList, elements)
 	}
 
-	t.createTable(title, titles, elementsList)
+	t.createTable(CreateTableOptions{
+		title:        title,
+		titles:       titles,
+		elementsList: elementsList,
+	})
 }

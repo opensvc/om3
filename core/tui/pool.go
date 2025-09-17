@@ -74,11 +74,7 @@ func (t *App) skipIfPoolNotUpdated() bool {
 	return true
 }
 
-func (t *App) updatePoolList() {
-	t.updatePoolListS(false)
-}
-
-func (t *App) updatePoolListS(forceUpdate bool) {
+func (t *App) updatePoolList(forceUpdate bool) {
 	if !forceUpdate && t.skipIfPoolNotUpdated() {
 		return
 	}
@@ -135,27 +131,33 @@ func (t *App) updatePoolListS(forceUpdate bool) {
 		selectables = []int{4}
 	}
 
-	t.createTableB(title, titles, elementsList, selectables, func(event *tcell.EventKey, v *tview.Table) *tcell.EventKey {
-		switch event.Key() {
-		case tcell.KeyEnter:
-			row, col := v.GetSelection()
-			if row == 0 {
-				break
+	t.createTable(CreateTableOptions{
+		title:        title,
+		titles:       titles,
+		elementsList: elementsList,
+		selectables:  selectables,
+		capture: func(event *tcell.EventKey, v *tview.Table) *tcell.EventKey {
+			switch event.Key() {
+			case tcell.KeyEnter:
+				row, col := v.GetSelection()
+				if row == 0 {
+					break
+				}
+				poolName := v.GetCell(row, 0).Text
+				if col == 0 && t.selectedElement != "" {
+					t.previousSelectedElement = t.selectedElement
+				}
+				t.selectedElement = poolName
+				if col == 0 {
+					t.nav(viewPool)
+					t.position = Position{row: 0, col: 0}
+					t.updatePoolList(forceUpdate)
+				} else if col == 4 {
+					t.nav(viewPoolVolume)
+				}
 			}
-			poolName := v.GetCell(row, 0).Text
-			if col == 0 && t.selectedElement != "" {
-				t.previousSelectedElement = t.selectedElement
-			}
-			t.selectedElement = poolName
-			if col == 0 {
-				t.nav(viewPool)
-				t.position = Position{row: 0, col: 0}
-				t.updatePoolListS(true)
-			} else if col == 4 {
-				t.nav(viewPoolVolume)
-			}
-		}
-		return event
+			return event
+		},
 	})
 }
 
@@ -203,5 +205,9 @@ func (t *App) updatePoolVolume(name string) {
 		elementsList = append(elementsList, elements)
 	}
 
-	t.createTable(title, titles, elementsList)
+	t.createTable(CreateTableOptions{
+		title:        title,
+		titles:       titles,
+		elementsList: elementsList,
+	})
 }

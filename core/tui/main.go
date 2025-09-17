@@ -47,6 +47,13 @@ type (
 		pool.Status
 		Node string
 	}
+	CreateTableOptions struct {
+		title        string
+		titles       []string
+		elementsList [][]string
+		selectables  []int
+		capture      func(event *tcell.EventKey, v *tview.Table) *tcell.EventKey
+	}
 
 	App struct {
 		*monitor.Frame
@@ -129,6 +136,9 @@ var (
 	colorHead3     = tcell.ColorCrimson
 	colorInput     = tcell.ColorSteelBlue
 	colorHighlight = tcell.ColorWhite
+
+	forceUpdate    = true
+	updateIfChange = false
 )
 
 type Options struct {
@@ -571,7 +581,7 @@ func (t *App) do(statusGetter getter, evReader event.ReadCloser) error {
 				case viewKeys:
 					t.updateKeysView()
 				case viewPool:
-					t.updatePoolList()
+					t.updatePoolList(updateIfChange)
 				case viewPoolVolume:
 					t.updatePoolVolume(t.selectedElement)
 				case viewNetwork:
@@ -1868,7 +1878,7 @@ func (t *App) navFromTo(from, to viewId) {
 	case viewNetwork:
 		t.updateNetworkList()
 	case viewPool:
-		t.updatePoolListS(true)
+		t.updatePoolList(forceUpdate)
 	case viewNetworkIpList:
 		t.updateNetworkIpList(t.selectedElement)
 	case viewPoolVolume:
@@ -1878,19 +1888,11 @@ func (t *App) navFromTo(from, to viewId) {
 	t.flex.AddItem(t.errs, 1, 0, false)
 }
 
-func (t *App) createTable(title string, titles []string, elementsList [][]string) {
-	t.createTableE(title, titles, elementsList, nil)
-}
-
-func (t *App) createTableE(title string, titles []string, elementsList [][]string, capture func(event *tcell.EventKey, v *tview.Table) *tcell.EventKey) {
-	t.createTableB(title, titles, elementsList, nil, capture)
-}
-
-func (t *App) createTableB(title string, titles []string, elementsList [][]string, selectables []int, capture func(event *tcell.EventKey, v *tview.Table) *tcell.EventKey) {
+func (t *App) createTable(creator CreateTableOptions) {
 	v := tview.NewTable()
 	v.SetSelectable(true, true)
-	v.SetTitle(title)
-	for i, title := range titles {
+	v.SetTitle(creator.title)
+	for i, title := range creator.titles {
 		v.SetCell(0, i, tview.NewTableCell(title).SetTextColor(colorTitle).SetSelectable(false))
 	}
 
@@ -1898,8 +1900,8 @@ func (t *App) createTableB(title string, titles []string, elementsList [][]strin
 		if event.Rune() == 'q' {
 			t.stop()
 		}
-		if capture != nil {
-			return capture(event, v)
+		if creator.capture != nil {
+			return creator.capture(event, v)
 		}
 		return event
 	})
@@ -1908,10 +1910,10 @@ func (t *App) createTableB(title string, titles []string, elementsList [][]strin
 		t.position = Position{row: row, col: column}
 	})
 
-	for i, elements := range elementsList {
+	for i, elements := range creator.elementsList {
 		row := i + 1
 		for j, element := range elements {
-			selectable := j == 0 || (selectables != nil && slices.Contains(selectables, j))
+			selectable := j == 0 || (creator.selectables != nil && slices.Contains(creator.selectables, j))
 			v.SetCell(row, j, tview.NewTableCell(element).SetSelectable(selectable))
 		}
 	}
