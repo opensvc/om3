@@ -77,7 +77,7 @@ func sObjectInstanceOverall(instance instance.Status) string {
 }
 
 func sObjectInstanceDRP(instance instance.Config) string {
-	if instance.DRP {
+	if instance.ActorConfig != nil && instance.ActorConfig.DRP {
 		return iconDRP
 	}
 	return ""

@@ -441,8 +441,12 @@ func (t *Manager) onRemoteConfigUpdated(p naming.Path, node string, remoteInstan
 			return
 		}
 	}
+	var needFreeze bool
+	if remoteInstanceConfig.ActorConfig != nil && remoteInstanceConfig.ActorConfig.Orchestrate == "ha" && len(remoteInstanceConfig.Scope) > 1 {
+		needFreeze = true
+	}
 	log.Infof("cfg: fetch config from %s@%s", pathS, node)
-	t.fetchConfigFromRemote(p, node, remoteInstanceConfig.UpdatedAt, remoteInstanceConfig.Orchestrate, remoteInstanceConfig.Scope)
+	t.fetchConfigFromRemote(p, node, remoteInstanceConfig.UpdatedAt, needFreeze, remoteInstanceConfig.Scope)
 }
 
 // removeConfigFileAndDisableRecover is called to remove config file on localhost
@@ -605,8 +609,12 @@ func (t *Manager) onInstanceConfigForFromPeer(c *msgbus.InstanceConfigFor) {
 		// let running fetcher does its job
 		return
 	}
+	var needFreeze bool
+	if c.Orchestrate == "ha" && len(c.Scope) > 1 {
+		needFreeze = true
+	}
 	log.Infof("cfg: fetch config %s from foreign config file on %s", c.Path, c.Node)
-	t.fetchConfigFromRemote(c.Path, c.Node, c.UpdatedAt, c.Orchestrate, c.Scope)
+	t.fetchConfigFromRemote(c.Path, c.Node, c.UpdatedAt, needFreeze, c.Scope)
 }
 
 func (t *Manager) abortRetainForeignConfig(p naming.Path) {
@@ -677,7 +685,7 @@ func (t *Manager) cancelFetcher(s string) {
 	}
 }
 
-func (t *Manager) fetchConfigFromRemote(p naming.Path, peer string, updatedAt time.Time, orchestrate string, scope []string) {
+func (t *Manager) fetchConfigFromRemote(p naming.Path, peer string, updatedAt time.Time, needFreeze bool, scope []string) {
 	if peer == "" {
 		t.objectLogger(p).Errorf("cfg: fetch config %s from node ''", p)
 		return
@@ -702,10 +710,10 @@ func (t *Manager) fetchConfigFromRemote(p naming.Path, peer string, updatedAt ti
 		t.objectLogger(p).Errorf("cfg: can't create newDaemonClient to fetch %s from node %s: %s", p, peer, err)
 		return
 	}
-	go fetch(ctx, cli, p, peer, t.cfgCmdC, orchestrate, scope)
+	go fetch(ctx, cli, p, peer, t.cfgCmdC, needFreeze, scope)
 }
 
-func fetch(ctx context.Context, cli *client.T, p naming.Path, peer string, cmdC chan<- any, orchestrate string, scope []string) {
+func fetch(ctx context.Context, cli *client.T, p naming.Path, peer string, cmdC chan<- any, needFreeze bool, scope []string) {
 	id := p.String() + "@" + peer
 	log := naming.LogWithPath(plog.NewDefaultLogger(), p).
 		Attr("pkg", "daemon/discover").
@@ -758,10 +766,6 @@ func fetch(ctx context.Context, cli *client.T, p naming.Path, peer string, cmdC 
 		log.Infof("invalid scope %s", nodes)
 		return
 	}
-	var freezeV bool
-	if orchestrate == "ha" && len(scope) > 1 {
-		freezeV = true
-	}
 	select {
 	case <-ctx.Done():
 		log.Infof("abort on done context for %s", id)
@@ -772,7 +776,7 @@ func fetch(ctx context.Context, cli *client.T, p naming.Path, peer string, cmdC 
 			Path:      p,
 			Node:      peer,
 			File:      tmpFilename,
-			Freeze:    freezeV,
+			Freeze:    needFreeze,
 			UpdatedAt: updated,
 			Ctx:       ctx,
 			Err:       err,
