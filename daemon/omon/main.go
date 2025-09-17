@@ -85,43 +85,40 @@ type (
 // Start a goroutine responsible for the status of an object
 func Start(ctx context.Context, subQS pubsub.QueueSizer, p naming.Path, cfg instance.Config, imonStarter IMonStarter) error {
 	localhost := hostname.Hostname()
+	status := object.Status{
+		Scope:    cfg.Scope,
+		Priority: cfg.Priority,
+	}
+	if cfg.VolConfig != nil {
+		pool := cfg.VolConfig.Pool
+		status.Pool = &pool
+		size := cfg.VolConfig.Size
+		status.Size = &size
+	}
+	if cfg.ActorConfig != nil {
+		status.FlexTarget = cfg.ActorConfig.FlexTarget
+		status.FlexMin = cfg.ActorConfig.FlexMin
+		status.FlexMax = cfg.ActorConfig.FlexMax
+		status.Orchestrate = cfg.ActorConfig.Orchestrate
+		status.PlacementPolicy = cfg.ActorConfig.PlacementPolicy
+		status.Topology = cfg.ActorConfig.Topology
+	}
 	t := &Manager{
-		path: p,
-
-		status: object.Status{
-			Scope:           cfg.Scope,
-			FlexTarget:      cfg.FlexTarget,
-			FlexMin:         cfg.FlexMin,
-			FlexMax:         cfg.FlexMax,
-			Orchestrate:     cfg.Orchestrate,
-			Pool:            cfg.Pool,
-			PlacementPolicy: cfg.PlacementPolicy,
-			Priority:        cfg.Priority,
-			Size:            cfg.Size,
-			Topology:        cfg.Topology,
-		},
-
+		path:      p,
+		status:    status,
 		publisher: pubsub.PubFromContext(ctx),
-
 		// set initial instStatus value for cfg.Nodename to avoid early termination because of len 0 map
-		instStatus: make(map[string]instance.Status),
-
+		instStatus:  make(map[string]instance.Status),
 		instMonitor: make(map[string]instance.Monitor),
-
-		instConfig: make(map[string]instance.Config),
-
-		ctx: ctx,
-
+		instConfig:  make(map[string]instance.Config),
+		ctx:         ctx,
 		pubLabel: []pubsub.Label{
 			{"namespace", p.Namespace},
 			{"path", p.String()},
 			{"node", localhost},
 		},
-
-		localhost: localhost,
-
+		localhost:   localhost,
 		imonStarter: imonStarter,
-
 		log: naming.LogWithPath(plog.NewDefaultLogger(), p).
 			Attr("pkg", "daemon/omon").
 			WithPrefix("daemon: omon: " + p.String() + ": "),
@@ -260,16 +257,23 @@ func (t *Manager) worker() {
 							strings.Join(t.instConfigFor.Scope, ","))
 					}
 				}
-				t.status.Scope = c.Value.Scope
-				t.status.FlexTarget = c.Value.FlexTarget
-				t.status.FlexMin = c.Value.FlexMin
-				t.status.FlexMax = c.Value.FlexMax
-				t.status.Orchestrate = c.Value.Orchestrate
-				t.status.Pool = c.Value.Pool
-				t.status.PlacementPolicy = c.Value.PlacementPolicy
 				t.status.Priority = c.Value.Priority
-				t.status.Size = c.Value.Size
-				t.status.Topology = c.Value.Topology
+				if c.Value.ActorConfig != nil {
+					t.status.Scope = c.Value.Scope
+					t.status.FlexTarget = c.Value.FlexTarget
+					t.status.FlexMin = c.Value.FlexMin
+					t.status.FlexMax = c.Value.FlexMax
+					t.status.Orchestrate = c.Value.Orchestrate
+					t.status.PlacementPolicy = c.Value.PlacementPolicy
+					t.status.Topology = c.Value.Topology
+				}
+				if c.Value.VolConfig != nil {
+					pool := c.Value.Pool
+					t.status.Pool = &pool
+					size := c.Value.Size
+					t.status.Size = &size
+				}
+
 				t.srcEvent = c
 
 				t.instConfig[c.Node] = c.Value

@@ -134,11 +134,13 @@ func (t *Manager) initRelationAvailStatus() {
 			}
 		}
 	}
-	for _, relation := range config.Children {
-		do(relation, "Child", t.state.Children)
-	}
-	for _, relation := range config.Parents {
-		do(relation, "Parent", t.state.Parents)
+	if config.ActorConfig != nil {
+		for _, relation := range config.ActorConfig.Children {
+			do(relation, "Child", t.state.Children)
+		}
+		for _, relation := range config.ActorConfig.Parents {
+			do(relation, "Parent", t.state.Parents)
+		}
 	}
 }
 
@@ -340,8 +342,10 @@ func (t *Manager) onInstanceConfigUpdated(srcNode string, srcCmd *msgbus.Instanc
 		t.log.Debugf("refresh resource monitor states on local instance config updated")
 		t.initResourceMonitor()
 		janitorInstStatus(srcCmd.Value.Scope)
-		janitorRelations(srcCmd.Value.Children, "Child", t.state.Children)
-		janitorRelations(srcCmd.Value.Parents, "Parent", t.state.Parents)
+		if srcCmd.Value.ActorConfig != nil {
+			janitorRelations(srcCmd.Value.ActorConfig.Children, "Child", t.state.Children)
+			janitorRelations(srcCmd.Value.ActorConfig.Parents, "Parent", t.state.Parents)
+		}
 	}
 	t.scopeNodes = append([]string{}, srcCmd.Value.Scope...)
 	t.log.Debugf("updated from %s ObjectStatusUpdated InstanceConfigUpdated on %s scopeNodes=%s", srcNode, srcCmd.Node, t.scopeNodes)
@@ -1045,6 +1049,9 @@ func (t *Manager) doLastAction(action func() error, newState, successState, erro
 }
 
 func (t *Manager) initResourceMonitor() {
+	if t.instConfig.ActorConfig == nil {
+		return
+	}
 	// Stop any pending restart timers before init. We may be called after
 	// instance config refreshed with some previous resource restart scheduled.
 	t.cancelResourceOrchestrateSchedules()
@@ -1109,7 +1116,7 @@ func (t *Manager) onNodeRejoin(c *msgbus.NodeRejoin) {
 	if t.state.GlobalExpect == instance.MonitorGlobalExpectUnfrozen {
 		return
 	}
-	if t.instConfig.Orchestrate != "ha" {
+	if t.instConfig.ActorConfig != nil && t.instConfig.ActorConfig.Orchestrate != "ha" {
 		return
 	}
 	for peer, peerStatus := range t.instStatus {

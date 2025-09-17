@@ -865,7 +865,7 @@ func (t *T) scheduleObject(path naming.Path) {
 	log := t.loggerWithPath(path).WithPrefix(t.log.Prefix() + path.String() + ": ")
 
 	instanceConfig := instance.ConfigData.GetByPathAndNode(path, t.localhost)
-	if instanceConfig == nil || instanceConfig.Schedules == nil || len(instanceConfig.Schedules) == 0 {
+	if instanceConfig == nil || instanceConfig.ActorConfig == nil || instanceConfig.Schedules == nil || len(instanceConfig.Schedules) == 0 {
 		// only actor objects have scheduled actions
 		return
 	}

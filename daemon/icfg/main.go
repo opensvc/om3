@@ -307,49 +307,61 @@ func (t *Manager) configFileCheck() error {
 		cfg := t.instanceConfig
 		cfg.Scope = scope
 		cfg.UpdatedAt = mtime
-		cfg.Orchestrate = t.getOrchestrate(cf)
-		t.publisher.Pub(&msgbus.InstanceConfigFor{
-			Path:        t.path,
-			Node:        t.localhost,
-			Orchestrate: cfg.Orchestrate,
-			Scope:       append([]string{}, cfg.Scope...),
-			UpdatedAt:   cfg.UpdatedAt,
-		}, t.pubLabel...)
+		msg := msgbus.InstanceConfigFor{
+			Path:      t.path,
+			Node:      t.localhost,
+			Scope:     append([]string{}, cfg.Scope...),
+			UpdatedAt: cfg.UpdatedAt,
+		}
+		if cfg.ActorConfig != nil {
+			msg.Orchestrate = cfg.Orchestrate
+		}
+		t.publisher.Pub(&msg, t.pubLabel...)
+		if _, ok := any(t.configure).(object.Actor); ok {
+			cfg.ActorConfig = &instance.ActorConfig{
+				Orchestrate: t.getOrchestrate(cf),
+			}
+		}
 		return errConfigFileCheck
 	}
 
 	cfg := t.instanceConfig
-	cfg.App = cf.GetString(keyApp)
 	cfg.Checksum = fmt.Sprintf("%x", checksum)
-	cfg.Children = t.getChildren(cf)
-	cfg.Env = cf.GetString(keyEnv)
-	cfg.IsDisabled = cf.GetBool(keyDisable)
-	cfg.MonitorAction = t.getMonitorAction(cf)
-	cfg.Orchestrate = t.getOrchestrate(cf)
-	cfg.Parents = t.getParents(cf)
-	cfg.PlacementPolicy = t.getPlacementPolicy(cf)
-	cfg.PreMonitorAction = cf.GetString(keyPreMonitorAction)
-	cfg.Priority = t.getPriority(cf)
-	cfg.Resources = t.getResources(cf)
 	cfg.Scope = scope
-	cfg.Topology = t.getTopology(cf)
 	cfg.UpdatedAt = mtime
-	cfg.Size = cf.GetSize(keySize)
-	cfg.Subsets = t.getSubsets(cf)
-
-	if pool := cf.GetString(keyPool); pool != "" {
-		cfg.Pool = &pool
-	}
-	if cfg.Topology == topology.Flex {
-		instanceCount := len(scope)
-		cfg.FlexMin = t.getFlexMin(cf, instanceCount)
-		cfg.FlexMax = t.getFlexMax(cf, cfg.FlexMin, instanceCount)
-		cfg.FlexTarget = t.getFlexTarget(cf, cfg.FlexMin, cfg.FlexMax)
+	cfg.Priority = t.getPriority(cf)
+	if t.path.Kind == naming.KindVol {
+		cfg.VolConfig = &instance.VolConfig{
+			Pool: cf.GetString(keyPool),
+		}
+		if szPtr := cf.GetSize(keySize); szPtr != nil {
+			cfg.Size = *szPtr
+		}
 	}
 	if actor, ok := any(t.configure).(object.Actor); ok {
-		cfg.Schedules = make([]schedule.Config, 0)
+		cfg.ActorConfig = &instance.ActorConfig{
+			App:              cf.GetString(keyApp),
+			Children:         t.getChildren(cf),
+			Env:              cf.GetString(keyEnv),
+			IsDisabled:       cf.GetBool(keyDisable),
+			MonitorAction:    t.getMonitorAction(cf),
+			Orchestrate:      t.getOrchestrate(cf),
+			Parents:          t.getParents(cf),
+			PreMonitorAction: cf.GetString(keyPreMonitorAction),
+			PlacementPolicy:  t.getPlacementPolicy(cf),
+			Resources:        t.getResources(cf),
+			Schedules:        make([]schedule.Config, 0),
+			Subsets:          t.getSubsets(cf),
+			Topology:         t.getTopology(cf),
+		}
+		if cfg.Topology == topology.Flex {
+			instanceCount := len(scope)
+			cfg.FlexMin = t.getFlexMin(cf, instanceCount)
+			cfg.FlexMax = t.getFlexMax(cf, cfg.FlexMin, instanceCount)
+			cfg.FlexTarget = t.getFlexTarget(cf, cfg.FlexMin, cfg.FlexMax)
+		}
 		for _, e := range actor.Schedules() {
-			cfg.Schedules = append(cfg.Schedules, e.Config)
+			cfg.ActorConfig.Schedules = append(cfg.ActorConfig.Schedules, e.Config)
 		}
 	}
 

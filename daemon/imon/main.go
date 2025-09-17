@@ -51,10 +51,6 @@ type (
 		state         instance.Monitor
 		previousState instance.Monitor
 
-		// only svc and vol support "status -r", if not statefull skip status
-		// evaluations
-		statefull bool
-
 		// abortedOrchestration represents the state of an orchestration process
 		// that was prematurely aborted.
 		abortedOrchestration *orchestrationEnd
@@ -255,7 +251,6 @@ func start(parent context.Context, qs pubsub.QueueSizer, p naming.Path, nodes []
 		scopeNodes:    nodes,
 		change:        true,
 		readyDuration: defaultReadyDuration,
-		statefull:     statefullKinds.Has(p.Kind),
 
 		waitConvergedOrchestrationMsg: make(map[string]string),
 
@@ -622,17 +617,13 @@ func updateLastBootID(p naming.Path, s string) error {
 }
 
 func (t *Manager) bootAble() bool {
+	if t.instConfig.ActorConfig == nil {
+		return false
+	}
 	if t.instConfig.IsDisabled {
 		// ensures disabled instances are not erroneously booted, aligning
 		// behavior with the intended configuration.
 		return false
 	}
-	switch t.path.Kind {
-	case naming.KindSvc:
-		return true
-	case naming.KindVol:
-		return true
-	default:
-		return false
-	}
+	return true
 }

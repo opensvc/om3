@@ -16,8 +16,18 @@ type (
 	// Config describes a configuration file content checksum,
 	// timestamp of last change and the nodes it should be installed on.
 	Config struct {
+		Path      naming.Path `json:"-"`
+		Checksum  string      `json:"csum"`
+		Priority  priority.T  `json:"priority"`
+		Scope     []string    `json:"scope"`
+		UpdatedAt time.Time   `json:"updated_at"`
+
+		*ActorConfig
+		*VolConfig
+	}
+
+	ActorConfig struct {
 		App              string            `json:"app,omitempty"`
-		Checksum         string            `json:"csum"`
 		Children         naming.Relations  `json:"children,omitempty"`
 		DRP              bool              `json:"drp,omitempty"`
 		Env              string            `json:"env,omitempty"`
@@ -27,24 +37,22 @@ type (
 		MonitorAction    []MonitorAction   `json:"monitor_action,omitempty"`
 		PreMonitorAction string            `json:"pre_monitor_action,omitempty"`
 		Orchestrate      string            `json:"orchestrate"`
-		Path             naming.Path       `json:"-"`
 		Parents          naming.Relations  `json:"parents,omitempty"`
 		PlacementPolicy  placement.Policy  `json:"placement_policy"`
-		Priority         priority.T        `json:"priority,omitempty"`
 		Resources        ResourceConfigs   `json:"resources"`
 		Schedules        []schedule.Config `json:"schedules"`
-		Scope            []string          `json:"scope"`
 		Subsets          SubsetConfigs     `json:"subsets"`
-		Topology         topology.T        `json:"topology"`
-		UpdatedAt        time.Time         `json:"updated_at"`
+		Topology         topology.T        `json:"topology,omitempty"`
 
 		// IsDisabled is true when DEFAULT.disable is true
 		IsDisabled bool `json:"is_disabled"`
-
-		// Volume specific
-		Pool *string `json:"pool,omitempty"`
-		Size *int64  `json:"size,omitempty"`
 	}
+
+	VolConfig struct {
+		Pool string `json:"pool"`
+		Size int64  `json:"size"`
+	}
+
 	ResourceConfigs map[string]ResourceConfig
 	ResourceConfig  struct {
 		IsDisabled   bool           `json:"is_disabled"`
@@ -67,9 +75,30 @@ func (m SubsetConfigs) DeepCopy() SubsetConfigs {
 	return xmap.Copy(m)
 }
 
-func (cfg Config) DeepCopy() *Config {
-	newCfg := cfg
+func (cfg *Config) DeepCopy() *Config {
+	if cfg == nil {
+		return nil
+	}
+	newCfg := *cfg
 	newCfg.Scope = append([]string{}, cfg.Scope...)
+	newCfg.ActorConfig = cfg.ActorConfig.DeepCopy()
+	newCfg.VolConfig = cfg.VolConfig.DeepCopy()
+	return &newCfg
+}
+
+func (cfg *VolConfig) DeepCopy() *VolConfig {
+	if cfg == nil {
+		return nil
+	}
+	newCfg := *cfg
+	return &newCfg
+}
+
+func (cfg *ActorConfig) DeepCopy() *ActorConfig {
+	if cfg == nil {
+		return nil
+	}
+	newCfg := *cfg
 	newCfg.Subsets = cfg.Subsets.DeepCopy()
 	newCfg.Resources = cfg.Resources.DeepCopy()
 	newCfg.Schedules = append([]schedule.Config{}, cfg.Schedules...)
@@ -103,31 +132,31 @@ func (rcfgs ResourceConfigs) Get(rid string) *ResourceConfig {
 
 func (t Config) Unstructured() map[string]any {
 	m := map[string]any{
-		"app":                t.App,
-		"csum":               t.Checksum,
-		"children":           t.Children,
-		"drp":                t.DRP,
-		"env":                t.Env,
-		"flex_max":           t.FlexMax,
-		"flex_min":           t.FlexMin,
-		"flex_target":        t.FlexTarget,
-		"monitor_action":     t.MonitorAction,
-		"pre_monitor_action": t.PreMonitorAction,
-		"orchestrate":        t.Orchestrate,
-		"parents":            t.Parents,
-		"placement_policy":   t.PlacementPolicy,
-		"priority":           t.Priority,
-		"resources":          t.Resources.Unstructured(),
-		"scope":              t.Scope,
-		"subsets":            t.Subsets.Unstructured(),
-		"topology":           t.Topology,
-		"updated_at":         t.UpdatedAt,
+		"csum":       t.Checksum,
+		"scope":      t.Scope,
+		"updated_at": t.UpdatedAt,
 	}
-	if t.Pool != nil {
-		m["pool"] = t.Pool
+	if t.ActorConfig != nil {
+		m["app"] = t.App
+		m["children"] = t.Children
+		m["drp"] = t.DRP
+		m["env"] = t.Env
+		m["flex_max"] = t.FlexMax
+		m["flex_min"] = t.FlexMin
+		m["flex_target"] = t.FlexTarget
+		m["monitor_action"] = t.MonitorAction
+		m["pre_monitor_action"] = t.PreMonitorAction
+		m["orchestrate"] = t.Orchestrate
+		m["parents"] = t.Parents
+		m["placement_policy"] = t.PlacementPolicy
+		m["priority"] = t.Priority
+		m["resources"] = t.Resources.Unstructured()
+		m["subsets"] = t.Subsets.Unstructured()
+		m["topology"] = t.Topology
 	}
-	if t.Size != nil {
-		m["size"] = t.Size
+	if t.VolConfig != nil {
+		m["pool"] = t.VolConfig.Pool
+		m["size"] = t.VolConfig.Size
 	}
 	return m
 }

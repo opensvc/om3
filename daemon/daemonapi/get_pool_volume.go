@@ -42,15 +42,15 @@ func getPoolVolumes(name *string) api.PoolVolumeItems {
 		} else {
 			volNames[p] = nil
 		}
-		if instConfig.Value.Pool != nil {
-			poolName = *instConfig.Value.Pool
+		if instConfig.Value.VolConfig != nil {
+			poolName = instConfig.Value.VolConfig.Pool
 			_, poolOk = poolNames[poolName]
 		}
 		if name != nil && *name != poolName {
 			continue
 		}
-		if instConfig.Value.Size != nil {
-			size = *instConfig.Value.Size
+		if instConfig.Value.VolConfig != nil {
+			size = instConfig.Value.VolConfig.Size
 		}
 		l = append(l, api.PoolVolume{
 			Path:     p,
