@@ -2,7 +2,7 @@ openapi: 3.0.0
 
 info:
   title: opensvc agent api
-  version: 3.17.1
+  version: 3.17.2
 
 paths:
   /api/auth/info:
@@ -1528,7 +1528,9 @@ paths:
   /api/node/name/{nodename}/drbd/allocation:
     get:
       description: |
-        Get the drbd driver minor numbers and ports already allocated on the node.
+        For internal use only.
+        
+        Used by the CRM to get the drbd driver minor numbers and ports already allocated on the node.
       operationId: GetNodeDRBDAllocation
       parameters:
         - $ref: '#/components/parameters/inPathNodeName'
@@ -1548,12 +1550,15 @@ paths:
         - bearerAuth: []
       tags:
         - node
+      x-internal: true
 
   /api/node/name/{nodename}/drbd/config:
     get:
       operationId: GetNodeDRBDConfig
       description: |
-        Fetch from a node a drbd configuration file fragment.
+        For internal use only.
+
+        Used by the CRM to fetch from a node a drbd configuration file fragment.
       parameters:
         - $ref: '#/components/parameters/inPathNodeName'
         - $ref: '#/components/parameters/DRBDConfigName'
@@ -1577,10 +1582,13 @@ paths:
         - bearerAuth: []
       tags:
         - node
+      x-internal: true
     post:
       operationId: PostNodeDRBDConfig
       description: |
-        Send to a node a drbd configuration file fragment to install.
+        For internal use only.
+
+        Used by the CRM to send to a node a drbd configuration file fragment to install.
       tags:
         - node
       security:
@@ -1590,7 +1598,7 @@ paths:
         - $ref: '#/components/parameters/inPathNodeName'
         - $ref: '#/components/parameters/DRBDConfigName'
       requestBody:
-        description: monitor
+        description: Drbd configuration file fragment and allocation id.
         required: true
         content:
           application/json:
@@ -1607,6 +1615,7 @@ paths:
           $ref: '#/components/responses/403'
         500:
           $ref: '#/components/responses/500'
+      x-internal: true
 
   /api/node/name/{nodename}/drivers:
     get:
