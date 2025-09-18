@@ -2,6 +2,7 @@ package drbd
 
 import (
 	"bytes"
+	"context"
 	"encoding/xml"
 	"fmt"
 	"strings"
@@ -71,6 +72,20 @@ type (
 		Ports  map[string]any
 		Minors map[string]any
 	}
+)
+
+const (
+	ConnStateStandAlone        = "StandAlone"
+	ConnStateDisconnecting     = "Disconnecting"
+	ConnStateUnconnected       = "Unconnected"
+	ConnStateTimeout           = "Timeout"
+	ConnStateBrokenPipe        = "BrokenPipe"
+	ConnStateNetworkFailure    = "NetworkFailure"
+	ConnStateProtocolError     = "ProtocolError"
+	ConnStateTearDow           = "TearDown"
+	ConnStateConnecting        = "Connecting"
+	ConnStateConnected         = "Connected"
+	ConnStateLegacycConnecting = "WFConnection"
 )
 
 var (
@@ -221,7 +236,7 @@ func GetDigest() (Digest, error) {
 	}
 }
 
-func (t T) Primary() error {
+func (t *T) Primary(ctx context.Context) error {
 	args := []string{"primary", t.res}
 	cmd := command.New(
 		command.WithName(drbdadm),
@@ -230,11 +245,12 @@ func (t T) Primary() error {
 		command.WithCommandLogLevel(zerolog.InfoLevel),
 		command.WithStdoutLogLevel(zerolog.InfoLevel),
 		command.WithStderrLogLevel(zerolog.ErrorLevel),
+		command.WithContext(ctx),
 	)
 	return retry(cmd)
 }
 
-func (t T) PrimaryForce() error {
+func (t *T) PrimaryForce(ctx context.Context) error {
 	args := []string{"primary", t.res, "--force"}
 	cmd := command.New(
 		command.WithName(drbdadm),
@@ -243,11 +259,12 @@ func (t T) PrimaryForce() error {
 		command.WithCommandLogLevel(zerolog.InfoLevel),
 		command.WithStdoutLogLevel(zerolog.InfoLevel),
 		command.WithStderrLogLevel(zerolog.ErrorLevel),
+		command.WithContext(ctx),
 	)
 	return retry(cmd)
 }
 
-func (t T) Secondary() error {
+func (t *T) Secondary(ctx context.Context) error {
 	args := []string{"secondary", t.res}
 	cmd := command.New(
 		command.WithName(drbdadm),
@@ -256,11 +273,12 @@ func (t T) Secondary() error {
 		command.WithCommandLogLevel(zerolog.InfoLevel),
 		command.WithStdoutLogLevel(zerolog.InfoLevel),
 		command.WithStderrLogLevel(zerolog.ErrorLevel),
+		command.WithContext(ctx),
 	)
 	return retry(cmd)
 }
 
-func (t T) Adjust() error {
+func (t *T) Adjust(ctx context.Context) error {
 	args := []string{"adjust", t.res}
 	cmd := command.New(
 		command.WithName(drbdadm),
@@ -269,11 +287,12 @@ func (t T) Adjust() error {
 		command.WithCommandLogLevel(zerolog.InfoLevel),
 		command.WithStdoutLogLevel(zerolog.InfoLevel),
 		command.WithStderrLogLevel(zerolog.ErrorLevel),
+		command.WithContext(ctx),
 	)
 	return retry(cmd)
 }
 
-func (t T) Connect() error {
+func (t *T) Connect(ctx context.Context) error {
 	args := []string{"connect", t.res}
 	cmd := command.New(
 		command.WithName(drbdadm),
@@ -282,11 +301,12 @@ func (t T) Connect() error {
 		command.WithCommandLogLevel(zerolog.InfoLevel),
 		command.WithStdoutLogLevel(zerolog.InfoLevel),
 		command.WithStderrLogLevel(zerolog.ErrorLevel),
+		command.WithContext(ctx),
 	)
 	return retry(cmd)
 }
 
-func (t T) Disconnect() error {
+func (t *T) Disconnect(ctx context.Context) error {
 	args := []string{"disconnect", t.res}
 	cmd := command.New(
 		command.WithName(drbdadm),
@@ -295,11 +315,12 @@ func (t T) Disconnect() error {
 		command.WithCommandLogLevel(zerolog.InfoLevel),
 		command.WithStdoutLogLevel(zerolog.InfoLevel),
 		command.WithStderrLogLevel(zerolog.ErrorLevel),
+		command.WithContext(ctx),
 	)
 	return retry(cmd)
 }
 
-func (t T) Attach() error {
+func (t *T) Attach(ctx context.Context) error {
 	args := []string{"attach", t.res}
 	cmd := command.New(
 		command.WithName(drbdadm),
@@ -308,11 +329,12 @@ func (t T) Attach() error {
 		command.WithCommandLogLevel(zerolog.InfoLevel),
 		command.WithStdoutLogLevel(zerolog.InfoLevel),
 		command.WithStderrLogLevel(zerolog.ErrorLevel),
+		command.WithContext(ctx),
 	)
 	return retry(cmd)
 }
 
-func (t T) DetachForce() error {
+func (t *T) DetachForce(ctx context.Context) error {
 	args := []string{"detach", t.res, "--force"}
 	cmd := command.New(
 		command.WithName(drbdadm),
@@ -321,11 +343,12 @@ func (t T) DetachForce() error {
 		command.WithCommandLogLevel(zerolog.InfoLevel),
 		command.WithStdoutLogLevel(zerolog.InfoLevel),
 		command.WithStderrLogLevel(zerolog.ErrorLevel),
+		command.WithContext(ctx),
 	)
 	return retry(cmd)
 }
 
-func (t T) Down() error {
+func (t *T) Down(ctx context.Context) error {
 	args := []string{"down", t.res}
 	cmd := command.New(
 		command.WithName(drbdadm),
@@ -334,11 +357,12 @@ func (t T) Down() error {
 		command.WithCommandLogLevel(zerolog.InfoLevel),
 		command.WithStdoutLogLevel(zerolog.InfoLevel),
 		command.WithStderrLogLevel(zerolog.ErrorLevel),
+		command.WithContext(ctx),
 	)
 	return retry(cmd)
 }
 
-func (t T) Up() error {
+func (t *T) Up(ctx context.Context) error {
 	args := []string{"up", t.res}
 	cmd := command.New(
 		command.WithName(drbdadm),
@@ -347,11 +371,12 @@ func (t T) Up() error {
 		command.WithCommandLogLevel(zerolog.InfoLevel),
 		command.WithStdoutLogLevel(zerolog.InfoLevel),
 		command.WithStderrLogLevel(zerolog.ErrorLevel),
+		command.WithContext(ctx),
 	)
 	return retry(cmd)
 }
 
-func (t T) CreateMD(maxPeers int) error {
+func (t *T) CreateMD(ctx context.Context, maxPeers int) error {
 	args := []string{"create-md", "--force", "--max-peers", fmt.Sprint(maxPeers), t.res}
 	cmd := command.New(
 		command.WithName(drbdadm),
@@ -360,11 +385,12 @@ func (t T) CreateMD(maxPeers int) error {
 		command.WithCommandLogLevel(zerolog.InfoLevel),
 		command.WithStdoutLogLevel(zerolog.InfoLevel),
 		command.WithStderrLogLevel(zerolog.InfoLevel),
+		command.WithContext(ctx),
 	)
 	return cmd.Run()
 }
 
-func (t T) HasMD() (bool, error) {
+func (t *T) HasMD(ctx context.Context) (bool, error) {
 	hasMeta := true
 	args := []string{"--", "--force", "dump-md", t.res}
 	cmd := command.New(
@@ -375,6 +401,7 @@ func (t T) HasMD() (bool, error) {
 				hasMeta = false
 			}
 		}),
+		command.WithContext(ctx),
 	)
 	err := cmd.Run()
 	if !hasMeta {
@@ -386,12 +413,13 @@ func (t T) HasMD() (bool, error) {
 	return true, nil
 }
 
-func (t T) Role() (string, error) {
+func (t *T) Role(ctx context.Context) (string, error) {
 	args := []string{"role", t.res}
 	cmd := command.New(
 		command.WithName(drbdadm),
 		command.WithArgs(args),
 		command.WithBufferedStdout(),
+		command.WithContext(ctx),
 	)
 	if b, err := cmd.Output(); err != nil {
 		return "", err
@@ -413,7 +441,7 @@ func (t T) Role() (string, error) {
 	}
 }
 
-func (t T) ConnState() (string, error) {
+func (t *T) ConnState(ctx context.Context) (string, error) {
 	isAttached := true
 	cmd := command.New(
 		command.WithName(drbdadm),
@@ -424,6 +452,7 @@ func (t T) ConnState() (string, error) {
 				isAttached = false
 			}
 		}),
+		command.WithContext(ctx),
 	)
 	if err := cmd.Run(); err != nil {
 		if !isAttached || cmd.ExitCode() == 10 {
@@ -436,12 +465,13 @@ func (t T) ConnState() (string, error) {
 	return string(b), nil
 }
 
-func (t T) DiskStates() ([]string, error) {
+func (t *T) DiskStates(ctx context.Context) ([]string, error) {
 	args := []string{"dstate", t.res}
 	cmd := command.New(
 		command.WithName(drbdadm),
 		command.WithArgs(args),
 		command.WithBufferedStdout(),
+		command.WithContext(ctx),
 	)
 	if err := cmd.Run(); err != nil {
 		return []string{}, err
@@ -450,15 +480,15 @@ func (t T) DiskStates() ([]string, error) {
 	return strings.Split(s, "/"), nil
 }
 
-func (t T) Remove() error {
+func (t *T) Remove() error {
 	return nil
 }
 
-func (t T) IsUp() (bool, string, error) {
+func (t *T) IsUp() (bool, string, error) {
 	return false, "", fmt.Errorf("todo")
 }
 
-func (t T) IsDefined() (bool, error) {
+func (t *T) IsDefined(ctx context.Context) (bool, error) {
 	isDefined := true
 	cmd := command.New(
 		command.WithName(drbdadm),
@@ -471,6 +501,7 @@ func (t T) IsDefined() (bool, error) {
 				isDefined = false
 			}
 		}),
+		command.WithContext(ctx),
 	)
 	err := cmd.Run()
 	if !isDefined {
@@ -495,7 +526,7 @@ func (t T) IsDefined() (bool, error) {
 //	which will wipe metadata.
 //	This situation happens on unprovision on a stopped instance, when drbd
 //	is stacked over another (stopped) disk resource.
-func (t T) WipeMD() error {
+func (t *T) WipeMD(ctx context.Context) error {
 	args := []string{"--", "--force", "wipe-md", t.res}
 	cmd := command.New(
 		command.WithName(drbdadm),
@@ -516,12 +547,13 @@ func (t T) WipeMD() error {
 			t.log.Errorf(s)
 		}),
 		command.WithIgnoredExitCodes(0, 20),
+		command.WithContext(ctx),
 	)
 	cmd.Cmd().Stdin = strings.NewReader("yes\n")
 	return cmd.Run()
 }
 
-func (t T) validateName() error {
+func (t *T) validateName() error {
 	if t.res == "" {
 		return fmt.Errorf("name is required")
 	}
@@ -531,7 +563,7 @@ func (t T) validateName() error {
 	return nil
 }
 
-func (t T) devpathFromName() string {
+func (t *T) devpathFromName() string {
 	return "/dev/drbd/by-res/" + t.res + "/0"
 }
 
@@ -556,7 +588,7 @@ func retry(cmd *command.T) error {
 	}
 }
 
-func (t T) ModProbe() error {
+func (t *T) ModProbe(ctx context.Context) error {
 	if isModProbed {
 		return nil
 	}
@@ -571,6 +603,7 @@ func (t T) ModProbe() error {
 		command.WithCommandLogLevel(zerolog.InfoLevel),
 		command.WithStdoutLogLevel(zerolog.InfoLevel),
 		command.WithStderrLogLevel(zerolog.ErrorLevel),
+		command.WithContext(ctx),
 	)
 	err := cmd.Run()
 	if err != nil {
