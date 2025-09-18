@@ -1,13 +1,14 @@
 package output
 
 import (
+	"bytes"
 	"encoding/json"
 	"fmt"
 	"io"
 	"os"
-	"reflect"
 	"slices"
 	"sort"
+	"strconv"
 	"strings"
 
 	"github.com/opensvc/om3/util/render/palette"
@@ -20,69 +21,127 @@ type (
 	}
 )
 
+func flatten(value any, lkey *bytes.Buffer, flattened *map[string]string) {
+	if value == nil {
+		return
+	}
+
+	// Use a type switch, which is much faster than reflection.
+	switch v := value.(type) {
+	case map[string]any:
+		// Keep track of the builder's length to backtrack efficiently.
+		originalLen := lkey.Len()
+		for key, val := range v {
+			// Write the key separator.
+			if lkey.Len() > 0 {
+				lkey.WriteByte('.')
+			}
+
+			// Handle special characters in the key.
+			if strings.ContainsAny(key, ".#$/") || hasDigitPrefix(key) {
+				lkey.WriteString(`"`)
+				lkey.WriteString(key)
+				lkey.WriteString(`"`)
+			} else {
+				lkey.WriteString(key)
+			}
+
+			flatten(val, lkey, flattened)
+
+			// Reset the builder to its original state for the next key in the map.
+			lkey.Truncate(originalLen)
+		}
+	case []any:
+		originalLen := lkey.Len()
+		for i, val := range v {
+			// Append the slice index part, e.g., "[0]"
+			lkey.WriteByte('[')
+			lkey.WriteString(strconv.Itoa(i))
+			lkey.WriteByte(']')
+
+			flatten(val, lkey, flattened)
+
+			// Reset builder for the next iteration.
+			lkey.Truncate(originalLen)
+		}
+	// Add fast paths for primitive types to avoid json.Marshal.
+	case string:
+		(*flattened)[lkey.String()] = `"` + v + `"`
+	case bool:
+		(*flattened)[lkey.String()] = strconv.FormatBool(v)
+	case float64:
+		(*flattened)[lkey.String()] = strconv.FormatFloat(v, 'f', -1, 64)
+	case int:
+		(*flattened)[lkey.String()] = strconv.Itoa(v)
+	default:
+		// Fallback for complex types not handled above.
+		b, err := json.Marshal(value)
+		if err == nil { // Only assign if marshaling succeeds.
+			(*flattened)[lkey.String()] = string(b)
+		}
+	}
+}
+
 // Flatten accepts a nested struct and returns a flat struct with key like a."b/c".d[0].e
-func Flatten(inputJSON any) map[string]string {
-	var lkey = ""
-	var flattened = make(map[string]string)
-	flatten(inputJSON, lkey, &flattened)
+func Flatten(value any) map[string]string {
+	flattened := make(map[string]string)
+	var b bytes.Buffer
+	flatten(value, &b, &flattened)
 	return flattened
 }
 
 // SprintFlat accepts a JSON formatted byte array and returns the sorted
 // "key = val" buffer
 func SprintFlat(b []byte) string {
-	s := ""
+	var buf bytes.Buffer
 	for _, e := range sprintFlatData(b) {
-		s += fmt.Sprintln(e.k+" =", e.v)
+		buf.WriteString(e.k)
+		buf.WriteString(" = ")
+		buf.WriteString(fmt.Sprint(e.v))
+		buf.WriteString("\n")
 	}
-	return s
+	return buf.String()
+}
+
+func FprintFlat(w io.Writer, b []byte) {
+	for _, e := range sprintFlatData(b) {
+		fmt.Fprint(w, e.k)
+		fmt.Fprint(w, " = ")
+		fmt.Fprintln(w, e.v)
+	}
+}
+
+func PrintFlat(b []byte) {
+	FprintFlat(os.Stdout, b)
 }
 
 func SprintFlatColor(b []byte, colorize *palette.ColorPaletteFunc) string {
 	if colorize == nil {
 		colorize = palette.DefaultFuncPalette()
 	}
-	s := ""
+	var buf bytes.Buffer
 	for _, e := range sprintFlatData(b) {
-		s += fmt.Sprintln(colorize.Primary(e.k+" ="), e.v)
+		buf.WriteString(colorize.Primary(e.k))
+		buf.WriteString(colorize.Primary(" = "))
+		buf.WriteString(fmt.Sprintln(e.v))
 	}
-	return s
+	return buf.String()
 }
 
 func sprintFlatData(b []byte) []kv {
 	var data interface{}
 	json.Unmarshal(b, &data)
 	flattened := Flatten(data)
-	keys := make([]string, 0)
-	for key := range flattened {
-		keys = append(keys, key)
+	l := make([]kv, len(flattened))
+	i := 0
+	for k, v := range flattened {
+		l[i] = kv{k: k, v: v}
+		i++
 	}
-	sort.Strings(keys)
-	l := make([]kv, len(keys))
-	for i, k := range keys {
-		l[i] = kv{k: k, v: flattened[k]}
-	}
+	slices.SortFunc(l, func(i, j kv) int {
+		return strings.Compare(i.k, j.k)
+	})
 	return l
-}
-
-// PrintFlat accepts a JSON formatted byte array and prints to stdout the sorted
-// "key = val"
-func PrintFlat(b []byte) {
-	var data map[string]string
-	json.Unmarshal(b, &data)
-	flattened := Flatten(data)
-	sprintFlattened(os.Stdout, flattened)
-}
-
-func sprintFlattened(w io.Writer, flattened map[string]string) {
-	var keys []string
-	for key, _ := range flattened {
-		keys = append(keys, key)
-	}
-	sort.Strings(keys)
-	for _, k := range keys {
-		fmt.Println(k, "=", flattened[k])
-	}
 }
 
 func hasDigitPrefix(s string) bool {
@@ -94,31 +153,6 @@ func hasDigitPrefix(s string) bool {
 		break
 	}
 	return r >= '0' && r <= '9'
-}
-
-func flatten(value any, lkey string, flattened *map[string]string) {
-	v := reflect.ValueOf(value)
-	if value == nil {
-		return
-	}
-	switch v.Kind() {
-	case reflect.Slice:
-		for i := 0; i < v.Len(); i++ {
-			k := fmt.Sprintf("%s[%d]", lkey, i)
-			flatten(v.Index(i).Interface(), k, flattened)
-		}
-	case reflect.Map:
-		for rkey, rval := range value.(map[string]interface{}) {
-			if strings.ContainsAny(rkey, ".#$/") || hasDigitPrefix(rkey) {
-				rkey = fmt.Sprintf("\"%s\"", rkey)
-			}
-			k := fmt.Sprintf("%s.%s", lkey, rkey)
-			flatten(rval, k, flattened)
-		}
-	default:
-		b, _ := json.Marshal(value)
-		(*flattened)[lkey] = string(b)
-	}
 }
 
 type Delta struct {
