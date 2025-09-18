@@ -32,26 +32,36 @@ type (
 	// Status contains the object states obtained via
 	// aggregation of all instances states. It exists when an instance config exists somewhere
 	Status struct {
+		Priority  priority.T `json:"priority"`
+		Scope     []string   `json:"scope"`
+		UpdatedAt time.Time  `json:"updated_at"`
+
+		*ActorStatus
+		*FlexStatus
+		*VolStatus
+	}
+
+	ActorStatus struct {
 		Avail            status.T         `json:"avail"`
-		FlexTarget       int              `json:"flex_target,omitempty"`
-		FlexMin          int              `json:"flex_min,omitempty"`
-		FlexMax          int              `json:"flex_max,omitempty"`
 		Frozen           string           `json:"frozen"`
 		Orchestrate      string           `json:"orchestrate"`
 		Overall          status.T         `json:"overall"`
 		PlacementPolicy  placement.Policy `json:"placement_policy"`
 		PlacementState   placement.State  `json:"placement_state"`
-		Priority         priority.T       `json:"priority"`
 		Provisioned      provisioned.T    `json:"provisioned"`
-		Scope            []string         `json:"scope"`
 		Topology         topology.T       `json:"topology"`
 		UpInstancesCount int              `json:"up_instances_count"`
+	}
 
-		// Volume specific
-		Pool *string `json:"pool,omitempty"`
-		Size *int64  `json:"size,omitempty"`
+	FlexStatus struct {
+		FlexTarget int `json:"flex_target,omitempty"`
+		FlexMin    int `json:"flex_min,omitempty"`
+		FlexMax    int `json:"flex_max,omitempty"`
+	}
 
-		UpdatedAt time.Time `json:"updated_at"`
+	VolStatus struct {
+		Pool string `json:"pool,omitempty"`
+		Size int64  `json:"size,omitempty"`
 	}
 )
 
@@ -136,24 +146,38 @@ func NewStatus() *Digest {
 	return t
 }
 
-func (s *Status) DeepCopy() *Status {
-	return &Status{
-		Avail:            s.Avail,
-		Overall:          s.Overall,
-		Frozen:           s.Frozen,
-		Orchestrate:      s.Orchestrate,
-		PlacementState:   s.PlacementState,
-		PlacementPolicy:  s.PlacementPolicy,
-		Pool:             s.Pool,
-		Provisioned:      s.Provisioned,
-		Priority:         s.Priority,
-		Topology:         s.Topology,
-		FlexTarget:       s.FlexTarget,
-		FlexMin:          s.FlexMin,
-		FlexMax:          s.FlexMax,
-		UpInstancesCount: s.UpInstancesCount,
-		Size:             s.Size,
-		Scope:            append([]string{}, s.Scope...),
-		UpdatedAt:        s.UpdatedAt,
+func (s *ActorStatus) DeepCopy() *ActorStatus {
+	if s == nil {
+		return nil
 	}
+	newStatus := *s
+	return &newStatus
+}
+
+func (s *FlexStatus) DeepCopy() *FlexStatus {
+	if s == nil {
+		return nil
+	}
+	newStatus := *s
+	return &newStatus
+}
+
+func (s *VolStatus) DeepCopy() *VolStatus {
+	if s == nil {
+		return nil
+	}
+	newStatus := *s
+	return &newStatus
+}
+
+func (s *Status) DeepCopy() *Status {
+	if s == nil {
+		return nil
+	}
+	newStatus := *s
+	newStatus.ActorStatus = s.ActorStatus.DeepCopy()
+	newStatus.FlexStatus = s.FlexStatus.DeepCopy()
+	newStatus.VolStatus = s.VolStatus.DeepCopy()
+	newStatus.Scope = append([]string{}, s.Scope...)
+	return &newStatus
 }

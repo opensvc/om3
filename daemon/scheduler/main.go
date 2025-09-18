@@ -740,6 +740,9 @@ func (t *T) onObjectStatusDeleted(c *msgbus.ObjectStatusDeleted) {
 }
 
 func (t *T) onObjectStatusUpdated(c *msgbus.ObjectStatusUpdated) {
+	if c.Value.ActorStatus == nil {
+		return
+	}
 	changed := false
 	if srcEv, ok := c.SrcEv.(*msgbus.InstanceStatusUpdated); ok {
 		if t.onInstanceStatusUpdated(srcEv) {
@@ -763,6 +766,9 @@ func (t *T) loggerWithPath(path naming.Path) *plog.Logger {
 }
 
 func (t *T) onInstanceConfigUpdated(c *msgbus.InstanceConfigUpdated) {
+	if c.Value.ActorConfig == nil {
+		return
+	}
 	switch {
 	case t.enabled:
 		t.loggerWithPath(c.Path).Infof("%s: update schedules", c.Path)

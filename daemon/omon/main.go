@@ -33,6 +33,8 @@ type (
 	Manager struct {
 		path naming.Path
 
+		isActor bool
+
 		status object.Status
 
 		// imonCancel is the cancel function for the local imon we have started
@@ -90,21 +92,28 @@ func Start(ctx context.Context, subQS pubsub.QueueSizer, p naming.Path, cfg inst
 		Priority: cfg.Priority,
 	}
 	if cfg.VolConfig != nil {
-		pool := cfg.VolConfig.Pool
-		status.Pool = &pool
-		size := cfg.VolConfig.Size
-		status.Size = &size
+		status.VolStatus = &object.VolStatus{
+			Pool: cfg.VolConfig.Pool,
+			Size: cfg.VolConfig.Size,
+		}
+	}
+	if cfg.FlexConfig != nil {
+		status.FlexStatus = &object.FlexStatus{
+			FlexTarget: cfg.FlexConfig.FlexTarget,
+			FlexMin:    cfg.FlexConfig.FlexMin,
+			FlexMax:    cfg.FlexConfig.FlexMax,
+		}
 	}
 	if cfg.ActorConfig != nil {
-		status.FlexTarget = cfg.ActorConfig.FlexTarget
-		status.FlexMin = cfg.ActorConfig.FlexMin
-		status.FlexMax = cfg.ActorConfig.FlexMax
-		status.Orchestrate = cfg.ActorConfig.Orchestrate
-		status.PlacementPolicy = cfg.ActorConfig.PlacementPolicy
-		status.Topology = cfg.ActorConfig.Topology
+		status.ActorStatus = &object.ActorStatus{
+			Orchestrate:     cfg.ActorConfig.Orchestrate,
+			PlacementPolicy: cfg.ActorConfig.PlacementPolicy,
+			Topology:        cfg.ActorConfig.Topology,
+		}
 	}
 	t := &Manager{
 		path:      p,
+		isActor:   cfg.ActorConfig != nil,
 		status:    status,
 		publisher: pubsub.PubFromContext(ctx),
 		// set initial instStatus value for cfg.Nodename to avoid early termination because of len 0 map
@@ -258,20 +267,26 @@ func (t *Manager) worker() {
 					}
 				}
 				t.status.Priority = c.Value.Priority
+				t.status.Scope = c.Value.Scope
 				if c.Value.ActorConfig != nil {
-					t.status.Scope = c.Value.Scope
-					t.status.FlexTarget = c.Value.FlexTarget
-					t.status.FlexMin = c.Value.FlexMin
-					t.status.FlexMax = c.Value.FlexMax
-					t.status.Orchestrate = c.Value.Orchestrate
-					t.status.PlacementPolicy = c.Value.PlacementPolicy
-					t.status.Topology = c.Value.Topology
+					t.status.ActorStatus = &object.ActorStatus{
+						Orchestrate:     c.Value.Orchestrate,
+						PlacementPolicy: c.Value.PlacementPolicy,
+						Topology:        c.Value.Topology,
+					}
+				}
+				if c.Value.FlexConfig != nil {
+					t.status.FlexStatus = &object.FlexStatus{
+						FlexTarget: c.Value.FlexTarget,
+						FlexMin:    c.Value.FlexMin,
+						FlexMax:    c.Value.FlexMax,
+					}
 				}
 				if c.Value.VolConfig != nil {
-					pool := c.Value.Pool
-					t.status.Pool = &pool
-					size := c.Value.Size
-					t.status.Size = &size
+					t.status.VolStatus = &object.VolStatus{
+						Pool: c.Value.Pool,
+						Size: c.Value.Size,
+					}
 				}
 
 				t.srcEvent = c
@@ -436,10 +451,12 @@ func (t *Manager) updateStatus() {
 		}
 	}
 
-	updateAvailOverall()
-	updateProvisioned()
-	updateFrozen()
-	updatePlacementState()
+	if t.isActor {
+		updateAvailOverall()
+		updateProvisioned()
+		updateFrozen()
+		updatePlacementState()
+	}
 	t.update()
 }
 
@@ -453,7 +470,6 @@ func (t *Manager) delete() {
 func (t *Manager) update() {
 	t.status.UpdatedAt = time.Now()
 	value := t.status.DeepCopy()
-	t.log.Debugf("update avail %s", value.Avail)
 	object.StatusData.Set(t.path, t.status.DeepCopy())
 	t.publisher.Pub(&msgbus.ObjectStatusUpdated{Path: t.path, Node: t.localhost, Value: *value, SrcEv: t.srcEvent}, t.pubLabel...)
 }

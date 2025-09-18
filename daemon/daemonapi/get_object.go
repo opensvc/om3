@@ -68,25 +68,31 @@ func (a *DaemonAPI) getObjects(ctx echo.Context, pathSelector *string) (api.Obje
 				Object: p.String(),
 			},
 			Data: api.ObjectData{
-				Avail:            api.Status(ostat.Avail.String()),
-				FlexMax:          ostat.FlexMax,
-				FlexMin:          ostat.FlexMin,
-				FlexTarget:       ostat.FlexTarget,
-				Frozen:           ostat.Frozen,
-				Instances:        make(map[string]api.Instance),
-				Orchestrate:      api.Orchestrate(ostat.Orchestrate),
-				Overall:          api.Status(ostat.Overall.String()),
-				PlacementPolicy:  api.PlacementPolicy(ostat.PlacementPolicy.String()),
-				PlacementState:   api.PlacementState(ostat.PlacementState.String()),
-				Pool:             ostat.Pool,
-				Priority:         int(ostat.Priority),
-				Provisioned:      api.Provisioned(ostat.Provisioned.String()),
-				Scope:            append([]string{}, ostat.Scope...),
-				Size:             ostat.Size,
-				Topology:         api.Topology(ostat.Topology.String()),
-				UpInstancesCount: ostat.UpInstancesCount,
-				UpdatedAt:        ostat.UpdatedAt.String(),
+				Scope:     append([]string{}, ostat.Scope...),
+				Instances: make(map[string]api.Instance),
+				Priority:  int(ostat.Priority),
+				UpdatedAt: ostat.UpdatedAt.String(),
 			},
+		}
+		if ostat.ActorStatus != nil {
+			d.Data.Avail = api.Status(ostat.Avail.String())
+			d.Data.Frozen = ostat.Frozen
+			d.Data.Orchestrate = api.Orchestrate(ostat.Orchestrate)
+			d.Data.Overall = api.Status(ostat.Overall.String())
+			d.Data.PlacementPolicy = api.PlacementPolicy(ostat.PlacementPolicy.String())
+			d.Data.PlacementState = api.PlacementState(ostat.PlacementState.String())
+			d.Data.Provisioned = api.Provisioned(ostat.Provisioned.String())
+			d.Data.Topology = api.Topology(ostat.Topology.String())
+			d.Data.UpInstancesCount = ostat.UpInstancesCount
+		}
+		if ostat.FlexStatus != nil {
+			d.Data.FlexMax = ostat.FlexMax
+			d.Data.FlexMin = ostat.FlexMin
+			d.Data.FlexTarget = ostat.FlexTarget
+		}
+		if ostat.VolStatus != nil {
+			d.Data.Pool = &ostat.Pool
+			d.Data.Size = &ostat.Size
 		}
 		for nodename, config := range instance.ConfigData.GetByPath(p) {
 			monitor := instance.MonitorData.GetByPathAndNode(p, nodename)

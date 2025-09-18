@@ -637,7 +637,7 @@ func (t *Manager) onNodeStatusUpdated(c *msgbus.NodeStatusUpdated) {
 
 func (t *Manager) onNodeStatsUpdated(c *msgbus.NodeStatsUpdated) {
 	t.nodeStats[c.Node] = c.Value
-	if t.objStatus.PlacementPolicy == placement.Score {
+	if t.objStatus.ActorStatus != nil && t.objStatus.ActorStatus.PlacementPolicy == placement.Score {
 		t.onChange()
 	}
 }
@@ -987,6 +987,9 @@ func (t *Manager) newIsLeader() bool {
 }
 
 func (t *Manager) updateIsLeader() {
+	if t.objStatus.ActorStatus == nil {
+		return
+	}
 	isLeader := t.newIsLeader()
 	if isLeader != t.state.IsLeader {
 		t.change = true

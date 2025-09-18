@@ -9,7 +9,7 @@ import (
 func (t *Manager) orchestrateNone() {
 	t.clearStartFailed()
 	t.clearBootFailed()
-	if t.objStatus.Orchestrate == "ha" {
+	if t.objStatus.ActorStatus != nil && t.objStatus.Orchestrate == "ha" {
 		t.orchestrateHAStart()
 		t.orchestrateHAStop()
 	}

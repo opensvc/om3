@@ -356,9 +356,14 @@ func (t *Manager) configFileCheck() error {
 		}
 		if cfg.Topology == topology.Flex {
 			instanceCount := len(scope)
-			cfg.FlexMin = t.getFlexMin(cf, instanceCount)
-			cfg.FlexMax = t.getFlexMax(cf, cfg.FlexMin, instanceCount)
-			cfg.FlexTarget = t.getFlexTarget(cf, cfg.FlexMin, cfg.FlexMax)
+			flexMin := t.getFlexMin(cf, instanceCount)
+			flexMax := t.getFlexMax(cf, flexMin, instanceCount)
+			flexTarget := t.getFlexTarget(cf, flexMin, flexMax)
+			cfg.FlexConfig = &instance.FlexConfig{
+				FlexMin:    flexMin,
+				FlexMax:    flexMax,
+				FlexTarget: flexTarget,
+			}
 		}
 		for _, e := range actor.Schedules() {
 			cfg.ActorConfig.Schedules = append(cfg.ActorConfig.Schedules, e.Config)

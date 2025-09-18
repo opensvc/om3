@@ -23,6 +23,7 @@ type (
 		UpdatedAt time.Time   `json:"updated_at"`
 
 		*ActorConfig
+		*FlexConfig
 		*VolConfig
 	}
 
@@ -31,9 +32,6 @@ type (
 		Children         naming.Relations  `json:"children,omitempty"`
 		DRP              bool              `json:"drp,omitempty"`
 		Env              string            `json:"env,omitempty"`
-		FlexMax          int               `json:"flex_max,omitempty"`
-		FlexMin          int               `json:"flex_min,omitempty"`
-		FlexTarget       int               `json:"flex_target,omitempty"`
 		MonitorAction    []MonitorAction   `json:"monitor_action,omitempty"`
 		PreMonitorAction string            `json:"pre_monitor_action,omitempty"`
 		Orchestrate      string            `json:"orchestrate"`
@@ -46,6 +44,12 @@ type (
 
 		// IsDisabled is true when DEFAULT.disable is true
 		IsDisabled bool `json:"is_disabled"`
+	}
+
+	FlexConfig struct {
+		FlexMax    int `json:"flex_max,omitempty"`
+		FlexMin    int `json:"flex_min,omitempty"`
+		FlexTarget int `json:"flex_target,omitempty"`
 	}
 
 	VolConfig struct {
@@ -141,9 +145,6 @@ func (t Config) Unstructured() map[string]any {
 		m["children"] = t.Children
 		m["drp"] = t.DRP
 		m["env"] = t.Env
-		m["flex_max"] = t.FlexMax
-		m["flex_min"] = t.FlexMin
-		m["flex_target"] = t.FlexTarget
 		m["monitor_action"] = t.MonitorAction
 		m["pre_monitor_action"] = t.PreMonitorAction
 		m["orchestrate"] = t.Orchestrate
@@ -153,6 +154,11 @@ func (t Config) Unstructured() map[string]any {
 		m["resources"] = t.Resources.Unstructured()
 		m["subsets"] = t.Subsets.Unstructured()
 		m["topology"] = t.Topology
+	}
+	if t.FlexConfig != nil {
+		m["flex_max"] = t.FlexMax
+		m["flex_min"] = t.FlexMin
+		m["flex_target"] = t.FlexTarget
 	}
 	if t.VolConfig != nil {
 		m["pool"] = t.VolConfig.Pool
