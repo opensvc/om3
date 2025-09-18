@@ -10,7 +10,13 @@ import (
 
 func (f Frame) StrObjectInstance(path string, node string, scope []string) string {
 	s := ""
-	avail := f.Current.Cluster.Object[path].Avail
+	objectStatus := f.Current.Cluster.Object[path]
+	var avail status.T
+	if objectStatus.ActorStatus == nil {
+		avail = status.NotApplicable
+	} else {
+		avail = f.Current.Cluster.Object[path].Avail
+	}
 	inst := f.Current.Cluster.Node[node].Instance[path]
 	if inst.Status != nil {
 		var instanceMonitor instance.Monitor

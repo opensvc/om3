@@ -24,19 +24,23 @@ func (f Frame) wObjects() {
 }
 
 func sObjectPlacement(d object.Status) string {
-	var s string
-	if d.PlacementState == placement.NonOptimal {
-		s = iconPlacementAlert
+	if d.ActorStatus == nil {
+		return ""
 	}
-	return s
+	if d.ActorStatus.PlacementState == placement.NonOptimal {
+		return iconPlacementAlert
+	}
+	return ""
 }
 
 func sObjectWarning(d object.Status) string {
-	var s string
-	if d.Overall == status.Warn {
-		s = iconWarning
+	if d.ActorStatus == nil {
+		return ""
 	}
-	return s
+	if d.ActorStatus.Overall == status.Warn {
+		return iconWarning
+	}
+	return ""
 }
 
 func (f Frame) scalerInstancesUp(path string) int {
@@ -57,6 +61,9 @@ func (f Frame) scalerInstancesUp(path string) int {
 
 func (f Frame) sObjectOrchestrateAndRunning(path string) string {
 	s := f.Current.Cluster.Object[path]
+	if s.ActorStatus == nil {
+		return ""
+	}
 	return fmt.Sprintf("%-5s %s", s.Orchestrate, f.StrObjectRunning(path))
 }
 
@@ -67,6 +74,9 @@ func (f Frame) StrObjectRunning(path string) string {
 	avail := status.NotApplicable
 
 	s, ok := f.Current.Cluster.Object[path]
+	if s.ActorStatus == nil {
+		return ""
+	}
 	if ok {
 		avail = s.Avail
 	}
@@ -110,8 +120,10 @@ func StrObjectStatus(d object.Status) string {
 }
 
 func sObjectAvail(d object.Status) string {
-	s := d.Avail
-	return colorstatus.Sprint(s, rawconfig.Colorize)
+	if d.ActorStatus == nil {
+		return ""
+	}
+	return colorstatus.Sprint(d.ActorStatus.Avail, rawconfig.Colorize)
 }
 
 func (f Frame) sObject(path string) string {
