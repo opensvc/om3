@@ -33,7 +33,11 @@ func (t States) Tree() *tree.Tree {
 func (t States) LoadTreeNodeFolded(head *tree.Node) {
 	head.AddColumn().AddText(t.Node.Name).SetColor(rawconfig.Color.Bold)
 	head.AddColumn()
-	head.AddColumn().AddText(colorstatus.Sprint(t.Status.Avail, rawconfig.Colorize))
+	if t.Config.ActorConfig != nil {
+		head.AddColumn().AddText(colorstatus.Sprint(t.Status.Avail, rawconfig.Colorize))
+	} else {
+		head.AddColumn()
+	}
 	head.AddColumn().AddText(t.descString())
 }
 
@@ -42,6 +46,11 @@ func (t States) LoadTreeNodeFolded(head *tree.Node) {
 func (t States) LoadTreeNode(head *tree.Node) {
 	head.AddColumn().AddText(t.Node.Name).SetColor(rawconfig.Color.Bold)
 	head.AddColumn()
+	if t.Config.ActorConfig == nil {
+		head.AddColumn()
+		head.AddColumn().AddText(t.descString())
+		return
+	}
 	head.AddColumn().AddText(colorstatus.Sprint(t.Status.Avail, rawconfig.Colorize))
 	head.AddColumn().AddText(t.descString())
 
@@ -119,27 +128,29 @@ func (t States) LoadTreeNode(head *tree.Node) {
 func (t States) descString() string {
 	l := make([]string, 0)
 
-	// Overall
-	if t.Status.Overall == status.Warn {
-		l = append(l, colorstatus.Sprint(t.Status.Overall, rawconfig.Colorize))
-	}
+	if t.Config.ActorConfig != nil {
+		// Overall
+		if t.Status.Overall == status.Warn {
+			l = append(l, colorstatus.Sprint(t.Status.Overall, rawconfig.Colorize))
+		}
 
-	// Frozen
-	if !t.Status.FrozenAt.IsZero() {
-		l = append(l, rawconfig.Colorize.Frozen("frozen"))
-	}
+		// Frozen
+		if !t.Status.FrozenAt.IsZero() {
+			l = append(l, rawconfig.Colorize.Frozen("frozen"))
+		}
 
-	// Node frozen
-	if !t.Node.FrozenAt.IsZero() {
-		l = append(l, rawconfig.Colorize.Frozen("node-frozen"))
-	}
+		// Node frozen
+		if !t.Node.FrozenAt.IsZero() {
+			l = append(l, rawconfig.Colorize.Frozen("node-frozen"))
+		}
 
-	// Provisioned
-	switch t.Status.Provisioned {
-	case provisioned.False:
-		l = append(l, rawconfig.Colorize.Error("not-provisioned"))
-	case provisioned.Mixed:
-		l = append(l, rawconfig.Colorize.Error("mix-provisioned"))
+		// Provisioned
+		switch t.Status.Provisioned {
+		case provisioned.False:
+			l = append(l, rawconfig.Colorize.Error("not-provisioned"))
+		case provisioned.Mixed:
+			l = append(l, rawconfig.Colorize.Error("mix-provisioned"))
+		}
 	}
 
 	if !t.Config.UpdatedAt.IsZero() {
@@ -155,7 +166,7 @@ func (t States) descString() string {
 		// *or* imon deleted
 		// *or* imon not yet started
 		if t.Monitor.UpdatedAt.IsZero() {
-			l = append(l, rawconfig.Colorize.Warning("unknown"))
+			l = append(l, rawconfig.Colorize.Warning("no-monitor"))
 		}
 	} else {
 		switch t.Monitor.State {

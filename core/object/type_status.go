@@ -81,9 +81,11 @@ func (t Digest) Tree(nodes []string) *tree.Tree {
 // LoadTreeNode add the tree nodes representing the type instance into another.
 func (t Digest) LoadTreeNode(head *tree.Node, nodes []string) {
 	head.AddColumn().AddText(t.Path.String()).SetColor(rawconfig.Color.Bold)
-	head.AddColumn()
-	head.AddColumn().AddText(colorstatus.Sprint(t.Object.Avail, rawconfig.Colorize))
-	head.AddColumn().AddText(t.ObjectWarningsString())
+	if t.Object.ActorStatus != nil {
+		head.AddColumn()
+		head.AddColumn().AddText(colorstatus.Sprint(t.Object.Avail, rawconfig.Colorize))
+		head.AddColumn().AddText(t.ObjectWarningsString())
+	}
 	instances := head.AddNode()
 	instances.AddColumn().AddText("instances")
 	openMap := make(map[string]any)
