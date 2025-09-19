@@ -727,7 +727,7 @@ func (t *Manager) isStartable() (bool, string) {
 func (t *Manager) isStarted() bool {
 	switch t.objStatus.Topology {
 	case topology.Flex:
-		return t.objStatus.UpInstancesCount >= t.objStatus.FlexTarget
+		return t.objStatus.UpInstancesCount >= t.objStatus.Flex.Target
 	case topology.Failover:
 		return t.objStatus.Avail == status.Up
 	default:
@@ -951,7 +951,7 @@ func (t *Manager) newIsHALeader() bool {
 
 	var maxLeaders int = 1
 	if t.objStatus.Topology == topology.Flex {
-		maxLeaders = t.objStatus.FlexTarget
+		maxLeaders = t.objStatus.Flex.Target
 	}
 
 	i := stringslice.Index(t.localhost, candidates)
@@ -976,7 +976,7 @@ func (t *Manager) newIsLeader() bool {
 
 	var maxLeaders int = 1
 	if t.objStatus.Topology == topology.Flex {
-		maxLeaders = t.objStatus.FlexTarget
+		maxLeaders = t.objStatus.Flex.Target
 	}
 
 	i := stringslice.Index(t.localhost, candidates)

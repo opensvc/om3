@@ -37,7 +37,6 @@ type (
 		UpdatedAt time.Time  `json:"updated_at"`
 
 		*ActorStatus
-		*FlexStatus
 		*VolStatus
 	}
 
@@ -51,12 +50,13 @@ type (
 		Provisioned      provisioned.T    `json:"provisioned"`
 		Topology         topology.T       `json:"topology"`
 		UpInstancesCount int              `json:"up_instances_count"`
+		Flex             *FlexStatus      `json:"flex,omitempty"`
 	}
 
 	FlexStatus struct {
-		FlexTarget int `json:"flex_target,omitempty"`
-		FlexMin    int `json:"flex_min,omitempty"`
-		FlexMax    int `json:"flex_max,omitempty"`
+		Target int `json:"target,omitempty"`
+		Min    int `json:"min,omitempty"`
+		Max    int `json:"max,omitempty"`
 	}
 
 	VolStatus struct {
@@ -153,6 +153,7 @@ func (s *ActorStatus) DeepCopy() *ActorStatus {
 		return nil
 	}
 	newStatus := *s
+	newStatus.Flex = s.Flex.DeepCopy()
 	return &newStatus
 }
 
@@ -178,7 +179,6 @@ func (s *Status) DeepCopy() *Status {
 	}
 	newStatus := *s
 	newStatus.ActorStatus = s.ActorStatus.DeepCopy()
-	newStatus.FlexStatus = s.FlexStatus.DeepCopy()
 	newStatus.VolStatus = s.VolStatus.DeepCopy()
 	newStatus.Scope = append([]string{}, s.Scope...)
 	return &newStatus

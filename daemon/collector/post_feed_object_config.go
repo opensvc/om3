@@ -139,10 +139,10 @@ func (t *T) asPostFeedObjectConfigBody(p naming.Path, v *msgbus.InstanceConfigUp
 		pa.App = config.App
 		pa.Env = config.Env
 	}
-	if config.FlexConfig != nil {
-		pa.FlexMin = config.FlexMin
-		pa.FlexMax = config.FlexMax
-		pa.FlexTarget = config.FlexTarget
+	if config.Flex != nil {
+		pa.FlexMin = config.Flex.Min
+		pa.FlexMax = config.Flex.Max
+		pa.FlexTarget = config.Flex.Target
 	}
 
 	// TODO: set DrpNode, DrpNodes, Comment, encap

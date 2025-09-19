@@ -83,11 +83,11 @@ func (a *DaemonAPI) getObjects(ctx echo.Context, pathSelector *string) (api.Obje
 			Topology:         api.Topology(ostat.Topology.String()),
 			UpInstancesCount: ostat.UpInstancesCount,
 		}
-		if ostat.FlexStatus != nil {
+		if ostat.Flex != nil {
 			actor.Flex = &api.FlexConfig{
-				Max:    ostat.FlexMax,
-				Min:    ostat.FlexMin,
-				Target: ostat.FlexTarget,
+				Max:    ostat.Flex.Max,
+				Min:    ostat.Flex.Min,
+				Target: ostat.Flex.Target,
 			}
 		}
 		return actor

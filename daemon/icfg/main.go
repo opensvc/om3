@@ -359,10 +359,10 @@ func (t *Manager) configFileCheck() error {
 			flexMin := t.getFlexMin(cf, instanceCount)
 			flexMax := t.getFlexMax(cf, flexMin, instanceCount)
 			flexTarget := t.getFlexTarget(cf, flexMin, flexMax)
-			cfg.FlexConfig = &instance.FlexConfig{
-				FlexMin:    flexMin,
-				FlexMax:    flexMax,
-				FlexTarget: flexTarget,
+			cfg.ActorConfig.Flex = &instance.FlexConfig{
+				Min:    flexMin,
+				Max:    flexMax,
+				Target: flexTarget,
 			}
 		}
 		for _, e := range actor.Schedules() {

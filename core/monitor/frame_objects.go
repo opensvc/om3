@@ -95,7 +95,7 @@ func (f Frame) StrObjectRunning(path string) string {
 				//case !instanceStatus.Scale.IsZero():
 				//	expected = int(instanceStatus.Scale.ValueOrZero())
 				case s.Topology == topology.Flex:
-					expected = s.FlexTarget
+					expected = s.Flex.Target
 				case s.Topology == topology.Failover:
 					expected = 1
 				}

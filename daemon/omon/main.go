@@ -97,18 +97,18 @@ func Start(ctx context.Context, subQS pubsub.QueueSizer, p naming.Path, cfg inst
 			Size: cfg.VolConfig.Size,
 		}
 	}
-	if cfg.FlexConfig != nil {
-		status.FlexStatus = &object.FlexStatus{
-			FlexTarget: cfg.FlexConfig.FlexTarget,
-			FlexMin:    cfg.FlexConfig.FlexMin,
-			FlexMax:    cfg.FlexConfig.FlexMax,
-		}
-	}
 	if cfg.ActorConfig != nil {
 		status.ActorStatus = &object.ActorStatus{
 			Orchestrate:     cfg.ActorConfig.Orchestrate,
 			PlacementPolicy: cfg.ActorConfig.PlacementPolicy,
 			Topology:        cfg.ActorConfig.Topology,
+		}
+		if cfg.ActorConfig.Flex != nil {
+			status.ActorStatus.Flex = &object.FlexStatus{
+				Min:    cfg.Flex.Min,
+				Max:    cfg.Flex.Max,
+				Target: cfg.Flex.Target,
+			}
 		}
 	}
 	t := &Manager{
@@ -274,12 +274,12 @@ func (t *Manager) worker() {
 						PlacementPolicy: c.Value.PlacementPolicy,
 						Topology:        c.Value.Topology,
 					}
-				}
-				if c.Value.FlexConfig != nil {
-					t.status.FlexStatus = &object.FlexStatus{
-						FlexTarget: c.Value.FlexTarget,
-						FlexMin:    c.Value.FlexMin,
-						FlexMax:    c.Value.FlexMax,
+					if c.Value.ActorConfig.Flex != nil {
+						t.status.ActorStatus.Flex = &object.FlexStatus{
+							Target: c.Value.ActorConfig.Flex.Target,
+							Min:    c.Value.ActorConfig.Flex.Min,
+							Max:    c.Value.ActorConfig.Flex.Max,
+						}
 					}
 				}
 				if c.Value.VolConfig != nil {
@@ -340,9 +340,9 @@ func (t *Manager) updateStatus() {
 			switch {
 			case states[status.Up] == 0:
 				return status.Down
-			case states[status.Up] < t.status.FlexMin:
+			case states[status.Up] < t.status.Flex.Min:
 				return status.Warn
-			case states[status.Up] > t.status.FlexMax:
+			case states[status.Up] > t.status.Flex.Max:
 				return status.Warn
 			default:
 				return status.Up

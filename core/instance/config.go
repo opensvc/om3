@@ -23,7 +23,6 @@ type (
 		UpdatedAt time.Time   `json:"updated_at"`
 
 		*ActorConfig
-		*FlexConfig
 		*VolConfig
 	}
 
@@ -41,15 +40,16 @@ type (
 		Schedules        []schedule.Config `json:"schedules"`
 		Subsets          SubsetConfigs     `json:"subsets"`
 		Topology         topology.T        `json:"topology,omitempty"`
+		Flex             *FlexConfig       `json:"flex,omitempty"`
 
 		// IsDisabled is true when DEFAULT.disable is true
 		IsDisabled bool `json:"is_disabled"`
 	}
 
 	FlexConfig struct {
-		FlexMax    int `json:"flex_max,omitempty"`
-		FlexMin    int `json:"flex_min,omitempty"`
-		FlexTarget int `json:"flex_target,omitempty"`
+		Max    int `json:"max,omitempty"`
+		Min    int `json:"min,omitempty"`
+		Target int `json:"target,omitempty"`
 	}
 
 	VolConfig struct {
@@ -154,11 +154,11 @@ func (t Config) Unstructured() map[string]any {
 		m["resources"] = t.Resources.Unstructured()
 		m["subsets"] = t.Subsets.Unstructured()
 		m["topology"] = t.Topology
-	}
-	if t.FlexConfig != nil {
-		m["flex_max"] = t.FlexMax
-		m["flex_min"] = t.FlexMin
-		m["flex_target"] = t.FlexTarget
+		if t.ActorConfig.Flex != nil {
+			m["max"] = t.ActorConfig.Flex.Max
+			m["min"] = t.ActorConfig.Flex.Min
+			m["target"] = t.ActorConfig.Flex.Target
+		}
 	}
 	if t.VolConfig != nil {
 		m["pool"] = t.VolConfig.Pool

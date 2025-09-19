@@ -5054,9 +5054,6 @@ components:
         - children
         - drp
         - env
-        - flex_max
-        - flex_min
-        - flex_target
         - monitor_action
         - pre_monitor_action
         - nodename
@@ -5084,12 +5081,8 @@ components:
           type: boolean
         env:
           type: string
-        flex_max:
-          type: integer
-        flex_min:
-          type: integer
-        flex_target:
-          type: integer
+        flex:
+          $ref: '#/components/schemas/FlexConfig'
         monitor_action:
           type: array
           items:
