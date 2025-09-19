@@ -53,6 +53,53 @@ func (a *DaemonAPI) getObjects(ctx echo.Context, pathSelector *string) (api.Obje
 	hasRoot := grantsFromContext(ctx).HasRole(rbac.RoleRoot)
 	userGrants := grantsFromContext(ctx)
 
+	getCore := func(p naming.Path, ostat *object.Status) api.ObjectCore {
+		core := api.ObjectCore{
+			Scope:     append([]string{}, ostat.Scope...),
+			Instances: make(map[string]api.Instance),
+			Priority:  int(ostat.Priority),
+			UpdatedAt: ostat.UpdatedAt,
+		}
+		for nodename, config := range instance.ConfigData.GetByPath(p) {
+			monitor := instance.MonitorData.GetByPathAndNode(p, nodename)
+			status := instance.StatusData.GetByPathAndNode(p, nodename)
+			core.Instances[nodename] = api.Instance{
+				Config:  config,
+				Monitor: monitor,
+				Status:  status,
+			}
+		}
+		return core
+	}
+	getActor := func(ostat *object.Status) api.ObjectActor {
+		actor := api.ObjectActor{
+			Avail:            api.Status(ostat.Avail.String()),
+			Frozen:           api.ObjectFrozen(ostat.Frozen),
+			Orchestrate:      api.Orchestrate(ostat.Orchestrate),
+			Overall:          api.Status(ostat.Overall.String()),
+			PlacementPolicy:  api.PlacementPolicy(ostat.PlacementPolicy.String()),
+			PlacementState:   api.PlacementState(ostat.PlacementState.String()),
+			Provisioned:      api.Provisioned(ostat.Provisioned.String()),
+			Topology:         api.Topology(ostat.Topology.String()),
+			UpInstancesCount: ostat.UpInstancesCount,
+		}
+		if ostat.FlexStatus != nil {
+			actor.Flex = &api.FlexConfig{
+				Max:    ostat.FlexMax,
+				Min:    ostat.FlexMin,
+				Target: ostat.FlexTarget,
+			}
+		}
+		return actor
+	}
+
+	getObjectVolConfig := func(ostat *object.Status) api.ObjectVolConfig {
+		return api.ObjectVolConfig{
+			Pool: ostat.Pool,
+			Size: ostat.Size,
+		}
+	}
+
 	l := make(api.ObjectItems, 0)
 	for _, p := range meta.Paths() {
 		if !hasRoot && !hasRoleGuestOn(userGrants, p.Namespace) {
@@ -67,42 +114,26 @@ func (a *DaemonAPI) getObjects(ctx echo.Context, pathSelector *string) (api.Obje
 			Meta: api.ObjectMeta{
 				Object: p.String(),
 			},
-			Data: api.ObjectData{
-				Scope:     append([]string{}, ostat.Scope...),
-				Instances: make(map[string]api.Instance),
-				Priority:  int(ostat.Priority),
-				UpdatedAt: ostat.UpdatedAt.String(),
-			},
+			Data: api.ObjectData{},
 		}
-		if ostat.ActorStatus != nil {
-			d.Data.Avail = api.Status(ostat.Avail.String())
-			d.Data.Frozen = ostat.Frozen
-			d.Data.Orchestrate = api.Orchestrate(ostat.Orchestrate)
-			d.Data.Overall = api.Status(ostat.Overall.String())
-			d.Data.PlacementPolicy = api.PlacementPolicy(ostat.PlacementPolicy.String())
-			d.Data.PlacementState = api.PlacementState(ostat.PlacementState.String())
-			d.Data.Provisioned = api.Provisioned(ostat.Provisioned.String())
-			d.Data.Topology = api.Topology(ostat.Topology.String())
-			d.Data.UpInstancesCount = ostat.UpInstancesCount
+		switch p.Kind {
+		case naming.KindCcfg:
+			d.Data.MergeObjectCore(getCore(p, ostat))
+		case naming.KindCfg:
+			d.Data.MergeObjectCore(getCore(p, ostat))
+		case naming.KindSec:
+			d.Data.MergeObjectCore(getCore(p, ostat))
+		case naming.KindSvc:
+			d.Data.MergeObjectCore(getCore(p, ostat))
+			d.Data.MergeObjectActor(getActor(ostat))
+		case naming.KindVol:
+			d.Data.MergeObjectCore(getCore(p, ostat))
+			d.Data.MergeObjectActor(getActor(ostat))
+			d.Data.MergeObjectVolConfig(getObjectVolConfig(ostat))
+		case naming.KindUsr:
+			d.Data.MergeObjectCore(getCore(p, ostat))
 		}
-		if ostat.FlexStatus != nil {
-			d.Data.FlexMax = ostat.FlexMax
-			d.Data.FlexMin = ostat.FlexMin
-			d.Data.FlexTarget = ostat.FlexTarget
-		}
-		if ostat.VolStatus != nil {
-			d.Data.Pool = &ostat.Pool
-			d.Data.Size = &ostat.Size
-		}
-		for nodename, config := range instance.ConfigData.GetByPath(p) {
-			monitor := instance.MonitorData.GetByPathAndNode(p, nodename)
-			status := instance.StatusData.GetByPathAndNode(p, nodename)
-			d.Data.Instances[nodename] = api.Instance{
-				Config:  config,
-				Monitor: monitor,
-				Status:  status,
-			}
-		}
+
 		l = append(l, d)
 	}
 	return l, nil

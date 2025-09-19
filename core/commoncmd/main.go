@@ -72,7 +72,11 @@ func NodesFromPaths(c *client.T, selector string) ([]string, error) {
 		return nil, fmt.Errorf("%s", resp.Status())
 	}
 	for _, item := range resp.JSON200.Items {
-		for node := range item.Data.Instances {
+		core, err := item.Data.AsObjectCore()
+		if err != nil {
+			return []string{}, err
+		}
+		for node := range core.Instances {
 			m[node] = nil
 		}
 	}

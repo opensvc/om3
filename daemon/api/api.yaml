@@ -350,7 +350,7 @@ paths:
         The requester must be granted the 'root' or 'join' roles.
 
         The processing of the join request is asynchronous.
-       
+
         The HTTP response is sent when the join request event has been published.
         This event is labeled node=<api_node>.
 
@@ -4562,9 +4562,9 @@ components:
 
     DaemonDns:
       description: |
-        DaemonDNS describes the OpenSVC daemon dns subsystem state, which is 
+        DaemonDNS describes the OpenSVC daemon dns subsystem state, which is
         responsible for janitoring and serving the cluster Dns zone.
-        This zone is dynamically populated by ip address allocated for the 
+        This zone is dynamically populated by ip address allocated for the
         services (frontend and backend).
       allOf:
         - $ref: '#/components/schemas/DaemonSubsystemStatus'
@@ -4741,7 +4741,7 @@ components:
         - id
         - state
       description: |
-        Describes a OpenSVC daemon subsystem: when it was last created, 
+        Describes a OpenSVC daemon subsystem: when it was last created,
         configured an updated, what its current state is and its id.
       properties:
         configured_at:
@@ -5883,6 +5883,17 @@ components:
     # object schemas
     # ========================================================================
 
+    Priority:
+      type: integer
+      description: "Lower priority are orchestrated first."
+      example: 50
+
+    Scope:
+      type: array
+      items:
+        type: string
+      example: ["node1", "node2"]
+
     ObjectList:
       type: object
       required:
@@ -5959,65 +5970,130 @@ components:
       items:
         type: string
 
-    ObjectData:
+    ObjectCore:
       type: object
       required:
-        - avail
-        - flex_max
-        - flex_min
-        - flex_target
-        - frozen
         - instances
-        - orchestrate
-        - overall
-        - placement_policy
-        - placement_state
         - priority
-        - provisioned
         - scope
-        - topology
-        - up_instances_count
         - updated_at
       properties:
-        avail:
-          $ref: '#/components/schemas/Status'
-        flex_max:
-          type: integer
-        flex_min:
-          type: integer
-        flex_target:
-          type: integer
-        frozen:
-          type: string
         instances:
           $ref: '#/components/schemas/InstanceMap'
-        orchestrate:
-          $ref: '#/components/schemas/Orchestrate'
-        overall:
-          $ref: '#/components/schemas/Status'
-        placement_policy:
-          $ref: '#/components/schemas/PlacementPolicy'
-        placement_state:
-          $ref: '#/components/schemas/PlacementState'
+        priority:
+          $ref: '#/components/schemas/Priority'
+        scope:
+          $ref: '#/components/schemas/Scope'
+        updated_at:
+          $ref: '#/components/schemas/UpdatedAt'
+
+    ObjectActor:
+      type: object
+      allOf:
+        - $ref: '#/components/schemas/ObjectCore'
+        - type: object
+          properties:
+            avail:
+              $ref: '#/components/schemas/Status'
+            flex:
+              $ref: '#/components/schemas/FlexConfig'
+            frozen:
+              $ref: '#/components/schemas/ObjectFrozen'
+            orchestrate:
+              $ref: '#/components/schemas/Orchestrate'
+            overall:
+              $ref: '#/components/schemas/Status'
+            placement_policy:
+              $ref: '#/components/schemas/PlacementPolicy'
+            placement_state:
+              $ref: '#/components/schemas/PlacementState'
+            provisioned:
+              $ref: '#/components/schemas/Provisioned'
+            topology:
+              $ref: '#/components/schemas/Topology'
+            up_instances_count:
+              type: integer
+              example: 3
+          required:
+            - avail
+            - frozen
+            - orchestrate
+            - overall
+            - placement_policy
+            - placement_state
+            - provisioned
+            - topology
+            - up_instances_count
+
+    ObjectVolConfig:
+      type: object
+      properties:
         pool:
           type: string
-        priority:
-          type: integer
-        provisioned:
-          $ref: '#/components/schemas/Provisioned'
-        scope:
-          type: array
-          items:
-            type: string
+          example: "shm"
         size:
           type: integer
           format: int64
-        topology:
-          $ref: '#/components/schemas/Topology'
-        up_instances_count:
+          example: 10737418240
+      required:
+        - pool
+        - size
+
+    FlexConfig:
+      type: object
+      properties:
+        min:
           type: integer
-        updated_at:
-          type: string
+          example: 2
+        max:
+          type: integer
+          example: 10
+        target:
+          type: integer
+          example: 5
+      required:
+        - min
+        - max
+        - target
+
+    ObjectCcfg:
+      allOf:
+        - $ref: '#/components/schemas/ObjectCore'
+
+    ObjectUsr:
+      allOf:
+        - $ref: '#/components/schemas/ObjectCore'
+
+    ObjectSec:
+      allOf:
+        - $ref: '#/components/schemas/ObjectCore'
+
+    ObjectCfg:
+      allOf:
+        - $ref: '#/components/schemas/ObjectCore'
+
+    ObjectSvc:
+      allOf:
+        - $ref: '#/components/schemas/ObjectActor'
+        - $ref: '#/components/schemas/ObjectCore'
+
+    ObjectVol:
+      allOf:
+        - $ref: '#/components/schemas/ObjectActor'
+        - $ref: '#/components/schemas/ObjectCore'
+        - $ref: '#/components/schemas/ObjectVolConfig'
+
+    ObjectData:
+      anyOf:
+        - $ref: '#/components/schemas/ObjectActor'
+        - $ref: '#/components/schemas/ObjectCore'
+        - $ref: '#/components/schemas/ObjectCcfg'
+        - $ref: '#/components/schemas/ObjectCfg'
+        - $ref: '#/components/schemas/ObjectSec'
+        - $ref: '#/components/schemas/ObjectSvc'
+        - $ref: '#/components/schemas/ObjectUsr'
+        - $ref: '#/components/schemas/ObjectVol'
+        - $ref: '#/components/schemas/ObjectVolConfig'
 
     Orchestrate:
       type: string
@@ -6065,6 +6141,16 @@ components:
         - score
         - spread
         - shift
+
+    ObjectFrozen:
+      type: string
+      description: Frozen is the aggregation of instances frozen states
+      example: frozen
+      enum:
+        - frozen
+        - mixed
+        - n/a
+        - unfrozen
 
     PlacementState:
       type: string
@@ -7038,6 +7124,8 @@ components:
 
     Status:
       type: string
+      description: "Represents a resource, instance or object status, e.g., 'up', 'down', 'warn', ...."
+      example: up
       enum:
         - up
         - down
@@ -7070,6 +7158,12 @@ components:
         - failover
         - flex
       default: failover
+
+    UpdatedAt:
+      type: string
+      x-go-type: time.Time
+      format: date-time
+      example: "2025-09-19T06:30:00Z"
 
     UserIdentity :
       type: object
