@@ -2,7 +2,7 @@ openapi: 3.0.0
 
 info:
   title: opensvc agent api
-  version: 3.17.3
+  version: 3.18.0
 
 paths:
   /api/auth/info:
@@ -1603,7 +1603,7 @@ paths:
         content:
           application/json:
             schema:
-                $ref: '#/components/schemas/PostNodeDRBDConfigRequest'
+              $ref: '#/components/schemas/PostNodeDRBDConfigRequest'
       responses:
         200:
           description: OK
@@ -1615,6 +1615,41 @@ paths:
           $ref: '#/components/responses/403'
         500:
           $ref: '#/components/responses/500'
+      x-internal: true
+
+  /api/node/name/{nodename}/instance/path/{namespace}/{kind}/{name}/drbd/connect:
+    post:
+      operationId: PostNodeDRBDConnect
+      description: |
+        For internal use only.
+
+        Used by the CRM to ask a node for a drbd connection
+      parameters:
+        - $ref: '#/components/parameters/inPathNodeName'
+        - $ref: '#/components/parameters/inPathNamespace'
+        - $ref: '#/components/parameters/inPathKind'
+        - $ref: '#/components/parameters/inPathName'
+        - $ref: '#/components/parameters/DRBDResourceName'
+      responses:
+        204:
+          $ref: '#/components/responses/204'
+          description: OK
+        400:
+          $ref: '#/components/responses/400'
+        401:
+          $ref: '#/components/responses/401'
+        403:
+          $ref: '#/components/responses/403'
+        404:
+          $ref: '#/components/responses/404'
+        500:
+          $ref: '#/components/responses/500'
+      security:
+        - basicAuth: []
+        - bearerAuth: []
+      tags:
+        - node / instance / svc
+        - node / instance / vol
       x-internal: true
 
   /api/node/name/{nodename}/drivers:
@@ -7380,7 +7415,7 @@ components:
         type: string
         example: fs.ext4
 
-    inQuerySection:   
+    inQuerySection:
       in: query
       name: section
       description: show supported keywords of this configuration section

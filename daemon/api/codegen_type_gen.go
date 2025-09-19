@@ -2041,6 +2041,12 @@ type PostInstanceActionUnprovisionParams struct {
 	To           *InQueryTo           `form:"to,omitempty" json:"to,omitempty"`
 }
 
+// PostNodeDRBDConnectParams defines parameters for PostNodeDRBDConnect.
+type PostNodeDRBDConnectParams struct {
+	// Name drbd resource name
+	Name DRBDResourceName `form:"name" json:"name"`
+}
+
 // GetInstanceLogsParams defines parameters for GetInstanceLogs.
 type GetInstanceLogsParams struct {
 	// Filter list of log filter

@@ -615,6 +615,16 @@ func (t *T) StartConnection(ctx context.Context) error {
 	}
 }
 
+func (t *T) TryStartConnection(ctx context.Context) error {
+	if ok, err := t.IsDefined(ctx); err != nil {
+		return err
+	} else if !ok {
+		t.log.Infof("drbd resource %s is not defined, skipping connection", t.res)
+		return nil
+	}
+	return t.StartConnection(ctx)
+}
+
 func (t *T) WaitCState(ctx context.Context, timeout time.Duration, candidates ...string) (string, error) {
 	t.log.Infof("wait %s for cstate in (%s)", t.res, strings.Join(candidates, ","))
 	var state, lastState string

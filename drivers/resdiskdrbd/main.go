@@ -696,6 +696,50 @@ func (t *T) sendConfigToNode(nodename string, allocationID uuid.UUID, b []byte) 
 	}
 }
 
+// connectPeers establishes connections to all peer nodes except the current host and logs the connection attempts or errors.
+func (t *T) connectPeers(ctx context.Context) error {
+	for _, nodename := range t.Nodes {
+		if nodename == hostname.Hostname() {
+			continue
+		}
+		t.Log().Infof("resource %s connecting peer %s", t.Res, nodename)
+		if err := t.connectPeer(ctx, nodename); err != nil {
+			t.Log().Warnf("resource %s connect peer %s: %s", t.Res, nodename, err)
+		}
+	}
+	return nil
+}
+
+func (t *T) connectPeer(ctx context.Context, nodename string) error {
+	c, err := client.New()
+	if err != nil {
+		return err
+	}
+	params := api.PostNodeDRBDConnectParams{
+		Name: t.Res,
+	}
+	resp, err := c.PostNodeDRBDConnectWithResponse(ctx, nodename, t.Path.Namespace, t.Path.Kind, t.Path.Name, &params)
+	if err != nil {
+		return err
+	}
+	switch resp.StatusCode() {
+	case 204:
+		return nil
+	case 400:
+		return fmt.Errorf("%s", resp.JSON400)
+	case 401:
+		return fmt.Errorf("%s", resp.JSON401)
+	case 403:
+		return fmt.Errorf("%s", resp.JSON403)
+	case 404:
+		return nil
+	case 500:
+		return fmt.Errorf("%s", resp.JSON500)
+	default:
+		return fmt.Errorf("unexpected status code: %s", resp.Status())
+	}
+}
+
 func (t *T) ProvisionAsFollower(ctx context.Context) error {
 	actionrollback.Register(ctx, func(ctx context.Context) error {
 		return t.UnprovisionAsFollower(ctx)
@@ -899,6 +943,9 @@ func (t *T) ClaimedDevices() device.L {
 func (t *T) connectAndWaitConnectingOrConnected(ctx context.Context) (string, error) {
 	if err := t.Connect(ctx); err != nil {
 		return "", fmt.Errorf("drbd resource %s: connect: %w", t.Res, err)
+	}
+	if err := t.connectPeers(ctx); err != nil {
+		t.Log().Warnf("drbd resource %s: connect peers: %w", t.Res, err)
 	}
 	return t.drbd(ctx).WaitConnectingOrConnected(ctx)
 }
