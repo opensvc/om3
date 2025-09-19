@@ -204,13 +204,13 @@ func TestDataFilters(t *testing.T) {
 
 	for s, c := range matched {
 		t.Run(s, func(t *testing.T) {
-			require.True(t, c.match(v))
+			require.Truef(t, c.match(v), "'%s' should match '%s'", v, c)
 		})
 	}
 
 	for s, c := range notMatched {
 		t.Run(s, func(t *testing.T) {
-			require.False(t, c.match(v))
+			require.Falsef(t, c.match(v), "'%s' shouldn't match '%s'", v, c)
 		})
 	}
 }
