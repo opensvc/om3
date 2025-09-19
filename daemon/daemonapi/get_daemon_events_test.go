@@ -179,38 +179,38 @@ func TestDataFilters(t *testing.T) {
 	}
 
 	matched := map[string]DataFilters{
-		"match uniq value": {{Key: ".instance_status.overall", Op: "=", Value: string("\"down\"")}},
+		"match uniq value": {{Key: "instance_status.overall", Op: "=", Value: string("\"down\"")}},
 		"matched both values": DataFilters{
-			{Key: ".instance_status.overall", Op: "=", Value: string("\"down\"")},
-			{Key: ".instance_status.avail", Op: "=", Value: string("\"stdby down\"")},
+			{Key: "instance_status.overall", Op: "=", Value: string("\"down\"")},
+			{Key: "instance_status.avail", Op: "=", Value: string("\"stdby down\"")},
 		},
 	}
 
 	notMatched := map[string]DataFilters{
 		"unmatched the value": {{Key: ".instance_status.overall", Op: "=", Value: string("\"up\"")}},
 		"unmatched second value": DataFilters{
-			{Key: ".instance_status.overall", Op: "=", Value: string("\"down\"")},
-			{Key: ".instance_status.avail", Op: "=", Value: string("\"stdby up\"")},
+			{Key: "instance_status.overall", Op: "=", Value: string("\"down\"")},
+			{Key: "instance_status.avail", Op: "=", Value: string("\"stdby up\"")},
 		},
 		"unmatched first value": DataFilters{
-			{Key: ".instance_status.overall", Op: "=", Value: string("\"up\"")},
-			{Key: ".instance_status.avail", Op: "=", Value: string("\"stdby down\"")},
+			{Key: "instance_status.overall", Op: "=", Value: string("\"up\"")},
+			{Key: "instance_status.avail", Op: "=", Value: string("\"stdby down\"")},
 		},
 		"unmatched on both values": DataFilters{
-			{Key: ".instance_status.overall", Op: "=", Value: string("\"up\"")},
-			{Key: ".instance_status.avail", Op: "=", Value: string("\"up\"")},
+			{Key: "instance_status.overall", Op: "=", Value: string("\"up\"")},
+			{Key: "instance_status.avail", Op: "=", Value: string("\"up\"")},
 		},
 	}
 
 	for s, c := range matched {
 		t.Run(s, func(t *testing.T) {
-			require.True(t, c.match(v))
+			require.Truef(t, c.match(v), "'%s' should match '%s'", v, c)
 		})
 	}
 
 	for s, c := range notMatched {
 		t.Run(s, func(t *testing.T) {
-			require.False(t, c.match(v))
+			require.Falsef(t, c.match(v), "'%s' shouldn't match '%s'", v, c)
 		})
 	}
 }
