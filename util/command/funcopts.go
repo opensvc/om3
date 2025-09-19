@@ -29,10 +29,14 @@ func WithArgs(args []string) funcopt.O {
 	})
 }
 
-// WithContext sets the command context
+// WithContext sets a custom context.Context for the command execution,
+// using context.Background() if none is provided.
 func WithContext(ctx context.Context) funcopt.O {
 	return funcopt.F(func(i interface{}) error {
 		t := i.(*T)
+		if ctx == nil {
+			ctx = context.Background()
+		}
 		t.ctx = ctx
 		return nil
 	})

@@ -81,6 +81,13 @@ func (t *T) Manifest() *manifest.T {
 			Provisioning: true,
 			Text:         keywords.NewText(fs, "text/kw/network"),
 		},
+		keywords.Keyword{
+			Attr:         "Template",
+			Example:      "default",
+			Option:       "template",
+			Provisioning: true,
+			Text:         keywords.NewText(fs, "text/kw/template"),
+		},
 	)
 	return m
 }

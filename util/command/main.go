@@ -75,7 +75,6 @@ var (
 
 func New(opts ...funcopt.O) *T {
 	t := &T{
-		ctx:             context.Background(),
 		stdoutLogLevel:  zerolog.Disabled,
 		stderrLogLevel:  zerolog.Disabled,
 		logLevel:        zerolog.DebugLevel,
@@ -83,6 +82,9 @@ func New(opts ...funcopt.O) *T {
 		okExitCodes:     []int{0},
 	}
 	_ = funcopt.Apply(t, opts...)
+	if t.ctx == nil {
+		t.ctx = context.Background()
+	}
 	if t.timeout > 0 {
 		t.ctx, t.cancel = context.WithTimeout(t.ctx, t.timeout)
 	}

@@ -11,7 +11,6 @@ import (
 	"net"
 	"net/http"
 	"os"
-	"slices"
 	"strings"
 	"text/template"
 	"time"
@@ -34,7 +33,6 @@ import (
 	"github.com/opensvc/om3/util/file"
 	"github.com/opensvc/om3/util/hostname"
 	"github.com/opensvc/om3/util/key"
-	"github.com/opensvc/om3/util/waitfor"
 )
 
 type (
@@ -48,31 +46,62 @@ type (
 		Addr     string      `json:"addr"`
 		Port     int         `json:"port"`
 		Network  string      `json:"network"`
+		Template string      `json:"template"`
 	}
 	DRBDDriver interface {
-		Adjust() error
-		Attach() error
-		Connect() error
-		ConnState() (string, error)
-		CreateMD(int) error
-		DetachForce() error
-		Disconnect() error
-		DiskStates() ([]string, error)
-		Down() error
-		HasMD() (bool, error)
-		IsDefined() (bool, error)
-		Primary() error
-		PrimaryForce() error
-		Role() (string, error)
-		Secondary() error
-		Up() error
-		WipeMD() error
+		Adjust(context.Context) error
+		Attach(context.Context) error
+		Connect(context.Context) error
+		ConnState(context.Context) (string, error)
+		CreateMD(context.Context, int) error
+		DetachForce(context.Context) error
+		Disconnect(context.Context) error
+		DiskStates(context.Context) ([]string, error)
+		Down(context.Context) error
+		HasMD(context.Context) (bool, error)
+		IsDefined(context.Context) (bool, error)
+		Primary(context.Context) error
+		PrimaryForce(context.Context) error
+		Role(context.Context) (string, error)
+		Secondary(context.Context) error
+		Up(context.Context) error
+		WipeMD(context.Context) error
+		WaitCState(ctx context.Context, timeout time.Duration, candidates ...string) (string, error)
+		WaitConnectingOrConnected(ctx context.Context) (string, error)
+		StartConnection(context.Context) error
 	}
-	ConfRes struct {
+
+	// ResTemplateData represents template data for a resource configuration, it is exported (public)
+	// to help template designers to use it.
+	//
+	// It defines the available fields that template designers can use.
+	// Example usage in a template:
+	//     resource {{.Name}} {
+	//        {{range $node := .Nodes}}
+	//        on {{$node.Name}} {
+	//            device    {{$node.Device}};
+	//            disk      {{$node.Disk}};
+	//            meta-disk internal;
+	//            address   {{$node.Addr}};
+	//            node-id   {{$node.NodeId}};
+	//        }
+	//        {{end}}
+	//        connection-mesh {
+	//            hosts{{range $node := .Nodes}} {{$node.Name}}{{end}};
+	//        }
+	//        net {
+	//            rr-conflict retry-connect;
+	//        }
+	//    }
+	ResTemplateData struct {
 		Name  string
-		Hosts []ConfResOn
+		Nodes []NodeTemplateData
 	}
-	ConfResOn struct {
+
+	// NodeTemplateData represents a structure to hold template data for individual nodes,
+	// including their name, address, device, and disk information.
+	// It is exported (public) to help template designers to use it.
+	NodeTemplateData struct {
 		Name   string
 		Addr   string
 		Device string
@@ -82,8 +111,12 @@ type (
 )
 
 var (
-	WaitKnownDiskStatesDelay   = time.Second * 1
-	WaitKnownDiskStatesTimeout = time.Second * 5
+	// waitConnectedTimeout defines the maximum duration to wait for a connection
+	// state change to connected before timing out.
+	waitConnectedTimeout = time.Second * 20
+
+	waitDiskStatesDelay   = time.Second * 1
+	waitDiskStatesTimeout = time.Second * 20
 
 	MaxNodes = 32
 
@@ -92,6 +125,8 @@ var (
 
 	//go:embed text/template/res8
 	resTemplateTextV8 string
+
+	drbdCfgPath = naming.Path{Name: "drbd", Namespace: "system", Kind: naming.KindCfg}
 )
 
 func New() resource.Driver {
@@ -116,109 +151,50 @@ func (t *T) Name() string {
 	}
 }
 
-func (t *T) Info(ctx context.Context) (resource.InfoKeys, error) {
+func (t *T) Info(_ context.Context) (resource.InfoKeys, error) {
 	m := resource.InfoKeys{
 		{Key: "res", Value: t.Res},
 	}
 	return m, nil
 }
 
-func (t *T) WaitKnownDiskStates(dev DRBDDriver) error {
-	check := func() (bool, error) {
-		states, err := dev.DiskStates()
-		if err != nil {
-			return false, err
-		}
-		for idx, state := range states {
-			if state == "Diskless" || state == "DUnknown" {
-				t.Log().Infof("drbd %s disk %d dstate %s from %s is not yet valid", t.Res, idx, state, states)
-				return false, nil
-			}
-		}
-		t.Log().Infof("drbd %s disk states: %s", t.Res, states)
-		return true, nil
-	}
-	limit := time.Now().Add(WaitKnownDiskStatesTimeout)
-	for {
-		ok, err := check()
-		if err != nil {
-			return err
-		}
-		if ok {
-			return nil
-		}
-		if time.Now().Add(WaitKnownDiskStatesDelay).After(limit) {
-			return fmt.Errorf("timeout waiting for peers to have a known dstate")
-		}
-		time.Sleep(WaitKnownDiskStatesDelay)
-	}
-}
-
-func (t *T) WaitForNonLocalDiskless(dev DRBDDriver) error {
-	check := func() (bool, error) {
-		states, err := dev.DiskStates()
-		if err != nil {
-			return false, err
-		}
-		if len(states) == 0 {
-			t.Log().Infof("waiting for drbd %s disk local dstate", t.Res)
-			return false, nil
-		}
-		state := states[0]
-		if state == "Diskless" || state == "DUnknown" {
-			t.Log().Infof("drbd %s disk local dstate %s (%s) is not yet valid", t.Res, state, states)
-			return false, nil
-		}
-		t.Log().Infof("drbd %s found local dstate %s from states: %s", t.Res, state, states)
-		return true, nil
-	}
-	limit := time.Now().Add(WaitKnownDiskStatesTimeout)
-	for {
-		ok, err := check()
-		if err != nil {
-			return err
-		}
-		if ok {
-			return nil
-		}
-		if time.Now().Add(WaitKnownDiskStatesDelay).After(limit) {
-			return fmt.Errorf("timeout waiting for localhost to have a known dstate")
-		}
-		time.Sleep(WaitKnownDiskStatesDelay)
-	}
+func (t *T) Connect(ctx context.Context) error {
+	return t.drbd(ctx).Connect(ctx)
 }
 
 // DownForce is called by the unprovisioner. Dataloss is not an issue there,
 // so forced detach can be tried.
 func (t *T) DownForce(ctx context.Context) error {
-	dev := t.drbd()
-	if err := dev.Disconnect(); err != nil {
+	dev := t.drbd(ctx)
+	if err := dev.Disconnect(ctx); err != nil {
 		return err
 	}
-	if err := dev.DetachForce(); err != nil {
+	if err := dev.DetachForce(ctx); err != nil {
 		return err
 	}
-	if err := dev.Down(); err != nil {
+	if err := dev.Down(ctx); err != nil {
 		return err
 	}
 	return nil
 }
 
 func (t *T) Down(ctx context.Context) error {
-	dev := t.drbd()
-	if err := dev.Down(); err != nil {
+	dev := t.drbd(ctx)
+	if err := dev.Down(ctx); err != nil {
 		return err
 	}
 	// flush devtree caches
 	return nil
 }
 
+// Up function brings up the DRBD device and waits until its state is stable and
+// not in a diskless configuration.
 func (t *T) Up(ctx context.Context) error {
-	dev := t.drbd()
-	if err := dev.Up(); err != nil {
+	dev := t.drbd(ctx)
+	if err := dev.Up(ctx); err != nil {
 		return err
 	}
-	if err := t.WaitForNonLocalDiskless(dev); err != nil {
+	if err := t.waitForNonLocalDiskless(ctx, dev); err != nil {
 		return err
 	}
 	// flush devtree caches
@@ -226,19 +202,19 @@ func (t *T) Up(ctx context.Context) error {
 }
 
 func (t *T) GoSecondary(ctx context.Context) error {
-	dev := t.drbd()
-	role, err := dev.Role()
+	dev := t.drbd(ctx)
+	role, err := dev.Role(ctx)
 	if err != nil {
 		return err
 	}
 	if role == "Secondary" {
 		return nil
 	}
-	if err := dev.Secondary(); err != nil {
+	if err := dev.Secondary(ctx); err != nil {
 		return err
 	}
 	actionrollback.Register(ctx, func(ctx context.Context) error {
-		return dev.Primary()
+		return dev.Primary(ctx)
 	})
 	return nil
 }
@@ -253,32 +229,35 @@ func (t *T) StopStandby(ctx context.Context) error {
 		t.Log().Infof("skip: resource not configured")
 		return nil
 	}
-	dev := t.drbd()
-	if ok, err := dev.IsDefined(); err != nil {
+	dev := t.drbd(ctx)
+	if ok, err := dev.IsDefined(ctx); err != nil {
 		return err
 	} else if !ok {
 		t.Log().Infof("skip: resource not defined (for this host)")
 		return nil
 	}
-	if err := t.StartConnection(ctx); err != nil {
+	if err := dev.StartConnection(ctx); err != nil {
 		return fmt.Errorf("start connection: %s", err)
 	}
 	return t.GoSecondary(ctx)
 }
 
 func (t *T) StartStandby(ctx context.Context) error {
-	dev := t.drbd()
-	if err := t.StartConnection(ctx); err != nil {
+	dev := t.drbd(ctx)
+	if err := t.prepareUp(ctx, dev); err != nil {
+		return err
+	}
+	if err := dev.StartConnection(ctx); err != nil {
 		return fmt.Errorf("start connection: %s", err)
 	}
-	role, err := dev.Role()
+	role, err := dev.Role(ctx)
 	if err != nil {
 		return err
 	}
 	if role == "Primary" {
 		return nil
 	}
-	return dev.Secondary()
+	return dev.Secondary(ctx)
 }
 
 func (t *T) Start(ctx context.Context) error {
@@ -286,22 +265,25 @@ func (t *T) Start(ctx context.Context) error {
 		t.Log().Infof("skip: resource not configured")
 		return nil
 	}
-	dev := t.drbd()
-	if err := t.StartConnection(ctx); err != nil {
+	dev := t.drbd(ctx)
+	if err := t.prepareUp(ctx, dev); err != nil {
+		return err
+	}
+	if err := dev.StartConnection(ctx); err != nil {
 		return fmt.Errorf("start connection: %s", err)
 	}
-	role, err := dev.Role()
+	role, err := dev.Role(ctx)
 	if err != nil {
 		return err
 	}
 	if role == "Primary" {
 		return nil
 	}
-	if err := dev.Primary(); err != nil {
+	if err := dev.Primary(ctx); err != nil {
 		return err
 	}
 	actionrollback.Register(ctx, func(ctx context.Context) error {
-		return dev.Secondary()
+		return dev.Secondary(ctx)
 	})
 	return nil
 }
@@ -311,8 +293,8 @@ func (t *T) Stop(ctx context.Context) error {
 		t.Log().Infof("skip: resource not configured")
 		return nil
 	}
-	dev := t.drbd()
-	if ok, err := dev.IsDefined(); err != nil {
+	dev := t.drbd(ctx)
+	if ok, err := dev.IsDefined(ctx); err != nil {
 		return err
 	} else if !ok {
 		t.Log().Infof("skip: resource not defined (for this host)")
@@ -326,101 +308,14 @@ func (t *T) Shutdown(ctx context.Context) error {
 		t.Log().Infof("skip: resource not configured")
 		return nil
 	}
-	dev := t.drbd()
-	if ok, err := dev.IsDefined(); err != nil {
+	dev := t.drbd(ctx)
+	if ok, err := dev.IsDefined(ctx); err != nil {
 		return err
 	} else if !ok {
 		t.Log().Infof("skip: resource not defined (for this host)")
 		return nil
 	}
 	return t.DownForce(ctx)
-}
-
-// StartConnection ensures cstate is Connecting or Connected.
-//
-// on cstate StandAlone: try Down then Up
-//
-// transient ctates: https://github.com/LINBIT/drbd-headers/blob/master/linux/drbd.h
-//
-//	example: Unconnected, Timeout, ... wait for Connecting or Connected reached
-//	example: Disconnecting: wait for StandAlone reached before try Down, Up
-func (t *T) StartConnection(ctx context.Context) error {
-	dev := t.drbd()
-	state, err := dev.ConnState()
-	if err != nil {
-		return err
-	}
-
-	doWait := func(candidates ...string) (bool, error) {
-		t.Log().Infof("wait %s for cstate in (%s)", t.Res, strings.Join(candidates, ","))
-		var state string
-		ok, err := waitfor.TrueNoErrorCtx(ctx, 5*time.Second, time.Second, func() (bool, error) {
-			var err error
-			if state, err = dev.ConnState(); err != nil {
-				return false, err
-			} else if slices.Contains(candidates, state) {
-				return true, nil
-			} else {
-				return false, nil
-			}
-		})
-		if err != nil {
-			t.Log().Warnf("wait for %s cstate in (%s): %s",
-				t.Res, strings.Join(candidates, ","), err)
-		} else if !ok {
-			t.Log().Warnf("wait for %s cstate in (%s): timeout, last state was: %s",
-				t.Res, strings.Join(candidates, ","), state)
-		}
-		return ok, err
-	}
-
-	doWaitConnected := func() error {
-		if ok, err := doWait("Connecting", "Connected"); err != nil {
-			return fmt.Errorf("wait for cstate in (Connecting, Connected): %s", err)
-		} else if !ok {
-			return fmt.Errorf("wait for cstate in (Connecting, Connected): timeout")
-		} else {
-			return nil
-		}
-	}
-
-	restartConnection := func(doDown bool) error {
-		t.Log().Infof("drbd %s restart connection", t.Res)
-		if doDown {
-			_ = t.Down(ctx)
-		}
-		if err := t.Up(ctx); err != nil {
-			return fmt.Errorf("drbd %s restart connection: Up: %s", t.Res, err)
-		}
-		return doWaitConnected()
-	}
-
-	t.Log().Infof("drbd resource %s cstate %s", t.Res, state)
-	switch state {
-	case "Connecting", "Connected":
-		// expected state is reached
-		return nil
-	case "Unconnected", "Timeout", "BrokenPipe", "NetworkFailure", "ProtocolError", "TearDown":
-		return doWaitConnected()
-	case "Disconnecting":
-		t.Log().Infof("drbd resource %s: wants cstate StandAlone before restart connection", t.Res)
-		if ok, err := doWait("StandAlone"); err != nil {
-			return fmt.Errorf("drbd resource %s: waiting for cstate StandAlone: %s", t.Res, err)
-		} else if !ok {
-			return fmt.Errorf("drbd resource %s: waiting for cstate StandAlone: timeout", t.Res)
-		} else {
-			t.Log().Infof("drbd resource %s: cstate StandAlone: restart connection", t.Res)
-			return restartConnection(true)
-		}
-	case "StandAlone":
-		return restartConnection(true)
-	case "WFConnection":
-		t.Log().Warnf("drbd resource %s peer node is not listening", t.Res)
-		return nil
-	default:
-		// TODO: prefer instead restartConnection(true) ?
-		return restartConnection(false)
-	}
 }
 
 func (t *T) removeHolders() error {
@@ -433,8 +328,8 @@ func (t *T) removeHolders() error {
 }
 
 func (t *T) Status(ctx context.Context) status.T {
-	dev := t.drbd()
-	isDefined, err := dev.IsDefined()
+	dev := t.drbd(ctx)
+	isDefined, err := dev.IsDefined(ctx)
 	if err != nil {
 		t.StatusLog().Error("defined: %s", err)
 		return status.Undef
@@ -442,14 +337,14 @@ func (t *T) Status(ctx context.Context) status.T {
 	if !isDefined {
 		return status.Down
 	}
-	role, err := dev.Role()
+	role, err := dev.Role(ctx)
 	if err != nil {
 		t.StatusLog().Error("role: %s", err)
 		return status.Undef
 	}
 	t.StatusLog().Info(role)
 
-	states, err := dev.DiskStates()
+	states, err := dev.DiskStates(ctx)
 	if err != nil {
 		t.StatusLog().Error("dstates: %s", err)
 		return status.Undef
@@ -491,12 +386,12 @@ func (t *T) Label(_ context.Context) string {
 }
 
 // UnprovisionStop is a noop to avoid calling the normal Stop before unprovision
-func (t *T) UnprovisionStop(ctx context.Context) error {
+func (t *T) UnprovisionStop(_ context.Context) error {
 	return nil
 }
 
 // ProvisionStart is a noop to avoid calling the normal Start after provision
-func (t *T) ProvisionStart(ctx context.Context) error {
+func (t *T) ProvisionStart(_ context.Context) error {
 	return nil
 }
 
@@ -522,25 +417,19 @@ func (t *T) getDRBDAllocations() (map[string]api.DRBDAllocation, error) {
 	return allocations, nil
 }
 
-func (t *T) formatConfig(wr io.Writer, res ConfRes) error {
-	var text string
-	if capabilities.Has("disk.drbd.mesh") {
-		text = resTemplateTextV9
-	} else {
-		text = resTemplateTextV8
+func (t *T) formatConfig(wr io.Writer, text string, data ResTemplateData) error {
+	if text == "" {
+		return fmt.Errorf("empty template")
 	}
 	templ, err := template.New("res").Parse(text)
 	if err != nil {
 		return err
 	}
-	return templ.Execute(wr, res)
+	return templ.Execute(wr, data)
 }
 
-func (t *T) makeConfRes(allocations map[string]api.DRBDAllocation) (ConfRes, error) {
-	res := ConfRes{
-		Name:  t.Res,
-		Hosts: make([]ConfResOn, 0),
-	}
+func (t *T) getTemplateData(allocations map[string]api.DRBDAllocation) (ResTemplateData, error) {
+	nodesData := make([]NodeTemplateData, 0)
 	obj := t.GetObject().(object.Configurer)
 	for nodeID, nodename := range t.Nodes {
 		var (
@@ -549,21 +438,21 @@ func (t *T) makeConfRes(allocations map[string]api.DRBDAllocation) (ConfRes, err
 		)
 		allocation, ok := allocations[nodename]
 		if !ok {
-			return ConfRes{}, fmt.Errorf("drbd allocation for node %s not found", nodename)
+			return ResTemplateData{}, fmt.Errorf("drbd allocation for node %s not found", nodename)
 		}
 		if time.Now().After(allocation.ExpiredAt) {
-			return ConfRes{}, fmt.Errorf("drbd allocation for node %s has expired", nodename)
+			return ResTemplateData{}, fmt.Errorf("drbd allocation for node %s has expired", nodename)
 		}
-		device := fmt.Sprintf("/dev/drbd%d", allocation.Minor)
+		dev := fmt.Sprintf("/dev/drbd%d", allocation.Minor)
 		if s, err := obj.Config().EvalAs(key.T{Section: t.RID(), Option: "disk"}, nodename); err != nil {
-			return res, err
+			return ResTemplateData{}, err
 		} else {
 			disk = s.(string)
 		}
 
 		if s, err := obj.Config().EvalAs(key.T{Section: t.RID(), Option: "addr"}, nodename); (err != nil) || (s == "") {
 			if ip, err := t.getNodeIP(nodename); err != nil {
-				return res, err
+				return ResTemplateData{}, err
 			} else {
 				addr = ip.String()
 			}
@@ -587,16 +476,36 @@ func (t *T) makeConfRes(allocations map[string]api.DRBDAllocation) (ConfRes, err
 			ipVer = "ipv4"
 		}
 
-		host := ConfResOn{
+		nodeData := NodeTemplateData{
 			Name:   nodename,
 			Addr:   fmt.Sprintf("%s %s:%d", ipVer, ip, port),
 			Disk:   disk,
-			Device: device,
+			Device: dev,
 			NodeId: nodeID,
 		}
-		res.Hosts = append(res.Hosts, host)
+		nodesData = append(nodesData, nodeData)
 	}
-	return res, nil
+	return ResTemplateData{Name: t.Res, Nodes: nodesData}, nil
+}
+
+func (t *T) getTemplateText() (string, error) {
+	if t.Template == "" {
+		if capabilities.Has("drivers.resource.disk.drbd.mesh") {
+			return resTemplateTextV9, nil
+		} else {
+			return resTemplateTextV8, nil
+		}
+	}
+	t.Log().Infof("creating resource configuration from the %s %s template", drbdCfgPath, t.Template)
+	if drbdCfg, err := object.NewCfg(drbdCfgPath, object.WithVolatile(true)); err != nil {
+		return "", fmt.Errorf("retrieve template object %s: %w", drbdCfg, err)
+	} else if !drbdCfg.HasKey(t.Template) {
+		return "", fmt.Errorf("missing template object %s key %s", drbdCfg, t.Template)
+	} else if b, err := drbdCfg.DecodeKey(t.Template); err != nil {
+		return "", fmt.Errorf("decode template object %s key %s: %w", drbdCfgPath, t.Template, err)
+	} else {
+		return string(b), nil
+	}
 }
 
 func (t *T) getNodeIP(nodename string) (net.IP, error) {
@@ -645,13 +554,13 @@ func (t *T) getNodeIPWithGetAddrInfo(nodename string) (net.IP, error) {
 }
 
 // TODO: Acquire/Release cluster lock
-func (t *T) lock(ctx context.Context) error {
+func (t *T) lock(_ context.Context) error {
 	//lockName := "drivers.resources.disk.drbd.allocate"
 	return nil
 }
 
 // TODO: Acquire/Release cluster lock
-func (t *T) unlock(ctx context.Context) error {
+func (t *T) unlock(_ context.Context) error {
 	return nil
 }
 
@@ -693,6 +602,7 @@ func (t *T) fetchConfig() error {
 }
 
 func (t *T) writeConfig(ctx context.Context) error {
+	var templateText string
 	cf := drbd.ResConfigFile(t.Res)
 	if file.Exists(cf) {
 		t.Log().Infof("%s already exists", cf)
@@ -708,16 +618,22 @@ func (t *T) writeConfig(ctx context.Context) error {
 	if err != nil {
 		return err
 	}
-	res, err := t.makeConfRes(allocations)
+	templateData, err := t.getTemplateData(allocations)
 	if err != nil {
 		return err
 	}
-	file, err := os.OpenFile(cf, os.O_WRONLY|os.O_CREATE|os.O_TRUNC, os.ModePerm)
+
+	templateText, err = t.getTemplateText()
+	if err != nil {
+		return fmt.Errorf("get template text: %w", err)
+	}
+
+	f, err := os.OpenFile(cf, os.O_WRONLY|os.O_CREATE|os.O_TRUNC, os.ModePerm)
 	if err != nil {
 		return err
 	}
-	defer file.Close()
-	if err := t.formatConfig(file, res); err != nil {
+	defer func() { _ = f.Close() }()
+	if err := t.formatConfig(f, templateText, templateData); err != nil {
 		return err
 	}
 	b, err := os.ReadFile(cf)
@@ -780,6 +696,50 @@ func (t *T) sendConfigToNode(nodename string, allocationID uuid.UUID, b []byte) 
 	}
 }
 
+// connectPeers establishes connections to all peer nodes except the current host and logs the connection attempts or errors.
+func (t *T) connectPeers(ctx context.Context) error {
+	for _, nodename := range t.Nodes {
+		if nodename == hostname.Hostname() {
+			continue
+		}
+		t.Log().Infof("resource %s connecting peer %s", t.Res, nodename)
+		if err := t.connectPeer(ctx, nodename); err != nil {
+			t.Log().Warnf("resource %s connect peer %s: %s", t.Res, nodename, err)
+		}
+	}
+	return nil
+}
+
+func (t *T) connectPeer(ctx context.Context, nodename string) error {
+	c, err := client.New()
+	if err != nil {
+		return err
+	}
+	params := api.PostNodeDRBDConnectParams{
+		Name: t.Res,
+	}
+	resp, err := c.PostNodeDRBDConnectWithResponse(ctx, nodename, t.Path.Namespace, t.Path.Kind, t.Path.Name, &params)
+	if err != nil {
+		return err
+	}
+	switch resp.StatusCode() {
+	case 204:
+		return nil
+	case 400:
+		return fmt.Errorf("%s", resp.JSON400)
+	case 401:
+		return fmt.Errorf("%s", resp.JSON401)
+	case 403:
+		return fmt.Errorf("%s", resp.JSON403)
+	case 404:
+		return nil
+	case 500:
+		return fmt.Errorf("%s", resp.JSON500)
+	default:
+		return fmt.Errorf("unexpected status code: %s", resp.Status())
+	}
+}
+
 func (t *T) ProvisionAsFollower(ctx context.Context) error {
 	actionrollback.Register(ctx, func(ctx context.Context) error {
 		return t.UnprovisionAsFollower(ctx)
@@ -790,9 +750,13 @@ func (t *T) ProvisionAsFollower(ctx context.Context) error {
 	if err := t.provisionCommon(ctx); err != nil {
 		return err
 	}
-	// Use StartConnection to wait for an expected in progress connecting called
-	// from the provisionCommon steps: CreateMD -> Down -> Up
-	if err := t.StartConnection(ctx); err != nil {
+	if err := t.connectPeers(ctx); err != nil {
+		t.Log().Warnf("drbd resource %s: connect peers: %w", t.Res, err)
+	}
+	if err := t.drbd(ctx).StartConnection(ctx); err != nil {
+		return err
+	}
+	if err := t.waitConnected(ctx); err != nil {
 		return err
 	}
 	return nil
@@ -808,17 +772,14 @@ func (t *T) ProvisionAsLeader(ctx context.Context) error {
 	if err := t.provisionCommon(ctx); err != nil {
 		return err
 	}
-	if err := t.drbd().PrimaryForce(); err != nil {
+	if err := t.drbd(ctx).PrimaryForce(ctx); err != nil {
 		return err
 	}
-	return nil
+	return t.drbd(ctx).StartConnection(ctx)
 }
 
 func (t *T) provisionCommon(ctx context.Context) error {
-	if err := t.CreateMD(); err != nil {
-		return err
-	}
-	if err := t.Down(ctx); err != nil {
+	if err := t.CreateMD(ctx); err != nil {
 		return err
 	}
 	if err := t.Up(ctx); err != nil {
@@ -827,21 +788,21 @@ func (t *T) provisionCommon(ctx context.Context) error {
 	return nil
 }
 
-func (t *T) WipeMD() error {
-	if v, err := t.drbd().HasMD(); err != nil {
+func (t *T) WipeMD(ctx context.Context) error {
+	if v, err := t.drbd(ctx).HasMD(ctx); err != nil {
 		return err
 	} else if !v {
 		t.Log().Infof("resource %s already has no metadata", t.Res)
 		return nil
 	}
-	return t.drbd().WipeMD()
+	return t.drbd(ctx).WipeMD(ctx)
 }
 
 func (t *T) maxPeers() int {
 	v := t.MaxPeers
 	nNodes := len(t.Nodes)
 
-	// minValue could be nNodes-1 but we want to add a slot to allow a server
+	// minValue could be nNodes-1, but we want to add a slot to allow a server
 	// swap.
 	minValue := nNodes
 	if minValue < 1 {
@@ -860,14 +821,14 @@ func (t *T) maxPeers() int {
 	return v
 }
 
-func (t *T) CreateMD() error {
-	if v, err := t.drbd().HasMD(); err != nil {
+func (t *T) CreateMD(ctx context.Context) error {
+	if v, err := t.drbd(ctx).HasMD(ctx); err != nil {
 		return err
 	} else if v {
 		t.Log().Infof("resource %s already has metadata", t.Res)
 		return nil
 	}
-	return t.drbd().CreateMD(t.maxPeers())
+	return t.drbd(ctx).CreateMD(ctx, t.maxPeers())
 }
 
 func (t *T) deleteConfig() error {
@@ -893,7 +854,7 @@ func (t *T) UnprovisionAsFollower(ctx context.Context) error {
 }
 
 func (t *T) unprovisionCommon(ctx context.Context) error {
-	isDefined, err := t.drbd().IsDefined()
+	isDefined, err := t.drbd(ctx).IsDefined(ctx)
 	if err != nil {
 		return err
 	}
@@ -901,7 +862,7 @@ func (t *T) unprovisionCommon(ctx context.Context) error {
 		if err := t.DownForce(ctx); err != nil {
 			return err
 		}
-		if err := t.WipeMD(); err != nil {
+		if err := t.WipeMD(ctx); err != nil {
 			return err
 		}
 	} else {
@@ -917,7 +878,9 @@ func (t *T) Provisioned() (provisioned.T, error) {
 	if !t.isConfigured() {
 		return provisioned.False, nil
 	}
-	hasMD, err := t.drbd().HasMD()
+	// TODO: allow Provisioned(ctx context.Context) ?
+	ctx := context.Background()
+	hasMD, err := t.drbd(ctx).HasMD(ctx)
 	if err != nil {
 		t.Log().Debugf("drbd res is not configured")
 		return provisioned.Undef, err
@@ -935,11 +898,11 @@ func (t *T) ExposedDevices() device.L {
 	if err != nil {
 		return l
 	}
-	resource, ok := dump.GetResource(t.Res)
+	r, ok := dump.GetResource(t.Res)
 	if !ok {
 		return l
 	}
-	host, ok := resource.GetHost(hostname.Hostname())
+	host, ok := r.GetHost(hostname.Hostname())
 	if !ok {
 		return l
 	}
@@ -955,11 +918,11 @@ func (t *T) SubDevices() device.L {
 	if err != nil {
 		return l
 	}
-	resource, ok := dump.GetResource(t.Res)
+	r, ok := dump.GetResource(t.Res)
 	if !ok {
 		return l
 	}
-	host, ok := resource.GetHost(hostname.Hostname())
+	host, ok := r.GetHost(hostname.Hostname())
 	if !ok {
 		return l
 	}
@@ -975,6 +938,93 @@ func (t *T) ReservableDevices() device.L {
 
 func (t *T) ClaimedDevices() device.L {
 	return t.SubDevices()
+}
+
+func (t *T) connectAndWaitConnectingOrConnected(ctx context.Context) (string, error) {
+	if err := t.Connect(ctx); err != nil {
+		return "", fmt.Errorf("drbd resource %s: connect: %w", t.Res, err)
+	}
+	if err := t.connectPeers(ctx); err != nil {
+		t.Log().Warnf("drbd resource %s: connect peers: %w", t.Res, err)
+	}
+	return t.drbd(ctx).WaitConnectingOrConnected(ctx)
+}
+
+func (t *T) prepareUp(ctx context.Context, dev DRBDDriver) error {
+	if ok, err := dev.IsDefined(ctx); err != nil {
+		return err
+	} else if !ok {
+		if err := t.Up(ctx); err != nil {
+			return err
+		}
+	}
+	if err := t.waitForNonLocalDiskless(ctx, dev); err != nil {
+		return err
+	}
+	return nil
+}
+
+// waitConnected ensures the DRBD resource transitions to the "Connected" state,
+// attempting reconnection if in "StandAlone".
+func (t *T) waitConnected(ctx context.Context) error {
+	dev := t.drbd(ctx)
+	state, err := dev.WaitCState(ctx, waitConnectedTimeout, drbd.ConnStateStandAlone, drbd.ConnStateConnected)
+	if err != nil {
+		return err
+	} else if state == drbd.ConnStateConnected {
+		return nil
+	}
+
+	// state is StandAlone
+	t.Log().Infof("drbd %s is in StandAlone state, trying to connect", t.Res)
+	state, err = t.connectAndWaitConnectingOrConnected(ctx)
+	if err != nil {
+		return err
+	} else if state == drbd.ConnStateConnected {
+		return nil
+	}
+
+	state, err = dev.WaitCState(ctx, waitConnectedTimeout, drbd.ConnStateConnected)
+	if err != nil {
+		return err
+	} else if state == drbd.ConnStateConnected {
+		return nil
+	}
+	return fmt.Errorf("drbd %s is in %s state, but not connected", t.Res, state)
+}
+
+func (t *T) waitForNonLocalDiskless(ctx context.Context, dev DRBDDriver) error {
+	check := func() (bool, error) {
+		states, err := dev.DiskStates(ctx)
+		if err != nil {
+			return false, err
+		}
+		if len(states) == 0 {
+			t.Log().Infof("waiting for drbd %s disk local dstate", t.Res)
+			return false, nil
+		}
+		state := states[0]
+		if state == "Diskless" || state == "DUnknown" {
+			t.Log().Infof("drbd %s disk local dstate %s (%s) is not yet valid", t.Res, state, states)
+			return false, nil
+		}
+		t.Log().Infof("drbd %s found local dstate %s from states: %s", t.Res, state, states)
+		return true, nil
+	}
+	limit := time.Now().Add(waitDiskStatesTimeout)
+	for {
+		ok, err := check()
+		if err != nil {
+			return err
+		}
+		if ok {
+			return nil
+		}
+		if time.Now().Add(waitDiskStatesDelay).After(limit) {
+			return fmt.Errorf("timeout waiting for localhost to have a known dstate")
+		}
+		time.Sleep(waitDiskStatesDelay)
+	}
 }
 
 /*

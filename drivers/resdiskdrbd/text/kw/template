@@ -1,0 +1,25 @@
+A template key name from config object `system/cfg/drbd` to define alternate
+drbd resource configuration template used during resource provisioning.
+
+When defined: Provision will create resource config file from the template retrieved from
+`om system/cfg/drbd key decode --name <template>.
+
+When undefined, the default template is used.
+The default drbd 9 template:
+    resource {{.Name}} {
+        {{range $node := .Nodes}}
+        on {{$node.Name}} {
+            device    {{$node.Device}};
+            disk      {{$node.Disk}};
+            meta-disk internal;
+            address   {{$node.Addr}};
+            node-id   {{$node.NodeId}};
+        }
+        {{end}}
+        connection-mesh {
+            hosts{{range $node := .Nodes}} {{$node.Name}}{{end}};
+        }
+        net {
+            rr-conflict retry-connect;
+        }
+    }
