@@ -5,6 +5,7 @@ import (
 	"context"
 	"encoding/xml"
 	"fmt"
+	"slices"
 	"strings"
 	"time"
 
@@ -14,6 +15,7 @@ import (
 	"github.com/opensvc/om3/util/file"
 	"github.com/opensvc/om3/util/funcopt"
 	"github.com/opensvc/om3/util/plog"
+	"github.com/opensvc/om3/util/waitfor"
 )
 
 type (
@@ -121,6 +123,14 @@ var (
 	MaxDRBD = 512
 	MinPort = 7289
 	MaxPort = 7489
+
+	// waitConnectionStateDelay defines the periodic delay used when polling for
+	// connection state changes.
+	waitConnectionStateDelay = time.Second * 1
+
+	// waitConnectingOrConnectedTimeout defines the maximum duration to wait for
+	// a connection state change to connecting or connected before timing out.
+	waitConnectingOrConnectedTimeout = time.Second * 20
 )
 
 func New(res string, opts ...funcopt.O) *T {
@@ -569,6 +579,84 @@ func (t *T) devpathFromName() string {
 
 func (t *T) Create(disk string, addr string, port int) error {
 	return fmt.Errorf("todo")
+}
+
+// startConnection establishes a connection for the DRBD resource, managing its state transitions as needed.
+// It returns an error if the connection process fails.
+func (t *T) StartConnection(ctx context.Context) error {
+	state, err := t.ConnState(ctx)
+	if err != nil {
+		return err
+	}
+
+	t.log.Infof("drbd resource %s cstate %s", t.res, state)
+	switch state {
+	case ConnStateConnecting, ConnStateConnected, ConnStateLegacycConnecting:
+		// the expected state is reached
+		return nil
+	case ConnStateUnconnected, ConnStateTimeout, ConnStateBrokenPipe, ConnStateNetworkFailure, ConnStateProtocolError, ConnStateTearDow:
+		// Temporary state from C_CONNECTED to C_UNCONNECTED
+		_, err = t.WaitConnectingOrConnected(ctx)
+		return err
+	case ConnStateDisconnecting:
+		// Temporary state to StandAlone
+		t.log.Infof("drbd resource %s: wants cstate StandAlone before restart connection", t.res)
+		if _, err := t.WaitCState(ctx, 5*time.Second, ConnStateStandAlone); err != nil {
+			return fmt.Errorf("drbd resource %s: waiting for cstate StandAlone: %w", t.res, err)
+		}
+		_, err = t.ConnectAndWaitConnectingOrConnected(ctx)
+		return err
+	case ConnStateStandAlone:
+		_, err = t.ConnectAndWaitConnectingOrConnected(ctx)
+		return err
+	default:
+		return fmt.Errorf("drbd resource %s cstate %s unexpected while waiting for %s or %s",
+			t.res, state, ConnStateConnecting, ConnStateConnected)
+	}
+}
+
+func (t *T) WaitCState(ctx context.Context, timeout time.Duration, candidates ...string) (string, error) {
+	t.log.Infof("wait %s for cstate in (%s)", t.res, strings.Join(candidates, ","))
+	var state, lastState string
+	ok, err := waitfor.TrueNoErrorCtx(ctx, timeout, waitConnectionStateDelay, func() (bool, error) {
+		var err error
+		state, err = t.ConnState(ctx)
+
+		if err != nil {
+			return false, err
+		}
+
+		if slices.Contains(candidates, state) {
+			return true, nil
+		} else {
+			if state != lastState {
+				t.log.Infof("wait %s cstate in (%s), found current cstate %s", t.res, strings.Join(candidates, ","), state)
+				lastState = state
+			}
+			return false, nil
+		}
+	})
+	if err != nil {
+		return state, fmt.Errorf("wait for %s cstate in (%s): %w",
+			t.res, strings.Join(candidates, ","), err)
+	} else if !ok {
+		return state, fmt.Errorf("wait for %s cstate in (%s): timeout, last state was: %s",
+			t.res, strings.Join(candidates, ","), state)
+	}
+	t.log.Infof("wait for %s cstate in (%s): succeed found %s",
+		t.res, strings.Join(candidates, ","), state)
+	return state, nil
+}
+
+func (t *T) WaitConnectingOrConnected(ctx context.Context) (string, error) {
+	return t.WaitCState(ctx, waitConnectingOrConnectedTimeout, ConnStateConnecting, ConnStateConnected)
+}
+
+func (t *T) ConnectAndWaitConnectingOrConnected(ctx context.Context) (string, error) {
+	if err := t.Connect(ctx); err != nil {
+		return "", fmt.Errorf("drbd resource %s: connect: %w", t.res, err)
+	}
+	return t.WaitConnectingOrConnected(ctx)
 }
 
 func retry(cmd *command.T) error {
