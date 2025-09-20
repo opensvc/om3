@@ -12,9 +12,6 @@ type (
 )
 
 func (t *CmdNodeEvents) Run() error {
-	if t.Wait && t.Limit == 0 {
-		t.Limit = 1
-	}
 	if t.NodeSelector == "" {
 		t.NodeSelector = hostname.Hostname()
 	}

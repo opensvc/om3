@@ -52,7 +52,7 @@ func TestGetDaemonEventsParamsOk(t *testing.T) {
 				{
 					Kind:        &msgbus.InstanceStatusUpdated{},
 					Labels:      []pubsub.Label{{"node", "nodeX"}, {"path", "root/svc/foo"}},
-					DataFilters: DataFilters{{Key: ".data.instance_status.overall", Op: "=", Value: "down"}},
+					DataFilters: DataFilters{{Key: "data.instance_status.overall", Op: "=", Value: "down"}},
 				},
 			},
 		},
@@ -67,8 +67,8 @@ func TestGetDaemonEventsParamsOk(t *testing.T) {
 					Kind:   &msgbus.InstanceStatusUpdated{},
 					Labels: []pubsub.Label{{"node", "nodeX"}, {"path", "root/svc/foo"}},
 					DataFilters: DataFilters{
-						{Key: ".data.instance_status.overall", Op: "=", Value: "down"},
-						{Key: ".data.instance_status.avail", Op: "=", Value: "stdby up"},
+						{Key: "data.instance_status.overall", Op: "=", Value: "down"},
+						{Key: "data.instance_status.avail", Op: "=", Value: "stdby up"},
 					},
 				},
 			},
@@ -187,7 +187,7 @@ func TestDataFilters(t *testing.T) {
 	}
 
 	notMatched := map[string]DataFilters{
-		"unmatched the value": {{Key: ".instance_status.overall", Op: "=", Value: string("\"up\"")}},
+		"unmatched the value": {{Key: "instance_status.overall", Op: "=", Value: string("\"up\"")}},
 		"unmatched second value": DataFilters{
 			{Key: "instance_status.overall", Op: "=", Value: string("\"down\"")},
 			{Key: "instance_status.avail", Op: "=", Value: string("\"stdby up\"")},
