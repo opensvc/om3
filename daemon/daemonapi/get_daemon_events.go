@@ -571,7 +571,7 @@ func parseFilter(filterStr string) ([]Filter, error) {
 		case len(filterElement) == 0:
 			continue
 		case strings.HasPrefix(filterElement, "."):
-			dataFilter, err := parseDataFilter(filterElement)
+			dataFilter, err := parseDataFilter(strings.TrimPrefix(filterElement, "."))
 			if err != nil {
 				return nil, err
 			}
