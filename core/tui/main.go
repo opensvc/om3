@@ -89,6 +89,11 @@ type (
 		stopEvents   bool
 		eventsCtx    context.Context
 		eventsCancel context.CancelFunc
+		events        chan event.Event
+		isInEventView atomic.Bool
+		stopEvents    bool
+		eventsCtx     context.Context
+		eventsCancel  context.CancelFunc
 
 		viewPath naming.Path
 		viewNode string
@@ -338,12 +343,6 @@ func (t *App) initApp() {
 				return nil
 			}
 			t.back()
-			/*case tcell.KeyBacktab:
-				colorHead2--
-				t.updateHead()
-			case tcell.KeyTab:
-				colorHead2++
-				t.updateHead()*/
 		}
 		switch event.Rune() {
 		case ':':
@@ -618,7 +617,7 @@ func (t *App) do(statusGetter getter, evReader event.ReadCloser) error {
 		case err := <-t.errC:
 			return err
 		case e := <-eventC:
-			if t.onEventView.Load() {
+			if t.isInEventView.Load() {
 				t.events <- e
 			}
 			if nextEventID == 0 {
@@ -1533,7 +1532,7 @@ func (t *App) onRuneH(event *tcell.EventKey) {
 
      object actions:
        abort, delete, freeze, giveback, provision, purge, start, stop, switch,
-       unfreeze, unprovision  
+       unfreeze, unprovision, restart  
 
      instance actions:
        clear, delete, freeze, provision, refresh, start, stop, switch,
@@ -1872,7 +1871,7 @@ func (t *App) navFromTo(from, to viewId) {
 		if t.eventsCancel != nil {
 			t.eventsCancel()
 		}
-		t.onEventView.Store(false)
+		t.isInEventView.Store(false)
 	}
 	switch to {
 	case viewLog:
@@ -1912,7 +1911,7 @@ func (t *App) navFromTo(from, to viewId) {
 	case viewPoolVolume:
 		t.updatePoolVolume(t.selectedElement)
 	case viewEvents:
-		t.onEventView.Store(true)
+		t.isInEventView.Store(true)
 		t.initTextView()
 		t.initEventsView()
 		t.flex.AddItem(t.textView, 0, 1, true)
