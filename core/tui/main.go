@@ -47,7 +47,6 @@ type (
 		pool.Status
 		Node string
 	}
-
 	CreateTableOptions struct {
 		title        string
 		titles       []string
@@ -83,13 +82,6 @@ type (
 		selectedElement         string
 		previousSelectedElement string
 		position                Position
-
-		events       chan event.Event
-		onEventView  atomic.Bool
-		stopEvents   bool
-		eventsCtx    context.Context
-		eventsCancel context.CancelFunc
-		isInEventView atomic.Bool
 
 		viewPath naming.Path
 		viewNode string
@@ -132,7 +124,6 @@ const (
 	viewPoolVolume
 	viewNetwork
 	viewNetworkIpList
-	viewEvents
 	viewLast // marker, not a real view
 )
 
@@ -272,7 +263,6 @@ func NewApp() *App {
 		selectedRIDs:      make(map[[3]string]any),
 		errC:              make(chan error),
 		restartC:          make(chan error),
-		events:            make(chan event.Event, 100),
 	}
 }
 
@@ -308,7 +298,7 @@ func (t *App) initErrsTextView() {
 
 func (t *App) viewPrimitive(v viewId) tview.Primitive {
 	switch v {
-	case viewConfig, viewInstance, viewKey, viewLog, viewEvents:
+	case viewConfig, viewInstance, viewKey, viewLog:
 		return t.textView
 	case viewKeys:
 		return t.keys
@@ -330,15 +320,21 @@ func (t *App) initApp() {
 	t.app.SetRoot(t.flex, true)
 
 	t.app.SetInputCapture(func(event *tcell.EventKey) *tcell.EventKey {
-		if t.command != nil {
-			return event
-		}
 		switch event.Key() {
 		case tcell.KeyESC:
 			if n := t.resetSelected(); n > 0 {
 				return nil
 			}
 			t.back()
+		case tcell.KeyBacktab:
+			colorHead2--
+			t.updateHead()
+		case tcell.KeyTab:
+			colorHead2++
+			t.updateHead()
+		}
+		if t.command != nil {
+			return event
 		}
 		switch event.Rune() {
 		case ':':
@@ -592,8 +588,6 @@ func (t *App) do(statusGetter getter, evReader event.ReadCloser) error {
 					t.updateNetworkList()
 				case viewNetworkIpList:
 					t.updateNetworkIpList(t.selectedElement)
-				case viewEvents:
-					t.updateEventsView()
 				default:
 					t.updateObjects()
 				}
@@ -613,9 +607,6 @@ func (t *App) do(statusGetter getter, evReader event.ReadCloser) error {
 		case err := <-t.errC:
 			return err
 		case e := <-eventC:
-			if t.isInEventView.Load() {
-				t.events <- e
-			}
 			if nextEventID == 0 {
 				nextEventID = e.ID
 			} else if e.ID != nextEventID {
@@ -906,22 +897,14 @@ func (t *App) onRuneColumn(event *tcell.EventKey) {
 		SetLabel(":").
 		SetFieldWidth(0).
 		SetFieldBackgroundColor(colorInput).
-		SetAutocompleteFunc(func(currentText string) (entries []string) {
-			completions := t.getCompletions(currentText)
-			slices.Sort(completions)
-			return completions
-		}).
 		SetDoneFunc(func(key tcell.Key) {
 			text := strings.TrimSpace(t.command.GetText())
-			var action string
 			args := strings.Fields(text)
-			/*if len(args) == 0 {
+			if len(args) == 0 {
 				clean()
 				return
-			}*/
-			if len(args) > 0 {
-				action = args[0]
 			}
+			action := args[0]
 
 			switch key {
 			case tcell.KeyEnter:
@@ -1528,7 +1511,7 @@ func (t *App) onRuneH(event *tcell.EventKey) {
 
      object actions:
        abort, delete, freeze, giveback, provision, purge, start, stop, switch,
-       unfreeze, unprovision, restart  
+       unfreeze, unprovision  
 
      instance actions:
        clear, delete, freeze, provision, refresh, start, stop, switch,
@@ -1862,12 +1845,6 @@ func (t *App) navFromTo(from, to viewId) {
 		t.textView = nil
 	case viewKeys:
 		t.keys = nil
-	case viewEvents:
-		t.textView = nil
-		if t.eventsCancel != nil {
-			t.eventsCancel()
-		}
-		t.isInEventView.Store(false)
 	}
 	switch to {
 	case viewLog:
@@ -1906,13 +1883,6 @@ func (t *App) navFromTo(from, to viewId) {
 		t.updateNetworkIpList(t.selectedElement)
 	case viewPoolVolume:
 		t.updatePoolVolume(t.selectedElement)
-	case viewEvents:
-		t.isInEventView.Store(true)
-		t.initTextView()
-		t.initEventsView()
-		t.flex.AddItem(t.textView, 0, 1, true)
-		t.app.SetFocus(t.textView)
-		t.updateEventsView()
 	}
 	t.updateHead()
 	t.flex.AddItem(t.errs, 1, 0, false)
@@ -1995,6 +1965,5 @@ func (t *App) stop() {
 	default:
 	}
 
-	close(t.events)
 	t.app.Stop()
 }
