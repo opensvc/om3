@@ -117,7 +117,7 @@ func getServerSideEvents(q chan<- []byte, resp *http.Response) error {
 }
 
 // GetRaw fetches an event json RawMessage stream from the agent api
-func (t GetEvents) GetRaw() (chan []byte, error) {
+func (t *GetEvents) GetRaw() (chan []byte, error) {
 	resp, err := t.eventsBase()
 	if err != nil {
 		return nil, err
@@ -136,7 +136,7 @@ func (t GetEvents) GetRaw() (chan []byte, error) {
 }
 
 // Do fetches an Event stream from the agent api
-func (t GetEvents) Do() (chan event.Event, error) {
+func (t *GetEvents) Do() (chan event.Event, error) {
 	q, err := t.GetRaw()
 	if err != nil {
 		return nil, err
@@ -181,7 +181,7 @@ func marshalMessages(q chan []byte, out chan event.Event) {
 	}
 }
 
-func (t GetEvents) eventsBase() (*http.Response, error) {
+func (t *GetEvents) eventsBase() (*http.Response, error) {
 	params := api.GetDaemonEventsParams{
 		Filter:   &t.Filters,
 		Selector: t.selector,
