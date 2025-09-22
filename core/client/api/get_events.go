@@ -163,6 +163,16 @@ func (t *GetEvents) GetReader() (event.ReadCloser, error) {
 	return sseevent.NewReadCloser(resp.Body), nil
 }
 
+// NewTimeoutReader returns a non-blocking event.ReadCloser that yields nil
+// if no events are read within the specified timeout
+func (t *GetEvents) NewTimeoutReader(timeout time.Duration) (event.ReadCloser, error) {
+	resp, err := t.eventsBase()
+	if err != nil {
+		return nil, err
+	}
+	return sseevent.NewTimeoutReadCloser(resp.Body, timeout), nil
+}
+
 func marshalMessages(q chan []byte, out chan event.Event) {
 	var (
 		b  []byte

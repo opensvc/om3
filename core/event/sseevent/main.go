@@ -38,6 +38,10 @@ type (
 
 		ctx    context.Context
 		cancel context.CancelFunc
+
+		// timeout specifies the maximum duration to wait before Read returns
+		// nil if no events are available.
+		timeout time.Duration
 	}
 
 	Writer struct {
@@ -58,7 +62,7 @@ var (
 // NewReadCloser returns *Reader from wrapped reader r.
 //
 // It starts routine during first Read(), the parseStarted routine returns when
-// wrapped r is closed, or invalid event is parsed
+// wrapped r is closed, or when an invalid event is parsed
 func NewReadCloser(r io.ReadCloser) *ReadCloser {
 	t := &ReadCloser{
 		eventC:       make(chan *event.Event),
@@ -71,6 +75,13 @@ func NewReadCloser(r io.ReadCloser) *ReadCloser {
 	}
 	t.ctx, t.cancel = context.WithCancel(context.Background())
 
+	return t
+}
+
+// NewTimeoutReadCloser returns NewReadCloser(r io.ReadCloser) where timeout is set.
+func NewTimeoutReadCloser(r io.ReadCloser, timeout time.Duration) *ReadCloser {
+	t := NewReadCloser(r)
+	t.timeout = timeout
 	return t
 }
 
@@ -102,6 +113,13 @@ func (r *ReadCloser) Read() (*event.Event, error) {
 		go r.parse()
 		r.parseStarted = true
 	}
+	ctxTimeout := r.ctx
+
+	if r.timeout > 0 {
+		ctx, cancel := context.WithTimeout(r.ctx, r.timeout)
+		defer cancel()
+		ctxTimeout = ctx
+	}
 	select {
 	case <-r.ctx.Done():
 		return nil, r.ctx.Err()
@@ -117,6 +135,13 @@ func (r *ReadCloser) Read() (*event.Event, error) {
 			return nil, fmt.Errorf("event reader: read unexpected nil from event channel")
 		}
 		return e, nil
+	case <-ctxTimeout.Done():
+		select {
+		case <-r.ctx.Done():
+			return nil, r.ctx.Err()
+		default:
+			return nil, nil
+		}
 	}
 }
 
