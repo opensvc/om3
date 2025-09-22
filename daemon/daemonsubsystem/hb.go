@@ -4,6 +4,12 @@ import (
 	"time"
 )
 
+const (
+	green = "\033[32m"
+	red   = "\033[31m"
+	reset = "\033[0m"
+)
+
 type (
 	// Heartbeat defines model for Daemon Heartbeat subsystem.
 	Heartbeat struct {
@@ -88,9 +94,9 @@ func (t HeartbeatStreamPeerStatusTableEntry) Unstructured() map[string]any {
 	var stateIcon string
 	switch t.Status.State {
 	case "running":
-		stateIcon = "+"
+		stateIcon = green + "O" + reset
 	case "stopped", "failed":
-		stateIcon = "-"
+		stateIcon = red + "X" + reset
 	case "warning":
 		stateIcon = "!"
 	default:
@@ -99,9 +105,9 @@ func (t HeartbeatStreamPeerStatusTableEntry) Unstructured() map[string]any {
 
 	var beatingIcon string
 	if t.IsSingleNode || t.IsBeating {
-		beatingIcon = "+"
+		beatingIcon = green + "O" + reset
 	} else {
-		beatingIcon = "-"
+		beatingIcon = red + "X" + reset
 	}
 
 	peer := t.Peer
