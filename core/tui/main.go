@@ -47,6 +47,7 @@ type (
 		pool.Status
 		Node string
 	}
+
 	CreateTableOptions struct {
 		title        string
 		titles       []string
@@ -328,21 +329,21 @@ func (t *App) initApp() {
 	t.app.SetRoot(t.flex, true)
 
 	t.app.SetInputCapture(func(event *tcell.EventKey) *tcell.EventKey {
+		if t.command != nil {
+			return event
+		}
 		switch event.Key() {
 		case tcell.KeyESC:
 			if n := t.resetSelected(); n > 0 {
 				return nil
 			}
 			t.back()
-		case tcell.KeyBacktab:
-			colorHead2--
-			t.updateHead()
-		case tcell.KeyTab:
-			colorHead2++
-			t.updateHead()
-		}
-		if t.command != nil {
-			return event
+			/*case tcell.KeyBacktab:
+				colorHead2--
+				t.updateHead()
+			case tcell.KeyTab:
+				colorHead2++
+				t.updateHead()*/
 		}
 		switch event.Rune() {
 		case ':':
@@ -910,14 +911,22 @@ func (t *App) onRuneColumn(event *tcell.EventKey) {
 		SetLabel(":").
 		SetFieldWidth(0).
 		SetFieldBackgroundColor(colorInput).
+		SetAutocompleteFunc(func(currentText string) (entries []string) {
+			completions := t.getCompletions(currentText)
+			slices.Sort(completions)
+			return completions
+		}).
 		SetDoneFunc(func(key tcell.Key) {
 			text := strings.TrimSpace(t.command.GetText())
+			var action string
 			args := strings.Fields(text)
-			if len(args) == 0 {
+			/*if len(args) == 0 {
 				clean()
 				return
+			}*/
+			if len(args) > 0 {
+				action = args[0]
 			}
-			action := args[0]
 
 			switch key {
 			case tcell.KeyEnter:
