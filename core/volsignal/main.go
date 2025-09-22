@@ -8,11 +8,44 @@ import (
 )
 
 type (
-	T map[syscall.Signal]map[string]interface{}
+	routeMap map[syscall.Signal]map[string]any
+
+	T struct {
+		data routeMap
+	}
+
+	// Route is a relation between a signal number and the id of a resource supporting signaling
+	Route struct {
+		Signum syscall.Signal
+		RID    string
+	}
 )
 
-func Parse(s string) T {
-	t := make(map[syscall.Signal]map[string]interface{})
+func New(expressions ...string) *T {
+	t := &T{
+		data: make(routeMap),
+	}
+	for _, expression := range expressions {
+		t.Parse(expression)
+	}
+	return t
+}
+
+func (t *T) Merge(other *T) {
+	if other == nil {
+		return
+	}
+	for sigNum, rids := range other.data {
+		if _, ok := t.data[sigNum]; !ok {
+			t.data[sigNum] = make(map[string]interface{})
+		}
+		for rid := range rids {
+			t.data[sigNum][rid] = nil
+		}
+	}
+}
+
+func (t *T) Parse(s string) {
 	for _, e := range strings.Fields(s) {
 		l := strings.SplitN(e, ":", 2)
 		if len(l) != 2 {
@@ -26,12 +59,24 @@ func Parse(s string) T {
 		if sigNum == 0 {
 			continue
 		}
-		if _, ok := t[sigNum]; !ok {
-			t[sigNum] = make(map[string]interface{})
+		if _, ok := t.data[sigNum]; !ok {
+			t.data[sigNum] = make(map[string]interface{})
 		}
 		for _, rid := range strings.Split(l[1], ",") {
-			t[sigNum][rid] = nil
+			t.data[sigNum][rid] = nil
 		}
 	}
-	return t
+}
+
+func (t *T) Routes() []Route {
+	routes := make([]Route, 0)
+	for i, ridmap := range t.data {
+		for rid := range ridmap {
+			routes = append(routes, Route{
+				Signum: i,
+				RID:    rid,
+			})
+		}
+	}
+	return routes
 }
