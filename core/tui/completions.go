@@ -10,10 +10,10 @@ import (
 var completionTree = map[string]any{
 	"do": map[string]any{
 		"cluster":  []string{"freeze", "unfreeze"},
-		"object":   []string{"abort", "delete", "freeze", "giveback", "provision", "purge", "start", "stop", "switch", "unfreeze", "unprovision"},
+		"object":   []string{"abort", "delete", "freeze", "giveback", "provision", "purge", "restart", "start", "stop", "switch", "unfreeze", "unprovision"},
 		"instance": []string{"clear", "delete", "freeze", "provision", "refresh", "start", "stop", "switch", "unfreeze", "unprovision"},
 		"resource": []string{"disable", "enable", "provision", "run", "start", "stop", "unprovision"},
-		"node":     []string{"drain", "freeze", "unfreeze", "restart"},
+		"node":     []string{"drain", "freeze", "unfreeze"},
 	},
 	"filter": nil,
 	"go":     []string{"sec", "cfg", "vol", "pool", "net"},
