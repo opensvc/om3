@@ -91,6 +91,8 @@ type (
 		eventsCancel context.CancelFunc
 		isInEventView atomic.Bool
 
+		isOnConfirmation bool
+
 		viewPath naming.Path
 		viewNode string
 		viewKey  string
@@ -148,6 +150,10 @@ var (
 
 	forceUpdate    = true
 	updateIfChange = false
+
+	dataLostMessage            = "I understand data will be lost."
+	confLostMessage            = "I understand the configuration will be lost."
+	serviceInterruptionMessage = "I understand the selected services may be temporarily interrupted during failover, or durably interrupted if no failover is configured."
 )
 
 type Options struct {
@@ -788,7 +794,9 @@ func (t *App) onRuneColumn(event *tcell.EventKey) {
 	clean := func() {
 		t.flex.RemoveItem(t.command)
 		t.command = nil
-		t.app.SetFocus(t.flex.GetItem(1))
+		if !t.isOnConfirmation {
+			t.app.SetFocus(t.flex.GetItem(1))
+		}
 	}
 	if t.command != nil {
 		clean()
@@ -805,29 +813,43 @@ func (t *App) onRuneColumn(event *tcell.EventKey) {
 	objectAction := func(action string, paths map[string]any) {
 		switch action {
 		case "stop":
-			t.actionStop(paths)
+			t.confirmAction(func() {
+				t.actionStop(paths)
+			}, serviceInterruptionMessage)
 		case "start":
 			t.actionStart(paths)
 		case "provision":
 			t.actionProvision(paths)
 		case "unprovision":
-			t.actionUnprovision(paths)
+			t.confirmAction(func() {
+				t.actionUnprovision(paths)
+			}, dataLostMessage, serviceInterruptionMessage)
 		case "freeze":
 			t.actionFreeze(paths)
 		case "unfreeze", "thaw":
 			t.actionUnfreeze(paths)
 		case "switch":
-			t.actionSwitch(paths)
+			t.confirmAction(func() {
+				t.actionSwitch(paths)
+			}, serviceInterruptionMessage)
 		case "giveback":
-			t.actionGiveback(paths)
+			t.confirmAction(func() {
+				t.actionGiveback(paths)
+			}, serviceInterruptionMessage)
 		case "abort":
 			t.actionAbort(paths)
 		case "purge":
-			t.actionPurge(paths)
+			t.confirmAction(func() {
+				t.actionPurge(paths)
+			}, dataLostMessage, confLostMessage, serviceInterruptionMessage)
 		case "delete":
-			t.actionDelete(paths)
+			t.confirmAction(func() {
+				t.actionDelete(paths)
+			}, confLostMessage)
 		case "restart":
-			t.actionRestart(paths)
+			t.confirmAction(func() {
+				t.actionRestart(paths)
+			}, serviceInterruptionMessage)
 		default:
 			t.errorf("unknown object action: %s", action)
 		}
@@ -835,21 +857,29 @@ func (t *App) onRuneColumn(event *tcell.EventKey) {
 	resourceAction := func(args []string, keys map[[3]string]any) {
 		switch args[0] {
 		case "stop":
-			t.actionResourceStop(keys)
+			t.confirmAction(func() {
+				t.actionResourceStop(keys)
+			}, serviceInterruptionMessage)
 		case "start":
 			t.actionResourceStart(keys)
 		case "provision":
 			t.actionResourceProvision(keys)
 		case "unprovision":
-			t.actionResourceUnprovision(keys)
+			t.confirmAction(func() {
+				t.actionResourceUnprovision(keys)
+			}, dataLostMessage, serviceInterruptionMessage)
 		case "restart":
-			t.actionResourceRestart(keys)
+			t.confirmAction(func() {
+				t.actionResourceRestart(keys)
+			}, serviceInterruptionMessage)
 		case "run":
 			t.actionResourceRun(keys)
 		case "enable":
 			t.actionResourceEnable(keys)
 		case "disable":
-			t.actionResourceDisable(keys)
+			t.confirmAction(func() {
+				t.actionResourceDisable(keys)
+			}, serviceInterruptionMessage)
 		default:
 			t.errorf("unknown resource action: %s", args[0])
 		}
@@ -859,25 +889,31 @@ func (t *App) onRuneColumn(event *tcell.EventKey) {
 		case "clear":
 			t.actionInstanceClear(keys)
 		case "stop":
-			t.actionInstanceStop(keys)
+			t.confirmAction(func() {
+				t.actionInstanceStop(keys)
+			}, serviceInterruptionMessage)
 		case "start":
 			t.actionInstanceStart(keys)
 		case "provision":
 			t.actionInstanceProvision(keys)
 		case "unprovision":
-			t.actionInstanceUnprovision(keys)
+			t.confirmAction(func() {
+				t.actionInstanceUnprovision(keys)
+			}, dataLostMessage, serviceInterruptionMessage)
 		case "freeze":
 			t.actionInstanceFreeze(keys)
 		case "unfreeze", "thaw":
 			t.actionInstanceUnfreeze(keys)
 		case "restart":
-			t.actionInstanceRestart(keys)
+			t.confirmAction(func() {
+				t.actionInstanceRestart(keys)
+			}, serviceInterruptionMessage)
 		case "refresh":
 			t.actionInstanceRefresh(keys)
 		case "switch":
-			t.actionInstanceSwitch(keys)
-		//	case "clear":
-		//		t.actionInstanceClear(keys)
+			t.confirmAction(func() {
+				t.actionInstanceSwitch(keys)
+			}, serviceInterruptionMessage)
 		default:
 			t.errorf("unknown instance action: %s", action)
 		}
@@ -1034,6 +1070,80 @@ func (t *App) onRuneColumn(event *tcell.EventKey) {
 func (t *App) setFilter(s string) {
 	t.Frame.Selector = s
 	t.reconnect()
+}
+
+func (t *App) confirmAction(action func(), messages ...string) {
+	t.isOnConfirmation = true
+	confirmFlex := tview.NewFlex().SetDirection(tview.FlexRow)
+	confirmFlex.SetBorder(true).SetTitle("Confirm action").SetTitleAlign(tview.AlignLeft)
+
+	clean := func() {
+		t.flex.RemoveItem(confirmFlex)
+		t.app.SetFocus(t.flex.GetItem(1))
+		t.isOnConfirmation = false
+	}
+
+	confirmText := tview.NewTextView().
+		SetDynamicColors(true).
+		SetWrap(true)
+	confirmText.SetBorder(false)
+	confirmText.SetBorderPadding(1, 0, 1, 0)
+
+	actual := 1
+
+	showMessage := func() {
+		confirmText.Clear()
+		for i := 0; i < actual; i++ {
+			if i >= len(messages) {
+				break
+			}
+			fmt.Fprintf(confirmText, "[yellow]%s\n\n", messages[i])
+		}
+	}
+
+	buttonFlex := tview.NewFlex().SetDirection(tview.FlexColumn)
+
+	confirmButton := tview.NewButton("Confirm").SetSelectedFunc(func() {
+		if actual < len(messages) {
+			actual++
+			showMessage()
+			return
+		}
+		action()
+		clean()
+	})
+
+	cancelButton := tview.NewButton("Cancel").SetSelectedFunc(func() {
+		clean()
+	})
+
+	confirmFlex.SetInputCapture(func(event *tcell.EventKey) *tcell.EventKey {
+		switch event.Key() {
+		case tcell.KeyESC:
+			clean()
+		case tcell.KeyEnter:
+		case tcell.KeyLeft, tcell.KeyRight:
+			if cancelButton.HasFocus() {
+				t.app.SetFocus(confirmButton)
+			} else {
+				t.app.SetFocus(cancelButton)
+			}
+		}
+		return event
+	})
+
+	showMessage()
+
+	buttonFlex.AddItem(nil, 0, 1, false)
+	buttonFlex.AddItem(confirmButton, 24, 0, true)
+	buttonFlex.AddItem(nil, 0, 1, false)
+	buttonFlex.AddItem(cancelButton, 24, 0, false)
+	buttonFlex.AddItem(nil, 0, 1, false)
+
+	confirmFlex.AddItem(confirmText, 0, 1, false)
+	confirmFlex.AddItem(buttonFlex, 1, 0, true)
+	t.flex.AddItem(confirmFlex, 0, 1, true)
+	t.app.SetFocus(confirmFlex)
 }
 
 func (t *App) actionNodeDaemonRestart(nodes map[string]any) {
