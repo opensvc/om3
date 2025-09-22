@@ -84,11 +84,10 @@ type (
 		previousSelectedElement string
 		position                Position
 
-		events       chan event.Event
-		onEventView  atomic.Bool
-		stopEvents   bool
-		eventsCtx    context.Context
-		eventsCancel context.CancelFunc
+		events        chan event.Event
+		stopEvents    bool
+		eventsCtx     context.Context
+		eventsCancel  context.CancelFunc
 		isInEventView atomic.Bool
 
 		isOnConfirmation bool
