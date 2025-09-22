@@ -88,20 +88,20 @@ func (t HeartbeatStreamPeerStatusTableEntry) Unstructured() map[string]any {
 	var stateIcon string
 	switch t.Status.State {
 	case "running":
-		stateIcon = "✅"
+		stateIcon = "+"
 	case "stopped", "failed":
-		stateIcon = "❌"
+		stateIcon = "-"
 	case "warning":
-		stateIcon = "⚠️"
+		stateIcon = "!"
 	default:
-		stateIcon = "❓"
+		stateIcon = "?"
 	}
 
 	var beatingIcon string
 	if t.IsSingleNode || t.IsBeating {
-		beatingIcon = "✅"
+		beatingIcon = "+"
 	} else {
-		beatingIcon = "❌"
+		beatingIcon = "-"
 	}
 
 	peer := t.Peer
