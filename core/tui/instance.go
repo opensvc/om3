@@ -271,22 +271,25 @@ func (t *App) updateInstanceView() {
 	setRow := func(prefix, rid string, resourceStatus resource.Status) {
 		i += 1
 		table.SetCell(i, 0, cellResourceId(prefix+rid))
-		table.SetCell(i, 1, cellFlags(rid, resourceStatus, instanceState))
-		table.SetCell(i, 2, tview.NewTableCell(tview.TranslateANSI(colorstatus.Sprint(resourceStatus.Status, rawconfig.Colorize))).SetSelectable(false))
-		table.SetCell(i, 3, tview.NewTableCell(resourceStatus.Label).SetSelectable(false))
+		table.SetCell(i, 1, tview.NewTableCell(resourceStatus.Subset).SetSelectable(false))
+		table.SetCell(i, 2, cellFlags(rid, resourceStatus, instanceState))
+		table.SetCell(i, 3, tview.NewTableCell(tview.TranslateANSI(colorstatus.Sprint(resourceStatus.Status, rawconfig.Colorize))).SetSelectable(false))
+		table.SetCell(i, 4, tview.NewTableCell(resourceStatus.Label).SetSelectable(false))
 		for _, entry := range resourceStatus.Log {
 			i += 1
 			table.SetCell(i, 0, tview.NewTableCell("").SetSelectable(false))
 			table.SetCell(i, 1, tview.NewTableCell("").SetSelectable(false))
 			table.SetCell(i, 2, tview.NewTableCell("").SetSelectable(false))
-			table.SetCell(i, 3, cellLog(entry))
+			table.SetCell(i, 3, tview.NewTableCell("").SetSelectable(false))
+			table.SetCell(i, 4, cellLog(entry))
 		}
 	}
 
 	table.SetCell(i, 0, tview.NewTableCell("RID").SetTextColor(colorTitle).SetSelectable(false))
-	table.SetCell(i, 1, tview.NewTableCell("FLAGS").SetTextColor(colorTitle).SetSelectable(false))
-	table.SetCell(i, 2, tview.NewTableCell("STATUS").SetTextColor(colorTitle).SetSelectable(false))
-	table.SetCell(i, 3, tview.NewTableCell("LABEL").SetTextColor(colorTitle).SetSelectable(false))
+	table.SetCell(i, 1, tview.NewTableCell("SUBSET").SetTextColor(colorTitle).SetSelectable(false))
+	table.SetCell(i, 2, tview.NewTableCell("FLAGS").SetTextColor(colorTitle).SetSelectable(false))
+	table.SetCell(i, 3, tview.NewTableCell("STATUS").SetTextColor(colorTitle).SetSelectable(false))
+	table.SetCell(i, 4, tview.NewTableCell("LABEL").SetTextColor(colorTitle).SetSelectable(false))
 	for _, resourceStatus := range instanceState.Status.SortedResources() {
 		rid := resourceStatus.ResourceID.String()
 		setRow("", rid, resourceStatus)
