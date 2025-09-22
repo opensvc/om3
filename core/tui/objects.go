@@ -318,7 +318,10 @@ func (t *App) updateObjects() {
 }
 
 func (t *App) cellObjectOrchestrate(path string) *tview.TableCell {
-	s := t.Current.Cluster.Object[path].Orchestrate
+	var s string
+	if objectStatus := t.Current.Cluster.Object[path]; objectStatus.ActorStatus != nil {
+		s = objectStatus.Orchestrate
+	}
 	return tview.NewTableCell(s).SetSelectable(false)
 }
 

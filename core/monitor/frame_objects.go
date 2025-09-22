@@ -73,12 +73,12 @@ func (f Frame) StrObjectRunning(path string) string {
 	)
 	avail := status.NotApplicable
 
-	s, ok := f.Current.Cluster.Object[path]
-	if s.ActorStatus == nil {
+	objectStatus, ok := f.Current.Cluster.Object[path]
+	if objectStatus.ActorStatus == nil {
 		return ""
 	}
 	if ok {
-		avail = s.Avail
+		avail = objectStatus.Avail
 	}
 
 	for _, node := range f.Current.Cluster.Node {
@@ -94,9 +94,9 @@ func (f Frame) StrObjectRunning(path string) string {
 				switch {
 				//case !instanceStatus.Scale.IsZero():
 				//	expected = int(instanceStatus.Scale.ValueOrZero())
-				case s.Topology == topology.Flex:
-					expected = s.Flex.Target
-				case s.Topology == topology.Failover:
+				case objectStatus.Topology == topology.Flex:
+					expected = objectStatus.Flex.Target
+				case objectStatus.Topology == topology.Failover:
 					expected = 1
 				}
 			}
