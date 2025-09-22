@@ -5,7 +5,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"text/template"
-	"time"
 
 	"github.com/gdamore/tcell/v2"
 )
@@ -14,21 +13,8 @@ var (
 	eventTemplate *template.Template
 )
 
-func formatTime(t time.Time) string {
-	return t.Format("2006-01-02 15:04:05")
-}
-
 func formatJSON(data json.RawMessage) string {
-	var parsed map[string]interface{}
-	err := json.Unmarshal(data, &parsed)
-	if err != nil {
-		return string(data)
-	}
-	result, err := json.Marshal(parsed)
-	if err != nil {
-		return string(data)
-	}
-	return string(result)
+	return string(data)
 }
 
 func (t *App) getEventsViewTitle() string {
@@ -51,11 +37,9 @@ func (t *App) initEventsView() {
 	})
 
 	eventTemplate = template.New("ev").Funcs(template.FuncMap{
-		"formatTime": formatTime,
 		"formatJSON": formatJSON,
 	})
-	eventTemplate = template.Must(eventTemplate.Parse(`{{ formatTime .At }} {{ .Kind }} [{{ .ID }}] {{ formatJSON .Data }}`))
-
+	eventTemplate = template.Must(eventTemplate.Parse(`{{ .At }} {{ .Kind }} [{{ .ID }}] {{ formatJSON .Data }}`))
 }
 
 func (t *App) updateEventsView() {
