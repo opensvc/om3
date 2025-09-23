@@ -284,7 +284,6 @@ func (t Renderer) renderTab(options string) (string, error) {
 		for i, jsonPath := range jsonPaths {
 			values, err := jsonPath.FindResults(line)
 			if err != nil {
-				//row[i] = fmt.Sprintf("<%s>", err)
 				row[i] = "-"
 				continue
 			}
