@@ -1020,6 +1020,9 @@ func newCmdNodeEvents() *cobra.Command {
 		Long:    "Print the node event stream\n\n" + commoncmd.UsageFlagEventFilter() + "\n" + commoncmd.UsageFlagEventTemplate(),
 		Aliases: []string{"eve", "even", "event"},
 		RunE: func(cmd *cobra.Command, args []string) error {
+			if options.Wait && !cmd.Flags().Changed("limit") {
+				options.Limit = 1
+			}
 			return options.Run()
 		},
 	}
