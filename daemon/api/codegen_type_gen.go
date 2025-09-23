@@ -4,8 +4,10 @@
 package api
 
 import (
+	"encoding/json"
 	"time"
 
+	"github.com/oapi-codegen/runtime"
 	openapi_types "github.com/oapi-codegen/runtime/types"
 	"github.com/opensvc/om3/core/instance"
 	"github.com/opensvc/om3/core/naming"
@@ -129,6 +131,14 @@ const (
 // Defines values for NodeListKind.
 const (
 	NodeListKindNodeList NodeListKind = "NodeList"
+)
+
+// Defines values for ObjectFrozen.
+const (
+	ObjectFrozenFrozen   ObjectFrozen = "frozen"
+	ObjectFrozenMixed    ObjectFrozen = "mixed"
+	ObjectFrozenNa       ObjectFrozen = "n/a"
+	ObjectFrozenUnfrozen ObjectFrozen = "unfrozen"
 )
 
 // Defines values for ObjectItemKind.
@@ -279,13 +289,13 @@ const (
 
 // Defines values for Status.
 const (
-	Down      Status = "down"
-	Na        Status = "n/a"
-	StdbyDown Status = "stdby down"
-	StdbyUp   Status = "stdby up"
-	Undef     Status = "undef"
-	Up        Status = "up"
-	Warn      Status = "warn"
+	StatusDown      Status = "down"
+	StatusNa        Status = "n/a"
+	StatusStdbyDown Status = "stdby down"
+	StatusStdbyUp   Status = "stdby up"
+	StatusUndef     Status = "undef"
+	StatusUp        Status = "up"
+	StatusWarn      Status = "warn"
 )
 
 // Defines values for Topology.
@@ -306,6 +316,7 @@ const (
 
 // ArbitratorStatus defines model for ArbitratorStatus.
 type ArbitratorStatus struct {
+	// Status Represents a resource, instance or object status, e.g., 'up', 'down', 'warn', ....
 	Status Status `json:"status"`
 	Url    string `json:"url"`
 	Weight int    `json:"weight"`
@@ -512,6 +523,13 @@ type DriverListKind string
 
 // EventList responseEventList is a list of sse
 type EventList = openapi_types.File
+
+// FlexConfig defines model for FlexConfig.
+type FlexConfig struct {
+	Max    int `json:"max"`
+	Min    int `json:"min"`
+	Target int `json:"target"`
+}
 
 // Group defines model for Group.
 type Group struct {
@@ -877,35 +895,62 @@ type NodeStatus struct {
 // NodesInfo defines model for NodesInfo.
 type NodesInfo = nodesinfo.M
 
-// ObjectData defines model for ObjectData.
-type ObjectData struct {
-	Avail       Status      `json:"avail"`
-	FlexMax     int         `json:"flex_max"`
-	FlexMin     int         `json:"flex_min"`
-	FlexTarget  int         `json:"flex_target"`
-	Frozen      string      `json:"frozen"`
-	Instances   InstanceMap `json:"instances"`
-	Orchestrate Orchestrate `json:"orchestrate"`
-	Overall     Status      `json:"overall"`
+// ObjectActor defines model for ObjectActor.
+type ObjectActor struct {
+	// Avail Represents a resource, instance or object status, e.g., 'up', 'down', 'warn', ....
+	Avail Status      `json:"avail"`
+	Flex  *FlexConfig `json:"flex,omitempty"`
+
+	// Frozen Frozen is the aggregation of instances frozen states
+	Frozen      ObjectFrozen `json:"frozen"`
+	Instances   InstanceMap  `json:"instances"`
+	Orchestrate Orchestrate  `json:"orchestrate"`
+
+	// Overall Represents a resource, instance or object status, e.g., 'up', 'down', 'warn', ....
+	Overall Status `json:"overall"`
 
 	// PlacementPolicy object placement policy
 	PlacementPolicy PlacementPolicy `json:"placement_policy"`
 
 	// PlacementState object placement state
 	PlacementState PlacementState `json:"placement_state"`
-	Pool           *string        `json:"pool,omitempty"`
-	Priority       int            `json:"priority"`
+
+	// Priority Lower priority are orchestrated first.
+	Priority Priority `json:"priority"`
 
 	// Provisioned service, instance or resource provisioned state
 	Provisioned Provisioned `json:"provisioned"`
-	Scope       []string    `json:"scope"`
-	Size        *int64      `json:"size,omitempty"`
+	Scope       Scope       `json:"scope"`
 
 	// Topology object topology
-	Topology         Topology `json:"topology"`
-	UpInstancesCount int      `json:"up_instances_count"`
-	UpdatedAt        string   `json:"updated_at"`
+	Topology         Topology  `json:"topology"`
+	UpInstancesCount int       `json:"up_instances_count"`
+	UpdatedAt        UpdatedAt `json:"updated_at"`
 }
+
+// ObjectCcfg defines model for ObjectCcfg.
+type ObjectCcfg = ObjectCore
+
+// ObjectCfg defines model for ObjectCfg.
+type ObjectCfg = ObjectCore
+
+// ObjectCore defines model for ObjectCore.
+type ObjectCore struct {
+	Instances InstanceMap `json:"instances"`
+
+	// Priority Lower priority are orchestrated first.
+	Priority  Priority  `json:"priority"`
+	Scope     Scope     `json:"scope"`
+	UpdatedAt UpdatedAt `json:"updated_at"`
+}
+
+// ObjectData defines model for ObjectData.
+type ObjectData struct {
+	union json.RawMessage
+}
+
+// ObjectFrozen Frozen is the aggregation of instances frozen states
+type ObjectFrozen string
 
 // ObjectItem defines model for ObjectItem.
 type ObjectItem struct {
@@ -936,6 +981,86 @@ type ObjectMeta struct {
 
 // ObjectPaths defines model for ObjectPaths.
 type ObjectPaths = []string
+
+// ObjectSec defines model for ObjectSec.
+type ObjectSec = ObjectCore
+
+// ObjectSvc defines model for ObjectSvc.
+type ObjectSvc struct {
+	// Avail Represents a resource, instance or object status, e.g., 'up', 'down', 'warn', ....
+	Avail Status      `json:"avail"`
+	Flex  *FlexConfig `json:"flex,omitempty"`
+
+	// Frozen Frozen is the aggregation of instances frozen states
+	Frozen      ObjectFrozen `json:"frozen"`
+	Instances   InstanceMap  `json:"instances"`
+	Orchestrate Orchestrate  `json:"orchestrate"`
+
+	// Overall Represents a resource, instance or object status, e.g., 'up', 'down', 'warn', ....
+	Overall Status `json:"overall"`
+
+	// PlacementPolicy object placement policy
+	PlacementPolicy PlacementPolicy `json:"placement_policy"`
+
+	// PlacementState object placement state
+	PlacementState PlacementState `json:"placement_state"`
+
+	// Priority Lower priority are orchestrated first.
+	Priority Priority `json:"priority"`
+
+	// Provisioned service, instance or resource provisioned state
+	Provisioned Provisioned `json:"provisioned"`
+	Scope       Scope       `json:"scope"`
+
+	// Topology object topology
+	Topology         Topology  `json:"topology"`
+	UpInstancesCount int       `json:"up_instances_count"`
+	UpdatedAt        UpdatedAt `json:"updated_at"`
+}
+
+// ObjectUsr defines model for ObjectUsr.
+type ObjectUsr = ObjectCore
+
+// ObjectVol defines model for ObjectVol.
+type ObjectVol struct {
+	// Avail Represents a resource, instance or object status, e.g., 'up', 'down', 'warn', ....
+	Avail Status      `json:"avail"`
+	Flex  *FlexConfig `json:"flex,omitempty"`
+
+	// Frozen Frozen is the aggregation of instances frozen states
+	Frozen      ObjectFrozen `json:"frozen"`
+	Instances   InstanceMap  `json:"instances"`
+	Orchestrate Orchestrate  `json:"orchestrate"`
+
+	// Overall Represents a resource, instance or object status, e.g., 'up', 'down', 'warn', ....
+	Overall Status `json:"overall"`
+
+	// PlacementPolicy object placement policy
+	PlacementPolicy PlacementPolicy `json:"placement_policy"`
+
+	// PlacementState object placement state
+	PlacementState PlacementState `json:"placement_state"`
+	Pool           string         `json:"pool"`
+
+	// Priority Lower priority are orchestrated first.
+	Priority Priority `json:"priority"`
+
+	// Provisioned service, instance or resource provisioned state
+	Provisioned Provisioned `json:"provisioned"`
+	Scope       Scope       `json:"scope"`
+	Size        int64       `json:"size"`
+
+	// Topology object topology
+	Topology         Topology  `json:"topology"`
+	UpInstancesCount int       `json:"up_instances_count"`
+	UpdatedAt        UpdatedAt `json:"updated_at"`
+}
+
+// ObjectVolConfig defines model for ObjectVolConfig.
+type ObjectVolConfig struct {
+	Pool string `json:"pool"`
+	Size int64  `json:"size"`
+}
 
 // Orchestrate defines model for Orchestrate.
 type Orchestrate string
@@ -1106,6 +1231,9 @@ type PostRelayMessage struct {
 	Msg         string `json:"msg"`
 	Nodename    string `json:"nodename"`
 }
+
+// Priority Lower priority are orchestrated first.
+type Priority = int
 
 // Problem defines model for Problem.
 type Problem struct {
@@ -1413,7 +1541,10 @@ type ScheduleList struct {
 // ScheduleListKind defines model for ScheduleList.Kind.
 type ScheduleListKind string
 
-// Status defines model for Status.
+// Scope defines model for Scope.
+type Scope = []string
+
+// Status Represents a resource, instance or object status, e.g., 'up', 'down', 'warn', ....
 type Status string
 
 // SubsetConfig defines model for SubsetConfig.
@@ -1424,6 +1555,9 @@ type SubsetsConfig = []SubsetConfig
 
 // Topology object topology
 type Topology string
+
+// UpdatedAt defines model for UpdatedAt.
+type UpdatedAt = time.Time
 
 // User defines model for User.
 type User struct {
@@ -2225,3 +2359,247 @@ type PatchObjectDataJSONRequestBody = PatchDataKeys
 
 // PostRelayMessageJSONRequestBody defines body for PostRelayMessage for application/json ContentType.
 type PostRelayMessageJSONRequestBody = PostRelayMessage
+
+// AsObjectActor returns the union data inside the ObjectData as a ObjectActor
+func (t ObjectData) AsObjectActor() (ObjectActor, error) {
+	var body ObjectActor
+	err := json.Unmarshal(t.union, &body)
+	return body, err
+}
+
+// FromObjectActor overwrites any union data inside the ObjectData as the provided ObjectActor
+func (t *ObjectData) FromObjectActor(v ObjectActor) error {
+	b, err := json.Marshal(v)
+	t.union = b
+	return err
+}
+
+// MergeObjectActor performs a merge with any union data inside the ObjectData, using the provided ObjectActor
+func (t *ObjectData) MergeObjectActor(v ObjectActor) error {
+	b, err := json.Marshal(v)
+	if err != nil {
+		return err
+	}
+
+	merged, err := runtime.JSONMerge(t.union, b)
+	t.union = merged
+	return err
+}
+
+// AsObjectCore returns the union data inside the ObjectData as a ObjectCore
+func (t ObjectData) AsObjectCore() (ObjectCore, error) {
+	var body ObjectCore
+	err := json.Unmarshal(t.union, &body)
+	return body, err
+}
+
+// FromObjectCore overwrites any union data inside the ObjectData as the provided ObjectCore
+func (t *ObjectData) FromObjectCore(v ObjectCore) error {
+	b, err := json.Marshal(v)
+	t.union = b
+	return err
+}
+
+// MergeObjectCore performs a merge with any union data inside the ObjectData, using the provided ObjectCore
+func (t *ObjectData) MergeObjectCore(v ObjectCore) error {
+	b, err := json.Marshal(v)
+	if err != nil {
+		return err
+	}
+
+	merged, err := runtime.JSONMerge(t.union, b)
+	t.union = merged
+	return err
+}
+
+// AsObjectCcfg returns the union data inside the ObjectData as a ObjectCcfg
+func (t ObjectData) AsObjectCcfg() (ObjectCcfg, error) {
+	var body ObjectCcfg
+	err := json.Unmarshal(t.union, &body)
+	return body, err
+}
+
+// FromObjectCcfg overwrites any union data inside the ObjectData as the provided ObjectCcfg
+func (t *ObjectData) FromObjectCcfg(v ObjectCcfg) error {
+	b, err := json.Marshal(v)
+	t.union = b
+	return err
+}
+
+// MergeObjectCcfg performs a merge with any union data inside the ObjectData, using the provided ObjectCcfg
+func (t *ObjectData) MergeObjectCcfg(v ObjectCcfg) error {
+	b, err := json.Marshal(v)
+	if err != nil {
+		return err
+	}
+
+	merged, err := runtime.JSONMerge(t.union, b)
+	t.union = merged
+	return err
+}
+
+// AsObjectCfg returns the union data inside the ObjectData as a ObjectCfg
+func (t ObjectData) AsObjectCfg() (ObjectCfg, error) {
+	var body ObjectCfg
+	err := json.Unmarshal(t.union, &body)
+	return body, err
+}
+
+// FromObjectCfg overwrites any union data inside the ObjectData as the provided ObjectCfg
+func (t *ObjectData) FromObjectCfg(v ObjectCfg) error {
+	b, err := json.Marshal(v)
+	t.union = b
+	return err
+}
+
+// MergeObjectCfg performs a merge with any union data inside the ObjectData, using the provided ObjectCfg
+func (t *ObjectData) MergeObjectCfg(v ObjectCfg) error {
+	b, err := json.Marshal(v)
+	if err != nil {
+		return err
+	}
+
+	merged, err := runtime.JSONMerge(t.union, b)
+	t.union = merged
+	return err
+}
+
+// AsObjectSec returns the union data inside the ObjectData as a ObjectSec
+func (t ObjectData) AsObjectSec() (ObjectSec, error) {
+	var body ObjectSec
+	err := json.Unmarshal(t.union, &body)
+	return body, err
+}
+
+// FromObjectSec overwrites any union data inside the ObjectData as the provided ObjectSec
+func (t *ObjectData) FromObjectSec(v ObjectSec) error {
+	b, err := json.Marshal(v)
+	t.union = b
+	return err
+}
+
+// MergeObjectSec performs a merge with any union data inside the ObjectData, using the provided ObjectSec
+func (t *ObjectData) MergeObjectSec(v ObjectSec) error {
+	b, err := json.Marshal(v)
+	if err != nil {
+		return err
+	}
+
+	merged, err := runtime.JSONMerge(t.union, b)
+	t.union = merged
+	return err
+}
+
+// AsObjectSvc returns the union data inside the ObjectData as a ObjectSvc
+func (t ObjectData) AsObjectSvc() (ObjectSvc, error) {
+	var body ObjectSvc
+	err := json.Unmarshal(t.union, &body)
+	return body, err
+}
+
+// FromObjectSvc overwrites any union data inside the ObjectData as the provided ObjectSvc
+func (t *ObjectData) FromObjectSvc(v ObjectSvc) error {
+	b, err := json.Marshal(v)
+	t.union = b
+	return err
+}
+
+// MergeObjectSvc performs a merge with any union data inside the ObjectData, using the provided ObjectSvc
+func (t *ObjectData) MergeObjectSvc(v ObjectSvc) error {
+	b, err := json.Marshal(v)
+	if err != nil {
+		return err
+	}
+
+	merged, err := runtime.JSONMerge(t.union, b)
+	t.union = merged
+	return err
+}
+
+// AsObjectUsr returns the union data inside the ObjectData as a ObjectUsr
+func (t ObjectData) AsObjectUsr() (ObjectUsr, error) {
+	var body ObjectUsr
+	err := json.Unmarshal(t.union, &body)
+	return body, err
+}
+
+// FromObjectUsr overwrites any union data inside the ObjectData as the provided ObjectUsr
+func (t *ObjectData) FromObjectUsr(v ObjectUsr) error {
+	b, err := json.Marshal(v)
+	t.union = b
+	return err
+}
+
+// MergeObjectUsr performs a merge with any union data inside the ObjectData, using the provided ObjectUsr
+func (t *ObjectData) MergeObjectUsr(v ObjectUsr) error {
+	b, err := json.Marshal(v)
+	if err != nil {
+		return err
+	}
+
+	merged, err := runtime.JSONMerge(t.union, b)
+	t.union = merged
+	return err
+}
+
+// AsObjectVol returns the union data inside the ObjectData as a ObjectVol
+func (t ObjectData) AsObjectVol() (ObjectVol, error) {
+	var body ObjectVol
+	err := json.Unmarshal(t.union, &body)
+	return body, err
+}
+
+// FromObjectVol overwrites any union data inside the ObjectData as the provided ObjectVol
+func (t *ObjectData) FromObjectVol(v ObjectVol) error {
+	b, err := json.Marshal(v)
+	t.union = b
+	return err
+}
+
+// MergeObjectVol performs a merge with any union data inside the ObjectData, using the provided ObjectVol
+func (t *ObjectData) MergeObjectVol(v ObjectVol) error {
+	b, err := json.Marshal(v)
+	if err != nil {
+		return err
+	}
+
+	merged, err := runtime.JSONMerge(t.union, b)
+	t.union = merged
+	return err
+}
+
+// AsObjectVolConfig returns the union data inside the ObjectData as a ObjectVolConfig
+func (t ObjectData) AsObjectVolConfig() (ObjectVolConfig, error) {
+	var body ObjectVolConfig
+	err := json.Unmarshal(t.union, &body)
+	return body, err
+}
+
+// FromObjectVolConfig overwrites any union data inside the ObjectData as the provided ObjectVolConfig
+func (t *ObjectData) FromObjectVolConfig(v ObjectVolConfig) error {
+	b, err := json.Marshal(v)
+	t.union = b
+	return err
+}
+
+// MergeObjectVolConfig performs a merge with any union data inside the ObjectData, using the provided ObjectVolConfig
+func (t *ObjectData) MergeObjectVolConfig(v ObjectVolConfig) error {
+	b, err := json.Marshal(v)
+	if err != nil {
+		return err
+	}
+
+	merged, err := runtime.JSONMerge(t.union, b)
+	t.union = merged
+	return err
+}
+
+func (t ObjectData) MarshalJSON() ([]byte, error) {
+	b, err := t.union.MarshalJSON()
+	return b, err
+}
+
+func (t *ObjectData) UnmarshalJSON(b []byte) error {
+	err := t.union.UnmarshalJSON(b)
+	return err
+}

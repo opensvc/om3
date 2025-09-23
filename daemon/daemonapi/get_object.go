@@ -53,6 +53,53 @@ func (a *DaemonAPI) getObjects(ctx echo.Context, pathSelector *string) (api.Obje
 	hasRoot := grantsFromContext(ctx).HasRole(rbac.RoleRoot)
 	userGrants := grantsFromContext(ctx)
 
+	getCore := func(p naming.Path, ostat *object.Status) api.ObjectCore {
+		core := api.ObjectCore{
+			Scope:     append([]string{}, ostat.Scope...),
+			Instances: make(map[string]api.Instance),
+			Priority:  int(ostat.Priority),
+			UpdatedAt: ostat.UpdatedAt,
+		}
+		for nodename, config := range instance.ConfigData.GetByPath(p) {
+			monitor := instance.MonitorData.GetByPathAndNode(p, nodename)
+			status := instance.StatusData.GetByPathAndNode(p, nodename)
+			core.Instances[nodename] = api.Instance{
+				Config:  config,
+				Monitor: monitor,
+				Status:  status,
+			}
+		}
+		return core
+	}
+	getActor := func(ostat *object.Status) api.ObjectActor {
+		actor := api.ObjectActor{
+			Avail:            api.Status(ostat.Avail.String()),
+			Frozen:           api.ObjectFrozen(ostat.Frozen),
+			Orchestrate:      api.Orchestrate(ostat.Orchestrate),
+			Overall:          api.Status(ostat.Overall.String()),
+			PlacementPolicy:  api.PlacementPolicy(ostat.PlacementPolicy.String()),
+			PlacementState:   api.PlacementState(ostat.PlacementState.String()),
+			Provisioned:      api.Provisioned(ostat.Provisioned.String()),
+			Topology:         api.Topology(ostat.Topology.String()),
+			UpInstancesCount: ostat.UpInstancesCount,
+		}
+		if ostat.Flex != nil {
+			actor.Flex = &api.FlexConfig{
+				Max:    ostat.Flex.Max,
+				Min:    ostat.Flex.Min,
+				Target: ostat.Flex.Target,
+			}
+		}
+		return actor
+	}
+
+	getObjectVolConfig := func(ostat *object.Status) api.ObjectVolConfig {
+		return api.ObjectVolConfig{
+			Pool: ostat.Pool,
+			Size: ostat.Size,
+		}
+	}
+
 	l := make(api.ObjectItems, 0)
 	for _, p := range meta.Paths() {
 		if !hasRoot && !hasRoleGuestOn(userGrants, p.Namespace) {
@@ -67,36 +114,26 @@ func (a *DaemonAPI) getObjects(ctx echo.Context, pathSelector *string) (api.Obje
 			Meta: api.ObjectMeta{
 				Object: p.String(),
 			},
-			Data: api.ObjectData{
-				Avail:            api.Status(ostat.Avail.String()),
-				FlexMax:          ostat.FlexMax,
-				FlexMin:          ostat.FlexMin,
-				FlexTarget:       ostat.FlexTarget,
-				Frozen:           ostat.Frozen,
-				Instances:        make(map[string]api.Instance),
-				Orchestrate:      api.Orchestrate(ostat.Orchestrate),
-				Overall:          api.Status(ostat.Overall.String()),
-				PlacementPolicy:  api.PlacementPolicy(ostat.PlacementPolicy.String()),
-				PlacementState:   api.PlacementState(ostat.PlacementState.String()),
-				Pool:             ostat.Pool,
-				Priority:         int(ostat.Priority),
-				Provisioned:      api.Provisioned(ostat.Provisioned.String()),
-				Scope:            append([]string{}, ostat.Scope...),
-				Size:             ostat.Size,
-				Topology:         api.Topology(ostat.Topology.String()),
-				UpInstancesCount: ostat.UpInstancesCount,
-				UpdatedAt:        ostat.UpdatedAt.String(),
-			},
+			Data: api.ObjectData{},
 		}
-		for nodename, config := range instance.ConfigData.GetByPath(p) {
-			monitor := instance.MonitorData.GetByPathAndNode(p, nodename)
-			status := instance.StatusData.GetByPathAndNode(p, nodename)
-			d.Data.Instances[nodename] = api.Instance{
-				Config:  config,
-				Monitor: monitor,
-				Status:  status,
-			}
+		switch p.Kind {
+		case naming.KindCcfg:
+			d.Data.MergeObjectCore(getCore(p, ostat))
+		case naming.KindCfg:
+			d.Data.MergeObjectCore(getCore(p, ostat))
+		case naming.KindSec:
+			d.Data.MergeObjectCore(getCore(p, ostat))
+		case naming.KindSvc:
+			d.Data.MergeObjectCore(getCore(p, ostat))
+			d.Data.MergeObjectActor(getActor(ostat))
+		case naming.KindVol:
+			d.Data.MergeObjectCore(getCore(p, ostat))
+			d.Data.MergeObjectActor(getActor(ostat))
+			d.Data.MergeObjectVolConfig(getObjectVolConfig(ostat))
+		case naming.KindUsr:
+			d.Data.MergeObjectCore(getCore(p, ostat))
 		}
+
 		l = append(l, d)
 	}
 	return l, nil

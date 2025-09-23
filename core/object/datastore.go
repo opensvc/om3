@@ -2,6 +2,7 @@ package object
 
 import (
 	"os"
+	"slices"
 
 	"github.com/opensvc/om3/util/key"
 )
@@ -58,7 +59,11 @@ func keyFromName(name string) key.T {
 }
 
 func (t *dataStore) Shares() []string {
-	return t.config.GetStrings(key.Parse("share"))
+	l := t.config.GetStrings(key.Parse("share"))
+	if !slices.Contains(l, t.path.Namespace) {
+		l = append(l, t.path.Namespace)
+	}
+	return l
 }
 
 func (t *dataStore) HasKey(name string) bool {

@@ -9,7 +9,6 @@ import (
 
 	"github.com/opensvc/om3/core/env"
 	"github.com/opensvc/om3/core/instance"
-	"github.com/opensvc/om3/core/naming"
 	"github.com/opensvc/om3/core/priority"
 	"github.com/opensvc/om3/core/provisioned"
 	"github.com/opensvc/om3/core/status"
@@ -24,8 +23,6 @@ var (
 
 	// testCRMAction can be used to define alternate testCRMAction for tests
 	testCRMAction func(title string, cmdArgs ...string) error
-
-	statefullKinds = naming.NewKinds(naming.KindSvc, naming.KindVol)
 )
 
 func init() {
@@ -67,7 +64,7 @@ func (t *Manager) queueFreeze() error {
 // If the manager is stateless, it publishes the instance status directly.
 // Otherwise, it executes the status update through a priority-specific runner.
 func (t *Manager) runStatus(prio priority.T) error {
-	if !t.statefull {
+	if t.instConfig.ActorConfig == nil {
 		t.pubStatelessInstanceStatus()
 		return nil
 	}
@@ -91,7 +88,7 @@ func (t *Manager) pubStatelessInstanceStatus() {
 // requestStatusRefresh requests the current status for a specific priority queue in a thread-safe manner.
 // If the manager is stateless, it publishes the instance status directly.
 func (t *Manager) requestStatusRefresh(prio priority.T) {
-	if !t.statefull {
+	if t.instConfig.ActorConfig == nil {
 		t.pubStatelessInstanceStatus()
 		return
 	}

@@ -107,10 +107,11 @@ func (t *BaseTask) lastRunRetcodeFile() string {
 
 func (t *BaseTask) StatusInfo(ctx context.Context) map[string]any {
 	m := make(map[string]any)
-	lastRun := t.readLastRun()
-	m["last_run_exitcode"] = lastRun.ExitCode
-	m["last_run_at"] = lastRun.At
-	m["last_run_session_id"] = lastRun.SessionID
+	if lastRun := t.readLastRun(); lastRun != nil {
+		m["last_run_exitcode"] = lastRun.ExitCode
+		m["last_run_at"] = lastRun.At
+		m["last_run_session_id"] = lastRun.SessionID
+	}
 	return m
 }
 
@@ -119,7 +120,7 @@ func (t *BaseTask) statusLastRunWarn(ctx context.Context) status.T {
 		t.StatusLog().Info("requirements not met")
 		return status.NotApplicable
 	}
-	if lastRun := t.readLastRun(); lastRun.At.IsZero() {
+	if lastRun := t.readLastRun(); lastRun == nil {
 		t.StatusLog().Info("never run")
 		return status.NotApplicable
 	} else {
@@ -139,7 +140,7 @@ func (t *BaseTask) statusLastRun(ctx context.Context) status.T {
 		t.StatusLog().Info("requirements not met")
 		return status.NotApplicable
 	}
-	if lastRun := t.readLastRun(); lastRun.At.IsZero() {
+	if lastRun := t.readLastRun(); lastRun == nil {
 		t.StatusLog().Info("never run")
 		return status.NotApplicable
 	} else {
@@ -172,44 +173,44 @@ func (t *BaseTask) readLastRunRetcode() (int, error) {
 	}
 }
 
-func (t *BaseTask) readLastRun() LastRun {
+func (t *BaseTask) readLastRun() *LastRun {
 	if lastRun, err := t.readLastRunV2(); err == nil {
 		return lastRun
 	}
 	if lastRun, err := t.readLastRunV1(); err == nil {
 		return lastRun
 	}
-	return LastRun{}
+	return nil
 }
 
-func (t *BaseTask) readLastRunV1() (LastRun, error) {
+func (t *BaseTask) readLastRunV1() (*LastRun, error) {
 	var lastRun LastRun
 	ret, err := t.readLastRunRetcode()
 	if err != nil {
-		return lastRun, err
+		return nil, err
 	}
 	lastRun.ExitCode = ret
 
 	at, err := t.readLastRunAt()
 	if err != nil {
-		return lastRun, err
+		return nil, err
 	}
 	lastRun.At = at
 
-	return lastRun, nil
+	return &lastRun, nil
 }
 
-func (t *BaseTask) readLastRunV2() (LastRun, error) {
+func (t *BaseTask) readLastRunV2() (*LastRun, error) {
 	var lastRun LastRun
 	b, err := os.ReadFile(t.lastRunFile())
 	if err != nil {
-		return lastRun, err
+		return nil, err
 	}
 	err = json.Unmarshal(b, &lastRun)
 	if err != nil {
-		return lastRun, err
+		return nil, err
 	}
-	return lastRun, nil
+	return &lastRun, nil
 }
 
 func (t *BaseTask) WriteLastRun(retcode int) error {

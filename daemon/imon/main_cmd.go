@@ -134,11 +134,13 @@ func (t *Manager) initRelationAvailStatus() {
 			}
 		}
 	}
-	for _, relation := range config.Children {
-		do(relation, "Child", t.state.Children)
-	}
-	for _, relation := range config.Parents {
-		do(relation, "Parent", t.state.Parents)
+	if config.ActorConfig != nil {
+		for _, relation := range config.ActorConfig.Children {
+			do(relation, "Child", t.state.Children)
+		}
+		for _, relation := range config.ActorConfig.Parents {
+			do(relation, "Parent", t.state.Parents)
+		}
 	}
 }
 
@@ -340,8 +342,10 @@ func (t *Manager) onInstanceConfigUpdated(srcNode string, srcCmd *msgbus.Instanc
 		t.log.Debugf("refresh resource monitor states on local instance config updated")
 		t.initResourceMonitor()
 		janitorInstStatus(srcCmd.Value.Scope)
-		janitorRelations(srcCmd.Value.Children, "Child", t.state.Children)
-		janitorRelations(srcCmd.Value.Parents, "Parent", t.state.Parents)
+		if srcCmd.Value.ActorConfig != nil {
+			janitorRelations(srcCmd.Value.ActorConfig.Children, "Child", t.state.Children)
+			janitorRelations(srcCmd.Value.ActorConfig.Parents, "Parent", t.state.Parents)
+		}
 	}
 	t.scopeNodes = append([]string{}, srcCmd.Value.Scope...)
 	t.log.Debugf("updated from %s ObjectStatusUpdated InstanceConfigUpdated on %s scopeNodes=%s", srcNode, srcCmd.Node, t.scopeNodes)
@@ -633,7 +637,7 @@ func (t *Manager) onNodeStatusUpdated(c *msgbus.NodeStatusUpdated) {
 
 func (t *Manager) onNodeStatsUpdated(c *msgbus.NodeStatsUpdated) {
 	t.nodeStats[c.Node] = c.Value
-	if t.objStatus.PlacementPolicy == placement.Score {
+	if t.objStatus.ActorStatus != nil && t.objStatus.ActorStatus.PlacementPolicy == placement.Score {
 		t.onChange()
 	}
 }
@@ -723,7 +727,7 @@ func (t *Manager) isStartable() (bool, string) {
 func (t *Manager) isStarted() bool {
 	switch t.objStatus.Topology {
 	case topology.Flex:
-		return t.objStatus.UpInstancesCount >= t.objStatus.FlexTarget
+		return t.objStatus.UpInstancesCount >= t.objStatus.Flex.Target
 	case topology.Failover:
 		return t.objStatus.Avail == status.Up
 	default:
@@ -947,7 +951,7 @@ func (t *Manager) newIsHALeader() bool {
 
 	var maxLeaders int = 1
 	if t.objStatus.Topology == topology.Flex {
-		maxLeaders = t.objStatus.FlexTarget
+		maxLeaders = t.objStatus.Flex.Target
 	}
 
 	i := stringslice.Index(t.localhost, candidates)
@@ -972,7 +976,7 @@ func (t *Manager) newIsLeader() bool {
 
 	var maxLeaders int = 1
 	if t.objStatus.Topology == topology.Flex {
-		maxLeaders = t.objStatus.FlexTarget
+		maxLeaders = t.objStatus.Flex.Target
 	}
 
 	i := stringslice.Index(t.localhost, candidates)
@@ -983,6 +987,9 @@ func (t *Manager) newIsLeader() bool {
 }
 
 func (t *Manager) updateIsLeader() {
+	if t.objStatus.ActorStatus == nil {
+		return
+	}
 	isLeader := t.newIsLeader()
 	if isLeader != t.state.IsLeader {
 		t.change = true
@@ -1045,6 +1052,9 @@ func (t *Manager) doLastAction(action func() error, newState, successState, erro
 }
 
 func (t *Manager) initResourceMonitor() {
+	if t.instConfig.ActorConfig == nil {
+		return
+	}
 	// Stop any pending restart timers before init. We may be called after
 	// instance config refreshed with some previous resource restart scheduled.
 	t.cancelResourceOrchestrateSchedules()
@@ -1109,7 +1119,7 @@ func (t *Manager) onNodeRejoin(c *msgbus.NodeRejoin) {
 	if t.state.GlobalExpect == instance.MonitorGlobalExpectUnfrozen {
 		return
 	}
-	if t.instConfig.Orchestrate != "ha" {
+	if t.instConfig.ActorConfig != nil && t.instConfig.ActorConfig.Orchestrate != "ha" {
 		return
 	}
 	for peer, peerStatus := range t.instStatus {

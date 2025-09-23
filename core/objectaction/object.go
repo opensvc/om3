@@ -870,15 +870,26 @@ func (t T) DoRemote() error {
 
 	for i, item := range resp.JSON200.Items {
 		selectedInstances := make(api.InstanceMap)
-		for n, i := range item.Data.Instances {
+		core, err := item.Data.AsObjectCore()
+		if err != nil {
+			return err
+		}
+		for n, i := range core.Instances {
 			if _, ok := nodenames[n]; ok {
 				selectedInstances[n] = i
 			}
 		}
-		if t.Target == "started" && (string(item.Data.Topology) == topology.Failover.String()) && len(selectedInstances) > 1 {
-			return fmt.Errorf("%s: cowardly refusing to start multiple instances: topology is failover", item.Meta.Object)
+		if t.Target == "started" {
+			actor, err := item.Data.AsObjectActor()
+			if err != nil {
+				return err
+			}
+			if string(actor.Topology) == topology.Failover.String() && len(selectedInstances) > 1 {
+				return fmt.Errorf("%s: cowardly refusing to start multiple instances: topology is failover", item.Meta.Object)
+			}
 		}
-		resp.JSON200.Items[i].Data.Instances = selectedInstances
+		core.Instances = selectedInstances
+		resp.JSON200.Items[i].Data.MergeObjectCore(core)
 		count += len(selectedInstances)
 	}
 
@@ -887,7 +898,11 @@ func (t T) DoRemote() error {
 	}
 
 	for _, item := range resp.JSON200.Items {
-		for n := range item.Data.Instances {
+		core, err := item.Data.AsObjectCore()
+		if err != nil {
+			return err
+		}
+		for n := range core.Instances {
 			p, err := naming.ParsePath(item.Meta.Object)
 			if err != nil {
 				return err

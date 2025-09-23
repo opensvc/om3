@@ -8,6 +8,7 @@ import (
 	"os"
 	"os/user"
 	"path/filepath"
+	"slices"
 	"strconv"
 	"strings"
 	"syscall"
@@ -16,6 +17,7 @@ import (
 
 	"github.com/opensvc/om3/core/driver"
 	"github.com/opensvc/om3/core/naming"
+	"github.com/opensvc/om3/core/volsignal"
 	"github.com/opensvc/om3/util/file"
 	"github.com/opensvc/om3/util/plog"
 )
@@ -37,6 +39,7 @@ type (
 		FromPattern   string
 		FromStore     naming.Path
 		AccessControl KVInstallAccessControl
+		Signals       *volsignal.T
 	}
 	KVInstallAccessControl struct {
 		User  string
@@ -402,10 +405,10 @@ func (t *dataStore) InstallKeyTo(opt KVInstall) error {
 func (t *dataStore) postInstall(k string) error {
 	type receiver interface {
 		CanInstall(context.Context) (bool, error)
-		InstallFromDatastore(DataStore) (bool, error)
+		InstallFromDatastore(context.Context, DataStore) (bool, error)
 		InstallDataByKind(naming.Kind) (bool, error)
 		HasMetadata(naming.Path, string) bool
-		SendSignals(context.Context) error
+		OldSendSignals(context.Context) error
 	}
 	ctx := context.Background()
 	paths, err := naming.InstalledPaths()
@@ -413,7 +416,7 @@ func (t *dataStore) postInstall(k string) error {
 		return err
 	}
 	for _, p := range paths {
-		if p.Namespace != t.path.Namespace {
+		if !slices.Contains(t.Shares(), p.Namespace) {
 			continue
 		}
 		if p.Kind != naming.KindSvc {
@@ -438,16 +441,16 @@ func (t *dataStore) postInstall(k string) error {
 				continue
 			}
 
-			if v, err := receiverResource.InstallFromDatastore(t); err != nil {
+			if v, err := receiverResource.InstallFromDatastore(ctx, t); err != nil {
 				return err
 			} else if v {
-				onChange = receiverResource.SendSignals
+				onChange = receiverResource.OldSendSignals
 			}
 
 			if v, err := receiverResource.InstallDataByKind(t.path.Kind); err != nil {
 				return err
 			} else if v {
-				onChange = receiverResource.SendSignals
+				onChange = receiverResource.OldSendSignals
 			}
 		}
 		if onChange != nil {

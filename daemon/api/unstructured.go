@@ -1,5 +1,7 @@
 package api
 
+import "encoding/json"
+
 func (t CapabilityList) GetItems() any {
 	return t.Items
 }
@@ -365,30 +367,12 @@ func (t ObjectMeta) Unstructured() map[string]any {
 }
 
 func (t ObjectData) Unstructured() map[string]any {
-	m := map[string]any{
-		"avail":              t.Avail,
-		"flex_max":           t.FlexMax,
-		"flex_min":           t.FlexMin,
-		"flex_target":        t.FlexTarget,
-		"frozen":             t.Frozen,
-		"instances":          t.Instances.Unstructured(),
-		"orchestrate":        t.Orchestrate,
-		"overall":            t.Overall,
-		"placement_policy":   t.PlacementPolicy,
-		"placement_state":    t.PlacementState,
-		"priority":           t.Priority,
-		"provisioned":        t.Provisioned,
-		"scope":              t.Scope,
-		"topology":           t.Topology,
-		"up_instances_count": t.UpInstancesCount,
-		"updated_at":         t.UpdatedAt,
+	m := make(map[string]any)
+	b, err := t.MarshalJSON()
+	if err != nil {
+		return m
 	}
-	if t.Pool != nil {
-		m["pool"] = *t.Pool
-	}
-	if t.Size != nil {
-		m["size"] = *t.Size
-	}
+	json.Unmarshal(b, &m)
 	return m
 }
 

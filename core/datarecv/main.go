@@ -361,7 +361,7 @@ type dirDefinition struct {
 	Required bool
 }
 
-func (t *DataRecv) InstallFromDatastore(from object.DataStore) (bool, error) {
+func (t *DataRecv) InstallFromDatastore(ctx context.Context, from object.DataStore) (bool, error) {
 	if len(t.Install) == 0 {
 		return false, nil
 	}
@@ -385,6 +385,8 @@ func (t *DataRecv) InstallFromDatastore(from object.DataStore) (bool, error) {
 		}
 	}
 
+	signals := volsignal.New()
+
 	for _, md := range files {
 		if md.FromStore != from.Path() {
 			continue
@@ -407,8 +409,11 @@ func (t *DataRecv) InstallFromDatastore(from object.DataStore) (bool, error) {
 		if err := from.InstallKeyTo(md); err != nil && md.Required {
 			return false, err
 		}
+		signals.Merge(md.Signals)
 		changed = true
 	}
+
+	t.SendSignals(ctx, signals)
 
 	return changed, nil
 }
@@ -437,6 +442,8 @@ func (t *DataRecv) install(ctx context.Context) (bool, error) {
 		}
 	}
 
+	signals := volsignal.New()
+
 	for _, md := range files {
 		if !md.FromStore.Exists() {
 			err := fmt.Errorf("store %s does not exist: key %s data can not be installed in the volume", md.FromStore, md.FromPattern)
@@ -460,8 +467,11 @@ func (t *DataRecv) install(ctx context.Context) (bool, error) {
 		if err = dataStore.InstallKeyTo(md); err != nil && md.Required {
 			return false, err
 		}
+		signals.Merge(md.Signals)
 		changed = true
 	}
+
+	t.SendSignals(ctx, signals)
 
 	return changed, nil
 }
@@ -573,6 +583,7 @@ func (t *DataRecv) getInstallMetadata(head string) ([]dirDefinition, []object.KV
 				MakedirGroup: t.Group,
 				MakedirPerm:  t.getDirPerm(),
 			},
+			Signals: volsignal.New(),
 		}
 
 		var word string
@@ -639,6 +650,9 @@ func (t *DataRecv) getInstallMetadata(head string) ([]dirDefinition, []object.KV
 				}
 			case "required":
 				item.Required = true
+			case "signal":
+				word, line = pop(line)
+				item.Signals.Parse(word)
 			}
 		}
 
@@ -677,30 +691,27 @@ func (t *DataRecv) Do(ctx context.Context) error {
 		changed = v || changed
 	}
 	if changed {
-		return t.SendSignals(ctx)
+		// Compat with old `signal` keyword.
+		// Having signal=HUP:container#1,container#2 inside the `install`
+		// keyword is now preferred.
+		return t.OldSendSignals(ctx)
 	}
 	return nil
 }
 
-func (t *DataRecv) signalData() []SigRoute {
-	routes := make([]SigRoute, 0)
-	for i, ridmap := range volsignal.Parse(t.Signal) {
-		for rid := range ridmap {
-			routes = append(routes, SigRoute{
-				Signum: i,
-				RID:    rid,
-			})
-		}
-	}
-	return routes
+func (t *DataRecv) OldSendSignals(ctx context.Context) error {
+	return t.SendSignals(ctx, volsignal.New(t.Signal))
 }
 
-func (t *DataRecv) SendSignals(ctx context.Context) error {
+func (t *DataRecv) SendSignals(ctx context.Context, signals *volsignal.T) error {
+	if signals == nil {
+		return nil
+	}
 	o, ok := t.to.GetObject().(signaler)
 	if !ok {
 		return fmt.Errorf("%s does not implement SignalResource()", o.Path())
 	}
-	for _, sd := range t.signalData() {
+	for _, sd := range signals.Routes() {
 		if err := o.SignalResource(ctx, sd.RID, sd.Signum); err != nil {
 			return err
 		}

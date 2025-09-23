@@ -130,15 +130,19 @@ func (t *T) asPostFeedObjectConfigBody(p naming.Path, v *msgbus.InstanceConfigUp
 
 	pa := objectConfigPost{
 		Path:                   v.Path.String(),
-		Orchestrate:            config.Orchestrate,
-		Topology:               config.Topology.String(),
-		FlexMin:                config.FlexMin,
-		FlexMax:                config.FlexMax,
-		FlexTarget:             config.FlexTarget,
 		MonitoredResourceCount: monResCount,
-		App:                    config.App,
-		Env:                    config.Env,
 		Scope:                  config.Scope,
+	}
+	if config.ActorConfig != nil {
+		pa.Orchestrate = config.Orchestrate
+		pa.Topology = config.Topology.String()
+		pa.App = config.App
+		pa.Env = config.Env
+	}
+	if config.Flex != nil {
+		pa.FlexMin = config.Flex.Min
+		pa.FlexMax = config.Flex.Max
+		pa.FlexTarget = config.Flex.Target
 	}
 
 	// TODO: set DrpNode, DrpNodes, Comment, encap

@@ -9,7 +9,7 @@ import (
 func (t *Manager) orchestrateNone() {
 	t.clearStartFailed()
 	t.clearBootFailed()
-	if t.objStatus.Orchestrate == "ha" {
+	if t.objStatus.ActorStatus != nil && t.objStatus.Orchestrate == "ha" {
 		t.orchestrateHAStart()
 		t.orchestrateHAStop()
 	}
@@ -22,7 +22,7 @@ func (t *Manager) orchestrateHAStop() {
 
 	if t.nodeStatus[t.localhost].IsFrozen() {
 		return
-	} else if t.objStatus.UpInstancesCount <= t.objStatus.FlexTarget {
+	} else if t.objStatus.UpInstancesCount <= t.objStatus.Flex.Target {
 		return
 	} else if t.state.IsHALeader {
 		return
@@ -118,7 +118,7 @@ func (t *Manager) clearStartFailed() {
 			return
 		}
 	}
-	if t.objStatus.Topology == topology.Flex && t.objStatus.FlexTarget > 0 && t.objStatus.UpInstancesCount < t.objStatus.FlexTarget {
+	if t.objStatus.Topology == topology.Flex && t.objStatus.Flex.Target > 0 && t.objStatus.UpInstancesCount < t.objStatus.Flex.Target {
 		// avoid flex instance start loop
 		return
 	}

@@ -33,6 +33,8 @@ type (
 	Manager struct {
 		path naming.Path
 
+		isActor bool
+
 		status object.Status
 
 		// imonCancel is the cancel function for the local imon we have started
@@ -85,43 +87,47 @@ type (
 // Start a goroutine responsible for the status of an object
 func Start(ctx context.Context, subQS pubsub.QueueSizer, p naming.Path, cfg instance.Config, imonStarter IMonStarter) error {
 	localhost := hostname.Hostname()
+	status := object.Status{
+		Scope:    cfg.Scope,
+		Priority: cfg.Priority,
+	}
+	if cfg.VolConfig != nil {
+		status.VolStatus = &object.VolStatus{
+			Pool: cfg.VolConfig.Pool,
+			Size: cfg.VolConfig.Size,
+		}
+	}
+	if cfg.ActorConfig != nil {
+		status.ActorStatus = &object.ActorStatus{
+			Orchestrate:     cfg.ActorConfig.Orchestrate,
+			PlacementPolicy: cfg.ActorConfig.PlacementPolicy,
+			Topology:        cfg.ActorConfig.Topology,
+		}
+		if cfg.ActorConfig.Flex != nil {
+			status.ActorStatus.Flex = &object.FlexStatus{
+				Min:    cfg.Flex.Min,
+				Max:    cfg.Flex.Max,
+				Target: cfg.Flex.Target,
+			}
+		}
+	}
 	t := &Manager{
-		path: p,
-
-		status: object.Status{
-			Scope:           cfg.Scope,
-			FlexTarget:      cfg.FlexTarget,
-			FlexMin:         cfg.FlexMin,
-			FlexMax:         cfg.FlexMax,
-			Orchestrate:     cfg.Orchestrate,
-			Pool:            cfg.Pool,
-			PlacementPolicy: cfg.PlacementPolicy,
-			Priority:        cfg.Priority,
-			Size:            cfg.Size,
-			Topology:        cfg.Topology,
-		},
-
+		path:      p,
+		isActor:   cfg.ActorConfig != nil,
+		status:    status,
 		publisher: pubsub.PubFromContext(ctx),
-
 		// set initial instStatus value for cfg.Nodename to avoid early termination because of len 0 map
-		instStatus: make(map[string]instance.Status),
-
+		instStatus:  make(map[string]instance.Status),
 		instMonitor: make(map[string]instance.Monitor),
-
-		instConfig: make(map[string]instance.Config),
-
-		ctx: ctx,
-
+		instConfig:  make(map[string]instance.Config),
+		ctx:         ctx,
 		pubLabel: []pubsub.Label{
 			{"namespace", p.Namespace},
 			{"path", p.String()},
 			{"node", localhost},
 		},
-
-		localhost: localhost,
-
+		localhost:   localhost,
 		imonStarter: imonStarter,
-
 		log: naming.LogWithPath(plog.NewDefaultLogger(), p).
 			Attr("pkg", "daemon/omon").
 			WithPrefix("daemon: omon: " + p.String() + ": "),
@@ -260,16 +266,29 @@ func (t *Manager) worker() {
 							strings.Join(t.instConfigFor.Scope, ","))
 					}
 				}
-				t.status.Scope = c.Value.Scope
-				t.status.FlexTarget = c.Value.FlexTarget
-				t.status.FlexMin = c.Value.FlexMin
-				t.status.FlexMax = c.Value.FlexMax
-				t.status.Orchestrate = c.Value.Orchestrate
-				t.status.Pool = c.Value.Pool
-				t.status.PlacementPolicy = c.Value.PlacementPolicy
 				t.status.Priority = c.Value.Priority
-				t.status.Size = c.Value.Size
-				t.status.Topology = c.Value.Topology
+				t.status.Scope = c.Value.Scope
+				if c.Value.ActorConfig != nil {
+					t.status.ActorStatus = &object.ActorStatus{
+						Orchestrate:     c.Value.Orchestrate,
+						PlacementPolicy: c.Value.PlacementPolicy,
+						Topology:        c.Value.Topology,
+					}
+					if c.Value.ActorConfig.Flex != nil {
+						t.status.ActorStatus.Flex = &object.FlexStatus{
+							Target: c.Value.ActorConfig.Flex.Target,
+							Min:    c.Value.ActorConfig.Flex.Min,
+							Max:    c.Value.ActorConfig.Flex.Max,
+						}
+					}
+				}
+				if c.Value.VolConfig != nil {
+					t.status.VolStatus = &object.VolStatus{
+						Pool: c.Value.Pool,
+						Size: c.Value.Size,
+					}
+				}
+
 				t.srcEvent = c
 
 				t.instConfig[c.Node] = c.Value
@@ -321,9 +340,9 @@ func (t *Manager) updateStatus() {
 			switch {
 			case states[status.Up] == 0:
 				return status.Down
-			case states[status.Up] < t.status.FlexMin:
+			case states[status.Up] < t.status.Flex.Min:
 				return status.Warn
-			case states[status.Up] > t.status.FlexMax:
+			case states[status.Up] > t.status.Flex.Max:
 				return status.Warn
 			default:
 				return status.Up
@@ -432,10 +451,12 @@ func (t *Manager) updateStatus() {
 		}
 	}
 
-	updateAvailOverall()
-	updateProvisioned()
-	updateFrozen()
-	updatePlacementState()
+	if t.isActor {
+		updateAvailOverall()
+		updateProvisioned()
+		updateFrozen()
+		updatePlacementState()
+	}
 	t.update()
 }
 
@@ -449,7 +470,6 @@ func (t *Manager) delete() {
 func (t *Manager) update() {
 	t.status.UpdatedAt = time.Now()
 	value := t.status.DeepCopy()
-	t.log.Debugf("update avail %s", value.Avail)
 	object.StatusData.Set(t.path, t.status.DeepCopy())
 	t.publisher.Pub(&msgbus.ObjectStatusUpdated{Path: t.path, Node: t.localhost, Value: *value, SrcEv: t.srcEvent}, t.pubLabel...)
 }

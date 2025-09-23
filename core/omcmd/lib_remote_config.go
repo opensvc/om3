@@ -39,7 +39,11 @@ func remoteClient(p naming.Path, c *client.T) (*client.T, error) {
 		return nil, fmt.Errorf("get object %s data from %s: %s", p, c.URL(), resp.Status())
 	}
 	var nodename string
-	for k := range resp.JSON200.Data.Instances {
+	core, err := resp.JSON200.Data.AsObjectCore()
+	if err != nil {
+		return nil, err
+	}
+	for k := range core.Instances {
 		nodename = k
 		break
 	}
