@@ -373,7 +373,7 @@ func FlagKeyValue(flags *pflag.FlagSet, p *string) {
 }
 
 func FlagEventLimit(flags *pflag.FlagSet, p *uint64) {
-	flags.Uint64Var(p, "limit", 0, "exit when <limit> events are received, the default is 0 (unlimited)")
+	flags.Uint64Var(p, "limit", 0, "exit when <limit> events are received, the default is 0 (unlimited) or 1 if --wait is set")
 }
 
 func FlagWait(flags *pflag.FlagSet, p *bool) {
