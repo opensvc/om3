@@ -2,12 +2,8 @@ package daemonsubsystem
 
 import (
 	"time"
-)
 
-const (
-	green = "\033[32m"
-	red   = "\033[31m"
-	reset = "\033[0m"
+	"github.com/fatih/color"
 )
 
 type (
@@ -94,20 +90,20 @@ func (t HeartbeatStreamPeerStatusTableEntry) Unstructured() map[string]any {
 	var stateIcon string
 	switch t.Status.State {
 	case "running":
-		stateIcon = green + "O" + reset
+		stateIcon = color.New(color.FgGreen).Sprint("O")
 	case "stopped", "failed":
-		stateIcon = red + "X" + reset
+		stateIcon = color.New(color.FgRed).Sprint("X")
 	case "warning":
-		stateIcon = "!"
+		stateIcon = color.New(color.FgYellow).Sprint("!")
 	default:
-		stateIcon = "?"
+		stateIcon = color.New(color.FgHiBlack).Sprint("?")
 	}
 
 	var beatingIcon string
 	if t.IsSingleNode || t.IsBeating {
-		beatingIcon = green + "O" + reset
+		beatingIcon = color.New(color.FgGreen).Sprint("O")
 	} else {
-		beatingIcon = red + "X" + reset
+		beatingIcon = color.New(color.FgRed).Sprint("X")
 	}
 
 	peer := t.Peer
