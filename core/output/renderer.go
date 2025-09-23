@@ -54,6 +54,8 @@ var (
 	regexpJSONOptimal   = regexp.MustCompile(`(")(up|stdby up|ok)(")`)
 	regexpJSONWarning   = regexp.MustCompile(`(")(warn)(")`)
 	regexpJSONSecondary = regexp.MustCompile(`(")(n/a)(")`)
+
+	regexpANSI = regexp.MustCompile(`\x1b\[[0-9;]*m`)
 )
 
 // Sprint returns the string representation of the data in one of the
@@ -247,7 +249,8 @@ func (t Renderer) renderTab(options string) (string, error) {
 		widths := make([]int, len(rows[0]))
 		for _, row := range rows {
 			for i, cell := range row {
-				w := runewidth.StringWidth(cell)
+				plain := regexpANSI.ReplaceAllString(cell, "")
+				w := runewidth.StringWidth(plain)
 				if w > widths[i] {
 					widths[i] = w
 				}
@@ -265,7 +268,12 @@ func (t Renderer) renderTab(options string) (string, error) {
 		for _, row := range rows {
 			for i, cell := range row {
 				if needAlign {
-					fmt.Fprint(w, runewidth.FillRight(cell, columnWidths[i]))
+					plain := regexpANSI.ReplaceAllString(cell, "")
+					padding := columnWidths[i] - runewidth.StringWidth(plain)
+					fmt.Fprint(w, cell)
+					if padding > 0 {
+						fmt.Fprint(w, strings.Repeat(" ", padding))
+					}
 					fmt.Fprint(w, "  ")
 				} else {
 					fmt.Fprint(w, cell)
