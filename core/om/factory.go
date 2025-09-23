@@ -2871,7 +2871,7 @@ func newCmdObjectSetProvisioned(kind string) *cobra.Command {
 		Short:      "set the resources provisioned property",
 		Long:       "This action does not provision the resources (fs are not formatted, disk not allocated, ...). This is just a resources provisioned flag create. Necessary to allow the unprovision action, which is bypassed if the provisioned flag is not set.",
 		Aliases:    []string{"provision", "prov"},
-		Deprecated: "use provision --state-only.",
+		Deprecated: "use instance provision --state-only.",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return options.Run(kind)
 		},
@@ -2894,7 +2894,7 @@ func newCmdObjectSetUnprovisioned(kind string) *cobra.Command {
 		Short:      "unset the resources provisioned property",
 		Long:       "This action does not unprovision the resources (fs are not wiped, disk not removed, ...). This is just a resources provisioned flag remove. Necessary to allow the provision action, which is bypassed if the provisioned flag is set.",
 		Aliases:    []string{"unprovision", "unprov"},
-		Deprecated: "use unprovision --state-only.",
+		Deprecated: "use instance unprovision --state-only.",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return options.Run(kind)
 		},
