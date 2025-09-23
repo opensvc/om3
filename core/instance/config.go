@@ -146,6 +146,7 @@ func (t Config) Unstructured() map[string]any {
 		m["children"] = t.Children
 		m["drp"] = t.DRP
 		m["env"] = t.Env
+		m["is_disabled"] = t.IsDisabled
 		m["monitor_action"] = t.MonitorAction
 		m["pre_monitor_action"] = t.PreMonitorAction
 		m["orchestrate"] = t.Orchestrate
