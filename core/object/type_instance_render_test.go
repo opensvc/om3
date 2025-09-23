@@ -10,6 +10,7 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/opensvc/om3/core/instance"
+	"github.com/opensvc/om3/core/topology"
 	"github.com/opensvc/om3/testhelper"
 )
 
@@ -30,7 +31,13 @@ func Test_Instance_States_Render(t *testing.T) {
 				Node:    instance.Node{Name: "node1", FrozenAt: timeZero},
 				Status:  instanceStatus,
 				Monitor: instance.Monitor{State: instance.MonitorStateIdle, StateUpdatedAt: time.Now(), UpdatedAt: time.Now()},
-				Config:  instance.Config{Priority: 50},
+				Config: instance.Config{
+					Priority: 50,
+					ActorConfig: &instance.ActorConfig{
+						Orchestrate: "ha",
+						Topology:    topology.Failover,
+					},
+				},
 			}
 			goldenFile := filepath.Join("testdata", name+".render")
 			s := instanceState.Render()
