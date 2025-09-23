@@ -137,6 +137,7 @@ func (rcfgs ResourceConfigs) Get(rid string) *ResourceConfig {
 func (t Config) Unstructured() map[string]any {
 	m := map[string]any{
 		"csum":       t.Checksum,
+		"priority":   t.Priority,
 		"scope":      t.Scope,
 		"updated_at": t.UpdatedAt,
 	}
@@ -150,7 +151,6 @@ func (t Config) Unstructured() map[string]any {
 		m["orchestrate"] = t.Orchestrate
 		m["parents"] = t.Parents
 		m["placement_policy"] = t.PlacementPolicy
-		m["priority"] = t.Priority
 		m["resources"] = t.Resources.Unstructured()
 		m["subsets"] = t.Subsets.Unstructured()
 		m["topology"] = t.Topology
