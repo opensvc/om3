@@ -4,13 +4,15 @@ import (
 	"errors"
 	"io/ioutil"
 	"net/http"
+	"strconv"
 
 	"github.com/labstack/echo/v4"
-
 	"github.com/opensvc/om3/core/instance"
 	"github.com/opensvc/om3/core/naming"
+	"github.com/opensvc/om3/core/node"
 	"github.com/opensvc/om3/core/object"
 	"github.com/opensvc/om3/daemon/api"
+	"github.com/opensvc/om3/util/hostname"
 )
 
 func (a *DaemonAPI) PostObjectDataKey(ctx echo.Context, namespace string, kind naming.Kind, name string, params api.PostObjectDataKeyParams) error {
@@ -36,6 +38,14 @@ func (a *DaemonAPI) PostObjectDataKey(ctx echo.Context, namespace string, kind n
 			return JSONProblemf(ctx, http.StatusBadRequest, "NewDataStore", "%s", err)
 		case err != nil:
 			return JSONProblemf(ctx, http.StatusInternalServerError, "NewDataStore", "%s", err)
+		}
+
+		contentLength := ctx.Request().Header.Get("Content-Length")
+		if contentLength != "" {
+			maxSize := node.ConfigData.GetByNode(hostname.Hostname()).MaxKeysize
+			if size, err := strconv.Atoi(contentLength); err == nil && size > int(*maxSize) {
+				return JSONProblemf(ctx, http.StatusRequestEntityTooLarge, "Body too large", "The request body exceed the allowed size.")
+			}
 		}
 
 		b, err := ioutil.ReadAll(ctx.Request().Body)

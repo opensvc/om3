@@ -7,6 +7,7 @@ type (
 		Env                    string        `json:"env"`
 		MaintenanceGracePeriod time.Duration `json:"maintenance_grace_period"`
 		MaxParallel            int           `json:"max_parallel"`
+		MaxKeysize             *int64        `json:"max_keysize"`
 		MinAvailMemPct         int           `json:"min_avail_mem_pct"`
 		MinAvailSwapPct        int           `json:"min_avail_swap_pct"`
 		ReadyPeriod            time.Duration `json:"ready_period"`
