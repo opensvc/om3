@@ -340,7 +340,7 @@ func (t *App) initApp() {
 		}
 		switch event.Key() {
 		case tcell.KeyESC:
-			if n := t.resetSelected(); n > 0 {
+			if n := t.resetSelected(); n > 0 && t.Frame.Selector == "*/svc/*" {
 				return nil
 			}
 			t.back()
@@ -1949,6 +1949,10 @@ func (t *App) nav(to viewId) {
 }
 
 func (t *App) back() {
+	if t.resetSelected() == 0 && len(t.stack) == 0 {
+		t.setFilter("*/svc/*")
+		return
+	}
 	from := t.pop()
 	to := t.focus()
 	t.navFromTo(from, to)
