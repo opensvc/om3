@@ -909,7 +909,7 @@ func (t *App) onRuneColumn(event *tcell.EventKey) {
 			}, serviceInterruptionMessage)
 		case "refresh":
 			t.actionInstanceRefresh(keys)
-		case "switch":
+		case "switch", "takeover":
 			t.confirmAction(func() {
 				t.actionInstanceSwitch(keys)
 			}, serviceInterruptionMessage)
