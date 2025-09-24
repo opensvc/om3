@@ -11,7 +11,7 @@ var (
 	ErrKeyExist    = errors.New("key already exists")
 	ErrKeyEmpty    = errors.New("key name is empty")
 	ErrKeyNotExist = errors.New("key does not exist")
-	ErrValueTooBig = errors.New("value exceeds 1MB")
+	ErrValueTooBig = errors.New("value exceeds the allowed size")
 )
 
 // TransactionAddKey sets a new key
