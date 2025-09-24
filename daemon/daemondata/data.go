@@ -14,6 +14,7 @@ import (
 	"github.com/opensvc/om3/core/event"
 	"github.com/opensvc/om3/core/hbtype"
 	"github.com/opensvc/om3/core/node"
+	"github.com/opensvc/om3/daemon/daemonenv"
 	"github.com/opensvc/om3/daemon/msgbus"
 	"github.com/opensvc/om3/util/durationlog"
 	"github.com/opensvc/om3/util/plog"
@@ -118,9 +119,6 @@ var (
 	// - pub applied changes from peers
 	// - queueNewHbMsg (hb message type change, push msg to hb send queue)
 	propagationInterval = 250 * time.Millisecond
-
-	// subHbRefreshInterval is the minimum interval for update of: sub.hb
-	subHbRefreshInterval = 100 * propagationInterval
 
 	countRoutineInterval = 1 * time.Second
 
@@ -297,8 +295,8 @@ func (d *data) run(ctx context.Context, cmdC <-chan Caller, hbRecvQ <-chan *hbty
 				d.setDaemonHeartbeat()
 				d.log.Debugf("current hb msg mode %d", d.hbMsgPatchLength[d.localNode])
 				needMessage = true
-				if subHbRefreshAdaptiveInterval < subHbRefreshInterval {
-					subHbRefreshAdaptiveInterval = 2 * subHbRefreshAdaptiveInterval
+				if subHbRefreshAdaptiveInterval < daemonenv.HeartbeatStatusRefreshMaximumInterval {
+					subHbRefreshAdaptiveInterval = max(2*subHbRefreshAdaptiveInterval, daemonenv.HeartbeatStatusRefreshMaximumInterval)
 					subHbRefreshTicker.Reset(subHbRefreshAdaptiveInterval)
 					d.log.Debugf("adapt interval for sub hb stat: %s", subHbRefreshAdaptiveInterval)
 				}

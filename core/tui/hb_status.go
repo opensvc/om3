@@ -10,7 +10,7 @@ import (
 
 func (t *App) updateHbStatus() {
 	title := "heartbeats"
-	titles := []string{"RUNNING", "BEATING", "ID", "NODE", "PEER", "TYPE", "DESC", "LAST_AT"}
+	titles := []string{"RUNNING", "BEATING", "ID", "NODE", "PEER", "TYPE", "DESC", "CHANGED_AT"}
 
 	formatBool := func(b bool) string {
 		if b {
@@ -51,7 +51,7 @@ func (t *App) updateHbStatus() {
 			e.Peer,
 			e.Type,
 			e.Desc,
-			e.LastAt.Format(time.RFC3339),
+			e.ChangedAt.Format(time.RFC3339),
 		})
 	}
 

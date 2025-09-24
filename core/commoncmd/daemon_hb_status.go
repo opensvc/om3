@@ -6,13 +6,14 @@ import (
 	"sort"
 	"strings"
 
+	"github.com/spf13/cobra"
+
 	"github.com/opensvc/om3/core/client"
 	"github.com/opensvc/om3/core/clusterdump"
 	"github.com/opensvc/om3/core/nodeselector"
 	"github.com/opensvc/om3/core/output"
 	"github.com/opensvc/om3/core/rawconfig"
 	"github.com/opensvc/om3/daemon/daemonsubsystem"
-	"github.com/spf13/cobra"
 )
 
 type (
@@ -118,7 +119,7 @@ func (t *CmdDaemonHeartbeatStatus) Run() error {
 		return table[i].Peer < table[j].Peer
 	})
 	output.Renderer{
-		DefaultOutput: "tab=RUNNING:.state_icon,BEATING:.beating_icon,ID:.id,NODE:.node,PEER:.peer,TYPE:.type,DESC:.desc,LAST_AT:.last_at",
+		DefaultOutput: "tab=RUNNING:.state_icon,BEATING:.beating_icon,ID:.id,NODE:.node,PEER:.peer,TYPE:.type,DESC:.desc,CHANGED_AT:.changed_at",
 		Output:        t.Output,
 		Color:         t.Color,
 		Data:          table,

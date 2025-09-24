@@ -54,9 +54,14 @@ type (
 
 	// HeartbeatStreamPeerStatus status of the communication with a specific peer node.
 	HeartbeatStreamPeerStatus struct {
-		Desc      string    `json:"desc"`
-		IsBeating bool      `json:"is_beating"`
-		LastAt    time.Time `json:"last_at"`
+		Desc      string `json:"desc"`
+		IsBeating bool   `json:"is_beating"`
+
+		// ChangedAt is the time of IsBeating value changed
+		ChangedAt time.Time `json:"changed_at"`
+
+		// LastBeatingAt is the last beating time
+		LastBeatingAt time.Time `json:"last_beating_at"`
 	}
 
 	HeartbeatStreamPeerStatusTable      []HeartbeatStreamPeerStatusTableEntry
@@ -115,28 +120,24 @@ func (t HeartbeatStreamPeerStatusTableEntry) Unstructured() map[string]any {
 		desc = "N/A"
 	}
 
-	lastAt := "N/A"
-	if !t.LastAt.IsZero() {
-		lastAt = t.LastAt.Format(time.RFC3339Nano)
-	}
-
 	return map[string]any{
-		"node":          t.Node,
-		"peer":          peer,
-		"type":          t.Type,
-		"alerts":        t.Alerts,
-		"id":            t.Status.ID,
-		"state":         stateText,
-		"state_icon":    stateIcon,
-		"state_text":    stateText,
-		"configured_at": t.Status.ConfiguredAt,
-		"updated_at":    t.Status.UpdatedAt,
-		"created_at":    t.Status.CreatedAt,
-		"desc":          desc,
-		"last_at":       lastAt,
-		"is_beating":    t.IsBeating,
-		"beating":       beatingText,
-		"beating_icon":  beatingIcon,
+		"node":            t.Node,
+		"peer":            peer,
+		"type":            t.Type,
+		"alerts":          t.Alerts,
+		"id":              t.Status.ID,
+		"state":           stateText,
+		"state_icon":      stateIcon,
+		"state_text":      stateText,
+		"configured_at":   t.Status.ConfiguredAt,
+		"updated_at":      t.Status.UpdatedAt,
+		"created_at":      t.Status.CreatedAt,
+		"desc":            desc,
+		"changed_at":      t.ChangedAt.Format(time.RFC3339Nano),
+		"last_beating_at": t.LastBeatingAt.Format(time.RFC3339Nano),
+		"is_beating":      t.IsBeating,
+		"beating":         beatingText,
+		"beating_icon":    beatingIcon,
 	}
 }
 

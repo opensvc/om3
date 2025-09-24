@@ -348,7 +348,8 @@ func (c *C) run() {
 				}
 				if _, ok := heartbeat[hbID]; ok {
 					heartbeat[hbID].Peers[peerNode] = daemonsubsystem.HeartbeatStreamPeerStatus{
-						Desc: o.Desc,
+						Desc:      o.Desc,
+						ChangedAt: time.Now(),
 					}
 				} else {
 					c.log.Warnf("watcher skipped: called before register %s -> %s", hbID, peerNode)

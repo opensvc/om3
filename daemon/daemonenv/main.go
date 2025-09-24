@@ -30,6 +30,9 @@ var (
 
 	// HTTPUnixFileBasename is the basename of http listener unix socket
 	HTTPUnixFileBasename = "http.sock"
+
+	// HeartbeatStatusRefreshMaximumInterval is the maximum interval for refreshing daemon heartbeat statistics
+	HeartbeatStatusRefreshMaximumInterval = 10 * time.Second
 )
 
 var (
