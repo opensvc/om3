@@ -134,6 +134,7 @@ const (
 	viewNetwork
 	viewNetworkIpList
 	viewEvents
+	viewHbStatus
 	viewLast // marker, not a real view
 )
 
@@ -234,6 +235,8 @@ func (t viewId) String() string {
 		return "network"
 	case viewNetworkIpList:
 		return "network ip list"
+	case viewHbStatus:
+		return "heartbeat status"
 	default:
 		return ""
 	}
@@ -599,6 +602,8 @@ func (t *App) do(statusGetter getter, evReader event.ReadCloser) error {
 					t.updateNetworkIpList(t.selectedElement)
 				case viewEvents:
 					t.updateEventsView()
+				case viewHbStatus:
+					t.updateHbStatus()
 				default:
 					t.updateObjects()
 				}
@@ -2026,6 +2031,8 @@ func (t *App) navFromTo(from, to viewId) {
 		t.flex.AddItem(t.textView, 0, 1, true)
 		t.app.SetFocus(t.textView)
 		t.updateEventsView()
+	case viewHbStatus:
+		t.updateHbStatus()
 	}
 	t.updateHead()
 	t.flex.AddItem(t.errs, 1, 0, false)

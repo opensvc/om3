@@ -28,6 +28,8 @@ func (t *App) initObjectsTable() {
 			t.listContexts()
 		case row == 1 && col == 1:
 			t.nav(viewEvents)
+		case row == 5 && col == 3:
+			t.nav(viewHbStatus)
 		}
 	}
 
@@ -240,7 +242,7 @@ func (t *App) updateObjects() {
 		t.objects.SetCell(row, 0, tview.NewTableCell("").SetSelectable(false))
 		t.objects.SetCell(row, 1, tview.NewTableCell("").SetSelectable(false))
 		t.objects.SetCell(row, 2, tview.NewTableCell("").SetSelectable(false))
-		t.objects.SetCell(row, 3, tview.NewTableCell("HB").SetTextColor(colorTitle).SetSelectable(false))
+		t.objects.SetCell(row, 3, tview.NewTableCell("HB").SetTextColor(colorTitle).SetSelectable(true))
 		t.objects.SetCell(row, 4, tview.NewTableCell("│").SetTextColor(colorTitle).SetSelectable(false))
 		nodesHbCells(row)
 
