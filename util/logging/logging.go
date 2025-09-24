@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"io"
 	"os"
-	"os/exec"
 	"path"
 	"path/filepath"
 	"runtime/debug"
@@ -131,7 +130,7 @@ func Configure(config Config) error {
 
 	zerolog.TimeFieldFormat = time.RFC3339Nano
 
-	if _, err := exec.LookPath("journalctl"); err == nil {
+	if journalEnabled() {
 		if writer := journald.NewJournalDWriter(); writer != nil {
 			writers = append(writers, writer)
 		}
