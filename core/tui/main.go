@@ -2056,7 +2056,7 @@ func (t *App) createTable(creator CreateTableOptions) {
 	for i, elements := range creator.elementsList {
 		row := i + 1
 		for j, element := range elements {
-			selectable := j == 0 || (creator.selectables != nil && slices.Contains(creator.selectables, j))
+			selectable := creator.selectables != nil && slices.Contains(creator.selectables, j)
 			v.SetCell(row, j, tview.NewTableCell(element).SetSelectable(selectable))
 		}
 	}
@@ -2108,6 +2108,5 @@ func (t *App) stop() {
 	default:
 	}
 
-	close(t.events)
 	t.app.Stop()
 }

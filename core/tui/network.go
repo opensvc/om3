@@ -60,6 +60,7 @@ func (t *App) updateNetworkList() {
 		title:        title,
 		titles:       titles,
 		elementsList: elementsList,
+		selectables:  []int{0},
 		capture: func(event *tcell.EventKey, v *tview.Table) *tcell.EventKey {
 			switch event.Key() {
 			case tcell.KeyEnter:
@@ -124,5 +125,6 @@ func (t *App) updateNetworkIpList(name string) {
 		title:        title,
 		titles:       titles,
 		elementsList: elementsList,
+		selectables:  []int{0},
 	})
 }

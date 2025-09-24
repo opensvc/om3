@@ -126,9 +126,9 @@ func (t *App) updatePoolList(forceUpdate bool) {
 		}
 	}
 
-	var selectables []int
+	selectables := []int{0}
 	if t.selectedElement == "" {
-		selectables = []int{4}
+		selectables = append(selectables, 4)
 	}
 
 	t.createTable(CreateTableOptions{
@@ -209,5 +209,6 @@ func (t *App) updatePoolVolume(name string) {
 		title:        title,
 		titles:       titles,
 		elementsList: elementsList,
+		selectables:  []int{0},
 	})
 }
