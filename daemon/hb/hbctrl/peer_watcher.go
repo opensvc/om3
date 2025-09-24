@@ -4,6 +4,7 @@ import (
 	"context"
 	"time"
 
+	"github.com/opensvc/om3/daemon/daemonenv"
 	"github.com/opensvc/om3/daemon/daemonsubsystem"
 	"github.com/opensvc/om3/util/plog"
 )
@@ -23,10 +24,11 @@ var (
 
 // peerWatch starts a new peer watcher of nodename for hbID
 // when beating state change a hb_beating or hb_stale event is fired
-// Once beating, a hb_stale event is fired if no beating are received after timeout
+// Once beating, hb_stale event is fired if beating is not received after timeout
 func (c *C) peerWatch(ctx context.Context, beatingC chan bool, HbID, nodename, desc string, timeout time.Duration) {
 	peer := daemonsubsystem.HeartbeatStreamPeerStatus{
-		Desc: desc,
+		Desc:      desc,
+		ChangedAt: time.Now(),
 	}
 	started := make(chan bool)
 	go func() {
@@ -41,6 +43,9 @@ func (c *C) peerWatch(ctx context.Context, beatingC chan bool, HbID, nodename, d
 		defer pubTicker.Stop()
 		pubTicker.Stop()
 
+		setPeerStatusTicker := time.NewTicker(daemonenv.HeartbeatStatusRefreshMaximumInterval)
+		defer setPeerStatusTicker.Stop()
+
 		// staleTicker is the ticker to watch beating==true not refreshed since timeout
 		// Reset when receive a beating true
 		// Stop when receive a beating false
@@ -52,6 +57,7 @@ func (c *C) peerWatch(ctx context.Context, beatingC chan bool, HbID, nodename, d
 		started <- true
 		setBeating := func(v bool) {
 			peer.IsBeating = v
+			peer.ChangedAt = time.Now()
 			changes = true
 			pubTicker.Reset(pubDelay)
 		}
@@ -68,16 +74,22 @@ func (c *C) peerWatch(ctx context.Context, beatingC chan bool, HbID, nodename, d
 				case beating && peer.IsBeating:
 					// continue beating (normal situation)
 					staleTicker.Reset(timeout)
-					peer.LastAt = time.Now()
+					peer.LastBeatingAt = time.Now()
 				case beating && !peer.IsBeating:
 					// resume beating
 					setBeating(true)
 					staleTicker.Reset(timeout)
-					peer.LastAt = time.Now()
+					peer.LastBeatingAt = time.Now()
 				case !beating && peer.IsBeating:
 					// stop beating
 					setBeating(false)
 					staleTicker.Stop()
+				}
+			case <-setPeerStatusTicker.C:
+				c.cmd <- CmdSetPeerStatus{
+					Nodename:   nodename,
+					HbID:       HbID,
+					PeerStatus: peer,
 				}
 			case <-pubTicker.C:
 				pubTicker.Stop()
@@ -99,6 +111,7 @@ func (c *C) peerWatch(ctx context.Context, beatingC chan bool, HbID, nodename, d
 							PeerStatus: peer,
 						}
 						beatingOnLastPub = peer.IsBeating
+						setPeerStatusTicker.Reset(daemonenv.HeartbeatStatusRefreshMaximumInterval)
 					}
 				}
 			case <-staleTicker.C:

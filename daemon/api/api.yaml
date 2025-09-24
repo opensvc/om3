@@ -2,7 +2,7 @@ openapi: 3.0.0
 
 info:
   title: opensvc agent api
-  version: 3.18.0
+  version: 4.0.0
 
 paths:
   /api/auth/info:
@@ -4667,12 +4667,17 @@ components:
       description: status of the communication with a specific peer node.
       required:
         - is_beating
-        - last_at
+        - last_beating_at
+        - changed_at
       properties:
         is_beating:
           type: boolean
-        last_at:
+        changed_at:
           type: string
+          format: date-time
+        last_beating_at:
+          type: string
+          description: the last beating time
           format: date-time
 
     DaemonListener:
