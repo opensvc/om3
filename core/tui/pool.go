@@ -126,16 +126,16 @@ func (t *App) updatePoolList(forceUpdate bool) {
 		}
 	}
 
-	var selectables []int
+	selectableColumns := []int{0}
 	if t.selectedElement == "" {
-		selectables = []int{4}
+		selectableColumns = append(selectableColumns, 4)
 	}
 
 	t.createTable(CreateTableOptions{
-		title:        title,
-		titles:       titles,
-		elementsList: elementsList,
-		selectables:  selectables,
+		title:             title,
+		titles:            titles,
+		elementsList:      elementsList,
+		selectableColumns: selectableColumns,
 		capture: func(event *tcell.EventKey, v *tview.Table) *tcell.EventKey {
 			switch event.Key() {
 			case tcell.KeyEnter:
@@ -206,8 +206,9 @@ func (t *App) updatePoolVolume(name string) {
 	}
 
 	t.createTable(CreateTableOptions{
-		title:        title,
-		titles:       titles,
-		elementsList: elementsList,
+		title:             title,
+		titles:            titles,
+		elementsList:      elementsList,
+		selectableColumns: []int{0},
 	})
 }

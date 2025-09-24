@@ -11,12 +11,13 @@ var completionTree = map[string]any{
 	"do": map[string]any{
 		"cluster":  []string{"freeze", "unfreeze"},
 		"object":   []string{"abort", "delete", "freeze", "giveback", "provision", "purge", "restart", "start", "stop", "switch", "unfreeze", "unprovision"},
-		"instance": []string{"clear", "delete", "freeze", "provision", "refresh", "start", "stop", "switch", "unfreeze", "unprovision"},
+		"instance": []string{"clear", "delete", "freeze", "provision", "refresh", "start", "stop", "switch", "takeover", "unfreeze", "unprovision"},
 		"resource": []string{"disable", "enable", "provision", "run", "start", "stop", "unprovision"},
 		"node":     []string{"drain", "freeze", "unfreeze"},
 	},
-	"filter": nil,
-	"go":     []string{"sec", "cfg", "vol", "pool", "net"},
+	"filter":  nil,
+	"connect": nil,
+	"go":      []string{"sec", "cfg", "vol", "pool", "net"},
 }
 
 func (t *App) getActualSelected() string {
@@ -50,10 +51,11 @@ func (t *App) getActualSelected() string {
 
 	return ""
 }
+
 func (t *App) getCompletions(text string) []string {
 	args := strings.Fields(text)
 	if len(args) == 0 {
-		return []string{"do", "filter", "go", "connect"}
+		return maps.Keys(completionTree)
 	}
 
 	current := completionTree
@@ -69,7 +71,7 @@ func (t *App) getCompletions(text string) []string {
 		if !exist {
 			if i == 0 {
 				var results []string
-				options := []string{"do", "filter", "go", "connect"}
+				options := maps.Keys(completionTree)
 				for _, option := range options {
 					if strings.HasPrefix(option, arg) {
 						results = append(results, option)

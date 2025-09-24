@@ -57,9 +57,10 @@ func (t *App) updateNetworkList() {
 	}
 
 	t.createTable(CreateTableOptions{
-		title:        title,
-		titles:       titles,
-		elementsList: elementsList,
+		title:             title,
+		titles:            titles,
+		elementsList:      elementsList,
+		selectableColumns: []int{0},
 		capture: func(event *tcell.EventKey, v *tview.Table) *tcell.EventKey {
 			switch event.Key() {
 			case tcell.KeyEnter:
@@ -121,8 +122,9 @@ func (t *App) updateNetworkIpList(name string) {
 	}
 
 	t.createTable(CreateTableOptions{
-		title:        title,
-		titles:       titles,
-		elementsList: elementsList,
+		title:             title,
+		titles:            titles,
+		elementsList:      elementsList,
+		selectableColumns: []int{0},
 	})
 }
