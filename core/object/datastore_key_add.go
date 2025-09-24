@@ -4,7 +4,7 @@ import (
 	"errors"
 
 	"github.com/opensvc/om3/core/keyop"
-	"github.com/opensvc/om3/util/sizeconv"
+	"github.com/opensvc/om3/util/key"
 )
 
 var (
@@ -51,7 +51,8 @@ func (t *dataStore) addKey(name string, b []byte) error {
 	if b == nil {
 		b = []byte{}
 	}
-	if len(b) > sizeconv.MB {
+	keysize, err := t.node.config.GetSizeStrict(key.New("node", "max_keysize"))
+	if err == nil && len(b) > int(*keysize) {
 		return ErrValueTooBig
 	}
 	s, err := t.encodeDecoder.Encode(b)
