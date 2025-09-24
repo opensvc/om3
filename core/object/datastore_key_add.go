@@ -4,12 +4,14 @@ import (
 	"errors"
 
 	"github.com/opensvc/om3/core/keyop"
+	"github.com/opensvc/om3/util/sizeconv"
 )
 
 var (
 	ErrKeyExist    = errors.New("key already exists")
 	ErrKeyEmpty    = errors.New("key name is empty")
 	ErrKeyNotExist = errors.New("key does not exist")
+	ErrValueTooBig = errors.New("value exceeds 1MB")
 )
 
 // TransactionAddKey sets a new key
@@ -48,6 +50,9 @@ func (t *dataStore) addKey(name string, b []byte) error {
 	}
 	if b == nil {
 		b = []byte{}
+	}
+	if len(b) > sizeconv.MB {
+		return ErrValueTooBig
 	}
 	s, err := t.encodeDecoder.Encode(b)
 	if err != nil {
