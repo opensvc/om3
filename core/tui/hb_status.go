@@ -56,9 +56,9 @@ func (t *App) updateHbStatus() {
 	}
 
 	t.createTable(CreateTableOptions{
-		title:        title,
-		titles:       titles,
-		elementsList: elementsList,
-		selectables:  []int{},
+		title:             title,
+		titles:            titles,
+		elementsList:      elementsList,
+		selectableColumns: []int{},
 	})
 }

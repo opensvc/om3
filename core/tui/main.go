@@ -49,11 +49,11 @@ type (
 	}
 
 	CreateTableOptions struct {
-		title        string
-		titles       []string
-		elementsList [][]string
-		selectables  []int
-		capture      func(event *tcell.EventKey, v *tview.Table) *tcell.EventKey
+		title             string
+		titles            []string
+		elementsList      [][]string
+		selectableColumns []int
+		capture           func(event *tcell.EventKey, v *tview.Table) *tcell.EventKey
 	}
 
 	App struct {
@@ -2063,7 +2063,7 @@ func (t *App) createTable(creator CreateTableOptions) {
 	for i, elements := range creator.elementsList {
 		row := i + 1
 		for j, element := range elements {
-			selectable := creator.selectables != nil && slices.Contains(creator.selectables, j)
+			selectable := creator.selectableColumns != nil && slices.Contains(creator.selectableColumns, j)
 			v.SetCell(row, j, tview.NewTableCell(element).SetSelectable(selectable))
 		}
 	}
