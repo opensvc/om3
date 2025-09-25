@@ -42,9 +42,13 @@ func (a *DaemonAPI) PostObjectDataKey(ctx echo.Context, namespace string, kind n
 
 		contentLength := ctx.Request().Header.Get("Content-Length")
 		if contentLength != "" {
-			maxSize := node.ConfigData.GetByNode(hostname.Hostname()).MaxKeysize
-			if size, err := strconv.Atoi(contentLength); err == nil && size > int(*maxSize) {
-				return JSONProblemf(ctx, http.StatusRequestEntityTooLarge, "Body too large", "The request body exceed the allowed size.")
+			nodeData := node.ConfigData.GetByNode(a.localhost)
+			if nodeData == nil {
+				return JSONProblemf(ctx, http.StatusInternalServerError, "NodeConfig", "no config found for node %s", hostname.Hostname())
+			}
+			maxSize := nodeData.MaxKeySize
+			if size, err := strconv.Atoi(contentLength); err == nil && size > int(maxSize) {
+				return JSONProblemf(ctx, http.StatusRequestEntityTooLarge, "Body too large", "The request body exceeds the allowed size.")
 			}
 		}
 

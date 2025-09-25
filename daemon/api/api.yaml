@@ -3350,6 +3350,8 @@ paths:
           $ref: '#/components/responses/401'
         403:
           $ref: '#/components/responses/403'
+        413:
+          $ref: '#/components/responses/413'
         500:
           $ref: '#/components/responses/500'
 
@@ -7744,6 +7746,12 @@ components:
             $ref: "#/components/schemas/Problem"
     '409':
       description: Conflict
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/Problem"
+    '413':
+      description: "Body too large"
       content:
         application/json:
           schema:

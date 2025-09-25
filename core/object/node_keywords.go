@@ -221,9 +221,9 @@ var nodeCommonKeywords = []keywords.Keyword{
 	{
 		Converter: "size",
 		Default:   "1mb",
-		Option:    "max_keysize",
+		Option:    "max_key_size",
 		Section:   "node",
-		Text:      keywords.NewText(fs, "text/kw/node/node.max_keysize"),
+		Text:      keywords.NewText(fs, "text/kw/node/node.max_key_size"),
 	},
 	{
 		Converter: "list",

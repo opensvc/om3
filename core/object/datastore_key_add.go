@@ -11,7 +11,7 @@ var (
 	ErrKeyExist    = errors.New("key already exists")
 	ErrKeyEmpty    = errors.New("key name is empty")
 	ErrKeyNotExist = errors.New("key does not exist")
-	ErrValueTooBig = errors.New("value exceeds the allowed size")
+	ErrValueTooBig = errors.New("key value exceeds the allowed size")
 )
 
 // TransactionAddKey sets a new key
@@ -51,8 +51,11 @@ func (t *dataStore) addKey(name string, b []byte) error {
 	if b == nil {
 		b = []byte{}
 	}
-	keysize, err := t.node.config.GetSizeStrict(key.New("node", "max_keysize"))
-	if err == nil && len(b) > int(*keysize) {
+	keysize, err := t.node.config.GetSizeStrict(key.New("node", "max_key_size"))
+	if err != nil {
+		return err
+	}
+	if len(b) > int(*keysize) {
 		return ErrValueTooBig
 	}
 	s, err := t.encodeDecoder.Encode(b)
