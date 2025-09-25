@@ -433,8 +433,9 @@ func (t *T) getTemplateData(allocations map[string]api.DRBDAllocation) (ResTempl
 	obj := t.GetObject().(object.Configurer)
 	for nodeID, nodename := range t.Nodes {
 		var (
-			disk, addr, ipVer string
-			port              int
+			disk, addr, addrDrbd string
+
+			port int
 		)
 		allocation, ok := allocations[nodename]
 		if !ok {
@@ -468,17 +469,16 @@ func (t *T) getTemplateData(allocations map[string]api.DRBDAllocation) (ResTempl
 			port = i.(int)
 		}
 
-		// ip stringer should set the brackets around ipv6
 		ip := net.ParseIP(addr)
 		if ip.To4() == nil {
-			ipVer = "ipv6"
+			addrDrbd = fmt.Sprintf("ipv6 [%s]:%d", ip, port)
 		} else {
-			ipVer = "ipv4"
+			addrDrbd = fmt.Sprintf("ipv4 %s:%d", ip, port)
 		}
 
 		nodeData := NodeTemplateData{
 			Name:   nodename,
-			Addr:   fmt.Sprintf("%s %s:%d", ipVer, ip, port),
+			Addr:   addrDrbd,
 			Disk:   disk,
 			Device: dev,
 			NodeId: nodeID,
@@ -749,9 +749,6 @@ func (t *T) ProvisionAsFollower(ctx context.Context) error {
 	}
 	if err := t.provisionCommon(ctx); err != nil {
 		return err
-	}
-	if err := t.connectPeers(ctx); err != nil {
-		t.Log().Warnf("drbd resource %s: connect peers: %w", t.Res, err)
 	}
 	if err := t.drbd(ctx).StartConnection(ctx); err != nil {
 		return err
