@@ -51,7 +51,7 @@ func (t *dataStore) addKey(name string, b []byte) error {
 	if b == nil {
 		b = []byte{}
 	}
-	keysize, err := t.node.config.GetSizeStrict(key.New("node", "max_key_size"))
+	keysize, err := t.node.mergedConfig.GetSizeStrict(key.New("node", "max_key_size"))
 	if err != nil {
 		return err
 	}
