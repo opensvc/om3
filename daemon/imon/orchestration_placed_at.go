@@ -111,6 +111,14 @@ func (t *Manager) getPlacedAtDestination() ([]string, bool) {
 	return options.Destination, true
 }
 
+func (t *Manager) getPlacedAtLive() bool {
+	options, ok := t.state.GlobalExpectOptions.(instance.MonitorGlobalExpectOptionsPlacedAt)
+	if !ok {
+		return false
+	}
+	return options.Live
+}
+
 func (t *Manager) orchestratePlacedAt() {
 	dstNodes, ok := t.getPlacedAtDestination()
 	if !ok {
@@ -171,7 +179,18 @@ func (t *Manager) placedStop() {
 func (t *Manager) doPlacedStop() {
 	t.createPendingWithDuration(stopDuration)
 	t.disableMonitor("orchestrate placed stopping")
-	t.queueAction(t.crmStop, instance.MonitorStateStopProgress, instance.MonitorStateStopSuccess, instance.MonitorStateStopFailure)
+	dst, ok := t.getPlacedAtDestination()
+	if t.getPlacedAtLive() {
+		if ok && len(dst) == 1 {
+			t.queueAction(t.crmStopMoveToFunc(dst[0]), instance.MonitorStateStopProgress, instance.MonitorStateStopSuccess, instance.MonitorStateStopFailure)
+		} else {
+			// not possible: blocked by the SetInstanceMonitor event handler in imon
+			t.log.Errorf("FIXME: live migration is not possible with multiple destinations (%s)", dst)
+			t.transitionTo(instance.MonitorStateStopFailure)
+		}
+	} else {
+		t.queueAction(t.crmStop, instance.MonitorStateStopProgress, instance.MonitorStateStopSuccess, instance.MonitorStateStopFailure)
+	}
 }
 
 func (t *Manager) skipPlacedStop() {

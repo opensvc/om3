@@ -2221,6 +2221,7 @@ paths:
         - $ref: '#/components/parameters/inQueryAllSlaves'
         - $ref: '#/components/parameters/inQueryForce'
         - $ref: '#/components/parameters/inQueryMaster'
+        - $ref: '#/components/parameters/inQueryMoveTo'
         - $ref: '#/components/parameters/inQueryRequesterSid'
         - $ref: '#/components/parameters/inQueryRid'
         - $ref: '#/components/parameters/inQuerySlaves'
@@ -6415,12 +6416,15 @@ components:
       type: object
       required:
         - destination
+        - live
       properties:
         destination:
           type: array
           minItems: 1
           items:
             type: string
+        live:
+          type: boolean
 
     PostRelayMessage:
       type: object
@@ -7489,6 +7493,12 @@ components:
     inQueryTag:
       in: query
       name: tag
+      schema:
+        type: string
+
+    inQueryMoveTo:
+      in: query
+      name: move-to
       schema:
         type: string
 

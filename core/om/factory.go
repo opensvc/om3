@@ -2521,6 +2521,7 @@ func newCmdObjectInstanceStop(kind string) *cobra.Command {
 	commoncmd.FlagsResourceSelector(flags, &options.OptsResourceSelector)
 	commoncmd.FlagsTo(flags, &options.OptTo)
 	commoncmd.FlagForce(flags, &options.Force)
+	commoncmd.FlagMoveTo(flags, &options.MoveTo)
 	commoncmd.FlagNodeSelector(flags, &options.NodeSelector)
 	cmd.MarkFlagsMutuallyExclusive("no-lock", "node")
 	cmd.MarkFlagsMutuallyExclusive("waitlock", "node")
@@ -3040,6 +3041,7 @@ func newCmdObjectSwitch(kind string) *cobra.Command {
 	addFlagsGlobal(flags, &options.OptsGlobal)
 	commoncmd.FlagsAsync(flags, &options.OptsAsync)
 	commoncmd.FlagSwitchTo(flags, &options.To)
+	commoncmd.FlagLive(flags, &options.Live)
 	return cmd
 }
 
@@ -3076,6 +3078,7 @@ func newCmdObjectTakeover(kind string) *cobra.Command {
 	flags := cmd.Flags()
 	addFlagsGlobal(flags, &options.OptsGlobal)
 	commoncmd.FlagsAsync(flags, &options.OptsAsync)
+	commoncmd.FlagLive(flags, &options.Live)
 	return cmd
 }
 

@@ -11,6 +11,7 @@ type (
 	CmdObjectTakeover struct {
 		OptsGlobal
 		commoncmd.OptsAsync
+		Live bool
 	}
 )
 
@@ -19,6 +20,7 @@ func (t *CmdObjectTakeover) Run(kind string) error {
 	target := instance.MonitorGlobalExpectPlacedAt.String()
 	options := instance.MonitorGlobalExpectOptionsPlacedAt{
 		Destination: []string{hostname.Hostname()},
+		Live:        t.Live,
 	}
 	return objectaction.New(
 		objectaction.WithObjectSelector(mergedSelector),

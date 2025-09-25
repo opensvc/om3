@@ -1222,6 +1222,7 @@ type PostObjectActionRestart struct {
 // PostObjectActionSwitch defines model for PostObjectActionSwitch.
 type PostObjectActionSwitch struct {
 	Destination []string `json:"destination"`
+	Live        bool     `json:"live"`
 }
 
 // PostRelayMessage defines model for PostRelayMessage.
@@ -1723,6 +1724,9 @@ type InQueryLeader = bool
 // InQueryMaster Act on the host instance of the service, and don't act on encap instance if not asked for explicitely.
 type InQueryMaster = bool
 
+// InQueryMoveTo defines model for inQueryMoveTo.
+type InQueryMoveTo = string
+
 // InQueryNodeSelector defines model for inQueryNodeSelector.
 type InQueryNodeSelector = string
 
@@ -2139,6 +2143,7 @@ type PostInstanceActionStopParams struct {
 	Slaves       *InQueryAllSlaves    `form:"slaves,omitempty" json:"slaves,omitempty"`
 	Force        *InQueryForce        `form:"force,omitempty" json:"force,omitempty"`
 	Master       *InQueryMaster       `form:"master,omitempty" json:"master,omitempty"`
+	MoveTo       *InQueryMoveTo       `form:"move-to,omitempty" json:"move-to,omitempty"`
 	RequesterSid *InQueryRequesterSid `form:"requester_sid,omitempty" json:"requester_sid,omitempty"`
 	Rid          *InQueryRid          `form:"rid,omitempty" json:"rid,omitempty"`
 	Slave        *InQuerySlaves       `form:"slave,omitempty" json:"slave,omitempty"`
