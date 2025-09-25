@@ -6,6 +6,7 @@ package hbrelay
 import (
 	"context"
 	"fmt"
+	"io"
 	"os"
 	"time"
 
@@ -104,4 +105,13 @@ func (t *T) password() (string, error) {
 		return "", err
 	}
 	return string(b), nil
+}
+
+// drain reads and discards all data from the provided ReadCloser and closes
+// it to release resources and help Go to recycle the socket.
+func drain(rc io.ReadCloser, l *plog.Logger) {
+	_, _ = io.Copy(io.Discard, rc)
+	if err := rc.Close(); err != nil {
+		l.Warnf("drain: %s", err)
+	}
 }

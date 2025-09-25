@@ -129,7 +129,11 @@ func (t *tx) send(b []byte) {
 	if err != nil {
 		t.log.Debugf("send: PostRelayMessage: %s", err)
 		return
-	} else if resp.StatusCode != http.StatusOK {
+	}
+
+	defer drain(resp.Body, t.log)
+
+	if resp.StatusCode != http.StatusOK {
 		t.log.Debugf("send: unexpected PostRelayMessage status: %s", resp.Status)
 		return
 	}

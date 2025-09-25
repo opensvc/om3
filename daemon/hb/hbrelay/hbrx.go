@@ -138,7 +138,11 @@ func (t *rx) recv(nodename string) {
 	if err != nil {
 		t.log.Debugf("recv: node %s do request: %s", nodename, err)
 		return
-	} else if resp.StatusCode() != http.StatusOK {
+	}
+
+	defer drain(resp.HTTPResponse.Body, t.log)
+
+	if resp.StatusCode() != http.StatusOK {
 		t.log.Debugf("unexpected get relay message %s status %s", nodename, resp.Status())
 		return
 	}
