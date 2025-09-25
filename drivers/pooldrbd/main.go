@@ -168,6 +168,7 @@ func (t T) usageFile() (pool.Usage, error) {
 func (t *T) blkTranslateFile(name string, size int64, shared bool) (string, []string, error) {
 	p := fmt.Sprintf("%s/%s.img", t.path(), name)
 	data := []string{
+		"fs#0.type=flag",
 		"disk#1.type=loop",
 		"disk#1.name=" + name,
 		"disk#1.size=" + sizeconv.ExactBSizeCompact(float64(size)),
@@ -196,6 +197,7 @@ func (t *T) blkTranslateFile(name string, size int64, shared bool) (string, []st
 
 func (t *T) blkTranslateVG(name string, size int64, shared bool) (string, []string, error) {
 	data := []string{
+		"fs#0.type=flag",
 		"disk#1.type=lv",
 		"disk#1.name=" + name,
 		"disk#1.vg=" + t.vg(),
@@ -215,6 +217,7 @@ func (t *T) blkTranslateVG(name string, size int64, shared bool) (string, []stri
 
 func (t *T) blkTranslateZpool(name string, size int64, shared bool) (string, []string, error) {
 	data := []string{
+		"fs#0.type=flag",
 		"disk#1.type=zvol",
 		"disk#1.dev=" + t.zpool() + "/" + name,
 		"disk#1.size=" + sizeconv.ExactBSizeCompact(float64(size)),
