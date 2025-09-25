@@ -246,32 +246,23 @@ func (t *T) commonDrbdKeywords(rid string) (l []string) {
 	return
 }
 
-func (t *T) BlkTranslate(name string, size int64, shared bool) ([]string, error) {
+func (t *T) commonTranslate(name string, size int64, shared bool) (string, []string, error) {
 	if t.vg() != "" {
-		_, kws, err := t.blkTranslateVG(name, size, shared)
-		return kws, err
+		return t.blkTranslateVG(name, size, shared)
 	} else if t.zpool() != "" {
-		_, kws, err := t.blkTranslateZpool(name, size, shared)
-		return kws, err
+		return t.blkTranslateZpool(name, size, shared)
 	} else {
-		_, kws, err := t.blkTranslateFile(name, size, shared)
-		return kws, err
+		return t.blkTranslateFile(name, size, shared)
 	}
 }
 
+func (t *T) BlkTranslate(name string, size int64, shared bool) ([]string, error) {
+	_, kws, err := t.commonTranslate(name, size, shared)
+	return kws, err
+}
+
 func (t *T) Translate(name string, size int64, shared bool) ([]string, error) {
-	var (
-		rid string
-		kws []string
-		err error
-	)
-	if t.vg() != "" {
-		rid, kws, err = t.blkTranslateVG(name, size, shared)
-	} else if t.zpool() != "" {
-		rid, kws, err = t.blkTranslateZpool(name, size, shared)
-	} else {
-		rid, kws, err = t.blkTranslateFile(name, size, shared)
-	}
+	rid, kws, err := t.commonTranslate(name, size, shared)
 	if err != nil {
 		return nil, err
 	}
