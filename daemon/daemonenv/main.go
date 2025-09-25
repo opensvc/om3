@@ -32,7 +32,7 @@ var (
 	HTTPUnixFileBasename = "http.sock"
 
 	// HeartbeatStatusRefreshMaximumInterval is the maximum interval for refreshing daemon heartbeat statistics
-	HeartbeatStatusRefreshMaximumInterval = 10 * time.Second
+	HeartbeatStatusRefreshMaximumInterval = 60 * time.Second
 )
 
 var (
