@@ -5,17 +5,22 @@ import (
 	"context"
 	"encoding/xml"
 	"fmt"
+	"path/filepath"
 	"slices"
 	"strings"
 	"time"
 
+	"github.com/opensvc/fcntllock"
+	"github.com/opensvc/flock"
 	"github.com/rs/zerolog"
 
+	"github.com/opensvc/om3/core/rawconfig"
 	"github.com/opensvc/om3/util/command"
 	"github.com/opensvc/om3/util/file"
 	"github.com/opensvc/om3/util/funcopt"
 	"github.com/opensvc/om3/util/plog"
 	"github.com/opensvc/om3/util/waitfor"
+	"github.com/opensvc/om3/util/xsession"
 )
 
 type (
@@ -303,6 +308,10 @@ func (t *T) Adjust(ctx context.Context) error {
 }
 
 func (t *T) Connect(ctx context.Context) error {
+	return t.withLock(ctx, t.connect, "drbdadm connect", time.Second)
+}
+
+func (t *T) connect(ctx context.Context) error {
 	args := []string{"connect", t.res}
 	cmd := command.New(
 		command.WithName(drbdadm),
@@ -373,6 +382,10 @@ func (t *T) Down(ctx context.Context) error {
 }
 
 func (t *T) Up(ctx context.Context) error {
+	return t.withLock(ctx, t.up, "drbdadm up", time.Second)
+}
+
+func (t *T) up(ctx context.Context) error {
 	args := []string{"up", t.res}
 	cmd := command.New(
 		command.WithName(drbdadm),
@@ -752,4 +765,14 @@ func (t Digest) FreePort(exclude []int) (int, error) {
 		}
 	}
 	return 0, fmt.Errorf("no free port")
+}
+
+func (t *T) withLock(ctx context.Context, f func(context.Context) error, intent string, timeout time.Duration) error {
+	p := filepath.Join(rawconfig.Paths.Lock, "drbd-"+t.res+".lock")
+	lock := flock.New(p, xsession.ID.String(), fcntllock.New)
+	if err := lock.Lock(timeout, intent); err != nil {
+		return err
+	}
+	defer func() { _ = lock.UnLock() }()
+	return f(ctx)
 }

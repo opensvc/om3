@@ -750,9 +750,6 @@ func (t *T) ProvisionAsFollower(ctx context.Context) error {
 	if err := t.provisionCommon(ctx); err != nil {
 		return err
 	}
-	if err := t.connectPeers(ctx); err != nil {
-		t.Log().Warnf("drbd resource %s: connect peers: %w", t.Res, err)
-	}
 	if err := t.drbd(ctx).StartConnection(ctx); err != nil {
 		return err
 	}
