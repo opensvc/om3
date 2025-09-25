@@ -355,17 +355,7 @@ func (t *T) Volume() (object.Vol, error) {
 	}
 
 	logger := t.volumeLogger()
-	v, err := object.NewVol(p, object.WithLogger(logger))
-	if err != nil {
-		return nil, err
-	}
-	if !p.Exists() {
-		v.SetVolatile(true)
-		if err := t.configureVolume(v, false); err != nil {
-			return nil, err
-		}
-	}
-	return v, nil
+	return object.NewVol(p, object.WithLogger(logger))
 }
 
 func (t *T) createVolume(volume object.Vol) (object.Vol, error) {
