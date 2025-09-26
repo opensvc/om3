@@ -198,6 +198,10 @@ func FlagLeader(flags *pflag.FlagSet, p *bool) {
 	flags.BoolVar(p, "leader", false, "provision all resources, including shared resources that must be provisioned only once")
 }
 
+func FlagLive(flags *pflag.FlagSet, p *bool) {
+	flags.BoolVar(p, "live", false, "use live migration if possible")
+}
+
 func FlagLocal(flags *pflag.FlagSet, p *bool) {
 	flags.BoolVar(p, "local", false, "inline action on local instance")
 }
@@ -320,6 +324,10 @@ func FlagSlaves(flags *pflag.FlagSet, p *bool) {
 
 func FlagSections(flags *pflag.FlagSet, p *[]string) {
 	flags.StringSliceVar(p, "section", []string{}, "a configuration section")
+}
+
+func FlagMoveTo(flags *pflag.FlagSet, p *string) {
+	flags.StringVar(p, "move-to", "", "live-migrate capable resources destination")
 }
 
 func FlagSubset(flags *pflag.FlagSet, p *string) {

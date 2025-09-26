@@ -24,7 +24,6 @@ func (t *actor) PRStop(ctx context.Context) error {
 
 func (t *actor) lockedPRStop(ctx context.Context) error {
 	return t.action(ctx, func(ctx context.Context, r resource.Driver) error {
-		t.log.Attr("rid", r.RID()).Debugf("start resource")
 		return resource.PRStop(ctx, r)
 	})
 }

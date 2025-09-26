@@ -22,6 +22,7 @@ type (
 		commoncmd.OptsResourceSelector
 		commoncmd.OptTo
 		Force        bool
+		MoveTo       string
 		NodeSelector string
 	}
 )
@@ -45,6 +46,9 @@ func (t *CmdObjectInstanceStop) Run(kind string) error {
 				return nil, err
 			}
 			params := api.PostInstanceActionStopParams{}
+			if t.MoveTo != "" {
+				params.MoveTo = &t.MoveTo
+			}
 			if t.Force {
 				v := true
 				params.Force = &v
@@ -100,6 +104,7 @@ func (t *CmdObjectInstanceStop) Run(kind string) error {
 			ctx = actioncontext.WithLockTimeout(ctx, t.Timeout)
 			ctx = actioncontext.WithTo(ctx, t.To)
 			ctx = actioncontext.WithForce(ctx, t.Force)
+			ctx = actioncontext.WithMoveTo(ctx, t.MoveTo)
 			return nil, o.Stop(ctx)
 		}),
 	).Do()

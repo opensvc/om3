@@ -89,6 +89,7 @@ type (
 
 	MonitorGlobalExpectOptionsPlacedAt struct {
 		Destination []string `json:"destination"`
+		Live        bool     `json:"live"`
 	}
 )
 

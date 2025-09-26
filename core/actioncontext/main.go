@@ -22,6 +22,7 @@ const (
 	lockTimeoutKey
 	lockDisabledKey
 	masterKey
+	moveToKey
 	propsKey
 	quietKey
 	ridKey
@@ -123,6 +124,16 @@ func IsForce(ctx context.Context) bool {
 		return i.(bool)
 	}
 	return false
+}
+
+func WithMoveTo(ctx context.Context, v string) context.Context {
+	return context.WithValue(ctx, moveToKey, v)
+}
+func MoveTo(ctx context.Context) string {
+	if i := ctx.Value(moveToKey); i != nil {
+		return i.(string)
+	}
+	return ""
 }
 
 func WithTo(ctx context.Context, s string) context.Context {

@@ -37,6 +37,12 @@ type (
 		SetSSHKeyFile()
 	}
 
+	// PreMove implements a PreMove function that is called by a moveable
+	// driver (eg container.kvm) before starting a move.
+	PreMover interface {
+		PreMove(ctx context.Context, to string) error
+	}
+
 	//
 	// Runner implements the Run func, which runs a one-shot process
 	// Implemented by the resource. The object "run" action causes

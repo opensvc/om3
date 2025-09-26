@@ -20,6 +20,7 @@ type (
 		commoncmd.OptsResourceSelector
 		commoncmd.OptTo
 		Force        bool
+		MoveTo       string
 		NodeSelector string
 	}
 )
@@ -43,6 +44,9 @@ func (t *CmdObjectInstanceStop) Run(kind string) error {
 			if t.Force {
 				v := true
 				params.Force = &v
+			}
+			if t.MoveTo != "" {
+				params.MoveTo = &t.MoveTo
 			}
 			if t.OptsResourceSelector.RID != "" {
 				params.Rid = &t.OptsResourceSelector.RID

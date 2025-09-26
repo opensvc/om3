@@ -725,6 +725,7 @@ func (t T) DoAsync() error {
 				return fmt.Errorf("unexpected orchestration options: %#v", t.TargetOptions)
 			} else {
 				params.Destination = options.Destination
+				params.Live = options.Live
 			}
 			if resp, e := c.PostObjectActionSwitchWithResponse(ctx, p.Namespace, p.Kind, p.Name, params); e != nil {
 				err = e

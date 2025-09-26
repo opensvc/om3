@@ -171,6 +171,16 @@ func (t *Manager) crmStatus() error {
 	return t.crmAction("status", t.path.String(), "instance", "status", "-r")
 }
 
+func (t *Manager) crmStopMoveToFunc(dst string) func() error {
+	return func() error {
+		return t.crmStopMoveTo(dst)
+	}
+}
+
+func (t *Manager) crmStopMoveTo(dst string) error {
+	return t.crmAction("stop", t.path.String(), "instance", "stop", "--move-to", dst)
+}
+
 func (t *Manager) crmStop() error {
 	return t.crmAction("stop", t.path.String(), "instance", "stop")
 }

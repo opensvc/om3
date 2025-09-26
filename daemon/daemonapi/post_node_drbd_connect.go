@@ -14,33 +14,40 @@ import (
 	"github.com/opensvc/om3/util/plog"
 )
 
-func (a *DaemonAPI) PostNodeDRBDConnect(ctx echo.Context, nodename api.InPathNodeName, namespace api.InPathNamespace, kind api.InPathKind, name api.InPathName, params api.PostNodeDRBDConnectParams) error {
+func (a *DaemonAPI) PostNodeDRBDConnect(ctx echo.Context, nodename api.InPathNodeName, params api.PostNodeDRBDConnectParams) error {
 	if v, err := assertRoot(ctx); !v {
 		return err
 	}
 	nodename = a.parseNodename(nodename)
 	if a.localhost == nodename {
-		return a.postLocalDRBDConnect(ctx, namespace, kind, name, params)
+		return a.postLocalDRBDConnect(ctx, params)
 	}
 	return a.proxy(ctx, nodename, func(c *client.T) (*http.Response, error) {
-		return c.PostNodeDRBDConnect(ctx.Request().Context(), nodename, namespace, kind, name, &params)
+		return c.PostNodeDRBDConnect(ctx.Request().Context(), nodename, &params)
 	})
 }
 
-func (a *DaemonAPI) postLocalDRBDConnect(ctx echo.Context, namespace api.InPathNamespace, kind api.InPathKind, name api.InPathName, params api.PostNodeDRBDConnectParams) error {
-	var res *drbd.T
+func (a *DaemonAPI) objPathHandlingDRBDRes(res string) (naming.Path, bool) {
+	for p, instanceStatus := range instance.StatusData.GetByNode(a.localhost) {
+		for _, resourceStatus := range instanceStatus.Resources {
+			if v, ok := resourceStatus.Info["res"]; ok && v == res {
+				return p, true
+			}
+		}
+	}
+	return naming.Path{}, false
+}
+
+func (a *DaemonAPI) postLocalDRBDConnect(ctx echo.Context, params api.PostNodeDRBDConnectParams) error {
 	c := ctx.Request().Context()
 	log := LogHandler(ctx, "PostNodeDRBDConnect")
-	p, err := naming.NewPath(namespace, kind, name)
-	if err != nil {
-		return JSONProblemf(ctx, http.StatusBadRequest, "Invalid parameters", "%s", err)
+	p, ok := a.objPathHandlingDRBDRes(params.Name)
+	if !ok {
+		return JSONProblemf(ctx, http.StatusForbidden, "No object found managing the drbd resource", "%s", params.Name)
 	}
 	log = naming.LogWithPath(log, p)
-	if instance.ConfigData.GetByPathAndNode(p, a.localhost) == nil {
-		log.Infof("skipped: no local instance")
-		return ctx.NoContent(http.StatusNoContent)
-	}
-	if res, err = newDrbd(c, params.Name, log); err != nil {
+	res, err := newDrbd(c, params.Name, log)
+	if err != nil {
 		log.Warnf("can't create internal drbd object: %s", err)
 		return JSONProblemf(ctx, http.StatusInternalServerError, "New drbd", "%s", err)
 	}

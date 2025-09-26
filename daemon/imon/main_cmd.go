@@ -505,6 +505,10 @@ func (t *Manager) onSetInstanceMonitor(c *msgbus.SetInstanceMonitor) {
 				}
 				options.Destination = []string{dst}
 				c.Value.GlobalExpectOptions = options
+			} else if options.Live && len(options.Destination) > 1 {
+				err := fmt.Errorf("%w: daemon: imon: %s: live migration is not possible with multiple destinations", instance.ErrInvalidGlobalExpect, *c.Value.GlobalExpect)
+				globalExpectRefused()
+				return err
 			} else {
 				want := options.Destination
 				can, err := t.nextPlacedAtCandidates(want)
