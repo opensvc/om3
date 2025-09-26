@@ -275,5 +275,6 @@ func (t *T) Translate(name string, size int64, shared bool) ([]string, error) {
 		return nil, err
 	}
 	kws = append(kws, t.AddFS(name, shared, 1, 0, rid)...)
+	kws = append(kws, "devices_from="+rid)
 	return kws, nil
 }
