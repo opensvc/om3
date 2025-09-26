@@ -1623,7 +1623,7 @@ paths:
       description: |
         For internal use only.
 
-        Used by the CRM to ask a node for a drbd connection
+        Used by the CRM to ask a node for a `drbdadm connect` command execution
       parameters:
         - $ref: '#/components/parameters/inPathNodeName'
         - $ref: '#/components/parameters/DRBDResourceName'
@@ -1645,8 +1645,69 @@ paths:
         - basicAuth: []
         - bearerAuth: []
       tags:
-        - node / instance / svc
-        - node / instance / vol
+        - node
+      x-internal: true
+
+  /api/node/name/{nodename}/drbd/primary:
+    post:
+      operationId: PostNodeDRBDPrimary
+      description: |
+        For internal use only.
+
+        Used by the CRM to ask a node for a `drbdadm primary` command execution
+      parameters:
+        - $ref: '#/components/parameters/inPathNodeName'
+        - $ref: '#/components/parameters/DRBDResourceName'
+      responses:
+        204:
+          $ref: '#/components/responses/204'
+          description: OK
+        400:
+          $ref: '#/components/responses/400'
+        401:
+          $ref: '#/components/responses/401'
+        403:
+          $ref: '#/components/responses/403'
+        404:
+          $ref: '#/components/responses/404'
+        500:
+          $ref: '#/components/responses/500'
+      security:
+        - basicAuth: []
+        - bearerAuth: []
+      tags:
+        - node
+      x-internal: true
+
+  /api/node/name/{nodename}/drbd/secondary:
+    post:
+      operationId: PostNodeDRBDSecondary
+      description: |
+        For internal use only.
+
+        Used by the CRM to ask a node for a `drbdadm secondary` command execution
+      parameters:
+        - $ref: '#/components/parameters/inPathNodeName'
+        - $ref: '#/components/parameters/DRBDResourceName'
+      responses:
+        204:
+          $ref: '#/components/responses/204'
+          description: OK
+        400:
+          $ref: '#/components/responses/400'
+        401:
+          $ref: '#/components/responses/401'
+        403:
+          $ref: '#/components/responses/403'
+        404:
+          $ref: '#/components/responses/404'
+        500:
+          $ref: '#/components/responses/500'
+      security:
+        - basicAuth: []
+        - bearerAuth: []
+      tags:
+        - node
       x-internal: true
 
 

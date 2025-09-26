@@ -716,6 +716,43 @@ func (t *T) connectPeers(ctx context.Context) error {
 	return nil
 }
 
+// PreMove promotes the res to primary on move destination.
+// The drbd needs to allow-two-primaries for both the source and
+// destination to be primary at the same time during the move.
+func (t *T) PreMove(ctx context.Context, to string) error {
+	return t.primaryPeer(ctx, to)
+}
+
+func (t *T) primaryPeer(ctx context.Context, nodename string) error {
+	c, err := client.New()
+	if err != nil {
+		return err
+	}
+	params := api.PostNodeDRBDPrimaryParams{
+		Name: t.Res,
+	}
+	resp, err := c.PostNodeDRBDPrimaryWithResponse(ctx, nodename, &params)
+	if err != nil {
+		return err
+	}
+	switch resp.StatusCode() {
+	case 204:
+		return nil
+	case 400:
+		return fmt.Errorf("%s", resp.JSON400)
+	case 401:
+		return fmt.Errorf("%s", resp.JSON401)
+	case 403:
+		return fmt.Errorf("%s", resp.JSON403)
+	case 404:
+		return nil
+	case 500:
+		return fmt.Errorf("%s", resp.JSON500)
+	default:
+		return fmt.Errorf("unexpected status code: %s", resp.Status())
+	}
+}
+
 func (t *T) connectPeer(ctx context.Context, nodename string) error {
 	c, err := client.New()
 	if err != nil {

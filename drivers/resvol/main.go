@@ -563,3 +563,25 @@ func (t *T) Configure() error {
 	t.DataRecv.SetReceiver(t)
 	return nil
 }
+
+func (t *T) PreMove(ctx context.Context, to string) error {
+	if t.IsDisabled() {
+		return nil
+	}
+	volume, err := t.Volume()
+	if err != nil {
+		t.Log().Errorf("%s", err)
+		return fmt.Errorf("volume %s does not exist (and no pool can create it)", t.name())
+	}
+	for _, r := range volume.Resources() {
+		if r.IsDisabled() {
+			continue
+		}
+		if i, ok := r.(resource.PreMover); ok {
+			if err := i.PreMove(ctx, to); err != nil {
+				return err
+			}
+		}
+	}
+	return nil
+}

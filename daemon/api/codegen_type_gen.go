@@ -1994,6 +1994,18 @@ type PostNodeDRBDConnectParams struct {
 	Name DRBDResourceName `form:"name" json:"name"`
 }
 
+// PostNodeDRBDPrimaryParams defines parameters for PostNodeDRBDPrimary.
+type PostNodeDRBDPrimaryParams struct {
+	// Name drbd resource name
+	Name DRBDResourceName `form:"name" json:"name"`
+}
+
+// PostNodeDRBDSecondaryParams defines parameters for PostNodeDRBDSecondary.
+type PostNodeDRBDSecondaryParams struct {
+	// Name drbd resource name
+	Name DRBDResourceName `form:"name" json:"name"`
+}
+
 // PostInstanceActionBootParams defines parameters for PostInstanceActionBoot.
 type PostInstanceActionBootParams struct {
 	Slaves       *InQueryAllSlaves    `form:"slaves,omitempty" json:"slaves,omitempty"`

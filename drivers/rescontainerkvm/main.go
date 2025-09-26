@@ -351,8 +351,16 @@ func (t *T) Move(ctx context.Context, to string) error {
 		if r == nil {
 			continue
 		}
+		if r.IsDisabled() {
+			continue
+		}
 		if err := resource.PRStop(ctx, r); err != nil {
 			return err
+		}
+		if i, ok := r.(resource.PreMover); ok {
+			if err := i.PreMove(ctx, to); err != nil {
+				return err
+			}
 		}
 	}
 	return t.migrate(to)

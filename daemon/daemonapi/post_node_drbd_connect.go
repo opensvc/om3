@@ -46,10 +46,6 @@ func (a *DaemonAPI) postLocalDRBDConnect(ctx echo.Context, params api.PostNodeDR
 		return JSONProblemf(ctx, http.StatusForbidden, "No object found managing the drbd resource", "%s", params.Name)
 	}
 	log = naming.LogWithPath(log, p)
-	if instance.ConfigData.GetByPathAndNode(p, a.localhost) == nil {
-		log.Infof("skipped: no local instance")
-		return ctx.NoContent(http.StatusNoContent)
-	}
 	res, err := newDrbd(c, params.Name, log)
 	if err != nil {
 		log.Warnf("can't create internal drbd object: %s", err)
