@@ -326,7 +326,7 @@ func (t *Manager) updateStatus() {
 		statusAvailCount := make([]int, 128, 128)
 		statusOverallCount := make([]int, 128, 128)
 
-		agregateStatusFailover := func(states []int) status.T {
+		aggregateStatusFailover := func(states []int) status.T {
 			switch states[status.Up] {
 			case 0:
 				return status.Down
@@ -336,19 +336,20 @@ func (t *Manager) updateStatus() {
 				return status.Warn
 			}
 		}
-		agregateStatusFlex := func(states []int) status.T {
-			switch {
-			case states[status.Up] == 0:
+		aggregateStatusFlex := func(states []int) status.T {
+			if states[status.Up] == 0 {
 				return status.Down
-			case states[status.Up] < t.status.Flex.Min:
+			} else if t.status.Flex == nil {
+				// may happen during cluster upgrade with peers without tflex data
 				return status.Warn
-			case states[status.Up] > t.status.Flex.Max:
+			} else if states[status.Up] < t.status.Flex.Min {
 				return status.Warn
-			default:
-				return status.Up
+			} else if states[status.Up] > t.status.Flex.Max {
+				return status.Warn
 			}
+			return status.Up
 		}
-		agregateStatus := func(states []int) status.T {
+		aggregateStatus := func(states []int) status.T {
 			if len(t.instStatus) == 0 {
 				return status.NotApplicable
 			}
@@ -360,9 +361,9 @@ func (t *Manager) updateStatus() {
 			}
 			switch t.status.Topology {
 			case topology.Failover:
-				return agregateStatusFailover(states)
+				return aggregateStatusFailover(states)
 			case topology.Flex:
-				return agregateStatusFlex(states)
+				return aggregateStatusFlex(states)
 			default:
 				return status.Undef
 			}
@@ -376,13 +377,13 @@ func (t *Manager) updateStatus() {
 		t.status.UpInstancesCount = statusAvailCount[status.Up]
 
 		prev := t.status.Avail
-		t.status.Avail = agregateStatus(statusAvailCount)
+		t.status.Avail = aggregateStatus(statusAvailCount)
 		if prev != t.status.Avail {
 			t.log.Infof("change avail from %s -> %s", prev, t.status.Avail)
 		}
 
 		prev = t.status.Overall
-		t.status.Overall = agregateStatus(statusOverallCount)
+		t.status.Overall = aggregateStatus(statusOverallCount)
 		if prev != t.status.Overall {
 			t.log.Infof("change overall from %s -> %s", prev, t.status.Overall)
 		}
