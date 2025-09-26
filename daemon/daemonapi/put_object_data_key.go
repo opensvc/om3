@@ -39,6 +39,14 @@ func (a *DaemonAPI) PutObjectDataKey(ctx echo.Context, namespace string, kind na
 			return JSONProblemf(ctx, http.StatusInternalServerError, "NewDataStore", "%s", err)
 		}
 
+		ok, err := a.CheckDataSize(ctx)
+		if err != nil {
+			return err
+		}
+		if !ok {
+			return nil
+		}
+
 		keys, err := ks.AllKeys()
 		if err != nil {
 			return JSONProblemf(ctx, http.StatusInternalServerError, "AllKeys", "%s", err)

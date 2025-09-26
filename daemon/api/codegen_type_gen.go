@@ -1783,6 +1783,9 @@ type N408 = Problem
 // N409 defines model for 409.
 type N409 = Problem
 
+// N413 defines model for 413.
+type N413 = Problem
+
 // N500 defines model for 500.
 type N500 = Problem
 

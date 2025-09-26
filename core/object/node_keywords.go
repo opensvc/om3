@@ -219,6 +219,13 @@ var nodeCommonKeywords = []keywords.Keyword{
 		Text:      keywords.NewText(fs, "text/kw/node/node.max_parallel"),
 	},
 	{
+		Converter: "size",
+		Default:   "1mb",
+		Option:    "max_key_size",
+		Section:   "node",
+		Text:      keywords.NewText(fs, "text/kw/node/node.max_key_size"),
+	},
+	{
 		Converter: "list",
 		Default:   "10.0.0.0/8 172.16.0.0/24 192.168.0.0/16",
 		Option:    "allowed_networks",

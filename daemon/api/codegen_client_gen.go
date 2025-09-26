@@ -15145,6 +15145,7 @@ type PatchObjectDataResponse struct {
 	JSON403      *N403
 	JSON408      *N408
 	JSON409      *N409
+	JSON413      *N413
 	JSON500      *N500
 }
 
@@ -15221,6 +15222,7 @@ type PostObjectDataKeyResponse struct {
 	JSON400      *N400
 	JSON401      *N401
 	JSON403      *N403
+	JSON413      *N413
 	JSON500      *N500
 }
 
@@ -15246,6 +15248,7 @@ type PutObjectDataKeyResponse struct {
 	JSON400      *N400
 	JSON401      *N401
 	JSON403      *N403
+	JSON413      *N413
 	JSON500      *N500
 }
 
@@ -23380,6 +23383,13 @@ func ParsePatchObjectDataResponse(rsp *http.Response) (*PatchObjectDataResponse,
 		}
 		response.JSON409 = &dest
 
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 413:
+		var dest N413
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON413 = &dest
+
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
 		var dest N500
 		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
@@ -23528,6 +23538,13 @@ func ParsePostObjectDataKeyResponse(rsp *http.Response) (*PostObjectDataKeyRespo
 		}
 		response.JSON403 = &dest
 
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 413:
+		var dest N413
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON413 = &dest
+
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
 		var dest N500
 		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
@@ -23574,6 +23591,13 @@ func ParsePutObjectDataKeyResponse(rsp *http.Response) (*PutObjectDataKeyRespons
 			return nil, err
 		}
 		response.JSON403 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 413:
+		var dest N413
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON413 = &dest
 
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
 		var dest N500

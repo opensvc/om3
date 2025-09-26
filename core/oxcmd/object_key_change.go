@@ -103,6 +103,8 @@ func (t *CmdObjectKeyChange) RunForPath(ctx context.Context, c *client.T, path n
 		return fmt.Errorf("%s: %s", path, *response.JSON401)
 	case response.JSON403 != nil:
 		return fmt.Errorf("%s: %s", path, *response.JSON403)
+	case response.JSON413 != nil:
+		return fmt.Errorf("%s: %s", path, *response.JSON413)
 	case response.JSON500 != nil:
 		return fmt.Errorf("%s: %s", path, *response.JSON500)
 	default:

@@ -7,6 +7,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/opensvc/om3/core/object"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
@@ -172,6 +173,51 @@ func TestKeyActions(t *testing.T) {
 		require.Nilf(t, err, string(out))
 		if tc.expectedResults != "" {
 			assert.Equal(t, tc.expectedResults, string(out))
+		}
+	}
+}
+
+func TestSecDataLimit(t *testing.T) {
+
+	cases := map[string]struct {
+		extraArgs   []string
+		expectError bool
+	}{
+		"underLimit": {
+			extraArgs:   []string{"add", "--key", "foo/1o", "--value", "A"},
+			expectError: false,
+		},
+		"atLimit": {
+			extraArgs:   []string{"add", "--key", "foo/3o", "--value", "AAA"},
+			expectError: false,
+		},
+		"overLimit": {
+			extraArgs:   []string{"add", "--key", "foo/5o", "--value", "AAAAA"},
+			expectError: true,
+		},
+	}
+
+	getCmd := func(name string) []string {
+		args := []string{"test/sec/sec1"}
+		args = append(args, cases[name].extraArgs...)
+		return args
+	}
+
+	env := testhelper.Setup(t)
+	env.InstallFile("../../testdata/nodes_info.json", "var/nodes_info.json")
+	env.InstallFile("../../testdata/cluster.datasize.conf", "etc/cluster.conf")
+	env.InstallFile("../../testdata/sec_empty.conf", "etc/namespaces/test/sec/sec1.conf")
+
+	for caseName, caseValue := range cases {
+		args := getCmd(caseName)
+		t.Logf("run 'om %v'", strings.Join(args, " "))
+		cmd := exec.Command(os.Args[0], args...)
+		cmd.Env = append(os.Environ(), "GO_TEST_MODE=off", "OSVC_ROOT_PATH="+env.Root)
+		out, _ := cmd.CombinedOutput()
+		if caseValue.expectError {
+			require.Equal(t, "Error: test/sec/sec1: "+object.ErrValueTooBig.Error()+"\n", string(out), "Out : %s", out)
+		} else {
+			require.Contains(t, string(out), "set key "+caseValue.extraArgs[2], "Out : %s", out)
 		}
 	}
 }

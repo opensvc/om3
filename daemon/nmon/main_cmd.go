@@ -70,6 +70,7 @@ func (t *Manager) getNodeConfig() node.Config {
 	var (
 		keyMaintenanceGracePeriod = key.New("node", "maintenance_grace_period")
 		keyMaxParallel            = key.New("node", "max_parallel")
+		keyMaxKeySize             = key.New("node", "max_key_size")
 		keyReadyPeriod            = key.New("node", "ready_period")
 		keyRejoinGracePeriod      = key.New("node", "rejoin_grace_period")
 		keyEnv                    = key.New("node", "env")
@@ -88,6 +89,9 @@ func (t *Manager) getNodeConfig() node.Config {
 	}
 	if d := t.config.GetDuration(keyRejoinGracePeriod); d != nil {
 		cfg.RejoinGracePeriod = *d
+	}
+	if d := t.config.GetSize(keyMaxKeySize); d != nil {
+		cfg.MaxKeySize = *d
 	}
 	cfg.MinAvailMemPct = t.config.GetInt(keyMinAvailMemPct)
 	cfg.MinAvailSwapPct = t.config.GetInt(keyMinAvailSwapPct)

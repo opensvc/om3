@@ -73,7 +73,11 @@ func (a *DaemonAPI) PatchObjectData(ctx echo.Context, namespace string, kind nam
 					return err
 				}
 				if err := ks.TransactionAddKey(patch.Name, b); err != nil {
-					return JSONProblemf(ctx, http.StatusInternalServerError, "AddKey", "%s: %s", patch.Name, err)
+					status := http.StatusInternalServerError
+					if errors.Is(err, object.ErrValueTooBig) {
+						status = http.StatusRequestEntityTooLarge
+					}
+					return JSONProblemf(ctx, status, "AddKey", "%s: %s", patch.Name, err)
 				}
 			case "change":
 				b, err := getBytes(patch)
@@ -81,7 +85,11 @@ func (a *DaemonAPI) PatchObjectData(ctx echo.Context, namespace string, kind nam
 					return err
 				}
 				if err := ks.TransactionChangeKey(patch.Name, b); err != nil {
-					return JSONProblemf(ctx, http.StatusInternalServerError, "ChangeKey", "%s: %s", patch.Name, err)
+					status := http.StatusInternalServerError
+					if errors.Is(err, object.ErrValueTooBig) {
+						status = http.StatusRequestEntityTooLarge
+					}
+					return JSONProblemf(ctx, status, "ChangeKey", "%s: %s", patch.Name, err)
 				}
 			case "remove":
 				if err := ks.TransactionRemoveKey(patch.Name); err != nil {
