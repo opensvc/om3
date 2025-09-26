@@ -3387,6 +3387,8 @@ paths:
           $ref: '#/components/responses/401'
         403:
           $ref: '#/components/responses/403'
+        413:
+          $ref: '#/components/responses/413'
         500:
           $ref: '#/components/responses/500'
 
@@ -3455,6 +3457,8 @@ paths:
           $ref: '#/components/responses/408'
         409:
           $ref: '#/components/responses/409'
+        413:
+          $ref: '#/components/responses/413'
         500:
           $ref: '#/components/responses/500'
 
