@@ -20,6 +20,7 @@ func (t *App) updateNetworkList() {
 	c, err := client.New()
 	if err != nil {
 		t.errorf("failed to create client: %s", err)
+		return
 	}
 
 	params := api.GetNetworksParams{}
