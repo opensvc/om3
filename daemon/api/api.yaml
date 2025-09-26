@@ -1617,7 +1617,7 @@ paths:
           $ref: '#/components/responses/500'
       x-internal: true
 
-  /api/node/name/{nodename}/instance/path/{namespace}/{kind}/{name}/drbd/connect:
+  /api/node/name/{nodename}/drbd/connect:
     post:
       operationId: PostNodeDRBDConnect
       description: |
@@ -1626,9 +1626,6 @@ paths:
         Used by the CRM to ask a node for a drbd connection
       parameters:
         - $ref: '#/components/parameters/inPathNodeName'
-        - $ref: '#/components/parameters/inPathNamespace'
-        - $ref: '#/components/parameters/inPathKind'
-        - $ref: '#/components/parameters/inPathName'
         - $ref: '#/components/parameters/DRBDResourceName'
       responses:
         204:
@@ -1651,6 +1648,7 @@ paths:
         - node / instance / svc
         - node / instance / vol
       x-internal: true
+
 
   /api/node/name/{nodename}/drivers:
     get:

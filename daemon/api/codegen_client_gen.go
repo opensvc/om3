@@ -261,6 +261,9 @@ type ClientInterface interface {
 
 	PostNodeDRBDConfig(ctx context.Context, nodename InPathNodeName, params *PostNodeDRBDConfigParams, body PostNodeDRBDConfigJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
 
+	// PostNodeDRBDConnect request
+	PostNodeDRBDConnect(ctx context.Context, nodename InPathNodeName, params *PostNodeDRBDConnectParams, reqEditors ...RequestEditorFn) (*http.Response, error)
+
 	// GetNodeDriver request
 	GetNodeDriver(ctx context.Context, nodename InPathNodeName, reqEditors ...RequestEditorFn) (*http.Response, error)
 
@@ -323,9 +326,6 @@ type ClientInterface interface {
 
 	// GetInstanceConfigFile request
 	GetInstanceConfigFile(ctx context.Context, nodename InPathNodeName, namespace InPathNamespace, kind InPathKind, name InPathName, reqEditors ...RequestEditorFn) (*http.Response, error)
-
-	// PostNodeDRBDConnect request
-	PostNodeDRBDConnect(ctx context.Context, nodename InPathNodeName, namespace InPathNamespace, kind InPathKind, name InPathName, params *PostNodeDRBDConnectParams, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// GetInstanceLogs request
 	GetInstanceLogs(ctx context.Context, nodename InPathNodeName, namespace InPathNamespace, kind InPathKind, name InPathName, params *GetInstanceLogsParams, reqEditors ...RequestEditorFn) (*http.Response, error)
@@ -1221,6 +1221,18 @@ func (c *Client) PostNodeDRBDConfig(ctx context.Context, nodename InPathNodeName
 	return c.Client.Do(req)
 }
 
+func (c *Client) PostNodeDRBDConnect(ctx context.Context, nodename InPathNodeName, params *PostNodeDRBDConnectParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewPostNodeDRBDConnectRequest(c.Server, nodename, params)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
 func (c *Client) GetNodeDriver(ctx context.Context, nodename InPathNodeName, reqEditors ...RequestEditorFn) (*http.Response, error) {
 	req, err := NewGetNodeDriverRequest(c.Server, nodename)
 	if err != nil {
@@ -1463,18 +1475,6 @@ func (c *Client) PostInstanceClear(ctx context.Context, nodename InPathNodeName,
 
 func (c *Client) GetInstanceConfigFile(ctx context.Context, nodename InPathNodeName, namespace InPathNamespace, kind InPathKind, name InPathName, reqEditors ...RequestEditorFn) (*http.Response, error) {
 	req, err := NewGetInstanceConfigFileRequest(c.Server, nodename, namespace, kind, name)
-	if err != nil {
-		return nil, err
-	}
-	req = req.WithContext(ctx)
-	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
-		return nil, err
-	}
-	return c.Client.Do(req)
-}
-
-func (c *Client) PostNodeDRBDConnect(ctx context.Context, nodename InPathNodeName, namespace InPathNamespace, kind InPathKind, name InPathName, params *PostNodeDRBDConnectParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
-	req, err := NewPostNodeDRBDConnectRequest(c.Server, nodename, namespace, kind, name, params)
 	if err != nil {
 		return nil, err
 	}
@@ -4998,6 +4998,58 @@ func NewPostNodeDRBDConfigRequestWithBody(server string, nodename InPathNodeName
 	return req, nil
 }
 
+// NewPostNodeDRBDConnectRequest generates requests for PostNodeDRBDConnect
+func NewPostNodeDRBDConnectRequest(server string, nodename InPathNodeName, params *PostNodeDRBDConnectParams) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithLocation("simple", false, "nodename", runtime.ParamLocationPath, nodename)
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/api/node/name/%s/drbd/connect", pathParam0)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	if params != nil {
+		queryValues := queryURL.Query()
+
+		if queryFrag, err := runtime.StyleParamWithLocation("form", true, "name", runtime.ParamLocationQuery, params.Name); err != nil {
+			return nil, err
+		} else if parsed, err := url.ParseQuery(queryFrag); err != nil {
+			return nil, err
+		} else {
+			for k, v := range parsed {
+				for _, v2 := range v {
+					queryValues.Add(k, v2)
+				}
+			}
+		}
+
+		queryURL.RawQuery = queryValues.Encode()
+	}
+
+	req, err := http.NewRequest("POST", queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
 // NewGetNodeDriverRequest generates requests for GetNodeDriver
 func NewGetNodeDriverRequest(server string, nodename InPathNodeName) (*http.Request, error) {
 	var err error
@@ -8259,79 +8311,6 @@ func NewGetInstanceConfigFileRequest(server string, nodename InPathNodeName, nam
 	}
 
 	req, err := http.NewRequest("GET", queryURL.String(), nil)
-	if err != nil {
-		return nil, err
-	}
-
-	return req, nil
-}
-
-// NewPostNodeDRBDConnectRequest generates requests for PostNodeDRBDConnect
-func NewPostNodeDRBDConnectRequest(server string, nodename InPathNodeName, namespace InPathNamespace, kind InPathKind, name InPathName, params *PostNodeDRBDConnectParams) (*http.Request, error) {
-	var err error
-
-	var pathParam0 string
-
-	pathParam0, err = runtime.StyleParamWithLocation("simple", false, "nodename", runtime.ParamLocationPath, nodename)
-	if err != nil {
-		return nil, err
-	}
-
-	var pathParam1 string
-
-	pathParam1, err = runtime.StyleParamWithLocation("simple", false, "namespace", runtime.ParamLocationPath, namespace)
-	if err != nil {
-		return nil, err
-	}
-
-	var pathParam2 string
-
-	pathParam2, err = runtime.StyleParamWithLocation("simple", false, "kind", runtime.ParamLocationPath, kind)
-	if err != nil {
-		return nil, err
-	}
-
-	var pathParam3 string
-
-	pathParam3, err = runtime.StyleParamWithLocation("simple", false, "name", runtime.ParamLocationPath, name)
-	if err != nil {
-		return nil, err
-	}
-
-	serverURL, err := url.Parse(server)
-	if err != nil {
-		return nil, err
-	}
-
-	operationPath := fmt.Sprintf("/api/node/name/%s/instance/path/%s/%s/%s/drbd/connect", pathParam0, pathParam1, pathParam2, pathParam3)
-	if operationPath[0] == '/' {
-		operationPath = "." + operationPath
-	}
-
-	queryURL, err := serverURL.Parse(operationPath)
-	if err != nil {
-		return nil, err
-	}
-
-	if params != nil {
-		queryValues := queryURL.Query()
-
-		if queryFrag, err := runtime.StyleParamWithLocation("form", true, "name", runtime.ParamLocationQuery, params.Name); err != nil {
-			return nil, err
-		} else if parsed, err := url.ParseQuery(queryFrag); err != nil {
-			return nil, err
-		} else {
-			for k, v := range parsed {
-				for _, v2 := range v {
-					queryValues.Add(k, v2)
-				}
-			}
-		}
-
-		queryURL.RawQuery = queryValues.Encode()
-	}
-
-	req, err := http.NewRequest("POST", queryURL.String(), nil)
 	if err != nil {
 		return nil, err
 	}
@@ -11775,6 +11754,9 @@ type ClientWithResponsesInterface interface {
 
 	PostNodeDRBDConfigWithResponse(ctx context.Context, nodename InPathNodeName, params *PostNodeDRBDConfigParams, body PostNodeDRBDConfigJSONRequestBody, reqEditors ...RequestEditorFn) (*PostNodeDRBDConfigResponse, error)
 
+	// PostNodeDRBDConnectWithResponse request
+	PostNodeDRBDConnectWithResponse(ctx context.Context, nodename InPathNodeName, params *PostNodeDRBDConnectParams, reqEditors ...RequestEditorFn) (*PostNodeDRBDConnectResponse, error)
+
 	// GetNodeDriverWithResponse request
 	GetNodeDriverWithResponse(ctx context.Context, nodename InPathNodeName, reqEditors ...RequestEditorFn) (*GetNodeDriverResponse, error)
 
@@ -11837,9 +11819,6 @@ type ClientWithResponsesInterface interface {
 
 	// GetInstanceConfigFileWithResponse request
 	GetInstanceConfigFileWithResponse(ctx context.Context, nodename InPathNodeName, namespace InPathNamespace, kind InPathKind, name InPathName, reqEditors ...RequestEditorFn) (*GetInstanceConfigFileResponse, error)
-
-	// PostNodeDRBDConnectWithResponse request
-	PostNodeDRBDConnectWithResponse(ctx context.Context, nodename InPathNodeName, namespace InPathNamespace, kind InPathKind, name InPathName, params *PostNodeDRBDConnectParams, reqEditors ...RequestEditorFn) (*PostNodeDRBDConnectResponse, error)
 
 	// GetInstanceLogsWithResponse request
 	GetInstanceLogsWithResponse(ctx context.Context, nodename InPathNodeName, namespace InPathNamespace, kind InPathKind, name InPathName, params *GetInstanceLogsParams, reqEditors ...RequestEditorFn) (*GetInstanceLogsResponse, error)
@@ -13414,6 +13393,32 @@ func (r PostNodeDRBDConfigResponse) StatusCode() int {
 	return 0
 }
 
+type PostNodeDRBDConnectResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	JSON400      *N400
+	JSON401      *N401
+	JSON403      *N403
+	JSON404      *N404
+	JSON500      *N500
+}
+
+// Status returns HTTPResponse.Status
+func (r PostNodeDRBDConnectResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r PostNodeDRBDConnectResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
 type GetNodeDriverResponse struct {
 	Body         []byte
 	HTTPResponse *http.Response
@@ -13951,32 +13956,6 @@ func (r GetInstanceConfigFileResponse) Status() string {
 
 // StatusCode returns HTTPResponse.StatusCode
 func (r GetInstanceConfigFileResponse) StatusCode() int {
-	if r.HTTPResponse != nil {
-		return r.HTTPResponse.StatusCode
-	}
-	return 0
-}
-
-type PostNodeDRBDConnectResponse struct {
-	Body         []byte
-	HTTPResponse *http.Response
-	JSON400      *N400
-	JSON401      *N401
-	JSON403      *N403
-	JSON404      *N404
-	JSON500      *N500
-}
-
-// Status returns HTTPResponse.Status
-func (r PostNodeDRBDConnectResponse) Status() string {
-	if r.HTTPResponse != nil {
-		return r.HTTPResponse.Status
-	}
-	return http.StatusText(0)
-}
-
-// StatusCode returns HTTPResponse.StatusCode
-func (r PostNodeDRBDConnectResponse) StatusCode() int {
 	if r.HTTPResponse != nil {
 		return r.HTTPResponse.StatusCode
 	}
@@ -16067,6 +16046,15 @@ func (c *ClientWithResponses) PostNodeDRBDConfigWithResponse(ctx context.Context
 	return ParsePostNodeDRBDConfigResponse(rsp)
 }
 
+// PostNodeDRBDConnectWithResponse request returning *PostNodeDRBDConnectResponse
+func (c *ClientWithResponses) PostNodeDRBDConnectWithResponse(ctx context.Context, nodename InPathNodeName, params *PostNodeDRBDConnectParams, reqEditors ...RequestEditorFn) (*PostNodeDRBDConnectResponse, error) {
+	rsp, err := c.PostNodeDRBDConnect(ctx, nodename, params, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParsePostNodeDRBDConnectResponse(rsp)
+}
+
 // GetNodeDriverWithResponse request returning *GetNodeDriverResponse
 func (c *ClientWithResponses) GetNodeDriverWithResponse(ctx context.Context, nodename InPathNodeName, reqEditors ...RequestEditorFn) (*GetNodeDriverResponse, error) {
 	rsp, err := c.GetNodeDriver(ctx, nodename, reqEditors...)
@@ -16254,15 +16242,6 @@ func (c *ClientWithResponses) GetInstanceConfigFileWithResponse(ctx context.Cont
 		return nil, err
 	}
 	return ParseGetInstanceConfigFileResponse(rsp)
-}
-
-// PostNodeDRBDConnectWithResponse request returning *PostNodeDRBDConnectResponse
-func (c *ClientWithResponses) PostNodeDRBDConnectWithResponse(ctx context.Context, nodename InPathNodeName, namespace InPathNamespace, kind InPathKind, name InPathName, params *PostNodeDRBDConnectParams, reqEditors ...RequestEditorFn) (*PostNodeDRBDConnectResponse, error) {
-	rsp, err := c.PostNodeDRBDConnect(ctx, nodename, namespace, kind, name, params, reqEditors...)
-	if err != nil {
-		return nil, err
-	}
-	return ParsePostNodeDRBDConnectResponse(rsp)
 }
 
 // GetInstanceLogsWithResponse request returning *GetInstanceLogsResponse
@@ -19625,6 +19604,60 @@ func ParsePostNodeDRBDConfigResponse(rsp *http.Response) (*PostNodeDRBDConfigRes
 	return response, nil
 }
 
+// ParsePostNodeDRBDConnectResponse parses an HTTP response from a PostNodeDRBDConnectWithResponse call
+func ParsePostNodeDRBDConnectResponse(rsp *http.Response) (*PostNodeDRBDConnectResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &PostNodeDRBDConnectResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
+		var dest N400
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON400 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest N401
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest N403
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON403 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest N404
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON404 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
+		var dest N500
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON500 = &dest
+
+	}
+
+	return response, nil
+}
+
 // ParseGetNodeDriverResponse parses an HTTP response from a GetNodeDriverWithResponse call
 func ParseGetNodeDriverResponse(rsp *http.Response) (*GetNodeDriverResponse, error) {
 	bodyBytes, err := io.ReadAll(rsp.Body)
@@ -20725,60 +20758,6 @@ func ParseGetInstanceConfigFileResponse(rsp *http.Response) (*GetInstanceConfigF
 			return nil, err
 		}
 		response.JSON403 = &dest
-
-	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
-		var dest N500
-		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
-			return nil, err
-		}
-		response.JSON500 = &dest
-
-	}
-
-	return response, nil
-}
-
-// ParsePostNodeDRBDConnectResponse parses an HTTP response from a PostNodeDRBDConnectWithResponse call
-func ParsePostNodeDRBDConnectResponse(rsp *http.Response) (*PostNodeDRBDConnectResponse, error) {
-	bodyBytes, err := io.ReadAll(rsp.Body)
-	defer func() { _ = rsp.Body.Close() }()
-	if err != nil {
-		return nil, err
-	}
-
-	response := &PostNodeDRBDConnectResponse{
-		Body:         bodyBytes,
-		HTTPResponse: rsp,
-	}
-
-	switch {
-	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
-		var dest N400
-		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
-			return nil, err
-		}
-		response.JSON400 = &dest
-
-	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
-		var dest N401
-		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
-			return nil, err
-		}
-		response.JSON401 = &dest
-
-	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
-		var dest N403
-		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
-			return nil, err
-		}
-		response.JSON403 = &dest
-
-	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
-		var dest N404
-		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
-			return nil, err
-		}
-		response.JSON404 = &dest
 
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
 		var dest N500

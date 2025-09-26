@@ -327,6 +327,12 @@ func (t *T) removeHolders() error {
 	return nil
 }
 
+func (t *T) StatusInfo(context.Context) map[string]any {
+	return map[string]any{
+		"res": t.Res,
+	}
+}
+
 func (t *T) Status(ctx context.Context) status.T {
 	dev := t.drbd(ctx)
 	isDefined, err := dev.IsDefined(ctx)
@@ -718,7 +724,7 @@ func (t *T) connectPeer(ctx context.Context, nodename string) error {
 	params := api.PostNodeDRBDConnectParams{
 		Name: t.Res,
 	}
-	resp, err := c.PostNodeDRBDConnectWithResponse(ctx, nodename, t.Path.Namespace, t.Path.Kind, t.Path.Name, &params)
+	resp, err := c.PostNodeDRBDConnectWithResponse(ctx, nodename, &params)
 	if err != nil {
 		return err
 	}

@@ -1988,6 +1988,12 @@ type PostNodeDRBDConfigParams struct {
 	Name DRBDResourceName `form:"name" json:"name"`
 }
 
+// PostNodeDRBDConnectParams defines parameters for PostNodeDRBDConnect.
+type PostNodeDRBDConnectParams struct {
+	// Name drbd resource name
+	Name DRBDResourceName `form:"name" json:"name"`
+}
+
 // PostInstanceActionBootParams defines parameters for PostInstanceActionBoot.
 type PostInstanceActionBootParams struct {
 	Slaves       *InQueryAllSlaves    `form:"slaves,omitempty" json:"slaves,omitempty"`
@@ -2181,12 +2187,6 @@ type PostInstanceActionUnprovisionParams struct {
 	Subset       *InQuerySubset       `form:"subset,omitempty" json:"subset,omitempty"`
 	Tag          *InQueryTag          `form:"tag,omitempty" json:"tag,omitempty"`
 	To           *InQueryTo           `form:"to,omitempty" json:"to,omitempty"`
-}
-
-// PostNodeDRBDConnectParams defines parameters for PostNodeDRBDConnect.
-type PostNodeDRBDConnectParams struct {
-	// Name drbd resource name
-	Name DRBDResourceName `form:"name" json:"name"`
 }
 
 // GetInstanceLogsParams defines parameters for GetInstanceLogs.
