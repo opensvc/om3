@@ -17,7 +17,7 @@ var completionTree = map[string]any{
 	},
 	"filter":  nil,
 	"connect": nil,
-	"go":      []string{"sec", "cfg", "vol", "pool", "net"},
+	"go":      []string{"sec", "cfg", "vol", "pool", "net", "relay"},
 }
 
 func (t *App) getActualSelected() string {
