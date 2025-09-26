@@ -61,6 +61,10 @@ func (t T) network() string {
 	return t.GetString("network")
 }
 
+func (t *T) template() string {
+	return t.GetString("template")
+}
+
 func (t T) addrs() map[string]string {
 	m := make(map[string]string)
 	for _, nodename := range cluster.ConfigData.Get().Nodes {
@@ -235,13 +239,14 @@ func (t *T) blkTranslateZpool(name string, size int64, shared bool) (string, []s
 }
 
 func (t *T) commonDrbdKeywords(rid string) (l []string) {
-	maxPeers := t.maxPeers()
-	if maxPeers != "" {
-		l = append(l, rid+".max_peers="+maxPeers)
+	if s := t.maxPeers(); s != "" {
+		l = append(l, rid+".max_peers="+s)
 	}
-	network := t.network()
-	if network != "" {
-		l = append(l, rid+".network="+network)
+	if s := t.network(); s != "" {
+		l = append(l, rid+".network="+s)
+	}
+	if s := t.template(); s != "" {
+		l = append(l, rid+".template="+s)
 	}
 	for nodename, addr := range t.addrs() {
 		l = append(l, rid+".addr@"+nodename+"="+addr)

@@ -928,6 +928,14 @@ var nodeCommonKeywords = []keywords.Keyword{
 		Types:       []string{"drbd"},
 	},
 	{
+		Attr:    "Template",
+		Example: "live-migration",
+		Option:  "template",
+		Section: "pool",
+		Text:    "The value of the template keyword to set in the drbd resource of the created volumes",
+		Types:   []string{"drbd"},
+	},
+	{
 		Option:  "vg",
 		Section: "pool",
 		Text:    keywords.NewText(fs, "text/kw/node/pool.drbd.vg"),
