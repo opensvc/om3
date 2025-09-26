@@ -76,7 +76,7 @@ func (d *data) applyMsgEvents(msg *hbtype.Msg) error {
 		d.log.Infof(
 			"apply patch skipped %s gen %d (ask full from empty patch) len events: %d gens:%+v eventIDs: %+v hbGens[%s]: %v",
 			remote, msg.Gen[remote], len(msg.Events), d.hbGens, eventIDs, remote, d.hbGens[remote])
-		d.log.Infof("Msg is : %+v", *msg)
+		d.log.Debugf("Msg is : %+v", *msg)
 
 		setNeedFull()
 		return nil
