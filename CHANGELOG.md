@@ -69,6 +69,10 @@
     
 ### Object Configuration
 
+* **References**
+
+    * Drop support for arithmetic expressions in references
+
 * **Keywords removed:**
     * `svc_flex_cpu_low_threshold`
     
@@ -88,7 +92,7 @@
 
 * **Driver Group Names Removed:**
 
-    Drop support for driver group names:**
+    Drop support for driver-group names:**
 
 	* `drbd`
 	   Replaced by `disk#foo.type=drbd`
@@ -136,7 +140,7 @@
 
 ### Commands
 
-* **Configuration updates use the daemon api by default:**
+* **Configuration updates and queries use the daemon api by default:**
     `om set`, `om unset`, `om get`, `om eval` now need `--local` to operate on the local configurations without api calls.
 
 * `om xx status`
@@ -551,6 +555,13 @@ Where the password is the value of the `þassword` key in `system/sec/relay-v3`.
 
 * Add "o[mx] rename --key old --to new" commands
 
+### svc
+
+* Support kvm live migration with data on `disk.disk` and `disk.drbd`. The commands to trigger a live migration are
+
+    om svc1 switch --live
+    om svc1 takeover --live
+
 ## Upgrade from b2.1
 
 ### Cluster Config
@@ -561,4 +572,5 @@ Where the password is the value of the `þassword` key in `system/sec/relay-v3`.
     # Ensure cluster.name is defined before upgrade to v3
     om cluster set --kw cluster.name=$(om cluster eval --kw cluster.name)
     ```
+
 
