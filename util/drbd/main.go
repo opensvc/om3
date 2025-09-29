@@ -3,7 +3,9 @@ package drbd
 import (
 	"bytes"
 	"context"
+	"encoding/json"
 	"encoding/xml"
+	"errors"
 	"fmt"
 	"path/filepath"
 	"slices"
@@ -76,6 +78,48 @@ type (
 	Digest struct {
 		Ports  map[string]any
 		Minors map[string]any
+	}
+
+	CStateM map[string]string
+)
+
+type (
+	DrbdShow struct {
+		Resource string `json:"resource"`
+		ThisHost struct {
+			NodeID  int `json:"node-id"`
+			Volumes []struct {
+				VolumeNr    int    `json:"volume_nr"`
+				DeviceMinor int    `json:"device_minor"`
+				BackingDisk string `json:"backing-disk"`
+				MetaDisk    string `json:"meta-disk"`
+			} `json:"volumes"`
+		} `json:"_this_host"`
+		Connections []struct {
+			Paths []struct {
+				ThisHost struct {
+					Address string `json:"address"`
+					Port    int    `json:"port"`
+					Family  string `json:"family"`
+				} `json:"this_host"`
+				RemoteHost struct {
+					Address string `json:"address"`
+					Port    int    `json:"port"`
+					Family  string `json:"family"`
+				} `json:"remote_host"`
+			} `json:"paths"`
+			Cstate string `json:"_cstate"`
+			Net    struct {
+				Name string `json:"_name"`
+			} `json:"net"`
+			Volumes []struct {
+				VolumeNr int `json:"volume_nr"`
+				Disk     struct {
+					ResyncWithoutReplication bool `json:"resync-without-replication"`
+				} `json:"disk"`
+			} `json:"volumes"`
+			PeerNodeID int `json:"_peer_node_id"`
+		} `json:"connections"`
 	}
 )
 
@@ -305,14 +349,17 @@ func (t *T) Adjust(ctx context.Context) error {
 	return retry(cmd)
 }
 
-func (t *T) Connect(ctx context.Context) error {
-	return t.withLock(ctx, t.connect, "drbdadm connect", time.Second)
+func (t *T) Connect(ctx context.Context, nodeID string) error {
+	f := func(ctx context.Context) error {
+		return t.connect(ctx, nodeID)
+	}
+	return t.withLock(ctx, f, "drbdadm connect", time.Second)
 }
 
-func (t *T) connect(ctx context.Context) error {
-	args := []string{"connect", t.res}
+func (t *T) connect(ctx context.Context, nodeID string) error {
+	args := []string{"connect", t.res, nodeID}
 	cmd := command.New(
-		command.WithName(drbdadm),
+		command.WithName(drbdsetup),
 		command.WithArgs(args),
 		command.WithLogger(t.log),
 		command.WithCommandLogLevel(zerolog.InfoLevel),
@@ -462,11 +509,12 @@ func (t *T) Role(ctx context.Context) (string, error) {
 	}
 }
 
-func (t *T) ConnState(ctx context.Context) (string, error) {
+func (t *T) ConnStates(ctx context.Context) (CStateM, error) {
+	conStates := make(CStateM)
 	isAttached := true
 	cmd := command.New(
 		command.WithName(drbdadm),
-		command.WithVarArgs("cstate", t.res),
+		command.WithVarArgs("cstate", "-v", t.res),
 		command.WithBufferedStdout(),
 		command.WithOnStderrLine(func(s string) {
 			if strings.Contains(s, "Device minor not allocated") {
@@ -477,13 +525,36 @@ func (t *T) ConnState(ctx context.Context) (string, error) {
 	)
 	if err := cmd.Run(); err != nil {
 		if !isAttached || cmd.ExitCode() == 10 {
-			return "Unattached", nil
+			return conStates, nil
 		} else {
-			return "", err
+			return conStates, err
 		}
 	}
-	b := bytes.Split(cmd.Stdout(), []byte("\n"))[0]
-	return string(b), nil
+	lines := bytes.Split(cmd.Stdout(), []byte("\n"))
+	var idx string
+	for _, line := range lines {
+		fields := bytes.Fields(line)
+		if len(fields) > 1 {
+			idx = string(fields[len(fields)-1])
+		} else if len(fields) == 1 && idx != "" {
+			conStates[idx] = string(fields[0])
+			idx = ""
+		}
+	}
+	return conStates, nil
+}
+
+func (t *T) ConnState(ctx context.Context, nodeID string) (string, error) {
+	cmd := command.New(
+		command.WithName(drbdsetup),
+		command.WithVarArgs("cstate", t.res, nodeID),
+		command.WithBufferedStdout(),
+		command.WithContext(ctx),
+	)
+	if err := cmd.Run(); err != nil {
+		return "", err
+	}
+	return strings.TrimSuffix(string(cmd.Stdout()), "\n"), nil
 }
 
 func (t *T) DiskStates(ctx context.Context) ([]string, error) {
@@ -592,56 +663,83 @@ func (t *T) Create(disk string, addr string, port int) error {
 	return fmt.Errorf("todo")
 }
 
+// startConnections establishes a connection for the DRBD resource, managing its state transitions as needed.
+// It returns an error if the connection process fails.
+func (t *T) StartConnections(ctx context.Context, peers ...string) error {
+	states, err := t.ConnStates(ctx)
+	if err != nil {
+		return err
+	}
+	c := make(chan error, len(states))
+	for nodeID, state := range states {
+		if len(peers) > 0 && !slices.Contains(peers, nodeID) {
+			c <- nil
+			continue
+		}
+		if state == ConnStateConnecting || state == ConnStateConnected {
+			c <- nil
+			continue
+		}
+		go func() {
+			c <- t.StartConnection(ctx, nodeID)
+		}()
+	}
+	for range states {
+		err = errors.Join(<-c)
+	}
+	return err
+}
+
 // startConnection establishes a connection for the DRBD resource, managing its state transitions as needed.
 // It returns an error if the connection process fails.
-func (t *T) StartConnection(ctx context.Context) error {
-	state, err := t.ConnState(ctx)
+func (t *T) StartConnection(ctx context.Context, nodeID string) error {
+	state, err := t.ConnState(ctx, nodeID)
 	if err != nil {
 		return err
 	}
 
-	t.log.Infof("drbd resource %s cstate %s", t.res, state)
+	t.log.Infof("drbd resource %s node-id %s cstate %s", t.res, nodeID, state)
 	switch state {
 	case ConnStateConnecting, ConnStateConnected, ConnStateLegacycConnecting:
 		// the expected state is reached
 		return nil
 	case ConnStateUnconnected, ConnStateTimeout, ConnStateBrokenPipe, ConnStateNetworkFailure, ConnStateProtocolError, ConnStateTearDow:
 		// Temporary state from C_CONNECTED to C_UNCONNECTED
-		_, err = t.WaitConnectingOrConnected(ctx)
+		_, err = t.WaitConnectingOrConnected(ctx, nodeID)
 		return err
 	case ConnStateDisconnecting:
 		// Temporary state to StandAlone
-		t.log.Infof("drbd resource %s: wants cstate StandAlone before restart connection", t.res)
-		if _, err := t.WaitCState(ctx, 5*time.Second, ConnStateStandAlone); err != nil {
-			return fmt.Errorf("drbd resource %s: waiting for cstate StandAlone: %w", t.res, err)
+		t.log.Infof("drbd resource %s node-id %s: wants cstate StandAlone before restart connection", t.res, nodeID)
+		if _, err := t.WaitCState(ctx, nodeID, 5*time.Second, ConnStateStandAlone); err != nil {
+			return fmt.Errorf("drbd resource %s node-id %s: waiting for cstate StandAlone: %w", t.res, nodeID, err)
 		}
-		_, err = t.ConnectAndWaitConnectingOrConnected(ctx)
+		_, err = t.ConnectAndWaitConnectingOrConnected(ctx, nodeID)
 		return err
 	case ConnStateStandAlone:
-		_, err = t.ConnectAndWaitConnectingOrConnected(ctx)
+		_, err = t.ConnectAndWaitConnectingOrConnected(ctx, nodeID)
 		return err
 	default:
-		return fmt.Errorf("drbd resource %s cstate %s unexpected while waiting for %s or %s",
-			t.res, state, ConnStateConnecting, ConnStateConnected)
+		return fmt.Errorf("drbd resource %s node-id %s cstate %s unexpected while waiting for %s or %s",
+			t.res, nodeID, state, ConnStateConnecting, ConnStateConnected)
 	}
 }
 
-func (t *T) TryStartConnection(ctx context.Context) error {
+func (t *T) TryStartConnection(ctx context.Context, nodeID string) error {
 	if ok, err := t.IsDefined(ctx); err != nil {
 		return err
 	} else if !ok {
 		t.log.Infof("drbd resource %s is not defined, skipping connection", t.res)
 		return nil
 	}
-	return t.StartConnection(ctx)
+	return t.StartConnections(ctx, nodeID)
 }
 
-func (t *T) WaitCState(ctx context.Context, timeout time.Duration, candidates ...string) (string, error) {
-	t.log.Infof("wait %s for cstate in (%s)", t.res, strings.Join(candidates, ","))
+func (t *T) WaitCState(ctx context.Context, nodeID string, timeout time.Duration, candidates ...string) (string, error) {
+	t.log.Debugf("wait for %s node-id %s cstate in (%s)", t.res, nodeID, strings.Join(candidates, ","))
 	var state, lastState string
 	ok, err := waitfor.TrueNoErrorCtx(ctx, timeout, waitConnectionStateDelay, func() (bool, error) {
 		var err error
-		state, err = t.ConnState(ctx)
+		state, err = t.ConnState(ctx, nodeID)
 
 		if err != nil {
 			return false, err
@@ -651,33 +749,33 @@ func (t *T) WaitCState(ctx context.Context, timeout time.Duration, candidates ..
 			return true, nil
 		} else {
 			if state != lastState {
-				t.log.Infof("wait %s cstate in (%s), found current cstate %s", t.res, strings.Join(candidates, ","), state)
+				t.log.Infof("wait for %s node-id %s cstate in (%s), found current cstate %s", t.res, nodeID, strings.Join(candidates, ","), state)
 				lastState = state
 			}
 			return false, nil
 		}
 	})
 	if err != nil {
-		return state, fmt.Errorf("wait for %s cstate in (%s): %w",
-			t.res, strings.Join(candidates, ","), err)
+		return state, fmt.Errorf("wait for %s node-id %s cstate in (%s): %w",
+			t.res, nodeID, strings.Join(candidates, ","), err)
 	} else if !ok {
-		return state, fmt.Errorf("wait for %s cstate in (%s): timeout, last state was: %s",
-			t.res, strings.Join(candidates, ","), state)
+		return state, fmt.Errorf("wait for %s node-id %s cstate in (%s): timeout, last state was: %s",
+			t.res, nodeID, strings.Join(candidates, ","), state)
 	}
-	t.log.Infof("wait for %s cstate in (%s): succeed found %s",
-		t.res, strings.Join(candidates, ","), state)
+	t.log.Infof("wait for %s node-id %s cstate in (%s): succeed found %s",
+		t.res, nodeID, strings.Join(candidates, ","), state)
 	return state, nil
 }
 
-func (t *T) WaitConnectingOrConnected(ctx context.Context) (string, error) {
-	return t.WaitCState(ctx, waitConnectingOrConnectedTimeout, ConnStateConnecting, ConnStateConnected)
+func (t *T) WaitConnectingOrConnected(ctx context.Context, nodeID string) (string, error) {
+	return t.WaitCState(ctx, nodeID, waitConnectingOrConnectedTimeout, ConnStateConnecting, ConnStateConnected)
 }
 
-func (t *T) ConnectAndWaitConnectingOrConnected(ctx context.Context) (string, error) {
-	if err := t.Connect(ctx); err != nil {
+func (t *T) ConnectAndWaitConnectingOrConnected(ctx context.Context, nodeID string) (string, error) {
+	if err := t.Connect(ctx, nodeID); err != nil {
 		return "", fmt.Errorf("drbd resource %s: connect: %w", t.res, err)
 	}
-	return t.WaitConnectingOrConnected(ctx)
+	return t.WaitConnectingOrConnected(ctx, nodeID)
 }
 
 func retry(cmd *command.T) error {
@@ -722,13 +820,22 @@ func (t *T) ModProbe(ctx context.Context) error {
 	return nil
 }
 
-func intsContains(l []int, i int) bool {
-	for _, v := range l {
-		if v == i {
-			return true
-		}
+func (t *T) Show(ctx context.Context) (DrbdShow, error) {
+	var l []DrbdShow
+	cmd := command.New(
+		command.WithName(drbdsetup),
+		command.WithVarArgs("show", "--json", t.res),
+		command.WithBufferedStdout(),
+		command.WithContext(ctx),
+	)
+	if b, err := cmd.Output(); err != nil {
+		return DrbdShow{}, err
+	} else if err := json.Unmarshal(b, &l); err != nil {
+		return DrbdShow{}, err
+	} else if len(l) == 0 {
+		return DrbdShow{}, fmt.Errorf("no drbd resource found")
 	}
-	return false
+	return l[0], nil
 }
 
 func (t Digest) FreeMinor(exclude []int) (int, error) {
@@ -763,6 +870,23 @@ func (t Digest) FreePort(exclude []int) (int, error) {
 		}
 	}
 	return 0, fmt.Errorf("no free port")
+}
+
+func (c *CStateM) String() string {
+	var l []string
+	for k, v := range *c {
+		l = append(l, fmt.Sprintf("%s:%s", k, v))
+	}
+	return strings.Join(l, ", ")
+}
+
+func intsContains(l []int, i int) bool {
+	for _, v := range l {
+		if v == i {
+			return true
+		}
+	}
+	return false
 }
 
 func (t *T) withLock(ctx context.Context, f func(context.Context) error, intent string, timeout time.Duration) error {

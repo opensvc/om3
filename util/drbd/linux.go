@@ -13,8 +13,9 @@ import (
 )
 
 const (
-	drbdadm = "/sbin/drbdadm"
-	kmod    = "drbd"
+	drbdadm   = "/sbin/drbdadm"
+	drbdsetup = "/sbin/drbdsetup"
+	kmod      = "drbd"
 )
 
 func IsCapable() bool {
