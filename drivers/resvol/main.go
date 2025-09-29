@@ -355,17 +355,7 @@ func (t *T) Volume() (object.Vol, error) {
 	}
 
 	logger := t.volumeLogger()
-	v, err := object.NewVol(p, object.WithLogger(logger))
-	if err != nil {
-		return nil, err
-	}
-	if !p.Exists() {
-		v.SetVolatile(true)
-		if err := t.configureVolume(v, false); err != nil {
-			return nil, err
-		}
-	}
-	return v, nil
+	return object.NewVol(p, object.WithLogger(logger))
 }
 
 func (t *T) createVolume(volume object.Vol) (object.Vol, error) {
@@ -571,5 +561,27 @@ func (t *T) ExposedDevices() device.L {
 // Configure installs a resource backpointer in the DataStoreInstall
 func (t *T) Configure() error {
 	t.DataRecv.SetReceiver(t)
+	return nil
+}
+
+func (t *T) PreMove(ctx context.Context, to string) error {
+	if t.IsDisabled() {
+		return nil
+	}
+	volume, err := t.Volume()
+	if err != nil {
+		t.Log().Errorf("%s", err)
+		return fmt.Errorf("volume %s does not exist (and no pool can create it)", t.name())
+	}
+	for _, r := range volume.Resources() {
+		if r.IsDisabled() {
+			continue
+		}
+		if i, ok := r.(resource.PreMover); ok {
+			if err := i.PreMove(ctx, to); err != nil {
+				return err
+			}
+		}
+	}
 	return nil
 }

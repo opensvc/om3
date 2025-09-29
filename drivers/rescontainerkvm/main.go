@@ -21,6 +21,7 @@ import (
 	"golang.org/x/crypto/ssh"
 	"golang.org/x/crypto/ssh/terminal"
 
+	"github.com/opensvc/om3/core/actioncontext"
 	"github.com/opensvc/om3/core/actionrollback"
 	"github.com/opensvc/om3/core/naming"
 	"github.com/opensvc/om3/core/object"
@@ -78,6 +79,9 @@ type (
 		cache map[string]interface{}
 	}
 
+	exposedDevicer interface {
+		ExposedDevices() device.L
+	}
 	header interface {
 		Head() string
 	}
@@ -223,6 +227,20 @@ func (t *T) undefine() error {
 	return cmd.Run()
 }
 
+func (t *T) migrate(to string) error {
+	toUri := fmt.Sprintf("qemu+ssh://%s/system", to)
+	cmd := command.New(
+		command.WithName("virsh"),
+		command.WithVarArgs("migrate", "--live", "--persistent", t.Name, toUri),
+		command.WithLogger(t.Log()),
+		command.WithCommandLogLevel(zerolog.InfoLevel),
+		command.WithStdoutLogLevel(zerolog.InfoLevel),
+		command.WithStderrLogLevel(zerolog.ErrorLevel),
+		command.WithTimeout(*t.StopTimeout),
+	)
+	return cmd.Run()
+}
+
 func (t *T) start() error {
 	cmd := command.New(
 		command.WithName("virsh"),
@@ -324,12 +342,39 @@ func (t *T) Start(ctx context.Context) error {
 	return nil
 }
 
+func (t *T) Move(ctx context.Context, to string) error {
+	for _, dev := range t.SubDevices() {
+		r, err := t.resourceHandlingDevice(dev)
+		if err != nil {
+			return err
+		}
+		if r == nil {
+			continue
+		}
+		if r.IsDisabled() {
+			continue
+		}
+		if err := resource.PRStop(ctx, r); err != nil {
+			return err
+		}
+		if i, ok := r.(resource.PreMover); ok {
+			if err := i.PreMove(ctx, to); err != nil {
+				return err
+			}
+		}
+	}
+	return t.migrate(to)
+}
+
 func (t *T) Stop(ctx context.Context) error {
 	if v, err := t.isDown(); err != nil {
 		return err
 	} else if v {
 		t.Log().Infof("container %s is already down", t.Name)
 		return nil
+	}
+	if to := actioncontext.MoveTo(ctx); to != "" {
+		return t.Move(ctx, to)
 	}
 	if err := t.containerStop(ctx); err != nil {
 		return err
@@ -558,7 +603,7 @@ func (t *T) SubDevices() device.L {
 	if err != nil {
 		return l
 	}
-	es, err := xmlquery.QueryAll(doc, "//domain/devices/disk")
+	es, err := xmlquery.QueryAll(doc, "//domain/devices/disk/source")
 	if err != nil {
 		t.Log().Warnf("SubDevices: %s", err)
 		return l
@@ -832,6 +877,34 @@ func (t *T) obj() (interface{}, error) {
 	return object.New(t.Path, object.WithVolatile(true))
 }
 
+func (t *T) resourceHandlingDevice(p device.T) (resource.Driver, error) {
+	obj, err := t.obj()
+	if err != nil {
+		return nil, err
+	}
+	b, ok := obj.(resourceLister)
+	if !ok {
+		return nil, nil
+	}
+	for _, r := range b.Resources() {
+		h, ok := r.(exposedDevicer)
+		if !ok {
+			continue
+		}
+		if v, err := r.Provisioned(); err != nil {
+			return nil, err
+		} else if v == provisioned.False {
+			continue
+		}
+		if v, err := h.ExposedDevices().Contains(p); err != nil {
+			return nil, err
+		} else if v {
+			return r, nil
+		}
+	}
+	return nil, nil
+}
+
 func (t *T) resourceHandlingFile(p string) (resource.Driver, error) {
 	obj, err := t.obj()
 	if err != nil {
@@ -847,7 +920,7 @@ func (t *T) resourceHandlingFile(p string) (resource.Driver, error) {
 			continue
 		}
 		if v, err := r.Provisioned(); err != nil {
-			continue
+			return nil, err
 		} else if v == provisioned.False {
 			continue
 		}

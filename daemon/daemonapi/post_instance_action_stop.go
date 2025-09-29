@@ -50,6 +50,9 @@ func (a *DaemonAPI) postLocalInstanceActionStop(ctx echo.Context, namespace stri
 	if params.Force != nil && *params.Force {
 		args = append(args, "--force")
 	}
+	if params.MoveTo != nil && *params.MoveTo != "" {
+		args = append(args, "--move-to", *params.MoveTo)
+	}
 	if params.To != nil && *params.To != "" {
 		args = append(args, "--to", *params.To)
 	}

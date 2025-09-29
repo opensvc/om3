@@ -404,27 +404,19 @@ func ConfigureVolume(p Pooler, vol Volumer, size int64, format bool, acs volacce
 }
 
 func translate(p Pooler, name string, size int64, format bool, shared bool) ([]string, error) {
-	var kws []string
-	var err error
-	switch format {
-	case true:
+	if format {
 		o, ok := p.(Translater)
 		if !ok {
 			return nil, fmt.Errorf("pool %s does not support formatted volumes", p.Name())
 		}
-		if kws, err = o.Translate(name, size, shared); err != nil {
-			return nil, err
-		}
-	case false:
+		return o.Translate(name, size, shared)
+	} else {
 		o, ok := p.(BlkTranslater)
 		if !ok {
 			return nil, fmt.Errorf("pool %s does not support block volumes", p.Name())
 		}
-		if kws, err = o.BlkTranslate(name, size, shared); err != nil {
-			return nil, err
-		}
+		return o.BlkTranslate(name, size, shared)
 	}
-	return kws, nil
 }
 
 func NewStatusList() StatusList {

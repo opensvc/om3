@@ -39,6 +39,7 @@ func (a *DaemonAPI) PostObjectActionSwitch(eCtx echo.Context, namespace string, 
 			GlobalExpect: &globalExpect,
 			GlobalExpectOptions: instance.MonitorGlobalExpectOptionsPlacedAt{
 				Destination: payload.Destination,
+				Live:        payload.Live,
 			},
 			CandidateOrchestrationID: uuid.New(),
 		}

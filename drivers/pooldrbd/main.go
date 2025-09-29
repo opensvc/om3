@@ -61,6 +61,10 @@ func (t T) network() string {
 	return t.GetString("network")
 }
 
+func (t *T) template() string {
+	return t.GetString("template")
+}
+
 func (t T) addrs() map[string]string {
 	m := make(map[string]string)
 	for _, nodename := range cluster.ConfigData.Get().Nodes {
@@ -168,6 +172,7 @@ func (t T) usageFile() (pool.Usage, error) {
 func (t *T) blkTranslateFile(name string, size int64, shared bool) (string, []string, error) {
 	p := fmt.Sprintf("%s/%s.img", t.path(), name)
 	data := []string{
+		"fs#0.type=flag",
 		"disk#1.type=loop",
 		"disk#1.name=" + name,
 		"disk#1.size=" + sizeconv.ExactBSizeCompact(float64(size)),
@@ -196,6 +201,7 @@ func (t *T) blkTranslateFile(name string, size int64, shared bool) (string, []st
 
 func (t *T) blkTranslateVG(name string, size int64, shared bool) (string, []string, error) {
 	data := []string{
+		"fs#0.type=flag",
 		"disk#1.type=lv",
 		"disk#1.name=" + name,
 		"disk#1.vg=" + t.vg(),
@@ -215,6 +221,7 @@ func (t *T) blkTranslateVG(name string, size int64, shared bool) (string, []stri
 
 func (t *T) blkTranslateZpool(name string, size int64, shared bool) (string, []string, error) {
 	data := []string{
+		"fs#0.type=flag",
 		"disk#1.type=zvol",
 		"disk#1.dev=" + t.zpool() + "/" + name,
 		"disk#1.size=" + sizeconv.ExactBSizeCompact(float64(size)),
@@ -232,13 +239,14 @@ func (t *T) blkTranslateZpool(name string, size int64, shared bool) (string, []s
 }
 
 func (t *T) commonDrbdKeywords(rid string) (l []string) {
-	maxPeers := t.maxPeers()
-	if maxPeers != "" {
-		l = append(l, rid+".max_peers="+maxPeers)
+	if s := t.maxPeers(); s != "" {
+		l = append(l, rid+".max_peers="+s)
 	}
-	network := t.network()
-	if network != "" {
-		l = append(l, rid+".network="+network)
+	if s := t.network(); s != "" {
+		l = append(l, rid+".network="+s)
+	}
+	if s := t.template(); s != "" {
+		l = append(l, rid+".template="+s)
 	}
 	for nodename, addr := range t.addrs() {
 		l = append(l, rid+".addr@"+nodename+"="+addr)
@@ -246,35 +254,27 @@ func (t *T) commonDrbdKeywords(rid string) (l []string) {
 	return
 }
 
-func (t *T) BlkTranslate(name string, size int64, shared bool) ([]string, error) {
+func (t *T) commonTranslate(name string, size int64, shared bool) (string, []string, error) {
 	if t.vg() != "" {
-		_, kws, err := t.blkTranslateVG(name, size, shared)
-		return kws, err
+		return t.blkTranslateVG(name, size, shared)
 	} else if t.zpool() != "" {
-		_, kws, err := t.blkTranslateZpool(name, size, shared)
-		return kws, err
+		return t.blkTranslateZpool(name, size, shared)
 	} else {
-		_, kws, err := t.blkTranslateFile(name, size, shared)
-		return kws, err
+		return t.blkTranslateFile(name, size, shared)
 	}
 }
 
+func (t *T) BlkTranslate(name string, size int64, shared bool) ([]string, error) {
+	_, kws, err := t.commonTranslate(name, size, shared)
+	return kws, err
+}
+
 func (t *T) Translate(name string, size int64, shared bool) ([]string, error) {
-	var (
-		rid string
-		kws []string
-		err error
-	)
-	if t.vg() != "" {
-		rid, kws, err = t.blkTranslateVG(name, size, shared)
-	} else if t.zpool() != "" {
-		rid, kws, err = t.blkTranslateZpool(name, size, shared)
-	} else {
-		rid, kws, err = t.blkTranslateFile(name, size, shared)
-	}
+	rid, kws, err := t.commonTranslate(name, size, shared)
 	if err != nil {
 		return nil, err
 	}
 	kws = append(kws, t.AddFS(name, shared, 1, 0, rid)...)
+	kws = append(kws, "devices_from="+rid)
 	return kws, nil
 }

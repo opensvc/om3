@@ -12,14 +12,17 @@ type (
 	CmdObjectSwitch struct {
 		OptsGlobal
 		commoncmd.OptsAsync
-		To string
+		To   string
+		Live bool
 	}
 )
 
 func (t *CmdObjectSwitch) Run(kind string) error {
 	mergedSelector := commoncmd.MergeSelector("", t.ObjectSelector, kind, "")
 	target := instance.MonitorGlobalExpectPlacedAt.String()
-	options := instance.MonitorGlobalExpectOptionsPlacedAt{}
+	options := instance.MonitorGlobalExpectOptionsPlacedAt{
+		Live: t.Live,
+	}
 	if t.To != "" {
 		options.Destination = strings.Split(t.To, ",")
 	} else {

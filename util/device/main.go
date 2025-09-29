@@ -105,6 +105,23 @@ func (t T) SCSIPaths() (L, error) {
 	return t.Slaves()
 }
 
+func (t L) Contains(dev T) (bool, error) {
+	ref, err := dev.MajorMinorStr()
+	if err != nil {
+		return false, err
+	}
+	for _, dev = range t {
+		s, err := dev.MajorMinorStr()
+		if err != nil {
+			return false, err
+		}
+		if s == ref {
+			return true, nil
+		}
+	}
+	return false, nil
+}
+
 func (t L) SCSIPaths() (L, error) {
 	var errs error
 	l := make(L, 0)
