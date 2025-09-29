@@ -62,16 +62,16 @@ func FlagComplianceForce(flags *pflag.FlagSet, p *bool) {
 	flags.BoolVar(p, "force", false, "don't check before fix")
 }
 
+func FlagConfirm(flags *pflag.FlagSet, p *bool) {
+	flags.BoolVar(p, "confirm", false, "confirm a run action configured to ask for confirmation")
+}
+
 func FlagCPUProfile(flags *pflag.FlagSet, p *string) {
 	flags.StringVar(p, "cpuprofile", "", "dump a cpu pprof in this file on exit")
 }
 
 func FlagCreateConfig(flags *pflag.FlagSet, p *string) {
 	flags.StringVar(p, "config", "", "the initial configuration source: -, /dev/stdin, file path, url, object path or template://<name>")
-}
-
-func FlagConfirm(flags *pflag.FlagSet, p *bool) {
-	flags.BoolVar(p, "confirm", false, "confirm a run action configured to ask for confirmation")
 }
 
 func FlagCreateForce(flags *pflag.FlagSet, p *bool) {
