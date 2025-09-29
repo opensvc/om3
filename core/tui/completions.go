@@ -9,11 +9,46 @@ import (
 
 var completionTree = map[string]any{
 	"do": map[string]any{
-		"cluster":  []string{"freeze", "unfreeze"},
-		"object":   []string{"abort", "delete", "freeze", "giveback", "provision", "purge", "restart", "start", "stop", "switch", "unfreeze", "unprovision"},
-		"instance": []string{"clear", "delete", "freeze", "provision", "refresh", "start", "stop", "switch", "takeover", "unfreeze", "unprovision"},
-		"resource": []string{"disable", "enable", "provision", "run", "start", "stop", "unprovision"},
-		"node":     []string{"drain", "freeze", "unfreeze"},
+		"cluster": []string{"freeze", "unfreeze"},
+		"object": map[string]any{
+			"abort":       nil,
+			"freeze":      nil,
+			"giveback":    nil,
+			"provision":   nil,
+			"purge":       nil,
+			"restart":     nil,
+			"start":       nil,
+			"stop":        nil,
+			"switch":      []string{"--live"},
+			"unfreeze":    nil,
+			"unprovision": nil,
+		},
+		"instance": map[string]any{
+			"clear":       nil,
+			"delete":      nil,
+			"freeze":      nil,
+			"provision":   nil,
+			"refresh":     nil,
+			"restart":     nil,
+			"start":       nil,
+			"stop":        nil,
+			"switch":      []string{"--live"},
+			"takeover":    []string{"--live"},
+			"unfreeze":    nil,
+			"unprovision": nil,
+		},
+		"resource": map[string]any{
+			"disable":     nil,
+			"enable":      nil,
+			"provision":   nil,
+			"run":         nil,
+			"start":       []string{"--force"},
+			"stop":        []string{"--force"},
+			"unprovision": nil,
+		},
+		"service": []string{"restart", "start", "stop"},
+		"task":    []string{"abort", "restart", "start", "stop"},
+		"node":    []string{"drain", "freeze", "unfreeze"},
 	},
 	"filter":  nil,
 	"connect": nil,
@@ -61,26 +96,31 @@ func (t *App) getCompletions(text string) []string {
 	current := completionTree
 	var prefix strings.Builder
 
+	isMap := func(v any) bool {
+		_, ok := v.(map[string]any)
+		return ok
+	}
+
 	for i, arg := range args {
 		if i > 0 {
 			prefix.WriteString(" ")
 		}
-		prefix.WriteString(arg)
 
 		next, exist := current[arg]
 		if !exist {
-			if i == 0 {
+			if isMap(current) {
 				var results []string
-				options := maps.Keys(completionTree)
+				options := maps.Keys(current)
 				for _, option := range options {
 					if strings.HasPrefix(option, arg) {
-						results = append(results, option)
+						results = append(results, prefix.String()+option)
 					}
 				}
 				return results
 			}
 			return []string{}
 		}
+		prefix.WriteString(arg)
 		switch v := next.(type) {
 		case map[string]any:
 			if arg == "do" {
@@ -88,22 +128,31 @@ func (t *App) getCompletions(text string) []string {
 				if selected == "" {
 					return []string{}
 				}
-				actions, ok := v[selected].([]string)
-				if !ok {
+				if _, ok := v[selected]; !ok {
 					return []string{}
 				}
-				return t.buildCompletions(actions, args, i, prefix.String())
+				switch v[selected].(type) {
+				case []string:
+					return t.buildCompletions(v[selected].([]string), args, i, prefix.String())
+				case map[string]any:
+					current = v[selected].(map[string]any)
+				default:
+					return []string{}
+				}
 			}
 		case []string:
-			if arg == "go" {
-				return t.buildCompletions(v, args, i, prefix.String())
-			}
+			return t.buildCompletions(v, args, i, prefix.String())
 		case nil:
 			return []string{}
 		}
 	}
 	if m, ok := any(current).(map[string]any); ok {
-		return maps.Keys(m)
+		keys := maps.Keys(m)
+		res := make([]string, 0, len(keys))
+		for _, key := range keys {
+			res = append(res, prefix.String()+" "+key)
+		}
+		return res
 	}
 	return []string{}
 }
