@@ -10,17 +10,15 @@ import (
 	"strings"
 	"time"
 
-	"github.com/opensvc/fcntllock"
-	"github.com/opensvc/flock"
 	"github.com/rs/zerolog"
 
 	"github.com/opensvc/om3/core/rawconfig"
 	"github.com/opensvc/om3/util/command"
 	"github.com/opensvc/om3/util/file"
 	"github.com/opensvc/om3/util/funcopt"
+	"github.com/opensvc/om3/util/lock"
 	"github.com/opensvc/om3/util/plog"
 	"github.com/opensvc/om3/util/waitfor"
-	"github.com/opensvc/om3/util/xsession"
 )
 
 type (
@@ -768,11 +766,9 @@ func (t Digest) FreePort(exclude []int) (int, error) {
 }
 
 func (t *T) withLock(ctx context.Context, f func(context.Context) error, intent string, timeout time.Duration) error {
-	p := filepath.Join(rawconfig.Paths.Lock, "drbd-"+t.res+".lock")
-	lock := flock.New(p, xsession.ID.String(), fcntllock.New)
-	if err := lock.Lock(timeout, intent); err != nil {
-		return err
-	}
-	defer func() { _ = lock.UnLock() }()
-	return f(ctx)
+	return lock.Func(t.lockFile(), timeout, intent, func() error { return f(ctx) })
+}
+
+func (t *T) lockFile() string {
+	return filepath.Join(rawconfig.Paths.Lock, "drbd-"+t.res+".lock")
 }
