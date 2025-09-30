@@ -148,6 +148,6 @@ type (
 		GetHostname() string
 		GetOsvcRootPath() string
 		EncapCp(context.Context, string, string) error
-		EncapCmd(context.Context, []string, []string) (Commander, error)
+		EncapCmd(ctx context.Context, args []string, envs []string, stdin io.Reader) (Commander, error)
 	}
 )

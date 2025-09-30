@@ -1,7 +1,9 @@
 package xerrors
 
 var (
-	ObjectNotFound = newIndexedError("object not found", 2)
+	ExitCodeObjectNotFound = 2
+
+	ObjectNotFound = newIndexedError("object not found", ExitCodeObjectNotFound)
 )
 
 type indexedError struct {

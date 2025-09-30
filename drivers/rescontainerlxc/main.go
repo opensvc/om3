@@ -5,6 +5,7 @@ import (
 	"bytes"
 	"context"
 	"fmt"
+	"io"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -1269,12 +1270,13 @@ func (t *T) upPeer() (string, error) {
 	return "", nil
 }
 
-func (t *T) EncapCmd(ctx context.Context, args []string, envs []string) (resource.Commander, error) {
+func (t *T) EncapCmd(ctx context.Context, args []string, envs []string, stdin io.Reader) (resource.Commander, error) {
 	baseArgs, err := t.rcmd(envs)
 	if err != nil {
 		return nil, err
 	}
-	cmd := exec.Command(baseArgs[0], append(baseArgs[1:], args...)...)
+	cmd := exec.CommandContext(ctx, baseArgs[0], append(baseArgs[1:], args...)...)
+	cmd.Stdin = stdin
 	return cmd, nil
 }
 

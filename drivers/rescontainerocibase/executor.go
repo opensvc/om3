@@ -3,6 +3,7 @@ package rescontainerocibase
 import (
 	"context"
 	"fmt"
+	"io"
 	"os"
 	"os/exec"
 	"strings"
@@ -43,10 +44,14 @@ func NewExecutor(exe string, args ExecutorArgser, log Logger) *Executor {
 	return &Executor{bin: exe, args: args, logger: log, mutex: &sync.RWMutex{}}
 }
 
-func (e *Executor) EncapCmd(ctx context.Context, args []string, env []string) (*exec.Cmd, error) {
+func (e *Executor) EncapCmd(ctx context.Context, args []string, env []string, stdin io.Reader) (*exec.Cmd, error) {
 	args = e.args.ExecCmdArgs(args, env)
 	cmd := exec.CommandContext(ctx, e.bin, args...)
-	cmd.Stdin = os.Stdin
+	if stdin != nil {
+		cmd.Stdin = stdin
+	} else {
+		cmd.Stdin = os.Stdin
+	}
 	return cmd, nil
 }
 

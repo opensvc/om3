@@ -1025,23 +1025,30 @@ func (t *T) upPeer() (string, error) {
 	return "", nil
 }
 
-func (t *T) EncapCmd(ctx context.Context, args []string, envs []string) (resource.Commander, error) {
+func (t *T) EncapCmd(ctx context.Context, args []string, envs []string, stdin io.Reader) (resource.Commander, error) {
 	if t.QGA {
-		return t.EncapCmdWithQGA(ctx, args, envs)
+		return t.EncapCmdWithQGA(ctx, args, envs, stdin)
 	} else {
-		return t.EncapCmdWithRCmd(ctx, args, envs)
+		return t.EncapCmdWithRCmd(ctx, args, envs, stdin)
 	}
 }
 
-func (t *T) EncapCmdWithQGA(ctx context.Context, args []string, envs []string) (*qgaCommand, error) {
+func (t *T) EncapCmdWithQGA(ctx context.Context, args []string, envs []string, stdin io.Reader) (*qgaCommand, error) {
 	if len(args) < 1 {
 		return nil, fmt.Errorf("EncapCmdWithQGA call with empty a 'args []string' argument")
 	}
-	cmd := newQGACommand(ctx, t.Name, args[0], args[1:], envs)
+	cmd := &qgaCommand{
+		Ctx:   ctx,
+		Name:  t.Name,
+		Path:  args[0],
+		Args:  args[1:],
+		Envs:  envs,
+		Stdin: stdin,
+	}
 	return cmd, nil
 }
 
-func (t *T) EncapCmdWithRCmd(ctx context.Context, args []string, envs []string) (*exec.Cmd, error) {
+func (t *T) EncapCmdWithRCmd(ctx context.Context, args []string, envs []string, stdin io.Reader) (*exec.Cmd, error) {
 	baseArgs, err := t.rcmd()
 	if err != nil {
 		return nil, err
@@ -1049,6 +1056,7 @@ func (t *T) EncapCmdWithRCmd(ctx context.Context, args []string, envs []string) 
 	baseArgs = append(baseArgs, envs...)
 	baseArgs = append(baseArgs, args...)
 	cmd := exec.CommandContext(ctx, baseArgs[0], baseArgs[1:]...)
+	cmd.Stdin = stdin
 	return cmd, nil
 }
 

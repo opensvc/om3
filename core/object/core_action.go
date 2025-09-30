@@ -27,6 +27,7 @@ import (
 	"github.com/opensvc/om3/core/resourceset"
 	"github.com/opensvc/om3/core/status"
 	"github.com/opensvc/om3/core/statusbus"
+	"github.com/opensvc/om3/core/xerrors"
 	"github.com/opensvc/om3/daemon/api"
 	"github.com/opensvc/om3/util/hostname"
 	"github.com/opensvc/om3/util/key"
@@ -482,7 +483,7 @@ func (t *actor) action(ctx context.Context, fn resourceset.DoFunc) error {
 		if s := os.Getenv(env.ActionOrchestrationIDVar); s != "" {
 			envs = append(envs, env.ActionOrchestrationIDVar+"="+s)
 		}
-		cmd, err := encapContainer.EncapCmd(ctx, args, envs)
+		cmd, err := encapContainer.EncapCmd(ctx, args, envs, nil)
 		if err != nil {
 			return err
 		}
@@ -491,8 +492,8 @@ func (t *actor) action(ctx context.Context, fn resourceset.DoFunc) error {
 		if err != nil {
 			if exitErr, ok := err.(exitcoder); ok {
 				switch exitErr.ExitCode() {
-				case 2:
-					if err := encapContainer.EncapCp(ctx, configFile, configFile); err != nil {
+				case xerrors.ExitCodeObjectNotFound:
+					if err := t.installEncapConfig(ctx, encapContainer, configFile); err != nil {
 						return err
 					}
 				case 127, 128:
@@ -530,7 +531,7 @@ func (t *actor) action(ctx context.Context, fn resourceset.DoFunc) error {
 		}
 
 		args = append([]string{encapContainer.GetOsvcRootPath(), t.path.String(), "instance", action.Name}, options...)
-		cmd, err = encapContainer.EncapCmd(ctx, args, envs)
+		cmd, err = encapContainer.EncapCmd(ctx, args, envs, nil)
 		if err != nil {
 			return err
 		}

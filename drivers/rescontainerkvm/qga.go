@@ -87,11 +87,12 @@ type (
 	}
 
 	qgaCommand struct {
-		ctx  context.Context
-		name string
-		path string
-		args []string
-		envs []string
+		Ctx   context.Context
+		Name  string
+		Path  string
+		Args  []string
+		Envs  []string
+		Stdin io.Reader
 
 		pid    int
 		status *qgaCommandStatus
@@ -106,23 +107,34 @@ func (t *qgaExecError) ExitCode() int {
 	return t.exitCode
 }
 
-func newQGACommand(ctx context.Context, name, path string, args, envs []string) *qgaCommand {
-	return &qgaCommand{
-		ctx:  ctx,
-		name: name,
-		path: path,
-		args: args,
-		envs: envs,
-	}
-}
-
 func (t *qgaCommand) Start() error {
+	getInputData := func() (string, error) {
+		if t.Stdin == nil {
+			return "", nil
+		}
+		b, err := io.ReadAll(t.Stdin)
+		if err != nil {
+			return "", err
+		}
+		return base64.StdEncoding.EncodeToString(b), nil
+	}
 	if t.status != nil {
 		return nil
 	}
 	var response qgaExecCommandResponse
-	request := newQGAExecCommandRequest(t.path, t.args, t.envs)
-	err := qgaPost(t.name, request, &response)
+	request := qgaCommandRequest{
+		Execute: "guest-exec",
+	}
+	request.Arguments.CaptureOutput = true
+	request.Arguments.Path = t.Path
+	request.Arguments.Arg = t.Args
+	request.Arguments.Env = t.Envs
+	if inputData, err := getInputData(); err != nil {
+		return err
+	} else {
+		request.Arguments.InputData = inputData
+	}
+	err := qgaPost(t.Name, &request, &response)
 	if err != nil {
 		return err
 	}
@@ -146,10 +158,10 @@ func (t *qgaCommand) Wait() error {
 	defer ticker.Stop()
 	for {
 		select {
-		case <-t.ctx.Done():
+		case <-t.Ctx.Done():
 			return nil
 		case <-ticker.C:
-			status, err := qgaExecStatus(t.name, t.pid)
+			status, err := qgaExecStatus(t.Name, t.pid)
 			if err != nil {
 				return err
 			}
@@ -202,17 +214,6 @@ func newQGAExecStatusCommandRequest(pid int) *qgaCommandStatusRequest {
 		Execute: "guest-exec-status",
 	}
 	cmd.Arguments.PID = pid
-	return &cmd
-}
-
-func newQGAExecCommandRequest(path string, args, envs []string) *qgaCommandRequest {
-	cmd := qgaCommandRequest{
-		Execute: "guest-exec",
-	}
-	cmd.Arguments.Path = path
-	cmd.Arguments.Arg = args
-	cmd.Arguments.Env = envs
-	cmd.Arguments.CaptureOutput = true
 	return &cmd
 }
 

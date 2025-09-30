@@ -19,6 +19,7 @@ import (
 	"github.com/opensvc/om3/core/resourceid"
 	"github.com/opensvc/om3/core/status"
 	"github.com/opensvc/om3/core/statusbus"
+	"github.com/opensvc/om3/core/xerrors"
 	"github.com/opensvc/om3/util/file"
 	"github.com/opensvc/om3/util/hostname"
 	"github.com/opensvc/om3/util/xsession"
@@ -286,6 +287,28 @@ func (t *actor) resourceStatusEval(ctx context.Context, data *instance.Status, m
 	return err
 }
 
+func (t *actor) installEncapConfig(ctx context.Context, encapContainer resource.Encaper, configFile string) error {
+	// Prepare a io.Reader to serve the config
+	r, err := os.Open(configFile)
+	if err != nil {
+		return err
+	}
+	defer func() { r.Close() }()
+
+	// Execute `om <path> create --config=- --restore --wait` in the encap container with the config piped in
+	args := []string{encapContainer.GetOsvcRootPath(), t.path.String(), "create", "--config=-", "--restore", "--wait"}
+	envs := []string{
+		"OSVC_SESSION_ID=" + xsession.ID.String(),
+		env.ActionOrchestrationIDVar + "=" + os.Getenv(env.ActionOrchestrationIDVar),
+		env.OriginSetenvArg(env.Origin()),
+	}
+	cmd, err := encapContainer.EncapCmd(ctx, args, envs, r)
+	if err != nil {
+		return err
+	}
+	return cmd.Run()
+}
+
 func (t *actor) resourceStatusEvalEncap(ctx context.Context, encapContainer resource.Encaper, pushed bool) (*instance.EncapStatus, error) {
 	var (
 		encapInstanceStates *instance.States
@@ -307,19 +330,19 @@ func (t *actor) resourceStatusEvalEncap(ctx context.Context, encapContainer reso
 		env.ActionOrchestrationIDVar + "=" + os.Getenv(env.ActionOrchestrationIDVar),
 		env.OriginSetenvArg(env.Origin()),
 	}
-	cmd, err := encapContainer.EncapCmd(ctx, args, envs)
+	cmd, err := encapContainer.EncapCmd(ctx, args, envs, nil)
 	if err != nil {
 		return nil, err
 	}
 	b, err := cmd.CombinedOutput()
 	if err != nil {
 		if exitErr, ok := err.(exitcoder); ok {
-			if exitErr.ExitCode() == 2 {
+			if exitErr.ExitCode() == xerrors.ExitCodeObjectNotFound {
 				if pushed {
 					return nil, fmt.Errorf("no encap instance config: already pushed")
 				}
 				t.log.Debugf("%s: no encap instance config: push the config", t.path)
-				if err := encapContainer.EncapCp(ctx, configFile, configFile); err != nil {
+				if err := t.installEncapConfig(ctx, encapContainer, configFile); err != nil {
 					return nil, err
 				}
 				return t.resourceStatusEvalEncap(ctx, encapContainer, true)
@@ -336,7 +359,7 @@ func (t *actor) resourceStatusEvalEncap(ctx context.Context, encapContainer reso
 			return nil, fmt.Errorf("no encap instance status: already pushed")
 		}
 		t.log.Debugf("%s: no encap instance status: push the config", t.path)
-		if err := encapContainer.EncapCp(ctx, configFile, configFile); err != nil {
+		if err := t.installEncapConfig(ctx, encapContainer, configFile); err != nil {
 			return nil, err
 		}
 		return t.resourceStatusEvalEncap(ctx, encapContainer, true)
@@ -362,7 +385,7 @@ func (t *actor) resourceStatusEvalEncap(ctx context.Context, encapContainer reso
 			return nil, fmt.Errorf("encap instance config checksum (%s) is different than host's (%s): already pushed", encapInstanceStates.Config.Checksum, checksum)
 		}
 		t.log.Debugf("%s: encap instance config checksum (%s) is different than host's (%s): push the config", t.path, encapInstanceStates.Config.Checksum, checksum)
-		if err := encapContainer.EncapCp(ctx, configFile, configFile); err != nil {
+		if err := t.installEncapConfig(ctx, encapContainer, configFile); err != nil {
 			return nil, err
 		}
 		return t.resourceStatusEvalEncap(ctx, encapContainer, true)
