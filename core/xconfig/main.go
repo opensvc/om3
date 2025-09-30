@@ -48,6 +48,7 @@ type (
 		KeywordLookup(key.T, string) keywords.Keyword
 		IsVolatile() bool
 		Config() *T
+		ConfigData() any
 
 		// for reference private to the referrer. ex: path for an object
 		Dereference(string) (string, error)
@@ -1350,6 +1351,19 @@ func (t T) initDefaultSection() error {
 
 func (t *T) rawCommit(configData rawconfig.T, configPath string, validate bool) error {
 	if !t.changed {
+		if t.Referrer == nil {
+			return nil
+		}
+		if configData := t.Referrer.ConfigData(); configData != nil {
+			switch i := configData.(type) {
+			case []byte:
+				return os.WriteFile(t.ConfigFilePath, i, 0o600)
+			case string:
+				if file.IsFilePath(i) {
+					return file.Copy(i, t.ConfigFilePath)
+				}
+			}
+		}
 		return nil
 	}
 	if !configData.IsZero() {

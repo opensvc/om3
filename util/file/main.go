@@ -25,6 +25,16 @@ func IsProtected(fpath string) bool {
 	}
 }
 
+func IsFilePath(path string) bool {
+	// Clean the path to remove any relative components
+	cleanPath := filepath.Clean(path)
+	// Check if the path exists
+	if _, err := os.Stat(cleanPath); err == nil {
+		return true
+	}
+	return false
+}
+
 func IsNotDir(err error) bool {
 	e, ok := err.(*os.PathError)
 	if !ok {

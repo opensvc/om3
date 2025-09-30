@@ -59,6 +59,10 @@ func (t Node) String() string {
 	return fmt.Sprintf("node")
 }
 
+func (t *Node) ConfigData() any {
+	return t.configData
+}
+
 func (t *Node) SetVolatile(v bool) {
 	t.volatile = v
 }
