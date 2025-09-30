@@ -37,7 +37,13 @@ type (
 		SetSSHKeyFile()
 	}
 
-	// PreMove implements a PreMove function that is called by a moveable
+	// Mover implements a Move function that is exposed by resource
+	// drivers that support live migration (eg container.kvm).
+	Mover interface {
+		Move(ctx context.Context, to string) error
+	}
+
+	// PreMover implements a PreMove function that is called by a moveable
 	// driver (eg container.kvm) before starting a move.
 	PreMover interface {
 		PreMove(ctx context.Context, to string) error
@@ -148,6 +154,6 @@ type (
 		GetHostname() string
 		GetOsvcRootPath() string
 		EncapCp(context.Context, string, string) error
-		EncapCmd(context.Context, []string, []string) (Commander, error)
+		EncapCmd(ctx context.Context, args []string, envs []string, stdin io.Reader) (Commander, error)
 	}
 )

@@ -37,7 +37,8 @@ func WithClusterConfigFile(s string) funcopt.O {
 	})
 }
 
-// WithConfigData sets configuration overriding what is installed in the config file
+// WithConfigData sets configuration file (string) or content ([]byte)
+// overriding what is installed in the config file.
 // Useful for testing volatile services.
 func WithConfigData(b any) funcopt.O {
 	return funcopt.F(func(t any) error {

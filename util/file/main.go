@@ -25,6 +25,16 @@ func IsProtected(fpath string) bool {
 	}
 }
 
+func IsFilePath(path string) bool {
+	// Clean the path to remove any relative components
+	cleanPath := filepath.Clean(path)
+	// Check if the path exists
+	if _, err := os.Stat(cleanPath); err == nil {
+		return true
+	}
+	return false
+}
+
 func IsNotDir(err error) bool {
 	e, ok := err.(*os.PathError)
 	if !ok {
@@ -105,22 +115,25 @@ func ExistsAndSymlink(path string) (bool, error) {
 // Copy copies the file content from src file path to dst file path.
 // If dst does not exist, it is created.
 func Copy(src string, dst string) (err error) {
-	var (
-		r *os.File
-		w *os.File
-	)
-	if r, err = os.Open(src); err != nil {
-		return err
-	}
-	defer r.Close()
+	var w *os.File
 	if w, err = os.Create(dst); err != nil {
 		return err
 	}
 	defer w.Close()
+	return CopyTo(src, w)
+}
+
+func CopyTo(src string, w *os.File) (err error) {
+	var r *os.File
+	if r, err = os.Open(src); err != nil {
+		return err
+	}
+	defer r.Close()
 	if _, err := io.Copy(w, r); err != nil {
 		return err
 	}
 	return nil
+
 }
 
 // Copy2 is Identical to Copy() except that Copy2() also attempts to preserve file metadata.

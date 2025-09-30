@@ -13,6 +13,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"io"
 	"os/exec"
 	"path/filepath"
 	"slices"
@@ -113,7 +114,7 @@ type (
 
 	ExecuteEncaper interface {
 		EncapCp(context.Context, string, string) error
-		EncapCmd(context.Context, []string, []string) (*exec.Cmd, error)
+		EncapCmd(context.Context, []string, []string, io.Reader) (*exec.Cmd, error)
 	}
 
 	// ExecuteImager interface defines the functions used to manage container
@@ -956,8 +957,8 @@ func mangleVolMountOptions(initialOptions string, vol object.Vol) (string, error
 	return strings.Join(newOpts, ","), nil
 }
 
-func (t *BT) EncapCmd(ctx context.Context, args []string, env []string) (resource.Commander, error) {
-	return t.executer.EncapCmd(ctx, args, env)
+func (t *BT) EncapCmd(ctx context.Context, args []string, env []string, stdin io.Reader) (resource.Commander, error) {
+	return t.executer.EncapCmd(ctx, args, env, stdin)
 }
 
 func (t *BT) EncapCp(ctx context.Context, src, dst string) error {

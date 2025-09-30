@@ -69,6 +69,10 @@ type (
 	}
 )
 
+func (t *core) ConfigData() any {
+	return t.configData
+}
+
 func (t *core) PostCommit() error {
 	if t.postCommit == nil {
 		return nil

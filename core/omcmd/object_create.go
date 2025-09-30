@@ -72,22 +72,33 @@ func (t *CmdObjectCreate) Run(kind string) error {
 
 	ctx, cancel := context.WithTimeout(context.Background(), t.Time)
 	defer cancel()
-	var needWait bool
-	if t.Wait || t.Provision {
+
+	needWait, err := func() (bool, error) {
+		if !t.Wait && !t.Provision {
+			return false, nil
+		}
+		if t.path.Exists() {
+			return false, nil
+		}
 		// need dedicated client that override default client timeout with t.Timeout (zero means no timeout).
-		if c, err := client.New(client.WithTimeout(t.Timeout)); err != nil {
-			return err
-		} else if err := commoncmd.WaitAllInstanceMonitor(ctx, c, t.path, t.Time, errC); err != nil {
+		c, err := client.New(client.WithTimeout(t.Timeout))
+		if err != nil {
+			return false, err
+		}
+		err = commoncmd.WaitAllInstanceMonitor(ctx, c, t.path, t.Time, errC)
+		if err != nil {
 			// Wait until all instance monitors are registered before continuing, otherwise the next orchestration
 			// step may return early due to missing cluster monitors.
 			if errors.Is(err, os.ErrNotExist) {
 				// the daemon is not running.
 			} else {
-				return err
+				return false, err
 			}
-		} else {
-			needWait = true
 		}
+		return true, nil
+	}()
+	if err != nil {
+		return err
 	}
 
 	if err := t.do(); err != nil {
@@ -233,7 +244,7 @@ func (t CmdObjectCreate) dataFromConfig() ([]byte, error) {
 }
 
 func (t CmdObjectCreate) fromData(p naming.Path, b []byte) error {
-	if !t.Force && p.Exists() {
+	if !t.Force && !t.Restore && p.Exists() {
 		return fmt.Errorf("%s already exists", p)
 	}
 	oc, err := object.NewConfigurer(p, object.WithConfigData(b))
