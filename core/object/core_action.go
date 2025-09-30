@@ -466,6 +466,13 @@ func (t *actor) action(ctx context.Context, fn resourceset.DoFunc) error {
 			return nil
 		}
 
+		if actioncontext.MoveTo(ctx) != "" {
+			if _, ok := r.(resource.Mover); ok {
+				// let encap alone during live migrations
+				return nil
+			}
+		}
+
 		configFile := t.path.ConfigFile()
 		rid := r.RID()
 
