@@ -1600,6 +1600,9 @@ type UserListKind string
 // DRBDResourceName defines model for DRBDResourceName.
 type DRBDResourceName = string
 
+// DRBDResourceNodeID defines model for DRBDResourceNodeID.
+type DRBDResourceNodeID = string
+
 // Duration defines model for Duration.
 type Duration = string
 
@@ -1992,6 +1995,9 @@ type PostNodeDRBDConfigParams struct {
 type PostNodeDRBDConnectParams struct {
 	// Name drbd resource name
 	Name DRBDResourceName `form:"name" json:"name"`
+
+	// NodeId drbd resource connection node-id
+	NodeId *DRBDResourceNodeID `form:"node_id,omitempty" json:"node_id,omitempty"`
 }
 
 // PostNodeDRBDPrimaryParams defines parameters for PostNodeDRBDPrimary.

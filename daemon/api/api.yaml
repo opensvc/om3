@@ -2,7 +2,7 @@ openapi: 3.0.0
 
 info:
   title: opensvc agent api
-  version: 4.0.0
+  version: 4.1.0
 
 paths:
   /api/auth/info:
@@ -1627,6 +1627,7 @@ paths:
       parameters:
         - $ref: '#/components/parameters/inPathNodeName'
         - $ref: '#/components/parameters/DRBDResourceName'
+        - $ref: '#/components/parameters/DRBDResourceNodeID'
       responses:
         204:
           $ref: '#/components/responses/204'
@@ -7660,6 +7661,12 @@ components:
       in: query
       description: drbd resource name
       required: true
+      schema:
+        type: string
+    DRBDResourceNodeID:
+      name: node_id
+      in: query
+      description: drbd resource connection node-id
       schema:
         type: string
     Roles:

@@ -51,7 +51,11 @@ func (a *DaemonAPI) postLocalDRBDConnect(ctx echo.Context, params api.PostNodeDR
 		log.Warnf("can't create internal drbd object: %s", err)
 		return JSONProblemf(ctx, http.StatusInternalServerError, "New drbd", "%s", err)
 	}
-	if err := res.TryStartConnection(c); err != nil {
+	var nodeID string
+	if params.NodeId != nil {
+		nodeID = *params.NodeId
+	}
+	if err := res.TryStartConnection(c, nodeID); err != nil {
 		log.Warnf("unexpected error during try start connection: %s", err)
 		return JSONProblemf(ctx, http.StatusInternalServerError, "TryStartConnection", "%s", err)
 	}

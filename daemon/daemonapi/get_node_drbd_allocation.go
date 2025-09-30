@@ -59,7 +59,7 @@ func (t *pendingDRBDAllocationsMap) ports() []int {
 func (t *pendingDRBDAllocationsMap) expire() {
 	now := time.Now()
 	for id, a := range t.m {
-		if a.ExpiredAt.After(now) {
+		if now.After(a.ExpiredAt) {
 			delete(t.m, id)
 		}
 	}

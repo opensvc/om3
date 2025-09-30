@@ -279,6 +279,13 @@ func (t *T) onInstanceStatusPost(msg *msgbus.InstanceStatusPost) {
 	}
 	s := msg.Path.String()
 	prev := t.iStatusM[s]
+	if msg.Value.UpdatedAt.Before(prev.UpdatedAt) {
+		// Outdated instance status must be ignored: concurrent post from `scheduled status` and `end instance action`
+		// This prevents from reverting value until the next scheduled status and fix possible unexpected orchestration
+		// --wait failure.
+		naming.LogWithPath(t.log, msg.Path).Debugf("%s: ignore outdated %s vs %s", s, msg.Value.UpdatedAt, prev.UpdatedAt)
+		return
+	}
 	if prev.Avail != msg.Value.Avail {
 		naming.LogWithPath(t.log, msg.Path).Infof("%s: change avail %s -> %s", s, prev.Avail, msg.Value.Avail)
 	}
