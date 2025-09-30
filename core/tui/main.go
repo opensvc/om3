@@ -74,6 +74,7 @@ type (
 		flex     *tview.Flex
 		command  *tview.InputField
 		contexts *tview.List
+		options  *Options
 
 		client       *client.T
 		streamClient *client.T
@@ -91,6 +92,7 @@ type (
 		isInEventView atomic.Bool
 
 		isOnConfirmation bool
+		backToContext    bool
 
 		viewPath naming.Path
 		viewNode string
@@ -124,6 +126,7 @@ type (
 
 const (
 	viewObject viewId = iota
+	viewContext
 	viewConfig
 	viewKey
 	viewKeys
@@ -135,6 +138,7 @@ const (
 	viewNetworkIpList
 	viewEvents
 	viewHbStatus
+	viewRelay
 	viewLast // marker, not a real view
 )
 
@@ -161,7 +165,7 @@ type Options struct {
 }
 
 func Run(options *Options) error {
-	app := NewApp()
+	app := NewApp(options)
 	if options != nil {
 		if options.Selector != "" {
 			app.Frame.Selector = options.Selector
@@ -217,6 +221,8 @@ func (t viewId) String() string {
 	switch t {
 	case viewObject:
 		return "objects"
+	case viewContext:
+		return "context"
 	case viewConfig:
 		return "configuration"
 	case viewKey:
@@ -237,6 +243,8 @@ func (t viewId) String() string {
 		return "network ip list"
 	case viewHbStatus:
 		return "heartbeat status"
+	case viewRelay:
+		return "relay"
 	default:
 		return ""
 	}
@@ -264,7 +272,7 @@ func (t *App) focus() viewId {
 	return t.stack[n-1]
 }
 
-func NewApp() *App {
+func NewApp(options *Options) *App {
 	return &App{
 		stack:            make([]viewId, 0),
 		firstInstanceCol: 5,
@@ -274,6 +282,7 @@ func NewApp() *App {
 			Selector: "*/svc/*",
 			Sections: []string{},
 		},
+		options:           options,
 		selectedNodes:     make(map[string]any),
 		selectedPaths:     make(map[string]any),
 		selectedInstances: make(map[[2]string]any),
@@ -364,6 +373,9 @@ func (t *App) initApp() {
 			t.stop()
 		case 'r':
 			t.onRuneR(event)
+		case 'p':
+			t.infof("%d", len(t.stack))
+
 		}
 		return event
 	})
@@ -427,17 +439,6 @@ func (t *App) listContexts() {
 		v.SetCell(row, 3, tview.NewTableCell(data.Namespace).SetSelectable(false))
 	}
 
-	v.SetInputCapture(func(event *tcell.EventKey) *tcell.EventKey {
-		switch event.Key() {
-		case tcell.KeyESC:
-			t.flex.Clear()
-			t.flex.AddItem(t.head, 1, 0, false)
-			t.flex.AddItem(t.objects, 0, 1, true)
-			t.app.SetFocus(t.objects)
-			t.updateHead()
-		}
-		return event
-	})
 	v.SetSelectedFunc(func(row, col int) {
 		c := v.GetCell(row, col).Text
 		os.Setenv("OSVC_CONTEXT", c)
@@ -460,6 +461,13 @@ func (t *App) listContexts() {
 				t.flex.AddItem(t.objects, 0, 1, true)
 				t.app.SetFocus(t.objects)
 				t.updateHead()
+				if resp.JSON200.RawGrant == "heartbeat" {
+					t.nav(viewRelay)
+					t.backToContext = true
+				} else if t.backToContext {
+					t.backToContext = false
+					t.pop()
+				}
 			}
 		}
 	})
@@ -476,7 +484,7 @@ func (t *App) Run() error {
 		return err
 	}
 	go t.runEventReader()
-	go t.initContext()
+	t.initContext()
 	return t.app.Run()
 }
 
@@ -495,6 +503,10 @@ func (t *App) initContext() {
 			t.streamClient = streamClient
 			t.user = resp.JSON200.Name
 			t.reconnect()
+			if resp.JSON200.RawGrant == "heartbeat" {
+				t.nav(viewRelay)
+				t.backToContext = true
+			}
 		}
 	} else {
 		t.listContexts()
@@ -506,7 +518,7 @@ func (t *App) runEventReader() {
 	for {
 		evReader, err := t.streamClient.NewGetEvents().SetSelector(t.Selector).GetReader()
 		if err != nil {
-			t.errorf("new reader: %s", err)
+			//t.errorf("new reader: %s", err)
 			if t.exitFlag.Load() {
 				return
 			}
@@ -604,6 +616,8 @@ func (t *App) do(statusGetter getter, evReader event.ReadCloser) error {
 					t.updateEventsView()
 				case viewHbStatus:
 					t.updateHbStatus()
+				case viewRelay:
+					t.updateRelayStatus()
 				default:
 					t.updateObjects()
 				}
@@ -969,7 +983,7 @@ func (t *App) onRuneColumn(event *tcell.EventKey) {
 				case "quit", "q":
 					t.stop()
 				case "connect":
-					t.listContexts()
+					t.nav(viewContext)
 					clean()
 				case "filter":
 					if len(args) < 2 {
@@ -1011,6 +1025,10 @@ func (t *App) onRuneColumn(event *tcell.EventKey) {
 						return
 					case "network", "net":
 						t.nav(viewNetwork)
+						clean()
+						return
+					case "relay":
+						t.nav(viewRelay)
 						clean()
 						return
 					}
@@ -1656,7 +1674,7 @@ func (t *App) onRuneH(event *tcell.EventKey) {
 
    go <to>
 
-     sec, cfg, vol, pool, net
+     sec, cfg, vol, pool, net, relay
 
    filter <expression>
 `
@@ -1946,6 +1964,10 @@ func (t *App) printf(color tcell.Color, format string, args ...any) {
 
 func (t *App) nav(to viewId) {
 	from := t.focus()
+	if t.backToContext && to == viewRelay {
+		t.navFromTo(from, to)
+		return
+	}
 	t.push(to)
 	if to == from {
 		return
@@ -1954,8 +1976,19 @@ func (t *App) nav(to viewId) {
 }
 
 func (t *App) back() {
+	if t.backToContext {
+		if t.focus() == viewContext {
+			return
+		}
+		t.listContexts()
+		return
+	}
 	if t.resetSelected() == 0 && len(t.stack) == 0 {
-		t.setFilter("*/svc/*")
+		filter := "*/svc/*"
+		if t.options != nil && t.options.Selector != "" {
+			filter = t.options.Selector
+		}
+		t.setFilter(filter)
 		return
 	}
 	from := t.pop()
@@ -1988,6 +2021,8 @@ func (t *App) navFromTo(from, to viewId) {
 		t.isInEventView.Store(false)
 	}
 	switch to {
+	case viewContext:
+		t.listContexts()
 	case viewLog:
 		t.initTextView()
 		t.flex.AddItem(t.textView, 0, 1, true)
@@ -2033,6 +2068,8 @@ func (t *App) navFromTo(from, to viewId) {
 		t.updateEventsView()
 	case viewHbStatus:
 		t.updateHbStatus()
+	case viewRelay:
+		t.updateRelayStatus()
 	}
 	t.updateHead()
 	t.flex.AddItem(t.errs, 1, 0, false)
@@ -2105,7 +2142,10 @@ func (t *App) initTextView() {
 }
 
 func (t *App) reconnect() {
-	t.restartC <- nil
+	select {
+	case t.restartC <- nil:
+	default:
+	}
 }
 
 func (t *App) stop() {
