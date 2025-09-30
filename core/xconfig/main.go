@@ -654,15 +654,57 @@ func (t *T) set(op keyop.T) error {
 	return fmt.Errorf("unsupported operator: %d setting key %s", op.Op, op.Key)
 }
 
-func (t *T) write() (err error) {
-	var f *os.File
-	ini.DefaultHeader = true
+func (t *T) tempConfigFile() (*os.File, error) {
 	dir := filepath.Dir(t.ConfigFilePath)
-	if err = os.MkdirAll(dir, os.ModePerm); err != nil {
+	pattern := "." + filepath.Base(t.ConfigFilePath) + ".*"
+	f, err := os.CreateTemp(dir, pattern)
+	if err == nil {
+		return f, err
+	} else if os.IsNotExist(err) {
+		if err := os.MkdirAll(dir, os.ModePerm); err != nil {
+			return nil, err
+		}
+		return os.CreateTemp(dir, pattern)
+	} else {
+		return nil, err
+	}
+}
+
+func (t *T) writeReferrerConfigData() error {
+	tmp, err := t.tempConfigFile()
+	if err != nil {
 		return err
 	}
-	base := filepath.Base(t.ConfigFilePath)
-	if f, err = os.CreateTemp(dir, "."+base+".*"); err != nil {
+	switch i := t.Referrer.ConfigData().(type) {
+	case []byte:
+		if _, err := tmp.Write(i); err != nil {
+			tmp.Close()
+			os.Remove(tmp.Name())
+			return err
+		}
+	case string:
+		if file.IsFilePath(i) {
+			if err := file.CopyTo(i, tmp); err != nil {
+				tmp.Close()
+				os.Remove(tmp.Name())
+				return err
+			}
+		}
+	}
+	tmp.Close()
+	if err := os.Rename(tmp.Name(), t.ConfigFilePath); err != nil {
+		return err
+	}
+	if err := file.Sync(t.ConfigFilePath); err != nil {
+		return err
+	}
+	return nil
+}
+
+func (t *T) write() (err error) {
+	ini.DefaultHeader = true
+	f, err := t.tempConfigFile()
+	if err != nil {
 		return err
 	}
 	fName := f.Name()
@@ -1351,20 +1393,12 @@ func (t T) initDefaultSection() error {
 
 func (t *T) rawCommit(configData rawconfig.T, configPath string, validate bool) error {
 	if !t.changed {
-		if t.Referrer == nil {
+		if t.Referrer == nil || t.Referrer.IsVolatile() {
 			return nil
 		}
-		if configData := t.Referrer.ConfigData(); configData != nil {
-			switch i := configData.(type) {
-			case []byte:
-				return os.WriteFile(t.ConfigFilePath, i, 0o600)
-			case string:
-				if file.IsFilePath(i) {
-					return file.Copy(i, t.ConfigFilePath)
-				}
-			}
+		if t.Referrer.ConfigData() == nil {
+			return nil
 		}
-		return nil
 	}
 	if !configData.IsZero() {
 		if err := t.LoadRaw(configData); err != nil {
@@ -1389,8 +1423,14 @@ func (t *T) rawCommit(configData rawconfig.T, configPath string, validate bool) 
 		}
 	}
 	if t.Referrer != nil && !t.Referrer.IsVolatile() {
-		if err := t.write(); err != nil {
-			return err
+		if !t.changed {
+			if err := t.writeReferrerConfigData(); err != nil {
+				return err
+			}
+		} else {
+			if err := t.write(); err != nil {
+				return err
+			}
 		}
 	}
 	//t.clearRefCache()
