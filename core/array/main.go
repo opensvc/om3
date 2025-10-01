@@ -65,11 +65,11 @@ func GetDriver(s string) Driver {
 	type allocator interface {
 		New() any
 	}
-	i := driver.Get(drvID)
-	if i == nil {
+	i, ok := driver.Get(drvID)
+	if !ok {
 		return nil
 	}
-	if a, ok := i.(func() Driver); ok {
+	if a, ok := i.Allocator.(func() Driver); ok {
 		return a()
 	}
 	return nil

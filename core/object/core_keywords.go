@@ -734,7 +734,7 @@ func keywordLookup(store keywords.Store, k key.T, kind naming.Kind, sectionType 
 	}
 
 	for _, i := range drivers {
-		allocator, ok := i.(func() resource.Driver)
+		allocator, ok := i.Allocator.(func() resource.Driver)
 		if !ok {
 			continue
 		}

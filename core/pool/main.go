@@ -180,12 +180,12 @@ func (t *T) Mappings() map[string]string {
 
 func Driver(t string) func() Pooler {
 	did := driver.NewID(driver.GroupPool, t)
-	i := driver.Get(did)
-	if i == nil {
+	drv, ok := driver.Get(did)
+	if !ok {
 		return nil
 	}
-	if drv, ok := i.(func() Pooler); ok {
-		return drv
+	if allocator, ok := drv.Allocator.(func() Pooler); ok {
+		return allocator
 	}
 	return nil
 }

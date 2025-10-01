@@ -116,11 +116,11 @@ func Register(driverName string, fn func() Confer) {
 
 func Driver(driverName string) func() Confer {
 	did := driver.NewID(driver.GroupHeartbeat, driverName)
-	i := driver.Get(did)
-	if i == nil {
+	drv, ok := driver.Get(did)
+	if !ok {
 		return nil
 	}
-	if a, ok := i.(func() Confer); ok {
+	if a, ok := drv.Allocator.(func() Confer); ok {
 		return a
 	}
 	return nil

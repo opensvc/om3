@@ -153,11 +153,11 @@ func NewFromNoder(name string, noder Noder) Networker {
 
 func Driver(t string) func() Networker {
 	drvID := driver.NewID(driver.GroupNetwork, t)
-	i := driver.Get(drvID)
-	if i == nil {
+	drv, ok := driver.Get(drvID)
+	if !ok {
 		return nil
 	}
-	if a, ok := i.(func() Networker); ok {
+	if a, ok := drv.Allocator.(func() Networker); ok {
 		return a
 	}
 	return nil
