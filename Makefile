@@ -40,50 +40,8 @@ clean:
 	$(GOCLEAN) -testcache
 	rm -f $(OM) $(OX)
 
-om:
-	$(GOBUILD) -o $(OM) ./cmd/om/
-
-ox:
-	$(GOBUILD) -o $(OX) ./cmd/ox/
-
 compobj:
 	$(GOBUILD) -o $(COMPOBJ) ./util/compobj/
-
-test:
-	$(GOTEST) -p 1 -timeout 60s ./...
-
-testinfo:
-	TEST_LOG_LEVEL=info $(GOTEST) -p 1 -timeout 60s ./...
-
-race:
-	$(GOTEST) -p 1 -timeout 240s ./... -race
-
-vet:
-	$(GOVET) ./...
-
-install:
-	$(MKDIR) -p $(PREFIX)/bin
-	$(MKDIR) -p $(PREFIX)/$(COMPOBJ_D)
-	$(INSTALL) -m 755 $(OM) $(PREFIX)/$(OM)
-	$(INSTALL) -m 755 $(OX) $(PREFIX)/$(OX)
-	$(INSTALL) -m 755 $(COMPOBJ) $(PREFIX)/$(COMPOBJ)
-	$(PREFIX)/$(COMPOBJ) -i $(PREFIX)/$(COMPOBJ_D)
-
-version:
-	git describe --tags --abbrev >util/version/text/VERSION
-
-dist:
-	$(MKDIR) -p $(DIST)/bin
-	$(MKDIR) -p $(DIST)/$(COMPOBJ_D)
-	$(INSTALL) -m 755 $(OM) $(DIST)/$(OM)
-	$(INSTALL) -m 755 $(OX) $(DIST)/$(OX)
-	$(INSTALL) -m 755 $(COMPOBJ) $(DIST)/$(COMPOBJ)
-	$(DIST)/$(COMPOBJ) -r -i $(DIST)/$(COMPOBJ_D)
-	$(STRIP) --strip-all $(DIST)/$(OM) $(DIST)/$(OX) $(DIST)/$(COMPOBJ)
-	VERSION=`git describe --tags --abbrev` && cd $(DIST) && tar czvf opensvc-$$VERSION.tar.gz $(OM) $(OX) $(COMPOBJ) $(COMPOBJ_D) && cd -
-
-restart:
-	$(PREFIX)/$(OM) daemon restart
 
 deploy:
 	@for node in $(shell $(OM) node ls); do \
@@ -108,4 +66,47 @@ deploy:
 		fi; \
 	done
 	@echo "Deployment to all nodes completed successfully."
+
+dist:
+	$(MKDIR) -p $(DIST)/bin
+	$(MKDIR) -p $(DIST)/$(COMPOBJ_D)
+	$(INSTALL) -m 755 $(OM) $(DIST)/$(OM)
+	$(INSTALL) -m 755 $(OX) $(DIST)/$(OX)
+	$(INSTALL) -m 755 $(COMPOBJ) $(DIST)/$(COMPOBJ)
+	$(DIST)/$(COMPOBJ) -r -i $(DIST)/$(COMPOBJ_D)
+	$(STRIP) --strip-all $(DIST)/$(OM) $(DIST)/$(OX) $(DIST)/$(COMPOBJ)
+	VERSION=`git describe --tags --abbrev` && cd $(DIST) && tar czvf opensvc-$$VERSION.tar.gz $(OM) $(OX) $(COMPOBJ) $(COMPOBJ_D) && cd -
+
+install:
+	$(MKDIR) -p $(PREFIX)/bin
+	$(MKDIR) -p $(PREFIX)/$(COMPOBJ_D)
+	$(INSTALL) -m 755 $(OM) $(PREFIX)/$(OM)
+	$(INSTALL) -m 755 $(OX) $(PREFIX)/$(OX)
+	$(INSTALL) -m 755 $(COMPOBJ) $(PREFIX)/$(COMPOBJ)
+	$(PREFIX)/$(COMPOBJ) -i $(PREFIX)/$(COMPOBJ_D)
+
+om:
+	$(GOBUILD) -o $(OM) ./cmd/om/
+
+ox:
+	$(GOBUILD) -o $(OX) ./cmd/ox/
+
+race:
+	$(GOTEST) -p 1 -timeout 240s ./... -race
+
+restart:
+	$(PREFIX)/$(OM) daemon restart
+
+test:
+	$(GOTEST) -p 1 -timeout 60s ./...
+
+testinfo:
+	TEST_LOG_LEVEL=info $(GOTEST) -p 1 -timeout 60s ./...
+
+version:
+	git describe --tags --abbrev >util/version/text/VERSION
+
+vet:
+	$(GOVET) ./...
+
 
