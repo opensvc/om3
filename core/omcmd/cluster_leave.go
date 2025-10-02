@@ -69,7 +69,7 @@ func (t *CmdClusterLeave) Run() (err error) {
 		if deadLine, hasDeadline := ctx.Deadline(); hasDeadline {
 			// ensure token duration can be used until deadline reached
 			tkDuration := deadLine.Sub(time.Now()).String()
-			params.Duration = &tkDuration
+			params.AccessDuration = &tkDuration
 		}
 		resp, err := localClient.PostAuthTokenWithResponse(ctx, &params)
 		if err != nil {
@@ -77,7 +77,7 @@ func (t *CmdClusterLeave) Run() (err error) {
 		} else if resp.StatusCode() != http.StatusOK {
 			return fmt.Errorf("can't get leave token: got %d wanted %d", resp.StatusCode(), http.StatusOK)
 		} else {
-			tk = resp.JSON200.Token
+			tk = resp.JSON200.AccessToken
 		}
 	}
 

@@ -2336,9 +2336,9 @@ func NewPostAuthTokenRequest(server string, params *PostAuthTokenParams) (*http.
 
 		}
 
-		if params.Duration != nil {
+		if params.AccessDuration != nil {
 
-			if queryFrag, err := runtime.StyleParamWithLocation("form", true, "duration", runtime.ParamLocationQuery, *params.Duration); err != nil {
+			if queryFrag, err := runtime.StyleParamWithLocation("form", true, "access_duration", runtime.ParamLocationQuery, *params.AccessDuration); err != nil {
 				return nil, err
 			} else if parsed, err := url.ParseQuery(queryFrag); err != nil {
 				return nil, err
@@ -2371,6 +2371,38 @@ func NewPostAuthTokenRequest(server string, params *PostAuthTokenParams) (*http.
 		if params.Scope != nil {
 
 			if queryFrag, err := runtime.StyleParamWithLocation("form", true, "scope", runtime.ParamLocationQuery, *params.Scope); err != nil {
+				return nil, err
+			} else if parsed, err := url.ParseQuery(queryFrag); err != nil {
+				return nil, err
+			} else {
+				for k, v := range parsed {
+					for _, v2 := range v {
+						queryValues.Add(k, v2)
+					}
+				}
+			}
+
+		}
+
+		if params.Refresh != nil {
+
+			if queryFrag, err := runtime.StyleParamWithLocation("form", true, "refresh", runtime.ParamLocationQuery, *params.Refresh); err != nil {
+				return nil, err
+			} else if parsed, err := url.ParseQuery(queryFrag); err != nil {
+				return nil, err
+			} else {
+				for k, v := range parsed {
+					for _, v2 := range v {
+						queryValues.Add(k, v2)
+					}
+				}
+			}
+
+		}
+
+		if params.RefreshDuration != nil {
+
+			if queryFrag, err := runtime.StyleParamWithLocation("form", true, "refresh_duration", runtime.ParamLocationQuery, *params.RefreshDuration); err != nil {
 				return nil, err
 			} else if parsed, err := url.ParseQuery(queryFrag); err != nil {
 				return nil, err
