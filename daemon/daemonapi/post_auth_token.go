@@ -25,10 +25,8 @@ var (
 // When role parameter exists a new user is created with grants from role and
 // extra claims may be added to token
 func (a *DaemonAPI) PostAuthToken(ctx echo.Context, params api.PostAuthTokenParams) error {
-	if v, err := assertRole(ctx, rbac.RoleRoot); err != nil {
-		return err
-	} else if !v {
-		return nil
+	if !a.canCreateAccessToken(ctx) {
+		return JSONProblemf(ctx, http.StatusForbidden, "Forbidden", "not allowed to create token")
 	}
 	var (
 		// duration define the default token duration
