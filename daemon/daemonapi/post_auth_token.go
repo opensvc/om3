@@ -29,12 +29,6 @@ func (a *DaemonAPI) PostAuthToken(ctx echo.Context, params api.PostAuthTokenPara
 		return JSONProblemf(ctx, http.StatusForbidden, "Forbidden", "not allowed to create token")
 	}
 	var (
-		// duration define the default token duration
-		duration = time.Minute * 10
-
-		// duration define the maximum token duration
-		durationMax = time.Hour * 24
-
 		xClaims = make(map[string]interface{})
 
 		username string
@@ -43,16 +37,12 @@ func (a *DaemonAPI) PostAuthToken(ctx echo.Context, params api.PostAuthTokenPara
 	)
 	name := "PostAuthToken"
 	log := LogHandler(ctx, name)
-	if params.Duration != nil {
-		if v, err := converters.Lookup("duration").Convert(*params.Duration); err != nil {
-			log.Infof("%s: invalid duration: %s: %s", name, *params.Duration, err)
-			return JSONProblemf(ctx, http.StatusBadRequest, "Invalid parameters", "Invalid duration: %s", *params.Duration)
-		} else if v != nil {
-			duration = *v.(*time.Duration)
-			if duration > durationMax {
-				duration = durationMax
-			}
-		}
+	duration, err := a.accessTokenDuration(params.AccessDuration)
+	if err != nil {
+		return JSONProblemf(ctx, http.StatusBadRequest, "Invalid parameters", "Invalid access duration: %s", err)
+	}
+	if err := validateRole(params.Role); err != nil {
+		return JSONProblemf(ctx, http.StatusBadRequest, "Invalid parameters", "Invalid role: %s", err)
 	}
 	if params.Subject != nil && *params.Subject != "" {
 		username := *params.Subject
