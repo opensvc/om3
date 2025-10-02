@@ -126,6 +126,9 @@ func AuthMiddleware(parent context.Context) echo.MiddlewareFunc {
 			if strategy := extensions.Get("strategy"); strategy != "" {
 				c.Set("strategy", strategy)
 			}
+			if extensions.Get("token_use") == "refresh" {
+				c.Set("token_use", "refresh")
+			}
 			return next(c)
 		}
 	}

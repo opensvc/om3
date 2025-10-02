@@ -20,7 +20,8 @@ type (
 
 	// apiClaims defines api claims
 	apiClaims struct {
-		Grant []string `json:"grant"`
+		Grant    []string `json:"grant"`
+		TokenUse string   `json:"token_use"`
 		*jwt.RegisteredClaims
 	}
 
@@ -65,6 +66,9 @@ func initJWT(_ context.Context, i interface{}) (string, auth.Strategy, error) {
 		iss := claims.Issuer
 
 		extensions := authenticatedExtensions(StrategyJWT, iss, claims.Grant...)
+		if claims.TokenUse != "" {
+			extensions.Set("token_use", claims.TokenUse)
+		}
 		info = auth.NewUserInfo(claims.Subject, claims.Subject, nil, *extensions)
 		return
 	}
