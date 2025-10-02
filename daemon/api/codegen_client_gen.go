@@ -92,6 +92,9 @@ type ClientInterface interface {
 	// GetAuthInfo request
 	GetAuthInfo(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error)
 
+	// PostAuthRefresh request
+	PostAuthRefresh(ctx context.Context, params *PostAuthRefreshParams, reqEditors ...RequestEditorFn) (*http.Response, error)
+
 	// PostAuthToken request
 	PostAuthToken(ctx context.Context, params *PostAuthTokenParams, reqEditors ...RequestEditorFn) (*http.Response, error)
 
@@ -521,6 +524,18 @@ type ClientInterface interface {
 
 func (c *Client) GetAuthInfo(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error) {
 	req, err := NewGetAuthInfoRequest(c.Server)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+func (c *Client) PostAuthRefresh(ctx context.Context, params *PostAuthRefreshParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewPostAuthRefreshRequest(c.Server, params)
 	if err != nil {
 		return nil, err
 	}
@@ -2291,6 +2306,87 @@ func NewGetAuthInfoRequest(server string) (*http.Request, error) {
 	}
 
 	req, err := http.NewRequest("GET", queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
+// NewPostAuthRefreshRequest generates requests for PostAuthRefresh
+func NewPostAuthRefreshRequest(server string, params *PostAuthRefreshParams) (*http.Request, error) {
+	var err error
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/api/auth/refresh")
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	if params != nil {
+		queryValues := queryURL.Query()
+
+		if params.Role != nil {
+
+			if queryFrag, err := runtime.StyleParamWithLocation("form", true, "role", runtime.ParamLocationQuery, *params.Role); err != nil {
+				return nil, err
+			} else if parsed, err := url.ParseQuery(queryFrag); err != nil {
+				return nil, err
+			} else {
+				for k, v := range parsed {
+					for _, v2 := range v {
+						queryValues.Add(k, v2)
+					}
+				}
+			}
+
+		}
+
+		if params.AccessDuration != nil {
+
+			if queryFrag, err := runtime.StyleParamWithLocation("form", true, "access_duration", runtime.ParamLocationQuery, *params.AccessDuration); err != nil {
+				return nil, err
+			} else if parsed, err := url.ParseQuery(queryFrag); err != nil {
+				return nil, err
+			} else {
+				for k, v := range parsed {
+					for _, v2 := range v {
+						queryValues.Add(k, v2)
+					}
+				}
+			}
+
+		}
+
+		if params.Scope != nil {
+
+			if queryFrag, err := runtime.StyleParamWithLocation("form", true, "scope", runtime.ParamLocationQuery, *params.Scope); err != nil {
+				return nil, err
+			} else if parsed, err := url.ParseQuery(queryFrag); err != nil {
+				return nil, err
+			} else {
+				for k, v := range parsed {
+					for _, v2 := range v {
+						queryValues.Add(k, v2)
+					}
+				}
+			}
+
+		}
+
+		queryURL.RawQuery = queryValues.Encode()
+	}
+
+	req, err := http.NewRequest("POST", queryURL.String(), nil)
 	if err != nil {
 		return nil, err
 	}
@@ -11767,6 +11863,9 @@ type ClientWithResponsesInterface interface {
 	// GetAuthInfoWithResponse request
 	GetAuthInfoWithResponse(ctx context.Context, reqEditors ...RequestEditorFn) (*GetAuthInfoResponse, error)
 
+	// PostAuthRefreshWithResponse request
+	PostAuthRefreshWithResponse(ctx context.Context, params *PostAuthRefreshParams, reqEditors ...RequestEditorFn) (*PostAuthRefreshResponse, error)
+
 	// PostAuthTokenWithResponse request
 	PostAuthTokenWithResponse(ctx context.Context, params *PostAuthTokenParams, reqEditors ...RequestEditorFn) (*PostAuthTokenResponse, error)
 
@@ -12210,6 +12309,34 @@ func (r GetAuthInfoResponse) Status() string {
 
 // StatusCode returns HTTPResponse.StatusCode
 func (r GetAuthInfoResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+type PostAuthRefreshResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	JSON200      *AuthAccessToken
+	JSON400      *N400
+	JSON401      *N401
+	JSON403      *N403
+	JSON404      *N404
+	JSON500      *N500
+	JSON503      *N503
+}
+
+// Status returns HTTPResponse.Status
+func (r PostAuthRefreshResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r PostAuthRefreshResponse) StatusCode() int {
 	if r.HTTPResponse != nil {
 		return r.HTTPResponse.StatusCode
 	}
@@ -15769,6 +15896,15 @@ func (c *ClientWithResponses) GetAuthInfoWithResponse(ctx context.Context, reqEd
 	return ParseGetAuthInfoResponse(rsp)
 }
 
+// PostAuthRefreshWithResponse request returning *PostAuthRefreshResponse
+func (c *ClientWithResponses) PostAuthRefreshWithResponse(ctx context.Context, params *PostAuthRefreshParams, reqEditors ...RequestEditorFn) (*PostAuthRefreshResponse, error) {
+	rsp, err := c.PostAuthRefresh(ctx, params, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParsePostAuthRefreshResponse(rsp)
+}
+
 // PostAuthTokenWithResponse request returning *PostAuthTokenResponse
 func (c *ClientWithResponses) PostAuthTokenWithResponse(ctx context.Context, params *PostAuthTokenParams, reqEditors ...RequestEditorFn) (*PostAuthTokenResponse, error) {
 	rsp, err := c.PostAuthToken(ctx, params, reqEditors...)
@@ -17085,6 +17221,74 @@ func ParseGetAuthInfoResponse(rsp *http.Response) (*GetAuthInfoResponse, error) 
 			return nil, err
 		}
 		response.JSON200 = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParsePostAuthRefreshResponse parses an HTTP response from a PostAuthRefreshWithResponse call
+func ParsePostAuthRefreshResponse(rsp *http.Response) (*PostAuthRefreshResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &PostAuthRefreshResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest AuthAccessToken
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
+		var dest N400
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON400 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest N401
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest N403
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON403 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest N404
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON404 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
+		var dest N500
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON500 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 503:
+		var dest N503
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON503 = &dest
 
 	}
 

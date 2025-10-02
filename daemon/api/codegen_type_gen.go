@@ -1813,6 +1813,18 @@ type N500 = Problem
 // N503 defines model for 503.
 type N503 = Problem
 
+// PostAuthRefreshParams defines parameters for PostAuthRefresh.
+type PostAuthRefreshParams struct {
+	// Role list of api role
+	Role *Roles `form:"role,omitempty" json:"role,omitempty"`
+
+	// AccessDuration max access token duration, maximum value 24h
+	AccessDuration *string `form:"access_duration,omitempty" json:"access_duration,omitempty"`
+
+	// Scope the scope value used to create the token grant claim
+	Scope *string `form:"scope,omitempty" json:"scope,omitempty"`
+}
+
 // PostAuthTokenParams defines parameters for PostAuthToken.
 type PostAuthTokenParams struct {
 	// Role list of api role
