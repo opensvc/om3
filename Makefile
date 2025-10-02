@@ -89,12 +89,19 @@ deploy:
 	@for node in $(shell $(OM) node ls); do \
 		echo "Deploying $(OM) to $$node..."; \
 		TEMP_OM_FILE="/tmp/om-$(shell head /dev/urandom | tr -dc A-Za-z0-9 | head -c 10)"; \
+		TEMP_OX_FILE="/tmp/ox-$(shell head /dev/urandom | tr -dc A-Za-z0-9 | head -c 10)"; \
 		if [ "$$node" = "$(LOCAL_HOSTNAME)" ]; then \
 			$(INSTALL) -m 755 $(OM) $(PREFIX)/$(OM); \
+			$(INSTALL) -m 755 $(OX) $(PREFIX)/$(OX); \
 			$(PREFIX)/$(OM) daemon restart; \
 		else \
 			$(SCP) "$(OM)" "$$node:$$TEMP_OM_FILE" && \
-			$(SSH) "$$node" "sudo install -m 755 $$TEMP_OM_FILE $(PREFIX)/$(OM) && rm $$TEMP_OM_FILE && $(PREFIX)/$(OM) daemon restart" || { \
+			$(SCP) "$(OX)" "$$node:$$TEMP_OX_FILE" && \
+			$(SSH) "$$node" \
+					"sudo install -m 755 $$TEMP_OM_FILE $(PREFIX)/$(OM) \
+					&& sudo install -m 755 $$TEMP_OX_FILE $(PREFIX)/$(OX) \
+					&& rm $$TEMP_OM_FILE $$TEMP_OX_FILE \
+					&& $(PREFIX)/$(OM) daemon restart" || { \
 				echo "Deployment failed for $$node. Aborting."; \
 				exit 1; \
 			}; \
