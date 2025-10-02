@@ -1,23 +1,14 @@
 package daemonapi
 
 import (
-	"fmt"
+	"errors"
 	"net/http"
-	"os"
-	"time"
 
 	"github.com/labstack/echo/v4"
 	"github.com/shaj13/go-guardian/v2/auth"
 
-	"github.com/opensvc/om3/core/object"
 	"github.com/opensvc/om3/daemon/api"
-	"github.com/opensvc/om3/daemon/daemonenv"
 	"github.com/opensvc/om3/daemon/rbac"
-	"github.com/opensvc/om3/util/converters"
-)
-
-var (
-	userDB = &object.UsrDB{}
 )
 
 // PostAuthToken create a new token for a user
@@ -29,109 +20,46 @@ func (a *DaemonAPI) PostAuthToken(ctx echo.Context, params api.PostAuthTokenPara
 		return JSONProblemf(ctx, http.StatusForbidden, "Forbidden", "not allowed to create token")
 	}
 	var (
-		xClaims = make(map[string]interface{})
+		data = api.AuthToken{}
 
-		username string
-
-		user auth.Info
+		log = LogHandler(ctx, "PostAuthToken")
 	)
-	name := "PostAuthToken"
-	log := LogHandler(ctx, name)
-	duration, err := a.accessTokenDuration(params.AccessDuration)
+
+	// check params
+	aDuration, err := a.accessTokenDuration(params.AccessDuration)
 	if err != nil {
 		return JSONProblemf(ctx, http.StatusBadRequest, "Invalid parameters", "Invalid access duration: %s", err)
 	}
 	if err := validateRole(params.Role); err != nil {
 		return JSONProblemf(ctx, http.StatusBadRequest, "Invalid parameters", "Invalid role: %s", err)
 	}
+
+	username := ctx.Get("user").(auth.Info).GetUserName()
+
 	if params.Subject != nil && *params.Subject != "" {
-		username := *params.Subject
-		grantL, err := userDB.GrantsFromUsername(username)
-		if err != nil {
-			log.Errorf("user grants for username '%s': %s", username, err)
-			return JSONProblemf(ctx, http.StatusNotFound, "Retrieve user grants", "%s", err)
+		if v, err := assertRole(ctx, rbac.RoleRoot); err != nil {
+			return err
+		} else if !v {
+			log.Errorf("user grants for subject '%s' refused: need %s role", *params.Subject, rbac.RoleRoot)
+			return nil
 		}
-		user = auth.NewUserInfo(username, username, nil, auth.Extensions{"grant": grantL})
+		username = *params.Subject
+	}
+
+	if d, err := a.createAccessToken(ctx, username, aDuration, params.Role, params.Scope); err != nil {
+		if errors.Is(err, errBadRequest) {
+			log.Debugf("invalid parameters: %s", err)
+			return JSONProblemf(ctx, http.StatusBadRequest, "Create token Invalid parameters", "%s", err)
+		} else if errors.Is(err, errForbidden) {
+			log.Infof("forbidden: %s", err)
+			return JSONProblemf(ctx, http.StatusForbidden, "Create token Forbidden", "%s", err)
+		}
+		log.Warnf("create token: %v", err)
+		return JSONProblemf(ctx, http.StatusInternalServerError, "Create token", "%s", err)
 	} else {
-		user = ctx.Get("user").(auth.Info)
-		username = user.GetUserName()
-	}
-	// TODO verify if user is allowed to create token => 403 Forbidden
-	if params.Role != nil {
-		var err error
-		user, xClaims, err = userXClaims(params, user)
-		if err != nil {
-			log.Errorf("%s: userXClaims: %s", name, err)
-			return JSONProblemf(ctx, http.StatusServiceUnavailable, "Invalid user claims", "user name: %s", username)
-		}
+		data.AccessToken = d.AccessToken
+		data.AccessExpiredAt = d.AccessExpiredAt
 	}
 
-	xClaims["iss"] = a.localhost
-	tk, expireAt, err := a.JWTcreator.CreateUserToken(user, duration, xClaims)
-	if err != nil {
-		log.Errorf("%s: can't create token: %s", name, err)
-		return JSONProblemf(ctx, http.StatusInternalServerError, "Unexpected error", "%s", err)
-	} else if tk == "" {
-		err := fmt.Errorf("create token error: jwt auth is not enabled")
-		log.Warnf("%s: %s", name, err)
-		return JSONProblemf(ctx, http.StatusNotImplemented, err.Error(), "")
-	}
-	return ctx.JSON(http.StatusOK, api.AuthToken{
-		ExpiredAt: expireAt,
-		Token:     tk,
-	})
-}
-
-// userXClaims returns new user and Claims from p and current user
-func userXClaims(p api.PostAuthTokenParams, srcInfo auth.Info) (info auth.Info, xClaims map[string]interface{}, err error) {
-	xClaims = make(map[string]interface{})
-	extensions := auth.Extensions{"grant": []string{}}
-	roleDone := make(map[api.Role]bool)
-	grants := rbac.NewGrants(srcInfo.GetExtensions().Values("grant")...)
-	for _, r := range *p.Role {
-		if _, ok := roleDone[r]; ok {
-			continue
-		}
-		role := rbac.Role(r)
-		switch role {
-		case rbac.RoleJoin:
-			var b []byte
-			filename := daemonenv.CertChainFile()
-			b, err = os.ReadFile(filename)
-			if err != nil {
-				return
-			}
-			xClaims["ca"] = string(b)
-		case rbac.RoleAdmin:
-		case rbac.RoleBlacklistAdmin:
-		case rbac.RoleGuest:
-		case rbac.RoleHeartbeat:
-		case rbac.RoleLeave:
-		case rbac.RoleRoot:
-		case rbac.RoleSquatter:
-		case rbac.RoleUndef:
-			continue
-		default:
-			err = fmt.Errorf("%w: unexpected role %s", echo.ErrBadRequest, role)
-			return
-		}
-		var scope string
-		if p.Scope != nil && *p.Scope != "" {
-			scope = *p.Scope
-		}
-		grant := rbac.NewGrant(role, scope)
-		if grants.HasGrant(grant) {
-			extensions.Add("grant", grant.String())
-		} else if grants.Has(rbac.RoleRoot, "") {
-			// TODO: clarify this rule
-			extensions.Add("grant", grant.String())
-		} else {
-			err = fmt.Errorf("refused grant %s", grant)
-			return
-		}
-		roleDone[r] = true
-	}
-	userName := srcInfo.GetUserName()
-	info = auth.NewUserInfo(userName, userName, nil, extensions)
-	return
+	return ctx.JSON(http.StatusOK, data)
 }

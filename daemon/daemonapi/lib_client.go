@@ -3,7 +3,6 @@ package daemonapi
 import (
 	"fmt"
 	"net/http"
-	"strings"
 	"time"
 
 	"github.com/labstack/echo/v4"
@@ -11,9 +10,8 @@ import (
 	"github.com/opensvc/om3/core/client"
 	"github.com/opensvc/om3/core/clusternode"
 	"github.com/opensvc/om3/core/node"
-	"github.com/opensvc/om3/daemon/api"
+	"github.com/opensvc/om3/daemon/daemonauth"
 	"github.com/opensvc/om3/util/funcopt"
-	"github.com/opensvc/om3/util/hostname"
 )
 
 func (a *DaemonAPI) proxy(ctx echo.Context, nodename string, fn func(*client.T) (*http.Response, error)) error {
@@ -40,30 +38,12 @@ func (a *DaemonAPI) newProxyClient(ctx echo.Context, nodename string, opts ...fu
 	authHeader := ctx.Request().Header.Get("authorization")
 	if authHeader != "" {
 		options = append(options, client.WithAuthorization(authHeader))
-	} else if userFromContext(ctx).GetUserName() == "root" {
-		grants := grantsFromContext(ctx)
-		var (
-			roles api.Roles
-		)
-		for _, role := range strings.Fields(grants.String()) {
-			roles = append(roles, api.Role(role))
+	} else if strategyFromContext(ctx) == daemonauth.StrategyUX {
+		tk, err := a.createAccessToken(ctx, "root", 5*time.Second, nil, nil)
+		if err != nil {
+			return nil, fmt.Errorf("proxy create token: %w", err)
 		}
-		user := userFromContext(ctx)
-		params := api.PostAuthTokenParams{
-			Role: &roles,
-		}
-		if user, xClaims, err := userXClaims(params, user); err != nil {
-			return nil, err
-		} else {
-			xClaims["iss"] = hostname.Hostname()
-			if tk, _, err := a.JWTcreator.CreateUserToken(user, 5*time.Second, xClaims); err != nil {
-				return nil, fmt.Errorf("proxy create user token: %w", err)
-			} else {
-				options = append(options,
-					client.WithBearer(tk),
-				)
-			}
-		}
+		options = append(options, client.WithBearer(tk.AccessToken))
 	}
 	options = append(options, opts...)
 	return client.New(options...)

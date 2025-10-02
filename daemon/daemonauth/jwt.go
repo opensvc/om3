@@ -39,6 +39,8 @@ var (
 	jwtVerifyKeySign string
 )
 
+// initJWT initializes the JWT authentication strategy using provided configuration and context.
+// It returns the strategy name ("jwt"), an instance of the auth.Strategy, and any error encountered.
 func initJWT(_ context.Context, i interface{}) (string, auth.Strategy, error) {
 	var (
 		err       error
@@ -124,17 +126,16 @@ func initAuthJWT(i interface{}) (*rsa.PublicKey, *rsa.PrivateKey, error) {
 	return verifyKey, signKey, nil
 }
 
-// CreateUserToken implements CreateUserToken interface for JWTCreator.
-// empty token is returned if jwtSignKey is not initialized
-func (*JWTCreator) CreateUserToken(userInfo auth.Info, duration time.Duration, xClaims map[string]interface{}) (tk string, expiredAt time.Time, err error) {
+// CreateToken implements CreateToken interface for `daemonapi.JWTCreater`.
+// It generates a JWT with the specified duration and custom claims,
+// returning the token, expiration time, and error if any.
+func (*JWTCreator) CreateToken(duration time.Duration, xClaims map[string]interface{}) (tk string, expiredAt time.Time, err error) {
 	if jwtSignKey == nil {
 		return
 	}
 	expiredAt = time.Now().Add(duration)
 	allClaims := make(jwt.MapClaims)
-	allClaims["sub"] = userInfo.GetUserName()
 	allClaims["exp"] = expiredAt.Unix()
-	allClaims["grant"] = userInfo.GetExtensions()["grant"]
 
 	for c, v := range xClaims {
 		allClaims[c] = v
@@ -146,6 +147,10 @@ func (*JWTCreator) CreateUserToken(userInfo auth.Info, duration time.Duration, x
 	// Sign the token using the RSA private key
 	if tk, err = token.SignedString(jwtSignKey); err != nil {
 		return
+	}
+
+	if tk == "" {
+		err = fmt.Errorf("empty token")
 	}
 	return
 }
