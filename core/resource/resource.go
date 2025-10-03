@@ -326,11 +326,11 @@ func (t *Status) IsProvisionedFlag() string {
 }
 
 func NewResourceFunc(drvID driver.ID) func() Driver {
-	i := driver.Get(drvID)
-	if i == nil {
+	drv, ok := driver.Get(drvID)
+	if !ok {
 		return nil
 	}
-	if a, ok := i.(func() Driver); ok {
+	if a, ok := drv.Allocator.(func() Driver); ok {
 		return a
 	}
 	return nil

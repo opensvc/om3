@@ -2,6 +2,13 @@ package driverdb
 
 import (
 	// Uncomment to load
+	"fmt"
+	"os"
+	"path/filepath"
+	"strings"
+
+	"github.com/opensvc/om3/core/driver"
+	"github.com/opensvc/om3/core/rawconfig"
 	_ "github.com/opensvc/om3/drivers/arrayfreenas"
 	_ "github.com/opensvc/om3/drivers/arrayhoc"
 	_ "github.com/opensvc/om3/drivers/arraypure"
@@ -38,3 +45,21 @@ import (
 	_ "github.com/opensvc/om3/drivers/restaskhost"
 	_ "github.com/opensvc/om3/drivers/resvol"
 )
+
+func init() {
+	filepath.WalkDir(rawconfig.Paths.Drivers, func(path string, e os.DirEntry, err error) error {
+		if e == nil {
+			return nil
+		}
+		if e.IsDir() && path != rawconfig.Paths.Drivers {
+			return filepath.SkipDir
+		}
+		if !strings.HasSuffix(path, ".so") {
+			return nil
+		}
+		if err := driver.LoadBundle(path); err != nil {
+			fmt.Fprintf(os.Stderr, "loading bundle %s: %s\n", path, err)
+		}
+		return nil
+	})
+}
