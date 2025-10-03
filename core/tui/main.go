@@ -820,16 +820,18 @@ func (t *App) onRuneColumn(event *tcell.EventKey) {
 		clean()
 		return
 	}
-	clusterAction := func(action string) {
-		switch action {
+	clusterAction := func(args []string) {
+		switch args[0] {
 		case "freeze":
 			t.actionClusterFreeze()
 		case "unfreeze", "thaw":
 			t.actionClusterUnfreeze()
+		default:
+			t.errorf("unknown cluster action: %s", args[0])
 		}
 	}
-	objectAction := func(action string, paths map[string]any) {
-		switch action {
+	objectAction := func(args []string, paths map[string]any) {
+		switch args[0] {
 		case "stop":
 			t.confirmAction(func() {
 				t.actionStop(paths)
@@ -848,7 +850,7 @@ func (t *App) onRuneColumn(event *tcell.EventKey) {
 			t.actionUnfreeze(paths)
 		case "switch":
 			t.confirmAction(func() {
-				t.actionSwitch(paths)
+				t.actionSwitch(paths, args[1:])
 			}, serviceInterruptionMessage)
 		case "giveback":
 			t.confirmAction(func() {
@@ -869,17 +871,17 @@ func (t *App) onRuneColumn(event *tcell.EventKey) {
 				t.actionRestart(paths)
 			}, serviceInterruptionMessage)
 		default:
-			t.errorf("unknown object action: %s", action)
+			t.errorf("unknown object action: %s", args[0])
 		}
 	}
 	resourceAction := func(args []string, keys map[[3]string]any) {
 		switch args[0] {
 		case "stop":
 			t.confirmAction(func() {
-				t.actionResourceStop(keys)
+				t.actionResourceStop(keys, args[1:])
 			}, serviceInterruptionMessage)
 		case "start":
-			t.actionResourceStart(keys)
+			t.actionResourceStart(keys, args[1:])
 		case "provision":
 			t.actionResourceProvision(keys)
 		case "unprovision":
@@ -902,21 +904,21 @@ func (t *App) onRuneColumn(event *tcell.EventKey) {
 			t.errorf("unknown resource action: %s", args[0])
 		}
 	}
-	instanceAction := func(action string, keys map[[2]string]any) {
-		switch action {
+	instanceAction := func(args []string, keys map[[2]string]any) {
+		switch args[0] {
 		case "clear":
 			t.actionInstanceClear(keys)
 		case "stop":
 			t.confirmAction(func() {
-				t.actionInstanceStop(keys)
+				t.actionInstanceStop(keys, args[1:])
 			}, serviceInterruptionMessage)
 		case "start":
 			t.actionInstanceStart(keys)
 		case "provision":
-			t.actionInstanceProvision(keys)
+			t.actionInstanceProvision(keys, args[1:])
 		case "unprovision":
 			t.confirmAction(func() {
-				t.actionInstanceUnprovision(keys)
+				t.actionInstanceUnprovision(keys, args[1:])
 			}, dataLostMessage, serviceInterruptionMessage)
 		case "freeze":
 			t.actionInstanceFreeze(keys)
@@ -930,10 +932,10 @@ func (t *App) onRuneColumn(event *tcell.EventKey) {
 			t.actionInstanceRefresh(keys)
 		case "switch", "takeover":
 			t.confirmAction(func() {
-				t.actionInstanceSwitch(keys)
+				t.actionInstanceSwitch(keys, args[1:])
 			}, serviceInterruptionMessage)
 		default:
-			t.errorf("unknown instance action: %s", action)
+			t.errorf("unknown instance action: %s", args[0])
 		}
 	}
 	nodeAction := func(args []string, nodes map[string]any) {
@@ -1037,14 +1039,13 @@ func (t *App) onRuneColumn(event *tcell.EventKey) {
 						t.errorf("not enough arguments: do <action>")
 						return
 					}
-					action = args[1]
 					switch {
 					case len(t.selectedRIDs) > 0:
 						resourceAction(args[1:], t.selectedRIDs)
 					case len(t.selectedPaths) > 0:
-						objectAction(action, t.selectedPaths)
+						objectAction(args[1:], t.selectedPaths)
 					case len(t.selectedInstances) > 0:
-						instanceAction(action, t.selectedInstances)
+						instanceAction(args[1:], t.selectedInstances)
 					case len(t.selectedNodes) > 0:
 						nodeAction(args[1:], t.selectedNodes)
 					default:
@@ -1059,7 +1060,7 @@ func (t *App) onRuneColumn(event *tcell.EventKey) {
 								resourceAction(args[1:], selection)
 							}
 						case row == 0 && col == 1:
-							clusterAction(action)
+							clusterAction(args[1:])
 						case row == 0 && col >= t.firstInstanceCol:
 							node := t.objects.GetCell(row, col).Text
 							selection := make(map[string]any)
@@ -1069,13 +1070,13 @@ func (t *App) onRuneColumn(event *tcell.EventKey) {
 							path := t.objects.GetCell(row, 0).Text
 							selection := make(map[string]any)
 							selection[path] = nil
-							objectAction(action, selection)
+							objectAction(args[1:], selection)
 						case row >= t.firstObjectRow && col >= t.firstInstanceCol:
 							path := t.objects.GetCell(row, 0).Text
 							node := t.objects.GetCell(0, col).Text
 							selection := make(map[[2]string]any)
 							selection[[2]string{path, node}] = nil
-							instanceAction(action, selection)
+							instanceAction(args[1:], selection)
 						}
 					}
 					clean()
@@ -1270,7 +1271,7 @@ func (t *App) actionInstanceClear(keys map[[2]string]any) {
 	}
 }
 
-func (t *App) actionInstanceStop(keys map[[2]string]any) {
+func (t *App) actionInstanceStop(keys map[[2]string]any, args []string) {
 	ctx := context.Background()
 	for key, _ := range keys {
 		path := key[0]
@@ -1279,11 +1280,19 @@ func (t *App) actionInstanceStop(keys map[[2]string]any) {
 		if err != nil {
 			continue
 		}
-		_, _ = t.client.PostInstanceActionStopWithResponse(ctx, node, p.Namespace, p.Kind, p.Name, nil)
+		params := api.PostInstanceActionStopParams{}
+		for _, arg := range args {
+			switch {
+			case arg == "--force":
+				v := true
+				params.Force = &v
+			}
+		}
+		_, _ = t.client.PostInstanceActionStopWithResponse(ctx, node, p.Namespace, p.Kind, p.Name, &params)
 	}
 }
 
-func (t *App) actionInstanceProvision(keys map[[2]string]any) {
+func (t *App) actionInstanceProvision(keys map[[2]string]any, args []string) {
 	ctx := context.Background()
 	for key, _ := range keys {
 		path := key[0]
@@ -1292,11 +1301,25 @@ func (t *App) actionInstanceProvision(keys map[[2]string]any) {
 		if err != nil {
 			continue
 		}
-		_, _ = t.client.PostInstanceActionProvisionWithResponse(ctx, node, p.Namespace, p.Kind, p.Name, nil)
+		params := api.PostInstanceActionProvisionParams{}
+		for _, arg := range args {
+			switch {
+			case arg == "--leader":
+				v := true
+				params.Leader = &v
+			case arg == "--disable-rollback":
+				v := true
+				params.DisableRollback = &v
+			default:
+				t.errorf("unsupported option: %s", arg)
+				return
+			}
+		}
+		_, _ = t.client.PostInstanceActionProvisionWithResponse(ctx, node, p.Namespace, p.Kind, p.Name, &params)
 	}
 }
 
-func (t *App) actionInstanceUnprovision(keys map[[2]string]any) {
+func (t *App) actionInstanceUnprovision(keys map[[2]string]any, args []string) {
 	ctx := context.Background()
 	for key, _ := range keys {
 		path := key[0]
@@ -1305,7 +1328,18 @@ func (t *App) actionInstanceUnprovision(keys map[[2]string]any) {
 		if err != nil {
 			continue
 		}
-		_, _ = t.client.PostInstanceActionUnprovisionWithResponse(ctx, node, p.Namespace, p.Kind, p.Name, nil)
+		params := api.PostInstanceActionUnprovisionParams{}
+		for _, arg := range args {
+			switch {
+			case arg == "--leader":
+				v := true
+				params.Leader = &v
+			default:
+				t.errorf("unsupported option: %s", arg)
+				return
+			}
+		}
+		_, _ = t.client.PostInstanceActionUnprovisionWithResponse(ctx, node, p.Namespace, p.Kind, p.Name, &params)
 	}
 }
 
@@ -1335,7 +1369,7 @@ func (t *App) actionInstanceUnfreeze(keys map[[2]string]any) {
 	}
 }
 
-func (t *App) actionInstanceSwitch(keys map[[2]string]any) {
+func (t *App) actionInstanceSwitch(keys map[[2]string]any, args []string) {
 	ctx := context.Background()
 	m := make(map[string][]string)
 	for key, _ := range keys {
@@ -1356,6 +1390,12 @@ func (t *App) actionInstanceSwitch(keys map[[2]string]any) {
 		}
 		body := api.PostObjectActionSwitch{
 			Destination: nodes,
+		}
+		for _, arg := range args {
+			switch {
+			case arg == "--live":
+				body.Live = true
+			}
 		}
 		_, _ = t.client.PostObjectActionSwitchWithResponse(ctx, p.Namespace, p.Kind, p.Name, body)
 	}
@@ -1473,7 +1513,7 @@ func (t *App) actionResourceUnprovision(keys map[[3]string]any) {
 	}
 }
 
-func (t *App) actionResourceStart(keys map[[3]string]any) {
+func (t *App) actionResourceStart(keys map[[3]string]any, args []string) {
 	ctx := context.Background()
 	for key, rids := range groupByInstance(keys) {
 		path := key[0]
@@ -1484,11 +1524,18 @@ func (t *App) actionResourceStart(keys map[[3]string]any) {
 		}
 		rid := strings.Join(rids, ",")
 		params := api.PostInstanceActionStartParams{Rid: &rid}
+		for _, arg := range args {
+			switch {
+			case arg == "--force":
+				v := true
+				params.Force = &v
+			}
+		}
 		_, _ = t.client.PostInstanceActionStartWithResponse(ctx, node, p.Namespace, p.Kind, p.Name, &params)
 	}
 }
 
-func (t *App) actionResourceStop(keys map[[3]string]any) {
+func (t *App) actionResourceStop(keys map[[3]string]any, args []string) {
 	ctx := context.Background()
 	for key, rids := range groupByInstance(keys) {
 		path := key[0]
@@ -1499,6 +1546,13 @@ func (t *App) actionResourceStop(keys map[[3]string]any) {
 		}
 		rid := strings.Join(rids, ",")
 		params := api.PostInstanceActionStopParams{Rid: &rid}
+		for _, arg := range args {
+			switch {
+			case arg == "--force":
+				v := true
+				params.Force = &v
+			}
+		}
 		_, _ = t.client.PostInstanceActionStopWithResponse(ctx, node, p.Namespace, p.Kind, p.Name, &params)
 	}
 }
@@ -1591,7 +1645,7 @@ func (t *App) actionUnfreeze(paths map[string]any) {
 	}
 }
 
-func (t *App) actionSwitch(paths map[string]any) {
+func (t *App) actionSwitch(paths map[string]any, args []string) {
 	ctx := context.Background()
 	for path, _ := range paths {
 		p, err := naming.ParsePath(path)
@@ -1599,6 +1653,12 @@ func (t *App) actionSwitch(paths map[string]any) {
 			continue
 		}
 		body := api.PostObjectActionSwitch{}
+		for _, arg := range args {
+			switch {
+			case arg == "--live":
+				body.Live = true
+			}
+		}
 		_, _ = t.client.PostObjectActionSwitchWithResponse(ctx, p.Namespace, p.Kind, p.Name, body)
 	}
 }

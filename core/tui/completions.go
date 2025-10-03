@@ -49,8 +49,10 @@ var (
 		"takeover": node{
 			"--live": nil,
 		},
-		"unfreeze":    nil,
-		"unprovision": nil,
+		"unfreeze": nil,
+		"unprovision": node{
+			"--leader": nil,
+		},
 	}
 	nodeDoResource = node{
 		"disable":   nil,
@@ -89,12 +91,16 @@ var (
 	}
 )
 
-func (t node) Candidates(prefix, arg string) []string {
+func (t node) Candidates(prefix, arg string, flags map[string]bool) []string {
+	//prefix, _, _ = strings.Cut(prefix, " --")
 	if t == nil {
 		return []string{}
 	}
 	var candidates []string
 	for _, candidate := range maps.Keys(t) {
+		if _, ok := flags[candidate]; ok {
+			continue
+		}
 		if arg == "" || strings.HasPrefix(candidate, arg) {
 			candidates = append(candidates, prefix+candidate)
 		}
@@ -143,19 +149,32 @@ func (t *App) getCompletions(text string) []string {
 	var prefix strings.Builder
 
 	n := len(args)
+	flags := make(map[string]bool)
 
 	for i, arg := range args {
 		next, ok := current[arg]
-		if !ok {
-			return current.Candidates(prefix.String(), arg)
+		isFlag := strings.HasPrefix(arg, "--")
+		if isFlag {
+			next = current
 		}
-		prefix.WriteString(arg)
-		prefix.WriteString(" ")
+		if !ok {
+			return current.Candidates(prefix.String(), arg, flags)
+		}
+		if isFlag {
+			if _, ok := flags[arg]; !ok {
+				prefix.WriteString(arg)
+				prefix.WriteString(" ")
+				flags[arg] = true
+			}
+		} else {
+			prefix.WriteString(arg)
+			prefix.WriteString(" ")
+		}
 		if i == n-1 {
 			if !strings.HasSuffix(text, " ") {
 				return []string{}
 			}
-			return next.Candidates(prefix.String(), "")
+			return next.Candidates(prefix.String(), "", flags)
 		}
 		current = next
 	}
