@@ -322,6 +322,12 @@ type ArbitratorStatus struct {
 	Weight int    `json:"weight"`
 }
 
+// AuthAccessToken defines model for AuthAccessToken.
+type AuthAccessToken struct {
+	AccessExpiredAt time.Time `json:"access_expired_at"`
+	AccessToken     string    `json:"access_token"`
+}
+
 // AuthInfo defines model for AuthInfo.
 type AuthInfo struct {
 	Methods []AuthInfoMethods `json:"methods"`
@@ -334,10 +340,18 @@ type AuthInfo struct {
 // AuthInfoMethods defines model for AuthInfo.Methods.
 type AuthInfoMethods string
 
+// AuthRefreshToken defines model for AuthRefreshToken.
+type AuthRefreshToken struct {
+	RefreshExpiredAt *time.Time `json:"refresh_expired_at,omitempty"`
+	RefreshToken     *string    `json:"refresh_token,omitempty"`
+}
+
 // AuthToken defines model for AuthToken.
 type AuthToken struct {
-	ExpiredAt time.Time `json:"expired_at"`
-	Token     string    `json:"token"`
+	AccessExpiredAt  time.Time  `json:"access_expired_at"`
+	AccessToken      string     `json:"access_token"`
+	RefreshExpiredAt *time.Time `json:"refresh_expired_at,omitempty"`
+	RefreshToken     *string    `json:"refresh_token,omitempty"`
 }
 
 // Capability defines model for Capability.
@@ -1799,19 +1813,37 @@ type N500 = Problem
 // N503 defines model for 503.
 type N503 = Problem
 
+// PostAuthRefreshParams defines parameters for PostAuthRefresh.
+type PostAuthRefreshParams struct {
+	// Role list of api role
+	Role *Roles `form:"role,omitempty" json:"role,omitempty"`
+
+	// AccessDuration max access token duration, maximum value 24h
+	AccessDuration *string `form:"access_duration,omitempty" json:"access_duration,omitempty"`
+
+	// Scope the scope value used to create the token grant claim
+	Scope *string `form:"scope,omitempty" json:"scope,omitempty"`
+}
+
 // PostAuthTokenParams defines parameters for PostAuthToken.
 type PostAuthTokenParams struct {
 	// Role list of api role
 	Role *Roles `form:"role,omitempty" json:"role,omitempty"`
 
-	// Duration max token duration, maximum value 24h
-	Duration *string `form:"duration,omitempty" json:"duration,omitempty"`
+	// AccessDuration max access token duration, maximum value 24h
+	AccessDuration *string `form:"access_duration,omitempty" json:"access_duration,omitempty"`
 
 	// Subject the token subject claim, must be an existing cluster user
 	Subject *string `form:"subject,omitempty" json:"subject,omitempty"`
 
 	// Scope the scope value used to create the token grant claim
 	Scope *string `form:"scope,omitempty" json:"scope,omitempty"`
+
+	// Refresh If `true`, the response will include a refresh token in addition  to the access token.   If omitted or `false`, only an access token is returned.
+	Refresh *bool `form:"refresh,omitempty" json:"refresh,omitempty"`
+
+	// RefreshDuration max refresh token duration, maximum value 30 days
+	RefreshDuration *string `form:"refresh_duration,omitempty" json:"refresh_duration,omitempty"`
 }
 
 // GetClusterConfigParams defines parameters for GetClusterConfig.

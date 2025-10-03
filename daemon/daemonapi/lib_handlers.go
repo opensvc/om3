@@ -7,7 +7,6 @@ import (
 	"time"
 
 	"github.com/labstack/echo/v4"
-	"github.com/shaj13/go-guardian/v2/auth"
 
 	"github.com/opensvc/om3/daemon/api"
 	"github.com/opensvc/om3/daemon/daemonauth"
@@ -20,7 +19,7 @@ import (
 
 type (
 	JWTCreater interface {
-		CreateUserToken(userInfo auth.Info, duration time.Duration, xClaims map[string]interface{}) (tk string, expiredAt time.Time, err error)
+		CreateToken(duration time.Duration, xClaims map[string]interface{}) (tk string, expiredAt time.Time, err error)
 	}
 
 	DaemonAPI struct {

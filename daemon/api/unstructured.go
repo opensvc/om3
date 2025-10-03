@@ -574,3 +574,17 @@ func (t ResourceInfoItem) Unstructured() map[string]any {
 		"value":  t.Value,
 	}
 }
+
+func (t AuthToken) Unstructured() map[string]any {
+	m := map[string]any{
+		"access_token":      t.AccessToken,
+		"access_expired_at": t.AccessExpiredAt,
+	}
+	if t.RefreshToken != nil {
+		m["refresh_token"] = *t.RefreshToken
+	}
+	if t.RefreshExpiredAt != nil {
+		m["refresh_expired_at"] = *t.RefreshExpiredAt
+	}
+	return m
+}

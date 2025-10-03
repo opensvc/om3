@@ -185,6 +185,26 @@ func (t TDuration) Convert(s string) (any, error) {
 	return t.convert(s)
 }
 
+// DurationWithDefaultMinMax parses a duration string and clamps the result within minD and maxD or returns defaultD.
+// If s is nil or empty, defaultD is returned, clamped within the range defined by minD and maxD.
+func DurationWithDefaultMinMax(s *string, defaultD, minD, maxD time.Duration) (time.Duration, error) {
+	return TDuration{}.convertWithDefaultMinMax(s, defaultD, minD, maxD)
+}
+
+func (t TDuration) convertWithDefaultMinMax(s *string, defaultD, minD, maxD time.Duration) (time.Duration, error) {
+	if s == nil || *s == "" {
+		return min(maxD, max(minD, defaultD)), nil
+	}
+	d, err := t.convert(*s)
+	if err != nil {
+		return 0, fmt.Errorf("invalid duration conversion %s: %w", *s, err)
+	} else if d == nil {
+		return min(maxD, max(minD, defaultD)), nil
+	} else {
+		return max(minD, min(maxD, *d)), nil
+	}
+}
+
 func (t TDuration) convert(s string) (*time.Duration, error) {
 	if s == "" {
 		return nil, nil

@@ -22,18 +22,22 @@ paths:
 
   /api/auth/token:
     post:
+      summary: Get a new access token
       description: |
-        Create and return a JSON Web Token the client can use as a Authorization
-        header in its following requests.
+        Return a new access token the client can use as a Authorization
+        header in its following requests
 
+        If the `refresh` parameter is present and set to `true`, a refresh token
+        will also be included in the response.
+        
         The requested roles are embedded as a 'grant' claim if matching the usr
         'grant' keyword.
       operationId: PostAuthToken
       parameters:
         - $ref: '#/components/parameters/Roles'
         - in: query
-          name: duration
-          description: max token duration, maximum value 24h
+          name: access_duration
+          description: max access token duration, maximum value 24h
           schema:
             type: string
             example: 10m
@@ -49,6 +53,22 @@ paths:
           schema:
             type: string
             example: ns1
+        - in: query
+          name: refresh
+          description: >
+            If `true`, the response will include a refresh token in addition 
+            to the access token.  
+            If omitted or `false`, only an access token is returned.
+          required: false
+          schema:
+            type: boolean
+            default: true
+        - in: query
+          name: refresh_duration
+          description: max refresh token duration, maximum value 30 days
+          schema:
+            type: string
+            example: 24h
       responses:
         200:
           description: OK
@@ -70,6 +90,53 @@ paths:
           $ref: '#/components/responses/503'
       security:
         - basicAuth: []
+        - bearerAuth: []
+      tags:
+        - auth
+
+  /api/auth/refresh:
+    post:
+      summary: Refresh access token
+      description: |
+        Return a new access token the client can use as a Authorization
+        header in its following requests.
+        The subject of the access token is the same as the one of the refresh token
+        provided in the request Authorization header.
+      operationId: PostAuthRefresh
+      parameters:
+        - $ref: '#/components/parameters/Roles'
+        - in: query
+          name: access_duration
+          description: max access token duration, maximum value 24h
+          schema:
+            type: string
+            example: 10m
+        - in: query
+          name: scope
+          description: the scope value used to create the token grant claim
+          schema:
+            type: string
+            example: ns1
+      responses:
+        200:
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AuthAccessToken'
+        400:
+          $ref: '#/components/responses/400'
+        401:
+          $ref: '#/components/responses/401'
+        403:
+          $ref: '#/components/responses/403'
+        404:
+          $ref: '#/components/responses/404'
+        500:
+          $ref: '#/components/responses/500'
+        503:
+          $ref: '#/components/responses/503'
+      security:
         - bearerAuth: []
       tags:
         - auth
@@ -4375,17 +4442,28 @@ components:
             client_id:
               type: string
     AuthToken:
+      allOf:
+        - $ref: '#/components/schemas/AuthAccessToken'
+        - $ref: '#/components/schemas/AuthRefreshToken'
+    AuthAccessToken:
       type: object
       required:
-        - expired_at
-        - token
+        - access_expired_at
+        - access_token
       properties:
-        expired_at:
+        access_expired_at:
           type: string
           format: date-time
-        token:
+        access_token:
           type: string
-
+    AuthRefreshToken:
+      type: object
+      properties:
+        refresh_expired_at:
+          type: string
+          format: date-time
+        refresh_token:
+          type: string
     CapabilityList:
       type: object
       required:
