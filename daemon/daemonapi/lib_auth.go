@@ -57,12 +57,12 @@ func (a *DaemonAPI) canCreateRefreshToken(ctx echo.Context) bool {
 
 // accessTokenDuration parses a duration string, returning a clamped time.Duration or a default duration if input is nil or empty.
 func (a *DaemonAPI) accessTokenDuration(s *string) (time.Duration, error) {
-	return converters.TDuration{}.TryConvert(s, time.Minute*10, time.Second, time.Hour)
+	return converters.DurationWithDefaultMinMax(s, time.Minute*10, time.Second, time.Hour)
 }
 
 // refreshTokenDuration parses a duration string, returning a clamped time.Duration or a default duration if input is nil or empty.
 func (a *DaemonAPI) refreshTokenDuration(s *string) (time.Duration, error) {
-	return converters.TDuration{}.TryConvert(s, time.Hour*24, time.Second, time.Hour*24*30)
+	return converters.DurationWithDefaultMinMax(s, time.Hour*24, time.Second, time.Hour*24*30)
 }
 
 func validateRole(r *api.Roles) error {

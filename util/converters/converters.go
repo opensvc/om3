@@ -185,10 +185,13 @@ func (t TDuration) Convert(s string) (any, error) {
 	return t.convert(s)
 }
 
-// TryConvert attempts to parse a string into a time.Duration.
-// Returns the default value clamped within minD and maxD if s is nil or *s is ""
-// Returns the parsed duration clamped within minD and maxD
-func (t TDuration) TryConvert(s *string, defaultD, minD, maxD time.Duration) (time.Duration, error) {
+// DurationWithDefaultMinMax parses a duration string and clamps the result within minD and maxD or returns defaultD.
+// If s is nil or empty, defaultD is returned, clamped within the range defined by minD and maxD.
+func DurationWithDefaultMinMax(s *string, defaultD, minD, maxD time.Duration) (time.Duration, error) {
+	return TDuration{}.convertWithDefaultMinMax(s, defaultD, minD, maxD)
+}
+
+func (t TDuration) convertWithDefaultMinMax(s *string, defaultD, minD, maxD time.Duration) (time.Duration, error) {
 	if s == nil || *s == "" {
 		return min(maxD, max(minD, defaultD)), nil
 	}
