@@ -7,172 +7,165 @@ import (
 	"golang.org/x/exp/maps"
 )
 
-var completionTree = map[string]any{
-	"do": map[string]any{
-		"cluster": []string{"freeze", "unfreeze"},
-		"object": map[string]any{
-			"abort":       nil,
-			"freeze":      nil,
-			"giveback":    nil,
-			"provision":   nil,
-			"purge":       nil,
-			"restart":     nil,
-			"start":       nil,
-			"stop":        nil,
-			"switch":      []string{"--live"},
-			"unfreeze":    nil,
-			"unprovision": nil,
+type node map[string]node
+
+var (
+	nodeDoCluster = node{
+		"freeze":   nil,
+		"unfreeze": nil,
+	}
+	nodeDoObject = node{
+		"abort":     nil,
+		"freeze":    nil,
+		"giveback":  nil,
+		"provision": nil,
+		"purge":     nil,
+		"restart":   nil,
+		"start":     nil,
+		"stop":      nil,
+		"switch": node{
+			"--live": nil,
 		},
-		"instance": map[string]any{
-			"clear":       nil,
-			"delete":      nil,
-			"freeze":      nil,
-			"provision":   nil,
-			"refresh":     nil,
-			"restart":     nil,
-			"start":       nil,
-			"stop":        nil,
-			"switch":      []string{"--live"},
-			"takeover":    []string{"--live"},
-			"unfreeze":    nil,
-			"unprovision": nil,
+		"unfreeze":    nil,
+		"unprovision": nil,
+	}
+	nodeDoInstance = node{
+		"clear":  nil,
+		"delete": nil,
+		"freeze": nil,
+		"provision": node{
+			"--disable-rollback": nil,
+			"--leader":           nil,
 		},
-		"resource": map[string]any{
-			"disable":     nil,
-			"enable":      nil,
-			"provision":   nil,
-			"run":         nil,
-			"start":       []string{"--force"},
-			"stop":        []string{"--force"},
-			"unprovision": nil,
+		"refresh": nil,
+		"restart": nil,
+		"start":   nil,
+		"stop": node{
+			"--force": nil,
 		},
-		"service": []string{"restart", "start", "stop"},
-		"task":    []string{"abort", "restart", "start", "stop"},
-		"node":    []string{"drain", "freeze", "unfreeze"},
-	},
-	"filter":  nil,
-	"connect": nil,
-	"go":      []string{"sec", "cfg", "vol", "pool", "net", "relay"},
+		"switch": node{
+			"--live": nil,
+		},
+		"takeover": node{
+			"--live": nil,
+		},
+		"unfreeze":    nil,
+		"unprovision": nil,
+	}
+	nodeDoResource = node{
+		"disable":   nil,
+		"enable":    nil,
+		"provision": nil,
+		"run":       nil,
+		"start": node{
+			"--force": nil,
+		},
+		"stop": node{
+			"--force": nil,
+		},
+		"unprovision": nil,
+	}
+	nodeDoTask = node{
+		"abort": nil,
+		"run":   nil,
+	}
+	nodeDoNode = node{
+		"drain":    nil,
+		"freeze":   nil,
+		"unfreeze": nil,
+	}
+	nodeRoot = node{
+		"do":      nil,
+		"filter":  nil,
+		"connect": nil,
+		"go": node{
+			"sec":   nil,
+			"cfg":   nil,
+			"vol":   nil,
+			"pool":  nil,
+			"net":   nil,
+			"relay": nil,
+		},
+	}
+)
+
+func (t node) Candidates(prefix, arg string) []string {
+	if t == nil {
+		return []string{}
+	}
+	var candidates []string
+	for _, candidate := range maps.Keys(t) {
+		if arg == "" || strings.HasPrefix(candidate, arg) {
+			candidates = append(candidates, prefix+candidate)
+		}
+	}
+	return candidates
 }
 
-func (t *App) getActualSelected() string {
+func (t *App) getDo() node {
 	row, col := t.objects.GetSelection()
 
 	if t.focus() == viewInstance && row > 1 {
 		if _, ok := t.flex.GetItem(2).(*tview.Table); ok {
-			return "resource"
+			return nodeDoResource
 		}
-		return ""
+		return nil
 	}
 
 	if row == 0 {
 		if col == 1 {
-			return "cluster"
+			return nodeDoCluster
 		}
 		if col >= t.firstInstanceCol {
-			return "node"
+			return nodeDoNode
 		}
-		return ""
+		return nil
 	}
 
 	if row >= t.firstObjectRow {
 		if col == 0 {
-			return "object"
+			return nodeDoObject
 		}
 		if col >= t.firstInstanceCol {
-			return "instance"
+			return nodeDoInstance
 		}
 	}
 
-	return ""
+	return nil
 }
 
 func (t *App) getCompletions(text string) []string {
 	args := strings.Fields(text)
-	if len(args) == 0 {
-		return maps.Keys(completionTree)
-	}
 
-	current := completionTree
+	current := nodeRoot
+	current["do"] = t.getDo()
+
 	var prefix strings.Builder
 
-	isMap := func(v any) bool {
-		_, ok := v.(map[string]any)
-		return ok
-	}
+	n := len(args)
 
 	for i, arg := range args {
-		if i > 0 {
-			prefix.WriteString(" ")
-		}
-
-		next, exist := current[arg]
-		if !exist {
-			if isMap(current) {
-				var results []string
-				options := maps.Keys(current)
-				for _, option := range options {
-					if strings.HasPrefix(option, arg) {
-						results = append(results, prefix.String()+option)
-					}
-				}
-				return results
-			}
-			return []string{}
+		next, ok := current[arg]
+		if !ok {
+			return current.Candidates(prefix.String(), arg)
 		}
 		prefix.WriteString(arg)
-		switch v := next.(type) {
-		case map[string]any:
-			if arg == "do" {
-				selected := t.getActualSelected()
-				if selected == "" {
-					return []string{}
-				}
-				if _, ok := v[selected]; !ok {
-					return []string{}
-				}
-				switch v[selected].(type) {
-				case []string:
-					return t.buildCompletions(v[selected].([]string), args, i, prefix.String())
-				case map[string]any:
-					current = v[selected].(map[string]any)
-				default:
-					return []string{}
-				}
+		prefix.WriteString(" ")
+		if i == n-1 {
+			if !strings.HasSuffix(text, " ") {
+				return []string{}
 			}
-		case []string:
-			return t.buildCompletions(v, args, i, prefix.String())
-		case nil:
-			return []string{}
+			return next.Candidates(prefix.String(), "")
 		}
-	}
-	if m, ok := any(current).(map[string]any); ok {
-		keys := maps.Keys(m)
-		res := make([]string, 0, len(keys))
-		for _, key := range keys {
-			res = append(res, prefix.String()+" "+key)
-		}
-		return res
+		current = next
 	}
 	return []string{}
 }
 
 func (t *App) buildCompletions(options, args []string, currentIndex int, prefix string) []string {
-	if len(args) == currentIndex+2 {
-		filter := args[currentIndex+1]
-		var results []string
-		for _, option := range options {
-			if strings.HasPrefix(option, filter) {
-				completion := prefix + " " + option
-				results = append(results, completion)
-			}
-		}
-		return results
-	}
-
-	results := make([]string, 0, len(options))
-	for _, option := range options {
-		results = append(results, prefix+" "+option)
+	results := make([]string, len(options))
+	for i, option := range options {
+		results[i] = prefix + " " + option
 	}
 	return results
 }
