@@ -60,6 +60,16 @@ func (a *DaemonAPI) getRelayStatusLocal(ctx echo.Context, params api.GetRelaySta
 		}
 		data.Items = append(data.Items, item)
 	}
+	// Sort by ClusterID, then Nodename, then NodeAddr
+	sort.Slice(data.Items, func(i, j int) bool {
+		if data.Items[i].ClusterID != data.Items[j].ClusterID {
+			return data.Items[i].ClusterID < data.Items[j].ClusterID
+		}
+		if data.Items[i].Nodename != data.Items[j].Nodename {
+			return data.Items[i].Nodename < data.Items[j].Nodename
+		}
+		return data.Items[i].NodeAddr < data.Items[j].NodeAddr
+	})
 	return ctx.JSON(http.StatusOK, data)
 }
 
@@ -134,21 +144,15 @@ func (a *DaemonAPI) getRelayStatusRemote(ctx echo.Context, params api.GetRelaySt
 			items = append(items, resp.JSON200.Items...)
 		}
 	}
+	// Sort by ClusterID, then Nodename, then NodeAddr
 	sort.Slice(items, func(i, j int) bool {
-		switch {
-		case items[i].ClusterName < items[j].ClusterName:
-			return true
-		case items[i].ClusterName > items[j].ClusterName:
-			return false
-		case items[i].ClusterID < items[j].ClusterID:
-			return true
-		case items[i].ClusterID > items[j].ClusterID:
-			return false
-		case items[i].Nodename < items[j].Nodename:
-			return true
-		default:
-			return false
+		if items[i].ClusterID != items[j].ClusterID {
+			return items[i].ClusterID < items[j].ClusterID
 		}
+		if items[i].Nodename != items[j].Nodename {
+			return items[i].Nodename < items[j].Nodename
+		}
+		return items[i].NodeAddr < items[j].NodeAddr
 	})
 	data := api.RelayStatusList{
 		Kind:  "RelayStatusList",
