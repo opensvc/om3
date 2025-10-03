@@ -31,16 +31,16 @@ func (a *DaemonAPI) PostAuthToken(ctx echo.Context, params api.PostAuthTokenPara
 
 		log = LogHandler(ctx, "PostAuthToken")
 
-		rDuration time.Duration
+		refreshDuration time.Duration
 	)
 
 	// check params
-	aDuration, err := a.accessTokenDuration(params.AccessDuration)
+	accessDuration, err := a.accessTokenDuration(params.AccessDuration)
 	if err != nil {
 		return JSONProblemf(ctx, http.StatusBadRequest, "Invalid parameters", "Invalid access duration: %s", err)
 	}
 	if needRefresh {
-		if rDuration, err = a.refreshTokenDuration(params.RefreshDuration); err != nil {
+		if refreshDuration, err = a.refreshTokenDuration(params.RefreshDuration); err != nil {
 			return JSONProblemf(ctx, http.StatusBadRequest, "Invalid parameters", "Invalid refresh duration: %s", err)
 		}
 	}
@@ -60,7 +60,7 @@ func (a *DaemonAPI) PostAuthToken(ctx echo.Context, params api.PostAuthTokenPara
 		username = *params.Subject
 	}
 
-	if d, err := a.createAccessToken(ctx, username, aDuration, params.Role, params.Scope); err != nil {
+	if d, err := a.createAccessToken(ctx, username, accessDuration, params.Role, params.Scope); err != nil {
 		if errors.Is(err, errBadRequest) {
 			log.Debugf("invalid parameters: %s", err)
 			return JSONProblemf(ctx, http.StatusBadRequest, "Create token Invalid parameters", "%s", err)
@@ -76,7 +76,7 @@ func (a *DaemonAPI) PostAuthToken(ctx echo.Context, params api.PostAuthTokenPara
 	}
 
 	if needRefresh {
-		if rk, exp, err := a.createToken(username, "refresh", rDuration, nil); err != nil {
+		if rk, exp, err := a.createToken(username, "refresh", refreshDuration, nil); err != nil {
 			log.Errorf("create refresh token: %s", err)
 			return JSONProblemf(ctx, http.StatusInternalServerError, "Unexpected error", "%s", err)
 		} else {

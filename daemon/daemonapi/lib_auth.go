@@ -90,12 +90,12 @@ func validateRole(r *api.Roles) error {
 }
 
 // filterGrant filters the requested roles and scopes based on the allowed grants.
-func filterGrant(allowed []string, rolesP *api.Roles, scopeP *string) (grants []string, err error) {
-	if err := validateRole(rolesP); err != nil {
+func filterGrant(allowed []string, rolePtr *api.Roles, scopePtr *string) (grants []string, err error) {
+	if err := validateRole(rolePtr); err != nil {
 		return nil, err
 	}
 	var roles []rbac.Role
-	if rolesP == nil {
+	if rolePtr == nil {
 		added := make(map[string]struct{})
 		for _, v := range allowed {
 			if _, ok := added[v]; ok {
@@ -106,14 +106,14 @@ func filterGrant(allowed []string, rolesP *api.Roles, scopeP *string) (grants []
 			roles = append(roles, rbac.Role(r))
 		}
 	} else {
-		for _, r := range *rolesP {
+		for _, r := range *rolePtr {
 			roles = append(roles, rbac.Role(r))
 		}
 	}
 	allowedGrants := rbac.NewGrants(allowed...)
 	var scope string
-	if scopeP != nil {
-		scope = *scopeP
+	if scopePtr != nil {
+		scope = *scopePtr
 	}
 	roleDone := make(map[rbac.Role]bool)
 	for _, role := range roles {
@@ -178,7 +178,7 @@ func (a *DaemonAPI) createToken(username, tokenUse string, duration time.Duratio
 	return a.JWTcreator.CreateToken(duration, xc)
 }
 
-func (a *DaemonAPI) createAccessToken(ctx echo.Context, username string, duration time.Duration, pRole *api.Roles, pScope *string) (d api.AuthAccessToken, err error) {
+func (a *DaemonAPI) createAccessToken(ctx echo.Context, username string, duration time.Duration, rolePtr *api.Roles, scopePtr *string) (d api.AuthAccessToken, err error) {
 	var grantL []string
 	if username == "root" && strategyFromContext(ctx) == daemonauth.StrategyUX {
 		grants := grantsFromContext(ctx)
@@ -190,7 +190,7 @@ func (a *DaemonAPI) createAccessToken(ctx echo.Context, username string, duratio
 		return d, err
 	}
 
-	if grantL, err := filterGrant(grantL, pRole, pScope); err != nil {
+	if grantL, err := filterGrant(grantL, rolePtr, scopePtr); err != nil {
 		return d, fmt.Errorf("filter grant: %w", err)
 	} else if claims, err := a.xClaimForGrants(grantL); err != nil {
 		return d, fmt.Errorf("create claims: %w", err)
