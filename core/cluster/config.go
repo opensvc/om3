@@ -5,7 +5,6 @@ import (
 	"encoding/base64"
 	"errors"
 	"fmt"
-	"os"
 	"strconv"
 	"strings"
 
@@ -114,7 +113,6 @@ func (t *Config) HeartbeatSecret() HeartbeatSecret {
 }
 
 func (t *Config) SetHeartbeatSecret(s HeartbeatSecret) {
-	fmt.Fprintf(os.Stderr, "SetHeartbeatSecret %#v\n", s)
 	t.hbSecret = s
 }
 
