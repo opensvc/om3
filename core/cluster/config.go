@@ -26,6 +26,7 @@ type (
 		CASecPaths []string       `json:"ca_sec_paths"`
 		Listener   ConfigListener `json:"listener"`
 		Quorum     bool           `json:"quorum"`
+		HBGen      uint64         `json:"hb_gen"`
 
 		// fields private, no exposed in daemon data
 		// json nor events
@@ -138,6 +139,7 @@ func (t *Config) DeepCopy() *Config {
 		CASecPaths: append([]string{}, t.CASecPaths...),
 		Listener:   t.Listener,
 		Quorum:     t.Quorum,
+		HBGen:      t.HBGen,
 		secret:     t.secret,
 		hbSecret:   t.hbSecret,
 		sshKeyFile: t.sshKeyFile,
