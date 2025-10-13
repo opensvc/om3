@@ -201,10 +201,14 @@ func (t *rx) Start(cmdC chan<- interface{}, msgC chan<- *hbtype.Msg) error {
 				continue
 			}
 			clusterConfig := cluster.ConfigData.Get()
+			secret := clusterConfig.HeartbeatSecret()
 			clearConn := encryptconn.New(conn, &omcrypto.Factory{
 				NodeName:    hostname.Hostname(),
 				ClusterName: clusterConfig.Name,
-				Key:         clusterConfig.Secret(),
+				Key:         secret.Value,
+				KeyGen:      secret.Gen,
+				NextKey:     secret.NextValue,
+				NextKeyGen:  secret.NextGen,
 			})
 			wg.Add(1)
 			go func() {

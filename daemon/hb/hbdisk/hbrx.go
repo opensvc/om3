@@ -38,7 +38,7 @@ type (
 		msgC   chan<- *hbtype.Msg
 		cancel func()
 
-		encryptDecrypter *omcrypto.Factory
+		decrypter *omcrypto.Factory
 
 		// rescanMetadataReason stores the most recent reason for a metadata rescan,
 		// helping to prevent excessive logging of the same reason.
@@ -98,10 +98,14 @@ func (t *rx) Start(cmdC chan<- any, msgC chan<- *hbtype.Msg) error {
 	t.cancel = cancel
 
 	clusterConfig := cluster.ConfigData.Get()
-	t.encryptDecrypter = &omcrypto.Factory{
+	secret := clusterConfig.HeartbeatSecret()
+	t.decrypter = &omcrypto.Factory{
 		NodeName:    t.base.localhost,
 		ClusterName: clusterConfig.Name,
-		Key:         clusterConfig.Secret(),
+		Key:         secret.Value,
+		KeyGen:      secret.Gen,
+		NextKey:     secret.NextValue,
+		NextKeyGen:  secret.NextGen,
 	}
 
 	for _, node := range t.nodes {
@@ -171,7 +175,7 @@ func (t *rx) recv(nodename string) {
 		t.log.Debugf("node %s slot %d has not been updated for %s", nodename, slot, elapsed)
 		return
 	}
-	b, msgNodename, err := t.encryptDecrypter.DecryptWithNode(c.Msg)
+	b, msgNodename, err := t.decrypter.DecryptWithNode(c.Msg)
 	if err != nil {
 		t.log.Debugf("node %s slot %d decrypt: %s", nodename, slot, err)
 		return

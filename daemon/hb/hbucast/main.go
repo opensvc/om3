@@ -27,6 +27,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/opensvc/om3/core/cluster"
 	"github.com/opensvc/om3/core/hbcfg"
 	"github.com/opensvc/om3/util/hostname"
 	"github.com/opensvc/om3/util/key"
@@ -94,8 +95,9 @@ func (t *T) Configure(ctx context.Context) {
 	t.SetInterval(interval)
 	t.SetTimeout(timeout)
 	intf := t.GetString("intf")
-	signature := fmt.Sprintf("type: hb.ucast, nodes: %s timeout: %s interval: %s intf: %s",
-		nodesSig, timeout, interval, intf)
+	secretSig := cluster.ConfigData.Get().HeartbeatSecret().Sig
+	signature := fmt.Sprintf("type: hb.ucast, nodes: %s timeout: %s interval: %s intf: %s secret: %s",
+		nodesSig, timeout, interval, intf, secretSig)
 	t.SetSignature(signature)
 	name := t.Name()
 	tx := newTx(ctx, name, nodeMap, addr, port, intf, timeout, interval)

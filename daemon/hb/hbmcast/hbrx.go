@@ -36,7 +36,7 @@ type (
 		msgC   chan<- *hbtype.Msg
 		cancel func()
 
-		encryptDecrypter *omcrypto.Factory
+		decrypter *omcrypto.Factory
 	}
 	assembly map[string]msgMap
 	msgMap   map[string]dataMap
@@ -81,10 +81,14 @@ func (t *rx) Start(cmdC chan<- interface{}, msgC chan<- *hbtype.Msg) error {
 	t.log.Infof("starting")
 	t.assembly = make(assembly)
 	clusterConfig := cluster.ConfigData.Get()
-	t.encryptDecrypter = &omcrypto.Factory{
+	secret := clusterConfig.HeartbeatSecret()
+	t.decrypter = &omcrypto.Factory{
 		NodeName:    hostname.Hostname(),
 		ClusterName: clusterConfig.Name,
-		Key:         clusterConfig.Secret(),
+		Key:         secret.Value,
+		KeyGen:      secret.Gen,
+		NextKey:     secret.NextValue,
+		NextKeyGen:  secret.NextGen,
 	}
 	started := make(chan bool)
 	t.Add(1)
@@ -212,7 +216,7 @@ func (t *rx) recv(src *net.UDPAddr, n int, b []byte) {
 	} else {
 		encMsg = chunks[1]
 	}
-	b, err := t.encryptDecrypter.Decrypt(encMsg)
+	b, err := t.decrypter.Decrypt(encMsg)
 	if err != nil {
 		t.log.Debugf("recv: decrypting msg from %s: %s: %s", s, hex.Dump(encMsg), err)
 		return

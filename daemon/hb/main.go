@@ -361,17 +361,19 @@ func (t *T) msgToTx(ctx context.Context) error {
 				delete(registeredTxMsgQueue, txID)
 			case msg := <-msgC:
 				clusterConfig := cluster.ConfigData.Get()
-				encrypterDecrypter := &omcrypto.Factory{
+				secret := clusterConfig.HeartbeatSecret()
+				encrypter := &omcrypto.Factory{
 					NodeName:    hostname.Hostname(),
 					ClusterName: clusterConfig.Name,
-					Key:         clusterConfig.Secret(),
+					Key:         secret.Value,
+					KeyGen:      secret.Gen,
 				}
 				b, err := json.Marshal(msg)
 				if err != nil {
 					err = fmt.Errorf("marshal failure %s for msg %v", err, msg)
 					continue
 				}
-				b, err = encrypterDecrypter.Encrypt(b)
+				b, err = encrypter.Encrypt(b)
 				if err != nil {
 					continue
 				}
