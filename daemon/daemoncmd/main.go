@@ -99,7 +99,7 @@ func bootStrapCcfg() error {
 			Obfuscate: true,
 		},
 		{
-			Key:       key.New("cluster", "hb_secrets"),
+			Key:       key.New("cluster", "hb_secret"),
 			Default:   fmt.Sprintf("%d:%s", 0, strings.ReplaceAll(uuid.New().String(), "-", "")),
 			Obfuscate: true,
 		},
