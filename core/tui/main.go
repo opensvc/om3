@@ -352,7 +352,7 @@ func (t *App) initApp() {
 		}
 		switch event.Key() {
 		case tcell.KeyESC:
-			if n := t.resetSelected(); n > 0 && t.Frame.Selector == "*/svc/*" {
+			if n := t.resetSelected(); n > 0 || (t.Frame.Selector == "*/svc/*" && len(t.stack) == 0) {
 				return nil
 			}
 			t.back()
