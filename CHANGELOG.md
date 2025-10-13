@@ -25,7 +25,13 @@
 
 * **`cluster.name` scope:**
     This keyword is no longer scopable.
-    
+
+* **`cluster.hb_secret` added:**
+    In v2.1 `cluster.secret` keyword defines both sec and heartbeat encrypting key.
+    In v3 `cluster.hb_secret` define the heartbeat encryption key with the following format:
+    <generation_number>:<encryption_key>.
+    During the heartbeat secret key rotation the keyword may contain two values: the current and the next key.
+
 * **`node.default_mon_format` removed:**
     It should be a user-level setting, not a node-level config.
 
