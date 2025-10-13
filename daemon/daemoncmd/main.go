@@ -98,6 +98,11 @@ func bootStrapCcfg() error {
 			Default:   strings.ReplaceAll(uuid.New().String(), "-", ""),
 			Obfuscate: true,
 		},
+		{
+			Key:       key.New("cluster", "hb_secrets"),
+			Default:   fmt.Sprintf("%d:%s", 0, strings.ReplaceAll(uuid.New().String(), "-", "")),
+			Obfuscate: true,
+		},
 	}
 
 	ccfg, err := object.NewCluster(object.WithVolatile(false))

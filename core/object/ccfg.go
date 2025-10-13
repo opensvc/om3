@@ -97,6 +97,7 @@ func getClusterConfig() (*cluster.Config, error) {
 	var (
 		keyID         = key.New("cluster", "id")
 		keySecret     = key.New("cluster", "secret")
+		keyHBSecret   = key.New("cluster", "hb_secret")
 		keyName       = key.New("cluster", "name")
 		keyNodes      = key.New("cluster", "nodes")
 		keyDNS        = key.New("cluster", "dns")
@@ -112,6 +113,8 @@ func getClusterConfig() (*cluster.Config, error) {
 		keyListenerDNSSockGID     = key.New("listener", "dns_sock_gid")
 
 		keyNodeSSHKey = key.New("node", "sshkey")
+
+		hbSecret cluster.HeartbeatSecret
 	)
 
 	cfg := &cluster.Config{}
@@ -126,6 +129,19 @@ func getClusterConfig() (*cluster.Config, error) {
 	cfg.Name = c.GetString(keyName)
 	cfg.CASecPaths = c.GetStrings(keyCASecPaths)
 	cfg.SetSecret(c.GetString(keySecret))
+
+	if hbSecret, err = cluster.UnpackHeartbeatSecret(c.GetString(keyHBSecret)); err != nil {
+		cfg.Issues = append(cfg.Issues, fmt.Sprintf("unpack hb secret from %s value: %s", keyHBSecret, err))
+		cfg.SetHeartbeatSecret(cluster.HeartbeatSecret{Value: c.GetString(keySecret)})
+	} else if hbSecret.Value == "" {
+		// defines hb secrets from secret value
+		if hbSecret, err = cluster.UnpackHeartbeatSecret(c.GetString(keySecret)); err != nil {
+			cfg.Issues = append(cfg.Issues, fmt.Sprintf("unpack hb secret from %s value: %s", keySecret, err))
+			hbSecret = cluster.HeartbeatSecret{Value: c.GetString(keySecret)}
+		}
+	}
+	cfg.SetHeartbeatSecret(hbSecret)
+
 	cfg.Quorum = c.GetBool(keyQuorum)
 	cfg.Listener.CRL = c.GetString(keyListenerCRL)
 	if v, err := c.Eval(keyListenerAddr); err != nil {

@@ -551,6 +551,13 @@ var nodeCommonKeywords = []keywords.Keyword{
 		Text:        keywords.NewText(fs, "text/kw/node/cluster.secret"),
 	},
 	{
+		DefaultText: keywords.NewText(fs, "text/kw/node/cluster.hb_secret.default"),
+		Option:      "hb_secret",
+		Scopable:    true,
+		Section:     "cluster",
+		Text:        keywords.NewText(fs, "text/kw/node/cluster.hb_secret"),
+	},
+	{
 		Converter: "list",
 		Option:    "nodes",
 		Section:   "cluster",
