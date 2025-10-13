@@ -151,6 +151,10 @@ func (t *App) getCompletions(text string) []string {
 	n := len(args)
 	flags := make(map[string]bool)
 
+	if n == 0 {
+		return current.Candidates(prefix.String(), "", flags)
+	}
+
 	for i, arg := range args {
 		next, ok := current[arg]
 		isFlag := strings.HasPrefix(arg, "--")
