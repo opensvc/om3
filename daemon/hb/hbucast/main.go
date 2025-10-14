@@ -23,6 +23,7 @@ package hbucast
 import (
 	"context"
 	"fmt"
+	"slices"
 	"strconv"
 	"strings"
 	"time"
@@ -85,6 +86,7 @@ func (t *T) Configure(ctx context.Context) {
 		for node, s := range nodeMap {
 			l = append(l, fmt.Sprintf("%s(%s)", node, s))
 		}
+		slices.Sort(l)
 		return strings.Join(l, ",")
 	}()
 	delete(nodeMap, hostname.Hostname())
