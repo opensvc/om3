@@ -75,7 +75,7 @@ func New(_ context.Context, opts ...funcopt.O) *T {
 	return t
 }
 
-// Start startup the heartbeat components
+// Start starts the heartbeat components
 //
 // It starts:
 // with ctx:
@@ -326,7 +326,11 @@ func (t *T) msgToTx(ctx context.Context) error {
 		defer t.log.Infof("multiplexer message to hb tx drivers stopped")
 		t.log.Infof("multiplexer message to hb tx drivers started")
 		registeredTxMsgQueue := make(map[string]chan []byte)
+		sub := pubsub.SubFromContext(ctx, "daemon.hb.msgToTx")
+		sub.AddFilter(&msgbus.ClusterConfigUpdated{}, pubsub.Label{"node", hostname.Hostname()})
+		sub.Start()
 		defer func() {
+			_ = sub.Stop()
 			// We have to async ask daemondata to not anymore write to hbSendQ
 			// async because daemon data can be waiting on running queueNewHbMsg():
 			//    hbSendQ <- msg
@@ -346,9 +350,19 @@ func (t *T) msgToTx(ctx context.Context) error {
 					t.log.Debugf("msgToTx drop msg (done context)")
 				case <-t.msgToTxRegister:
 				case <-t.msgToTxUnregister:
+				case <-sub.C:
 				}
 			}
 		}()
+		clusterConfig := cluster.ConfigData.Get()
+		clusterName := clusterConfig.Name
+		secret := clusterConfig.HeartbeatSecret()
+		encrypter := &omcrypto.Factory{
+			NodeName:    hostname.Hostname(),
+			ClusterName: clusterName,
+			Key:         secret.Value,
+			KeyGen:      secret.Gen,
+		}
 		for {
 			select {
 			case <-ctx.Done():
@@ -359,15 +373,20 @@ func (t *T) msgToTx(ctx context.Context) error {
 			case txID := <-t.msgToTxUnregister:
 				t.log.Debugf("remove %s from hb transmitters", txID)
 				delete(registeredTxMsgQueue, txID)
-			case msg := <-msgC:
-				clusterConfig := cluster.ConfigData.Get()
-				secret := clusterConfig.HeartbeatSecret()
-				encrypter := &omcrypto.Factory{
-					NodeName:    hostname.Hostname(),
-					ClusterName: clusterConfig.Name,
-					Key:         secret.Value,
-					KeyGen:      secret.Gen,
+			case i := <-sub.C:
+				switch i.(type) {
+				case *msgbus.ClusterConfigUpdated:
+					clusterConfig := cluster.ConfigData.Get()
+					clusterName = clusterConfig.Name
+					secret = clusterConfig.HeartbeatSecret()
+					encrypter = &omcrypto.Factory{
+						NodeName:    hostname.Hostname(),
+						ClusterName: clusterName,
+						Key:         secret.Value,
+						KeyGen:      secret.Gen,
+					}
 				}
+			case msg := <-msgC:
 				b, err := json.Marshal(msg)
 				if err != nil {
 					err = fmt.Errorf("marshal failure %s for msg %v", err, msg)
