@@ -74,17 +74,6 @@ func (t *Ccfg) DRPNodes() ([]string, error) {
 	return t.config.GetStrings(k), nil
 }
 
-// GetClusterConfig returns the cached config data if any, or load the cache and return the cached config data.
-func GetClusterConfig() (cluster.Config, error) {
-	cfg := cluster.ConfigData.Get()
-	if cfg != nil {
-		return *cfg, nil
-	}
-	cfg, err := getClusterConfig()
-	cluster.ConfigData.Set(cfg)
-	return *cfg, err
-}
-
 // SetClusterConfig refreshes the config data cache and returns the new config data.
 func SetClusterConfig() (cluster.Config, error) {
 	cfg, err := getClusterConfig()
