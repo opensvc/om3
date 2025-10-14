@@ -49,6 +49,8 @@ type (
 		subQS pubsub.QueueSizer
 
 		wg sync.WaitGroup
+
+		previousHeartbeatConfig cluster.ConfigHeartbeat
 	}
 
 	// NodeDB implements AuthenticateNode

@@ -123,6 +123,8 @@ var (
 
 		"HeartbeatAlive": func() any { return &HeartbeatAlive{} },
 
+		"HeartbeatConfigUpdated": func() any { return &HeartbeatConfigUpdated{} },
+
 		"HeartbeatStale": func() any { return &HeartbeatStale{} },
 
 		"InstanceConfigDeleted": func() any { return &InstanceConfigDeleted{} },
@@ -443,6 +445,12 @@ type (
 		Nodename   string    `json:"to" yaml:"to"`
 		HbID       string    `json:"hb_id" yaml:"hb_id"`
 		Time       time.Time `json:"at" yaml:"at"`
+	}
+
+	HeartbeatConfigUpdated struct {
+		pubsub.Msg `yaml:",inline"`
+		Nodename   string                  `json:"to" yaml:"to"`
+		Value      cluster.ConfigHeartbeat `json:"config_heartbeat" yaml:"config_heartbeat"`
 	}
 
 	HeartbeatMessageTypeUpdated struct {
@@ -1072,6 +1080,10 @@ func (e *HeartbeatAlive) String() string {
 
 func (e *HeartbeatAlive) Kind() string {
 	return "HeartbeatAlive"
+}
+
+func (e *HeartbeatConfigUpdated) Kind() string {
+	return "HeartbeatConfigUpdated"
 }
 
 func (e *HeartbeatStale) String() string {

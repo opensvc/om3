@@ -52,6 +52,10 @@ func (t *Manager) pubClusterConfig() {
 	for _, v := range removed {
 		t.publisher.Pub(&msgbus.LeaveSuccess{Node: v}, labelLocalhost, pubsub.Label{"removed", v})
 	}
+	if t.previousHeartbeatConfig.Sig != state.Heartbeat.Sig {
+		t.previousHeartbeatConfig = state.Heartbeat
+		t.publisher.Pub(&msgbus.HeartbeatConfigUpdated{Nodename: t.localhost, Value: state.Heartbeat}, labelLocalhost)
+	}
 }
 
 func (t *Manager) handleConfigChanges() {

@@ -18,15 +18,15 @@ type (
 	// The cluster name is used as the right most part of cluster dns
 	// names.
 	Config struct {
-		Issues     []string       `json:"issues"`
-		ID         string         `json:"id"`
-		Name       string         `json:"name"`
-		Nodes      Nodes          `json:"nodes"`
-		DNS        []string       `json:"dns"`
-		CASecPaths []string       `json:"ca_sec_paths"`
-		Listener   ConfigListener `json:"listener"`
-		Quorum     bool           `json:"quorum"`
-		HBGen      uint64         `json:"hb_gen"`
+		Issues     []string        `json:"issues"`
+		ID         string          `json:"id"`
+		Name       string          `json:"name"`
+		Nodes      Nodes           `json:"nodes"`
+		DNS        []string        `json:"dns"`
+		CASecPaths []string        `json:"ca_sec_paths"`
+		Heartbeat  ConfigHeartbeat `json:"hb"`
+		Listener   ConfigListener  `json:"listener"`
+		Quorum     bool            `json:"quorum"`
 
 		// fields private, no exposed in daemon data
 		// json nor events
@@ -43,6 +43,11 @@ type (
 		NextValue string
 		NextGen   uint64
 		Sig       string
+	}
+
+	ConfigHeartbeat struct {
+		Gen uint64 `json:"gen"`
+		Sig string `json:"sig"`
 	}
 
 	ConfigListener struct {
@@ -90,8 +95,8 @@ func UnpackHeartbeatSecret(s string) (HeartbeatSecret, error) {
 		}
 	}
 
-	if len(secret.Value) > 0 || len(secret.NextValue) > 0 {
-		sha256sum := sha256.Sum256([]byte(secret.Value + ":" + secret.NextValue))
+	if len(secret.Value) > 0 || len(secret.NextValue) > 0 || secret.Gen > 0 || secret.NextGen > 0 {
+		sha256sum := sha256.Sum256([]byte(fmt.Sprintf("%d:%s %d:%s", secret.Gen, secret.Value, secret.NextGen, secret.NextValue)))
 		secret.Sig = base64.RawStdEncoding.EncodeToString(sha256sum[:])
 	}
 
@@ -137,9 +142,9 @@ func (t *Config) DeepCopy() *Config {
 		Nodes:      append(Nodes{}, t.Nodes...),
 		DNS:        append([]string{}, t.DNS...),
 		CASecPaths: append([]string{}, t.CASecPaths...),
+		Heartbeat:  t.Heartbeat,
 		Listener:   t.Listener,
 		Quorum:     t.Quorum,
-		HBGen:      t.HBGen,
 		secret:     t.secret,
 		hbSecret:   t.hbSecret,
 		sshKeyFile: t.sshKeyFile,

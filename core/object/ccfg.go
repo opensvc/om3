@@ -130,7 +130,8 @@ func getClusterConfig() (*cluster.Config, error) {
 		}
 	}
 	cfg.SetHeartbeatSecret(hbSecret)
-	cfg.HBGen = hbSecret.Gen
+	cfg.Heartbeat.Gen = hbSecret.Gen
+	cfg.Heartbeat.Sig = hbSecret.Sig
 
 	cfg.Quorum = c.GetBool(keyQuorum)
 	cfg.Listener.CRL = c.GetString(keyListenerCRL)
