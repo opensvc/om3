@@ -99,6 +99,8 @@ type (
 		viewKey  string
 		viewRID  string
 
+		focused bool
+
 		lastUpdatedAt time.Time
 
 		firstInstanceCol int
@@ -350,6 +352,9 @@ func (t *App) initApp() {
 		if t.command != nil {
 			return event
 		}
+		if t.focused {
+			return event
+		}
 		switch event.Key() {
 		case tcell.KeyESC:
 			if n := t.resetSelected(); n > 0 || (t.Frame.Selector == "*/svc/*" && len(t.stack) == 0) {
@@ -373,9 +378,6 @@ func (t *App) initApp() {
 			t.stop()
 		case 'r':
 			t.onRuneR(event)
-		case 'p':
-			t.infof("%d", len(t.stack))
-
 		}
 		return event
 	})
@@ -2043,7 +2045,7 @@ func (t *App) back() {
 		t.listContexts()
 		return
 	}
-	if t.resetSelected() == 0 && len(t.stack) == 0 {
+	if t.resetSelected() == 0 && len(t.stack) == 0 && !t.focused {
 		filter := "*/svc/*"
 		if t.options != nil && t.options.Selector != "" {
 			filter = t.options.Selector
