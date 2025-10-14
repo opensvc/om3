@@ -13,7 +13,6 @@ import (
 
 	"github.com/opensvc/om3/util/sign"
 
-	"github.com/opensvc/om3/core/cluster"
 	"github.com/opensvc/om3/core/hbcfg"
 	"github.com/opensvc/om3/daemon/daemonsubsystem"
 	"github.com/opensvc/om3/util/hostname"
@@ -82,9 +81,8 @@ func (t *T) Configure(ctx context.Context) {
 
 	t.SetNodes(oNodes)
 	t.SetTimeout(timeout)
-	secretSig := cluster.ConfigData.Get().HeartbeatSecret().Sig
-	signature := fmt.Sprintf("type: hb.disk, disk: %s nodes: %s timeout: %s interval: %s max_slot: %d secret: %s",
-		dev, nodes, timeout, interval, maxSlots, secretSig)
+	signature := fmt.Sprintf("type: hb.disk, disk: %s nodes: %s timeout: %s interval: %s max_slot: %d",
+		dev, nodes, timeout, interval, maxSlots)
 	t.SetSignature(signature)
 	name := t.Name()
 	tx := newTx(ctx, name, oNodes, dev, timeout, interval, maxSlots)

@@ -8,7 +8,6 @@ import (
 	"strings"
 	"time"
 
-	"github.com/opensvc/om3/core/cluster"
 	"github.com/opensvc/om3/core/hbcfg"
 	"github.com/opensvc/om3/util/hostname"
 	"github.com/opensvc/om3/util/key"
@@ -84,9 +83,8 @@ func (t *T) Configure(ctx context.Context) {
 	t.SetNodes(oNodes)
 	t.SetInterval(interval)
 	t.SetTimeout(timeout)
-	secretSig := cluster.ConfigData.Get().HeartbeatSecret().Sig
-	signature := fmt.Sprintf("type: hb.mcast, port: %d nodes: %s timeout: %s intf: %s interval: %s secret: %s",
-		port, nodes, timeout, intf, interval, secretSig)
+	signature := fmt.Sprintf("type: hb.mcast, port: %d nodes: %s timeout: %s intf: %s interval: %s",
+		port, nodes, timeout, intf, interval)
 	t.SetSignature(signature)
 	name := t.Name()
 
