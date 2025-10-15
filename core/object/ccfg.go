@@ -1,6 +1,7 @@
 package object
 
 import (
+	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -102,8 +103,6 @@ func getClusterConfig() (*cluster.Config, error) {
 		keyListenerDNSSockGID     = key.New("listener", "dns_sock_gid")
 
 		keyNodeSSHKey = key.New("node", "sshkey")
-
-		hbSecret cluster.HeartbeatSecret
 	)
 
 	cfg := &cluster.Config{}
@@ -119,19 +118,14 @@ func getClusterConfig() (*cluster.Config, error) {
 	cfg.CASecPaths = c.GetStrings(keyCASecPaths)
 	cfg.SetSecret(c.GetString(keySecret))
 
-	if hbSecret, err = cluster.UnpackHeartbeatSecret(c.GetString(keyHBSecret)); err != nil {
-		cfg.Issues = append(cfg.Issues, fmt.Sprintf("unpack hb secret from %s value: %s", keyHBSecret, err))
-		cfg.SetHeartbeatSecret(cluster.HeartbeatSecret{Value: c.GetString(keySecret)})
-	} else if hbSecret.Value == "" {
-		// defines hb secrets from secret value
-		if hbSecret, err = cluster.UnpackHeartbeatSecret(c.GetString(keySecret)); err != nil {
-			cfg.Issues = append(cfg.Issues, fmt.Sprintf("unpack hb secret from %s value: %s", keySecret, err))
-			hbSecret = cluster.HeartbeatSecret{Value: c.GetString(keySecret)}
+	if err1 := cfg.SetHeartbeatSecret(c.GetString(keyHBSecret)); err1 != nil {
+		// fallback to keySecret
+		cfg.Issues = append(cfg.Issues, fmt.Sprintf("configure heartbeat secret from %s: %s", keyHBSecret, err1))
+		if err2 := cfg.SetHeartbeatSecret(c.GetString(keySecret)); err2 != nil {
+			cfg.Issues = append(cfg.Issues, fmt.Sprintf("configure heartbeat secret from %s: %s", keySecret, err2))
+			return cfg, fmt.Errorf("unable to configure heartbeat secret from %s or from %s: %s", keyHBSecret, keySecret, errors.Join(err1, err2))
 		}
 	}
-	cfg.SetHeartbeatSecret(hbSecret)
-	cfg.Heartbeat.Gen = hbSecret.Gen
-	cfg.Heartbeat.Sig = hbSecret.Sig
 
 	cfg.Quorum = c.GetBool(keyQuorum)
 	cfg.Listener.CRL = c.GetString(keyListenerCRL)

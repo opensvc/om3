@@ -32,22 +32,26 @@ type (
 		// json nor events
 		secret string
 
-		hbSecret HeartbeatSecret
-
 		sshKeyFile string
 	}
 
-	HeartbeatSecret struct {
-		Value     string
-		Gen       uint64
-		NextValue string
-		NextGen   uint64
-		Sig       string
-	}
-
+	// ConfigHeartbeat represents the configuration for managing cluster heartbeat.
 	ConfigHeartbeat struct {
-		Gen uint64 `json:"gen"`
-		Sig string `json:"sig"`
+		// CurrentSecretVersion represents the current version of the heartbeat secret used by
+		// localhost to encrypt the heartbeat messages.
+		CurrentSecretVersion uint64 `json:"current_secret_version"`
+
+		// SecretSig represents the signature associated with the current configuration
+		// of cluster heartbeat secrets.
+		SecretSig string `json:"secret_sig"`
+
+		// NextSecretVersion represents the version of the next heartbeat secret used by
+		// localhost to encrypt the heartbeat messages after heartbeat secret rotation.
+		NextSecretVersion uint64 `json:"next_secret_version,omitempty"`
+
+		// These fields are private and not exposed in the daemon’s data, JSON output, or events
+		currentSecret string
+		nextSecret    string
 	}
 
 	ConfigListener struct {
@@ -61,48 +65,6 @@ type (
 	}
 )
 
-func unpackSecret(s string) (uint64, string, error) {
-	parts := strings.SplitN(s, ":", 2)
-
-	if len(parts) == 1 {
-		return 0, parts[0], nil
-	} else if uintPart, err := strconv.ParseUint(parts[0], 10, 64); err != nil {
-		return 0, "", errors.New("failed to convert first part to uint64")
-	} else {
-		return uintPart, parts[1], nil
-	}
-}
-
-func UnpackHeartbeatSecret(s string) (HeartbeatSecret, error) {
-	secret := HeartbeatSecret{}
-	l := strings.Fields(s)
-	if len(l) >= 1 {
-		i, v, err := unpackSecret(l[0])
-		if err != nil {
-			return secret, fmt.Errorf("failed to unpack rolling secret Value: %w", err)
-		} else {
-			secret.Value = v
-			secret.Gen = i
-		}
-	}
-	if len(l) > 1 {
-		i, v, err := unpackSecret(l[1])
-		if err != nil {
-			return secret, fmt.Errorf("failed to unpack next secret Value: %w", err)
-		} else {
-			secret.NextValue = v
-			secret.NextGen = i
-		}
-	}
-
-	if len(secret.Value) > 0 || len(secret.NextValue) > 0 || secret.Gen > 0 || secret.NextGen > 0 {
-		sha256sum := sha256.Sum256([]byte(fmt.Sprintf("%d:%s %d:%s", secret.Gen, secret.Value, secret.NextGen, secret.NextValue)))
-		secret.Sig = base64.RawStdEncoding.EncodeToString(sha256sum[:])
-	}
-
-	return secret, nil
-}
-
 func (t Config) Secret() string {
 	return t.secret
 }
@@ -111,15 +73,11 @@ func (t *Config) SetSecret(s string) {
 	t.secret = s
 }
 
-func (t *Config) HeartbeatSecret() HeartbeatSecret {
+func (t *ConfigHeartbeat) Secrets() (currentVersion uint64, currentSecret string, NextVersion uint64, nextSecret string) {
 	if t == nil {
-		return HeartbeatSecret{}
+		return
 	}
-	return t.hbSecret
-}
-
-func (t *Config) SetHeartbeatSecret(s HeartbeatSecret) {
-	t.hbSecret = s
+	return t.CurrentSecretVersion, t.currentSecret, t.NextSecretVersion, t.nextSecret
 }
 
 func (t *Config) SetSSHKeyFile(s string) {
@@ -146,7 +104,6 @@ func (t *Config) DeepCopy() *Config {
 		Listener:   t.Listener,
 		Quorum:     t.Quorum,
 		secret:     t.secret,
-		hbSecret:   t.hbSecret,
 		sshKeyFile: t.sshKeyFile,
 	}
 }
@@ -156,4 +113,59 @@ func (t *Config) DeepCopy() *Config {
 func (t *Config) SSHKeyFile() (string, bool) {
 	ok, _ := file.ExistsAndRegular(t.sshKeyFile)
 	return t.sshKeyFile, ok
+}
+
+func (t *Config) SetHeartbeatSecret(s string) error {
+	// reset values
+	hbCfg := t.Heartbeat
+	hbCfg.currentSecret = ""
+	hbCfg.nextSecret = ""
+	hbCfg.CurrentSecretVersion = 0
+	hbCfg.NextSecretVersion = 0
+	hbCfg.SecretSig = ""
+
+	l := strings.Fields(s)
+	if len(l) >= 1 {
+		i, v, err := unpackSecret(l[0])
+		if err != nil {
+			return fmt.Errorf("failed to unpack rolling secret Value: %w", err)
+		} else {
+			hbCfg.currentSecret = v
+			hbCfg.CurrentSecretVersion = i
+		}
+	}
+	if len(l) > 1 {
+		i, v, err := unpackSecret(l[1])
+		if err != nil {
+			return fmt.Errorf("failed to unpack next secret Value: %w", err)
+		} else {
+			hbCfg.nextSecret = v
+			hbCfg.NextSecretVersion = i
+		}
+	}
+
+	if len(hbCfg.currentSecret) == 0 {
+		return errors.New("current secret is empty")
+	}
+
+	if len(hbCfg.currentSecret) > 0 || len(hbCfg.nextSecret) > 0 || hbCfg.CurrentSecretVersion > 0 || hbCfg.NextSecretVersion > 0 {
+		sigToSum := fmt.Sprintf("%d:%s %d:%s", hbCfg.CurrentSecretVersion, hbCfg.currentSecret, hbCfg.NextSecretVersion, hbCfg.nextSecret)
+		sha256sum := sha256.Sum256([]byte(sigToSum))
+		hbCfg.SecretSig = base64.RawStdEncoding.EncodeToString(sha256sum[:])
+	}
+
+	t.Heartbeat = hbCfg
+	return nil
+}
+
+func unpackSecret(s string) (uint64, string, error) {
+	parts := strings.SplitN(s, ":", 2)
+
+	if len(parts) == 1 {
+		return 0, parts[0], nil
+	} else if uintPart, err := strconv.ParseUint(parts[0], 10, 64); err != nil {
+		return 0, "", errors.New("failed to convert first part to uint64")
+	} else {
+		return uintPart, parts[1], nil
+	}
 }
