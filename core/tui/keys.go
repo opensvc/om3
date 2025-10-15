@@ -8,6 +8,7 @@ import (
 
 	"github.com/gdamore/tcell/v2"
 	"github.com/opensvc/om3/core/client"
+	"github.com/opensvc/om3/core/oxcmd"
 	"github.com/opensvc/om3/daemon/api"
 	"github.com/opensvc/om3/util/sizeconv"
 	"github.com/rivo/tview"
@@ -51,6 +52,8 @@ func (t *App) initKeysTable() {
 			}, deleteKeyMessage)
 		case '+':
 			t.createAddInputBox()
+		case 'e':
+			t.editKey()
 		}
 		return event
 	})
@@ -264,4 +267,18 @@ func (t *App) createAddInputBox() {
 
 	t.flex.AddItem(grid, 0, 1, true)
 	t.app.SetFocus(flex)
+}
+
+func (t *App) editKey() {
+	if t.viewPath.IsZero() || t.viewKey == "" {
+		return
+	}
+	t.app.Suspend(func() {
+		cmd := oxcmd.CmdObjectKeyEdit{
+			Name: t.viewKey,
+		}
+		if err := cmd.DoRemote(t.viewPath, t.client); err != nil {
+			t.errorf("%s", err)
+		}
+	})
 }

@@ -369,6 +369,9 @@ func (t *App) initApp() {
 		case 'c':
 			t.onRuneC(event)
 		case 'e':
+			if t.viewPath.Kind == naming.KindCfg || t.viewPath.Kind == naming.KindSec {
+				return event
+			}
 			t.onRuneE(event)
 		case 'h':
 			t.onRuneH(event)
