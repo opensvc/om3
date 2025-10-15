@@ -36,7 +36,7 @@ const (
 	// modeRaw is the mode for non-Linux systems
 	modeRaw = "raw" // Mode for non-Linux systems
 
-	HBDiskSignature = "62d09ef2-3fce-41ad-9ffb-05f1c2b31c1a"
+	HBDiskSignature = "\x3d\xc1\x3c\x87\xc0\x5b\xe3\xb6"
 )
 
 // calculateMetaSlotOffset returns the offset of the meta page of the slot.
