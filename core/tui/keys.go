@@ -15,7 +15,7 @@ import (
 )
 
 var (
-	deleteKeyMessage = "DeleteKeyMessage"
+	deleteKeyMessage = "I understand that this action is irreversible and all data associated with this key will be permanently lost."
 )
 
 func (t *App) initKeysTable() {
