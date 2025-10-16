@@ -250,6 +250,9 @@ func (t *Manager) onForgetPeer(c *msgbus.ForgetPeer) {
 	delete(t.livePeers, c.Node)
 
 	delete(t.cacheNodesInfo, c.Node)
+
+	delete(t.hbSecretSigByNodename, c.Node)
+
 	t.saveNodesInfo()
 
 	var forgetType string

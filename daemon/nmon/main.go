@@ -34,6 +34,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/google/uuid"
 	"github.com/prometheus/procfs"
 
 	"github.com/opensvc/om3/core/cluster"
@@ -120,6 +121,11 @@ type (
 		nodeStatus node.Status
 
 		wg sync.WaitGroup
+
+		hbSecretRotating      bool
+		hbSecretRotatingAt    time.Time
+		hbSecretRotatingUUID  uuid.UUID
+		hbSecretSigByNodename map[string]string
 	}
 
 	// cmdOrchestrate can be used from post action go routines
@@ -182,6 +188,8 @@ func NewManager(drainDuration time.Duration, subQS pubsub.QueueSizer) *Manager {
 		labelLocalhost: pubsub.Label{"node", localhost},
 
 		subQS: subQS,
+
+		hbSecretSigByNodename: make(map[string]string),
 	}
 }
 
@@ -313,7 +321,9 @@ func (t *Manager) startSubscriptions() {
 	sub.AddFilter(&msgbus.DaemonListenerUpdated{})
 
 	sub.AddFilter(&msgbus.ForgetPeer{})
+	sub.AddFilter(&msgbus.HeartbeatConfigUpdated{})
 	sub.AddFilter(&msgbus.HeartbeatMessageTypeUpdated{})
+	sub.AddFilter(&msgbus.HeartbeatRotateRequest{}, t.labelLocalhost)
 	sub.AddFilter(&msgbus.JoinRequest{}, t.labelLocalhost)
 	sub.AddFilter(&msgbus.LeaveRequest{}, t.labelLocalhost)
 	sub.AddFilter(&msgbus.NodeConfigUpdated{}, pubsub.Label{"from", "peer"})
@@ -426,8 +436,12 @@ func (t *Manager) worker() {
 				t.onDaemonListenerUpdated(c)
 			case *msgbus.ForgetPeer:
 				t.onForgetPeer(c)
+			case *msgbus.HeartbeatConfigUpdated:
+				t.onHeartbeatConfigUpdated(c)
 			case *msgbus.JoinRequest:
 				t.onJoinRequest(c)
+			case *msgbus.HeartbeatRotateRequest:
+				t.onHeartbeatRotateRequest(c)
 			case *msgbus.HeartbeatMessageTypeUpdated:
 				t.onHeartbeatMessageTypeUpdated(c)
 			case *msgbus.NodeConfigUpdated:
