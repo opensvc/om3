@@ -4,6 +4,7 @@ package omcrypto
 import (
 	"bytes"
 	"compress/zlib"
+	"context"
 	"crypto/aes"
 	"crypto/cipher"
 	"crypto/rand"
@@ -42,7 +43,75 @@ type (
 		// NextKeyGen indicates the generation number of the next encryption key.
 		NextKeyGen uint64
 	}
+
+	FactoryCreateArgser interface {
+		Nodename() string
+		ClusterName() string
+		Secrets() (uint64, string, uint64, string)
+	}
+
+	FactoryArgser interface {
+		FactoryCreateArgser
+		OutdatedC() <-chan bool
+	}
+
+	FactoryArgs struct {
+		NodeName    string
+		ClusterName string
+		Key         string
+		KeyGen      uint64
+		NextKey     string
+		NextKeyGen  uint64
+	}
 )
+
+// Cipher defines an interface for encryption and decryption operations with optional node identification support.
+// DecryptWithNode decrypts the data, also returning the node name associated with the encryption process.
+// Decrypt decrypts the data using the current encryption configuration and returns the result.
+// Encrypt encrypts the data and outputs it in a secure format with metadata about the encryption.
+type (
+	Cipher interface {
+		DecryptWithNode(data []byte) ([]byte, string, error)
+		Decrypt(data []byte) ([]byte, error)
+		Encrypt(data []byte) ([]byte, error)
+	}
+)
+
+var (
+	// assert Factory implements Cipher interface
+	_ = Cipher(&Factory{})
+)
+
+// CipherC creates a channel that emits *Factory instances and manages their
+// lifecycle based on context and outdated signals.
+func CipherC(ctx context.Context, a FactoryArgser) <-chan *Factory {
+	c := make(chan *Factory)
+	go func() {
+		factory := newCipher(a)
+		outdatedC := a.OutdatedC()
+		for {
+			select {
+			case <-ctx.Done():
+				return
+			case c <- factory:
+			case outdated := <-outdatedC:
+				if outdated {
+					factory = newCipher(a)
+				}
+			}
+		}
+	}()
+	return c
+}
+
+func newCipher(a FactoryCreateArgser) *Factory {
+	f := &Factory{
+		NodeName:    a.Nodename(),
+		ClusterName: a.ClusterName(),
+	}
+	f.KeyGen, f.Key, f.NextKeyGen, f.NextKey = a.Secrets()
+	return f
+}
 
 func (m *Factory) assertValid() {
 	if m.ClusterName == "" {
