@@ -604,6 +604,11 @@ type HardwareList struct {
 // HardwareListKind defines model for HardwareList.Kind.
 type HardwareListKind string
 
+// HeartbeatRotateResponse defines model for HeartbeatRotateResponse.
+type HeartbeatRotateResponse struct {
+	ID openapi_types.UUID `json:"id"`
+}
+
 // IPAddress defines model for IPAddress.
 type IPAddress struct {
 	Address        string `json:"address"`

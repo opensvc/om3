@@ -547,6 +547,41 @@ paths:
       tags:
         - cluster
 
+  /api/cluster/hb/rotate:
+    post:
+      description: |
+        For internal use only.
+
+        Initiate cluster heartbeat secret rotation.
+
+        To follow the processing of the heartbeat rotate request, use the following event filters,
+        - HeartbeatRotateSuccess,.id=xxx
+        - HeartbeatRotateError,.id=xxx
+      operationId: PostClusterHeartbeatRotate
+      responses:
+        200:
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HeartbeatRotateResponse'
+        400:
+          $ref: '#/components/responses/400'
+        401:
+          $ref: '#/components/responses/401'
+        403:
+          $ref: '#/components/responses/403'
+        409:
+          $ref: '#/components/responses/409'
+        500:
+          $ref: '#/components/responses/500'
+      security:
+        - basicAuth: [ ]
+        - bearerAuth: [ ]
+      tags:
+        - cluster
+      x-internal: true
+
   /api/node/name/{nodename}/config/keywords:
     get:
       operationId: GetNodeConfigKeywords
@@ -5231,6 +5266,16 @@ components:
           type: string
         type:
           type: string
+
+    HeartbeatRotateResponse:
+      type: object
+      required:
+        - id
+      properties:
+        id:
+          type: string
+          format: uuid
+          x-go-name: ID
 
     InstanceMeta:
       type: object

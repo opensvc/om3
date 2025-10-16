@@ -125,6 +125,12 @@ var (
 
 		"HeartbeatConfigUpdated": func() any { return &HeartbeatConfigUpdated{} },
 
+		"HeartbeatRotateError": func() any { return &HeartbeatRotateError{} },
+
+		"HeartbeatRotateRequest": func() any { return &HeartbeatRotateRequest{} },
+
+		"HeartbeatRotateSuccess": func() any { return &HeartbeatRotateSuccess{} },
+
 		"HeartbeatStale": func() any { return &HeartbeatStale{} },
 
 		"InstanceConfigDeleted": func() any { return &InstanceConfigDeleted{} },
@@ -465,6 +471,22 @@ type (
 
 		// InstalledGens are the current installed node gens
 		InstalledGens node.Gen `json:"installed_gens" yaml:"installed_gens"`
+	}
+
+	HeartbeatRotateError struct {
+		pubsub.Msg `yaml:",inline"`
+		ID         uuid.UUID `json:"id" yaml:"id"`
+		Reason     string    `json:"reason" yaml:"reason"`
+	}
+
+	HeartbeatRotateRequest struct {
+		pubsub.Msg `yaml:",inline"`
+		ID         uuid.UUID `json:"id" yaml:"id"`
+	}
+
+	HeartbeatRotateSuccess struct {
+		pubsub.Msg `yaml:",inline"`
+		ID         uuid.UUID `json:"id" yaml:"id"`
 	}
 
 	HeartbeatStale struct {
@@ -1084,6 +1106,18 @@ func (e *HeartbeatAlive) Kind() string {
 
 func (e *HeartbeatConfigUpdated) Kind() string {
 	return "HeartbeatConfigUpdated"
+}
+
+func (e *HeartbeatRotateError) Kind() string {
+	return "HeartbeatRotateError"
+}
+
+func (e *HeartbeatRotateRequest) Kind() string {
+	return "HeartbeatRotateRequest"
+}
+
+func (e *HeartbeatRotateSuccess) Kind() string {
+	return "HeartbeatRotateSuccess"
 }
 
 func (e *HeartbeatStale) String() string {
