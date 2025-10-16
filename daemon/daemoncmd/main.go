@@ -233,6 +233,7 @@ func (t *T) run() error {
 	log.Attr("capabilities", capabilities.Data()).Infof("rescanned node capabilities")
 
 	if err := bootStrapCcfg(); err != nil {
+		log.Debugf("bootstrap cluster config %s", err)
 		return err
 	}
 	d := daemon.New()
