@@ -18,7 +18,6 @@ func configUpdate(log *plog.Logger, p naming.Path, deletes []string, unsets []ke
 	if err := oc.Config().PrepareUpdate(deletes, unsets, sets); err != nil {
 		log.Debugf("PrepareUpdate %s: %s", p, err)
 		return false, fmt.Errorf("prepare update %s: %w", p, err)
-
 	}
 	if alerts, err := oc.Config().Validate(); err != nil {
 		log.Debugf("Validate %s: %s", p, err)
