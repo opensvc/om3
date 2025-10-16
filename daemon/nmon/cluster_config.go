@@ -176,9 +176,16 @@ func (t *Manager) hbRotatingCheck() {
 		return
 	}
 	if count == len(t.clusterConfig.Nodes) {
-		t.log.Infof("heartbeat rotate prepared")
 		cConfig := cluster.ConfigData.Get()
 		_, _, nextVersion, nextSecret := cConfig.Heartbeat.Secrets()
+		if nextSecret == "" {
+			t.log.Warnf("heartbeat rotate failed: next secret is empty")
+			t.publisher.Pub(&msgbus.HeartbeatRotateError{Reason: "next secret is empty", ID: t.hbSecretRotatingUUID}, t.labelLocalhost)
+			t.hbSecretRotating = false
+			t.hbSecretRotatingUUID = uuid.UUID{}
+			return
+		}
+		t.log.Infof("heartbeat rotate prepared")
 		s := fmt.Sprintf("%d:%s", nextVersion, nextSecret)
 		if err := t.setClusterHeartbeatSecret(s); err != nil {
 			t.log.Warnf("heartbeat rotate failed: %s", err)
