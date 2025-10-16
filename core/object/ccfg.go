@@ -1,7 +1,6 @@
 package object
 
 import (
-	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -118,12 +117,11 @@ func getClusterConfig() (*cluster.Config, error) {
 	cfg.CASecPaths = c.GetStrings(keyCASecPaths)
 	cfg.SetSecret(c.GetString(keySecret))
 
-	if err1 := cfg.SetHeartbeatSecret(c.GetString(keyHBSecret)); err1 != nil {
+	if err := cfg.SetHeartbeatSecret(c.GetString(keyHBSecret)); err != nil {
 		// fallback to keySecret
-		cfg.Issues = append(cfg.Issues, fmt.Sprintf("configure heartbeat secret from %s: %s", keyHBSecret, err1))
-		if err2 := cfg.SetHeartbeatSecret(c.GetString(keySecret)); err2 != nil {
-			cfg.Issues = append(cfg.Issues, fmt.Sprintf("configure heartbeat secret from %s: %s", keySecret, err2))
-			return cfg, fmt.Errorf("unable to configure heartbeat secret from %s or from %s: %s", keyHBSecret, keySecret, errors.Join(err1, err2))
+		cfg.Issues = append(cfg.Issues, fmt.Sprintf("configure heartbeat secret from %s: %s", keyHBSecret, err))
+		if err := cfg.SetHeartbeatSecret(c.GetString(keySecret)); err != nil {
+			cfg.Issues = append(cfg.Issues, fmt.Sprintf("configure heartbeat secret from %s: %s", keySecret, err))
 		}
 	}
 
