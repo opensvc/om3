@@ -35,20 +35,18 @@ const (
 	// PageSizeInt64 is the int64 conversion of directio block size
 	PageSizeInt64 = int64(directio.BlockSize) // Introduce a constant for int64 conversion of PageSize
 
+	HeaderSize = int64(unsafe.Sizeof(header{}) * 8)
+
 	HBDiskSignature = "\x3d\xc1\x3c\x87\xc0\x5b\xe3\xb6"
 	HBDiskVersion   = 3
 )
-
-func getHeaderSize() int64 {
-	return int64(unsafe.Sizeof(header{}) * 8)
-}
 
 func CreateAndFillDisk(path string) error {
 	_, err := os.Stat(path)
 	if err != nil {
 		return err
 	}
-	headerSize := getHeaderSize()
+	headerSize := HeaderSize
 	f, err := os.OpenFile(path, os.O_RDWR, 0644)
 	if err != nil {
 		return err
@@ -83,7 +81,7 @@ func RemoveHeaderFromDisk(path string) error {
 	if err != nil {
 		return err
 	}
-	headerSize := getHeaderSize()
+	headerSize := HeaderSize
 	f, err := os.OpenFile(path, os.O_RDWR, 0644)
 	if err != nil {
 		return err
@@ -103,7 +101,7 @@ func RemoveHeaderFromDisk(path string) error {
 	return nil
 }
 
-func GetSignature(path string) ([]byte, error) {
+func getSignature(path string) ([]byte, error) {
 	_, err := os.Stat(path)
 	if err != nil {
 		return []byte{}, err
@@ -127,7 +125,7 @@ func GetSignature(path string) ([]byte, error) {
 }
 
 func EnsureSignature(path string) (bool, error) {
-	signature, err := GetSignature(path)
+	signature, err := getSignature(path)
 	if err != nil {
 		return false, err
 	}

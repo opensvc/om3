@@ -228,11 +228,17 @@ type ClientInterface interface {
 	// PostDaemonHeartbeatRestart request
 	PostDaemonHeartbeatRestart(ctx context.Context, nodename InPathNodeName, name InPathHeartbeatName, reqEditors ...RequestEditorFn) (*http.Response, error)
 
+	// PostDaemonHeartbeatSign request
+	PostDaemonHeartbeatSign(ctx context.Context, nodename InPathNodeName, name InPathHeartbeatName, reqEditors ...RequestEditorFn) (*http.Response, error)
+
 	// PostDaemonHeartbeatStart request
 	PostDaemonHeartbeatStart(ctx context.Context, nodename InPathNodeName, name InPathHeartbeatName, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// PostDaemonHeartbeatStop request
 	PostDaemonHeartbeatStop(ctx context.Context, nodename InPathNodeName, name InPathHeartbeatName, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// PostDaemonHeartbeatWipe request
+	PostDaemonHeartbeatWipe(ctx context.Context, nodename InPathNodeName, name InPathHeartbeatName, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// PostDaemonListenerRestart request
 	PostDaemonListenerRestart(ctx context.Context, nodename InPathNodeName, name InPathListenerName, reqEditors ...RequestEditorFn) (*http.Response, error)
@@ -1086,6 +1092,18 @@ func (c *Client) PostDaemonHeartbeatRestart(ctx context.Context, nodename InPath
 	return c.Client.Do(req)
 }
 
+func (c *Client) PostDaemonHeartbeatSign(ctx context.Context, nodename InPathNodeName, name InPathHeartbeatName, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewPostDaemonHeartbeatSignRequest(c.Server, nodename, name)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
 func (c *Client) PostDaemonHeartbeatStart(ctx context.Context, nodename InPathNodeName, name InPathHeartbeatName, reqEditors ...RequestEditorFn) (*http.Response, error) {
 	req, err := NewPostDaemonHeartbeatStartRequest(c.Server, nodename, name)
 	if err != nil {
@@ -1100,6 +1118,18 @@ func (c *Client) PostDaemonHeartbeatStart(ctx context.Context, nodename InPathNo
 
 func (c *Client) PostDaemonHeartbeatStop(ctx context.Context, nodename InPathNodeName, name InPathHeartbeatName, reqEditors ...RequestEditorFn) (*http.Response, error) {
 	req, err := NewPostDaemonHeartbeatStopRequest(c.Server, nodename, name)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+func (c *Client) PostDaemonHeartbeatWipe(ctx context.Context, nodename InPathNodeName, name InPathHeartbeatName, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewPostDaemonHeartbeatWipeRequest(c.Server, nodename, name)
 	if err != nil {
 		return nil, err
 	}
@@ -4699,6 +4729,47 @@ func NewPostDaemonHeartbeatRestartRequest(server string, nodename InPathNodeName
 	return req, nil
 }
 
+// NewPostDaemonHeartbeatSignRequest generates requests for PostDaemonHeartbeatSign
+func NewPostDaemonHeartbeatSignRequest(server string, nodename InPathNodeName, name InPathHeartbeatName) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithLocation("simple", false, "nodename", runtime.ParamLocationPath, nodename)
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam1 string
+
+	pathParam1, err = runtime.StyleParamWithLocation("simple", false, "name", runtime.ParamLocationPath, name)
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/api/node/name/%s/daemon/hb/name/%s/action/sign", pathParam0, pathParam1)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest("POST", queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
 // NewPostDaemonHeartbeatStartRequest generates requests for PostDaemonHeartbeatStart
 func NewPostDaemonHeartbeatStartRequest(server string, nodename InPathNodeName, name InPathHeartbeatName) (*http.Request, error) {
 	var err error
@@ -4764,6 +4835,47 @@ func NewPostDaemonHeartbeatStopRequest(server string, nodename InPathNodeName, n
 	}
 
 	operationPath := fmt.Sprintf("/api/node/name/%s/daemon/hb/name/%s/action/stop", pathParam0, pathParam1)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest("POST", queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
+// NewPostDaemonHeartbeatWipeRequest generates requests for PostDaemonHeartbeatWipe
+func NewPostDaemonHeartbeatWipeRequest(server string, nodename InPathNodeName, name InPathHeartbeatName) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithLocation("simple", false, "nodename", runtime.ParamLocationPath, nodename)
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam1 string
+
+	pathParam1, err = runtime.StyleParamWithLocation("simple", false, "name", runtime.ParamLocationPath, name)
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/api/node/name/%s/daemon/hb/name/%s/action/wipe", pathParam0, pathParam1)
 	if operationPath[0] == '/' {
 		operationPath = "." + operationPath
 	}
@@ -11999,11 +12111,17 @@ type ClientWithResponsesInterface interface {
 	// PostDaemonHeartbeatRestartWithResponse request
 	PostDaemonHeartbeatRestartWithResponse(ctx context.Context, nodename InPathNodeName, name InPathHeartbeatName, reqEditors ...RequestEditorFn) (*PostDaemonHeartbeatRestartResponse, error)
 
+	// PostDaemonHeartbeatSignWithResponse request
+	PostDaemonHeartbeatSignWithResponse(ctx context.Context, nodename InPathNodeName, name InPathHeartbeatName, reqEditors ...RequestEditorFn) (*PostDaemonHeartbeatSignResponse, error)
+
 	// PostDaemonHeartbeatStartWithResponse request
 	PostDaemonHeartbeatStartWithResponse(ctx context.Context, nodename InPathNodeName, name InPathHeartbeatName, reqEditors ...RequestEditorFn) (*PostDaemonHeartbeatStartResponse, error)
 
 	// PostDaemonHeartbeatStopWithResponse request
 	PostDaemonHeartbeatStopWithResponse(ctx context.Context, nodename InPathNodeName, name InPathHeartbeatName, reqEditors ...RequestEditorFn) (*PostDaemonHeartbeatStopResponse, error)
+
+	// PostDaemonHeartbeatWipeWithResponse request
+	PostDaemonHeartbeatWipeWithResponse(ctx context.Context, nodename InPathNodeName, name InPathHeartbeatName, reqEditors ...RequestEditorFn) (*PostDaemonHeartbeatWipeResponse, error)
 
 	// PostDaemonListenerRestartWithResponse request
 	PostDaemonListenerRestartWithResponse(ctx context.Context, nodename InPathNodeName, name InPathListenerName, reqEditors ...RequestEditorFn) (*PostDaemonListenerRestartResponse, error)
@@ -13451,6 +13569,32 @@ func (r PostDaemonHeartbeatRestartResponse) StatusCode() int {
 	return 0
 }
 
+type PostDaemonHeartbeatSignResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	JSON200      *N200
+	JSON400      *N400
+	JSON401      *N401
+	JSON403      *N403
+	JSON500      *N500
+}
+
+// Status returns HTTPResponse.Status
+func (r PostDaemonHeartbeatSignResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r PostDaemonHeartbeatSignResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
 type PostDaemonHeartbeatStartResponse struct {
 	Body         []byte
 	HTTPResponse *http.Response
@@ -13497,6 +13641,32 @@ func (r PostDaemonHeartbeatStopResponse) Status() string {
 
 // StatusCode returns HTTPResponse.StatusCode
 func (r PostDaemonHeartbeatStopResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+type PostDaemonHeartbeatWipeResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	JSON200      *N200
+	JSON400      *N400
+	JSON401      *N401
+	JSON403      *N403
+	JSON500      *N500
+}
+
+// Status returns HTTPResponse.Status
+func (r PostDaemonHeartbeatWipeResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r PostDaemonHeartbeatWipeResponse) StatusCode() int {
 	if r.HTTPResponse != nil {
 		return r.HTTPResponse.StatusCode
 	}
@@ -16308,6 +16478,15 @@ func (c *ClientWithResponses) PostDaemonHeartbeatRestartWithResponse(ctx context
 	return ParsePostDaemonHeartbeatRestartResponse(rsp)
 }
 
+// PostDaemonHeartbeatSignWithResponse request returning *PostDaemonHeartbeatSignResponse
+func (c *ClientWithResponses) PostDaemonHeartbeatSignWithResponse(ctx context.Context, nodename InPathNodeName, name InPathHeartbeatName, reqEditors ...RequestEditorFn) (*PostDaemonHeartbeatSignResponse, error) {
+	rsp, err := c.PostDaemonHeartbeatSign(ctx, nodename, name, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParsePostDaemonHeartbeatSignResponse(rsp)
+}
+
 // PostDaemonHeartbeatStartWithResponse request returning *PostDaemonHeartbeatStartResponse
 func (c *ClientWithResponses) PostDaemonHeartbeatStartWithResponse(ctx context.Context, nodename InPathNodeName, name InPathHeartbeatName, reqEditors ...RequestEditorFn) (*PostDaemonHeartbeatStartResponse, error) {
 	rsp, err := c.PostDaemonHeartbeatStart(ctx, nodename, name, reqEditors...)
@@ -16324,6 +16503,15 @@ func (c *ClientWithResponses) PostDaemonHeartbeatStopWithResponse(ctx context.Co
 		return nil, err
 	}
 	return ParsePostDaemonHeartbeatStopResponse(rsp)
+}
+
+// PostDaemonHeartbeatWipeWithResponse request returning *PostDaemonHeartbeatWipeResponse
+func (c *ClientWithResponses) PostDaemonHeartbeatWipeWithResponse(ctx context.Context, nodename InPathNodeName, name InPathHeartbeatName, reqEditors ...RequestEditorFn) (*PostDaemonHeartbeatWipeResponse, error) {
+	rsp, err := c.PostDaemonHeartbeatWipe(ctx, nodename, name, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParsePostDaemonHeartbeatWipeResponse(rsp)
 }
 
 // PostDaemonListenerRestartWithResponse request returning *PostDaemonListenerRestartResponse
@@ -19547,6 +19735,60 @@ func ParsePostDaemonHeartbeatRestartResponse(rsp *http.Response) (*PostDaemonHea
 	return response, nil
 }
 
+// ParsePostDaemonHeartbeatSignResponse parses an HTTP response from a PostDaemonHeartbeatSignWithResponse call
+func ParsePostDaemonHeartbeatSignResponse(rsp *http.Response) (*PostDaemonHeartbeatSignResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &PostDaemonHeartbeatSignResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest N200
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
+		var dest N400
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON400 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest N401
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest N403
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON403 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
+		var dest N500
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON500 = &dest
+
+	}
+
+	return response, nil
+}
+
 // ParsePostDaemonHeartbeatStartResponse parses an HTTP response from a PostDaemonHeartbeatStartWithResponse call
 func ParsePostDaemonHeartbeatStartResponse(rsp *http.Response) (*PostDaemonHeartbeatStartResponse, error) {
 	bodyBytes, err := io.ReadAll(rsp.Body)
@@ -19610,6 +19852,60 @@ func ParsePostDaemonHeartbeatStopResponse(rsp *http.Response) (*PostDaemonHeartb
 	}
 
 	response := &PostDaemonHeartbeatStopResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest N200
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
+		var dest N400
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON400 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest N401
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest N403
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON403 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
+		var dest N500
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON500 = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParsePostDaemonHeartbeatWipeResponse parses an HTTP response from a PostDaemonHeartbeatWipeWithResponse call
+func ParsePostDaemonHeartbeatWipeResponse(rsp *http.Response) (*PostDaemonHeartbeatWipeResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &PostDaemonHeartbeatWipeResponse{
 		Body:         bodyBytes,
 		HTTPResponse: rsp,
 	}
