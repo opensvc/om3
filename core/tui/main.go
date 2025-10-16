@@ -99,6 +99,8 @@ type (
 		viewKey  string
 		viewRID  string
 
+		focused bool
+
 		lastUpdatedAt time.Time
 
 		firstInstanceCol int
@@ -350,9 +352,12 @@ func (t *App) initApp() {
 		if t.command != nil {
 			return event
 		}
+		if t.focused {
+			return event
+		}
 		switch event.Key() {
 		case tcell.KeyESC:
-			if n := t.resetSelected(); n > 0 && t.Frame.Selector == "*/svc/*" {
+			if n := t.resetSelected(); n > 0 || (t.Frame.Selector == "*/svc/*" && len(t.stack) == 0) {
 				return nil
 			}
 			t.back()
@@ -364,6 +369,9 @@ func (t *App) initApp() {
 		case 'c':
 			t.onRuneC(event)
 		case 'e':
+			if t.viewPath.Kind == naming.KindCfg || t.viewPath.Kind == naming.KindSec {
+				return event
+			}
 			t.onRuneE(event)
 		case 'h':
 			t.onRuneH(event)
@@ -373,9 +381,6 @@ func (t *App) initApp() {
 			t.stop()
 		case 'r':
 			t.onRuneR(event)
-		case 'p':
-			t.infof("%d", len(t.stack))
-
 		}
 		return event
 	})
@@ -1097,13 +1102,22 @@ func (t *App) setFilter(s string) {
 
 func (t *App) confirmAction(action func(), messages ...string) {
 	t.isOnConfirmation = true
+	t.focused = true
+
+	grid := tview.NewGrid().
+		SetRows(12, 0, 0).
+		SetColumns(0, 72, 0)
+
 	confirmFlex := tview.NewFlex().SetDirection(tview.FlexRow)
 	confirmFlex.SetBorder(true).SetTitle("Confirm action").SetTitleAlign(tview.AlignLeft)
 
+	grid.AddItem(confirmFlex, 0, 1, 1, 1, 0, 0, true)
+
 	clean := func() {
-		t.flex.RemoveItem(confirmFlex)
+		t.flex.RemoveItem(grid)
 		t.app.SetFocus(t.flex.GetItem(1))
 		t.isOnConfirmation = false
+		t.focused = false
 	}
 
 	confirmText := tview.NewTextView().
@@ -1136,21 +1150,12 @@ func (t *App) confirmAction(action func(), messages ...string) {
 		clean()
 	})
 
-	cancelButton := tview.NewButton("Cancel").SetSelectedFunc(func() {
-		clean()
-	})
-
 	confirmFlex.SetInputCapture(func(event *tcell.EventKey) *tcell.EventKey {
 		switch event.Key() {
 		case tcell.KeyESC:
 			clean()
+			return nil
 		case tcell.KeyEnter:
-		case tcell.KeyLeft, tcell.KeyRight:
-			if cancelButton.HasFocus() {
-				t.app.SetFocus(confirmButton)
-			} else {
-				t.app.SetFocus(cancelButton)
-			}
 		}
 		return event
 	})
@@ -1160,12 +1165,10 @@ func (t *App) confirmAction(action func(), messages ...string) {
 	buttonFlex.AddItem(nil, 0, 1, false)
 	buttonFlex.AddItem(confirmButton, 24, 0, true)
 	buttonFlex.AddItem(nil, 0, 1, false)
-	buttonFlex.AddItem(cancelButton, 24, 0, false)
-	buttonFlex.AddItem(nil, 0, 1, false)
 
 	confirmFlex.AddItem(confirmText, 0, 1, false)
 	confirmFlex.AddItem(buttonFlex, 1, 0, true)
-	t.flex.AddItem(confirmFlex, 0, 1, true)
+	t.flex.AddItem(grid, 0, 1, true)
 	t.app.SetFocus(confirmFlex)
 }
 
@@ -2043,7 +2046,7 @@ func (t *App) back() {
 		t.listContexts()
 		return
 	}
-	if t.resetSelected() == 0 && len(t.stack) == 0 {
+	if t.resetSelected() == 0 && len(t.stack) == 0 && !t.focused {
 		filter := "*/svc/*"
 		if t.options != nil && t.options.Selector != "" {
 			filter = t.options.Selector
