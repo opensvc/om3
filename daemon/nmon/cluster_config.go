@@ -107,6 +107,19 @@ func (t *Manager) onHeartbeatRotateRequest(c *msgbus.HeartbeatRotateRequest) {
 		t.publisher.Pub(&msgbus.HeartbeatRotateError{Reason: "already rotating", ID: c.ID}, t.labelLocalhost)
 		return
 	}
+	expectedSig := t.hbSecretSigByNodename[t.localhost]
+	notSameSig := make([]string, 0)
+	for peer, sig := range t.hbSecretSigByNodename {
+		if sig != expectedSig {
+			notSameSig = append(notSameSig, peer)
+		}
+	}
+	if len(notSameSig) > 0 {
+		err := fmt.Errorf("unexpected heartbeat signature on %s", notSameSig)
+		t.log.Warnf("heartbeat rotate request refused: %s", err)
+		t.publisher.Pub(&msgbus.HeartbeatRotateError{Reason: err.Error(), ID: c.ID}, t.labelLocalhost)
+		return
+	}
 	t.log.Infof("heartbeat rotate request")
 
 	version, currentSecret, nextVersion, _ := cluster.ConfigData.Get().Heartbeat.Secrets()
