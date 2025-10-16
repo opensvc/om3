@@ -491,8 +491,6 @@ func (t *T) janitor(ctx context.Context) {
 				t.log.Errorf("subscription stop: %s", err)
 			}
 		}()
-		pub := pubsub.PubFromContext(ctx)
-		secret := cluster.ConfigData.Get().HeartbeatSecret()
 		for {
 			select {
 			case <-ctx.Done():
@@ -537,20 +535,6 @@ func (t *T) janitor(ctx context.Context) {
 					t.log.Infof("rescan heartbeat configurations (local cluster config changed)")
 					_ = t.rescanHb(t.ctx)
 					t.log.Infof("rescan heartbeat configurations done")
-
-					if secret.Sig == msg.Value.Heartbeat.Sig {
-						// no change in secret, nothing to do
-						continue
-					}
-					secret.Sig = msg.Value.Heartbeat.Sig
-					l := make([]string, 0, len(t.rxs))
-					for hbID := range t.rxs {
-						l = append(l, hbID+".rx")
-					}
-					t.log.Infof("heartbeat secret updated: ask restart %s", strings.Join(l, ", "))
-					for _, component := range l {
-						go pub.Pub(&msgbus.DaemonCtl{Component: component, Action: "restart"}, pubsub.Label{"node", hostname.Hostname()})
-					}
 				}
 			}
 		}
