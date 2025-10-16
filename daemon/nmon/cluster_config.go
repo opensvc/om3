@@ -164,11 +164,16 @@ func (t *Manager) hbRotatingCheck() {
 		return
 	}
 	count := 0
-	for _, sig := range t.hbSecretSigByNodename {
+	waitingL := make([]string, 0)
+	for peer, sig := range t.hbSecretSigByNodename {
 		if sig != expectedSig {
-			return
+			waitingL = append(waitingL, peer)
 		}
 		count++
+	}
+	if len(waitingL) > 0 {
+		t.log.Infof("heartbeat rotate waiting for nodes %s", waitingL)
+		return
 	}
 	if count == len(t.clusterConfig.Nodes) {
 		t.log.Infof("heartbeat rotate prepared")
