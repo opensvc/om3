@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"github.com/ncw/directio"
+	"github.com/opensvc/om3/util/sign"
 
 	"github.com/opensvc/om3/util/file"
 )
@@ -35,31 +36,29 @@ const (
 
 	// modeRaw is the mode for non-Linux systems
 	modeRaw = "raw" // Mode for non-Linux systems
-
-	HBDiskSignature = "\x3d\xc1\x3c\x87\xc0\x5b\xe3\xb6"
 )
 
 // calculateMetaSlotOffset returns the offset of the meta page of the slot.
 func (t *device) calculateMetaSlotOffset(slot int) int64 {
-	return pageSizeInt64 * int64(slot)
+	return sign.PageSizeInt64 * int64(slot)
 }
 
 func (t *device) readSignature() (string, error) {
 	if _, err := t.file.Seek(0, io.SeekStart); err != nil {
 		return "", fmt.Errorf("seek: %w", err)
 	}
-	block := directio.AlignedBlock(PageSize)
-	if n, err := io.ReadAtLeast(t.file, block, len(HBDiskSignature)); err != nil {
+	block := directio.AlignedBlock(sign.PageSize)
+	if n, err := io.ReadAtLeast(t.file, block, len(sign.HBDiskSignature)); err != nil {
 		return "", fmt.Errorf("read failed: %w", err)
-	} else if n < len(HBDiskSignature) {
-		return "", fmt.Errorf("expected %d bytes, got %d", len(HBDiskSignature), n)
+	} else if n < len(sign.HBDiskSignature) {
+		return "", fmt.Errorf("expected %d bytes, got %d", len(sign.HBDiskSignature), n)
 	} else if block[0] == endOfDataMarker {
 		return "", fmt.Errorf("no data")
 	}
 	if _, err := t.file.Seek(0, io.SeekStart); err != nil {
 		return "", fmt.Errorf("seek: %w", err)
 	}
-	return string(block[:len(HBDiskSignature)]), nil
+	return string(block[:len(sign.HBDiskSignature)]), nil
 }
 
 func (t *device) readMetaSlot(slot int) ([]byte, error) {
@@ -67,7 +66,7 @@ func (t *device) readMetaSlot(slot int) ([]byte, error) {
 	if _, err := t.file.Seek(offset, io.SeekStart); err != nil {
 		return nil, fmt.Errorf("seek offset %d: %w", offset, err)
 	}
-	block := directio.AlignedBlock(PageSize)
+	block := directio.AlignedBlock(sign.PageSize)
 	if _, err := io.ReadFull(t.file, block); err != nil {
 		return nil, fmt.Errorf("read full at offset %d: %w", offset, err)
 	}
@@ -75,14 +74,14 @@ func (t *device) readMetaSlot(slot int) ([]byte, error) {
 }
 
 func (t *device) writeMetaSlot(slot int, b []byte) error {
-	if len(b) > PageSize {
+	if len(b) > sign.PageSize {
 		return fmt.Errorf("attempt to write too long data in meta slot %d", slot)
 	}
 	offset := t.calculateMetaSlotOffset(slot)
 	if _, err := t.file.Seek(offset, io.SeekStart); err != nil {
 		return fmt.Errorf("seek offset %d: %w", offset, err)
 	}
-	block := directio.AlignedBlock(PageSize)
+	block := directio.AlignedBlock(sign.PageSize)
 	copy(block, b)
 	if _, err := t.file.Write(block); err != nil {
 		return fmt.Errorf("write at offset %d: %w", offset, err)
@@ -92,7 +91,7 @@ func (t *device) writeMetaSlot(slot int, b []byte) error {
 
 // calculateDataSlotOffset calculates the byte offset of a data slot within the storage device.
 func (t *device) calculateDataSlotOffset(slot int) int64 {
-	return t.metaSize + SlotSizeInt64*int64(slot)
+	return t.metaSize + sign.SlotSizeInt64*int64(slot)
 }
 
 func (t *device) readDataSlot(slot int) (capsule, error) {
@@ -104,7 +103,7 @@ func (t *device) readDataSlot(slot int) (capsule, error) {
 	data := make([]byte, 0)
 	totalRead := 0
 	for {
-		block := directio.AlignedBlock(PageSize)
+		block := directio.AlignedBlock(sign.PageSize)
 		n, err := io.ReadFull(t.file, block)
 		totalRead += n
 		if err != nil {
@@ -120,7 +119,7 @@ func (t *device) readDataSlot(slot int) (capsule, error) {
 			data = append(data, block[:i]...)
 			break
 		}
-		if totalRead >= SlotSize {
+		if totalRead >= sign.SlotSize {
 			break
 		}
 	}
@@ -143,7 +142,7 @@ func (t *device) writeDataSlot(slot int, b []byte) error {
 		return fmt.Errorf("msg encapsulation: %w", err)
 	}
 	b = append(b, []byte{endOfDataMarker}...)
-	if len(b) > SlotSize {
+	if len(b) > sign.SlotSize {
 		return fmt.Errorf("attempt to write too long data in data slot %d", slot)
 	}
 	offset := t.calculateDataSlotOffset(slot)
@@ -155,12 +154,12 @@ func (t *device) writeDataSlot(slot int, b []byte) error {
 		if remaining == 0 {
 			break
 		}
-		block := directio.AlignedBlock(PageSize)
+		block := directio.AlignedBlock(sign.PageSize)
 		copied := copy(block, b)
 		if _, err := t.file.Write(block); err != nil {
 			return fmt.Errorf("write at offset %d: %w", offset, err)
 		}
-		if copied < PageSize {
+		if copied < sign.PageSize {
 			return nil
 		}
 		b = b[copied:]
@@ -214,9 +213,9 @@ func (t *device) ensureCharDevice(path string) error {
 // and returns an error if validation fails.
 func (t *device) ensureHBSignature() error {
 	if signature, err := t.readSignature(); err != nil {
-		return fmt.Errorf("expected signature '%s' at offset 0: read failed: %w", HBDiskSignature, err)
-	} else if signature != HBDiskSignature {
-		return fmt.Errorf("expected signature '%s' at offset 0: found '%s'", HBDiskSignature, signature)
+		return fmt.Errorf("expected signature '%s' at offset 0: read failed: %w", sign.HBDiskSignature, err)
+	} else if signature != sign.HBDiskSignature {
+		return fmt.Errorf("expected signature '%s' at offset 0: found '%s'", sign.HBDiskSignature, signature)
 	}
 	return nil
 }

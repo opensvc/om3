@@ -11,7 +11,7 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/ncw/directio"
+	"github.com/opensvc/om3/util/sign"
 
 	"github.com/opensvc/om3/core/hbcfg"
 	"github.com/opensvc/om3/daemon/daemonsubsystem"
@@ -40,20 +40,7 @@ type (
 	}
 )
 
-var (
-	// SlotSize is the data size reserved for a single node
-	SlotSize = 1024 * 1024
-
-	SlotSizeInt64 = int64(SlotSize)
-)
-
 const (
-	// PageSize is the directio block size
-	PageSize = directio.BlockSize
-
-	// pageSizeInt64 is the int64 conversion of directio block size
-	pageSizeInt64 = int64(directio.BlockSize) // Introduce a constant for int64 conversion of PageSize
-
 	endOfDataMarker = '\x00'
 
 	// minimumSlot represents the minimum slot value in the system, used as the
@@ -186,7 +173,7 @@ func nodeFromMetadata(b []byte) string {
 }
 
 func metaSize(maxSlots int) int64 {
-	return int64(maxSlots * PageSize)
+	return int64(maxSlots * sign.PageSize)
 }
 
 func getSlotAlert(nodename string, slot int) daemonsubsystem.Alert {

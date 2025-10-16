@@ -12,6 +12,7 @@ import (
 	"github.com/opensvc/om3/daemon/hb/hbctrl"
 	"github.com/opensvc/om3/util/hostname"
 	"github.com/opensvc/om3/util/plog"
+	"github.com/opensvc/om3/util/sign"
 )
 
 type (
@@ -60,7 +61,7 @@ func (t *tx) streamPeerDesc() string {
 
 // Start implements the Start function of Transmitter interface for tx
 func (t *tx) Start(cmdC chan<- interface{}, msgC <-chan []byte) error {
-	t.log.Infof("starting with storage area: metadata_size + (max_slots x slot_size): %d + (%d x %d)", metaSize(t.base.maxSlots), t.base.maxSlots, SlotSize)
+	t.log.Infof("starting with storage area: metadata_size + (max_slots x slot_size): %d + (%d x %d)", metaSize(t.base.maxSlots), t.base.maxSlots, sign.SlotSize)
 	if t.base.maxSlots < len(t.nodes) {
 		return fmt.Errorf("startup failed: not enough slots for %d nodes", len(t.nodes))
 	}
