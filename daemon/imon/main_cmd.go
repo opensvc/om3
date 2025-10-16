@@ -279,7 +279,7 @@ func (t *Manager) onInstanceConfigUpdated(srcNode string, srcCmd *msgbus.Instanc
 		}
 	}
 
-	janitorRelations := func(relations []naming.Relation, name string, cache map[string]status.T) {
+	janitorRelations := func(relations []naming.Relation, name string, currentRelations map[string]status.T) {
 		// m is a map representation of relations, used to determine
 		// if a relation in cache is still in the configured relations
 		m := make(map[string]any)
@@ -287,7 +287,7 @@ func (t *Manager) onInstanceConfigUpdated(srcNode string, srcCmd *msgbus.Instanc
 		for _, relation := range relations {
 			relationS := relation.String()
 			m[relationS] = nil
-			if _, ok := cache[relationS]; ok {
+			if _, ok := currentRelations[relationS]; ok {
 				continue
 			} else if objectPath, node, err := relation.Split(); err != nil {
 				t.log.Warnf("janitor relations %s status cache: split %s: %s", name, relation, err)
@@ -299,10 +299,10 @@ func (t *Manager) onInstanceConfigUpdated(srcNode string, srcCmd *msgbus.Instanc
 					t.sub.AddFilter(&msgbus.ObjectStatusDeleted{}, pubsub.Label{"path", objectPath.String()})
 					if st := object.StatusData.GetByPath(objectPath); st != nil {
 						t.log.Infof("janitor relations %s %s avail status init to %s", name, relation, st.Avail)
-						cache[relationS] = st.Avail
+						currentRelations[relationS] = st.Avail
 					} else {
 						t.log.Infof("janitor relations %s %s avail status init to %s", name, relation, status.Undef)
-						cache[relationS] = status.Undef
+						currentRelations[relationS] = status.Undef
 					}
 					t.change = true
 				} else {
@@ -310,17 +310,19 @@ func (t *Manager) onInstanceConfigUpdated(srcNode string, srcCmd *msgbus.Instanc
 					t.sub.AddFilter(&msgbus.InstanceStatusDeleted{}, pubsub.Label{"path", objectPath.String()}, pubsub.Label{"node", node})
 					if st := instance.StatusData.GetByPathAndNode(objectPath, node); st != nil {
 						t.log.Infof("janitor relations %s %s avail status init to %s", name, relation, st.Avail)
-						cache[relationS] = st.Avail
+						currentRelations[relationS] = st.Avail
 					} else {
 						t.log.Infof("janitor relations %s %s avail status init to %s", name, relation, status.Undef)
-						cache[relationS] = status.Undef
+						currentRelations[relationS] = status.Undef
 					}
 					t.change = true
 				}
 			}
 		}
-		for relationS := range cache {
+		droppedRelations := make([]string, 0)
+		for relationS := range currentRelations {
 			if _, ok := m[relationS]; !ok {
+				droppedRelations = append(droppedRelations, relationS)
 				t.log.Infof("janitor relations unsubscribe from %s %s avail status updates and deletes", name, relationS)
 				objectPath, node, _ := naming.Relation(relationS).Split()
 				if node == "" {
@@ -331,6 +333,10 @@ func (t *Manager) onInstanceConfigUpdated(srcNode string, srcCmd *msgbus.Instanc
 					t.sub.DelFilter(&msgbus.InstanceStatusDeleted{}, pubsub.Label{"path", objectPath.String()})
 				}
 			}
+		}
+		for _, relationS := range droppedRelations {
+			delete(currentRelations, relationS)
+			t.log.Debugf("drop %s relation %s status", name, relationS)
 		}
 	}
 
