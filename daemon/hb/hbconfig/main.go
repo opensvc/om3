@@ -44,10 +44,16 @@ func (t *T) Nodename() string {
 }
 
 func (t *T) ClusterName() string {
+	if t == nil || t.cConfig == nil {
+		return ""
+	}
 	return t.cConfig.Name
 }
 
 func (t *T) Secrets() (currentVersion uint64, currentSecret string, NextVersion uint64, nextSecret string) {
+	if t == nil || t.cConfig == nil {
+		return
+	}
 	return t.cConfig.Heartbeat.Secrets()
 }
 
