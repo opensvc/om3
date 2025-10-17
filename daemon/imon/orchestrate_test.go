@@ -22,7 +22,7 @@ import (
 	"github.com/opensvc/om3/core/node"
 	"github.com/opensvc/om3/core/provisioned"
 	"github.com/opensvc/om3/core/status"
-	"github.com/opensvc/om3/daemon/daemonhelper"
+	"github.com/opensvc/om3/daemon/daemontesthelper"
 	"github.com/opensvc/om3/daemon/icfg"
 	"github.com/opensvc/om3/daemon/istat"
 	"github.com/opensvc/om3/daemon/msgbus"
@@ -531,7 +531,7 @@ func orchestrateTestFunc(t *testing.T, c tCase) {
 	now := time.Now()
 	t.Logf("iteration %d starting", testCount.Load())
 
-	setup := daemonhelper.Setup(t, nil)
+	setup := daemontesthelper.Setup(t, nil)
 	defer setup.Cancel()
 
 	if c.bootID != "" {
@@ -711,7 +711,7 @@ func (c *crmSpy) getCalls() [][]string {
 	return calls
 }
 
-func crmBuilder(t *testing.T, setup *daemonhelper.D, p naming.Path, sideEffect map[string]sideEffect) *crm {
+func crmBuilder(t *testing.T, setup *daemontesthelper.D, p naming.Path, sideEffect map[string]sideEffect) *crm {
 	ctx := setup.Ctx
 	pub := pubsub.PubFromContext(ctx)
 	c := crm{
@@ -779,7 +779,7 @@ func crmBuilder(t *testing.T, setup *daemonhelper.D, p naming.Path, sideEffect m
 }
 
 // objectMonCreator emulates discover omon creation for c (creates omon worker for c on first received InstanceConfigUpdated)
-func objectMonCreator(t *testing.T, setup *daemonhelper.D, c tCase, factory Factory) {
+func objectMonCreator(t *testing.T, setup *daemontesthelper.D, c tCase, factory Factory) {
 	var (
 		p = naming.Path{Kind: naming.KindSvc, Name: c.obj}
 
@@ -822,7 +822,7 @@ func objectMonCreator(t *testing.T, setup *daemonhelper.D, c tCase, factory Fact
 
 // waitExpectations watches for InstanceMonitorUpdated until matched expectation from c or reached timeout
 // when timeout is reached, error is non nil and event is the latest event published or zero value
-func waitExpectations(t *testing.T, setup *daemonhelper.D, timeout time.Duration, c tCase) (<-chan *msgbus.InstanceMonitorUpdated, <-chan error) {
+func waitExpectations(t *testing.T, setup *daemontesthelper.D, timeout time.Duration, c tCase) (<-chan *msgbus.InstanceMonitorUpdated, <-chan error) {
 	parent := setup.Ctx
 	evC := make(chan *msgbus.InstanceMonitorUpdated)
 	errC := make(chan error)

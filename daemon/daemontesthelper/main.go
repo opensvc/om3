@@ -1,5 +1,5 @@
 // Package daemonhelper is a helper for daemon components tests
-package daemonhelper
+package daemontesthelper
 
 import (
 	"context"
