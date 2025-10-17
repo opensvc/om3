@@ -99,10 +99,11 @@ func Test_daemon(t *testing.T) {
 
 	t.Run("discover newly created object", func(t *testing.T) {
 		env.InstallFile("./testdata/foo.conf", "etc/foo.conf")
-		time.Sleep(250 * time.Millisecond)
+		t.Logf("foo.conf created, wait 500ms and GetDaemonStatus to verify existence of instance foo")
+		time.Sleep(500 * time.Millisecond)
 		cData, err := GetDaemonStatus(t)
-		p := naming.Path{Name: "foo", Kind: naming.KindSvc}
 		require.Nil(t, err)
+		p := naming.Path{Name: "foo", Kind: naming.KindSvc}
 		_, ok := cData.Cluster.Node["node1"].Instance[p.String()]
 		assert.Truef(t, ok, "unable to find node1 instance %s", p)
 	})
