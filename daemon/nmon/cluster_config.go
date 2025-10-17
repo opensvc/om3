@@ -102,12 +102,24 @@ func (t *Manager) removeClusterNode(node string) error {
 //
 // If an error occurs, publish msgbus.HeartbeatRotateError:
 func (t *Manager) onHeartbeatRotateRequest(c *msgbus.HeartbeatRotateRequest) {
+	logP := "heartbeat rotate request"
+	onRefused := func(reason string) {
+		err := fmt.Errorf(reason)
+		t.log.Warnf("%s refused: %s", logP, err)
+		t.publisher.Pub(&msgbus.HeartbeatRotateError{Reason: err.Error(), ID: c.ID}, t.labelLocalhost)
+	}
 	if t.hbSecretRotating {
-		t.log.Warnf("heartbeat rotate request ignored already rotating")
-		t.publisher.Pub(&msgbus.HeartbeatRotateError{Reason: "already rotating", ID: c.ID}, t.labelLocalhost)
+		onRefused("already rotating")
 		return
 	}
 	expectedSig := t.hbSecretSigByNodename[t.localhost]
+	if expectedSig == "" {
+		// secret version change been committed, we have to wait for next
+		// HeartbeatConfigUpdated to avoid re-inserting the previous current secret.
+		onRefused("not ready yet, initialising")
+		return
+	}
+
 	notSameSig := make([]string, 0)
 	for peer, sig := range t.hbSecretSigByNodename {
 		if sig != expectedSig {
@@ -115,23 +127,22 @@ func (t *Manager) onHeartbeatRotateRequest(c *msgbus.HeartbeatRotateRequest) {
 		}
 	}
 	if len(notSameSig) > 0 {
-		err := fmt.Errorf("unexpected heartbeat signature on %s", notSameSig)
-		t.log.Warnf("heartbeat rotate request refused: %s", err)
-		t.publisher.Pub(&msgbus.HeartbeatRotateError{Reason: err.Error(), ID: c.ID}, t.labelLocalhost)
+		onRefused(fmt.Sprintf("not ready yet, found non matching heartbeat signature on %s", notSameSig))
 		return
 	}
-	t.log.Infof("heartbeat rotate request")
 
 	version, currentSecret, nextVersion, _ := cluster.ConfigData.Get().Heartbeat.Secrets()
 	nextSecret := strings.ReplaceAll(uuid.New().String(), "-", "")
 	nextVersion = max(version, nextVersion) + 1
 	value := fmt.Sprintf("%d:%s %d:%s", version, currentSecret, nextVersion, nextSecret)
 
+	t.log.Infof("%s candidate new secret version %d", logP, nextVersion)
 	if err := t.setClusterHeartbeatSecret(value); err != nil {
-		t.log.Warnf("heartbeat rotate request failed: %s", err)
+		t.log.Errorf("%s: %s", logP, err)
 		t.publisher.Pub(&msgbus.HeartbeatRotateError{Reason: err.Error(), ID: c.ID}, t.labelLocalhost)
 		return
 	}
+	t.log.Debugf("%s wait for peer converge candidate new secret version %d", logP, nextVersion)
 	t.hbSecretRotating = true
 	t.hbSecretRotatingAt = time.Now()
 	t.hbSecretRotatingUUID = c.ID
@@ -165,11 +176,17 @@ func (t *Manager) hbRotatingCheck() {
 	if !t.hbSecretRotating {
 		return
 	}
-	if time.Now().After(t.hbSecretRotatingAt.Add(15 * time.Second)) {
-		t.log.Warnf("heartbeat rotate request timed out")
-		t.publisher.Pub(&msgbus.HeartbeatRotateError{Reason: "timed out", ID: t.hbSecretRotatingUUID}, t.labelLocalhost)
+	logP := "heartbeat rotate request"
+	onError := func(reason string) {
+		err := fmt.Errorf(reason)
+		t.log.Warnf("%s: %s", logP, err)
+		t.publisher.Pub(&msgbus.HeartbeatRotateError{Reason: err.Error(), ID: t.hbSecretRotatingUUID}, t.labelLocalhost)
 		t.hbSecretRotating = false
 		t.hbSecretRotatingUUID = uuid.UUID{}
+		return
+	}
+	if time.Now().After(t.hbSecretRotatingAt.Add(15 * time.Second)) {
+		onError("timed out")
 		return
 	}
 	expectedSig := t.hbSecretSigByNodename[t.localhost]
@@ -185,32 +202,28 @@ func (t *Manager) hbRotatingCheck() {
 		count++
 	}
 	if len(waitingL) > 0 {
-		t.log.Infof("heartbeat rotate waiting for nodes %s", waitingL)
+		t.log.Debugf("%s waiting for peers: %s", logP, waitingL)
 		return
 	}
 	if count == len(t.clusterConfig.Nodes) {
 		cConfig := cluster.ConfigData.Get()
-		_, _, nextVersion, nextSecret := cConfig.Heartbeat.Secrets()
+		version, _, nextVersion, nextSecret := cConfig.Heartbeat.Secrets()
 		if nextSecret == "" {
-			t.log.Warnf("heartbeat rotate failed: next secret is empty")
-			t.publisher.Pub(&msgbus.HeartbeatRotateError{Reason: "next secret is empty", ID: t.hbSecretRotatingUUID}, t.labelLocalhost)
-			t.hbSecretRotating = false
-			t.hbSecretRotatingUUID = uuid.UUID{}
+			onError("next secret is empty")
 			return
 		}
-		t.log.Infof("heartbeat rotate prepared")
+		t.log.Debugf("%s commiting version change %d -> %d", logP, version, nextVersion)
 		s := fmt.Sprintf("%d:%s", nextVersion, nextSecret)
 		if err := t.setClusterHeartbeatSecret(s); err != nil {
-			t.log.Warnf("heartbeat rotate failed: %s", err)
-			t.publisher.Pub(&msgbus.HeartbeatRotateError{Reason: err.Error(), ID: t.hbSecretRotatingUUID}, t.labelLocalhost)
-			t.hbSecretRotating = false
-			t.hbSecretRotatingUUID = uuid.UUID{}
+			onError(fmt.Sprintf("commit candidate version %d failed: %s", nextVersion, err))
 			return
 		}
-		t.log.Infof("heartbeat rotate success, next secret gen: %d", nextVersion)
+		t.log.Infof("%s version is now %d", logP, nextVersion)
 		t.publisher.Pub(&msgbus.HeartbeatRotateSuccess{ID: t.hbSecretRotatingUUID}, t.labelLocalhost)
 		t.hbSecretRotating = false
 		t.hbSecretRotatingUUID = uuid.UUID{}
+		// reset localhost signature to prevent re-rotation accepted before the new signature is recreated
+		delete(t.hbSecretSigByNodename, t.localhost)
 		return
 	}
 }

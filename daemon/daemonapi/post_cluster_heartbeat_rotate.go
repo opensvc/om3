@@ -18,6 +18,8 @@ func (a *DaemonAPI) PostClusterHeartbeatRotate(ctx echo.Context) error {
 
 	leader, err := getLeaderNode()
 	if err != nil {
+		log := LogHandler(ctx, "postLocalClusterHeartbeatRotate")
+		log.Infof("unable to get leader node: %s", err)
 		return JSONProblemf(ctx, http.StatusConflict, "cluster heartbeat rotate refused", "can't get leader node: %s", err)
 	}
 

@@ -13,7 +13,7 @@ import (
 )
 
 // onConfigFileUpdated reloads the config parser and emits the updated
-// node.Config data in a NodeConfigUpdated event, so other go routine
+// node.Config data in a NodeConfigUpdated event, so other go routines
 // can just subscribe to this event to maintain the cache of keywords
 // they care about.
 func (t *Manager) onConfigFileUpdated(c *msgbus.ConfigFileUpdated) {
