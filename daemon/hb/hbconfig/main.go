@@ -84,7 +84,7 @@ func (t *T) Start(ctx context.Context) error {
 	t.cancel = cancel
 
 	go func() {
-		outdated := true
+		outdated := false
 		defer t.cancel()
 		t.cConfig = cluster.ConfigData.Get()
 		sub := pubsub.SubFromContext(ctx, t.name)

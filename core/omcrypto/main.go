@@ -87,7 +87,7 @@ var (
 func CipherC(ctx context.Context, a FactoryArgser) <-chan *Factory {
 	c := make(chan *Factory)
 	go func() {
-		factory := newCipher(a)
+		var factory *Factory
 		outdatedC := a.OutdatedC()
 		for {
 			select {
