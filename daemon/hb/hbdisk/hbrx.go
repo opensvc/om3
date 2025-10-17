@@ -11,7 +11,6 @@ import (
 	"github.com/opensvc/om3/util/sign"
 	"golang.org/x/exp/maps"
 
-	"github.com/opensvc/om3/core/cluster"
 	"github.com/opensvc/om3/core/hbtype"
 	"github.com/opensvc/om3/core/omcrypto"
 	"github.com/opensvc/om3/daemon/daemonsubsystem"
@@ -38,7 +37,7 @@ type (
 		msgC   chan<- *hbtype.Msg
 		cancel func()
 
-		encryptDecrypter *omcrypto.Factory
+		crypto *omcrypto.Factory
 
 		// rescanMetadataReason stores the most recent reason for a metadata rescan,
 		// helping to prevent excessive logging of the same reason.
@@ -97,13 +96,6 @@ func (t *rx) Start(cmdC chan<- any, msgC chan<- *hbtype.Msg) error {
 	t.msgC = msgC
 	t.cancel = cancel
 
-	clusterConfig := cluster.ConfigData.Get()
-	t.encryptDecrypter = &omcrypto.Factory{
-		NodeName:    t.base.localhost,
-		ClusterName: clusterConfig.Name,
-		Key:         clusterConfig.Secret(),
-	}
-
 	for _, node := range t.nodes {
 		cmdC <- hbctrl.CmdAddWatcher{
 			HbID:     t.id,
@@ -123,11 +115,17 @@ func (t *rx) Start(cmdC chan<- any, msgC chan<- *hbtype.Msg) error {
 		t.updateAlertWithSlots()
 		t.sendAlert()
 
+		cryptoC := omcrypto.CryptoFromContext(ctx)
 		ticker := time.NewTicker(t.interval)
 		defer ticker.Stop()
 		for {
 			select {
 			case <-ticker.C:
+				select {
+				case <-ctx.Done():
+					return
+				case t.crypto = <-cryptoC:
+				}
 				t.onTick()
 			case <-ctx.Done():
 				t.cancel()
@@ -171,7 +169,7 @@ func (t *rx) recv(nodename string) {
 		t.log.Debugf("node %s slot %d has not been updated for %s", nodename, slot, elapsed)
 		return
 	}
-	b, msgNodename, err := t.encryptDecrypter.DecryptWithNode(c.Msg)
+	b, msgNodename, err := t.crypto.DecryptWithNode(c.Msg)
 	if err != nil {
 		t.log.Debugf("node %s slot %d decrypt: %s", nodename, slot, err)
 		return

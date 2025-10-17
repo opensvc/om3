@@ -8,7 +8,6 @@ import (
 	"github.com/opensvc/om3/core/instance"
 	"github.com/opensvc/om3/core/keyop"
 	"github.com/opensvc/om3/core/naming"
-	"github.com/opensvc/om3/core/object"
 	"github.com/opensvc/om3/daemon/api"
 	"github.com/opensvc/om3/daemon/rbac"
 	"github.com/opensvc/om3/util/key"
@@ -74,27 +73,9 @@ func (a *DaemonAPI) PatchObjectConfig(ctx echo.Context, namespace string, kind n
 	instanceConfigData := instance.ConfigData.GetByPath(p)
 
 	if _, ok := instanceConfigData[a.localhost]; ok {
-		oc, err := object.NewConfigurer(p)
+		changed, err := configUpdate(log, p, deletes, unsets, sets)
 		if err != nil {
-			return JSONProblemf(ctx, http.StatusInternalServerError, "NewConfigurer", "%s", err)
-		}
-		if err := oc.Config().PrepareUpdate(deletes, unsets, sets); err != nil {
-			log.Debugf("PrepareUpdate %s: %s", p, err)
 			return JSONProblemf(ctx, http.StatusInternalServerError, "Update config", "%s", err)
-		}
-		alerts, err := oc.Config().Validate()
-		if err != nil {
-			log.Debugf("Validate %s: %s", p, err)
-			return JSONProblemf(ctx, http.StatusInternalServerError, "Validate config", "%s", err)
-		}
-		if alerts.HasError() {
-			log.Debugf("Validate has errors %s", p)
-			return JSONProblemf(ctx, http.StatusBadRequest, "Validate config", "%s", alerts.StringWithoutMeta())
-		}
-		changed := oc.Config().Changed()
-		if err := oc.Config().CommitInvalid(); err != nil {
-			log.Errorf("CommitInvalid %s: %s", p, err)
-			return JSONProblemf(ctx, http.StatusInternalServerError, "Commit", "%s", err)
 		}
 		return ctx.JSON(http.StatusOK, api.Committed{IsChanged: changed})
 	}

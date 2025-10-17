@@ -393,6 +393,8 @@ func (d *data) startSubscriptions(ctx context.Context, qs pubsub.QueueSizer) {
 	sub.AddFilter(&msgbus.DaemonSchedulerUpdated{}, d.labelLocalhost)
 	sub.AddFilter(&msgbus.DaemonStatusUpdated{}, d.labelLocalhost)
 
+	sub.AddFilter(&msgbus.HeartbeatConfigUpdated{}, d.labelLocalhost)
+
 	sub.AddFilter(&msgbus.InstanceConfigDeleted{}, d.labelLocalhost)
 	sub.AddFilter(&msgbus.InstanceConfigFor{}, d.labelLocalhost)
 	sub.AddFilter(&msgbus.InstanceConfigUpdated{}, d.labelLocalhost)
@@ -456,6 +458,7 @@ func localEventMustBeForwarded(i interface{}) bool {
 	case *msgbus.DaemonRunnerImonUpdated:
 	case *msgbus.DaemonSchedulerUpdated:
 	case *msgbus.DaemonStatusUpdated:
+
 	// instances...
 	case *msgbus.InstanceConfigDeleted:
 	case *msgbus.InstanceConfigFor:
@@ -464,6 +467,10 @@ func localEventMustBeForwarded(i interface{}) bool {
 	case *msgbus.InstanceMonitorUpdated:
 	case *msgbus.InstanceStatusUpdated:
 	case *msgbus.InstanceStatusDeleted:
+
+	// heartbeat
+	case *msgbus.HeartbeatConfigUpdated:
+
 	// node...
 	case *msgbus.NodeConfigUpdated:
 	case *msgbus.NodeMonitorDeleted:
@@ -472,6 +479,7 @@ func localEventMustBeForwarded(i interface{}) bool {
 	case *msgbus.NodeStatsUpdated:
 	case *msgbus.NodeStatusUpdated:
 	case *msgbus.NodeStatusLabelsUpdated:
+
 	// object...
 	case *msgbus.ObjectCreated:
 	case *msgbus.ObjectOrchestrationEnd:

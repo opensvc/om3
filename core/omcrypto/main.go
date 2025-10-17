@@ -4,6 +4,7 @@ package omcrypto
 import (
 	"bytes"
 	"compress/zlib"
+	"context"
 	"crypto/aes"
 	"crypto/cipher"
 	"crypto/rand"
@@ -19,14 +20,98 @@ type (
 		NodeName    string `json:"nodename"`
 		IV          string `json:"iv"`
 		Data        string `json:"data"`
+
+		// Gen is the generation of the key that was used to encrypt the message.
+		Gen uint64 `json:"gen"`
 	}
 
 	Factory struct {
 		NodeName    string
 		ClusterName string
+
+		// Key is the current key used to encrypt data.
+		Key string
+
+		// KeyGen indicates the generation number of the current encryption key.
+		KeyGen uint64
+
+		// NextKey is the encryption key that will be used after the next secret rotation.
+		// It will replace the current key and can be used to decrypt messages
+		// encrypted with a secret that was previously rotated by the peer factory.
+		NextKey string
+
+		// NextKeyGen indicates the generation number of the next encryption key.
+		NextKeyGen uint64
+	}
+
+	FactoryCreateArgser interface {
+		Nodename() string
+		ClusterName() string
+		Secrets() (uint64, string, uint64, string)
+	}
+
+	FactoryArgser interface {
+		FactoryCreateArgser
+		OutdatedC() <-chan bool
+	}
+
+	FactoryArgs struct {
+		NodeName    string
+		ClusterName string
 		Key         string
+		KeyGen      uint64
+		NextKey     string
+		NextKeyGen  uint64
 	}
 )
+
+// Cipher defines an interface for encryption and decryption operations with optional node identification support.
+// DecryptWithNode decrypts the data, also returning the node name associated with the encryption process.
+// Decrypt decrypts the data using the current encryption configuration and returns the result.
+// Encrypt encrypts the data and outputs it in a secure format with metadata about the encryption.
+type (
+	Cipher interface {
+		DecryptWithNode(data []byte) ([]byte, string, error)
+		Decrypt(data []byte) ([]byte, error)
+		Encrypt(data []byte) ([]byte, error)
+	}
+)
+
+var (
+	// assert Factory implements Cipher interface
+	_ = Cipher(&Factory{})
+)
+
+// CipherC creates a channel that emits *Factory instances and manages their
+// lifecycle based on context and outdated signals.
+func CipherC(ctx context.Context, a FactoryArgser) <-chan *Factory {
+	c := make(chan *Factory)
+	go func() {
+		var factory *Factory
+		outdatedC := a.OutdatedC()
+		for {
+			select {
+			case <-ctx.Done():
+				return
+			case c <- factory:
+			case outdated := <-outdatedC:
+				if outdated {
+					factory = newCipher(a)
+				}
+			}
+		}
+	}()
+	return c
+}
+
+func newCipher(a FactoryCreateArgser) *Factory {
+	f := &Factory{
+		NodeName:    a.Nodename(),
+		ClusterName: a.ClusterName(),
+	}
+	f.KeyGen, f.Key, f.NextKeyGen, f.NextKey = a.Secrets()
+	return f
+}
 
 func (m *Factory) assertValid() {
 	if m.ClusterName == "" {
@@ -46,12 +131,20 @@ func (m *Factory) DecryptWithNode(data []byte) ([]byte, string, error) {
 		// fast return, Unmarshal will fail
 		return nil, "", io.EOF
 	}
-	var b []byte
-	key := []byte(m.Key)
+	var (
+		b, key []byte
+	)
 	msg := &encryptedMessage{}
 	err := json.Unmarshal(data, msg)
 	if err != nil {
 		return nil, "", fmt.Errorf("analyse message unmarshal failure: %w", err)
+	}
+	if msg.Gen == 0 || msg.Gen == m.KeyGen {
+		key = []byte(m.Key)
+	} else if msg.Gen == m.NextKeyGen {
+		key = []byte(m.NextKey)
+	} else {
+		return nil, "", fmt.Errorf("can't decrypt from unknown secret gen %d", msg.Gen)
 	}
 	// TODO: test nodename and clustername, plug blacklist
 	b, err = decode(msg.Data, msg.IV, key)
@@ -87,6 +180,7 @@ func (m *Factory) Encrypt(data []byte) ([]byte, error) {
 		NodeName:    m.NodeName,
 		IV:          encodedIV,
 		Data:        encoded,
+		Gen:         m.KeyGen,
 	}
 	return json.Marshal(msg)
 }

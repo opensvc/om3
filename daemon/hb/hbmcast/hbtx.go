@@ -10,11 +10,8 @@ import (
 
 	"github.com/google/uuid"
 
-	"github.com/opensvc/om3/core/cluster"
 	"github.com/opensvc/om3/core/hbtype"
-	"github.com/opensvc/om3/core/omcrypto"
 	"github.com/opensvc/om3/daemon/hb/hbctrl"
-	"github.com/opensvc/om3/util/hostname"
 	"github.com/opensvc/om3/util/plog"
 )
 
@@ -34,8 +31,6 @@ type (
 		cmdC   chan<- interface{}
 		msgC   chan<- *hbtype.Msg
 		cancel func()
-
-		encryptDecrypter *omcrypto.Factory
 	}
 )
 
@@ -73,13 +68,6 @@ func (t *tx) Start(cmdC chan<- interface{}, msgC <-chan []byte) error {
 	ctx, cancel := context.WithCancel(t.ctx)
 	t.cancel = cancel
 	t.cmdC = cmdC
-
-	clusterConfig := cluster.ConfigData.Get()
-	t.encryptDecrypter = &omcrypto.Factory{
-		NodeName:    hostname.Hostname(),
-		ClusterName: clusterConfig.Name,
-		Key:         clusterConfig.Secret(),
-	}
 
 	t.Add(1)
 	go func() {
@@ -121,10 +109,6 @@ func (t *tx) Start(cmdC chan<- interface{}, msgC <-chan []byte) error {
 	<-started
 	t.log.Infof("started")
 	return nil
-}
-
-func (t *tx) encryptMessage(b []byte) ([]byte, error) {
-	return t.encryptDecrypter.Encrypt(b)
 }
 
 func (t *tx) send(b []byte) {

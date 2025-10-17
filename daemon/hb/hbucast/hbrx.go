@@ -11,12 +11,10 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/opensvc/om3/core/cluster"
 	"github.com/opensvc/om3/core/hbtype"
 	"github.com/opensvc/om3/core/omcrypto"
 	"github.com/opensvc/om3/daemon/encryptconn"
 	"github.com/opensvc/om3/daemon/hb/hbctrl"
-	"github.com/opensvc/om3/util/hostname"
 	"github.com/opensvc/om3/util/plog"
 )
 
@@ -174,6 +172,8 @@ func (t *rx) Start(cmdC chan<- interface{}, msgC chan<- *hbtype.Msg) error {
 		}()
 		t.log.Infof("listen to %s for %s", t.addr+":"+t.port, otherNodeIPL)
 		started <- true
+		cryptoC := omcrypto.CryptoFromContext(ctx)
+		var crypto *omcrypto.Factory
 		for {
 			conn, err := listener.Accept()
 			if err != nil {
@@ -200,12 +200,12 @@ func (t *rx) Start(cmdC chan<- interface{}, msgC chan<- *hbtype.Msg) error {
 				t.log.Infof("can't set read deadline for %s: %s", connAddr, err)
 				continue
 			}
-			clusterConfig := cluster.ConfigData.Get()
-			clearConn := encryptconn.New(conn, &omcrypto.Factory{
-				NodeName:    hostname.Hostname(),
-				ClusterName: clusterConfig.Name,
-				Key:         clusterConfig.Secret(),
-			})
+			select {
+			case <-ctx.Done():
+				return
+			case crypto = <-cryptoC:
+			}
+			clearConn := encryptconn.New(conn, crypto)
 			wg.Add(1)
 			go func() {
 				defer wg.Done()

@@ -13,7 +13,7 @@ import (
 )
 
 // onConfigFileUpdated reloads the config parser and emits the updated
-// node.Config data in a NodeConfigUpdated event, so other go routine
+// node.Config data in a NodeConfigUpdated event, so other go routines
 // can just subscribe to this event to maintain the cache of keywords
 // they care about.
 func (t *Manager) onConfigFileUpdated(c *msgbus.ConfigFileUpdated) {
@@ -22,6 +22,8 @@ func (t *Manager) onConfigFileUpdated(c *msgbus.ConfigFileUpdated) {
 
 func (t *Manager) pubClusterConfig() {
 	previousNodes := t.state.Nodes
+	previousHeartbeatSecretSig := t.state.Heartbeat.SecretSig
+
 	state, err := object.SetClusterConfig()
 	if err != nil {
 		t.log.Errorf("%s", err)
@@ -51,6 +53,9 @@ func (t *Manager) pubClusterConfig() {
 	}
 	for _, v := range removed {
 		t.publisher.Pub(&msgbus.LeaveSuccess{Node: v}, labelLocalhost, pubsub.Label{"removed", v})
+	}
+	if previousHeartbeatSecretSig != state.Heartbeat.SecretSig {
+		t.publisher.Pub(&msgbus.HeartbeatConfigUpdated{Nodename: t.localhost, Value: state.Heartbeat}, labelLocalhost)
 	}
 }
 

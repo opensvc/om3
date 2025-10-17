@@ -81,7 +81,8 @@ func (t *T) Configure(ctx context.Context) {
 
 	t.SetNodes(oNodes)
 	t.SetTimeout(timeout)
-	signature := fmt.Sprintf("type: hb.disk, disk: %s nodes: %s timeout: %s interval: %s max_slot: %d", dev, nodes, timeout, interval, maxSlots)
+	signature := fmt.Sprintf("type: hb.disk, disk: %s nodes: %s timeout: %s interval: %s max_slot: %d",
+		dev, nodes, timeout, interval, maxSlots)
 	t.SetSignature(signature)
 	name := t.Name()
 	tx := newTx(ctx, name, oNodes, dev, timeout, interval, maxSlots)

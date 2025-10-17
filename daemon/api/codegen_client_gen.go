@@ -125,6 +125,9 @@ type ClientInterface interface {
 	// GetClusterConfigKeywords request
 	GetClusterConfigKeywords(ctx context.Context, params *GetClusterConfigKeywordsParams, reqEditors ...RequestEditorFn) (*http.Response, error)
 
+	// PostClusterHeartbeatRotate request
+	PostClusterHeartbeatRotate(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error)
+
 	// PostClusterJoin request
 	PostClusterJoin(ctx context.Context, params *PostClusterJoinParams, reqEditors ...RequestEditorFn) (*http.Response, error)
 
@@ -662,6 +665,18 @@ func (c *Client) PutClusterConfigFileWithBody(ctx context.Context, contentType s
 
 func (c *Client) GetClusterConfigKeywords(ctx context.Context, params *GetClusterConfigKeywordsParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
 	req, err := NewGetClusterConfigKeywordsRequest(c.Server, params)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+func (c *Client) PostClusterHeartbeatRotate(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewPostClusterHeartbeatRotateRequest(c.Server)
 	if err != nil {
 		return nil, err
 	}
@@ -2953,6 +2968,33 @@ func NewGetClusterConfigKeywordsRequest(server string, params *GetClusterConfigK
 	}
 
 	req, err := http.NewRequest("GET", queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
+// NewPostClusterHeartbeatRotateRequest generates requests for PostClusterHeartbeatRotate
+func NewPostClusterHeartbeatRotateRequest(server string) (*http.Request, error) {
+	var err error
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/api/cluster/hb/rotate")
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest("POST", queryURL.String(), nil)
 	if err != nil {
 		return nil, err
 	}
@@ -12008,6 +12050,9 @@ type ClientWithResponsesInterface interface {
 	// GetClusterConfigKeywordsWithResponse request
 	GetClusterConfigKeywordsWithResponse(ctx context.Context, params *GetClusterConfigKeywordsParams, reqEditors ...RequestEditorFn) (*GetClusterConfigKeywordsResponse, error)
 
+	// PostClusterHeartbeatRotateWithResponse request
+	PostClusterHeartbeatRotateWithResponse(ctx context.Context, reqEditors ...RequestEditorFn) (*PostClusterHeartbeatRotateResponse, error)
+
 	// PostClusterJoinWithResponse request
 	PostClusterJoinWithResponse(ctx context.Context, params *PostClusterJoinParams, reqEditors ...RequestEditorFn) (*PostClusterJoinResponse, error)
 
@@ -12720,6 +12765,33 @@ func (r GetClusterConfigKeywordsResponse) Status() string {
 
 // StatusCode returns HTTPResponse.StatusCode
 func (r GetClusterConfigKeywordsResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+type PostClusterHeartbeatRotateResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	JSON200      *HeartbeatRotateResponse
+	JSON400      *N400
+	JSON401      *N401
+	JSON403      *N403
+	JSON409      *N409
+	JSON500      *N500
+}
+
+// Status returns HTTPResponse.Status
+func (r PostClusterHeartbeatRotateResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r PostClusterHeartbeatRotateResponse) StatusCode() int {
 	if r.HTTPResponse != nil {
 		return r.HTTPResponse.StatusCode
 	}
@@ -16165,6 +16237,15 @@ func (c *ClientWithResponses) GetClusterConfigKeywordsWithResponse(ctx context.C
 	return ParseGetClusterConfigKeywordsResponse(rsp)
 }
 
+// PostClusterHeartbeatRotateWithResponse request returning *PostClusterHeartbeatRotateResponse
+func (c *ClientWithResponses) PostClusterHeartbeatRotateWithResponse(ctx context.Context, reqEditors ...RequestEditorFn) (*PostClusterHeartbeatRotateResponse, error) {
+	rsp, err := c.PostClusterHeartbeatRotate(ctx, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParsePostClusterHeartbeatRotateResponse(rsp)
+}
+
 // PostClusterJoinWithResponse request returning *PostClusterJoinResponse
 func (c *ClientWithResponses) PostClusterJoinWithResponse(ctx context.Context, params *PostClusterJoinParams, reqEditors ...RequestEditorFn) (*PostClusterJoinResponse, error) {
 	rsp, err := c.PostClusterJoin(ctx, params, reqEditors...)
@@ -18045,6 +18126,67 @@ func ParseGetClusterConfigKeywordsResponse(rsp *http.Response) (*GetClusterConfi
 			return nil, err
 		}
 		response.JSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
+		var dest N500
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON500 = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParsePostClusterHeartbeatRotateResponse parses an HTTP response from a PostClusterHeartbeatRotateWithResponse call
+func ParsePostClusterHeartbeatRotateResponse(rsp *http.Response) (*PostClusterHeartbeatRotateResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &PostClusterHeartbeatRotateResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest HeartbeatRotateResponse
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
+		var dest N400
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON400 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest N401
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest N403
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON403 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 409:
+		var dest N409
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON409 = &dest
 
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
 		var dest N500

@@ -1,5 +1,5 @@
 // Package daemonhelper is a helper for daemon components tests
-package daemonhelper
+package daemontesthelper
 
 import (
 	"context"
@@ -14,10 +14,12 @@ import (
 	"github.com/opensvc/om3/core/instance"
 	"github.com/opensvc/om3/core/node"
 	"github.com/opensvc/om3/core/object"
+	"github.com/opensvc/om3/core/omcrypto"
 	"github.com/opensvc/om3/core/rawconfig"
 	"github.com/opensvc/om3/daemon/daemonctx"
 	"github.com/opensvc/om3/daemon/daemondata"
 	"github.com/opensvc/om3/daemon/daemonenv"
+	"github.com/opensvc/om3/daemon/hb/hbconfig"
 	"github.com/opensvc/om3/daemon/hbcache"
 	"github.com/opensvc/om3/daemon/runner"
 	"github.com/opensvc/om3/testhelper"
@@ -69,6 +71,13 @@ func Setup(t *testing.T, env *testhelper.Env) *D {
 	ctx = daemondata.ContextWithBus(ctx, dataCmd)
 	ctx = daemonctx.WithHBRecvMsgQ(ctx, dataMsgRecvQ)
 
+	hbSecretFactory := hbconfig.New("daemon.hb.secret")
+	if err := hbSecretFactory.Start(ctx); err != nil {
+		panic(err)
+	}
+	cryptoC := omcrypto.CipherC(ctx, hbSecretFactory)
+	ctx = omcrypto.ContextWithCrypto(ctx, cryptoC)
+
 	qsSmall := pubsub.WithQueueSize(daemonenv.SubQSSmall)
 	testRunner := runner.NewDefault(qsSmall)
 	testRunner.SetMaxRunning(20)
@@ -79,6 +88,7 @@ func Setup(t *testing.T, env *testhelper.Env) *D {
 		cancel()
 		dataCmdCancel()
 		hostname.SetHostnameForGoTest("")
+		_ = hbSecretFactory.Stop()
 	}
 	return &D{
 		Env:           *env,

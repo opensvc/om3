@@ -19,6 +19,7 @@ import (
 	"github.com/retailnext/cannula"
 
 	"github.com/opensvc/om3/core/cluster"
+	"github.com/opensvc/om3/core/omcrypto"
 	"github.com/opensvc/om3/daemon/ccfg"
 	"github.com/opensvc/om3/daemon/collector"
 	"github.com/opensvc/om3/daemon/cstat"
@@ -30,6 +31,7 @@ import (
 	"github.com/opensvc/om3/daemon/discover"
 	"github.com/opensvc/om3/daemon/dns"
 	"github.com/opensvc/om3/daemon/hb"
+	"github.com/opensvc/om3/daemon/hb/hbconfig"
 	"github.com/opensvc/om3/daemon/hbcache"
 	"github.com/opensvc/om3/daemon/hook"
 	"github.com/opensvc/om3/daemon/imon"
@@ -208,6 +210,14 @@ func (t *T) Start(ctx context.Context) error {
 		DrainDuration: daemonenv.DrainChanDuration,
 		DelayDuration: daemonenv.ImonDelayDuration,
 		SubQS:         qsMedium,
+	}
+
+	hbSecretFactory := hbconfig.New("daemon.hb.secret")
+	if err := t.startComponent(t.ctx, hbSecretFactory); err != nil {
+		return fmt.Errorf("can't start hb secret provider: %w", err)
+	} else {
+		cryptoC := omcrypto.CipherC(t.ctx, hbSecretFactory)
+		t.ctx = omcrypto.ContextWithCrypto(t.ctx, cryptoC)
 	}
 
 	t.ctx = daemonapi.WithSubQS(t.ctx, qsMedium)

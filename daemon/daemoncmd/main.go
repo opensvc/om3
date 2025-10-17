@@ -98,6 +98,11 @@ func bootStrapCcfg() error {
 			Default:   strings.ReplaceAll(uuid.New().String(), "-", ""),
 			Obfuscate: true,
 		},
+		{
+			Key:       key.New("cluster", "hb_secret"),
+			Default:   fmt.Sprintf("%d:%s", 0, strings.ReplaceAll(uuid.New().String(), "-", "")),
+			Obfuscate: true,
+		},
 	}
 
 	ccfg, err := object.NewCluster(object.WithVolatile(false))
@@ -228,6 +233,7 @@ func (t *T) run() error {
 	log.Attr("capabilities", capabilities.Data()).Infof("rescanned node capabilities")
 
 	if err := bootStrapCcfg(); err != nil {
+		log.Debugf("bootstrap cluster config %s", err)
 		return err
 	}
 	d := daemon.New()

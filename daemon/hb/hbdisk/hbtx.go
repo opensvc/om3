@@ -56,7 +56,7 @@ func (t *tx) Stop() error {
 }
 
 func (t *tx) streamPeerDesc() string {
-	return fmt.Sprintf("→ %s[%d]", t.base.device.file.Name(), t.slot)
+	return fmt.Sprintf("→ %s slot %d", t.base.device.file.Name(), t.slot)
 }
 
 // Start implements the Start function of Transmitter interface for tx

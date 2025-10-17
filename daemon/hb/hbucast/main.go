@@ -23,6 +23,7 @@ package hbucast
 import (
 	"context"
 	"fmt"
+	"slices"
 	"strconv"
 	"strings"
 	"time"
@@ -84,6 +85,7 @@ func (t *T) Configure(ctx context.Context) {
 		for node, s := range nodeMap {
 			l = append(l, fmt.Sprintf("%s(%s)", node, s))
 		}
+		slices.Sort(l)
 		return strings.Join(l, ",")
 	}()
 	delete(nodeMap, hostname.Hostname())
@@ -97,6 +99,7 @@ func (t *T) Configure(ctx context.Context) {
 	signature := fmt.Sprintf("type: hb.ucast, nodes: %s timeout: %s interval: %s intf: %s",
 		nodesSig, timeout, interval, intf)
 	t.SetSignature(signature)
+	log.Infof("signature: [%s]", signature)
 	name := t.Name()
 	tx := newTx(ctx, name, nodeMap, addr, port, intf, timeout, interval)
 	t.SetTx(tx)

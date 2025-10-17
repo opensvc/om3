@@ -74,17 +74,6 @@ func (t *Ccfg) DRPNodes() ([]string, error) {
 	return t.config.GetStrings(k), nil
 }
 
-// GetClusterConfig returns the cached config data if any, or load the cache and return the cached config data.
-func GetClusterConfig() (cluster.Config, error) {
-	cfg := cluster.ConfigData.Get()
-	if cfg != nil {
-		return *cfg, nil
-	}
-	cfg, err := getClusterConfig()
-	cluster.ConfigData.Set(cfg)
-	return *cfg, err
-}
-
 // SetClusterConfig refreshes the config data cache and returns the new config data.
 func SetClusterConfig() (cluster.Config, error) {
 	cfg, err := getClusterConfig()
@@ -97,6 +86,7 @@ func getClusterConfig() (*cluster.Config, error) {
 	var (
 		keyID         = key.New("cluster", "id")
 		keySecret     = key.New("cluster", "secret")
+		keyHBSecret   = key.New("cluster", "hb_secret")
 		keyName       = key.New("cluster", "name")
 		keyNodes      = key.New("cluster", "nodes")
 		keyDNS        = key.New("cluster", "dns")
@@ -126,6 +116,15 @@ func getClusterConfig() (*cluster.Config, error) {
 	cfg.Name = c.GetString(keyName)
 	cfg.CASecPaths = c.GetStrings(keyCASecPaths)
 	cfg.SetSecret(c.GetString(keySecret))
+
+	if err := cfg.SetHeartbeatSecret(c.GetString(keyHBSecret)); err != nil {
+		// fallback to keySecret
+		cfg.Issues = append(cfg.Issues, fmt.Sprintf("configure heartbeat secret from %s: %s", keyHBSecret, err))
+		if err := cfg.SetHeartbeatSecret(c.GetString(keySecret)); err != nil {
+			cfg.Issues = append(cfg.Issues, fmt.Sprintf("configure heartbeat secret from %s: %s", keySecret, err))
+		}
+	}
+
 	cfg.Quorum = c.GetBool(keyQuorum)
 	cfg.Listener.CRL = c.GetString(keyListenerCRL)
 	if v, err := c.Eval(keyListenerAddr); err != nil {

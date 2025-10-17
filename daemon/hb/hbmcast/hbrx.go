@@ -10,7 +10,6 @@ import (
 	"sync"
 	"time"
 
-	"github.com/opensvc/om3/core/cluster"
 	"github.com/opensvc/om3/core/hbtype"
 	"github.com/opensvc/om3/core/omcrypto"
 	"github.com/opensvc/om3/daemon/hb/hbctrl"
@@ -36,7 +35,7 @@ type (
 		msgC   chan<- *hbtype.Msg
 		cancel func()
 
-		encryptDecrypter *omcrypto.Factory
+		cryptoC <-chan *omcrypto.Factory
 	}
 	assembly map[string]msgMap
 	msgMap   map[string]dataMap
@@ -80,12 +79,6 @@ func (t *rx) Start(cmdC chan<- interface{}, msgC chan<- *hbtype.Msg) error {
 	t.cancel = cancel
 	t.log.Infof("starting")
 	t.assembly = make(assembly)
-	clusterConfig := cluster.ConfigData.Get()
-	t.encryptDecrypter = &omcrypto.Factory{
-		NodeName:    hostname.Hostname(),
-		ClusterName: clusterConfig.Name,
-		Key:         clusterConfig.Secret(),
-	}
 	started := make(chan bool)
 	t.Add(1)
 	go func() {
@@ -121,6 +114,7 @@ func (t *rx) Start(cmdC chan<- interface{}, msgC chan<- *hbtype.Msg) error {
 			}
 		}()
 		started <- true
+		t.cryptoC = omcrypto.CryptoFromContext(ctx)
 		b := make([]byte, MaxDatagramSize)
 		for {
 			n, src, err := listener.ReadFromUDP(b)
@@ -212,7 +206,14 @@ func (t *rx) recv(src *net.UDPAddr, n int, b []byte) {
 	} else {
 		encMsg = chunks[1]
 	}
-	b, err := t.encryptDecrypter.Decrypt(encMsg)
+	var crypto *omcrypto.Factory
+	select {
+	case <-t.ctx.Done():
+		return
+	case crypto = <-t.cryptoC:
+	}
+
+	b, err := crypto.Decrypt(encMsg)
 	if err != nil {
 		t.log.Debugf("recv: decrypting msg from %s: %s: %s", s, hex.Dump(encMsg), err)
 		return

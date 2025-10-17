@@ -10,11 +10,9 @@ import (
 	"sync"
 	"time"
 
-	"github.com/opensvc/om3/core/cluster"
 	"github.com/opensvc/om3/core/clusterhb"
 	"github.com/opensvc/om3/core/hbcfg"
 	"github.com/opensvc/om3/core/hbtype"
-	"github.com/opensvc/om3/core/naming"
 	"github.com/opensvc/om3/core/omcrypto"
 	"github.com/opensvc/om3/daemon/daemonctx"
 	"github.com/opensvc/om3/daemon/daemondata"
@@ -44,9 +42,7 @@ type (
 
 		ridSignature map[string]string
 
-		sub *pubsub.Subscription
-
-		// ctx is the main context for controller, and started hb drivers
+		// ctx is the main context for the controller, and started hb drivers
 		ctx context.Context
 
 		// cancel is the cancel function for msgToTx, msgFromRx, janitor
@@ -75,7 +71,7 @@ func New(_ context.Context, opts ...funcopt.O) *T {
 	return t
 }
 
-// Start startup the heartbeat components
+// Start starts the heartbeat components
 //
 // It starts:
 // with ctx:
@@ -349,6 +345,10 @@ func (t *T) msgToTx(ctx context.Context) error {
 				}
 			}
 		}()
+
+		cryptoC := omcrypto.CryptoFromContext(ctx)
+		var crypto *omcrypto.Factory
+
 		for {
 			select {
 			case <-ctx.Done():
@@ -360,18 +360,20 @@ func (t *T) msgToTx(ctx context.Context) error {
 				t.log.Debugf("remove %s from hb transmitters", txID)
 				delete(registeredTxMsgQueue, txID)
 			case msg := <-msgC:
-				clusterConfig := cluster.ConfigData.Get()
-				encrypterDecrypter := &omcrypto.Factory{
-					NodeName:    hostname.Hostname(),
-					ClusterName: clusterConfig.Name,
-					Key:         clusterConfig.Secret(),
-				}
 				b, err := json.Marshal(msg)
 				if err != nil {
 					err = fmt.Errorf("marshal failure %s for msg %v", err, msg)
 					continue
 				}
-				b, err = encrypterDecrypter.Encrypt(b)
+				select {
+				case <-ctx.Done():
+					return
+				case crypto = <-cryptoC:
+					if crypto == nil {
+						continue
+					}
+				}
+				b, err = crypto.Encrypt(b)
 				if err != nil {
 					continue
 				}
@@ -447,13 +449,6 @@ func (t *T) msgFromRx(ctx context.Context) {
 	}
 }
 
-func (t *T) startSubscriptions(ctx context.Context) {
-	t.sub = pubsub.SubFromContext(ctx, "daemon.hb")
-	t.sub.AddFilter(&msgbus.InstanceConfigUpdated{}, pubsub.Label{"path", naming.Cluster.String()})
-	t.sub.AddFilter(&msgbus.DaemonCtl{})
-	t.sub.Start()
-}
-
 // janitor starts the goroutine responsible for hb drivers lifecycle.
 //
 // It ends when ctx is done.
@@ -461,7 +456,6 @@ func (t *T) startSubscriptions(ctx context.Context) {
 // It watches cluster InstanceConfigUpdated and DaemonCtl to (re)start hb drivers
 // When a hb driver is started, it will use the main context t.ctx.
 func (t *T) janitor(ctx context.Context) {
-	t.startSubscriptions(ctx)
 	started := make(chan bool)
 
 	if err := t.rescanHb(ctx); err != nil {
@@ -472,8 +466,12 @@ func (t *T) janitor(ctx context.Context) {
 	go func() {
 		defer t.wg.Done()
 		started <- true
+		sub := pubsub.SubFromContext(ctx, "daemon.hb")
+		sub.AddFilter(&msgbus.ClusterConfigUpdated{}, pubsub.Label{"node", hostname.Hostname()})
+		sub.AddFilter(&msgbus.DaemonCtl{})
+		sub.Start()
 		defer func() {
-			if err := t.sub.Stop(); err != nil {
+			if err := sub.Stop(); err != nil {
 				t.log.Errorf("subscription stop: %s", err)
 			}
 		}()
@@ -481,15 +479,8 @@ func (t *T) janitor(ctx context.Context) {
 			select {
 			case <-ctx.Done():
 				return
-			case i := <-t.sub.C:
+			case i := <-sub.C:
 				switch msg := i.(type) {
-				case *msgbus.InstanceConfigUpdated:
-					if msg.Node != hostname.Hostname() {
-						continue
-					}
-					t.log.Infof("rescan heartbeat configurations (local cluster config changed)")
-					_ = t.rescanHb(t.ctx)
-					t.log.Infof("rescan heartbeat configurations done")
 				case *msgbus.DaemonCtl:
 					hbID := msg.Component
 					action := msg.Action
@@ -524,6 +515,10 @@ func (t *T) janitor(ctx context.Context) {
 						t.log.Infof("restart %s:starting", hbID)
 						t.daemonCtlStart(t.ctx, hbID, action)
 					}
+				case *msgbus.ClusterConfigUpdated:
+					t.log.Infof("rescan heartbeat configurations (local cluster config changed)")
+					_ = t.rescanHb(t.ctx)
+					t.log.Infof("rescan heartbeat configurations done")
 				}
 			}
 		}
