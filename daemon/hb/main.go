@@ -369,6 +369,9 @@ func (t *T) msgToTx(ctx context.Context) error {
 				case <-ctx.Done():
 					return
 				case crypto = <-cryptoC:
+					if crypto == nil {
+						continue
+					}
 				}
 				b, err = crypto.Encrypt(b)
 				if err != nil {
