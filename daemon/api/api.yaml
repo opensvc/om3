@@ -814,6 +814,56 @@ paths:
         500:
           $ref: '#/components/responses/500'
 
+  /api/node/name/{nodename}/daemon/hb/name/{name}/action/sign:
+    post:
+      description: |
+        Sign a heartbeat disk
+      operationId: PostDaemonHeartbeatSign
+      parameters:
+        - $ref: '#/components/parameters/inPathNodeName'
+        - $ref: '#/components/parameters/inPathHeartbeatName'
+      tags:
+        - node / daemon
+      security:
+        - basicAuth: [ ]
+        - bearerAuth: [ ]
+      responses:
+        200:
+          $ref: '#/components/responses/200'
+        400:
+          $ref: '#/components/responses/400'
+        401:
+          $ref: '#/components/responses/401'
+        403:
+          $ref: '#/components/responses/403'
+        500:
+          $ref: '#/components/responses/500'
+
+  /api/node/name/{nodename}/daemon/hb/name/{name}/action/wipe:
+    post:
+      description: |
+        Wipe a heartbeat disk
+      operationId: PostDaemonHeartbeatWipe
+      parameters:
+        - $ref: '#/components/parameters/inPathNodeName'
+        - $ref: '#/components/parameters/inPathHeartbeatName'
+      tags:
+        - node / daemon
+      security:
+        - basicAuth: [ ]
+        - bearerAuth: [ ]
+      responses:
+        200:
+          $ref: '#/components/responses/200'
+        400:
+          $ref: '#/components/responses/400'
+        401:
+          $ref: '#/components/responses/401'
+        403:
+          $ref: '#/components/responses/403'
+        500:
+          $ref: '#/components/responses/500'
+
   /api/node/name/{nodename}/daemon/hb/name/{name}/action/stop:
     post:
       description: |

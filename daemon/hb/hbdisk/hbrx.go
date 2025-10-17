@@ -8,6 +8,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/opensvc/om3/util/sign"
 	"golang.org/x/exp/maps"
 
 	"github.com/opensvc/om3/core/cluster"
@@ -77,7 +78,7 @@ func (t *rx) streamPeerDesc(node string) string {
 
 // Start implements the Start function of the Receiver interface for rx
 func (t *rx) Start(cmdC chan<- any, msgC chan<- *hbtype.Msg) error {
-	t.log.Infof("starting with storage area: metadata_size + (max_slots x slot_size): %d + (%d x %d)", metaSize(t.base.maxSlots), t.base.maxSlots, SlotSize)
+	t.log.Infof("starting with storage area: metadata_size + (max_slots x slot_size): %d + (%d x %d)", metaSize(t.base.maxSlots), t.base.maxSlots, sign.SlotSize)
 	nodeCount := len(t.nodes) + 1
 	if t.base.maxSlots < nodeCount {
 		return fmt.Errorf("can't start: not enough slots for %d nodes", nodeCount)
