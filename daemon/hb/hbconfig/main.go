@@ -83,14 +83,16 @@ func (t *T) Start(ctx context.Context) error {
 	ctx, cancel := context.WithCancel(ctx)
 	t.cancel = cancel
 
+	started := make(chan bool)
 	go func() {
 		outdated := false
 		defer t.cancel()
-		t.cConfig = cluster.ConfigData.Get()
 		sub := pubsub.SubFromContext(ctx, t.name)
 		sub.AddFilter(&msgbus.HeartbeatConfigUpdated{}, pubsub.Label{"node", hostname.Hostname()})
 		sub.Start()
 		defer sub.Stop()
+		t.cConfig = cluster.ConfigData.Get()
+		started <- true
 		for {
 			select {
 			case <-ctx.Done():
@@ -107,5 +109,6 @@ func (t *T) Start(ctx context.Context) error {
 			}
 		}
 	}()
+	<-started
 	return nil
 }
