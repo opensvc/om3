@@ -48,6 +48,7 @@ func init() {
 		commoncmd.NewCmdDaemonHeartbeatStop(),
 		commoncmd.NewCmdHeartbeatSign(),
 		commoncmd.NewCmdHeartbeatWipe(),
+		commoncmd.NewCmdDaemonHeartbeatRotate(),
 	)
 
 	cmdDaemonListener.AddCommand(
