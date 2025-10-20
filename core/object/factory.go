@@ -103,6 +103,8 @@ func New(p naming.Path, opts ...funcopt.O) (any, error) {
 		return NewUsr(p, opts...)
 	case naming.KindCcfg:
 		return newCcfg(p, opts...)
+	case naming.KindNscfg:
+		return NewNscfg(p, opts...)
 	default:
 		return nil, fmt.Errorf("unsupported kind: %s", p.Kind)
 	}

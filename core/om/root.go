@@ -54,7 +54,18 @@ var (
 )
 
 func validArgs(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
-	return listObjectPaths(), cobra.ShellCompDirectiveNoFileComp
+	//return listObjectPaths(), cobra.ShellCompDirectiveNoFileComp
+	all := listObjectPaths()
+	if toComplete == "" {
+		return all, cobra.ShellCompDirectiveNoFileComp
+	}
+	l := make([]string, 0)
+	for _, candidate := range all {
+		if strings.HasPrefix(candidate, toComplete) {
+			l = append(l, candidate)
+		}
+	}
+	return l, cobra.ShellCompDirectiveNoFileComp
 }
 
 func listObjectPaths() []string {
@@ -215,6 +226,9 @@ func init() {
 	root.PersistentFlags().BoolVar(&callerFlag, "caller", false, "show the caller file and linenum in logs")
 	root.PersistentFlags().StringVarP(&selectorFlag, "selector", "s", "", "object selector")
 	root.PersistentFlags().Lookup("selector").Hidden = true
+	root.RegisterFlagCompletionFunc("selector", func(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
+		return validArgs(cmd, args, toComplete)
+	})
 }
 
 // mergeSelector returns the selector from argv[1], or falls back to

@@ -13,13 +13,13 @@ var completionCmd = &cobra.Command{
 
 Bash:
 
-  $ source <(opensvc completion bash)
+  $ source <(om completion bash)
 
   # To load completions for each session, execute once:
   # Linux:
-  $ opensvc completion bash > /etc/bash_completion.d/opensvc
+  $ om completion bash > /etc/bash_completion.d/om
   # macOS:
-  $ opensvc completion bash > /usr/local/etc/bash_completion.d/opensvc
+  $ om completion bash > /usr/local/etc/bash_completion.d/om
 
 Zsh:
 
@@ -29,23 +29,23 @@ Zsh:
   $ echo "autoload -U compinit; compinit" >> ~/.zshrc
 
   # To load completions for each session, execute once:
-  $ opensvc completion zsh > "${fpath[1]}/_opensvc"
+  $ om completion zsh > "${fpath[1]}/om"
 
   # You will need to start a new shell for this setup to take effect.
 
 fish:
 
-  $ opensvc completion fish | source
+  $ om completion fish | source
 
   # To load completions for each session, execute once:
-  $ opensvc completion fish > ~/.config/fish/completions/opensvc.fish
+  $ om completion fish > ~/.config/fish/completions/om.fish
 
 PowerShell:
 
-  PS> opensvc completion powershell | Out-String | Invoke-Expression
+  PS> om completion powershell | Out-String | Invoke-Expression
 
   # To load completions for every new session, run:
-  PS> opensvc completion powershell > opensvc.ps1
+  PS> om completion powershell > om.ps1
   # and source this file from your PowerShell profile.
 `,
 	DisableFlagsInUseLine: true,
