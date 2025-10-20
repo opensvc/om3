@@ -22,13 +22,13 @@ func NewCmdDaemonHeartbeatRotate() *cobra.Command {
 	options := CmdDaemonHeartbeatRotate{}
 	cmd := &cobra.Command{
 		Use:   "rotate",
-		Short: "rotate a heartbeat disk",
+		Short: "rotate a disk heartbeat encryption secret",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return options.Run()
 		},
 	}
 	flags := cmd.Flags()
-	FlagWait(flags, &options.Wait)
+	flags.BoolVar(&options.Wait, "wait", false, "wait for the rotate operation to complete")
 	return cmd
 }
 
