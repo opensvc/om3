@@ -112,6 +112,10 @@ func (t *Manager) onHeartbeatRotateRequest(c *msgbus.HeartbeatRotateRequest) {
 		onRefused("already rotating")
 		return
 	}
+	if len(t.livePeers) != len(t.clusterConfig.Nodes) {
+		onRefused("some cluster nodes are offline")
+		return
+	}
 	expectedSig := t.hbSecretSigByNodename[t.localhost]
 	if expectedSig == "" {
 		// secret version change been committed, we have to wait for next
