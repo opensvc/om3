@@ -165,10 +165,10 @@ func (t *T) stopHb(hb hbtype.IDStopper) error {
 func (t *T) startHb(hb hbcfg.Confer) error {
 	var errs error
 	if err := t.startHbTx(hb); err != nil {
-		errs = errors.Join(errs, err)
+		errs = errors.Join(errs, fmt.Errorf("start %s.tx failed: %w", hb.Name(), err))
 	}
 	if err := t.startHbRx(hb); err != nil {
-		errs = errors.Join(errs, err)
+		errs = errors.Join(errs, fmt.Errorf("start %s.rx failed: %w", hb.Name(), err))
 	}
 	return errs
 }
@@ -188,7 +188,6 @@ func (t *T) startHbTx(hb hbcfg.Confer) error {
 	go debounceLatestMsgToTx(t.msgToTxCtx, msgToSendQ, debouncedMsgQ)
 
 	if err := tx.Start(t.ctrlC, debouncedMsgQ); err != nil {
-		t.log.Errorf("start %s failed: %s", tx.ID(), err)
 		t.ctrlC <- hbctrl.CmdSetState{ID: tx.ID(), State: "failed"}
 		return err
 	}
@@ -209,7 +208,6 @@ func (t *T) startHbRx(hb hbcfg.Confer) error {
 	t.ctrlC <- hbctrl.CmdRegister{ID: rx.ID(), Type: hb.Type()}
 	if err := rx.Start(t.ctrlC, t.readMsgQueue); err != nil {
 		t.ctrlC <- hbctrl.CmdSetState{ID: rx.ID(), State: "failed"}
-		t.log.Errorf("start %s failed: %s", rx.ID(), err)
 		return err
 	}
 	t.rxs[hb.Name()] = rx
@@ -487,7 +485,7 @@ func (t *T) janitor(ctx context.Context) {
 					if !strings.HasPrefix(hbID, "hb#") {
 						continue
 					}
-					t.log.Infof("on daemonCtl %s %s", action, hbID)
+					t.log.Infof("handle event DaemonCtl with action %s on component %s", action, hbID)
 					switch msg.Action {
 					case "stop":
 						t.log.Infof("stopping %s", hbID)
@@ -517,8 +515,11 @@ func (t *T) janitor(ctx context.Context) {
 					}
 				case *msgbus.ClusterConfigUpdated:
 					t.log.Infof("rescan heartbeat configurations (local cluster config changed)")
-					_ = t.rescanHb(t.ctx)
-					t.log.Infof("rescan heartbeat configurations done")
+					if err := t.rescanHb(t.ctx); err != nil {
+						t.log.Errorf("rescan heartbeat configurations has errors: %s", err)
+					} else {
+						t.log.Infof("rescan heartbeat configurations done")
+					}
 				}
 			}
 		}

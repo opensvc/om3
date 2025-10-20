@@ -8,8 +8,9 @@ import (
 	"sync"
 	"time"
 
-	"github.com/opensvc/om3/util/sign"
 	"golang.org/x/exp/maps"
+
+	"github.com/opensvc/om3/util/sign"
 
 	"github.com/opensvc/om3/core/hbtype"
 	"github.com/opensvc/om3/core/omcrypto"

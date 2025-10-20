@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"github.com/ncw/directio"
+
 	"github.com/opensvc/om3/util/sign"
 
 	"github.com/opensvc/om3/util/file"
@@ -182,7 +183,7 @@ func (t *device) open() error {
 		return err
 	}
 	if err := t.ensureHBSignature(); err != nil {
-		return err
+		return fmt.Errorf("heartbeat disk signature verify: %w", err)
 	}
 	return nil
 }
@@ -213,9 +214,9 @@ func (t *device) ensureCharDevice(path string) error {
 // and returns an error if validation fails.
 func (t *device) ensureHBSignature() error {
 	if signature, err := t.readSignature(); err != nil {
-		return fmt.Errorf("expected signature '%s' at offset 0: read failed: %w", sign.HBDiskSignature, err)
+		return err
 	} else if signature != sign.HBDiskSignature {
-		return fmt.Errorf("expected signature '%s' at offset 0: found '%s'", sign.HBDiskSignature, signature)
+		return fmt.Errorf("wrong signature")
 	}
 	return nil
 }
