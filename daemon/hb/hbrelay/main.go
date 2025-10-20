@@ -80,6 +80,7 @@ func (t *T) Configure(ctx context.Context) {
 	signature := fmt.Sprintf("type: hb.relay nodes: %s relay: %s timeout: %s interval: %s",
 		nodes, relay, timeout, interval)
 	t.SetSignature(signature)
+	log.Debugf("signature: [%s]", signature)
 	name := t.Name()
 	tx := newTx(ctx, name, oNodes, relay, username, password, insecure, timeout, interval)
 	t.SetTx(tx)
