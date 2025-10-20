@@ -31,7 +31,7 @@ func TestNewStore(t *testing.T) {
 		"volume#withcfg": {"name": "withcfg", "configs": "store/foo:/cfg"},
 		"volume#withsec": {"name": "withsec", "secrets": "store/foo:/sec"},
 	}
-	clientObjPath := naming.Path{Name: "client", Kind: naming.KindSvc, Namespace: "root"}
+	clientObjPath := naming.Path{Name: "client", Kind: naming.KindSvc, Namespace: naming.NsRoot}
 	t.Logf("prepare %s object that will setup the volumes with configs and secrets", clientObjPath)
 	t.Logf("creating %s object %s", clientObjPath, clientObjPath.ConfigFile())
 	clientObj, err := NewSvc(clientObjPath, WithConfigData(volConf))
@@ -48,7 +48,7 @@ func TestNewStore(t *testing.T) {
 
 	for _, c := range []naming.Kind{naming.KindCfg, naming.KindSec} {
 		t.Run(c.String(), func(t *testing.T) {
-			storePath := naming.Path{Name: "store", Kind: c, Namespace: "root"}
+			storePath := naming.Path{Name: "store", Kind: c, Namespace: naming.NsRoot}
 			t.Logf("%s create config: %s", storePath, storePath.ConfigFile())
 			o, err := NewDataStore(storePath)
 			require.NoError(t, err)
@@ -59,7 +59,7 @@ func TestNewStore(t *testing.T) {
 			t.Logf("%s installKey", storePath)
 			require.NoError(t, o.InstallKey("demo"))
 
-			volPath := naming.Path{Name: "with" + c.String(), Namespace: "root", Kind: naming.KindVol}
+			volPath := naming.Path{Name: "with" + c.String(), Namespace: naming.NsRoot, Kind: naming.KindVol}
 			t.Logf("check installed key on %s head", volPath)
 			var vol Vol
 			vol, err = NewVol(volPath)

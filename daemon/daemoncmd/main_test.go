@@ -173,9 +173,9 @@ func runTestDaemonStartup(t *testing.T, hasConfig bool) {
 			// TODO: check for automatically defined heartbeat hb#1.type=unicast
 		}
 		for _, objectName := range []string{
-			naming.NamespaceSystem + "/sec/cert",
-			naming.NamespaceSystem + "/sec/ca",
-			"cluster",
+			naming.SecCert.String(),
+			naming.SecCa.String(),
+			naming.Cluster.String(),
 		} {
 			logf("search object %s", objectName)
 			_, ok := cData.Cluster.Object[objectName]

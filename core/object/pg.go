@@ -80,7 +80,7 @@ func (t *core) pgConfig(section string) *pg.Config {
 	}
 	svcPGName := func() []string {
 		s := pgNameObject(t.path)
-		if t.path.Namespace == "root" {
+		if t.path.Namespace == naming.NsRoot {
 			return []string{"opensvc", "opensvc-" + s}
 		}
 		ns := pgNameNamespace(t.path.Namespace)

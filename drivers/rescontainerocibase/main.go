@@ -288,7 +288,7 @@ func (t *BT) ContainerName() string {
 	}
 	var s string
 	switch t.Path.Namespace {
-	case "root", "":
+	case naming.NsRoot, "":
 		s = ""
 	default:
 		s = t.Path.Namespace + ".."

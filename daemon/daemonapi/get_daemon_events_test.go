@@ -21,11 +21,11 @@ func TestGetDaemonEventsParamsOk(t *testing.T) {
 		expected []Filter
 	}{
 		"type and label": {
-			filterS: []string{"ObjectStatusUpdated,path=root/svc/foo"},
+			filterS: []string{"ObjectStatusUpdated,path=ns1/svc/foo"},
 			expected: []Filter{
 				{
 					Kind:   &msgbus.ObjectStatusUpdated{},
-					Labels: []pubsub.Label{{"path", "root/svc/foo"}},
+					Labels: []pubsub.Label{{"path", "ns1/svc/foo"}},
 				},
 			},
 		},
@@ -34,38 +34,38 @@ func TestGetDaemonEventsParamsOk(t *testing.T) {
 			expected: nil,
 		},
 		"types and labels": {
-			filterS: []string{"ObjectStatusUpdated,path=root/svc/foo", "ConfigFileRemoved,path=root/svc/bar"},
+			filterS: []string{"ObjectStatusUpdated,path=ns1/svc/foo", "ConfigFileRemoved,path=ns2/svc/bar"},
 			expected: []Filter{
 				{
 					Kind:   &msgbus.ObjectStatusUpdated{},
-					Labels: []pubsub.Label{{"path", "root/svc/foo"}},
+					Labels: []pubsub.Label{{"path", "ns1/svc/foo"}},
 				},
 				{
 					Kind:   &msgbus.ConfigFileRemoved{},
-					Labels: []pubsub.Label{{"path", "root/svc/bar"}},
+					Labels: []pubsub.Label{{"path", "ns2/svc/bar"}},
 				},
 			},
 		},
 		"type label and matcher": {
-			filterS: []string{"InstanceStatusUpdated,node=nodeX,path=root/svc/foo,.data.instance_status.overall=down"},
+			filterS: []string{"InstanceStatusUpdated,node=nodeX,path=ns1/svc/foo,.data.instance_status.overall=down"},
 			expected: []Filter{
 				{
 					Kind:        &msgbus.InstanceStatusUpdated{},
-					Labels:      []pubsub.Label{{"node", "nodeX"}, {"path", "root/svc/foo"}},
+					Labels:      []pubsub.Label{{"node", "nodeX"}, {"path", "ns1/svc/foo"}},
 					DataFilters: DataFilters{{Key: "data.instance_status.overall", Op: "=", Value: "down"}},
 				},
 			},
 		},
 		"type label and matchers": {
 			filterS: []string{
-				"InstanceStatusUpdated,node=nodeX,path=root/svc/foo" +
+				"InstanceStatusUpdated,node=nodeX,path=ns1/svc/foo" +
 					",.data.instance_status.overall=down" +
 					",.data.instance_status.avail=stdby up",
 			},
 			expected: []Filter{
 				{
 					Kind:   &msgbus.InstanceStatusUpdated{},
-					Labels: []pubsub.Label{{"node", "nodeX"}, {"path", "root/svc/foo"}},
+					Labels: []pubsub.Label{{"node", "nodeX"}, {"path", "ns1/svc/foo"}},
 					DataFilters: DataFilters{
 						{Key: "data.instance_status.overall", Op: "=", Value: "down"},
 						{Key: "data.instance_status.avail", Op: "=", Value: "stdby up"},
@@ -82,40 +82,40 @@ func TestGetDaemonEventsParamsOk(t *testing.T) {
 			},
 		},
 		"only label": {
-			filterS: []string{"path=root/svc/foo"},
+			filterS: []string{"path=ns1/svc/foo"},
 			expected: []Filter{
 				{
-					Labels: []pubsub.Label{{"path", "root/svc/foo"}},
+					Labels: []pubsub.Label{{"path", "ns1/svc/foo"}},
 				},
 			},
 		},
 		"only label with heading comma": {
-			filterS: []string{",path=root/svc/foo"},
+			filterS: []string{",path=ns1/svc/foo"},
 			expected: []Filter{
 				{
-					Labels: []pubsub.Label{{"path", "root/svc/foo"}},
+					Labels: []pubsub.Label{{"path", "ns1/svc/foo"}},
 				},
 			},
 		},
 		"only labels": {
-			filterS: []string{",path=root/svc/foo", ",path=root/svc/bar"},
+			filterS: []string{",path=ns1/svc/foo", ",path=ns1/svc/bar"},
 			expected: []Filter{
 				{
-					Labels: []pubsub.Label{{"path", "root/svc/foo"}},
+					Labels: []pubsub.Label{{"path", "ns1/svc/foo"}},
 				},
 				{
-					Labels: []pubsub.Label{{"path", "root/svc/bar"}},
+					Labels: []pubsub.Label{{"path", "ns1/svc/bar"}},
 				},
 			},
 		},
 		"mix type and label": {
-			filterS: []string{"ObjectStatusUpdated", ",path=root/svc/bar"},
+			filterS: []string{"ObjectStatusUpdated", ",path=ns1/svc/bar"},
 			expected: []Filter{
 				{
 					Kind: &msgbus.ObjectStatusUpdated{},
 				},
 				{
-					Labels: []pubsub.Label{{"path", "root/svc/bar"}},
+					Labels: []pubsub.Label{{"path", "ns1/svc/bar"}},
 				},
 			},
 		},

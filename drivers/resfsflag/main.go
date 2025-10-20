@@ -177,7 +177,7 @@ func (t *T) dir() string {
 	if t.lazyDir != "" {
 		return t.lazyDir
 	}
-	if t.Path.Namespace != "root" {
+	if t.Path.Namespace != naming.NsRoot {
 		p = fmt.Sprintf("%s/%s/%s/%s", t.baseDir(), t.Path.Namespace, t.Path.Kind, t.Path.Name)
 	} else {
 		p = fmt.Sprintf("%s/%s/%s", t.baseDir(), t.Path.Kind, t.Path.Name)

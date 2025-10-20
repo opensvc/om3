@@ -18,7 +18,7 @@ func (a *DaemonAPI) GetAuthWhoAmI(ctx echo.Context) error {
 		Auth:      pts(extensions.Get("strategy")),
 		Grant:     map[string][]string{},
 		Name:      user.GetUserName(),
-		Namespace: naming.NamespaceSystem,
+		Namespace: naming.NsSys,
 		RawGrant:  grants.String(),
 	}
 	for _, grant := range grants {

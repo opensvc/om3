@@ -196,8 +196,8 @@ func (t *CmdClusterJoin) onJoined(ctx context.Context, cli *client.T) (err error
 	filePaths := make(map[string]naming.Path)
 	toFetch := []naming.Path{
 		naming.Cluster,
-		{Namespace: naming.NamespaceSystem, Kind: naming.KindSec, Name: "ca"},
-		{Namespace: naming.NamespaceSystem, Kind: naming.KindSec, Name: "cert"},
+		naming.SecCa,
+		naming.SecCert,
 	}
 	downloadedFiles := make([]string, 0)
 	defer func([]string) {

@@ -65,7 +65,7 @@ func New() resource.Driver {
 func (t *T) GetName() string {
 	if t.Name != "" {
 		return t.Name
-	} else if t.Path.Namespace != "root" {
+	} else if t.Path.Namespace != naming.NsRoot {
 		return fmt.Sprintf(
 			"%s.%s.%s",
 			strings.ToLower(t.Path.Namespace),

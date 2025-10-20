@@ -52,11 +52,15 @@ const (
 )
 
 const (
-	NamespaceSystem = "system"
+	NsRoot = "root"
+	NsSys  = "system"
 )
 
 var (
-	Cluster = Path{Name: "cluster", Namespace: "root", Kind: KindCcfg}
+	Cluster = Path{Name: "cluster", Namespace: NsRoot, Kind: KindCcfg}
+	SecCa   = Path{Name: "ca", Namespace: NsSys, Kind: KindSec}
+	SecCert = Path{Name: "cert", Namespace: NsSys, Kind: KindSec}
+	SecHb   = Path{Name: "hb", Namespace: NsSys, Kind: KindSec}
 
 	// ErrInvalid is raised when the path allocator can not return a path
 	// because one of the path element is not valid.
@@ -89,7 +93,7 @@ func NewPathFromStrings(namespace, kind, name string) (Path, error) {
 		kind = "svc"
 	}
 	if namespace == "" {
-		namespace = "root"
+		namespace = NsRoot
 	}
 
 	k := ParseKind(kind)
@@ -141,7 +145,7 @@ func (t Path) FQN() string {
 		return ""
 	}
 	if t.Namespace == "" {
-		s += "root" + Separator
+		s += NsRoot + Separator
 	} else {
 		s += t.Namespace + Separator
 	}
@@ -154,7 +158,7 @@ func (t Path) String() string {
 	if t.Kind == KindInvalid {
 		return ""
 	}
-	if t.Namespace != "" && t.Namespace != "root" {
+	if t.Namespace != "" && t.Namespace != NsRoot {
 		s += t.Namespace + Separator
 	}
 	if (t.Kind != KindSvc && t.Kind != KindCcfg) || s != "" {
@@ -220,18 +224,18 @@ func ParsePath(s string) (Path, error) {
 			kind = "nscfg"
 			name = "namespace"
 		default: // ex: cfg/c1
-			namespace = "root"
+			namespace = NsRoot
 			kind = l[0]
 			name = l[1]
 		}
 	case 1:
 		switch l[0] {
 		case "cluster":
-			namespace = "root"
+			namespace = NsRoot
 			kind = "ccfg"
 			name = l[0]
 		default:
-			namespace = "root"
+			namespace = NsRoot
 			kind = "svc"
 			name = l[0]
 		}
@@ -281,12 +285,12 @@ func (t Path) Match(pattern string) bool {
 	switch len(l) {
 	case 1:
 		s := t.FQN()
-		if fnmatch.Match("root/svc/"+pattern, s, f) {
+		if fnmatch.Match(NsRoot+"/svc/"+pattern, s, f) {
 			return true
 		}
 	case 2:
 		s := t.FQN()
-		if fnmatch.Match("root/"+pattern, s, f) {
+		if fnmatch.Match(NsRoot+"/"+pattern, s, f) {
 			return true
 		}
 	case 3:
@@ -391,7 +395,7 @@ func (t Paths) Merge(other Paths) Paths {
 func (t Path) VarDir() string {
 	var s string
 	switch t.Namespace {
-	case "", "root":
+	case "", NsRoot:
 		s = fmt.Sprintf("%s/%s/%s", rawconfig.Paths.Var, t.Kind, t.Name)
 	default:
 		s = fmt.Sprintf("%s/%s", rawconfig.Paths.VarNs, t)
@@ -404,7 +408,7 @@ func (t Path) VarDir() string {
 func (t Path) TmpDir() string {
 	var s string
 	switch {
-	case t.Namespace != "", t.Namespace != "root":
+	case t.Namespace != "", t.Namespace != NsRoot:
 		s = fmt.Sprintf("%s/%s/%s", rawconfig.Paths.TmpNs, t.Namespace, t.Kind)
 	case t.Kind == KindSvc, t.Kind == KindCcfg:
 		s = fmt.Sprintf("%s", rawconfig.Paths.Tmp)
@@ -419,7 +423,7 @@ func (t Path) TmpDir() string {
 func (t Path) LogDir() string {
 	var s string
 	switch {
-	case t.Namespace != "", t.Namespace != "root":
+	case t.Namespace != "", t.Namespace != NsRoot:
 		s = fmt.Sprintf("%s/%s/%s", rawconfig.Paths.LogNs, t.Namespace, t.Kind)
 	case t.Kind == KindSvc, t.Kind == KindCcfg:
 		s = fmt.Sprintf("%s", rawconfig.Paths.Log)
@@ -446,7 +450,7 @@ func (t Path) ConfigFile() string {
 		return ""
 	}
 	switch t.Namespace {
-	case "", "root":
+	case "", NsRoot:
 		s = fmt.Sprintf("%s/%s.conf", rawconfig.Paths.Etc, s)
 	default:
 		s = fmt.Sprintf("%s/%s.conf", rawconfig.Paths.EtcNs, s)

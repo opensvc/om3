@@ -19,7 +19,7 @@ func TestGenCert(t *testing.T) {
 		expectedKeys []string
 	}{
 		{
-			name: naming.NamespaceSystem + "/sec/ca",
+			name: naming.NsSys + "/sec/ca",
 			keywords: []string{
 				"c=fr",
 				"ts=oise",
@@ -32,7 +32,7 @@ func TestGenCert(t *testing.T) {
 			expectedKeys: []string{"private_key", "certificate", "certificate_chain"},
 		},
 		{
-			name: naming.NamespaceSystem + "/sec/cert",
+			name: naming.NsSys + "/sec/cert",
 			keywords: []string{
 				"ca=system/sec/ca",
 				"cn=vip.local",

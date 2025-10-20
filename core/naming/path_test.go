@@ -34,7 +34,7 @@ func TestNewPath(t *testing.T) {
 		},
 		"cannonicalization": {
 			name:      "svc1",
-			namespace: "root",
+			namespace: NsRoot,
 			kind:      "svc",
 			output:    "svc1",
 			ok:        true,
@@ -48,28 +48,28 @@ func TestNewPath(t *testing.T) {
 		},
 		"one char name is allowed": {
 			name:      "a",
-			namespace: "root",
+			namespace: NsRoot,
 			kind:      "svc",
 			output:    "a",
 			ok:        true,
 		},
 		"invalid kind": {
 			name:      "svc1",
-			namespace: "root",
+			namespace: NsRoot,
 			kind:      "unknown",
 			output:    "",
 			ok:        false,
 		},
 		"invalid name": {
 			name:      "name#",
-			namespace: "root",
+			namespace: NsRoot,
 			kind:      "svc",
 			output:    "",
 			ok:        false,
 		},
 		"invalid name (longer than 63 char)": {
 			name:      "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
-			namespace: "root",
+			namespace: NsRoot,
 			kind:      "svc",
 			output:    "",
 			ok:        false,
@@ -83,21 +83,21 @@ func TestNewPath(t *testing.T) {
 		},
 		"empty name": {
 			name:      "",
-			namespace: "root",
+			namespace: NsRoot,
 			kind:      "svc",
 			output:    "",
 			ok:        false,
 		},
 		"forbidden name": {
 			name:      "svc",
-			namespace: "root",
+			namespace: NsRoot,
 			kind:      "svc",
 			output:    "",
 			ok:        false,
 		},
 		"cluster": {
 			name:      "cluster",
-			namespace: "root",
+			namespace: NsRoot,
 			kind:      "ccfg",
 			output:    "cluster",
 			ok:        true,
@@ -145,13 +145,13 @@ func TestParsePath(t *testing.T) {
 	}{
 		"svc1": {
 			name:      "svc1",
-			namespace: "root",
+			namespace: NsRoot,
 			kind:      "svc",
 			ok:        true,
 		},
 		"svc/svc1": {
 			name:      "svc1",
-			namespace: "root",
+			namespace: NsRoot,
 			kind:      "svc",
 			ok:        true,
 		},
@@ -199,7 +199,7 @@ func TestParsePath(t *testing.T) {
 		},
 		"cluster": {
 			name:      "cluster",
-			namespace: "root",
+			namespace: NsRoot,
 			kind:      "ccfg",
 			ok:        true,
 		},
@@ -330,7 +330,7 @@ func TestPathMatch(t *testing.T) {
 		},
 		"svc1 matches *": {
 			name:      "svc1",
-			namespace: "root",
+			namespace: NsRoot,
 			kind:      "svc",
 			pattern:   "*",
 			match:     true,
@@ -372,8 +372,9 @@ func TestPathsFilter(t *testing.T) {
 	l := Paths{
 		Path{"s1", "ns1", KindSvc},
 		Path{"s2", "ns2", KindSvc},
-		Path{"s3", "root", KindSvc},
+		Path{"s3", NsRoot, KindSvc},
 		Path{"v1", "ns1", KindVol},
+		SecHb,
 	}
 	tests := []struct {
 		pattern  string
@@ -384,7 +385,7 @@ func TestPathsFilter(t *testing.T) {
 			Paths{
 				Path{"s1", "ns1", KindSvc},
 				Path{"s2", "ns2", KindSvc},
-				Path{"s3", "root", KindSvc},
+				Path{"s3", NsRoot, KindSvc},
 			},
 		},
 		{
@@ -392,8 +393,9 @@ func TestPathsFilter(t *testing.T) {
 			Paths{
 				Path{"s1", "ns1", KindSvc},
 				Path{"s2", "ns2", KindSvc},
-				Path{"s3", "root", KindSvc},
+				Path{"s3", NsRoot, KindSvc},
 				Path{"v1", "ns1", KindVol},
+				SecHb,
 			},
 		},
 		{
@@ -406,7 +408,13 @@ func TestPathsFilter(t *testing.T) {
 		{
 			"root/svc/*",
 			Paths{
-				Path{"s3", "root", KindSvc},
+				Path{"s3", NsRoot, KindSvc},
+			},
+		},
+		{
+			"system/sec/*",
+			Paths{
+				SecHb,
 			},
 		},
 		{
@@ -427,13 +435,14 @@ func TestPathsFilter(t *testing.T) {
 			Paths{
 				Path{"s1", "ns1", KindSvc},
 				Path{"s2", "ns2", KindSvc},
-				Path{"s3", "root", KindSvc},
+				Path{"s3", NsRoot, KindSvc},
+				SecHb,
 			},
 		},
 		{
 			"s*",
 			Paths{
-				Path{"s3", "root", KindSvc},
+				Path{"s3", NsRoot, KindSvc},
 			},
 		},
 		{
@@ -548,6 +557,7 @@ func TestPathEqual(t *testing.T) {
 	assert.False(t, p.Equal(Path{Name: "bar", Namespace: "ns1", Kind: KindSvc}))
 }
 
-func TestNamespaceSystem(t *testing.T) {
-	assert.Equal(t, "system", NamespaceSystem)
+func TestNsNames(t *testing.T) {
+	assert.Equal(t, "root", NsRoot)
+	assert.Equal(t, "system", NsSys)
 }

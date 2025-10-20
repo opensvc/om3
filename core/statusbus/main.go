@@ -115,7 +115,7 @@ func (t *T) Start() {
 
 // Post push a new object rid status to status bus
 //
-// bus.Post(naming.Path{Name:"foo",Namespace: "root", Kind: kind.Svc},
+// bus.Post(naming.Path{Name:"foo",Namespace: "ns1", Kind: kind.Svc},
 //
 //	"app#1",
 //	status.Down))
@@ -149,7 +149,7 @@ func (t *T) Pending(p naming.Path, rid string) {
 //
 // Example:
 //
-//	p := path.Path{Name:"foo",Namespace: "root", Kind: kind.Svc}
+//	p := path.Path{Name:"foo",Namespace: "ns1", Kind: kind.Svc}
 //	bus.Post(p, "app#1", status.Up)
 //	bus.Post(p, "app#2", status.Down)
 //
