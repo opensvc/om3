@@ -16,6 +16,7 @@ import (
 	"github.com/opensvc/om3/core/cluster"
 	"github.com/opensvc/om3/core/clusterdump"
 	"github.com/opensvc/om3/core/event"
+	"github.com/opensvc/om3/core/naming"
 	"github.com/opensvc/om3/core/om"
 	"github.com/opensvc/om3/core/rawconfig"
 	"github.com/opensvc/om3/daemon/daemoncmd"
@@ -172,8 +173,8 @@ func runTestDaemonStartup(t *testing.T, hasConfig bool) {
 			// TODO: check for automatically defined heartbeat hb#1.type=unicast
 		}
 		for _, objectName := range []string{
-			"system/sec/cert",
-			"system/sec/ca",
+			naming.NamespaceSystem + "/sec/cert",
+			naming.NamespaceSystem + "/sec/ca",
 			"cluster",
 		} {
 			logf("search object %s", objectName)

@@ -51,6 +51,10 @@ const (
 	Separator = "/"
 )
 
+const (
+	NamespaceSystem = "system"
+)
+
 var (
 	Cluster = Path{Name: "cluster", Namespace: "root", Kind: KindCcfg}
 

@@ -25,8 +25,8 @@ var (
 	certFileMode fs.FileMode = 0600
 	certDirMode  fs.FileMode = 0700
 
-	caPath   = naming.Path{Name: "ca", Namespace: "system", Kind: naming.KindSec}
-	certPath = naming.Path{Name: "cert", Namespace: "system", Kind: naming.KindSec}
+	caPath   = naming.Path{Name: "ca", Namespace: naming.NamespaceSystem, Kind: naming.KindSec}
+	certPath = naming.Path{Name: "cert", Namespace: naming.NamespaceSystem, Kind: naming.KindSec}
 )
 
 func (t *T) startCertFS() error {
@@ -231,7 +231,7 @@ func (t *T) bootStrapCaPath(p naming.Path) error {
 //	return false, nil when no v2 ca exists
 //	return true, != nil when migration fails
 func (t *T) migrateCaPathV2(clusterName string) (ok bool, err error) {
-	caPathV2 := naming.Path{Name: "ca-" + clusterName, Namespace: "system", Kind: naming.KindSec}
+	caPathV2 := naming.Path{Name: "ca-" + clusterName, Namespace: naming.NamespaceSystem, Kind: naming.KindSec}
 	ok = caPathV2.Exists()
 	if !ok {
 		return
@@ -276,7 +276,7 @@ func getClusterName() (string, error) {
 //	return false, nil when no v2 cert exists
 //	return true, != nil when migration fails
 func (t *T) migrateCertPathV2(clusterName string) (hasV2cert bool, err error) {
-	certPathV2 := naming.Path{Name: "cert-" + clusterName, Namespace: "system", Kind: naming.KindSec}
+	certPathV2 := naming.Path{Name: "cert-" + clusterName, Namespace: naming.NamespaceSystem, Kind: naming.KindSec}
 	hasV2cert = certPathV2.Exists()
 	if !hasV2cert {
 		return

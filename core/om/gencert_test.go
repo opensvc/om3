@@ -8,6 +8,7 @@ import (
 
 	"github.com/stretchr/testify/require"
 
+	"github.com/opensvc/om3/core/naming"
 	"github.com/opensvc/om3/testhelper"
 )
 
@@ -18,7 +19,7 @@ func TestGenCert(t *testing.T) {
 		expectedKeys []string
 	}{
 		{
-			name: "system/sec/ca",
+			name: naming.NamespaceSystem + "/sec/ca",
 			keywords: []string{
 				"c=fr",
 				"ts=oise",
@@ -31,7 +32,7 @@ func TestGenCert(t *testing.T) {
 			expectedKeys: []string{"private_key", "certificate", "certificate_chain"},
 		},
 		{
-			name: "system/sec/cert",
+			name: naming.NamespaceSystem + "/sec/cert",
 			keywords: []string{
 				"ca=system/sec/ca",
 				"cn=vip.local",

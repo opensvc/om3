@@ -5,6 +5,7 @@ import (
 
 	"github.com/labstack/echo/v4"
 
+	"github.com/opensvc/om3/core/naming"
 	"github.com/opensvc/om3/daemon/api"
 )
 
@@ -17,7 +18,7 @@ func (a *DaemonAPI) GetAuthWhoAmI(ctx echo.Context) error {
 		Auth:      pts(extensions.Get("strategy")),
 		Grant:     map[string][]string{},
 		Name:      user.GetUserName(),
-		Namespace: "system",
+		Namespace: naming.NamespaceSystem,
 		RawGrant:  grants.String(),
 	}
 	for _, grant := range grants {

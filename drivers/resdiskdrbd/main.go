@@ -130,7 +130,7 @@ var (
 	//go:embed text/template/res8
 	resTemplateTextV8 string
 
-	drbdCfgPath = naming.Path{Name: "drbd", Namespace: "system", Kind: naming.KindCfg}
+	drbdCfgPath = naming.Path{Name: "drbd", Namespace: naming.NamespaceSystem, Kind: naming.KindCfg}
 )
 
 func New() resource.Driver {

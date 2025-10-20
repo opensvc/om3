@@ -547,3 +547,7 @@ func TestPathEqual(t *testing.T) {
 	assert.False(t, p.Equal(Path{Name: "foo", Namespace: "ns1", Kind: KindCfg}))
 	assert.False(t, p.Equal(Path{Name: "bar", Namespace: "ns1", Kind: KindSvc}))
 }
+
+func TestNamespaceSystem(t *testing.T) {
+	assert.Equal(t, "system", NamespaceSystem)
+}
