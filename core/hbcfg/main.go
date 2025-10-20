@@ -225,12 +225,12 @@ func (t *T) SetTimeout(timeout time.Duration) {
 	t.timeout = timeout
 }
 
-// SetSignature set a string that identify config details
+// SetSignature set a string that identifies config details
 func (t *T) SetSignature(s string) {
 	t.sig = s
 }
 
-// Signature return the string identification of config details
+// Signature returns the string identification of config details
 func (t *T) Signature() string {
 	return t.sig
 }
