@@ -627,6 +627,7 @@ paths:
         - object / svc
         - object / vol
         - object / cfg
+        - object / nscfg
         - object / sec
         - object / usr
       security:
@@ -2073,6 +2074,7 @@ paths:
         - node / instance / vol
         - node / instance / sec
         - node / instance / cfg
+        - node / instance / nscfg
         - node / instance / usr
 
   /api/node/name/{nodename}/instance/path/{namespace}/{kind}/{name}/action/freeze:
@@ -2643,6 +2645,7 @@ paths:
         - node / instance / svc
         - node / instance / vol
         - node / instance / cfg
+        - node / instance / nscfg
         - node / instance / sec
         - node / instance / usr
 
@@ -3208,6 +3211,7 @@ paths:
         - object / svc
         - object / vol
         - object / cfg
+        - object / nscfg
         - object / sec
         - object / usr
       security:
@@ -3246,6 +3250,7 @@ paths:
         - object / svc
         - object / vol
         - object / cfg
+        - object / nscfg
         - object / sec
         - object / usr
       security:
@@ -4096,6 +4101,7 @@ paths:
         - object / svc
         - object / vol
         - object / cfg
+        - object / nscfg
         - object / sec
         - object / usr
       security:
@@ -4129,6 +4135,7 @@ paths:
         - object / svc
         - object / vol
         - object / cfg
+        - object / nscfg
         - object / sec
         - object / usr
       security:
@@ -4168,6 +4175,7 @@ paths:
         - object / svc
         - object / vol
         - object / cfg
+        - object / nscfg
         - object / sec
         - object / usr
       security:
@@ -4204,6 +4212,7 @@ paths:
         - object / svc
         - object / vol
         - object / cfg
+        - object / nscfg
         - object / sec
         - object / usr
       security:
@@ -4241,6 +4250,7 @@ paths:
         - object / svc
         - object / vol
         - object / cfg
+        - object / nscfg
         - object / sec
         - object / usr
       security:
