@@ -16,6 +16,9 @@ import (
 	"time"
 
 	"github.com/gdamore/tcell/v2"
+	"github.com/rivo/tview"
+	"github.com/rs/zerolog"
+
 	"github.com/opensvc/om3/core/client"
 	"github.com/opensvc/om3/core/clientcontext"
 	"github.com/opensvc/om3/core/clusterdump"
@@ -30,8 +33,6 @@ import (
 	"github.com/opensvc/om3/daemon/msgbus"
 	"github.com/opensvc/om3/util/hostname"
 	"github.com/opensvc/om3/util/logging"
-	"github.com/rivo/tview"
-	"github.com/rs/zerolog"
 )
 
 type (
@@ -1105,16 +1106,19 @@ func (t *App) confirmAction(action func(), messages ...string) {
 	t.focused = true
 
 	grid := tview.NewGrid().
-		SetRows(12, 0, 0).
+		SetRows(0, 12, 0).
 		SetColumns(0, 72, 0)
+
+	grid.SetBackgroundColor(tcell.ColorBlack)
 
 	confirmFlex := tview.NewFlex().SetDirection(tview.FlexRow)
 	confirmFlex.SetBorder(true).SetTitle("Confirm action").SetTitleAlign(tview.AlignLeft)
+	confirmFlex.SetBackgroundColor(tcell.ColorBlack)
 
-	grid.AddItem(confirmFlex, 0, 1, 1, 1, 0, 0, true)
+	grid.AddItem(confirmFlex, 1, 1, 1, 1, 0, 0, true)
 
 	clean := func() {
-		t.flex.RemoveItem(grid)
+		t.app.SetRoot(t.flex, true)
 		t.app.SetFocus(t.flex.GetItem(1))
 		t.isOnConfirmation = false
 		t.focused = false
@@ -1125,12 +1129,13 @@ func (t *App) confirmAction(action func(), messages ...string) {
 		SetWrap(true)
 	confirmText.SetBorder(false)
 	confirmText.SetBorderPadding(1, 0, 1, 0)
+	confirmFlex.SetBackgroundColor(tcell.ColorBlack)
 
-	actual := 1
+	messageId := 1
 
 	showMessage := func() {
 		confirmText.Clear()
-		for i := 0; i < actual; i++ {
+		for i := 0; i < messageId; i++ {
 			if i >= len(messages) {
 				break
 			}
@@ -1139,16 +1144,15 @@ func (t *App) confirmAction(action func(), messages ...string) {
 	}
 
 	buttonFlex := tview.NewFlex().SetDirection(tview.FlexColumn)
+	buttonFlex.SetBackgroundColor(tcell.ColorRed)
 
-	confirmButton := tview.NewButton("Confirm").SetSelectedFunc(func() {
-		if actual < len(messages) {
-			actual++
-			showMessage()
-			return
-		}
-		action()
-		clean()
-	})
+	confirmButton := tview.NewTextView().
+		SetTextAlign(tview.AlignCenter).
+		SetText("Confirm").
+		SetDynamicColors(false)
+	confirmButton.SetBackgroundColor(tcell.ColorRed)
+	confirmButton.SetTextColor(tcell.ColorBlack)
+	confirmButton.SetBorderPadding(0, 0, 1, 1)
 
 	confirmFlex.SetInputCapture(func(event *tcell.EventKey) *tcell.EventKey {
 		switch event.Key() {
@@ -1156,19 +1160,39 @@ func (t *App) confirmAction(action func(), messages ...string) {
 			clean()
 			return nil
 		case tcell.KeyEnter:
+			if messageId < len(messages) {
+				messageId++
+				showMessage()
+				return nil
+			}
+			action()
+			clean()
+			return nil
 		}
 		return event
 	})
 
 	showMessage()
 
-	buttonFlex.AddItem(nil, 0, 1, false)
-	buttonFlex.AddItem(confirmButton, 24, 0, true)
-	buttonFlex.AddItem(nil, 0, 1, false)
+	filler := tview.NewTextView().
+		SetDynamicColors(false).
+		SetText("")
+	filler.SetBackgroundColor(tcell.ColorBlack)
+	filler.SetTextColor(tcell.ColorBlack)
+	filler.SetBorderPadding(0, 0, 1, 1)
+
+	buttonFlex.AddItem(filler, 0, 1, false)
+	buttonFlex.AddItem(confirmButton, 0, 1, true)
+	buttonFlex.AddItem(filler, 0, 1, false)
 
 	confirmFlex.AddItem(confirmText, 0, 1, false)
 	confirmFlex.AddItem(buttonFlex, 1, 0, true)
-	t.flex.AddItem(grid, 0, 1, true)
+
+	pages := tview.NewPages()
+	pages.AddPage("base", t.flex, true, true)
+	pages.AddPage("confirm", grid, true, true)
+
+	t.app.SetRoot(pages, true)
 	t.app.SetFocus(confirmFlex)
 }
 

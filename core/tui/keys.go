@@ -7,11 +7,12 @@ import (
 	"strings"
 
 	"github.com/gdamore/tcell/v2"
+	"github.com/rivo/tview"
+
 	"github.com/opensvc/om3/core/client"
 	"github.com/opensvc/om3/core/oxcmd"
 	"github.com/opensvc/om3/daemon/api"
 	"github.com/opensvc/om3/util/sizeconv"
-	"github.com/rivo/tview"
 )
 
 var (
@@ -174,18 +175,20 @@ func (t *App) createAddInputBox() {
 	}
 
 	grid := tview.NewGrid().
-		SetRows(12, 0, 0).
+		SetRows(0, 12, 0).
 		SetColumns(0, 45, 0)
 
 	flex := tview.NewFlex().SetDirection(tview.FlexRow)
 	flex.SetTitle(paddingSpace() + "Add key to " + t.viewPath.String() + paddingSpace()).SetTitleAlign(tview.AlignLeft).
 		SetBorder(true)
+	flex.SetBackgroundColor(tcell.ColorBlack)
 
-	grid.AddItem(flex, 0, 1, 1, 1, 0, 0, true)
+	grid.AddItem(flex, 1, 1, 1, 1, 0, 0, true)
+	grid.SetBackgroundColor(tcell.ColorBlack)
 
 	clean := func() {
 		t.focused = false
-		t.flex.RemoveItem(grid)
+		t.app.SetRoot(t.flex, true)
 		t.app.SetFocus(t.flex.GetItem(1))
 	}
 
@@ -201,6 +204,7 @@ func (t *App) createAddInputBox() {
 	inputFlex.AddItem(nil, 0, 1, false)
 	inputFlex.AddItem(inputKeyName, 30, 0, true)
 	inputFlex.AddItem(nil, 0, 1, false)
+	inputFlex.SetBackgroundColor(tcell.ColorBlack)
 
 	addKey := func() {
 		keyName := strings.TrimSpace(inputKeyName.GetText())
@@ -265,7 +269,11 @@ func (t *App) createAddInputBox() {
 	flex.AddItem(inputFlex, 1, 0, true)
 	flex.AddItem(nil, 0, 1, false)
 
-	t.flex.AddItem(grid, 0, 1, true)
+	pages := tview.NewPages()
+	pages.AddPage("base", t.flex, true, true)
+	pages.AddPage("input", grid, true, true)
+
+	t.app.SetRoot(pages, true)
 	t.app.SetFocus(flex)
 }
 
