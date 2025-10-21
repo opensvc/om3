@@ -198,6 +198,7 @@ func (t *CmdClusterJoin) onJoined(ctx context.Context, cli *client.T) (err error
 		naming.Cluster,
 		naming.SecCa,
 		naming.SecCert,
+		naming.SecHb,
 	}
 	downloadedFiles := make([]string, 0)
 	defer func([]string) {
