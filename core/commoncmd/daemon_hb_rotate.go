@@ -15,6 +15,7 @@ import (
 type (
 	CmdDaemonHeartbeatRotate struct {
 		Wait bool
+		Time time.Duration
 	}
 )
 
@@ -29,14 +30,14 @@ func NewCmdDaemonHeartbeatRotate() *cobra.Command {
 	}
 	flags := cmd.Flags()
 	flags.BoolVar(&options.Wait, "wait", false, "wait for the rotate operation to complete")
+	flags.DurationVar(&options.Time, "time", 30*time.Second, "stop waiting for the rotate operation after the specified duration")
 	return cmd
 }
 
 func (t *CmdDaemonHeartbeatRotate) Run() error {
-	timeoutDuration := 30 * time.Second
 	done := make(chan error, 1)
 
-	c, err := client.New(client.WithTimeout(timeoutDuration))
+	c, err := client.New(client.WithTimeout(t.Time))
 	if err != nil {
 		return err
 	}
@@ -45,7 +46,7 @@ func (t *CmdDaemonHeartbeatRotate) Run() error {
 	defer cancel()
 
 	if t.Wait {
-		if err := startEventWatcher(ctx, c, done, timeoutDuration); err != nil {
+		if err := startEventWatcher(ctx, c, done, t.Time); err != nil {
 			return err
 		}
 	}
