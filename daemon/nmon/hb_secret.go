@@ -18,6 +18,7 @@ func (t *Manager) onInstanceConfigUpdated(c *msgbus.InstanceConfigUpdated) {
 		t.log.Errorf("unexpected InstanceConfigUpdated for %s", c.Path)
 		return
 	}
+	previousVersion := t.hbConfig.CurrentSecretVersion
 	if t.hbSecretChecksumByNodename[c.Node] == c.Value.Checksum {
 		return
 	}
@@ -29,7 +30,9 @@ func (t *Manager) onInstanceConfigUpdated(c *msgbus.InstanceConfigUpdated) {
 	}
 	t.hbConfig.SecretSig = c.Value.Checksum
 	t.publisher.Pub(&msgbus.HeartbeatConfigUpdated{Nodename: t.localhost, Value: *t.hbConfig.DeepCopy()}, t.labelLocalhost)
-
+	if previousVersion != t.hbConfig.CurrentSecretVersion {
+		t.log.Infof("heartbeat secret version changed from %d to %d", previousVersion, t.hbConfig.CurrentSecretVersion)
+	}
 	if !t.hbSecretRotating {
 		return
 	}
