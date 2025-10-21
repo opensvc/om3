@@ -211,7 +211,7 @@ func bootStrapSecHb(currentSecret string, currentVersion uint64) error {
 	if changed {
 		log.Infof("%s commit changes ...", secHb)
 		if err := secHb.Config().Commit(); err != nil {
-			return fmt.Errorf("can't commit %s changes %s: %w", secHb, err)
+			return fmt.Errorf("can't commit %s changes: %w", secHb, err)
 		}
 	}
 	return nil
