@@ -22,7 +22,7 @@ func NewCmdDaemonHeartbeatRotate() *cobra.Command {
 	options := CmdDaemonHeartbeatRotate{}
 	cmd := &cobra.Command{
 		Use:   "rotate",
-		Short: "rotate a disk heartbeat encryption secret",
+		Short: "rotate the heartbeat encryption secret",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return options.Run()
 		},
@@ -36,21 +36,12 @@ func (t *CmdDaemonHeartbeatRotate) Run() error {
 	timeoutDuration := 30 * time.Second
 	done := make(chan error, 1)
 
-	c, err := client.New()
+	c, err := client.New(client.WithTimeout(timeoutDuration))
 	if err != nil {
 		return err
 	}
 
-	var (
-		ctx    context.Context
-		cancel context.CancelFunc
-	)
-
-	if t.Wait {
-		ctx, cancel = context.WithTimeout(context.Background(), timeoutDuration)
-	} else {
-		ctx, cancel = context.WithCancel(context.Background())
-	}
+	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
 	if t.Wait {
@@ -107,15 +98,13 @@ func startEventWatcher(ctx context.Context, c *client.T, done chan<- error, time
 	}
 
 	go func() {
-		select {
-		case <-ctx.Done():
-			_ = evReader.Close()
-		}
-	}()
-
-	go func() {
-		defer func() {
-			_ = evReader.Close()
+		ctx, cancel := context.WithTimeout(ctx, timeoutDuration)
+		defer cancel()
+		go func() {
+			select {
+			case <-ctx.Done():
+				_ = evReader.Close()
+			}
 		}()
 		for {
 			ev, readErr := evReader.Read()
