@@ -212,6 +212,17 @@ var nodeCommonKeywords = []keywords.Keyword{
 		Text:    keywords.NewText(fs, "text/kw/node/node.env"),
 	},
 	{
+		Converter: "bool",
+		Option:    "insecure",
+		Section:   "console",
+		Text:      keywords.NewText(fs, "text/kw/node/console.insecure"),
+	},
+	{
+		Option:  "server",
+		Section: "console",
+		Text:    keywords.NewText(fs, "text/kw/node/console.server"),
+	},
+	{
 		Converter: "int",
 		Default:   fmt.Sprintf("%d", DefaultNodeMaxParallel),
 		Option:    "max_parallel",

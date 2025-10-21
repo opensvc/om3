@@ -2679,6 +2679,40 @@ paths:
         500:
           $ref: '#/components/responses/500'
 
+  /api/node/name/{nodename}/instance/path/{namespace}/{kind}/{name}/console:
+    post:
+      operationId: PostInstanceResourceConsole
+      description: |
+        Start a shell in the container resource and expose it through a url that can be opened by a browser or a `tty-share` client. 
+      parameters:
+        - $ref: '#/components/parameters/inPathNodeName'
+        - $ref: '#/components/parameters/inPathNamespace'
+        - $ref: '#/components/parameters/inPathKind'
+        - $ref: '#/components/parameters/inPathName'
+        - $ref: '#/components/parameters/inQueryRid'
+      responses:
+        200:
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ResourceConsole'
+        400:
+          $ref: '#/components/responses/400'
+        401:
+          $ref: '#/components/responses/401'
+        403:
+          $ref: '#/components/responses/403'
+        404:
+          $ref: '#/components/responses/404'
+        500:
+          $ref: '#/components/responses/500'
+      security:
+        - basicAuth: []
+        - bearerAuth: []
+      tags:
+        - node / instance / svc
+
   /api/node/name/{nodename}/instance/path/{namespace}/{kind}/{name}/resource/info:
     get:
       operationId: GetInstanceResourceInfo
@@ -3702,6 +3736,8 @@ paths:
           $ref: '#/components/responses/401'
         403:
           $ref: '#/components/responses/403'
+        404:
+          $ref: '#/components/responses/404'
         500:
           $ref: '#/components/responses/500'
       security:
@@ -7048,6 +7084,14 @@ components:
           type: string
           format: byte
 
+    ResourceConsole:
+      type: object
+      required:
+        - url
+      properties:
+        url:
+          type: string
+
     ResourceMonitorRestart:
       type: object
       required:
@@ -7533,6 +7577,15 @@ components:
       schema:
         $ref: '#/components/schemas/Kind'
 
+    inPathRid:
+      in: path
+      name: rid
+      required: true
+      schema:
+        type: string
+        desc: The resource identifier.
+        example: fs#1
+
     inQueryDeletes:
       in: query
       name: delete
@@ -7704,6 +7757,7 @@ components:
       schema:
         type: string
         x-go-name: RID
+        x-go-type: string
 
     inQueryStateOnly:
       in: query

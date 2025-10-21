@@ -1359,6 +1359,11 @@ type Resource struct {
 // ResourceConfig defines model for ResourceConfig.
 type ResourceConfig = instance.ResourceConfig
 
+// ResourceConsole defines model for ResourceConsole.
+type ResourceConsole struct {
+	Url string `json:"url"`
+}
+
 // ResourceInfoItem defines model for ResourceInfoItem.
 type ResourceInfoItem struct {
 	Key    string `json:"key"`
@@ -2242,6 +2247,11 @@ type PostInstanceActionUnprovisionParams struct {
 	Subset       *InQuerySubset       `form:"subset,omitempty" json:"subset,omitempty"`
 	Tag          *InQueryTag          `form:"tag,omitempty" json:"tag,omitempty"`
 	To           *InQueryTo           `form:"to,omitempty" json:"to,omitempty"`
+}
+
+// PostInstanceResourceConsoleParams defines parameters for PostInstanceResourceConsole.
+type PostInstanceResourceConsoleParams struct {
+	Rid *InQueryRid `form:"rid,omitempty" json:"rid,omitempty"`
 }
 
 // GetInstanceLogsParams defines parameters for GetInstanceLogs.
