@@ -121,6 +121,7 @@ func initEnv(t *testing.T) *testhelper.Env {
 	env.InstallFile("../../testdata/cluster.conf", "etc/cluster.conf")
 	env.InstallFile("../../testdata/ca-cluster1.conf", "etc/namespaces/system/sec/ca.conf")
 	env.InstallFile("../../testdata/cert-cluster1.conf", "etc/namespaces/system/sec/cert.conf")
+	env.InstallFile("../../testdata/hb.conf", "etc/namespaces/system/sec/hb.conf")
 
 	object.SetClusterConfig()
 
