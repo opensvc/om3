@@ -597,7 +597,7 @@ func (t *Manager) loggerWithState() *plog.Logger {
 }
 
 func lastBootIDFile(p naming.Path) string {
-	if p.Namespace != "root" && p.Namespace != "" {
+	if p.Namespace != naming.NsRoot && p.Namespace != "" {
 		return filepath.Join(rawconfig.Paths.Var, "namespaces", p.String(), "last_boot_id")
 	} else {
 		return filepath.Join(rawconfig.Paths.Var, p.Kind.String(), p.Name, "last_boot_id")

@@ -54,7 +54,7 @@ func (t *usr) KeywordLookup(k key.T, sectionType string) keywords.Keyword {
 
 // GrantsFromUsernameAndPassword returns grants for username if username and password match existing usr object
 func (_ *UsrDB) GrantsFromUsernameAndPassword(username, password string) ([]string, error) {
-	usrPath := naming.Path{Name: username, Namespace: "system", Kind: naming.KindUsr}
+	usrPath := naming.Path{Name: username, Namespace: naming.NsSys, Kind: naming.KindUsr}
 	user, err := NewUsr(usrPath, WithVolatile(true))
 	if err != nil {
 		return nil, err
@@ -71,7 +71,7 @@ func (_ *UsrDB) GrantsFromUsernameAndPassword(username, password string) ([]stri
 
 // GrantsFromUsername returns grants for username if username existing usr object
 func (_ *UsrDB) GrantsFromUsername(username string) ([]string, error) {
-	usrPath := naming.Path{Name: username, Namespace: "system", Kind: naming.KindUsr}
+	usrPath := naming.Path{Name: username, Namespace: naming.NsSys, Kind: naming.KindUsr}
 	if !usrPath.Exists() {
 		return nil, fmt.Errorf("username '%s' does not exist", username)
 	}

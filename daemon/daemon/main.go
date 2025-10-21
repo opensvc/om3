@@ -199,9 +199,6 @@ func (t *T) Start(ctx context.Context) error {
 	if initialCcfg.Name == "" {
 		panic("unexpected empty cluster name detected on initial cluster config")
 	}
-	if initialCcfg.Heartbeat.SecretSig == "" {
-		panic("unexpected empty heartbeat secret detected on initial cluster config")
-	}
 	if livePort := initialCcfg.Listener.Port; livePort != daemonenv.HTTPPort {
 		// update daemonenv.HttpPort from live config value. Discover will need
 		// connect to peers to fetch config...

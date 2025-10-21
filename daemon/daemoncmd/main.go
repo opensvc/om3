@@ -11,6 +11,7 @@ import (
 	"os"
 	"path/filepath"
 	"runtime/pprof"
+	"slices"
 	"strconv"
 	"strings"
 	"syscall"
@@ -98,11 +99,6 @@ func bootStrapCcfg() error {
 			Default:   strings.ReplaceAll(uuid.New().String(), "-", ""),
 			Obfuscate: true,
 		},
-		{
-			Key:       key.New("cluster", "hb_secret"),
-			Default:   fmt.Sprintf("%d:%s", 0, strings.ReplaceAll(uuid.New().String(), "-", "")),
-			Obfuscate: true,
-		},
 	}
 
 	ccfg, err := object.NewCluster(object.WithVolatile(false))
@@ -150,6 +146,72 @@ func bootStrapCcfg() error {
 	} else {
 		for _, issue := range cfg.Issues {
 			log.Warnf("issue: %s", issue)
+		}
+	}
+
+	if secret := ccfg.Config().Get(key.New("cluster", "secret")); secret != "" {
+		if err := bootStrapSecHb(secret, 0); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func bootStrapSecHb(currentSecret string, currentVersion uint64) error {
+	log := logger("bootstrap heartbeat secret")
+	type keyT struct {
+		Name      string
+		Value     string
+		Obfuscate bool
+	}
+	keys := []keyT{
+		{
+			Name:      "current_secret",
+			Value:     currentSecret,
+			Obfuscate: true,
+		},
+		{
+			Name:      "current_version",
+			Value:     fmt.Sprintf("%d", currentVersion),
+			Obfuscate: false,
+		},
+		{
+			Name:      "next_secret",
+			Value:     currentSecret,
+			Obfuscate: true,
+		},
+		{
+			Name:      "next_version",
+			Value:     fmt.Sprintf("%d", currentVersion),
+			Obfuscate: false,
+		},
+	}
+
+	secHb, err := object.NewSec(naming.SecHb, object.WithVolatile(false))
+	if err != nil {
+		return err
+	}
+
+	existingKeys, err := secHb.AllKeys()
+	if err != nil {
+		return err
+	}
+	var changed bool
+	for _, k := range keys {
+		if slices.Contains(existingKeys, k.Name) {
+			// already exists, skipped
+			continue
+		}
+		log.Infof("%s adding key %s", secHb, k.Name)
+		if err := secHb.TransactionAddKey(k.Name, []byte(k.Value)); err != nil {
+			return fmt.Errorf("can't add key %s: %w", k.Name, err)
+		}
+		changed = true
+	}
+	if changed {
+		log.Infof("%s commit changes ...", secHb)
+		if err := secHb.Config().Commit(); err != nil {
+			return fmt.Errorf("can't commit %s changes: %w", secHb, err)
 		}
 	}
 	return nil

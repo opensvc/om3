@@ -86,7 +86,6 @@ func getClusterConfig() (*cluster.Config, error) {
 	var (
 		keyID         = key.New("cluster", "id")
 		keySecret     = key.New("cluster", "secret")
-		keyHBSecret   = key.New("cluster", "hb_secret")
 		keyName       = key.New("cluster", "name")
 		keyNodes      = key.New("cluster", "nodes")
 		keyDNS        = key.New("cluster", "dns")
@@ -116,14 +115,6 @@ func getClusterConfig() (*cluster.Config, error) {
 	cfg.Name = c.GetString(keyName)
 	cfg.CASecPaths = c.GetStrings(keyCASecPaths)
 	cfg.SetSecret(c.GetString(keySecret))
-
-	if err := cfg.SetHeartbeatSecret(c.GetString(keyHBSecret)); err != nil {
-		// fallback to keySecret
-		cfg.Issues = append(cfg.Issues, fmt.Sprintf("configure heartbeat secret from %s: %s", keyHBSecret, err))
-		if err := cfg.SetHeartbeatSecret(c.GetString(keySecret)); err != nil {
-			cfg.Issues = append(cfg.Issues, fmt.Sprintf("configure heartbeat secret from %s: %s", keySecret, err))
-		}
-	}
 
 	cfg.Quorum = c.GetBool(keyQuorum)
 	cfg.Listener.CRL = c.GetString(keyListenerCRL)

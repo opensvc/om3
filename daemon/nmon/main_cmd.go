@@ -251,7 +251,7 @@ func (t *Manager) onForgetPeer(c *msgbus.ForgetPeer) {
 
 	delete(t.cacheNodesInfo, c.Node)
 
-	delete(t.hbSecretSigByNodename, c.Node)
+	delete(t.hbSecretChecksumByNodename, c.Node)
 
 	t.saveNodesInfo()
 

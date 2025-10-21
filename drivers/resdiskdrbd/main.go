@@ -130,7 +130,7 @@ var (
 	//go:embed text/template/res8
 	resTemplateTextV8 string
 
-	drbdCfgPath = naming.Path{Name: "drbd", Namespace: "system", Kind: naming.KindCfg}
+	drbdCfgPath = naming.Path{Name: "drbd", Namespace: naming.NsSys, Kind: naming.KindCfg}
 )
 
 func New() resource.Driver {
@@ -139,7 +139,7 @@ func New() resource.Driver {
 }
 
 func (t *T) Name() string {
-	if t.Path.Namespace != "root" {
+	if t.Path.Namespace != naming.NsRoot {
 		return fmt.Sprintf(
 			"%s.%s.%s",
 			strings.ToLower(t.Path.Namespace),

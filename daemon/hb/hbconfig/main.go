@@ -5,6 +5,7 @@ import (
 	"fmt"
 
 	"github.com/opensvc/om3/core/cluster"
+	"github.com/opensvc/om3/core/hbsecret"
 	"github.com/opensvc/om3/daemon/msgbus"
 	"github.com/opensvc/om3/util/hostname"
 	"github.com/opensvc/om3/util/pubsub"
@@ -12,12 +13,13 @@ import (
 
 type (
 	T struct {
-		name      string
-		cConfig   *cluster.Config
-		localhost string
-		outdatedC chan bool
-		cancel    context.CancelFunc
-		started   bool
+		name        string
+		config      cluster.ConfigHeartbeat
+		localhost   string
+		clusterName string
+		outdatedC   chan bool
+		cancel      context.CancelFunc
+		started     bool
 	}
 )
 
@@ -44,17 +46,17 @@ func (t *T) Nodename() string {
 }
 
 func (t *T) ClusterName() string {
-	if t == nil || t.cConfig == nil {
+	if t == nil {
 		return ""
 	}
-	return t.cConfig.Name
+	return t.clusterName
 }
 
-func (t *T) Secrets() (currentVersion uint64, currentSecret string, NextVersion uint64, nextSecret string) {
-	if t == nil || t.cConfig == nil {
+func (t *T) Secrets() (currentVersion uint64, currentSecret string, nextVersion uint64, nextSecret string) {
+	if t == nil {
 		return
 	}
-	return t.cConfig.Heartbeat.Secrets()
+	return t.config.Secrets()
 }
 
 func (t *T) Stop() error {
@@ -88,20 +90,31 @@ func (t *T) Start(ctx context.Context) error {
 		outdated := false
 		defer t.cancel()
 		sub := pubsub.SubFromContext(ctx, t.name)
+		sub.AddFilter(&msgbus.ClusterConfigUpdated{}, pubsub.Label{"node", hostname.Hostname()})
 		sub.AddFilter(&msgbus.HeartbeatConfigUpdated{}, pubsub.Label{"node", hostname.Hostname()})
 		sub.Start()
 		defer sub.Stop()
-		t.cConfig = cluster.ConfigData.Get()
+		t.clusterName = cluster.ConfigData.Get().Name
+		cVersion, cSecret, nVersion, nSecret, err := hbsecret.DecodeSecretAndVersions()
+		if err != nil {
+			panic(err)
+		}
+		cfg := cluster.ConfigHeartbeat{}
+		cfg.SetCurrent(cVersion, cSecret)
+		cfg.SetNext(nVersion, nSecret)
+		t.config = *cfg.DeepCopy()
+
 		started <- true
 		for {
 			select {
 			case <-ctx.Done():
 				return
 			case i := <-sub.C:
-				switch i.(type) {
+				switch m := i.(type) {
+				case *msgbus.ClusterConfigUpdated:
+					t.clusterName = m.Value.Name
 				case *msgbus.HeartbeatConfigUpdated:
-					// need private hb secrets
-					t.cConfig = cluster.ConfigData.Get()
+					t.config = *m.Value.DeepCopy()
 					outdated = true
 				}
 			case t.outdatedC <- outdated:

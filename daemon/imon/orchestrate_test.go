@@ -660,7 +660,7 @@ func orchestrateTestFunc(t *testing.T, c tCase) {
 			}
 			msg, setImonErr := msgbus.NewSetInstanceMonitorWithErr(ctx, p, hostname.Hostname(), value)
 			t.Logf("try delete orchestration with : %v", msg)
-			pub.Pub(msg, pubsub.Label{"namespace", "root"}, pubsub.Label{"path", "obj"}, pubsub.Label{"origin", "api"})
+			pub.Pub(msg, pubsub.Label{"namespace", p.Namespace}, pubsub.Label{"path", p.String()}, pubsub.Label{"origin", "api"})
 			require.NoError(t, setImonErr.Receive())
 
 			t.Logf("waiting for delete, deleting")

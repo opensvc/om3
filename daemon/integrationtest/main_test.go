@@ -46,14 +46,15 @@ func Test_daemon(t *testing.T) {
 	cData, err := GetDaemonStatus(t)
 	require.Nil(t, err)
 
-	paths := []string{"cluster", "system/sec/ca", "system/sec/cert"}
+	paths := []naming.Path{naming.Cluster, naming.SecCa, naming.SecCert}
 	for _, p := range paths {
-		t.Run("check instance "+p, func(t *testing.T) {
-			inst, ok := cData.Cluster.Node["node1"].Instance[p]
-			assert.Truef(t, ok, "unable to find node1 instance %s", p)
+		s := p.String()
+		t.Run("check instance "+s, func(t *testing.T) {
+			inst, ok := cData.Cluster.Node["node1"].Instance[s]
+			assert.Truef(t, ok, "unable to find node1 instance %s", s)
 			t.Logf("instance %s config: %+v", p, inst.Config)
-			if p == "cluster" {
-				require.NotNilf(t, inst.Config, "instance config should be defined for %s", p)
+			if s == "cluster" {
+				require.NotNilf(t, inst.Config, "instance config should be defined for %s", s)
 				if inst.Config != nil {
 					require.Equal(t, []string{"node1", "node2", "node3"}, inst.Config.Scope)
 				}

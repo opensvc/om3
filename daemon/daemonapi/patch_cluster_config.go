@@ -7,7 +7,7 @@ import (
 )
 
 func (a *DaemonAPI) PatchClusterConfig(ctx echo.Context, params api.PatchClusterConfigParams) error {
-	return a.PatchObjectConfig(ctx, "root", naming.KindCcfg, "cluster", api.PatchObjectConfigParams{
+	return a.PatchObjectConfig(ctx, naming.Cluster.Namespace, naming.Cluster.Kind, naming.Cluster.Name, api.PatchObjectConfigParams{
 		Delete: params.Delete,
 		Unset:  params.Unset,
 		Set:    params.Set,

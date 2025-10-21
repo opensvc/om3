@@ -38,6 +38,7 @@ import (
 	"github.com/prometheus/procfs"
 
 	"github.com/opensvc/om3/core/cluster"
+	"github.com/opensvc/om3/core/naming"
 	"github.com/opensvc/om3/core/node"
 	"github.com/opensvc/om3/core/nodesinfo"
 	"github.com/opensvc/om3/core/object"
@@ -93,6 +94,9 @@ type (
 		// clusterConfig is a cache of published ClusterConfigUpdated
 		clusterConfig cluster.Config
 
+		// hbConfig defines the local heartbeat configuration
+		hbConfig cluster.ConfigHeartbeat
+
 		// livePeers is a map of peer nodes
 		// exists when we receive msgbus.NodeMonitorUpdated
 		// removed when we receive msgbus.ForgetPeer
@@ -122,10 +126,10 @@ type (
 
 		wg sync.WaitGroup
 
-		hbSecretRotating      bool
-		hbSecretRotatingAt    time.Time
-		hbSecretRotatingUUID  uuid.UUID
-		hbSecretSigByNodename map[string]string
+		hbSecretRotating           bool
+		hbSecretRotatingAt         time.Time
+		hbSecretRotatingUUID       uuid.UUID
+		hbSecretChecksumByNodename map[string]string
 	}
 
 	// cmdOrchestrate can be used from post action go routines
@@ -189,7 +193,7 @@ func NewManager(drainDuration time.Duration, subQS pubsub.QueueSizer) *Manager {
 
 		subQS: subQS,
 
-		hbSecretSigByNodename: make(map[string]string),
+		hbSecretChecksumByNodename: make(map[string]string),
 	}
 }
 
@@ -321,9 +325,9 @@ func (t *Manager) startSubscriptions() {
 	sub.AddFilter(&msgbus.DaemonListenerUpdated{})
 
 	sub.AddFilter(&msgbus.ForgetPeer{})
-	sub.AddFilter(&msgbus.HeartbeatConfigUpdated{})
 	sub.AddFilter(&msgbus.HeartbeatMessageTypeUpdated{})
 	sub.AddFilter(&msgbus.HeartbeatRotateRequest{}, t.labelLocalhost)
+	sub.AddFilter(&msgbus.InstanceConfigUpdated{}, pubsub.Label{"path", naming.SecHb.String()})
 	sub.AddFilter(&msgbus.JoinRequest{}, t.labelLocalhost)
 	sub.AddFilter(&msgbus.LeaveRequest{}, t.labelLocalhost)
 	sub.AddFilter(&msgbus.NodeConfigUpdated{}, pubsub.Label{"from", "peer"})
@@ -436,14 +440,14 @@ func (t *Manager) worker() {
 				t.onDaemonListenerUpdated(c)
 			case *msgbus.ForgetPeer:
 				t.onForgetPeer(c)
-			case *msgbus.HeartbeatConfigUpdated:
-				t.onHeartbeatConfigUpdated(c)
 			case *msgbus.JoinRequest:
 				t.onJoinRequest(c)
 			case *msgbus.HeartbeatRotateRequest:
 				t.onHeartbeatRotateRequest(c)
 			case *msgbus.HeartbeatMessageTypeUpdated:
 				t.onHeartbeatMessageTypeUpdated(c)
+			case *msgbus.InstanceConfigUpdated:
+				t.onInstanceConfigUpdated(c)
 			case *msgbus.NodeConfigUpdated:
 				t.onPeerNodeConfigUpdated(c)
 			case *msgbus.NodeMonitorDeleted:

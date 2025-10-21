@@ -42,7 +42,7 @@ func TestPost(t *testing.T) {
 	defer bus.Stop()
 	p := naming.Path{
 		Name:      "foo",
-		Namespace: "root",
+		Namespace: "ns1",
 		Kind:      naming.KindSvc,
 	}
 	bus.Post(p, "app#1", status.Down, false)

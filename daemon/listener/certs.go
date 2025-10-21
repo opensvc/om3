@@ -25,8 +25,8 @@ var (
 	certFileMode fs.FileMode = 0600
 	certDirMode  fs.FileMode = 0700
 
-	caPath   = naming.Path{Name: "ca", Namespace: "system", Kind: naming.KindSec}
-	certPath = naming.Path{Name: "cert", Namespace: "system", Kind: naming.KindSec}
+	caPath   = naming.SecCa
+	certPath = naming.SecCert
 )
 
 func (t *T) startCertFS() error {
@@ -92,7 +92,7 @@ func (t *T) installCaFiles(clusterName string) error {
 			return err
 		} else if !ok {
 			t.log.Infof("install ca files bootstrap initial %s", caPath)
-			if err := t.bootStrapCaPath(caPath); err != nil {
+			if err := t.bootStrapCaPath(); err != nil {
 				return fmt.Errorf("install ca files can't bootstrap initial %s: %w", caPath, err)
 			}
 		}
@@ -175,7 +175,7 @@ func (t *T) installCertFiles(clusterName string) error {
 			return err
 		} else if !ok {
 			t.log.Infof("install cert files bootstrap initial %s", certPath)
-			if err := t.bootStrapCertPath(certPath, caPath); err != nil {
+			if err := t.bootStrapCertPath(); err != nil {
 				return fmt.Errorf("install cert files can't bootstrap %s: %w", certPath, err)
 			}
 		}
@@ -215,7 +215,8 @@ func (t *T) installCertFiles(clusterName string) error {
 	return nil
 }
 
-func (t *T) bootStrapCaPath(p naming.Path) error {
+func (t *T) bootStrapCaPath() error {
+	p := caPath
 	t.log.Infof("bootstrapping ca %s", p)
 	caSec, err := object.NewSec(p, object.WithVolatile(false))
 	if err != nil {
@@ -231,7 +232,7 @@ func (t *T) bootStrapCaPath(p naming.Path) error {
 //	return false, nil when no v2 ca exists
 //	return true, != nil when migration fails
 func (t *T) migrateCaPathV2(clusterName string) (ok bool, err error) {
-	caPathV2 := naming.Path{Name: "ca-" + clusterName, Namespace: "system", Kind: naming.KindSec}
+	caPathV2 := naming.Path{Name: "ca-" + clusterName, Namespace: naming.NsSys, Kind: naming.KindSec}
 	ok = caPathV2.Exists()
 	if !ok {
 		return
@@ -243,7 +244,8 @@ func (t *T) migrateCaPathV2(clusterName string) (ok bool, err error) {
 	return
 }
 
-func (t *T) bootStrapCertPath(p naming.Path, caPath naming.Path) error {
+func (t *T) bootStrapCertPath() error {
+	p := certPath
 	t.log.Infof("create %s", p)
 	certSec, err := object.NewSec(p, object.WithVolatile(false))
 	if err != nil {
@@ -276,7 +278,7 @@ func getClusterName() (string, error) {
 //	return false, nil when no v2 cert exists
 //	return true, != nil when migration fails
 func (t *T) migrateCertPathV2(clusterName string) (hasV2cert bool, err error) {
-	certPathV2 := naming.Path{Name: "cert-" + clusterName, Namespace: "system", Kind: naming.KindSec}
+	certPathV2 := naming.Path{Name: "cert-" + clusterName, Namespace: naming.NsSys, Kind: naming.KindSec}
 	hasV2cert = certPathV2.Exists()
 	if !hasV2cert {
 		return

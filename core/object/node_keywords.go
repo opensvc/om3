@@ -551,13 +551,6 @@ var nodeCommonKeywords = []keywords.Keyword{
 		Text:        keywords.NewText(fs, "text/kw/node/cluster.secret"),
 	},
 	{
-		DefaultText: keywords.NewText(fs, "text/kw/node/cluster.hb_secret.default"),
-		Option:      "hb_secret",
-		Scopable:    true,
-		Section:     "cluster",
-		Text:        keywords.NewText(fs, "text/kw/node/cluster.hb_secret"),
-	},
-	{
 		Converter: "list",
 		Option:    "nodes",
 		Section:   "cluster",
@@ -755,7 +748,7 @@ var nodeCommonKeywords = []keywords.Keyword{
 		Types:   []string{"relay"},
 	},
 	{
-		Default: "system/sec/relay",
+		Default: naming.NsSys + "/sec/relay",
 		Option:  "password",
 		Section: "hb",
 		Text:    keywords.NewText(fs, "text/kw/node/hb.relay.password"),
@@ -1303,7 +1296,7 @@ var nodeCommonKeywords = []keywords.Keyword{
 		Types:    []string{"pure"},
 	},
 	{
-		Example:  "system/sec/array1",
+		Example:  naming.NsSys + "/sec/array1",
 		Option:   "secret",
 		Required: true,
 		Section:  "array",
@@ -1319,7 +1312,7 @@ var nodeCommonKeywords = []keywords.Keyword{
 		Types:    []string{"pure"},
 	},
 	{
-		Example:  "system/sec/array1",
+		Example:  naming.NsSys + "/sec/array1",
 		Option:   "password",
 		Required: true,
 		Section:  "array",
@@ -1327,7 +1320,7 @@ var nodeCommonKeywords = []keywords.Keyword{
 		Types:    []string{"centera", "eva", "hds", "freenas", "nexenta", "xtremio", "truenas", "dorado", "hoc"},
 	},
 	{
-		Example: "system/sec/array1",
+		Example: naming.NsSys + "/sec/array1",
 		Option:  "password",
 		Section: "array",
 		Text:    keywords.NewText(fs, "text/kw/node/array.password,optional"),
