@@ -106,10 +106,16 @@ func (t *T) start(ctx context.Context, errC chan<- error) {
 		Addr:    t.addr,
 		Handler: routehttp.New(ctx, true),
 		TLSConfig: &tls.Config{
-			ClientAuth:       tls.RequestClientCert,
-			MinVersion:       tls.VersionTLS12,
-			CurvePreferences: []tls.CurveID{tls.CurveP521, tls.CurveP384, tls.CurveP256},
+			ClientAuth: tls.RequestClientCert,
+			MinVersion: tls.VersionTLS13,
+			CurvePreferences: []tls.CurveID{
+				tls.X25519,
+				tls.CurveP521,
+				tls.CurveP384,
+				tls.CurveP256,
+			},
 			CipherSuites: []uint16{
+				tls.TLS_ECDHE_ECDSA_WITH_AES_256_GCM_SHA384,
 				tls.TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384,
 				tls.TLS_ECDHE_RSA_WITH_AES_256_CBC_SHA,
 				tls.TLS_RSA_WITH_AES_256_GCM_SHA384,
