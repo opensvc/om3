@@ -1,0 +1,13 @@
+This keyword sets the absolute upper limit (maximum duration) that an API user can request via the `greet_timeout` query parameter when calling the handler to start a service instance resource console.
+
+The console handler accepts a `greet_timeout` query parameter, which specifies how long the service instance should wait for the first client connection to the generated console URL.
+
+The `max_greet_timeout` acts as a security safeguard, preventing API users from setting excessively long `greet_timeout` values.
+
+If `max_greet_timeout` is set to 30s, any user request for greet_timeout=60s will be refused.
+
+Recommendation:
+
+* Keep Short: The effective timeout should generally be kept to a few seconds (e.g., 5s to 10s). A shorter timeout minimizes the risk that a malicious actor could successfully guess the console URL through a brute-force attack before the link expires.
+
+* Manual Testing: Users may occasionally need to set a slightly higher `greet_timeout` (e.g., 60s) for manual testing or debugging purposes, but this value will always be constrained by the `max_greet_timeout` defined here.

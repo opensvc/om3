@@ -1,0 +1,1 @@
+The tty-proxy console server address. A TLS capable server is expected, so the value should be a TLS terminator reverse proxy.
