@@ -1733,6 +1733,9 @@ type InQueryEvaluate = bool
 // InQueryForce defines model for inQueryForce.
 type InQueryForce = bool
 
+// InQueryGreetTimeout defines model for inQueryGreetTimeout.
+type InQueryGreetTimeout = string
+
 // InQueryImpersonate The node name to impersonate when evaluating a keyword. Setting impersonate without evaluate=true returns a Bad Request error.
 type InQueryImpersonate = string
 
@@ -1768,6 +1771,9 @@ type InQueryRequesterSid = openapi_types.UUID
 
 // InQueryRid defines model for inQueryRid.
 type InQueryRid = string
+
+// InQuerySeats defines model for inQuerySeats.
+type InQuerySeats = int
 
 // InQuerySection defines model for inQuerySection.
 type InQuerySection = string
@@ -2251,7 +2257,9 @@ type PostInstanceActionUnprovisionParams struct {
 
 // PostInstanceResourceConsoleParams defines parameters for PostInstanceResourceConsole.
 type PostInstanceResourceConsoleParams struct {
-	Rid *InQueryRid `form:"rid,omitempty" json:"rid,omitempty"`
+	Rid          *InQueryRid          `form:"rid,omitempty" json:"rid,omitempty"`
+	GreetTimeout *InQueryGreetTimeout `form:"greet_timeout,omitempty" json:"greet_timeout,omitempty"`
+	Seats        *InQuerySeats        `form:"seats,omitempty" json:"seats,omitempty"`
 }
 
 // GetInstanceLogsParams defines parameters for GetInstanceLogs.

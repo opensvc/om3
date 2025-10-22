@@ -212,6 +212,20 @@ var nodeCommonKeywords = []keywords.Keyword{
 		Text:    keywords.NewText(fs, "text/kw/node/node.env"),
 	},
 	{
+		Converter: "duration",
+		Option:    "max_greet_timeout",
+		Section:   "console",
+		Default:   "20s",
+		Text:      keywords.NewText(fs, "text/kw/node/console.max_greet_timeout"),
+	},
+	{
+		Converter: "int",
+		Option:    "max_seats",
+		Section:   "console",
+		Default:   "1",
+		Text:      keywords.NewText(fs, "text/kw/node/console.max_seats"),
+	},
+	{
 		Converter: "bool",
 		Option:    "insecure",
 		Section:   "console",

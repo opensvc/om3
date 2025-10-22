@@ -26,7 +26,7 @@ func (a *DaemonAPI) PostInstanceResourceConsole(ctx echo.Context, nodename, name
 	}
 	nodename = a.parseNodename(nodename)
 	if a.localhost == nodename {
-		return a.localInstanceResourceConsole(ctx, namespace, kind, name, params.Rid)
+		return a.localInstanceResourceConsole(ctx, namespace, kind, name, params)
 	}
 	return a.proxy(ctx, nodename, func(c *client.T) (*http.Response, error) {
 		return c.PostInstanceResourceConsole(ctx.Request().Context(), nodename, namespace, kind, name, &params)
@@ -63,7 +63,7 @@ func scanForConsoleUrl(r io.Reader, timeout time.Duration) (string, error) {
 	}
 }
 
-func (a *DaemonAPI) localInstanceResourceConsole(ctx echo.Context, namespace string, kind naming.Kind, name string, rid *string) error {
+func (a *DaemonAPI) localInstanceResourceConsole(ctx echo.Context, namespace string, kind naming.Kind, name string, params api.PostInstanceResourceConsoleParams) error {
 	path, err := naming.NewPath(namespace, kind, name)
 	if err != nil {
 		return JSONProblemf(ctx, http.StatusInternalServerError, "New path", "%s", err)
@@ -83,10 +83,22 @@ func (a *DaemonAPI) localInstanceResourceConsole(ctx echo.Context, namespace str
 		return JSONProblemf(ctx, http.StatusServiceUnavailable, "Service Unavailable", "node.console_server is not set")
 
 	}
-	enterArgs := fmt.Sprintf("%s enter", path)
-	if rid != nil {
-		enterArgs += fmt.Sprintf(" --rid %s", *rid)
+
+	maxGreetTimeout, err := config.GetDurationStrict(key.New("console", "max_greet_timeout"))
+	if err != nil {
+		return JSONProblemf(ctx, http.StatusInternalServerError, "Capping GreetTimeout error", "%s", err)
 	}
+
+	maxSeats, err := config.GetIntStrict(key.New("console", "max_seats"))
+	if err != nil {
+		return JSONProblemf(ctx, http.StatusInternalServerError, "Capping Seats error", "%s", err)
+	}
+
+	enterArgs := fmt.Sprintf("%s enter", path)
+	if params.Rid != nil {
+		enterArgs += fmt.Sprintf(" --rid %s", *params.Rid)
+	}
+
 	args := []string{
 		"-command", os.Args[0],
 		"-args", enterArgs,
@@ -94,9 +106,27 @@ func (a *DaemonAPI) localInstanceResourceConsole(ctx echo.Context, namespace str
 		"-no-wait",
 		"-headless",
 		"-hangup",
-		"-seats", "1",
 		"-listen", ":0",
-		"-timeout", "10",
+	}
+	if params.Seats != nil {
+		if *params.Seats == 0 {
+			return JSONProblemf(ctx, http.StatusBadRequest, "Bad Request", "Ulimited (0) Seats is not allowed")
+		} else if *params.Seats > maxSeats {
+			return JSONProblemf(ctx, http.StatusBadRequest, "Bad Request", "Seats %d is too high: max %d", *params.Seats, maxSeats)
+		} else {
+			args = append(args, "-seats", fmt.Sprintf("%d", *params.Seats))
+		}
+	}
+	if params.GreetTimeout != nil {
+		if d, err := time.ParseDuration(*params.GreetTimeout); err != nil {
+			return JSONProblemf(ctx, http.StatusBadRequest, "Bad Request", "GreetTimeout %s is not a valid duration: %s", *params.GreetTimeout, err)
+		} else if d == 0 {
+			return JSONProblemf(ctx, http.StatusBadRequest, "Bad Request", "Unlimited GreetTimeout (0) is not allowed")
+		} else if d > *maxGreetTimeout {
+			return JSONProblemf(ctx, http.StatusBadRequest, "Bad Request", "GreetTimeout %s is too long: max %s", *params.GreetTimeout, *maxGreetTimeout)
+		} else {
+			args = append(args, "-greet-timeout", fmt.Sprintf("%s", *params.GreetTimeout))
+		}
 	}
 	if config.GetBool(key.New("console", "insecure")) {
 		args = append(args, "-k")

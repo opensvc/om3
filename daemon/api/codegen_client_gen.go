@@ -8831,6 +8831,38 @@ func NewPostInstanceResourceConsoleRequest(server string, nodename InPathNodeNam
 
 		}
 
+		if params.GreetTimeout != nil {
+
+			if queryFrag, err := runtime.StyleParamWithLocation("form", true, "greet_timeout", runtime.ParamLocationQuery, *params.GreetTimeout); err != nil {
+				return nil, err
+			} else if parsed, err := url.ParseQuery(queryFrag); err != nil {
+				return nil, err
+			} else {
+				for k, v := range parsed {
+					for _, v2 := range v {
+						queryValues.Add(k, v2)
+					}
+				}
+			}
+
+		}
+
+		if params.Seats != nil {
+
+			if queryFrag, err := runtime.StyleParamWithLocation("form", true, "seats", runtime.ParamLocationQuery, *params.Seats); err != nil {
+				return nil, err
+			} else if parsed, err := url.ParseQuery(queryFrag); err != nil {
+				return nil, err
+			} else {
+				for k, v := range parsed {
+					for _, v2 := range v {
+						queryValues.Add(k, v2)
+					}
+				}
+			}
+
+		}
+
 		queryURL.RawQuery = queryValues.Encode()
 	}
 
