@@ -393,9 +393,9 @@ func (d *data) startSubscriptions(ctx context.Context, qs pubsub.QueueSizer) {
 	sub.AddFilter(&msgbus.DaemonSchedulerUpdated{}, d.labelLocalhost)
 	sub.AddFilter(&msgbus.DaemonStatusUpdated{}, d.labelLocalhost)
 
-	sub.AddFilter(&msgbus.HeartbeatConfigUpdated{}, d.labelLocalhost)
 	sub.AddFilter(&msgbus.HeartbeatRotateError{}, d.labelLocalhost)
 	sub.AddFilter(&msgbus.HeartbeatRotateSuccess{}, d.labelLocalhost)
+	sub.AddFilter(&msgbus.HeartbeatSecretUpdated{}, d.labelLocalhost)
 
 	sub.AddFilter(&msgbus.InstanceConfigDeleted{}, d.labelLocalhost)
 	sub.AddFilter(&msgbus.InstanceConfigFor{}, d.labelLocalhost)
@@ -471,9 +471,9 @@ func localEventMustBeForwarded(i interface{}) bool {
 	case *msgbus.InstanceStatusDeleted:
 
 	// heartbeat
-	case *msgbus.HeartbeatConfigUpdated:
 	case *msgbus.HeartbeatRotateError:
 	case *msgbus.HeartbeatRotateSuccess:
+	case *msgbus.HeartbeatSecretUpdated:
 
 	// node...
 	case *msgbus.NodeConfigUpdated:

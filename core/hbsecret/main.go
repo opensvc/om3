@@ -1,60 +1,66 @@
 package hbsecret
 
-import (
-	"bytes"
-	"fmt"
-	"strconv"
+type Secret struct {
+	// Version represents the current version of the heartbeat secret used by
+	// localhost to encrypt the heartbeat messages.
+	Version uint64 `json:"version"`
 
-	"github.com/opensvc/om3/core/naming"
-	"github.com/opensvc/om3/core/object"
-)
+	// AltVersion represents the version of the alternate heartbeat secret used by
+	// localhost to encrypt/decrypt the heartbeat messages during heartbeat secret rotation.
+	AltVersion uint64 `json:"alt_version,omitempty"`
 
-func DecodeSecretAndVersions() (currentVersion uint64, currentSecret string, nextVersion uint64, nextSecret string, err error) {
-	var (
-		b []byte
-
-		store object.DataStore
-	)
-	store, err = object.NewSec(naming.SecHb, object.WithVolatile(true))
-	if err != nil {
-		err = fmt.Errorf("can't analyse %s: %w", naming.SecHb, err)
-		return
-	}
-	if b, err = store.DecodeKey("current_version"); err != nil {
-		return
-	} else if currentVersion, err = strconv.ParseUint(string(bytes.TrimSuffix(b, []byte("\n"))), 10, 64); err != nil {
-		err = fmt.Errorf("convert current version %s to uint64: %w", string(b), err)
-		return
-	}
-	if b, err = store.DecodeKey("current_secret"); err != nil {
-		return
-	} else {
-		currentSecret = string(b)
-	}
-
-	if b, err = store.DecodeKey("next_version"); err != nil {
-		return
-	} else if nextVersion, err = strconv.ParseUint(string(bytes.TrimSuffix(b, []byte("\n"))), 10, 64); err != nil {
-		err = fmt.Errorf("convert next version %s to uint64: %w", string(b), err)
-		return
-	}
-	if b, err = store.DecodeKey("next_secret"); err != nil {
-		return
-	} else {
-		nextSecret = string(b)
-	}
-	return
+	// These fields are private and not exposed in the daemon’s data, JSON output, or events
+	secret    string
+	altSecret string
 }
 
-func UpdateHb(prefix string, version uint64, secret string) error {
-	if store, err := object.NewSec(naming.SecHb, object.WithVolatile(false)); err != nil {
-		return err
-	} else if err := store.TransactionChangeKey(prefix+"_secret", []byte(secret)); err != nil {
-		return err
-	} else if err := store.TransactionChangeKey(prefix+"_version", []byte(fmt.Sprintf("%d", version))); err != nil {
-		return err
-	} else if err := store.Config().Commit(); err != nil {
-		return err
+func NewSecret(secret, altSecret string, version, altVersion uint64) *Secret {
+	return &Secret{
+		Version:    version,
+		AltVersion: altVersion,
+		secret:     secret,
+		altSecret:  altSecret,
 	}
-	return nil
+}
+
+func (s *Secret) MainSecret() string {
+	if s == nil {
+		return ""
+	}
+	return s.secret
+}
+
+func (s *Secret) MainVersion() uint64 {
+	if s == nil {
+		return 0
+	}
+	return s.Version
+}
+
+func (s *Secret) AltSecret() string {
+	if s == nil {
+		return ""
+	}
+	return s.altSecret
+}
+
+func (s *Secret) AltSecretVersion() uint64 {
+	if s == nil {
+		return 0
+	}
+	return s.AltVersion
+}
+
+func (s *Secret) DeepCopy() *Secret {
+	v := *s
+	return &v
+}
+
+func (s *Secret) Rotate() {
+	oldS := s.secret
+	oldV := s.Version
+	s.secret = s.altSecret
+	s.Version = s.AltVersion
+	s.altSecret = oldS
+	s.AltVersion = oldV
 }

@@ -157,7 +157,7 @@ func (d *data) setCacheAndPublish(ev event.Event) error {
 	case *msgbus.DaemonStatusUpdated:
 		d.publisher.Pub(c, labelFromPeer)
 
-	case *msgbus.HeartbeatConfigUpdated:
+	case *msgbus.HeartbeatSecretUpdated:
 		d.publisher.Pub(c, labelFromPeer)
 	case *msgbus.HeartbeatRotateError:
 		d.publisher.Pub(c, labelFromPeer)

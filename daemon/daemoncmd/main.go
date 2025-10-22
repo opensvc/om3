@@ -21,6 +21,7 @@ import (
 	"github.com/labstack/gommon/log"
 
 	"github.com/opensvc/om3/core/client"
+	"github.com/opensvc/om3/core/hbsecobject"
 	"github.com/opensvc/om3/core/keyop"
 	"github.com/opensvc/om3/core/naming"
 	"github.com/opensvc/om3/core/object"
@@ -166,22 +167,22 @@ func bootStrapSecHb(currentSecret string, currentVersion uint64) error {
 	}
 	keys := []keyT{
 		{
-			Name:      "current_secret",
+			Name:      hbsecobject.Secret,
 			Value:     currentSecret,
 			Obfuscate: true,
 		},
 		{
-			Name:      "current_version",
+			Name:      hbsecobject.Version,
 			Value:     fmt.Sprintf("%d", currentVersion),
 			Obfuscate: false,
 		},
 		{
-			Name:      "next_secret",
+			Name:      hbsecobject.AltSecret,
 			Value:     currentSecret,
 			Obfuscate: true,
 		},
 		{
-			Name:      "next_version",
+			Name:      hbsecobject.AltVersion,
 			Value:     fmt.Sprintf("%d", currentVersion),
 			Obfuscate: false,
 		},

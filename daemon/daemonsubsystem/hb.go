@@ -21,6 +21,11 @@ type (
 		// Streams list of daemon heartbeat streams
 		Streams []HeartbeatStream `json:"streams"`
 
+		SecretVersion struct {
+			Main      uint64 `json:"main"`
+			Alternate uint64 `json:"alt"`
+		} `json:"secret_version"`
+
 		UpdatedAt time.Time `json:"updated_at"`
 	}
 

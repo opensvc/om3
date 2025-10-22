@@ -53,6 +53,7 @@ import (
 	"github.com/opensvc/om3/core/cluster"
 	"github.com/opensvc/om3/core/clusterdump"
 	"github.com/opensvc/om3/core/event"
+	"github.com/opensvc/om3/core/hbsecret"
 	"github.com/opensvc/om3/core/instance"
 	"github.com/opensvc/om3/core/naming"
 	"github.com/opensvc/om3/core/node"
@@ -123,13 +124,13 @@ var (
 
 		"HeartbeatAlive": func() any { return &HeartbeatAlive{} },
 
-		"HeartbeatConfigUpdated": func() any { return &HeartbeatConfigUpdated{} },
-
 		"HeartbeatRotateError": func() any { return &HeartbeatRotateError{} },
 
 		"HeartbeatRotateRequest": func() any { return &HeartbeatRotateRequest{} },
 
 		"HeartbeatRotateSuccess": func() any { return &HeartbeatRotateSuccess{} },
+
+		"HeartbeatSecretUpdated": func() any { return &HeartbeatSecretUpdated{} },
 
 		"HeartbeatStale": func() any { return &HeartbeatStale{} },
 
@@ -453,12 +454,6 @@ type (
 		Time       time.Time `json:"at" yaml:"at"`
 	}
 
-	HeartbeatConfigUpdated struct {
-		pubsub.Msg `yaml:",inline"`
-		Nodename   string                  `json:"to" yaml:"to"`
-		Value      cluster.ConfigHeartbeat `json:"config_heartbeat" yaml:"config_heartbeat"`
-	}
-
 	HeartbeatMessageTypeUpdated struct {
 		pubsub.Msg `yaml:",inline"`
 		Node       string   `json:"node" yaml:"node"`
@@ -487,6 +482,12 @@ type (
 	HeartbeatRotateSuccess struct {
 		pubsub.Msg `yaml:",inline"`
 		ID         uuid.UUID `json:"id" yaml:"id"`
+	}
+
+	HeartbeatSecretUpdated struct {
+		pubsub.Msg `yaml:",inline"`
+		Nodename   string          `json:"nodename" yaml:"nodename"`
+		Value      hbsecret.Secret `json:"hb_secret" yaml:"hb_secret"`
 	}
 
 	HeartbeatStale struct {
@@ -1104,10 +1105,6 @@ func (e *HeartbeatAlive) Kind() string {
 	return "HeartbeatAlive"
 }
 
-func (e *HeartbeatConfigUpdated) Kind() string {
-	return "HeartbeatConfigUpdated"
-}
-
 func (e *HeartbeatRotateError) Kind() string {
 	return "HeartbeatRotateError"
 }
@@ -1118,6 +1115,10 @@ func (e *HeartbeatRotateRequest) Kind() string {
 
 func (e *HeartbeatRotateSuccess) Kind() string {
 	return "HeartbeatRotateSuccess"
+}
+
+func (e *HeartbeatSecretUpdated) Kind() string {
+	return "HeartbeatSecretUpdated"
 }
 
 func (e *HeartbeatStale) String() string {

@@ -13,10 +13,10 @@ import (
 	"github.com/opensvc/om3/core/clusterhb"
 	"github.com/opensvc/om3/core/hbcfg"
 	"github.com/opensvc/om3/core/hbtype"
-	"github.com/opensvc/om3/core/omcrypto"
 	"github.com/opensvc/om3/daemon/daemonctx"
 	"github.com/opensvc/om3/daemon/daemondata"
 	"github.com/opensvc/om3/daemon/daemonenv"
+	"github.com/opensvc/om3/daemon/hb/hbcrypto"
 	"github.com/opensvc/om3/daemon/hb/hbctrl"
 	"github.com/opensvc/om3/daemon/msgbus"
 	"github.com/opensvc/om3/util/funcopt"
@@ -344,8 +344,7 @@ func (t *T) msgToTx(ctx context.Context) error {
 			}
 		}()
 
-		cryptoC := omcrypto.CryptoFromContext(ctx)
-		var crypto *omcrypto.Factory
+		crypto := hbcrypto.CryptoFromContext(ctx)
 
 		for {
 			select {
@@ -363,15 +362,11 @@ func (t *T) msgToTx(ctx context.Context) error {
 					err = fmt.Errorf("marshal failure %s for msg %v", err, msg)
 					continue
 				}
-				select {
-				case <-ctx.Done():
-					return
-				case crypto = <-cryptoC:
-					if crypto == nil {
-						continue
-					}
+				cipher := crypto.Load()
+				if cipher == nil {
+					continue
 				}
-				b, err = crypto.Encrypt(b)
+				b, err = cipher.Encrypt(b)
 				if err != nil {
 					continue
 				}

@@ -38,6 +38,7 @@ import (
 	"github.com/prometheus/procfs"
 
 	"github.com/opensvc/om3/core/cluster"
+	"github.com/opensvc/om3/core/hbsecret"
 	"github.com/opensvc/om3/core/naming"
 	"github.com/opensvc/om3/core/node"
 	"github.com/opensvc/om3/core/nodesinfo"
@@ -94,8 +95,8 @@ type (
 		// clusterConfig is a cache of published ClusterConfigUpdated
 		clusterConfig cluster.Config
 
-		// hbConfig defines the local heartbeat configuration
-		hbConfig cluster.ConfigHeartbeat
+		// hbSecret defines the local heartbeat secret
+		hbSecret hbsecret.Secret
 
 		// livePeers is a map of peer nodes
 		// exists when we receive msgbus.NodeMonitorUpdated

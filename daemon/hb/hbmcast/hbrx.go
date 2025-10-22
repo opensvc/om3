@@ -8,10 +8,12 @@ import (
 	"fmt"
 	"net"
 	"sync"
+	"sync/atomic"
 	"time"
 
 	"github.com/opensvc/om3/core/hbtype"
 	"github.com/opensvc/om3/core/omcrypto"
+	"github.com/opensvc/om3/daemon/hb/hbcrypto"
 	"github.com/opensvc/om3/daemon/hb/hbctrl"
 	"github.com/opensvc/om3/util/hostname"
 	"github.com/opensvc/om3/util/plog"
@@ -35,7 +37,7 @@ type (
 		msgC   chan<- *hbtype.Msg
 		cancel func()
 
-		cryptoC <-chan *omcrypto.Factory
+		crypto atomic.Pointer[omcrypto.T]
 	}
 	assembly map[string]msgMap
 	msgMap   map[string]dataMap
@@ -114,7 +116,7 @@ func (t *rx) Start(cmdC chan<- interface{}, msgC chan<- *hbtype.Msg) error {
 			}
 		}()
 		started <- true
-		t.cryptoC = omcrypto.CryptoFromContext(ctx)
+		t.crypto = *hbcrypto.CryptoFromContext(ctx)
 		b := make([]byte, MaxDatagramSize)
 		for {
 			n, src, err := listener.ReadFromUDP(b)
@@ -206,12 +208,7 @@ func (t *rx) recv(src *net.UDPAddr, n int, b []byte) {
 	} else {
 		encMsg = chunks[1]
 	}
-	var crypto *omcrypto.Factory
-	select {
-	case <-t.ctx.Done():
-		return
-	case crypto = <-t.cryptoC:
-	}
+	crypto := t.crypto.Load()
 
 	b, err := crypto.Decrypt(encMsg)
 	if err != nil {

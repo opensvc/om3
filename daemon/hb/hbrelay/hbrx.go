@@ -11,8 +11,8 @@ import (
 	"github.com/opensvc/om3/core/client"
 	"github.com/opensvc/om3/core/cluster"
 	"github.com/opensvc/om3/core/hbtype"
-	"github.com/opensvc/om3/core/omcrypto"
 	"github.com/opensvc/om3/daemon/api"
+	"github.com/opensvc/om3/daemon/hb/hbcrypto"
 	"github.com/opensvc/om3/daemon/hb/hbctrl"
 	"github.com/opensvc/om3/util/plog"
 )
@@ -38,7 +38,11 @@ type (
 		msgC   chan<- *hbtype.Msg
 		cancel func()
 
-		crypto *omcrypto.Factory
+		crypto decryptWithNoder
+	}
+
+	decryptWithNoder interface {
+		DecryptWithNode(data []byte) ([]byte, string, error)
 	}
 )
 
@@ -90,18 +94,14 @@ func (t *rx) Start(cmdC chan<- any, msgC chan<- *hbtype.Msg) error {
 		defer ticker.Stop()
 		t.log.Infof("started")
 		defer t.log.Infof("stopped")
-		cryptoC := omcrypto.CryptoFromContext(ctx)
+		crypto := hbcrypto.CryptoFromContext(ctx)
 		for {
 			select {
 			case <-ctx.Done():
 				t.cancel()
 				return
 			case <-ticker.C:
-				select {
-				case <-ctx.Done():
-					return
-				case t.crypto = <-cryptoC:
-				}
+				t.crypto = crypto.Load()
 				t.onTick()
 			}
 		}

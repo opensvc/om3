@@ -35,6 +35,11 @@ func (t *dataStore) TransactionChangeKey(name string, b []byte) error {
 	return t.addKey(name, b)
 }
 
+// TransactionChangeOrAddKey changes the value of an existing key or adds the value to a new key
+func (t *dataStore) TransactionChangeOrAddKey(name string, b []byte) error {
+	return t.addKey(name, b)
+}
+
 // ChangeKey changes the value of a existing key and commits immediately
 func (t *dataStore) ChangeKey(name string, b []byte) error {
 	if err := t.TransactionChangeKey(name, b); err != nil {
