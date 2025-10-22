@@ -124,13 +124,13 @@ var (
 
 		"HeartbeatAlive": func() any { return &HeartbeatAlive{} },
 
-		"HeartbeatSecretUpdated": func() any { return &HeartbeatSecretUpdated{} },
-
 		"HeartbeatRotateError": func() any { return &HeartbeatRotateError{} },
 
 		"HeartbeatRotateRequest": func() any { return &HeartbeatRotateRequest{} },
 
 		"HeartbeatRotateSuccess": func() any { return &HeartbeatRotateSuccess{} },
+
+		"HeartbeatSecretUpdated": func() any { return &HeartbeatSecretUpdated{} },
 
 		"HeartbeatStale": func() any { return &HeartbeatStale{} },
 
@@ -454,12 +454,6 @@ type (
 		Time       time.Time `json:"at" yaml:"at"`
 	}
 
-	HeartbeatSecretUpdated struct {
-		pubsub.Msg `yaml:",inline"`
-		Nodename   string          `json:"nodename" yaml:"nodename"`
-		Value      hbsecret.Secret `json:"hb_secret" yaml:"hb_secret"`
-	}
-
 	HeartbeatMessageTypeUpdated struct {
 		pubsub.Msg `yaml:",inline"`
 		Node       string   `json:"node" yaml:"node"`
@@ -488,6 +482,12 @@ type (
 	HeartbeatRotateSuccess struct {
 		pubsub.Msg `yaml:",inline"`
 		ID         uuid.UUID `json:"id" yaml:"id"`
+	}
+
+	HeartbeatSecretUpdated struct {
+		pubsub.Msg `yaml:",inline"`
+		Nodename   string          `json:"nodename" yaml:"nodename"`
+		Value      hbsecret.Secret `json:"hb_secret" yaml:"hb_secret"`
 	}
 
 	HeartbeatStale struct {
@@ -1105,10 +1105,6 @@ func (e *HeartbeatAlive) Kind() string {
 	return "HeartbeatAlive"
 }
 
-func (e *HeartbeatSecretUpdated) Kind() string {
-	return "HeartbeatSecretUpdated"
-}
-
 func (e *HeartbeatRotateError) Kind() string {
 	return "HeartbeatRotateError"
 }
@@ -1119,6 +1115,10 @@ func (e *HeartbeatRotateRequest) Kind() string {
 
 func (e *HeartbeatRotateSuccess) Kind() string {
 	return "HeartbeatRotateSuccess"
+}
+
+func (e *HeartbeatSecretUpdated) Kind() string {
+	return "HeartbeatSecretUpdated"
 }
 
 func (e *HeartbeatStale) String() string {
