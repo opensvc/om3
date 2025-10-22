@@ -9,6 +9,14 @@ func (data *ClusterData) onDaemonHeartbeatUpdated(m *DaemonHeartbeatUpdated) {
 	}
 }
 
+func (data *ClusterData) onHeartbeatSecretUpdated(m *HeartbeatSecretUpdated) {
+	if ndata, ok := data.Cluster.Node[m.Nodename]; ok {
+		ndata.Daemon.Heartbeat.SecretVersion.Main = m.Value.CurrentKeyVersion()
+		ndata.Daemon.Heartbeat.SecretVersion.Alternate = m.Value.NextKeyVersion()
+		data.Cluster.Node[m.Nodename] = ndata
+	}
+}
+
 func (data *ClusterData) daemonHeartbeatUpdated(labels pubsub.Labels) ([]any, error) {
 	l := make([]any, 0)
 	if nodename := labels["node"]; nodename != "" {
