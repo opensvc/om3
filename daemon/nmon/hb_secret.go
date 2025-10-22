@@ -7,7 +7,7 @@ import (
 
 	"github.com/google/uuid"
 
-	"github.com/opensvc/om3/core/hbsecret"
+	"github.com/opensvc/om3/core/hbsecobject"
 	"github.com/opensvc/om3/core/naming"
 	"github.com/opensvc/om3/daemon/msgbus"
 )
@@ -18,7 +18,7 @@ func (t *Manager) onInstanceConfigUpdated(c *msgbus.InstanceConfigUpdated) {
 		t.log.Errorf("unexpected InstanceConfigUpdated for %s", c.Path)
 		return
 	}
-	previousVersion := t.hbConfig.CurrentSecretVersion
+	previousVersion := t.hbSecret.CurrentKeyVersion()
 	if t.hbSecretChecksumByNodename[c.Node] == c.Value.Checksum {
 		return
 	}
@@ -28,10 +28,10 @@ func (t *Manager) onInstanceConfigUpdated(c *msgbus.InstanceConfigUpdated) {
 		t.log.Warnf("can't analyse %s: %s", naming.SecHb, err)
 		return
 	}
-	t.hbConfig.SecretSig = c.Value.Checksum
-	t.publisher.Pub(&msgbus.HeartbeatConfigUpdated{Nodename: t.localhost, Value: *t.hbConfig.DeepCopy()}, t.labelLocalhost)
-	if previousVersion != t.hbConfig.CurrentSecretVersion {
-		t.log.Infof("heartbeat secret version changed from %d to %d", previousVersion, t.hbConfig.CurrentSecretVersion)
+	newVersion := t.hbSecret.CurrentKeyVersion()
+	t.publisher.Pub(&msgbus.HeartbeatSecretUpdated{Nodename: t.localhost, Value: *t.hbSecret.DeepCopy()}, t.labelLocalhost)
+	if previousVersion != t.hbSecret.CurrentKeyVersion() {
+		t.log.Infof("heartbeat secret version changed from %d to %d", previousVersion, newVersion)
 	}
 	if !t.hbSecretRotating {
 		return
@@ -60,8 +60,8 @@ func (t *Manager) onHeartbeatRotateRequest(c *msgbus.HeartbeatRotateRequest) {
 	}
 	expectedChecksum := t.hbSecretChecksumByNodename[t.localhost]
 	if expectedChecksum == "" {
-		// secret version change been committed, we have to wait for next
-		// HeartbeatConfigUpdated to avoid re-inserting the previous current secret.
+		// secret version change been committed, we have to wait for the next event
+		// HeartbeatSecretUpdated to avoid re-inserting the previous current secret.
 		onRefused("not ready yet, initialising")
 		return
 	}
@@ -77,7 +77,10 @@ func (t *Manager) onHeartbeatRotateRequest(c *msgbus.HeartbeatRotateRequest) {
 		return
 	}
 
-	version, secret, nextVersion, _ := t.hbConfig.Secrets()
+	version := t.hbSecret.CurrentKeyVersion()
+	nextVersion := t.hbSecret.NextKeyVersion()
+	secret := t.hbSecret.CurrentKey()
+
 	if secret == "" {
 		onRefused("current secret must be defined")
 		return
@@ -86,7 +89,7 @@ func (t *Manager) onHeartbeatRotateRequest(c *msgbus.HeartbeatRotateRequest) {
 	nextVersion = max(version, nextVersion) + 1
 
 	t.log.Infof("%s candidate new secret version %d", logP, nextVersion)
-	if err := hbsecret.UpdateHb("next", nextVersion, nextSecret); err != nil {
+	if err := hbsecobject.Set("next", nextVersion, nextSecret); err != nil {
 		t.log.Errorf("%s: %s", logP, err)
 		t.publisher.Pub(&msgbus.HeartbeatRotateError{Reason: err.Error(), ID: c.ID}, t.labelLocalhost)
 		return
@@ -135,13 +138,15 @@ func (t *Manager) hbRotatingCheck() {
 		return
 	}
 	if count == len(t.clusterConfig.Nodes) {
-		version, _, nextVersion, nextSecret := t.hbConfig.Secrets()
+		version := t.hbSecret.CurrentKeyVersion()
+		nextVersion := t.hbSecret.NextKeyVersion()
+		nextSecret := t.hbSecret.NextKey()
 		if nextSecret == "" {
 			onError("next secret is empty")
 			return
 		}
 		t.log.Debugf("%s commiting version change %d -> %d", logP, version, nextVersion)
-		if err := hbsecret.UpdateHb("current", nextVersion, nextSecret); err != nil {
+		if err := hbsecobject.Set("current", nextVersion, nextSecret); err != nil {
 			onError(fmt.Sprintf("commit candidate version %d failed: %s", nextVersion, err))
 			return
 		}
@@ -156,11 +161,10 @@ func (t *Manager) hbRotatingCheck() {
 }
 
 func (t *Manager) setHbSecretFromFile() error {
-	if currentVersion, currentSecret, nextVersion, nextSecret, err := hbsecret.DecodeSecretAndVersions(); err != nil {
+	if sec, err := hbsecobject.Get(); err != nil {
 		return err
 	} else {
-		t.hbConfig.SetCurrent(currentVersion, currentSecret)
-		t.hbConfig.SetNext(nextVersion, nextSecret)
+		t.hbSecret = *sec
 	}
 	return nil
 }

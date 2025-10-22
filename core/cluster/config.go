@@ -65,38 +65,6 @@ func (t *Config) SetSecret(s string) {
 	t.secret = s
 }
 
-func (t *ConfigHeartbeat) Secrets() (currentVersion uint64, currentSecret string, NextVersion uint64, nextSecret string) {
-	if t == nil {
-		return
-	}
-	return t.CurrentSecretVersion, t.currentSecret, t.NextSecretVersion, t.nextSecret
-}
-
-func (t *ConfigHeartbeat) SetCurrent(version uint64, secret string) {
-	if t == nil {
-		return
-	}
-	t.CurrentSecretVersion = version
-	t.currentSecret = secret
-}
-
-func (t *ConfigHeartbeat) SetNext(version uint64, secret string) {
-	if t == nil {
-		return
-	}
-	t.NextSecretVersion = version
-	t.nextSecret = secret
-}
-
-func (t *ConfigHeartbeat) DeepCopy() *ConfigHeartbeat {
-	return &ConfigHeartbeat{
-		CurrentSecretVersion: t.CurrentSecretVersion,
-		currentSecret:        t.currentSecret,
-		NextSecretVersion:    t.NextSecretVersion,
-		nextSecret:           t.nextSecret,
-	}
-}
-
 func (t *Config) SetSSHKeyFile(s string) {
 	t.sshKeyFile = s
 }

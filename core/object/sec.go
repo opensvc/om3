@@ -50,7 +50,7 @@ type (
 
 func GetSecEncryptDecrypter() (encryptDecrypter, error) {
 	clusterConfig := cluster.ConfigData.Get()
-	factory := &omcrypto.Factory{
+	factory := &omcrypto.T{
 		NodeName:    hostname.Hostname(),
 		ClusterName: clusterConfig.Name,
 		Key:         clusterConfig.Secret(),

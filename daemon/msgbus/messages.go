@@ -53,6 +53,7 @@ import (
 	"github.com/opensvc/om3/core/cluster"
 	"github.com/opensvc/om3/core/clusterdump"
 	"github.com/opensvc/om3/core/event"
+	"github.com/opensvc/om3/core/hbsecret"
 	"github.com/opensvc/om3/core/instance"
 	"github.com/opensvc/om3/core/naming"
 	"github.com/opensvc/om3/core/node"
@@ -123,7 +124,7 @@ var (
 
 		"HeartbeatAlive": func() any { return &HeartbeatAlive{} },
 
-		"HeartbeatConfigUpdated": func() any { return &HeartbeatConfigUpdated{} },
+		"HeartbeatSecretUpdated": func() any { return &HeartbeatSecretUpdated{} },
 
 		"HeartbeatRotateError": func() any { return &HeartbeatRotateError{} },
 
@@ -453,10 +454,10 @@ type (
 		Time       time.Time `json:"at" yaml:"at"`
 	}
 
-	HeartbeatConfigUpdated struct {
+	HeartbeatSecretUpdated struct {
 		pubsub.Msg `yaml:",inline"`
-		Nodename   string                  `json:"to" yaml:"to"`
-		Value      cluster.ConfigHeartbeat `json:"config_heartbeat" yaml:"config_heartbeat"`
+		Nodename   string          `json:"nodename" yaml:"nodename"`
+		Value      hbsecret.Secret `json:"hb_secret" yaml:"hb_secret"`
 	}
 
 	HeartbeatMessageTypeUpdated struct {
@@ -1104,8 +1105,8 @@ func (e *HeartbeatAlive) Kind() string {
 	return "HeartbeatAlive"
 }
 
-func (e *HeartbeatConfigUpdated) Kind() string {
-	return "HeartbeatConfigUpdated"
+func (e *HeartbeatSecretUpdated) Kind() string {
+	return "HeartbeatSecretUpdated"
 }
 
 func (e *HeartbeatRotateError) Kind() string {

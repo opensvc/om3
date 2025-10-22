@@ -10,14 +10,13 @@ import (
 
 	"golang.org/x/exp/maps"
 
-	"github.com/opensvc/om3/util/sign"
-
 	"github.com/opensvc/om3/core/hbtype"
-	"github.com/opensvc/om3/core/omcrypto"
 	"github.com/opensvc/om3/daemon/daemonsubsystem"
+	"github.com/opensvc/om3/daemon/hb/hbcrypto"
 	"github.com/opensvc/om3/daemon/hb/hbctrl"
 	"github.com/opensvc/om3/util/hostname"
 	"github.com/opensvc/om3/util/plog"
+	"github.com/opensvc/om3/util/sign"
 )
 
 type (
@@ -38,13 +37,17 @@ type (
 		msgC   chan<- *hbtype.Msg
 		cancel func()
 
-		crypto *omcrypto.Factory
+		crypto decryptWithNoder
 
 		// rescanMetadataReason stores the most recent reason for a metadata rescan,
 		// helping to prevent excessive logging of the same reason.
 		rescanMetadataReason string
 
 		alert []daemonsubsystem.Alert
+	}
+
+	decryptWithNoder interface {
+		DecryptWithNode(data []byte) ([]byte, string, error)
 	}
 )
 
@@ -116,17 +119,13 @@ func (t *rx) Start(cmdC chan<- any, msgC chan<- *hbtype.Msg) error {
 		t.updateAlertWithSlots()
 		t.sendAlert()
 
-		cryptoC := omcrypto.CryptoFromContext(ctx)
+		crypto := hbcrypto.CryptoFromContext(ctx)
 		ticker := time.NewTicker(t.interval)
 		defer ticker.Stop()
 		for {
 			select {
 			case <-ticker.C:
-				select {
-				case <-ctx.Done():
-					return
-				case t.crypto = <-cryptoC:
-				}
+				t.crypto = crypto.Load()
 				t.onTick()
 			case <-ctx.Done():
 				t.cancel()

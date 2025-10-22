@@ -4,7 +4,6 @@ package omcrypto
 import (
 	"bytes"
 	"compress/zlib"
-	"context"
 	"crypto/aes"
 	"crypto/cipher"
 	"crypto/rand"
@@ -25,7 +24,7 @@ type (
 		Gen uint64 `json:"gen"`
 	}
 
-	Factory struct {
+	T struct {
 		NodeName    string
 		ClusterName string
 
@@ -44,33 +43,20 @@ type (
 		NextKeyGen uint64
 	}
 
-	FactoryCreateArgser interface {
-		Nodename() string
-		ClusterName() string
-		Secrets() (uint64, string, uint64, string)
-	}
-
-	FactoryArgser interface {
-		FactoryCreateArgser
-		OutdatedC() <-chan bool
-	}
-
-	FactoryArgs struct {
-		NodeName    string
-		ClusterName string
-		Key         string
-		KeyGen      uint64
-		NextKey     string
-		NextKeyGen  uint64
+	Keyer interface {
+		CurrentKey() string
+		CurrentKeyVersion() uint64
+		NextKey() string
+		NextKeyVersion() uint64
 	}
 )
 
-// Cipher defines an interface for encryption and decryption operations with optional node identification support.
+// EncryptDecrypter defines an interface for encryption and decryption operations with optional node identification support.
 // DecryptWithNode decrypts the data, also returning the node name associated with the encryption process.
 // Decrypt decrypts the data using the current encryption configuration and returns the result.
 // Encrypt encrypts the data and outputs it in a secure format with metadata about the encryption.
 type (
-	Cipher interface {
+	EncryptDecrypter interface {
 		DecryptWithNode(data []byte) ([]byte, string, error)
 		Decrypt(data []byte) ([]byte, error)
 		Encrypt(data []byte) ([]byte, error)
@@ -78,42 +64,22 @@ type (
 )
 
 var (
-	// assert Factory implements Cipher interface
-	_ = Cipher(&Factory{})
+	// assert T implements EncryptDecrypter interface
+	_ = EncryptDecrypter(&T{})
 )
 
-// CipherC creates a channel that emits *Factory instances and manages their
-// lifecycle based on context and outdated signals.
-func CipherC(ctx context.Context, a FactoryArgser) <-chan *Factory {
-	c := make(chan *Factory)
-	go func() {
-		factory := newCipher(a)
-		outdatedC := a.OutdatedC()
-		for {
-			select {
-			case <-ctx.Done():
-				return
-			case c <- factory:
-			case outdated := <-outdatedC:
-				if outdated {
-					factory = newCipher(a)
-				}
-			}
-		}
-	}()
-	return c
-}
-
-func newCipher(a FactoryCreateArgser) *Factory {
-	f := &Factory{
-		NodeName:    a.Nodename(),
-		ClusterName: a.ClusterName(),
+func New(nodename, clusterName string, sec Keyer) *T {
+	return &T{
+		NodeName:    nodename,
+		ClusterName: clusterName,
+		KeyGen:      sec.CurrentKeyVersion(),
+		Key:         sec.CurrentKey(),
+		NextKeyGen:  sec.NextKeyVersion(),
+		NextKey:     sec.NextKey(),
 	}
-	f.KeyGen, f.Key, f.NextKeyGen, f.NextKey = a.Secrets()
-	return f
 }
 
-func (m *Factory) assertValid() {
+func (m *T) assertValid() {
 	if m.ClusterName == "" {
 		panic("NewMessage: unexpected empty cluster name")
 	}
@@ -125,7 +91,7 @@ func (m *Factory) assertValid() {
 // DecryptWithNode Decrypt the message
 //
 // returns decodedMsg []byte, encryptorNodename string, error
-func (m *Factory) DecryptWithNode(data []byte) ([]byte, string, error) {
+func (m *T) DecryptWithNode(data []byte) ([]byte, string, error) {
 	m.assertValid()
 	if len(data) == 0 {
 		// fast return, Unmarshal will fail
@@ -156,7 +122,7 @@ func (m *Factory) DecryptWithNode(data []byte) ([]byte, string, error) {
 
 // Decrypt decrypts the message, if the nodename found in the message is a
 // cluster node.
-func (m *Factory) Decrypt(data []byte) ([]byte, error) {
+func (m *T) Decrypt(data []byte) ([]byte, error) {
 	m.assertValid()
 	b, _, err := m.DecryptWithNode(data)
 	return b, err
@@ -164,7 +130,7 @@ func (m *Factory) Decrypt(data []byte) ([]byte, error) {
 
 // Encrypt encrypts the message and returns a json with head keys describing
 // the sender, and embedding the AES-encypted + Base64-encoded data.
-func (m *Factory) Encrypt(data []byte) ([]byte, error) {
+func (m *T) Encrypt(data []byte) ([]byte, error) {
 	m.assertValid()
 	var (
 		encoded   string

@@ -9,17 +9,19 @@ import (
 
 	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
+	"github.com/opensvc/om3/core/cluster"
+	"github.com/opensvc/om3/core/hbsecobject"
 	"github.com/opensvc/om3/core/instance"
 	"github.com/opensvc/om3/core/node"
 	"github.com/opensvc/om3/core/object"
-	"github.com/opensvc/om3/core/omcrypto"
 	"github.com/opensvc/om3/core/rawconfig"
 	"github.com/opensvc/om3/daemon/daemonctx"
 	"github.com/opensvc/om3/daemon/daemondata"
 	"github.com/opensvc/om3/daemon/daemonenv"
-	"github.com/opensvc/om3/daemon/hb/hbconfig"
+	"github.com/opensvc/om3/daemon/hb/hbcrypto"
 	"github.com/opensvc/om3/daemon/hbcache"
 	"github.com/opensvc/om3/daemon/runner"
 	"github.com/opensvc/om3/testhelper"
@@ -71,12 +73,12 @@ func Setup(t *testing.T, env *testhelper.Env) *D {
 	ctx = daemondata.ContextWithBus(ctx, dataCmd)
 	ctx = daemonctx.WithHBRecvMsgQ(ctx, dataMsgRecvQ)
 
-	hbSecretFactory := hbconfig.New("daemon.hb.secret")
-	if err := hbSecretFactory.Start(ctx); err != nil {
-		panic(err)
-	}
-	cryptoC := omcrypto.CipherC(ctx, hbSecretFactory)
-	ctx = omcrypto.ContextWithCrypto(ctx, cryptoC)
+	initialCcfg := cluster.ConfigData.Get()
+	assert.NotEmpty(t, initialCcfg.Name)
+	initialHeartbeatSecret, err := hbsecobject.Get()
+	assert.NoError(t, err)
+	cryptoWorker := hbcrypto.T{}
+	ctx = hbcrypto.ContextWithCrypto(ctx, cryptoWorker.Start(ctx, initialCcfg.Name, *initialHeartbeatSecret))
 
 	qsSmall := pubsub.WithQueueSize(daemonenv.SubQSSmall)
 	testRunner := runner.NewDefault(qsSmall)
@@ -88,7 +90,7 @@ func Setup(t *testing.T, env *testhelper.Env) *D {
 		cancel()
 		dataCmdCancel()
 		hostname.SetHostnameForGoTest("")
-		_ = hbSecretFactory.Stop()
+		_ = cryptoWorker.Stop()
 	}
 	return &D{
 		Env:           *env,
