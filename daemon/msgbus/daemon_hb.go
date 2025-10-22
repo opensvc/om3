@@ -11,8 +11,8 @@ func (data *ClusterData) onDaemonHeartbeatUpdated(m *DaemonHeartbeatUpdated) {
 
 func (data *ClusterData) onHeartbeatSecretUpdated(m *HeartbeatSecretUpdated) {
 	if ndata, ok := data.Cluster.Node[m.Nodename]; ok {
-		ndata.Daemon.Heartbeat.SecretVersion.Main = m.Value.CurrentKeyVersion()
-		ndata.Daemon.Heartbeat.SecretVersion.Alternate = m.Value.NextKeyVersion()
+		ndata.Daemon.Heartbeat.SecretVersion.Main = m.Value.MainVersion()
+		ndata.Daemon.Heartbeat.SecretVersion.Alternate = m.Value.AltSecretVersion()
 		data.Cluster.Node[m.Nodename] = ndata
 	}
 }

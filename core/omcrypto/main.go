@@ -31,23 +31,22 @@ type (
 		// Key is the current key used to encrypt data.
 		Key string
 
-		// KeyGen indicates the generation number of the current encryption key.
-		KeyGen uint64
+		// Version indicates the generation number of the current encryption key.
+		Version uint64
 
-		// NextKey is the encryption key that will be used after the next secret rotation.
-		// It will replace the current key and can be used to decrypt messages
-		// encrypted with a secret that was previously rotated by the peer factory.
-		NextKey string
+		// AltKey is an alternate encryption key that can be used to decrypt messages.
+		// It is the previous or future key.
+		AltKey string
 
-		// NextKeyGen indicates the generation number of the next encryption key.
-		NextKeyGen uint64
+		// AltVersion indicates the generation number of the next encryption key.
+		AltVersion uint64
 	}
 
 	Keyer interface {
-		CurrentKey() string
-		CurrentKeyVersion() uint64
-		NextKey() string
-		NextKeyVersion() uint64
+		MainSecret() string
+		MainVersion() uint64
+		AltSecret() string
+		AltSecretVersion() uint64
 	}
 )
 
@@ -72,10 +71,10 @@ func New(nodename, clusterName string, sec Keyer) *T {
 	return &T{
 		NodeName:    nodename,
 		ClusterName: clusterName,
-		KeyGen:      sec.CurrentKeyVersion(),
-		Key:         sec.CurrentKey(),
-		NextKeyGen:  sec.NextKeyVersion(),
-		NextKey:     sec.NextKey(),
+		Version:     sec.MainVersion(),
+		Key:         sec.MainSecret(),
+		AltVersion:  sec.AltSecretVersion(),
+		AltKey:      sec.AltSecret(),
 	}
 }
 
@@ -105,12 +104,12 @@ func (m *T) DecryptWithNode(data []byte) ([]byte, string, error) {
 	if err != nil {
 		return nil, "", fmt.Errorf("analyse message unmarshal failure: %w", err)
 	}
-	if msg.Gen == 0 || msg.Gen == m.KeyGen {
+	if msg.Gen == 0 || msg.Gen == m.Version {
 		key = []byte(m.Key)
-	} else if msg.Gen == m.NextKeyGen {
-		key = []byte(m.NextKey)
+	} else if msg.Gen == m.AltVersion {
+		key = []byte(m.AltKey)
 	} else {
-		return nil, "", fmt.Errorf("can't decrypt from unknown secret gen %d", msg.Gen)
+		return nil, "", fmt.Errorf("can't decrypt message with secret version %d", msg.Gen)
 	}
 	// TODO: test nodename and clustername, plug blacklist
 	b, err = decode(msg.Data, msg.IV, key)
@@ -146,7 +145,7 @@ func (m *T) Encrypt(data []byte) ([]byte, error) {
 		NodeName:    m.NodeName,
 		IV:          encodedIV,
 		Data:        encoded,
-		Gen:         m.KeyGen,
+		Gen:         m.Version,
 	}
 	return json.Marshal(msg)
 }

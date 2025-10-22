@@ -43,6 +43,7 @@ type (
 
 		TransactionAddKey(name string, b []byte) error
 		TransactionChangeKey(name string, b []byte) error
+		TransactionChangeOrAddKey(name string, b []byte) error
 		TransactionRemoveKey(name string) error
 		TransactionRenameKey(name, to string) error
 	}

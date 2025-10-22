@@ -18,7 +18,7 @@ func (t *Manager) onInstanceConfigUpdated(c *msgbus.InstanceConfigUpdated) {
 		t.log.Errorf("unexpected InstanceConfigUpdated for %s", c.Path)
 		return
 	}
-	previousVersion := t.hbSecret.CurrentKeyVersion()
+	previousVersion := t.hbSecret.MainVersion()
 	if t.hbSecretChecksumByNodename[c.Node] == c.Value.Checksum {
 		return
 	}
@@ -28,9 +28,9 @@ func (t *Manager) onInstanceConfigUpdated(c *msgbus.InstanceConfigUpdated) {
 		t.log.Warnf("can't analyse %s: %s", naming.SecHb, err)
 		return
 	}
-	newVersion := t.hbSecret.CurrentKeyVersion()
+	newVersion := t.hbSecret.MainVersion()
 	t.publisher.Pub(&msgbus.HeartbeatSecretUpdated{Nodename: t.localhost, Value: *t.hbSecret.DeepCopy()}, t.labelLocalhost)
-	if previousVersion != t.hbSecret.CurrentKeyVersion() {
+	if previousVersion != t.hbSecret.MainVersion() {
 		t.log.Infof("heartbeat secret version changed from %d to %d", previousVersion, newVersion)
 	}
 	if !t.hbSecretRotating {
@@ -77,9 +77,9 @@ func (t *Manager) onHeartbeatRotateRequest(c *msgbus.HeartbeatRotateRequest) {
 		return
 	}
 
-	version := t.hbSecret.CurrentKeyVersion()
-	nextVersion := t.hbSecret.NextKeyVersion()
-	secret := t.hbSecret.CurrentKey()
+	version := t.hbSecret.MainVersion()
+	nextVersion := t.hbSecret.AltSecretVersion()
+	secret := t.hbSecret.MainSecret()
 
 	if secret == "" {
 		onRefused("current secret must be defined")
@@ -89,7 +89,7 @@ func (t *Manager) onHeartbeatRotateRequest(c *msgbus.HeartbeatRotateRequest) {
 	nextVersion = max(version, nextVersion) + 1
 
 	t.log.Infof("%s candidate new secret version %d", logP, nextVersion)
-	if err := hbsecobject.Update("next", nextVersion, nextSecret); err != nil {
+	if err := hbsecobject.UpdateAlternate(nextVersion, nextSecret); err != nil {
 		t.log.Errorf("%s: %s", logP, err)
 		t.publisher.Pub(&msgbus.HeartbeatRotateError{Reason: err.Error(), ID: c.ID}, t.labelLocalhost)
 		return
@@ -138,11 +138,15 @@ func (t *Manager) hbRotatingCheck() {
 		return
 	}
 	if count == len(t.clusterConfig.Nodes) {
-		version := t.hbSecret.CurrentKeyVersion()
-		nextVersion := t.hbSecret.NextKeyVersion()
-		nextSecret := t.hbSecret.NextKey()
+		version := t.hbSecret.MainVersion()
+		nextVersion := t.hbSecret.AltSecretVersion()
+		nextSecret := t.hbSecret.AltSecret()
 		if nextSecret == "" {
 			onError("next secret is empty")
+			return
+		}
+		if version > nextVersion {
+			onError(fmt.Sprintf("current version %d is greater than candidate version %d", version, nextVersion))
 			return
 		}
 		t.log.Debugf("%s commiting version change %d -> %d", logP, version, nextVersion)

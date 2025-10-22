@@ -32,14 +32,14 @@
     
     The `system/sec/hb` secret store holds the following keys:
           
-        |-------------------|---------------------------------------------|
-        | Key               | Description                                 |
-        |-------------------|---------------------------------------------|
-        | `current_secret`  | Active secret for encryptbeats              |
-        | `current_version` | Version of the `current_secret`             |
-        | `next_secret`     | Next secret for future heartbeat encryption |
-        | `next_version`    | Version of the `next_secret`                |
-        |-------------------|---------------------------------------------|
+        |---------------|-------------------------------------------|
+        | Key           | Description                               |
+        |---------------|-------------------------------------------|
+        | `secret`      | Active secret to encrypt heartbeat msg    |
+        | `version`     | Version of the `secret`                   |
+        | `alt_secret`  | Alternate secret to decrypt heartbeat msg |
+        | `alt_version` | Version of the alternate secreat          |
+        |---------------|-------------------------------------------|
 
 * **`node.default_mon_format` removed:**
     It should be a user-level setting, not a node-level config.

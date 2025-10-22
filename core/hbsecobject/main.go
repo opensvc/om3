@@ -11,6 +11,13 @@ import (
 	"github.com/opensvc/om3/core/object"
 )
 
+const (
+	Secret     = "secret"
+	Version    = "version"
+	AltSecret  = "alt_secret"
+	AltVersion = "alt_version"
+)
+
 func Get() (sec *hbsecret.Secret, err error) {
 	var (
 		b []byte
@@ -25,25 +32,25 @@ func Get() (sec *hbsecret.Secret, err error) {
 		err = fmt.Errorf("can't analyse %s: %w", naming.SecHb, err)
 		return
 	}
-	if b, err = store.DecodeKey("current_version"); err != nil {
+	if b, err = store.DecodeKey(Version); err != nil {
 		return
 	} else if version, err = strconv.ParseUint(string(bytes.TrimSuffix(b, []byte("\n"))), 10, 64); err != nil {
 		err = fmt.Errorf("convert current version %s to uint64: %w", string(b), err)
 		return
 	}
-	if b, err = store.DecodeKey("current_secret"); err != nil {
+	if b, err = store.DecodeKey(Secret); err != nil {
 		return
 	} else {
 		key = string(b)
 	}
 
-	if b, err = store.DecodeKey("next_version"); err != nil {
+	if b, err = store.DecodeKey(AltVersion); err != nil {
 		return
 	} else if altVersion, err = strconv.ParseUint(string(bytes.TrimSuffix(b, []byte("\n"))), 10, 64); err != nil {
-		err = fmt.Errorf("convert next version %s to uint64: %w", string(b), err)
+		err = fmt.Errorf("convert alt version %s to uint64: %w", string(b), err)
 		return
 	}
-	if b, err = store.DecodeKey("next_secret"); err != nil {
+	if b, err = store.DecodeKey(AltSecret); err != nil {
 		return
 	} else {
 		altKey = string(b)
@@ -55,13 +62,13 @@ func Get() (sec *hbsecret.Secret, err error) {
 func Set(sec hbsecret.Secret) error {
 	if store, err := object.NewSec(naming.SecHb, object.WithVolatile(false)); err != nil {
 		return err
-	} else if err := store.TransactionChangeKey("current_secret", []byte(sec.CurrentKey())); err != nil {
+	} else if err := store.TransactionChangeOrAddKey(Secret, []byte(sec.MainSecret())); err != nil {
 		return err
-	} else if err := store.TransactionChangeKey("current_version", []byte(fmt.Sprintf("%d", sec.CurrentKeyVersion()))); err != nil {
+	} else if err := store.TransactionChangeOrAddKey(Version, []byte(fmt.Sprintf("%d", sec.MainVersion()))); err != nil {
 		return err
-	} else if err := store.TransactionChangeKey("next_secret", []byte(sec.NextKey())); err != nil {
+	} else if err := store.TransactionChangeOrAddKey(AltSecret, []byte(sec.AltSecret())); err != nil {
 		return err
-	} else if err := store.TransactionChangeKey("next_version", []byte(fmt.Sprintf("%d", sec.NextKeyVersion()))); err != nil {
+	} else if err := store.TransactionChangeOrAddKey(AltVersion, []byte(fmt.Sprintf("%d", sec.AltSecretVersion()))); err != nil {
 		return err
 	} else if err := store.Config().Commit(); err != nil {
 		return err
@@ -69,12 +76,13 @@ func Set(sec hbsecret.Secret) error {
 	return nil
 }
 
-func Update(prefix string, version uint64, secret string) error {
+// UpdateAlternate updates the alternate secret and version of the hbsecret.Secret object.
+func UpdateAlternate(version uint64, secret string) error {
 	if store, err := object.NewSec(naming.SecHb, object.WithVolatile(false)); err != nil {
 		return err
-	} else if err := store.TransactionChangeKey(prefix+"_secret", []byte(secret)); err != nil {
+	} else if err := store.TransactionChangeOrAddKey(AltSecret, []byte(secret)); err != nil {
 		return err
-	} else if err := store.TransactionChangeKey(prefix+"_version", []byte(fmt.Sprintf("%d", version))); err != nil {
+	} else if err := store.TransactionChangeOrAddKey(AltVersion, []byte(fmt.Sprintf("%d", version))); err != nil {
 		return err
 	} else if err := store.Config().Commit(); err != nil {
 		return err

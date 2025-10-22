@@ -27,25 +27,6 @@ type (
 		sshKeyFile string
 	}
 
-	// ConfigHeartbeat represents the configuration for managing cluster heartbeat.
-	ConfigHeartbeat struct {
-		// CurrentSecretVersion represents the current version of the heartbeat secret used by
-		// localhost to encrypt the heartbeat messages.
-		CurrentSecretVersion uint64 `json:"current_secret_version"`
-
-		// SecretSig represents the signature associated with the current configuration
-		// of cluster heartbeat secrets.
-		SecretSig string `json:"secret_sig"`
-
-		// NextSecretVersion represents the version of the next heartbeat secret used by
-		// localhost to encrypt the heartbeat messages after heartbeat secret rotation.
-		NextSecretVersion uint64 `json:"next_secret_version,omitempty"`
-
-		// These fields are private and not exposed in the daemon’s data, JSON output, or events
-		currentSecret string
-		nextSecret    string
-	}
-
 	ConfigListener struct {
 		CRL            string `json:"crl"`
 		Addr           string `json:"addr"`

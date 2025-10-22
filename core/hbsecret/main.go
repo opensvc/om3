@@ -1,54 +1,54 @@
 package hbsecret
 
 type Secret struct {
-	// CurrentVersion represents the current version of the heartbeat secret used by
+	// Version represents the current version of the heartbeat secret used by
 	// localhost to encrypt the heartbeat messages.
-	CurrentVersion uint64 `json:"current_version"`
+	Version uint64 `json:"version"`
 
-	// NextVersion represents the version of the next heartbeat secret used by
-	// localhost to encrypt the heartbeat messages after heartbeat secret rotation.
-	NextVersion uint64 `json:"next_version,omitempty"`
+	// AltVersion represents the version of the alternate heartbeat secret used by
+	// localhost to encrypt/decrypt the heartbeat messages during heartbeat secret rotation.
+	AltVersion uint64 `json:"alt_version,omitempty"`
 
 	// These fields are private and not exposed in the daemon’s data, JSON output, or events
-	currentSecret string
-	nextSecret    string
+	secret    string
+	altSecret string
 }
 
-func NewSecret(key, altKeay string, version, altVersion uint64) *Secret {
+func NewSecret(secret, altSecret string, version, altVersion uint64) *Secret {
 	return &Secret{
-		CurrentVersion: version,
-		NextVersion:    altVersion,
-		currentSecret:  key,
-		nextSecret:     altKeay,
+		Version:    version,
+		AltVersion: altVersion,
+		secret:     secret,
+		altSecret:  altSecret,
 	}
 }
 
-func (s *Secret) CurrentKey() string {
+func (s *Secret) MainSecret() string {
 	if s == nil {
 		return ""
 	}
-	return s.currentSecret
+	return s.secret
 }
 
-func (s *Secret) CurrentKeyVersion() uint64 {
+func (s *Secret) MainVersion() uint64 {
 	if s == nil {
 		return 0
 	}
-	return s.CurrentVersion
+	return s.Version
 }
 
-func (s *Secret) NextKey() string {
+func (s *Secret) AltSecret() string {
 	if s == nil {
 		return ""
 	}
-	return s.nextSecret
+	return s.altSecret
 }
 
-func (s *Secret) NextKeyVersion() uint64 {
+func (s *Secret) AltSecretVersion() uint64 {
 	if s == nil {
 		return 0
 	}
-	return s.NextVersion
+	return s.AltVersion
 }
 
 func (s *Secret) DeepCopy() *Secret {
@@ -57,10 +57,10 @@ func (s *Secret) DeepCopy() *Secret {
 }
 
 func (s *Secret) Rotate() {
-	oldS := s.currentSecret
-	oldV := s.CurrentVersion
-	s.currentSecret = s.nextSecret
-	s.CurrentVersion = s.NextVersion
-	s.nextSecret = oldS
-	s.NextVersion = oldV
+	oldS := s.secret
+	oldV := s.Version
+	s.secret = s.altSecret
+	s.Version = s.AltVersion
+	s.altSecret = oldS
+	s.AltVersion = oldV
 }
