@@ -227,7 +227,7 @@ func (ea *ExecutorArg) StartArgs(ctx context.Context) (*args.T, error) {
 func (ea *ExecutorArg) StopArgs() *args.T {
 	a := args.New("container", "stop", ea.BT.ContainerName())
 	if ea.BT.StopTimeout != nil && *ea.BT.StopTimeout > 0 {
-		a.Append("--time", fmt.Sprintf("%.0f", ea.BT.StopTimeout.Seconds()))
+		a.Append("--timeout", fmt.Sprintf("%.0f", ea.BT.StopTimeout.Seconds()))
 	}
 	return a
 }
