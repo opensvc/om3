@@ -46,8 +46,8 @@ Receive only events matching the filtering expression formatted as:
 
 ###  Heartbeat
 
-    HeartbeatMessageTypeUpdated, HeartbeatAlive, HeartbeatConfigUpdated, HeartbeatStale
-    HeartbeatRotateRequest, HeartbeatRotateSuccess, HeartbeatRotateError
+    HeartbeatMessageTypeUpdated, HeartbeatAlive, HeartbeatStale
+    HeartbeatRotateRequest, HeartbeatRotateSuccess, HeartbeatRotateError, HeartbeatSecretUpdated
 
 ### Instance
 
