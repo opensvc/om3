@@ -97,7 +97,7 @@ func startEventWatcher(ctx context.Context, c *client.T, done chan<- error, time
 	if err != nil {
 		return err
 	}
-
+	started := make(chan struct{})
 	go func() {
 		ctx, cancel := context.WithTimeout(ctx, timeoutDuration)
 		defer cancel()
@@ -133,8 +133,8 @@ func startEventWatcher(ctx context.Context, c *client.T, done chan<- error, time
 				return
 			}
 		}
-
 	}()
+	<-started
 
 	return nil
 }
