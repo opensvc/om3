@@ -14701,7 +14701,6 @@ func (r GetInstanceConfigFileResponse) StatusCode() int {
 type PostInstanceResourceConsoleResponse struct {
 	Body         []byte
 	HTTPResponse *http.Response
-	JSON200      *ResourceConsole
 	JSON400      *N400
 	JSON401      *N401
 	JSON403      *N403
@@ -21957,13 +21956,6 @@ func ParsePostInstanceResourceConsoleResponse(rsp *http.Response) (*PostInstance
 	}
 
 	switch {
-	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
-		var dest ResourceConsole
-		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
-			return nil, err
-		}
-		response.JSON200 = &dest
-
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
 		var dest N400
 		if err := json.Unmarshal(bodyBytes, &dest); err != nil {

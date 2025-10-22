@@ -157,10 +157,9 @@ func (a *DaemonAPI) localInstanceResourceConsole(ctx echo.Context, namespace str
 	}()
 	url, err := scanForConsoleUrl(r, 2*time.Second)
 	if err != nil {
+		cmd.Process.Kill()
 		return JSONProblemf(ctx, http.StatusInternalServerError, "scan for console url", "%s", err)
 	}
-	resp := api.ResourceConsole{
-		Url: url,
-	}
-	return ctx.JSON(http.StatusOK, resp)
+	ctx.Response().Header().Set("Location", url)
+	return ctx.NoContent(http.StatusCreated)
 }

@@ -1359,11 +1359,6 @@ type Resource struct {
 // ResourceConfig defines model for ResourceConfig.
 type ResourceConfig = instance.ResourceConfig
 
-// ResourceConsole defines model for ResourceConsole.
-type ResourceConsole struct {
-	Url string `json:"url"`
-}
-
 // ResourceInfoItem defines model for ResourceInfoItem.
 type ResourceInfoItem struct {
 	Key    string `json:"key"`

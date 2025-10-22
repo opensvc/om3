@@ -2693,12 +2693,11 @@ paths:
         - $ref: '#/components/parameters/inQueryGreetTimeout'
         - $ref: '#/components/parameters/inQuerySeats'
       responses:
-        200:
-          description: OK
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ResourceConsole'
+        201:
+          description: Created
+          headers:
+            Location:
+              type: string
         400:
           $ref: '#/components/responses/400'
         401:
@@ -7085,14 +7084,6 @@ components:
         bytes:
           type: string
           format: byte
-
-    ResourceConsole:
-      type: object
-      required:
-        - url
-      properties:
-        url:
-          type: string
 
     ResourceMonitorRestart:
       type: object
