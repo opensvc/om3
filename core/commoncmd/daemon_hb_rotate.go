@@ -68,7 +68,7 @@ func (t *CmdDaemonHeartbeatRotate) Run() error {
 	switch resp.StatusCode() {
 	case 200:
 		if !t.Wait {
-			fmt.Printf("ID : %s\n", resp.JSON200.ID.String())
+			fmt.Printf("%s\n", resp.JSON200.ID.String())
 		}
 	case 400:
 		return fmt.Errorf("%s", resp.JSON400)
@@ -97,7 +97,7 @@ func startEventWatcher(ctx context.Context, c *client.T, done chan<- error, time
 	if err != nil {
 		return err
 	}
-
+	started := make(chan struct{})
 	go func() {
 		ctx, cancel := context.WithTimeout(ctx, timeoutDuration)
 		defer cancel()
@@ -120,7 +120,7 @@ func startEventWatcher(ctx context.Context, c *client.T, done chan<- error, time
 					done <- err
 					return
 				}
-				fmt.Printf("ID: %s\n", msg.ID.String())
+				fmt.Printf("%s\n", msg.ID.String())
 				done <- nil
 				return
 			case "HeartbeatRotateError":
@@ -133,8 +133,8 @@ func startEventWatcher(ctx context.Context, c *client.T, done chan<- error, time
 				return
 			}
 		}
-
 	}()
+	<-started
 
 	return nil
 }

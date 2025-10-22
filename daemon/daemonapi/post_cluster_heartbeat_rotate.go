@@ -21,7 +21,7 @@ var (
 
 	// heartbeatRotateMinCallInterval defines the minimum time interval required
 	// between successive heartbeat rotate calls.
-	heartbeatRotateMinCallInterval = 1 * time.Millisecond
+	heartbeatRotateMinCallInterval = 60 * time.Millisecond
 )
 
 func (a *DaemonAPI) PostClusterHeartbeatRotate(ctx echo.Context) error {
