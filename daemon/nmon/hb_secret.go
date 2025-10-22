@@ -89,7 +89,7 @@ func (t *Manager) onHeartbeatRotateRequest(c *msgbus.HeartbeatRotateRequest) {
 	nextVersion = max(version, nextVersion) + 1
 
 	t.log.Infof("%s candidate new secret version %d", logP, nextVersion)
-	if err := hbsecobject.Set("next", nextVersion, nextSecret); err != nil {
+	if err := hbsecobject.Update("next", nextVersion, nextSecret); err != nil {
 		t.log.Errorf("%s: %s", logP, err)
 		t.publisher.Pub(&msgbus.HeartbeatRotateError{Reason: err.Error(), ID: c.ID}, t.labelLocalhost)
 		return
@@ -146,7 +146,8 @@ func (t *Manager) hbRotatingCheck() {
 			return
 		}
 		t.log.Debugf("%s commiting version change %d -> %d", logP, version, nextVersion)
-		if err := hbsecobject.Set("current", nextVersion, nextSecret); err != nil {
+		t.hbSecret.Rotate()
+		if err := hbsecobject.Set(*t.hbSecret.DeepCopy()); err != nil {
 			onError(fmt.Sprintf("commit candidate version %d failed: %s", nextVersion, err))
 			return
 		}

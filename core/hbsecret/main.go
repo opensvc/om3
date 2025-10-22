@@ -55,3 +55,12 @@ func (s *Secret) DeepCopy() *Secret {
 	v := *s
 	return &v
 }
+
+func (s *Secret) Rotate() {
+	oldS := s.currentSecret
+	oldV := s.CurrentVersion
+	s.currentSecret = s.nextSecret
+	s.CurrentVersion = s.NextVersion
+	s.nextSecret = oldS
+	s.NextVersion = oldV
+}

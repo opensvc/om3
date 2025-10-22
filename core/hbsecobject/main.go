@@ -52,7 +52,24 @@ func Get() (sec *hbsecret.Secret, err error) {
 	return
 }
 
-func Set(prefix string, version uint64, secret string) error {
+func Set(sec hbsecret.Secret) error {
+	if store, err := object.NewSec(naming.SecHb, object.WithVolatile(false)); err != nil {
+		return err
+	} else if err := store.TransactionChangeKey("current_secret", []byte(sec.CurrentKey())); err != nil {
+		return err
+	} else if err := store.TransactionChangeKey("current_version", []byte(fmt.Sprintf("%d", sec.CurrentKeyVersion()))); err != nil {
+		return err
+	} else if err := store.TransactionChangeKey("next_secret", []byte(sec.NextKey())); err != nil {
+		return err
+	} else if err := store.TransactionChangeKey("next_version", []byte(fmt.Sprintf("%d", sec.NextKeyVersion()))); err != nil {
+		return err
+	} else if err := store.Config().Commit(); err != nil {
+		return err
+	}
+	return nil
+}
+
+func Update(prefix string, version uint64, secret string) error {
 	if store, err := object.NewSec(naming.SecHb, object.WithVolatile(false)); err != nil {
 		return err
 	} else if err := store.TransactionChangeKey(prefix+"_secret", []byte(secret)); err != nil {
