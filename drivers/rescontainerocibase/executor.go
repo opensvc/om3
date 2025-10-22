@@ -91,7 +91,15 @@ outerLoop:
 	cmd.Stdin = os.Stdin
 	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stderr
-	return cmd.Run()
+	err = cmd.Run()
+	if err != nil {
+		switch cmd.ProcessState.ExitCode() {
+		case 130:
+			return nil
+		}
+		return err
+	}
+	return nil
 }
 
 func (e *Executor) HasImage(ctx context.Context) (bool, string, error) {
