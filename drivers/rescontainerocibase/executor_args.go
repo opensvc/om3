@@ -37,8 +37,8 @@ func (ea *ExecutorArg) CpCmdArgs(src, dst string) []string {
 	return []string{"cp", "-q", src, ea.BT.ContainerName() + ":" + dst}
 }
 
-func (ea *ExecutorArg) EnterCmdArgs() []string {
-	return []string{"exec", "-it", ea.BT.ContainerName()}
+func (ea *ExecutorArg) EnterCmdArgs(pid int) []string {
+	return []string{"nsenter", "-t", fmt.Sprint(pid), "--all"}
 }
 
 func (ea *ExecutorArg) ExecCmdArgs(args []string, env []string) []string {
@@ -50,8 +50,8 @@ func (ea *ExecutorArg) ExecCmdArgs(args []string, env []string) []string {
 	return append(l, args...)
 }
 
-func (ea *ExecutorArg) EnterCmdCheckArgs() []string {
-	return []string{"exec", ea.BT.ContainerName()}
+func (ea *ExecutorArg) EnterCmdCheckArgs(pid int) []string {
+	return []string{"nsenter", "-t", fmt.Sprint(pid), "--all"}
 }
 
 func (ea *ExecutorArg) HasImageArgs() *args.T {
