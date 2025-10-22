@@ -63,12 +63,15 @@ func (e *Executor) EncapCp(ctx context.Context, src, dst string) error {
 func (e *Executor) Enter() error {
 	var enterCmd string
 	candidates := []string{"/bin/bash", "/bin/sh"}
-	enterArgs := e.args.EnterCmdCheckArgs()
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	inspect, err := e.Inspect(ctx)
+	pid := inspect.PID()
+	if err != nil {
+		return err
+	}
 outerLoop:
 	for _, candidate := range candidates {
-		args := append(enterArgs, candidate)
-		cmd := exec.CommandContext(ctx, e.bin, args...)
+		cmd := exec.CommandContext(ctx, "nsenter", "-t", fmt.Sprint(pid), "--all", candidate)
 		_ = cmd.Run()
 
 		switch cmd.ProcessState.ExitCode() {
@@ -84,11 +87,19 @@ outerLoop:
 		return fmt.Errorf("can't enter: container needs at least one of following command: %s",
 			strings.Join(candidates, ", "))
 	}
-	cmd := exec.Command(e.bin, append(e.args.EnterCmdArgs(), enterCmd)...)
+	cmd := exec.Command("nsenter", "-t", fmt.Sprint(pid), "--all", enterCmd)
 	cmd.Stdin = os.Stdin
 	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stderr
-	return cmd.Run()
+	err = cmd.Run()
+	if err != nil {
+		switch cmd.ProcessState.ExitCode() {
+		case 130:
+			return nil
+		}
+		return err
+	}
+	return nil
 }
 
 func (e *Executor) HasImage(ctx context.Context) (bool, string, error) {
