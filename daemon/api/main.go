@@ -13,6 +13,11 @@ const (
 	HeaderRelativePath = "OM-relative-path"
 )
 
+const (
+	AliasLocalhost      = "localhost"
+	AliasShortLocalhost = "_"
+)
+
 func (t OrchestrationQueued) String() (out string) {
 	return fmt.Sprint(t.OrchestrationID)
 }

@@ -58,7 +58,7 @@ func fetchFromAPI(cli *client.T, p naming.Path) (b []byte, updated time.Time, er
 		mtime time.Time
 		resp  *api.GetInstanceConfigFileResponse
 	)
-	resp, err = cli.GetInstanceConfigFileWithResponse(context.Background(), cli.Hostname(), p.Namespace, p.Kind, p.Name)
+	resp, err = cli.GetInstanceConfigFileWithResponse(context.Background(), api.AliasShortLocalhost, p.Namespace, p.Kind, p.Name)
 	if err != nil {
 		return
 	} else if resp.StatusCode() != http.StatusOK {
