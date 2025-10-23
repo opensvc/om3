@@ -105,7 +105,6 @@ func (a *DaemonAPI) localInstanceResourceConsole(ctx echo.Context, namespace str
 		"-public", "-tty-proxy", consoleServer,
 		"-no-wait",
 		"-headless",
-		"-hangup",
 		"-listen", ":0",
 	}
 	if params.Seats != nil {
