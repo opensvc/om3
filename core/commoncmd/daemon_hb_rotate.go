@@ -107,6 +107,7 @@ func startEventWatcher(ctx context.Context, c *client.T, done chan<- error, time
 				_ = evReader.Close()
 			}
 		}()
+		started <- struct{}{}
 		for {
 			ev, readErr := evReader.Read()
 			if readErr != nil {
