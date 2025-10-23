@@ -438,6 +438,10 @@ paths:
       responses:
         200:
           description: OK
+          headers:
+            OM-Served-By:
+              description: The cluster nodename that processed the request
+              type: string
         400:
           $ref: '#/components/responses/400'
         401:
