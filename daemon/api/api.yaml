@@ -422,18 +422,18 @@ paths:
         This event is labeled node=<api_node>.
 
         To follow the processing of the join request, use the following event filters,
-        - JoinSuccess,node=<api_node>,added=<node> (the new node has been added to cluster nodes)
-        - JoinIgnored,node=<api_node>,join-node=<node> (the new node was already a cluster node)
-        - JoinError,node=<api_node>,join-node=<node> (an error occur during update cluster node list)
+        - JoinSuccess,node=<api_node>,added_node=<node> (the candidate node has been added to cluster nodes)
+        - JoinIgnored,node=<api_node>,candidate-node=<node> (the candidate node was already a cluster node)
+        - JoinError,node=<api_node>,candidate-node=<node> (an error occur during update cluster node list)
       operationId: PostClusterJoin
       parameters:
         - in: query
           name: node
-          description: The node to add to cluster nodes
+          description: The candidate node to add to cluster nodes
           required: true
           schema:
             type: string
-            example: new_node
+            example: candidate-node
             minLength: 2
       responses:
         200:

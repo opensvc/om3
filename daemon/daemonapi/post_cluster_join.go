@@ -17,14 +17,14 @@ func (a *DaemonAPI) PostClusterJoin(ctx echo.Context, params api.PostClusterJoin
 		return err
 	}
 	log := LogHandler(ctx, "PostClusterJoin")
-	node := params.Node
+	candidate := params.Node
 	// TODO verify is node value is a valid nodename
-	if node == "" {
-		log.Warnf("invalid node value: '%s'", node)
+	if candidate == "" {
+		log.Warnf("invalid node value: '%s'", candidate)
 		return JSONProblem(ctx, http.StatusBadRequest, "Invalid parameters", "Missing node param")
 	}
-	log.Infof("publish join request for node %s", node)
-	a.Publisher.Pub(&msgbus.JoinRequest{Node: node}, a.LabelLocalhost, labelOriginAPI)
+	log.Infof("publish join request for node %s", candidate)
+	a.Publisher.Pub(&msgbus.JoinRequest{CandidateNode: candidate}, a.LabelLocalhost, labelOriginAPI)
 	ctx.Response().Header().Add(api.HeaderServedBy, a.localhost)
 	return ctx.JSON(http.StatusOK, nil)
 }

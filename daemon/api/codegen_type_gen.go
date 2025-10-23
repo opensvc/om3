@@ -1885,7 +1885,7 @@ type GetClusterConfigKeywordsParams struct {
 
 // PostClusterJoinParams defines parameters for PostClusterJoin.
 type PostClusterJoinParams struct {
-	// Node The node to add to cluster nodes
+	// Node The candidate node to add to cluster nodes
 	Node string `form:"node" json:"node"`
 }
 

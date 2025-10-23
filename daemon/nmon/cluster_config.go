@@ -16,22 +16,22 @@ import (
 //
 // If error occurs publish msgbus.JoinIgnored, or msgbus.JoinError:
 //
-// - publish msgbus.JoinIgnored,join-node=node (the node already exists in cluster nodes)
-// - publish msgbus.JoinError,join-node=node (update cluster config object fails)
+// - publish msgbus.JoinIgnored,candidate-node=node (the node already exists in cluster nodes)
+// - publish msgbus.JoinError,candidate-node=node (update cluster config object fails)
 func (t *Manager) onJoinRequest(c *msgbus.JoinRequest) {
 	nodes := cluster.ConfigData.Get().Nodes
-	node := c.Node
+	candidate := c.CandidateNode
 	labels := []pubsub.Label{
 		{"node", hostname.Hostname()},
-		{"join-node", node},
+		{"candidate-node", candidate},
 	}
-	t.log.Infof("join request for node %s", node)
-	if slices.Contains(nodes, node) {
+	t.log.Infof("join request from candidate node %s", candidate)
+	if slices.Contains(nodes, candidate) {
 		t.log.Debugf("join request ignored already member")
-		t.publisher.Pub(&msgbus.JoinIgnored{Node: node}, labels...)
-	} else if err := t.addClusterNode(node); err != nil {
+		t.publisher.Pub(&msgbus.JoinIgnored{CandidateNode: candidate}, labels...)
+	} else if err := t.addClusterNode(candidate); err != nil {
 		t.log.Warnf("join request denied: %s", err)
-		t.publisher.Pub(&msgbus.JoinError{Node: node, Reason: err.Error()}, labels...)
+		t.publisher.Pub(&msgbus.JoinError{CandidateNode: candidate, Reason: err.Error()}, labels...)
 	}
 }
 

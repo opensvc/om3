@@ -92,9 +92,9 @@ func (t *CmdClusterJoin) run() error {
 
 	localhost := hostname.Hostname()
 	filters := []string{
-		"JoinSuccess,added=" + localhost + ",node=" + t.Node,
-		"JoinError,join-node=" + localhost,
-		"JoinIgnored,join-node=" + localhost,
+		"JoinSuccess,added-node=" + localhost,
+		"JoinError,candidate-node=" + localhost,
+		"JoinIgnored,candidate-node=" + localhost,
 	}
 	ctx, cancel := context.WithTimeout(context.Background(), t.Timeout)
 	defer cancel()
@@ -276,14 +276,18 @@ func (t *CmdClusterJoin) waitJoinResult(ctx context.Context, evReader event.Read
 			if err != nil {
 				return err
 			}
-			switch ev.Kind {
-			case (&msgbus.JoinSuccess{}).Kind():
+			msg, err := msgbus.EventToMessage(*ev)
+			if err != nil {
+				return err
+			}
+			switch msg.(type) {
+			case *msgbus.JoinSuccess:
 				_, _ = fmt.Fprintf(os.Stdout, "Cluster nodes updated\n")
 				return nil
-			case (&msgbus.JoinError{}).Kind():
+			case *msgbus.JoinError:
 				err := fmt.Errorf("join error event %s", ev.Data)
 				return err
-			case (&msgbus.JoinIgnored{}).Kind():
+			case *msgbus.JoinIgnored:
 				// TODO parse Reason
 				_, _ = fmt.Fprintf(os.Stdout, "Join ignored: %s", ev.Data)
 				return nil

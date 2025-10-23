@@ -598,27 +598,28 @@ type (
 
 	JoinError struct {
 		pubsub.Msg `yaml:",inline"`
-		// Node is a node that can't be added to cluster config nodes
-		Node   string `json:"node" yaml:"node"`
-		Reason string `json:"reason" yaml:"reason"`
+		// CandidateNode is the candidate node that can't be added to cluster config nodes
+		CandidateNode string `json:"candidate_node" yaml:"candidate_node"`
+		Reason        string `json:"reason" yaml:"reason"`
 	}
 
 	JoinIgnored struct {
 		pubsub.Msg `yaml:",inline"`
-		// Node is a node that is already in cluster config nodes
-		Node string `json:"node" yaml:"node"`
+		// CandidateNode is a candidate node that is already present in cluster config nodes
+		CandidateNode string `json:"candidate_node" yaml:"candidate_node"`
 	}
 
 	JoinRequest struct {
 		pubsub.Msg `yaml:",inline"`
-		// Node is a node to add to cluster config nodes
-		Node string `json:"node" yaml:"node"`
+		// CandidateNode is a candidate node to add to cluster config nodes
+		CandidateNode string `json:"candidate_node" yaml:"candidate_node"`
 	}
 
 	JoinSuccess struct {
 		pubsub.Msg `yaml:",inline"`
-		// Node is the successfully added node in cluster config nodes
-		Node string `json:"node" yaml:"node"`
+		// AddedNode is a node that has been successfully added to the cluster config nodes
+		// after join request or sysadmin cluster config nodes update.
+		AddedNode string `json:"added_node" yaml:"added_node"`
 	}
 
 	LeaveError struct {

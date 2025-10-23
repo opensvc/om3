@@ -48,7 +48,7 @@ func (t *Manager) pubClusterConfig() {
 	t.publisher.Pub(&msgbus.ClusterConfigUpdated{Node: t.localhost, Value: state, NodesAdded: added, NodesRemoved: removed}, labelLocalhost)
 
 	for _, v := range added {
-		t.publisher.Pub(&msgbus.JoinSuccess{Node: v}, labelLocalhost, pubsub.Label{"added", v})
+		t.publisher.Pub(&msgbus.JoinSuccess{AddedNode: v}, labelLocalhost, pubsub.Label{"added", v})
 	}
 	for _, v := range removed {
 		t.publisher.Pub(&msgbus.LeaveSuccess{Node: v}, labelLocalhost, pubsub.Label{"removed", v})
