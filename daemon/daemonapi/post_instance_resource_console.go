@@ -115,6 +115,8 @@ func (a *DaemonAPI) localInstanceResourceConsole(ctx echo.Context, namespace str
 		} else {
 			args = append(args, "-seats", fmt.Sprintf("%d", *params.Seats))
 		}
+	} else {
+		args = append(args, "-seats", "1")
 	}
 	if params.GreetTimeout != nil {
 		if d, err := time.ParseDuration(*params.GreetTimeout); err != nil {
@@ -126,6 +128,8 @@ func (a *DaemonAPI) localInstanceResourceConsole(ctx echo.Context, namespace str
 		} else {
 			args = append(args, "-greet-timeout", fmt.Sprintf("%s", *params.GreetTimeout))
 		}
+	} else {
+		args = append(args, "-greet-timeout", "5s")
 	}
 	if config.GetBool(key.New("console", "insecure")) {
 		args = append(args, "-k")
