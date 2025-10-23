@@ -8,6 +8,7 @@ import (
 	"io"
 	"net/http"
 	"os"
+	"os/exec"
 	"slices"
 	"sort"
 	"strings"
@@ -382,6 +383,8 @@ func (t *App) initApp() {
 			t.stop()
 		case 'r':
 			t.onRuneR(event)
+		case 't':
+			t.onRuneT(event)
 		}
 		return event
 	})
@@ -1954,6 +1957,41 @@ func (t *App) onRuneC(event *tcell.EventKey) {
 	t.initTextView()
 	t.updateConfigView()
 	t.nav(viewConfig)
+}
+
+func (t *App) onRuneT(_ *tcell.EventKey) {
+	url := ""
+	// Do the api request to get the good url
+	t.openTtyTerminal(false, url)
+}
+
+func (t *App) openTtyTerminal(insecure bool, url string) {
+	t.app.Suspend(func() {
+		var args []string
+		if insecure {
+			args = append(args, "-k")
+		}
+		args = append(args, url)
+		cmd := exec.Command("tty-share", args...)
+		cmd.Stdin = os.Stdin
+		cmd.Stdout = os.Stdout
+		cmd.Stderr = os.Stderr
+		if err := cmd.Run(); err != nil {
+			var exitErr *exec.ExitError
+			if errors.As(err, &exitErr) {
+				code := exitErr.ExitCode()
+				if code == 2 && !insecure {
+					t.confirmAction(func() {
+						t.openTtyTerminal(true, url)
+					}, "Tty certificate error")
+				} else if code == 1 {
+					t.errorf("URL not valid")
+				}
+				return
+			}
+			return
+		}
+	})
 }
 
 func (t *App) updateConfigView() {
