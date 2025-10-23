@@ -25,5 +25,6 @@ func (a *DaemonAPI) PostClusterJoin(ctx echo.Context, params api.PostClusterJoin
 	}
 	log.Infof("publish join request for node %s", node)
 	a.Publisher.Pub(&msgbus.JoinRequest{Node: node}, a.LabelLocalhost, labelOriginAPI)
+	ctx.Response().Header().Add(api.HeaderLastModified, "")
 	return ctx.JSON(http.StatusOK, nil)
 }

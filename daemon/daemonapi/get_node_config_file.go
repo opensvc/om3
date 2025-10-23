@@ -25,7 +25,7 @@ func (a *DaemonAPI) GetNodeConfigFile(ctx echo.Context, nodename string) error {
 		filename := rawconfig.NodeConfigFile()
 		mtime := file.ModTime(filename)
 		if !mtime.IsZero() {
-			ctx.Response().Header().Add(api.HeaderLastModifiedNano, mtime.Format(time.RFC3339Nano))
+			ctx.Response().Header().Add(api.HeaderLastModified, mtime.Format(time.RFC3339Nano))
 			log.Infof("serve node config file to %s", userFromContext(ctx).GetUserName())
 			return ctx.File(filename)
 		}

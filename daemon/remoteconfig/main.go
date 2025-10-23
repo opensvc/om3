@@ -65,7 +65,7 @@ func fetchFromAPI(cli *client.T, p naming.Path) (b []byte, updated time.Time, er
 		err = fmt.Errorf("unexpected get object file %s status %s", p, resp.Status())
 		return
 	}
-	if mtime, err = time.Parse(time.RFC3339Nano, resp.HTTPResponse.Header.Get(api.HeaderLastModifiedNano)); err != nil {
+	if mtime, err = time.Parse(time.RFC3339Nano, resp.HTTPResponse.Header.Get(api.HeaderLastModified)); err != nil {
 		return
 	}
 	return resp.Body, mtime, nil

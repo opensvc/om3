@@ -37,11 +37,11 @@ func (a *DaemonAPI) GetObjectConfigFile(ctx echo.Context, namespace string, kind
 			return JSONProblemf(ctx, http.StatusNotFound, "Not found", "config file not found: %s", filename)
 		}
 
-		ctx.Response().Header().Add(api.HeaderLastModifiedNano, mtime.Format(time.RFC3339Nano))
+		ctx.Response().Header().Add(api.HeaderLastModified, mtime.Format(time.RFC3339Nano))
 		log.Infof("serve config file %s to %s", objPath, userFromContext(ctx).GetUserName())
 		return ctx.File(filename)
 	}
-	for nodename  := range instance.ConfigData.GetByPath(objPath) {
+	for nodename := range instance.ConfigData.GetByPath(objPath) {
 		return a.proxy(ctx, nodename, func(c *client.T) (*http.Response, error) {
 			return c.GetObjectConfigFile(ctx.Request().Context(), namespace, kind, name)
 		})
