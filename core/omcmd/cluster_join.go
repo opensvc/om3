@@ -92,9 +92,9 @@ func (t *CmdClusterJoin) run() error {
 
 	localhost := hostname.Hostname()
 	filters := []string{
-		"JoinSuccess,added-node=" + localhost,
-		"JoinError,candidate-node=" + localhost,
-		"JoinIgnored,candidate-node=" + localhost,
+		"JoinSuccess,added_node=" + localhost,
+		"JoinError,candidate_node=" + localhost,
+		"JoinIgnored,candidate_node=" + localhost,
 	}
 	ctx, cancel := context.WithTimeout(context.Background(), t.Timeout)
 	defer cancel()

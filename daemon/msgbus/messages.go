@@ -624,15 +624,15 @@ type (
 
 	LeaveError struct {
 		pubsub.Msg `yaml:",inline"`
-		// Node is a node that can't be removed from cluster config nodes
-		Node   string `json:"node" yaml:"node"`
-		Reason string
+		// CandidateNode is a candidate node that can't be removed from cluster config nodes
+		CandidateNode string `json:"candidate_node" yaml:"candidate_node"`
+		Reason        string
 	}
 
 	LeaveIgnored struct {
 		pubsub.Msg `yaml:",inline"`
-		// Node is a node that is not in cluster config nodes
-		Node string `json:"node" yaml:"node"`
+		// CandidateNode is a candidate node that is not a cluster config node
+		CandidateNode string `json:"candidate_node" yaml:"candidate_node"`
 	}
 
 	LeaveOverloadPeriod struct {
@@ -641,14 +641,14 @@ type (
 
 	LeaveRequest struct {
 		pubsub.Msg `yaml:",inline"`
-		// Node is a node to remove to cluster config nodes
-		Node string `json:"node" yaml:"node"`
+		// CandidateNode is a node to remove to cluster config nodes
+		CandidateNode string `json:"candidate_node" yaml:"candidate_node"`
 	}
 
 	LeaveSuccess struct {
 		pubsub.Msg `yaml:",inline"`
-		// Node is the successfully removed node from cluster config nodes
-		Node string `json:"node" yaml:"node"`
+		// RemovedNode is the successfully removed node from cluster config nodes
+		RemovedNode string `json:"removed_node" yaml:"removed_node"`
 	}
 
 	// Log is a log message.

@@ -2,7 +2,7 @@ openapi: 3.0.0
 
 info:
   title: opensvc agent api
-  version: 4.1.1
+  version: 4.1.2
 
 paths:
   /api/auth/info:
@@ -423,8 +423,8 @@ paths:
 
         To follow the processing of the join request, use the following event filters,
         - JoinSuccess,node=<api_node>,added_node=<node> (the candidate node has been added to cluster nodes)
-        - JoinIgnored,node=<api_node>,candidate-node=<node> (the candidate node was already a cluster node)
-        - JoinError,node=<api_node>,candidate-node=<node> (an error occur during update cluster node list)
+        - JoinIgnored,node=<api_node>,candidate_node=<node> (the candidate node was already a cluster node)
+        - JoinError,node=<api_node>,candidate_node=<node> (an error occur during update cluster node list)
       operationId: PostClusterJoin
       parameters:
         - in: query
@@ -469,9 +469,9 @@ paths:
         This event is labeled node=<api_node>.
 
         To follow the processing of the leave request, use the following event filters,
-        - LeaveSuccess,node=<api_node>,removed=<node> (node has been removed to cluster nodes)
-        - LeaveIgnored,node=<api_node>,leave-node=<node> (node is not a cluster node)
-        - LeaveError,node=<api_node>,leave-node=<node> (an error occur during update cluster node list)
+        - LeaveSuccess,node=<api_node>,removed_node=<node> (node has been removed to cluster nodes)
+        - LeaveIgnored,node=<api_node>,candidate_node=<node> (node is not a cluster node)
+        - LeaveError,node=<api_node>,candidate_node=<node> (an error occur during update cluster node list)
       operationId: PostClusterLeave
       parameters:
         - in: query
@@ -480,7 +480,7 @@ paths:
           required: true
           schema:
             type: string
-            example: node-wto-remove
+            example: node-to-remove
             minLength: 2
       responses:
         200:
