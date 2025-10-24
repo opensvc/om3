@@ -11,6 +11,7 @@ import (
 	"os/exec"
 	"slices"
 	"sort"
+	"strconv"
 	"strings"
 	"sync"
 	"sync/atomic"
@@ -48,6 +49,11 @@ type (
 	PoolData struct {
 		pool.Status
 		Node string
+	}
+
+	AskInputData struct {
+		label       string
+		defaultText string
 	}
 
 	CreateTableOptions struct {
@@ -384,7 +390,24 @@ func (t *App) initApp() {
 		case 'r':
 			t.onRuneR(event)
 		case 't':
-			t.onRuneT(event)
+			if t.focus() == viewInstance && strings.HasPrefix(t.viewRID, "container") {
+				t.onRuneT(event)
+			}
+		case 'T':
+			if t.focus() == viewInstance && strings.HasPrefix(t.viewRID, "container") {
+				t.askInput("Enter tty-share", func(inputValues ...string) bool {
+					seatsStr := inputValues[0]
+					seats, err := strconv.Atoi(seatsStr)
+					if err != nil {
+						t.errorf("invalid seats value: %s", err)
+						return false
+					}
+					greetTimeout := inputValues[1]
+					t.onRuneShiftT(event, seats, greetTimeout)
+					return true
+				}, AskInputData{"Seats", "1"}, AskInputData{"Greet timeout", "5s"})
+			}
+		case 'p':
 		}
 		return event
 	})
@@ -1107,10 +1130,11 @@ func (t *App) setFilter(s string) {
 func (t *App) confirmAction(action func(), messages ...string) {
 	t.isOnConfirmation = true
 	t.focused = true
+	oldFocus := t.app.GetFocus()
 
 	grid := tview.NewGrid().
 		SetRows(0, 12, 0).
-		SetColumns(0, 72, 0)
+		SetColumns(0, 110, 0)
 
 	grid.SetBackgroundColor(tcell.ColorBlack)
 
@@ -1122,7 +1146,11 @@ func (t *App) confirmAction(action func(), messages ...string) {
 
 	clean := func() {
 		t.app.SetRoot(t.flex, true)
-		t.app.SetFocus(t.flex.GetItem(1))
+		if oldFocus != nil && t.focus() != viewObject {
+			t.app.SetFocus(oldFocus)
+		} else {
+			t.app.SetFocus(t.flex.GetItem(1))
+		}
 		t.isOnConfirmation = false
 		t.focused = false
 	}
@@ -1168,8 +1196,8 @@ func (t *App) confirmAction(action func(), messages ...string) {
 				showMessage()
 				return nil
 			}
-			action()
 			clean()
+			action()
 			return nil
 		}
 		return event
@@ -1197,6 +1225,112 @@ func (t *App) confirmAction(action func(), messages ...string) {
 
 	t.app.SetRoot(pages, true)
 	t.app.SetFocus(confirmFlex)
+}
+
+func (t *App) askInput(title string, onEnter func(inputValues ...string) bool, inputsData ...AskInputData) {
+	t.focused = true
+	oldFocus := t.app.GetFocus()
+
+	filler := tview.NewTextView().
+		SetDynamicColors(false).
+		SetText("")
+	filler.SetBackgroundColor(tcell.ColorBlack)
+	filler.SetTextColor(tcell.ColorBlack)
+	filler.SetBorderPadding(0, 0, 1, 1)
+
+	rowSize := (len(inputsData) + 1) * 2
+
+	grid := tview.NewGrid().
+		SetRows(0, rowSize+2, 0).
+		SetColumns(0, 45, 0)
+
+	flex := tview.NewFlex().SetDirection(tview.FlexRow)
+	flex.SetTitle(title).SetTitleAlign(tview.AlignLeft).
+		SetBorder(true)
+	flex.SetBackgroundColor(tcell.ColorBlack)
+
+	grid.AddItem(flex, 1, 1, 1, 1, 0, 0, true)
+	grid.SetBackgroundColor(tcell.ColorBlack)
+
+	clean := func() {
+		t.focused = false
+		t.app.SetRoot(t.flex, true)
+		if oldFocus != nil {
+			t.app.SetFocus(oldFocus)
+		} else {
+			t.app.SetFocus(t.flex.GetItem(1))
+		}
+	}
+
+	inputFlex := tview.NewFlex().SetDirection(tview.FlexRow)
+	inputFlex.SetBackgroundColor(tcell.ColorBlack)
+
+	for i, inputData := range inputsData {
+		inputField := tview.NewInputField().
+			SetLabel(inputData.label + ": ").
+			SetText(inputData.defaultText).
+			SetFieldBackgroundColor(tcell.ColorDarkGray)
+		inputField.SetFieldTextColor(tcell.ColorBlack)
+
+		centerFlex := tview.NewFlex().SetDirection(tview.FlexColumn)
+		centerFlex.SetBackgroundColor(tcell.ColorBlack)
+		ratio := 1
+		if len(inputData.label) > 10 {
+			ratio = 2
+		}
+		centerFlex.AddItem(filler, 0, 1, false)
+		centerFlex.AddItem(inputField, 0, 2*ratio, i == 0)
+		centerFlex.AddItem(filler, 0, 1*ratio, false)
+
+		inputFlex.AddItem(centerFlex, 2, 0, i == 0)
+	}
+
+	selected := 0
+
+	mod := func(a, b int) int {
+		return ((a % b) + b) % b
+	}
+
+	flex.SetInputCapture(func(event *tcell.EventKey) *tcell.EventKey {
+		switch event.Key() {
+		case tcell.KeyESC:
+			clean()
+			return nil
+		case tcell.KeyEnter:
+			inputValues := make([]string, inputFlex.GetItemCount())
+			for i := 0; i < inputFlex.GetItemCount(); i++ {
+				if centerFlex, ok := inputFlex.GetItem(i).(*tview.Flex); ok {
+					if inputField, ok := centerFlex.GetItem(1).(*tview.InputField); ok {
+						inputValues[i] = inputField.GetText()
+					}
+				}
+			}
+			clean()
+			if !onEnter(inputValues...) {
+				t.askInput(title, onEnter, inputsData...)
+			}
+			return nil
+		case tcell.KeyUp, tcell.KeyDown, tcell.KeyTab:
+			direction := map[tcell.Key]int{tcell.KeyUp: -1, tcell.KeyDown: 1, tcell.KeyTab: 1}[event.Key()]
+			selected = mod(selected+direction, inputFlex.GetItemCount())
+			centerFlex := inputFlex.GetItem(selected).(*tview.Flex)
+			t.app.SetFocus(centerFlex.GetItem(1))
+			return nil
+		default:
+		}
+		return event
+	})
+
+	flex.AddItem(filler, 0, 1, false)
+	flex.AddItem(inputFlex, len(inputsData)*2, 0, true)
+	flex.AddItem(filler, 0, 1, false)
+
+	pages := tview.NewPages()
+	pages.AddPage("base", t.flex, true, true)
+	pages.AddPage("input", grid, true, true)
+
+	t.app.SetRoot(pages, true)
+	t.app.SetFocus(flex)
 }
 
 func (t *App) actionNodeDaemonRestart(nodes map[string]any) {
@@ -1960,9 +2094,62 @@ func (t *App) onRuneC(event *tcell.EventKey) {
 }
 
 func (t *App) onRuneT(_ *tcell.EventKey) {
-	url := ""
-	// Do the api request to get the good url
+	url, err := t.getTtyTerminalURL(0, "")
+	if err != nil {
+		t.errorf("%s", err)
+		return
+	}
 	t.openTtyTerminal(false, url)
+}
+
+func (t *App) onRuneShiftT(_ *tcell.EventKey, seats int, greetTimeout string) {
+	url, err := t.getTtyTerminalURL(seats, greetTimeout)
+	if err != nil {
+		t.errorf("%s", err)
+		return
+	}
+	t.confirmAction(func() {
+		t.openTtyTerminal(false, url)
+	}, "The URL for the tty-share session is : \n"+url)
+}
+
+func (t *App) getTtyTerminalURL(seats int, greetTimeout string) (string, error) {
+	c, err := client.New()
+	if err != nil {
+		return "", fmt.Errorf("failed to create client: %s", err)
+	}
+
+	params := api.PostInstanceResourceConsoleParams{}
+	params.Rid = &t.viewRID
+
+	if seats > 0 {
+		params.Seats = &seats
+	}
+	if greetTimeout != "" {
+		params.GreetTimeout = &greetTimeout
+	}
+
+	resp, err := c.PostInstanceResourceConsoleWithResponse(context.Background(), t.viewNode, t.viewPath.Namespace, t.viewPath.Kind, t.viewPath.Name, &params)
+	if err != nil {
+		return "", fmt.Errorf("failed to get tty-share URL: %s", err)
+	}
+	if resp.StatusCode() != http.StatusCreated {
+		switch resp.StatusCode() {
+		case 400:
+			return "", fmt.Errorf("%s", resp.JSON400)
+		case 401:
+			return "", fmt.Errorf("%s", resp.JSON401)
+		case 403:
+			return "", fmt.Errorf("%s", resp.JSON403)
+		case 404:
+			return "", fmt.Errorf("%s", resp.JSON404)
+		case 500:
+			return "", fmt.Errorf("%s", resp.JSON500)
+		default:
+			return "", fmt.Errorf("unexpected status code: %d", resp.StatusCode())
+		}
+	}
+	return resp.HTTPResponse.Header.Get("Location"), nil
 }
 
 func (t *App) openTtyTerminal(insecure bool, url string) {
@@ -1983,9 +2170,9 @@ func (t *App) openTtyTerminal(insecure bool, url string) {
 				if code == 2 && !insecure {
 					t.confirmAction(func() {
 						t.openTtyTerminal(true, url)
-					}, "Tty certificate error")
+					}, "Invalid certificate, proceed anyway ?")
 				} else if code == 1 {
-					t.errorf("URL not valid")
+					t.errorf("The url may be invalid or the tty-share server is unreachable.")
 				}
 				return
 			}
