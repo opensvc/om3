@@ -45,7 +45,7 @@ func (t *T) Network() string {
 //	   "name": "lo",
 //	   "type": "loopback"
 //	}
-func (t T) CNIConfigData() (interface{}, error) {
+func (t *T) CNIConfigData() (interface{}, error) {
 	m := map[string]interface{}{
 		"cniVersion": network.CNIVersion,
 		"name":       t.Name(),
