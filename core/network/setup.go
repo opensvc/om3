@@ -10,6 +10,7 @@ import (
 	"path/filepath"
 	"strings"
 
+	"github.com/opensvc/om3/core/keyop"
 	"github.com/opensvc/om3/core/object"
 	"github.com/opensvc/om3/util/file"
 )
@@ -29,8 +30,13 @@ func Setup(n *object.Node) error {
 	if err != nil {
 		return err
 	}
+	cluster, err := object.NewCluster()
+	if err != nil {
+		return err
+	}
 	nws := Networks(n)
 	needCommit := make([]string, 0)
+	kops := make(keyop.L, 0)
 	for _, nw := range nws {
 		if err := checkOverlap(nw, nws); err != nil {
 			nw.Log().Errorf("network setup: %s", err)
@@ -43,11 +49,12 @@ func Setup(n *object.Node) error {
 		}
 		if nw.NeedCommit() {
 			needCommit = append(needCommit, nw.Name())
+			kops = append(kops, nw.Kops()...)
 		}
 	}
 	if len(needCommit) > 0 {
 		n.Log().Infof("network setup: commit config changes on %s", strings.Join(needCommit, ","))
-		n.MergedConfig().Commit()
+		cluster.Config().Set(kops...)
 	}
 	if err := setupFW(n, nws); err != nil {
 		errs = append(errs, err)

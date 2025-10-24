@@ -12,16 +12,15 @@ import (
 	"github.com/vishvananda/netlink"
 
 	"github.com/opensvc/om3/core/driver"
-	"github.com/opensvc/om3/core/keyop"
 	"github.com/opensvc/om3/core/network"
 	"github.com/opensvc/om3/util/hostname"
-	"github.com/opensvc/om3/util/key"
 	"github.com/opensvc/om3/util/plog"
 )
 
 type (
 	T struct {
 		network.T
+		subnetMap map[string]string
 	}
 )
 
@@ -67,10 +66,11 @@ func New() *T {
 //	       ]
 //	   }
 //	}
-func (t T) CNIConfigData() (interface{}, error) {
+func (t *T) CNIConfigData() (interface{}, error) {
 	name := t.Name()
 	nwStr := t.Network()
 	brName := t.brName()
+	subnetStr := t.subnet()
 	brIP, err := t.bridgeIP()
 	if err != nil {
 		return nil, err
@@ -88,7 +88,7 @@ func (t T) CNIConfigData() (interface{}, error) {
 				{"dst": defaultRouteDst(nwStr)},
 				{"dst": nwStr, "gw": brIP.String()},
 			},
-			"subnet": t.subnet(),
+			"subnet": subnetStr,
 		},
 	}
 	return m, nil
@@ -110,7 +110,7 @@ func isIP6(cidr string) bool {
 	return ip.To4() == nil
 }
 
-func (t T) bridgeIP() (net.IP, error) {
+func (t *T) bridgeIP() (net.IP, error) {
 	subnetStr := t.subnet()
 	if subnetStr == "" {
 		return nil, fmt.Errorf("network#%s.subnet is required", t.Name())
@@ -123,8 +123,8 @@ func (t T) bridgeIP() (net.IP, error) {
 	return ip, nil
 }
 
-func (t T) allocateSubnets() error {
-	subnetMap, err := t.subnetMap()
+func (t *T) allocateSubnets() error {
+	subnetMap, err := t.subnets()
 	if err != nil {
 		return err
 	}
@@ -164,21 +164,21 @@ func (t T) allocateSubnets() error {
 		return err
 	}
 	subnetOnes := int(math.Log2(float64(ipsPerNode)))
+	m := make(map[string]string)
 
-	kops := make([]keyop.T, 0)
 	for _, nodename := range nodes {
 		subnet := fmt.Sprintf("%s/%d", addr, bits-subnetOnes)
 		for i := 0; i < ipsPerNode; i++ {
 			addr = addr.Next()
 		}
-		kops = append(kops, keyop.T{
-			Key:   key.New("network#"+t.Name(), "subnet@"+nodename),
-			Op:    keyop.Set,
-			Value: subnet,
-		})
+		if err := t.Set("subnet@"+nodename, subnet); err != nil {
+			return err
+		}
+		m[nodename] = subnet
 		t.Log().Infof("assign subnet %s to node %s", subnet, nodename)
 	}
-	return t.Config().Set(kops...)
+	t.subnetMap = m
+	return nil
 }
 
 func (t *T) Setup() error {
@@ -270,7 +270,7 @@ func (t *T) setupNode(nodename string, nodeIndex int, localIP, brIP net.IP) erro
 	return nil
 }
 
-func (t T) mustTunnel(tunnel string, peerIP net.IP) (bool, error) {
+func (t *T) mustTunnel(tunnel string, peerIP net.IP) (bool, error) {
 	if tunnel == "never" {
 		return false, nil
 	}
@@ -370,7 +370,7 @@ func (t *T) setupNodeTunnelLinkUp(name string) error {
 	return nil
 }
 
-func (t T) getTunnelByEndpoints(localIP, peerIP net.IP) (netlink.Link, error) {
+func (t *T) getTunnelByEndpoints(localIP, peerIP net.IP) (netlink.Link, error) {
 	links, err := netlink.LinkList()
 	if err != nil {
 		return nil, err
@@ -392,7 +392,7 @@ func (t T) getTunnelByEndpoints(localIP, peerIP net.IP) (netlink.Link, error) {
 	return nil, nil
 }
 
-func (t T) isSameTunnelMode(link netlink.Link, mode string) bool {
+func (t *T) isSameTunnelMode(link netlink.Link, mode string) bool {
 	name := link.Attrs().Name
 	switch link.(type) {
 	case *netlink.Gretun:
@@ -415,7 +415,7 @@ func (t T) isSameTunnelMode(link netlink.Link, mode string) bool {
 	return true
 }
 
-func (t T) isSameTunnelEndpoints(link netlink.Link, localIP, peerIP net.IP) bool {
+func (t *T) isSameTunnelEndpoints(link netlink.Link, localIP, peerIP net.IP) bool {
 	name := link.Attrs().Name
 	var local, remote net.IP
 	switch tun := link.(type) {
@@ -443,7 +443,7 @@ func (t T) isSameTunnelEndpoints(link netlink.Link, localIP, peerIP net.IP) bool
 	return true
 }
 
-func (t T) modTunnel(name, mode string, localIP, peerIP net.IP) error {
+func (t *T) modTunnel(name, mode string, localIP, peerIP net.IP) error {
 	if mode == "gre" {
 		return t.modTunnelGre(name, localIP, peerIP)
 	}
@@ -454,7 +454,7 @@ func (t T) modTunnel(name, mode string, localIP, peerIP net.IP) error {
 	}
 }
 
-func (t T) addTunnel(name, mode string, localIP, peerIP net.IP) error {
+func (t *T) addTunnel(name, mode string, localIP, peerIP net.IP) error {
 	if mode == "gre" {
 		return t.addTunnelGre(name, localIP, peerIP)
 	}
@@ -465,11 +465,11 @@ func (t T) addTunnel(name, mode string, localIP, peerIP net.IP) error {
 	}
 }
 
-func (t T) loggerWithLink(link any) *plog.Logger {
+func (t *T) loggerWithLink(link any) *plog.Logger {
 	return t.Log().Attr("link", link)
 }
 
-func (t T) modTunnelGre(name string, localIP, peerIP net.IP) error {
+func (t *T) modTunnelGre(name string, localIP, peerIP net.IP) error {
 	link := &netlink.Ip6tnl{
 		LinkAttrs: netlink.LinkAttrs{
 			Name:      name,
@@ -487,7 +487,7 @@ func (t T) modTunnelGre(name string, localIP, peerIP net.IP) error {
 	}
 }
 
-func (t T) modTunnelIp6(name string, localIP, peerIP net.IP) error {
+func (t *T) modTunnelIp6(name string, localIP, peerIP net.IP) error {
 	link := &netlink.Ip6tnl{
 		LinkAttrs: netlink.LinkAttrs{
 			Name:      name,
@@ -505,7 +505,7 @@ func (t T) modTunnelIp6(name string, localIP, peerIP net.IP) error {
 	}
 }
 
-func (t T) modTunnelIp4(name string, localIP, peerIP net.IP) error {
+func (t *T) modTunnelIp4(name string, localIP, peerIP net.IP) error {
 	link := &netlink.Iptun{
 		LinkAttrs: netlink.LinkAttrs{
 			Name:      name,
@@ -523,7 +523,7 @@ func (t T) modTunnelIp4(name string, localIP, peerIP net.IP) error {
 	}
 }
 
-func (t T) addTunnelGre(name string, localIP, peerIP net.IP) error {
+func (t *T) addTunnelGre(name string, localIP, peerIP net.IP) error {
 	link := &netlink.Gretun{
 		LinkAttrs: netlink.LinkAttrs{
 			Name:      name,
@@ -536,7 +536,7 @@ func (t T) addTunnelGre(name string, localIP, peerIP net.IP) error {
 	return netlink.LinkAdd(link)
 }
 
-func (t T) addTunnelIp6(name string, localIP, peerIP net.IP) error {
+func (t *T) addTunnelIp6(name string, localIP, peerIP net.IP) error {
 	link := &netlink.Ip6tnl{
 		LinkAttrs: netlink.LinkAttrs{
 			Name:      name,
@@ -549,7 +549,7 @@ func (t T) addTunnelIp6(name string, localIP, peerIP net.IP) error {
 	return netlink.LinkAdd(link)
 }
 
-func (t T) addTunnelIp4(name string, localIP, peerIP net.IP) error {
+func (t *T) addTunnelIp4(name string, localIP, peerIP net.IP) error {
 	link := &netlink.Iptun{
 		LinkAttrs: netlink.LinkAttrs{
 			Name:      name,
@@ -570,7 +570,7 @@ func tunName(peerIP net.IP, nodeIndex int) string {
 	}
 }
 
-func (t T) setupBridge() (netlink.Link, error) {
+func (t *T) setupBridge() (netlink.Link, error) {
 	la := netlink.NewLinkAttrs()
 	la.Name = t.brName()
 	link, err := netlink.LinkByName(la.Name)
@@ -592,11 +592,18 @@ func (t T) setupBridge() (netlink.Link, error) {
 	return br, nil
 }
 
-func (t T) subnet() string {
+func (t *T) subnet() string {
+	if t.subnetMap != nil {
+		s, _ := t.subnetMap[hostname.Hostname()]
+		return s
+	}
 	return t.GetString("subnet")
 }
 
-func (t T) subnetMap() (map[string]string, error) {
+func (t *T) subnets() (map[string]string, error) {
+	if t.subnetMap != nil {
+		return t.subnetMap, nil
+	}
 	m := make(map[string]string)
 	nodes, err := t.Nodes()
 	if err != nil {
@@ -605,22 +612,23 @@ func (t T) subnetMap() (map[string]string, error) {
 	for _, nodename := range nodes {
 		m[nodename] = t.GetString("subnet@" + nodename)
 	}
+	t.subnetMap = m
 	return m, nil
 }
 
-func (t T) tunnel() string {
+func (t *T) tunnel() string {
 	return t.GetString("tunnel")
 }
 
-func (t T) brName() string {
+func (t *T) brName() string {
 	return "obr_" + t.Name()
 }
 
-func (t T) BackendDevName() string {
+func (t *T) BackendDevName() string {
 	return t.brName()
 }
 
-func (t T) setupBridgeMAC(br netlink.Link, brIP net.IP) error {
+func (t *T) setupBridgeMAC(br netlink.Link, brIP net.IP) error {
 	var (
 		mac net.HardwareAddr
 		err error
@@ -642,12 +650,12 @@ func (t T) setupBridgeMAC(br netlink.Link, brIP net.IP) error {
 	return netlink.LinkSetHardwareAddr(br, mac)
 }
 
-func (t T) setupBridgeIP(br netlink.Link, brIP net.IP) error {
+func (t *T) setupBridgeIP(br netlink.Link, brIP net.IP) error {
+	subnetStr := t.subnet()
 	if br == nil {
 		return nil
 	}
 	brName := t.brName()
-	subnetStr := t.subnet()
 	_, ipnet, err := net.ParseCIDR(subnetStr)
 	if err != nil {
 		return err
@@ -677,7 +685,7 @@ func (t T) setupBridgeIP(br netlink.Link, brIP net.IP) error {
 
 // getNodeIP returns the addr scoped for nodename from the network config.
 // Defaults to the first resolved ip address with the network address family (ip4 or ip6).
-func (t T) getNodeIP(nodename string) (net.IP, error) {
+func (t *T) getNodeIP(nodename string) (net.IP, error) {
 	var keyName string
 	if nodename == hostname.Hostname() {
 		keyName = "addr"
@@ -693,12 +701,12 @@ func (t T) getNodeIP(nodename string) (net.IP, error) {
 
 // getLocalIP returns the addr set in the network config.
 // Defaults to the first resolved ip address with the network address family (ip4 or ip6).
-func (t T) getLocalIP() (net.IP, error) {
+func (t *T) getLocalIP() (net.IP, error) {
 	return t.getNodeIP(hostname.Hostname())
 }
 
 // getAF returns the network address family (ip4 or ip6).
-func (t T) getAF() (af string) {
+func (t *T) getAF() (af string) {
 	if t.IsIP6() {
 		af = "ip6"
 	} else {

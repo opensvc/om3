@@ -30,11 +30,11 @@ func New() *T {
 	return &t
 }
 
-func (t T) brName() string {
+func (t *T) brName() string {
 	return "obr_" + t.Name()
 }
 
-func (t T) BackendDevName() string {
+func (t *T) BackendDevName() string {
 	return t.brName()
 }
 
@@ -55,7 +55,7 @@ func (t T) BackendDevName() string {
 //	  "isGateway": true,
 //	  "type": "bridge"
 //	}
-func (t T) CNIConfigData() (interface{}, error) {
+func (t *T) CNIConfigData() (interface{}, error) {
 	m := map[string]interface{}{
 		"cniVersion": network.CNIVersion,
 		"name":       t.Name(),

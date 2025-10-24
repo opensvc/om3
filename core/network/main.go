@@ -26,6 +26,7 @@ type (
 		isImplicit        bool
 		needCommit        bool
 		allowEmptyNetwork bool
+		kops              keyop.L
 
 		log   *plog.Logger
 		noder Noder
@@ -70,6 +71,10 @@ type (
 		// Name returns the name of the network. Which is the part
 		// after the dash in the configuration section name.
 		Name() string
+
+		// Kops returns the list of cluster config changes queued by the
+		// driver upon Setup.
+		Kops() keyop.L
 
 		// Network returns the CIDR representation of the network.
 		Network() string
@@ -127,7 +132,7 @@ func (t *T) Log() *plog.Logger {
 	return t.log
 }
 
-func (t T) Nodes() ([]string, error) {
+func (t *T) Nodes() ([]string, error) {
 	return t.noder.Nodes()
 }
 
@@ -163,7 +168,11 @@ func Driver(t string) func() Networker {
 	return nil
 }
 
-func (t T) Name() string {
+func (t *T) Kops() keyop.L {
+	return t.kops
+}
+
+func (t *T) Name() string {
 	return t.name
 }
 
@@ -175,7 +184,7 @@ func (t *T) SetDriver(name string) {
 	t.driver = name
 }
 
-func (t T) NeedCommit() bool {
+func (t *T) NeedCommit() bool {
 	return t.needCommit
 }
 
@@ -183,7 +192,7 @@ func (t *T) SetNeedCommit(v bool) {
 	t.needCommit = v
 }
 
-func (t T) Type() string {
+func (t *T) Type() string {
 	return t.driver
 }
 
@@ -195,7 +204,7 @@ func (t *T) SetNoder(noder Noder) {
 	t.noder = noder
 }
 
-func (t T) FilterIPs(ips clusterip.L) clusterip.L {
+func (t *T) FilterIPs(ips clusterip.L) clusterip.L {
 	l := make(clusterip.L, 0)
 	if ipnet, err := t.IPNet(); err != nil {
 		return l
@@ -204,7 +213,7 @@ func (t T) FilterIPs(ips clusterip.L) clusterip.L {
 	}
 }
 
-func (t T) key(option string) key.T {
+func (t *T) key(option string) key.T {
 	return key.New("network#"+t.name, option)
 }
 
@@ -225,9 +234,7 @@ func (t *T) Set(option, value string) error {
 		Op:    keyop.Set,
 		Value: value,
 	}
-	if err := t.Config().PrepareSet(kop); err != nil {
-		return err
-	}
+	t.kops = append(t.kops, kop)
 	t.needCommit = true
 	return nil
 }
@@ -244,15 +251,15 @@ func (t *T) Tables() []string {
 // AllowEmptyNetwork returns true if the driver supports
 // empty "network" keyword value.
 // For one, the loopback driver does support that.
-func (t T) AllowEmptyNetwork() bool {
+func (t *T) AllowEmptyNetwork() bool {
 	return t.allowEmptyNetwork
 }
 
-func (t T) SetAllowEmptyNetwork(v bool) {
+func (t *T) SetAllowEmptyNetwork(v bool) {
 	t.allowEmptyNetwork = v
 }
 
-func (t T) IsIP6() bool {
+func (t *T) IsIP6() bool {
 	ip, _, err := net.ParseCIDR(t.Network())
 	if err != nil {
 		return false
@@ -280,7 +287,7 @@ func (t *T) SetImplicit(v bool) {
 	t.isImplicit = v
 }
 
-func (t T) IsImplicit() bool {
+func (t *T) IsImplicit() bool {
 	return t.isImplicit
 }
 
@@ -295,7 +302,7 @@ func namesInConfig(noder Noder) []string {
 	return l
 }
 
-func (t T) IPNet() (*net.IPNet, error) {
+func (t *T) IPNet() (*net.IPNet, error) {
 	_, ipnet, err := net.ParseCIDR(t.Network())
 	return ipnet, err
 }
