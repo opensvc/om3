@@ -16,22 +16,22 @@ import (
 //
 // If error occurs publish msgbus.JoinIgnored, or msgbus.JoinError:
 //
-// - publish msgbus.JoinIgnored,join-node=node (the node already exists in cluster nodes)
-// - publish msgbus.JoinError,join-node=node (update cluster config object fails)
+// - publish msgbus.JoinIgnored,candidate_node=node (the node already exists in cluster nodes)
+// - publish msgbus.JoinError,candidate_node=node (update cluster config object fails)
 func (t *Manager) onJoinRequest(c *msgbus.JoinRequest) {
 	nodes := cluster.ConfigData.Get().Nodes
-	node := c.Node
+	candidate := c.CandidateNode
 	labels := []pubsub.Label{
 		{"node", hostname.Hostname()},
-		{"join-node", node},
+		{"candidate_node", candidate},
 	}
-	t.log.Infof("join request for node %s", node)
-	if slices.Contains(nodes, node) {
+	t.log.Infof("join request from candidate node %s", candidate)
+	if slices.Contains(nodes, candidate) {
 		t.log.Debugf("join request ignored already member")
-		t.publisher.Pub(&msgbus.JoinIgnored{Node: node}, labels...)
-	} else if err := t.addClusterNode(node); err != nil {
+		t.publisher.Pub(&msgbus.JoinIgnored{CandidateNode: candidate}, labels...)
+	} else if err := t.addClusterNode(candidate); err != nil {
 		t.log.Warnf("join request denied: %s", err)
-		t.publisher.Pub(&msgbus.JoinError{Node: node, Reason: err.Error()}, labels...)
+		t.publisher.Pub(&msgbus.JoinError{CandidateNode: candidate, Reason: err.Error()}, labels...)
 	}
 }
 
@@ -56,22 +56,22 @@ func (t *Manager) addClusterNode(node string) error {
 //
 // If an error occurs, publish msgbus.LeaveIgnored, or msgbus.LeaveError:
 //
-// - publish msgbus.LeaveIgnored,leave-node=node (the node is not a cluster nodes)
-// - publish msgbus.LeaveError,leave-node=node (update cluster config object fails)
+// - publish msgbus.LeaveIgnored,candidate_node=node (the node is not a cluster node)
+// - publish msgbus.LeaveError,candidate_node=node (update cluster config object fails)
 func (t *Manager) onLeaveRequest(c *msgbus.LeaveRequest) {
 	nodes := cluster.ConfigData.Get().Nodes
-	node := c.Node
+	candidate := c.CandidateNode
 	labels := []pubsub.Label{
 		{"node", hostname.Hostname()},
-		{"leave-node", node},
+		{"candidate_node", candidate},
 	}
-	t.log.Infof("leave request for node %s", node)
-	if !slices.Contains(nodes, node) {
+	t.log.Infof("leave request for candidate node %s", candidate)
+	if !slices.Contains(nodes, candidate) {
 		t.log.Debugf("leave request ignored for not cluster member")
-		t.publisher.Pub(&msgbus.LeaveIgnored{Node: node}, labels...)
-	} else if err := t.removeClusterNode(node); err != nil {
+		t.publisher.Pub(&msgbus.LeaveIgnored{CandidateNode: candidate}, labels...)
+	} else if err := t.removeClusterNode(candidate); err != nil {
 		t.log.Warnf("leave request denied: %s", err)
-		t.publisher.Pub(&msgbus.LeaveError{Node: node, Reason: err.Error()}, labels...)
+		t.publisher.Pub(&msgbus.LeaveError{CandidateNode: candidate, Reason: err.Error()}, labels...)
 	}
 }
 

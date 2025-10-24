@@ -29,6 +29,6 @@ func (a *DaemonAPI) PostClusterLeave(ctx echo.Context, params api.PostClusterLea
 		return JSONProblemf(ctx, http.StatusBadRequest, "Invalid parameters", "node '%s' is localhost", node)
 	}
 	log.Infof("publish leave request for node %s", node)
-	a.Publisher.Pub(&msgbus.LeaveRequest{Node: node}, a.LabelLocalhost, labelOriginAPI)
+	a.Publisher.Pub(&msgbus.LeaveRequest{CandidateNode: node}, a.LabelLocalhost, labelOriginAPI)
 	return ctx.JSON(http.StatusOK, nil)
 }

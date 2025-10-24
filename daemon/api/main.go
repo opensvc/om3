@@ -8,8 +8,15 @@ import (
 	"fmt"
 )
 
-var (
-	HeaderLastModifiedNano = "x-last-modified-rfc3339nano"
+const (
+	HeaderLastModified = "OM-Last-Modified"
+	HeaderRelativePath = "OM-relative-path"
+	HeaderServedBy     = "OM-Served-By"
+)
+
+const (
+	AliasLocalhost      = "localhost"
+	AliasShortLocalhost = "_"
 )
 
 func (t OrchestrationQueued) String() (out string) {

@@ -15,6 +15,7 @@ import (
 	"github.com/opensvc/om3/core/naming"
 	"github.com/opensvc/om3/core/object"
 	"github.com/opensvc/om3/core/resource"
+	"github.com/opensvc/om3/daemon/api"
 )
 
 func (a *DaemonAPI) PostInstanceStateFile(ctx echo.Context, nodename, namespace string, kind naming.Kind, name string) error {
@@ -25,10 +26,10 @@ func (a *DaemonAPI) PostInstanceStateFile(ctx echo.Context, nodename, namespace 
 	if nodename == a.localhost {
 		return a.postLocalObjectStateFile(ctx, namespace, kind, name)
 	}
-	relativePath := ctx.Request().Header.Get("x-relative-path")
+	relativePath := ctx.Request().Header.Get(api.HeaderRelativePath)
 	return a.proxy(ctx, nodename, func(c *client.T) (*http.Response, error) {
 		addHeader := func(ctx context.Context, req *http.Request) error {
-			req.Header.Add("x-relative-path", relativePath)
+			req.Header.Add(api.HeaderRelativePath, relativePath)
 			return nil
 		}
 		return c.PostInstanceStateFileWithBody(ctx.Request().Context(), nodename, namespace, kind, name, "application/octet-stream", ctx.Request().Body, addHeader)
@@ -44,9 +45,9 @@ func (a *DaemonAPI) postLocalObjectStateFile(ctx echo.Context, namespace string,
 	if !p.Exists() {
 		return JSONProblemf(ctx, http.StatusNotFound, "Object not found", "")
 	}
-	relPath := ctx.Request().Header.Get("x-relative-path")
+	relPath := ctx.Request().Header.Get(api.HeaderRelativePath)
 	if relPath == "" {
-		return JSONProblemf(ctx, http.StatusBadRequest, "Bad request", "Header 'x-relative-path' is required")
+		return JSONProblemf(ctx, http.StatusBadRequest, "Bad request", "Header '%s' is required", api.HeaderRelativePath)
 	}
 	o, err := object.NewActor(p)
 	if err != nil {

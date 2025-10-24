@@ -570,7 +570,7 @@ func (t *T) sends(filename string) error {
 		defer file.Close()
 		ctx := context.Background()
 		response, err := c.PostInstanceStateFileWithBody(ctx, nodename, t.Path.Namespace, t.Path.Kind, t.Path.Name, "application/octet-stream", file, func(ctx context.Context, req *http.Request) error {
-			req.Header.Add("x-relative-path", filename[len(head):])
+			req.Header.Add(api.HeaderRelativePath, filename[len(head):])
 			return nil
 		})
 		if err != nil {

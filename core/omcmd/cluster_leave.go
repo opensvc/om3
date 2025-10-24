@@ -125,9 +125,9 @@ func (t *CmdClusterLeave) Run() (err error) {
 
 func (t *CmdClusterLeave) setEvReader(duration time.Duration) (err error) {
 	filters := []string{
-		"LeaveSuccess,removed=" + t.localhost + ",node=" + t.APINode,
-		"LeaveError,leave-node=" + t.localhost,
-		"LeaveIgnored,leave-node=" + t.localhost,
+		"LeaveSuccess,removed_node=" + t.localhost,
+		"LeaveError,candidate_node=" + t.localhost,
+		"LeaveIgnored,candidate_node=" + t.localhost,
 	}
 
 	getEvents := t.peerClient.NewGetEvents().

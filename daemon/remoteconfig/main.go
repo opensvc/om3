@@ -58,14 +58,14 @@ func fetchFromAPI(cli *client.T, p naming.Path) (b []byte, updated time.Time, er
 		mtime time.Time
 		resp  *api.GetInstanceConfigFileResponse
 	)
-	resp, err = cli.GetInstanceConfigFileWithResponse(context.Background(), cli.Hostname(), p.Namespace, p.Kind, p.Name)
+	resp, err = cli.GetInstanceConfigFileWithResponse(context.Background(), api.AliasShortLocalhost, p.Namespace, p.Kind, p.Name)
 	if err != nil {
 		return
 	} else if resp.StatusCode() != http.StatusOK {
 		err = fmt.Errorf("unexpected get object file %s status %s", p, resp.Status())
 		return
 	}
-	if mtime, err = time.Parse(time.RFC3339Nano, resp.HTTPResponse.Header.Get(api.HeaderLastModifiedNano)); err != nil {
+	if mtime, err = time.Parse(time.RFC3339Nano, resp.HTTPResponse.Header.Get(api.HeaderLastModified)); err != nil {
 		return
 	}
 	return resp.Body, mtime, nil

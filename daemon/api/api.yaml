@@ -2,7 +2,7 @@ openapi: 3.0.0
 
 info:
   title: opensvc agent api
-  version: 4.1.0
+  version: 4.1.2
 
 paths:
   /api/auth/info:
@@ -333,7 +333,7 @@ paths:
         200:
           description: OK
           headers:
-            x-last-modified-rfc3339nano:
+            OM-Last-Modified:
               type: string
               format: date-time
               pattern: '^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(\.\d{1,9})?Z?$'
@@ -422,22 +422,26 @@ paths:
         This event is labeled node=<api_node>.
 
         To follow the processing of the join request, use the following event filters,
-        - JoinSuccess,node=<api_node>,added=<node> (the new node has been added to cluster nodes)
-        - JoinIgnored,node=<api_node>,join-node=<node> (the new node was already a cluster node)
-        - JoinError,node=<api_node>,join-node=<node> (an error occur during update cluster node list)
+        - JoinSuccess,node=<api_node>,added_node=<node> (the candidate node has been added to cluster nodes)
+        - JoinIgnored,node=<api_node>,candidate_node=<node> (the candidate node was already a cluster node)
+        - JoinError,node=<api_node>,candidate_node=<node> (an error occur during update cluster node list)
       operationId: PostClusterJoin
       parameters:
         - in: query
           name: node
-          description: The node to add to cluster nodes
+          description: The candidate node to add to cluster nodes
           required: true
           schema:
             type: string
-            example: new_node
+            example: candidate-node
             minLength: 2
       responses:
         200:
           description: OK
+          headers:
+            OM-Served-By:
+              description: The cluster nodename that processed the request
+              type: string
         400:
           $ref: '#/components/responses/400'
         401:
@@ -465,9 +469,9 @@ paths:
         This event is labeled node=<api_node>.
 
         To follow the processing of the leave request, use the following event filters,
-        - LeaveSuccess,node=<api_node>,removed=<node> (node has been removed to cluster nodes)
-        - LeaveIgnored,node=<api_node>,leave-node=<node> (node is not a cluster node)
-        - LeaveError,node=<api_node>,leave-node=<node> (an error occur during update cluster node list)
+        - LeaveSuccess,node=<api_node>,removed_node=<node> (node has been removed to cluster nodes)
+        - LeaveIgnored,node=<api_node>,candidate_node=<node> (node is not a cluster node)
+        - LeaveError,node=<api_node>,candidate_node=<node> (an error occur during update cluster node list)
       operationId: PostClusterLeave
       parameters:
         - in: query
@@ -476,7 +480,7 @@ paths:
           required: true
           schema:
             type: string
-            example: node-wto-remove
+            example: node-to-remove
             minLength: 2
       responses:
         200:
@@ -1629,7 +1633,7 @@ paths:
         200:
           description: OK
           headers:
-            x-last-modified-rfc3339nano:
+            OM-Last-Modified:
               type: string
               format: date-time
               pattern: '^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(\.\d{1,9})?Z?$'
@@ -2599,7 +2603,7 @@ paths:
         200:
           description: OK
           headers:
-            x-last-modified-rfc3339nano:
+            OM-Last-Modified:
               type: string
               format: date-time
               pattern: '^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(\.\d{1,9})?Z?$'
@@ -4226,7 +4230,7 @@ paths:
         200:
           description: OK
           headers:
-            x-last-modified-rfc3339nano:
+            OM-Last-Modified:
               type: string
               format: date-time
               pattern: '^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(\.\d{1,9})?Z?$'
@@ -4330,7 +4334,7 @@ paths:
         - basicAuth: []
         - bearerAuth: []
       headers:
-        x-relative-path:
+        OM-relative-path:
           type: string
       parameters:
         - $ref: '#/components/parameters/inPathNodeName'

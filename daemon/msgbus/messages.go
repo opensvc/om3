@@ -598,40 +598,41 @@ type (
 
 	JoinError struct {
 		pubsub.Msg `yaml:",inline"`
-		// Node is a node that can't be added to cluster config nodes
-		Node   string `json:"node" yaml:"node"`
-		Reason string `json:"reason" yaml:"reason"`
+		// CandidateNode is the candidate node that can't be added to cluster config nodes
+		CandidateNode string `json:"candidate_node" yaml:"candidate_node"`
+		Reason        string `json:"reason" yaml:"reason"`
 	}
 
 	JoinIgnored struct {
 		pubsub.Msg `yaml:",inline"`
-		// Node is a node that is already in cluster config nodes
-		Node string `json:"node" yaml:"node"`
+		// CandidateNode is a candidate node that is already present in cluster config nodes
+		CandidateNode string `json:"candidate_node" yaml:"candidate_node"`
 	}
 
 	JoinRequest struct {
 		pubsub.Msg `yaml:",inline"`
-		// Node is a node to add to cluster config nodes
-		Node string `json:"node" yaml:"node"`
+		// CandidateNode is a candidate node to add to cluster config nodes
+		CandidateNode string `json:"candidate_node" yaml:"candidate_node"`
 	}
 
 	JoinSuccess struct {
 		pubsub.Msg `yaml:",inline"`
-		// Node is the successfully added node in cluster config nodes
-		Node string `json:"node" yaml:"node"`
+		// AddedNode is a node that has been successfully added to the cluster config nodes
+		// after join request or sysadmin cluster config nodes update.
+		AddedNode string `json:"added_node" yaml:"added_node"`
 	}
 
 	LeaveError struct {
 		pubsub.Msg `yaml:",inline"`
-		// Node is a node that can't be removed from cluster config nodes
-		Node   string `json:"node" yaml:"node"`
-		Reason string
+		// CandidateNode is a candidate node that can't be removed from cluster config nodes
+		CandidateNode string `json:"candidate_node" yaml:"candidate_node"`
+		Reason        string
 	}
 
 	LeaveIgnored struct {
 		pubsub.Msg `yaml:",inline"`
-		// Node is a node that is not in cluster config nodes
-		Node string `json:"node" yaml:"node"`
+		// CandidateNode is a candidate node that is not a cluster config node
+		CandidateNode string `json:"candidate_node" yaml:"candidate_node"`
 	}
 
 	LeaveOverloadPeriod struct {
@@ -640,14 +641,14 @@ type (
 
 	LeaveRequest struct {
 		pubsub.Msg `yaml:",inline"`
-		// Node is a node to remove to cluster config nodes
-		Node string `json:"node" yaml:"node"`
+		// CandidateNode is a node to remove to cluster config nodes
+		CandidateNode string `json:"candidate_node" yaml:"candidate_node"`
 	}
 
 	LeaveSuccess struct {
 		pubsub.Msg `yaml:",inline"`
-		// Node is the successfully removed node from cluster config nodes
-		Node string `json:"node" yaml:"node"`
+		// RemovedNode is the successfully removed node from cluster config nodes
+		RemovedNode string `json:"removed_node" yaml:"removed_node"`
 	}
 
 	// Log is a log message.
