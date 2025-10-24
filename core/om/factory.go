@@ -3558,11 +3558,13 @@ func newCmdObjectRun(kind string) *cobra.Command {
 func newCmdDaemonJoin() *cobra.Command {
 	cmd := newCmdClusterJoin()
 	cmd.Hidden = true
+	cmd.Deprecated = "use `cluster join`."
 	return cmd
 }
 
 func newCmdDaemonLeave() *cobra.Command {
 	cmd := newCmdClusterLeave()
 	cmd.Hidden = true
+	cmd.Deprecated = "use `cluster leave`."
 	return cmd
 }

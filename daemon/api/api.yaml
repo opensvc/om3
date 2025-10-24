@@ -7712,7 +7712,7 @@ components:
       name: greet_timeout
       schema:
         type: string
-        default: 10s
+        default: 5s
         x-go-name: GreetTimeout
 
     inQueryKeywordOps:
