@@ -6,10 +6,11 @@ import (
 	"time"
 
 	"github.com/gdamore/tcell/v2"
+	"github.com/rivo/tview"
+
 	"github.com/opensvc/om3/core/monitor"
 	"github.com/opensvc/om3/core/naming"
 	"github.com/opensvc/om3/daemon/daemonsubsystem"
-	"github.com/rivo/tview"
 )
 
 func (t *App) initObjectsTable() {

@@ -2059,6 +2059,7 @@ func newCmdObjectEnter(kind string) *cobra.Command {
 	flags := cmd.Flags()
 	addFlagObject(flags, &options.ObjectSelector)
 	commoncmd.FlagRID(flags, &options.RID)
+	commoncmd.FlagNodeSelector(flags, &options.NodeSelector)
 	return cmd
 }
 
