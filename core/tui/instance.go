@@ -7,6 +7,8 @@ import (
 	"time"
 
 	"github.com/gdamore/tcell/v2"
+	"github.com/rivo/tview"
+
 	"github.com/opensvc/om3/core/colorstatus"
 	"github.com/opensvc/om3/core/instance"
 	"github.com/opensvc/om3/core/object"
@@ -15,7 +17,6 @@ import (
 	"github.com/opensvc/om3/core/rawconfig"
 	"github.com/opensvc/om3/core/resource"
 	"github.com/opensvc/om3/core/status"
-	"github.com/rivo/tview"
 )
 
 func formatRel(data map[string]status.T) string {
