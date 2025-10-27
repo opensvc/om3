@@ -640,11 +640,12 @@ var nodeCommonKeywords = []keywords.Keyword{
 	{
 		Converter: "shlex",
 		Example:   "/bin/true",
-		Option:    "cmd",
+		Option:    "command",
+		Aliases:   []string{"cmd"},
 		Required:  true,
 		Scopable:  true,
 		Section:   "stonith",
-		Text:      keywords.NewText(fs, "text/kw/node/stonith.cmd"),
+		Text:      keywords.NewText(fs, "text/kw/node/stonith.command"),
 	},
 	{
 		Candidates: []string{"unicast", "multicast", "disk", "relay"},
