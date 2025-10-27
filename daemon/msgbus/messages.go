@@ -574,6 +574,7 @@ type (
 		pubsub.Msg `yaml:",inline"`
 		Path       naming.Path `json:"path" yaml:"path"`
 		Node       string      `json:"node" yaml:"node"`
+		PeerDropAt time.Time   `json:"peer_drop_at"`
 	}
 
 	InstanceStatusPost struct {

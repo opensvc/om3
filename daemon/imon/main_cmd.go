@@ -249,10 +249,12 @@ func (t *Manager) onMyInstanceStatusUpdated(srcNode string, srcCmd *msgbus.Insta
 	case !ok:
 		t.log.Debugf("ObjectStatusUpdated %s from InstanceStatusUpdated on %s create instance status", srcNode, srcCmd.Node)
 		t.instStatus[srcCmd.Node] = srcCmd.Value
+		t.clearStonith(srcCmd.Node, srcCmd.Value.Avail)
 	case instStatus.UpdatedAt.Before(srcCmd.Value.UpdatedAt):
 		// only update if more recent
 		t.log.Debugf("ObjectStatusUpdated %s from InstanceStatusUpdated on %s update instance status with avail %s", srcNode, srcCmd.Node, srcCmd.Value.Avail)
 		t.instStatus[srcCmd.Node] = srcCmd.Value
+		t.clearStonith(srcCmd.Node, srcCmd.Value.Avail)
 	default:
 		t.log.Debugf("ObjectStatusUpdated %s from InstanceStatusUpdated on %s skip update instance from obsolete status avail %s", srcNode, srcCmd.Node, srcCmd.Value.Avail)
 	}
@@ -359,6 +361,7 @@ func (t *Manager) onInstanceConfigUpdated(srcNode string, srcCmd *msgbus.Instanc
 
 func (t *Manager) onMyInstanceStatusDeleted(c *msgbus.InstanceStatusDeleted) {
 	if _, ok := t.instStatus[c.Node]; ok {
+		t.setStonith(c.Node, c.PeerDropAt)
 		t.log.Debugf("drop deleted instance status from node %s", c.Node)
 		delete(t.instStatus, c.Node)
 	}

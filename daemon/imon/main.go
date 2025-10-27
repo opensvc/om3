@@ -96,6 +96,10 @@ type (
 		// TODO: need review
 		statusQueued atomic.Bool
 
+		// peerDrop stores which node needs a stonith before starting the local instance, if any
+		peerDrop   string
+		peerDropAt time.Time
+
 		// needStatusQ is the status refresh pending request queue. A buffered
 		// channel with 1 slot (If a status refresh is triggered twice (or more) before
 		// the previous one starts, the extra status refresh is skipped). This happen
