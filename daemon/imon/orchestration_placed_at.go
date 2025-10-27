@@ -60,7 +60,7 @@ func (t *Manager) orchestrateFailoverPlacedStop() {
 	case instance.MonitorStateUnfreezeSuccess:
 		t.placedStop()
 	case instance.MonitorStateStopFailure:
-		t.clearStopFailedIfDown()
+		t.orchestratePlacedStopFromStopFailure()
 	case instance.MonitorStateStopSuccess:
 		t.clearStopped()
 	case instance.MonitorStateReady:
@@ -85,7 +85,7 @@ func (t *Manager) orchestrateFlexPlacedStop() {
 	case instance.MonitorStateUnfreezeSuccess:
 		t.placedStop()
 	case instance.MonitorStateStopFailure:
-		t.clearStopFailedIfDown()
+		t.orchestratePlacedStopFromStopFailure()
 	case instance.MonitorStateStopSuccess:
 		t.clearStopped()
 	case instance.MonitorStateReady:
@@ -207,13 +207,18 @@ func (t *Manager) skipPlacedStart() {
 	t.clearPending()
 }
 
-func (t *Manager) clearStopFailedIfDown() {
+func (t *Manager) orchestratePlacedStopFromStopFailure() {
 	instStatus := t.instStatus[t.localhost]
 	switch instStatus.Avail {
 	case status.Down, status.StandbyDown:
 		t.loggerWithState().Infof("instance is down, clear stop failed")
 		t.change = true
 		t.state.State = instance.MonitorStateStopSuccess
+		t.clearPending()
+	default:
+		t.loggerWithState().Warnf("orchestration %s stop fails, set done: state is %s with avail %s",
+			t.state.GlobalExpect, t.state.State, instStatus.Avail)
+		t.done()
 		t.clearPending()
 	}
 }
@@ -239,6 +244,14 @@ func (t *Manager) orchestrateFailoverPlacedStartFromStopped() {
 		t.startedClearIfReached()
 	case status.Down:
 		t.placedStart()
+	case status.Warn, status.Up, status.StandbyUp:
+		if t.orchestrationIsDoneOnPeers() {
+			t.loggerWithState().Warnf("orchestration %s start fails, set done and idle: all peer orchestrations are done but object avail is %s",
+				t.state.GlobalExpect, t.objStatus.Avail)
+			t.transitionTo(instance.MonitorStateIdle)
+			t.done()
+			t.clearPending()
+		}
 	default:
 		return
 	}
