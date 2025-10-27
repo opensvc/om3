@@ -31,6 +31,10 @@ func flagDebug(flags *pflag.FlagSet, p *bool) {
 	flags.BoolVar(p, "debug", false, "show debug log entries")
 }
 
+func flagStonithNode(flags *pflag.FlagSet, p *string) {
+	flags.StringVar(p, "node", "", "the cluster node to fence")
+}
+
 func addFlagMonitor(flags *pflag.FlagSet, p *bool) {
 	flags.BoolVarP(p, "monitor", "m", false, "refresh only the monitored resources in the cached instance status data")
 }

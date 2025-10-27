@@ -165,6 +165,7 @@ func init() {
 		newCmdNodeEval(),
 		newCmdNodeRegister(),
 		newCmdNodeSet(),
+		newCmdNodeStonith(),
 		newCmdNodeSysreport(),
 		newCmdNodeUnfreeze(),
 		newCmdNodeUnset(),
