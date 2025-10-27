@@ -92,6 +92,7 @@ var (
 	keyPriority         = key.New("DEFAULT", "priority")
 	keySize             = key.New("DEFAULT", "size")
 	keyTopology         = key.New("DEFAULT", "topology")
+	keyStonith          = key.New("DEFAULT", "stonith")
 )
 
 // Start launch goroutine instConfig worker for a local instance config
@@ -353,6 +354,7 @@ func (t *Manager) configFileCheck() error {
 			Schedules:        make([]schedule.Config, 0),
 			Subsets:          t.getSubsets(cf),
 			Topology:         t.getTopology(cf),
+			Stonith:          cf.GetBool(keyStonith),
 		}
 		if cfg.Topology == topology.Flex {
 			instanceCount := len(scope)
