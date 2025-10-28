@@ -167,9 +167,16 @@ var (
 
 	isModProbed = false
 
+	// MaxDRBD defines the maximum number of allowable DRBD resources within the system.
 	MaxDRBD = 512
+
+	// MinPort defines the minimum port number used for a drbd resource
 	MinPort = 7289
-	MaxPort = 7489
+
+	// MaxPort defines the maximum port number used for a drbd resource
+	// It is calculated as MinPort + 2 * MaxDRBD to allow other applications to use
+	// the ports between MinPort and MaxPort.
+	MaxPort = min(65535, MinPort+2*MaxDRBD)
 
 	// waitConnectionStateDelay defines the periodic delay used when polling for
 	// connection state changes.
