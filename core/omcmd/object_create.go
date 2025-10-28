@@ -91,6 +91,7 @@ func (t *CmdObjectCreate) Run(kind string) error {
 			// step may return early due to missing cluster monitors.
 			if errors.Is(err, os.ErrNotExist) {
 				// the daemon is not running.
+				return false, nil
 			} else {
 				return false, err
 			}

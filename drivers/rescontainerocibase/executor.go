@@ -45,7 +45,11 @@ func NewExecutor(exe string, args ExecutorArgser, log Logger) *Executor {
 }
 
 func (e *Executor) EncapCmd(ctx context.Context, args []string, env []string, stdin io.Reader) (*exec.Cmd, error) {
-	args = e.args.ExecCmdArgs(args, env)
+	var interactive bool
+	if stdin != nil {
+		interactive = true
+	}
+	args = e.args.ExecCmdArgs(args, env, interactive)
 	cmd := exec.CommandContext(ctx, e.bin, args...)
 	if stdin != nil {
 		cmd.Stdin = stdin

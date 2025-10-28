@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"io"
 	"os"
 	"strings"
 	"sync"
@@ -295,6 +296,8 @@ func (t *actor) installEncapConfig(ctx context.Context, encapContainer resource.
 	}
 	defer func() { r.Close() }()
 
+	pipeReader, pipeWriter := io.Pipe()
+
 	// Execute `om <path> create --config=- --restore --wait` in the encap container with the config piped in
 	args := []string{encapContainer.GetOsvcRootPath(), t.path.String(), "create", "--config=-", "--restore", "--wait"}
 	envs := []string{
@@ -302,10 +305,16 @@ func (t *actor) installEncapConfig(ctx context.Context, encapContainer resource.
 		env.ActionOrchestrationIDVar + "=" + os.Getenv(env.ActionOrchestrationIDVar),
 		env.OriginSetenvArg(env.Origin()),
 	}
-	cmd, err := encapContainer.EncapCmd(ctx, args, envs, r)
+	cmd, err := encapContainer.EncapCmd(ctx, args, envs, pipeReader)
 	if err != nil {
+		pipeReader.Close()
+		pipeWriter.Close()
 		return err
 	}
+	go func() {
+		defer pipeWriter.Close() // signal EOF to the command.
+		io.Copy(pipeWriter, r)
+	}()
 	return cmd.Run()
 }
 
