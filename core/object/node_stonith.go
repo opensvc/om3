@@ -12,7 +12,7 @@ import (
 	"github.com/rs/zerolog"
 )
 
-func (t Node) Stonith(nodename string) error {
+func (t *Node) Stonith(nodename string) error {
 	if nodename == "" {
 		return fmt.Errorf("node name is not set")
 	}
