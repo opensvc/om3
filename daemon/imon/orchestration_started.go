@@ -144,8 +144,8 @@ func (t *Manager) startedFromReady() {
 		if t.peerDrop == "" {
 			return nil
 		}
-		if ge := t.instMonitor[t.localhost].GlobalExpect; ge != instance.MonitorGlobalExpectNone && ge != instance.MonitorGlobalExpectInit {
-			t.log.Debugf("stonith: %s: skip because global expect is set (%s)", t.peerDrop, ge)
+		if t.state.GlobalExpect != instance.MonitorGlobalExpectNone {
+			t.log.Infof("stonith: %s: skip because global expect is set (%s)", t.peerDrop, t.state.GlobalExpect)
 			return nil
 		}
 		nodeStonithAtMapMutex.Lock()
@@ -165,7 +165,7 @@ func (t *Manager) startedFromReady() {
 		return t.crmStonith(t.peerDrop)
 	}
 
-	start := func() error {
+	stonithAndStart := func() error {
 		if err := stonith(); err != nil {
 			t.log.Warnf("stonith: %s: %s", t.peerDrop, err)
 		}
@@ -179,7 +179,7 @@ func (t *Manager) startedFromReady() {
 			t.transitionTo(instance.MonitorStateIdle)
 			return
 		}
-		t.queueAction(start, instance.MonitorStateStartProgress, instance.MonitorStateStartSuccess, instance.MonitorStateStartFailure)
+		t.queueAction(stonithAndStart, instance.MonitorStateStartProgress, instance.MonitorStateStartSuccess, instance.MonitorStateStartFailure)
 		return
 	default:
 		return
