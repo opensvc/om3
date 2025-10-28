@@ -574,6 +574,7 @@ type (
 		pubsub.Msg `yaml:",inline"`
 		Path       naming.Path `json:"path" yaml:"path"`
 		Node       string      `json:"node" yaml:"node"`
+		PeerDropAt time.Time   `json:"peer_drop_at"`
 	}
 
 	InstanceStatusPost struct {
@@ -986,16 +987,8 @@ func (e *ClientSubscribed) Kind() string {
 	return "ClientSubscribed"
 }
 
-func (e *ClientSubscribed) String() string {
-	return fmt.Sprintf("ClientSubscribed,name=%s,time=%s", e.Name, e.Time)
-}
-
 func (e *ClientUnsubscribed) Kind() string {
 	return "ClientUnsubscribed"
-}
-
-func (e *ClientUnsubscribed) String() string {
-	return fmt.Sprintf("ClientUnsubscribed,name=%s,time=%s", e.Name, e.Time)
 }
 
 func (e *DaemonCollectorUpdated) Kind() string {
@@ -1098,10 +1091,6 @@ func (e *HeartbeatMessageTypeUpdated) Key() string {
 	return fmt.Sprintf("HeartbeatMessageTypeUpdated,node=%s", e.Node)
 }
 
-func (e *HeartbeatAlive) String() string {
-	return fmt.Sprintf("HeartbeatAlive: node %s ping detected from %s %s", e.Nodename, e.HbID, e.Time)
-}
-
 func (e *HeartbeatAlive) Kind() string {
 	return "HeartbeatAlive"
 }
@@ -1120,10 +1109,6 @@ func (e *HeartbeatRotateSuccess) Kind() string {
 
 func (e *HeartbeatSecretUpdated) Kind() string {
 	return "HeartbeatSecretUpdated"
-}
-
-func (e *HeartbeatStale) String() string {
-	return fmt.Sprintf("HeartbeatStale: node %s stale detected from %s %s", e.Nodename, e.HbID, e.Time)
 }
 
 func (e *HeartbeatStale) Kind() string {
@@ -1388,12 +1373,6 @@ func (e *ObjectStatusDone) Kind() string {
 	return "ObjectStatusDone"
 }
 
-func (e *ObjectStatusUpdated) String() string {
-	d := e.Value
-	s := fmt.Sprintf("ObjectStatusUpdated: %s@%s %s %s %s %s %v", e.Path, e.Node, d.Avail, d.Overall, d.Frozen, d.Provisioned, d.Scope)
-	return s
-}
-
 func (e *ObjectStatusUpdated) Key() string {
 	return fmt.Sprintf("ObjectStatusUpdated,path=%s", e.Path)
 }
@@ -1444,10 +1423,6 @@ func (e *SetInstanceMonitorRefused) Kind() string {
 
 func (e *SetNodeMonitor) Kind() string {
 	return "SetNodeMonitor"
-}
-
-func (e *WatchDog) String() string {
-	return e.Bus
 }
 
 func (e *WatchDog) Kind() string {

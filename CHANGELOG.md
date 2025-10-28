@@ -588,4 +588,4 @@ Where the password is the value of the `þassword` key in `system/sec/relay-v3`.
     om cluster set --kw cluster.name=$(om cluster eval --kw cluster.name)
     ```
 
-
+* Rename the stonith sections `cmd` option to `command`. Backward compatibility is implemented.

@@ -2,6 +2,7 @@ package daemondata
 
 import (
 	"context"
+	"time"
 
 	"github.com/opensvc/om3/core/instance"
 	"github.com/opensvc/om3/core/node"
@@ -81,6 +82,7 @@ func (d *data) dropPeer(peer string) {
 	peerLabels := []pubsub.Label{{"node", peer}, {"from", "peer"}}
 
 	hbcache.DropPeer(peer)
+	peerDropAt := time.Now()
 
 	// unset and publish deleted <peer> components instance and node (found from
 	// instance and node data holders).
@@ -91,7 +93,7 @@ func (d *data) dropPeer(peer string) {
 	}
 	for p := range instance.StatusData.GetByNode(peer) {
 		instance.StatusData.Unset(p, peer)
-		d.publisher.Pub(&msgbus.InstanceStatusDeleted{Node: peer, Path: p}, append(peerLabels, pubsub.Label{"namespace", p.Namespace}, pubsub.Label{"path", p.String()})...)
+		d.publisher.Pub(&msgbus.InstanceStatusDeleted{Node: peer, Path: p, PeerDropAt: peerDropAt}, append(peerLabels, pubsub.Label{"namespace", p.Namespace}, pubsub.Label{"path", p.String()})...)
 	}
 	for p := range instance.MonitorData.GetByNode(peer) {
 		instance.MonitorData.Unset(p, peer)

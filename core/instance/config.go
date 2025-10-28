@@ -38,6 +38,7 @@ type (
 		PlacementPolicy  placement.Policy  `json:"placement_policy"`
 		Resources        ResourceConfigs   `json:"resources"`
 		Schedules        []schedule.Config `json:"schedules"`
+		Stonith          bool              `json:"stonith"`
 		Subsets          SubsetConfigs     `json:"subsets"`
 		Topology         topology.T        `json:"topology,omitempty"`
 		Flex             *FlexConfig       `json:"flex,omitempty"`
@@ -155,6 +156,7 @@ func (t Config) Unstructured() map[string]any {
 		m["resources"] = t.Resources.Unstructured()
 		m["subsets"] = t.Subsets.Unstructured()
 		m["topology"] = t.Topology
+		m["stonith"] = t.Stonith
 		if t.ActorConfig.Flex != nil {
 			m["max"] = t.ActorConfig.Flex.Max
 			m["min"] = t.ActorConfig.Flex.Min

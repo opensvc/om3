@@ -1370,6 +1370,22 @@ func newCmdNodeConfigUpdate() *cobra.Command {
 	return cmd
 }
 
+func newCmdNodeStonith() *cobra.Command {
+	var options commands.CmdNodeStonith
+	cmd := &cobra.Command{
+		Use:   "stonith",
+		Short: "fence a peer node (danger)",
+		Long: `This command is executed by the daemon before taking
+over a service declaring stonith=true`,
+		RunE: func(cmd *cobra.Command, args []string) error {
+			return options.Run()
+		},
+	}
+	flags := cmd.Flags()
+	flagStonithNode(flags, &options.Node)
+	return cmd
+}
+
 func newCmdNodeSysreport() *cobra.Command {
 	var options commands.CmdNodeSysreport
 	cmd := &cobra.Command{

@@ -890,7 +890,7 @@ func (t T) DoRemote() error {
 			}
 		}
 		core.Instances = selectedInstances
-		resp.JSON200.Items[i].Data.MergeObjectCore(core)
+		resp.JSON200.Items[i].Data.FromObjectCore(core)
 		count += len(selectedInstances)
 	}
 

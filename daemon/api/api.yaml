@@ -5364,6 +5364,7 @@ components:
         - subsets
         - topology
         - updated_at
+        - stonith
       properties:
         app:
           type: string
@@ -5423,6 +5424,8 @@ components:
         updated_at:
           type: string
           format: date-time
+        stonith:
+          type: boolean
 
     InstanceMonitor:
       x-go-type: instance.Monitor

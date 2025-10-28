@@ -139,6 +139,39 @@ func (t *Manager) startedFromReady() {
 	if t.setWaitParents() {
 		return
 	}
+
+	stonith := func() error {
+		if t.peerDrop == "" {
+			return nil
+		}
+		if t.state.GlobalExpect != instance.MonitorGlobalExpectNone {
+			t.log.Infof("stonith: %s: skip because global expect is set (%s)", t.peerDrop, t.state.GlobalExpect)
+			return nil
+		}
+		nodeStonithAtMapMutex.Lock()
+
+		defer func() {
+			nodeStonithAtMapMutex.Unlock()
+			t.unsetStonith()
+		}()
+
+		nodeStonithAt, ok := nodeStonithAtMap[t.peerDrop]
+		if ok && !nodeStonithAt.Before(t.peerDropAt) {
+			t.log.Debugf("stonith: %s already fenced", t.peerDrop)
+			return nil
+		}
+		nodeStonithAtMap[t.peerDrop] = t.peerDropAt
+		t.log.Infof("stonith: %s: fence", t.peerDrop)
+		return t.crmStonith(t.peerDrop)
+	}
+
+	stonithAndStart := func() error {
+		if err := stonith(); err != nil {
+			t.log.Warnf("stonith: %s: %s", t.peerDrop, err)
+		}
+		return t.crmStart()
+	}
+
 	select {
 	case <-t.pendingCtx.Done():
 		defer t.clearPending()
@@ -146,7 +179,7 @@ func (t *Manager) startedFromReady() {
 			t.transitionTo(instance.MonitorStateIdle)
 			return
 		}
-		t.queueAction(t.crmStart, instance.MonitorStateStartProgress, instance.MonitorStateStartSuccess, instance.MonitorStateStartFailure)
+		t.queueAction(stonithAndStart, instance.MonitorStateStartProgress, instance.MonitorStateStartSuccess, instance.MonitorStateStartFailure)
 		return
 	default:
 		return
