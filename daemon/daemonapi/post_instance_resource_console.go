@@ -80,7 +80,7 @@ func (a *DaemonAPI) localInstanceResourceConsole(ctx echo.Context, namespace str
 
 	consoleServer := config.GetString(key.New("console", "server"))
 	if consoleServer == "" {
-		return JSONProblemf(ctx, http.StatusServiceUnavailable, "Service Unavailable", "node.console_server is not set")
+		return JSONProblemf(ctx, http.StatusServiceUnavailable, "Service Unavailable", "console.server is not set")
 
 	}
 
