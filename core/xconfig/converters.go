@@ -1,6 +1,8 @@
 package xconfig
 
 import (
+	"errors"
+
 	"github.com/opensvc/om3/core/env"
 	"github.com/opensvc/om3/core/nodeselector"
 	"github.com/opensvc/om3/util/converters"
@@ -28,7 +30,9 @@ func (t TNodesConverter) String() string {
 
 func (t TNodesConverter) Convert(s string) (interface{}, error) {
 	l, err := nodeselector.Expand(s)
-	if err != nil {
+	if errors.Is(err, nodeselector.ErrClusterNodeCacheEmpty) {
+		// pass
+	} else if err != nil {
 		return nil, err
 	}
 	if len(l) == 0 && env.Context() == "" {
