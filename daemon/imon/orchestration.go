@@ -45,7 +45,7 @@ func (t *Manager) orchestrate() {
 	}
 
 	if t.state.OrchestrationID != uuid.Nil && t.state.OrchestrationIsDone && !t.statusQueued.Load() {
-		if t.orchestrationIsAllDone() {
+		if t.orchestrationIsDoneOnAll() {
 			t.endOrchestration()
 		}
 		t.log.Debugf("orchestrate return on o.state.OrchestrationID != uuid.Nil && o.state.OrchestrationIsDone")
@@ -225,8 +225,36 @@ func (t *Manager) done() {
 	}
 }
 
-func (t *Manager) orchestrationIsAllDone() bool {
+func (t *Manager) orchestrationIsDoneOnAll() bool {
 	for nodename, oImon := range t.AllInstanceMonitors() {
+		if !oImon.OrchestrationIsDone && oImon.OrchestrationID != uuid.Nil {
+			msg := fmt.Sprintf("state:%s orchestrationID:%s", oImon.State, oImon.OrchestrationID)
+			if t.waitConvergedOrchestrationMsg[nodename] != msg {
+				t.log.Infof("orchestration progress on node %s: %s", nodename, msg)
+				t.waitConvergedOrchestrationMsg[nodename] = msg
+			}
+			return false
+		} else {
+			// OrchestrationIsDone or no OrchestrationID
+			msg := fmt.Sprintf("state:%s orchestrationID:%s", oImon.State, oImon.OrchestrationID)
+			if t.waitConvergedOrchestrationMsg[nodename] != msg {
+				t.log.Infof("orchestration done on node %s: %s", nodename, msg)
+				t.waitConvergedOrchestrationMsg[nodename] = msg
+			}
+		}
+	}
+	if len(t.waitConvergedOrchestrationMsg) > 0 {
+		t.log.Infof("orchestration is done on all nodes")
+		t.waitConvergedOrchestrationMsg = make(map[string]string)
+	}
+	return true
+}
+
+func (t *Manager) orchestrationIsDoneOnPeers() bool {
+	for nodename, oImon := range t.AllInstanceMonitors() {
+		if nodename == t.localhost {
+			continue
+		}
 		if !oImon.OrchestrationIsDone && oImon.OrchestrationID != uuid.Nil {
 			msg := fmt.Sprintf("state:%s orchestrationID:%s", oImon.State, oImon.OrchestrationID)
 			if t.waitConvergedOrchestrationMsg[nodename] != msg {
