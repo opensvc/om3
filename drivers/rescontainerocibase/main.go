@@ -160,7 +160,7 @@ type (
 		CpCmdArgs(string, string) []string
 		EnterCmdArgs(pid int) []string
 		EnterCmdCheckArgs(pid int) []string
-		ExecCmdArgs([]string, []string) []string
+		ExecCmdArgs([]string, []string, bool) []string
 		RemoveArgs() *args.T
 		RunArgsBase(ctx context.Context) (*args.T, error)
 		RunArgsImage() (*args.T, error)

@@ -41,10 +41,13 @@ func (ea *ExecutorArg) EnterCmdArgs(pid int) []string {
 	return []string{"nsenter", "-t", fmt.Sprint(pid), "--all"}
 }
 
-func (ea *ExecutorArg) ExecCmdArgs(args []string, env []string) []string {
+func (ea *ExecutorArg) ExecCmdArgs(args []string, env []string, interactive bool) []string {
 	l := []string{"exec"}
 	for _, e := range env {
 		l = append(l, "--env", e)
+	}
+	if interactive {
+		l = append(l, "-i")
 	}
 	l = append(l, ea.BT.ContainerName())
 	return append(l, args...)
