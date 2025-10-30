@@ -8,6 +8,7 @@ import (
 
 	"github.com/stretchr/testify/require"
 
+	"github.com/opensvc/om3/core/object"
 	"github.com/opensvc/om3/core/om"
 	"github.com/opensvc/om3/daemon/daemon"
 	"github.com/opensvc/om3/testhelper"
@@ -18,11 +19,15 @@ func TestMain(m *testing.M) {
 }
 
 func setup(t *testing.T) testhelper.Env {
+	t.Helper()
 	env := testhelper.Setup(t)
 	env.InstallFile("../../testdata/cluster.conf", "etc/cluster.conf")
 	env.InstallFile("../../testdata/ca-cluster1.conf", "etc/namespaces/system/sec/ca.conf")
 	env.InstallFile("../../testdata/cert-cluster1.conf", "etc/namespaces/system/sec/cert.conf")
 	env.InstallFile("../../testdata/hb.conf", "etc/namespaces/system/sec/hb.conf")
+	// daemondata.Start needs initial cluster.ConfigData.Set
+	_, err := object.SetClusterConfig()
+	require.NoError(t, err)
 	return env
 }
 

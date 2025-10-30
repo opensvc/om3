@@ -12,6 +12,7 @@ import (
 	"github.com/opensvc/om3/core/client"
 	"github.com/opensvc/om3/core/cluster"
 	"github.com/opensvc/om3/core/clusterdump"
+	"github.com/opensvc/om3/core/object"
 	"github.com/opensvc/om3/core/rawconfig"
 	"github.com/opensvc/om3/daemon/daemon"
 	"github.com/opensvc/om3/daemon/daemonenv"
@@ -39,9 +40,13 @@ func Setup(t *testing.T) (testhelper.Env, func()) {
 	env.InstallFile("./testdata/cert-cluster1.conf", "etc/namespaces/system/sec/cert.conf")
 	env.InstallFile("./testdata/hb.conf", "etc/namespaces/system/sec/hb.conf")
 
+	// daemondata.Start needs initial cluster.ConfigData.Set
+	_, err := object.SetClusterConfig()
+	require.NoError(t, err)
+
 	t.Logf("RunDaemon")
 	mainDaemon := daemon.New()
-	err := mainDaemon.Start(context.Background())
+	err = mainDaemon.Start(context.Background())
 	require.NoError(t, err)
 
 	stop := func() {

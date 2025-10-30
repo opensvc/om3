@@ -15,6 +15,7 @@ import (
 	"github.com/opensvc/om3/core/hbtype"
 	"github.com/opensvc/om3/core/instance"
 	"github.com/opensvc/om3/core/node"
+	"github.com/opensvc/om3/core/object"
 	"github.com/opensvc/om3/core/om"
 	"github.com/opensvc/om3/core/status"
 	"github.com/opensvc/om3/daemon/ccfg"
@@ -53,14 +54,18 @@ func TestMain(m *testing.M) {
 }
 
 func setup(t *testing.T) {
+	t.Helper()
 	env := testhelper.Setup(t)
 	env.InstallFile("../../testdata/nodes_info.json", "var/nodes_info.json")
 	env.InstallFile("../../testdata/cluster-2-nodes.conf", "etc/cluster.conf")
 	env.InstallFile("../../testdata/ca-cluster1.conf", "etc/namespaces/system/sec/ca.conf")
 	env.InstallFile("../../testdata/cert-cluster1.conf", "etc/namespaces/system/sec/cert.conf")
+	// daemondata.Start needs initial cluster.ConfigData.Set
+	_, err := object.SetClusterConfig()
+	require.NoError(t, err)
 }
 
-// TestDaemonData runs sequence of data updates within t.Run, and fail fast on
+// TestDaemonData runs sequences of data updates within t.Run, and fail fast on
 // first error
 //
 // This is why each t.Run is followed by require.False(t, t.Failed()) // fail on first error
@@ -68,7 +73,7 @@ func TestDaemonData(t *testing.T) {
 	setup(t)
 
 	// waitDurationForHbMsgProcessed is the duration to wait after a message is sent to the hbRecvMsgQ (the message
-	// process may take few milliseconds)
+	// process may take a few milliseconds)
 	waitDurationForHbMsgProcessed := 50 * time.Millisecond
 
 	drainDuration := 10 * time.Millisecond
