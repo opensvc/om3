@@ -67,6 +67,12 @@ type (
 	}
 
 	daemonSysManager uint
+
+	delayComponent struct {
+		delay time.Duration
+		desc  string
+		log   *plog.Logger
+	}
 )
 
 const (
@@ -224,6 +230,15 @@ func (t *T) Start(ctx context.Context) error {
 	t.ctx = daemonapi.WithSubQS(t.ctx, qsMedium)
 	for _, s := range []startStopper{
 		hbcache.New(2 * daemonenv.DrainChanDuration),
+
+		// Prefer start `hb` before the `discover` event storm
+		hb.New(t.ctx),
+
+		// introduces a short delay before starting `discover` to give the
+		// cluster state time to propagate, improving the likelihood of a fast
+		// ping→full→patch transition during daemon startup.
+		t.newDelay("cluster initial state propagate", 1000*time.Millisecond),
+
 		cstat.New(qsMedium),
 		istat.New(qsLarge),
 		listener.New(),
@@ -233,7 +248,6 @@ func (t *T) Start(ctx context.Context) error {
 		discover.NewManager(daemonenv.DrainChanDuration, qsHuge).
 			WithOmonSubQS(qsMedium).
 			WithImonStarter(imonFactory),
-		hb.New(t.ctx),
 		collector.New(t.ctx, qsHuge),
 		scheduler.New(qsHuge),
 		runner.NewDefault(qsSmall),
@@ -493,4 +507,22 @@ func startProfiling() {
 
 func GetBufferPublicationDuration() time.Duration {
 	return bufferPublicationDuration
+}
+
+func (t *T) newDelay(desc string, delay time.Duration) *delayComponent {
+	return &delayComponent{
+		log:   t.log,
+		desc:  desc,
+		delay: delay,
+	}
+}
+
+func (d *delayComponent) Start(_ context.Context) error {
+	d.log.Infof("%s: delay %s", d.desc, d.delay)
+	time.Sleep(d.delay)
+	return nil
+}
+
+func (d *delayComponent) Stop() error {
+	return nil
 }
