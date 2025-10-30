@@ -6969,6 +6969,26 @@ components:
           type: string
           format: duration
 
+    ResourceFiles:
+      type: array
+      items:
+        $ref: '#/components/schemas/ResourceFile'
+
+    ResourceFile:
+      type: object
+      required:
+        - csum
+        - mtime
+        - name
+      properties:
+        csum:
+          type: string
+        mtime:
+          type: string
+          format: date-time
+        name:
+          type: string
+
     ResourceLog:
       type: array
       items:
@@ -7161,6 +7181,7 @@ components:
       required:
         - disable
         - encap
+        - files
         - info
         - label
         - log
@@ -7182,6 +7203,8 @@ components:
           description: |
             indicates that the resource is handled by the encapsulated agents,
             and ignored at the hypervisor level
+        files:
+          $ref: '#/components/schemas/ResourceFiles'
         info:
           type: object
           description: |

@@ -1359,6 +1359,16 @@ type Resource struct {
 // ResourceConfig defines model for ResourceConfig.
 type ResourceConfig = instance.ResourceConfig
 
+// ResourceFile defines model for ResourceFile.
+type ResourceFile struct {
+	Csum  string    `json:"csum"`
+	Mtime time.Time `json:"mtime"`
+	Name  string    `json:"name"`
+}
+
+// ResourceFiles defines model for ResourceFiles.
+type ResourceFiles = []ResourceFile
+
 // ResourceInfoItem defines model for ResourceInfoItem.
 type ResourceInfoItem struct {
 	Key    string `json:"key"`
