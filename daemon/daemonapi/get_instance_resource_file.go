@@ -77,7 +77,7 @@ func (a *DaemonAPI) GetInstanceResourceFile(ctx echo.Context, nodename, namespac
 		ctx.Response().Header().Add(api.HeaderGroup, fmt.Sprint(uxInfo.Gid))
 		ctx.Response().Header().Add(api.HeaderUser, fmt.Sprint(uxInfo.Uid))
 
-		log.Infof("serve config file %s to %s", objPath, userFromContext(ctx).GetUserName())
+		log.Infof("serve %s file %s to %s", params.Rid, params.Name, userFromContext(ctx).GetUserName())
 		return ctx.File(params.Name)
 	}
 	return a.proxy(ctx, nodename, func(c *client.T) (*http.Response, error) {
