@@ -320,7 +320,7 @@ func (t *CmdNodeEvents) nodeEventLoop(ctx context.Context, nodename string) {
 				retries = 0
 				break
 			}
-			_, _ = fmt.Fprintf(os.Stderr, "retry %d of %d failed for %s: '%s'\n", retries, maxRetries, nodename, err)
+			_, _ = fmt.Fprintf(os.Stderr, ".")
 		}
 	}
 }
