@@ -87,6 +87,8 @@ var (
 
 	WatchdogUsecEnv     = "WATCHDOG_USEC"
 	WatchdogMinInterval = 2 * time.Second
+
+	ClusterInitialStatePropagateInterval = 1000 * time.Millisecond
 )
 
 func New() *T {
@@ -237,7 +239,7 @@ func (t *T) Start(ctx context.Context) error {
 		// introduces a short delay before starting `discover` to give the
 		// cluster state time to propagate, improving the likelihood of a fast
 		// ping→full→patch transition during daemon startup.
-		t.newDelay("cluster initial state propagate", 1000*time.Millisecond),
+		t.newDelay("cluster initial state propagate", ClusterInitialStatePropagateInterval),
 
 		cstat.New(qsMedium),
 		istat.New(qsLarge),
