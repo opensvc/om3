@@ -7,6 +7,7 @@ import (
 
 	"github.com/stretchr/testify/require"
 
+	"github.com/opensvc/om3/core/cluster"
 	"github.com/opensvc/om3/daemon/daemonctx"
 	"github.com/opensvc/om3/daemon/daemondata"
 	"github.com/opensvc/om3/daemon/hbcache"
@@ -23,6 +24,9 @@ func bootstrapDaemon(ctx context.Context, t *testing.T) context.Context {
 	bus.SetPanicOnFullQueue(time.Second)
 	bus.Start(ctx)
 	ctx = pubsub.ContextWithBus(ctx, bus)
+
+	// daemondata.Start needs initial cluster.ConfigData.Set
+	cluster.ConfigData.Set(&cluster.Config{})
 
 	t.Logf("start daemon")
 	hbc := hbcache.New(drainDuration)

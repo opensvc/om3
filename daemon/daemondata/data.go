@@ -45,8 +45,12 @@ type (
 		hbMessageType string        // latest created hb message type
 		localNode     string
 
-		// cluster nodes from local cluster config, it is updated from
-		// msgbus.ClusterConfigUpdated {NodesAdded, NodesRemoved}
+		// clusterNodes tracks the set of valid cluster members.
+		// It is used to determine whether a heartbeat message should be accepted
+		// (if its node name is a member of the cluster) or dropped
+		// (if it is not a member).
+		// The map is updated in response to msgbus.ClusterConfigUpdated events,
+		// which include NodesAdded and NodesRemoved notifications.
 		clusterNodes map[string]struct{}
 
 		log       *plog.Logger
@@ -513,10 +517,10 @@ func (d *data) updateClusterNodes(added, removed []string) {
 }
 
 // onSubEvent is called on events emitted from localhost (has label node=localhost).
-// It forwards event to peer (if localEventMustBeForwarded)
+// It forwards events to peer (if localEventMustBeForwarded)
 //
-// when event is ClusterConfigUpdated: d.clusterNodes is refreshed and d.dropPeer
-// is called for NodesRemoved
+// when the event is ClusterConfigUpdated: d.clusterNodes is refreshed,
+// and d.dropPeer is called for NodesRemoved
 //
 // finally event is applied to d.clusterData
 func (d *data) onSubEvent(i interface{}) {

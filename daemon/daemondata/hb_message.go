@@ -153,7 +153,6 @@ func (d *data) setNextMsgType() {
 			}
 			if _, ok := d.clusterNodes[node]; !ok {
 				err := fmt.Errorf("bug: d.hbGens[%s] exists without d.clusterNodes[%s]", node, node)
-				// TODO: replace with panic(err) ?
 				d.log.Errorf("setNextMsgType cleanup unexpected hb gens %s: %s", node, err)
 				delete(d.hbGens, node)
 				continue

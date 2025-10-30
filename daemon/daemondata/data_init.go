@@ -5,6 +5,7 @@ import (
 	"path/filepath"
 	"time"
 
+	"github.com/opensvc/om3/core/cluster"
 	"github.com/opensvc/om3/core/clusterdump"
 	"github.com/opensvc/om3/core/instance"
 	"github.com/opensvc/om3/core/node"
@@ -52,6 +53,11 @@ func newData() *data {
 		},
 	}
 
+	clusterNodes := make(map[string]struct{})
+	for _, n := range cluster.ConfigData.Get().Nodes {
+		clusterNodes[n] = struct{}{}
+	}
+
 	initialMsgType := "undef"
 	return &data{
 		gen:                nodeData.Status.Gen[localNode],
@@ -59,7 +65,7 @@ func newData() *data {
 		hbMessageType:      initialMsgType,
 		hbPatchMsgUpdated:  make(map[string]time.Time),
 		localNode:          localNode,
-		clusterNodes:       map[string]struct{}{localNode: {}},
+		clusterNodes:       clusterNodes,
 		clusterData:        msgbus.NewClusterData(status.DeepCopy()),
 		eventQueue:         make(eventQueue),
 		previousRemoteInfo: make(map[string]remoteInfo),
