@@ -220,10 +220,11 @@ type (
 		// Tags is a set of words attached to the resource.
 		Tags TagSet `json:"tags,omitempty"`
 
-		Files []File `json:"files,omitempty"`
+		Files Files `json:"files,omitempty"`
 	}
 
-	File struct {
+	Files []File
+	File  struct {
 		Checksum string    `json:"csum"`
 		Mtime    time.Time `json:"mtime"`
 		Name     string    `json:"name"`
@@ -1482,14 +1483,14 @@ func createStoppedIfHasResourceSelector(ctx context.Context, r Driver) error {
 	return file.Close()
 }
 
-func getFiles(t Driver) []File {
+func getFiles(t Driver) Files {
 	i, ok := t.(toSyncer)
 	if !ok {
 		return nil
 	}
 	_, isIngester := t.(ingester)
 
-	files := make([]File, 0)
+	files := make(Files, 0)
 	for _, name := range i.ToSync() {
 		mtime := file.ModTime(name)
 		checksum, _ := file.MD5(name)
@@ -1502,4 +1503,13 @@ func getFiles(t Driver) []File {
 		files = append(files, file)
 	}
 	return files
+}
+
+func (t Files) Lookup(name string) (File, bool) {
+	for _, file := range t {
+		if file.Name == name {
+			return file, true
+		}
+	}
+	return File{}, false
 }
