@@ -29,6 +29,7 @@ import (
 	"github.com/opensvc/om3/core/trigger"
 	"github.com/opensvc/om3/util/command"
 	"github.com/opensvc/om3/util/device"
+	"github.com/opensvc/om3/util/file"
 	"github.com/opensvc/om3/util/pg"
 	"github.com/opensvc/om3/util/plog"
 	"github.com/opensvc/om3/util/runfiles"
@@ -218,6 +219,15 @@ type (
 
 		// Tags is a set of words attached to the resource.
 		Tags TagSet `json:"tags,omitempty"`
+
+		Files []File `json:"files,omitempty"`
+	}
+
+	File struct {
+		Checksum string    `json:"csum"`
+		Mtime    time.Time `json:"mtime"`
+		Name     string    `json:"name"`
+		Ingest   bool      `json:"ingest"`
 	}
 
 	// RunningInfoList is the list of the in-progress run info (for sync and task).
@@ -1218,6 +1228,7 @@ func GetStatus(ctx context.Context, r Driver) Status {
 		Log:           r.StatusLog().Entries(),
 		IsProvisioned: getProvisionStatus(r),
 		Info:          getStatusInfo(ctx, r),
+		Files:         getFiles(r),
 
 		IsStopped:   r.IsStopped(),
 		IsMonitored: r.IsMonitored(),
@@ -1469,4 +1480,26 @@ func createStoppedIfHasResourceSelector(ctx context.Context, r Driver) error {
 		return err
 	}
 	return file.Close()
+}
+
+func getFiles(t Driver) []File {
+	i, ok := t.(toSyncer)
+	if !ok {
+		return nil
+	}
+	_, isIngester := t.(ingester)
+
+	files := make([]File, 0)
+	for _, name := range i.ToSync() {
+		mtime := file.ModTime(name)
+		checksum, _ := file.MD5(name)
+		file := File{
+			Name:     name,
+			Mtime:    mtime,
+			Checksum: fmt.Sprintf("%x", checksum),
+			Ingest:   isIngester,
+		}
+		files = append(files, file)
+	}
+	return files
 }
