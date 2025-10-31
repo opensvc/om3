@@ -38,6 +38,11 @@ func (t *GetEvents) SetLimit(limit uint64) *GetEvents {
 	return t
 }
 
+func (t *GetEvents) SetFilter(filters ...string) *GetEvents {
+	t.Filters = filters
+	return t
+}
+
 func (t *GetEvents) SetFilters(filters []string) *GetEvents {
 	t.Filters = filters
 	return t
