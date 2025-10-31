@@ -11,6 +11,7 @@ import (
 	"github.com/opensvc/om3/core/clusternode"
 	"github.com/opensvc/om3/core/node"
 	"github.com/opensvc/om3/daemon/daemonauth"
+	"github.com/opensvc/om3/daemon/daemonsubsystem"
 	"github.com/opensvc/om3/util/funcopt"
 )
 
@@ -27,13 +28,18 @@ func (a *DaemonAPI) proxy(ctx echo.Context, nodename string, fn func(*client.T) 
 	if resp, err := fn(c); err != nil {
 		return JSONProblemf(ctx, http.StatusInternalServerError, "Request peer", "%s: %s", nodename, err)
 	} else {
+		for key, values := range resp.Header {
+			for _, v := range values {
+				ctx.Response().Header().Add(key, v)
+			}
+		}
 		return ctx.Stream(resp.StatusCode, resp.Header.Get("Content-Type"), resp.Body)
 	}
 }
 
 func (a *DaemonAPI) newProxyClient(ctx echo.Context, nodename string, opts ...funcopt.O) (*client.T, error) {
 	options := []funcopt.O{
-		client.WithURL(nodename),
+		client.WithURL(daemonsubsystem.PeerURL(nodename)),
 	}
 	authHeader := ctx.Request().Header.Get("authorization")
 	if authHeader != "" {

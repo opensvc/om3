@@ -149,6 +149,11 @@ func (t *Manager) crmStartStandby() error {
 	return t.crmAction("start", t.path.String(), "instance", "startstandby")
 }
 
+func (t *Manager) crmResourceIngest(rids []string) error {
+	s := strings.Join(rids, ",")
+	return t.crmAction("ingest", t.path.String(), "instance", "ingest", "--rid", s)
+}
+
 func (t *Manager) crmResourceStartStandby(rids []string) error {
 	s := strings.Join(rids, ",")
 	return t.crmAction("start", t.path.String(), "instance", "startstandby", "--rid", s)

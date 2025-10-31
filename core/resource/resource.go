@@ -8,6 +8,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"slices"
 	"strings"
 	"time"
 
@@ -1503,6 +1504,17 @@ func getFiles(t Driver) Files {
 		files = append(files, file)
 	}
 	return files
+}
+
+func (t Files) Merge(f File) Files {
+	l := slices.Clone(t)
+	for i, this := range l {
+		if this.Name == f.Name {
+			l[i] = f
+			return l
+		}
+	}
+	return append(l, f)
 }
 
 func (t Files) Lookup(name string) (File, bool) {

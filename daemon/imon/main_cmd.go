@@ -248,16 +248,15 @@ func (t *Manager) onMyInstanceStatusUpdated(srcNode string, srcCmd *msgbus.Insta
 	switch {
 	case !ok:
 		t.log.Debugf("ObjectStatusUpdated %s from InstanceStatusUpdated on %s create instance status", srcNode, srcCmd.Node)
-		t.instStatus[srcCmd.Node] = srcCmd.Value
-		t.clearStonith(srcCmd.Node, srcCmd.Value.Avail)
 	case instStatus.UpdatedAt.Before(srcCmd.Value.UpdatedAt):
-		// only update if more recent
 		t.log.Debugf("ObjectStatusUpdated %s from InstanceStatusUpdated on %s update instance status with avail %s", srcNode, srcCmd.Node, srcCmd.Value.Avail)
-		t.instStatus[srcCmd.Node] = srcCmd.Value
-		t.clearStonith(srcCmd.Node, srcCmd.Value.Avail)
 	default:
 		t.log.Debugf("ObjectStatusUpdated %s from InstanceStatusUpdated on %s skip update instance from obsolete status avail %s", srcNode, srcCmd.Node, srcCmd.Value.Avail)
+		return
 	}
+	t.instStatus[srcCmd.Node] = srcCmd.Value
+	t.clearStonith(srcCmd.Node, srcCmd.Value.Avail)
+	t.manageResourceFiles(srcCmd)
 }
 
 func (t *Manager) onInstanceConfigUpdated(srcNode string, srcCmd *msgbus.InstanceConfigUpdated) {
@@ -397,8 +396,7 @@ func (t *Manager) onMyObjectStatusUpdated(c *msgbus.ObjectStatusUpdated) {
 		case *msgbus.InstanceConfigUpdated:
 			t.onInstanceConfigUpdated(c.Node, srcCmd)
 		case *msgbus.InstanceConfigDeleted:
-			// just a reminder here: no action on InstanceConfigDeleted because
-			// if our instance config is deleted our omon launcher will cancel us
+			// Do nothing here: omon is canceling our context
 		case *msgbus.InstanceMonitorDeleted:
 			if srcCmd.Node == t.localhost {
 				// this is not expected
