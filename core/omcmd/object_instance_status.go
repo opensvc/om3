@@ -78,7 +78,7 @@ func (t *CmdObjectInstanceStatus) extract(nodenames []string, paths naming.Paths
 		return t.extractLocal(paths)
 	}
 
-	return nil, fmt.Errorf("failed to get instance status data from the deamon nor from the crm")
+	return localData, nil
 }
 
 func (t *CmdObjectInstanceStatus) extractLocal(paths naming.Paths) ([]object.Digest, error) {
