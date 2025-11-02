@@ -139,7 +139,7 @@ type (
 	// cmdBufferPublications is the command to enable or disable publication buffer
 	cmdBufferPublications struct {
 		enabled  bool
-		capacity int32
+		capacity uint32
 		done     chan<- bool
 	}
 
@@ -188,6 +188,17 @@ type (
 		// maximum queue size.
 		// Default value (zero) disables panic on the full queue feature.
 		panicOnFullQueueGraceTime time.Duration
+
+		// onPubCmd is the function called when a publication is received
+		onPubCmd func(cmdPub)
+		// bufferedPublicationCount is the number of publications that have been buffered
+		bufferedPublicationCount uint32
+		// bufferedPublicationMax is the maximum number of publications that can be buffered
+		bufferedPublicationMax uint32
+		// bufferedPublicationC is the channel where buffered publications are pushed
+		bufferedPublicationC chan cmdPub
+		// bufferedPublicationEnabled is true if publication buffering is enabled
+		bufferedPublicationEnabled bool
 	}
 
 	stringer interface {
@@ -421,6 +432,7 @@ func (b *Bus) Start(ctx context.Context) {
 	started := make(chan bool)
 	b.subs = make(map[uuid.UUID]*Subscription)
 	b.subMap = make(subscriptionMap)
+	b.onPubCmd = b.doPublication
 
 	b.Add(1)
 	go func() {
@@ -443,8 +455,6 @@ func (b *Bus) Start(ctx context.Context) {
 			b.warnExceededNotification(watchDurationCtx, notifyDurationWarn)
 		}()
 
-		var cmdPubC chan cmdPub
-		cmdPubBuffered := false
 		started <- true
 		for {
 			select {
@@ -454,14 +464,7 @@ func (b *Bus) Start(ctx context.Context) {
 				beginCmd <- cmd
 				switch c := cmd.(type) {
 				case cmdPub:
-					if !cmdPubBuffered {
-						b.onPubCmd(c)
-					} else {
-						resp := c.resp
-						c.resp = nil
-						cmdPubC <- c
-						resp <- true
-					}
+					b.onPubCmd(c)
 				case cmdSubAddFilter:
 					b.onSubAddFilter(c)
 				case cmdSubDelFilter:
@@ -471,28 +474,10 @@ func (b *Bus) Start(ctx context.Context) {
 				case cmdUnsub:
 					b.onUnsubCmd(c)
 				case cmdBufferPublications:
-					if c.enabled && !cmdPubBuffered {
-						cmdPubBuffered = true
-						cmdPubC = make(chan cmdPub, c.capacity)
-						b.log.Infof("publication buffering is now enabled")
-					} else if !c.enabled && cmdPubBuffered {
-						b.log.Infof("disabling publication buffering and emit queued publications")
-						for {
-							if !cmdPubBuffered {
-								break
-							}
-							select {
-							case <-b.ctx.Done():
-								return
-							case c := <-cmdPubC:
-								b.onPubCmd(c)
-							default:
-								cmdPubBuffered = false
-								close(cmdPubC)
-								break
-							}
-						}
-						b.log.Infof("publication buffering is now disabled")
+					if c.enabled {
+						b.enablePublicationBuffering(c)
+					} else {
+						b.disablePublicationBuffering(c)
 					}
 					c.done <- true
 				}
@@ -502,6 +487,47 @@ func (b *Bus) Start(ctx context.Context) {
 	}()
 	b.started = <-started
 	b.log.Infof("bus started")
+}
+
+func (b *Bus) enablePublicationBuffering(c cmdBufferPublications) {
+	if b.bufferedPublicationEnabled {
+		b.log.Errorf("can't enable: publication buffering is already enabled")
+		return
+	}
+	b.log.Infof("publication buffering is now enabled")
+	b.bufferedPublicationEnabled = true
+	b.bufferedPublicationMax = c.capacity
+	b.bufferedPublicationC = make(chan cmdPub, b.bufferedPublicationMax)
+	b.onPubCmd = b.doBufferedPublication
+}
+
+func (b *Bus) disablePublicationBuffering(_ cmdBufferPublications) {
+	if !b.bufferedPublicationEnabled {
+		b.log.Debugf("publication buffering is already disabled")
+		return
+	}
+	b.log.Infof("disabling publication buffering, emit queued publications %d", b.bufferedPublicationCount)
+	defer func() {
+		if b.bufferedPublicationC != nil {
+			close(b.bufferedPublicationC)
+		}
+		b.bufferedPublicationEnabled = false
+		b.bufferedPublicationC = nil
+		b.onPubCmd = b.doPublication
+		b.log.Infof("publication buffering is now disabled")
+	}()
+
+	for {
+		select {
+		case <-b.ctx.Done():
+			return
+		case c := <-b.bufferedPublicationC:
+			b.bufferedPublicationCount--
+			b.doPublication(c)
+		default:
+			return
+		}
+	}
 }
 
 // SetDrainChanDuration overrides defaultDrainChanDuration for not yet started bus.
@@ -582,9 +608,21 @@ func (b *Bus) onUnsubCmd(c cmdUnsub) {
 	subscriptionTotal.With(prometheus.Labels{"operation": "delete"}).Inc()
 }
 
-func (b *Bus) onPubCmd(c cmdPub) {
+func (b *Bus) doBufferedPublication(c cmdPub) {
+	resp := c.resp
+	c.resp = nil
+	b.bufferedPublicationC <- c
+	b.bufferedPublicationCount++
+	if b.bufferedPublicationCount >= b.bufferedPublicationMax {
+		b.log.Infof("publication buffering is full, disabling buffering")
+		b.disablePublicationBuffering(cmdBufferPublications{enabled: false})
+	}
+	resp <- true
+}
+
+func (b *Bus) doPublication(c cmdPub) {
 	for _, toFilterKey := range c.pubKeys {
-		// search publication that listen on one of cmdPub.keys
+		// search subscribers that listen to on one of cmdPub.keys
 		if subIDMap, ok := b.subMap[toFilterKey]; ok {
 			for subID := range subIDMap {
 				sub, ok := b.subs[subID]
@@ -785,11 +823,11 @@ func (b *Bus) DisableBufferPublication() {
 }
 
 // EnableBufferPublication enable the publication buffering.
-// The future publication commands are push to a fresh buffered channel
+// The future publication commands are push to a fresh bufferedPublicationEnabled channel
 // of cmdPub with cap capacity, instead of being delivered immediately.
 //
 // pubsub default behavior is unbuffered.
-func (b *Bus) EnableBufferPublication(capacity int32) {
+func (b *Bus) EnableBufferPublication(capacity uint32) {
 	done := make(chan bool)
 	op := cmdBufferPublications{
 		enabled:  true,
