@@ -70,6 +70,8 @@ func New(subQS pubsub.QueueSizer) *T {
 
 func (t *T) Start(ctx context.Context) error {
 	t.log = plog.NewDefaultLogger().WithPrefix("daemon: istat: ").Attr("pkg", "daemon/istat")
+	t.log.Infof("starting")
+	defer t.log.Infof("started")
 	err := make(chan error)
 	t.wg.Add(1)
 	go func(errC chan<- error) {
