@@ -186,7 +186,7 @@ type (
 		// panicOnFullQueueGraceTime is the grace time duration we have to wait
 		// before panic when a subscription with no timeout has reached its
 		// maximum queue size.
-		// Default value (zero) disable panic on full queue feature.
+		// Default value (zero) disables panic on the full queue feature.
 		panicOnFullQueueGraceTime time.Duration
 	}
 
