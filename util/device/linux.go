@@ -15,6 +15,7 @@ import (
 
 	"github.com/opensvc/om3/util/command"
 	"github.com/opensvc/om3/util/devicedriver"
+	"github.com/opensvc/om3/util/udevadm"
 )
 
 func (t T) IsReadWrite() (bool, error) {
@@ -362,6 +363,16 @@ func (t T) RemoveMultipath() error {
 }
 
 func (t T) WWID() (string, error) {
+	props, err := udevadm.Properties(t.path)
+	if err != nil {
+		return "", err
+	}
+	if v, ok := props["DM_SERIAL"]; ok {
+		return v, nil
+	}
+	if v, ok := props["ID_SERIAL"]; ok {
+		return v, nil
+	}
 	return "", nil
 }
 
