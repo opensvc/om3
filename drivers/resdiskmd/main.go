@@ -158,6 +158,9 @@ func (t *T) Status(ctx context.Context) status.T {
 		t.StatusLog().Warn("auto-assemble is not disabled")
 	}
 	if v {
+		if err := t.dumpCacheFile(); err != nil {
+			t.StatusLog().Warn("dump disks cache: %s", err)
+		}
 		return status.Up
 	}
 	t.downStateAlerts()
@@ -305,12 +308,8 @@ func (t *T) Boot(ctx context.Context) error {
 	return t.Stop(ctx)
 }
 
-func (t *T) PostSync() error {
+func (t *T) Ingest(ctx context.Context) error {
 	return t.md().DisableAutoActivation()
-}
-
-func (t *T) PreSync() error {
-	return t.dumpCacheFile()
 }
 
 func (t *T) Resync(ctx context.Context) error {
