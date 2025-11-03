@@ -54,8 +54,8 @@ func New(subQS pubsub.QueueSizer) *T {
 // Start launches the cstat worker goroutine
 func (o *T) Start(parent context.Context) error {
 	o.log = plog.NewDefaultLogger().WithPrefix("daemon: cstat: ").Attr("pkg", "daemon/cstat")
-	o.log.Infof("starting")
-	defer o.log.Infof("started")
+	o.log.Debugf("starting")
+	defer o.log.Debugf("started")
 	o.ctx, o.cancel = context.WithCancel(parent)
 	o.publisher = pubsub.PubFromContext(o.ctx)
 
