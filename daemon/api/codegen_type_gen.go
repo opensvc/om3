@@ -1359,6 +1359,16 @@ type Resource struct {
 // ResourceConfig defines model for ResourceConfig.
 type ResourceConfig = instance.ResourceConfig
 
+// ResourceFile defines model for ResourceFile.
+type ResourceFile struct {
+	Csum  string    `json:"csum"`
+	Mtime time.Time `json:"mtime"`
+	Name  string    `json:"name"`
+}
+
+// ResourceFiles defines model for ResourceFiles.
+type ResourceFiles = []ResourceFile
+
 // ResourceInfoItem defines model for ResourceInfoItem.
 type ResourceInfoItem struct {
 	Key    string `json:"key"`
@@ -1764,6 +1774,12 @@ type InQueryPoolName = string
 // InQueryRequesterSid defines model for inQueryRequesterSid.
 type InQueryRequesterSid = openapi_types.UUID
 
+// InQueryResourceFileName defines model for inQueryResourceFileName.
+type InQueryResourceFileName = string
+
+// InQueryResourceFileRid defines model for inQueryResourceFileRid.
+type InQueryResourceFileRid = string
+
 // InQueryRid defines model for inQueryRid.
 type InQueryRid = string
 
@@ -1850,7 +1866,7 @@ type PostAuthTokenParams struct {
 	// Scope the scope value used to create the token grant claim
 	Scope *string `form:"scope,omitempty" json:"scope,omitempty"`
 
-	// Refresh If `true`, the response will include a refresh token in addition  to the access token.   If omitted or `false`, only an access token is returned.
+	// Refresh If `true`, the response will include a refresh token in addition to the access token. If omitted or `false`, only an access token is returned.
 	Refresh *bool `form:"refresh,omitempty" json:"refresh,omitempty"`
 
 	// RefreshDuration max refresh token duration, maximum value 30 days
@@ -2267,6 +2283,15 @@ type GetInstanceLogsParams struct {
 
 	// Lines report this number of past last log entries
 	Lines *LogLines `form:"lines,omitempty" json:"lines,omitempty"`
+}
+
+// GetInstanceResourceFileParams defines parameters for GetInstanceResourceFile.
+type GetInstanceResourceFileParams struct {
+	// Name The path of a file explicitely shared by a resource driver that the requester wants to receive the data of.
+	Name InQueryResourceFileName `form:"name" json:"name"`
+
+	// Rid The rid that is expected to expose the requested file path.
+	Rid InQueryResourceFileRid `form:"rid" json:"rid"`
 }
 
 // GetNodeLogsParams defines parameters for GetNodeLogs.

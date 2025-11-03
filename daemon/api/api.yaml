@@ -29,7 +29,7 @@ paths:
 
         If the `refresh` parameter is present and set to `true`, a refresh token
         will also be included in the response.
-        
+
         The requested roles are embedded as a 'grant' claim if matching the usr
         'grant' keyword.
       operationId: PostAuthToken
@@ -56,8 +56,8 @@ paths:
         - in: query
           name: refresh
           description: >
-            If `true`, the response will include a refresh token in addition 
-            to the access token.  
+            If `true`, the response will include a refresh token in addition
+            to the access token.
             If omitted or `false`, only an access token is returned.
           required: false
           schema:
@@ -1686,7 +1686,7 @@ paths:
     get:
       description: |
         For internal use only.
-        
+
         Used by the CRM to get the drbd driver minor numbers and ports already allocated on the node.
       operationId: GetNodeDRBDAllocation
       parameters:
@@ -2687,7 +2687,7 @@ paths:
     post:
       operationId: PostInstanceResourceConsole
       description: |
-        Start a shell in the container resource and expose it through a url that can be opened by a browser or a `tty-share` client. 
+        Start a shell in the container resource and expose it through a url that can be opened by a browser or a `tty-share` client.
       parameters:
         - $ref: '#/components/parameters/inPathNodeName'
         - $ref: '#/components/parameters/inPathNamespace'
@@ -2717,6 +2717,55 @@ paths:
         - bearerAuth: []
       tags:
         - node / instance / svc
+
+  /api/node/name/{nodename}/instance/path/{namespace}/{kind}/{name}/resource/file:
+    get:
+      operationId: GetInstanceResourceFile
+      description: |
+        For internal use only.
+
+        Returns the content of the requested file as the response body, with the file’s metadata (statinfo) included in the response headers. This operation is only performed if the specified file path is verified as exposed by an instance resource.
+      parameters:
+        - $ref: '#/components/parameters/inPathNodeName'
+        - $ref: '#/components/parameters/inPathNamespace'
+        - $ref: '#/components/parameters/inPathKind'
+        - $ref: '#/components/parameters/inPathName'
+        - $ref: '#/components/parameters/inQueryResourceFileName'
+        - $ref: '#/components/parameters/inQueryResourceFileRid'
+      security:
+        - basicAuth: []
+        - bearerAuth: []
+      responses:
+        200:
+          description: OK
+          headers:
+            OM-Group:
+              type: string
+            OM-Last-Modified:
+              type: string
+              format: date-time
+              pattern: '^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(\.\d{1,9})?Z?$'
+            OM-Perm:
+              type: string
+            OM-User:
+              type: string
+          content:
+            application/octet-stream:
+              schema:
+                type: string
+                format: binary
+        400:
+          $ref: '#/components/responses/400'
+        401:
+          $ref: '#/components/responses/401'
+        403:
+          $ref: '#/components/responses/403'
+        500:
+          $ref: '#/components/responses/500'
+      tags:
+        - node / instance / svc
+        - node / instance / vol
+      x-internal: true
 
   /api/node/name/{nodename}/instance/path/{namespace}/{kind}/{name}/resource/info:
     get:
@@ -6920,6 +6969,26 @@ components:
           type: string
           format: duration
 
+    ResourceFiles:
+      type: array
+      items:
+        $ref: '#/components/schemas/ResourceFile'
+
+    ResourceFile:
+      type: object
+      required:
+        - csum
+        - mtime
+        - name
+      properties:
+        csum:
+          type: string
+        mtime:
+          type: string
+          format: date-time
+        name:
+          type: string
+
     ResourceLog:
       type: array
       items:
@@ -7112,6 +7181,7 @@ components:
       required:
         - disable
         - encap
+        - files
         - info
         - label
         - log
@@ -7133,6 +7203,8 @@ components:
           description: |
             indicates that the resource is handled by the encapsulated agents,
             and ignored at the hypervisor level
+        files:
+          $ref: '#/components/schemas/ResourceFiles'
         info:
           type: object
           description: |
@@ -7663,6 +7735,22 @@ components:
       name: node
       description: a node selector expression like `n[123]`, `n*`, `mylabel=myvalue`
       required: false
+      schema:
+        type: string
+
+    inQueryResourceFileName:
+      in: query
+      name: name
+      description: The path of a file explicitely shared by a resource driver that the requester wants to receive the data of.
+      required: true
+      schema:
+        type: string
+
+    inQueryResourceFileRid:
+      in: query
+      name: rid
+      description: The rid that is expected to expose the requested file path.
+      required: true
       schema:
         type: string
 

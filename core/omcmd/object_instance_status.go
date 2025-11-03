@@ -7,7 +7,6 @@ import (
 	"fmt"
 	"os"
 	"strings"
-	"sync"
 	"time"
 
 	"github.com/opensvc/om3/core/actioncontext"
@@ -37,46 +36,49 @@ type (
 	}
 )
 
-func (t *CmdObjectInstanceStatus) extract(nodenames []string, paths naming.Paths, c *client.T) (data []object.Digest, err error) {
+func (t *CmdObjectInstanceStatus) extract(nodenames []string, paths naming.Paths, c *client.T) ([]object.Digest, error) {
 	if env.HasDaemonOrigin() {
 		// avoid exec loop.
 		// The daemon doesn't need more.
-		data, err = t.extractLocal(paths)
-		return
+		return t.extractLocal(paths)
 	}
+
+	var localData []object.Digest
+
 	if t.Local || t.Monitor || (t.Refresh && t.NodeSelector == "") {
-		var wg sync.WaitGroup
-		wg.Add(1)
-		go func() {
-			defer wg.Done()
-			clusterStatus, err := getClusterStatus(paths, c)
-			if err != nil {
-				return
-			}
-			ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
-			defer cancel()
-			commoncmd.RefreshInstanceStatusFromClusterStatus(ctx, clusterStatus)
-		}()
-
-		data, err = t.extractLocal(paths)
+		ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+		defer cancel()
+		wait, err := commoncmd.InstanceStatusUpdatedWaiter(ctx, paths)
 		if err != nil {
-			return
+			return nil, err
 		}
-		wg.Wait()
-		// try daemon
-		if data, err := t.extractFromDaemon(paths, c); err == nil {
+		if data, err := t.extractLocal(paths); err != nil {
 			return data, err
+		} else {
+			localData = data
 		}
-		return
+		wait()
+	} else if t.Refresh && t.NodeSelector != "" {
+		clusterStatus, err := getClusterStatus(paths, c)
+		if err != nil {
+			return nil, err
+		}
+		ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+		defer cancel()
+		commoncmd.RefreshInstanceStatusFromClusterStatus(ctx, clusterStatus)
 	}
 
-	// try daemon
-	if data, err := t.extractFromDaemon(paths, c); err == nil {
-		return data, err
+	// try to get instance Monitor and Config from the daemon
+	if daemonData, err := t.extractFromDaemon(paths, c); err == nil {
+		return daemonData, nil
 	}
 
-	data, err = t.extractLocal(paths)
-	return
+	// fallback to display just instance Status, no Monitor, no Config
+	if localData == nil {
+		return t.extractLocal(paths)
+	}
+
+	return localData, nil
 }
 
 func (t *CmdObjectInstanceStatus) extractLocal(paths naming.Paths) ([]object.Digest, error) {

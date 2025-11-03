@@ -9,9 +9,12 @@ import (
 )
 
 const (
+	HeaderGroup        = "OM-Group"
 	HeaderLastModified = "OM-Last-Modified"
+	HeaderPerm         = "OM-Perm"
 	HeaderRelativePath = "OM-relative-path"
 	HeaderServedBy     = "OM-Served-By"
+	HeaderUser         = "OM-User"
 )
 
 const (

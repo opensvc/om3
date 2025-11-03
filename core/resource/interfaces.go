@@ -136,6 +136,9 @@ type (
 	updater interface {
 		Update(context.Context) error
 	}
+	toSyncer interface {
+		ToSync() []string
+	}
 	ingester interface {
 		Ingest(context.Context) error
 	}

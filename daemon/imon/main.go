@@ -36,6 +36,7 @@ import (
 	"github.com/opensvc/om3/core/object"
 	"github.com/opensvc/om3/core/priority"
 	"github.com/opensvc/om3/core/rawconfig"
+	"github.com/opensvc/om3/core/resource"
 	"github.com/opensvc/om3/core/status"
 	"github.com/opensvc/om3/daemon/daemondata"
 	"github.com/opensvc/om3/daemon/daemonenv"
@@ -74,6 +75,8 @@ type (
 		// ObjectStatusUpdated for path events where srcEvent is InstanceStatusDeleted
 		// or InstanceStatusUpdated.
 		instStatus map[string]instance.Status
+
+		files filesManager
 
 		// instMonitor tracks instance.Monitor for path on other nodes, iit is updated on
 		// ObjectStatusUpdated for path events where srcEvent is InstanceMonitorDeleted
@@ -164,6 +167,20 @@ type (
 		regularResourceOrchestrate orchestrationResource
 	}
 
+	filesManager struct {
+		// fetched stores the resource files we fetched to avoid uneeded refetch
+		fetched map[string]resource.File
+
+		// attention stores a pending InstanceStatusUpdated event received while the fetch
+		// manager was already processing an event. This serves as a flag to immediately
+		// retrigger a new fetch cycle upon completion of the current one.
+		attention *msgbus.InstanceStatusUpdated
+
+		// fetching is true when the resource files fetch and ingest routine is
+		// running
+		fetching bool
+	}
+
 	// cmdOrchestrate can be used from post action go routines
 	cmdOrchestrate struct {
 		state    instance.MonitorState
@@ -178,6 +195,10 @@ type (
 	cmdResourceRestart struct {
 		rids    []string
 		standby bool
+	}
+
+	cmdFetchDone struct {
+		Files resource.Files
 	}
 
 	Factory struct {
@@ -245,6 +266,9 @@ func start(parent context.Context, qs pubsub.QueueSizer, p naming.Path, nodes []
 		cmdC:          make(chan any),
 		databus:       databus,
 		publisher:     pubsub.PubFromContext(ctx),
+		files: filesManager{
+			fetched: make(map[string]resource.File),
+		},
 		instStatus:    make(map[string]instance.Status),
 		instMonitor:   make(map[string]instance.Monitor),
 		nodeMonitor:   make(map[string]node.Monitor),
@@ -439,6 +463,8 @@ func (t *Manager) worker(initialNodes []string) {
 				t.needOrchestrate(c)
 			case cmdResourceRestart:
 				t.resourceRestart(c.rids, c.standby)
+			case cmdFetchDone:
+				t.onFetchDone(c)
 			}
 		case <-t.delayTimer.C:
 			t.onDelayTimer()

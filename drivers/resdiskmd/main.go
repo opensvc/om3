@@ -5,9 +5,11 @@ package resdiskmd
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
+	"slices"
 	"strings"
 
 	"github.com/opensvc/om3/core/actionrollback"
@@ -158,6 +160,9 @@ func (t *T) Status(ctx context.Context) status.T {
 		t.StatusLog().Warn("auto-assemble is not disabled")
 	}
 	if v {
+		if err := t.dumpCacheFile(); err != nil {
+			t.StatusLog().Warn("dump disks cache: %s", err)
+		}
 		return status.Up
 	}
 	t.downStateAlerts()
@@ -305,12 +310,8 @@ func (t *T) Boot(ctx context.Context) error {
 	return t.Stop(ctx)
 }
 
-func (t *T) PostSync() error {
+func (t *T) Ingest(ctx context.Context) error {
 	return t.md().DisableAutoActivation()
-}
-
-func (t *T) PreSync() error {
-	return t.dumpCacheFile()
 }
 
 func (t *T) Resync(ctx context.Context) error {
@@ -335,7 +336,7 @@ func (t *T) dumpCacheFile() error {
 	p := t.cacheFile()
 	dids := make([]string, 0)
 	for _, dev := range t.SubDevices() {
-		if did, err := dev.WWID(); did != "" && err != nil {
+		if did, err := dev.WWID(); did != "" && err == nil {
 			dids = append(dids, did)
 		}
 	}
@@ -374,6 +375,17 @@ func (t *T) downStateAlerts() error {
 	dids, err := t.loadCacheFile()
 	if err != nil {
 		return err
+	}
+	var notFound []string
+	for _, did := range dids {
+		_, err = os.Stat("/dev/disk/by-id/scsi-" + did)
+		if errors.Is(err, os.ErrNotExist) {
+			notFound = append(notFound, did)
+		}
+	}
+	if notFound != nil {
+		slices.Sort(notFound)
+		t.StatusLog().Warn("md members missing: %s", strings.Join(notFound, ","))
 	}
 	t.Log().Debugf("loaded disk ids from cache: %s", dids)
 	return nil

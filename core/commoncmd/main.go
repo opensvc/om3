@@ -250,10 +250,11 @@ func WaitInstanceMonitor(ctx context.Context, c *client.T, p naming.Path, timeou
 // the error immediately and does not send anything to errC.
 func WaitInstanceStatusUpdated(ctx context.Context, c *client.T, nodename string, p naming.Path, timeout time.Duration, errC chan error) error {
 	waitingAt := time.Now()
-	filters := []string{
-		fmt.Sprintf("InstanceStatusUpdated,path=%s,node=%s", p.String(), nodename),
+	filter := fmt.Sprintf("InstanceStatusUpdated,path=%s", p)
+	if nodename != "" {
+		filter += fmt.Sprintf(",node=%s", nodename)
 	}
-	getEvents := c.NewGetEvents().SetFilters(filters).SetLimit(1)
+	getEvents := c.NewGetEvents().SetFilter(filter).SetLimit(1)
 	if timeout > 0 {
 		getEvents = getEvents.SetDuration(timeout)
 	}
@@ -353,4 +354,29 @@ func RefreshInstanceStatusFromClusterStatus(ctx context.Context, clusterStatus c
 	}
 	wg.Wait()
 	return nil
+}
+
+func InstanceStatusUpdatedWaiter(ctx context.Context, paths naming.Paths) (func(), error) {
+	var wg sync.WaitGroup
+	c, err := client.New(client.WithTimeout(0))
+	if err != nil {
+		return func() {}, err
+	}
+
+	for _, path := range paths {
+		// errC must be buffered because of early return if an error occurs
+		// during PostInstanceActionStatusWithResponse
+		errC := make(chan error, 1)
+
+		if err := WaitInstanceStatusUpdated(ctx, c, "", path, 0, errC); err != nil {
+			// TODO: accumulate or ignore error ?
+		} else {
+			wg.Add(1)
+			go func(c <-chan error) {
+				_ = <-c
+				wg.Done()
+			}(errC)
+		}
+	}
+	return func() { wg.Wait() }, nil
 }

@@ -8,6 +8,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"slices"
 	"strings"
 	"time"
 
@@ -29,6 +30,7 @@ import (
 	"github.com/opensvc/om3/core/trigger"
 	"github.com/opensvc/om3/util/command"
 	"github.com/opensvc/om3/util/device"
+	"github.com/opensvc/om3/util/file"
 	"github.com/opensvc/om3/util/pg"
 	"github.com/opensvc/om3/util/plog"
 	"github.com/opensvc/om3/util/runfiles"
@@ -218,6 +220,16 @@ type (
 
 		// Tags is a set of words attached to the resource.
 		Tags TagSet `json:"tags,omitempty"`
+
+		Files Files `json:"files,omitempty"`
+	}
+
+	Files []File
+	File  struct {
+		Checksum string    `json:"csum"`
+		Mtime    time.Time `json:"mtime"`
+		Name     string    `json:"name"`
+		Ingest   bool      `json:"ingest"`
 	}
 
 	// RunningInfoList is the list of the in-progress run info (for sync and task).
@@ -1218,6 +1230,7 @@ func GetStatus(ctx context.Context, r Driver) Status {
 		Log:           r.StatusLog().Entries(),
 		IsProvisioned: getProvisionStatus(r),
 		Info:          getStatusInfo(ctx, r),
+		Files:         getFiles(r),
 
 		IsStopped:   r.IsStopped(),
 		IsMonitored: r.IsMonitored(),
@@ -1469,4 +1482,46 @@ func createStoppedIfHasResourceSelector(ctx context.Context, r Driver) error {
 		return err
 	}
 	return file.Close()
+}
+
+func getFiles(t Driver) Files {
+	i, ok := t.(toSyncer)
+	if !ok {
+		return nil
+	}
+	_, isIngester := t.(ingester)
+
+	files := make(Files, 0)
+	for _, name := range i.ToSync() {
+		mtime := file.ModTime(name)
+		checksum, _ := file.MD5(name)
+		file := File{
+			Name:     name,
+			Mtime:    mtime,
+			Checksum: fmt.Sprintf("%x", checksum),
+			Ingest:   isIngester,
+		}
+		files = append(files, file)
+	}
+	return files
+}
+
+func (t Files) Merge(f File) Files {
+	l := slices.Clone(t)
+	for i, this := range l {
+		if this.Name == f.Name {
+			l[i] = f
+			return l
+		}
+	}
+	return append(l, f)
+}
+
+func (t Files) Lookup(name string) (File, bool) {
+	for _, file := range t {
+		if file.Name == name {
+			return file, true
+		}
+	}
+	return File{}, false
 }
