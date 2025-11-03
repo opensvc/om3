@@ -256,7 +256,7 @@ func (t *Manager) onMyInstanceStatusUpdated(srcNode string, srcCmd *msgbus.Insta
 	}
 	t.instStatus[srcCmd.Node] = srcCmd.Value
 	t.clearStonith(srcCmd.Node, srcCmd.Value.Avail)
-	t.manageResourceFiles(srcCmd)
+	t.handleResourceFiles(srcCmd)
 }
 
 func (t *Manager) onInstanceConfigUpdated(srcNode string, srcCmd *msgbus.InstanceConfigUpdated) {

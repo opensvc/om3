@@ -22,11 +22,31 @@ import (
 	"github.com/opensvc/om3/daemon/msgbus"
 )
 
-func (t *Manager) manageResourceFiles(ev *msgbus.InstanceStatusUpdated) {
+func (t *filesManager) Fetched() resource.Files {
+	l := make(resource.Files, len(t.fetched))
+	i := 0
+	for _, v := range t.fetched {
+		l[i] = v
+		i += 1
+	}
+	return l
+}
+
+func (t *Manager) handleResourceFiles(ev *msgbus.InstanceStatusUpdated) {
+	if t.files.fetching {
+		t.files.attention = ev
+		return
+	}
+	t.doHandleResourceFiles(ev)
+}
+
+func (t *Manager) doHandleResourceFiles(ev *msgbus.InstanceStatusUpdated) {
+	t.files.attention = nil
 	if !t.needFetchResourceFiles(ev) {
 		return
 	}
-	t.fetchResourceFiles(ev)
+	t.files.fetching = true
+	go t.fetchResourceFiles(t.files.Fetched(), t.instStatus[t.localhost], ev)
 }
 
 func (t *Manager) needFetchResourceFiles(ev *msgbus.InstanceStatusUpdated) bool {
@@ -49,13 +69,14 @@ func (t *Manager) needFetchResourceFiles(ev *msgbus.InstanceStatusUpdated) bool 
 	return true
 }
 
-func (t *Manager) fetchResourceFiles(ev *msgbus.InstanceStatusUpdated) {
-	localInstanceStatus := t.instStatus[t.localhost]
+func (t *Manager) fetchResourceFiles(fetched resource.Files, localInstanceStatus instance.Status, ev *msgbus.InstanceStatusUpdated) {
 
 	var (
 		ridsToIngest []string
 		ridsNoIngest []string
 	)
+
+	done := cmdFetchDone{}
 
 	for rid, peerResourceStatus := range ev.Value.Resources {
 		if peerResourceStatus.Status != status.Up {
@@ -69,9 +90,17 @@ func (t *Manager) fetchResourceFiles(ev *msgbus.InstanceStatusUpdated) {
 			continue
 		}
 		for _, peerFile := range peerResourceStatus.Files {
-			localFile, ok := localResourceStatus.Files.Lookup(peerFile.Name)
+			// try to get the localFile from the fetched cache first
+			// because fetch cache contains more recent data than the
+			// t.instStatus cache.
+			localFile, ok := fetched.Lookup(peerFile.Name)
 			if !ok {
-				continue
+				// fallback to the t.instStatus cache, ie we never fetched
+				// this file yet.
+				localFile, ok = localResourceStatus.Files.Lookup(peerFile.Name)
+				if !ok {
+					continue
+				}
 			}
 			if !peerFile.Mtime.After(localFile.Mtime) {
 				continue
@@ -84,12 +113,7 @@ func (t *Manager) fetchResourceFiles(ev *msgbus.InstanceStatusUpdated) {
 				continue
 			}
 
-			// Remember we fetched this file to avoid re-fetch if we recv
-			// another peer InstanceStatusUpdated before we update our
-			// own InstanceStatusUpdated
-			r := t.instStatus[t.localhost].Resources[rid]
-			r.Files = r.Files.Merge(peerFile)
-			t.instStatus[t.localhost].Resources[rid] = r
+			done.Files = append(done.Files, peerFile)
 
 			if peerFile.Ingest {
 				ridsToIngest = append(ridsToIngest, rid)
@@ -105,6 +129,7 @@ func (t *Manager) fetchResourceFiles(ev *msgbus.InstanceStatusUpdated) {
 	} else if ridsNoIngest != nil {
 		t.log.Debugf("no transfered resource file needs ingest")
 	}
+	t.cmdC <- done
 }
 
 func (t *Manager) fetchResourceFile(rid string, peerFile resource.File, from string) error {
@@ -188,4 +213,17 @@ func (t *Manager) fetchResourceFile(rid string, peerFile resource.File, from str
 		return err
 	}
 	return nil
+}
+
+func (t *Manager) onFetchDone(c cmdFetchDone) {
+	// Remember we fetched this file to avoid re-fetch if we recv
+	// another peer InstanceStatusUpdated before we update our
+	// own InstanceStatusUpdated
+	for _, file := range c.Files {
+		t.files.fetched[file.Name] = file
+	}
+	t.files.fetching = false
+	if t.files.attention != nil {
+		t.doHandleResourceFiles(t.files.attention)
+	}
 }
