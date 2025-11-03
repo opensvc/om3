@@ -338,7 +338,7 @@ func (d *data) run(ctx context.Context, cmdC <-chan Caller, hbRecvQ <-chan *hbty
 			if _, ok := d.clusterNodes[msg.Nodename]; ok {
 				d.onReceiveHbMsg(msg)
 			} else {
-				d.log.Warnf("drop rx message message: %s is not cluster member, cluster nodes: %+v", msg.Nodename, d.clusterNodes)
+				d.log.Warnf("drop rx message: %s is not cluster member, cluster nodes: %+v", msg.Nodename, d.clusterNodes)
 			}
 		case cmd := <-cmdC:
 			if c, ok := cmd.(Caller); ok {

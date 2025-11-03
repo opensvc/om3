@@ -138,7 +138,7 @@ func (t *T) Start(ctx context.Context) error {
 	t.ctx = pubsub.ContextWithBus(t.ctx, bus)
 	t.wg.Add(1)
 	bus.Start(t.ctx)
-	bus.EnableBufferPublication(2000)
+	bus.EnableBufferPublication(20000)
 
 	t.bus = bus
 	t.publisher = pubsub.PubFromContext(t.ctx)
@@ -157,7 +157,7 @@ func (t *T) Start(ctx context.Context) error {
 
 	defer func() {
 		go func() {
-			// give a chance for event client to reconnect to the daemon
+			// give a chance for clients to reconnect to the daemon and get buffered events
 			time.Sleep(bufferPublicationDuration)
 			bus.DisableBufferPublication()
 		}()
