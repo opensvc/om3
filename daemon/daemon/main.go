@@ -477,7 +477,7 @@ func (t *T) sdWatchDog(ctx context.Context, interval, pubsubTimeout time.Duratio
 }
 
 // sdWatchDogInterval determines the systemd watchdog interval based on the WATCHDOG_USEC environment variable.
-// Returns the interval duration after validation against minimum allowed duration.
+// The returned interval is half of the WATCHDOG_USEC to avoid false positive alerts.
 // Logs warnings for invalid or below-minimum values and disables the watchdog if WATCHDOG_USEC is empty.
 func (t *T) sdWatchDogInterval() (interval time.Duration) {
 	s := os.Getenv(WatchdogUsecEnv)
@@ -489,6 +489,7 @@ func (t *T) sdWatchDogInterval() (interval time.Duration) {
 		return
 	} else {
 		interval = *i.(*time.Duration)
+		interval = interval / 2
 	}
 	if interval < WatchdogMinInterval {
 		t.log.Warnf("sd-watchdog: %s timeout %s is below the allowed minimum %s, adjust to %s",
