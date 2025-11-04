@@ -1,12 +1,8 @@
 name: SBOM Generation with Syft and CycloneDX
 
 on:
-  push:
-    branches:
-      - main
-  pull_request:
-    branches:
-      - main
+  release:
+    types: [created]
 
 jobs:
   sbom:
@@ -57,11 +53,10 @@ jobs:
       - name: Validate SBOM
         run: cyclonedx validate --input-file sbom.json
 
-      - name: Commit SBOM
-        uses: stefanzweifel/git-auto-commit-action@v5
+      - name: Upload sbom.json to release
+        uses: softprops/action-gh-release@v1
         with:
-          commit_message: "Update SBOM"
-          branch: main
-          file_pattern: "sbom.json"
-          commit_user_name: "github-actions[bot]"
-          commit_user_email: "github-actions[bot]@users.noreply.github.com"
+          files:
+            sbom.json
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
