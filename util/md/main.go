@@ -220,7 +220,7 @@ func (t T) Exists() (bool, error) {
 	if t.uuid != "" && strings.Contains(buff, "UUID="+t.uuid) {
 		return true, nil
 	}
-	if t.name != "" && strings.Contains(buff, t.devpathFromName()) {
+	if t.name != "" && strings.Contains(buff, t.devpathFromName()+" ") {
 		return true, nil
 	}
 	return false, nil
@@ -361,8 +361,6 @@ func (t T) Activate() error {
 	switch cmd.ExitCode() {
 	case 0:
 		// ok
-	case 2:
-		t.log.Infof("no changes were made to the array")
 	default:
 		return fmt.Errorf("%s error %d", cmd, cmd.ExitCode())
 	}
