@@ -1,0 +1,62 @@
+name: SBOM Generation with Syft and CycloneDX
+
+on:
+  release:
+    types: [created]
+
+jobs:
+  sbom:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v3
+        with:
+          fetch-depth: 0
+          fetch-tags: true
+
+      - name: Display sha hash
+        run: |
+          github_sha_hash=${{ github.sha }}
+          github_sha_short="${github_sha_hash:0:7}"
+          echo "GitHub Long Commit Hash  : ${github_sha_hash}"
+          echo "GitHub Short Commit Hash : ${github_sha_short}"
+
+      - name: Set up Go
+        uses: actions/setup-go@v4
+        with:
+          go-version: '1.21'
+
+      - name: Create ~/bin directory
+        run: mkdir -p $HOME/bin
+
+      - name: Download Syft
+        run: |
+          curl -sSfL https://raw.githubusercontent.com/anchore/syft/main/install.sh | sh -s -- -b $HOME/bin
+          $HOME/bin/syft version
+
+      - name: Download CycloneDX CLI
+        run: |
+          curl -sSfL https://github.com/CycloneDX/cyclonedx-cli/releases/download/v0.29.1/cyclonedx-linux-x64 \
+            -o $HOME/bin/cyclonedx
+          chmod +x $HOME/bin/cyclonedx
+          $HOME/bin/cyclonedx --version || echo "CycloneDX CLI installed"
+
+      - name: Add ~/bin to PATH
+        run: echo "$HOME/bin" >> $GITHUB_PATH
+
+      - name: Generate SBOM
+        run: |
+          syft scan . -o cyclonedx-json > sbom.json
+          syft scan . -o table
+
+      - name: Validate SBOM
+        run: cyclonedx validate --input-file sbom.json
+
+      - name: Upload sbom.json to release
+        uses: softprops/action-gh-release@v1
+        with:
+          files:
+            sbom.json
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
