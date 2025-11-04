@@ -165,29 +165,22 @@ func (t *T) Start(ctx context.Context) error {
 
 	defer t.stopWatcher()
 
+	pubsubWatchDogInterval := 5 * time.Second
+	t.wg.Add(1)
+	go func(ctx context.Context) {
+		defer t.wg.Done()
+		t.pubsubWatchDogLoop(ctx, pubsubWatchDogInterval, "daemon")
+	}(t.ctx)
+
 	sdWatchDogInterval := t.sdWatchDogInterval()
+	pubsubWatchDogTimeout := 2*pubsubWatchDogInterval + time.Second
 	if sdWatchDogInterval > 0 {
 		t.wg.Add(1)
 		go func(ctx context.Context) {
 			defer t.wg.Done()
-			t.sdWatchDogFromPubsubWatchDog(ctx)
+			t.sdWatchDog(ctx, sdWatchDogInterval, pubsubWatchDogTimeout)
 		}(t.ctx)
 	}
-
-	t.wg.Add(1)
-	go func(ctx context.Context) {
-		defer t.wg.Done()
-		// A systemd watchdog notification is sent whenever a WatchDog message is
-		// received via pubsub.
-		// By default, pubsub emits a WatchDog message every 4 seconds, or every
-		// sdWatchDogInterval / 2 if sdWatchDogInterval is set, to ensure
-		// systemd's watchdog expectations are met.
-		pubsubWatchDogInterval := 4 * time.Second
-		if sdWatchDogInterval > 0 {
-			pubsubWatchDogInterval = sdWatchDogInterval / 2
-		}
-		t.pubsubWatchDogLoop(ctx, pubsubWatchDogInterval, "daemon")
-	}(t.ctx)
 
 	dataCmd, dataMsgRecvQ, dataCmdCancel := daemondata.Start(t.ctx, daemonenv.DrainChanDuration, qsHuge)
 	t.stopFuncs = append(t.stopFuncs, func() error {
@@ -409,9 +402,18 @@ func (t *T) pubsubWatchDogLoop(ctx context.Context, interval time.Duration, busN
 	}
 }
 
-// sdWatchDogFromPubsubWatchDog manages the systemd watchdog notification cycle based
-// on WatchDog messages received from a pubsub system.
-func (t *T) sdWatchDogFromPubsubWatchDog(ctx context.Context) {
+// sdWatchDog manages the systemd watchdog notification service.
+//
+// It periodically publishes watchdog messages to systemd at the specified interval,
+// preventing the service from timing out.
+//
+// The function also monitors the pubsub system to dynamically enable or disable
+// systemd notifications based on pubsub health checks. These health checks are
+// performed through a subscription to periodic pubsub watchdog messages.
+//
+// The systemd watchdog notification service is automatically disabled when
+// the provided context is canceled.
+func (t *T) sdWatchDog(ctx context.Context, interval, pubsubTimeout time.Duration) (err error) {
 	sd, err := daemonsys.New(ctx)
 	if err != nil {
 		return
@@ -434,13 +436,23 @@ func (t *T) sdWatchDogFromPubsubWatchDog(ctx context.Context) {
 			}
 		}()
 	}()
+	ticker := time.NewTicker(interval)
+	defer ticker.Stop()
 
-	t.log.Infof("sd-watchdog: started")
+	tickerPubsub := time.NewTicker(pubsubTimeout)
+	defer tickerPubsub.Stop()
+
+	var disabled bool
+	t.log.Debugf("sd-watchdog: started")
+	defer t.log.Debugf("sd-watchdog: stopped")
 	for {
 		select {
 		case <-ctx.Done():
 			return
-		case <-sub.C:
+		case <-ticker.C:
+			if disabled {
+				continue
+			}
 			if ok, err := sd.NotifyWatchdog(); err != nil {
 				t.log.Warnf("sd-watchdog: %s", err)
 			} else if !ok {
@@ -448,6 +460,18 @@ func (t *T) sdWatchDogFromPubsubWatchDog(ctx context.Context) {
 			} else {
 				t.log.Debugf("sd-watchdog: delivered")
 			}
+		case <-tickerPubsub.C:
+			if disabled {
+				continue
+			}
+			disabled = true
+			t.log.Infof("sd-watchdog: disable on missing pubsub heathcheck")
+		case <-sub.C:
+			if disabled {
+				t.log.Infof("sd-watchdog: enable on pubsub heathcheck")
+			}
+			disabled = false
+			tickerPubsub.Reset(pubsubTimeout)
 		}
 	}
 }
