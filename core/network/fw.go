@@ -8,15 +8,17 @@ import (
 	"reflect"
 
 	"github.com/google/nftables"
-	"github.com/google/nftables/expr"
+	"github.com/opensvc/om3/util/command"
+	"github.com/opensvc/om3/util/plog"
+	"github.com/rs/zerolog"
 )
 
 type (
 	nftHandle struct {
-		conn     *nftables.Conn
-		chains   []*nftables.Chain
-		tables   []*nftables.Table
-		messages []string
+		conn   *nftables.Conn
+		chains []*nftables.Chain
+		tables []*nftables.Table
+		log    *plog.Logger
 	}
 	backendDevNamer interface {
 		BackendDevName() string
@@ -30,20 +32,24 @@ func newNFTHandle() *nftHandle {
 	return h
 }
 
-func (t *nftHandle) Msgf(format string, v ...interface{}) {
-	t.messages = append(t.messages, fmt.Sprintf(format, v...))
+func (t *nftHandle) SetLogger(l *plog.Logger) {
+	t.log = l
 }
 
 func (t *nftHandle) Conn() *nftables.Conn {
 	return t.conn
 }
 
-func (t *nftHandle) Messages() []string {
-	return t.messages
-}
-
-func (t *nftHandle) Flush() error {
-	return t.conn.Flush()
+func (t *nftHandle) Run(argv []string) error {
+	cmd := command.New(
+		command.WithName(argv[0]),
+		command.WithArgs(argv[1:]),
+		command.WithLogger(t.log),
+		command.WithCommandLogLevel(zerolog.InfoLevel),
+		command.WithStdoutLogLevel(zerolog.InfoLevel),
+		command.WithStderrLogLevel(zerolog.ErrorLevel),
+	)
+	return cmd.Run()
 }
 
 func (t *nftHandle) Tables() ([]*nftables.Table, error) {
@@ -99,8 +105,13 @@ func (t *nftHandle) AddTable(family nftables.TableFamily, tableName string) (*nf
 		Family: family,
 		Name:   tableName,
 	}
-	t.Msgf("nft add table %s %s", fmtFamily(family), tableName)
-	table = t.conn.AddTable(table)
+	if err := t.Run([]string{"nft", "add", "table", fmtFamily(family), tableName}); err != nil {
+		return nil, err
+	}
+	table, err = t.GetTable(family, tableName)
+	if err != nil {
+		return nil, err
+	}
 	t.tables = append(t.tables, table)
 	return table, nil
 }
@@ -152,47 +163,59 @@ func (t *nftHandle) AddChain(table *nftables.Table, chainName string) (*nftables
 		Name:  chainName,
 		Table: table,
 	}
-	return t.addChain(chain)
+	return t.addRegularChain(chain)
 }
 
-func fmtChain(chain *nftables.Chain) string {
-	s := fmt.Sprintf("nft add chain %s %s %s {", fmtFamily(chain.Table.Family), chain.Table.Name, chain.Name)
-	switch chain.Type {
-	case nftables.ChainTypeNAT:
-		s += " type nat"
-	case nftables.ChainTypeFilter:
-		s += " type filter"
-	case nftables.ChainTypeRoute:
-		s += " type route"
-	}
+func fmtRegularChain(chain *nftables.Chain) []string {
+	l := []string{"nft", "add", "chain", fmtFamily(chain.Table.Family), chain.Table.Name, chain.Name}
+	return l
+}
+
+func fmtChain(chain *nftables.Chain) []string {
+	l := []string{"nft", "add", "chain", fmtFamily(chain.Table.Family), chain.Table.Name, chain.Name}
+
+	s := "{ type " + string(chain.Type)
 	switch chain.Hooknum {
-	case nftables.ChainHookPostrouting:
-		s += " hook postrouting"
 	case nftables.ChainHookPrerouting:
 		s += " hook prerouting"
 	case nftables.ChainHookInput:
 		s += " hook input"
-	case nftables.ChainHookOutput:
-		s += " hook output"
 	case nftables.ChainHookForward:
 		s += " hook forward"
+	case nftables.ChainHookOutput:
+		s += " hook output"
+	case nftables.ChainHookPostrouting:
+		s += " hook postrouting"
 	}
-	switch chain.Priority {
-	case nftables.ChainPriorityNATSource:
-		s += " priority srcnat;"
-	case nftables.ChainPriorityNATDest:
-		s += " priority dstnat;"
-	}
+
+	s += fmt.Sprintf(" priority %d", chain.Priority)
+
 	if chain.Policy != nil {
 		switch *chain.Policy {
 		case nftables.ChainPolicyAccept:
-			s += " policy accept;"
+			s += " policy accept"
 		case nftables.ChainPolicyDrop:
-			s += " policy drop;"
+			s += " policy drop"
 		}
 	}
-	s += " }"
-	return s
+	s += "; }"
+	return append(l, s)
+}
+
+func (t *nftHandle) addRegularChain(chain *nftables.Chain) (*nftables.Chain, error) {
+	cachedChain, err := t.GetChain(chain.Table.Family, chain.Table.Name, chain.Name)
+	if err != nil {
+		return nil, err
+	}
+	if cachedChain != nil {
+		return cachedChain, nil
+	}
+	l := fmtRegularChain(chain)
+	if err := t.Run(l); err != nil {
+		return nil, err
+	}
+	t.chains = append(t.chains, chain)
+	return chain, nil
 }
 
 func (t *nftHandle) addChain(chain *nftables.Chain) (*nftables.Chain, error) {
@@ -203,9 +226,10 @@ func (t *nftHandle) addChain(chain *nftables.Chain) (*nftables.Chain, error) {
 	if cachedChain != nil {
 		return cachedChain, nil
 	}
-	chain = t.conn.AddChain(chain)
-	s := fmtChain(chain)
-	t.Msgf(s)
+	l := fmtChain(chain)
+	if err := t.Run(l); err != nil {
+		return nil, err
+	}
 	t.chains = append(t.chains, chain)
 	return chain, nil
 }
@@ -237,22 +261,28 @@ func debugRules() error {
 
 func setupFW(n logger, nws []Networker) error {
 	h := newNFTHandle()
-	h.FlushChains()
+	h.SetLogger(n.Log())
+	if err := h.FlushChains(); err != nil {
+		return err
+	}
 	for _, other := range nws {
 		cidr := other.Network()
-		h.AddRuleDestinationReturn(cidr)
+		if err := h.AddRuleDestinationReturn(cidr); err != nil {
+			return err
+		}
 		if i, ok := other.(backendDevNamer); ok {
 			dev := i.BackendDevName()
-			h.AddRuleSourceJump(cidr)
-			h.AddRuleForwardAccept(cidr, dev)
+			if err := h.AddRuleSourceJump(cidr); err != nil {
+				return err
+			}
+			if err := h.AddRuleForwardAccept(cidr, dev); err != nil {
+				return err
+			}
 		}
 	}
 	h.AddRuleDestinationReturn("224.0.0.0/8")
 	h.AddRuleMasq()
-	for _, m := range h.Messages() {
-		n.Log().Infof(m)
-	}
-	return h.Flush()
+	return nil
 }
 
 func fmtFamily(family nftables.TableFamily) string {
@@ -282,7 +312,7 @@ func ipFamily(ip net.IP) nftables.TableFamily {
 	}
 }
 
-func (t *nftHandle) FlushChains() {
+func (t *nftHandle) FlushChains() error {
 	families := []nftables.TableFamily{
 		nftables.TableFamilyIPv4,
 		nftables.TableFamilyIPv6,
@@ -298,11 +328,14 @@ func (t *nftHandle) FlushChains() {
 	for _, family := range families {
 		for _, data := range chainNames {
 			if chain, _ := t.GetChain(family, data.Table, data.Chain); chain != nil {
-				t.Msgf("nft flush chain %s %s %s", fmtFamily(family), data.Table, data.Chain)
-				t.conn.FlushChain(chain)
+				l := []string{"nft", "flush", "chain", fmtFamily(family), data.Table, data.Chain}
+				if err := t.Run(l); err != nil {
+					return err
+				}
 			}
 		}
 	}
+	return nil
 }
 
 func (t *nftHandle) AddRuleMasq() error {
@@ -326,18 +359,10 @@ func (t *nftHandle) addRuleMasq(table *nftables.Table) error {
 	if err != nil {
 		return err
 	}
-	s := fmt.Sprintf("nft add rule %s %s %s", fmtFamily(table.Family), table.Name, chain.Name)
-	rule := &nftables.Rule{
-		Table: table,
-		Chain: chain,
-		Exprs: []expr.Any{},
+	l := []string{"nft", "add", "rule", fmtFamily(table.Family), table.Name, chain.Name, "masquerade"}
+	if err := t.Run(l); err != nil {
+		return err
 	}
-	rule.Exprs = append(rule.Exprs, &expr.Counter{})
-	rule.Exprs = append(rule.Exprs, &expr.Masq{})
-	s += fmt.Sprintf(" masquerade")
-	//printRuleExprs(rule)
-	t.conn.AddRule(rule)
-	t.Msgf(s)
 	return nil
 }
 
@@ -355,73 +380,14 @@ func (t *nftHandle) AddRuleDestinationReturn(cidr string) error {
 	if err != nil {
 		return err
 	}
-	maskLen := len(ipnet.Mask)
-	ones, _ := ipnet.Mask.Size()
-	isByteAligned := (ones/8)*8 == ones
-	cmpLen := ones / 8
-	s := fmt.Sprintf("nft insert rule %s %s %s", fmtFamily(family), table.Name, chain.Name)
-	rule := &nftables.Rule{
-		Table: table,
-		Chain: chain,
-		Exprs: []expr.Any{},
-	}
-	var b []byte
+	l := []string{"nft", "insert", "rule", fmtFamily(family), table.Name, chain.Name}
 	if ip.To4() == nil {
-		rule.Exprs = append(rule.Exprs, &expr.Payload{
-			OperationType: expr.PayloadLoad,
-			DestRegister:  1,
-			Base:          expr.PayloadBaseNetworkHeader,
-			Offset:        24,
-			Len:           uint32(cmpLen),
-		})
-		s += " ip6"
-		b = ipnet.IP.To16()[0:cmpLen]
+		l = append(l, "ip6")
 	} else {
-		rule.Exprs = append(rule.Exprs, &expr.Payload{
-			OperationType: expr.PayloadLoad,
-			DestRegister:  1,
-			Base:          expr.PayloadBaseNetworkHeader,
-			Offset:        16,
-			Len:           uint32(cmpLen),
-		})
-		s += " ip"
-		b = ipnet.IP.To4()
+		l = append(l, "ip")
 	}
-	if isByteAligned {
-		rule.Exprs = append(rule.Exprs, &expr.Cmp{
-			Op:       expr.CmpOpEq,
-			Register: 1,
-			Data:     b[0:cmpLen],
-		})
-	} else {
-		rule.Exprs = append(rule.Exprs, &expr.Bitwise{
-			SourceRegister: 1,
-			DestRegister:   1,
-			Len:            uint32(maskLen),
-			Mask:           ipnet.Mask,
-		})
-		rule.Exprs = append(rule.Exprs, &expr.Cmp{
-			Op:       expr.CmpOpEq,
-			Register: 1,
-			Data:     b,
-		})
-	}
-	rule.Exprs = append(rule.Exprs, &expr.Counter{})
-	rule.Exprs = append(rule.Exprs, &expr.Verdict{
-		Kind: expr.VerdictReturn,
-	})
-	s += fmt.Sprintf(" daddr %s counter return", ipnet.String())
-	//printRuleExprs(rule)
-	t.conn.InsertRule(rule)
-	t.Msgf(s)
-	return nil
-}
-
-func printRuleExprs(rule *nftables.Rule) {
-	fmt.Printf("== Rule %+v\n", rule)
-	for _, e := range rule.Exprs {
-		fmt.Printf("   %s %+v\n", reflect.TypeOf(e), e)
-	}
+	l = append(l, "daddr", ipnet.String(), "counter", "return")
+	return t.Run(l)
 }
 
 func (t *nftHandle) AddRuleSourceJump(cidr string) error {
@@ -438,67 +404,14 @@ func (t *nftHandle) AddRuleSourceJump(cidr string) error {
 	if err != nil {
 		return err
 	}
-	maskLen := len(ipnet.Mask)
-	ones, _ := ipnet.Mask.Size()
-	isByteAligned := (ones/8)*8 == ones
-	cmpLen := ones / 8
-	s := fmt.Sprintf("nft add rule %s %s %s", fmtFamily(family), table.Name, chain.Name)
-	rule := &nftables.Rule{
-		Table: table,
-		Chain: chain,
-		Exprs: []expr.Any{},
-	}
-	var b []byte
+	l := []string{"nft", "add", "rule", fmtFamily(family), table.Name, chain.Name}
 	if ip.To4() == nil {
-		rule.Exprs = append(rule.Exprs, &expr.Payload{
-			OperationType: expr.PayloadLoad,
-			DestRegister:  1,
-			Base:          expr.PayloadBaseNetworkHeader,
-			Offset:        8,
-			Len:           uint32(cmpLen),
-		})
-		s += " ip6"
-		b = ipnet.IP.To16()[0:cmpLen]
+		l = append(l, "ip6")
 	} else {
-		rule.Exprs = append(rule.Exprs, &expr.Payload{
-			OperationType: expr.PayloadLoad,
-			DestRegister:  1,
-			Base:          expr.PayloadBaseNetworkHeader,
-			Offset:        12,
-			Len:           uint32(cmpLen),
-		})
-		s += " ip"
-		b = ipnet.IP.To4()
+		l = append(l, "ip")
 	}
-	if isByteAligned {
-		rule.Exprs = append(rule.Exprs, &expr.Cmp{
-			Op:       expr.CmpOpEq,
-			Register: 1,
-			Data:     b[0:cmpLen],
-		})
-	} else {
-		rule.Exprs = append(rule.Exprs, &expr.Bitwise{
-			SourceRegister: 1,
-			DestRegister:   1,
-			Len:            uint32(maskLen),
-			Mask:           ipnet.Mask,
-		})
-		rule.Exprs = append(rule.Exprs, &expr.Cmp{
-			Op:       expr.CmpOpEq,
-			Register: 1,
-			Data:     b,
-		})
-	}
-	rule.Exprs = append(rule.Exprs, &expr.Counter{})
-	rule.Exprs = append(rule.Exprs, &expr.Verdict{
-		Kind:  expr.VerdictJump,
-		Chain: "osvc-masq",
-	})
-	s += fmt.Sprintf(" saddr %s counter jump osvc-masq", ipnet.String())
-	//printRuleExprs(rule)
-	t.conn.AddRule(rule)
-	t.Msgf(s)
-	return nil
+	l = append(l, "saddr", ipnet.String(), "counter", "jump", "osvc-masq")
+	return t.Run(l)
 }
 
 func (t *nftHandle) AddRuleForwardAccept(cidr, dev string) error {
@@ -515,54 +428,16 @@ func (t *nftHandle) AddRuleForwardAccept(cidr, dev string) error {
 	if err != nil {
 		return err
 	}
-	b := []byte(dev + "\x00")
 
-	rule := &nftables.Rule{
-		Table: table,
-		Chain: chain,
-		Exprs: []expr.Any{
-			&expr.Meta{
-				Key:      expr.MetaKeyIIFNAME,
-				Register: 1,
-			},
-			&expr.Cmp{
-				Op:       expr.CmpOpEq,
-				Register: 1,
-				Data:     b,
-			},
-			&expr.Counter{},
-			&expr.Verdict{
-				Kind: expr.VerdictAccept,
-			},
-		},
+	l := []string{"nft", "add", "rule", fmtFamily(family), table.Name, chain.Name, "iif", dev, "counter", "accept"}
+	if err := t.Run(l); err != nil {
+		return err
 	}
-	s := fmt.Sprintf("nft add rule %s %s %s iif %s counter accept", fmtFamily(family), table.Name, chain.Name, dev)
-	//printRuleExprs(rule)
-	t.conn.AddRule(rule)
-	t.Msgf(s)
 
-	rule = &nftables.Rule{
-		Table: table,
-		Chain: chain,
-		Exprs: []expr.Any{
-			&expr.Meta{
-				Key:      expr.MetaKeyOIFNAME,
-				Register: 1,
-			},
-			&expr.Cmp{
-				Op:       expr.CmpOpEq,
-				Register: 1,
-				Data:     b,
-			},
-			&expr.Counter{},
-			&expr.Verdict{
-				Kind: expr.VerdictAccept,
-			},
-		},
+	l = []string{"nft", "add", "rule", fmtFamily(family), table.Name, chain.Name, "oif", dev, "counter", "accept"}
+	if err := t.Run(l); err != nil {
+		return err
 	}
-	s = fmt.Sprintf("nft add rule %s %s %s oif %s counter accept", fmtFamily(family), table.Name, chain.Name, dev)
-	//printRuleExprs(rule)
-	t.conn.AddRule(rule)
-	t.Msgf(s)
+
 	return nil
 }
