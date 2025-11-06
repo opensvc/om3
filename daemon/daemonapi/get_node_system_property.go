@@ -40,9 +40,9 @@ func (a *DaemonAPI) getLocalNodeSystemProperty(ctx echo.Context) error {
 	}
 	items := make(api.PropertyItems, 0)
 
-	for i := 0; i < len(data.Values()); i++ {
+	for _, p := range data.Values() {
 
-		value := data.Values()[i].Value
+		value := p.Value
 		if value == nil {
 			value = ""
 		}
@@ -50,10 +50,10 @@ func (a *DaemonAPI) getLocalNodeSystemProperty(ctx echo.Context) error {
 		items = append(items, api.PropertyItem{
 			Kind: "PropertyItem",
 			Data: api.Property{
-				Name:   data.Values()[i].Name,
-				Source: data.Values()[i].Source,
-				Title:  data.Values()[i].Title,
-				Error:  data.Values()[i].Error,
+				Name:   p.Name,
+				Source: p.Source,
+				Title:  p.Title,
+				Error:  p.Error,
 				Value:  value,
 			},
 			Meta: api.NodeMeta{

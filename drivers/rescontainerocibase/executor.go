@@ -75,7 +75,7 @@ func (e *Executor) Enter() error {
 	}
 outerLoop:
 	for _, candidate := range candidates {
-		cmd := exec.CommandContext(ctx, "nsenter", "-t", fmt.Sprint(pid), "--all", candidate)
+		cmd := exec.CommandContext(ctx, "nsenter", "-t", fmt.Sprint(pid), "--all", "-e", "-w", candidate)
 		_ = cmd.Run()
 
 		switch cmd.ProcessState.ExitCode() {
@@ -91,7 +91,7 @@ outerLoop:
 		return fmt.Errorf("can't enter: container needs at least one of following command: %s",
 			strings.Join(candidates, ", "))
 	}
-	cmd := exec.Command("nsenter", "-t", fmt.Sprint(pid), "--all", enterCmd)
+	cmd := exec.Command("nsenter", "-t", fmt.Sprint(pid), "--all", "-e", "-w", enterCmd)
 	cmd.Stdin = os.Stdin
 	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stderr
