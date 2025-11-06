@@ -3,6 +3,7 @@ package logging
 import (
 	"fmt"
 	"io"
+	"log/syslog"
 	"os"
 	"path"
 	"path/filepath"
@@ -134,7 +135,10 @@ func Configure(config Config) error {
 		if writer := journald.NewJournalDWriter(); writer != nil {
 			writers = append(writers, writer)
 		}
+	} else if writer, err := syslog.New(syslog.LOG_INFO|syslog.LOG_USER, "om"); err == nil {
+		writers = append(writers, writer)
 	}
+
 	if config.WithConsoleLog {
 		consoleWriter := zerolog.ConsoleWriter{
 			Out:              os.Stderr,
