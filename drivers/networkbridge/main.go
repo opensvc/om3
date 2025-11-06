@@ -42,6 +42,22 @@ func (t *T) BackendDevName() string {
 	return t.brName()
 }
 
+func defaultRouteDst(cidr string) string {
+	if isIP6(cidr) {
+		return "::/0"
+	} else {
+		return "0.0.0.0/0"
+	}
+}
+
+func isIP6(cidr string) bool {
+	ip, _, err := net.ParseCIDR(cidr)
+	if err != nil {
+		return false
+	}
+	return ip.To4() == nil
+}
+
 // CNIConfigData returns a cni network configuration, like
 //
 //	{
@@ -60,6 +76,11 @@ func (t *T) BackendDevName() string {
 //	  "type": "bridge"
 //	}
 func (t *T) CNIConfigData() (interface{}, error) {
+	nwStr := t.Network()
+	brIP, err := t.bridgeIP()
+	if err != nil {
+		return nil, err
+	}
 	m := map[string]interface{}{
 		"cniVersion": network.CNIVersion,
 		"name":       t.Name(),
@@ -70,7 +91,8 @@ func (t *T) CNIConfigData() (interface{}, error) {
 		"ipam": map[string]interface{}{
 			"type": "host-local",
 			"routes": []map[string]interface{}{
-				{"dst": "0.0.0.0/0"},
+				{"dst": defaultRouteDst(nwStr)},
+				{"dst": nwStr, "gw": brIP.String()},
 			},
 			"subnet": t.Network(),
 		},
