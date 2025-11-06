@@ -2,6 +2,7 @@ package rescontainerocibase
 
 import (
 	"encoding/json"
+	"fmt"
 	"strings"
 )
 
@@ -127,6 +128,16 @@ func (i *InspectDataConfigEntrypoint) UnmarshalJSON(b []byte) error {
 		*i = strings.Split(v, " ")
 	case []string:
 		*i = v
+	case []any:
+		l := make([]string, 0, len(v))
+		for _, e := range v {
+			if s, ok := e.(string); ok {
+				l = append(l, s)
+			} else {
+				l = append(l, fmt.Sprint(e))
+			}
+		}
+		*i = l
 	}
 	return nil
 }
