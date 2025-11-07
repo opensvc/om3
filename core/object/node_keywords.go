@@ -1144,6 +1144,19 @@ var nodeCommonKeywords = []keywords.Keyword{
 		Types:   []string{"bridge", "routed_bridge"},
 	},
 	{
+		Option:  "dev",
+		Section: "network",
+		Text:    keywords.NewText(fs, "text/kw/node/network.dev"),
+		Types:   []string{"bridge", "routed_bridge"},
+	},
+	{
+		Converter: "bool",
+		Option:    "public",
+		Section:   "network",
+		Text:      keywords.NewText(fs, "text/kw/node/network.public"),
+		Types:     []string{"bridge", "routed_bridge"},
+	},
+	{
 		Candidates: []string{"brocade"},
 		Option:     "type",
 		Required:   true,
