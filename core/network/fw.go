@@ -272,11 +272,13 @@ func setupFW(n logger, nws []Networker) error {
 		}
 		if i, ok := other.(backendDevNamer); ok {
 			dev := i.BackendDevName()
-			if err := h.AddRuleSourceJump(cidr); err != nil {
-				return err
-			}
-			if err := h.AddRuleForwardAccept(cidr, dev); err != nil {
-				return err
+			if dev != "" {
+				if err := h.AddRuleSourceJump(cidr); err != nil {
+					return err
+				}
+				if err := h.AddRuleForwardAccept(cidr, dev); err != nil {
+					return err
+				}
 			}
 		}
 	}

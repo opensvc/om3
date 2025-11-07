@@ -621,10 +621,16 @@ func (t *T) tunnel() string {
 }
 
 func (t *T) brName() string {
+	if s := t.GetString("dev"); s != "" {
+		return s
+	}
 	return "obr_" + t.Name()
 }
 
 func (t *T) BackendDevName() string {
+	if v := t.GetBool("public"); v {
+		return ""
+	}
 	return t.brName()
 }
 

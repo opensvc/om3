@@ -23,6 +23,7 @@ type (
 		driver            string
 		name              string
 		network           string
+		dev               string
 		isImplicit        bool
 		needCommit        bool
 		allowEmptyNetwork bool
@@ -225,6 +226,11 @@ func (t *T) GetInt(s string) int {
 func (t *T) GetString(s string) string {
 	k := t.key(s)
 	return t.Config().GetString(k)
+}
+
+func (t *T) GetBool(s string) bool {
+	k := t.key(s)
+	return t.Config().GetBool(k)
 }
 
 func (t *T) Set(option, value string) error {

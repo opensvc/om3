@@ -1,0 +1,1 @@
+Set to true if the network ip range is public and we must not configure masquerading rules.
