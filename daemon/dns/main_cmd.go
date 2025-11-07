@@ -179,8 +179,8 @@ func (t *Manager) onInstanceStatusUpdated(c *msgbus.InstanceStatusUpdated) {
 			aType = "A"
 			ptrType = "PTR"
 		} else {
-			aType = "A6"
-			ptrType = "PTR6"
+			aType = "AAAA"
+			ptrType = "PTR"
 		}
 		getResNames := func() (string, string) {
 			if i, ok := rstat.Info[hostnameInfoKey]; ok {
