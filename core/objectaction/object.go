@@ -1202,14 +1202,7 @@ func (t T) waitExpectation(ctx context.Context, c *client.T, idC <-chan uuid.UUI
 					return
 				}
 			case *msgbus.ObjectStatusDeleted:
-				switch globalExpect {
-				case instance.MonitorGlobalExpectDeleted,
-					instance.MonitorGlobalExpectPurged:
-					logger.Debugf("object %s is now deleted", p)
-					return
-				default:
-					object.StatusData.Unset(m.Path)
-				}
+				object.StatusData.Unset(m.Path)
 			}
 		}
 	}()
