@@ -220,6 +220,8 @@ var (
 
 		"ObjectDeleted": func() any { return &ObjectDeleted{} },
 
+		"ObjectOrchestrationAccepted": func() any { return &ObjectOrchestrationAccepted{} },
+
 		"ObjectOrchestrationEnd": func() any { return &ObjectOrchestrationEnd{} },
 
 		"ObjectOrchestrationRefused": func() any { return &ObjectOrchestrationRefused{} },
@@ -808,6 +810,16 @@ type (
 		Node       string      `json:"node" yaml:"node"`
 	}
 
+	ObjectOrchestrationAccepted struct {
+		pubsub.Msg            `yaml:",inline"`
+		ID                    string                       `json:"id" yaml:"id"`
+		Node                  string                       `json:"node" yaml:"node"`
+		Path                  naming.Path                  `json:"path" yaml:"path"`
+		GlobalExpect          instance.MonitorGlobalExpect `json:"global_expect" yaml:"global_expect"`
+		GlobalExpectUpdatedAt time.Time                    `json:"global_expect_updated_at" yaml:"global_expect_updated_at"`
+		GlobalExpectOptions   any                          `json:"global_expect_options" yaml:"global_expect_options"`
+	}
+
 	ObjectOrchestrationEnd struct {
 		pubsub.Msg            `yaml:",inline"`
 		ID                    string                       `json:"id" yaml:"id"`
@@ -1349,6 +1361,10 @@ func (e *ObjectCreated) Kind() string {
 
 func (e *ObjectDeleted) Kind() string {
 	return "ObjectDeleted"
+}
+
+func (e *ObjectOrchestrationAccepted) Kind() string {
+	return "ObjectOrchestrationAccepted"
 }
 
 func (e *ObjectOrchestrationEnd) Kind() string {

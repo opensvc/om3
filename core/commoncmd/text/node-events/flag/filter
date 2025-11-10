@@ -75,7 +75,7 @@ Receive only events matching the filtering expression formatted as:
      
 ### Object
 
-     ObjectOrchestrationEnd, ObjectOrchestrationRefused
+     ObjectOrchestrationAccepted, ObjectOrchestrationEnd, ObjectOrchestrationRefused
      ObjectStatusDeleted, ObjectStatusDone, ObjectStatusUpdated
 
 ### Event Subscription

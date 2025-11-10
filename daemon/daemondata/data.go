@@ -423,6 +423,7 @@ func (d *data) startSubscriptions(ctx context.Context, qs pubsub.QueueSizer) {
 	// need forward to peers
 	sub.AddFilter(&msgbus.ObjectCreated{}, d.labelLocalhost)
 	sub.AddFilter(&msgbus.ObjectStatusDeleted{}, d.labelLocalhost)
+	sub.AddFilter(&msgbus.ObjectOrchestrationAccepted{}, d.labelLocalhost)
 	sub.AddFilter(&msgbus.ObjectOrchestrationEnd{}, d.labelLocalhost)
 	sub.AddFilter(&msgbus.ObjectOrchestrationRefused{}, d.labelLocalhost)
 	sub.AddFilter(&msgbus.ObjectStatusUpdated{}, d.labelLocalhost)
@@ -490,6 +491,7 @@ func localEventMustBeForwarded(i interface{}) bool {
 
 	// object...
 	case *msgbus.ObjectCreated:
+	case *msgbus.ObjectOrchestrationAccepted:
 	case *msgbus.ObjectOrchestrationEnd:
 	case *msgbus.ObjectOrchestrationRefused:
 	case *msgbus.ObjectStatusDeleted:
