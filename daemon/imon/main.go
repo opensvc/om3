@@ -397,7 +397,12 @@ func (t *Manager) worker(initialNodes []string) {
 		instance.StatusData.Unset(t.path, t.localhost)
 		t.publisher.Pub(&msgbus.InstanceStatusDeleted{Path: t.path, Node: t.localhost}, t.pubLabels...)
 		instance.MonitorData.Unset(t.path, t.localhost)
-		t.publisher.Pub(&msgbus.InstanceMonitorDeleted{Path: t.path, Node: t.localhost}, t.pubLabels...)
+
+		// a last chance to publish any pending aborted orchestration
+		t.publishOrchestrationAborted()
+
+		t.publisher.Pub(&msgbus.InstanceMonitorDeleted{Path: t.path, Node: t.localhost, OrchestrationEnd: t.orchestrationPending}, t.pubLabels...)
+
 		go func() {
 			tC := time.After(t.drainDuration)
 			for {
