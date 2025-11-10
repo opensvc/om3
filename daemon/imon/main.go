@@ -52,10 +52,6 @@ type (
 		state         instance.Monitor
 		previousState instance.Monitor
 
-		// abortedOrchestration represents the state of an orchestration process
-		// that was prematurely aborted.
-		abortedOrchestration *orchestrationEnd
-
 		path    naming.Path
 		id      string
 		ctx     context.Context
@@ -120,7 +116,14 @@ type (
 		// It is used while we are waiting for orchestration reached
 		waitConvergedOrchestrationMsg map[string]string
 
-		acceptedOrchestrationID uuid.UUID
+		// orchestrationPending represents the ObjectOrchestrationEnd event for the
+		// orchestration that has been accepted
+		// It will be used to notify the end of orchestration
+		orchestrationPending *msgbus.ObjectOrchestrationEnd
+
+		// orchestrationAborted represents the ObjectOrchestrationEnd event for
+		// an orchestration process that was prematurely aborted.
+		orchestrationAborted *msgbus.ObjectOrchestrationEnd
 
 		drainDuration time.Duration
 
@@ -205,19 +208,6 @@ type (
 		DrainDuration time.Duration
 		SubQS         pubsub.QueueSizer
 		DelayDuration time.Duration
-	}
-
-	// orchestrationEnd is a helper data structure representing the end state of
-	// an orchestration process, it is used to publish ObjectOrchestrationEnd.
-	// orchestrationID is the UUID of the accepted orchestration.
-	// globalExpect represents the desired global state of the instance.
-	// globalExpectUpdateAt is the timestamp of when the global expectation was updated.
-	// globalExpectOptions holds additional options relevant to the global expectation.
-	orchestrationEnd struct {
-		orchestrationID      uuid.UUID
-		globalExpect         instance.MonitorGlobalExpect
-		globalExpectUpdateAt time.Time
-		globalExpectOptions  any
 	}
 )
 
