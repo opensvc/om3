@@ -620,12 +620,11 @@ func (t *Manager) onSetInstanceMonitor(c *msgbus.SetInstanceMonitor) {
 		t.onChange()
 	} else {
 		t.publisher.Pub(&msgbus.ObjectOrchestrationRefused{
-			Node:                t.localhost,
-			Path:                t.path,
-			ID:                  c.Value.CandidateOrchestrationID.String(),
-			Reason:              fmt.Sprintf("set instance monitor request => no changes: %v", c.Value),
-			GlobalExpect:        c.Value.GlobalExpect,
-			GlobalExpectOptions: c.Value.GlobalExpectOptions,
+			Node:         t.localhost,
+			Path:         t.path,
+			ID:           c.Value.CandidateOrchestrationID.String(),
+			Reason:       fmt.Sprintf("set instance monitor request => no changes: %v", c.Value),
+			GlobalExpect: c.Value.GlobalExpect,
 		}, t.pubLabels...)
 	}
 }
@@ -1152,23 +1151,23 @@ func (t *Manager) onNodeRejoin(c *msgbus.NodeRejoin) {
 
 func (t *Manager) setNextPendingOrchestration() {
 	t.orchestrationPending = &msgbus.ObjectOrchestrationEnd{
+		Msg:                   pubsub.Msg{},
 		Node:                  t.localhost,
 		Path:                  t.path,
 		ID:                    t.state.OrchestrationID.String(),
 		GlobalExpect:          t.state.GlobalExpect,
 		GlobalExpectUpdatedAt: t.state.GlobalExpectUpdatedAt,
-		GlobalExpectOptions:   t.state.GlobalExpectOptions,
 	}
 }
 
 func (t *Manager) publishOrchestrationAccepted() {
 	t.publisher.Pub(&msgbus.ObjectOrchestrationAccepted{
+		Msg:                   pubsub.Msg{},
 		Node:                  t.localhost,
 		Path:                  t.path,
 		ID:                    t.state.OrchestrationID.String(),
 		GlobalExpect:          t.state.GlobalExpect,
 		GlobalExpectUpdatedAt: t.state.GlobalExpectUpdatedAt,
-		GlobalExpectOptions:   t.state.GlobalExpectOptions,
 	}, t.pubLabels...)
 }
 

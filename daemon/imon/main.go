@@ -401,7 +401,11 @@ func (t *Manager) worker(initialNodes []string) {
 		// a last chance to publish any pending aborted orchestration
 		t.publishOrchestrationAborted()
 
-		t.publisher.Pub(&msgbus.InstanceMonitorDeleted{Path: t.path, Node: t.localhost, OrchestrationEnd: t.orchestrationPending}, t.pubLabels...)
+		var pending msgbus.ObjectOrchestrationEnd
+		if t.orchestrationPending != nil {
+			pending = *t.orchestrationPending
+		}
+		t.publisher.Pub(&msgbus.InstanceMonitorDeleted{Path: t.path, Node: t.localhost, OrchestrationEnd: pending}, t.pubLabels...)
 
 		go func() {
 			tC := time.After(t.drainDuration)
