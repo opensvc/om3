@@ -77,6 +77,12 @@ type (
 		pubLabel []pubsub.Label
 
 		localhost string
+
+		// orchestrationEnd saves any pending ObjectOrchestrationEnd events from
+		// the InstanceMonitorDeleted event.
+		// It is used to publish any pending ObjectOrchestrationEnd events that
+		// have been lost during purge/delete orchestration.
+		orchestrationEnd msgbus.ObjectOrchestrationEnd
 	}
 
 	IMonStarter interface {
@@ -232,6 +238,9 @@ func (t *Manager) worker() {
 				t.srcEvent = c
 				delete(t.instMonitor, c.Node)
 				t.updateStatus()
+				if c.Node == t.localhost {
+					t.orchestrationEnd = c.OrchestrationEnd
+				}
 
 			case *msgbus.InstanceStatusDeleted:
 				t.srcEvent = c
@@ -466,6 +475,10 @@ func (t *Manager) delete() {
 	t.publisher.Pub(&msgbus.ObjectStatusDeleted{Path: t.path, Node: t.localhost}, t.pubLabel...)
 	t.publisher.Pub(&msgbus.ObjectDeleted{Path: t.path, Node: t.localhost}, t.pubLabel...)
 	t.publisher.Pub(&msgbus.ObjectStatusDone{Path: t.path}, t.pubLabel...)
+	if t.orchestrationEnd.ID != "" {
+		// same as Pub(&msgbus.ObjectOrchestrationEnd ...
+		t.publisher.Pub(&t.orchestrationEnd, t.pubLabel...)
+	}
 }
 
 func (t *Manager) update() {

@@ -563,10 +563,8 @@ func (t *Manager) onSetInstanceMonitor(c *msgbus.SetInstanceMonitor) {
 		}
 
 		if *c.Value.GlobalExpect != t.state.GlobalExpect {
-			if *c.Value.GlobalExpect == instance.MonitorGlobalExpectAborted && t.state.GlobalExpect != instance.MonitorGlobalExpectNone {
-				// This is an abort orchestration, pickup the pending orchestration
-				// it will be used to publish ObjectOrchestrationEnd with abort true
-				t.abortedOrchestration = t.getOrchestrationEnd()
+			if *c.Value.GlobalExpect == instance.MonitorGlobalExpectAborted {
+				t.savePendingOrchestration()
 			}
 			t.change = true
 			t.state.GlobalExpect = *c.Value.GlobalExpect
@@ -615,17 +613,18 @@ func (t *Manager) onSetInstanceMonitor(c *msgbus.SetInstanceMonitor) {
 		if c.Value.CandidateOrchestrationID != uuid.Nil && t.state.OrchestrationID.String() != c.Value.CandidateOrchestrationID.String() {
 			t.log = t.newLogger(c.Value.CandidateOrchestrationID)
 			t.state.OrchestrationID = c.Value.CandidateOrchestrationID
-			t.acceptedOrchestrationID = c.Value.CandidateOrchestrationID
+			t.savePendingOrchestration()
+			t.publishOrchestrationAccepted()
+			t.setNextPendingOrchestration()
 		}
 		t.onChange()
 	} else {
 		t.publisher.Pub(&msgbus.ObjectOrchestrationRefused{
-			Node:                t.localhost,
-			Path:                t.path,
-			ID:                  c.Value.CandidateOrchestrationID.String(),
-			Reason:              fmt.Sprintf("set instance monitor request => no changes: %v", c.Value),
-			GlobalExpect:        c.Value.GlobalExpect,
-			GlobalExpectOptions: c.Value.GlobalExpectOptions,
+			Node:         t.localhost,
+			Path:         t.path,
+			ID:           c.Value.CandidateOrchestrationID.String(),
+			Reason:       fmt.Sprintf("set instance monitor request => no changes: %v", c.Value),
+			GlobalExpect: c.Value.GlobalExpect,
 		}, t.pubLabels...)
 	}
 }
@@ -1147,5 +1146,55 @@ func (t *Manager) onNodeRejoin(c *msgbus.NodeRejoin) {
 			return
 		}
 
+	}
+}
+
+func (t *Manager) setNextPendingOrchestration() {
+	t.orchestrationPending = &msgbus.ObjectOrchestrationEnd{
+		Msg:                   pubsub.Msg{},
+		Node:                  t.localhost,
+		Path:                  t.path,
+		ID:                    t.state.OrchestrationID.String(),
+		GlobalExpect:          t.state.GlobalExpect,
+		GlobalExpectUpdatedAt: t.state.GlobalExpectUpdatedAt,
+	}
+}
+
+func (t *Manager) publishOrchestrationAccepted() {
+	t.publisher.Pub(&msgbus.ObjectOrchestrationAccepted{
+		Msg:                   pubsub.Msg{},
+		Node:                  t.localhost,
+		Path:                  t.path,
+		ID:                    t.state.OrchestrationID.String(),
+		GlobalExpect:          t.state.GlobalExpect,
+		GlobalExpectUpdatedAt: t.state.GlobalExpectUpdatedAt,
+	}, t.pubLabels...)
+}
+
+func (t *Manager) publishOrchestrationAborted() {
+	if t.orchestrationAborted != nil {
+		t.log.Debugf("publish aborted orchestration %s:%s", t.orchestrationAborted.GlobalExpect, t.orchestrationAborted.ID)
+		t.publisher.Pub(t.orchestrationAborted, t.pubLabels...)
+		t.orchestrationAborted = nil
+	}
+}
+
+func (t *Manager) publishOrchestrationEnded() {
+	if t.orchestrationPending != nil {
+		t.publisher.Pub(t.orchestrationPending, t.pubLabels...)
+		t.orchestrationPending = nil
+	}
+}
+
+// savePendingOrchestration is called to save any pending accepted orchestration
+// before orchestrationPending resets.
+// Value is saved to orchestrationAborted with Aborted value set to true.
+// Any previous pending orchestrationAborted is published immediately before orchestrationAborted resets.
+func (t *Manager) savePendingOrchestration() {
+	if t.orchestrationPending != nil {
+		t.publishOrchestrationAborted()
+		t.orchestrationAborted = t.orchestrationPending
+		t.orchestrationAborted.Aborted = true
+		t.orchestrationPending = nil
 	}
 }

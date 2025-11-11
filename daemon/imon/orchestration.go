@@ -8,7 +8,6 @@ import (
 	"github.com/opensvc/om3/core/instance"
 	"github.com/opensvc/om3/core/node"
 	"github.com/opensvc/om3/core/status"
-	"github.com/opensvc/om3/daemon/msgbus"
 )
 
 func (t *Manager) isDone() bool {
@@ -154,51 +153,15 @@ func (t *Manager) setWaitChildren() bool {
 func (t *Manager) endOrchestration() {
 	t.change = true
 
-	if t.acceptedOrchestrationID != uuid.Nil {
-		if t.abortedOrchestration != nil {
-			t.log.Debugf("aborting:%s publish aborted %s:%s", t.acceptedOrchestrationID, t.abortedOrchestration.globalExpect, t.abortedOrchestration.orchestrationID)
-			t.publishObjectOrchestrationEnd(t.abortedOrchestration, true)
-		}
-		o := t.getOrchestrationEnd()
-		if t.acceptedOrchestrationID == o.orchestrationID {
-			defer func() {
-				t.log.Debugf("%s:%s end orchestration", o.globalExpect, o.orchestrationID)
-				t.publishObjectOrchestrationEnd(o, false)
-			}()
-		}
-	}
-	t.abortedOrchestration = nil
+	defer t.publishOrchestrationEnded()
 
 	t.state.GlobalExpect = instance.MonitorGlobalExpectNone
 	t.state.GlobalExpectOptions = nil
 	t.state.OrchestrationIsDone = false
 	t.state.OrchestrationID = uuid.UUID{}
-	t.acceptedOrchestrationID = uuid.UUID{}
 	t.clearPending()
 	t.updateIfChange()
 	t.log = t.newLogger(uuid.Nil)
-}
-
-func (t *Manager) getOrchestrationEnd() *orchestrationEnd {
-	return &orchestrationEnd{
-		orchestrationID:      t.state.OrchestrationID,
-		globalExpect:         t.state.GlobalExpect,
-		globalExpectUpdateAt: t.state.GlobalExpectUpdatedAt,
-		globalExpectOptions:  t.state.GlobalExpectOptions,
-	}
-}
-
-// publishObjectOrchestrationEnd publishes the orchestration end message
-func (t *Manager) publishObjectOrchestrationEnd(o *orchestrationEnd, aborted bool) {
-	t.publisher.Pub(&msgbus.ObjectOrchestrationEnd{
-		Node:                  t.localhost,
-		Path:                  t.path,
-		ID:                    o.orchestrationID.String(),
-		GlobalExpect:          o.globalExpect,
-		GlobalExpectUpdatedAt: o.globalExpectUpdateAt,
-		GlobalExpectOptions:   o.globalExpectOptions,
-		Aborted:               aborted,
-	}, t.pubLabels...)
 }
 
 // doneAndIdle marks the orchestration as done on the local instance and
