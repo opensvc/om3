@@ -7,3 +7,7 @@ package systemd
 func HasSystemd() bool {
 	return false
 }
+
+func Escape(s string) string {
+	return " "
+}
