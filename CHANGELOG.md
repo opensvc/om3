@@ -579,6 +579,10 @@ Where the password is the value of the `þassword` key in `system/sec/relay-v3`.
 
 ## Upgrade from b2.1
 
+### Activation on boot
+
+* systemctl enable --now opensvc-server
+
 ### Cluster Config
 
 * Need to set explicitly the `cluster.name` because the v3 daemon will generate a random cluster name if none is set:
@@ -589,3 +593,12 @@ Where the password is the value of the `þassword` key in `system/sec/relay-v3`.
     ```
 
 * Rename the stonith sections `cmd` option to `command`. Backward compatibility is implemented.
+
+### DNS
+
+* Reinstall system/svc/dns if installed. Make sure the recursor and server configuration in system/cfg/dns are reapplied (allow-from is often customized).
+
+### Network
+
+* Flush iptables rules created by om2. om3 now configures the firewall using nft only.
+
