@@ -40,10 +40,6 @@ type (
 		Namespace string `json:"namespace"`
 		Kind      Kind   `json:"kind"`
 	}
-
-	pather interface {
-		Path() Path
-	}
 )
 
 const (
@@ -504,11 +500,4 @@ func InstalledPaths() (Paths, error) {
 		l = append(l, p)
 	}
 	return l, nil
-}
-
-func PathOf(o any) Path {
-	if p, ok := o.(pather); ok {
-		return p.Path()
-	}
-	return Path{}
 }
