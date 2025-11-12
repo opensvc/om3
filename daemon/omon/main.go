@@ -82,7 +82,7 @@ type (
 		// the InstanceMonitorDeleted event.
 		// It is used to publish any pending ObjectOrchestrationEnd events that
 		// have been lost during purge/delete orchestration.
-		orchestrationEnd msgbus.ObjectOrchestrationEnd
+		orchestrationEnd *msgbus.ObjectOrchestrationEnd
 	}
 
 	IMonStarter interface {
@@ -204,6 +204,7 @@ func (t *Manager) worker() {
 			t.imonCancel = cancel
 		}
 	}
+
 	defer func() {
 		if t.imonCancel != nil {
 			t.imonCancel()
@@ -475,9 +476,13 @@ func (t *Manager) delete() {
 	t.publisher.Pub(&msgbus.ObjectStatusDeleted{Path: t.path, Node: t.localhost}, t.pubLabel...)
 	t.publisher.Pub(&msgbus.ObjectDeleted{Path: t.path, Node: t.localhost}, t.pubLabel...)
 	t.publisher.Pub(&msgbus.ObjectStatusDone{Path: t.path}, t.pubLabel...)
-	if t.orchestrationEnd.ID != "" {
-		// same as Pub(&msgbus.ObjectOrchestrationEnd ...
-		t.publisher.Pub(&t.orchestrationEnd, t.pubLabel...)
+	if t.orchestrationEnd != nil {
+		// Clone event to avoid race:
+		//    routine1: Write: Pub() -> util/pubsub.(*Msg).AddLabels()
+		//    routine2: Read: daemondata.(*data).forwardEvent() -> daemon/daemondata.marshalEventData()
+		ev := *t.orchestrationEnd
+		// same as Pub(&msgbus.ObjectOrchestrationEnd
+		t.publisher.Pub(&ev, t.pubLabel...)
 	}
 }
 
