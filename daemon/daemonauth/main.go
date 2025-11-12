@@ -170,7 +170,7 @@ func initStategies(ctx context.Context, i any) (union.Union, error) {
 		initJWTOpenID,
 		initBasicNode,
 		initBasicUser,
-		//initX509,
+		initX509,
 	} {
 		name, s, err := fn(ctx, i)
 		if err != nil {
