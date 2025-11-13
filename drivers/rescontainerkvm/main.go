@@ -543,22 +543,14 @@ func (t *T) firmwareFiles() ([]string, error) {
 	}
 
 	es, err := xmlquery.QueryAll(doc, "//domain/os/nvram")
-	if err != nil {
-		return files, err
+	if err == nil && len(es) > 0 && es[0] != nil {
+		files = append(files, es[0].Data)
 	}
-	if len(es) > 0 {
-		return files, nil
-	}
-	files = append(files, es[0].Data)
 
 	es, err = xmlquery.QueryAll(doc, "//domain/os/loader")
-	if err != nil {
-		return files, err
+	if err == nil && len(es) > 0 && es[0] != nil {
+		files = append(files, es[0].Data)
 	}
-	if len(es) > 0 {
-		return files, nil
-	}
-	files = append(files, es[0].Data)
 
 	return files, nil
 }
