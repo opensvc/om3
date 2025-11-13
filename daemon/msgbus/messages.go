@@ -561,9 +561,9 @@ type (
 
 	InstanceMonitorDeleted struct {
 		pubsub.Msg       `yaml:",inline"`
-		Path             naming.Path            `json:"path" yaml:"path"`
-		Node             string                 `json:"node" yaml:"node"`
-		OrchestrationEnd ObjectOrchestrationEnd `json:"orchestration_end" yaml:"orchestration_end"`
+		Path             naming.Path             `json:"path" yaml:"path"`
+		Node             string                  `json:"node" yaml:"node"`
+		OrchestrationEnd *ObjectOrchestrationEnd `json:"orchestration_end" yaml:"orchestration_end"`
 	}
 
 	InstanceMonitorUpdated struct {
