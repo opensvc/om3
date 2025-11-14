@@ -8,6 +8,7 @@ import (
 
 	"github.com/opensvc/om3/core/client/api"
 	reqh2 "github.com/opensvc/om3/core/client/requester/h2"
+	reqtoken "github.com/opensvc/om3/core/client/token"
 	"github.com/opensvc/om3/core/clientcontext"
 	"github.com/opensvc/om3/core/env"
 	"github.com/opensvc/om3/core/nodesinfo"
@@ -31,6 +32,7 @@ type (
 		bearer             string
 		rootCA             string
 		timeout            time.Duration
+		token              reqtoken.Token
 	}
 )
 
@@ -222,6 +224,7 @@ func (t *T) newRequester() (err error) {
 			Bearer:             t.bearer,
 			RootCA:             t.rootCA,
 			Timeout:            t.timeout,
+			Token:              t.token,
 		})
 	default:
 		if !strings.Contains(t.url, ":") {
@@ -252,6 +255,7 @@ func (t *T) newRequester() (err error) {
 			Bearer:             t.bearer,
 			RootCA:             t.rootCA,
 			Timeout:            t.timeout,
+			Token:              t.token,
 		})
 	}
 	return err
@@ -267,8 +271,16 @@ func (t *T) loadContext() error {
 		t.insecureSkipVerify = context.Cluster.InsecureSkipVerify
 		t.clientCertificate = context.User.ClientCertificate
 		t.clientKey = context.User.ClientKey
-		t.password = context.User.Password
 		t.username = context.User.Name
+
+		var tok reqtoken.Token
+		if err := reqtoken.LoadToken(env.Context(), &tok); err != nil {
+			return err
+		}
+		if tok.AccessToken != "" {
+			t.token = tok
+			t.bearer = tok.AccessToken
+		}
 	}
 	return nil
 }

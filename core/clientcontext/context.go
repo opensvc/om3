@@ -7,8 +7,9 @@ import (
 	"os"
 	"strings"
 
-	"github.com/opensvc/om3/core/env"
 	"sigs.k8s.io/yaml"
+
+	"github.com/opensvc/om3/core/env"
 
 	"github.com/mitchellh/go-homedir"
 )
@@ -50,7 +51,6 @@ type (
 	user struct {
 		ClientCertificate string `json:"client_certificate"`
 		ClientKey         string `json:"client_key"`
-		Password          string `json:"password"`
 		Name              string `json:"name"`
 	}
 )
@@ -59,8 +59,9 @@ var (
 	// Err is raised when a context definition has issues.
 	Err = errors.New("context error")
 
+	ConfigFolder = "~/.config/opensvc/"
 	// ConfigFilename is the file where the context information is stored
-	ConfigFilename = "~/.config/opensvc/contexts"
+	ConfigFilename = ConfigFolder + "contexts"
 )
 
 // IsSet returns true if the OSVC_CONTEXT environment variable is set
