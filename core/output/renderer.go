@@ -153,6 +153,12 @@ func (t Renderer) Sprint() (string, error) {
 			return "", err
 		}
 		return s, nil
+	case Template:
+		s, err := t.renderTemplate(options)
+		if err != nil {
+			return "", err
+		}
+		return s, nil
 	default:
 		if t.HumanRenderer != nil {
 			return t.HumanRenderer(), nil

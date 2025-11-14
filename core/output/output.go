@@ -9,7 +9,7 @@ const (
 	Human T = iota
 	// JSON is the json output format
 	JSON
-	// Flat is the flattened json output format (a.'b#b'.c = d, a[0] = b)
+	// Flat is the flattened json output format (a."b#b".c = d, a[0] = b)
 	Flat
 	// JSONLine is unindented json output format
 	JSONLine
@@ -21,6 +21,8 @@ const (
 	CSV
 	// YAML is the standard human readable, commentable, complex data representation
 	YAML
+	// Template is a custom user provided renderer
+	Template
 )
 
 var toString = map[T]string{
@@ -32,6 +34,7 @@ var toString = map[T]string{
 	Table:    "table",
 	CSV:      "csv",
 	YAML:     "yaml",
+	Template: "template",
 }
 
 var toID = map[string]T{
@@ -44,6 +47,7 @@ var toID = map[string]T{
 	"table":     Table,
 	"csv":       CSV,
 	"yaml":      YAML,
+	"template":  Template,
 }
 
 func (t T) String() string {

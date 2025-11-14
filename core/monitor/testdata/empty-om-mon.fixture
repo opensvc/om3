@@ -1,17 +1,17 @@
-Threads                    
- daemon                    
- collector                 
- hb                        
- listener                  
- scheduler                 
-                           
-Nodes                      
- score                     
-  load15m                  
-  mem                      
-  swap                     
-  version          warn    
-  compat           warn    
- state                     
-                           
-Objects matching *         
+Threads             
+ daemon             
+ collector          
+ hb                 
+ listener           
+ scheduler          
+                    
+Nodes               
+ score              
+  load15m           
+  mem               
+  swap              
+  version   warn    
+  compat    warn    
+ state              
+                    
+Objects ~ *         

@@ -12,6 +12,7 @@ import (
 
 	"github.com/spf13/cobra"
 
+	"github.com/opensvc/om3/core/commoncmd"
 	"github.com/opensvc/om3/core/env"
 	"github.com/opensvc/om3/core/naming"
 	"github.com/opensvc/om3/core/rawconfig"
@@ -103,7 +104,7 @@ func setExecuteArgs(args []string) {
 	}
 	_, _, err := root.Find(lookupArgs)
 
-	if err != nil {
+	if err != nil || lookupArgs[0] == "-" {
 		// command not found... try with args[1] as a selector.
 		if len(lookupArgs) > 0 {
 			selectorFlag = lookupArgs[0]
@@ -162,6 +163,8 @@ func guessSubsystem(s string) string {
 // the selector passed by the -s flag.
 func mergeSelector(subsysSelector string, kind string, deft string) string {
 	switch {
+	case selectorFlag == "-":
+		return commoncmd.SelectorFromStdin()
 	case selectorFlag != "":
 		return selectorFlag
 	case subsysSelector != "":
