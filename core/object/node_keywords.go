@@ -4,6 +4,7 @@ import (
 	"fmt"
 
 	"github.com/opensvc/om3/core/keywords"
+	"github.com/opensvc/om3/core/kwoption"
 	"github.com/opensvc/om3/core/naming"
 	"github.com/opensvc/om3/core/rawconfig"
 	"github.com/opensvc/om3/daemon/daemonenv"
@@ -802,7 +803,7 @@ var nodeCommonKeywords = []keywords.Keyword{
 		Text:       keywords.NewText(fs, "text/kw/node/pool.type"),
 	},
 	{
-		Option:  "status_schedule",
+		Option:  kwoption.ScheduleStatus,
 		Section: "pool",
 		Text:    keywords.NewText(fs, "text/kw/node/pool.status_schedule"),
 	},
