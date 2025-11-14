@@ -124,12 +124,12 @@ func (a *DaemonAPI) getObjects(ctx echo.Context, pathSelector *string) (api.Obje
 		case naming.KindSec:
 			d.Data.MergeObjectCore(getCore(p, ostat))
 		case naming.KindSvc:
-			d.Data.MergeObjectCore(getCore(p, ostat))
 			d.Data.MergeObjectActor(getActor(ostat))
+			d.Data.MergeObjectCore(getCore(p, ostat))
 		case naming.KindVol:
-			d.Data.MergeObjectCore(getCore(p, ostat))
-			d.Data.MergeObjectActor(getActor(ostat))
 			d.Data.MergeObjectVolConfig(getObjectVolConfig(ostat))
+			d.Data.MergeObjectActor(getActor(ostat))
+			d.Data.MergeObjectCore(getCore(p, ostat))
 		case naming.KindUsr:
 			d.Data.MergeObjectCore(getCore(p, ostat))
 		}
