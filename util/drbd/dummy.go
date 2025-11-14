@@ -3,7 +3,8 @@
 package drbd
 
 const (
-	drbdadm string = "/bin/false"
+	drbdadm   string = "/bin/false"
+	drbdsetup string = "/bin/false"
 )
 
 func IsCapable() bool {
