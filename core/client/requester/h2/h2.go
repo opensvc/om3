@@ -35,13 +35,13 @@ type (
 		Timeout            time.Duration
 		InsecureSkipVerify bool
 		RootCA             string
-		Token              reqtoken.Token
+		Tokens             reqtoken.Entry
 	}
 
 	RefreshTransport struct {
 		Base     http.RoundTripper
 		baseURL  string
-		token    reqtoken.Token
+		tokens   reqtoken.Entry
 		Username string
 		Password string
 	}
@@ -122,7 +122,7 @@ func NewInet(config Config) (apiClient *api.ClientWithResponses, err error) {
 	httpClient.Transport = &RefreshTransport{
 		Base:     baseTransport,
 		baseURL:  config.URL,
-		token:    config.Token,
+		tokens:   config.Tokens,
 		Username: config.Username,
 		Password: config.Password,
 	}
@@ -183,7 +183,7 @@ func (t *RefreshTransport) RoundTrip(req *http.Request) (*http.Response, error) 
 	}
 	defer resp.Body.Close()
 
-	hasTokens := t.token.AccessToken != "" || t.token.RefreshToken != ""
+	hasTokens := t.tokens.AccessToken != "" || t.tokens.RefreshToken != ""
 	hasCredentials := t.Username != "" && t.Password != ""
 
 	if !hasTokens && hasCredentials {
@@ -192,7 +192,7 @@ func (t *RefreshTransport) RoundTrip(req *http.Request) (*http.Response, error) 
 
 	if t.isAccessTokenValid() {
 		lreq := req.Clone(ctx)
-		lreq.Header.Set("Authorization", "Bearer "+t.token.AccessToken)
+		lreq.Header.Set("Authorization", "Bearer "+t.tokens.AccessToken)
 		return base.RoundTrip(lreq)
 	}
 
@@ -212,18 +212,18 @@ func (t *RefreshTransport) getBaseTransport() http.RoundTripper {
 }
 
 func (t *RefreshTransport) isAccessTokenValid() bool {
-	return t.token.AccessToken != "" && time.Now().Before(t.token.AccessTokenExpire)
+	return t.tokens.AccessToken != "" && time.Now().Before(t.tokens.AccessTokenExpire)
 }
 
 func (t *RefreshTransport) retryWithAccessToken(ctx context.Context, req *http.Request, base http.RoundTripper) (*http.Response, error) {
 	retryReq := req.Clone(ctx)
-	retryReq.Header.Set("Authorization", "Bearer "+t.token.AccessToken)
+	retryReq.Header.Set("Authorization", "Bearer "+t.tokens.AccessToken)
 	return base.RoundTrip(retryReq)
 }
 
 func (t *RefreshTransport) retryWithToken(ctx context.Context, req *http.Request, base http.RoundTripper, token string) (*http.Response, error) {
 	if token == "" {
-		return nil, fmt.Errorf("no valid token available")
+		return nil, fmt.Errorf("no valid tokens available")
 	}
 	retryReq := req.Clone(ctx)
 	retryReq.Header.Set("Authorization", "Bearer "+token)
@@ -233,19 +233,19 @@ func (t *RefreshTransport) retryWithToken(ctx context.Context, req *http.Request
 func (t *RefreshTransport) authenticateOrRefresh(ctx context.Context, base http.RoundTripper) (string, error) {
 	now := time.Now()
 
-	if t.token.AccessToken == "" && t.token.RefreshToken == "" {
-		return t.authenticateWithCredentials(ctx, base, "no access or refresh token available, use `om daemon login` to authenticate")
+	if t.tokens.AccessToken == "" && t.tokens.RefreshToken == "" {
+		return t.authenticateWithCredentials(ctx, base, "no access or refresh tokens available, use `om daemon login` to authenticate")
 	}
 
-	if now.After(t.token.RefreshTokenExpire) {
+	if now.After(t.tokens.RefreshTokenExpire) {
 		return t.authenticateWithCredentials(ctx, base, "both access and refresh tokens are expired, use `om daemon login` to reauthenticate")
 	}
 
-	if now.After(t.token.AccessTokenExpire) {
+	if now.After(t.tokens.AccessTokenExpire) {
 		return t.refreshAccessToken(ctx, base)
 	}
 
-	return t.token.AccessToken, nil
+	return t.tokens.AccessToken, nil
 }
 
 func (t *RefreshTransport) authenticateWithCredentials(ctx context.Context, base http.RoundTripper, errorMessage string) (string, error) {
@@ -256,7 +256,7 @@ func (t *RefreshTransport) authenticateWithCredentials(ctx context.Context, base
 	params := url.Values{}
 	params.Add("refresh", "true")
 
-	loginURL := strings.TrimRight(t.baseURL, "/") + "/api/auth/token?" + params.Encode()
+	loginURL := strings.TrimRight(t.baseURL, "/") + "/api/auth/tokens?" + params.Encode()
 	loginReq, err := http.NewRequestWithContext(ctx, http.MethodPost, loginURL, nil)
 	if err != nil {
 		return "", err
@@ -273,17 +273,17 @@ func (t *RefreshTransport) authenticateWithCredentials(ctx context.Context, base
 		return "", fmt.Errorf("authentication failed with status: %d", loginResp.StatusCode)
 	}
 
-	var tokenResp reqtoken.Token
+	var tokenResp reqtoken.Entry
 	if err := json.NewDecoder(loginResp.Body).Decode(&tokenResp); err != nil {
 		return "", err
 	}
 
 	if tokenResp.AccessToken == "" || tokenResp.RefreshToken == "" {
-		return "", fmt.Errorf("token login response missing access_token or refresh_token")
+		return "", fmt.Errorf("tokens login response missing access_token or refresh_token")
 	}
 
-	t.updateToken(tokenResp)
-	return tokenResp.AccessToken, reqtoken.SaveToken(env.Context(), t.token)
+	t.updateTokens(tokenResp)
+	return tokenResp.AccessToken, reqtoken.Save(env.Context(), t.tokens)
 }
 
 func (t *RefreshTransport) refreshAccessToken(ctx context.Context, base http.RoundTripper) (string, error) {
@@ -293,7 +293,7 @@ func (t *RefreshTransport) refreshAccessToken(ctx context.Context, base http.Rou
 		return "", err
 	}
 
-	refreshReq.Header.Set("Authorization", "Bearer "+t.token.RefreshToken)
+	refreshReq.Header.Set("Authorization", "Bearer "+t.tokens.RefreshToken)
 	refreshResp, err := base.RoundTrip(refreshReq)
 	if err != nil {
 		return "", err
@@ -301,7 +301,7 @@ func (t *RefreshTransport) refreshAccessToken(ctx context.Context, base http.Rou
 	defer refreshResp.Body.Close()
 
 	if refreshResp.StatusCode != http.StatusOK {
-		return "", fmt.Errorf("token refresh failed with status: %d", refreshResp.StatusCode)
+		return "", fmt.Errorf("tokens refresh failed with status: %d", refreshResp.StatusCode)
 	}
 
 	var tokenResp struct {
@@ -314,17 +314,17 @@ func (t *RefreshTransport) refreshAccessToken(ctx context.Context, base http.Rou
 	}
 
 	if tokenResp.AccessToken == "" {
-		return "", fmt.Errorf("token refresh response missing access_token")
+		return "", fmt.Errorf("tokens refresh response missing access_token")
 	}
 
-	t.token.AccessToken = tokenResp.AccessToken
-	t.token.AccessTokenExpire = tokenResp.AccessTokenExpire
-	return tokenResp.AccessToken, reqtoken.SaveToken(env.Context(), t.token)
+	t.tokens.AccessToken = tokenResp.AccessToken
+	t.tokens.AccessTokenExpire = tokenResp.AccessTokenExpire
+	return tokenResp.AccessToken, reqtoken.Save(env.Context(), t.tokens)
 }
 
-func (t *RefreshTransport) updateToken(token reqtoken.Token) {
-	t.token.AccessToken = token.AccessToken
-	t.token.AccessTokenExpire = token.AccessTokenExpire
-	t.token.RefreshToken = token.RefreshToken
-	t.token.RefreshTokenExpire = token.RefreshTokenExpire
+func (t *RefreshTransport) updateTokens(token reqtoken.Entry) {
+	t.tokens.AccessToken = token.AccessToken
+	t.tokens.AccessTokenExpire = token.AccessTokenExpire
+	t.tokens.RefreshToken = token.RefreshToken
+	t.tokens.RefreshTokenExpire = token.RefreshTokenExpire
 }

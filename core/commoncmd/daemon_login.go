@@ -29,7 +29,7 @@ func NewCmdDaemonLogin() *cobra.Command {
 	var options CmdDaemonLogin
 	cmd := &cobra.Command{
 		Use:   "login",
-		Short: "Login and cache authentication tokens",
+		Short: "Request and cache authentication tokens",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return options.Run()
 		},
@@ -54,7 +54,7 @@ func (t *CmdDaemonLogin) Run() error {
 				fmt.Println(" - " + name)
 			}
 			fmt.Println()
-			name, _ := reqtoken.GetMostRecent()
+			name, _ := reqtoken.GetLast()
 			fmt.Print("Select context")
 			if name != "" {
 				fmt.Printf(" [<%s>]", name)
@@ -124,13 +124,13 @@ func (t *CmdDaemonLogin) Run() error {
 	}
 
 	resp200 := resp.JSON200
-	token := reqtoken.Token{
+	token := reqtoken.Entry{
 		AccessTokenExpire:  resp200.AccessExpiredAt,
 		AccessToken:        resp200.AccessToken,
 		RefreshTokenExpire: *resp200.RefreshExpiredAt,
 		RefreshToken:       *resp200.RefreshToken,
 	}
-	err = reqtoken.SaveToken(t.Context, token)
+	err = reqtoken.Save(t.Context, token)
 	if err != nil {
 		return err
 	}

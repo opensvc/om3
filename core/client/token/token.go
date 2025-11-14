@@ -1,4 +1,4 @@
-package reqtoken
+package tokencache
 
 import (
 	"encoding/json"
@@ -14,7 +14,7 @@ import (
 )
 
 type (
-	Token struct {
+	Entry struct {
 		AccessTokenExpire  time.Time `json:"access_expired_at"`
 		AccessToken        string    `json:"access_token"`
 		RefreshTokenExpire time.Time `json:"refresh_expired_at"`
@@ -22,8 +22,8 @@ type (
 	}
 )
 
-func SaveToken(contextName string, token Token) error {
-	filename, _ := homedir.Expand(getFilePath(contextName))
+func Save(contextName string, token Entry) error {
+	filename, _ := homedir.Expand(fmtFilename(contextName))
 	b, err := json.MarshalIndent(token, "", "  ")
 	if err != nil {
 		return err
@@ -34,8 +34,8 @@ func SaveToken(contextName string, token Token) error {
 	return nil
 }
 
-func LoadToken(contextName string, token *Token) error {
-	filename, _ := homedir.Expand(getFilePath(contextName))
+func Load(contextName string, token *Entry) error {
+	filename, _ := homedir.Expand(fmtFilename(contextName))
 	b, err := os.ReadFile(filename)
 	if errors.Is(err, os.ErrNotExist) {
 		return nil
@@ -48,17 +48,17 @@ func LoadToken(contextName string, token *Token) error {
 	return nil
 }
 
-func TokenExists(contextName string) bool {
-	filename, _ := homedir.Expand(getFilePath(contextName))
+func Exists(contextName string) bool {
+	filename, _ := homedir.Expand(fmtFilename(contextName))
 	_, err := os.Stat(filename)
 	return !errors.Is(err, os.ErrNotExist)
 }
 
-func DeleteToken(contextName string) error {
-	if !TokenExists(contextName) {
+func Delete(contextName string) error {
+	if !Exists(contextName) {
 		return fmt.Errorf("no token found for context %s", contextName)
 	}
-	filename, _ := homedir.Expand(getFilePath(contextName))
+	filename, _ := homedir.Expand(fmtFilename(contextName))
 	err := os.Remove(filename)
 	if errors.Is(err, os.ErrNotExist) {
 		return nil
@@ -66,8 +66,8 @@ func DeleteToken(contextName string) error {
 	return err
 }
 
-func GetAllToken() map[string]Token {
-	tokens := make(map[string]Token)
+func GetAll() map[string]Entry {
+	tokens := make(map[string]Entry)
 	dirpath, err := homedir.Expand(clientcontext.ConfigFolder)
 	if err != nil {
 		return tokens
@@ -80,8 +80,8 @@ func GetAllToken() map[string]Token {
 		name := file.Name()
 		if !file.IsDir() && strings.HasPrefix(name, "token-") && strings.HasSuffix(name, ".json") {
 			contextName := strings.TrimSuffix(strings.TrimPrefix(name, "token-"), ".json")
-			var token Token
-			if err := LoadToken(contextName, &token); err == nil {
+			var token Entry
+			if err := Load(contextName, &token); err == nil {
 				tokens[contextName] = token
 			}
 		}
@@ -89,10 +89,10 @@ func GetAllToken() map[string]Token {
 	return tokens
 }
 
-func GetMostRecent() (string, Token) {
+func GetLast() (string, Entry) {
 	var recentContext string
-	var recentToken Token
-	tokens := GetAllToken()
+	var recentToken Entry
+	tokens := GetAll()
 	var recentTime time.Time
 	for contextName, token := range tokens {
 		if token.AccessTokenExpire.After(recentTime) {
@@ -104,6 +104,6 @@ func GetMostRecent() (string, Token) {
 	return recentContext, recentToken
 }
 
-func getFilePath(contextName string) string {
+func fmtFilename(contextName string) string {
 	return clientcontext.ConfigFolder + "token-" + contextName + ".json"
 }

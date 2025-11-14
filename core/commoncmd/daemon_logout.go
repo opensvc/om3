@@ -24,7 +24,7 @@ func NewCmdDaemonLogout() *cobra.Command {
 	var options CmdDaemonLogout
 	cmd := &cobra.Command{
 		Use:   "logout",
-		Short: "Logout and clear cached authentication tokens",
+		Short: "Clear cached authentication tokens",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return options.Run()
 		},
@@ -40,7 +40,7 @@ func (t *CmdDaemonLogout) Run() error {
 			t.Context = ctx
 		} else {
 			var valid []string
-			tokens := reqtoken.GetAllToken()
+			tokens := reqtoken.GetAll()
 			for name := range tokens {
 				tok := tokens[name]
 				if time.Now().Before(tok.RefreshTokenExpire) {
@@ -55,7 +55,7 @@ func (t *CmdDaemonLogout) Run() error {
 				fmt.Println(" - " + name)
 			}
 			fmt.Println()
-			name, _ := reqtoken.GetMostRecent()
+			name, _ := reqtoken.GetLast()
 			fmt.Print("Select context")
 			if name != "" {
 				fmt.Printf(" [<%s>]", name)
@@ -70,11 +70,11 @@ func (t *CmdDaemonLogout) Run() error {
 		}
 	}
 
-	if !reqtoken.TokenExists(t.Context) {
+	if !reqtoken.Exists(t.Context) {
 		return fmt.Errorf("no token found for context %s", t.Context)
 	}
 
-	if err := reqtoken.DeleteToken(t.Context); err != nil {
+	if err := reqtoken.Delete(t.Context); err != nil {
 		return err
 	}
 
