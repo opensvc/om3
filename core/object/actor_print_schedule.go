@@ -4,6 +4,7 @@ import (
 	"path/filepath"
 	"time"
 
+	"github.com/opensvc/om3/core/kwoption"
 	"github.com/opensvc/om3/core/naming"
 	"github.com/opensvc/om3/core/resource"
 	"github.com/opensvc/om3/core/schedule"
@@ -57,10 +58,10 @@ func (t *actor) newScheduleEntry(action, keyStr, rid, base string, reqCol, reqPr
 
 func (t *actor) Schedules() schedule.Table {
 	table := schedule.NewTable(
-		t.newScheduleEntry("status", "status_schedule", "", "status", false, false),
+		t.newScheduleEntry("status", kwoption.ScheduleStatus, "", "status", false, false),
 	)
 	if t.path.Kind == naming.KindSvc {
-		e := t.newScheduleEntry("compliance_auto", "comp_schedule", "", "comp_check", true, true)
+		e := t.newScheduleEntry("compliance_auto", kwoption.ScheduleCompliance, "", "comp_check", true, true)
 		table = table.Add(e)
 	}
 	needResMon := false
@@ -90,11 +91,11 @@ func (t *actor) Schedules() schedule.Table {
 		table = table.Add(e)
 	}
 	if needResMon {
-		e := t.newScheduleEntry("resource_monitor", "monitor_schedule", "", "resource_monitor", false, true)
+		e := t.newScheduleEntry("resource_monitor", kwoption.ScheduleMonitor, "", "resource_monitor", false, true)
 		table = table.Add(e)
 	}
 	if len(listResources(t)) > 0 {
-		e := t.newScheduleEntry("push_resinfo", "resinfo_schedule", "", "push_resinfo", true, false)
+		e := t.newScheduleEntry("push_resinfo", kwoption.ScheduleResinfo, "", "push_resinfo", true, false)
 		table = table.Add(e)
 	}
 	return table
