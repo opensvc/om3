@@ -32,7 +32,7 @@ type (
 		bearer             string
 		rootCA             string
 		timeout            time.Duration
-		token              reqtoken.Token
+		tokens             reqtoken.Entry
 	}
 )
 
@@ -141,7 +141,7 @@ func WithAuthorization(s string) funcopt.O {
 	})
 }
 
-// WithBearer sets the client bearer token to use for newRequests
+// WithBearer sets the client bearer tokens to use for newRequests
 func WithBearer(s string) funcopt.O {
 	return funcopt.F(func(i interface{}) error {
 		t := i.(*T)
@@ -224,7 +224,7 @@ func (t *T) newRequester() (err error) {
 			Bearer:             t.bearer,
 			RootCA:             t.rootCA,
 			Timeout:            t.timeout,
-			Token:              t.token,
+			Tokens:             t.tokens,
 		})
 	default:
 		if !strings.Contains(t.url, ":") {
@@ -255,7 +255,7 @@ func (t *T) newRequester() (err error) {
 			Bearer:             t.bearer,
 			RootCA:             t.rootCA,
 			Timeout:            t.timeout,
-			Token:              t.token,
+			Tokens:             t.tokens,
 		})
 	}
 	return err
@@ -273,13 +273,15 @@ func (t *T) loadContext() error {
 		t.clientKey = context.User.ClientKey
 		t.username = context.User.Name
 
-		var tok reqtoken.Token
-		if err := reqtoken.LoadToken(env.Context(), &tok); err != nil {
-			return err
-		}
-		if tok.AccessToken != "" {
-			t.token = tok
-			t.bearer = tok.AccessToken
+		if t.bearer == "" {
+			var tok reqtoken.Entry
+			if err := reqtoken.Load(env.Context(), &tok); err != nil {
+				return err
+			}
+			if tok.AccessToken != "" {
+				t.tokens = tok
+				t.bearer = tok.AccessToken
+			}
 		}
 	}
 	return nil
