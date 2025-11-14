@@ -2,6 +2,7 @@ package object
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"sort"
 	"time"
@@ -517,6 +518,9 @@ func (t *actor) SoftAntiAffinity() []string {
 
 func (t *actor) EncapNodes() ([]string, error) {
 	l, err := t.config.Eval(key.Parse("encapnodes"))
+	if errors.Is(err, xconfig.ErrNoKeyword) {
+		return []string{}, nil
+	}
 	if err != nil {
 		return nil, err
 	}
