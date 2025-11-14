@@ -11,6 +11,7 @@ import (
 	"time"
 
 	"github.com/labstack/gommon/log"
+
 	"github.com/opensvc/om3/core/driver"
 	"github.com/opensvc/om3/core/instance"
 	"github.com/opensvc/om3/core/naming"
@@ -271,6 +272,10 @@ func (t *T) createJob(e schedule.Entry) {
 	}
 
 	logger := t.jobLogger(e)
+	if e.LastRunAt.IsZero() {
+		// after daemon start: initialize the schedule's LastRunAt from LastRunFile
+		e.LastRunAt = e.GetLastRun()
+	}
 	if lastRunOnAllPeers, ok := t.lastRunOnAllPeers.Get(e.Path, e.Key); ok && e.LastRunAt.Before(lastRunOnAllPeers) {
 		logger.Infof("adjust schedule entry last run time: %s => %s", e.LastRunAt, lastRunOnAllPeers)
 		e.LastRunAt = lastRunOnAllPeers

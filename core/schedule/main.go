@@ -141,3 +141,7 @@ func (t Entry) SetLastSuccess(tm time.Time) error {
 func (t Entry) SetLastRun(tm time.Time) error {
 	return file.Touch(t.LastRunFile, tm)
 }
+
+func (t Entry) GetLastRun() time.Time {
+	return file.ModTime(t.LastRunFile)
+}
