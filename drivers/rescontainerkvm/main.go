@@ -62,17 +62,18 @@ type (
 		DNS        []string    `json:"dns"`
 		Topology   topology.T
 
-		SCSIReserv   bool           `json:"scsireserv"`
-		PromoteRW    bool           `json:"promote_rw"`
-		OsvcRootPath string         `json:"osvc_root_path"`
-		GuestOS      string         `json:"guest_os"`
-		Name         string         `json:"name"`
-		Hostname     string         `json:"hostname"`
-		RCmd         []string       `json:"rcmd"`
-		StartTimeout *time.Duration `json:"start_timeout"`
-		StopTimeout  *time.Duration `json:"stop_timeout"`
-		VirtInst     []string       `json:"virtinst"`
-		QGA          bool           `json:"qga"`
+		SCSIReserv          bool           `json:"scsireserv"`
+		PromoteRW           bool           `json:"promote_rw"`
+		OsvcRootPath        string         `json:"osvc_root_path"`
+		GuestOS             string         `json:"guest_os"`
+		Name                string         `json:"name"`
+		Hostname            string         `json:"hostname"`
+		RCmd                []string       `json:"rcmd"`
+		StartTimeout        *time.Duration `json:"start_timeout"`
+		StopTimeout         *time.Duration `json:"stop_timeout"`
+		VirtInst            []string       `json:"virtinst"`
+		QGA                 bool           `json:"qga"`
+		QGAOperationalDelay *time.Duration `json:"qga_operational_delay"`
 		//Snap           string         `json:"snap"`
 		//SnapOf         string         `json:"snapof"`
 
@@ -180,11 +181,18 @@ func (t *T) checkCapabilities() bool {
 }
 
 func (t *T) hasEncap() bool {
-	return slices.Contains(t.EncapNodes, t.Name)
+	return slices.Contains(t.EncapNodes, t.GetHostname())
 }
 
 func (t *T) isOperational() (bool, error) {
-	if err := t.rexec("pwd"); err != nil {
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+	cmd, err := t.EncapCmd(ctx, []string{"pwd"}, []string{}, nil)
+	if err != nil {
+		t.Log().Debugf("isOperational: %s", err)
+		return false, nil
+	}
+	if err := cmd.Run(); err != nil {
 		t.Log().Debugf("isOperational: %s", err)
 		return false, nil
 	}
@@ -427,6 +435,13 @@ func (t *T) waitForOperational(ctx context.Context, timeout, interval time.Durat
 		if err != nil {
 			t.Log().Errorf("abort waiting for %s operational: %s", t.Name, err)
 			return true
+		}
+		if v && t.QGA && t.QGAOperationalDelay != nil {
+			// qga is operational, but we have no generic method to ensure
+			// the os is far enough in the boot for a encap start to succeed
+			// (network, sssd, dockerd, ... may need to be started but we don't
+			// know if they are managed by systemd, openrc, ...)
+			time.Sleep(*t.QGAOperationalDelay)
 		}
 		return v
 	})
@@ -817,15 +832,6 @@ func (t *T) rcmd() ([]string, error) {
 	}
 	a.Append(t.GetHostname())
 	return a.Get(), nil
-}
-
-func (t *T) rexec(cmd string) error {
-	rcmd, err := t.rcmd()
-	if err != nil {
-		return err
-	}
-	rcmd = append(rcmd, cmd)
-	return t.execViaRCmd(rcmd)
 }
 
 func (t *T) Enter() error {
