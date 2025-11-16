@@ -527,7 +527,7 @@ var keywordStore = keywords.Store{
 	{
 		Default:  "@60m",
 		Kind:     naming.NewKinds(naming.KindSvc, naming.KindVol),
-		Option:   kwoption.ScheduleCompliance,
+		Option:   kwoption.ScheduleResinfo,
 		Scopable: true,
 		Section:  "DEFAULT",
 		Text:     keywords.NewText(fs, "text/kw/core/resinfo_schedule"),
