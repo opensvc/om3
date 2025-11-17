@@ -258,7 +258,13 @@ func (t T) Validate() (Alerts, error) {
 				if sectionType == "" {
 					sectionType = did.Name
 				}
-				if !driver.Exists(did) {
+				if rid.DriverGroup() == driver.GroupVolume {
+					poolDid := driver.NewID(driver.GroupPool, sectionType)
+					if !driver.Exists(poolDid) {
+						alerts = append(alerts, t.NewAlertUnknownDriver(key.T{Section: section}, poolDid))
+						continue
+					}
+				} else if !driver.Exists(did) {
 					alerts = append(alerts, t.NewAlertUnknownDriver(key.T{Section: section}, did))
 					continue
 				}
