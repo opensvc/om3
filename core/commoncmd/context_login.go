@@ -13,20 +13,20 @@ import (
 	"golang.org/x/term"
 
 	"github.com/opensvc/om3/core/client"
-	reqtoken "github.com/opensvc/om3/core/client/token"
+	"github.com/opensvc/om3/core/client/tokencache"
 	"github.com/opensvc/om3/core/clientcontext"
 	"github.com/opensvc/om3/core/env"
 	"github.com/opensvc/om3/daemon/api"
 )
 
 type (
-	CmdDaemonLogin struct {
+	CmdContextLogin struct {
 		Context string
 	}
 )
 
 func NewCmdDaemonLogin() *cobra.Command {
-	var options CmdDaemonLogin
+	var options CmdContextLogin
 	cmd := &cobra.Command{
 		Use:   "login",
 		Short: "Request and cache authentication tokens",
@@ -39,7 +39,7 @@ func NewCmdDaemonLogin() *cobra.Command {
 	return cmd
 }
 
-func (t *CmdDaemonLogin) Run() error {
+func (t *CmdContextLogin) Run() error {
 
 	if t.Context == "" {
 		if ctx := env.Context(); ctx != "" {
@@ -54,7 +54,7 @@ func (t *CmdDaemonLogin) Run() error {
 				fmt.Println(" - " + name)
 			}
 			fmt.Println()
-			name, _ := reqtoken.GetLast()
+			name, _ := tokencache.GetLast()
 			fmt.Print("Select context")
 			if name != "" {
 				fmt.Printf(" [<%s>]", name)
@@ -67,11 +67,11 @@ func (t *CmdDaemonLogin) Run() error {
 			}
 			if input == "\n" && name != "" {
 				t.Context = name
-				return nil
 			} else if input == "\n" {
 				return fmt.Errorf("no context selected")
+			} else {
+				t.Context = strings.TrimSpace(input)
 			}
-			t.Context = strings.TrimSpace(input)
 		}
 	}
 
@@ -124,13 +124,13 @@ func (t *CmdDaemonLogin) Run() error {
 	}
 
 	resp200 := resp.JSON200
-	token := reqtoken.Entry{
+	token := tokencache.Entry{
 		AccessTokenExpire:  resp200.AccessExpiredAt,
 		AccessToken:        resp200.AccessToken,
 		RefreshTokenExpire: *resp200.RefreshExpiredAt,
 		RefreshToken:       *resp200.RefreshToken,
 	}
-	err = reqtoken.Save(t.Context, token)
+	err = tokencache.Save(t.Context, token)
 	if err != nil {
 		return err
 	}

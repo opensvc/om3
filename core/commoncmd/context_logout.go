@@ -10,18 +10,18 @@ import (
 
 	"github.com/spf13/cobra"
 
-	reqtoken "github.com/opensvc/om3/core/client/token"
+	"github.com/opensvc/om3/core/client/tokencache"
 	"github.com/opensvc/om3/core/env"
 )
 
 type (
-	CmdDaemonLogout struct {
+	CmdContextLogout struct {
 		Context string
 	}
 )
 
 func NewCmdDaemonLogout() *cobra.Command {
-	var options CmdDaemonLogout
+	var options CmdContextLogout
 	cmd := &cobra.Command{
 		Use:   "logout",
 		Short: "Clear cached authentication tokens",
@@ -34,28 +34,27 @@ func NewCmdDaemonLogout() *cobra.Command {
 	return cmd
 }
 
-func (t *CmdDaemonLogout) Run() error {
+func (t *CmdContextLogout) Run() error {
 	if t.Context == "" {
 		if ctx := env.Context(); ctx != "" {
 			t.Context = ctx
 		} else {
-			var valid []string
-			tokens := reqtoken.GetAll()
+			tokens := tokencache.GetAll()
 			for name := range tokens {
 				tok := tokens[name]
-				if time.Now().Before(tok.RefreshTokenExpire) {
-					valid = append(valid, name)
+				if !time.Now().Before(tok.RefreshTokenExpire) {
+					delete(tokens, name)
 				}
 			}
-			if len(valid) == 0 {
+			if len(tokens) == 0 {
 				return fmt.Errorf("no valid context login found")
 			}
 			fmt.Println("Current valid context logins:")
-			for _, name := range valid {
+			for name := range tokens {
 				fmt.Println(" - " + name)
 			}
 			fmt.Println()
-			name, _ := reqtoken.GetLast()
+			name, _ := tokencache.GetLast()
 			fmt.Print("Select context")
 			if name != "" {
 				fmt.Printf(" [<%s>]", name)
@@ -66,15 +65,21 @@ func (t *CmdDaemonLogout) Run() error {
 			if err != nil && err != io.EOF {
 				return err
 			}
-			t.Context = strings.TrimSpace(input)
+			if input == "\n" && name != "" {
+				t.Context = name
+			} else if input == "\n" {
+				return fmt.Errorf("no context selected")
+			} else {
+				t.Context = strings.TrimSpace(input)
+			}
 		}
 	}
 
-	if !reqtoken.Exists(t.Context) {
-		return fmt.Errorf("no token found for context %s", t.Context)
+	if !tokencache.Exists(t.Context) {
+		return fmt.Errorf("no tokencache found for context %s", t.Context)
 	}
 
-	if err := reqtoken.Delete(t.Context); err != nil {
+	if err := tokencache.Delete(t.Context); err != nil {
 		return err
 	}
 
