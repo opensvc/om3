@@ -1,4 +1,4 @@
-package xconfig
+package file
 
 import (
 	"errors"
@@ -10,7 +10,6 @@ import (
 	"github.com/hexops/gotextdiff/span"
 
 	"github.com/opensvc/om3/util/editor"
-	"github.com/opensvc/om3/util/file"
 )
 
 type (
@@ -43,9 +42,9 @@ func Diff(a, b string) (string, error) {
 	return fmt.Sprint(gotextdiff.ToUnified(a, b, string(ab), edits)), nil
 }
 
-func Edit(src string, mode EditMode, ref Referrer) error {
+func Edit(src string, mode EditMode, validate func(dst string) error) error {
 	dst := src + ".tmp"
-	if file.Exists(dst) {
+	if Exists(dst) {
 		switch mode {
 		case EditModeDiscard:
 			if err := os.Remove(dst); err != nil {
@@ -57,14 +56,14 @@ func Edit(src string, mode EditMode, ref Referrer) error {
 			return fmt.Errorf("%w: %s", ErrEditPending, diff)
 		}
 	}
-	if !file.Exists(dst) {
-		if err := file.Copy(src, dst); err != nil {
+	if !Exists(dst) {
+		if err := Copy(src, dst); err != nil {
 			return err
 		}
 		//log.Debug().Str("dst", dst).Msg("new configuration temporary copy")
 	}
 	var refSum []byte
-	if b, err := file.MD5(dst); err != nil {
+	if b, err := MD5(dst); err != nil {
 		return err
 	} else {
 		refSum = b
@@ -72,13 +71,11 @@ func Edit(src string, mode EditMode, ref Referrer) error {
 	if err := editor.Edit(dst); err != nil {
 		return err
 	}
-	if file.HaveSameMD5(refSum, dst) {
+	if HaveSameMD5(refSum, dst) {
 		fmt.Println("unchanged")
-	} else if alerts, err := ValidateFile(dst, ref); err != nil {
-		return err
-	} else if alerts.HasError() {
-		return fmt.Errorf("%w:\n%s", ErrEditValidate, alerts)
-	} else if err := file.Copy(dst, src); err != nil {
+	} else if err := validate(dst); err != nil {
+		return fmt.Errorf("%w: %s", ErrEditValidate, err)
+	} else if err := Copy(dst, src); err != nil {
 		return err
 	}
 	if err := os.Remove(dst); err != nil {
