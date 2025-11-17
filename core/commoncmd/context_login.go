@@ -8,6 +8,7 @@ import (
 	"net/http"
 	"os"
 	"strings"
+	"time"
 
 	"github.com/spf13/cobra"
 	"golang.org/x/term"
@@ -21,7 +22,9 @@ import (
 
 type (
 	CmdContextLogin struct {
-		Context string
+		Context         string
+		AccessDuration  time.Duration
+		RefreshDuration time.Duration
 	}
 )
 
@@ -36,6 +39,9 @@ func NewCmdDaemonLogin() *cobra.Command {
 	}
 	flags := cmd.Flags()
 	flags.StringVar(&options.Context, "context", "", "The context to use to login")
+	flags.DurationVar(&options.RefreshDuration, "refresh-duration", 0, "refresh_token duration.")
+	flags.DurationVar(&options.AccessDuration, "duration", 0, "access_token duration.")
+
 	return cmd
 }
 
@@ -46,15 +52,22 @@ func (t *CmdContextLogin) Run() error {
 			t.Context = ctx
 		} else {
 			config, err := clientcontext.Load()
+			var firstContext string
 			if err != nil {
 				return err
 			}
 			fmt.Println("Known Contexts:")
 			for name := range config.Contexts {
 				fmt.Println(" - " + name)
+				if firstContext == "" {
+					firstContext = name
+				}
 			}
 			fmt.Println()
 			name, _ := tokencache.GetLast()
+			if name == "" {
+				name = firstContext
+			}
 			fmt.Print("Select context")
 			if name != "" {
 				fmt.Printf(" [<%s>]", name)
@@ -95,8 +108,16 @@ func (t *CmdContextLogin) Run() error {
 		return err
 	}
 	refresh := true
+	refreshDuration := t.RefreshDuration.String()
+	accessDuration := t.AccessDuration.String()
 	params := api.PostAuthTokenParams{}
 	params.Refresh = &refresh
+	if t.RefreshDuration != 0 {
+		params.RefreshDuration = &refreshDuration
+	}
+	if t.AccessDuration != 0 {
+		params.AccessDuration = &accessDuration
+	}
 
 	resp, err := c.PostAuthTokenWithResponse(context.Background(), &params)
 
