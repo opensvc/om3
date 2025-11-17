@@ -260,6 +260,24 @@ func (t *Manager) onMyInstanceStatusUpdated(srcNode string, srcCmd *msgbus.Insta
 }
 
 func (t *Manager) onInstanceConfigUpdated(srcNode string, srcCmd *msgbus.InstanceConfigUpdated) {
+	if srcCmd.Node == t.localhost {
+		t.onLocalInstanceConfigUpdated(srcCmd)
+	}
+
+	// updates scope nodes, the latest object status depends on srcCmd instance config.
+	t.scopeNodes = append([]string{}, srcCmd.Value.Scope...)
+	t.log.Debugf("updated from %s ObjectStatusUpdated InstanceConfigUpdated on %s scopeNodes=%s", srcNode, srcCmd.Node, t.scopeNodes)
+}
+
+func (t *Manager) onLocalInstanceConfigUpdated(srcCmd *msgbus.InstanceConfigUpdated) {
+	if !srcCmd.Value.UpdatedAt.After(t.instConfig.UpdatedAt) {
+		// drop already loaded localhost instance config (during worker init loads local instance config cache)
+		// we don't want to run an extra instance status evaluation.
+		// omon use both local instance config cache or event to start imon.
+		t.log.Debugf("ignore already loaded local instance config update")
+		return
+	}
+
 	janitorInstStatus := func(scope []string) {
 		cfgNodes := make(map[string]any)
 
@@ -341,21 +359,16 @@ func (t *Manager) onInstanceConfigUpdated(srcNode string, srcCmd *msgbus.Instanc
 		}
 	}
 
-	if srcCmd.Node == t.localhost {
-		defer func() {
-			t.requestStatusRefresh(t.instConfig.Priority)
-		}()
-		t.instConfig = srcCmd.Value
-		t.log.Debugf("refresh resource monitor states on local instance config updated")
-		t.initResourceMonitor()
-		janitorInstStatus(srcCmd.Value.Scope)
-		if srcCmd.Value.ActorConfig != nil {
-			janitorRelations(srcCmd.Value.ActorConfig.Children, "Child", t.state.Children)
-			janitorRelations(srcCmd.Value.ActorConfig.Parents, "Parent", t.state.Parents)
-		}
+	t.instConfig = srcCmd.Value
+	t.log.Debugf("refresh resource monitor states on local instance config updated")
+	t.initResourceMonitor()
+	janitorInstStatus(srcCmd.Value.Scope)
+	if srcCmd.Value.ActorConfig != nil {
+		janitorRelations(srcCmd.Value.ActorConfig.Children, "Child", t.state.Children)
+		janitorRelations(srcCmd.Value.ActorConfig.Parents, "Parent", t.state.Parents)
 	}
-	t.scopeNodes = append([]string{}, srcCmd.Value.Scope...)
-	t.log.Debugf("updated from %s ObjectStatusUpdated InstanceConfigUpdated on %s scopeNodes=%s", srcNode, srcCmd.Node, t.scopeNodes)
+	// config has changed refresh resource monitor states
+	t.requestStatusRefresh(t.instConfig.Priority)
 }
 
 func (t *Manager) onMyInstanceStatusDeleted(c *msgbus.InstanceStatusDeleted) {
