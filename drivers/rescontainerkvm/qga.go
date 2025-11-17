@@ -8,8 +8,9 @@ import (
 	"fmt"
 	"io"
 	"os"
-	"os/exec"
 	"time"
+
+	"github.com/opensvc/om3/util/command"
 )
 
 type (
@@ -168,7 +169,7 @@ func (t *qgaCommand) Wait() error {
 			if status.Return.Exited {
 				t.status = status
 				if status.Return.ExitCode != 0 {
-					return &qgaExecError{exitCode: status.Return.ExitCode, err: fmt.Errorf("exit code %d", status.Return.ExitCode)}
+					return &qgaExecError{exitCode: status.Return.ExitCode, err: fmt.Errorf("qga command exit code %d", status.Return.ExitCode)}
 				}
 				return nil
 			}
@@ -249,14 +250,19 @@ func qgaPost(name string, request any, result any) error {
 		return err
 	}
 	args := []string{"qemu-agent-command", name, string(requestBytes)}
-	cmd := exec.Command("virsh", args...)
-	b, err := cmd.Output()
+	cmd := command.New(
+		command.WithName("virsh"),
+		command.WithArgs(args),
+		command.WithBufferedStdout(),
+		command.WithBufferedStderr(),
+	)
+	err = cmd.Run()
 	//fmt.Println(">>>", cmd.Args)
 	//fmt.Println("<<<", string(b), err)
 	if err != nil {
-		return err
+		return fmt.Errorf("%w: %s", err, cmd.Stderr())
 	}
-	if err := json.Unmarshal(b, result); err != nil {
+	if err := json.Unmarshal(cmd.Stdout(), result); err != nil {
 		return err
 	}
 	return nil
@@ -310,5 +316,6 @@ func qgaExecStatus(name string, pid int) (*qgaCommandStatus, error) {
 	if err != nil {
 		return nil, err
 	}
+	//fmt.Printf("%s [%d]: qga response: %#v\n", name, pid, response)
 	return &response, nil
 }
