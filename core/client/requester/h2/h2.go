@@ -50,6 +50,8 @@ type (
 const (
 	UDSPrefix  = "http:///"
 	InetPrefix = "https://"
+
+	authURLPath = "/api/auth/token"
 )
 
 var (
@@ -173,7 +175,15 @@ func (t *RefreshTransport) RoundTrip(req *http.Request) (*http.Response, error) 
 	ctx := req.Context()
 	base := t.getBaseTransport()
 
-	resp, err := base.RoundTrip(req.Clone(ctx))
+	reqClone := req.Clone(ctx)
+	if strings.HasSuffix(req.URL.Path, authURLPath) && (reqClone.Header != nil && strings.HasSuffix(reqClone.Header.Get("Authorization"), t.tokens.AccessToken)) {
+		reqClone.Header.Del("Authorization")
+		if t.Username != "" && t.Password != "" {
+			reqClone.SetBasicAuth(t.Username, t.Password)
+		}
+	}
+
+	resp, err := base.RoundTrip(reqClone)
 	if err != nil {
 		return nil, err
 	}
@@ -181,7 +191,6 @@ func (t *RefreshTransport) RoundTrip(req *http.Request) (*http.Response, error) 
 	if resp.StatusCode != http.StatusUnauthorized {
 		return resp, nil
 	}
-	defer resp.Body.Close()
 
 	hasTokens := t.tokens.AccessToken != "" || t.tokens.RefreshToken != ""
 	hasCredentials := t.Username != "" && t.Password != ""
@@ -256,7 +265,7 @@ func (t *RefreshTransport) authenticateWithCredentials(ctx context.Context, base
 	params := url.Values{}
 	params.Add("refresh", "true")
 
-	loginURL := strings.TrimRight(t.baseURL, "/") + "/api/auth/tokens?" + params.Encode()
+	loginURL := strings.TrimRight(t.baseURL, "/") + authURLPath + "?" + params.Encode()
 	loginReq, err := http.NewRequestWithContext(ctx, http.MethodPost, loginURL, nil)
 	if err != nil {
 		return "", err
