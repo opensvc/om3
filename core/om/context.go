@@ -9,7 +9,7 @@ func init() {
 	)
 
 	cmdCtx.AddCommand(
-		commoncmd.NewCmdDaemonLogin(),
-		commoncmd.NewCmdDaemonLogout(),
+		commoncmd.NewCmdContextLogin(),
+		commoncmd.NewCmdContextLogout(),
 	)
 }

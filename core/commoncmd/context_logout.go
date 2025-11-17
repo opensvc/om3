@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"strconv"
 	"strings"
 	"time"
 
@@ -20,7 +21,7 @@ type (
 	}
 )
 
-func NewCmdDaemonLogout() *cobra.Command {
+func NewCmdContextLogout() *cobra.Command {
 	var options CmdContextLogout
 	cmd := &cobra.Command{
 		Use:   "logout",
@@ -50,8 +51,12 @@ func (t *CmdContextLogout) Run() error {
 				return fmt.Errorf("no valid context login found")
 			}
 			fmt.Println("Current valid context logins:")
+			i := 0
+			contextName := make([]string, len(tokens))
 			for name := range tokens {
-				fmt.Println(" - " + name)
+				fmt.Printf("%d) %s\n", i+1, name)
+				contextName[i] = name
+				i++
 			}
 			fmt.Println()
 			name, _ := tokencache.GetLast()
@@ -70,7 +75,12 @@ func (t *CmdContextLogout) Run() error {
 			} else if input == "\n" {
 				return fmt.Errorf("no context selected")
 			} else {
-				t.Context = strings.TrimSpace(input)
+				inputTrimmed := strings.TrimSpace(input)
+				if idx, err := strconv.Atoi(inputTrimmed); err == nil {
+					t.Context = contextName[idx-1]
+				} else {
+					t.Context = strings.TrimSpace(inputTrimmed)
+				}
 			}
 		}
 	}

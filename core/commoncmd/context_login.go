@@ -7,6 +7,7 @@ import (
 	"io"
 	"net/http"
 	"os"
+	"strconv"
 	"strings"
 	"time"
 
@@ -28,7 +29,7 @@ type (
 	}
 )
 
-func NewCmdDaemonLogin() *cobra.Command {
+func NewCmdContextLogin() *cobra.Command {
 	var options CmdContextLogin
 	cmd := &cobra.Command{
 		Use:   "login",
@@ -52,22 +53,19 @@ func (t *CmdContextLogin) Run() error {
 			t.Context = ctx
 		} else {
 			config, err := clientcontext.Load()
-			var firstContext string
 			if err != nil {
 				return err
 			}
 			fmt.Println("Known Contexts:")
+			i := 0
+			contextName := make([]string, len(config.Contexts))
 			for name := range config.Contexts {
-				fmt.Println(" - " + name)
-				if firstContext == "" {
-					firstContext = name
-				}
+				fmt.Printf("%d) %s\n", i+1, name)
+				contextName[i] = name
+				i++
 			}
 			fmt.Println()
 			name, _ := tokencache.GetLast()
-			if name == "" {
-				name = firstContext
-			}
 			fmt.Print("Select context")
 			if name != "" {
 				fmt.Printf(" [<%s>]", name)
@@ -83,18 +81,26 @@ func (t *CmdContextLogin) Run() error {
 			} else if input == "\n" {
 				return fmt.Errorf("no context selected")
 			} else {
-				t.Context = strings.TrimSpace(input)
+				inputTrimmed := strings.TrimSpace(input)
+				if idx, err := strconv.Atoi(inputTrimmed); err == nil {
+					t.Context = contextName[idx-1]
+				} else {
+					t.Context = strings.TrimSpace(inputTrimmed)
+				}
 			}
 		}
 	}
 
-	fmt.Print("Password: ")
+	fmt.Printf("Password for %s: ", t.Context)
 	pwdBytes, err := term.ReadPassword(int(os.Stdin.Fd()))
 	if err != nil {
 		return err
 	}
 	fmt.Println()
 	password := string(pwdBytes)
+	if password == "" {
+		return fmt.Errorf("empty password")
+	}
 
 	os.Setenv("OSVC_CONTEXT", t.Context)
 
@@ -108,14 +114,14 @@ func (t *CmdContextLogin) Run() error {
 		return err
 	}
 	refresh := true
-	refreshDuration := t.RefreshDuration.String()
-	accessDuration := t.AccessDuration.String()
 	params := api.PostAuthTokenParams{}
 	params.Refresh = &refresh
 	if t.RefreshDuration != 0 {
+		refreshDuration := t.RefreshDuration.String()
 		params.RefreshDuration = &refreshDuration
 	}
 	if t.AccessDuration != 0 {
+		accessDuration := t.AccessDuration.String()
 		params.AccessDuration = &accessDuration
 	}
 
@@ -156,5 +162,6 @@ func (t *CmdContextLogin) Run() error {
 		return err
 	}
 
+	fmt.Printf("Login successful. Switch to this context with :\nexport OSVC_CONTEXT=%s\n", t.Context)
 	return nil
 }
