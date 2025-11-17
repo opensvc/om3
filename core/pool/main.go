@@ -9,6 +9,7 @@ import (
 	"github.com/opensvc/om3/core/array"
 	"github.com/opensvc/om3/core/driver"
 	"github.com/opensvc/om3/core/keyop"
+	"github.com/opensvc/om3/core/kwoption"
 	"github.com/opensvc/om3/core/naming"
 	"github.com/opensvc/om3/core/nodesinfo"
 	"github.com/opensvc/om3/core/volaccess"
@@ -360,12 +361,12 @@ func nodeKeywords(nodes []string) []string {
 }
 
 func statusScheduleKeywords(p Pooler) []string {
-	statusSchedule := p.Config().GetString(pKey(p, "status_schedule"))
+	statusSchedule := p.Config().GetString(pKey(p, kwoption.ScheduleStatus))
 	if statusSchedule == "" {
 		return []string{}
 	}
 	return []string{
-		"status_schedule=" + statusSchedule,
+		kwoption.ScheduleStatus + "=" + statusSchedule,
 	}
 }
 

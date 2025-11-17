@@ -8,6 +8,7 @@ import (
 	"github.com/opensvc/om3/core/instance"
 	"github.com/opensvc/om3/core/keyop"
 	"github.com/opensvc/om3/core/keywords"
+	"github.com/opensvc/om3/core/kwoption"
 	"github.com/opensvc/om3/core/naming"
 	"github.com/opensvc/om3/core/placement"
 	"github.com/opensvc/om3/core/priority"
@@ -518,7 +519,7 @@ var keywordStore = keywords.Store{
 	{
 		Default:  "@1m",
 		Kind:     naming.NewKinds(naming.KindSvc, naming.KindVol),
-		Option:   "monitor_schedule",
+		Option:   kwoption.ScheduleMonitor,
 		Scopable: true,
 		Section:  "DEFAULT",
 		Text:     keywords.NewText(fs, "text/kw/core/monitor_schedule"),
@@ -526,7 +527,7 @@ var keywordStore = keywords.Store{
 	{
 		Default:  "@60m",
 		Kind:     naming.NewKinds(naming.KindSvc, naming.KindVol),
-		Option:   "resinfo_schedule",
+		Option:   kwoption.ScheduleResinfo,
 		Scopable: true,
 		Section:  "DEFAULT",
 		Text:     keywords.NewText(fs, "text/kw/core/resinfo_schedule"),
@@ -534,7 +535,7 @@ var keywordStore = keywords.Store{
 	{
 		Default:  "@10m",
 		Kind:     naming.NewKinds(naming.KindSvc, naming.KindVol),
-		Option:   "status_schedule",
+		Option:   kwoption.ScheduleStatus,
 		Scopable: true,
 		Section:  "DEFAULT",
 		Text:     keywords.NewText(fs, "text/kw/core/status_schedule"),
@@ -542,7 +543,7 @@ var keywordStore = keywords.Store{
 	{
 		Default:  "~00:00-06:00",
 		Kind:     naming.NewKinds(naming.KindSvc, naming.KindVol),
-		Option:   "comp_schedule",
+		Option:   kwoption.ScheduleCompliance,
 		Scopable: true,
 		Section:  "DEFAULT",
 		Text:     keywords.NewText(fs, "text/kw/core/comp_schedule"),

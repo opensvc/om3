@@ -11,8 +11,10 @@ import (
 	"time"
 
 	"github.com/labstack/gommon/log"
+
 	"github.com/opensvc/om3/core/driver"
 	"github.com/opensvc/om3/core/instance"
+	"github.com/opensvc/om3/core/kwoption"
 	"github.com/opensvc/om3/core/naming"
 	"github.com/opensvc/om3/core/node"
 	"github.com/opensvc/om3/core/object"
@@ -271,6 +273,10 @@ func (t *T) createJob(e schedule.Entry) {
 	}
 
 	logger := t.jobLogger(e)
+	if e.LastRunAt.IsZero() {
+		// after daemon start: initialize the schedule's LastRunAt from LastRunFile
+		e.LastRunAt = e.GetLastRun()
+	}
 	if lastRunOnAllPeers, ok := t.lastRunOnAllPeers.Get(e.Path, e.Key); ok && e.LastRunAt.Before(lastRunOnAllPeers) {
 		logger.Infof("adjust schedule entry last run time: %s => %s", e.LastRunAt, lastRunOnAllPeers)
 		e.LastRunAt = lastRunOnAllPeers
@@ -554,6 +560,8 @@ func (t *T) onLocalInstanceStatusUpdated(c *msgbus.InstanceStatusUpdated) bool {
 	if !ok {
 		return false
 	}
+
+	t.lastRunOnAllPeers.Set(c.Path, kwoption.ScheduleStatus, c.Value.UpdatedAt)
 
 	checkReq := func(rid string, requiredStatusList status.L) error {
 		resourceStatus, ok := c.Value.Resources[rid]
