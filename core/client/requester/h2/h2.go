@@ -13,7 +13,7 @@ import (
 
 	"github.com/oapi-codegen/oapi-codegen/v2/pkg/securityprovider"
 
-	reqtoken "github.com/opensvc/om3/core/client/token"
+	"github.com/opensvc/om3/core/client/tokencache"
 	"github.com/opensvc/om3/core/env"
 	"github.com/opensvc/om3/daemon/api"
 	"github.com/opensvc/om3/daemon/daemonenv"
@@ -35,13 +35,13 @@ type (
 		Timeout            time.Duration
 		InsecureSkipVerify bool
 		RootCA             string
-		Tokens             reqtoken.Entry
+		Tokens             tokencache.Entry
 	}
 
 	RefreshTransport struct {
 		Base     http.RoundTripper
 		baseURL  string
-		tokens   reqtoken.Entry
+		tokens   tokencache.Entry
 		Username string
 		Password string
 	}
@@ -273,7 +273,7 @@ func (t *RefreshTransport) authenticateWithCredentials(ctx context.Context, base
 		return "", fmt.Errorf("authentication failed with status: %d", loginResp.StatusCode)
 	}
 
-	var tokenResp reqtoken.Entry
+	var tokenResp tokencache.Entry
 	if err := json.NewDecoder(loginResp.Body).Decode(&tokenResp); err != nil {
 		return "", err
 	}
@@ -283,7 +283,7 @@ func (t *RefreshTransport) authenticateWithCredentials(ctx context.Context, base
 	}
 
 	t.updateTokens(tokenResp)
-	return tokenResp.AccessToken, reqtoken.Save(env.Context(), t.tokens)
+	return tokenResp.AccessToken, tokencache.Save(env.Context(), t.tokens)
 }
 
 func (t *RefreshTransport) refreshAccessToken(ctx context.Context, base http.RoundTripper) (string, error) {
@@ -319,10 +319,10 @@ func (t *RefreshTransport) refreshAccessToken(ctx context.Context, base http.Rou
 
 	t.tokens.AccessToken = tokenResp.AccessToken
 	t.tokens.AccessTokenExpire = tokenResp.AccessTokenExpire
-	return tokenResp.AccessToken, reqtoken.Save(env.Context(), t.tokens)
+	return tokenResp.AccessToken, tokencache.Save(env.Context(), t.tokens)
 }
 
-func (t *RefreshTransport) updateTokens(token reqtoken.Entry) {
+func (t *RefreshTransport) updateTokens(token tokencache.Entry) {
 	t.tokens.AccessToken = token.AccessToken
 	t.tokens.AccessTokenExpire = token.AccessTokenExpire
 	t.tokens.RefreshToken = token.RefreshToken

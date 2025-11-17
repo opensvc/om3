@@ -8,7 +8,7 @@ import (
 
 	"github.com/opensvc/om3/core/client/api"
 	reqh2 "github.com/opensvc/om3/core/client/requester/h2"
-	reqtoken "github.com/opensvc/om3/core/client/token"
+	"github.com/opensvc/om3/core/client/tokencache"
 	"github.com/opensvc/om3/core/clientcontext"
 	"github.com/opensvc/om3/core/env"
 	"github.com/opensvc/om3/core/nodesinfo"
@@ -32,7 +32,7 @@ type (
 		bearer             string
 		rootCA             string
 		timeout            time.Duration
-		tokens             reqtoken.Entry
+		tokens             tokencache.Entry
 	}
 )
 
@@ -274,12 +274,12 @@ func (t *T) loadContext() error {
 		t.username = context.User.Name
 
 		if t.bearer == "" {
-			var tok reqtoken.Entry
-			if err := reqtoken.Load(env.Context(), &tok); err != nil {
+			tok, err := tokencache.Load(env.Context())
+			if err != nil {
 				return err
 			}
-			if tok.AccessToken != "" {
-				t.tokens = tok
+			if tok != nil && tok.AccessToken != "" {
+				t.tokens = *tok
 				t.bearer = tok.AccessToken
 			}
 		}

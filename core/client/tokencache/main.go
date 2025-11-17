@@ -34,18 +34,19 @@ func Save(contextName string, token Entry) error {
 	return nil
 }
 
-func Load(contextName string, token *Entry) error {
+func Load(contextName string) (*Entry, error) {
 	filename, _ := homedir.Expand(fmtFilename(contextName))
 	b, err := os.ReadFile(filename)
 	if errors.Is(err, os.ErrNotExist) {
-		return nil
+		return nil, nil
 	} else if err != nil {
-		return err
+		return nil, err
 	}
+	var token = &Entry{}
 	if err := json.Unmarshal(b, token); err != nil {
-		return err
+		return nil, err
 	}
-	return nil
+	return token, nil
 }
 
 func Exists(contextName string) bool {
@@ -66,13 +67,21 @@ func Delete(contextName string) error {
 	return err
 }
 
-func GetAll() map[string]Entry {
-	tokens := make(map[string]Entry)
+func getAllFiles() ([]os.DirEntry, error) {
 	dirpath, err := homedir.Expand(clientcontext.ConfigFolder)
 	if err != nil {
-		return tokens
+		return nil, err
 	}
 	files, err := os.ReadDir(dirpath)
+	if err != nil {
+		return nil, err
+	}
+	return files, nil
+}
+
+func GetAll() map[string]Entry {
+	tokens := make(map[string]Entry)
+	files, err := getAllFiles()
 	if err != nil {
 		return tokens
 	}
@@ -80,9 +89,9 @@ func GetAll() map[string]Entry {
 		name := file.Name()
 		if !file.IsDir() && strings.HasPrefix(name, "token-") && strings.HasSuffix(name, ".json") {
 			contextName := strings.TrimSuffix(strings.TrimPrefix(name, "token-"), ".json")
-			var token Entry
-			if err := Load(contextName, &token); err == nil {
-				tokens[contextName] = token
+			token, err := Load(contextName)
+			if err == nil && token != nil {
+				tokens[contextName] = *token
 			}
 		}
 	}
@@ -90,18 +99,37 @@ func GetAll() map[string]Entry {
 }
 
 func GetLast() (string, Entry) {
-	var recentContext string
-	var recentToken Entry
-	tokens := GetAll()
-	var recentTime time.Time
-	for contextName, token := range tokens {
-		if token.AccessTokenExpire.After(recentTime) {
-			recentTime = token.AccessTokenExpire
-			recentContext = contextName
-			recentToken = token
+	files, err := getAllFiles()
+	if err != nil {
+		return "", Entry{}
+	}
+	var lastContext string
+	var lastModTime time.Time
+	for _, file := range files {
+		name := file.Name()
+		if !file.IsDir() && strings.HasPrefix(name, "token-") && strings.HasSuffix(name, ".json") {
+			info, err := file.Info()
+			if err != nil {
+				continue
+			}
+			if info.ModTime().After(lastModTime) {
+				lastModTime = info.ModTime()
+				lastContext = strings.TrimSuffix(strings.TrimPrefix(name, "token-"), ".json")
+			}
 		}
 	}
-	return recentContext, recentToken
+	if lastContext != "" {
+		token, err := Load(lastContext)
+		if err == nil && token != nil {
+			return lastContext, *token
+		}
+	}
+	return "", Entry{
+		AccessTokenExpire:  time.Time{},
+		AccessToken:        "",
+		RefreshTokenExpire: time.Time{},
+		RefreshToken:       "",
+	}
 }
 
 func fmtFilename(contextName string) string {
