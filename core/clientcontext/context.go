@@ -53,6 +53,13 @@ type (
 		ClientKey         string `json:"client_key"`
 		Name              string `json:"name"`
 	}
+
+	TokenInfo struct {
+		Name            string `json:"name"`
+		AccessExpireAt  string `json:"access_expired_at"`
+		RefreshExpireAt string `json:"refresh_expired_at"`
+		Authenticated   bool   `json:"authenticated"`
+	}
 )
 
 var (
@@ -200,4 +207,13 @@ func New() (T, error) {
 func (t T) String() string {
 	b, _ := json.Marshal(t)
 	return string(b)
+}
+
+func (t *TokenInfo) Unstructured() map[string]any {
+	return map[string]any{
+		"name":               t.Name,
+		"access_expired_at":  t.AccessExpireAt,
+		"refresh_expired_at": t.RefreshExpireAt,
+		"authenticated":      t.Authenticated,
+	}
 }

@@ -11,5 +11,8 @@ func init() {
 	cmdCtx.AddCommand(
 		commoncmd.NewCmdContextLogin(),
 		commoncmd.NewCmdContextLogout(),
+		commoncmd.NewCmdContextList(),
+		commoncmd.NewCmdContextShow(),
+		commoncmd.NewCmdContextEdit(),
 	)
 }
