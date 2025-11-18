@@ -132,12 +132,15 @@ func (t *CmdContextLogin) Run() error {
 	refresh := true
 	params.Refresh = &refresh
 
-	if v := chooseDuration(t.RefreshDuration, config.Contexts[t.Context].RefreshTokenDuration); v != "" {
-		params.RefreshDuration = &v
+	if v := chooseDuration(duration.New(t.RefreshDuration), config.Contexts[t.Context].RefreshTokenDuration); v.Positive() {
+		refreshDurationStr := v.String()
+		params.RefreshDuration = &refreshDurationStr
 	}
 
-	if v := chooseDuration(t.AccessDuration, config.Contexts[t.Context].AccessTokenDuration); v != "" {
-		params.AccessDuration = &v
+	accessDuration := chooseDuration(duration.New(t.AccessDuration), config.Contexts[t.Context].AccessTokenDuration)
+	if accessDuration.Positive() {
+		accessDurationStr := accessDuration.String()
+		params.AccessDuration = &accessDurationStr
 	}
 
 	resp, err := c.PostAuthTokenWithResponse(context.Background(), &params)
@@ -172,8 +175,8 @@ func (t *CmdContextLogin) Run() error {
 		RefreshTokenExpire: *resp200.RefreshExpiredAt,
 		RefreshToken:       *resp200.RefreshToken,
 	}
-	if t.AccessDuration != 0 {
-		token.AccessTokenDuration = t.AccessDuration
+	if accessDuration.Positive() {
+		token.AccessTokenDuration = accessDuration
 	}
 
 	err = tokencache.Save(t.Context, token)
@@ -185,12 +188,12 @@ func (t *CmdContextLogin) Run() error {
 	return nil
 }
 
-func chooseDuration(first time.Duration, second duration.Duration) string {
-	if first != 0 {
-		return first.String()
+func chooseDuration(first duration.Duration, second duration.Duration) duration.Duration {
+	if first.Positive() {
+		return first
 	}
-	if !second.IsZero() {
-		return second.String()
+	if second.Positive() {
+		return second
 	}
-	return ""
+	return duration.Duration{Duration: 0}
 }

@@ -11,15 +11,16 @@ import (
 	"github.com/mitchellh/go-homedir"
 
 	"github.com/opensvc/om3/core/clientcontext"
+	"github.com/opensvc/om3/util/duration"
 )
 
 type (
 	Entry struct {
-		AccessTokenExpire   time.Time     `json:"access_expired_at"`
-		AccessToken         string        `json:"access_token"`
-		AccessTokenDuration time.Duration `json:"access_token_duration,omitempty"`
-		RefreshTokenExpire  time.Time     `json:"refresh_expired_at"`
-		RefreshToken        string        `json:"refresh_token"`
+		AccessTokenExpire   time.Time         `json:"access_expired_at"`
+		AccessToken         string            `json:"access_token"`
+		AccessTokenDuration duration.Duration `json:"access_token_duration,omitempty"`
+		RefreshTokenExpire  time.Time         `json:"refresh_expired_at"`
+		RefreshToken        string            `json:"refresh_token"`
 	}
 )
 

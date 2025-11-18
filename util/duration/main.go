@@ -42,3 +42,7 @@ func (d Duration) MarshalJSON() ([]byte, error) {
 func (d Duration) IsZero() bool {
 	return d.Duration == 0
 }
+
+func (d Duration) Positive() bool {
+	return d.Duration > 0
+}

@@ -199,7 +199,7 @@ func (t *RefreshTransport) RoundTrip(req *http.Request) (*http.Response, error) 
 		return resp, nil
 	}
 
-	resp.Body.Close()
+	_ = resp.Body.Close()
 
 	newToken, err := t.authenticateOrRefresh(ctx, base)
 	if err != nil {
@@ -293,7 +293,7 @@ func (t *RefreshTransport) authenticateWithCredentials(ctx context.Context, base
 
 func (t *RefreshTransport) refreshAccessToken(ctx context.Context, base http.RoundTripper) (string, error) {
 	refreshURL := strings.TrimRight(t.baseURL, "/") + "/api/auth/refresh"
-	if t.tokens.AccessTokenDuration != 0 {
+	if t.tokens.AccessTokenDuration.Positive() {
 		refreshURL += "?access_duration=" + t.tokens.AccessTokenDuration.String()
 	}
 	refreshReq, err := http.NewRequestWithContext(ctx, http.MethodPost, refreshURL, nil)
