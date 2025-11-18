@@ -37,7 +37,7 @@ func NewCmdContextLogin() *cobra.Command {
 		Use:   "login",
 		Short: "Request and cache authentication tokens",
 		RunE: func(cmd *cobra.Command, args []string) error {
-			return options.Run()
+			return options.Run(cmd)
 		},
 	}
 	flags := cmd.Flags()
@@ -48,11 +48,13 @@ func NewCmdContextLogin() *cobra.Command {
 	return cmd
 }
 
-func (t *CmdContextLogin) Run() error {
+func (t *CmdContextLogin) Run(cmd *cobra.Command) error {
 	config, err := clientcontext.Load()
 
+	contextChanged := cmd.Flag("context").Changed
+
 	if t.Context == "" {
-		if ctx := env.Context(); ctx != "" {
+		if ctx := env.Context(); ctx != "" && !contextChanged {
 			t.Context = ctx
 		} else {
 			if err != nil {

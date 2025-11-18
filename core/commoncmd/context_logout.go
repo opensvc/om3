@@ -29,7 +29,7 @@ func NewCmdContextLogout() *cobra.Command {
 		Use:   "logout",
 		Short: "Clear cached authentication tokens",
 		RunE: func(cmd *cobra.Command, args []string) error {
-			return options.Run()
+			return options.Run(cmd)
 		},
 	}
 	flags := cmd.Flags()
@@ -38,9 +38,12 @@ func NewCmdContextLogout() *cobra.Command {
 	return cmd
 }
 
-func (t *CmdContextLogout) Run() error {
+func (t *CmdContextLogout) Run(cmd *cobra.Command) error {
+
+	contextChanged := cmd.Flag("context").Changed
+
 	if t.Context == "" && !t.All {
-		if ctx := env.Context(); ctx != "" {
+		if ctx := env.Context(); ctx != "" && !contextChanged {
 			t.Context = ctx
 		} else {
 			tokens := tokencache.GetAll()
