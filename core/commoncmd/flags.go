@@ -11,6 +11,30 @@ import (
 	"github.com/opensvc/om3/daemon/rbac"
 )
 
+func DeprecatedFlagDownTo(flags *pflag.FlagSet, p *string) {
+	flags.StringVar(p, "downto", "", "DEPRECATED: stop down to the specified rid or driver group")
+	flags.MarkDeprecated("downto", "Please use --to instead.")
+	flags.MarkHidden("downto")
+}
+
+func DeprecatedFlagSubsets(flags *pflag.FlagSet, p *string) {
+	flags.StringVar(p, "subsets", "", "DEPRECATED: a subset selector expression (ex: g1,g2)")
+	flags.MarkDeprecated("subsets", "Please use --subset instead.")
+	flags.MarkHidden("subsets")
+}
+
+func DeprecatedFlagTags(flags *pflag.FlagSet, p *string) {
+	flags.StringVar(p, "tags", "", "DEPRECATED: a tag selector expression (ex: t1,t2)")
+	flags.MarkDeprecated("tags", "Please use --tag instead.")
+	flags.MarkHidden("tags")
+}
+
+func DeprecatedFlagUpTo(flags *pflag.FlagSet, p *string) {
+	flags.StringVar(p, "upto", "", "DEPRECATED: start up to the specified rid or driver group")
+	flags.MarkDeprecated("upto", "Please use --to instead.")
+	flags.MarkHidden("upto")
+}
+
 func FlagQuiet(flags *pflag.FlagSet, p *bool) {
 	flags.BoolVarP(p, "quiet", "q", false, "don't print the logs on the console")
 }
@@ -43,6 +67,8 @@ func FlagsEncap(flags *pflag.FlagSet, p *OptsEncap) {
 }
 
 func FlagsResourceSelector(flags *pflag.FlagSet, p *OptsResourceSelector) {
+	DeprecatedFlagSubsets(flags, &p.Tag)
+	DeprecatedFlagTags(flags, &p.Tag)
 	FlagRID(flags, &p.RID)
 	FlagSubset(flags, &p.Subset)
 	FlagTag(flags, &p.Tag)
@@ -50,8 +76,8 @@ func FlagsResourceSelector(flags *pflag.FlagSet, p *OptsResourceSelector) {
 
 func FlagsTo(flags *pflag.FlagSet, p *OptTo) {
 	FlagTo(flags, &p.To)
-	FlagUpTo(flags, &p.UpTo)
-	FlagDownTo(flags, &p.DownTo)
+	DeprecatedFlagUpTo(flags, &p.UpTo)
+	DeprecatedFlagDownTo(flags, &p.DownTo)
 }
 
 func FlagComplianceAttach(flags *pflag.FlagSet, p *bool) {
@@ -120,12 +146,6 @@ func FlagDisableRollback(flags *pflag.FlagSet, p *bool) {
 
 func FlagDiscard(flags *pflag.FlagSet, p *bool) {
 	flags.BoolVar(p, "discard", false, "discard the stashed, invalid, configuration file leftover of a previous execution")
-}
-
-func FlagDownTo(flags *pflag.FlagSet, p *string) {
-	flags.StringVar(p, "downto", "", "stop down to the specified rid or driver group")
-	flags.Lookup("downto").Deprecated = "Use --to."
-	flags.Lookup("downto").Hidden = true
 }
 
 func FlagDriver(flags *pflag.FlagSet, p *string) {
@@ -362,12 +382,6 @@ func FlagUpdateUnset(flags *pflag.FlagSet, p *[]string) {
 	flags.StringSliceVar(p, "unset", []string{}, "a keyword to unset from the configuration")
 }
 
-func FlagUpTo(flags *pflag.FlagSet, p *string) {
-	flags.StringVar(p, "upto", "", "start up to the specified rid or driver group")
-	flags.Lookup("upto").Deprecated = "Use --to."
-	flags.Lookup("upto").Hidden = true
-}
-
 func FlagFrom(flags *pflag.FlagSet, p *string) {
 	flags.StringVar(p, "from", "", "the key value source (ex: uri, file, /dev/stdin)")
 }
@@ -431,83 +445,73 @@ func HiddenFlagsResourceSelector(flags *pflag.FlagSet, p *OptsResourceSelector) 
 
 func HiddenFlagsTo(flags *pflag.FlagSet, p *OptTo) {
 	HiddenFlagTo(flags, &p.To)
-	HiddenFlagUpTo(flags, &p.UpTo)
-	HiddenFlagDownTo(flags, &p.DownTo)
+	DeprecatedFlagUpTo(flags, &p.UpTo)
+	DeprecatedFlagDownTo(flags, &p.DownTo)
 }
 
 func HiddenFlagLeader(flags *pflag.FlagSet, p *bool) {
 	FlagLeader(flags, p)
-	flags.Lookup("leader").Hidden = true
+	flags.MarkHidden("leader")
 }
 
 func HiddenFlagDisableRollback(flags *pflag.FlagSet, p *bool) {
 	FlagDisableRollback(flags, p)
-	flags.Lookup("disable-rollback").Hidden = true
-}
-
-func HiddenFlagDownTo(flags *pflag.FlagSet, p *string) {
-	FlagDownTo(flags, p)
-	flags.Lookup("downto").Hidden = true
+	flags.MarkHidden("disable-rollback")
 }
 
 func HiddenFlagForce(flags *pflag.FlagSet, p *bool) {
 	FlagForce(flags, p)
-	flags.Lookup("force").Hidden = true
+	flags.MarkHidden("force")
 }
 
 func HiddenFlagMaster(flags *pflag.FlagSet, p *bool) {
 	FlagMaster(flags, p)
-	flags.Lookup("master").Hidden = true
+	flags.MarkHidden("master")
 }
 
 func HiddenFlagNodeSelector(flags *pflag.FlagSet, p *string) {
 	FlagNodeSelector(flags, p)
-	flags.Lookup("node").Hidden = true
+	flags.MarkHidden("node")
 }
 
 func HiddenFlagNoLock(flags *pflag.FlagSet, p *bool) {
 	FlagNoLock(flags, p)
-	flags.Lookup("no-lock").Hidden = true
+	flags.MarkHidden("no-lock")
 }
 
 func HiddenFlagRID(flags *pflag.FlagSet, p *string) {
 	FlagRID(flags, p)
-	flags.Lookup("rid").Hidden = true
+	flags.MarkHidden("rid")
 }
 
 func HiddenFlagSlave(flags *pflag.FlagSet, p *[]string) {
 	FlagSlave(flags, p)
-	flags.Lookup("slave").Hidden = true
+	flags.MarkHidden("slave")
 }
 
 func HiddenFlagSlaves(flags *pflag.FlagSet, p *bool) {
 	FlagSlaves(flags, p)
-	flags.Lookup("slaves").Hidden = true
+	flags.MarkHidden("slaves")
 }
 
 func HiddenFlagSubset(flags *pflag.FlagSet, p *string) {
 	FlagSubset(flags, p)
-	flags.Lookup("subset").Hidden = true
+	flags.MarkHidden("subset")
 }
 
 func HiddenFlagTo(flags *pflag.FlagSet, p *string) {
 	FlagTo(flags, p)
-	flags.Lookup("to").Hidden = true
+	flags.MarkHidden("to")
 }
 
 func HiddenFlagTag(flags *pflag.FlagSet, p *string) {
 	FlagTag(flags, p)
-	flags.Lookup("tag").Hidden = true
-}
-
-func HiddenFlagUpTo(flags *pflag.FlagSet, p *string) {
-	FlagUpTo(flags, p)
-	flags.Lookup("upto").Hidden = true
+	flags.MarkHidden("tag")
 }
 
 func HiddenFlagWaitLock(flags *pflag.FlagSet, p *time.Duration) {
 	flags.DurationVar(p, "waitlock", 30*time.Second, "lock acquire timeout")
-	flags.Lookup("waitlock").Hidden = true
+	flags.MarkHidden("waitlock")
 }
 
 func HiddenFlagObjectSelector(flags *pflag.FlagSet, p *string) {
