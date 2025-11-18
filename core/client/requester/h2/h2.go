@@ -199,11 +199,7 @@ func (t *RefreshTransport) RoundTrip(req *http.Request) (*http.Response, error) 
 		return resp, nil
 	}
 
-	if t.isAccessTokenValid() {
-		lreq := req.Clone(ctx)
-		lreq.Header.Set("Authorization", "Bearer "+t.tokens.AccessToken)
-		return base.RoundTrip(lreq)
-	}
+	resp.Body.Close()
 
 	newToken, err := t.authenticateOrRefresh(ctx, base)
 	if err != nil {
@@ -243,11 +239,11 @@ func (t *RefreshTransport) authenticateOrRefresh(ctx context.Context, base http.
 	now := time.Now()
 
 	if t.tokens.AccessToken == "" && t.tokens.RefreshToken == "" {
-		return t.authenticateWithCredentials(ctx, base, "no access or refresh tokens available, use `om daemon login` to authenticate")
+		return t.authenticateWithCredentials(ctx, base, "no access or refresh tokens available, use `om context login` to authenticate")
 	}
 
 	if now.After(t.tokens.RefreshTokenExpire) {
-		return t.authenticateWithCredentials(ctx, base, "both access and refresh tokens are expired, use `om daemon login` to reauthenticate")
+		return t.authenticateWithCredentials(ctx, base, "both access and refresh tokens are expired, use `om context login` to reauthenticate")
 	}
 
 	if now.After(t.tokens.AccessTokenExpire) {
@@ -297,6 +293,9 @@ func (t *RefreshTransport) authenticateWithCredentials(ctx context.Context, base
 
 func (t *RefreshTransport) refreshAccessToken(ctx context.Context, base http.RoundTripper) (string, error) {
 	refreshURL := strings.TrimRight(t.baseURL, "/") + "/api/auth/refresh"
+	if t.tokens.AccessTokenDuration != 0 {
+		refreshURL += "?access_duration=" + t.tokens.AccessTokenDuration.String()
+	}
 	refreshReq, err := http.NewRequestWithContext(ctx, http.MethodPost, refreshURL, nil)
 	if err != nil {
 		return "", err

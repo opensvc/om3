@@ -276,7 +276,7 @@ func (t *T) loadContext() error {
 		if t.bearer == "" {
 			tok, err := tokencache.Load(env.Context())
 			if err != nil {
-				return err
+				return tokencache.ReconnectError(err, env.Context())
 			}
 			if tok != nil && tok.AccessToken != "" {
 				t.tokens = *tok

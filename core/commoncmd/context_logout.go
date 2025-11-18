@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"slices"
 	"strconv"
 	"strings"
 	"time"
@@ -18,6 +19,7 @@ import (
 type (
 	CmdContextLogout struct {
 		Context string
+		All     bool
 	}
 )
 
@@ -32,11 +34,12 @@ func NewCmdContextLogout() *cobra.Command {
 	}
 	flags := cmd.Flags()
 	flags.StringVar(&options.Context, "context", "", "The context to use to logout")
+	flags.BoolVar(&options.All, "all", false, "Logout from all contexts")
 	return cmd
 }
 
 func (t *CmdContextLogout) Run() error {
-	if t.Context == "" {
+	if t.Context == "" && !t.All {
 		if ctx := env.Context(); ctx != "" {
 			t.Context = ctx
 		} else {
@@ -53,16 +56,25 @@ func (t *CmdContextLogout) Run() error {
 			fmt.Println("Current valid context logins:")
 			i := 0
 			contextName := make([]string, len(tokens))
+			lastName, _ := tokencache.GetLast()
+			lastIndex := -1
 			for name := range tokens {
-				fmt.Printf("%d) %s\n", i+1, name)
 				contextName[i] = name
 				i++
 			}
+			slices.Sort(contextName)
+
+			for i, name := range contextName {
+				fmt.Printf("%d) %s\n", i+1, name)
+				if name == lastName {
+					lastIndex = i
+				}
+			}
+
 			fmt.Println()
-			name, _ := tokencache.GetLast()
 			fmt.Print("Select context")
-			if name != "" {
-				fmt.Printf(" [<%s>]", name)
+			if lastName != "" && lastIndex != -1 {
+				fmt.Printf(" [%d]", lastIndex+1)
 			}
 			fmt.Print(": ")
 			reader := bufio.NewReader(os.Stdin)
@@ -70,27 +82,40 @@ func (t *CmdContextLogout) Run() error {
 			if err != nil && err != io.EOF {
 				return err
 			}
-			if input == "\n" && name != "" {
-				t.Context = name
+			if input == "\n" && lastIndex != -1 {
+				t.Context = lastName
 			} else if input == "\n" {
 				return fmt.Errorf("no context selected")
 			} else {
 				inputTrimmed := strings.TrimSpace(input)
 				if idx, err := strconv.Atoi(inputTrimmed); err == nil {
+					if idx < 1 || idx > len(contextName) {
+						return fmt.Errorf("invalid context index")
+					}
 					t.Context = contextName[idx-1]
 				} else {
-					t.Context = strings.TrimSpace(inputTrimmed)
+					return fmt.Errorf("invalid context selection : must be a number")
 				}
 			}
 		}
 	}
 
-	if !tokencache.Exists(t.Context) {
-		return fmt.Errorf("no tokencache found for context %s", t.Context)
+	if !t.All {
+		if !tokencache.Exists(t.Context) {
+			return fmt.Errorf("no tokencache found for context %s", t.Context)
+		}
+
+		if err := tokencache.Delete(t.Context); err != nil {
+			return err
+		}
+		return nil
 	}
 
-	if err := tokencache.Delete(t.Context); err != nil {
-		return err
+	tokens := tokencache.GetAll()
+	for name := range tokens {
+		if err := tokencache.Delete(name); err != nil {
+			return err
+		}
 	}
 
 	return nil

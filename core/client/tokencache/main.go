@@ -15,15 +15,16 @@ import (
 
 type (
 	Entry struct {
-		AccessTokenExpire  time.Time `json:"access_expired_at"`
-		AccessToken        string    `json:"access_token"`
-		RefreshTokenExpire time.Time `json:"refresh_expired_at"`
-		RefreshToken       string    `json:"refresh_token"`
+		AccessTokenExpire   time.Time     `json:"access_expired_at"`
+		AccessToken         string        `json:"access_token"`
+		AccessTokenDuration time.Duration `json:"access_token_duration,omitempty"`
+		RefreshTokenExpire  time.Time     `json:"refresh_expired_at"`
+		RefreshToken        string        `json:"refresh_token"`
 	}
 )
 
 func Save(contextName string, token Entry) error {
-	filename, _ := homedir.Expand(fmtFilename(contextName))
+	filename, _ := homedir.Expand(FmtFilename(contextName))
 	b, err := json.MarshalIndent(token, "", "  ")
 	if err != nil {
 		return err
@@ -35,7 +36,7 @@ func Save(contextName string, token Entry) error {
 }
 
 func Load(contextName string) (*Entry, error) {
-	filename, _ := homedir.Expand(fmtFilename(contextName))
+	filename, _ := homedir.Expand(FmtFilename(contextName))
 	b, err := os.ReadFile(filename)
 	if errors.Is(err, os.ErrNotExist) {
 		return nil, nil
@@ -50,7 +51,7 @@ func Load(contextName string) (*Entry, error) {
 }
 
 func Exists(contextName string) bool {
-	filename, _ := homedir.Expand(fmtFilename(contextName))
+	filename, _ := homedir.Expand(FmtFilename(contextName))
 	_, err := os.Stat(filename)
 	return !errors.Is(err, os.ErrNotExist)
 }
@@ -59,7 +60,7 @@ func Delete(contextName string) error {
 	if !Exists(contextName) {
 		return fmt.Errorf("no token found for context %s", contextName)
 	}
-	filename, _ := homedir.Expand(fmtFilename(contextName))
+	filename, _ := homedir.Expand(FmtFilename(contextName))
 	err := os.Remove(filename)
 	if errors.Is(err, os.ErrNotExist) {
 		return nil
@@ -132,6 +133,27 @@ func GetLast() (string, Entry) {
 	}
 }
 
-func fmtFilename(contextName string) string {
+func FmtFilename(contextName string) string {
 	return clientcontext.ConfigFolder + "token-" + contextName + ".json"
+}
+
+func ReconnectError(srcErr error, contextName string) error {
+	fullPath, err2 := homedir.Expand(FmtFilename(contextName))
+	if err2 != nil {
+		return err2
+	}
+	return fmt.Errorf("%w at %s: use `om context login` to authenticate", srcErr, fullPath)
+}
+
+func ModTime(contextName string) (time.Time, error) {
+	filename := FmtFilename(contextName)
+	filename, err := homedir.Expand(filename)
+	if err != nil {
+		return time.Time{}, err
+	}
+	info, err := os.Stat(filename)
+	if err != nil {
+		return time.Time{}, err
+	}
+	return info.ModTime(), nil
 }

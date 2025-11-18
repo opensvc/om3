@@ -10,6 +10,7 @@ import (
 	"sigs.k8s.io/yaml"
 
 	"github.com/opensvc/om3/core/env"
+	"github.com/opensvc/om3/util/duration"
 
 	"github.com/mitchellh/go-homedir"
 )
@@ -33,9 +34,11 @@ type (
 
 	// relation is a Cluster-User relation.
 	relation struct {
-		ClusterRefName string `json:"cluster"`
-		UserRefName    string `json:"user"`
-		Namespace      string `json:"namespace"`
+		ClusterRefName       string            `json:"cluster"`
+		UserRefName          string            `json:"user"`
+		Namespace            string            `json:"namespace"`
+		AccessTokenDuration  duration.Duration `json:"access_token_duration,omitempty"`
+		RefreshTokenDuration duration.Duration `json:"refresh_token_duration,omitempty"`
 	}
 
 	// cluster host the endpoint address or name, and the certificate authority
@@ -59,6 +62,7 @@ type (
 		AccessExpireAt  string `json:"access_expired_at"`
 		RefreshExpireAt string `json:"refresh_expired_at"`
 		Authenticated   bool   `json:"authenticated"`
+		AuthenticatedAt string `json:"authenticated_at"`
 	}
 )
 
@@ -215,5 +219,6 @@ func (t *TokenInfo) Unstructured() map[string]any {
 		"access_expired_at":  t.AccessExpireAt,
 		"refresh_expired_at": t.RefreshExpireAt,
 		"authenticated":      t.Authenticated,
+		"authenticated_at":   t.AuthenticatedAt,
 	}
 }

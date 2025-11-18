@@ -7,6 +7,7 @@ import (
 	"io"
 	"net/http"
 	"os"
+	"slices"
 	"strconv"
 	"strings"
 	"time"
@@ -19,6 +20,7 @@ import (
 	"github.com/opensvc/om3/core/clientcontext"
 	"github.com/opensvc/om3/core/env"
 	"github.com/opensvc/om3/daemon/api"
+	"github.com/opensvc/om3/util/duration"
 )
 
 type (
@@ -47,28 +49,37 @@ func NewCmdContextLogin() *cobra.Command {
 }
 
 func (t *CmdContextLogin) Run() error {
+	config, err := clientcontext.Load()
 
 	if t.Context == "" {
 		if ctx := env.Context(); ctx != "" {
 			t.Context = ctx
 		} else {
-			config, err := clientcontext.Load()
 			if err != nil {
 				return err
 			}
 			fmt.Println("Known Contexts:")
 			i := 0
 			contextName := make([]string, len(config.Contexts))
+			lastName, _ := tokencache.GetLast()
+			lastIndex := -1
 			for name := range config.Contexts {
-				fmt.Printf("%d) %s\n", i+1, name)
 				contextName[i] = name
 				i++
 			}
+			slices.Sort(contextName)
+
+			for i, name := range contextName {
+				fmt.Printf("%d) %s\n", i+1, name)
+				if name == lastName {
+					lastIndex = i
+				}
+			}
+
 			fmt.Println()
-			name, _ := tokencache.GetLast()
 			fmt.Print("Select context")
-			if name != "" {
-				fmt.Printf(" [<%s>]", name)
+			if lastName != "" && lastIndex != -1 {
+				fmt.Printf(" [%d]", lastIndex+1)
 			}
 			fmt.Print(": ")
 			reader := bufio.NewReader(os.Stdin)
@@ -76,16 +87,19 @@ func (t *CmdContextLogin) Run() error {
 			if err != nil && err != io.EOF {
 				return err
 			}
-			if input == "\n" && name != "" {
-				t.Context = name
+			if input == "\n" && lastName != "" {
+				t.Context = lastName
 			} else if input == "\n" {
 				return fmt.Errorf("no context selected")
 			} else {
 				inputTrimmed := strings.TrimSpace(input)
 				if idx, err := strconv.Atoi(inputTrimmed); err == nil {
+					if idx < 1 || idx > len(contextName) {
+						return fmt.Errorf("invalid context index")
+					}
 					t.Context = contextName[idx-1]
 				} else {
-					t.Context = strings.TrimSpace(inputTrimmed)
+					return fmt.Errorf("invalid context selection : must be a number")
 				}
 			}
 		}
@@ -113,16 +127,17 @@ func (t *CmdContextLogin) Run() error {
 	if err != nil {
 		return err
 	}
-	refresh := true
+
 	params := api.PostAuthTokenParams{}
+	refresh := true
 	params.Refresh = &refresh
-	if t.RefreshDuration != 0 {
-		refreshDuration := t.RefreshDuration.String()
-		params.RefreshDuration = &refreshDuration
+
+	if v := chooseDuration(t.RefreshDuration, config.Contexts[t.Context].RefreshTokenDuration); v != "" {
+		params.RefreshDuration = &v
 	}
-	if t.AccessDuration != 0 {
-		accessDuration := t.AccessDuration.String()
-		params.AccessDuration = &accessDuration
+
+	if v := chooseDuration(t.AccessDuration, config.Contexts[t.Context].AccessTokenDuration); v != "" {
+		params.AccessDuration = &v
 	}
 
 	resp, err := c.PostAuthTokenWithResponse(context.Background(), &params)
@@ -157,6 +172,10 @@ func (t *CmdContextLogin) Run() error {
 		RefreshTokenExpire: *resp200.RefreshExpiredAt,
 		RefreshToken:       *resp200.RefreshToken,
 	}
+	if t.AccessDuration != 0 {
+		token.AccessTokenDuration = t.AccessDuration
+	}
+
 	err = tokencache.Save(t.Context, token)
 	if err != nil {
 		return err
@@ -164,4 +183,14 @@ func (t *CmdContextLogin) Run() error {
 
 	fmt.Printf("Login successful. Switch to this context with :\nexport OSVC_CONTEXT=%s\n", t.Context)
 	return nil
+}
+
+func chooseDuration(first time.Duration, second duration.Duration) string {
+	if first != 0 {
+		return first.String()
+	}
+	if !second.IsZero() {
+		return second.String()
+	}
+	return ""
 }
