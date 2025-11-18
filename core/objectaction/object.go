@@ -305,7 +305,7 @@ func rsHumanRender(rs []actionrouter.Result) string {
 				rsTree = tree.New()
 			}
 			branch := i.Tree()
-			if !branch.IsEmpty() {
+			if !branch.IsZero() {
 				rsNode = rsTree.AddNode()
 				rsNode.AddColumn().AddText(r.Path.String() + " @ " + r.Nodename).SetColor(rawconfig.Color.Bold)
 				rsNode.PlugTree(branch)

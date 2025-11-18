@@ -59,7 +59,7 @@ func (t ID) String() string {
 	return fmt.Sprintf("%s.%s", t.Group, t.Name)
 }
 
-func (t ID) IsEmpty() bool {
+func (t ID) IsZero() bool {
 	return t.Name == "" && t.Group == 0
 }
 

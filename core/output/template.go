@@ -23,7 +23,7 @@ func (t Renderer) renderTemplate(options string) (string, error) {
 		case string:
 			drvID = driver.Parse(a)
 		}
-		if drvID.IsEmpty() {
+		if drvID.IsZero() {
 			return ""
 		}
 		return drvID.Name
@@ -36,7 +36,7 @@ func (t Renderer) renderTemplate(options string) (string, error) {
 		case string:
 			drvID = driver.Parse(a)
 		}
-		if drvID.IsEmpty() {
+		if drvID.IsZero() {
 			return ""
 		}
 		return drvID.Group.String()

@@ -147,8 +147,8 @@ func (t *Tree) Head() *Node {
 	return t.head
 }
 
-// IsEmpty returns true if the tree head node has no children.
-func (t *Tree) IsEmpty() bool {
+// IsZero returns true if the tree head node has no children.
+func (t *Tree) IsZero() bool {
 	return len(t.head.children) == 0
 }
 
@@ -373,8 +373,8 @@ func (t *Node) String() string {
 	return s
 }
 
-// IsEmpty returns true if the node has one or more columns
-func (t *Node) IsEmpty() bool {
+// IsZero returns true if the node has one or more columns
+func (t *Node) IsZero() bool {
 	return len(t.columns) == 0
 }
 
