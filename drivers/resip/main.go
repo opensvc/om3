@@ -1,3 +1,5 @@
+//go:build linux
+
 package resip
 
 import (
@@ -7,9 +9,10 @@ import (
 	"strings"
 	"time"
 
+	"github.com/vishvananda/netlink"
+
 	"github.com/opensvc/om3/util/plog"
 	"github.com/opensvc/om3/util/stringset"
-	"github.com/vishvananda/netlink"
 )
 
 func AllocateDevLabel(dev string) (string, error) {

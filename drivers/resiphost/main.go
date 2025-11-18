@@ -1,3 +1,5 @@
+//go:build linux
+
 package resiphost
 
 import (
@@ -9,6 +11,8 @@ import (
 	"strings"
 	"time"
 
+	"github.com/vishvananda/netlink"
+
 	"github.com/opensvc/om3/core/actioncontext"
 	"github.com/opensvc/om3/core/actionrollback"
 	"github.com/opensvc/om3/core/naming"
@@ -19,7 +23,6 @@ import (
 	"github.com/opensvc/om3/util/hostname"
 	"github.com/opensvc/om3/util/netif"
 	"github.com/opensvc/om3/util/ping"
-	"github.com/vishvananda/netlink"
 )
 
 const (

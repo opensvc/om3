@@ -1,4 +1,4 @@
-//go:build linux
+//go:build !linux
 
 package resiphost
 
@@ -19,11 +19,8 @@ var (
 	drvID = driver.NewID(driver.GroupIP, "host")
 )
 
-func init() {
-	driver.Register(drvID, New)
-}
+func init() {}
 
-// Manifest exposes to the core the input expected by the driver.
 func (t *T) Manifest() *manifest.T {
 	m := manifest.New(drvID, t)
 	m.Kinds.Or(naming.KindSvc)

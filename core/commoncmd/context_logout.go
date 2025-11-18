@@ -41,64 +41,65 @@ func NewCmdContextLogout() *cobra.Command {
 func (t *CmdContextLogout) Run(cmd *cobra.Command) error {
 
 	contextChanged := cmd.Flag("context").Changed
+	if !contextChanged {
+		t.Context = env.Context()
+	}
 
 	if t.Context == "" && !t.All {
-		if ctx := env.Context(); ctx != "" && !contextChanged {
-			t.Context = ctx
+		tokens := tokencache.GetAll()
+		for name := range tokens {
+			tok := tokens[name]
+			if !time.Now().Before(tok.RefreshTokenExpire) {
+				delete(tokens, name)
+				tokens[name+" (expired)"] = tok
+			}
+		}
+		if len(tokens) == 0 {
+			return fmt.Errorf("no valid context login found")
+		}
+
+		fmt.Println("Current valid context logins:")
+		i := 0
+		contextName := make([]string, len(tokens))
+		lastName, _ := tokencache.GetLast()
+		lastIndex := -1
+		for name := range tokens {
+			contextName[i] = name
+			i++
+		}
+		slices.Sort(contextName)
+
+		for i, name := range contextName {
+			fmt.Printf("%d) %s\n", i+1, name)
+			if name == lastName {
+				lastIndex = i
+			}
+		}
+
+		fmt.Println()
+		fmt.Print("Select context")
+		if lastName != "" && lastIndex != -1 {
+			fmt.Printf(" [%d]", lastIndex+1)
+		}
+		fmt.Print(": ")
+		reader := bufio.NewReader(os.Stdin)
+		input, err := reader.ReadString('\n')
+		if err != nil && err != io.EOF {
+			return err
+		}
+		if input == "\n" && lastIndex != -1 {
+			t.Context = lastName
+		} else if input == "\n" {
+			return fmt.Errorf("no context selected")
 		} else {
-			tokens := tokencache.GetAll()
-			for name := range tokens {
-				tok := tokens[name]
-				if !time.Now().Before(tok.RefreshTokenExpire) {
-					delete(tokens, name)
+			inputTrimmed := strings.TrimSpace(input)
+			if idx, err := strconv.Atoi(inputTrimmed); err == nil {
+				if idx < 1 || idx > len(contextName) {
+					return fmt.Errorf("invalid context index")
 				}
-			}
-			if len(tokens) == 0 {
-				return fmt.Errorf("no valid context login found")
-			}
-			fmt.Println("Current valid context logins:")
-			i := 0
-			contextName := make([]string, len(tokens))
-			lastName, _ := tokencache.GetLast()
-			lastIndex := -1
-			for name := range tokens {
-				contextName[i] = name
-				i++
-			}
-			slices.Sort(contextName)
-
-			for i, name := range contextName {
-				fmt.Printf("%d) %s\n", i+1, name)
-				if name == lastName {
-					lastIndex = i
-				}
-			}
-
-			fmt.Println()
-			fmt.Print("Select context")
-			if lastName != "" && lastIndex != -1 {
-				fmt.Printf(" [%d]", lastIndex+1)
-			}
-			fmt.Print(": ")
-			reader := bufio.NewReader(os.Stdin)
-			input, err := reader.ReadString('\n')
-			if err != nil && err != io.EOF {
-				return err
-			}
-			if input == "\n" && lastIndex != -1 {
-				t.Context = lastName
-			} else if input == "\n" {
-				return fmt.Errorf("no context selected")
+				t.Context = contextName[idx-1]
 			} else {
-				inputTrimmed := strings.TrimSpace(input)
-				if idx, err := strconv.Atoi(inputTrimmed); err == nil {
-					if idx < 1 || idx > len(contextName) {
-						return fmt.Errorf("invalid context index")
-					}
-					t.Context = contextName[idx-1]
-				} else {
-					return fmt.Errorf("invalid context selection : must be a number")
-				}
+				return fmt.Errorf("invalid context selection : must be a number")
 			}
 		}
 	}

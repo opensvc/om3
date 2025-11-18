@@ -1,4 +1,4 @@
-//go:build !solaris
+//go:build linux
 
 package resiphost
 
