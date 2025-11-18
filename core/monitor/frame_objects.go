@@ -14,8 +14,13 @@ import (
 
 func (f Frame) wObjects() {
 	s := "Objects"
-	if f.Selector != "" {
-		s += " matching " + f.Selector
+	maxSelectorLen := 18
+	selector := f.Selector
+	if len(selector) > maxSelectorLen {
+		selector = f.Selector[0:maxSelectorLen-3] + "..."
+	}
+	if selector != "" {
+		s += " ~ " + selector
 	}
 	fmt.Fprintln(f.w, f.title(s))
 	for _, k := range f.info.paths {

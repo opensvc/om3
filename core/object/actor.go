@@ -2,6 +2,7 @@ package object
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"sort"
 	"time"
@@ -378,7 +379,7 @@ func (t *actor) configureResource(r resource.Driver, rid string) error {
 				return err
 			}
 		case c.Ref == "object.encapnodes":
-			if nodes, err := EncapNodes(t); err != nil {
+			if nodes, err := t.EncapNodes(); err != nil {
 				return err
 			} else if err := attr.SetValue(r, c.Attr, nodes); err != nil {
 				return err
@@ -495,14 +496,6 @@ func (t *actor) IsDisabled() bool {
 	return t.config.GetBool(k)
 }
 
-func EncapNodes(o Core) ([]string, error) {
-	if i, ok := o.(Svc); ok {
-		return i.EncapNodes()
-	} else {
-		return []string{}, nil
-	}
-}
-
 func (t *actor) HardAffinity() []string {
 	l, _ := t.config.Eval(key.Parse("hard_affinity"))
 	return l.([]string)
@@ -521,4 +514,15 @@ func (t *actor) SoftAffinity() []string {
 func (t *actor) SoftAntiAffinity() []string {
 	l, _ := t.config.Eval(key.Parse("soft_anti_affinity"))
 	return l.([]string)
+}
+
+func (t *actor) EncapNodes() ([]string, error) {
+	l, err := t.config.Eval(key.Parse("encapnodes"))
+	if errors.Is(err, xconfig.ErrNoKeyword) {
+		return []string{}, nil
+	}
+	if err != nil {
+		return nil, err
+	}
+	return l.([]string), nil
 }

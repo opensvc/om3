@@ -4,10 +4,14 @@
 package commoncmd
 
 import (
+	"bufio"
+	"bytes"
 	"context"
 	"errors"
 	"fmt"
 	"io"
+	"os"
+	"strings"
 	"sync"
 	"time"
 
@@ -30,9 +34,33 @@ type (
 	}
 )
 
+func SelectorFromStdin() string {
+	var buff strings.Builder
+	scanner := bufio.NewScanner(os.Stdin)
+	for scanner.Scan() {
+		b := scanner.Bytes()
+		b = bytes.TrimSpace(b)
+		if len(b) == 0 {
+			continue
+		}
+		switch b[0] {
+		case '#':
+			continue
+		case ';':
+			continue
+		}
+		b = bytes.TrimSpace(b)
+		buff.Write(b)
+		buff.Write([]byte(","))
+	}
+	return buff.String()
+}
+
 func MergeSelector(selector string, subsysSelector string, kind string, defaultSelector string) string {
 	var s string
 	switch {
+	case selector == "-", subsysSelector == "-":
+		return SelectorFromStdin()
 	case selector != "":
 		s = selector
 	case subsysSelector != "":

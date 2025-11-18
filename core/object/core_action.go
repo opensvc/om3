@@ -494,7 +494,6 @@ func (t *actor) action(ctx context.Context, fn resourceset.DoFunc) error {
 		if err != nil {
 			return err
 		}
-		r.Log().Debugf("%s", cmd)
 		err = cmd.Run()
 		if err != nil {
 			if exitErr, ok := err.(exitcoder); ok {

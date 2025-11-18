@@ -33,31 +33,19 @@ func (t *T) Manifest() *manifest.T {
 		manifest.ContextPeers,
 		manifest.ContextDNS,
 		manifest.ContextTopology,
-		/*
-			keywords.Keyword{
-				Option:       "snap",
-				Attr:         "Snap",
-				Scopable:     true,
-				Provisioning: true,
-				Text:         "If this keyword is set, the service configures a resource-private container data store. This setup is allows stateful service relocalization.",
-				Text: keywords.NewText(fs, "text/kw/snap"),
-				Example:      "/srv/svc1/data/containers",
-			},
-			keywords.Keyword{
-				Option:       "snapof",
-				Attr:         "SnapOf",
-				Scopable:     true,
-				Provisioning: true,
-				Text:         "Sets the root fs directory of the container",
-				Text: keywords.NewText(fs, "text/kw/snapof"),
-				Example:      "/srv/svc1/data/containers",
-			},
-		*/
 		keywords.Keyword{
 			Option:    "qga",
 			Attr:      "QGA",
 			Converter: "bool",
 			Text:      keywords.NewText(fs, "text/kw/qga"),
+			Scopable:  true,
+		},
+		keywords.Keyword{
+			Option:    "qga_operational_delay",
+			Attr:      "QGAOperationalDelay",
+			Converter: "duration",
+			Default:   "10s",
+			Text:      "Wait after we successfully tested a pwd in the container, so the os is sufficiently started to accept a encap start.",
 			Scopable:  true,
 		},
 		keywords.Keyword{
