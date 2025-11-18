@@ -351,6 +351,17 @@ func (t Alert) StringWithoutMeta() string {
 	return buff
 }
 
+func ValidateReferrer(dst string, referrer Referrer) error {
+	alerts, err := ValidateFile(dst, referrer)
+	if err != nil {
+		return err
+	}
+	if alerts.HasError() {
+		return fmt.Errorf("%s", alerts)
+	}
+	return nil
+}
+
 func (t Alerts) GetItems() any {
 	return t
 }

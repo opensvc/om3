@@ -8,6 +8,7 @@ import (
 
 	"github.com/opensvc/om3/core/client/api"
 	reqh2 "github.com/opensvc/om3/core/client/requester/h2"
+	"github.com/opensvc/om3/core/client/tokencache"
 	"github.com/opensvc/om3/core/clientcontext"
 	"github.com/opensvc/om3/core/env"
 	"github.com/opensvc/om3/core/nodesinfo"
@@ -31,6 +32,7 @@ type (
 		bearer             string
 		rootCA             string
 		timeout            time.Duration
+		tokens             tokencache.Entry
 	}
 )
 
@@ -139,7 +141,7 @@ func WithAuthorization(s string) funcopt.O {
 	})
 }
 
-// WithBearer sets the client bearer token to use for newRequests
+// WithBearer sets the client bearer tokens to use for newRequests
 func WithBearer(s string) funcopt.O {
 	return funcopt.F(func(i interface{}) error {
 		t := i.(*T)
@@ -222,6 +224,7 @@ func (t *T) newRequester() (err error) {
 			Bearer:             t.bearer,
 			RootCA:             t.rootCA,
 			Timeout:            t.timeout,
+			Tokens:             t.tokens,
 		})
 	default:
 		if !strings.Contains(t.url, ":") {
@@ -252,6 +255,7 @@ func (t *T) newRequester() (err error) {
 			Bearer:             t.bearer,
 			RootCA:             t.rootCA,
 			Timeout:            t.timeout,
+			Tokens:             t.tokens,
 		})
 	}
 	return err
@@ -267,8 +271,18 @@ func (t *T) loadContext() error {
 		t.insecureSkipVerify = context.Cluster.InsecureSkipVerify
 		t.clientCertificate = context.User.ClientCertificate
 		t.clientKey = context.User.ClientKey
-		t.password = context.User.Password
 		t.username = context.User.Name
+
+		if t.bearer == "" {
+			tok, err := tokencache.Load(env.Context())
+			if err != nil {
+				return tokencache.ReconnectError(err, env.Context())
+			}
+			if tok != nil && tok.AccessToken != "" {
+				t.tokens = *tok
+				t.bearer = tok.AccessToken
+			}
+		}
 	}
 	return nil
 }

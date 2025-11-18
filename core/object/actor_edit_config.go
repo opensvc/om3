@@ -6,6 +6,7 @@ import (
 	"github.com/opensvc/om3/core/actioncontext"
 	"github.com/opensvc/om3/core/statusbus"
 	"github.com/opensvc/om3/core/xconfig"
+	"github.com/opensvc/om3/util/file"
 )
 
 func (t *actor) RecoverAndEditConfig() error {
@@ -14,7 +15,9 @@ func (t *actor) RecoverAndEditConfig() error {
 	ctx, stop := statusbus.WithContext(ctx, t.path)
 	defer stop()
 	defer t.postActionStatusEval(ctx)
-	return xconfig.Edit(t.ConfigFile(), xconfig.EditModeRecover, t.config.Referrer)
+	return file.Edit(t.ConfigFile(), file.EditModeRecover, func(dst string) error {
+		return xconfig.ValidateReferrer(dst, t.config.Referrer)
+	})
 }
 
 func (t *actor) DiscardAndEditConfig() error {
@@ -23,7 +26,9 @@ func (t *actor) DiscardAndEditConfig() error {
 	ctx, stop := statusbus.WithContext(ctx, t.path)
 	defer stop()
 	defer t.postActionStatusEval(ctx)
-	return xconfig.Edit(t.ConfigFile(), xconfig.EditModeDiscard, t.config.Referrer)
+	return file.Edit(t.ConfigFile(), file.EditModeDiscard, func(dst string) error {
+		return xconfig.ValidateReferrer(dst, t.config.Referrer)
+	})
 }
 
 func (t *actor) EditConfig() error {
@@ -32,5 +37,7 @@ func (t *actor) EditConfig() error {
 	ctx, stop := statusbus.WithContext(ctx, t.path)
 	defer stop()
 	defer t.postActionStatusEval(ctx)
-	return xconfig.Edit(t.ConfigFile(), xconfig.EditModeNormal, t.config.Referrer)
+	return file.Edit(t.ConfigFile(), file.EditModeNormal, func(dst string) error {
+		return xconfig.ValidateReferrer(dst, t.config.Referrer)
+	})
 }

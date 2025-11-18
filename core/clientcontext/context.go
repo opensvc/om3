@@ -7,8 +7,10 @@ import (
 	"os"
 	"strings"
 
-	"github.com/opensvc/om3/core/env"
 	"sigs.k8s.io/yaml"
+
+	"github.com/opensvc/om3/core/env"
+	"github.com/opensvc/om3/util/duration"
 
 	"github.com/mitchellh/go-homedir"
 )
@@ -32,9 +34,11 @@ type (
 
 	// relation is a Cluster-User relation.
 	relation struct {
-		ClusterRefName string `json:"cluster"`
-		UserRefName    string `json:"user"`
-		Namespace      string `json:"namespace"`
+		ClusterRefName       string            `json:"cluster"`
+		UserRefName          string            `json:"user"`
+		Namespace            string            `json:"namespace"`
+		AccessTokenDuration  duration.Duration `json:"access_token_duration,omitempty"`
+		RefreshTokenDuration duration.Duration `json:"refresh_token_duration,omitempty"`
 	}
 
 	// cluster host the endpoint address or name, and the certificate authority
@@ -50,8 +54,15 @@ type (
 	user struct {
 		ClientCertificate string `json:"client_certificate"`
 		ClientKey         string `json:"client_key"`
-		Password          string `json:"password"`
 		Name              string `json:"name"`
+	}
+
+	TokenInfo struct {
+		Name            string `json:"name"`
+		AccessExpireAt  string `json:"access_expired_at"`
+		RefreshExpireAt string `json:"refresh_expired_at"`
+		Authenticated   bool   `json:"authenticated"`
+		AuthenticatedAt string `json:"authenticated_at"`
 	}
 )
 
@@ -59,8 +70,9 @@ var (
 	// Err is raised when a context definition has issues.
 	Err = errors.New("context error")
 
+	ConfigFolder = "~/.config/opensvc/"
 	// ConfigFilename is the file where the context information is stored
-	ConfigFilename = "~/.config/opensvc/contexts"
+	ConfigFilename = ConfigFolder + "contexts"
 )
 
 // IsSet returns true if the OSVC_CONTEXT environment variable is set
@@ -199,4 +211,14 @@ func New() (T, error) {
 func (t T) String() string {
 	b, _ := json.Marshal(t)
 	return string(b)
+}
+
+func (t *TokenInfo) Unstructured() map[string]any {
+	return map[string]any{
+		"name":               t.Name,
+		"access_expired_at":  t.AccessExpireAt,
+		"refresh_expired_at": t.RefreshExpireAt,
+		"authenticated":      t.Authenticated,
+		"authenticated_at":   t.AuthenticatedAt,
+	}
 }
