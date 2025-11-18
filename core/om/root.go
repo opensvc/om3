@@ -176,7 +176,7 @@ func setExecuteArgs(args []string) {
 	}
 	_, _, err := root.Find(lookupArgs)
 
-	if err != nil {
+	if err != nil || lookupArgs[0] == "-" {
 		// command not found... try with args[1] as a selector.
 		if len(lookupArgs) > 0 {
 			selectorFlag = lookupArgs[0]

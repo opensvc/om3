@@ -734,6 +734,35 @@ func (t *Manager) isHAOrchestrateable() (bool, string) {
 	case provisioned.False:
 		return false, "false object provisioned state"
 	}
+	// This prevents from taking HA decision too early: during daemon startup
+	// it can take time to be aware of all peers instance monitor and statuses.
+	if ok, reason := t.hasInstanceMonitorAndStatusOnPeers(); !ok {
+		return false, reason
+	}
+	return true, ""
+}
+
+// hasInstanceMonitorAndStatusOnPeers checks if all (alive) peer nodes in scope have
+// published both monitor state and instance status.
+// Returns true and an empty string if conditions are met,
+// otherwise false and a reason message.
+func (t *Manager) hasInstanceMonitorAndStatusOnPeers() (bool, string) {
+	for _, peer := range t.instConfig.Scope {
+		if peer == t.localhost {
+			continue
+		}
+		if _, ok := t.nodeStatus[peer]; !ok {
+			// there is no peer node state, no need to wait for peer instance
+			// monitor state or status
+			continue
+		}
+		if peerImon, ok := t.instMonitor[peer]; !ok || peerImon.State == instance.MonitorStateInit {
+			return false, fmt.Sprintf("wait for instance monitor state on peer %s", peer)
+		}
+		if peerIStatus, ok := t.instStatus[peer]; !ok || peerIStatus.UpdatedAt.IsZero() {
+			return false, fmt.Sprintf("wait for instance status on peer %s", peer)
+		}
+	}
 	return true, ""
 }
 
