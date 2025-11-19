@@ -534,6 +534,14 @@ Where the password is the value of the `þassword` key in `system/sec/relay-v3`.
 
 * The `secret` keyword is now ignored.
 
+### Orchestration
+
+* Flex
+  * A `flex_target` value under `flex_min` is forced to `flex_min`. A warning is logged.
+  * A `flex_target` value above `flex_max` is forced to `flex_max`. A warning is logged.
+  * The `flex_target` value default is the value of `flex_min`.
+  * The `flex_min` value default is `1`.
+
 ## Enhancements
 
 ### Core

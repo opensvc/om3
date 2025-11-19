@@ -205,7 +205,7 @@ func (t *DataRecv) getMetadataByKind(head string, kinds ...naming.Kind) []object
 		}
 		for _, ref := range refs {
 			md := t.parseReference(ref, kind, head)
-			if md.IsEmpty() {
+			if md.IsZero() {
 				continue
 			}
 			l = append(l, md)

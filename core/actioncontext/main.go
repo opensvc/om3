@@ -266,5 +266,5 @@ func IsActionForMaster(ctx context.Context) bool {
 }
 
 func HasResourceSelector(ctx context.Context) bool {
-	return RID(ctx) != "" || Tag(ctx) != "" || Subset(ctx) != ""
+	return RID(ctx) != "" || Tag(ctx) != "" || Subset(ctx) != "" || To(ctx) != ""
 }

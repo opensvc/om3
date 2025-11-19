@@ -3,6 +3,8 @@ package resource
 import (
 	"slices"
 	"sort"
+
+	"github.com/opensvc/om3/core/driver"
 )
 
 type (
@@ -66,7 +68,16 @@ func (t Drivers) HasRID(rid string) bool {
 	return false
 }
 
-// ResolveLink returns the driver intstance targeted by <to>
+func (t Drivers) Index(rid string) int {
+	for i, r := range t {
+		if r.RID() == rid {
+			return i
+		}
+	}
+	return -1
+}
+
+// ResolveLink returns the driver instance targeted by <to>
 func (t Drivers) ResolveLink(to string) (Driver, bool) {
 	for _, r := range t {
 		i, ok := r.(LinkNameser)
@@ -156,20 +167,60 @@ func (t Drivers) Reverse() {
 	sort.Sort(sort.Reverse(t))
 }
 
-// Truncate returns the drivers list from first to the driver with <rid>.
-// If rid is not set, return the whole driver list.
-// The second return value is true if the rid was found, whatever the
-// truncation done.
-func (t Drivers) Truncate(rid string) (Drivers, bool) {
-	if rid == "" {
-		return t, false
+// Barrier returns the rid of the resource that the instance action must stop at (included).
+//
+// Example:
+//
+//  0. ip#1
+//  1. ip#2 link to container#2
+//  2. ip#3
+//  3. container#1
+//  4. container#2
+//  5. container#3
+//
+// Barrier("ip#2") returns ip#2
+// Barrier("ip") returns ip#2 [idx=4]
+//
+// As a consequence the startup sequence is:
+//
+//	ip#1
+//	ip#3
+//	container#1
+//	container#2
+//	ip#2
+func (t Drivers) Barrier(s string) string {
+	drvGroup := driver.NewGroup(s)
+	if drvGroup == driver.GroupUnknown {
+		return s
 	}
-	l := make(Drivers, 0)
-	for _, r := range t {
-		l = append(l, r)
-		if r.RID() == rid {
-			return l, true
+
+	in := false
+	barrierIdx := 0
+	barrier := ""
+
+	for i, r := range t {
+		id := r.ID()
+		if id == nil {
+			continue
+		}
+		if id.DriverGroup() == drvGroup {
+			in = true
+		} else if in {
+			return barrier
+		}
+		if linkToer, ok := r.(LinkToer); ok {
+			name := linkToer.LinkTo()
+			if name != "" {
+				linkIdx := t.Index(name)
+				if linkIdx >= barrierIdx {
+					barrierIdx = linkIdx
+					barrier = r.RID()
+				}
+			}
+		} else if i >= barrierIdx {
+			barrierIdx = i
+			barrier = r.RID()
 		}
 	}
-	return l, false
+	return s
 }

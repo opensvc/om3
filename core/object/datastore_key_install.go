@@ -72,7 +72,7 @@ func (t KVInstall) RelativeToPath() string {
 	return relativePath
 }
 
-func (t KVInstall) IsEmpty() bool {
+func (t KVInstall) IsZero() bool {
 	return t.ToPath == "" && t.FromPattern == ""
 }
 
