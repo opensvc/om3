@@ -254,10 +254,10 @@ func (t T) doParallel(ctx context.Context, l ResourceLister, resources resource.
 		res := <-q
 		switch {
 		case res.Error == nil:
-			continue
+		case errors.Is(res.Error, resource.ErrBarrier):
+			hasHitBarrier = true
 		case res.Resource.IsOptional():
 			res.Resource.Log().Errorf("error from optional resource: %s", res.Error)
-			continue
 		default:
 			res.Resource.Log().Errorf("%s", res.Error)
 			errs = errors.Join(errs, fmt.Errorf("%s: %w", res.Resource.RID(), res.Error))
@@ -296,6 +296,8 @@ func (t T) doSerial(ctx context.Context, l ResourceLister, resources resource.Dr
 		switch {
 		case err == nil:
 			continue
+		case errors.Is(err, resource.ErrBarrier):
+			return true, nil
 		case r.IsOptional():
 			r.Log().Warnf("error from optional resource: %s", err)
 			continue
@@ -322,7 +324,7 @@ func (t L) Do(ctx context.Context, l ResourceLister, barrier, desc string, fn Do
 			return err
 		}
 		if hasHitBarrier {
-			break
+			return resource.ErrBarrier
 		}
 	}
 	return nil

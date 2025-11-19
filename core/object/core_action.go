@@ -365,13 +365,17 @@ func (t *actor) action(ctx context.Context, fn resourceset.DoFunc) error {
 	t.pg = t.pgConfig("")
 	wd, _ := os.Getwd()
 	action := actioncontext.Props(ctx)
-	barrier := actioncontext.To(ctx)
 	resourceSelector := resourceselector.FromContext(ctx, t)
 	resources := resourceSelector.Resources()
 	isDesc := resourceSelector.IsDesc()
 	isActionForMaster := actioncontext.IsActionForMaster(ctx)
 	hasEncapResourcesSelected := false
 	encaperRIDsAddedForSelectedEncapResources := make([]string, 0)
+
+	barrier := resources.Barrier(actioncontext.To(ctx))
+	if barrier != "" {
+		t.log.Debugf("action barrier: barrier")
+	}
 
 	if len(resources) == 0 && !resourceSelector.IsZero() {
 		return fmt.Errorf("resource does not exist")
@@ -709,7 +713,9 @@ func (t *actor) action(ctx context.Context, fn resourceset.DoFunc) error {
 		t.announceIdle(ctxWithTimeout)
 		return err
 	}
-	if err := t.ResourceSets().Do(ctxWithTimeout, resourceSelector, barrier, "link-"+action.Name, progressWrap(linkWrap(encapWrap(fn)))); err != nil {
+	if err := t.ResourceSets().Do(ctxWithTimeout, resourceSelector, barrier, "link-"+action.Name, progressWrap(linkWrap(encapWrap(fn)))); errors.Is(err, resource.ErrBarrier) {
+		// pass
+	} else if err != nil {
 		if t.needRollback(ctxWithTimeout) {
 			if rb := actionrollback.FromContext(ctxWithTimeout); rb != nil {
 				t.Log().Infof("rollback")
