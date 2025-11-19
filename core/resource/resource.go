@@ -492,7 +492,11 @@ func (t *T) ApplyPGChain(ctx context.Context) error {
 		if !run.Changed {
 			continue
 		}
-		t.Log().Infof("applied %s", run.Config)
+		if configStr := run.Config.String(); strings.Contains(configStr, "=") {
+			t.Log().Infof("applied %s", configStr)
+		} else {
+			t.Log().Debugf("create %s", configStr)
+		}
 		if run.Err != nil {
 			errs = errors.Join(errs, run.Err)
 		}
