@@ -167,6 +167,27 @@ func (t Drivers) Reverse() {
 	sort.Sort(sort.Reverse(t))
 }
 
+// Barrier returns the rid of the resource that the instance action must stop at (included).
+//
+// Example:
+//
+//  0. ip#1
+//  1. ip#2 link to container#2
+//  2. ip#3
+//  3. container#1
+//  4. container#2
+//  5. container#3
+//
+// Barrier("ip#2") returns ip#2
+// Barrier("ip") returns ip#2 [idx=4]
+//
+// As a consequence the startup sequence is:
+//
+//	ip#1
+//	ip#3
+//	container#1
+//	container#2
+//	ip#2
 func (t Drivers) Barrier(s string) string {
 	drvGroup := driver.NewGroup(s)
 	if drvGroup == driver.GroupUnknown {

@@ -29,9 +29,7 @@ func (t *actor) lockedStart(ctx context.Context) error {
 	if err := file.Touch(t.lastStartFile(), time.Now()); err != nil {
 		return err
 	}
-	return t.action(ctx, func(ctx context.Context, r resource.Driver) error {
-		return resource.Start(ctx, r)
-	})
+	return t.action(ctx, resource.Start)
 }
 
 func (t *actor) lastStartFile() string {

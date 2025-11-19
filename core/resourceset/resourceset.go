@@ -266,6 +266,28 @@ func (t T) doParallel(ctx context.Context, l ResourceLister, resources resource.
 	return hasHitBarrier, errs
 }
 
+// doSerial executes serially fn on every resource of the resourceset that has no dependency on other resources.
+//
+// e.g.
+//
+//	with [ip#1 ip#2(netns=container#1) ip#3]
+//	with barrier ip#2
+//
+//	 does:
+//	                   hasHitBarrier
+//	                   -------------
+//	 ip#1 exec fn()    false
+//	 ip#2 skip fn()    false (not toggled because ip#2 exec fn() is delayed after container#1)
+//	 ip#3 exec fn()    false
+//
+//	with [ip#1 ip#2(netns=container#1) ip#3]
+//	with barrier ip#1
+//
+//	 does:
+//	                   hasHitBarrier
+//	                   -------------
+//	 ip#1 exec fn()    true
+//	 <break on barrier hit>
 func (t T) doSerial(ctx context.Context, l ResourceLister, resources resource.Drivers, barrier, desc string, pgMgr *pg.Mgr, fn DoFunc) (bool, error) {
 	hasHitBarrier := false
 	selectedResources := l.Resources()
@@ -297,6 +319,7 @@ func (t T) doSerial(ctx context.Context, l ResourceLister, resources resource.Dr
 		case err == nil:
 			continue
 		case errors.Is(err, resource.ErrBarrier):
+			// linkWrap executed resourceset.L.Do again with a fn that can return ErrBarrier
 			return true, nil
 		case r.IsOptional():
 			r.Log().Warnf("error from optional resource: %s", err)
@@ -313,6 +336,20 @@ func (t L) Reverse() {
 	sort.Sort(sort.Reverse(t))
 }
 
+// Do executes fn on every resourceset of the actor.
+// The barrier can be hit on a resource delayed by a resource link (e.g. ip.cni depending on container.docker)
+//
+// e.g.
+//
+//	with resourcesets [[ip#1 ip#2(netns=container#1) ip#3] [container#1 container#2]]
+//	with barrier ip#2
+//	with action start (i.e. ascending)
+//
+//	does:
+//	                                                hasHitBarrier  fn executed on  comment
+//	                                                -------------  --------------  -------
+//	  rset[ip#1 ip#2(netns=container#1) ip#3].Do    false          ip#1 ip#3       ip#2 is skipped, depends on container#1
+//	  rset[container#1 container#2].Do              true           container#1     then ip#2 via linkWrap() => ErrBarrier
 func (t L) Do(ctx context.Context, l ResourceLister, barrier, desc string, fn DoFunc) error {
 	if l.IsDesc() {
 		// Align the resourceset order with the ResourceLister order.

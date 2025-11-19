@@ -374,7 +374,7 @@ func (t *actor) action(ctx context.Context, fn resourceset.DoFunc) error {
 
 	barrier := resources.Barrier(actioncontext.To(ctx))
 	if barrier != "" {
-		t.log.Debugf("action barrier: barrier")
+		t.log.Debugf("action barrier: %s", barrier)
 	}
 
 	if len(resources) == 0 && !resourceSelector.IsZero() {
@@ -645,34 +645,50 @@ func (t *actor) action(ctx context.Context, fn resourceset.DoFunc) error {
 	linkWrap := func(fn resourceset.DoFunc) resourceset.DoFunc {
 		return func(ctx context.Context, r resource.Driver) error {
 			if linkNameser, ok := r.(resource.LinkNameser); !ok {
-				// normal action for a non-linkable resource
+				// No resource can depend on resource r.
+				// e.g. a fs.flag resource does not expose link names, i.e. not linkable.
 				return fn(ctx, r)
 			} else {
-				// Here, we handle a resource other resources can link to.
-				names := linkNameser.LinkNames()
-				rids := resources.LinkersRID(names)
-				filter := func(fn resourceset.DoFunc) resourceset.DoFunc {
-					// filter applies the action only on linkers
+				// Other resources can depend on resource r.
+				// e.g. a "container#1" container.docker resource can be required by ip.cni resources.
+
+				names := linkNameser.LinkNames()             // e.g. [container#1] link names of a "container#1" container.docker resource
+				dependentRIDs := resources.LinkersRID(names) // e.g. [ip#1 ip#2] two ip.cni resources with netns=container#1
+
+				if len(dependentRIDs) == 0 {
+					return fn(ctx, r)
+				}
+
+				onDependantResource := func(fn resourceset.DoFunc) resourceset.DoFunc {
 					return func(ctx context.Context, r resource.Driver) error {
-						if !slices.Contains(rids, r.RID()) {
+						if !slices.Contains(dependentRIDs, r.RID()) {
+							// don't execute fn: the resource is not dependent on the linkNameser
 							return nil
 						}
 						return fn(ctx, r)
 					}
 				}
 
-				// On descending action, do action on linkers first.
+				doDependentResources := func() error {
+					return t.ResourceSets().Do(ctx, resourceSelector, barrier, "linked-"+action.Name, progressWrap(onDependantResource(fn)))
+				}
+
 				if isDesc {
-					if err := t.ResourceSets().Do(ctx, resourceSelector, barrier, "linked-"+action.Name, progressWrap(filter(fn))); err != nil {
+					// On descending actions, do action on linkers first.
+					// e.g. stop ip#2 ip#1 container#1
+					if err := doDependentResources(); err != nil {
 						return err
 					}
-				}
-				if err := fn(ctx, r); err != nil {
-					return err
-				}
-				// On ascending action, do action on linkers last.
-				if !isDesc {
-					if err := t.ResourceSets().Do(ctx, resourceSelector, barrier, "linked-"+action.Name, progressWrap(filter(fn))); err != nil {
+					if err := fn(ctx, r); err != nil {
+						return err
+					}
+				} else {
+					// On ascending actions, do action on linkers last.
+					// e.g. start container#1 ip#1 ip#2
+					if err := fn(ctx, r); err != nil {
+						return err
+					}
+					if err := doDependentResources(); err != nil {
 						return err
 					}
 				}
