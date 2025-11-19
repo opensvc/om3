@@ -633,8 +633,6 @@ func (t *actor) action(ctx context.Context, fn resourceset.DoFunc) error {
 				err = nil
 			case errors.Is(err, resource.ErrActionNotSupported):
 				err = nil
-			case errors.Is(err, resource.ErrActionPostponedToLinker):
-				err = nil
 			}
 			return err
 		}
@@ -642,12 +640,6 @@ func (t *actor) action(ctx context.Context, fn resourceset.DoFunc) error {
 
 	linkWrap := func(fn resourceset.DoFunc) resourceset.DoFunc {
 		return func(ctx context.Context, r resource.Driver) error {
-			if linkToer, ok := r.(resource.LinkToer); ok {
-				if name := linkToer.LinkTo(); name != "" && resources.HasRID(name) {
-					// will be handled by the targeted LinkNameser resource
-					return resource.ErrActionPostponedToLinker
-				}
-			}
 			if linkNameser, ok := r.(resource.LinkNameser); !ok {
 				// normal action for a non-linkable resource
 				return fn(ctx, r)
@@ -688,7 +680,7 @@ func (t *actor) action(ctx context.Context, fn resourceset.DoFunc) error {
 	// Pre action resource evaluation.
 	// For action requirements like fs#1(up)
 	var evaluated sync.Map
-	t.ResourceSets().Do(ctxWithTimeout, t, barrier, "pre-"+action.Name+" status", func(ctx context.Context, r resource.Driver) error {
+	t.ResourceSets().Do(ctxWithTimeout, t, "", "pre-"+action.Name+" status", func(ctx context.Context, r resource.Driver) error {
 		if v, err := t.isEncapNodeMatchingResource(r); err != nil {
 			return err
 		} else if !v {
@@ -717,7 +709,7 @@ func (t *actor) action(ctx context.Context, fn resourceset.DoFunc) error {
 		t.announceIdle(ctxWithTimeout)
 		return err
 	}
-	if err := t.ResourceSets().Do(ctxWithTimeout, resourceSelector, barrier, action.Name, progressWrap(linkWrap(encapWrap(fn)))); err != nil {
+	if err := t.ResourceSets().Do(ctxWithTimeout, resourceSelector, barrier, "link-"+action.Name, progressWrap(linkWrap(encapWrap(fn)))); err != nil {
 		if t.needRollback(ctxWithTimeout) {
 			if rb := actionrollback.FromContext(ctxWithTimeout); rb != nil {
 				t.Log().Infof("rollback")

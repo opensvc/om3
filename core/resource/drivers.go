@@ -155,21 +155,3 @@ func (t Drivers) Sort() {
 func (t Drivers) Reverse() {
 	sort.Sort(sort.Reverse(t))
 }
-
-// Truncate returns the drivers list from first to the driver with <rid>.
-// If rid is not set, return the whole driver list.
-// The second return value is true if the rid was found, whatever the
-// truncation done.
-func (t Drivers) Truncate(rid string) (Drivers, bool) {
-	if rid == "" {
-		return t, false
-	}
-	l := make(Drivers, 0)
-	for _, r := range t {
-		l = append(l, r)
-		if r.RID() == rid {
-			return l, true
-		}
-	}
-	return l, false
-}

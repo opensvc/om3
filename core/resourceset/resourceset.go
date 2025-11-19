@@ -184,22 +184,35 @@ func (t T) Do(ctx context.Context, l ResourceLister, barrier, desc string, fn Do
 		// Align the resources order with the ResourceLister order.
 		resources.Reverse()
 	}
-	resources, hasHitBarrier = resources.Truncate(barrier)
-	if pgMgr := pg.FromContext(ctx); pgMgr != nil {
+	pgMgr := pg.FromContext(ctx)
+	if pgMgr != nil {
 		pgMgr.Register(t.PG)
-		for _, r := range resources {
-			pgMgr.Register(r.GetPG())
-		}
 	}
 	if t.Parallel {
-		err = t.doParallel(ctx, l, resources, desc, fn)
+		hasHitBarrier, err = t.doParallel(ctx, l, resources, barrier, desc, pgMgr, fn)
 	} else {
-		err = t.doSerial(ctx, l, resources, desc, fn)
+		hasHitBarrier, err = t.doSerial(ctx, l, resources, barrier, desc, pgMgr, fn)
 	}
 	return
 }
 
-func (t T) doParallel(ctx context.Context, l ResourceLister, resources resource.Drivers, desc string, fn DoFunc) error {
+func (t T) delayLinkedResource(r resource.Driver, selectedResources resource.Drivers, desc string) bool {
+	if !strings.HasPrefix(desc, "link-") {
+		// status, pre-status and linked-* actions don't need delaying
+		return false
+	}
+	if linkToer, ok := r.(resource.LinkToer); ok {
+		if name := linkToer.LinkTo(); name != "" && selectedResources.HasRID(name) {
+			// will be handled by the targeted LinkNameser resource
+			return true
+		}
+	}
+	return false
+}
+
+func (t T) doParallel(ctx context.Context, l ResourceLister, resources resource.Drivers, barrier, desc string, pgMgr *pg.Mgr, fn DoFunc) (bool, error) {
+	hasHitBarrier := false
+	selectedResources := l.Resources()
 	q := make(chan result, len(resources))
 	defer close(q)
 	do := func(q chan<- result, r resource.Driver) {
@@ -218,11 +231,25 @@ func (t T) doParallel(ctx context.Context, l ResourceLister, resources resource.
 			Resource: r,
 		}
 	}
+	nResources := 0
 	for _, r := range resources {
+		if hasHitBarrier {
+			break
+		}
+		if t.delayLinkedResource(r, selectedResources, desc) {
+			continue
+		}
+		rid := r.RID()
+		if rid == barrier {
+			hasHitBarrier = true
+		}
+		if pgMgr != nil {
+			pgMgr.Register(r.GetPG())
+		}
+		nResources += 1
 		go do(q, r)
 	}
 	var errs error
-	nResources := len(resources)
 	for i := 0; i < nResources; i++ {
 		res := <-q
 		switch {
@@ -236,12 +263,26 @@ func (t T) doParallel(ctx context.Context, l ResourceLister, resources resource.
 			errs = errors.Join(errs, fmt.Errorf("%s: %w", res.Resource.RID(), res.Error))
 		}
 	}
-	return errs
+	return hasHitBarrier, errs
 }
 
-func (t T) doSerial(ctx context.Context, l ResourceLister, resources resource.Drivers, desc string, fn DoFunc) error {
+func (t T) doSerial(ctx context.Context, l ResourceLister, resources resource.Drivers, barrier, desc string, pgMgr *pg.Mgr, fn DoFunc) (bool, error) {
+	hasHitBarrier := false
+	selectedResources := l.Resources()
 	for _, r := range resources {
+		if hasHitBarrier {
+			break
+		}
+		if t.delayLinkedResource(r, selectedResources, desc) {
+			continue
+		}
 		rid := r.RID()
+		if rid == barrier {
+			hasHitBarrier = true
+		}
+		if pgMgr != nil {
+			pgMgr.Register(r.GetPG())
+		}
 		var err error
 		c := make(chan error, 1)
 		if err = l.ReconfigureResource(r); err == nil {
@@ -260,10 +301,10 @@ func (t T) doSerial(ctx context.Context, l ResourceLister, resources resource.Dr
 			continue
 		default:
 			r.Log().Errorf("%s", err)
-			return fmt.Errorf("%s: %w", rid, err)
+			return hasHitBarrier, fmt.Errorf("%s: %w", rid, err)
 		}
 	}
-	return nil
+	return hasHitBarrier, nil
 }
 
 func (t L) Reverse() {
