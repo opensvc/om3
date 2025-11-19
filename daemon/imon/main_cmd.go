@@ -653,6 +653,13 @@ func (t *Manager) onNodeMonitorUpdated(c *msgbus.NodeMonitorUpdated) {
 	t.onChange()
 }
 
+func (t *Manager) onForgetPeer(c *msgbus.ForgetPeer) {
+	delete(t.nodeMonitor, c.Node)
+	delete(t.nodeStats, c.Node)
+	delete(t.nodeStatus, c.Node)
+	t.onChange()
+}
+
 func (t *Manager) onNodeStatusUpdated(c *msgbus.NodeStatusUpdated) {
 	t.nodeStatus[c.Node] = c.Value
 	t.onChange()

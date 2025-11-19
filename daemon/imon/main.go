@@ -316,6 +316,7 @@ func (t *Manager) newLogger(i uuid.UUID) *plog.Logger {
 
 func (t *Manager) startSubscriptions(qs pubsub.QueueSizer) {
 	sub := pubsub.SubFromContext(t.ctx, "daemon.imon "+t.id, qs)
+	sub.AddFilter(&msgbus.ForgetPeer{})
 	sub.AddFilter(&msgbus.NodeConfigUpdated{}, t.labelLocalhost)
 	sub.AddFilter(&msgbus.NodeMonitorUpdated{})
 	sub.AddFilter(&msgbus.NodeRejoin{}, t.labelLocalhost)
@@ -425,6 +426,8 @@ func (t *Manager) worker(initialNodes []string) {
 				return
 			}
 			switch c := i.(type) {
+			case *msgbus.ForgetPeer:
+				t.onForgetPeer(c)
 			case *msgbus.InstanceStatusDeleted:
 				t.onInstanceStatusDeleted(c)
 			case *msgbus.InstanceStatusUpdated:
