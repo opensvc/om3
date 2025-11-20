@@ -504,12 +504,12 @@ func (t *actor) action(ctx context.Context, fn resourceset.DoFunc) error {
 				switch exitErr.ExitCode() {
 				case xerrors.ExitCodeObjectNotFound:
 					if err := t.installEncapConfig(ctx, encapContainer, configFile); err != nil {
-						return err
+						return fmt.Errorf("encap config install: %w", err)
 					}
 				case 127, 128:
 					return ErrEncapAgentNotInstalled
 				default:
-					return err
+					return fmt.Errorf("encap config mtime: %w", err)
 				}
 			}
 		}
