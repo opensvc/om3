@@ -62,3 +62,7 @@ func (t T) Vendor() (string, error) {
 func (t T) WWID() (string, error) {
 	return "", nil
 }
+
+func (t T) PromoteRW() error {
+	return nil
+}
