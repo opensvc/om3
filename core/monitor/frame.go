@@ -6,6 +6,7 @@ import (
 
 	"github.com/fatih/color"
 	tabwriter "github.com/juju/ansiterm"
+
 	"github.com/opensvc/om3/core/clusterdump"
 )
 
@@ -118,8 +119,8 @@ func (f *Frame) Render() string {
 	f.setSectionMask()
 	f.scanData()
 	f.w = tabwriter.NewTabWriter(&builder, 1, 1, 1, ' ', 0)
-	if f.hasSection("threads") {
-		f.wThreads()
+	if f.hasSection("daemons") {
+		f.wDaemons()
 	}
 	if f.hasSection("arbitrators") {
 		f.wArbitrators()
