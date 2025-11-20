@@ -2,6 +2,7 @@ package monitor
 
 import (
 	"fmt"
+	"time"
 
 	"github.com/golang-collections/collections/set"
 
@@ -238,8 +239,40 @@ func (f Frame) StrNodeHbMode(peer string) string {
 	return mode
 }
 
+func (f Frame) sUptimeLine() string {
+	s := fmt.Sprintf(" %s\t\t\t%s\t", bold("uptime"), f.info.separator)
+	for _, n := range f.Current.Cluster.Config.Nodes {
+		s += f.StrUptime(n) + "\t"
+	}
+	return s
+}
+
+func (f Frame) StrUptime(n string) string {
+	if val, ok := f.Current.Cluster.Node[n]; ok {
+		day := 24 * time.Hour
+		diffTime := time.Now().Sub(val.Daemon.StartedAt)
+		s := ""
+		if diffTime < time.Hour {
+			if diffTime >= time.Minute {
+				s += fmt.Sprintf("%dm", int(diffTime.Minutes()))
+			}
+			s += fmt.Sprintf("%ds", int(diffTime.Seconds())%60)
+			return s
+		}
+		if diffTime >= day {
+			s += fmt.Sprintf("%dd", int(diffTime.Hours())/24)
+		}
+		if diffTime < 10*day {
+			s += fmt.Sprintf("%dh", int(diffTime.Hours())%24)
+		}
+		return s
+	}
+	return iconUndef
+}
+
 func (f Frame) wNodes() {
 	fmt.Fprintln(f.w, f.title("Nodes"))
+	fmt.Fprintln(f.w, f.sUptimeLine())
 	fmt.Fprintln(f.w, f.sNodeScoreLine())
 	fmt.Fprintln(f.w, f.sNodeLoadLine())
 	fmt.Fprintln(f.w, f.sNodeMemLine())
@@ -247,8 +280,7 @@ func (f Frame) wNodes() {
 	fmt.Fprint(f.w, f.sNodeVersionLine())
 	fmt.Fprint(f.w, f.sNodeCompatLine())
 	if len(f.Current.Cluster.Config.Nodes) > 1 {
-		fmt.Fprintln(f.w, f.sNodeHbMode())
+		fmt.Fprintln(f.w, f.sNodeWarningsLine())
+		fmt.Fprintln(f.w, f.info.empty)
 	}
-	fmt.Fprintln(f.w, f.sNodeWarningsLine())
-	fmt.Fprintln(f.w, f.info.empty)
 }
