@@ -20,20 +20,20 @@ type (
 	// It contains the credentials and endpoint information to connect to
 	// remote clusters.
 	config struct {
-		Contexts map[string]relation `json:"contexts"`
-		Clusters map[string]cluster  `json:"clusters"`
-		Users    map[string]user     `json:"users"`
+		Contexts map[string]Relation `json:"contexts"`
+		Clusters map[string]Cluster  `json:"clusters"`
+		Users    map[string]User     `json:"users"`
 	}
 
 	// T is a dereferenced Cluster-User relation.
 	T struct {
-		Cluster   cluster `json:"cluster"`
-		User      user    `json:"user"`
+		Cluster   Cluster `json:"cluster"`
+		User      User    `json:"user"`
 		Namespace string  `json:"namespace"`
 	}
 
-	// relation is a Cluster-User relation.
-	relation struct {
+	// Relation is a Cluster-User relation.
+	Relation struct {
 		ClusterRefName       string            `json:"cluster"`
 		UserRefName          string            `json:"user"`
 		Namespace            string            `json:"namespace"`
@@ -41,17 +41,17 @@ type (
 		RefreshTokenDuration duration.Duration `json:"refresh_token_duration,omitempty"`
 	}
 
-	// cluster host the endpoint address or name, and the certificate authority
+	// Cluster host the endpoint address or name, and the certificate authority
 	// to trust.
-	cluster struct {
+	Cluster struct {
 		CertificateAuthority string `json:"certificate_authority,omitempty"`
 		Server               string `json:"server"`
 		InsecureSkipVerify   bool   `json:"insecure"`
 	}
 
-	// user hosts the certificate and private to use to connect to the remote
+	// User hosts the certificate and private to use to connect to the remote
 	// cluster.
-	user struct {
+	User struct {
 		ClientCertificate string `json:"client_certificate"`
 		ClientKey         string `json:"client_key"`
 		Name              string `json:"name"`
@@ -151,13 +151,13 @@ func loadFile(name string, cfg *config) error {
 		return err
 	}
 	if cfg.Clusters == nil {
-		cfg.Clusters = make(map[string]cluster)
+		cfg.Clusters = make(map[string]Cluster)
 	}
 	if cfg.Users == nil {
-		cfg.Users = make(map[string]user)
+		cfg.Users = make(map[string]User)
 	}
 	if cfg.Contexts == nil {
-		cfg.Contexts = make(map[string]relation)
+		cfg.Contexts = make(map[string]Relation)
 	}
 	for k, v := range this.Clusters {
 		cfg.Clusters[k] = v
@@ -221,4 +221,151 @@ func (t *TokenInfo) Unstructured() map[string]any {
 		"authenticated":      t.Authenticated,
 		"authenticated_at":   t.AuthenticatedAt,
 	}
+}
+
+func (c config) Save() error {
+	filename, _ := homedir.Expand(ConfigFilename + ".json")
+	b, err := json.MarshalIndent(c, "", "  ")
+	if err != nil {
+		return err
+	}
+	if err := os.WriteFile(filename, b, 0o600); err != nil {
+		return err
+	}
+	return nil
+}
+
+func setItem[V any](m map[string]V, name string, item V, mustExist bool, singular, plural string) error {
+	if m == nil {
+		return fmt.Errorf("%w: no %s defined", Err, plural)
+	}
+	_, exists := m[name]
+	if mustExist && !exists {
+		return fmt.Errorf("%w: %s %s does not exist", Err, singular, name)
+	}
+	if !mustExist && exists {
+		return fmt.Errorf("%w: %s %s already exists", Err, singular, name)
+	}
+	m[name] = item
+	return nil
+}
+
+func removeItem[V any](m map[string]V, name string, singular, plural string) error {
+	if m == nil {
+		return fmt.Errorf("%w: no %s defined", Err, plural)
+	}
+	_, exists := m[name]
+	if !exists {
+		return fmt.Errorf("%w: %s %s does not exist", Err, singular, name)
+	}
+	delete(m, name)
+	return nil
+}
+
+func (c config) AddContext(name string, r Relation) error {
+	return setItem(c.Contexts, name, r, false, "context", "contexts")
+}
+
+func (c config) ChangeContext(name string, r Relation) error {
+	return setItem(c.Contexts, name, r, true, "context", "contexts")
+}
+
+func (c config) RemoveContext(name string) error {
+	return removeItem(c.Contexts, name, "context", "contexts")
+}
+
+func (c config) AddCluster(name string, cl Cluster) error {
+	return setItem(c.Clusters, name, cl, false, "cluster", "clusters")
+}
+
+func (c config) ChangeCluster(name string, cl Cluster) error {
+	return setItem(c.Clusters, name, cl, true, "cluster", "clusters")
+}
+
+func (c config) RemoveCluster(name string) error {
+	return removeItem(c.Clusters, name, "cluster", "clusters")
+}
+
+func (c config) ClusterUsed(name string) (bool, error) {
+	if c.Contexts == nil {
+		return false, nil
+	}
+	for _, r := range c.Contexts {
+		if r.ClusterRefName == name {
+			return true, nil
+		}
+	}
+	return false, nil
+}
+
+func (c config) AddUser(name string, u User) error {
+	return setItem(c.Users, name, u, false, "user", "users")
+}
+
+func (c config) ChangeUser(name string, u User) error {
+	return setItem(c.Users, name, u, true, "user", "users")
+}
+
+func (c config) RemoveUser(name string) error {
+	return removeItem(c.Users, name, "user", "users")
+}
+
+func (c config) UserUsed(name string) (bool, error) {
+	if c.Contexts == nil {
+		return false, nil
+	}
+	for _, r := range c.Contexts {
+		if r.UserRefName == name {
+			return true, nil
+		}
+	}
+	return false, nil
+}
+
+func (r Relation) MarshalJSON() ([]byte, error) {
+	result := make(map[string]interface{})
+	if r.ClusterRefName != "" {
+		result["cluster"] = r.ClusterRefName
+	}
+	if r.UserRefName != "" {
+		result["user"] = r.UserRefName
+	}
+	if r.Namespace != "" {
+		result["namespace"] = r.Namespace
+	}
+	if r.AccessTokenDuration.Positive() {
+		result["access_token_duration"] = r.AccessTokenDuration
+	}
+	if r.RefreshTokenDuration.Positive() {
+		result["refresh_token_duration"] = r.RefreshTokenDuration
+	}
+	return json.Marshal(result)
+}
+
+func (c Cluster) MarshalJSON() ([]byte, error) {
+	result := make(map[string]interface{})
+	if c.CertificateAuthority != "" {
+		result["certificate_authority"] = c.CertificateAuthority
+	}
+	if c.Server != "" {
+		result["server"] = c.Server
+	}
+	if c.InsecureSkipVerify {
+		result["insecure"] = c.InsecureSkipVerify
+	}
+	return json.Marshal(result)
+}
+
+func (u User) MarshalJSON() ([]byte, error) {
+	result := make(map[string]interface{})
+	if u.ClientCertificate != "" {
+		result["client_certificate"] = u.ClientCertificate
+	}
+	if u.ClientKey != "" {
+		result["client_key"] = u.ClientKey
+	}
+	if u.Name != "" {
+		result["name"] = u.Name
+	}
+	return json.Marshal(result)
 }
