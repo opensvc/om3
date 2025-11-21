@@ -1,7 +1,6 @@
 package daemonapi
 
 import (
-	"fmt"
 	"net"
 	"net/http"
 
@@ -45,7 +44,7 @@ func (a *DaemonAPI) GetNetworkIP(ctx echo.Context, params api.GetNetworkIPParams
 	}
 	n, err := object.NewNode(object.WithVolatile(true))
 	if err != nil {
-		return JSONProblemf(ctx, http.StatusInternalServerError, "Failed to allocate a new object.Node", fmt.Sprint(err))
+		return JSONProblemf(ctx, http.StatusInternalServerError, "Failed to allocate a new object.Node", "%s", err)
 	}
 	clusterIPs := GetClusterIPs()
 	var networkStatusList network.StatusList

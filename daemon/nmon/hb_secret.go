@@ -46,9 +46,8 @@ func (t *Manager) onInstanceConfigUpdated(c *msgbus.InstanceConfigUpdated) {
 func (t *Manager) onHeartbeatRotateRequest(c *msgbus.HeartbeatRotateRequest) {
 	logP := "heartbeat rotate request"
 	onRefused := func(reason string) {
-		err := fmt.Errorf(reason)
-		t.log.Warnf("%s refused: %s", logP, err)
-		t.publisher.Pub(&msgbus.HeartbeatRotateError{Reason: err.Error(), ID: c.ID}, t.labelLocalhost)
+		t.log.Warnf("%s refused: %s", logP, reason)
+		t.publisher.Pub(&msgbus.HeartbeatRotateError{Reason: reason, ID: c.ID}, t.labelLocalhost)
 	}
 	if t.hbSecretRotating {
 		onRefused("already rotating")
@@ -110,9 +109,8 @@ func (t *Manager) hbRotatingCheck() {
 	}
 	logP := "heartbeat rotate request"
 	onError := func(reason string) {
-		err := fmt.Errorf(reason)
-		t.log.Warnf("%s: %s", logP, err)
-		t.publisher.Pub(&msgbus.HeartbeatRotateError{Reason: err.Error(), ID: t.hbSecretRotatingUUID}, t.labelLocalhost)
+		t.log.Warnf("%s: %s", logP, reason)
+		t.publisher.Pub(&msgbus.HeartbeatRotateError{Reason: reason, ID: t.hbSecretRotatingUUID}, t.labelLocalhost)
 		t.hbSecretRotating = false
 		t.hbSecretRotatingUUID = uuid.UUID{}
 		return

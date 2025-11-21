@@ -8,8 +8,9 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/opensvc/om3/core/check"
 	"github.com/stretchr/testify/assert"
+
+	"github.com/opensvc/om3/core/check"
 )
 
 func fakeExecCommand(command string, args ...string) *exec.Cmd {
@@ -87,10 +88,10 @@ func TestHelperProcess(t *testing.T) {
 	}
 
 	if out != "" {
-		_, _ = fmt.Fprintf(os.Stdout, out)
+		_, _ = fmt.Fprint(os.Stdout, out)
 	}
 	if err != "" {
-		_, _ = fmt.Fprintf(os.Stderr, err)
+		_, _ = fmt.Fprint(os.Stderr, err)
 	}
 	return
 }

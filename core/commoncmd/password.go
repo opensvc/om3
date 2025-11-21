@@ -20,12 +20,12 @@ func ReadPasswordFromStdinOrPrompt(prompt string) ([]byte, error) {
 		}
 	}
 
-	fmt.Fprintf(os.Stderr, prompt)
+	_, _ = fmt.Fprint(os.Stderr, prompt)
 	if b, err := term.ReadPassword(int(os.Stdin.Fd())); err != nil {
-		fmt.Fprintln(os.Stderr, "")
+		_, _ = fmt.Fprintln(os.Stderr)
 		return nil, err
 	} else {
-		fmt.Fprintln(os.Stderr, "")
+		_, _ = fmt.Fprintln(os.Stderr)
 		return b, nil
 	}
 }
