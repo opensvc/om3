@@ -279,7 +279,7 @@ func certFromPEM(b []byte) (*x509.Certificate, error) {
 	}
 	cert, err := x509.ParseCertificate(block.Bytes)
 	if err != nil {
-		return nil, fmt.Errorf("certFromPEM: failed to parse certificate: " + err.Error())
+		return nil, fmt.Errorf("certFromPEM: failed to parse certificate: %w", err)
 	}
 	return cert, nil
 }
@@ -339,12 +339,12 @@ func (t *sec) genPriv() (*rsa.PrivateKey, error) {
 func genCert(template, parent *x509.Certificate, pub interface{}, priv *rsa.PrivateKey) (*x509.Certificate, []byte, error) {
 	certBytes, err := x509.CreateCertificate(rand.Reader, template, parent, pub, priv)
 	if err != nil {
-		return nil, nil, fmt.Errorf("failed to create certificate: " + err.Error())
+		return nil, nil, fmt.Errorf("failed to create certificate: %w", err)
 	}
 
 	cert, err := x509.ParseCertificate(certBytes)
 	if err != nil {
-		return nil, nil, fmt.Errorf("failed to parse certificate: " + err.Error())
+		return nil, nil, fmt.Errorf("failed to parse certificate: %w", err)
 	}
 
 	b := pem.Block{Type: "CERTIFICATE", Bytes: certBytes}

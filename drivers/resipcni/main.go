@@ -17,6 +17,8 @@ import (
 	"strings"
 	"time"
 
+	"github.com/rs/zerolog"
+
 	"github.com/opensvc/om3/core/actionresdeps"
 	"github.com/opensvc/om3/core/actionrollback"
 	"github.com/opensvc/om3/core/naming"
@@ -25,7 +27,6 @@ import (
 	"github.com/opensvc/om3/drivers/resip"
 	"github.com/opensvc/om3/util/command"
 	"github.com/opensvc/om3/util/file"
-	"github.com/rs/zerolog"
 
 	"github.com/containernetworking/plugins/pkg/ns"
 	"github.com/google/uuid"
@@ -591,9 +592,9 @@ func (t *T) stop(ctx context.Context) error {
 	if outB := cmd.Stdout(); len(outB) > 0 {
 		var resp response
 		if err := json.Unmarshal(outB, &resp); err == nil && resp.Code != 0 {
-			msg := fmt.Sprintf("cni error code %d: %s", resp.Code, resp.Msg)
-			t.Log().Errorf(msg)
-			return fmt.Errorf(msg)
+			err = fmt.Errorf("cni error code %d: %s", resp.Code, resp.Msg)
+			t.Log().Errorf("%s", err)
+			return err
 		} else {
 			t.Log().Infof(string(outB))
 		}

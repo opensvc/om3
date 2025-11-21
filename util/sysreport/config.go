@@ -470,11 +470,10 @@ func (t T) filterLstree(lstreeData []string) []string {
 func (t T) getLstree() ([]string, error) {
 	response, err := t.collectorClient.Call("sysreport_lstree")
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("collector sysreport_lstree call: %w", err)
 	}
 	if response.Error != nil {
-		errStr := response.Error.Error()
-		return nil, fmt.Errorf(errStr)
+		return nil, fmt.Errorf("collector sysreport_lstree response: %w", response.Error)
 	}
 	switch l := response.Result.(type) {
 	case []interface{}:
@@ -528,11 +527,10 @@ func (t T) send() error {
 	}
 	response, err := t.collectorClient.Call("send_sysreport", filepath.Base(tmpf), b, deleted)
 	if err != nil {
-		return err
+		return fmt.Errorf("send_sysreport call: %w", err)
 	}
 	if response.Error != nil {
-		errStr := response.Error.Error()
-		return fmt.Errorf(errStr)
+		return fmt.Errorf("send_sysreport response: %w", response.Error)
 	}
 	srLog.Info().Int("size", len(b)).Msg("Report sent")
 	return nil

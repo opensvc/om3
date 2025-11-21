@@ -400,6 +400,21 @@ func (t *T) GetStringsStrict(k key.T) ([]string, error) {
 	}
 }
 
+func (t *T) GetSet(k key.T) *set.Set {
+	val, _ := t.GetSetStrict(k)
+	return val
+}
+
+func (t *T) GetSetStrict(k key.T) (*set.Set, error) {
+	if v, err := t.Eval(k); err != nil {
+		return set.New(), err
+	} else if v != nil {
+		return v.(*set.Set), nil
+	} else {
+		return set.New(), nil
+	}
+}
+
 func (t *T) GetBool(k key.T) bool {
 	val, _ := t.GetBoolStrict(k)
 	return val

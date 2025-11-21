@@ -20,6 +20,7 @@ import (
 	"github.com/opensvc/om3/core/schedule"
 	"github.com/opensvc/om3/core/xconfig"
 	"github.com/opensvc/om3/util/funcopt"
+	"github.com/opensvc/om3/util/hostname"
 	"github.com/opensvc/om3/util/key"
 	"github.com/opensvc/om3/util/pg"
 	"github.com/opensvc/om3/util/scsi"
@@ -258,6 +259,11 @@ func (t *actor) ConfigureResources() {
 	begin := time.Now()
 	postponed := make(map[string][]resource.Driver)
 	t._resources = make(resource.Drivers, 0)
+	isEncapNode, err := t.config.IsInEncapNodes(hostname.Hostname())
+	if err != nil {
+		t.log.Errorf("configure resources: IsInEncapNodes: %s", err)
+		return
+	}
 	for _, k := range t.config.SectionStrings() {
 		rid, err := resourceid.Parse(k)
 		if err != nil {
@@ -277,6 +283,20 @@ func (t *actor) ConfigureResources() {
 			continue
 		}
 		r := factory()
+		isEncapResource := func() bool {
+			encap := t.config.GetBool(key.T{k, "encap"})
+			if encap {
+				return true
+			}
+			tags := t.config.GetSet(key.T{k, "tags"})
+			if tags.Has("encap") {
+				return true
+			}
+			return false
+		}
+		if isEncapNode && !isEncapResource() {
+			continue
+		}
 		rBegin := time.Now()
 		if err := t.configureResource(r, k); err != nil {
 			switch o := err.(type) {

@@ -1,7 +1,6 @@
 package daemonapi
 
 import (
-	"fmt"
 	"net/http"
 
 	"github.com/labstack/echo/v4"
@@ -16,7 +15,7 @@ func (a *DaemonAPI) PutObjectConfigFile(ctx echo.Context, namespace string, kind
 	}
 	p, err := naming.NewPath(namespace, kind, name)
 	if err != nil {
-		return JSONProblemf(ctx, http.StatusBadRequest, "Bad request path", fmt.Sprint(err))
+		return JSONProblemf(ctx, http.StatusBadRequest, "Bad request path", "%s", err)
 	}
 	if len(instance.MonitorData.GetByPath(p)) == 0 {
 		return JSONProblemf(ctx, http.StatusNotFound, "Not found", "Use the POST method instead of PUT to create the object")

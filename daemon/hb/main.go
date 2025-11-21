@@ -234,7 +234,7 @@ func (t *T) stopHbRid(rid string) error {
 		}
 	}
 	if len(failures) > 0 {
-		return fmt.Errorf("stop hb rid %s error for " + strings.Join(failures, ", "))
+		return fmt.Errorf("stop hb rid %s error for %s", rid, strings.Join(failures, ", "))
 	}
 	return nil
 }

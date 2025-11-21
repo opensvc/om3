@@ -4,6 +4,7 @@ import (
 	"context"
 	"crypto/tls"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"net"
 	"net/http"
@@ -255,7 +256,7 @@ func (t *RefreshTransport) authenticateOrRefresh(ctx context.Context, base http.
 
 func (t *RefreshTransport) authenticateWithCredentials(ctx context.Context, base http.RoundTripper, errorMessage string) (string, error) {
 	if t.Username == "" || t.Password == "" {
-		return "", fmt.Errorf(errorMessage)
+		return "", errors.New(errorMessage)
 	}
 
 	params := url.Values{}

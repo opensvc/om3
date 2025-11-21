@@ -3,6 +3,7 @@ package object
 import (
 	"bytes"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"net/http"
@@ -136,7 +137,7 @@ func (t Node) registerAsUser(user, password, app string) error {
 		return fmt.Errorf("decode response body: %w", err)
 	}
 	if data.Error != "" {
-		return fmt.Errorf(data.Error)
+		return errors.New(data.Error)
 	}
 	if data.Info != "" {
 		t.Log().Infof("%s", data.Info)
@@ -164,7 +165,7 @@ func (t Node) registerAsNode() error {
 				if strings.Contains(s, "already") {
 					t.Log().Infof(s)
 				} else {
-					return fmt.Errorf(s)
+					return errors.New(s)
 				}
 			}
 		case string:

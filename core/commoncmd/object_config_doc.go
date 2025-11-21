@@ -47,7 +47,7 @@ func NewCmdObjectConfigDoc(kind string) *cobra.Command {
 func (t *CmdObjectConfigDoc) Run(kind string) error {
 	path, err := naming.ParsePath(t.OptsGlobal.ObjectSelector)
 	if err != nil {
-		return err
+		path, _ = naming.ParsePath("ns1/" + kind + "/obj1")
 	}
 	c, err := client.New()
 	if err != nil {
