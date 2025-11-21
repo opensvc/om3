@@ -1,12 +1,12 @@
-Threads             node3    
- daemon           | O        
- dns              | O        
- collector        | o        
- hb               |          
- listener         | 2222     
- scheduler        |          
+Daemon              node3    
+ uptime           | 1016d    
+ state            | dns      
+ hb queue         | ?        
+ hb rx            | /        
+ hb tx            | /        
                              
 Nodes               node3    
+ uptime           | 1017d    
  score            | 96       
   load15m         | 0.1      
   mem             | 26%1.94g 
