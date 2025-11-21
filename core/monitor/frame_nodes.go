@@ -24,7 +24,7 @@ func (f Frame) sNodeScoreLine() string {
 
 func (f Frame) sNodeLoadLine() string {
 	var sb strings.Builder
-	sb.WriteString(format(" %s\t\t\t%s\t", bold("load15m"), f.info.separator))
+	sb.WriteString(format("  %s\t\t\t%s\t", bold("load15m"), f.info.separator))
 	for _, n := range f.Current.Cluster.Config.Nodes {
 		sb.WriteString(f.StrNodeLoad(n))
 		sb.WriteString("\t")
@@ -44,7 +44,7 @@ func (f Frame) sNodeMemLine() string {
 
 func (f Frame) sNodeSwapLine() string {
 	var sb strings.Builder
-	sb.WriteString(format(" %s\t\t\t%s\t", bold("swap"), f.info.separator))
+	sb.WriteString(format("  %s\t\t\t%s\t", bold("swap"), f.info.separator))
 	for _, n := range f.Current.Cluster.Config.Nodes {
 		sb.WriteString(f.StrNodeSwap(n))
 		sb.WriteString("\t")
@@ -79,7 +79,7 @@ func (f Frame) sNodeVersionLine() string {
 		return ""
 	}
 	var sb strings.Builder
-	sb.WriteString(format(" %s\t%s\t\t%s\t", bold("version"), yellow("warn"), f.info.separator))
+	sb.WriteString(format("  %s\t%s\t\t%s\t", bold("version"), yellow("warn"), f.info.separator))
 	for _, n := range f.Current.Cluster.Config.Nodes {
 		sb.WriteString(f.sNodeVersion(n))
 		sb.WriteString("\t")
