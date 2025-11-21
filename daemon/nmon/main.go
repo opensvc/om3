@@ -185,6 +185,7 @@ func NewManager(drainDuration time.Duration, subQS pubsub.QueueSizer) *Manager {
 		nodeStatus: node.Status{
 			Agent:    version.Version(),
 			FrozenAt: time.Now(), // ensure initial frozen
+			BootedAt: time.Now(),
 		},
 		frozen:    true, // ensure initial frozen
 		livePeers: map[string]bool{localhost: true},

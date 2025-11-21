@@ -1,6 +1,7 @@
 package monitor
 
 import (
+	"fmt"
 	"sort"
 	"strings"
 
@@ -99,6 +100,10 @@ func (f Frame) hasSection(section string) bool {
 		return true
 	}
 	return f.sectionMask&sectionToID[section] != 0
+}
+
+func format(format string, a ...any) string {
+	return fmt.Sprintf(format, a...)
 }
 
 // Render return a string buffer containing a human-friendly
