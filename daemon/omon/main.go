@@ -279,24 +279,38 @@ func (t *Manager) worker() {
 				t.status.Priority = c.Value.Priority
 				t.status.Scope = c.Value.Scope
 				if c.Value.ActorConfig != nil {
-					t.status.ActorStatus = &object.ActorStatus{
-						Orchestrate:     c.Value.Orchestrate,
-						PlacementPolicy: c.Value.PlacementPolicy,
-						Topology:        c.Value.Topology,
+					if t.status.ActorStatus == nil {
+						t.status.ActorStatus = &object.ActorStatus{
+							Orchestrate:     c.Value.Orchestrate,
+							PlacementPolicy: c.Value.PlacementPolicy,
+							Topology:        c.Value.Topology,
+						}
+					} else {
+						t.status.ActorStatus.Orchestrate = c.Value.Orchestrate
+						t.status.ActorStatus.PlacementPolicy = c.Value.PlacementPolicy
+						t.status.ActorStatus.Topology = c.Value.Topology
 					}
+
 					if c.Value.ActorConfig.Flex != nil {
 						t.status.ActorStatus.Flex = &object.FlexStatus{
 							Target: c.Value.ActorConfig.Flex.Target,
 							Min:    c.Value.ActorConfig.Flex.Min,
 							Max:    c.Value.ActorConfig.Flex.Max,
 						}
+					} else {
+						t.status.ActorStatus.Flex = nil
 					}
+				} else {
+					t.status.ActorStatus = nil
 				}
+
 				if c.Value.VolConfig != nil {
 					t.status.VolStatus = &object.VolStatus{
 						Pool: c.Value.Pool,
 						Size: c.Value.Size,
 					}
+				} else {
+					t.status.VolStatus = nil
 				}
 
 				t.srcEvent = c
