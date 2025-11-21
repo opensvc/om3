@@ -1,11 +1,13 @@
 package monitor
 
 import (
+	"fmt"
 	"sort"
 	"strings"
 
 	"github.com/fatih/color"
 	tabwriter "github.com/juju/ansiterm"
+
 	"github.com/opensvc/om3/core/clusterdump"
 )
 
@@ -100,6 +102,10 @@ func (f Frame) hasSection(section string) bool {
 	return f.sectionMask&sectionToID[section] != 0
 }
 
+func format(format string, a ...any) string {
+	return fmt.Sprintf(format, a...)
+}
+
 // Render return a string buffer containing a human-friendly
 // representation of Render.
 func (f *Frame) Render() string {
@@ -118,8 +124,8 @@ func (f *Frame) Render() string {
 	f.setSectionMask()
 	f.scanData()
 	f.w = tabwriter.NewTabWriter(&builder, 1, 1, 1, ' ', 0)
-	if f.hasSection("threads") {
-		f.wThreads()
+	if f.hasSection("daemons") {
+		f.wDaemons()
 	}
 	if f.hasSection("arbitrators") {
 		f.wArbitrators()

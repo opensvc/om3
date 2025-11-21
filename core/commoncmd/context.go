@@ -9,3 +9,17 @@ func NewCmdContext() *cobra.Command {
 		Aliases: []string{"ctx"},
 	}
 }
+
+func NewCmdContextCluster() *cobra.Command {
+	return &cobra.Command{
+		Use:   "cluster",
+		Short: "manage cluster contexts",
+	}
+}
+
+func NewCmdContextUser() *cobra.Command {
+	return &cobra.Command{
+		Use:   "user",
+		Short: "manage user contexts",
+	}
+}
