@@ -3,7 +3,6 @@ package daemonapi
 import (
 	"context"
 	"errors"
-	"fmt"
 	"io"
 	"net/http"
 	"os"
@@ -40,7 +39,7 @@ func (a *DaemonAPI) PostInstanceStateFile(ctx echo.Context, nodename, namespace 
 func (a *DaemonAPI) postLocalObjectStateFile(ctx echo.Context, namespace string, kind naming.Kind, name string) error {
 	p, err := naming.NewPath(namespace, kind, name)
 	if err != nil {
-		return JSONProblemf(ctx, http.StatusBadRequest, "Bad request path", fmt.Sprint(err))
+		return JSONProblemf(ctx, http.StatusBadRequest, "Bad request path", "%s", err)
 	}
 	if !p.Exists() {
 		return JSONProblemf(ctx, http.StatusNotFound, "Object not found", "")

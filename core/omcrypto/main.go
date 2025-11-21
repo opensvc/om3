@@ -234,8 +234,7 @@ func unpadPKCSS(b []byte, blockSize int) ([]byte, error) {
 	}
 	for _, el := range b[len(b)-paddingLength:] {
 		if el != byte(paddingLength) {
-			errStr := fmt.Sprintf("padding had malformed entry '%x', expected '%x'", paddingLength, el)
-			return nil, fmt.Errorf(errStr)
+			return nil, fmt.Errorf("padding had malformed entry '%x', expected '%x'", paddingLength, el)
 		}
 	}
 	return b[:len(b)-paddingLength], nil

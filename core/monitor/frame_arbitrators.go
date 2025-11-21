@@ -27,8 +27,8 @@ func (f Frame) wArbitrators() {
 		}
 		s += "\n"
 	}
-	fmt.Fprintf(f.w, s)
-	fmt.Fprintln(f.w, f.info.empty)
+	_, _ = fmt.Fprint(f.w, s)
+	_, _ = fmt.Fprintln(f.w, f.info.empty)
 }
 
 func (f Frame) StrNodeArbitratorStatus(name, node string) string {

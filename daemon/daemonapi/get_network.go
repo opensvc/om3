@@ -1,7 +1,6 @@
 package daemonapi
 
 import (
-	"fmt"
 	"net/http"
 
 	"github.com/labstack/echo/v4"
@@ -19,7 +18,7 @@ func (a *DaemonAPI) GetNetworks(ctx echo.Context, params api.GetNetworksParams) 
 	var items api.NetworkItems
 	n, err := object.NewNode(object.WithVolatile(true))
 	if err != nil {
-		return JSONProblemf(ctx, http.StatusInternalServerError, "Failed to allocate a new object.Node", fmt.Sprint(err))
+		return JSONProblemf(ctx, http.StatusInternalServerError, "Failed to allocate a new object.Node", "%s", err)
 	}
 	clusterIPs := GetClusterIPs()
 	get := func() network.StatusList {

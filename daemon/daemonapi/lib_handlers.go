@@ -65,9 +65,9 @@ func JSONProblem(ctx echo.Context, code int, title, detail string) error {
 	})
 }
 
-func JSONProblemf(ctx echo.Context, code int, title, detail string, argv ...any) error {
+func JSONProblemf(ctx echo.Context, code int, title, format string, a ...any) error {
 	return ctx.JSON(code, api.Problem{
-		Detail: fmt.Sprintf(detail, argv...),
+		Detail: fmt.Sprintf(format, a...),
 		Title:  title,
 		Status: code,
 	})
