@@ -3,14 +3,35 @@ package monitor
 import (
 	"fmt"
 	"strings"
+	"time"
 )
 
-func (f Frame) sDaemonStateLine() string {
-	s := fmt.Sprintf(" %s\t\t\t%s\t", bold("state"), f.info.separator)
-	for _, node := range f.Current.Cluster.Config.Nodes {
-		s += f.StrDaemonState(node) + "\t"
+func (f Frame) sDaemonUptimeLine() string {
+	var sb strings.Builder
+	sb.WriteString(format(" %s\t\t\t%s\t", bold("uptime"), f.info.separator))
+	for _, n := range f.Current.Cluster.Config.Nodes {
+		sb.WriteString(f.StrDaemonUptime(n))
+		sb.WriteString("\t")
 	}
-	return s
+	return sb.String()
+}
+
+func (f Frame) StrDaemonUptime(n string) string {
+	if val, ok := f.Current.Cluster.Node[n]; ok {
+		diffTime := time.Now().Sub(val.Daemon.StartedAt)
+		return f.formatDuration(diffTime)
+	}
+	return iconUndef
+}
+
+func (f Frame) sDaemonStateLine() string {
+	var sb strings.Builder
+	sb.WriteString(format(" %s\t\t\t%s\t", bold("state"), f.info.separator))
+	for _, node := range f.Current.Cluster.Config.Nodes {
+		sb.WriteString(f.StrDaemonState(node))
+		sb.WriteString("\t")
+	}
+	return sb.String()
 }
 
 func (f Frame) StrDaemonState(n string) string {
@@ -70,13 +91,15 @@ func (f Frame) StrHbQueue(n string) string {
 }
 
 func (f Frame) sHeartbeatLine(hbType string) string {
-	s := fmt.Sprintf(" %s\t\t\t%s\t", bold("hb "+hbType), f.info.separator)
+	var sb strings.Builder
+	sb.WriteString(format(" %s\t\t\t%s\t", bold("hb "+hbType), f.info.separator))
 
 	for _, node := range f.Current.Cluster.Config.Nodes {
-		s += f.StrHeartbeat(node, hbType) + "\t"
+		sb.WriteString(f.StrHeartbeat(node, hbType))
+		sb.WriteString("\t")
 	}
 
-	return s
+	return sb.String()
 }
 
 func (f Frame) StrHeartbeat(n string, hbType string) string {
@@ -117,7 +140,7 @@ func (f Frame) StrHeartbeat(n string, hbType string) string {
 
 func (f Frame) wDaemons() {
 	fmt.Fprintln(f.w, f.title("Daemon"))
-	fmt.Fprintln(f.w, f.sUptimeLine())
+	fmt.Fprintln(f.w, f.sDaemonUptimeLine())
 	fmt.Fprintln(f.w, f.sDaemonStateLine())
 	fmt.Fprintln(f.w, f.sHbQueueLine())
 	fmt.Fprintln(f.w, f.sHeartbeatLine("rx"))

@@ -133,12 +133,13 @@ func sObjectAvail(d object.Status) string {
 
 func (f Frame) sObject(path string) string {
 	d := f.Current.Cluster.Object[path]
-	s := fmt.Sprintf(" %s\t", bold(path))
-	s += fmt.Sprintf("%s\t", StrObjectStatus(d))
-	s += fmt.Sprintf("%s\t", f.sObjectOrchestrateAndRunning(path))
-	s += fmt.Sprintf("%s\t", f.info.separator)
+	var sb strings.Builder
+	sb.WriteString(format(" %s\t", bold(path)))
+	sb.WriteString(format("%s\t", StrObjectStatus(d)))
+	sb.WriteString(format("%s\t", f.sObjectOrchestrateAndRunning(path)))
+	sb.WriteString(format("%s\t", f.info.separator))
 	for _, node := range f.Current.Cluster.Config.Nodes {
-		s += f.StrObjectInstance(path, node, d.Scope) + "\t"
+		sb.WriteString(f.StrObjectInstance(path, node, d.Scope) + "\t")
 	}
-	return s
+	return sb.String()
 }
