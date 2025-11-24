@@ -2,6 +2,7 @@ package monitor
 
 import (
 	"fmt"
+	"strconv"
 	"strings"
 	"time"
 
@@ -14,7 +15,11 @@ import (
 
 func (f Frame) sNodeScoreLine() string {
 	var sb strings.Builder
-	sb.WriteString(format(" %s\t\t\t%s\t", bold("score"), f.info.separator))
+	sb.WriteString(" ")
+	sb.WriteString(bold("score"))
+	sb.WriteString("\t\t\t")
+	sb.WriteString(f.info.separator)
+	sb.WriteString("\t")
 	for _, n := range f.Current.Cluster.Config.Nodes {
 		sb.WriteString(f.StrNodeScore(n))
 		sb.WriteString("\t")
@@ -24,7 +29,11 @@ func (f Frame) sNodeScoreLine() string {
 
 func (f Frame) sNodeLoadLine() string {
 	var sb strings.Builder
-	sb.WriteString(format("  %s\t\t\t%s\t", bold("load15m"), f.info.separator))
+	sb.WriteString("  ")
+	sb.WriteString(bold("load15m"))
+	sb.WriteString("\t\t\t")
+	sb.WriteString(f.info.separator)
+	sb.WriteString("\t")
 	for _, n := range f.Current.Cluster.Config.Nodes {
 		sb.WriteString(f.StrNodeLoad(n))
 		sb.WriteString("\t")
@@ -34,7 +43,11 @@ func (f Frame) sNodeLoadLine() string {
 
 func (f Frame) sNodeMemLine() string {
 	var sb strings.Builder
-	sb.WriteString(format("  %s\t\t\t%s\t", bold("mem"), f.info.separator))
+	sb.WriteString("  ")
+	sb.WriteString(bold("mem"))
+	sb.WriteString("\t\t\t")
+	sb.WriteString(f.info.separator)
+	sb.WriteString("\t")
 	for _, n := range f.Current.Cluster.Config.Nodes {
 		sb.WriteString(f.StrNodeMem(n))
 		sb.WriteString("\t")
@@ -44,7 +57,11 @@ func (f Frame) sNodeMemLine() string {
 
 func (f Frame) sNodeSwapLine() string {
 	var sb strings.Builder
-	sb.WriteString(format("  %s\t\t\t%s\t", bold("swap"), f.info.separator))
+	sb.WriteString("  ")
+	sb.WriteString(bold("swap"))
+	sb.WriteString("\t\t\t")
+	sb.WriteString(f.info.separator)
+	sb.WriteString("\t")
 	for _, n := range f.Current.Cluster.Config.Nodes {
 		sb.WriteString(f.StrNodeSwap(n))
 		sb.WriteString("\t")
@@ -62,7 +79,11 @@ func (f Frame) StrNodeStates(n string) string {
 
 func (f Frame) sNodeWarningsLine() string {
 	var sb strings.Builder
-	sb.WriteString(format(" %s\t\t\t%s\t", bold("state"), f.info.separator))
+	sb.WriteString(" ")
+	sb.WriteString(bold("state"))
+	sb.WriteString("\t\t\t")
+	sb.WriteString(f.info.separator)
+	sb.WriteString("\t")
 	for _, n := range f.Current.Cluster.Config.Nodes {
 		sb.WriteString(f.StrNodeStates(n))
 		sb.WriteString("\t")
@@ -79,7 +100,13 @@ func (f Frame) sNodeVersionLine() string {
 		return ""
 	}
 	var sb strings.Builder
-	sb.WriteString(format("  %s\t%s\t\t%s\t", bold("version"), yellow("warn"), f.info.separator))
+	sb.WriteString("  ")
+	sb.WriteString(bold("version"))
+	sb.WriteString("\t")
+	sb.WriteString(yellow("warn"))
+	sb.WriteString("\t\t")
+	sb.WriteString(f.info.separator)
+	sb.WriteString("\t")
 	for _, n := range f.Current.Cluster.Config.Nodes {
 		sb.WriteString(f.sNodeVersion(n))
 		sb.WriteString("\t")
@@ -92,7 +119,13 @@ func (f Frame) sNodeCompatLine() string {
 		return ""
 	}
 	var sb strings.Builder
-	sb.WriteString(format("  %s\t%s\t\t%s\t", bold("compat"), yellow("warn"), f.info.separator))
+	sb.WriteString("  ")
+	sb.WriteString(bold("compat"))
+	sb.WriteString("\t")
+	sb.WriteString(yellow("warn"))
+	sb.WriteString("\t\t")
+	sb.WriteString(f.info.separator)
+	sb.WriteString("\t")
 	for _, n := range f.Current.Cluster.Config.Nodes {
 		sb.WriteString(f.sNodeCompat(n))
 		sb.WriteString("\t")
@@ -127,9 +160,16 @@ func (f Frame) StrNodeMem(n string) string {
 		total := sizeconv.BSizeCompactFromMB(val.Stats.MemTotalMB)
 		var sb strings.Builder
 		if val.Config.MinAvailMemPct > 0 {
-			sb.WriteString(format("%d%%%s<%d%%", usage, total, limit))
+			sb.WriteString(strconv.Itoa(usage))
+			sb.WriteString("%")
+			sb.WriteString(total)
+			sb.WriteString("<")
+			sb.WriteString(strconv.Itoa(limit))
+			sb.WriteString("%")
 		} else {
-			sb.WriteString(format("%d%%%s", usage, total))
+			sb.WriteString(strconv.Itoa(usage))
+			sb.WriteString("%")
+			sb.WriteString(total)
 		}
 		if usage > limit {
 			return hired(sb.String())
@@ -152,9 +192,16 @@ func (f Frame) StrNodeSwap(n string) string {
 		total := sizeconv.BSizeCompactFromMB(val.Stats.SwapTotalMB)
 		var sb strings.Builder
 		if val.Config.MinAvailSwapPct > 0 {
-			sb.WriteString(format("%d%%%s<%d%%", usage, total, limit))
+			sb.WriteString(strconv.Itoa(usage))
+			sb.WriteString("%")
+			sb.WriteString(total)
+			sb.WriteString("<")
+			sb.WriteString(strconv.Itoa(limit))
+			sb.WriteString("%")
 		} else {
-			sb.WriteString(format("%d%%%s", usage, total))
+			sb.WriteString(strconv.Itoa(usage))
+			sb.WriteString("%")
+			sb.WriteString(total)
 		}
 		if usage > limit {
 			return hired(sb.String())
@@ -223,7 +270,11 @@ func (f Frame) sNodeVersion(n string) string {
 
 func (f Frame) sNodeHbMode() string {
 	var sb strings.Builder
-	sb.WriteString(format(" %s\t\t\t%s", bold("hb-q"), f.info.separator+"\t"))
+	sb.WriteString(" ")
+	sb.WriteString(bold("hb-q"))
+	sb.WriteString("\t\t\t")
+	sb.WriteString(f.info.separator)
+	sb.WriteString("\t")
 	for _, peer := range f.Current.Cluster.Config.Nodes {
 		sb.WriteString(f.StrNodeHbMode(peer))
 		sb.WriteString("\t")
@@ -260,7 +311,11 @@ func (f Frame) StrNodeHbMode(peer string) string {
 
 func (f Frame) sNodeUptimeLine() string {
 	var sb strings.Builder
-	sb.WriteString(format(" %s\t\t\t%s\t", bold("uptime"), f.info.separator))
+	sb.WriteString(" ")
+	sb.WriteString(bold("uptime"))
+	sb.WriteString("\t\t\t")
+	sb.WriteString(f.info.separator)
+	sb.WriteString("\t")
 	for _, n := range f.Current.Cluster.Config.Nodes {
 		sb.WriteString(f.StrNodeUptime(n))
 		sb.WriteString("\t")
@@ -285,16 +340,19 @@ func (f Frame) formatDuration(t time.Duration) string {
 	day := 24 * time.Hour
 	if t < time.Hour {
 		if t >= time.Minute {
-			sb.WriteString(format("%dm", int(t.Minutes())))
+			sb.WriteString(strconv.Itoa(int(t.Minutes())))
+			sb.WriteString("m")
 		}
-		sb.WriteString(format("%ds", int(t.Seconds())%60))
+		sb.WriteString(strconv.Itoa(int(t.Seconds()) % 60))
 		return sb.String()
 	}
 	if t >= day {
-		sb.WriteString(format("%dd", int(t.Hours())/24))
+		sb.WriteString(strconv.Itoa(int(t.Hours()) / 24))
+		sb.WriteString("d")
 	}
 	if t < 10*day {
-		sb.WriteString(format("%dh", int(t.Hours())%24))
+		sb.WriteString(strconv.Itoa(int(t.Hours()) % 24))
+		sb.WriteString("h")
 	}
 	return sb.String()
 }

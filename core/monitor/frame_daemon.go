@@ -7,7 +7,11 @@ import (
 
 func (f Frame) sDaemonUptimeLine() string {
 	var sb strings.Builder
-	sb.WriteString(format(" %s\t\t\t%s\t", bold("uptime"), f.info.separator))
+	sb.WriteString(" ")
+	sb.WriteString(bold("uptime"))
+	sb.WriteString("\t\t\t")
+	sb.WriteString(f.info.separator)
+	sb.WriteString("\t")
 	for _, n := range f.Current.Cluster.Config.Nodes {
 		sb.WriteString(f.StrDaemonUptime(n))
 		sb.WriteString("\t")
@@ -25,7 +29,11 @@ func (f Frame) StrDaemonUptime(n string) string {
 
 func (f Frame) sDaemonStateLine() string {
 	var sb strings.Builder
-	sb.WriteString(format(" %s\t\t\t%s\t", bold("state"), f.info.separator))
+	sb.WriteString(" ")
+	sb.WriteString(bold("state"))
+	sb.WriteString("\t\t\t")
+	sb.WriteString(f.info.separator)
+	sb.WriteString("\t")
 	for _, node := range f.Current.Cluster.Config.Nodes {
 		sb.WriteString(f.StrDaemonState(node))
 		sb.WriteString("\t")
@@ -91,7 +99,11 @@ func (f Frame) StrHbQueue(n string) string {
 
 func (f Frame) sHeartbeatLine(hbType string) string {
 	var sb strings.Builder
-	sb.WriteString(format(" %s\t\t\t%s\t", bold("hb "+hbType), f.info.separator))
+	sb.WriteString(" ")
+	sb.WriteString(bold("hb " + hbType))
+	sb.WriteString("\t\t\t")
+	sb.WriteString(f.info.separator)
+	sb.WriteString("\t")
 
 	for _, node := range f.Current.Cluster.Config.Nodes {
 		sb.WriteString(f.StrHeartbeat(node, hbType))
