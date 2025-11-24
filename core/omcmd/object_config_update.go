@@ -72,6 +72,8 @@ func (t *CmdObjectConfigUpdate) Run(kind string) error {
 			return fmt.Errorf("%s: %s", p, *response.JSON401)
 		case 403:
 			return fmt.Errorf("%s: %s", p, *response.JSON403)
+		case 404:
+			return fmt.Errorf("%s: %s", p, *response.JSON404)
 		case 500:
 			return fmt.Errorf("%s: %s", p, *response.JSON500)
 		default:
