@@ -16,11 +16,11 @@ import (
 
 type (
 	Entry struct {
-		AccessTokenExpire   time.Time         `json:"access_expired_at"`
-		AccessToken         string            `json:"access_token"`
-		AccessTokenDuration duration.Duration `json:"access_token_duration,omitempty"`
-		RefreshTokenExpire  time.Time         `json:"refresh_expired_at"`
-		RefreshToken        string            `json:"refresh_token"`
+		AccessTokenExpire   time.Time          `json:"access_expired_at"`
+		AccessToken         string             `json:"access_token"`
+		AccessTokenDuration *duration.Duration `json:"access_token_duration,omitempty"`
+		RefreshTokenExpire  time.Time          `json:"refresh_expired_at"`
+		RefreshToken        string             `json:"refresh_token"`
 	}
 )
 

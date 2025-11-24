@@ -35,7 +35,7 @@ func NewCmdContextLogin() *cobra.Command {
 	var options CmdContextLogin
 	cmd := &cobra.Command{
 		Use:   "login",
-		Short: "Request and cache authentication tokens",
+		Short: "request and cache authentication tokens",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return options.Run(cmd)
 		},
@@ -50,6 +50,9 @@ func NewCmdContextLogin() *cobra.Command {
 
 func (t *CmdContextLogin) Run(cmd *cobra.Command) error {
 	config, err := clientcontext.Load()
+	if err != nil {
+		return err
+	}
 
 	contextChanged := cmd.Flag("context").Changed
 	if !contextChanged {
@@ -57,9 +60,6 @@ func (t *CmdContextLogin) Run(cmd *cobra.Command) error {
 	}
 
 	if t.Context == "" {
-		if err != nil {
-			return err
-		}
 		fmt.Println("Known Contexts:")
 		i := 0
 		contextName := make([]string, len(config.Contexts))
@@ -123,12 +123,16 @@ func (t *CmdContextLogin) Run(cmd *cobra.Command) error {
 
 	os.Setenv("OSVC_CONTEXT", t.Context)
 
-	clientc, err := clientcontext.New()
-	if err != nil {
-		return err
+	clientc, ok := config.Contexts[t.Context]
+	if !ok {
+		return fmt.Errorf("context %s not found in config", t.Context)
 	}
 
-	c, err := client.New(client.WithUsername(clientc.User.Name), client.WithPassword(password))
+	userName := clientc.UserRefName
+	if usr, ok := config.Users[clientc.UserRefName]; ok && usr.Name != nil && *usr.Name != "" {
+		userName = *usr.Name
+	}
+	c, err := client.New(client.WithUsername(userName), client.WithPassword(password))
 	if err != nil {
 		return err
 	}
@@ -193,12 +197,12 @@ func (t *CmdContextLogin) Run(cmd *cobra.Command) error {
 	return nil
 }
 
-func chooseDuration(first duration.Duration, second duration.Duration) duration.Duration {
-	if first.Positive() {
+func chooseDuration(first *duration.Duration, second *duration.Duration) *duration.Duration {
+	if first != nil && first.Positive() {
 		return first
 	}
-	if second.Positive() {
+	if second != nil && second.Positive() {
 		return second
 	}
-	return duration.Duration{Duration: 0}
+	return duration.New(0)
 }

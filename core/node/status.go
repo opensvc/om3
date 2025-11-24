@@ -19,6 +19,7 @@ type (
 		IsLeader     bool                        `json:"is_leader"`
 		IsOverloaded bool                        `json:"is_overloaded"`
 		Labels       label.M                     `json:"labels"`
+		BootedAt     time.Time                   `json:"booted_at"`
 	}
 
 	// Instances groups instances configuration digest and status

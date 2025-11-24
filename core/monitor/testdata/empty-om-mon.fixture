@@ -1,11 +1,12 @@
-Threads             
- daemon             
- collector          
- hb                 
- listener           
- scheduler          
+Daemon              
+ uptime             
+ state              
+ hb queue           
+ hb rx              
+ hb tx              
                     
 Nodes               
+ uptime             
  score              
   load15m           
   mem               

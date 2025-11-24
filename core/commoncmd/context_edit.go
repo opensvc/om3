@@ -24,7 +24,7 @@ func NewCmdContextEdit() *cobra.Command {
 
 	cmd := &cobra.Command{
 		Use:   "edit",
-		Short: "Edit a context",
+		Short: "edit a context",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return options.Run()
 		},

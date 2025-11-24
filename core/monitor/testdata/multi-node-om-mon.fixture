@@ -1,23 +1,20 @@
-Threads                              node1    node2    node3    
- daemon                            | O        O        O        
- dns                               | O        ?        O        
- collector                         | O        X        o        
- hb                                |                            
-  hb#1.rx        running unicast   | O        X        /        
-  hb#1.tx        running unicast   | X        O        /        
- listener                          | 1215     1215     1215     
- scheduler                         |                            
-                                                                
-Nodes                                node1    node2    node3    
- score                             | 95       96       96       
-  load15m                          | 0.1      0.2      0.1      
-  mem                              | 27%1.94g 24%1.94g 26%1.94g 
-  swap                             | 2%1.92g  0%1.92g  1%1.92g  
- hb-q                              | 1        0        0        
- state                             |                            
-                                                                
-Objects ~ *                          node1    node2    node3    
- cluster         n/a               | /        /        /        
- foo             up      ha    1/1 | O^       X        X        
- system/sec/ca   n/a     no        | /        /        /        
- system/sec/cert n/a     no        | /        /        /        
+Daemon                           node1       node2    node3    
+ uptime                        | 500d        500d     500d     
+ state                         | dns,speaker X        dns      
+ hb queue                      | 1           0        0        
+ hb rx                         | O           O        O!       
+ hb tx                         | O           O        O!       
+                                                               
+Nodes                            node1       node2    node3    
+ uptime                        | 500d        500d     500d     
+ score                         | 95          96       96       
+  load15m                      | 0.1         0.2      0.1      
+  mem                          | 27%1.94g    24%1.94g 26%1.94g 
+  swap                         | 2%1.92g     0%1.92g  1%1.92g  
+ state                         |                               
+                                                               
+Objects ~ *                      node1       node2    node3    
+ cluster         n/a           | /           /        /        
+ foo             up  ha    1/1 | O^          X        X        
+ system/sec/ca   n/a no        | /           /        /        
+ system/sec/cert n/a no        | /           /        /        

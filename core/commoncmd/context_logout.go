@@ -27,7 +27,7 @@ func NewCmdContextLogout() *cobra.Command {
 	var options CmdContextLogout
 	cmd := &cobra.Command{
 		Use:   "logout",
-		Short: "Clear cached authentication tokens",
+		Short: "clear cached authentication tokens",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return options.Run(cmd)
 		},

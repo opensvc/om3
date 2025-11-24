@@ -2,6 +2,9 @@ package monitor
 
 import (
 	"fmt"
+	"strconv"
+	"strings"
+	"time"
 
 	"github.com/golang-collections/collections/set"
 
@@ -11,49 +14,81 @@ import (
 )
 
 func (f Frame) sNodeScoreLine() string {
-	s := fmt.Sprintf(" %s\t\t\t%s\t", bold("score"), f.info.separator)
+	var sb strings.Builder
+	sb.WriteString(" ")
+	sb.WriteString(bold("score"))
+	sb.WriteString("\t\t\t")
+	sb.WriteString(f.info.separator)
+	sb.WriteString("\t")
 	for _, n := range f.Current.Cluster.Config.Nodes {
-		s += f.StrNodeScore(n) + "\t"
+		sb.WriteString(f.StrNodeScore(n))
+		sb.WriteString("\t")
 	}
-	return s
+	return sb.String()
 }
+
 func (f Frame) sNodeLoadLine() string {
-	s := fmt.Sprintf("  %s\t\t\t%s\t", bold("load15m"), f.info.separator)
+	var sb strings.Builder
+	sb.WriteString("  ")
+	sb.WriteString(bold("load15m"))
+	sb.WriteString("\t\t\t")
+	sb.WriteString(f.info.separator)
+	sb.WriteString("\t")
 	for _, n := range f.Current.Cluster.Config.Nodes {
-		s += f.StrNodeLoad(n) + "\t"
+		sb.WriteString(f.StrNodeLoad(n))
+		sb.WriteString("\t")
 	}
-	return s
+	return sb.String()
 }
 
 func (f Frame) sNodeMemLine() string {
-	s := fmt.Sprintf("  %s\t\t\t%s\t", bold("mem"), f.info.separator)
+	var sb strings.Builder
+	sb.WriteString("  ")
+	sb.WriteString(bold("mem"))
+	sb.WriteString("\t\t\t")
+	sb.WriteString(f.info.separator)
+	sb.WriteString("\t")
 	for _, n := range f.Current.Cluster.Config.Nodes {
-		s += f.StrNodeMem(n) + "\t"
+		sb.WriteString(f.StrNodeMem(n))
+		sb.WriteString("\t")
 	}
-	return s
+	return sb.String()
 }
 
 func (f Frame) sNodeSwapLine() string {
-	s := fmt.Sprintf("  %s\t\t\t%s\t", bold("swap"), f.info.separator)
+	var sb strings.Builder
+	sb.WriteString("  ")
+	sb.WriteString(bold("swap"))
+	sb.WriteString("\t\t\t")
+	sb.WriteString(f.info.separator)
+	sb.WriteString("\t")
 	for _, n := range f.Current.Cluster.Config.Nodes {
-		s += f.StrNodeSwap(n) + "\t"
+		sb.WriteString(f.StrNodeSwap(n))
+		sb.WriteString("\t")
 	}
-	return s
+	return sb.String()
 }
 
 func (f Frame) StrNodeStates(n string) string {
-	s := f.sNodeMonState(n)
-	s += f.sNodeFrozen(n)
-	s += f.sNodeMonTarget(n)
-	return s
+	var sb strings.Builder
+	sb.WriteString(f.sNodeMonState(n))
+	sb.WriteString(f.sNodeFrozen(n))
+	sb.WriteString(f.sNodeMonTarget(n))
+	return sb.String()
 }
 
 func (f Frame) sNodeWarningsLine() string {
-	s := fmt.Sprintf(" %s\t\t\t%s\t", bold("state"), f.info.separator)
+	var sb strings.Builder
+	sb.WriteString(" ")
+	sb.WriteString(bold("state"))
+	sb.WriteString("\t\t\t")
+	sb.WriteString(f.info.separator)
+	sb.WriteString("\t")
 	for _, n := range f.Current.Cluster.Config.Nodes {
-		s += f.StrNodeStates(n) + "\t"
+		sb.WriteString(f.StrNodeStates(n))
+		sb.WriteString("\t")
 	}
-	return s
+	return sb.String()
 }
 
 func (f Frame) sNodeVersionLine() string {
@@ -64,22 +99,38 @@ func (f Frame) sNodeVersionLine() string {
 	if versions.Len() == 1 {
 		return ""
 	}
-	s := fmt.Sprintf("  %s\t%s\t\t%s\t", bold("version"), yellow("warn"), f.info.separator)
+	var sb strings.Builder
+	sb.WriteString("  ")
+	sb.WriteString(bold("version"))
+	sb.WriteString("\t")
+	sb.WriteString(yellow("warn"))
+	sb.WriteString("\t\t")
+	sb.WriteString(f.info.separator)
+	sb.WriteString("\t")
 	for _, n := range f.Current.Cluster.Config.Nodes {
-		s += f.sNodeVersion(n) + "\t"
+		sb.WriteString(f.sNodeVersion(n))
+		sb.WriteString("\t")
 	}
-	return s + "\n"
+	return sb.String() + "\n"
 }
 
 func (f Frame) sNodeCompatLine() string {
 	if f.Current.Cluster.Status.IsCompat {
 		return ""
 	}
-	s := fmt.Sprintf("  %s\t%s\t\t%s\t", bold("compat"), yellow("warn"), f.info.separator)
+	var sb strings.Builder
+	sb.WriteString("  ")
+	sb.WriteString(bold("compat"))
+	sb.WriteString("\t")
+	sb.WriteString(yellow("warn"))
+	sb.WriteString("\t\t")
+	sb.WriteString(f.info.separator)
+	sb.WriteString("\t")
 	for _, n := range f.Current.Cluster.Config.Nodes {
-		s += f.sNodeCompat(n) + "\t"
+		sb.WriteString(f.sNodeCompat(n))
+		sb.WriteString("\t")
 	}
-	return s + "\n"
+	return sb.String() + "\n"
 }
 
 func (f Frame) StrNodeScore(n string) string {
@@ -107,16 +158,23 @@ func (f Frame) StrNodeMem(n string) string {
 		limit := 100 - val.Config.MinAvailMemPct
 		usage := 100 - val.Stats.MemAvailPct
 		total := sizeconv.BSizeCompactFromMB(val.Stats.MemTotalMB)
-		var s string
+		var sb strings.Builder
 		if val.Config.MinAvailMemPct > 0 {
-			s = fmt.Sprintf("%d%%%s<%d%%", usage, total, limit)
+			sb.WriteString(strconv.Itoa(usage))
+			sb.WriteString("%")
+			sb.WriteString(total)
+			sb.WriteString("<")
+			sb.WriteString(strconv.Itoa(limit))
+			sb.WriteString("%")
 		} else {
-			s = fmt.Sprintf("%d%%%s", usage, total)
+			sb.WriteString(strconv.Itoa(usage))
+			sb.WriteString("%")
+			sb.WriteString(total)
 		}
 		if usage > limit {
-			return hired(s)
+			return hired(sb.String())
 		}
-		return s
+		return sb.String()
 	}
 	return iconUndef
 }
@@ -132,16 +190,23 @@ func (f Frame) StrNodeSwap(n string) string {
 		limit := 100 - val.Config.MinAvailSwapPct
 		usage := 100 - val.Stats.SwapAvailPct
 		total := sizeconv.BSizeCompactFromMB(val.Stats.SwapTotalMB)
-		var s string
+		var sb strings.Builder
 		if val.Config.MinAvailSwapPct > 0 {
-			s = fmt.Sprintf("%d%%%s<%d%%", usage, total, limit)
+			sb.WriteString(strconv.Itoa(usage))
+			sb.WriteString("%")
+			sb.WriteString(total)
+			sb.WriteString("<")
+			sb.WriteString(strconv.Itoa(limit))
+			sb.WriteString("%")
 		} else {
-			s = fmt.Sprintf("%d%%%s", usage, total)
+			sb.WriteString(strconv.Itoa(usage))
+			sb.WriteString("%")
+			sb.WriteString(total)
 		}
 		if usage > limit {
-			return hired(s)
+			return hired(sb.String())
 		}
-		return s
+		return sb.String()
 	}
 	return iconUndef
 }
@@ -166,20 +231,20 @@ func (f Frame) sNodeFrozen(n string) string {
 
 func (f Frame) sNodeMonTarget(n string) string {
 	if val, ok := f.Current.Cluster.Node[n]; ok {
-		s := ""
+		var sb strings.Builder
 		switch val.Monitor.GlobalExpect {
 		case node.MonitorGlobalExpectNone:
 		case node.MonitorGlobalExpectInit:
 		default:
-			s += rawconfig.Colorize.Frozen(" >" + val.Monitor.GlobalExpect.String())
+			sb.WriteString(rawconfig.Colorize.Frozen(" >" + val.Monitor.GlobalExpect.String()))
 		}
 		switch val.Monitor.LocalExpect {
 		case node.MonitorLocalExpectNone:
 		case node.MonitorLocalExpectInit:
 		default:
-			s += rawconfig.Colorize.Frozen(" >" + val.Monitor.LocalExpect.String())
+			sb.WriteString(rawconfig.Colorize.Frozen(" >" + val.Monitor.LocalExpect.String()))
 		}
-		return s
+		return sb.String()
 	}
 	return ""
 }
@@ -204,11 +269,17 @@ func (f Frame) sNodeVersion(n string) string {
 }
 
 func (f Frame) sNodeHbMode() string {
-	s := fmt.Sprintf(" %s\t\t\t%s", bold("hb-q"), f.info.separator+"\t")
+	var sb strings.Builder
+	sb.WriteString(" ")
+	sb.WriteString(bold("hb-q"))
+	sb.WriteString("\t\t\t")
+	sb.WriteString(f.info.separator)
+	sb.WriteString("\t")
 	for _, peer := range f.Current.Cluster.Config.Nodes {
-		s += f.StrNodeHbMode(peer) + "\t"
+		sb.WriteString(f.StrNodeHbMode(peer))
+		sb.WriteString("\t")
 	}
-	return s
+	return sb.String()
 }
 
 func (f Frame) StrNodeHbMode(peer string) string {
@@ -238,17 +309,63 @@ func (f Frame) StrNodeHbMode(peer string) string {
 	return mode
 }
 
+func (f Frame) sNodeUptimeLine() string {
+	var sb strings.Builder
+	sb.WriteString(" ")
+	sb.WriteString(bold("uptime"))
+	sb.WriteString("\t\t\t")
+	sb.WriteString(f.info.separator)
+	sb.WriteString("\t")
+	for _, n := range f.Current.Cluster.Config.Nodes {
+		sb.WriteString(f.StrNodeUptime(n))
+		sb.WriteString("\t")
+	}
+	return sb.String()
+}
+
+func (f Frame) StrNodeUptime(n string) string {
+	if val, ok := f.Current.Cluster.Node[n]; ok {
+		bt := val.Status.BootedAt
+		if bt.IsZero() {
+			return yellow("-")
+		}
+		diffTime := now().Sub(val.Status.BootedAt)
+		return f.formatDuration(diffTime)
+	}
+	return iconUndef
+}
+
+func (f Frame) formatDuration(t time.Duration) string {
+	var sb strings.Builder
+	day := 24 * time.Hour
+	if t < time.Hour {
+		if t >= time.Minute {
+			sb.WriteString(strconv.Itoa(int(t.Minutes())))
+			sb.WriteString("m")
+		}
+		sb.WriteString(strconv.Itoa(int(t.Seconds()) % 60))
+		return sb.String()
+	}
+	if t >= day {
+		sb.WriteString(strconv.Itoa(int(t.Hours()) / 24))
+		sb.WriteString("d")
+	}
+	if t < 10*day {
+		sb.WriteString(strconv.Itoa(int(t.Hours()) % 24))
+		sb.WriteString("h")
+	}
+	return sb.String()
+}
+
 func (f Frame) wNodes() {
 	fmt.Fprintln(f.w, f.title("Nodes"))
+	fmt.Fprintln(f.w, f.sNodeUptimeLine())
 	fmt.Fprintln(f.w, f.sNodeScoreLine())
 	fmt.Fprintln(f.w, f.sNodeLoadLine())
 	fmt.Fprintln(f.w, f.sNodeMemLine())
 	fmt.Fprintln(f.w, f.sNodeSwapLine())
 	fmt.Fprint(f.w, f.sNodeVersionLine())
 	fmt.Fprint(f.w, f.sNodeCompatLine())
-	if len(f.Current.Cluster.Config.Nodes) > 1 {
-		fmt.Fprintln(f.w, f.sNodeHbMode())
-	}
 	fmt.Fprintln(f.w, f.sNodeWarningsLine())
 	fmt.Fprintln(f.w, f.info.empty)
 }

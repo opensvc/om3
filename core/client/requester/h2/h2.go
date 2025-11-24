@@ -294,7 +294,7 @@ func (t *RefreshTransport) authenticateWithCredentials(ctx context.Context, base
 
 func (t *RefreshTransport) refreshAccessToken(ctx context.Context, base http.RoundTripper) (string, error) {
 	refreshURL := strings.TrimRight(t.baseURL, "/") + "/api/auth/refresh"
-	if t.tokens.AccessTokenDuration.Positive() {
+	if t.tokens.AccessTokenDuration != nil && t.tokens.AccessTokenDuration.Positive() {
 		refreshURL += "?access_duration=" + t.tokens.AccessTokenDuration.String()
 	}
 	refreshReq, err := http.NewRequestWithContext(ctx, http.MethodPost, refreshURL, nil)

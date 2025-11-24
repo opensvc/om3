@@ -419,7 +419,8 @@
                     "min_avail_mem": 0,
                     "min_avail_swap": 0,
                     "is_leader": true,
-                    "labels": {}
+                    "labels": {},
+                    "booted_at": "2024-07-08T19:10:05.382713008+02:00"
                 },
                 "os": {
                     "paths": [
@@ -889,7 +890,8 @@
                     "min_avail_mem": 0,
                     "min_avail_swap": 0,
                     "is_leader": false,
-                    "labels": {}
+                    "labels": {},
+                    "booted_at": "2024-07-08T19:10:05.382713008+02:00"
                 },
                 "os": {
                     "paths": [
@@ -1359,7 +1361,8 @@
                     "min_avail_mem": 0,
                     "min_avail_swap": 0,
                     "is_leader": false,
-                    "labels": {}
+                    "labels": {},
+                  "booted_at": "2024-07-08T19:10:05.382713008+02:00"
                 },
                 "os": {
                     "paths": [

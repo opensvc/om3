@@ -3,6 +3,7 @@ package monitor
 import (
 	"fmt"
 	"sort"
+	"strings"
 
 	"github.com/opensvc/om3/core/status"
 )
@@ -11,8 +12,13 @@ func (f Frame) wArbitrators() {
 	if len(f.info.arbitrators) == 0 {
 		return
 	}
-	s := fmt.Sprintf("%s\t\t\t%s", bold("arbitrators"), f.info.separator+"\t")
-	s += f.info.emptyNodes + "\n"
+	var sb strings.Builder
+	sb.WriteString(bold("arbitrators"))
+	sb.WriteString("\t\t\t")
+	sb.WriteString(f.info.separator)
+	sb.WriteString("\t")
+	sb.WriteString(f.info.emptyNodes)
+	sb.WriteString("\n")
 	arbitrators := make([]string, 0)
 	for name := range f.info.arbitrators {
 		arbitrators = append(arbitrators, name)
@@ -21,13 +27,17 @@ func (f Frame) wArbitrators() {
 	for _, name := range arbitrators {
 		for i, node := range f.Current.Cluster.Config.Nodes {
 			if i == 0 {
-				s += bold(" "+name) + "\t\t\t" + f.info.separator + "\t"
+				sb.WriteString(bold(name))
+				sb.WriteString("\t\t\t")
+				sb.WriteString(f.info.separator)
+				sb.WriteString("\t")
 			}
-			s += f.StrNodeArbitratorStatus(name, node) + "\t"
+			sb.WriteString(f.StrNodeArbitratorStatus(name, node))
+			sb.WriteString("\t")
 		}
-		s += "\n"
+		sb.WriteString("\n")
 	}
-	_, _ = fmt.Fprint(f.w, s)
+	_, _ = fmt.Fprint(f.w, sb.String())
 	_, _ = fmt.Fprintln(f.w, f.info.empty)
 }
 
