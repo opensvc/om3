@@ -121,6 +121,8 @@ func (t *CmdContextLogin) Run(cmd *cobra.Command) error {
 		return fmt.Errorf("empty password")
 	}
 
+	os.Setenv("OSVC_CONTEXT", t.Context)
+
 	cfg, err := clientcontext.Load()
 	if err != nil {
 		return err

@@ -200,7 +200,9 @@ func New() (T, error) {
 			return c, fmt.Errorf("%w: user not defined: %s", Err, cr.ClusterRefName)
 		}
 	}
-	c.Namespace = *cr.Namespace
+	if cr.Namespace != nil {
+		c.Namespace = *cr.Namespace
+	}
 	if c.User.Name == nil || *c.User.Name == "" {
 		// If the user name is not specified, use the map key
 		c.User.Name = &cr.UserRefName
