@@ -224,14 +224,20 @@ func (t *TokenInfo) Unstructured() map[string]any {
 }
 
 func (c config) Save() error {
-	filename, _ := homedir.Expand(ConfigFilename + ".json")
+	tempFilename, _ := homedir.Expand(ConfigFilename + ".tmp")
 	b, err := json.MarshalIndent(c, "", "  ")
 	if err != nil {
 		return err
 	}
-	if err := os.WriteFile(filename, b, 0o600); err != nil {
+	if err := os.WriteFile(tempFilename, b, 0o600); err != nil {
 		return err
 	}
+
+	filename, _ := homedir.Expand(ConfigFilename + ".json")
+	if err := os.Rename(tempFilename, filename); err != nil {
+		return err
+	}
+
 	return nil
 }
 
