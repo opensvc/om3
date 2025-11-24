@@ -31,7 +31,7 @@ func (f Frame) wArbitrators() {
 		}
 		sb.WriteString("\n")
 	}
-	_, _ = fmt.Fprint(f.w, s)
+	_, _ = fmt.Fprint(f.w, sb.String())
 	_, _ = fmt.Fprintln(f.w, f.info.empty)
 }
 
