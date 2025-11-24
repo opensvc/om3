@@ -30,7 +30,7 @@ func (t *CmdContextList) Run() error {
 	for name, _ := range config.Contexts {
 		tok, err := tokencache.Load(name)
 		if err != nil {
-			return tokencache.ReconnectError(err, name)
+			tok = nil
 		}
 
 		info := clientcontext.TokenInfo{
