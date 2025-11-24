@@ -953,6 +953,7 @@ func (t *T) updateExposedSchedules(path naming.Path) {
 }
 
 func (t *T) unschedule(path naming.Path) {
+	t.reqSatisfied.UnsetPath(path)
 	t.schedules.DelByPath(path)
 	t.jobs.DelPath(path)
 }
