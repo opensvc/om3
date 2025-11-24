@@ -1,11 +1,13 @@
 package ox
 
-import "github.com/opensvc/om3/core/commoncmd"
+import (
+	"github.com/opensvc/om3/core/commoncmd"
+)
 
 func init() {
-	cmdCtx := commoncmd.NewCmdContext()
-	cmdCtxCluster := commoncmd.NewCmdContextCluster()
-	cmdCtxUser := commoncmd.NewCmdContextUser()
+	cmdCtx := NewCmdContext()
+	cmdCtxCluster := NewCmdContextCluster()
+	cmdCtxUser := NewCmdContextUser()
 
 	root.AddCommand(
 		cmdCtx,
@@ -16,28 +18,28 @@ func init() {
 	)
 
 	cmdCtxCluster.AddCommand(
-		commoncmd.NewCmdContextClusterAdd(),
-		commoncmd.NewCmdContextClusterChange(),
-		commoncmd.NewCmdContextClusterRemove(),
+		NewCmdContextClusterAdd(),
+		NewCmdContextClusterChange(),
+		NewCmdContextClusterRemove(),
 	)
 
 	cmdCtxUser.AddCommand(
-		commoncmd.NewCmdContextUserAdd(),
-		commoncmd.NewCmdContextUserChange(),
-		commoncmd.NewCmdContextUserRemove(),
+		NewCmdContextUserAdd(),
+		NewCmdContextUserChange(),
+		NewCmdContextUserRemove(),
 	)
 
 	cmdCtx.AddCommand(
 		cmdCtxCluster,
 		cmdCtxUser,
-		commoncmd.NewCmdContextLogin(),
-		commoncmd.NewCmdContextLogout(),
-		commoncmd.NewCmdContextList(),
-		commoncmd.NewCmdContextShow(),
-		commoncmd.NewCmdContextEdit(),
+		NewCmdContextLogin(),
+		NewCmdContextLogout(),
+		NewCmdContextList(),
+		NewCmdContextShow(),
+		NewCmdContextEdit(),
 
-		commoncmd.NewCmdContextAdd(),
-		commoncmd.NewCmdContextChange(),
-		commoncmd.NewCmdContextRemove(),
+		NewCmdContextAdd(),
+		NewCmdContextChange(),
+		NewCmdContextRemove(),
 	)
 }

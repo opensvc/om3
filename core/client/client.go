@@ -283,7 +283,7 @@ func (t *T) loadContext() error {
 
 		if t.bearer == "" {
 			tok, err := tokencache.Load(env.Context())
-			if err != nil {
+			if err != nil && (t.username == "" || t.password == "") {
 				return tokencache.ReconnectError(err, env.Context())
 			}
 			if tok != nil && tok.AccessToken != "" {

@@ -1,9 +1,7 @@
-package commoncmd
+package oxcmd
 
 import (
 	"time"
-
-	"github.com/spf13/cobra"
 
 	"github.com/opensvc/om3/core/clientcontext"
 	"github.com/opensvc/om3/util/duration"
@@ -19,32 +17,6 @@ type (
 		RefreshTokenDuration time.Duration
 	}
 )
-
-func NewCmdContextAdd() *cobra.Command {
-	var options ContextAddCmd
-
-	cmd := &cobra.Command{
-		Use:   "add",
-		Short: "add a context",
-		RunE: func(cmd *cobra.Command, args []string) error {
-			return options.Run()
-		},
-	}
-
-	flags := cmd.Flags()
-	flags.StringVar(&options.Name, "name", "", "Context name")
-	flags.StringVar(&options.User, "user", "", "User name")
-	flags.StringVar(&options.Cluster, "cluster", "", "Cluster name")
-	flags.StringVar(&options.Namespace, "namespace", "", "Namespace")
-	flags.DurationVar(&options.AccessTokenDuration, "access-token-duration", 0, "Access token duration")
-	flags.DurationVar(&options.RefreshTokenDuration, "refresh-token-duration", 0, "Refresh token duration")
-
-	_ = cmd.MarkFlagRequired("name")
-	_ = cmd.MarkFlagRequired("user")
-	_ = cmd.MarkFlagRequired("cluster")
-
-	return cmd
-}
 
 func (t *ContextAddCmd) Run() error {
 

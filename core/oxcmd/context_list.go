@@ -1,14 +1,13 @@
-package commoncmd
+package oxcmd
 
 import (
 	"cmp"
 	"slices"
 	"time"
 
-	"github.com/spf13/cobra"
-
 	"github.com/opensvc/om3/core/client/tokencache"
 	"github.com/opensvc/om3/core/clientcontext"
+	"github.com/opensvc/om3/core/commoncmd"
 	"github.com/opensvc/om3/core/output"
 	"github.com/opensvc/om3/core/rawconfig"
 	"github.com/opensvc/om3/util/unstructured"
@@ -16,25 +15,9 @@ import (
 
 type (
 	CmdContextList struct {
-		OptsGlobal
+		commoncmd.OptsGlobal
 	}
 )
-
-func NewCmdContextList() *cobra.Command {
-	var options CmdContextList
-	cmd := &cobra.Command{
-		Use:   "list",
-		Short: "list configured contexts",
-		RunE: func(cmd *cobra.Command, args []string) error {
-			return options.Run()
-		},
-	}
-	flags := cmd.Flags()
-	FlagColor(flags, &options.Color)
-	FlagOutput(flags, &options.Output)
-
-	return cmd
-}
 
 func (t *CmdContextList) Run() error {
 	cols := "NAME:name,AUTHENTICATED:authenticated,ACCESS_EXPIRE:access_expired_at,REFRESH_EXPIRE:refresh_expired_at,AUTHENTICATED_AT:authenticated_at"
@@ -47,7 +30,7 @@ func (t *CmdContextList) Run() error {
 	for name, _ := range config.Contexts {
 		tok, err := tokencache.Load(name)
 		if err != nil {
-			return tokencache.ReconnectError(err, name)
+			tok = nil
 		}
 
 		info := clientcontext.TokenInfo{

@@ -1,4 +1,4 @@
-package commoncmd
+package oxcmd
 
 import (
 	"bufio"
@@ -22,21 +22,6 @@ type (
 		All     bool
 	}
 )
-
-func NewCmdContextLogout() *cobra.Command {
-	var options CmdContextLogout
-	cmd := &cobra.Command{
-		Use:   "logout",
-		Short: "clear cached authentication tokens",
-		RunE: func(cmd *cobra.Command, args []string) error {
-			return options.Run(cmd)
-		},
-	}
-	flags := cmd.Flags()
-	flags.StringVar(&options.Context, "context", "", "The context to use to logout")
-	flags.BoolVar(&options.All, "all", false, "Logout from all contexts")
-	return cmd
-}
 
 func (t *CmdContextLogout) Run(cmd *cobra.Command) error {
 
