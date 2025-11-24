@@ -26,7 +26,7 @@ func NewCmdContextChange() *cobra.Command {
 
 	cmd := &cobra.Command{
 		Use:   "change",
-		Short: "change an existing context",
+		Short: "change a context",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return options.Run()
 		},

@@ -11,16 +11,8 @@ func init() {
 		cmdCtx,
 	)
 
-	cmdCtxCluster.AddCommand(
-		commoncmd.NewCmdContextClusterAdd(),
-		commoncmd.NewCmdContextClusterChange(),
-		commoncmd.NewCmdContextClusterRemove(),
-	)
-
-	cmdCtxUser.AddCommand(
-		commoncmd.NewCmdContextUserAdd(),
-		commoncmd.NewCmdContextUserChange(),
-		commoncmd.NewCmdContextUserRemove(),
+	cmdCtx.AddGroup(
+		commoncmd.NewGroupSubsystems(),
 	)
 
 	cmdCtx.AddCommand(
@@ -35,5 +27,17 @@ func init() {
 		commoncmd.NewCmdContextAdd(),
 		commoncmd.NewCmdContextChange(),
 		commoncmd.NewCmdContextRemove(),
+	)
+
+	cmdCtxCluster.AddCommand(
+		commoncmd.NewCmdContextClusterAdd(),
+		commoncmd.NewCmdContextClusterChange(),
+		commoncmd.NewCmdContextClusterRemove(),
+	)
+
+	cmdCtxUser.AddCommand(
+		commoncmd.NewCmdContextUserAdd(),
+		commoncmd.NewCmdContextUserChange(),
+		commoncmd.NewCmdContextUserRemove(),
 	)
 }

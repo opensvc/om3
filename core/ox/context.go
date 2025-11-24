@@ -11,6 +11,10 @@ func init() {
 		cmdCtx,
 	)
 
+	cmdCtx.AddGroup(
+		commoncmd.NewGroupSubsystems(),
+	)
+
 	cmdCtxCluster.AddCommand(
 		commoncmd.NewCmdContextClusterAdd(),
 		commoncmd.NewCmdContextClusterChange(),
