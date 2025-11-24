@@ -12,7 +12,6 @@ import (
 func bootTime() (uint64, error) {
 	file, err := os.Open("/proc/stat")
 	if err != nil {
-		fmt.Println("a")
 		return 0, err
 	}
 	defer file.Close()
