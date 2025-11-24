@@ -270,6 +270,10 @@ func (f Frame) sNodeUptimeLine() string {
 
 func (f Frame) StrNodeUptime(n string) string {
 	if val, ok := f.Current.Cluster.Node[n]; ok {
+		bt := val.Status.BootedAt
+		if bt.IsZero() {
+			return yellow("-")
+		}
 		diffTime := now().Sub(val.Status.BootedAt)
 		return f.formatDuration(diffTime)
 	}

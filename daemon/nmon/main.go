@@ -51,6 +51,7 @@ import (
 	"github.com/opensvc/om3/daemon/daemonsubsystem"
 	"github.com/opensvc/om3/daemon/msgbus"
 	"github.com/opensvc/om3/util/bootid"
+	"github.com/opensvc/om3/util/btime"
 	"github.com/opensvc/om3/util/file"
 	"github.com/opensvc/om3/util/hostname"
 	"github.com/opensvc/om3/util/key"
@@ -164,7 +165,7 @@ var (
 
 func NewManager(drainDuration time.Duration, subQS pubsub.QueueSizer) *Manager {
 	localhost := hostname.Hostname()
-	return &Manager{
+	m := &Manager{
 		drainDuration: drainDuration,
 		state: node.Monitor{
 			LocalExpect:  node.MonitorLocalExpectNone,
@@ -185,7 +186,6 @@ func NewManager(drainDuration time.Duration, subQS pubsub.QueueSizer) *Manager {
 		nodeStatus: node.Status{
 			Agent:    version.Version(),
 			FrozenAt: time.Now(), // ensure initial frozen
-			BootedAt: time.Now(),
 		},
 		frozen:    true, // ensure initial frozen
 		livePeers: map[string]bool{localhost: true},
@@ -197,6 +197,12 @@ func NewManager(drainDuration time.Duration, subQS pubsub.QueueSizer) *Manager {
 
 		hbSecretChecksumByNodename: make(map[string]string),
 	}
+	bt, err := btime.GetBootTime()
+	if err != nil {
+		m.log.Warnf("get boot time: %s", err)
+	}
+	m.nodeStatus.BootedAt = bt
+	return m
 }
 
 // Start launches the nmon worker goroutine
