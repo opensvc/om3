@@ -3330,3 +3330,317 @@ func newCmdObjectGen(kind string) *cobra.Command {
 		Use:    "gen",
 	}
 }
+
+func NewCmdContext() *cobra.Command {
+	return &cobra.Command{
+		Use: "context",
+		Long: `A context groups the namespace, authentication and endpoint metadata needed to connect and manage a remote cluster.
+
+Once configured, you can login and logout from this context.`,
+		Short:   "manage client contexts",
+		Aliases: []string{"ctx"},
+	}
+}
+
+func NewCmdContextCluster() *cobra.Command {
+	return &cobra.Command{
+		GroupID: commoncmd.GroupIDSubsystems,
+		Use:     "cluster",
+		Long:    "A cluster is a reusable profile to store communication metadata, preventing property duplication across contexts.",
+		Short:   "manage context cluster endpoints",
+	}
+}
+
+func NewCmdContextUser() *cobra.Command {
+	return &cobra.Command{
+		GroupID: commoncmd.GroupIDSubsystems,
+		Use:     "user",
+		Long:    "A user is a reusable profile to store authentication metadata, preventing property duplication across contexts.\nUses the --name as the default login name when the optional --username property is omitted.",
+		Short:   "manage context user authentication",
+	}
+}
+
+func NewCmdContextAdd() *cobra.Command {
+	var options commands.ContextAddCmd
+
+	cmd := &cobra.Command{
+		Use:   "add",
+		Short: "add a context",
+		RunE: func(cmd *cobra.Command, args []string) error {
+			return options.Run()
+		},
+	}
+
+	flags := cmd.Flags()
+	flags.StringVar(&options.Name, "name", "", "Context name")
+	flags.StringVar(&options.User, "user", "", "User name")
+	flags.StringVar(&options.Cluster, "cluster", "", "Cluster name")
+	flags.StringVar(&options.Namespace, "namespace", "", "Namespace")
+	flags.DurationVar(&options.AccessTokenDuration, "access-token-duration", 0, "Access token duration")
+	flags.DurationVar(&options.RefreshTokenDuration, "refresh-token-duration", 0, "Refresh token duration")
+
+	_ = cmd.MarkFlagRequired("name")
+	_ = cmd.MarkFlagRequired("user")
+	_ = cmd.MarkFlagRequired("cluster")
+
+	return cmd
+}
+
+func NewCmdContextChange() *cobra.Command {
+	var options commands.ContextChangeCmd
+
+	cmd := &cobra.Command{
+		Use:   "change",
+		Short: "change a context",
+		RunE: func(cmd *cobra.Command, args []string) error {
+			return options.Run()
+		},
+	}
+
+	flags := cmd.Flags()
+	flags.StringVar(&options.Name, "name", "", "Context name")
+	flags.StringVar(&options.User, "user", "", "User name")
+	flags.StringVar(&options.Cluster, "cluster", "", "Cluster name")
+	flags.StringVar(&options.Namespace, "namespace", "", "Namespace")
+	flags.DurationVar(&options.AccessTokenDuration, "access-token-duration", 0, "Access token duration")
+	flags.DurationVar(&options.RefreshTokenDuration, "refresh-token-duration", 0, "Refresh token duration")
+
+	_ = cmd.MarkFlagRequired("name")
+	_ = cmd.MarkFlagRequired("user")
+	_ = cmd.MarkFlagRequired("cluster")
+
+	return cmd
+}
+
+func NewCmdContextRemove() *cobra.Command {
+	var options commands.ContextRemoveCmd
+
+	cmd := &cobra.Command{
+		Use:     "remove",
+		Aliases: []string{"rm"},
+		Short:   "remove a context",
+		RunE: func(cmd *cobra.Command, args []string) error {
+			return options.Run()
+		},
+	}
+
+	flags := cmd.Flags()
+	flags.StringVar(&options.Name, "name", "", "Context name")
+
+	_ = cmd.MarkFlagRequired("name")
+
+	return cmd
+}
+
+func NewCmdContextClusterAdd() *cobra.Command {
+	var options commands.ContextClusterAddCmd
+
+	cmd := &cobra.Command{
+		Use:   "add",
+		Short: "add a cluster context endpoint",
+		RunE: func(cmd *cobra.Command, args []string) error {
+			return options.Run()
+		},
+	}
+
+	flags := cmd.Flags()
+	flags.StringVar(&options.Name, "name", "", "Cluster name")
+	flags.StringVar(&options.Server, "server", "", "Cluster server address")
+	flags.BoolVar(&options.Insecure, "insecure", false, "Skip TLS certificate verification")
+	flags.StringVar(&options.CertificateAuthority, "certificate-authority", "", "Path to the certificate authority file")
+
+	_ = cmd.MarkFlagRequired("name")
+	_ = cmd.MarkFlagRequired("server")
+
+	return cmd
+}
+
+func NewCmdContextClusterChange() *cobra.Command {
+	var options commands.ContextClusterChangeCmd
+
+	cmd := &cobra.Command{
+		Use:   "change",
+		Short: "change a cluster context endpoint",
+		RunE: func(cmd *cobra.Command, args []string) error {
+			return options.Run()
+		},
+	}
+
+	flags := cmd.Flags()
+	flags.StringVar(&options.Name, "name", "", "Cluster name")
+	flags.StringVar(&options.Server, "server", "", "Cluster server address")
+	flags.BoolVar(&options.Insecure, "insecure", false, "Skip TLS certificate verification")
+	flags.StringVar(&options.CertificateAuthority, "certificate-authority", "", "Path to the certificate authority file")
+
+	_ = cmd.MarkFlagRequired("name")
+	_ = cmd.MarkFlagRequired("server")
+
+	return cmd
+}
+
+func NewCmdContextClusterRemove() *cobra.Command {
+	var options commands.ContextClusterRemoveCmd
+
+	cmd := &cobra.Command{
+		Use:     "remove",
+		Aliases: []string{"rm"},
+		Short:   "remove a cluster context endpoint",
+		RunE: func(cmd *cobra.Command, args []string) error {
+			return options.Run()
+		},
+	}
+
+	flags := cmd.Flags()
+	flags.StringVar(&options.Name, "name", "", "Cluster name")
+	flags.BoolVar(&options.Force, "force", false, "Force removal even if the cluster is used in a context")
+
+	_ = cmd.MarkFlagRequired("name")
+
+	return cmd
+}
+
+func NewCmdContextUserAdd() *cobra.Command {
+	var options commands.ContextUserAddCmd
+
+	cmd := &cobra.Command{
+		Use:   "add",
+		Short: "add a context user",
+		RunE: func(cmd *cobra.Command, args []string) error {
+			return options.Run()
+		},
+	}
+
+	flags := cmd.Flags()
+
+	flags.StringVar(&options.Name, "name", "", "Name of the user element")
+	flags.StringVar(&options.Username, "username", "", "Username associated with the user")
+	flags.StringVar(&options.ClientKey, "client-key", "", "Path to the client key file")
+	flags.StringVar(&options.ClientCertificate, "client-certificate", "", "Path to the client certificate file")
+
+	_ = cmd.MarkFlagRequired("name")
+
+	return cmd
+}
+
+func NewCmdContextUserChange() *cobra.Command {
+	var options commands.ContextUserChangeCmd
+
+	cmd := &cobra.Command{
+		Use:   "change",
+		Short: "change a context user",
+		RunE: func(cmd *cobra.Command, args []string) error {
+			return options.Run()
+		},
+	}
+
+	flags := cmd.Flags()
+
+	flags.StringVar(&options.Name, "name", "", "Name of the user element")
+	flags.StringVar(&options.Username, "username", "", "Username associated with the user")
+	flags.StringVar(&options.ClientKey, "client-key", "", "Path to the client key file")
+	flags.StringVar(&options.ClientCertificate, "client-certificate", "", "Path to the client certificate file")
+
+	_ = cmd.MarkFlagRequired("name")
+
+	return cmd
+}
+
+func NewCmdContextUserRemove() *cobra.Command {
+	var options commands.ContextUserRemoveCmd
+
+	cmd := &cobra.Command{
+		Use:     "remove",
+		Aliases: []string{"rm"},
+		Short:   "remove a context user",
+		RunE: func(cmd *cobra.Command, args []string) error {
+			return options.Run()
+		},
+	}
+
+	flags := cmd.Flags()
+	flags.StringVar(&options.Name, "name", "", "User name")
+	flags.BoolVar(&options.Force, "force", false, "Force removal even if the user is used in a context")
+
+	_ = cmd.MarkFlagRequired("name")
+
+	return cmd
+}
+
+func NewCmdContextEdit() *cobra.Command {
+	var options commands.CmdContextEdit
+
+	cmd := &cobra.Command{
+		Use:   "edit",
+		Short: "edit a context",
+		RunE: func(cmd *cobra.Command, args []string) error {
+			return options.Run()
+		},
+	}
+	flags := cmd.Flags()
+
+	commoncmd.FlagDiscard(flags, &options.Discard)
+	commoncmd.FlagRecover(flags, &options.Recover)
+	return cmd
+}
+
+func NewCmdContextList() *cobra.Command {
+	var options commands.CmdContextList
+	cmd := &cobra.Command{
+		Use:   "list",
+		Short: "list configured contexts",
+		RunE: func(cmd *cobra.Command, args []string) error {
+			return options.Run()
+		},
+	}
+	flags := cmd.Flags()
+	commoncmd.FlagColor(flags, &options.Color)
+	commoncmd.FlagOutput(flags, &options.Output)
+
+	return cmd
+}
+
+func NewCmdContextLogin() *cobra.Command {
+	var options commands.CmdContextLogin
+	cmd := &cobra.Command{
+		Use:   "login",
+		Short: "request and cache authentication tokens",
+		RunE: func(cmd *cobra.Command, args []string) error {
+			return options.Run(cmd)
+		},
+	}
+	flags := cmd.Flags()
+	flags.StringVar(&options.Context, "context", "", "The context to use to login")
+	flags.DurationVar(&options.RefreshDuration, "refresh-duration", 0, "refresh_token duration.")
+	flags.DurationVar(&options.AccessDuration, "duration", 0, "access_token duration.")
+
+	return cmd
+}
+
+func NewCmdContextLogout() *cobra.Command {
+	var options commands.CmdContextLogout
+	cmd := &cobra.Command{
+		Use:   "logout",
+		Short: "clear cached authentication tokens",
+		RunE: func(cmd *cobra.Command, args []string) error {
+			return options.Run(cmd)
+		},
+	}
+	flags := cmd.Flags()
+	flags.StringVar(&options.Context, "context", "", "The context to use to logout")
+	flags.BoolVar(&options.All, "all", false, "Logout from all contexts")
+	return cmd
+}
+
+func NewCmdContextShow() *cobra.Command {
+	var options commands.CmdContextShow
+
+	cmd := &cobra.Command{
+		Use:   "show",
+		Short: "show the context configuration",
+		RunE: func(cmd *cobra.Command, args []string) error {
+			return options.Run()
+		},
+	}
+
+	return cmd
+}

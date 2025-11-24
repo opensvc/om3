@@ -1,4 +1,4 @@
-package commoncmd
+package oxcmd
 
 import (
 	"bufio"
@@ -30,23 +30,6 @@ type (
 		RefreshDuration time.Duration
 	}
 )
-
-func NewCmdContextLogin() *cobra.Command {
-	var options CmdContextLogin
-	cmd := &cobra.Command{
-		Use:   "login",
-		Short: "request and cache authentication tokens",
-		RunE: func(cmd *cobra.Command, args []string) error {
-			return options.Run(cmd)
-		},
-	}
-	flags := cmd.Flags()
-	flags.StringVar(&options.Context, "context", "", "The context to use to login")
-	flags.DurationVar(&options.RefreshDuration, "refresh-duration", 0, "refresh_token duration.")
-	flags.DurationVar(&options.AccessDuration, "duration", 0, "access_token duration.")
-
-	return cmd
-}
 
 func (t *CmdContextLogin) Run(cmd *cobra.Command) error {
 	config, err := clientcontext.Load()

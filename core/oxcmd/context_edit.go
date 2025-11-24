@@ -1,4 +1,4 @@
-package commoncmd
+package oxcmd
 
 import (
 	"encoding/json"
@@ -6,7 +6,6 @@ import (
 	"os"
 
 	"github.com/mitchellh/go-homedir"
-	"github.com/spf13/cobra"
 
 	"github.com/opensvc/om3/core/clientcontext"
 	"github.com/opensvc/om3/util/file"
@@ -18,23 +17,6 @@ type (
 		Recover bool
 	}
 )
-
-func NewCmdContextEdit() *cobra.Command {
-	var options CmdContextEdit
-
-	cmd := &cobra.Command{
-		Use:   "edit",
-		Short: "edit a context",
-		RunE: func(cmd *cobra.Command, args []string) error {
-			return options.Run()
-		},
-	}
-	flags := cmd.Flags()
-
-	FlagDiscard(flags, &options.Discard)
-	FlagRecover(flags, &options.Recover)
-	return cmd
-}
 
 func (t *CmdContextEdit) Run() error {
 

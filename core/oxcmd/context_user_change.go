@@ -1,9 +1,7 @@
-package commoncmd
+package oxcmd
 
 import (
 	"fmt"
-
-	"github.com/spf13/cobra"
 
 	"github.com/opensvc/om3/core/clientcontext"
 )
@@ -16,29 +14,6 @@ type (
 		ClientCertificate string
 	}
 )
-
-func NewCmdContextUserChange() *cobra.Command {
-	var options ContextUserChangeCmd
-
-	cmd := &cobra.Command{
-		Use:   "change",
-		Short: "change a context user",
-		RunE: func(cmd *cobra.Command, args []string) error {
-			return options.Run()
-		},
-	}
-
-	flags := cmd.Flags()
-
-	flags.StringVar(&options.Name, "name", "", "Name of the user element")
-	flags.StringVar(&options.Username, "username", "", "Username associated with the user")
-	flags.StringVar(&options.ClientKey, "client-key", "", "Path to the client key file")
-	flags.StringVar(&options.ClientCertificate, "client-certificate", "", "Path to the client certificate file")
-
-	_ = cmd.MarkFlagRequired("name")
-
-	return cmd
-}
 
 func (t *ContextUserChangeCmd) Run() error {
 	configs, err := clientcontext.Load()
