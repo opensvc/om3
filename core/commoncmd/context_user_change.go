@@ -22,7 +22,7 @@ func NewCmdContextUserChange() *cobra.Command {
 
 	cmd := &cobra.Command{
 		Use:   "change",
-		Short: "Change a user in the context",
+		Short: "change a context user",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return options.Run()
 		},

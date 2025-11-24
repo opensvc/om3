@@ -22,7 +22,7 @@ func NewCmdContextClusterChange() *cobra.Command {
 
 	cmd := &cobra.Command{
 		Use:   "change",
-		Short: "Change an existing cluster context endpoint",
+		Short: "change a cluster context endpoint",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return options.Run()
 		},

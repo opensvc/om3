@@ -35,7 +35,7 @@ func NewCmdContextLogin() *cobra.Command {
 	var options CmdContextLogin
 	cmd := &cobra.Command{
 		Use:   "login",
-		Short: "Request and cache authentication tokens",
+		Short: "request and cache authentication tokens",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return options.Run(cmd)
 		},
@@ -128,11 +128,10 @@ func (t *CmdContextLogin) Run(cmd *cobra.Command) error {
 		return err
 	}
 
-	if _, ok := cfg.Contexts[t.Context]; !ok {
+	clientc, ok := cfg.Contexts[t.Context]
+	if !ok {
 		return fmt.Errorf("context %s not found in config", t.Context)
 	}
-
-	clientc := cfg.Contexts[t.Context]
 
 	userName := clientc.UserRefName
 	if usr, ok := cfg.Users[clientc.UserRefName]; ok && usr.Name != nil && *usr.Name != "" {

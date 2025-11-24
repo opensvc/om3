@@ -21,7 +21,7 @@ func NewCmdContextClusterRemove() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:     "remove",
 		Aliases: []string{"rm"},
-		Short:   "Remove a cluster context endpoint",
+		Short:   "remove a cluster context endpoint",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return options.Run()
 		},
@@ -41,7 +41,7 @@ func (t *ContextClusterRemoveCmd) Run() error {
 	if err != nil {
 		return err
 	}
-	if used := cfg.ClusterUsed(t.Name); used && !t.Force {
+	if !t.Force && cfg.ClusterUsed(t.Name) {
 		return fmt.Errorf("cluster %s is used in one or more contexts, use --force to remove it anyway", t.Name)
 	}
 	err = cfg.RemoveCluster(t.Name)

@@ -18,7 +18,7 @@ func NewCmdContextRemove() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:     "remove",
 		Aliases: []string{"rm"},
-		Short:   "Remove an existing context",
+		Short:   "remove an existing context",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return options.Run()
 		},

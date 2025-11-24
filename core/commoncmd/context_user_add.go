@@ -20,7 +20,7 @@ func NewCmdContextUserAdd() *cobra.Command {
 
 	cmd := &cobra.Command{
 		Use:   "add",
-		Short: "Add a user to the context",
+		Short: "add a context user",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return options.Run()
 		},

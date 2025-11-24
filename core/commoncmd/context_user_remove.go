@@ -21,7 +21,7 @@ func NewCmdContextUserRemove() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:     "remove",
 		Aliases: []string{"rm"},
-		Short:   "Remove a user from a context",
+		Short:   "remove a context user",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return options.Run()
 		},
@@ -42,7 +42,7 @@ func (t *ContextUserRemoveCmd) Run() error {
 		return err
 	}
 
-	if used := cfg.UserUsed(t.Name); used && !t.Force {
+	if !t.Force && cfg.UserUsed(t.Name) {
 		return fmt.Errorf("user %s is used in one or more contexts, use --force to remove it anyway", t.Name)
 	}
 

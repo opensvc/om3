@@ -19,7 +19,7 @@ func NewCmdContextShow() *cobra.Command {
 
 	cmd := &cobra.Command{
 		Use:   "show",
-		Short: "Show the context configuration",
+		Short: "show the context configuration",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return options.Run()
 		},

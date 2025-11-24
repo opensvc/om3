@@ -24,7 +24,7 @@ func NewCmdContextList() *cobra.Command {
 	var options CmdContextList
 	cmd := &cobra.Command{
 		Use:   "list",
-		Short: "List available contexts",
+		Short: "list available contexts",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return options.Run()
 		},

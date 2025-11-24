@@ -25,7 +25,7 @@ func NewCmdContextAdd() *cobra.Command {
 
 	cmd := &cobra.Command{
 		Use:   "add",
-		Short: "Add a new context",
+		Short: "add a new context",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return options.Run()
 		},
