@@ -164,7 +164,7 @@ func setExecuteArgs(args []string) {
 		//
 		lookupArgs = args[1:]
 		cobraArgs = args[0:1]
-	} else {
+	} else if len(args) > 0 {
 		//
 		// Example:
 		//   args = [test/svc/s1 pri]
@@ -173,7 +173,10 @@ func setExecuteArgs(args []string) {
 		//
 		lookupArgs = args
 		cobraArgs = []string{}
+	} else {
+		return
 	}
+
 	_, _, err := root.Find(lookupArgs)
 
 	if err != nil || lookupArgs[0] == "-" {
