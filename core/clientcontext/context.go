@@ -223,7 +223,7 @@ func (t *TokenInfo) Unstructured() map[string]any {
 	}
 }
 
-func (c config) Save() error {
+func (c *config) Save() error {
 	tempFilename, _ := homedir.Expand(ConfigFilename + ".tmp")
 	b, err := json.MarshalIndent(c, "", "  ")
 	if err != nil {
@@ -268,62 +268,62 @@ func removeItem[V any](m map[string]V, name string, singular, plural string) err
 	return nil
 }
 
-func (c config) AddContext(name string, r Relation) error {
+func (c *config) AddContext(name string, r Relation) error {
 	return setItem(c.Contexts, name, r, false, "context", "contexts")
 }
 
-func (c config) ChangeContext(name string, r Relation) error {
+func (c *config) ChangeContext(name string, r Relation) error {
 	return setItem(c.Contexts, name, r, true, "context", "contexts")
 }
 
-func (c config) RemoveContext(name string) error {
+func (c *config) RemoveContext(name string) error {
 	return removeItem(c.Contexts, name, "context", "contexts")
 }
 
-func (c config) AddCluster(name string, cl Cluster) error {
+func (c *config) AddCluster(name string, cl Cluster) error {
 	return setItem(c.Clusters, name, cl, false, "cluster", "clusters")
 }
 
-func (c config) ChangeCluster(name string, cl Cluster) error {
+func (c *config) ChangeCluster(name string, cl Cluster) error {
 	return setItem(c.Clusters, name, cl, true, "cluster", "clusters")
 }
 
-func (c config) RemoveCluster(name string) error {
+func (c *config) RemoveCluster(name string) error {
 	return removeItem(c.Clusters, name, "cluster", "clusters")
 }
 
-func (c config) ClusterUsed(name string) (bool, error) {
+func (c *config) ClusterUsed(name string) bool {
 	if c.Contexts == nil {
-		return false, nil
+		return false
 	}
 	for _, r := range c.Contexts {
 		if r.ClusterRefName == name {
-			return true, nil
+			return true
 		}
 	}
-	return false, nil
+	return false
 }
 
-func (c config) AddUser(name string, u User) error {
+func (c *config) AddUser(name string, u User) error {
 	return setItem(c.Users, name, u, false, "user", "users")
 }
 
-func (c config) ChangeUser(name string, u User) error {
+func (c *config) ChangeUser(name string, u User) error {
 	return setItem(c.Users, name, u, true, "user", "users")
 }
 
-func (c config) RemoveUser(name string) error {
+func (c *config) RemoveUser(name string) error {
 	return removeItem(c.Users, name, "user", "users")
 }
 
-func (c config) UserUsed(name string) (bool, error) {
+func (c *config) UserUsed(name string) bool {
 	if c.Contexts == nil {
-		return false, nil
+		return false
 	}
 	for _, r := range c.Contexts {
 		if r.UserRefName == name {
-			return true, nil
+			return true
 		}
 	}
-	return false, nil
+	return false
 }

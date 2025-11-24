@@ -13,13 +13,13 @@ func NewCmdContext() *cobra.Command {
 func NewCmdContextCluster() *cobra.Command {
 	return &cobra.Command{
 		Use:   "cluster",
-		Short: "manage cluster contexts",
+		Short: "manage context cluster endpoints",
 	}
 }
 
 func NewCmdContextUser() *cobra.Command {
 	return &cobra.Command{
 		Use:   "user",
-		Short: "manage user contexts",
+		Short: "manage context users",
 	}
 }

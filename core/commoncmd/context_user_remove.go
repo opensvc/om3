@@ -42,7 +42,7 @@ func (t *ContextUserRemoveCmd) Run() error {
 		return err
 	}
 
-	if used, err := cfg.UserUsed(t.Name); used && err == nil && !t.Force {
+	if used := cfg.UserUsed(t.Name); used && !t.Force {
 		return fmt.Errorf("user %s is used in one or more contexts, use --force to remove it anyway", t.Name)
 	}
 

@@ -20,7 +20,7 @@ func NewCmdContextClusterAdd() *cobra.Command {
 
 	cmd := &cobra.Command{
 		Use:   "add",
-		Short: "Add a new cluster to the context",
+		Short: "Add a new cluster context endpoint",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return options.Run()
 		},
