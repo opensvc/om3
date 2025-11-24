@@ -99,5 +99,6 @@ func (a *DaemonAPI) PatchObjectConfig(ctx echo.Context, namespace string, kind n
 		}
 	}
 
-	return nil
+	log.Debugf("can't patch: object not found %s", p)
+	return JSONProblemf(ctx, http.StatusNotFound, "Not found", "object not found: %s", p)
 }
