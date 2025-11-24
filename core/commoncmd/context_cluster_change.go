@@ -53,12 +53,10 @@ func (t *ContextClusterChangeCmd) Run() error {
 
 	cluster.Server = t.Server
 	if t.Insecure {
-		cluster.InsecureSkipVerify = true
-	} else {
-		cluster.InsecureSkipVerify = false
+		cluster.InsecureSkipVerify = &t.Insecure
 	}
 	if t.CertificateAuthority != "" {
-		cluster.CertificateAuthority = t.CertificateAuthority
+		cluster.CertificateAuthority = &t.CertificateAuthority
 	}
 
 	if err := configs.ChangeCluster(t.Name, cluster); err != nil {

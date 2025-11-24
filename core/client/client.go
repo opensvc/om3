@@ -268,10 +268,18 @@ func (t *T) loadContext() error {
 	}
 	if context.Cluster.Server != "" {
 		t.url = context.Cluster.Server
-		t.insecureSkipVerify = context.Cluster.InsecureSkipVerify
-		t.clientCertificate = context.User.ClientCertificate
-		t.clientKey = context.User.ClientKey
-		t.username = context.User.Name
+		if context.Cluster.InsecureSkipVerify != nil {
+			t.insecureSkipVerify = *context.Cluster.InsecureSkipVerify
+		}
+		if context.User.ClientCertificate != nil {
+			t.clientCertificate = *context.User.ClientCertificate
+		}
+		if context.User.ClientKey != nil {
+			t.clientKey = *context.User.ClientKey
+		}
+		if context.User.Name != nil {
+			t.username = *context.User.Name
+		}
 
 		if t.bearer == "" {
 			tok, err := tokencache.Load(env.Context())

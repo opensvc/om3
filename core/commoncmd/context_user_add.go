@@ -42,17 +42,15 @@ func (t *ContextUserAddCmd) Run() error {
 	user := clientcontext.User{}
 
 	if t.Username != "" {
-		user.Name = t.Username
-	} else {
-		user.Name = t.Name
+		user.Name = &t.Username
 	}
 
 	if t.ClientKey != "" {
-		user.ClientKey = t.ClientKey
+		user.ClientKey = &t.ClientKey
 	}
 
 	if t.ClientCertificate != "" {
-		user.ClientCertificate = t.ClientCertificate
+		user.ClientCertificate = &t.ClientCertificate
 	}
 
 	cfg, err := clientcontext.Load()

@@ -121,14 +121,22 @@ func (t *CmdContextLogin) Run(cmd *cobra.Command) error {
 		return fmt.Errorf("empty password")
 	}
 
-	os.Setenv("OSVC_CONTEXT", t.Context)
-
-	clientc, err := clientcontext.New()
+	cfg, err := clientcontext.Load()
 	if err != nil {
 		return err
 	}
 
-	c, err := client.New(client.WithUsername(clientc.User.Name), client.WithPassword(password))
+	if _, ok := cfg.Contexts[t.Context]; !ok {
+		return fmt.Errorf("context %s not found in config", t.Context)
+	}
+
+	clientc := cfg.Contexts[t.Context]
+
+	userName := clientc.UserRefName
+	if usr, ok := cfg.Users[clientc.UserRefName]; ok && usr.Name != nil && *usr.Name != "" {
+		userName = *usr.Name
+	}
+	c, err := client.New(client.WithUsername(userName), client.WithPassword(password))
 	if err != nil {
 		return err
 	}
@@ -193,12 +201,12 @@ func (t *CmdContextLogin) Run(cmd *cobra.Command) error {
 	return nil
 }
 
-func chooseDuration(first duration.Duration, second duration.Duration) duration.Duration {
-	if first.Positive() {
+func chooseDuration(first *duration.Duration, second *duration.Duration) *duration.Duration {
+	if first != nil && first.Positive() {
 		return first
 	}
-	if second.Positive() {
+	if second != nil && second.Positive() {
 		return second
 	}
-	return duration.Duration{Duration: 0}
+	return duration.New(0)
 }

@@ -34,27 +34,27 @@ type (
 
 	// Relation is a Cluster-User relation.
 	Relation struct {
-		ClusterRefName       string            `json:"cluster"`
-		UserRefName          string            `json:"user"`
-		Namespace            string            `json:"namespace"`
-		AccessTokenDuration  duration.Duration `json:"access_token_duration,omitempty"`
-		RefreshTokenDuration duration.Duration `json:"refresh_token_duration,omitempty"`
+		ClusterRefName       string             `json:"cluster"`
+		UserRefName          string             `json:"user"`
+		Namespace            *string            `json:"namespace,omitempty"`
+		AccessTokenDuration  *duration.Duration `json:"access_token_duration,omitempty"`
+		RefreshTokenDuration *duration.Duration `json:"refresh_token_duration,omitempty"`
 	}
 
 	// Cluster host the endpoint address or name, and the certificate authority
 	// to trust.
 	Cluster struct {
-		CertificateAuthority string `json:"certificate_authority,omitempty"`
-		Server               string `json:"server"`
-		InsecureSkipVerify   bool   `json:"insecure"`
+		CertificateAuthority *string `json:"certificate_authority,omitempty"`
+		Server               string  `json:"server"`
+		InsecureSkipVerify   *bool   `json:"insecure,omitempty"`
 	}
 
 	// User hosts the certificate and private to use to connect to the remote
 	// cluster.
 	User struct {
-		ClientCertificate string `json:"client_certificate"`
-		ClientKey         string `json:"client_key"`
-		Name              string `json:"name"`
+		ClientCertificate *string `json:"client_certificate,omitempty"`
+		ClientKey         *string `json:"client_key,omitempty"`
+		Name              *string `json:"name,omitempty"`
 	}
 
 	TokenInfo struct {
@@ -200,10 +200,10 @@ func New() (T, error) {
 			return c, fmt.Errorf("%w: user not defined: %s", Err, cr.ClusterRefName)
 		}
 	}
-	c.Namespace = cr.Namespace
-	if c.User.Name == "" {
+	c.Namespace = *cr.Namespace
+	if c.User.Name == nil || *c.User.Name == "" {
 		// If the user name is not specified, use the map key
-		c.User.Name = cr.UserRefName
+		c.User.Name = &cr.UserRefName
 	}
 	return c, nil
 }
@@ -326,52 +326,4 @@ func (c config) UserUsed(name string) (bool, error) {
 		}
 	}
 	return false, nil
-}
-
-func (r Relation) MarshalJSON() ([]byte, error) {
-	result := make(map[string]interface{})
-	if r.ClusterRefName != "" {
-		result["cluster"] = r.ClusterRefName
-	}
-	if r.UserRefName != "" {
-		result["user"] = r.UserRefName
-	}
-	if r.Namespace != "" {
-		result["namespace"] = r.Namespace
-	}
-	if r.AccessTokenDuration.Positive() {
-		result["access_token_duration"] = r.AccessTokenDuration
-	}
-	if r.RefreshTokenDuration.Positive() {
-		result["refresh_token_duration"] = r.RefreshTokenDuration
-	}
-	return json.Marshal(result)
-}
-
-func (c Cluster) MarshalJSON() ([]byte, error) {
-	result := make(map[string]interface{})
-	if c.CertificateAuthority != "" {
-		result["certificate_authority"] = c.CertificateAuthority
-	}
-	if c.Server != "" {
-		result["server"] = c.Server
-	}
-	if c.InsecureSkipVerify {
-		result["insecure"] = c.InsecureSkipVerify
-	}
-	return json.Marshal(result)
-}
-
-func (u User) MarshalJSON() ([]byte, error) {
-	result := make(map[string]interface{})
-	if u.ClientCertificate != "" {
-		result["client_certificate"] = u.ClientCertificate
-	}
-	if u.ClientKey != "" {
-		result["client_key"] = u.ClientKey
-	}
-	if u.Name != "" {
-		result["name"] = u.Name
-	}
-	return json.Marshal(result)
 }

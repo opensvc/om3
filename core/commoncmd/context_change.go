@@ -63,7 +63,7 @@ func (t *ContextChangeCmd) Run() error {
 	ctx.ClusterRefName = t.Cluster
 
 	if t.Namespace != "" {
-		ctx.Namespace = t.Namespace
+		ctx.Namespace = &t.Namespace
 	}
 	if t.AccessTokenDuration != 0 {
 		ctx.AccessTokenDuration = duration.New(t.AccessTokenDuration)

@@ -43,10 +43,10 @@ func (t *ContextClusterAddCmd) Run() error {
 		Server: t.Server,
 	}
 	if t.Insecure {
-		cluster.InsecureSkipVerify = true
+		cluster.InsecureSkipVerify = &t.Insecure
 	}
 	if t.CertificateAuthority != "" {
-		cluster.CertificateAuthority = t.CertificateAuthority
+		cluster.CertificateAuthority = &t.CertificateAuthority
 	}
 
 	config, err := clientcontext.Load()

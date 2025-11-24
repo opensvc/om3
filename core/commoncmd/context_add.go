@@ -54,7 +54,7 @@ func (t *ContextAddCmd) Run() error {
 	}
 
 	if t.Namespace != "" {
-		relation.Namespace = t.Namespace
+		relation.Namespace = &t.Namespace
 	}
 	if t.AccessTokenDuration != 0 {
 		relation.AccessTokenDuration = duration.New(t.AccessTokenDuration)

@@ -52,17 +52,15 @@ func (t *ContextUserChangeCmd) Run() error {
 	}
 
 	if t.Username != "" {
-		usr.Name = t.Username
-	} else {
-		usr.Name = t.Name
+		usr.Name = &t.Username
 	}
 
 	if t.ClientKey != "" {
-		usr.ClientKey = t.ClientKey
+		usr.ClientKey = &t.ClientKey
 	}
 
 	if t.ClientCertificate != "" {
-		usr.ClientCertificate = t.ClientCertificate
+		usr.ClientCertificate = &t.ClientCertificate
 	}
 
 	if err := configs.ChangeUser(t.Name, usr); err != nil {

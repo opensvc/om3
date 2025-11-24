@@ -11,8 +11,8 @@ type (
 	}
 )
 
-func New(d time.Duration) Duration {
-	return Duration{Duration: d}
+func New(d time.Duration) *Duration {
+	return &Duration{Duration: d}
 }
 
 func (d *Duration) UnmarshalJSON(b []byte) error {

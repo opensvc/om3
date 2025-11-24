@@ -468,7 +468,11 @@ func (t *App) listContexts() {
 			selectable = false
 		}
 		v.SetCell(row, 0, tview.NewTableCell(name).SetSelectable(selectable))
-		v.SetCell(row, 3, tview.NewTableCell(data.Namespace).SetSelectable(false))
+		namespace := ""
+		if data.Namespace != nil {
+			namespace = *data.Namespace
+		}
+		v.SetCell(row, 3, tview.NewTableCell(namespace).SetSelectable(false))
 	}
 
 	v.SetSelectedFunc(func(row, col int) {
