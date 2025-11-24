@@ -468,7 +468,7 @@ func (t *App) listContexts() {
 			selectable = false
 		}
 		v.SetCell(row, 0, tview.NewTableCell(name).SetSelectable(selectable))
-		namespace := ""
+		var namespace string
 		if data.Namespace != nil {
 			namespace = *data.Namespace
 		}

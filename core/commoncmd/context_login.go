@@ -50,6 +50,9 @@ func NewCmdContextLogin() *cobra.Command {
 
 func (t *CmdContextLogin) Run(cmd *cobra.Command) error {
 	config, err := clientcontext.Load()
+	if err != nil {
+		return err
+	}
 
 	contextChanged := cmd.Flag("context").Changed
 	if !contextChanged {
@@ -57,9 +60,6 @@ func (t *CmdContextLogin) Run(cmd *cobra.Command) error {
 	}
 
 	if t.Context == "" {
-		if err != nil {
-			return err
-		}
 		fmt.Println("Known Contexts:")
 		i := 0
 		contextName := make([]string, len(config.Contexts))
@@ -123,18 +123,13 @@ func (t *CmdContextLogin) Run(cmd *cobra.Command) error {
 
 	os.Setenv("OSVC_CONTEXT", t.Context)
 
-	cfg, err := clientcontext.Load()
-	if err != nil {
-		return err
-	}
-
-	clientc, ok := cfg.Contexts[t.Context]
+	clientc, ok := config.Contexts[t.Context]
 	if !ok {
 		return fmt.Errorf("context %s not found in config", t.Context)
 	}
 
 	userName := clientc.UserRefName
-	if usr, ok := cfg.Users[clientc.UserRefName]; ok && usr.Name != nil && *usr.Name != "" {
+	if usr, ok := config.Users[clientc.UserRefName]; ok && usr.Name != nil && *usr.Name != "" {
 		userName = *usr.Name
 	}
 	c, err := client.New(client.WithUsername(userName), client.WithPassword(password))
