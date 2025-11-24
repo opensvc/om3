@@ -3,7 +3,6 @@ package monitor
 import (
 	"fmt"
 	"strings"
-	"time"
 )
 
 func (f Frame) sDaemonUptimeLine() string {
@@ -18,7 +17,7 @@ func (f Frame) sDaemonUptimeLine() string {
 
 func (f Frame) StrDaemonUptime(n string) string {
 	if val, ok := f.Current.Cluster.Node[n]; ok {
-		diffTime := time.Now().Sub(val.Daemon.StartedAt)
+		diffTime := now().Sub(val.Daemon.StartedAt)
 		return f.formatDuration(diffTime)
 	}
 	return iconUndef

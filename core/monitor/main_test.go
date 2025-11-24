@@ -4,6 +4,7 @@ import (
 	"os"
 	"path"
 	"testing"
+	"time"
 
 	"github.com/golang/mock/gomock"
 	"github.com/stretchr/testify/assert"
@@ -79,6 +80,11 @@ func TestMonitorOutput(t *testing.T) {
 			expected, err := os.ReadFile(path.Join("testdata", s+"-om-mon.fixture"))
 			require.Nil(t, err)
 			ctrl := gomock.NewController(t)
+
+			now = func() time.Time {
+				return time.Date(2025, 11, 21, 15, 0, 0, 0, time.UTC)
+			}
+
 			daemonStatusGetter := mock_monitor.NewMockGetter(ctrl)
 
 			daemonStatusGetter.EXPECT().

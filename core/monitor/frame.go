@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"sort"
 	"strings"
+	"time"
 
 	"github.com/fatih/color"
 	tabwriter "github.com/juju/ansiterm"
@@ -30,6 +31,7 @@ var (
 	}
 	green, yellow, hired, red, blue, hiblue, hiblack, bold                                                                                                                                                                 func(a ...interface{}) string
 	iconUp, iconWarning, iconDownIssue, iconPlacementAlert, iconProvisionAlert, iconStandbyDown, iconStandbyUpIssue, iconUndef, iconFrozen, iconDown, iconDRP, iconLeader, iconNotApplicable, iconPreserved, iconStandbyUp string
+	now                                                                                                                                                                                                                    = time.Now
 )
 
 func InitColor() {
