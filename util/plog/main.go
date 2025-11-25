@@ -63,7 +63,7 @@ func (t *Logger) Debugf(format string, a ...any) {
 }
 
 func (t *Logger) Tracef(format string, a ...any) {
-	t.logger.Debug().Str(levelKey, levelTrace).Msg(t.Msgf(format, a...))
+	t.logger.Trace().Str(levelKey, levelTrace).Msg(t.Msgf(format, a...))
 }
 
 func (t *Logger) Errorf(format string, a ...any) {
@@ -77,7 +77,7 @@ func (t *Logger) Warnf(format string, a ...any) {
 func (t *Logger) Levelf(level zerolog.Level, format string, a ...any) {
 	switch level {
 	case zerolog.TraceLevel:
-		t.logger.Debug().Str(levelKey, levelTrace).Msg(t.Msgf(format, a...))
+		t.logger.Trace().Str(levelKey, levelTrace).Msg(t.Msgf(format, a...))
 	case zerolog.DebugLevel:
 		t.logger.Debug().Str(levelKey, levelDebug).Msg(t.Msgf(format, a...))
 	case zerolog.InfoLevel:
