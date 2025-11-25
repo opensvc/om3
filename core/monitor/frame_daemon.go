@@ -3,6 +3,8 @@ package monitor
 import (
 	"fmt"
 	"strings"
+
+	"github.com/opensvc/om3/util/duration"
 )
 
 func (f Frame) sDaemonUptimeLine() string {
@@ -22,7 +24,7 @@ func (f Frame) sDaemonUptimeLine() string {
 func (f Frame) StrDaemonUptime(n string) string {
 	if val, ok := f.Current.Cluster.Node[n]; ok {
 		diffTime := now().Sub(val.Daemon.StartedAt)
-		return f.formatDuration(diffTime)
+		return duration.FmtShortDuration(diffTime)
 	}
 	return iconUndef
 }

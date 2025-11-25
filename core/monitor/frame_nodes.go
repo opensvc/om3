@@ -4,12 +4,12 @@ import (
 	"fmt"
 	"strconv"
 	"strings"
-	"time"
 
 	"github.com/golang-collections/collections/set"
 
 	"github.com/opensvc/om3/core/node"
 	"github.com/opensvc/om3/core/rawconfig"
+	"github.com/opensvc/om3/util/duration"
 	"github.com/opensvc/om3/util/sizeconv"
 )
 
@@ -336,35 +336,9 @@ func (f Frame) StrNodeUptime(n string) string {
 			return yellow("-")
 		}
 		diffTime := now().Sub(val.Status.BootedAt)
-		return f.formatDuration(diffTime)
+		return duration.FmtShortDuration(diffTime)
 	}
 	return iconUndef
-}
-
-func (f Frame) formatDuration(t time.Duration) string {
-	var sb strings.Builder
-	day := 24 * time.Hour
-	if t < time.Hour {
-		minutes := t >= time.Minute
-		if minutes {
-			sb.WriteString(strconv.Itoa(int(t.Minutes())))
-			sb.WriteString("m")
-		}
-		sb.WriteString(strconv.Itoa(int(t.Seconds()) % 60))
-		if !minutes {
-			sb.WriteString("s")
-		}
-		return sb.String()
-	}
-	if t >= day {
-		sb.WriteString(strconv.Itoa(int(t.Hours()) / 24))
-		sb.WriteString("d")
-	}
-	if t < 10*day {
-		sb.WriteString(strconv.Itoa(int(t.Hours()) % 24))
-		sb.WriteString("h")
-	}
-	return sb.String()
 }
 
 func (f Frame) wNodes() {
