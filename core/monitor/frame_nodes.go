@@ -91,12 +91,18 @@ func (f Frame) sNodeWarningsLine() string {
 	return sb.String()
 }
 
-func (f Frame) sNodeVersionLine() string {
+func (f Frame) NodeVersions() *set.Set {
 	versions := set.New()
 	for _, n := range f.Current.Cluster.Config.Nodes {
-		versions.Insert(f.sNodeVersion(n))
+		versions.Insert(f.StrNodeVersion(n))
 	}
-	if versions.Len() == 1 {
+	versions.Remove(iconUndef)
+	return versions
+}
+
+func (f Frame) sNodeVersionLine() string {
+	versions := f.NodeVersions()
+	if versions.Len() <= 1 {
 		return ""
 	}
 	var sb strings.Builder
@@ -108,7 +114,7 @@ func (f Frame) sNodeVersionLine() string {
 	sb.WriteString(f.info.separator)
 	sb.WriteString("\t")
 	for _, n := range f.Current.Cluster.Config.Nodes {
-		sb.WriteString(f.sNodeVersion(n))
+		sb.WriteString(f.StrNodeVersion(n))
 		sb.WriteString("\t")
 	}
 	return sb.String() + "\n"
@@ -256,7 +262,7 @@ func (f Frame) sNodeCompat(n string) string {
 	return iconUndef
 }
 
-func (f Frame) sNodeVersion(n string) string {
+func (f Frame) StrNodeVersion(n string) string {
 	if val, ok := f.Current.Cluster.Node[n]; ok {
 		if len(val.Status.Agent) == 40 {
 			// commit id => abbrev
@@ -339,11 +345,15 @@ func (f Frame) formatDuration(t time.Duration) string {
 	var sb strings.Builder
 	day := 24 * time.Hour
 	if t < time.Hour {
-		if t >= time.Minute {
+		minutes := t >= time.Minute
+		if minutes {
 			sb.WriteString(strconv.Itoa(int(t.Minutes())))
 			sb.WriteString("m")
 		}
 		sb.WriteString(strconv.Itoa(int(t.Seconds()) % 60))
+		if !minutes {
+			sb.WriteString("s")
+		}
 		return sb.String()
 	}
 	if t >= day {
