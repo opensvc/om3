@@ -2,6 +2,8 @@ package duration
 
 import (
 	"encoding/json"
+	"strconv"
+	"strings"
 	"time"
 )
 
@@ -45,4 +47,49 @@ func (d Duration) IsZero() bool {
 
 func (d Duration) Positive() bool {
 	return d.Duration > 0
+}
+
+func FmtShortDuration(d time.Duration) string {
+	if d == 0 {
+		return "0s"
+	}
+
+	day := 24 * time.Hour
+
+	units := []struct {
+		duration time.Duration
+		suffix   string
+	}{
+		{day, "d"},
+		{time.Hour, "h"},
+		{time.Minute, "m"},
+		{time.Second, "s"},
+	}
+
+	var primaryIdx int
+	for i, unit := range units {
+		if d >= unit.duration {
+			primaryIdx = i
+			break
+		}
+	}
+
+	primary := units[primaryIdx]
+	primaryValue := d / primary.duration
+
+	var sb strings.Builder
+	sb.WriteString(strconv.Itoa(int(primaryValue)))
+	sb.WriteString(primary.suffix)
+
+	if primaryValue < 10 && primaryIdx+1 < len(units) {
+		remainder := d % primary.duration
+		secondary := units[primaryIdx+1]
+
+		if secondaryValue := remainder / secondary.duration; secondaryValue > 0 {
+			sb.WriteString(strconv.Itoa(int(secondaryValue)))
+			sb.WriteString(secondary.suffix)
+		}
+	}
+
+	return sb.String()
 }
