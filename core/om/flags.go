@@ -13,6 +13,7 @@ import (
 func addFlagsGlobal(flags *pflag.FlagSet, options *commands.OptsGlobal) {
 	commoncmd.FlagQuiet(flags, &options.Quiet)
 	commoncmd.FlagDebug(flags, &options.Debug)
+	commoncmd.FlagTrace(flags, &options.Trace)
 	commoncmd.FlagColor(flags, &options.Color)
 	commoncmd.FlagOutput(flags, &options.Output)
 	commoncmd.FlagObjectSelector(flags, &options.ObjectSelector)

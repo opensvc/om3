@@ -43,6 +43,10 @@ func FlagDebug(flags *pflag.FlagSet, p *bool) {
 	flags.BoolVar(p, "debug", false, "show debug log entries")
 }
 
+func FlagTrace(flags *pflag.FlagSet, p *bool) {
+	flags.BoolVar(p, "trace", false, "show debug trace log entries")
+}
+
 func FlagsAsync(flags *pflag.FlagSet, p *OptsAsync) {
 	FlagTime(flags, &p.Time)
 	FlagWait(flags, &p.Wait)

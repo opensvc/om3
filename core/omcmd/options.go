@@ -8,5 +8,6 @@ type (
 		ObjectSelector string
 		Quiet          bool
 		Debug          bool
+		Trace          bool
 	}
 )

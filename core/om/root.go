@@ -34,6 +34,7 @@ var (
 
 	callerFlag     bool
 	debugFlag      bool
+	traceFlag      bool
 	foregroundFlag bool
 	quietFlag      bool
 	versionFlag    bool
@@ -87,9 +88,11 @@ func configureLogger() error {
 	level := "info"
 	if debugFlag {
 		level = "debug"
+	} else if traceFlag {
+		level = "trace"
 	}
 	err := logging.Configure(logging.Config{
-		WithConsoleLog: !quietFlag || debugFlag || foregroundFlag,
+		WithConsoleLog: !quietFlag || debugFlag || traceFlag || foregroundFlag,
 		WithColor:      colorFlag != "no",
 		WithCaller:     callerFlag,
 		Level:          level,
@@ -117,6 +120,9 @@ func persistentPreRunE(cmd *cobra.Command, _ []string) error {
 	}
 	if flag := cmd.Flags().Lookup("debug"); flag != nil && flag.Value.String() == "true" {
 		debugFlag = true
+	}
+	if flag := cmd.Flags().Lookup("trace"); flag != nil && flag.Value.String() == "true" {
+		traceFlag = true
 	}
 	if flag := cmd.Flags().Lookup("color"); flag != nil {
 		colorFlag = flag.Value.String()
