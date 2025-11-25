@@ -146,7 +146,7 @@ func (f Frame) StrHeartbeat(n string, hbType string) string {
 			return iconDownIssue
 		}
 	}
-	return ""
+	return iconUndef
 }
 
 func (f Frame) wDaemons() {
