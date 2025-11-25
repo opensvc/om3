@@ -48,7 +48,7 @@ func (t *T) Start(ctx context.Context) error {
 	ctx = daemonctx.WithLsnrType(ctx, "ux")
 
 	errC := make(chan error)
-	t.log.Debugf("starting")
+	t.log.Tracef("starting")
 	if err := os.RemoveAll(t.addr); err != nil {
 		t.log.Errorf("remove file: %s", err)
 		return err
@@ -96,7 +96,7 @@ func (t *T) serve(ctx context.Context, errC chan<- error) {
 	t.log.Infof("started")
 	errC <- nil
 	if err := t.server.Serve(*t.listener); err != http.ErrServerClosed && !errors.Is(err, net.ErrClosed) {
-		t.log.Debugf("serve ends with unexpected error: %s", err)
+		t.log.Tracef("serve ends with unexpected error: %s", err)
 	}
 	t.log.Infof("stopped")
 }

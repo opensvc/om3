@@ -272,7 +272,7 @@ func (t *Manager) worker() {
 				if !c.Value.UpdatedAt.Before(t.instConfigFor.UpdatedAt) {
 					if i := slices.Index(t.instConfigFor.Scope, c.Node); i >= 0 {
 						t.instConfigFor.Scope = slices.Delete(t.instConfigFor.Scope, i, i+1)
-						t.log.Debugf("remaining missing instance config update for nodes (%s)",
+						t.log.Tracef("remaining missing instance config update for nodes (%s)",
 							strings.Join(t.instConfigFor.Scope, ","))
 					}
 				}

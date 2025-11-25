@@ -40,7 +40,7 @@ func (t *Manager) setArbitratorConfig() {
 			Weight:   t.config.GetInt(key.New(s, "weight")),
 		}
 		if a.URI == "" {
-			t.log.Debugf("arbitrator keyword 'name' is deprecated, use 'uri' instead")
+			t.log.Tracef("arbitrator keyword 'name' is deprecated, use 'uri' instead")
 			a.URI = t.config.GetString(key.New(s, "name"))
 		}
 		if a.URI == "" {
@@ -73,7 +73,7 @@ func (t *Manager) getStatusArbitrators() map[string]node.ArbitratorStatus {
 		aStatus := status.Up
 		if r.err != nil {
 			t.log.Warnf("arbitrator#%s is down", name)
-			t.log.Debugf("arbitrator#%s is down: %s", name, r.err)
+			t.log.Tracef("arbitrator#%s is down: %s", name, r.err)
 			aStatus = status.Down
 			t.publisher.Pub(&msgbus.ArbitratorError{
 				Node: t.localhost,

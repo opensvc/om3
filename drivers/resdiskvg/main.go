@@ -221,7 +221,7 @@ func (t *T) ReservableDevices() device.L {
 
 func (t *T) SubDevices() device.L {
 	if l, err := t.vg().PVs(); err != nil {
-		t.Log().Debugf("%s", err)
+		t.Log().Tracef("%s", err)
 		return device.L{}
 	} else {
 		return l

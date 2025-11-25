@@ -21,7 +21,7 @@ var (
 func (d *data) applyMsgEvents(msg *hbtype.Msg) error {
 	local := d.localNode
 	remote := msg.Nodename
-	d.log.Debugf("apply patch %s", remote)
+	d.log.Tracef("apply patch %s", remote)
 	var (
 		sortGen []uint64
 	)
@@ -31,11 +31,11 @@ func (d *data) applyMsgEvents(msg *hbtype.Msg) error {
 	}
 
 	if d.hbGens[local][remote] == 0 {
-		d.log.Debugf("apply patch skipped %s gen %v (wait full)", remote, msg.Gen[remote])
+		d.log.Tracef("apply patch skipped %s gen %v (wait full)", remote, msg.Gen[remote])
 		return nil
 	}
 	if msg.UpdatedAt.Before(d.hbPatchMsgUpdated[remote]) {
-		d.log.Debugf(
+		d.log.Tracef(
 			"apply patch skipped %s outdated msg "+
 				"(msg [gen:%d updated:%s], "+
 				"latest applied msg:[gen:%d updated:%s])",
@@ -76,7 +76,7 @@ func (d *data) applyMsgEvents(msg *hbtype.Msg) error {
 		d.log.Infof(
 			"apply patch skipped %s gen %d (ask full from empty patch) len events: %d gens:%+v eventIDs: %+v hbGens[%s]: %v",
 			remote, msg.Gen[remote], len(msg.Events), d.hbGens, eventIDs, remote, d.hbGens[remote])
-		d.log.Debugf("Msg is : %+v", *msg)
+		d.log.Tracef("Msg is : %+v", *msg)
 
 		setNeedFull()
 		return nil
@@ -90,7 +90,7 @@ func (d *data) applyMsgEvents(msg *hbtype.Msg) error {
 		sortGen = append(sortGen, gen)
 	}
 	sort.Slice(sortGen, func(i, j int) bool { return sortGen[i] < sortGen[j] })
-	d.log.Debugf("apply patch sequence %s %v", remote, sortGen)
+	d.log.Tracef("apply patch sequence %s %v", remote, sortGen)
 	for _, gen := range sortGen {
 		genS := strconv.FormatUint(gen, 10)
 		if gen <= pendingNodeGen {
@@ -102,7 +102,7 @@ func (d *data) applyMsgEvents(msg *hbtype.Msg) error {
 			setNeedFull()
 			return err
 		}
-		d.log.Debugf("apply patch %s delta gen %s", remote, genS)
+		d.log.Tracef("apply patch %s delta gen %s", remote, genS)
 		for _, ev := range events[genS] {
 			if err := d.setCacheAndPublish(ev); err != nil {
 				d.log.Infof("can't apply patch %s events %s kind %s (ask full): %s", remote, genS, ev.Kind, err)

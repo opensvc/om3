@@ -2441,7 +2441,7 @@ func (t *Array) runDeletePair(sid, pairFile, rdfg string) error {
 
 func (t *Array) deletePair(dev Device) (*RDF, error) {
 	if dev.RDF == nil {
-		t.log.Debugf("dev %s is not in a RDF relation", dev.DevInfo.DevName)
+		t.log.Tracef("dev %s is not in a RDF relation", dev.DevInfo.DevName)
 		return nil, nil
 	}
 	rdfg := fmt.Sprint(dev.RDF.Local.RAGroupNum)

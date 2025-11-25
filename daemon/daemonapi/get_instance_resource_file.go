@@ -25,7 +25,7 @@ func (a *DaemonAPI) GetInstanceResourceFile(ctx echo.Context, nodename, namespac
 	if a.localhost == nodename {
 		logName := "GetInstanceResourceFile"
 		log := LogHandler(ctx, logName)
-		log.Debugf("%s: starting", logName)
+		log.Tracef("%s: starting", logName)
 
 		// Verify the object path is valid
 		objPath, err := naming.NewPath(namespace, kind, name)

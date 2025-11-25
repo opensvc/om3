@@ -29,7 +29,7 @@ func (t *Manager) setStonith(peerDrop string, peerDropAt time.Time) {
 	if instStatus, ok := t.instStatus[peerDrop]; !ok || instStatus.Avail != status.Up {
 		return
 	}
-	t.log.Debugf("stonith: flag %s, dropped at %s", peerDrop, peerDropAt)
+	t.log.Tracef("stonith: flag %s, dropped at %s", peerDrop, peerDropAt)
 	t.peerDrop = peerDrop
 	t.peerDropAt = peerDropAt
 }
@@ -46,6 +46,6 @@ func (t *Manager) clearStonith(nodename string, avail status.T) {
 	if avail != status.Up {
 		return
 	}
-	t.log.Debugf("stonith: clear the instance on node %s is started", nodename)
+	t.log.Tracef("stonith: clear the instance on node %s is started", nodename)
 	t.unsetStonith()
 }

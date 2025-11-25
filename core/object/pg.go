@@ -130,12 +130,12 @@ func (t *core) CleanPG(ctx context.Context) {
 	for _, run := range mgr.Clean() {
 		if run.Err != nil {
 			if errors.Is(run.Err, os.ErrPermission) {
-				t.log.Debugf("remove pg %s: still active", run.Config.ID)
+				t.log.Tracef("remove pg %s: still active", run.Config.ID)
 			} else {
 				t.log.Errorf("remove pg %s error: %s", run.Config.ID, run.Err)
 			}
 		} else if run.Changed {
-			t.log.Debugf("remove pg %s", run.Config.ID)
+			t.log.Tracef("remove pg %s", run.Config.ID)
 		}
 	}
 }

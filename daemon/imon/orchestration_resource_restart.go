@@ -88,7 +88,7 @@ func (t *Manager) setLocalExpect(localExpect instance.MonitorLocalExpect, format
 	} else {
 		if format != "" {
 			msg := fmt.Sprintf(format, a...)
-			t.loggerWithState().Debugf("%s: local expect is already %s", msg, localExpect)
+			t.loggerWithState().Tracef("%s: local expect is already %s", msg, localExpect)
 		}
 		return false
 	}
@@ -200,14 +200,14 @@ func (t *Manager) orchestrateResourceRestart() {
 
 	// ignore if the node is frozen
 	if t.nodeStatus[t.localhost].IsFrozen() {
-		t.log.Debugf("skip restart: node is frozen")
+		t.log.Tracef("skip restart: node is frozen")
 		t.cancelResourceOrchestrateSchedules()
 		return
 	}
 
 	// ignore if the node is not idle
 	if t.nodeMonitor[t.localhost].State != node.MonitorStateIdle {
-		t.log.Debugf("skip restart: node is %s", t.nodeMonitor[t.localhost].State)
+		t.log.Tracef("skip restart: node is %s", t.nodeMonitor[t.localhost].State)
 		t.cancelResourceOrchestrateSchedules()
 		return
 	}
@@ -223,14 +223,14 @@ func (t *Manager) orchestrateResourceRestart() {
 
 	// ignore if the instance is frozen
 	if t.instStatus[t.localhost].IsFrozen() {
-		t.log.Debugf("skip restart: instance is frozen")
+		t.log.Tracef("skip restart: instance is frozen")
 		t.cancelResourceOrchestrateSchedules()
 		return
 	}
 
 	// ignore if the instance is not provisioned
 	if instanceStatus := t.instStatus[t.localhost]; instanceStatus.Provisioned.IsOneOf(provisioned.False, provisioned.Mixed, provisioned.Undef) {
-		t.log.Debugf("skip restart: provisioned is %s", instanceStatus.Provisioned)
+		t.log.Tracef("skip restart: provisioned is %s", instanceStatus.Provisioned)
 		t.cancelResourceOrchestrateSchedules()
 		return
 	}
@@ -238,7 +238,7 @@ func (t *Manager) orchestrateResourceRestart() {
 	// ignore if the instance has no monitor data
 	instMonitor, ok := t.GetInstanceMonitor(t.localhost)
 	if !ok {
-		t.log.Debugf("skip restart: no instance monitor")
+		t.log.Tracef("skip restart: no instance monitor")
 		t.cancelResourceOrchestrateSchedules()
 		return
 	}
@@ -248,7 +248,7 @@ func (t *Manager) orchestrateResourceRestart() {
 	case instance.MonitorStateIdle, instance.MonitorStateStartFailure, instance.MonitorStateStopFailure:
 		// pass
 	default:
-		t.log.Debugf("skip restart: state=%s", instMonitor.State)
+		t.log.Tracef("skip restart: state=%s", instMonitor.State)
 		return
 	}
 
@@ -503,23 +503,23 @@ func (t *Manager) orchestrateResourcePlan(rid string, rcfg *instance.ResourceCon
 	switch {
 	case rcfg.IsDisabled:
 		reason := "is disabled"
-		or.log.Debugf("planFor rid %s skipped: %s", rid, reason)
+		or.log.Tracef("planFor rid %s skipped: %s", rid, reason)
 		dropScheduled(rid, reason)
 		resetRemaining(rid, reason)
 	case rStatus.IsStopped:
 		reason := fmt.Sprintf("resource is explicitely stopped")
-		or.log.Debugf("planFor rid %s skipped: %s", rid, reason)
+		or.log.Tracef("planFor rid %s skipped: %s", rid, reason)
 		dropScheduled(rid, reason)
 		resetRemaining(rid, reason)
 	case rStatus.Status.Is(status.NotApplicable, status.Undef, status.Up, status.StandbyUp):
 		reason := fmt.Sprintf("status is %s", rStatus.Status)
-		or.log.Debugf("planFor rid %s skipped: %s", rid, reason)
+		or.log.Tracef("planFor rid %s skipped: %s", rid, reason)
 		dropScheduled(rid, reason)
 		resetRemaining(rid, reason)
 	case or.alreadyScheduled(rid):
-		or.log.Debugf("planFor rid %s skipped: already scheduled", rid)
+		or.log.Tracef("planFor rid %s skipped: already scheduled", rid)
 	case t.monitorActionCalled():
-		or.log.Debugf("planFor rid %s skipped: monitor action has been already called", rid)
+		or.log.Tracef("planFor rid %s skipped: monitor action has been already called", rid)
 	case rcfg.IsStandby || started:
 		if rmon.Restart.Remaining == 0 && rcfg.IsMonitored {
 			or.log.Infof("rid %s status %s, restart remaining %d out of %d: need monitor action", rid, rStatus.Status, rmon.Restart.Remaining, rcfg.Restart)

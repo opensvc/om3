@@ -43,7 +43,7 @@ func (t *T) onClusterConfigUpdated(c *msgbus.ClusterConfigUpdated) {
 }
 
 func (t *T) onConfigUpdated() {
-	t.log.Debugf("reconfigure")
+	t.log.Tracef("reconfigure")
 	if collector.Alive.Load() {
 		t.log.Infof("disable collector clients")
 		collector.Alive.Store(false)
@@ -92,18 +92,18 @@ func (t *T) onInstanceConfigUpdated(c *msgbus.InstanceConfigUpdated) {
 		sent.path = c.Path
 		if err := sent.read(); err != nil {
 			if errors.Is(err, fs.ErrNotExist) {
-				t.log.Debugf("onInstanceConfigUpdated from %s@%s with checksum %s sent config cache absent", c.Path, c.Node, c.Value.Checksum)
+				t.log.Tracef("onInstanceConfigUpdated from %s@%s with checksum %s sent config cache absent", c.Path, c.Node, c.Value.Checksum)
 			} else {
 				t.log.Warnf("can't read sent config: %s", err)
 			}
 		} else {
-			t.log.Debugf("onInstanceConfigUpdated from %s@%s with checksum %s init sent config cache %s", c.Path, c.Node, c.Value.Checksum, sent.Checksum)
+			t.log.Tracef("onInstanceConfigUpdated from %s@%s with checksum %s init sent config cache %s", c.Path, c.Node, c.Value.Checksum, sent.Checksum)
 			t.objectConfigSent[c.Path] = sent
 		}
 	}
 	if sent.Checksum == c.Value.Checksum {
 		// skip already sent config
-		t.log.Debugf("onInstanceConfigUpdated from %s@%s skipped on same checksum %s", c.Path, c.Node, sent.Checksum)
+		t.log.Tracef("onInstanceConfigUpdated from %s@%s skipped on same checksum %s", c.Path, c.Node, sent.Checksum)
 		return
 	}
 
@@ -118,13 +118,13 @@ func (t *T) onInstanceConfigUpdated(c *msgbus.InstanceConfigUpdated) {
 		// already have objectConfigToSend
 		if toSend.Value.Checksum == c.Value.Checksum {
 			if c.Node != t.localhost {
-				t.log.Debugf("onInstanceConfigUpdated from %s@%s skipped: found localhost InstanceConfigUpdated with same checksum %s", c.Path, c.Node, sent.Checksum)
+				t.log.Tracef("onInstanceConfigUpdated from %s@%s skipped: found localhost InstanceConfigUpdated with same checksum %s", c.Path, c.Node, sent.Checksum)
 				return
 			}
 		}
 	}
 
-	t.log.Debugf("onInstanceConfigUpdated from %s@%s checksum %s need send", c.Path, c.Node, c.Value.Checksum)
+	t.log.Tracef("onInstanceConfigUpdated from %s@%s checksum %s need send", c.Path, c.Node, c.Value.Checksum)
 	t.objectConfigToSend[c.Path] = c
 }
 

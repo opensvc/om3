@@ -37,10 +37,10 @@ func (t *Manager) pubClusterConfig() {
 
 	removed, added := stringslice.Diff(previousNodes, state.Nodes)
 	if len(added) > 0 {
-		t.log.Debugf("added nodes: %s", added)
+		t.log.Tracef("added nodes: %s", added)
 	}
 	if len(removed) > 0 {
-		t.log.Debugf("removed nodes: %s", removed)
+		t.log.Tracef("removed nodes: %s", removed)
 	}
 	cluster.ConfigData.Set(&state)
 	clusternode.Set(state.Nodes)

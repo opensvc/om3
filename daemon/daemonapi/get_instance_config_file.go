@@ -20,7 +20,7 @@ func (a *DaemonAPI) GetInstanceConfigFile(ctx echo.Context, nodename, namespace 
 	if a.localhost == nodename {
 		logName := "GetInstanceConfigFile"
 		log := LogHandler(ctx, logName)
-		log.Debugf("%s: starting", logName)
+		log.Tracef("%s: starting", logName)
 
 		objPath, err := naming.NewPath(namespace, kind, name)
 		if err != nil {

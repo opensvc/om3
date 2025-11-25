@@ -162,7 +162,7 @@ func (t *T) start(ctx context.Context, errC chan<- error) {
 	errC <- nil
 	if err := t.listener.ServeTLS(lsnr, t.certFile, t.keyFile); err != nil {
 		if errors.Is(err, http.ErrServerClosed) || errors.Is(err, net.ErrClosed) {
-			t.log.Debugf("listener serve ends with expected error")
+			t.log.Tracef("listener serve ends with expected error")
 		} else {
 			t.log.Errorf("listener serve ends with unexpected error: %s", err)
 		}

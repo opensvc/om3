@@ -245,7 +245,7 @@ func (t *T) purgeConfigFile() error {
 func (t *T) purgeLxcVar() error {
 	p := t.lxcPath()
 	if p == "" {
-		t.Log().Debugf("purgeLxcVar: lxcPath() is empty. consider we have nothing to purge.")
+		t.Log().Tracef("purgeLxcVar: lxcPath() is empty. consider we have nothing to purge.")
 		return nil
 	}
 	p = filepath.Join(p, t.Name)
@@ -823,7 +823,7 @@ func (t *T) ContainerHead() (string, error) {
 func (t *T) cpusetDir() string {
 	path := ""
 	if !file.Exists(cpusetDir) {
-		t.Log().Debugf("startCgroup: %s does not exist", cpusetDir)
+		t.Log().Tracef("startCgroup: %s does not exist", cpusetDir)
 		return ""
 	}
 	if t.cgroupDirCapable() {
@@ -859,11 +859,11 @@ func (t *T) setCpusetCloneChildren() error {
 	setFile := func(p string, v []byte) error {
 		b, err := os.ReadFile(p)
 		if err != nil {
-			t.Log().Debugf("%s does not exist", p)
+			t.Log().Tracef("%s does not exist", p)
 			return nil
 		}
 		if bytes.Compare(b, v) == 0 {
-			t.Log().Debugf("%s already set to %s", p, v)
+			t.Log().Tracef("%s already set to %s", p, v)
 			return nil
 		}
 		err = os.WriteFile(p, v, 0644)
@@ -878,7 +878,7 @@ func (t *T) setCpusetCloneChildren() error {
 		ref := filepath.Join(cpusetDir, base)
 		b, err := os.ReadFile(ref)
 		if err != nil {
-			t.Log().Debugf("%s does not exist", ref)
+			t.Log().Tracef("%s does not exist", ref)
 			return nil
 		}
 		return setFile(p, b)
@@ -915,7 +915,7 @@ func (t *T) cgroupDirCapable() bool {
 
 func (t *T) createCgroup(p string) error {
 	if file.Exists(p) {
-		t.Log().Debugf("%s already exists", p)
+		t.Log().Tracef("%s already exists", p)
 		return nil
 	}
 	if err := os.MkdirAll(p, 0755); err != nil {
@@ -957,7 +957,7 @@ func (t *T) installCF() error {
 	}
 	nativeCF := t.nativeConfigFile()
 	if nativeCF == "" {
-		t.Log().Debugf("could not determine the config file standard hosting directory")
+		t.Log().Tracef("could not determine the config file standard hosting directory")
 		return nil
 	}
 	if cf == nativeCF {
@@ -1016,7 +1016,7 @@ func (t *T) exists() bool {
 func (t *T) cleanupLink(s string) error {
 	link, err := netlink.LinkByName(s)
 	if err != nil {
-		t.Log().Debugf("link %s already deleted", s)
+		t.Log().Tracef("link %s already deleted", s)
 		return nil
 	}
 	if err := netlink.LinkDel(link); err != nil {
@@ -1206,7 +1206,7 @@ func (t *T) abortPing(hn string) bool {
 		t.Log().Errorf("abort! %s is alive", hn)
 		return true
 	} else {
-		t.Log().Debugf("abort? %s is not alive", hn)
+		t.Log().Tracef("abort? %s is not alive", hn)
 		return false
 	}
 }
@@ -1261,7 +1261,7 @@ func (t *T) upPeer() (string, error) {
 			continue
 		}
 		if v, err := isPeerUp(n); err != nil {
-			t.Log().Debugf("ssh abort check on %s: %s", n, err)
+			t.Log().Tracef("ssh abort check on %s: %s", n, err)
 			continue
 		} else if v {
 			return n, nil

@@ -31,7 +31,7 @@ func (t *actor) Unprovision(ctx context.Context) error {
 
 func (t *actor) lockedUnprovision(ctx context.Context) error {
 	return t.action(ctx, func(ctx context.Context, r resource.Driver) error {
-		t.log.Attr("rid", r.RID()).Debugf("unprovision resource")
+		t.log.Attr("rid", r.RID()).Tracef("unprovision resource")
 		leader := actioncontext.IsLeader(ctx)
 		return resource.Unprovision(ctx, r, leader)
 	})

@@ -119,9 +119,9 @@ func (e *Executor) HasImage(ctx context.Context) (bool, string, error) {
 	} else {
 		cmd = exec.Command(e.bin, a...)
 	}
-	e.log().Debugf("call %s %s", e.bin, a)
+	e.log().Tracef("call %s %s", e.bin, a)
 	if b, err := cmd.Output(); err != nil {
-		e.log().Debugf("call %s %s failed: %s", e.bin, a, err)
+		e.log().Tracef("call %s %s failed: %s", e.bin, a, err)
 		return false, "", nil
 	} else {
 		imageID := strings.TrimSuffix(string(b), "\n")
@@ -157,18 +157,18 @@ func (e *Executor) InspectRefresh(ctx context.Context) (Inspecter, error) {
 	e.mutex.Lock()
 	defer e.mutex.Unlock()
 	e.inspected = true
-	e.log().Debugf("engine inspect: %s %s", e.bin, strings.Join(a, " "))
+	e.log().Tracef("engine inspect: %s %s", e.bin, strings.Join(a, " "))
 	if b, err := cmd.Output(); err != nil {
 		e.inspecter = nil
-		e.log().Debugf("inspect: %s", err)
+		e.log().Tracef("inspect: %s", err)
 		return nil, nil
 	} else if i, err := e.args.InspectParser(b); err != nil {
 		e.inspecter = nil
-		e.log().Debugf("inspect parse: %s", err)
+		e.log().Tracef("inspect parse: %s", err)
 		return nil, err
 	} else {
 		e.inspecter = i
-		e.log().Debugf("inspect success")
+		e.log().Tracef("inspect success")
 		return i, nil
 	}
 }
@@ -180,7 +180,7 @@ func (e *Executor) Pull(ctx context.Context) error {
 func (e *Executor) Remove(ctx context.Context) error {
 	if err := e.doExecRun(ctx, nil, e.args.RemoveArgs().Get()...); err != nil {
 		if inspect, err := e.InspectRefresh(ctx); err == nil && inspect == nil {
-			e.log().Debugf("remove: container removed")
+			e.log().Tracef("remove: container removed")
 			return nil
 		}
 		return err
@@ -217,7 +217,7 @@ func (e *Executor) Start(ctx context.Context) error {
 func (e *Executor) Stop(ctx context.Context) error {
 	if err := e.doExecRun(ctx, nil, e.args.StopArgs().Get()...); err != nil {
 		if inspect, err := e.InspectRefresh(ctx); err == nil && inspect == nil {
-			e.log().Debugf("stop: container removed")
+			e.log().Tracef("stop: container removed")
 			return nil
 		}
 		return err
@@ -228,7 +228,7 @@ func (e *Executor) Stop(ctx context.Context) error {
 func (e *Executor) WaitNotRunning(ctx context.Context) error {
 	if err := e.args.WaitNotRunning(ctx); err != nil {
 		if inspect, err := e.InspectRefresh(ctx); err == nil && inspect == nil {
-			e.log().Debugf("wait not running: container removed")
+			e.log().Tracef("wait not running: container removed")
 			return nil
 		}
 		return err
@@ -239,7 +239,7 @@ func (e *Executor) WaitNotRunning(ctx context.Context) error {
 func (e *Executor) WaitRemoved(ctx context.Context) error {
 	if err := e.args.WaitRemoved(ctx); err != nil {
 		if inspect, err := e.InspectRefresh(ctx); err == nil && inspect == nil {
-			e.log().Debugf("wait removed: container removed")
+			e.log().Tracef("wait removed: container removed")
 			return nil
 		}
 		return err
@@ -281,7 +281,7 @@ func (e *Executor) doExecRunLog(ctx context.Context, logOutput bool, environ map
 	if len(environ) > 0 {
 		envL := os.Environ()
 		for k, v := range environ {
-			e.log().Debugf("exec with env %s=xxx", k)
+			e.log().Tracef("exec with env %s=xxx", k)
 			envL = append(envL, fmt.Sprintf("%s=%s", k, v))
 		}
 		opts = append(opts, command.WithEnv(envL))

@@ -19,6 +19,16 @@ type (
 	ctxKey struct{}
 )
 
+const (
+	levelKey = "OSVC_LOG_LEVEL"
+
+	levelError = "error"
+	levelWarn  = "warn"
+	levelInfo  = "info"
+	levelDebug = "debug"
+	levelTrace = "trace"
+)
+
 func NewDefaultLogger() *Logger {
 	return &Logger{
 		logger: log.Logger,
@@ -45,31 +55,37 @@ func (t *Logger) Msgf(format string, a ...any) string {
 }
 
 func (t *Logger) Infof(format string, a ...any) {
-	t.logger.Info().Msg(t.Msgf(format, a...))
+	t.logger.Info().Str(levelKey, "6").Msg(t.Msgf(format, a...))
 }
 
 func (t *Logger) Debugf(format string, a ...any) {
-	t.logger.Debug().Msg(t.Msgf(format, a...))
+	t.logger.Debug().Str(levelKey, levelDebug).Msg(t.Msgf(format, a...))
+}
+
+func (t *Logger) Tracef(format string, a ...any) {
+	t.logger.Debug().Str(levelKey, levelTrace).Msg(t.Msgf(format, a...))
 }
 
 func (t *Logger) Errorf(format string, a ...any) {
-	t.logger.Error().Msg(t.Msgf(format, a...))
+	t.logger.Error().Str(levelKey, levelError).Msg(t.Msgf(format, a...))
 }
 
 func (t *Logger) Warnf(format string, a ...any) {
-	t.logger.Warn().Msg(t.Msgf(format, a...))
+	t.logger.Warn().Str(levelKey, levelWarn).Msg(t.Msgf(format, a...))
 }
 
 func (t *Logger) Levelf(level zerolog.Level, format string, a ...any) {
 	switch level {
+	case zerolog.TraceLevel:
+		t.logger.Debug().Str(levelKey, levelTrace).Msg(t.Msgf(format, a...))
 	case zerolog.DebugLevel:
-		t.logger.Debug().Msg(t.Msgf(format, a...))
+		t.logger.Debug().Str(levelKey, levelDebug).Msg(t.Msgf(format, a...))
 	case zerolog.InfoLevel:
-		t.logger.Info().Msg(t.Msgf(format, a...))
+		t.logger.Info().Str(levelKey, levelInfo).Msg(t.Msgf(format, a...))
 	case zerolog.WarnLevel:
-		t.logger.Warn().Msg(t.Msgf(format, a...))
+		t.logger.Warn().Str(levelKey, levelWarn).Msg(t.Msgf(format, a...))
 	case zerolog.ErrorLevel:
-		t.logger.Error().Msg(t.Msgf(format, a...))
+		t.logger.Error().Str(levelKey, levelError).Msg(t.Msgf(format, a...))
 	}
 }
 

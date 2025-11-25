@@ -205,7 +205,7 @@ func (t T) IsActive() (bool, string, error) {
 			inactive = true
 		}
 		if inactive {
-			t.log.Debugf("status eval'ed down because: %s", s)
+			t.log.Tracef("status eval'ed down because: %s", s)
 			return false, msg, nil
 		}
 	}

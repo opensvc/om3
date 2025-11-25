@@ -209,7 +209,7 @@ func (t *T) genHostID() error {
 // imports anyway, but if we don't export unnecessary export/import is
 // saved.
 func (t *T) UnprovisionStop(ctx context.Context) error {
-	t.Log().Debugf("bypass export for unprovision")
+	t.Log().Tracef("bypass export for unprovision")
 	return nil
 }
 
@@ -391,7 +391,7 @@ func (t *T) unprovision(ctx context.Context) error {
 		return err
 	} else if !v {
 		if err := t.poolImportTryDevice(true); err != nil {
-			t.Log().Debugf("try import before destroy: %s", err)
+			t.Log().Tracef("try import before destroy: %s", err)
 			return nil
 		}
 	}
@@ -418,10 +418,10 @@ func (t *T) SubDevices() device.L {
 	if l, errUpd := t.updateSubDevsFile(); errUpd == nil && l != nil {
 		return t.toDevices(l)
 	} else if l, errLoad := t.loadSubDevsFile(); errLoad == nil {
-		t.Log().Debugf("update sub devs cache: %s", errUpd)
+		t.Log().Tracef("update sub devs cache: %s", errUpd)
 		return t.toDevices(l)
 	} else {
-		t.Log().Debugf("load sub devs cache: %s", errLoad)
+		t.Log().Tracef("load sub devs cache: %s", errLoad)
 		return device.L{}
 	}
 }

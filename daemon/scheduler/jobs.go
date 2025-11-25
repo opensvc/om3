@@ -74,7 +74,7 @@ func (o *T) action(e schedule.Entry) error {
 		command.WithLogger(o.log),
 		command.WithEnv(cmdEnv),
 	)
-	o.log.Debugf("-> exec %s", cmd)
+	o.log.Tracef("-> exec %s", cmd)
 	o.publisher.Pub(&msgbus.Exec{Command: cmd.String(), Node: o.localhost, Origin: "scheduler", SessionID: sid}, labels...)
 	startTime := time.Now()
 	if err := cmd.Run(); err != nil {
@@ -85,6 +85,6 @@ func (o *T) action(e schedule.Entry) error {
 	}
 	duration := time.Now().Sub(startTime)
 	o.publisher.Pub(&msgbus.ExecSuccess{Command: cmd.String(), Duration: duration, Node: o.localhost, Origin: "scheduler", SessionID: sid}, labels...)
-	o.log.Debugf("<- exec %s", cmd)
+	o.log.Tracef("<- exec %s", cmd)
 	return nil
 }

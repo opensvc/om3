@@ -557,7 +557,7 @@ func (t *T) getNodeIPWithGetAddrInfo(nodename string) (net.IP, error) {
 	case 1:
 		// ok
 	default:
-		t.Log().Debugf("name %s is resolvables to %d address. Using the first.", nodename, n)
+		t.Log().Tracef("name %s is resolvables to %d address. Using the first.", nodename, n)
 	}
 	return ips[0], nil
 
@@ -945,11 +945,11 @@ func (t *T) Provisioned() (provisioned.T, error) {
 	ctx := context.Background()
 	hasMD, err := t.drbd(ctx).HasMD(ctx)
 	if err != nil {
-		t.Log().Debugf("drbd res is not configured")
+		t.Log().Tracef("drbd res is not configured")
 		return provisioned.Undef, err
 	}
 	if !hasMD {
-		t.Log().Debugf("drbd disk has no metadata")
+		t.Log().Tracef("drbd disk has no metadata")
 		return provisioned.False, nil
 	}
 	return provisioned.True, nil

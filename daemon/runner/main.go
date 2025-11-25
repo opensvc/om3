@@ -61,17 +61,17 @@ func (t *T) run() {
 	for {
 		running := t.running.Load()
 		if running >= int32(t.maxRunning) {
-			//t.log.Debugf("priority run queue full: %d running %d waiting", running, t.queue.Len())
+			//t.log.Tracef("priority run queue full: %d running %d waiting", running, t.queue.Len())
 			return
 		}
 		i := t.queue.Pop()
 		if i == nil {
-			//t.log.Debugf("priority run queue empty")
+			//t.log.Tracef("priority run queue empty")
 			return
 		}
 		item := i.(Item)
 		t.running.Add(1)
-		//t.log.Debugf("priority run dequeue from p%d: %d running %d waiting", item.priority, running, t.queue.Len())
+		//t.log.Tracef("priority run dequeue from p%d: %d running %d waiting", item.priority, running, t.queue.Len())
 		go func() {
 			imStarted <- true
 			err := item.f()

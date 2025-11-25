@@ -280,7 +280,7 @@ func (t *T) mustTunnel(tunnel string, peerIP net.IP) (bool, error) {
 	if _, ipnet, err := network.IPReachableFrom(peerIP); err != nil {
 		return false, err
 	} else if ipnet != nil {
-		t.Log().Debugf("%s is reachable from %s. tunnel not needed", peerIP, ipnet)
+		t.Log().Tracef("%s is reachable from %s. tunnel not needed", peerIP, ipnet)
 		return false, nil
 	}
 	return true, nil

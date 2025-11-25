@@ -250,7 +250,7 @@ func (t *Manager) startUDSListener() error {
 
 	sendBytes := func(id uint64, conn net.Conn, b []byte) error {
 		b = append(b, []byte("\n")...)
-		t.log.Debugf("%d: >>> %s", id, string(b))
+		t.log.Tracef("%d: >>> %s", id, string(b))
 		if err := conn.SetWriteDeadline(time.Now().Add(time.Second)); err != nil {
 			t.log.Warnf("%d: can't set response write deadline: %s", id, err)
 		}
@@ -274,7 +274,7 @@ func (t *Manager) startUDSListener() error {
 			Result: false,
 		}
 		b, _ := json.Marshal(response)
-		t.log.Debugf("%d: >>> %s", id, string(b))
+		t.log.Tracef("%d: >>> %s", id, string(b))
 		return sendBytes(id, conn, b)
 	}
 
@@ -296,7 +296,7 @@ func (t *Manager) startUDSListener() error {
 			reqCount uint64
 		)
 		defer conn.Close()
-		t.log.Debugf("%d: new connection", id)
+		t.log.Tracef("%d: new connection", id)
 		for {
 			select {
 			case <-t.ctx.Done():
@@ -312,10 +312,10 @@ func (t *Manager) startUDSListener() error {
 			message = buffer[:n]
 
 			if os.IsTimeout(err) {
-				t.log.Debugf("%d: alive", id)
+				t.log.Tracef("%d: alive", id)
 				continue
 			} else if errors.Is(err, io.EOF) {
-				t.log.Debugf("%d: close connection (%s), served %d requests", id, err, reqCount)
+				t.log.Tracef("%d: close connection (%s), served %d requests", id, err, reqCount)
 				return
 			} else if err != nil {
 				t.log.Errorf("%d: close connection (%s), served %d requests", id, err, reqCount)
@@ -328,7 +328,7 @@ func (t *Manager) startUDSListener() error {
 			}
 
 			reqCount++
-			t.log.Debugf("%d: <<< %s", id, string(message))
+			t.log.Tracef("%d: <<< %s", id, string(message))
 
 			if err := json.Unmarshal(message, &req); err != nil {
 				t.log.Errorf("%d: close connection (%s), served %d requests", id, err, reqCount)
@@ -354,7 +354,7 @@ func (t *Manager) startUDSListener() error {
 		go func() {
 			select {
 			case <-t.ctx.Done():
-				t.log.Debugf("stop listening (abort)")
+				t.log.Tracef("stop listening (abort)")
 				_ = l.Close()
 				return
 			}
@@ -365,7 +365,7 @@ func (t *Manager) startUDSListener() error {
 			conn, err := l.Accept()
 			if err != nil {
 				if errors.Is(err, net.ErrClosed) {
-					t.log.Debugf("stop listening (%s)", err)
+					t.log.Tracef("stop listening (%s)", err)
 					return
 				}
 				t.log.Warnf("accept connection error: %s", err)
@@ -384,7 +384,7 @@ func (t *Manager) startUDSListener() error {
 	t.wg.Add(1)
 	go func() {
 		defer t.wg.Done()
-		t.log.Debugf("start listening")
+		t.log.Tracef("start listening")
 		listen()
 	}()
 

@@ -115,6 +115,8 @@ func (t *T) Start(ctx context.Context) error {
 		return fmt.Errorf("can't start again, daemon is already running")
 	}
 	t.logTransition("starting ...")
+	t.log.Tracef("daemon using qsSmall: %d", qsSmall)
+	t.log.Tracef("daemon using qsMedium: %d", qsMedium)
 
 	// When started by the systemd unit, HOME is empty.
 	// os.UserHomeDir() uses $HOME, so we want HOME initialized once and for all, early.
@@ -149,7 +151,7 @@ func (t *T) Start(ctx context.Context) error {
 		// give chance for DaemonStatusUpdated message to reach peers
 		time.Sleep(300 * time.Millisecond)
 		defer t.wg.Done()
-		t.log.Infof("stop pubsub bus")
+		t.log.Infof("stopping pubsub bus")
 		t.bus.Stop()
 		t.log.Infof("stopped pubsub bus")
 		return nil
@@ -184,7 +186,7 @@ func (t *T) Start(ctx context.Context) error {
 
 	dataCmd, dataMsgRecvQ, dataCmdCancel := daemondata.Start(t.ctx, daemonenv.DrainChanDuration, qsHuge)
 	t.stopFuncs = append(t.stopFuncs, func() error {
-		t.log.Debugf("stop data manager")
+		t.log.Tracef("stop data manager")
 		dataCmdCancel()
 		return nil
 	})
@@ -262,7 +264,7 @@ func (t *T) Start(ctx context.Context) error {
 	if ok, err := t.notifyDaemonSys(t.ctx, daemonSysManagerReady); err != nil {
 		t.log.Warnf("sd notify ready: %s", err)
 	} else if !ok {
-		t.log.Debugf("sd notify ready delivery not needed")
+		t.log.Tracef("sd notify ready delivery not needed")
 	} else {
 		t.log.Infof("sd notify ready delivered")
 	}
@@ -279,7 +281,7 @@ func (t *T) Stop() error {
 	if ok, err := t.notifyDaemonSys(t.ctx, daemonSysManagerStopping); err != nil {
 		t.log.Warnf("sd notify stopping: %s", err)
 	} else if !ok {
-		t.log.Debugf("sd notify ready delivery not needed")
+		t.log.Tracef("sd notify ready delivery not needed")
 	} else {
 		t.log.Infof("sd notify stopping delivered")
 	}
@@ -335,14 +337,14 @@ func (t *T) stopWatcher() {
 		defer func() {
 			signalCancel()
 			_ = sub.Stop()
-			t.log.Debugf("stop watcher terminated")
+			t.log.Tracef("stop watcher terminated")
 		}()
-		t.log.Debugf("stop watcher running")
+		t.log.Tracef("stop watcher running")
 		started <- true
 		for {
 			select {
 			case <-t.ctx.Done():
-				t.log.Debugf("stop watcher returns on context done")
+				t.log.Tracef("stop watcher returns on context done")
 				return
 			case <-signalCtx.Done():
 				t.log.Infof("stopping on signal")
@@ -443,8 +445,8 @@ func (t *T) sdWatchDog(ctx context.Context, interval, pubsubTimeout time.Duratio
 	defer tickerPubsub.Stop()
 
 	var disabled bool
-	t.log.Debugf("sd-watchdog: started")
-	defer t.log.Debugf("sd-watchdog: stopped")
+	t.log.Tracef("sd-watchdog: started")
+	defer t.log.Tracef("sd-watchdog: stopped")
 	for {
 		select {
 		case <-ctx.Done():
@@ -456,9 +458,9 @@ func (t *T) sdWatchDog(ctx context.Context, interval, pubsubTimeout time.Duratio
 			if ok, err := sd.NotifyWatchdog(); err != nil {
 				t.log.Warnf("sd-watchdog: %s", err)
 			} else if !ok {
-				t.log.Debugf("sd-watchdog: delivery not needed")
+				t.log.Tracef("sd-watchdog: delivery not needed")
 			} else {
-				t.log.Debugf("sd-watchdog: delivered")
+				t.log.Tracef("sd-watchdog: delivered")
 			}
 		case <-tickerPubsub.C:
 			if disabled {

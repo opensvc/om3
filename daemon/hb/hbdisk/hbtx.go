@@ -42,7 +42,7 @@ func (t *tx) ID() string {
 
 // Stop implements the Stop function of Transmitter interface for tx
 func (t *tx) Stop() error {
-	t.log.Debugf("cancelling")
+	t.log.Tracef("cancelling")
 	t.cancel()
 	for _, node := range t.nodes {
 		t.cmdC <- hbctrl.CmdDelWatcher{
@@ -51,7 +51,7 @@ func (t *tx) Stop() error {
 		}
 	}
 	t.Wait()
-	t.log.Debugf("wait done")
+	t.log.Tracef("wait done")
 	return nil
 }
 
@@ -126,7 +126,7 @@ func (t *tx) Start(cmdC chan<- interface{}, msgC <-chan []byte) error {
 			if len(b) == 0 {
 				continue
 			}
-			t.log.Debugf(reason)
+			t.log.Tracef(reason)
 			t.send(b)
 		}
 	}()
@@ -146,7 +146,7 @@ func (t *tx) allocateSlot() error {
 			return fmt.Errorf("free slot: %w", err)
 		}
 
-		t.log.Debugf("allocating slot %d for node %s", slot, localhost)
+		t.log.Tracef("allocating slot %d for node %s", slot, localhost)
 		if err := t.base.writeMetaSlot(slot, b); err != nil {
 			return fmt.Errorf("write mata slot %d: %w", slot, err)
 		}
@@ -200,7 +200,7 @@ func (t *tx) send(b []byte) {
 		t.log.Errorf("write data slot %d: %s", t.slot, err)
 		return
 	} else {
-		t.log.Debugf("written data slot %d len %d", t.slot, len(b))
+		t.log.Tracef("written data slot %d len %d", t.slot, len(b))
 	}
 	for _, node := range t.nodes {
 		t.cmdC <- hbctrl.CmdSetPeerSuccess{

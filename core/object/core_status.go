@@ -98,12 +98,12 @@ func (t *core) statusDump(data instance.Status) error {
 		os.Remove(tempFileName)
 		return err
 	}
-	t.log.Debugf("%s dumped", p)
+	t.log.Tracef("%s dumped", p)
 	if err := t.postInstanceStatus(data); err != nil {
 		// daemon can be down
-		t.log.Debugf("post instance status error: %s", err)
+		t.log.Tracef("post instance status error: %s", err)
 	} else {
-		t.log.Debugf("posted instance status")
+		t.log.Tracef("posted instance status")
 	}
 	return nil
 }

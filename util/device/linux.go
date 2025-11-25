@@ -291,7 +291,7 @@ func (t T) Remove() error {
 	}
 	driverRemover, ok := driver.(remover)
 	if !ok {
-		t.log.Debugf("Remove() not implemented for device driver %s", driver)
+		t.log.Tracef("Remove() not implemented for device driver %s", driver)
 		return nil
 	}
 	driverRemover.Remove(t)

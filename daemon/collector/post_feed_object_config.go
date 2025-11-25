@@ -72,7 +72,7 @@ var (
 )
 
 func (t *T) sendObjectConfigChange() (err error) {
-	t.log.Debugf("sendObjectConfigChange")
+	t.log.Tracef("sendObjectConfigChange")
 	for p, v := range t.objectConfigToSend {
 		checksum, b, err := t.asPostFeedObjectConfigBody(p, v)
 		if err != nil {
@@ -169,7 +169,7 @@ func (t *T) asPostFeedObjectConfigBody(p naming.Path, v *msgbus.InstanceConfigUp
 				addr = lsnr.Addr
 			}
 		}
-		t.log.Debugf("use client url from %s and %s: %s", addr, port, daemonenv.HTTPNodeAndPortURL(addr, port))
+		t.log.Tracef("use client url from %s and %s: %s", addr, port, daemonenv.HTTPNodeAndPortURL(addr, port))
 		cli, err := client.New(
 			client.WithURL(daemonenv.HTTPNodeAndPortURL(addr, port)),
 			client.WithUsername(hostname.Hostname()),
@@ -261,7 +261,7 @@ func (t *T) doPostObjectConfig(checksum string, b []byte, p naming.Path) error {
 
 	switch resp.StatusCode {
 	case http.StatusAccepted:
-		t.log.Debugf("%s %s %s status code %d", method, path, p, resp.StatusCode)
+		t.log.Tracef("%s %s %s status code %d", method, path, p, resp.StatusCode)
 		sent := objectConfigSent{path: p, Checksum: checksum, SentAt: time.Now()}
 		if err := sent.write(); err != nil {
 			return err

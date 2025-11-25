@@ -70,8 +70,8 @@ func New(subQS pubsub.QueueSizer) *T {
 
 func (t *T) Start(ctx context.Context) error {
 	t.log = plog.NewDefaultLogger().WithPrefix("daemon: istat: ").Attr("pkg", "daemon/istat")
-	t.log.Debugf("starting")
-	defer t.log.Debugf("started")
+	t.log.Tracef("starting")
+	defer t.log.Tracef("started")
 	err := make(chan error)
 	t.wg.Add(1)
 	go func(errC chan<- error) {
@@ -285,7 +285,7 @@ func (t *T) onInstanceStatusPost(msg *msgbus.InstanceStatusPost) {
 		// Outdated instance status must be ignored: concurrent post from `scheduled status` and `end instance action`
 		// This prevents from reverting value until the next scheduled status and fix possible unexpected orchestration
 		// --wait failure.
-		naming.LogWithPath(t.log, msg.Path).Debugf("%s: ignore outdated %s vs %s", s, msg.Value.UpdatedAt, prev.UpdatedAt)
+		naming.LogWithPath(t.log, msg.Path).Tracef("%s: ignore outdated %s vs %s", s, msg.Value.UpdatedAt, prev.UpdatedAt)
 		return
 	}
 	if prev.Avail != msg.Value.Avail {

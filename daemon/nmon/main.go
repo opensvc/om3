@@ -397,7 +397,7 @@ func (t *Manager) poolWorker() {
 
 // worker watch for local nmon updates
 func (t *Manager) worker() {
-	defer t.log.Debugf("done")
+	defer t.log.Tracef("done")
 
 	t.startedAt = time.Now()
 
@@ -752,7 +752,7 @@ func (t *Manager) bootstrapConfig() error {
 	t.config = n.MergedConfig()
 	nodeConfig := t.getNodeConfig()
 	if nodeConfig.PRKey != "" {
-		t.log.Debugf("node prkey %s", nodeConfig.PRKey)
+		t.log.Tracef("node prkey %s", nodeConfig.PRKey)
 		return nil
 	}
 	prKey, err := n.PRKey()

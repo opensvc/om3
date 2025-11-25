@@ -503,7 +503,7 @@ func (b *Bus) enablePublicationBuffering(c cmdBufferPublications) {
 
 func (b *Bus) disablePublicationBuffering(_ cmdBufferPublications) {
 	if !b.bufferedPublicationEnabled {
-		b.log.Debugf("publication buffering is already disabled")
+		b.log.Tracef("publication buffering is already disabled")
 		return
 	}
 	b.log.Infof("disabling publication buffering, emit queued publications %d", b.bufferedPublicationCount)
@@ -586,7 +586,7 @@ func (b *Bus) onSubCmd(c cmdSub) {
 	}
 	b.subs[id] = sub
 	c.resp <- sub
-	b.log.Debugf("subscribe %s timeout %s queueSize %d", sub.name, c.timeout, c.queueSize)
+	b.log.Tracef("subscribe %s timeout %s queueSize %d", sub.name, c.timeout, c.queueSize)
 	subscriptionTotal.With(prometheus.Labels{"operation": "create"}).Inc()
 }
 
@@ -604,7 +604,7 @@ func (b *Bus) onUnsubCmd(c cmdUnsub) {
 		c.err <- b.ctx.Err()
 	case c.err <- nil:
 	}
-	b.log.Debugf("unsubscribe %s", sub.name)
+	b.log.Tracef("unsubscribe %s", sub.name)
 	subscriptionTotal.With(prometheus.Labels{"operation": "delete"}).Inc()
 }
 
@@ -631,7 +631,7 @@ func (b *Bus) doPublication(c cmdPub) {
 					b.log.Warnf("filter key %s has a dead subscription %s", toFilterKey, subID)
 					continue
 				}
-				b.log.Debugf("route %s to %s", c, sub)
+				b.log.Tracef("route %s to %s", c, sub)
 				queueLen := sub.queued.Add(1)
 				sub.q <- c.data
 				publicationPushedTotal.With(prometheus.Labels{"filterkey": toFilterKey}).Inc()
@@ -671,7 +671,7 @@ func (b *Bus) doPublication(c cmdPub) {
 						b.log.Warnf("subscription %s has reached high %d queued pending message, increase threshold %d -> %d of limit %d", sub.name, queueLen, previous, sub.queuedMax, sub.queuedSize)
 						subscriptionQueueThresholdTotal.With(prometheus.Labels{"family": sub.family, "change": "increase", "block": sub.block, "level": "info"}).Inc()
 					} else {
-						b.log.Debugf("subscription %s has reached high %d queued pending message, increase threshold %d -> %d of limit %d", sub.name, queueLen, previous, sub.queuedMax, sub.queuedSize)
+						b.log.Tracef("subscription %s has reached high %d queued pending message, increase threshold %d -> %d of limit %d", sub.name, queueLen, previous, sub.queuedMax, sub.queuedSize)
 						subscriptionQueueThresholdTotal.With(prometheus.Labels{"family": sub.family, "change": "increase", "block": sub.block, "level": "debug"}).Inc()
 					}
 					go sub.publisher.Pub(&SubscriptionQueueThreshold{Name: sub.name, ID: sub.id, Count: queueLen, From: previous, To: sub.queuedMax, Limit: sub.queuedSize}, Label{"counter", ""}, Label{"level", level})
@@ -686,7 +686,7 @@ func (b *Bus) doPublication(c cmdPub) {
 						b.log.Infof("subscription %s has reached low %d queued pending message, decrease threshold %d -> %d of limit %d", sub.name, queueLen, previous, sub.queuedMax, sub.queuedSize)
 						subscriptionQueueThresholdTotal.With(prometheus.Labels{"family": sub.family, "change": "decrease", "block": sub.block, "level": "info"}).Inc()
 					} else {
-						b.log.Debugf("subscription %s has reached low %d queued pending message, decrease threshold %d -> %d of limit %d", sub.name, queueLen, previous, sub.queuedMax, sub.queuedSize)
+						b.log.Tracef("subscription %s has reached low %d queued pending message, decrease threshold %d -> %d of limit %d", sub.name, queueLen, previous, sub.queuedMax, sub.queuedSize)
 						subscriptionQueueThresholdTotal.With(prometheus.Labels{"family": sub.family, "change": "decrease", "block": sub.block, "level": "debug"}).Inc()
 					}
 					go sub.publisher.Pub(&SubscriptionQueueThreshold{Name: sub.name, ID: sub.id, Count: queueLen, From: previous, To: sub.queuedMax, Limit: sub.queuedSize}, Label{"counter", ""}, Label{"level", level})
@@ -1214,7 +1214,7 @@ func (sub *Subscription) Start() {
 		}
 		filters += ", "
 	}
-	sub.bus.log.Debugf("subscription '%s' started with filters [%s]", sub.name, filters)
+	sub.bus.log.Tracef("subscription '%s' started with filters [%s]", sub.name, filters)
 	subscriptionTotal.With(prometheus.Labels{"operation": "start"}).Inc()
 }
 

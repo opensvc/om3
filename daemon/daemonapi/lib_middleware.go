@@ -116,7 +116,7 @@ func AuthMiddleware(parent context.Context) echo.MiddlewareFunc {
 				code := http.StatusUnauthorized
 				return JSONProblem(c, code, http.StatusText(code), err.Error())
 			}
-			log.Debugf("user %s authenticated", user.GetUserName())
+			log.Tracef("user %s authenticated", user.GetUserName())
 			extensions := user.GetExtensions()
 			c.Set("user", user)
 			c.Set("grants", rbac.NewGrants(extensions.Values("grant")...))

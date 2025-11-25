@@ -93,7 +93,7 @@ func (t *T) Stop(ctx context.Context) (err error) {
 	container := t.containerDetachedGetter.GetContainerDetached()
 
 	if container == nil {
-		t.Log().Debugf("stop container skipped: container is absent")
+		t.Log().Tracef("stop container skipped: container is absent")
 		return nil
 	}
 

@@ -213,7 +213,7 @@ func (t *T) devpath() string {
 	if p, err := vpath.HostDevpath(t.Device, t.Path.Namespace); err == nil {
 		return p
 	} else {
-		t.Log().Debugf("resolve host devpath for device %s in namespace %s: %s", t.Device, t.Path.Namespace, err)
+		t.Log().Tracef("resolve host devpath for device %s in namespace %s: %s", t.Device, t.Path.Namespace, err)
 	}
 	return ""
 }
@@ -346,7 +346,7 @@ func (t *T) promoteDevicesReadWrite(ctx context.Context) error {
 			return err
 		}
 		if !currentRO {
-			t.Log().Debugf("device %s is already read-write", dev)
+			t.Log().Tracef("device %s is already read-write", dev)
 			continue
 		}
 		t.Log().Infof("promote device %s read-write", dev)
@@ -369,7 +369,7 @@ func (t *T) fs() filesystems.I {
 func (t *T) fsck() error {
 	fs := t.fs()
 	if !filesystems.HasFSCK(fs) {
-		t.Log().Debugf("skip fsck, not implemented for type %s", fs)
+		t.Log().Tracef("skip fsck, not implemented for type %s", fs)
 		return nil
 	}
 	if err := filesystems.CanFSCK(fs); err != nil {
@@ -469,12 +469,12 @@ func (t *T) checkReadAccess() error {
 
 func (t *T) checkWriteXattr(s string) error {
 	data := []byte(time.Now().String())
-	t.Log().Debugf("checkWriteXattr %s", s)
+	t.Log().Tracef("checkWriteXattr %s", s)
 	return unix.Setxattr(s, "user.opensvc", data, 0)
 }
 
 func (t *T) checkWriteFile(s string) error {
-	t.Log().Debugf("checkWriteFile %s", s)
+	t.Log().Tracef("checkWriteFile %s", s)
 	if f, err := os.OpenFile(s, os.O_CREATE|os.O_WRONLY|os.O_TRUNC, 0600); err != nil {
 		return err
 	} else {

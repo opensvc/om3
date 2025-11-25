@@ -17,7 +17,7 @@ func (a *DaemonAPI) GetNodeDRBDConfig(ctx echo.Context, nodename string, params 
 		return err
 	}
 	log := LogHandler(ctx, "GetNodeDRBDConfig")
-	log.Debugf("starting")
+	log.Tracef("starting")
 	if params.Name == "" {
 		log.Warnf("invalid file name: %s", params.Name)
 		return JSONProblemf(ctx, http.StatusBadRequest, "Invalid parameter", "invalid file name: %s", params.Name)

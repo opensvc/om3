@@ -163,7 +163,7 @@ func (a *DaemonAPI) localPostDaemonShutdown(eCtx echo.Context, params api.PostDa
 	for p, state := range getMonitorStates() {
 		logP := naming.LogWithPath(log, p)
 		if instance.ConfigData.GetByPathAndNode(p, a.localhost).IsDisabled {
-			logP.Debugf("shutdown skipped on disabled local instance")
+			logP.Tracef("shutdown skipped on disabled local instance")
 			continue
 		}
 		// TODO: perhaps here we should shutdown all local instance that are not shutdown ?

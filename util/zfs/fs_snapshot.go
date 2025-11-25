@@ -56,7 +56,7 @@ func (t *Filesystem) Snapshot(fopts ...funcopt.O) error {
 	cmd := exec.Command("/usr/sbin/zfs", args...)
 	cmdStr := cmd.String()
 	if t.Log != nil {
-		t.Log.Debugf("exec '%s'", cmdStr)
+		t.Log.Tracef("exec '%s'", cmdStr)
 	}
 	b, err := cmd.CombinedOutput()
 	if err != nil {

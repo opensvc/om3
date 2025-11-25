@@ -103,7 +103,7 @@ func (t *Manager) startSubscriptions() {
 
 // worker watch for local ccfg updates
 func (t *Manager) worker() {
-	defer t.log.Debugf("done")
+	defer t.log.Tracef("done")
 
 	t.startedAt = time.Now()
 

@@ -68,16 +68,16 @@ func (t *Manager) startedFromUnfrozen() {
 		return
 	}
 	if t.hasOtherNodeActing() {
-		t.log.Debugf("another node acting")
+		t.log.Tracef("another node acting")
 		return
 	}
 	if t.instStatus[t.localhost].Provisioned.IsOneOf(provisioned.False, provisioned.Undef) {
-		t.log.Debugf("provisioned is false or undef")
+		t.log.Tracef("provisioned is false or undef")
 		return
 	}
 	if t.objStatus.Topology != topology.Flex {
 		if nodename, state := t.isAnyPeerState(instance.MonitorStateStartProgress, instance.MonitorStateReady); nodename != "" {
-			t.log.Debugf("peer %s imon state is %s", nodename, state)
+			t.log.Tracef("peer %s imon state is %s", nodename, state)
 			return
 		}
 	}
@@ -157,7 +157,7 @@ func (t *Manager) startedFromReady() {
 
 		nodeStonithAt, ok := nodeStonithAtMap[t.peerDrop]
 		if ok && !nodeStonithAt.Before(t.peerDropAt) {
-			t.log.Debugf("stonith: %s already fenced", t.peerDrop)
+			t.log.Tracef("stonith: %s already fenced", t.peerDrop)
 			return nil
 		}
 		nodeStonithAtMap[t.peerDrop] = t.peerDropAt

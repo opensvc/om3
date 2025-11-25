@@ -32,7 +32,7 @@ func (t *actor) lockedShutdown(ctx context.Context) error {
 
 func (t *actor) masterShutdown(ctx context.Context) error {
 	return t.action(ctx, func(ctx context.Context, r resource.Driver) error {
-		t.log.Attr("rid", r.RID()).Debugf("shutdown resource")
+		t.log.Attr("rid", r.RID()).Tracef("shutdown resource")
 		return resource.Shutdown(ctx, r)
 	})
 }

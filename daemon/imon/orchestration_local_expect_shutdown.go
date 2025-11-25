@@ -26,7 +26,7 @@ import (
 //	  from state 'shutdown':
 //		   => 'shutdown' no change (done)
 func (t *Manager) orchestrateLocalExpectShutdown() {
-	t.log.Debugf("orchestrateLocalExpectShutdown from state %s", t.state.State)
+	t.log.Tracef("orchestrateLocalExpectShutdown from state %s", t.state.State)
 	switch t.state.State {
 	case instance.MonitorStateShutdownSuccess:
 		// already in expected state, no more actions

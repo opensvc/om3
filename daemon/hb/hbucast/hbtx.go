@@ -43,7 +43,7 @@ func (t *tx) ID() string {
 
 // Stop implements the Stop function of Transmitter interface for tx
 func (t *tx) Stop() error {
-	t.log.Debugf("cancelling")
+	t.log.Tracef("cancelling")
 	t.cancel()
 	for node := range t.nodes {
 		t.cmdC <- hbctrl.CmdDelWatcher{
@@ -52,7 +52,7 @@ func (t *tx) Stop() error {
 		}
 	}
 	t.Wait()
-	t.log.Debugf("wait done")
+	t.log.Tracef("wait done")
 	return nil
 }
 
@@ -136,7 +136,7 @@ func (t *tx) Start(cmdC chan<- interface{}, msgC <-chan []byte) error {
 			if len(b) == 0 {
 				continue
 			} else {
-				t.log.Debugf(reason)
+				t.log.Tracef(reason)
 				protectedB := make([]byte, len(b))
 				copy(protectedB, b)
 				for node, addr := range t.nodes {

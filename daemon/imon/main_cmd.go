@@ -200,7 +200,7 @@ func (t *Manager) onRelationObjectStatusUpdated(c *msgbus.ObjectStatusUpdated) {
 			cache[relation] = c.Value.Avail
 			changes = true
 		} else {
-			t.log.Debugf("update relation %s %s avail status unchanged", name, relation)
+			t.log.Tracef("update relation %s %s avail status unchanged", name, relation)
 		}
 	}
 	if _, ok := t.state.Children[relation]; ok {
@@ -226,7 +226,7 @@ func (t *Manager) onRelationInstanceStatusUpdated(c *msgbus.InstanceStatusUpdate
 		if cache[relation] != c.Value.Avail {
 			t.log.Infof("update relation %s %s avail status change %s -> %s", name, relation, cache[relation], c.Value.Avail)
 		} else {
-			t.log.Debugf("update relation %s %s avail status unchanged", name, relation)
+			t.log.Tracef("update relation %s %s avail status unchanged", name, relation)
 		}
 		cache[relation] = c.Value.Avail
 		changes = true
@@ -247,11 +247,11 @@ func (t *Manager) onMyInstanceStatusUpdated(srcNode string, srcCmd *msgbus.Insta
 	instStatus, ok := t.instStatus[srcCmd.Node]
 	switch {
 	case !ok:
-		t.log.Debugf("ObjectStatusUpdated %s from InstanceStatusUpdated on %s create instance status", srcNode, srcCmd.Node)
+		t.log.Tracef("ObjectStatusUpdated %s from InstanceStatusUpdated on %s create instance status", srcNode, srcCmd.Node)
 	case instStatus.UpdatedAt.Before(srcCmd.Value.UpdatedAt):
-		t.log.Debugf("ObjectStatusUpdated %s from InstanceStatusUpdated on %s update instance status with avail %s", srcNode, srcCmd.Node, srcCmd.Value.Avail)
+		t.log.Tracef("ObjectStatusUpdated %s from InstanceStatusUpdated on %s update instance status with avail %s", srcNode, srcCmd.Node, srcCmd.Value.Avail)
 	default:
-		t.log.Debugf("ObjectStatusUpdated %s from InstanceStatusUpdated on %s skip update instance from obsolete status avail %s", srcNode, srcCmd.Node, srcCmd.Value.Avail)
+		t.log.Tracef("ObjectStatusUpdated %s from InstanceStatusUpdated on %s skip update instance from obsolete status avail %s", srcNode, srcCmd.Node, srcCmd.Value.Avail)
 		return
 	}
 	t.instStatus[srcCmd.Node] = srcCmd.Value
@@ -266,7 +266,7 @@ func (t *Manager) onInstanceConfigUpdated(srcNode string, srcCmd *msgbus.Instanc
 
 	// updates scope nodes, the latest object status depends on srcCmd instance config.
 	t.scopeNodes = append([]string{}, srcCmd.Value.Scope...)
-	t.log.Debugf("updated from %s ObjectStatusUpdated InstanceConfigUpdated on %s scopeNodes=%s", srcNode, srcCmd.Node, t.scopeNodes)
+	t.log.Tracef("updated from %s ObjectStatusUpdated InstanceConfigUpdated on %s scopeNodes=%s", srcNode, srcCmd.Node, t.scopeNodes)
 }
 
 func (t *Manager) onLocalInstanceConfigUpdated(srcCmd *msgbus.InstanceConfigUpdated) {
@@ -274,7 +274,7 @@ func (t *Manager) onLocalInstanceConfigUpdated(srcCmd *msgbus.InstanceConfigUpda
 		// drop already loaded localhost instance config (during worker init loads local instance config cache)
 		// we don't want to run an extra instance status evaluation.
 		// omon use both local instance config cache or event to start imon.
-		t.log.Debugf("ignore already loaded local instance config update")
+		t.log.Tracef("ignore already loaded local instance config update")
 		return
 	}
 
@@ -292,7 +292,7 @@ func (t *Manager) onLocalInstanceConfigUpdated(srcCmd *msgbus.InstanceConfigUpda
 		// delete the instStatus key for peers gone out of scope
 		for node := range t.instStatus {
 			if _, ok := cfgNodes[node]; !ok {
-				t.log.Debugf("drop instance status cache for node %s (node no longer in the object's expanded node list)", node)
+				t.log.Tracef("drop instance status cache for node %s (node no longer in the object's expanded node list)", node)
 				delete(t.instStatus, node)
 			}
 		}
@@ -355,12 +355,12 @@ func (t *Manager) onLocalInstanceConfigUpdated(srcCmd *msgbus.InstanceConfigUpda
 		}
 		for _, relationS := range droppedRelations {
 			delete(currentRelations, relationS)
-			t.log.Debugf("drop %s relation %s status", name, relationS)
+			t.log.Tracef("drop %s relation %s status", name, relationS)
 		}
 	}
 
 	t.instConfig = srcCmd.Value
-	t.log.Debugf("refresh resource monitor states on local instance config updated")
+	t.log.Tracef("refresh resource monitor states on local instance config updated")
 	t.initResourceMonitor()
 	janitorInstStatus(srcCmd.Value.Scope)
 	if srcCmd.Value.ActorConfig != nil {
@@ -374,7 +374,7 @@ func (t *Manager) onLocalInstanceConfigUpdated(srcCmd *msgbus.InstanceConfigUpda
 func (t *Manager) onMyInstanceStatusDeleted(c *msgbus.InstanceStatusDeleted) {
 	if _, ok := t.instStatus[c.Node]; ok {
 		t.setStonith(c.Node, c.PeerDropAt)
-		t.log.Debugf("drop deleted instance status from node %s", c.Node)
+		t.log.Tracef("drop deleted instance status from node %s", c.Node)
 		delete(t.instStatus, c.Node)
 	}
 }
@@ -682,7 +682,7 @@ func (t *Manager) onInstanceMonitorUpdated(c *msgbus.InstanceMonitorUpdated) {
 func (t *Manager) onRemoteInstanceMonitorUpdated(c *msgbus.InstanceMonitorUpdated) {
 	remote := c.Node
 	instMon := c.Value
-	t.log.Debugf("updated instance imon from peer node %s -> global expect:%s, state: %s", remote, instMon.GlobalExpect, instMon.State)
+	t.log.Tracef("updated instance imon from peer node %s -> global expect:%s, state: %s", remote, instMon.GlobalExpect, instMon.State)
 	t.instMonitor[remote] = instMon
 	t.convergeGlobalExpectFromRemote()
 	t.updateOrchestrateUpdate()
@@ -694,7 +694,7 @@ func (t *Manager) onInstanceMonitorDeletedFromNode(node string) {
 		t.log.Warnf("onInstanceMonitorDeletedFromNode should never be called from localhost")
 		return
 	}
-	t.log.Debugf("delete remote instance imon from node %s", node)
+	t.log.Tracef("delete remote instance imon from node %s", node)
 	delete(t.instMonitor, node)
 	t.convergeGlobalExpectFromRemote()
 	t.updateOrchestrateUpdate()
@@ -1222,7 +1222,7 @@ func (t *Manager) publishOrchestrationAccepted() {
 
 func (t *Manager) publishOrchestrationAborted() {
 	if t.orchestrationAborted != nil {
-		t.log.Debugf("publish aborted orchestration %s:%s", t.orchestrationAborted.GlobalExpect, t.orchestrationAborted.ID)
+		t.log.Tracef("publish aborted orchestration %s:%s", t.orchestrationAborted.GlobalExpect, t.orchestrationAborted.ID)
 		t.publisher.Pub(t.orchestrationAborted, t.pubLabels...)
 		t.orchestrationAborted = nil
 	}

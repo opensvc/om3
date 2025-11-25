@@ -22,7 +22,7 @@ func (t T) DaemonRefresh() {
 }
 
 func (o opDaemonRefresh) call(ctx context.Context, d *data) error {
-	d.log.Debugf("refresh daemon data sub...")
+	d.log.Tracef("refresh daemon data sub...")
 	d.setDaemonHeartbeat()
 	return nil
 }

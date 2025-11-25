@@ -143,7 +143,7 @@ func (t *T) lockedSync(ctx context.Context, mode modeT, target []string) (err er
 	for _, nodename := range nodenames {
 		if err := t.isSendAllowedToPeerEnv(nodename); err != nil {
 			if isCron {
-				t.Log().Debugf("%s", err)
+				t.Log().Tracef("%s", err)
 			} else {
 				t.Log().Infof("%s", err)
 			}
@@ -625,7 +625,7 @@ func (t *T) dstSnapshotExistsLocal(name, nodename string) (bool, error) {
 			t.Log().
 				Attr("exitcode", ec).
 				Attr("host", nodename).
-				Debugf("rexec '%s' on host %s exited with code %d", cmd, nodename, ec)
+				Tracef("rexec '%s' on host %s exited with code %d", cmd, nodename, ec)
 			return false, err
 		} else {
 			return false, err
@@ -663,7 +663,7 @@ func (t *T) dstSnapshotExists(name, nodename string) (bool, error) {
 		t.Log().
 			Attr("exitcode", ec).
 			Attr("host", nodename).
-			Debugf("rexec '%s' on host %s exited with code %d", cmd, nodename, ec)
+			Tracef("rexec '%s' on host %s exited with code %d", cmd, nodename, ec)
 		return false, err
 	}
 	return true, nil

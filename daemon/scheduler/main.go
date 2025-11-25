@@ -301,7 +301,7 @@ func (t *T) createJob(e schedule.Entry) {
 	e.NextRunAt = next
 	delay := next.Sub(now)
 	if e.LastRunAt.IsZero() || delay >= time.Second {
-		logger.Debugf("next at %s (in %s)", next, delay)
+		logger.Tracef("next at %s (in %s)", next, delay)
 	}
 	t.jobs.Add(e, delay, t.events)
 	return
@@ -448,7 +448,7 @@ func (t *T) startSubscriptions() *pubsub.Subscription {
 }
 
 func (t *T) loop() {
-	t.log.Debugf("loop started")
+	t.log.Tracef("loop started")
 	t.databus = daemondata.FromContext(t.ctx)
 	t.publisher = pubsub.PubFromContext(t.ctx)
 	sub := t.startSubscriptions()
@@ -659,7 +659,7 @@ func (t *T) onPeerInstanceStatusUpdated(c *msgbus.InstanceStatusUpdated) bool {
 		cachedLastRunAtOnPeer, ok := t.lastRunOnAllPeers.GetWithRID(c.Path, rid)
 
 		if !ok || lastRunAtOnPeer.After(cachedLastRunAtOnPeer) {
-			log.Debugf("%s: %s: last run on peer %s at %s", c.Path, rid, c.Node, lastRunAtOnPeer)
+			log.Tracef("%s: %s: last run on peer %s at %s", c.Path, rid, c.Node, lastRunAtOnPeer)
 			t.lastRunOnAllPeers.SetWithRID(c.Path, rid, lastRunAtOnPeer)
 		}
 	}

@@ -556,7 +556,7 @@ func (t T) waitExpectation(ctx context.Context, c *client.T, exp Expectation, er
 	case node.MonitorGlobalExpect:
 		filters = []string{"NodeMonitorUpdated"}
 	}
-	log.Debugf("get event with filters: %+v", filters)
+	log.Tracef("get event with filters: %+v", filters)
 	getEvents := c.NewGetEvents().SetFilters(filters)
 	if t.WaitDuration > 0 {
 		getEvents = getEvents.SetDuration(t.WaitDuration)
@@ -604,27 +604,27 @@ func (t T) waitExpectation(ctx context.Context, c *client.T, exp Expectation, er
 				if err != nil {
 					return
 				}
-				log.Debugf("NodeMonitorUpdated %+v", msg)
+				log.Tracef("NodeMonitorUpdated %+v", msg)
 				nmon := msg.Value
 				switch v := exp.(type) {
 				case node.MonitorState:
 					if nmon.State == v {
 						reached[msg.Node] = true
-						log.Debugf("NodeMonitorUpdated reached state %s", v)
+						log.Tracef("NodeMonitorUpdated reached state %s", v)
 					} else if reached[msg.Node] && nmon.State == node.MonitorStateIdle {
-						log.Debugf("NodeMonitorUpdated reached state %s unset", v)
+						log.Tracef("NodeMonitorUpdated reached state %s unset", v)
 						return
 					}
 				case node.MonitorGlobalExpect:
 					if nmon.GlobalExpect == v {
 						reached[msg.Node] = true
-						log.Debugf("NodeMonitorUpdated reached global expect %s", v)
+						log.Tracef("NodeMonitorUpdated reached global expect %s", v)
 					} else if reached[msg.Node] && nmon.GlobalExpect == node.MonitorGlobalExpectNone {
 						reachedUnset[msg.Node] = true
-						log.Debugf("NodeMonitorUpdated reached global expect %s unset for %s", v, msg.Node)
+						log.Tracef("NodeMonitorUpdated reached global expect %s unset for %s", v, msg.Node)
 					}
 					if len(reached) > 0 && len(reached) == len(reachedUnset) {
-						log.Debugf("NodeMonitorUpdated reached global expect %s unset for all nodes", v)
+						log.Tracef("NodeMonitorUpdated reached global expect %s unset for all nodes", v)
 						return
 					}
 				}

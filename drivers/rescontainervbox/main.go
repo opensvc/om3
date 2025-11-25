@@ -84,7 +84,7 @@ func New() resource.Driver {
 
 func (t *T) Abort(ctx context.Context) bool {
 	if isLocalUp, err := t.isUp(); errors.Is(err, ErrNotRegistered) {
-		t.Log().Debugf("%s", err)
+		t.Log().Tracef("%s", err)
 	} else if err != nil {
 		t.Log().Errorf("%s", err)
 	} else if isLocalUp {
@@ -142,7 +142,7 @@ func (t *T) Start(ctx context.Context) error {
 	}
 
 	if _, err := net.LookupIP(t.GetHostname()); err != nil {
-		t.Log().Debugf("can not do dns resolution for : %s", t.Name)
+		t.Log().Tracef("can not do dns resolution for : %s", t.Name)
 		return nil
 	}
 
@@ -329,7 +329,7 @@ func (t *T) checkCapabilities() bool {
 
 func (t *T) isOperational() (bool, error) {
 	if err := t.rexec("pwd"); err != nil {
-		t.Log().Debugf("is operational: %s", err)
+		t.Log().Tracef("is operational: %s", err)
 		return false, nil
 	}
 	return true, nil
@@ -464,7 +464,7 @@ func isAbortedFromState(state string) bool {
 }
 
 func (t *T) domState() (string, error) {
-	t.Log().Debugf("VBoxManage showvminfo --machinereadable %s", t.Name)
+	t.Log().Tracef("VBoxManage showvminfo --machinereadable %s", t.Name)
 	s, err := t.vBoxManageCommand("showvminfo", "--machinereadable", t.Name)
 	if err != nil {
 		return "", err
@@ -529,7 +529,7 @@ func (t *T) execViaInternalSSH(cmd string) error {
 			Attr("exitcode", ec).
 			Attr("cmd", cmd).
 			Attr("host", hn).
-			Debugf("rexec: %s on node %s exited with code %d", cmd, hn, ec)
+			Tracef("rexec: %s on node %s exited with code %d", cmd, hn, ec)
 		return err
 	}
 	return nil
@@ -649,7 +649,7 @@ func (t *T) abortPing(hn string) bool {
 		t.Log().Errorf("abort! %s is alive", hn)
 		return true
 	} else {
-		t.Log().Debugf("abort? %s is not alive", hn)
+		t.Log().Tracef("abort? %s is not alive", hn)
 		return false
 	}
 }
@@ -696,7 +696,7 @@ func (t *T) upPeer() (string, error) {
 			continue
 		}
 		if v, err := isPeerUp(n); err != nil {
-			t.Log().Debugf("ssh abort check on %s: %s", n, err)
+			t.Log().Tracef("ssh abort check on %s: %s", n, err)
 			continue
 		} else if v {
 			return n, nil

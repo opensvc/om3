@@ -715,7 +715,7 @@ func (t *DataRecv) SendSignals(ctx context.Context, signals *volsignal.T) error 
 		if err := o.SignalResource(ctx, sd.RID, sd.Signum); err != nil {
 			return err
 		}
-		t.to.Log().Debugf("resource %s has been sent a signal %s", sd.RID, unix.SignalName(sd.Signum))
+		t.to.Log().Tracef("resource %s has been sent a signal %s", sd.RID, unix.SignalName(sd.Signum))
 	}
 	return nil
 }

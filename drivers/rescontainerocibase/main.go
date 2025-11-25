@@ -263,7 +263,7 @@ func (t *BT) IsAlwaysImagePullPolicy() bool {
 // ContainerID returns the container inspect ID, or ""
 func (t *BT) ContainerID(ctx context.Context) string {
 	if t.executer == nil {
-		t.Log().Debugf("can't get container id from undefined executer")
+		t.Log().Tracef("can't get container id from undefined executer")
 		return ""
 	}
 	if i, err := t.executer.Inspect(ctx); err != nil {
@@ -473,11 +473,11 @@ func (t *BT) NetNSPath(ctx context.Context) (string, error) {
 // PID returns the container inspect PID or 0
 func (t *BT) PID(ctx context.Context) int {
 	if t.executer == nil {
-		t.Log().Debugf("PID called with undefined executer")
+		t.Log().Tracef("PID called with undefined executer")
 		return 0
 	}
 	if i, err := t.executer.Inspect(ctx); err != nil {
-		t.Log().Debugf("PID inspect: %s", err)
+		t.Log().Tracef("PID inspect: %s", err)
 		return 0
 	} else if i == nil {
 		return 0
@@ -547,7 +547,7 @@ func (t *BT) Start(ctx context.Context) error {
 	} else {
 		// it is defined
 		inspectStatus := inspect.Status()
-		log.Debugf("container start %s: defined with inspectStatus %s", name, inspectStatus)
+		log.Tracef("container start %s: defined with inspectStatus %s", name, inspectStatus)
 		if t.NeedPreStartRemove() {
 			log.Infof("container start %s: remove leftover container", name)
 			if err := t.executer.Remove(ctx); err != nil {
@@ -596,53 +596,53 @@ func (t *BT) Stop(ctx context.Context) error {
 			t.Log().Errorf("stop: %s", err)
 			return err
 		}
-		log.Debugf("container stopped")
+		log.Tracef("container stopped")
 	}
 
 	if t.Remove {
 		if hostConfig := inspect.HostConfig(); hostConfig != nil && !hostConfig.AutoRemove {
-			t.Log().Debugf("remove container %s", name)
+			t.Log().Tracef("remove container %s", name)
 			if err := t.executer.Remove(ctx); err != nil {
 				return logError(fmt.Errorf("can't remove container %s", name))
 			}
 		}
-		t.Log().Debugf("wait removed condition")
+		t.Log().Tracef("wait removed condition")
 		if err := t.executer.WaitRemoved(ctx); err != nil {
 			t.Log().Warnf("wait removed: %s", err)
 			return err
 		} else {
-			t.Log().Debugf("removed")
+			t.Log().Tracef("removed")
 			return nil
 		}
 	} else {
-		t.Log().Debugf("wait not running condition")
+		t.Log().Tracef("wait not running condition")
 		if err := t.executer.WaitNotRunning(ctx); err != nil {
 			t.Log().Warnf("wait not running: %s", err)
 			return err
 		}
-		t.Log().Debugf("wait not running: done")
+		t.Log().Tracef("wait not running: done")
 	}
 	return nil
 }
 
 func (t *BT) Status(ctx context.Context) status.T {
 	if !t.Detach {
-		t.Log().Debugf("status n/a on not detach")
+		t.Log().Tracef("status n/a on not detach")
 		return status.NotApplicable
 	}
 
-	t.Log().Debugf("Status.enter")
-	defer t.Log().Debugf("Status.return")
+	t.Log().Tracef("Status.enter")
+	defer t.Log().Tracef("Status.return")
 	if t.executer == nil {
-		t.Log().Debugf("status n/a on undefined executer")
+		t.Log().Tracef("status n/a on undefined executer")
 		return status.NotApplicable
 	}
 	inspect, err := t.executer.Inspect(ctx)
 	if err != nil {
-		t.Log().Debugf("status down on inspect: %s", err)
+		t.Log().Tracef("status down on inspect: %s", err)
 		return status.Down
 	} else if inspect == nil {
-		t.Log().Debugf("status down on inspect nil")
+		t.Log().Tracef("status down on inspect nil")
 		return status.Down
 	}
 	if inspectConfig := inspect.Config(); inspectConfig != nil {
@@ -741,7 +741,7 @@ func (t *BT) findAndStart(ctx context.Context) error {
 			defer inspectRefresh()
 			return
 		}
-		t.Log().Debugf("started")
+		t.Log().Tracef("started")
 		if t.Detach {
 			// t.executer.Wait(ctx, WaitConditionRunning) return err not found
 			// use check running instead
@@ -752,7 +752,7 @@ func (t *BT) findAndStart(ctx context.Context) error {
 			} else if inspect == nil {
 				err = fmt.Errorf("check running: inspect is nil")
 			} else if inspect.Running() {
-				t.Log().Debugf("check running: ok")
+				t.Log().Tracef("check running: ok")
 			} else {
 				err = fmt.Errorf("check running: false")
 			}
@@ -765,11 +765,11 @@ func (t *BT) findAndStart(ctx context.Context) error {
 		defer inspectRefresh()
 		t.Log().Infof("wait not running")
 		if err := t.executer.WaitNotRunning(ctx); err != nil {
-			t.Log().Debugf("wait not running: %s", err)
+			t.Log().Tracef("wait not running: %s", err)
 			errs <- nil
 			return
 		} else {
-			t.Log().Debugf("wait not running: done")
+			t.Log().Tracef("wait not running: done")
 			errs <- nil
 			return
 		}
@@ -828,7 +828,7 @@ func (t *BT) pullAndRun(ctx context.Context) error {
 		return fmt.Errorf("pullAndRun: undefined executer")
 	}
 	if t.IsAlwaysImagePullPolicy() {
-		t.Log().Debugf("container start: with image policy: always")
+		t.Log().Tracef("container start: with image policy: always")
 		if err := t.pull(ctx); err != nil {
 			return err
 		}
@@ -905,11 +905,11 @@ func (t *BT) statusInspectNS(ctx context.Context, attr, current, target string) 
 
 	switch {
 	case tgtName == current:
-		t.Log().Debugf("valid %s cross-resource reference to %s: %s", attr, tgtName, current)
+		t.Log().Tracef("valid %s cross-resource reference to %s: %s", attr, tgtName, current)
 	case tgtID == current:
-		t.Log().Debugf("valid %s cross-resource reference to %s: %s", attr, tgtID, current)
+		t.Log().Tracef("valid %s cross-resource reference to %s: %s", attr, tgtID, current)
 	default:
-		t.Log().Debugf("invalid %s cross-resource reference to %s: found %s instead of %s or %s",
+		t.Log().Tracef("invalid %s cross-resource reference to %s: found %s instead of %s or %s",
 			attr, target, current, tgtName, tgtID)
 		t.warnAttrDiff(attr, current, tgtName)
 	}

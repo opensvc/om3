@@ -23,7 +23,7 @@ func (t *actor) SyncIngest(ctx context.Context) error {
 
 func (t *actor) lockedSyncIngest(ctx context.Context) error {
 	return t.action(ctx, func(ctx context.Context, r resource.Driver) error {
-		t.log.Attr("rid", r.RID()).Debugf("ingest resource data")
+		t.log.Attr("rid", r.RID()).Tracef("ingest resource data")
 		return resource.Ingest(ctx, r)
 	})
 }

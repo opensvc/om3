@@ -152,14 +152,14 @@ func (t *Manager) orchestrateRestartedOnWaitPriors() {
 	for _, nodename := range t.priors {
 		instanceMonitor, ok := t.instMonitor[nodename]
 		if !ok {
-			t.log.Debugf("skip prior instance on %s: no instance monitor data", nodename)
+			t.log.Tracef("skip prior instance on %s: no instance monitor data", nodename)
 			t.priors = stringslice.Remove(t.priors, nodename)
 			continue
 		}
 		if instanceMonitor.State == instance.MonitorStateRestarted || instanceMonitor.OrchestrationIsDone {
 			continue
 		}
-		t.log.Debugf("prior instance on %s is not done nor restarted yet (%s), keep waiting", nodename, instanceMonitor.State)
+		t.log.Tracef("prior instance on %s is not done nor restarted yet (%s), keep waiting", nodename, instanceMonitor.State)
 		return
 	}
 	t.log.Infof("no prior instances, ready to restart")

@@ -57,8 +57,8 @@ func (t *Manager) cfg(started chan<- bool) {
 	t.log.Infof("cfg: started")
 	defer t.log.Infof("cfg: stopped")
 	defer func() {
-		t.log.Debugf("cfg: flushing the command bus message queue")
-		defer t.log.Debugf("cfg: flushed the command bus message queue")
+		t.log.Tracef("cfg: flushing the command bus message queue")
+		defer t.log.Tracef("cfg: flushed the command bus message queue")
 		ticker := time.NewTicker(t.drainDuration)
 		defer ticker.Stop()
 		for {
@@ -165,7 +165,7 @@ func (t *Manager) onInstanceStatusUpdated(c *msgbus.InstanceStatusUpdated) {
 		if _, ok := prevWatched[runDir]; ok {
 			watched[runDir] = nil
 		} else if err := t.fsWatcher.Add(runDir); errors.Is(err, os.ErrNotExist) {
-			t.log.Debugf("fs: skip dir watch %s: does not exist yet", runDir)
+			t.log.Tracef("fs: skip dir watch %s: does not exist yet", runDir)
 		} else if err != nil {
 			t.log.Warnf("fs: failed to add dir watch %s: %s", runDir, err)
 		} else {
@@ -252,7 +252,7 @@ func (t *Manager) onConfigFileUpdated(c *msgbus.ConfigFileUpdated) {
 			t.cfgMTime[s] = mtime
 		}
 	} else {
-		log.Debugf("cfg: config file updated already have icfg: %s", c.Path)
+		log.Tracef("cfg: config file updated already have icfg: %s", c.Path)
 	}
 }
 
@@ -462,13 +462,13 @@ func (t *Manager) removeConfigFileAndDisableRecover(p naming.Path, updatedAt tim
 	bckCfgFile := path.Join(rawconfig.Paths.Backup, bckName)
 	log.Infof("cfg: archive removed file %s to %s", cfgFile, bckCfgFile)
 	if err := os.Rename(cfgFile, bckCfgFile); err != nil {
-		log.Debugf("cfg: archive removed file %s: %s", cfgFile, err)
+		log.Tracef("cfg: archive removed file %s: %s", cfgFile, err)
 	}
 	if _, ok := t.cfgMTime[pathS]; ok {
 		// the running icfg will die soon, onInstanceConfigManagerDone will be called
 		// and must not try to recover the config.
 		t.disableRecover[p] = updatedAt
-		log.Debugf("cfg: disable the next onInstanceConfigManagerDone recovering of %s configuration", p)
+		log.Tracef("cfg: disable the next onInstanceConfigManagerDone recovering of %s configuration", p)
 	}
 }
 
@@ -479,7 +479,7 @@ func (t *Manager) onHeartbeatMessageTypeUpdated(c *msgbus.HeartbeatMessageTypeUp
 	if c.To != "patch" {
 		return
 	}
-	t.log.Debugf("cfg: hb message type is now patch, verify if foreign config file event must be re-emmited")
+	t.log.Tracef("cfg: hb message type is now patch, verify if foreign config file event must be re-emmited")
 	for p, ev := range t.instanceConfigFor {
 		mtime := file.ModTime(p.ConfigFile())
 		if !mtime.IsZero() && len(ev.Scope) > 0 {
@@ -496,7 +496,7 @@ func (t *Manager) onHeartbeatMessageTypeUpdated(c *msgbus.HeartbeatMessageTypeUp
 				t.labelLocalhost,
 			)
 		} else {
-			t.objectLogger(p).Debugf("cfg: drop obsolete foreign config file %s event, local config file is absent", ev.Path)
+			t.objectLogger(p).Tracef("cfg: drop obsolete foreign config file %s event, local config file is absent", ev.Path)
 			delete(t.instanceConfigFor, p)
 		}
 	}
@@ -676,7 +676,7 @@ func (t *Manager) inScope(cfg *instance.Config) bool {
 func (t *Manager) cancelFetcher(s string) {
 	if cancel, ok := t.fetcherCancel[s]; ok {
 		peer := t.fetcherFrom[s]
-		t.log.Debugf("cfg: cancelFetcher %s@%s", s, peer)
+		t.log.Tracef("cfg: cancelFetcher %s@%s", s, peer)
 		cancel()
 		delete(t.fetcherCancel, s)
 		delete(t.fetcherNodeCancel[peer], s)
@@ -742,7 +742,7 @@ func fetch(ctx context.Context, cli *client.T, p naming.Path, peer string, cmdC 
 		}
 	}
 	defer func() {
-		log.Debugf("routine done for instance %s@%s", p, peer)
+		log.Tracef("routine done for instance %s@%s", p, peer)
 		_ = os.Remove(tmpFilename)
 	}()
 	configure, err := object.NewConfigurer(p, object.WithConfigFile(tmpFilename), object.WithVolatile(true))

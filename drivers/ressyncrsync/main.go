@@ -117,7 +117,7 @@ func (t *T) lockedSync(ctx context.Context, mode modeT, target []string) (err er
 	for _, nodename := range nodenames {
 		if err := t.isSendAllowedToPeerEnv(nodename); err != nil {
 			if isCron {
-				t.Log().Debugf("%s", err)
+				t.Log().Tracef("%s", err)
 			} else {
 				t.Log().Infof("%s", err)
 			}

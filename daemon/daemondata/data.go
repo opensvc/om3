@@ -244,8 +244,8 @@ func (d *data) run(ctx context.Context, cmdC <-chan Caller, hbRecvQ <-chan *hbty
 	defer countRoutineTicker.Stop()
 
 	doDrain := func() {
-		d.log.Debugf("draining")
-		defer d.log.Debugf("drained")
+		d.log.Tracef("draining")
+		defer d.log.Tracef("drained")
 
 		tC := time.After(drainDuration)
 		for {
@@ -255,7 +255,7 @@ func (d *data) run(ctx context.Context, cmdC <-chan Caller, hbRecvQ <-chan *hbty
 			case c := <-cmdC:
 				c.SetError(ErrDrained)
 			case <-tC:
-				d.log.Debugf("drop clusterData cmds done")
+				d.log.Tracef("drop clusterData cmds done")
 				return
 			}
 		}
@@ -297,12 +297,12 @@ func (d *data) run(ctx context.Context, cmdC <-chan Caller, hbRecvQ <-chan *hbty
 				return
 			case <-subHbRefreshTicker.C:
 				d.setDaemonHeartbeat()
-				d.log.Debugf("current hb msg mode %d", d.hbMsgPatchLength[d.localNode])
+				d.log.Tracef("current hb msg mode %d", d.hbMsgPatchLength[d.localNode])
 				needMessage = true
 				if subHbRefreshAdaptiveInterval < daemonenv.HeartbeatStatusRefreshMaximumInterval {
 					subHbRefreshAdaptiveInterval = max(2*subHbRefreshAdaptiveInterval, daemonenv.HeartbeatStatusRefreshMaximumInterval)
 					subHbRefreshTicker.Reset(subHbRefreshAdaptiveInterval)
-					d.log.Debugf("adapt interval for sub hb stat: %s", subHbRefreshAdaptiveInterval)
+					d.log.Tracef("adapt interval for sub hb stat: %s", subHbRefreshAdaptiveInterval)
 				}
 			default:
 			}
@@ -324,7 +324,7 @@ func (d *data) run(ctx context.Context, cmdC <-chan Caller, hbRecvQ <-chan *hbty
 					d.needMsg = false
 					if hbMsgType != d.hbMessageType {
 						subHbRefreshAdaptiveInterval = propagationInterval
-						d.log.Debugf("hb mg type changed, adapt interval for sub hb stat: %s", subHbRefreshAdaptiveInterval)
+						d.log.Tracef("hb mg type changed, adapt interval for sub hb stat: %s", subHbRefreshAdaptiveInterval)
 						subHbRefreshTicker.Reset(subHbRefreshAdaptiveInterval)
 						hbMsgType = d.hbMessageType
 					}
@@ -356,7 +356,7 @@ func (d *data) run(ctx context.Context, cmdC <-chan Caller, hbRecvQ <-chan *hbty
 				case endCmd <- true:
 				}
 			} else {
-				d.log.Debugf("%s{...} is not a caller-interface cmd", reflect.TypeOf(cmd))
+				d.log.Tracef("%s{...} is not a caller-interface cmd", reflect.TypeOf(cmd))
 			}
 		case i := <-d.sub.C:
 			d.onSubEvent(i)

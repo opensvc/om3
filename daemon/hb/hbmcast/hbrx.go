@@ -51,7 +51,7 @@ func (t *rx) ID() string {
 
 // Stop implements the Stop function of the Receiver interface for rx
 func (t *rx) Stop() error {
-	t.log.Debugf("cancelling")
+	t.log.Tracef("cancelling")
 	t.cancel()
 	for _, node := range t.nodes {
 		t.cmdC <- hbctrl.CmdDelWatcher{
@@ -60,7 +60,7 @@ func (t *rx) Stop() error {
 		}
 	}
 	t.Wait()
-	t.log.Debugf("wait done")
+	t.log.Tracef("wait done")
 	return nil
 }
 
@@ -108,9 +108,9 @@ func (t *rx) Start(cmdC chan<- interface{}, msgC chan<- *hbtype.Msg) error {
 			defer t.Done()
 			select {
 			case <-ctx.Done():
-				t.log.Debugf("closing listener")
+				t.log.Tracef("closing listener")
 				_ = listener.Close()
-				t.log.Debugf("closed listener")
+				t.log.Tracef("closed listener")
 				t.cancel()
 				return
 			}
@@ -122,7 +122,7 @@ func (t *rx) Start(cmdC chan<- interface{}, msgC chan<- *hbtype.Msg) error {
 			n, src, err := listener.ReadFromUDP(b)
 			if err != nil {
 				if errors.Is(err, net.ErrClosed) {
-					t.log.Debugf("closed connection: %s", err)
+					t.log.Tracef("closed connection: %s", err)
 					break
 				}
 				t.log.Infof("read: %s", err)
@@ -149,7 +149,7 @@ func (t *rx) recv(src *net.UDPAddr, n int, b []byte) {
 	}
 
 	if f.MsgID == "" {
-		t.log.Debugf("not a udp message frame")
+		t.log.Tracef("not a udp message frame")
 		return
 	}
 	// verify message DoS
@@ -182,7 +182,7 @@ func (t *rx) recv(src *net.UDPAddr, n int, b []byte) {
 	msg[f.MsgID] = chunks
 	t.assembly[s] = msg
 
-	t.log.Debugf("recv: %d/%d", len(chunks), f.Total)
+	t.log.Tracef("recv: %d/%d", len(chunks), f.Total)
 	if len(chunks) < f.Total {
 		// more fragments to come
 		return
@@ -212,7 +212,7 @@ func (t *rx) recv(src *net.UDPAddr, n int, b []byte) {
 
 	b, err := crypto.Decrypt(encMsg)
 	if err != nil {
-		t.log.Debugf("recv: decrypting msg from %s: %s: %s", s, hex.Dump(encMsg), err)
+		t.log.Tracef("recv: decrypting msg from %s: %s: %s", s, hex.Dump(encMsg), err)
 		return
 	}
 	data := hbtype.Msg{}
@@ -221,7 +221,7 @@ func (t *rx) recv(src *net.UDPAddr, n int, b []byte) {
 		return
 	}
 	if data.Nodename == hostname.Hostname() {
-		t.log.Debugf("recv: drop msg from self")
+		t.log.Tracef("recv: drop msg from self")
 		return
 	}
 	t.cmdC <- hbctrl.CmdSetPeerSuccess{

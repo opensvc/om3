@@ -319,7 +319,7 @@ func (t *T) listPD() ([]string, error) {
 	}
 	args := []string{"-g", t.SymDG, "list", "ld", "-output", "xml_e", "-i", "15", "-c", "4"}
 	cmd := exec.Command(symdg, args...)
-	t.Log().Debugf("run %s", cmd)
+	t.Log().Tracef("run %s", cmd)
 	b, err := cmd.Output()
 	if err != nil {
 		if e, ok := err.(*exec.ExitError); ok {
@@ -347,7 +347,7 @@ func (t *T) getPDNameByDevNameMap() (map[string][]string, error) {
 	m := make(map[string][]string)
 	args := []string{"-identifier", "device_name", "-output", "xml_e"}
 	cmd := exec.Command(syminq, args...)
-	t.Log().Debugf("run %s", cmd)
+	t.Log().Tracef("run %s", cmd)
 	b, err := cmd.Output()
 	if err != nil {
 		if e, ok := err.(*exec.ExitError); ok {

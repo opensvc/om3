@@ -39,7 +39,7 @@ func localPostDaemonHeartbeatSign(ctx echo.Context, name api.InPathHeartbeatName
 
 	hbType := config.GetString(key.New(section, "type"))
 	if hbType != "disk" {
-		log.Debugf("heartbeat %s is not a disk", name)
+		log.Tracef("heartbeat %s is not a disk", name)
 		return JSONProblemf(ctx, http.StatusBadRequest, "Invalid parameter", "heartbeat %s is not a disk", name)
 	}
 

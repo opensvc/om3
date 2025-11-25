@@ -47,7 +47,7 @@ func (t T) SetHBSendQ(hbSendQ chan<- hbtype.Msg) error {
 func (d *data) queueNewHbMsg(ctx context.Context) error {
 	select {
 	case <-ctx.Done():
-		d.log.Debugf("abort queue new hb message (context is done)")
+		d.log.Tracef("abort queue new hb message (context is done)")
 	default:
 	}
 	if msg, err := d.getHbMessage(); err != nil {
@@ -59,10 +59,10 @@ func (d *data) queueNewHbMsg(ctx context.Context) error {
 		}
 		d.msgLocalGen = msgLocalGen
 		if d.hbSendQ != nil {
-			d.log.Debugf("queue a new hb message %s gen %v", msg.Kind, msgLocalGen)
+			d.log.Tracef("queue a new hb message %s gen %v", msg.Kind, msgLocalGen)
 			select {
 			case <-ctx.Done():
-				d.log.Debugf("abort queue a new hb message %s gen %v (context is done)", msg.Kind, msgLocalGen)
+				d.log.Tracef("abort queue a new hb message %s gen %v (context is done)", msg.Kind, msgLocalGen)
 			case d.hbSendQ <- msg:
 			}
 		}
@@ -76,7 +76,7 @@ func (d *data) queueNewHbMsg(ctx context.Context) error {
 //
 //	"full", "ping" or len <msg.delta> (patch)
 func (d *data) getHbMessage() (hbtype.Msg, error) {
-	d.log.Debugf("getHbMessage")
+	d.log.Tracef("getHbMessage")
 	d.setNextMsgType()
 	var err error
 	msg := hbtype.Msg{

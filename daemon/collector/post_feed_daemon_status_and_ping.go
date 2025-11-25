@@ -106,7 +106,7 @@ func (t *T) postPing() error {
 	} else {
 		ioReader = bytes.NewReader(b)
 	}
-	t.log.Debugf("postFeedDaemonPing: %v", body)
+	t.log.Tracef("postFeedDaemonPing: %v", body)
 	now := time.Now()
 
 	ctx, cancel := context.WithTimeout(t.ctx, defaultPostMaxDuration)
@@ -117,7 +117,7 @@ func (t *T) postPing() error {
 		return fmt.Errorf("%s %s create request: %w", method, path, err)
 	}
 
-	t.log.Debugf("%s %s", method, path)
+	t.log.Tracef("%s %s", method, path)
 	resp, err = t.client.Do(req)
 	if err != nil {
 		return err
@@ -141,7 +141,7 @@ func (t *T) postPing() error {
 		} else if len(addedPath) > 0 {
 			t.log.Infof("%s %s status code %d got missing instance config: %s", method, path, resp.StatusCode, addedPath)
 		} else {
-			t.log.Debugf("%s %s status code %d", method, path, resp.StatusCode)
+			t.log.Tracef("%s %s status code %d", method, path, resp.StatusCode)
 		}
 		return nil
 	default:
@@ -198,14 +198,14 @@ func (t *T) postChanges() error {
 		return fmt.Errorf("%s %s create request: %w", method, path, err)
 	}
 
-	t.log.Debugf("%s %s from %s -> %s", method, path, t.previousUpdatedAt, now)
+	t.log.Tracef("%s %s from %s -> %s", method, path, t.previousUpdatedAt, now)
 	resp, err = t.client.Do(req)
 	if err != nil {
 		return fmt.Errorf("post daemon change call: %w", err)
 	}
 	defer func() { _ = resp.Body.Close() }()
 
-	t.log.Debugf("post daemon change status code %d", resp.StatusCode)
+	t.log.Tracef("post daemon change status code %d", resp.StatusCode)
 	switch resp.StatusCode {
 	case http.StatusConflict:
 		// collector detect out of sync (collector previousUpdatedAt is not t.previousUpdatedAt), recreate full
@@ -264,7 +264,7 @@ func (t *T) postStatus() error {
 
 	req.Header.Set(headerPreviousUpdatedAt, t.previousUpdatedAt.Format(time.RFC3339Nano))
 
-	t.log.Debugf("%s %s from %s -> %s", method, path, t.previousUpdatedAt, now)
+	t.log.Tracef("%s %s from %s -> %s", method, path, t.previousUpdatedAt, now)
 	resp, err = t.client.Do(req)
 	if err != nil {
 		return fmt.Errorf("%s %s: %w", method, path, err)
@@ -286,7 +286,7 @@ func (t *T) postStatus() error {
 		} else if len(addedPath) > 0 {
 			t.log.Infof("%s %s status code %d got missing instance config: %s", method, path, resp.StatusCode, addedPath)
 		} else {
-			t.log.Debugf("%s %s status code %d", method, path, resp.StatusCode)
+			t.log.Tracef("%s %s status code %d", method, path, resp.StatusCode)
 		}
 		t.previousUpdatedAt = now
 		t.dropChanges()
@@ -294,7 +294,7 @@ func (t *T) postStatus() error {
 	default:
 		b := make([]byte, 512)
 		l, _ := resp.Body.Read(b)
-		t.log.Debugf("%s %s unexpected status code %d, response body extract: '%s'", method, path, resp.StatusCode, b[0:l])
+		t.log.Tracef("%s %s unexpected status code %d, response body extract: '%s'", method, path, resp.StatusCode, b[0:l])
 		return fmt.Errorf("%s %s unexpected status code %d", method, path, resp.StatusCode)
 	}
 }
@@ -361,12 +361,12 @@ func (t *T) objectConfigToSendFromBody(r io.Reader) (added []naming.Path, err er
 			if sent, ok := t.objectConfigSent[p]; ok {
 				if time.Now().Before(sent.SentAt.Add(t.objectConfigToSendMinDelay)) {
 					toAdd = false
-					t.log.Debugf("delay need instance config send %s", p)
+					t.log.Tracef("delay need instance config send %s", p)
 				}
 			}
 			if toAdd {
 				if ok = t.dropInstanceConfigSentFlag(objectConfigSent{path: p}); !ok {
-					t.log.Debugf("mark need instance config send %s", p)
+					t.log.Tracef("mark need instance config send %s", p)
 				}
 				delete(t.objectConfigSent, p)
 				t.objectConfigToSend[p] = nil
@@ -389,7 +389,7 @@ func (t *T) dropInstanceConfigSentFlag(sent objectConfigSent) bool {
 			return false
 		}
 	} else {
-		t.log.Debugf("dropped previous instance config sent flag %s", sent.path)
+		t.log.Tracef("dropped previous instance config sent flag %s", sent.path)
 		return true
 	}
 }

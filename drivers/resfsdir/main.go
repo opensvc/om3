@@ -61,7 +61,7 @@ func (t *T) Status(ctx context.Context) status.T {
 		t.StatusLog().Error("%s", err)
 		return status.Undef
 	} else if !v {
-		t.Log().Debugf("dir does not exist: %s", p)
+		t.Log().Tracef("dir does not exist: %s", p)
 		return status.Down
 	}
 	ok := t.checkOwnership()
