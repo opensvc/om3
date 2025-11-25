@@ -24,23 +24,14 @@ func (t *App) updateHbStatus() {
 	isSingleNode := len(t.Current.Cluster.Node) == 1
 	table := make(daemonsubsystem.HeartbeatStreamPeerStatusTable, 0)
 
-	filterName, filterNode := "", ""
-	if s := strings.TrimSpace(t.hbFilter); s != "" {
-		parts := strings.SplitN(s, "|", 2)
-		filterName = strings.TrimSpace(parts[0])
-		if len(parts) == 2 {
-			filterNode = strings.TrimSpace(parts[1])
-		}
-	}
-
-	matchAll := filterName == ""
+	matchAll := t.hbFilter.Name == ""
 
 	for nodeName, nodeData := range t.Current.Cluster.Node {
-		if filterNode != "" && nodeName != filterNode {
+		if t.hbFilter.NodeName != "" && nodeName != t.hbFilter.NodeName {
 			continue
 		}
 		for _, e := range nodeData.Daemon.Heartbeat.Table(nodeName, isSingleNode) {
-			if matchAll || strings.Contains(e.ID, filterName) {
+			if matchAll || strings.Contains(e.ID, t.hbFilter.Name) {
 				table = append(table, e)
 			}
 		}

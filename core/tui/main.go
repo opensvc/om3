@@ -64,6 +64,11 @@ type (
 		capture           func(event *tcell.EventKey, v *tview.Table) *tcell.EventKey
 	}
 
+	HbStatusFilter struct {
+		Name     string
+		NodeName string
+	}
+
 	App struct {
 		*monitor.Frame
 
@@ -109,7 +114,7 @@ type (
 
 		focused bool
 
-		hbFilter string
+		hbFilter HbStatusFilter
 
 		lastUpdatedAt time.Time
 
