@@ -89,9 +89,9 @@ func (t T) detail() (string, error) {
 		command.WithName(mdadm),
 		command.WithVarArgs("--detail", t.devpathFromName()),
 		command.WithLogger(t.log),
-		command.WithCommandLogLevel(zerolog.DebugLevel),
-		command.WithStdoutLogLevel(zerolog.DebugLevel),
-		command.WithStderrLogLevel(zerolog.DebugLevel),
+		command.WithCommandLogLevel(zerolog.TraceLevel),
+		command.WithStdoutLogLevel(zerolog.TraceLevel),
+		command.WithStderrLogLevel(zerolog.TraceLevel),
 		command.WithBufferedStdout(),
 	)
 	if out, err := cmd.Output(); err != nil {
@@ -106,9 +106,9 @@ func (t T) examineScanVerbose() (string, error) {
 		command.WithName(mdadm),
 		command.WithVarArgs("-E", "--scan", "-v"),
 		command.WithLogger(t.log),
-		command.WithCommandLogLevel(zerolog.DebugLevel),
-		command.WithStdoutLogLevel(zerolog.DebugLevel),
-		command.WithStderrLogLevel(zerolog.DebugLevel),
+		command.WithCommandLogLevel(zerolog.TraceLevel),
+		command.WithStdoutLogLevel(zerolog.TraceLevel),
+		command.WithStderrLogLevel(zerolog.TraceLevel),
 		command.WithBufferedStdout(),
 	)
 	if out, err := fcache.Output(cmd, "mdadm-E-scan-v"); err != nil {

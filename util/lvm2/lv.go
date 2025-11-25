@@ -137,9 +137,9 @@ func (t *LV) Show() (*LVInfo, error) {
 		command.WithName("lvs"),
 		command.WithVarArgs("--reportformat", "json", fqn),
 		command.WithLogger(t.Log()),
-		command.WithCommandLogLevel(zerolog.DebugLevel),
-		command.WithStdoutLogLevel(zerolog.DebugLevel),
-		command.WithStderrLogLevel(zerolog.DebugLevel),
+		command.WithCommandLogLevel(zerolog.TraceLevel),
+		command.WithStdoutLogLevel(zerolog.TraceLevel),
+		command.WithStderrLogLevel(zerolog.TraceLevel),
 		command.WithBufferedStdout(),
 	)
 	if err := cmd.Run(); err != nil {
@@ -204,8 +204,8 @@ func (t *LV) Devices() (device.L, error) {
 		command.WithName("lvs"),
 		command.WithVarArgs("-o", "devices,metadata_devices", "--reportformat", "json", fqn),
 		command.WithLogger(t.Log()),
-		command.WithStdoutLogLevel(zerolog.DebugLevel),
-		command.WithStderrLogLevel(zerolog.DebugLevel),
+		command.WithStdoutLogLevel(zerolog.TraceLevel),
+		command.WithStderrLogLevel(zerolog.TraceLevel),
 		command.WithBufferedStdout(),
 	)
 	if err := cmd.Run(); err != nil {

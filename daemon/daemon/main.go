@@ -111,12 +111,11 @@ func (t *T) Start(ctx context.Context) error {
 		defaultSubscriptionQueueSize = daemonenv.SubQSSmall
 	)
 
+	t.log.Debugf("verify if already running	 ...")
 	if t.Running() {
 		return fmt.Errorf("can't start again, daemon is already running")
 	}
 	t.logTransition("starting ...")
-	t.log.Tracef("daemon using qsSmall: %d", qsSmall)
-	t.log.Tracef("daemon using qsMedium: %d", qsMedium)
 
 	// When started by the systemd unit, HOME is empty.
 	// os.UserHomeDir() uses $HOME, so we want HOME initialized once and for all, early.

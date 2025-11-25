@@ -381,9 +381,9 @@ func (t T) IsReady() (bool, error) {
 		command.WithName("sg_turs"),
 		command.WithVarArgs(t.path),
 		command.WithLogger(t.log),
-		command.WithCommandLogLevel(zerolog.DebugLevel),
-		command.WithStdoutLogLevel(zerolog.DebugLevel),
-		command.WithStderrLogLevel(zerolog.DebugLevel),
+		command.WithCommandLogLevel(zerolog.TraceLevel),
+		command.WithStdoutLogLevel(zerolog.TraceLevel),
+		command.WithStderrLogLevel(zerolog.TraceLevel),
 		command.WithIgnoredExitCodes(0, 2),
 	)
 	err := cmd.Run()

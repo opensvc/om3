@@ -77,8 +77,8 @@ func New(opts ...funcopt.O) *T {
 	t := &T{
 		stdoutLogLevel:  zerolog.Disabled,
 		stderrLogLevel:  zerolog.Disabled,
-		logLevel:        zerolog.DebugLevel,
-		commandLogLevel: zerolog.DebugLevel,
+		logLevel:        zerolog.TraceLevel,
+		commandLogLevel: zerolog.TraceLevel,
 		okExitCodes:     []int{0},
 	}
 	_ = funcopt.Apply(t, opts...)

@@ -742,9 +742,9 @@ func (t *T) isSynchronous() bool {
 	cmd := command.New(
 		command.WithName(symrdf),
 		command.WithArgs(args),
-		command.WithCommandLogLevel(zerolog.DebugLevel),
-		command.WithStdoutLogLevel(zerolog.DebugLevel),
-		command.WithStderrLogLevel(zerolog.DebugLevel),
+		command.WithCommandLogLevel(zerolog.TraceLevel),
+		command.WithStdoutLogLevel(zerolog.TraceLevel),
+		command.WithStderrLogLevel(zerolog.TraceLevel),
 		command.WithLogger(t.Log()),
 	)
 	_ = cmd.Run()
@@ -756,9 +756,9 @@ func (t *T) isAsynchronous() bool {
 	cmd := command.New(
 		command.WithName(symrdf),
 		command.WithArgs(args),
-		command.WithCommandLogLevel(zerolog.DebugLevel),
-		command.WithStdoutLogLevel(zerolog.DebugLevel),
-		command.WithStderrLogLevel(zerolog.DebugLevel),
+		command.WithCommandLogLevel(zerolog.TraceLevel),
+		command.WithStdoutLogLevel(zerolog.TraceLevel),
+		command.WithStderrLogLevel(zerolog.TraceLevel),
 		command.WithLogger(t.Log()),
 	)
 	_ = cmd.Run()
@@ -770,9 +770,9 @@ func (t *T) isACPDisk() bool {
 	cmd := command.New(
 		command.WithName(symrdf),
 		command.WithArgs(args),
-		command.WithCommandLogLevel(zerolog.DebugLevel),
-		command.WithStdoutLogLevel(zerolog.DebugLevel),
-		command.WithStderrLogLevel(zerolog.DebugLevel),
+		command.WithCommandLogLevel(zerolog.TraceLevel),
+		command.WithStdoutLogLevel(zerolog.TraceLevel),
+		command.WithStderrLogLevel(zerolog.TraceLevel),
 		command.WithLogger(t.Log()),
 	)
 	_ = cmd.Run()
@@ -784,9 +784,9 @@ func (t *T) isSynchronized() bool {
 	cmd := command.New(
 		command.WithName(symrdf),
 		command.WithArgs(args),
-		command.WithCommandLogLevel(zerolog.DebugLevel),
-		command.WithStdoutLogLevel(zerolog.DebugLevel),
-		command.WithStderrLogLevel(zerolog.DebugLevel),
+		command.WithCommandLogLevel(zerolog.TraceLevel),
+		command.WithStdoutLogLevel(zerolog.TraceLevel),
+		command.WithStderrLogLevel(zerolog.TraceLevel),
 		command.WithLogger(t.Log()),
 	)
 	_ = cmd.Run()
@@ -798,9 +798,9 @@ func (t *T) isSynchronousAndSynchronized() bool {
 	cmd := command.New(
 		command.WithName(symrdf),
 		command.WithArgs(args),
-		command.WithCommandLogLevel(zerolog.DebugLevel),
-		command.WithStdoutLogLevel(zerolog.DebugLevel),
-		command.WithStderrLogLevel(zerolog.DebugLevel),
+		command.WithCommandLogLevel(zerolog.TraceLevel),
+		command.WithStdoutLogLevel(zerolog.TraceLevel),
+		command.WithStderrLogLevel(zerolog.TraceLevel),
 		command.WithLogger(t.Log()),
 	)
 	_ = cmd.Run()
@@ -812,9 +812,9 @@ func (t *T) isSyncInProg() bool {
 	cmd := command.New(
 		command.WithName(symrdf),
 		command.WithArgs(args),
-		command.WithCommandLogLevel(zerolog.DebugLevel),
-		command.WithStdoutLogLevel(zerolog.DebugLevel),
-		command.WithStderrLogLevel(zerolog.DebugLevel),
+		command.WithCommandLogLevel(zerolog.TraceLevel),
+		command.WithStdoutLogLevel(zerolog.TraceLevel),
+		command.WithStderrLogLevel(zerolog.TraceLevel),
 		command.WithLogger(t.Log()),
 	)
 	_ = cmd.Run()
@@ -826,9 +826,9 @@ func (t *T) isSuspended() bool {
 	cmd := command.New(
 		command.WithName(symrdf),
 		command.WithArgs(args),
-		command.WithCommandLogLevel(zerolog.DebugLevel),
-		command.WithStdoutLogLevel(zerolog.DebugLevel),
-		command.WithStderrLogLevel(zerolog.DebugLevel),
+		command.WithCommandLogLevel(zerolog.TraceLevel),
+		command.WithStdoutLogLevel(zerolog.TraceLevel),
+		command.WithStderrLogLevel(zerolog.TraceLevel),
 		command.WithLogger(t.Log()),
 	)
 	_ = cmd.Run()
@@ -840,9 +840,9 @@ func (t *T) isSplit() bool {
 	cmd := command.New(
 		command.WithName(symrdf),
 		command.WithArgs(args),
-		command.WithCommandLogLevel(zerolog.DebugLevel),
-		command.WithStdoutLogLevel(zerolog.DebugLevel),
-		command.WithStderrLogLevel(zerolog.DebugLevel),
+		command.WithCommandLogLevel(zerolog.TraceLevel),
+		command.WithStdoutLogLevel(zerolog.TraceLevel),
+		command.WithStderrLogLevel(zerolog.TraceLevel),
 		command.WithLogger(t.Log()),
 	)
 	_ = cmd.Run()
@@ -854,9 +854,9 @@ func (t *T) isFailedOver() bool {
 	cmd := command.New(
 		command.WithName(symrdf),
 		command.WithArgs(args),
-		command.WithCommandLogLevel(zerolog.DebugLevel),
-		command.WithStdoutLogLevel(zerolog.DebugLevel),
-		command.WithStderrLogLevel(zerolog.DebugLevel),
+		command.WithCommandLogLevel(zerolog.TraceLevel),
+		command.WithStdoutLogLevel(zerolog.TraceLevel),
+		command.WithStderrLogLevel(zerolog.TraceLevel),
 		command.WithLogger(t.Log()),
 	)
 	_ = cmd.Run()
@@ -868,9 +868,9 @@ func (t *T) isPartitioned() bool {
 	cmd := command.New(
 		command.WithName(symrdf),
 		command.WithArgs(args),
-		command.WithCommandLogLevel(zerolog.DebugLevel),
-		command.WithStdoutLogLevel(zerolog.DebugLevel),
-		command.WithStderrLogLevel(zerolog.DebugLevel),
+		command.WithCommandLogLevel(zerolog.TraceLevel),
+		command.WithStdoutLogLevel(zerolog.TraceLevel),
+		command.WithStderrLogLevel(zerolog.TraceLevel),
 		command.WithLogger(t.Log()),
 	)
 	_ = cmd.Run()
@@ -882,9 +882,9 @@ func (t *T) isConsistent() bool {
 	cmd := command.New(
 		command.WithName(symrdf),
 		command.WithArgs(args),
-		command.WithCommandLogLevel(zerolog.DebugLevel),
-		command.WithStdoutLogLevel(zerolog.DebugLevel),
-		command.WithStderrLogLevel(zerolog.DebugLevel),
+		command.WithCommandLogLevel(zerolog.TraceLevel),
+		command.WithStdoutLogLevel(zerolog.TraceLevel),
+		command.WithStderrLogLevel(zerolog.TraceLevel),
 		command.WithLogger(t.Log()),
 	)
 	_ = cmd.Run()
@@ -896,9 +896,9 @@ func (t *T) isEnabled() bool {
 	cmd := command.New(
 		command.WithName(symrdf),
 		command.WithArgs(args),
-		command.WithCommandLogLevel(zerolog.DebugLevel),
-		command.WithStdoutLogLevel(zerolog.DebugLevel),
-		command.WithStderrLogLevel(zerolog.DebugLevel),
+		command.WithCommandLogLevel(zerolog.TraceLevel),
+		command.WithStdoutLogLevel(zerolog.TraceLevel),
+		command.WithStderrLogLevel(zerolog.TraceLevel),
 		command.WithLogger(t.Log()),
 	)
 	_ = cmd.Run()
@@ -1033,8 +1033,8 @@ func (t *T) devList(devs []string) ([]byte, error) {
 	cmd := command.New(
 		command.WithName(symdev),
 		command.WithArgs(args),
-		command.WithCommandLogLevel(zerolog.DebugLevel),
-		command.WithStdoutLogLevel(zerolog.DebugLevel),
+		command.WithCommandLogLevel(zerolog.TraceLevel),
+		command.WithStdoutLogLevel(zerolog.TraceLevel),
 		command.WithStderrLogLevel(zerolog.ErrorLevel),
 		command.WithBufferedStdout(),
 		command.WithLogger(t.Log()),
@@ -1048,8 +1048,8 @@ func (t *T) dgQuery() ([]byte, error) {
 	cmd := command.New(
 		command.WithName(symdg),
 		command.WithArgs(args),
-		command.WithCommandLogLevel(zerolog.DebugLevel),
-		command.WithStdoutLogLevel(zerolog.DebugLevel),
+		command.WithCommandLogLevel(zerolog.TraceLevel),
+		command.WithStdoutLogLevel(zerolog.TraceLevel),
 		command.WithStderrLogLevel(zerolog.ErrorLevel),
 		command.WithBufferedStdout(),
 		command.WithLogger(t.Log()),
@@ -1063,8 +1063,8 @@ func (t *T) rdfQuery() ([]byte, error) {
 	cmd := command.New(
 		command.WithName(symrdf),
 		command.WithArgs(args),
-		command.WithCommandLogLevel(zerolog.DebugLevel),
-		command.WithStdoutLogLevel(zerolog.DebugLevel),
+		command.WithCommandLogLevel(zerolog.TraceLevel),
+		command.WithStdoutLogLevel(zerolog.TraceLevel),
 		command.WithStderrLogLevel(zerolog.ErrorLevel),
 		command.WithBufferedStdout(),
 		command.WithLogger(t.Log()),

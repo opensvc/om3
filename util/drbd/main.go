@@ -210,9 +210,9 @@ func Dump() ([]byte, error) {
 	cmd := command.New(
 		command.WithName(drbdadm),
 		command.WithVarArgs("dump-xml"),
-		command.WithCommandLogLevel(zerolog.DebugLevel),
-		command.WithStdoutLogLevel(zerolog.DebugLevel),
-		command.WithStderrLogLevel(zerolog.DebugLevel),
+		command.WithCommandLogLevel(zerolog.TraceLevel),
+		command.WithStdoutLogLevel(zerolog.TraceLevel),
+		command.WithStderrLogLevel(zerolog.TraceLevel),
 		command.WithBufferedStdout(),
 	)
 	return cmd.Output()

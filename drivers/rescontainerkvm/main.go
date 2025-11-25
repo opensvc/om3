@@ -847,9 +847,9 @@ func (t *T) execViaRCmd(args []string) error {
 		command.WithName(args[0]),
 		command.WithArgs(args[1:]),
 		command.WithLogger(t.Log()),
-		command.WithStdoutLogLevel(zerolog.DebugLevel),
-		command.WithStderrLogLevel(zerolog.DebugLevel),
-		command.WithCommandLogLevel(zerolog.DebugLevel),
+		command.WithStdoutLogLevel(zerolog.TraceLevel),
+		command.WithStderrLogLevel(zerolog.TraceLevel),
+		command.WithCommandLogLevel(zerolog.TraceLevel),
 	)
 	return cmd.Run()
 }

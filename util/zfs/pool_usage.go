@@ -60,9 +60,9 @@ func (t *Pool) Usage(fopts ...funcopt.O) (PoolUsage, error) {
 		command.WithVarArgs("get", "-H", "size,alloc,free", "-p", t.Name),
 		command.WithBufferedStdout(),
 		command.WithLogger(t.Log),
-		command.WithCommandLogLevel(zerolog.DebugLevel),
-		command.WithStdoutLogLevel(zerolog.DebugLevel),
-		command.WithStderrLogLevel(zerolog.DebugLevel),
+		command.WithCommandLogLevel(zerolog.TraceLevel),
+		command.WithStdoutLogLevel(zerolog.TraceLevel),
+		command.WithStderrLogLevel(zerolog.TraceLevel),
 	)
 	b, err := cmd.Output()
 	if err != nil {
