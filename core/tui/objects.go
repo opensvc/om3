@@ -2,7 +2,6 @@ package tui
 
 import (
 	"fmt"
-	"strings"
 	"time"
 
 	"github.com/gdamore/tcell/v2"
@@ -10,7 +9,10 @@ import (
 
 	"github.com/opensvc/om3/core/monitor"
 	"github.com/opensvc/om3/core/naming"
-	"github.com/opensvc/om3/daemon/daemonsubsystem"
+)
+
+var (
+	hbIndexRow = -1
 )
 
 func (t *App) initObjectsTable() {
@@ -29,7 +31,19 @@ func (t *App) initObjectsTable() {
 			t.listContexts()
 		case row == 1 && col == 1:
 			t.nav(viewEvents)
-		case row == 5 && col == 3:
+		case (row >= hbIndexRow && row <= hbIndexRow+2) && (col >= 3 && col <= 7):
+			if hbIndexRow == -1 {
+				return
+			}
+			var nodeFilter string
+			if col >= t.firstInstanceCol {
+				nodeFilter = table.GetCell(0, col).Text
+			}
+			var hbType string
+			if row > 8 {
+				hbType = table.GetCell(row, 3).Text[3:]
+			}
+			t.hbFilter = fmt.Sprintf("%s|%s", hbType, nodeFilter)
 			t.nav(viewHbStatus)
 		}
 	}
@@ -178,20 +192,48 @@ func (t *App) updateObjects() {
 	nodesHbCells := func(row int) {
 		for i, nodename := range t.Current.Cluster.Config.Nodes {
 			s := tview.TranslateANSI(t.StrNodeHbMode(nodename))
-			t.objects.SetCell(row, t.firstInstanceCol+i, tview.NewTableCell(s).SetSelectable(false))
+			t.objects.SetCell(row, t.firstInstanceCol+i, tview.NewTableCell(s).SetSelectable(true))
 		}
 	}
 
-	nodesHb1Cells := func(row int, stream daemonsubsystem.HeartbeatStream) {
+	nodesHb1Cells := func(row int, hbType string) {
 		for i, nodename := range t.Current.Cluster.Config.Nodes {
-			s := tview.TranslateANSI(t.StrNodeHbStatus(stream, nodename))
-			t.objects.SetCell(row, t.firstInstanceCol+i, tview.NewTableCell(s).SetSelectable(false))
+			s := tview.TranslateANSI(t.StrHeartbeat(nodename, hbType))
+			t.objects.SetCell(row, t.firstInstanceCol+i, tview.NewTableCell(s).SetSelectable(true))
 		}
 	}
 
 	nodesArbitratorCells := func(row int, arbitratorName string) {
 		for i, nodename := range t.Current.Cluster.Config.Nodes {
 			s := tview.TranslateANSI(t.StrNodeArbitratorStatus(arbitratorName, nodename))
+			t.objects.SetCell(row, t.firstInstanceCol+i, tview.NewTableCell(s).SetSelectable(false))
+		}
+	}
+
+	nodesDaemonState := func(row int) {
+		for i, nodename := range t.Current.Cluster.Config.Nodes {
+			s := tview.TranslateANSI(t.StrDaemonState(nodename))
+			t.objects.SetCell(row, t.firstInstanceCol+i, tview.NewTableCell(s).SetSelectable(false))
+		}
+	}
+
+	nodesDaemonUptime := func(row int) {
+		for i, nodename := range t.Current.Cluster.Config.Nodes {
+			s := tview.TranslateANSI(t.StrDaemonUptime(nodename))
+			t.objects.SetCell(row, t.firstInstanceCol+i, tview.NewTableCell(s).SetSelectable(false))
+		}
+	}
+
+	nodesUptime := func(row int) {
+		for i, nodename := range t.Current.Cluster.Config.Nodes {
+			s := tview.TranslateANSI(t.StrNodeUptime(nodename))
+			t.objects.SetCell(row, t.firstInstanceCol+i, tview.NewTableCell(s).SetSelectable(false))
+		}
+	}
+
+	nodesVersion := func(row int) {
+		for i, nodename := range t.Current.Cluster.Config.Nodes {
+			s := tview.TranslateANSI(t.StrNodeVersion(nodename))
 			t.objects.SetCell(row, t.firstInstanceCol+i, tview.NewTableCell(s).SetSelectable(false))
 		}
 	}
@@ -213,13 +255,21 @@ func (t *App) updateObjects() {
 	t.objects.SetCell(row, 0, tview.NewTableCell("EVENT").SetTextColor(colorTitle).SetSelectable(false))
 	t.objects.SetCell(row, 1, tview.NewTableCell(fmt.Sprintf("%d", t.eventCount)).SetSelectable(true))
 	t.objects.SetCell(row, 2, tview.NewTableCell("").SetSelectable(false))
+	t.objects.SetCell(row, 3, tview.NewTableCell("│UPTIME").SetTextColor(colorTitle).SetSelectable(false))
+	t.objects.SetCell(row, 4, tview.NewTableCell("│").SetTextColor(colorTitle).SetSelectable(false))
+	nodesUptime(row)
+
+	row++
+	t.objects.SetCell(row, 0, tview.NewTableCell("LAST").SetTextColor(colorTitle).SetSelectable(false))
+	t.objects.SetCell(row, 1, tview.NewTableCell("0s").SetSelectable(false))
+	t.objects.SetCell(row, 2, tview.NewTableCell("").SetSelectable(false))
 	t.objects.SetCell(row, 3, tview.NewTableCell("SCORE").SetTextColor(colorTitle).SetSelectable(false))
 	t.objects.SetCell(row, 4, tview.NewTableCell("│").SetTextColor(colorTitle).SetSelectable(false))
 	nodesScoreCells(row)
 
 	row++
-	t.objects.SetCell(row, 0, tview.NewTableCell("LAST").SetTextColor(colorTitle).SetSelectable(false))
-	t.objects.SetCell(row, 1, tview.NewTableCell("0s").SetSelectable(false))
+	t.objects.SetCell(row, 0, tview.NewTableCell("").SetSelectable(false))
+	t.objects.SetCell(row, 1, tview.NewTableCell("").SetSelectable(false))
 	t.objects.SetCell(row, 2, tview.NewTableCell("").SetSelectable(false))
 	t.objects.SetCell(row, 3, tview.NewTableCell("│LOAD").SetTextColor(colorTitle).SetSelectable(false))
 	t.objects.SetCell(row, 4, tview.NewTableCell("│").SetTextColor(colorTitle).SetSelectable(false))
@@ -241,8 +291,35 @@ func (t *App) updateObjects() {
 	t.objects.SetCell(row, 4, tview.NewTableCell("│").SetTextColor(colorTitle).SetSelectable(false))
 	nodesSwapCells(row)
 
+	row++
+	t.objects.SetCell(row, 0, tview.NewTableCell("").SetSelectable(false))
+	t.objects.SetCell(row, 1, tview.NewTableCell("").SetSelectable(false))
+	t.objects.SetCell(row, 2, tview.NewTableCell("").SetSelectable(false))
+	t.objects.SetCell(row, 3, tview.NewTableCell("DAEMON").SetTextColor(colorTitle).SetSelectable(false))
+	t.objects.SetCell(row, 4, tview.NewTableCell("│").SetTextColor(colorTitle).SetSelectable(false))
+	nodesDaemonState(row)
+
+	row++
+	t.objects.SetCell(row, 0, tview.NewTableCell("").SetSelectable(false))
+	t.objects.SetCell(row, 1, tview.NewTableCell("").SetSelectable(false))
+	t.objects.SetCell(row, 2, tview.NewTableCell("").SetSelectable(false))
+	t.objects.SetCell(row, 3, tview.NewTableCell("│UPTIME").SetTextColor(colorTitle).SetSelectable(false))
+	t.objects.SetCell(row, 4, tview.NewTableCell("│").SetTextColor(colorTitle).SetSelectable(false))
+	nodesDaemonUptime(row)
+
+	if t.NodeVersions().Len() > 1 {
+		row++
+		t.objects.SetCell(row, 0, tview.NewTableCell("").SetSelectable(false))
+		t.objects.SetCell(row, 1, tview.NewTableCell("").SetSelectable(false))
+		t.objects.SetCell(row, 2, tview.NewTableCell("").SetSelectable(false))
+		t.objects.SetCell(row, 3, tview.NewTableCell("│VERSION").SetTextColor(colorTitle).SetSelectable(false))
+		t.objects.SetCell(row, 4, tview.NewTableCell("│").SetTextColor(colorTitle).SetSelectable(false))
+		nodesVersion(row)
+	}
+
 	if len(t.Current.Cluster.Config.Nodes) > 1 {
 		row++
+		hbIndexRow = row
 		t.objects.SetCell(row, 0, tview.NewTableCell("").SetSelectable(false))
 		t.objects.SetCell(row, 1, tview.NewTableCell("").SetSelectable(false))
 		t.objects.SetCell(row, 2, tview.NewTableCell("").SetSelectable(false))
@@ -250,15 +327,16 @@ func (t *App) updateObjects() {
 		t.objects.SetCell(row, 4, tview.NewTableCell("│").SetTextColor(colorTitle).SetSelectable(false))
 		nodesHbCells(row)
 
-		for _, hbStatus := range t.Current.Cluster.Node[t.Frame.Nodename].Daemon.Heartbeat.Streams {
-			name := "│" + strings.TrimPrefix(hbStatus.ID, "hb#") + tview.TranslateANSI(monitor.StrThreadAlerts(hbStatus.Alerts))
+		hbTypes := []string{"rx", "tx"}
+		for _, hbType := range hbTypes {
+			name := "│" + hbType
 			row++
 			t.objects.SetCell(row, 0, tview.NewTableCell("").SetSelectable(false))
 			t.objects.SetCell(row, 1, tview.NewTableCell("").SetSelectable(false))
 			t.objects.SetCell(row, 2, tview.NewTableCell("").SetSelectable(false))
-			t.objects.SetCell(row, 3, tview.NewTableCell(name).SetTextColor(colorTitle).SetSelectable(false))
+			t.objects.SetCell(row, 3, tview.NewTableCell(name).SetTextColor(colorTitle).SetSelectable(true))
 			t.objects.SetCell(row, 4, tview.NewTableCell("│").SetTextColor(colorTitle).SetSelectable(false))
-			nodesHb1Cells(row, hbStatus)
+			nodesHb1Cells(row, hbType)
 		}
 	}
 

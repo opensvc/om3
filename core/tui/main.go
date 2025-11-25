@@ -109,6 +109,8 @@ type (
 
 		focused bool
 
+		hbFilter string
+
 		lastUpdatedAt time.Time
 
 		firstInstanceCol int
