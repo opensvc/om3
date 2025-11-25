@@ -43,7 +43,10 @@ func (t *App) initObjectsTable() {
 			if row > 8 {
 				hbType = table.GetCell(row, 3).Text[3:]
 			}
-			t.hbFilter = fmt.Sprintf("%s|%s", hbType, nodeFilter)
+			t.hbFilter = HbStatusFilter{
+				Name:     hbType,
+				NodeName: nodeFilter,
+			}
 			t.nav(viewHbStatus)
 		}
 	}
@@ -327,8 +330,7 @@ func (t *App) updateObjects() {
 		t.objects.SetCell(row, 4, tview.NewTableCell("│").SetTextColor(colorTitle).SetSelectable(false))
 		nodesHbCells(row)
 
-		hbTypes := []string{"rx", "tx"}
-		for _, hbType := range hbTypes {
+		for _, hbType := range []string{"rx", "tx"} {
 			name := "│" + hbType
 			row++
 			t.objects.SetCell(row, 0, tview.NewTableCell("").SetSelectable(false))

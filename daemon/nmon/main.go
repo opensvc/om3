@@ -197,10 +197,10 @@ func NewManager(drainDuration time.Duration, subQS pubsub.QueueSizer) *Manager {
 
 		hbSecretChecksumByNodename: make(map[string]string),
 	}
-	if bt, err := btime.GetBootTime(); err == nil {
-		m.nodeStatus.BootedAt = bt
-	} else {
+	if bt, err := btime.GetBootTime(); err != nil {
 		m.log.Warnf("get boot time: %s", err)
+	} else {
+		m.nodeStatus.BootedAt = bt
 	}
 	return m
 }
