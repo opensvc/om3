@@ -31,7 +31,7 @@ func (t *App) initObjectsTable() {
 			t.listContexts()
 		case row == 1 && col == 1:
 			t.nav(viewEvents)
-		case (row >= hbIndexRow && row <= hbIndexRow+2) && (col >= 3 && col <= 7):
+		case (row >= hbIndexRow && row <= hbIndexRow+2) && (col >= t.headerRightCol && col <= t.firstInstanceCol+len(t.Current.Cluster.Config.Nodes)-1):
 			if hbIndexRow == -1 {
 				return
 			}
