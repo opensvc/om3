@@ -233,6 +233,7 @@ func init() {
 	root.PersistentFlags().StringVar(&colorFlag, "color", "auto", "output colorization (yes|no|auto)")
 	root.PersistentFlags().BoolVarP(&quietFlag, "quiet", "q", false, "do not display logs on the console")
 	root.PersistentFlags().BoolVar(&debugFlag, "debug", false, "display logs at debug level")
+	root.PersistentFlags().BoolVar(&traceFlag, "trace", false, "display logs at trace level")
 	root.PersistentFlags().BoolVar(&callerFlag, "caller", false, "show the caller file and linenum in logs")
 	root.PersistentFlags().StringVarP(&selectorFlag, "selector", "s", "", "object selector")
 	root.PersistentFlags().Lookup("selector").Hidden = true

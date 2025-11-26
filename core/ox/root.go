@@ -4,7 +4,6 @@ import (
 	// Necessary to use go:embed
 	_ "embed"
 	"errors"
-
 	"fmt"
 	"os"
 	"path/filepath"
@@ -20,11 +19,10 @@ import (
 )
 
 var (
-	configFlag   string
 	colorFlag    string
 	selectorFlag string
 	serverFlag   string
-	nodeFlag     string
+	quietFlag    bool
 
 	//go:embed bash_completion.sh
 	bashCompletionFunction string
@@ -146,6 +144,7 @@ func ExecuteArgs(args []string) {
 
 func init() {
 	root.PersistentFlags().StringVar(&colorFlag, "color", "auto", "Output colorization yes|no|auto.")
+	root.PersistentFlags().BoolVarP(&quietFlag, "quiet", "q", false, "do not display logs on the console")
 	root.PersistentFlags().StringVar(&serverFlag, "server", "", "URI of the opensvc api server.")
 	root.PersistentFlags().StringVarP(&selectorFlag, "selector", "s", "", "object selector")
 	root.PersistentFlags().Lookup("selector").Hidden = true
