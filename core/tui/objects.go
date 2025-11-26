@@ -12,7 +12,8 @@ import (
 )
 
 var (
-	hbIndexRow = -1
+	hbIndexRow   = -1
+	separatorBar = "│"
 )
 
 func (t *App) initObjectsTable() {
@@ -151,234 +152,164 @@ func (t *App) initObjectsTable() {
 }
 
 func (t *App) updateObjects() {
+
+	nodesPopulate := func(row int, selectable bool, valueFn func(string) string) {
+		for i, nodename := range t.Current.Cluster.Config.Nodes {
+			s := tview.TranslateANSI(valueFn(nodename))
+			t.objects.SetCell(row, t.firstInstanceCol+i, tview.NewTableCell(s).SetSelectable(selectable))
+		}
+	}
+
 	nodesCells := func(row int, selectable bool) {
 		for i, nodename := range t.Current.Cluster.Config.Nodes {
 			t.objects.SetCell(row, t.firstInstanceCol+i, t.cellNode(nodename, selectable))
 		}
 	}
 
-	nodesScoreCells := func(row int) {
-		for i, nodename := range t.Current.Cluster.Config.Nodes {
-			s := tview.TranslateANSI(t.StrNodeScore(nodename))
-			t.objects.SetCell(row, t.firstInstanceCol+i, tview.NewTableCell(s).SetSelectable(false))
-		}
-	}
-
-	nodesLoadCells := func(row int) {
-		for i, nodename := range t.Current.Cluster.Config.Nodes {
-			s := tview.TranslateANSI(t.StrNodeLoad(nodename))
-			t.objects.SetCell(row, t.firstInstanceCol+i, tview.NewTableCell(s).SetSelectable(false))
-		}
-	}
-
-	nodesMemCells := func(row int) {
-		for i, nodename := range t.Current.Cluster.Config.Nodes {
-			s := tview.TranslateANSI(t.StrNodeMem(nodename))
-			t.objects.SetCell(row, t.firstInstanceCol+i, tview.NewTableCell(s).SetSelectable(false))
-		}
-	}
-
-	nodesSwapCells := func(row int) {
-		for i, nodename := range t.Current.Cluster.Config.Nodes {
-			s := tview.TranslateANSI(t.StrNodeSwap(nodename))
-			t.objects.SetCell(row, t.firstInstanceCol+i, tview.NewTableCell(s).SetSelectable(false))
-		}
-	}
-
-	nodesStateCells := func(row int) {
-		for i, nodename := range t.Current.Cluster.Config.Nodes {
-			s := tview.TranslateANSI(t.StrNodeStates(nodename))
-			t.objects.SetCell(row, t.firstInstanceCol+i, tview.NewTableCell(s).SetSelectable(false))
-		}
-	}
-
-	nodesHbCells := func(row int) {
-		for i, nodename := range t.Current.Cluster.Config.Nodes {
-			s := tview.TranslateANSI(t.StrNodeHbMode(nodename))
-			t.objects.SetCell(row, t.firstInstanceCol+i, tview.NewTableCell(s).SetSelectable(true))
-		}
-	}
-
+	nodesScoreCells := func(row int) { nodesPopulate(row, false, func(n string) string { return t.StrNodeScore(n) }) }
+	nodesLoadCells := func(row int) { nodesPopulate(row, false, func(n string) string { return t.StrNodeLoad(n) }) }
+	nodesMemCells := func(row int) { nodesPopulate(row, false, func(n string) string { return t.StrNodeMem(n) }) }
+	nodesSwapCells := func(row int) { nodesPopulate(row, false, func(n string) string { return t.StrNodeSwap(n) }) }
+	nodesStateCells := func(row int) { nodesPopulate(row, false, func(n string) string { return t.StrNodeStates(n) }) }
+	nodesHbCells := func(row int) { nodesPopulate(row, true, func(n string) string { return t.StrNodeHbMode(n) }) }
 	nodesHb1Cells := func(row int, hbType string) {
-		for i, nodename := range t.Current.Cluster.Config.Nodes {
-			s := tview.TranslateANSI(t.StrHeartbeat(nodename, hbType))
-			t.objects.SetCell(row, t.firstInstanceCol+i, tview.NewTableCell(s).SetSelectable(true))
-		}
+		nodesPopulate(row, true, func(n string) string { return t.StrHeartbeat(n, hbType) })
 	}
-
 	nodesArbitratorCells := func(row int, arbitratorName string) {
-		for i, nodename := range t.Current.Cluster.Config.Nodes {
-			s := tview.TranslateANSI(t.StrNodeArbitratorStatus(arbitratorName, nodename))
-			t.objects.SetCell(row, t.firstInstanceCol+i, tview.NewTableCell(s).SetSelectable(false))
+		nodesPopulate(row, false, func(n string) string { return t.StrNodeArbitratorStatus(arbitratorName, n) })
+	}
+	nodesDaemonState := func(row int) { nodesPopulate(row, false, func(n string) string { return t.StrDaemonState(n) }) }
+	nodesDaemonUptime := func(row int) { nodesPopulate(row, false, func(n string) string { return t.StrDaemonUptime(n) }) }
+	nodesUptime := func(row int) { nodesPopulate(row, false, func(n string) string { return t.StrNodeUptime(n) }) }
+	nodesVersion := func(row int) { nodesPopulate(row, false, func(n string) string { return t.StrNodeVersion(n) }) }
+
+	fmtSubElement := func(name string) string {
+		return separatorBar + name
+	}
+
+	objects := []HeaderObject{
+		{
+			Left:  t.newLeftHeaderCell("CLUSTER", t.Current.Cluster.Config.Name).withValueSelectable(),
+			Right: t.newRightHeaderCell("NODE"),
+			Populate: func(row int) {
+				nodesCells(row, true)
+			},
+		},
+		{
+			Left:     t.newLeftHeaderCell("EVENT", fmt.Sprintf("%d", t.eventCount)).withValueSelectable(),
+			Right:    t.newRightHeaderCell("UPTIME"),
+			Populate: nodesUptime,
+		},
+		{
+			Left:     t.newLeftHeaderCell("LAST", "0s"),
+			Right:    t.newRightHeaderCell("SCORE"),
+			Populate: nodesScoreCells,
+		},
+		{
+			Left:     HeaderCell{},
+			Right:    t.newRightHeaderCell(fmtSubElement("LOAD")),
+			Populate: nodesLoadCells,
+		},
+		{
+			Left:     HeaderCell{},
+			Right:    t.newRightHeaderCell(fmtSubElement("MEM")),
+			Populate: nodesMemCells,
+		},
+		{
+			Left:     HeaderCell{},
+			Right:    t.newRightHeaderCell(fmtSubElement("SWAP")),
+			Populate: nodesSwapCells,
+		},
+		{
+			Left:     HeaderCell{},
+			Right:    t.newRightHeaderCell("DAEMON"),
+			Populate: nodesDaemonState,
+		},
+		{
+			Left:     HeaderCell{},
+			Right:    t.newRightHeaderCell(fmtSubElement("UPTIME")),
+			Populate: nodesDaemonUptime,
+		},
+	}
+
+	if t.NodeVersions().Len() > 1 {
+		objects = append(objects, HeaderObject{
+			Left:     HeaderCell{},
+			Right:    t.newRightHeaderCell("VERSION"),
+			Populate: nodesVersion,
+		})
+	}
+
+	if len(t.Current.Cluster.Config.Nodes) > 1 {
+		hbIndexRow = len(objects)
+		objects = append(objects, HeaderObject{
+			Left:     HeaderCell{},
+			Right:    t.newRightHeaderCell("HB").withTitleSelectable(),
+			Populate: nodesHbCells,
+		})
+
+		for _, hbType := range []string{"rx", "tx"} {
+			name := fmtSubElement(hbType)
+			objects = append(objects, HeaderObject{
+				Left:  HeaderCell{},
+				Right: t.newRightHeaderCell(name).withTitleSelectable(),
+				Populate: func(row int) {
+					nodesHb1Cells(row, hbType)
+				},
+			})
 		}
 	}
 
-	nodesDaemonState := func(row int) {
-		for i, nodename := range t.Current.Cluster.Config.Nodes {
-			s := tview.TranslateANSI(t.StrDaemonState(nodename))
-			t.objects.SetCell(row, t.firstInstanceCol+i, tview.NewTableCell(s).SetSelectable(false))
+	arbitratorNames := t.Current.ArbitratorNames()
+	if len(arbitratorNames) > 0 {
+		objects = append(objects, HeaderObject{
+			Left:     HeaderCell{},
+			Right:    t.newRightHeaderCell("ARBITRATORS"),
+			Populate: func(row int) {},
+		})
+
+		for _, arbitratorName := range arbitratorNames {
+			name := fmtSubElement(arbitratorName)
+			objects = append(objects, HeaderObject{
+				Left:  HeaderCell{},
+				Right: t.newRightHeaderCell(name),
+				Populate: func(row int) {
+					nodesArbitratorCells(row, arbitratorName)
+				},
+			})
 		}
 	}
 
-	nodesDaemonUptime := func(row int) {
-		for i, nodename := range t.Current.Cluster.Config.Nodes {
-			s := tview.TranslateANSI(t.StrDaemonUptime(nodename))
-			t.objects.SetCell(row, t.firstInstanceCol+i, tview.NewTableCell(s).SetSelectable(false))
-		}
-	}
-
-	nodesUptime := func(row int) {
-		for i, nodename := range t.Current.Cluster.Config.Nodes {
-			s := tview.TranslateANSI(t.StrNodeUptime(nodename))
-			t.objects.SetCell(row, t.firstInstanceCol+i, tview.NewTableCell(s).SetSelectable(false))
-		}
-	}
-
-	nodesVersion := func(row int) {
-		for i, nodename := range t.Current.Cluster.Config.Nodes {
-			s := tview.TranslateANSI(t.StrNodeVersion(nodename))
-			t.objects.SetCell(row, t.firstInstanceCol+i, tview.NewTableCell(s).SetSelectable(false))
-		}
-	}
+	objects = append(objects,
+		HeaderObject{
+			Left:     HeaderCell{},
+			Right:    t.newRightHeaderCell("STATE"),
+			Populate: nodesStateCells,
+		},
+		HeaderObject{
+			Left: HeaderCell{},
+			Right: HeaderCell{
+				Value: "┼",
+			},
+			Populate: func(row int) {},
+		})
 
 	t.lastDraw = time.Now()
 
 	t.objects.Clear()
 	t.objects.SetTitle(fmt.Sprintf("%s objects", t.Frame.Selector))
 
-	row := 0
-	t.objects.SetCell(row, 0, tview.NewTableCell("CLUSTER").SetTextColor(colorTitle).SetSelectable(false))
-	t.objects.SetCell(row, 1, tview.NewTableCell(t.Current.Cluster.Config.Name).SetSelectable(true))
-	t.objects.SetCell(row, 2, tview.NewTableCell("").SetSelectable(false))
-	t.objects.SetCell(row, 3, tview.NewTableCell("NODE").SetTextColor(colorTitle).SetSelectable(false))
-	t.objects.SetCell(row, 4, tview.NewTableCell("│").SetTextColor(colorTitle).SetSelectable(false))
-	nodesCells(row, true)
-
-	row++
-	t.objects.SetCell(row, 0, tview.NewTableCell("EVENT").SetTextColor(colorTitle).SetSelectable(false))
-	t.objects.SetCell(row, 1, tview.NewTableCell(fmt.Sprintf("%d", t.eventCount)).SetSelectable(true))
-	t.objects.SetCell(row, 2, tview.NewTableCell("").SetSelectable(false))
-	t.objects.SetCell(row, 3, tview.NewTableCell("│UPTIME").SetTextColor(colorTitle).SetSelectable(false))
-	t.objects.SetCell(row, 4, tview.NewTableCell("│").SetTextColor(colorTitle).SetSelectable(false))
-	nodesUptime(row)
-
-	row++
-	t.objects.SetCell(row, 0, tview.NewTableCell("LAST").SetTextColor(colorTitle).SetSelectable(false))
-	t.objects.SetCell(row, 1, tview.NewTableCell("0s").SetSelectable(false))
-	t.objects.SetCell(row, 2, tview.NewTableCell("").SetSelectable(false))
-	t.objects.SetCell(row, 3, tview.NewTableCell("SCORE").SetTextColor(colorTitle).SetSelectable(false))
-	t.objects.SetCell(row, 4, tview.NewTableCell("│").SetTextColor(colorTitle).SetSelectable(false))
-	nodesScoreCells(row)
-
-	row++
-	t.objects.SetCell(row, 0, tview.NewTableCell("").SetSelectable(false))
-	t.objects.SetCell(row, 1, tview.NewTableCell("").SetSelectable(false))
-	t.objects.SetCell(row, 2, tview.NewTableCell("").SetSelectable(false))
-	t.objects.SetCell(row, 3, tview.NewTableCell("│LOAD").SetTextColor(colorTitle).SetSelectable(false))
-	t.objects.SetCell(row, 4, tview.NewTableCell("│").SetTextColor(colorTitle).SetSelectable(false))
-	nodesLoadCells(row)
-
-	row++
-	t.objects.SetCell(row, 0, tview.NewTableCell("").SetSelectable(false))
-	t.objects.SetCell(row, 1, tview.NewTableCell("").SetSelectable(false))
-	t.objects.SetCell(row, 2, tview.NewTableCell("").SetSelectable(false))
-	t.objects.SetCell(row, 3, tview.NewTableCell("│MEM").SetTextColor(colorTitle).SetSelectable(false))
-	t.objects.SetCell(row, 4, tview.NewTableCell("│").SetTextColor(colorTitle).SetSelectable(false))
-	nodesMemCells(row)
-
-	row++
-	t.objects.SetCell(row, 0, tview.NewTableCell("").SetSelectable(false))
-	t.objects.SetCell(row, 1, tview.NewTableCell("").SetSelectable(false))
-	t.objects.SetCell(row, 2, tview.NewTableCell("").SetSelectable(false))
-	t.objects.SetCell(row, 3, tview.NewTableCell("│SWAP").SetTextColor(colorTitle).SetSelectable(false))
-	t.objects.SetCell(row, 4, tview.NewTableCell("│").SetTextColor(colorTitle).SetSelectable(false))
-	nodesSwapCells(row)
-
-	row++
-	t.objects.SetCell(row, 0, tview.NewTableCell("").SetSelectable(false))
-	t.objects.SetCell(row, 1, tview.NewTableCell("").SetSelectable(false))
-	t.objects.SetCell(row, 2, tview.NewTableCell("").SetSelectable(false))
-	t.objects.SetCell(row, 3, tview.NewTableCell("DAEMON").SetTextColor(colorTitle).SetSelectable(false))
-	t.objects.SetCell(row, 4, tview.NewTableCell("│").SetTextColor(colorTitle).SetSelectable(false))
-	nodesDaemonState(row)
-
-	row++
-	t.objects.SetCell(row, 0, tview.NewTableCell("").SetSelectable(false))
-	t.objects.SetCell(row, 1, tview.NewTableCell("").SetSelectable(false))
-	t.objects.SetCell(row, 2, tview.NewTableCell("").SetSelectable(false))
-	t.objects.SetCell(row, 3, tview.NewTableCell("│UPTIME").SetTextColor(colorTitle).SetSelectable(false))
-	t.objects.SetCell(row, 4, tview.NewTableCell("│").SetTextColor(colorTitle).SetSelectable(false))
-	nodesDaemonUptime(row)
-
-	if t.NodeVersions().Len() > 1 {
-		row++
-		t.objects.SetCell(row, 0, tview.NewTableCell("").SetSelectable(false))
-		t.objects.SetCell(row, 1, tview.NewTableCell("").SetSelectable(false))
+	for i, obj := range objects {
+		row := i
+		t.objects.SetCell(row, 0, tview.NewTableCell(obj.Left.Title).SetTextColor(colorTitle).SetSelectable(obj.Left.TitleSelectable))
+		t.objects.SetCell(row, 1, tview.NewTableCell(obj.Left.Value).SetSelectable(obj.Left.ValueSelectable))
 		t.objects.SetCell(row, 2, tview.NewTableCell("").SetSelectable(false))
-		t.objects.SetCell(row, 3, tview.NewTableCell("│VERSION").SetTextColor(colorTitle).SetSelectable(false))
+		t.objects.SetCell(row, 3, tview.NewTableCell(obj.Right.Title).SetTextColor(colorTitle).SetSelectable(obj.Right.TitleSelectable))
 		t.objects.SetCell(row, 4, tview.NewTableCell("│").SetTextColor(colorTitle).SetSelectable(false))
-		nodesVersion(row)
+		obj.Populate(row)
 	}
 
-	if len(t.Current.Cluster.Config.Nodes) > 1 {
-		row++
-		hbIndexRow = row
-		t.objects.SetCell(row, 0, tview.NewTableCell("").SetSelectable(false))
-		t.objects.SetCell(row, 1, tview.NewTableCell("").SetSelectable(false))
-		t.objects.SetCell(row, 2, tview.NewTableCell("").SetSelectable(false))
-		t.objects.SetCell(row, 3, tview.NewTableCell("HB").SetTextColor(colorTitle).SetSelectable(true))
-		t.objects.SetCell(row, 4, tview.NewTableCell("│").SetTextColor(colorTitle).SetSelectable(false))
-		nodesHbCells(row)
-
-		for _, hbType := range []string{"rx", "tx"} {
-			name := "│" + hbType
-			row++
-			t.objects.SetCell(row, 0, tview.NewTableCell("").SetSelectable(false))
-			t.objects.SetCell(row, 1, tview.NewTableCell("").SetSelectable(false))
-			t.objects.SetCell(row, 2, tview.NewTableCell("").SetSelectable(false))
-			t.objects.SetCell(row, 3, tview.NewTableCell(name).SetTextColor(colorTitle).SetSelectable(true))
-			t.objects.SetCell(row, 4, tview.NewTableCell("│").SetTextColor(colorTitle).SetSelectable(false))
-			nodesHb1Cells(row, hbType)
-		}
-	}
-
-	arbitratorNames := t.Current.ArbitratorNames()
-	if len(arbitratorNames) > 0 {
-		row++
-		t.objects.SetCell(row, 0, tview.NewTableCell("").SetSelectable(false))
-		t.objects.SetCell(row, 1, tview.NewTableCell("").SetSelectable(false))
-		t.objects.SetCell(row, 2, tview.NewTableCell("").SetSelectable(false))
-		t.objects.SetCell(row, 3, tview.NewTableCell("ARBITRATORS").SetTextColor(colorTitle).SetSelectable(false))
-		t.objects.SetCell(row, 4, tview.NewTableCell("│").SetTextColor(colorTitle).SetSelectable(false))
-
-		for _, arbitratorName := range arbitratorNames {
-			name := "│" + arbitratorName
-			row++
-			t.objects.SetCell(row, 0, tview.NewTableCell("").SetSelectable(false))
-			t.objects.SetCell(row, 1, tview.NewTableCell("").SetSelectable(false))
-			t.objects.SetCell(row, 2, tview.NewTableCell("").SetSelectable(false))
-			t.objects.SetCell(row, 3, tview.NewTableCell(name).SetTextColor(colorTitle).SetSelectable(false))
-			t.objects.SetCell(row, 4, tview.NewTableCell("│").SetTextColor(colorTitle).SetSelectable(false))
-			nodesArbitratorCells(row, arbitratorName)
-		}
-	}
-
-	row++
-	t.objects.SetCell(row, 0, tview.NewTableCell("").SetSelectable(false))
-	t.objects.SetCell(row, 1, tview.NewTableCell("").SetSelectable(false))
-	t.objects.SetCell(row, 2, tview.NewTableCell("").SetSelectable(false))
-	t.objects.SetCell(row, 3, tview.NewTableCell("STATE").SetTextColor(colorTitle).SetSelectable(false))
-	t.objects.SetCell(row, 4, tview.NewTableCell("│").SetTextColor(colorTitle).SetSelectable(false))
-	nodesStateCells(row)
-
-	row++
-	t.objects.SetCell(row, 0, tview.NewTableCell("").SetSelectable(false))
-	t.objects.SetCell(row, 1, tview.NewTableCell("").SetSelectable(false))
-	t.objects.SetCell(row, 2, tview.NewTableCell("").SetSelectable(false))
-	t.objects.SetCell(row, 3, tview.NewTableCell("").SetSelectable(false))
-	t.objects.SetCell(row, 4, tview.NewTableCell("┼").SetTextColor(colorTitle).SetSelectable(false))
-
-	row++
+	row := len(objects)
 	t.objects.SetCell(row, 0, tview.NewTableCell("PATH").SetTextColor(colorTitle).SetSelectable(false))
 	t.objects.SetCell(row, 1, tview.NewTableCell("AVAIL").SetTextColor(colorTitle).SetSelectable(false))
 	t.objects.SetCell(row, 2, tview.NewTableCell("ORCHESTRATE").SetTextColor(colorTitle).SetSelectable(false))
@@ -452,4 +383,28 @@ func (t *App) cellObjectPath(path string) *tview.TableCell {
 		cell.SetBackgroundColor(colorSelected)
 	}
 	return cell
+}
+
+func (t *App) newLeftHeaderCell(title, value string) HeaderCell {
+	return HeaderCell{
+		Title: title,
+		Value: value,
+	}
+}
+
+func (t *App) newRightHeaderCell(title string) HeaderCell {
+	return HeaderCell{
+		Title: title,
+		Value: separatorBar,
+	}
+}
+
+func (h HeaderCell) withTitleSelectable() HeaderCell {
+	h.TitleSelectable = true
+	return h
+}
+
+func (h HeaderCell) withValueSelectable() HeaderCell {
+	h.ValueSelectable = true
+	return h
 }
