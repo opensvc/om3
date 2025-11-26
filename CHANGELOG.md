@@ -363,6 +363,24 @@
     Use double quotes instead of quotes, as the strings in the value part already use double quotes.
     Not mixing single and double quotes helps formatting the --filter for `om node events`.
 
+### Driver: container.docker
+
+    * `stop_timeout`
+    Updated the default value for the stop_timeout keyword from 120 seconds to 
+    10 seconds to align with the default behavior of Docker and Podman.
+
+### Driver: container.podman
+
+    * `stop_timeout`
+    Updated the default value for the stop_timeout keyword from 120 seconds to 
+    10 seconds to align with the default behavior of Docker and Podman.
+
+### Driver: container.oci
+
+    * `stop_timeout`
+    Updated the default value for the stop_timeout keyword from 120 seconds to 
+    10 seconds to align with the default behavior of Docker and Podman.
+
 ### Driver: disk.lvm
 
 * **Removed feature:**
