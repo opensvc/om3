@@ -20,7 +20,7 @@ type (
 )
 
 const (
-	levelKey = "OSVC_LOG_LEVEL"
+	levelKey = "LEVEL"
 
 	levelError = "error"
 	levelWarn  = "warn"
