@@ -16,20 +16,20 @@ func configUpdate(log *plog.Logger, p naming.Path, deletes []string, unsets []ke
 		return false, fmt.Errorf("new configurer %s: %w", p, err)
 	}
 	if err := oc.Config().PrepareUpdate(deletes, unsets, sets); err != nil {
-		log.Tracef("PrepareUpdate %s: %s", p, err)
-		return false, fmt.Errorf("prepare update %s: %w", p, err)
+		log.Tracef("prepare configuration update for object %s: %s", p, err)
+		return false, fmt.Errorf("prepare configuration update for object %s: %w", p, err)
 	}
 	if alerts, err := oc.Config().Validate(); err != nil {
-		log.Tracef("Validate %s: %s", p, err)
-		return false, fmt.Errorf("validate %s: %w", p, err)
+		log.Tracef("configuration validation for object %s: %s", p, err)
+		return false, fmt.Errorf("configuration validation for object %s: %w", p, err)
 	} else if alerts.HasError() {
-		log.Tracef("Validate has errors %s", p)
-		return false, fmt.Errorf("validate %s has errors: %w", p, err)
+		log.Tracef("configuration validation has errors for object %s", p)
+		return false, fmt.Errorf("configuration validation has errors for object %s", p)
 	}
 	changed := oc.Config().Changed()
 	if err := oc.Config().CommitInvalid(); err != nil {
-		log.Errorf("CommitInvalid %s: %s", p, err)
-		return false, fmt.Errorf("commit %s is invalid: %w", p, err)
+		log.Errorf("configuration commit is invalid for object %s: %s", p, err)
+		return false, fmt.Errorf("configuration commit is invalid for object %s: %w", p, err)
 	}
 	return changed, nil
 }

@@ -31,30 +31,30 @@ func localPostDaemonHeartbeatSign(ctx echo.Context, name api.InPathHeartbeatName
 	var i any
 	i, err := object.NewCluster(object.WithVolatile(true))
 	if err != nil {
-		log.Warnf("NewCluster: %v", err)
-		return JSONProblemf(ctx, http.StatusInternalServerError, "NewCluster", "%s", err)
+		log.Warnf("new cluster object failed: %v", err)
+		return JSONProblemf(ctx, http.StatusInternalServerError, "new cluster object failed", "%s", err)
 	}
 	config := (i.(configProvider)).Config()
 	section := "hb#" + string(name)
 
 	hbType := config.GetString(key.New(section, "type"))
 	if hbType != "disk" {
-		log.Tracef("heartbeat %s is not a disk", name)
-		return JSONProblemf(ctx, http.StatusBadRequest, "Invalid parameter", "heartbeat %s is not a disk", name)
+		log.Tracef("sign heartbeat disk refused: unexpected hb#%s.type %s", name, hbType)
+		return JSONProblemf(ctx, http.StatusBadRequest, "Invalid parameter", "sign heartbeat disk refused: unexpected hb#%s.type %s", name, hbType)
 	}
 
-	path := config.GetString(key.New(section, "dev"))
-	if path == "" {
-		log.Warnf("Path %s: %v", path, err)
-		return JSONProblemf(ctx, http.StatusBadRequest, "Invalid parameter", "heartbeat %s has no dev configured", name)
+	devPath := config.GetString(key.New(section, "dev"))
+	if devPath == "" {
+		log.Warnf("sign heartbeat disk refused: unexpected empty hb#%s.dev", name)
+		return JSONProblemf(ctx, http.StatusBadRequest, "Invalid parameter", "sign heartbeat disk refused: unexpected empty hb#%s.dev", name)
 	}
 
-	log.Infof("Sign heartbeat %s on %s", name, path)
-	err = sign.CreateAndFillDisk(path)
+	log.Infof("sign heartbeat disk %s dev %s", name, devPath)
+	err = sign.CreateAndFillDisk(devPath)
 	if err != nil {
-		log.Warnf("CreateAndFillDisk %s: %v", path, err)
-		return JSONProblemf(ctx, http.StatusInternalServerError, "CreateAndFillDisk", "%s", err)
+		log.Warnf("sign heartbeat disk %s dev %s: %s", name, devPath, err)
+		return JSONProblemf(ctx, http.StatusInternalServerError, "Heartbeat disk sign error", "sign heartbeat disk %s dev %s: %s", name, devPath, err)
 	}
 
-	return JSONProblemf(ctx, http.StatusOK, "heartbeat sign", "sign heartbeat %s on %s", name, path)
+	return JSONProblemf(ctx, http.StatusOK, "Heartbeat disk signed", "sign heartbeat %s on %s", name, devPath)
 }

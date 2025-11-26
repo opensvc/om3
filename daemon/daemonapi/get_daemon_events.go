@@ -78,7 +78,7 @@ func (a *DaemonAPI) getPeerDaemonEvents(ctx echo.Context, nodename string, param
 	request := ctx.Request()
 	if params.Duration != nil {
 		if v, err := converters.Lookup("duration").Convert(*params.Duration); err != nil {
-			log.Infof("Invalid parameter: field 'duration' with value '%s' validation error: %s", *params.Duration, err)
+			log.Infof("invalid parameter: field 'duration' with value '%s' validation error: %s", *params.Duration, err)
 			return JSONProblemf(ctx, http.StatusBadRequest, "Invalid parameter", "field 'duration' with value '%s' validation error: %s", *params.Duration, err)
 		} else if timeout := *v.(*time.Duration); timeout > 0 {
 			var cancel context.CancelFunc
@@ -246,7 +246,7 @@ func (a *DaemonAPI) getLocalDaemonEvents(ctx echo.Context, params api.GetDaemonE
 	}
 	if params.Duration != nil {
 		if v, err := converters.Lookup("duration").Convert(*params.Duration); err != nil {
-			log.Infof("Invalid parameter: field 'duration' with value '%s' validation error: %s", *params.Duration, err)
+			log.Infof("invalid parameter: field 'duration' with value '%s' validation error: %s", *params.Duration, err)
 			return JSONProblemf(ctx, http.StatusBadRequest, "Invalid parameter", "field 'duration' with value '%s' validation error: %s", *params.Duration, err)
 		} else if timeout := *v.(*time.Duration); timeout > 0 {
 			evCtx, cancel = context.WithTimeout(evCtx, timeout)
@@ -256,7 +256,7 @@ func (a *DaemonAPI) getLocalDaemonEvents(ctx echo.Context, params api.GetDaemonE
 
 	filters, err := parseFilters(params)
 	if err != nil {
-		log.Infof("Invalid parameter: field 'filter' with value '%s' validation error: %s", *params.Filter, err)
+		log.Infof("invalid parameter: field 'filter' with value '%s' validation error: %s", *params.Filter, err)
 		return JSONProblemf(ctx, http.StatusBadRequest, "Invalid parameter", "field 'filter' with value '%s' validation error: %s", *params.Filter, err)
 	}
 
