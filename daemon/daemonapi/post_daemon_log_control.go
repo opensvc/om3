@@ -37,5 +37,5 @@ func (a *DaemonAPI) postLocalDaemonLogControl(ctx echo.Context, payload api.LogC
 		return JSONProblemf(ctx, http.StatusBadRequest, "Invalid body", "Error parsing 'level': %s", err)
 	}
 	zerolog.SetGlobalLevel(newLevel)
-	return JSONProblemf(ctx, http.StatusOK, "New log level", "%s", payload.Level)
+	return JSONProblemf(ctx, http.StatusOK, "New log level", "%s[%d]", payload.Level, newLevel)
 }

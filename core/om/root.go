@@ -34,6 +34,7 @@ var (
 
 	callerFlag     bool
 	debugFlag      bool
+	traceFlag      bool
 	foregroundFlag bool
 	quietFlag      bool
 	versionFlag    bool
@@ -88,8 +89,11 @@ func configureLogger() error {
 	if debugFlag {
 		level = "debug"
 	}
+	if traceFlag {
+		level = "trace"
+	}
 	err := logging.Configure(logging.Config{
-		WithConsoleLog: !quietFlag || debugFlag || foregroundFlag,
+		WithConsoleLog: !quietFlag || debugFlag || traceFlag || foregroundFlag,
 		WithColor:      colorFlag != "no",
 		WithCaller:     callerFlag,
 		Level:          level,
@@ -117,6 +121,9 @@ func persistentPreRunE(cmd *cobra.Command, _ []string) error {
 	}
 	if flag := cmd.Flags().Lookup("debug"); flag != nil && flag.Value.String() == "true" {
 		debugFlag = true
+	}
+	if flag := cmd.Flags().Lookup("trace"); flag != nil && flag.Value.String() == "true" {
+		traceFlag = true
 	}
 	if flag := cmd.Flags().Lookup("color"); flag != nil {
 		colorFlag = flag.Value.String()
@@ -226,6 +233,7 @@ func init() {
 	root.PersistentFlags().StringVar(&colorFlag, "color", "auto", "output colorization (yes|no|auto)")
 	root.PersistentFlags().BoolVarP(&quietFlag, "quiet", "q", false, "do not display logs on the console")
 	root.PersistentFlags().BoolVar(&debugFlag, "debug", false, "display logs at debug level")
+	root.PersistentFlags().BoolVar(&traceFlag, "trace", false, "display logs at trace level")
 	root.PersistentFlags().BoolVar(&callerFlag, "caller", false, "show the caller file and linenum in logs")
 	root.PersistentFlags().StringVarP(&selectorFlag, "selector", "s", "", "object selector")
 	root.PersistentFlags().Lookup("selector").Hidden = true

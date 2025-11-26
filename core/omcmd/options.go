@@ -6,7 +6,5 @@ type (
 		Color          string
 		Output         string
 		ObjectSelector string
-		Quiet          bool
-		Debug          bool
 	}
 )

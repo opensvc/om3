@@ -74,13 +74,13 @@ func (t *T) Configure(ctx context.Context) {
 		nodes = t.Config().GetStrings(k)
 	}
 	oNodes := hostname.OtherNodes(nodes)
-	log.Debugf("timeout=%s interval=%s relay=%s insecure=%t nodes=%s onodes=%s", timeout, interval, relay, insecure, nodes, oNodes)
+	log.Tracef("timeout=%s interval=%s relay=%s insecure=%t nodes=%s onodes=%s", timeout, interval, relay, insecure, nodes, oNodes)
 	t.SetNodes(oNodes)
 	t.SetTimeout(timeout)
 	signature := fmt.Sprintf("type: hb.relay nodes: %s relay: %s timeout: %s interval: %s",
 		nodes, relay, timeout, interval)
 	t.SetSignature(signature)
-	log.Debugf("signature: [%s]", signature)
+	log.Tracef("signature: [%s]", signature)
 	name := t.Name()
 	tx := newTx(ctx, name, oNodes, relay, username, password, insecure, timeout, interval)
 	t.SetTx(tx)

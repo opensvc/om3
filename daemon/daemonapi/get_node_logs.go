@@ -95,8 +95,8 @@ func (a *DaemonAPI) getLocalNodeLogs(ctx echo.Context, params api.GetNodeLogsPar
 		handlerName = "GetNodeLogs"
 	)
 	log := LogHandler(ctx, handlerName)
-	log.Debugf("starting")
-	defer log.Debugf("done")
+	log.Tracef("starting")
+	defer log.Tracef("done")
 
 	matches, err := parseLogFilters(params.Filter)
 	if err != nil {
@@ -141,7 +141,7 @@ func (a *DaemonAPI) getLocalNodeLogs(ctx echo.Context, params api.GetNodeLogsPar
 	}
 	defer func() {
 		if err := stream.Stop(); err != nil {
-			log.Debugf("stream.Stop: %s", err)
+			log.Tracef("stream.Stop: %s", err)
 		}
 	}()
 	w.WriteHeader(http.StatusOK)
@@ -156,7 +156,7 @@ func (a *DaemonAPI) getLocalNodeLogs(ctx echo.Context, params api.GetNodeLogsPar
 			return nil
 		case ev := <-stream.Events():
 			if _, err := sseWriter.Write(&event.Event{Kind: "log", Data: ev.B}); err != nil {
-				log.Debugf("sseWriter.Write: %s", err)
+				log.Tracef("sseWriter.Write: %s", err)
 				break
 			}
 			w.Flush()
@@ -164,7 +164,7 @@ func (a *DaemonAPI) getLocalNodeLogs(ctx echo.Context, params api.GetNodeLogsPar
 			if err == nil {
 				return nil
 			}
-			log.Debugf("stream.Error: %s", err)
+			log.Tracef("stream.Error: %s", err)
 		}
 	}
 }

@@ -331,7 +331,7 @@ func (t *Manager) startSubscriptions(qs pubsub.QueueSizer) {
 
 // worker watch for local imon updates
 func (t *Manager) worker(initialNodes []string) {
-	defer t.log.Debugf("worker stopped")
+	defer t.log.Tracef("worker stopped")
 
 	// runStatus and requestStatusRefresh will need instance config Priority
 	if iConfig := instance.ConfigData.GetByPathAndNode(t.path, t.localhost); iConfig != nil {
@@ -415,14 +415,14 @@ func (t *Manager) worker(initialNodes []string) {
 			}
 		}()
 	}()
-	t.log.Debugf("started")
+	t.log.Tracef("started")
 	for {
 		select {
 		case <-t.ctx.Done():
 			return
 		case i := <-t.sub.C:
 			if t.ctx.Err() != nil {
-				t.log.Debugf("skipping event due to canceled context")
+				t.log.Tracef("skipping event due to canceled context")
 				return
 			}
 			switch c := i.(type) {
@@ -453,7 +453,7 @@ func (t *Manager) worker(initialNodes []string) {
 			}
 		case i := <-t.cmdC:
 			if t.ctx.Err() != nil {
-				t.log.Debugf("skipping cmd due to canceled context")
+				t.log.Tracef("skipping cmd due to canceled context")
 				return
 			}
 			switch c := i.(type) {
@@ -557,7 +557,7 @@ func (t *Manager) updateIfChange() {
 			//							    ✅now, the instance status updated at is newer than the local expect updated at
 			t.enableMonitor("local instance is up and idle")
 		} else {
-			t.log.Debugf("wait for fresher instance status before enable enable resource restart and monitoring")
+			t.log.Tracef("wait for fresher instance status before enable enable resource restart and monitoring")
 		}
 	}
 	if !t.change {
@@ -604,13 +604,13 @@ func (t *Manager) hasOtherNodeActing() bool {
 }
 
 func (t *Manager) createPendingWithDuration(duration time.Duration) {
-	t.log.Debugf("create new pending context with duration %s", duration)
+	t.log.Tracef("create new pending context with duration %s", duration)
 	t.pendingCtx, t.pendingCancel = context.WithTimeout(t.ctx, duration)
 }
 
 func (t *Manager) clearPending() {
 	if t.pendingCancel != nil {
-		t.log.Debugf("clear pending context")
+		t.log.Tracef("clear pending context")
 		t.pendingCancel()
 		t.pendingCancel = nil
 		t.pendingCtx = nil

@@ -17,7 +17,7 @@ func (a *DaemonAPI) PostRelayMessage(ctx echo.Context) error {
 		value   api.RelayMessage
 	)
 	log := LogHandler(ctx, "PostRelayMessage")
-	log.Debugf("starting")
+	log.Tracef("starting")
 
 	if v, err := assertGrant(ctx, rbac.GrantHeartbeat); !v {
 		return err
@@ -37,6 +37,6 @@ func (a *DaemonAPI) PostRelayMessage(ctx echo.Context) error {
 	value.Username = username
 
 	relay.Map.Store(username, payload.ClusterID, payload.Nodename, value)
-	log.Debugf("stored %s %s", payload.ClusterID, payload.Nodename)
+	log.Tracef("stored %s %s", payload.ClusterID, payload.Nodename)
 	return JSONProblemf(ctx, http.StatusOK, "stored", "at %s from %s", value.UpdatedAt, value.NodeAddr)
 }

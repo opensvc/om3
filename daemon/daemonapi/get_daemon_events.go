@@ -123,19 +123,19 @@ func (a *DaemonAPI) getPeerDaemonEvents(ctx echo.Context, nodename string, param
 	for {
 		ev, err := evReader.Read()
 		if err != nil {
-			log.Debugf("event read: %s", err)
+			log.Tracef("event read: %s", err)
 			return nil
 		} else if ev == nil {
 			return nil
 		}
 		eventCount++
 		if _, err := sseWriter.Write(ev); err != nil {
-			log.Debugf("event write: %s", err)
+			log.Tracef("event write: %s", err)
 			return nil
 		}
 		w.Flush()
 		if limit > 0 && eventCount >= limit {
-			log.Debugf("reach event count limit")
+			log.Tracef("reach event count limit")
 			return nil
 		}
 	}
@@ -183,8 +183,8 @@ func (a *DaemonAPI) getLocalDaemonEvents(ctx echo.Context, params api.GetDaemonE
 	userGrants := grantsFromContext(ctx)
 
 	log := LogHandler(ctx, handlerName)
-	log.Debugf("starting")
-	defer log.Debugf("done")
+	log.Tracef("starting")
+	defer log.Tracef("done")
 
 	getSelectedMap := func() (naming.M, error) {
 		if selected, err := selector.Expand(); err != nil {
@@ -278,17 +278,17 @@ func (a *DaemonAPI) getLocalDaemonEvents(ctx echo.Context, params api.GetDaemonE
 
 	for _, filter := range filters {
 		if filter.Kind == nil {
-			log.Debugf("filtering %v %v", filter.Kind, filter.Labels)
+			log.Tracef("filtering %v %v", filter.Kind, filter.Labels)
 			requestedFilterByFilterIdentifier[pubsub.FilterFmt("", filter.Labels...)] = nil
 		} else if kind, ok := filter.Kind.(event.Kinder); ok {
 			requestedFilterByFilterIdentifier[pubsub.FilterFmt(kind.Kind(), filter.Labels...)] = nil
 
 			if len(filter.DataFilters) > 0 {
-				log.Debugf("filtering %s label:%v data:%v", kind.Kind(), filter.Labels, filter.DataFilters)
+				log.Tracef("filtering %s label:%v data:%v", kind.Kind(), filter.Labels, filter.DataFilters)
 				dataFiltersByKind[kind.Kind()] = filter.DataFilters
 			} else {
-				log.Debugf("filtering %s label:%v", kind.Kind(), filter.Labels)
-				log.Debugf("filtering %s %v", kind.Kind(), filter.Labels)
+				log.Tracef("filtering %s label:%v", kind.Kind(), filter.Labels)
+				log.Tracef("filtering %s %v", kind.Kind(), filter.Labels)
 			}
 		} else {
 			log.Warnf("skip filtering of %s %v", reflect.TypeOf(filter.Kind), filter.Labels)
@@ -311,20 +311,20 @@ func (a *DaemonAPI) getLocalDaemonEvents(ctx echo.Context, params api.GetDaemonE
 		createdMsg := &msgbus.ObjectCreated{}
 		createdMsg.AddLabels(a.LabelLocalhost)
 		if !needForwardEvent("ObjectCreated", createdMsg) {
-			log.Debugf("add hidden filtering: ObjectCreated")
+			log.Tracef("add hidden filtering: ObjectCreated")
 			sub.AddFilter(&msgbus.ObjectCreated{})
 		}
 		deleteMsg := &msgbus.ObjectDeleted{}
 		deleteMsg.AddLabels(a.LabelLocalhost)
 		if !needForwardEvent("ObjectDeleted", deleteMsg) {
-			log.Debugf("add hidden filtering: ObjectDeleted,node=%s", a.localhost)
+			log.Tracef("add hidden filtering: ObjectDeleted,node=%s", a.localhost)
 			sub.AddFilter(&msgbus.ObjectDeleted{}, a.LabelLocalhost)
 		}
 	}
 	sub.Start()
 	defer func() {
 		if err := sub.Stop(); err != nil {
-			log.Debugf("sub.Stop: %s", err)
+			log.Tracef("sub.Stop: %s", err)
 		}
 	}()
 	if hasSelector {
@@ -370,7 +370,7 @@ func (a *DaemonAPI) getLocalDaemonEvents(ctx echo.Context, params api.GetDaemonE
 		}
 		eventCount++
 		if _, err := sseWriter.Write(ev); err != nil {
-			log.Debugf("write event %s: %s", ev.Kind, err)
+			log.Tracef("write event %s: %s", ev.Kind, err)
 			return err
 		}
 		w.Flush()
@@ -390,12 +390,12 @@ func (a *DaemonAPI) getLocalDaemonEvents(ctx echo.Context, params api.GetDaemonE
 			}
 			for _, anyE := range anyL {
 				if err := doEvent(anyE); err != nil {
-					log.Debugf("do event failed on %v: %s", anyE, err)
+					log.Tracef("do event failed on %v: %s", anyE, err)
 					return nil
 				}
 				w.Flush()
 				if limit > 0 && eventCount >= limit {
-					log.Debugf("reach event count limit")
+					log.Tracef("reach event count limit")
 					return nil
 				}
 			}
@@ -424,7 +424,7 @@ func (a *DaemonAPI) getLocalDaemonEvents(ctx echo.Context, params api.GetDaemonE
 							log.Errorf("can't filter on object created")
 							return err
 						} else if selected.Has(s) {
-							log.Debugf("add created object %s to selection", s)
+							log.Tracef("add created object %s to selection", s)
 							pathSelected[s] = nil
 						}
 					}
@@ -443,7 +443,7 @@ func (a *DaemonAPI) getLocalDaemonEvents(ctx echo.Context, params api.GetDaemonE
 						s := ev.Path.String()
 						if pathSelected.Has(s) {
 							notAnymoreSelected = true
-							log.Debugf("remove deleted object %s from selection", s)
+							log.Tracef("remove deleted object %s from selection", s)
 							delete(pathSelected, s)
 						}
 						if _, ok := pathM[s]; ok {
@@ -485,7 +485,7 @@ func (a *DaemonAPI) getLocalDaemonEvents(ctx echo.Context, params api.GetDaemonE
 				return nil
 			}
 			if limit > 0 && eventCount >= limit {
-				log.Debugf("reach event count limit")
+				log.Tracef("reach event count limit")
 				return nil
 			}
 		}

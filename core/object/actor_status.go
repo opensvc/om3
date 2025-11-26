@@ -75,7 +75,7 @@ func (t *actor) Status(ctx context.Context) (instance.Status, error) {
 
 func (t *actor) postActionStatusEval(ctx context.Context) {
 	if _, err := t.statusEval(ctx); err != nil {
-		t.log.Debugf("a status refresh is already in progress: %s", err)
+		t.log.Tracef("a status refresh is already in progress: %s", err)
 	}
 }
 
@@ -350,7 +350,7 @@ func (t *actor) resourceStatusEvalEncap(ctx context.Context, encapContainer reso
 				if pushed {
 					return nil, fmt.Errorf("no encap instance config: already pushed")
 				}
-				t.log.Debugf("%s: no encap instance config: push the config", t.path)
+				t.log.Tracef("%s: no encap instance config: push the config", t.path)
 				if err := t.installEncapConfig(ctx, encapContainer, configFile); err != nil {
 					return nil, err
 				}
@@ -367,7 +367,7 @@ func (t *actor) resourceStatusEvalEncap(ctx context.Context, encapContainer reso
 		if pushed {
 			return nil, fmt.Errorf("no encap instance status: already pushed")
 		}
-		t.log.Debugf("%s: no encap instance status: push the config", t.path)
+		t.log.Tracef("%s: no encap instance status: push the config", t.path)
 		if err := t.installEncapConfig(ctx, encapContainer, configFile); err != nil {
 			return nil, err
 		}
@@ -393,7 +393,7 @@ func (t *actor) resourceStatusEvalEncap(ctx context.Context, encapContainer reso
 		if pushed {
 			return nil, fmt.Errorf("encap instance config checksum (%s) is different than host's (%s): already pushed", encapInstanceStates.Config.Checksum, checksum)
 		}
-		t.log.Debugf("%s: encap instance config checksum (%s) is different than host's (%s): push the config", t.path, encapInstanceStates.Config.Checksum, checksum)
+		t.log.Tracef("%s: encap instance config checksum (%s) is different than host's (%s): push the config", t.path, encapInstanceStates.Config.Checksum, checksum)
 		if err := t.installEncapConfig(ctx, encapContainer, configFile); err != nil {
 			return nil, err
 		}

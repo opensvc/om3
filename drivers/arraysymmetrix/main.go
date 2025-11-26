@@ -877,8 +877,8 @@ func (t *Array) SymAccessShowViewDetail(name string) ([]MaskingView, error) {
 		command.WithArgs(args),
 		command.WithBufferedStdout(),
 		command.WithBufferedStderr(),
-		command.WithCommandLogLevel(zerolog.DebugLevel),
-		command.WithLogLevel(zerolog.DebugLevel),
+		command.WithCommandLogLevel(zerolog.TraceLevel),
+		command.WithLogLevel(zerolog.TraceLevel),
 		command.WithEnv(t.SymEnv()),
 		command.WithLogger(t.Log()),
 	)
@@ -899,8 +899,8 @@ func (t *Array) SymAccessListViewDetail() ([]MaskingView, error) {
 		command.WithArgs(args),
 		command.WithBufferedStdout(),
 		command.WithBufferedStderr(),
-		command.WithCommandLogLevel(zerolog.DebugLevel),
-		command.WithLogLevel(zerolog.DebugLevel),
+		command.WithCommandLogLevel(zerolog.TraceLevel),
+		command.WithLogLevel(zerolog.TraceLevel),
 		command.WithEnv(t.SymEnv()),
 		command.WithLogger(t.Log()),
 	)
@@ -929,8 +929,8 @@ func (t *Array) SymCfgList(s string) (SymmInfo, error) {
 		command.WithArgs(args),
 		command.WithBufferedStdout(),
 		command.WithBufferedStderr(),
-		command.WithCommandLogLevel(zerolog.DebugLevel),
-		command.WithLogLevel(zerolog.DebugLevel),
+		command.WithCommandLogLevel(zerolog.TraceLevel),
+		command.WithLogLevel(zerolog.TraceLevel),
 		command.WithEnv(t.SymEnv()),
 		command.WithLogger(t.Log()),
 	)
@@ -959,8 +959,8 @@ func (t *Array) SymCfgDirectorList(s string) ([]Director, error) {
 		command.WithArgs(args),
 		command.WithBufferedStdout(),
 		command.WithBufferedStderr(),
-		command.WithCommandLogLevel(zerolog.DebugLevel),
-		command.WithLogLevel(zerolog.DebugLevel),
+		command.WithCommandLogLevel(zerolog.TraceLevel),
+		command.WithLogLevel(zerolog.TraceLevel),
 		command.WithEnv(t.SymEnv()),
 		command.WithLogger(t.Log()),
 	)
@@ -989,8 +989,8 @@ func (t *Array) SymCfgRDFGList(s string) ([]RDFGroup, error) {
 		command.WithArgs(args),
 		command.WithBufferedStdout(),
 		command.WithBufferedStderr(),
-		command.WithCommandLogLevel(zerolog.DebugLevel),
-		command.WithLogLevel(zerolog.DebugLevel),
+		command.WithCommandLogLevel(zerolog.TraceLevel),
+		command.WithLogLevel(zerolog.TraceLevel),
 		command.WithEnv(t.SymEnv()),
 		command.WithLogger(t.Log()),
 	)
@@ -1019,8 +1019,8 @@ func (t *Array) SymCfgPoolList() ([]DevicePool, error) {
 		command.WithArgs(args),
 		command.WithBufferedStdout(),
 		command.WithBufferedStderr(),
-		command.WithCommandLogLevel(zerolog.DebugLevel),
-		command.WithLogLevel(zerolog.DebugLevel),
+		command.WithCommandLogLevel(zerolog.TraceLevel),
+		command.WithLogLevel(zerolog.TraceLevel),
 		command.WithEnv(t.SymEnv()),
 		command.WithLogger(t.Log()),
 	)
@@ -1049,8 +1049,8 @@ func (t *Array) SymCfgSLOList() ([]SLO, error) {
 		command.WithArgs(args),
 		command.WithBufferedStdout(),
 		command.WithBufferedStderr(),
-		command.WithCommandLogLevel(zerolog.DebugLevel),
-		command.WithLogLevel(zerolog.DebugLevel),
+		command.WithCommandLogLevel(zerolog.TraceLevel),
+		command.WithLogLevel(zerolog.TraceLevel),
 		command.WithEnv(t.SymEnv()),
 		command.WithLogger(t.Log()),
 	)
@@ -1079,8 +1079,8 @@ func (t *Array) SymCfgSRPList() ([]SRP, error) {
 		command.WithArgs(args),
 		command.WithBufferedStdout(),
 		command.WithBufferedStderr(),
-		command.WithCommandLogLevel(zerolog.DebugLevel),
-		command.WithLogLevel(zerolog.DebugLevel),
+		command.WithCommandLogLevel(zerolog.TraceLevel),
+		command.WithLogLevel(zerolog.TraceLevel),
 		command.WithEnv(t.SymEnv()),
 		command.WithLogger(t.Log()),
 	)
@@ -1109,8 +1109,8 @@ func (t *Array) SymDiskListDiskGroupSummary() ([]DiskGroup, error) {
 		command.WithArgs(args),
 		command.WithBufferedStdout(),
 		command.WithBufferedStderr(),
-		command.WithCommandLogLevel(zerolog.DebugLevel),
-		command.WithLogLevel(zerolog.DebugLevel),
+		command.WithCommandLogLevel(zerolog.TraceLevel),
+		command.WithLogLevel(zerolog.TraceLevel),
 		command.WithEnv(t.SymEnv()),
 		command.WithLogger(t.Log()),
 	)
@@ -1138,8 +1138,8 @@ func (t *Array) SymDevListThinDevs(sid, devId string) ([]ThinDev, error) {
 		command.WithArgs(args),
 		command.WithBufferedStdout(),
 		command.WithBufferedStderr(),
-		command.WithCommandLogLevel(zerolog.DebugLevel),
-		command.WithLogLevel(zerolog.DebugLevel),
+		command.WithCommandLogLevel(zerolog.TraceLevel),
+		command.WithLogLevel(zerolog.TraceLevel),
 		command.WithEnv(t.SymEnv()),
 		command.WithLogger(t.Log()),
 	)
@@ -1167,8 +1167,8 @@ func (t *Array) SymDevShow(sid, devId string) ([]Device, error) {
 		command.WithArgs(args),
 		command.WithBufferedStdout(),
 		command.WithBufferedStderr(),
-		command.WithCommandLogLevel(zerolog.DebugLevel),
-		command.WithLogLevel(zerolog.DebugLevel),
+		command.WithCommandLogLevel(zerolog.TraceLevel),
+		command.WithLogLevel(zerolog.TraceLevel),
 		command.WithEnv(t.SymEnv()),
 		command.WithLogger(t.Log()),
 	)
@@ -1196,8 +1196,8 @@ func (t *Array) SymDevShowByWWN(sid, devId string) ([]Device, error) {
 		command.WithArgs(args),
 		command.WithBufferedStdout(),
 		command.WithBufferedStderr(),
-		command.WithCommandLogLevel(zerolog.DebugLevel),
-		command.WithLogLevel(zerolog.DebugLevel),
+		command.WithCommandLogLevel(zerolog.TraceLevel),
+		command.WithLogLevel(zerolog.TraceLevel),
 		command.WithEnv(t.SymEnv()),
 		command.WithLogger(t.Log()),
 	)
@@ -1224,8 +1224,8 @@ func (t *Array) SymDevList(sid string) ([]Device, error) {
 		command.WithArgs(args),
 		command.WithBufferedStdout(),
 		command.WithBufferedStderr(),
-		command.WithCommandLogLevel(zerolog.DebugLevel),
-		command.WithLogLevel(zerolog.DebugLevel),
+		command.WithCommandLogLevel(zerolog.TraceLevel),
+		command.WithLogLevel(zerolog.TraceLevel),
 		command.WithEnv(t.SymEnv()),
 		command.WithLogger(t.Log()),
 	)
@@ -1284,8 +1284,8 @@ func (t *Array) SymSGShow(sid, name string) ([]SGInfo, error) {
 		command.WithArgs(args),
 		command.WithBufferedStdout(),
 		command.WithBufferedStderr(),
-		command.WithCommandLogLevel(zerolog.DebugLevel),
-		command.WithLogLevel(zerolog.DebugLevel),
+		command.WithCommandLogLevel(zerolog.TraceLevel),
+		command.WithLogLevel(zerolog.TraceLevel),
 		command.WithEnv(t.SymEnv()),
 		command.WithLogger(t.Log()),
 	)
@@ -1308,8 +1308,8 @@ func (t *Array) SymSGList(sid string) ([]SGInfo, error) {
 		command.WithArgs(args),
 		command.WithBufferedStdout(),
 		command.WithBufferedStderr(),
-		command.WithCommandLogLevel(zerolog.DebugLevel),
-		command.WithLogLevel(zerolog.DebugLevel),
+		command.WithCommandLogLevel(zerolog.TraceLevel),
+		command.WithLogLevel(zerolog.TraceLevel),
 		command.WithEnv(t.SymEnv()),
 		command.WithLogger(t.Log()),
 	)
@@ -2112,8 +2112,8 @@ func (t *Array) SymCfgVerifyThinDevStatus(sid, devId, status string) (bool, erro
 		command.WithArgs(args),
 		command.WithBufferedStdout(),
 		command.WithBufferedStderr(),
-		command.WithCommandLogLevel(zerolog.DebugLevel),
-		command.WithLogLevel(zerolog.DebugLevel),
+		command.WithCommandLogLevel(zerolog.TraceLevel),
+		command.WithLogLevel(zerolog.TraceLevel),
 		command.WithEnv(t.SymEnv()),
 		command.WithLogger(t.Log()),
 	)
@@ -2441,7 +2441,7 @@ func (t *Array) runDeletePair(sid, pairFile, rdfg string) error {
 
 func (t *Array) deletePair(dev Device) (*RDF, error) {
 	if dev.RDF == nil {
-		t.log.Debugf("dev %s is not in a RDF relation", dev.DevInfo.DevName)
+		t.log.Tracef("dev %s is not in a RDF relation", dev.DevInfo.DevName)
 		return nil, nil
 	}
 	rdfg := fmt.Sprint(dev.RDF.Local.RAGroupNum)

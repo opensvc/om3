@@ -14,9 +14,9 @@ func datasetGetProperty(ds Dataset, prop string) (string, error) {
 		command.WithVarArgs("get", "-Hp", "-o", "value", prop, ds.GetName()),
 		command.WithBufferedStdout(),
 		command.WithLogger(ds.GetLog()),
-		command.WithCommandLogLevel(zerolog.DebugLevel),
-		command.WithStdoutLogLevel(zerolog.DebugLevel),
-		command.WithStderrLogLevel(zerolog.DebugLevel),
+		command.WithCommandLogLevel(zerolog.TraceLevel),
+		command.WithStdoutLogLevel(zerolog.TraceLevel),
+		command.WithStderrLogLevel(zerolog.TraceLevel),
 	)
 	b, err := cmd.Output()
 	if err != nil {

@@ -88,7 +88,7 @@ func (a *DaemonAPI) GetNodeDRBDAllocation(ctx echo.Context, nodename string) err
 
 func (a *DaemonAPI) getLocalNodeDRBDAllocation(ctx echo.Context) error {
 	log := LogHandler(ctx, "GetNodeDRBDAllocation")
-	log.Debugf("starting")
+	log.Tracef("starting")
 
 	pendingDRBDAllocations.Lock()
 	defer pendingDRBDAllocations.Unlock()

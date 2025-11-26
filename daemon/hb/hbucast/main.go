@@ -90,7 +90,7 @@ func (t *T) Configure(ctx context.Context) {
 	}()
 	delete(nodeMap, hostname.Hostname())
 
-	log.Debugf("timeout=%s interval=%s port=%s nodes=%s onodes=%s", timeout, interval,
+	log.Tracef("timeout=%s interval=%s port=%s nodes=%s onodes=%s", timeout, interval,
 		port, nodes, peerList)
 	t.SetNodes(peerList)
 	t.SetInterval(interval)
@@ -99,7 +99,7 @@ func (t *T) Configure(ctx context.Context) {
 	signature := fmt.Sprintf("type: hb.ucast, nodes: %s timeout: %s interval: %s intf: %s",
 		nodesSig, timeout, interval, intf)
 	t.SetSignature(signature)
-	log.Debugf("signature: [%s]", signature)
+	log.Tracef("signature: [%s]", signature)
 	name := t.Name()
 	tx := newTx(ctx, name, nodeMap, addr, port, intf, timeout, interval)
 	t.SetTx(tx)

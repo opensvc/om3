@@ -291,7 +291,7 @@ func (t T) Remove() error {
 	}
 	driverRemover, ok := driver.(remover)
 	if !ok {
-		t.log.Debugf("Remove() not implemented for device driver %s", driver)
+		t.log.Tracef("Remove() not implemented for device driver %s", driver)
 		return nil
 	}
 	driverRemover.Remove(t)
@@ -381,9 +381,9 @@ func (t T) IsReady() (bool, error) {
 		command.WithName("sg_turs"),
 		command.WithVarArgs(t.path),
 		command.WithLogger(t.log),
-		command.WithCommandLogLevel(zerolog.DebugLevel),
-		command.WithStdoutLogLevel(zerolog.DebugLevel),
-		command.WithStderrLogLevel(zerolog.DebugLevel),
+		command.WithCommandLogLevel(zerolog.TraceLevel),
+		command.WithStdoutLogLevel(zerolog.TraceLevel),
+		command.WithStderrLogLevel(zerolog.TraceLevel),
 		command.WithIgnoredExitCodes(0, 2),
 	)
 	err := cmd.Run()

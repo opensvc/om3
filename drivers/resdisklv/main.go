@@ -186,7 +186,7 @@ func (t *T) ExposedDevices() device.L {
 
 func (t *T) SubDevices() device.L {
 	if l, err := t.lv().Devices(); err != nil {
-		t.Log().Debugf("%s", err)
+		t.Log().Tracef("%s", err)
 		return device.L{}
 	} else {
 		return l

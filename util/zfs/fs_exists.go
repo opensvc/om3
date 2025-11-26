@@ -22,7 +22,7 @@ func (t *Filesystem) existsWithType(s string) (bool, error) {
 		command.WithVarArgs("list", "-t", s, t.Name),
 		command.WithLogger(t.Log),
 		command.WithBufferedStderr(),
-		command.WithCommandLogLevel(zerolog.DebugLevel),
+		command.WithCommandLogLevel(zerolog.TraceLevel),
 	)
 	err := cmd.Run()
 	if err == nil {

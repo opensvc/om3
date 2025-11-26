@@ -229,7 +229,7 @@ func (t *Manager) crmDefaultAction(title string, cmdArgs ...string) error {
 	if title != "" {
 		t.loggerWithState().Infof("-> exec %s", append([]string{cmdPath}, cmdArgs...))
 	} else {
-		t.loggerWithState().Debugf("-> exec %s", append([]string{cmdPath}, cmdArgs...))
+		t.loggerWithState().Tracef("-> exec %s", append([]string{cmdPath}, cmdArgs...))
 	}
 	t.publisher.Pub(&msgbus.Exec{Command: cmd.String(), Node: t.localhost, Origin: "imon", Title: title, SessionID: sid}, labels...)
 	startTime := time.Now()
@@ -244,7 +244,7 @@ func (t *Manager) crmDefaultAction(title string, cmdArgs ...string) error {
 	if title != "" {
 		t.loggerWithState().Infof("<- exec %s", append([]string{cmdPath}, cmdArgs...))
 	} else {
-		t.loggerWithState().Debugf("<- exec %s", append([]string{cmdPath}, cmdArgs...))
+		t.loggerWithState().Tracef("<- exec %s", append([]string{cmdPath}, cmdArgs...))
 	}
 	return nil
 }

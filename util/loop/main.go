@@ -98,9 +98,9 @@ func (t T) Data() (InfoEntries, error) {
 		command.WithName(losetup),
 		command.WithVarArgs("-J"),
 		command.WithLogger(t.log),
-		command.WithCommandLogLevel(zerolog.DebugLevel),
-		command.WithStdoutLogLevel(zerolog.DebugLevel),
-		command.WithStderrLogLevel(zerolog.DebugLevel),
+		command.WithCommandLogLevel(zerolog.TraceLevel),
+		command.WithStdoutLogLevel(zerolog.TraceLevel),
+		command.WithStderrLogLevel(zerolog.TraceLevel),
 		command.WithBufferedStdout(),
 	)
 	if out, err = fcache.Output(cmd, "losetup"); err != nil {

@@ -39,7 +39,7 @@ func (t *actor) Provision(ctx context.Context) error {
 func (t *actor) lockedProvision(ctx context.Context) error {
 	return t.action(ctx, func(ctx context.Context, r resource.Driver) error {
 		rid := r.RID()
-		t.log.Attr("rid", rid).Debugf("%s: provision resource", rid)
+		t.log.Attr("rid", rid).Tracef("%s: provision resource", rid)
 		leader := actioncontext.IsLeader(ctx)
 		return resource.Provision(ctx, r, leader)
 	})

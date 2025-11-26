@@ -168,9 +168,9 @@ func ListFilesystems(fopts ...funcopt.O) (Filesystems, error) {
 		command.WithBufferedStdout(),
 		command.WithBufferedStderr(),
 		command.WithLogger(opts.Log),
-		command.WithCommandLogLevel(zerolog.DebugLevel),
-		command.WithStdoutLogLevel(zerolog.DebugLevel),
-		command.WithStderrLogLevel(zerolog.DebugLevel),
+		command.WithCommandLogLevel(zerolog.TraceLevel),
+		command.WithStdoutLogLevel(zerolog.TraceLevel),
+		command.WithStderrLogLevel(zerolog.TraceLevel),
 		command.WithIgnoredExitCodes(0, 1),
 	)
 	err := cmd.Run()
@@ -194,9 +194,9 @@ func ListVolumes(fopts ...funcopt.O) (Vols, error) {
 		command.WithVarArgs("list", "-t", "volume", "-Hp", "-o", "name,volsize,volblocksize"),
 		command.WithBufferedStdout(),
 		command.WithLogger(opts.Log),
-		command.WithCommandLogLevel(zerolog.DebugLevel),
-		command.WithStdoutLogLevel(zerolog.DebugLevel),
-		command.WithStderrLogLevel(zerolog.DebugLevel),
+		command.WithCommandLogLevel(zerolog.TraceLevel),
+		command.WithStdoutLogLevel(zerolog.TraceLevel),
+		command.WithStderrLogLevel(zerolog.TraceLevel),
 	)
 	b, err := cmd.Output()
 	if err != nil {

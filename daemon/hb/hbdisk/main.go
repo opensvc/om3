@@ -77,14 +77,14 @@ func (t *T) Configure(ctx context.Context) {
 	dev := t.GetString("dev")
 	maxSlots := t.GetInt("max_slots")
 	oNodes := hostname.OtherNodes(nodes)
-	log.Debugf("timeout=%s interval=%s dev=%s nodes=%s onodes=%s max_slot=%d", timeout, interval, dev, nodes, oNodes, maxSlots)
+	log.Tracef("timeout=%s interval=%s dev=%s nodes=%s onodes=%s max_slot=%d", timeout, interval, dev, nodes, oNodes, maxSlots)
 
 	t.SetNodes(oNodes)
 	t.SetTimeout(timeout)
 	signature := fmt.Sprintf("type: hb.disk, disk: %s nodes: %s timeout: %s interval: %s max_slot: %d",
 		dev, nodes, timeout, interval, maxSlots)
 	t.SetSignature(signature)
-	log.Debugf("signature: [%s]", signature)
+	log.Tracef("signature: [%s]", signature)
 	name := t.Name()
 	tx := newTx(ctx, name, oNodes, dev, timeout, interval, maxSlots)
 	t.SetTx(tx)
@@ -102,7 +102,7 @@ func (t *base) scanMetadata(searchedNodes ...string) error {
 	}
 	t.nodeSlot = make(map[string]int)
 	t.nodeSlotUnknown = make(map[string]bool)
-	defer func(now time.Time) { t.log.Debugf("scanMetadata elapsed %s", time.Since(now)) }(time.Now())
+	defer func(now time.Time) { t.log.Tracef("scanMetadata elapsed %s", time.Since(now)) }(time.Now())
 	// Initialize peer configs with all provided searchedNodes and local hostname.
 	for _, node := range searchedNodes {
 		t.nodeSlot[node] = 0

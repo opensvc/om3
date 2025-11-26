@@ -176,9 +176,9 @@ func (t *VG) CachedDevicesShow() (*VGInfo, error) {
 		command.WithName("vgs"),
 		command.WithVarArgs("--reportformat", "json", "-o", "devices"),
 		command.WithLogger(t.Log()),
-		command.WithCommandLogLevel(zerolog.DebugLevel),
-		command.WithStdoutLogLevel(zerolog.DebugLevel),
-		command.WithStderrLogLevel(zerolog.DebugLevel),
+		command.WithCommandLogLevel(zerolog.TraceLevel),
+		command.WithStdoutLogLevel(zerolog.TraceLevel),
+		command.WithStderrLogLevel(zerolog.TraceLevel),
 		command.WithBufferedStdout(),
 	)
 	if out, err = fcache.Output(cmd, "vgs-devices"); err != nil {
@@ -220,9 +220,9 @@ func (t *VG) CachedNormalShow() (l []VGInfo, err error) {
 		command.WithName("vgs"),
 		command.WithVarArgs("--reportformat", "json", "-o", "+tags,pv_name"),
 		command.WithLogger(t.Log()),
-		command.WithCommandLogLevel(zerolog.DebugLevel),
-		command.WithStdoutLogLevel(zerolog.DebugLevel),
-		command.WithStderrLogLevel(zerolog.DebugLevel),
+		command.WithCommandLogLevel(zerolog.TraceLevel),
+		command.WithStdoutLogLevel(zerolog.TraceLevel),
+		command.WithStderrLogLevel(zerolog.TraceLevel),
 		command.WithBufferedStdout(),
 	)
 	if out, err = fcache.Output(cmd, "vgs"); err != nil {
@@ -252,9 +252,9 @@ func (t *VG) Show(fields string) (*VGInfo, error) {
 		command.WithName("vgs"),
 		command.WithVarArgs("--reportformat", "json", "-o", fields, t.VGName),
 		command.WithLogger(t.Log()),
-		command.WithCommandLogLevel(zerolog.DebugLevel),
-		command.WithStdoutLogLevel(zerolog.DebugLevel),
-		command.WithStderrLogLevel(zerolog.DebugLevel),
+		command.WithCommandLogLevel(zerolog.TraceLevel),
+		command.WithStdoutLogLevel(zerolog.TraceLevel),
+		command.WithStderrLogLevel(zerolog.TraceLevel),
 		command.WithBufferedStdout(),
 	)
 	if err := cmd.Run(); err != nil {

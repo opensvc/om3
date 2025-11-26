@@ -141,7 +141,7 @@ func (t T) Resources() resource.Drivers {
 				deps := dp.Dependencies(t.action, r.RID())
 				for _, rid := range deps {
 					if dep := l.GetRID(rid); dep != nil {
-						r.Log().Debugf("add %s to satisfy %s dependency", dep.RID(), t.action)
+						r.Log().Tracef("add %s to satisfy %s dependency", dep.RID(), t.action)
 						fl = fl.Add(dep)
 					}
 				}

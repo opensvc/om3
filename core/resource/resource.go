@@ -496,7 +496,7 @@ func (t *T) ApplyPGChain(ctx context.Context) error {
 		if configStr := run.Config.String(); strings.Contains(configStr, "=") {
 			t.Log().Infof("applied %s", configStr)
 		} else {
-			t.Log().Debugf("create %s", configStr)
+			t.Log().Tracef("create %s", configStr)
 		}
 		if run.Err != nil {
 			errs = errors.Join(errs, run.Err)
@@ -1162,11 +1162,11 @@ func newSCSIPersistentRerservationHandle(ctx context.Context, r Driver) *scsi.Pe
 	var i any = r
 	o, ok := i.(devReservabler)
 	if !ok {
-		r.Log().Debugf("resource does not implement reservable disks listing")
+		r.Log().Tracef("resource does not implement reservable disks listing")
 		return nil
 	}
 	if !o.IsSCSIPersistentReservationEnabled() {
-		r.Log().Debugf("scsi pr is not enabled")
+		r.Log().Tracef("scsi pr is not enabled")
 		return nil
 	}
 	hdl := scsi.PersistentReservationHandle{
@@ -1195,7 +1195,7 @@ func ImportDevices(r Driver) error {
 	var i any = r
 	o, ok := i.(devImporter)
 	if !ok {
-		r.Log().Debugf("resource does not implement ImportDevices()")
+		r.Log().Tracef("resource does not implement ImportDevices()")
 		return nil
 	}
 	return o.ImportDevices()

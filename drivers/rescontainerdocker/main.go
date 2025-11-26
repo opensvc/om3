@@ -65,7 +65,7 @@ func (t *T) Status(ctx context.Context) status.T {
 			} else if inspectHostConfig.UsernsMode != expectedValue {
 				t.StatusLog().Warn("userns: UsernsMode is %s, should be %s", inspectHostConfig.UsernsMode, expectedValue)
 			} else {
-				t.Log().Debugf("valid userns: UsernsMode is %s", expectedValue)
+				t.Log().Tracef("valid userns: UsernsMode is %s", expectedValue)
 			}
 		}
 	}

@@ -291,7 +291,7 @@ func (t *T) ExposedDevices() device.L {
 
 func (t *T) SubDevices() device.L {
 	if l, err := t.md().Devices(); err != nil {
-		t.Log().Debugf("%s", err)
+		t.Log().Tracef("%s", err)
 		return device.L{}
 	} else {
 		return l
@@ -387,6 +387,6 @@ func (t *T) downStateAlerts() error {
 		slices.Sort(notFound)
 		t.StatusLog().Warn("md members missing: %s", strings.Join(notFound, ","))
 	}
-	t.Log().Debugf("loaded disk ids from cache: %s", dids)
+	t.Log().Tracef("loaded disk ids from cache: %s", dids)
 	return nil
 }

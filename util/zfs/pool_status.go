@@ -119,9 +119,9 @@ func (t *Pool) Status(fopts ...funcopt.O) (PoolStatusData, error) {
 		command.WithArgs(args),
 		command.WithBufferedStdout(),
 		command.WithLogger(t.Log),
-		command.WithCommandLogLevel(zerolog.DebugLevel),
-		command.WithStdoutLogLevel(zerolog.DebugLevel),
-		command.WithStderrLogLevel(zerolog.DebugLevel),
+		command.WithCommandLogLevel(zerolog.TraceLevel),
+		command.WithStdoutLogLevel(zerolog.TraceLevel),
+		command.WithStderrLogLevel(zerolog.TraceLevel),
 	)
 	b, err := cmd.Output()
 	if err != nil {

@@ -255,9 +255,9 @@ func (t *T) getShowmounts() (Mounts, error) {
 		command.WithVarArgs("-e", "--no-headers", "127.0.0.1"),
 		command.WithBufferedStdout(),
 		command.WithLogger(t.Log()),
-		command.WithCommandLogLevel(zerolog.DebugLevel),
-		command.WithStdoutLogLevel(zerolog.DebugLevel),
-		command.WithStderrLogLevel(zerolog.DebugLevel),
+		command.WithCommandLogLevel(zerolog.TraceLevel),
+		command.WithStdoutLogLevel(zerolog.TraceLevel),
+		command.WithStderrLogLevel(zerolog.TraceLevel),
 	)
 	out, err := cmd.Output()
 	if err != nil {
@@ -288,9 +288,9 @@ func (t *T) getAllExports() (Exports, error) {
 		command.WithVarArgs("-v"),
 		command.WithBufferedStdout(),
 		command.WithLogger(t.Log()),
-		command.WithCommandLogLevel(zerolog.DebugLevel),
-		command.WithStdoutLogLevel(zerolog.DebugLevel),
-		command.WithStderrLogLevel(zerolog.DebugLevel),
+		command.WithCommandLogLevel(zerolog.TraceLevel),
+		command.WithStdoutLogLevel(zerolog.TraceLevel),
+		command.WithStderrLogLevel(zerolog.TraceLevel),
 	)
 	out, err := cmd.Output()
 	if err != nil {

@@ -18,7 +18,7 @@ func (a *DaemonAPI) PostInstanceStatus(ctx echo.Context, namespace string, kind 
 	}
 	var payload api.InstanceStatus
 	log := LogHandler(ctx, "PostInstanceStatus")
-	log.Debugf("starting")
+	log.Tracef("starting")
 	p, err := naming.NewPath(namespace, kind, name)
 	if err != nil {
 		log.Warnf("can't make path: %s", err)

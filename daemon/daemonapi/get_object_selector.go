@@ -13,7 +13,7 @@ import (
 
 func (a *DaemonAPI) GetObjectPaths(ctx echo.Context, params api.GetObjectPathsParams) error {
 	log := LogHandler(ctx, "GetObjectPaths")
-	log.Debugf("starting")
+	log.Tracef("starting")
 	paths := object.StatusData.GetPaths()
 	selection := objectselector.New(
 		params.Path,

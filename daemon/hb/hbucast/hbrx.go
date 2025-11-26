@@ -61,7 +61,7 @@ func (t *rx) ID() string {
 
 // Stop implements the Stop function of the Receiver interface for rx
 func (t *rx) Stop() error {
-	t.log.Debugf("cancelling")
+	t.log.Tracef("cancelling")
 	t.cancel()
 	for node := range t.nodes {
 		t.cmdC <- hbctrl.CmdDelWatcher{
@@ -70,7 +70,7 @@ func (t *rx) Stop() error {
 		}
 	}
 	t.Wait()
-	t.log.Debugf("wait done")
+	t.log.Tracef("wait done")
 	return nil
 }
 

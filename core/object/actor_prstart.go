@@ -24,7 +24,7 @@ func (t *actor) PRStart(ctx context.Context) error {
 
 func (t *actor) lockedPRStart(ctx context.Context) error {
 	return t.action(ctx, func(ctx context.Context, r resource.Driver) error {
-		t.log.Attr("rid", r.RID()).Debugf("start resource")
+		t.log.Attr("rid", r.RID()).Tracef("start resource")
 		return resource.PRStart(ctx, r)
 	})
 }

@@ -58,7 +58,7 @@ func (t *rx) ID() string {
 
 // Stop implements the Stop function of the Receiver interface for rx
 func (t *rx) Stop() error {
-	t.log.Debugf("cancelling")
+	t.log.Tracef("cancelling")
 	t.cancel()
 	for _, node := range t.nodes {
 		t.cmdC <- hbctrl.CmdDelWatcher{
@@ -67,7 +67,7 @@ func (t *rx) Stop() error {
 		}
 	}
 	t.Wait()
-	t.log.Debugf("wait done")
+	t.log.Tracef("wait done")
 	return nil
 }
 
@@ -157,21 +157,21 @@ func (t *rx) recv(nodename string) {
 		return
 	}
 	if c.Updated.IsZero() {
-		t.log.Debugf("node %s slot %d has never been updated", nodename, slot)
+		t.log.Tracef("node %s slot %d has never been updated", nodename, slot)
 		return
 	}
 	if !t.last.IsZero() && c.Updated == t.last {
-		t.log.Debugf("node %s slot %d unchanged since last read", nodename, slot)
+		t.log.Tracef("node %s slot %d unchanged since last read", nodename, slot)
 		return
 	}
 	elapsed := time.Now().Sub(c.Updated)
 	if elapsed > t.timeout {
-		t.log.Debugf("node %s slot %d has not been updated for %s", nodename, slot, elapsed)
+		t.log.Tracef("node %s slot %d has not been updated for %s", nodename, slot, elapsed)
 		return
 	}
 	b, msgNodename, err := t.crypto.DecryptWithNode(c.Msg)
 	if err != nil {
-		t.log.Debugf("node %s slot %d decrypt: %s", nodename, slot, err)
+		t.log.Tracef("node %s slot %d decrypt: %s", nodename, slot, err)
 		return
 	}
 
@@ -186,7 +186,7 @@ func (t *rx) recv(nodename string) {
 		t.log.Warnf("node %s slot %d can't unmarshal msg: %s", nodename, slot, err)
 		return
 	}
-	t.log.Debugf("node %s slot %d ok", nodename, slot)
+	t.log.Tracef("node %s slot %d ok", nodename, slot)
 	t.cmdC <- hbctrl.CmdSetPeerSuccess{
 		Nodename: msg.Nodename,
 		HbID:     t.id,

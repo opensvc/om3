@@ -181,7 +181,7 @@ func (t *actor) ResourceSets() resourceset.L {
 			rset.SetLogger(t.log)
 			l = append(l, rset)
 		} else {
-			t.log.Debugf("%s", err)
+			t.log.Tracef("%s", err)
 		}
 	}
 	sort.Sort(l)
@@ -271,7 +271,7 @@ func (t *actor) ConfigureResources() {
 		}
 		driverGroup := rid.DriverGroup()
 		if driverGroup == driver.GroupUnknown {
-			t.log.Attr("rid", k).Debugf("unknown driver group in rid %s", k)
+			t.log.Attr("rid", k).Tracef("unknown driver group in rid %s", k)
 			continue
 		}
 		typeKey := key.New(k, "type")
@@ -279,7 +279,7 @@ func (t *actor) ConfigureResources() {
 		driverID := driver.NewID(driverGroup, driverName)
 		factory := resource.NewResourceFunc(driverID)
 		if factory == nil {
-			t.log.Debugf("unknown driver %s", driverID)
+			t.log.Tracef("unknown driver %s", driverID)
 			continue
 		}
 		r := factory()
@@ -311,7 +311,7 @@ func (t *actor) ConfigureResources() {
 			continue
 		}
 		dur := time.Now().Sub(rBegin)
-		t.log.Attr("rid", k).Attr("duration", dur).Debugf("resource %s configured in %s", k, dur)
+		t.log.Attr("rid", k).Attr("duration", dur).Tracef("resource %s configured in %s", k, dur)
 		t._resources = append(t._resources, r)
 	}
 	for _, resources := range postponed {
@@ -322,14 +322,14 @@ func (t *actor) ConfigureResources() {
 				continue
 			}
 			dur := time.Now().Sub(rBegin)
-			t.log.Attr("rid", r.RID()).Attr("duration", dur).Debugf("postponed resource %s configured in %s", r.RID(), dur)
+			t.log.Attr("rid", r.RID()).Attr("duration", dur).Tracef("postponed resource %s configured in %s", r.RID(), dur)
 			t._resources = append(t._resources, r)
 		}
 	}
 	t.resources = t._resources
 	t._resources = nil
 	dur := time.Now().Sub(begin)
-	t.log.Attr("duration", dur).Debugf("all resources configured in %s", dur)
+	t.log.Attr("duration", dur).Tracef("all resources configured in %s", dur)
 	return
 }
 
@@ -470,7 +470,7 @@ func (t *actor) configureResource(r resource.Driver, rid string) error {
 				if o.Required {
 					return err
 				}
-				r.Log().Debugf("%s keyword eval: %s", k, err)
+				r.Log().Tracef("%s keyword eval: %s", k, err)
 				continue
 			}
 			if err := o.SetValue(r, val); err != nil {

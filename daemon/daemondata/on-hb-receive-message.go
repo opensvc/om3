@@ -22,7 +22,7 @@ func (d *data) onReceiveHbMsg(msg *hbtype.Msg) {
 		d.setFromPeerMsg(msg.Nodename, msg.Kind, 0, msg.Gen)
 		if d.hbGens[d.localNode][msg.Nodename] == msg.Gen[msg.Nodename] {
 			// already have most recent version of peer
-			d.log.Debugf("onReceiveHbMsg skipped %s from %s gens: %v (already have peer gen applied)", msg.Kind, msg.Nodename, msg.Gen)
+			d.log.Tracef("onReceiveHbMsg skipped %s from %s gens: %v (already have peer gen applied)", msg.Kind, msg.Nodename, msg.Gen)
 			return
 		}
 		if d.hbGens[d.localNode][msg.Nodename]+uint64(len(msg.Events)) >= msg.Gen[msg.Nodename] {
@@ -35,7 +35,7 @@ func (d *data) onReceiveHbMsg(msg *hbtype.Msg) {
 			}
 			if d.hbGens[d.localNode][msg.Nodename] == msg.Gen[msg.Nodename] {
 				// the events have been applied => node data not needed
-				d.log.Debugf("apply message %s events from %s gens: %v succeed (previously applied peer %d now %d)",
+				d.log.Tracef("apply message %s events from %s gens: %v succeed (previously applied peer %d now %d)",
 					msg.Kind, msg.Nodename, msg.Gen,
 					previouslyApplied, msg.Gen[msg.Nodename])
 				return

@@ -22,8 +22,8 @@ func (t *Manager) omon(started chan<- bool) {
 	sub.Start()
 	started <- true
 	defer func() {
-		log.Debugf("flushing queue")
-		defer log.Debugf("flushed queue")
+		log.Tracef("flushing queue")
+		defer log.Tracef("flushed queue")
 		if err := sub.Stop(); err != nil {
 			t.log.Errorf("subscription stop: %s", err)
 		}

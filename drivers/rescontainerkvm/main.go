@@ -189,11 +189,11 @@ func (t *T) isOperational() (bool, error) {
 	defer cancel()
 	cmd, err := t.EncapCmd(ctx, []string{"pwd"}, []string{}, nil)
 	if err != nil {
-		t.Log().Debugf("isOperational: %s", err)
+		t.Log().Tracef("isOperational: %s", err)
 		return false, nil
 	}
 	if err := cmd.Run(); err != nil {
-		t.Log().Debugf("isOperational: %s", err)
+		t.Log().Tracef("isOperational: %s", err)
 		return false, nil
 	}
 	return true, nil
@@ -847,9 +847,9 @@ func (t *T) execViaRCmd(args []string) error {
 		command.WithName(args[0]),
 		command.WithArgs(args[1:]),
 		command.WithLogger(t.Log()),
-		command.WithStdoutLogLevel(zerolog.DebugLevel),
-		command.WithStderrLogLevel(zerolog.DebugLevel),
-		command.WithCommandLogLevel(zerolog.DebugLevel),
+		command.WithStdoutLogLevel(zerolog.TraceLevel),
+		command.WithStderrLogLevel(zerolog.TraceLevel),
+		command.WithCommandLogLevel(zerolog.TraceLevel),
 	)
 	return cmd.Run()
 }
@@ -967,7 +967,7 @@ func (t *T) abortPing(hn string) bool {
 		t.Log().Errorf("abort! %s is alive", hn)
 		return true
 	} else {
-		t.Log().Debugf("abort? %s is not alive", hn)
+		t.Log().Tracef("abort? %s is not alive", hn)
 		return false
 	}
 }
@@ -1014,7 +1014,7 @@ func (t *T) upPeer() (string, error) {
 			continue
 		}
 		if v, err := isPeerUp(n); err != nil {
-			t.Log().Debugf("ssh abort check on %s: %s", n, err)
+			t.Log().Tracef("ssh abort check on %s: %s", n, err)
 			continue
 		} else if v {
 			return n, nil

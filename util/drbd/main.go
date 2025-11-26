@@ -210,9 +210,9 @@ func Dump() ([]byte, error) {
 	cmd := command.New(
 		command.WithName(drbdadm),
 		command.WithVarArgs("dump-xml"),
-		command.WithCommandLogLevel(zerolog.DebugLevel),
-		command.WithStdoutLogLevel(zerolog.DebugLevel),
-		command.WithStderrLogLevel(zerolog.DebugLevel),
+		command.WithCommandLogLevel(zerolog.TraceLevel),
+		command.WithStdoutLogLevel(zerolog.TraceLevel),
+		command.WithStderrLogLevel(zerolog.TraceLevel),
 		command.WithBufferedStdout(),
 	)
 	return cmd.Output()
@@ -742,7 +742,7 @@ func (t *T) TryStartConnection(ctx context.Context, nodeID string) error {
 }
 
 func (t *T) WaitCState(ctx context.Context, nodeID string, timeout time.Duration, candidates ...string) (string, error) {
-	t.log.Debugf("wait for %s node-id %s cstate in (%s)", t.res, nodeID, strings.Join(candidates, ","))
+	t.log.Tracef("wait for %s node-id %s cstate in (%s)", t.res, nodeID, strings.Join(candidates, ","))
 	var state, lastState string
 	ok, err := waitfor.TrueNoErrorCtx(ctx, timeout, waitConnectionStateDelay, func() (bool, error) {
 		var err error

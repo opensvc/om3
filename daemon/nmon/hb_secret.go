@@ -93,7 +93,7 @@ func (t *Manager) onHeartbeatRotateRequest(c *msgbus.HeartbeatRotateRequest) {
 		t.publisher.Pub(&msgbus.HeartbeatRotateError{Reason: err.Error(), ID: c.ID}, t.labelLocalhost)
 		return
 	}
-	t.log.Debugf("%s wait for peer converge candidate new secret version %d", logP, nextVersion)
+	t.log.Tracef("%s wait for peer converge candidate new secret version %d", logP, nextVersion)
 	t.hbSecretRotating = true
 	t.hbSecretRotatingAt = time.Now()
 	t.hbSecretRotatingUUID = c.ID
@@ -132,7 +132,7 @@ func (t *Manager) hbRotatingCheck() {
 		count++
 	}
 	if len(waitingL) > 0 {
-		t.log.Debugf("%s waiting for peers: %s", logP, waitingL)
+		t.log.Tracef("%s waiting for peers: %s", logP, waitingL)
 		return
 	}
 	if count == len(t.clusterConfig.Nodes) {
@@ -147,7 +147,7 @@ func (t *Manager) hbRotatingCheck() {
 			onError(fmt.Sprintf("current version %d is greater than candidate version %d", version, nextVersion))
 			return
 		}
-		t.log.Debugf("%s commiting version change %d -> %d", logP, version, nextVersion)
+		t.log.Tracef("%s commiting version change %d -> %d", logP, version, nextVersion)
 		t.hbSecret.Rotate()
 		if err := hbsecobject.Set(*t.hbSecret.DeepCopy()); err != nil {
 			onError(fmt.Sprintf("commit candidate version %d failed: %s", nextVersion, err))

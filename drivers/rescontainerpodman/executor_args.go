@@ -67,7 +67,7 @@ func (ea *ExecutorArg) wait(ctx context.Context, a ...string) error {
 	}
 	ea.BT.Log().Infof("%s %s", ea.exe, strings.Join(a, " "))
 	if err := cmd.Run(); err != nil {
-		ea.BT.Log().Debugf("%s %s: %s", ea.exe, strings.Join(a, " "), err)
+		ea.BT.Log().Tracef("%s %s: %s", ea.exe, strings.Join(a, " "), err)
 		return err
 	}
 	return nil

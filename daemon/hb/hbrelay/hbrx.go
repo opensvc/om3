@@ -53,7 +53,7 @@ func (t *rx) ID() string {
 
 // Stop implements the Stop function of the Receiver interface for rx
 func (t *rx) Stop() error {
-	t.log.Debugf("cancelling")
+	t.log.Tracef("cancelling")
 	t.cancel()
 	for _, node := range t.nodes {
 		t.cmdC <- hbctrl.CmdDelWatcher{
@@ -62,7 +62,7 @@ func (t *rx) Stop() error {
 		}
 	}
 	t.Wait()
-	t.log.Debugf("wait done")
+	t.log.Tracef("wait done")
 	return nil
 }
 
@@ -134,42 +134,42 @@ func (t *rx) recv(nodename string) {
 	}
 	resp, err := cli.GetRelayMessageWithResponse(context.Background(), &params)
 	if err != nil {
-		t.log.Debugf("recv: node %s do request: %s", nodename, err)
+		t.log.Tracef("recv: node %s do request: %s", nodename, err)
 		return
 	}
 
 	defer drain(resp.HTTPResponse.Body, t.log)
 
 	if resp.StatusCode() != http.StatusOK {
-		t.log.Debugf("unexpected get relay message %s status %s", nodename, resp.Status())
+		t.log.Tracef("unexpected get relay message %s status %s", nodename, resp.Status())
 		return
 	}
 	if resp.JSON200 == nil {
-		t.log.Debugf("recv: node %s data has no stored data", nodename)
+		t.log.Tracef("recv: node %s data has no stored data", nodename)
 		return
 	}
 	c := *resp.JSON200
 	if c.UpdatedAt.IsZero() {
-		t.log.Debugf("recv: node %s data has never been updated", nodename)
+		t.log.Tracef("recv: node %s data has never been updated", nodename)
 		return
 	}
 	if !t.lastAt.IsZero() && c.UpdatedAt == t.lastAt {
-		t.log.Debugf("recv: node %s data has not change since last read", nodename)
+		t.log.Tracef("recv: node %s data has not change since last read", nodename)
 		return
 	}
 	elapsed := time.Now().Sub(c.UpdatedAt)
 	if elapsed > t.timeout {
-		t.log.Debugf("recv: node %s data has not been updated for %s", nodename, elapsed)
+		t.log.Tracef("recv: node %s data has not been updated for %s", nodename, elapsed)
 		return
 	}
 	b, msgNodename, err := t.crypto.DecryptWithNode([]byte(c.Msg))
 	if err != nil {
-		t.log.Debugf("recv: decrypting node %s: %s", nodename, err)
+		t.log.Tracef("recv: decrypting node %s: %s", nodename, err)
 		return
 	}
 
 	if nodename != msgNodename {
-		t.log.Debugf("recv: node %s data was written by unexpected node %s: %s", nodename, msgNodename, err)
+		t.log.Tracef("recv: node %s data was written by unexpected node %s: %s", nodename, msgNodename, err)
 		return
 	}
 
@@ -178,7 +178,7 @@ func (t *rx) recv(nodename string) {
 		t.log.Warnf("can't unmarshal msg from %s: %s", nodename, err)
 		return
 	}
-	t.log.Debugf("recv: node %s", nodename)
+	t.log.Tracef("recv: node %s", nodename)
 	t.cmdC <- hbctrl.CmdSetPeerSuccess{
 		Nodename: msg.Nodename,
 		HbID:     t.id,

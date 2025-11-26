@@ -39,7 +39,7 @@ func (a *DaemonAPI) PostDaemonStop(ctx echo.Context, nodename string) error {
 
 func (a *DaemonAPI) localPostDaemonStop(ctx echo.Context) error {
 	log := LogHandler(ctx, "PostDaemonStop")
-	log.Debugf("starting")
+	log.Tracef("starting")
 
 	a.announceNodeState(log, node.MonitorStateMaintenance)
 

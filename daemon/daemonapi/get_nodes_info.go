@@ -13,7 +13,7 @@ func (a *DaemonAPI) GetNodesInfo(ctx echo.Context) error {
 		return err
 	}
 	log := LogHandler(ctx, "GetNodesInfo")
-	log.Debugf("starting")
+	log.Tracef("starting")
 	// TODO returned value should be cached
 	data, err := nodesinfo.Load()
 	if err != nil {

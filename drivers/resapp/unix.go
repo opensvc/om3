@@ -201,7 +201,7 @@ func (t *T) CommonStatus(ctx context.Context) status.T {
 	}
 	cmd := command.New(opts...)
 
-	t.Log().Debugf("status running command: %s", cmd.String())
+	t.Log().Tracef("status running command: %s", cmd.String())
 	if err = cmd.Start(); err != nil {
 		return status.Undef
 	}
@@ -209,14 +209,14 @@ func (t *T) CommonStatus(ctx context.Context) status.T {
 		if errors.Is(err, context.DeadlineExceeded) {
 			t.StatusLog().Warn("%s", err)
 		}
-		t.Log().Debugf("status is down")
+		t.Log().Tracef("status is down")
 		return status.Down
 	}
 	resultStatus, err := t.ExitCodeToStatus(cmd.ExitCode())
 	if err != nil {
 		t.StatusLog().Warn("%s", err)
 	}
-	t.Log().Debugf("status result: %v", resultStatus)
+	t.Log().Tracef("status result: %v", resultStatus)
 	return resultStatus
 }
 
@@ -239,7 +239,7 @@ func (t *T) BaseCmdArgs(s string, action string) ([]string, error) {
 		return nil, err
 	}
 	if len(baseCommand) == 0 {
-		t.Log().Debugf("no base command for action '%v'", action)
+		t.Log().Tracef("no base command for action '%v'", action)
 		return nil, nil
 	}
 	return command.CmdArgsFromString(baseCommand)
@@ -248,7 +248,7 @@ func (t *T) BaseCmdArgs(s string, action string) ([]string, error) {
 // CmdArgs returns the command argv of an action
 func (t *T) CmdArgs(ctx context.Context, s string, action string) ([]string, error) {
 	if len(s) == 0 {
-		t.Log().Debugf("nothing to do for action '%v'", action)
+		t.Log().Tracef("nothing to do for action '%v'", action)
 		return nil, nil
 	}
 	baseCommandSlice, err := t.BaseCmdArgs(s, action)

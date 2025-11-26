@@ -28,7 +28,7 @@ func (a *DaemonAPI) PostAuthRefresh(ctx echo.Context, params api.PostAuthRefresh
 	if d, err := a.createAccessToken(ctx, username, duration, params.Role, params.Scope); err != nil {
 		log := LogHandler(ctx, "PostAuthRefresh")
 		if errors.Is(err, errBadRequest) {
-			log.Debugf("invalid parameters: %s", err)
+			log.Tracef("invalid parameters: %s", err)
 			return JSONProblemf(ctx, http.StatusBadRequest, "Create token Invalid parameters", "%s", err)
 		} else if errors.Is(err, errForbidden) {
 			log.Infof("forbidden: %s", err)

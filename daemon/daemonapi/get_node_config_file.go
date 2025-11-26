@@ -20,7 +20,7 @@ func (a *DaemonAPI) GetNodeConfigFile(ctx echo.Context, nodename string) error {
 	if a.localhost == nodename {
 		logName := "GetNodeConfigFile"
 		log := LogHandler(ctx, logName)
-		log.Debugf("%s: starting", logName)
+		log.Tracef("%s: starting", logName)
 
 		filename := rawconfig.NodeConfigFile()
 		mtime := file.ModTime(filename)

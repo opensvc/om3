@@ -23,7 +23,7 @@ func (t *Pool) Exists() (bool, error) {
 		command.WithVarArgs("list", t.Name),
 		command.WithLogger(t.Log),
 		command.WithBufferedStderr(),
-		command.WithCommandLogLevel(zerolog.DebugLevel),
+		command.WithCommandLogLevel(zerolog.TraceLevel),
 	)
 	err := cmd.Run()
 	if err == nil {

@@ -353,7 +353,7 @@ func (t *T) NodeSubnet(nodename string) (*net.IPNet, error) {
 	} else if _, ipnet, err := net.ParseCIDR(subnet); err != nil {
 		return nil, err
 	} else if ipnet != nil {
-		t.Log().Debugf("node %s subnet %s read from config", nodename, ipnet)
+		t.Log().Tracef("node %s subnet %s read from config", nodename, ipnet)
 		return ipnet, nil
 	}
 

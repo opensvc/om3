@@ -239,7 +239,7 @@ func (t SGPersistDriver) env(val string) []string {
 // ackUnitAttention does a --in command to acknowledge a unit attention, likely
 // caused by the previous --out command.
 func (t SGPersistDriver) ackUnitAttention(dev device.T) {
-	t.Log.Debugf("ack Unit Attention on %s.", dev)
+	t.Log.Tracef("ack Unit Attention on %s.", dev)
 	_, _ = t.readReservation(dev)
 }
 
@@ -261,7 +261,7 @@ func (t SGPersistDriver) retryOnUnitAttention(dev device.T, options ...funcopt.O
 		err := cmd.Run()
 		if err == nil {
 			// all good
-			t.Log.Attr("out", string(cmd.Stdout())).Debugf("")
+			t.Log.Attr("out", string(cmd.Stdout())).Tracef("")
 			return err
 		}
 		if cmd.ExitCode() == 6 {

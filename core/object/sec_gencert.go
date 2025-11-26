@@ -33,7 +33,7 @@ func (t *sec) GenCert() error {
 }
 
 func (t *sec) genSelfSigned() error {
-	t.log.Debugf("generate a self-signed certificate")
+	t.log.Tracef("generate a self-signed certificate")
 	priv, err := t.getPriv()
 	if err != nil {
 		return err
@@ -66,7 +66,7 @@ func (t *sec) genSelfSigned() error {
 }
 
 func (t *sec) genCASigned(ca string) error {
-	t.log.Debugf("generate a certificate signed by the %s CA", ca)
+	t.log.Tracef("generate a certificate signed by the %s CA", ca)
 	priv, err := t.getPriv()
 	if err != nil {
 		return err

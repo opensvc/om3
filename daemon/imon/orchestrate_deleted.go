@@ -5,7 +5,7 @@ import (
 )
 
 func (t *Manager) orchestrateDeleted() {
-	t.log.Debugf("orchestrateDeleted starting from %s", t.state.State)
+	t.log.Tracef("orchestrateDeleted starting from %s", t.state.State)
 	switch t.state.State {
 	case instance.MonitorStateDeleteSuccess:
 		t.deletedFromDeleted()

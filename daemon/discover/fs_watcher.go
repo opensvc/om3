@@ -134,7 +134,7 @@ func (t *Manager) fsWatcherStart() (func(), error) {
 							log.Debug().Msgf("daemon: discover: fs: add file %s", filename)
 						}
 					*/
-					log.Debugf("publish msgbus.ConfigFileUpdated config file %s", filename)
+					log.Tracef("publish msgbus.ConfigFileUpdated config file %s", filename)
 					t.PubDebounce(filename, &msgbus.ConfigFileUpdated{Path: p, File: filename}, pubsub.Label{"namespace", p.Namespace}, pubsub.Label{"path", p.String()})
 				}
 				return nil
@@ -184,13 +184,13 @@ func (t *Manager) fsWatcherStart() (func(), error) {
 			case e := <-watcher.Errors:
 				log.Errorf("watcher: %s", e)
 			case event := <-watcher.Events:
-				log.Debugf("event: %s", event)
+				log.Tracef("event: %s", event)
 				filename := event.Name
 				switch {
 				case strings.HasSuffix(filepath.Dir(filename), "/run"):
 					switch {
 					case event.Op&fsnotify.Remove != 0:
-						log.Debugf("detect removed file %s (%s)", filename, event.Op)
+						log.Tracef("detect removed file %s (%s)", filename, event.Op)
 						path, rid, err := runFilenameToPathAndRID(filename)
 						if err != nil {
 							log.Warnf("failed to parse path and rid from %s: %s", filename, err)
@@ -198,7 +198,7 @@ func (t *Manager) fsWatcherStart() (func(), error) {
 						}
 						t.PubDebounce(filename, &msgbus.RunFileRemoved{File: filename, Path: path, RID: rid, At: time.Now()}, t.labelLocalhost, pubsub.Label{"namespace", path.Namespace}, pubsub.Label{"path", path.String()})
 					case event.Op&fsnotify.Create != 0:
-						log.Debugf("detect updated file %s (%s)", filename, event.Op)
+						log.Tracef("detect updated file %s (%s)", filename, event.Op)
 						path, rid, err := runFilenameToPathAndRID(filename)
 						if err != nil {
 							log.Warnf("failed to parse path and rid from %s: %s", filename, err)
@@ -213,12 +213,12 @@ func (t *Manager) fsWatcherStart() (func(), error) {
 					}
 					switch {
 					case event.Op&fsnotify.Remove != 0:
-						log.Debugf("detect removed file %s (%s)", filename, event.Op)
+						log.Tracef("detect removed file %s (%s)", filename, event.Op)
 						if filename == nodeFrozenFile {
 							t.PubDebounce(filename, &msgbus.NodeFrozenFileRemoved{File: filename}, t.labelLocalhost)
 						}
 					case event.Op&updateMask != 0:
-						log.Debugf("detect updated file %s (%s)", filename, event.Op)
+						log.Tracef("detect updated file %s (%s)", filename, event.Op)
 						if filename == nodeFrozenFile {
 							t.PubDebounce(filename, &msgbus.NodeFrozenFileUpdated{File: filename, At: file.ModTime(filename)}, t.labelLocalhost)
 						}
@@ -237,16 +237,16 @@ func (t *Manager) fsWatcherStart() (func(), error) {
 					switch {
 					case event.Op&removeMask != 0:
 						if !file.Exists(filename) {
-							log.Debugf("detect removed file %s (%s)", filename, event.Op)
+							log.Tracef("detect removed file %s (%s)", filename, event.Op)
 							t.PubDebounce(filename, &msgbus.ConfigFileRemoved{Path: p, File: filename}, pubsub.Label{"namespace", p.Namespace}, pubsub.Label{"path", p.String()})
 						}
 					case event.Op&updateMask != 0:
-						log.Debugf("detect updated file %s (%s)", filename, event.Op)
+						log.Tracef("detect updated file %s (%s)", filename, event.Op)
 						t.PubDebounce(filename, &msgbus.ConfigFileUpdated{Path: p, File: filename}, pubsub.Label{"namespace", p.Namespace}, pubsub.Label{"path", p.String()})
 					}
 				case dirCreated(event):
 					if event.Name == "." {
-						log.Debugf("skip event %s", event)
+						log.Tracef("skip event %s", event)
 						continue
 					}
 					if err := t.fsWatcher.Add(filename); err != nil {

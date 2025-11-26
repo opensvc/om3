@@ -61,7 +61,7 @@ func (t *Manager) crmAction(cmdArgs ...string) error {
 		command.WithEnv(cmdEnv),
 		command.WithLogger(t.log),
 	)
-	t.log.Debugf("-> exec %s %s", cmdPath, cmd)
+	t.log.Tracef("-> exec %s %s", cmdPath, cmd)
 	labels := []pubsub.Label{t.labelLocalhost, {"origin", "nmon"}}
 	t.publisher.Pub(&msgbus.Exec{Command: cmd.String(), Node: t.localhost, Origin: "nmon"}, labels...)
 	startTime := time.Now()
@@ -73,6 +73,6 @@ func (t *Manager) crmAction(cmdArgs ...string) error {
 	}
 	duration := time.Now().Sub(startTime)
 	t.publisher.Pub(&msgbus.ExecSuccess{Command: cmd.String(), Duration: duration, Node: t.localhost, Origin: "nmon"}, labels...)
-	t.log.Debugf("<- exec %s %s", cmdPath, cmd)
+	t.log.Tracef("<- exec %s %s", cmdPath, cmd)
 	return nil
 }

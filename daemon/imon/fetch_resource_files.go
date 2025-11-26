@@ -127,7 +127,7 @@ func (t *Manager) fetchResourceFiles(fetched resource.Files, localInstanceStatus
 			t.log.Warnf("%s", err)
 		}
 	} else if ridsNoIngest != nil {
-		t.log.Debugf("no transfered resource file needs ingest")
+		t.log.Tracef("no transfered resource file needs ingest")
 	}
 	t.cmdC <- done
 }

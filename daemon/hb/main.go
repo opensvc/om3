@@ -337,7 +337,7 @@ func (t *T) msgToTx(ctx context.Context) error {
 				case <-tC:
 					return
 				case <-msgC:
-					t.log.Debugf("msgToTx drop msg (done context)")
+					t.log.Tracef("msgToTx drop msg (done context)")
 				case <-t.msgToTxRegister:
 				case <-t.msgToTxUnregister:
 				}
@@ -351,10 +351,10 @@ func (t *T) msgToTx(ctx context.Context) error {
 			case <-ctx.Done():
 				return
 			case c := <-t.msgToTxRegister:
-				t.log.Debugf("add %s to hb transmitters", c.id)
+				t.log.Tracef("add %s to hb transmitters", c.id)
 				registeredTxMsgQueue[c.id] = c.msgToSendQueue
 			case txID := <-t.msgToTxUnregister:
-				t.log.Debugf("remove %s from hb transmitters", txID)
+				t.log.Tracef("remove %s from hb transmitters", txID)
 				delete(registeredTxMsgQueue, txID)
 			case msg := <-msgC:
 				b, err := json.Marshal(msg)
@@ -407,7 +407,7 @@ func (t *T) msgFromRx(ctx context.Context) {
 			case <-tC:
 				return
 			case <-t.readMsgQueue:
-				t.log.Debugf("msgFromRx drop msg (done context)")
+				t.log.Tracef("msgFromRx drop msg (done context)")
 			}
 		}
 	}()
@@ -416,7 +416,7 @@ func (t *T) msgFromRx(ctx context.Context) {
 		case <-ctx.Done():
 			return
 		case now := <-statTicker.C:
-			t.log.Debugf("received message: %.2f/s, goroutines %d", count/10, runtime.NumGoroutine())
+			t.log.Tracef("received message: %.2f/s, goroutines %d", count/10, runtime.NumGoroutine())
 			count = 0
 			for peer, updated := range msgTimes {
 				if now.Sub(updated) > msgTimeDuration {
@@ -426,7 +426,7 @@ func (t *T) msgFromRx(ctx context.Context) {
 		case msg := <-t.readMsgQueue:
 			peer := msg.Nodename
 			if msgTimes[peer].Equal(msg.UpdatedAt) {
-				t.log.Debugf("drop already processed msg %s from %s gens: %v", msg.Kind, msg.Nodename, msg.Gen)
+				t.log.Tracef("drop already processed msg %s from %s gens: %v", msg.Kind, msg.Nodename, msg.Gen)
 				continue
 			}
 			select {
@@ -434,7 +434,7 @@ func (t *T) msgFromRx(ctx context.Context) {
 				// don't hang up when context is done
 				return
 			case dataMsgRecvQ <- msg:
-				t.log.Debugf("processed msg type %s from %s gens: %v", msg.Kind, msg.Nodename, msg.Gen)
+				t.log.Tracef("processed msg type %s from %s gens: %v", msg.Kind, msg.Nodename, msg.Gen)
 				msgTimes[peer] = msg.UpdatedAt
 				count++
 			}

@@ -87,21 +87,21 @@ func (t *actor) setenv(action string, leader bool) {
 
 func (t *actor) needRollback(ctx context.Context) bool {
 	if actionrollback.Len(ctx) == 0 {
-		t.Log().Debugf("skip rollback: empty stack")
+		t.Log().Tracef("skip rollback: empty stack")
 		return false
 	}
 	action := actioncontext.Props(ctx)
 	if !action.Rollback {
-		t.Log().Debugf("skip rollback: not demanded by the %s action", action.Name)
+		t.Log().Tracef("skip rollback: not demanded by the %s action", action.Name)
 		return false
 	}
 	if actioncontext.IsRollbackDisabled(ctx) {
-		t.Log().Debugf("skip rollback: disabled via the command flag")
+		t.Log().Tracef("skip rollback: disabled via the command flag")
 		return false
 	}
 	k := key.Parse("rollback")
 	if !t.Config().GetBool(k) {
-		t.Log().Debugf("skip rollback: disabled via configuration keyword")
+		t.Log().Tracef("skip rollback: disabled via configuration keyword")
 		return false
 	}
 	return true
@@ -109,7 +109,7 @@ func (t *actor) needRollback(ctx context.Context) bool {
 
 func (t *actor) withTimeoutFromKeywords(ctx context.Context, kwNames []string) (context.Context, func()) {
 	timeout, source := t.actionTimeout(kwNames)
-	t.log.Debugf("action timeout set to %s from keyword %s", timeout, source)
+	t.log.Tracef("action timeout set to %s from keyword %s", timeout, source)
 	if timeout == 0 {
 		return ctx, func() {}
 	}
@@ -207,14 +207,14 @@ func (t *actor) announceProgress(ctx context.Context, progress string) error {
 	})
 	switch {
 	case errors.Is(err, os.ErrNotExist):
-		t.log.Debugf("skip announce progress: the daemon is not running")
+		t.log.Tracef("skip announce progress: the daemon is not running")
 		return nil
 	case err != nil:
 		var opErr *net.OpError
 		if errors.As(err, &opErr) {
 			if sysErr, ok := opErr.Err.(*os.SyscallError); ok {
 				if sysErr.Err == syscall.ECONNREFUSED {
-					t.log.Debugf("skip announce progress: the daemon connection is refused")
+					t.log.Tracef("skip announce progress: the daemon connection is refused")
 					return nil
 				}
 			}
@@ -374,7 +374,7 @@ func (t *actor) action(ctx context.Context, fn resourceset.DoFunc) error {
 
 	barrier := resources.Barrier(actioncontext.To(ctx))
 	if barrier != "" {
-		t.log.Debugf("action barrier: %s", barrier)
+		t.log.Tracef("action barrier: %s", barrier)
 	}
 
 	if len(resources) == 0 && !resourceSelector.IsZero() {
@@ -435,15 +435,15 @@ func (t *actor) action(ctx context.Context, fn resourceset.DoFunc) error {
 			return nil
 		}
 		if !resourceSelector.IsZero() {
-			t.log.Debugf("skip freeze: resource selection")
+			t.log.Tracef("skip freeze: resource selection")
 			return nil
 		}
 		if !t.orchestrateWantsFreeze() {
-			t.log.Debugf("skip freeze: orchestrate value")
+			t.log.Tracef("skip freeze: orchestrate value")
 			return nil
 		}
 		if env.HasDaemonMonitorOrigin() {
-			t.log.Debugf("skip freeze: action has daemon origin")
+			t.log.Tracef("skip freeze: action has daemon origin")
 			return nil
 		}
 		if err := freeze.Freeze(t.path.FrozenFile()); err != nil {
@@ -571,7 +571,7 @@ func (t *actor) action(ctx context.Context, fn resourceset.DoFunc) error {
 				if len(l) > 2 {
 					switch {
 					case strings.Contains(l[1], "DBG"):
-						t.log.Debugf("%s: %s", rid, line)
+						t.log.Tracef("%s: %s", rid, line)
 					case strings.Contains(l[1], "INF"):
 						t.log.Infof("%s: %s", rid, line)
 					case strings.Contains(l[1], "WRN"):

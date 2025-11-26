@@ -78,7 +78,7 @@ func (t *T) Configure(ctx context.Context) {
 		nodes = t.Config().GetStrings(k)
 	}
 	oNodes := hostname.OtherNodes(nodes)
-	log.Debugf("timeout=%s interval= %s port=%d nodes=%s onodes=%s", timeout, interval,
+	log.Tracef("timeout=%s interval= %s port=%d nodes=%s onodes=%s", timeout, interval,
 		port, nodes, oNodes)
 	t.SetNodes(oNodes)
 	t.SetInterval(interval)
@@ -86,7 +86,7 @@ func (t *T) Configure(ctx context.Context) {
 	signature := fmt.Sprintf("type: hb.mcast, port: %d nodes: %s timeout: %s intf: %s interval: %s",
 		port, nodes, timeout, intf, interval)
 	t.SetSignature(signature)
-	log.Debugf("signature: [%s]", signature)
+	log.Tracef("signature: [%s]", signature)
 	name := t.Name()
 
 	udpAddr, err := net.ResolveUDPAddr("udp", fmt.Sprintf("%s:%d", addr, port))
@@ -104,7 +104,7 @@ func (t *T) Configure(ctx context.Context) {
 			log.Errorf("can't get interface by name: %s", err)
 			return
 		}
-		log.Debugf("set rx interface %s", ifi.Name)
+		log.Tracef("set rx interface %s", ifi.Name)
 
 		addrs, err := ifi.Addrs()
 		if err != nil {
@@ -116,12 +116,12 @@ func (t *T) Configure(ctx context.Context) {
 			l := strings.Split(addrStr, "/")
 			laddr, err = net.ResolveUDPAddr("udp", fmt.Sprintf("%s:%d", l[0], 0))
 			if err != nil {
-				log.Debugf("intf %s make tx laddr from addr %s: %s", ifi.Name, addr, err)
+				log.Tracef("intf %s make tx laddr from addr %s: %s", ifi.Name, addr, err)
 			} else {
 				break
 			}
 		}
-		log.Debugf("set tx interface %s laddr %s", ifi.Name, laddr)
+		log.Tracef("set tx interface %s laddr %s", ifi.Name, laddr)
 	}
 
 	tx := newTx(ctx, name, oNodes, laddr, udpAddr, timeout, interval)

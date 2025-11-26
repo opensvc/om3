@@ -170,7 +170,7 @@ func (t *Manager) startSubscriptions() {
 
 // worker watch for local dns updates
 func (t *Manager) worker() {
-	defer t.log.Debugf("done")
+	defer t.log.Tracef("done")
 
 	for _, v := range instance.StatusData.GetAll() {
 		t.onInstanceStatusUpdated(&msgbus.InstanceStatusUpdated{Node: v.Node, Path: v.Path, Value: *v.Value})

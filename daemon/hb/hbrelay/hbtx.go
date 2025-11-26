@@ -45,7 +45,7 @@ func (t *tx) ID() string {
 
 // Stop implements the Stop function of Transmitter interface for tx
 func (t *tx) Stop() error {
-	t.log.Debugf("cancelling")
+	t.log.Tracef("cancelling")
 	t.cancel()
 	for _, node := range t.nodes {
 		t.cmdC <- hbctrl.CmdDelWatcher{
@@ -54,7 +54,7 @@ func (t *tx) Stop() error {
 		}
 	}
 	t.Wait()
-	t.log.Debugf("wait done")
+	t.log.Tracef("wait done")
 	return nil
 }
 
@@ -98,7 +98,7 @@ func (t *tx) Start(cmdC chan<- interface{}, msgC <-chan []byte) error {
 			if len(b) == 0 {
 				continue
 			} else {
-				t.log.Debugf(reason)
+				t.log.Tracef(reason)
 				t.send(b)
 			}
 		}
@@ -114,7 +114,7 @@ func (t *tx) send(b []byte) {
 		client.WithInsecureSkipVerify(t.insecure),
 	)
 	if err != nil {
-		t.log.Debugf("send: new client: %s", err)
+		t.log.Tracef("send: new client: %s", err)
 		return
 	}
 
@@ -127,14 +127,14 @@ func (t *tx) send(b []byte) {
 	}
 	resp, err := cli.PostRelayMessage(context.Background(), params)
 	if err != nil {
-		t.log.Debugf("send: PostRelayMessage: %s", err)
+		t.log.Tracef("send: PostRelayMessage: %s", err)
 		return
 	}
 
 	defer drain(resp.Body, t.log)
 
 	if resp.StatusCode != http.StatusOK {
-		t.log.Debugf("send: unexpected PostRelayMessage status: %s", resp.Status)
+		t.log.Tracef("send: unexpected PostRelayMessage status: %s", resp.Status)
 		return
 	}
 

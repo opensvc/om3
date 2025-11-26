@@ -129,8 +129,8 @@ func Start(parent context.Context, p naming.Path, filename string, svcDiscoverCm
 	t.startSubscriptions()
 
 	go func() {
-		t.log.Debugf("starting")
-		defer t.log.Debugf("stopped")
+		t.log.Tracef("starting")
+		defer t.log.Tracef("stopped")
 		defer func() {
 			cancel()
 			if err := t.sub.Stop(); err != nil && !errors.Is(err, context.Canceled) {
@@ -179,12 +179,12 @@ func (t *Manager) startSubscriptions() {
 func (t *Manager) worker() {
 	// do once what we do later on msgbus.ConfigFileUpdated
 	if err := t.configFileCheck(); err != nil {
-		t.log.Debugf("initial: %s", err)
+		t.log.Tracef("initial: %s", err)
 		return
 	}
 	defer t.delete()
 
-	t.log.Debugf("started")
+	t.log.Tracef("started")
 	for {
 		select {
 		case <-t.ctx.Done():
@@ -212,7 +212,7 @@ func (t *Manager) configFileCheckRefresh(force bool) error {
 	}
 	err := t.configFileCheck()
 	if err != nil {
-		t.log.Debugf("refresh: %s", err)
+		t.log.Tracef("refresh: %s", err)
 		t.cancel()
 	}
 	return err
@@ -245,7 +245,7 @@ func (t *Manager) onConfigFileRemoved() {
 // updateConfig update iConfig.cfg when newConfig differ from iConfig.cfg
 func (t *Manager) updateConfig(newConfig *instance.Config) {
 	if instance.ConfigEqual(&t.instanceConfig, newConfig) {
-		t.log.Debugf("no update required")
+		t.log.Tracef("no update required")
 		return
 	}
 	if !t.published {
@@ -272,7 +272,7 @@ func (t *Manager) configFileCheck() error {
 		return errConfigFileCheck
 	}
 	if mtime.Equal(t.lastMtime) && !t.forceRefresh {
-		t.log.Debugf("the config file mtime has not changed, keep the cached icfg")
+		t.log.Tracef("the config file mtime has not changed, keep the cached icfg")
 		return nil
 	}
 	checksum, err := file.MD5(t.filename)
@@ -531,7 +531,7 @@ func (t *Manager) getFlexTarget(cf *xconfig.T, minInstanceCount, maxInstanceCoun
 	case naming.KindSvc, naming.KindVol:
 		i, err := cf.GetIntStrict(keyFlexTarget)
 		if err != nil {
-			t.log.Debugf("can't get flex_target value: %s", err)
+			t.log.Tracef("can't get flex_target value: %s", err)
 			return minInstanceCount
 		}
 		if i < minInstanceCount {

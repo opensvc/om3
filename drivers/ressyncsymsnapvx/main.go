@@ -184,7 +184,7 @@ func (t *T) devFromDevPath(devPath string) (XInqDevice, error) {
 	}
 	args := []string{"-pdevfile", devPath, "-output", "xml_e"}
 	cmd := exec.Command("syminq", args...)
-	t.Log().Debugf("exec: %s", cmd)
+	t.Log().Tracef("exec: %s", cmd)
 	b, err := cmd.Output()
 	if err != nil {
 		return XInqDevice{}, fmt.Errorf("%s: %w", devPath, err)
@@ -214,7 +214,7 @@ func (t *T) List() ([]XSnapshot, error) {
 	}
 	args := []string{"list", "-sid", t.SymID, "-devs", strings.Join(mergedDevs, ","), "-output", "xml_e"}
 	cmd := exec.Command(symsnapvx, args...)
-	t.Log().Debugf("exec: %s", cmd)
+	t.Log().Tracef("exec: %s", cmd)
 	b, err := cmd.Output()
 	if err != nil {
 		if e, ok := err.(*exec.ExitError); ok {

@@ -17,7 +17,7 @@ func (a *DaemonAPI) GetClusterConfigFile(ctx echo.Context) error {
 	}
 	logName := "GetClusterConfigFile"
 	log := LogHandler(ctx, logName)
-	log.Debugf("%s: starting", logName)
+	log.Tracef("%s: starting", logName)
 
 	objPath := naming.Cluster
 	log = naming.LogWithPath(log, objPath)

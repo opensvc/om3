@@ -54,8 +54,8 @@ func New(subQS pubsub.QueueSizer) *T {
 // Start launches the cstat worker goroutine
 func (o *T) Start(parent context.Context) error {
 	o.log = plog.NewDefaultLogger().WithPrefix("daemon: cstat: ").Attr("pkg", "daemon/cstat")
-	o.log.Debugf("starting")
-	defer o.log.Debugf("started")
+	o.log.Tracef("starting")
+	defer o.log.Tracef("started")
 	o.ctx, o.cancel = context.WithCancel(parent)
 	o.publisher = pubsub.PubFromContext(o.ctx)
 
@@ -63,9 +63,9 @@ func (o *T) Start(parent context.Context) error {
 	running := make(chan bool)
 	o.wg.Add(1)
 	go func() {
-		o.log.Debugf("start")
+		o.log.Tracef("start")
 		running <- true
-		defer o.log.Debugf("done")
+		defer o.log.Tracef("done")
 		defer o.wg.Done()
 		defer func() {
 			if err := o.sub.Stop(); err != nil && !errors.Is(err, context.Canceled) {

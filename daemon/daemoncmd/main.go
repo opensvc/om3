@@ -279,13 +279,13 @@ func (t *T) run() error {
 		return ErrAlreadyRunning
 	}
 	pidFile := daemonPidFile()
-	log.Debugf("create pid file %s", pidFile)
+	log.Tracef("create pid file %s", pidFile)
 
 	if err := os.WriteFile(pidFile, []byte(fmt.Sprintf("%d\n", os.Getpid())), 0644); err != nil {
 		return err
 	}
 	defer func() {
-		log.Debugf("remove pid file %s", pidFile)
+		log.Tracef("remove pid file %s", pidFile)
 		if err := os.Remove(pidFile); err != nil {
 			log.Errorf("remove pid file %s: %s", pidFile, err)
 		}
@@ -296,11 +296,11 @@ func (t *T) run() error {
 	log.Attr("capabilities", capabilities.Data()).Infof("rescanned node capabilities")
 
 	if err := bootStrapCcfg(); err != nil {
-		log.Debugf("bootstrap cluster config %s", err)
+		log.Tracef("bootstrap cluster config %s", err)
 		return err
 	}
 	d := daemon.New()
-	log.Debugf("starting daemon...")
+	log.Tracef("starting daemon...")
 	err = d.Start(context.Background())
 	release()
 	if err != nil {
@@ -547,7 +547,7 @@ func (t *T) stop() error {
 	}
 	switch {
 	case resp.JSON200 != nil:
-		log.Debugf("wait for stop...")
+		log.Tracef("wait for stop...")
 		pid := resp.JSON200.Pid
 		hasProcfile := func() (bool, error) {
 			return t.hasProcFile(pid)
@@ -559,7 +559,7 @@ func (t *T) stop() error {
 			log.Warnf("daemon pid %d still running after stop request, kill", pid)
 			return t.kill()
 		}
-		log.Debugf("stopped")
+		log.Tracef("stopped")
 		// one more delay before return listener not anymore responding
 		time.Sleep(WaitStoppedDelay)
 	default:
@@ -706,15 +706,15 @@ func isCmdlineMatchingDaemon(pid int) (bool, error) {
 
 	areProcArgsMatching := func(args []string) bool {
 		if len(args) == 0 {
-			log.Debugf("process %d pointed by %s ran by a command with no arguments", pid, daemonPidFile())
+			log.Tracef("process %d pointed by %s ran by a command with no arguments", pid, daemonPidFile())
 			return false
 		}
 		if len(args) < 3 {
-			log.Debugf("process %d pointed by %s ran by a command with too few arguments: %s", pid, daemonPidFile(), args)
+			log.Tracef("process %d pointed by %s ran by a command with too few arguments: %s", pid, daemonPidFile(), args)
 			return false
 		}
 		if args[1] != "daemon" || args[2] != "run" {
-			log.Debugf("process %d pointed by %s is not a om daemon: %s", pid, daemonPidFile(), args)
+			log.Tracef("process %d pointed by %s is not a om daemon: %s", pid, daemonPidFile(), args)
 			return false
 		}
 		return true

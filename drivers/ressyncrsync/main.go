@@ -117,7 +117,7 @@ func (t *T) lockedSync(ctx context.Context, mode modeT, target []string) (err er
 	for _, nodename := range nodenames {
 		if err := t.isSendAllowedToPeerEnv(nodename); err != nil {
 			if isCron {
-				t.Log().Debugf("%s", err)
+				t.Log().Tracef("%s", err)
 			} else {
 				t.Log().Infof("%s", err)
 			}
@@ -323,7 +323,7 @@ func (t *T) peerSync(ctx context.Context, mode modeT, nodename string) (err erro
 		command.WithLogger(t.Log()),
 		command.WithCommandLogLevel(zerolog.InfoLevel),
 		command.WithStderrLogLevel(zerolog.ErrorLevel),
-		command.WithStdoutLogLevel(zerolog.DebugLevel),
+		command.WithStdoutLogLevel(zerolog.TraceLevel),
 		command.WithOnStdoutLine(func(line string) {
 			addBytesSent(line, stats)
 			addBytesReceived(line, stats)
@@ -382,7 +382,7 @@ func (t *T) isFSMounted(nodename, mnt string) (bool, error) {
 	cmd := command.New(
 		command.WithName("ssh"),
 		command.WithArgs(a.Get()),
-		command.WithCommandLogLevel(zerolog.DebugLevel),
+		command.WithCommandLogLevel(zerolog.TraceLevel),
 		command.WithBufferedStdout(),
 	)
 	b, err := cmd.Output()

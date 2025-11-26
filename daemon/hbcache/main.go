@@ -58,8 +58,8 @@ func (t *T) run(ctx context.Context) {
 	gens := make(map[string]node.Gen)
 	heartbeats := make([]daemonsubsystem.HeartbeatStream, 0)
 	log := plog.NewDefaultLogger().WithPrefix("daemon: hbcache: ").Attr("pkg", "daemon/hbcache")
-	log.Debugf("started")
-	defer log.Debugf("done")
+	log.Tracef("started")
+	defer log.Tracef("done")
 	defer draincommand.Do(cmdI, t.drainDuration)
 	t.ctx, t.cancel = context.WithCancel(ctx)
 	for {

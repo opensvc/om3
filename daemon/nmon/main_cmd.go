@@ -132,7 +132,7 @@ func (t *Manager) isStateFailed() bool {
 func (t *Manager) onSetNodeMonitor(c *msgbus.SetNodeMonitor) {
 	resetFailedState := func() {
 		if c.Value.State == nil && t.isStateFailed() {
-			t.log.Debugf("reset failed state")
+			t.log.Tracef("reset failed state")
 			t.state.State = node.MonitorStateIdle
 		}
 	}
@@ -333,7 +333,7 @@ func (t *Manager) onNodeFrozenFileUpdated(m *msgbus.NodeFrozenFileUpdated) {
 }
 
 func (t *Manager) onNodeMonitorDeleted(c *msgbus.NodeMonitorDeleted) {
-	t.log.Debugf("deleted nmon for node %s", c.Node)
+	t.log.Tracef("deleted nmon for node %s", c.Node)
 	delete(t.nodeMonitor, c.Node)
 	t.convergeGlobalExpectFromRemote()
 	t.updateIfChange()
@@ -342,7 +342,7 @@ func (t *Manager) onNodeMonitorDeleted(c *msgbus.NodeMonitorDeleted) {
 }
 
 func (t *Manager) onPeerNodeMonitorUpdated(c *msgbus.NodeMonitorUpdated) {
-	t.log.Debugf("updated nmon from node %s  -> %s", c.Node, c.Value.GlobalExpect)
+	t.log.Tracef("updated nmon from node %s  -> %s", c.Node, c.Value.GlobalExpect)
 	t.nodeMonitor[c.Node] = c.Value
 	if _, ok := t.livePeers[c.Node]; !ok {
 		t.livePeers[c.Node] = true

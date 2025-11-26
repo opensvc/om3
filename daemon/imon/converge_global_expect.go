@@ -39,7 +39,7 @@ func (t *Manager) convergeGlobalExpectFromRemote() {
 			mostRecentNode, strVal, t.state.OrchestrationID, mostRecentUpdated)
 		if t.state.OrchestrationIsDone {
 			t.state.OrchestrationIsDone = false
-			t.log.Debugf("reset previous orchestration is done on fetched global expect")
+			t.log.Tracef("reset previous orchestration is done on fetched global expect")
 		}
 		t.log = t.newLogger(t.state.OrchestrationID)
 		if t.state.GlobalExpect == instance.MonitorGlobalExpectAborted {
@@ -57,7 +57,7 @@ func (t *Manager) isConvergedGlobalExpect() bool {
 			panic(err)
 		}
 		if localUpdated.After(v.GlobalExpectUpdatedAt) {
-			t.log.Debugf("wait GlobalExpect propagation on %s", s)
+			t.log.Tracef("wait GlobalExpect propagation on %s", s)
 			return false
 		}
 	}

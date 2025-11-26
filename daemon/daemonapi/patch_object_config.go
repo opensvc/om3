@@ -90,7 +90,7 @@ func (a *DaemonAPI) PatchObjectConfig(ctx echo.Context, namespace string, kind n
 			log.Warnf("request proxy %s@%s: %s", p, nodename, err)
 			return JSONProblemf(ctx, http.StatusInternalServerError, "Request peer", "%s: %s", nodename, err)
 		} else {
-			log.Debugf("request proxy to %s for %s status: %s", nodename, p, resp.Status())
+			log.Tracef("request proxy to %s for %s status: %s", nodename, p, resp.Status())
 			if len(resp.Body) > 0 {
 				return ctx.JSONBlob(resp.StatusCode(), resp.Body)
 			} else {
@@ -99,6 +99,6 @@ func (a *DaemonAPI) PatchObjectConfig(ctx echo.Context, namespace string, kind n
 		}
 	}
 
-	log.Debugf("can't patch: object not found %s", p)
+	log.Tracef("can't patch: object not found %s", p)
 	return JSONProblemf(ctx, http.StatusNotFound, "Not found", "object not found: %s", p)
 }

@@ -102,9 +102,9 @@ func (t T) modprobe() error {
 		command.WithName("modprobe"),
 		command.WithVarArgs("raw"),
 		command.WithLogger(t.log),
-		command.WithCommandLogLevel(zerolog.DebugLevel),
-		command.WithStdoutLogLevel(zerolog.DebugLevel),
-		command.WithStderrLogLevel(zerolog.DebugLevel),
+		command.WithCommandLogLevel(zerolog.TraceLevel),
+		command.WithStdoutLogLevel(zerolog.TraceLevel),
+		command.WithStderrLogLevel(zerolog.TraceLevel),
 	)
 	probed = true
 	if err := cmd.Run(); err != nil {
@@ -155,9 +155,9 @@ func (t T) QueryAll() (Binds, error) {
 		command.WithName(raw),
 		command.WithVarArgs("-qa"),
 		command.WithLogger(t.log),
-		command.WithCommandLogLevel(zerolog.DebugLevel),
-		command.WithStdoutLogLevel(zerolog.DebugLevel),
-		command.WithStderrLogLevel(zerolog.DebugLevel),
+		command.WithCommandLogLevel(zerolog.TraceLevel),
+		command.WithStdoutLogLevel(zerolog.TraceLevel),
+		command.WithStderrLogLevel(zerolog.TraceLevel),
 		command.WithBufferedStdout(),
 		command.WithEnv([]string{"LANG=C"}),
 	)

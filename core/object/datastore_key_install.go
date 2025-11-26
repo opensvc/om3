@@ -237,7 +237,7 @@ func (t *dataStore) chmod(p string, mode *os.FileMode, info os.FileInfo, log *pl
 		}
 		log.Infof("change %s permissions from %s to %s", p, info.Mode().Perm(), mode)
 	} else {
-		log.Debugf("set %s permissions to %s", p, mode)
+		log.Tracef("set %s permissions to %s", p, mode)
 	}
 	return os.Chmod(p, *mode)
 }
@@ -284,7 +284,7 @@ func (t *dataStore) chown(p string, usr, grp string, info os.FileInfo, log *plog
 			}
 		}
 	} else if uid > 0 || gid > 0 {
-		log.Debugf("set %s owner to %d:%d", p, uid, gid)
+		log.Tracef("set %s owner to %d:%d", p, uid, gid)
 		return os.Chown(p, uid, gid)
 	}
 	return nil
@@ -330,7 +330,7 @@ func (t *dataStore) writeKey(vk vKey, b []byte, opt KVInstall) (bool, error) {
 		return false, err
 	}
 	if string(currentMD5) == string(targetMD5) {
-		opt.ToLog.Debugf("%s from key %s already installed and same md5: set access and modification times to %s", dst, vk.Key, mtime)
+		opt.ToLog.Tracef("%s from key %s already installed and same md5: set access and modification times to %s", dst, vk.Key, mtime)
 		return false, os.Chtimes(dst, mtime, mtime)
 	}
 	return false, nil
@@ -379,7 +379,7 @@ func (t *dataStore) InstallKeyTo(opt KVInstall) error {
 	if opt.ToLog == nil {
 		opt.ToLog = t.log
 	}
-	opt.ToLog.Debugf("install key %s to %s", opt.FromPattern, opt.ToPath)
+	opt.ToLog.Tracef("install key %s to %s", opt.FromPattern, opt.ToPath)
 	keys, err := t.resolveKey(opt.FromPattern)
 	if err != nil {
 		return fmt.Errorf("resolve %s key %s: %w", t.path, opt.FromPattern, err)
@@ -454,7 +454,7 @@ func (t *dataStore) postInstall(k string) error {
 			}
 		}
 		if onChange != nil {
-			t.log.Debugf("signal key %s referrer: %s", k, p)
+			t.log.Tracef("signal key %s referrer: %s", k, p)
 			if err := onChange(ctx); err != nil {
 				return err
 			}

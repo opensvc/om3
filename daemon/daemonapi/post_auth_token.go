@@ -62,7 +62,7 @@ func (a *DaemonAPI) PostAuthToken(ctx echo.Context, params api.PostAuthTokenPara
 
 	if d, err := a.createAccessToken(ctx, username, accessDuration, params.Role, params.Scope); err != nil {
 		if errors.Is(err, errBadRequest) {
-			log.Debugf("invalid parameters: %s", err)
+			log.Tracef("invalid parameters: %s", err)
 			return JSONProblemf(ctx, http.StatusBadRequest, "Create token Invalid parameters", "%s", err)
 		} else if errors.Is(err, errForbidden) {
 			log.Infof("forbidden: %s", err)

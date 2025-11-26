@@ -55,7 +55,7 @@ func (t *T) Running() (resource.RunningInfoList, error) {
 
 func (t *T) Update(ctx context.Context) error {
 	if v, rids := t.IsInstanceSufficientlyStarted(ctx); !v {
-		t.Log().Debugf("the instance is not sufficiently started (%s). refuse to create snapshots", strings.Join(rids, ","))
+		t.Log().Tracef("the instance is not sufficiently started (%s). refuse to create snapshots", strings.Join(rids, ","))
 		return nil
 	}
 	for _, dataset := range t.Dataset {
@@ -88,7 +88,7 @@ func (t *T) removeSnap(dataset string) error {
 		}
 		if kept < t.Keep {
 			kept++
-			t.Log().Debugf("keep snap %s %d/%d", candidate.Name, kept, t.Keep)
+			t.Log().Tracef("keep snap %s %d/%d", candidate.Name, kept, t.Keep)
 			continue
 		}
 		if err := candidate.Destroy(); err != nil {

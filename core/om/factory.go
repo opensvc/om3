@@ -1034,7 +1034,6 @@ func newCmdNodeEvents() *cobra.Command {
 	commoncmd.FlagEventTemplate(flags, &options.Template)
 	commoncmd.FlagNodeSelector(flags, &options.NodeSelector)
 	commoncmd.FlagObjectSelector(flags, &options.ObjectSelector)
-	commoncmd.FlagQuiet(flags, &options.Quiet)
 	commoncmd.FlagWait(flags, &options.Wait)
 	commoncmd.FlagEventLimit(flags, &options.Limit)
 	return cmd

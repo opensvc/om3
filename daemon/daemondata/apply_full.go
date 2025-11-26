@@ -18,7 +18,7 @@ func (d *data) applyNodeData(msg *hbtype.Msg) error {
 	remote := msg.Nodename
 	peerLabel := pubsub.Label{"node", remote}
 	local := d.localNode
-	d.log.Debugf("applyNodeData %s", remote)
+	d.log.Tracef("applyNodeData %s", remote)
 
 	d.clusterData.Cluster.Node[remote] = msg.NodeData
 	d.hbGens[local][remote] = msg.NodeData.Status.Gen[remote]

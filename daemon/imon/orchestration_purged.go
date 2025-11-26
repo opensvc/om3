@@ -11,7 +11,7 @@ var (
 )
 
 func (t *Manager) orchestratePurged() {
-	t.log.Debugf("orchestratePurged starting from %s", t.state.State)
+	t.log.Tracef("orchestratePurged starting from %s", t.state.State)
 	switch t.state.State {
 	case instance.MonitorStateDeleteSuccess:
 		t.purgedFromDeleted()

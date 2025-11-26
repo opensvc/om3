@@ -82,10 +82,10 @@ func (ea *ExecutorArg) WaitRemoved(ctx context.Context) error {
 
 func (ea *ExecutorArg) isRemoved(ctx context.Context) (bool, error) {
 	if inspect, err := ea.inspectRefresher.InspectRefresh(ctx); err == nil {
-		ea.BT.Log().Debugf("is removed: %v", inspect == nil)
+		ea.BT.Log().Tracef("is removed: %v", inspect == nil)
 		return inspect == nil, nil
 	} else {
-		ea.BT.Log().Debugf("is removed: false")
+		ea.BT.Log().Tracef("is removed: false")
 		return false, err
 	}
 }

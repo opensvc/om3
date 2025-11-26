@@ -37,7 +37,7 @@ func (t *Manager) convergeGlobalExpectFromRemote() {
 		t.log.Infof("fetch global expect from node %s -> %s updated at %s", mostRecentNode, strVal, mostRecentUpdated)
 
 		if t.isStateFailed() {
-			t.log.Debugf("reset failed state")
+			t.log.Tracef("reset failed state")
 			t.state.State = node.MonitorStateIdle
 		}
 	}
@@ -50,7 +50,7 @@ func (t *Manager) isConvergedGlobalExpect() bool {
 			continue
 		}
 		if localUpdated.After(data.GlobalExpectUpdatedAt) {
-			t.log.Debugf("wait global expect propagation on %s", s)
+			t.log.Tracef("wait global expect propagation on %s", s)
 			return false
 		}
 	}

@@ -176,7 +176,7 @@ func (t *T) statusOfAddr(ctx context.Context, dev string) status.T {
 		return status.Down
 	}
 	if !addrs.Has(ip) {
-		t.Log().Debugf("ip not found on intf")
+		t.Log().Tracef("ip not found on intf")
 		return status.Down
 	}
 	return status.Up
@@ -233,7 +233,7 @@ func (t *T) abortPing() bool {
 		t.Log().Errorf("abort! %s is alive", ip)
 		return true
 	} else {
-		t.Log().Debugf("abort? %s is not alive", ip)
+		t.Log().Tracef("abort? %s is not alive", ip)
 		return false
 	}
 }
@@ -323,7 +323,7 @@ func (t *T) getIPAddr() net.IP {
 		case 1:
 			// ok
 		default:
-			t.Log().Debugf("name %s is resolvables to %d address. Using the first.", t.Name, n)
+			t.Log().Tracef("name %s is resolvables to %d address. Using the first.", t.Name, n)
 		}
 		return l[0]
 	default:
@@ -389,19 +389,19 @@ func getIPBits(ip net.IP) (bits int) {
 func (t *T) arpAnnounce(dev string) error {
 	ip := t.ipaddr()
 	if ip.IsLoopback() {
-		t.Log().Debugf("skip arp announce on loopback address %s", ip)
+		t.Log().Tracef("skip arp announce on loopback address %s", ip)
 		return nil
 	}
 	if ip.IsLinkLocalUnicast() {
-		t.Log().Debugf("skip arp announce on link local unicast address %s", ip)
+		t.Log().Tracef("skip arp announce on link local unicast address %s", ip)
 		return nil
 	}
 	if ip.To4() == nil {
-		t.Log().Debugf("skip arp announce on non-ip4 address %s", ip)
+		t.Log().Tracef("skip arp announce on non-ip4 address %s", ip)
 		return nil
 	}
 	if i, err := net.InterfaceByName(dev); err == nil && i.Flags&net.FlagLoopback != 0 {
-		t.Log().Debugf("skip arp announce on loopback interface %s", t.Dev)
+		t.Log().Tracef("skip arp announce on loopback interface %s", t.Dev)
 		return nil
 	}
 	t.Log().Infof("send gratuitous arp to announce %s over %s", t.ipaddr(), dev)

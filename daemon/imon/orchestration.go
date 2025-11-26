@@ -22,19 +22,19 @@ func (t *Manager) isDone() bool {
 // orchestrate from omon vs global expect
 func (t *Manager) orchestrate() {
 	if t.isDone() {
-		t.log.Debugf("orchestrate return on isDone()")
+		t.log.Tracef("orchestrate return on isDone()")
 		return
 	}
 	if _, ok := t.instStatus[t.localhost]; !ok {
-		t.log.Debugf("orchestrate return on no instStatus[o.localhost]")
+		t.log.Tracef("orchestrate return on no instStatus[o.localhost]")
 		return
 	}
 	if _, ok := t.nodeStatus[t.localhost]; !ok {
-		t.log.Debugf("orchestrate return on no nodeStatus[o.localhost]")
+		t.log.Tracef("orchestrate return on no nodeStatus[o.localhost]")
 		return
 	}
 	if !t.isConvergedGlobalExpect() {
-		t.log.Debugf("orchestrate return on not isConvergedGlobalExpect")
+		t.log.Tracef("orchestrate return on not isConvergedGlobalExpect")
 		return
 	}
 
@@ -47,11 +47,11 @@ func (t *Manager) orchestrate() {
 		if t.orchestrationIsDoneOnAll() {
 			t.endOrchestration()
 		}
-		t.log.Debugf("orchestrate return on o.state.OrchestrationID != uuid.Nil && o.state.OrchestrationIsDone")
+		t.log.Tracef("orchestrate return on o.state.OrchestrationID != uuid.Nil && o.state.OrchestrationIsDone")
 		return
 	}
 	if t.isDone() {
-		t.log.Debugf("orchestrate return on isDone()")
+		t.log.Tracef("orchestrate return on isDone()")
 		return
 	}
 	switch t.nodeMonitor[t.localhost].State {
@@ -65,19 +65,19 @@ func (t *Manager) orchestrate() {
 		}
 		return
 	default:
-		t.log.Debugf("orchestrate return on nodeMonitor.State: %s", t.nodeMonitor[t.localhost].State)
+		t.log.Tracef("orchestrate return on nodeMonitor.State: %s", t.nodeMonitor[t.localhost].State)
 		return
 	}
 
 	if t.statusQueued.Load() {
 		// a new orchestrate() call will be fired by the InstanceStatusUpdated at the end of the running status evaluation
-		t.log.Debugf("orchestrate return on t.statusQueued")
+		t.log.Tracef("orchestrate return on t.statusQueued")
 		return
 	}
 
 	t.orchestrateResourceRestart()
 	if t.isDone() {
-		t.log.Debugf("orchestrate return on isDone()")
+		t.log.Tracef("orchestrate return on isDone()")
 		return
 	}
 
@@ -180,11 +180,11 @@ func (t *Manager) doneAndIdle() {
 // OrchestrationIsDone is set to true when orchestrationID is set.
 func (t *Manager) done() {
 	if t.state.OrchestrationID != uuid.Nil && !t.state.OrchestrationIsDone {
-		t.log.Debugf("set OrchestrationIsDone -> true for OrchestrationID %s", t.state.OrchestrationID)
+		t.log.Tracef("set OrchestrationIsDone -> true for OrchestrationID %s", t.state.OrchestrationID)
 		t.change = true
 		t.state.OrchestrationIsDone = true
 	} else if !t.state.OrchestrationIsDone {
-		t.log.Debugf("skip change OrchestrationIsDone (OrchestrationID is nil)")
+		t.log.Tracef("skip change OrchestrationIsDone (OrchestrationID is nil)")
 	}
 }
 

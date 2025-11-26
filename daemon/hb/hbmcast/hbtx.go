@@ -41,7 +41,7 @@ func (t *tx) ID() string {
 
 // Stop implements the Stop function of Transmitter interface for tx
 func (t *tx) Stop() error {
-	t.log.Debugf("cancelling")
+	t.log.Tracef("cancelling")
 	t.cancel()
 	for _, node := range t.nodes {
 		t.cmdC <- hbctrl.CmdDelWatcher{
@@ -50,7 +50,7 @@ func (t *tx) Stop() error {
 		}
 	}
 	t.Wait()
-	t.log.Debugf("wait done")
+	t.log.Tracef("wait done")
 	return nil
 }
 
@@ -101,7 +101,7 @@ func (t *tx) Start(cmdC chan<- interface{}, msgC <-chan []byte) error {
 			if len(b) == 0 {
 				continue
 			} else {
-				t.log.Debugf(reason)
+				t.log.Tracef(reason)
 				go t.send(b)
 			}
 		}
@@ -113,11 +113,11 @@ func (t *tx) Start(cmdC chan<- interface{}, msgC <-chan []byte) error {
 
 func (t *tx) send(b []byte) {
 	//fmt.Println("xx >>>\n", hex.Dump(b))
-	t.log.Debugf("send to udp %s", t.udpAddr)
+	t.log.Tracef("send to udp %s", t.udpAddr)
 
 	c, err := net.DialUDP("udp", t.laddr, t.udpAddr)
 	if err != nil {
-		t.log.Debugf("dial udp %s: %s", t.udpAddr, err)
+		t.log.Tracef("dial udp %s: %s", t.udpAddr, err)
 		return
 	}
 	defer c.Close()
@@ -147,11 +147,11 @@ func (t *tx) send(b []byte) {
 		}
 		dgram, err := json.Marshal(f)
 		if err != nil {
-			t.log.Debugf("marshal frame: %s", err)
+			t.log.Tracef("marshal frame: %s", err)
 			return
 		}
 		if _, err := c.Write(dgram); err != nil {
-			t.log.Debugf("write in udp conn to %s: %s", t.udpAddr, err)
+			t.log.Tracef("write in udp conn to %s: %s", t.udpAddr, err)
 			return
 		}
 	}
