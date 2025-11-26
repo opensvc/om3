@@ -81,32 +81,24 @@ func (t *core) statusDumpModTime() time.Time {
 	return file.ModTime(p)
 }
 
-// statusFilePair returns a pair of file path suitable for a tmp-to-final move
-// after change.
-func (t *core) statusFilePair() (final string, tmp string) {
-	final = t.statusFile()
-	tmp = filepath.Join(filepath.Dir(final), "."+filepath.Base(final)+".swp")
-	return
-}
-
 func (t *core) statusDump(data instance.Status) error {
-	p, tmp := t.statusFilePair()
-	jsonFile, err := os.Create(tmp)
+	p := t.statusFile()
+	tempFile, err := os.CreateTemp(filepath.Dir(p), filepath.Base(p)+".swp.*")
 	if err != nil {
 		return err
 	}
-	defer os.Remove(tmp)
-	enc := json.NewEncoder(jsonFile)
+	tempFileName := tempFile.Name()
+	enc := json.NewEncoder(tempFile)
 	err = enc.Encode(data)
 	if err != nil {
-		t.log.Attr("file", tmp).Errorf("json-encode instance status in %s: %s", tmp, err)
+		os.Remove(tempFileName)
 		return err
 	}
-	if err := os.Rename(tmp, p); err != nil {
-		t.log.Attr("file", tmp).Errorf("install new %s: %s", p, err)
+	if err := os.Rename(tempFileName, p); err != nil {
+		os.Remove(tempFileName)
 		return err
 	}
-	t.log.Debugf("%s: %s dumped", t.path, p)
+	t.log.Debugf("%s dumped", p)
 	if err := t.postInstanceStatus(data); err != nil {
 		// daemon can be down
 		t.log.Debugf("post instance status error: %s", err)
