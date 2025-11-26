@@ -459,7 +459,7 @@ func (t *T) sdWatchDog(ctx context.Context, interval, pubsubTimeout time.Duratio
 			} else if !ok {
 				t.log.Tracef("sd-watchdog: delivery not needed")
 			} else {
-				t.log.Tracef("sd-watchdog: delivered")
+				t.log.Debugf("sd-watchdog: delivered")
 			}
 		case <-tickerPubsub.C:
 			if disabled {
