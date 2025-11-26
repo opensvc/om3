@@ -55,7 +55,7 @@ func (t *Logger) Msgf(format string, a ...any) string {
 }
 
 func (t *Logger) Infof(format string, a ...any) {
-	t.logger.Info().Str(levelKey, "6").Msg(t.Msgf(format, a...))
+	t.logger.Info().Str(levelKey, levelInfo).Msg(t.Msgf(format, a...))
 }
 
 func (t *Logger) Debugf(format string, a ...any) {

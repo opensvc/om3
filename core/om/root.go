@@ -88,7 +88,8 @@ func configureLogger() error {
 	level := "info"
 	if debugFlag {
 		level = "debug"
-	} else if traceFlag {
+	}
+	if traceFlag {
 		level = "trace"
 	}
 	err := logging.Configure(logging.Config{

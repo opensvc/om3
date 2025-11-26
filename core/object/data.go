@@ -84,6 +84,10 @@ func (c *Data[T]) GetPaths() naming.Paths {
 
 // InitData reset package objects data, it can be used for tests.
 func InitData() {
+	if StatusData != nil {
+		StatusData.Lock()
+		defer StatusData.Unlock()
+	}
 	StatusData = NewData[Status]()
 }
 

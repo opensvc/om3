@@ -149,8 +149,22 @@ func DropNode(nodename string) {
 
 // InitData reset package instances data, it can be used for tests.
 func InitData() {
+	if StatusData != nil {
+		StatusData.Lock()
+		defer StatusData.Unlock()
+	}
 	StatusData = NewData[Status]()
+
+	if MonitorData != nil {
+		MonitorData.Lock()
+		defer MonitorData.Unlock()
+	}
 	MonitorData = NewData[Monitor]()
+
+	if ConfigData != nil {
+		ConfigData.Lock()
+		defer ConfigData.Unlock()
+	}
 	ConfigData = NewData[Config]()
 }
 
