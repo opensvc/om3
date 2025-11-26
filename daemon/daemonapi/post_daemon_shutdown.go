@@ -74,7 +74,7 @@ func (a *DaemonAPI) localPostDaemonShutdown(eCtx echo.Context, params api.PostDa
 	)
 	if params.Duration != nil {
 		if v, err := converters.Lookup("duration").Convert(*params.Duration); err != nil {
-			log.Infof("Invalid parameter: field 'duration' with value '%s' validation error: %s", *params.Duration, err)
+			log.Infof("invalid parameter: field 'duration' with value '%s' validation error: %s", *params.Duration, err)
 			return JSONProblemf(eCtx, http.StatusBadRequest, "Invalid parameter", "field 'duration' with value '%s' validation error: %s", *params.Duration, err)
 		} else if timeout := *v.(*time.Duration); timeout > 0 {
 			shutdownCtx, shutdownCancel = context.WithTimeout(shutdownCtx, timeout)
