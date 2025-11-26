@@ -121,6 +121,8 @@ type (
 		firstInstanceCol int
 		firstObjectRow   int
 
+		headerRightCol int
+
 		maxRetries      int
 		displayInterval time.Duration
 
@@ -293,6 +295,7 @@ func NewApp(options *Options) *App {
 	return &App{
 		stack:            make([]viewId, 0),
 		firstInstanceCol: 5,
+		headerRightCol:   3,
 		maxRetries:       600,
 		displayInterval:  500 * time.Millisecond,
 		Frame: &monitor.Frame{
