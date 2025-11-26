@@ -1,10 +1,10 @@
 package findmnt
 
 import (
-	"encoding/json"
 	"fmt"
 	"os"
 	"os/exec"
+	"regexp"
 	"slices"
 	"strings"
 
@@ -135,7 +135,7 @@ func List(dev string, mnt string) (mounts []MountInfo, err error) {
 // When dev is on nfs, -T mnt is skipped to prevent command hang
 // When dev is dir, -S dev is skipped
 func findMntArgs(dev, mnt string, devIsDir, devIsNfs bool) []string {
-	opts := []string{"-J"}
+	opts := []string{"-P"}
 
 	if !devIsDir && dev != "" {
 		opts = append(opts, "-S", dev)
@@ -147,14 +147,50 @@ func findMntArgs(dev, mnt string, devIsDir, devIsNfs bool) []string {
 }
 
 func findMnt(opts []string) (mounts []MountInfo, err error) {
-	data := newInfo()
 	cmd := exec.Command("findmnt", opts...)
 	stdout, err := cmd.Output()
 	if err != nil {
-		return data.Filesystems, nil
+		return nil, nil
 	}
-	err = json.Unmarshal(stdout, &data)
-	return data.Filesystems, err
+	data, err := parseMountInfo(stdout)
+	if err != nil {
+		return nil, err
+	}
+	return data, err
+}
+
+func parseMountInfo(data []byte) ([]MountInfo, error) {
+	lines := strings.Split(string(data), "\n")
+	mounts := make([]MountInfo, 0)
+	re := regexp.MustCompile(`(\w+)="([^"]*)"`)
+	for _, line := range lines {
+		if line == "" {
+			continue
+		}
+		m := re.FindAllStringSubmatch(line, -1)
+		mi := MountInfo{}
+		for _, match := range m {
+			if len(match) != 3 {
+				continue
+			}
+			key := match[1]
+			value := match[2]
+			switch key {
+			case "SOURCE":
+				mi.Source = value
+			case "TARGET":
+				mi.Target = value
+			case "FSTYPE":
+				mi.FsType = value
+			case "OPTIONS":
+				mi.Options = value
+			default:
+				return nil, fmt.Errorf("unexpected findmnt key: %s", key)
+			}
+		}
+		mounts = append(mounts, mi)
+	}
+	return mounts, nil
 }
 
 func isNfsPath(s string) bool {
