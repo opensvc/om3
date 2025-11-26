@@ -100,7 +100,7 @@ func (a *DaemonAPI) getLocalNodeLogs(ctx echo.Context, params api.GetNodeLogsPar
 
 	matches, err := parseLogFilters(params.Filter)
 	if err != nil {
-		log.Infof("Invalid parameter: field 'filter' with value '%s' validation error: %s", *params.Filter, err)
+		log.Infof("invalid parameter: field 'filter' with value '%s' validation error: %s", *params.Filter, err)
 		return JSONProblemf(ctx, http.StatusBadRequest, "Invalid parameter", "field 'filter' with value '%s' validation error: %s", *params.Filter, err)
 	}
 	if params.Paths != nil {
