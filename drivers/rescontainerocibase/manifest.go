@@ -251,7 +251,7 @@ func (t *BT) ManifestWithID(drvID driver.ID) *manifest.T {
 			Converter: "duration",
 			Text:      keywords.NewText(fs, "text/kw/stop_timeout"),
 			Example:   "2m",
-			Default:   "2m30s",
+			Default:   "10s",
 		},
 		keywords.Keyword{
 			Option:    "secrets_environment",
