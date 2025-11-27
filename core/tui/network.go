@@ -4,12 +4,14 @@ import (
 	"context"
 	"fmt"
 	"net/http"
+	"sort"
 
 	"github.com/gdamore/tcell/v2"
+	"github.com/rivo/tview"
+
 	"github.com/opensvc/om3/core/client"
 	"github.com/opensvc/om3/daemon/api"
 	"github.com/opensvc/om3/util/sizeconv"
-	"github.com/rivo/tview"
 )
 
 func (t *App) updateNetworkList() {
@@ -44,8 +46,13 @@ func (t *App) updateNetworkList() {
 		return
 	}
 
-	data := resp.JSON200
-	for _, network := range data.Items {
+	items := resp.JSON200.Items
+
+	sort.Slice(items, func(i, j int) bool {
+		return items[i].Name < items[j].Name
+	})
+
+	for _, network := range items {
 		elements := []string{
 			network.Name,
 			network.Type,
@@ -109,8 +116,16 @@ func (t *App) updateNetworkIpList(name string) {
 		}
 	}
 
-	data := resp.JSON200
-	for _, ip := range data.Items {
+	items := resp.JSON200.Items
+
+	sort.Slice(items, func(i, j int) bool {
+		if items[i].Path != items[j].Path {
+			return items[i].Path < items[j].Path
+		}
+		return items[i].IP < items[j].IP
+	})
+
+	for _, ip := range items {
 		elements := []string{
 			ip.Path,
 			ip.Node,
