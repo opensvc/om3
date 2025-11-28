@@ -211,7 +211,10 @@ func strategyFromContext(ctx echo.Context) string {
 }
 
 func grantsFromContext(ctx echo.Context) rbac.Grants {
-	return ctx.Get("grants").(rbac.Grants)
+	if g, ok := ctx.Get("grants").(rbac.Grants); ok {
+		return g
+	}
+	return rbac.Grants{}
 }
 
 func LogHandler(c echo.Context, name string) *plog.Logger {
