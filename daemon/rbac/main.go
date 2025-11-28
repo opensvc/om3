@@ -201,6 +201,14 @@ func (t Grants) String() string {
 	return strings.Join(strList, " ")
 }
 
+func (t Grants) AsStringList() []string {
+	l := make([]string, 0, len(t))
+	for _, g := range t {
+		l = append(l, string(g))
+	}
+	return l
+}
+
 // Roles returns list of defined roles
 func Roles() []string {
 	l := make([]string, 0)

@@ -202,3 +202,18 @@ func (a *DaemonAPI) createAccessToken(ctx echo.Context, username string, duratio
 		return d, nil
 	}
 }
+
+func (a *DaemonAPI) createAccessTokenWithGrants(username string, duration time.Duration, grantL []string) (d api.AuthAccessToken, err error) {
+	if username == "" {
+		return d, fmt.Errorf("username is empty")
+	}
+	if claims, err := a.xClaimForGrants(grantL); err != nil {
+		return d, fmt.Errorf("create claims: %w", err)
+	} else if tk, exp, err := a.createToken(username, "access", duration, claims); err != nil {
+		return d, fmt.Errorf("create token: %w", err)
+	} else {
+		d.AccessToken = tk
+		d.AccessExpiredAt = exp
+		return d, nil
+	}
+}
