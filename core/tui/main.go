@@ -69,6 +69,19 @@ type (
 		NodeName string
 	}
 
+	HeaderCell struct {
+		Title           string
+		Value           string
+		TitleSelectable bool
+		ValueSelectable bool
+	}
+
+	HeaderObject struct {
+		Left     HeaderCell
+		Right    HeaderCell
+		Populate func(row int)
+	}
+
 	App struct {
 		*monitor.Frame
 

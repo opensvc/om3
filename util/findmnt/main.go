@@ -5,9 +5,11 @@ import (
 	"fmt"
 	"os"
 	"os/exec"
+	"regexp"
 	"slices"
 	"strings"
 
+	"github.com/opensvc/om3/util/capabilities"
 	"github.com/opensvc/om3/util/file"
 )
 
@@ -26,6 +28,11 @@ type (
 
 const (
 	PathNfsSeparator = ':'
+	JsonCapability   = "node.x.findmnt.json"
+)
+
+var (
+	jsonFlag = "-J"
 )
 
 // Has returns true when {dev} is mounted on {mnt} using the findmnt command
@@ -135,7 +142,12 @@ func List(dev string, mnt string) (mounts []MountInfo, err error) {
 // When dev is on nfs, -T mnt is skipped to prevent command hang
 // When dev is dir, -S dev is skipped
 func findMntArgs(dev, mnt string, devIsDir, devIsNfs bool) []string {
-	opts := []string{"-J"}
+	var opts []string
+	if capabilities.Has(JsonCapability) {
+		opts = append(opts, jsonFlag)
+	} else {
+		opts = append(opts, "-P")
+	}
 
 	if !devIsDir && dev != "" {
 		opts = append(opts, "-S", dev)
@@ -147,14 +159,60 @@ func findMntArgs(dev, mnt string, devIsDir, devIsNfs bool) []string {
 }
 
 func findMnt(opts []string) (mounts []MountInfo, err error) {
-	data := newInfo()
 	cmd := exec.Command("findmnt", opts...)
 	stdout, err := cmd.Output()
 	if err != nil {
+		return nil, nil
+	}
+
+	if slices.Contains(opts, jsonFlag) {
+		data := newInfo()
+		if err := json.Unmarshal(stdout, &data); err != nil {
+			return nil, err
+		}
 		return data.Filesystems, nil
 	}
-	err = json.Unmarshal(stdout, &data)
-	return data.Filesystems, err
+	return parseMountInfo(stdout)
+}
+
+func parseMountInfo(data []byte) ([]MountInfo, error) {
+	lines := strings.Split(string(data), "\n")
+	mounts := make([]MountInfo, 0)
+	re := regexp.MustCompile(`(\w+)="([^"]*)"`)
+	for _, line := range lines {
+		if line == "" {
+			continue
+		}
+		m := re.FindAllStringSubmatch(line, -1)
+
+		quoteCount := strings.Count(line, `"`)
+		if quoteCount%2 != 0 {
+			return nil, fmt.Errorf("unmatched quotes in line: %s", line)
+		}
+
+		mi := MountInfo{}
+		for _, match := range m {
+			if len(match) != 3 {
+				continue
+			}
+			key := match[1]
+			value := match[2]
+			switch key {
+			case "SOURCE":
+				mi.Source = value
+			case "TARGET":
+				mi.Target = value
+			case "FSTYPE":
+				mi.FsType = value
+			case "OPTIONS":
+				mi.Options = value
+			default:
+				return nil, fmt.Errorf("unexpected findmnt key: %s", key)
+			}
+		}
+		mounts = append(mounts, mi)
+	}
+	return mounts, nil
 }
 
 func isNfsPath(s string) bool {
@@ -166,4 +224,17 @@ func isNfsPath(s string) bool {
 		return false
 	}
 	return len(split[0]) > 0 && len(split[1]) > 0
+}
+
+func init() {
+	capabilities.Register(CapabilitiesScanner)
+}
+
+func CapabilitiesScanner() ([]string, error) {
+	l := make([]string, 0)
+	cmd := exec.Command("findmnt", jsonFlag)
+	if err := cmd.Run(); err == nil {
+		l = append(l, JsonCapability)
+	}
+	return l, nil
 }
