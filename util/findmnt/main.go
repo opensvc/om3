@@ -1,6 +1,7 @@
 package findmnt
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"os"
@@ -8,6 +9,7 @@ import (
 	"regexp"
 	"slices"
 	"strings"
+	"time"
 
 	"github.com/opensvc/om3/util/capabilities"
 	"github.com/opensvc/om3/util/file"
@@ -232,7 +234,9 @@ func init() {
 
 func CapabilitiesScanner() ([]string, error) {
 	l := make([]string, 0)
-	cmd := exec.Command("findmnt", jsonFlag)
+	ctx, cancel := context.WithTimeout(context.Background(), 1*time.Second)
+	defer cancel()
+	cmd := exec.CommandContext(ctx, "findmnt", jsonFlag, "/")
 	if err := cmd.Run(); err == nil {
 		l = append(l, JsonCapability)
 	}
