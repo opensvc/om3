@@ -35,6 +35,31 @@ TARGET="/mnt/nas/Documents partagés" SOURCE="nas.local:/volume1/documents" FSTY
 				{Target: "/mnt/nas/Documents partagés", Source: "nas.local:/volume1/documents", FsType: "nfs", Options: "rw,relatime,vers=4.1"}}},
 
 		{"Invalid format", `TARGT="/mnt/data" SOUCE="/dev/sdb1" FSTYPE="ext4" OPTIONS="rw,relatime"`, nil},
+		{"Empty", ``, []MountInfo{}},
+
+		{"Missing parts", `TARGET="/foo"`, []MountInfo{{Target: "/foo", Source: "", FsType: "", Options: ""}}},
+
+		{"Extra parts", `TARGET="/" SOURCE="/dev/sda1" FSTYPE="ext4" OPTIONS="rw,relatime,errors=remount-ro" FOOO="foo"`, nil},
+
+		{"Missing TARGET", `SOURCE="/dev/sdb1" FSTYPE="ext4" OPTIONS="rw,relatime"`,
+			[]MountInfo{{Target: "", Source: "/dev/sdb1", FsType: "ext4", Options: "rw,relatime"}},
+		},
+
+		{"Missing SOURCE", `TARGET="/foo" FSTYPE="ext4" OPTIONS="rw,relatime"`,
+			[]MountInfo{{Target: "/foo", Source: "", FsType: "ext4", Options: "rw,relatime"}},
+		},
+
+		{"Missing FSTYPE", `TARGET="/foo" SOURCE="/dev/sdb1" OPTIONS="rw,relatime"`,
+			[]MountInfo{{Target: "/foo", Source: "/dev/sdb1", FsType: "", Options: "rw,relatime"}},
+		},
+
+		{"Missing OPTIONS", `TARGET="/foo" SOURCE="/dev/sdb1" FSTYPE="ext4"`,
+			[]MountInfo{{Target: "/foo", Source: "/dev/sdb1", FsType: "ext4", Options: ""}},
+		},
+
+		{"Invalid format", `TARGT="/mnt/data" SOUCE="/dev/sdb1" FSTYPE="ext4" OPTIONS="rw,relatime"`, nil},
+
+		{"Invalid format 2", `TARGET="x SOURCE="/dev/sdb1" FSTYPE="ext4" OPTIONS="rw,relatime"`, nil},
 	}
 
 	for _, tc := range cases {
