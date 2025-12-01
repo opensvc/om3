@@ -745,10 +745,16 @@ func (t *T) hasNSDev(netns ns.NetNS) bool {
 }
 
 func (t *T) guestDev(netns ns.NetNS) (string, error) {
+	dev, _, err := t.guestDevOrigin(netns)
+	return dev, err
+}
+
+func (t *T) guestDevOrigin(netns ns.NetNS) (string, bool, error) {
 	if dev, err := t.curGuestDev(netns); err != nil {
-		return "", err
+		return "", false, err
 	} else if dev != "" {
-		return dev, nil
+		return dev, true, nil
 	}
-	return t.newGuestDev(netns)
+	dev, err := t.newGuestDev(netns)
+	return dev, false, err
 }
