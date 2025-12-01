@@ -26,11 +26,13 @@ func (t *T) startBridge(ctx context.Context) error {
 			}
 		}()
 	}
-	guestDev, err := t.guestDev(netns)
+	guestDev, exists, err := t.guestDevOrigin(netns)
 	if err != nil {
 		return err
 	}
-	if !t.hasNSDev(netns) {
+	if exists {
+		t.Log().Infof("device already exists")
+	} else if !t.hasNSDev(netns) {
 		hostDev := formatHostDevName(guestDev, pid)
 
 		mtu, err := t.devMTU()

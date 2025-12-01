@@ -23,14 +23,18 @@ func (t *T) startMACVLAN(ctx context.Context) error {
 	}
 	defer netns.Close()
 
-	guestDev, err := t.guestDev(netns)
+	guestDev, exists, err := t.guestDevOrigin(netns)
 	if err != nil {
 		return err
 	}
-
-	if err := t.startMACVLANDev(ctx, netns, pid, guestDev); err != nil {
-		return err
+	if exists {
+		t.Log().Infof("device already exists")
+	} else {
+		if err := t.startMACVLANDev(ctx, netns, pid, guestDev); err != nil {
+			return err
+		}
 	}
+
 	if err := t.startIP(ctx, netns, guestDev); err != nil {
 		return err
 	}
