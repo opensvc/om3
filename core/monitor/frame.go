@@ -14,7 +14,7 @@ import (
 const (
 	staticCols = 3
 
-	sectionThreads int = 1 << iota
+	sectionDaemon int = 1 << iota
 	sectionArbitrators
 	sectionNodes
 	sectionObjects
@@ -22,11 +22,14 @@ const (
 
 var (
 	sectionToID = map[string]int{
-		"threads":     sectionThreads,
+		"daemon":      sectionDaemon,
 		"arbitrators": sectionArbitrators,
 		"nodes":       sectionNodes,
 		"objects":     sectionObjects,
-		"services":    sectionObjects,
+
+		// legacy sections: services and threads
+		"services": sectionObjects,
+		"threads":  sectionDaemon,
 	}
 	green, yellow, hired, red, blue, hiblue, hiblack, bold                                                                                                                                                                 func(a ...interface{}) string
 	iconUp, iconWarning, iconDownIssue, iconPlacementAlert, iconProvisionAlert, iconStandbyDown, iconStandbyUpIssue, iconUndef, iconFrozen, iconDown, iconDRP, iconLeader, iconNotApplicable, iconPreserved, iconStandbyUp string
@@ -121,7 +124,7 @@ func (f *Frame) Render() string {
 	f.setSectionMask()
 	f.scanData()
 	f.w = tabwriter.NewTabWriter(&builder, 1, 1, 1, ' ', 0)
-	if f.hasSection("daemons") {
+	if f.hasSection("daemon") {
 		f.wDaemons()
 	}
 	if f.hasSection("arbitrators") {
