@@ -97,10 +97,7 @@ func (t *Manager) fetchResourceFiles(fetched resource.Files, localInstanceStatus
 			if !ok {
 				// fallback to the t.instStatus cache, ie we never fetched
 				// this file yet.
-				localFile, ok = localResourceStatus.Files.Lookup(peerFile.Name)
-				if !ok {
-					continue
-				}
+				localFile, _ = localResourceStatus.Files.Lookup(peerFile.Name)
 			}
 			if !peerFile.Mtime.After(localFile.Mtime) {
 				continue
