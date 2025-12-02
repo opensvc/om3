@@ -31,8 +31,10 @@ type (
 	Vol interface {
 		Actor
 		Head() string
-		Device() *device.T
-		Devices() device.L
+		ExposedDevice() *device.T
+		ExposedDevices() device.L
+		SubDevice() *device.T
+		SubDevices() device.L
 		HoldersExcept(ctx context.Context, p naming.Path) (naming.Paths, error)
 		Access() (volaccess.T, error)
 		Children() (naming.Relations, error)
@@ -90,14 +92,40 @@ func (t *vol) Head() string {
 	return head
 }
 
-func (t *vol) Devices() device.L {
+func (t *vol) SubDevices() device.L {
+	type devicer interface {
+		SubDevices() device.L
+	}
+	rids := t.config.GetStrings(key.Parse("devices_from"))
+	devs := make(device.L, 0)
+	if len(rids) == 0 {
+		dev := t.SubDevice()
+		if dev != nil {
+			devs = append(devs, *dev)
+		}
+		return devs
+	}
+	t.ConfigureResources()
+	for _, rid := range rids {
+		r := t.ResourceByID(rid)
+		if r == nil {
+			continue
+		}
+		if d, ok := r.(devicer); ok {
+			devs = append(devs, d.SubDevices()...)
+		}
+	}
+	return devs
+}
+
+func (t *vol) ExposedDevices() device.L {
 	type devicer interface {
 		ExposedDevices() device.L
 	}
 	rids := t.config.GetStrings(key.Parse("devices_from"))
 	devs := make(device.L, 0)
 	if len(rids) == 0 {
-		dev := t.Device()
+		dev := t.ExposedDevice()
 		if dev != nil {
 			devs = append(devs, *dev)
 		}
@@ -116,7 +144,41 @@ func (t *vol) Devices() device.L {
 	return devs
 }
 
-func (t *vol) Device() *device.T {
+func (t *vol) SubDevice() *device.T {
+	type devicer interface {
+		SubDevices() device.L
+	}
+	rids := make([]string, 0)
+	candidates := make(map[string]devicer)
+	l := t.ResourcesByDrivergroups([]driver.Group{
+		driver.GroupDisk,
+		driver.GroupVolume,
+	})
+	for _, r := range l {
+		if r.Manifest().DriverID.Name == "scsireserv" {
+			continue
+		}
+		var i interface{} = r
+		o, ok := i.(devicer)
+		if !ok {
+			continue
+		}
+		rid := r.RID()
+		candidates[rid] = o
+		rids = append(rids, rid)
+	}
+	sort.Sort(sort.Reverse(sort.StringSlice(rids)))
+	for _, rid := range rids {
+		devs := candidates[rid].SubDevices()
+		if len(devs) == 0 {
+			continue
+		}
+		return &devs[0]
+	}
+	return nil
+}
+
+func (t *vol) ExposedDevice() *device.T {
 	type devicer interface {
 		ExposedDevices() device.L
 	}
@@ -139,7 +201,7 @@ func (t *vol) Device() *device.T {
 		candidates[rid] = o
 		rids = append(rids, rid)
 	}
-	sort.Strings(rids)
+	sort.Sort(sort.Reverse(sort.StringSlice(rids)))
 	for _, rid := range rids {
 		devs := candidates[rid].ExposedDevices()
 		if len(devs) == 0 {

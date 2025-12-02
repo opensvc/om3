@@ -129,7 +129,7 @@ func HostDevpath(s string, namespace string) (string, error) {
 	default:
 		return s, fmt.Errorf("%w: %s(%s)", ErrAccess, volPath, st.Avail)
 	}
-	dev := vol.Device()
+	dev := vol.ExposedDevice()
 	if dev == nil {
 		return s, fmt.Errorf("%s is not a device-capable vol", s)
 	}
