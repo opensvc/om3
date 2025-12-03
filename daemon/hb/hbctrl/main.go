@@ -45,6 +45,7 @@ import (
 	"github.com/opensvc/om3/daemon/daemonsubsystem"
 	"github.com/opensvc/om3/daemon/hbcache"
 	"github.com/opensvc/om3/daemon/msgbus"
+	"github.com/opensvc/om3/util/hostname"
 	"github.com/opensvc/om3/util/plog"
 	"github.com/opensvc/om3/util/pubsub"
 )
@@ -194,6 +195,8 @@ func (c *C) run() {
 	defer c.log.Infof("stopped: %v", events)
 	updateDaemonDataHeartbeatsTicker := time.NewTicker(time.Second)
 	defer updateDaemonDataHeartbeatsTicker.Stop()
+	labelLocalhost := pubsub.Label{"node", hostname.Hostname()}
+	labelAliveStale := pubsub.Label{"hb", "alive/stale"}
 
 	c.wg.Add(1)
 	go func() {
@@ -279,15 +282,14 @@ func (c *C) run() {
 				} else {
 					events[o.Name] = 1
 				}
-				label := pubsub.Label{"hb", "ping/stale"}
 				if o.Name == evStale {
 					c.log.Warnf("event %s for %s from %s", o.Name, o.Nodename, o.HbID)
 					changed = true
-					pub.Pub(&msgbus.HeartbeatStale{Nodename: o.Nodename, HbID: o.HbID, Time: time.Now()}, label)
+					pub.Pub(&msgbus.HeartbeatStale{Nodename: o.Nodename, HbID: o.HbID, Time: time.Now()}, labelLocalhost, labelAliveStale)
 				} else {
 					c.log.Infof("event %s for %s from %s", o.Name, o.Nodename, o.HbID)
 					changed = true
-					pub.Pub(&msgbus.HeartbeatAlive{Nodename: o.Nodename, HbID: o.HbID, Time: time.Now()}, label)
+					pub.Pub(&msgbus.HeartbeatAlive{Nodename: o.Nodename, HbID: o.HbID, Time: time.Now()}, labelLocalhost, labelAliveStale)
 				}
 				if remote, ok := remotes[o.Nodename]; ok {
 					if strings.HasSuffix(o.HbID, ".rx") {
@@ -296,7 +298,7 @@ func (c *C) run() {
 							if remote.rxBeating == 0 {
 								c.log.Infof("beating node %s", o.Nodename)
 								changed = true
-								pub.Pub(&msgbus.NodeAlive{Node: o.Nodename}, pubsub.Label{"node", o.Nodename})
+								pub.Pub(&msgbus.NodeAlive{Node: o.Nodename}, labelLocalhost)
 							}
 							remote.rxBeating++
 						case evStale:
@@ -308,7 +310,7 @@ func (c *C) run() {
 						if remote.rxBeating == 0 {
 							c.log.Infof("stale node %s", o.Nodename)
 							changed = true
-							pub.Pub(&msgbus.NodeStale{Node: o.Nodename}, pubsub.Label{"node", o.Nodename})
+							pub.Pub(&msgbus.NodeStale{Node: o.Nodename}, labelLocalhost)
 						}
 						remotes[o.Nodename] = remote
 					}

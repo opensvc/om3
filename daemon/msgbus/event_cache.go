@@ -22,6 +22,10 @@ func (data *ClusterData) ExtractEvents(m any, labels pubsub.Labels) ([]any, erro
 		return data.daemonRunnerImonUpdated(labels)
 	case *DaemonSchedulerUpdated:
 		return data.daemonSchedulerUpdated(labels)
+	case *HeartbeatAlive:
+		return data.heartbeatAlive(labels)
+	case *HeartbeatStale:
+		return data.heartbeatStale(labels)
 	case *ObjectStatusUpdated:
 		return data.objectStatusUpdated(labels)
 	case *NodePoolStatusUpdated:
