@@ -315,7 +315,7 @@ func FlagModuleset(flags *pflag.FlagSet, p *string) {
 }
 
 func FlagOutputSections(flags *pflag.FlagSet, p *string) {
-	flags.StringVar(p, "sections", "", "sections to include in the output (ex: threads,nodes,objects)")
+	flags.StringVar(p, "sections", "", "sections to include in the output (ex: daemon,arbitrators,nodes,objects)")
 }
 
 func FlagRoles(flags *pflag.FlagSet, p *[]string) {

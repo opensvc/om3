@@ -237,6 +237,9 @@ func (t *T) undefine() error {
 
 func (t *T) migrate(to string) error {
 	toUri := fmt.Sprintf("qemu+ssh://%s/system", to)
+	if sshKeyFile := t.GetSSHKeyFile(); sshKeyFile != "" {
+		toUri += fmt.Sprintf("?keyfile=%s", sshKeyFile)
+	}
 	cmd := command.New(
 		command.WithName("virsh"),
 		command.WithVarArgs("migrate", "--live", "--persistent", t.Name, toUri),

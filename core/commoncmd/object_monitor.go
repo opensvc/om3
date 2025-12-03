@@ -5,9 +5,10 @@ import (
 	"os"
 	"time"
 
+	"github.com/spf13/cobra"
+
 	"github.com/opensvc/om3/core/client"
 	"github.com/opensvc/om3/core/monitor"
-	"github.com/spf13/cobra"
 )
 
 type (
