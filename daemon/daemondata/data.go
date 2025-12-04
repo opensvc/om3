@@ -88,6 +88,8 @@ type (
 		// set to false after a hb message is created
 		needMsg bool
 
+		hasEventHeartbeatStaleOrAlive bool
+
 		labelLocalhost pubsub.Label
 	}
 
@@ -300,10 +302,11 @@ func (d *data) run(ctx context.Context, cmdC <-chan Caller, hbRecvQ <-chan *hbty
 				d.log.Tracef("current hb msg mode %d", d.hbMsgPatchLength[d.localNode])
 				needMessage = true
 				if subHbRefreshAdaptiveInterval < daemonenv.HeartbeatStatusRefreshMaximumInterval {
-					subHbRefreshAdaptiveInterval = max(2*subHbRefreshAdaptiveInterval, daemonenv.HeartbeatStatusRefreshMaximumInterval)
+					subHbRefreshAdaptiveInterval = min(2*subHbRefreshAdaptiveInterval, daemonenv.HeartbeatStatusRefreshMaximumInterval)
 					subHbRefreshTicker.Reset(subHbRefreshAdaptiveInterval)
-					d.log.Tracef("adapt interval for sub hb stat: %s", subHbRefreshAdaptiveInterval)
+					d.log.Debugf("adapt interval for sub hb stat: %s", subHbRefreshAdaptiveInterval)
 				}
+				d.hasEventHeartbeatStaleOrAlive = false
 			default:
 			}
 			select {
@@ -322,11 +325,18 @@ func (d *data) run(ctx context.Context, cmdC <-chan Caller, hbRecvQ <-chan *hbty
 					d.log.Errorf("queue hb message: %s %s", err)
 				} else {
 					d.needMsg = false
+					needHbRefresh := false
 					if hbMsgType != d.hbMessageType {
-						subHbRefreshAdaptiveInterval = propagationInterval
-						d.log.Tracef("hb mg type changed, adapt interval for sub hb stat: %s", subHbRefreshAdaptiveInterval)
-						subHbRefreshTicker.Reset(subHbRefreshAdaptiveInterval)
 						hbMsgType = d.hbMessageType
+						needHbRefresh = true
+					}
+					if needHbRefresh || d.hasEventHeartbeatStaleOrAlive {
+						if subHbRefreshAdaptiveInterval > 4*propagationInterval {
+							subHbRefreshAdaptiveInterval = 4 * propagationInterval
+							d.log.Debugf("hb mg type changed, adapt interval for sub hb stat: %s", subHbRefreshAdaptiveInterval)
+							subHbRefreshTicker.Reset(subHbRefreshAdaptiveInterval)
+						}
+						d.hasEventHeartbeatStaleOrAlive = false
 					}
 				}
 			}
@@ -397,9 +407,11 @@ func (d *data) startSubscriptions(ctx context.Context, qs pubsub.QueueSizer) {
 	sub.AddFilter(&msgbus.DaemonSchedulerUpdated{}, d.labelLocalhost)
 	sub.AddFilter(&msgbus.DaemonStatusUpdated{}, d.labelLocalhost)
 
+	sub.AddFilter(&msgbus.HeartbeatAlive{}, d.labelLocalhost)
 	sub.AddFilter(&msgbus.HeartbeatRotateError{}, d.labelLocalhost)
 	sub.AddFilter(&msgbus.HeartbeatRotateSuccess{}, d.labelLocalhost)
 	sub.AddFilter(&msgbus.HeartbeatSecretUpdated{}, d.labelLocalhost)
+	sub.AddFilter(&msgbus.HeartbeatStale{}, d.labelLocalhost)
 
 	sub.AddFilter(&msgbus.InstanceConfigDeleted{}, d.labelLocalhost)
 	sub.AddFilter(&msgbus.InstanceConfigFor{}, d.labelLocalhost)
@@ -532,12 +544,16 @@ func (d *data) onSubEvent(i interface{}) {
 		}
 	}
 
-	if ev, ok := i.(*msgbus.ClusterConfigUpdated); ok {
+	switch i.(type) {
+	case *msgbus.ClusterConfigUpdated:
+		ev := i.(*msgbus.ClusterConfigUpdated)
 		d.updateClusterNodes(ev.NodesAdded, ev.NodesRemoved)
 		for _, s := range ev.NodesRemoved {
 			d.log.Infof("removed cluster node => drop peer node %s data", s)
 			d.dropPeer(s)
 		}
+	case *msgbus.HeartbeatStale, *msgbus.HeartbeatAlive:
+		d.hasEventHeartbeatStaleOrAlive = true
 	}
 
 	if msg, ok := i.(pubsub.Messager); ok {
