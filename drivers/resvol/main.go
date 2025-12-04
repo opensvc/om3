@@ -547,7 +547,7 @@ func (t *T) exposedDevice() *device.T {
 	if err != nil {
 		return nil
 	}
-	return volume.Device()
+	return volume.ExposedDevice()
 }
 
 func (t *T) ExposedDevices() device.L {
@@ -555,7 +555,15 @@ func (t *T) ExposedDevices() device.L {
 	if err != nil {
 		return nil
 	}
-	return volume.Devices()
+	return volume.ExposedDevices()
+}
+
+func (t *T) SubDevices() device.L {
+	volume, err := t.Volume()
+	if err != nil {
+		return nil
+	}
+	return volume.SubDevices()
 }
 
 // Configure installs a resource backpointer in the DataStoreInstall
