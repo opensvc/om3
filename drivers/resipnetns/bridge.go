@@ -51,10 +51,6 @@ func (t *T) startBridge(ctx context.Context) error {
 				return err
 			}
 		}
-		if err := t.linkSetMaster(hostDev, t.Dev); err != nil {
-			t.linkDel(tmpGuestDev)
-			return err
-		}
 		if err := t.linkSetNsPidAndNameAndUp(tmpGuestDev, pid, guestDev); err != nil {
 			t.linkDel(tmpGuestDev)
 			return err
@@ -63,6 +59,10 @@ func (t *T) startBridge(ctx context.Context) error {
 			return t.linkDelIn(guestDev, netns.Path())
 		})
 		if err := t.linkSetMacIn(guestDev, t.MacAddr, netns.Path()); err != nil {
+			return err
+		}
+		if err := t.linkSetMaster(hostDev, t.Dev); err != nil {
+			t.linkDel(tmpGuestDev)
 			return err
 		}
 	}
