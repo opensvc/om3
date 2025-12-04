@@ -22,6 +22,10 @@ func (data *ClusterData) ExtractEvents(m any, labels pubsub.Labels) ([]any, erro
 		return data.daemonRunnerImonUpdated(labels)
 	case *DaemonSchedulerUpdated:
 		return data.daemonSchedulerUpdated(labels)
+	case *HeartbeatAlive:
+		return data.heartbeatAlive(labels)
+	case *HeartbeatStale:
+		return data.heartbeatStale(labels)
 	case *ObjectStatusUpdated:
 		return data.objectStatusUpdated(labels)
 	case *NodePoolStatusUpdated:
@@ -34,6 +38,8 @@ func (data *ClusterData) ExtractEvents(m any, labels pubsub.Labels) ([]any, erro
 		return data.instanceStatusUpdated(labels)
 	case *NodeConfigUpdated:
 		return data.nodeConfigUpdated(labels)
+	case *NodeAlive:
+		return data.nodeAlive(labels)
 	case *NodeDataUpdated:
 		return data.nodeDataUpdated(labels)
 	case *NodeMonitorUpdated:
@@ -42,6 +48,8 @@ func (data *ClusterData) ExtractEvents(m any, labels pubsub.Labels) ([]any, erro
 		return data.nodeOsPathsUpdated(labels)
 	case *NodeStatsUpdated:
 		return data.nodeStatsUpdated(labels)
+	case *NodeStale:
+		return data.nodeStale(labels)
 	case *NodeStatusUpdated:
 		return data.nodeStatusUpdated(labels)
 	}

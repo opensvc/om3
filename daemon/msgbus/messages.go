@@ -451,7 +451,7 @@ type (
 
 	HeartbeatAlive struct {
 		pubsub.Msg `yaml:",inline"`
-		Nodename   string    `json:"to" yaml:"to"`
+		Nodename   string    `json:"node" yaml:"node"`
 		HbID       string    `json:"hb_id" yaml:"hb_id"`
 		Time       time.Time `json:"at" yaml:"at"`
 	}

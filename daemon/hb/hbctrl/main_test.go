@@ -12,6 +12,7 @@ import (
 	"github.com/opensvc/om3/daemon/daemondata"
 	"github.com/opensvc/om3/daemon/hbcache"
 	"github.com/opensvc/om3/daemon/msgbus"
+	"github.com/opensvc/om3/util/hostname"
 	"github.com/opensvc/om3/util/plog"
 	"github.com/opensvc/om3/util/pubsub"
 )
@@ -51,6 +52,7 @@ func TestCmdSetPeerSuccessCreatesPublishNodeAliveStale(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 	ctx = bootstrapDaemon(ctx, t)
+	labelLocalhost := pubsub.NewLabels("node", hostname.Hostname())
 
 	pubDelay = 10 * time.Millisecond
 	testCtrl := setupCtrl(ctx)
@@ -82,7 +84,7 @@ func TestCmdSetPeerSuccessCreatesPublishNodeAliveStale(t *testing.T) {
 			},
 			readPingDuration: 200 * time.Millisecond,
 			expected: []any{
-				msgbus.NodeAlive{Msg: pubsub.Msg{Labels: pubsub.NewLabels("node", "node5")}, Node: "node5"},
+				msgbus.NodeAlive{Msg: pubsub.Msg{Labels: labelLocalhost}, Node: "node5"},
 			},
 		},
 
@@ -98,9 +100,9 @@ func TestCmdSetPeerSuccessCreatesPublishNodeAliveStale(t *testing.T) {
 			},
 			readPingDuration: 200 * time.Millisecond,
 			expected: []any{
-				msgbus.NodeAlive{Msg: pubsub.Msg{Labels: pubsub.NewLabels("node", "node6")}, Node: "node6"},
-				msgbus.NodeStale{Msg: pubsub.Msg{Labels: pubsub.NewLabels("node", "node6")}, Node: "node6"},
-				msgbus.NodeAlive{Msg: pubsub.Msg{Labels: pubsub.NewLabels("node", "node6")}, Node: "node6"},
+				msgbus.NodeAlive{Msg: pubsub.Msg{Labels: labelLocalhost}, Node: "node6"},
+				msgbus.NodeStale{Msg: pubsub.Msg{Labels: labelLocalhost}, Node: "node6"},
+				msgbus.NodeAlive{Msg: pubsub.Msg{Labels: labelLocalhost}, Node: "node6"},
 			},
 		},
 
@@ -135,7 +137,7 @@ func TestCmdSetPeerSuccessCreatesPublishNodeAliveStale(t *testing.T) {
 			},
 			readPingDuration: 200 * time.Millisecond,
 			expected: []any{
-				msgbus.NodeAlive{Msg: pubsub.Msg{Labels: pubsub.NewLabels("node", "node7")}, Node: "node7"},
+				msgbus.NodeAlive{Msg: pubsub.Msg{Labels: labelLocalhost}, Node: "node7"},
 			},
 		},
 
@@ -151,8 +153,8 @@ func TestCmdSetPeerSuccessCreatesPublishNodeAliveStale(t *testing.T) {
 			},
 			readPingDuration: 200 * time.Millisecond,
 			expected: []any{
-				msgbus.NodeAlive{Msg: pubsub.Msg{Labels: pubsub.NewLabels("node", "node8")}, Node: "node8"},
-				msgbus.NodeStale{Msg: pubsub.Msg{Labels: pubsub.NewLabels("node", "node8")}, Node: "node8"},
+				msgbus.NodeAlive{Msg: pubsub.Msg{Labels: labelLocalhost}, Node: "node8"},
+				msgbus.NodeStale{Msg: pubsub.Msg{Labels: labelLocalhost}, Node: "node8"},
 			},
 		},
 
@@ -173,14 +175,14 @@ func TestCmdSetPeerSuccessCreatesPublishNodeAliveStale(t *testing.T) {
 			},
 			readPingDuration: 500 * time.Millisecond,
 			expected: []any{
-				msgbus.NodeAlive{Msg: pubsub.Msg{Labels: pubsub.NewLabels("node", "node9")}, Node: "node9"},
-				msgbus.NodeStale{Msg: pubsub.Msg{Labels: pubsub.NewLabels("node", "node9")}, Node: "node9"},
-				msgbus.NodeAlive{Msg: pubsub.Msg{Labels: pubsub.NewLabels("node", "node9")}, Node: "node9"},
-				msgbus.NodeStale{Msg: pubsub.Msg{Labels: pubsub.NewLabels("node", "node9")}, Node: "node9"},
-				msgbus.NodeAlive{Msg: pubsub.Msg{Labels: pubsub.NewLabels("node", "node9")}, Node: "node9"},
-				msgbus.NodeStale{Msg: pubsub.Msg{Labels: pubsub.NewLabels("node", "node9")}, Node: "node9"},
-				msgbus.NodeAlive{Msg: pubsub.Msg{Labels: pubsub.NewLabels("node", "node9")}, Node: "node9"},
-				msgbus.NodeStale{Msg: pubsub.Msg{Labels: pubsub.NewLabels("node", "node9")}, Node: "node9"},
+				msgbus.NodeAlive{Msg: pubsub.Msg{Labels: labelLocalhost}, Node: "node9"},
+				msgbus.NodeStale{Msg: pubsub.Msg{Labels: labelLocalhost}, Node: "node9"},
+				msgbus.NodeAlive{Msg: pubsub.Msg{Labels: labelLocalhost}, Node: "node9"},
+				msgbus.NodeStale{Msg: pubsub.Msg{Labels: labelLocalhost}, Node: "node9"},
+				msgbus.NodeAlive{Msg: pubsub.Msg{Labels: labelLocalhost}, Node: "node9"},
+				msgbus.NodeStale{Msg: pubsub.Msg{Labels: labelLocalhost}, Node: "node9"},
+				msgbus.NodeAlive{Msg: pubsub.Msg{Labels: labelLocalhost}, Node: "node9"},
+				msgbus.NodeStale{Msg: pubsub.Msg{Labels: labelLocalhost}, Node: "node9"},
 			},
 		},
 	}
@@ -189,8 +191,8 @@ func TestCmdSetPeerSuccessCreatesPublishNodeAliveStale(t *testing.T) {
 			tNode := tc.node
 
 			sub := pubsub.SubFromContext(ctx, name, pubsub.Timeout(time.Second))
-			sub.AddFilter(&msgbus.NodeAlive{}, pubsub.Label{"node", tNode})
-			sub.AddFilter(&msgbus.NodeStale{}, pubsub.Label{"node", tNode})
+			sub.AddFilter(&msgbus.NodeAlive{})
+			sub.AddFilter(&msgbus.NodeStale{})
 			sub.Start()
 			defer func() {
 				_ = sub.Stop()
@@ -206,11 +208,19 @@ func TestCmdSetPeerSuccessCreatesPublishNodeAliveStale(t *testing.T) {
 					case i := <-sub.C:
 						switch msg := i.(type) {
 						case *msgbus.NodeAlive:
-							t.Logf("receive msgbus.NodeAlive notification: ---- %+v", msg)
-							pingMsgs = append(pingMsgs, *msg)
+							if msg.Node != tNode {
+								t.Logf("skip msgbus.NodeAlive notification: ---- %+v", msg)
+							} else {
+								t.Logf("receive msgbus.NodeAlive notification: ---- %+v", msg)
+								pingMsgs = append(pingMsgs, *msg)
+							}
 						case *msgbus.NodeStale:
-							t.Logf("receive msgbus.NodeStale notification: ---- %+v", msg)
-							pingMsgs = append(pingMsgs, *msg)
+							if msg.Node != tNode {
+								t.Logf("skip msgbus.NodeStale notification: ---- %+v", msg)
+							} else {
+								t.Logf("receive msgbus.NodeStale notification: ---- %+v", msg)
+								pingMsgs = append(pingMsgs, *msg)
+							}
 						}
 					case <-timeout:
 						t.Logf("timeout reached, NodeAlive/NodeStale messages are: %+v", pingMsgs)
