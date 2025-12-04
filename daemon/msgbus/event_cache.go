@@ -38,6 +38,8 @@ func (data *ClusterData) ExtractEvents(m any, labels pubsub.Labels) ([]any, erro
 		return data.instanceStatusUpdated(labels)
 	case *NodeConfigUpdated:
 		return data.nodeConfigUpdated(labels)
+	case *NodeAlive:
+		return data.nodeAlive(labels)
 	case *NodeDataUpdated:
 		return data.nodeDataUpdated(labels)
 	case *NodeMonitorUpdated:
@@ -46,6 +48,8 @@ func (data *ClusterData) ExtractEvents(m any, labels pubsub.Labels) ([]any, erro
 		return data.nodeOsPathsUpdated(labels)
 	case *NodeStatsUpdated:
 		return data.nodeStatsUpdated(labels)
+	case *NodeStale:
+		return data.nodeStale(labels)
 	case *NodeStatusUpdated:
 		return data.nodeStatusUpdated(labels)
 	}
