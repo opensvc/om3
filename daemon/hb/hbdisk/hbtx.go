@@ -110,6 +110,8 @@ func (t *tx) Start(cmdC chan<- interface{}, msgC <-chan []byte) error {
 		var b []byte
 		ticker := time.NewTicker(t.interval)
 		defer ticker.Stop()
+		tickerChecSignature := time.NewTicker(120 * t.interval)
+		defer tickerChecSignature.Stop()
 		var reason string
 		for {
 			select {
@@ -122,6 +124,8 @@ func (t *tx) Start(cmdC chan<- interface{}, msgC <-chan []byte) error {
 				ticker.Reset(t.interval)
 			case <-ticker.C:
 				reason = reasonTick
+			case <-tickerChecSignature.C:
+				t.base.checkSignature()
 			}
 			if len(b) == 0 {
 				continue

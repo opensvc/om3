@@ -122,11 +122,15 @@ func (t *rx) Start(cmdC chan<- any, msgC chan<- *hbtype.Msg) error {
 		crypto := hbcrypto.CryptoFromContext(ctx)
 		ticker := time.NewTicker(t.interval)
 		defer ticker.Stop()
+		tickerChecSignature := time.NewTicker(120 * t.interval)
+		defer tickerChecSignature.Stop()
 		for {
 			select {
 			case <-ticker.C:
 				t.crypto = crypto.Load()
 				t.onTick()
+			case <-tickerChecSignature.C:
+				t.base.checkSignature()
 			case <-ctx.Done():
 				t.cancel()
 				return

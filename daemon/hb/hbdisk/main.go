@@ -37,6 +37,7 @@ type (
 		log             *plog.Logger
 		localhost       string
 		maxSlots        int
+		invalidSig      bool
 	}
 )
 
@@ -185,4 +186,19 @@ func getSlotAlert(nodename string, slot int) daemonsubsystem.Alert {
 		level = "warning"
 	}
 	return daemonsubsystem.Alert{Severity: level, Message: msg}
+}
+
+func (t *base) checkSignature() {
+	if err := t.device.ensureHBSignature(); err != nil {
+		t.log.Warnf("signature check failed: %s", err)
+		if !t.invalidSig {
+			t.log.Warnf("signature is now invalid")
+		}
+		t.invalidSig = true
+	} else {
+		if t.invalidSig {
+			t.log.Infof("signature is now valid")
+		}
+		t.invalidSig = false
+	}
 }
