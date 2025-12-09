@@ -62,11 +62,44 @@ func getSizeAndUnit(size float64, base float64, _map []string, exact bool) (floa
 	return size, _map[i]
 }
 
+// PrintSigFixed formats a float to N significant digits using fixed-point notation.
+func PrintSigFixed(value float64, N int) string {
+	if value == 0 {
+		// Handle zero case to avoid log(0)
+		return fmt.Sprintf("0.%s", strings.Repeat("0", N-1))
+	}
+
+	// Calculate the number of digits before the decimal point (e.g., 123.45 has 3)
+	// math.Log10(123.45) is approx 2.09. math.Floor(2.09) is 2. 2 + 1 = 3 digits.
+	// For small numbers like 0.00123, log10 is -2.9. math.Floor(-2.9) is -3. -3 + 1 = -2.
+	digitsBeforeDecimal := int(math.Floor(math.Log10(math.Abs(value)))) + 1
+
+	// Calculate the required decimal precision for %f
+	// Decimal places (D) = N (significant digits) - digitsBeforeDecimal
+	decimalPlaces := N - digitsBeforeDecimal
+
+	if decimalPlaces < 0 {
+		// If the number is large (e.g., 12345 and N=3), 3 - 5 = -2.
+		// Set precision to 0, and the formatting will handle rounding to the nearest power of 10.
+		decimalPlaces = 0
+	}
+
+	// Use %f with the calculated decimal precision
+	format := fmt.Sprintf("%%.%df", decimalPlaces)
+
+	s := fmt.Sprintf(format, value)
+	if strings.Contains(s, ".") {
+		s = strings.TrimRight(s, "0")
+		s = strings.TrimRight(s, ".")
+	}
+	return s
+}
+
 // CustomSize returns a human-readable approximation of a size
 // using custom format and precision.
 func CustomSize(format string, precision int, size float64, base float64, _map []string) string {
 	size, unit := getSizeAndUnit(size, base, _map, false)
-	return fmt.Sprintf(format, precision, size, unit)
+	return PrintSigFixed(size, precision) + unit
 }
 
 func CustomExactSize(format string, precision int, size float64, base float64, _map []string) string {

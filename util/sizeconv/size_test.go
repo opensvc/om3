@@ -33,11 +33,26 @@ var (
 		"8EiB",
 		"badValue",
 	}
-	compactBSizeRenderings = map[float64]string{
+	exactCompactBSizeRenderings = map[float64]string{
 		float64(1024 * MB):  "1000000k",
-		float64(1001 * KiB): "1001k",
+		float64(1023 * KiB): "1023k",
+		float64(1024 * KiB): "1m",
+		float64(1025 * KiB): "1025k",
 		float64(100 * MiB):  "100m",
 		float64(1 * GiB):    "1g",
+	}
+	compactBSizeRenderings = map[float64]string{
+		float64(2):               "2",
+		float64(1025):            "1k",
+		float64(GiB * GiB * GiB): "1024y",
+		float64(1024 * MB):       "977m",
+		float64(1500 * KiB):      "1.46m",
+		float64(1023 * KiB):      "1023k",
+		float64(1024 * KiB):      "1m",
+		float64(1025 * KiB):      "1m",
+		float64(999 * KiB):       "999k",
+		float64(100 * MiB):       "100m",
+		float64(1 * GiB):         "1g",
 	}
 )
 
@@ -56,9 +71,15 @@ func TestFromSize(t *testing.T) {
 		}
 	})
 	t.Run("compact exact bin size renderings", func(t *testing.T) {
-		for f, expected := range compactBSizeRenderings {
+		for f, expected := range exactCompactBSizeRenderings {
 			result := ExactBSizeCompact(f)
 			assert.Equalf(t, expected, result, "ExactBSizeCompact(%f) -> %s", f, result)
+		}
+	})
+	t.Run("compact bin size renderings", func(t *testing.T) {
+		for f, expected := range compactBSizeRenderings {
+			result := BSizeCompact(f)
+			assert.Equalf(t, expected, result, "BSizeCompact(%f) -> %s", f, result)
 		}
 	})
 }
