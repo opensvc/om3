@@ -1,0 +1,446 @@
+package resdiskrados
+
+import (
+	"context"
+	"encoding/json"
+	"fmt"
+
+	"github.com/opensvc/om3/v3/core/actionrollback"
+	"github.com/opensvc/om3/v3/core/provisioned"
+	"github.com/opensvc/om3/v3/core/resource"
+	"github.com/opensvc/om3/v3/core/status"
+	"github.com/opensvc/om3/v3/drivers/resdisk"
+	"github.com/opensvc/om3/v3/util/command"
+	"github.com/opensvc/om3/v3/util/device"
+	"github.com/opensvc/om3/v3/util/hostname"
+	"github.com/opensvc/om3/v3/util/sizeconv"
+	"github.com/opensvc/om3/v3/util/udevadm"
+	"github.com/rs/zerolog"
+)
+
+type (
+	T struct {
+		resdisk.T
+		Name       string `json:"name"`
+		ObjectFQDN string `json:"object_fqdn"`
+		Size       string `json:"size"`
+		Access     string `json:"access"`
+	}
+
+	RBDMap struct {
+		ID        string `json:"id"`
+		Pool      string `json:"pool"`
+		Namespace string `json:"namespace"`
+		Name      string `json:"name"`
+		Snap      string `json:"snap"`
+		Device    string `json:"device"`
+	}
+
+	RBDInfo struct {
+		Name            string         `json:"name"`
+		ID              string         `json:"id"`
+		Size            int64          `json:"size"`
+		Objects         int            `json:"objects"`
+		Order           int            `json:"order"`
+		ObjectSize      int64          `json:"object_size"`
+		SnapshotCount   int            `json:"snapshot_count"`
+		BlockNamePrefix string         `json:"block_name_prefix"`
+		Format          int            `json:"format"`
+		Features        []string       `json:"features"`
+		OpFeatures      []any          `json:"op_features"`
+		Flags           []any          `json:"flags"`
+		CreateTimestamp string         `json:"create_timestamp"`
+		AccessTimestamp string         `json:"access_timestamp"`
+		ModifyTimestamp string         `json:"modify_timestamp"`
+		Parent          *RBDParentInfo `json:"parent,omitempty"`
+	}
+
+	RBDParentInfo struct {
+		ID            string `json:"id"`
+		Image         string `json:"image"`
+		Overlap       string `json:"overlap"`
+		Pool          string `json:"pool"`
+		PoolNamespace string `json:"pool_namespace"`
+		Snapshot      string `json:"snapshot"`
+		Trash         bool   `json:"trash"`
+	}
+
+	RBDLock struct {
+		ID      string `json:"id"`
+		Locker  string `json:"locker"`
+		Address string `json:"address"`
+	}
+)
+
+func New() resource.Driver {
+	t := &T{}
+	return t
+}
+
+func (t RBDMap) ImageSpec() string {
+	s := t.Pool
+	if t.Namespace != "" {
+		s += "/" + t.Namespace
+	}
+	return s + "/" + t.Name
+}
+
+func (t *T) Start(ctx context.Context) error {
+	if err := t.mapDevice(ctx); err != nil {
+		return err
+	}
+	actionrollback.Register(ctx, func(ctx context.Context) error {
+		return t.unmapDevice(ctx)
+	})
+	/*
+		if err := t.lockDevice(ctx); err != nil {
+			return err
+		}
+		actionrollback.Register(ctx, func(ctx context.Context) error {
+			return t.unlockDevice(ctx)
+		})
+	*/
+	return nil
+}
+
+func (t *T) mapDevice(ctx context.Context) error {
+	if v, err := t.isMapped(ctx); err != nil {
+		return err
+	} else if v {
+		t.Log().Infof("%s is already mapped", t.Name)
+		return nil
+	}
+	cmd := command.New(
+		command.WithContext(ctx),
+		command.WithName("rbd"),
+		command.WithVarArgs("map", t.Name),
+		command.WithLogger(t.Log()),
+		command.WithCommandLogLevel(zerolog.InfoLevel),
+		command.WithStdoutLogLevel(zerolog.InfoLevel),
+		command.WithStderrLogLevel(zerolog.ErrorLevel),
+	)
+	return cmd.Run()
+}
+
+func (t *T) unmapDevice(ctx context.Context) error {
+	if v, err := t.isMapped(ctx); err != nil {
+		return err
+	} else if !v {
+		t.Log().Infof("%s is already unmapped", t.Name)
+		return nil
+	}
+	if err := t.removeHolders(); err != nil {
+		return err
+	}
+	udevadm.Settle()
+	cmd := command.New(
+		command.WithContext(ctx),
+		command.WithName("rbd"),
+		command.WithVarArgs("unmap", t.Name),
+		command.WithLogger(t.Log()),
+		command.WithCommandLogLevel(zerolog.InfoLevel),
+		command.WithStdoutLogLevel(zerolog.InfoLevel),
+		command.WithStderrLogLevel(zerolog.ErrorLevel),
+	)
+	return cmd.Run()
+}
+
+func (t *T) createDevice(ctx context.Context) error {
+	bytes, err := sizeconv.FromSize(t.Size)
+	if err != nil {
+		return err
+	}
+	cmd := command.New(
+		command.WithContext(ctx),
+		command.WithName("rbd"),
+		command.WithVarArgs("create", "--size", fmt.Sprintf("%dB", bytes), t.Name),
+		command.WithLogger(t.Log()),
+		command.WithCommandLogLevel(zerolog.InfoLevel),
+		command.WithStdoutLogLevel(zerolog.InfoLevel),
+		command.WithStderrLogLevel(zerolog.ErrorLevel),
+	)
+	if err := cmd.Run(); err != nil {
+		return err
+	}
+	udevadm.Settle()
+	return nil
+}
+
+func (t *T) removeDevice(ctx context.Context) error {
+	cmd := command.New(
+		command.WithContext(ctx),
+		command.WithName("rbd"),
+		command.WithVarArgs("remove", t.Name),
+		command.WithLogger(t.Log()),
+		command.WithCommandLogLevel(zerolog.InfoLevel),
+		command.WithStdoutLogLevel(zerolog.InfoLevel),
+		command.WithStderrLogLevel(zerolog.ErrorLevel),
+	)
+	return cmd.Run()
+}
+
+func (t *T) lockDevice(ctx context.Context) error {
+	if v, err := t.isLocked(ctx); err != nil {
+		return err
+	} else if v {
+		t.Log().Infof("%s is already locked", t.Name)
+		return nil
+	}
+	var args []string
+	switch t.Access {
+	case "rwx", "rox":
+		args = append(args, "lock", "--shared", t.sharedLockID())
+	default:
+		args = append(args, "lock", t.lockID())
+	}
+	cmd := command.New(
+		command.WithContext(ctx),
+		command.WithName("rbd"),
+		command.WithArgs(args),
+		command.WithLogger(t.Log()),
+		command.WithCommandLogLevel(zerolog.InfoLevel),
+		command.WithStdoutLogLevel(zerolog.InfoLevel),
+		command.WithStderrLogLevel(zerolog.ErrorLevel),
+	)
+	return cmd.Run()
+}
+
+func (t *T) unlockDevice(ctx context.Context) error {
+	if v, err := t.isLocked(ctx); err != nil {
+		return err
+	} else if !v {
+		t.Log().Infof("%s is already unlocked", t.Name)
+		return nil
+	}
+	var args []string
+	switch t.Access {
+	case "rwx", "rox":
+		args = append(args, "unlock", "--shared", t.sharedLockID())
+	default:
+		args = append(args, "unlock", t.lockID())
+	}
+	cmd := command.New(
+		command.WithContext(ctx),
+		command.WithName("rbd"),
+		command.WithArgs(args),
+		command.WithLogger(t.Log()),
+		command.WithCommandLogLevel(zerolog.InfoLevel),
+		command.WithStdoutLogLevel(zerolog.InfoLevel),
+		command.WithStderrLogLevel(zerolog.ErrorLevel),
+	)
+	return cmd.Run()
+}
+
+func (t *T) Info(ctx context.Context) (resource.InfoKeys, error) {
+	m := resource.InfoKeys{
+		{Key: "name", Value: t.Name},
+	}
+	return m, nil
+}
+
+func (t *T) deviceInfo(ctx context.Context) (*RBDInfo, error) {
+	cmd := command.New(
+		command.WithContext(ctx),
+		command.WithName("rbd"),
+		command.WithVarArgs("info", t.Name, "--format", "json"),
+		command.WithLogger(t.Log()),
+		command.WithBufferedStdout(),
+		command.WithIgnoredExitCodes(0, 2),
+	)
+	b, err := cmd.Output()
+	if cmd.ExitCode() == 2 {
+		return nil, nil
+	}
+	if err != nil {
+		return nil, err
+	}
+	var data RBDInfo
+	if err := json.Unmarshal(b, &data); err != nil {
+		return nil, err
+	}
+	return &data, nil
+}
+
+func (t *T) listLocks(ctx context.Context) ([]RBDLock, error) {
+	cmd := command.New(
+		command.WithContext(ctx),
+		command.WithName("rbd"),
+		command.WithVarArgs("lock", "list", t.Name, "--format", "json"),
+		command.WithLogger(t.Log()),
+		command.WithBufferedStdout(),
+		command.WithStderrLogLevel(zerolog.ErrorLevel),
+	)
+	b, err := cmd.Output()
+	if err != nil {
+		return nil, err
+	}
+	var data []RBDLock
+	if err := json.Unmarshal(b, &data); err != nil {
+		return nil, err
+	}
+	return data, nil
+}
+
+func (t *T) listDevices(ctx context.Context) ([]RBDMap, error) {
+	cmd := command.New(
+		command.WithContext(ctx),
+		command.WithName("rbd"),
+		command.WithVarArgs("device", "list", "--format", "json"),
+		command.WithLogger(t.Log()),
+		command.WithBufferedStdout(),
+		command.WithStderrLogLevel(zerolog.ErrorLevel),
+	)
+	b, err := cmd.Output()
+	if err != nil {
+		return nil, err
+	}
+	var data []RBDMap
+	if err := json.Unmarshal(b, &data); err != nil {
+		return nil, err
+	}
+	return data, nil
+}
+
+func (t *T) Stop(ctx context.Context) error {
+	/*
+		if err := t.unlockDevice(ctx); err != nil {
+			return err
+		}
+	*/
+	if err := t.unmapDevice(ctx); err != nil {
+		return err
+	}
+	return nil
+}
+
+func (t *T) removeHolders() error {
+	return t.exposedDevice().RemoveHolders()
+}
+
+func (t *T) Status(ctx context.Context) status.T {
+	if v, err := t.isMapped(ctx); err != nil {
+		t.StatusLog().Error("%s", err)
+		return status.Undef
+	} else if v {
+		return status.Up
+	}
+	return status.Down
+}
+
+func (t *T) Label(_ context.Context) string {
+	return t.Name
+}
+
+func (t *T) isMapped(ctx context.Context) (bool, error) {
+	data, err := t.listDevices(ctx)
+	if err != nil {
+		return false, err
+	}
+	for _, dev := range data {
+		if dev.ImageSpec() == t.Name {
+			return true, nil
+		}
+	}
+	return false, nil
+}
+
+func (t *T) sharedLockID() string {
+	return t.ObjectFQDN
+}
+
+func (t *T) lockID() string {
+	return t.ObjectFQDN + ":" + hostname.Hostname()
+}
+
+func (t *T) isLocked(ctx context.Context) (bool, error) {
+	data, err := t.listLocks(ctx)
+	if err != nil {
+		return false, err
+	}
+	var lockID string
+	switch t.Access {
+	case "rwx", "rox":
+		lockID = t.lockID()
+	default:
+		lockID = t.sharedLockID()
+	}
+	for _, lock := range data {
+		if lock.ID == lockID {
+			return true, nil
+		}
+	}
+	if len(data) > 0 {
+		return true, fmt.Errorf("device is locked by a tiers")
+	}
+	return false, nil
+}
+
+func (t *T) exists(ctx context.Context) (bool, error) {
+	data, err := t.deviceInfo(ctx)
+	if err != nil {
+		return false, err
+	}
+	if data == nil {
+		return false, nil
+	}
+	return true, nil
+}
+
+func (t *T) ProvisionAsLeader(ctx context.Context) error {
+	exists, err := t.exists(ctx)
+	if err != nil {
+		return err
+	}
+	if exists {
+		t.Log().Infof("%s is already provisioned", t.Name)
+		return nil
+	}
+	if t.createDevice(ctx); err != nil {
+		return err
+	}
+	actionrollback.Register(ctx, func(ctx context.Context) error {
+		return t.removeDevice(ctx)
+	})
+	return nil
+}
+
+func (t *T) UnprovisionAsLeader(ctx context.Context) error {
+	exists, err := t.exists(ctx)
+	if err != nil {
+		return err
+	}
+	if !exists {
+		t.Log().Infof("%s is already unprovisioned", t.Name)
+		return nil
+	}
+	return t.removeDevice(ctx)
+}
+
+func (t *T) Provisioned() (provisioned.T, error) {
+	v, err := t.exists(context.Background())
+	return provisioned.FromBool(v), err
+}
+
+func (t *T) devpath() string {
+	return "/dev/rbd/" + t.Name
+}
+
+func (t *T) exposedDevice() device.T {
+	return device.New(t.devpath())
+}
+
+func (t *T) ClaimedDevices() device.L {
+	return device.L{}
+}
+
+func (t *T) ExposedDevices() device.L {
+	return device.L{t.exposedDevice()}
+}
+
+func (t *T) SubDevices() device.L {
+	return device.L{}
+}
+
+func (t *T) Boot(ctx context.Context) error {
+	return t.Stop(ctx)
+}

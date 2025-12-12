@@ -18,6 +18,7 @@ import (
 	_ "github.com/opensvc/om3/v3/drivers/rescontainervbox"
 	_ "github.com/opensvc/om3/v3/drivers/resdiskcrypt"
 	_ "github.com/opensvc/om3/v3/drivers/resdiskdrbd"
+	_ "github.com/opensvc/om3/v3/drivers/resdiskrados"
 	_ "github.com/opensvc/om3/v3/drivers/resdiskzpool"
 	_ "github.com/opensvc/om3/v3/drivers/resdiskzvol"
 	_ "github.com/opensvc/om3/v3/drivers/resipcni"

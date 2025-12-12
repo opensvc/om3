@@ -1,0 +1,8 @@
+The access mode of the disk.
+
+* `rwo` is Read Write Once
+* `roo` is Read Only Once
+* `rwx` is Read Write Many
+* `rox` is Read Only Many
+
+Setting `rwx` or `rox` will activate acquire shared locks.
