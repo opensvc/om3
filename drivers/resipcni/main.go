@@ -19,14 +19,14 @@ import (
 
 	"github.com/rs/zerolog"
 
-	"github.com/opensvc/om3/core/actionresdeps"
-	"github.com/opensvc/om3/core/actionrollback"
-	"github.com/opensvc/om3/core/naming"
-	"github.com/opensvc/om3/core/resource"
-	"github.com/opensvc/om3/core/status"
-	"github.com/opensvc/om3/drivers/resip"
-	"github.com/opensvc/om3/util/command"
-	"github.com/opensvc/om3/util/file"
+	"github.com/opensvc/om3/v3/core/actionresdeps"
+	"github.com/opensvc/om3/v3/core/actionrollback"
+	"github.com/opensvc/om3/v3/core/naming"
+	"github.com/opensvc/om3/v3/core/resource"
+	"github.com/opensvc/om3/v3/core/status"
+	"github.com/opensvc/om3/v3/drivers/resip"
+	"github.com/opensvc/om3/v3/util/command"
+	"github.com/opensvc/om3/v3/util/file"
 
 	"github.com/containernetworking/plugins/pkg/ns"
 	"github.com/google/uuid"

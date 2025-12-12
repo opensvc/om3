@@ -7,11 +7,11 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/opensvc/om3/core/object"
+	"github.com/opensvc/om3/v3/core/object"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	"github.com/opensvc/om3/testhelper"
+	"github.com/opensvc/om3/v3/testhelper"
 )
 
 func TestSecKeys(t *testing.T) {

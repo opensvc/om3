@@ -8,8 +8,8 @@ import (
 	"github.com/labstack/echo/v4"
 	"github.com/shaj13/go-guardian/v2/auth"
 
-	"github.com/opensvc/om3/daemon/api"
-	"github.com/opensvc/om3/daemon/rbac"
+	"github.com/opensvc/om3/v3/daemon/api"
+	"github.com/opensvc/om3/v3/daemon/rbac"
 )
 
 // PostAuthToken create a new token for a user

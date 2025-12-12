@@ -12,12 +12,12 @@ import (
 	"github.com/rs/zerolog/log"
 	"gopkg.in/errgo.v2/fmt/errors"
 
-	"github.com/opensvc/om3/core/client"
-	"github.com/opensvc/om3/core/clientcontext"
-	"github.com/opensvc/om3/core/cluster"
-	"github.com/opensvc/om3/core/nodesinfo"
-	"github.com/opensvc/om3/util/funcopt"
-	"github.com/opensvc/om3/util/hostname"
+	"github.com/opensvc/om3/v3/core/client"
+	"github.com/opensvc/om3/v3/core/clientcontext"
+	"github.com/opensvc/om3/v3/core/cluster"
+	"github.com/opensvc/om3/v3/core/nodesinfo"
+	"github.com/opensvc/om3/v3/util/funcopt"
+	"github.com/opensvc/om3/v3/util/hostname"
 )
 
 type (

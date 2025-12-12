@@ -3,7 +3,7 @@ package daemonsubsystem
 import (
 	"fmt"
 
-	"github.com/opensvc/om3/daemon/daemonenv"
+	"github.com/opensvc/om3/v3/daemon/daemonenv"
 )
 
 type (

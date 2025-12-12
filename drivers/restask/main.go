@@ -13,14 +13,14 @@ import (
 	"github.com/google/uuid"
 	"github.com/mattn/go-isatty"
 
-	"github.com/opensvc/om3/core/actioncontext"
-	"github.com/opensvc/om3/core/env"
-	"github.com/opensvc/om3/core/resource"
-	"github.com/opensvc/om3/core/status"
-	"github.com/opensvc/om3/util/confirmation"
-	"github.com/opensvc/om3/util/retcodes"
-	"github.com/opensvc/om3/util/runfiles"
-	"github.com/opensvc/om3/util/xsession"
+	"github.com/opensvc/om3/v3/core/actioncontext"
+	"github.com/opensvc/om3/v3/core/env"
+	"github.com/opensvc/om3/v3/core/resource"
+	"github.com/opensvc/om3/v3/core/status"
+	"github.com/opensvc/om3/v3/util/confirmation"
+	"github.com/opensvc/om3/v3/util/retcodes"
+	"github.com/opensvc/om3/v3/util/runfiles"
+	"github.com/opensvc/om3/v3/util/xsession"
 )
 
 const (

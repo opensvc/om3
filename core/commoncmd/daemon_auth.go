@@ -9,10 +9,10 @@ import (
 
 	"github.com/spf13/cobra"
 
-	"github.com/opensvc/om3/core/client"
-	"github.com/opensvc/om3/core/output"
-	"github.com/opensvc/om3/core/rawconfig"
-	"github.com/opensvc/om3/daemon/api"
+	"github.com/opensvc/om3/v3/core/client"
+	"github.com/opensvc/om3/v3/core/output"
+	"github.com/opensvc/om3/v3/core/rawconfig"
+	"github.com/opensvc/om3/v3/daemon/api"
 )
 
 type (
@@ -63,9 +63,9 @@ func (t *CmdDaemonAuth) Run() error {
 		roles = append(roles, api.Role(s))
 	}
 	params := api.PostAuthTokenParams{
-		AccessDuration:  &duration,
-		Subject:         &t.Subject,
-		Scope:           &t.Scope,
+		AccessDuration: &duration,
+		Subject:        &t.Subject,
+		Scope:          &t.Scope,
 	}
 	if t.Refresh {
 		params.Refresh = &t.Refresh

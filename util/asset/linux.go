@@ -17,7 +17,7 @@ import (
 	"github.com/talos-systems/go-smbios/smbios"
 	"github.com/zcalusic/sysinfo"
 
-	"github.com/opensvc/om3/util/bootid"
+	"github.com/opensvc/om3/v3/util/bootid"
 )
 
 var (

@@ -6,12 +6,12 @@ import (
 
 	"github.com/labstack/echo/v4"
 
-	"github.com/opensvc/om3/core/client"
-	"github.com/opensvc/om3/core/instance"
-	"github.com/opensvc/om3/core/naming"
-	"github.com/opensvc/om3/daemon/api"
-	"github.com/opensvc/om3/util/drbd"
-	"github.com/opensvc/om3/util/plog"
+	"github.com/opensvc/om3/v3/core/client"
+	"github.com/opensvc/om3/v3/core/instance"
+	"github.com/opensvc/om3/v3/core/naming"
+	"github.com/opensvc/om3/v3/daemon/api"
+	"github.com/opensvc/om3/v3/util/drbd"
+	"github.com/opensvc/om3/v3/util/plog"
 )
 
 func (a *DaemonAPI) PostNodeDRBDConnect(ctx echo.Context, nodename api.InPathNodeName, params api.PostNodeDRBDConnectParams) error {

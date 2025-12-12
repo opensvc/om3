@@ -6,10 +6,10 @@ import (
 
 	"github.com/labstack/echo/v4"
 
-	"github.com/opensvc/om3/core/clusternode"
-	"github.com/opensvc/om3/core/instance"
-	"github.com/opensvc/om3/core/naming"
-	"github.com/opensvc/om3/daemon/api"
+	"github.com/opensvc/om3/v3/core/clusternode"
+	"github.com/opensvc/om3/v3/core/instance"
+	"github.com/opensvc/om3/v3/core/naming"
+	"github.com/opensvc/om3/v3/daemon/api"
 )
 
 func (a *DaemonAPI) GetObjectResourceInfo(ctx echo.Context, namespace string, kind naming.Kind, name string) error {

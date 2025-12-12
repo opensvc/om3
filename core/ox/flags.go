@@ -6,7 +6,7 @@ import (
 
 	"github.com/spf13/pflag"
 
-	commands "github.com/opensvc/om3/core/oxcmd"
+	commands "github.com/opensvc/om3/v3/core/oxcmd"
 )
 
 func addFlagsGlobal(flagSet *pflag.FlagSet, p *commands.OptsGlobal) {

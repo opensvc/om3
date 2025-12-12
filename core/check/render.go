@@ -3,9 +3,9 @@ package check
 import (
 	"fmt"
 
-	"github.com/opensvc/om3/core/rawconfig"
-	"github.com/opensvc/om3/util/hostname"
-	"github.com/opensvc/om3/util/render/tree"
+	"github.com/opensvc/om3/v3/core/rawconfig"
+	"github.com/opensvc/om3/v3/util/hostname"
+	"github.com/opensvc/om3/v3/util/render/tree"
 )
 
 // Render returns a human friendly string representation of the type.

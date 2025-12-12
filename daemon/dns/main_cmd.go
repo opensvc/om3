@@ -5,11 +5,11 @@ import (
 	"net"
 	"time"
 
-	"github.com/opensvc/om3/core/naming"
-	"github.com/opensvc/om3/core/resource"
-	"github.com/opensvc/om3/core/resourceid"
-	"github.com/opensvc/om3/daemon/msgbus"
-	"github.com/opensvc/om3/util/pubsub"
+	"github.com/opensvc/om3/v3/core/naming"
+	"github.com/opensvc/om3/v3/core/resource"
+	"github.com/opensvc/om3/v3/core/resourceid"
+	"github.com/opensvc/om3/v3/daemon/msgbus"
+	"github.com/opensvc/om3/v3/util/pubsub"
 )
 
 const hexDigit = "0123456789abcdef"

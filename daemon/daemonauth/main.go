@@ -13,11 +13,11 @@ import (
 	"github.com/shaj13/go-guardian/v2/auth/strategies/union"
 	"github.com/shaj13/libcache"
 
-	"github.com/opensvc/om3/daemon/daemonlogctx"
-	"github.com/opensvc/om3/daemon/msgbus"
-	"github.com/opensvc/om3/util/hostname"
-	"github.com/opensvc/om3/util/plog"
-	"github.com/opensvc/om3/util/pubsub"
+	"github.com/opensvc/om3/v3/daemon/daemonlogctx"
+	"github.com/opensvc/om3/v3/daemon/msgbus"
+	"github.com/opensvc/om3/v3/util/hostname"
+	"github.com/opensvc/om3/v3/util/plog"
+	"github.com/opensvc/om3/v3/util/pubsub"
 )
 
 type (

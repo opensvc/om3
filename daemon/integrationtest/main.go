@@ -9,15 +9,15 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	"github.com/opensvc/om3/core/client"
-	"github.com/opensvc/om3/core/cluster"
-	"github.com/opensvc/om3/core/clusterdump"
-	"github.com/opensvc/om3/core/object"
-	"github.com/opensvc/om3/core/rawconfig"
-	"github.com/opensvc/om3/daemon/daemon"
-	"github.com/opensvc/om3/daemon/daemonenv"
-	"github.com/opensvc/om3/testhelper"
-	"github.com/opensvc/om3/util/hostname"
+	"github.com/opensvc/om3/v3/core/client"
+	"github.com/opensvc/om3/v3/core/cluster"
+	"github.com/opensvc/om3/v3/core/clusterdump"
+	"github.com/opensvc/om3/v3/core/object"
+	"github.com/opensvc/om3/v3/core/rawconfig"
+	"github.com/opensvc/om3/v3/daemon/daemon"
+	"github.com/opensvc/om3/v3/daemon/daemonenv"
+	"github.com/opensvc/om3/v3/testhelper"
+	"github.com/opensvc/om3/v3/util/hostname"
 )
 
 func Setup(t *testing.T) (testhelper.Env, func()) {

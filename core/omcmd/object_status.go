@@ -5,12 +5,12 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/opensvc/om3/core/actioncontext"
-	"github.com/opensvc/om3/core/commoncmd"
-	"github.com/opensvc/om3/core/env"
-	"github.com/opensvc/om3/core/instance"
-	"github.com/opensvc/om3/core/naming"
-	"github.com/opensvc/om3/core/object"
+	"github.com/opensvc/om3/v3/core/actioncontext"
+	"github.com/opensvc/om3/v3/core/commoncmd"
+	"github.com/opensvc/om3/v3/core/env"
+	"github.com/opensvc/om3/v3/core/instance"
+	"github.com/opensvc/om3/v3/core/naming"
+	"github.com/opensvc/om3/v3/core/object"
 )
 
 type (

@@ -1,8 +1,8 @@
 package oxcmd
 
 import (
-	"github.com/opensvc/om3/core/commoncmd"
-	"github.com/opensvc/om3/core/objectaction"
+	"github.com/opensvc/om3/v3/core/commoncmd"
+	"github.com/opensvc/om3/v3/core/objectaction"
 )
 
 type (

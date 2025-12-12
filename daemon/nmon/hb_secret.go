@@ -7,9 +7,9 @@ import (
 
 	"github.com/google/uuid"
 
-	"github.com/opensvc/om3/core/hbsecobject"
-	"github.com/opensvc/om3/core/naming"
-	"github.com/opensvc/om3/daemon/msgbus"
+	"github.com/opensvc/om3/v3/core/hbsecobject"
+	"github.com/opensvc/om3/v3/core/naming"
+	"github.com/opensvc/om3/v3/daemon/msgbus"
 )
 
 func (t *Manager) onInstanceConfigUpdated(c *msgbus.InstanceConfigUpdated) {

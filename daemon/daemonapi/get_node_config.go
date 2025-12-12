@@ -5,10 +5,10 @@ import (
 
 	"github.com/labstack/echo/v4"
 
-	"github.com/opensvc/om3/core/clusternode"
-	"github.com/opensvc/om3/core/object"
-	"github.com/opensvc/om3/daemon/api"
-	"github.com/opensvc/om3/util/key"
+	"github.com/opensvc/om3/v3/core/clusternode"
+	"github.com/opensvc/om3/v3/core/object"
+	"github.com/opensvc/om3/v3/daemon/api"
+	"github.com/opensvc/om3/v3/util/key"
 )
 
 func (a *DaemonAPI) GetNodeConfig(ctx echo.Context, nodename string, params api.GetNodeConfigParams) error {

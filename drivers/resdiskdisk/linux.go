@@ -13,10 +13,10 @@ import (
 
 	"github.com/yookoala/realpath"
 
-	"github.com/opensvc/om3/core/status"
-	"github.com/opensvc/om3/util/device"
-	"github.com/opensvc/om3/util/scsi"
-	"github.com/opensvc/om3/util/udevadm"
+	"github.com/opensvc/om3/v3/core/status"
+	"github.com/opensvc/om3/v3/util/device"
+	"github.com/opensvc/om3/v3/util/scsi"
+	"github.com/opensvc/om3/v3/util/udevadm"
 )
 
 func (t *T) expectedDevPath() string {

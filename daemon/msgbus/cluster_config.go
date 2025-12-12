@@ -1,8 +1,8 @@
 package msgbus
 
 import (
-	"github.com/opensvc/om3/util/hostname"
-	"github.com/opensvc/om3/util/pubsub"
+	"github.com/opensvc/om3/v3/util/hostname"
+	"github.com/opensvc/om3/v3/util/pubsub"
 )
 
 // onClusterConfigUpdated sets .cluster.config

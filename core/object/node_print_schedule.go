@@ -5,13 +5,13 @@ import (
 	"path/filepath"
 	"time"
 
-	"github.com/opensvc/om3/core/driver"
-	"github.com/opensvc/om3/core/resource"
-	"github.com/opensvc/om3/core/resourceid"
-	"github.com/opensvc/om3/core/schedule"
-	"github.com/opensvc/om3/util/file"
-	"github.com/opensvc/om3/util/hostname"
-	"github.com/opensvc/om3/util/key"
+	"github.com/opensvc/om3/v3/core/driver"
+	"github.com/opensvc/om3/v3/core/resource"
+	"github.com/opensvc/om3/v3/core/resourceid"
+	"github.com/opensvc/om3/v3/core/schedule"
+	"github.com/opensvc/om3/v3/util/file"
+	"github.com/opensvc/om3/v3/util/hostname"
+	"github.com/opensvc/om3/v3/util/key"
 )
 
 func (t *Node) lastRunFile(action, rid, base string) string {

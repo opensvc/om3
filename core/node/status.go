@@ -3,9 +3,9 @@ package node
 import (
 	"time"
 
-	"github.com/opensvc/om3/core/instance"
-	"github.com/opensvc/om3/core/status"
-	"github.com/opensvc/om3/util/label"
+	"github.com/opensvc/om3/v3/core/instance"
+	"github.com/opensvc/om3/v3/core/status"
+	"github.com/opensvc/om3/v3/util/label"
 )
 
 type (

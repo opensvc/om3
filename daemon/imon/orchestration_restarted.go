@@ -50,9 +50,9 @@ package imon
 */
 
 import (
-	"github.com/opensvc/om3/core/instance"
-	"github.com/opensvc/om3/core/status"
-	"github.com/opensvc/om3/util/stringslice"
+	"github.com/opensvc/om3/v3/core/instance"
+	"github.com/opensvc/om3/v3/core/status"
+	"github.com/opensvc/om3/v3/util/stringslice"
 )
 
 func (t *Manager) orchestrateRestarted() {

@@ -11,7 +11,7 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/opensvc/om3/util/render/palette"
+	"github.com/opensvc/om3/v3/util/render/palette"
 )
 
 type (

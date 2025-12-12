@@ -5,7 +5,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/opensvc/om3/daemon/daemonsubsystem"
+	"github.com/opensvc/om3/v3/daemon/daemonsubsystem"
 )
 
 func (t *App) updateHbStatus() {

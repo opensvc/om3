@@ -4,12 +4,12 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/opensvc/om3/core/colorstatus"
-	"github.com/opensvc/om3/core/object"
-	"github.com/opensvc/om3/core/placement"
-	"github.com/opensvc/om3/core/rawconfig"
-	"github.com/opensvc/om3/core/status"
-	"github.com/opensvc/om3/core/topology"
+	"github.com/opensvc/om3/v3/core/colorstatus"
+	"github.com/opensvc/om3/v3/core/object"
+	"github.com/opensvc/om3/v3/core/placement"
+	"github.com/opensvc/om3/v3/core/rawconfig"
+	"github.com/opensvc/om3/v3/core/status"
+	"github.com/opensvc/om3/v3/core/topology"
 )
 
 func (f Frame) wObjects() {

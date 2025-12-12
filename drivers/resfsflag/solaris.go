@@ -5,7 +5,7 @@ package resfsflag
 import (
 	"path/filepath"
 
-	"github.com/opensvc/om3/util/file"
+	"github.com/opensvc/om3/v3/util/file"
 )
 
 func (t *T) baseDir() string {

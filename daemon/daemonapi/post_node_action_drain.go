@@ -8,9 +8,9 @@ import (
 	"github.com/google/uuid"
 	"github.com/labstack/echo/v4"
 
-	"github.com/opensvc/om3/core/client"
-	"github.com/opensvc/om3/core/node"
-	"github.com/opensvc/om3/daemon/msgbus"
+	"github.com/opensvc/om3/v3/core/client"
+	"github.com/opensvc/om3/v3/core/node"
+	"github.com/opensvc/om3/v3/daemon/msgbus"
 )
 
 func (a *DaemonAPI) PostPeerActionDrain(ctx echo.Context, nodename string) error {

@@ -5,7 +5,7 @@ import (
 
 	"github.com/labstack/echo/v4"
 
-	"github.com/opensvc/om3/core/nodesinfo"
+	"github.com/opensvc/om3/v3/core/nodesinfo"
 )
 
 func (a *DaemonAPI) GetNodesInfo(ctx echo.Context) error {

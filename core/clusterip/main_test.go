@@ -1,7 +1,7 @@
 package clusterip
 
 import (
-	"github.com/opensvc/om3/core/naming"
+	"github.com/opensvc/om3/v3/core/naming"
 	"github.com/stretchr/testify/assert"
 	"net"
 	"sort"

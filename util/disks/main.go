@@ -1,10 +1,10 @@
 package disks
 
 import (
-	"github.com/opensvc/om3/core/rawconfig"
-	"github.com/opensvc/om3/util/hostname"
-	"github.com/opensvc/om3/util/render/tree"
-	"github.com/opensvc/om3/util/sizeconv"
+	"github.com/opensvc/om3/v3/core/rawconfig"
+	"github.com/opensvc/om3/v3/util/hostname"
+	"github.com/opensvc/om3/v3/util/render/tree"
+	"github.com/opensvc/om3/v3/util/sizeconv"
 )
 
 type (

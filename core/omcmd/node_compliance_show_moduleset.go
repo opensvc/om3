@@ -1,9 +1,9 @@
 package omcmd
 
 import (
-	"github.com/opensvc/om3/core/nodeaction"
-	"github.com/opensvc/om3/core/object"
-	"github.com/opensvc/om3/util/xstrings"
+	"github.com/opensvc/om3/v3/core/nodeaction"
+	"github.com/opensvc/om3/v3/core/object"
+	"github.com/opensvc/om3/v3/util/xstrings"
 )
 
 type (

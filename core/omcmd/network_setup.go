@@ -1,8 +1,8 @@
 package omcmd
 
 import (
-	"github.com/opensvc/om3/core/network"
-	"github.com/opensvc/om3/core/object"
+	"github.com/opensvc/om3/v3/core/network"
+	"github.com/opensvc/om3/v3/core/object"
 )
 
 type (

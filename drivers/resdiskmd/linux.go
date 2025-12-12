@@ -2,7 +2,7 @@
 
 package resdiskmd
 
-import "github.com/opensvc/om3/util/md"
+import "github.com/opensvc/om3/v3/util/md"
 
 func (t *T) md() MDDriver {
 	d := md.New(

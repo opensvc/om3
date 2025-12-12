@@ -16,13 +16,13 @@ import (
 	"github.com/rs/zerolog"
 	"golang.org/x/exp/maps"
 
-	"github.com/opensvc/om3/core/array"
-	"github.com/opensvc/om3/core/driver"
-	"github.com/opensvc/om3/core/resourceid"
-	"github.com/opensvc/om3/util/command"
-	"github.com/opensvc/om3/util/nullable"
-	"github.com/opensvc/om3/util/plog"
-	"github.com/opensvc/om3/util/sizeconv"
+	"github.com/opensvc/om3/v3/core/array"
+	"github.com/opensvc/om3/v3/core/driver"
+	"github.com/opensvc/om3/v3/core/resourceid"
+	"github.com/opensvc/om3/v3/util/command"
+	"github.com/opensvc/om3/v3/util/nullable"
+	"github.com/opensvc/om3/v3/util/plog"
+	"github.com/opensvc/om3/v3/util/sizeconv"
 )
 
 type (

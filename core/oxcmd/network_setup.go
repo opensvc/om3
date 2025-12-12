@@ -3,7 +3,7 @@ package oxcmd
 import (
 	"fmt"
 
-	"github.com/opensvc/om3/core/client"
+	"github.com/opensvc/om3/v3/core/client"
 )
 
 type (

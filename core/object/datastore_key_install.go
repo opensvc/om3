@@ -15,11 +15,11 @@ import (
 
 	"github.com/danwakefield/fnmatch"
 
-	"github.com/opensvc/om3/core/driver"
-	"github.com/opensvc/om3/core/naming"
-	"github.com/opensvc/om3/core/volsignal"
-	"github.com/opensvc/om3/util/file"
-	"github.com/opensvc/om3/util/plog"
+	"github.com/opensvc/om3/v3/core/driver"
+	"github.com/opensvc/om3/v3/core/naming"
+	"github.com/opensvc/om3/v3/core/volsignal"
+	"github.com/opensvc/om3/v3/util/file"
+	"github.com/opensvc/om3/v3/util/plog"
 )
 
 type (

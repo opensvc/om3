@@ -3,11 +3,11 @@ package object
 import (
 	"context"
 
-	"github.com/opensvc/om3/core/keyop"
-	"github.com/opensvc/om3/core/rawconfig"
-	"github.com/opensvc/om3/core/schedule"
-	"github.com/opensvc/om3/core/xconfig"
-	"github.com/opensvc/om3/util/key"
+	"github.com/opensvc/om3/v3/core/keyop"
+	"github.com/opensvc/om3/v3/core/rawconfig"
+	"github.com/opensvc/om3/v3/core/schedule"
+	"github.com/opensvc/om3/v3/core/xconfig"
+	"github.com/opensvc/om3/v3/util/key"
 )
 
 type (

@@ -11,10 +11,10 @@ import (
 
 	"github.com/vishvananda/netlink"
 
-	"github.com/opensvc/om3/core/driver"
-	"github.com/opensvc/om3/core/network"
-	"github.com/opensvc/om3/util/hostname"
-	"github.com/opensvc/om3/util/plog"
+	"github.com/opensvc/om3/v3/core/driver"
+	"github.com/opensvc/om3/v3/core/network"
+	"github.com/opensvc/om3/v3/util/hostname"
+	"github.com/opensvc/om3/v3/util/plog"
 )
 
 type (

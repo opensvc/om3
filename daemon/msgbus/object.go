@@ -1,9 +1,9 @@
 package msgbus
 
 import (
-	"github.com/opensvc/om3/core/naming"
-	"github.com/opensvc/om3/util/hostname"
-	"github.com/opensvc/om3/util/pubsub"
+	"github.com/opensvc/om3/v3/core/naming"
+	"github.com/opensvc/om3/v3/util/hostname"
+	"github.com/opensvc/om3/v3/util/pubsub"
 )
 
 // OnObjectStatusDeleted delete .cluster.object.<path>

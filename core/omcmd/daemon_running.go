@@ -3,8 +3,8 @@ package omcmd
 import (
 	"os"
 
-	"github.com/opensvc/om3/core/client"
-	"github.com/opensvc/om3/daemon/daemoncmd"
+	"github.com/opensvc/om3/v3/core/client"
+	"github.com/opensvc/om3/v3/daemon/daemoncmd"
 )
 
 type (

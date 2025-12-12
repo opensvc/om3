@@ -3,12 +3,12 @@ package object
 import (
 	"fmt"
 
-	"github.com/opensvc/om3/core/keywords"
-	"github.com/opensvc/om3/core/kwoption"
-	"github.com/opensvc/om3/core/naming"
-	"github.com/opensvc/om3/core/rawconfig"
-	"github.com/opensvc/om3/daemon/daemonenv"
-	"github.com/opensvc/om3/util/key"
+	"github.com/opensvc/om3/v3/core/keywords"
+	"github.com/opensvc/om3/v3/core/kwoption"
+	"github.com/opensvc/om3/v3/core/naming"
+	"github.com/opensvc/om3/v3/core/rawconfig"
+	"github.com/opensvc/om3/v3/daemon/daemonenv"
+	"github.com/opensvc/om3/v3/util/key"
 )
 
 const (

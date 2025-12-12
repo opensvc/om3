@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/opensvc/om3/core/instance"
+	"github.com/opensvc/om3/v3/core/instance"
 )
 
 // convergeGlobalExpectFromRemote set global expect from most recent global expect value

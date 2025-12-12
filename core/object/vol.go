@@ -4,15 +4,15 @@ import (
 	"context"
 	"sort"
 
-	"github.com/opensvc/om3/core/driver"
-	"github.com/opensvc/om3/core/keywords"
-	"github.com/opensvc/om3/core/naming"
-	"github.com/opensvc/om3/core/status"
-	"github.com/opensvc/om3/core/volaccess"
-	"github.com/opensvc/om3/util/device"
-	"github.com/opensvc/om3/util/funcopt"
-	"github.com/opensvc/om3/util/hostname"
-	"github.com/opensvc/om3/util/key"
+	"github.com/opensvc/om3/v3/core/driver"
+	"github.com/opensvc/om3/v3/core/keywords"
+	"github.com/opensvc/om3/v3/core/naming"
+	"github.com/opensvc/om3/v3/core/status"
+	"github.com/opensvc/om3/v3/core/volaccess"
+	"github.com/opensvc/om3/v3/util/device"
+	"github.com/opensvc/om3/v3/util/funcopt"
+	"github.com/opensvc/om3/v3/util/hostname"
+	"github.com/opensvc/om3/v3/util/key"
 )
 
 type (

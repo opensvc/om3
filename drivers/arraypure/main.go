@@ -15,12 +15,12 @@ import (
 	"github.com/golang-jwt/jwt/v5"
 	"github.com/spf13/cobra"
 
-	"github.com/opensvc/om3/core/array"
-	"github.com/opensvc/om3/core/driver"
-	"github.com/opensvc/om3/core/naming"
-	"github.com/opensvc/om3/core/object"
-	"github.com/opensvc/om3/util/sizeconv"
-	"github.com/opensvc/om3/util/xmap"
+	"github.com/opensvc/om3/v3/core/array"
+	"github.com/opensvc/om3/v3/core/driver"
+	"github.com/opensvc/om3/v3/core/naming"
+	"github.com/opensvc/om3/v3/core/object"
+	"github.com/opensvc/om3/v3/util/sizeconv"
+	"github.com/opensvc/om3/v3/util/xmap"
 )
 
 var (

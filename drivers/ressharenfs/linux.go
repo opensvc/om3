@@ -9,8 +9,8 @@ import (
 	"strings"
 	"time"
 
-	"github.com/opensvc/om3/core/actionrollback"
-	"github.com/opensvc/om3/util/command"
+	"github.com/opensvc/om3/v3/core/actionrollback"
+	"github.com/opensvc/om3/v3/util/command"
 	"github.com/rs/zerolog"
 )
 

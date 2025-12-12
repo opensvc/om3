@@ -5,8 +5,8 @@ import (
 
 	"github.com/labstack/echo/v4"
 
-	"github.com/opensvc/om3/core/client"
-	"github.com/opensvc/om3/daemon/dns"
+	"github.com/opensvc/om3/v3/core/client"
+	"github.com/opensvc/om3/v3/daemon/dns"
 )
 
 // GetDaemonDNSDump returns the DNS zone content.

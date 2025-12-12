@@ -3,8 +3,8 @@ package object
 import (
 	"context"
 
-	"github.com/opensvc/om3/core/actioncontext"
-	"github.com/opensvc/om3/core/resource"
+	"github.com/opensvc/om3/v3/core/actioncontext"
+	"github.com/opensvc/om3/v3/core/resource"
 )
 
 // PRStop stops the exclusive write access to devices of the local instance of the object

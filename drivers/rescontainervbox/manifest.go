@@ -3,12 +3,12 @@ package rescontainervbox
 import (
 	"embed"
 
-	"github.com/opensvc/om3/core/keywords"
-	"github.com/opensvc/om3/core/naming"
+	"github.com/opensvc/om3/v3/core/keywords"
+	"github.com/opensvc/om3/v3/core/naming"
 
-	"github.com/opensvc/om3/core/driver"
-	"github.com/opensvc/om3/core/manifest"
-	"github.com/opensvc/om3/drivers/rescontainer"
+	"github.com/opensvc/om3/v3/core/driver"
+	"github.com/opensvc/om3/v3/core/manifest"
+	"github.com/opensvc/om3/v3/drivers/rescontainer"
 )
 
 var (

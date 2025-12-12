@@ -3,9 +3,9 @@ package node
 import (
 	"encoding/json"
 
-	"github.com/opensvc/om3/core/instance"
-	"github.com/opensvc/om3/core/pool"
-	"github.com/opensvc/om3/daemon/daemonsubsystem"
+	"github.com/opensvc/om3/v3/core/instance"
+	"github.com/opensvc/om3/v3/core/pool"
+	"github.com/opensvc/om3/v3/daemon/daemonsubsystem"
 )
 
 type (

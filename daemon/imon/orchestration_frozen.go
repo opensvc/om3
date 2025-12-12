@@ -1,6 +1,6 @@
 package imon
 
-import "github.com/opensvc/om3/core/instance"
+import "github.com/opensvc/om3/v3/core/instance"
 
 func (t *Manager) orchestrateFrozen() {
 	switch t.state.State {

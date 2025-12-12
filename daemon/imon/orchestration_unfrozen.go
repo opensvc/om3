@@ -1,7 +1,7 @@
 package imon
 
 import (
-	"github.com/opensvc/om3/core/instance"
+	"github.com/opensvc/om3/v3/core/instance"
 )
 
 func (t *Manager) orchestrateUnfrozen() {

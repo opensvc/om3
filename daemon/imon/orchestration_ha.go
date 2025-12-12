@@ -1,9 +1,9 @@
 package imon
 
 import (
-	"github.com/opensvc/om3/core/instance"
-	"github.com/opensvc/om3/core/status"
-	"github.com/opensvc/om3/core/topology"
+	"github.com/opensvc/om3/v3/core/instance"
+	"github.com/opensvc/om3/v3/core/status"
+	"github.com/opensvc/om3/v3/core/topology"
 )
 
 func (t *Manager) orchestrateNone() {

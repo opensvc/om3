@@ -6,11 +6,11 @@ import (
 	"slices"
 	"strings"
 
-	"github.com/opensvc/om3/core/driver"
-	"github.com/opensvc/om3/core/naming"
-	"github.com/opensvc/om3/core/resourceid"
-	"github.com/opensvc/om3/util/capabilities"
-	"github.com/opensvc/om3/util/key"
+	"github.com/opensvc/om3/v3/core/driver"
+	"github.com/opensvc/om3/v3/core/naming"
+	"github.com/opensvc/om3/v3/core/resourceid"
+	"github.com/opensvc/om3/v3/util/capabilities"
+	"github.com/opensvc/om3/v3/util/key"
 )
 
 type (

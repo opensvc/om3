@@ -7,10 +7,10 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/opensvc/om3/util/pg"
-	"github.com/opensvc/om3/util/sizeconv"
-	"github.com/opensvc/om3/util/ulimit"
-	"github.com/opensvc/om3/util/usergroup"
+	"github.com/opensvc/om3/v3/util/pg"
+	"github.com/opensvc/om3/v3/util/sizeconv"
+	"github.com/opensvc/om3/v3/util/ulimit"
+	"github.com/opensvc/om3/v3/util/usergroup"
 	"github.com/spf13/pflag"
 )
 

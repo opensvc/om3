@@ -1,8 +1,8 @@
 package networklo
 
 import (
-	"github.com/opensvc/om3/core/driver"
-	"github.com/opensvc/om3/core/network"
+	"github.com/opensvc/om3/v3/core/driver"
+	"github.com/opensvc/om3/v3/core/network"
 )
 
 type (

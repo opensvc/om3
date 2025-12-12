@@ -3,11 +3,11 @@ package poolvirtual
 import (
 	"fmt"
 
-	"github.com/opensvc/om3/core/driver"
-	"github.com/opensvc/om3/core/naming"
-	"github.com/opensvc/om3/core/pool"
-	"github.com/opensvc/om3/core/xconfig"
-	"github.com/opensvc/om3/util/key"
+	"github.com/opensvc/om3/v3/core/driver"
+	"github.com/opensvc/om3/v3/core/naming"
+	"github.com/opensvc/om3/v3/core/pool"
+	"github.com/opensvc/om3/v3/core/xconfig"
+	"github.com/opensvc/om3/v3/util/key"
 )
 
 type (

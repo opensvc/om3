@@ -6,7 +6,7 @@ import (
 
 	"github.com/vishvananda/netlink"
 
-	"github.com/opensvc/om3/drivers/resip"
+	"github.com/opensvc/om3/v3/drivers/resip"
 )
 
 // Label implements Label from resource.Driver interface,

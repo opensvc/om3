@@ -14,12 +14,12 @@ import (
 
 	"golang.org/x/sys/unix"
 
-	"github.com/opensvc/om3/core/keywords"
-	"github.com/opensvc/om3/core/naming"
-	"github.com/opensvc/om3/core/object"
-	"github.com/opensvc/om3/core/resource"
-	"github.com/opensvc/om3/core/volsignal"
-	"github.com/opensvc/om3/util/plog"
+	"github.com/opensvc/om3/v3/core/keywords"
+	"github.com/opensvc/om3/v3/core/naming"
+	"github.com/opensvc/om3/v3/core/object"
+	"github.com/opensvc/om3/v3/core/resource"
+	"github.com/opensvc/om3/v3/core/volsignal"
+	"github.com/opensvc/om3/v3/util/plog"
 )
 
 type (

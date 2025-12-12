@@ -7,10 +7,10 @@ import (
 	"os"
 	"path/filepath"
 
-	"github.com/opensvc/om3/core/actioncontext"
-	"github.com/opensvc/om3/core/resource"
-	"github.com/opensvc/om3/core/resourceselector"
-	"github.com/opensvc/om3/util/hostname"
+	"github.com/opensvc/om3/v3/core/actioncontext"
+	"github.com/opensvc/om3/v3/core/resource"
+	"github.com/opensvc/om3/v3/core/resourceselector"
+	"github.com/opensvc/om3/v3/util/hostname"
 )
 
 // PushResInfo pushes resources information of the local instance of the object

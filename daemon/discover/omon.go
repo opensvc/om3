@@ -3,12 +3,12 @@ package discover
 import (
 	"time"
 
-	"github.com/opensvc/om3/core/instance"
-	"github.com/opensvc/om3/core/naming"
-	"github.com/opensvc/om3/daemon/msgbus"
-	"github.com/opensvc/om3/daemon/omon"
-	"github.com/opensvc/om3/util/plog"
-	"github.com/opensvc/om3/util/pubsub"
+	"github.com/opensvc/om3/v3/core/instance"
+	"github.com/opensvc/om3/v3/core/naming"
+	"github.com/opensvc/om3/v3/daemon/msgbus"
+	"github.com/opensvc/om3/v3/daemon/omon"
+	"github.com/opensvc/om3/v3/util/plog"
+	"github.com/opensvc/om3/v3/util/pubsub"
 )
 
 func (t *Manager) omon(started chan<- bool) {

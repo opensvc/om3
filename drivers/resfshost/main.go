@@ -15,17 +15,17 @@ import (
 
 	"golang.org/x/sys/unix"
 
-	"github.com/opensvc/om3/core/actionrollback"
-	"github.com/opensvc/om3/core/naming"
-	"github.com/opensvc/om3/core/provisioned"
-	"github.com/opensvc/om3/core/resource"
-	"github.com/opensvc/om3/core/status"
-	"github.com/opensvc/om3/core/vpath"
-	"github.com/opensvc/om3/drivers/resfsdir"
-	"github.com/opensvc/om3/util/device"
-	"github.com/opensvc/om3/util/file"
-	"github.com/opensvc/om3/util/filesystems"
-	"github.com/opensvc/om3/util/findmnt"
+	"github.com/opensvc/om3/v3/core/actionrollback"
+	"github.com/opensvc/om3/v3/core/naming"
+	"github.com/opensvc/om3/v3/core/provisioned"
+	"github.com/opensvc/om3/v3/core/resource"
+	"github.com/opensvc/om3/v3/core/status"
+	"github.com/opensvc/om3/v3/core/vpath"
+	"github.com/opensvc/om3/v3/drivers/resfsdir"
+	"github.com/opensvc/om3/v3/util/device"
+	"github.com/opensvc/om3/v3/util/file"
+	"github.com/opensvc/om3/v3/util/filesystems"
+	"github.com/opensvc/om3/v3/util/findmnt"
 )
 
 type (

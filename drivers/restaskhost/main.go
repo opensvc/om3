@@ -14,17 +14,17 @@ import (
 	"github.com/google/uuid"
 	"github.com/rs/zerolog"
 
-	"github.com/opensvc/om3/core/naming"
-	"github.com/opensvc/om3/core/resource"
-	"github.com/opensvc/om3/core/status"
-	"github.com/opensvc/om3/drivers/resapp"
-	"github.com/opensvc/om3/drivers/restask"
-	"github.com/opensvc/om3/util/command"
-	"github.com/opensvc/om3/util/funcopt"
-	"github.com/opensvc/om3/util/pg"
-	"github.com/opensvc/om3/util/plog"
-	"github.com/opensvc/om3/util/proc"
-	"github.com/opensvc/om3/util/ulimit"
+	"github.com/opensvc/om3/v3/core/naming"
+	"github.com/opensvc/om3/v3/core/resource"
+	"github.com/opensvc/om3/v3/core/status"
+	"github.com/opensvc/om3/v3/drivers/resapp"
+	"github.com/opensvc/om3/v3/drivers/restask"
+	"github.com/opensvc/om3/v3/util/command"
+	"github.com/opensvc/om3/v3/util/funcopt"
+	"github.com/opensvc/om3/v3/util/pg"
+	"github.com/opensvc/om3/v3/util/plog"
+	"github.com/opensvc/om3/v3/util/proc"
+	"github.com/opensvc/om3/v3/util/ulimit"
 )
 
 // T is the driver structure.

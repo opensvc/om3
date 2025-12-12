@@ -1,8 +1,8 @@
 package restaskpodman
 
 import (
-	"github.com/opensvc/om3/drivers/rescontainerpodman"
-	"github.com/opensvc/om3/util/capabilities"
+	"github.com/opensvc/om3/v3/drivers/rescontainerpodman"
+	"github.com/opensvc/om3/v3/util/capabilities"
 )
 
 func init() {

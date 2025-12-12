@@ -10,10 +10,10 @@ import (
 	"strings"
 	"time"
 
-	"github.com/opensvc/om3/core/rawconfig"
-	"github.com/opensvc/om3/util/hostname"
-	"github.com/opensvc/om3/util/render/tree"
-	"github.com/opensvc/om3/util/san"
+	"github.com/opensvc/om3/v3/core/rawconfig"
+	"github.com/opensvc/om3/v3/util/hostname"
+	"github.com/opensvc/om3/v3/util/render/tree"
+	"github.com/opensvc/om3/v3/util/san"
 	"github.com/ssrathi/go-attr"
 )
 

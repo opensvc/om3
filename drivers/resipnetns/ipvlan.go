@@ -9,7 +9,7 @@ import (
 
 	"github.com/containernetworking/plugins/pkg/ns"
 
-	"github.com/opensvc/om3/core/actionrollback"
+	"github.com/opensvc/om3/v3/core/actionrollback"
 )
 
 func (t *T) IPVLANMode() (string, error) {

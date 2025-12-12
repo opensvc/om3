@@ -4,9 +4,9 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/opensvc/om3/core/check"
-	"github.com/opensvc/om3/core/check/helpers/checkdf"
-	"github.com/opensvc/om3/util/df"
+	"github.com/opensvc/om3/v3/core/check"
+	"github.com/opensvc/om3/v3/core/check/helpers/checkdf"
+	"github.com/opensvc/om3/v3/util/df"
 )
 
 const (

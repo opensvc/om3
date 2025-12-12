@@ -5,16 +5,16 @@ import (
 	"errors"
 	"fmt"
 
-	"github.com/opensvc/om3/core/cluster"
-	"github.com/opensvc/om3/core/object"
-	"github.com/opensvc/om3/daemon/ccfg"
-	"github.com/opensvc/om3/daemon/daemonauth"
-	"github.com/opensvc/om3/daemon/daemonctx"
-	"github.com/opensvc/om3/daemon/daemonenv"
-	"github.com/opensvc/om3/daemon/listener/lsnrhttpinet"
-	"github.com/opensvc/om3/daemon/listener/lsnrhttpux"
-	"github.com/opensvc/om3/util/funcopt"
-	"github.com/opensvc/om3/util/plog"
+	"github.com/opensvc/om3/v3/core/cluster"
+	"github.com/opensvc/om3/v3/core/object"
+	"github.com/opensvc/om3/v3/daemon/ccfg"
+	"github.com/opensvc/om3/v3/daemon/daemonauth"
+	"github.com/opensvc/om3/v3/daemon/daemonctx"
+	"github.com/opensvc/om3/v3/daemon/daemonenv"
+	"github.com/opensvc/om3/v3/daemon/listener/lsnrhttpinet"
+	"github.com/opensvc/om3/v3/daemon/listener/lsnrhttpux"
+	"github.com/opensvc/om3/v3/util/funcopt"
+	"github.com/opensvc/om3/v3/util/plog"
 )
 
 type (

@@ -8,12 +8,12 @@ import (
 	"github.com/google/uuid"
 	"github.com/labstack/echo/v4"
 
-	"github.com/opensvc/om3/core/env"
-	"github.com/opensvc/om3/core/naming"
-	"github.com/opensvc/om3/daemon/msgbus"
-	"github.com/opensvc/om3/util/command"
-	"github.com/opensvc/om3/util/plog"
-	"github.com/opensvc/om3/util/pubsub"
+	"github.com/opensvc/om3/v3/core/env"
+	"github.com/opensvc/om3/v3/core/naming"
+	"github.com/opensvc/om3/v3/daemon/msgbus"
+	"github.com/opensvc/om3/v3/util/command"
+	"github.com/opensvc/om3/v3/util/plog"
+	"github.com/opensvc/om3/v3/util/pubsub"
 )
 
 func (a *DaemonAPI) apiExec(ctx echo.Context, p naming.Path, requesterSid uuid.UUID, args []string, log *plog.Logger) (uuid.UUID, error) {

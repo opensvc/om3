@@ -3,11 +3,11 @@ package omcmd
 import (
 	"sync"
 
-	"github.com/opensvc/om3/core/nodeaction"
-	"github.com/opensvc/om3/core/object"
-	"github.com/opensvc/om3/core/output"
-	"github.com/opensvc/om3/core/rawconfig"
-	"github.com/opensvc/om3/core/xconfig"
+	"github.com/opensvc/om3/v3/core/nodeaction"
+	"github.com/opensvc/om3/v3/core/object"
+	"github.com/opensvc/om3/v3/core/output"
+	"github.com/opensvc/om3/v3/core/rawconfig"
+	"github.com/opensvc/om3/v3/core/xconfig"
 )
 
 type (

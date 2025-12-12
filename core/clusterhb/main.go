@@ -4,8 +4,8 @@ package clusterhb
 import (
 	"strings"
 
-	"github.com/opensvc/om3/core/hbcfg"
-	"github.com/opensvc/om3/core/object"
+	"github.com/opensvc/om3/v3/core/hbcfg"
+	"github.com/opensvc/om3/v3/core/object"
 )
 
 type (

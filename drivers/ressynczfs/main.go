@@ -14,16 +14,16 @@ import (
 	"github.com/rs/zerolog"
 	"golang.org/x/crypto/ssh"
 
-	"github.com/opensvc/om3/core/actioncontext"
-	"github.com/opensvc/om3/core/nodesinfo"
-	"github.com/opensvc/om3/core/provisioned"
-	"github.com/opensvc/om3/core/resource"
-	"github.com/opensvc/om3/core/status"
-	"github.com/opensvc/om3/core/topology"
-	"github.com/opensvc/om3/drivers/ressync"
-	"github.com/opensvc/om3/util/hostname"
-	"github.com/opensvc/om3/util/proc"
-	"github.com/opensvc/om3/util/zfs"
+	"github.com/opensvc/om3/v3/core/actioncontext"
+	"github.com/opensvc/om3/v3/core/nodesinfo"
+	"github.com/opensvc/om3/v3/core/provisioned"
+	"github.com/opensvc/om3/v3/core/resource"
+	"github.com/opensvc/om3/v3/core/status"
+	"github.com/opensvc/om3/v3/core/topology"
+	"github.com/opensvc/om3/v3/drivers/ressync"
+	"github.com/opensvc/om3/v3/util/hostname"
+	"github.com/opensvc/om3/v3/util/proc"
+	"github.com/opensvc/om3/v3/util/zfs"
 )
 
 // T is the driver structure.

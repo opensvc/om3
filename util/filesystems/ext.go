@@ -5,8 +5,8 @@ import (
 	"fmt"
 	"os/exec"
 
-	"github.com/opensvc/om3/util/command"
-	"github.com/opensvc/om3/util/plog"
+	"github.com/opensvc/om3/v3/util/command"
+	"github.com/opensvc/om3/v3/util/plog"
 	"github.com/rs/zerolog"
 )
 

@@ -3,8 +3,8 @@ package omcmd
 import (
 	"fmt"
 
-	"github.com/opensvc/om3/core/nodeaction"
-	"github.com/opensvc/om3/core/object"
+	"github.com/opensvc/om3/v3/core/nodeaction"
+	"github.com/opensvc/om3/v3/core/object"
 )
 
 type (

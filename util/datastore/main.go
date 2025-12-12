@@ -3,7 +3,7 @@ package datastore
 import (
 	"path/filepath"
 
-	"github.com/opensvc/om3/util/file"
+	"github.com/opensvc/om3/v3/util/file"
 )
 
 func FileToKey(path, prefix, from string) (string, error) {

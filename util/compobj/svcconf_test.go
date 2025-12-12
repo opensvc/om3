@@ -7,9 +7,9 @@ import (
 	"slices"
 	"testing"
 
-	"github.com/opensvc/om3/core/keyop"
-	"github.com/opensvc/om3/core/naming"
-	"github.com/opensvc/om3/core/object"
+	"github.com/opensvc/om3/v3/core/keyop"
+	"github.com/opensvc/om3/v3/core/naming"
+	"github.com/opensvc/om3/v3/core/object"
 	"github.com/stretchr/testify/require"
 )
 

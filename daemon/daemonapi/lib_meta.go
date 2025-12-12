@@ -5,11 +5,11 @@ import (
 
 	"github.com/labstack/echo/v4"
 
-	"github.com/opensvc/om3/core/naming"
-	"github.com/opensvc/om3/core/nodeselector"
-	"github.com/opensvc/om3/core/object"
-	"github.com/opensvc/om3/core/objectselector"
-	"github.com/opensvc/om3/daemon/rbac"
+	"github.com/opensvc/om3/v3/core/naming"
+	"github.com/opensvc/om3/v3/core/nodeselector"
+	"github.com/opensvc/om3/v3/core/object"
+	"github.com/opensvc/om3/v3/core/objectselector"
+	"github.com/opensvc/om3/v3/daemon/rbac"
 )
 
 type (

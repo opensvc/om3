@@ -9,14 +9,14 @@ import (
 	"strings"
 	"time"
 
-	"github.com/opensvc/om3/core/clusternode"
-	"github.com/opensvc/om3/core/node"
-	"github.com/opensvc/om3/core/rawconfig"
-	"github.com/opensvc/om3/daemon/msgbus"
-	"github.com/opensvc/om3/util/errcontext"
-	"github.com/opensvc/om3/util/file"
-	"github.com/opensvc/om3/util/key"
-	"github.com/opensvc/om3/util/toc"
+	"github.com/opensvc/om3/v3/core/clusternode"
+	"github.com/opensvc/om3/v3/core/node"
+	"github.com/opensvc/om3/v3/core/rawconfig"
+	"github.com/opensvc/om3/v3/daemon/msgbus"
+	"github.com/opensvc/om3/v3/util/errcontext"
+	"github.com/opensvc/om3/v3/util/file"
+	"github.com/opensvc/om3/v3/util/key"
+	"github.com/opensvc/om3/v3/util/toc"
 )
 
 var (

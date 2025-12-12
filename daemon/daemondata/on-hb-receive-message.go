@@ -3,8 +3,8 @@ package daemondata
 import (
 	"github.com/prometheus/client_golang/prometheus"
 
-	"github.com/opensvc/om3/core/hbtype"
-	"github.com/opensvc/om3/core/node"
+	"github.com/opensvc/om3/v3/core/hbtype"
+	"github.com/opensvc/om3/v3/core/node"
 )
 
 func (d *data) onReceiveHbMsg(msg *hbtype.Msg) {

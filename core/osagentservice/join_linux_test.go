@@ -6,9 +6,9 @@ import (
 
 	"github.com/stretchr/testify/require"
 
-	"github.com/opensvc/om3/core/rawconfig"
-	"github.com/opensvc/om3/testhelper"
-	"github.com/opensvc/om3/util/capabilities"
+	"github.com/opensvc/om3/v3/core/rawconfig"
+	"github.com/opensvc/om3/v3/testhelper"
+	"github.com/opensvc/om3/v3/util/capabilities"
 )
 
 func TestJoin(t *testing.T) {

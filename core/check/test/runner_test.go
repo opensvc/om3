@@ -10,7 +10,7 @@ import (
 
 	"github.com/stretchr/testify/assert"
 
-	"github.com/opensvc/om3/core/check"
+	"github.com/opensvc/om3/v3/core/check"
 )
 
 func fakeExecCommand(command string, args ...string) *exec.Cmd {

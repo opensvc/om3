@@ -1,7 +1,7 @@
 package oxcmd
 
 import (
-	"github.com/opensvc/om3/core/clientcontext"
+	"github.com/opensvc/om3/v3/core/clientcontext"
 )
 
 type (

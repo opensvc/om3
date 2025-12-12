@@ -5,7 +5,7 @@ import (
 
 	"github.com/google/uuid"
 
-	"github.com/opensvc/om3/core/hbtype"
+	"github.com/opensvc/om3/v3/core/hbtype"
 )
 
 type (

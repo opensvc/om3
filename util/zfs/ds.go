@@ -1,6 +1,6 @@
 package zfs
 
-import "github.com/opensvc/om3/util/plog"
+import "github.com/opensvc/om3/v3/util/plog"
 
 type (
 	Dataset interface {

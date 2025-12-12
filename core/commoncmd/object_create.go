@@ -5,7 +5,7 @@ import (
 	"io"
 	"os"
 
-	"github.com/opensvc/om3/util/uri"
+	"github.com/opensvc/om3/v3/util/uri"
 )
 
 func DataFromConfigURI(u uri.T) ([]byte, error) {

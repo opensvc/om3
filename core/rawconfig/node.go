@@ -11,8 +11,8 @@ import (
 	"github.com/msoap/byline"
 	"github.com/subosito/gotenv"
 
-	"github.com/opensvc/om3/util/capabilities"
-	"github.com/opensvc/om3/util/render/palette"
+	"github.com/opensvc/om3/v3/util/capabilities"
+	"github.com/opensvc/om3/v3/util/render/palette"
 )
 
 const (

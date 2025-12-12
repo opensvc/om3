@@ -3,11 +3,11 @@ package daemonapi
 import (
 	"fmt"
 
-	"github.com/opensvc/om3/core/keyop"
-	"github.com/opensvc/om3/core/naming"
-	"github.com/opensvc/om3/core/object"
-	"github.com/opensvc/om3/util/key"
-	"github.com/opensvc/om3/util/plog"
+	"github.com/opensvc/om3/v3/core/keyop"
+	"github.com/opensvc/om3/v3/core/naming"
+	"github.com/opensvc/om3/v3/core/object"
+	"github.com/opensvc/om3/v3/util/key"
+	"github.com/opensvc/om3/v3/util/plog"
 )
 
 func configUpdate(log *plog.Logger, p naming.Path, deletes []string, unsets []key.T, sets []keyop.T) (bool, error) {

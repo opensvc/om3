@@ -6,7 +6,7 @@ import (
 
 	"github.com/stretchr/testify/require"
 
-	"github.com/opensvc/om3/util/bootid"
+	"github.com/opensvc/om3/v3/util/bootid"
 )
 
 func Test_Get(t *testing.T) {

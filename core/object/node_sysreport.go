@@ -1,6 +1,6 @@
 package object
 
-import "github.com/opensvc/om3/util/sysreport"
+import "github.com/opensvc/om3/v3/util/sysreport"
 
 // Sysreport sends an archive of modified files the agent is configured
 // to track, and the list of files deleted since the last call.

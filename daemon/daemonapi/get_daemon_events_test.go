@@ -7,12 +7,12 @@ import (
 	"github.com/goccy/go-json"
 	"github.com/stretchr/testify/require"
 
-	"github.com/opensvc/om3/core/event"
-	"github.com/opensvc/om3/core/instance"
-	"github.com/opensvc/om3/core/status"
-	"github.com/opensvc/om3/daemon/api"
-	"github.com/opensvc/om3/daemon/msgbus"
-	"github.com/opensvc/om3/util/pubsub"
+	"github.com/opensvc/om3/v3/core/event"
+	"github.com/opensvc/om3/v3/core/instance"
+	"github.com/opensvc/om3/v3/core/status"
+	"github.com/opensvc/om3/v3/daemon/api"
+	"github.com/opensvc/om3/v3/daemon/msgbus"
+	"github.com/opensvc/om3/v3/util/pubsub"
 )
 
 func TestGetDaemonEventsParamsOk(t *testing.T) {

@@ -3,7 +3,7 @@ package object
 import (
 	"context"
 
-	"github.com/opensvc/om3/core/freeze"
+	"github.com/opensvc/om3/v3/core/freeze"
 )
 
 // Restart stops then starts the local instance of the object

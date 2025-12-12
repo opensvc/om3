@@ -7,15 +7,15 @@ import (
 
 	"github.com/google/uuid"
 
-	"github.com/opensvc/om3/core/env"
-	"github.com/opensvc/om3/core/instance"
-	"github.com/opensvc/om3/core/priority"
-	"github.com/opensvc/om3/core/provisioned"
-	"github.com/opensvc/om3/core/status"
-	"github.com/opensvc/om3/daemon/msgbus"
-	"github.com/opensvc/om3/daemon/runner"
-	"github.com/opensvc/om3/util/command"
-	"github.com/opensvc/om3/util/pubsub"
+	"github.com/opensvc/om3/v3/core/env"
+	"github.com/opensvc/om3/v3/core/instance"
+	"github.com/opensvc/om3/v3/core/priority"
+	"github.com/opensvc/om3/v3/core/provisioned"
+	"github.com/opensvc/om3/v3/core/status"
+	"github.com/opensvc/om3/v3/daemon/msgbus"
+	"github.com/opensvc/om3/v3/daemon/runner"
+	"github.com/opensvc/om3/v3/util/command"
+	"github.com/opensvc/om3/v3/util/pubsub"
 )
 
 var (

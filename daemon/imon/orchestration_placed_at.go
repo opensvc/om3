@@ -3,8 +3,8 @@ package imon
 import (
 	"slices"
 
-	"github.com/opensvc/om3/core/instance"
-	"github.com/opensvc/om3/core/status"
+	"github.com/opensvc/om3/v3/core/instance"
+	"github.com/opensvc/om3/v3/core/status"
 )
 
 func (t *Manager) orchestrateFailoverPlacedStart() {

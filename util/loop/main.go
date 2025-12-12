@@ -9,11 +9,11 @@ import (
 	"github.com/opensvc/flock"
 	"github.com/rs/zerolog"
 
-	"github.com/opensvc/om3/util/command"
-	"github.com/opensvc/om3/util/fcache"
-	"github.com/opensvc/om3/util/funcopt"
-	"github.com/opensvc/om3/util/plog"
-	"github.com/opensvc/om3/util/udevadm"
+	"github.com/opensvc/om3/v3/util/command"
+	"github.com/opensvc/om3/v3/util/fcache"
+	"github.com/opensvc/om3/v3/util/funcopt"
+	"github.com/opensvc/om3/v3/util/plog"
+	"github.com/opensvc/om3/v3/util/udevadm"
 )
 
 const (

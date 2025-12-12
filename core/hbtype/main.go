@@ -4,8 +4,8 @@ package hbtype
 import (
 	"time"
 
-	"github.com/opensvc/om3/core/event"
-	"github.com/opensvc/om3/core/node"
+	"github.com/opensvc/om3/v3/core/event"
+	"github.com/opensvc/om3/v3/core/node"
 )
 
 type (

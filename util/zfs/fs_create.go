@@ -4,9 +4,9 @@ import (
 	"os/exec"
 	"strings"
 
-	"github.com/opensvc/om3/util/args"
-	"github.com/opensvc/om3/util/funcopt"
-	"github.com/opensvc/om3/util/sizeconv"
+	"github.com/opensvc/om3/v3/util/args"
+	"github.com/opensvc/om3/v3/util/funcopt"
+	"github.com/opensvc/om3/v3/util/sizeconv"
 	"golang.org/x/crypto/ssh"
 )
 

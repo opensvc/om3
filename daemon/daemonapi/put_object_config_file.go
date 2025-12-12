@@ -5,8 +5,8 @@ import (
 
 	"github.com/labstack/echo/v4"
 
-	"github.com/opensvc/om3/core/instance"
-	"github.com/opensvc/om3/core/naming"
+	"github.com/opensvc/om3/v3/core/instance"
+	"github.com/opensvc/om3/v3/core/naming"
 )
 
 func (a *DaemonAPI) PutObjectConfigFile(ctx echo.Context, namespace string, kind naming.Kind, name string) error {

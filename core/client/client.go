@@ -6,16 +6,16 @@ import (
 	"strings"
 	"time"
 
-	"github.com/opensvc/om3/core/client/api"
-	reqh2 "github.com/opensvc/om3/core/client/requester/h2"
-	"github.com/opensvc/om3/core/client/tokencache"
-	"github.com/opensvc/om3/core/clientcontext"
-	"github.com/opensvc/om3/core/env"
-	"github.com/opensvc/om3/core/nodesinfo"
-	oapi "github.com/opensvc/om3/daemon/api"
-	"github.com/opensvc/om3/daemon/daemonenv"
-	"github.com/opensvc/om3/util/funcopt"
-	"github.com/opensvc/om3/util/hostname"
+	"github.com/opensvc/om3/v3/core/client/api"
+	reqh2 "github.com/opensvc/om3/v3/core/client/requester/h2"
+	"github.com/opensvc/om3/v3/core/client/tokencache"
+	"github.com/opensvc/om3/v3/core/clientcontext"
+	"github.com/opensvc/om3/v3/core/env"
+	"github.com/opensvc/om3/v3/core/nodesinfo"
+	oapi "github.com/opensvc/om3/v3/daemon/api"
+	"github.com/opensvc/om3/v3/daemon/daemonenv"
+	"github.com/opensvc/om3/v3/util/funcopt"
+	"github.com/opensvc/om3/v3/util/hostname"
 )
 
 type (

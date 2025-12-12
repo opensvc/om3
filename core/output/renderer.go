@@ -15,9 +15,9 @@ import (
 	"k8s.io/client-go/util/jsonpath"
 	"sigs.k8s.io/yaml"
 
-	"github.com/opensvc/om3/util/render"
-	"github.com/opensvc/om3/util/render/palette"
-	"github.com/opensvc/om3/util/unstructured"
+	"github.com/opensvc/om3/v3/util/render"
+	"github.com/opensvc/om3/v3/util/render/palette"
+	"github.com/opensvc/om3/v3/util/unstructured"
 )
 
 type (

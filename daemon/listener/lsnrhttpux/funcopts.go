@@ -1,7 +1,7 @@
 package lsnrhttpux
 
 import (
-	"github.com/opensvc/om3/util/funcopt"
+	"github.com/opensvc/om3/v3/util/funcopt"
 )
 
 func WithAddr(o string) funcopt.O {

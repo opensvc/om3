@@ -51,9 +51,9 @@ import (
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promauto"
 
-	"github.com/opensvc/om3/util/durationlog"
-	"github.com/opensvc/om3/util/plog"
-	"github.com/opensvc/om3/util/xmap"
+	"github.com/opensvc/om3/v3/util/durationlog"
+	"github.com/opensvc/om3/v3/util/plog"
+	"github.com/opensvc/om3/v3/util/xmap"
 )
 
 type (

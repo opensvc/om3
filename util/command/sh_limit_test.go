@@ -5,7 +5,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/opensvc/om3/util/limits"
+	"github.com/opensvc/om3/v3/util/limits"
 	"github.com/stretchr/testify/assert"
 )
 

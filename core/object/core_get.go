@@ -1,7 +1,7 @@
 package object
 
 import (
-	"github.com/opensvc/om3/util/key"
+	"github.com/opensvc/om3/v3/util/key"
 )
 
 // Get returns a keyword value

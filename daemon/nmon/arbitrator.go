@@ -9,11 +9,11 @@ import (
 	"net/http"
 	"strings"
 
-	"github.com/opensvc/om3/core/cluster"
-	"github.com/opensvc/om3/core/node"
-	"github.com/opensvc/om3/core/status"
-	"github.com/opensvc/om3/daemon/msgbus"
-	"github.com/opensvc/om3/util/key"
+	"github.com/opensvc/om3/v3/core/cluster"
+	"github.com/opensvc/om3/v3/core/node"
+	"github.com/opensvc/om3/v3/core/status"
+	"github.com/opensvc/om3/v3/daemon/msgbus"
+	"github.com/opensvc/om3/v3/util/key"
 )
 
 type (

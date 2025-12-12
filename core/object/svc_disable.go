@@ -3,11 +3,11 @@ package object
 import (
 	"context"
 
-	"github.com/opensvc/om3/core/actioncontext"
-	"github.com/opensvc/om3/core/keyop"
-	"github.com/opensvc/om3/core/resourceselector"
-	"github.com/opensvc/om3/core/statusbus"
-	"github.com/opensvc/om3/util/key"
+	"github.com/opensvc/om3/v3/core/actioncontext"
+	"github.com/opensvc/om3/v3/core/keyop"
+	"github.com/opensvc/om3/v3/core/resourceselector"
+	"github.com/opensvc/om3/v3/core/statusbus"
+	"github.com/opensvc/om3/v3/util/key"
 )
 
 // Disable unsets disable=true from the svc config

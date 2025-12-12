@@ -8,13 +8,13 @@ import (
 	"os"
 	"sync"
 
-	"github.com/opensvc/om3/core/client"
-	"github.com/opensvc/om3/core/clientcontext"
-	"github.com/opensvc/om3/core/commoncmd"
-	"github.com/opensvc/om3/core/monitor"
-	"github.com/opensvc/om3/core/nodeaction"
-	"github.com/opensvc/om3/core/nodeselector"
-	"github.com/opensvc/om3/util/hostname"
+	"github.com/opensvc/om3/v3/core/client"
+	"github.com/opensvc/om3/v3/core/clientcontext"
+	"github.com/opensvc/om3/v3/core/commoncmd"
+	"github.com/opensvc/om3/v3/core/monitor"
+	"github.com/opensvc/om3/v3/core/nodeaction"
+	"github.com/opensvc/om3/v3/core/nodeselector"
+	"github.com/opensvc/om3/v3/util/hostname"
 )
 
 type CmdNodeDrain struct {

@@ -14,8 +14,8 @@ import (
 	"golang.org/x/crypto/ssh"
 	"golang.org/x/crypto/ssh/knownhosts"
 
-	"github.com/opensvc/om3/util/file"
-	"github.com/opensvc/om3/util/funcopt"
+	"github.com/opensvc/om3/v3/util/file"
+	"github.com/opensvc/om3/v3/util/funcopt"
 )
 
 type (

@@ -10,10 +10,10 @@ import (
 	"os"
 	"path/filepath"
 
-	"github.com/opensvc/om3/core/rawconfig"
+	"github.com/opensvc/om3/v3/core/rawconfig"
 
-	"github.com/opensvc/om3/core/naming"
-	"github.com/opensvc/om3/util/disks"
+	"github.com/opensvc/om3/v3/core/naming"
+	"github.com/opensvc/om3/v3/util/disks"
 )
 
 type (

@@ -5,17 +5,17 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/opensvc/om3/core/keyop"
-	"github.com/opensvc/om3/core/naming"
-	"github.com/opensvc/om3/core/nodesinfo"
-	"github.com/opensvc/om3/core/object"
-	"github.com/opensvc/om3/core/pool"
-	"github.com/opensvc/om3/core/provisioned"
-	"github.com/opensvc/om3/core/resource"
-	"github.com/opensvc/om3/drivers/resdisk"
-	"github.com/opensvc/om3/util/device"
-	"github.com/opensvc/om3/util/hostname"
-	"github.com/opensvc/om3/util/key"
+	"github.com/opensvc/om3/v3/core/keyop"
+	"github.com/opensvc/om3/v3/core/naming"
+	"github.com/opensvc/om3/v3/core/nodesinfo"
+	"github.com/opensvc/om3/v3/core/object"
+	"github.com/opensvc/om3/v3/core/pool"
+	"github.com/opensvc/om3/v3/core/provisioned"
+	"github.com/opensvc/om3/v3/core/resource"
+	"github.com/opensvc/om3/v3/drivers/resdisk"
+	"github.com/opensvc/om3/v3/util/device"
+	"github.com/opensvc/om3/v3/util/hostname"
+	"github.com/opensvc/om3/v3/util/key"
 )
 
 type (

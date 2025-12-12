@@ -11,9 +11,9 @@ import (
 	"net"
 	"time"
 
-	"github.com/opensvc/om3/core/naming"
-	"github.com/opensvc/om3/util/hostname"
-	"github.com/opensvc/om3/util/key"
+	"github.com/opensvc/om3/v3/core/naming"
+	"github.com/opensvc/om3/v3/util/hostname"
+	"github.com/opensvc/om3/v3/util/key"
 )
 
 // GenCert generates a x509 certificate and adds (or replaces) it has a key set.

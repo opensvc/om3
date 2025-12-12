@@ -6,9 +6,9 @@ import (
 
 	"github.com/stretchr/testify/require"
 
-	"github.com/opensvc/om3/core/naming"
-	"github.com/opensvc/om3/core/resource"
-	"github.com/opensvc/om3/core/resourceid"
+	"github.com/opensvc/om3/v3/core/naming"
+	"github.com/opensvc/om3/v3/core/resource"
+	"github.com/opensvc/om3/v3/core/resourceid"
 )
 
 func TestExecutorArg_RunArgsBase(t *testing.T) {

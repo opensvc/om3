@@ -6,11 +6,11 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/opensvc/om3/core/client"
-	"github.com/opensvc/om3/core/commoncmd"
-	"github.com/opensvc/om3/core/naming"
-	"github.com/opensvc/om3/core/objectselector"
-	"github.com/opensvc/om3/daemon/api"
+	"github.com/opensvc/om3/v3/core/client"
+	"github.com/opensvc/om3/v3/core/commoncmd"
+	"github.com/opensvc/om3/v3/core/naming"
+	"github.com/opensvc/om3/v3/core/objectselector"
+	"github.com/opensvc/om3/v3/daemon/api"
 )
 
 type (

@@ -8,13 +8,13 @@ import (
 
 	"github.com/labstack/echo/v4"
 
-	"github.com/opensvc/om3/daemon/api"
-	"github.com/opensvc/om3/daemon/daemonauth"
-	"github.com/opensvc/om3/daemon/daemondata"
-	"github.com/opensvc/om3/daemon/daemonenv"
-	"github.com/opensvc/om3/daemon/rbac"
-	"github.com/opensvc/om3/util/hostname"
-	"github.com/opensvc/om3/util/pubsub"
+	"github.com/opensvc/om3/v3/daemon/api"
+	"github.com/opensvc/om3/v3/daemon/daemonauth"
+	"github.com/opensvc/om3/v3/daemon/daemondata"
+	"github.com/opensvc/om3/v3/daemon/daemonenv"
+	"github.com/opensvc/om3/v3/daemon/rbac"
+	"github.com/opensvc/om3/v3/util/hostname"
+	"github.com/opensvc/om3/v3/util/pubsub"
 )
 
 type (

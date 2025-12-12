@@ -5,7 +5,7 @@ package resdiskdrbd
 import (
 	"context"
 
-	"github.com/opensvc/om3/util/drbd"
+	"github.com/opensvc/om3/v3/util/drbd"
 )
 
 func (t *T) drbd(ctx context.Context) DRBDDriver {

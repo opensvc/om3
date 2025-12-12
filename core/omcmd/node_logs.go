@@ -4,9 +4,9 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/opensvc/om3/core/commoncmd"
-	"github.com/opensvc/om3/core/streamlog"
-	"github.com/opensvc/om3/util/render"
+	"github.com/opensvc/om3/v3/core/commoncmd"
+	"github.com/opensvc/om3/v3/core/streamlog"
+	"github.com/opensvc/om3/v3/util/render"
 )
 
 type (

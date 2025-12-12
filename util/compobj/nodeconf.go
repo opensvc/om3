@@ -4,10 +4,10 @@ import (
 	"encoding/json"
 	"fmt"
 
-	"github.com/opensvc/om3/core/keyop"
-	"github.com/opensvc/om3/core/object"
-	"github.com/opensvc/om3/util/key"
-	"github.com/opensvc/om3/util/plog"
+	"github.com/opensvc/om3/v3/core/keyop"
+	"github.com/opensvc/om3/v3/core/object"
+	"github.com/opensvc/om3/v3/util/key"
+	"github.com/opensvc/om3/v3/util/plog"
 	"github.com/rs/zerolog"
 )
 

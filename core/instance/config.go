@@ -3,13 +3,13 @@ package instance
 import (
 	"time"
 
-	"github.com/opensvc/om3/core/naming"
-	"github.com/opensvc/om3/core/placement"
-	"github.com/opensvc/om3/core/priority"
-	"github.com/opensvc/om3/core/schedule"
-	"github.com/opensvc/om3/core/topology"
-	"github.com/opensvc/om3/util/stringslice"
-	"github.com/opensvc/om3/util/xmap"
+	"github.com/opensvc/om3/v3/core/naming"
+	"github.com/opensvc/om3/v3/core/placement"
+	"github.com/opensvc/om3/v3/core/priority"
+	"github.com/opensvc/om3/v3/core/schedule"
+	"github.com/opensvc/om3/v3/core/topology"
+	"github.com/opensvc/om3/v3/util/stringslice"
+	"github.com/opensvc/om3/v3/util/xmap"
 )
 
 type (

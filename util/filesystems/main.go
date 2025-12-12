@@ -6,10 +6,10 @@ import (
 	"os"
 	"strings"
 
-	"github.com/opensvc/om3/util/command"
-	"github.com/opensvc/om3/util/device"
-	"github.com/opensvc/om3/util/plog"
-	"github.com/opensvc/om3/util/xmap"
+	"github.com/opensvc/om3/v3/util/command"
+	"github.com/opensvc/om3/v3/util/device"
+	"github.com/opensvc/om3/v3/util/plog"
+	"github.com/opensvc/om3/v3/util/xmap"
 )
 
 type (

@@ -1,10 +1,10 @@
 package object
 
 import (
-	"github.com/opensvc/om3/core/keywords"
-	"github.com/opensvc/om3/core/naming"
-	"github.com/opensvc/om3/util/funcopt"
-	"github.com/opensvc/om3/util/key"
+	"github.com/opensvc/om3/v3/core/keywords"
+	"github.com/opensvc/om3/v3/core/naming"
+	"github.com/opensvc/om3/v3/util/funcopt"
+	"github.com/opensvc/om3/v3/util/key"
 )
 
 type (

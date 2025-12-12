@@ -5,9 +5,9 @@ import (
 
 	"github.com/google/uuid"
 
-	"github.com/opensvc/om3/core/instance"
-	"github.com/opensvc/om3/core/node"
-	"github.com/opensvc/om3/core/status"
+	"github.com/opensvc/om3/v3/core/instance"
+	"github.com/opensvc/om3/v3/core/node"
+	"github.com/opensvc/om3/v3/core/status"
 )
 
 func (t *Manager) isDone() bool {

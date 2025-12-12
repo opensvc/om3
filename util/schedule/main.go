@@ -12,9 +12,9 @@ import (
 
 	errchain "github.com/g8rswimmer/error-chain"
 
-	"github.com/opensvc/om3/util/converters"
-	"github.com/opensvc/om3/util/funcopt"
-	"github.com/opensvc/om3/util/seq"
+	"github.com/opensvc/om3/v3/util/converters"
+	"github.com/opensvc/om3/v3/util/funcopt"
+	"github.com/opensvc/om3/v3/util/seq"
 )
 
 var (

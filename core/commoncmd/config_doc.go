@@ -3,10 +3,10 @@ package commoncmd
 import (
 	"io"
 
-	"github.com/opensvc/om3/core/keyop"
-	"github.com/opensvc/om3/core/keywords"
-	"github.com/opensvc/om3/core/naming"
-	"github.com/opensvc/om3/daemon/api"
+	"github.com/opensvc/om3/v3/core/keyop"
+	"github.com/opensvc/om3/v3/core/keywords"
+	"github.com/opensvc/om3/v3/core/naming"
+	"github.com/opensvc/om3/v3/daemon/api"
 )
 
 func KeywordStoreFromAPI(items api.KeywordDefinitionItems) (store keywords.Store) {

@@ -4,17 +4,17 @@ import (
 	"embed"
 	"fmt"
 
-	"github.com/opensvc/om3/core/driver"
-	"github.com/opensvc/om3/core/instance"
-	"github.com/opensvc/om3/core/keyop"
-	"github.com/opensvc/om3/core/keywords"
-	"github.com/opensvc/om3/core/kwoption"
-	"github.com/opensvc/om3/core/naming"
-	"github.com/opensvc/om3/core/placement"
-	"github.com/opensvc/om3/core/priority"
-	"github.com/opensvc/om3/core/resource"
-	"github.com/opensvc/om3/core/resourceid"
-	"github.com/opensvc/om3/util/key"
+	"github.com/opensvc/om3/v3/core/driver"
+	"github.com/opensvc/om3/v3/core/instance"
+	"github.com/opensvc/om3/v3/core/keyop"
+	"github.com/opensvc/om3/v3/core/keywords"
+	"github.com/opensvc/om3/v3/core/kwoption"
+	"github.com/opensvc/om3/v3/core/naming"
+	"github.com/opensvc/om3/v3/core/placement"
+	"github.com/opensvc/om3/v3/core/priority"
+	"github.com/opensvc/om3/v3/core/resource"
+	"github.com/opensvc/om3/v3/core/resourceid"
+	"github.com/opensvc/om3/v3/util/key"
 )
 
 //go:embed text

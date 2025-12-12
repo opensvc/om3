@@ -20,8 +20,8 @@ import (
 	"sync"
 	"time"
 
-	"github.com/opensvc/om3/core/hbtype"
-	"github.com/opensvc/om3/util/pubsub"
+	"github.com/opensvc/om3/v3/core/hbtype"
+	"github.com/opensvc/om3/v3/util/pubsub"
 )
 
 type (

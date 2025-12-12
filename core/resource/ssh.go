@@ -3,9 +3,9 @@ package resource
 import (
 	"golang.org/x/crypto/ssh"
 
-	"github.com/opensvc/om3/core/cluster"
-	"github.com/opensvc/om3/util/funcopt"
-	"github.com/opensvc/om3/util/sshnode"
+	"github.com/opensvc/om3/v3/core/cluster"
+	"github.com/opensvc/om3/v3/util/funcopt"
+	"github.com/opensvc/om3/v3/util/sshnode"
 )
 
 // SSH represents a configuration for SSH-based interactions,

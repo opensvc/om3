@@ -6,9 +6,9 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/opensvc/om3/core/client"
-	"github.com/opensvc/om3/core/commoncmd"
-	"github.com/opensvc/om3/core/nodeselector"
+	"github.com/opensvc/om3/v3/core/client"
+	"github.com/opensvc/om3/v3/core/commoncmd"
+	"github.com/opensvc/om3/v3/core/nodeselector"
 )
 
 type (

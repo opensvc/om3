@@ -3,11 +3,11 @@ package oxcmd
 import (
 	"fmt"
 
-	"github.com/opensvc/om3/core/client"
-	"github.com/opensvc/om3/core/commoncmd"
-	"github.com/opensvc/om3/core/objectdevice"
-	"github.com/opensvc/om3/core/output"
-	"github.com/opensvc/om3/core/rawconfig"
+	"github.com/opensvc/om3/v3/core/client"
+	"github.com/opensvc/om3/v3/core/commoncmd"
+	"github.com/opensvc/om3/v3/core/objectdevice"
+	"github.com/opensvc/om3/v3/core/output"
+	"github.com/opensvc/om3/v3/core/rawconfig"
 )
 
 type (

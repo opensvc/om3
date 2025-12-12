@@ -11,17 +11,17 @@ import (
 	"slices"
 	"time"
 
-	"github.com/opensvc/om3/core/client"
-	"github.com/opensvc/om3/core/driver"
-	"github.com/opensvc/om3/core/keywords"
-	"github.com/opensvc/om3/core/naming"
-	"github.com/opensvc/om3/core/resource"
-	"github.com/opensvc/om3/core/status"
-	"github.com/opensvc/om3/core/statusbus"
-	"github.com/opensvc/om3/daemon/api"
-	"github.com/opensvc/om3/util/file"
-	"github.com/opensvc/om3/util/hostname"
-	"github.com/opensvc/om3/util/schedule"
+	"github.com/opensvc/om3/v3/core/client"
+	"github.com/opensvc/om3/v3/core/driver"
+	"github.com/opensvc/om3/v3/core/keywords"
+	"github.com/opensvc/om3/v3/core/naming"
+	"github.com/opensvc/om3/v3/core/resource"
+	"github.com/opensvc/om3/v3/core/status"
+	"github.com/opensvc/om3/v3/core/statusbus"
+	"github.com/opensvc/om3/v3/daemon/api"
+	"github.com/opensvc/om3/v3/util/file"
+	"github.com/opensvc/om3/v3/util/hostname"
+	"github.com/opensvc/om3/v3/util/schedule"
 )
 
 type (

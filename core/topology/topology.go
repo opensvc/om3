@@ -3,7 +3,7 @@ package topology
 import (
 	"fmt"
 
-	"github.com/opensvc/om3/util/xmap"
+	"github.com/opensvc/om3/v3/util/xmap"
 )
 
 // T is an integer representing the opensvc object topology.

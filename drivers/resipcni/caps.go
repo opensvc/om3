@@ -2,7 +2,7 @@
 
 package resipcni
 
-import "github.com/opensvc/om3/util/capabilities"
+import "github.com/opensvc/om3/v3/util/capabilities"
 
 func init() {
 	capabilities.Register(capabilitiesScanner)

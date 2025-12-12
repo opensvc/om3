@@ -6,14 +6,14 @@ import (
 	"os"
 	"strings"
 
-	"github.com/opensvc/om3/core/driver"
-	"github.com/opensvc/om3/core/pool"
-	"github.com/opensvc/om3/core/xconfig"
-	"github.com/opensvc/om3/drivers/arraysymmetrix"
-	"github.com/opensvc/om3/util/hostname"
-	"github.com/opensvc/om3/util/key"
-	"github.com/opensvc/om3/util/san"
-	"github.com/opensvc/om3/util/sizeconv"
+	"github.com/opensvc/om3/v3/core/driver"
+	"github.com/opensvc/om3/v3/core/pool"
+	"github.com/opensvc/om3/v3/core/xconfig"
+	"github.com/opensvc/om3/v3/drivers/arraysymmetrix"
+	"github.com/opensvc/om3/v3/util/hostname"
+	"github.com/opensvc/om3/v3/util/key"
+	"github.com/opensvc/om3/v3/util/san"
+	"github.com/opensvc/om3/v3/util/sizeconv"
 )
 
 type (

@@ -3,7 +3,7 @@ package node
 import (
 	"sync"
 
-	"github.com/opensvc/om3/util/san"
+	"github.com/opensvc/om3/v3/util/san"
 )
 
 type (

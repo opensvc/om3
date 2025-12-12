@@ -9,7 +9,7 @@ import (
 	"github.com/hexops/gotextdiff/myers"
 	"github.com/hexops/gotextdiff/span"
 
-	"github.com/opensvc/om3/util/editor"
+	"github.com/opensvc/om3/v3/util/editor"
 )
 
 type (

@@ -5,8 +5,8 @@ import (
 
 	"github.com/labstack/echo/v4"
 
-	"github.com/opensvc/om3/core/cluster"
-	"github.com/opensvc/om3/daemon/api"
+	"github.com/opensvc/om3/v3/core/cluster"
+	"github.com/opensvc/om3/v3/daemon/api"
 )
 
 func (a *DaemonAPI) GetAuthInfo(ctx echo.Context) error {

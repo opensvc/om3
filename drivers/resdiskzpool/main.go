@@ -13,18 +13,18 @@ import (
 
 	"github.com/rs/zerolog"
 
-	"github.com/opensvc/om3/core/actionrollback"
-	"github.com/opensvc/om3/core/provisioned"
-	"github.com/opensvc/om3/core/rawconfig"
-	"github.com/opensvc/om3/core/resource"
-	"github.com/opensvc/om3/core/status"
-	"github.com/opensvc/om3/drivers/resdisk"
-	"github.com/opensvc/om3/util/args"
-	"github.com/opensvc/om3/util/command"
-	"github.com/opensvc/om3/util/device"
-	"github.com/opensvc/om3/util/file"
-	"github.com/opensvc/om3/util/funcopt"
-	"github.com/opensvc/om3/util/zfs"
+	"github.com/opensvc/om3/v3/core/actionrollback"
+	"github.com/opensvc/om3/v3/core/provisioned"
+	"github.com/opensvc/om3/v3/core/rawconfig"
+	"github.com/opensvc/om3/v3/core/resource"
+	"github.com/opensvc/om3/v3/core/status"
+	"github.com/opensvc/om3/v3/drivers/resdisk"
+	"github.com/opensvc/om3/v3/util/args"
+	"github.com/opensvc/om3/v3/util/command"
+	"github.com/opensvc/om3/v3/util/device"
+	"github.com/opensvc/om3/v3/util/file"
+	"github.com/opensvc/om3/v3/util/funcopt"
+	"github.com/opensvc/om3/v3/util/zfs"
 )
 
 type (

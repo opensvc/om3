@@ -3,9 +3,9 @@ package object
 import (
 	"strings"
 
-	"github.com/opensvc/om3/core/pool"
-	"github.com/opensvc/om3/drivers/pooldirectory"
-	"github.com/opensvc/om3/drivers/poolshm"
+	"github.com/opensvc/om3/v3/core/pool"
+	"github.com/opensvc/om3/v3/drivers/pooldirectory"
+	"github.com/opensvc/om3/v3/drivers/poolshm"
 )
 
 func (t *Node) ShowPoolsByName(name string) pool.StatusList {

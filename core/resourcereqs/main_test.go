@@ -3,7 +3,7 @@ package resourcereqs
 import (
 	"testing"
 
-	"github.com/opensvc/om3/core/status"
+	"github.com/opensvc/om3/v3/core/status"
 	"github.com/stretchr/testify/assert"
 )
 

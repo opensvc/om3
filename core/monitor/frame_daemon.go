@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/opensvc/om3/util/duration"
+	"github.com/opensvc/om3/v3/util/duration"
 )
 
 func (f Frame) sDaemonUptimeLine() string {

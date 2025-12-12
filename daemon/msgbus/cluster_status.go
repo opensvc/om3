@@ -1,8 +1,8 @@
 package msgbus
 
 import (
-	"github.com/opensvc/om3/util/hostname"
-	"github.com/opensvc/om3/util/pubsub"
+	"github.com/opensvc/om3/v3/util/hostname"
+	"github.com/opensvc/om3/v3/util/pubsub"
 )
 
 // onClusterStatusUpdated updates .cluster.status
@@ -15,7 +15,7 @@ func (data *ClusterData) clusterStatusUpdated(_ pubsub.Labels) ([]any, error) {
 	nodename := hostname.Hostname()
 	clusterStatus := data.Cluster.Status
 	l = append(l, &ClusterStatusUpdated{
-		Msg:   pubsub.Msg{
+		Msg: pubsub.Msg{
 			Labels: pubsub.NewLabels("node", nodename, "from", "cache"),
 		},
 		Node:  nodename,

@@ -3,11 +3,11 @@ package resfshost
 import (
 	"embed"
 
-	"github.com/opensvc/om3/core/driver"
-	"github.com/opensvc/om3/core/keywords"
-	"github.com/opensvc/om3/core/manifest"
-	"github.com/opensvc/om3/core/naming"
-	"github.com/opensvc/om3/util/filesystems"
+	"github.com/opensvc/om3/v3/core/driver"
+	"github.com/opensvc/om3/v3/core/keywords"
+	"github.com/opensvc/om3/v3/core/manifest"
+	"github.com/opensvc/om3/v3/core/naming"
+	"github.com/opensvc/om3/v3/util/filesystems"
 )
 
 var (

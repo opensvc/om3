@@ -1,13 +1,12 @@
 package msgbus
 
-import "github.com/opensvc/om3/util/pubsub"
+import "github.com/opensvc/om3/v3/util/pubsub"
 
 func (data *ClusterData) onDaemonDnsUpdated(m *DaemonDnsUpdated) {
 	v := data.Cluster.Node[m.Node]
 	v.Daemon.Dns = m.Value
 	data.Cluster.Node[m.Node] = v
 }
-
 
 func (data *ClusterData) daemonDnsUpdated(labels pubsub.Labels) ([]any, error) {
 	l := make([]any, 0)

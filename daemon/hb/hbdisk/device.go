@@ -11,9 +11,9 @@ import (
 
 	"github.com/ncw/directio"
 
-	"github.com/opensvc/om3/util/sign"
+	"github.com/opensvc/om3/v3/util/sign"
 
-	"github.com/opensvc/om3/util/file"
+	"github.com/opensvc/om3/v3/util/file"
 )
 
 type (

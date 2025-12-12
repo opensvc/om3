@@ -8,8 +8,8 @@ import (
 
 	"github.com/stretchr/testify/require"
 
-	"github.com/opensvc/om3/core/naming"
-	"github.com/opensvc/om3/testhelper"
+	"github.com/opensvc/om3/v3/core/naming"
+	"github.com/opensvc/om3/v3/testhelper"
 )
 
 func TestGenCert(t *testing.T) {

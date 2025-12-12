@@ -9,9 +9,9 @@ import (
 	"path/filepath"
 	"time"
 
-	"github.com/opensvc/om3/core/provisioned"
-	"github.com/opensvc/om3/core/trigger"
-	"github.com/opensvc/om3/util/file"
+	"github.com/opensvc/om3/v3/core/provisioned"
+	"github.com/opensvc/om3/v3/core/trigger"
+	"github.com/opensvc/om3/v3/util/file"
 )
 
 type (

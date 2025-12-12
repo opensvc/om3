@@ -13,9 +13,9 @@ import (
 	"github.com/rs/zerolog"
 	"github.com/yookoala/realpath"
 
-	"github.com/opensvc/om3/util/command"
-	"github.com/opensvc/om3/util/devicedriver"
-	"github.com/opensvc/om3/util/udevadm"
+	"github.com/opensvc/om3/v3/util/command"
+	"github.com/opensvc/om3/v3/util/devicedriver"
+	"github.com/opensvc/om3/v3/util/udevadm"
 )
 
 func (t T) IsReadWrite() (bool, error) {

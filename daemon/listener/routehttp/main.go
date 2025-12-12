@@ -15,9 +15,9 @@ import (
 	"github.com/labstack/echo-contrib/pprof"
 	"github.com/labstack/echo/v4"
 
-	"github.com/opensvc/om3/core/rawconfig"
-	"github.com/opensvc/om3/daemon/api"
-	"github.com/opensvc/om3/daemon/daemonapi"
+	"github.com/opensvc/om3/v3/core/rawconfig"
+	"github.com/opensvc/om3/v3/daemon/api"
+	"github.com/opensvc/om3/v3/daemon/daemonapi"
 )
 
 type (

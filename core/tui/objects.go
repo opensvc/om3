@@ -7,8 +7,8 @@ import (
 	"github.com/gdamore/tcell/v2"
 	"github.com/rivo/tview"
 
-	"github.com/opensvc/om3/core/monitor"
-	"github.com/opensvc/om3/core/naming"
+	"github.com/opensvc/om3/v3/core/monitor"
+	"github.com/opensvc/om3/v3/core/naming"
 )
 
 var (

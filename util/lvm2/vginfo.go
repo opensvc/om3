@@ -3,7 +3,7 @@ package lvm2
 import (
 	"strings"
 
-	"github.com/opensvc/om3/util/sizeconv"
+	"github.com/opensvc/om3/v3/util/sizeconv"
 )
 
 type (

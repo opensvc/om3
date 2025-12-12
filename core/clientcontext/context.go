@@ -9,8 +9,8 @@ import (
 
 	"sigs.k8s.io/yaml"
 
-	"github.com/opensvc/om3/core/env"
-	"github.com/opensvc/om3/util/duration"
+	"github.com/opensvc/om3/v3/core/env"
+	"github.com/opensvc/om3/v3/util/duration"
 
 	"github.com/mitchellh/go-homedir"
 )

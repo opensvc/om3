@@ -22,13 +22,13 @@ import (
 	"github.com/rs/zerolog/log"
 	"golang.org/x/sys/unix"
 
-	"github.com/opensvc/om3/core/collector"
-	"github.com/opensvc/om3/core/rawconfig"
-	"github.com/opensvc/om3/util/device"
-	"github.com/opensvc/om3/util/file"
-	"github.com/opensvc/om3/util/hostname"
-	"github.com/opensvc/om3/util/timestamp"
-	"github.com/opensvc/om3/util/xmap"
+	"github.com/opensvc/om3/v3/core/collector"
+	"github.com/opensvc/om3/v3/core/rawconfig"
+	"github.com/opensvc/om3/v3/util/device"
+	"github.com/opensvc/om3/v3/util/file"
+	"github.com/opensvc/om3/v3/util/hostname"
+	"github.com/opensvc/om3/v3/util/timestamp"
+	"github.com/opensvc/om3/v3/util/xmap"
 )
 
 type (

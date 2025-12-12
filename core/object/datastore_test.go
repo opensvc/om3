@@ -9,10 +9,10 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	"github.com/opensvc/om3/core/actioncontext"
-	"github.com/opensvc/om3/core/naming"
-	"github.com/opensvc/om3/testhelper"
-	"github.com/opensvc/om3/util/hostname"
+	"github.com/opensvc/om3/v3/core/actioncontext"
+	"github.com/opensvc/om3/v3/core/naming"
+	"github.com/opensvc/om3/v3/testhelper"
+	"github.com/opensvc/om3/v3/util/hostname"
 )
 
 // TestNewStore validates the creation, configuration, provisioning,

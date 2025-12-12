@@ -1,7 +1,7 @@
 package oxcmd
 
 import (
-	"github.com/opensvc/om3/core/nodeaction"
+	"github.com/opensvc/om3/v3/core/nodeaction"
 )
 
 type (

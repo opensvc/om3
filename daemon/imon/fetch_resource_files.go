@@ -9,17 +9,17 @@ import (
 	"strconv"
 	"time"
 
-	"github.com/opensvc/om3/util/file"
+	"github.com/opensvc/om3/v3/util/file"
 
-	"github.com/opensvc/om3/core/client"
-	"github.com/opensvc/om3/core/cluster"
-	"github.com/opensvc/om3/core/instance"
-	"github.com/opensvc/om3/core/resource"
-	"github.com/opensvc/om3/core/status"
-	"github.com/opensvc/om3/daemon/api"
-	"github.com/opensvc/om3/daemon/daemonenv"
-	"github.com/opensvc/om3/daemon/daemonsubsystem"
-	"github.com/opensvc/om3/daemon/msgbus"
+	"github.com/opensvc/om3/v3/core/client"
+	"github.com/opensvc/om3/v3/core/cluster"
+	"github.com/opensvc/om3/v3/core/instance"
+	"github.com/opensvc/om3/v3/core/resource"
+	"github.com/opensvc/om3/v3/core/status"
+	"github.com/opensvc/om3/v3/daemon/api"
+	"github.com/opensvc/om3/v3/daemon/daemonenv"
+	"github.com/opensvc/om3/v3/daemon/daemonsubsystem"
+	"github.com/opensvc/om3/v3/daemon/msgbus"
 )
 
 func (t *filesManager) Fetched() resource.Files {

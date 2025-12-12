@@ -4,7 +4,7 @@ import (
 	"path/filepath"
 	"time"
 
-	"github.com/opensvc/om3/core/freeze"
+	"github.com/opensvc/om3/v3/core/freeze"
 	"github.com/rs/zerolog/log"
 )
 

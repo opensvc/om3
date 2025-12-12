@@ -7,10 +7,10 @@ import (
 
 	"github.com/golang-collections/collections/set"
 
-	"github.com/opensvc/om3/core/node"
-	"github.com/opensvc/om3/core/rawconfig"
-	"github.com/opensvc/om3/util/duration"
-	"github.com/opensvc/om3/util/sizeconv"
+	"github.com/opensvc/om3/v3/core/node"
+	"github.com/opensvc/om3/v3/core/rawconfig"
+	"github.com/opensvc/om3/v3/util/duration"
+	"github.com/opensvc/om3/v3/util/sizeconv"
 )
 
 func (f Frame) sNodeScoreLine() string {

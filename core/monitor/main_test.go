@@ -10,8 +10,8 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	"github.com/opensvc/om3/core/mock_monitor"
-	"github.com/opensvc/om3/util/hostname"
+	"github.com/opensvc/om3/v3/core/mock_monitor"
+	"github.com/opensvc/om3/v3/util/hostname"
 )
 
 type recorder struct {

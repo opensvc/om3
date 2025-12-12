@@ -12,8 +12,8 @@ import (
 	"github.com/opensvc/fcntllock"
 	"github.com/opensvc/flock"
 
-	"github.com/opensvc/om3/core/rawconfig"
-	"github.com/opensvc/om3/util/xsession"
+	"github.com/opensvc/om3/v3/core/rawconfig"
+	"github.com/opensvc/om3/v3/util/xsession"
 )
 
 var (

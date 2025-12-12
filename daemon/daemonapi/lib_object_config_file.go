@@ -6,8 +6,8 @@ import (
 
 	"github.com/labstack/echo/v4"
 
-	"github.com/opensvc/om3/core/naming"
-	"github.com/opensvc/om3/core/object"
+	"github.com/opensvc/om3/v3/core/naming"
+	"github.com/opensvc/om3/v3/core/object"
 )
 
 func (a *DaemonAPI) writeObjectConfigFile(ctx echo.Context, p naming.Path) error {

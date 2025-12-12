@@ -6,8 +6,8 @@ import (
 	"net/http"
 	"os"
 
-	"github.com/opensvc/om3/core/client"
-	"github.com/opensvc/om3/core/naming"
+	"github.com/opensvc/om3/v3/core/client"
+	"github.com/opensvc/om3/v3/core/naming"
 )
 
 func createTempRemoteConfig(p naming.Path, c *client.T) (string, error) {

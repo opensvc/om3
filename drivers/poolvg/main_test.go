@@ -5,7 +5,7 @@ import (
 
 	"github.com/stretchr/testify/require"
 
-	"github.com/opensvc/om3/util/lvm2"
+	"github.com/opensvc/om3/v3/util/lvm2"
 )
 
 func TestVGInfo_Free(t *testing.T) {

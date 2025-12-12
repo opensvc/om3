@@ -1,8 +1,8 @@
 package object
 
 import (
-	"github.com/opensvc/om3/core/xconfig"
-	"github.com/opensvc/om3/util/file"
+	"github.com/opensvc/om3/v3/core/xconfig"
+	"github.com/opensvc/om3/v3/util/file"
 )
 
 func (t Node) RecoverAndEditConfig() error {

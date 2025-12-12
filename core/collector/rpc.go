@@ -13,8 +13,8 @@ import (
 	"github.com/google/uuid"
 	"github.com/ybbus/jsonrpc"
 
-	"github.com/opensvc/om3/util/hostname"
-	"github.com/opensvc/om3/util/plog"
+	"github.com/opensvc/om3/v3/util/hostname"
+	"github.com/opensvc/om3/v3/util/plog"
 )
 
 var (

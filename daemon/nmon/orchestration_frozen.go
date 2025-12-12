@@ -1,6 +1,6 @@
 package nmon
 
-import "github.com/opensvc/om3/core/node"
+import "github.com/opensvc/om3/v3/core/node"
 
 func (t *Manager) orchestrateFrozen() {
 	switch t.state.State {

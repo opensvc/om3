@@ -6,9 +6,9 @@ import (
 
 	"github.com/spf13/cobra"
 
-	"github.com/opensvc/om3/core/commoncmd"
-	commands "github.com/opensvc/om3/core/oxcmd"
-	"github.com/opensvc/om3/core/tui"
+	"github.com/opensvc/om3/v3/core/commoncmd"
+	commands "github.com/opensvc/om3/v3/core/oxcmd"
+	"github.com/opensvc/om3/v3/core/tui"
 )
 
 func newCmdAll() *cobra.Command {

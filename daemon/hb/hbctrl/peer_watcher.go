@@ -4,9 +4,9 @@ import (
 	"context"
 	"time"
 
-	"github.com/opensvc/om3/daemon/daemonenv"
-	"github.com/opensvc/om3/daemon/daemonsubsystem"
-	"github.com/opensvc/om3/util/plog"
+	"github.com/opensvc/om3/v3/daemon/daemonenv"
+	"github.com/opensvc/om3/v3/daemon/daemonsubsystem"
+	"github.com/opensvc/om3/v3/util/plog"
 )
 
 var (
