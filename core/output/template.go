@@ -8,10 +8,11 @@ import (
 	"text/template"
 
 	"github.com/danwakefield/fnmatch"
-	"github.com/opensvc/om3/core/driver"
-	"github.com/opensvc/om3/core/naming"
-	"github.com/opensvc/om3/core/resourceid"
-	"github.com/opensvc/om3/util/unstructured"
+
+	"github.com/opensvc/om3/v3/core/driver"
+	"github.com/opensvc/om3/v3/core/naming"
+	"github.com/opensvc/om3/v3/core/resourceid"
+	"github.com/opensvc/om3/v3/util/unstructured"
 )
 
 func (t Renderer) renderTemplate(options string) (string, error) {

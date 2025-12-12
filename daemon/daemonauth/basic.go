@@ -8,7 +8,7 @@ import (
 	"github.com/shaj13/go-guardian/v2/auth"
 	"github.com/shaj13/go-guardian/v2/auth/strategies/basic"
 
-	"github.com/opensvc/om3/util/hostname"
+	"github.com/opensvc/om3/v3/util/hostname"
 )
 
 type (

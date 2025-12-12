@@ -4,7 +4,7 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/opensvc/om3/core/client"
+	"github.com/opensvc/om3/v3/core/client"
 )
 
 // PostDaemonStop sends an api request to stop the daemon and handles the

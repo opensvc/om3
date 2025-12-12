@@ -6,10 +6,10 @@ import (
 	"os"
 	"path/filepath"
 
-	"github.com/opensvc/om3/core/rawconfig"
+	"github.com/opensvc/om3/v3/core/rawconfig"
 
-	"github.com/opensvc/om3/util/hostname"
-	"github.com/opensvc/om3/util/patches"
+	"github.com/opensvc/om3/v3/util/hostname"
+	"github.com/opensvc/om3/v3/util/patches"
 )
 
 func (t Node) nodePatchCacheFile() string {

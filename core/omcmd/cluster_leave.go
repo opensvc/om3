@@ -7,13 +7,13 @@ import (
 	"os"
 	"time"
 
-	"github.com/opensvc/om3/core/client"
-	"github.com/opensvc/om3/core/event"
-	"github.com/opensvc/om3/core/object"
-	"github.com/opensvc/om3/daemon/api"
-	"github.com/opensvc/om3/daemon/daemonenv"
-	"github.com/opensvc/om3/daemon/msgbus"
-	"github.com/opensvc/om3/util/hostname"
+	"github.com/opensvc/om3/v3/core/client"
+	"github.com/opensvc/om3/v3/core/event"
+	"github.com/opensvc/om3/v3/core/object"
+	"github.com/opensvc/om3/v3/daemon/api"
+	"github.com/opensvc/om3/v3/daemon/daemonenv"
+	"github.com/opensvc/om3/v3/daemon/msgbus"
+	"github.com/opensvc/om3/v3/util/hostname"
 )
 
 type (

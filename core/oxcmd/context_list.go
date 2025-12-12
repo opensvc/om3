@@ -5,12 +5,12 @@ import (
 	"slices"
 	"time"
 
-	"github.com/opensvc/om3/core/client/tokencache"
-	"github.com/opensvc/om3/core/clientcontext"
-	"github.com/opensvc/om3/core/commoncmd"
-	"github.com/opensvc/om3/core/output"
-	"github.com/opensvc/om3/core/rawconfig"
-	"github.com/opensvc/om3/util/unstructured"
+	"github.com/opensvc/om3/v3/core/client/tokencache"
+	"github.com/opensvc/om3/v3/core/clientcontext"
+	"github.com/opensvc/om3/v3/core/commoncmd"
+	"github.com/opensvc/om3/v3/core/output"
+	"github.com/opensvc/om3/v3/core/rawconfig"
+	"github.com/opensvc/om3/v3/util/unstructured"
 )
 
 type (

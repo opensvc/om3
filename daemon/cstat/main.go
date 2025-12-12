@@ -11,11 +11,11 @@ import (
 	"sync"
 	"time"
 
-	"github.com/opensvc/om3/core/clusterdump"
-	"github.com/opensvc/om3/core/node"
-	"github.com/opensvc/om3/daemon/msgbus"
-	"github.com/opensvc/om3/util/plog"
-	"github.com/opensvc/om3/util/pubsub"
+	"github.com/opensvc/om3/v3/core/clusterdump"
+	"github.com/opensvc/om3/v3/core/node"
+	"github.com/opensvc/om3/v3/daemon/msgbus"
+	"github.com/opensvc/om3/v3/util/plog"
+	"github.com/opensvc/om3/v3/util/pubsub"
 )
 
 type (

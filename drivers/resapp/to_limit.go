@@ -1,7 +1,7 @@
 package resapp
 
 import (
-	"github.com/opensvc/om3/util/capexec"
+	"github.com/opensvc/om3/v3/util/capexec"
 )
 
 func (t *T) toCaps() capexec.T {

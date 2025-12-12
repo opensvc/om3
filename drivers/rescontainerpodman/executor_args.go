@@ -5,7 +5,7 @@ import (
 	"os/exec"
 	"strings"
 
-	"github.com/opensvc/om3/util/args"
+	"github.com/opensvc/om3/v3/util/args"
 )
 
 // RunArgsBase append extra args for podman

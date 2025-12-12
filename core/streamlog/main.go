@@ -11,9 +11,9 @@ import (
 	"github.com/fatih/color"
 	"github.com/rs/zerolog"
 
-	"github.com/opensvc/om3/core/rawconfig"
-	"github.com/opensvc/om3/util/command"
-	"github.com/opensvc/om3/util/logging"
+	"github.com/opensvc/om3/v3/core/rawconfig"
+	"github.com/opensvc/om3/v3/util/command"
+	"github.com/opensvc/om3/v3/util/logging"
 )
 
 type (

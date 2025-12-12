@@ -9,8 +9,8 @@ import (
 
 	"github.com/google/uuid"
 
-	"github.com/opensvc/om3/core/status"
-	"github.com/opensvc/om3/util/xmap"
+	"github.com/opensvc/om3/v3/core/status"
+	"github.com/opensvc/om3/v3/util/xmap"
 )
 
 type (

@@ -4,10 +4,11 @@ import (
 	"fmt"
 
 	"github.com/google/uuid"
-	"github.com/opensvc/om3/core/rawconfig"
-	"github.com/opensvc/om3/core/xconfig"
-	"github.com/opensvc/om3/util/funcopt"
-	"github.com/opensvc/om3/util/plog"
+
+	"github.com/opensvc/om3/v3/core/rawconfig"
+	"github.com/opensvc/om3/v3/core/xconfig"
+	"github.com/opensvc/om3/v3/util/funcopt"
+	"github.com/opensvc/om3/v3/util/plog"
 )
 
 type (

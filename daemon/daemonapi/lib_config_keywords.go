@@ -6,10 +6,11 @@ import (
 	"strings"
 
 	"github.com/labstack/echo/v4"
-	"github.com/opensvc/om3/core/keywords"
-	"github.com/opensvc/om3/core/naming"
-	"github.com/opensvc/om3/daemon/api"
-	"github.com/opensvc/om3/util/key"
+
+	"github.com/opensvc/om3/v3/core/keywords"
+	"github.com/opensvc/om3/v3/core/naming"
+	"github.com/opensvc/om3/v3/daemon/api"
+	"github.com/opensvc/om3/v3/util/key"
 )
 
 func filterKeywordStore(ctx echo.Context, store keywords.Store, driver, section, option *string, path naming.Path, getConfigProvider func() (configProvider, error)) (keywords.Store, int, error) {

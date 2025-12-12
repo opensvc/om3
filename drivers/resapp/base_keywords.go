@@ -1,7 +1,7 @@
 package resapp
 
 import (
-	"github.com/opensvc/om3/core/keywords"
+	"github.com/opensvc/om3/v3/core/keywords"
 )
 
 var (

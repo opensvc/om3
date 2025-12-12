@@ -5,8 +5,9 @@ import (
 	"testing"
 	"time"
 
-	"github.com/opensvc/om3/util/limits"
 	"github.com/stretchr/testify/assert"
+
+	"github.com/opensvc/om3/v3/util/limits"
 )
 
 func TestT_shLimitCommands(t *testing.T) {

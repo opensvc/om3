@@ -5,7 +5,7 @@ import (
 
 	"github.com/stretchr/testify/require"
 
-	"github.com/opensvc/om3/drivers/rescontainerocibase"
+	"github.com/opensvc/om3/v3/drivers/rescontainerocibase"
 )
 
 func Test_ExecBaseArgs(t *testing.T) {

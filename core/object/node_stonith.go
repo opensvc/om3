@@ -4,12 +4,13 @@ import (
 	"fmt"
 	"slices"
 
-	_ "github.com/opensvc/om3/drivers/chkfsidf"
-	_ "github.com/opensvc/om3/drivers/chkfsudf"
-	"github.com/opensvc/om3/util/command"
-	"github.com/opensvc/om3/util/hostname"
-	"github.com/opensvc/om3/util/key"
 	"github.com/rs/zerolog"
+
+	_ "github.com/opensvc/om3/v3/drivers/chkfsidf"
+	_ "github.com/opensvc/om3/v3/drivers/chkfsudf"
+	"github.com/opensvc/om3/v3/util/command"
+	"github.com/opensvc/om3/v3/util/hostname"
+	"github.com/opensvc/om3/v3/util/key"
 )
 
 func (t *Node) Stonith(nodename string) error {

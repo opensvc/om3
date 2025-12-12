@@ -8,8 +8,8 @@ import (
 
 	"github.com/stretchr/testify/assert"
 
-	"github.com/opensvc/om3/util/file"
-	"github.com/opensvc/om3/util/plog"
+	"github.com/opensvc/om3/v3/util/file"
+	"github.com/opensvc/om3/v3/util/plog"
 )
 
 func TestRaw(t *testing.T) {

@@ -13,16 +13,16 @@ import (
 
 	"github.com/rs/zerolog"
 
-	"github.com/opensvc/om3/daemon/daemonapi"
-	"github.com/opensvc/om3/daemon/daemonctx"
-	"github.com/opensvc/om3/daemon/daemonsubsystem"
-	"github.com/opensvc/om3/daemon/listener/routehttp"
-	"github.com/opensvc/om3/daemon/msgbus"
-	"github.com/opensvc/om3/util/file"
-	"github.com/opensvc/om3/util/funcopt"
-	"github.com/opensvc/om3/util/hostname"
-	"github.com/opensvc/om3/util/plog"
-	"github.com/opensvc/om3/util/pubsub"
+	"github.com/opensvc/om3/v3/daemon/daemonapi"
+	"github.com/opensvc/om3/v3/daemon/daemonctx"
+	"github.com/opensvc/om3/v3/daemon/daemonsubsystem"
+	"github.com/opensvc/om3/v3/daemon/listener/routehttp"
+	"github.com/opensvc/om3/v3/daemon/msgbus"
+	"github.com/opensvc/om3/v3/util/file"
+	"github.com/opensvc/om3/v3/util/funcopt"
+	"github.com/opensvc/om3/v3/util/hostname"
+	"github.com/opensvc/om3/v3/util/plog"
+	"github.com/opensvc/om3/v3/util/pubsub"
 )
 
 type (

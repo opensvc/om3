@@ -1,11 +1,13 @@
 package clusterip
 
 import (
-	"github.com/opensvc/om3/core/naming"
-	"github.com/stretchr/testify/assert"
 	"net"
 	"sort"
 	"testing"
+
+	"github.com/stretchr/testify/assert"
+
+	"github.com/opensvc/om3/v3/core/naming"
 )
 
 func TestSort(t *testing.T) {

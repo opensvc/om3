@@ -3,9 +3,10 @@ package statusbus
 import (
 	"testing"
 
-	"github.com/opensvc/om3/core/naming"
-	"github.com/opensvc/om3/core/status"
 	"github.com/stretchr/testify/assert"
+
+	"github.com/opensvc/om3/v3/core/naming"
+	"github.com/opensvc/om3/v3/core/status"
 )
 
 func TestRefuseStartTwice(t *testing.T) {

@@ -38,10 +38,10 @@ import (
 	"context"
 	"time"
 
-	"github.com/opensvc/om3/core/driver"
-	"github.com/opensvc/om3/core/hbtype"
-	"github.com/opensvc/om3/core/xconfig"
-	"github.com/opensvc/om3/util/key"
+	"github.com/opensvc/om3/v3/core/driver"
+	"github.com/opensvc/om3/v3/core/hbtype"
+	"github.com/opensvc/om3/v3/core/xconfig"
+	"github.com/opensvc/om3/v3/util/key"
 )
 
 type (

@@ -4,11 +4,11 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/opensvc/om3/core/client"
-	"github.com/opensvc/om3/core/clientcontext"
-	"github.com/opensvc/om3/util/editor"
-	"github.com/opensvc/om3/util/file"
-	"github.com/opensvc/om3/util/hostname"
+	"github.com/opensvc/om3/v3/core/client"
+	"github.com/opensvc/om3/v3/core/clientcontext"
+	"github.com/opensvc/om3/v3/util/editor"
+	"github.com/opensvc/om3/v3/util/file"
+	"github.com/opensvc/om3/v3/util/hostname"
 )
 
 type (

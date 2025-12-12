@@ -5,10 +5,10 @@ import (
 	"sort"
 	"time"
 
-	"github.com/opensvc/om3/daemon/daemonsubsystem"
-	"github.com/opensvc/om3/daemon/hbcache"
-	"github.com/opensvc/om3/daemon/msgbus"
-	"github.com/opensvc/om3/util/pubsub"
+	"github.com/opensvc/om3/v3/daemon/daemonsubsystem"
+	"github.com/opensvc/om3/v3/daemon/hbcache"
+	"github.com/opensvc/om3/v3/daemon/msgbus"
+	"github.com/opensvc/om3/v3/util/pubsub"
 )
 
 func (d *data) setDaemonHeartbeat() {
@@ -44,7 +44,9 @@ func (d *data) setDaemonHeartbeat() {
 	subHb.UpdatedAt = time.Now()
 	daemonsubsystem.DataHeartbeat.Set(d.localNode, subHb.DeepCopy())
 	labels := []pubsub.Label{d.labelLocalhost}
-	if changed {labels = append(labels, pubsub.Label{"changed", "true"})}
+	if changed {
+		labels = append(labels, pubsub.Label{"changed", "true"})
+	}
 	d.publisher.Pub(&msgbus.DaemonHeartbeatUpdated{Node: d.localNode, Value: *subHb.DeepCopy()}, labels...)
 }
 

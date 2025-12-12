@@ -1,6 +1,6 @@
 package compliance
 
-import "github.com/opensvc/om3/core/rawconfig"
+import "github.com/opensvc/om3/v3/core/rawconfig"
 
 type (
 	// Envs is indexed by module name

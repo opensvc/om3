@@ -7,14 +7,14 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	"github.com/opensvc/om3/core/naming"
-	"github.com/opensvc/om3/core/object"
-	"github.com/opensvc/om3/core/rawconfig"
-	"github.com/opensvc/om3/core/resource"
-	"github.com/opensvc/om3/testhelper"
+	"github.com/opensvc/om3/v3/core/naming"
+	"github.com/opensvc/om3/v3/core/object"
+	"github.com/opensvc/om3/v3/core/rawconfig"
+	"github.com/opensvc/om3/v3/core/resource"
+	"github.com/opensvc/om3/v3/testhelper"
 
 	// because used object has a fs flag resource
-	_ "github.com/opensvc/om3/drivers/resfsflag"
+	_ "github.com/opensvc/om3/v3/drivers/resfsflag"
 )
 
 func getAppRid(rid string, resources []resource.Driver) *T {

@@ -3,8 +3,9 @@
 package systemd
 
 import (
-	"github.com/stretchr/testify/require"
 	"testing"
+
+	"github.com/stretchr/testify/require"
 )
 
 func TestHasSystemd(t *testing.T) {

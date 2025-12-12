@@ -4,11 +4,11 @@ import (
 	"context"
 	"strings"
 
-	"github.com/opensvc/om3/core/actioncontext"
-	"github.com/opensvc/om3/core/actionresdeps"
-	"github.com/opensvc/om3/core/ordering"
-	"github.com/opensvc/om3/core/resource"
-	"github.com/opensvc/om3/util/funcopt"
+	"github.com/opensvc/om3/v3/core/actioncontext"
+	"github.com/opensvc/om3/v3/core/actionresdeps"
+	"github.com/opensvc/om3/v3/core/ordering"
+	"github.com/opensvc/om3/v3/core/resource"
+	"github.com/opensvc/om3/v3/util/funcopt"
 )
 
 type (

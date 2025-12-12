@@ -12,10 +12,10 @@ import (
 	"github.com/rs/zerolog"
 	"github.com/shaj13/go-guardian/v2/auth"
 
-	"github.com/opensvc/om3/daemon/daemonauth"
-	"github.com/opensvc/om3/daemon/daemonctx"
-	"github.com/opensvc/om3/daemon/rbac"
-	"github.com/opensvc/om3/util/plog"
+	"github.com/opensvc/om3/v3/daemon/daemonauth"
+	"github.com/opensvc/om3/v3/daemon/daemonctx"
+	"github.com/opensvc/om3/v3/daemon/rbac"
+	"github.com/opensvc/om3/v3/util/plog"
 )
 
 type (

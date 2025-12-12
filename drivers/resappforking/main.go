@@ -5,14 +5,14 @@ import (
 
 	"github.com/rs/zerolog"
 
-	"github.com/opensvc/om3/core/actioncontext"
-	"github.com/opensvc/om3/core/actionrollback"
-	"github.com/opensvc/om3/core/resource"
-	"github.com/opensvc/om3/core/status"
-	"github.com/opensvc/om3/drivers/resapp"
-	"github.com/opensvc/om3/util/command"
-	"github.com/opensvc/om3/util/funcopt"
-	"github.com/opensvc/om3/util/plog"
+	"github.com/opensvc/om3/v3/core/actioncontext"
+	"github.com/opensvc/om3/v3/core/actionrollback"
+	"github.com/opensvc/om3/v3/core/resource"
+	"github.com/opensvc/om3/v3/core/status"
+	"github.com/opensvc/om3/v3/drivers/resapp"
+	"github.com/opensvc/om3/v3/util/command"
+	"github.com/opensvc/om3/v3/util/funcopt"
+	"github.com/opensvc/om3/v3/util/plog"
 )
 
 // T is the driver structure.

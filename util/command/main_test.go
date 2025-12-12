@@ -10,7 +10,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	"github.com/opensvc/om3/util/plog"
+	"github.com/opensvc/om3/v3/util/plog"
 )
 
 func TestString(t *testing.T) {

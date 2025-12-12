@@ -3,13 +3,13 @@ package ccfg
 import (
 	"strings"
 
-	"github.com/opensvc/om3/core/cluster"
-	"github.com/opensvc/om3/core/clusternode"
-	"github.com/opensvc/om3/core/network"
-	"github.com/opensvc/om3/core/object"
-	"github.com/opensvc/om3/daemon/msgbus"
-	"github.com/opensvc/om3/util/pubsub"
-	"github.com/opensvc/om3/util/stringslice"
+	"github.com/opensvc/om3/v3/core/cluster"
+	"github.com/opensvc/om3/v3/core/clusternode"
+	"github.com/opensvc/om3/v3/core/network"
+	"github.com/opensvc/om3/v3/core/object"
+	"github.com/opensvc/om3/v3/daemon/msgbus"
+	"github.com/opensvc/om3/v3/util/pubsub"
+	"github.com/opensvc/om3/v3/util/stringslice"
 )
 
 // onConfigFileUpdated reloads the config parser and emits the updated

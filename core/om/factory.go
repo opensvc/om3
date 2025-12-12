@@ -9,9 +9,9 @@ import (
 
 	"github.com/spf13/cobra"
 
-	"github.com/opensvc/om3/core/commoncmd"
-	commands "github.com/opensvc/om3/core/omcmd"
-	"github.com/opensvc/om3/util/hostname"
+	"github.com/opensvc/om3/v3/core/commoncmd"
+	commands "github.com/opensvc/om3/v3/core/omcmd"
+	"github.com/opensvc/om3/v3/util/hostname"
 )
 
 func newCmdAll() *cobra.Command {

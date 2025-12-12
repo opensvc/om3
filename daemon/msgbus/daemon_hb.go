@@ -1,8 +1,8 @@
 package msgbus
 
 import (
-	"github.com/opensvc/om3/core/node"
-	"github.com/opensvc/om3/util/pubsub"
+	"github.com/opensvc/om3/v3/core/node"
+	"github.com/opensvc/om3/v3/util/pubsub"
 )
 
 func (data *ClusterData) onDaemonHeartbeatUpdated(m *DaemonHeartbeatUpdated) {

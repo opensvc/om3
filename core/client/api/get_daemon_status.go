@@ -6,7 +6,7 @@ import (
 	"io"
 	"net/http"
 
-	"github.com/opensvc/om3/daemon/api"
+	"github.com/opensvc/om3/v3/daemon/api"
 )
 
 type GetClusterStatus struct {

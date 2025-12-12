@@ -1,7 +1,7 @@
 package zfs
 
 import (
-	"github.com/opensvc/om3/util/funcopt"
+	"github.com/opensvc/om3/v3/util/funcopt"
 )
 
 func (t *Pool) ListVolumes(fopts ...funcopt.O) (Vols, error) {

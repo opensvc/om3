@@ -1,8 +1,9 @@
 package om
 
 import (
-	"github.com/opensvc/om3/util/capexec"
 	"github.com/spf13/cobra"
+
+	"github.com/opensvc/om3/v3/util/capexec"
 )
 
 var (

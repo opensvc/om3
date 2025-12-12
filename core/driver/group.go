@@ -1,7 +1,7 @@
 package driver
 
 import (
-	"github.com/opensvc/om3/util/xmap"
+	"github.com/opensvc/om3/v3/util/xmap"
 )
 
 // Group groups drivers sharing some properties.

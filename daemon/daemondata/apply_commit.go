@@ -3,7 +3,7 @@ package daemondata
 import (
 	"strconv"
 
-	"github.com/opensvc/om3/core/event"
+	"github.com/opensvc/om3/v3/core/event"
 )
 
 // commitPendingOps manage patch queue from current clusterData ops

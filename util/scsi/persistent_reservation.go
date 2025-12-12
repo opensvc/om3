@@ -6,9 +6,9 @@ import (
 	"os"
 	"strings"
 
-	"github.com/opensvc/om3/core/status"
-	"github.com/opensvc/om3/util/device"
-	"github.com/opensvc/om3/util/plog"
+	"github.com/opensvc/om3/v3/core/status"
+	"github.com/opensvc/om3/v3/util/device"
+	"github.com/opensvc/om3/v3/util/plog"
 )
 
 type (
@@ -38,7 +38,7 @@ type (
 		Log                         *plog.Logger
 		StatusLogger                statusLogger
 		persistentReservationDriver PersistentReservationDriver
-		CurrentStatus		    PersistentReservationStatus
+		CurrentStatus               PersistentReservationStatus
 	}
 
 	PersistentReservationStatus struct {

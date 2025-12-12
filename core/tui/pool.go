@@ -10,10 +10,11 @@ import (
 	"time"
 
 	"github.com/gdamore/tcell/v2"
-	"github.com/opensvc/om3/core/client"
-	"github.com/opensvc/om3/daemon/api"
-	"github.com/opensvc/om3/util/sizeconv"
 	"github.com/rivo/tview"
+
+	"github.com/opensvc/om3/v3/core/client"
+	"github.com/opensvc/om3/v3/daemon/api"
+	"github.com/opensvc/om3/v3/util/sizeconv"
 )
 
 func (t *App) getPoolList() map[string]PoolData {

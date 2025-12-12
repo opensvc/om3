@@ -3,10 +3,10 @@ package schedule
 import (
 	"time"
 
-	"github.com/opensvc/om3/core/naming"
-	"github.com/opensvc/om3/util/file"
-	"github.com/opensvc/om3/util/key"
-	usched "github.com/opensvc/om3/util/schedule"
+	"github.com/opensvc/om3/v3/core/naming"
+	"github.com/opensvc/om3/v3/util/file"
+	"github.com/opensvc/om3/v3/util/key"
+	usched "github.com/opensvc/om3/v3/util/schedule"
 )
 
 type (

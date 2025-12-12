@@ -5,8 +5,8 @@ import (
 	"slices"
 	"time"
 
-	"github.com/opensvc/om3/core/actionrollback"
-	"github.com/opensvc/om3/util/pg"
+	"github.com/opensvc/om3/v3/core/actionrollback"
+	"github.com/opensvc/om3/v3/util/pg"
 )
 
 type (

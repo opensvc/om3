@@ -5,9 +5,9 @@ package resdiskvg
 import (
 	"context"
 
-	"github.com/opensvc/om3/core/actionrollback"
-	"github.com/opensvc/om3/util/hostname"
-	"github.com/opensvc/om3/util/lvm2"
+	"github.com/opensvc/om3/v3/core/actionrollback"
+	"github.com/opensvc/om3/v3/util/hostname"
+	"github.com/opensvc/om3/v3/util/lvm2"
 )
 
 func (t *T) vg() VGDriver {

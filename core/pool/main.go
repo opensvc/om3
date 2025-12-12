@@ -6,17 +6,17 @@ import (
 	"strings"
 	"time"
 
-	"github.com/opensvc/om3/core/array"
-	"github.com/opensvc/om3/core/driver"
-	"github.com/opensvc/om3/core/keyop"
-	"github.com/opensvc/om3/core/kwoption"
-	"github.com/opensvc/om3/core/naming"
-	"github.com/opensvc/om3/core/nodesinfo"
-	"github.com/opensvc/om3/core/volaccess"
-	"github.com/opensvc/om3/core/xconfig"
-	"github.com/opensvc/om3/util/key"
-	"github.com/opensvc/om3/util/san"
-	"github.com/opensvc/om3/util/sizeconv"
+	"github.com/opensvc/om3/v3/core/array"
+	"github.com/opensvc/om3/v3/core/driver"
+	"github.com/opensvc/om3/v3/core/keyop"
+	"github.com/opensvc/om3/v3/core/kwoption"
+	"github.com/opensvc/om3/v3/core/naming"
+	"github.com/opensvc/om3/v3/core/nodesinfo"
+	"github.com/opensvc/om3/v3/core/volaccess"
+	"github.com/opensvc/om3/v3/core/xconfig"
+	"github.com/opensvc/om3/v3/util/key"
+	"github.com/opensvc/om3/v3/util/san"
+	"github.com/opensvc/om3/v3/util/sizeconv"
 )
 
 type (

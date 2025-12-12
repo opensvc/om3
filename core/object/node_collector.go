@@ -9,10 +9,10 @@ import (
 	"strings"
 	"time"
 
-	"github.com/opensvc/om3/core/collector"
-	"github.com/opensvc/om3/util/hostname"
-	"github.com/opensvc/om3/util/httphelper"
-	"github.com/opensvc/om3/util/key"
+	"github.com/opensvc/om3/v3/core/collector"
+	"github.com/opensvc/om3/v3/util/hostname"
+	"github.com/opensvc/om3/v3/util/httphelper"
+	"github.com/opensvc/om3/v3/util/key"
 )
 
 var (

@@ -4,11 +4,11 @@ import (
 	"sort"
 	"time"
 
-	"github.com/opensvc/om3/core/provisioned"
-	"github.com/opensvc/om3/core/rawconfig"
-	"github.com/opensvc/om3/core/resource"
-	"github.com/opensvc/om3/core/resourceid"
-	"github.com/opensvc/om3/core/status"
+	"github.com/opensvc/om3/v3/core/provisioned"
+	"github.com/opensvc/om3/v3/core/rawconfig"
+	"github.com/opensvc/om3/v3/core/resource"
+	"github.com/opensvc/om3/v3/core/resourceid"
+	"github.com/opensvc/om3/v3/core/status"
 )
 
 type (

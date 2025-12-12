@@ -3,7 +3,7 @@ package daemonapi
 import (
 	"fmt"
 
-	"github.com/opensvc/om3/core/node"
+	"github.com/opensvc/om3/v3/core/node"
 )
 
 func getLeaderNode() (string, error) {

@@ -13,10 +13,10 @@ import (
 	"github.com/rs/zerolog"
 	"golang.org/x/crypto/ssh"
 
-	"github.com/opensvc/om3/core/client"
-	"github.com/opensvc/om3/core/node"
-	"github.com/opensvc/om3/util/command"
-	"github.com/opensvc/om3/util/file"
+	"github.com/opensvc/om3/v3/core/client"
+	"github.com/opensvc/om3/v3/core/node"
+	"github.com/opensvc/om3/v3/util/command"
+	"github.com/opensvc/om3/v3/util/file"
 )
 
 func (a *DaemonAPI) GetNodeSSHKey(ctx echo.Context, nodename string) error {

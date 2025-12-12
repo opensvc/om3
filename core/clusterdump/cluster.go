@@ -4,13 +4,13 @@ import (
 	"encoding/json"
 	"sort"
 
-	"github.com/opensvc/om3/core/cluster"
-	"github.com/opensvc/om3/core/instance"
-	"github.com/opensvc/om3/core/naming"
-	"github.com/opensvc/om3/core/node"
-	"github.com/opensvc/om3/core/object"
-	"github.com/opensvc/om3/core/objectselector"
-	"github.com/opensvc/om3/daemon/daemonsubsystem"
+	"github.com/opensvc/om3/v3/core/cluster"
+	"github.com/opensvc/om3/v3/core/instance"
+	"github.com/opensvc/om3/v3/core/naming"
+	"github.com/opensvc/om3/v3/core/node"
+	"github.com/opensvc/om3/v3/core/object"
+	"github.com/opensvc/om3/v3/core/objectselector"
+	"github.com/opensvc/om3/v3/daemon/daemonsubsystem"
 )
 
 type (

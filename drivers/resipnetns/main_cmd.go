@@ -4,8 +4,9 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/opensvc/om3/util/command"
 	"github.com/rs/zerolog"
+
+	"github.com/opensvc/om3/v3/util/command"
 )
 
 func (t *T) sysctlEnableIPV6NdiscNotifyIn(dev, path string) error {

@@ -9,7 +9,7 @@ import (
 	"github.com/labstack/echo/v4"
 	"golang.org/x/crypto/ssh"
 
-	"github.com/opensvc/om3/core/client"
+	"github.com/opensvc/om3/v3/core/client"
 )
 
 func (a *DaemonAPI) GetNodeSSHHostkeys(ctx echo.Context, nodename string) error {

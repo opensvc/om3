@@ -1,4 +1,4 @@
-module github.com/opensvc/om3
+module github.com/opensvc/om3/v3
 
 go 1.24.0
 

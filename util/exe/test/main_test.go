@@ -3,9 +3,10 @@ package exe_test
 import (
 	"testing"
 
-	"github.com/opensvc/om3/util/exe"
 	"github.com/opensvc/testhelper"
 	"github.com/stretchr/testify/assert"
+
+	"github.com/opensvc/om3/v3/util/exe"
 )
 
 func TestFindExe(t *testing.T) {

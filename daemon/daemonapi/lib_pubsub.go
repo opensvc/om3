@@ -3,10 +3,10 @@ package daemonapi
 import (
 	"time"
 
-	"github.com/opensvc/om3/core/node"
-	"github.com/opensvc/om3/daemon/daemondata"
-	"github.com/opensvc/om3/daemon/msgbus"
-	"github.com/opensvc/om3/util/plog"
+	"github.com/opensvc/om3/v3/core/node"
+	"github.com/opensvc/om3/v3/daemon/daemondata"
+	"github.com/opensvc/om3/v3/daemon/msgbus"
+	"github.com/opensvc/om3/v3/util/plog"
 )
 
 func (a *DaemonAPI) announceSub(name string) {

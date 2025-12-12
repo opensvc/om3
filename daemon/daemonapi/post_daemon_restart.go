@@ -6,8 +6,8 @@ import (
 
 	"github.com/labstack/echo/v4"
 
-	"github.com/opensvc/om3/core/clusternode"
-	"github.com/opensvc/om3/util/command"
+	"github.com/opensvc/om3/v3/core/clusternode"
+	"github.com/opensvc/om3/v3/util/command"
 )
 
 func (a *DaemonAPI) PostDaemonRestart(ctx echo.Context, nodename string) error {

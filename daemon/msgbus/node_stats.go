@@ -1,6 +1,6 @@
 package msgbus
 
-import "github.com/opensvc/om3/util/pubsub"
+import "github.com/opensvc/om3/v3/util/pubsub"
 
 // onNodeStatsUpdated updates .cluster.node.<node>.stats
 func (data *ClusterData) onNodeStatsUpdated(m *NodeStatsUpdated) {

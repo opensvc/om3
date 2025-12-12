@@ -5,8 +5,8 @@ import (
 	"os"
 	"path/filepath"
 
-	"github.com/opensvc/om3/core/actioncontext"
-	"github.com/opensvc/om3/util/file"
+	"github.com/opensvc/om3/v3/core/actioncontext"
+	"github.com/opensvc/om3/v3/util/file"
 )
 
 // DeleteSection deletes a resource section from object.

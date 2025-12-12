@@ -10,9 +10,9 @@ import (
 	"github.com/containerd/cgroups"
 	"github.com/containerd/cgroups/v3/cgroup2"
 
-	"github.com/opensvc/om3/daemon/daemonsys"
-	"github.com/opensvc/om3/util/capabilities"
-	"github.com/opensvc/om3/util/systemd"
+	"github.com/opensvc/om3/v3/daemon/daemonsys"
+	"github.com/opensvc/om3/v3/util/capabilities"
+	"github.com/opensvc/om3/v3/util/systemd"
 )
 
 // Join add current process to opensvc systemd agent service when

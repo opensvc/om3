@@ -15,12 +15,12 @@ import (
 	"github.com/spf13/cobra"
 	"golang.org/x/term"
 
-	"github.com/opensvc/om3/core/client"
-	"github.com/opensvc/om3/core/client/tokencache"
-	"github.com/opensvc/om3/core/clientcontext"
-	"github.com/opensvc/om3/core/env"
-	"github.com/opensvc/om3/daemon/api"
-	"github.com/opensvc/om3/util/duration"
+	"github.com/opensvc/om3/v3/core/client"
+	"github.com/opensvc/om3/v3/core/client/tokencache"
+	"github.com/opensvc/om3/v3/core/clientcontext"
+	"github.com/opensvc/om3/v3/core/env"
+	"github.com/opensvc/om3/v3/daemon/api"
+	"github.com/opensvc/om3/v3/util/duration"
 )
 
 type (

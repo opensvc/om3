@@ -4,7 +4,7 @@ import (
 	"os"
 	"slices"
 
-	"github.com/opensvc/om3/util/key"
+	"github.com/opensvc/om3/v3/util/key"
 )
 
 const (

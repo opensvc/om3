@@ -4,9 +4,9 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/opensvc/om3/core/actioncontext"
-	"github.com/opensvc/om3/core/resource"
-	"github.com/opensvc/om3/util/key"
+	"github.com/opensvc/om3/v3/core/actioncontext"
+	"github.com/opensvc/om3/v3/core/resource"
+	"github.com/opensvc/om3/v3/util/key"
 )
 
 // Unprovision stops and frees the local instance of the object

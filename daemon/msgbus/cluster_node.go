@@ -1,6 +1,6 @@
 package msgbus
 
-import "github.com/opensvc/om3/util/pubsub"
+import "github.com/opensvc/om3/v3/util/pubsub"
 
 // onClusterConfigUpdated sets .cluster.config
 func (data *ClusterData) onNodeDataUpdated(c *NodeDataUpdated) {

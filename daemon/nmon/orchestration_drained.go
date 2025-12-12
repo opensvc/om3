@@ -3,10 +3,10 @@ package nmon
 import (
 	"time"
 
-	"github.com/opensvc/om3/core/instance"
-	"github.com/opensvc/om3/core/naming"
-	"github.com/opensvc/om3/core/node"
-	"github.com/opensvc/om3/util/hostname"
+	"github.com/opensvc/om3/v3/core/instance"
+	"github.com/opensvc/om3/v3/core/naming"
+	"github.com/opensvc/om3/v3/core/node"
+	"github.com/opensvc/om3/v3/util/hostname"
 )
 
 func (t *Manager) orchestrateDrained() {

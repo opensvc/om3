@@ -3,7 +3,7 @@ package command
 import (
 	"syscall"
 
-	"github.com/opensvc/om3/util/usergroup"
+	"github.com/opensvc/om3/v3/util/usergroup"
 )
 
 // credential returns *syscall.Credential for 'user' and 'group' string

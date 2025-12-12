@@ -4,14 +4,14 @@ import (
 	"reflect"
 	"time"
 
-	"github.com/opensvc/om3/core/hbtype"
-	"github.com/opensvc/om3/core/instance"
-	"github.com/opensvc/om3/core/naming"
-	"github.com/opensvc/om3/core/node"
-	"github.com/opensvc/om3/core/pool"
-	"github.com/opensvc/om3/daemon/daemonsubsystem"
-	"github.com/opensvc/om3/daemon/msgbus"
-	"github.com/opensvc/om3/util/pubsub"
+	"github.com/opensvc/om3/v3/core/hbtype"
+	"github.com/opensvc/om3/v3/core/instance"
+	"github.com/opensvc/om3/v3/core/naming"
+	"github.com/opensvc/om3/v3/core/node"
+	"github.com/opensvc/om3/v3/core/pool"
+	"github.com/opensvc/om3/v3/daemon/daemonsubsystem"
+	"github.com/opensvc/om3/v3/daemon/msgbus"
+	"github.com/opensvc/om3/v3/util/pubsub"
 )
 
 func (d *data) applyNodeData(msg *hbtype.Msg) error {

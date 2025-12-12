@@ -10,14 +10,14 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/opensvc/om3/core/actionrollback"
-	"github.com/opensvc/om3/core/provisioned"
-	"github.com/opensvc/om3/core/resource"
-	"github.com/opensvc/om3/core/status"
-	"github.com/opensvc/om3/drivers/resdisk"
-	"github.com/opensvc/om3/util/device"
-	"github.com/opensvc/om3/util/file"
-	"github.com/opensvc/om3/util/raw"
+	"github.com/opensvc/om3/v3/core/actionrollback"
+	"github.com/opensvc/om3/v3/core/provisioned"
+	"github.com/opensvc/om3/v3/core/resource"
+	"github.com/opensvc/om3/v3/core/status"
+	"github.com/opensvc/om3/v3/drivers/resdisk"
+	"github.com/opensvc/om3/v3/util/device"
+	"github.com/opensvc/om3/v3/util/file"
+	"github.com/opensvc/om3/v3/util/raw"
 )
 
 type (

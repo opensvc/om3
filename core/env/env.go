@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/opensvc/om3/util/xsession"
+	"github.com/opensvc/om3/v3/util/xsession"
 )
 
 type (

@@ -4,10 +4,11 @@ import (
 	"os/user"
 	"testing"
 
-	"github.com/opensvc/om3/core/keyop"
-	"github.com/opensvc/om3/core/object"
-	"github.com/opensvc/om3/util/key"
 	"github.com/stretchr/testify/require"
+
+	"github.com/opensvc/om3/v3/core/keyop"
+	"github.com/opensvc/om3/v3/core/object"
+	"github.com/opensvc/om3/v3/util/key"
 )
 
 func TestNodeConfAdd(t *testing.T) {

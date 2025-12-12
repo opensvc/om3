@@ -3,13 +3,13 @@ package resfsskel
 import (
 	"context"
 
-	"github.com/opensvc/om3/core/driver"
-	"github.com/opensvc/om3/core/manifest"
-	"github.com/opensvc/om3/core/naming"
-	"github.com/opensvc/om3/core/resource"
-	"github.com/opensvc/om3/core/status"
-	"github.com/opensvc/om3/core/topology"
-	"github.com/opensvc/om3/util/capabilities"
+	"github.com/opensvc/om3/v3/core/driver"
+	"github.com/opensvc/om3/v3/core/manifest"
+	"github.com/opensvc/om3/v3/core/naming"
+	"github.com/opensvc/om3/v3/core/resource"
+	"github.com/opensvc/om3/v3/core/status"
+	"github.com/opensvc/om3/v3/core/topology"
+	"github.com/opensvc/om3/v3/util/capabilities"
 )
 
 type T struct {

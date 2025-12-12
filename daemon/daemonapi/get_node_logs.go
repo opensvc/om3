@@ -8,14 +8,14 @@ import (
 
 	"github.com/labstack/echo/v4"
 
-	"github.com/opensvc/om3/core/client"
-	"github.com/opensvc/om3/core/clusternode"
-	"github.com/opensvc/om3/core/event"
-	"github.com/opensvc/om3/core/event/sseevent"
-	"github.com/opensvc/om3/core/naming"
-	"github.com/opensvc/om3/core/streamlog"
-	"github.com/opensvc/om3/daemon/api"
-	"github.com/opensvc/om3/daemon/rbac"
+	"github.com/opensvc/om3/v3/core/client"
+	"github.com/opensvc/om3/v3/core/clusternode"
+	"github.com/opensvc/om3/v3/core/event"
+	"github.com/opensvc/om3/v3/core/event/sseevent"
+	"github.com/opensvc/om3/v3/core/naming"
+	"github.com/opensvc/om3/v3/core/streamlog"
+	"github.com/opensvc/om3/v3/daemon/api"
+	"github.com/opensvc/om3/v3/daemon/rbac"
 )
 
 // GetNodeLogs feeds publications in rss format.

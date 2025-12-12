@@ -12,7 +12,7 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/opensvc/om3/core/rawconfig"
+	"github.com/opensvc/om3/v3/core/rawconfig"
 )
 
 type (

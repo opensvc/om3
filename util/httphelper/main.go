@@ -9,7 +9,7 @@ import (
 	"io"
 	"net/http"
 
-	"github.com/opensvc/om3/util/requestfactory"
+	"github.com/opensvc/om3/v3/util/requestfactory"
 )
 
 type (

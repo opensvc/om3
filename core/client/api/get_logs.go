@@ -6,9 +6,9 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/opensvc/om3/core/event"
-	"github.com/opensvc/om3/core/event/sseevent"
-	"github.com/opensvc/om3/daemon/api"
+	"github.com/opensvc/om3/v3/core/event"
+	"github.com/opensvc/om3/v3/core/event/sseevent"
+	"github.com/opensvc/om3/v3/daemon/api"
 )
 
 // GetLogs describes the events request options.

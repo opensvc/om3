@@ -6,8 +6,8 @@ import (
 	"path/filepath"
 	"runtime/debug"
 
-	"github.com/opensvc/om3/core/ox"
-	"github.com/opensvc/om3/core/rawconfig"
+	"github.com/opensvc/om3/v3/core/ox"
+	"github.com/opensvc/om3/v3/core/rawconfig"
 )
 
 func main() {

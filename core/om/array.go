@@ -4,11 +4,12 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/opensvc/om3/core/array"
-	"github.com/opensvc/om3/core/commoncmd"
-	"github.com/opensvc/om3/core/object"
-	"github.com/opensvc/om3/util/key"
 	"github.com/spf13/cobra"
+
+	"github.com/opensvc/om3/v3/core/array"
+	"github.com/opensvc/om3/v3/core/commoncmd"
+	"github.com/opensvc/om3/v3/core/object"
+	"github.com/opensvc/om3/v3/util/key"
 )
 
 var (

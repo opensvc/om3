@@ -1,9 +1,9 @@
 package cstat
 
 import (
-	"github.com/opensvc/om3/daemon/msgbus"
-	"github.com/opensvc/om3/util/hostname"
-	"github.com/opensvc/om3/util/pubsub"
+	"github.com/opensvc/om3/v3/daemon/msgbus"
+	"github.com/opensvc/om3/v3/util/hostname"
+	"github.com/opensvc/om3/v3/util/pubsub"
 )
 
 func (o *T) onNodeStatusUpdated(c *msgbus.NodeStatusUpdated) {

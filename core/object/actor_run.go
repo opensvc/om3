@@ -4,8 +4,8 @@ import (
 	"context"
 	"errors"
 
-	"github.com/opensvc/om3/core/actioncontext"
-	"github.com/opensvc/om3/core/resource"
+	"github.com/opensvc/om3/v3/core/actioncontext"
+	"github.com/opensvc/om3/v3/core/resource"
 )
 
 // Run starts the local instance of the object

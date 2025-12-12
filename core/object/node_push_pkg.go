@@ -10,9 +10,9 @@ import (
 	"os"
 	"path/filepath"
 
-	"github.com/opensvc/om3/core/rawconfig"
+	"github.com/opensvc/om3/v3/core/rawconfig"
 
-	"github.com/opensvc/om3/util/packages"
+	"github.com/opensvc/om3/v3/util/packages"
 )
 
 func (t Node) nodePackageCacheFile() string {

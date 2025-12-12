@@ -3,7 +3,7 @@ package om
 import (
 	"github.com/spf13/cobra"
 
-	"github.com/opensvc/om3/core/commoncmd"
+	"github.com/opensvc/om3/v3/core/commoncmd"
 )
 
 func init() {

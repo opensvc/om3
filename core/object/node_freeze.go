@@ -4,8 +4,9 @@ import (
 	"path/filepath"
 	"time"
 
-	"github.com/opensvc/om3/core/freeze"
 	"github.com/rs/zerolog/log"
+
+	"github.com/opensvc/om3/v3/core/freeze"
 )
 
 // lockName is the path of the file to use as an action lock.

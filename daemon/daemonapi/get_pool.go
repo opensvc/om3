@@ -6,9 +6,9 @@ import (
 
 	"github.com/labstack/echo/v4"
 
-	"github.com/opensvc/om3/core/nodeselector"
-	"github.com/opensvc/om3/core/pool"
-	"github.com/opensvc/om3/daemon/api"
+	"github.com/opensvc/om3/v3/core/nodeselector"
+	"github.com/opensvc/om3/v3/core/pool"
+	"github.com/opensvc/om3/v3/daemon/api"
 )
 
 func (a *DaemonAPI) GetPools(ctx echo.Context, params api.GetPoolsParams) error {

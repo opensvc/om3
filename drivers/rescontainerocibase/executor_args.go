@@ -7,9 +7,9 @@ import (
 	"os"
 	"strings"
 
-	"github.com/opensvc/om3/util/args"
-	"github.com/opensvc/om3/util/file"
-	"github.com/opensvc/om3/util/plog"
+	"github.com/opensvc/om3/v3/util/args"
+	"github.com/opensvc/om3/v3/util/file"
+	"github.com/opensvc/om3/v3/util/plog"
 )
 
 type (

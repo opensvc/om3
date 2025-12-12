@@ -4,14 +4,14 @@ import (
 	"slices"
 	"strings"
 
-	"github.com/opensvc/om3/core/colorstatus"
-	"github.com/opensvc/om3/core/provisioned"
-	"github.com/opensvc/om3/core/rawconfig"
-	"github.com/opensvc/om3/core/resource"
-	"github.com/opensvc/om3/core/resourceset"
-	"github.com/opensvc/om3/core/status"
-	"github.com/opensvc/om3/util/render/tree"
-	"github.com/opensvc/om3/util/xmap"
+	"github.com/opensvc/om3/v3/core/colorstatus"
+	"github.com/opensvc/om3/v3/core/provisioned"
+	"github.com/opensvc/om3/v3/core/rawconfig"
+	"github.com/opensvc/om3/v3/core/resource"
+	"github.com/opensvc/om3/v3/core/resourceset"
+	"github.com/opensvc/om3/v3/core/status"
+	"github.com/opensvc/om3/v3/util/render/tree"
+	"github.com/opensvc/om3/v3/util/xmap"
 )
 
 // Render returns a human friendly string representation of the type instance.

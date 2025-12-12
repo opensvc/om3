@@ -11,12 +11,12 @@ import (
 	"os"
 	"path/filepath"
 
-	"github.com/opensvc/om3/core/rawconfig"
-	"github.com/opensvc/om3/util/asset"
-	"github.com/opensvc/om3/util/hostname"
-	"github.com/opensvc/om3/util/key"
-	"github.com/opensvc/om3/util/san"
-	"github.com/opensvc/om3/util/version"
+	"github.com/opensvc/om3/v3/core/rawconfig"
+	"github.com/opensvc/om3/v3/util/asset"
+	"github.com/opensvc/om3/v3/util/hostname"
+	"github.com/opensvc/om3/v3/util/key"
+	"github.com/opensvc/om3/v3/util/san"
+	"github.com/opensvc/om3/v3/util/version"
 )
 
 type (

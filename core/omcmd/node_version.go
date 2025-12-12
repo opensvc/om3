@@ -3,7 +3,7 @@ package omcmd
 import (
 	"fmt"
 
-	"github.com/opensvc/om3/util/version"
+	"github.com/opensvc/om3/v3/util/version"
 )
 
 func CmdNodeVersion() {

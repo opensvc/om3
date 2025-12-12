@@ -7,7 +7,7 @@ import (
 	"errors"
 	"fmt"
 
-	"github.com/opensvc/om3/core/actionrollback"
+	"github.com/opensvc/om3/v3/core/actionrollback"
 )
 
 func (t *T) startBridge(ctx context.Context) error {

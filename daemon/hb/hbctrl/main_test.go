@@ -7,14 +7,14 @@ import (
 
 	"github.com/stretchr/testify/require"
 
-	"github.com/opensvc/om3/core/cluster"
-	"github.com/opensvc/om3/daemon/daemonctx"
-	"github.com/opensvc/om3/daemon/daemondata"
-	"github.com/opensvc/om3/daemon/hbcache"
-	"github.com/opensvc/om3/daemon/msgbus"
-	"github.com/opensvc/om3/util/hostname"
-	"github.com/opensvc/om3/util/plog"
-	"github.com/opensvc/om3/util/pubsub"
+	"github.com/opensvc/om3/v3/core/cluster"
+	"github.com/opensvc/om3/v3/daemon/daemonctx"
+	"github.com/opensvc/om3/v3/daemon/daemondata"
+	"github.com/opensvc/om3/v3/daemon/hbcache"
+	"github.com/opensvc/om3/v3/daemon/msgbus"
+	"github.com/opensvc/om3/v3/util/hostname"
+	"github.com/opensvc/om3/v3/util/plog"
+	"github.com/opensvc/om3/v3/util/pubsub"
 )
 
 func bootstrapDaemon(ctx context.Context, t *testing.T) context.Context {

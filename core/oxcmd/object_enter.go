@@ -10,12 +10,12 @@ import (
 	"os/exec"
 	"regexp"
 
-	"github.com/opensvc/om3/core/client"
-	"github.com/opensvc/om3/core/clientcontext"
-	"github.com/opensvc/om3/core/naming"
-	"github.com/opensvc/om3/core/nodeselector"
-	"github.com/opensvc/om3/daemon/api"
-	"github.com/opensvc/om3/util/hostname"
+	"github.com/opensvc/om3/v3/core/client"
+	"github.com/opensvc/om3/v3/core/clientcontext"
+	"github.com/opensvc/om3/v3/core/naming"
+	"github.com/opensvc/om3/v3/core/nodeselector"
+	"github.com/opensvc/om3/v3/daemon/api"
+	"github.com/opensvc/om3/v3/util/hostname"
 )
 
 type (

@@ -11,8 +11,8 @@ import (
 	cgroupsv2 "github.com/containerd/cgroups/v2"
 	"github.com/opencontainers/runtime-spec/specs-go"
 
-	"github.com/opensvc/om3/util/converters"
-	"github.com/opensvc/om3/util/sizeconv"
+	"github.com/opensvc/om3/v3/util/converters"
+	"github.com/opensvc/om3/v3/util/sizeconv"
 )
 
 // ApplyProc creates the cgroup, set caps, and add the specified process

@@ -5,9 +5,10 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/opensvc/om3/core/collector"
-	"github.com/opensvc/om3/util/hostname"
 	"github.com/ybbus/jsonrpc"
+
+	"github.com/opensvc/om3/v3/core/collector"
+	"github.com/opensvc/om3/v3/util/hostname"
 )
 
 type (

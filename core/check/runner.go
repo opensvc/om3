@@ -5,8 +5,9 @@ import (
 	"os"
 	"os/exec"
 
-	"github.com/opensvc/om3/util/funcopt"
 	"github.com/rs/zerolog/log"
+
+	"github.com/opensvc/om3/v3/util/funcopt"
 )
 
 var ExecCommand = exec.Command

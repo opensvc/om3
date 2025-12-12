@@ -13,12 +13,12 @@ import (
 
 	"github.com/inancgumus/screen"
 
-	"github.com/opensvc/om3/core/clusterdump"
-	"github.com/opensvc/om3/core/event"
-	"github.com/opensvc/om3/core/output"
-	"github.com/opensvc/om3/core/rawconfig"
-	"github.com/opensvc/om3/daemon/msgbus"
-	"github.com/opensvc/om3/util/hostname"
+	"github.com/opensvc/om3/v3/core/clusterdump"
+	"github.com/opensvc/om3/v3/core/event"
+	"github.com/opensvc/om3/v3/core/output"
+	"github.com/opensvc/om3/v3/core/rawconfig"
+	"github.com/opensvc/om3/v3/daemon/msgbus"
+	"github.com/opensvc/om3/v3/util/hostname"
 )
 
 type (

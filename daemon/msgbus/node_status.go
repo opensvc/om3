@@ -1,8 +1,8 @@
 package msgbus
 
 import (
-	"github.com/opensvc/om3/core/node"
-	"github.com/opensvc/om3/util/pubsub"
+	"github.com/opensvc/om3/v3/core/node"
+	"github.com/opensvc/om3/v3/util/pubsub"
 )
 
 // onNodeStatusUpdated updates .cluster.node.<node>.status from msgbus.NodeStatusUpdated and from gen cache.

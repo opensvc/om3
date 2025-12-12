@@ -5,14 +5,14 @@ import (
 	"path/filepath"
 	"time"
 
-	"github.com/opensvc/om3/core/check"
-	"github.com/opensvc/om3/core/naming"
-	"github.com/opensvc/om3/core/rawconfig"
-	"github.com/opensvc/om3/util/exe"
-	"github.com/opensvc/om3/util/hostname"
+	"github.com/opensvc/om3/v3/core/check"
+	"github.com/opensvc/om3/v3/core/naming"
+	"github.com/opensvc/om3/v3/core/rawconfig"
+	"github.com/opensvc/om3/v3/util/exe"
+	"github.com/opensvc/om3/v3/util/hostname"
 
-	_ "github.com/opensvc/om3/drivers/chkfsidf"
-	_ "github.com/opensvc/om3/drivers/chkfsudf"
+	_ "github.com/opensvc/om3/v3/drivers/chkfsidf"
+	_ "github.com/opensvc/om3/v3/drivers/chkfsudf"
 )
 
 // Checks finds and runs the check drivers.

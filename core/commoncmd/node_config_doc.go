@@ -5,12 +5,13 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/opensvc/om3/core/client"
-	"github.com/opensvc/om3/core/keywords"
-	"github.com/opensvc/om3/core/output"
-	"github.com/opensvc/om3/core/rawconfig"
-	"github.com/opensvc/om3/daemon/api"
 	"github.com/spf13/cobra"
+
+	"github.com/opensvc/om3/v3/core/client"
+	"github.com/opensvc/om3/v3/core/keywords"
+	"github.com/opensvc/om3/v3/core/output"
+	"github.com/opensvc/om3/v3/core/rawconfig"
+	"github.com/opensvc/om3/v3/daemon/api"
 )
 
 type (

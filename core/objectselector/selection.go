@@ -13,15 +13,15 @@ import (
 
 	"github.com/goombaio/orderedset"
 
-	"github.com/opensvc/om3/core/client"
-	"github.com/opensvc/om3/core/clientcontext"
-	"github.com/opensvc/om3/core/env"
-	"github.com/opensvc/om3/core/keyop"
-	"github.com/opensvc/om3/core/naming"
-	"github.com/opensvc/om3/core/object"
-	"github.com/opensvc/om3/core/xerrors"
-	"github.com/opensvc/om3/daemon/api"
-	"github.com/opensvc/om3/util/funcopt"
+	"github.com/opensvc/om3/v3/core/client"
+	"github.com/opensvc/om3/v3/core/clientcontext"
+	"github.com/opensvc/om3/v3/core/env"
+	"github.com/opensvc/om3/v3/core/keyop"
+	"github.com/opensvc/om3/v3/core/naming"
+	"github.com/opensvc/om3/v3/core/object"
+	"github.com/opensvc/om3/v3/core/xerrors"
+	"github.com/opensvc/om3/v3/daemon/api"
+	"github.com/opensvc/om3/v3/util/funcopt"
 )
 
 type (

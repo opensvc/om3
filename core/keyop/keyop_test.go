@@ -5,7 +5,7 @@ import (
 
 	"github.com/stretchr/testify/assert"
 
-	"github.com/opensvc/om3/util/key"
+	"github.com/opensvc/om3/v3/util/key"
 )
 
 func TestDrop(t *testing.T) {

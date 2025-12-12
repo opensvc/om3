@@ -4,9 +4,10 @@ import (
 	"fmt"
 	"net"
 
-	"github.com/opensvc/om3/core/driver"
-	"github.com/opensvc/om3/core/network"
 	"github.com/vishvananda/netlink"
+
+	"github.com/opensvc/om3/v3/core/driver"
+	"github.com/opensvc/om3/v3/core/network"
 )
 
 type (

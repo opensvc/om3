@@ -3,8 +3,8 @@ package object
 import (
 	"context"
 
-	"github.com/opensvc/om3/core/keyop"
-	"github.com/opensvc/om3/util/key"
+	"github.com/opensvc/om3/v3/core/keyop"
+	"github.com/opensvc/om3/v3/util/key"
 )
 
 // Update updates applies configurations changes in the configuration file.

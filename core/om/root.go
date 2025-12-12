@@ -14,17 +14,17 @@ import (
 	"github.com/rs/zerolog/log"
 	"github.com/spf13/cobra"
 
-	"github.com/opensvc/om3/core/env"
-	"github.com/opensvc/om3/core/naming"
-	"github.com/opensvc/om3/core/object"
-	"github.com/opensvc/om3/core/osagentservice"
-	"github.com/opensvc/om3/core/rawconfig"
-	"github.com/opensvc/om3/util/fcache"
-	"github.com/opensvc/om3/util/hostname"
-	"github.com/opensvc/om3/util/logging"
-	"github.com/opensvc/om3/util/render"
-	"github.com/opensvc/om3/util/version"
-	"github.com/opensvc/om3/util/xsession"
+	"github.com/opensvc/om3/v3/core/env"
+	"github.com/opensvc/om3/v3/core/naming"
+	"github.com/opensvc/om3/v3/core/object"
+	"github.com/opensvc/om3/v3/core/osagentservice"
+	"github.com/opensvc/om3/v3/core/rawconfig"
+	"github.com/opensvc/om3/v3/util/fcache"
+	"github.com/opensvc/om3/v3/util/hostname"
+	"github.com/opensvc/om3/v3/util/logging"
+	"github.com/opensvc/om3/v3/util/render"
+	"github.com/opensvc/om3/v3/util/version"
+	"github.com/opensvc/om3/v3/util/xsession"
 )
 
 var (

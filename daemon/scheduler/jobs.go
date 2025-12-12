@@ -7,11 +7,11 @@ import (
 
 	"github.com/google/uuid"
 
-	"github.com/opensvc/om3/core/env"
-	"github.com/opensvc/om3/core/schedule"
-	"github.com/opensvc/om3/daemon/msgbus"
-	"github.com/opensvc/om3/util/command"
-	"github.com/opensvc/om3/util/pubsub"
+	"github.com/opensvc/om3/v3/core/env"
+	"github.com/opensvc/om3/v3/core/schedule"
+	"github.com/opensvc/om3/v3/daemon/msgbus"
+	"github.com/opensvc/om3/v3/util/command"
+	"github.com/opensvc/om3/v3/util/pubsub"
 )
 
 func (o *T) action(e schedule.Entry) error {

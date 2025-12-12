@@ -7,10 +7,10 @@ import (
 
 	"github.com/stretchr/testify/assert"
 
-	"github.com/opensvc/om3/core/resource"
-	"github.com/opensvc/om3/testhelper"
-	"github.com/opensvc/om3/util/executable"
-	"github.com/opensvc/om3/util/pg"
+	"github.com/opensvc/om3/v3/core/resource"
+	"github.com/opensvc/om3/v3/testhelper"
+	"github.com/opensvc/om3/v3/util/executable"
+	"github.com/opensvc/om3/v3/util/pg"
 )
 
 func TestT_Info(t *testing.T) {

@@ -3,8 +3,8 @@ package collector
 import (
 	"net/http"
 
-	"github.com/opensvc/om3/util/httphelper"
-	"github.com/opensvc/om3/util/requestfactory"
+	"github.com/opensvc/om3/v3/util/httphelper"
+	"github.com/opensvc/om3/v3/util/requestfactory"
 )
 
 func NewRequester(dbOpensvc string, auth string, insecure bool) (*httphelper.T, error) {

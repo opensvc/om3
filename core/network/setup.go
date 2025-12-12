@@ -10,9 +10,9 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/opensvc/om3/core/keyop"
-	"github.com/opensvc/om3/core/object"
-	"github.com/opensvc/om3/util/file"
+	"github.com/opensvc/om3/v3/core/keyop"
+	"github.com/opensvc/om3/v3/core/object"
+	"github.com/opensvc/om3/v3/util/file"
 )
 
 const (

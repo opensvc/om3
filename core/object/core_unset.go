@@ -3,8 +3,8 @@ package object
 import (
 	"context"
 
-	"github.com/opensvc/om3/core/actioncontext"
-	"github.com/opensvc/om3/util/key"
+	"github.com/opensvc/om3/v3/core/actioncontext"
+	"github.com/opensvc/om3/v3/util/key"
 )
 
 // Unset unsets keywords

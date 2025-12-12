@@ -7,10 +7,11 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/opensvc/om3/util/command"
-	"github.com/opensvc/om3/util/funcopt"
-	"github.com/opensvc/om3/util/plog"
 	"github.com/rs/zerolog"
+
+	"github.com/opensvc/om3/v3/util/command"
+	"github.com/opensvc/om3/v3/util/funcopt"
+	"github.com/opensvc/om3/v3/util/plog"
 )
 
 type (

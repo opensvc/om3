@@ -9,12 +9,12 @@ import (
 
 	"github.com/danwakefield/fnmatch"
 
-	"github.com/opensvc/om3/core/env"
-	"github.com/opensvc/om3/core/rawconfig"
-	"github.com/opensvc/om3/util/file"
-	"github.com/opensvc/om3/util/hostname"
-	"github.com/opensvc/om3/util/xmap"
-	"github.com/opensvc/om3/util/xstrings"
+	"github.com/opensvc/om3/v3/core/env"
+	"github.com/opensvc/om3/v3/core/rawconfig"
+	"github.com/opensvc/om3/v3/util/file"
+	"github.com/opensvc/om3/v3/util/hostname"
+	"github.com/opensvc/om3/v3/util/xmap"
+	"github.com/opensvc/om3/v3/util/xstrings"
 )
 
 type (

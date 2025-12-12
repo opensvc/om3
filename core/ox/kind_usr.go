@@ -1,6 +1,6 @@
 package ox
 
-import "github.com/opensvc/om3/core/commoncmd"
+import "github.com/opensvc/om3/v3/core/commoncmd"
 
 func init() {
 	kind := "usr"

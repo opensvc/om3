@@ -4,9 +4,9 @@ import (
 	"errors"
 	"fmt"
 
-	"github.com/opensvc/om3/core/naming"
-	"github.com/opensvc/om3/util/funcopt"
-	"github.com/opensvc/om3/util/plog"
+	"github.com/opensvc/om3/v3/core/naming"
+	"github.com/opensvc/om3/v3/util/funcopt"
+	"github.com/opensvc/om3/v3/util/plog"
 )
 
 var ErrWrongType = errors.New("wrong type provided for interface")

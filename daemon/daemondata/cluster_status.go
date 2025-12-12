@@ -5,7 +5,7 @@ import (
 
 	"golang.org/x/sync/singleflight"
 
-	"github.com/opensvc/om3/core/clusterdump"
+	"github.com/opensvc/om3/v3/core/clusterdump"
 )
 
 var (

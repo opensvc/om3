@@ -7,11 +7,11 @@ import (
 	"os"
 	"strings"
 
-	"github.com/opensvc/om3/core/naming"
-	"github.com/opensvc/om3/util/key"
-	"github.com/opensvc/om3/util/pg"
-	"github.com/opensvc/om3/util/stringslice"
-	"github.com/opensvc/om3/util/systemd"
+	"github.com/opensvc/om3/v3/core/naming"
+	"github.com/opensvc/om3/v3/util/key"
+	"github.com/opensvc/om3/v3/util/pg"
+	"github.com/opensvc/om3/v3/util/stringslice"
+	"github.com/opensvc/om3/v3/util/systemd"
 )
 
 func pgNameObject(p naming.Path) string {

@@ -3,8 +3,8 @@ package object
 import (
 	"context"
 
-	"github.com/opensvc/om3/core/actioncontext"
-	"github.com/opensvc/om3/core/keyop"
+	"github.com/opensvc/om3/v3/core/actioncontext"
+	"github.com/opensvc/om3/v3/core/keyop"
 )
 
 // Set changes or adds a keyword and its value in the configuration file.

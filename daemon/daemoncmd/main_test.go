@@ -12,17 +12,17 @@ import (
 
 	"github.com/stretchr/testify/require"
 
-	"github.com/opensvc/om3/core/client"
-	"github.com/opensvc/om3/core/cluster"
-	"github.com/opensvc/om3/core/clusterdump"
-	"github.com/opensvc/om3/core/event"
-	"github.com/opensvc/om3/core/naming"
-	"github.com/opensvc/om3/core/om"
-	"github.com/opensvc/om3/core/rawconfig"
-	"github.com/opensvc/om3/daemon/daemoncmd"
-	"github.com/opensvc/om3/daemon/daemonenv"
-	"github.com/opensvc/om3/testhelper"
-	"github.com/opensvc/om3/util/plog"
+	"github.com/opensvc/om3/v3/core/client"
+	"github.com/opensvc/om3/v3/core/cluster"
+	"github.com/opensvc/om3/v3/core/clusterdump"
+	"github.com/opensvc/om3/v3/core/event"
+	"github.com/opensvc/om3/v3/core/naming"
+	"github.com/opensvc/om3/v3/core/om"
+	"github.com/opensvc/om3/v3/core/rawconfig"
+	"github.com/opensvc/om3/v3/daemon/daemoncmd"
+	"github.com/opensvc/om3/v3/daemon/daemonenv"
+	"github.com/opensvc/om3/v3/testhelper"
+	"github.com/opensvc/om3/v3/util/plog"
 )
 
 func newClient(serverUrl string) (*client.T, error) {

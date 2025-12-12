@@ -3,13 +3,13 @@ package nmon
 import (
 	"slices"
 
-	"github.com/opensvc/om3/core/cluster"
-	"github.com/opensvc/om3/core/keyop"
-	"github.com/opensvc/om3/core/object"
-	"github.com/opensvc/om3/daemon/msgbus"
-	"github.com/opensvc/om3/util/hostname"
-	"github.com/opensvc/om3/util/key"
-	"github.com/opensvc/om3/util/pubsub"
+	"github.com/opensvc/om3/v3/core/cluster"
+	"github.com/opensvc/om3/v3/core/keyop"
+	"github.com/opensvc/om3/v3/core/object"
+	"github.com/opensvc/om3/v3/daemon/msgbus"
+	"github.com/opensvc/om3/v3/util/hostname"
+	"github.com/opensvc/om3/v3/util/key"
+	"github.com/opensvc/om3/v3/util/pubsub"
 )
 
 // onJoinRequest handle JoinRequest to update cluster config with new node.

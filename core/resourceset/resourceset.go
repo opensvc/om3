@@ -9,10 +9,10 @@ import (
 
 	"github.com/rs/zerolog"
 
-	"github.com/opensvc/om3/core/driver"
-	"github.com/opensvc/om3/core/resource"
-	"github.com/opensvc/om3/util/pg"
-	"github.com/opensvc/om3/util/plog"
+	"github.com/opensvc/om3/v3/core/driver"
+	"github.com/opensvc/om3/v3/core/resource"
+	"github.com/opensvc/om3/v3/util/pg"
+	"github.com/opensvc/om3/v3/util/plog"
 )
 
 type (

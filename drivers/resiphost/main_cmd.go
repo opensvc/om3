@@ -1,8 +1,9 @@
 package resiphost
 
 import (
-	"github.com/opensvc/om3/util/command"
 	"github.com/rs/zerolog"
+
+	"github.com/opensvc/om3/v3/util/command"
 )
 
 func (t *T) addrAdd(addr, dev, label string) error {

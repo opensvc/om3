@@ -7,9 +7,9 @@ import (
 
 	"golang.org/x/crypto/ssh"
 
-	"github.com/opensvc/om3/util/args"
-	"github.com/opensvc/om3/util/funcopt"
-	"github.com/opensvc/om3/util/hostname"
+	"github.com/opensvc/om3/v3/util/args"
+	"github.com/opensvc/om3/v3/util/funcopt"
+	"github.com/opensvc/om3/v3/util/hostname"
 )
 
 type (

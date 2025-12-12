@@ -5,7 +5,7 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/opensvc/om3/core/status"
+	"github.com/opensvc/om3/v3/core/status"
 )
 
 var (

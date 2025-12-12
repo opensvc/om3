@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"net/http"
 
-	"github.com/opensvc/om3/core/client"
+	"github.com/opensvc/om3/v3/core/client"
 )
 
 // PostDaemonRestart sends an api request to restart the daemon and handles the

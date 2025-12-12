@@ -3,8 +3,8 @@ package resdiskraw
 import (
 	"os/exec"
 
-	"github.com/opensvc/om3/util/capabilities"
-	"github.com/opensvc/om3/util/raw"
+	"github.com/opensvc/om3/v3/util/capabilities"
+	"github.com/opensvc/om3/v3/util/raw"
 )
 
 func init() {

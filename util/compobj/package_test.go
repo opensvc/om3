@@ -1,9 +1,10 @@
 package main
 
 import (
-	"github.com/stretchr/testify/require"
 	"os"
 	"testing"
+
+	"github.com/stretchr/testify/require"
 )
 
 func TestPackage_loadInstalledPackages(t *testing.T) {

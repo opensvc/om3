@@ -9,16 +9,16 @@ import (
 	"strings"
 	"time"
 
-	"github.com/opensvc/om3/core/actioncontext"
-	"github.com/opensvc/om3/core/actionrollback"
-	"github.com/opensvc/om3/core/naming"
-	"github.com/opensvc/om3/core/provisioned"
-	"github.com/opensvc/om3/core/resource"
-	"github.com/opensvc/om3/core/status"
-	"github.com/opensvc/om3/drivers/resip"
-	"github.com/opensvc/om3/util/hostname"
-	"github.com/opensvc/om3/util/netif"
-	"github.com/opensvc/om3/util/ping"
+	"github.com/opensvc/om3/v3/core/actioncontext"
+	"github.com/opensvc/om3/v3/core/actionrollback"
+	"github.com/opensvc/om3/v3/core/naming"
+	"github.com/opensvc/om3/v3/core/provisioned"
+	"github.com/opensvc/om3/v3/core/resource"
+	"github.com/opensvc/om3/v3/core/status"
+	"github.com/opensvc/om3/v3/drivers/resip"
+	"github.com/opensvc/om3/v3/util/hostname"
+	"github.com/opensvc/om3/v3/util/netif"
+	"github.com/opensvc/om3/v3/util/ping"
 )
 
 const (

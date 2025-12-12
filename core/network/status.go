@@ -3,7 +3,7 @@ package network
 import (
 	"math"
 
-	"github.com/opensvc/om3/core/clusterip"
+	"github.com/opensvc/om3/v3/core/clusterip"
 )
 
 type (

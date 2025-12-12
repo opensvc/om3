@@ -11,7 +11,7 @@ import (
 	sddaemon "github.com/coreos/go-systemd/daemon"
 	"github.com/coreos/go-systemd/v22/dbus"
 
-	"github.com/opensvc/om3/util/command"
+	"github.com/opensvc/om3/v3/util/command"
 )
 
 type (

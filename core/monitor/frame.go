@@ -8,7 +8,7 @@ import (
 	"github.com/fatih/color"
 	tabwriter "github.com/juju/ansiterm"
 
-	"github.com/opensvc/om3/core/clusterdump"
+	"github.com/opensvc/om3/v3/core/clusterdump"
 )
 
 const (

@@ -18,16 +18,16 @@ import (
 	"github.com/google/uuid"
 	"github.com/iancoleman/orderedmap"
 
-	"github.com/opensvc/om3/core/keyop"
-	"github.com/opensvc/om3/core/keywords"
-	"github.com/opensvc/om3/core/naming"
-	"github.com/opensvc/om3/core/rawconfig"
-	"github.com/opensvc/om3/util/converters"
-	"github.com/opensvc/om3/util/file"
-	"github.com/opensvc/om3/util/hostname"
-	"github.com/opensvc/om3/util/key"
-	"github.com/opensvc/om3/util/stringslice"
-	"github.com/opensvc/om3/util/xstrings"
+	"github.com/opensvc/om3/v3/core/keyop"
+	"github.com/opensvc/om3/v3/core/keywords"
+	"github.com/opensvc/om3/v3/core/naming"
+	"github.com/opensvc/om3/v3/core/rawconfig"
+	"github.com/opensvc/om3/v3/util/converters"
+	"github.com/opensvc/om3/v3/util/file"
+	"github.com/opensvc/om3/v3/util/hostname"
+	"github.com/opensvc/om3/v3/util/key"
+	"github.com/opensvc/om3/v3/util/stringslice"
+	"github.com/opensvc/om3/v3/util/xstrings"
 )
 
 type (

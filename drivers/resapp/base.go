@@ -6,10 +6,11 @@ import (
 	"time"
 
 	"github.com/google/uuid"
-	"github.com/opensvc/om3/core/actioncontext"
-	"github.com/opensvc/om3/core/naming"
-	"github.com/opensvc/om3/core/resource"
-	"github.com/opensvc/om3/util/envprovider"
+
+	"github.com/opensvc/om3/v3/core/actioncontext"
+	"github.com/opensvc/om3/v3/core/naming"
+	"github.com/opensvc/om3/v3/core/resource"
+	"github.com/opensvc/om3/v3/util/envprovider"
 )
 
 // BaseT is the app base driver structure

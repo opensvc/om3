@@ -4,8 +4,8 @@ import (
 	"sync"
 	"time"
 
-	"github.com/opensvc/om3/core/status"
-	"github.com/opensvc/om3/core/topology"
+	"github.com/opensvc/om3/v3/core/status"
+	"github.com/opensvc/om3/v3/core/topology"
 )
 
 var (

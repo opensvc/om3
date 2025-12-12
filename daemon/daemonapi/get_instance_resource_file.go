@@ -10,11 +10,11 @@ import (
 
 	"github.com/labstack/echo/v4"
 
-	"github.com/opensvc/om3/core/client"
-	"github.com/opensvc/om3/core/instance"
-	"github.com/opensvc/om3/core/naming"
-	"github.com/opensvc/om3/core/status"
-	"github.com/opensvc/om3/daemon/api"
+	"github.com/opensvc/om3/v3/core/client"
+	"github.com/opensvc/om3/v3/core/instance"
+	"github.com/opensvc/om3/v3/core/naming"
+	"github.com/opensvc/om3/v3/core/status"
+	"github.com/opensvc/om3/v3/daemon/api"
 )
 
 func (a *DaemonAPI) GetInstanceResourceFile(ctx echo.Context, nodename, namespace string, kind naming.Kind, name string, params api.GetInstanceResourceFileParams) error {

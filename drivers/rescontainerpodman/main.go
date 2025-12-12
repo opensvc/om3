@@ -1,8 +1,8 @@
 package rescontainerpodman
 
 import (
-	"github.com/opensvc/om3/core/resource"
-	"github.com/opensvc/om3/drivers/rescontainerocibase"
+	"github.com/opensvc/om3/v3/core/resource"
+	"github.com/opensvc/om3/v3/drivers/rescontainerocibase"
 )
 
 type (

@@ -5,10 +5,10 @@ import (
 	"sort"
 	"strings"
 
-	"github.com/opensvc/om3/core/volaccess"
-	"github.com/opensvc/om3/core/xconfig"
-	"github.com/opensvc/om3/util/key"
-	"github.com/opensvc/om3/util/sizeconv"
+	"github.com/opensvc/om3/v3/core/volaccess"
+	"github.com/opensvc/om3/v3/core/xconfig"
+	"github.com/opensvc/om3/v3/util/key"
+	"github.com/opensvc/om3/v3/util/sizeconv"
 )
 
 type (

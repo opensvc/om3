@@ -3,9 +3,9 @@
 package poolfreenas
 
 import (
-	"github.com/opensvc/om3/core/driver"
-	"github.com/opensvc/om3/util/capabilities"
-	"github.com/opensvc/om3/util/zfs"
+	"github.com/opensvc/om3/v3/core/driver"
+	"github.com/opensvc/om3/v3/util/capabilities"
+	"github.com/opensvc/om3/v3/util/zfs"
 )
 
 func init() {

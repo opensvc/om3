@@ -3,7 +3,7 @@ package manifest
 import (
 	"embed"
 
-	"github.com/opensvc/om3/core/keywords"
+	"github.com/opensvc/om3/v3/core/keywords"
 )
 
 //go:embed text

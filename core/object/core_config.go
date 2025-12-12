@@ -10,16 +10,16 @@ import (
 
 	"github.com/google/uuid"
 
-	"github.com/opensvc/om3/core/keyop"
-	"github.com/opensvc/om3/core/naming"
-	"github.com/opensvc/om3/core/placement"
-	"github.com/opensvc/om3/core/priority"
-	"github.com/opensvc/om3/core/rawconfig"
-	"github.com/opensvc/om3/core/topology"
-	"github.com/opensvc/om3/core/xconfig"
-	"github.com/opensvc/om3/util/device"
-	"github.com/opensvc/om3/util/hostname"
-	"github.com/opensvc/om3/util/key"
+	"github.com/opensvc/om3/v3/core/keyop"
+	"github.com/opensvc/om3/v3/core/naming"
+	"github.com/opensvc/om3/v3/core/placement"
+	"github.com/opensvc/om3/v3/core/priority"
+	"github.com/opensvc/om3/v3/core/rawconfig"
+	"github.com/opensvc/om3/v3/core/topology"
+	"github.com/opensvc/om3/v3/core/xconfig"
+	"github.com/opensvc/om3/v3/util/device"
+	"github.com/opensvc/om3/v3/util/hostname"
+	"github.com/opensvc/om3/v3/util/key"
 )
 
 var (

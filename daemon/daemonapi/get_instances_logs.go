@@ -5,8 +5,8 @@ import (
 
 	"github.com/labstack/echo/v4"
 
-	"github.com/opensvc/om3/core/naming"
-	"github.com/opensvc/om3/daemon/api"
+	"github.com/opensvc/om3/v3/core/naming"
+	"github.com/opensvc/om3/v3/daemon/api"
 )
 
 func (a *DaemonAPI) GetInstanceLogs(ctx echo.Context, nodename string, namespace string, kind naming.Kind, name string, params api.GetInstanceLogsParams) error {

@@ -9,9 +9,10 @@ import (
 
 	"github.com/fatih/color"
 	"github.com/iancoleman/orderedmap"
-	"github.com/opensvc/om3/core/rawconfig"
-	"github.com/opensvc/om3/daemon/api"
-	"github.com/opensvc/om3/util/key"
+
+	"github.com/opensvc/om3/v3/core/rawconfig"
+	"github.com/opensvc/om3/v3/daemon/api"
+	"github.com/opensvc/om3/v3/util/key"
 )
 
 func APIKeywordItemsToRaw(items api.KeywordItems) rawconfig.T {

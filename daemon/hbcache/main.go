@@ -13,10 +13,10 @@ import (
 	"sync"
 	"time"
 
-	"github.com/opensvc/om3/core/node"
-	"github.com/opensvc/om3/daemon/daemonsubsystem"
-	"github.com/opensvc/om3/daemon/draincommand"
-	"github.com/opensvc/om3/util/plog"
+	"github.com/opensvc/om3/v3/core/node"
+	"github.com/opensvc/om3/v3/daemon/daemonsubsystem"
+	"github.com/opensvc/om3/v3/daemon/draincommand"
+	"github.com/opensvc/om3/v3/util/plog"
 )
 
 type (

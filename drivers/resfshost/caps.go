@@ -1,9 +1,9 @@
 package resfshost
 
 import (
-	"github.com/opensvc/om3/core/driver"
-	"github.com/opensvc/om3/util/capabilities"
-	"github.com/opensvc/om3/util/filesystems"
+	"github.com/opensvc/om3/v3/core/driver"
+	"github.com/opensvc/om3/v3/util/capabilities"
+	"github.com/opensvc/om3/v3/util/filesystems"
 )
 
 func init() {

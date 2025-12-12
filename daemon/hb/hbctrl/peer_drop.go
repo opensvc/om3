@@ -4,14 +4,14 @@ import (
 	"context"
 	"time"
 
-	"github.com/opensvc/om3/core/node"
-	"github.com/opensvc/om3/core/object"
-	"github.com/opensvc/om3/core/xconfig"
-	"github.com/opensvc/om3/daemon/daemondata"
-	"github.com/opensvc/om3/daemon/msgbus"
-	"github.com/opensvc/om3/util/key"
-	"github.com/opensvc/om3/util/plog"
-	"github.com/opensvc/om3/util/pubsub"
+	"github.com/opensvc/om3/v3/core/node"
+	"github.com/opensvc/om3/v3/core/object"
+	"github.com/opensvc/om3/v3/core/xconfig"
+	"github.com/opensvc/om3/v3/daemon/daemondata"
+	"github.com/opensvc/om3/v3/daemon/msgbus"
+	"github.com/opensvc/om3/v3/util/key"
+	"github.com/opensvc/om3/v3/util/plog"
+	"github.com/opensvc/om3/v3/util/pubsub"
 )
 
 // peerDropWorker is responsible for dropping peer data on msgbus.NodeStale{Node: <peer>}.

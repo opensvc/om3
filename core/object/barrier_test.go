@@ -6,11 +6,11 @@ import (
 
 	"github.com/stretchr/testify/require"
 
-	"github.com/opensvc/om3/core/actioncontext"
-	"github.com/opensvc/om3/core/cluster"
-	"github.com/opensvc/om3/core/naming"
-	"github.com/opensvc/om3/core/status"
-	"github.com/opensvc/om3/testhelper"
+	"github.com/opensvc/om3/v3/core/actioncontext"
+	"github.com/opensvc/om3/v3/core/cluster"
+	"github.com/opensvc/om3/v3/core/naming"
+	"github.com/opensvc/om3/v3/core/status"
+	"github.com/opensvc/om3/v3/testhelper"
 )
 
 func TestBarrierToFlag(t *testing.T) {

@@ -6,11 +6,11 @@ import (
 
 	"github.com/labstack/echo/v4"
 
-	"github.com/opensvc/om3/core/clusterip"
-	"github.com/opensvc/om3/core/instance"
-	"github.com/opensvc/om3/core/network"
-	"github.com/opensvc/om3/core/object"
-	"github.com/opensvc/om3/daemon/api"
+	"github.com/opensvc/om3/v3/core/clusterip"
+	"github.com/opensvc/om3/v3/core/instance"
+	"github.com/opensvc/om3/v3/core/network"
+	"github.com/opensvc/om3/v3/core/object"
+	"github.com/opensvc/om3/v3/daemon/api"
 )
 
 func GetClusterIPs() clusterip.L {

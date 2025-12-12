@@ -4,10 +4,10 @@ import (
 	"context"
 	"time"
 
-	"github.com/opensvc/om3/core/actioncontext"
-	"github.com/opensvc/om3/core/freeze"
-	"github.com/opensvc/om3/core/resource"
-	"github.com/opensvc/om3/core/statusbus"
+	"github.com/opensvc/om3/v3/core/actioncontext"
+	"github.com/opensvc/om3/v3/core/freeze"
+	"github.com/opensvc/om3/v3/core/resource"
+	"github.com/opensvc/om3/v3/core/statusbus"
 )
 
 // Frozen returns the unix timestamp of the last freeze.

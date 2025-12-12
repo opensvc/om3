@@ -5,11 +5,11 @@ import (
 
 	"github.com/labstack/echo/v4"
 
-	"github.com/opensvc/om3/core/driver"
-	"github.com/opensvc/om3/core/instance"
-	"github.com/opensvc/om3/core/resourceid"
-	"github.com/opensvc/om3/daemon/api"
-	"github.com/opensvc/om3/daemon/rbac"
+	"github.com/opensvc/om3/v3/core/driver"
+	"github.com/opensvc/om3/v3/core/instance"
+	"github.com/opensvc/om3/v3/core/resourceid"
+	"github.com/opensvc/om3/v3/daemon/api"
+	"github.com/opensvc/om3/v3/daemon/rbac"
 )
 
 func (a *DaemonAPI) GetResources(ctx echo.Context, params api.GetResourcesParams) error {

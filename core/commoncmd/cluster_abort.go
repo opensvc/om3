@@ -1,8 +1,9 @@
 package commoncmd
 
 import (
-	"github.com/opensvc/om3/core/nodeaction"
 	"github.com/spf13/cobra"
+
+	"github.com/opensvc/om3/v3/core/nodeaction"
 )
 
 type CmdClusterAbort struct {

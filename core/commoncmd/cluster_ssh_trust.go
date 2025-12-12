@@ -5,9 +5,10 @@ import (
 	"errors"
 	"fmt"
 
-	"github.com/opensvc/om3/core/client"
-	"github.com/opensvc/om3/core/nodeselector"
 	"github.com/spf13/cobra"
+
+	"github.com/opensvc/om3/v3/core/client"
+	"github.com/opensvc/om3/v3/core/nodeselector"
 )
 
 type (

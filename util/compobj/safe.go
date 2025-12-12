@@ -8,9 +8,9 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/opensvc/om3/core/object"
-	"github.com/opensvc/om3/util/hostname"
-	"github.com/opensvc/om3/util/key"
+	"github.com/opensvc/om3/v3/core/object"
+	"github.com/opensvc/om3/v3/util/hostname"
+	"github.com/opensvc/om3/v3/util/key"
 )
 
 type (

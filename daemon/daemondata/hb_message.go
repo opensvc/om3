@@ -8,8 +8,8 @@ import (
 	"strings"
 	"time"
 
-	"github.com/opensvc/om3/core/hbtype"
-	"github.com/opensvc/om3/core/node"
+	"github.com/opensvc/om3/v3/core/hbtype"
+	"github.com/opensvc/om3/v3/core/node"
 )
 
 type (

@@ -8,7 +8,7 @@ import (
 
 	"github.com/spf13/pflag"
 
-	"github.com/opensvc/om3/daemon/rbac"
+	"github.com/opensvc/om3/v3/daemon/rbac"
 )
 
 func DeprecatedFlagDownTo(flags *pflag.FlagSet, p *string) {

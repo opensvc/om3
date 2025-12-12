@@ -3,10 +3,10 @@ package xconfig
 import (
 	"errors"
 
-	"github.com/opensvc/om3/core/env"
-	"github.com/opensvc/om3/core/nodeselector"
-	"github.com/opensvc/om3/util/converters"
-	"github.com/opensvc/om3/util/hostname"
+	"github.com/opensvc/om3/v3/core/env"
+	"github.com/opensvc/om3/v3/core/nodeselector"
+	"github.com/opensvc/om3/v3/util/converters"
+	"github.com/opensvc/om3/v3/util/hostname"
 )
 
 type (

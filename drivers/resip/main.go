@@ -7,8 +7,8 @@ import (
 	"strings"
 	"time"
 
-	"github.com/opensvc/om3/util/plog"
-	"github.com/opensvc/om3/util/stringset"
+	"github.com/opensvc/om3/v3/util/plog"
+	"github.com/opensvc/om3/v3/util/stringset"
 )
 
 func SplitDevLabel(s string) (string, string) {

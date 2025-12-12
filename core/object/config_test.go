@@ -3,11 +3,12 @@ package object
 import (
 	"testing"
 
-	"github.com/opensvc/om3/core/cluster"
-	"github.com/opensvc/om3/core/naming"
-	"github.com/opensvc/om3/core/xconfig"
-	"github.com/opensvc/om3/util/key"
 	"github.com/stretchr/testify/require"
+
+	"github.com/opensvc/om3/v3/core/cluster"
+	"github.com/opensvc/om3/v3/core/naming"
+	"github.com/opensvc/om3/v3/core/xconfig"
+	"github.com/opensvc/om3/v3/util/key"
 )
 
 func TestConfigDerefScopedEnv(t *testing.T) {

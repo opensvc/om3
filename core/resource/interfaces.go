@@ -4,9 +4,9 @@ import (
 	"context"
 	"io"
 
-	"github.com/opensvc/om3/core/actionresdeps"
-	"github.com/opensvc/om3/core/schedule"
-	"github.com/opensvc/om3/util/device"
+	"github.com/opensvc/om3/v3/core/actionresdeps"
+	"github.com/opensvc/om3/v3/core/schedule"
+	"github.com/opensvc/om3/v3/util/device"
 )
 
 type (

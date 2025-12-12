@@ -11,10 +11,10 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/opensvc/om3/core/clusterdump"
-	"github.com/opensvc/om3/core/naming"
-	"github.com/opensvc/om3/daemon/msgbus"
-	"github.com/opensvc/om3/util/xmap"
+	"github.com/opensvc/om3/v3/core/clusterdump"
+	"github.com/opensvc/om3/v3/core/naming"
+	"github.com/opensvc/om3/v3/daemon/msgbus"
+	"github.com/opensvc/om3/v3/util/xmap"
 )
 
 type (

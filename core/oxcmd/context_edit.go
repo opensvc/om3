@@ -7,8 +7,8 @@ import (
 
 	"github.com/mitchellh/go-homedir"
 
-	"github.com/opensvc/om3/core/clientcontext"
-	"github.com/opensvc/om3/util/file"
+	"github.com/opensvc/om3/v3/core/clientcontext"
+	"github.com/opensvc/om3/v3/util/file"
 )
 
 type (
