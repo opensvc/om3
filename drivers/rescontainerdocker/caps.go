@@ -6,6 +6,7 @@ import (
 	"os/exec"
 
 	"github.com/hashicorp/go-version"
+
 	"github.com/opensvc/om3/v3/util/capabilities"
 )
 

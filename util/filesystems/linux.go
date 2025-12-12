@@ -7,9 +7,10 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/rs/zerolog"
+
 	"github.com/opensvc/om3/v3/util/command"
 	"github.com/opensvc/om3/v3/util/file"
-	"github.com/rs/zerolog"
 )
 
 func (t T) Mount(dev string, mnt string, options string) error {

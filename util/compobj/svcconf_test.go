@@ -7,10 +7,11 @@ import (
 	"slices"
 	"testing"
 
+	"github.com/stretchr/testify/require"
+
 	"github.com/opensvc/om3/v3/core/keyop"
 	"github.com/opensvc/om3/v3/core/naming"
 	"github.com/opensvc/om3/v3/core/object"
-	"github.com/stretchr/testify/require"
 )
 
 func TestSvcconfAdd(t *testing.T) {

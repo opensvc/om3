@@ -9,12 +9,13 @@ import (
 	"sort"
 	"strings"
 
+	"github.com/ssrathi/go-attr"
+	"golang.org/x/exp/maps"
+
 	"github.com/opensvc/om3/v3/core/driver"
 	"github.com/opensvc/om3/v3/core/keyop"
 	"github.com/opensvc/om3/v3/core/naming"
 	"github.com/opensvc/om3/v3/util/key"
-	"github.com/ssrathi/go-attr"
-	"golang.org/x/exp/maps"
 )
 
 type (

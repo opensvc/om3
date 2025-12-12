@@ -12,6 +12,8 @@ import (
 	"golang.org/x/net/http2"
 	"golang.org/x/net/http2/h2c"
 
+	"github.com/rs/zerolog"
+
 	"github.com/opensvc/om3/v3/daemon/daemonapi"
 	"github.com/opensvc/om3/v3/daemon/daemonctx"
 	"github.com/opensvc/om3/v3/daemon/listener/routehttp"
@@ -19,7 +21,6 @@ import (
 	"github.com/opensvc/om3/v3/util/funcopt"
 	"github.com/opensvc/om3/v3/util/plog"
 	"github.com/opensvc/om3/v3/util/pubsub"
-	"github.com/rs/zerolog"
 )
 
 type (

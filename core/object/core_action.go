@@ -16,6 +16,8 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/rs/zerolog"
+
 	"github.com/opensvc/om3/v3/core/actioncontext"
 	"github.com/opensvc/om3/v3/core/actionrollback"
 	"github.com/opensvc/om3/v3/core/client"
@@ -33,7 +35,6 @@ import (
 	"github.com/opensvc/om3/v3/util/key"
 	"github.com/opensvc/om3/v3/util/pg"
 	"github.com/opensvc/om3/v3/util/xsession"
-	"github.com/rs/zerolog"
 )
 
 // Resources implementing setters

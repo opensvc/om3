@@ -6,6 +6,7 @@ import (
 	"strings"
 
 	"github.com/danwakefield/fnmatch"
+
 	"github.com/opensvc/om3/v3/core/driver"
 )
 

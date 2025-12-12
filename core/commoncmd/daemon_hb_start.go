@@ -5,8 +5,9 @@ import (
 	"fmt"
 	"net/http"
 
-	"github.com/opensvc/om3/v3/core/client"
 	"github.com/spf13/cobra"
+
+	"github.com/opensvc/om3/v3/core/client"
 )
 
 type (

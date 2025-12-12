@@ -2,6 +2,7 @@ package colorstatus
 
 import (
 	"github.com/fatih/color"
+
 	"github.com/opensvc/om3/v3/core/status"
 	"github.com/opensvc/om3/v3/util/render/palette"
 )

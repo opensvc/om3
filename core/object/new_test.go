@@ -3,10 +3,11 @@ package object_test
 import (
 	"testing"
 
+	"github.com/stretchr/testify/assert"
+
 	"github.com/opensvc/om3/v3/core/naming"
 	"github.com/opensvc/om3/v3/core/object"
 	"github.com/opensvc/om3/v3/testhelper"
-	"github.com/stretchr/testify/assert"
 )
 
 func TestVolatileFuncOpt(t *testing.T) {

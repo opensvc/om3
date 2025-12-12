@@ -8,6 +8,7 @@ import (
 	"text/template"
 
 	"github.com/danwakefield/fnmatch"
+
 	"github.com/opensvc/om3/v3/core/driver"
 	"github.com/opensvc/om3/v3/core/naming"
 	"github.com/opensvc/om3/v3/core/resourceid"

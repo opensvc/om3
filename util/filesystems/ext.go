@@ -5,9 +5,10 @@ import (
 	"fmt"
 	"os/exec"
 
+	"github.com/rs/zerolog"
+
 	"github.com/opensvc/om3/v3/util/command"
 	"github.com/opensvc/om3/v3/util/plog"
-	"github.com/rs/zerolog"
 )
 
 func extCanFSCK() error {

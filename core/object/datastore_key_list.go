@@ -5,6 +5,7 @@ import (
 	"sort"
 
 	"github.com/danwakefield/fnmatch"
+
 	"github.com/opensvc/om3/v3/util/xmap"
 )
 

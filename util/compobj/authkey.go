@@ -13,8 +13,9 @@ import (
 	"strings"
 	"syscall"
 
-	"github.com/opensvc/om3/v3/util/compobj/sysproc"
 	"github.com/pbar1/pkill-go"
+
+	"github.com/opensvc/om3/v3/util/compobj/sysproc"
 )
 
 type (

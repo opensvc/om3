@@ -1,8 +1,9 @@
 package arraysymmetrix
 
 import (
-	"github.com/opensvc/om3/v3/core/array"
 	"github.com/spf13/cobra"
+
+	"github.com/opensvc/om3/v3/core/array"
 )
 
 var (

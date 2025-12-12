@@ -14,6 +14,7 @@ import (
 	"github.com/hexops/gotextdiff"
 	"github.com/hexops/gotextdiff/myers"
 	"github.com/hexops/gotextdiff/span"
+
 	"github.com/opensvc/om3/v3/util/file"
 )
 

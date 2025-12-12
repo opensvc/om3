@@ -5,9 +5,10 @@ import (
 	"fmt"
 	"net/http"
 
+	"github.com/spf13/cobra"
+
 	"github.com/opensvc/om3/v3/core/client"
 	"github.com/opensvc/om3/v3/daemon/api"
-	"github.com/spf13/cobra"
 )
 
 type (

@@ -1,11 +1,12 @@
 package main
 
 import (
-	"github.com/stretchr/testify/require"
 	"os"
 	"os/exec"
 	"reflect"
 	"testing"
+
+	"github.com/stretchr/testify/require"
 )
 
 func TestGroupCheckFilesNsswitch(t *testing.T) {

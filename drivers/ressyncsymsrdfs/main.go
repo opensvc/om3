@@ -15,6 +15,8 @@ import (
 	"slices"
 	"strings"
 
+	"github.com/rs/zerolog"
+
 	"github.com/opensvc/om3/v3/core/client"
 	"github.com/opensvc/om3/v3/core/resource"
 	"github.com/opensvc/om3/v3/core/status"
@@ -25,7 +27,6 @@ import (
 	"github.com/opensvc/om3/v3/util/device"
 	"github.com/opensvc/om3/v3/util/hostname"
 	"github.com/opensvc/om3/v3/util/xsession"
-	"github.com/rs/zerolog"
 )
 
 // T is the driver structure.
