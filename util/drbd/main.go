@@ -18,6 +18,7 @@ import (
 	"github.com/opensvc/om3/v3/util/command"
 	"github.com/opensvc/om3/v3/util/file"
 	"github.com/opensvc/om3/v3/util/funcopt"
+	"github.com/opensvc/om3/v3/util/hostname"
 	"github.com/opensvc/om3/v3/util/lock"
 	"github.com/opensvc/om3/v3/util/plog"
 	"github.com/opensvc/om3/v3/util/waitfor"
@@ -650,6 +651,33 @@ func (t *T) WipeMD(ctx context.Context) error {
 	)
 	cmd.Cmd().Stdin = strings.NewReader("yes\n")
 	return cmd.Run()
+}
+
+// ConfigurePeerMultiPrimary sets the allow-two-primaries net-option
+// on the specified resource connection (res:peer).
+func (t *T) ConfigurePeerMultiPrimary(ctx context.Context, peer string, enabled bool) error {
+	if peer == "" {
+		return fmt.Errorf("cannot allow two primaries when peer is empty")
+	} else if peer == hostname.Hostname() {
+		return fmt.Errorf("cannot allow two primaries when peer is localhost")
+	}
+	var yesOrNo string
+	if enabled {
+		yesOrNo = "yes"
+	} else {
+		yesOrNo = "no"
+	}
+	args := []string{"net-options", "--allow-two-primaries=" + yesOrNo, t.res + ":" + peer}
+	cmd := command.New(
+		command.WithName(drbdadm),
+		command.WithArgs(args),
+		command.WithLogger(t.log),
+		command.WithCommandLogLevel(zerolog.InfoLevel),
+		command.WithStdoutLogLevel(zerolog.InfoLevel),
+		command.WithStderrLogLevel(zerolog.ErrorLevel),
+		command.WithContext(ctx),
+	)
+	return retry(cmd)
 }
 
 func (t *T) validateName() error {

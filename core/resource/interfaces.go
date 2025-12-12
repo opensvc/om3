@@ -49,6 +49,18 @@ type (
 		PreMove(ctx context.Context, to string) error
 	}
 
+	// PreMoveRollbacker implements a PreMove rollback function that is called
+	// by a moveable driver (eg container.kvm) when move has failed.
+	PreMoveRollbacker interface {
+		PreMoveRollback(ctx context.Context, to string) error
+	}
+
+	// PostMover implements a PostMove function that is called by a moveable
+	// driver (eg container.kvm) after the move is done.
+	PostMover interface {
+		PostMove(ctx context.Context, to string) error
+	}
+
 	//
 	// Runner implements the Run func, which runs a one-shot process
 	// Implemented by the resource. The object "run" action causes

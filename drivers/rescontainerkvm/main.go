@@ -353,7 +353,21 @@ func (t *T) Start(ctx context.Context) error {
 	return nil
 }
 
-func (t *T) Move(ctx context.Context, to string) error {
+func (t *T) Move(ctx context.Context, to string) (err error) {
+	postMovers := make([]resource.PostMover, 0)
+	onFailureRollbackers := make([]resource.PreMoveRollbacker, 0)
+
+	defer func() {
+		if err != nil {
+			// best effort to revert the pre-move action when something bad happens
+			for _, r := range onFailureRollbackers {
+				if err := r.PreMoveRollback(ctx, to); err != nil {
+					t.Log().Warnf("pre-move rollback action failed: %s", err)
+				}
+			}
+		}
+	}()
+
 	for _, dev := range t.SubDevices() {
 		r, err := t.resourceHandlingDevice(dev)
 		if err != nil {
@@ -372,9 +386,30 @@ func (t *T) Move(ctx context.Context, to string) error {
 			if err := i.PreMove(ctx, to); err != nil {
 				return err
 			}
+			if i, ok := r.(resource.PreMoveRollbacker); ok {
+				onFailureRollbackers = append(onFailureRollbackers, i)
+			}
+		}
+		if i, ok := r.(resource.PostMover); ok {
+			postMovers = append(postMovers, i)
 		}
 	}
-	return t.migrate(to)
+
+	t.Log().Infof("migrating container %s to %s", t.Name, to)
+	if err := t.migrate(to); err != nil {
+		t.Log().Warnf("migrate container %s to %s: %s", t.Name, to, err)
+		return fmt.Errorf("migrate container: %w", err)
+	}
+
+	// Reverse the order of post-move actions, so that the first one is executed first.
+	slices.Reverse(postMovers)
+	for _, dev := range postMovers {
+		if err := dev.PostMove(ctx, to); err != nil {
+			return err
+		}
+	}
+
+	return nil
 }
 
 func (t *T) Stop(ctx context.Context) error {
