@@ -53,6 +53,7 @@ type (
 	DRBDDriver interface {
 		Adjust(context.Context) error
 		Attach(context.Context) error
+		ConfigurePeerMultiPrimary(ctx context.Context, peer string, enabled bool) error
 		Connect(context.Context, string) error
 		ConnStates(context.Context) (drbd.CStateM, error)
 		ConnState(context.Context, string) (string, error)
@@ -731,11 +732,52 @@ func (t *T) connectPeers(ctx context.Context, nodeIDs ...string) error {
 	return errs
 }
 
-// PreMove promotes the res to primary on move destination.
-// The drbd needs to allow-two-primaries for both the source and
-// destination to be primary at the same time during the move.
-func (t *T) PreMove(ctx context.Context, to string) error {
-	return t.primaryPeer(ctx, to)
+// PreMove prepares the peer connection and promotes it to primary for multi-primary mode during resource operations.
+func (t *T) PreMove(ctx context.Context, peer string) error {
+	t.Log().Infof("enabling multi-primary mode on peer connection %s:%s", t.Res, peer)
+	if err := t.drbd(ctx).ConfigurePeerMultiPrimary(ctx, peer, true); err != nil {
+		return fmt.Errorf("enable multi-primary mode on peer connection %s:%s: %w", t.Res, peer, err)
+	}
+	t.Log().Infof("promoting primary %s on peer %s", t.Res, peer)
+	if err := t.primaryPeer(ctx, peer); err != nil {
+		t.Log().Warnf("promote primary %s on peer %s: %s", t.Res, peer, err)
+		t.Log().Infof("rollback: disabling multi-primary mode on peer connection %s:%s", t.Res, peer)
+		if err := t.drbd(ctx).ConfigurePeerMultiPrimary(ctx, peer, false); err != nil {
+			t.Log().Warnf("rollback: disable multi-primary mode on peer connection %s:%s: %s", t.Res, peer, err)
+		}
+		return fmt.Errorf("promote primary %s on peer %s: %w", t.Res, peer, err)
+	}
+	return nil
+}
+
+// PreMoveRollback ensures a rollback of a pre-move operation, promoting peer as secondary and
+// disabling multi-primary mode to the peer connection.
+func (t *T) PreMoveRollback(ctx context.Context, peer string) error {
+	t.Log().Infof("rollback promoting secondary %s on peer %s", t.Res, peer)
+	if err := t.secondaryPeer(ctx, peer); err != nil {
+		return fmt.Errorf("promote secondary %s on peer %s: %s", t.Res, peer, err)
+	}
+	t.Log().Infof("rollback disabling multi-primary mode on the peer connection")
+	if err := t.drbd(ctx).ConfigurePeerMultiPrimary(ctx, peer, false); err != nil {
+		return fmt.Errorf("disable multi-primary mode on the peer connection %s:%s: %w", t.Res, peer, err)
+	}
+	return nil
+}
+
+// PostMove moves the local res to secondary and disables the
+// multiple primaries on the peer connection name.
+func (t *T) PostMove(ctx context.Context, peer string) error {
+	t.Log().Infof("promoting secondary %s on localhost", t.Res)
+	r := t.drbd(ctx)
+	if err := r.Secondary(ctx); err != nil {
+		return fmt.Errorf("promote secondary %s on localhost: %w", t.Res, err)
+	}
+
+	t.Log().Infof("disabling multi-primary mode for peer connection %s:%s", t.Res, peer)
+	if err := r.ConfigurePeerMultiPrimary(ctx, peer, false); err != nil {
+		return fmt.Errorf("disable multi-primary mode for peer connection %s:%s: %w", t.Res, peer, err)
+	}
+	return nil
 }
 
 func (t *T) primaryPeer(ctx context.Context, nodename string) error {
@@ -747,6 +789,36 @@ func (t *T) primaryPeer(ctx context.Context, nodename string) error {
 		Name: t.Res,
 	}
 	resp, err := c.PostNodeDRBDPrimaryWithResponse(ctx, nodename, &params)
+	if err != nil {
+		return err
+	}
+	switch resp.StatusCode() {
+	case 204:
+		return nil
+	case 400:
+		return fmt.Errorf("%s", resp.JSON400)
+	case 401:
+		return fmt.Errorf("%s", resp.JSON401)
+	case 403:
+		return fmt.Errorf("%s", resp.JSON403)
+	case 404:
+		return nil
+	case 500:
+		return fmt.Errorf("%s", resp.JSON500)
+	default:
+		return fmt.Errorf("unexpected status code: %s", resp.Status())
+	}
+}
+
+func (t *T) secondaryPeer(ctx context.Context, nodename string) error {
+	c, err := client.New()
+	if err != nil {
+		return err
+	}
+	params := api.PostNodeDRBDSecondaryParams{
+		Name: t.Res,
+	}
+	resp, err := c.PostNodeDRBDSecondaryWithResponse(ctx, nodename, &params)
 	if err != nil {
 		return err
 	}
