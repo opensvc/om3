@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"slices"
 
 	"github.com/opensvc/om3/v3/core/actionrollback"
 	"github.com/opensvc/om3/v3/core/provisioned"
@@ -21,10 +22,13 @@ import (
 type (
 	T struct {
 		resdisk.T
+		resource.SSH
 		Name       string `json:"name"`
 		ObjectFQDN string `json:"object_fqdn"`
 		Size       string `json:"size"`
 		Access     string `json:"access"`
+
+		featureDisabled []string
 	}
 
 	RBDMap struct {
@@ -443,4 +447,100 @@ func (t *T) SubDevices() device.L {
 
 func (t *T) Boot(ctx context.Context) error {
 	return t.Stop(ctx)
+}
+
+func (t *T) PreMove(ctx context.Context, to string) error {
+	info, err := t.deviceInfo(ctx)
+	if err != nil {
+		return err
+	}
+	if !slices.Contains(info.Features, "exclusive-lock") {
+		t.Log().Infof("feature exclusive-lock is already disabled")
+		return nil
+	}
+	for _, feature := range []string{"journaling", "object-map", "exclusive-lock"} {
+		if !slices.Contains(info.Features, feature) {
+			t.Log().Infof("feature %s is already disabled")
+			continue
+		}
+		if err := t.disableFeature(ctx, feature); err != nil {
+			return err
+		}
+		t.featureDisabled = append(t.featureDisabled, feature)
+	}
+	sshKeyFile := t.GetSSHKeyFile()
+	if sshKeyFile == "" {
+		return fmt.Errorf("no opensvc ssh key file")
+	}
+	cmd := command.New(
+		command.WithContext(ctx),
+		command.WithName("ssh"),
+		command.WithVarArgs("-i", sshKeyFile, to, fmt.Sprintf("rbd map %s", t.Name)),
+		command.WithLogger(t.Log()),
+		command.WithCommandLogLevel(zerolog.InfoLevel),
+		command.WithStdoutLogLevel(zerolog.InfoLevel),
+		command.WithStderrLogLevel(zerolog.ErrorLevel),
+	)
+	return cmd.Run()
+}
+
+func (t *T) disableFeature(ctx context.Context, feature string) error {
+	cmd := command.New(
+		command.WithContext(ctx),
+		command.WithName("rbd"),
+		command.WithVarArgs("feature", "disable", t.Name, feature),
+		command.WithLogger(t.Log()),
+		command.WithCommandLogLevel(zerolog.InfoLevel),
+		command.WithStdoutLogLevel(zerolog.InfoLevel),
+		command.WithStderrLogLevel(zerolog.ErrorLevel),
+	)
+	return cmd.Run()
+}
+
+func (t *T) enableFeature(ctx context.Context, feature string) error {
+	cmd := command.New(
+		command.WithContext(ctx),
+		command.WithName("rbd"),
+		command.WithVarArgs("feature", "enable", t.Name, feature),
+		command.WithLogger(t.Log()),
+		command.WithCommandLogLevel(zerolog.InfoLevel),
+		command.WithStdoutLogLevel(zerolog.InfoLevel),
+		command.WithStderrLogLevel(zerolog.ErrorLevel),
+	)
+	return cmd.Run()
+
+}
+
+func (t *T) restoreFeatures(ctx context.Context) error {
+	info, err := t.deviceInfo(ctx)
+	if err != nil {
+		return err
+	}
+	for _, feature := range t.featureDisabled {
+		if !slices.Contains(info.Features, feature) {
+			t.Log().Infof("feature %s is already re-enabled")
+			continue
+		}
+		if err := t.enableFeature(ctx, feature); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func (t *T) PreMoveRollback(ctx context.Context, to string) error {
+	if err := t.restoreFeatures(ctx); err != nil {
+		return err
+	}
+	return nil
+}
+
+func (t *T) PostMove(ctx context.Context, to string) error {
+	defer func() {
+		t.featureDisabled = nil
+	}()
+	if err := t.restoreFeatures(ctx); err != nil {
+		return err
+	}
+	return t.unmapDevice(ctx)
 }
