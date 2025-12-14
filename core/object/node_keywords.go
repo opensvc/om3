@@ -796,7 +796,7 @@ var nodeCommonKeywords = []keywords.Keyword{
 		Text:    keywords.NewText(fs, "text/kw/node/cni.config"),
 	},
 	{
-		Candidates: []string{"directory", "loop", "vg", "zpool", "freenas", "share", "shm", "symmetrix", "truenas", "virtual", "dorado", "hoc", "drbd", "pure"},
+		Candidates: []string{"directory", "loop", "vg", "zpool", "freenas", "share", "shm", "symmetrix", "truenas", "virtual", "dorado", "hoc", "drbd", "pure", "rados"},
 		Default:    "directory",
 		Option:     "type",
 		Section:    "pool",
@@ -820,6 +820,19 @@ var nodeCommonKeywords = []keywords.Keyword{
 		Section:  "pool",
 		Text:     keywords.NewText(fs, "text/kw/node/pool.array"),
 		Types:    []string{"freenas", "symmetrix", "dorado", "hoc", "pure", "truenas"},
+	},
+	{
+		Option:   "rbd_pool",
+		Section:  "pool",
+		Required: true,
+		Text:     "The ceph pool where to create images.",
+		Types:    []string{"rados"},
+	},
+	{
+		Option:  "rbd_namespace",
+		Section: "pool",
+		Text:    "The ceph pool namespace where to create images.",
+		Types:   []string{"rados"},
 	},
 	{
 		Option:  "label_prefix",
@@ -1051,7 +1064,7 @@ var nodeCommonKeywords = []keywords.Keyword{
 		Option:  "fs_type",
 		Section: "pool",
 		Text:    keywords.NewText(fs, "text/kw/node/pool.fs_type"),
-		Types:   []string{"freenas", "dorado", "hoc", "symmetrix", "drbd", "loop", "vg", "pure", "truenas"},
+		Types:   []string{"freenas", "dorado", "hoc", "symmetrix", "drbd", "loop", "vg", "pure", "truenas", "rados"},
 	},
 	{
 		Example: "-O largefile",

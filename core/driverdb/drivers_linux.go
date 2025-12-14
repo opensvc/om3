@@ -9,6 +9,7 @@ import (
 	_ "github.com/opensvc/om3/v3/drivers/networkroutedbridge"
 	_ "github.com/opensvc/om3/v3/drivers/pooldrbd"
 	_ "github.com/opensvc/om3/v3/drivers/poolloop"
+	_ "github.com/opensvc/om3/v3/drivers/poolrados"
 	_ "github.com/opensvc/om3/v3/drivers/poolvg"
 	_ "github.com/opensvc/om3/v3/drivers/rescontainerdocker"
 	_ "github.com/opensvc/om3/v3/drivers/rescontainerkvm"
