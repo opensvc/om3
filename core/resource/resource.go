@@ -174,7 +174,7 @@ type (
 	}
 
 	devImporter interface {
-		ImportDevices() error
+		ImportDevices(context.Context) error
 	}
 
 	SCSIPersistentReservation struct {
@@ -1191,18 +1191,18 @@ func SCSIPersistentReservationStop(ctx context.Context, r Driver) error {
 // ImportDevices execute the Driver ImportDevices() function if defined.
 // Some drivers need to import devices before they can list the
 // reservable devices to register. So use this in the start codepath.
-func ImportDevices(r Driver) error {
+func ImportDevices(ctx context.Context, r Driver) error {
 	var i any = r
 	o, ok := i.(devImporter)
 	if !ok {
 		r.Log().Tracef("resource does not implement ImportDevices()")
 		return nil
 	}
-	return o.ImportDevices()
+	return o.ImportDevices(ctx)
 }
 
 func SCSIPersistentReservationStart(ctx context.Context, r Driver) error {
-	if err := ImportDevices(r); err != nil {
+	if err := ImportDevices(ctx, r); err != nil {
 		return err
 	}
 
