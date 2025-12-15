@@ -190,7 +190,7 @@ func (t *T) Start() (err error) {
 
 		onLine := func(s string) {
 			if t.log != nil && t.stdoutLogLevel != zerolog.Disabled {
-				t.log.Attr("out", s).Attr("pid", t.pid).Levelf(t.stdoutLogLevel, "stdout: "+s)
+				t.log.Attr("out", s).Attr("pid", t.pid).Levelf(t.stdoutLogLevel, "stdout: %s", s)
 			}
 			if t.onStdoutLine != nil {
 				t.onStdoutLine(s)
@@ -223,7 +223,7 @@ func (t *T) Start() (err error) {
 		onLine := func(s string) {
 			if t.log != nil && t.stderrLogLevel != zerolog.Disabled {
 				if t.log != nil {
-					t.log.Attr("err", s).Attr("pid", t.pid).Levelf(t.stderrLogLevel, "stderr: "+s)
+					t.log.Attr("err", s).Attr("pid", t.pid).Levelf(t.stderrLogLevel, "stderr: %s", s)
 				}
 			}
 			if t.onStderrLine != nil {
