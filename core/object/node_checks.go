@@ -1,6 +1,7 @@
 package object
 
 import (
+	"context"
 	"fmt"
 	"path/filepath"
 	"time"
@@ -17,7 +18,7 @@ import (
 
 // Checks finds and runs the check drivers.
 // Results are aggregated and sent to the collector.
-func (t Node) Checks() (check.ResultSet, error) {
+func (t Node) Checks(ctx context.Context) (check.ResultSet, error) {
 	rootPath := filepath.Join(rawconfig.Paths.Drivers, "check", "chk*")
 	customCheckPaths := exe.FindExe(rootPath)
 	paths, err := naming.InstalledPaths()
@@ -32,7 +33,7 @@ func (t Node) Checks() (check.ResultSet, error) {
 		check.RunnerWithCustomCheckPaths(customCheckPaths...),
 		check.RunnerWithObjects(objs...),
 	)
-	rs := runner.Do()
+	rs := runner.Do(ctx)
 	if err := t.pushChecks(rs); err != nil {
 		return *rs, err
 	}

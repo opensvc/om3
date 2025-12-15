@@ -1,6 +1,7 @@
 package poolrados
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 
@@ -60,7 +61,7 @@ func (t T) Capabilities() []string {
 	return []string{"move", "rox", "rwx", "roo", "rwo", "snap", "blk", "shared"}
 }
 
-func (t T) Usage() (pool.Usage, error) {
+func (t T) Usage(ctx context.Context) (pool.Usage, error) {
 	/*
 		{
 		  "pools": [
@@ -100,6 +101,7 @@ func (t T) Usage() (pool.Usage, error) {
 		}
 	)
 	cmd := command.New(
+		command.WithContext(ctx),
 		command.WithName("ceph"),
 		command.WithVarArgs("df", "--format", "json"),
 		command.WithBufferedStdout(),

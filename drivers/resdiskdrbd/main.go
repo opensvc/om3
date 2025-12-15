@@ -1009,12 +1009,11 @@ func (t *T) unprovisionCommon(ctx context.Context) error {
 	return nil
 }
 
-func (t *T) Provisioned() (provisioned.T, error) {
+func (t *T) Provisioned(ctx context.Context) (provisioned.T, error) {
 	if !t.isConfigured() {
 		return provisioned.False, nil
 	}
 	// TODO: allow Provisioned(ctx context.Context) ?
-	ctx := context.Background()
 	hasMD, err := t.drbd(ctx).HasMD(ctx)
 	if err != nil {
 		t.Log().Tracef("drbd res is not configured")
@@ -1206,7 +1205,7 @@ func (t Path) PreSync() error {
 	return t.dumpCacheFile()
 }
 
-func (t Path) ToSync() []string {
+func (t Path) ToSync(ctx context.Context) []string {
 	return []string{}
 }
 

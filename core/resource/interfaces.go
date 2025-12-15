@@ -149,7 +149,7 @@ type (
 		Update(context.Context) error
 	}
 	toSyncer interface {
-		ToSync() []string
+		ToSync(context.Context) []string
 	}
 	ingester interface {
 		Ingest(context.Context) error

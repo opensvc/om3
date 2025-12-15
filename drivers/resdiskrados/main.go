@@ -420,8 +420,8 @@ func (t *T) UnprovisionAsLeader(ctx context.Context) error {
 	return t.removeDevice(ctx)
 }
 
-func (t *T) Provisioned() (provisioned.T, error) {
-	v, err := t.exists(context.Background())
+func (t *T) Provisioned(ctx context.Context) (provisioned.T, error) {
+	v, err := t.exists(ctx)
 	return provisioned.FromBool(v), err
 }
 

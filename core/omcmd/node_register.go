@@ -1,6 +1,8 @@
 package omcmd
 
 import (
+	"context"
+
 	"github.com/opensvc/om3/v3/core/nodeaction"
 	"github.com/opensvc/om3/v3/core/object"
 )
@@ -24,7 +26,8 @@ func (t *CmdNodeRegister) Run() error {
 			if err != nil {
 				return nil, err
 			}
-			return nil, n.Register(t.User, t.Password, t.App)
+			ctx := context.Background()
+			return nil, n.Register(ctx, t.User, t.Password, t.App)
 		}),
 	).Do()
 }

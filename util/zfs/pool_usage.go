@@ -1,6 +1,7 @@
 package zfs
 
 import (
+	"context"
 	"fmt"
 	"strconv"
 	"strings"
@@ -53,10 +54,11 @@ func parsePoolUsage(b []byte) (PoolUsage, error) {
 	return data, nil
 }
 
-func (t *Pool) Usage(fopts ...funcopt.O) (PoolUsage, error) {
+func (t *Pool) Usage(ctx context.Context, fopts ...funcopt.O) (PoolUsage, error) {
 	opts := &poolStatusOpts{}
 	funcopt.Apply(opts, fopts...)
 	cmd := command.New(
+		command.WithContext(ctx),
 		command.WithName("zpool"),
 		command.WithVarArgs("get", "-H", "size,alloc,free", "-p", t.Name),
 		command.WithBufferedStdout(),

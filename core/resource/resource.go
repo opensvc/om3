@@ -62,7 +62,7 @@ type (
 
 	// Driver exposes what can be done with a resource
 	Driver interface {
-		Provisioned() (provisioned.T, error)
+		Provisioned(context.Context) (provisioned.T, error)
 		Provision(context.Context) error
 		Unprovision(context.Context) error
 
@@ -1233,9 +1233,9 @@ func GetStatus(ctx context.Context, r Driver) Status {
 		Subset:        r.RSubset(),
 		Tags:          r.TagSet(),
 		Log:           r.StatusLog().Entries(),
-		IsProvisioned: getProvisionStatus(r),
+		IsProvisioned: getProvisionStatus(ctx, r),
 		Info:          getStatusInfo(ctx, r),
-		Files:         getFiles(r),
+		Files:         getFiles(ctx, r),
 
 		IsStopped:   r.IsStopped(),
 		IsMonitored: r.IsMonitored(),
@@ -1489,7 +1489,7 @@ func createStoppedIfHasResourceSelector(ctx context.Context, r Driver) error {
 	return file.Close()
 }
 
-func getFiles(t Driver) Files {
+func getFiles(ctx context.Context, t Driver) Files {
 	i, ok := t.(toSyncer)
 	if !ok {
 		return nil
@@ -1497,7 +1497,7 @@ func getFiles(t Driver) Files {
 	_, isIngester := t.(ingester)
 
 	files := make(Files, 0)
-	for _, name := range i.ToSync() {
+	for _, name := range i.ToSync(ctx) {
 		mtime := file.ModTime(name)
 		checksum, _ := file.MD5(name)
 		file := File{

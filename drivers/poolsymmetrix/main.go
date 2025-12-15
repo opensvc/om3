@@ -1,6 +1,7 @@
 package poolsymmetrix
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"os"
@@ -133,8 +134,8 @@ func (t T) Capabilities() []string {
 	return []string{"rox", "rwx", "roo", "rwo", "blk", "fc", "shared"}
 }
 
-func (t T) getSRP() (arraysymmetrix.SRP, error) {
-	srps, err := t.array().SymCfgSRPList()
+func (t T) getSRP(ctx context.Context) (arraysymmetrix.SRP, error) {
+	srps, err := t.array().SymCfgSRPList(ctx)
 	if err != nil {
 		return arraysymmetrix.SRP{}, err
 	}
@@ -147,12 +148,12 @@ func (t T) getSRP() (arraysymmetrix.SRP, error) {
 	return arraysymmetrix.SRP{}, os.ErrNotExist
 }
 
-func (t T) Usage() (pool.Usage, error) {
+func (t T) Usage(ctx context.Context) (pool.Usage, error) {
 	usage := pool.Usage{
 		Shared: true,
 	}
 
-	srp, err := t.getSRP()
+	srp, err := t.getSRP(ctx)
 	if err != nil {
 		return usage, err
 	}
@@ -197,9 +198,9 @@ func (t *T) BlkTranslate(name string, size int64, shared bool) ([]string, error)
 	return data, nil
 }
 
-func (t *T) GetTargets() (san.Targets, error) {
+func (t *T) GetTargets(ctx context.Context) (san.Targets, error) {
 	ports := make(san.Targets, 0)
-	data, err := t.array().SymCfgDirectorList("all")
+	data, err := t.array().SymCfgDirectorList(ctx, "all")
 	if err != nil {
 		return nil, err
 	}
@@ -216,13 +217,13 @@ func (t *T) GetTargets() (san.Targets, error) {
 	return ports, nil
 }
 
-func (t *T) DeleteDisk(name, wwid string) ([]pool.Disk, error) {
+func (t *T) DeleteDisk(ctx context.Context, name, wwid string) ([]pool.Disk, error) {
 	poolDisk := pool.Disk{}
 	a := t.array()
 	if len(wwid) != 32 {
 		return nil, fmt.Errorf("wwid %s is not 32 characters long", wwid)
 	}
-	arrayDisk, err := a.DelDisk(arraysymmetrix.OptDelDisk{
+	arrayDisk, err := a.DelDisk(ctx, arraysymmetrix.OptDelDisk{
 		Dev: wwid,
 	})
 	if err != nil {
@@ -233,15 +234,15 @@ func (t *T) DeleteDisk(name, wwid string) ([]pool.Disk, error) {
 	return []pool.Disk{poolDisk}, nil
 }
 
-func (t *T) CreateDisk(name string, size int64, nodenames []string) ([]pool.Disk, error) {
+func (t *T) CreateDisk(ctx context.Context, name string, size int64, nodenames []string) ([]pool.Disk, error) {
 	if t.srdf() {
-		return t.CreateDiskSRDF(name, size, nodenames)
+		return t.CreateDiskSRDF(ctx, name, size, nodenames)
 	} else {
-		return t.CreateDiskSimple(name, size, nodenames)
+		return t.CreateDiskSimple(ctx, name, size, nodenames)
 	}
 }
 
-func (t *T) CreateDiskSRDF(name string, size int64, nodenames []string) ([]pool.Disk, error) {
+func (t *T) CreateDiskSRDF(ctx context.Context, name string, size int64, nodenames []string) ([]pool.Disk, error) {
 	arrayNodes, err := t.arrayNodes(nodenames)
 	if err != nil {
 		return []pool.Disk{}, err
@@ -250,12 +251,12 @@ func (t *T) CreateDiskSRDF(name string, size int64, nodenames []string) ([]pool.
 	r1Nodes := arrayNodes[t.arrayName()]
 	r2Nodes := arrayNodes[t.remoteArrayName()]
 
-	r1PoolDisks, err := t.CreateDiskSimple(name, size, r1Nodes)
+	r1PoolDisks, err := t.CreateDiskSimple(ctx, name, size, r1Nodes)
 	if err != nil {
 		return []pool.Disk{}, err
 	}
 
-	r2PoolDisks, err := t.MapDisk(name, r2Nodes)
+	r2PoolDisks, err := t.MapDisk(ctx, name, r2Nodes)
 	if err != nil {
 		return []pool.Disk{}, err
 	}
@@ -263,14 +264,14 @@ func (t *T) CreateDiskSRDF(name string, size int64, nodenames []string) ([]pool.
 	return append(r1PoolDisks, r2PoolDisks...), nil
 }
 
-func (t *T) MapDisk(devId string, nodenames []string) ([]pool.Disk, error) {
+func (t *T) MapDisk(ctx context.Context, devId string, nodenames []string) ([]pool.Disk, error) {
 	poolDisk := pool.Disk{}
-	paths, err := pool.GetPaths(t, nodenames, "fc")
-	mappings, err := pool.GetMappings(t, nodenames, "fc")
+	paths, err := pool.GetPaths(ctx, t, nodenames, "fc")
+	mappings, err := pool.GetMappings(ctx, t, nodenames, "fc")
 	if err != nil {
 		return []pool.Disk{}, err
 	}
-	arrayDisk, err := t.remoteArray().MapDisk(arraysymmetrix.OptMapDisk{
+	arrayDisk, err := t.remoteArray().MapDisk(ctx, arraysymmetrix.OptMapDisk{
 		Dev:      devId,
 		SLO:      t.slo(),
 		SRP:      t.srp(),
@@ -287,10 +288,10 @@ func (t *T) MapDisk(devId string, nodenames []string) ([]pool.Disk, error) {
 	return []pool.Disk{poolDisk}, nil
 }
 
-func (t *T) CreateDiskSimple(name string, size int64, nodenames []string) ([]pool.Disk, error) {
+func (t *T) CreateDiskSimple(ctx context.Context, name string, size int64, nodenames []string) ([]pool.Disk, error) {
 	poolDisk := pool.Disk{}
-	paths, err := pool.GetPaths(t, nodenames, "fc")
-	mappings, err := pool.GetMappings(t, nodenames, "fc")
+	paths, err := pool.GetPaths(ctx, t, nodenames, "fc")
+	mappings, err := pool.GetMappings(ctx, t, nodenames, "fc")
 	if err != nil {
 		return []pool.Disk{}, err
 	}
@@ -299,7 +300,7 @@ func (t *T) CreateDiskSimple(name string, size int64, nodenames []string) ([]poo
 		return []pool.Disk{}, errors.New("no mapping in request. cowardly refuse to create a disk that can not be mapped")
 	}
 	drvSize := sizeconv.ExactBSizeCompact(float64(size))
-	arrayDisk, err := t.array().AddDisk(arraysymmetrix.OptAddDisk{
+	arrayDisk, err := t.array().AddDisk(ctx, arraysymmetrix.OptAddDisk{
 		Name:     name,
 		Size:     drvSize,
 		SID:      t.sid(),

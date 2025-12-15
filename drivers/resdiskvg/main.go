@@ -28,31 +28,31 @@ type (
 		PVs     []string `json:"pvs"`
 	}
 	VGDriver interface {
-		Activate() error
-		Deactivate() error
-		IsActive() (bool, error)
-		Exists() (bool, error)
+		Activate(context.Context) error
+		Deactivate(context.Context) error
+		IsActive(context.Context) (bool, error)
+		Exists(context.Context) (bool, error)
 		FQN() string
-		Devices() (device.L, error)
-		PVs() (device.L, error)
+		Devices(context.Context) (device.L, error)
+		PVs(context.Context) (device.L, error)
 		ActiveLVs() (device.L, error)
 		DriverName() string
-		AddTag(string) error
-		DelTag(string) error
-		HasTag(string) (bool, error)
-		Tags() ([]string, error)
+		AddTag(context.Context, string) error
+		DelTag(context.Context, string) error
+		HasTag(context.Context, string) (bool, error)
+		Tags(context.Context) ([]string, error)
 	}
 	VGDriverProvisioner interface {
-		Create(string, []string, []string) error
+		Create(context.Context, string, []string, []string) error
 	}
 	VGDriverUnprovisioner interface {
-		Remove([]string) error
+		Remove(context.Context, []string) error
 	}
 	VGDriverWiper interface {
-		Wipe() error
+		Wipe(context.Context) error
 	}
 	VGDriverImportDeviceser interface {
-		ImportDevices() error
+		ImportDevices(context.Context) error
 	}
 )
 
@@ -65,17 +65,17 @@ func (t *T) Start(ctx context.Context) error {
 	if err := t.startTag(ctx); err != nil {
 		return err
 	}
-	if v, err := t.isUp(); err != nil {
+	if v, err := t.isUp(ctx); err != nil {
 		return err
 	} else if v {
 		t.Log().Infof("Volume group %s is already up", t.Label(ctx))
 		return nil
 	}
-	if err := t.vg().Activate(); err != nil {
+	if err := t.vg().Activate(ctx); err != nil {
 		return err
 	}
 	actionrollback.Register(ctx, func(ctx context.Context) error {
-		return t.vg().Deactivate()
+		return t.vg().Deactivate(ctx)
 	})
 	return nil
 }
@@ -88,7 +88,7 @@ func (t *T) Info(ctx context.Context) (resource.InfoKeys, error) {
 }
 
 func (t *T) Stop(ctx context.Context) error {
-	if v, err := t.isUp(); err != nil {
+	if v, err := t.isUp(ctx); err != nil {
 		return err
 	} else if !v {
 		t.Log().Infof("Volume group %s is already down", t.Label(ctx))
@@ -98,21 +98,21 @@ func (t *T) Stop(ctx context.Context) error {
 		return err
 	}
 	udevadm.Settle()
-	if err := t.vg().Deactivate(); err != nil {
+	if err := t.vg().Deactivate(ctx); err != nil {
 		return err
 	}
-	if err := t.stopTag(); err != nil {
+	if err := t.stopTag(ctx); err != nil {
 		return err
 	}
 	return nil
 }
 
-func (t *T) exists() (bool, error) {
-	return t.vg().Exists()
+func (t *T) exists(ctx context.Context) (bool, error) {
+	return t.vg().Exists(ctx)
 }
 
-func (t *T) isUp() (bool, error) {
-	return t.hasTag()
+func (t *T) isUp(ctx context.Context) (bool, error) {
+	return t.hasTag(ctx)
 }
 
 func (t *T) removeHolders() error {
@@ -125,7 +125,7 @@ func (t *T) removeHolders() error {
 }
 
 func (t *T) Status(ctx context.Context) status.T {
-	if v, err := t.isUp(); err != nil {
+	if v, err := t.isUp(ctx); err != nil {
 		t.StatusLog().Error("%s", err)
 		return status.Undef
 	} else if v {
@@ -153,7 +153,7 @@ func (t *T) ProvisionAsLeader(ctx context.Context) error {
 	if !ok {
 		return fmt.Errorf("Volume group %s provisioning skipped: not implemented by driver %s", vg.FQN(), vg.DriverName())
 	}
-	exists, err := vg.Exists()
+	exists, err := vg.Exists(ctx)
 	if err != nil {
 		return err
 	}
@@ -164,13 +164,13 @@ func (t *T) ProvisionAsLeader(ctx context.Context) error {
 	if pvs, err := vpath.HostDevpaths(t.PVs, t.Path.Namespace); err != nil {
 		return err
 	} else {
-		return vgi.Create(t.Size, pvs, t.Options)
+		return vgi.Create(ctx, t.Size, pvs, t.Options)
 	}
 }
 
 func (t *T) UnprovisionAsLeader(ctx context.Context) error {
 	vg := t.vg()
-	exists, err := vg.Exists()
+	exists, err := vg.Exists(ctx)
 	if err != nil {
 		return err
 	}
@@ -179,7 +179,7 @@ func (t *T) UnprovisionAsLeader(ctx context.Context) error {
 		return nil
 	}
 	if vgi, ok := vg.(VGDriverWiper); ok {
-		_ = vgi.Wipe()
+		_ = vgi.Wipe(ctx)
 	} else {
 		t.Log().Infof("Volume group %s wipe skipped: not implemented by driver %s", vg.FQN(), vg.DriverName())
 	}
@@ -188,11 +188,11 @@ func (t *T) UnprovisionAsLeader(ctx context.Context) error {
 		return fmt.Errorf("vg %s %s driver does not implement unprovisioning", vg.FQN(), vg.DriverName())
 	}
 	args := []string{"-f"}
-	return vgi.Remove(args)
+	return vgi.Remove(ctx, args)
 }
 
-func (t *T) Provisioned() (provisioned.T, error) {
-	v, err := t.exists()
+func (t *T) Provisioned(ctx context.Context) (provisioned.T, error) {
+	v, err := t.exists(ctx)
 	return provisioned.FromBool(v), err
 }
 
@@ -208,9 +208,9 @@ func (t *T) ClaimedDevices() device.L {
 	return t.SubDevices()
 }
 
-func (t *T) ImportDevices() error {
+func (t *T) ImportDevices(ctx context.Context) error {
 	if vgi, ok := t.vg().(VGDriverImportDeviceser); ok {
-		return vgi.ImportDevices()
+		return vgi.ImportDevices(ctx)
 	}
 	return nil
 }
@@ -220,7 +220,8 @@ func (t *T) ReservableDevices() device.L {
 }
 
 func (t *T) SubDevices() device.L {
-	if l, err := t.vg().PVs(); err != nil {
+	ctx := context.Background()
+	if l, err := t.vg().PVs(ctx); err != nil {
 		t.Log().Tracef("%s", err)
 		return device.L{}
 	} else {

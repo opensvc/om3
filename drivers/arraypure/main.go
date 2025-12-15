@@ -2,6 +2,7 @@ package arraypure
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -371,7 +372,7 @@ func (t *Array) Run(args []string) error {
 		cmd := &cobra.Command{
 			Use:   "disk",
 			Short: "resize a volume",
-			RunE: func(_ *cobra.Command, _ []string) error {
+			RunE: func(cmd *cobra.Command, _ []string) error {
 				opt := OptResizeDisk{
 					Volume: OptVolume{
 						ID:     id,
@@ -381,7 +382,7 @@ func (t *Array) Run(args []string) error {
 					Size:     size,
 					Truncate: truncate,
 				}
-				if data, err := t.ResizeDisk(opt); err != nil {
+				if data, err := t.ResizeDisk(cmd.Context(), opt); err != nil {
 					return err
 				} else {
 					return dump(data)
@@ -412,7 +413,7 @@ func (t *Array) Run(args []string) error {
 						HostGroupName: hostGroup,
 					},
 				}
-				if data, err := t.UnmapDisk(opt); err != nil {
+				if data, err := t.UnmapDisk(cmd.Context(), opt); err != nil {
 					return err
 				} else {
 					return dump(data)
@@ -445,7 +446,7 @@ func (t *Array) Run(args []string) error {
 						LUN:           lun,
 					},
 				}
-				if data, err := t.MapDisk(opt); err != nil {
+				if data, err := t.MapDisk(cmd.Context(), opt); err != nil {
 					return err
 				} else {
 					return dump(data)
@@ -465,7 +466,7 @@ func (t *Array) Run(args []string) error {
 		cmd := &cobra.Command{
 			Use:   "disk",
 			Short: "unmap a volume and delete",
-			RunE: func(_ *cobra.Command, _ []string) error {
+			RunE: func(cmd *cobra.Command, _ []string) error {
 				opt := OptDelDisk{
 					Volume: OptVolume{
 						ID:     id,
@@ -474,7 +475,7 @@ func (t *Array) Run(args []string) error {
 					},
 					Now: now,
 				}
-				if data, err := t.DelDisk(opt); err != nil {
+				if data, err := t.DelDisk(cmd.Context(), opt); err != nil {
 					return err
 				} else {
 					return dump(data)
@@ -498,7 +499,7 @@ func (t *Array) Run(args []string) error {
 					Mappings: mappings,
 					LUN:      lun,
 				}
-				if data, err := t.AddDisk(opt); err != nil {
+				if data, err := t.AddDisk(cmd.Context(), opt); err != nil {
 					return err
 				} else {
 					return dump(data)
@@ -522,9 +523,9 @@ func (t *Array) Run(args []string) error {
 		cmd := &cobra.Command{
 			Use:   "hosts",
 			Short: "get hosts",
-			RunE: func(_ *cobra.Command, _ []string) error {
+			RunE: func(cmd *cobra.Command, _ []string) error {
 				opt := OptGetItems{Filter: filter}
-				data, err := t.GetHosts(opt)
+				data, err := t.GetHosts(cmd.Context(), opt)
 				if err != nil {
 					return err
 				}
@@ -538,9 +539,9 @@ func (t *Array) Run(args []string) error {
 		cmd := &cobra.Command{
 			Use:   "connections",
 			Short: "get connections",
-			RunE: func(_ *cobra.Command, _ []string) error {
+			RunE: func(cmd *cobra.Command, _ []string) error {
 				opt := OptGetItems{Filter: filter}
-				data, err := t.GetConnections(opt)
+				data, err := t.GetConnections(cmd.Context(), opt)
 				if err != nil {
 					return err
 				}
@@ -554,9 +555,9 @@ func (t *Array) Run(args []string) error {
 		cmd := &cobra.Command{
 			Use:   "volumes",
 			Short: "get volumes",
-			RunE: func(_ *cobra.Command, _ []string) error {
+			RunE: func(cmd *cobra.Command, _ []string) error {
 				opt := OptGetItems{Filter: filter}
-				data, err := t.GetVolumes(opt)
+				data, err := t.GetVolumes(cmd.Context(), opt)
 				if err != nil {
 					return err
 				}
@@ -570,9 +571,9 @@ func (t *Array) Run(args []string) error {
 		cmd := &cobra.Command{
 			Use:   "controllers",
 			Short: "get controllers",
-			RunE: func(_ *cobra.Command, _ []string) error {
+			RunE: func(cmd *cobra.Command, _ []string) error {
 				opt := OptGetItems{Filter: filter}
-				data, err := t.GetControllers(opt)
+				data, err := t.GetControllers(cmd.Context(), opt)
 				if err != nil {
 					return err
 				}
@@ -586,9 +587,9 @@ func (t *Array) Run(args []string) error {
 		cmd := &cobra.Command{
 			Use:   "drives",
 			Short: "get drives",
-			RunE: func(_ *cobra.Command, _ []string) error {
+			RunE: func(cmd *cobra.Command, _ []string) error {
 				opt := OptGetItems{Filter: filter}
-				data, err := t.GetDrives(opt)
+				data, err := t.GetDrives(cmd.Context(), opt)
 				if err != nil {
 					return err
 				}
@@ -602,9 +603,9 @@ func (t *Array) Run(args []string) error {
 		cmd := &cobra.Command{
 			Use:   "pods",
 			Short: "get pods",
-			RunE: func(_ *cobra.Command, _ []string) error {
+			RunE: func(cmd *cobra.Command, _ []string) error {
 				opt := OptGetItems{Filter: filter}
-				data, err := t.GetPods(opt)
+				data, err := t.GetPods(cmd.Context(), opt)
 				if err != nil {
 					return err
 				}
@@ -618,9 +619,9 @@ func (t *Array) Run(args []string) error {
 		cmd := &cobra.Command{
 			Use:   "ports",
 			Short: "get ports",
-			RunE: func(_ *cobra.Command, _ []string) error {
+			RunE: func(cmd *cobra.Command, _ []string) error {
 				opt := OptGetItems{Filter: filter}
-				data, err := t.GetPorts(opt)
+				data, err := t.GetPorts(cmd.Context(), opt)
 				if err != nil {
 					return err
 				}
@@ -634,9 +635,9 @@ func (t *Array) Run(args []string) error {
 		cmd := &cobra.Command{
 			Use:   "interfaces",
 			Short: "get network interfaces",
-			RunE: func(_ *cobra.Command, _ []string) error {
+			RunE: func(cmd *cobra.Command, _ []string) error {
 				opt := OptGetItems{Filter: filter}
-				data, err := t.GetNetworkInterfaces(opt)
+				data, err := t.GetNetworkInterfaces(cmd.Context(), opt)
 				if err != nil {
 					return err
 				}
@@ -650,9 +651,9 @@ func (t *Array) Run(args []string) error {
 		cmd := &cobra.Command{
 			Use:   "volumegroups",
 			Short: "get volumegroups",
-			RunE: func(_ *cobra.Command, _ []string) error {
+			RunE: func(cmd *cobra.Command, _ []string) error {
 				opt := OptGetItems{Filter: filter}
-				data, err := t.GetVolumeGroups(opt)
+				data, err := t.GetVolumeGroups(cmd.Context(), opt)
 				if err != nil {
 					return err
 				}
@@ -666,9 +667,9 @@ func (t *Array) Run(args []string) error {
 		cmd := &cobra.Command{
 			Use:   "hostgroups",
 			Short: "get hostgroups",
-			RunE: func(_ *cobra.Command, _ []string) error {
+			RunE: func(cmd *cobra.Command, _ []string) error {
 				opt := OptGetItems{Filter: filter}
-				data, err := t.GetHostGroups(opt)
+				data, err := t.GetHostGroups(cmd.Context(), opt)
 				if err != nil {
 					return err
 				}
@@ -682,9 +683,9 @@ func (t *Array) Run(args []string) error {
 		cmd := &cobra.Command{
 			Use:   "arrays",
 			Short: "get arrays",
-			RunE: func(_ *cobra.Command, _ []string) error {
+			RunE: func(cmd *cobra.Command, _ []string) error {
 				opt := OptGetItems{Filter: filter}
-				data, err := t.GetArrays(opt)
+				data, err := t.GetArrays(cmd.Context(), opt)
 				if err != nil {
 					return err
 				}
@@ -698,9 +699,9 @@ func (t *Array) Run(args []string) error {
 		cmd := &cobra.Command{
 			Use:   "hardware",
 			Short: "get hardware",
-			RunE: func(_ *cobra.Command, _ []string) error {
+			RunE: func(cmd *cobra.Command, _ []string) error {
 				opt := OptGetItems{Filter: filter}
-				data, err := t.GetHardware(opt)
+				data, err := t.GetHardware(cmd.Context(), opt)
 				if err != nil {
 					return err
 				}
@@ -802,17 +803,17 @@ func (t *Array) privateKey() ([]byte, error) {
 	return sec.DecodeKey("private_key")
 }
 
-func (t *Array) getToken() (*pureToken, error) {
+func (t *Array) getToken(ctx context.Context) (*pureToken, error) {
 	if t.token != nil {
 		return t.token, nil
 	}
-	if err := t.newToken(); err != nil {
+	if err := t.newToken(ctx); err != nil {
 		return nil, err
 	}
 	return t.token, nil
 }
 
-func (t *Array) newToken() error {
+func (t *Array) newToken(ctx context.Context) error {
 	username := t.username()
 	issuer := t.issuer()
 	now := time.Now().Unix()
@@ -851,7 +852,7 @@ func (t *Array) newToken() error {
 	values.Add("subject_token_type", "urn:ietf:params:oauth:token-type:jwt")
 
 	pure1URL := fmt.Sprintf("%s/oauth2/%s/token", t.api(), "1.0")
-	req, err := http.NewRequest(http.MethodPost, pure1URL, strings.NewReader(values.Encode()))
+	req, err := http.NewRequestWithContext(ctx, http.MethodPost, pure1URL, strings.NewReader(values.Encode()))
 	if err != nil {
 		return err
 	}
@@ -956,7 +957,7 @@ func validateOptVolume(opt OptVolume) error {
 	return nil
 }
 
-func (t *Array) ResizeDisk(opt OptResizeDisk) (pureVolume, error) {
+func (t *Array) ResizeDisk(ctx context.Context, opt OptResizeDisk) (pureVolume, error) {
 	if err := validateOptVolume(opt.Volume); err != nil {
 		return pureVolume{}, err
 	}
@@ -978,7 +979,7 @@ func (t *Array) ResizeDisk(opt OptResizeDisk) (pureVolume, error) {
 	if err != nil {
 		return pureVolume{}, err
 	}
-	volume, err := t.getVolume(opt.Volume)
+	volume, err := t.getVolume(ctx, opt.Volume)
 	if err != nil {
 		return pureVolume{}, err
 	}
@@ -999,7 +1000,7 @@ func (t *Array) ResizeDisk(opt OptResizeDisk) (pureVolume, error) {
 	data := map[string]string{
 		"provisioned": fmt.Sprint(sizeBytes),
 	}
-	req, err := t.newRequest(http.MethodPatch, "/volumes", params, data)
+	req, err := t.newRequest(ctx, http.MethodPatch, "/volumes", params, data)
 	if err != nil {
 		return pureVolume{}, err
 	}
@@ -1017,10 +1018,10 @@ func (t pureVolume) WWN() string {
 	return WWIDPrefix + strings.ToLower(t.Serial)
 }
 
-func (t *Array) AddDisk(opt OptAddDisk) (array.Disk, error) {
+func (t *Array) AddDisk(ctx context.Context, opt OptAddDisk) (array.Disk, error) {
 	var disk array.Disk
 	driverData := make(map[string]any)
-	volume, err := t.addVolume(opt.Name, opt.Size)
+	volume, err := t.addVolume(ctx, opt.Name, opt.Size)
 	if err != nil {
 		return disk, err
 	}
@@ -1028,7 +1029,7 @@ func (t *Array) AddDisk(opt OptAddDisk) (array.Disk, error) {
 	disk.DriverData = driverData
 	disk.DiskID = volume.WWN()
 	disk.DevID = volume.ID
-	conns, err := t.MapDisk(OptMapDisk{
+	conns, err := t.MapDisk(ctx, OptMapDisk{
 		Volume: OptVolume{
 			ID: volume.ID,
 		},
@@ -1045,7 +1046,7 @@ func (t *Array) AddDisk(opt OptAddDisk) (array.Disk, error) {
 	return disk, nil
 }
 
-func (t *Array) addVolume(name, size string) (pureVolume, error) {
+func (t *Array) addVolume(ctx context.Context, name, size string) (pureVolume, error) {
 	if name == "" {
 		return pureVolume{}, fmt.Errorf("--name is required")
 	}
@@ -1063,7 +1064,7 @@ func (t *Array) addVolume(name, size string) (pureVolume, error) {
 		"subtype":     "regular",
 		"provisioned": fmt.Sprint(sizeBytes),
 	}
-	req, err := t.newRequest(http.MethodPost, "/volumes", params, data)
+	req, err := t.newRequest(ctx, http.MethodPost, "/volumes", params, data)
 	if err != nil {
 		return pureVolume{}, err
 	}
@@ -1077,11 +1078,11 @@ func (t *Array) addVolume(name, size string) (pureVolume, error) {
 	return responseData.Items[0], nil
 }
 
-func (t *Array) getHostName(hbaID string) (string, error) {
+func (t *Array) getHostName(ctx context.Context, hbaID string) (string, error) {
 	opt := OptGetItems{
 		Filter: fmt.Sprintf("wwns='%s'", hbaID),
 	}
-	hosts, err := t.GetHosts(opt)
+	hosts, err := t.GetHosts(ctx, opt)
 	if err != nil {
 		return "", err
 	}
@@ -1112,7 +1113,7 @@ func formatWWN(s string) (string, error) {
 	return s[0:2] + ":" + s[2:4] + ":" + s[4:6] + ":" + s[6:8] + ":" + s[8:10] + ":" + s[10:12] + ":" + s[12:14] + ":" + s[14:], nil
 }
 
-func (t *Array) getHostsFromMappings(mappings []string) (map[string][]string, error) {
+func (t *Array) getHostsFromMappings(ctx context.Context, mappings []string) (map[string][]string, error) {
 	m := make(map[string][]string)
 
 	parsedMappings, err := array.ParseMappings(mappings)
@@ -1125,7 +1126,7 @@ func (t *Array) getHostsFromMappings(mappings []string) (map[string][]string, er
 		if err != nil {
 			return nil, err
 		}
-		hostName, err := t.getHostName(wwn)
+		hostName, err := t.getHostName(ctx, wwn)
 		if err != nil {
 			return nil, err
 		}
@@ -1136,7 +1137,7 @@ func (t *Array) getHostsFromMappings(mappings []string) (map[string][]string, er
 		opt := OptGetItems{
 			Filter: fmt.Sprintf("fc.wwn='%s' and services='scsi-fc' and enabled='true'", wwn),
 		}
-		networkInterfaces, err := t.GetNetworkInterfaces(opt)
+		networkInterfaces, err := t.GetNetworkInterfaces(ctx, opt)
 		if err != nil {
 			return nil, err
 		}
@@ -1152,7 +1153,7 @@ func (t *Array) getHostsFromMappings(mappings []string) (map[string][]string, er
 	return m, nil
 }
 
-func (t *Array) mapVolume(volumeName, hostName, hostGroupName string, lun int) (pureVolumeConnection, error) {
+func (t *Array) mapVolume(ctx context.Context, volumeName, hostName, hostGroupName string, lun int) (pureVolumeConnection, error) {
 	params := map[string]string{
 		"volume_names": volumeName,
 	}
@@ -1165,7 +1166,7 @@ func (t *Array) mapVolume(volumeName, hostName, hostGroupName string, lun int) (
 	if lun >= 0 {
 		params["lun"] = fmt.Sprint(lun)
 	}
-	req, err := t.newRequest(http.MethodPost, "/connections", params, nil)
+	req, err := t.newRequest(ctx, http.MethodPost, "/connections", params, nil)
 	if err != nil {
 		return pureVolumeConnection{}, err
 	}
@@ -1180,23 +1181,23 @@ func (t *Array) mapVolume(volumeName, hostName, hostGroupName string, lun int) (
 	return responseData.Items[0], nil
 }
 
-func (t *Array) deleteAllVolumeConnections(volumeName string) ([]pureVolumeConnection, error) {
-	conns, err := t.deleteHostGroupVolumeConnections(volumeName)
+func (t *Array) deleteAllVolumeConnections(ctx context.Context, volumeName string) ([]pureVolumeConnection, error) {
+	conns, err := t.deleteHostGroupVolumeConnections(ctx, volumeName)
 	if err != nil {
 		return conns, err
 	}
-	_, err = t.deleteHostVolumeConnections(volumeName)
+	_, err = t.deleteHostVolumeConnections(ctx, volumeName)
 	if err != nil {
 		return conns, err
 	}
 	return conns, nil
 }
 
-func (t *Array) deleteHostGroupVolumeConnections(volumeName string) ([]pureVolumeConnection, error) {
+func (t *Array) deleteHostGroupVolumeConnections(ctx context.Context, volumeName string) ([]pureVolumeConnection, error) {
 	opt := OptGetItems{
 		Filter: fmt.Sprintf("volume.name='%s'", volumeName),
 	}
-	conns, err := t.GetConnections(opt)
+	conns, err := t.GetConnections(ctx, opt)
 	if err != nil {
 		return []pureVolumeConnection{}, nil
 	}
@@ -1211,7 +1212,7 @@ func (t *Array) deleteHostGroupVolumeConnections(volumeName string) ([]pureVolum
 			"volume_names":     volumeName,
 			"host_group_names": strings.Join(xmap.Keys(hostGroups), ","),
 		}
-		req, err := t.newRequest(http.MethodDelete, "/connections", params, nil)
+		req, err := t.newRequest(ctx, http.MethodDelete, "/connections", params, nil)
 		if err != nil {
 			return conns, err
 		}
@@ -1224,11 +1225,11 @@ func (t *Array) deleteHostGroupVolumeConnections(volumeName string) ([]pureVolum
 	return conns, nil
 }
 
-func (t *Array) deleteHostVolumeConnections(volumeName string) ([]pureVolumeConnection, error) {
+func (t *Array) deleteHostVolumeConnections(ctx context.Context, volumeName string) ([]pureVolumeConnection, error) {
 	opt := OptGetItems{
 		Filter: fmt.Sprintf("volume.name='%s'", volumeName),
 	}
-	conns, err := t.GetConnections(opt)
+	conns, err := t.GetConnections(ctx, opt)
 	if err != nil {
 		return []pureVolumeConnection{}, nil
 	}
@@ -1243,7 +1244,7 @@ func (t *Array) deleteHostVolumeConnections(volumeName string) ([]pureVolumeConn
 			"volume_names": volumeName,
 			"host_names":   strings.Join(xmap.Keys(hosts), ","),
 		}
-		req, err := t.newRequest(http.MethodDelete, "/connections", params, nil)
+		req, err := t.newRequest(ctx, http.MethodDelete, "/connections", params, nil)
 		if err != nil {
 			return conns, err
 		}
@@ -1256,7 +1257,7 @@ func (t *Array) deleteHostVolumeConnections(volumeName string) ([]pureVolumeConn
 	return conns, nil
 }
 
-func (t *Array) unmapVolume(volumeName, hostName, hostGroupName string) error {
+func (t *Array) unmapVolume(ctx context.Context, volumeName, hostName, hostGroupName string) error {
 	params := map[string]string{
 		"volume_names": volumeName,
 	}
@@ -1266,7 +1267,7 @@ func (t *Array) unmapVolume(volumeName, hostName, hostGroupName string) error {
 	if hostGroupName != "" {
 		params["host_group_names"] = hostGroupName
 	}
-	req, err := t.newRequest(http.MethodDelete, "/connections", params, nil)
+	req, err := t.newRequest(ctx, http.MethodDelete, "/connections", params, nil)
 	if err != nil {
 		return err
 	}
@@ -1278,14 +1279,14 @@ func (t *Array) unmapVolume(volumeName, hostName, hostGroupName string) error {
 	return nil
 }
 
-func (t *Array) UnmapDisk(opt OptUnmapDisk) ([]pureVolumeConnection, error) {
+func (t *Array) UnmapDisk(ctx context.Context, opt OptUnmapDisk) ([]pureVolumeConnection, error) {
 	if err := validateOptVolume(opt.Volume); err != nil {
 		return nil, err
 	}
 	if err := validateOptMapping(opt.Mapping); err != nil {
 		return nil, err
 	}
-	volume, err := t.getVolume(opt.Volume)
+	volume, err := t.getVolume(ctx, opt.Volume)
 	if err != nil {
 		return nil, err
 	}
@@ -1293,7 +1294,7 @@ func (t *Array) UnmapDisk(opt OptUnmapDisk) ([]pureVolumeConnection, error) {
 	hostGroupsDeleted := make(map[string]any)
 	switch {
 	case len(mappings) > 0:
-		hosts, err := t.getHostsFromMappings(opt.Mapping.Mappings)
+		hosts, err := t.getHostsFromMappings(ctx, opt.Mapping.Mappings)
 		if err != nil {
 			return nil, err
 		}
@@ -1301,7 +1302,7 @@ func (t *Array) UnmapDisk(opt OptUnmapDisk) ([]pureVolumeConnection, error) {
 			queryOpt := OptGetItems{
 				Filter: fmt.Sprintf("volume.name='%s' and host.name='%s'", volume.Name, hostName),
 			}
-			conns, err := t.GetConnections(queryOpt)
+			conns, err := t.GetConnections(ctx, queryOpt)
 			if err != nil {
 				return nil, err
 			}
@@ -1310,7 +1311,7 @@ func (t *Array) UnmapDisk(opt OptUnmapDisk) ([]pureVolumeConnection, error) {
 			} else if len(conns) > 1 {
 				return nil, fmt.Errorf("too many connections found: %d matches with filter volume.name='%s' and host.name='%s'", len(conns), volume.Name, hostName)
 			}
-			if err := t.unmapVolume(volume.Name, hostName, ""); err != nil {
+			if err := t.unmapVolume(ctx, volume.Name, hostName, ""); err != nil {
 				return nil, err
 			}
 			ConnectionsDeleted = append(ConnectionsDeleted, conns[0])
@@ -1319,7 +1320,7 @@ func (t *Array) UnmapDisk(opt OptUnmapDisk) ([]pureVolumeConnection, error) {
 		queryOpt := OptGetItems{
 			Filter: fmt.Sprintf("volume.name='%s'", volume.Name),
 		}
-		conns, err := t.GetConnections(queryOpt)
+		conns, err := t.GetConnections(ctx, queryOpt)
 		if err != nil {
 			return nil, err
 		}
@@ -1329,7 +1330,7 @@ func (t *Array) UnmapDisk(opt OptUnmapDisk) ([]pureVolumeConnection, error) {
 				if conn.Host.Name != opt.Mapping.HostName {
 					continue
 				}
-				if err := t.unmapVolume(volume.Name, opt.Mapping.HostName, ""); err != nil {
+				if err := t.unmapVolume(ctx, volume.Name, opt.Mapping.HostName, ""); err != nil {
 					return ConnectionsDeleted, err
 				} else {
 					ConnectionsDeleted = append(ConnectionsDeleted, conn)
@@ -1340,7 +1341,7 @@ func (t *Array) UnmapDisk(opt OptUnmapDisk) ([]pureVolumeConnection, error) {
 				}
 				if _, ok := hostGroupsDeleted[opt.Mapping.HostGroupName]; ok {
 					continue
-				} else if err := t.unmapVolume(volume.Name, "", opt.Mapping.HostGroupName); err != nil {
+				} else if err := t.unmapVolume(ctx, volume.Name, "", opt.Mapping.HostGroupName); err != nil {
 					return ConnectionsDeleted, err
 				} else {
 					ConnectionsDeleted = append(ConnectionsDeleted, conn)
@@ -1349,14 +1350,14 @@ func (t *Array) UnmapDisk(opt OptUnmapDisk) ([]pureVolumeConnection, error) {
 			case conn.HostGroup.Name != "":
 				if _, ok := hostGroupsDeleted[conn.HostGroup.Name]; ok {
 					continue
-				} else if err := t.unmapVolume(volume.Name, "", conn.HostGroup.Name); err != nil {
+				} else if err := t.unmapVolume(ctx, volume.Name, "", conn.HostGroup.Name); err != nil {
 					return ConnectionsDeleted, err
 				} else {
 					ConnectionsDeleted = append(ConnectionsDeleted, conn)
 					hostGroupsDeleted[conn.HostGroup.Name] = nil
 				}
 			case conn.Host.Name != "":
-				if err := t.unmapVolume(volume.Name, conn.Host.Name, ""); err != nil {
+				if err := t.unmapVolume(ctx, volume.Name, conn.Host.Name, ""); err != nil {
 					return ConnectionsDeleted, err
 				} else {
 					ConnectionsDeleted = append(ConnectionsDeleted, conn)
@@ -1367,39 +1368,39 @@ func (t *Array) UnmapDisk(opt OptUnmapDisk) ([]pureVolumeConnection, error) {
 	return ConnectionsDeleted, nil
 }
 
-func (t *Array) MapDisk(opt OptMapDisk) (any, error) {
+func (t *Array) MapDisk(ctx context.Context, opt OptMapDisk) (any, error) {
 	if err := validateOptVolume(opt.Volume); err != nil {
 		return nil, err
 	}
 	if err := validateOptMapping(opt.Mapping); err != nil {
 		return nil, err
 	}
-	volume, err := t.getVolume(opt.Volume)
+	volume, err := t.getVolume(ctx, opt.Volume)
 	if err != nil {
 		return nil, err
 	}
 	ConnectionsAdded := make([]pureVolumeConnection, 0)
 	switch {
 	case len(opt.Mapping.Mappings) > 0:
-		hosts, err := t.getHostsFromMappings(opt.Mapping.Mappings)
+		hosts, err := t.getHostsFromMappings(ctx, opt.Mapping.Mappings)
 		if err != nil {
 			return nil, err
 		}
 		for hostName, _ := range hosts {
-			if conn, err := t.mapVolume(volume.Name, hostName, "", opt.Mapping.LUN); err != nil {
+			if conn, err := t.mapVolume(ctx, volume.Name, hostName, "", opt.Mapping.LUN); err != nil {
 				return nil, err
 			} else {
 				ConnectionsAdded = append(ConnectionsAdded, conn)
 			}
 		}
 	case opt.Mapping.HostName != "":
-		if conn, err := t.mapVolume(volume.Name, opt.Mapping.HostName, "", opt.Mapping.LUN); err != nil {
+		if conn, err := t.mapVolume(ctx, volume.Name, opt.Mapping.HostName, "", opt.Mapping.LUN); err != nil {
 			return ConnectionsAdded, err
 		} else {
 			ConnectionsAdded = append(ConnectionsAdded, conn)
 		}
 	case opt.Mapping.HostGroupName != "":
-		if conn, err := t.mapVolume(volume.Name, "", opt.Mapping.HostGroupName, opt.Mapping.LUN); err != nil {
+		if conn, err := t.mapVolume(ctx, volume.Name, "", opt.Mapping.HostGroupName, opt.Mapping.LUN); err != nil {
 			return ConnectionsAdded, err
 		} else {
 			ConnectionsAdded = append(ConnectionsAdded, conn)
@@ -1408,7 +1409,7 @@ func (t *Array) MapDisk(opt OptMapDisk) (any, error) {
 	return ConnectionsAdded, nil
 }
 
-func (t *Array) getVolume(opt OptVolume) (pureVolume, error) {
+func (t *Array) getVolume(ctx context.Context, opt OptVolume) (pureVolume, error) {
 	var (
 		volume   pureVolume
 		items    []pureVolume
@@ -1424,7 +1425,7 @@ func (t *Array) getVolume(opt OptVolume) (pureVolume, error) {
 	} else {
 		return volume, fmt.Errorf("id, name and serial are empty. refuse to get all volumes")
 	}
-	items, err = t.GetVolumes(queryOpt)
+	items, err = t.GetVolumes(ctx, queryOpt)
 	if err != nil {
 		return volume, err
 	}
@@ -1445,10 +1446,10 @@ func (t *Array) getVolume(opt OptVolume) (pureVolume, error) {
 	return volume, fmt.Errorf("no volume found matching %s", filter)
 }
 
-func (t *Array) DelDisk(opt OptDelDisk) (array.Disk, error) {
+func (t *Array) DelDisk(ctx context.Context, opt OptDelDisk) (array.Disk, error) {
 	var disk array.Disk
 
-	volume, err := t.getVolume(opt.Volume)
+	volume, err := t.getVolume(ctx, opt.Volume)
 	if err != nil {
 		return disk, err
 	}
@@ -1458,14 +1459,14 @@ func (t *Array) DelDisk(opt OptDelDisk) (array.Disk, error) {
 	driverData["volume"] = volume
 	disk.DriverData = driverData
 
-	conns, err := t.deleteAllVolumeConnections(volume.Name)
+	conns, err := t.deleteAllVolumeConnections(ctx, volume.Name)
 	if err != nil {
 		return disk, err
 	}
 	driverData["mappings"] = conns
 	disk.DriverData = driverData
 
-	volume, err = t.delVolume(opt)
+	volume, err = t.delVolume(ctx, opt)
 	if err != nil {
 		return disk, err
 	}
@@ -1475,11 +1476,11 @@ func (t *Array) DelDisk(opt OptDelDisk) (array.Disk, error) {
 	return disk, nil
 }
 
-func (t *Array) delVolume(opt OptDelDisk) (pureVolume, error) {
+func (t *Array) delVolume(ctx context.Context, opt OptDelDisk) (pureVolume, error) {
 	if err := validateOptVolume(opt.Volume); err != nil {
 		return pureVolume{}, err
 	}
-	volume, err := t.getVolume(opt.Volume)
+	volume, err := t.getVolume(ctx, opt.Volume)
 	if err != nil {
 		return pureVolume{}, err
 	}
@@ -1492,7 +1493,7 @@ func (t *Array) delVolume(opt OptDelDisk) (pureVolume, error) {
 		data := map[string]any{
 			"destroyed": true,
 		}
-		req, err := t.newRequest(http.MethodPatch, "/volumes", params, data)
+		req, err := t.newRequest(ctx, http.MethodPatch, "/volumes", params, data)
 		if err != nil {
 			return pureVolume{}, err
 		}
@@ -1509,7 +1510,7 @@ func (t *Array) delVolume(opt OptDelDisk) (pureVolume, error) {
 		item = volume
 	}
 	if opt.Now {
-		req, err := t.newRequest(http.MethodDelete, "/volumes", params, nil)
+		req, err := t.newRequest(ctx, http.MethodDelete, "/volumes", params, nil)
 		if err != nil {
 			return pureVolume{}, err
 		}
@@ -1523,9 +1524,9 @@ func (t *Array) delVolume(opt OptDelDisk) (pureVolume, error) {
 	return item, nil
 }
 
-func (t *Array) GetHosts(opt OptGetItems) ([]pureHost, error) {
+func (t *Array) GetHosts(ctx context.Context, opt OptGetItems) ([]pureHost, error) {
 	params := getParams(opt.Filter)
-	l, err := t.doGet("GET", "/hosts", params, nil)
+	l, err := t.doGet(ctx, "GET", "/hosts", params, nil)
 	if err != nil {
 		return nil, err
 	}
@@ -1539,9 +1540,9 @@ func (t *Array) GetHosts(opt OptGetItems) ([]pureHost, error) {
 	return hosts, nil
 }
 
-func (t *Array) GetConnections(opt OptGetItems) ([]pureVolumeConnection, error) {
+func (t *Array) GetConnections(ctx context.Context, opt OptGetItems) ([]pureVolumeConnection, error) {
 	params := getParams(opt.Filter)
-	l, err := t.doGet("GET", "/connections", params, nil)
+	l, err := t.doGet(ctx, "GET", "/connections", params, nil)
 	if err != nil {
 		return nil, err
 	}
@@ -1555,9 +1556,9 @@ func (t *Array) GetConnections(opt OptGetItems) ([]pureVolumeConnection, error) 
 	return conns, nil
 }
 
-func (t *Array) GetArrays(opt OptGetItems) ([]pureArray, error) {
+func (t *Array) GetArrays(ctx context.Context, opt OptGetItems) ([]pureArray, error) {
 	params := getParams(opt.Filter)
-	l, err := t.doGet("GET", "/arrays", params, nil)
+	l, err := t.doGet(ctx, "GET", "/arrays", params, nil)
 	if err != nil {
 		return nil, err
 	}
@@ -1571,9 +1572,9 @@ func (t *Array) GetArrays(opt OptGetItems) ([]pureArray, error) {
 	return arrays, nil
 }
 
-func (t *Array) GetVolumes(opt OptGetItems) ([]pureVolume, error) {
+func (t *Array) GetVolumes(ctx context.Context, opt OptGetItems) ([]pureVolume, error) {
 	params := getParams(opt.Filter)
-	l, err := t.doGet("GET", "/volumes", params, nil)
+	l, err := t.doGet(ctx, "GET", "/volumes", params, nil)
 	if err != nil {
 		return nil, err
 	}
@@ -1587,34 +1588,34 @@ func (t *Array) GetVolumes(opt OptGetItems) ([]pureVolume, error) {
 	return volumes, nil
 }
 
-func (t *Array) GetVolumeGroups(opt OptGetItems) (any, error) {
+func (t *Array) GetVolumeGroups(ctx context.Context, opt OptGetItems) (any, error) {
 	params := getParams(opt.Filter)
-	return t.doGet("GET", "/volume-groups", params, nil)
+	return t.doGet(ctx, "GET", "/volume-groups", params, nil)
 }
 
-func (t *Array) GetControllers(opt OptGetItems) (any, error) {
+func (t *Array) GetControllers(ctx context.Context, opt OptGetItems) (any, error) {
 	params := getParams(opt.Filter)
-	return t.doGet("GET", "/controllers", params, nil)
+	return t.doGet(ctx, "GET", "/controllers", params, nil)
 }
 
-func (t *Array) GetDrives(opt OptGetItems) (any, error) {
+func (t *Array) GetDrives(ctx context.Context, opt OptGetItems) (any, error) {
 	params := getParams(opt.Filter)
-	return t.doGet("GET", "/drives", params, nil)
+	return t.doGet(ctx, "GET", "/drives", params, nil)
 }
 
-func (t *Array) GetPods(opt OptGetItems) (any, error) {
+func (t *Array) GetPods(ctx context.Context, opt OptGetItems) (any, error) {
 	params := getParams(opt.Filter)
-	return t.doGet("GET", "/pods", params, nil)
+	return t.doGet(ctx, "GET", "/pods", params, nil)
 }
 
-func (t *Array) GetPorts(opt OptGetItems) (any, error) {
+func (t *Array) GetPorts(ctx context.Context, opt OptGetItems) (any, error) {
 	params := getParams(opt.Filter)
-	return t.doGet("GET", "/ports", params, nil)
+	return t.doGet(ctx, "GET", "/ports", params, nil)
 }
 
-func (t *Array) GetNetworkInterfaces(opt OptGetItems) ([]pureNetworkInterface, error) {
+func (t *Array) GetNetworkInterfaces(ctx context.Context, opt OptGetItems) ([]pureNetworkInterface, error) {
 	params := getParams(opt.Filter)
-	l, err := t.doGet("GET", "/network-interfaces", params, nil)
+	l, err := t.doGet(ctx, "GET", "/network-interfaces", params, nil)
 	if err != nil {
 		return nil, err
 	}
@@ -1628,9 +1629,9 @@ func (t *Array) GetNetworkInterfaces(opt OptGetItems) ([]pureNetworkInterface, e
 	return items, nil
 }
 
-func (t *Array) GetHostGroups(opt OptGetItems) (any, error) {
+func (t *Array) GetHostGroups(ctx context.Context, opt OptGetItems) (any, error) {
 	params := getParams(opt.Filter)
-	return t.doGet("GET", "/host-groups", params, nil)
+	return t.doGet(ctx, "GET", "/host-groups", params, nil)
 }
 
 func getParams(filter string) map[string]string {
@@ -1641,13 +1642,13 @@ func getParams(filter string) map[string]string {
 	return params
 }
 
-func (t *Array) GetHardware(opt OptGetItems) ([]any, error) {
+func (t *Array) GetHardware(ctx context.Context, opt OptGetItems) ([]any, error) {
 	params := getParams(opt.Filter)
-	return t.doGet("GET", "/hardware", params, nil)
+	return t.doGet(ctx, "GET", "/hardware", params, nil)
 }
 
-func (t *Array) doGet(method string, path string, params map[string]string, data interface{}) ([]any, error) {
-	req, err := t.newRequest(method, path, params, data)
+func (t *Array) doGet(ctx context.Context, method string, path string, params map[string]string, data interface{}) ([]any, error) {
+	req, err := t.newRequest(ctx, method, path, params, data)
 	if err != nil {
 		return nil, err
 	}
@@ -1672,7 +1673,7 @@ func (t *Array) doGet(method string, path string, params map[string]string, data
 				} else {
 					params["continuation_token"] = r.ContinuationToken.(string)
 				}
-				req, err := t.newRequest(method, path, params, data)
+				req, err := t.newRequest(ctx, method, path, params, data)
 				if err != nil {
 					return nil, err
 				}
@@ -1688,7 +1689,7 @@ func (t *Array) doGet(method string, path string, params map[string]string, data
 	return items, nil
 }
 
-func (t *Array) newRequest(method string, path string, params map[string]string, data interface{}) (*http.Request, error) {
+func (t *Array) newRequest(ctx context.Context, method string, path string, params map[string]string, data interface{}) (*http.Request, error) {
 	fpath := t.api() + Head + path
 	baseURL, err := url.Parse(fpath)
 	if err != nil {
@@ -1701,7 +1702,7 @@ func (t *Array) newRequest(method string, path string, params map[string]string,
 		}
 		baseURL.RawQuery = ps.Encode()
 	}
-	req, err := http.NewRequest(method, baseURL.String(), nil)
+	req, err := http.NewRequestWithContext(ctx, method, baseURL.String(), nil)
 	if err != nil {
 		return nil, err
 	}
@@ -1710,13 +1711,13 @@ func (t *Array) newRequest(method string, path string, params map[string]string,
 		if err != nil {
 			return nil, err
 		}
-		req, err = http.NewRequest(method, baseURL.String(), bytes.NewBuffer(jsonString))
+		req, err = http.NewRequestWithContext(ctx, method, baseURL.String(), bytes.NewBuffer(jsonString))
 		if err != nil {
 			return nil, err
 		}
 	}
 
-	token, err := t.getToken()
+	token, err := t.getToken(ctx)
 	if err != nil {
 		return nil, err
 	}

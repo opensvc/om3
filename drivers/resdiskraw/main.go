@@ -489,7 +489,7 @@ func (t *T) Status(ctx context.Context) status.T {
 	return s
 }
 
-func (t *T) Provisioned() (provisioned.T, error) {
+func (t *T) Provisioned(ctx context.Context) (provisioned.T, error) {
 	return provisioned.FromBool(true), nil
 }
 

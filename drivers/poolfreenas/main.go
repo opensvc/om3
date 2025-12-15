@@ -3,6 +3,7 @@
 package poolfreenas
 
 import (
+	"context"
 	"errors"
 	"fmt"
 
@@ -76,12 +77,12 @@ func (t T) Capabilities() []string {
 	return []string{"rox", "rwx", "roo", "rwo", "blk", "iscsi", "shared"}
 }
 
-func (t T) Usage() (pool.Usage, error) {
+func (t T) Usage(ctx context.Context) (pool.Usage, error) {
 	usage := pool.Usage{
 		Shared: true,
 	}
 	a := t.array()
-	data, err := a.GetDataset(t.diskgroup())
+	data, err := a.GetDataset(ctx, t.diskgroup())
 	if err != nil {
 		return usage, err
 	}
@@ -126,9 +127,9 @@ func (t *T) BlkTranslate(name string, size int64, shared bool) ([]string, error)
 	return data, nil
 }
 
-func (t *T) GetTargets() (san.Targets, error) {
+func (t *T) GetTargets(ctx context.Context) (san.Targets, error) {
 	a := t.array()
-	data, err := a.GetISCSITargets()
+	data, err := a.GetISCSITargets(ctx)
 	if err != nil {
 		return nil, err
 	}
@@ -142,17 +143,17 @@ func (t *T) GetTargets() (san.Targets, error) {
 	return ports, nil
 }
 
-func (t *T) DeleteDisk(name, wwid string) ([]pool.Disk, error) {
+func (t *T) DeleteDisk(ctx context.Context, name, wwid string) ([]pool.Disk, error) {
 	disk := pool.Disk{}
 	a := t.array()
 	drvName := t.diskgroup() + "/" + name
-	drvDisk, err := a.DelDisk(drvName)
+	drvDisk, err := a.DelDisk(ctx, drvName)
 	if err != nil {
 		return []pool.Disk{}, err
 	}
 	disk.Driver = drvDisk
 	disk.ID = a.DiskId(*drvDisk)
-	if paths, err := a.DiskPaths(*drvDisk); err != nil {
+	if paths, err := a.DiskPaths(ctx, *drvDisk); err != nil {
 		return []pool.Disk{disk}, err
 	} else {
 		disk.Paths = paths
@@ -160,9 +161,9 @@ func (t *T) DeleteDisk(name, wwid string) ([]pool.Disk, error) {
 	return []pool.Disk{disk}, nil
 }
 
-func (t *T) CreateDisk(name string, size int64, nodenames []string) ([]pool.Disk, error) {
+func (t *T) CreateDisk(ctx context.Context, name string, size int64, nodenames []string) ([]pool.Disk, error) {
 	disk := pool.Disk{}
-	paths, err := pool.GetPaths(t, nodenames, san.ISCSI)
+	paths, err := pool.GetPaths(ctx, t, nodenames, san.ISCSI)
 	if err != nil {
 		return []pool.Disk{}, err
 	}
@@ -183,13 +184,13 @@ func (t *T) CreateDisk(name string, size int64, nodenames []string) ([]pool.Disk
 		Mapping:     paths.Mapping(),
 		LunId:       nil,
 	}
-	drvDisk, err := a.AddDisk(opt)
+	drvDisk, err := a.AddDisk(ctx, opt)
 	if err != nil {
 		return []pool.Disk{}, err
 	}
 	disk.Driver = drvDisk
 	disk.ID = a.DiskId(*drvDisk)
-	if paths, err := a.DiskPaths(*drvDisk); err != nil {
+	if paths, err := a.DiskPaths(ctx, *drvDisk); err != nil {
 		return []pool.Disk{disk}, err
 	} else {
 		disk.Paths = paths

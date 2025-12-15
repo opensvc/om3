@@ -3,6 +3,7 @@
 package poolloop
 
 import (
+	"context"
 	"fmt"
 
 	"github.com/opensvc/om3/v3/core/driver"
@@ -44,9 +45,9 @@ func (t T) Capabilities() []string {
 	return []string{"rox", "rwx", "roo", "rwo", "blk"}
 }
 
-func (t T) Usage() (pool.Usage, error) {
+func (t T) Usage(ctx context.Context) (pool.Usage, error) {
 	head := t.Head()
-	entries, err := df.ContainingMountUsage(head)
+	entries, err := df.ContainingMountUsage(ctx, head)
 	if err != nil {
 		return pool.Usage{}, err
 	}

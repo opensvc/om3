@@ -2,6 +2,7 @@ package arrayhoc
 
 import (
 	"bytes"
+	"context"
 	"crypto/tls"
 	"encoding/base64"
 	"encoding/json"
@@ -421,7 +422,8 @@ func (t *Array) Run(args []string) error {
 		cmd := &cobra.Command{
 			Use:   "disk",
 			Short: "resize a volume",
-			RunE: func(_ *cobra.Command, _ []string) error {
+			RunE: func(cmd *cobra.Command, _ []string) error {
+				ctx := cmd.Context()
 				opt := OptResizeDisk{
 					Volume: OptVolume{
 						ID:     volumeId,
@@ -430,7 +432,7 @@ func (t *Array) Run(args []string) error {
 					},
 					Size: size,
 				}
-				if data, err := t.ResizeDisk(opt); err != nil {
+				if data, err := t.ResizeDisk(ctx, opt); err != nil {
 					return err
 				} else {
 					return dump(data)
@@ -448,6 +450,7 @@ func (t *Array) Run(args []string) error {
 			Use:   "disk",
 			Short: "unmap a volume",
 			RunE: func(cmd *cobra.Command, _ []string) error {
+				ctx := cmd.Context()
 				opt := OptUnmapDisk{
 					Volume: OptVolume{
 						ID:     volumeId,
@@ -459,7 +462,7 @@ func (t *Array) Run(args []string) error {
 						HostGroupNames: hostGroups,
 					},
 				}
-				if data, err := t.UnmapDisk(opt); err != nil {
+				if data, err := t.UnmapDisk(ctx, opt); err != nil {
 					return err
 				} else {
 					return dump(data)
@@ -478,6 +481,7 @@ func (t *Array) Run(args []string) error {
 			Use:   "disk",
 			Short: "map a volume",
 			RunE: func(cmd *cobra.Command, _ []string) error {
+				ctx := cmd.Context()
 				opt := OptMapDisk{
 					Volume: OptVolume{
 						ID:     volumeId,
@@ -492,7 +496,7 @@ func (t *Array) Run(args []string) error {
 						VolumeIdRangeTo:   volumeIdRangeTo,
 					},
 				}
-				if data, err := t.MapDisk(opt); err != nil {
+				if data, err := t.MapDisk(ctx, opt); err != nil {
 					return err
 				} else {
 					return dump(data)
@@ -513,7 +517,8 @@ func (t *Array) Run(args []string) error {
 		cmd := &cobra.Command{
 			Use:   "disk",
 			Short: "unmap a volume and delete",
-			RunE: func(_ *cobra.Command, _ []string) error {
+			RunE: func(cmd *cobra.Command, _ []string) error {
+				ctx := cmd.Context()
 				opt := OptDelDisk{
 					Volume: OptVolume{
 						ID:     volumeId,
@@ -521,7 +526,7 @@ func (t *Array) Run(args []string) error {
 						Serial: serial,
 					},
 				}
-				if data, err := t.DelDisk(opt); err != nil {
+				if data, err := t.DelDisk(ctx, opt); err != nil {
 					return err
 				} else {
 					return dump(data)
@@ -538,6 +543,7 @@ func (t *Array) Run(args []string) error {
 			Use:   "disk",
 			Short: "add a volume and map",
 			RunE: func(cmd *cobra.Command, _ []string) error {
+				ctx := cmd.Context()
 				opt := OptAddDisk{
 					Volume: OptAddVolume{
 						Name:                    name,
@@ -555,7 +561,7 @@ func (t *Array) Run(args []string) error {
 						VolumeIdRangeTo:   volumeIdRangeTo,
 					},
 				}
-				if data, err := t.AddDisk(opt); err != nil {
+				if data, err := t.AddDisk(ctx, opt); err != nil {
 					return err
 				} else {
 					return dump(data)
@@ -586,11 +592,12 @@ func (t *Array) Run(args []string) error {
 		cmd := &cobra.Command{
 			Use:   "servers",
 			Short: "get servers",
-			RunE: func(_ *cobra.Command, _ []string) error {
+			RunE: func(cmd *cobra.Command, _ []string) error {
+				ctx := cmd.Context()
 				opt := OptGetItems{
 					Filter: filter,
 				}
-				data, err := t.GetServers(opt)
+				data, err := t.GetServers(ctx, opt)
 				if err != nil {
 					return err
 				}
@@ -604,7 +611,8 @@ func (t *Array) Run(args []string) error {
 		cmd := &cobra.Command{
 			Use:   "volumes",
 			Short: "get volumes",
-			RunE: func(_ *cobra.Command, _ []string) error {
+			RunE: func(cmd *cobra.Command, _ []string) error {
+				ctx := cmd.Context()
 				opt := OptGetItems{
 					Volume: OptVolume{
 						ID:     volumeId,
@@ -613,7 +621,7 @@ func (t *Array) Run(args []string) error {
 					},
 					Filter: filter,
 				}
-				data, err := t.GetVolumes(opt)
+				data, err := t.GetVolumes(ctx, opt)
 				if err != nil {
 					return err
 				}
@@ -630,9 +638,10 @@ func (t *Array) Run(args []string) error {
 		cmd := &cobra.Command{
 			Use:   "host-groups",
 			Short: "get host groups",
-			RunE: func(_ *cobra.Command, _ []string) error {
+			RunE: func(cmd *cobra.Command, _ []string) error {
+				ctx := cmd.Context()
 				opt := OptGetItems{Filter: filter}
-				data, err := t.GetHostGroups(opt)
+				data, err := t.GetHostGroups(ctx, opt)
 				if err != nil {
 					return err
 				}
@@ -646,9 +655,10 @@ func (t *Array) Run(args []string) error {
 		cmd := &cobra.Command{
 			Use:   "storage-ports",
 			Short: "get storage ports",
-			RunE: func(_ *cobra.Command, _ []string) error {
+			RunE: func(cmd *cobra.Command, _ []string) error {
+				ctx := cmd.Context()
 				opt := OptGetItems{Filter: filter}
-				data, err := t.GetStoragePorts(opt)
+				data, err := t.GetStoragePorts(ctx, opt)
 				if err != nil {
 					return err
 				}
@@ -662,9 +672,10 @@ func (t *Array) Run(args []string) error {
 		cmd := &cobra.Command{
 			Use:   "storage-pools",
 			Short: "get storage pools",
-			RunE: func(_ *cobra.Command, _ []string) error {
+			RunE: func(cmd *cobra.Command, _ []string) error {
+				ctx := cmd.Context()
 				opt := OptGetItems{Filter: filter}
-				data, err := t.GetStoragePools(opt)
+				data, err := t.GetStoragePools(ctx, opt)
 				if err != nil {
 					return err
 				}
@@ -678,9 +689,10 @@ func (t *Array) Run(args []string) error {
 		cmd := &cobra.Command{
 			Use:   "disks",
 			Short: "get disks",
-			RunE: func(_ *cobra.Command, _ []string) error {
+			RunE: func(cmd *cobra.Command, _ []string) error {
+				ctx := cmd.Context()
 				opt := OptGetItems{Filter: filter}
-				data, err := t.GetDisks(opt)
+				data, err := t.GetDisks(ctx, opt)
 				if err != nil {
 					return err
 				}
@@ -694,8 +706,9 @@ func (t *Array) Run(args []string) error {
 		cmd := &cobra.Command{
 			Use:   "storage-system",
 			Short: "get storage system",
-			RunE: func(_ *cobra.Command, _ []string) error {
-				data, err := t.GetStorageSystem()
+			RunE: func(cmd *cobra.Command, _ []string) error {
+				ctx := cmd.Context()
+				data, err := t.GetStorageSystem(ctx)
 				if err != nil {
 					return err
 				}
@@ -708,9 +721,10 @@ func (t *Array) Run(args []string) error {
 		cmd := &cobra.Command{
 			Use:   "storage-systems",
 			Short: "get storage systems",
-			RunE: func(_ *cobra.Command, _ []string) error {
+			RunE: func(cmd *cobra.Command, _ []string) error {
+				ctx := cmd.Context()
 				opt := OptGetItems{Filter: filter}
-				data, err := t.GetStorageSystems(opt)
+				data, err := t.GetStorageSystems(ctx, opt)
 				if err != nil {
 					return err
 				}
@@ -724,9 +738,10 @@ func (t *Array) Run(args []string) error {
 		cmd := &cobra.Command{
 			Use:   "jobs",
 			Short: "get jobs",
-			RunE: func(_ *cobra.Command, _ []string) error {
+			RunE: func(cmd *cobra.Command, _ []string) error {
+				ctx := cmd.Context()
 				opt := OptGetItems{Filter: filter}
-				data, err := t.GetJobs(opt)
+				data, err := t.GetJobs(ctx, opt)
 				if err != nil {
 					return err
 				}
@@ -740,9 +755,10 @@ func (t *Array) Run(args []string) error {
 		cmd := &cobra.Command{
 			Use:   "system-tasks",
 			Short: "get system tasks",
-			RunE: func(_ *cobra.Command, _ []string) error {
+			RunE: func(cmd *cobra.Command, _ []string) error {
 				opt := OptGetItems{Filter: filter}
-				data, err := t.GetSystemTasks(opt)
+				ctx := cmd.Context()
+				data, err := t.GetSystemTasks(ctx, opt)
 				if err != nil {
 					return err
 				}
@@ -911,12 +927,12 @@ func (t *Array) newToken() error {
 	return nil
 }
 
-func (t *Array) DoJob(req *http.Request) (hocJob, error) {
+func (t *Array) DoJob(ctx context.Context, req *http.Request) (hocJob, error) {
 	var job hocJob
 	var jobRequestPath string
 
 	getJob := func() error {
-		req, err := t.newRequest(http.MethodGet, jobRequestPath, nil, nil)
+		req, err := t.newRequest(ctx, http.MethodGet, jobRequestPath, nil, nil)
 		if err != nil {
 			return err
 		}
@@ -1014,7 +1030,7 @@ func validateOptVolume(opt OptVolume) error {
 	return nil
 }
 
-func (t *Array) ResizeDisk(opt OptResizeDisk) (hocVolume, error) {
+func (t *Array) ResizeDisk(ctx context.Context, opt OptResizeDisk) (hocVolume, error) {
 	if err := validateOptVolume(opt.Volume); err != nil {
 		return hocVolume{}, err
 	}
@@ -1036,7 +1052,7 @@ func (t *Array) ResizeDisk(opt OptResizeDisk) (hocVolume, error) {
 	if err != nil {
 		return hocVolume{}, err
 	}
-	volume, err := t.getVolume(opt.Volume)
+	volume, err := t.getVolume(ctx, opt.Volume)
 	if err != nil {
 		return hocVolume{}, err
 	}
@@ -1052,18 +1068,18 @@ func (t *Array) ResizeDisk(opt OptResizeDisk) (hocVolume, error) {
 		"capacityInBytes": fmt.Sprint(sizeBytes),
 	}
 	path := fmt.Sprintf("/storage-systems/%s/volumes/%d", t.storageSystemId(), volume.VolumeId)
-	req, err := t.newRequest(http.MethodPost, path, nil, data)
+	req, err := t.newRequest(ctx, http.MethodPost, path, nil, data)
 	if err != nil {
 		return hocVolume{}, err
 	}
-	job, err := t.DoJob(req)
+	job, err := t.DoJob(ctx, req)
 	if err != nil {
 		return volume, err
 	}
 	if job.Status == JobStatusFailed {
 		return volume, fmt.Errorf("job failed: %#v", job)
 	}
-	return t.getVolume(OptVolume{ID: volume.VolumeId})
+	return t.getVolume(ctx, OptVolume{ID: volume.VolumeId})
 }
 
 func (t *Array) WWN(id int) string {
@@ -1071,10 +1087,10 @@ func (t *Array) WWN(id int) string {
 	return strings.ToLower(s)
 }
 
-func (t *Array) AddDisk(opt OptAddDisk) (array.Disk, error) {
+func (t *Array) AddDisk(ctx context.Context, opt OptAddDisk) (array.Disk, error) {
 	var disk array.Disk
 	driverData := make(map[string]any)
-	volume, err := t.addVolume(opt.Volume)
+	volume, err := t.addVolume(ctx, opt.Volume)
 	if err != nil {
 		return disk, err
 	}
@@ -1084,10 +1100,10 @@ func (t *Array) AddDisk(opt OptAddDisk) (array.Disk, error) {
 	disk.DevID = fmt.Sprint(volume.VolumeId)
 	disk.DriverData = driverData
 
-	if err := t.mapDisk(volume, opt.Mapping); err != nil {
+	if err := t.mapDisk(ctx, volume, opt.Mapping); err != nil {
 		return disk, err
 	}
-	volume, err = t.getVolume(OptVolume{ID: volume.VolumeId})
+	volume, err = t.getVolume(ctx, OptVolume{ID: volume.VolumeId})
 	if err != nil {
 		return disk, err
 	}
@@ -1097,7 +1113,7 @@ func (t *Array) AddDisk(opt OptAddDisk) (array.Disk, error) {
 	return disk, nil
 }
 
-func (t *Array) addVolume(opt OptAddVolume) (hocVolume, error) {
+func (t *Array) addVolume(ctx context.Context, opt OptAddVolume) (hocVolume, error) {
 	if opt.Name == "" {
 		return hocVolume{}, fmt.Errorf("--name is required")
 	}
@@ -1129,12 +1145,12 @@ func (t *Array) addVolume(opt OptAddVolume) (hocVolume, error) {
 	}
 
 	path := fmt.Sprintf("/storage-systems/%s/volumes", t.storageSystemId())
-	req, err := t.newRequest(http.MethodPost, path, params, data)
+	req, err := t.newRequest(ctx, http.MethodPost, path, params, data)
 	if err != nil {
 		return hocVolume{}, err
 	}
 	var volume hocVolume
-	job, err := t.DoJob(req)
+	job, err := t.DoJob(ctx, req)
 	if err != nil {
 		return volume, err
 	}
@@ -1142,7 +1158,7 @@ func (t *Array) addVolume(opt OptAddVolume) (hocVolume, error) {
 	if volumeId < 0 {
 		return volume, fmt.Errorf("volumme id not found in job reports")
 	}
-	return t.getVolume(OptVolume{ID: volumeId})
+	return t.getVolume(ctx, OptVolume{ID: volumeId})
 }
 
 func findVolumeIdInJob(job hocJob) int {
@@ -1175,7 +1191,7 @@ func formatWWN(s string) (string, error) {
 	return strings.ToUpper(s), nil
 }
 
-func (t *Array) attachWithMappings(volume hocVolume, mapping OptMapping) error {
+func (t *Array) attachWithMappings(ctx context.Context, volume hocVolume, mapping OptMapping) error {
 	portsByHostWWPN := make(map[string]OptAttachPort)
 	addPortsByHostWWPN := func(hostWWPN string, serverId int, storagePortId string) {
 		if port, ok := portsByHostWWPN[hostWWPN]; !ok {
@@ -1197,7 +1213,7 @@ func (t *Array) attachWithMappings(volume hocVolume, mapping OptMapping) error {
 		if ok {
 			return server, nil
 		}
-		server, err := t.GetServerWithWWPN(s)
+		server, err := t.GetServerWithWWPN(ctx, s)
 		if err != nil {
 			return server, err
 		}
@@ -1212,7 +1228,7 @@ func (t *Array) attachWithMappings(volume hocVolume, mapping OptMapping) error {
 		if ok {
 			return port, nil
 		}
-		port, err := t.GetPortWithWWPN(s)
+		port, err := t.GetPortWithWWPN(ctx, s)
 		if err != nil {
 			return port, err
 		}
@@ -1267,11 +1283,11 @@ func (t *Array) attachWithMappings(volume hocVolume, mapping OptMapping) error {
 			opt.Volumes[0].LUN = mapping.LUN
 		}
 
-		req, err := t.newRequest(http.MethodPost, "/volume-manager/attach", nil, opt)
+		req, err := t.newRequest(ctx, http.MethodPost, "/volume-manager/attach", nil, opt)
 		if err != nil {
 			return err
 		}
-		job, err := t.DoJob(req)
+		job, err := t.DoJob(ctx, req)
 		if err != nil {
 			return err
 		}
@@ -1282,7 +1298,7 @@ func (t *Array) attachWithMappings(volume hocVolume, mapping OptMapping) error {
 	return nil
 }
 
-func (t *Array) UnmapDisk(opt OptUnmapDisk) (array.Disk, error) {
+func (t *Array) UnmapDisk(ctx context.Context, opt OptUnmapDisk) (array.Disk, error) {
 	var disk array.Disk
 
 	if err := validateOptVolume(opt.Volume); err != nil {
@@ -1292,7 +1308,7 @@ func (t *Array) UnmapDisk(opt OptUnmapDisk) (array.Disk, error) {
 	if filter == "" {
 		return disk, fmt.Errorf("no volume selector")
 	}
-	volumes, err := t.GetVolumes(OptGetItems{Filter: filter})
+	volumes, err := t.GetVolumes(ctx, OptGetItems{Filter: filter})
 	if err != nil {
 		return disk, err
 	}
@@ -1304,7 +1320,7 @@ func (t *Array) UnmapDisk(opt OptUnmapDisk) (array.Disk, error) {
 
 	volume := volumes[0]
 
-	if err := t.detachAll(volume); err != nil {
+	if err := t.detachAll(ctx, volume); err != nil {
 		return disk, err
 	}
 
@@ -1317,7 +1333,7 @@ func (t *Array) UnmapDisk(opt OptUnmapDisk) (array.Disk, error) {
 	return disk, nil
 }
 
-func (t *Array) MapDisk(opt OptMapDisk) (array.Disk, error) {
+func (t *Array) MapDisk(ctx context.Context, opt OptMapDisk) (array.Disk, error) {
 	var disk array.Disk
 
 	if err := validateOptVolume(opt.Volume); err != nil {
@@ -1326,14 +1342,14 @@ func (t *Array) MapDisk(opt OptMapDisk) (array.Disk, error) {
 	if err := validateOptMapping(opt.Mapping); err != nil {
 		return disk, err
 	}
-	volume, err := t.getVolume(opt.Volume)
+	volume, err := t.getVolume(ctx, opt.Volume)
 	if err != nil {
 		return disk, err
 	}
-	if err := t.mapDisk(volume, opt.Mapping); err != nil {
+	if err := t.mapDisk(ctx, volume, opt.Mapping); err != nil {
 		return disk, err
 	}
-	volume, err = t.getVolume(opt.Volume)
+	volume, err = t.getVolume(ctx, opt.Volume)
 	if err != nil {
 		return disk, err
 	}
@@ -1347,9 +1363,9 @@ func (t *Array) MapDisk(opt OptMapDisk) (array.Disk, error) {
 	return disk, nil
 }
 
-func (t *Array) mapDisk(volume hocVolume, mapping OptMapping) error {
+func (t *Array) mapDisk(ctx context.Context, volume hocVolume, mapping OptMapping) error {
 	if len(mapping.Mappings) > 0 {
-		return t.attachWithMappings(volume, mapping)
+		return t.attachWithMappings(ctx, volume, mapping)
 	}
 	return fmt.Errorf("no mappings... todo by hostgroup ?")
 }
@@ -1366,7 +1382,7 @@ func (opt OptVolume) Filter() string {
 	}
 }
 
-func (t *Array) getVolume(opt OptVolume) (hocVolume, error) {
+func (t *Array) getVolume(ctx context.Context, opt OptVolume) (hocVolume, error) {
 	var (
 		volume   hocVolume
 		items    []hocVolume
@@ -1378,7 +1394,7 @@ func (t *Array) getVolume(opt OptVolume) (hocVolume, error) {
 	} else {
 		queryOpt.Filter = s
 	}
-	items, err = t.GetVolumes(queryOpt)
+	items, err = t.GetVolumes(ctx, queryOpt)
 	if err != nil {
 		return volume, err
 	}
@@ -1399,7 +1415,7 @@ func (t *Array) getVolume(opt OptVolume) (hocVolume, error) {
 	return volume, fmt.Errorf("no volume found matching %s", filter)
 }
 
-func (t *Array) DelDisk(opt OptDelDisk) (array.Disk, error) {
+func (t *Array) DelDisk(ctx context.Context, opt OptDelDisk) (array.Disk, error) {
 	var disk array.Disk
 
 	if err := validateOptVolume(opt.Volume); err != nil {
@@ -1409,7 +1425,7 @@ func (t *Array) DelDisk(opt OptDelDisk) (array.Disk, error) {
 	if filter == "" {
 		return disk, fmt.Errorf("no volume selector")
 	}
-	volumes, err := t.GetVolumes(OptGetItems{Filter: filter})
+	volumes, err := t.GetVolumes(ctx, OptGetItems{Filter: filter})
 	if err != nil {
 		return disk, err
 	}
@@ -1421,11 +1437,11 @@ func (t *Array) DelDisk(opt OptDelDisk) (array.Disk, error) {
 
 	volume := volumes[0]
 
-	if err := t.detachAll(volume); err != nil {
+	if err := t.detachAll(ctx, volume); err != nil {
 		return disk, err
 	}
 
-	if err := t.delVolume(volume); err != nil {
+	if err := t.delVolume(ctx, volume); err != nil {
 		return disk, err
 	}
 
@@ -1438,13 +1454,13 @@ func (t *Array) DelDisk(opt OptDelDisk) (array.Disk, error) {
 	return disk, nil
 }
 
-func (t *Array) delVolume(volume hocVolume) error {
+func (t *Array) delVolume(ctx context.Context, volume hocVolume) error {
 	path := fmt.Sprintf("/storage-systems/%s/volumes/%d", t.storageSystemId(), volume.VolumeId)
-	req, err := t.newRequest(http.MethodDelete, path, nil, nil)
+	req, err := t.newRequest(ctx, http.MethodDelete, path, nil, nil)
 	if err != nil {
 		return err
 	}
-	job, err := t.DoJob(req)
+	job, err := t.DoJob(ctx, req)
 	if err != nil {
 		return err
 	}
@@ -1454,26 +1470,26 @@ func (t *Array) delVolume(volume hocVolume) error {
 	return nil
 }
 
-func (t *Array) detachAll(volume hocVolume) error {
+func (t *Array) detachAll(ctx context.Context, volume hocVolume) error {
 	for _, attachment := range volume.AttachedVolumeServerSummary {
-		if err := t.detach(volume.StorageSystemId, volume.VolumeId, attachment.ServerId); err != nil {
+		if err := t.detach(ctx, volume.StorageSystemId, volume.VolumeId, attachment.ServerId); err != nil {
 			return err
 		}
 	}
 	return nil
 }
 
-func (t *Array) detach(storageSystemId string, volumeId, serverId int) error {
+func (t *Array) detach(ctx context.Context, storageSystemId string, volumeId, serverId int) error {
 	data := map[string]any{
 		"storageSystemId": storageSystemId,
 		"volumeId":        volumeId,
 		"serverId":        serverId,
 	}
-	req, err := t.newRequest(http.MethodPost, "/volume-manager/detach", nil, data)
+	req, err := t.newRequest(ctx, http.MethodPost, "/volume-manager/detach", nil, data)
 	if err != nil {
 		return err
 	}
-	job, err := t.DoJob(req)
+	job, err := t.DoJob(ctx, req)
 	if err != nil {
 		return err
 	}
@@ -1485,8 +1501,8 @@ func (t *Array) detach(storageSystemId string, volumeId, serverId int) error {
 	return nil
 }
 
-func (t *Array) GetStorageSystem() (hocStorageSystem, error) {
-	storageSystems, err := t.GetStorageSystems(OptGetItems{
+func (t *Array) GetStorageSystem(ctx context.Context) (hocStorageSystem, error) {
+	storageSystems, err := t.GetStorageSystems(ctx, OptGetItems{
 		Filter: "storageSystemId:" + t.storageSystemId(),
 	})
 	if err != nil {
@@ -1498,9 +1514,9 @@ func (t *Array) GetStorageSystem() (hocStorageSystem, error) {
 	return storageSystems[0], nil
 }
 
-func (t *Array) GetStorageSystems(opt OptGetItems) ([]hocStorageSystem, error) {
+func (t *Array) GetStorageSystems(ctx context.Context, opt OptGetItems) ([]hocStorageSystem, error) {
 	params := getParams(opt)
-	l, err := t.doGet("GET", "/storage-systems", params, nil)
+	l, err := t.doGet(ctx, "GET", "/storage-systems", params, nil)
 	if err != nil {
 		return nil, err
 	}
@@ -1514,9 +1530,9 @@ func (t *Array) GetStorageSystems(opt OptGetItems) ([]hocStorageSystem, error) {
 	return storageSystems, nil
 }
 
-func (t *Array) GetPortWithWWPN(wwpn string) (hocPort, error) {
+func (t *Array) GetPortWithWWPN(ctx context.Context, wwpn string) (hocPort, error) {
 	opt := OptGetItems{Filter: "wwn:" + wwpn}
-	ports, err := t.GetStoragePorts(opt)
+	ports, err := t.GetStoragePorts(ctx, opt)
 	if err != nil {
 		return hocPort{}, err
 	}
@@ -1529,9 +1545,9 @@ func (t *Array) GetPortWithWWPN(wwpn string) (hocPort, error) {
 	}
 }
 
-func (t *Array) GetServerWithWWPN(wwpn string) (hocServer, error) {
+func (t *Array) GetServerWithWWPN(ctx context.Context, wwpn string) (hocServer, error) {
 	opt := OptGetItems{Filter: "wwpnsWithUserDefinedName.wwpn:" + wwpn}
-	servers, err := t.GetServers(opt)
+	servers, err := t.GetServers(ctx, opt)
 	if err != nil {
 		return hocServer{}, err
 	}
@@ -1544,9 +1560,9 @@ func (t *Array) GetServerWithWWPN(wwpn string) (hocServer, error) {
 	}
 }
 
-func (t *Array) GetServers(opt OptGetItems) ([]hocServer, error) {
+func (t *Array) GetServers(ctx context.Context, opt OptGetItems) ([]hocServer, error) {
 	params := getParams(opt)
-	l, err := t.doGet("GET", "/compute/servers", params, nil)
+	l, err := t.doGet(ctx, "GET", "/compute/servers", params, nil)
 	if err != nil {
 		return nil, err
 	}
@@ -1560,10 +1576,10 @@ func (t *Array) GetServers(opt OptGetItems) ([]hocServer, error) {
 	return servers, nil
 }
 
-func (t *Array) GetStoragePorts(opt OptGetItems) ([]hocPort, error) {
+func (t *Array) GetStoragePorts(ctx context.Context, opt OptGetItems) ([]hocPort, error) {
 	params := getParams(opt)
 	path := fmt.Sprintf("/storage-systems/%s/storage-ports", t.storageSystemId())
-	l, err := t.doGet("GET", path, params, nil)
+	l, err := t.doGet(ctx, "GET", path, params, nil)
 	if err != nil {
 		return nil, err
 	}
@@ -1577,10 +1593,10 @@ func (t *Array) GetStoragePorts(opt OptGetItems) ([]hocPort, error) {
 	return ports, nil
 }
 
-func (t *Array) GetVolumes(opt OptGetItems) ([]hocVolume, error) {
+func (t *Array) GetVolumes(ctx context.Context, opt OptGetItems) ([]hocVolume, error) {
 	params := getParams(opt)
 	path := fmt.Sprintf("/storage-systems/%s/volumes", t.storageSystemId())
-	l, err := t.doGet("GET", path, params, nil)
+	l, err := t.doGet(ctx, "GET", path, params, nil)
 	if err != nil {
 		return nil, err
 	}
@@ -1594,47 +1610,47 @@ func (t *Array) GetVolumes(opt OptGetItems) ([]hocVolume, error) {
 	return volumes, nil
 }
 
-func (t *Array) GetVolumeGroups(opt OptGetItems) (any, error) {
+func (t *Array) GetVolumeGroups(ctx context.Context, opt OptGetItems) (any, error) {
 	params := getParams(opt)
 	path := fmt.Sprintf("/storage-systems/%s/volume-groups", t.storageSystemId())
-	return t.doGet("GET", path, params, nil)
+	return t.doGet(ctx, "GET", path, params, nil)
 }
 
-func (t *Array) GetControllers(opt OptGetItems) (any, error) {
+func (t *Array) GetControllers(ctx context.Context, opt OptGetItems) (any, error) {
 	params := getParams(opt)
 	path := fmt.Sprintf("/storage-systems/%s/controllers", t.storageSystemId())
-	return t.doGet("GET", path, params, nil)
+	return t.doGet(ctx, "GET", path, params, nil)
 }
 
-func (t *Array) GetJobs(opt OptGetItems) (any, error) {
+func (t *Array) GetJobs(ctx context.Context, opt OptGetItems) (any, error) {
 	params := getParams(opt)
 	path := fmt.Sprintf("/jobs")
 	var r hocResponseJobs
-	return t.doGetIn("GET", path, params, nil, &r)
+	return t.doGetIn(ctx, "GET", path, params, nil, &r)
 }
 
-func (t *Array) GetSystemTasks(opt OptGetItems) (any, error) {
+func (t *Array) GetSystemTasks(ctx context.Context, opt OptGetItems) (any, error) {
 	params := getParams(opt)
 	path := fmt.Sprintf("/storage-systems/%s/system-tasks", t.storageSystemId())
-	return t.doGet("GET", path, params, nil)
+	return t.doGet(ctx, "GET", path, params, nil)
 }
 
-func (t *Array) GetDisks(opt OptGetItems) (any, error) {
+func (t *Array) GetDisks(ctx context.Context, opt OptGetItems) (any, error) {
 	params := getParams(opt)
 	path := fmt.Sprintf("/storage-systems/%s/disks", t.storageSystemId())
-	return t.doGet("GET", path, params, nil)
+	return t.doGet(ctx, "GET", path, params, nil)
 }
 
-func (t *Array) GetStoragePools(opt OptGetItems) (any, error) {
+func (t *Array) GetStoragePools(ctx context.Context, opt OptGetItems) (any, error) {
 	params := getParams(opt)
 	path := fmt.Sprintf("/storage-systems/%s/storage-pools", t.storageSystemId())
-	return t.doGet("GET", path, params, nil)
+	return t.doGet(ctx, "GET", path, params, nil)
 }
 
-func (t *Array) GetHostGroups(opt OptGetItems) (any, error) {
+func (t *Array) GetHostGroups(ctx context.Context, opt OptGetItems) (any, error) {
 	params := getParams(opt)
 	path := fmt.Sprintf("/storage-systems/%s/host-groups", t.storageSystemId())
-	return t.doGet("GET", path, params, nil)
+	return t.doGet(ctx, "GET", path, params, nil)
 }
 
 func getParams(opt OptGetItems) map[string]string {
@@ -1647,13 +1663,13 @@ func getParams(opt OptGetItems) map[string]string {
 	return params
 }
 
-func (t *Array) doGet(method string, path string, params map[string]string, data interface{}) ([]any, error) {
+func (t *Array) doGet(ctx context.Context, method string, path string, params map[string]string, data interface{}) ([]any, error) {
 	var r hocResponse
-	return t.doGetIn(method, path, params, data, &r)
+	return t.doGetIn(ctx, method, path, params, data, &r)
 }
 
-func (t *Array) doGetIn(method string, path string, params map[string]string, data interface{}, r itemser) ([]any, error) {
-	req, err := t.newRequest(method, path, params, data)
+func (t *Array) doGetIn(ctx context.Context, method string, path string, params map[string]string, data interface{}, r itemser) ([]any, error) {
+	req, err := t.newRequest(ctx, method, path, params, data)
 	if err != nil {
 		return nil, err
 	}
@@ -1676,7 +1692,7 @@ func (t *Array) doGetIn(method string, path string, params map[string]string, da
 				} else {
 					params["nextToken"] = r.ItemsNextToken()
 				}
-				req, err := t.newRequest(method, path, params, data)
+				req, err := t.newRequest(ctx, method, path, params, data)
 				if err != nil {
 					return nil, err
 				}
@@ -1692,7 +1708,7 @@ func (t *Array) doGetIn(method string, path string, params map[string]string, da
 	return items, nil
 }
 
-func (t *Array) newRequest(method string, path string, params map[string]string, data interface{}) (*http.Request, error) {
+func (t *Array) newRequest(ctx context.Context, method string, path string, params map[string]string, data interface{}) (*http.Request, error) {
 	fpath := t.api() + Head + path
 	baseURL, err := url.Parse(fpath)
 	if err != nil {
@@ -1705,7 +1721,7 @@ func (t *Array) newRequest(method string, path string, params map[string]string,
 		}
 		baseURL.RawQuery = ps.Encode()
 	}
-	req, err := http.NewRequest(method, baseURL.String(), nil)
+	req, err := http.NewRequestWithContext(ctx, method, baseURL.String(), nil)
 	if err != nil {
 		return nil, err
 	}

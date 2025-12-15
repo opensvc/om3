@@ -297,7 +297,7 @@ func (t *T) ScheduleOptions() resource.ScheduleOptions {
 	}
 }
 
-func (t *T) Provisioned() (provisioned.T, error) {
+func (t *T) Provisioned(ctx context.Context) (provisioned.T, error) {
 	return provisioned.NotApplicable, nil
 }
 

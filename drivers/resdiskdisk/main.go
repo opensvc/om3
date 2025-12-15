@@ -52,7 +52,7 @@ func (t *T) Stop(ctx context.Context) error {
 	return nil
 }
 
-func (t *T) Provisioned() (provisioned.T, error) {
+func (t *T) Provisioned(ctx context.Context) (provisioned.T, error) {
 	return provisioned.FromBool(t.DiskID != ""), nil
 }
 
@@ -84,7 +84,7 @@ func (t *T) ProvisionAsLeader(ctx context.Context) error {
 		t.Log().Infof("skip disk creation: the disk_id keyword is already set")
 		return t.configure(preserve)
 	}
-	if disks, err = t.createDisk(); err != nil {
+	if disks, err = t.createDisk(ctx); err != nil {
 		return err
 	}
 	if err := t.setDiskIDKeywords(ctx, disks); err != nil {
@@ -101,7 +101,7 @@ func (t *T) UnprovisionAsLeader(ctx context.Context) error {
 	if err := t.unconfigure(); err != nil {
 		return err
 	}
-	if _, err := t.deleteDisk(); err != nil {
+	if _, err := t.deleteDisk(ctx); err != nil {
 		return err
 	}
 	if err := t.unsetDiskIDKeywords(ctx); err != nil {
@@ -128,14 +128,14 @@ func (t *T) diskIDKey(node string) key.T {
 	}
 	return k
 }
-func (t *T) pooler() (pool.ArrayPooler, error) {
+func (t *T) pooler(ctx context.Context) (pool.ArrayPooler, error) {
 	node, err := object.NewNode()
 	if err != nil {
 		return nil, err
 	}
 	l := pool.NewLookup(node)
 	l.Name = t.Pool
-	p, err := l.Do()
+	p, err := l.Do(ctx)
 	if err != nil {
 		return nil, err
 	}
@@ -163,13 +163,13 @@ func (t *T) diskMapToNodes() []string {
 	}
 }
 
-func (t *T) deleteDisk() ([]pool.Disk, error) {
-	p, err := t.pooler()
+func (t *T) deleteDisk(ctx context.Context) ([]pool.Disk, error) {
+	p, err := t.pooler(ctx)
 	if err != nil {
 		return []pool.Disk{}, err
 	}
 	name := t.diskName(p)
-	disks, err := p.DeleteDisk(name, t.DiskID)
+	disks, err := p.DeleteDisk(ctx, name, t.DiskID)
 	if err != nil {
 		t.Log().Errorf("delete disk %s [%s]: %#v %s", name, t.DiskID, disks, err)
 	} else {
@@ -178,8 +178,8 @@ func (t *T) deleteDisk() ([]pool.Disk, error) {
 	return disks, nil
 }
 
-func (t *T) createDisk() ([]pool.Disk, error) {
-	p, err := t.pooler()
+func (t *T) createDisk(ctx context.Context) ([]pool.Disk, error) {
+	p, err := t.pooler(ctx)
 	if err != nil {
 		return []pool.Disk{}, err
 	}
@@ -188,7 +188,7 @@ func (t *T) createDisk() ([]pool.Disk, error) {
 	}
 	diskName := t.diskName(p)
 	nodenames := t.diskMapToNodes()
-	disks, err := p.CreateDisk(diskName, *t.Size, nodenames)
+	disks, err := p.CreateDisk(ctx, diskName, *t.Size, nodenames)
 	if err != nil {
 		t.Log().Errorf("create disk %s: %#v %s", diskName, disks, err)
 	} else {

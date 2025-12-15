@@ -124,7 +124,7 @@ func (t *T) fileExists() (os.FileInfo, error) {
 	return info, nil
 }
 
-func (t *T) Provisioned() (provisioned.T, error) {
+func (t *T) Provisioned(ctx context.Context) (provisioned.T, error) {
 	stat, err := t.fileExists()
 	if err != nil {
 		return provisioned.Undef, err
@@ -148,14 +148,14 @@ func (t *T) Info(ctx context.Context) (resource.InfoKeys, error) {
 	return m, nil
 }
 
-func (t *T) isVolatile() bool {
-	return df.HasTypeMount("tmpfs", t.File)
+func (t *T) isVolatile(ctx context.Context) bool {
+	return df.HasTypeMount(ctx, "tmpfs", t.File)
 }
 
 // autoProvision provisions the loop on start if the backing file is
 // hosted on a tmpfs
 func (t *T) autoProvision(ctx context.Context) error {
-	if !t.isVolatile() {
+	if !t.isVolatile(ctx) {
 		return nil
 	}
 	stat, err := t.fileExists()
@@ -178,7 +178,7 @@ func (t *T) autoUnprovision(ctx context.Context) error {
 	} else if stat == nil {
 		return nil
 	}
-	if !t.isVolatile() {
+	if !t.isVolatile(ctx) {
 		return nil
 	}
 	return t.unprovision(ctx)

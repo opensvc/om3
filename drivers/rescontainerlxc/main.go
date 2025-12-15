@@ -368,7 +368,7 @@ func (t *T) Unprovision(ctx context.Context) error {
 	return nil
 }
 
-func (t *T) Provisioned() (provisioned.T, error) {
+func (t *T) Provisioned(ctx context.Context) (provisioned.T, error) {
 	return provisioned.NotApplicable, nil
 }
 
@@ -745,7 +745,7 @@ func (t *T) lxcPath() string {
 	return p
 }
 
-func (t *T) ToSync() []string {
+func (t *T) ToSync(ctx context.Context) []string {
 	l := make([]string, 0)
 
 	// Don't synchronize container.lxc config in /var/lib/lxc if not shared
@@ -771,7 +771,7 @@ func (t *T) ToSync() []string {
 	// shared. If the fs is shared, it must not be replicated to avoid
 	// copying on the remote underlying fs (which may block a zfs dataset
 	// mount).
-	r, err := t.resourceHandlingFile(cf)
+	r, err := t.resourceHandlingFile(ctx, cf)
 	if err != nil {
 		return l
 	}
@@ -789,7 +789,7 @@ func (t *T) obj() (interface{}, error) {
 	return object.New(t.Path, object.WithVolatile(true))
 }
 
-func (t *T) resourceHandlingFile(p string) (resource.Driver, error) {
+func (t *T) resourceHandlingFile(ctx context.Context, p string) (resource.Driver, error) {
 	obj, err := t.obj()
 	if err != nil {
 		return nil, err
@@ -803,7 +803,7 @@ func (t *T) resourceHandlingFile(p string) (resource.Driver, error) {
 		if !ok {
 			continue
 		}
-		if v, err := r.Provisioned(); err != nil {
+		if v, err := r.Provisioned(ctx); err != nil {
 			continue
 		} else if v == provisioned.False {
 			continue

@@ -42,20 +42,20 @@ type (
 		Name   string      `json:"name"`
 	}
 	MDDriver interface {
-		Activate() error
-		Deactivate() error
-		Resync() error
-		IsActive() (bool, string, error)
-		Exists() (bool, error)
-		Devices() (device.L, error)
+		Activate(ctx context.Context) error
+		Deactivate(ctx context.Context) error
+		Resync(ctx context.Context) error
+		IsActive(ctx context.Context) (bool, string, error)
+		Exists(ctx context.Context) (bool, error)
+		Devices(ctx context.Context) (device.L, error)
 		UUID() string
 		IsAutoActivated() bool
 		DisableAutoActivation() error
 	}
 	MDDriverProvisioner interface {
-		Create(level string, devs []string, spares int, layout string, chunk *int64, bitmap string) error
-		Remove() error
-		Wipe() error
+		Create(ctx context.Context, level string, devs []string, spares int, layout string, chunk *int64, bitmap string) error
+		Remove(ctx context.Context) error
+		Wipe(ctx context.Context) error
 	}
 )
 
@@ -94,17 +94,17 @@ func (t *T) Info(ctx context.Context) (resource.InfoKeys, error) {
 func (t *T) Start(ctx context.Context) error {
 	dev := t.md()
 	_ = dev.DisableAutoActivation()
-	if v, err := t.isUp(); err != nil {
+	if v, err := t.isUp(ctx); err != nil {
 		return err
 	} else if v {
 		t.Log().Infof("md %s is already assembled", t.Label(ctx))
 		return nil
 	}
-	if err := dev.Activate(); err != nil {
+	if err := dev.Activate(ctx); err != nil {
 		return err
 	}
 	actionrollback.Register(ctx, func(ctx context.Context) error {
-		return dev.Deactivate()
+		return dev.Deactivate(ctx)
 	})
 	// drop the create_static_name(devpath) py code ??
 	return nil
@@ -112,7 +112,7 @@ func (t *T) Start(ctx context.Context) error {
 
 func (t *T) Stop(ctx context.Context) error {
 	dev := t.md()
-	if v, err := t.isUp(); err != nil {
+	if v, err := t.isUp(ctx); err != nil {
 		return err
 	} else if !v {
 		t.Log().Infof("%s is already down", t.Label(ctx))
@@ -122,18 +122,18 @@ func (t *T) Stop(ctx context.Context) error {
 		return err
 	}
 	udevadm.Settle()
-	if err := dev.Deactivate(); err != nil {
+	if err := dev.Deactivate(ctx); err != nil {
 		return err
 	}
 	return nil
 }
 
-func (t *T) exists() (bool, error) {
-	return t.md().Exists()
+func (t *T) exists(ctx context.Context) (bool, error) {
+	return t.md().Exists(ctx)
 }
 
-func (t *T) isUp() (bool, error) {
-	active, _, err := t.md().IsActive()
+func (t *T) isUp(ctx context.Context) (bool, error) {
+	active, _, err := t.md().IsActive(ctx)
 	return active, err
 }
 
@@ -148,7 +148,7 @@ func (t *T) removeHolders() error {
 
 func (t *T) Status(ctx context.Context) status.T {
 	dev := t.md()
-	v, msg, err := dev.IsActive()
+	v, msg, err := dev.IsActive(ctx)
 	if err != nil {
 		t.StatusLog().Error("%s", err)
 		return status.Undef
@@ -181,7 +181,7 @@ func (t *T) ProvisionAsLeader(ctx context.Context) error {
 	if !ok {
 		return fmt.Errorf("md driver does not implement the provisioner interface")
 	}
-	exists, err := dev.Exists()
+	exists, err := dev.Exists(ctx)
 	if err != nil {
 		return err
 	}
@@ -189,11 +189,11 @@ func (t *T) ProvisionAsLeader(ctx context.Context) error {
 		t.Log().Infof("md is already created")
 		return nil
 	}
-	if err := devIntf.Create(t.Level, t.Devs, t.Spares, t.Layout, t.Chunk, t.Bitmap); err != nil {
+	if err := devIntf.Create(ctx, t.Level, t.Devs, t.Spares, t.Layout, t.Chunk, t.Bitmap); err != nil {
 		return err
 	}
 	actionrollback.Register(ctx, func(ctx context.Context) error {
-		return devIntf.Remove()
+		return devIntf.Remove(ctx)
 	})
 	t.Log().Infof("md uuid is %s", dev.UUID())
 	if err := t.SetUUID(ctx, dev.UUID()); err != nil {
@@ -253,7 +253,7 @@ func (t *T) UnsetUUID(ctx context.Context) error {
 
 func (t *T) UnprovisionAsLeader(ctx context.Context) error {
 	dev := t.md()
-	exists, err := dev.Exists()
+	exists, err := dev.Exists(ctx)
 	if err != nil {
 		return err
 	}
@@ -265,7 +265,7 @@ func (t *T) UnprovisionAsLeader(ctx context.Context) error {
 	if !ok {
 		return fmt.Errorf("driver does not implement the provisioner interface")
 	}
-	if err := devIntf.Wipe(); err != nil {
+	if err := devIntf.Wipe(ctx); err != nil {
 		return err
 	}
 	if err := t.UnsetUUID(ctx); err != nil {
@@ -274,23 +274,25 @@ func (t *T) UnprovisionAsLeader(ctx context.Context) error {
 	return nil
 }
 
-func (t *T) Provisioned() (provisioned.T, error) {
-	v, err := t.exists()
+func (t *T) Provisioned(ctx context.Context) (provisioned.T, error) {
+	v, err := t.exists(ctx)
 	return provisioned.FromBool(v), err
 }
 
 func (t *T) ExposedDevices() device.L {
+	ctx := context.Background()
 	if t.UUID == "" {
 		return device.L{}
 	}
-	if v, err := t.isUp(); err == nil && v {
+	if v, err := t.isUp(ctx); err == nil && v {
 		return device.L{device.New("/dev/md/"+t.GetName(), device.WithLogger(t.Log()))}
 	}
 	return device.L{}
 }
 
 func (t *T) SubDevices() device.L {
-	if l, err := t.md().Devices(); err != nil {
+	ctx := context.Background()
+	if l, err := t.md().Devices(ctx); err != nil {
 		t.Log().Tracef("%s", err)
 		return device.L{}
 	} else {
@@ -315,10 +317,10 @@ func (t *T) Ingest(ctx context.Context) error {
 }
 
 func (t *T) Resync(ctx context.Context) error {
-	return t.md().Resync()
+	return t.md().Resync(ctx)
 }
 
-func (t *T) ToSync() []string {
+func (t *T) ToSync(ctx context.Context) []string {
 	if t.UUID == "" {
 		return []string{}
 	}

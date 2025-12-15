@@ -1,6 +1,7 @@
 package rescontainerkvm
 
 import (
+	"context"
 	"os/exec"
 
 	"github.com/opensvc/om3/v3/util/capabilities"
@@ -19,10 +20,11 @@ func capabilitiesScanner() ([]string, error) {
 	if _, err := exec.LookPath("virsh"); err == nil {
 		l = append(l, drvCap)
 	}
-	if isPartitionsCapable() {
+	ctx := context.Background()
+	if isPartitionsCapable(ctx) {
 		l = append(l, drvCap+".partitions")
 	}
-	if isHVMCapable() {
+	if isHVMCapable(ctx) {
 		l = append(l, drvCap+".hvm")
 	}
 	return l, nil

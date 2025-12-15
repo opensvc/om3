@@ -3,6 +3,7 @@
 package lvm2
 
 import (
+	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -70,21 +71,22 @@ func (t VG) FQN() string {
 	return t.VGName
 }
 
-func (t *VG) Activate() error {
-	return t.change([]string{"-ay"})
+func (t *VG) Activate(ctx context.Context) error {
+	return t.change(ctx, []string{"-ay"})
 }
 
-func (t *VG) Deactivate() error {
-	return t.change([]string{"-an"})
+func (t *VG) Deactivate(ctx context.Context) error {
+	return t.change(ctx, []string{"-an"})
 }
 
-func (t *VG) ImportDevices() error {
+func (t *VG) ImportDevices(ctx context.Context) error {
 	if v, err := file.ExistsAndRegular("/etc/lvm/devices/system.devices"); err != nil {
 		return err
 	} else if !v {
 		return nil
 	}
 	cmd := command.New(
+		command.WithContext(ctx),
 		command.WithName("vgimportdevices"),
 		command.WithVarArgs(t.VGName),
 		command.WithLogger(t.Log()),
@@ -104,8 +106,9 @@ func (t *VG) ImportDevices() error {
 	return nil
 }
 
-func (t *VG) change(args []string) error {
+func (t *VG) change(ctx context.Context, args []string) error {
 	cmd := command.New(
+		command.WithContext(ctx),
 		command.WithName("vgchange"),
 		command.WithArgs(append(args, t.VGName)),
 		command.WithLogger(t.Log()),
@@ -122,16 +125,17 @@ func (t *VG) change(args []string) error {
 	return nil
 }
 
-func (t *VG) AddNodeTag() error {
-	return t.AddTag("@" + hostname.Hostname())
+func (t *VG) AddNodeTag(ctx context.Context) error {
+	return t.AddTag(ctx, "@"+hostname.Hostname())
 }
 
-func (t *VG) DelNodeTag() error {
-	return t.DelTag("@" + hostname.Hostname())
+func (t *VG) DelNodeTag(ctx context.Context) error {
+	return t.DelTag(ctx, "@"+hostname.Hostname())
 }
 
-func (t *VG) DelTag(s string) error {
+func (t *VG) DelTag(ctx context.Context, s string) error {
 	cmd := command.New(
+		command.WithContext(ctx),
 		command.WithName("vgchange"),
 		command.WithVarArgs("--deltag", s, t.VGName),
 		command.WithLogger(t.Log()),
@@ -148,8 +152,9 @@ func (t *VG) DelTag(s string) error {
 	return nil
 }
 
-func (t *VG) AddTag(s string) error {
+func (t *VG) AddTag(ctx context.Context, s string) error {
 	cmd := command.New(
+		command.WithContext(ctx),
 		command.WithName("vgchange"),
 		command.WithVarArgs("--addtag", s, t.VGName),
 		command.WithLogger(t.Log()),
@@ -166,13 +171,14 @@ func (t *VG) AddTag(s string) error {
 	return nil
 }
 
-func (t *VG) CachedDevicesShow() (*VGInfo, error) {
+func (t *VG) CachedDevicesShow(ctx context.Context) (*VGInfo, error) {
 	var (
 		err error
 		out []byte
 	)
 	data := ShowData{}
 	cmd := command.New(
+		command.WithContext(ctx),
 		command.WithName("vgs"),
 		command.WithVarArgs("--reportformat", "json", "-o", "devices"),
 		command.WithLogger(t.Log()),
@@ -213,10 +219,11 @@ func (t *VG) CachedDevicesShow() (*VGInfo, error) {
 //	   ]}
 //	  ]
 //	}
-func (t *VG) CachedNormalShow() (l []VGInfo, err error) {
+func (t *VG) CachedNormalShow(ctx context.Context) (l []VGInfo, err error) {
 	var out []byte
 	data := ShowData{}
 	cmd := command.New(
+		command.WithContext(ctx),
 		command.WithName("vgs"),
 		command.WithVarArgs("--reportformat", "json", "-o", "+tags,pv_name"),
 		command.WithLogger(t.Log()),
@@ -246,9 +253,10 @@ func (t *VG) CachedNormalShow() (l []VGInfo, err error) {
 	return
 }
 
-func (t *VG) Show(fields string) (*VGInfo, error) {
+func (t *VG) Show(ctx context.Context, fields string) (*VGInfo, error) {
 	data := ShowData{}
 	cmd := command.New(
+		command.WithContext(ctx),
 		command.WithName("vgs"),
 		command.WithVarArgs("--reportformat", "json", "-o", fields, t.VGName),
 		command.WithLogger(t.Log()),
@@ -272,8 +280,8 @@ func (t *VG) Show(fields string) (*VGInfo, error) {
 	return nil, fmt.Errorf("%w: %s", ErrExist, t.VGName)
 }
 
-func (t *VG) Attrs() (VGAttrs, error) {
-	vgL, err := t.CachedNormalShow()
+func (t *VG) Attrs(ctx context.Context) (VGAttrs, error) {
+	vgL, err := t.CachedNormalShow(ctx)
 	switch {
 	case errors.Is(err, ErrExist):
 		return "", nil
@@ -287,8 +295,8 @@ func (t *VG) Attrs() (VGAttrs, error) {
 	}
 }
 
-func (t *VG) Tags() ([]string, error) {
-	vgL, err := t.CachedNormalShow()
+func (t *VG) Tags(ctx context.Context) ([]string, error) {
+	vgL, err := t.CachedNormalShow(ctx)
 	switch {
 	case errors.Is(err, ErrExist):
 		return []string{}, nil
@@ -302,8 +310,8 @@ func (t *VG) Tags() ([]string, error) {
 	}
 }
 
-func (t *VG) HasTag(s string) (bool, error) {
-	tags, err := t.Tags()
+func (t *VG) HasTag(ctx context.Context, s string) (bool, error) {
+	tags, err := t.Tags(ctx)
 	if err != nil {
 		return false, err
 	}
@@ -315,8 +323,8 @@ func (t *VG) HasTag(s string) (bool, error) {
 	return false, nil
 }
 
-func (t *VG) HasNodeTag() (bool, error) {
-	return t.HasTag(hostname.Hostname())
+func (t *VG) HasNodeTag(ctx context.Context) (bool, error) {
+	return t.HasTag(ctx, hostname.Hostname())
 }
 
 func (t VGAttrs) Attr(index VGAttrIndex) VGAttr {
@@ -326,8 +334,8 @@ func (t VGAttrs) Attr(index VGAttrIndex) VGAttr {
 	return VGAttr(t[index])
 }
 
-func (t *VG) Exists() (bool, error) {
-	_, err := t.CachedNormalShow()
+func (t *VG) Exists(ctx context.Context) (bool, error) {
+	_, err := t.CachedNormalShow(ctx)
 	switch {
 	case errors.Is(err, ErrExist):
 		return false, nil
@@ -338,9 +346,9 @@ func (t *VG) Exists() (bool, error) {
 	}
 }
 
-func (t *VG) IsActive() (bool, error) {
+func (t *VG) IsActive(ctx context.Context) (bool, error) {
 	/*
-		if attrs, err := t.Attrs(); err != nil {
+		if attrs, err := t.Attrs(ctx); err != nil {
 			return false, err
 		} else {
 			return attrs.Attr(VGAttrIndexState) == VGAttrStateActive, nil
@@ -349,9 +357,9 @@ func (t *VG) IsActive() (bool, error) {
 	return false, nil
 }
 
-func (t *VG) Devices() (device.L, error) {
+func (t *VG) Devices(ctx context.Context) (device.L, error) {
 	l := make(device.L, 0)
-	data, err := t.CachedDevicesShow()
+	data, err := t.CachedDevicesShow(ctx)
 	if err != nil {
 		return nil, err
 	}
@@ -363,7 +371,7 @@ func (t *VG) Devices() (device.L, error) {
 	return l, nil
 }
 
-func (t *VG) Create(size string, pvs []string, options []string) error {
+func (t *VG) Create(ctx context.Context, size string, pvs []string, options []string) error {
 	if i, err := sizeconv.FromSize(size); err == nil {
 		// default unit is not "B", explicitly tell
 		size = fmt.Sprintf("%dB", i)
@@ -374,6 +382,7 @@ func (t *VG) Create(size string, pvs []string, options []string) error {
 	args = append(args, options...)
 	args = append(args, "--yes")
 	cmd := command.New(
+		command.WithContext(ctx),
 		command.WithName("vgcreate"),
 		command.WithArgs(args),
 		command.WithLogger(t.Log()),
@@ -394,8 +403,9 @@ func (t *VG) Wipe() error {
 	return nil
 }
 
-func (t *VG) Remove(args []string) error {
+func (t *VG) Remove(ctx context.Context, args []string) error {
 	cmd := command.New(
+		command.WithContext(ctx),
 		command.WithName("vgremove"),
 		command.WithArgs(append(args, t.VGName)),
 		command.WithLogger(t.Log()),
@@ -412,9 +422,9 @@ func (t *VG) Remove(args []string) error {
 	return nil
 }
 
-func (t *VG) PVs() (device.L, error) {
+func (t *VG) PVs(ctx context.Context) (device.L, error) {
 	l := make(device.L, 0)
-	vgL, err := t.CachedNormalShow()
+	vgL, err := t.CachedNormalShow(ctx)
 	switch {
 	case errors.Is(err, ErrExist):
 		return l, nil

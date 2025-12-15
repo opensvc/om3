@@ -48,19 +48,19 @@ func (t *T) subDevsFilePath() string {
 	return filepath.Join(t.VarDir(), "sub_devs")
 }
 
-func (t *T) ToSync() []string {
+func (t *T) ToSync(ctx context.Context) []string {
 	return []string{
 		t.subDevsFilePath(),
 	}
 }
 
-func (t *T) PreSync() error {
-	_, err := t.updateSubDevsFile()
+func (t *T) PreSync(ctx context.Context) error {
+	_, err := t.updateSubDevsFile(ctx)
 	return err
 }
 
-func (t *T) updateSubDevsFile() ([]string, error) {
-	if v, err := t.hasIt(); err != nil {
+func (t *T) updateSubDevsFile(ctx context.Context) ([]string, error) {
+	if v, err := t.hasIt(ctx); err != nil {
 		return nil, err
 	} else if !v {
 		return nil, nil
@@ -112,8 +112,8 @@ func (t *T) loadSubDevsFile() ([]string, error) {
 	return l, nil
 }
 
-func (t *T) hasIt() (bool, error) {
-	return t.pool().Exists()
+func (t *T) hasIt(ctx context.Context) (bool, error) {
+	return t.pool().Exists(ctx)
 }
 
 func (t *T) poolListZDevs() ([]string, error) {
@@ -148,7 +148,7 @@ func (t *T) setMultihost() error {
 }
 
 func (t *T) Start(ctx context.Context) error {
-	if v, err := t.isUp(); err != nil {
+	if v, err := t.isUp(ctx); err != nil {
 		return err
 	} else if v {
 		t.Log().Infof("%s is already up", t.Label(ctx))
@@ -214,7 +214,7 @@ func (t *T) UnprovisionStop(ctx context.Context) error {
 }
 
 func (t *T) Stop(ctx context.Context) error {
-	if v, err := t.isUp(); err != nil {
+	if v, err := t.isUp(ctx); err != nil {
 		return err
 	} else if !v {
 		t.Log().Infof("%s is already down", t.Label(ctx))
@@ -226,9 +226,9 @@ func (t *T) Stop(ctx context.Context) error {
 	return nil
 }
 
-func (t *T) isUp() (bool, error) {
+func (t *T) isUp(ctx context.Context) (bool, error) {
 	pool := t.pool()
-	if v, err := t.hasIt(); err != nil {
+	if v, err := t.hasIt(ctx); err != nil {
 		return false, err
 	} else if !v {
 		return false, nil
@@ -249,7 +249,7 @@ func (t *T) isUp() (bool, error) {
 }
 
 func (t *T) Status(ctx context.Context) status.T {
-	if v, err := t.isUp(); err != nil {
+	if v, err := t.isUp(ctx); err != nil {
 		t.StatusLog().Error("%s", err)
 		return status.Undef
 	} else if v {
@@ -377,7 +377,7 @@ func (t *T) ProvisionAsLeader(ctx context.Context) error {
 }
 
 func (t *T) provision(ctx context.Context) error {
-	if v, err := t.hasIt(); err != nil {
+	if v, err := t.hasIt(ctx); err != nil {
 		return err
 	} else if v {
 		t.Log().Infof("%s is already provisioned", t.Name)
@@ -387,7 +387,7 @@ func (t *T) provision(ctx context.Context) error {
 }
 
 func (t *T) unprovision(ctx context.Context) error {
-	if v, err := t.hasIt(); err != nil {
+	if v, err := t.hasIt(ctx); err != nil {
 		return err
 	} else if !v {
 		if err := t.poolImportTryDevice(true); err != nil {
@@ -398,8 +398,8 @@ func (t *T) unprovision(ctx context.Context) error {
 	return t.poolDestroy()
 }
 
-func (t *T) Provisioned() (provisioned.T, error) {
-	if v, err := t.hasIt(); err != nil {
+func (t *T) Provisioned(ctx context.Context) (provisioned.T, error) {
+	if v, err := t.hasIt(ctx); err != nil {
 		return provisioned.Undef, err
 	} else {
 		return provisioned.FromBool(v), nil
@@ -415,7 +415,8 @@ func (t *T) ExposedDevices() device.L {
 }
 
 func (t *T) SubDevices() device.L {
-	if l, errUpd := t.updateSubDevsFile(); errUpd == nil && l != nil {
+	ctx := context.Background()
+	if l, errUpd := t.updateSubDevsFile(ctx); errUpd == nil && l != nil {
 		return t.toDevices(l)
 	} else if l, errLoad := t.loadSubDevsFile(); errLoad == nil {
 		t.Log().Tracef("update sub devs cache: %s", errUpd)

@@ -1,6 +1,7 @@
 package check
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"os"
@@ -12,7 +13,7 @@ import (
 type (
 	// Checker exposes what can be done with a check
 	Checker interface {
-		Check(objs []interface{}) (*ResultSet, error)
+		Check(ctx context.Context, objs []interface{}) (*ResultSet, error)
 	}
 
 	// T is the check type
@@ -54,8 +55,8 @@ func (r T) String() string {
 }
 
 // Check returns a result list
-func Check(r Checker, objs []interface{}) error {
-	data, err := r.Check(objs)
+func Check(ctx context.Context, r Checker, objs []interface{}) error {
+	data, err := r.Check(ctx, objs)
 	if err != nil {
 		_, _ = fmt.Fprintln(os.Stderr, err)
 		return err
@@ -67,7 +68,7 @@ func Check(r Checker, objs []interface{}) error {
 }
 
 // ObjectPathClaimingDir returns the first object using the directory
-func ObjectPathClaimingDir(p string, objs []interface{}) string {
+func ObjectPathClaimingDir(ctx context.Context, p string, objs []interface{}) string {
 	for _, obj := range objs {
 		h, ok := obj.(header)
 		if !ok {
@@ -87,7 +88,7 @@ func ObjectPathClaimingDir(p string, objs []interface{}) string {
 			if !ok {
 				continue
 			}
-			if v, err := r.Provisioned(); err != nil {
+			if v, err := r.Provisioned(ctx); err != nil {
 				continue
 			} else if v == provisioned.False {
 				continue

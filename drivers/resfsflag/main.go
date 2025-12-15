@@ -148,7 +148,7 @@ func (t *T) ProvisionAsLeader(ctx context.Context) error {
 	return nil
 }
 
-func (t *T) Provisioned() (provisioned.T, error) {
+func (t *T) Provisioned(ctx context.Context) (provisioned.T, error) {
 	return provisioned.NotApplicable, nil
 }
 

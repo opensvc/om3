@@ -171,7 +171,7 @@ func (t *T) unprovision(ctx context.Context) error {
 	return t.zvolDestroy()
 }
 
-func (t *T) Provisioned() (provisioned.T, error) {
+func (t *T) Provisioned(ctx context.Context) (provisioned.T, error) {
 	if v, err := t.hasIt(); err != nil {
 		return provisioned.Undef, err
 	} else {

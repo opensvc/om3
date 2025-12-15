@@ -167,7 +167,7 @@ func (t *T) UnprovisionAsLeader(ctx context.Context) error {
 	return lvi.Remove([]string{"-f"})
 }
 
-func (t *T) Provisioned() (provisioned.T, error) {
+func (t *T) Provisioned(ctx context.Context) (provisioned.T, error) {
 	v, err := t.exists()
 	return provisioned.FromBool(v), err
 }

@@ -1,6 +1,7 @@
 package check
 
 import (
+	"context"
 	"encoding/json"
 	"os"
 	"os/exec"
@@ -51,13 +52,13 @@ func RunnerWithObjects(objs ...interface{}) funcopt.O {
 
 // Do runs the check drivers, aggregates results and format
 // the output.
-func (r Runner) Do(opts ...funcopt.O) *ResultSet {
+func (r Runner) Do(ctx context.Context, opts ...funcopt.O) *ResultSet {
 	rs := NewResultSet()
 	for _, path := range r.customCheckPaths {
-		go r.doCustomCheck(path)
+		go r.doCustomCheck(ctx, path)
 	}
 	for _, c := range checkers {
-		go r.doRegisteredCheck(c)
+		go r.doRegisteredCheck(ctx, c)
 	}
 	for range r.customCheckPaths {
 		d := <-r.q
@@ -75,8 +76,8 @@ func (r Runner) Do(opts ...funcopt.O) *ResultSet {
 	return rs
 }
 
-func (r *Runner) doRegisteredCheck(c Checker) {
-	rs, err := c.Check(r.objects)
+func (r *Runner) doRegisteredCheck(ctx context.Context, c Checker) {
+	rs, err := c.Check(ctx, r.objects)
 	if err != nil {
 		log.Error().Err(err).Msg("execution")
 		r.q <- rs
@@ -89,9 +90,9 @@ func (r *Runner) doRegisteredCheck(c Checker) {
 	r.q <- rs
 }
 
-func (r *Runner) doCustomCheck(path string) {
+func (r *Runner) doCustomCheck(ctx context.Context, path string) {
 	rs := NewResultSet()
-	cmd := ExecCommand(path)
+	cmd := exec.CommandContext(ctx, path)
 	cmd.Stderr = os.Stderr
 	b, err := cmd.Output()
 	if err != nil {

@@ -3,6 +3,8 @@
 package poolzpool
 
 import (
+	"context"
+
 	"github.com/opensvc/om3/v3/core/driver"
 	"github.com/opensvc/om3/v3/core/pool"
 	"github.com/opensvc/om3/v3/util/sizeconv"
@@ -46,10 +48,10 @@ func (t T) Capabilities() []string {
 	return []string{"rox", "rwx", "roo", "rwo", "snap", "blk"}
 }
 
-func (t T) Usage() (pool.Usage, error) {
+func (t T) Usage(ctx context.Context) (pool.Usage, error) {
 	poolName := t.poolName()
 	zpool := zfs.Pool{Name: poolName}
-	e, err := zpool.Usage()
+	e, err := zpool.Usage(ctx)
 	if err != nil {
 		return pool.Usage{}, err
 	}

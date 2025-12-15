@@ -156,12 +156,13 @@ func (t *T) sec() (object.Sec, error) {
 	return v, nil
 }
 
-func (t *T) exists() (bool, error) {
+func (t *T) exists(ctx context.Context) (bool, error) {
 	dev := t.getDev()
 	if dev == "" {
 		return false, nil
 	}
 	cmd := command.New(
+		command.WithContext(ctx),
 		command.WithName(cryptsetup),
 		command.WithVarArgs("isLuks", dev),
 		command.WithIgnoredExitCodes(0, 1, 4),
@@ -175,8 +176,8 @@ func (t *T) exists() (bool, error) {
 	return true, nil
 }
 
-func (t *T) isUp() (bool, error) {
-	if v, err := t.exists(); err != nil {
+func (t *T) isUp(ctx context.Context) (bool, error) {
+	if v, err := t.exists(ctx); err != nil {
 		return false, err
 	} else if !v {
 		return false, nil
@@ -188,7 +189,7 @@ func (t *T) isUp() (bool, error) {
 	return file.Exists(dev.String()), nil
 }
 
-func (t *T) activate() error {
+func (t *T) activate(ctx context.Context) error {
 	devp := t.getDev()
 	if devp == "" {
 		return fmt.Errorf("abort luksOpen: no dev")
@@ -202,6 +203,7 @@ func (t *T) activate() error {
 		return err
 	}
 	cmd := command.New(
+		command.WithContext(ctx),
 		command.WithName(cryptsetup),
 		command.WithVarArgs("luksOpen", devp, name, "-"),
 		command.WithLogger(t.Log()),
@@ -231,7 +233,7 @@ func (t *T) activate() error {
 	return nil
 }
 
-func (t *T) deactivate(force bool) error {
+func (t *T) deactivate(ctx context.Context, force bool) error {
 	name := t.getName()
 	if name == "" {
 		return nil
@@ -244,6 +246,7 @@ func (t *T) deactivate(force bool) error {
 		return err
 	}
 	cmd := command.New(
+		command.WithContext(ctx),
 		command.WithName(cryptsetup),
 		command.WithVarArgs("luksClose", dev.String(), name),
 		command.WithLogger(t.Log()),
@@ -261,17 +264,17 @@ func (t *T) deactivate(force bool) error {
 }
 
 func (t *T) Start(ctx context.Context) error {
-	if v, err := t.isUp(); err != nil {
+	if v, err := t.isUp(ctx); err != nil {
 		return err
 	} else if v {
 		t.Log().Infof("%s is already up", t.exposedDevpath())
 		return nil
 	}
-	if err := t.activate(); err != nil {
+	if err := t.activate(ctx); err != nil {
 		return err
 	}
 	actionrollback.Register(ctx, func(ctx context.Context) error {
-		return t.deactivate(true)
+		return t.deactivate(ctx, true)
 	})
 	return nil
 }
@@ -287,7 +290,7 @@ func (t *T) Stop(ctx context.Context) error {
 	}
 	udevadm.Settle()
 	force := actioncontext.IsForce(ctx)
-	return t.deactivate(force)
+	return t.deactivate(ctx, force)
 }
 
 func (t *T) removeHolders() error {
@@ -307,7 +310,7 @@ func (t *T) getName() string {
 }
 
 func (t *T) Status(ctx context.Context) status.T {
-	if v, err := t.isUp(); err != nil {
+	if v, err := t.isUp(ctx); err != nil {
 		t.StatusLog().Error("%s", err)
 		return status.Undef
 	} else if v {
@@ -335,7 +338,7 @@ func (t *T) ProvisionAsLeader(ctx context.Context) error {
 		b   []byte
 		err error
 	)
-	if v, err := t.exists(); err != nil {
+	if v, err := t.exists(ctx); err != nil {
 		return err
 	} else if v {
 		t.Log().Infof("%s is already luks formatted", dev)
@@ -362,6 +365,7 @@ func (t *T) ProvisionAsLeader(ctx context.Context) error {
 	}
 	args = append(args, dev, "-")
 	cmd := command.New(
+		command.WithContext(ctx),
 		command.WithName(cryptsetup),
 		command.WithArgs(args),
 		command.WithLogger(t.Log()),
@@ -396,21 +400,22 @@ func (t *T) UnprovisionAsLeader(ctx context.Context) error {
 	if dev == "" {
 		return nil
 	}
-	if v, err := t.exists(); err != nil {
+	if v, err := t.exists(ctx); err != nil {
 		return err
 	} else if !v {
 		t.Log().Infof("%s already erased", dev)
 		return nil
 	}
-	if err := t.erase(dev); err != nil {
+	if err := t.erase(ctx, dev); err != nil {
 		return err
 	}
 	t.forgetPassphrase()
 	return nil
 }
 
-func (t *T) erase(dev string) error {
+func (t *T) erase(ctx context.Context, dev string) error {
 	cmd := command.New(
+		command.WithContext(ctx),
 		command.WithName(cryptsetup),
 		command.WithVarArgs("luksErase", "--batch-mode", dev),
 		command.WithLogger(t.Log()),
@@ -428,8 +433,8 @@ func (t *T) erase(dev string) error {
 	return nil
 }
 
-func (t *T) Provisioned() (provisioned.T, error) {
-	v, err := t.exists()
+func (t *T) Provisioned(ctx context.Context) (provisioned.T, error) {
+	v, err := t.exists(ctx)
 	return provisioned.FromBool(v), err
 }
 

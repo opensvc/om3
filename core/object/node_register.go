@@ -2,6 +2,7 @@ package object
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -48,7 +49,7 @@ type (
 //
 // If app is not set, the node is added to any app under the user's
 // responsibility.
-func (t Node) Register(user, password, app string) error {
+func (t Node) Register(ctx context.Context, user, password, app string) error {
 	if err := t.register(user, password, app); err != nil {
 		return err
 	}
@@ -57,7 +58,7 @@ func (t Node) Register(user, password, app string) error {
 	} else {
 		t.Log().Infof("sent initial asset discovery")
 	}
-	if data, err := t.Checks(); err != nil {
+	if data, err := t.Checks(ctx); err != nil {
 		return err
 	} else {
 		t.Log().Infof("sent initial checks (%d)", data.Len())

@@ -490,7 +490,7 @@ func (t *BT) Provision(_ context.Context) error {
 	return nil
 }
 
-func (t *BT) Provisioned() (provisioned.T, error) {
+func (t *BT) Provisioned(ctx context.Context) (provisioned.T, error) {
 	return provisioned.NotApplicable, nil
 }
 

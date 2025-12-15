@@ -2,6 +2,7 @@ package md
 
 import (
 	"bufio"
+	"context"
 	"fmt"
 	"math"
 	"os"
@@ -47,8 +48,8 @@ func WithLogger(log *plog.Logger) funcopt.O {
 	})
 }
 
-func (t T) detailState() (string, error) {
-	buff, err := t.detail()
+func (t T) detailState(ctx context.Context) (string, error) {
+	buff, err := t.detail(ctx)
 	if err != nil {
 		return "", nil
 	}
@@ -64,8 +65,8 @@ func (t T) detailState() (string, error) {
 	return "", fmt.Errorf("md state not found in details")
 }
 
-func (t T) detailUUID() (string, error) {
-	buff, err := t.detail()
+func (t T) detailUUID(ctx context.Context) (string, error) {
+	buff, err := t.detail(ctx)
 	if err != nil {
 		return "", nil
 	}
@@ -84,8 +85,9 @@ func (t T) detailUUID() (string, error) {
 	return "", fmt.Errorf("md uuid not found in details")
 }
 
-func (t T) detail() (string, error) {
+func (t T) detail(ctx context.Context) (string, error) {
 	cmd := command.New(
+		command.WithContext(ctx),
 		command.WithName(mdadm),
 		command.WithVarArgs("--detail", t.devpathFromName()),
 		command.WithLogger(t.log),
@@ -101,8 +103,9 @@ func (t T) detail() (string, error) {
 	}
 }
 
-func (t T) examineScanVerbose() (string, error) {
+func (t T) examineScanVerbose(ctx context.Context) (string, error) {
 	cmd := command.New(
+		command.WithContext(ctx),
 		command.WithName(mdadm),
 		command.WithVarArgs("-E", "--scan", "-v"),
 		command.WithLogger(t.log),
@@ -118,8 +121,8 @@ func (t T) examineScanVerbose() (string, error) {
 	}
 }
 
-func (t T) Resync() error {
-	buff, err := t.detail()
+func (t T) Resync(ctx context.Context) error {
+	buff, err := t.detail(ctx)
 	if err != nil {
 		return err
 	}
@@ -133,7 +136,7 @@ func (t T) Resync() error {
 		t.log.Infof("skip: non-raid1 md")
 		return nil
 	}
-	v, _, err := t.IsActive()
+	v, _, err := t.IsActive(ctx)
 	if err != nil {
 		return err
 	}
@@ -147,7 +150,7 @@ func (t T) Resync() error {
 		if strings.Contains(line, "faulty") {
 			l := strings.Fields(line)
 			faultyDev := l[len(l)-1]
-			if err := t.reAdd(faultyDev); err != nil {
+			if err := t.reAdd(ctx, faultyDev); err != nil {
 				return err
 			}
 			added = added + 1
@@ -159,28 +162,28 @@ func (t T) Resync() error {
 	return nil
 }
 
-func (t T) Wipe() error {
-	devs, err := t.Devices()
+func (t T) Wipe(ctx context.Context) error {
+	devs, err := t.Devices(ctx)
 	if err != nil {
 		return err
 	}
 	for _, d := range devs {
-		if err := t.wipeDevice(d.Path()); err != nil {
+		if err := t.wipeDevice(ctx, d.Path()); err != nil {
 			return err
 		}
 	}
 	return nil
 }
 
-func (t T) Remove() error {
+func (t T) Remove(ctx context.Context) error {
 	return nil
 }
 
-func (t T) IsActive() (bool, string, error) {
-	if v, err := t.Exists(); !v {
+func (t T) IsActive(ctx context.Context) (bool, string, error) {
+	if v, err := t.Exists(ctx); !v {
 		return false, "", err
 	}
-	s, err := t.detailState()
+	s, err := t.detailState(ctx)
 	if err != nil {
 		return false, "", err
 	}
@@ -212,8 +215,8 @@ func (t T) IsActive() (bool, string, error) {
 	return true, msg, nil
 }
 
-func (t T) Exists() (bool, error) {
-	buff, err := t.examineScanVerbose()
+func (t T) Exists(ctx context.Context) (bool, error) {
+	buff, err := t.examineScanVerbose(ctx)
 	if err != nil {
 		return false, err
 	}
@@ -226,12 +229,12 @@ func (t T) Exists() (bool, error) {
 	return false, nil
 }
 
-func (t T) Devices() (device.L, error) {
+func (t T) Devices(ctx context.Context) (device.L, error) {
 	l := make(device.L, 0)
 	if t.uuid == "" {
 		return l, nil
 	}
-	buff, err := t.examineScanVerbose()
+	buff, err := t.examineScanVerbose(ctx)
 	if err != nil {
 		return l, nil
 	}
@@ -261,9 +264,10 @@ func (t T) UUID() string {
 	return t.uuid
 }
 
-func (t T) reAdd(devpath string) error {
+func (t T) reAdd(ctx context.Context, devpath string) error {
 	args := []string{"--re-add", t.devpathFromUUID(), devpath}
 	cmd := command.New(
+		command.WithContext(ctx),
 		command.WithName(mdadm),
 		command.WithArgs(args),
 		command.WithLogger(t.log),
@@ -282,9 +286,10 @@ func (t T) reAdd(devpath string) error {
 	return nil
 }
 
-func (t T) wipeDevice(devpath string) error {
+func (t T) wipeDevice(ctx context.Context, devpath string) error {
 	args := []string{"--brief", "--zero-superblock", devpath}
 	cmd := command.New(
+		command.WithContext(ctx),
 		command.WithName(mdadm),
 		command.WithArgs(args),
 		command.WithLogger(t.log),
@@ -303,7 +308,7 @@ func (t T) wipeDevice(devpath string) error {
 	return nil
 }
 
-func (t T) Deactivate() error {
+func (t T) Deactivate(ctx context.Context) error {
 	if t.name == "" {
 		return fmt.Errorf("name is required")
 	}
@@ -317,6 +322,7 @@ func (t T) Deactivate() error {
 	}
 	args := []string{"--stop", t.devpathFromName()}
 	cmd := command.New(
+		command.WithContext(ctx),
 		command.WithName(mdadm),
 		command.WithArgs(args),
 		command.WithLogger(t.log),
@@ -335,7 +341,7 @@ func (t T) Deactivate() error {
 	return nil
 }
 
-func (t T) Activate() error {
+func (t T) Activate(ctx context.Context) error {
 	if t.name == "" {
 		return fmt.Errorf("name is required")
 	}
@@ -349,6 +355,7 @@ func (t T) Activate() error {
 	}
 	args := []string{"--assemble", t.devpathFromName(), "-u", t.uuid}
 	cmd := command.New(
+		command.WithContext(ctx),
 		command.WithName(mdadm),
 		command.WithArgs(args),
 		command.WithLogger(t.log),
@@ -385,7 +392,7 @@ func (t T) devpathFromName() string {
 	return "/dev/md/" + t.name
 }
 
-func (t *T) Create(level string, devs []string, spares int, layout string, chunk *int64, bitmap string) error {
+func (t *T) Create(ctx context.Context, level string, devs []string, spares int, layout string, chunk *int64, bitmap string) error {
 	dataDevsCount := len(devs) - spares
 	if dataDevsCount < 1 {
 		return fmt.Errorf("at least 1 device must be set in the 'devs' provisioning")
@@ -415,6 +422,7 @@ func (t *T) Create(level string, devs []string, spares int, layout string, chunk
 	args = append(args, devs...)
 
 	cmd := command.New(
+		command.WithContext(ctx),
 		command.WithName(mdadm),
 		command.WithArgs(args),
 		command.WithLogger(t.log),
@@ -427,7 +435,7 @@ func (t *T) Create(level string, devs []string, spares int, layout string, chunk
 	if cmd.ExitCode() != 0 {
 		return fmt.Errorf("%s error %d", cmd, cmd.ExitCode())
 	}
-	if uuid, err := t.detailUUID(); err != nil {
+	if uuid, err := t.detailUUID(ctx); err != nil {
 		return err
 	} else {
 		t.uuid = uuid

@@ -3,6 +3,7 @@
 package poolpure
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"strings"
@@ -73,12 +74,12 @@ func (t T) Capabilities() []string {
 	return []string{"rox", "rwx", "roo", "rwo", "blk", "fc", "shared"}
 }
 
-func (t T) Usage() (pool.Usage, error) {
+func (t T) Usage(ctx context.Context) (pool.Usage, error) {
 	usage := pool.Usage{
 		Shared: true,
 	}
 	a := t.array()
-	data, err := a.GetArrays(arraypure.OptGetItems{})
+	data, err := a.GetArrays(ctx, arraypure.OptGetItems{})
 	if err != nil {
 		return usage, err
 	}
@@ -119,13 +120,13 @@ func (t *T) BlkTranslate(name string, size int64, shared bool) ([]string, error)
 	return data, nil
 }
 
-func (t *T) GetTargets() (san.Targets, error) {
+func (t *T) GetTargets(ctx context.Context) (san.Targets, error) {
 	ports := make(san.Targets, 0)
 	a := t.array()
 	opt := arraypure.OptGetItems{
 		Filter: "services='scsi-fc' and enabled='true'",
 	}
-	data, err := a.GetNetworkInterfaces(opt)
+	data, err := a.GetNetworkInterfaces(ctx, opt)
 	if err != nil {
 		return nil, err
 	}
@@ -138,14 +139,14 @@ func (t *T) GetTargets() (san.Targets, error) {
 	return ports, nil
 }
 
-func (t *T) DeleteDisk(name, wwid string) ([]pool.Disk, error) {
+func (t *T) DeleteDisk(ctx context.Context, name, wwid string) ([]pool.Disk, error) {
 	if len(wwid) != 32 {
 		return nil, fmt.Errorf("delete disk: can not fetch serial from wwid: %s", wwid)
 	}
 	serial := wwid[8:]
 	poolDisk := pool.Disk{}
 	a := t.array()
-	arrayDisk, err := a.DelDisk(arraypure.OptDelDisk{
+	arrayDisk, err := a.DelDisk(ctx, arraypure.OptDelDisk{
 		Volume: arraypure.OptVolume{
 			Serial: serial,
 		},
@@ -159,9 +160,9 @@ func (t *T) DeleteDisk(name, wwid string) ([]pool.Disk, error) {
 	return []pool.Disk{poolDisk}, nil
 }
 
-func (t *T) CreateDisk(name string, size int64, nodenames []string) ([]pool.Disk, error) {
+func (t *T) CreateDisk(ctx context.Context, name string, size int64, nodenames []string) ([]pool.Disk, error) {
 	poolDisk := pool.Disk{}
-	paths, err := pool.GetPaths(t, nodenames, san.FC)
+	paths, err := pool.GetPaths(ctx, t, nodenames, san.FC)
 	if err != nil {
 		return []pool.Disk{}, err
 	}
@@ -177,7 +178,7 @@ func (t *T) CreateDisk(name string, size int64, nodenames []string) ([]pool.Disk
 	} else if vg != "" {
 		name = vg + "/" + name
 	}
-	arrayDisk, err := a.AddDisk(arraypure.OptAddDisk{
+	arrayDisk, err := a.AddDisk(ctx, arraypure.OptAddDisk{
 		Name:     name,
 		Size:     drvSize,
 		Mappings: paths.MappingList(),
