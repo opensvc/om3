@@ -65,7 +65,7 @@ func (t *T) updateSubDevsFile(ctx context.Context) ([]string, error) {
 	} else if !v {
 		return nil, nil
 	}
-	l, err := t.pool().VDevPaths()
+	l, err := t.pool().VDevPaths(ctx)
 	if err != nil {
 		return nil, fmt.Errorf("update sub devs cache: %w", err)
 	}
@@ -116,8 +116,8 @@ func (t *T) hasIt(ctx context.Context) (bool, error) {
 	return t.pool().Exists(ctx)
 }
 
-func (t *T) poolListZDevs() ([]string, error) {
-	if zvols, err := t.pool().ListVolumes(); err != nil {
+func (t *T) poolListZDevs(ctx context.Context) ([]string, error) {
+	if zvols, err := t.pool().ListVolumes(ctx); err != nil {
 		return nil, err
 	} else {
 		return zvols.Paths(), nil
@@ -233,7 +233,7 @@ func (t *T) isUp(ctx context.Context) (bool, error) {
 	} else if !v {
 		return false, nil
 	}
-	data, err := pool.Status(zfs.PoolStatusWithVerbose())
+	data, err := pool.Status(ctx, zfs.PoolStatusWithVerbose())
 	if err != nil {
 		return false, err
 	}
@@ -406,16 +406,15 @@ func (t *T) Provisioned(ctx context.Context) (provisioned.T, error) {
 	}
 }
 
-func (t *T) ExposedDevices() device.L {
-	if l, err := t.poolListZDevs(); err == nil {
+func (t *T) ExposedDevices(ctx context.Context) device.L {
+	if l, err := t.poolListZDevs(ctx); err == nil {
 		return t.toDevices(l)
 	} else {
 		return device.L{}
 	}
 }
 
-func (t *T) SubDevices() device.L {
-	ctx := context.Background()
+func (t *T) SubDevices(ctx context.Context) device.L {
 	if l, errUpd := t.updateSubDevsFile(ctx); errUpd == nil && l != nil {
 		return t.toDevices(l)
 	} else if l, errLoad := t.loadSubDevsFile(); errLoad == nil {
@@ -427,8 +426,8 @@ func (t *T) SubDevices() device.L {
 	}
 }
 
-func (t *T) ReservableDevices() device.L {
-	return t.SubDevices()
+func (t *T) ReservableDevices(ctx context.Context) device.L {
+	return t.SubDevices(ctx)
 }
 
 func (t *T) toDevices(l []string) device.L {

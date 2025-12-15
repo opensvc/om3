@@ -118,7 +118,7 @@ func (t *T) Stop(ctx context.Context) error {
 		t.Log().Infof("%s is already down", t.Label(ctx))
 		return nil
 	}
-	if err := t.removeHolders(); err != nil {
+	if err := t.removeHolders(ctx); err != nil {
 		return err
 	}
 	udevadm.Settle()
@@ -137,9 +137,9 @@ func (t *T) isUp(ctx context.Context) (bool, error) {
 	return active, err
 }
 
-func (t *T) removeHolders() error {
-	for _, dev := range t.ExposedDevices() {
-		if err := dev.RemoveHolders(); err != nil {
+func (t *T) removeHolders(ctx context.Context) error {
+	for _, dev := range t.ExposedDevices(ctx) {
+		if err := dev.RemoveHolders(ctx); err != nil {
 			return nil
 		}
 	}
@@ -160,7 +160,7 @@ func (t *T) Status(ctx context.Context) status.T {
 		t.StatusLog().Warn("auto-assemble is not disabled")
 	}
 	if v {
-		if err := t.dumpCacheFile(); err != nil {
+		if err := t.dumpCacheFile(ctx); err != nil {
 			t.StatusLog().Warn("dump disks cache: %s", err)
 		}
 		return status.Up
@@ -279,8 +279,7 @@ func (t *T) Provisioned(ctx context.Context) (provisioned.T, error) {
 	return provisioned.FromBool(v), err
 }
 
-func (t *T) ExposedDevices() device.L {
-	ctx := context.Background()
+func (t *T) ExposedDevices(ctx context.Context) device.L {
 	if t.UUID == "" {
 		return device.L{}
 	}
@@ -290,8 +289,7 @@ func (t *T) ExposedDevices() device.L {
 	return device.L{}
 }
 
-func (t *T) SubDevices() device.L {
-	ctx := context.Background()
+func (t *T) SubDevices(ctx context.Context) device.L {
 	if l, err := t.md().Devices(ctx); err != nil {
 		t.Log().Tracef("%s", err)
 		return device.L{}
@@ -300,12 +298,12 @@ func (t *T) SubDevices() device.L {
 	}
 }
 
-func (t *T) ReservableDevices() device.L {
-	return t.SubDevices()
+func (t *T) ReservableDevices(ctx context.Context) device.L {
+	return t.SubDevices(ctx)
 }
 
-func (t *T) ClaimedDevices() device.L {
-	return t.SubDevices()
+func (t *T) ClaimedDevices(ctx context.Context) device.L {
+	return t.SubDevices(ctx)
 }
 
 func (t *T) Boot(ctx context.Context) error {
@@ -334,10 +332,10 @@ func (t *T) cacheFile() string {
 	return filepath.Join(t.VarDir(), "disks")
 }
 
-func (t *T) dumpCacheFile() error {
+func (t *T) dumpCacheFile(ctx context.Context) error {
 	p := t.cacheFile()
 	dids := make([]string, 0)
-	for _, dev := range t.SubDevices() {
+	for _, dev := range t.SubDevices(ctx) {
 		if did, err := dev.WWID(); did != "" && err == nil {
 			dids = append(dids, did)
 		}

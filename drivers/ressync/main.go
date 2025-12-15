@@ -112,7 +112,7 @@ func (t *T) StatusLastSync(nodenames []string) status.T {
 	return state
 }
 
-func (t *T) WritePeerLastSync(peer string, peers []string) error {
+func (t *T) WritePeerLastSync(ctx context.Context, peer string, peers []string) error {
 	head := t.GetObjectDriver().VarDir()
 	lastSyncFile := t.lastSyncFile(peer)
 	lastSyncFileSrc := t.lastSyncFile(hostname.Hostname())
@@ -139,7 +139,6 @@ func (t *T) WritePeerLastSync(peer string, peers []string) error {
 			return err
 		}
 		defer file.Close()
-		ctx := context.Background()
 		response, err := c.PostInstanceStateFileWithBody(ctx, nodename, t.Path.Namespace, t.Path.Kind, t.Path.Name, "application/octet-stream", file, func(ctx context.Context, req *http.Request) error {
 			req.Header.Add(api.HeaderRelativePath, filename[len(head):])
 			return nil

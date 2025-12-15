@@ -285,7 +285,7 @@ func (t *T) Stop(ctx context.Context) error {
 		t.Log().Infof("%s is already down", devPath)
 		return nil
 	}
-	if err := t.removeHolders(); err != nil {
+	if err := t.removeHolders(ctx); err != nil {
 		return err
 	}
 	udevadm.Settle()
@@ -293,8 +293,8 @@ func (t *T) Stop(ctx context.Context) error {
 	return t.deactivate(ctx, force)
 }
 
-func (t *T) removeHolders() error {
-	return t.exposedDevice().RemoveHolders()
+func (t *T) removeHolders(ctx context.Context) error {
+	return t.exposedDevice().RemoveHolders(ctx)
 }
 
 func (t *T) getDev() string {
@@ -455,7 +455,7 @@ func (t *T) exposedDevice() *device.T {
 	return &dev
 }
 
-func (t *T) ExposedDevices() device.L {
+func (t *T) ExposedDevices(ctx context.Context) device.L {
 	dev := t.exposedDevice()
 	if dev == nil {
 		return device.L{}
@@ -463,11 +463,11 @@ func (t *T) ExposedDevices() device.L {
 	return device.L{*dev}
 }
 
-func (t *T) ReservableDevices() device.L {
-	return t.SubDevices()
+func (t *T) ReservableDevices(ctx context.Context) device.L {
+	return t.SubDevices(ctx)
 }
 
-func (t *T) SubDevices() device.L {
+func (t *T) SubDevices(ctx context.Context) device.L {
 	devp := t.getDev()
 	if devp == "" {
 		return device.L{}

@@ -161,7 +161,7 @@ type (
 	// to handle SCSI persistent reservation on a list of devices.
 	devReservabler interface {
 		// ReservableDevices must be implement by every driver that wants SCSI PR.
-		ReservableDevices() device.L
+		ReservableDevices(context.Context) device.L
 
 		// IsSCSIPersistentReservationPreemptAbortDisabled is exposing the resource no_preempt_abort keyword value.
 		IsSCSIPersistentReservationPreemptAbortDisabled() bool
@@ -1171,7 +1171,7 @@ func newSCSIPersistentRerservationHandle(ctx context.Context, r Driver) *scsi.Pe
 	}
 	hdl := scsi.PersistentReservationHandle{
 		Key:            o.PersistentReservationKey(),
-		Devices:        o.ReservableDevices(),
+		Devices:        o.ReservableDevices(ctx),
 		NoPreemptAbort: o.IsSCSIPersistentReservationPreemptAbortDisabled(),
 		Force:          actioncontext.IsForce(ctx) || env.HasDaemonMonitorOrigin(),
 		Log:            r.Log(),

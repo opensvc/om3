@@ -128,7 +128,7 @@ func (t *T) startCgroup() error {
 }
 
 func (t *T) Start(ctx context.Context) error {
-	if v, err := t.isUp(); err != nil {
+	if v, err := t.isUp(ctx); err != nil {
 		return err
 	} else if v {
 		t.Log().Infof("container %s is already up", t.Name)
@@ -137,7 +137,7 @@ func (t *T) Start(ctx context.Context) error {
 	if err := t.startCgroup(); err != nil {
 		return err
 	}
-	if err := t.installCF(); err != nil {
+	if err := t.installCF(ctx); err != nil {
 		return err
 	}
 	if err := t.start(ctx); err != nil {
@@ -150,13 +150,13 @@ func (t *T) Start(ctx context.Context) error {
 }
 
 func (t *T) Stop(ctx context.Context) error {
-	if v, err := t.isUp(); err != nil {
+	if v, err := t.isUp(ctx); err != nil {
 		return err
 	} else if !v {
 		t.Log().Infof("container %s is already down", t.Name)
 		return nil
 	}
-	links := t.getLinks()
+	links := t.getLinks(ctx)
 	if err := t.stopOrKill(ctx); err != nil {
 		return err
 	}
@@ -194,7 +194,7 @@ func (t *T) Status(ctx context.Context) status.T {
 			return status.NotApplicable
 		}
 	*/
-	if v, err := t.isUp(); err != nil {
+	if v, err := t.isUp(ctx); err != nil {
 		t.StatusLog().Error("%s", err)
 		return status.Undef
 	} else if v {
@@ -210,25 +210,25 @@ func (t *T) Label(_ context.Context) string {
 }
 
 func (t *T) UnprovisionAsLeader(ctx context.Context) error {
-	return t.unprovision()
+	return t.unprovision(ctx)
 }
 
 func (t *T) UnprovisionAsFollower(ctx context.Context) error {
-	return t.unprovision()
+	return t.unprovision(ctx)
 }
 
-func (t *T) unprovision() error {
-	if err := t.purgeLxcVar(); err != nil {
+func (t *T) unprovision(ctx context.Context) error {
+	if err := t.purgeLxcVar(ctx); err != nil {
 		return err
 	}
-	if err := t.purgeConfigFile(); err != nil {
+	if err := t.purgeConfigFile(ctx); err != nil {
 		return err
 	}
 	return nil
 }
 
-func (t *T) purgeConfigFile() error {
-	p, err := t.configFile()
+func (t *T) purgeConfigFile(ctx context.Context) error {
+	p, err := t.configFile(ctx)
 	if err != nil {
 		return err
 	}
@@ -242,8 +242,8 @@ func (t *T) purgeConfigFile() error {
 	return nil
 }
 
-func (t *T) purgeLxcVar() error {
-	p := t.lxcPath()
+func (t *T) purgeLxcVar(ctx context.Context) error {
+	p := t.lxcPath(ctx)
 	if p == "" {
 		t.Log().Tracef("purgeLxcVar: lxcPath() is empty. consider we have nothing to purge.")
 		return nil
@@ -265,12 +265,12 @@ func (t *T) purgeLxcVar() error {
 }
 
 func (t *T) ProvisionAsLeader(ctx context.Context) error {
-	if t.exists() {
+	if t.exists(ctx) {
 		t.Log().Infof("container %s is already created", t.Name)
 		return nil
 	}
 	args := []string{"--name", t.Name}
-	rootDir, err := t.rootDir()
+	rootDir, err := t.rootDir(ctx)
 	if err == nil {
 		if !file.Exists(rootDir) {
 			if err := os.MkdirAll(rootDir, 0755); err != nil {
@@ -279,11 +279,11 @@ func (t *T) ProvisionAsLeader(ctx context.Context) error {
 		}
 		args = append(args, "--dir", rootDir)
 	}
-	cf, err := t.configFile()
+	cf, err := t.configFile(ctx)
 	if err == nil && cf != "" && file.Exists(cf) {
 		args = append(args, "-f", cf)
 	}
-	dataDir, err := t.dataDir()
+	dataDir, err := t.dataDir(ctx)
 	if err == nil && dataDir != "" {
 		args = append(args, "-P", dataDir)
 		if cf == "" {
@@ -381,8 +381,8 @@ func (t *T) Signal(ctx context.Context, sig syscall.Signal) error {
 	return syscall.Kill(pid, sig)
 }
 
-func (t *T) copyFrom(src, dst string) error {
-	rootDir, err := t.rootDir()
+func (t *T) copyFrom(ctx context.Context, src, dst string) error {
+	rootDir, err := t.rootDir(ctx)
 	if err != nil {
 		return err
 	}
@@ -390,8 +390,8 @@ func (t *T) copyFrom(src, dst string) error {
 	return file.Copy(src, dst)
 }
 
-func (t *T) copyTo(src, dst string) error {
-	rootDir, err := t.rootDir()
+func (t *T) copyTo(ctx context.Context, src, dst string) error {
+	rootDir, err := t.rootDir(ctx)
 	if err != nil {
 		return err
 	}
@@ -399,7 +399,7 @@ func (t *T) copyTo(src, dst string) error {
 	return file.Copy(src, dst)
 }
 
-func (t *T) rcmd(envs []string) ([]string, error) {
+func (t *T) rcmd(ctx context.Context, envs []string) ([]string, error) {
 	var args []string
 	if len(t.RCmd) > 0 {
 		args = t.RCmd
@@ -411,7 +411,7 @@ func (t *T) rcmd(envs []string) ([]string, error) {
 
 	hasPIDNS := file.Exists("/proc/1/ns/pid")
 	if exe, err := exec.LookPath("lxc-attach"); err == nil && hasPIDNS {
-		if p, err := t.dataDir(); err == nil && p != "" {
+		if p, err := t.dataDir(ctx); err == nil && p != "" {
 			args = []string{exe, "-n", t.Name, "-P", p, "--clear-env"}
 		} else {
 			args = []string{exe, "-n", t.Name, "--clear-env"}
@@ -429,17 +429,17 @@ func (t *T) rcmd(envs []string) ([]string, error) {
 // SetEncapFileOwnership sets the ownership of the file to be the
 // same ownership than the container root dir, which may be not root
 // for unprivileged containers.
-func (t *T) SetEncapFileOwnership(p string) error {
-	rootDir, err := t.rootDir()
+func (t *T) SetEncapFileOwnership(ctx context.Context, p string) error {
+	rootDir, err := t.rootDir(ctx)
 	if err != nil {
 		return err
 	}
 	return file.CopyOwnership(rootDir, p)
 }
 
-func (t *T) Enter() error {
+func (t *T) Enter(ctx context.Context) error {
 	sh := "/bin/bash"
-	rcmd, err := t.rcmd([]string{})
+	rcmd, err := t.rcmd(ctx, []string{})
 	if err != nil {
 		return err
 	}
@@ -452,7 +452,7 @@ func (t *T) Enter() error {
 		sh = "/bin/sh"
 	}
 	args = append(rcmd, sh)
-	cmd = exec.Command(args[0], args[1:]...)
+	cmd = exec.CommandContext(ctx, args[0], args[1:]...)
 	cmd.Stdin = os.Stdin
 	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stderr
@@ -474,12 +474,12 @@ func (t *T) GetHostname() string {
 	return t.Name
 }
 
-func (t *T) setHostname() error {
-	if err := t.checkHostname(); err != nil {
+func (t *T) setHostname(ctx context.Context) error {
+	if err := t.checkHostname(ctx); err != nil {
 		t.Log().Infof("container hostname already set")
 		return nil
 	}
-	p, err := t.hostnameFile()
+	p, err := t.hostnameFile(ctx)
 	if err != nil {
 		return err
 	}
@@ -491,8 +491,8 @@ func (t *T) setHostname() error {
 	return nil
 }
 
-func (t *T) checkHostname() error {
-	p, err := t.hostnameFile()
+func (t *T) checkHostname(ctx context.Context) error {
+	p, err := t.hostnameFile(ctx)
 	if err != nil {
 		return err
 	}
@@ -507,19 +507,19 @@ func (t *T) checkHostname() error {
 	return nil
 }
 
-func (t *T) hostnameFile() (string, error) {
-	rootDir, err := t.rootDir()
+func (t *T) hostnameFile(ctx context.Context) (string, error) {
+	rootDir, err := t.rootDir(ctx)
 	if err != nil {
 		return "", err
 	}
 	return filepath.Join(rootDir, "etc/hostname"), nil
 }
 
-func (t *T) configFile() (string, error) {
+func (t *T) configFile(ctx context.Context) (string, error) {
 	if p, ok := t.cache["configFile"]; ok {
 		return p.(string), nil
 	}
-	if p, err := t.getConfigFile(); err == nil {
+	if p, err := t.getConfigFile(ctx); err == nil {
 		t.cache["configFile"] = p
 		return p, nil
 	} else {
@@ -561,13 +561,13 @@ func (t *T) prefix() (string, error) {
 	}
 }
 
-func (t *T) getConfigFile() (string, error) {
+func (t *T) getConfigFile(ctx context.Context) (string, error) {
 	if t.ConfigFile != "" {
-		return vpath.HostPath(t.ConfigFile, t.Path.Namespace)
+		return vpath.HostPath(ctx, t.ConfigFile, t.Path.Namespace)
 	}
 	if t.DataDir != "" {
 		p := filepath.Join(t.DataDir, t.Name, "config")
-		return vpath.HostPath(p, t.Path.Namespace)
+		return vpath.HostPath(ctx, p, t.Path.Namespace)
 	}
 	relDir := "/var/lib/lxc"
 
@@ -598,8 +598,8 @@ func (t *T) getConfigFile() (string, error) {
 	return "", fmt.Errorf("unable to find the container configuration file")
 }
 
-func (t *T) getConfigValue(key string) (string, error) {
-	cf, err := t.configFile()
+func (t *T) getConfigValue(ctx context.Context, key string) (string, error) {
+	cf, err := t.configFile(ctx)
 	f, err := os.Open(cf)
 	if err != nil {
 		return "", err
@@ -625,8 +625,8 @@ func (t *T) getConfigValue(key string) (string, error) {
 	return "", fmt.Errorf("key %s not found in %s", key, cf)
 }
 
-func (t *T) rootDirFromConfigFile() (string, error) {
-	p, err := t.rootfsFromConfigFile()
+func (t *T) rootDirFromConfigFile(ctx context.Context) (string, error) {
+	p, err := t.rootfsFromConfigFile(ctx)
 	if err != nil {
 		return "", err
 	}
@@ -643,28 +643,28 @@ func (t *T) rootDirFromConfigFile() (string, error) {
 	return p, nil
 }
 
-func (t *T) rootfsFromConfigFile() (string, error) {
-	if p, err := t.getConfigValue("lxc.rootfs"); err == nil {
+func (t *T) rootfsFromConfigFile(ctx context.Context) (string, error) {
+	if p, err := t.getConfigValue(ctx, "lxc.rootfs"); err == nil {
 		return p, nil
 	}
-	if p, err := t.getConfigValue("lxc.rootfs.path"); err == nil {
+	if p, err := t.getConfigValue(ctx, "lxc.rootfs.path"); err == nil {
 		return p, nil
 	}
 	return "", fmt.Errorf("could not determine lxc container rootfs")
 }
 
-func (t *T) getRootDir() (string, error) {
+func (t *T) getRootDir(ctx context.Context) (string, error) {
 	if t.RootDir != "" {
-		return vpath.HostPath(t.RootDir, t.Path.Namespace)
+		return vpath.HostPath(ctx, t.RootDir, t.Path.Namespace)
 	}
-	return t.rootDirFromConfigFile()
+	return t.rootDirFromConfigFile(ctx)
 }
 
-func (t *T) rootDir() (string, error) {
+func (t *T) rootDir(ctx context.Context) (string, error) {
 	if p, ok := t.cache["rootDir"]; ok {
 		return p.(string), nil
 	}
-	if p, err := t.getRootDir(); err == nil {
+	if p, err := t.getRootDir(ctx); err == nil {
 		t.cache["rootDir"] = p
 		return p, nil
 	} else {
@@ -672,14 +672,14 @@ func (t *T) rootDir() (string, error) {
 	}
 }
 
-func (t *T) dataDir() (string, error) {
+func (t *T) dataDir(ctx context.Context) (string, error) {
 	if t.DataDir == "" {
 		return "", nil
 	}
 	if p, ok := t.cache["dataDir"]; ok {
 		return p.(string), nil
 	}
-	if p, err := vpath.HostPath(t.DataDir, t.Path.Namespace); err == nil {
+	if p, err := vpath.HostPath(ctx, t.DataDir, t.Path.Namespace); err == nil {
 		t.cache["dataDir"] = p
 		return p, nil
 	} else {
@@ -687,12 +687,12 @@ func (t *T) dataDir() (string, error) {
 	}
 }
 
-func (t *T) nativeConfigFile() string {
+func (t *T) nativeConfigFile(ctx context.Context) string {
 	if p, ok := t.cache["nativeConfigFile"]; ok {
 		return p.(string)
 	}
 	p := func() string {
-		if p := t.lxcPath(); p != "" {
+		if p := t.lxcPath(ctx); p != "" {
 			return filepath.Join(p, t.Name, "config")
 		}
 		exe, err := exec.LookPath("lxc-info")
@@ -723,12 +723,12 @@ func (t *T) nativeConfigFile() string {
 	return p
 }
 
-func (t *T) lxcPath() string {
+func (t *T) lxcPath(ctx context.Context) string {
 	if p, ok := t.cache["lxcPath"]; ok {
 		return p.(string)
 	}
 	p := func() string {
-		if p, err := t.dataDir(); err != nil {
+		if p, err := t.dataDir(ctx); err != nil {
 			return p
 		}
 		p := "/var/lib/lxc"
@@ -758,7 +758,7 @@ func (t *T) ToSync(ctx context.Context) []string {
 
 	// The config file might be in a umounted fs resource,
 	// in which case, no need to ask for its sync as the sync won't happen
-	cf, err := t.configFile()
+	cf, err := t.configFile(ctx)
 	if err != nil {
 		return l
 	}
@@ -816,8 +816,8 @@ func (t *T) resourceHandlingFile(ctx context.Context, p string) (resource.Driver
 }
 
 // ContainerHead implements the interface replacing b2.1 the zonepath resource attribute
-func (t *T) ContainerHead() (string, error) {
-	return t.rootDir()
+func (t *T) ContainerHead(ctx context.Context) (string, error) {
+	return t.rootDir(ctx)
 }
 
 func (t *T) cpusetDir() string {
@@ -950,12 +950,12 @@ func (t *T) cleanupCgroup(p string) error {
 	return nil
 }
 
-func (t *T) installCF() error {
-	cf, err := t.configFile()
+func (t *T) installCF(ctx context.Context) error {
+	cf, err := t.configFile(ctx)
 	if err != nil {
 		return err
 	}
-	nativeCF := t.nativeConfigFile()
+	nativeCF := t.nativeConfigFile(ctx)
 	if nativeCF == "" {
 		t.Log().Tracef("could not determine the config file standard hosting directory")
 		return nil
@@ -976,17 +976,18 @@ func (t *T) installCF() error {
 	return err
 }
 
-func (t *T) dataDirArgs() []string {
-	if dataDir, err := t.dataDir(); err == nil && dataDir != "" {
+func (t *T) dataDirArgs(ctx context.Context) []string {
+	if dataDir, err := t.dataDir(ctx); err == nil && dataDir != "" {
 		return []string{"-P", dataDir}
 	}
 	return []string{}
 }
 
-func (t *T) isUpInfo() bool {
+func (t *T) isUpInfo(ctx context.Context) bool {
 	args := []string{"--name", t.Name}
-	args = append(args, t.dataDirArgs()...)
+	args = append(args, t.dataDirArgs(ctx)...)
 	cmd := command.New(
+		command.WithContext(ctx),
 		command.WithName("lxc-info"),
 		command.WithArgs(args),
 		command.WithBufferedStdout(),
@@ -999,10 +1000,11 @@ func (t *T) isUpInfo() bool {
 	return v
 }
 
-func (t *T) exists() bool {
+func (t *T) exists(ctx context.Context) bool {
 	args := []string{"--name", t.Name}
-	args = append(args, t.dataDirArgs()...)
+	args = append(args, t.dataDirArgs(ctx)...)
 	cmd := command.New(
+		command.WithContext(ctx),
 		command.WithName("lxc-info"),
 		command.WithArgs(args),
 		command.WithBufferedStdout(),
@@ -1038,15 +1040,13 @@ func (t *T) cleanupLinks(links []string) error {
 
 func (t *T) getPID(ctx context.Context) (int, error) {
 	args := []string{"--name", t.Name}
-	args = append(args, t.dataDirArgs()...)
+	args = append(args, t.dataDirArgs(ctx)...)
 	opts := []funcopt.O{
+		command.WithContext(ctx),
 		command.WithName("lxc-info"),
 		command.WithArgs(args),
 		command.WithBufferedStdout(),
 		command.WithIgnoredExitCodes(0, 1),
-	}
-	if ctx != nil {
-		opts = append(opts, command.WithContext(ctx))
 	}
 	cmd := command.New(opts...)
 	b, err := cmd.Output()
@@ -1071,11 +1071,12 @@ func (t *T) getPID(ctx context.Context) (int, error) {
 	return 0, nil
 }
 
-func (t *T) getLinks() []string {
+func (t *T) getLinks(ctx context.Context) []string {
 	l := make([]string, 0)
 	args := []string{"--name", t.Name}
-	args = append(args, t.dataDirArgs()...)
+	args = append(args, t.dataDirArgs(ctx)...)
 	cmd := command.New(
+		command.WithContext(ctx),
 		command.WithName("lxc-info"),
 		command.WithArgs(args),
 		command.WithBufferedStdout(),
@@ -1098,8 +1099,9 @@ func (t *T) getLinks() []string {
 	return l
 }
 
-func (t *T) isUpPS() bool {
+func (t *T) isUpPS(ctx context.Context) bool {
 	cmd := command.New(
+		command.WithContext(ctx),
 		command.WithName("lxc-ps"),
 		command.WithVarArgs("--name", t.Name),
 		command.WithBufferedStdout(),
@@ -1112,16 +1114,16 @@ func (t *T) isUpPS() bool {
 	return v
 }
 
-func (t *T) isUp() (bool, error) {
+func (t *T) isUp(ctx context.Context) (bool, error) {
 	if p, err := exec.LookPath("lxc-ps"); err == nil && p != "" {
-		return t.isUpPS(), nil
+		return t.isUpPS(ctx), nil
 	}
-	return t.isUpInfo(), nil
+	return t.isUpInfo(ctx), nil
 }
 
 func (t *T) start(ctx context.Context) error {
 	cgroupDir := t.cgroupDir()
-	cf, err := t.configFile()
+	cf, err := t.configFile(ctx)
 	if err != nil {
 		return err
 	}
@@ -1133,8 +1135,9 @@ func (t *T) start(ctx context.Context) error {
 	if cf != "" {
 		args = append(args, "-f", cf)
 	}
-	args = append(args, t.dataDirArgs()...)
+	args = append(args, t.dataDirArgs(ctx)...)
 	cmd := command.New(
+		command.WithContext(ctx),
 		command.WithName("lxc-start"),
 		command.WithArgs(args),
 		command.WithLogger(t.Log()),
@@ -1148,20 +1151,21 @@ func (t *T) start(ctx context.Context) error {
 
 func (t *T) stopOrKill(ctx context.Context) error {
 	if actioncontext.IsForce(ctx) {
-		return t.kill()
+		return t.kill(ctx)
 	}
-	if err := t.stop(); err == nil {
+	if err := t.stop(ctx); err == nil {
 		return err
 	} else {
 		t.Log().Warnf("stop: %s", err)
 	}
-	return t.kill()
+	return t.kill(ctx)
 }
 
-func (t *T) stop() error {
+func (t *T) stop(ctx context.Context) error {
 	args := []string{"-n", t.Name}
-	args = append(args, t.dataDirArgs()...)
+	args = append(args, t.dataDirArgs(ctx)...)
 	cmd := command.New(
+		command.WithContext(ctx),
 		command.WithName("lxc-stop"),
 		command.WithArgs(args),
 		command.WithLogger(t.Log()),
@@ -1173,10 +1177,11 @@ func (t *T) stop() error {
 	return cmd.Run()
 }
 
-func (t *T) kill() error {
+func (t *T) kill(ctx context.Context) error {
 	args := []string{"-n", t.Name, "--kill"}
-	args = append(args, t.dataDirArgs()...)
+	args = append(args, t.dataDirArgs(ctx)...)
 	cmd := command.New(
+		command.WithContext(ctx),
 		command.WithName("lxc-stop"),
 		command.WithArgs(args),
 		command.WithLogger(t.Log()),
@@ -1212,7 +1217,7 @@ func (t *T) abortPing(hn string) bool {
 }
 
 func (t *T) Abort(ctx context.Context) bool {
-	if v, err := t.isUp(); err != nil {
+	if v, err := t.isUp(ctx); err != nil {
 		t.Log().Warnf("abort? %s", err)
 		return false
 	} else if v {
@@ -1271,7 +1276,7 @@ func (t *T) upPeer() (string, error) {
 }
 
 func (t *T) EncapCmd(ctx context.Context, args []string, envs []string, stdin io.Reader) (resource.Commander, error) {
-	baseArgs, err := t.rcmd(envs)
+	baseArgs, err := t.rcmd(ctx, envs)
 	if err != nil {
 		return nil, err
 	}
@@ -1281,7 +1286,7 @@ func (t *T) EncapCmd(ctx context.Context, args []string, envs []string, stdin io
 }
 
 func (t *T) EncapCp(ctx context.Context, src, dst string) error {
-	rootDir, err := t.rootDir()
+	rootDir, err := t.rootDir(ctx)
 	if err != nil {
 		return err
 	}

@@ -67,10 +67,10 @@ func (t *T) Start(ctx context.Context) error {
 		Stop() error
 	}
 
-	if err := t.startCertFS(); err != nil {
+	if err := t.startCertFS(ctx); err != nil {
 		t.log.Errorf("start certificates volatile fs: %s", err)
 	} else {
-		t.stopFunc = append(t.stopFunc, t.stopCertFS)
+		t.stopFunc = append(t.stopFunc, func() error { return t.stopCertFS(ctx) })
 	}
 	if err := daemonauth.Start(ctx, &authOption{}); err != nil {
 		return fmt.Errorf("can't start daemon auth: %w", err)

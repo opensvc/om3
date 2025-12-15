@@ -81,7 +81,7 @@ type (
 	}
 
 	exposedDevicer interface {
-		ExposedDevices() device.L
+		ExposedDevices(context.Context) device.L
 	}
 	header interface {
 		Head() string
@@ -186,8 +186,8 @@ func (t *T) hasEncap() bool {
 	return slices.Contains(t.EncapNodes, t.GetHostname())
 }
 
-func (t *T) isOperational() (bool, error) {
-	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+func (t *T) isOperational(ctx context.Context) (bool, error) {
+	ctx, cancel := context.WithTimeout(ctx, 5*time.Second)
 	defer cancel()
 	cmd, err := t.EncapCmd(ctx, []string{"pwd"}, []string{}, nil)
 	if err != nil {
@@ -376,7 +376,7 @@ func (t *T) Move(ctx context.Context, to string) (err error) {
 		}
 	}()
 
-	for _, dev := range t.SubDevices() {
+	for _, dev := range t.SubDevices(ctx) {
 		r, err := t.resourceHandlingDevice(ctx, dev)
 		if err != nil {
 			return err
@@ -477,7 +477,7 @@ func (t *T) waitForPing(ctx context.Context, timeout, interval time.Duration) bo
 func (t *T) waitForOperational(ctx context.Context, timeout, interval time.Duration) bool {
 	t.Log().Attr("timeout", timeout).Infof("wait for %s operational (timeout %s)", t.Name, timeout)
 	return waitfor.TrueCtx(ctx, timeout, interval, func() bool {
-		v, err := t.isOperational()
+		v, err := t.isOperational(ctx)
 		if err != nil {
 			t.Log().Errorf("abort waiting for %s operational: %s", t.Name, err)
 			return true
@@ -645,7 +645,7 @@ func (t *T) HasEFI() (bool, error) {
 	return false, nil
 }
 
-func (t *T) SubDevices() device.L {
+func (t *T) SubDevices(ctx context.Context) device.L {
 	l := make(device.L, 0)
 	cf := t.configFile()
 	f, err := os.Open(cf)
@@ -882,7 +882,7 @@ func (t *T) rcmd() ([]string, error) {
 	return a.Get(), nil
 }
 
-func (t *T) Enter() error {
+func (t *T) Enter(ctx context.Context) error {
 	rcmd, err := t.rcmd()
 	if err != nil {
 		return err
@@ -943,7 +943,7 @@ func (t *T) resourceHandlingDevice(ctx context.Context, p device.T) (resource.Dr
 		} else if v == provisioned.False {
 			continue
 		}
-		if v, err := h.ExposedDevices().Contains(p); err != nil {
+		if v, err := h.ExposedDevices(ctx).Contains(p); err != nil {
 			return nil, err
 		} else if v {
 			return r, nil

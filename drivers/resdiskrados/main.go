@@ -133,7 +133,7 @@ func (t *T) unmapDevice(ctx context.Context) error {
 		t.Log().Infof("%s is already unmapped", t.Name)
 		return nil
 	}
-	if err := t.removeHolders(); err != nil {
+	if err := t.removeHolders(ctx); err != nil {
 		return err
 	}
 	udevadm.Settle()
@@ -317,8 +317,8 @@ func (t *T) Stop(ctx context.Context) error {
 	return nil
 }
 
-func (t *T) removeHolders() error {
-	return t.exposedDevice().RemoveHolders()
+func (t *T) removeHolders(ctx context.Context) error {
+	return t.exposedDevice().RemoveHolders(ctx)
 }
 
 func (t *T) Status(ctx context.Context) status.T {
@@ -433,15 +433,15 @@ func (t *T) exposedDevice() device.T {
 	return device.New(t.devpath())
 }
 
-func (t *T) ClaimedDevices() device.L {
+func (t *T) ClaimedDevices(ctx context.Context) device.L {
 	return device.L{}
 }
 
-func (t *T) ExposedDevices() device.L {
+func (t *T) ExposedDevices(ctx context.Context) device.L {
 	return device.L{t.exposedDevice()}
 }
 
-func (t *T) SubDevices() device.L {
+func (t *T) SubDevices(ctx context.Context) device.L {
 	return device.L{}
 }
 

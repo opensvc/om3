@@ -28,7 +28,7 @@ var (
 // INPUT        VOL     host path            COMMENT
 // /path        nil     /path                host full path
 // myvol/path   myvol   /srv/myvol/path      vol head relative path
-func HostPathAndVol(s string, namespace string) (hostPath string, vol object.Vol, err error) {
+func HostPathAndVol(ctx context.Context, s string, namespace string) (hostPath string, vol object.Vol, err error) {
 	var volRelativeSourcePath string
 	l := strings.SplitN(s, "/", 2)
 	if len(l[0]) == 0 {
@@ -52,7 +52,7 @@ func HostPathAndVol(s string, namespace string) (hostPath string, vol object.Vol
 		return
 	}
 
-	volStatus, err1 := vol.Status(context.Background())
+	volStatus, err1 := vol.Status(ctx)
 	if err1 != nil {
 		err = err1
 		return
@@ -74,15 +74,15 @@ func HostPathAndVol(s string, namespace string) (hostPath string, vol object.Vol
 // INPUT        VOL     OUTPUT           COMMENT
 // /path                /path            host full path
 // myvol/path   myvol   /srv/myvol/path  vol head relative path
-func HostPath(s string, namespace string) (string, error) {
-	hostPath, _, err := HostPathAndVol(s, namespace)
+func HostPath(ctx context.Context, s string, namespace string) (string, error) {
+	hostPath, _, err := HostPathAndVol(ctx, s, namespace)
 	return hostPath, err
 }
 
 // HostPaths applies the HostPath function to each path of the input list
-func HostPaths(l []string, namespace string) ([]string, error) {
+func HostPaths(ctx context.Context, l []string, namespace string) ([]string, error) {
 	for i, s := range l {
-		if s2, err := HostPath(s, namespace); err != nil {
+		if s2, err := HostPath(ctx, s, namespace); err != nil {
 			return l, err
 		} else {
 			l[i] = s2
@@ -97,7 +97,7 @@ func HostPaths(l []string, namespace string) ([]string, error) {
 // /path                /dev/sda1   loop dev
 // /dev/sda1            /dev/sda1   host full path
 // myvol        myvol   /dev/sda1   vol dev path in host
-func HostDevpath(s string, namespace string) (string, error) {
+func HostDevpath(ctx context.Context, s string, namespace string) (string, error) {
 	if strings.HasPrefix(s, "/dev/") {
 		return s, nil
 	}
@@ -120,7 +120,7 @@ func HostDevpath(s string, namespace string) (string, error) {
 	if err != nil {
 		return s, err
 	}
-	st, err := vol.Status(context.Background())
+	st, err := vol.Status(ctx)
 	if err != nil {
 		return s, err
 	}
@@ -129,7 +129,7 @@ func HostDevpath(s string, namespace string) (string, error) {
 	default:
 		return s, fmt.Errorf("%w: %s(%s)", ErrAccess, volPath, st.Avail)
 	}
-	dev := vol.ExposedDevice()
+	dev := vol.ExposedDevice(ctx)
 	if dev == nil {
 		return s, fmt.Errorf("%s is not a device-capable vol", s)
 	}
@@ -137,9 +137,9 @@ func HostDevpath(s string, namespace string) (string, error) {
 }
 
 // HostDevpaths applies the HostDevpath function to each path of the input list
-func HostDevpaths(l []string, namespace string) ([]string, error) {
+func HostDevpaths(ctx context.Context, l []string, namespace string) ([]string, error) {
 	for i, s := range l {
-		if s2, err := HostDevpath(s, namespace); err != nil {
+		if s2, err := HostDevpath(ctx, s, namespace); err != nil {
 			return l, err
 		} else {
 			l[i] = s2

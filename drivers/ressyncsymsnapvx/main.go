@@ -132,13 +132,13 @@ func New() resource.Driver {
 }
 
 func (t *T) Update(ctx context.Context) error {
-	if err := t.establish(); err != nil {
+	if err := t.establish(ctx); err != nil {
 		return err
 	}
 	return nil
 }
 
-func (t *T) mergeDevs() ([]string, error) {
+func (t *T) mergeDevs(ctx context.Context) ([]string, error) {
 	m := make(map[string]any)
 	for _, devID := range t.Devices {
 		m[devID] = nil
@@ -154,7 +154,7 @@ func (t *T) mergeDevs() ([]string, error) {
 			t.StatusLog().Warn("referenced rid %s as devs source does not support sub devs listing", rid)
 			continue
 		}
-		for _, dev := range i.SubDevices() {
+		for _, dev := range i.SubDevices(ctx) {
 			dev, err := t.devFromDevPath(dev.Path())
 			if err != nil {
 				return nil, err
@@ -208,8 +208,8 @@ func parseInq(b []byte) (*XInqPdevfile, error) {
 	return &head, nil
 }
 
-func (t *T) List() ([]XSnapshot, error) {
-	mergedDevs, err := t.mergeDevs()
+func (t *T) List(ctx context.Context) ([]XSnapshot, error) {
+	mergedDevs, err := t.mergeDevs(ctx)
 	if err != nil {
 		return nil, err
 	}
@@ -233,8 +233,8 @@ func (t *T) List() ([]XSnapshot, error) {
 	return head.Symmetrix.Snapvx.Snapshots, nil
 }
 
-func (t *T) getSnap() (*XSnapshot, error) {
-	snaps, err := t.List()
+func (t *T) getSnap(ctx context.Context) (*XSnapshot, error) {
+	snaps, err := t.List(ctx)
 	if err != nil {
 		return nil, err
 	}
@@ -248,7 +248,7 @@ func (t *T) getSnap() (*XSnapshot, error) {
 }
 
 func (t *T) Status(ctx context.Context) status.T {
-	snap, err := t.getSnap()
+	snap, err := t.getSnap(ctx)
 	if err != nil {
 		t.StatusLog().Error("%s", err)
 		return status.Undef
@@ -302,7 +302,7 @@ func (t *T) Provisioned(ctx context.Context) (provisioned.T, error) {
 }
 
 func (t *T) Info(ctx context.Context) (resource.InfoKeys, error) {
-	mergedDevs, _ := t.mergeDevs()
+	mergedDevs, _ := t.mergeDevs(ctx)
 	m := resource.InfoKeys{
 		{Key: "devs", Value: strings.Join(t.Devices, " ")},
 		{Key: "name", Value: t.Name},
@@ -318,7 +318,7 @@ func (t *T) Info(ctx context.Context) (resource.InfoKeys, error) {
 	if t.Delta != "" {
 		m = append(m, resource.InfoKey{Key: "delta", Value: t.Delta})
 	}
-	snap, err := t.getSnap()
+	snap, err := t.getSnap(ctx)
 	if err == nil {
 		m = append(m, resource.InfoKey{Key: "num_generations", Value: fmt.Sprint(snap.NumGenerations)})
 		m = append(m, resource.InfoKey{Key: "last_timestamp", Value: snap.LastTimestamp})
@@ -333,8 +333,8 @@ func (t *T) formatName() string {
 	return fmt.Sprintf("%s.%s", t.ResourceID.Index(), t.ObjectFQDN)
 }
 
-func (t *T) establish() error {
-	mergedDevs, err := t.mergeDevs()
+func (t *T) establish(ctx context.Context) error {
+	mergedDevs, err := t.mergeDevs(ctx)
 	if err != nil {
 		return err
 	}

@@ -105,7 +105,7 @@ type (
 	// ExecuteContainer interface defines the functions used to manage container
 	// lifecycle.
 	ExecuteContainer interface {
-		Enter() error
+		Enter(context.Context) error
 		Start(context.Context) error
 		Stop(context.Context) error
 		Remove(context.Context) error
@@ -311,11 +311,11 @@ func (t *BT) ContainerInspectRefresh(ctx context.Context) (Inspecter, error) {
 	return t.executer.InspectRefresh(ctx)
 }
 
-func (t *BT) Enter() error {
+func (t *BT) Enter(ctx context.Context) error {
 	if t.executer == nil {
 		return t.logMainAction("enter", errors.New("undefined executer"))
 	}
-	return t.executer.Enter()
+	return t.executer.Enter(ctx)
 }
 
 func (t *BT) FormatNS(s string) (string, error) {
@@ -405,7 +405,7 @@ func (t *BT) LinkNames() []string {
 	return []string{t.RID()}
 }
 
-func (t *BT) Mounts() ([]BindMount, error) {
+func (t *BT) Mounts(ctx context.Context) ([]BindMount, error) {
 	mounts := make([]BindMount, 0)
 	for _, s := range t.VolumeMounts {
 		var source, target, opt string
@@ -431,7 +431,7 @@ func (t *BT) Mounts() ([]BindMount, error) {
 		}
 		if strings.HasPrefix(source, "/") {
 			// pass
-		} else if srcRealpath, vol, err := vpath.HostPathAndVol(source, t.Path.Namespace); err != nil {
+		} else if srcRealpath, vol, err := vpath.HostPathAndVol(ctx, source, t.Path.Namespace); err != nil {
 			return mounts, err
 		} else if file.IsProtected(srcRealpath) {
 			return mounts, fmt.Errorf("invalid volumes_mount entry: %s: expanded to the protected path %s", s, srcRealpath)

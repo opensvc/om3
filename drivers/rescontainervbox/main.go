@@ -97,7 +97,7 @@ func (t *T) Abort(ctx context.Context) bool {
 	return t.abortPing(hn) || t.abortPeerUp(hn)
 }
 
-func (t *T) Enter() error {
+func (t *T) Enter(ctx context.Context) error {
 	if rcmd, err := t.rcmd(); err == nil {
 		return t.enterViaRCmd(rcmd)
 	}
@@ -211,7 +211,7 @@ func (t *T) Stop(ctx context.Context) error {
 	return t.containerStop(ctx)
 }
 
-func (t *T) SubDevices() device.L {
+func (t *T) SubDevices(ctx context.Context) device.L {
 	l := make(device.L, 0)
 	f, err := os.Open(t.configFile())
 	if err != nil {

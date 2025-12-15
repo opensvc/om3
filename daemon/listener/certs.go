@@ -1,6 +1,7 @@
 package listener
 
 import (
+	"context"
 	"fmt"
 	"io/fs"
 	"os"
@@ -29,12 +30,12 @@ var (
 	certPath = naming.SecCert
 )
 
-func (t *T) startCertFS() error {
+func (t *T) startCertFS(ctx context.Context) error {
 	clusterName, err := getClusterName()
 	if err != nil {
 		return err
 	}
-	if err := t.mountCertFS(); err != nil {
+	if err := t.mountCertFS(ctx); err != nil {
 		return err
 	}
 
@@ -49,17 +50,17 @@ func (t *T) startCertFS() error {
 	return nil
 }
 
-func (t *T) stopCertFS() error {
+func (t *T) stopCertFS(ctx context.Context) error {
 	tmpfs := filesystems.FromType("tmpfs")
 	t.log.Infof("unmounting cert fs %s", rawconfig.Paths.Certs)
-	if err := tmpfs.Umount(rawconfig.Paths.Certs); err != nil {
+	if err := tmpfs.Umount(ctx, rawconfig.Paths.Certs); err != nil {
 		return err
 	}
 	t.log.Infof("unmounted cert fs %s", rawconfig.Paths.Certs)
 	return nil
 }
 
-func (t *T) mountCertFS() error {
+func (t *T) mountCertFS(ctx context.Context) error {
 	if v, err := findmnt.Has("none", rawconfig.Paths.Certs); err != nil {
 		if err1, ok := err.(*exec.Error); ok {
 			if err1.Name == "findmnt" && err1.Err == exec.ErrNotFound {
@@ -79,7 +80,7 @@ func (t *T) mountCertFS() error {
 	}
 	tmpfs := filesystems.FromType("tmpfs")
 	t.log.Infof("mounting cert fs %s", rawconfig.Paths.Certs)
-	if err := tmpfs.Mount("none", rawconfig.Paths.Certs, "rw,nosuid,nodev,noexec,relatime,size=1m"); err != nil {
+	if err := tmpfs.Mount(ctx, "none", rawconfig.Paths.Certs, "rw,nosuid,nodev,noexec,relatime,size=1m"); err != nil {
 		return fmt.Errorf("mount cert fs can't mount %s: %w", rawconfig.Paths.Certs, err)
 	}
 	t.log.Infof("mounted cert fs %s", rawconfig.Paths.Certs)

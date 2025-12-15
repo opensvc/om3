@@ -155,7 +155,7 @@ type (
 		Ingest(context.Context) error
 	}
 	SubDeviceser interface {
-		SubDevices() device.L
+		SubDevices(context.Context) device.L
 	}
 
 	Commander interface {

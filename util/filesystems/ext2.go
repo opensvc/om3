@@ -1,5 +1,7 @@
 package filesystems
 
+import "context"
+
 type (
 	Ext2 struct{ T }
 )
@@ -19,14 +21,14 @@ func (t Ext2) CanFSCK() error {
 	return extCanFSCK()
 }
 
-func (t Ext2) FSCK(s string) error {
-	return extFSCK(s)
+func (t Ext2) FSCK(ctx context.Context, s string) error {
+	return extFSCK(ctx, s)
 }
 
 func (t Ext2) IsFormated(s string) (bool, error) {
 	return extIsFormated(s)
 }
 
-func (t Ext2) MKFS(s string, args []string) error {
-	return xMKFS("mkfs.ext2", s, args, t.log)
+func (t Ext2) MKFS(ctx context.Context, s string, args []string) error {
+	return xMKFS(ctx, "mkfs.ext2", s, args, t.log)
 }

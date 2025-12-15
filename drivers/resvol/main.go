@@ -254,9 +254,9 @@ func (t *T) installFlag() error {
 	return nil
 }
 
-func (t *T) removeHolders() error {
-	for _, dev := range t.ExposedDevices() {
-		if err := dev.RemoveHolders(); err != nil {
+func (t *T) removeHolders(ctx context.Context) error {
+	for _, dev := range t.ExposedDevices(ctx) {
+		if err := dev.RemoveHolders(ctx); err != nil {
 			return err
 		}
 	}
@@ -542,28 +542,28 @@ func (t *T) Head() string {
 	return volume.Head()
 }
 
-func (t *T) exposedDevice() *device.T {
+func (t *T) exposedDevice(ctx context.Context) *device.T {
 	volume, err := t.Volume()
 	if err != nil {
 		return nil
 	}
-	return volume.ExposedDevice()
+	return volume.ExposedDevice(ctx)
 }
 
-func (t *T) ExposedDevices() device.L {
+func (t *T) ExposedDevices(ctx context.Context) device.L {
 	volume, err := t.Volume()
 	if err != nil {
 		return nil
 	}
-	return volume.ExposedDevices()
+	return volume.ExposedDevices(ctx)
 }
 
-func (t *T) SubDevices() device.L {
+func (t *T) SubDevices(ctx context.Context) device.L {
 	volume, err := t.Volume()
 	if err != nil {
 		return nil
 	}
-	return volume.SubDevices()
+	return volume.SubDevices(ctx)
 }
 
 // Configure installs a resource backpointer in the DataStoreInstall

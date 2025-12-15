@@ -31,10 +31,10 @@ type (
 	Vol interface {
 		Actor
 		Head() string
-		ExposedDevice() *device.T
-		ExposedDevices() device.L
-		SubDevice() *device.T
-		SubDevices() device.L
+		ExposedDevice(context.Context) *device.T
+		ExposedDevices(context.Context) device.L
+		SubDevice(context.Context) *device.T
+		SubDevices(context.Context) device.L
 		HoldersExcept(ctx context.Context, p naming.Path) (naming.Paths, error)
 		Access() (volaccess.T, error)
 		Children() (naming.Relations, error)
@@ -92,14 +92,14 @@ func (t *vol) Head() string {
 	return head
 }
 
-func (t *vol) SubDevices() device.L {
+func (t *vol) SubDevices(ctx context.Context) device.L {
 	type devicer interface {
-		SubDevices() device.L
+		SubDevices(context.Context) device.L
 	}
 	rids := t.config.GetStrings(key.Parse("devices_from"))
 	devs := make(device.L, 0)
 	if len(rids) == 0 {
-		dev := t.SubDevice()
+		dev := t.SubDevice(ctx)
 		if dev != nil {
 			devs = append(devs, *dev)
 		}
@@ -112,20 +112,20 @@ func (t *vol) SubDevices() device.L {
 			continue
 		}
 		if d, ok := r.(devicer); ok {
-			devs = append(devs, d.SubDevices()...)
+			devs = append(devs, d.SubDevices(ctx)...)
 		}
 	}
 	return devs
 }
 
-func (t *vol) ExposedDevices() device.L {
+func (t *vol) ExposedDevices(ctx context.Context) device.L {
 	type devicer interface {
-		ExposedDevices() device.L
+		ExposedDevices(context.Context) device.L
 	}
 	rids := t.config.GetStrings(key.Parse("devices_from"))
 	devs := make(device.L, 0)
 	if len(rids) == 0 {
-		dev := t.ExposedDevice()
+		dev := t.ExposedDevice(ctx)
 		if dev != nil {
 			devs = append(devs, *dev)
 		}
@@ -138,15 +138,15 @@ func (t *vol) ExposedDevices() device.L {
 			continue
 		}
 		if d, ok := r.(devicer); ok {
-			devs = append(devs, d.ExposedDevices()...)
+			devs = append(devs, d.ExposedDevices(ctx)...)
 		}
 	}
 	return devs
 }
 
-func (t *vol) SubDevice() *device.T {
+func (t *vol) SubDevice(ctx context.Context) *device.T {
 	type devicer interface {
-		SubDevices() device.L
+		SubDevices(context.Context) device.L
 	}
 	rids := make([]string, 0)
 	candidates := make(map[string]devicer)
@@ -169,7 +169,7 @@ func (t *vol) SubDevice() *device.T {
 	}
 	sort.Sort(sort.Reverse(sort.StringSlice(rids)))
 	for _, rid := range rids {
-		devs := candidates[rid].SubDevices()
+		devs := candidates[rid].SubDevices(ctx)
 		if len(devs) == 0 {
 			continue
 		}
@@ -178,9 +178,9 @@ func (t *vol) SubDevice() *device.T {
 	return nil
 }
 
-func (t *vol) ExposedDevice() *device.T {
+func (t *vol) ExposedDevice(ctx context.Context) *device.T {
 	type devicer interface {
-		ExposedDevices() device.L
+		ExposedDevices(context.Context) device.L
 	}
 	rids := make([]string, 0)
 	candidates := make(map[string]devicer)
@@ -203,7 +203,7 @@ func (t *vol) ExposedDevice() *device.T {
 	}
 	sort.Sort(sort.Reverse(sort.StringSlice(rids)))
 	for _, rid := range rids {
-		devs := candidates[rid].ExposedDevices()
+		devs := candidates[rid].ExposedDevices(ctx)
 		if len(devs) == 0 {
 			continue
 		}

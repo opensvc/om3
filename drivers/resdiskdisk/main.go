@@ -110,12 +110,12 @@ func (t *T) UnprovisionAsLeader(ctx context.Context) error {
 	return nil
 }
 
-func (t *T) ReservableDevices() device.L {
-	return t.ExposedDevices()
+func (t *T) ReservableDevices(ctx context.Context) device.L {
+	return t.ExposedDevices(ctx)
 }
 
-func (t *T) ClaimedDevices() device.L {
-	return t.ExposedDevices()
+func (t *T) ClaimedDevices(ctx context.Context) device.L {
+	return t.ExposedDevices(ctx)
 }
 
 func (t *T) diskIDKey(node string) key.T {

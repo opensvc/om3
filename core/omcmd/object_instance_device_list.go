@@ -1,6 +1,7 @@
 package omcmd
 
 import (
+	"context"
 	"fmt"
 
 	"github.com/opensvc/om3/v3/core/client"
@@ -20,18 +21,18 @@ type (
 	}
 
 	devicer interface {
-		PrintDevices(roles objectdevice.Role) objectdevice.L
+		PrintDevices(context.Context, objectdevice.Role) objectdevice.L
 	}
 )
 
-func (t *CmdObjectInstanceDeviceList) extract(selector string, c *client.T) (objectdevice.L, error) {
+func (t *CmdObjectInstanceDeviceList) extract(ctx context.Context, selector string, c *client.T) (objectdevice.L, error) {
 	if t.NodeSelector == "" {
-		return t.extractLocal(selector)
+		return t.extractLocal(ctx, selector)
 	}
-	return t.extractFromDaemon(selector, c)
+	return t.extractFromDaemon(ctx, selector, c)
 }
 
-func (t *CmdObjectInstanceDeviceList) extractLocal(selector string) (objectdevice.L, error) {
+func (t *CmdObjectInstanceDeviceList) extractLocal(ctx context.Context, selector string) (objectdevice.L, error) {
 	data := objectdevice.NewList()
 	sel := objectselector.New(
 		selector,
@@ -51,24 +52,25 @@ func (t *CmdObjectInstanceDeviceList) extractLocal(selector string) (objectdevic
 			continue
 		}
 		roles := objectdevice.ParseRoles(t.Roles)
-		table := i.PrintDevices(roles)
+		table := i.PrintDevices(ctx, roles)
 		data = data.Add(table)
 	}
 	return data, nil
 }
 
-func (t *CmdObjectInstanceDeviceList) extractFromDaemon(selector string, c *client.T) (objectdevice.L, error) {
+func (t *CmdObjectInstanceDeviceList) extractFromDaemon(ctx context.Context, selector string, c *client.T) (objectdevice.L, error) {
 	data := objectdevice.NewList()
 	return data, fmt.Errorf("TODO")
 }
 
 func (t *CmdObjectInstanceDeviceList) Run(kind string) error {
+	ctx := context.Background()
 	mergedSelector := commoncmd.MergeSelector("", t.ObjectSelector, kind, "")
 	c, err := client.New()
 	if err != nil {
 		return err
 	}
-	data, err := t.extract(mergedSelector, c)
+	data, err := t.extract(ctx, mergedSelector, c)
 	if err != nil {
 		return err
 	}

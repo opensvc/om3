@@ -79,7 +79,7 @@ func (t *T) Stop(ctx context.Context) error {
 		t.Log().Infof("%s is already down", t.Label(ctx))
 		return nil
 	}
-	if err := t.removeHolders(); err != nil {
+	if err := t.removeHolders(ctx); err != nil {
 		return err
 	}
 	udevadm.Settle()
@@ -94,8 +94,8 @@ func (t *T) isUp(ctx context.Context) (bool, error) {
 	return t.lv().IsActive(ctx)
 }
 
-func (t *T) removeHolders() error {
-	return t.exposedDevice().RemoveHolders()
+func (t *T) removeHolders(ctx context.Context) error {
+	return t.exposedDevice().RemoveHolders(ctx)
 }
 
 func (t *T) fqn() string {
@@ -176,16 +176,15 @@ func (t *T) exposedDevice() device.T {
 	return device.New(fmt.Sprintf("/dev/%s", t.fqn()), device.WithLogger(t.Log()))
 }
 
-func (t *T) ClaimedDevices() device.L {
-	return t.ExposedDevices()
+func (t *T) ClaimedDevices(ctx context.Context) device.L {
+	return t.ExposedDevices(ctx)
 }
 
-func (t *T) ExposedDevices() device.L {
+func (t *T) ExposedDevices(ctx context.Context) device.L {
 	return device.L{t.exposedDevice()}
 }
 
-func (t *T) SubDevices() device.L {
-	ctx := context.Background()
+func (t *T) SubDevices(ctx context.Context) device.L {
 	if l, err := t.lv().Devices(ctx); err != nil {
 		t.Log().Tracef("%s", err)
 		return device.L{}

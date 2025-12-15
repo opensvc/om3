@@ -94,7 +94,7 @@ func (t *T) Stop(ctx context.Context) error {
 		t.Log().Infof("Volume group %s is already down", t.Label(ctx))
 		return nil
 	}
-	if err := t.removeHolders(); err != nil {
+	if err := t.removeHolders(ctx); err != nil {
 		return err
 	}
 	udevadm.Settle()
@@ -115,9 +115,9 @@ func (t *T) isUp(ctx context.Context) (bool, error) {
 	return t.hasTag(ctx)
 }
 
-func (t *T) removeHolders() error {
-	for _, dev := range t.ExposedDevices() {
-		if err := dev.RemoveHolders(); err != nil {
+func (t *T) removeHolders(ctx context.Context) error {
+	for _, dev := range t.ExposedDevices(ctx) {
+		if err := dev.RemoveHolders(ctx); err != nil {
 			return nil
 		}
 	}
@@ -161,7 +161,7 @@ func (t *T) ProvisionAsLeader(ctx context.Context) error {
 		t.Log().Infof("Volume group %s is already provisioned", vg.FQN())
 		return nil
 	}
-	if pvs, err := vpath.HostDevpaths(t.PVs, t.Path.Namespace); err != nil {
+	if pvs, err := vpath.HostDevpaths(ctx, t.PVs, t.Path.Namespace); err != nil {
 		return err
 	} else {
 		return vgi.Create(ctx, t.Size, pvs, t.Options)
@@ -196,7 +196,7 @@ func (t *T) Provisioned(ctx context.Context) (provisioned.T, error) {
 	return provisioned.FromBool(v), err
 }
 
-func (t *T) ExposedDevices() device.L {
+func (t *T) ExposedDevices(ctx context.Context) device.L {
 	if l, err := t.vg().ActiveLVs(); err == nil {
 		return l
 	} else {
@@ -204,8 +204,8 @@ func (t *T) ExposedDevices() device.L {
 	}
 }
 
-func (t *T) ClaimedDevices() device.L {
-	return t.SubDevices()
+func (t *T) ClaimedDevices(ctx context.Context) device.L {
+	return t.SubDevices(ctx)
 }
 
 func (t *T) ImportDevices(ctx context.Context) error {
@@ -215,12 +215,11 @@ func (t *T) ImportDevices(ctx context.Context) error {
 	return nil
 }
 
-func (t *T) ReservableDevices() device.L {
-	return t.SubDevices()
+func (t *T) ReservableDevices(ctx context.Context) device.L {
+	return t.SubDevices(ctx)
 }
 
-func (t *T) SubDevices() device.L {
-	ctx := context.Background()
+func (t *T) SubDevices(ctx context.Context) device.L {
 	if l, err := t.vg().PVs(ctx); err != nil {
 		t.Log().Tracef("%s", err)
 		return device.L{}

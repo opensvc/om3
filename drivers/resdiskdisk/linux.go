@@ -36,7 +36,7 @@ func (t *T) devPath() string {
 	return matches[0]
 }
 
-func (t *T) ExposedDevices() device.L {
+func (t *T) ExposedDevices(ctx context.Context) device.L {
 	l := make(device.L, 0)
 	p, err := realpath.Realpath(t.devPath())
 	if err != nil {
@@ -58,7 +58,7 @@ func (t *T) Status(ctx context.Context) status.T {
 }
 
 func (t *T) unconfigure(ctx context.Context) error {
-	for _, dev := range t.ExposedDevices() {
+	for _, dev := range t.ExposedDevices(ctx) {
 		slaves, err := dev.Slaves()
 		if err != nil {
 			return fmt.Errorf("%s get slaves: %w", dev, err)
@@ -139,7 +139,7 @@ func (t *T) configureMultipath(ctx context.Context) error {
 }
 
 func (t *T) configure(ctx context.Context, force forceMode) error {
-	exposedDevices := t.ExposedDevices()
+	exposedDevices := t.ExposedDevices(ctx)
 	if force == preserve && len(exposedDevices) > 0 {
 		t.Log().Infof("system configuration: skip: device already exposed: %s", exposedDevices)
 		return nil
@@ -161,7 +161,7 @@ func (t *T) configure(ctx context.Context, force forceMode) error {
 	if err := t.waitDevPath(1*time.Second, 30*time.Second); err != nil {
 		return err
 	}
-	exposedDevices = t.ExposedDevices()
+	exposedDevices = t.ExposedDevices(ctx)
 	if len(exposedDevices) == 0 {
 		return fmt.Errorf("system configuration: %s is not exposed device after scan", t.DiskID)
 	}

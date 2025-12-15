@@ -473,11 +473,11 @@ func (t *T) Head() string {
 	return t.MountPoint
 }
 
-func (t *T) ClaimedDevices() device.L {
-	return t.SubDevices()
+func (t *T) ClaimedDevices(ctx context.Context) device.L {
+	return t.SubDevices(ctx)
 }
 
-func (t *T) SubDevices() device.L {
-	devs, _ := t.pool().VDevDevices()
+func (t *T) SubDevices(ctx context.Context) device.L {
+	devs, _ := t.pool().VDevDevices(ctx)
 	return devs
 }

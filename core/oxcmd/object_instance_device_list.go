@@ -18,7 +18,7 @@ type (
 	}
 
 	devicer interface {
-		PrintDevices(roles objectdevice.Role) objectdevice.L
+		PrintDevices(context.Context, roles objectdevice.Role) objectdevice.L
 	}
 )
 

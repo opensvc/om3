@@ -3,6 +3,7 @@
 package filesystems
 
 import (
+	"context"
 	"fmt"
 	"syscall"
 	"time"
@@ -13,13 +14,14 @@ import (
 	"github.com/opensvc/om3/v3/util/file"
 )
 
-func (t T) Mount(dev string, mnt string, options string) error {
+func (t T) Mount(ctx context.Context, dev string, mnt string, options string) error {
 	args := []string{"-t", t.Type()}
 	if len(options) > 0 {
 		args = append(args, "-o", options)
 	}
 	args = append(args, dev, mnt)
 	cmd := command.New(
+		command.WithContext(ctx),
 		command.WithName("mount"),
 		command.WithArgs(args),
 		command.WithLogger(t.Log()),
@@ -36,8 +38,9 @@ func (t T) Mount(dev string, mnt string, options string) error {
 	return nil
 }
 
-func (t T) Umount(mnt string) error {
+func (t T) Umount(ctx context.Context, mnt string) error {
 	cmd := command.New(
+		command.WithContext(ctx),
 		command.WithName("umount"),
 		command.WithVarArgs(mnt),
 		command.WithLogger(t.Log()),
@@ -56,7 +59,7 @@ func (t T) Umount(mnt string) error {
 	return nil
 }
 
-func (t T) KillUsers(mnt string) error {
+func (t T) KillUsers(ctx context.Context, mnt string) error {
 	var extraArgs string
 	if v, err := file.ExistsNotDir(mnt); err != nil {
 		return err
@@ -66,6 +69,7 @@ func (t T) KillUsers(mnt string) error {
 		extraArgs = "-kMv"
 	}
 	cmd := command.New(
+		command.WithContext(ctx),
 		command.WithName("fuser"),
 		command.WithVarArgs(mnt, extraArgs),
 		command.WithLogger(t.Log()),

@@ -126,7 +126,7 @@ func (t *T) lockedSync(ctx context.Context, mode modeT, target []string) (err er
 		if err := t.peerSync(ctx, mode, nodename); err != nil {
 			return err
 		}
-		if t.WritePeerLastSync(nodename, nodenames); err != nil {
+		if t.WritePeerLastSync(ctx, nodename, nodenames); err != nil {
 			return err
 		}
 	}

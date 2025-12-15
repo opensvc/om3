@@ -283,20 +283,20 @@ func (t T) IsSCSI() (bool, error) {
 	}
 }
 
-func (t T) Remove() error {
+func (t T) Remove(ctx context.Context) error {
 	driver, err := t.Driver()
 	if err != nil {
 		return err
 	}
 	type remover interface {
-		Remove(T) error
+		Remove(context.Context, T) error
 	}
 	driverRemover, ok := driver.(remover)
 	if !ok {
 		t.log.Tracef("Remove() not implemented for device driver %s", driver)
 		return nil
 	}
-	driverRemover.Remove(t)
+	driverRemover.Remove(ctx, t)
 	return nil
 }
 

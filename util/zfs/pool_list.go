@@ -1,10 +1,12 @@
 package zfs
 
 import (
+	"context"
+
 	"github.com/opensvc/om3/v3/util/funcopt"
 )
 
-func (t *Pool) ListVolumes(fopts ...funcopt.O) (Vols, error) {
+func (t *Pool) ListVolumes(ctx context.Context, fopts ...funcopt.O) (Vols, error) {
 	fopts = append(fopts, ListWithLogger(t.Log))
 	vols, err := ListVolumes(fopts...)
 	if err != nil {
