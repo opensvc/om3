@@ -57,6 +57,8 @@ func init() {
 		newCmdObjectCreate(kind),
 		newCmdObjectDelete(kind),
 		newCmdObjectDeploy(kind),
+		newCmdObjectDisable(kind),
+		newCmdObjectEnable(kind),
 		newCmdObjectEval(kind),
 		newCmdObjectFreeze(kind),
 		newCmdObjectGet(kind),
