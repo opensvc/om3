@@ -11,7 +11,7 @@ import (
 	"github.com/opensvc/om3/v3/util/funcopt"
 )
 
-var ExecCommand = exec.Command
+var ExecCommand = exec.CommandContext
 
 type (
 	// Runner collects results and format the output.
@@ -92,7 +92,7 @@ func (r *Runner) doRegisteredCheck(ctx context.Context, c Checker) {
 
 func (r *Runner) doCustomCheck(ctx context.Context, path string) {
 	rs := NewResultSet()
-	cmd := exec.CommandContext(ctx, path)
+	cmd := ExecCommand(ctx, path)
 	cmd.Stderr = os.Stderr
 	b, err := cmd.Output()
 	if err != nil {
