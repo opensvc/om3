@@ -68,11 +68,11 @@ func (t *T) Info(ctx context.Context) (resource.InfoKeys, error) {
 }
 
 func (t *T) UnprovisionAsFollower(ctx context.Context) error {
-	return t.unconfigure()
+	return t.unconfigure(ctx)
 }
 
 func (t *T) ProvisionAsFollower(ctx context.Context) error {
-	return t.configure(preserve)
+	return t.configure(ctx, preserve)
 }
 
 func (t *T) ProvisionAsLeader(ctx context.Context) error {
@@ -82,7 +82,7 @@ func (t *T) ProvisionAsLeader(ctx context.Context) error {
 	)
 	if t.DiskID != "" {
 		t.Log().Infof("skip disk creation: the disk_id keyword is already set")
-		return t.configure(preserve)
+		return t.configure(ctx, preserve)
 	}
 	if disks, err = t.createDisk(ctx); err != nil {
 		return err
@@ -90,7 +90,7 @@ func (t *T) ProvisionAsLeader(ctx context.Context) error {
 	if err := t.setDiskIDKeywords(ctx, disks); err != nil {
 		return err
 	}
-	return t.configure(enforce)
+	return t.configure(ctx, enforce)
 }
 
 func (t *T) UnprovisionAsLeader(ctx context.Context) error {
@@ -98,7 +98,7 @@ func (t *T) UnprovisionAsLeader(ctx context.Context) error {
 		t.Log().Infof("skip disk deletion: the disk_id keyword is not set")
 		return nil
 	}
-	if err := t.unconfigure(); err != nil {
+	if err := t.unconfigure(ctx); err != nil {
 		return err
 	}
 	if _, err := t.deleteDisk(ctx); err != nil {

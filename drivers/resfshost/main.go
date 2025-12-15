@@ -350,11 +350,11 @@ func (t *T) promoteDevicesReadWrite(ctx context.Context) error {
 			continue
 		}
 		t.Log().Infof("promote device %s read-write", dev)
-		if err := dev.SetReadWrite(); err != nil {
+		if err := dev.SetReadWrite(ctx); err != nil {
 			return err
 		}
 		actionrollback.Register(ctx, func(ctx context.Context) error {
-			return dev.SetReadOnly()
+			return dev.SetReadOnly(ctx)
 		})
 	}
 	return nil
