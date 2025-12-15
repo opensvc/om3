@@ -40,12 +40,18 @@ func parse(b []byte) ([]Entry, error) {
 		if err != nil {
 			continue
 		}
+		var usedPct int64
+		if total == 0 {
+			usedPct = 0
+		} else {
+			usedPct = 100 * used / total
+		}
 		r = append(r, Entry{
 			Device:      l[0],
 			Total:       total * 1024,
 			Used:        used * 1024,
 			Free:        free * 1024,
-			UsedPercent: 100 * used / total,
+			UsedPercent: usedPct,
 			MountPoint:  l[5],
 		})
 	}
