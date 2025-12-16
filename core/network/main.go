@@ -228,6 +228,11 @@ func (t *T) GetString(s string) string {
 	return t.Config().GetString(k)
 }
 
+func (t *T) GetStringAs(s, nodename string) string {
+	k := t.key(s)
+	return t.Config().GetStringAs(k, nodename)
+}
+
 func (t *T) GetBool(s string) bool {
 	k := t.key(s)
 	return t.Config().GetBool(k)
