@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"time"
 
 	"github.com/opensvc/om3/v3/core/cluster"
 	"github.com/opensvc/om3/v3/core/object"
@@ -70,7 +71,11 @@ func (t *T) Start(ctx context.Context) error {
 	if err := t.startCertFS(ctx); err != nil {
 		t.log.Errorf("start certificates volatile fs: %s", err)
 	} else {
-		t.stopFunc = append(t.stopFunc, func() error { return t.stopCertFS(ctx) })
+		t.stopFunc = append(t.stopFunc, func() error {
+			ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+			defer cancel()
+			return t.stopCertFS(ctx)
+		})
 	}
 	if err := daemonauth.Start(ctx, &authOption{}); err != nil {
 		return fmt.Errorf("can't start daemon auth: %w", err)
