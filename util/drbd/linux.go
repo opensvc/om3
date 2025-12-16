@@ -5,6 +5,7 @@ package drbd
 import (
 	"bufio"
 	"bytes"
+	"context"
 	"fmt"
 	"os/exec"
 	"strings"
@@ -18,18 +19,19 @@ const (
 	kmod      = "drbd"
 )
 
-func IsCapable() bool {
+func IsCapable(ctx context.Context) bool {
 	if _, err := exec.LookPath(drbdadm); err != nil {
 		return false
 	}
-	if !hasKMod(kmod) {
+	if !hasKMod(ctx, kmod) {
 		return false
 	}
 	return true
 }
 
-func hasKMod(s string) bool {
+func hasKMod(ctx context.Context, s string) bool {
 	cmd := command.New(
+		command.WithContext(ctx),
 		command.WithName("modinfo"),
 		command.WithVarArgs(s),
 	)
@@ -39,8 +41,9 @@ func hasKMod(s string) bool {
 	return true
 }
 
-func Version() (string, error) {
+func Version(ctx context.Context) (string, error) {
 	cmd := command.New(
+		command.WithContext(ctx),
 		command.WithName(drbdadm),
 		command.WithBufferedStdout(),
 		command.WithIgnoredExitCodes(1),

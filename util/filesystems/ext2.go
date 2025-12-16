@@ -25,8 +25,8 @@ func (t Ext2) FSCK(ctx context.Context, s string) error {
 	return extFSCK(ctx, s)
 }
 
-func (t Ext2) IsFormated(s string) (bool, error) {
-	return extIsFormated(s)
+func (t Ext2) IsFormated(ctx context.Context, s string) (bool, error) {
+	return extIsFormated(ctx, s)
 }
 
 func (t Ext2) MKFS(ctx context.Context, s string, args []string) error {

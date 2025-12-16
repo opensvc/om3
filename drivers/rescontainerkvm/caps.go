@@ -11,7 +11,7 @@ func init() {
 	capabilities.Register(capabilitiesScanner)
 }
 
-func capabilitiesScanner() ([]string, error) {
+func capabilitiesScanner(ctx context.Context) ([]string, error) {
 	l := make([]string, 0)
 	drvCap := drvID.Cap()
 	if _, err := exec.LookPath("machinectl"); err == nil {
@@ -20,7 +20,6 @@ func capabilitiesScanner() ([]string, error) {
 	if _, err := exec.LookPath("virsh"); err == nil {
 		l = append(l, drvCap)
 	}
-	ctx := context.Background()
 	if isPartitionsCapable(ctx) {
 		l = append(l, drvCap+".partitions")
 	}

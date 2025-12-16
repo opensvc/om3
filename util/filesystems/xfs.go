@@ -47,6 +47,7 @@ func (t XFS) MKFS(ctx context.Context, devpath string, args []string) error {
 		return fmt.Errorf("mkfs.xfs not found")
 	}
 	cmd := command.New(
+		command.WithContext(ctx),
 		command.WithName("mkfs.xfs"),
 		command.WithArgs(append(args, "-f", "-q", devpath)),
 		command.WithLogger(t.log),

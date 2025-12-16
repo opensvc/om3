@@ -1,6 +1,7 @@
 package rescontainerpodman
 
 import (
+	"context"
 	"os/exec"
 
 	"github.com/opensvc/om3/v3/util/capabilities"
@@ -21,7 +22,7 @@ func IsGenuine() bool {
 // as strings, depending on system tools.
 // It conditionally adds capabilities based on the availability of Podman,
 // Docker, or Docker-native systems.
-func capabilitiesScanner() ([]string, error) {
+func capabilitiesScanner(ctx context.Context) ([]string, error) {
 	l := make([]string, 0)
 	drvCap := DrvID.Cap()
 	if !IsGenuine() {

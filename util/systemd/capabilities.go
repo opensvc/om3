@@ -1,13 +1,17 @@
 package systemd
 
-import "github.com/opensvc/om3/v3/util/capabilities"
+import (
+	"context"
+
+	"github.com/opensvc/om3/v3/util/capabilities"
+)
 
 const (
 	NodeCapability = "node.x.systemd"
 )
 
-// CapabilitiesScanner is the capabilities scanner for systemd
-func CapabilitiesScanner() ([]string, error) {
+// capabilitiesScanner is the capabilities scanner for systemd
+func capabilitiesScanner(ctx context.Context) ([]string, error) {
 	if HasSystemd() {
 		return []string{NodeCapability}, nil
 	}
@@ -16,5 +20,5 @@ func CapabilitiesScanner() ([]string, error) {
 
 // register node scanners
 func init() {
-	capabilities.Register(CapabilitiesScanner)
+	capabilities.Register(capabilitiesScanner)
 }

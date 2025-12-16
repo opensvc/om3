@@ -38,11 +38,11 @@ func extFSCK(ctx context.Context, s string) error {
 	}
 }
 
-func extIsFormated(s string) (bool, error) {
+func extIsFormated(ctx context.Context, s string) (bool, error) {
 	if _, err := exec.LookPath("tune2fs"); err != nil {
 		return false, errors.New("tune2fs not found")
 	}
-	cmd := exec.Command("tune2fs", "-l", s)
+	cmd := exec.CommandContext(ctx, "tune2fs", "-l", s)
 	cmd.Start()
 	cmd.Wait()
 	exitCode := cmd.ProcessState.ExitCode()

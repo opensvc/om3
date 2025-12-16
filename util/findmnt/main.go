@@ -229,12 +229,12 @@ func isNfsPath(s string) bool {
 }
 
 func init() {
-	capabilities.Register(CapabilitiesScanner)
+	capabilities.Register(capabilitiesScanner)
 }
 
-func CapabilitiesScanner() ([]string, error) {
+func capabilitiesScanner(ctx context.Context) ([]string, error) {
 	l := make([]string, 0)
-	ctx, cancel := context.WithTimeout(context.Background(), 1*time.Second)
+	ctx, cancel := context.WithTimeout(ctx, 1*time.Second)
 	defer cancel()
 	cmd := exec.CommandContext(ctx, "findmnt", jsonFlag, "/")
 	if err := cmd.Run(); err == nil {

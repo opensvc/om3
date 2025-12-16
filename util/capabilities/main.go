@@ -11,6 +11,7 @@
 package capabilities
 
 import (
+	"context"
 	"encoding/json"
 	"errors"
 	"os"
@@ -21,7 +22,7 @@ import (
 
 type (
 	// scanner func may be registered by drivers or other components
-	scanner func() ([]string, error)
+	scanner func(context.Context) ([]string, error)
 
 	// L is a list of capabilities expressed as strings
 	L []string
@@ -71,12 +72,12 @@ func Has(cap string) bool {
 
 // Scan refresh capabilities from the scanners function calls, then
 // it update capabilities list stored on file system
-func Scan() error {
+func Scan(ctx context.Context) error {
 	newCaps := make(L, 0)
 	runChan := make(chan int, runtime.GOMAXPROCS(0))
 	resChan := make(chan L)
 	for _, s := range scanners {
-		go runScanner(s, runChan, resChan)
+		go runScanner(ctx, s, runChan, resChan)
 	}
 	for range scanners {
 		sCaps := <-resChan
@@ -135,10 +136,10 @@ func Load() (loadedCaps L, err error) {
 	return
 }
 
-func runScanner(sc scanner, running chan int, result chan L) {
+func runScanner(ctx context.Context, sc scanner, running chan int, result chan L) {
 	running <- 1
 	defer func() { <-running }()
-	scannerCaps, err := sc()
+	scannerCaps, err := sc(ctx)
 	if err != nil {
 		result <- L{}
 		return

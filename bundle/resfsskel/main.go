@@ -25,7 +25,7 @@ func New() resource.Driver {
 	return &T{}
 }
 
-func capabilitiesScanner() ([]string, error) {
+func capabilitiesScanner(ctx context.Context) ([]string, error) {
 	return []string{DriverID.Cap()}, nil
 }
 

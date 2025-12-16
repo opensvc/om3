@@ -2,6 +2,7 @@ package rescontainerdocker
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"os/exec"
 
@@ -29,9 +30,9 @@ func init() {
 	capabilities.Register(capabilitiesScanner)
 }
 
-func getDockerInfo() (*dockerInfo, error) {
+func getDockerInfo(ctx context.Context) (*dockerInfo, error) {
 	var di dockerInfo
-	b, err := exec.Command("docker", "info", "-f", "json").Output()
+	b, err := exec.CommandContext(ctx, "docker", "info", "-f", "json").Output()
 	if err != nil {
 		return nil, err
 	}
@@ -39,8 +40,8 @@ func getDockerInfo() (*dockerInfo, error) {
 	return &di, err
 }
 
-func IsGenuine() bool {
-	b, err := exec.Command("docker", "--version").Output()
+func IsGenuine(ctx context.Context) bool {
+	b, err := exec.CommandContext(ctx, "docker", "--version").Output()
 	if err != nil {
 		return false
 	} else if bytes.Contains(b, []byte("Docker")) {
@@ -67,16 +68,16 @@ func isTimeoutCapable(di *dockerInfo) bool {
 	return false
 }
 
-func capabilitiesScanner() ([]string, error) {
+func capabilitiesScanner(ctx context.Context) ([]string, error) {
 	l := make([]string, 0)
-	if !IsGenuine() {
+	if !IsGenuine(ctx) {
 		return l, nil
 	}
 	l = append(l, drvCap)
 	l = append(l, capRegistryCreds)
 	l = append(l, capSignal)
 
-	di, err := getDockerInfo()
+	di, err := getDockerInfo(ctx)
 	if err == nil {
 		if isTimeoutCapable(di) {
 			l = append(l, capHasTimeoutFlag)

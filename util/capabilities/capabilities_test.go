@@ -86,14 +86,14 @@ func TestHas(t *testing.T) {
 func TestScan(t *testing.T) {
 	t.Run("succeed when no Scanner", func(t *testing.T) {
 		setup(t)
-		assert.Nil(t, Scan())
+		assert.Nil(t, Scan(t.Context()))
 		assert.Equalf(t, L{}, caps, "must have empty caps")
 	})
 
 	t.Run("return error is not able to update cache", func(t *testing.T) {
 		setup(t)
 		SetCacheFile("/tmp/does-not-exist/capabilities.json")
-		err := Scan()
+		err := Scan(t.Context())
 		assert.Error(t, err, os.ErrNotExist)
 	})
 
@@ -105,7 +105,7 @@ func TestScan(t *testing.T) {
 		Register(func() ([]string, error) { return []string{}, errors.New("") })
 		Register(func() ([]string, error) { return []string{"not"}, errors.New("") })
 		Register(func() ([]string, error) { return []string{"a"}, nil })
-		assert.Nil(t, Scan())
+		assert.Nil(t, Scan(t.Context()))
 
 		t.Run("has updated itself", func(t *testing.T) {
 			assert.True(t, Has("a"))

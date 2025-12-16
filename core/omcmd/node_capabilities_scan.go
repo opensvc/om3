@@ -27,7 +27,8 @@ func (t *CmdNodeCapabilitiesScan) Run() error {
 			if err != nil {
 				return nil, err
 			}
-			return n.ScanCapabilities()
+			ctx := context.Background()
+			return n.ScanCapabilities(ctx)
 		}),
 		nodeaction.WithRemoteFunc(func(ctx context.Context, nodename string) (interface{}, error) {
 			c, err := client.New()

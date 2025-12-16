@@ -1,12 +1,14 @@
 package object
 
 import (
+	"context"
+
 	"github.com/opensvc/om3/v3/util/capabilities"
 )
 
 // ScanCapabilities scan node capabilities and return new capabilities
-func (t Node) ScanCapabilities() (capabilities.L, error) {
-	err := capabilities.Scan()
+func (t Node) ScanCapabilities(ctx context.Context) (capabilities.L, error) {
+	err := capabilities.Scan(ctx)
 	if err != nil {
 		return nil, err
 	}

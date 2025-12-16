@@ -149,14 +149,14 @@ func (t *T) SetLog(log *plog.Logger) {
 	t.log = log
 }
 
-func IsCapable(t string) bool {
+func IsCapable(ctx context.Context, t string) bool {
 	fs := FromType(t)
 	if i, ok := fs.(IsCapabler); ok {
 		if !i.IsCapable() {
 			return false
 		}
 	}
-	if !availTypes().Has(t) && !hasKMod(t) {
+	if !availTypes().Has(t) && !hasKMod(ctx, t) {
 		return false
 	}
 	return true
@@ -231,8 +231,9 @@ func (m availTypesM) Has(s string) bool {
 	return ok
 }
 
-func hasKMod(s string) bool {
+func hasKMod(ctx context.Context, s string) bool {
 	cmd := command.New(
+		command.WithContext(ctx),
 		command.WithName("modinfo"),
 		command.WithVarArgs(s),
 	)

@@ -3,6 +3,7 @@ package scsi
 import (
 	"bufio"
 	"bytes"
+	"context"
 	"fmt"
 	"os"
 	"os/exec"
@@ -24,8 +25,8 @@ var (
 	mpathReservationKeyFileRegexp = regexp.MustCompile(`(?m)^\s*reservation_key\s+("file"|file)\s*$`)
 )
 
-// CapabilitiesScanner is the capabilities scanner for scsi
-func CapabilitiesScanner() ([]string, error) {
+// capabilitiesScanner is the capabilities scanner for scsi
+func capabilitiesScanner(ctx context.Context) ([]string, error) {
 	l := make([]string, 0)
 	if _, err := exec.LookPath("mpathpersist"); err != nil {
 		// out
@@ -33,7 +34,7 @@ func CapabilitiesScanner() ([]string, error) {
 		// out
 	} else if !mpathReservationKeyConfigured {
 		// out
-	} else if mpathVersionSufficent, err := isMpathVersionSufficent(); err != nil {
+	} else if mpathVersionSufficent, err := isMpathVersionSufficent(ctx); err != nil {
 		// out
 	} else if mpathVersionSufficent {
 		l = append(l, MpathPersistCapability)
@@ -46,8 +47,8 @@ func CapabilitiesScanner() ([]string, error) {
 	return l, nil
 }
 
-func isMpathVersionSufficent() (bool, error) {
-	v, err := mpathVersion()
+func isMpathVersionSufficent(ctx context.Context) (bool, error) {
+	v, err := mpathVersion(ctx)
 	if err != nil {
 		return false, err
 	}
@@ -62,8 +63,9 @@ func isMpathVersionSufficent() (bool, error) {
 	return minVer.LessThanOrEqual(curVer), nil
 }
 
-func mpathVersion() (string, error) {
+func mpathVersion(ctx context.Context) (string, error) {
 	cmd := command.New(
+		command.WithContext(ctx),
 		command.WithName("multipath"),
 		command.WithVarArgs("-h"),
 		command.WithBufferedStderr(),
@@ -97,5 +99,5 @@ func isMpathReservationKeyConfigured() (bool, error) {
 
 // register node scanners
 func init() {
-	capabilities.Register(CapabilitiesScanner)
+	capabilities.Register(capabilitiesScanner)
 }
