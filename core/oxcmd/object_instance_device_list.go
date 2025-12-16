@@ -16,10 +16,6 @@ type (
 		NodeSelector string
 		Roles        string
 	}
-
-	devicer interface {
-		PrintDevices(context.Context, roles objectdevice.Role) objectdevice.L
-	}
 )
 
 func (t *CmdObjectInstanceDeviceList) extract(selector string, c *client.T) (objectdevice.L, error) {
