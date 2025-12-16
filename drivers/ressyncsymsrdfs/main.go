@@ -312,14 +312,14 @@ func New() resource.Driver {
 	return &T{}
 }
 
-func (t *T) listPD() ([]string, error) {
+func (t *T) listPD(ctx context.Context) ([]string, error) {
 	l := make([]string, 0)
-	m, err := t.getPDNameByDevNameMap()
+	m, err := t.getPDNameByDevNameMap(ctx)
 	if err != nil {
 		return l, err
 	}
 	args := []string{"-g", t.SymDG, "list", "ld", "-output", "xml_e", "-i", "15", "-c", "4"}
-	cmd := exec.Command(symdg, args...)
+	cmd := exec.CommandContext(ctx, symdg, args...)
 	t.Log().Tracef("run %s", cmd)
 	b, err := cmd.Output()
 	if err != nil {
@@ -344,10 +344,10 @@ func (t *T) listPD() ([]string, error) {
 	return l, err
 }
 
-func (t *T) getPDNameByDevNameMap() (map[string][]string, error) {
+func (t *T) getPDNameByDevNameMap(ctx context.Context) (map[string][]string, error) {
 	m := make(map[string][]string)
 	args := []string{"-identifier", "device_name", "-output", "xml_e"}
-	cmd := exec.Command(syminq, args...)
+	cmd := exec.CommandContext(ctx, syminq, args...)
 	t.Log().Tracef("run %s", cmd)
 	b, err := cmd.Output()
 	if err != nil {
@@ -374,11 +374,11 @@ func (t *T) getPDNameByDevNameMap() (map[string][]string, error) {
 	return m, nil
 }
 
-func (t *T) promoteRW() error {
+func (t *T) promoteRW(ctx context.Context) error {
 	if runtime.GOOS != "linux" {
 		return nil
 	}
-	devs, err := t.listPD()
+	devs, err := t.listPD(ctx)
 	if err != nil {
 		return err
 	}
@@ -386,16 +386,16 @@ func (t *T) promoteRW() error {
 		if !strings.HasPrefix(dev, "/dev/mapper/") && !strings.HasPrefix(dev, "/dev/dm-") && !strings.HasPrefix(dev, "/dev/rdsk/") {
 			continue
 		}
-		if err := t.promoteRWDev(dev); err != nil {
+		if err := t.promoteRWDev(ctx, dev); err != nil {
 			return err
 		}
 	}
 	return nil
 }
 
-func (t *T) promoteRWDev(dev string) error {
+func (t *T) promoteRWDev(ctx context.Context, dev string) error {
 	d := device.New(dev, device.WithLogger(t.Log()))
-	return d.PromoteRW()
+	return d.PromoteRW(ctx)
 }
 
 func (t *T) getSymIDFromExportSafe(path string) string {
@@ -987,7 +987,7 @@ func (t *T) Start(ctx context.Context) error {
 	if err != nil {
 		return err
 	}
-	return t.promoteRW()
+	return t.promoteRW(ctx)
 }
 
 func (t *T) dgImport(path string) error {

@@ -3,6 +3,7 @@
 package device
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"os"
@@ -38,12 +39,12 @@ func (t T) IsReadOnly() (bool, error) {
 	}
 }
 
-func (t T) SetReadWrite() error {
-	return t.setRO(false)
+func (t T) SetReadWrite(ctx context.Context) error {
+	return t.setRO(ctx, false)
 }
 
-func (t T) SetReadOnly() error {
-	return t.setRO(true)
+func (t T) SetReadOnly(ctx context.Context) error {
+	return t.setRO(ctx, true)
 }
 
 func (t T) sysfsFile() (string, error) {
@@ -63,7 +64,7 @@ func (t T) sysfsFileRO() (string, error) {
 	return fmt.Sprintf("%s/ro", p), nil
 }
 
-func (t T) setRO(v bool) error {
+func (t T) setRO(ctx context.Context, v bool) error {
 	var action string
 	if v {
 		action = "--setro"
@@ -71,6 +72,7 @@ func (t T) setRO(v bool) error {
 		action = "--setrw"
 	}
 	cmd := command.New(
+		command.WithContext(ctx),
 		command.WithName("blockdev"),
 		command.WithVarArgs(action, t.path),
 		command.WithLogger(t.log),
@@ -281,25 +283,26 @@ func (t T) IsSCSI() (bool, error) {
 	}
 }
 
-func (t T) Remove() error {
+func (t T) Remove(ctx context.Context) error {
 	driver, err := t.Driver()
 	if err != nil {
 		return err
 	}
 	type remover interface {
-		Remove(T) error
+		Remove(context.Context, T) error
 	}
 	driverRemover, ok := driver.(remover)
 	if !ok {
 		t.log.Tracef("Remove() not implemented for device driver %s", driver)
 		return nil
 	}
-	driverRemover.Remove(t)
+	driverRemover.Remove(ctx, t)
 	return nil
 }
 
-func (t T) Wipe() error {
+func (t T) Wipe(ctx context.Context) error {
 	cmd := command.New(
+		command.WithContext(ctx),
 		command.WithName("wipefs"),
 		command.WithVarArgs("-a", t.path),
 		command.WithLogger(t.log),
@@ -314,8 +317,9 @@ func (t T) Wipe() error {
 	return nil
 }
 
-func (t T) ConfigureMultipath(verbosity int) error {
+func (t T) ConfigureMultipath(ctx context.Context, verbosity int) error {
 	cmd := command.New(
+		command.WithContext(ctx),
 		command.WithName("multipath"),
 		command.WithVarArgs("-v", fmt.Sprint(verbosity), t.path),
 		command.WithLogger(t.log),
@@ -330,8 +334,9 @@ func (t T) ConfigureMultipath(verbosity int) error {
 	return nil
 }
 
-func (t T) RefreshMultipath() error {
+func (t T) RefreshMultipath(ctx context.Context) error {
 	cmd := command.New(
+		command.WithContext(ctx),
 		command.WithName("multipath"),
 		command.WithVarArgs("-r", t.path),
 		command.WithLogger(t.log),
@@ -346,8 +351,9 @@ func (t T) RefreshMultipath() error {
 	return nil
 }
 
-func (t T) RemoveMultipath() error {
+func (t T) RemoveMultipath(ctx context.Context) error {
 	cmd := command.New(
+		command.WithContext(ctx),
 		command.WithName("multipath"),
 		command.WithVarArgs("-f", t.path),
 		command.WithLogger(t.log),
@@ -376,8 +382,9 @@ func (t T) WWID() (string, error) {
 	return "", nil
 }
 
-func (t T) IsReady() (bool, error) {
+func (t T) IsReady(ctx context.Context) (bool, error) {
 	cmd := command.New(
+		command.WithContext(ctx),
 		command.WithName("sg_turs"),
 		command.WithVarArgs(t.path),
 		command.WithLogger(t.log),
@@ -393,11 +400,11 @@ func (t T) IsReady() (bool, error) {
 	return true, err
 }
 
-func (t T) WaitReady() error {
+func (t T) WaitReady(ctx context.Context) error {
 	delay := time.Second
 	retries := 5
 	for i := 0; i < retries; i++ {
-		if v, err := t.IsReady(); err != nil {
+		if v, err := t.IsReady(ctx); err != nil {
 			return err
 		} else if v {
 			if i == 0 {
@@ -412,7 +419,7 @@ func (t T) WaitReady() error {
 	return fmt.Errorf("timed out waiting for device %s to become ready (max %s)", t.path, time.Duration(retries)*delay)
 }
 
-func (t T) PromoteRW() error {
+func (t T) PromoteRW(ctx context.Context) error {
 	count := 0
 	paths, err := t.SCSIPaths()
 	if err != nil {
@@ -425,7 +432,7 @@ func (t T) PromoteRW() error {
 			return err
 		}
 		if isRO {
-			if err := path.SetReadWrite(); err != nil {
+			if err := path.SetReadWrite(ctx); err != nil {
 				return err
 			}
 			isChanged = true
@@ -443,7 +450,7 @@ func (t T) PromoteRW() error {
 		}
 		if isChanged {
 			count += 1
-			if err := t.WaitReady(); err != nil {
+			if err := t.WaitReady(ctx); err != nil {
 				return err
 			}
 		}
@@ -453,12 +460,12 @@ func (t T) PromoteRW() error {
 		return err
 	}
 	if isRO {
-		if err := t.SetReadWrite(); err != nil {
+		if err := t.SetReadWrite(ctx); err != nil {
 			return err
 		}
 	}
 	if count > 0 {
-		if err := t.RefreshMultipath(); err != nil {
+		if err := t.RefreshMultipath(ctx); err != nil {
 			return err
 		}
 	}

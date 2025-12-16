@@ -96,7 +96,7 @@ func (t *actor) needRollback(ctx context.Context) bool {
 		t.Log().Tracef("skip rollback: not demanded by the %s action", action.Name)
 		return false
 	}
-	if actioncontext.IsRollbackDisabled(ctx) {
+	if actioncontext.IsRollbackDisabled(ctx) || actioncontext.IsLeader(ctx) {
 		t.Log().Tracef("skip rollback: disabled via the command flag")
 		return false
 	}

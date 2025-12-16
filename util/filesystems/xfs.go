@@ -1,6 +1,7 @@
 package filesystems
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"os/exec"
@@ -25,11 +26,11 @@ func NewXFS() *XFS {
 	return &t
 }
 
-func (t XFS) IsFormated(s string) (bool, error) {
+func (t XFS) IsFormated(ctx context.Context, s string) (bool, error) {
 	if _, err := exec.LookPath("xfs_admin"); err != nil {
 		return false, errors.New("xfs_admin not found")
 	}
-	cmd := exec.Command("xfs_admin", "-l", s)
+	cmd := exec.CommandContext(ctx, "xfs_admin", "-l", s)
 	cmd.Start()
 	cmd.Wait()
 	exitCode := cmd.ProcessState.ExitCode()
@@ -41,11 +42,12 @@ func (t XFS) IsFormated(s string) (bool, error) {
 	}
 }
 
-func (t XFS) MKFS(devpath string, args []string) error {
+func (t XFS) MKFS(ctx context.Context, devpath string, args []string) error {
 	if _, err := exec.LookPath("mkfs.xfs"); err != nil {
 		return fmt.Errorf("mkfs.xfs not found")
 	}
 	cmd := command.New(
+		command.WithContext(ctx),
 		command.WithName("mkfs.xfs"),
 		command.WithArgs(append(args, "-f", "-q", devpath)),
 		command.WithLogger(t.log),

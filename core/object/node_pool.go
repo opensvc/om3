@@ -1,6 +1,7 @@
 package object
 
 import (
+	"context"
 	"strings"
 
 	"github.com/opensvc/om3/v3/core/pool"
@@ -8,21 +9,21 @@ import (
 	"github.com/opensvc/om3/v3/drivers/poolshm"
 )
 
-func (t *Node) ShowPoolsByName(name string) pool.StatusList {
+func (t *Node) ShowPoolsByName(ctx context.Context, name string) pool.StatusList {
 	l := pool.NewStatusList()
 	for _, p := range t.Pools() {
 		if name != "" && name != p.Name() {
 			continue
 		}
-		l = l.Add(p, true)
+		l = l.Add(ctx, p, true)
 	}
 	return l
 }
 
-func (t *Node) ShowPools() pool.StatusList {
+func (t *Node) ShowPools(ctx context.Context) pool.StatusList {
 	l := pool.NewStatusList()
 	for _, p := range t.Pools() {
-		l = l.Add(p, true)
+		l = l.Add(ctx, p, true)
 	}
 	return l
 }

@@ -63,7 +63,7 @@ func (t *T) Start(ctx context.Context) error {
 }
 
 func (t *T) Stop(ctx context.Context) error {
-	if v, err := t.isMounted(); err != nil {
+	if v, err := t.isMounted(ctx); err != nil {
 		return err
 	} else if !v {
 		t.Log().Infof("%s already umounted from %s", t.Device, t.mountPoint())
@@ -93,7 +93,7 @@ func (t *T) Status(ctx context.Context) status.T {
 		t.StatusLog().Info("mnt is not defined")
 		return status.NotApplicable
 	}
-	if v, err := t.isMounted(); err != nil {
+	if v, err := t.isMounted(ctx); err != nil {
 		t.StatusLog().Error("%s", err)
 		return status.Undef
 	} else if !v {
@@ -154,7 +154,7 @@ func (t *T) mount(ctx context.Context) error {
 	if err := t.validateDevice(); err != nil {
 		return err
 	}
-	if v, err := t.isMounted(); err != nil {
+	if v, err := t.isMounted(ctx); err != nil {
 		return err
 	} else if v {
 		t.Log().Infof("%s already mounted on %s", t.Device, t.mountPoint())
@@ -315,8 +315,8 @@ func (t *T) validateDevice() error {
 	return nil
 }
 
-func (t *T) isMounted() (bool, error) {
-	v, err := findmnt.Has(t.Device, t.mountPoint())
+func (t *T) isMounted(ctx context.Context) (bool, error) {
+	v, err := findmnt.Has(ctx, t.Device, t.mountPoint())
 	return v, err
 }
 
@@ -434,7 +434,7 @@ func (t *T) UnprovisionAsLeader(ctx context.Context) error {
 	return nil
 }
 
-func (t *T) Provisioned() (provisioned.T, error) {
+func (t *T) Provisioned(ctx context.Context) (provisioned.T, error) {
 	return provisioned.NotApplicable, nil
 }
 
@@ -473,11 +473,11 @@ func (t *T) Head() string {
 	return t.MountPoint
 }
 
-func (t *T) ClaimedDevices() device.L {
-	return t.SubDevices()
+func (t *T) ClaimedDevices(ctx context.Context) device.L {
+	return t.SubDevices(ctx)
 }
 
-func (t *T) SubDevices() device.L {
-	devs, _ := t.pool().VDevDevices()
+func (t *T) SubDevices(ctx context.Context) device.L {
+	devs, _ := t.pool().VDevDevices(ctx)
 	return devs
 }

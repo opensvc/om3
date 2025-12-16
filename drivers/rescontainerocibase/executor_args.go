@@ -175,7 +175,7 @@ func (ea *ExecutorArg) RunArgsBase(ctx context.Context) (*args.T, error) {
 		a.Append("--device", v)
 	}
 
-	if mounts, err := ea.runArgsMounts(); err != nil {
+	if mounts, err := ea.runArgsMounts(ctx); err != nil {
 		return a, err
 	} else {
 		for _, v := range mounts {
@@ -323,8 +323,8 @@ func (ea *ExecutorArg) runArgsLabels() []string {
 	return a
 }
 
-func (ea *ExecutorArg) runArgsMounts() ([]string, error) {
-	mounts, err := ea.BT.Mounts()
+func (ea *ExecutorArg) runArgsMounts(ctx context.Context) ([]string, error) {
+	mounts, err := ea.BT.Mounts(ctx)
 	if err != nil {
 		return nil, err
 	}

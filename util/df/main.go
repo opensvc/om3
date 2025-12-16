@@ -1,6 +1,7 @@
 package df
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"os"
@@ -23,8 +24,8 @@ type (
 )
 
 // Usage executes and parses a df command
-func Usage() ([]Entry, error) {
-	b, err := doDFUsage()
+func Usage(ctx context.Context) ([]Entry, error) {
+	b, err := doDFUsage(ctx)
 	if err != nil {
 		return nil, err
 	}
@@ -32,8 +33,8 @@ func Usage() ([]Entry, error) {
 }
 
 // Inode executes and parses a df command
-func Inode() ([]Entry, error) {
-	b, err := doDFInode()
+func Inode(ctx context.Context) ([]Entry, error) {
+	b, err := doDFInode(ctx)
 	if err != nil {
 		return nil, err
 	}
@@ -41,7 +42,7 @@ func Inode() ([]Entry, error) {
 }
 
 // ContainingMountUsage executes and parses a df command for the mount point containing the path
-func ContainingMountUsage(p string) ([]Entry, error) {
+func ContainingMountUsage(ctx context.Context, p string) ([]Entry, error) {
 	pp := p
 	for {
 		if _, err := os.Stat(pp); errors.Is(err, os.ErrNotExist) {
@@ -53,7 +54,7 @@ func ContainingMountUsage(p string) ([]Entry, error) {
 		} else if err != nil {
 			return nil, err
 		}
-		if b, err := doDFUsage(pp); err == nil {
+		if b, err := doDFUsage(ctx, pp); err == nil {
 			return parseUsage(b)
 		} else {
 			return nil, err
@@ -62,8 +63,8 @@ func ContainingMountUsage(p string) ([]Entry, error) {
 }
 
 // MountUsage executes and parses a df command for a mount point
-func MountUsage(mnt string) ([]Entry, error) {
-	b, err := doDFUsage(mnt)
+func MountUsage(ctx context.Context, mnt string) ([]Entry, error) {
+	b, err := doDFUsage(ctx, mnt)
 	if err != nil {
 		return nil, err
 	}
@@ -71,8 +72,8 @@ func MountUsage(mnt string) ([]Entry, error) {
 }
 
 // TypeMountUsage executes and parses a df command for a mount point and a fstype
-func TypeMountUsage(fstype string, mnt string) ([]Entry, error) {
-	b, err := doDFUsage(typeOption, fstype, mnt)
+func TypeMountUsage(ctx context.Context, fstype string, mnt string) ([]Entry, error) {
+	b, err := doDFUsage(ctx, typeOption, fstype, mnt)
 	if err != nil {
 		return nil, err
 	}
@@ -81,23 +82,20 @@ func TypeMountUsage(fstype string, mnt string) ([]Entry, error) {
 
 // HasTypeMount return true if df has 'mnt' mount point with type 'fstype'
 // else return false
-func HasTypeMount(fstype string, mnt string) bool {
-	l, err := TypeMountUsage(fstype, mnt)
+func HasTypeMount(ctx context.Context, fstype string, mnt string) bool {
+	l, err := TypeMountUsage(ctx, fstype, mnt)
 	if err != nil {
 		return false
 	}
 	return len(l) > 0
 }
 
-func doDF(args []string) ([]byte, error) {
+func doDF(ctx context.Context, args []string) ([]byte, error) {
 	df, err := exec.LookPath(dfPath)
 	if err != nil {
 		return nil, err
 	}
-	cmd := &exec.Cmd{
-		Path: df,
-		Args: args,
-	}
+	cmd := exec.CommandContext(ctx, df, args...)
 	b, err := cmd.Output()
 	if err != nil {
 		return nil, err

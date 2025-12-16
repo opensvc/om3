@@ -64,10 +64,10 @@ func (e *Executor) EncapCp(ctx context.Context, src, dst string) error {
 	return e.doExecRun(ctx, nil, args...)
 }
 
-func (e *Executor) Enter() error {
+func (e *Executor) Enter(ctx context.Context) error {
 	var enterCmd string
 	candidates := []string{"/bin/bash", "/bin/sh"}
-	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	ctx, cancel := context.WithTimeout(ctx, 10*time.Second)
 	inspect, err := e.Inspect(ctx)
 	pid := inspect.PID()
 	if err != nil {
@@ -91,7 +91,7 @@ outerLoop:
 		return fmt.Errorf("can't enter: container needs at least one of following command: %s",
 			strings.Join(candidates, ", "))
 	}
-	cmd := exec.Command("nsenter", "-t", fmt.Sprint(pid), "--all", "-e", "-w", enterCmd)
+	cmd := exec.CommandContext(ctx, "nsenter", "-t", fmt.Sprint(pid), "--all", "-e", "-w", enterCmd)
 	cmd.Stdin = os.Stdin
 	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stderr

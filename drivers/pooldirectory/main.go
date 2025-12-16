@@ -1,6 +1,7 @@
 package pooldirectory
 
 import (
+	"context"
 	"fmt"
 	"path/filepath"
 
@@ -43,8 +44,8 @@ func (t T) Capabilities() []string {
 	return []string{"rox", "rwx", "roo", "rwo", "blk"}
 }
 
-func (t T) Usage() (pool.Usage, error) {
-	entries, err := df.ContainingMountUsage(t.path())
+func (t T) Usage(ctx context.Context) (pool.Usage, error) {
+	entries, err := df.ContainingMountUsage(ctx, t.path())
 	if err != nil {
 		return pool.Usage{}, err
 	}

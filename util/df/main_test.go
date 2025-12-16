@@ -9,7 +9,8 @@ import (
 )
 
 func TestUsage(t *testing.T) {
-	entries, err := Usage()
+	ctx := t.Context()
+	entries, err := Usage(ctx)
 	if exitError, ok := err.(*exec.ExitError); ok {
 		t.Logf("got error with stderr: %v", string(exitError.Stderr))
 	}
@@ -25,7 +26,8 @@ func TestUsage(t *testing.T) {
 }
 
 func TestInode(t *testing.T) {
-	entries, err := Inode()
+	ctx := t.Context()
+	entries, err := Inode(ctx)
 	require.Nil(t, err)
 	require.Greater(t, len(entries), 0)
 	nbWithFree := 0
@@ -38,17 +40,19 @@ func TestInode(t *testing.T) {
 }
 
 func TestMountUsage(t *testing.T) {
-	entries, err := MountUsage("/")
+	ctx := t.Context()
+	entries, err := MountUsage(ctx, "/")
 	require.Nil(t, err)
 	require.Len(t, entries, 1)
 	require.Equal(t, "/", entries[0].MountPoint)
 }
 
 func TestTypeMountUsage(t *testing.T) {
+	ctx := t.Context()
 	t.Run("must succeed on one fs type", func(t *testing.T) {
 		succeed := 0
 		for _, fsType := range []string{"xfs", "ext3", "ext4", "zfs", "ufs", "apfs"} {
-			if _, err := TypeMountUsage(fsType, "/"); err == nil {
+			if _, err := TypeMountUsage(ctx, fsType, "/"); err == nil {
 				succeed = succeed + 1
 			}
 		}
@@ -56,7 +60,7 @@ func TestTypeMountUsage(t *testing.T) {
 	})
 
 	t.Run("return error if no such fs type", func(t *testing.T) {
-		entries, err := TypeMountUsage("suchDoesNotExists", "/")
+		entries, err := TypeMountUsage(ctx, "suchDoesNotExists", "/")
 		require.NotNil(t, err, entries)
 	})
 }

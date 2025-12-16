@@ -36,7 +36,7 @@ func (t *T) devPath() string {
 	return matches[0]
 }
 
-func (t *T) ExposedDevices() device.L {
+func (t *T) ExposedDevices(ctx context.Context) device.L {
 	l := make(device.L, 0)
 	p, err := realpath.Realpath(t.devPath())
 	if err != nil {
@@ -57,13 +57,13 @@ func (t *T) Status(ctx context.Context) status.T {
 	return status.NotApplicable
 }
 
-func (t *T) unconfigure() error {
-	for _, dev := range t.ExposedDevices() {
+func (t *T) unconfigure(ctx context.Context) error {
+	for _, dev := range t.ExposedDevices(ctx) {
 		slaves, err := dev.Slaves()
 		if err != nil {
 			return fmt.Errorf("%s get slaves: %w", dev, err)
 		}
-		if err := dev.RemoveMultipath(); err != nil {
+		if err := dev.RemoveMultipath(ctx); err != nil {
 			return fmt.Errorf("%s multipath remove: %w", dev, err)
 		} else {
 			t.Log().Infof("%s multipath removed", dev)
@@ -129,17 +129,17 @@ func (t *T) waitAnyPath(interval time.Duration, timeout time.Duration) error {
 	return fmt.Errorf("timeout waiting for %s to appear", devPath)
 }
 
-func (t *T) configureMultipath() error {
+func (t *T) configureMultipath(ctx context.Context) error {
 	realDevPath, err := realpath.Realpath(t.devPath())
 	if err != nil {
 		return err
 	}
 	dev := device.New(realDevPath, device.WithLogger(t.Log()))
-	return dev.ConfigureMultipath(1)
+	return dev.ConfigureMultipath(ctx, 1)
 }
 
-func (t *T) configure(force forceMode) error {
-	exposedDevices := t.ExposedDevices()
+func (t *T) configure(ctx context.Context, force forceMode) error {
+	exposedDevices := t.ExposedDevices(ctx)
 	if force == preserve && len(exposedDevices) > 0 {
 		t.Log().Infof("system configuration: skip: device already exposed: %s", exposedDevices)
 		return nil
@@ -155,13 +155,13 @@ func (t *T) configure(force forceMode) error {
 		return err
 	}
 	udevadm.Settle()
-	if err := t.configureMultipath(); err != nil {
+	if err := t.configureMultipath(ctx); err != nil {
 		return err
 	}
 	if err := t.waitDevPath(1*time.Second, 30*time.Second); err != nil {
 		return err
 	}
-	exposedDevices = t.ExposedDevices()
+	exposedDevices = t.ExposedDevices(ctx)
 	if len(exposedDevices) == 0 {
 		return fmt.Errorf("system configuration: %s is not exposed device after scan", t.DiskID)
 	}

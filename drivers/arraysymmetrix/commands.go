@@ -78,13 +78,13 @@ func newResizeDiskCmd(t *Array) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "disk",
 		Short: "resize a volume",
-		RunE: func(_ *cobra.Command, _ []string) error {
+		RunE: func(cmd *cobra.Command, _ []string) error {
 			opt := OptResizeDisk{
 				Dev:   dev,
 				Size:  size,
 				Force: force,
 			}
-			if data, err := t.ResizeDisk(opt); err != nil {
+			if data, err := t.ResizeDisk(cmd.Context(), opt); err != nil {
 				return err
 			} else {
 				return dump(data)
@@ -110,7 +110,7 @@ func newUnmapDiskCmd(t *Array) *cobra.Command {
 			opt := OptUnmapDisk{
 				Dev: dev,
 			}
-			if data, err := t.UnmapDisk(opt); err != nil {
+			if data, err := t.UnmapDisk(cmd.Context(), opt); err != nil {
 				return err
 			} else {
 				return dump(data)
@@ -136,7 +136,7 @@ func newRenameDiskCmd(t *Array) *cobra.Command {
 				Dev:  dev,
 				Name: name,
 			}
-			if data, err := t.RenameDisk(opt); err != nil {
+			if data, err := t.RenameDisk(cmd.Context(), opt); err != nil {
 				return err
 			} else {
 				return dump(data)
@@ -169,7 +169,7 @@ func newMapDiskCmd(t *Array) *cobra.Command {
 				SRP:      srp,
 				SG:       sg,
 			}
-			if data, err := t.MapDisk(opt); err != nil {
+			if data, err := t.MapDisk(cmd.Context(), opt); err != nil {
 				return err
 			} else {
 				return dump(data)
@@ -193,11 +193,11 @@ func newDelDiskCmd(t *Array) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "disk",
 		Short: "unmap a volume and delete",
-		RunE: func(_ *cobra.Command, _ []string) error {
+		RunE: func(cmd *cobra.Command, _ []string) error {
 			opt := OptDelDisk{
 				Dev: dev,
 			}
-			if data, err := t.DelDisk(opt); err != nil {
+			if data, err := t.DelDisk(cmd.Context(), opt); err != nil {
 				return err
 			} else {
 				return dump(data)
@@ -234,7 +234,7 @@ func newAddThinDevCmd(t *Array) *cobra.Command {
 				SRDFMode: srdfMode,
 				SRDFType: srdfType,
 			}
-			if data, err := t.AddThinDev(opt); err != nil {
+			if data, err := t.AddThinDev(cmd.Context(), opt); err != nil {
 				return err
 			} else {
 				return dump(data)
@@ -264,7 +264,7 @@ func newDelThinDevCmd(t *Array) *cobra.Command {
 			opt := OptDelThinDev{
 				Dev: dev,
 			}
-			if data, err := t.DelThinDev(opt); err != nil {
+			if data, err := t.DelThinDev(cmd.Context(), opt); err != nil {
 				return err
 			} else {
 				return dump(data)
@@ -288,7 +288,7 @@ func newDeletePairCmd(t *Array) *cobra.Command {
 			opt := OptDeletePair{
 				Dev: dev,
 			}
-			if data, err := t.DeletePair(opt); err != nil {
+			if data, err := t.DeletePair(cmd.Context(), opt); err != nil {
 				return err
 			} else {
 				return dump(data)
@@ -320,7 +320,7 @@ func newCreatePairCmd(t *Array) *cobra.Command {
 				SRDFMode:   srdfMode,
 				SRDFType:   srdfType,
 			}
-			return t.CreatePair(opt)
+			return t.CreatePair(cmd.Context(), opt)
 		},
 	}
 	useFlagPair(cmd)
@@ -361,7 +361,7 @@ func newAddDiskCmd(t *Array) *cobra.Command {
 				RDFG:     rdfg,
 				Mappings: mappings,
 			}
-			if data, err := t.AddDisk(opt); err != nil {
+			if data, err := t.AddDisk(cmd.Context(), opt); err != nil {
 				return err
 			} else {
 				return dump(data)
@@ -390,11 +390,11 @@ func newFreeThinDev(t *Array) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "free",
 		Short: "free thin device",
-		RunE: func(_ *cobra.Command, _ []string) error {
+		RunE: func(cmd *cobra.Command, _ []string) error {
 			opt := OptFreeThinDev{
 				Dev: dev,
 			}
-			return t.FreeThinDev(opt)
+			return t.FreeThinDev(cmd.Context(), opt)
 		},
 	}
 	useFlagDev(cmd)
@@ -411,12 +411,12 @@ func newSetSRDFModeCmd(t *Array) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "mode",
 		Short: "set SRDF mode",
-		RunE: func(_ *cobra.Command, _ []string) error {
+		RunE: func(cmd *cobra.Command, _ []string) error {
 			opt := OptSetSRDFMode{
 				Dev:      dev,
 				SRDFMode: srdfMode,
 			}
-			return t.SetSRDFMode(opt)
+			return t.SetSRDFMode(cmd.Context(), opt)
 		},
 	}
 	useFlagDev(cmd)
@@ -429,7 +429,7 @@ func newAddMaskingCmd(t *Array) *cobra.Command {
 		Use:   "masking",
 		Short: "present disks to hosts in batch mode",
 		RunE: func(cmd *cobra.Command, _ []string) error {
-			if data, err := t.AddMasking([]byte(data)); err != nil {
+			if data, err := t.AddMasking(cmd.Context(), []byte(data)); err != nil {
 				return err
 			} else {
 				return dump(data)
@@ -451,8 +451,8 @@ func newGetPoolsCmd(t *Array) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "pools",
 		Short: "get thin pools",
-		RunE: func(_ *cobra.Command, _ []string) error {
-			data, err := t.SymCfgPoolList()
+		RunE: func(cmd *cobra.Command, _ []string) error {
+			data, err := t.SymCfgPoolList(cmd.Context())
 			if err != nil {
 				return err
 			}
@@ -465,8 +465,8 @@ func newGetStorageGroupsCmd(t *Array) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "sgs",
 		Short: "get storage groups",
-		RunE: func(_ *cobra.Command, _ []string) error {
-			data, err := t.SymSGList("")
+		RunE: func(cmd *cobra.Command, _ []string) error {
+			data, err := t.SymSGList(cmd.Context(), "")
 			if err != nil {
 				return err
 			}
@@ -479,8 +479,8 @@ func newGetSRPsCmd(t *Array) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "srps",
 		Short: "get SRP names",
-		RunE: func(_ *cobra.Command, _ []string) error {
-			data, err := t.SymCfgSRPList()
+		RunE: func(cmd *cobra.Command, _ []string) error {
+			data, err := t.SymCfgSRPList(cmd.Context())
 			if err != nil {
 				return err
 			}
@@ -493,8 +493,8 @@ func newGetDirectorsCmd(t *Array) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "directors",
 		Short: "get directors",
-		RunE: func(_ *cobra.Command, _ []string) error {
-			data, err := t.SymCfgDirectorList("all")
+		RunE: func(cmd *cobra.Command, _ []string) error {
+			data, err := t.SymCfgDirectorList(cmd.Context(), "all")
 			if err != nil {
 				return err
 			}
@@ -507,8 +507,8 @@ func newGetThinDevsCmd(t *Array) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "tdevs",
 		Short: "get thin devs",
-		RunE: func(_ *cobra.Command, _ []string) error {
-			data, err := t.SymDevList("")
+		RunE: func(cmd *cobra.Command, _ []string) error {
+			data, err := t.SymDevList(cmd.Context(), "")
 			if err != nil {
 				return err
 			}
@@ -521,8 +521,8 @@ func newGetViewsCmd(t *Array) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "views",
 		Short: "get masking views",
-		RunE: func(_ *cobra.Command, _ []string) error {
-			data, err := t.SymAccessListViewDetail()
+		RunE: func(cmd *cobra.Command, _ []string) error {
+			data, err := t.SymAccessListViewDetail(cmd.Context())
 			if err != nil {
 				return err
 			}

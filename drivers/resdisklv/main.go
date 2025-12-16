@@ -24,22 +24,22 @@ type (
 		CreateOptions []string `json:"create_options"`
 	}
 	LVDriver interface {
-		Activate() error
-		Deactivate() error
-		IsActive() (bool, error)
-		Exists() (bool, error)
+		Activate(context.Context) error
+		Deactivate(context.Context) error
+		IsActive(context.Context) (bool, error)
+		Exists(context.Context) (bool, error)
 		FQN() string
-		Devices() (device.L, error)
+		Devices(context.Context) (device.L, error)
 		DriverName() string
 	}
 	LVDriverProvisioner interface {
-		Create(string, []string) error
+		Create(context.Context, string, []string) error
 	}
 	LVDriverUnprovisioner interface {
-		Remove([]string) error
+		Remove(context.Context, []string) error
 	}
 	LVDriverWiper interface {
-		Wipe() error
+		Wipe(context.Context) error
 	}
 )
 
@@ -49,17 +49,17 @@ func New() resource.Driver {
 }
 
 func (t *T) Start(ctx context.Context) error {
-	if v, err := t.isUp(); err != nil {
+	if v, err := t.isUp(ctx); err != nil {
 		return err
 	} else if v {
 		t.Log().Infof("%s is already up", t.Label(ctx))
 		return nil
 	}
-	if err := t.lv().Activate(); err != nil {
+	if err := t.lv().Activate(ctx); err != nil {
 		return err
 	}
 	actionrollback.Register(ctx, func(ctx context.Context) error {
-		return t.lv().Deactivate()
+		return t.lv().Deactivate(ctx)
 	})
 	return nil
 }
@@ -73,29 +73,29 @@ func (t *T) Info(ctx context.Context) (resource.InfoKeys, error) {
 }
 
 func (t *T) Stop(ctx context.Context) error {
-	if v, err := t.isUp(); err != nil {
+	if v, err := t.isUp(ctx); err != nil {
 		return err
 	} else if !v {
 		t.Log().Infof("%s is already down", t.Label(ctx))
 		return nil
 	}
-	if err := t.removeHolders(); err != nil {
+	if err := t.removeHolders(ctx); err != nil {
 		return err
 	}
 	udevadm.Settle()
-	return t.lv().Deactivate()
+	return t.lv().Deactivate(ctx)
 }
 
-func (t *T) exists() (bool, error) {
-	return t.lv().Exists()
+func (t *T) exists(ctx context.Context) (bool, error) {
+	return t.lv().Exists(ctx)
 }
 
-func (t *T) isUp() (bool, error) {
-	return t.lv().IsActive()
+func (t *T) isUp(ctx context.Context) (bool, error) {
+	return t.lv().IsActive(ctx)
 }
 
-func (t *T) removeHolders() error {
-	return t.exposedDevice().RemoveHolders()
+func (t *T) removeHolders(ctx context.Context) error {
+	return t.exposedDevice().RemoveHolders(ctx)
 }
 
 func (t *T) fqn() string {
@@ -103,7 +103,7 @@ func (t *T) fqn() string {
 }
 
 func (t *T) Status(ctx context.Context) status.T {
-	if v, err := t.isUp(); err != nil {
+	if v, err := t.isUp(ctx); err != nil {
 		t.StatusLog().Error("%s", err)
 		return status.Undef
 	} else if v {
@@ -124,7 +124,7 @@ func (t *T) ProvisionAsLeader(ctx context.Context) error {
 	if !ok {
 		return fmt.Errorf("lv %s %s driver does not implement provisioning", lv.FQN(), lv.DriverName())
 	}
-	exists, err := lv.Exists()
+	exists, err := lv.Exists(ctx)
 	if err != nil {
 		return err
 	}
@@ -132,12 +132,12 @@ func (t *T) ProvisionAsLeader(ctx context.Context) error {
 		t.Log().Infof("%s is already provisioned", lv.FQN())
 		return nil
 	}
-	if lvi.Create(t.Size, t.CreateOptions); err != nil {
+	if lvi.Create(ctx, t.Size, t.CreateOptions); err != nil {
 		return err
 	}
 	actionrollback.Register(ctx, func(ctx context.Context) error {
 		if lvi, ok := lv.(LVDriverUnprovisioner); ok {
-			return lvi.Remove([]string{"-f"})
+			return lvi.Remove(ctx, []string{"-f"})
 		} else {
 			return nil
 		}
@@ -147,7 +147,7 @@ func (t *T) ProvisionAsLeader(ctx context.Context) error {
 
 func (t *T) UnprovisionAsLeader(ctx context.Context) error {
 	lv := t.lv()
-	exists, err := lv.Exists()
+	exists, err := lv.Exists(ctx)
 	if err != nil {
 		return err
 	}
@@ -156,7 +156,7 @@ func (t *T) UnprovisionAsLeader(ctx context.Context) error {
 		return nil
 	}
 	if lvi, ok := lv.(LVDriverWiper); ok {
-		_ = lvi.Wipe()
+		_ = lvi.Wipe(ctx)
 	} else {
 		t.Log().Infof("%s wipe skipped: not implementing by %s", lv.FQN(), lv.DriverName())
 	}
@@ -164,11 +164,11 @@ func (t *T) UnprovisionAsLeader(ctx context.Context) error {
 	if !ok {
 		return fmt.Errorf("lv %s %s driver does not implement unprovisioning", lv.FQN(), lv.DriverName())
 	}
-	return lvi.Remove([]string{"-f"})
+	return lvi.Remove(ctx, []string{"-f"})
 }
 
-func (t *T) Provisioned() (provisioned.T, error) {
-	v, err := t.exists()
+func (t *T) Provisioned(ctx context.Context) (provisioned.T, error) {
+	v, err := t.exists(ctx)
 	return provisioned.FromBool(v), err
 }
 
@@ -176,16 +176,16 @@ func (t *T) exposedDevice() device.T {
 	return device.New(fmt.Sprintf("/dev/%s", t.fqn()), device.WithLogger(t.Log()))
 }
 
-func (t *T) ClaimedDevices() device.L {
-	return t.ExposedDevices()
+func (t *T) ClaimedDevices(ctx context.Context) device.L {
+	return t.ExposedDevices(ctx)
 }
 
-func (t *T) ExposedDevices() device.L {
+func (t *T) ExposedDevices(ctx context.Context) device.L {
 	return device.L{t.exposedDevice()}
 }
 
-func (t *T) SubDevices() device.L {
-	if l, err := t.lv().Devices(); err != nil {
+func (t *T) SubDevices(ctx context.Context) device.L {
+	if l, err := t.lv().Devices(ctx); err != nil {
 		t.Log().Tracef("%s", err)
 		return device.L{}
 	} else {

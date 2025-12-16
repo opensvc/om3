@@ -277,9 +277,11 @@ func (t *T) mustTunnel(tunnel string, peerIP net.IP) (bool, error) {
 	if tunnel == "always" {
 		return true, nil
 	}
-	if _, ipnet, err := network.IPReachableFrom(peerIP); err != nil {
+	_, ipnet, err := network.IPReachableFrom(peerIP)
+	if err != nil {
 		return false, err
-	} else if ipnet != nil {
+	}
+	if ipnet != nil {
 		t.Log().Tracef("%s is reachable from %s. tunnel not needed", peerIP, ipnet)
 		return false, nil
 	}
@@ -692,14 +694,19 @@ func (t *T) setupBridgeIP(br netlink.Link, brIP net.IP) error {
 // getNodeIP returns the addr scoped for nodename from the network config.
 // Defaults to the first resolved ip address with the network address family (ip4 or ip6).
 func (t *T) getNodeIP(nodename string) (net.IP, error) {
-	var keyName string
+	var addr string
 	if nodename == hostname.Hostname() {
-		keyName = "addr"
+		addr = t.GetString("addr")
 	} else {
-		keyName = "addr@" + nodename
+		addr = t.GetStringAs("addr", nodename)
 	}
-	if addr := t.GetString(keyName); addr != "" {
-		return net.ParseIP(addr), nil
+	if addr != "" {
+		ip := net.ParseIP(addr)
+		if ip != nil {
+			return ip, nil
+		}
+		af := t.getAF()
+		return network.GetNodeAddr(addr, af)
 	}
 	af := t.getAF()
 	return network.GetNodeAddr(nodename, af)

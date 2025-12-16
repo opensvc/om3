@@ -1,6 +1,7 @@
 package pool
 
 import (
+	"context"
 	"fmt"
 	"sort"
 	"strings"
@@ -62,7 +63,7 @@ func NewLookup(m manager) *Lookup {
 	return &t
 }
 
-func (t Lookup) Do() (Pooler, error) {
+func (t Lookup) Do(ctx context.Context) (Pooler, error) {
 	cause := make([]string, 0)
 	l := NewStatusList()
 	m := make(map[string]Pooler)
@@ -92,7 +93,7 @@ func (t Lookup) Do() (Pooler, error) {
 			continue
 		}
 		if t.Usage == true {
-			usage, err := p.Usage()
+			usage, err := p.Usage(ctx)
 			if err != nil {
 				cause = append(cause, fmt.Sprintf("[%s] no usage data: %s", p.Name(), err))
 				continue
@@ -103,7 +104,7 @@ func (t Lookup) Do() (Pooler, error) {
 				continue
 			}
 		}
-		l = l.Add(p, t.Usage)
+		l = l.Add(ctx, p, t.Usage)
 		m[p.Name()] = p
 	}
 	if len(l) == 0 {
@@ -163,12 +164,12 @@ func (t Lookup) Env(p Pooler, c consumer, optional bool) ([]string, error) {
 	return env, nil
 }
 
-func (t Lookup) ConfigureVolume(volume Volumer, obj interface{}) error {
+func (t Lookup) ConfigureVolume(ctx context.Context, volume Volumer, obj interface{}) error {
 	c, ok := obj.(consumer)
 	if !ok {
 		return fmt.Errorf("configure volume: the <obj> argument is not a consumer")
 	}
-	p, err := t.Do()
+	p, err := t.Do(ctx)
 	if err != nil {
 		return err
 	}

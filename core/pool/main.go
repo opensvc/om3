@@ -1,6 +1,7 @@
 package pool
 
 import (
+	"context"
 	"fmt"
 	"path/filepath"
 	"strings"
@@ -85,16 +86,16 @@ type (
 		Head() string
 		Mappings() map[string]string
 		Capabilities() []string
-		Usage() (Usage, error)
+		Usage(context.Context) (Usage, error)
 		SetConfig(Config)
 		Config() Config
 		Separator() string
 	}
 	ArrayPooler interface {
 		Pooler
-		GetTargets() (san.Targets, error)
-		CreateDisk(name string, size int64, nodenames []string) ([]Disk, error)
-		DeleteDisk(name, wwid string) ([]Disk, error)
+		GetTargets(ctx context.Context) (san.Targets, error)
+		CreateDisk(ctx context.Context, name string, size int64, nodenames []string) ([]Disk, error)
+		DeleteDisk(ctx context.Context, name, wwid string) ([]Disk, error)
 	}
 	Translater interface {
 		Translate(name string, size int64, shared bool) ([]string, error)
@@ -223,14 +224,14 @@ func (t *T) SetConfig(c Config) {
 	t.config = c
 }
 
-func GetStatus(t Pooler, withUsage bool) Status {
+func GetStatus(ctx context.Context, t Pooler, withUsage bool) Status {
 	data := NewStatus()
 	data.Type = t.Type()
 	data.Capabilities = t.Capabilities()
 	data.Head = t.Head()
 	data.UpdatedAt = time.Now()
 	if withUsage {
-		if usage, err := t.Usage(); err != nil {
+		if usage, err := t.Usage(ctx); err != nil {
 			data.Errors = append(data.Errors, err.Error())
 		} else {
 			data.Usage.Free = usage.Free
@@ -436,10 +437,10 @@ func (t StatusList) Swap(i, j int) {
 	t[i], t[j] = t[j], t[i]
 }
 
-func (t StatusList) Add(p Pooler, withUsage bool) StatusList {
+func (t StatusList) Add(ctx context.Context, p Pooler, withUsage bool) StatusList {
 	t = append(t, StatusItem{
 		Name:   p.Name(),
-		Status: GetStatus(p, withUsage),
+		Status: GetStatus(ctx, p, withUsage),
 	})
 	return t
 }
@@ -500,9 +501,9 @@ func (t *Status) DeepCopy() *Status {
 	}
 }
 
-func GetMappings(p ArrayPooler, nodes []string, pathType string) (array.Mappings, error) {
+func GetMappings(ctx context.Context, p ArrayPooler, nodes []string, pathType string) (array.Mappings, error) {
 	m := make(array.Mappings)
-	paths, err := GetPaths(p, nodes, pathType)
+	paths, err := GetPaths(ctx, p, nodes, pathType)
 	if err != nil {
 		return m, err
 	}
@@ -512,8 +513,8 @@ func GetMappings(p ArrayPooler, nodes []string, pathType string) (array.Mappings
 	return m, nil
 }
 
-func GetPaths(p ArrayPooler, nodes []string, pathType string) (san.Paths, error) {
-	targets, err := p.GetTargets()
+func GetPaths(ctx context.Context, p ArrayPooler, nodes []string, pathType string) (san.Paths, error) {
+	targets, err := p.GetTargets(ctx)
 	if err != nil {
 		return san.Paths{}, err
 	}

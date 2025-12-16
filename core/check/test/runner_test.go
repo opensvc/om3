@@ -1,6 +1,7 @@
 package check_test
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"os"
@@ -13,10 +14,10 @@ import (
 	"github.com/opensvc/om3/v3/core/check"
 )
 
-func fakeExecCommand(command string, args ...string) *exec.Cmd {
+func fakeExecCommand(ctx context.Context, command string, args ...string) *exec.Cmd {
 	cs := []string{"-test.run=TestHelperProcess", "--", command}
 	cs = append(cs, args...)
-	cmd := exec.Command(os.Args[0], cs...)
+	cmd := exec.CommandContext(ctx, os.Args[0], cs...)
 	cmd.Env = []string{"GO_WANT_HELPER_PROCESS=1"}
 	return cmd
 }
@@ -103,7 +104,7 @@ type fakeChecker struct {
 	Unit        string
 }
 
-func (t fakeChecker) Check(objs []interface{}) (*check.ResultSet, error) {
+func (t fakeChecker) Check(ctx context.Context, objs []interface{}) (*check.ResultSet, error) {
 	var results []check.Result
 	if strings.Contains(t.DriverGroup, "error") {
 		return &check.ResultSet{}, fmt.Errorf("something wrong happen")
@@ -123,7 +124,7 @@ func (t fakeChecker) Check(objs []interface{}) (*check.ResultSet, error) {
 
 func TestRunnerDo(t *testing.T) {
 	check.ExecCommand = fakeExecCommand
-	defer func() { check.ExecCommand = exec.Command }()
+	defer func() { check.ExecCommand = exec.CommandContext }()
 	var checker1, checker2, errorChecker check.Checker
 	checker1 = &fakeChecker{
 		DriverGroup: "checker1Grp",
@@ -326,7 +327,7 @@ func TestRunnerDo(t *testing.T) {
 			}
 			resultSet := check.NewRunner(
 				check.RunnerWithCustomCheckPaths(tc.CustomCheckPaths...),
-			).Do()
+			).Do(t.Context())
 			for _, expectedResult := range tc.ExpectedResults {
 				assert.Containsf(t, resultSet.Data, expectedResult,
 					"result: %+v not found in resultSet %+v\n", expectedResult, resultSet.Data)

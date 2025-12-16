@@ -1,6 +1,8 @@
 package chkfsudf
 
 import (
+	"context"
+
 	"github.com/opensvc/om3/v3/core/check"
 	"github.com/opensvc/om3/v3/core/check/helpers/checkdf"
 	"github.com/opensvc/om3/v3/util/df"
@@ -21,12 +23,12 @@ func init() {
 	check.Register(&fsChecker{})
 }
 
-func (t *fsChecker) Entries() ([]df.Entry, error) {
-	return df.Usage()
+func (t *fsChecker) Entries(ctx context.Context) ([]df.Entry, error) {
+	return df.Usage(ctx)
 }
 
-func (t *fsChecker) ResultSet(entry *df.Entry, objs []interface{}) *check.ResultSet {
-	path := check.ObjectPathClaimingDir(entry.MountPoint, objs)
+func (t *fsChecker) ResultSet(ctx context.Context, entry *df.Entry, objs []interface{}) *check.ResultSet {
+	path := check.ObjectPathClaimingDir(ctx, entry.MountPoint, objs)
 	rs := check.NewResultSet()
 	rs.Push(check.Result{
 		Instance:    entry.MountPoint,
@@ -55,11 +57,11 @@ func (t *fsChecker) ResultSet(entry *df.Entry, objs []interface{}) *check.Result
 	return rs
 }
 
-func (t *fsChecker) Check(objs []interface{}) (*check.ResultSet, error) {
-	return checkdf.Check(t, objs)
+func (t *fsChecker) Check(ctx context.Context, objs []interface{}) (*check.ResultSet, error) {
+	return checkdf.Check(ctx, t, objs)
 }
 
 func main() {
 	checker := &fsChecker{}
-	_ = check.Check(checker, []interface{}{})
+	_ = check.Check(context.Background(), checker, []interface{}{})
 }

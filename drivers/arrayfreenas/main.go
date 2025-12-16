@@ -2,6 +2,7 @@ package arrayfreenas
 
 import (
 	"bytes"
+	"context"
 	"crypto/tls"
 	"encoding/base64"
 	"encoding/json"
@@ -204,12 +205,12 @@ func (t *Array) Run(args []string) error {
 		cmd := &cobra.Command{
 			Use:   "zvol",
 			Short: "unmap a zvol-type dataset",
-			RunE: func(_ *cobra.Command, _ []string) error {
+			RunE: func(cmd *cobra.Command, _ []string) error {
 				opt := UnmapDiskOptions{
 					Name:    name,
 					Mapping: mapping,
 				}
-				if data, err := t.UnmapDisk(opt); err != nil {
+				if data, err := t.UnmapDisk(cmd.Context(), opt); err != nil {
 					return err
 				} else {
 					return dump(data)
@@ -228,6 +229,7 @@ func (t *Array) Run(args []string) error {
 			Hidden: true,
 			Short:  "map a zvol-type dataset",
 			RunE: func(cmd *cobra.Command, _ []string) error {
+				ctx := cmd.Context()
 				opt := MapDiskOptions{
 					Name:    name,
 					Mapping: mapping,
@@ -235,7 +237,7 @@ func (t *Array) Run(args []string) error {
 				if lunId >= 0 {
 					opt.LunId = &lunId
 				}
-				if data, err := t.MapDisk(opt); err != nil {
+				if data, err := t.MapDisk(ctx, opt); err != nil {
 					return err
 				} else {
 					return dump(data)
@@ -254,6 +256,7 @@ func (t *Array) Run(args []string) error {
 			Use:   "disk",
 			Short: "map a zvol-type dataset",
 			RunE: func(cmd *cobra.Command, _ []string) error {
+				ctx := cmd.Context()
 				opt := MapDiskOptions{
 					Name:    name,
 					Mapping: mapping,
@@ -261,7 +264,7 @@ func (t *Array) Run(args []string) error {
 				if lunId >= 0 {
 					opt.LunId = &lunId
 				}
-				if data, err := t.MapDisk(opt); err != nil {
+				if data, err := t.MapDisk(ctx, opt); err != nil {
 					return err
 				} else {
 					return dump(data)
@@ -279,8 +282,9 @@ func (t *Array) Run(args []string) error {
 		cmd := &cobra.Command{
 			Use:   "disk",
 			Short: "unmap a zvol-type dataset and delete",
-			RunE: func(_ *cobra.Command, _ []string) error {
-				if data, err := t.DelDisk(name); err != nil {
+			RunE: func(cmd *cobra.Command, _ []string) error {
+				ctx := cmd.Context()
+				if data, err := t.DelDisk(ctx, name); err != nil {
 					return err
 				} else {
 					return dump(data)
@@ -295,6 +299,7 @@ func (t *Array) Run(args []string) error {
 			Use:   "disk",
 			Short: "add a zvol-type dataset and map",
 			RunE: func(cmd *cobra.Command, _ []string) error {
+				ctx := cmd.Context()
 				opt := AddDiskOptions{
 					AddZvolOptions: AddZvolOptions{
 						Name:          name,
@@ -310,7 +315,7 @@ func (t *Array) Run(args []string) error {
 				if lunId >= 0 {
 					opt.LunId = &lunId
 				}
-				if data, err := t.AddDisk(opt); err != nil {
+				if data, err := t.AddDisk(ctx, opt); err != nil {
 					return err
 				} else {
 					return dump(data)
@@ -333,7 +338,7 @@ func (t *Array) Run(args []string) error {
 			Use:    "zvol",
 			Short:  "add a zvol-type dataset",
 			Hidden: true,
-			RunE: func(_ *cobra.Command, _ []string) error {
+			RunE: func(cmd *cobra.Command, _ []string) error {
 				opt := AddDiskOptions{
 					AddZvolOptions: AddZvolOptions{
 						Name:          volume + "/" + name,
@@ -349,7 +354,7 @@ func (t *Array) Run(args []string) error {
 				if lunId >= 0 {
 					opt.LunId = &lunId
 				}
-				if data, err := t.AddDisk(opt); err != nil {
+				if data, err := t.AddDisk(cmd.Context(), opt); err != nil {
 					return err
 				} else {
 					return dump(data)
@@ -371,7 +376,7 @@ func (t *Array) Run(args []string) error {
 		cmd := &cobra.Command{
 			Use:   "zvol",
 			Short: "add a zvol-type dataset",
-			RunE: func(_ *cobra.Command, _ []string) error {
+			RunE: func(cmd *cobra.Command, _ []string) error {
 				opt := AddZvolOptions{
 					Name:          name,
 					Size:          size,
@@ -380,7 +385,7 @@ func (t *Array) Run(args []string) error {
 					Deduplication: dedup,
 					Compression:   compression,
 				}
-				if data, err := t.AddZvol(opt); err != nil {
+				if data, err := t.AddZvol(cmd.Context(), opt); err != nil {
 					return err
 				} else {
 					return dump(data)
@@ -399,8 +404,8 @@ func (t *Array) Run(args []string) error {
 		cmd := &cobra.Command{
 			Use:   "zvol",
 			Short: "del a zvol-type dataset",
-			RunE: func(_ *cobra.Command, _ []string) error {
-				if data, err := t.DeleteDataset(name); err != nil {
+			RunE: func(cmd *cobra.Command, _ []string) error {
+				if data, err := t.DeleteDataset(cmd.Context(), name); err != nil {
 					return err
 				} else {
 					return dump(data)
@@ -421,8 +426,8 @@ func (t *Array) Run(args []string) error {
 		cmd := &cobra.Command{
 			Use:   "pools",
 			Short: "get pools",
-			RunE: func(_ *cobra.Command, _ []string) error {
-				return t.dumpPools()
+			RunE: func(cmd *cobra.Command, _ []string) error {
+				return t.dumpPools(cmd.Context())
 			},
 		}
 		return cmd
@@ -431,8 +436,8 @@ func (t *Array) Run(args []string) error {
 		cmd := &cobra.Command{
 			Use:   "datasets",
 			Short: "get datasets",
-			RunE: func(_ *cobra.Command, _ []string) error {
-				return t.dumpDatasets()
+			RunE: func(cmd *cobra.Command, _ []string) error {
+				return t.dumpDatasets(cmd.Context())
 			},
 		}
 		return cmd
@@ -441,8 +446,8 @@ func (t *Array) Run(args []string) error {
 		cmd := &cobra.Command{
 			Use:   "disk",
 			Short: "get dataset, extent and targetextents",
-			RunE: func(_ *cobra.Command, _ []string) error {
-				return t.dumpDisk(name)
+			RunE: func(cmd *cobra.Command, _ []string) error {
+				return t.dumpDisk(cmd.Context(), name)
 			},
 		}
 		cmd.Flags().StringVar(&name, "name", "", "")
@@ -452,8 +457,8 @@ func (t *Array) Run(args []string) error {
 		cmd := &cobra.Command{
 			Use:   "dataset",
 			Short: "get dataset",
-			RunE: func(_ *cobra.Command, _ []string) error {
-				return t.dumpDataset(name)
+			RunE: func(cmd *cobra.Command, _ []string) error {
+				return t.dumpDataset(cmd.Context(), name)
 			},
 		}
 		cmd.Flags().StringVar(&name, "name", "", "")
@@ -463,8 +468,8 @@ func (t *Array) Run(args []string) error {
 		cmd := &cobra.Command{
 			Use:   "system",
 			Short: "get system information",
-			RunE: func(_ *cobra.Command, _ []string) error {
-				return t.dumpSystemInfo()
+			RunE: func(cmd *cobra.Command, _ []string) error {
+				return t.dumpSystemInfo(cmd.Context())
 			},
 		}
 		return cmd
@@ -487,7 +492,7 @@ func (t *Array) Run(args []string) error {
 		cmd := &cobra.Command{
 			Use:   "portal",
 			Short: "create a iscsi portal",
-			RunE: func(_ *cobra.Command, _ []string) error {
+			RunE: func(cmd *cobra.Command, _ []string) error {
 				listenParam := make([]ISCSIPortalListenIp, 0)
 				for _, server := range listen {
 					l := strings.SplitN(server, ":", 2)
@@ -513,7 +518,7 @@ func (t *Array) Run(args []string) error {
 				if authGroupId >= 0 {
 					params.DiscoveryAuthGroup = authGroupId
 				}
-				if data, err := t.addISCSIPortal(params); err != nil {
+				if data, err := t.addISCSIPortal(cmd.Context(), params); err != nil {
 					return err
 				} else {
 					return dump(data)
@@ -530,11 +535,11 @@ func (t *Array) Run(args []string) error {
 		cmd := &cobra.Command{
 			Use:   "target",
 			Short: "create a iscsi target",
-			RunE: func(_ *cobra.Command, _ []string) error {
+			RunE: func(cmd *cobra.Command, _ []string) error {
 				params := CreateISCSITargetParams{
 					Name: name,
 				}
-				if data, err := t.addISCSITarget(params); err != nil {
+				if data, err := t.addISCSITarget(cmd.Context(), params); err != nil {
 					return err
 				} else {
 					return dump(data)
@@ -548,7 +553,7 @@ func (t *Array) Run(args []string) error {
 		cmd := &cobra.Command{
 			Use:   "targetgroup",
 			Short: "create a iscsi targetgroup",
-			RunE: func(_ *cobra.Command, _ []string) error {
+			RunE: func(cmd *cobra.Command, _ []string) error {
 				params := AddISCSITargetGroupOptions{
 					AuthMethod:    authMethod,
 					Auth:          auth,
@@ -557,7 +562,7 @@ func (t *Array) Run(args []string) error {
 					InitiatorName: initiatorName,
 					InitiatorId:   initiatorId,
 				}
-				if data, err := t.addISCSITargetGroup(params); err != nil {
+				if data, err := t.addISCSITargetGroup(cmd.Context(), params); err != nil {
 					return err
 				} else {
 					return dump(data)
@@ -578,8 +583,8 @@ func (t *Array) Run(args []string) error {
 		cmd := &cobra.Command{
 			Use:   "target",
 			Short: "delete a iscsi target",
-			RunE: func(_ *cobra.Command, _ []string) error {
-				if data, err := t.delISCSITarget(id); err != nil {
+			RunE: func(cmd *cobra.Command, _ []string) error {
+				if data, err := t.delISCSITarget(cmd.Context(), id); err != nil {
 					return err
 				} else {
 					return dump(data)
@@ -593,8 +598,8 @@ func (t *Array) Run(args []string) error {
 		cmd := &cobra.Command{
 			Use:   "initiator",
 			Short: "delete a iscsi initiator",
-			RunE: func(_ *cobra.Command, _ []string) error {
-				if data, err := t.delISCSIInitiator(id); err != nil {
+			RunE: func(cmd *cobra.Command, _ []string) error {
+				if data, err := t.delISCSIInitiator(cmd.Context(), id); err != nil {
 					return err
 				} else {
 					return dump(data)
@@ -608,13 +613,13 @@ func (t *Array) Run(args []string) error {
 		cmd := &cobra.Command{
 			Use:   "initiator",
 			Short: "create a iscsi initiator",
-			RunE: func(_ *cobra.Command, _ []string) error {
+			RunE: func(cmd *cobra.Command, _ []string) error {
 				params := CreateISCSIInitiatorParams{
 					Initiators:  initiators,
 					AuthNetwork: authNetworks,
 					Comment:     comment,
 				}
-				if data, err := t.addISCSIInitiator(params); err != nil {
+				if data, err := t.addISCSIInitiator(cmd.Context(), params); err != nil {
 					return err
 				} else {
 					return dump(data)
@@ -630,14 +635,14 @@ func (t *Array) Run(args []string) error {
 		cmd := &cobra.Command{
 			Use:   "extent",
 			Short: "create a iscsi extent",
-			RunE: func(_ *cobra.Command, _ []string) error {
+			RunE: func(cmd *cobra.Command, _ []string) error {
 				opt := AddISCSIExtentOptions{
 					Name:        name,
 					Disk:        disk,
 					Blocksize:   blocksize,
 					InsecureTPC: insecureTPC,
 				}
-				if data, err := t.AddISCSIExtent(opt); err != nil {
+				if data, err := t.AddISCSIExtent(cmd.Context(), opt); err != nil {
 					return err
 				} else {
 					return dump(data)
@@ -654,12 +659,12 @@ func (t *Array) Run(args []string) error {
 		cmd := &cobra.Command{
 			Use:   "extent",
 			Short: "delete a iscsi extent",
-			RunE: func(_ *cobra.Command, _ []string) error {
+			RunE: func(cmd *cobra.Command, _ []string) error {
 				opt := DelISCSIExtentOptions{
 					Id:   id,
 					Name: name,
 				}
-				if data, err := t.DelISCSIExtent(opt); err != nil {
+				if data, err := t.DelISCSIExtent(cmd.Context(), opt); err != nil {
 					return err
 				} else {
 					return dump(data)
@@ -681,8 +686,8 @@ func (t *Array) Run(args []string) error {
 		cmd := &cobra.Command{
 			Use:   "portals",
 			Short: "get iscsi portals",
-			RunE: func(_ *cobra.Command, _ []string) error {
-				return t.dumpISCSIPortals()
+			RunE: func(cmd *cobra.Command, _ []string) error {
+				return t.dumpISCSIPortals(cmd.Context())
 			},
 		}
 		return cmd
@@ -691,8 +696,8 @@ func (t *Array) Run(args []string) error {
 		cmd := &cobra.Command{
 			Use:   "targets",
 			Short: "get iscsi targets",
-			RunE: func(_ *cobra.Command, _ []string) error {
-				return t.dumpISCSITargets()
+			RunE: func(cmd *cobra.Command, _ []string) error {
+				return t.dumpISCSITargets(cmd.Context())
 			},
 		}
 		return cmd
@@ -701,8 +706,8 @@ func (t *Array) Run(args []string) error {
 		cmd := &cobra.Command{
 			Use:   "targetextents",
 			Short: "get iscsi targetextents",
-			RunE: func(_ *cobra.Command, _ []string) error {
-				return t.dumpISCSITargetExtents()
+			RunE: func(cmd *cobra.Command, _ []string) error {
+				return t.dumpISCSITargetExtents(cmd.Context())
 			},
 		}
 		return cmd
@@ -711,8 +716,8 @@ func (t *Array) Run(args []string) error {
 		cmd := &cobra.Command{
 			Use:   "extent",
 			Short: "get iscsi extent",
-			RunE: func(_ *cobra.Command, _ []string) error {
-				return t.dumpISCSIExtent(name)
+			RunE: func(cmd *cobra.Command, _ []string) error {
+				return t.dumpISCSIExtent(cmd.Context(), name)
 			},
 		}
 		cmd.Flags().StringVar(&name, "name", "", "")
@@ -722,8 +727,8 @@ func (t *Array) Run(args []string) error {
 		cmd := &cobra.Command{
 			Use:   "extents",
 			Short: "get iscsi extents",
-			RunE: func(_ *cobra.Command, _ []string) error {
-				return t.dumpISCSIExtents()
+			RunE: func(cmd *cobra.Command, _ []string) error {
+				return t.dumpISCSIExtents(cmd.Context())
 			},
 		}
 		return cmd
@@ -732,8 +737,8 @@ func (t *Array) Run(args []string) error {
 		cmd := &cobra.Command{
 			Use:   "initiators",
 			Short: "get iscsi initiators",
-			RunE: func(_ *cobra.Command, _ []string) error {
-				return t.dumpISCSIInitiators()
+			RunE: func(cmd *cobra.Command, _ []string) error {
+				return t.dumpISCSIInitiators(cmd.Context())
 			},
 		}
 		return cmd
@@ -749,7 +754,7 @@ func (t *Array) Run(args []string) error {
 		cmd := &cobra.Command{
 			Use:   "dataset",
 			Short: "update a dataset",
-			RunE: func(_ *cobra.Command, _ []string) error {
+			RunE: func(cmd *cobra.Command, _ []string) error {
 				params := UpdateDatasetParams{}
 				var (
 					initialSize int64
@@ -758,7 +763,7 @@ func (t *Array) Run(args []string) error {
 				if strings.HasPrefix(size, "+") || strings.HasPrefix(size, "-") {
 					sign = string(size[0])
 					size = size[1:]
-					if ds, err := t.GetDataset(name); err != nil {
+					if ds, err := t.GetDataset(cmd.Context(), name); err != nil {
 						return err
 					} else if i, err := sizeconv.FromSize(ds.Volsize.Rawvalue); err != nil {
 						return err
@@ -777,7 +782,7 @@ func (t *Array) Run(args []string) error {
 					}
 					params.Volsize = &initialSize
 				}
-				if data, err := t.UpdateDataset(name, params); err != nil {
+				if data, err := t.UpdateDataset(cmd.Context(), name, params); err != nil {
 					return err
 				} else {
 					return dump(data)
@@ -858,21 +863,21 @@ func (t *Array) Run(args []string) error {
 	return parent.Execute()
 }
 
-func (t Array) DelZvol(name string) (*Dataset, error) {
-	dataset, err := t.GetDataset(name)
+func (t Array) DelZvol(ctx context.Context, name string) (*Dataset, error) {
+	dataset, err := t.GetDataset(ctx, name)
 	if err != nil {
 		return nil, err
 	}
 	if dataset == nil {
 		return nil, fmt.Errorf("dataset not found")
 	}
-	err = t.delZvolById(dataset.Id)
+	err = t.delZvolById(ctx, dataset.Id)
 	return dataset, err
 }
 
-func (t Array) delZvolById(id string) error {
+func (t Array) delZvolById(ctx context.Context, id string) error {
 	path := fmt.Sprintf("/pool/dataset/id/%s", url.PathEscape(id))
-	req, err := t.newRequest(http.MethodDelete, path, nil, nil)
+	req, err := t.newRequest(ctx, http.MethodDelete, path, nil, nil)
 	if err != nil {
 		return err
 	}
@@ -884,9 +889,9 @@ func (t Array) delZvolById(id string) error {
 	return nil
 }
 
-func (t Array) delISCSIExtent(extent ISCSIExtent) error {
+func (t Array) delISCSIExtent(ctx context.Context, extent ISCSIExtent) error {
 	path := fmt.Sprintf("/iscsi/extent/id/%d", extent.Id)
-	req, err := t.newRequest(http.MethodDelete, path, nil, nil)
+	req, err := t.newRequest(ctx, http.MethodDelete, path, nil, nil)
 	if err != nil {
 		return err
 	}
@@ -898,8 +903,8 @@ func (t Array) delISCSIExtent(extent ISCSIExtent) error {
 	return nil
 }
 
-func (t Array) DelISCSIExtent(opt DelISCSIExtentOptions) (*ISCSIExtent, error) {
-	extents, err := t.GetISCSIExtents()
+func (t Array) DelISCSIExtent(ctx context.Context, opt DelISCSIExtentOptions) (*ISCSIExtent, error) {
+	extents, err := t.GetISCSIExtents(ctx)
 	if err != nil {
 		return nil, err
 	}
@@ -912,11 +917,11 @@ func (t Array) DelISCSIExtent(opt DelISCSIExtentOptions) (*ISCSIExtent, error) {
 	if extent == nil {
 		return nil, fmt.Errorf("extent %#v not found (%d scanned)", opt, len(extents))
 	}
-	return extent, t.delISCSIExtent(*extent)
+	return extent, t.delISCSIExtent(ctx, *extent)
 }
 
-func (t Array) AddISCSIExtent(opt AddISCSIExtentOptions) (*ISCSIExtent, error) {
-	extent, err := t.GetISCSIExtent(opt.Name)
+func (t Array) AddISCSIExtent(ctx context.Context, opt AddISCSIExtentOptions) (*ISCSIExtent, error) {
+	extent, err := t.GetISCSIExtent(ctx, opt.Name)
 	if err != nil {
 		return nil, err
 	}
@@ -934,38 +939,38 @@ func (t Array) AddISCSIExtent(opt AddISCSIExtentOptions) (*ISCSIExtent, error) {
 	} else {
 		params.Blocksize = int(i)
 	}
-	return t.createISCSIExtent(params)
+	return t.createISCSIExtent(ctx, params)
 }
 
-func (t Array) AddZvol(opt AddZvolOptions) (*Dataset, error) {
+func (t Array) AddZvol(ctx context.Context, opt AddZvolOptions) (*Dataset, error) {
 	params, err := opt.Params()
 	if err != nil {
 		return nil, err
 	}
 	params.Type = &DatasetTypeVolume
-	dataset, err := t.GetDataset(params.Name)
+	dataset, err := t.GetDataset(ctx, params.Name)
 	if err != nil {
 		return nil, err
 	}
 	if dataset != nil {
 		return dataset, nil
 	}
-	return t.CreateDataset(params)
+	return t.CreateDataset(ctx, params)
 }
 
-func (t Array) DelDisk(name string) (*Disk, error) {
-	disk, err := t.GetDisk(name)
+func (t Array) DelDisk(ctx context.Context, name string) (*Disk, error) {
+	disk, err := t.GetDisk(ctx, name)
 	if err != nil {
 		return nil, err
 	}
 	if disk != nil {
 		if disk.ISCSI != nil && disk.ISCSI.Extent != nil {
-			if _, err := t.DelISCSIExtent(DelISCSIExtentOptions{Id: disk.ISCSI.Extent.Id}); err != nil {
+			if _, err := t.DelISCSIExtent(ctx, DelISCSIExtentOptions{Id: disk.ISCSI.Extent.Id}); err != nil {
 				return disk, err
 			}
 		}
 		if disk.Dataset != nil {
-			if err := t.delZvolById(disk.Dataset.Id); err != nil {
+			if err := t.delZvolById(ctx, disk.Dataset.Id); err != nil {
 				return disk, err
 			}
 		}
@@ -973,18 +978,18 @@ func (t Array) DelDisk(name string) (*Disk, error) {
 	return disk, nil
 }
 
-func (t Array) AddDisk(opt AddDiskOptions) (*Disk, error) {
+func (t Array) AddDisk(ctx context.Context, opt AddDiskOptions) (*Disk, error) {
 	disk := Disk{
 		ISCSI: &DiskISCSI{},
 	}
-	if data, err := t.AddZvol(opt.AddZvolOptions); err != nil {
+	if data, err := t.AddZvol(ctx, opt.AddZvolOptions); err != nil {
 		return nil, err
 	} else {
 		disk.Dataset = data
 	}
 
 	// Extent
-	extent, err := t.AddISCSIExtent(AddISCSIExtentOptions{
+	extent, err := t.AddISCSIExtent(ctx, AddISCSIExtentOptions{
 		Name:        opt.Name,
 		Disk:        "zvol/" + opt.Name,
 		Blocksize:   opt.Blocksize,
@@ -996,7 +1001,7 @@ func (t Array) AddDisk(opt AddDiskOptions) (*Disk, error) {
 	disk.ISCSI.Extent = extent
 
 	// targetExtent
-	targetExtent, err := t.MapDisk(MapDiskOptions{
+	targetExtent, err := t.MapDisk(ctx, MapDiskOptions{
 		Name:    opt.Name,
 		Mapping: opt.Mapping,
 		LunId:   opt.LunId,
@@ -1054,8 +1059,8 @@ func (t Array) api() string {
 	return t.Config().GetString(t.Key("api"))
 }
 
-func (t Array) GetPoolByName(name string) (Pool, error) {
-	pools, err := t.GetPools()
+func (t Array) GetPoolByName(ctx context.Context, name string) (Pool, error) {
+	pools, err := t.GetPools(ctx)
 	if err != nil {
 		return Pool{}, err
 	}
@@ -1073,17 +1078,17 @@ func dump(data any) error {
 	return enc.Encode(data)
 }
 
-func (t Array) dumpPools() error {
-	data, err := t.GetPools()
+func (t Array) dumpPools(ctx context.Context) error {
+	data, err := t.GetPools(ctx)
 	if err != nil {
 		return err
 	}
 	return dump(data)
 }
 
-func (t Array) UpdateDataset(id string, params UpdateDatasetParams) (*Dataset, error) {
+func (t Array) UpdateDataset(ctx context.Context, id string, params UpdateDatasetParams) (*Dataset, error) {
 	path := fmt.Sprintf("/pool/dataset/id/%s", id)
-	req, err := t.newRequest(http.MethodPut, path, nil, params)
+	req, err := t.newRequest(ctx, http.MethodPut, path, nil, params)
 	if err != nil {
 		return nil, err
 	}
@@ -1095,9 +1100,9 @@ func (t Array) UpdateDataset(id string, params UpdateDatasetParams) (*Dataset, e
 	return &data, nil
 }
 
-func (t Array) CreateDataset(params CreateDatasetParams) (*Dataset, error) {
+func (t Array) CreateDataset(ctx context.Context, params CreateDatasetParams) (*Dataset, error) {
 	path := fmt.Sprintf("/pool/dataset")
-	req, err := t.newRequest(http.MethodPost, path, nil, params)
+	req, err := t.newRequest(ctx, http.MethodPost, path, nil, params)
 	if err != nil {
 		return nil, err
 	}
@@ -1109,8 +1114,8 @@ func (t Array) CreateDataset(params CreateDatasetParams) (*Dataset, error) {
 	return &data, nil
 }
 
-func (t Array) DeleteDataset(name string) (*Dataset, error) {
-	dataset, err := t.GetDataset(name)
+func (t Array) DeleteDataset(ctx context.Context, name string) (*Dataset, error) {
+	dataset, err := t.GetDataset(ctx, name)
 	if err != nil {
 		return nil, err
 	}
@@ -1118,7 +1123,7 @@ func (t Array) DeleteDataset(name string) (*Dataset, error) {
 		return nil, fmt.Errorf("dataset %s does not exist", name)
 	}
 	path := fmt.Sprintf("/pool/dataset/id/%s", url.PathEscape(dataset.Id))
-	req, err := t.newRequest(http.MethodDelete, path, nil, nil)
+	req, err := t.newRequest(ctx, http.MethodDelete, path, nil, nil)
 	if err != nil {
 		return nil, err
 	}
@@ -1130,9 +1135,9 @@ func (t Array) DeleteDataset(name string) (*Dataset, error) {
 	return dataset, nil
 }
 
-func (t Array) GetPools() ([]Pool, error) {
+func (t Array) GetPools(ctx context.Context) ([]Pool, error) {
 	path := fmt.Sprintf("/pool")
-	req, err := t.newRequest(http.MethodGet, path, nil, nil)
+	req, err := t.newRequest(ctx, http.MethodGet, path, nil, nil)
 	if err != nil {
 		return nil, err
 	}
@@ -1144,17 +1149,17 @@ func (t Array) GetPools() ([]Pool, error) {
 	return items, nil
 }
 
-func (t Array) dumpISCSIPortals() error {
-	data, err := t.GetISCSIPortals()
+func (t Array) dumpISCSIPortals(ctx context.Context) error {
+	data, err := t.GetISCSIPortals(ctx)
 	if err != nil {
 		return err
 	}
 	return dump(data)
 }
 
-func (t Array) GetISCSIPortals() ([]any, error) {
+func (t Array) GetISCSIPortals(ctx context.Context) ([]any, error) {
 	path := fmt.Sprintf("/iscsi/portal")
-	req, err := t.newRequest(http.MethodGet, path, nil, nil)
+	req, err := t.newRequest(ctx, http.MethodGet, path, nil, nil)
 	if err != nil {
 		return nil, err
 	}
@@ -1166,8 +1171,8 @@ func (t Array) GetISCSIPortals() ([]any, error) {
 	return items, nil
 }
 
-func (t Array) dumpISCSITargets() error {
-	data, err := t.GetISCSITargets()
+func (t Array) dumpISCSITargets(ctx context.Context) error {
+	data, err := t.GetISCSITargets(ctx)
 	if err != nil {
 		return err
 	}
@@ -1192,9 +1197,9 @@ func (t *Array) Do(req *http.Request, v interface{}) (*http.Response, error) {
 	return resp, nil
 }
 
-func (t Array) GetISCSITargets() (ISCSITargets, error) {
+func (t Array) GetISCSITargets(ctx context.Context) (ISCSITargets, error) {
 	path := fmt.Sprintf("/iscsi/target")
-	req, err := t.newRequest(http.MethodGet, path, nil, nil)
+	req, err := t.newRequest(ctx, http.MethodGet, path, nil, nil)
 	if err != nil {
 		return nil, err
 	}
@@ -1207,33 +1212,33 @@ func (t Array) GetISCSITargets() (ISCSITargets, error) {
 	return items, nil
 }
 
-func (t Array) GetISCSIExtent(name string) (*ISCSIExtent, error) {
-	extents, err := t.GetISCSIExtents()
+func (t Array) GetISCSIExtent(ctx context.Context, name string) (*ISCSIExtent, error) {
+	extents, err := t.GetISCSIExtents(ctx)
 	if err != nil {
 		return nil, err
 	}
 	return extents.GetByName(name), nil
 }
 
-func (t Array) dumpISCSIExtent(name string) error {
-	data, err := t.GetISCSIExtent(name)
+func (t Array) dumpISCSIExtent(ctx context.Context, name string) error {
+	data, err := t.GetISCSIExtent(ctx, name)
 	if err != nil {
 		return err
 	}
 	return dump(data)
 }
 
-func (t Array) dumpISCSITargetExtents() error {
-	data, err := t.GetISCSITargetExtents()
+func (t Array) dumpISCSITargetExtents(ctx context.Context) error {
+	data, err := t.GetISCSITargetExtents(ctx)
 	if err != nil {
 		return err
 	}
 	return dump(data)
 }
 
-func (t Array) GetISCSITargetExtents() (ISCSITargetExtents, error) {
+func (t Array) GetISCSITargetExtents(ctx context.Context) (ISCSITargetExtents, error) {
 	path := fmt.Sprintf("/iscsi/targetextent")
-	req, err := t.newRequest(http.MethodGet, path, nil, nil)
+	req, err := t.newRequest(ctx, http.MethodGet, path, nil, nil)
 	if err != nil {
 		return nil, err
 	}
@@ -1245,17 +1250,17 @@ func (t Array) GetISCSITargetExtents() (ISCSITargetExtents, error) {
 	return items, nil
 }
 
-func (t Array) dumpISCSIExtents() error {
-	data, err := t.GetISCSIExtents()
+func (t Array) dumpISCSIExtents(ctx context.Context) error {
+	data, err := t.GetISCSIExtents(ctx)
 	if err != nil {
 		return err
 	}
 	return dump(data)
 }
 
-func (t Array) GetISCSIExtents() (ISCSIExtents, error) {
+func (t Array) GetISCSIExtents(ctx context.Context) (ISCSIExtents, error) {
 	path := fmt.Sprintf("/iscsi/extent")
-	req, err := t.newRequest(http.MethodGet, path, nil, nil)
+	req, err := t.newRequest(ctx, http.MethodGet, path, nil, nil)
 	if err != nil {
 		return nil, err
 	}
@@ -1267,17 +1272,17 @@ func (t Array) GetISCSIExtents() (ISCSIExtents, error) {
 	return items, nil
 }
 
-func (t Array) dumpISCSIInitiators() error {
-	data, err := t.GetISCSIInitiators()
+func (t Array) dumpISCSIInitiators(ctx context.Context) error {
+	data, err := t.GetISCSIInitiators(ctx)
 	if err != nil {
 		return err
 	}
 	return dump(data)
 }
 
-func (t Array) GetISCSIInitiators() (ISCSIInitiators, error) {
+func (t Array) GetISCSIInitiators(ctx context.Context) (ISCSIInitiators, error) {
 	path := fmt.Sprintf("/iscsi/initiator")
-	req, err := t.newRequest(http.MethodGet, path, nil, nil)
+	req, err := t.newRequest(ctx, http.MethodGet, path, nil, nil)
 	if err != nil {
 		return nil, err
 	}
@@ -1289,17 +1294,17 @@ func (t Array) GetISCSIInitiators() (ISCSIInitiators, error) {
 	return items, nil
 }
 
-func (t Array) dumpSystemInfo() error {
-	data, err := t.GetSystemInfo()
+func (t Array) dumpSystemInfo(ctx context.Context) error {
+	data, err := t.GetSystemInfo(ctx)
 	if err != nil {
 		return err
 	}
 	return dump(data)
 }
 
-func (t Array) GetSystemInfo() (*SystemInfo, error) {
+func (t Array) GetSystemInfo(ctx context.Context) (*SystemInfo, error) {
 	path := fmt.Sprintf("/system/info")
-	req, err := t.newRequest(http.MethodGet, path, nil, nil)
+	req, err := t.newRequest(ctx, http.MethodGet, path, nil, nil)
 	if err != nil {
 		return nil, err
 	}
@@ -1311,20 +1316,20 @@ func (t Array) GetSystemInfo() (*SystemInfo, error) {
 	return &data, nil
 }
 
-func (t Array) dumpDisk(name string) error {
-	data, err := t.GetDisk(name)
+func (t Array) dumpDisk(ctx context.Context, name string) error {
+	data, err := t.GetDisk(ctx, name)
 	if err != nil {
 		return err
 	}
 	return dump(data)
 }
 
-func (t Array) GetDisk(name string) (*Disk, error) {
+func (t Array) GetDisk(ctx context.Context, name string) (*Disk, error) {
 	disk := Disk{
 		ISCSI: &DiskISCSI{},
 	}
 
-	dataset, err := t.GetDataset(name)
+	dataset, err := t.GetDataset(ctx, name)
 	if err != nil {
 		return nil, err
 	}
@@ -1333,7 +1338,7 @@ func (t Array) GetDisk(name string) (*Disk, error) {
 	}
 	disk.Dataset = dataset
 
-	extents, err := t.GetISCSIExtents()
+	extents, err := t.GetISCSIExtents(ctx)
 	if err != nil {
 		return nil, err
 	}
@@ -1348,7 +1353,7 @@ func (t Array) GetDisk(name string) (*Disk, error) {
 	if len(extents) == 1 {
 		extent := extents[0]
 		disk.ISCSI.Extent = &extent
-		if targetExtents, err := t.GetISCSITargetExtents(); err != nil {
+		if targetExtents, err := t.GetISCSITargetExtents(ctx); err != nil {
 			return nil, err
 		} else {
 			disk.ISCSI.TargetExtents = targetExtents.WithExtent(extent)
@@ -1357,17 +1362,17 @@ func (t Array) GetDisk(name string) (*Disk, error) {
 	return &disk, nil
 }
 
-func (t Array) dumpDatasets() error {
-	data, err := t.GetDatasets()
+func (t Array) dumpDatasets(ctx context.Context) error {
+	data, err := t.GetDatasets(ctx)
 	if err != nil {
 		return err
 	}
 	return dump(data)
 }
 
-func (t Array) GetDatasets() (Datasets, error) {
+func (t Array) GetDatasets(ctx context.Context) (Datasets, error) {
 	path := fmt.Sprintf("/pool/dataset")
-	req, err := t.newRequest(http.MethodGet, path, nil, nil)
+	req, err := t.newRequest(ctx, http.MethodGet, path, nil, nil)
 	if err != nil {
 		return nil, err
 	}
@@ -1379,20 +1384,20 @@ func (t Array) GetDatasets() (Datasets, error) {
 	return items, nil
 }
 
-func (t Array) dumpDataset(name string) error {
-	data, err := t.GetDataset(name)
+func (t Array) dumpDataset(ctx context.Context, name string) error {
+	data, err := t.GetDataset(ctx, name)
 	if err != nil {
 		return err
 	}
 	return dump(data)
 }
 
-func (t Array) GetDataset(name string) (*Dataset, error) {
+func (t Array) GetDataset(ctx context.Context, name string) (*Dataset, error) {
 	path := fmt.Sprintf("/pool/dataset")
 	params := map[string]string{
 		"name": name,
 	}
-	req, err := t.newRequest(http.MethodGet, path, params, nil)
+	req, err := t.newRequest(ctx, http.MethodGet, path, params, nil)
 	if err != nil {
 		return nil, err
 	}
@@ -1407,7 +1412,7 @@ func (t Array) GetDataset(name string) (*Dataset, error) {
 	return &data[0], nil
 }
 
-func (t Array) UnmapDisk(opt UnmapDiskOptions) (ISCSITargetExtents, error) {
+func (t Array) UnmapDisk(ctx context.Context, opt UnmapDiskOptions) (ISCSITargetExtents, error) {
 	deletedTargetExtents := make(ISCSITargetExtents, 0)
 	paths, err := san.ParseMapping(opt.Mapping)
 	if err != nil {
@@ -1415,15 +1420,15 @@ func (t Array) UnmapDisk(opt UnmapDiskOptions) (ISCSITargetExtents, error) {
 	} else if len(paths) == 0 {
 		return deletedTargetExtents, nil
 	}
-	targets, err := t.GetISCSITargets()
+	targets, err := t.GetISCSITargets(ctx)
 	if err != nil {
 		return deletedTargetExtents, err
 	}
-	extents, err := t.GetISCSIExtents()
+	extents, err := t.GetISCSIExtents(ctx)
 	if err != nil {
 		return deletedTargetExtents, err
 	}
-	targetextents, err := t.GetISCSITargetExtents()
+	targetextents, err := t.GetISCSITargetExtents(ctx)
 	if err != nil {
 		return deletedTargetExtents, err
 	}
@@ -1444,7 +1449,7 @@ func (t Array) UnmapDisk(opt UnmapDiskOptions) (ISCSITargetExtents, error) {
 			return deletedTargetExtents, fmt.Errorf("too many (%d) target extents for path %s", len(filteredTargetextents), p)
 		}
 		filteredTargetextent := filteredTargetextents[0]
-		if err := t.delISCSITargetExtent(filteredTargetextent.Id); err != nil {
+		if err := t.delISCSITargetExtent(ctx, filteredTargetextent.Id); err != nil {
 			return deletedTargetExtents, err
 		}
 		deletedTargetExtents = append(deletedTargetExtents, filteredTargetextent)
@@ -1452,7 +1457,7 @@ func (t Array) UnmapDisk(opt UnmapDiskOptions) (ISCSITargetExtents, error) {
 	return deletedTargetExtents, nil
 }
 
-func (t Array) MapDisk(opt MapDiskOptions) (ISCSITargetExtents, error) {
+func (t Array) MapDisk(ctx context.Context, opt MapDiskOptions) (ISCSITargetExtents, error) {
 	missingTargetExtents := make(ISCSITargetExtents, 0)
 	paths, err := san.ParseMapping(opt.Mapping)
 	if err != nil {
@@ -1460,15 +1465,15 @@ func (t Array) MapDisk(opt MapDiskOptions) (ISCSITargetExtents, error) {
 	} else if len(paths) == 0 {
 		return missingTargetExtents, nil
 	}
-	targets, err := t.GetISCSITargets()
+	targets, err := t.GetISCSITargets(ctx)
 	if err != nil {
 		return missingTargetExtents, err
 	}
-	extents, err := t.GetISCSIExtents()
+	extents, err := t.GetISCSIExtents(ctx)
 	if err != nil {
 		return missingTargetExtents, err
 	}
-	targetextents, err := t.GetISCSITargetExtents()
+	targetextents, err := t.GetISCSITargetExtents(ctx)
 	if err != nil {
 		return missingTargetExtents, err
 	}
@@ -1492,7 +1497,7 @@ func (t Array) MapDisk(opt MapDiskOptions) (ISCSITargetExtents, error) {
 			Extent: extent.Id,
 			LunId:  opt.LunId,
 		}
-		d, err := t.createISCSITargetExtent(params)
+		d, err := t.createISCSITargetExtent(ctx, params)
 		if err != nil {
 			return missingTargetExtents, err
 		}
@@ -1501,9 +1506,9 @@ func (t Array) MapDisk(opt MapDiskOptions) (ISCSITargetExtents, error) {
 	return missingTargetExtents, nil
 }
 
-func (t Array) createISCSITargetExtent(params CreateISCSITargetExtentParams) (*ISCSITargetExtent, error) {
+func (t Array) createISCSITargetExtent(ctx context.Context, params CreateISCSITargetExtentParams) (*ISCSITargetExtent, error) {
 	path := fmt.Sprintf("/iscsi/targetextent")
-	req, err := t.newRequest(http.MethodPost, path, nil, params)
+	req, err := t.newRequest(ctx, http.MethodPost, path, nil, params)
 	if err != nil {
 		return nil, err
 	}
@@ -1515,9 +1520,9 @@ func (t Array) createISCSITargetExtent(params CreateISCSITargetExtentParams) (*I
 	return &data, nil
 }
 
-func (t Array) createISCSIExtent(params CreateISCSIExtentParams) (*ISCSIExtent, error) {
+func (t Array) createISCSIExtent(ctx context.Context, params CreateISCSIExtentParams) (*ISCSIExtent, error) {
 	path := fmt.Sprintf("/iscsi/extent")
-	req, err := t.newRequest(http.MethodPost, path, nil, params)
+	req, err := t.newRequest(ctx, http.MethodPost, path, nil, params)
 	if err != nil {
 		return nil, err
 	}
@@ -1529,9 +1534,9 @@ func (t Array) createISCSIExtent(params CreateISCSIExtentParams) (*ISCSIExtent, 
 	return &data, nil
 }
 
-func (t Array) getISCSITarget(id int) (*ISCSITarget, error) {
+func (t Array) getISCSITarget(ctx context.Context, id int) (*ISCSITarget, error) {
 	path := fmt.Sprintf("/iscsi/target/id/%d", id)
-	req, err := t.newRequest(http.MethodGet, path, nil, nil)
+	req, err := t.newRequest(ctx, http.MethodGet, path, nil, nil)
 	if err != nil {
 		return nil, err
 	}
@@ -1543,10 +1548,10 @@ func (t Array) getISCSITarget(id int) (*ISCSITarget, error) {
 	return &data, nil
 }
 
-func (t Array) delISCSITargetExtent(id int) error {
+func (t Array) delISCSITargetExtent(ctx context.Context, id int) error {
 	path := fmt.Sprintf("/iscsi/targetextent/id/%d", id)
 	// true as a body payload forces the delete of a in-use target extent
-	req, err := t.newRequest(http.MethodDelete, path, nil, true)
+	req, err := t.newRequest(ctx, http.MethodDelete, path, nil, true)
 	if err != nil {
 		return err
 	}
@@ -1558,13 +1563,13 @@ func (t Array) delISCSITargetExtent(id int) error {
 	return nil
 }
 
-func (t Array) delISCSITarget(id int) (*ISCSITarget, error) {
-	target, err := t.getISCSITarget(id)
+func (t Array) delISCSITarget(ctx context.Context, id int) (*ISCSITarget, error) {
+	target, err := t.getISCSITarget(ctx, id)
 	if err != nil {
 		return nil, err
 	}
 	path := fmt.Sprintf("/iscsi/target/id/%d", id)
-	req, err := t.newRequest(http.MethodDelete, path, nil, nil)
+	req, err := t.newRequest(ctx, http.MethodDelete, path, nil, nil)
 	if err != nil {
 		return target, err
 	}
@@ -1576,9 +1581,9 @@ func (t Array) delISCSITarget(id int) (*ISCSITarget, error) {
 	return target, nil
 }
 
-func (t Array) getISCSIInitiator(id int) (*ISCSIInitiator, error) {
+func (t Array) getISCSIInitiator(ctx context.Context, id int) (*ISCSIInitiator, error) {
 	path := fmt.Sprintf("/iscsi/initiator/id/%d", id)
-	req, err := t.newRequest(http.MethodGet, path, nil, nil)
+	req, err := t.newRequest(ctx, http.MethodGet, path, nil, nil)
 	if err != nil {
 		return nil, err
 	}
@@ -1590,13 +1595,13 @@ func (t Array) getISCSIInitiator(id int) (*ISCSIInitiator, error) {
 	return &data, nil
 }
 
-func (t Array) delISCSIInitiator(id int) (*ISCSIInitiator, error) {
-	initiator, err := t.getISCSIInitiator(id)
+func (t Array) delISCSIInitiator(ctx context.Context, id int) (*ISCSIInitiator, error) {
+	initiator, err := t.getISCSIInitiator(ctx, id)
 	if err != nil {
 		return nil, err
 	}
 	path := fmt.Sprintf("/iscsi/initiator/id/%d", id)
-	req, err := t.newRequest(http.MethodDelete, path, nil, nil)
+	req, err := t.newRequest(ctx, http.MethodDelete, path, nil, nil)
 	if err != nil {
 		return initiator, err
 	}
@@ -1608,9 +1613,9 @@ func (t Array) delISCSIInitiator(id int) (*ISCSIInitiator, error) {
 	return initiator, nil
 }
 
-func (t Array) addISCSIInitiator(params CreateISCSIInitiatorParams) (*ISCSIInitiator, error) {
+func (t Array) addISCSIInitiator(ctx context.Context, params CreateISCSIInitiatorParams) (*ISCSIInitiator, error) {
 	path := fmt.Sprintf("/iscsi/initiator")
-	req, err := t.newRequest(http.MethodPost, path, nil, params)
+	req, err := t.newRequest(ctx, http.MethodPost, path, nil, params)
 	if err != nil {
 		return nil, err
 	}
@@ -1622,10 +1627,10 @@ func (t Array) addISCSIInitiator(params CreateISCSIInitiatorParams) (*ISCSIIniti
 	return &data, nil
 }
 
-func (t Array) addISCSITargetGroup(opt AddISCSITargetGroupOptions) (ISCSITargets, error) {
+func (t Array) addISCSITargetGroup(ctx context.Context, opt AddISCSITargetGroupOptions) (ISCSITargets, error) {
 	initiators := make(ISCSIInitiators, 0)
 	if opt.InitiatorId >= 0 {
-		initiator, err := t.getISCSIInitiator(opt.InitiatorId)
+		initiator, err := t.getISCSIInitiator(ctx, opt.InitiatorId)
 		if err != nil {
 			return nil, err
 		}
@@ -1634,7 +1639,7 @@ func (t Array) addISCSITargetGroup(opt AddISCSITargetGroupOptions) (ISCSITargets
 		}
 		initiators = append(initiators, *initiator)
 	} else if opt.InitiatorName != "" {
-		l, err := t.GetISCSIInitiators()
+		l, err := t.GetISCSIInitiators(ctx)
 		if err != nil {
 			return nil, err
 		}
@@ -1643,7 +1648,7 @@ func (t Array) addISCSITargetGroup(opt AddISCSITargetGroupOptions) (ISCSITargets
 
 	targets := make(ISCSITargets, 0)
 	if opt.Target != "" {
-		l, err := t.GetISCSITargets()
+		l, err := t.GetISCSITargets(ctx)
 		if err != nil {
 			return nil, err
 		}
@@ -1685,7 +1690,7 @@ func (t Array) addISCSITargetGroup(opt AddISCSITargetGroupOptions) (ISCSITargets
 		if target.Alias != nil {
 			params.Alias = *target.Alias
 		}
-		req, err := t.newRequest(http.MethodPut, path, nil, params)
+		req, err := t.newRequest(ctx, http.MethodPut, path, nil, params)
 		if err != nil {
 			return nil, err
 		}
@@ -1704,9 +1709,9 @@ func (t Array) addISCSITargetGroup(opt AddISCSITargetGroupOptions) (ISCSITargets
 	return targetsChangedSlice, nil
 }
 
-func (t Array) addISCSITarget(params CreateISCSITargetParams) (*ISCSITarget, error) {
+func (t Array) addISCSITarget(ctx context.Context, params CreateISCSITargetParams) (*ISCSITarget, error) {
 	path := fmt.Sprintf("/iscsi/target")
-	req, err := t.newRequest(http.MethodPost, path, nil, params)
+	req, err := t.newRequest(ctx, http.MethodPost, path, nil, params)
 	if err != nil {
 		return nil, err
 	}
@@ -1718,9 +1723,9 @@ func (t Array) addISCSITarget(params CreateISCSITargetParams) (*ISCSITarget, err
 	return &data, nil
 }
 
-func (t Array) addISCSIPortal(params CreateISCSIPortalParams) (*ISCSIPortal, error) {
+func (t Array) addISCSIPortal(ctx context.Context, params CreateISCSIPortalParams) (*ISCSIPortal, error) {
 	path := fmt.Sprintf("/iscsi/portal")
-	req, err := t.newRequest(http.MethodPost, path, nil, params)
+	req, err := t.newRequest(ctx, http.MethodPost, path, nil, params)
 	if err != nil {
 		return nil, err
 	}
@@ -1755,7 +1760,7 @@ func basicAuth(username, password string) string {
 	return base64.StdEncoding.EncodeToString([]byte(auth))
 }
 
-func (t *Array) newRequest(method string, path string, params map[string]string, data interface{}) (*http.Request, error) {
+func (t *Array) newRequest(ctx context.Context, method string, path string, params map[string]string, data interface{}) (*http.Request, error) {
 	fpath := t.api() + Head + path
 	baseURL, err := url.Parse(fpath)
 	if err != nil {
@@ -1768,7 +1773,7 @@ func (t *Array) newRequest(method string, path string, params map[string]string,
 		}
 		baseURL.RawQuery = ps.Encode()
 	}
-	req, err := http.NewRequest(method, baseURL.String(), nil)
+	req, err := http.NewRequestWithContext(ctx, method, baseURL.String(), nil)
 	if err != nil {
 		return nil, err
 	}
@@ -1802,13 +1807,13 @@ func (t Array) DiskId(disk Disk) string {
 }
 
 // DiskPaths return the san paths list from the created disk dataset and api query responses
-func (t Array) DiskPaths(disk Disk) (san.Paths, error) {
+func (t Array) DiskPaths(ctx context.Context, disk Disk) (san.Paths, error) {
 	paths := san.Paths{}
-	targets, err := t.GetISCSITargets()
+	targets, err := t.GetISCSITargets(ctx)
 	if err != nil {
 		return paths, err
 	}
-	initiators, err := t.GetISCSIInitiators()
+	initiators, err := t.GetISCSIInitiators(ctx)
 	if err != nil {
 		return paths, err
 	}

@@ -2,6 +2,7 @@ package filesystems
 
 import (
 	"bufio"
+	"context"
 	"errors"
 	"os"
 	"strings"
@@ -23,7 +24,7 @@ type (
 	}
 
 	subDeviceLister interface {
-		SubDevices() device.L
+		SubDevices(context.Context) device.L
 	}
 
 	I interface {
@@ -34,26 +35,26 @@ type (
 		IsVirtual() bool
 		IsFileBacked() bool
 		IsMultiDevice() bool
-		Mount(string, string, string) error
-		Umount(string) error
-		KillUsers(string) error
+		Mount(context.Context, string, string, string) error
+		Umount(context.Context, string) error
+		KillUsers(context.Context, string) error
 		Log() *plog.Logger
 		SetLog(*plog.Logger)
 	}
 	FSCKer interface {
-		FSCK(string) error
+		FSCK(context.Context, string) error
 	}
 	CanFSCKer interface {
 		CanFSCK() error
 	}
 	IsFormateder interface {
-		IsFormated(string) (bool, error)
+		IsFormated(context.Context, string) (bool, error)
 	}
 	IsCapabler interface {
 		IsCapable() bool
 	}
 	MKFSer interface {
-		MKFS(string, []string) error
+		MKFS(context.Context, string, []string) error
 	}
 )
 
@@ -148,14 +149,14 @@ func (t *T) SetLog(log *plog.Logger) {
 	t.log = log
 }
 
-func IsCapable(t string) bool {
+func IsCapable(ctx context.Context, t string) bool {
 	fs := FromType(t)
 	if i, ok := fs.(IsCapabler); ok {
 		if !i.IsCapable() {
 			return false
 		}
 	}
-	if !availTypes().Has(t) && !hasKMod(t) {
+	if !availTypes().Has(t) && !hasKMod(ctx, t) {
 		return false
 	}
 	return true
@@ -174,31 +175,31 @@ func HasFSCK(fs any) bool {
 	return ok
 }
 
-func DevicesFSCK(fs any, dl subDeviceLister) error {
+func DevicesFSCK(ctx context.Context, fs any, dl subDeviceLister) error {
 	i, ok := fs.(FSCKer)
 	if !ok {
 		return nil
 	}
-	devices := dl.SubDevices()
+	devices := dl.SubDevices(ctx)
 	for _, dev := range devices {
-		if err := i.FSCK(dev.Path()); err != nil {
+		if err := i.FSCK(ctx, dev.Path()); err != nil {
 			return err
 		}
 	}
 	return nil
 }
 
-func DevicesFormated(fs any, dl subDeviceLister) (bool, error) {
+func DevicesFormated(ctx context.Context, fs any, dl subDeviceLister) (bool, error) {
 	i, ok := fs.(IsFormateder)
 	if !ok {
 		return false, errors.New("isFormated is not implemented")
 	}
-	devices := dl.SubDevices()
+	devices := dl.SubDevices(ctx)
 	if len(devices) == 0 {
 		return false, errors.New("no devices")
 	}
 	for _, dev := range devices {
-		v, err := i.IsFormated(dev.Path())
+		v, err := i.IsFormated(ctx, dev.Path())
 		if err != nil {
 			return false, err
 		}
@@ -230,8 +231,9 @@ func (m availTypesM) Has(s string) bool {
 	return ok
 }
 
-func hasKMod(s string) bool {
+func hasKMod(ctx context.Context, s string) bool {
 	cmd := command.New(
+		command.WithContext(ctx),
 		command.WithName("modinfo"),
 		command.WithVarArgs(s),
 	)

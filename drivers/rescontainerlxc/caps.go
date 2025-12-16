@@ -1,6 +1,7 @@
 package rescontainerlxc
 
 import (
+	"context"
 	"strings"
 
 	"github.com/hashicorp/go-version"
@@ -13,10 +14,11 @@ func init() {
 	capabilities.Register(capabilitiesScanner)
 }
 
-func capabilitiesScanner() ([]string, error) {
+func capabilitiesScanner(ctx context.Context) ([]string, error) {
 	l := make([]string, 0)
 	drvCap := drvID.Cap()
 	cmd := command.New(
+		command.WithContext(ctx),
 		command.WithName("lxc-info"),
 		command.WithVarArgs("--version"),
 		command.WithBufferedStdout(),

@@ -1,6 +1,7 @@
 package checkdf
 
 import (
+	"context"
 	"fmt"
 	"os"
 	"strings"
@@ -49,14 +50,14 @@ func skipper(dfEntry df.Entry) bool {
 }
 
 type translator interface {
-	Entries() ([]df.Entry, error)
-	ResultSet(*df.Entry, []interface{}) *check.ResultSet
+	Entries(context.Context) ([]df.Entry, error)
+	ResultSet(context.Context, *df.Entry, []interface{}) *check.ResultSet
 }
 
 // Check returns a list of check result
-func Check(trans translator, objs []interface{}) (*check.ResultSet, error) {
+func Check(ctx context.Context, trans translator, objs []interface{}) (*check.ResultSet, error) {
 	rs := check.NewResultSet()
-	data, err := trans.Entries()
+	data, err := trans.Entries(ctx)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "%s\n", err)
 		return rs, err
@@ -65,7 +66,7 @@ func Check(trans translator, objs []interface{}) (*check.ResultSet, error) {
 		if skipper(dfEntry) {
 			continue
 		}
-		rs.Add(trans.ResultSet(&dfEntry, objs))
+		rs.Add(trans.ResultSet(ctx, &dfEntry, objs))
 	}
 	return rs, nil
 }

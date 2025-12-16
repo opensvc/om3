@@ -3,6 +3,7 @@ package zfs
 import (
 	"bufio"
 	"bytes"
+	"context"
 	"strconv"
 	"strings"
 
@@ -111,11 +112,12 @@ func parsePoolStatus(b []byte) PoolStatusData {
 	return data
 }
 
-func (t *Pool) Status(fopts ...funcopt.O) (PoolStatusData, error) {
+func (t *Pool) Status(ctx context.Context, fopts ...funcopt.O) (PoolStatusData, error) {
 	opts := &poolStatusOpts{}
 	funcopt.Apply(opts, fopts...)
 	args := append(poolStatusOptsToArgs(*opts), t.Name)
 	cmd := command.New(
+		command.WithContext(ctx),
 		command.WithName("zpool"),
 		command.WithArgs(args),
 		command.WithBufferedStdout(),
@@ -131,16 +133,16 @@ func (t *Pool) Status(fopts ...funcopt.O) (PoolStatusData, error) {
 	return parsePoolStatus(b), nil
 }
 
-func (t *Pool) VDevPaths() ([]string, error) {
-	if status, err := t.Status(); err != nil {
+func (t *Pool) VDevPaths(ctx context.Context) ([]string, error) {
+	if status, err := t.Status(ctx); err != nil {
 		return nil, err
 	} else {
 		return status.VDevs.Paths(), nil
 	}
 }
 
-func (t *Pool) VDevDevices() (device.L, error) {
-	paths, err := t.VDevPaths()
+func (t *Pool) VDevDevices(ctx context.Context) (device.L, error) {
+	paths, err := t.VDevPaths(ctx)
 	if err != nil {
 		return device.L{}, err
 	}

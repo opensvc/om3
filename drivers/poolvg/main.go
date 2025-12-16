@@ -3,6 +3,8 @@
 package poolvg
 
 import (
+	"context"
+
 	"github.com/opensvc/om3/v3/core/driver"
 	"github.com/opensvc/om3/v3/core/pool"
 	"github.com/opensvc/om3/v3/util/lvm2"
@@ -46,9 +48,9 @@ func (t T) VGName() string {
 	return t.GetString("name")
 }
 
-func (t T) Usage() (pool.Usage, error) {
+func (t T) Usage(ctx context.Context) (pool.Usage, error) {
 	vg := lvm2.NewVG(t.VGName())
-	info, err := vg.Show("vg_name,vg_free,vg_size")
+	info, err := vg.Show(ctx, "vg_name,vg_free,vg_size")
 	if err != nil {
 		return pool.Usage{}, err
 	}

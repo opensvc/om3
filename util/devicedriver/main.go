@@ -2,6 +2,7 @@ package devicedriver
 
 import (
 	"bufio"
+	"context"
 	"fmt"
 	"os"
 	"strconv"
@@ -111,8 +112,9 @@ func NewLoop() *Loop {
 	return &t
 }
 
-func (t Loop) Remove(dev device) error {
+func (t Loop) Remove(ctx context.Context, dev device) error {
 	cmd := command.New(
+		command.WithContext(ctx),
 		command.WithName("losetup"),
 		command.WithVarArgs("-d", dev.Path()),
 		command.WithLogger(t.log),
@@ -135,6 +137,6 @@ func NewDeviceMapper() *DeviceMapper {
 	return &t
 }
 
-func (t DeviceMapper) Remove(dev device) error {
+func (t DeviceMapper) Remove(ctx context.Context, dev device) error {
 	panic("not implemented")
 }

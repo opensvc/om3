@@ -8,7 +8,7 @@ import (
 )
 
 type enterer interface {
-	Enter() error
+	Enter(context.Context) error
 }
 
 // Enter returns a keyword value
@@ -28,7 +28,7 @@ func (t *actor) Enter(ctx context.Context, rid string) error {
 	if container == nil {
 		return fmt.Errorf("no resource supports enter")
 	}
-	if err := container.Enter(); err != nil {
+	if err := container.Enter(ctx); err != nil {
 		return fmt.Errorf("%s: %w", rid, err)
 	}
 	return nil

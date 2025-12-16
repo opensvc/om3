@@ -20,7 +20,7 @@ func TestJoin(t *testing.T) {
 		"OSVC_ROOT_PATH":    env.Root,
 		"OSVC_CLUSTER_NAME": env.ClusterName,
 	})
-	err := capabilities.Scan()
+	err := capabilities.Scan(t.Context())
 	require.NoError(t, err)
 	err = Join()
 	require.ErrorIs(t, err, os.ErrNotExist)

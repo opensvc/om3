@@ -38,6 +38,9 @@ func (t *CmdObjectDisable) Run(kind string) error {
 		return err
 	}
 	for _, p := range paths {
+		if p.Kind != naming.KindSvc {
+			continue
+		}
 		params := api.PostSvcDisableParams{}
 		params.Rid = &t.RID
 		params.Subset = &t.Subset
@@ -71,6 +74,9 @@ func (t *CmdObjectDisable) doObjectAction(mergedSelector string) error {
 		objectaction.WithOutput(t.Output),
 		objectaction.WithObjectSelector(mergedSelector),
 		objectaction.WithLocalFunc(func(ctx context.Context, p naming.Path) (interface{}, error) {
+			if p.Kind != naming.KindSvc {
+				return nil, nil
+			}
 			o, err := object.NewSvc(p)
 			if err != nil {
 				return nil, err

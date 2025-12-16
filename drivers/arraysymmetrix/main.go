@@ -3,12 +3,15 @@ package arraysymmetrix
 import (
 	"bufio"
 	"bytes"
+	"context"
 	"encoding/json"
 	"encoding/xml"
 	"errors"
 	"fmt"
 	"os"
+	"os/exec"
 	"path/filepath"
+	"regexp"
 	"strconv"
 	"strings"
 	"time"
@@ -763,6 +766,41 @@ func (t *Array) Run(args []string) error {
 	return parent.Execute()
 }
 
+func (t *Array) symcliVersion(ctx context.Context) (int, int, error) {
+	cmd := exec.CommandContext(ctx, t.symcli())
+	b, err := cmd.Output()
+	if err != nil {
+		return 0, 0, err
+	}
+	return t.parseSymcliVersion(b)
+}
+
+func (t *Array) parseSymcliVersion(b []byte) (major int, minor int, err error) {
+	pattern := regexp.MustCompile(`\(SYMCLI\)\sVersion V(\d+)\.(\d+)`)
+	m := pattern.FindStringSubmatch(string(b))
+
+	if len(m) == 3 {
+		majorStr := m[1]
+		minorStr := m[2]
+
+		major, err = strconv.Atoi(majorStr)
+		if err != nil {
+			return
+		}
+
+		minor, err = strconv.Atoi(minorStr)
+		if err != nil {
+			return
+		}
+
+		return
+	}
+	return
+}
+
+func (t *Array) symcli() string {
+	return filepath.Join(t.kwSymcliPath(), "symcli")
+}
 func (t *Array) symaccess() string {
 	return filepath.Join(t.kwSymcliPath(), "symaccess")
 }
@@ -868,10 +906,11 @@ func (t *Array) MaskDBFile() (string, error) {
 	}
 }
 
-func (t *Array) SymAccessShowViewDetail(name string) ([]MaskingView, error) {
+func (t *Array) SymAccessShowViewDetail(ctx context.Context, name string) ([]MaskingView, error) {
 	sid := t.kwSID()
 	args := []string{"-sid", sid, "-output", "xml_e", "show", "view", name, "-detail"}
 	cmd := command.New(
+		command.WithContext(ctx),
 		command.WithPrompt(PromptReader),
 		command.WithName(t.symaccess()),
 		command.WithArgs(args),
@@ -890,10 +929,11 @@ func (t *Array) SymAccessShowViewDetail(name string) ([]MaskingView, error) {
 	return t.parseSymAccessListViewDetail(b)
 }
 
-func (t *Array) SymAccessListViewDetail() ([]MaskingView, error) {
+func (t *Array) SymAccessListViewDetail(ctx context.Context) ([]MaskingView, error) {
 	sid := t.kwSID()
 	args := []string{"-sid", sid, "-output", "xml_e", "list", "view", "-detail"}
 	cmd := command.New(
+		command.WithContext(ctx),
 		command.WithPrompt(PromptReader),
 		command.WithName(t.symaccess()),
 		command.WithArgs(args),
@@ -920,10 +960,11 @@ func (t *Array) parseSymAccessListViewDetail(b []byte) ([]MaskingView, error) {
 	return head.Symmetrix.MaskingViews, nil
 }
 
-func (t *Array) SymCfgList(s string) (SymmInfo, error) {
+func (t *Array) SymCfgList(ctx context.Context, s string) (SymmInfo, error) {
 	sid := t.kwSID()
 	args := []string{"-sid", sid, "-output", "xml_e", "list"}
 	cmd := command.New(
+		command.WithContext(ctx),
 		command.WithPrompt(PromptReader),
 		command.WithName(t.symcfg()),
 		command.WithArgs(args),
@@ -950,10 +991,11 @@ func (t *Array) parseSymCfgList(b []byte) (SymmInfo, error) {
 	return head.Symmetrix.SymmInfo, nil
 }
 
-func (t *Array) SymCfgDirectorList(s string) ([]Director, error) {
+func (t *Array) SymCfgDirectorList(ctx context.Context, s string) ([]Director, error) {
 	sid := t.kwSID()
 	args := []string{"-sid", sid, "-output", "xml_e", "-dir", s, "-v", "list"}
 	cmd := command.New(
+		command.WithContext(ctx),
 		command.WithPrompt(PromptReader),
 		command.WithName(t.symcfg()),
 		command.WithArgs(args),
@@ -980,10 +1022,11 @@ func (t *Array) parseSymCfgDirectorList(b []byte) ([]Director, error) {
 	return head.Symmetrix.Directors, nil
 }
 
-func (t *Array) SymCfgRDFGList(s string) ([]RDFGroup, error) {
+func (t *Array) SymCfgRDFGList(ctx context.Context, s string) ([]RDFGroup, error) {
 	sid := t.kwSID()
 	args := []string{"-sid", sid, "-output", "xml_e", "-rdfg", s, "list"}
 	cmd := command.New(
+		command.WithContext(ctx),
 		command.WithPrompt(PromptReader),
 		command.WithName(t.symcfg()),
 		command.WithArgs(args),
@@ -1010,10 +1053,11 @@ func (t *Array) parseSymCfgRDFGList(b []byte) ([]RDFGroup, error) {
 	return head.Symmetrix.RDFGroups, nil
 }
 
-func (t *Array) SymCfgPoolList() ([]DevicePool, error) {
+func (t *Array) SymCfgPoolList(ctx context.Context) ([]DevicePool, error) {
 	sid := t.kwSID()
 	args := []string{"-sid", sid, "-output", "xml_e", "-pool", "list", "-v"}
 	cmd := command.New(
+		command.WithContext(ctx),
 		command.WithPrompt(PromptReader),
 		command.WithName(t.symcfg()),
 		command.WithArgs(args),
@@ -1040,10 +1084,11 @@ func (t *Array) parseSymCfgPoolList(b []byte) ([]DevicePool, error) {
 	return head.Symmetrix.DevicePools, nil
 }
 
-func (t *Array) SymCfgSLOList() ([]SLO, error) {
+func (t *Array) SymCfgSLOList(ctx context.Context) ([]SLO, error) {
 	sid := t.kwSID()
 	args := []string{"-sid", sid, "-output", "xml_e", "list", "-slo", "-detail", "-v"}
 	cmd := command.New(
+		command.WithContext(ctx),
 		command.WithPrompt(PromptReader),
 		command.WithName(t.symcfg()),
 		command.WithArgs(args),
@@ -1070,10 +1115,11 @@ func (t *Array) parseSymCfgSLOList(b []byte) ([]SLO, error) {
 	return head.Symmetrix.SLOs, nil
 }
 
-func (t *Array) SymCfgSRPList() ([]SRP, error) {
+func (t *Array) SymCfgSRPList(ctx context.Context) ([]SRP, error) {
 	sid := t.kwSID()
 	args := []string{"-sid", sid, "-output", "xml_e", "list", "-srp", "-detail", "-v"}
 	cmd := command.New(
+		command.WithContext(ctx),
 		command.WithPrompt(PromptReader),
 		command.WithName(t.symcfg()),
 		command.WithArgs(args),
@@ -1100,10 +1146,11 @@ func (t *Array) parseSymCfgSRPList(b []byte) ([]SRP, error) {
 	return head.Symmetrix.SRPs, nil
 }
 
-func (t *Array) SymDiskListDiskGroupSummary() ([]DiskGroup, error) {
+func (t *Array) SymDiskListDiskGroupSummary(ctx context.Context) ([]DiskGroup, error) {
 	sid := t.kwSID()
 	args := []string{"-sid", sid, "-output", "xml_e", "list", "-dskgroup_summary"}
 	cmd := command.New(
+		command.WithContext(ctx),
 		command.WithPrompt(PromptReader),
 		command.WithName(t.symdisk()),
 		command.WithArgs(args),
@@ -1130,9 +1177,10 @@ func (t *Array) parseSymDiskListDiskGroupSummary(b []byte) ([]DiskGroup, error) 
 	return head.Symmetrix.DiskGroups, nil
 }
 
-func (t *Array) SymDevListThinDevs(sid, devId string) ([]ThinDev, error) {
+func (t *Array) SymDevListThinDevs(ctx context.Context, sid, devId string) ([]ThinDev, error) {
 	args := []string{"-sid", sid, "-output", "xml_e", "list", "-tdevs", "-devs", devId}
 	cmd := command.New(
+		command.WithContext(ctx),
 		command.WithPrompt(PromptReader),
 		command.WithName(t.symdev()),
 		command.WithArgs(args),
@@ -1159,9 +1207,10 @@ func (t *Array) parseSymDevListThinDevs(b []byte) ([]ThinDev, error) {
 	return head.Symmetrix.ThinDevs, nil
 }
 
-func (t *Array) SymDevShow(sid, devId string) ([]Device, error) {
+func (t *Array) SymDevShow(ctx context.Context, sid, devId string) ([]Device, error) {
 	args := []string{"-sid", sid, "-output", "xml_e", "show", devId}
 	cmd := command.New(
+		command.WithContext(ctx),
 		command.WithPrompt(PromptReader),
 		command.WithName(t.symdev()),
 		command.WithArgs(args),
@@ -1188,9 +1237,10 @@ func (t *Array) parseSymDevShow(b []byte) ([]Device, error) {
 	return head.Symmetrix.Devices, nil
 }
 
-func (t *Array) SymDevShowByWWN(sid, devId string) ([]Device, error) {
+func (t *Array) SymDevShowByWWN(ctx context.Context, sid, devId string) ([]Device, error) {
 	args := []string{"-sid", sid, "-output", "xml_e", "show", "-wwn", devId}
 	cmd := command.New(
+		command.WithContext(ctx),
 		command.WithPrompt(PromptReader),
 		command.WithName(t.symdev()),
 		command.WithArgs(args),
@@ -1213,12 +1263,13 @@ func (t *Array) SymDevShowByWWN(sid, devId string) ([]Device, error) {
 	return head.Symmetrix.Devices, nil
 }
 
-func (t *Array) SymDevList(sid string) ([]Device, error) {
+func (t *Array) SymDevList(ctx context.Context, sid string) ([]Device, error) {
 	if sid == "" {
 		sid = t.kwSID()
 	}
 	args := []string{"-sid", sid, "-output", "xml_e", "list"}
 	cmd := command.New(
+		command.WithContext(ctx),
 		command.WithPrompt(PromptReader),
 		command.WithName(t.symdev()),
 		command.WithArgs(args),
@@ -1245,13 +1296,13 @@ func (t *Array) parseSymDevList(b []byte) ([]Device, error) {
 	return head.Symmetrix.Devices, nil
 }
 
-func (t *Array) getPGByTgtIds(sid string, tgtIds []string) (PortGroup, error) {
-	l, err := t.SymAccessListPort(sid)
+func (t *Array) getPGByTgtIds(ctx context.Context, sid string, tgtIds []string) (PortGroup, error) {
+	l, err := t.SymAccessListPort(ctx, sid)
 	if err != nil {
 		return PortGroup{}, err
 	}
 	for _, pg := range l {
-		pgShow, err := t.SymAccessShowPort(sid, pg.GroupInfo.GroupName)
+		pgShow, err := t.SymAccessShowPort(ctx, sid, pg.GroupInfo.GroupName)
 		if err != nil {
 			return PortGroup{}, err
 		}
@@ -1262,8 +1313,8 @@ func (t *Array) getPGByTgtIds(sid string, tgtIds []string) (PortGroup, error) {
 	return PortGroup{}, os.ErrNotExist
 }
 
-func (t *Array) getSG(sid, name string) (SGInfo, error) {
-	l, err := t.SymSGShow(sid, name)
+func (t *Array) getSG(ctx context.Context, sid, name string) (SGInfo, error) {
+	l, err := t.SymSGShow(ctx, sid, name)
 	if err != nil {
 		return SGInfo{}, err
 	}
@@ -1273,12 +1324,13 @@ func (t *Array) getSG(sid, name string) (SGInfo, error) {
 	return l[0], nil
 }
 
-func (t *Array) SymSGShow(sid, name string) ([]SGInfo, error) {
+func (t *Array) SymSGShow(ctx context.Context, sid, name string) ([]SGInfo, error) {
 	if sid == "" {
 		sid = t.kwSID()
 	}
 	args := []string{"-sid", sid, "-output", "xml_e", "show", name}
 	cmd := command.New(
+		command.WithContext(ctx),
 		command.WithPrompt(PromptReader),
 		command.WithName(t.symsg()),
 		command.WithArgs(args),
@@ -1297,12 +1349,13 @@ func (t *Array) SymSGShow(sid, name string) ([]SGInfo, error) {
 	return t.parseSymSGList(b)
 }
 
-func (t *Array) SymSGList(sid string) ([]SGInfo, error) {
+func (t *Array) SymSGList(ctx context.Context, sid string) ([]SGInfo, error) {
 	if sid == "" {
 		sid = t.kwSID()
 	}
 	args := []string{"-sid", sid, "-output", "xml_e", "list", "-v"}
 	cmd := command.New(
+		command.WithContext(ctx),
 		command.WithPrompt(PromptReader),
 		command.WithName(t.symsg()),
 		command.WithArgs(args),
@@ -1329,7 +1382,7 @@ func (t *Array) parseSymSGList(b []byte) ([]SGInfo, error) {
 	return head.SG.SGInfos, nil
 }
 
-func (t *Array) getDev(sid, devId string) (Device, error) {
+func (t *Array) getDev(ctx context.Context, sid, devId string) (Device, error) {
 	var (
 		devs []Device
 		err  error
@@ -1338,9 +1391,9 @@ func (t *Array) getDev(sid, devId string) (Device, error) {
 		return Device{}, fmt.Errorf("--dev is required")
 	}
 	if len(devId) > 6 {
-		devs, err = t.SymDevShowByWWN(sid, devId)
+		devs, err = t.SymDevShowByWWN(ctx, sid, devId)
 	} else {
-		devs, err = t.SymDevShow(sid, devId)
+		devs, err = t.SymDevShow(ctx, sid, devId)
 	}
 	if err != nil {
 		return Device{}, err
@@ -1351,7 +1404,7 @@ func (t *Array) getDev(sid, devId string) (Device, error) {
 	return Device{}, os.ErrNotExist
 }
 
-func (t *Array) addThinDevToSG(sid, devId, sg string) error {
+func (t *Array) addThinDevToSG(ctx context.Context, sid, devId, sg string) error {
 	if sid == "" {
 		return fmt.Errorf("a sym id is required to add tdev to sg")
 	}
@@ -1363,6 +1416,7 @@ func (t *Array) addThinDevToSG(sid, devId, sg string) error {
 	}
 	args := []string{"-sid", sid, "-name", sg, "-type", "storage", "add", "dev", devId}
 	cmd := command.New(
+		command.WithContext(ctx),
 		command.WithPrompt(PromptReader),
 		command.WithName(t.symaccess()),
 		command.WithArgs(args),
@@ -1376,9 +1430,10 @@ func (t *Array) addThinDevToSG(sid, devId, sg string) error {
 	return cmd.Run()
 }
 
-func (t *Array) removeThinDevFromSG(sid, devId, sg string) error {
+func (t *Array) removeThinDevFromSG(ctx context.Context, sid, devId, sg string) error {
 	args := []string{"-sid", sid, "-name", sg, "-type", "storage", "remove", "dev", devId, "-unmap"}
 	cmd := command.New(
+		command.WithContext(ctx),
 		command.WithPrompt(PromptReader),
 		command.WithName(t.symaccess()),
 		command.WithArgs(args),
@@ -1392,9 +1447,10 @@ func (t *Array) removeThinDevFromSG(sid, devId, sg string) error {
 	return cmd.Run()
 }
 
-func (t *Array) SymAccessShowPort(sid, name string) (ShowPortGroup, error) {
+func (t *Array) SymAccessShowPort(ctx context.Context, sid, name string) (ShowPortGroup, error) {
 	args := []string{"-sid", sid, "show", name, "-type", "port"}
 	cmd := command.New(
+		command.WithContext(ctx),
 		command.WithPrompt(PromptReader),
 		command.WithName(t.symaccess()),
 		command.WithArgs(args),
@@ -1421,9 +1477,10 @@ func (t *Array) parseSymAccessShowPort(b []byte) (ShowPortGroup, error) {
 	return head.Symmetrix.PortGroup, nil
 }
 
-func (t *Array) SymAccessListPort(sid string) ([]PortGroup, error) {
+func (t *Array) SymAccessListPort(ctx context.Context, sid string) ([]PortGroup, error) {
 	args := []string{"-sid", sid, "list", "-type", "port"}
 	cmd := command.New(
+		command.WithContext(ctx),
 		command.WithPrompt(PromptReader),
 		command.WithName(t.symaccess()),
 		command.WithArgs(args),
@@ -1450,9 +1507,10 @@ func (t *Array) parseSymAccessListPort(b []byte) ([]PortGroup, error) {
 	return head.Symmetrix.PortGroups, nil
 }
 
-func (t *Array) SymAccessListDevInitiator(sid, wwn string) ([]InitiatorGroup, error) {
+func (t *Array) SymAccessListDevInitiator(ctx context.Context, sid, wwn string) ([]InitiatorGroup, error) {
 	args := []string{"-sid", sid, "-output", "xml_e", "list", "-type", "initiator", "-wwn", wwn}
 	cmd := command.New(
+		command.WithContext(ctx),
 		command.WithPrompt(PromptReader),
 		command.WithName(t.symaccess()),
 		command.WithArgs(args),
@@ -1479,8 +1537,8 @@ func (t *Array) parseSymAccessListDevInitiator(b []byte) ([]InitiatorGroup, erro
 	return head.Symmetrix.InitiatorGroups, nil
 }
 
-func (t *Array) getInitiatorViewNames(sid, wwn string) ([]string, error) {
-	sgs, err := t.SymAccessListDevInitiator(sid, wwn)
+func (t *Array) getInitiatorViewNames(ctx context.Context, sid, wwn string) ([]string, error) {
+	sgs, err := t.SymAccessListDevInitiator(ctx, sid, wwn)
 	if err != nil {
 		return nil, err
 	}
@@ -1494,8 +1552,8 @@ func (t *Array) getInitiatorViewNames(sid, wwn string) ([]string, error) {
 	return maps.Keys(m), nil
 }
 
-func (t *Array) getView(name string) (MaskingView, error) {
-	views, err := t.SymAccessShowViewDetail(name)
+func (t *Array) getView(ctx context.Context, name string) (MaskingView, error) {
+	views, err := t.SymAccessShowViewDetail(ctx, name)
 	if err != nil {
 		return MaskingView{}, err
 	}
@@ -1530,10 +1588,10 @@ func (t mappingSGs) narrowestSG() string {
 	return narrowest
 }
 
-func (t *Array) filterMappingsSGs(current mappingSGs, sid string, slo, srp string) (mappingSGs, error) {
+func (t *Array) filterMappingsSGs(ctx context.Context, current mappingSGs, sid string, slo, srp string) (mappingSGs, error) {
 	m := make(mappingSGs)
 	for sgName, e := range current {
-		sg, err := t.getSG(sid, sgName)
+		sg, err := t.getSG(ctx, sid, sgName)
 		if err != nil {
 			return m, err
 		}
@@ -1550,11 +1608,11 @@ func (t *Array) filterMappingsSGs(current mappingSGs, sid string, slo, srp strin
 	return m, nil
 }
 
-func (t *Array) bestSG(sid string, mappings array.Mappings, slo, srp string) (string, error) {
+func (t *Array) bestSG(ctx context.Context, sid string, mappings array.Mappings, slo, srp string) (string, error) {
 	if mappings == nil || len(mappings) == 0 {
 		return "", nil
 	}
-	m, err := t.getStorageGroupOfMappings(sid, mappings)
+	m, err := t.getStorageGroupOfMappings(ctx, sid, mappings)
 	if err != nil {
 		return "", err
 	}
@@ -1562,7 +1620,7 @@ func (t *Array) bestSG(sid string, mappings array.Mappings, slo, srp string) (st
 		return "", fmt.Errorf("no storage group found for the requested mappings")
 	}
 	if slo != "" || srp != "" {
-		m, err = t.filterMappingsSGs(m, sid, slo, srp)
+		m, err = t.filterMappingsSGs(ctx, m, sid, slo, srp)
 		if err != nil {
 			return "", err
 		}
@@ -1575,10 +1633,10 @@ func (t *Array) bestSG(sid string, mappings array.Mappings, slo, srp string) (st
 	return narrowest, nil
 }
 
-func (t *Array) getStorageGroupOfMappings(sid string, mappings array.Mappings) (mappingSGs, error) {
+func (t *Array) getStorageGroupOfMappings(ctx context.Context, sid string, mappings array.Mappings) (mappingSGs, error) {
 	var m mappingSGs
 	for _, mapping := range mappings {
-		this, err := t.getStorageGroupOfMapping(sid, mapping.HBAID, mapping.TGTID)
+		this, err := t.getStorageGroupOfMapping(ctx, sid, mapping.HBAID, mapping.TGTID)
 		if err != nil {
 			return m, err
 		}
@@ -1591,16 +1649,16 @@ func (t *Array) getStorageGroupOfMappings(sid string, mappings array.Mappings) (
 	return m, nil
 }
 
-func (t *Array) getStorageGroupOfMapping(sid, hbaId, tgtId string) (mappingSGs, error) {
+func (t *Array) getStorageGroupOfMapping(ctx context.Context, sid, hbaId, tgtId string) (mappingSGs, error) {
 	m := make(mappingSGs)
 	ports := make(map[string]any)
-	viewNames, err := t.getInitiatorViewNames(sid, hbaId)
+	viewNames, err := t.getInitiatorViewNames(ctx, sid, hbaId)
 	if err != nil {
 		return nil, err
 	}
 	for _, viewName := range viewNames {
 		viewSGs := make(map[string]any)
-		view, err := t.getView(viewName)
+		view, err := t.getView(ctx, viewName)
 		if err != nil {
 			return nil, err
 		}
@@ -1648,9 +1706,10 @@ func (t *Array) getStorageGroupOfMapping(sid, hbaId, tgtId string) (mappingSGs, 
 	return m, nil
 }
 
-func (t *Array) SymAccessListDevStorage(sid, devId string) ([]StorageGroup, error) {
+func (t *Array) SymAccessListDevStorage(ctx context.Context, sid, devId string) ([]StorageGroup, error) {
 	args := []string{"-sid", sid, "-output", "xml_e", "list", "-type", "storage", "-devs", devId}
 	cmd := command.New(
+		command.WithContext(ctx),
 		command.WithPrompt(PromptReader),
 		command.WithName(t.symaccess()),
 		command.WithArgs(args),
@@ -1677,8 +1736,8 @@ func (t *Array) parseSymAccessListDevStorage(b []byte) ([]StorageGroup, error) {
 	return head.Symmetrix.StorageGroups, nil
 }
 
-func (t *Array) getDevSGs(sid, devId string) ([]StorageGroup, error) {
-	sgs, err := t.SymAccessListDevStorage(sid, devId)
+func (t *Array) getDevSGs(ctx context.Context, sid, devId string) ([]StorageGroup, error) {
+	sgs, err := t.SymAccessListDevStorage(ctx, sid, devId)
 	if err != nil {
 		return nil, err
 	}
@@ -1691,8 +1750,8 @@ func (t *Array) getDevSGs(sid, devId string) ([]StorageGroup, error) {
 	return l, nil
 }
 
-func (t *Array) getDevViewNames(sid, devId string) ([]string, error) {
-	sgs, err := t.getDevSGs(sid, devId)
+func (t *Array) getDevViewNames(ctx context.Context, sid, devId string) ([]string, error) {
+	sgs, err := t.getDevSGs(ctx, sid, devId)
 	if err != nil {
 		return nil, err
 	}
@@ -1705,10 +1764,11 @@ func (t *Array) getDevViewNames(sid, devId string) ([]string, error) {
 	return maps.Keys(m), nil
 }
 
-func (t *Array) addStorageGroupsToStorageGroup(sid, parent string, children []string) (Result, error) {
+func (t *Array) addStorageGroupsToStorageGroup(ctx context.Context, sid, parent string, children []string) (Result, error) {
 	var result Result
 	args := []string{"-sid", sid, "-sg", parent, "add", "sg", strings.Join(children, ",")}
 	cmd := command.New(
+		command.WithContext(ctx),
 		command.WithPrompt(PromptReader),
 		command.WithName(t.symsg()),
 		command.WithArgs(args),
@@ -1726,7 +1786,7 @@ func (t *Array) addStorageGroupsToStorageGroup(sid, parent string, children []st
 	return result, err
 }
 
-func (t *Array) createStorageGroup(sid, name, srp, slo string) (Result, error) {
+func (t *Array) createStorageGroup(ctx context.Context, sid, name, srp, slo string) (Result, error) {
 	var result Result
 	args := []string{"-sid", sid, "create", name}
 	if srp != "" {
@@ -1736,6 +1796,7 @@ func (t *Array) createStorageGroup(sid, name, srp, slo string) (Result, error) {
 		args = append(args, "-slo", slo)
 	}
 	cmd := command.New(
+		command.WithContext(ctx),
 		command.WithPrompt(PromptReader),
 		command.WithName(t.symsg()),
 		command.WithArgs(args),
@@ -1753,10 +1814,10 @@ func (t *Array) createStorageGroup(sid, name, srp, slo string) (Result, error) {
 	return result, err
 }
 
-func (t *Array) createView(sid, name string, portIds, sgNames, igNames []string) (Result, error) {
+func (t *Array) createView(ctx context.Context, sid, name string, portIds, sgNames, igNames []string) (Result, error) {
 	var result Result
 
-	pg, err := t.getPGByTgtIds(sid, portIds)
+	pg, err := t.getPGByTgtIds(ctx, sid, portIds)
 	if err == nil {
 	} else if errors.Is(err, os.ErrNotExist) {
 		result.Err = fmt.Sprintf("can't create the '%s' masking view: no pg with port ids %v", name, portIds)
@@ -1773,6 +1834,7 @@ func (t *Array) createView(sid, name string, portIds, sgNames, igNames []string)
 		args = append(args, "-ig", strings.Join(igNames, ","))
 	}
 	cmd := command.New(
+		command.WithContext(ctx),
 		command.WithPrompt(PromptReader),
 		command.WithName(t.symaccess()),
 		command.WithArgs(args),
@@ -1790,7 +1852,7 @@ func (t *Array) createView(sid, name string, portIds, sgNames, igNames []string)
 	return result, err
 }
 
-func (t *Array) createThinDev(sid, name string, size string, sgName string) (Result, error) {
+func (t *Array) createThinDev(ctx context.Context, sid, name string, size string, sgName string) (Result, error) {
 	var result Result
 	if name == "" {
 		name = "NONAME"
@@ -1801,7 +1863,7 @@ func (t *Array) createThinDev(sid, name string, size string, sgName string) (Res
 	}
 	args := []string{"-sid", sid, "create", "-tdev", "-N", "1", "-cap", fmt.Sprint(sizeBytes / 1024 / 1024)}
 
-	_, err = t.getSG(sid, sgName)
+	_, err = t.getSG(ctx, sid, sgName)
 	if err == nil {
 		args = append(args, "-sg", sgName)
 	} else if errors.Is(err, os.ErrNotExist) {
@@ -1812,6 +1874,7 @@ func (t *Array) createThinDev(sid, name string, size string, sgName string) (Res
 
 	args = append(args, "-emulation", "FBA", "-device_name", name, "-noprompt", "-v")
 	cmd := command.New(
+		command.WithContext(ctx),
 		command.WithPrompt(PromptReader),
 		command.WithName(t.symdev()),
 		command.WithArgs(args),
@@ -1829,13 +1892,13 @@ func (t *Array) createThinDev(sid, name string, size string, sgName string) (Res
 	return result, err
 }
 
-func (t *Array) createGatekeepers(sid, sgName string, count *int) (Result, error) {
+func (t *Array) createGatekeepers(ctx context.Context, sid, sgName string, count *int) (Result, error) {
 	var result Result
 	if count == nil {
 		v := DumpDefaultGKCount
 		count = &v
 	}
-	sg, err := t.getSG(sid, sgName)
+	sg, err := t.getSG(ctx, sid, sgName)
 	result.Err = err.Error()
 	if err != nil {
 		return result, err
@@ -1845,6 +1908,7 @@ func (t *Array) createGatekeepers(sid, sgName string, count *int) (Result, error
 	}
 	args := []string{"-sid", sid, "create", "-gk", "-N", fmt.Sprint(*count - sg.NumOfGKs), "-sg", sgName, "-noprompt"}
 	cmd := command.New(
+		command.WithContext(ctx),
 		command.WithPrompt(PromptReader),
 		command.WithName(t.symdev()),
 		command.WithArgs(args),
@@ -1862,7 +1926,7 @@ func (t *Array) createGatekeepers(sid, sgName string, count *int) (Result, error
 	return result, err
 }
 
-func (t *Array) createInitiator(sid, name string, consistent bool) (Result, error) {
+func (t *Array) createInitiator(ctx context.Context, sid, name string, consistent bool) (Result, error) {
 	var result Result
 	args := []string{"-sid", sid, "name", name, "-type", "initiator"}
 	if consistent {
@@ -1870,6 +1934,7 @@ func (t *Array) createInitiator(sid, name string, consistent bool) (Result, erro
 	}
 	args = append(args, "create")
 	cmd := command.New(
+		command.WithContext(ctx),
 		command.WithPrompt(PromptReader),
 		command.WithName(t.symaccess()),
 		command.WithArgs(args),
@@ -1887,10 +1952,11 @@ func (t *Array) createInitiator(sid, name string, consistent bool) (Result, erro
 	return result, err
 }
 
-func (t *Array) addInitiatorToInitiatorGroup(sid, name string, ig string) (Result, error) {
+func (t *Array) addInitiatorToInitiatorGroup(ctx context.Context, sid, name string, ig string) (Result, error) {
 	var result Result
 	args := []string{"-sid", sid, "name", name, "-type", "initiator", "-ig", ig, "add"}
 	cmd := command.New(
+		command.WithContext(ctx),
 		command.WithPrompt(PromptReader),
 		command.WithName(t.symaccess()),
 		command.WithArgs(args),
@@ -1908,10 +1974,11 @@ func (t *Array) addInitiatorToInitiatorGroup(sid, name string, ig string) (Resul
 	return result, err
 }
 
-func (t *Array) addHBAToInitiator(sid, name string, hbaId string) (Result, error) {
+func (t *Array) addHBAToInitiator(ctx context.Context, sid, name string, hbaId string) (Result, error) {
 	var result Result
 	args := []string{"-sid", sid, "name", name, "-type", "initiator", "-wwn", hbaId, "add"}
 	cmd := command.New(
+		command.WithContext(ctx),
 		command.WithPrompt(PromptReader),
 		command.WithName(t.symaccess()),
 		command.WithArgs(args),
@@ -1929,11 +1996,11 @@ func (t *Array) addHBAToInitiator(sid, name string, hbaId string) (Result, error
 	return result, err
 }
 
-func (t *Array) RenameDisk(opt OptRenameDisk) (Device, error) {
+func (t *Array) RenameDisk(ctx context.Context, opt OptRenameDisk) (Device, error) {
 	if opt.SID == "" {
 		opt.SID = t.kwSID()
 	}
-	dev, err := t.getDev(opt.SID, opt.Dev)
+	dev, err := t.getDev(ctx, opt.SID, opt.Dev)
 	if err != nil {
 		return dev, err
 	}
@@ -1942,6 +2009,7 @@ func (t *Array) RenameDisk(opt OptRenameDisk) (Device, error) {
 	}
 	args := []string{"-sid", opt.SID, "set", "dev", dev.DevInfo.DevName, "-attribute", "device_name=" + opt.Name}
 	cmd := command.New(
+		command.WithContext(ctx),
 		command.WithPrompt(PromptReader),
 		command.WithName(t.symdev()),
 		command.WithArgs(args),
@@ -1956,18 +2024,18 @@ func (t *Array) RenameDisk(opt OptRenameDisk) (Device, error) {
 	if err != nil {
 		return dev, err
 	}
-	return t.getDev(opt.SID, dev.DevInfo.DevName)
+	return t.getDev(ctx, opt.SID, dev.DevInfo.DevName)
 }
 
 func (t *Array) cylinderSize() int64 {
 	return int64(1920 * 1024)
 }
 
-func (t *Array) ResizeDisk(opt OptResizeDisk) (Device, error) {
+func (t *Array) ResizeDisk(ctx context.Context, opt OptResizeDisk) (Device, error) {
 	if opt.SID == "" {
 		opt.SID = t.kwSID()
 	}
-	dev, err := t.getDev(opt.SID, opt.Dev)
+	dev, err := t.getDev(ctx, opt.SID, opt.Dev)
 	if err != nil {
 		return dev, err
 	}
@@ -2006,6 +2074,7 @@ func (t *Array) ResizeDisk(opt OptResizeDisk) (Device, error) {
 		args = append(args, "-rdfg", fmt.Sprint(dev.RDF.Local.RAGroupNum))
 	}
 	cmd := command.New(
+		command.WithContext(ctx),
 		command.WithPrompt(PromptReader),
 		command.WithName(t.symdev()),
 		command.WithArgs(args),
@@ -2020,15 +2089,15 @@ func (t *Array) ResizeDisk(opt OptResizeDisk) (Device, error) {
 	if err != nil {
 		return dev, err
 	}
-	return t.getDev(opt.SID, dev.DevInfo.DevName)
+	return t.getDev(ctx, opt.SID, dev.DevInfo.DevName)
 }
 
 func (t *Array) IsPowerMax() bool {
 	return true
 }
 
-func (t *Array) IsThinDevFreed(sid, devId string) (bool, error) {
-	devs, err := t.SymDevListThinDevs(sid, devId)
+func (t *Array) IsThinDevFreed(ctx context.Context, sid, devId string) (bool, error) {
+	devs, err := t.SymDevListThinDevs(ctx, sid, devId)
 	if err != nil {
 		return false, err
 	}
@@ -2038,10 +2107,11 @@ func (t *Array) IsThinDevFreed(sid, devId string) (bool, error) {
 	return true, nil
 }
 
-func (t *Array) freeThinDev(sid, devId string) error {
+func (t *Array) freeThinDev(ctx context.Context, sid, devId string) error {
 	args := []string{"-sid", sid, "free", "-devs", devId, "-all", "-noprompt"}
 
 	cmd := command.New(
+		command.WithContext(ctx),
 		command.WithPrompt(PromptReader),
 		command.WithName(t.symdev()),
 		command.WithArgs(args),
@@ -2055,25 +2125,29 @@ func (t *Array) freeThinDev(sid, devId string) error {
 	return cmd.Run()
 }
 
-func (t *Array) FreeThinDev(opt OptFreeThinDev) error {
+func (t *Array) FreeThinDev(ctx context.Context, opt OptFreeThinDev) error {
+	if major, minor, err := t.symcliVersion(ctx); err == nil && major >= 9 && minor >= 1 {
+		t.Log().Infof("skip tdev free: version %d.%d >= 9.1", major, minor)
+		return nil
+	}
 	if opt.SID == "" {
 		opt.SID = t.kwSID()
 	}
-	dev, err := t.getDev(opt.SID, opt.Dev)
+	dev, err := t.getDev(ctx, opt.SID, opt.Dev)
 	if err != nil {
 		return err
 	}
 	for {
-		err := t.freeThinDev(opt.SID, dev.DevInfo.DevName)
+		err := t.freeThinDev(ctx, opt.SID, dev.DevInfo.DevName)
 		if err != nil {
 			return err
 		}
-		if v, err := t.IsThinDevFreed(opt.SID, dev.DevInfo.DevName); err != nil {
+		if v, err := t.IsThinDevFreed(ctx, opt.SID, dev.DevInfo.DevName); err != nil {
 			return err
 		} else if !v {
 			continue
 		}
-		if v, err := t.IsThinDevStatusDeallocating(opt.SID, dev.DevInfo.DevName); err != nil {
+		if v, err := t.IsThinDevStatusDeallocating(ctx, opt.SID, dev.DevInfo.DevName); err != nil {
 			return err
 		} else if v {
 			t.Log().Infof("device %s status is deallocating", dev.DevInfo.DevName)
@@ -2081,7 +2155,7 @@ func (t *Array) FreeThinDev(opt OptFreeThinDev) error {
 		} else {
 			t.Log().Infof("device %s status is not deallocating", dev.DevInfo.DevName)
 		}
-		if v, err := t.IsThinDevStatusFreeingAll(opt.SID, dev.DevInfo.DevName); err != nil {
+		if v, err := t.IsThinDevStatusFreeingAll(ctx, opt.SID, dev.DevInfo.DevName); err != nil {
 			return err
 		} else if v {
 			t.Log().Infof("device %s status is freeingall", dev.DevInfo.DevName)
@@ -2095,18 +2169,19 @@ func (t *Array) FreeThinDev(opt OptFreeThinDev) error {
 	return nil
 }
 
-func (t *Array) IsThinDevStatusDeallocating(sid, devId string) (bool, error) {
-	return t.SymCfgVerifyThinDevStatus(sid, devId, "-deallocating")
+func (t *Array) IsThinDevStatusDeallocating(ctx context.Context, sid, devId string) (bool, error) {
+	return t.SymCfgVerifyThinDevStatus(ctx, sid, devId, "-deallocating")
 }
 
-func (t *Array) IsThinDevStatusFreeingAll(sid, devId string) (bool, error) {
-	return t.SymCfgVerifyThinDevStatus(sid, devId, "-freeingall")
+func (t *Array) IsThinDevStatusFreeingAll(ctx context.Context, sid, devId string) (bool, error) {
+	return t.SymCfgVerifyThinDevStatus(ctx, sid, devId, "-freeingall")
 }
 
-func (t *Array) SymCfgVerifyThinDevStatus(sid, devId, status string) (bool, error) {
+func (t *Array) SymCfgVerifyThinDevStatus(ctx context.Context, sid, devId, status string) (bool, error) {
 	args := []string{"-sid", sid, "verify", "-tdevs", "-devs", devId, status}
 
 	cmd := command.New(
+		command.WithContext(ctx),
 		command.WithPrompt(PromptReader),
 		command.WithName(t.symcfg()),
 		command.WithArgs(args),
@@ -2133,10 +2208,11 @@ func (t *Array) SymCfgVerifyThinDevStatus(sid, devId, status string) (bool, erro
 	return true, nil
 }
 
-func (t *Array) setDevRO(sid, devId string) error {
+func (t *Array) setDevRO(ctx context.Context, sid, devId string) error {
 	args := []string{"-sid", sid, "write_disable", devId, "-noprompt"}
 
 	cmd := command.New(
+		command.WithContext(ctx),
 		command.WithPrompt(PromptReader),
 		command.WithName(t.symdev()),
 		command.WithArgs(args),
@@ -2150,14 +2226,14 @@ func (t *Array) setDevRO(sid, devId string) error {
 	return cmd.Run()
 }
 
-func (t *Array) SetSRDFMode(opt OptSetSRDFMode) error {
+func (t *Array) SetSRDFMode(ctx context.Context, opt OptSetSRDFMode) error {
 	if opt.SID == "" {
 		opt.SID = t.kwSID()
 	}
 	if opt.SRDFMode == "" {
 		return fmt.Errorf("--srdf-mode is required")
 	}
-	dev, err := t.getDev(opt.SID, opt.Dev)
+	dev, err := t.getDev(ctx, opt.SID, opt.Dev)
 	if err != nil {
 		return err
 	}
@@ -2177,6 +2253,7 @@ func (t *Array) SetSRDFMode(opt OptSetSRDFMode) error {
 	args := []string{"-sid", opt.SID, "-f", pairFile, "-rdfg", rdfg, "set", "mode", opt.SRDFMode, "-noprompt"}
 
 	cmd := command.New(
+		command.WithContext(ctx),
 		command.WithPrompt(PromptReader),
 		command.WithName(t.symrdf()),
 		command.WithArgs(args),
@@ -2190,27 +2267,27 @@ func (t *Array) SetSRDFMode(opt OptSetSRDFMode) error {
 	return cmd.Run()
 }
 
-func (t *Array) AddThinDev(opt OptAddThinDev) (Device, error) {
+func (t *Array) AddThinDev(ctx context.Context, opt OptAddThinDev) (Device, error) {
 	if opt.SID == "" {
 		opt.SID = t.kwSID()
 	}
 	if opt.SRDF && opt.RDFG == "" {
 		return Device{}, fmt.Errorf("--srdf is specified but --rdfg is not")
 	}
-	r1Devs, err := t.CreateThinDev(opt)
+	r1Devs, err := t.CreateThinDev(ctx, opt)
 	if err != nil {
 		return Device{}, err
 	}
 	r1 := r1Devs[0]
 	if opt.SRDF {
-		rdfg, err := t.SymCfgRDFGList(opt.RDFG)
+		rdfg, err := t.SymCfgRDFGList(ctx, opt.RDFG)
 		if err != nil {
 			return Device{}, err
 		}
 		if len(rdfg) == 0 {
 			return Device{}, fmt.Errorf("can't find remote sid of rdfg %s", opt.RDFG)
 		}
-		r2Devs, err := t.CreateThinDev(OptAddThinDev{
+		r2Devs, err := t.CreateThinDev(ctx, OptAddThinDev{
 			Name:     opt.Name,
 			RDFG:     opt.RDFG,
 			Size:     opt.Size,
@@ -2224,7 +2301,7 @@ func (t *Array) AddThinDev(opt OptAddThinDev) (Device, error) {
 			return Device{}, err
 		}
 		r2 := r2Devs[0]
-		err = t.CreatePair(OptCreatePair{
+		err = t.CreatePair(ctx, OptCreatePair{
 			Pair:     r1 + ":" + r2,
 			RDFG:     opt.RDFG,
 			SRDFMode: opt.SRDFMode,
@@ -2235,7 +2312,7 @@ func (t *Array) AddThinDev(opt OptAddThinDev) (Device, error) {
 			return Device{}, err
 		}
 	}
-	return t.getDev(opt.SID, r1Devs[0])
+	return t.getDev(ctx, opt.SID, r1Devs[0])
 }
 
 func (t *Array) getDevsFromCreateThinDevOutput(b []byte) ([]string, error) {
@@ -2256,7 +2333,7 @@ func (t *Array) getDevsFromCreateThinDevOutput(b []byte) ([]string, error) {
 	return nil, fmt.Errorf("device not found in 'symdev create -tdev' output: %s", string(b))
 }
 
-func (t *Array) CreateThinDev(opt OptAddThinDev) ([]string, error) {
+func (t *Array) CreateThinDev(ctx context.Context, opt OptAddThinDev) ([]string, error) {
 	if opt.Name == "" {
 		return nil, fmt.Errorf("--name is required")
 	}
@@ -2278,6 +2355,7 @@ func (t *Array) CreateThinDev(opt OptAddThinDev) ([]string, error) {
 	args = append(args, "-emulation", "FBA", "-device_name", opt.Name, "-noprompt", "-v")
 
 	cmd := command.New(
+		command.WithContext(ctx),
 		command.WithPrompt(PromptReader),
 		command.WithName(t.symdev()),
 		command.WithArgs(args),
@@ -2297,25 +2375,26 @@ func (t *Array) CreateThinDev(opt OptAddThinDev) ([]string, error) {
 	return t.getDevsFromCreateThinDevOutput(b)
 }
 
-func (t *Array) DelThinDev(opt OptDelThinDev) (Device, error) {
+func (t *Array) DelThinDev(ctx context.Context, opt OptDelThinDev) (Device, error) {
 	if opt.SID == "" {
 		opt.SID = t.kwSID()
 	}
-	dev, err := t.getDev(opt.SID, opt.Dev)
+	dev, err := t.getDev(ctx, opt.SID, opt.Dev)
 	if err != nil {
 		return Device{}, err
 	}
-	err = t.delThinDev(opt.SID, dev.DevInfo.DevName)
+	err = t.delThinDev(ctx, opt.SID, dev.DevInfo.DevName)
 	if err != nil {
 		return Device{}, err
 	}
 	return dev, nil
 }
 
-func (t *Array) delThinDev(sid, devId string) error {
+func (t *Array) delThinDev(ctx context.Context, sid, devId string) error {
 	args := []string{"-sid", sid, "delete", devId, "-noprompt"}
 
 	cmd := command.New(
+		command.WithContext(ctx),
 		command.WithPrompt(PromptReader),
 		command.WithName(t.symdev()),
 		command.WithArgs(args),
@@ -2350,7 +2429,7 @@ func (t *Array) writePairFile(src, dst string) (string, error) {
 	return path, nil
 }
 
-func (t *Array) CreatePair(opt OptCreatePair) error {
+func (t *Array) CreatePair(ctx context.Context, opt OptCreatePair) error {
 	if opt.Pair == "" {
 		return fmt.Errorf("--pair is required")
 	}
@@ -2371,7 +2450,7 @@ func (t *Array) CreatePair(opt OptCreatePair) error {
 		opt.SID = t.kwSID()
 	}
 
-	srcDev, err := t.SymDevShow(opt.SID, src)
+	srcDev, err := t.SymDevShow(ctx, opt.SID, src)
 	if err != nil {
 		return err
 	}
@@ -2383,10 +2462,10 @@ func (t *Array) CreatePair(opt OptCreatePair) error {
 		return err
 	}
 	defer func() { _ = os.Remove(pairFile) }()
-	return t.runCreatePair(opt.SID, pairFile, opt.RDFG, opt.SRDFMode, opt.SRDFType, opt.Invalidate)
+	return t.runCreatePair(ctx, opt.SID, pairFile, opt.RDFG, opt.SRDFMode, opt.SRDFType, opt.Invalidate)
 }
 
-func (t *Array) runCreatePair(sid, pairFile, rdfg, rdfMode, rdfType, invalidate string) error {
+func (t *Array) runCreatePair(ctx context.Context, sid, pairFile, rdfg, rdfMode, rdfType, invalidate string) error {
 	args := []string{"-sid", sid, "-f", pairFile, "-rdfg", rdfg, "createpair", "-rdf_mode", rdfMode, "-type", rdfType}
 	if invalidate == "R1" || invalidate == "R2" {
 		args = append(args, "-invalidate", invalidate)
@@ -2394,6 +2473,7 @@ func (t *Array) runCreatePair(sid, pairFile, rdfg, rdfMode, rdfType, invalidate 
 		args = append(args, "-establish")
 	}
 	cmd := command.New(
+		command.WithContext(ctx),
 		command.WithPrompt(PromptReader),
 		command.WithName(t.symrdf()),
 		command.WithArgs(args),
@@ -2407,9 +2487,10 @@ func (t *Array) runCreatePair(sid, pairFile, rdfg, rdfMode, rdfType, invalidate 
 	return cmd.Run()
 }
 
-func (t *Array) runSuspendPair(sid, pairFile, rdfg string) error {
+func (t *Array) runSuspendPair(ctx context.Context, sid, pairFile, rdfg string) error {
 	args := []string{"-sid", sid, "-f", pairFile, "-rdfg", rdfg, "suspend", "-noprompt"}
 	cmd := command.New(
+		command.WithContext(ctx),
 		command.WithPrompt(PromptReader),
 		command.WithName(t.symrdf()),
 		command.WithArgs(args),
@@ -2423,9 +2504,10 @@ func (t *Array) runSuspendPair(sid, pairFile, rdfg string) error {
 	return cmd.Run()
 }
 
-func (t *Array) runDeletePair(sid, pairFile, rdfg string) error {
+func (t *Array) runDeletePair(ctx context.Context, sid, pairFile, rdfg string) error {
 	args := []string{"-sid", sid, "-f", pairFile, "-rdfg", rdfg, "delepair", "-noprompt", "-force"}
 	cmd := command.New(
+		command.WithContext(ctx),
 		command.WithPrompt(PromptReader),
 		command.WithName(t.symrdf()),
 		command.WithArgs(args),
@@ -2439,7 +2521,7 @@ func (t *Array) runDeletePair(sid, pairFile, rdfg string) error {
 	return cmd.Run()
 }
 
-func (t *Array) deletePair(dev Device) (*RDF, error) {
+func (t *Array) deletePair(ctx context.Context, dev Device) (*RDF, error) {
 	if dev.RDF == nil {
 		t.log.Tracef("dev %s is not in a RDF relation", dev.DevInfo.DevName)
 		return nil, nil
@@ -2453,35 +2535,35 @@ func (t *Array) deletePair(dev Device) (*RDF, error) {
 	defer func() { _ = os.Remove(pairFile) }()
 
 	if dev.RDF.Info.PairState != "Suspended" {
-		if err := t.runSuspendPair(dev.Product.SymId, pairFile, rdfg); err != nil {
+		if err := t.runSuspendPair(ctx, dev.Product.SymId, pairFile, rdfg); err != nil {
 			return dev.RDF, err
 		}
 	}
 
-	err = t.runDeletePair(dev.Product.SymId, pairFile, rdfg)
+	err = t.runDeletePair(ctx, dev.Product.SymId, pairFile, rdfg)
 	if err != nil {
 		return dev.RDF, err
 	}
 	return dev.RDF, err
 }
 
-func (t *Array) DeletePair(opt OptDeletePair) (*RDF, error) {
+func (t *Array) DeletePair(ctx context.Context, opt OptDeletePair) (*RDF, error) {
 	if opt.SID == "" {
 		opt.SID = t.kwSID()
 	}
-	dev, err := t.getDev(opt.SID, opt.Dev)
+	dev, err := t.getDev(ctx, opt.SID, opt.Dev)
 	if err != nil {
 		return nil, err
 	}
-	return t.deletePair(dev)
+	return t.deletePair(ctx, dev)
 }
 
-func (t *Array) MapDisk(opt OptMapDisk) (array.Disk, error) {
+func (t *Array) MapDisk(ctx context.Context, opt OptMapDisk) (array.Disk, error) {
 	var disk array.Disk
 	if opt.SID == "" {
 		opt.SID = t.kwSID()
 	}
-	dev, err := t.getDev(opt.SID, opt.Dev)
+	dev, err := t.getDev(ctx, opt.SID, opt.Dev)
 	if err != nil {
 		return disk, err
 	}
@@ -2496,11 +2578,11 @@ func (t *Array) MapDisk(opt OptMapDisk) (array.Disk, error) {
 		return disk, fmt.Errorf("--sg or --mappings is required")
 	}
 
-	if err := t.mapDisk(opt); err != nil {
+	if err := t.mapDisk(ctx, opt); err != nil {
 		return disk, err
 	}
 
-	if data, err := t.getMappings(opt.SID, dev.DevInfo.DevName); err != nil {
+	if data, err := t.getMappings(ctx, opt.SID, dev.DevInfo.DevName); err != nil {
 		return disk, err
 	} else {
 		disk.Mappings = data
@@ -2509,29 +2591,29 @@ func (t *Array) MapDisk(opt OptMapDisk) (array.Disk, error) {
 	return disk, nil
 }
 
-func (t *Array) mapDisk(opt OptMapDisk) error {
+func (t *Array) mapDisk(ctx context.Context, opt OptMapDisk) error {
 	if opt.SG == "" {
-		sg, err := t.bestSG(opt.SID, opt.Mappings, opt.SLO, opt.SRP)
+		sg, err := t.bestSG(ctx, opt.SID, opt.Mappings, opt.SLO, opt.SRP)
 		if err != nil {
 			return err
 		}
 		opt.SG = sg
 	}
-	if err := t.addThinDevToSG(opt.SID, opt.Dev, opt.SG); err != nil {
+	if err := t.addThinDevToSG(ctx, opt.SID, opt.Dev, opt.SG); err != nil {
 		return err
 	}
 	return nil
 }
 
-func (t *Array) getMappings(sid, devId string) (array.Mappings, error) {
-	sgs, err := t.getDevSGs(sid, dev)
+func (t *Array) getMappings(ctx context.Context, sid, devId string) (array.Mappings, error) {
+	sgs, err := t.getDevSGs(ctx, sid, dev)
 	if err != nil {
 		return nil, err
 	}
 	arrayMappings := make(array.Mappings)
 	for _, sg := range sgs {
 		for _, viewName := range sg.GroupInfo.MaskViewNames.ViewNames {
-			view, err := t.getView(viewName)
+			view, err := t.getView(ctx, viewName)
 			if err != nil {
 				return nil, err
 			}
@@ -2569,12 +2651,12 @@ func (t *Array) getMappings(sid, devId string) (array.Mappings, error) {
 	return arrayMappings, nil
 }
 
-func (t *Array) AddDisk(opt OptAddDisk) (array.Disk, error) {
+func (t *Array) AddDisk(ctx context.Context, opt OptAddDisk) (array.Disk, error) {
 	var disk array.Disk
 	if opt.SID == "" {
 		opt.SID = t.kwSID()
 	}
-	dev, err := t.AddThinDev(OptAddThinDev{
+	dev, err := t.AddThinDev(ctx, OptAddThinDev{
 		Name:     opt.Name,
 		RDFG:     opt.RDFG,
 		Size:     opt.Size,
@@ -2597,7 +2679,7 @@ func (t *Array) AddDisk(opt OptAddDisk) (array.Disk, error) {
 	disk.DriverData = driverData
 
 	if opt.SG != "" || len(opt.Mappings) > 0 {
-		if err := t.mapDisk(OptMapDisk{
+		if err := t.mapDisk(ctx, OptMapDisk{
 			Dev:      dev.DevInfo.DevName,
 			SID:      opt.SID,
 			SLO:      opt.SLO,
@@ -2608,12 +2690,12 @@ func (t *Array) AddDisk(opt OptAddDisk) (array.Disk, error) {
 			return disk, err
 		}
 
-		dev, err = t.getDev(opt.SID, dev.DevInfo.DevName)
+		dev, err = t.getDev(ctx, opt.SID, dev.DevInfo.DevName)
 		if err != nil {
 			return disk, err
 		}
 
-		if data, err := t.getMappings(opt.SID, dev.DevInfo.DevName); err != nil {
+		if data, err := t.getMappings(ctx, opt.SID, dev.DevInfo.DevName); err != nil {
 			return disk, err
 		} else {
 			disk.Mappings = data
@@ -2625,29 +2707,29 @@ func (t *Array) AddDisk(opt OptAddDisk) (array.Disk, error) {
 	return disk, nil
 }
 
-func (t *Array) unmap(sid, devId string) error {
-	sgs, err := t.getDevSGs(sid, devId)
+func (t *Array) unmap(ctx context.Context, sid, devId string) error {
+	sgs, err := t.getDevSGs(ctx, sid, devId)
 	if err != nil {
 		return err
 	}
 	for _, sg := range sgs {
-		if err := t.removeThinDevFromSG(sid, dev, sg.GroupInfo.GroupName); err != nil {
+		if err := t.removeThinDevFromSG(ctx, sid, dev, sg.GroupInfo.GroupName); err != nil {
 			return err
 		}
 	}
 	return nil
 }
 
-func (t *Array) UnmapDisk(opt OptUnmapDisk) (array.Disk, error) {
+func (t *Array) UnmapDisk(ctx context.Context, opt OptUnmapDisk) (array.Disk, error) {
 	var disk array.Disk
 	if opt.SID == "" {
 		opt.SID = t.kwSID()
 	}
-	dev, err := t.getDev(opt.SID, opt.Dev)
+	dev, err := t.getDev(ctx, opt.SID, opt.Dev)
 	if err != nil {
 		return disk, err
 	}
-	if err := t.unmap(opt.SID, dev.DevInfo.DevName); err != nil {
+	if err := t.unmap(ctx, opt.SID, dev.DevInfo.DevName); err != nil {
 		return disk, err
 	}
 
@@ -2661,13 +2743,13 @@ func (t *Array) UnmapDisk(opt OptUnmapDisk) (array.Disk, error) {
 	return disk, nil
 }
 
-func (t *Array) DelDisk(opt OptDelDisk) (array.Disk, error) {
+func (t *Array) DelDisk(ctx context.Context, opt OptDelDisk) (array.Disk, error) {
 	var disk array.Disk
 	if opt.SID == "" {
 		opt.SID = t.kwSID()
 	}
 
-	dev, err := t.getDev(opt.SID, opt.Dev)
+	dev, err := t.getDev(ctx, opt.SID, opt.Dev)
 	if err != nil {
 		return disk, err
 	}
@@ -2675,13 +2757,13 @@ func (t *Array) DelDisk(opt OptDelDisk) (array.Disk, error) {
 	if dev.DevInfo.SnapvxSource {
 		return disk, fmt.Errorf("dev %s is a snapvx_source. can not delete", dev.DevInfo.DevName)
 	}
-	if err := t.setDevRO(opt.SID, dev.DevInfo.DevName); err != nil {
+	if err := t.setDevRO(ctx, opt.SID, dev.DevInfo.DevName); err != nil {
 		return disk, err
 	}
-	if err := t.unmap(opt.SID, dev.DevInfo.DevName); err != nil {
+	if err := t.unmap(ctx, opt.SID, dev.DevInfo.DevName); err != nil {
 		return disk, err
 	}
-	if _, err := t.deletePair(dev); err != nil {
+	if _, err := t.deletePair(ctx, dev); err != nil {
 		return disk, err
 	}
 
@@ -2689,10 +2771,10 @@ func (t *Array) DelDisk(opt OptDelDisk) (array.Disk, error) {
 	retryDelay := 5 * time.Second
 
 	for i := 1; i <= maxRetry; i++ {
-		if err := t.freeThinDev(opt.SID, dev.DevInfo.DevName); err != nil {
+		if err := t.freeThinDev(ctx, opt.SID, dev.DevInfo.DevName); err != nil {
 			return disk, err
 		}
-		if err := t.delThinDev(opt.SID, dev.DevInfo.DevName); err != nil {
+		if err := t.delThinDev(ctx, opt.SID, dev.DevInfo.DevName); err != nil {
 			if errors.Is(err, ErrNotFree) {
 				if i >= maxRetry {
 					return disk, fmt.Errorf("dev %s is still not free of all allocations after 5 tries", dev.DevInfo.DevName)
@@ -2716,12 +2798,12 @@ func (t *Array) DelDisk(opt OptDelDisk) (array.Disk, error) {
 	return disk, nil
 }
 
-func (t *Array) AddMasking(b []byte) (MaskingDump, error) {
+func (t *Array) AddMasking(ctx context.Context, b []byte) (MaskingDump, error) {
 	var data MaskingDump
 	if err := json.Unmarshal(b, &data); err != nil {
 		return MaskingDump{}, err
 	}
-	return t.addMasking(data)
+	return t.addMasking(ctx, data)
 }
 
 // Dump/Restore of masking views
@@ -2778,34 +2860,34 @@ var (
 	DumpDefaultConsistent = true
 )
 
-func (t *Array) addMasking(data MaskingDump) (MaskingDump, error) {
+func (t *Array) addMasking(ctx context.Context, data MaskingDump) (MaskingDump, error) {
 	var err error
-	data, err = t.addDumpInitiatorGroups(data)
+	data, err = t.addDumpInitiatorGroups(ctx, data)
 	if err != nil {
 		return data, err
 	}
-	data, err = t.addDumpStorageGroups(data)
+	data, err = t.addDumpStorageGroups(ctx, data)
 	if err != nil {
 		return data, err
 	}
-	data, err = t.addDumpGatekeepers(data)
+	data, err = t.addDumpGatekeepers(ctx, data)
 	if err != nil {
 		return data, err
 	}
-	data, err = t.addDumpDevices(data)
+	data, err = t.addDumpDevices(ctx, data)
 	if err != nil {
 		return data, err
 	}
-	data, err = t.addDumpViews(data)
+	data, err = t.addDumpViews(ctx, data)
 	if err != nil {
 		return data, err
 	}
 	return data, nil
 }
 
-func (t *Array) addDumpInitiatorGroups(data MaskingDump) (MaskingDump, error) {
+func (t *Array) addDumpInitiatorGroups(ctx context.Context, data MaskingDump) (MaskingDump, error) {
 	for i, e := range data.InitiatorGroups {
-		results, err := t.addDumpInitiatorGroup(e)
+		results, err := t.addDumpInitiatorGroup(ctx, e)
 		if err != nil {
 			return data, err
 		}
@@ -2815,9 +2897,9 @@ func (t *Array) addDumpInitiatorGroups(data MaskingDump) (MaskingDump, error) {
 	return data, nil
 }
 
-func (t *Array) addDumpStorageGroups(data MaskingDump) (MaskingDump, error) {
+func (t *Array) addDumpStorageGroups(ctx context.Context, data MaskingDump) (MaskingDump, error) {
 	for i, e := range data.StorageGroups {
-		results, err := t.addDumpStorageGroup(e)
+		results, err := t.addDumpStorageGroup(ctx, e)
 		if err != nil {
 			return data, err
 		}
@@ -2827,9 +2909,9 @@ func (t *Array) addDumpStorageGroups(data MaskingDump) (MaskingDump, error) {
 	return data, nil
 }
 
-func (t *Array) addDumpGatekeepers(data MaskingDump) (MaskingDump, error) {
+func (t *Array) addDumpGatekeepers(ctx context.Context, data MaskingDump) (MaskingDump, error) {
 	for i, e := range data.Gatekeepers {
-		results, err := t.addDumpGatekeeper(e)
+		results, err := t.addDumpGatekeeper(ctx, e)
 		if err != nil {
 			return data, err
 		}
@@ -2839,9 +2921,9 @@ func (t *Array) addDumpGatekeepers(data MaskingDump) (MaskingDump, error) {
 	return data, nil
 }
 
-func (t *Array) addDumpDevices(data MaskingDump) (MaskingDump, error) {
+func (t *Array) addDumpDevices(ctx context.Context, data MaskingDump) (MaskingDump, error) {
 	for i, e := range data.Devices {
-		results, err := t.addDumpDevice(e)
+		results, err := t.addDumpDevice(ctx, e)
 		if err != nil {
 			return data, err
 		}
@@ -2851,9 +2933,9 @@ func (t *Array) addDumpDevices(data MaskingDump) (MaskingDump, error) {
 	return data, nil
 }
 
-func (t *Array) addDumpViews(data MaskingDump) (MaskingDump, error) {
+func (t *Array) addDumpViews(ctx context.Context, data MaskingDump) (MaskingDump, error) {
 	for i, e := range data.Views {
-		results, err := t.addDumpView(e)
+		results, err := t.addDumpView(ctx, e)
 		if err != nil {
 			return data, err
 		}
@@ -2864,15 +2946,15 @@ func (t *Array) addDumpViews(data MaskingDump) (MaskingDump, error) {
 	return data, nil
 }
 
-func (t *Array) addDumpStorageGroup(data MaskingDumpSG) ([]Result, error) {
+func (t *Array) addDumpStorageGroup(ctx context.Context, data MaskingDumpSG) ([]Result, error) {
 	var results []Result
-	if result, err := t.createStorageGroup(t.kwSID(), data.Name, data.SRP, data.SLO); err != nil {
+	if result, err := t.createStorageGroup(ctx, t.kwSID(), data.Name, data.SRP, data.SLO); err != nil {
 		return results, err
 	} else {
 		results = append(results, result)
 	}
 	for _, sg := range data.StorageGroups {
-		result, err := t.addStorageGroupsToStorageGroup(t.kwSID(), data.Name, []string{sg})
+		result, err := t.addStorageGroupsToStorageGroup(ctx, t.kwSID(), data.Name, []string{sg})
 		if err != nil {
 			return results, err
 		}
@@ -2886,26 +2968,26 @@ func (t *Array) addDumpStorageGroup(data MaskingDumpSG) ([]Result, error) {
 	return results, nil
 }
 
-func (t *Array) addDumpInitiatorGroup(data MaskingDumpIG) ([]Result, error) {
+func (t *Array) addDumpInitiatorGroup(ctx context.Context, data MaskingDumpIG) ([]Result, error) {
 	var results []Result
 	if data.Consistent == nil {
 		v := DumpDefaultConsistent
 		data.Consistent = &v
 	}
-	if result, err := t.createInitiator(t.kwSID(), data.Name, *data.Consistent); err != nil {
+	if result, err := t.createInitiator(ctx, t.kwSID(), data.Name, *data.Consistent); err != nil {
 		return results, err
 	} else {
 		results = append(results, result)
 	}
 	for _, ig := range data.InitiatorGroups {
-		if result, err := t.addInitiatorToInitiatorGroup(t.kwSID(), data.Name, ig); err != nil {
+		if result, err := t.addInitiatorToInitiatorGroup(ctx, t.kwSID(), data.Name, ig); err != nil {
 			return results, err
 		} else {
 			results = append(results, result)
 		}
 	}
 	for _, hbaId := range data.HBAIds {
-		if result, err := t.addHBAToInitiator(t.kwSID(), data.Name, hbaId); err != nil {
+		if result, err := t.addHBAToInitiator(ctx, t.kwSID(), data.Name, hbaId); err != nil {
 			return results, err
 		} else {
 			results = append(results, result)
@@ -2914,9 +2996,9 @@ func (t *Array) addDumpInitiatorGroup(data MaskingDumpIG) ([]Result, error) {
 	return results, nil
 }
 
-func (t *Array) addDumpGatekeeper(data MaskingDumpGK) ([]Result, error) {
+func (t *Array) addDumpGatekeeper(ctx context.Context, data MaskingDumpGK) ([]Result, error) {
 	var results []Result
-	if result, err := t.createGatekeepers(t.kwSID(), data.StorageGroup, data.Count); err != nil {
+	if result, err := t.createGatekeepers(ctx, t.kwSID(), data.StorageGroup, data.Count); err != nil {
 		return results, err
 	} else {
 		results = append(results, result)
@@ -2924,9 +3006,9 @@ func (t *Array) addDumpGatekeeper(data MaskingDumpGK) ([]Result, error) {
 	return results, nil
 }
 
-func (t *Array) addDumpDevice(data MaskingDumpDev) ([]Result, error) {
+func (t *Array) addDumpDevice(ctx context.Context, data MaskingDumpDev) ([]Result, error) {
 	var results []Result
-	if result, err := t.createThinDev(t.kwSID(), data.Name, data.Size, data.StorageGroup); err != nil {
+	if result, err := t.createThinDev(ctx, t.kwSID(), data.Name, data.Size, data.StorageGroup); err != nil {
 		return results, err
 	} else {
 		results = append(results, result)
@@ -2934,9 +3016,9 @@ func (t *Array) addDumpDevice(data MaskingDumpDev) ([]Result, error) {
 	return results, nil
 }
 
-func (t *Array) addDumpView(data MaskingDumpView) ([]Result, error) {
+func (t *Array) addDumpView(ctx context.Context, data MaskingDumpView) ([]Result, error) {
 	var results []Result
-	if result, err := t.createView(t.kwSID(), data.Name, data.PortIds, data.StorageGroupNames, data.InitiatorGroupNames); err != nil {
+	if result, err := t.createView(ctx, t.kwSID(), data.Name, data.PortIds, data.StorageGroupNames, data.InitiatorGroupNames); err != nil {
 		return results, err
 	} else {
 		results = append(results, result)

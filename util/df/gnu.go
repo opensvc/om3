@@ -3,6 +3,7 @@
 package df
 
 import (
+	"context"
 	"strconv"
 	"strings"
 )
@@ -11,12 +12,12 @@ const (
 	typeOption = "-t"
 )
 
-func doDFInode(args ...string) ([]byte, error) {
-	return doDF(append([]string{"-lPi"}, args...))
+func doDFInode(ctx context.Context, args ...string) ([]byte, error) {
+	return doDF(ctx, append([]string{"-lPi"}, args...))
 }
 
-func doDFUsage(args ...string) ([]byte, error) {
-	return doDF(append([]string{"-lP"}, args...))
+func doDFUsage(ctx context.Context, args ...string) ([]byte, error) {
+	return doDF(ctx, append([]string{"-lP"}, args...))
 }
 
 func parse(b []byte) ([]Entry, error) {
@@ -39,12 +40,18 @@ func parse(b []byte) ([]Entry, error) {
 		if err != nil {
 			continue
 		}
+		var usedPct int64
+		if total == 0 {
+			usedPct = 0
+		} else {
+			usedPct = 100 * used / total
+		}
 		r = append(r, Entry{
 			Device:      l[0],
 			Total:       total * 1024,
 			Used:        used * 1024,
 			Free:        free * 1024,
-			UsedPercent: 100 * used / total,
+			UsedPercent: usedPct,
 			MountPoint:  l[5],
 		})
 	}

@@ -3,6 +3,7 @@
 package poolhoc
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"strconv"
@@ -86,12 +87,12 @@ func (t T) Capabilities() []string {
 	return []string{"rox", "rwx", "roo", "rwo", "blk", "fc", "shared"}
 }
 
-func (t T) Usage() (pool.Usage, error) {
+func (t T) Usage(ctx context.Context) (pool.Usage, error) {
 	usage := pool.Usage{
 		Shared: true,
 	}
 	a := t.array()
-	data, err := a.GetStorageSystem()
+	data, err := a.GetStorageSystem(ctx)
 	if err != nil {
 		return usage, err
 	}
@@ -128,13 +129,13 @@ func (t *T) BlkTranslate(name string, size int64, shared bool) ([]string, error)
 	return data, nil
 }
 
-func (t *T) GetTargets() (san.Targets, error) {
+func (t *T) GetTargets(ctx context.Context) (san.Targets, error) {
 	ports := make(san.Targets, 0)
 	a := t.array()
 	opt := arrayhoc.OptGetItems{
 		Filter: "type:FIBRE",
 	}
-	data, err := a.GetStoragePorts(opt)
+	data, err := a.GetStoragePorts(ctx, opt)
 	if err != nil {
 		return nil, err
 	}
@@ -147,7 +148,7 @@ func (t *T) GetTargets() (san.Targets, error) {
 	return ports, nil
 }
 
-func (t *T) DeleteDisk(name, wwid string) ([]pool.Disk, error) {
+func (t *T) DeleteDisk(ctx context.Context, name, wwid string) ([]pool.Disk, error) {
 	if len(wwid) != 32 {
 		return nil, fmt.Errorf("delete disk: can not fetch serial from wwid: %s", wwid)
 	}
@@ -160,7 +161,7 @@ func (t *T) DeleteDisk(name, wwid string) ([]pool.Disk, error) {
 	if err != nil {
 		return nil, err
 	}
-	arrayDisk, err := a.DelDisk(arrayhoc.OptDelDisk{
+	arrayDisk, err := a.DelDisk(ctx, arrayhoc.OptDelDisk{
 		Volume: arrayhoc.OptVolume{
 			ID: int(devId),
 		},
@@ -173,9 +174,9 @@ func (t *T) DeleteDisk(name, wwid string) ([]pool.Disk, error) {
 	return []pool.Disk{poolDisk}, nil
 }
 
-func (t *T) CreateDisk(name string, size int64, nodenames []string) ([]pool.Disk, error) {
+func (t *T) CreateDisk(ctx context.Context, name string, size int64, nodenames []string) ([]pool.Disk, error) {
 	poolDisk := pool.Disk{}
-	paths, err := pool.GetPaths(t, nodenames, san.FC)
+	paths, err := pool.GetPaths(ctx, t, nodenames, san.FC)
 	if err != nil {
 		return []pool.Disk{}, err
 	}
@@ -184,7 +185,7 @@ func (t *T) CreateDisk(name string, size int64, nodenames []string) ([]pool.Disk
 	}
 	a := t.array()
 	drvSize := sizeconv.ExactBSizeCompact(float64(size))
-	arrayDisk, err := a.AddDisk(arrayhoc.OptAddDisk{
+	arrayDisk, err := a.AddDisk(ctx, arrayhoc.OptAddDisk{
 		Volume: arrayhoc.OptAddVolume{
 			Name:                    name,
 			Size:                    drvSize,

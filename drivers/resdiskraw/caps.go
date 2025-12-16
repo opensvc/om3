@@ -1,6 +1,7 @@
 package resdiskraw
 
 import (
+	"context"
 	"os/exec"
 
 	"github.com/opensvc/om3/v3/util/capabilities"
@@ -11,7 +12,7 @@ func init() {
 	capabilities.Register(capabilitiesScanner)
 }
 
-func capabilitiesScanner() ([]string, error) {
+func capabilitiesScanner(ctx context.Context) ([]string, error) {
 	if !raw.IsCapable() {
 		return []string{}, nil
 	}

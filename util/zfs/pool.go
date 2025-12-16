@@ -1,6 +1,7 @@
 package zfs
 
 import (
+	"context"
 	"strings"
 
 	"github.com/rs/zerolog"
@@ -17,8 +18,9 @@ type (
 	}
 )
 
-func (t *Pool) Exists() (bool, error) {
+func (t *Pool) Exists(ctx context.Context) (bool, error) {
 	cmd := command.New(
+		command.WithContext(ctx),
 		command.WithName("zpool"),
 		command.WithVarArgs("list", t.Name),
 		command.WithLogger(t.Log),

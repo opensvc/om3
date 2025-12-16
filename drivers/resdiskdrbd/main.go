@@ -323,9 +323,9 @@ func (t *T) Shutdown(ctx context.Context) error {
 	return t.DownForce(ctx)
 }
 
-func (t *T) removeHolders() error {
-	for _, dev := range t.ExposedDevices() {
-		if err := dev.RemoveHolders(); err != nil {
+func (t *T) removeHolders(ctx context.Context) error {
+	for _, dev := range t.ExposedDevices(ctx) {
+		if err := dev.RemoveHolders(ctx); err != nil {
 			return nil
 		}
 	}
@@ -406,14 +406,14 @@ func (t *T) ProvisionStart(_ context.Context) error {
 	return nil
 }
 
-func (t *T) getDRBDAllocations() (map[string]api.DRBDAllocation, error) {
+func (t *T) getDRBDAllocations(ctx context.Context) (map[string]api.DRBDAllocation, error) {
 	allocations := make(map[string]api.DRBDAllocation)
 	c, err := client.New()
 	if err != nil {
 		return nil, err
 	}
 	for _, nodename := range t.Nodes {
-		resp, err := c.GetNodeDRBDAllocationWithResponse(context.Background(), nodename)
+		resp, err := c.GetNodeDRBDAllocationWithResponse(ctx, nodename)
 		switch {
 		case err != nil:
 			return nil, err
@@ -575,7 +575,7 @@ func (t *T) unlock(_ context.Context) error {
 	return nil
 }
 
-func (t *T) fetchConfigFromNode(nodename string) ([]byte, error) {
+func (t *T) fetchConfigFromNode(ctx context.Context, nodename string) ([]byte, error) {
 	c, err := client.New()
 	if err != nil {
 		return nil, err
@@ -583,7 +583,7 @@ func (t *T) fetchConfigFromNode(nodename string) ([]byte, error) {
 	params := api.GetNodeDRBDConfigParams{
 		Name: t.Res,
 	}
-	resp, err := c.GetNodeDRBDConfigWithResponse(context.Background(), nodename, &params)
+	resp, err := c.GetNodeDRBDConfigWithResponse(ctx, nodename, &params)
 	if err != nil {
 		return nil, err
 	} else if resp.StatusCode() != http.StatusOK {
@@ -592,14 +592,14 @@ func (t *T) fetchConfigFromNode(nodename string) ([]byte, error) {
 	return resp.JSON200.Data, nil
 }
 
-func (t *T) fetchConfig() error {
+func (t *T) fetchConfig(ctx context.Context) error {
 	cf := drbd.ResConfigFile(t.Res)
 	if file.Exists(cf) {
 		t.Log().Infof("%s already exists", cf)
 		return nil
 	}
 	for _, nodename := range t.Nodes {
-		b, err := t.fetchConfigFromNode(nodename)
+		b, err := t.fetchConfigFromNode(ctx, nodename)
 		if err != nil {
 			continue
 		}
@@ -625,7 +625,7 @@ func (t *T) writeConfig(ctx context.Context) error {
 	defer func() {
 		_ = t.unlock(ctx)
 	}()
-	allocations, err := t.getDRBDAllocations()
+	allocations, err := t.getDRBDAllocations(ctx)
 	if err != nil {
 		return err
 	}
@@ -651,13 +651,13 @@ func (t *T) writeConfig(ctx context.Context) error {
 	if err != nil {
 		return err
 	}
-	if err := t.sendConfig(b, allocations); err != nil {
+	if err := t.sendConfig(ctx, b, allocations); err != nil {
 		return err
 	}
 	return nil
 }
 
-func (t *T) sendConfig(b []byte, allocations map[string]api.DRBDAllocation) error {
+func (t *T) sendConfig(ctx context.Context, b []byte, allocations map[string]api.DRBDAllocation) error {
 	for _, nodename := range t.Nodes {
 		var allocationID uuid.UUID
 		if nodename == hostname.Hostname() {
@@ -668,14 +668,14 @@ func (t *T) sendConfig(b []byte, allocations map[string]api.DRBDAllocation) erro
 		} else {
 			return fmt.Errorf("allocation id for node %s not found", nodename)
 		}
-		if err := t.sendConfigToNode(nodename, allocationID, b); err != nil {
+		if err := t.sendConfigToNode(ctx, nodename, allocationID, b); err != nil {
 			return err
 		}
 	}
 	return nil
 }
 
-func (t *T) sendConfigToNode(nodename string, allocationID uuid.UUID, b []byte) error {
+func (t *T) sendConfigToNode(ctx context.Context, nodename string, allocationID uuid.UUID, b []byte) error {
 	c, err := client.New()
 	if err != nil {
 		return err
@@ -687,7 +687,7 @@ func (t *T) sendConfigToNode(nodename string, allocationID uuid.UUID, b []byte) 
 		AllocationID: allocationID,
 		Data:         b,
 	}
-	resp, err := c.PostNodeDRBDConfigWithResponse(context.Background(), nodename, &params, body)
+	resp, err := c.PostNodeDRBDConfigWithResponse(ctx, nodename, &params, body)
 	if err != nil {
 		return err
 	}
@@ -875,7 +875,7 @@ func (t *T) ProvisionAsFollower(ctx context.Context) error {
 	actionrollback.Register(ctx, func(ctx context.Context) error {
 		return t.UnprovisionAsFollower(ctx)
 	})
-	if err := t.fetchConfig(); err != nil {
+	if err := t.fetchConfig(ctx); err != nil {
 		return err
 	}
 	if err := t.provisionCommon(ctx); err != nil {
@@ -1009,12 +1009,11 @@ func (t *T) unprovisionCommon(ctx context.Context) error {
 	return nil
 }
 
-func (t *T) Provisioned() (provisioned.T, error) {
+func (t *T) Provisioned(ctx context.Context) (provisioned.T, error) {
 	if !t.isConfigured() {
 		return provisioned.False, nil
 	}
 	// TODO: allow Provisioned(ctx context.Context) ?
-	ctx := context.Background()
 	hasMD, err := t.drbd(ctx).HasMD(ctx)
 	if err != nil {
 		t.Log().Tracef("drbd res is not configured")
@@ -1027,7 +1026,7 @@ func (t *T) Provisioned() (provisioned.T, error) {
 	return provisioned.True, nil
 }
 
-func (t *T) ExposedDevices() device.L {
+func (t *T) ExposedDevices(ctx context.Context) device.L {
 	l := make(device.L, 0)
 	dump, err := drbd.GetConfig()
 	if err != nil {
@@ -1047,7 +1046,7 @@ func (t *T) ExposedDevices() device.L {
 	return l
 }
 
-func (t *T) SubDevices() device.L {
+func (t *T) SubDevices(ctx context.Context) device.L {
 	l := make(device.L, 0)
 	dump, err := drbd.GetConfig()
 	if err != nil {
@@ -1067,12 +1066,12 @@ func (t *T) SubDevices() device.L {
 	return l
 }
 
-func (t *T) ReservableDevices() device.L {
-	return t.SubDevices()
+func (t *T) ReservableDevices(ctx context.Context) device.L {
+	return t.SubDevices(ctx)
 }
 
-func (t *T) ClaimedDevices() device.L {
-	return t.SubDevices()
+func (t *T) ClaimedDevices(ctx context.Context) device.L {
+	return t.SubDevices(ctx)
 }
 
 func (t *T) connectAndWaitConnectingOrConnected(ctx context.Context, nodeID string) (string, error) {
@@ -1206,7 +1205,7 @@ func (t Path) PreSync() error {
 	return t.dumpCacheFile()
 }
 
-func (t Path) ToSync() []string {
+func (t Path) ToSync(ctx context.Context) []string {
 	return []string{}
 }
 

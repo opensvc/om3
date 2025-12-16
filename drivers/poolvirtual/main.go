@@ -1,6 +1,7 @@
 package poolvirtual
 
 import (
+	"context"
 	"fmt"
 
 	"github.com/opensvc/om3/v3/core/driver"
@@ -56,7 +57,7 @@ func (t T) Capabilities() []string {
 	return t.GetStrings("capabilities")
 }
 
-func (t T) Usage() (pool.Usage, error) {
+func (t T) Usage(ctx context.Context) (pool.Usage, error) {
 	usage := pool.Usage{}
 	return usage, nil
 }

@@ -2,6 +2,7 @@ package device
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"errors"
 	"slices"
@@ -48,20 +49,20 @@ func (t T) Path() string {
 	return t.path
 }
 
-func (t T) RemoveHolders() error {
-	return RemoveHolders(t)
+func (t T) RemoveHolders(ctx context.Context) error {
+	return RemoveHolders(ctx, t)
 }
 
-func RemoveHolders(head T) error {
+func RemoveHolders(ctx context.Context, head T) error {
 	holders, err := head.Holders()
 	if err != nil {
 		return err
 	}
 	for _, dev := range holders {
-		if err := RemoveHolders(dev); err != nil {
+		if err := RemoveHolders(ctx, dev); err != nil {
 			return err
 		}
-		if err := dev.Remove(); err != nil {
+		if err := dev.Remove(ctx); err != nil {
 			return err
 		}
 	}

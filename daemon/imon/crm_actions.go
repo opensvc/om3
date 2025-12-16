@@ -142,7 +142,7 @@ func (t *Manager) crmProvisionNonLeader() error {
 }
 
 func (t *Manager) crmProvisionLeader() error {
-	return t.crmAction("provision leader", t.path.String(), "instance", "provision", "--leader", "--disable-rollback")
+	return t.crmAction("provision leader", t.path.String(), "instance", "provision", "--leader")
 }
 
 func (t *Manager) crmStartStandby() error {

@@ -3,6 +3,7 @@
 package pooldrbd
 
 import (
+	"context"
 	"fmt"
 	"path/filepath"
 
@@ -93,19 +94,19 @@ func (t T) Head() string {
 	}
 }
 
-func (t T) Usage() (pool.Usage, error) {
+func (t T) Usage(ctx context.Context) (pool.Usage, error) {
 	if t.vg() != "" {
-		return t.usageVG()
+		return t.usageVG(ctx)
 	} else if t.zpool() != "" {
-		return t.usageZpool()
+		return t.usageZpool(ctx)
 	} else {
-		return t.usageFile()
+		return t.usageFile(ctx)
 	}
 }
 
-func (t T) usageVG() (pool.Usage, error) {
+func (t T) usageVG(ctx context.Context) (pool.Usage, error) {
 	vg := lvm2.NewVG(t.vg())
-	info, err := vg.Show("vg_name,vg_free,vg_size")
+	info, err := vg.Show(ctx, "vg_name,vg_free,vg_size")
 	if err != nil {
 		return pool.Usage{}, err
 	}
@@ -132,10 +133,10 @@ func (t T) usageVG() (pool.Usage, error) {
 	return usage, nil
 }
 
-func (t T) usageZpool() (pool.Usage, error) {
+func (t T) usageZpool(ctx context.Context) (pool.Usage, error) {
 	poolName := t.zpool()
 	zpool := zfs.Pool{Name: poolName}
-	e, err := zpool.Usage()
+	e, err := zpool.Usage(ctx)
 	if err != nil {
 		return pool.Usage{}, err
 	}
@@ -153,8 +154,8 @@ func (t T) usageZpool() (pool.Usage, error) {
 	return usage, nil
 }
 
-func (t T) usageFile() (pool.Usage, error) {
-	entries, err := df.ContainingMountUsage(t.path())
+func (t T) usageFile(ctx context.Context) (pool.Usage, error) {
+	entries, err := df.ContainingMountUsage(ctx, t.path())
 	if err != nil {
 		return pool.Usage{}, err
 	}

@@ -82,22 +82,22 @@ func (t *T) Start(ctx context.Context) error {
 }
 
 func (t *T) Stop(ctx context.Context) error {
-	if v, err := t.isMounted(); err != nil {
+	if v, err := t.isMounted(ctx); err != nil {
 		return err
 	} else if !v {
-		t.Log().Infof("%s already umounted from %s", t.devpath(), t.mountPoint())
+		t.Log().Infof("%s already umounted from %s", t.devpath(ctx), t.mountPoint())
 		return nil
 	}
 	mnt := t.mountPoint()
 	fs := t.fs()
-	if err := fs.Umount(mnt); err != nil {
+	if err := fs.Umount(ctx, mnt); err != nil {
 		if file.IsProtected(mnt) {
 			return err
 		}
 		if errors.Is(err, syscall.EBUSY) {
 			for _ = range 4 {
-				fs.KillUsers(mnt)
-				if err := fs.Umount(mnt); err == nil {
+				fs.KillUsers(ctx, mnt)
+				if err := fs.Umount(ctx, mnt); err == nil {
 					return nil
 				}
 			}
@@ -116,7 +116,7 @@ func (t *T) Status(ctx context.Context) status.T {
 		t.StatusLog().Info("mnt is not defined")
 		return status.NotApplicable
 	}
-	if v, err := t.isMounted(); err != nil {
+	if v, err := t.isMounted(ctx); err != nil {
 		t.StatusLog().Error("%s", err)
 		return status.Undef
 	} else if !v {
@@ -138,8 +138,8 @@ func (t *T) Status(ctx context.Context) status.T {
 
 // Label implements Label from resource.Driver interface,
 // it returns a formatted short description of the Resource
-func (t *T) Label(_ context.Context) string {
-	s := t.devpath()
+func (t *T) Label(ctx context.Context) string {
+	s := t.devpath(ctx)
 	m := t.mountPoint()
 	if m != "" {
 		s += "@" + m
@@ -155,13 +155,13 @@ func (t *T) Unprovision(ctx context.Context) error {
 	return nil
 }
 
-func (t *T) Provisioned() (provisioned.T, error) {
+func (t *T) Provisioned(ctx context.Context) (provisioned.T, error) {
 	return provisioned.NotApplicable, nil
 }
 
 func (t *T) Info(ctx context.Context) (resource.InfoKeys, error) {
 	m := resource.InfoKeys{
-		{Key: "dev", Value: t.devpath()},
+		{Key: "dev", Value: t.devpath(ctx)},
 		{Key: "mnt", Value: t.mountPoint()},
 		{Key: "mnt_opt", Value: t.MountOptions},
 	}
@@ -193,11 +193,11 @@ func (t *T) mountPoint() string {
 	return filepath.Clean(t.MountPoint)
 }
 
-func (t *T) device() device.T {
-	return device.New(t.devpath(), device.WithLogger(t.Log()))
+func (t *T) device(ctx context.Context) device.T {
+	return device.New(t.devpath(ctx), device.WithLogger(t.Log()))
 }
 
-func (t *T) devpath() string {
+func (t *T) devpath(ctx context.Context) string {
 	if t.fs().IsFileBacked() {
 		return t.Device
 	}
@@ -210,7 +210,7 @@ func (t *T) devpath() string {
 	if t.hasMountOption("loop") {
 		return t.Device
 	}
-	if p, err := vpath.HostDevpath(t.Device, t.Path.Namespace); err == nil {
+	if p, err := vpath.HostDevpath(ctx, t.Device, t.Path.Namespace); err == nil {
 		return p
 	} else {
 		t.Log().Tracef("resolve host devpath for device %s in namespace %s: %s", t.Device, t.Path.Namespace, err)
@@ -219,16 +219,16 @@ func (t *T) devpath() string {
 }
 
 func (t *T) mount(ctx context.Context) error {
-	if err := t.validateDevice(); err != nil {
+	if err := t.validateDevice(ctx); err != nil {
 		return err
 	}
 	if err := t.promoteDevicesReadWrite(ctx); err != nil {
 		return err
 	}
-	if v, err := t.isMounted(); err != nil {
+	if v, err := t.isMounted(ctx); err != nil {
 		return err
 	} else if v {
-		t.Log().Infof("%s already mounted on %s", t.devpath(), t.mountPoint())
+		t.Log().Infof("%s already mounted on %s", t.devpath(ctx), t.mountPoint())
 		return nil
 	}
 	if err := t.createDevice(ctx); err != nil {
@@ -237,20 +237,20 @@ func (t *T) mount(ctx context.Context) error {
 	if err := t.createMountPoint(ctx); err != nil {
 		return err
 	}
-	if err := t.fsck(); err != nil {
+	if err := t.fsck(ctx); err != nil {
 		return err
 	}
-	if err := t.fs().Mount(t.devpath(), t.mountPoint(), t.mountOptions()); err != nil {
+	if err := t.fs().Mount(ctx, t.devpath(ctx), t.mountPoint(), t.mountOptions()); err != nil {
 		return err
 	}
 	actionrollback.Register(ctx, func(ctx context.Context) error {
-		return t.fs().Umount(t.mountPoint())
+		return t.fs().Umount(ctx, t.mountPoint())
 	})
 	return nil
 }
 
 func (t *T) createDevice(ctx context.Context) error {
-	p := t.devpath()
+	p := t.devpath(ctx)
 	fs := t.fs()
 	if !fs.IsFileBacked() {
 		return nil
@@ -281,7 +281,7 @@ func (t *T) createMountPoint(ctx context.Context) error {
 	return nil
 }
 
-func (t *T) validateDevice() error {
+func (t *T) validateDevice(ctx context.Context) error {
 	fs := t.fs()
 	if fs.IsZero() {
 		return nil
@@ -301,7 +301,7 @@ func (t *T) validateDevice() error {
 	if t.isByUUID() {
 		return nil
 	}
-	dev := t.devpath()
+	dev := t.devpath(ctx)
 	if (!fs.IsFileBacked() && !fs.IsNetworked()) && !file.Exists(dev) {
 		return fmt.Errorf("device does not exist: %s", dev)
 	}
@@ -316,19 +316,19 @@ func (t *T) isByLabel() bool {
 	return strings.HasPrefix(t.Device, "LABEL=")
 }
 
-func (t *T) ClaimedDevices() device.L {
-	return t.SubDevices()
+func (t *T) ClaimedDevices(ctx context.Context) device.L {
+	return t.SubDevices(ctx)
 }
 
-func (t *T) ReservableDevices() device.L {
-	return t.SubDevices()
+func (t *T) ReservableDevices(ctx context.Context) device.L {
+	return t.SubDevices(ctx)
 }
 
-func (t *T) SubDevices() device.L {
+func (t *T) SubDevices(ctx context.Context) device.L {
 	l := make(device.L, 0)
 	fs := t.fs()
 	if !fs.IsMultiDevice() {
-		l = append(l, t.device())
+		l = append(l, t.device(ctx))
 		return l
 	}
 	t.Log().Warnf("TODO: multi dev SubDevices()")
@@ -339,7 +339,7 @@ func (t *T) promoteDevicesReadWrite(ctx context.Context) error {
 	if !t.PromoteRW {
 		return nil
 	}
-	devices := t.SubDevices()
+	devices := t.SubDevices(ctx)
 	for _, dev := range devices {
 		currentRO, err := dev.IsReadOnly()
 		if err != nil {
@@ -350,11 +350,11 @@ func (t *T) promoteDevicesReadWrite(ctx context.Context) error {
 			continue
 		}
 		t.Log().Infof("promote device %s read-write", dev)
-		if err := dev.SetReadWrite(); err != nil {
+		if err := dev.SetReadWrite(ctx); err != nil {
 			return err
 		}
 		actionrollback.Register(ctx, func(ctx context.Context) error {
-			return dev.SetReadOnly()
+			return dev.SetReadOnly(ctx)
 		})
 	}
 	return nil
@@ -366,7 +366,7 @@ func (t *T) fs() filesystems.I {
 	return fs
 }
 
-func (t *T) fsck() error {
+func (t *T) fsck(ctx context.Context) error {
 	fs := t.fs()
 	if !filesystems.HasFSCK(fs) {
 		t.Log().Tracef("skip fsck, not implemented for type %s", fs)
@@ -376,17 +376,17 @@ func (t *T) fsck() error {
 		t.Log().Warnf("skip fsck: %s", err)
 		return nil
 	}
-	return filesystems.DevicesFSCK(fs, t)
+	return filesystems.DevicesFSCK(ctx, fs, t)
 }
 
-func (t *T) isMounted() (bool, error) {
+func (t *T) isMounted(ctx context.Context) (bool, error) {
 	if t.hasMountOption("loop") {
-		return findmnt.HasFromMount(t.devpath(), t.mountPoint())
+		return findmnt.HasFromMount(t.devpath(ctx), t.mountPoint())
 	}
 	if t.Type == "tmpfs" {
-		return findmnt.HasMntWithTypes([]string{"tmpfs"}, t.mountPoint())
+		return findmnt.HasMntWithTypes(ctx, []string{"tmpfs"}, t.mountPoint())
 	}
-	return findmnt.Has(t.devpath(), t.mountPoint())
+	return findmnt.Has(ctx, t.devpath(ctx), t.mountPoint())
 }
 
 func (t *T) ProvisionAsLeader(ctx context.Context) error {
@@ -396,7 +396,7 @@ func (t *T) ProvisionAsLeader(ctx context.Context) error {
 		t.Log().Infof("skip mkfs, formatted detection is not implemented for type %s", fs)
 		return nil
 	}
-	devpath := t.devpath()
+	devpath := t.devpath(ctx)
 	if devpath == "" {
 		return fmt.Errorf("%s real dev path is empty", t.Device)
 	}
@@ -408,7 +408,7 @@ func (t *T) ProvisionAsLeader(ctx context.Context) error {
 	}
 	i2, ok := fs.(filesystems.MKFSer)
 	if ok {
-		return i2.MKFS(t.Device, t.MKFSOptions)
+		return i2.MKFS(ctx, t.Device, t.MKFSOptions)
 	}
 	t.Log().Infof("skip mkfs, not implemented for type %s", fs)
 	return nil

@@ -155,7 +155,7 @@ func (t *T) lockedSync(ctx context.Context, mode modeT, target []string) (err er
 		if err := t.rotatePeerSnaps(nodename, t.dstSnapTosend, t.dstSnapSent); err != nil {
 			return err
 		}
-		if t.WritePeerLastSync(nodename, nodenames); err != nil {
+		if t.WritePeerLastSync(ctx, nodename, nodenames); err != nil {
 			return err
 		}
 	}
@@ -568,7 +568,7 @@ func (t *T) ScheduleOptions() resource.ScheduleOptions {
 	}
 }
 
-func (t *T) Provisioned() (provisioned.T, error) {
+func (t *T) Provisioned(ctx context.Context) (provisioned.T, error) {
 	return provisioned.NotApplicable, nil
 }
 

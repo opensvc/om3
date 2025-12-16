@@ -28,7 +28,7 @@ func (t *actor) Provision(ctx context.Context) error {
 	if err := t.lockedProvision(ctx2); err != nil {
 		return err
 	}
-	if actioncontext.IsRollbackDisabled(ctx2) {
+	if actioncontext.IsRollbackDisabled(ctx2) || actioncontext.IsLeader(ctx2) {
 		// --disable-rollback handling
 		return nil
 	}

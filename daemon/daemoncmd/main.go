@@ -262,7 +262,7 @@ func (t *T) SetNode(node string) {
 }
 
 // run function will start daemon with internal lock protection
-func (t *T) run() error {
+func (t *T) run(ctx context.Context) error {
 	log := logger("locked run: ")
 	if err := rawconfig.CreateMandatoryDirectories(); err != nil {
 		return fmt.Errorf("create mandatory directories: %w", err)
@@ -290,7 +290,7 @@ func (t *T) run() error {
 			log.Errorf("remove pid file %s: %s", pidFile, err)
 		}
 	}()
-	if err := capabilities.Scan(); err != nil {
+	if err := capabilities.Scan(ctx); err != nil {
 		return err
 	}
 	log.Attr("capabilities", capabilities.Data()).Infof("rescanned node capabilities")
@@ -597,7 +597,7 @@ func (t *T) Run(ctx context.Context, profile string) error {
 			defer stopProfile()
 		}
 	}
-	if err := t.run(); err != nil {
+	if err := t.run(ctx); err != nil {
 		return err
 	}
 	return nil

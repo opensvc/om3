@@ -52,11 +52,11 @@ func provisionedFileModTime(t Driver) time.Time {
 
 // getProvisionStatus returns the resource provisioned state from the on-disk cache and its
 // state change time.
-func getProvisionStatus(t Driver) ProvisionStatus {
+func getProvisionStatus(ctx context.Context, t Driver) ProvisionStatus {
 	var (
 		data ProvisionStatus
 	)
-	if state, err := Provisioned(t); err != nil {
+	if state, err := Provisioned(ctx, t); err != nil {
 		t.StatusLog().Error("provisioned: %s", err)
 	} else {
 		data.State = state
@@ -73,7 +73,7 @@ func Provision(ctx context.Context, r Driver, leader bool) error {
 	}
 	Setenv(r)
 	if r.IsProvisionDisabled() {
-		if prov, err := Provisioned(r); err != nil {
+		if prov, err := Provisioned(ctx, r); err != nil {
 			return fmt.Errorf("provision is disabled, can't detect the provisioned state: %w", err)
 		} else if !prov.IsOneOf(provisioned.True, provisioned.NotApplicable) {
 			return fmt.Errorf("provision is disabled, the current resource provisioning state is %s: make sure the resource has been provisioned by a sysadmin and execute 'instance provision --state-only --rid %s'", prov, r.RID())
@@ -111,7 +111,7 @@ func Unprovision(ctx context.Context, r Driver, leader bool) error {
 	}
 	Setenv(r)
 	if r.IsUnprovisionDisabled() {
-		if prov, err := Provisioned(r); err != nil {
+		if prov, err := Provisioned(ctx, r); err != nil {
 			return fmt.Errorf("unprovision is disabled, can't detect the provisioned state: %w", err)
 		} else if !prov.IsOneOf(provisioned.False, provisioned.NotApplicable) {
 			return fmt.Errorf("unprovision is disabled, the current resource provisioning state is %s: sysadmins may unprovision manually and execute 'instance unprovision --state-only --rid %s'", prov, r.RID())
@@ -257,7 +257,7 @@ func unprovisionAsFollower(ctx context.Context, t Driver) error {
 	return nil
 }
 
-func Provisioned(t Driver) (provisioned.T, error) {
+func Provisioned(ctx context.Context, t Driver) (provisioned.T, error) {
 	if t.IsDisabled() {
 		return provisioned.NotApplicable, nil
 	}
@@ -267,7 +267,7 @@ func Provisioned(t Driver) (provisioned.T, error) {
 	if v, err := getProvisionedValue(t); err == nil {
 		return provisioned.FromBool(v), nil
 	}
-	if v, err := t.Provisioned(); err == nil {
+	if v, err := t.Provisioned(ctx); err == nil {
 		provBool := v.IsOneOf(provisioned.True)
 		err = setProvisionedValue(provBool, t)
 		return provisioned.FromBool(provBool), err

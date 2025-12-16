@@ -3,6 +3,7 @@
 package lvm2
 
 import (
+	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -101,17 +102,18 @@ func (t LV) DevPath() string {
 	return fmt.Sprintf("/dev/%s/%s", t.VGName, t.LVName)
 }
 
-func (t *LV) Activate() error {
-	return t.change([]string{"-ay"})
+func (t *LV) Activate(ctx context.Context) error {
+	return t.change(ctx, []string{"-ay"})
 }
 
-func (t *LV) Deactivate() error {
-	return t.change([]string{"-an"})
+func (t *LV) Deactivate(ctx context.Context) error {
+	return t.change(ctx, []string{"-an"})
 }
 
-func (t *LV) change(args []string) error {
+func (t *LV) change(ctx context.Context, args []string) error {
 	fqn := t.FQN()
 	cmd := command.New(
+		command.WithContext(ctx),
 		command.WithName("lvchange"),
 		command.WithArgs(append(args, fqn)),
 		command.WithLogger(t.Log()),
@@ -131,10 +133,11 @@ func (t *LV) change(args []string) error {
 	return nil
 }
 
-func (t *LV) Show() (*LVInfo, error) {
+func (t *LV) Show(ctx context.Context) (*LVInfo, error) {
 	data := ShowData{}
 	fqn := t.FQN()
 	cmd := command.New(
+		command.WithContext(ctx),
 		command.WithName("lvs"),
 		command.WithVarArgs("--reportformat", "json", fqn),
 		command.WithLogger(t.Log()),
@@ -158,8 +161,8 @@ func (t *LV) Show() (*LVInfo, error) {
 	return nil, fmt.Errorf("%w: %s", ErrExist, fqn)
 }
 
-func (t *LV) Attrs() (LVAttrs, error) {
-	lvInfo, err := t.Show()
+func (t *LV) Attrs(ctx context.Context) (LVAttrs, error) {
+	lvInfo, err := t.Show(ctx)
 	switch {
 	case errors.Is(err, ErrExist):
 		return "", nil
@@ -177,8 +180,8 @@ func (t LVAttrs) Attr(index LVAttrIndex) LVAttr {
 	return LVAttr(t[index])
 }
 
-func (t *LV) Exists() (bool, error) {
-	_, err := t.Show()
+func (t *LV) Exists(ctx context.Context) (bool, error) {
+	_, err := t.Show(ctx)
 	switch {
 	case errors.Is(err, ErrExist):
 		return false, nil
@@ -189,19 +192,20 @@ func (t *LV) Exists() (bool, error) {
 	}
 }
 
-func (t *LV) IsActive() (bool, error) {
-	if attrs, err := t.Attrs(); err != nil {
+func (t *LV) IsActive(ctx context.Context) (bool, error) {
+	if attrs, err := t.Attrs(ctx); err != nil {
 		return false, err
 	} else {
 		return attrs.Attr(LVAttrIndexState) == LVAttrStateActive, nil
 	}
 }
 
-func (t *LV) Devices() (device.L, error) {
+func (t *LV) Devices(ctx context.Context) (device.L, error) {
 	l := make(device.L, 0)
 	data := ShowData{}
 	fqn := t.FQN()
 	cmd := command.New(
+		command.WithContext(ctx),
 		command.WithName("lvs"),
 		command.WithVarArgs("-o", "devices,metadata_devices", "--reportformat", "json", fqn),
 		command.WithLogger(t.Log()),
@@ -245,7 +249,7 @@ func (t *LV) Devices() (device.L, error) {
 	return l, nil
 }
 
-func (t *LV) Create(size string, args []string) error {
+func (t *LV) Create(ctx context.Context, size string, args []string) error {
 	if strings.Contains(size, "%") {
 		args = append(args, "-l", size)
 	} else if i, err := sizeconv.FromSize(size); err == nil {
@@ -256,6 +260,7 @@ func (t *LV) Create(size string, args []string) error {
 		args = append(args, "-L", size)
 	}
 	cmd := command.New(
+		command.WithContext(ctx),
 		command.WithName("lvcreate"),
 		command.WithArgs(append(args, "--yes", "-n", t.LVName, t.VGName)),
 		command.WithLogger(t.Log()),
@@ -270,19 +275,20 @@ func (t *LV) Create(size string, args []string) error {
 	return nil
 }
 
-func (t *LV) Wipe() error {
+func (t *LV) Wipe(ctx context.Context) error {
 	path := t.DevPath()
 	if !file.Exists(path) {
 		t.Log().Infof("skip wipe: %s does not exist", path)
 		return nil
 	}
 	dev := device.New(path, device.WithLogger(t.Log()))
-	return dev.Wipe()
+	return dev.Wipe(ctx)
 }
 
-func (t *LV) Remove(args []string) error {
+func (t *LV) Remove(ctx context.Context, args []string) error {
 	bdev := t.DevPath()
 	cmd := command.New(
+		command.WithContext(ctx),
 		command.WithName("lvremove"),
 		command.WithArgs(append(args, bdev)),
 		command.WithLogger(t.Log()),

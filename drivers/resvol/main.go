@@ -254,9 +254,9 @@ func (t *T) installFlag() error {
 	return nil
 }
 
-func (t *T) removeHolders() error {
-	for _, dev := range t.ExposedDevices() {
-		if err := dev.RemoveHolders(); err != nil {
+func (t *T) removeHolders(ctx context.Context) error {
+	for _, dev := range t.ExposedDevices(ctx) {
+		if err := dev.RemoveHolders(ctx); err != nil {
 			return err
 		}
 	}
@@ -358,7 +358,7 @@ func (t *T) Volume() (object.Vol, error) {
 	return object.NewVol(p, object.WithLogger(logger))
 }
 
-func (t *T) createVolume(volume object.Vol) (object.Vol, error) {
+func (t *T) createVolume(ctx context.Context, volume object.Vol) (object.Vol, error) {
 	if err := t.ValidateNodesAndName(); err != nil {
 		return nil, err
 	}
@@ -368,12 +368,12 @@ func (t *T) createVolume(volume object.Vol) (object.Vol, error) {
 		return nil, err
 	}
 	defer func() { _ = lock.UnLock() }()
-	return t.lockedCreateVolume(volume)
+	return t.lockedCreateVolume(ctx, volume)
 }
 
-func (t *T) lockedCreateVolume(volume object.Vol) (object.Vol, error) {
+func (t *T) lockedCreateVolume(ctx context.Context, volume object.Vol) (object.Vol, error) {
 	volume.SetVolatile(false)
-	err := t.configureVolume(volume, true)
+	err := t.configureVolume(ctx, volume, true)
 	if err != nil {
 		return nil, err
 	}
@@ -418,7 +418,7 @@ func (t *T) volEnv() []string {
 	return []string{}
 }
 
-func (t *T) configureVolume(v object.Vol, withUsage bool) error {
+func (t *T) configureVolume(ctx context.Context, v object.Vol, withUsage bool) error {
 	l, err := t.poolLookup(withUsage)
 	if err != nil {
 		return err
@@ -428,7 +428,7 @@ func (t *T) configureVolume(v object.Vol, withUsage bool) error {
 	if err != nil {
 		return err
 	}
-	return l.ConfigureVolume(v, obj)
+	return l.ConfigureVolume(ctx, v, obj)
 }
 
 // Label implements Label from resource.Driver interface,
@@ -486,7 +486,7 @@ func (t *T) ProvisionAsLeader(ctx context.Context) error {
 		return err
 	}
 	if !volume.Path().Exists() {
-		if volume, err = t.createVolume(volume); err != nil {
+		if volume, err = t.createVolume(ctx, volume); err != nil {
 			return err
 		}
 		// the volume resources cache is now wrong. Allocate a new one.
@@ -525,7 +525,7 @@ func (t *T) UnprovisionAsLeader(ctx context.Context) error {
 	return nil
 }
 
-func (t *T) Provisioned() (provisioned.T, error) {
+func (t *T) Provisioned(ctx context.Context) (provisioned.T, error) {
 	volume, err := t.Volume()
 	if err != nil {
 		return provisioned.False, err
@@ -542,28 +542,28 @@ func (t *T) Head() string {
 	return volume.Head()
 }
 
-func (t *T) exposedDevice() *device.T {
+func (t *T) exposedDevice(ctx context.Context) *device.T {
 	volume, err := t.Volume()
 	if err != nil {
 		return nil
 	}
-	return volume.ExposedDevice()
+	return volume.ExposedDevice(ctx)
 }
 
-func (t *T) ExposedDevices() device.L {
+func (t *T) ExposedDevices(ctx context.Context) device.L {
 	volume, err := t.Volume()
 	if err != nil {
 		return nil
 	}
-	return volume.ExposedDevices()
+	return volume.ExposedDevices(ctx)
 }
 
-func (t *T) SubDevices() device.L {
+func (t *T) SubDevices(ctx context.Context) device.L {
 	volume, err := t.Volume()
 	if err != nil {
 		return nil
 	}
-	return volume.SubDevices()
+	return volume.SubDevices(ctx)
 }
 
 // Configure installs a resource backpointer in the DataStoreInstall

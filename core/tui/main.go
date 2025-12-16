@@ -242,11 +242,11 @@ func (t *App) updateHead() {
 	}
 	title := box.GetTitle()
 	t.head.SetCell(0, 0, tview.NewTableCell(conn()).SetBackgroundColor(colorHead3))
-	t.head.SetCell(0, 1, tview.NewTableCell("").SetBackgroundColor(colorHead).SetTextColor(colorHead3))
+	t.head.SetCell(0, 1, tview.NewTableCell("◤").SetBackgroundColor(colorHead).SetTextColor(colorHead3))
 	t.head.SetCell(0, 2, tview.NewTableCell(t.Frame.Current.Cluster.Config.Name).SetBackgroundColor(colorHead))
-	t.head.SetCell(0, 3, tview.NewTableCell("").SetBackgroundColor(colorHead2).SetTextColor(colorHead))
+	t.head.SetCell(0, 3, tview.NewTableCell("◤").SetBackgroundColor(colorHead2).SetTextColor(colorHead))
 	t.head.SetCell(0, 4, tview.NewTableCell(title).SetBackgroundColor(colorHead2))
-	t.head.SetCell(0, 5, tview.NewTableCell("").SetTextColor(colorHead2))
+	t.head.SetCell(0, 5, tview.NewTableCell("◤").SetTextColor(colorHead2))
 }
 
 func (t viewId) String() string {

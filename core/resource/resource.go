@@ -62,7 +62,7 @@ type (
 
 	// Driver exposes what can be done with a resource
 	Driver interface {
-		Provisioned() (provisioned.T, error)
+		Provisioned(context.Context) (provisioned.T, error)
 		Provision(context.Context) error
 		Unprovision(context.Context) error
 
@@ -161,7 +161,7 @@ type (
 	// to handle SCSI persistent reservation on a list of devices.
 	devReservabler interface {
 		// ReservableDevices must be implement by every driver that wants SCSI PR.
-		ReservableDevices() device.L
+		ReservableDevices(context.Context) device.L
 
 		// IsSCSIPersistentReservationPreemptAbortDisabled is exposing the resource no_preempt_abort keyword value.
 		IsSCSIPersistentReservationPreemptAbortDisabled() bool
@@ -174,7 +174,7 @@ type (
 	}
 
 	devImporter interface {
-		ImportDevices() error
+		ImportDevices(context.Context) error
 	}
 
 	SCSIPersistentReservation struct {
@@ -1171,7 +1171,7 @@ func newSCSIPersistentRerservationHandle(ctx context.Context, r Driver) *scsi.Pe
 	}
 	hdl := scsi.PersistentReservationHandle{
 		Key:            o.PersistentReservationKey(),
-		Devices:        o.ReservableDevices(),
+		Devices:        o.ReservableDevices(ctx),
 		NoPreemptAbort: o.IsSCSIPersistentReservationPreemptAbortDisabled(),
 		Force:          actioncontext.IsForce(ctx) || env.HasDaemonMonitorOrigin(),
 		Log:            r.Log(),
@@ -1191,18 +1191,18 @@ func SCSIPersistentReservationStop(ctx context.Context, r Driver) error {
 // ImportDevices execute the Driver ImportDevices() function if defined.
 // Some drivers need to import devices before they can list the
 // reservable devices to register. So use this in the start codepath.
-func ImportDevices(r Driver) error {
+func ImportDevices(ctx context.Context, r Driver) error {
 	var i any = r
 	o, ok := i.(devImporter)
 	if !ok {
 		r.Log().Tracef("resource does not implement ImportDevices()")
 		return nil
 	}
-	return o.ImportDevices()
+	return o.ImportDevices(ctx)
 }
 
 func SCSIPersistentReservationStart(ctx context.Context, r Driver) error {
-	if err := ImportDevices(r); err != nil {
+	if err := ImportDevices(ctx, r); err != nil {
 		return err
 	}
 
@@ -1233,9 +1233,9 @@ func GetStatus(ctx context.Context, r Driver) Status {
 		Subset:        r.RSubset(),
 		Tags:          r.TagSet(),
 		Log:           r.StatusLog().Entries(),
-		IsProvisioned: getProvisionStatus(r),
+		IsProvisioned: getProvisionStatus(ctx, r),
 		Info:          getStatusInfo(ctx, r),
-		Files:         getFiles(r),
+		Files:         getFiles(ctx, r),
 
 		IsStopped:   r.IsStopped(),
 		IsMonitored: r.IsMonitored(),
@@ -1489,7 +1489,7 @@ func createStoppedIfHasResourceSelector(ctx context.Context, r Driver) error {
 	return file.Close()
 }
 
-func getFiles(t Driver) Files {
+func getFiles(ctx context.Context, t Driver) Files {
 	i, ok := t.(toSyncer)
 	if !ok {
 		return nil
@@ -1497,7 +1497,7 @@ func getFiles(t Driver) Files {
 	_, isIngester := t.(ingester)
 
 	files := make(Files, 0)
-	for _, name := range i.ToSync() {
+	for _, name := range i.ToSync(ctx) {
 		mtime := file.ModTime(name)
 		checksum, _ := file.MD5(name)
 		file := File{

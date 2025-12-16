@@ -1,6 +1,8 @@
 package omcmd
 
 import (
+	"context"
+
 	"github.com/opensvc/om3/v3/core/nodeaction"
 	"github.com/opensvc/om3/v3/core/object"
 )
@@ -21,7 +23,8 @@ func (t *CmdNodeChecks) Run() error {
 			if err != nil {
 				return nil, err
 			}
-			return n.Checks()
+			ctx := context.Background()
+			return n.Checks(ctx)
 		}),
 	).Do()
 }

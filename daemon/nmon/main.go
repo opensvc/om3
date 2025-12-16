@@ -833,12 +833,17 @@ func (t *Manager) loadPools() {
 		return
 	}
 	renewed := make(map[string]any)
-	for _, p := range n.Pools() {
+	renew := func(p pool.Pooler) {
+		ctx, cancel := context.WithTimeout(t.ctx, time.Minute)
+		defer cancel()
 		poolName := p.Name()
-		data := pool.GetStatus(p, true)
+		data := pool.GetStatus(ctx, p, true)
 		renewed[poolName] = nil
 		pool.StatusData.Set(poolName, t.localhost, data.DeepCopy())
 		t.publisher.Pub(&msgbus.NodePoolStatusUpdated{Node: t.localhost, Name: poolName, Value: data}, t.labelLocalhost)
+	}
+	for _, p := range n.Pools() {
+		renew(p)
 	}
 	for _, e := range pool.StatusData.GetByNode(t.localhost) {
 		if _, ok := renewed[e.Name]; !ok {

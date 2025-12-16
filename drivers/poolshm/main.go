@@ -1,6 +1,7 @@
 package poolshm
 
 import (
+	"context"
 	"fmt"
 	"path/filepath"
 	"strings"
@@ -44,8 +45,8 @@ func (t T) Capabilities() []string {
 	return []string{"rox", "rwx", "roo", "rwo", "blk"}
 }
 
-func (t T) Usage() (pool.Usage, error) {
-	entries, err := df.MountUsage(t.path())
+func (t T) Usage(ctx context.Context) (pool.Usage, error) {
+	entries, err := df.MountUsage(ctx, t.path())
 	if err != nil {
 		return pool.Usage{}, err
 	}

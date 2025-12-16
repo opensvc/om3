@@ -81,7 +81,7 @@ type (
 	}
 
 	exposedDevicer interface {
-		ExposedDevices() device.L
+		ExposedDevices(context.Context) device.L
 	}
 	header interface {
 		Head() string
@@ -93,8 +93,9 @@ type (
 
 var _ resource.Encaper = (*T)(nil)
 
-func isPartitionsCapable() bool {
+func isPartitionsCapable(ctx context.Context) bool {
 	cmd := command.New(
+		command.WithContext(ctx),
 		command.WithName("virsh"),
 		command.WithVarArgs("--version"),
 		command.WithBufferedStdout(),
@@ -118,8 +119,9 @@ func isPartitionsCapable() bool {
 	return false
 }
 
-func isHVMCapable() bool {
+func isHVMCapable(ctx context.Context) bool {
 	cmd := command.New(
+		command.WithContext(ctx),
 		command.WithName("virsh"),
 		command.WithVarArgs("capabilities"),
 		command.WithBufferedStdout(),
@@ -168,7 +170,7 @@ func (t *T) configFiles() []string {
 	return files
 }
 
-func (t *T) ToSync() []string {
+func (t *T) ToSync(ctx context.Context) []string {
 	return t.configFiles()
 }
 
@@ -184,8 +186,8 @@ func (t *T) hasEncap() bool {
 	return slices.Contains(t.EncapNodes, t.GetHostname())
 }
 
-func (t *T) isOperational() (bool, error) {
-	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+func (t *T) isOperational(ctx context.Context) (bool, error) {
+	ctx, cancel := context.WithTimeout(ctx, 5*time.Second)
 	defer cancel()
 	cmd, err := t.EncapCmd(ctx, []string{"pwd"}, []string{}, nil)
 	if err != nil {
@@ -205,8 +207,9 @@ func (t *T) isPinging() (bool, error) {
 	return ping.Ping(ip, timeout)
 }
 
-func (t *T) define() error {
+func (t *T) define(ctx context.Context) error {
 	cmd := command.New(
+		command.WithContext(ctx),
 		command.WithName("virsh"),
 		command.WithVarArgs("define", t.configFile()),
 		command.WithLogger(t.Log()),
@@ -217,7 +220,7 @@ func (t *T) define() error {
 	return cmd.Run()
 }
 
-func (t *T) undefine() error {
+func (t *T) undefine(ctx context.Context) error {
 	args := []string{"undefine", t.Name}
 	if hasEFI, err := t.HasEFI(); err != nil {
 		return err
@@ -225,6 +228,7 @@ func (t *T) undefine() error {
 		args = append(args, "--nvram")
 	}
 	cmd := command.New(
+		command.WithContext(ctx),
 		command.WithName("virsh"),
 		command.WithArgs(args),
 		command.WithLogger(t.Log()),
@@ -235,12 +239,13 @@ func (t *T) undefine() error {
 	return cmd.Run()
 }
 
-func (t *T) migrate(to string) error {
+func (t *T) migrate(ctx context.Context, to string) error {
 	toUri := fmt.Sprintf("qemu+ssh://%s/system", to)
 	if sshKeyFile := t.GetSSHKeyFile(); sshKeyFile != "" {
 		toUri += fmt.Sprintf("?keyfile=%s", sshKeyFile)
 	}
 	cmd := command.New(
+		command.WithContext(ctx),
 		command.WithName("virsh"),
 		command.WithVarArgs("migrate", "--live", "--persistent", t.Name, toUri),
 		command.WithLogger(t.Log()),
@@ -252,8 +257,9 @@ func (t *T) migrate(to string) error {
 	return cmd.Run()
 }
 
-func (t *T) start() error {
+func (t *T) start(ctx context.Context) error {
 	cmd := command.New(
+		command.WithContext(ctx),
 		command.WithName("virsh"),
 		command.WithVarArgs("start", t.Name),
 		command.WithLogger(t.Log()),
@@ -265,8 +271,9 @@ func (t *T) start() error {
 	return cmd.Run()
 }
 
-func (t *T) stop() error {
+func (t *T) stop(ctx context.Context) error {
 	cmd := command.New(
+		command.WithContext(ctx),
 		command.WithName("virsh"),
 		command.WithVarArgs("shutdown", t.Name),
 		command.WithLogger(t.Log()),
@@ -278,8 +285,9 @@ func (t *T) stop() error {
 	return cmd.Run()
 }
 
-func (t *T) destroy() error {
+func (t *T) destroy(ctx context.Context) error {
 	cmd := command.New(
+		command.WithContext(ctx),
 		command.WithName("virsh"),
 		command.WithVarArgs("destroy", t.Name),
 		command.WithLogger(t.Log()),
@@ -298,10 +306,10 @@ func (t *T) containerStart(ctx context.Context) error {
 	if err := t.doPartitions(); err != nil {
 		return err
 	}
-	if err := t.define(); err != nil {
+	if err := t.define(ctx); err != nil {
 		return err
 	}
-	if err := t.start(); err != nil {
+	if err := t.start(ctx); err != nil {
 		return err
 	}
 	return nil
@@ -324,7 +332,7 @@ func (t *T) Start(ctx context.Context) error {
 	if err := t.ApplyPGChain(ctx); err != nil {
 		return err
 	}
-	if v, err := t.isUp(); err != nil {
+	if v, err := t.isUp(ctx); err != nil {
 		return err
 	} else if v {
 		t.Log().Infof("container %s is already up", t.Name)
@@ -368,8 +376,8 @@ func (t *T) Move(ctx context.Context, to string) (err error) {
 		}
 	}()
 
-	for _, dev := range t.SubDevices() {
-		r, err := t.resourceHandlingDevice(dev)
+	for _, dev := range t.SubDevices(ctx) {
+		r, err := t.resourceHandlingDevice(ctx, dev)
 		if err != nil {
 			return err
 		}
@@ -396,7 +404,7 @@ func (t *T) Move(ctx context.Context, to string) (err error) {
 	}
 
 	t.Log().Infof("migrating container %s to %s", t.Name, to)
-	if err := t.migrate(to); err != nil {
+	if err := t.migrate(ctx, to); err != nil {
 		t.Log().Warnf("migrate container %s to %s: %s", t.Name, to, err)
 		return fmt.Errorf("migrate container: %w", err)
 	}
@@ -413,7 +421,7 @@ func (t *T) Move(ctx context.Context, to string) (err error) {
 }
 
 func (t *T) Stop(ctx context.Context) error {
-	if v, err := t.isDown(); err != nil {
+	if v, err := t.isDown(ctx); err != nil {
 		return err
 	} else if v {
 		t.Log().Infof("container %s is already down", t.Name)
@@ -431,7 +439,7 @@ func (t *T) Stop(ctx context.Context) error {
 func (t *T) waitForDown(ctx context.Context, timeout, interval time.Duration) bool {
 	t.Log().Attr("timeout", timeout).Infof("wait for %s shutdown (timeout %s)", t.Name, timeout)
 	return waitfor.TrueCtx(ctx, timeout, interval, func() bool {
-		v, err := t.isDown()
+		v, err := t.isDown(ctx)
 		if err != nil {
 			return true
 		}
@@ -442,7 +450,7 @@ func (t *T) waitForDown(ctx context.Context, timeout, interval time.Duration) bo
 func (t *T) waitForUp(ctx context.Context, timeout, interval time.Duration) bool {
 	t.Log().Attr("timeout", timeout).Infof("wait for %s up (timeout %s)", t.Name, timeout)
 	return waitfor.TrueCtx(ctx, timeout, interval, func() bool {
-		v, err := t.isUp()
+		v, err := t.isUp(ctx)
 		if err != nil {
 			t.Log().Errorf("abort waiting for %s up: %s", t.Name, err)
 			return true
@@ -469,7 +477,7 @@ func (t *T) waitForPing(ctx context.Context, timeout, interval time.Duration) bo
 func (t *T) waitForOperational(ctx context.Context, timeout, interval time.Duration) bool {
 	t.Log().Attr("timeout", timeout).Infof("wait for %s operational (timeout %s)", t.Name, timeout)
 	return waitfor.TrueCtx(ctx, timeout, interval, func() bool {
-		v, err := t.isOperational()
+		v, err := t.isOperational(ctx)
 		if err != nil {
 			t.Log().Errorf("abort waiting for %s operational: %s", t.Name, err)
 			return true
@@ -486,23 +494,23 @@ func (t *T) waitForOperational(ctx context.Context, timeout, interval time.Durat
 }
 
 func (t *T) containerStop(ctx context.Context) error {
-	state, err := t.domState()
+	state, err := t.domState(ctx)
 	if err != nil {
 		return err
 	}
 	switch state {
 	case DomStateRunning:
-		if err := t.stop(); err != nil {
+		if err := t.stop(ctx); err != nil {
 			return err
 		}
 		if !t.waitForDown(ctx, *t.StopTimeout, 2*time.Second) {
 			t.Log().Warnf("waited too long for shutdown")
-			if err := t.destroy(); err != nil {
+			if err := t.destroy(ctx); err != nil {
 				return err
 			}
 		}
 	case DomStateBlocked, DomStatePaused, DomStateCrashed:
-		if err := t.destroy(); err != nil {
+		if err := t.destroy(ctx); err != nil {
 			return err
 		}
 	default:
@@ -512,8 +520,8 @@ func (t *T) containerStop(ctx context.Context) error {
 	return nil
 }
 
-func (t *T) isUp() (bool, error) {
-	state, err := t.domState()
+func (t *T) isUp(ctx context.Context) (bool, error) {
+	state, err := t.domState(ctx)
 	if err != nil {
 		return false, err
 	}
@@ -527,8 +535,8 @@ func isUpFromState(state string) bool {
 	return false
 }
 
-func (t *T) isDown() (bool, error) {
-	state, err := t.domState()
+func (t *T) isDown(ctx context.Context) (bool, error) {
+	state, err := t.domState(ctx)
 	if err != nil {
 		return false, err
 	}
@@ -543,8 +551,9 @@ func isDownFromState(state string) bool {
 	return false
 }
 
-func (t *T) domState() (string, error) {
+func (t *T) domState(ctx context.Context) (string, error) {
 	cmd := command.New(
+		command.WithContext(ctx),
 		command.WithName("virsh"),
 		command.WithVarArgs("dominfo", t.Name),
 		command.WithBufferedStdout(),
@@ -636,7 +645,7 @@ func (t *T) HasEFI() (bool, error) {
 	return false, nil
 }
 
-func (t *T) SubDevices() device.L {
+func (t *T) SubDevices(ctx context.Context) device.L {
 	l := make(device.L, 0)
 	cf := t.configFile()
 	f, err := os.Open(cf)
@@ -762,7 +771,7 @@ func (t *T) Status(ctx context.Context) status.T {
 		t.StatusLog().Info("this node is not kvm capable")
 		return status.Undef
 	}
-	state, err := t.domState()
+	state, err := t.domState(ctx)
 	if err != nil {
 		t.StatusLog().Error("%s", err)
 		return status.Undef
@@ -784,8 +793,8 @@ func (t *T) Label(_ context.Context) string {
 	return t.Name
 }
 
-func (t *T) provisioned() (bool, error) {
-	if state, err := t.domState(); err != nil {
+func (t *T) provisioned(ctx context.Context) (bool, error) {
+	if state, err := t.domState(ctx); err != nil {
 		return false, err
 	} else if state == DomStateNone {
 		return false, nil
@@ -795,7 +804,7 @@ func (t *T) provisioned() (bool, error) {
 }
 
 func (t *T) UnprovisionAsFollower(ctx context.Context) error {
-	isProvisioned, err := t.provisioned()
+	isProvisioned, err := t.provisioned(ctx)
 	if err != nil {
 		return err
 	}
@@ -804,7 +813,7 @@ func (t *T) UnprovisionAsFollower(ctx context.Context) error {
 		return nil
 	}
 	if t.hasConfigFile() {
-		if err := t.undefine(); err != nil {
+		if err := t.undefine(ctx); err != nil {
 			return err
 		}
 	}
@@ -819,7 +828,7 @@ func (t *T) UnprovisionAsLeader(ctx context.Context) error {
 }
 
 func (t *T) ProvisionAsLeader(ctx context.Context) error {
-	isProvisioned, err := t.provisioned()
+	isProvisioned, err := t.provisioned(ctx)
 	if err != nil {
 		return err
 	}
@@ -831,6 +840,7 @@ func (t *T) ProvisionAsLeader(ctx context.Context) error {
 		return fmt.Errorf("the 'virtinst' parameter must be set")
 	}
 	cmd := command.New(
+		command.WithContext(ctx),
 		command.WithName(t.VirtInst[0]),
 		command.WithArgs(t.VirtInst[1:]),
 		command.WithLogger(t.Log()),
@@ -846,7 +856,7 @@ func (t *T) Unprovision(ctx context.Context) error {
 	return nil
 }
 
-func (t *T) Provisioned() (provisioned.T, error) {
+func (t *T) Provisioned(ctx context.Context) (provisioned.T, error) {
 	if t.hasConfigFile() {
 		return provisioned.True, nil
 	}
@@ -872,7 +882,7 @@ func (t *T) rcmd() ([]string, error) {
 	return a.Get(), nil
 }
 
-func (t *T) Enter() error {
+func (t *T) Enter(ctx context.Context) error {
 	rcmd, err := t.rcmd()
 	if err != nil {
 		return err
@@ -880,8 +890,9 @@ func (t *T) Enter() error {
 	return t.enterViaRCmd(rcmd)
 }
 
-func (t *T) execViaRCmd(args []string) error {
+func (t *T) execViaRCmd(ctx context.Context, args []string) error {
 	cmd := command.New(
+		command.WithContext(ctx),
 		command.WithName(args[0]),
 		command.WithArgs(args[1:]),
 		command.WithLogger(t.Log()),
@@ -913,7 +924,7 @@ func (t *T) obj() (interface{}, error) {
 	return object.New(t.Path, object.WithVolatile(true))
 }
 
-func (t *T) resourceHandlingDevice(p device.T) (resource.Driver, error) {
+func (t *T) resourceHandlingDevice(ctx context.Context, p device.T) (resource.Driver, error) {
 	obj, err := t.obj()
 	if err != nil {
 		return nil, err
@@ -927,12 +938,12 @@ func (t *T) resourceHandlingDevice(p device.T) (resource.Driver, error) {
 		if !ok {
 			continue
 		}
-		if v, err := r.Provisioned(); err != nil {
+		if v, err := r.Provisioned(ctx); err != nil {
 			return nil, err
 		} else if v == provisioned.False {
 			continue
 		}
-		if v, err := h.ExposedDevices().Contains(p); err != nil {
+		if v, err := h.ExposedDevices(ctx).Contains(p); err != nil {
 			return nil, err
 		} else if v {
 			return r, nil
@@ -941,7 +952,7 @@ func (t *T) resourceHandlingDevice(p device.T) (resource.Driver, error) {
 	return nil, nil
 }
 
-func (t *T) resourceHandlingFile(p string) (resource.Driver, error) {
+func (t *T) resourceHandlingFile(ctx context.Context, p string) (resource.Driver, error) {
 	obj, err := t.obj()
 	if err != nil {
 		return nil, err
@@ -955,7 +966,7 @@ func (t *T) resourceHandlingFile(p string) (resource.Driver, error) {
 		if !ok {
 			continue
 		}
-		if v, err := r.Provisioned(); err != nil {
+		if v, err := r.Provisioned(ctx); err != nil {
 			return nil, err
 		} else if v == provisioned.False {
 			continue
@@ -979,7 +990,7 @@ func (t *T) cgroupDir() string {
 }
 
 func (t *T) Abort(ctx context.Context) bool {
-	if v, err := t.isUp(); err != nil {
+	if v, err := t.isUp(ctx); err != nil {
 		t.Log().Warnf("abort? dom state test failed: %s", err)
 		return false
 	} else if v {

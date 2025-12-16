@@ -97,7 +97,7 @@ func (t *T) Abort(ctx context.Context) bool {
 	return t.abortPing(hn) || t.abortPeerUp(hn)
 }
 
-func (t *T) Enter() error {
+func (t *T) Enter(ctx context.Context) error {
 	if rcmd, err := t.rcmd(); err == nil {
 		return t.enterViaRCmd(rcmd)
 	}
@@ -211,7 +211,7 @@ func (t *T) Stop(ctx context.Context) error {
 	return t.containerStop(ctx)
 }
 
-func (t *T) SubDevices() device.L {
+func (t *T) SubDevices(ctx context.Context) device.L {
 	l := make(device.L, 0)
 	f, err := os.Open(t.configFile())
 	if err != nil {
@@ -251,7 +251,7 @@ func (t *T) Presync() error {
 	return err
 }
 
-func (t *T) ToSync() []string {
+func (t *T) ToSync(ctx context.Context) []string {
 	if t.Topology == topology.Failover && !t.IsShared() {
 		return t.configFiles()
 	}
@@ -606,7 +606,7 @@ func (t *T) obj() (interface{}, error) {
 	return object.New(t.Path, object.WithVolatile(true))
 }
 
-func (t *T) resourceHandlingFile(p string) (resource.Driver, error) {
+func (t *T) resourceHandlingFile(ctx context.Context, p string) (resource.Driver, error) {
 	obj, err := t.obj()
 	if err != nil {
 		return nil, err
@@ -620,7 +620,7 @@ func (t *T) resourceHandlingFile(p string) (resource.Driver, error) {
 		if !ok {
 			continue
 		}
-		if v, err := r.Provisioned(); err != nil {
+		if v, err := r.Provisioned(ctx); err != nil {
 			continue
 		} else if v == provisioned.False {
 			continue
