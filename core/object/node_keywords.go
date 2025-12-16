@@ -782,14 +782,14 @@ var nodeCommonKeywords = []keywords.Keyword{
 		Types:   []string{"relay"},
 	},
 	{
-		Default: "/opt/cni/bin",
+		Default: "/usr/lib/cni",
 		Example: "/var/lib/opensvc/cni/bin",
 		Option:  "plugins",
 		Section: "cni",
 		Text:    keywords.NewText(fs, "text/kw/node/cni.plugins"),
 	},
 	{
-		Default: "/opt/cni/net.d",
+		Default: "/var/lib/opensvc/cni/net.d",
 		Example: "/var/lib/opensvc/cni/net.d",
 		Option:  "config",
 		Section: "cni",
