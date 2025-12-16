@@ -75,20 +75,17 @@ func (t *Logger) Warnf(format string, a ...any) {
 }
 
 func (t *Logger) Levelf(level zerolog.Level, format string, a ...any) {
-	if len(a) > 0 {
-		format = t.Msgf(format, a...)
-	}
 	switch level {
 	case zerolog.TraceLevel:
-		t.logger.Trace().Str(levelKey, levelTrace).Msg(format)
+		t.logger.Trace().Str(levelKey, levelTrace).Msg(t.Msgf(format, a...))
 	case zerolog.DebugLevel:
-		t.logger.Debug().Str(levelKey, levelDebug).Msg(format)
+		t.logger.Debug().Str(levelKey, levelDebug).Msg(t.Msgf(format, a...))
 	case zerolog.InfoLevel:
-		t.logger.Info().Str(levelKey, levelInfo).Msg(format)
+		t.logger.Info().Str(levelKey, levelInfo).Msg(t.Msgf(format, a...))
 	case zerolog.WarnLevel:
-		t.logger.Warn().Str(levelKey, levelWarn).Msg(format)
+		t.logger.Warn().Str(levelKey, levelWarn).Msg(t.Msgf(format, a...))
 	case zerolog.ErrorLevel:
-		t.logger.Error().Str(levelKey, levelError).Msg(format)
+		t.logger.Error().Str(levelKey, levelError).Msg(t.Msgf(format, a...))
 	}
 }
 
