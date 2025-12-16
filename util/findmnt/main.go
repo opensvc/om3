@@ -38,8 +38,8 @@ var (
 )
 
 // Has returns true when {dev} is mounted on {mnt} using the findmnt command
-func Has(dev string, mnt string) (bool, error) {
-	l, err := List(dev, mnt)
+func Has(ctx context.Context, dev string, mnt string) (bool, error) {
+	l, err := List(ctx, dev, mnt)
 	if err != nil {
 		return false, err
 	}
@@ -47,8 +47,8 @@ func Has(dev string, mnt string) (bool, error) {
 }
 
 // HasMntWithTypes returns true when a fs with type matching one of {fsTypes} is mounted on {mnt} using the findmnt command
-func HasMntWithTypes(fsTypes []string, mnt string) (bool, error) {
-	l, err := List("", mnt)
+func HasMntWithTypes(ctx context.Context, fsTypes []string, mnt string) (bool, error) {
+	l, err := List(ctx, "", mnt)
 	if err != nil {
 		return false, err
 	}
@@ -93,7 +93,7 @@ func newInfo() *info {
 //
 // So when dev is on nfs, We can't use findmnt -J -T {mnt} -S {dev}
 // Instead findmnt -J -S {dev} is used, then mnt is filtered within List function.
-func List(dev string, mnt string) (mounts []MountInfo, err error) {
+func List(ctx context.Context, dev string, mnt string) (mounts []MountInfo, err error) {
 	var (
 		devIsDir, devIsNfs bool
 	)
@@ -111,7 +111,7 @@ func List(dev string, mnt string) (mounts []MountInfo, err error) {
 	}
 
 	args := findMntArgs(dev, mnt, devIsDir, devIsNfs)
-	if mounts, err = findMnt(args); err != nil {
+	if mounts, err = findMnt(ctx, args); err != nil {
 		return
 	}
 
@@ -160,8 +160,8 @@ func findMntArgs(dev, mnt string, devIsDir, devIsNfs bool) []string {
 	return opts
 }
 
-func findMnt(opts []string) (mounts []MountInfo, err error) {
-	cmd := exec.Command("findmnt", opts...)
+func findMnt(ctx context.Context, opts []string) (mounts []MountInfo, err error) {
+	cmd := exec.CommandContext(ctx, "findmnt", opts...)
 	stdout, err := cmd.Output()
 	if err != nil {
 		return nil, nil

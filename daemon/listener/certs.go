@@ -61,7 +61,7 @@ func (t *T) stopCertFS(ctx context.Context) error {
 }
 
 func (t *T) mountCertFS(ctx context.Context) error {
-	if v, err := findmnt.Has("none", rawconfig.Paths.Certs); err != nil {
+	if v, err := findmnt.Has(ctx, "none", rawconfig.Paths.Certs); err != nil {
 		if err1, ok := err.(*exec.Error); ok {
 			if err1.Name == "findmnt" && err1.Err == exec.ErrNotFound {
 				// fallback when findmnt is not present

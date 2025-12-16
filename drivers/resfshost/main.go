@@ -384,9 +384,9 @@ func (t *T) isMounted(ctx context.Context) (bool, error) {
 		return findmnt.HasFromMount(t.devpath(ctx), t.mountPoint())
 	}
 	if t.Type == "tmpfs" {
-		return findmnt.HasMntWithTypes([]string{"tmpfs"}, t.mountPoint())
+		return findmnt.HasMntWithTypes(ctx, []string{"tmpfs"}, t.mountPoint())
 	}
-	return findmnt.Has(t.devpath(ctx), t.mountPoint())
+	return findmnt.Has(ctx, t.devpath(ctx), t.mountPoint())
 }
 
 func (t *T) ProvisionAsLeader(ctx context.Context) error {
