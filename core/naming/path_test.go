@@ -136,6 +136,36 @@ func TestPathsLen(t *testing.T) {
 	assert.Equal(t, 0, len(l))
 }
 
+func TestParsePathRel(t *testing.T) {
+	tests := []struct {
+		input  string
+		rel    string
+		expect string
+	}{
+		{
+			input:  "system/sec/ca",
+			rel:    "ns2",
+			expect: "system/sec/ca",
+		},
+		{
+			input:  "./sec/ca",
+			rel:    "ns2",
+			expect: "ns2/sec/ca",
+		},
+		{
+			input:  "sec/ca",
+			rel:    "ns2",
+			expect: "sec/ca",
+		},
+	}
+	for _, test := range tests {
+		t.Logf("input: '%s'", test.input)
+		actual, err := ParsePathRel(test.input, test.rel)
+		assert.NoError(t, err)
+		assert.Equal(t, test.expect, actual.String())
+	}
+}
+
 func TestParsePath(t *testing.T) {
 	tests := map[string]struct {
 		name      string

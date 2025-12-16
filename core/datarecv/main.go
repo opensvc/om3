@@ -587,7 +587,6 @@ func (t *DataRecv) getInstallMetadata(head string) ([]dirDefinition, []object.KV
 		}
 
 		var word string
-		var kind naming.Kind
 
 		word, line = pop(line)
 		item.ToPath = filepath.Join(head, word)
@@ -601,24 +600,21 @@ func (t *DataRecv) getInstallMetadata(head string) ([]dirDefinition, []object.KV
 		}
 
 		word, line = pop(line)
-		switch word {
-		case "sec":
-			kind = naming.KindSec
+		fromStore, err := naming.ParsePathRel(word, path.Namespace)
+		if err != nil {
+			return
+		}
+
+		switch fromStore.Kind {
+		case naming.KindSec:
 			item.AccessControl.Perm = &defaultSecPerm
-		case "cfg":
-			kind = naming.KindCfg
+		case naming.KindCfg:
 			item.AccessControl.Perm = &defaultCfgPerm
 		default:
 			return
 		}
 
-		name, line := pop(line)
-
-		item.FromStore = naming.Path{
-			Name:      name,
-			Namespace: path.Namespace,
-			Kind:      kind,
-		}
+		item.FromStore = fromStore
 
 		for {
 			word, line = pop(line)
@@ -626,13 +622,6 @@ func (t *DataRecv) getInstallMetadata(head string) ([]dirDefinition, []object.KV
 				break
 			}
 			switch word {
-			case "namespace":
-				word, line = pop(line)
-				item.FromStore = naming.Path{
-					Name:      name,
-					Namespace: word,
-					Kind:      kind,
-				}
 			case "key":
 				word, line = pop(line)
 				item.FromPattern = word
