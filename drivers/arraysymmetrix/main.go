@@ -9,7 +9,9 @@ import (
 	"errors"
 	"fmt"
 	"os"
+	"os/exec"
 	"path/filepath"
+	"regexp"
 	"strconv"
 	"strings"
 	"time"
@@ -764,6 +766,41 @@ func (t *Array) Run(args []string) error {
 	return parent.Execute()
 }
 
+func (t *Array) symcliVersion(ctx context.Context) (int, int, error) {
+	cmd := exec.CommandContext(ctx, t.symcli())
+	b, err := cmd.Output()
+	if err != nil {
+		return 0, 0, err
+	}
+	return t.parseSymcliVersion(b)
+}
+
+func (t *Array) parseSymcliVersion(b []byte) (major int, minor int, err error) {
+	pattern := regexp.MustCompile(`\(SYMCLI\)\sVersion V(\d+)\.(\d+)`)
+	m := pattern.FindStringSubmatch(string(b))
+
+	if len(m) == 3 {
+		majorStr := m[1]
+		minorStr := m[2]
+
+		major, err = strconv.Atoi(majorStr)
+		if err != nil {
+			return
+		}
+
+		minor, err = strconv.Atoi(minorStr)
+		if err != nil {
+			return
+		}
+
+		return
+	}
+	return
+}
+
+func (t *Array) symcli() string {
+	return filepath.Join(t.kwSymcliPath(), "symcli")
+}
 func (t *Array) symaccess() string {
 	return filepath.Join(t.kwSymcliPath(), "symaccess")
 }
@@ -2089,6 +2126,10 @@ func (t *Array) freeThinDev(ctx context.Context, sid, devId string) error {
 }
 
 func (t *Array) FreeThinDev(ctx context.Context, opt OptFreeThinDev) error {
+	if major, minor, err := t.symcliVersion(ctx); err == nil && major >= 9 && minor >= 1 {
+		t.Log().Infof("skip tdev free: version %d.%d >= 9.1", major, minor)
+		return nil
+	}
 	if opt.SID == "" {
 		opt.SID = t.kwSID()
 	}

@@ -118,4 +118,12 @@ func Test(t *testing.T) {
 		require.Nil(t, err)
 		require.Equal(t, data, []string{"0DCD9"})
 	})
+	t.Run("symcli", func(t *testing.T) {
+		b, err := os.ReadFile("./testdata/25-symcli")
+		require.Nil(t, err)
+		major, minor, err := arr.parseSymcliVersion(b)
+		require.Nil(t, err)
+		require.Equal(t, 10, major)
+		require.Equal(t, 1, minor)
+	})
 }
