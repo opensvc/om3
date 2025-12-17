@@ -74,6 +74,15 @@ var (
 	defaultDirPerm = os.FileMode(0700)
 )
 
+// pop returns "a", "b c d" from "a b c d".
+// This function is used in a loop to iterate all words of a line until pop returns "", "".
+func pop(words []string) (string, []string) {
+	if len(words) == 0 {
+		return "", words
+	}
+	return words[0], words[1:]
+}
+
 func Keywords(prefix string) []keywords.Keyword {
 	return []keywords.Keyword{
 		keywords.Keyword{
@@ -525,13 +534,6 @@ func (t *DataRecv) getInstallMetadata(head string) ([]dirDefinition, []object.KV
 		}
 		fileMode := os.FileMode(mode)
 		return &fileMode, nil
-	}
-
-	pop := func(words []string) (string, []string) {
-		if len(words) == 0 {
-			return "", words
-		}
-		return words[0], words[1:]
 	}
 
 	parseDir := func(line []string) {

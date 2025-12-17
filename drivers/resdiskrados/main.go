@@ -7,6 +7,7 @@ import (
 	"slices"
 
 	"github.com/opensvc/om3/v3/core/actionrollback"
+	"github.com/opensvc/om3/v3/core/datarecv"
 	"github.com/opensvc/om3/v3/core/provisioned"
 	"github.com/opensvc/om3/v3/core/resource"
 	"github.com/opensvc/om3/v3/core/status"
@@ -27,8 +28,10 @@ type (
 		ObjectFQDN string `json:"object_fqdn"`
 		Size       string `json:"size"`
 		Access     string `json:"access"`
+		Keyring    string `json:"keyring"`
 
-		featureDisabled []string
+		featureDisabled  []string
+		keyringArgsCache []string
 	}
 
 	RBDMap struct {
@@ -96,14 +99,6 @@ func (t *T) Start(ctx context.Context) error {
 	actionrollback.Register(ctx, func(ctx context.Context) error {
 		return t.unmapDevice(ctx)
 	})
-	/*
-		if err := t.lockDevice(ctx); err != nil {
-			return err
-		}
-		actionrollback.Register(ctx, func(ctx context.Context) error {
-			return t.unlockDevice(ctx)
-		})
-	*/
 	return nil
 }
 
@@ -114,10 +109,15 @@ func (t *T) mapDevice(ctx context.Context) error {
 		t.Log().Infof("%s is already mapped", t.Name)
 		return nil
 	}
+	args, err := t.keyringArgs()
+	if err != nil {
+		return err
+	}
+	args = append(args, "map", t.Name)
 	cmd := command.New(
 		command.WithContext(ctx),
 		command.WithName("rbd"),
-		command.WithVarArgs("map", t.Name),
+		command.WithArgs(args),
 		command.WithLogger(t.Log()),
 		command.WithCommandLogLevel(zerolog.InfoLevel),
 		command.WithStdoutLogLevel(zerolog.InfoLevel),
@@ -137,10 +137,15 @@ func (t *T) unmapDevice(ctx context.Context) error {
 		return err
 	}
 	udevadm.Settle()
+	args, err := t.keyringArgs()
+	if err != nil {
+		return err
+	}
+	args = append(args, "unmap", t.Name)
 	cmd := command.New(
 		command.WithContext(ctx),
 		command.WithName("rbd"),
-		command.WithVarArgs("unmap", t.Name),
+		command.WithArgs(args),
 		command.WithLogger(t.Log()),
 		command.WithCommandLogLevel(zerolog.InfoLevel),
 		command.WithStdoutLogLevel(zerolog.InfoLevel),
@@ -154,10 +159,15 @@ func (t *T) createDevice(ctx context.Context) error {
 	if err != nil {
 		return err
 	}
+	args, err := t.keyringArgs()
+	if err != nil {
+		return err
+	}
+	args = append(args, "create", "--size", fmt.Sprintf("%dB", bytes), t.Name)
 	cmd := command.New(
 		command.WithContext(ctx),
 		command.WithName("rbd"),
-		command.WithVarArgs("create", "--size", fmt.Sprintf("%dB", bytes), t.Name),
+		command.WithArgs(args),
 		command.WithLogger(t.Log()),
 		command.WithCommandLogLevel(zerolog.InfoLevel),
 		command.WithStdoutLogLevel(zerolog.InfoLevel),
@@ -171,10 +181,15 @@ func (t *T) createDevice(ctx context.Context) error {
 }
 
 func (t *T) removeDevice(ctx context.Context) error {
+	args, err := t.keyringArgs()
+	if err != nil {
+		return err
+	}
+	args = append(args, "remove", t.Name)
 	cmd := command.New(
 		command.WithContext(ctx),
 		command.WithName("rbd"),
-		command.WithVarArgs("remove", t.Name),
+		command.WithArgs(args),
 		command.WithLogger(t.Log()),
 		command.WithCommandLogLevel(zerolog.InfoLevel),
 		command.WithStdoutLogLevel(zerolog.InfoLevel),
@@ -190,7 +205,10 @@ func (t *T) lockDevice(ctx context.Context) error {
 		t.Log().Infof("%s is already locked", t.Name)
 		return nil
 	}
-	var args []string
+	args, err := t.keyringArgs()
+	if err != nil {
+		return err
+	}
 	switch t.Access {
 	case "rwx", "rox":
 		args = append(args, "lock", "--shared", t.sharedLockID())
@@ -216,7 +234,10 @@ func (t *T) unlockDevice(ctx context.Context) error {
 		t.Log().Infof("%s is already unlocked", t.Name)
 		return nil
 	}
-	var args []string
+	args, err := t.keyringArgs()
+	if err != nil {
+		return err
+	}
 	switch t.Access {
 	case "rwx", "rox":
 		args = append(args, "unlock", "--shared", t.sharedLockID())
@@ -243,10 +264,15 @@ func (t *T) Info(ctx context.Context) (resource.InfoKeys, error) {
 }
 
 func (t *T) deviceInfo(ctx context.Context) (*RBDInfo, error) {
+	args, err := t.keyringArgs()
+	if err != nil {
+		return nil, err
+	}
+	args = append(args, "info", t.Name, "--format", "json")
 	cmd := command.New(
 		command.WithContext(ctx),
 		command.WithName("rbd"),
-		command.WithVarArgs("info", t.Name, "--format", "json"),
+		command.WithArgs(args),
 		command.WithLogger(t.Log()),
 		command.WithBufferedStdout(),
 		command.WithIgnoredExitCodes(0, 2),
@@ -266,10 +292,15 @@ func (t *T) deviceInfo(ctx context.Context) (*RBDInfo, error) {
 }
 
 func (t *T) listLocks(ctx context.Context) ([]RBDLock, error) {
+	args, err := t.keyringArgs()
+	if err != nil {
+		return nil, err
+	}
+	args = append(args, "lock", "list", t.Name, "--format", "json")
 	cmd := command.New(
 		command.WithContext(ctx),
 		command.WithName("rbd"),
-		command.WithVarArgs("lock", "list", t.Name, "--format", "json"),
+		command.WithArgs(args),
 		command.WithLogger(t.Log()),
 		command.WithBufferedStdout(),
 		command.WithStderrLogLevel(zerolog.ErrorLevel),
@@ -286,10 +317,15 @@ func (t *T) listLocks(ctx context.Context) ([]RBDLock, error) {
 }
 
 func (t *T) listDevices(ctx context.Context) ([]RBDMap, error) {
+	args, err := t.keyringArgs()
+	if err != nil {
+		return nil, err
+	}
+	args = append(args, "device", "list", "--format", "json")
 	cmd := command.New(
 		command.WithContext(ctx),
 		command.WithName("rbd"),
-		command.WithVarArgs("device", "list", "--format", "json"),
+		command.WithArgs(args),
 		command.WithLogger(t.Log()),
 		command.WithBufferedStdout(),
 		command.WithStderrLogLevel(zerolog.ErrorLevel),
@@ -306,11 +342,6 @@ func (t *T) listDevices(ctx context.Context) ([]RBDMap, error) {
 }
 
 func (t *T) Stop(ctx context.Context) error {
-	/*
-		if err := t.unlockDevice(ctx); err != nil {
-			return err
-		}
-	*/
 	if err := t.unmapDevice(ctx); err != nil {
 		return err
 	}
@@ -485,10 +516,15 @@ func (t *T) PreMove(ctx context.Context, to string) error {
 }
 
 func (t *T) disableFeature(ctx context.Context, feature string) error {
+	args, err := t.keyringArgs()
+	if err != nil {
+		return err
+	}
+	args = append(args, "feature", "disable", t.Name, feature)
 	cmd := command.New(
 		command.WithContext(ctx),
 		command.WithName("rbd"),
-		command.WithVarArgs("feature", "disable", t.Name, feature),
+		command.WithArgs(args),
 		command.WithLogger(t.Log()),
 		command.WithCommandLogLevel(zerolog.InfoLevel),
 		command.WithStdoutLogLevel(zerolog.InfoLevel),
@@ -498,10 +534,15 @@ func (t *T) disableFeature(ctx context.Context, feature string) error {
 }
 
 func (t *T) enableFeature(ctx context.Context, feature string) error {
+	args, err := t.keyringArgs()
+	if err != nil {
+		return err
+	}
+	args = append(args, "feature", "enable", t.Name, feature)
 	cmd := command.New(
 		command.WithContext(ctx),
 		command.WithName("rbd"),
-		command.WithVarArgs("feature", "enable", t.Name, feature),
+		command.WithArgs(args),
 		command.WithLogger(t.Log()),
 		command.WithCommandLogLevel(zerolog.InfoLevel),
 		command.WithStdoutLogLevel(zerolog.InfoLevel),
@@ -543,4 +584,25 @@ func (t *T) PostMove(ctx context.Context, to string) error {
 		return err
 	}
 	return t.unmapDevice(ctx)
+}
+
+func (t *T) keyringArgs() ([]string, error) {
+	if t.Keyring == "" {
+		return []string{}, nil
+	}
+	if t.keyringArgsCache != nil {
+		return t.keyringArgsCache, nil
+	}
+	km, err := datarecv.ParseKeyMetaRelObj(t.Keyring, t.GetObject())
+	if err != nil {
+		t.keyringArgsCache = []string{}
+		return t.keyringArgsCache, err
+	}
+	keyringFile, err := km.CacheFile()
+	if err != nil {
+		t.keyringArgsCache = []string{}
+		return t.keyringArgsCache, err
+	}
+	t.keyringArgsCache = []string{"--keyring", keyringFile}
+	return t.keyringArgsCache, nil
 }

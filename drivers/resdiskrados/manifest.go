@@ -53,6 +53,13 @@ func (t *T) Manifest() *manifest.T {
 			Scopable:     true,
 			Text:         keywords.NewText(fs, "text/kw/access"),
 		},
+		keywords.Keyword{
+			Attr:     "Keyring",
+			Option:   "keyring",
+			Scopable: true,
+			Example:  "from ./sec/ceph key eu1.keyring",
+			Text:     keywords.NewText(fs, "text/kw/keyring"),
+		},
 	)
 	return m
 }

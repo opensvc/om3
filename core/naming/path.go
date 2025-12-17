@@ -3,9 +3,11 @@ package naming
 import (
 	"errors"
 	"fmt"
+	"os"
 	"path/filepath"
 	"strconv"
 	"strings"
+	"time"
 
 	"github.com/danwakefield/fnmatch"
 
@@ -177,6 +179,14 @@ func (t Path) ToMetadata() *Metadata {
 		Namespace: t.Namespace,
 		Kind:      t.Kind,
 	}
+}
+
+func (t Path) ModTime() (time.Time, error) {
+	info, err := os.Stat(t.ConfigFile())
+	if err != nil {
+		return time.Time{}, err
+	}
+	return info.ModTime(), nil
 }
 
 func (t Path) IsZero() bool {

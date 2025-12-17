@@ -36,6 +36,7 @@ type (
 		RemoveKey(name string) error
 		RenameKey(name, to string) error
 
+		Allow(string) bool
 		Shares() []string
 		HasKey(name string) bool
 		AllKeys() ([]string, error)
@@ -57,6 +58,11 @@ type (
 
 func keyFromName(name string) key.T {
 	return key.New(dataSectionName, name)
+}
+
+func (t *dataStore) Allow(namespace string) bool {
+	shares := t.Shares()
+	return slices.Contains(shares, "*") || slices.Contains(shares, namespace)
 }
 
 func (t *dataStore) Shares() []string {
