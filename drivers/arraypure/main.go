@@ -17,9 +17,9 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/opensvc/om3/v3/core/array"
+	"github.com/opensvc/om3/v3/core/datarecv"
 	"github.com/opensvc/om3/v3/core/driver"
 	"github.com/opensvc/om3/v3/core/naming"
-	"github.com/opensvc/om3/v3/core/object"
 	"github.com/opensvc/om3/v3/util/sizeconv"
 	"github.com/opensvc/om3/v3/util/xmap"
 )
@@ -779,28 +779,29 @@ func (t Array) insecure() bool {
 	return t.Config().GetBool(t.Key("insecure"))
 }
 
-func (t Array) secret() string {
-	return t.Config().GetString(t.Key("secret"))
-}
-
-func (t *Array) sec() (object.Sec, error) {
-	s, err := t.Config().GetStringStrict(t.Key("secret"))
-	if err != nil {
-		return nil, err
-	}
-	path, err := naming.ParsePath(s)
-	if err != nil {
-		return nil, err
-	}
-	return object.NewSec(path, object.WithVolatile(true))
-}
-
 func (t *Array) privateKey() ([]byte, error) {
-	sec, err := t.sec()
+	var km datarecv.KeyMeta
+	s, err := t.Config().GetStringStrict(t.Key("private_key"))
 	if err != nil {
 		return nil, err
 	}
-	return sec.DecodeKey("private_key")
+	if len(strings.Fields(s)) == 1 {
+		// old format: private_key = system/sec/array1
+		path, err := naming.ParsePath(s)
+		if err != nil {
+			return nil, err
+		}
+		km.Path = path
+		km.From = naming.NsSys
+		km.Key = "private_key"
+	} else {
+		// new format: private_key = from system/sec/array1 key password
+		km, err = datarecv.ParseKeyMetaRel(s, naming.NsSys)
+		if err != nil {
+			return nil, err
+		}
+	}
+	return km.RootDecode()
 }
 
 func (t *Array) getToken(ctx context.Context) (*pureToken, error) {

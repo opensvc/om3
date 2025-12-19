@@ -1372,7 +1372,7 @@ var nodeCommonKeywords = []keywords.Keyword{
 		Types:    []string{"pure"},
 	},
 	{
-		Example:  naming.NsSys + "/sec/array1",
+		Example:  "from system/sec/array1 key password",
 		Option:   "password",
 		Required: true,
 		Section:  "array",

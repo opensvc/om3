@@ -69,6 +69,25 @@ func ParseKeyMetaRel(line, namespace string) (KeyMeta, error) {
 	return km, nil
 }
 
+func (t *KeyMeta) RootDecode() ([]byte, error) {
+	ds, err := object.NewDataStore(t.Path, object.WithVolatile(true))
+	if err != nil {
+		return nil, err
+	}
+	return ds.DecodeKey(t.Key)
+}
+
+func (t *KeyMeta) Decode() ([]byte, error) {
+	ds, err := object.NewDataStore(t.Path, object.WithVolatile(true))
+	if err != nil {
+		return nil, err
+	}
+	if !ds.Allow(t.From) {
+		return nil, fmt.Errorf("the %s namespace is not allowed to access %s keys", t.From, t.Path)
+	}
+	return ds.DecodeKey(t.Key)
+}
+
 func (t *KeyMeta) CacheFile() (string, error) {
 	ds, err := object.NewDataStore(t.Path, object.WithVolatile(true))
 	if !ds.Allow(t.From) {
