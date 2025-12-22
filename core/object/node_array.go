@@ -4,7 +4,13 @@ import (
 	"strings"
 
 	"github.com/opensvc/om3/v3/core/array"
+	"github.com/opensvc/om3/v3/util/key"
 )
+
+type ArrayItem struct {
+	Name string
+	Type string
+}
 
 func (t *Node) Array(name string) array.Driver {
 	p := array.GetDriver(name)
@@ -18,8 +24,8 @@ func (t *Node) Array(name string) array.Driver {
 
 func (t *Node) Arrays() []array.Driver {
 	l := make([]array.Driver, 0)
-	for _, name := range t.ListArrays() {
-		p := t.Array(name)
+	for _, item := range t.ListArrays() {
+		p := t.Array(item.Name)
 		if p == nil {
 			continue
 		}
@@ -28,13 +34,16 @@ func (t *Node) Arrays() []array.Driver {
 	return l
 }
 
-func (t *Node) ListArrays() []string {
-	l := make([]string, 0)
+func (t *Node) ListArrays() []ArrayItem {
+	l := make([]ArrayItem, 0)
 	for _, s := range t.MergedConfig().SectionStrings() {
 		if !strings.HasPrefix(s, "array#") {
 			continue
 		}
-		l = append(l, s[6:])
+		l = append(l, ArrayItem{
+			Name: s[6:],
+			Type: t.MergedConfig().Get(key.New(s, "type")),
+		})
 	}
 	return l
 }
