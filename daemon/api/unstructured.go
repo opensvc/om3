@@ -530,6 +530,17 @@ func (t PoolVolume) Unstructured() map[string]any {
 	}
 }
 
+func (t ArrayList) getItems() any {
+	return t.Items
+}
+
+func (t ArrayItem) Unstructured() map[string]any {
+	return map[string]any{
+		"name": t.Name,
+		"type": t.Type,
+	}
+}
+
 func (t DataKeyList) GetItems() any {
 	return t.Items
 }

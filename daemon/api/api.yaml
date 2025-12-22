@@ -4415,6 +4415,30 @@ paths:
         500:
           $ref: '#/components/responses/500'
 
+  /api/array:
+    get:
+      operationId: GetArray
+      tags:
+        - array
+      security:
+        - basicAuth: []
+        - bearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/inQueryArrayName'
+      responses:
+          200:
+            description: OK
+            content:
+              application/json:
+                schema:
+                  $ref: '#/components/schemas/ArrayList'
+          401:
+            $ref: '#/components/responses/401'
+          403:
+            $ref: '#/components/responses/403'
+          500:
+            $ref: '#/components/responses/500'
+
   /api/pool:
     get:
       operationId: GetPools
@@ -5393,7 +5417,7 @@ components:
     InstanceConfig:
       x-go-type: instance.Config
       x-go-type-import:
-          path: github.com/opensvc/om3/core/instance
+          path: github.com/opensvc/om3/v3/core/instance
       type: object
       required:
         - app
@@ -5481,7 +5505,7 @@ components:
     InstanceMonitor:
       x-go-type: instance.Monitor
       x-go-type-import:
-          path: github.com/opensvc/om3/core/instance
+          path: github.com/opensvc/om3/v3/core/instance
       type: object
       required:
         - global_expect
@@ -5552,7 +5576,7 @@ components:
     InstanceStatus:
       x-go-type: instance.Status
       x-go-type-import:
-          path: github.com/opensvc/om3/core/instance
+          path: github.com/opensvc/om3/v3/core/instance
       type: object
       required:
         - avail
@@ -6217,7 +6241,7 @@ components:
     NodesInfo:
       x-go-type: nodesinfo.M
       x-go-type-import:
-          path: github.com/opensvc/om3/core/nodesinfo
+          path: github.com/opensvc/om3/v3/core/nodesinfo
       type: object
       items:
         $ref: '#/components/schemas/NodeInfo'
@@ -6618,7 +6642,7 @@ components:
     Kind:
       x-go-type: naming.Kind
       x-go-type-import:
-          path: github.com/opensvc/om3/core/naming
+          path: github.com/opensvc/om3/v3/core/naming
       type: string
       enum:
         - svc
@@ -6743,6 +6767,35 @@ components:
         size:
           type: integer
           format: int64
+
+    ArrayList:
+      type: object
+      required:
+        - items
+        - kind
+      properties:
+        kind:
+          type: string
+          enum:
+            - Array
+        items:
+          $ref: '#/components/schemas/ArrayItems'
+
+    ArrayItems:
+        type: array
+        items:
+          $ref: '#/components/schemas/ArrayItem'
+
+    ArrayItem:
+      type: object
+      required:
+        - name
+        - type
+      properties:
+        name:
+          type: string
+        type:
+          type: string
 
     PostObjectActionRestart:
       type: object
@@ -6950,7 +7003,7 @@ components:
     ResourceConfig:
       x-go-type: instance.ResourceConfig
       x-go-type-import:
-          path: github.com/opensvc/om3/core/instance
+          path: github.com/opensvc/om3/v3/core/instance
       type: object
       required:
         - is_disabled
@@ -7037,7 +7090,7 @@ components:
     ResourceMonitor:
       x-go-type: instance.ResourceMonitor
       x-go-type-import:
-          path: github.com/opensvc/om3/core/instance
+          path: github.com/opensvc/om3/v3/core/instance
       type: object
       required:
         - restart
@@ -7178,7 +7231,7 @@ components:
     ResourceStatus:
       x-go-type: resource.Status
       x-go-type-import:
-          path: github.com/opensvc/om3/core/resource
+          path: github.com/opensvc/om3/v3/core/resource
       type: object
       required:
         - disable
@@ -7512,7 +7565,7 @@ components:
     SubsetConfig:
       x-go-type: instance.SubsetConfig
       x-go-type-import:
-          path: github.com/opensvc/om3/core/instance
+          path: github.com/opensvc/om3/v3/core/instance
       type: object
       required:
         - parallel
@@ -7760,6 +7813,14 @@ components:
       in: query
       name: name
       description: the name of a backend storage pool
+      required: false
+      schema:
+        type: string
+
+    inQueryArrayName:
+      in: query
+      name: name
+      description: the name of a backend storage array
       required: false
       schema:
         type: string

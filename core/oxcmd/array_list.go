@@ -1,11 +1,14 @@
 package oxcmd
 
 import (
+	"context"
 	"fmt"
 
 	"github.com/opensvc/om3/v3/core/client"
 	"github.com/opensvc/om3/v3/core/output"
 	"github.com/opensvc/om3/v3/core/rawconfig"
+	"github.com/opensvc/om3/v3/daemon/api"
+	"github.com/opensvc/om3/v3/util/unstructured"
 )
 
 type (
@@ -15,37 +18,49 @@ type (
 )
 
 func (t *CmdArrayList) Run() error {
-	var (
-		data []string
-		err  error
-	)
-	data, err = t.extractDaemon()
+
+	var arr api.ArrayList
+
+	cols := "NAME:name,TYPE:type"
+
+	c, err := client.New()
 	if err != nil {
 		return err
 	}
-	output.Renderer{
-		Output: t.Output,
-		Color:  t.Color,
-		Data:   data,
-		HumanRenderer: func() string {
-			s := ""
-			for _, e := range data {
-				s += e + "\n"
-			}
-			return s
-		},
-		Colorize: rawconfig.Colorize,
-	}.Print()
-	return nil
-}
 
-func (t *CmdArrayList) extractDaemon() ([]string, error) {
-	var (
-		c   *client.T
-		err error
-	)
-	if c, err = client.New(); err != nil {
-		return []string{}, err
+	params := api.GetArrayParams{}
+
+	resp, err := c.GetArrayWithResponse(context.Background(), &params)
+	if err != nil {
+		return err
 	}
-	return []string{}, fmt.Errorf("todo %v", c)
+	switch resp.StatusCode() {
+	case 200:
+		arr = *resp.JSON200
+	case 401:
+		return fmt.Errorf("%s", resp.JSON401)
+	case 403:
+		return fmt.Errorf("%s", resp.JSON403)
+	case 500:
+		return fmt.Errorf("%s", resp.JSON500)
+	default:
+		return fmt.Errorf("unexpected status code: %d", resp.StatusCode())
+	}
+
+	render := func(items api.ArrayItems) {
+		lines := make(unstructured.List, 0)
+		for _, a := range items {
+			lines = append(lines, a.Unstructured())
+		}
+		output.Renderer{
+			DefaultOutput: "tab=" + cols,
+			Output:        t.Output,
+			Color:         t.Color,
+			Data:          lines,
+			Colorize:      rawconfig.Colorize,
+		}.Print()
+	}
+
+	render(arr.Items)
+	return nil
 }

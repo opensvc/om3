@@ -132,7 +132,6 @@ func newCmdArrayList() *cobra.Command {
 	}
 	flags := cmd.Flags()
 	addFlagsGlobal(flags, &options.OptsGlobal)
-	flagLocal(flags, &options.Local)
 	return cmd
 }
 
