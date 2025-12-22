@@ -1,16 +1,26 @@
 package object
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"fmt"
+	"io"
+	"net/http"
 	"os"
 	"path/filepath"
 
 	"github.com/opensvc/om3/v3/core/actioncontext"
 	"github.com/opensvc/om3/v3/core/resource"
 	"github.com/opensvc/om3/v3/core/resourceselector"
-	"github.com/opensvc/om3/v3/util/hostname"
+)
+
+type (
+	postResInfo struct {
+		Info     []resource.Info `json:"info"`
+		Path     string          `json:"path"`
+		Topology *string         `json:"topology,omitempty"`
+	}
 )
 
 // PushResInfo pushes resources information of the local instance of the object
@@ -99,49 +109,51 @@ func (t *actor) slaveResInfo(ctx context.Context) ([]resource.Info, error) {
 }
 
 func (t *actor) collectorPushResInfo(infos resource.Infos) error {
-	svcname := infos.ObjectPath.String()
-	nodename := hostname.Hostname()
-	topology := t.Topology().String()
-	asList := func(infos resource.Infos) [][]string {
-		l := make([][]string, 0)
-		for _, info := range infos.Resources {
-			for _, key := range info.Keys {
-				e := []string{
-					svcname,
-					nodename,
-					topology,
-					info.RID,
-					key.Key,
-					key.Value,
-				}
-				l = append(l, e)
-			}
-		}
-		return l
-	}
+	var (
+		req  *http.Request
+		resp *http.Response
 
-	vars := []string{
-		"res_svcname",
-		"res_nodename",
-		"topology",
-		"rid",
-		"res_key",
-		"res_value",
-	}
+		ioReader io.Reader
+
+		method = http.MethodPost
+		path   = "/oc3/feed/instance/resource_info"
+	)
 	node, err := t.Node()
 	if err != nil {
 		return err
 	}
-	client, err := node.CollectorFeedClient()
+	oc3, err := node.CollectorClient()
 	if err != nil {
 		return err
 	}
-	vals := asList(infos)
-	if response, err := client.Call("update_resinfo", vars, vals); err != nil {
-		return err
-	} else if response.Error != nil {
-		return fmt.Errorf("rpc: %s %s", response.Error.Message, response.Error.Data)
+
+	topology := t.Topology().String()
+	data := postResInfo{
+		Info:     infos.Resources,
+		Path:     infos.ObjectPath.String(),
+		Topology: &topology,
 	}
 
+	if b, err := json.Marshal(data); err != nil {
+		return fmt.Errorf("encode request body: %w", err)
+	} else {
+		ioReader = bytes.NewBuffer(b)
+	}
+
+	req, err = oc3.NewRequestWithContext(context.Background(), method, path, ioReader)
+	if err != nil {
+		return fmt.Errorf("%s %s create request: %w", method, path, err)
+	}
+
+	resp, err = oc3.Do(req)
+	if err != nil {
+		return fmt.Errorf("collector %s %s: %w", method, path, err)
+	}
+	defer func() { _ = resp.Body.Close() }()
+
+	if resp.StatusCode != http.StatusAccepted {
+		return fmt.Errorf("unexpected collector response status code for %s %s: wanted %d got %d",
+			method, path, http.StatusAccepted, resp.StatusCode)
+	}
 	return nil
 }
