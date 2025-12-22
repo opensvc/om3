@@ -264,6 +264,10 @@ func (t *T) setupNode(nodename string, nodeIndex int, localIP, brIP net.IP) erro
 			Gateway:  peerIP,
 		}
 	}
+	if route.Gateway == nil && route.Dev == "" {
+		t.Log().Infof("skip route setup because no gateway and no dev of node %s", nodename)
+		return nil
+	}
 	if err := t.setupNodeRoutes(route); err != nil {
 		return fmt.Errorf("setup route: %w", err)
 	}
