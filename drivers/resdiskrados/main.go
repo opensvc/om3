@@ -430,7 +430,7 @@ func (t *T) ProvisionAsLeader(ctx context.Context) error {
 		t.Log().Infof("%s is already provisioned", t.Name)
 		return nil
 	}
-	if t.createDevice(ctx); err != nil {
+	if err := t.createDevice(ctx); err != nil {
 		return err
 	}
 	actionrollback.Register(ctx, func(ctx context.Context) error {
