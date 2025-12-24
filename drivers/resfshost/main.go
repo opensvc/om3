@@ -51,7 +51,7 @@ type (
 	}
 
 	IsFormateder interface {
-		IsFormated(string) (bool, error)
+		IsFormated(context.Context, string) (bool, error)
 	}
 	MKFSer interface {
 		MKFS(string, []string) error
@@ -400,7 +400,7 @@ func (t *T) ProvisionAsLeader(ctx context.Context) error {
 	if devpath == "" {
 		return fmt.Errorf("%s real dev path is empty", t.Device)
 	}
-	if v, err := i1.IsFormated(devpath); err != nil {
+	if v, err := i1.IsFormated(ctx, devpath); err != nil {
 		t.Log().Warnf("skip mkfs: %s", err)
 	} else if v {
 		t.Log().Infof("%s is already formatted", t.Device)
