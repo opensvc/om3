@@ -2,7 +2,10 @@
 
 package device
 
-import "errors"
+import (
+	"context"
+	"errors"
+)
 
 var ErrNotApplicable = errors.New("not applicable")
 
@@ -34,15 +37,15 @@ func (t T) Model() (string, error) {
 	return "", ErrNotApplicable
 }
 
-func (t T) Remove() error {
+func (t T) Remove(_ context.Context) error {
 	return ErrNotApplicable
 }
 
-func (t T) SetReadOnly() error {
+func (t T) SetReadOnly(_ context.Context) error {
 	return ErrNotApplicable
 }
 
-func (t T) SetReadWrite() error {
+func (t T) SetReadWrite(_ context.Context) error {
 	return ErrNotApplicable
 }
 
@@ -63,6 +66,6 @@ func (t T) WWID() (string, error) {
 	return "", nil
 }
 
-func (t T) PromoteRW() error {
+func (t T) PromoteRW(_ context.Context) error {
 	return nil
 }

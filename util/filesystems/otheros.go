@@ -2,7 +2,10 @@
 
 package filesystems
 
-import "fmt"
+import (
+	"context"
+	"fmt"
+)
 
 func (t T) Mount(ctx context.Context, dev string, mnt string, options string) error {
 	return fmt.Errorf("mount not implemented")
