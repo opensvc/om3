@@ -179,7 +179,7 @@ func (t *T) Provisioned(ctx context.Context) (provisioned.T, error) {
 	}
 }
 
-func (t *T) ExposedDevices() device.L {
+func (t *T) ExposedDevices(ctx context.Context) device.L {
 	p := t.devpath()
 	return t.toDevices([]string{p})
 }

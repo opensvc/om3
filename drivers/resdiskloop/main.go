@@ -38,13 +38,13 @@ func (t *T) loop() *loop.T {
 	return l
 }
 
-func (t *T) isUp(lo *loop.T) (bool, error) {
-	return lo.FileExists(t.File)
+func (t *T) isUp(ctx context.Context, lo *loop.T) (bool, error) {
+	return lo.FileExists(ctx, t.File)
 }
 
 func (t *T) Start(ctx context.Context) error {
 	lo := t.loop()
-	isUp, err := t.isUp(lo)
+	isUp, err := t.isUp(ctx, lo)
 	if err != nil {
 		return err
 	}
@@ -62,22 +62,22 @@ func (t *T) Start(ctx context.Context) error {
 	if err := t.autoProvision(ctx); err != nil {
 		return err
 	}
-	if err := lo.Add(t.File); err != nil {
+	if err := lo.Add(ctx, t.File); err != nil {
 		return err
 	}
 	actionrollback.Register(ctx, func(ctx context.Context) error {
-		return lo.FileDelete(t.File)
+		return lo.FileDelete(ctx, t.File)
 	})
 	return nil
 }
 
 func (t *T) Stop(ctx context.Context) error {
 	lo := t.loop()
-	if v, err := t.isUp(lo); err != nil {
+	if v, err := t.isUp(ctx, lo); err != nil {
 		return err
 	} else if !v {
 		t.Log().Infof("%s is already down", t.Label(ctx))
-	} else if err := lo.FileDelete(t.File); err != nil {
+	} else if err := lo.FileDelete(ctx, t.File); err != nil {
 		return err
 	}
 	if err := t.autoUnprovision(ctx); err != nil {
@@ -88,7 +88,7 @@ func (t *T) Stop(ctx context.Context) error {
 
 func (t *T) Status(ctx context.Context) status.T {
 	lo := t.loop()
-	loInfo, err := lo.FileGet(t.File)
+	loInfo, err := lo.FileGet(ctx, t.File)
 	if err != nil {
 		t.StatusLog().Warn("%s", err)
 		return status.Undef
@@ -163,7 +163,7 @@ func (t *T) autoProvision(ctx context.Context) error {
 		return err
 	}
 	if stat != nil {
-		if err := t.removeEmptyBackendFile(); err != nil {
+		if err := t.removeEmptyBackendFile(ctx); err != nil {
 			return err
 		}
 	}
@@ -184,9 +184,9 @@ func (t *T) autoUnprovision(ctx context.Context) error {
 	return t.unprovision(ctx)
 }
 
-func (t *T) removeEmptyBackendFile() error {
+func (t *T) removeEmptyBackendFile(ctx context.Context) error {
 	lo := t.loop()
-	if err := lo.Delete(t.File); err != nil {
+	if err := lo.Delete(ctx, t.File); err != nil {
 		return err
 	}
 	t.Log().Infof("remove empty existing file %s", t.File)
@@ -201,7 +201,7 @@ func (t *T) ProvisionAsLeader(ctx context.Context) error {
 		return err
 	} else if stat != nil {
 		if stat.Size() == 0 {
-			if err := t.removeEmptyBackendFile(); err != nil {
+			if err := t.removeEmptyBackendFile(ctx); err != nil {
 				return err
 			}
 		}
@@ -279,8 +279,8 @@ func (t *T) unprovision(ctx context.Context) error {
 	return os.RemoveAll(t.File)
 }
 
-func (t *T) exposedDevice(lo *loop.T) *device.T {
-	i, err := lo.FileGet(t.File)
+func (t *T) exposedDevice(ctx context.Context, lo *loop.T) *device.T {
+	i, err := lo.FileGet(ctx, t.File)
 	if err != nil {
 		return nil
 	}
@@ -291,9 +291,9 @@ func (t *T) exposedDevice(lo *loop.T) *device.T {
 	return &dev
 }
 
-func (t *T) ExposedDevices() device.L {
+func (t *T) ExposedDevices(ctx context.Context) device.L {
 	lo := t.loop()
-	dev := t.exposedDevice(lo)
+	dev := t.exposedDevice(ctx, lo)
 	if dev == nil {
 		return device.L{}
 	}

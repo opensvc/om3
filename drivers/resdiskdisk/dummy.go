@@ -13,7 +13,7 @@ func (t *T) Status(ctx context.Context) status.T {
 	return status.NotApplicable
 }
 
-func (t *T) ExposedDevices() device.L {
+func (t *T) ExposedDevices(ctx context.Context) device.L {
 	l := make(device.L, 0)
 	return l
 }

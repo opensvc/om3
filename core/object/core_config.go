@@ -1,6 +1,7 @@
 package object
 
 import (
+	"context"
 	"fmt"
 	"net"
 	"path/filepath"
@@ -257,7 +258,7 @@ func (t *core) dereferenceExposedDevices(ref string) (string, error) {
 		return ref, fmt.Errorf("can't dereference exposed_devs on a non-actor object: %s", ref)
 	}
 	type exposedDeviceser interface {
-		ExposedDevices() device.L
+		ExposedDevices(context.Context) device.L
 	}
 	if len(l) != 2 {
 		return ref, fmt.Errorf("misformatted exposed_devs ref: %s", ref)
@@ -275,7 +276,8 @@ func (t *core) dereferenceExposedDevices(ref string) (string, error) {
 	if !ok {
 		return ref, fmt.Errorf("resource referenced by %s has no exposed devices", ref)
 	}
-	xdevs := o.ExposedDevices()
+	ctx := context.Background()
+	xdevs := o.ExposedDevices(ctx)
 	ls := make([]string, len(xdevs))
 	for i, xd := range xdevs {
 		ls[i] = xd.String()
