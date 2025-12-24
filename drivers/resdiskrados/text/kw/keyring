@@ -1,0 +1,5 @@
+This keyword specifies the datastore and key where the keyring content is securely stored.
+
+The content is automatically exposed on all nodes as a temporary file at /run/opensvc/<fqn>/key/<keyname>, allowing the file to be securely referenced by the rbd command using the --keyring <filename> flag.
+
+Value format: `from <datastore path> key <key name>` (the path supports relative notation, e.g., ./sec/ceph).

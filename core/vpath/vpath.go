@@ -104,7 +104,7 @@ func HostDevpath(ctx context.Context, s string, namespace string) (string, error
 	if v, err := file.ExistsAndRegular(s); err != nil {
 		return s, err
 	} else if v {
-		if lo, err := loop.New().FileGet(s); err != nil {
+		if lo, err := loop.New().FileGet(ctx, s); err != nil {
 			return "", err
 		} else {
 			return lo.Name, nil

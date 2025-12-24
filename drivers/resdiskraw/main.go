@@ -512,7 +512,7 @@ func (t *T) UnprovisionAsLeader(ctx context.Context) error {
 	return nil
 }
 
-func (t *T) ExposedDevices() device.L {
+func (t *T) ExposedDevices(ctx context.Context) device.L {
 	l := make(device.L, 0)
 	for _, pair := range t.devices() {
 		if pair.Dst != nil {

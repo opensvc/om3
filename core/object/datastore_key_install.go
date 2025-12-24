@@ -8,7 +8,6 @@ import (
 	"os"
 	"os/user"
 	"path/filepath"
-	"slices"
 	"strconv"
 	"strings"
 	"syscall"
@@ -324,14 +323,22 @@ func (t *dataStore) writeKey(vk vKey, b []byte, opt KVInstall) (bool, error) {
 	if mtime == file.ModTime(dst) {
 		return false, nil
 	}
-	targetMD5 := md5.New().Sum(b)
-	currentMD5, err := file.MD5(dst)
+	targetMD5 := md5.New()
+	if _, err := targetMD5.Write(b); err != nil {
+		return false, err
+	}
+	targetMD5Sum := targetMD5.Sum(nil)
+	currentMD5Sum, err := file.MD5(dst)
+
 	if err != nil {
 		return false, err
 	}
-	if string(currentMD5) == string(targetMD5) {
+	if string(currentMD5Sum) == string(targetMD5Sum) {
 		opt.ToLog.Tracef("%s from key %s already installed and same md5: set access and modification times to %s", dst, vk.Key, mtime)
 		return false, os.Chtimes(dst, mtime, mtime)
+	}
+	if err := os.WriteFile(dst, b, info.Mode()); err != nil {
+		return true, err
 	}
 	return false, nil
 }
@@ -416,7 +423,7 @@ func (t *dataStore) postInstall(k string) error {
 		return err
 	}
 	for _, p := range paths {
-		if !slices.Contains(t.Shares(), p.Namespace) {
+		if !t.Allow(p.Namespace) {
 			continue
 		}
 		if p.Kind != naming.KindSvc {

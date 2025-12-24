@@ -18,9 +18,9 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/opensvc/om3/v3/core/array"
+	"github.com/opensvc/om3/v3/core/datarecv"
 	"github.com/opensvc/om3/v3/core/driver"
 	"github.com/opensvc/om3/v3/core/naming"
-	"github.com/opensvc/om3/v3/core/object"
 	"github.com/opensvc/om3/v3/util/sizeconv"
 )
 
@@ -846,28 +846,29 @@ func (t Array) storageSystemId() string {
 	return t.Config().GetString(t.Key("name"))
 }
 
-func (t Array) secret() string {
-	return t.Config().GetString(t.Key("password"))
-}
-
-func (t *Array) sec() (object.Sec, error) {
+func (t Array) password() (string, error) {
+	var km datarecv.KeyMeta
 	s, err := t.Config().GetStringStrict(t.Key("password"))
-	if err != nil {
-		return nil, err
-	}
-	path, err := naming.ParsePath(s)
-	if err != nil {
-		return nil, err
-	}
-	return object.NewSec(path, object.WithVolatile(true))
-}
-
-func (t *Array) password() (string, error) {
-	sec, err := t.sec()
 	if err != nil {
 		return "", err
 	}
-	b, err := sec.DecodeKey("password")
+	if len(strings.Fields(s)) == 1 {
+		// old format: password = system/sec/array1
+		path, err := naming.ParsePath(s)
+		if err != nil {
+			return "", err
+		}
+		km.Path = path
+		km.From = naming.NsSys
+		km.Key = "password"
+	} else {
+		// new format: password = from system/sec/array1 key password
+		km, err = datarecv.ParseKeyMetaRel(s, naming.NsSys)
+		if err != nil {
+			return "", err
+		}
+	}
+	b, err := km.RootDecode()
 	if err != nil {
 		return "", err
 	}

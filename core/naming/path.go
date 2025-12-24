@@ -3,9 +3,11 @@ package naming
 import (
 	"errors"
 	"fmt"
+	"os"
 	"path/filepath"
 	"strconv"
 	"strings"
+	"time"
 
 	"github.com/danwakefield/fnmatch"
 
@@ -179,6 +181,14 @@ func (t Path) ToMetadata() *Metadata {
 	}
 }
 
+func (t Path) ModTime() (time.Time, error) {
+	info, err := os.Stat(t.ConfigFile())
+	if err != nil {
+		return time.Time{}, err
+	}
+	return info.ModTime(), nil
+}
+
 func (t Path) IsZero() bool {
 	return t.Name == "" && t.Namespace == "" && t.Kind == KindInvalid
 }
@@ -199,14 +209,19 @@ func ParsePaths(l ...string) (Paths, error) {
 
 // ParsePath returns a new path struct from a path string representation
 func ParsePath(s string) (Path, error) {
-	var (
-		name      string
-		namespace string
-		kind      string
-	)
-	if s != strings.ToLower(s) {
-		return Path{}, fmt.Errorf("%w: uppercase letters are not allowed", ErrInvalid)
+	namespace, kind, name := splitPath(s)
+	return NewPathFromStrings(namespace, kind, name)
+}
+
+func ParsePathRel(s, ns string) (Path, error) {
+	namespace, kind, name := splitPath(s)
+	if namespace == "." {
+		namespace = ns
 	}
+	return NewPathFromStrings(namespace, kind, name)
+}
+
+func splitPath(s string) (namespace, kind, name string) {
 	l := strings.Split(s, Separator)
 	switch len(l) {
 	case 3:
@@ -236,7 +251,7 @@ func ParsePath(s string) (Path, error) {
 			name = l[0]
 		}
 	}
-	return NewPathFromStrings(namespace, kind, name)
+	return
 }
 
 // MarshalText implements the json interface

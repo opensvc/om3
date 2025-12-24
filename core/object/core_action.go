@@ -450,6 +450,7 @@ func (t *actor) action(ctx context.Context, fn resourceset.DoFunc) error {
 		if err := freeze.Freeze(t.path.FrozenFile()); err != nil {
 			return err
 		}
+		t.log.Infof("instance frozen")
 		return nil
 	}
 

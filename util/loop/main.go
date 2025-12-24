@@ -1,6 +1,7 @@
 package loop
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"time"
@@ -53,48 +54,49 @@ func WithLogger(log *plog.Logger) funcopt.O {
 	})
 }
 
-func (t T) FileExists(filePath string) (bool, error) {
-	data, err := t.Data()
+func (t T) FileExists(ctx context.Context, filePath string) (bool, error) {
+	data, err := t.Data(ctx)
 	if err != nil {
 		return false, err
 	}
 	return data.HasFile(filePath), nil
 }
 
-func (t T) FileDelete(filePath string) error {
-	i, err := t.FileGet(filePath)
+func (t T) FileDelete(ctx context.Context, filePath string) error {
+	i, err := t.FileGet(ctx, filePath)
 	if err != nil {
 		return err
 	}
 	if i == nil {
 		return nil
 	}
-	return t.Delete(i.Name)
+	return t.Delete(ctx, i.Name)
 }
 
-func (t T) FileGet(filePath string) (*InfoEntry, error) {
-	data, err := t.Data()
+func (t T) FileGet(ctx context.Context, filePath string) (*InfoEntry, error) {
+	data, err := t.Data(ctx)
 	if err != nil {
 		return nil, err
 	}
 	return data.File(filePath), nil
 }
 
-func (t T) Get(name string) (*InfoEntry, error) {
-	data, err := t.Data()
+func (t T) Get(ctx context.Context, name string) (*InfoEntry, error) {
+	data, err := t.Data(ctx)
 	if err != nil {
 		return nil, err
 	}
 	return data.Name(name), nil
 }
 
-func (t T) Data() (InfoEntries, error) {
+func (t T) Data(ctx context.Context) (InfoEntries, error) {
 	var (
 		out []byte
 		err error
 	)
 	data := Info{}
 	cmd := command.New(
+		command.WithContext(ctx),
 		command.WithName(losetup),
 		command.WithVarArgs("-J"),
 		command.WithLogger(t.log),
@@ -115,18 +117,19 @@ func (t T) Data() (InfoEntries, error) {
 	return data.LoopDevices, nil
 }
 
-func (t T) Add(filePath string) error {
+func (t T) Add(ctx context.Context, filePath string) error {
 	p := "/var/lock/opensvc.losetup.lock"
 	lock := flock.New(p, "", fcntllock.New)
 	if err := lock.Lock(20*time.Second, ""); err != nil {
 		return err
 	}
 	defer func() { _ = lock.UnLock() }()
-	return t.lockedAdd(filePath)
+	return t.lockedAdd(ctx, filePath)
 }
 
-func (t T) lockedAdd(filePath string) error {
+func (t T) lockedAdd(ctx context.Context, filePath string) error {
 	cmd := command.New(
+		command.WithContext(ctx),
 		command.WithName(losetup),
 		command.WithVarArgs("-f", filePath),
 		command.WithLogger(t.log),
@@ -142,8 +145,9 @@ func (t T) lockedAdd(filePath string) error {
 	return nil
 }
 
-func (t T) Delete(devPath string) error {
+func (t T) Delete(ctx context.Context, devPath string) error {
 	cmd := command.New(
+		command.WithContext(ctx),
 		command.WithName(losetup),
 		command.WithVarArgs("-d", devPath),
 		command.WithLogger(t.log),
@@ -159,7 +163,7 @@ func (t T) Delete(devPath string) error {
 	udevadm.Settle()
 	limit := time.Now().Add(5 * time.Second)
 	for {
-		info, _ := t.Get(devPath)
+		info, _ := t.Get(ctx, devPath)
 		if info == nil {
 			return nil
 		}

@@ -10,16 +10,7 @@ import (
 // Stop stops the local instance of the object
 func (t *actor) Stop(ctx context.Context) error {
 	ctx = actioncontext.WithProps(ctx, actioncontext.Stop)
-	if err := t.validateAction(); err != nil {
-		return err
-	}
-	t.setenv("stop", false)
-	unlock, err := t.lockAction(ctx)
-	if err != nil {
-		return err
-	}
-	defer unlock()
-	return t.lockedStop(ctx)
+	return t.stopWithContext(ctx)
 }
 
 func (t *actor) lockedStop(ctx context.Context) error {

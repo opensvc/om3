@@ -25,6 +25,7 @@ type (
 		EtcNs        string `mapstructure:"etcns"`
 		LastShutdown string `mapstructure:"last_shutdown"`
 		Capabilities string `mapstructure:"capabilities"`
+		Run          string `mapstructure:"run"`
 		Tmp          string `mapstructure:"tmp"`
 		TmpNs        string `mapstructure:"tmpns"`
 		Doc          string `mapstructure:"doc"`
