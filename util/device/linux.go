@@ -39,12 +39,12 @@ func (t T) IsReadOnly() (bool, error) {
 	}
 }
 
-func (t T) SetReadWrite(ctx context.Context) error {
-	return t.setRO(ctx, false)
-}
-
 func (t T) SetReadOnly(ctx context.Context) error {
 	return t.setRO(ctx, true)
+}
+
+func (t T) SetReadWrite(ctx context.Context) error {
+	return t.setRO(ctx, false)
 }
 
 func (t T) sysfsFile() (string, error) {
