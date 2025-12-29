@@ -33,9 +33,9 @@ func (a *DaemonAPI) GetNetworks(ctx echo.Context, params api.GetNetworksParams) 
 			Name:    stat.Name,
 			Type:    stat.Type,
 			Network: stat.Network,
-			Free:    stat.Free,
-			Used:    stat.Used,
-			Size:    stat.Size,
+			Free:    stat.Free.String(),
+			Used:    stat.Used.String(),
+			Size:    stat.Size.String(),
 		}
 		if len(stat.Errors) > 0 {
 			l := append([]string{}, stat.Errors...)

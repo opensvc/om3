@@ -784,12 +784,12 @@ type LogList = openapi_types.File
 // Network defines model for Network.
 type Network struct {
 	Errors  *[]string `json:"errors,omitempty"`
-	Free    int       `json:"free"`
+	Free    string    `json:"free"`
 	Name    string    `json:"name"`
 	Network string    `json:"network"`
-	Size    int       `json:"size"`
+	Size    string    `json:"size"`
 	Type    string    `json:"type"`
-	Used    int       `json:"used"`
+	Used    string    `json:"used"`
 }
 
 // NetworkIP defines model for NetworkIP.

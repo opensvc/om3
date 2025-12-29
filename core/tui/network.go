@@ -3,6 +3,7 @@ package tui
 import (
 	"context"
 	"fmt"
+	"math/big"
 	"net/http"
 	"sort"
 
@@ -11,7 +12,6 @@ import (
 
 	"github.com/opensvc/om3/v3/core/client"
 	"github.com/opensvc/om3/v3/daemon/api"
-	"github.com/opensvc/om3/v3/util/sizeconv"
 )
 
 func (t *App) updateNetworkList() {
@@ -53,13 +53,19 @@ func (t *App) updateNetworkList() {
 	})
 
 	for _, network := range items {
+		sizeBigInt := new(big.Int)
+		sizeBigInt.SetString(network.Size, 10)
+		usedBigInt := new(big.Int)
+		usedBigInt.SetString(network.Used, 10)
+		freeBigInt := new(big.Int)
+		freeBigInt.SetString(network.Free, 10)
 		elements := []string{
 			network.Name,
 			network.Type,
 			network.Network,
-			sizeconv.BSizeCompact(float64(network.Size)),
-			sizeconv.BSizeCompact(float64(network.Used)),
-			sizeconv.BSizeCompact(float64(network.Free)),
+			sizeBigInt.String(),
+			usedBigInt.String(),
+			freeBigInt.String(),
 		}
 		elementsList = append(elementsList, elements)
 	}

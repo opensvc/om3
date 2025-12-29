@@ -1,16 +1,16 @@
 package network
 
 import (
-	"math"
+	"math/big"
 
 	"github.com/opensvc/om3/v3/core/clusterip"
 )
 
 type (
 	Usage struct {
-		Free int `json:"free"`
-		Used int `json:"used"`
-		Size int `json:"size"`
+		Free *big.Int `json:"free"`
+		Used *big.Int `json:"used"`
+		Size *big.Int `json:"size"`
 	}
 
 	Status struct {
@@ -38,11 +38,11 @@ func GetStatus(t Networker, ips clusterip.L) Status {
 	data.Network = t.Network()
 	if ips != nil {
 		data.IPs = t.FilterIPs(ips)
-		data.Usage.Used = len(data.IPs)
+		data.Usage.Used = big.NewInt(int64(len(data.IPs)))
 		if ipn, err := t.IPNet(); err == nil {
 			ones, bits := ipn.Mask.Size()
-			data.Usage.Size = int(math.Pow(2.0, float64(bits-ones)))
-			data.Usage.Free = data.Usage.Size - data.Usage.Used
+			data.Usage.Size = new(big.Int).Lsh(big.NewInt(1), uint(bits-ones))
+			data.Usage.Free = new(big.Int).Sub(data.Usage.Size, data.Usage.Used)
 		}
 	}
 	return data

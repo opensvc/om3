@@ -5773,11 +5773,11 @@ components:
           items:
             type: string
         free:
-          type: integer
+          type: string
         used:
-          type: integer
+          type: string
         size:
-          type: integer
+          type: string
 
     PackageList:
       type: object
