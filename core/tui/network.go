@@ -12,6 +12,7 @@ import (
 
 	"github.com/opensvc/om3/v3/core/client"
 	"github.com/opensvc/om3/v3/daemon/api"
+	"github.com/opensvc/om3/v3/util/sizeconv"
 )
 
 func (t *App) updateNetworkList() {
@@ -52,20 +53,20 @@ func (t *App) updateNetworkList() {
 		return items[i].Name < items[j].Name
 	})
 
+	convertToFloat64 := func(bi big.Int) float64 {
+		f, _ := bi.Float64()
+		return f
+	}
+
 	for _, network := range items {
-		sizeBigInt := new(big.Int)
-		sizeBigInt.SetString(network.Size, 10)
-		usedBigInt := new(big.Int)
-		usedBigInt.SetString(network.Used, 10)
-		freeBigInt := new(big.Int)
-		freeBigInt.SetString(network.Free, 10)
+
 		elements := []string{
 			network.Name,
 			network.Type,
 			network.Network,
-			sizeBigInt.String(),
-			usedBigInt.String(),
-			freeBigInt.String(),
+			sizeconv.DSizeCompact(convertToFloat64(network.Size)),
+			sizeconv.DSizeCompact(convertToFloat64(network.Used)),
+			sizeconv.DSizeCompact(convertToFloat64(network.Free)),
 		}
 		elementsList = append(elementsList, elements)
 	}

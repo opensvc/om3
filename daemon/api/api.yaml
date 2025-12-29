@@ -5774,10 +5774,13 @@ components:
             type: string
         free:
           type: string
+          x-go-type: big.Int
         used:
           type: string
+          x-go-type: big.Int
         size:
           type: string
+          x-go-type: big.Int
 
     PackageList:
       type: object
