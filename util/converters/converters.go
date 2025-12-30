@@ -258,6 +258,9 @@ func (t TSize) convert(s string) (*int64, error) {
 	if strings.Contains(s, "%") {
 		return nil, err
 	}
+	if strings.HasSuffix(s, "m") {
+		s = s[:len(s)-1] + "MiB"
+	}
 	if i, err = sizeconv.FromSize(s); err != nil {
 		return nil, err
 	}

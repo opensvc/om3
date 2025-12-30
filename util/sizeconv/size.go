@@ -165,11 +165,12 @@ func FromSize(sizeStr string) (int64, error) {
 	var convertMap unitMap
 	if strings.ToLower(matches[4]) == "i" {
 		convertMap = bMap
-	} else if strings.ToLower(matches[5]) == "" {
-		// eg. "100m" interpreted implicitly as "100MiB"
-		convertMap = bMap
-	} else {
+	} else if strings.ToLower(matches[4]) == "" && strings.ToLower(matches[5]) == "b" {
 		convertMap = dMap
+	} else if strings.ToLower(matches[4]) == "" && strings.ToLower(matches[5]) == "" {
+		convertMap = dMap
+	} else {
+		return -1, fmt.Errorf("invalid size unit: '%s'", sizeStr)
 	}
 	dotted := strings.ReplaceAll(matches[1], ",", ".")
 	size, err := strconv.ParseFloat(dotted, 64)
