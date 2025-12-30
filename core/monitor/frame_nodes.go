@@ -153,6 +153,12 @@ func (f Frame) StrNodeLoad(n string) string {
 	return iconUndef
 }
 
+func BSizeCompactFromMB(n uint64) string {
+	f := float64(n * sizeconv.MiB)
+	s := sizeconv.BSizeCompact(f)
+	return strings.TrimSuffix(s, "i")
+}
+
 func (f Frame) StrNodeMem(n string) string {
 	if val, ok := f.Current.Cluster.Node[n]; ok {
 		if val.Stats.MemTotalMB == 0 {
@@ -163,7 +169,7 @@ func (f Frame) StrNodeMem(n string) string {
 		}
 		limit := 100 - val.Config.MinAvailMemPct
 		usage := 100 - val.Stats.MemAvailPct
-		total := sizeconv.BSizeCompactFromMB(val.Stats.MemTotalMB)
+		total := BSizeCompactFromMB(val.Stats.MemTotalMB)
 		var sb strings.Builder
 		if val.Config.MinAvailMemPct > 0 {
 			sb.WriteString(strconv.Itoa(usage))
@@ -195,7 +201,7 @@ func (f Frame) StrNodeSwap(n string) string {
 		}
 		limit := 100 - val.Config.MinAvailSwapPct
 		usage := 100 - val.Stats.SwapAvailPct
-		total := sizeconv.BSizeCompactFromMB(val.Stats.SwapTotalMB)
+		total := BSizeCompactFromMB(val.Stats.SwapTotalMB)
 		var sb strings.Builder
 		if val.Config.MinAvailSwapPct > 0 {
 			sb.WriteString(strconv.Itoa(usage))

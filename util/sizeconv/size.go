@@ -43,13 +43,12 @@ type unitMap map[string]int64
 var (
 	dMap = unitMap{"k": KB, "m": MB, "g": GB, "t": TB, "p": PB, "e": EB}
 	bMap = unitMap{"k": KiB, "m": MiB, "g": GiB, "t": TiB, "p": PiB, "e": EiB}
-	dAbb = []string{"B", "KB", "MB", "GB", "TB", "PB", "EB", "ZB", "YB"}
-	bAbb = []string{"B", "KiB", "MiB", "GiB", "TiB", "PiB", "EiB", "ZiB", "YiB"}
-	cAbb = []string{"", "ki", "mi", "gi", "ti", "pi", "ei", "zi", "yi"}
+	dAbb = []string{"", "K", "M", "G", "T", "P", "E", "Z", "Y"}
+	bAbb = []string{"", "Ki", "Mi", "Gi", "Ti", "Pi", "Ei", "Zi", "Yi"}
 	sReg = regexp.MustCompile(`^(\d+([\.,]\d+)*) ?([kKmMgGtTpPeE])?([iI])?([bB])?$`)
 )
 
-func getSizeAndUnit(size float64, base float64, _map []string, exact bool) (float64, string) {
+func getSizeAndUnit(size float64, base float64, _map []string, exact, compact bool) (float64, string) {
 	i := 0
 	unitsLimit := len(_map) - 1
 	for size >= base && i < unitsLimit {
@@ -59,7 +58,11 @@ func getSizeAndUnit(size float64, base float64, _map []string, exact bool) (floa
 		size = size / base
 		i++
 	}
-	return size, _map[i]
+	unit := _map[i]
+	if compact {
+		unit = strings.ToLower(unit)
+	}
+	return size, unit
 }
 
 // PrintSigFixed formats a float to N significant digits using fixed-point notation.
@@ -91,7 +94,7 @@ func PrintSigFixed(value float64, N int, compact bool) string {
 	format := fmt.Sprintf("%%.%df", decimalPlaces)
 
 	s := fmt.Sprintf(format, value)
-	if strings.Contains(s, ".") {
+	if strings.Contains(s, ".") && compact {
 		s = strings.TrimRight(s, "0")
 		s = strings.TrimRight(s, ".")
 	}
@@ -101,12 +104,12 @@ func PrintSigFixed(value float64, N int, compact bool) string {
 // CustomSize returns a human-readable approximation of a size
 // using custom format and precision.
 func CustomSize(format string, precision int, size float64, base float64, _map []string, compact bool) string {
-	size, unit := getSizeAndUnit(size, base, _map, false)
+	size, unit := getSizeAndUnit(size, base, _map, false, compact)
 	return PrintSigFixed(size, precision, compact) + unit
 }
 
-func CustomExactSize(format string, precision int, size float64, base float64, _map []string) string {
-	size, unit := getSizeAndUnit(size, base, _map, true)
+func CustomExactSize(format string, precision int, size float64, base float64, _map []string, compact bool) string {
+	size, unit := getSizeAndUnit(size, base, _map, true, compact)
 	return fmt.Sprintf(format, precision, size, unit)
 }
 
@@ -123,7 +126,7 @@ func DSize(size float64) string {
 }
 
 func DSizeCompact(f float64) string {
-	return CustomSize("%.*g%s", defaultPrecision, f, 1000.0, cAbb, true)
+	return CustomSize("%.*g%s", defaultPrecision, f, 1000.0, dAbb, true)
 }
 
 // BSizeWithPrecision returns a human-readable, arbitrary precision,
@@ -140,16 +143,16 @@ func BSize(size float64) string {
 
 // BSizeCompact returns a compact human readable version of n
 func BSizeCompact(f float64) string {
-	return CustomSize("%.*g%s", defaultPrecision, f, 1024.0, cAbb, true)
+	return CustomSize("%.*g%s", defaultPrecision, f, 1024.0, bAbb, true)
 }
 
 func ExactBSizeCompact(f float64) string {
-	size, unit := getSizeAndUnit(f, 1024.0, cAbb, true)
+	size, unit := getSizeAndUnit(f, 1024.0, bAbb, true, true)
 	return fmt.Sprintf("%.0f%s", size, unit)
 }
 
 func ExactDSizeCompact(f float64) string {
-	size, unit := getSizeAndUnit(f, 1000.0, cAbb, true)
+	size, unit := getSizeAndUnit(f, 1000.0, bAbb, true, true)
 	return fmt.Sprintf("%.0f%s", size, unit)
 }
 
@@ -165,10 +168,10 @@ func FromSize(sizeStr string) (int64, error) {
 	var convertMap unitMap
 	if strings.ToLower(matches[4]) == "i" {
 		convertMap = bMap
-	} else if strings.ToLower(matches[4]) == "" && strings.ToLower(matches[5]) == "b" {
+	} else if strings.ToLower(matches[5]) == "b" {
 		convertMap = dMap
-	} else if strings.ToLower(matches[4]) == "" && strings.ToLower(matches[5]) == "" {
-		convertMap = dMap
+	} else if matches[5] == "" {
+		convertMap = bMap
 	} else {
 		return -1, fmt.Errorf("invalid size unit: '%s'", sizeStr)
 	}
@@ -213,10 +216,4 @@ func parseSize(sizeStr string, uMap unitMap) (int64, error) {
 	}
 
 	return int64(size), nil
-}
-
-// BSizeCompactFromMB returns a compact human readable version of n
-func BSizeCompactFromMB(n uint64) string {
-	f := float64(n * MiB)
-	return BSizeCompact(f)
 }
