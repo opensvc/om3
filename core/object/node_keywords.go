@@ -1119,6 +1119,13 @@ var nodeCommonKeywords = []keywords.Keyword{
 		Types:     []string{"routed_bridge"},
 	},
 	{
+		Converter: "int",
+		Default:   "0",
+		Option:    "mask_per_node",
+		Section:   "network",
+		Text:      keywords.NewText(fs, "text/kw/node/network.routed_bridge.mask_per_node"),
+	},
+	{
 		Converter: "list",
 		Default:   "main",
 		Example:   "main custom1 custom2",
