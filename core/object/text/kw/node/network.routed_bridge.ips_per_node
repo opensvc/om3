@@ -1,3 +1,10 @@
-The number of allocatable ips per node on the network.
+The number of ips each node must be able to allocate in the  network. This number is translated into the prefix length of the subnets distributed to each node.
+For example if the network is a x.x.x.x/16 you can distribute
+- x.x.x.x/17 subnets to 2 nodes
+- x.x.x.x/18 to 4 nodes
+- etc...
 
-Converted to the closest power of two.
+If both `mask_per_node` and `ips_per_node` are set, `ips_per_node` is ignored.
+If only `ips_per_node` is set, it is honored for backward compatibility.
+
+The `ips_per_node` keyword is deprecated because its value is hard to manage for large ipv6 subnets (e.g a x.x.x.x/48 subnet has 281474976710656 ips).
