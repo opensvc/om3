@@ -1,4 +1,3 @@
 The cluster backend network.
 
-The routed_bridge driver fragments this network into `ips_per_nodes` blocks
-subnets.
+The routed_bridge driver fragments this network into subnets with a prefix length given by`mask_per_nodes`.

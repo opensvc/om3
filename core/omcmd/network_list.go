@@ -3,11 +3,14 @@ package omcmd
 import (
 	"context"
 	"fmt"
+	"math/big"
 
 	"github.com/opensvc/om3/v3/core/client"
 	"github.com/opensvc/om3/v3/core/output"
 	"github.com/opensvc/om3/v3/core/rawconfig"
 	"github.com/opensvc/om3/v3/daemon/api"
+	"github.com/opensvc/om3/v3/util/sizeconv"
+	"github.com/opensvc/om3/v3/util/unstructured"
 )
 
 type (
@@ -33,11 +36,28 @@ func (t *CmdNetworkList) Run() error {
 	var pb api.Problem
 	switch resp.StatusCode() {
 	case 200:
+		cols := "NAME:name,TYPE:type,NETWORK:network,SIZE:size,USED:used,FREE:free"
+		convertToFloat64 := func(bi big.Int) float64 {
+			f, _ := bi.Float64()
+			return f
+		}
+		lines := make(unstructured.List, len(resp.JSON200.Items))
+		for i, network := range resp.JSON200.Items {
+			u := map[string]any{
+				"name":    network.Name,
+				"type":    network.Type,
+				"network": network.Network,
+				"size":    sizeconv.BSizeCompact(convertToFloat64(network.Size)),
+				"used":    sizeconv.BSizeCompact(convertToFloat64(network.Used)),
+				"free":    sizeconv.BSizeCompact(convertToFloat64(network.Free)),
+			}
+			lines[i] = u
+		}
 		output.Renderer{
-			DefaultOutput: "tab=NAME:name,TYPE:type,NETWORK:network,SIZE:size,USED:used,FREE:free",
+			DefaultOutput: "tab=" + cols,
 			Output:        t.Output,
 			Color:         t.Color,
-			Data:          resp.JSON200,
+			Data:          lines,
 			Colorize:      rawconfig.Colorize,
 		}.Print()
 		return nil

@@ -5773,11 +5773,14 @@ components:
           items:
             type: string
         free:
-          type: integer
+          type: string
+          x-go-type: big.Int
         used:
-          type: integer
+          type: string
+          x-go-type: big.Int
         size:
-          type: integer
+          type: string
+          x-go-type: big.Int
 
     PackageList:
       type: object

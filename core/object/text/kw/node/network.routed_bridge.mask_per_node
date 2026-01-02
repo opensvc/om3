@@ -1,4 +1,4 @@
-The number of ips each node must be able to allocate in the  network. This number is translated into the prefix length of the subnets distributed to each node.
+The prefix length of the subnets distributed to each node.
 For example if the network is a x.x.x.x/16 you can distribute
 - x.x.x.x/17 subnets to 2 nodes
 - x.x.x.x/18 to 4 nodes

@@ -5,8 +5,8 @@ package networkroutedbridge
 import (
 	"fmt"
 	"math"
+	"math/big"
 	"net"
-	"net/netip"
 	"strings"
 
 	"github.com/vishvananda/netlink"
@@ -135,49 +135,93 @@ func (t *T) allocateSubnets() error {
 		}
 	}
 
-	ipsPerNode := t.GetInt("ips_per_node")
-	if ipsPerNode == 0 {
-		return fmt.Errorf("ips_per_node must be greater than 0")
-	}
-	if ipsPerNode&(ipsPerNode-1) == 1 {
-		return fmt.Errorf("ips_per_node must be a power of 2")
+	maskPerNode := t.GetInt("mask_per_node")
+	if maskPerNode <= 0 {
+		ipsPerNode := t.GetInt("ips_per_node")
+		if ipsPerNode <= 0 {
+			return fmt.Errorf("either mask_per_node or ips_per_node must be set to a value greater than 0")
+		}
+		if ipsPerNode&(ipsPerNode-1) == 1 {
+			return fmt.Errorf("ips_per_node must be a power of 2")
+		}
+		maskPerNode = int(math.Log2(float64(ipsPerNode)))
 	}
 
-	ip, network, err := net.ParseCIDR(t.Network())
+	ip, netwk, err := net.ParseCIDR(t.Network())
 	if err != nil {
 		return err
 	}
+
 	nodes, err := t.Nodes()
 	if err != nil {
 		return err
 	}
-	ones, bits := network.Mask.Size()
-	maxIPs := 1 << (bits - ones)
-	maxIPsPerNodes := maxIPs / len(nodes)
-	minSubnetOnes := int(math.Log2(float64(maxIPsPerNodes)))
-	maxIPsPerNodes = 1 << minSubnetOnes
-	if ipsPerNode > maxIPsPerNodes {
-		return fmt.Errorf("ips_per_node=%d must be <=%d (%s has %d ips to distribute to %d nodes)", ipsPerNode, maxIPsPerNodes, network, maxIPs, len(nodes))
-	}
-	addr, err := netip.ParseAddr(ip.String())
-	if err != nil {
+
+	if err := t.checkMaxIpsPerNode(netwk, maskPerNode, nodes); err != nil {
 		return err
 	}
-	subnetOnes := int(math.Log2(float64(ipsPerNode)))
+
+	_, bits := netwk.Mask.Size()
 	m := make(map[string]string)
 
-	for _, nodename := range nodes {
-		subnet := fmt.Sprintf("%s/%d", addr, bits-subnetOnes)
-		for i := 0; i < ipsPerNode; i++ {
-			addr = addr.Next()
+	for i, nodename := range nodes {
+		nodeIp, subnet, err := computeSubnet(ip, int64(i), maskPerNode, bits, maskPerNode)
+		if err != nil {
+			return err
 		}
+		_ = nodeIp
 		if err := t.Set("subnet@"+nodename, subnet); err != nil {
 			return err
 		}
 		m[nodename] = subnet
 		t.Log().Infof("assign subnet %s to node %s", subnet, nodename)
 	}
+
 	t.subnetMap = m
+	return nil
+}
+
+func computeSubnet(baseIP net.IP, nodeIndex int64, maskPerNode int, bits, subnetOnes int) (net.IP, string, error) {
+	ip16 := baseIP.To16()
+	if ip16 == nil {
+		return nil, "", fmt.Errorf("invalid base ip %s", baseIP)
+	}
+
+	ipsPerNode := new(big.Int).Lsh(big.NewInt(1), uint(maskPerNode))
+
+	baseInt := new(big.Int).SetBytes(ip16)
+	idxBig := big.NewInt(nodeIndex)
+	offset := new(big.Int).Mul(idxBig, ipsPerNode)
+
+	nodeInt := new(big.Int).Add(baseInt, offset)
+
+	if nodeInt.BitLen() > 128 {
+		return nil, "", fmt.Errorf("computed ip exceeds maximum size")
+	}
+
+	nodeBytes := nodeInt.FillBytes(make([]byte, 16))
+	nodeIP := net.IP(nodeBytes)
+
+	if baseIP.To4() != nil {
+		nodeIP = nodeIP.To4()
+	}
+
+	prefix := bits - subnetOnes
+	subnet := fmt.Sprintf("%s/%d", nodeIP.String(), prefix)
+	return nodeIP, subnet, nil
+}
+
+func (t *T) checkMaxIpsPerNode(network *net.IPNet, maskPerNode int, nodes []string) error {
+	ipsPerNode := new(big.Int).Lsh(big.NewInt(1), uint(maskPerNode))
+	one := big.NewInt(1)
+	ones, bits := network.Mask.Size()
+	maxIPs := new(big.Int).Lsh(one, uint(bits-ones))
+	maxIPsPerNodes := new(big.Int).Div(maxIPs, big.NewInt(int64(len(nodes))))
+	minSubnetOnes := maxIPsPerNodes.BitLen() - 1
+	maxIPsPerNodes = new(big.Int).Lsh(one, uint(minSubnetOnes))
+	if ipsPerNode.Cmp(maxIPsPerNodes) > 0 {
+		return fmt.Errorf("ips_per_node=%s must be <=%s (%s has %s ips to distribute to %d nodes)", ipsPerNode.String(), maxIPsPerNodes.String(), network, maxIPs.String(), len(nodes))
+	}
 	return nil
 }
 
@@ -228,12 +272,13 @@ func (t *T) setupNode(nodename string, nodeIndex int, localIP, brIP net.IP) erro
 	if err != nil {
 		return fmt.Errorf("get peer ip: %w", err)
 	}
-	dst, err := t.NodeSubnet(nodename)
-	if err != nil {
-		return fmt.Errorf("get peer subnet: %w", err)
-	}
-	if dst == nil {
+	subnet, ok := t.subnetMap[nodename]
+	if !ok {
 		return fmt.Errorf("no peer subnet: %w", err)
+	}
+	_, dst, err := net.ParseCIDR(subnet)
+	if err != nil {
+		return fmt.Errorf("parse peer subnet %s: %w", subnet, err)
 	}
 	if hostname.Hostname() == nodename {
 		route = network.Route{

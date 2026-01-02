@@ -3,6 +3,7 @@ package tui
 import (
 	"context"
 	"fmt"
+	"math/big"
 	"net/http"
 	"sort"
 
@@ -52,14 +53,20 @@ func (t *App) updateNetworkList() {
 		return items[i].Name < items[j].Name
 	})
 
+	convertToFloat64 := func(bi big.Int) float64 {
+		f, _ := bi.Float64()
+		return f
+	}
+
 	for _, network := range items {
+
 		elements := []string{
 			network.Name,
 			network.Type,
 			network.Network,
-			sizeconv.BSizeCompact(float64(network.Size)),
-			sizeconv.BSizeCompact(float64(network.Used)),
-			sizeconv.BSizeCompact(float64(network.Free)),
+			sizeconv.DSizeCompact(convertToFloat64(network.Size)),
+			sizeconv.DSizeCompact(convertToFloat64(network.Used)),
+			sizeconv.DSizeCompact(convertToFloat64(network.Free)),
 		}
 		elementsList = append(elementsList, elements)
 	}
