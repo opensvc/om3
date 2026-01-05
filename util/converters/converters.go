@@ -258,6 +258,11 @@ func (t TSize) convert(s string) (*int64, error) {
 	if strings.Contains(s, "%") {
 		return nil, err
 	}
+	last := s[len(s)-1]
+	switch strings.ToLower(string(last)) {
+	case "k", "m", "g", "t", "p", "e", "z", "y":
+		s = s[:len(s)-1] + strings.ToUpper(string(last)) + "iB"
+	}
 	if i, err = sizeconv.FromSize(s); err != nil {
 		return nil, err
 	}

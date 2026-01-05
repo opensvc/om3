@@ -5,6 +5,7 @@ package api
 
 import (
 	"encoding/json"
+	"math/big"
 	"time"
 
 	"github.com/oapi-codegen/runtime"
@@ -784,12 +785,12 @@ type LogList = openapi_types.File
 // Network defines model for Network.
 type Network struct {
 	Errors  *[]string `json:"errors,omitempty"`
-	Free    int       `json:"free"`
+	Free    big.Int   `json:"free"`
 	Name    string    `json:"name"`
 	Network string    `json:"network"`
-	Size    int       `json:"size"`
+	Size    big.Int   `json:"size"`
 	Type    string    `json:"type"`
-	Used    int       `json:"used"`
+	Used    big.Int   `json:"used"`
 }
 
 // NetworkIP defines model for NetworkIP.
