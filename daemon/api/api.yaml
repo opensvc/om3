@@ -5,6 +5,30 @@ info:
   version: 4.1.3
 
 paths:
+  /api/array:
+    get:
+      operationId: GetArray
+      tags:
+        - array
+      security:
+        - basicAuth: []
+        - bearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/inQueryArrayName'
+      responses:
+        200:
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ArrayList'
+        401:
+          $ref: '#/components/responses/401'
+        403:
+          $ref: '#/components/responses/403'
+        500:
+          $ref: '#/components/responses/500'
+
   /api/auth/info:
     get:
       description: |
@@ -17,6 +41,53 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/AuthInfo'
+      tags:
+        - auth
+
+  /api/auth/refresh:
+    post:
+      summary: Refresh access token
+      description: |
+        Return a new access token the client can use as a Authorization
+        header in its following requests.
+        The subject of the access token is the same as the one of the refresh token
+        provided in the request Authorization header.
+      operationId: PostAuthRefresh
+      parameters:
+        - $ref: '#/components/parameters/Roles'
+        - in: query
+          name: access_duration
+          description: max access token duration, maximum value 24h
+          schema:
+            type: string
+            example: 10m
+        - in: query
+          name: scope
+          description: the scope value used to create the token grant claim
+          schema:
+            type: string
+            example: ns1
+      responses:
+        200:
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AuthAccessToken'
+        400:
+          $ref: '#/components/responses/400'
+        401:
+          $ref: '#/components/responses/401'
+        403:
+          $ref: '#/components/responses/403'
+        404:
+          $ref: '#/components/responses/404'
+        500:
+          $ref: '#/components/responses/500'
+        503:
+          $ref: '#/components/responses/503'
+      security:
+        - bearerAuth: []
       tags:
         - auth
 
@@ -90,53 +161,6 @@ paths:
           $ref: '#/components/responses/503'
       security:
         - basicAuth: []
-        - bearerAuth: []
-      tags:
-        - auth
-
-  /api/auth/refresh:
-    post:
-      summary: Refresh access token
-      description: |
-        Return a new access token the client can use as a Authorization
-        header in its following requests.
-        The subject of the access token is the same as the one of the refresh token
-        provided in the request Authorization header.
-      operationId: PostAuthRefresh
-      parameters:
-        - $ref: '#/components/parameters/Roles'
-        - in: query
-          name: access_duration
-          description: max access token duration, maximum value 24h
-          schema:
-            type: string
-            example: 10m
-        - in: query
-          name: scope
-          description: the scope value used to create the token grant claim
-          schema:
-            type: string
-            example: ns1
-      responses:
-        200:
-          description: OK
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/AuthAccessToken'
-        400:
-          $ref: '#/components/responses/400'
-        401:
-          $ref: '#/components/responses/401'
-        403:
-          $ref: '#/components/responses/403'
-        404:
-          $ref: '#/components/responses/404'
-        500:
-          $ref: '#/components/responses/500'
-        503:
-          $ref: '#/components/responses/503'
-      security:
         - bearerAuth: []
       tags:
         - auth
@@ -380,32 +404,68 @@ paths:
         500:
           $ref: '#/components/responses/500'
 
-  /api/cluster/status:
+  /api/cluster/config/keywords:
     get:
+      operationId: GetClusterConfigKeywords
       description: |
-        Dump all the information available to the daemon.
-      operationId: GetClusterStatus
-      security:
-        - basicAuth: []
-        - bearerAuth: []
+        Return the list of supported keywords in cluster.conf
       parameters:
-        - $ref: '#/components/parameters/NamespaceOptional'
-        - $ref: '#/components/parameters/SelectorOptional'
+        - $ref: '#/components/parameters/inQueryDriver'
+        - $ref: '#/components/parameters/inQuerySection'
+        - $ref: '#/components/parameters/inQueryOption'
       responses:
         200:
           description: OK
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/ClusterStatus'
+                $ref: '#/components/schemas/KeywordDefinitionList'
+        400:
+          $ref: '#/components/responses/400'
+        401:
+          $ref: '#/components/responses/401'
+        500:
+          $ref: '#/components/responses/500'
+      security:
+        - basicAuth: [ ]
+        - bearerAuth: [ ]
+      tags:
+        - cluster
+
+  /api/cluster/hb/rotate:
+    post:
+      description: |
+        For internal use only.
+
+        Initiate cluster heartbeat secret rotation.
+
+        To follow the processing of the heartbeat rotate request, use the following event filters,
+        - HeartbeatRotateSuccess,.id=xxx
+        - HeartbeatRotateError,.id=xxx
+      operationId: PostClusterHeartbeatRotate
+      responses:
+        200:
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HeartbeatRotateResponse'
+        400:
+          $ref: '#/components/responses/400'
         401:
           $ref: '#/components/responses/401'
         403:
           $ref: '#/components/responses/403'
+        409:
+          $ref: '#/components/responses/409'
         500:
           $ref: '#/components/responses/500'
+      security:
+        - basicAuth: [ ]
+        - bearerAuth: [ ]
       tags:
         - cluster
+      x-internal: true
 
   /api/cluster/join:
     post:
@@ -493,568 +553,24 @@ paths:
       tags:
         - cluster
 
-  /api/node/name/{nodename}/capabilities:
+  /api/cluster/status:
     get:
-      operationId: GetNodeCapabilities
       description: |
-        Return the capabilities of the node.
-        Capability scanners are provided by the core agent and by every resource driver.
-        Capabalities are used to enable or disable features based on the current operating system state.
-      parameters:
-        - $ref: '#/components/parameters/inPathNodeName'
-      responses:
-        200:
-          description: OK
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/CapabilityList'
-        400:
-          $ref: '#/components/responses/400'
-        401:
-          $ref: '#/components/responses/401'
-        403:
-          $ref: '#/components/responses/403'
-        500:
-          $ref: '#/components/responses/500'
+        Dump all the information available to the daemon.
+      operationId: GetClusterStatus
       security:
         - basicAuth: []
         - bearerAuth: []
-      tags:
-        - node
-
-  /api/cluster/config/keywords:
-    get:
-      operationId: GetClusterConfigKeywords
-      description: |
-        Return the list of supported keywords in cluster.conf
       parameters:
-        - $ref: '#/components/parameters/inQueryDriver'
-        - $ref: '#/components/parameters/inQuerySection'
-        - $ref: '#/components/parameters/inQueryOption'
-      responses:
-        200:
-          description: OK
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/KeywordDefinitionList'
-        400:
-          $ref: '#/components/responses/400'
-        401:
-          $ref: '#/components/responses/401'
-        500:
-          $ref: '#/components/responses/500'
-      security:
-        - basicAuth: [ ]
-        - bearerAuth: [ ]
-      tags:
-        - cluster
-
-  /api/cluster/hb/rotate:
-    post:
-      description: |
-        For internal use only.
-
-        Initiate cluster heartbeat secret rotation.
-
-        To follow the processing of the heartbeat rotate request, use the following event filters,
-        - HeartbeatRotateSuccess,.id=xxx
-        - HeartbeatRotateError,.id=xxx
-      operationId: PostClusterHeartbeatRotate
-      responses:
-        200:
-          description: OK
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/HeartbeatRotateResponse'
-        400:
-          $ref: '#/components/responses/400'
-        401:
-          $ref: '#/components/responses/401'
-        403:
-          $ref: '#/components/responses/403'
-        409:
-          $ref: '#/components/responses/409'
-        500:
-          $ref: '#/components/responses/500'
-      security:
-        - basicAuth: [ ]
-        - bearerAuth: [ ]
-      tags:
-        - cluster
-      x-internal: true
-
-  /api/node/name/{nodename}/config/keywords:
-    get:
-      operationId: GetNodeConfigKeywords
-      description: |
-        Return the list of supported keywords in node
-      parameters:
-        - $ref: '#/components/parameters/inPathNodeName'
-        - $ref: '#/components/parameters/inQueryDriver'
-        - $ref: '#/components/parameters/inQuerySection'
-        - $ref: '#/components/parameters/inQueryOption'
-      responses:
-        200:
-          description: OK
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/KeywordDefinitionList'
-        400:
-          $ref: '#/components/responses/400'
-        401:
-          $ref: '#/components/responses/401'
-        500:
-          $ref: '#/components/responses/500'
-      security:
-        - basicAuth: [ ]
-        - bearerAuth: [ ]
-      tags:
-        - node
-
-  /api/object/path/{namespace}/{kind}/{name}/config/keywords:
-    get:
-      operationId: GetObjectConfigKeywords
-      description: |
-        Return the list of supported keywords in object
-      parameters:
-        - $ref: '#/components/parameters/inPathNamespace'
-        - $ref: '#/components/parameters/inPathKind'
-        - $ref: '#/components/parameters/inPathName'
-        - $ref: '#/components/parameters/inQueryDriver'
-        - $ref: '#/components/parameters/inQuerySection'
-        - $ref: '#/components/parameters/inQueryOption'
-      tags:
-        - object / svc
-        - object / vol
-        - object / cfg
-        - object / nscfg
-        - object / sec
-        - object / usr
-      security:
-        - basicAuth: [ ]
-        - bearerAuth: [ ]
-      responses:
-        200:
-          description: OK
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/KeywordDefinitionList'
-        400:
-          $ref: '#/components/responses/400'
-        401:
-          $ref: '#/components/responses/401'
-        500:
-          $ref: '#/components/responses/500'
-
-  /api/node/name/{nodename}/daemon/action/restart:
-    post:
-      description: |
-        Restart the daemon on this node.
-
-        The node svc and vol instances do not change state.
-
-        The peer nodes are notified of our maintenance state so they will not
-        try to takeover services during the restart.
-      operationId: PostDaemonRestart
-      parameters:
-        - $ref: '#/components/parameters/inPathNodeName'
-      responses:
-        200:
-          $ref: '#/components/responses/200'
-        400:
-          $ref: '#/components/responses/400'
-        401:
-          $ref: '#/components/responses/401'
-        403:
-          $ref: '#/components/responses/403'
-        500:
-          $ref: '#/components/responses/500'
-      security:
-        - basicAuth: []
-        - bearerAuth: []
-      tags:
-        - node / daemon
-
-  /api/node/name/{nodename}/daemon/action/shutdown:
-    post:
-      description: |
-        Shut down all the node svc and vol instances, then stop the daemon.
-
-        Peer nodes are not notified of a maintenance period, so they will try
-        to takeover services as soon as their instance on the shutdown daemon's
-        node is down.
-      operationId: PostDaemonShutdown
-      parameters:
-        - $ref: '#/components/parameters/Duration'
-        - $ref: '#/components/parameters/inPathNodeName'
-      responses:
-        200:
-          description: OK
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/DaemonPid'
-        400:
-          $ref: '#/components/responses/400'
-        401:
-          $ref: '#/components/responses/401'
-        403:
-          $ref: '#/components/responses/403'
-        500:
-          $ref: '#/components/responses/500'
-      tags:
-        - node / daemon
-      security:
-        - basicAuth: []
-        - bearerAuth: []
-
-  /api/node/name/{nodename}/daemon/action/stop:
-    post:
-      description: |
-        Stop the daemon.
-
-        The node svc and vol instances do not change state.
-        The peer nodes are notified of our maintenance state so they will
-        not takeover services until the maintenance_grace_period is expired.
-      operationId: PostDaemonStop
-      parameters:
-        - $ref: '#/components/parameters/inPathNodeName'
-      responses:
-        200:
-          description: OK
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/DaemonPid'
-        400:
-          $ref: '#/components/responses/400'
-        401:
-          $ref: '#/components/responses/401'
-        403:
-          $ref: '#/components/responses/403'
-        500:
-          $ref: '#/components/responses/500'
-      security:
-        - basicAuth: []
-        - bearerAuth: []
-      tags:
-        - node / daemon
-
-  /api/node/name/{nodename}/daemon/dns/dump:
-    get:
-      description: |
-        Dump the cluster DNS zone content.
-      operationId: GetDaemonDNSDump
-      parameters:
-        - $ref: '#/components/parameters/inPathNodeName'
-      responses:
-        200:
-          description: OK
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/DNSZone'
-        401:
-          $ref: '#/components/responses/401'
-        403:
-          $ref: '#/components/responses/403'
-        500:
-          $ref: '#/components/responses/500'
-      security:
-        - basicAuth: []
-        - bearerAuth: []
-      tags:
-        - node / daemon
-
-  /api/node/name/{nodename}/daemon/event:
-    get:
-      operationId: GetDaemonEvents
-      description: |
-        Listen node daemon events
-      parameters:
-        - $ref: '#/components/parameters/inPathNodeName'
-        - $ref: '#/components/parameters/Duration'
-        - $ref: '#/components/parameters/Limit'
-        - $ref: '#/components/parameters/EventFilter'
-        - $ref: '#/components/parameters/EventCache'
+        - $ref: '#/components/parameters/NamespaceOptional'
         - $ref: '#/components/parameters/SelectorOptional'
       responses:
         200:
           description: OK
           content:
-            text/event-stream:
+            application/json:
               schema:
-                $ref: '#/components/schemas/EventList'
-        400:
-          $ref: '#/components/responses/400'
-        401:
-          $ref: '#/components/responses/401'
-        403:
-          $ref: '#/components/responses/403'
-        500:
-          $ref: '#/components/responses/500'
-      security:
-        - basicAuth: []
-        - bearerAuth: []
-      tags:
-        - node / daemon
-
-  /api/node/name/{nodename}/daemon/hb/name/{name}/action/restart:
-    post:
-      description: |
-        Restart daemon hb `name` on `nodename`.
-      operationId: PostDaemonHeartbeatRestart
-      parameters:
-        - $ref: '#/components/parameters/inPathNodeName'
-        - $ref: '#/components/parameters/inPathHeartbeatName'
-      tags:
-        - node / daemon
-      security:
-        - basicAuth: [ ]
-        - bearerAuth: [ ]
-      responses:
-        200:
-          $ref: '#/components/responses/200'
-        400:
-          $ref: '#/components/responses/400'
-        401:
-          $ref: '#/components/responses/401'
-        403:
-          $ref: '#/components/responses/403'
-        500:
-          $ref: '#/components/responses/500'
-
-  /api/node/name/{nodename}/daemon/hb/name/{name}/action/start:
-    post:
-      description: |
-        Start daemon hb `name` on `nodename`.
-      operationId: PostDaemonHeartbeatStart
-      parameters:
-        - $ref: '#/components/parameters/inPathNodeName'
-        - $ref: '#/components/parameters/inPathHeartbeatName'
-      tags:
-        - node / daemon
-      security:
-        - basicAuth: [ ]
-        - bearerAuth: [ ]
-      responses:
-        200:
-          $ref: '#/components/responses/200'
-        400:
-          $ref: '#/components/responses/400'
-        401:
-          $ref: '#/components/responses/401'
-        403:
-          $ref: '#/components/responses/403'
-        500:
-          $ref: '#/components/responses/500'
-
-  /api/node/name/{nodename}/daemon/hb/name/{name}/action/sign:
-    post:
-      description: |
-        Sign a heartbeat disk
-      operationId: PostDaemonHeartbeatSign
-      parameters:
-        - $ref: '#/components/parameters/inPathNodeName'
-        - $ref: '#/components/parameters/inPathHeartbeatName'
-      tags:
-        - node / daemon
-      security:
-        - basicAuth: [ ]
-        - bearerAuth: [ ]
-      responses:
-        200:
-          $ref: '#/components/responses/200'
-        400:
-          $ref: '#/components/responses/400'
-        401:
-          $ref: '#/components/responses/401'
-        403:
-          $ref: '#/components/responses/403'
-        500:
-          $ref: '#/components/responses/500'
-
-  /api/node/name/{nodename}/daemon/hb/name/{name}/action/wipe:
-    post:
-      description: |
-        Wipe a heartbeat disk
-      operationId: PostDaemonHeartbeatWipe
-      parameters:
-        - $ref: '#/components/parameters/inPathNodeName'
-        - $ref: '#/components/parameters/inPathHeartbeatName'
-      tags:
-        - node / daemon
-      security:
-        - basicAuth: [ ]
-        - bearerAuth: [ ]
-      responses:
-        200:
-          $ref: '#/components/responses/200'
-        400:
-          $ref: '#/components/responses/400'
-        401:
-          $ref: '#/components/responses/401'
-        403:
-          $ref: '#/components/responses/403'
-        500:
-          $ref: '#/components/responses/500'
-
-  /api/node/name/{nodename}/daemon/hb/name/{name}/action/stop:
-    post:
-      description: |
-        Stop daemon hb `name` on `nodename`.
-      operationId: PostDaemonHeartbeatStop
-      parameters:
-        - $ref: '#/components/parameters/inPathNodeName'
-        - $ref: '#/components/parameters/inPathHeartbeatName'
-      tags:
-        - node / daemon
-      security:
-        - basicAuth: [ ]
-        - bearerAuth: [ ]
-      responses:
-        200:
-          $ref: '#/components/responses/200'
-        400:
-          $ref: '#/components/responses/400'
-        401:
-          $ref: '#/components/responses/401'
-        403:
-          $ref: '#/components/responses/403'
-        500:
-          $ref: '#/components/responses/500'
-
-  /api/node/name/{nodename}/daemon/listener/name/{name}/action/restart:
-    post:
-      description: |
-        Restart daemon listener `name` on `nodename`.
-      operationId: PostDaemonListenerRestart
-      parameters:
-        - $ref: '#/components/parameters/inPathNodeName'
-        - $ref: '#/components/parameters/inPathListenerName'
-      tags:
-        - node / daemon
-      security:
-        - basicAuth: [ ]
-        - bearerAuth: [ ]
-      responses:
-        200:
-          $ref: '#/components/responses/200'
-        400:
-          $ref: '#/components/responses/400'
-        401:
-          $ref: '#/components/responses/401'
-        403:
-          $ref: '#/components/responses/403'
-        500:
-          $ref: '#/components/responses/500'
-
-  /api/node/name/{nodename}/daemon/listener/name/{name}/action/start:
-    post:
-      description: |
-        Start daemon listener `name` on `nodename`.
-      operationId: PostDaemonListenerStart
-      parameters:
-        - $ref: '#/components/parameters/inPathNodeName'
-        - $ref: '#/components/parameters/inPathListenerName'
-      tags:
-        - node / daemon
-      security:
-        - basicAuth: [ ]
-        - bearerAuth: [ ]
-      responses:
-        200:
-          $ref: '#/components/responses/200'
-        400:
-          $ref: '#/components/responses/400'
-        401:
-          $ref: '#/components/responses/401'
-        403:
-          $ref: '#/components/responses/403'
-        500:
-          $ref: '#/components/responses/500'
-
-  /api/node/name/{nodename}/daemon/listener/name/{name}/log/control:
-    post:
-      operationId: PostDaemonListenerLogControl
-      parameters:
-        - $ref: '#/components/parameters/inPathNodeName'
-        - $ref: '#/components/parameters/inPathListenerName'
-      tags:
-        - node / daemon
-      security:
-        - basicAuth: []
-        - bearerAuth: []
-      requestBody:
-        description: |
-          Set a daemon listener log level.
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/LogControlBody'
-      responses:
-        200:
-          $ref: '#/components/responses/200'
-        400:
-          $ref: '#/components/responses/400'
-        401:
-          $ref: '#/components/responses/401'
-        403:
-          $ref: '#/components/responses/403'
-        500:
-          $ref: '#/components/responses/500'
-
-  /api/node/name/{nodename}/daemon/listener/name/{name}/action/stop:
-    post:
-      description: |
-        Stop daemon listener `name` on `nodename`.
-      operationId: PostDaemonListenerStop
-      parameters:
-        - $ref: '#/components/parameters/inPathNodeName'
-        - $ref: '#/components/parameters/inPathListenerName'
-      tags:
-        - node / daemon
-      security:
-        - basicAuth: [ ]
-        - bearerAuth: [ ]
-      responses:
-        200:
-          $ref: '#/components/responses/200'
-        400:
-          $ref: '#/components/responses/400'
-        401:
-          $ref: '#/components/responses/401'
-        403:
-          $ref: '#/components/responses/403'
-        500:
-          $ref: '#/components/responses/500'
-
-  /api/node/name/{nodename}/daemon/log/control:
-    post:
-      operationId: PostDaemonLogControl
-      parameters:
-        - $ref: '#/components/parameters/inPathNodeName'
-      security:
-        - basicAuth: []
-        - bearerAuth: []
-      requestBody:
-        description: set daemon log level
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/LogControlBody'
-      responses:
-        200:
-          $ref: '#/components/responses/200'
-        400:
-          $ref: '#/components/responses/400'
+                $ref: '#/components/schemas/ClusterStatus'
         401:
           $ref: '#/components/responses/401'
         403:
@@ -1062,22 +578,26 @@ paths:
         500:
           $ref: '#/components/responses/500'
       tags:
-        - node / daemon
+        - cluster
 
-  /api/node/name/{nodename}/schedule:
+  /api/instance:
     get:
-      operationId: GetNodeSchedule
-      description: |
-        Return the schedule table of the node.
+      operationId: GetInstances
+      tags:
+        - instance
+      security:
+        - basicAuth: []
+        - bearerAuth: []
       parameters:
-        - $ref: '#/components/parameters/inPathNodeName'
+        - $ref: '#/components/parameters/PathOptional'
+        - $ref: '#/components/parameters/NodeOptional'
       responses:
         200:
-          description: OK
+          description: get instance config, monitor and status
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/ScheduleList'
+                $ref: '#/components/schemas/InstanceList'
         400:
           $ref: '#/components/responses/400'
         401:
@@ -1086,26 +606,33 @@ paths:
           $ref: '#/components/responses/403'
         500:
           $ref: '#/components/responses/500'
+
+  /api/instance/path/{namespace}/{kind}/{name}/progress:
+    post:
+      description: |
+        For internal use only.
+
+        Used by the CRM to annonce to the daemon the action it is starting to process, if this action was not triggered by the daemon.
+      operationId: PostInstanceProgress
+      tags:
+        - instance
       security:
         - basicAuth: []
         - bearerAuth: []
-      tags:
-        - node
-
-  /api/node/name/{nodename}/ssh/hostkeys:
-    get:
-      description: |
-        Return the ssh public host keys so the peer can trust them in its known_hosts file.
-      operationId: GetNodeSSHHostkeys
       parameters:
-        - $ref: '#/components/parameters/inPathNodeName'
+        - $ref: '#/components/parameters/inPathNamespace'
+        - $ref: '#/components/parameters/inPathKind'
+        - $ref: '#/components/parameters/inPathName'
+      requestBody:
+        description: Change the instance monitor state to reflect the progress of actions the daemon did not started.
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PostInstanceProgress'
       responses:
         200:
           description: OK
-          content:
-            text/plain:
-              schema:
-                type: string
         400:
           $ref: '#/components/responses/400'
         401:
@@ -1114,26 +641,34 @@ paths:
           $ref: '#/components/responses/403'
         500:
           $ref: '#/components/responses/500'
+      x-internal: true
+
+  /api/instance/path/{namespace}/{kind}/{name}/status:
+    post:
+      description: |
+        For internal use only.
+
+        Used by the CRM to annonce to the daemon the status of the instance at the end of an action.
+      operationId: PostInstanceStatus
+      tags:
+        - instance
       security:
         - basicAuth: []
         - bearerAuth: []
-      tags:
-        - node
-
-  /api/node/name/{nodename}/ssh/key:
-    get:
-      description: |
-        Return the ssh public key defined by node.sshkey so the peer can trust it in its authorized_keys file.
-      operationId: GetNodeSSHKey
       parameters:
-        - $ref: '#/components/parameters/inPathNodeName'
+        - $ref: '#/components/parameters/inPathNamespace'
+        - $ref: '#/components/parameters/inPathKind'
+        - $ref: '#/components/parameters/inPathName'
+      requestBody:
+        description: post object status
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/InstanceStatus'
       responses:
         200:
           description: OK
-          content:
-            text/plain:
-              schema:
-                type: string
         400:
           $ref: '#/components/responses/400'
         401:
@@ -1142,33 +677,6 @@ paths:
           $ref: '#/components/responses/403'
         500:
           $ref: '#/components/responses/500'
-      security:
-        - basicAuth: []
-        - bearerAuth: []
-      tags:
-        - node
-
-  /api/node/name/{nodename}/ssh/trust:
-    put:
-      description: |
-        Trust the ssh public keys of peer nodes.
-      operationId: PutNodeSSHTrust
-      parameters:
-        - $ref: '#/components/parameters/inPathNodeName'
-      responses:
-        204:
-          $ref: '#/components/responses/204'
-        401:
-          $ref: '#/components/responses/401'
-        403:
-          $ref: '#/components/responses/403'
-        500:
-          $ref: '#/components/responses/500'
-      security:
-        - basicAuth: []
-        - bearerAuth: []
-      tags:
-        - node
 
   /api/network:
     get:
@@ -1208,12 +716,12 @@ paths:
         - basicAuth: []
         - bearerAuth: []
       parameters:
-      - in: query
-        name: name
-        description: the name of a cluster backend network
-        required: false
-        schema:
-          type: string
+        - in: query
+          name: name
+          description: the name of a cluster backend network
+          required: false
+          schema:
+            type: string
       responses:
         200:
           description: OK
@@ -1254,6 +762,29 @@ paths:
           $ref: '#/components/responses/403'
         500:
           $ref: '#/components/responses/500'
+
+  /api/node/info:
+    get:
+      operationId: GetNodesInfo
+      tags:
+        - node
+      security:
+        - basicAuth: []
+        - bearerAuth: []
+      responses:
+        200:
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/NodesInfo'
+        401:
+          $ref: '#/components/responses/401'
+        403:
+          $ref: '#/components/responses/403'
+        500:
+          $ref: '#/components/responses/500'
+
 
   /api/node/name/{nodename}/action/abort:
     post:
@@ -1559,6 +1090,36 @@ paths:
         500:
           $ref: '#/components/responses/500'
 
+  /api/node/name/{nodename}/capabilities:
+    get:
+      operationId: GetNodeCapabilities
+      description: |
+        Return the capabilities of the node.
+        Capability scanners are provided by the core agent and by every resource driver.
+        Capabalities are used to enable or disable features based on the current operating system state.
+      parameters:
+        - $ref: '#/components/parameters/inPathNodeName'
+      responses:
+        200:
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CapabilityList'
+        400:
+          $ref: '#/components/responses/400'
+        401:
+          $ref: '#/components/responses/401'
+        403:
+          $ref: '#/components/responses/403'
+        500:
+          $ref: '#/components/responses/500'
+      security:
+        - basicAuth: []
+        - bearerAuth: []
+      tags:
+        - node
+
   /api/node/name/{nodename}/config:
     get:
       operationId: GetNodeConfig
@@ -1615,7 +1176,6 @@ paths:
           $ref: '#/components/responses/403'
         500:
           $ref: '#/components/responses/500'
-
 
   /api/node/name/{nodename}/config/file:
     get:
@@ -1681,6 +1241,448 @@ paths:
           $ref: '#/components/responses/409'
         500:
           $ref: '#/components/responses/500'
+
+  /api/node/name/{nodename}/config/keywords:
+    get:
+      operationId: GetNodeConfigKeywords
+      description: |
+        Return the list of supported keywords in node
+      parameters:
+        - $ref: '#/components/parameters/inPathNodeName'
+        - $ref: '#/components/parameters/inQueryDriver'
+        - $ref: '#/components/parameters/inQuerySection'
+        - $ref: '#/components/parameters/inQueryOption'
+      responses:
+        200:
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/KeywordDefinitionList'
+        400:
+          $ref: '#/components/responses/400'
+        401:
+          $ref: '#/components/responses/401'
+        500:
+          $ref: '#/components/responses/500'
+      security:
+        - basicAuth: [ ]
+        - bearerAuth: [ ]
+      tags:
+        - node
+
+  /api/node/name/{nodename}/daemon/action/restart:
+    post:
+      description: |
+        Restart the daemon on this node.
+
+        The node svc and vol instances do not change state.
+
+        The peer nodes are notified of our maintenance state so they will not
+        try to takeover services during the restart.
+      operationId: PostDaemonRestart
+      parameters:
+        - $ref: '#/components/parameters/inPathNodeName'
+      responses:
+        200:
+          $ref: '#/components/responses/200'
+        400:
+          $ref: '#/components/responses/400'
+        401:
+          $ref: '#/components/responses/401'
+        403:
+          $ref: '#/components/responses/403'
+        500:
+          $ref: '#/components/responses/500'
+      security:
+        - basicAuth: []
+        - bearerAuth: []
+      tags:
+        - node / daemon
+
+  /api/node/name/{nodename}/daemon/action/shutdown:
+    post:
+      description: |
+        Shut down all the node svc and vol instances, then stop the daemon.
+
+        Peer nodes are not notified of a maintenance period, so they will try
+        to takeover services as soon as their instance on the shutdown daemon's
+        node is down.
+      operationId: PostDaemonShutdown
+      parameters:
+        - $ref: '#/components/parameters/Duration'
+        - $ref: '#/components/parameters/inPathNodeName'
+      responses:
+        200:
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DaemonPid'
+        400:
+          $ref: '#/components/responses/400'
+        401:
+          $ref: '#/components/responses/401'
+        403:
+          $ref: '#/components/responses/403'
+        500:
+          $ref: '#/components/responses/500'
+      tags:
+        - node / daemon
+      security:
+        - basicAuth: []
+        - bearerAuth: []
+
+  /api/node/name/{nodename}/daemon/action/stop:
+    post:
+      description: |
+        Stop the daemon.
+
+        The node svc and vol instances do not change state.
+        The peer nodes are notified of our maintenance state so they will
+        not takeover services until the maintenance_grace_period is expired.
+      operationId: PostDaemonStop
+      parameters:
+        - $ref: '#/components/parameters/inPathNodeName'
+      responses:
+        200:
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DaemonPid'
+        400:
+          $ref: '#/components/responses/400'
+        401:
+          $ref: '#/components/responses/401'
+        403:
+          $ref: '#/components/responses/403'
+        500:
+          $ref: '#/components/responses/500'
+      security:
+        - basicAuth: []
+        - bearerAuth: []
+      tags:
+        - node / daemon
+
+  /api/node/name/{nodename}/daemon/dns/dump:
+    get:
+      description: |
+        Dump the cluster DNS zone content.
+      operationId: GetDaemonDNSDump
+      parameters:
+        - $ref: '#/components/parameters/inPathNodeName'
+      responses:
+        200:
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DNSZone'
+        401:
+          $ref: '#/components/responses/401'
+        403:
+          $ref: '#/components/responses/403'
+        500:
+          $ref: '#/components/responses/500'
+      security:
+        - basicAuth: []
+        - bearerAuth: []
+      tags:
+        - node / daemon
+
+  /api/node/name/{nodename}/daemon/event:
+    get:
+      operationId: GetDaemonEvents
+      description: |
+        Listen node daemon events
+      parameters:
+        - $ref: '#/components/parameters/inPathNodeName'
+        - $ref: '#/components/parameters/Duration'
+        - $ref: '#/components/parameters/Limit'
+        - $ref: '#/components/parameters/EventFilter'
+        - $ref: '#/components/parameters/EventCache'
+        - $ref: '#/components/parameters/SelectorOptional'
+      responses:
+        200:
+          description: OK
+          content:
+            text/event-stream:
+              schema:
+                $ref: '#/components/schemas/EventList'
+        400:
+          $ref: '#/components/responses/400'
+        401:
+          $ref: '#/components/responses/401'
+        403:
+          $ref: '#/components/responses/403'
+        500:
+          $ref: '#/components/responses/500'
+      security:
+        - basicAuth: []
+        - bearerAuth: []
+      tags:
+        - node / daemon
+
+  /api/node/name/{nodename}/daemon/hb/name/{name}/action/restart:
+    post:
+      description: |
+        Restart daemon hb `name` on `nodename`.
+      operationId: PostDaemonHeartbeatRestart
+      parameters:
+        - $ref: '#/components/parameters/inPathNodeName'
+        - $ref: '#/components/parameters/inPathHeartbeatName'
+      tags:
+        - node / daemon
+      security:
+        - basicAuth: [ ]
+        - bearerAuth: [ ]
+      responses:
+        200:
+          $ref: '#/components/responses/200'
+        400:
+          $ref: '#/components/responses/400'
+        401:
+          $ref: '#/components/responses/401'
+        403:
+          $ref: '#/components/responses/403'
+        500:
+          $ref: '#/components/responses/500'
+
+  /api/node/name/{nodename}/daemon/hb/name/{name}/action/sign:
+    post:
+      description: |
+        Sign a heartbeat disk
+      operationId: PostDaemonHeartbeatSign
+      parameters:
+        - $ref: '#/components/parameters/inPathNodeName'
+        - $ref: '#/components/parameters/inPathHeartbeatName'
+      tags:
+        - node / daemon
+      security:
+        - basicAuth: [ ]
+        - bearerAuth: [ ]
+      responses:
+        200:
+          $ref: '#/components/responses/200'
+        400:
+          $ref: '#/components/responses/400'
+        401:
+          $ref: '#/components/responses/401'
+        403:
+          $ref: '#/components/responses/403'
+        500:
+          $ref: '#/components/responses/500'
+
+  /api/node/name/{nodename}/daemon/hb/name/{name}/action/start:
+    post:
+      description: |
+        Start daemon hb `name` on `nodename`.
+      operationId: PostDaemonHeartbeatStart
+      parameters:
+        - $ref: '#/components/parameters/inPathNodeName'
+        - $ref: '#/components/parameters/inPathHeartbeatName'
+      tags:
+        - node / daemon
+      security:
+        - basicAuth: [ ]
+        - bearerAuth: [ ]
+      responses:
+        200:
+          $ref: '#/components/responses/200'
+        400:
+          $ref: '#/components/responses/400'
+        401:
+          $ref: '#/components/responses/401'
+        403:
+          $ref: '#/components/responses/403'
+        500:
+          $ref: '#/components/responses/500'
+
+  /api/node/name/{nodename}/daemon/hb/name/{name}/action/stop:
+    post:
+      description: |
+        Stop daemon hb `name` on `nodename`.
+      operationId: PostDaemonHeartbeatStop
+      parameters:
+        - $ref: '#/components/parameters/inPathNodeName'
+        - $ref: '#/components/parameters/inPathHeartbeatName'
+      tags:
+        - node / daemon
+      security:
+        - basicAuth: [ ]
+        - bearerAuth: [ ]
+      responses:
+        200:
+          $ref: '#/components/responses/200'
+        400:
+          $ref: '#/components/responses/400'
+        401:
+          $ref: '#/components/responses/401'
+        403:
+          $ref: '#/components/responses/403'
+        500:
+          $ref: '#/components/responses/500'
+
+  /api/node/name/{nodename}/daemon/hb/name/{name}/action/wipe:
+    post:
+      description: |
+        Wipe a heartbeat disk
+      operationId: PostDaemonHeartbeatWipe
+      parameters:
+        - $ref: '#/components/parameters/inPathNodeName'
+        - $ref: '#/components/parameters/inPathHeartbeatName'
+      tags:
+        - node / daemon
+      security:
+        - basicAuth: [ ]
+        - bearerAuth: [ ]
+      responses:
+        200:
+          $ref: '#/components/responses/200'
+        400:
+          $ref: '#/components/responses/400'
+        401:
+          $ref: '#/components/responses/401'
+        403:
+          $ref: '#/components/responses/403'
+        500:
+          $ref: '#/components/responses/500'
+
+  /api/node/name/{nodename}/daemon/listener/name/{name}/action/restart:
+    post:
+      description: |
+        Restart daemon listener `name` on `nodename`.
+      operationId: PostDaemonListenerRestart
+      parameters:
+        - $ref: '#/components/parameters/inPathNodeName'
+        - $ref: '#/components/parameters/inPathListenerName'
+      tags:
+        - node / daemon
+      security:
+        - basicAuth: [ ]
+        - bearerAuth: [ ]
+      responses:
+        200:
+          $ref: '#/components/responses/200'
+        400:
+          $ref: '#/components/responses/400'
+        401:
+          $ref: '#/components/responses/401'
+        403:
+          $ref: '#/components/responses/403'
+        500:
+          $ref: '#/components/responses/500'
+
+  /api/node/name/{nodename}/daemon/listener/name/{name}/action/start:
+    post:
+      description: |
+        Start daemon listener `name` on `nodename`.
+      operationId: PostDaemonListenerStart
+      parameters:
+        - $ref: '#/components/parameters/inPathNodeName'
+        - $ref: '#/components/parameters/inPathListenerName'
+      tags:
+        - node / daemon
+      security:
+        - basicAuth: [ ]
+        - bearerAuth: [ ]
+      responses:
+        200:
+          $ref: '#/components/responses/200'
+        400:
+          $ref: '#/components/responses/400'
+        401:
+          $ref: '#/components/responses/401'
+        403:
+          $ref: '#/components/responses/403'
+        500:
+          $ref: '#/components/responses/500'
+
+  /api/node/name/{nodename}/daemon/listener/name/{name}/action/stop:
+    post:
+      description: |
+        Stop daemon listener `name` on `nodename`.
+      operationId: PostDaemonListenerStop
+      parameters:
+        - $ref: '#/components/parameters/inPathNodeName'
+        - $ref: '#/components/parameters/inPathListenerName'
+      tags:
+        - node / daemon
+      security:
+        - basicAuth: [ ]
+        - bearerAuth: [ ]
+      responses:
+        200:
+          $ref: '#/components/responses/200'
+        400:
+          $ref: '#/components/responses/400'
+        401:
+          $ref: '#/components/responses/401'
+        403:
+          $ref: '#/components/responses/403'
+        500:
+          $ref: '#/components/responses/500'
+
+  /api/node/name/{nodename}/daemon/listener/name/{name}/log/control:
+    post:
+      operationId: PostDaemonListenerLogControl
+      parameters:
+        - $ref: '#/components/parameters/inPathNodeName'
+        - $ref: '#/components/parameters/inPathListenerName'
+      tags:
+        - node / daemon
+      security:
+        - basicAuth: []
+        - bearerAuth: []
+      requestBody:
+        description: |
+          Set a daemon listener log level.
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/LogControlBody'
+      responses:
+        200:
+          $ref: '#/components/responses/200'
+        400:
+          $ref: '#/components/responses/400'
+        401:
+          $ref: '#/components/responses/401'
+        403:
+          $ref: '#/components/responses/403'
+        500:
+          $ref: '#/components/responses/500'
+
+  /api/node/name/{nodename}/daemon/log/control:
+    post:
+      operationId: PostDaemonLogControl
+      parameters:
+        - $ref: '#/components/parameters/inPathNodeName'
+      security:
+        - basicAuth: []
+        - bearerAuth: []
+      requestBody:
+        description: set daemon log level
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/LogControlBody'
+      responses:
+        200:
+          $ref: '#/components/responses/200'
+        400:
+          $ref: '#/components/responses/400'
+        401:
+          $ref: '#/components/responses/401'
+        403:
+          $ref: '#/components/responses/403'
+        500:
+          $ref: '#/components/responses/500'
+      tags:
+        - node / daemon
 
   /api/node/name/{nodename}/drbd/allocation:
     get:
@@ -1868,7 +1870,6 @@ paths:
         - node
       x-internal: true
 
-
   /api/node/name/{nodename}/drivers:
     get:
       description: Get the node drivers
@@ -1887,83 +1888,6 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/DriverList'
-        400:
-          $ref: '#/components/responses/400'
-        401:
-          $ref: '#/components/responses/401'
-        403:
-          $ref: '#/components/responses/403'
-        500:
-          $ref: '#/components/responses/500'
-
-  /api/node/info:
-    get:
-      operationId: GetNodesInfo
-      tags:
-        - node
-      security:
-        - basicAuth: []
-        - bearerAuth: []
-      responses:
-        200:
-          description: OK
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/NodesInfo'
-        401:
-          $ref: '#/components/responses/401'
-        403:
-          $ref: '#/components/responses/403'
-        500:
-          $ref: '#/components/responses/500'
-
-  /api/object:
-    get:
-      operationId: GetObjects
-      tags:
-        - object
-      security:
-        - basicAuth: []
-        - bearerAuth: []
-      description: |
-        List all objects in the cluster.
-      parameters:
-        - $ref: '#/components/parameters/PathOptional'
-      responses:
-        200:
-          description: OK
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ObjectList'
-        400:
-          $ref: '#/components/responses/400'
-        401:
-          $ref: '#/components/responses/401'
-        403:
-          $ref: '#/components/responses/403'
-        500:
-          $ref: '#/components/responses/500'
-
-  /api/instance:
-    get:
-      operationId: GetInstances
-      tags:
-        - instance
-      security:
-        - basicAuth: []
-        - bearerAuth: []
-      parameters:
-        - $ref: '#/components/parameters/PathOptional'
-        - $ref: '#/components/parameters/NodeOptional'
-      responses:
-        200:
-          description: get instance config, monitor and status
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/InstanceList'
         400:
           $ref: '#/components/responses/400'
         401:
@@ -2159,6 +2083,90 @@ paths:
         - basicAuth: []
         - bearerAuth: []
 
+  /api/node/name/{nodename}/instance/path/{namespace}/{kind}/{name}/action/prstart:
+    post:
+      description: |
+        Register and reserve the instance scsi devices using the node key.
+      operationId: PostInstanceActionPRStart
+      parameters:
+        - $ref: '#/components/parameters/inPathNodeName'
+        - $ref: '#/components/parameters/inPathNamespace'
+        - $ref: '#/components/parameters/inPathKind'
+        - $ref: '#/components/parameters/inPathName'
+        - $ref: '#/components/parameters/inQueryAllSlaves'
+        - $ref: '#/components/parameters/inQueryDisableRollback'
+        - $ref: '#/components/parameters/inQueryForce'
+        - $ref: '#/components/parameters/inQueryMaster'
+        - $ref: '#/components/parameters/inQueryRequesterSid'
+        - $ref: '#/components/parameters/inQueryRid'
+        - $ref: '#/components/parameters/inQuerySlaves'
+        - $ref: '#/components/parameters/inQuerySubset'
+        - $ref: '#/components/parameters/inQueryTag'
+        - $ref: '#/components/parameters/inQueryTo'
+      responses:
+        200:
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/InstanceActionAccepted'
+          description: OK
+        400:
+          $ref: '#/components/responses/400'
+        401:
+          $ref: '#/components/responses/401'
+        403:
+          $ref: '#/components/responses/403'
+        500:
+          $ref: '#/components/responses/500'
+      security:
+        - basicAuth: []
+        - bearerAuth: []
+      tags:
+        - node / instance / svc
+        - node / instance / vol
+
+  /api/node/name/{nodename}/instance/path/{namespace}/{kind}/{name}/action/prstop:
+    post:
+      description: |
+        Drop reservations and registrations held by the node key on the instance scsi devices.
+      operationId: PostInstanceActionPRStop
+      parameters:
+        - $ref: '#/components/parameters/inPathNodeName'
+        - $ref: '#/components/parameters/inPathNamespace'
+        - $ref: '#/components/parameters/inPathKind'
+        - $ref: '#/components/parameters/inPathName'
+        - $ref: '#/components/parameters/inQueryAllSlaves'
+        - $ref: '#/components/parameters/inQueryDisableRollback'
+        - $ref: '#/components/parameters/inQueryForce'
+        - $ref: '#/components/parameters/inQueryMaster'
+        - $ref: '#/components/parameters/inQueryRequesterSid'
+        - $ref: '#/components/parameters/inQueryRid'
+        - $ref: '#/components/parameters/inQuerySlaves'
+        - $ref: '#/components/parameters/inQuerySubset'
+        - $ref: '#/components/parameters/inQueryTag'
+        - $ref: '#/components/parameters/inQueryTo'
+      responses:
+        200:
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/InstanceActionAccepted'
+          description: OK
+        400:
+          $ref: '#/components/responses/400'
+        401:
+          $ref: '#/components/responses/401'
+        403:
+          $ref: '#/components/responses/403'
+        500:
+          $ref: '#/components/responses/500'
+      security:
+        - basicAuth: []
+        - bearerAuth: []
+      tags:
+        - node / instance / svc
+        - node / instance / vol
+
   /api/node/name/{nodename}/instance/path/{namespace}/{kind}/{name}/action/push/resource/info:
     post:
       operationId: PostInstanceActionPushResourceInfo
@@ -2273,6 +2281,46 @@ paths:
         - node / instance / svc
         - node / instance / vol
 
+  /api/node/name/{nodename}/instance/path/{namespace}/{kind}/{name}/action/shutdown:
+    post:
+      description: Shutdown the object instance.
+      operationId: PostInstanceActionShutdown
+      parameters:
+        - $ref: '#/components/parameters/inPathNodeName'
+        - $ref: '#/components/parameters/inPathNamespace'
+        - $ref: '#/components/parameters/inPathKind'
+        - $ref: '#/components/parameters/inPathName'
+        - $ref: '#/components/parameters/inQueryAllSlaves'
+        - $ref: '#/components/parameters/inQueryForce'
+        - $ref: '#/components/parameters/inQueryMaster'
+        - $ref: '#/components/parameters/inQueryRequesterSid'
+        - $ref: '#/components/parameters/inQueryRid'
+        - $ref: '#/components/parameters/inQuerySlaves'
+        - $ref: '#/components/parameters/inQuerySubset'
+        - $ref: '#/components/parameters/inQueryTag'
+        - $ref: '#/components/parameters/inQueryTo'
+      responses:
+        200:
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/InstanceActionAccepted'
+          description: OK
+        400:
+          $ref: '#/components/responses/400'
+        401:
+          $ref: '#/components/responses/401'
+        403:
+          $ref: '#/components/responses/403'
+        500:
+          $ref: '#/components/responses/500'
+      security:
+        - basicAuth: []
+        - bearerAuth: []
+      tags:
+        - node / instance / svc
+        - node / instance / vol
+
   /api/node/name/{nodename}/instance/path/{namespace}/{kind}/{name}/action/start:
     post:
       description: Start the object instance.
@@ -2365,46 +2413,6 @@ paths:
         - $ref: '#/components/parameters/inPathKind'
         - $ref: '#/components/parameters/inPathName'
         - $ref: '#/components/parameters/inQueryRequesterSid'
-      responses:
-        200:
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/InstanceActionAccepted'
-          description: OK
-        400:
-          $ref: '#/components/responses/400'
-        401:
-          $ref: '#/components/responses/401'
-        403:
-          $ref: '#/components/responses/403'
-        500:
-          $ref: '#/components/responses/500'
-      security:
-        - basicAuth: []
-        - bearerAuth: []
-      tags:
-        - node / instance / svc
-        - node / instance / vol
-
-  /api/node/name/{nodename}/instance/path/{namespace}/{kind}/{name}/action/shutdown:
-    post:
-      description: Shutdown the object instance.
-      operationId: PostInstanceActionShutdown
-      parameters:
-        - $ref: '#/components/parameters/inPathNodeName'
-        - $ref: '#/components/parameters/inPathNamespace'
-        - $ref: '#/components/parameters/inPathKind'
-        - $ref: '#/components/parameters/inPathName'
-        - $ref: '#/components/parameters/inQueryAllSlaves'
-        - $ref: '#/components/parameters/inQueryForce'
-        - $ref: '#/components/parameters/inQueryMaster'
-        - $ref: '#/components/parameters/inQueryRequesterSid'
-        - $ref: '#/components/parameters/inQueryRid'
-        - $ref: '#/components/parameters/inQuerySlaves'
-        - $ref: '#/components/parameters/inQuerySubset'
-        - $ref: '#/components/parameters/inQueryTag'
-        - $ref: '#/components/parameters/inQueryTo'
       responses:
         200:
           content:
@@ -2580,6 +2588,38 @@ paths:
         - node / instance / svc
         - node / instance / vol
 
+  /api/node/name/{nodename}/instance/path/{namespace}/{kind}/{name}/clear:
+    post:
+      description: |
+        Clear an error ("start failed" for example) in the instance monitor state.
+      operationId: PostInstanceClear
+      parameters:
+        - $ref: '#/components/parameters/inPathNodeName'
+        - $ref: '#/components/parameters/inPathNamespace'
+        - $ref: '#/components/parameters/inPathKind'
+        - $ref: '#/components/parameters/inPathName'
+      responses:
+        200:
+          description: OK
+        400:
+          $ref: '#/components/responses/400'
+        401:
+          $ref: '#/components/responses/401'
+        403:
+          $ref: '#/components/responses/403'
+        500:
+          $ref: '#/components/responses/500'
+      security:
+        - basicAuth: []
+        - bearerAuth: []
+      tags:
+        - node / instance / svc
+        - node / instance / vol
+        - node / instance / cfg
+        - node / instance / nscfg
+        - node / instance / sec
+        - node / instance / usr
+
   /api/node/name/{nodename}/instance/path/{namespace}/{kind}/{name}/config/file:
     get:
       description: |
@@ -2621,68 +2661,6 @@ paths:
         500:
           $ref: '#/components/responses/500'
 
-  /api/node/name/{nodename}/instance/path/{namespace}/{kind}/{name}/clear:
-    post:
-      description: |
-        Clear an error ("start failed" for example) in the instance monitor state.
-      operationId: PostInstanceClear
-      parameters:
-        - $ref: '#/components/parameters/inPathNodeName'
-        - $ref: '#/components/parameters/inPathNamespace'
-        - $ref: '#/components/parameters/inPathKind'
-        - $ref: '#/components/parameters/inPathName'
-      responses:
-        200:
-          description: OK
-        400:
-          $ref: '#/components/responses/400'
-        401:
-          $ref: '#/components/responses/401'
-        403:
-          $ref: '#/components/responses/403'
-        500:
-          $ref: '#/components/responses/500'
-      security:
-        - basicAuth: []
-        - bearerAuth: []
-      tags:
-        - node / instance / svc
-        - node / instance / vol
-        - node / instance / cfg
-        - node / instance / nscfg
-        - node / instance / sec
-        - node / instance / usr
-
-  /api/node/name/{nodename}/log:
-    get:
-      operationId: GetNodeLogs
-      tags:
-        - node
-      security:
-        - basicAuth: []
-        - bearerAuth: []
-      description: |
-        Serve new logs
-      parameters:
-        - $ref: '#/components/parameters/inPathNodeName'
-        - $ref: '#/components/parameters/LogFilter'
-        - $ref: '#/components/parameters/LogFollow'
-        - $ref: '#/components/parameters/LogLines'
-        - $ref: '#/components/parameters/Paths'
-      responses:
-        200:
-          description: OK
-          content:
-            text/event-stream:
-              schema:
-                $ref: '#/components/schemas/LogList'
-        401:
-          $ref: '#/components/responses/401'
-        403:
-          $ref: '#/components/responses/403'
-        500:
-          $ref: '#/components/responses/500'
-
   /api/node/name/{nodename}/instance/path/{namespace}/{kind}/{name}/console:
     post:
       operationId: PostInstanceResourceConsole
@@ -2717,6 +2695,44 @@ paths:
         - bearerAuth: []
       tags:
         - node / instance / svc
+
+  /api/node/name/{nodename}/instance/path/{namespace}/{kind}/{name}/log:
+    get:
+      operationId: GetInstanceLogs
+      tags:
+        - node / instance / svc
+        - node / instance / vol
+        - node / instance / cfg
+        - node / instance / sec
+        - node / instance / usr
+      security:
+        - basicAuth: []
+        - bearerAuth: []
+      description: |
+        Serve new logs
+      parameters:
+        - $ref: '#/components/parameters/inPathNodeName'
+        - $ref: '#/components/parameters/inPathNamespace'
+        - $ref: '#/components/parameters/inPathKind'
+        - $ref: '#/components/parameters/inPathName'
+        - $ref: '#/components/parameters/LogFilter'
+        - $ref: '#/components/parameters/LogFollow'
+        - $ref: '#/components/parameters/LogLines'
+      responses:
+        200:
+          description: OK
+          content:
+            text/event-stream:
+              schema:
+                $ref: '#/components/schemas/LogList'
+        400:
+          $ref: '#/components/responses/400'
+        401:
+          $ref: '#/components/responses/401'
+        403:
+          $ref: '#/components/responses/403'
+        500:
+          $ref: '#/components/responses/500'
 
   /api/node/name/{nodename}/instance/path/{namespace}/{kind}/{name}/resource/file:
     get:
@@ -2833,15 +2849,51 @@ paths:
         - node / instance / svc
         - node / instance / vol
 
-  /api/node/name/{nodename}/instance/path/{namespace}/{kind}/{name}/log:
-    get:
-      operationId: GetInstanceLogs
+  /api/node/name/{nodename}/instance/path/{namespace}/{kind}/{name}/state/file:
+    post:
+      operationId: PostInstanceStateFile
       tags:
         - node / instance / svc
         - node / instance / vol
-        - node / instance / cfg
-        - node / instance / sec
-        - node / instance / usr
+      security:
+        - basicAuth: []
+        - bearerAuth: []
+      headers:
+        OM-relative-path:
+          type: string
+      parameters:
+        - $ref: '#/components/parameters/inPathNodeName'
+        - $ref: '#/components/parameters/inPathNamespace'
+        - $ref: '#/components/parameters/inPathKind'
+        - $ref: '#/components/parameters/inPathName'
+      requestBody:
+        description: OK
+        content:
+          application/octet-stream:
+            schema:
+              type: string
+              format: binary
+      responses:
+        204:
+          $ref: '#/components/responses/204'
+        400:
+          $ref: '#/components/responses/400'
+        401:
+          $ref: '#/components/responses/401'
+        403:
+          $ref: '#/components/responses/403'
+        404:
+          $ref: '#/components/responses/404'
+        409:
+          $ref: '#/components/responses/409'
+        500:
+          $ref: '#/components/responses/500'
+
+  /api/node/name/{nodename}/log:
+    get:
+      operationId: GetNodeLogs
+      tags:
+        - node
       security:
         - basicAuth: []
         - bearerAuth: []
@@ -2849,12 +2901,10 @@ paths:
         Serve new logs
       parameters:
         - $ref: '#/components/parameters/inPathNodeName'
-        - $ref: '#/components/parameters/inPathNamespace'
-        - $ref: '#/components/parameters/inPathKind'
-        - $ref: '#/components/parameters/inPathName'
         - $ref: '#/components/parameters/LogFilter'
         - $ref: '#/components/parameters/LogFollow'
         - $ref: '#/components/parameters/LogLines'
+        - $ref: '#/components/parameters/Paths'
       responses:
         200:
           description: OK
@@ -2862,8 +2912,6 @@ paths:
             text/event-stream:
               schema:
                 $ref: '#/components/schemas/LogList'
-        400:
-          $ref: '#/components/responses/400'
         401:
           $ref: '#/components/responses/401'
         403:
@@ -2892,6 +2940,112 @@ paths:
       security:
         - basicAuth: [ ]
         - bearerAuth: [ ]
+      tags:
+        - node
+
+  /api/node/name/{nodename}/schedule:
+    get:
+      operationId: GetNodeSchedule
+      description: |
+        Return the schedule table of the node.
+      parameters:
+        - $ref: '#/components/parameters/inPathNodeName'
+      responses:
+        200:
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ScheduleList'
+        400:
+          $ref: '#/components/responses/400'
+        401:
+          $ref: '#/components/responses/401'
+        403:
+          $ref: '#/components/responses/403'
+        500:
+          $ref: '#/components/responses/500'
+      security:
+        - basicAuth: []
+        - bearerAuth: []
+      tags:
+        - node
+
+  /api/node/name/{nodename}/ssh/hostkeys:
+    get:
+      description: |
+        Return the ssh public host keys so the peer can trust them in its known_hosts file.
+      operationId: GetNodeSSHHostkeys
+      parameters:
+        - $ref: '#/components/parameters/inPathNodeName'
+      responses:
+        200:
+          description: OK
+          content:
+            text/plain:
+              schema:
+                type: string
+        400:
+          $ref: '#/components/responses/400'
+        401:
+          $ref: '#/components/responses/401'
+        403:
+          $ref: '#/components/responses/403'
+        500:
+          $ref: '#/components/responses/500'
+      security:
+        - basicAuth: []
+        - bearerAuth: []
+      tags:
+        - node
+
+  /api/node/name/{nodename}/ssh/key:
+    get:
+      description: |
+        Return the ssh public key defined by node.sshkey so the peer can trust it in its authorized_keys file.
+      operationId: GetNodeSSHKey
+      parameters:
+        - $ref: '#/components/parameters/inPathNodeName'
+      responses:
+        200:
+          description: OK
+          content:
+            text/plain:
+              schema:
+                type: string
+        400:
+          $ref: '#/components/responses/400'
+        401:
+          $ref: '#/components/responses/401'
+        403:
+          $ref: '#/components/responses/403'
+        500:
+          $ref: '#/components/responses/500'
+      security:
+        - basicAuth: []
+        - bearerAuth: []
+      tags:
+        - node
+
+  /api/node/name/{nodename}/ssh/trust:
+    put:
+      description: |
+        Trust the ssh public keys of peer nodes.
+      operationId: PutNodeSSHTrust
+      parameters:
+        - $ref: '#/components/parameters/inPathNodeName'
+      responses:
+        204:
+          $ref: '#/components/responses/204'
+        401:
+          $ref: '#/components/responses/401'
+        403:
+          $ref: '#/components/responses/403'
+        500:
+          $ref: '#/components/responses/500'
+      security:
+        - basicAuth: []
+        - bearerAuth: []
       tags:
         - node
 
@@ -2949,60 +3103,6 @@ paths:
       tags:
         - node
 
-  /api/node/name/{nodename}/system/package:
-    get:
-      description: View the package
-      operationId: GetNodeSystemPackage
-      parameters:
-        - $ref: '#/components/parameters/inPathNodeName'
-      responses:
-        200:
-          description: OK
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/PackageList'
-        400:
-          $ref: '#/components/responses/400'
-        401:
-          $ref: '#/components/responses/401'
-        403:
-          $ref: '#/components/responses/403'
-        500:
-          $ref: '#/components/responses/500'
-      security:
-        - basicAuth: [ ]
-        - bearerAuth: [ ]
-      tags:
-        - node
-
-  /api/node/name/{nodename}/system/patch:
-    get:
-      description: View the patch
-      operationId: GetNodeSystemPatch
-      parameters:
-        - $ref: '#/components/parameters/inPathNodeName'
-      responses:
-        200:
-          description: OK
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/PatchList'
-        400:
-          $ref: '#/components/responses/400'
-        401:
-          $ref: '#/components/responses/401'
-        403:
-          $ref: '#/components/responses/403'
-        500:
-          $ref: '#/components/responses/500'
-      security:
-        - basicAuth: [ ]
-        - bearerAuth: [ ]
-      tags:
-        - node
-
   /api/node/name/{nodename}/system/hardware:
     get:
       description: View the hardwares
@@ -3043,6 +3143,60 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/IPAddressList'
+        400:
+          $ref: '#/components/responses/400'
+        401:
+          $ref: '#/components/responses/401'
+        403:
+          $ref: '#/components/responses/403'
+        500:
+          $ref: '#/components/responses/500'
+      security:
+        - basicAuth: [ ]
+        - bearerAuth: [ ]
+      tags:
+        - node
+
+  /api/node/name/{nodename}/system/package:
+    get:
+      description: View the package
+      operationId: GetNodeSystemPackage
+      parameters:
+        - $ref: '#/components/parameters/inPathNodeName'
+      responses:
+        200:
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PackageList'
+        400:
+          $ref: '#/components/responses/400'
+        401:
+          $ref: '#/components/responses/401'
+        403:
+          $ref: '#/components/responses/403'
+        500:
+          $ref: '#/components/responses/500'
+      security:
+        - basicAuth: [ ]
+        - bearerAuth: [ ]
+      tags:
+        - node
+
+  /api/node/name/{nodename}/system/patch:
+    get:
+      description: View the patch
+      operationId: GetNodeSystemPatch
+      parameters:
+        - $ref: '#/components/parameters/inPathNodeName'
+      responses:
+        200:
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PatchList'
         400:
           $ref: '#/components/responses/400'
         401:
@@ -3165,68 +3319,25 @@ paths:
       tags:
         - node
 
-  /api/instance/path/{namespace}/{kind}/{name}/progress:
-    post:
-      description: |
-        For internal use only.
-
-        Used by the CRM to annonce to the daemon the action it is starting to process, if this action was not triggered by the daemon.
-      operationId: PostInstanceProgress
+  /api/object:
+    get:
+      operationId: GetObjects
       tags:
-        - instance
+        - object
       security:
         - basicAuth: []
         - bearerAuth: []
-      parameters:
-        - $ref: '#/components/parameters/inPathNamespace'
-        - $ref: '#/components/parameters/inPathKind'
-        - $ref: '#/components/parameters/inPathName'
-      requestBody:
-        description: Change the instance monitor state to reflect the progress of actions the daemon did not started.
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/PostInstanceProgress'
-      responses:
-        200:
-          description: OK
-        400:
-          $ref: '#/components/responses/400'
-        401:
-          $ref: '#/components/responses/401'
-        403:
-          $ref: '#/components/responses/403'
-        500:
-          $ref: '#/components/responses/500'
-      x-internal: true
-
-  /api/instance/path/{namespace}/{kind}/{name}/status:
-    post:
       description: |
-        For internal use only.
-
-        Used by the CRM to annonce to the daemon the status of the instance at the end of an action.
-      operationId: PostInstanceStatus
-      tags:
-        - instance
-      security:
-        - basicAuth: []
-        - bearerAuth: []
+        List all objects in the cluster.
       parameters:
-        - $ref: '#/components/parameters/inPathNamespace'
-        - $ref: '#/components/parameters/inPathKind'
-        - $ref: '#/components/parameters/inPathName'
-      requestBody:
-        description: post object status
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/InstanceStatus'
+        - $ref: '#/components/parameters/PathOptional'
       responses:
         200:
           description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ObjectList'
         400:
           $ref: '#/components/responses/400'
         401:
@@ -3255,6 +3366,60 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ObjectPaths'
+        401:
+          $ref: '#/components/responses/401'
+        403:
+          $ref: '#/components/responses/403'
+        500:
+          $ref: '#/components/responses/500'
+
+  /api/object/path/{namespace}/svc/{name}/disable:
+    post:
+      operationId: PostSvcDisable
+      tags:
+        - object / svc
+      security:
+        - basicAuth: []
+        - bearerAuth: []
+      description: Disable the whole svc or some of its resources.
+      parameters:
+        - $ref: '#/components/parameters/inPathNamespace'
+        - $ref: '#/components/parameters/inPathName'
+        - $ref: '#/components/parameters/inQueryRid'
+        - $ref: '#/components/parameters/inQuerySubset'
+        - $ref: '#/components/parameters/inQueryTag'
+      responses:
+        204:
+          $ref: '#/components/responses/204'
+        400:
+          $ref: '#/components/responses/400'
+        401:
+          $ref: '#/components/responses/401'
+        403:
+          $ref: '#/components/responses/403'
+        500:
+          $ref: '#/components/responses/500'
+
+  /api/object/path/{namespace}/svc/{name}/enable:
+    post:
+      operationId: PostSvcEnable
+      tags:
+        - object / svc
+      security:
+        - basicAuth: []
+        - bearerAuth: []
+      description: Enable the whole svc or some of its resources.
+      parameters:
+        - $ref: '#/components/parameters/inPathNamespace'
+        - $ref: '#/components/parameters/inPathName'
+        - $ref: '#/components/parameters/inQueryRid'
+        - $ref: '#/components/parameters/inQuerySubset'
+        - $ref: '#/components/parameters/inQueryTag'
+      responses:
+        204:
+          $ref: '#/components/responses/204'
+        400:
+          $ref: '#/components/responses/400'
         401:
           $ref: '#/components/responses/401'
         403:
@@ -3370,60 +3535,6 @@ paths:
         500:
           $ref: '#/components/responses/500'
 
-  /api/object/path/{namespace}/svc/{name}/disable:
-    post:
-      operationId: PostSvcDisable
-      tags:
-        - object / svc
-      security:
-        - basicAuth: []
-        - bearerAuth: []
-      description: Disable the whole svc or some of its resources.
-      parameters:
-        - $ref: '#/components/parameters/inPathNamespace'
-        - $ref: '#/components/parameters/inPathName'
-        - $ref: '#/components/parameters/inQueryRid'
-        - $ref: '#/components/parameters/inQuerySubset'
-        - $ref: '#/components/parameters/inQueryTag'
-      responses:
-        204:
-          $ref: '#/components/responses/204'
-        400:
-          $ref: '#/components/responses/400'
-        401:
-          $ref: '#/components/responses/401'
-        403:
-          $ref: '#/components/responses/403'
-        500:
-          $ref: '#/components/responses/500'
-
-  /api/object/path/{namespace}/svc/{name}/enable:
-    post:
-      operationId: PostSvcEnable
-      tags:
-        - object / svc
-      security:
-        - basicAuth: []
-        - bearerAuth: []
-      description: Enable the whole svc or some of its resources.
-      parameters:
-        - $ref: '#/components/parameters/inPathNamespace'
-        - $ref: '#/components/parameters/inPathName'
-        - $ref: '#/components/parameters/inQueryRid'
-        - $ref: '#/components/parameters/inQuerySubset'
-        - $ref: '#/components/parameters/inQueryTag'
-      responses:
-        204:
-          $ref: '#/components/responses/204'
-        400:
-          $ref: '#/components/responses/400'
-        401:
-          $ref: '#/components/responses/401'
-        403:
-          $ref: '#/components/responses/403'
-        500:
-          $ref: '#/components/responses/500'
-
   /api/object/path/{namespace}/{kind}/{name}/action/freeze:
     post:
       operationId: PostObjectActionFreeze
@@ -3527,397 +3638,6 @@ paths:
           $ref: '#/components/responses/409'
         500:
           $ref: '#/components/responses/500'
-
-  /api/object/path/{namespace}/{kind}/{name}/data/keys:
-    get:
-      description: |
-        List the keys in the key-value store.
-      operationId: GetObjectDataKeys
-      tags:
-        - object / cfg
-        - object / sec
-        - object / usr
-      security:
-        - basicAuth: []
-        - bearerAuth: []
-      parameters:
-        - $ref: '#/components/parameters/inPathNamespace'
-        - $ref: '#/components/parameters/inPathKind'
-        - $ref: '#/components/parameters/inPathName'
-      responses:
-        200:
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/DataKeyList'
-        400:
-          $ref: '#/components/responses/400'
-        401:
-          $ref: '#/components/responses/401'
-        403:
-          $ref: '#/components/responses/403'
-        404:
-          $ref: '#/components/responses/404'
-        500:
-          $ref: '#/components/responses/500'
-
-  /api/object/path/{namespace}/{kind}/{name}/data/key:
-    get:
-      description: |
-        Return a single key value as the response body.
-      operationId: GetObjectDataKey
-      tags:
-        - object / cfg
-        - object / sec
-        - object / usr
-      security:
-        - basicAuth: []
-        - bearerAuth: []
-      parameters:
-        - $ref: '#/components/parameters/inPathNamespace'
-        - $ref: '#/components/parameters/inPathKind'
-        - $ref: '#/components/parameters/inPathName'
-        - $ref: '#/components/parameters/inQueryKeyName'
-      responses:
-        200:
-          content:
-            application/octet-stream:
-              schema:
-                type: string
-                format: binary
-        400:
-          $ref: '#/components/responses/400'
-        401:
-          $ref: '#/components/responses/401'
-        403:
-          $ref: '#/components/responses/403'
-        404:
-          $ref: '#/components/responses/403'
-        500:
-          $ref: '#/components/responses/500'
-
-    delete:
-      description: |
-        Delete a key from the key-value store.
-      operationId: DeleteObjectDataKey
-      tags:
-        - object / cfg
-        - object / sec
-        - object / usr
-      security:
-        - basicAuth: []
-        - bearerAuth: []
-      parameters:
-        - $ref: '#/components/parameters/inPathNamespace'
-        - $ref: '#/components/parameters/inPathKind'
-        - $ref: '#/components/parameters/inPathName'
-        - $ref: '#/components/parameters/inQueryKeyName'
-      responses:
-        204:
-          $ref: '#/components/responses/204'
-        400:
-          $ref: '#/components/responses/400'
-        401:
-          $ref: '#/components/responses/401'
-        403:
-          $ref: '#/components/responses/403'
-        500:
-          $ref: '#/components/responses/500'
-
-    post:
-      description: |
-        Create a new key in the key-value store.
-      operationId: PostObjectDataKey
-      tags:
-        - object / cfg
-        - object / sec
-        - object / usr
-      security:
-        - basicAuth: []
-        - bearerAuth: []
-      parameters:
-        - $ref: '#/components/parameters/inPathNamespace'
-        - $ref: '#/components/parameters/inPathKind'
-        - $ref: '#/components/parameters/inPathName'
-        - $ref: '#/components/parameters/inQueryKeyName'
-      requestBody:
-        required: true
-        content:
-          application/octet-stream:
-            schema:
-              type: string
-              format: binary
-      responses:
-        204:
-          $ref: '#/components/responses/204'
-        400:
-          $ref: '#/components/responses/400'
-        401:
-          $ref: '#/components/responses/401'
-        403:
-          $ref: '#/components/responses/403'
-        413:
-          $ref: '#/components/responses/413'
-        500:
-          $ref: '#/components/responses/500'
-
-    put:
-      description: |
-        Change the value of an existing key in the key-value store.
-      operationId: PutObjectDataKey
-      tags:
-        - object / cfg
-        - object / sec
-        - object / usr
-      security:
-        - basicAuth: []
-        - bearerAuth: []
-      parameters:
-        - $ref: '#/components/parameters/inPathNamespace'
-        - $ref: '#/components/parameters/inPathKind'
-        - $ref: '#/components/parameters/inPathName'
-        - $ref: '#/components/parameters/inQueryKeyName'
-      requestBody:
-        required: true
-        content:
-          application/octet-stream:
-            schema:
-              type: string
-              format: binary
-      responses:
-        204:
-          $ref: '#/components/responses/204'
-        400:
-          $ref: '#/components/responses/400'
-        401:
-          $ref: '#/components/responses/401'
-        403:
-          $ref: '#/components/responses/403'
-        413:
-          $ref: '#/components/responses/413'
-        500:
-          $ref: '#/components/responses/500'
-
-  /api/object/path/{namespace}/{kind}/{name}/data:
-    get:
-      description: |
-        Return a structured list of key and values objects.
-      operationId: GetObjectData
-      tags:
-        - object / cfg
-        - object / sec
-        - object / usr
-      security:
-        - basicAuth: []
-        - bearerAuth: []
-      parameters:
-        - $ref: '#/components/parameters/inPathNamespace'
-        - $ref: '#/components/parameters/inPathKind'
-        - $ref: '#/components/parameters/inPathName'
-        - $ref: '#/components/parameters/inQueryKeyNames'
-      responses:
-        200:
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/DataKeys'
-        400:
-          $ref: '#/components/responses/400'
-        401:
-          $ref: '#/components/responses/401'
-        403:
-          $ref: '#/components/responses/403'
-        500:
-          $ref: '#/components/responses/500'
-    patch:
-      description: |
-        A single-transaction combination of add, change or delete operations on the key-value store keys.
-      operationId: PatchObjectData
-      tags:
-        - object / cfg
-        - object / sec
-        - object / usr
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/PatchDataKeys'
-      security:
-        - basicAuth: []
-        - bearerAuth: []
-      parameters:
-        - $ref: '#/components/parameters/inPathNamespace'
-        - $ref: '#/components/parameters/inPathKind'
-        - $ref: '#/components/parameters/inPathName'
-      responses:
-        204:
-          $ref: '#/components/responses/204'
-        400:
-          $ref: '#/components/responses/400'
-        401:
-          $ref: '#/components/responses/401'
-        403:
-          $ref: '#/components/responses/403'
-        408:
-          $ref: '#/components/responses/408'
-        409:
-          $ref: '#/components/responses/409'
-        413:
-          $ref: '#/components/responses/413'
-        500:
-          $ref: '#/components/responses/500'
-
-  /api/object/path/{namespace}/{kind}/{name}/resource/info:
-    get:
-      operationId: GetObjectResourceInfo
-      description: |
-        Return the resource info table of all object instances.
-      parameters:
-        - $ref: '#/components/parameters/inPathNamespace'
-        - $ref: '#/components/parameters/inPathKind'
-        - $ref: '#/components/parameters/inPathName'
-      responses:
-        200:
-          description: OK
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ResourceInfoList'
-        400:
-          $ref: '#/components/responses/400'
-        401:
-          $ref: '#/components/responses/401'
-        403:
-          $ref: '#/components/responses/403'
-        404:
-          $ref: '#/components/responses/404'
-        500:
-          $ref: '#/components/responses/500'
-      security:
-        - basicAuth: []
-        - bearerAuth: []
-      tags:
-        - object / svc
-        - object / vol
-
-  /api/object/path/{namespace}/{kind}/{name}/schedule:
-    get:
-      operationId: GetObjectSchedule
-      description: |
-        Return the schedule table of all the object instances.
-      parameters:
-        - $ref: '#/components/parameters/inPathNamespace'
-        - $ref: '#/components/parameters/inPathKind'
-        - $ref: '#/components/parameters/inPathName'
-      responses:
-        200:
-          description: OK
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ScheduleList'
-        400:
-          $ref: '#/components/responses/400'
-        401:
-          $ref: '#/components/responses/401'
-        403:
-          $ref: '#/components/responses/403'
-        404:
-          $ref: '#/components/responses/404'
-        500:
-          $ref: '#/components/responses/500'
-      security:
-        - basicAuth: []
-        - bearerAuth: []
-      tags:
-        - object / svc
-        - object / vol
-
-  /api/node/name/{nodename}/instance/path/{namespace}/{kind}/{name}/action/prstart:
-    post:
-      description: |
-        Register and reserve the instance scsi devices using the node key.
-      operationId: PostInstanceActionPRStart
-      parameters:
-        - $ref: '#/components/parameters/inPathNodeName'
-        - $ref: '#/components/parameters/inPathNamespace'
-        - $ref: '#/components/parameters/inPathKind'
-        - $ref: '#/components/parameters/inPathName'
-        - $ref: '#/components/parameters/inQueryAllSlaves'
-        - $ref: '#/components/parameters/inQueryDisableRollback'
-        - $ref: '#/components/parameters/inQueryForce'
-        - $ref: '#/components/parameters/inQueryMaster'
-        - $ref: '#/components/parameters/inQueryRequesterSid'
-        - $ref: '#/components/parameters/inQueryRid'
-        - $ref: '#/components/parameters/inQuerySlaves'
-        - $ref: '#/components/parameters/inQuerySubset'
-        - $ref: '#/components/parameters/inQueryTag'
-        - $ref: '#/components/parameters/inQueryTo'
-      responses:
-        200:
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/InstanceActionAccepted'
-          description: OK
-        400:
-          $ref: '#/components/responses/400'
-        401:
-          $ref: '#/components/responses/401'
-        403:
-          $ref: '#/components/responses/403'
-        500:
-          $ref: '#/components/responses/500'
-      security:
-        - basicAuth: []
-        - bearerAuth: []
-      tags:
-        - node / instance / svc
-        - node / instance / vol
-
-  /api/node/name/{nodename}/instance/path/{namespace}/{kind}/{name}/action/prstop:
-    post:
-      description: |
-        Drop reservations and registrations held by the node key on the instance scsi devices.
-      operationId: PostInstanceActionPRStop
-      parameters:
-        - $ref: '#/components/parameters/inPathNodeName'
-        - $ref: '#/components/parameters/inPathNamespace'
-        - $ref: '#/components/parameters/inPathKind'
-        - $ref: '#/components/parameters/inPathName'
-        - $ref: '#/components/parameters/inQueryAllSlaves'
-        - $ref: '#/components/parameters/inQueryDisableRollback'
-        - $ref: '#/components/parameters/inQueryForce'
-        - $ref: '#/components/parameters/inQueryMaster'
-        - $ref: '#/components/parameters/inQueryRequesterSid'
-        - $ref: '#/components/parameters/inQueryRid'
-        - $ref: '#/components/parameters/inQuerySlaves'
-        - $ref: '#/components/parameters/inQuerySubset'
-        - $ref: '#/components/parameters/inQueryTag'
-        - $ref: '#/components/parameters/inQueryTo'
-      responses:
-        200:
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/InstanceActionAccepted'
-          description: OK
-        400:
-          $ref: '#/components/responses/400'
-        401:
-          $ref: '#/components/responses/401'
-        403:
-          $ref: '#/components/responses/403'
-        500:
-          $ref: '#/components/responses/500'
-      security:
-        - basicAuth: []
-        - bearerAuth: []
-      tags:
-        - node / instance / svc
-        - node / instance / vol
-
 
   /api/object/path/{namespace}/{kind}/{name}/action/purge:
     post:
@@ -4257,7 +3977,6 @@ paths:
         500:
           $ref: '#/components/responses/500'
 
-
   /api/object/path/{namespace}/{kind}/{name}/config/file:
     get:
       description: |
@@ -4375,25 +4094,193 @@ paths:
         500:
           $ref: '#/components/responses/500'
 
-  /api/node/name/{nodename}/instance/path/{namespace}/{kind}/{name}/state/file:
-    post:
-      operationId: PostInstanceStateFile
-      tags:
-        - node / instance / svc
-        - node / instance / vol
-      security:
-        - basicAuth: []
-        - bearerAuth: []
-      headers:
-        OM-relative-path:
-          type: string
+  /api/object/path/{namespace}/{kind}/{name}/config/keywords:
+    get:
+      operationId: GetObjectConfigKeywords
+      description: |
+        Return the list of supported keywords in object
       parameters:
-        - $ref: '#/components/parameters/inPathNodeName'
         - $ref: '#/components/parameters/inPathNamespace'
         - $ref: '#/components/parameters/inPathKind'
         - $ref: '#/components/parameters/inPathName'
+        - $ref: '#/components/parameters/inQueryDriver'
+        - $ref: '#/components/parameters/inQuerySection'
+        - $ref: '#/components/parameters/inQueryOption'
+      tags:
+        - object / svc
+        - object / vol
+        - object / cfg
+        - object / nscfg
+        - object / sec
+        - object / usr
+      security:
+        - basicAuth: [ ]
+        - bearerAuth: [ ]
+      responses:
+        200:
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/KeywordDefinitionList'
+        400:
+          $ref: '#/components/responses/400'
+        401:
+          $ref: '#/components/responses/401'
+        500:
+          $ref: '#/components/responses/500'
+
+  /api/object/path/{namespace}/{kind}/{name}/data:
+    get:
+      description: |
+        Return a structured list of key and values objects.
+      operationId: GetObjectData
+      tags:
+        - object / cfg
+        - object / sec
+        - object / usr
+      security:
+        - basicAuth: []
+        - bearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/inPathNamespace'
+        - $ref: '#/components/parameters/inPathKind'
+        - $ref: '#/components/parameters/inPathName'
+        - $ref: '#/components/parameters/inQueryKeyNames'
+      responses:
+        200:
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DataKeys'
+        400:
+          $ref: '#/components/responses/400'
+        401:
+          $ref: '#/components/responses/401'
+        403:
+          $ref: '#/components/responses/403'
+        500:
+          $ref: '#/components/responses/500'
+    patch:
+      description: |
+        A single-transaction combination of add, change or delete operations on the key-value store keys.
+      operationId: PatchObjectData
+      tags:
+        - object / cfg
+        - object / sec
+        - object / usr
       requestBody:
-        description: OK
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PatchDataKeys'
+      security:
+        - basicAuth: []
+        - bearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/inPathNamespace'
+        - $ref: '#/components/parameters/inPathKind'
+        - $ref: '#/components/parameters/inPathName'
+      responses:
+        204:
+          $ref: '#/components/responses/204'
+        400:
+          $ref: '#/components/responses/400'
+        401:
+          $ref: '#/components/responses/401'
+        403:
+          $ref: '#/components/responses/403'
+        408:
+          $ref: '#/components/responses/408'
+        409:
+          $ref: '#/components/responses/409'
+        413:
+          $ref: '#/components/responses/413'
+        500:
+          $ref: '#/components/responses/500'
+
+  /api/object/path/{namespace}/{kind}/{name}/data/key:
+    get:
+      description: |
+        Return a single key value as the response body.
+      operationId: GetObjectDataKey
+      tags:
+        - object / cfg
+        - object / sec
+        - object / usr
+      security:
+        - basicAuth: []
+        - bearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/inPathNamespace'
+        - $ref: '#/components/parameters/inPathKind'
+        - $ref: '#/components/parameters/inPathName'
+        - $ref: '#/components/parameters/inQueryKeyName'
+      responses:
+        200:
+          content:
+            application/octet-stream:
+              schema:
+                type: string
+                format: binary
+        400:
+          $ref: '#/components/responses/400'
+        401:
+          $ref: '#/components/responses/401'
+        403:
+          $ref: '#/components/responses/403'
+        404:
+          $ref: '#/components/responses/403'
+        500:
+          $ref: '#/components/responses/500'
+
+    delete:
+      description: |
+        Delete a key from the key-value store.
+      operationId: DeleteObjectDataKey
+      tags:
+        - object / cfg
+        - object / sec
+        - object / usr
+      security:
+        - basicAuth: []
+        - bearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/inPathNamespace'
+        - $ref: '#/components/parameters/inPathKind'
+        - $ref: '#/components/parameters/inPathName'
+        - $ref: '#/components/parameters/inQueryKeyName'
+      responses:
+        204:
+          $ref: '#/components/responses/204'
+        400:
+          $ref: '#/components/responses/400'
+        401:
+          $ref: '#/components/responses/401'
+        403:
+          $ref: '#/components/responses/403'
+        500:
+          $ref: '#/components/responses/500'
+
+    post:
+      description: |
+        Create a new key in the key-value store.
+      operationId: PostObjectDataKey
+      tags:
+        - object / cfg
+        - object / sec
+        - object / usr
+      security:
+        - basicAuth: []
+        - bearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/inPathNamespace'
+        - $ref: '#/components/parameters/inPathKind'
+        - $ref: '#/components/parameters/inPathName'
+        - $ref: '#/components/parameters/inQueryKeyName'
+      requestBody:
+        required: true
         content:
           application/octet-stream:
             schema:
@@ -4408,36 +4295,165 @@ paths:
           $ref: '#/components/responses/401'
         403:
           $ref: '#/components/responses/403'
-        404:
-          $ref: '#/components/responses/404'
-        409:
-          $ref: '#/components/responses/409'
+        413:
+          $ref: '#/components/responses/413'
         500:
           $ref: '#/components/responses/500'
 
-  /api/array:
-    get:
-      operationId: GetArray
+    put:
+      description: |
+        Change the value of an existing key in the key-value store.
+      operationId: PutObjectDataKey
       tags:
-        - array
+        - object / cfg
+        - object / sec
+        - object / usr
       security:
         - basicAuth: []
         - bearerAuth: []
       parameters:
-        - $ref: '#/components/parameters/inQueryArrayName'
+        - $ref: '#/components/parameters/inPathNamespace'
+        - $ref: '#/components/parameters/inPathKind'
+        - $ref: '#/components/parameters/inPathName'
+        - $ref: '#/components/parameters/inQueryKeyName'
+      requestBody:
+        required: true
+        content:
+          application/octet-stream:
+            schema:
+              type: string
+              format: binary
       responses:
-          200:
-            description: OK
-            content:
-              application/json:
-                schema:
-                  $ref: '#/components/schemas/ArrayList'
-          401:
-            $ref: '#/components/responses/401'
-          403:
-            $ref: '#/components/responses/403'
-          500:
-            $ref: '#/components/responses/500'
+        204:
+          $ref: '#/components/responses/204'
+        400:
+          $ref: '#/components/responses/400'
+        401:
+          $ref: '#/components/responses/401'
+        403:
+          $ref: '#/components/responses/403'
+        413:
+          $ref: '#/components/responses/413'
+        500:
+          $ref: '#/components/responses/500'
+
+  /api/object/path/{namespace}/{kind}/{name}/data/keys:
+    get:
+      description: |
+        List the keys in the key-value store.
+      operationId: GetObjectDataKeys
+      tags:
+        - object / cfg
+        - object / sec
+        - object / usr
+      security:
+        - basicAuth: []
+        - bearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/inPathNamespace'
+        - $ref: '#/components/parameters/inPathKind'
+        - $ref: '#/components/parameters/inPathName'
+      responses:
+        200:
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DataKeyList'
+        400:
+          $ref: '#/components/responses/400'
+        401:
+          $ref: '#/components/responses/401'
+        403:
+          $ref: '#/components/responses/403'
+        404:
+          $ref: '#/components/responses/404'
+        500:
+          $ref: '#/components/responses/500'
+
+  /api/object/path/{namespace}/{kind}/{name}/resource/info:
+    get:
+      operationId: GetObjectResourceInfo
+      description: |
+        Return the resource info table of all object instances.
+      parameters:
+        - $ref: '#/components/parameters/inPathNamespace'
+        - $ref: '#/components/parameters/inPathKind'
+        - $ref: '#/components/parameters/inPathName'
+      responses:
+        200:
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ResourceInfoList'
+        400:
+          $ref: '#/components/responses/400'
+        401:
+          $ref: '#/components/responses/401'
+        403:
+          $ref: '#/components/responses/403'
+        404:
+          $ref: '#/components/responses/404'
+        500:
+          $ref: '#/components/responses/500'
+      security:
+        - basicAuth: []
+        - bearerAuth: []
+      tags:
+        - object / svc
+        - object / vol
+
+  /api/object/path/{namespace}/{kind}/{name}/schedule:
+    get:
+      operationId: GetObjectSchedule
+      description: |
+        Return the schedule table of all the object instances.
+      parameters:
+        - $ref: '#/components/parameters/inPathNamespace'
+        - $ref: '#/components/parameters/inPathKind'
+        - $ref: '#/components/parameters/inPathName'
+      responses:
+        200:
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ScheduleList'
+        400:
+          $ref: '#/components/responses/400'
+        401:
+          $ref: '#/components/responses/401'
+        403:
+          $ref: '#/components/responses/403'
+        404:
+          $ref: '#/components/responses/404'
+        500:
+          $ref: '#/components/responses/500'
+      security:
+        - basicAuth: []
+        - bearerAuth: []
+      tags:
+        - object / svc
+        - object / vol
+
+  /api/openapi:
+    get:
+      operationId: GetSwagger
+      tags:
+        - public
+      responses:
+        200:
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+        401:
+          $ref: '#/components/responses/401'
+        403:
+          $ref: '#/components/responses/403'
+        500:
+          $ref: '#/components/responses/500'
 
   /api/pool:
     get:
@@ -4481,34 +4497,6 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/PoolVolumeList'
-        401:
-          $ref: '#/components/responses/401'
-        403:
-          $ref: '#/components/responses/403'
-        500:
-          $ref: '#/components/responses/500'
-
-  /api/relay/status:
-    get:
-      description: |
-        Get messages of all relays used by the responding node.
-        The login/password used to fetch information are the same the heartbeats use.
-      operationId: GetRelayStatus
-      tags:
-        - relay
-      security:
-        - basicAuth: []
-        - bearerAuth: []
-      parameters:
-        - $ref: '#/components/parameters/Relays'
-        - $ref: '#/components/parameters/RelayRemote'
-      responses:
-        200:
-          description: OK
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/RelayStatusList'
         401:
           $ref: '#/components/responses/401'
         403:
@@ -4567,6 +4555,34 @@ paths:
         500:
           $ref: '#/components/responses/500'
 
+  /api/relay/status:
+    get:
+      description: |
+        Get messages of all relays used by the responding node.
+        The login/password used to fetch information are the same the heartbeats use.
+      operationId: GetRelayStatus
+      tags:
+        - relay
+      security:
+        - basicAuth: []
+        - bearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/Relays'
+        - $ref: '#/components/parameters/RelayRemote'
+      responses:
+        200:
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RelayStatusList'
+        401:
+          $ref: '#/components/responses/401'
+        403:
+          $ref: '#/components/responses/403'
+        500:
+          $ref: '#/components/responses/500'
+
   /api/resource:
     get:
       operationId: GetResources
@@ -4595,25 +4611,6 @@ paths:
         500:
           $ref: '#/components/responses/500'
 
-  /api/openapi:
-    get:
-      operationId: GetSwagger
-      tags:
-        - public
-      responses:
-        200:
-          description: OK
-          content:
-            application/json:
-              schema:
-                type: object
-        401:
-          $ref: '#/components/responses/401'
-        403:
-          $ref: '#/components/responses/403'
-        500:
-          $ref: '#/components/responses/500'
-
 components:
   schemas:
     ArbitratorStatus:
@@ -4629,6 +4626,48 @@ components:
           type: string
         weight:
           type: integer
+
+    ArrayItem:
+      type: object
+      required:
+        - name
+        - type
+      properties:
+        name:
+          type: string
+        type:
+          type: string
+
+    ArrayItems:
+      type: array
+      items:
+        $ref: '#/components/schemas/ArrayItem'
+
+    ArrayList:
+      type: object
+      required:
+        - items
+        - kind
+      properties:
+        kind:
+          type: string
+          enum:
+            - Array
+        items:
+          $ref: '#/components/schemas/ArrayItems'
+
+    AuthAccessToken:
+      type: object
+      required:
+        - access_expired_at
+        - access_token
+      properties:
+        access_expired_at:
+          type: string
+          format: date-time
+        access_token:
+          type: string
+
     AuthInfo:
       type: object
       required:
@@ -4652,21 +4691,7 @@ components:
               type: string
             client_id:
               type: string
-    AuthToken:
-      allOf:
-        - $ref: '#/components/schemas/AuthAccessToken'
-        - $ref: '#/components/schemas/AuthRefreshToken'
-    AuthAccessToken:
-      type: object
-      required:
-        - access_expired_at
-        - access_token
-      properties:
-        access_expired_at:
-          type: string
-          format: date-time
-        access_token:
-          type: string
+
     AuthRefreshToken:
       type: object
       properties:
@@ -4675,39 +4700,19 @@ components:
           format: date-time
         refresh_token:
           type: string
-    CapabilityList:
-      type: object
-      required:
-        - kind
-        - items
-      properties:
-        kind:
-          type: string
-          enum:
-            - CapabilityList
-        items:
-          $ref: '#/components/schemas/CapabilityItems'
-    KeywordDefinitionList:
-      type: object
-      required:
-        - kind
-        - items
-      properties:
-        kind:
-          type: string
-          enum:
-            - KeywordDefinitionList
-        items:
-          $ref: '#/components/schemas/KeywordDefinitionItems'
 
-    CapabilityItems:
-      type: array
-      items:
-        $ref: '#/components/schemas/CapabilityItem'
-    KeywordDefinitionItems:
-      type: array
-      items:
-        $ref: '#/components/schemas/KeywordDefinitionItem'
+    AuthToken:
+      allOf:
+        - $ref: '#/components/schemas/AuthAccessToken'
+        - $ref: '#/components/schemas/AuthRefreshToken'
+
+    Capability:
+      type: object
+      required:
+        - name
+      properties:
+        name:
+          type: string
 
     CapabilityItem:
       type: object
@@ -4724,82 +4729,24 @@ components:
           $ref: '#/components/schemas/NodeMeta'
         data:
           $ref: '#/components/schemas/Capability'
-    KeywordDefinitionItem:
-      type: object
-      required:
-        - section
-        - option
-        - scopable
-        - converter
-        - text
-        - defaultText
-        - example
-        - default
-        - defaultOption
-        - candidates
-        - depends
-        - kind
-        - provisioning
-        - types
-        - aliases
-        - inherit
-        - deprecated
-        - required
-      properties:
-        section:
-          type: string
-        option:
-          type: string
-        scopable:
-          type: boolean
-        converter:
-          type: string
-        text:
-          type: string
-        defaultText:
-          type: string
-        example:
-          type: string
-        default:
-          type: string
-        defaultOption:
-          type: string
-        candidates:
-          type: array
-          items:
-            type: string
-        depends:
-          type : array
-          items:
-            type: string
-        kind:
-          type: array
-          items:
-            type: string
-        provisioning:
-          type: boolean
-        types:
-          type: array
-          items:
-            type: string
-        aliases:
-          type: array
-          items:
-            type: string
-        inherit:
-          type: string
-        deprecated:
-          type: string
-        required:
-          type: boolean
 
-    Capability:
+    CapabilityItems:
+      type: array
+      items:
+        $ref: '#/components/schemas/CapabilityItem'
+
+    CapabilityList:
       type: object
       required:
-        - name
+        - kind
+        - items
       properties:
-        name:
+        kind:
           type: string
+          enum:
+            - CapabilityList
+        items:
+          $ref: '#/components/schemas/CapabilityItems'
 
     Cluster:
       type: object
@@ -4838,6 +4785,60 @@ components:
         is_changed:
           type: boolean
 
+    DNSRecord:
+      type: object
+      required:
+        - name
+        - type
+        - class
+        - ttl
+        - data
+      properties:
+        name:
+          type: string
+        type:
+          type: string
+        class:
+          type: string
+        ttl:
+          type: integer
+        data:
+          type: string
+
+    DNSZone:
+      type: array
+      items:
+        $ref: '#/components/schemas/DNSRecord'
+
+    DRBDAllocation:
+      type: object
+      required:
+        - port
+        - minor
+        - expired_at
+        - id
+      properties:
+        id:
+          type: string
+          format: uuid
+          x-go-name: ID
+        port:
+          type: integer
+        minor:
+          type: integer
+        expired_at:
+          type: string
+          format: date-time
+
+    DRBDConfig:
+      type: object
+      required:
+        - data
+      properties:
+        data:
+          type: string
+          format: byte
+
     Daemon:
       type: object
       required:
@@ -4875,17 +4876,6 @@ components:
         started_at:
           type: string
           format: date-time
-
-    DaemonLocal:
-      type: object
-      required:
-        - nodename
-        - routines
-      properties:
-        nodename:
-          type: string
-        routines:
-          type: integer
 
     DaemonCollector:
       description: |
@@ -4997,27 +4987,6 @@ components:
         - $ref: '#/components/schemas/DaemonHeartbeatStreamType'
         - $ref: '#/components/schemas/DaemonHeartbeatStreamPeers'
 
-    DaemonHeartbeatStreamType:
-      type: object
-      required:
-        - type
-      properties:
-        type:
-          type: string
-          description: heartbeat stream type (unicast, multicast, ...)
-          example: unicast
-
-    DaemonHeartbeatStreamPeers:
-      type: object
-      required:
-        - peers
-      properties:
-        peers:
-          type: object
-          description: map of peer names to daemon heartbeat stream peer status
-          additionalProperties:
-            $ref: '#/components/schemas/DaemonHeartbeatStreamPeerStatus'
-
     DaemonHeartbeatStreamPeerStatus:
       type: object
       description: status of the communication with a specific peer node.
@@ -5035,6 +5004,27 @@ components:
           type: string
           description: the last beating time
           format: date-time
+
+    DaemonHeartbeatStreamPeers:
+      type: object
+      required:
+        - peers
+      properties:
+        peers:
+          type: object
+          description: map of peer names to daemon heartbeat stream peer status
+          additionalProperties:
+            $ref: '#/components/schemas/DaemonHeartbeatStreamPeerStatus'
+
+    DaemonHeartbeatStreamType:
+      type: object
+      required:
+        - type
+      properties:
+        type:
+          type: string
+          description: heartbeat stream type (unicast, multicast, ...)
+          example: unicast
 
     DaemonListener:
       description: |
@@ -5056,6 +5046,17 @@ components:
       type: string
       example: http-inet
       description: Listener name
+
+    DaemonLocal:
+      type: object
+      required:
+        - nodename
+        - routines
+      properties:
+        nodename:
+          type: string
+        routines:
+          type: integer
 
     DaemonPid:
       type: object
@@ -5093,6 +5094,28 @@ components:
               type: integer
               description: maximum number of running jobs
 
+    DaemonStatus:
+      type: object
+      required:
+        - cluster
+        - daemon
+      properties:
+        cluster:
+          $ref: '#/components/schemas/Cluster'
+        daemon:
+          $ref: '#/components/schemas/DaemonLocal'
+
+    DaemonSubNameBody:
+      type: object
+      required:
+        - name
+      properties:
+        name:
+          type: array
+          description: List of daemon subsystem ids. Example for heartbeat is hb#myvalue.tx
+          items:
+            type: string
+
     DaemonSubsystemStatus:
       type: object
       required:
@@ -5120,39 +5143,57 @@ components:
         state:
           type: string
 
-    DiskList:
+    DataKey:
+      type: object
+      required:
+        - name
+        - bytes
+      properties:
+        name:
+          type: string
+        bytes:
+          type: string
+          format: byte
+
+    DataKeyList:
       type: object
       required:
         - kind
         - items
       properties:
-          kind:
-            type: string
-            enum:
-              - DiskList
-          items:
-            $ref: '#/components/schemas/DiskItems'
-
-    DiskItems:
-      type: array
-      items:
-        $ref: '#/components/schemas/DiskItem'
-
-    DiskItem:
-      type: object
-      required:
-        - kind
-        - data
-        - meta
-      properties:
         kind:
           type: string
           enum:
-            - DiskItem
-        data:
-          $ref: '#/components/schemas/Disk'
-        meta:
-          $ref: '#/components/schemas/NodeMeta'
+            - DataKeyList
+        items:
+          $ref: '#/components/schemas/DataKeyListItems'
+
+    DataKeyListItem:
+      type: object
+      required:
+        - node
+        - object
+        - name
+        - size
+      properties:
+        node:
+          type: string
+        object:
+          type: string
+        name:
+          type: string
+        size:
+          type: integer
+
+    DataKeyListItems:
+      type: array
+      items:
+        $ref: '#/components/schemas/DataKeyListItem'
+
+    DataKeys:
+      type: array
+      items:
+        $ref: '#/components/schemas/DataKey'
 
     Disk:
       type: object
@@ -5184,90 +5225,47 @@ components:
           items:
             $ref: '#/components/schemas/Region'
 
-    Region:
+    DiskItem:
       type: object
       required:
-        - id
-        - devpath
-        - object
-        - size
-        - group
-      properties:
-        id:
-          type: string
-          x-go-name: ID
-        devpath:
-          type: string
-        object:
-          type: string
-        size:
-          type: integer
-          format: uint64
-        group:
-          type: string
-
-    DNSRecord:
-      type: object
-      required:
-        - name
-        - type
-        - class
-        - ttl
+        - kind
         - data
+        - meta
       properties:
-        name:
+        kind:
           type: string
-        type:
-          type: string
-        class:
-          type: string
-        ttl:
-          type: integer
+          enum:
+            - DiskItem
         data:
-          type: string
+          $ref: '#/components/schemas/Disk'
+        meta:
+          $ref: '#/components/schemas/NodeMeta'
 
-    DNSZone:
+    DiskItems:
       type: array
       items:
-        $ref: '#/components/schemas/DNSRecord'
+        $ref: '#/components/schemas/DiskItem'
 
-    DRBDAllocation:
-      type: object
-      required:
-        - port
-        - minor
-        - expired_at
-        - id
-      properties:
-        id:
-          type: string
-          format: uuid
-          x-go-name: ID
-        port:
-          type: integer
-        minor:
-          type: integer
-        expired_at:
-          type: string
-          format: date-time
-
-    DriverList:
+    DiskList:
       type: object
       required:
         - kind
         - items
       properties:
-          kind:
-            type: string
-            enum:
-              - DriversList
-          items:
-            $ref: '#/components/schemas/DriverItems'
+        kind:
+          type: string
+          enum:
+            - DiskList
+        items:
+          $ref: '#/components/schemas/DiskItems'
 
-    DriverItems:
-      type: array
-      items:
-        $ref: '#/components/schemas/DriverItem'
+    Driver:
+      type: object
+      required:
+        - name
+      properties:
+        name:
+          type: string
 
     DriverItem:
       type: object
@@ -5285,31 +5283,57 @@ components:
         meta:
           $ref: '#/components/schemas/NodeMeta'
 
-    Driver:
-      type: object
-      required:
-        - name
-      properties:
-        name:
-          type: string
+    DriverItems:
+      type: array
+      items:
+        $ref: '#/components/schemas/DriverItem'
 
-    GroupList:
+    DriverList:
       type: object
       required:
         - kind
         - items
       properties:
-        kind:
-          type: string
-          enum:
-            - GroupList
-        items:
-          $ref: '#/components/schemas/GroupItems'
+          kind:
+            type: string
+            enum:
+              - DriversList
+          items:
+            $ref: '#/components/schemas/DriverItems'
 
-    GroupItems:
-      type: array
-      items:
-        $ref: '#/components/schemas/GroupItem'
+    EventList:
+      description: responseEventList is a list of sse
+      type: string
+      format: binary
+
+    FlexConfig:
+      type: object
+      properties:
+        min:
+          type: integer
+          example: 2
+        max:
+          type: integer
+          example: 10
+        target:
+          type: integer
+          example: 5
+      required:
+        - min
+        - max
+        - target
+
+    Group:
+      type: object
+      required:
+        - id
+        - name
+      properties:
+        id:
+          type: integer
+          x-go-name: ID
+        name:
+          type: string
 
     GroupItem:
       type: object
@@ -5327,19 +5351,12 @@ components:
         meta:
           $ref: '#/components/schemas/NodeMeta'
 
-    Group:
-      type: object
-      required:
-        - id
-        - name
-      properties:
-        id:
-          type: integer
-          x-go-name: ID
-        name:
-          type: string
+    GroupItems:
+      type: array
+      items:
+        $ref: '#/components/schemas/GroupItem'
 
-    HardwareList:
+    GroupList:
       type: object
       required:
         - kind
@@ -5348,30 +5365,9 @@ components:
         kind:
           type: string
           enum:
-            - HardwareList
+            - GroupList
         items:
-          $ref: '#/components/schemas/HardwareItems'
-
-    HardwareItems:
-      type: array
-      items:
-        $ref: '#/components/schemas/HardwareItem'
-
-    HardwareItem:
-      type: object
-      required:
-        - kind
-        - data
-        - meta
-      properties:
-        kind:
-          type: string
-          enum:
-            - HardwareItem
-        data:
-          $ref: '#/components/schemas/Hardware'
-        meta:
-          $ref: '#/components/schemas/NodeMeta'
+          $ref: '#/components/schemas/GroupItems'
 
     Hardware:
       type: object
@@ -5393,6 +5389,40 @@ components:
         type:
           type: string
 
+    HardwareItem:
+      type: object
+      required:
+        - kind
+        - data
+        - meta
+      properties:
+        kind:
+          type: string
+          enum:
+            - HardwareItem
+        data:
+          $ref: '#/components/schemas/Hardware'
+        meta:
+          $ref: '#/components/schemas/NodeMeta'
+
+    HardwareItems:
+      type: array
+      items:
+        $ref: '#/components/schemas/HardwareItem'
+
+    HardwareList:
+      type: object
+      required:
+        - kind
+        - items
+      properties:
+        kind:
+          type: string
+          enum:
+            - HardwareList
+        items:
+          $ref: '#/components/schemas/HardwareItems'
+
     HeartbeatRotateResponse:
       type: object
       required:
@@ -5403,21 +5433,88 @@ components:
           format: uuid
           x-go-name: ID
 
-    InstanceMeta:
+    IPAddress:
       type: object
       required:
-        - object
-        - node
+        - mac
+        - address
+        - flagdeprecated
+        - intf
+        - mask
+        - type
       properties:
-        object:
+        mac:
           type: string
-        node:
+        address:
           type: string
+        flagdeprecated:
+          type: boolean
+          x-go-name: FlagDeprecated
+        intf:
+          type: string
+        mask:
+          type: string
+        type:
+          type: string
+
+    IPAddressItem:
+      type: object
+      required:
+        - kind
+        - data
+        - meta
+      properties:
+        kind:
+          type: string
+          enum:
+            - IPAddressItem
+        data:
+          $ref: '#/components/schemas/IPAddress'
+        meta:
+          $ref: '#/components/schemas/NodeMeta'
+
+    IPAddressItems:
+      type: array
+      items:
+        $ref: '#/components/schemas/IPAddressItem'
+
+    IPAddressList:
+      type: object
+      required:
+        - kind
+        - items
+      properties:
+        kind:
+          type: string
+          enum:
+            - IDAddressList
+        items:
+          $ref: '#/components/schemas/IPAddressItems'
+
+    Instance:
+      type: object
+      properties:
+        config:
+          $ref: '#/components/schemas/InstanceConfig'
+        monitor:
+          $ref: '#/components/schemas/InstanceMonitor'
+        status:
+          $ref: '#/components/schemas/InstanceStatus'
+
+    InstanceActionAccepted:
+      type: object
+      properties:
+        session_id:
+          type: string
+          format: uuid
+          x-go-name: SessionID
+      required:
+        - session_id
 
     InstanceConfig:
       x-go-type: instance.Config
       x-go-type-import:
-          path: github.com/opensvc/om3/v3/core/instance
+        path: github.com/opensvc/om3/v3/core/instance
       type: object
       required:
         - app
@@ -5501,6 +5598,56 @@ components:
           format: date-time
         stonith:
           type: boolean
+
+    InstanceItem:
+      type: object
+      required:
+        - kind
+        - meta
+        - data
+      properties:
+        kind:
+          type: string
+          enum:
+            - InstanceItem
+        meta:
+          $ref: '#/components/schemas/InstanceMeta'
+        data:
+          $ref: '#/components/schemas/Instance'
+
+    InstanceItems:
+      type: array
+      items:
+        $ref: '#/components/schemas/InstanceItem'
+
+    InstanceList:
+      type: object
+      required:
+        - items
+        - kind
+      properties:
+        kind:
+          type: string
+          enum:
+            - InstanceList
+        items:
+          $ref: '#/components/schemas/InstanceItems'
+
+    InstanceMap:
+      type: object
+      additionalProperties:
+        $ref: '#/components/schemas/Instance'
+
+    InstanceMeta:
+      type: object
+      required:
+        - object
+        - node
+      properties:
+        object:
+          type: string
+        node:
+          type: string
 
     InstanceMonitor:
       x-go-type: instance.Monitor
@@ -5635,83 +5782,81 @@ components:
           type: string
           format: date-time
 
-    RunningInfo:
+    KeywordDefinitionItem:
       type: object
       required:
-        - rid
-        - session_id
-        - pid
-        - at
-      properties:
-        at:
-          type: string
-          format: date-time
-        rid:
-          type: string
-        session_id:
-          type: string
-        pid:
-          type: integer
-
-    IPAddressList:
-      type: object
-      required:
+        - section
+        - option
+        - scopable
+        - converter
+        - text
+        - defaultText
+        - example
+        - default
+        - defaultOption
+        - candidates
+        - depends
         - kind
-        - items
+        - provisioning
+        - types
+        - aliases
+        - inherit
+        - deprecated
+        - required
       properties:
-        kind:
+        section:
           type: string
-          enum:
-            - IDAddressList
-        items:
-          $ref: '#/components/schemas/IPAddressItems'
-
-    IPAddressItems:
-      type: array
-      items:
-        $ref: '#/components/schemas/IPAddressItem'
-
-    IPAddressItem:
-      type: object
-      required:
-        - kind
-        - data
-        - meta
-      properties:
-        kind:
+        option:
           type: string
-          enum:
-            - IPAddressItem
-        data:
-          $ref: '#/components/schemas/IPAddress'
-        meta:
-          $ref: '#/components/schemas/NodeMeta'
-
-    IPAddress:
-      type: object
-      required:
-        - mac
-        - address
-        - flagdeprecated
-        - intf
-        - mask
-        - type
-      properties:
-        mac:
-          type: string
-        address:
-          type: string
-        flagdeprecated:
+        scopable:
           type: boolean
-          x-go-name: FlagDeprecated
-        intf:
+        converter:
           type: string
-        mask:
+        text:
           type: string
-        type:
+        defaultText:
           type: string
+        example:
+          type: string
+        default:
+          type: string
+        defaultOption:
+          type: string
+        candidates:
+          type: array
+          items:
+            type: string
+        depends:
+          type : array
+          items:
+            type: string
+        kind:
+          type: array
+          items:
+            type: string
+        provisioning:
+          type: boolean
+        types:
+          type: array
+          items:
+            type: string
+        aliases:
+          type: array
+          items:
+            type: string
+        inherit:
+          type: string
+        deprecated:
+          type: string
+        required:
+          type: boolean
 
-    KeywordList:
+    KeywordDefinitionItems:
+      type: array
+      items:
+        $ref: '#/components/schemas/KeywordDefinitionItem'
+
+    KeywordDefinitionList:
       type: object
       required:
         - kind
@@ -5720,14 +5865,9 @@ components:
         kind:
           type: string
           enum:
-            - KeywordList
+            - KeywordDefinitionList
         items:
-          $ref: '#/components/schemas/KeywordItems'
-
-    KeywordItems:
-      type: array
-      items:
-        $ref: '#/components/schemas/KeywordItem'
+          $ref: '#/components/schemas/KeywordDefinitionItems'
 
     KeywordItem:
       type: object
@@ -5750,6 +5890,61 @@ components:
           type: string
         evaluated_as:
           type: string
+
+    KeywordItems:
+      type: array
+      items:
+        $ref: '#/components/schemas/KeywordItem'
+
+    KeywordList:
+      type: object
+      required:
+        - kind
+        - items
+      properties:
+        kind:
+          type: string
+          enum:
+            - KeywordList
+        items:
+          $ref: '#/components/schemas/KeywordItems'
+
+    Kind:
+      x-go-type: naming.Kind
+      x-go-type-import:
+        path: github.com/opensvc/om3/v3/core/naming
+      type: string
+      enum:
+        - svc
+        - vol
+        - cfg
+        - sec
+        - usr
+        - nscfg
+        - ccfg
+
+    LogControlBody:
+      type: object
+      x-go-type: LogControl
+      required:
+        - level
+      properties:
+        level:
+          type: string
+          enum:
+            - debug
+            - info
+            - warn
+            - error
+            - fatal
+            - panic
+            - none
+          default: info
+
+    LogList:
+      description: responseLogList is a list of sse
+      type: string
+      format: binary
 
     Network:
       type: object
@@ -5782,202 +5977,6 @@ components:
           type: string
           x-go-type: big.Int
 
-    PackageList:
-      type: object
-      required:
-        - kind
-        - items
-      properties:
-        kind:
-          type: string
-          enum:
-            - PackageList
-        items:
-          $ref: '#/components/schemas/PackageItems'
-
-    PackageItems:
-      type: array
-      items:
-        $ref: '#/components/schemas/PackageItem'
-
-    PackageItem:
-      type: object
-      required:
-        - kind
-        - data
-        - meta
-      properties:
-        kind:
-          type: string
-          enum:
-            - PackageItem
-        data:
-          $ref: '#/components/schemas/Package'
-        meta:
-          $ref: '#/components/schemas/NodeMeta'
-
-    Package:
-      type: object
-      required:
-        - name
-        - version
-        - arch
-        - type
-        - installedat
-        - sig
-      properties:
-        name:
-          type: string
-        version:
-          type: string
-        arch:
-          type: string
-        type:
-          type: string
-        installedat:
-          type: string
-          format: data-time
-          x-go-type: "time.Time"
-          x-go-name: InstalledAt
-        sig:
-          type: string
-
-    PatchList:
-      type: object
-      required:
-        - kind
-        - items
-      properties:
-        kind:
-          type: string
-          enum:
-            - PatchList
-        items:
-          $ref: '#/components/schemas/PatchItems'
-
-    PatchItems:
-      type: array
-      items:
-        $ref: '#/components/schemas/PatchItem'
-
-    PatchItem:
-      type: object
-      required:
-        - kind
-        - data
-        - meta
-      properties:
-        kind:
-          type: string
-          enum:
-            - PacthItem
-        data:
-          $ref: '#/components/schemas/Patch'
-        meta:
-          $ref: '#/components/schemas/NodeMeta'
-
-    Patch:
-      type: object
-      required:
-        - number
-        - revision
-        - installedat
-      properties:
-        number:
-          type: string
-        revision:
-          type: string
-        installedat:
-          format: date-time
-          x-go-type: "time.Time"
-          x-go-name: InstalledAt
-
-    PropertyList:
-      type: object
-      required:
-        - kind
-        - items
-      properties:
-        kind:
-          type: string
-          enum:
-            - PropertyList
-        items:
-          $ref: '#/components/schemas/PropertyItems'
-
-    PropertyItems:
-      type: array
-      items:
-        $ref: '#/components/schemas/PropertyItem'
-
-    PropertyItem:
-      type: object
-      required:
-        - kind
-        - meta
-        - data
-      properties:
-        kind:
-          type: string
-        meta:
-          $ref: '#/components/schemas/NodeMeta'
-        data:
-          $ref: '#/components/schemas/Property'
-
-    Property:
-      type: object
-      required:
-        - error
-        - name
-        - source
-        - title
-        - value
-      properties:
-        error:
-          type: string
-        name:
-          type: string
-        source:
-          type: string
-        title:
-          type: string
-        value: !!set
-          type1: string
-          type2: number
-          type3: boolean
-
-    NetworkIPNetwork:
-      type: object
-      required:
-        - name
-        - type
-        - network
-      properties:
-        name:
-          type: string
-        type:
-          type: string
-        network:
-          type: string
-
-    NetworkList:
-      type: object
-      required:
-        - items
-        - kind
-      properties:
-        kind:
-          type: string
-          enum:
-            - NetworkList
-        items:
-          $ref: '#/components/schemas/NetworkItems'
-
-    NetworkItems:
-      type: array
-      items:
-        $ref: '#/components/schemas/Network'
-
     NetworkIP:
       type: object
       required:
@@ -6000,6 +5999,11 @@ components:
         network:
           $ref: '#/components/schemas/NetworkIPNetwork'
 
+    NetworkIPItems:
+      type: array
+      items:
+        $ref: '#/components/schemas/NetworkIP'
+
     NetworkIPList:
       type: object
       required:
@@ -6013,16 +6017,26 @@ components:
         items:
           $ref: '#/components/schemas/NetworkIPItems'
 
-    NetworkIPItems:
+    NetworkIPNetwork:
+      type: object
+      required:
+        - name
+        - type
+        - network
+      properties:
+        name:
+          type: string
+        type:
+          type: string
+        network:
+          type: string
+
+    NetworkItems:
       type: array
       items:
-        $ref: '#/components/schemas/NetworkIP'
+        $ref: '#/components/schemas/Network'
 
-    # ========================================================================
-    # node schemas
-    # ========================================================================
-
-    NodeList:
+    NetworkList:
       type: object
       required:
         - items
@@ -6031,9 +6045,13 @@ components:
         kind:
           type: string
           enum:
-            - NodeList
+            - NetworkList
         items:
-          $ref: '#/components/schemas/NodeItems'
+          $ref: '#/components/schemas/NetworkItems'
+
+    # ========================================================================
+    # node schemas
+    # ========================================================================
 
     Node:
       type: object
@@ -6054,27 +6072,6 @@ components:
           x-go-name: SessionID
       required:
         - session_id
-
-    NodeItems:
-      type: array
-      items:
-        $ref: '#/components/schemas/NodeItem'
-
-    NodeItem:
-      type: object
-      required:
-        - kind
-        - meta
-        - data
-      properties:
-        kind:
-          type: string
-          enum:
-            - NodeItem
-        meta:
-          $ref: '#/components/schemas/NodeMeta'
-        data:
-          $ref: '#/components/schemas/Node'
 
     NodeConfig:
       type: object
@@ -6112,6 +6109,87 @@ components:
         prkey:
           type: string
           x-go-name: PRKey
+
+    NodeInfo:
+      type: object
+      required:
+        - labels
+        - nodename
+        - paths
+        - listener
+      properties:
+        labels:
+          type: array
+          description: labels is the list of node labels.
+          items:
+            $ref: '#/components/schemas/NodeLabel'
+        nodename:
+          type: string
+          description: nodename is the name of the node where the labels and paths are coming from.
+        paths:
+          type: array
+          description: paths is the list of node to storage array san paths.
+          items:
+            $ref: '#/components/schemas/SANPath'
+        listener:
+          type: object
+          items:
+            $ref: '#/components/schemas/DaemonListener'
+
+    NodeItem:
+      type: object
+      required:
+        - kind
+        - meta
+        - data
+      properties:
+        kind:
+          type: string
+          enum:
+            - NodeItem
+        meta:
+          $ref: '#/components/schemas/NodeMeta'
+        data:
+          $ref: '#/components/schemas/Node'
+
+    NodeItems:
+      type: array
+      items:
+        $ref: '#/components/schemas/NodeItem'
+
+    NodeLabel:
+      type: object
+      required:
+        - name
+        - value
+      properties:
+        name:
+          type: string
+          description: name is the label name.
+        value:
+          type: string
+          description: value is the label value.
+
+    NodeList:
+      type: object
+      required:
+        - items
+        - kind
+      properties:
+        kind:
+          type: string
+          enum:
+            - NodeList
+        items:
+          $ref: '#/components/schemas/NodeItems'
+
+    NodeMeta:
+      type: object
+      required:
+        - node
+      properties:
+        node:
+          type: string
 
     NodeMonitor:
       type: object
@@ -6194,53 +6272,6 @@ components:
           additionalProperties:
             type: string
 
-    NodeInfo:
-      type: object
-      required:
-        - labels
-        - nodename
-        - paths
-        - listener
-      properties:
-        labels:
-          type: array
-          description: labels is the list of node labels.
-          items:
-            $ref: '#/components/schemas/NodeLabel'
-        nodename:
-          type: string
-          description: nodename is the name of the node where the labels and paths are coming from.
-        paths:
-          type: array
-          description: paths is the list of node to storage array san paths.
-          items:
-            $ref: '#/components/schemas/SANPath'
-        listener:
-          type: object
-          items:
-            $ref: '#/components/schemas/DaemonListener'
-
-    NodeLabel:
-      type: object
-      required:
-        - name
-        - value
-      properties:
-        name:
-          type: string
-          description: name is the label name.
-        value:
-          type: string
-          description: value is the label value.
-
-    NodeMeta:
-      type: object
-      required:
-        - node
-      properties:
-        node:
-          type: string
-
     NodesInfo:
       x-go-type: nodesinfo.M
       x-go-type-import:
@@ -6252,110 +6283,6 @@ components:
     # ========================================================================
     # object schemas
     # ========================================================================
-
-    Priority:
-      type: integer
-      description: "Lower priority are orchestrated first."
-      example: 50
-
-    Scope:
-      type: array
-      items:
-        type: string
-      example: ["node1", "node2"]
-
-    ObjectList:
-      type: object
-      required:
-        - items
-        - kind
-      properties:
-        kind:
-          type: string
-          enum:
-            - ObjectList
-        items:
-          $ref: '#/components/schemas/ObjectItems'
-
-    ObjectItems:
-      type: array
-      items:
-        $ref: '#/components/schemas/ObjectItem'
-
-    ObjectItem:
-      type: object
-      required:
-        - kind
-        - meta
-        - data
-      properties:
-        kind:
-          type: string
-          enum:
-            - ObjectItem
-        meta:
-          $ref: '#/components/schemas/ObjectMeta'
-        data:
-          $ref: '#/components/schemas/ObjectData'
-
-    ObjectConfig:
-      type: object
-      required:
-        - data
-        - mtime
-      properties:
-        data:
-          type: object
-          additionalProperties: true
-          x-go-type: orderedmap.OrderedMap
-          x-go-type-import:
-            path: github.com/iancoleman/orderedmap
-        mtime:
-          type: string
-          format: date-time
-
-    ObjectConfigFile:
-      type: object
-      required:
-        - data
-        - mtime
-      properties:
-        data:
-          type: string
-          format: byte
-        mtime:
-          type: string
-          format: date-time
-
-    ObjectMeta:
-      type: object
-      required:
-        - object
-      properties:
-        object:
-          type: string
-
-    ObjectPaths:
-      type: array
-      items:
-        type: string
-
-    ObjectCore:
-      type: object
-      required:
-        - instances
-        - priority
-        - scope
-        - updated_at
-      properties:
-        instances:
-          $ref: '#/components/schemas/InstanceMap'
-        priority:
-          $ref: '#/components/schemas/Priority'
-        scope:
-          $ref: '#/components/schemas/Scope'
-        updated_at:
-          $ref: '#/components/schemas/UpdatedAt'
 
     ObjectActor:
       type: object
@@ -6395,6 +6322,148 @@ components:
             - topology
             - up_instances_count
 
+    ObjectCcfg:
+      allOf:
+        - $ref: '#/components/schemas/ObjectCore'
+
+    ObjectCfg:
+      allOf:
+        - $ref: '#/components/schemas/ObjectCore'
+
+    ObjectConfig:
+      type: object
+      required:
+        - data
+        - mtime
+      properties:
+        data:
+          type: object
+          additionalProperties: true
+          x-go-type: orderedmap.OrderedMap
+          x-go-type-import:
+            path: github.com/iancoleman/orderedmap
+        mtime:
+          type: string
+          format: date-time
+
+    ObjectConfigFile:
+      type: object
+      required:
+        - data
+        - mtime
+      properties:
+        data:
+          type: string
+          format: byte
+        mtime:
+          type: string
+          format: date-time
+
+    ObjectCore:
+      type: object
+      required:
+        - instances
+        - priority
+        - scope
+        - updated_at
+      properties:
+        instances:
+          $ref: '#/components/schemas/InstanceMap'
+        priority:
+          $ref: '#/components/schemas/Priority'
+        scope:
+          $ref: '#/components/schemas/Scope'
+        updated_at:
+          $ref: '#/components/schemas/UpdatedAt'
+
+    ObjectData:
+      anyOf:
+        - $ref: '#/components/schemas/ObjectActor'
+        - $ref: '#/components/schemas/ObjectCore'
+        - $ref: '#/components/schemas/ObjectCcfg'
+        - $ref: '#/components/schemas/ObjectCfg'
+        - $ref: '#/components/schemas/ObjectSec'
+        - $ref: '#/components/schemas/ObjectSvc'
+        - $ref: '#/components/schemas/ObjectUsr'
+        - $ref: '#/components/schemas/ObjectVol'
+        - $ref: '#/components/schemas/ObjectVolConfig'
+
+    ObjectFrozen:
+      type: string
+      description: Frozen is the aggregation of instances frozen states
+      example: frozen
+      enum:
+        - frozen
+        - mixed
+        - n/a
+        - unfrozen
+
+    ObjectItem:
+      type: object
+      required:
+        - kind
+        - meta
+        - data
+      properties:
+        kind:
+          type: string
+          enum:
+            - ObjectItem
+        meta:
+          $ref: '#/components/schemas/ObjectMeta'
+        data:
+          $ref: '#/components/schemas/ObjectData'
+
+    ObjectItems:
+      type: array
+      items:
+        $ref: '#/components/schemas/ObjectItem'
+
+    ObjectList:
+      type: object
+      required:
+        - items
+        - kind
+      properties:
+        kind:
+          type: string
+          enum:
+            - ObjectList
+        items:
+          $ref: '#/components/schemas/ObjectItems'
+
+    ObjectMeta:
+      type: object
+      required:
+        - object
+      properties:
+        object:
+          type: string
+
+    ObjectPaths:
+      type: array
+      items:
+        type: string
+
+    ObjectSec:
+      allOf:
+        - $ref: '#/components/schemas/ObjectCore'
+
+    ObjectSvc:
+      allOf:
+        - $ref: '#/components/schemas/ObjectActor'
+        - $ref: '#/components/schemas/ObjectCore'
+
+    ObjectUsr:
+      allOf:
+        - $ref: '#/components/schemas/ObjectCore'
+
+    ObjectVol:
+      allOf:
+        - $ref: '#/components/schemas/ObjectActor'
+        - $ref: '#/components/schemas/ObjectCore'
+        - $ref: '#/components/schemas/ObjectVolConfig'
+
     ObjectVolConfig:
       type: object
       properties:
@@ -6409,62 +6478,6 @@ components:
         - pool
         - size
 
-    FlexConfig:
-      type: object
-      properties:
-        min:
-          type: integer
-          example: 2
-        max:
-          type: integer
-          example: 10
-        target:
-          type: integer
-          example: 5
-      required:
-        - min
-        - max
-        - target
-
-    ObjectCcfg:
-      allOf:
-        - $ref: '#/components/schemas/ObjectCore'
-
-    ObjectUsr:
-      allOf:
-        - $ref: '#/components/schemas/ObjectCore'
-
-    ObjectSec:
-      allOf:
-        - $ref: '#/components/schemas/ObjectCore'
-
-    ObjectCfg:
-      allOf:
-        - $ref: '#/components/schemas/ObjectCore'
-
-    ObjectSvc:
-      allOf:
-        - $ref: '#/components/schemas/ObjectActor'
-        - $ref: '#/components/schemas/ObjectCore'
-
-    ObjectVol:
-      allOf:
-        - $ref: '#/components/schemas/ObjectActor'
-        - $ref: '#/components/schemas/ObjectCore'
-        - $ref: '#/components/schemas/ObjectVolConfig'
-
-    ObjectData:
-      anyOf:
-        - $ref: '#/components/schemas/ObjectActor'
-        - $ref: '#/components/schemas/ObjectCore'
-        - $ref: '#/components/schemas/ObjectCcfg'
-        - $ref: '#/components/schemas/ObjectCfg'
-        - $ref: '#/components/schemas/ObjectSec'
-        - $ref: '#/components/schemas/ObjectSvc'
-        - $ref: '#/components/schemas/ObjectUsr'
-        - $ref: '#/components/schemas/ObjectVol'
-        - $ref: '#/components/schemas/ObjectVolConfig'
-
     Orchestrate:
       type: string
       enum:
@@ -6472,16 +6485,6 @@ components:
         - no
         - start
       default: no
-
-    InstanceActionAccepted:
-      type: object
-      properties:
-        session_id:
-          type: string
-          format: uuid
-          x-go-name: SessionID
-      required:
-        - session_id
 
     OrchestrationQueued:
       type: object
@@ -6492,6 +6495,144 @@ components:
           x-go-name: OrchestrationID
       required:
         - orchestration_id
+
+    Package:
+      type: object
+      required:
+        - name
+        - version
+        - arch
+        - type
+        - installedat
+        - sig
+      properties:
+        name:
+          type: string
+        version:
+          type: string
+        arch:
+          type: string
+        type:
+          type: string
+        installedat:
+          type: string
+          format: data-time
+          x-go-type: "time.Time"
+          x-go-name: InstalledAt
+        sig:
+          type: string
+
+    PackageItem:
+      type: object
+      required:
+        - kind
+        - data
+        - meta
+      properties:
+        kind:
+          type: string
+          enum:
+            - PackageItem
+        data:
+          $ref: '#/components/schemas/Package'
+        meta:
+          $ref: '#/components/schemas/NodeMeta'
+
+    PackageItems:
+      type: array
+      items:
+        $ref: '#/components/schemas/PackageItem'
+
+    PackageList:
+      type: object
+      required:
+        - kind
+        - items
+      properties:
+        kind:
+          type: string
+          enum:
+            - PackageList
+        items:
+          $ref: '#/components/schemas/PackageItems'
+
+    Patch:
+      type: object
+      required:
+        - number
+        - revision
+        - installedat
+      properties:
+        number:
+          type: string
+        revision:
+          type: string
+        installedat:
+          format: date-time
+          x-go-type: "time.Time"
+          x-go-name: InstalledAt
+
+    PatchDataKey:
+      type: object
+      required:
+        - action
+        - name
+      properties:
+        action:
+          type: string
+          enum:
+            - add
+            - change
+            - remove
+            - rename
+        name:
+          type: string
+        to:
+          type: string
+        string:
+          type: string
+        bytes:
+          type: string
+          format: byte
+
+    PatchDataKeys:
+      type: array
+      items:
+        $ref: '#/components/schemas/PatchDataKey'
+
+    PatchItem:
+      type: object
+      required:
+        - kind
+        - data
+        - meta
+      properties:
+        kind:
+          type: string
+          enum:
+            - PacthItem
+        data:
+          $ref: '#/components/schemas/Patch'
+        meta:
+          $ref: '#/components/schemas/NodeMeta'
+
+    PatchItems:
+      type: array
+      items:
+        $ref: '#/components/schemas/PatchItem'
+
+    PatchList:
+      type: object
+      required:
+        - kind
+        - items
+      properties:
+        kind:
+          type: string
+          enum:
+            - PatchList
+        items:
+          $ref: '#/components/schemas/PatchItems'
 
     PathRelation:
       type: array
@@ -6512,16 +6653,6 @@ components:
         - spread
         - shift
 
-    ObjectFrozen:
-      type: string
-      description: Frozen is the aggregation of instances frozen states
-      example: frozen
-      enum:
-        - frozen
-        - mixed
-        - n/a
-        - unfrozen
-
     PlacementState:
       type: string
       description: object placement state
@@ -6531,152 +6662,9 @@ components:
         - n/a
         - undef
 
-    LogControlBody:
-      type: object
-      x-go-type: LogControl
-      required:
-        - level
-      properties:
-        level:
-          type: string
-          enum:
-            - debug
-            - info
-            - warn
-            - error
-            - fatal
-            - panic
-            - none
-          default: info
-
-    DaemonSubNameBody:
-      type: object
-      required:
-        - name
-      properties:
-        name:
-          type: array
-          description: List of daemon subsystem ids. Example for heartbeat is hb#myvalue.tx
-          items:
-            type: string
-
-    PostNodeDRBDConfigRequest:
-      type: object
-      required:
-        - allocation_id
-        - data
-      properties:
-        allocation_id:
-          type: string
-          format: uuid
-          x-go-name: AllocationID
-        data:
-          type: string
-          format: byte
-
-    PostInstanceProgress:
-      type: object
-      required:
-        - session_id
-        - state
-      properties:
-        session_id:
-          type: string
-          format: uuid
-          x-go-name: SessionID
-        state:
-          type: string
-        is_partial:
-          type: boolean
-
-    # ========================================================================
-    # instance schemas
-    # ========================================================================
-
-    InstanceList:
-      type: object
-      required:
-        - items
-        - kind
-      properties:
-        kind:
-          type: string
-          enum:
-            - InstanceList
-        items:
-          $ref: '#/components/schemas/InstanceItems'
-
-    Instance:
-      type: object
-      properties:
-        config:
-          $ref: '#/components/schemas/InstanceConfig'
-        monitor:
-          $ref: '#/components/schemas/InstanceMonitor'
-        status:
-          $ref: '#/components/schemas/InstanceStatus'
-
-    InstanceItems:
-      type: array
-      items:
-        $ref: '#/components/schemas/InstanceItem'
-
-    InstanceItem:
-      type: object
-      required:
-        - kind
-        - meta
-        - data
-      properties:
-        kind:
-          type: string
-          enum:
-            - InstanceItem
-        meta:
-          $ref: '#/components/schemas/InstanceMeta'
-        data:
-          $ref: '#/components/schemas/Instance'
-
-    InstanceMap:
-      type: object
-      additionalProperties:
-        $ref: '#/components/schemas/Instance'
-
-    Kind:
-      x-go-type: naming.Kind
-      x-go-type-import:
-          path: github.com/opensvc/om3/v3/core/naming
-      type: string
-      enum:
-        - svc
-        - vol
-        - cfg
-        - sec
-        - usr
-        - nscfg
-        - ccfg
-
     # ========================================================================
     # pool schemas
     # ========================================================================
-
-    PoolList:
-      type: object
-      required:
-        - items
-        - kind
-      properties:
-        kind:
-          type: string
-          enum:
-            - PoolList
-        items:
-          $ref: '#/components/schemas/PoolItems'
-
-    PoolItems:
-      type: array
-      items:
-        $ref: '#/components/schemas/Pool'
 
     Pool:
       type: object
@@ -6726,11 +6714,12 @@ components:
           type: string
           format: date-time
 
-    # ========================================================================
-    # pool volume schemas
-    # ========================================================================
+    PoolItems:
+      type: array
+      items:
+        $ref: '#/components/schemas/Pool'
 
-    PoolVolumeList:
+    PoolList:
       type: object
       required:
         - items
@@ -6739,14 +6728,13 @@ components:
         kind:
           type: string
           enum:
-            - PoolVolumeList
+            - PoolList
         items:
-          $ref: '#/components/schemas/PoolVolumeItems'
+          $ref: '#/components/schemas/PoolItems'
 
-    PoolVolumeItems:
-      type: array
-      items:
-        $ref: '#/components/schemas/PoolVolume'
+    # ========================================================================
+    # pool volume schemas
+    # ========================================================================
 
     PoolVolume:
       type: object
@@ -6771,7 +6759,12 @@ components:
           type: integer
           format: int64
 
-    ArrayList:
+    PoolVolumeItems:
+      type: array
+      items:
+        $ref: '#/components/schemas/PoolVolume'
+
+    PoolVolumeList:
       type: object
       required:
         - items
@@ -6780,25 +6773,38 @@ components:
         kind:
           type: string
           enum:
-            - Array
+            - PoolVolumeList
         items:
-          $ref: '#/components/schemas/ArrayItems'
+          $ref: '#/components/schemas/PoolVolumeItems'
 
-    ArrayItems:
-        type: array
-        items:
-          $ref: '#/components/schemas/ArrayItem'
-
-    ArrayItem:
+    PostInstanceProgress:
       type: object
       required:
-        - name
-        - type
+        - session_id
+        - state
       properties:
-        name:
+        session_id:
           type: string
-        type:
+          format: uuid
+          x-go-name: SessionID
+        state:
           type: string
+        is_partial:
+          type: boolean
+
+    PostNodeDRBDConfigRequest:
+      type: object
+      required:
+        - allocation_id
+        - data
+      properties:
+        allocation_id:
+          type: string
+          format: uuid
+          x-go-name: AllocationID
+        data:
+          type: string
+          format: byte
 
     PostObjectActionRestart:
       type: object
@@ -6838,6 +6844,11 @@ components:
         msg:
           type: string
 
+    Priority:
+      type: integer
+      description: "Lower priority are orchestrated first."
+      example: 50
+
     Problem:
       type: object
       properties:
@@ -6863,6 +6874,60 @@ components:
         - status
         - title
 
+    Property:
+      type: object
+      required:
+        - error
+        - name
+        - source
+        - title
+        - value
+      properties:
+        error:
+          type: string
+        name:
+          type: string
+        source:
+          type: string
+        title:
+          type: string
+        value: !!set
+          type1: string
+          type2: number
+          type3: boolean
+
+    PropertyItem:
+      type: object
+      required:
+        - kind
+        - meta
+        - data
+      properties:
+        kind:
+          type: string
+        meta:
+          $ref: '#/components/schemas/NodeMeta'
+        data:
+          $ref: '#/components/schemas/Property'
+
+    PropertyItems:
+      type: array
+      items:
+        $ref: '#/components/schemas/PropertyItem'
+
+    PropertyList:
+      type: object
+      required:
+        - kind
+        - items
+      properties:
+        kind:
+          type: string
+          enum:
+            - PropertyList
+        items:
+          $ref: '#/components/schemas/PropertyItems'
+
     Provisioned:
       type: string
       description: service, instance or resource provisioned state
@@ -6871,6 +6936,59 @@ components:
         - "mixed"
         - "n/a"
         - "true"
+
+    Region:
+      type: object
+      required:
+        - id
+        - devpath
+        - object
+        - size
+        - group
+      properties:
+        id:
+          type: string
+          x-go-name: ID
+        devpath:
+          type: string
+        object:
+          type: string
+        size:
+          type: integer
+          format: uint64
+        group:
+          type: string
+
+    RelayMessage:
+      type: object
+      required:
+        - relay
+        - node_addr
+        - cluster_id
+        - cluster_name
+        - msg
+        - nodename
+        - updated_at
+        - username
+      properties:
+        relay:
+          type: string
+        node_addr:
+          type: string
+        cluster_id:
+          type: string
+          x-go-name: ClusterID
+        cluster_name:
+          type: string
+        msg:
+          type: string
+        nodename:
+          type: string
+        updated_at:
+          type: string
+          format: date-time
+        username:
+          type: string
 
     RelayStatusItem:
       type: object
@@ -6906,6 +7024,11 @@ components:
         status:
           type: string
 
+    RelayStatusItems:
+      type: array
+      items:
+        $ref: '#/components/schemas/RelayStatusItem'
+
     RelayStatusList:
       type: object
       required:
@@ -6919,58 +7042,9 @@ components:
         items:
           $ref: '#/components/schemas/RelayStatusItems'
 
-    RelayStatusItems:
-      type: array
-      items:
-        $ref: '#/components/schemas/RelayStatusItem'
-
-    RelayMessage:
-      type: object
-      required:
-        - relay
-        - node_addr
-        - cluster_id
-        - cluster_name
-        - msg
-        - nodename
-        - updated_at
-        - username
-      properties:
-        relay:
-          type: string
-        node_addr:
-          type: string
-        cluster_id:
-          type: string
-          x-go-name: ClusterID
-        cluster_name:
-          type: string
-        msg:
-          type: string
-        nodename:
-          type: string
-        updated_at:
-          type: string
-          format: date-time
-        username:
-          type: string
-
     # ========================================================================
     # resource schemas
     # ========================================================================
-
-    ResourceList:
-      type: object
-      required:
-        - items
-        - kind
-      properties:
-        kind:
-          type: string
-          enum:
-            - ResourceList
-        items:
-          $ref: '#/components/schemas/ResourceItems'
 
     Resource:
       type: object
@@ -6982,31 +7056,10 @@ components:
         status:
           $ref: '#/components/schemas/ResourceStatus'
 
-    ResourceItems:
-      type: array
-      items:
-        $ref: '#/components/schemas/ResourceItem'
-
-    ResourceItem:
-      type: object
-      required:
-        - kind
-        - meta
-        - data
-      properties:
-        kind:
-          type: string
-          enum:
-            - ResourceItem
-        meta:
-          $ref: '#/components/schemas/ResourceMeta'
-        data:
-          $ref: '#/components/schemas/Resource'
-
     ResourceConfig:
       x-go-type: instance.ResourceConfig
       x-go-type-import:
-          path: github.com/opensvc/om3/v3/core/instance
+        path: github.com/opensvc/om3/v3/core/instance
       type: object
       required:
         - is_disabled
@@ -7027,11 +7080,6 @@ components:
           type: string
           format: duration
 
-    ResourceFiles:
-      type: array
-      items:
-        $ref: '#/components/schemas/ResourceFile'
-
     ResourceFile:
       type: object
       required:
@@ -7046,6 +7094,83 @@ components:
           format: date-time
         name:
           type: string
+
+    ResourceFiles:
+      type: array
+      items:
+        $ref: '#/components/schemas/ResourceFile'
+
+    ResourceInfoItem:
+      type: object
+      required:
+        - node
+        - object
+        - rid
+        - key
+        - value
+      properties:
+        node:
+          type: string
+        object:
+          type: string
+        rid:
+          type: string
+        key:
+          type: string
+        value:
+          type: string
+
+    ResourceInfoItems:
+      type: array
+      items:
+        $ref: '#/components/schemas/ResourceInfoItem'
+
+    ResourceInfoList:
+      type: object
+      required:
+        - items
+        - kind
+      properties:
+        kind:
+          type: string
+          enum:
+            - ResourceInfoList
+        items:
+          $ref: '#/components/schemas/ResourceInfoItems'
+
+    ResourceItem:
+      type: object
+      required:
+        - kind
+        - meta
+        - data
+      properties:
+        kind:
+          type: string
+          enum:
+            - ResourceItem
+        meta:
+          $ref: '#/components/schemas/ResourceMeta'
+        data:
+          $ref: '#/components/schemas/Resource'
+
+    ResourceItems:
+      type: array
+      items:
+        $ref: '#/components/schemas/ResourceItem'
+
+    ResourceList:
+      type: object
+      required:
+        - items
+        - kind
+      properties:
+        kind:
+          type: string
+          enum:
+            - ResourceList
+        items:
+          $ref: '#/components/schemas/ResourceItems'
 
     ResourceLog:
       type: array
@@ -7062,18 +7187,6 @@ components:
           type: string
         message:
           type: string
-
-    ResourceProvisionStatus:
-      type: object
-      required:
-        - state
-        - mtime
-      properties:
-        mtime:
-          type: string
-          format: date-time
-        state:
-          $ref: '#/components/schemas/Provisioned'
 
     ResourceMeta:
       type: object
@@ -7101,124 +7214,6 @@ components:
         restart:
           $ref: '#/components/schemas/ResourceMonitorRestart'
 
-    ResourceInfoList:
-      type: object
-      required:
-        - items
-        - kind
-      properties:
-        kind:
-          type: string
-          enum:
-            - ResourceInfoList
-        items:
-          $ref: '#/components/schemas/ResourceInfoItems'
-
-    ResourceInfoItems:
-      type: array
-      items:
-        $ref: '#/components/schemas/ResourceInfoItem'
-
-    ResourceInfoItem:
-      type: object
-      required:
-        - node
-        - object
-        - rid
-        - key
-        - value
-      properties:
-        node:
-          type: string
-        object:
-          type: string
-        rid:
-          type: string
-        key:
-          type: string
-        value:
-          type: string
-
-    DataKeys:
-        type: array
-        items:
-          $ref: '#/components/schemas/DataKey'
-
-    DataKey:
-      type: object
-      required:
-        - name
-        - bytes
-      properties:
-        name:
-          type: string
-        bytes:
-          type: string
-          format: byte
-
-    DataKeyList:
-      type: object
-      required:
-        - kind
-        - items
-      properties:
-        kind:
-          type: string
-          enum:
-            - DataKeyList
-        items:
-          $ref: '#/components/schemas/DataKeyListItems'
-
-    DataKeyListItems:
-        type: array
-        items:
-          $ref: '#/components/schemas/DataKeyListItem'
-
-    DataKeyListItem:
-      type: object
-      required:
-        - node
-        - object
-        - name
-        - size
-      properties:
-        node:
-          type: string
-        object:
-          type: string
-        name:
-          type: string
-        size:
-          type: integer
-
-    PatchDataKeys:
-        type: array
-        items:
-          $ref: '#/components/schemas/PatchDataKey'
-
-    PatchDataKey:
-      type: object
-      required:
-        - action
-        - name
-      properties:
-        action:
-          type: string
-          enum:
-            - add
-            - change
-            - remove
-            - rename
-        name:
-          type: string
-        to:
-          type: string
-        string:
-          type: string
-        bytes:
-          type: string
-          format: byte
-
     ResourceMonitorRestart:
       type: object
       required:
@@ -7230,6 +7225,18 @@ components:
         last_at:
           type: string
           format: date-time
+
+    ResourceProvisionStatus:
+      type: object
+      required:
+        - state
+        - mtime
+      properties:
+        mtime:
+          type: string
+          format: date-time
+        state:
+          $ref: '#/components/schemas/Provisioned'
 
     ResourceStatus:
       x-go-type: resource.Status
@@ -7302,36 +7309,6 @@ components:
         type:
           type: string
 
-    DaemonStatus:
-      type: object
-      required:
-        - cluster
-        - daemon
-      properties:
-        cluster:
-          $ref: '#/components/schemas/Cluster'
-        daemon:
-          $ref: '#/components/schemas/DaemonLocal'
-
-    LogList:
-      description: responseLogList is a list of sse
-      type: string
-      format: binary
-
-    EventList:
-      description: responseEventList is a list of sse
-      type: string
-      format: binary
-
-    DRBDConfig:
-      type: object
-      required:
-        - data
-      properties:
-        data:
-          type: string
-          format: byte
-
     Role:
       type: string
       enum:
@@ -7346,23 +7323,23 @@ components:
         - root
         - squatter
 
-    SANPathList:
+    RunningInfo:
       type: object
       required:
-        - kind
-        - items
+        - rid
+        - session_id
+        - pid
+        - at
       properties:
-        kind:
+        at:
           type: string
-          enum:
-            - SANPathList
-        items:
-          $ref: '#/components/schemas/SANPathItems'
-
-    SANPathItems:
-      type: array
-      items:
-        $ref: '#/components/schemas/SANPath'
+          format: date-time
+        rid:
+          type: string
+        session_id:
+          type: string
+        pid:
+          type: integer
 
     SANPath:
       type: object
@@ -7374,40 +7351,6 @@ components:
           $ref: '#/components/schemas/SANPathInitiator'
         target:
           $ref: '#/components/schemas/SANPathTarget'
-
-    SANPathInitiatorList:
-      type: object
-      required:
-        - kind
-        - items
-      properties:
-        kind:
-          type: string
-          enum:
-            - SANPathInitiatorList
-        items:
-          $ref: '#/components/schemas/SANPathInitiatorItems'
-
-    SANPathInitiatorItems:
-      type: array
-      items:
-        $ref: '#/components/schemas/SANPathInitiatorItem'
-
-    SANPathInitiatorItem:
-      type: object
-      required:
-        - kind
-        - data
-        - meta
-      properties:
-        kind:
-          type: string
-          enum:
-            - SANPathInitiatorItem
-        data:
-          $ref: '#/components/schemas/SANPathInitiator'
-        meta:
-          $ref: '#/components/schemas/NodeMeta'
 
     SANPathInitiator:
       type: object
@@ -7425,6 +7368,58 @@ components:
           description: type is the endpoint type.
           example: iscsi
 
+    SANPathInitiatorItem:
+      type: object
+      required:
+        - kind
+        - data
+        - meta
+      properties:
+        kind:
+          type: string
+          enum:
+            - SANPathInitiatorItem
+        data:
+          $ref: '#/components/schemas/SANPathInitiator'
+        meta:
+          $ref: '#/components/schemas/NodeMeta'
+
+    SANPathInitiatorItems:
+      type: array
+      items:
+        $ref: '#/components/schemas/SANPathInitiatorItem'
+
+    SANPathInitiatorList:
+      type: object
+      required:
+        - kind
+        - items
+      properties:
+        kind:
+          type: string
+          enum:
+            - SANPathInitiatorList
+        items:
+          $ref: '#/components/schemas/SANPathInitiatorItems'
+
+    SANPathItems:
+      type: array
+      items:
+        $ref: '#/components/schemas/SANPath'
+
+    SANPathList:
+      type: object
+      required:
+        - kind
+        - items
+      properties:
+        kind:
+          type: string
+          enum:
+            - SANPathList
+        items:
+          $ref: '#/components/schemas/SANPathItems'
+
     SANPathTarget:
       type: object
       description: target is the storage array side san path endpoint.
@@ -7440,19 +7435,6 @@ components:
           type: string
           description: type is a the endpoint type.
           example: iscsi
-
-    ScheduleList:
-      type: object
-      required:
-        - items
-        - kind
-      properties:
-        kind:
-          type: string
-          enum:
-            - ScheduleList
-        items:
-          $ref: '#/components/schemas/ScheduleItems'
 
     Schedule:
       type: object
@@ -7526,11 +7508,6 @@ components:
         require_provisioned:
           type: boolean
 
-    ScheduleItems:
-      type: array
-      items:
-        $ref: '#/components/schemas/ScheduleItem'
-
     ScheduleItem:
       type: object
       required:
@@ -7547,6 +7524,30 @@ components:
         data:
           $ref: '#/components/schemas/Schedule'
 
+    ScheduleItems:
+      type: array
+      items:
+        $ref: '#/components/schemas/ScheduleItem'
+
+    ScheduleList:
+      type: object
+      required:
+        - items
+        - kind
+      properties:
+        kind:
+          type: string
+          enum:
+            - ScheduleList
+        items:
+          $ref: '#/components/schemas/ScheduleItems'
+
+    Scope:
+      type: array
+      items:
+        type: string
+      example: ["node1", "node2"]
+
     Status:
       type: string
       description: "Represents a resource, instance or object status, e.g., 'up', 'down', 'warn', ...."
@@ -7560,21 +7561,21 @@ components:
         - stdby up
         - stdby down
 
-    SubsetsConfig:
-      type: array
-      items:
-        $ref: '#/components/schemas/SubsetConfig'
-
     SubsetConfig:
       x-go-type: instance.SubsetConfig
       x-go-type-import:
-          path: github.com/opensvc/om3/v3/core/instance
+        path: github.com/opensvc/om3/v3/core/instance
       type: object
       required:
         - parallel
       properties:
         parallel:
           type: boolean
+
+    SubsetsConfig:
+      type: array
+      items:
+        $ref: '#/components/schemas/SubsetConfig'
 
     Topology:
       type: string
@@ -7589,6 +7590,18 @@ components:
       x-go-type: time.Time
       format: date-time
       example: "2025-09-19T06:30:00Z"
+
+    User:
+      type: object
+      required:
+        - id
+        - name
+      properties:
+        id:
+          type: integer
+          x-go-name: ID
+        name:
+          type: string
 
     UserIdentity :
       type: object
@@ -7613,24 +7626,6 @@ components:
             items:
               type: string
 
-    UserList:
-      type: object
-      required:
-        - kind
-        - items
-      properties:
-        kind:
-          type: string
-          enum:
-            - UserList
-        items:
-          $ref: '#/components/schemas/UserItems'
-
-    UserItems:
-      type: array
-      items:
-        $ref: '#/components/schemas/UserItem'
-
     UserItem:
       type: object
       required:
@@ -7647,25 +7642,240 @@ components:
         meta:
           $ref: '#/components/schemas/NodeMeta'
 
-    User:
+    UserItems:
+      type: array
+      items:
+        $ref: '#/components/schemas/UserItem'
+
+    UserList:
       type: object
       required:
-        - id
-        - name
+        - kind
+        - items
       properties:
-        id:
-          type: integer
-          x-go-name: ID
-        name:
+        kind:
           type: string
+          enum:
+            - UserList
+        items:
+          $ref: '#/components/schemas/UserItems'
 
   parameters:
+    DRBDResourceName:
+      name: name
+      in: query
+      description: drbd resource name
+      required: true
+      schema:
+        type: string
+
+    DRBDResourceNodeID:
+      name: node_id
+      in: query
+      description: drbd resource connection node-id
+      schema:
+        type: string
+
+    Duration:
+      name: duration
+      in: query
+      description: max duration
+      schema:
+        type: string
+        example: 5s
+
+    EventCache:
+      name: cache
+      in: query
+      description: start the event feed using the latest past events from the cache that match the specified kind and labels.
+      schema:
+        type: boolean
+        default: false
+
+    EventFilter:
+      name: filter
+      in: query
+      description: list of event filter
+      schema:
+        type: array
+        items:
+          type: string
+          description: |
+            filter expression: [kind][,label=value]*[.dataxxx=value]
+          example: ObjectStatusUpdated,path=foo
+
+    Limit:
+      name: limit
+      in: query
+      description: limit items count
+      schema:
+        type: integer
+        format: int64
+        example: 1
+
+    LogFilter:
+      name: filter
+      in: query
+      description: list of log filter
+      schema:
+        type: array
+        items:
+          type: string
+          description: "a filter expression: label=value[,label=value]..."
+          example: sid=9a8e04e6-bc12-43e6-83d1-fe10d5363ea7
+
+    LogFollow:
+      name: follow
+      in: query
+      description: follow the logs
+      schema:
+        type: boolean
+
+    LogLines:
+      name: lines
+      in: query
+      description: report this number of past last log entries
+      schema:
+        type: integer
+
+    NamespaceOptional:
+      name: namespace
+      in: query
+      description: namespace
+      schema:
+        type: string
+
+    Node:
+      name: node
+      in: query
+      description: node selector expression.
+      required: true
+      schema:
+        type: string
+        example: n2,az=eu1
+
+    NodeOptional:
+      name: node
+      in: query
+      description: node selector expression.
+      schema:
+        type: string
+        example: n2,az=eu1
+
+    ObjectPath:
+      name: path
+      in: query
+      description: object path
+      required: true
+      schema:
+        type: string
+
+    Path:
+      name: path
+      in: query
+      description: object selector expression.
+      required: true
+      schema:
+        type: string
+        example: db1,web*
+
+    PathOptional:
+      name: path
+      in: query
+      description: object selector expression.
+      schema:
+        type: string
+        example: db1,web*
+
+    Paths:
+      name: paths
+      in: query
+      description: list of object paths to send logs for
+      schema:
+        type: array
+        items:
+          type: string
+          description: object path
+          example: svc1, svc2
+
+    RelayClusterID:
+      name: cluster_id
+      in: query
+      description: the cluster id component of the slot id on the relay
+      x-go-name: ClusterID
+      required: true
+      schema:
+        type: string
+
+    RelayNodename:
+      name: nodename
+      in: query
+      description: the nodename component of the slot id on the relay
+      required: true
+      schema:
+        type: string
+
+    RelayRemote:
+      name: remote
+      in: query
+      description: If true, report the status of relays the server is client of. If false or not set, report the status of the server embedded relay.
+      schema:
+        type: boolean
+
+    RelayUsername:
+      name: username
+      in: query
+      description: If true and the requester has the root grant, read the message from the specified user relay partition instead of the requester's partition.
+      schema:
+        type: string
+
+    Relays:
+      name: relay
+      x-go-name: Relays
+      in: query
+      description: list of relays to include in the response dataset
+      schema:
+        type: array
+        items:
+          type: string
+
+    RidOptional:
+      name: resource
+      in: query
+      description: resource selector expression.
+      schema:
+        type: string
+        example: fs#1,ip
+
+    Roles:
+      name: role
+      in: query
+      description: list of api role
+      schema:
+        type: array
+        items:
+          $ref: '#/components/schemas/Role'
+
+    SelectorOptional:
+      name: selector
+      in: query
+      description: selector
+      schema:
+        type: string
+
     inPathHeartbeatName:
       in: path
       name: name
       required: true
       schema:
         $ref: '#/components/schemas/DaemonHeartbeatName'
+
+    inPathKind:
+      in: path
+      name: kind
+      required: true
+      schema:
+        $ref: '#/components/schemas/Kind'
 
     inPathListenerName:
       in: path
@@ -7696,16 +7906,9 @@ components:
       schema:
         type: string
         description: |
-            The cluster node to relay the request to. `_` and `localhost` refer tp
-            the node that received the request.
+          The cluster node to relay the request to. `_` and `localhost` refer tp
+          the node that received the request.
         example: localhost
-
-    inPathKind:
-      in: path
-      name: kind
-      required: true
-      schema:
-        $ref: '#/components/schemas/Kind'
 
     inPathRid:
       in: path
@@ -7715,6 +7918,33 @@ components:
         type: string
         desc: The resource identifier.
         example: fs#1
+
+    inQueryAllSlaves:
+      in: query
+      name: slaves
+      schema:
+        type: boolean
+        description: Act on all encap instances, and don't act on the host instance if not asked for explicitely.
+
+    inQueryArrayName:
+      in: query
+      name: name
+      description: the name of a backend storage array
+      required: false
+      schema:
+        type: string
+
+    inQueryConfirm:
+      in: query
+      name: confirm
+      schema:
+        type: boolean
+
+    inQueryCron:
+      in: query
+      name: cron
+      schema:
+        type: boolean
 
     inQueryDeletes:
       in: query
@@ -7732,6 +7962,24 @@ components:
       schema:
         type: boolean
 
+    inQueryDriver:
+      in: query
+      name: driver
+      description: show only keywords of this driver
+      schema:
+        type: string
+        example: fs.ext4
+
+    inQueryEnvs:
+      in: query
+      name: env
+      schema:
+        type: array
+        items:
+          type: string
+          description: An environment variable to set in the task commands execution context.
+          example: MYVAR=myval
+
     inQueryEvaluate:
       in: query
       name: evaluate
@@ -7739,23 +7987,19 @@ components:
         type: boolean
         description: Dereference, scope and convert the keyword raw value.
 
-    inQueryConfirm:
-      in: query
-      name: confirm
-      schema:
-        type: boolean
-
-    inQueryCron:
-      in: query
-      name: cron
-      schema:
-        type: boolean
-
     inQueryForce:
       in: query
       name: force
       schema:
         type: boolean
+
+    inQueryGreetTimeout:
+      in: query
+      name: greet_timeout
+      schema:
+        type: string
+        default: 5s
+        x-go-name: GreetTimeout
 
     inQueryImpersonate:
       in: query
@@ -7763,12 +8007,6 @@ components:
       schema:
         type: string
         description: The node name to impersonate when evaluating a keyword. Setting impersonate without evaluate=true returns a Bad Request error.
-
-    inQueryKeyword:
-      in: query
-      name: kw
-      schema:
-        type: string
 
     inQueryKeyName:
       in: query
@@ -7788,6 +8026,57 @@ components:
           type: string
           description: A datastore key name
 
+    inQueryKeyword:
+      in: query
+      name: kw
+      schema:
+        type: string
+
+    inQueryKeywordOps:
+      in: query
+      name: kw
+      schema:
+        type: array
+        items:
+          type: string
+          description: An operation and value to do on a keyword.
+          example: env.unwanted=removeMe
+
+    inQueryKeywords:
+      in: query
+      name: kw
+      schema:
+        type: array
+        items:
+          type: string
+          description: A keyword to remove.
+          example: env.unwanted
+
+    inQueryLeader:
+      in: query
+      name: leader
+      schema:
+        type: boolean
+
+    inQueryMaster:
+      in: query
+      name: master
+      schema:
+        type: boolean
+        description: Act on the host instance of the service, and don't act on encap instance if not asked for explicitely.
+
+    inQueryMoveTo:
+      in: query
+      name: move-to
+      schema:
+        type: string
+
+    inQueryNoLock:
+      in: query
+      name: no_lock
+      schema:
+        type: boolean
+
     inQueryNodeSelector:
       in: query
       name: node
@@ -7795,6 +8084,30 @@ components:
       required: false
       schema:
         type: string
+
+    inQueryOption:
+      in: query
+      name: option
+      description: show the keyword referenced by section and option
+      schema:
+        type: string
+        example: fs#2
+
+    inQueryPoolName:
+      in: query
+      name: name
+      description: the name of a backend storage pool
+      required: false
+      schema:
+        type: string
+
+    inQueryRequesterSid:
+      in: query
+      name: requester_sid
+      schema:
+        type: string
+        format: uuid
+        x-go-name: RequesterSessionID
 
     inQueryResourceFileName:
       in: query
@@ -7812,107 +8125,6 @@ components:
       schema:
         type: string
 
-    inQueryPoolName:
-      in: query
-      name: name
-      description: the name of a backend storage pool
-      required: false
-      schema:
-        type: string
-
-    inQueryArrayName:
-      in: query
-      name: name
-      description: the name of a backend storage array
-      required: false
-      schema:
-        type: string
-
-    inQuerySets:
-      in: query
-      name: set
-      schema:
-        type: array
-        items:
-          type: string
-          description: A keyword operation expressed as <kw>[<index>]<op><value>, with op like = += -=.
-          example: env.eat=fruits
-
-    inQueryUnsets:
-      in: query
-      name: unset
-      schema:
-        type: array
-        items:
-          type: string
-          description: The name of the section to remove, without brackets.
-          example: task#unwanted
-
-    inQueryKeywords:
-      in: query
-      name: kw
-      schema:
-        type: array
-        items:
-          type: string
-          description: A keyword to remove.
-          example: env.unwanted
-
-    inQueryEnvs:
-      in: query
-      name: env
-      schema:
-        type: array
-        items:
-          type: string
-          description: An environment variable to set in the task commands execution context.
-          example: MYVAR=myval
-
-    inQueryGreetTimeout:
-      in: query
-      name: greet_timeout
-      schema:
-        type: string
-        default: 5s
-        x-go-name: GreetTimeout
-
-    inQueryKeywordOps:
-      in: query
-      name: kw
-      schema:
-        type: array
-        items:
-          type: string
-          description: An operation and value to do on a keyword.
-          example: env.unwanted=removeMe
-
-    inQueryMaster:
-      in: query
-      name: master
-      schema:
-        type: boolean
-        description: Act on the host instance of the service, and don't act on encap instance if not asked for explicitely.
-
-    inQueryNoLock:
-      in: query
-      name: no_lock
-      schema:
-        type: boolean
-
-    inQueryLeader:
-      in: query
-      name: leader
-      schema:
-        type: boolean
-
-    inQueryRequesterSid:
-      in: query
-      name: requester_sid
-      schema:
-        type: string
-        format: uuid
-        x-go-name: RequesterSessionID
-
     inQueryRid:
       in: query
       name: rid
@@ -7928,11 +8140,23 @@ components:
         default: 1
         x-go-name: Seats
 
-    inQueryStateOnly:
+    inQuerySection:
       in: query
-      name: state_only
+      name: section
+      description: show supported keywords of this configuration section
       schema:
-        type: boolean
+        type: string
+        example: fs#2
+
+    inQuerySets:
+      in: query
+      name: set
+      schema:
+        type: array
+        items:
+          type: string
+          description: A keyword operation expressed as <kw>[<index>]<op><value>, with op like = += -=.
+          example: env.eat=fruits
 
     inQuerySlaves:
       in: query
@@ -7943,12 +8167,11 @@ components:
           type: string
           description: Act on the encap instances specified by hostname, and don't act on the host instance if not asked for explicitely.
 
-    inQueryAllSlaves:
+    inQueryStateOnly:
       in: query
-      name: slaves
+      name: state_only
       schema:
         type: boolean
-        description: Act on all encap instances, and don't act on the host instance if not asked for explicitely.
 
     inQuerySubset:
       in: query
@@ -7962,17 +8185,21 @@ components:
       schema:
         type: string
 
-    inQueryMoveTo:
-      in: query
-      name: move-to
-      schema:
-        type: string
-
     inQueryTo:
       in: query
       name: to
       schema:
         type: string
+
+    inQueryUnsets:
+      in: query
+      name: unset
+      schema:
+        type: array
+        items:
+          type: string
+          description: The name of the section to remove, without brackets.
+          example: task#unwanted
 
     inQueryWaitLock:
       in: query
@@ -7981,216 +8208,16 @@ components:
         type: string
         format: duration
 
-    inQueryDriver:
-      in: query
-      name: driver
-      description: show only keywords of this driver
-      schema:
-        type: string
-        example: fs.ext4
-
-    inQuerySection:
-      in: query
-      name: section
-      description: show supported keywords of this configuration section
-      schema:
-        type: string
-        example: fs#2
-
-    inQueryOption:
-      in: query
-      name: option
-      description: show the keyword referenced by section and option
-      schema:
-        type: string
-        example: fs#2
-
-    Duration:
-      name: duration
-      in: query
-      description: max duration
-      schema:
-        type: string
-        example: 5s
-    Paths:
-      name: paths
-      in: query
-      description: list of object paths to send logs for
-      schema:
-        type: array
-        items:
-          type: string
-          description: object path
-          example: svc1, svc2
-    LogFilter:
-      name: filter
-      in: query
-      description: list of log filter
-      schema:
-        type: array
-        items:
-          type: string
-          description: "a filter expression: label=value[,label=value]..."
-          example: sid=9a8e04e6-bc12-43e6-83d1-fe10d5363ea7
-    LogFollow:
-      name: follow
-      in: query
-      description: follow the logs
-      schema:
-        type: boolean
-    LogLines:
-      name: lines
-      in: query
-      description: report this number of past last log entries
-      schema:
-        type: integer
-    EventCache:
-      name: cache
-      in: query
-      description: start the event feed using the latest past events from the cache that match the specified kind and labels.
-      schema:
-        type: boolean
-        default: false
-    EventFilter:
-      name: filter
-      in: query
-      description: list of event filter
-      schema:
-        type: array
-        items:
-          type: string
-          description: |
-            filter expression: [kind][,label=value]*[.dataxxx=value]
-          example: ObjectStatusUpdated,path=foo
-    DRBDResourceName:
-      name: name
-      in: query
-      description: drbd resource name
-      required: true
-      schema:
-        type: string
-    DRBDResourceNodeID:
-      name: node_id
-      in: query
-      description: drbd resource connection node-id
-      schema:
-        type: string
-    Roles:
-      name: role
-      in: query
-      description: list of api role
-      schema:
-        type: array
-        items:
-          $ref: '#/components/schemas/Role'
-    Limit:
-      name: limit
-      in: query
-      description: limit items count
-      schema:
-        type: integer
-        format: int64
-        example: 1
-    NamespaceOptional:
-      name: namespace
-      in: query
-      description: namespace
-      schema:
-        type: string
-    ObjectPath:
-      name: path
-      in: query
-      description: object path
-      required: true
-      schema:
-        type: string
-    Path:
-      name: path
-      in: query
-      description: object selector expression.
-      required: true
-      schema:
-        type: string
-        example: db1,web*
-    PathOptional:
-      name: path
-      in: query
-      description: object selector expression.
-      schema:
-        type: string
-        example: db1,web*
-    Node:
-      name: node
-      in: query
-      description: node selector expression.
-      required: true
-      schema:
-        type: string
-        example: n2,az=eu1
-    NodeOptional:
-      name: node
-      in: query
-      description: node selector expression.
-      schema:
-        type: string
-        example: n2,az=eu1
-    RidOptional:
-      name: resource
-      in: query
-      description: resource selector expression.
-      schema:
-        type: string
-        example: fs#1,ip
-    RelayClusterID:
-      name: cluster_id
-      in: query
-      description: the cluster id component of the slot id on the relay
-      x-go-name: ClusterID
-      required: true
-      schema:
-        type: string
-    Relays:
-      name: relay
-      x-go-name: Relays
-      in: query
-      description: list of relays to include in the response dataset
-      schema:
-        type: array
-        items:
-          type: string
-    RelayNodename:
-      name: nodename
-      in: query
-      description: the nodename component of the slot id on the relay
-      required: true
-      schema:
-        type: string
-    RelayRemote:
-      name: remote
-      in: query
-      description: If true, report the status of relays the server is client of. If false or not set, report the status of the server embedded relay.
-      schema:
-        type: boolean
-    RelayUsername:
-      name: username
-      in: query
-      description: If true and the requester has the root grant, read the message from the specified user relay partition instead of the requester's partition.
-      schema:
-        type: string
-    SelectorOptional:
-      name: selector
-      in: query
-      description: selector
-      schema:
-        type: string
   securitySchemes:
     basicAuth:
       type: http
       scheme: basic
+
     bearerAuth:
       type: http
       scheme: bearer
       bearerFormat: JWT
+
   responses:
     '200':
       description: OK
@@ -8198,56 +8225,66 @@ components:
         application/json:
           schema:
             $ref: "#/components/schemas/Problem"
+
     '204':
       description: No Content
+
     '400':
       description: Bad Request
       content:
         application/json:
           schema:
             $ref: "#/components/schemas/Problem"
+
     '401':
       description: Unauthorized
       content:
         application/json:
           schema:
             $ref: "#/components/schemas/Problem"
+
     '403':
       description: Forbidden
       content:
         application/json:
           schema:
             $ref: "#/components/schemas/Problem"
+
     '404':
       description: Not Found
       content:
         application/json:
           schema:
             $ref: "#/components/schemas/Problem"
+
     '408':
       description: Request Timeout
       content:
         application/json:
           schema:
             $ref: "#/components/schemas/Problem"
+
     '409':
       description: Conflict
       content:
         application/json:
           schema:
             $ref: "#/components/schemas/Problem"
+
     '413':
       description: "Body too large"
       content:
         application/json:
           schema:
             $ref: "#/components/schemas/Problem"
+
     '500':
       description: Internal Server Error
       content:
         application/json:
           schema:
             $ref: "#/components/schemas/Problem"
+
     '503':
       description: Service Unavailable
       content:
