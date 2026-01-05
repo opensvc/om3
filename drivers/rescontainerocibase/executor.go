@@ -91,7 +91,7 @@ outerLoop:
 		return fmt.Errorf("can't enter: container needs at least one of following command: %s",
 			strings.Join(candidates, ", "))
 	}
-	cmd := exec.CommandContext(ctx, "nsenter", "-t", fmt.Sprint(pid), "--all", "-e", "-w", enterCmd)
+	cmd := exec.Command("nsenter", "-t", fmt.Sprint(pid), "--all", "-e", "-w", enterCmd)
 	cmd.Stdin = os.Stdin
 	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stderr
