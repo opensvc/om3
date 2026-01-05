@@ -843,7 +843,7 @@ func (t T) DoRemote() error {
 		}
 	}
 	if len(nodenames) == 0 {
-		return fmt.Errorf("the node selection is empty")
+		return fmt.Errorf("no node matching %s", t.NodeSelector)
 	}
 
 	results := make([]actionrouter.Result, 0)
