@@ -12,6 +12,7 @@ import (
 	"time"
 
 	"github.com/rs/zerolog"
+	"golang.org/x/time/rate"
 
 	"github.com/opensvc/om3/v3/daemon/daemonapi"
 	"github.com/opensvc/om3/v3/daemon/daemonctx"
@@ -94,6 +95,7 @@ func (t *T) start(ctx context.Context, errC chan<- error) {
 	t.wg.Add(1)
 	defer t.wg.Done()
 	ctx = daemonctx.WithListenAddr(ctx, t.addr)
+	ctx = daemonctx.WithListenRateLimiterMemoryStoreConfig(ctx, rate.Limit(200), 1000, 3*time.Second)
 
 	t.log.Infof("starting")
 	for _, fname := range []string{t.certFile, t.keyFile} {

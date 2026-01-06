@@ -9,6 +9,9 @@ import (
 	"github.com/allenai/go-swaggerui"
 	"github.com/google/uuid"
 	"github.com/labstack/echo/v4"
+	"github.com/labstack/echo/v4/middleware"
+	"github.com/prometheus/client_golang/prometheus"
+	"github.com/prometheus/client_golang/prometheus/promauto"
 	"github.com/rs/zerolog"
 	"github.com/shaj13/go-guardian/v2/auth"
 
@@ -35,7 +38,67 @@ var (
 		"/api/docs/*":        zerolog.DebugLevel,
 		"/api/relay/message": zerolog.DebugLevel,
 	}
+
+	rateLimitDeniedTotal = promauto.NewCounterVec(
+		prometheus.CounterOpts{
+			Name: "opensvc_listener_rate_limiter_denied_total",
+			Help: "The total number of requests denied by rate limiting",
+		},
+		[]string{"method", "path"},
+	)
+
+	rateLimitErrorsTotal = promauto.NewCounter(
+		prometheus.CounterOpts{
+			Name: "opensvc_listener_rate_limiter_errors_total",
+			Help: "The total number of rate limiter internal errors",
+		},
+	)
 )
+
+func RateLimiterWithConfig(parent context.Context) echo.MiddlewareFunc {
+	addr := daemonctx.ListenAddr(parent)
+	family := daemonctx.LsnrType(parent)
+	log := plog.NewDefaultLogger().
+		Attr("pkg", "daemon/daemonapi").
+		Attr("lsnr_type", family).
+		Attr("lsnr_addr", addr).
+		WithPrefix(fmt.Sprintf("daemon: api: %s: ", family))
+
+	storeCfg := daemonctx.ListenRateLimiterMemoryStoreConfig(parent)
+	if storeCfg.Rate == 0 {
+		log.Debugf("rate limiter: rate limiter disabled")
+		return func(next echo.HandlerFunc) echo.HandlerFunc { return next }
+	} else {
+		log.Infof("rate limiter config: %#v", storeCfg)
+	}
+
+	config := middleware.RateLimiterConfig{
+		Skipper:    func(c echo.Context) bool { return family == daemonauth.StrategyUX },
+		BeforeFunc: nil,
+		Store:      middleware.NewRateLimiterMemoryStoreWithConfig(storeCfg),
+		IdentifierExtractor: func(c echo.Context) (string, error) {
+			id := c.RealIP()
+			return id, nil
+		},
+		ErrorHandler: func(c echo.Context, err error) error {
+			if err != nil {
+				log.Tracef("rate limiter: too many request from %s: %s", c.RealIP(), err)
+			}
+
+			rateLimitErrorsTotal.Inc()
+			return c.JSON(http.StatusTooManyRequests, nil)
+		},
+		DenyHandler: func(c echo.Context, identifier string, err error) error {
+			if err != nil {
+				log.Tracef("rate limiter deny from %s: %s", c.RealIP(), err)
+			}
+
+			rateLimitDeniedTotal.WithLabelValues(c.Request().Method, c.Path()).Inc()
+			return c.JSON(http.StatusForbidden, nil)
+		},
+	}
+	return middleware.RateLimiterWithConfig(config)
+}
 
 func LogMiddleware(parent context.Context) echo.MiddlewareFunc {
 	addr := daemonctx.ListenAddr(parent)
