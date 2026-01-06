@@ -49,6 +49,8 @@ func New(ctx context.Context, enableUI bool) *T {
 	webappURL := "/ui"
 
 	e := echo.New()
+	e.Use(daemonapi.RateLimiterWithConfig(ctx))
+
 	pprof.Register(e)
 	e.Use(mwProm)
 	e.GET(metricsURL, echoprometheus.NewHandler())

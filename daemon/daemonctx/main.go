@@ -2,8 +2,11 @@ package daemonctx
 
 import (
 	"context"
+	"time"
 
 	"github.com/google/uuid"
+	"github.com/labstack/echo/v4/middleware"
+	"golang.org/x/time/rate"
 
 	"github.com/opensvc/om3/v3/core/hbtype"
 )
@@ -13,10 +16,11 @@ type (
 )
 
 var (
-	contextHBRecvMsgQueue = contextKey("hb-recv-msg-queue")
-	contextUUID           = contextKey("uuid")
-	contextListenAddr     = contextKey("listen-addr")
-	contextLsnrType       = contextKey("lsnr-type")
+	contextHBRecvMsgQueue        = contextKey("hb-recv-msg-queue")
+	contextUUID                  = contextKey("uuid")
+	contextListenAddr            = contextKey("listen-addr")
+	contextLsnrType              = contextKey("lsnr-type")
+	contextLsnrRateLimiterConfig = contextKey("lsnr-rate-limiter-config")
 )
 
 func (c contextKey) String() string {
@@ -52,6 +56,14 @@ func LsnrType(ctx context.Context) string {
 	return ""
 }
 
+func ListenRateLimiterMemoryStoreConfig(ctx context.Context) middleware.RateLimiterMemoryStoreConfig {
+	v, ok := ctx.Value(contextLsnrRateLimiterConfig).(middleware.RateLimiterMemoryStoreConfig)
+	if ok {
+		return v
+	}
+	return middleware.RateLimiterMemoryStoreConfig{}
+}
+
 // WithHBRecvMsgQ function returns copy of parent with HBRecvMsgQ
 // the queue used by daemondata to retrieve hb rx decoded messages
 func WithHBRecvMsgQ(parent context.Context, hbRecvQ chan<- *hbtype.Msg) context.Context {
@@ -80,4 +92,9 @@ func UUID(ctx context.Context) uuid.UUID {
 // WithListenAddr function returns copy of parent with listener addr.
 func WithListenAddr(parent context.Context, addr string) context.Context {
 	return context.WithValue(parent, contextListenAddr, addr)
+}
+
+func WithListenRateLimiterMemoryStoreConfig(parent context.Context, rate rate.Limit, burst int, expiresIn time.Duration) context.Context {
+	cfg := middleware.RateLimiterMemoryStoreConfig{Rate: rate, Burst: burst, ExpiresIn: expiresIn}
+	return context.WithValue(parent, contextLsnrRateLimiterConfig, cfg)
 }
