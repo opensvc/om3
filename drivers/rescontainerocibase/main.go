@@ -536,11 +536,22 @@ func (t *BT) Start(ctx context.Context) error {
 		return err
 	}
 
+	callAndRegisterRollbackOnSuccess := func(ctx context.Context, f func(context.Context) error) error {
+		if err := f(ctx); err != nil {
+			return logError(err)
+		} else {
+			actionrollback.Register(ctx, func(ctx context.Context) error {
+				return t.Stop(ctx)
+			})
+			return nil
+		}
+	}
+
 	inspect, err := t.executer.Inspect(ctx)
 	if err != nil {
 		return t.logMainAction("start", fmt.Errorf("inspect: %s", err))
 	} else if inspect == nil || !inspect.Defined() {
-		return logError(t.pullAndRun(ctx))
+		return callAndRegisterRollbackOnSuccess(ctx, t.pullAndRun)
 	} else if inspect.Running() {
 		log.Infof("container start %s: already started", name)
 		return nil
@@ -553,16 +564,16 @@ func (t *BT) Start(ctx context.Context) error {
 			if err := t.executer.Remove(ctx); err != nil {
 				return logError(err)
 			}
-			return logError(t.pullAndRun(ctx))
+			return callAndRegisterRollbackOnSuccess(ctx, t.pullAndRun)
 		} else if inspectStatus == "initialized" {
 			log.Infof("container inspectStatus %s, try fix with stop first", inspectStatus)
 			if err := t.executer.Stop(ctx); err != nil {
 				return err
 			}
-			return logError(t.findAndStart(ctx))
+			return callAndRegisterRollbackOnSuccess(ctx, t.findAndStart)
 		} else {
 			log.Infof("container inspectStatus %s", inspectStatus)
-			return logError(t.findAndStart(ctx))
+			return callAndRegisterRollbackOnSuccess(ctx, t.findAndStart)
 		}
 	}
 }
@@ -783,15 +794,12 @@ func (t *BT) findAndStart(ctx context.Context) error {
 	}
 	select {
 	case err := <-errs:
-		if err == nil {
-			actionrollback.Register(ctx, func(ctx context.Context) error {
-				return t.Stop(ctx)
-			})
-			return nil
+		if err != nil {
+			err = fmt.Errorf("container start %s (%s): %s", name, id, err)
+			t.Log().Errorf("%s", err)
+			return err
 		}
-		err = fmt.Errorf("container start %s (%s): %s", name, id, err)
-		t.Log().Errorf("%s", err)
-		return err
+		return nil
 	case <-timerC:
 		err := fmt.Errorf("container start %s (%s): timeout", name, id)
 		t.Log().Errorf("%s", err)
@@ -851,14 +859,7 @@ func (t *BT) pullAndRun(ctx context.Context) error {
 		_, _ = t.executer.InspectRefresh(refreshCtx)
 	}()
 
-	if err := t.executer.Run(ctx); err == nil {
-		actionrollback.Register(ctx, func(ctx context.Context) error {
-			return t.Stop(ctx)
-		})
-		return nil
-	} else {
-		return err
-	}
+	return t.executer.Run(ctx)
 }
 
 func (t *BT) statusInspectNS(ctx context.Context, attr, current, target string) {
