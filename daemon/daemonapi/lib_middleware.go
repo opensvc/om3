@@ -64,6 +64,10 @@ func RateLimiterWithConfig(parent context.Context) echo.MiddlewareFunc {
 		Attr("lsnr_addr", addr).
 		WithPrefix(fmt.Sprintf("daemon: api: %s: ", family))
 
+	if family == daemonauth.StrategyUX {
+		log.Debugf("rate limiter: disabled on stategy %s", family)
+		return func(next echo.HandlerFunc) echo.HandlerFunc { return next }
+	}
 	storeCfg := daemonctx.ListenRateLimiterMemoryStoreConfig(parent)
 	if storeCfg.Rate == 0 {
 		log.Debugf("rate limiter: rate limiter disabled")
