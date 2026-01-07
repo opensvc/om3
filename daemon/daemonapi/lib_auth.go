@@ -28,7 +28,7 @@ var (
 // canCreateAccessToken determines whether an access token can be created based
 // on the token type (refresh token) or authentication strategy (UX or User).
 func (a *DaemonAPI) canCreateAccessToken(ctx echo.Context) bool {
-	if s, ok := ctx.Get("token_use").(string); ok && s == "refresh" {
+	if s, ok := ctx.Get(daemonauth.TkUseClaim).(string); ok && s == daemonauth.TkUseRefresh {
 		return true
 	}
 	strategy := strategyFromContext(ctx)
@@ -160,16 +160,16 @@ func (a *DaemonAPI) xClaimForGrants(grants []string) (map[string]interface{}, er
 	return xc, nil
 }
 
-func (a *DaemonAPI) createToken(username, tokenUse string, duration time.Duration, claims map[string]any) (string, time.Time, error) {
+func (a *DaemonAPI) createToken(username, tkUseValue string, duration time.Duration, claims map[string]any) (string, time.Time, error) {
 	if username == "" {
 		return "", time.Time{}, fmt.Errorf("username is empty")
 	}
-	if tokenUse == "" {
+	if tkUseValue == "" {
 		return "", time.Time{}, fmt.Errorf("token use is empty")
 	}
 	xc := make(map[string]any)
 	xc["sub"] = username
-	xc["token_use"] = tokenUse
+	xc[daemonauth.TkUseClaim] = tkUseValue
 	xc["iss"] = a.localhost
 	for c, v := range claims {
 		xc[c] = v
@@ -194,7 +194,7 @@ func (a *DaemonAPI) createAccessToken(ctx echo.Context, username string, duratio
 		return d, fmt.Errorf("filter grant: %w", err)
 	} else if claims, err := a.xClaimForGrants(grantL); err != nil {
 		return d, fmt.Errorf("create claims: %w", err)
-	} else if tk, exp, err := a.createToken(username, "access", duration, claims); err != nil {
+	} else if tk, exp, err := a.createToken(username, daemonauth.TkUseAccess, duration, claims); err != nil {
 		return d, fmt.Errorf("create token: %w", err)
 	} else {
 		d.AccessToken = tk
@@ -203,13 +203,13 @@ func (a *DaemonAPI) createAccessToken(ctx echo.Context, username string, duratio
 	}
 }
 
-func (a *DaemonAPI) createAccessTokenWithGrants(username string, duration time.Duration, grantL []string) (d api.AuthAccessToken, err error) {
+func (a *DaemonAPI) createAccessTokenWithGrants(username string, duration time.Duration, tkUse string, grantL []string) (d api.AuthAccessToken, err error) {
 	if username == "" {
 		return d, fmt.Errorf("username is empty")
 	}
 	if claims, err := a.xClaimForGrants(grantL); err != nil {
 		return d, fmt.Errorf("create claims: %w", err)
-	} else if tk, exp, err := a.createToken(username, "access", duration, claims); err != nil {
+	} else if tk, exp, err := a.createToken(username, tkUse, duration, claims); err != nil {
 		return d, fmt.Errorf("create token: %w", err)
 	} else {
 		d.AccessToken = tk

@@ -55,14 +55,17 @@ var (
 	)
 )
 
-func RateLimiterWithConfig(parent context.Context) echo.MiddlewareFunc {
-	addr := daemonctx.ListenAddr(parent)
-	family := daemonctx.LsnrType(parent)
-	log := plog.NewDefaultLogger().
+func logWithFamilyAndAddr(family, addr string) *plog.Logger {
+	return plog.NewDefaultLogger().
 		Attr("pkg", "daemon/daemonapi").
 		Attr("lsnr_type", family).
 		Attr("lsnr_addr", addr).
 		WithPrefix(fmt.Sprintf("daemon: api: %s: ", family))
+}
+
+func RateLimiterWithConfig(parent context.Context) echo.MiddlewareFunc {
+	family := daemonctx.LsnrType(parent)
+	log := logWithFamilyAndAddr(family, daemonctx.ListenAddr(parent))
 
 	if family == daemonauth.StrategyUX {
 		log.Debugf("rate limiter: disabled on stategy %s", family)
@@ -77,7 +80,12 @@ func RateLimiterWithConfig(parent context.Context) echo.MiddlewareFunc {
 	}
 
 	config := middleware.RateLimiterConfig{
-		Skipper:    func(c echo.Context) bool { return family == daemonauth.StrategyUX },
+		Skipper: func(c echo.Context) bool {
+			if s, ok := c.Get(daemonauth.TkUseClaim).(string); ok && s == daemonauth.TkUseProxy {
+				return true
+			}
+			return false
+		},
 		BeforeFunc: nil,
 		Store:      middleware.NewRateLimiterMemoryStoreWithConfig(storeCfg),
 		IdentifierExtractor: func(c echo.Context) (string, error) {
@@ -86,7 +94,7 @@ func RateLimiterWithConfig(parent context.Context) echo.MiddlewareFunc {
 		},
 		ErrorHandler: func(c echo.Context, err error) error {
 			if err != nil {
-				log.Tracef("rate limiter: too many request from %s: %s", c.RealIP(), err)
+				GetLogger(c).Tracef("rate limiter: too many request from %s: %s", c.RealIP(), err)
 			}
 
 			rateLimitErrorsTotal.Inc()
@@ -94,7 +102,7 @@ func RateLimiterWithConfig(parent context.Context) echo.MiddlewareFunc {
 		},
 		DenyHandler: func(c echo.Context, identifier string, err error) error {
 			if err != nil {
-				log.Tracef("rate limiter deny from %s: %s", c.RealIP(), err)
+				GetLogger(c).Tracef("rate limiter deny from %s: %s", c.RealIP(), err)
 			}
 
 			rateLimitDeniedTotal.WithLabelValues(c.Request().Method, c.Path()).Inc()
@@ -105,13 +113,8 @@ func RateLimiterWithConfig(parent context.Context) echo.MiddlewareFunc {
 }
 
 func LogMiddleware(parent context.Context) echo.MiddlewareFunc {
-	addr := daemonctx.ListenAddr(parent)
 	family := daemonctx.LsnrType(parent)
-	log := plog.NewDefaultLogger().
-		Attr("pkg", "daemon/daemonapi").
-		Attr("lsnr_type", family).
-		Attr("lsnr_addr", addr).
-		WithPrefix(fmt.Sprintf("daemon: api: %s: ", family))
+	log := logWithFamilyAndAddr(family, daemonctx.ListenAddr(parent))
 
 	return func(next echo.HandlerFunc) echo.HandlerFunc {
 		return func(c echo.Context) error {
@@ -193,8 +196,8 @@ func AuthMiddleware(parent context.Context) echo.MiddlewareFunc {
 			if strategy := extensions.Get("strategy"); strategy != "" {
 				c.Set("strategy", strategy)
 			}
-			if extensions.Get("token_use") == "refresh" {
-				c.Set("token_use", "refresh")
+			if s := extensions.Get(daemonauth.TkUseClaim); s != "" {
+				c.Set(daemonauth.TkUseClaim, s)
 			}
 			return next(c)
 		}

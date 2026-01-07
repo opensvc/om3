@@ -39,6 +39,20 @@ var (
 	jwtVerifyKeySign string
 )
 
+const (
+	// TkUseClaim is a constant used as the key to identify the token usage type in claims or authentication context.
+	TkUseClaim = "token_use"
+
+	// TkUseAccess represents the token usage type for access tokens.
+	TkUseAccess = "access"
+
+	// TkUseRefresh represents the token usage type for refresh tokens.
+	TkUseRefresh = "refresh"
+
+	// TkUseProxy represents the token usage type for proxy tokens.
+	TkUseProxy = "proxy"
+)
+
 // initJWT initializes the JWT authentication strategy using provided configuration and context.
 // It returns the strategy name ("jwt"), an instance of the auth.Strategy, and any error encountered.
 func initJWT(_ context.Context, i interface{}) (string, auth.Strategy, error) {
@@ -69,7 +83,7 @@ func initJWT(_ context.Context, i interface{}) (string, auth.Strategy, error) {
 
 		extensions := authenticatedExtensions(StrategyJWT, iss, claims.Grant...)
 		if claims.TokenUse != "" {
-			extensions.Set("token_use", claims.TokenUse)
+			extensions.Set(TkUseClaim, claims.TokenUse)
 		}
 		info = auth.NewUserInfo(claims.Subject, claims.Subject, nil, *extensions)
 		return

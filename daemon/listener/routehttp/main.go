@@ -49,8 +49,6 @@ func New(ctx context.Context, enableUI bool) *T {
 	webappURL := "/ui"
 
 	e := echo.New()
-	e.Use(daemonapi.RateLimiterWithConfig(ctx))
-
 	pprof.Register(e)
 	e.Use(mwProm)
 	e.GET(metricsURL, echoprometheus.NewHandler())
@@ -73,6 +71,7 @@ func New(ctx context.Context, enableUI bool) *T {
 
 	e.Use(daemonapi.LogMiddleware(ctx))
 	e.Use(daemonapi.AuthMiddleware(ctx))
+	e.Use(daemonapi.RateLimiterWithConfig(ctx))
 	e.Use(daemonapi.LogUserMiddleware(ctx))
 	e.Use(daemonapi.LogRequestMiddleWare(ctx))
 	api.RegisterHandlers(e, daemonapi.New(ctx))
