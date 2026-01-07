@@ -539,12 +539,13 @@ func (t *BT) Start(ctx context.Context) error {
 	callAndRegisterRollbackOnSuccess := func(ctx context.Context, f func(context.Context) error) error {
 		if err := f(ctx); err != nil {
 			return logError(err)
-		} else {
+		} else if t.Detach {
+			// rollback needed only for detached containers, not for init containers that exit after start.
 			actionrollback.Register(ctx, func(ctx context.Context) error {
 				return t.Stop(ctx)
 			})
-			return nil
 		}
+		return nil
 	}
 
 	inspect, err := t.executer.Inspect(ctx)
