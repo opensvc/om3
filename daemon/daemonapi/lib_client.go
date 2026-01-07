@@ -54,7 +54,7 @@ func (a *DaemonAPI) newProxyClient(ctx echo.Context, nodename string, opts ...fu
 			username := userFromContext(ctx).GetUserName()
 			grantL := grantsFromContext(ctx).AsStringList()
 			GetLogger(ctx).Tracef("create proxy client token for %s@%s with grants %s", username, nodename, grantL)
-			tk, err := a.createAccessTokenWithGrants(username, tkDuration, grantL)
+			tk, err := a.createAccessTokenWithGrants(username, tkDuration, daemonauth.TkUseProxy, grantL)
 			if err != nil {
 				return nil, fmt.Errorf("proxy abort: can't create token for %s with grants %s: %w", username, grantL, err)
 			}

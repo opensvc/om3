@@ -9,6 +9,7 @@ import (
 	"github.com/shaj13/go-guardian/v2/auth"
 
 	"github.com/opensvc/om3/v3/daemon/api"
+	"github.com/opensvc/om3/v3/daemon/daemonauth"
 	"github.com/opensvc/om3/v3/daemon/rbac"
 )
 
@@ -76,7 +77,7 @@ func (a *DaemonAPI) PostAuthToken(ctx echo.Context, params api.PostAuthTokenPara
 	}
 
 	if needRefresh {
-		if rk, exp, err := a.createToken(username, "refresh", refreshDuration, nil); err != nil {
+		if rk, exp, err := a.createToken(username, daemonauth.TkUseRefresh, refreshDuration, nil); err != nil {
 			log.Errorf("create refresh token: %s", err)
 			return JSONProblemf(ctx, http.StatusInternalServerError, "Unexpected error", "%s", err)
 		} else {
