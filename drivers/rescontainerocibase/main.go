@@ -851,7 +851,14 @@ func (t *BT) pullAndRun(ctx context.Context) error {
 		_, _ = t.executer.InspectRefresh(refreshCtx)
 	}()
 
-	return t.executer.Run(ctx)
+	if err := t.executer.Run(ctx); err == nil {
+		actionrollback.Register(ctx, func(ctx context.Context) error {
+			return t.Stop(ctx)
+		})
+		return nil
+	} else {
+		return err
+	}
 }
 
 func (t *BT) statusInspectNS(ctx context.Context, attr, current, target string) {
