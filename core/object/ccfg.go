@@ -5,6 +5,8 @@ import (
 	"os"
 	"path/filepath"
 
+	"golang.org/x/time/rate"
+
 	"github.com/opensvc/om3/v3/core/cluster"
 	"github.com/opensvc/om3/v3/core/keywords"
 	"github.com/opensvc/om3/v3/core/naming"
@@ -100,6 +102,10 @@ func getClusterConfig() (*cluster.Config, error) {
 		keyListenerDNSSockUID     = key.New("listener", "dns_sock_uid")
 		keyListenerDNSSockGID     = key.New("listener", "dns_sock_gid")
 
+		keyListenerRateLimiterRate    = key.New("listener", "rate_limiter_rate")
+		keyListenerRateLimiterBurst   = key.New("listener", "rate_limiter_burst")
+		keyListenerRateLimiterExpires = key.New("listener", "rate_limiter_expires")
+
 		keyNodeSSHKey = key.New("node", "sshkey")
 	)
 
@@ -132,6 +138,15 @@ func getClusterConfig() (*cluster.Config, error) {
 	cfg.Listener.OpenIDClientID = c.GetString(keyListenerOpenIDClientID)
 	cfg.Listener.DNSSockGID = c.GetString(keyListenerDNSSockGID)
 	cfg.Listener.DNSSockUID = c.GetString(keyListenerDNSSockUID)
+
+	cfg.Listener.RateLimiter = cluster.RateLimiterConfig{
+		Rate:  rate.Limit(c.GetInt(keyListenerRateLimiterRate)),
+		Burst: c.GetInt(keyListenerRateLimiterBurst),
+	}
+	if expires := c.GetDuration(keyListenerRateLimiterExpires); expires != nil {
+		cfg.Listener.RateLimiter.Expires = *expires
+	}
+
 	if homedir, err := os.UserHomeDir(); err != nil {
 		cfg.Issues = append(cfg.Issues, fmt.Sprintf("user home dir: %s", err))
 	} else {

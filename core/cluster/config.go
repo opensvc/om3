@@ -1,6 +1,10 @@
 package cluster
 
 import (
+	"time"
+
+	"golang.org/x/time/rate"
+
 	"github.com/opensvc/om3/v3/util/file"
 )
 
@@ -27,14 +31,21 @@ type (
 		sshKeyFile string
 	}
 
+	RateLimiterConfig struct {
+		Rate    rate.Limit    `json:"rate"`
+		Burst   int           `json:"burst"`
+		Expires time.Duration `json:"expires"`
+	}
+
 	ConfigListener struct {
-		CRL            string `json:"crl"`
-		Addr           string `json:"addr"`
-		Port           int    `json:"port"`
-		OpenIDIssuer   string `json:"openid_issuer"`
-		OpenIDClientID string `json:"openid_client_id"`
-		DNSSockGID     string `json:"dns_sock_gid"`
-		DNSSockUID     string `json:"dns_sock_uid"`
+		CRL            string            `json:"crl"`
+		Addr           string            `json:"addr"`
+		Port           int               `json:"port"`
+		OpenIDIssuer   string            `json:"openid_issuer"`
+		OpenIDClientID string            `json:"openid_client_id"`
+		DNSSockGID     string            `json:"dns_sock_gid"`
+		DNSSockUID     string            `json:"dns_sock_uid"`
+		RateLimiter    RateLimiterConfig `json:"rate_limiter"`
 	}
 )
 

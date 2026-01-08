@@ -5,9 +5,9 @@ import (
 	"time"
 
 	"github.com/google/uuid"
-	"github.com/labstack/echo/v4/middleware"
 	"golang.org/x/time/rate"
 
+	"github.com/opensvc/om3/v3/core/cluster"
 	"github.com/opensvc/om3/v3/core/hbtype"
 )
 
@@ -56,12 +56,12 @@ func LsnrType(ctx context.Context) string {
 	return ""
 }
 
-func ListenRateLimiterMemoryStoreConfig(ctx context.Context) middleware.RateLimiterMemoryStoreConfig {
-	v, ok := ctx.Value(contextLsnrRateLimiterConfig).(middleware.RateLimiterMemoryStoreConfig)
+func ListenRateLimiterConfig(ctx context.Context) cluster.RateLimiterConfig {
+	v, ok := ctx.Value(contextLsnrRateLimiterConfig).(cluster.RateLimiterConfig)
 	if ok {
 		return v
 	}
-	return middleware.RateLimiterMemoryStoreConfig{}
+	return cluster.RateLimiterConfig{}
 }
 
 // WithHBRecvMsgQ function returns copy of parent with HBRecvMsgQ
@@ -94,7 +94,9 @@ func WithListenAddr(parent context.Context, addr string) context.Context {
 	return context.WithValue(parent, contextListenAddr, addr)
 }
 
-func WithListenRateLimiterMemoryStoreConfig(parent context.Context, rate rate.Limit, burst int, expiresIn time.Duration) context.Context {
-	cfg := middleware.RateLimiterMemoryStoreConfig{Rate: rate, Burst: burst, ExpiresIn: expiresIn}
-	return context.WithValue(parent, contextLsnrRateLimiterConfig, cfg)
+// WithListenRateLimiterConfig adds a rate limiter configuration to the given context
+// with a specified rate, burst, and expires duration.
+func WithListenRateLimiterConfig(ctx context.Context, rate rate.Limit, burst int, exp time.Duration) context.Context {
+	cfg := cluster.RateLimiterConfig{Rate: rate, Burst: burst, Expires: exp}
+	return context.WithValue(ctx, contextLsnrRateLimiterConfig, cfg)
 }

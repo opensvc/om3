@@ -1,0 +1,2 @@
+The maximum number of inet listener requests to pass at the same moment.
+It additionally allows a number of requests to pass when rate limit is reached.

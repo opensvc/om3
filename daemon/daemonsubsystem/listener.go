@@ -3,6 +3,7 @@ package daemonsubsystem
 import (
 	"fmt"
 
+	"github.com/opensvc/om3/v3/core/cluster"
 	"github.com/opensvc/om3/v3/daemon/daemonenv"
 )
 
@@ -14,6 +15,8 @@ type (
 		Addr string `json:"addr"`
 
 		Port string `json:"port"`
+
+		RateLimiter cluster.RateLimiterConfig `json:"rate_limiter"`
 	}
 )
 
