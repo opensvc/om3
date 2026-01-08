@@ -12,7 +12,6 @@ import (
 	"time"
 
 	"github.com/rs/zerolog"
-	"golang.org/x/time/rate"
 
 	"github.com/opensvc/om3/v3/daemon/daemonapi"
 	"github.com/opensvc/om3/v3/daemon/daemonctx"
@@ -77,7 +76,7 @@ func (t *T) Stop() error {
 	return err
 }
 
-// Start startup the inet http janitor. janitor startup initial inet http listener.
+// Start starts up the inet http janitor. Janitor startup initial inet http listener.
 func (t *T) Start(ctx context.Context) error {
 	ctx = daemonctx.WithLsnrType(ctx, "inet")
 
@@ -94,8 +93,9 @@ func (t *T) Start(ctx context.Context) error {
 func (t *T) start(ctx context.Context, errC chan<- error) {
 	t.wg.Add(1)
 	defer t.wg.Done()
+	rateCfg := t.status.RateLimiter
 	ctx = daemonctx.WithListenAddr(ctx, t.addr)
-	ctx = daemonctx.WithListenRateLimiterMemoryStoreConfig(ctx, rate.Limit(200), 1000, 3*time.Second)
+	ctx = daemonctx.WithListenRateLimiterConfig(ctx, rateCfg.Rate, rateCfg.Burst, rateCfg.Expires)
 
 	t.log.Infof("starting")
 	for _, fname := range []string{t.certFile, t.keyFile} {
@@ -269,22 +269,34 @@ func (t *T) janitor(ctx context.Context, errC chan<- error) {
 					daemonapi.LogLevel = zerolog.TraceLevel
 				}
 			case *msgbus.ClusterConfigUpdated:
+				var needRestart bool
 				select {
 				case <-ctx.Done():
 					return
 				default:
 				}
+
 				clusterConfig := m.Value
 				newAddr := fmt.Sprintf("%s:%d", clusterConfig.Listener.Addr, clusterConfig.Listener.Port)
+				newRateLimiterConfig := clusterConfig.Listener.RateLimiter
 				if t.addr != newAddr {
+					t.addr = newAddr
+					needRestart = true
 					t.log.Infof("will restart: addr changed %s -> %s", t.addr, newAddr)
+				}
+				if newRateLimiterConfig != t.status.RateLimiter {
+					t.status.RateLimiter = newRateLimiterConfig
+					needRestart = true
+					t.log.Infof("will restart: rate limiter config changed")
+				}
+
+				if needRestart {
 					stop()
 					select {
 					case <-ctx.Done():
 						return
 					default:
 					}
-					t.addr = newAddr
 
 					t.log = plog.NewDefaultLogger().
 						Attr("pkg", "daemon/listener/lsnrhttpinet").

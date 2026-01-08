@@ -1,6 +1,7 @@
 package lsnrhttpinet
 
 import (
+	"github.com/opensvc/om3/v3/core/cluster"
 	"github.com/opensvc/om3/v3/util/funcopt"
 )
 
@@ -24,6 +25,14 @@ func WithKeyFile(o string) funcopt.O {
 	return funcopt.F(func(i interface{}) error {
 		t := i.(*T)
 		t.keyFile = o
+		return nil
+	})
+}
+
+func WithRateLimiterConfig(o cluster.RateLimiterConfig) funcopt.O {
+	return funcopt.F(func(i interface{}) error {
+		t := i.(*T)
+		t.status.RateLimiter = o
 		return nil
 	})
 }

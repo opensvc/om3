@@ -93,6 +93,7 @@ func (t *T) Start(ctx context.Context) error {
 			lsnrhttpinet.WithAddr(fmt.Sprintf("%s:%d", clusterConfig.Listener.Addr, clusterConfig.Listener.Port)),
 			lsnrhttpinet.WithCertFile(daemonenv.CertChainFile()),
 			lsnrhttpinet.WithKeyFile(daemonenv.KeyFile()),
+			lsnrhttpinet.WithRateLimiterConfig(clusterConfig.Listener.RateLimiter),
 		),
 	} {
 		if err := lsnr.Start(ctx); err != nil {

@@ -67,17 +67,19 @@ func RateLimiterWithConfig(parent context.Context) echo.MiddlewareFunc {
 	family := daemonctx.LsnrType(parent)
 	log := logWithFamilyAndAddr(family, daemonctx.ListenAddr(parent))
 
-	if family == daemonauth.StrategyUX {
-		log.Debugf("rate limiter: disabled on stategy %s", family)
-		return func(next echo.HandlerFunc) echo.HandlerFunc { return next }
-	}
-	storeCfg := daemonctx.ListenRateLimiterMemoryStoreConfig(parent)
-	if storeCfg.Rate == 0 {
+	rateLimiterConfig := daemonctx.ListenRateLimiterConfig(parent)
+	if rateLimiterConfig.Rate == 0 {
 		log.Debugf("rate limiter: rate limiter disabled")
 		return func(next echo.HandlerFunc) echo.HandlerFunc { return next }
 	} else {
-		log.Infof("rate limiter config: %#v", storeCfg)
+		log.Debugf("rate limiter config: %#v", rateLimiterConfig)
 	}
+
+	rateLimiterStore := middleware.NewRateLimiterMemoryStoreWithConfig(middleware.RateLimiterMemoryStoreConfig{
+		Rate:      rateLimiterConfig.Rate,
+		Burst:     rateLimiterConfig.Burst,
+		ExpiresIn: rateLimiterConfig.Expires,
+	})
 
 	config := middleware.RateLimiterConfig{
 		Skipper: func(c echo.Context) bool {
@@ -87,7 +89,7 @@ func RateLimiterWithConfig(parent context.Context) echo.MiddlewareFunc {
 			return false
 		},
 		BeforeFunc: nil,
-		Store:      middleware.NewRateLimiterMemoryStoreWithConfig(storeCfg),
+		Store:      rateLimiterStore,
 		IdentifierExtractor: func(c echo.Context) (string, error) {
 			id := c.RealIP()
 			return id, nil
