@@ -38,7 +38,7 @@ type (
 	}
 )
 
-func (t Config) Secret() string {
+func (t *Config) Secret() string {
 	return t.secret
 }
 
