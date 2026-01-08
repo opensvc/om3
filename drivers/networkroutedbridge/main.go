@@ -661,7 +661,7 @@ func (t *T) subnets() (map[string]string, error) {
 		return nil, err
 	}
 	for _, nodename := range nodes {
-		m[nodename] = t.GetString("subnet@" + nodename)
+		m[nodename] = t.GetStringAs("subnet", nodename)
 	}
 	t.subnetMap = m
 	return m, nil

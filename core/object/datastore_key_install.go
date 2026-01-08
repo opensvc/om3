@@ -403,7 +403,7 @@ func (t *dataStore) InstallKeyTo(opt KVInstall) error {
 	}
 	for _, vk := range keys {
 		if _, err := t.installKey(vk, opt); err != nil {
-			return fmt.Errorf("install key %s to %s: %w", vk.Key, t.path, err)
+			return fmt.Errorf("install %s key %s to %s: %w", t.path, vk.Key, opt.ToPath, err)
 		}
 	}
 	return nil
