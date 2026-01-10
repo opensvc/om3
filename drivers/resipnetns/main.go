@@ -20,7 +20,8 @@ import (
 	"github.com/opensvc/om3/v3/core/resource"
 	"github.com/opensvc/om3/v3/core/status"
 	"github.com/opensvc/om3/v3/drivers/resip"
-	"github.com/opensvc/om3/v3/util/hostname"
+	"github.com/opensvc/om3/v3/util/duration"
+	"github.com/opensvc/om3/v3/util/getaddr"
 	"github.com/opensvc/om3/v3/util/netif"
 	"github.com/opensvc/om3/v3/util/ping"
 
@@ -30,6 +31,8 @@ import (
 const (
 	tagNonRouted = "nonrouted"
 	tagDedicated = "dedicated"
+
+	maxIPAddrAge = 16 * time.Minute
 )
 
 type (
@@ -60,9 +63,10 @@ type (
 		Expose        []string       `json:"expose"`
 
 		// cache
-		_ipaddr net.IP
-		_ipmask net.IPMask
-		_ipnet  *net.IPNet
+		_ipaddr    net.IP
+		_ipaddrAge time.Duration
+		_ipmask    net.IPMask
+		_ipnet     *net.IPNet
 	}
 
 	Addrs []net.Addr
@@ -138,6 +142,11 @@ func (t *T) ActionResourceDeps() []actionresdeps.Dep {
 }
 
 func (t *T) Start(ctx context.Context) error {
+	if t._ipaddrAge > maxIPAddrAge {
+		return fmt.Errorf("ip %s lookup issue, cache expired (%s old)", t.Name, duration.FmtShortDuration(t._ipaddrAge))
+	} else if t._ipaddrAge > 0 {
+		t.Log().Warnf("ip %s lookup issue, cache valid (%s old)", t.Name, duration.FmtShortDuration(t._ipaddrAge))
+	}
 	if err := t.startMode(ctx); err != nil {
 		return err
 	}
@@ -271,6 +280,11 @@ func (t *T) startARP(netns ns.NetNS, guestDev string) error {
 }
 
 func (t *T) Stop(ctx context.Context) error {
+	if t._ipaddrAge > maxIPAddrAge {
+		return fmt.Errorf("ip %s lookup issue, cache expired (%s old)", t.Name, duration.FmtShortDuration(t._ipaddrAge))
+	} else if t._ipaddrAge > 0 {
+		t.Log().Warnf("ip %s lookup issue, cache valid (%s old)", t.Name, duration.FmtShortDuration(t._ipaddrAge))
+	}
 	if t.Tags.Has(tagDedicated) {
 		return t.stopDedicated(ctx)
 	}
@@ -329,6 +343,15 @@ func (t *T) Status(ctx context.Context) status.T {
 			return status.Down
 		}
 	}
+
+	_ = t.ipaddr()
+	if t._ipaddrAge > maxIPAddrAge {
+		t.StatusLog().Error("ip %s lookup issue, cache expired (%s old)", t.Name, duration.FmtShortDuration(t._ipaddrAge))
+		return status.Undef
+	} else if t._ipaddrAge > 0 {
+		t.StatusLog().Warn("ip %s lookup issue, cache valid (%s old)", t.Name, duration.FmtShortDuration(t._ipaddrAge))
+	}
+
 	netns, err := t.getNS(ctx)
 	if err != nil {
 		t.StatusLog().Error("netns: %s", err)
@@ -346,6 +369,9 @@ func (t *T) Status(ctx context.Context) status.T {
 	}
 	if guestDev == "" {
 		return status.Down
+	}
+	if t._ipaddrAge > 0 {
+		return status.Warn
 	}
 	return status.Up
 }
@@ -378,6 +404,9 @@ func (t *T) Abort(ctx context.Context) bool {
 		return false // let start fail with an explicit error message
 	}
 	if t.ipaddr() == nil {
+		return false // let start fail with an explicit error message
+	}
+	if t._ipaddrAge > maxIPAddrAge {
 		return false // let start fail with an explicit error message
 	}
 	if initialStatus := t.Status(ctx); initialStatus == status.Up {
@@ -423,8 +452,13 @@ func (t *T) ipaddr() net.IP {
 	if t._ipaddr != nil {
 		return t._ipaddr
 	}
-	t._ipaddr = t.getIPAddr()
-	return t._ipaddr
+	ip, age, err := getaddr.Lookup(t.Name)
+	if getaddr.IsErrManyAddr(err) {
+		t.StatusLog().Warn("%s", err)
+	}
+	t._ipaddr = ip
+	t._ipaddrAge = age
+	return ip
 }
 
 func (t *T) ipmask() net.IPMask {
@@ -475,33 +509,6 @@ func (t *T) defaultMask() (net.IPMask, error) {
 		return nil, err
 	}
 	return net.Mask, nil
-}
-
-func (t *T) getIPAddr() net.IP {
-	switch {
-	case naming.IsValidFQDN(t.Name) || hostname.IsValid(t.Name):
-		var (
-			l   []net.IP
-			err error
-		)
-		l, err = net.LookupIP(t.Name)
-		if err != nil {
-			t.Log().Errorf("%s", err)
-			return nil
-		}
-		n := len(l)
-		switch n {
-		case 0:
-			t.Log().Errorf("name %s is unresolvable", t.Name)
-		case 1:
-			// ok
-		default:
-			t.Log().Tracef("name %s is resolvables to %d address. Using the first.", t.Name, n)
-		}
-		return l[0]
-	default:
-		return net.ParseIP(t.Name)
-	}
 }
 
 func (t *T) netInterface() (*net.Interface, error) {
