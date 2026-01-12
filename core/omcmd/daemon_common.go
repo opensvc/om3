@@ -54,46 +54,22 @@ func (t *CmdDaemonCommon) backupLocalConfig(name string) error {
 		_, _ = fmt.Fprintf(os.Stdout, "Empty %s, skip backup\n", backupDir)
 		return nil
 	}
-	cmd := command.New(
-		command.WithBufferedStdout(),
-		command.WithName(os.Args[0]),
-		command.WithArgs([]string{"**", "print", "config", "--local", "--format", "json"}),
-		// allow exit code 1 (Error: no match)
-		command.WithIgnoredExitCodes(0, 1),
-	)
-	_, _ = fmt.Fprintln(os.Stdout, "Dump all configs")
-	if err := cmd.Run(); err != nil {
-		return fmt.Errorf("%s: %w", cmd, err)
-	}
 
-	backup := path.Join(backupDir, time.Now().Format(name+"-2006-01-02T15:04:05.json"))
-	_, _ = fmt.Fprintf(os.Stdout, "Save configs to %s\n", backup)
-	if err := os.WriteFile(backup, cmd.Stdout(), 0o400); err != nil {
+	backup := path.Join(backupDir, time.Now().Format(name+"-2006-01-02T15:04:05"))
+	_, _ = fmt.Fprintf(os.Stdout, "move all configs to %s\n", backup)
+	err := os.Rename(rawconfig.Paths.Etc, backup)
+	if err != nil {
 		return err
 	}
 	return nil
 }
 
-func (t *CmdDaemonCommon) deleteLocalConfig() error {
-	if err := t.cleanupEtcDir(); err != nil {
-		return fmt.Errorf("cleanup opensvc etc dir: %w", err)
-	}
-
+func (t *CmdDaemonCommon) cleanupAndMandatoryDirectories() error {
 	if err := t.cleanupVarDir(); err != nil {
 		return fmt.Errorf("cleanup opensvc var dir: %w", err)
 	}
 
 	return rawconfig.CreateMandatoryDirectories()
-}
-
-func (t *CmdDaemonCommon) cleanupEtcDir() error {
-	etcDir := rawconfig.Paths.Etc
-	if ok, err := file.ExistsAndDir(etcDir); err != nil {
-		return err
-	} else if ok {
-		return os.RemoveAll(etcDir)
-	}
-	return nil
 }
 
 // cleanupVarDir removes all entries in the opensvc var directory except for
