@@ -33,7 +33,11 @@ func (t *filesManager) Fetched() resource.Files {
 }
 
 func (t *Manager) handleResourceFiles(ev *msgbus.InstanceStatusUpdated) {
-	if t.files.fetching {
+	if ev.Node == t.localhost {
+		t.doHandleLocalResourceFiles(ev)
+		return
+	}
+	if t.files.fetching && t.needFetchResourceFiles(ev) {
 		t.files.attention = ev
 		return
 	}
@@ -59,14 +63,34 @@ func (t *Manager) needFetchResourceFiles(ev *msgbus.InstanceStatusUpdated) bool 
 	}
 
 	// Is the remote node a valid resource file authority
-	if ev.Node == t.localhost {
-		return false
-	}
 	if ev.Value.Avail != status.Up {
 		return false
 	}
 
 	return true
+}
+
+func (t *Manager) doHandleLocalResourceFiles(ev *msgbus.InstanceStatusUpdated) {
+	if t.instConfig.ActorConfig == nil {
+		return
+	}
+	announcedFilenames := make(map[string]any)
+	for _, localResourceStatus := range ev.Value.Resources {
+		for _, f := range localResourceStatus.Files {
+			announcedFilenames[f.Name] = nil
+		}
+	}
+	var toDelete []string
+	for filename := range t.files.fetched {
+		if _, ok := announcedFilenames[filename]; !ok {
+			// This already fetched file is no longer announced by the resource
+			// Drop.
+			toDelete = append(toDelete, filename)
+		}
+	}
+	for _, filename := range toDelete {
+		delete(t.files.fetched, filename)
+	}
 }
 
 func (t *Manager) fetchResourceFiles(fetched resource.Files, localInstanceStatus instance.Status, ev *msgbus.InstanceStatusUpdated) {
