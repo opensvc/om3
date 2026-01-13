@@ -70,10 +70,13 @@ func (e *Executor) Enter(ctx context.Context) error {
 	candidates := []string{"/bin/bash", "/bin/sh"}
 	ctx, cancel := context.WithTimeout(ctx, 10*time.Second)
 	inspect, err := e.Inspect(ctx)
-	pid := inspect.PID()
 	if err != nil {
 		return err
 	}
+	if inspect == nil {
+		return fmt.Errorf("the container is not running")
+	}
+	pid := inspect.PID()
 	env, err := pidEnv(pid)
 	if err != nil {
 		return err
