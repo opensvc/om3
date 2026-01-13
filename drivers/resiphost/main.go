@@ -24,7 +24,7 @@ import (
 
 const (
 	tagNonRouted = "nonrouted"
-	maxIPAddrAge = 16 * time.Minute
+	maxIPAddrAge = 19 * time.Minute
 )
 
 type (
@@ -95,7 +95,7 @@ func (t *T) getDevAndLabel() (string, string, error) {
 }
 
 func (t *T) Start(ctx context.Context) error {
-	if initialStatus := t.Status(ctx); initialStatus == status.Up {
+	if initialStatus := t.statusWithIPAddrCacheTrust(ctx); initialStatus == status.Up {
 		t.Log().Infof("%s is already up on %s", t.Name, t.Dev)
 		return nil
 	}
@@ -137,6 +137,14 @@ func (t *T) Stop(ctx context.Context) error {
 }
 
 func (t *T) Status(ctx context.Context) status.T {
+	s := t.statusWithIPAddrCacheTrust(ctx)
+	if s == status.Up && t._ipaddrAge > 0 {
+		return status.Warn
+	}
+	return s
+}
+
+func (t *T) statusWithIPAddrCacheTrust(ctx context.Context) status.T {
 	if t.Name == "" {
 		t.StatusLog().Warn("name not set")
 		return status.NotApplicable
@@ -176,9 +184,12 @@ func (t *T) statusOfAddr(ctx context.Context, dev string) status.T {
 		return status.NotApplicable
 	}
 	ip := t.ipaddr()
-	if t._ipaddrAge > maxIPAddrAge {
-		t.StatusLog().Error("ip %s lookup issue, cache expired (%s old)", t.Name, duration.FmtShortDuration(t._ipaddrAge))
+	if ip == nil {
+		t.StatusLog().Error("ip %s lookup issue, cache miss", t.Name)
 		return status.Undef
+	} else if t._ipaddrAge > maxIPAddrAge {
+		t.StatusLog().Error("ip %s lookup issue, cache expired (%s old)", t.Name, duration.FmtShortDuration(t._ipaddrAge))
+		return status.Warn
 	} else if t._ipaddrAge > 0 {
 		t.StatusLog().Warn("ip %s lookup issue, cache valid (%s old)", t.Name, duration.FmtShortDuration(t._ipaddrAge))
 	}
@@ -197,9 +208,6 @@ func (t *T) statusOfAddr(ctx context.Context, dev string) status.T {
 	if !addrs.Has(ip) {
 		t.Log().Tracef("ip not found on intf")
 		return status.Down
-	}
-	if t._ipaddrAge > 0 {
-		return status.Warn
 	}
 	return status.Up
 }
@@ -226,7 +234,7 @@ func (t *T) Abort(ctx context.Context) bool {
 	if t._ipaddrAge > maxIPAddrAge {
 		return false // let start fail with an explicit error message
 	}
-	if initialStatus := t.Status(ctx); initialStatus == status.Up {
+	if initialStatus := t.statusWithIPAddrCacheTrust(ctx); initialStatus == status.Up {
 		return false // let start fail with an explicit error message
 	}
 	if t.CheckCarrier {

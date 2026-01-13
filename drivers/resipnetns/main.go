@@ -32,7 +32,7 @@ const (
 	tagNonRouted = "nonrouted"
 	tagDedicated = "dedicated"
 
-	maxIPAddrAge = 16 * time.Minute
+	maxIPAddrAge = 19 * time.Minute
 )
 
 type (
@@ -315,6 +315,14 @@ func (t *T) devMTU() (int, error) {
 }
 
 func (t *T) Status(ctx context.Context) status.T {
+	s := t.statusWithIPAddrCacheTrust(ctx)
+	if s == status.Up && t._ipaddrAge > 0 {
+		return status.Warn
+	}
+	return s
+}
+
+func (t *T) statusWithIPAddrCacheTrust(ctx context.Context) status.T {
 	var (
 		err     error
 		carrier bool
@@ -344,8 +352,11 @@ func (t *T) Status(ctx context.Context) status.T {
 		}
 	}
 
-	_ = t.ipaddr()
-	if t._ipaddrAge > maxIPAddrAge {
+	ip := t.ipaddr()
+	if ip == nil {
+		t.StatusLog().Error("ip %s lookup issue, cache miss", t.Name)
+		return status.Undef
+	} else if t._ipaddrAge > maxIPAddrAge {
 		t.StatusLog().Error("ip %s lookup issue, cache expired (%s old)", t.Name, duration.FmtShortDuration(t._ipaddrAge))
 		return status.Undef
 	} else if t._ipaddrAge > 0 {
@@ -369,9 +380,6 @@ func (t *T) Status(ctx context.Context) status.T {
 	}
 	if guestDev == "" {
 		return status.Down
-	}
-	if t._ipaddrAge > 0 {
-		return status.Warn
 	}
 	return status.Up
 }
@@ -409,7 +417,7 @@ func (t *T) Abort(ctx context.Context) bool {
 	if t._ipaddrAge > maxIPAddrAge {
 		return false // let start fail with an explicit error message
 	}
-	if initialStatus := t.Status(ctx); initialStatus == status.Up {
+	if initialStatus := t.statusWithIPAddrCacheTrust(ctx); initialStatus == status.Up {
 		return false // let start fail with an explicit error message
 	}
 	if t.abortPing() {
