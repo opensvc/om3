@@ -16,13 +16,15 @@ import (
 	"github.com/opensvc/om3/v3/core/resource"
 	"github.com/opensvc/om3/v3/core/status"
 	"github.com/opensvc/om3/v3/drivers/resip"
-	"github.com/opensvc/om3/v3/util/hostname"
+	"github.com/opensvc/om3/v3/util/duration"
+	"github.com/opensvc/om3/v3/util/getaddr"
 	"github.com/opensvc/om3/v3/util/netif"
 	"github.com/opensvc/om3/v3/util/ping"
 )
 
 const (
 	tagNonRouted = "nonrouted"
+	maxIPAddrAge = 19 * time.Minute
 )
 
 type (
@@ -46,9 +48,10 @@ type (
 		WaitDNS      *time.Duration `json:"wait_dns"`
 
 		// cache
-		_ipaddr net.IP
-		_ipmask net.IPMask
-		_ipnet  *net.IPNet
+		_ipaddr    net.IP
+		_ipaddrAge time.Duration
+		_ipmask    net.IPMask
+		_ipnet     *net.IPNet
 	}
 
 	Addrs []net.Addr
@@ -92,9 +95,14 @@ func (t *T) getDevAndLabel() (string, string, error) {
 }
 
 func (t *T) Start(ctx context.Context) error {
-	if initialStatus := t.Status(ctx); initialStatus == status.Up {
+	if initialStatus := t.statusWithIPAddrCacheTrust(ctx); initialStatus == status.Up {
 		t.Log().Infof("%s is already up on %s", t.Name, t.Dev)
 		return nil
+	}
+	if t._ipaddrAge > maxIPAddrAge {
+		return fmt.Errorf("ip %s lookup issue, cache expired (%s old)", t.Name, duration.FmtShortDuration(t._ipaddrAge))
+	} else if t._ipaddrAge > 0 {
+		t.Log().Warnf("ip %s lookup issue, cache valid (%s old)", t.Name, duration.FmtShortDuration(t._ipaddrAge))
 	}
 	dev, label, err := t.getDevAndLabel()
 	if err != nil {
@@ -116,6 +124,11 @@ func (t *T) Start(ctx context.Context) error {
 }
 
 func (t *T) Stop(ctx context.Context) error {
+	if t._ipaddrAge > maxIPAddrAge {
+		return fmt.Errorf("ip %s lookup issue, cache expired (%s old)", t.Name, duration.FmtShortDuration(t._ipaddrAge))
+	} else if t._ipaddrAge > 0 {
+		t.Log().Warnf("ip %s lookup issue, cache valid (%s old)", t.Name, duration.FmtShortDuration(t._ipaddrAge))
+	}
 	dev, _ := resip.SplitDevLabel(t.Dev)
 	if err := t.stopAddr(ctx, dev); err != nil {
 		return err
@@ -124,6 +137,14 @@ func (t *T) Stop(ctx context.Context) error {
 }
 
 func (t *T) Status(ctx context.Context) status.T {
+	s := t.statusWithIPAddrCacheTrust(ctx)
+	if s == status.Up && t._ipaddrAge > 0 {
+		return status.Warn
+	}
+	return s
+}
+
+func (t *T) statusWithIPAddrCacheTrust(ctx context.Context) status.T {
 	if t.Name == "" {
 		t.StatusLog().Warn("name not set")
 		return status.NotApplicable
@@ -159,9 +180,18 @@ func (t *T) statusOfAddr(ctx context.Context, dev string) status.T {
 		err   error
 		addrs Addrs
 	)
-	ip := t.ipaddr()
 	if t.Name == "" {
 		return status.NotApplicable
+	}
+	ip := t.ipaddr()
+	if ip == nil {
+		t.StatusLog().Error("ip %s lookup issue, cache miss", t.Name)
+		return status.Undef
+	} else if t._ipaddrAge > maxIPAddrAge {
+		t.StatusLog().Error("ip %s lookup issue, cache expired (%s old)", t.Name, duration.FmtShortDuration(t._ipaddrAge))
+		return status.Warn
+	} else if t._ipaddrAge > 0 {
+		t.StatusLog().Warn("ip %s lookup issue, cache valid (%s old)", t.Name, duration.FmtShortDuration(t._ipaddrAge))
 	}
 	if i, err = net.InterfaceByName(dev); err != nil {
 		if fmt.Sprint(err.(*net.OpError).Unwrap()) == "no such network interface" {
@@ -201,7 +231,10 @@ func (t *T) Abort(ctx context.Context) bool {
 	if t.ipaddr() == nil {
 		return false // let start fail with an explicit error message
 	}
-	if initialStatus := t.Status(ctx); initialStatus == status.Up {
+	if t._ipaddrAge > maxIPAddrAge {
+		return false // let start fail with an explicit error message
+	}
+	if initialStatus := t.statusWithIPAddrCacheTrust(ctx); initialStatus == status.Up {
 		return false // let start fail with an explicit error message
 	}
 	if t.CheckCarrier {
@@ -250,8 +283,13 @@ func (t *T) ipaddr() net.IP {
 	if t._ipaddr != nil {
 		return t._ipaddr
 	}
-	t._ipaddr = t.getIPAddr()
-	return t._ipaddr
+	ip, age, err := getaddr.Lookup(t.Name)
+	if getaddr.IsErrManyAddr(err) {
+		t.StatusLog().Warn("%s", err)
+	}
+	t._ipaddr = ip
+	t._ipaddrAge = age
+	return ip
 }
 
 func (t *T) ipmask() net.IPMask {
@@ -302,33 +340,6 @@ func (t *T) defaultMask() (net.IPMask, error) {
 		return nil, err
 	}
 	return net.Mask, nil
-}
-
-func (t *T) getIPAddr() net.IP {
-	switch {
-	case naming.IsValidFQDN(t.Name) || hostname.IsValid(t.Name):
-		var (
-			l   []net.IP
-			err error
-		)
-		l, err = net.LookupIP(t.Name)
-		if err != nil {
-			t.Log().Errorf("%s", err)
-			return nil
-		}
-		n := len(l)
-		switch n {
-		case 0:
-			t.Log().Errorf("name %s is unresolvable", t.Name)
-		case 1:
-			// ok
-		default:
-			t.Log().Tracef("name %s is resolvables to %d address. Using the first.", t.Name, n)
-		}
-		return l[0]
-	default:
-		return net.ParseIP(t.Name)
-	}
 }
 
 func (t Addrs) Has(ip net.IP) bool {

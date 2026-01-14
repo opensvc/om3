@@ -1,6 +1,7 @@
 package rescontainerocibase
 
 import (
+	"bytes"
 	"context"
 	"fmt"
 	"io"
@@ -69,13 +70,22 @@ func (e *Executor) Enter(ctx context.Context) error {
 	candidates := []string{"/bin/bash", "/bin/sh"}
 	ctx, cancel := context.WithTimeout(ctx, 10*time.Second)
 	inspect, err := e.Inspect(ctx)
-	pid := inspect.PID()
 	if err != nil {
 		return err
 	}
+	if inspect == nil {
+		return fmt.Errorf("the container is not running")
+	}
+	pid := inspect.PID()
+	env, err := pidEnv(pid)
+	if err != nil {
+		return err
+	}
+
 outerLoop:
 	for _, candidate := range candidates {
-		cmd := exec.CommandContext(ctx, "nsenter", "-t", fmt.Sprint(pid), "--all", "-e", "-w", candidate)
+		cmd := exec.CommandContext(ctx, "nsenter", "-t", fmt.Sprint(pid), "--all", "-w", candidate)
+		cmd.Env = env
 		_ = cmd.Run()
 
 		switch cmd.ProcessState.ExitCode() {
@@ -91,7 +101,8 @@ outerLoop:
 		return fmt.Errorf("can't enter: container needs at least one of following command: %s",
 			strings.Join(candidates, ", "))
 	}
-	cmd := exec.Command("nsenter", "-t", fmt.Sprint(pid), "--all", "-e", "-w", enterCmd)
+	cmd := exec.Command("nsenter", "-t", fmt.Sprint(pid), "--all", "-w", enterCmd)
+	cmd.Env = env
 	cmd.Stdin = os.Stdin
 	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stderr
@@ -104,6 +115,31 @@ outerLoop:
 		return err
 	}
 	return nil
+}
+
+func pidEnv(pid int) ([]string, error) {
+	envPath := fmt.Sprintf("/proc/%d/environ", pid)
+
+	data, err := os.ReadFile(envPath)
+	if err != nil {
+		return nil, err
+	}
+
+	// Parse NUL-separated environment
+	raw := bytes.Split(data, []byte{0})
+
+	env := make([]string, 0, len(raw))
+	for _, kv := range raw {
+		if len(kv) == 0 {
+			continue
+		}
+		// must contain '=' and not start with '='
+		if i := bytes.IndexByte(kv, '='); i <= 0 {
+			continue
+		}
+		env = append(env, string(kv))
+	}
+	return env, nil
 }
 
 func (e *Executor) HasImage(ctx context.Context) (bool, string, error) {
