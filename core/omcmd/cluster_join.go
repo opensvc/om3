@@ -233,11 +233,11 @@ func (t *CmdClusterJoin) onJoined(ctx context.Context, cli *client.T) (err error
 		}
 	}
 
-	if err := t.backupLocalConfig(".pre-daemon-join"); err != nil {
+	if err := t.backupLocalConfig(".pre-cluster-join-etc"); err != nil {
 		return err
 	}
 
-	if err := t.deleteLocalConfig(); err != nil {
+	if err := t.cleanupAndMandatoryDirectories(); err != nil {
 		return err
 	}
 

@@ -108,11 +108,15 @@ func (t *CmdClusterLeave) Run() (err error) {
 		return err
 	}
 
-	if err := t.backupLocalConfig(".pre-daemon-leave"); err != nil {
+	if err := t.backupLocalConfig(".pre-cluster-leave-etc"); err != nil {
 		return err
 	}
 
-	if err := t.deleteLocalConfig(); err != nil {
+	if err := t.cleanupVarDir(); err != nil {
+		return fmt.Errorf("cleanup opensvc var dir: %w", err)
+	}
+
+	if err := t.cleanupAndMandatoryDirectories(); err != nil {
 		return err
 	}
 
