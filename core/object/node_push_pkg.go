@@ -62,7 +62,7 @@ func (t Node) pushPkg(data []packages.Pkg) error {
 		ioReader io.Reader
 
 		method = http.MethodPost
-		path   = "/oc3/feed/system"
+		path   = "/oc3/feed/node/system"
 	)
 	oc3, err := t.CollectorClient()
 	if err != nil {
