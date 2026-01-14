@@ -1,8 +1,43 @@
 The DNS name or IP address of the ip resource.
 
+Scoping
+-------
+
 Can be different from one node to the other, in which case the
 `name@<nodename>` scoping syntax can be used.
 
 This is most useful to specify a different ip when the service starts in DRP
 mode, where subnets are likely to be different than those of the production
 datacenter.
+
+DNS name caching
+----------------
+
+If the value is a DNS name, a lookup is done for every resource status
+evaluation.
+
+* If the lookup succeeds, the addr is store in a cache file.
+
+* If the lookup fails, the address is fetched from the cache file.
+
+  * If the cache is not expired (refreshed in the past 19 minutes) the
+    address is trusted:
+
+    * The resource status is degraded to from `up` to `warn`.
+
+    * The resource restarts begin if `restarts > 0`.
+      The restart is a no-op but the resource status is re-evaluated.
+      If the lookup succeeds, the resource status to `up`.
+
+    * The monitor action is triggered if all restarts failed and
+      `monitor_action` is set.
+      For example, a `freezestop` can still succeed using the cached
+      ip address.
+
+  * If the cache is expired (older than 19 minutes):
+
+    * The resource status is `warn`, weither the actual untrusted ip
+      address is plumbed or not.
+
+    * The `stop` and `start` actions no longer work. An admin action
+      is necessary to repair the configuration or dns lookups.
