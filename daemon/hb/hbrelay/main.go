@@ -5,6 +5,8 @@ package hbrelay
 
 import (
 	"context"
+	"crypto/md5"
+	"encoding/hex"
 	"fmt"
 	"io"
 	"os"
@@ -67,6 +69,9 @@ func (t *T) Configure(ctx context.Context) {
 		log.Errorf("no %s.password parsing: %s", t.Name(), err)
 		return
 	}
+	passwordHash := md5.Sum([]byte(password))
+	passwordMD5 := hex.EncodeToString(passwordHash[:])
+
 	insecure := t.GetBool("insecure")
 	nodes := t.GetStrings("nodes")
 	if len(nodes) == 0 {
@@ -77,8 +82,8 @@ func (t *T) Configure(ctx context.Context) {
 	log.Tracef("timeout=%s interval=%s relay=%s insecure=%t nodes=%s onodes=%s", timeout, interval, relay, insecure, nodes, oNodes)
 	t.SetNodes(oNodes)
 	t.SetTimeout(timeout)
-	signature := fmt.Sprintf("type: hb.relay nodes: %s relay: %s timeout: %s interval: %s",
-		nodes, relay, timeout, interval)
+	signature := fmt.Sprintf("type: hb.relay nodes: %s relay: %s timeout: %s interval: %s password-md5: %s",
+		nodes, relay, timeout, interval, passwordMD5)
 	t.SetSignature(signature)
 	log.Tracef("signature: [%s]", signature)
 	name := t.Name()
