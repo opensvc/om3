@@ -31,8 +31,8 @@ type (
 	ridFiles []ridFile
 
 	filesManager struct {
-		// fetched stores the resource files we fetched to avoid uneeded refetch
-		fetched map[string]ridFile
+		// states stores the resource files we store to avoid uneeded refetch
+		states map[string]ridFile
 
 		// attention stores a pending InstanceStatusUpdated event received while the fetch
 		// manager was already processing an event. This serves as a flag to immediately
@@ -47,7 +47,7 @@ type (
 
 func newFilesManager() *filesManager {
 	return &filesManager{
-		fetched: make(map[string]ridFile),
+		states: make(map[string]ridFile),
 	}
 }
 
@@ -61,9 +61,9 @@ func (t ridFiles) Lookup(name string) (ridFile, bool) {
 }
 
 func (t *filesManager) Fetched() ridFiles {
-	l := make(ridFiles, len(t.fetched))
+	l := make(ridFiles, len(t.states))
 	i := 0
-	for _, v := range t.fetched {
+	for _, v := range t.states {
 		l[i] = v
 		i += 1
 	}
@@ -116,7 +116,7 @@ func (t *Manager) initLocalResourceFiles() {
 	for rid, localResourceStatus := range instanceStatus.Resources {
 		for _, f := range localResourceStatus.Files {
 			t.log.Infof("%s: file %s discovered (csum=%s, mtime=%s)", rid, f.Name, f.Checksum, f.Mtime)
-			t.files.fetched[f.Name] = ridFile{
+			t.files.states[f.Name] = ridFile{
 				rid:  rid,
 				File: &f,
 			}
@@ -135,16 +135,20 @@ func (t *Manager) handleLocalResourceFiles(ev *msgbus.InstanceStatusUpdated) {
 			existingFilenames[f.Name] = nil
 
 			if ev.Value.Avail != status.Up {
-				fetchedFile, ok := t.files.fetched[f.Name]
+				fetchedFile, ok := t.files.states[f.Name]
 				if !ok {
 					t.log.Infof("%s: file %s discovered (csum=%s, mtime=%s)", rid, f.Name, f.Checksum, f.Mtime)
-					t.files.fetched[f.Name] = ridFile{
+					t.files.states[f.Name] = ridFile{
 						rid:  rid,
 						File: &f,
 					}
 					needFetch = true
 				} else if fetchedFile.Checksum != f.Checksum {
 					t.log.Infof("%s: file %s altered locally (csum=%s, mtime=%s)", rid, f.Name, f.Checksum, f.Mtime)
+					t.files.states[f.Name] = ridFile{
+						rid:  rid,
+						File: &f,
+					}
 					needFetch = true
 				}
 			}
@@ -153,7 +157,7 @@ func (t *Manager) handleLocalResourceFiles(ev *msgbus.InstanceStatusUpdated) {
 
 	// Prepare the list of filenames we fetched but are no longer existing
 	var toDelete []string
-	for filename, fetchedFile := range t.files.fetched {
+	for filename, fetchedFile := range t.files.states {
 		if _, ok := existingFilenames[filename]; !ok {
 			toDelete = append(toDelete, filename)
 			t.log.Infof("%s: file %s disappeared", fetchedFile.rid, filename)
@@ -163,7 +167,7 @@ func (t *Manager) handleLocalResourceFiles(ev *msgbus.InstanceStatusUpdated) {
 
 	// Mark these filenames as not fetched
 	for _, filename := range toDelete {
-		delete(t.files.fetched, filename)
+		delete(t.files.states, filename)
 	}
 
 	// If a file was changed or removed or discovered, fetch from the up instance
@@ -217,9 +221,6 @@ func (t *Manager) fetchResourceFiles(fetched ridFiles, localInstanceStatus insta
 					File: &file,
 					rid:  rid,
 				}
-			}
-			if !peerFile.Mtime.After(localFile.Mtime) {
-				continue
 			}
 			if peerFile.Checksum == localFile.Checksum {
 				continue
@@ -339,7 +340,7 @@ func (t *Manager) onFetchDone(c cmdFetchDone) {
 	// another peer InstanceStatusUpdated before we update our
 	// own InstanceStatusUpdated
 	for _, file := range c.Files {
-		t.files.fetched[file.Name] = file
+		t.files.states[file.Name] = file
 	}
 	t.files.fetching = false
 	if t.files.attention != nil {
