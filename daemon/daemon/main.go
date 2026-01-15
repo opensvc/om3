@@ -427,6 +427,16 @@ func (t *T) sdWatchDog(ctx context.Context, interval, pubsubTimeout time.Duratio
 		}()
 	}
 
+	sdNotify := func() {
+		if ok, err := sd.NotifyWatchdog(); err != nil {
+			t.log.Warnf("sd-watchdog: %s", err)
+		} else if !ok {
+			t.log.Tracef("sd-watchdog: delivery not needed")
+		} else {
+			t.log.Debugf("sd-watchdog: delivered")
+		}
+	}
+
 	sub := t.bus.Sub("sd-watchdog")
 	sub.AddFilter(&msgbus.WatchDog{}, pubsub.Label{"node", hostname.Hostname()})
 	sub.Start()
@@ -437,42 +447,36 @@ func (t *T) sdWatchDog(ctx context.Context, interval, pubsubTimeout time.Duratio
 			}
 		}()
 	}()
-	ticker := time.NewTicker(interval)
-	defer ticker.Stop()
+	pingTicker := time.NewTicker(interval)
+	defer pingTicker.Stop()
 
-	tickerPubsub := time.NewTicker(pubsubTimeout)
-	defer tickerPubsub.Stop()
+	pubsubTicker := time.NewTicker(pubsubTimeout)
+	defer pubsubTicker.Stop()
 
-	var disabled bool
+	pingEnabled := true
 	t.log.Tracef("sd-watchdog: started")
 	defer t.log.Tracef("sd-watchdog: stopped")
 	for {
 		select {
 		case <-ctx.Done():
 			return
-		case <-ticker.C:
-			if disabled {
-				continue
+		case <-pingTicker.C:
+			if pingEnabled {
+				sdNotify()
 			}
-			if ok, err := sd.NotifyWatchdog(); err != nil {
-				t.log.Warnf("sd-watchdog: %s", err)
-			} else if !ok {
-				t.log.Tracef("sd-watchdog: delivery not needed")
-			} else {
-				t.log.Debugf("sd-watchdog: delivered")
+		case <-pubsubTicker.C:
+			if pingEnabled {
+				pingEnabled = false
+				t.log.Infof("sd-watchdog: suspend ping (pubsub is stale)")
+				sdNotify()
 			}
-		case <-tickerPubsub.C:
-			if disabled {
-				continue
-			}
-			disabled = true
-			t.log.Infof("sd-watchdog: disable on missing pubsub heathcheck")
 		case <-sub.C:
-			if disabled {
-				t.log.Infof("sd-watchdog: enable on pubsub heathcheck")
+			if !pingEnabled {
+				pingEnabled = true
+				t.log.Infof("sd-watchdog: resume ping (pubsub is alive)")
+				sdNotify()
 			}
-			disabled = false
-			tickerPubsub.Reset(pubsubTimeout)
+			pubsubTicker.Reset(pubsubTimeout)
 		}
 	}
 }
