@@ -153,7 +153,7 @@ func (t *T) addRoutes(routes []*types.Route) error {
 			t.Log().Infof("route to %s dev %s already up", route.Dst.String(), dev.Attrs().Name)
 			return nil
 		}
-		t.Log().Infof("add route to %s dev %s", route.Dst, dev.Attrs().Name)
+		t.Log().Infof("add route to %s dev %s", route.Dst.String(), dev.Attrs().Name)
 		return ip.AddRoute(&route.Dst, route.GW, dev)
 	}
 	return nil
