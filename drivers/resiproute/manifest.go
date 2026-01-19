@@ -25,7 +25,6 @@ func (t *T) Manifest() *manifest.T {
 	m := manifest.New(drvID, t)
 	m.Kinds.Or(naming.KindSvc)
 	m.Add(
-		manifest.ContextObjectPath,
 		keywords.Keyword{
 			Attr:     "NetNS",
 			Example:  "container#0",
