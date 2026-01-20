@@ -32,6 +32,26 @@ func (t *sec) GenCert() error {
 	return t.config.Commit()
 }
 
+// GenCertificateSigningRequest generates a certificate signing request. It also creates a private key if needed.
+func (t *sec) GenCertificateSigningRequest() ([]byte, error) {
+	privateKey, err := t.getPriv()
+	if err != nil {
+		return nil, err
+	}
+
+	csrTemplate := x509.CertificateRequest{
+		Subject:            t.subject(),
+		SignatureAlgorithm: x509.SHA256WithRSA,
+	}
+
+	if csrBytes, err := x509.CreateCertificateRequest(rand.Reader, &csrTemplate, privateKey); err != nil {
+		return nil, err
+	} else {
+		csrPEM := pem.EncodeToMemory(&pem.Block{Type: "CERTIFICATE REQUEST", Bytes: csrBytes})
+		return csrPEM, t.config.Commit()
+	}
+}
+
 func (t *sec) genSelfSigned() error {
 	t.log.Tracef("generate a self-signed certificate")
 	priv, err := t.getPriv()
@@ -176,6 +196,8 @@ func (t *sec) subject() pkix.Name {
 		Country:            []string{t.CertInfo("c")},
 		Organization:       []string{t.CertInfo("o")},
 		OrganizationalUnit: []string{t.CertInfo("ou")},
+		Locality:           []string{t.CertInfo("l")},
+		Province:           []string{t.CertInfo("st")},
 		CommonName:         t.CertInfo("cn"),
 	}
 }
