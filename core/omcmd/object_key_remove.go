@@ -12,7 +12,7 @@ import (
 type (
 	CmdObjectKeyRemove struct {
 		OptsGlobal
-		Name string
+		Names []string
 	}
 )
 
@@ -27,7 +27,12 @@ func (t *CmdObjectKeyRemove) Run(kind string) error {
 			if err != nil {
 				return nil, err
 			}
-			return nil, store.RemoveKey(t.Name)
+			for _, name := range t.Names {
+				if err := store.TransactionRemoveKey(name); err != nil {
+					return nil, err
+				}
+			}
+			return nil, store.Config().CommitInvalid()
 		}),
 	).Do()
 }

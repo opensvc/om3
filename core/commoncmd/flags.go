@@ -190,6 +190,10 @@ func FlagKey(flags *pflag.FlagSet, p *string) {
 	flags.StringVar(p, "key", "", "a data key name")
 }
 
+func FlagKeys(flags *pflag.FlagSet, p *[]string) {
+	flags.StringSliceVar(p, "key", nil, "a data key name")
+}
+
 func FlagKeyTo(flags *pflag.FlagSet, p *string) {
 	flags.StringVar(p, "to", "", "the new data key name")
 }
@@ -380,6 +384,10 @@ func FlagFrom(flags *pflag.FlagSet, p *string) {
 
 func FlagKeyName(flags *pflag.FlagSet, p *string) {
 	flags.StringVar(p, "name", "", "the key name")
+}
+
+func FlagKeyNames(flags *pflag.FlagSet, p *[]string) {
+	flags.StringSliceVar(p, "name", nil, "a data key name")
 }
 
 func FlagKeyValue(flags *pflag.FlagSet, p *string) {
