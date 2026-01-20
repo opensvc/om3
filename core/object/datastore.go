@@ -52,6 +52,7 @@ type (
 	// KeyStore is implemented by encrypting KeyStore object kinds (usr, sec).
 	KeyStore interface {
 		GenCert() error
+		GenCertificateSigningRequest() ([]byte, error)
 		PKCS(password []byte) ([]byte, error)
 	}
 )

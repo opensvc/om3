@@ -1517,6 +1517,21 @@ func newCmdObjectCertificateCreate(kind string) *cobra.Command {
 	return cmd
 }
 
+func newCmdObjectCertificateSigningRequest(kind string) *cobra.Command {
+	var options commands.CmdObjectCertificateSigningRequest
+	cmd := &cobra.Command{
+		Use:     "signing-request",
+		Aliases: []string{"sr"},
+		Short:   "format a certificate signing request",
+		RunE: func(cmd *cobra.Command, args []string) error {
+			return options.Run(kind)
+		},
+	}
+	flags := cmd.Flags()
+	addFlagsGlobal(flags, &options.OptsGlobal)
+	return cmd
+}
+
 func newCmdObjectCertificatePKCS(kind string) *cobra.Command {
 	var options commands.CmdObjectCertificatePKCS
 	cmd := &cobra.Command{
