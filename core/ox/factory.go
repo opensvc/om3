@@ -305,7 +305,7 @@ func newCmdObjectKeyRemove(kind string) *cobra.Command {
 	}
 	flags := cmd.Flags()
 	addFlagsGlobal(flags, &options.OptsGlobal)
-	commoncmd.FlagKeyName(flags, &options.Name)
+	commoncmd.FlagKeyNames(flags, &options.Names)
 	return cmd
 }
 
@@ -3289,7 +3289,7 @@ func newCmdDataStoreRemove(kind string) *cobra.Command {
 	}
 	flags := cmd.Flags()
 	addFlagsGlobal(flags, &options.OptsGlobal)
-	commoncmd.FlagKey(flags, &options.Name)
+	commoncmd.FlagKeys(flags, &options.Names)
 	return cmd
 }
 
