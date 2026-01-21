@@ -917,8 +917,13 @@ func (t *T) provisionCommon(ctx context.Context) error {
 	if err := t.CreateMD(ctx); err != nil {
 		return err
 	}
-	if err := t.Up(ctx); err != nil {
+	dev := t.drbd(ctx)
+	if isDefined, err := dev.IsDefined(ctx); err != nil {
 		return err
+	} else if !isDefined {
+		if err := dev.Up(ctx); err != nil {
+			return err
+		}
 	}
 	return nil
 }

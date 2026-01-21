@@ -248,23 +248,31 @@ func (t *T) provision(ctx context.Context) error {
 	if err = t.provisionDir(ctx); err != nil {
 		return err
 	}
-	t.Log().Infof("create file %s", t.File)
-	if f, err = os.Create(t.File); err != nil {
+	if v, err := file.ExistsAndRegular(t.File); err != nil {
 		return err
+	} else if v {
+		t.Log().Infof("file already exists %s", t.File)
+	} else {
+		t.Log().Infof("create file %s", t.File)
+		f, err = os.Create(t.File)
+		if err != nil {
+			return err
+		}
+		defer f.Close()
+		actionrollback.Register(ctx, func(ctx context.Context) error {
+			t.Log().Infof("unlink file %s", t.File)
+			return os.Remove(t.File)
+		})
+		offset := (size / 512 * 512) - 1
+		t.Log().Infof("seek/write file, offset %d", offset)
+		if _, err = f.Seek(offset, 0); err != nil {
+			return err
+		}
+		if _, err = f.Write([]byte{0}); err != nil {
+			return err
+		}
 	}
-	defer f.Close()
-	actionrollback.Register(ctx, func(ctx context.Context) error {
-		t.Log().Infof("unlink file %s", t.File)
-		return os.Remove(t.File)
-	})
-	offset := (size / 512 * 512) - 1
-	t.Log().Infof("seek/write file, offset %d", offset)
-	if _, err = f.Seek(offset, 0); err != nil {
-		return err
-	}
-	if _, err = f.Write([]byte{0}); err != nil {
-		return err
-	}
+
 	if err := t.setFileMode(); err != nil {
 		return err
 	}

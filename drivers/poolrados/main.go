@@ -57,8 +57,17 @@ func (t T) rbdNamespace() string {
 	return t.GetString("rbd_namespace")
 }
 
-func (t T) Capabilities() []string {
-	return []string{"move", "rox", "rwx", "roo", "rwo", "snap", "blk", "shared"}
+func (t T) Capabilities() pool.Capabilities {
+	return pool.Capabilities{
+		pool.CapBlk,
+		pool.CapFile,
+		pool.CapMove,
+		pool.CapROO,
+		pool.CapROX,
+		pool.CapRWO,
+		pool.CapRWX,
+		pool.CapShared,
+	}
 }
 
 func (t T) Usage(ctx context.Context) (pool.Usage, error) {

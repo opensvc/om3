@@ -53,8 +53,13 @@ func (t T) volumeEnv() []string {
 	return t.GetStrings("volume_env")
 }
 
-func (t T) Capabilities() []string {
-	return t.GetStrings("capabilities")
+func (t T) Capabilities() pool.Capabilities {
+	l := t.GetStrings("capabilities")
+	capabilities := make(pool.Capabilities, len(l))
+	for i, s := range t.GetStrings("capabilities") {
+		capabilities[i] = pool.Capability(s)
+	}
+	return capabilities
 }
 
 func (t T) Usage(ctx context.Context) (pool.Usage, error) {

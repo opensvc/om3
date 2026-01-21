@@ -1,7 +1,9 @@
 package oxcmd
 
 import (
+	"bytes"
 	"context"
+	"encoding/json"
 	"fmt"
 	"net/http"
 	"slices"
@@ -16,7 +18,7 @@ import (
 type (
 	CmdObjectKeyRemove struct {
 		OptsGlobal
-		Name string
+		Names []string
 	}
 )
 
@@ -46,10 +48,18 @@ func (t *CmdObjectKeyRemove) Run(kind string) error {
 }
 
 func (t *CmdObjectKeyRemove) RunForPath(ctx context.Context, c *client.T, path naming.Path) error {
-	params := api.DeleteObjectDataKeyParams{
-		Name: t.Name,
+	data := make(api.PatchDataKeys, len(t.Names))
+	for i, name := range t.Names {
+		data[i] = api.PatchDataKey{
+			Action: "remove",
+			Name:   name,
+		}
 	}
-	response, err := c.DeleteObjectDataKeyWithResponse(ctx, path.Namespace, path.Kind, path.Name, &params)
+	r := bytes.NewBuffer(nil)
+	if err := json.NewEncoder(r).Encode(data); err != nil {
+		return err
+	}
+	response, err := c.PatchObjectDataWithBodyWithResponse(ctx, path.Namespace, path.Kind, path.Name, "application/json", r)
 	if err != nil {
 		return err
 	}

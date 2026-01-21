@@ -40,8 +40,15 @@ func (t T) Head() string {
 	return t.path()
 }
 
-func (t T) Capabilities() []string {
-	return []string{"rox", "rwx", "roo", "rwo", "blk"}
+func (t T) Capabilities() pool.Capabilities {
+	return pool.Capabilities{
+		pool.CapBlk,
+		pool.CapFile,
+		pool.CapROO,
+		pool.CapROX,
+		pool.CapRWO,
+		pool.CapRWX,
+	}
 }
 
 func (t T) Usage(ctx context.Context) (pool.Usage, error) {
