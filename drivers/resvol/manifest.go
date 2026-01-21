@@ -46,6 +46,15 @@ func (t *T) Manifest() *manifest.T {
 			Text:         keywords.NewText(fs, "text/kw/type"),
 		},
 		keywords.Keyword{
+			Attr:         "Volatile",
+			Converter:    "bool",
+			Default:      "false",
+			Option:       "volatile",
+			Provisioning: true,
+			Scopable:     true,
+			Text:         keywords.NewText(fs, "text/kw/volatile"),
+		},
+		keywords.Keyword{
 			Attr:         "Access",
 			Candidates:   []string{"rwo", "roo", "rwx", "rox"},
 			Default:      "rwo",

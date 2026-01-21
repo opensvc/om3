@@ -44,8 +44,16 @@ func (t T) poolName() string {
 	return t.GetString("name")
 }
 
-func (t T) Capabilities() []string {
-	return []string{"rox", "rwx", "roo", "rwo", "snap", "blk"}
+func (t T) Capabilities() pool.Capabilities {
+	return pool.Capabilities{
+		pool.CapBlk,
+		pool.CapFile,
+		pool.CapROO,
+		pool.CapROX,
+		pool.CapRWO,
+		pool.CapRWX,
+		pool.CapSnap,
+	}
 }
 
 func (t T) Usage(ctx context.Context) (pool.Usage, error) {

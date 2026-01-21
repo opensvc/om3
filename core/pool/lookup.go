@@ -17,14 +17,15 @@ type (
 		Pools() []Pooler
 	}
 	Lookup struct {
-		Name   string
-		Type   string
-		Access volaccess.T
-		Size   int64
-		Format bool
-		Shared bool
-		Usage  bool
-		Nodes  []string
+		Name     string
+		Type     string
+		Access   volaccess.T
+		Size     int64
+		Format   bool
+		Shared   bool
+		Usage    bool
+		Volatile bool
+		Nodes    []string
 
 		manager manager
 	}
@@ -34,6 +35,19 @@ type (
 		data StatusList
 		by   func(p1, p2 *StatusItem) bool // Closure used in the Less method.
 	}
+)
+
+const (
+	CapBlk      Capability = "blk"
+	CapFile     Capability = "file"
+	CapMove     Capability = "move"
+	CapROO      Capability = "roo"
+	CapROX      Capability = "rox"
+	CapRWO      Capability = "rwo"
+	CapRWX      Capability = "rwx"
+	CapShared   Capability = "shared"
+	CapSnap     Capability = "snap"
+	CapVolatile Capability = "volatile"
 )
 
 func (by By) Sort(l StatusList) {
@@ -72,10 +86,6 @@ func (t Lookup) Do(ctx context.Context) (Pooler, error) {
 			cause = append(cause, fmt.Sprintf("[%s] not matching name %s", p.Name(), t.Name))
 			continue
 		}
-		if t.Type == "" && "shm" == p.Type() {
-			cause = append(cause, fmt.Sprintf("[%s] volatile, type not requested, assume persistence is expected.", p.Name()))
-			continue
-		}
 		if t.Type != "" && t.Type != p.Type() {
 			cause = append(cause, fmt.Sprintf("[%s] type %s not matching %s", p.Name(), p.Type(), t.Type))
 			continue
@@ -84,12 +94,24 @@ func (t Lookup) Do(ctx context.Context) (Pooler, error) {
 			cause = append(cause, fmt.Sprintf("[%s] not %s capable %s", p.Name(), t.Access, p.Capabilities()))
 			continue
 		}
-		if t.Format == false && !HasCapability(p, "blk") {
+		if t.Format == false && !HasCapability(p, CapBlk) {
 			cause = append(cause, fmt.Sprintf("[%s] not blk capable", p.Name()))
 			continue
 		}
-		if t.Shared == true && !HasCapability(p, "shared") {
+		if t.Format == true && !HasCapability(p, CapFile) {
+			cause = append(cause, fmt.Sprintf("[%s] not file capable", p.Name()))
+			continue
+		}
+		if t.Shared == true && !HasCapability(p, CapShared) {
 			cause = append(cause, fmt.Sprintf("[%s] not shared capable", p.Name()))
+			continue
+		}
+		if t.Volatile == true && !HasCapability(p, CapVolatile) {
+			cause = append(cause, fmt.Sprintf("[%s] not volatile capable", p.Name()))
+			continue
+		}
+		if t.Volatile == false && HasCapability(p, CapVolatile) {
+			cause = append(cause, fmt.Sprintf("[%s] not persistent capable", p.Name()))
 			continue
 		}
 		if t.Usage == true {
@@ -112,8 +134,8 @@ func (t Lookup) Do(ctx context.Context) (Pooler, error) {
 	}
 	weight := func(p1, p2 *StatusItem) bool {
 		if !t.Shared {
-			p1shared := p1.HasCapability("shared")
-			p2shared := p2.HasCapability("shared")
+			p1shared := p1.HasCapability(CapShared)
+			p2shared := p2.HasCapability(CapShared)
 			switch {
 			case p1shared && p2shared:
 				// not decisive
@@ -121,10 +143,10 @@ func (t Lookup) Do(ctx context.Context) (Pooler, error) {
 				// not decisive
 			case p1shared && !p2shared:
 				// prefer p2, not shared-capable
-				return true
+				return false
 			case !p1shared && p2shared:
 				// prefer p1, not shared-capable
-				return false
+				return true
 			}
 		}
 		if p1.Usage.Free < p2.Usage.Free {

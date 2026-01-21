@@ -59,6 +59,7 @@ type (
 		PoolType string `json:"type"`
 		Size     *int64 `json:"size"`
 		Format   bool   `json:"format"`
+		Volatile bool   `json:"volatile"`
 		VolNodes []string
 
 		// Context
@@ -403,6 +404,7 @@ func (t *T) poolLookup(withUsage bool) (*pool.Lookup, error) {
 	}
 	l.Format = t.Format
 	l.Shared = t.Shared
+	l.Volatile = t.Volatile
 	l.Access, err = volaccess.Parse(t.Access)
 	if err != nil {
 		return nil, err

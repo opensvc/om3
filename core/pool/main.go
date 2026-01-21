@@ -39,12 +39,12 @@ type (
 
 	Status struct {
 		Usage
-		Capabilities []string  `json:"capabilities"`
-		Errors       []string  `json:"errors"`
-		Head         string    `json:"head"`
-		Type         string    `json:"type"`
-		UpdatedAt    time.Time `json:"updated_at"`
-		VolumeCount  int       `json:"volume_count"`
+		Capabilities Capabilities `json:"capabilities"`
+		Errors       []string     `json:"errors"`
+		Head         string       `json:"head"`
+		Type         string       `json:"type"`
+		UpdatedAt    time.Time    `json:"updated_at"`
+		VolumeCount  int          `json:"volume_count"`
 	}
 	StatusItem struct {
 		Status
@@ -52,7 +52,8 @@ type (
 	}
 
 	StatusList   []StatusItem
-	Capabilities []string
+	Capabilities []Capability
+	Capability   string
 
 	VolumeStatus struct {
 		Pool     string       `json:"pool"`
@@ -85,7 +86,7 @@ type (
 		Type() string
 		Head() string
 		Mappings() map[string]string
-		Capabilities() []string
+		Capabilities() Capabilities
 		Usage(context.Context) (Usage, error)
 		SetConfig(Config)
 		Config() Config
@@ -119,6 +120,18 @@ type (
 		Driver any
 	}
 )
+
+func (t Capabilities) StringSlice() []string {
+	l := make([]string, len(t))
+	for i, c := range t {
+		l[i] = string(c)
+	}
+	return l
+}
+
+func (t Capabilities) String() string {
+	return strings.Join(t.StringSlice(), ",")
+}
 
 func MappingsFromPaths(paths san.Paths) (array.Mappings, error) {
 	m := make(array.Mappings)
@@ -458,10 +471,10 @@ func (t VolumeStatusList) Swap(i, j int) {
 }
 
 func HasAccess(p Pooler, acs volaccess.T) bool {
-	return HasCapability(p, acs.String())
+	return HasCapability(p, Capability(acs.String()))
 }
 
-func HasCapability(p Pooler, s string) bool {
+func HasCapability(p Pooler, s Capability) bool {
 	for _, capa := range p.Capabilities() {
 		if capa == s {
 			return true
@@ -472,10 +485,10 @@ func HasCapability(p Pooler, s string) bool {
 }
 
 func (t *Status) HasAccess(acs volaccess.T) bool {
-	return t.HasCapability(acs.String())
+	return t.HasCapability(Capability(acs.String()))
 }
 
-func (t *Status) HasCapability(s string) bool {
+func (t *Status) HasCapability(s Capability) bool {
 	for _, capa := range t.Capabilities {
 		if capa == s {
 			return true
@@ -490,7 +503,7 @@ func (t *Status) DeepCopy() *Status {
 		Type:         t.Type,
 		Head:         t.Head,
 		VolumeCount:  t.VolumeCount,
-		Capabilities: append([]string{}, t.Capabilities...),
+		Capabilities: append(Capabilities{}, t.Capabilities...),
 		UpdatedAt:    t.UpdatedAt,
 		Usage: Usage{
 			Free: t.Usage.Free,

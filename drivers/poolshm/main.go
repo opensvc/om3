@@ -41,8 +41,16 @@ func (t T) Head() string {
 	return t.path()
 }
 
-func (t T) Capabilities() []string {
-	return []string{"rox", "rwx", "roo", "rwo", "blk"}
+func (t T) Capabilities() pool.Capabilities {
+	return pool.Capabilities{
+		pool.CapBlk,
+		pool.CapFile,
+		pool.CapROO,
+		pool.CapROX,
+		pool.CapRWO,
+		pool.CapRWX,
+		pool.CapVolatile,
+	}
 }
 
 func (t T) Usage(ctx context.Context) (pool.Usage, error) {
@@ -62,7 +70,7 @@ func (t T) Usage(ctx context.Context) (pool.Usage, error) {
 }
 
 func (t *T) mntOpt(size int64) string {
-	sizeOpt := "size=" + sizeconv.ExactBSizeCompact(float64(size))
+	sizeOpt := "size=" + strings.TrimRight(sizeconv.ExactBSizeCompact(float64(size)), "i")
 	opts := t.GetString("mnt_opt")
 	if opts == "" {
 		opts = "mode=700"

@@ -130,8 +130,16 @@ func (t T) arrayNodes(nodenames []string) (map[string][]string, error) {
 	return m, nil
 }
 
-func (t T) Capabilities() []string {
-	return []string{"rox", "rwx", "roo", "rwo", "blk", "fc", "shared"}
+func (t T) Capabilities() pool.Capabilities {
+	return pool.Capabilities{
+		pool.CapBlk,
+		pool.CapFile,
+		pool.CapROO,
+		pool.CapROX,
+		pool.CapRWO,
+		pool.CapRWX,
+		pool.CapShared,
+	}
 }
 
 func (t T) getSRP(ctx context.Context) (arraysymmetrix.SRP, error) {

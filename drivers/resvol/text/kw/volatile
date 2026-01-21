@@ -1,0 +1,2 @@
+Set to true if you want the pool lookup to return a pool creating vol object that discards data on stop.
+Temporary files and secret content usually want `volatile=true`.

@@ -59,8 +59,12 @@ func (a *DaemonAPI) getNodePools(ctx echo.Context, name *string, nodeMap nodesel
 			continue
 		}
 		stat := *e.Value
+		capabilities := make([]string, len(stat.Capabilities))
+		for i, c := range stat.Capabilities {
+			capabilities[i] = string(c)
+		}
 		item := api.Pool{
-			Capabilities: append([]string{}, stat.Capabilities...),
+			Capabilities: capabilities,
 			Free:         stat.Free,
 			Head:         stat.Head,
 			Name:         e.Name,
@@ -89,9 +93,13 @@ func (a *DaemonAPI) getClusterPools(ctx echo.Context, name *string) api.PoolItem
 		}
 		item, ok := m[e.Name]
 		stat := *e.Value
+		capabilities := make([]string, len(stat.Capabilities))
+		for i, c := range stat.Capabilities {
+			capabilities[i] = string(c)
+		}
 		if !ok {
 			item = api.Pool{
-				Capabilities: append([]string{}, stat.Capabilities...),
+				Capabilities: capabilities,
 				Free:         stat.Free,
 				Head:         stat.Head,
 				Name:         e.Name,

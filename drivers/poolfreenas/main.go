@@ -73,8 +73,17 @@ func (t T) arrayName() string {
 	return t.GetString("array")
 }
 
-func (t T) Capabilities() []string {
-	return []string{"rox", "rwx", "roo", "rwo", "blk", "iscsi", "shared"}
+func (t T) Capabilities() pool.Capabilities {
+	return pool.Capabilities{
+		pool.CapBlk,
+		pool.CapFile,
+		pool.CapMove,
+		pool.CapROO,
+		pool.CapROX,
+		pool.CapRWO,
+		pool.CapRWX,
+		pool.CapShared,
+	}
 }
 
 func (t T) Usage(ctx context.Context) (pool.Usage, error) {

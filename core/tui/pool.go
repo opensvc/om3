@@ -91,7 +91,7 @@ func (t *App) updatePoolList(forceUpdate bool) {
 		return []string{
 			poolName,
 			poolData.Type,
-			strings.Join(poolData.Capabilities, ","),
+			poolData.Capabilities.String(),
 			poolData.Head,
 			strconv.FormatInt(int64(poolData.VolumeCount), 10),
 			sizeconv.BSizeCompact(float64(poolData.Size)),
