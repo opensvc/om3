@@ -189,6 +189,15 @@ func (t Store) Swap(i, j int) {
 	t[i], t[j] = t[j], t[i]
 }
 
+func (t Store) ByOption(option string) Store {
+	for _, kw := range t {
+		if kw.Option == option {
+			return Store{kw}
+		}
+	}
+	return Store{}
+}
+
 func (t Store) Lookup(k key.T, kind naming.Kind, sectionType string) Keyword {
 	driverGroup := strings.Split(k.Section, "#")[0]
 	baseOption := k.BaseOption()

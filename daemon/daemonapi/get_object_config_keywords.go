@@ -41,7 +41,7 @@ func (a *DaemonAPI) GetObjectConfigKeywords(ctx echo.Context, namespace string, 
 		}
 		return i.(doc.ConfigProvider), nil
 	})
-	if errors.As(err, doc.ErrBadRequest) {
+	if errors.Is(err, doc.ErrBadRequest) {
 		status = http.StatusBadRequest
 		return JSONProblemf(ctx, status, http.StatusText(status), "%s", err)
 	} else if err != nil {

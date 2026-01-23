@@ -1,6 +1,7 @@
 package doc
 
 import (
+	"errors"
 	"fmt"
 	"strings"
 
@@ -15,35 +16,31 @@ type (
 	ConfigProvider interface {
 		Config() *xconfig.T
 	}
-	errBadRequest struct {
-		text string
-	}
 )
 
 var (
-	ErrBadRequest errBadRequest
+	ErrBadRequest = errors.New("driver and section filters are mutually exclusive")
 )
-
-func (err errBadRequest) Error() string {
-	return err.text
-}
-
-func newErrBadRequest(text string) errBadRequest {
-	return errBadRequest{text: text}
-}
 
 func FilterKeywordStore(store keywords.Store, driver, section, option *string, path naming.Path, getConfigProvider func() (ConfigProvider, error)) (keywords.Store, error) {
 	var err error
 	switch {
 	case driver == nil && section == nil && option == nil:
 	case driver != nil && section != nil && option == nil:
-		return nil, newErrBadRequest("driver and section filters are mutually exclusive")
+		return nil, ErrBadRequest
 	case driver != nil && section == nil && option == nil:
 		l := keywords.ParseIndex(*driver)
 		store, err = store.DriverKeywords(l[0], l[1], path.Kind)
 		if err != nil {
 			return nil, err
 		}
+	case driver != nil && option != nil:
+		l := keywords.ParseIndex(*driver)
+		store, err = store.DriverKeywords(l[0], l[1], path.Kind)
+		if *option == "" && section != nil {
+			return store.ByOption(*section), nil
+		}
+		return store.ByOption(*option), nil
 	case driver == nil && section != nil && option == nil:
 		o, err := getConfigProvider()
 		if err != nil {
