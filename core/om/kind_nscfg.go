@@ -4,6 +4,7 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/opensvc/om3/v3/core/commoncmd"
+	"github.com/opensvc/om3/v3/core/omcmd"
 )
 
 func init() {
@@ -41,7 +42,7 @@ func init() {
 	)
 
 	cmdObjectConfig.AddCommand(
-		commoncmd.NewCmdObjectConfigDoc(kind),
+		omcmd.NewCmdObjectConfigDoc(kind),
 		newCmdObjectConfigEdit(kind),
 		newCmdObjectConfigEval(kind),
 		newCmdObjectConfigGet(kind),

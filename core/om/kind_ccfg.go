@@ -1,6 +1,9 @@
 package om
 
-import "github.com/opensvc/om3/v3/core/commoncmd"
+import (
+	"github.com/opensvc/om3/v3/core/commoncmd"
+	"github.com/opensvc/om3/v3/core/omcmd"
+)
 
 func init() {
 	kind := "ccfg"
@@ -45,7 +48,7 @@ func init() {
 		newCmdObjectUnset(kind),
 	)
 	cmdObjectConfig.AddCommand(
-		commoncmd.NewCmdObjectConfigDoc(kind),
+		omcmd.NewCmdObjectConfigDoc(kind),
 		newCmdObjectConfigEdit(kind),
 		newCmdObjectConfigEval(kind),
 		newCmdObjectConfigGet(kind),
