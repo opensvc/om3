@@ -335,5 +335,7 @@ func (t *App) updateInstanceView() {
 		table1.SetCell(i, 1, tview.NewTableCell(formatRel(instanceState.Monitor.Children)).SetSelectable(false))
 	}
 
-	postamble()
+	if focusTable, ok := t.app.GetFocus().(*tview.Table); !ok || focusTable.GetTitle() != table.GetTitle() {
+		postamble()
+	}
 }
