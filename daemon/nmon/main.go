@@ -833,20 +833,44 @@ func (t *Manager) loadPools() {
 		return
 	}
 	renewed := make(map[string]any)
+
+	var renewedMu sync.Mutex
+	var wg sync.WaitGroup
+
 	renew := func(p pool.Pooler) {
-		ctx, cancel := context.WithTimeout(t.ctx, time.Minute)
+		defer wg.Done()
+
+		ctx, cancel := context.WithTimeout(t.ctx, 10*time.Second)
 		defer cancel()
+
 		poolName := p.Name()
 		data := pool.GetStatus(ctx, p, true)
+
+		if ctx.Err() != nil {
+			t.log.Warnf("loading pool '%s' status: %s", poolName, ctx.Err())
+			return
+		}
+		t.log.Infof("pool '%s' status loaded", poolName)
+
+		renewedMu.Lock()
 		renewed[poolName] = nil
+		renewedMu.Unlock()
+
 		pool.StatusData.Set(poolName, t.localhost, data.DeepCopy())
 		t.publisher.Pub(&msgbus.NodePoolStatusUpdated{Node: t.localhost, Name: poolName, Value: data}, t.labelLocalhost)
+
 	}
 	for _, p := range n.Pools() {
-		renew(p)
+		wg.Add(1)
+		go renew(p)
 	}
+
+	wg.Wait()
 	for _, e := range pool.StatusData.GetByNode(t.localhost) {
-		if _, ok := renewed[e.Name]; !ok {
+		renewedMu.Lock()
+		_, ok := renewed[e.Name]
+		renewedMu.Unlock()
+		if !ok {
 			pool.StatusData.Unset(e.Name, t.localhost)
 		}
 	}
