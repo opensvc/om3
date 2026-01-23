@@ -2,6 +2,7 @@ package om
 
 import (
 	"github.com/opensvc/om3/v3/core/commoncmd"
+	"github.com/opensvc/om3/v3/core/omcmd"
 	"github.com/opensvc/om3/v3/util/hostname"
 )
 
@@ -126,7 +127,7 @@ func init() {
 		newCmdObjectResourceList(kind),
 	)
 	cmdObjectConfig.AddCommand(
-		commoncmd.NewCmdObjectConfigDoc(kind),
+		omcmd.NewCmdObjectConfigDoc(kind),
 		newCmdObjectConfigEdit(kind),
 		newCmdObjectConfigEval(kind),
 		newCmdObjectConfigGet(kind),

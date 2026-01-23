@@ -28,7 +28,7 @@ func NewCmdNodeConfigDoc() *cobra.Command {
 	var options CmdNodeConfigDoc
 	cmd := &cobra.Command{
 		Use:   "doc",
-		Short: "print the documentation of the selected keywords",
+		Short: "print the keyword documentation",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return options.Run()
 		},

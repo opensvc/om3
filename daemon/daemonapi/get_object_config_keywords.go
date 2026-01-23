@@ -1,10 +1,12 @@
 package daemonapi
 
 import (
+	"errors"
 	"net/http"
 
 	"github.com/labstack/echo/v4"
 
+	"github.com/opensvc/om3/v3/core/doc"
 	"github.com/opensvc/om3/v3/core/naming"
 	"github.com/opensvc/om3/v3/core/object"
 	"github.com/opensvc/om3/v3/core/xconfig"
@@ -28,7 +30,7 @@ func (a *DaemonAPI) GetObjectConfigKeywords(ctx echo.Context, namespace string, 
 		Namespace: namespace,
 		Kind:      kind,
 	}
-	store, status, err = filterKeywordStore(ctx, store, params.Driver, params.Section, params.Option, path, func() (configProvider, error) {
+	store, err = doc.FilterKeywordStore(store, params.Driver, params.Section, params.Option, path, func() (doc.ConfigProvider, error) {
 		var (
 			i   any
 			err error
@@ -37,14 +39,18 @@ func (a *DaemonAPI) GetObjectConfigKeywords(ctx echo.Context, namespace string, 
 		if err != nil {
 			return nil, err
 		}
-		return i.(configProvider), nil
+		return i.(doc.ConfigProvider), nil
 	})
-	if err != nil {
+	if errors.As(err, doc.ErrBadRequest) {
+		status = http.StatusBadRequest
+		return JSONProblemf(ctx, status, http.StatusText(status), "%s", err)
+	} else if err != nil {
+		status := http.StatusInternalServerError
 		return JSONProblemf(ctx, status, http.StatusText(status), "%s", err)
 	}
 	r := api.KeywordDefinitionList{
 		Kind:  "KeywordDefinitionList",
-		Items: convertKeywordStore(store),
+		Items: doc.ConvertKeywordStore(store),
 	}
 	return ctx.JSON(http.StatusOK, r)
 }
