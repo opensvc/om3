@@ -5,6 +5,9 @@ import (
 	"encoding/json"
 	"fmt"
 	"slices"
+	"time"
+
+	"github.com/rs/zerolog"
 
 	"github.com/opensvc/om3/v3/core/actionrollback"
 	"github.com/opensvc/om3/v3/core/datarecv"
@@ -17,7 +20,6 @@ import (
 	"github.com/opensvc/om3/v3/util/hostname"
 	"github.com/opensvc/om3/v3/util/sizeconv"
 	"github.com/opensvc/om3/v3/util/udevadm"
-	"github.com/rs/zerolog"
 )
 
 type (
@@ -79,6 +81,10 @@ type (
 	}
 )
 
+const (
+	DefaultCommandTimeout = 10 * time.Second
+)
+
 func New() resource.Driver {
 	t := &T{}
 	return t
@@ -116,6 +122,7 @@ func (t *T) mapDevice(ctx context.Context) error {
 	args = append(args, "map", t.Name)
 	cmd := command.New(
 		command.WithContext(ctx),
+		command.WithTimeout(DefaultCommandTimeout),
 		command.WithName("rbd"),
 		command.WithArgs(args),
 		command.WithLogger(t.Log()),
@@ -144,6 +151,7 @@ func (t *T) unmapDevice(ctx context.Context) error {
 	args = append(args, "unmap", t.Name)
 	cmd := command.New(
 		command.WithContext(ctx),
+		command.WithTimeout(DefaultCommandTimeout),
 		command.WithName("rbd"),
 		command.WithArgs(args),
 		command.WithLogger(t.Log()),
@@ -166,6 +174,7 @@ func (t *T) createDevice(ctx context.Context) error {
 	args = append(args, "create", "--size", fmt.Sprintf("%dB", bytes), t.Name)
 	cmd := command.New(
 		command.WithContext(ctx),
+		command.WithTimeout(DefaultCommandTimeout),
 		command.WithName("rbd"),
 		command.WithArgs(args),
 		command.WithLogger(t.Log()),
@@ -188,6 +197,7 @@ func (t *T) removeDevice(ctx context.Context) error {
 	args = append(args, "remove", t.Name)
 	cmd := command.New(
 		command.WithContext(ctx),
+		command.WithTimeout(DefaultCommandTimeout),
 		command.WithName("rbd"),
 		command.WithArgs(args),
 		command.WithLogger(t.Log()),
@@ -217,6 +227,7 @@ func (t *T) lockDevice(ctx context.Context) error {
 	}
 	cmd := command.New(
 		command.WithContext(ctx),
+		command.WithTimeout(DefaultCommandTimeout),
 		command.WithName("rbd"),
 		command.WithArgs(args),
 		command.WithLogger(t.Log()),
@@ -246,6 +257,7 @@ func (t *T) unlockDevice(ctx context.Context) error {
 	}
 	cmd := command.New(
 		command.WithContext(ctx),
+		command.WithTimeout(DefaultCommandTimeout),
 		command.WithName("rbd"),
 		command.WithArgs(args),
 		command.WithLogger(t.Log()),
@@ -271,6 +283,7 @@ func (t *T) deviceInfo(ctx context.Context) (*RBDInfo, error) {
 	args = append(args, "info", t.Name, "--format", "json")
 	cmd := command.New(
 		command.WithContext(ctx),
+		command.WithTimeout(DefaultCommandTimeout),
 		command.WithName("rbd"),
 		command.WithArgs(args),
 		command.WithLogger(t.Log()),
@@ -299,6 +312,7 @@ func (t *T) listLocks(ctx context.Context) ([]RBDLock, error) {
 	args = append(args, "lock", "list", t.Name, "--format", "json")
 	cmd := command.New(
 		command.WithContext(ctx),
+		command.WithTimeout(DefaultCommandTimeout),
 		command.WithName("rbd"),
 		command.WithArgs(args),
 		command.WithLogger(t.Log()),
@@ -324,6 +338,7 @@ func (t *T) listDevices(ctx context.Context) ([]RBDMap, error) {
 	args = append(args, "device", "list", "--format", "json")
 	cmd := command.New(
 		command.WithContext(ctx),
+		command.WithTimeout(DefaultCommandTimeout),
 		command.WithName("rbd"),
 		command.WithArgs(args),
 		command.WithLogger(t.Log()),
