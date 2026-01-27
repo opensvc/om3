@@ -16,7 +16,7 @@ import (
 )
 
 func (t *App) updateNetworkList() {
-	title := "Networks"
+	title := "networks"
 	titles := []string{"NAME", "TYPE", "NETWORK", "SIZE", "USED", "FREE"}
 	var elementsList [][]string
 

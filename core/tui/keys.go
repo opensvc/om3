@@ -197,7 +197,7 @@ func (t *App) createAddInputBox() {
 		clean()
 	}
 
-	inputKeyName := tview.NewInputField().SetLabel("Key name:").SetFieldWidth(20).
+	inputKeyName := tview.NewInputField().SetLabel("Key name: ").SetFieldWidth(20).
 		SetFieldBackgroundColor(tcell.ColorDarkGray).
 		SetFieldTextColor(tcell.ColorBlack)
 
