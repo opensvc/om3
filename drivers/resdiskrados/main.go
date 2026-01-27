@@ -131,7 +131,10 @@ func (t *T) mapDevice(ctx context.Context) error {
 		command.WithStdoutLogLevel(zerolog.InfoLevel),
 		command.WithStderrLogLevel(zerolog.ErrorLevel),
 	)
-	return cmd.Run()
+	if err := cmd.Run(); err != nil {
+		return fmt.Errorf("map: %v", err)
+	}
+	return nil
 }
 
 func (t *T) unmapDevice(ctx context.Context) error {
@@ -160,7 +163,10 @@ func (t *T) unmapDevice(ctx context.Context) error {
 		command.WithStdoutLogLevel(zerolog.InfoLevel),
 		command.WithStderrLogLevel(zerolog.ErrorLevel),
 	)
-	return cmd.Run()
+	if err := cmd.Run(); err != nil {
+		return fmt.Errorf("unmap: %v", err)
+	}
+	return nil
 }
 
 func (t *T) createDevice(ctx context.Context) error {
@@ -184,7 +190,7 @@ func (t *T) createDevice(ctx context.Context) error {
 		command.WithStderrLogLevel(zerolog.ErrorLevel),
 	)
 	if err := cmd.Run(); err != nil {
-		return err
+		return fmt.Errorf("create: %v", err)
 	}
 	udevadm.Settle()
 	return nil
@@ -206,7 +212,10 @@ func (t *T) removeDevice(ctx context.Context) error {
 		command.WithStdoutLogLevel(zerolog.InfoLevel),
 		command.WithStderrLogLevel(zerolog.ErrorLevel),
 	)
-	return cmd.Run()
+	if err := cmd.Run(); err != nil {
+		return fmt.Errorf("remove: %v", err)
+	}
+	return nil
 }
 
 func (t *T) lockDevice(ctx context.Context) error {
@@ -236,7 +245,10 @@ func (t *T) lockDevice(ctx context.Context) error {
 		command.WithStdoutLogLevel(zerolog.InfoLevel),
 		command.WithStderrLogLevel(zerolog.ErrorLevel),
 	)
-	return cmd.Run()
+	if err := cmd.Run(); err != nil {
+		return fmt.Errorf("lock: %v", err)
+	}
+	return nil
 }
 
 func (t *T) unlockDevice(ctx context.Context) error {
@@ -266,7 +278,10 @@ func (t *T) unlockDevice(ctx context.Context) error {
 		command.WithStdoutLogLevel(zerolog.InfoLevel),
 		command.WithStderrLogLevel(zerolog.ErrorLevel),
 	)
-	return cmd.Run()
+	if err := cmd.Run(); err != nil {
+		return fmt.Errorf("unlock: %v", err)
+	}
+	return nil
 }
 
 func (t *T) Info(ctx context.Context) (resource.InfoKeys, error) {
@@ -296,7 +311,7 @@ func (t *T) deviceInfo(ctx context.Context) (*RBDInfo, error) {
 		return nil, nil
 	}
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("info: %v", err)
 	}
 	var data RBDInfo
 	if err := json.Unmarshal(b, &data); err != nil {
@@ -322,7 +337,7 @@ func (t *T) listLocks(ctx context.Context) ([]RBDLock, error) {
 	)
 	b, err := cmd.Output()
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("lock list: %v", err)
 	}
 	var data []RBDLock
 	if err := json.Unmarshal(b, &data); err != nil {
@@ -348,7 +363,7 @@ func (t *T) listDevices(ctx context.Context) ([]RBDMap, error) {
 	)
 	b, err := cmd.Output()
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("device list: %v", err)
 	}
 	var data []RBDMap
 	if err := json.Unmarshal(b, &data); err != nil {
@@ -547,7 +562,10 @@ func (t *T) disableFeature(ctx context.Context, feature string) error {
 		command.WithStdoutLogLevel(zerolog.InfoLevel),
 		command.WithStderrLogLevel(zerolog.ErrorLevel),
 	)
-	return cmd.Run()
+	if err := cmd.Run(); err != nil {
+		return fmt.Errorf("feature disable: %v", err)
+	}
+	return nil
 }
 
 func (t *T) enableFeature(ctx context.Context, feature string) error {
@@ -566,7 +584,10 @@ func (t *T) enableFeature(ctx context.Context, feature string) error {
 		command.WithStdoutLogLevel(zerolog.InfoLevel),
 		command.WithStderrLogLevel(zerolog.ErrorLevel),
 	)
-	return cmd.Run()
+	if err := cmd.Run(); err != nil {
+		return fmt.Errorf("feature enable: %v", err)
+	}
+	return nil
 
 }
 
