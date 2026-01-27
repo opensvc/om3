@@ -82,7 +82,8 @@ type (
 )
 
 const (
-	DefaultCommandTimeout = 10 * time.Second
+	DefaultCommandTimeout = 30 * time.Second
+	DefaultQueryTimeout   = 10 * time.Second
 )
 
 func New() resource.Driver {
@@ -283,7 +284,7 @@ func (t *T) deviceInfo(ctx context.Context) (*RBDInfo, error) {
 	args = append(args, "info", t.Name, "--format", "json")
 	cmd := command.New(
 		command.WithContext(ctx),
-		command.WithTimeout(DefaultCommandTimeout),
+		command.WithTimeout(DefaultQueryTimeout),
 		command.WithName("rbd"),
 		command.WithArgs(args),
 		command.WithLogger(t.Log()),
@@ -312,7 +313,7 @@ func (t *T) listLocks(ctx context.Context) ([]RBDLock, error) {
 	args = append(args, "lock", "list", t.Name, "--format", "json")
 	cmd := command.New(
 		command.WithContext(ctx),
-		command.WithTimeout(DefaultCommandTimeout),
+		command.WithTimeout(DefaultQueryTimeout),
 		command.WithName("rbd"),
 		command.WithArgs(args),
 		command.WithLogger(t.Log()),
@@ -338,7 +339,7 @@ func (t *T) listDevices(ctx context.Context) ([]RBDMap, error) {
 	args = append(args, "device", "list", "--format", "json")
 	cmd := command.New(
 		command.WithContext(ctx),
-		command.WithTimeout(DefaultCommandTimeout),
+		command.WithTimeout(DefaultQueryTimeout),
 		command.WithName("rbd"),
 		command.WithArgs(args),
 		command.WithLogger(t.Log()),
@@ -538,6 +539,7 @@ func (t *T) disableFeature(ctx context.Context, feature string) error {
 	args = append(args, "feature", "disable", t.Name, feature)
 	cmd := command.New(
 		command.WithContext(ctx),
+		command.WithTimeout(DefaultCommandTimeout),
 		command.WithName("rbd"),
 		command.WithArgs(args),
 		command.WithLogger(t.Log()),
@@ -556,6 +558,7 @@ func (t *T) enableFeature(ctx context.Context, feature string) error {
 	args = append(args, "feature", "enable", t.Name, feature)
 	cmd := command.New(
 		command.WithContext(ctx),
+		command.WithTimeout(DefaultCommandTimeout),
 		command.WithName("rbd"),
 		command.WithArgs(args),
 		command.WithLogger(t.Log()),
