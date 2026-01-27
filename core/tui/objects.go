@@ -297,7 +297,7 @@ func (t *App) updateObjects() {
 	t.lastDraw = time.Now()
 
 	t.objects.Clear()
-	t.objects.SetTitle(fmt.Sprintf("%s objects", t.Frame.Selector))
+	t.objects.SetTitle(fmt.Sprintf("objects matching %s", t.Frame.Selector))
 
 	for i, obj := range objects {
 		row := i

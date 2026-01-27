@@ -178,10 +178,9 @@ var (
 	colorNone      = tcell.ColorNone
 	colorSelected  = tcell.ColorDarkSlateGray
 	colorTitle     = tcell.ColorGray
-	colorHead      = tcell.ColorSteelBlue
-	colorHead2     = tcell.ColorOlive
-	colorHead3     = tcell.ColorCrimson
-	colorInput     = tcell.ColorSteelBlue
+	colorHead      = tcell.NewHexColor(0x315B7E)
+	colorHead2     = tcell.NewHexColor(0x386890)
+	colorHead3     = tcell.NewHexColor(0x23415A)
 	colorHighlight = tcell.ColorWhite
 
 	forceUpdate    = true
@@ -198,6 +197,7 @@ type Options struct {
 
 func Run(options *Options) error {
 	app := NewApp(options)
+	os.Setenv("COLORTERM", "truecolor")
 	if options != nil {
 		if options.Selector != "" {
 			app.Frame.Selector = options.Selector
@@ -241,12 +241,10 @@ func (t *App) updateHead() {
 		}
 	}
 	title := box.GetTitle()
+
 	t.head.SetCell(0, 0, tview.NewTableCell(conn()).SetBackgroundColor(colorHead3))
-	t.head.SetCell(0, 1, tview.NewTableCell("◤").SetBackgroundColor(colorHead).SetTextColor(colorHead3))
-	t.head.SetCell(0, 2, tview.NewTableCell(t.Frame.Current.Cluster.Config.Name).SetBackgroundColor(colorHead))
-	t.head.SetCell(0, 3, tview.NewTableCell("◤").SetBackgroundColor(colorHead2).SetTextColor(colorHead))
-	t.head.SetCell(0, 4, tview.NewTableCell(title).SetBackgroundColor(colorHead2))
-	t.head.SetCell(0, 5, tview.NewTableCell("◤").SetTextColor(colorHead2))
+	t.head.SetCell(0, 1, tview.NewTableCell(" "+t.Frame.Current.Cluster.Config.Name).SetBackgroundColor(colorHead))
+	t.head.SetCell(0, 2, tview.NewTableCell(" "+title).SetBackgroundColor(colorHead2).SetExpansion(1))
 }
 
 func (t viewId) String() string {
@@ -871,6 +869,7 @@ func (t *App) onRuneColumn(event *tcell.EventKey) {
 	clean := func() {
 		t.flex.RemoveItem(t.command)
 		t.command = nil
+		t.focused = false
 		if !t.isOnConfirmation {
 			t.app.SetFocus(t.flex.GetItem(1))
 		}
@@ -1017,10 +1016,13 @@ func (t *App) onRuneColumn(event *tcell.EventKey) {
 			t.errorf("unknown node action: %s", args[0])
 		}
 	}
+	mainStyle := tcell.StyleDefault.Background(colorHead2).Foreground(tcell.ColorWhite)
+	selectedStyle := tcell.StyleDefault.Background(tcell.ColorWhite).Foreground(colorHead2)
 	t.command = tview.NewInputField().
 		SetLabel(":").
 		SetFieldWidth(0).
-		SetFieldBackgroundColor(colorInput).
+		SetFieldBackgroundColor(colorHead3).
+		SetAutocompleteStyles(colorHead2, mainStyle, selectedStyle).
 		SetAutocompleteFunc(func(currentText string) (entries []string) {
 			completions := t.getCompletions(currentText)
 			slices.Sort(completions)
@@ -1044,15 +1046,15 @@ func (t *App) onRuneColumn(event *tcell.EventKey) {
 				case "quit", "q":
 					t.stop()
 				case "connect":
-					t.nav(viewContext)
 					clean()
+					t.nav(viewContext)
 				case "filter":
 					if len(args) < 2 {
 						t.errorf("not enough arguments: filter <expression>")
 						return
 					}
-					t.setFilter(args[1])
 					clean()
+					t.setFilter(args[1])
 					return
 				case "go":
 					if len(args) < 2 {
@@ -1061,36 +1063,36 @@ func (t *App) onRuneColumn(event *tcell.EventKey) {
 					}
 					switch args[1] {
 					case "sec":
-						t.setFilter("*/sec/*")
 						clean()
+						t.setFilter("*/sec/*")
 						return
 					case "cfg":
-						t.setFilter("*/cfg/*")
 						clean()
+						t.setFilter("*/cfg/*")
 						return
 					case "usr":
-						t.setFilter("*/usr/*")
 						clean()
+						t.setFilter("*/usr/*")
 						return
 					case "svc":
-						t.setFilter("*/svc/*")
 						clean()
+						t.setFilter("*/svc/*")
 						return
 					case "vol":
-						t.setFilter("*/vol/*")
 						clean()
+						t.setFilter("*/vol/*")
 						return
 					case "pool":
-						t.nav(viewPool)
 						clean()
+						t.nav(viewPool)
 						return
 					case "network", "net":
-						t.nav(viewNetwork)
 						clean()
+						t.nav(viewNetwork)
 						return
 					case "relay":
-						t.nav(viewRelay)
 						clean()
+						t.nav(viewRelay)
 						return
 					}
 				case "do":
@@ -1098,6 +1100,7 @@ func (t *App) onRuneColumn(event *tcell.EventKey) {
 						t.errorf("not enough arguments: do <action>")
 						return
 					}
+					clean()
 					switch {
 					case len(t.selectedRIDs) > 0:
 						resourceAction(args[1:], t.selectedRIDs)
@@ -1138,7 +1141,6 @@ func (t *App) onRuneColumn(event *tcell.EventKey) {
 							instanceAction(args[1:], selection)
 						}
 					}
-					clean()
 				}
 			case tcell.KeyEscape:
 				clean()
@@ -1147,6 +1149,7 @@ func (t *App) onRuneColumn(event *tcell.EventKey) {
 	t.flex.RemoveItem(t.errs)
 	t.flex.AddItem(t.command, 1, 0, true)
 	t.app.SetFocus(t.command)
+	t.focused = true
 }
 
 func (t *App) setFilter(s string) {
@@ -1301,13 +1304,9 @@ func (t *App) askInput(title string, onEnter func(inputValues ...string) bool, i
 
 		centerFlex := tview.NewFlex().SetDirection(tview.FlexColumn)
 		centerFlex.SetBackgroundColor(tcell.ColorBlack)
-		ratio := 1
-		if len(inputData.label) > 10 {
-			ratio = 2
-		}
 		centerFlex.AddItem(filler, 0, 1, false)
-		centerFlex.AddItem(inputField, 0, 2*ratio, i == 0)
-		centerFlex.AddItem(filler, 0, 1*ratio, false)
+		centerFlex.AddItem(inputField, 0, 2, i == 0)
+		centerFlex.AddItem(filler, 0, 1, false)
 
 		inputFlex.AddItem(centerFlex, 2, 0, i == 0)
 	}
@@ -2446,11 +2445,13 @@ func (t *App) createTable(creator CreateTableOptions) {
 
 	v.Select(t.position.row, t.position.col)
 
-	t.flex.Clear()
-	t.flex.AddItem(t.head, 1, 0, false)
-	t.flex.AddItem(v, 0, 1, true)
-	t.app.SetFocus(v)
-	t.updateHead()
+	if focusTable, ok := t.app.GetFocus().(*tview.Table); !t.focused && (!ok || focusTable.GetTitle() != v.GetTitle()) {
+		t.flex.Clear()
+		t.flex.AddItem(t.head, 1, 0, false)
+		t.flex.AddItem(v, 0, 1, true)
+		t.app.SetFocus(v)
+		t.updateHead()
+	}
 }
 
 func (t *App) selectedString() string {
