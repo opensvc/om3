@@ -23,6 +23,7 @@ import (
 	"github.com/opensvc/om3/v3/core/resourcereqs"
 	"github.com/opensvc/om3/v3/core/schedule"
 	"github.com/opensvc/om3/v3/core/status"
+	"github.com/opensvc/om3/v3/core/topology"
 	"github.com/opensvc/om3/v3/daemon/daemondata"
 	"github.com/opensvc/om3/v3/daemon/daemonsubsystem"
 	"github.com/opensvc/om3/v3/daemon/msgbus"
@@ -46,6 +47,7 @@ type (
 		jobs                Jobs
 		enabled             bool
 		provisioned         map[naming.Path]bool
+		failover            map[naming.Path]bool
 		schedules           Schedules
 		isCollectorJoinable bool
 
@@ -148,6 +150,7 @@ func New(subQS pubsub.QueueSizer, opts ...funcopt.O) *T {
 		events:            make(chan any),
 		jobs:              make(Jobs),
 		schedules:         make(Schedules),
+		failover:          make(map[naming.Path]bool),
 		provisioned:       make(map[naming.Path]bool),
 		subQS:             subQS,
 		lastRunOnAllPeers: make(timeMap),
@@ -259,6 +262,29 @@ func (t Job) Cancel() {
 	t.cancel = nil
 }
 
+func (t *T) peerInstanceLastRun(e schedule.Entry) time.Time {
+	if e.Path.IsZero() {
+		return time.Time{}
+	}
+	if !t.isFailover(e.Path) {
+		return time.Time{}
+	}
+	if e.Config.Require == "" {
+		return time.Time{}
+	}
+	if strings.Contains(e.Config.Require, "down") {
+		return time.Time{}
+	}
+	if strings.Contains(e.Config.Require, "warn") {
+		return time.Time{}
+	}
+	lastRunOnAllPeers, ok := t.lastRunOnAllPeers.Get(e.Path, e.Key)
+	if !ok {
+		return time.Time{}
+	}
+	return lastRunOnAllPeers
+}
+
 func (t *T) createJob(e schedule.Entry) {
 	if !t.enabled {
 		return
@@ -277,9 +303,10 @@ func (t *T) createJob(e schedule.Entry) {
 		// after daemon start: initialize the schedule's LastRunAt from LastRunFile
 		e.LastRunAt = e.GetLastRun()
 	}
-	if lastRunOnAllPeers, ok := t.lastRunOnAllPeers.Get(e.Path, e.Key); ok && e.LastRunAt.Before(lastRunOnAllPeers) {
-		logger.Infof("adjust schedule entry last run time: %s => %s", e.LastRunAt, lastRunOnAllPeers)
-		e.LastRunAt = lastRunOnAllPeers
+
+	if tm := t.peerInstanceLastRun(e); e.LastRunAt.Before(tm) {
+		logger.Infof("adjust schedule entry last run time: %s => %s", e.LastRunAt, tm)
+		e.LastRunAt = tm
 	}
 
 	now := time.Now() // keep before GetNext call
@@ -324,6 +351,11 @@ func (t *T) jobLogger(e schedule.Entry) *plog.Logger {
 	return logger.WithPrefix(prefix)
 }
 
+func (t *T) isFailover(path naming.Path) bool {
+	isFailover, hasFailover := t.failover[path]
+	return hasFailover && isFailover
+}
+
 func (t *T) isProvisioned(path naming.Path) bool {
 	isProvisioned, hasProvisioned := t.provisioned[path]
 	return hasProvisioned && isProvisioned
@@ -354,6 +386,12 @@ func (t *T) onJobAlarm(c eventJobAlarm) {
 			log.Infof("%s: aborted, requirements not yet evaluated", e.RID())
 			return
 		}
+	}
+
+	if tm := t.peerInstanceLastRun(e); c.schedule.LastRunAt.Before(tm) {
+		logger.Infof("aborted, job ran on peer at %s", tm)
+		t.recreateJobFrom(e, tm)
+		return
 	}
 
 	// plan the next run before exec, so another exec can be done
@@ -745,6 +783,8 @@ func (t *T) onDaemonCollectorUpdated(c *msgbus.DaemonCollectorUpdated) {
 func (t *T) onObjectStatusDeleted(c *msgbus.ObjectStatusDeleted) {
 	t.lastRunOnAllPeers.UnsetPath(c.Path)
 	t.reqSatisfied.UnsetPath(c.Path)
+	delete(t.provisioned, c.Path)
+	delete(t.failover, c.Path)
 }
 
 func (t *T) onObjectStatusUpdated(c *msgbus.ObjectStatusUpdated) {
@@ -761,6 +801,7 @@ func (t *T) onObjectStatusUpdated(c *msgbus.ObjectStatusUpdated) {
 		delete(t.provisioned, c.Path)
 		return
 	}
+	t.failover[c.Path] = c.Value.Topology == topology.Failover
 	isProvisioned := c.Value.Provisioned.IsOneOf(provisioned.True, provisioned.NotApplicable)
 	wasProvisioned, ok := t.provisioned[c.Path]
 	t.provisioned[c.Path] = isProvisioned
