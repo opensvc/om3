@@ -5,6 +5,7 @@ import (
 	"strings"
 
 	"github.com/opensvc/om3/v3/core/colorstatus"
+	"github.com/opensvc/om3/v3/core/naming"
 	"github.com/opensvc/om3/v3/core/provisioned"
 	"github.com/opensvc/om3/v3/core/rawconfig"
 	"github.com/opensvc/om3/v3/core/resource"
@@ -46,7 +47,8 @@ func (t States) LoadTreeNodeFolded(head *tree.Node) {
 func (t States) LoadTreeNode(head *tree.Node) {
 	head.AddColumn().AddText(t.Node.Name).SetColor(rawconfig.Color.Bold)
 	head.AddColumn()
-	if t.Config.ActorConfig == nil {
+	switch t.Path.Kind {
+	case naming.KindSec, naming.KindCfg, naming.KindCcfg, naming.KindUsr, naming.KindNscfg:
 		head.AddColumn()
 		head.AddColumn().AddText(t.descString())
 		return
