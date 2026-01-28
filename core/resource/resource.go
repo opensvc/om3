@@ -1226,15 +1226,14 @@ func GetStatus(ctx context.Context, r Driver) Status {
 	// on containers it will set the initial inspect.
 	resStatus := EvalStatus(ctx, r)
 	return Status{
-		Label:         formatResourceLabel(ctx, r),
-		Type:          r.Manifest().DriverID.String(),
-		Status:        resStatus,
-		Subset:        r.RSubset(),
-		Tags:          r.TagSet(),
-		Log:           r.StatusLog().Entries(),
-		IsProvisioned: getProvisionStatus(ctx, r),
-		Info:          getStatusInfo(ctx, r),
-		Files:         getFiles(ctx, r),
+		Label:  formatResourceLabel(ctx, r),
+		Type:   r.Manifest().DriverID.String(),
+		Status: resStatus,
+		Subset: r.RSubset(),
+		Tags:   r.TagSet(),
+		Log:    r.StatusLog().Entries(),
+		Info:   getStatusInfo(ctx, r),
+		Files:  getFiles(ctx, r),
 
 		IsStopped:   r.IsStopped(),
 		IsMonitored: r.IsMonitored(),
@@ -1243,6 +1242,9 @@ func GetStatus(ctx context.Context, r Driver) Status {
 		IsStandby:   r.IsStandby(),
 		IsDisabled:  r.IsDisabled(),
 		IsEncap:     r.IsEncap(),
+
+		// keep last because all previous func calls can add entries
+		IsProvisioned: getProvisionStatus(ctx, r),
 	}
 }
 
