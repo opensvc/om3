@@ -218,7 +218,6 @@ func (t *actor) resourceStatusEval(ctx context.Context, data *instance.Status, m
 		var (
 			resourceStatus      resource.Status
 			encapInstanceStatus *instance.EncapStatus
-			err                 error
 		)
 
 		if v, err := t.isEncapNodeMatchingResource(r); err != nil {
@@ -245,20 +244,24 @@ func (t *actor) resourceStatusEval(ctx context.Context, data *instance.Status, m
 		}
 
 		// If the resource is a encap capable container, evaluate the encap instance
-		if encapContainer, ok := r.(resource.Encaper); ok {
-			if resourceStatus.Status.Is(status.Up, status.StandbyUp) {
-				if encapInstanceStatus, err = t.resourceStatusEvalEncap(ctx, encapContainer, false); err != nil {
-					log := resource.NewStatusLog(resourceStatus.Log...)
-					log.Error("%s", err)
-					resourceStatus.Log = log.Entries()
-				}
-			} else {
-				encapInstanceStatus = &instance.EncapStatus{
-					Status: instance.Status{
-						Avail:   status.Down,
-						Overall: status.Down,
-					},
-					Hostname: encapContainer.GetHostname(),
+		if encapNodes, err := t.EncapNodes(); err != nil {
+			return err
+		} else if len(encapNodes) > 0 {
+			if encapContainer, ok := r.(resource.Encaper); ok {
+				if resourceStatus.Status.Is(status.Up, status.StandbyUp) {
+					if encapInstanceStatus, err = t.resourceStatusEvalEncap(ctx, encapContainer, false); err != nil {
+						log := resource.NewStatusLog(resourceStatus.Log...)
+						log.Error("%s", err)
+						resourceStatus.Log = log.Entries()
+					}
+				} else {
+					encapInstanceStatus = &instance.EncapStatus{
+						Status: instance.Status{
+							Avail:   status.Down,
+							Overall: status.Down,
+						},
+						Hostname: encapContainer.GetHostname(),
+					}
 				}
 			}
 		}
