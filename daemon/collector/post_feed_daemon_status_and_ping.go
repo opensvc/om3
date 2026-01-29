@@ -13,6 +13,7 @@ import (
 
 	"github.com/opensvc/om3/v3/core/clusterdump"
 	"github.com/opensvc/om3/v3/core/naming"
+	"github.com/opensvc/om3/v3/core/oc3path"
 	"github.com/opensvc/om3/v3/daemon/msgbus"
 	"github.com/opensvc/om3/v3/util/xmap"
 )
@@ -95,7 +96,7 @@ func (t *T) postPing() error {
 		err error
 
 		method = http.MethodPost
-		path   = "/oc3/feed/daemon/ping"
+		path   = oc3path.FeedDaemonPing
 
 		ioReader io.Reader
 	)
@@ -180,7 +181,7 @@ func (t *T) postChanges() error {
 		err error
 
 		method = http.MethodPost
-		path   = "/oc3/feed/daemon/changes"
+		path   = oc3path.FeedDaemonChange
 	)
 	now := time.Now()
 
@@ -235,7 +236,8 @@ func (t *T) postStatus() error {
 		err      error
 		ioReader io.Reader
 		method   = http.MethodPost
-		path     = "/oc3/feed/daemon/status"
+
+		path = oc3path.FeedDaemonStatus
 	)
 	now := time.Now()
 	body := postFeedDaemonStatus{

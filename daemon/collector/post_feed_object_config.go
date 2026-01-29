@@ -18,6 +18,7 @@ import (
 	"github.com/opensvc/om3/v3/core/cluster"
 	"github.com/opensvc/om3/v3/core/instance"
 	"github.com/opensvc/om3/v3/core/naming"
+	"github.com/opensvc/om3/v3/core/oc3path"
 	"github.com/opensvc/om3/v3/core/rawconfig"
 	"github.com/opensvc/om3/v3/daemon/daemonenv"
 	"github.com/opensvc/om3/v3/daemon/daemonsubsystem"
@@ -241,7 +242,7 @@ func (t *T) doPostObjectConfig(checksum string, b []byte, p naming.Path) error {
 		err error
 
 		method = http.MethodPost
-		path   = "/oc3/feed/object/config"
+		path   = oc3path.FeedObjectConfig
 	)
 
 	ctx, cancel := context.WithTimeout(t.ctx, defaultPostMaxDuration)
