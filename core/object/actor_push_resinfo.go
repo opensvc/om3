@@ -11,6 +11,7 @@ import (
 	"path/filepath"
 
 	"github.com/opensvc/om3/v3/core/actioncontext"
+	"github.com/opensvc/om3/v3/core/oc3path"
 	"github.com/opensvc/om3/v3/core/resource"
 	"github.com/opensvc/om3/v3/core/resourceselector"
 )
@@ -116,7 +117,7 @@ func (t *actor) collectorPushResInfo(infos resource.Infos) error {
 		ioReader io.Reader
 
 		method = http.MethodPost
-		path   = "/oc3/feed/instance/resource_info"
+		path   = oc3path.FeedInstanceResinfo
 	)
 	node, err := t.Node()
 	if err != nil {

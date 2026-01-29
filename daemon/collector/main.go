@@ -64,8 +64,8 @@ type (
 		instances map[string]struct{}
 
 		// daemonStatusChange is used when we have to post data to collector:
-		// if the map is empty, we POST /oc3/feed/daemon/ping
-		// else we POST /oc3/feed/daemon/status with header XDaemonChange
+		// if the map is empty, we POST oc3path.FeedDaemonPing
+		// else we POST oc3path.FeedDaemonStatus with header XDaemonChange
 		//
 		// The map keys are:
 		//   - @<nodename>: on node removed or node frozen state changed
@@ -78,7 +78,7 @@ type (
 
 		clusterData clusterDataer
 
-		// featurePostChange when true, POST /oc3/feed/daemon/change instead of
+		// featurePostChange when true, POST oc3path.FeedDaemonChange instead of
 		featurePostChange bool
 
 		// objectConfigToSend is a map of path to the most recent

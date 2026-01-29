@@ -1,11 +1,14 @@
 package requestfactory
 
 import (
+	"fmt"
 	"net/http"
 	"net/url"
 	"testing"
 
 	"github.com/stretchr/testify/require"
+
+	"github.com/opensvc/om3/v3/core/oc3path"
 )
 
 func TestNew(t *testing.T) {
@@ -23,8 +26,8 @@ func TestNew(t *testing.T) {
 	}{
 		{
 			method:      "POST",
-			relPath:     "/oc3/daemon/ping",
-			expectedUrl: "https://localhost:128/proxy/oc3/daemon/ping",
+			relPath:     oc3path.FeedDaemonPing,
+			expectedUrl: fmt.Sprintf("https://localhost:128/proxy%s", oc3path.FeedDaemonPing),
 		},
 		{
 			method:      "GET",

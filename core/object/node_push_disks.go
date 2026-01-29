@@ -10,6 +10,7 @@ import (
 	"os"
 	"path/filepath"
 
+	"github.com/opensvc/om3/v3/core/oc3path"
 	"github.com/opensvc/om3/v3/core/rawconfig"
 
 	"github.com/opensvc/om3/v3/core/naming"
@@ -118,7 +119,7 @@ func (t Node) pushDisks(data disks.Disks) error {
 		ioReader io.Reader
 
 		method = http.MethodPost
-		path   = "/oc3/feed/node/disk"
+		path   = oc3path.FeedNodeDisk
 	)
 	oc3, err := t.CollectorClient()
 	if err != nil {

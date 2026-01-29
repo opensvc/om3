@@ -11,6 +11,7 @@ import (
 	"os"
 	"path/filepath"
 
+	"github.com/opensvc/om3/v3/core/oc3path"
 	"github.com/opensvc/om3/v3/core/rawconfig"
 	"github.com/opensvc/om3/v3/util/asset"
 	"github.com/opensvc/om3/v3/util/hostname"
@@ -243,7 +244,7 @@ func (t Node) pushAsset(data asset.Data) error {
 		ioReader io.Reader
 
 		method = http.MethodPost
-		path   = "/oc3/feed/node/system"
+		path   = oc3path.FeedNodeSystem
 	)
 	oc3, err := t.CollectorClient()
 	if err != nil {
