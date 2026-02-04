@@ -84,7 +84,11 @@ func (t *core) Orchestrate() string {
 }
 
 func (t *core) FQDN() string {
-	return t.fqdn().String()
+	if fqdn := t.fqdn(); fqdn != nil {
+		return fqdn.String()
+	} else {
+		return ""
+	}
 }
 
 func (t *core) Domain() string {
