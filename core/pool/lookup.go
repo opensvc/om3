@@ -110,7 +110,7 @@ func (t Lookup) Do(ctx context.Context) (Pooler, error) {
 			cause = append(cause, fmt.Sprintf("[%s] not volatile capable", p.Name()))
 			continue
 		}
-		if t.Volatile == false && HasCapability(p, CapVolatile) {
+		if t.Volatile == false && HasCapability(p, CapVolatile) && t.Type != "shm" {
 			cause = append(cause, fmt.Sprintf("[%s] not persistent capable", p.Name()))
 			continue
 		}
