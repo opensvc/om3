@@ -2,9 +2,37 @@ The capabilities exposed by the virtual pool.
 
 Supported capabilities:
 
-* `shared`
-* `roo`
-* `rox`
-* `rwo`
-* `rwx`
 * `blk`
+  The pool can satisfy the `format=false` requirement.
+
+* `file`
+  The pool can satisfy the `format=true` requirement.
+
+* `move`
+  The pool volumes can host data for resources proposing live migration (e.g. container.kvm).
+
+* `roo`
+  Read-Only from One node.
+  The pool can satisfy the `access=roo` requirement.
+
+* `rox`
+  Read-Only from Many nodes.
+  The pool can satisfy the `access=rox` requirement.
+
+* `rwo`
+  Read-Write from One node.
+  The pool can satisfy the `access=rwo` requirement.
+
+* `rwx`
+  Read-Write from Many nodes.
+  The pool can satisfy the `access=rwx` requirement.
+
+* `shared`
+  The same technical object is used on all nodes.
+
+* `snap`
+  The volume can be snapshotted.
+
+* `volatile`
+  The pool can satisfy the `volatile=true` requirement.
+
