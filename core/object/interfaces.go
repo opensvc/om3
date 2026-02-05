@@ -5,7 +5,6 @@ import (
 
 	"github.com/opensvc/om3/v3/core/keyop"
 	"github.com/opensvc/om3/v3/core/rawconfig"
-	"github.com/opensvc/om3/v3/core/schedule"
 	"github.com/opensvc/om3/v3/core/xconfig"
 	"github.com/opensvc/om3/v3/util/key"
 )
@@ -30,9 +29,5 @@ type (
 		Set(context.Context, ...keyop.T) error
 		Update(context.Context, []string, []key.T, []keyop.T) error
 		Unset(context.Context, ...key.T) error
-	}
-
-	scheduler interface {
-		Schedules() schedule.Table
 	}
 )
