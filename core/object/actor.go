@@ -271,7 +271,7 @@ func (t *actor) ConfigureResources() {
 		}
 		driverGroup := rid.DriverGroup()
 		if driverGroup == driver.GroupUnknown {
-			t.log.Attr("rid", k).Tracef("unknown driver group in rid %s", k)
+			t.log.Tracef("unknown driver group in rid %s", k)
 			continue
 		}
 		typeKey := key.New(k, "type")
@@ -306,30 +306,35 @@ func (t *actor) ConfigureResources() {
 				}
 				postponed[o.RID] = append(postponed[o.RID], r)
 			default:
-				t.log.Attr("rid", k).Errorf("configure resource %s: %s", k, err)
+				r.SetConfigured(err)
+				t.log.Tracef("resource %s configuration error: %s", k, err)
+				t._resources = append(t._resources, r)
 			}
 			continue
 		}
 		dur := time.Now().Sub(rBegin)
-		t.log.Attr("rid", k).Attr("duration", dur).Tracef("resource %s configured in %s", k, dur)
+		t.log.Tracef("resource %s configured in %s", k, dur)
 		t._resources = append(t._resources, r)
 	}
 	for _, resources := range postponed {
 		for _, r := range resources {
 			rBegin := time.Now()
+			k := r.RID()
 			if err := t.ReconfigureResource(r); err != nil {
-				t.log.Attr("rid", r.RID()).Errorf("configure postponed resource %s: %s", r.RID(), err)
+				r.SetConfigured(err)
+				t.log.Tracef("postponed resource %s configuration error: %s", k, err)
+				t._resources = append(t._resources, r)
 				continue
 			}
 			dur := time.Now().Sub(rBegin)
-			t.log.Attr("rid", r.RID()).Attr("duration", dur).Tracef("postponed resource %s configured in %s", r.RID(), dur)
+			t.log.Tracef("postponed resource %s configured in %s", k, dur)
 			t._resources = append(t._resources, r)
 		}
 	}
 	t.resources = t._resources
 	t._resources = nil
 	dur := time.Now().Sub(begin)
-	t.log.Attr("duration", dur).Tracef("all resources configured in %s", dur)
+	t.log.Tracef("%d resources configured in %s", len(t.resources), dur)
 	return
 }
 
@@ -339,6 +344,7 @@ func (t *actor) ReconfigureResource(r resource.Driver) error {
 
 func (t *actor) configureResource(r resource.Driver, rid string) error {
 	r.SetRID(rid)
+	r.SetObject(t)
 	m := r.Manifest()
 	getDNS := func() ([]string, error) {
 		n, err := t.Node()
@@ -482,7 +488,6 @@ func (t *actor) configureResource(r resource.Driver, rid string) error {
 			}
 		}
 	}
-	r.SetObject(t)
 	r.SetPG(t.pgConfig(rid))
 	if i, ok := r.(resource.Configurer); ok {
 		if err := i.Configure(); err != nil {

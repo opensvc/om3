@@ -95,6 +95,9 @@ func (t *actor) masterResInfo(ctx context.Context) ([]resource.Info, error) {
 	resourceLister := resourceselector.FromContext(ctx, t)
 	barrier := actioncontext.To(ctx)
 	err := t.ResourceSets().Do(ctx, resourceLister, barrier, "resinfo", func(ctx context.Context, r resource.Driver) error {
+		if !r.IsConfigured() {
+			return nil
+		}
 		info, err := resource.GetInfo(ctx, r)
 		if err != nil {
 			return err
