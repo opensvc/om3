@@ -36,7 +36,7 @@ func Test_Monitor_Unmarshal(t *testing.T) {
 			StateUpdatedAt:       t0,
 			Resources: ResourceMonitors{
 				"fs#1": ResourceMonitor{
-					Restart: ResourceMonitorRestart{
+					Restart: &ResourceMonitorRestart{
 						Remaining: 1,
 						LastAt:    time.Date(2020, time.March, 4, 16, 33, 23, 167003830, time.UTC),
 					},
@@ -62,8 +62,8 @@ func Test_Monitor_DeepCopy(t *testing.T) {
 		LocalExpectUpdatedAt:  time.Now(),
 		GlobalExpectUpdatedAt: time.Now(),
 		Resources: ResourceMonitors{
-			"a": ResourceMonitor{Restart: ResourceMonitorRestart{Remaining: 1, LastAt: time.Now()}},
-			"b": ResourceMonitor{Restart: ResourceMonitorRestart{Remaining: 8, LastAt: time.Now()}},
+			"a": ResourceMonitor{Restart: &ResourceMonitorRestart{Remaining: 1, LastAt: time.Now()}},
+			"b": ResourceMonitor{Restart: &ResourceMonitorRestart{Remaining: 8, LastAt: time.Now()}},
 		},
 	}
 	mon2 := *mon1.DeepCopy()
