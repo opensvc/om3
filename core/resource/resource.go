@@ -67,12 +67,14 @@ type (
 
 		// common
 		ApplyPGChain(context.Context) error
+		GetConfigurationError() error
 		GetObject() any
 		GetPG() *pg.Config
 		GetPGID() string
 		GetRestartDelay() time.Duration
 		ID() *resourceid.T
 		IsActionDisabled() bool
+		IsConfigured() bool
 		IsDisabled() bool
 		IsEncap() bool
 		IsMonitored() bool
@@ -83,6 +85,7 @@ type (
 		IsStandby() bool
 		IsStopped() bool
 		IsStatusDisabled() bool
+		SetConfigured(error)
 
 		// Label returns a formatted short description of the Resource
 		Label(context.Context) string
@@ -149,11 +152,12 @@ type (
 		EnableProvision         bool
 		EnableUnprovision       bool
 
-		statusLog    StatusLog
-		log          plog.Logger
-		object       any
-		objectDriver ObjectDriver
-		pg           *pg.Config
+		configurationError error
+		statusLog          StatusLog
+		log                plog.Logger
+		object             any
+		objectDriver       ObjectDriver
+		pg                 *pg.Config
 	}
 
 	// devReservabler is an interface implemented by resource drivers that want the core resource
@@ -363,7 +367,7 @@ func (t *T) IsOptional() bool {
 
 // IsEncap returns true if the resource definition contains encap=true.
 func (t *T) IsEncap() bool {
-	return t.Encap || t.Tags.Has("encap")
+	return t.Encap || t.MatchTag("encap")
 }
 
 // IsDisabled returns true if the resource definition contains disable=true.
@@ -412,6 +416,18 @@ func (t *T) IsStatusDisabled() bool {
 // In this case, the resource actions like stop and start are skipped.
 func (t *T) IsActionDisabled() bool {
 	return t.MatchTag("noaction")
+}
+
+func (t *T) IsConfigured() bool {
+	return t.configurationError == nil
+}
+
+func (t *T) GetConfigurationError() error {
+	return t.configurationError
+}
+
+func (t *T) SetConfigured(err error) {
+	t.configurationError = err
 }
 
 // RestartCount returns the value of the Restart field
@@ -1120,6 +1136,10 @@ func stop(ctx context.Context, r Driver) error {
 func EvalStatus(ctx context.Context, r Driver) status.T {
 	r.StatusLog().Reset()
 	s := status.NotApplicable
+	if err := r.GetConfigurationError(); err != nil {
+		r.StatusLog().Error("%s", err)
+		return s
+	}
 	var tags []string
 	if r.IsActionDisabled() {
 		tags = append(tags, "actions disabled")
