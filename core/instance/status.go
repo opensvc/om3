@@ -138,7 +138,9 @@ func ResourceFlagsString(rid string, mon Monitor, status Status, rstatus resourc
 	restartFlag := func() string {
 		retries := 0
 		if rmon := mon.Resources.Get(rid); rmon != nil {
-			retries = rmon.Restart.Remaining
+			if rmon.Restart != nil {
+				retries = rmon.Restart.Remaining
+			}
 		}
 		s := rstatus.RestartFlag(retries)
 		if s == "." {

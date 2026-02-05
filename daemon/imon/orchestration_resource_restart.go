@@ -480,6 +480,10 @@ func (t *Manager) orchestrateResourcePlan(rid string, rcfg *instance.ResourceCon
 		err = fmt.Errorf("orchestrate resource plan called with nil resource config")
 		return
 	}
+	if rmon.Restart == nil {
+		// Resource not supporting restarts, e.g. task
+		return
+	}
 
 	or := t.orchestrationResource(rcfg.IsStandby)
 

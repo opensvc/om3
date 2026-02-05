@@ -1145,11 +1145,13 @@ func (t *Manager) initResourceMonitor() {
 
 	m := make(instance.ResourceMonitors, 0)
 	for rid, rcfg := range t.instConfig.Resources {
-		m[rid] = instance.ResourceMonitor{
-			Restart: instance.ResourceMonitorRestart{
+		resourceMonitor := instance.ResourceMonitor{}
+		if rcfg.Restart > 0 {
+			resourceMonitor.Restart = &instance.ResourceMonitorRestart{
 				Remaining: rcfg.Restart,
-			},
+			}
 		}
+		m[rid] = resourceMonitor
 		if rcfg.IsMonitored && hasMonitorActionNone {
 			t.orchestrationResource(rcfg.IsStandby).log.Infof("rid %s is monitored, but monitor action is none", rid)
 		}

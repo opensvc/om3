@@ -63,7 +63,7 @@ type (
 		IsDisabled   bool           `json:"is_disabled"`
 		IsMonitored  bool           `json:"is_monitored"`
 		IsStandby    bool           `json:"is_standby"`
-		Restart      int            `json:"restart"`
+		Restart      int            `json:"restart,omitempty"`
 		RestartDelay *time.Duration `json:"restart_delay"`
 	}
 	SubsetConfig struct {
