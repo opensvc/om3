@@ -67,13 +67,11 @@ type (
 
 		// common
 		ApplyPGChain(context.Context) error
-		GetConfigurationError() error
 		GetObject() any
 		GetPG() *pg.Config
 		GetPGID() string
 		ID() *resourceid.T
 		IsActionDisabled() bool
-		IsConfigured() bool
 		IsDisabled() bool
 		IsEncap() bool
 		IsMonitored() bool
@@ -84,7 +82,9 @@ type (
 		IsStandby() bool
 		IsStopped() bool
 		IsStatusDisabled() bool
-		SetConfigured(error)
+
+		GetConfigurationError() error
+		SetConfigurationError(error)
 
 		// Label returns a formatted short description of the Resource
 		Label(context.Context) string
@@ -427,15 +427,11 @@ func (t *T) IsActionDisabled() bool {
 	return t.MatchTag("noaction")
 }
 
-func (t *T) IsConfigured() bool {
-	return t.configurationError == nil
-}
-
 func (t *T) GetConfigurationError() error {
 	return t.configurationError
 }
 
-func (t *T) SetConfigured(err error) {
+func (t *T) SetConfigurationError(err error) {
 	t.configurationError = err
 }
 
