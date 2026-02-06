@@ -268,9 +268,6 @@ func (t *Manager) orchestrateResourceRestart() {
 			continue
 		}
 		rmon := t.state.Resources.Get(rid)
-		if rmon == nil {
-			continue
-		}
 		needRestart, needMonitorAction, err := t.orchestrateResourcePlan(rid, rcfg, rmon, rstat, started)
 		if err != nil {
 			t.log.Errorf("orchestrate resource plan for resource %s: %s", rid, err)
@@ -476,13 +473,6 @@ func (t *Manager) orchestrateResourcePlan(rid string, rcfg *instance.ResourceCon
 	if rcfg == nil {
 		err = fmt.Errorf("orchestrate resource plan called with nil resource monitor")
 		return
-	} else if rmon == nil {
-		err = fmt.Errorf("orchestrate resource plan called with nil resource config")
-		return
-	}
-	if rmon.Restart == nil {
-		// Resource not supporting restarts, e.g. task
-		return
 	}
 
 	or := t.orchestrationResource(rcfg.IsStandby)
@@ -494,6 +484,9 @@ func (t *Manager) orchestrateResourcePlan(rid string, rcfg *instance.ResourceCon
 	}
 
 	resetRemaining := func(rid string, reason string) {
+		if rmon == nil || rmon.Restart == nil {
+			return
+		}
 		if rmon.Restart.Remaining != rcfg.Restart {
 			or.log.Infof("rid %s %s: reset restart count to config value (%d -> %d)", rid, reason, rmon.Restart.Remaining, rcfg.Restart)
 			rmon.Restart.Remaining = rcfg.Restart
@@ -525,7 +518,12 @@ func (t *Manager) orchestrateResourcePlan(rid string, rcfg *instance.ResourceCon
 	case t.monitorActionCalled():
 		or.log.Tracef("planFor rid %s skipped: monitor action has been already called", rid)
 	case rcfg.IsStandby || started:
-		if rmon.Restart.Remaining == 0 && rcfg.IsMonitored {
+		if rmon == nil || rmon.Restart == nil {
+			if rcfg.IsMonitored {
+				or.log.Infof("rid %s status %s, no restart configured: need monitor action", rid, rStatus.Status)
+				needMonitorAction = true
+			}
+		} else if rmon.Restart.Remaining == 0 && rcfg.IsMonitored {
 			or.log.Infof("rid %s status %s, restart remaining %d out of %d: need monitor action", rid, rStatus.Status, rmon.Restart.Remaining, rcfg.Restart)
 			needMonitorAction = true
 		} else if rmon.Restart.Remaining > 0 {
