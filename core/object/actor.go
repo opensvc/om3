@@ -306,7 +306,7 @@ func (t *actor) ConfigureResources() {
 				}
 				postponed[o.RID] = append(postponed[o.RID], r)
 			default:
-				r.SetConfigured(err)
+				r.SetConfigurationError(err)
 				t.log.Tracef("resource %s configuration error: %s", k, err)
 				t._resources = append(t._resources, r)
 			}
@@ -321,7 +321,7 @@ func (t *actor) ConfigureResources() {
 			rBegin := time.Now()
 			k := r.RID()
 			if err := t.ReconfigureResource(r); err != nil {
-				r.SetConfigured(err)
+				r.SetConfigurationError(err)
 				t.log.Tracef("postponed resource %s configuration error: %s", k, err)
 				t._resources = append(t._resources, r)
 				continue

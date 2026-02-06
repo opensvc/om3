@@ -312,7 +312,7 @@ func (t T) doSerial(ctx context.Context, l ResourceLister, resources resource.Dr
 			pgMgr.Register(r.GetPG())
 		}
 		if err := l.ReconfigureResource(r); err != nil {
-			r.SetConfigured(err)
+			r.SetConfigurationError(err)
 		}
 		err := fn(ctx, r)
 		if err == nil {
