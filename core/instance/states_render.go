@@ -78,9 +78,11 @@ func (t States) LoadTreeNode(head *tree.Node) {
 				subsetNode.AddColumn()
 				subsetNode.AddColumn()
 				parallel := ""
-				if subset, ok := t.Config.Subsets[resourceSetName]; ok {
-					if subset.Parallel {
-						parallel = "//"
+				if t.Config.ActorConfig != nil {
+					if subset, ok := t.Config.Subsets[resourceSetName]; ok {
+						if subset.Parallel {
+							parallel = "//"
+						}
 					}
 				}
 				subsetNode.AddColumn().AddText(parallel)
