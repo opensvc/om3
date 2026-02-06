@@ -206,7 +206,7 @@ var (
 	}
 
 	KWRestart = keywords.Keyword{
-		Attr:      "Restart",
+		Attr:      "Restart.Count",
 		Default:   "0",
 		Converter: "int",
 		Option:    "restart",
@@ -215,7 +215,7 @@ var (
 	}
 
 	KWRestartDelay = keywords.Keyword{
-		Attr:      "RestartDelay",
+		Attr:      "Restart.Delay",
 		Converter: "duration",
 		Default:   "500ms",
 		Option:    "restart_delay",

@@ -55,6 +55,7 @@ var _ resource.Encaper = (*T)(nil)
 type (
 	T struct {
 		resource.T
+		resource.Restart
 		resource.SSH
 		resource.SCSIPersistentReservation
 		Path                     naming.Path    `json:"path"`

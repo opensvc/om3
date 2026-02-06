@@ -52,6 +52,7 @@ import (
 type (
 	T struct {
 		resource.T
+		resource.Restart
 		datarecv.DataRecv
 		Name     string `json:"name"`
 		Access   string `json:"access"`

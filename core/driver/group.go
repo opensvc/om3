@@ -19,10 +19,6 @@ const (
 	GroupApp
 	GroupSync
 	GroupTask
-	GroupCertificate
-	GroupExpose
-	GroupRoute
-	GroupVhost
 	GroupPool
 	GroupNetwork
 	GroupHeartbeat
@@ -33,51 +29,43 @@ const (
 )
 
 var (
-	resourceGroups = GroupIP | GroupVolume | GroupDisk | GroupFS | GroupShare | GroupContainer | GroupApp | GroupSync | GroupTask | GroupCertificate | GroupExpose | GroupRoute | GroupVhost
+	resourceGroups = GroupIP | GroupVolume | GroupDisk | GroupFS | GroupShare | GroupContainer | GroupApp | GroupSync | GroupTask
 
 	toGroupID = map[string]Group{
-		"ip":          GroupIP,
-		"volume":      GroupVolume,
-		"disk":        GroupDisk,
-		"fs":          GroupFS,
-		"share":       GroupShare,
-		"container":   GroupContainer,
-		"app":         GroupApp,
-		"sync":        GroupSync,
-		"task":        GroupTask,
-		"certificate": GroupCertificate,
-		"expose":      GroupExpose,
-		"route":       GroupRoute,
-		"vhost":       GroupVhost,
-		"pool":        GroupPool,
-		"network":     GroupNetwork,
-		"hb":          GroupHeartbeat,
-		"array":       GroupArray,
-		"switch":      GroupSwitch,
-		"stonith":     GroupStonith,
-		"backup":      GroupBackup,
+		"ip":        GroupIP,
+		"volume":    GroupVolume,
+		"disk":      GroupDisk,
+		"fs":        GroupFS,
+		"share":     GroupShare,
+		"container": GroupContainer,
+		"app":       GroupApp,
+		"sync":      GroupSync,
+		"task":      GroupTask,
+		"pool":      GroupPool,
+		"network":   GroupNetwork,
+		"hb":        GroupHeartbeat,
+		"array":     GroupArray,
+		"switch":    GroupSwitch,
+		"stonith":   GroupStonith,
+		"backup":    GroupBackup,
 	}
 	toGroupString = map[Group]string{
-		GroupIP:          "ip",
-		GroupVolume:      "volume",
-		GroupDisk:        "disk",
-		GroupFS:          "fs",
-		GroupShare:       "share",
-		GroupContainer:   "container",
-		GroupApp:         "app",
-		GroupSync:        "sync",
-		GroupTask:        "task",
-		GroupCertificate: "certificate",
-		GroupExpose:      "expose",
-		GroupRoute:       "route",
-		GroupVhost:       "vhost",
-		GroupPool:        "pool",
-		GroupNetwork:     "network",
-		GroupHeartbeat:   "hb",
-		GroupArray:       "array",
-		GroupSwitch:      "switch",
-		GroupStonith:     "stonith",
-		GroupBackup:      "backup",
+		GroupIP:        "ip",
+		GroupVolume:    "volume",
+		GroupDisk:      "disk",
+		GroupFS:        "fs",
+		GroupShare:     "share",
+		GroupContainer: "container",
+		GroupApp:       "app",
+		GroupSync:      "sync",
+		GroupTask:      "task",
+		GroupPool:      "pool",
+		GroupNetwork:   "network",
+		GroupHeartbeat: "hb",
+		GroupArray:     "array",
+		GroupSwitch:    "switch",
+		GroupStonith:   "stonith",
+		GroupBackup:    "backup",
 	}
 )
 

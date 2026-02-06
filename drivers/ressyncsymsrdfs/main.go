@@ -33,6 +33,7 @@ import (
 type (
 	T struct {
 		ressync.T
+		resource.Restart
 		SymDG    string
 		SymID    string
 		RDFG     int

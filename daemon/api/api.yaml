@@ -7066,7 +7066,6 @@ components:
         - is_monitored
         - is_standby
         - restart
-        - restart_delay
       properties:
         is_disabled:
           type: boolean
@@ -7208,8 +7207,6 @@ components:
       x-go-type-import:
           path: github.com/opensvc/om3/v3/core/instance
       type: object
-      required:
-        - restart
       properties:
         restart:
           $ref: '#/components/schemas/ResourceMonitorRestart'
@@ -7253,7 +7250,6 @@ components:
         - monitor
         - optional
         - provisioned
-        - restart
         - standby
         - status
         - subset
@@ -7291,8 +7287,6 @@ components:
             Errors in optional resource don't stop a state transition action
         provisioned:
           $ref: '#/components/schemas/ResourceProvisionStatus'
-        restart:
-          type: integer
         standby:
           type: boolean
           description: |

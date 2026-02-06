@@ -10,7 +10,6 @@ import (
 	"github.com/google/uuid"
 
 	"github.com/opensvc/om3/v3/core/status"
-	"github.com/opensvc/om3/v3/util/xmap"
 )
 
 type (
@@ -72,11 +71,11 @@ type (
 	// ResourceMonitor describes the restart states maintained by the daemon
 	// for an object instance.
 	ResourceMonitor struct {
-		Restart ResourceMonitorRestart `json:"restart"`
+		Restart *ResourceMonitorRestart `json:"restart,omitempty"`
 	}
 	ResourceMonitorRestart struct {
-		Remaining int       `json:"remaining"`
-		LastAt    time.Time `json:"last_at"`
+		Remaining int       `json:"remaining,omitempty"`
+		LastAt    time.Time `json:"last_at,omitempty"`
 	}
 
 	MonitorState        int
@@ -200,10 +199,18 @@ func (t *MonitorGlobalExpect) UnmarshalText(b []byte) error {
 	}
 }
 
-func (rmon *ResourceMonitor) DecRestartRemaining() {
-	if rmon.Restart.Remaining > 0 {
-		rmon.Restart.Remaining -= 1
+func (m *ResourceMonitor) DecRestartRemaining() {
+	if m.Restart.Remaining > 0 {
+		m.Restart.Remaining -= 1
 	}
+}
+
+func (t *ResourceMonitor) Unstructured() map[string]any {
+	m := map[string]any{}
+	if t.Restart != nil {
+		m["restart"] = t.Restart.Unstructured()
+	}
+	return m
 }
 
 func (m ResourceMonitors) Set(rid string, rmon ResourceMonitor) {
@@ -219,7 +226,21 @@ func (m ResourceMonitors) Get(rid string) *ResourceMonitor {
 }
 
 func (m ResourceMonitors) DeepCopy() ResourceMonitors {
-	return xmap.Copy(m)
+	c := make(ResourceMonitors)
+	for k, v := range m {
+		c[k] = ResourceMonitor{
+			Restart: v.Restart.DeepCopy(),
+		}
+	}
+	return c
+}
+
+func (t ResourceMonitors) Unstructured() map[string]map[string]any {
+	m := make(map[string]map[string]any)
+	for k, v := range t {
+		m[k] = v.Unstructured()
+	}
+	return m
 }
 
 func (mon Monitor) DeepCopy() *Monitor {
@@ -243,13 +264,17 @@ func (mon Monitor) DeepCopy() *Monitor {
 	return &v
 }
 
-func (t ResourceMonitor) Unstructured() map[string]any {
-	return map[string]any{
-		"restart": t.Restart.Unstructured(),
+func (t *ResourceMonitorRestart) DeepCopy() *ResourceMonitorRestart {
+	if t == nil {
+		return nil
+	}
+	return &ResourceMonitorRestart{
+		Remaining: t.Remaining,
+		LastAt:    t.LastAt,
 	}
 }
 
-func (t ResourceMonitorRestart) Unstructured() map[string]any {
+func (t *ResourceMonitorRestart) Unstructured() map[string]any {
 	return map[string]any{
 		"remaining": t.Remaining,
 		"last_at":   t.LastAt,
@@ -282,14 +307,6 @@ func (t Monitor) Unstructured() map[string]any {
 	}
 	if len(t.Children) > 0 {
 		m["children"] = t.Children
-	}
-	return m
-}
-
-func (t ResourceMonitors) Unstructured() map[string]map[string]any {
-	m := make(map[string]map[string]any)
-	for k, v := range t {
-		m[k] = v.Unstructured()
 	}
 	return m
 }

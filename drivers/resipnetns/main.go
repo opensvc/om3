@@ -38,6 +38,7 @@ const (
 type (
 	T struct {
 		resource.T
+		resource.Restart
 
 		Path       naming.Path
 		ObjectFQDN string

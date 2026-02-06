@@ -14,6 +14,7 @@ type T struct {
 	NetNS   string `json:"netns"`
 	Dev     string `json:"dev"`
 	resource.T
+	resource.Restart
 }
 
 // New allocates a new driver

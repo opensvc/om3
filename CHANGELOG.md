@@ -628,3 +628,6 @@ Where the password is the value of the `þassword` key in `system/sec/relay-v3`.
 
 * Flush iptables rules created by om2. om3 now configures the firewall using nft only.
 
+* Change `ips_per_node` to `mask_per_node`. The former was inadequate for large subnets (ipv6). For example, `ips_per_node=18446744073709551616` is easier expressed as `mask_per_node=64`. Backward compatibility is maintained for this release.
+
+

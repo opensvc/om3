@@ -306,6 +306,9 @@ func (t *actor) abortStartDrivers(ctx context.Context, resources resource.Driver
 	q := make(chan bool, len(resources))
 	var wg sync.WaitGroup
 	for _, r := range resources {
+		if r.GetConfigurationError() != nil {
+			return nil
+		}
 		if v, err := t.isEncapNodeMatchingResource(r); err != nil {
 			return err
 		} else if !v {
@@ -626,6 +629,10 @@ func (t *actor) action(ctx context.Context, fn resourceset.DoFunc) error {
 
 	progressWrap := func(fn resourceset.DoFunc) resourceset.DoFunc {
 		return func(ctx context.Context, r resource.Driver) error {
+			if err := r.GetConfigurationError(); err != nil {
+				r.Log().Warnf("skip resource with configuration error: %s", err)
+				return nil
+			}
 			if v, err := t.isEncapNodeMatchingResource(r); err != nil {
 				return err
 			} else if !v {

@@ -22,6 +22,7 @@ import (
 // T is the driver structure.
 type T struct {
 	resource.T
+	resource.Restart
 	resource.SSH
 	Path     naming.Path `json:"path"`
 	Nodes    []string    `json:"nodes"`

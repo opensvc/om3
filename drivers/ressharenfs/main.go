@@ -14,6 +14,7 @@ import (
 // T is the driver structure.
 type T struct {
 	resource.T
+	resource.Restart
 	SharePath string `json:"path"`
 	ShareOpts string `json:"opts"`
 

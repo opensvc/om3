@@ -28,6 +28,10 @@ type (
 	infoer interface {
 		Info(context.Context) (InfoKeys, error)
 	}
+
+	restarter interface {
+		GetRestart() Restart
+	}
 )
 
 func GetInfo(ctx context.Context, r Driver) (Info, error) {
@@ -62,15 +66,14 @@ func GetInfo(ctx context.Context, r Driver) (Info, error) {
 				Key:   "encap",
 				Value: fmt.Sprint(r.IsEncap()),
 			},
-			{
-				Key:   "restart",
-				Value: fmt.Sprint(r.RestartCount()),
-			},
-			{
-				Key:   "restart_delay",
-				Value: fmt.Sprint(r.GetRestartDelay()),
-			},
 		},
+	}
+	if i, ok := r.(restarter); ok {
+		restart := i.GetRestart()
+		info.Keys = append(info.Keys,
+			InfoKey{"restart_count", fmt.Sprint(restart.Count)},
+			InfoKey{"restart_delay", fmt.Sprint(restart.Delay)},
+		)
 	}
 	i, ok := r.(infoer)
 	if !ok {

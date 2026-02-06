@@ -223,7 +223,7 @@ func (t T) doParallel(ctx context.Context, l ResourceLister, resources resource.
 		}
 		select {
 		case <-ctx.Done():
-			err = fmt.Errorf("timeout")
+			err = ctx.Err()
 		case err = <-c:
 		}
 		q <- result{
@@ -292,6 +292,12 @@ func (t T) doSerial(ctx context.Context, l ResourceLister, resources resource.Dr
 	hasHitBarrier := false
 	selectedResources := l.Resources()
 	for _, r := range resources {
+		select {
+		case <-ctx.Done():
+			return hasHitBarrier, ctx.Err()
+		default:
+			// pass
+		}
 		if hasHitBarrier {
 			break
 		}
@@ -305,29 +311,22 @@ func (t T) doSerial(ctx context.Context, l ResourceLister, resources resource.Dr
 		if pgMgr != nil {
 			pgMgr.Register(r.GetPG())
 		}
-		var err error
-		c := make(chan error, 1)
-		if err = l.ReconfigureResource(r); err == nil {
-			c <- fn(ctx, r)
+		if err := l.ReconfigureResource(r); err != nil {
+			r.SetConfigurationError(err)
 		}
-		select {
-		case <-ctx.Done():
-			err = fmt.Errorf("timeout")
-		case err = <-c:
-		}
-		switch {
-		case err == nil:
+		err := fn(ctx, r)
+		if err == nil {
 			continue
-		case errors.Is(err, resource.ErrBarrier):
+		}
+		if errors.Is(err, resource.ErrBarrier) {
 			// linkWrap executed resourceset.L.Do again with a fn that can return ErrBarrier
 			return true, nil
-		case r.IsOptional():
-			r.Log().Warnf("error from optional resource: %s", err)
-			continue
-		default:
-			r.Log().Errorf("%s", err)
-			return hasHitBarrier, fmt.Errorf("%s: %w", rid, err)
 		}
+		if r.IsOptional() {
+			r.Log().Warnf("error from optional resource: %s", err)
+		}
+		r.Log().Errorf("%s", err)
+		return hasHitBarrier, fmt.Errorf("%s: %w", rid, err)
 	}
 	return hasHitBarrier, nil
 }

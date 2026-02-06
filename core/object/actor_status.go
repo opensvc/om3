@@ -226,6 +226,14 @@ func (t *actor) resourceStatusEval(ctx context.Context, data *instance.Status, m
 			return nil
 		}
 
+		if err := r.GetConfigurationError(); err != nil {
+			log := resource.NewStatusLog()
+			log.Error("%s", err)
+			resourceStatus.Log = log.Entries()
+			data.Resources[r.RID()] = resourceStatus
+			return nil
+		}
+
 		if monitoredOnly && !r.IsMonitored() {
 			resourceStatus = data.Resources[r.RID()]
 			sb.Post(r.RID(), resourceStatus.Status, false)

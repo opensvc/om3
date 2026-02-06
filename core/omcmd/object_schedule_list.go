@@ -51,9 +51,11 @@ func (t *CmdObjectScheduleList) extractLocal(selector string) (api.ScheduleList,
 	if err != nil {
 		return data, err
 	}
+	var errs error
 	for _, p := range paths {
 		obj, err := object.New(p)
 		if err != nil {
+			errs = errors.Join(errs, err)
 			continue
 		}
 		i, ok := obj.(scheduler)
@@ -84,7 +86,7 @@ func (t *CmdObjectScheduleList) extractLocal(selector string) (api.ScheduleList,
 			data.Items = append(data.Items, item)
 		}
 	}
-	return data, nil
+	return data, errs
 }
 
 func (t *CmdObjectScheduleList) extractFromDaemons(selector string, c *client.T) (api.ScheduleList, error) {
@@ -140,9 +142,6 @@ func (t *CmdObjectScheduleList) Run(kind string) error {
 		return err
 	}
 	data, err := t.extract(mergedSelector, c)
-	if err != nil {
-		return err
-	}
 	output.Renderer{
 		DefaultOutput: "tab=OBJECT:meta.object,NODE:meta.node,ACTION:data.action,KEY:data.key,LAST_RUN_AT:data.last_run_at,NEXT_RUN_AT:data.next_run_at,SCHEDULE:data.schedule",
 		Output:        t.Output,
@@ -150,5 +149,5 @@ func (t *CmdObjectScheduleList) Run(kind string) error {
 		Data:          data,
 		Colorize:      rawconfig.Colorize,
 	}.Print()
-	return nil
+	return err
 }
