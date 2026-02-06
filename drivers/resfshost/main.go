@@ -31,6 +31,7 @@ import (
 type (
 	T struct {
 		resource.T
+		resource.Restart
 		resource.SCSIPersistentReservation
 		Path            naming.Path
 		MountPoint      string         `json:"mnt"`

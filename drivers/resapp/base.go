@@ -16,6 +16,7 @@ import (
 // BaseT is the app base driver structure
 type BaseT struct {
 	resource.T
+	resource.Restart
 	RetCodes     string         `json:"retcodes"`
 	Path         naming.Path    `json:"path"`
 	Nodes        []string       `json:"nodes"`

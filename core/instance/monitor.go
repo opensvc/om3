@@ -199,10 +199,18 @@ func (t *MonitorGlobalExpect) UnmarshalText(b []byte) error {
 	}
 }
 
-func (rmon *ResourceMonitor) DecRestartRemaining() {
-	if rmon.Restart.Remaining > 0 {
-		rmon.Restart.Remaining -= 1
+func (m *ResourceMonitor) DecRestartRemaining() {
+	if m.Restart.Remaining > 0 {
+		m.Restart.Remaining -= 1
 	}
+}
+
+func (t *ResourceMonitor) Unstructured() map[string]any {
+	m := map[string]any{}
+	if t.Restart != nil {
+		m["restart"] = t.Restart.Unstructured()
+	}
+	return m
 }
 
 func (m ResourceMonitors) Set(rid string, rmon ResourceMonitor) {
@@ -220,14 +228,19 @@ func (m ResourceMonitors) Get(rid string) *ResourceMonitor {
 func (m ResourceMonitors) DeepCopy() ResourceMonitors {
 	c := make(ResourceMonitors)
 	for k, v := range m {
-		v2 := ResourceMonitor{}
-		if v.Restart != nil {
-			r2 := *v.Restart
-			v2.Restart = &r2
+		c[k] = ResourceMonitor{
+			Restart: v.Restart.DeepCopy(),
 		}
-		c[k] = v2
 	}
 	return c
+}
+
+func (t ResourceMonitors) Unstructured() map[string]map[string]any {
+	m := make(map[string]map[string]any)
+	for k, v := range t {
+		m[k] = v.Unstructured()
+	}
+	return m
 }
 
 func (mon Monitor) DeepCopy() *Monitor {
@@ -251,15 +264,17 @@ func (mon Monitor) DeepCopy() *Monitor {
 	return &v
 }
 
-func (t ResourceMonitor) Unstructured() map[string]any {
-	m := map[string]any{}
-	if t.Restart != nil {
-		m["restart"] = t.Restart.Unstructured()
+func (t *ResourceMonitorRestart) DeepCopy() *ResourceMonitorRestart {
+	if t == nil {
+		return nil
 	}
-	return m
+	return &ResourceMonitorRestart{
+		Remaining: t.Remaining,
+		LastAt:    t.LastAt,
+	}
 }
 
-func (t ResourceMonitorRestart) Unstructured() map[string]any {
+func (t *ResourceMonitorRestart) Unstructured() map[string]any {
 	return map[string]any{
 		"remaining": t.Remaining,
 		"last_at":   t.LastAt,
@@ -292,14 +307,6 @@ func (t Monitor) Unstructured() map[string]any {
 	}
 	if len(t.Children) > 0 {
 		m["children"] = t.Children
-	}
-	return m
-}
-
-func (t ResourceMonitors) Unstructured() map[string]map[string]any {
-	m := make(map[string]map[string]any)
-	for k, v := range t {
-		m[k] = v.Unstructured()
 	}
 	return m
 }

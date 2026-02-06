@@ -11,6 +11,7 @@ import (
 type (
 	T struct {
 		resource.T
+		resource.Restart
 		resource.SCSIPersistentReservation
 		PromoteRW bool
 	}
