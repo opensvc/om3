@@ -46,6 +46,7 @@ import (
 type (
 	BT struct {
 		resource.T
+		resource.Restart
 		resource.SCSIPersistentReservation
 		ObjectDomain    string         `json:"object_domain"`
 		PG              pg.Config      `json:"pg"`

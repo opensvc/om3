@@ -127,9 +127,9 @@ func (a ResourceOrder) Less(i, j int) bool {
 // P   Provisioned
 // S   Standby
 // <n> Restart remaining, + More than 9 remaining, X UserStopped
-func ResourceFlagsString(rid string, mon Monitor, status Status, rstatus resource.Status) string {
+func ResourceFlagsString(rid string, states States, rstatus resource.Status) string {
 	runningFlag := func() string {
-		if status.Running.Has(rid) {
+		if states.Status.Running.Has(rid) {
 			return "R"
 		} else {
 			return "."
@@ -137,16 +137,20 @@ func ResourceFlagsString(rid string, mon Monitor, status Status, rstatus resourc
 	}
 	restartFlag := func() string {
 		retries := 0
-		if rmon := mon.Resources.Get(rid); rmon != nil {
+		restart := 0
+		if rcfg := states.Config.Resources.Get(rid); rcfg != nil {
+			restart = rcfg.Restart
+		}
+		if rmon := states.Monitor.Resources.Get(rid); rmon != nil {
 			if rmon.Restart != nil {
 				retries = rmon.Restart.Remaining
 			}
 		}
-		s := rstatus.RestartFlag(retries)
+		s := rstatus.RestartFlag(restart, retries)
 		if s == "." {
 			return s
 		}
-		if mon.LocalExpect != MonitorLocalExpectStarted || status.IsFrozen() {
+		if states.Monitor.LocalExpect != MonitorLocalExpectStarted || states.Status.IsFrozen() {
 			s = rawconfig.Colorize.Secondary(s)
 		}
 		return s

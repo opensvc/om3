@@ -30,6 +30,7 @@ import (
 type (
 	T struct {
 		resource.T
+		resource.Restart
 		MountPoint     string         `json:"mnt"`
 		Device         string         `json:"dev"`
 		MountOptions   string         `json:"mnt_opt"`

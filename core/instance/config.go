@@ -64,7 +64,7 @@ type (
 		IsMonitored  bool           `json:"is_monitored"`
 		IsStandby    bool           `json:"is_standby"`
 		Restart      int            `json:"restart,omitempty"`
-		RestartDelay *time.Duration `json:"restart_delay"`
+		RestartDelay *time.Duration `json:"restart_delay,omitempty"`
 	}
 	SubsetConfig struct {
 		Parallel bool `json:"parallel,omitempty"`
@@ -172,11 +172,13 @@ func (t Config) Unstructured() map[string]any {
 
 func (t ResourceConfig) Unstructured() map[string]any {
 	m := map[string]any{
-		"is_disabled":   t.IsDisabled,
-		"is_monitored":  t.IsMonitored,
-		"is_standby":    t.IsStandby,
-		"restart":       t.Restart,
-		"restart_delay": t.RestartDelay,
+		"is_disabled":  t.IsDisabled,
+		"is_monitored": t.IsMonitored,
+		"is_standby":   t.IsStandby,
+		"restart":      t.Restart,
+	}
+	if t.RestartDelay != nil {
+		m["restart_delay"] = t.RestartDelay
 	}
 	return m
 }

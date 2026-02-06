@@ -21,6 +21,7 @@ const (
 type (
 	T struct {
 		resource.T
+		resource.Restart
 		Path  string       `json:"path"`
 		User  *user.User   `json:"user"`
 		Group *user.Group  `json:"group"`

@@ -1150,8 +1150,8 @@ func (t *Manager) initResourceMonitor() {
 			resourceMonitor.Restart = &instance.ResourceMonitorRestart{
 				Remaining: rcfg.Restart,
 			}
+			m[rid] = resourceMonitor
 		}
-		m[rid] = resourceMonitor
 		if rcfg.IsMonitored && hasMonitorActionNone {
 			t.orchestrationResource(rcfg.IsStandby).log.Infof("rid %s is monitored, but monitor action is none", rid)
 		}

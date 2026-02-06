@@ -36,6 +36,7 @@ import (
 type (
 	T struct {
 		resource.T
+		resource.Restart
 
 		Path naming.Path
 		DNS  []string

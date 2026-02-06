@@ -71,7 +71,6 @@ type (
 		GetObject() any
 		GetPG() *pg.Config
 		GetPGID() string
-		GetRestartDelay() time.Duration
 		ID() *resourceid.T
 		IsActionDisabled() bool
 		IsConfigured() bool
@@ -96,7 +95,6 @@ type (
 		MatchSubset(string) bool
 		MatchTag(string) bool
 		Requires(string) *resourcereqs.T
-		RestartCount() int
 		RID() string
 		RSubset() string
 		SetObject(any)
@@ -107,6 +105,14 @@ type (
 		TagSet() TagSet
 		Trigger(context.Context, trigger.Blocking, trigger.Hook, trigger.Action) error
 		VarDir() string
+	}
+
+	Restart struct {
+		// Count is how many times imon should try to restart before giving up.
+		Count int
+
+		// Delay is the duration between 2 restarts.
+		Delay *time.Duration
 	}
 
 	// T is the resource type, embedded in each drivers type
@@ -120,8 +126,6 @@ type (
 		Standby                 bool
 		Shared                  bool
 		Encap                   bool
-		Restart                 int
-		RestartDelay            *time.Duration
 		Tags                    *set.Set
 		BlockingPreStart        string
 		BlockingPreStop         string
@@ -218,9 +222,6 @@ type (
 		// collect site-wide about this resource.
 		Info map[string]any `json:"info,omitempty"`
 
-		// Restart is the number of restart to be tried before giving up.
-		Restart int `json:"restart,omitempty"`
-
 		// Tags is a set of words attached to the resource.
 		Tags TagSet `json:"tags,omitempty"`
 
@@ -280,6 +281,14 @@ var (
 	ErrBarrier                 = errors.New("barrier hit")
 )
 
+func (t *Restart) GetRestart() Restart {
+	return *t
+}
+
+func (t *Restart) SetRestart(n *Restart) {
+	t = n
+}
+
 // IsMonitoredFlag returns a one character representation of the IsMonitored state.
 func (t *Status) IsMonitoredFlag() string {
 	if t.IsMonitored {
@@ -297,11 +306,11 @@ func (t *Status) IsDisabledFlag() string {
 }
 
 // RestartFlag returns a one character representation of the Restart state.
-func (t *Status) RestartFlag(retries int) string {
+func (t *Status) RestartFlag(restart, retries int) string {
 	switch {
 	case t.IsStopped:
 		return "X"
-	case t.Restart <= 0:
+	case restart <= 0:
 		return "."
 	case retries <= 0:
 		return "0"
@@ -428,19 +437,6 @@ func (t *T) GetConfigurationError() error {
 
 func (t *T) SetConfigured(err error) {
 	t.configurationError = err
-}
-
-// RestartCount returns the value of the Restart field
-func (t *T) RestartCount() int {
-	return t.Restart
-}
-
-// GetRestartDelay returns the duration between 2 restarts
-func (t *T) GetRestartDelay() time.Duration {
-	if t.RestartDelay == nil {
-		return 500 * time.Millisecond
-	}
-	return *t.RestartDelay
 }
 
 // RSubset returns the resource subset name
@@ -607,6 +603,7 @@ func (t *T) trigger(ctx context.Context, s string) error {
 		command.WithName(cmdArgs[0]),
 		command.WithVarArgs(cmdArgs[1:]...),
 		command.WithLogger(&t.log),
+		command.WithEnv(append(os.Environ(), "OPENSVC_RID="+t.RID())),
 		command.WithStdoutLogLevel(zerolog.InfoLevel),
 		command.WithStderrLogLevel(zerolog.ErrorLevel))
 	return cmd.Run()
@@ -1257,7 +1254,6 @@ func GetStatus(ctx context.Context, r Driver) Status {
 
 		IsStopped:   r.IsStopped(),
 		IsMonitored: r.IsMonitored(),
-		Restart:     r.RestartCount(),
 		IsOptional:  r.IsOptional(),
 		IsStandby:   r.IsStandby(),
 		IsDisabled:  r.IsDisabled(),
@@ -1404,7 +1400,6 @@ func (t *Status) Unstructured() map[string]any {
 		"disable":     t.IsDisabled,
 		"optional":    t.IsOptional,
 		"encap":       t.IsEncap,
-		"restart":     t.Restart,
 		"standby":     t.IsStandby,
 		"stopped":     t.IsStopped,
 	}
