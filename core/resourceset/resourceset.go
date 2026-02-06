@@ -223,7 +223,7 @@ func (t T) doParallel(ctx context.Context, l ResourceLister, resources resource.
 		}
 		select {
 		case <-ctx.Done():
-			err = fmt.Errorf("timeout")
+			err = ctx.Err()
 		case err = <-c:
 		}
 		q <- result{
@@ -292,6 +292,12 @@ func (t T) doSerial(ctx context.Context, l ResourceLister, resources resource.Dr
 	hasHitBarrier := false
 	selectedResources := l.Resources()
 	for _, r := range resources {
+		select {
+		case <-ctx.Done():
+			return hasHitBarrier, ctx.Err()
+		default:
+			// pass
+		}
 		if hasHitBarrier {
 			break
 		}
