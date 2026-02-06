@@ -71,7 +71,6 @@ func Test_Status_Unmarshal(t *testing.T) {
 					Mtime: time.Date(2022, time.November, 28, 21, 46, 25, 849702075, time.UTC),
 					State: provisioned.False,
 				},
-				Restart: 2,
 			},
 		},
 	}
