@@ -136,6 +136,10 @@ func ResourceFlagsString(rid string, states States, rstatus resource.Status) str
 		}
 	}
 	restartFlag := func() string {
+		if states.Config.ActorConfig == nil {
+			// only actors have the Resources field
+			return "."
+		}
 		retries := 0
 		restart := 0
 		if rcfg := states.Config.Resources.Get(rid); rcfg != nil {
