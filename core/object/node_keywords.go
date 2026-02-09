@@ -1063,7 +1063,7 @@ var nodeCommonKeywords = []keywords.Keyword{
 	},
 	{
 		Converter: "list",
-		Default:   "roo rwo rox rwx",
+		Default:   "file roo rwo rox rwx",
 		Option:    "capabilities",
 		Section:   "pool",
 		Text:      keywords.NewText(fs, "text/kw/node/pool.virtual.capabilities"),
