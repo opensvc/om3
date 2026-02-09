@@ -620,12 +620,6 @@ Where the password is the value of the `þassword` key in `system/sec/relay-v3`.
 
 * Rename the stonith sections `cmd` option to `command`. Backward compatibility is implemented.
 
-* Set the capabilities of the virtual type pools. The pool lookup algorithm now verifies strictly if the pool has:
-
-  * the `file` capability when the volume requires `format=true` (default).
-  * the `blk` capability when the volume requires `format=false`.
-  * the `volatile` capability when the volume requires `volatile=true`.
-
 ### DNS
 
 * Reinstall system/svc/dns if installed. Make sure the recursor and server configuration in system/cfg/dns are reapplied (allow-from is often customized).
