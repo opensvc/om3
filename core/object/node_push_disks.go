@@ -121,7 +121,7 @@ func (t Node) pushDisks(data disks.Disks) error {
 		method = http.MethodPost
 		path   = oc3path.FeedNodeDisk
 	)
-	oc3, err := t.CollectorClient()
+	oc3, err := t.CollectorFeeder()
 	if err != nil {
 		return err
 	}

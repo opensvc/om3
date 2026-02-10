@@ -126,7 +126,7 @@ func (t *actor) collectorPushResInfo(infos resource.Infos) error {
 	if err != nil {
 		return err
 	}
-	oc3, err := node.CollectorClient()
+	oc3, err := node.CollectorFeeder()
 	if err != nil {
 		return err
 	}

@@ -15,6 +15,27 @@ import (
 	"github.com/opensvc/om3/v3/util/key"
 )
 
+type (
+	CollectorConfigRaw struct {
+		baseUrl   string
+		feederUrl string
+		serverUrl string
+		timeout   *time.Duration
+		insecure  bool
+		uuid      string
+	}
+
+	CollectorConfig struct {
+		FeederUrl string        `json:"feeder_url"`
+		ServerUrl string        `json:"server_url"`
+		Timeout   time.Duration `json:"timeout"`
+		Insecure  bool          `json:"insecure"`
+
+		// private field
+		password string
+	}
+)
+
 var (
 	ErrNodeCollectorConfig       = errors.New("collector is not configured: empty configuration keyword node.dbopensvc")
 	ErrNodeCollectorUnregistered = errors.New("this node is not registered. try 'om node register'")
@@ -22,10 +43,55 @@ var (
 	defaultPostCollectorTimeout = 1 * time.Second
 )
 
-func (t Node) CollectorFeedClient() (*collector.Client, error) {
-	s := t.mergedConfig.GetString(key.Parse("node.dbopensvc"))
-	secret := t.config.GetString(key.Parse("node.uuid"))
-	return collector.NewFeedClient(s, secret)
+func (t *Node) CollectorRawConfig() *CollectorConfigRaw {
+	cfg := t.MergedConfig()
+	return &CollectorConfigRaw{
+		baseUrl:   cfg.GetString(key.Parse("node.collector")),
+		feederUrl: cfg.GetString(key.Parse("node.collector_feeder")),
+		serverUrl: cfg.GetString(key.Parse("node.collector_server")),
+		timeout:   cfg.GetDuration(key.Parse("node.collector_timeout")),
+		insecure:  cfg.GetBool(key.Parse("node.dbinsecure")),
+		uuid:      cfg.GetString(key.Parse("node.uuid")),
+	}
+}
+
+func (t *CollectorConfigRaw) FeederUrl() string {
+	if t.feederUrl != "" {
+		return t.feederUrl
+	} else if t.baseUrl != "" {
+		return t.baseUrl + "/feeder"
+	} else {
+		return ""
+	}
+}
+
+func (t *CollectorConfigRaw) ServerUrl() string {
+	if t.serverUrl != "" {
+		return t.serverUrl
+	} else if t.baseUrl != "" {
+		return t.baseUrl + "/server"
+	} else {
+		return ""
+	}
+}
+
+func (t *CollectorConfigRaw) AsConfig() *CollectorConfig {
+	var timeout time.Duration
+	if t.timeout != nil {
+		timeout = *t.timeout
+	}
+	return &CollectorConfig{
+		FeederUrl: t.FeederUrl(),
+		ServerUrl: t.ServerUrl(),
+		Timeout:   timeout,
+		Insecure:  t.insecure,
+		password:  t.uuid,
+	}
+}
+
+func (t *Node) CollectorFeedClient() (*collector.Client, error) {
+	collectorCfg := t.CollectorRawConfig().AsConfig()
+	return collector.NewFeedClient(collectorCfg.FeederUrl, collectorCfg.password)
 }
 
 func (t Node) CollectorInitClient() (*collector.Client, error) {
@@ -85,4 +151,46 @@ func (t *Node) CollectorClient() (*httphelper.T, error) {
 
 	auth := "Basic " + base64.StdEncoding.EncodeToString([]byte(hostname.Hostname()+":"+pass))
 	return collector.NewRequester(dbopensvc, auth, insecure)
+}
+
+// CollectorFeeder returns new collector feeder client from config
+func (t *Node) CollectorFeeder() (*httphelper.T, error) {
+	cfg := t.CollectorRawConfig().AsConfig()
+
+	if cfg.FeederUrl == "" {
+		return nil, ErrNodeCollectorConfig
+	} else if cfg.password == "" {
+		return nil, ErrNodeCollectorUnregistered
+	}
+
+	auth := "Basic " + base64.StdEncoding.EncodeToString([]byte(hostname.Hostname()+":"+cfg.password))
+	return collector.NewRequester(cfg.FeederUrl, auth, cfg.Insecure)
+}
+
+// CollectorServer returns new collector server client from config
+func (t *Node) CollectorServer() (*httphelper.T, error) {
+	cfg := t.CollectorRawConfig().AsConfig()
+
+	if cfg.ServerUrl == "" {
+		return nil, ErrNodeCollectorConfig
+	} else if cfg.password == "" {
+		return nil, ErrNodeCollectorUnregistered
+	}
+
+	auth := "Basic " + base64.StdEncoding.EncodeToString([]byte(hostname.Hostname()+":"+cfg.password))
+	return collector.NewRequester(cfg.ServerUrl, auth, cfg.Insecure)
+}
+
+// CollectorServer returns new collector server client from config
+func (t *Node) CollectorServerWithAuth(auth string) (*httphelper.T, error) {
+	cfg := t.CollectorRawConfig().AsConfig()
+	pass := t.MergedConfig().GetString(key.Parse("node.uuid"))
+
+	if cfg.ServerUrl == "" {
+		return nil, ErrNodeCollectorConfig
+	} else if pass == "" {
+		return nil, ErrNodeCollectorUnregistered
+	}
+
+	return collector.NewRequester(cfg.ServerUrl, auth, cfg.Insecure)
 }
