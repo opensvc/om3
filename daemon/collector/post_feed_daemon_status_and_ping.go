@@ -142,7 +142,7 @@ func (t *T) postPing() error {
 		} else if len(addedPath) > 0 {
 			t.log.Infof("%s %s status code %d got missing instance config: %s", method, path, resp.StatusCode, addedPath)
 		} else {
-			t.log.Tracef("%s %s status code %d", method, path, resp.StatusCode)
+			t.log.Debugf("%s %s status code %d", method, path, resp.StatusCode)
 		}
 		return nil
 	default:
@@ -288,7 +288,7 @@ func (t *T) postStatus() error {
 		} else if len(addedPath) > 0 {
 			t.log.Infof("%s %s status code %d got missing instance config: %s", method, path, resp.StatusCode, addedPath)
 		} else {
-			t.log.Tracef("%s %s status code %d", method, path, resp.StatusCode)
+			t.log.Debugf("%s %s status code %d", method, path, resp.StatusCode)
 		}
 		t.previousUpdatedAt = now
 		t.dropChanges()

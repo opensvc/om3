@@ -1,0 +1,4 @@
+The system enables OpenSVC Collector 3 calls conditional upon the detection of
+the Collector 3 environment.
+If collector_feeder or collector_server are not explicitly defined, they are
+derived from this value.

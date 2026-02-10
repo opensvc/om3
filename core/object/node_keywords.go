@@ -337,6 +337,31 @@ var nodeCommonKeywords = []keywords.Keyword{
 		Text:    keywords.NewText(fs, "text/kw/node/node.dbopensvc"),
 	},
 	{
+		Example: "https://collector.opensvc.com",
+		Option:  "collector",
+		Section: "node",
+		Text:    keywords.NewText(fs, "text/kw/node/node.collector"),
+	},
+	{
+		Example: "https://collector.opensvc.com/server",
+		Option:  "collector_server",
+		Section: "node",
+		Text:    keywords.NewText(fs, "text/kw/node/node.collector_server"),
+	},
+	{
+		Example: "https://collector.opensvc.com/feeder",
+		Option:  "collector_feeder",
+		Section: "node",
+		Text:    keywords.NewText(fs, "text/kw/node/node.collector_feeder"),
+	},
+	{
+		Option:    "collector_timeout",
+		Section:   "node",
+		Converter: "duration",
+		Default:   "5s",
+		Text:      keywords.NewText(fs, "text/kw/node/node.collector_timeout"),
+	},
+	{
 		Converter: "bool",
 		Option:    "dbinsecure",
 		Section:   "node",

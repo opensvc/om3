@@ -246,7 +246,7 @@ func (t Node) pushAsset(data asset.Data) error {
 		method = http.MethodPost
 		path   = oc3path.FeedNodeSystem
 	)
-	oc3, err := t.CollectorClient()
+	oc3, err := t.CollectorFeeder()
 	if err != nil {
 		return err
 	}

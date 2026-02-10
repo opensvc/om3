@@ -232,7 +232,7 @@ func (t *T) setupRequester() error {
 	if node, err := object.NewNode(); err != nil {
 		t.client = nil
 		return err
-	} else if cli, err := node.CollectorClient(); err != nil {
+	} else if cli, err := node.CollectorFeeder(); err != nil {
 		t.client = nil
 		if errors.Is(err, object.ErrNodeCollectorConfig) {
 			t.disable = true
