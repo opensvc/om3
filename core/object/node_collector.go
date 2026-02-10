@@ -17,12 +17,12 @@ import (
 
 type (
 	CollectorConfigRaw struct {
-		baseUrl   string
-		feederUrl string
-		serverUrl string
-		timeout   *time.Duration
-		insecure  bool
-		uuid      string
+		collectorUrl string
+		feederUrl    string
+		serverUrl    string
+		timeout      *time.Duration
+		insecure     bool
+		uuid         string
 	}
 
 	CollectorConfig struct {
@@ -46,20 +46,24 @@ var (
 func (t *Node) CollectorRawConfig() *CollectorConfigRaw {
 	cfg := t.MergedConfig()
 	return &CollectorConfigRaw{
-		baseUrl:   cfg.GetString(key.Parse("node.collector")),
-		feederUrl: cfg.GetString(key.Parse("node.collector_feeder")),
-		serverUrl: cfg.GetString(key.Parse("node.collector_server")),
-		timeout:   cfg.GetDuration(key.Parse("node.collector_timeout")),
-		insecure:  cfg.GetBool(key.Parse("node.dbinsecure")),
-		uuid:      cfg.GetString(key.Parse("node.uuid")),
+		collectorUrl: cfg.GetString(key.Parse("node.collector")),
+		feederUrl:    cfg.GetString(key.Parse("node.collector_feeder")),
+		serverUrl:    cfg.GetString(key.Parse("node.collector_server")),
+		timeout:      cfg.GetDuration(key.Parse("node.collector_timeout")),
+		insecure:     cfg.GetBool(key.Parse("node.dbinsecure")),
+		uuid:         cfg.GetString(key.Parse("node.uuid")),
 	}
+}
+
+func (t *CollectorConfigRaw) HasServerV3() bool {
+	return t.collectorUrl != "" || t.serverUrl != ""
 }
 
 func (t *CollectorConfigRaw) FeederUrl() string {
 	if t.feederUrl != "" {
 		return t.feederUrl
-	} else if t.baseUrl != "" {
-		return t.baseUrl + "/feeder"
+	} else if t.collectorUrl != "" {
+		return t.collectorUrl + "/feeder"
 	} else {
 		return ""
 	}
@@ -68,8 +72,8 @@ func (t *CollectorConfigRaw) FeederUrl() string {
 func (t *CollectorConfigRaw) ServerUrl() string {
 	if t.serverUrl != "" {
 		return t.serverUrl
-	} else if t.baseUrl != "" {
-		return t.baseUrl + "/server"
+	} else if t.collectorUrl != "" {
+		return t.collectorUrl + "/server"
 	} else {
 		return ""
 	}

@@ -16,3 +16,7 @@ const (
 
 	FeedVersion = "/api/version"
 )
+
+const (
+	ServerRegister = "/api/register"
+)

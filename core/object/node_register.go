@@ -3,6 +3,7 @@ package object
 import (
 	"bytes"
 	"context"
+	"encoding/base64"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -14,6 +15,7 @@ import (
 	"golang.org/x/term"
 
 	"github.com/opensvc/om3/v3/core/keyop"
+	"github.com/opensvc/om3/v3/core/oc3path"
 	"github.com/opensvc/om3/v3/util/hostname"
 	"github.com/opensvc/om3/v3/util/key"
 )
@@ -86,11 +88,88 @@ func (t Node) register(user, password, app string) error {
 	if user == "" {
 		return t.registerAsNode()
 	} else {
-		return t.registerAsUser(user, password, app)
+		if t.CollectorRawConfig().HasServerV3() {
+			return t.registerAsUserV3(user, password, app)
+		} else {
+			return t.registerAsUserV2(user, password, app)
+		}
 	}
 }
 
-func (t Node) registerAsUser(user, password, app string) error {
+func (t Node) registerAsUserV3(user, password, app string) error {
+	var (
+		req  *http.Request
+		resp *http.Response
+
+		ioReader io.Reader
+
+		method = http.MethodPost
+		path   = oc3path.ServerRegister
+	)
+	if app == "" {
+		app = t.MergedConfig().GetString(key.Parse("node.app"))
+	}
+	if app != "" {
+		path += "?app=" + app
+	}
+	if password == "" {
+		fmt.Printf("Password: ")
+		if b, err := term.ReadPassword(int(os.Stdin.Fd())); err != nil {
+			return err
+		} else {
+			password = string(b)
+			fmt.Println("")
+		}
+	}
+	auth := "Basic " + base64.StdEncoding.EncodeToString([]byte(user+":"+password))
+	oc3, err := t.CollectorServerWithAuth(auth)
+	if err != nil {
+		return fmt.Errorf("create collector server: %w", err)
+	}
+	reqData := registerReq{
+		Nodename: hostname.Hostname(),
+		App:      app,
+	}
+	if b, err := json.Marshal(reqData); err != nil {
+		return fmt.Errorf("encode request body:%w", err)
+	} else {
+		ioReader = bytes.NewBuffer(b)
+	}
+
+	ctx, cancel := context.WithTimeout(context.Background(), defaultPostCollectorTimeout)
+	defer cancel()
+
+	req, err = oc3.NewRequestWithContext(ctx, method, path, ioReader)
+	if err != nil {
+		return fmt.Errorf("create collector request %s %s: %w", method, path, err)
+	}
+
+	resp, err = oc3.Do(req)
+	if err != nil {
+		return fmt.Errorf("collector %s %s: %w", method, path, err)
+	}
+	defer func() { _ = resp.Body.Close() }()
+
+	if resp.StatusCode != http.StatusOK {
+		return fmt.Errorf("unexpected collector response status code for %s %s: wanted %d got %d",
+			method, path, http.StatusOK, resp.StatusCode)
+	}
+	dec := json.NewDecoder(resp.Body)
+	data := registerRes{}
+	if err := dec.Decode(&data); err != nil {
+		return fmt.Errorf("decode response body: %w", err)
+	}
+	fmt.Printf("got response data: %#v\n", data)
+	if data.Error != "" {
+		return errors.New(data.Error)
+	}
+	if data.Info != "" {
+		t.Log().Infof("%s", data.Info)
+	}
+	return t.writeUUID(data.Data.UUID)
+}
+
+func (t Node) registerAsUserV2(user, password, app string) error {
 	if password == "" {
 		fmt.Printf("Password: ")
 		if b, err := term.ReadPassword(int(os.Stdin.Fd())); err != nil {
