@@ -78,9 +78,12 @@ func (t Node) Register(ctx context.Context, user, password, app string) error {
 	if _, err := t.PushDisks(); err != nil {
 		return err
 	}
+	t.Log().Infof("sent initial disk inventory")
+
 	if err := t.Sysreport(); err != nil {
 		return err
 	}
+	t.Log().Infof("sent initial sysreport")
 	return nil
 }
 
