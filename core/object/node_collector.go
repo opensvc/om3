@@ -195,3 +195,14 @@ func (t *Node) CollectorServerWithAuth(auth string) (*httphelper.T, error) {
 
 	return collector.NewRequester(cfg.ServerUrl, auth, cfg.Insecure)
 }
+
+// CollectorServer returns new collector server client from config
+func (t *Node) CollectorServerWithoutAuth() (*httphelper.T, error) {
+	cfg := t.CollectorRawConfig().AsConfig()
+
+	if cfg.ServerUrl == "" {
+		return nil, ErrNodeCollectorConfig
+	}
+
+	return collector.NewRequester(cfg.ServerUrl, "", cfg.Insecure)
+}
