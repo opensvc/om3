@@ -188,12 +188,9 @@ func (t *Node) CollectorServer() (*httphelper.T, error) {
 // CollectorServer returns new collector server client from config
 func (t *Node) CollectorServerWithAuth(auth string) (*httphelper.T, error) {
 	cfg := t.CollectorRawConfig().AsConfig()
-	pass := t.MergedConfig().GetString(key.Parse("node.uuid"))
 
 	if cfg.ServerUrl == "" {
 		return nil, ErrNodeCollectorConfig
-	} else if pass == "" {
-		return nil, ErrNodeCollectorUnregistered
 	}
 
 	return collector.NewRequester(cfg.ServerUrl, auth, cfg.Insecure)
