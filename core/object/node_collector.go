@@ -51,7 +51,9 @@ func (t *Node) CollectorRawConfig() *CollectorConfigRaw {
 		serverUrl:    cfg.GetString(key.Parse("node.collector_server")),
 		timeout:      cfg.GetDuration(key.Parse("node.collector_timeout")),
 		insecure:     cfg.GetBool(key.Parse("node.dbinsecure")),
-		uuid:         cfg.GetString(key.Parse("node.uuid")),
+
+		// uuid is loaded from node.conf
+		uuid: t.Config().GetString(key.Parse("node.uuid")),
 	}
 }
 
