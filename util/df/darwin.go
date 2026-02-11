@@ -3,6 +3,7 @@
 package df
 
 import (
+	"context"
 	"strconv"
 	"strings"
 )
@@ -11,12 +12,12 @@ const (
 	typeOption = "-T"
 )
 
-func doDFInode(args ...string) ([]byte, error) {
-	return doDF(append([]string{"-i"}, args...))
+func doDFInode(ctx context.Context, args ...string) ([]byte, error) {
+	return doDF(ctx, append([]string{"-i"}, args...))
 }
 
-func doDFUsage(args ...string) ([]byte, error) {
-	return doDF(append([]string{"-k", "-P"}, args...))
+func doDFUsage(ctx context.Context, args ...string) ([]byte, error) {
+	return doDF(ctx, append([]string{"-k", "-P"}, args...))
 }
 
 func parseUsage(b []byte) ([]Entry, error) {

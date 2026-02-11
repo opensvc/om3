@@ -51,7 +51,9 @@ func (t *Node) CollectorRawConfig() *CollectorConfigRaw {
 		serverUrl:    cfg.GetString(key.Parse("node.collector_server")),
 		timeout:      cfg.GetDuration(key.Parse("node.collector_timeout")),
 		insecure:     cfg.GetBool(key.Parse("node.dbinsecure")),
-		uuid:         cfg.GetString(key.Parse("node.uuid")),
+
+		// uuid is loaded from node.conf
+		uuid: t.Config().GetString(key.Parse("node.uuid")),
 	}
 }
 
@@ -188,13 +190,21 @@ func (t *Node) CollectorServer() (*httphelper.T, error) {
 // CollectorServer returns new collector server client from config
 func (t *Node) CollectorServerWithAuth(auth string) (*httphelper.T, error) {
 	cfg := t.CollectorRawConfig().AsConfig()
-	pass := t.MergedConfig().GetString(key.Parse("node.uuid"))
 
 	if cfg.ServerUrl == "" {
 		return nil, ErrNodeCollectorConfig
-	} else if pass == "" {
-		return nil, ErrNodeCollectorUnregistered
 	}
 
 	return collector.NewRequester(cfg.ServerUrl, auth, cfg.Insecure)
+}
+
+// CollectorServer returns new collector server client from config
+func (t *Node) CollectorServerWithoutAuth() (*httphelper.T, error) {
+	cfg := t.CollectorRawConfig().AsConfig()
+
+	if cfg.ServerUrl == "" {
+		return nil, ErrNodeCollectorConfig
+	}
+
+	return collector.NewRequester(cfg.ServerUrl, "", cfg.Insecure)
 }

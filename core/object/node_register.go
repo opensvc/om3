@@ -53,33 +53,44 @@ type (
 // responsibility.
 func (t Node) Register(ctx context.Context, user, password, app string) error {
 	if err := t.register(user, password, app); err != nil {
-		return err
+		return fmt.Errorf("register: %w", err)
 	}
 	if _, err := t.PushAsset(); err != nil {
-		return err
+		return fmt.Errorf("push asset: %w", err)
 	} else {
 		t.Log().Infof("sent initial asset discovery")
 	}
-	if data, err := t.Checks(ctx); err != nil {
-		return err
-	} else {
-		t.Log().Infof("sent initial checks (%d)", data.Len())
-	}
 	if data, err := t.PushPkg(); err != nil {
-		return err
+		return fmt.Errorf("push pkg: %w", err)
 	} else {
 		t.Log().Infof("sent initial package inventory (%d)", len(data))
 	}
 	if data, err := t.PushPatch(); err != nil {
-		return err
+		// TODO: implement oc3 post patch
+		//return fmt.Errorf("push patch: %w", err)
+		t.Log().Warnf("push patch: %s", err)
 	} else {
 		t.Log().Infof("sent initial patch inventory (%d)", len(data))
 	}
 	if _, err := t.PushDisks(); err != nil {
-		return err
+		return fmt.Errorf("push disk: %w", err)
 	}
+	t.Log().Infof("sent initial disk inventory")
+
 	if err := t.Sysreport(); err != nil {
-		return err
+		// TODO: implement oc3 sysreport
+		// return fmt.Errorf("sysreport: %w", err)
+		t.Log().Warnf("sysreport: %s", err)
+	} else {
+		t.Log().Infof("sent initial sysreport")
+	}
+
+	if data, err := t.Checks(ctx); err != nil {
+		// TODO: implement oc3 push check
+		// return fmt.Errorf("push check: %w", err)
+		t.Log().Warnf("push check: %s", err)
+	} else {
+		t.Log().Infof("sent initial checks (%d)", data.Len())
 	}
 	return nil
 }
@@ -159,7 +170,6 @@ func (t Node) registerAsUserV3(user, password, app string) error {
 	if err := dec.Decode(&data); err != nil {
 		return fmt.Errorf("decode response body: %w", err)
 	}
-	fmt.Printf("got response data: %#v\n", data)
 	if data.Error != "" {
 		return errors.New(data.Error)
 	}

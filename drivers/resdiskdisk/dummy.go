@@ -18,9 +18,9 @@ func (t *T) ExposedDevices(ctx context.Context) device.L {
 	return l
 }
 
-func (t *T) unconfigure() error {
+func (t *T) unconfigure(_ context.Context) error {
 	return nil
 }
-func (t *T) configure(force forceMode) error {
+func (t *T) configure(_ context.Context, force forceMode) error {
 	return nil
 }

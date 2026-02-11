@@ -15,8 +15,9 @@ func NewRequester(dbOpensvc string, auth string, insecure bool) (*httphelper.T, 
 	// prepare default default header
 	header := http.Header{}
 	header.Set("Content-Type", "application/json")
-	header.Set("Authorization", auth)
-
+	if auth != "" {
+		header.Set("Authorization", auth)
+	}
 	factory := requestfactory.New(server, header)
 
 	cli := httphelper.NewHttpsClient(insecure)

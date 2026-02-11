@@ -1,3 +1,1 @@
 OpenSVC enables Collector v3 feeder calls upon detection of a collector v3 instance.
-When the feeder path is undefined, the system automatically constructs it using
-the format: node.collector + /feeder."
