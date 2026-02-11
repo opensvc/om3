@@ -66,7 +66,9 @@ func (t Node) Register(ctx context.Context, user, password, app string) error {
 		t.Log().Infof("sent initial package inventory (%d)", len(data))
 	}
 	if data, err := t.PushPatch(); err != nil {
-		return fmt.Errorf("push patch: %w", err)
+		// TODO: implement oc3 post patch
+		//return fmt.Errorf("push patch: %w", err)
+		t.Log().Warnf("push patch: %s", err)
 	} else {
 		t.Log().Infof("sent initial patch inventory (%d)", len(data))
 	}

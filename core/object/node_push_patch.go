@@ -21,9 +21,6 @@ func (t Node) PushPatch() ([]patches.Patch, error) {
 	if err != nil {
 		return l, err
 	}
-	if len(l) == 0 {
-		return l, nil
-	}
 	if err := t.dumpPatch(l); err != nil {
 		return l, err
 	}
