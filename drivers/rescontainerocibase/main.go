@@ -525,6 +525,10 @@ func (t *BT) Start(ctx context.Context) error {
 	name := t.ContainerName()
 	log := t.Log()
 
+	if deadline, ok := ctx.Deadline(); ok {
+		log.Debugf("Start deadline in %s", deadline.Sub(time.Now()))
+	}
+
 	logError := func(err error) error {
 		return t.logMainAction("start", err)
 	}
@@ -584,6 +588,9 @@ func (t *BT) Stop(ctx context.Context) error {
 	name := t.ContainerName()
 	log := t.Log()
 
+	if deadline, ok := ctx.Deadline(); ok {
+		log.Debugf("Stop deadline in %s", deadline.Sub(time.Now()))
+	}
 	logError := func(err error) error {
 		return t.logMainAction(fmt.Sprintf("container stop %s:", t.RID()), err)
 	}
@@ -722,6 +729,7 @@ func (t *BT) containerLabelID() string {
 
 func (t *BT) findAndStart(ctx context.Context) error {
 	var id string
+	log := t.Log()
 	name := t.ContainerName()
 	if t.executer == nil {
 		return fmt.Errorf("findAndStart: undefined executer")
@@ -734,18 +742,21 @@ func (t *BT) findAndStart(ctx context.Context) error {
 	errs := make(chan error, 1)
 	go func() {
 		if t.StartTimeout != nil && *t.StartTimeout > 0 {
-			t.Log().Infof("container start %s (%s) with timeout %s", name, id, t.StartTimeout)
+			log.Infof("container start %s (%s) with timeout %s", name, id, t.StartTimeout)
 			var cancel context.CancelFunc
 			ctx, cancel = context.WithTimeout(ctx, *t.StartTimeout)
 			defer cancel()
+			if deadline, ok := ctx.Deadline(); ok {
+				log.Debugf("findAndStart deadline in %s", deadline.Sub(time.Now()))
+			}
 		} else {
-			t.Log().Infof("container start %s (%s) without timeout", name, id)
+			log.Infof("container start %s (%s) without timeout", name, id)
 		}
 
 		inspectRefresh := func() {
 			_, err := t.executer.InspectRefresh(context.Background())
 			if err != nil {
-				t.Log().Warnf("findAndStart InspectRefresh: %s", err)
+				log.Warnf("findAndStart InspectRefresh: %s", err)
 			}
 		}
 
@@ -754,35 +765,35 @@ func (t *BT) findAndStart(ctx context.Context) error {
 			defer inspectRefresh()
 			return
 		}
-		t.Log().Tracef("started")
+		log.Tracef("started")
 		if t.Detach {
 			// t.executer.Wait(ctx, WaitConditionRunning) return err not found
 			// use check running instead
-			t.Log().Infof("check running")
+			log.Infof("check running")
 			inspect, err := t.executer.InspectRefresh(context.Background())
 			if err != nil {
 				err = fmt.Errorf("check running: can't inspect: %s", err)
 			} else if inspect == nil {
 				err = fmt.Errorf("check running: inspect is nil")
 			} else if inspect.Running() {
-				t.Log().Tracef("check running: ok")
+				log.Tracef("check running: ok")
 			} else {
 				err = fmt.Errorf("check running: false")
 			}
 			if err != nil {
-				t.Log().Warnf("%s", err)
+				log.Warnf("%s", err)
 			}
 			errs <- err
 			return
 		}
 		defer inspectRefresh()
-		t.Log().Infof("wait not running")
+		log.Infof("wait not running")
 		if err := t.executer.WaitNotRunning(ctx); err != nil {
-			t.Log().Tracef("wait not running: %s", err)
+			log.Tracef("wait not running: %s", err)
 			errs <- nil
 			return
 		} else {
-			t.Log().Tracef("wait not running: done")
+			log.Tracef("wait not running: done")
 			errs <- nil
 			return
 		}
@@ -798,13 +809,13 @@ func (t *BT) findAndStart(ctx context.Context) error {
 	case err := <-errs:
 		if err != nil {
 			err = fmt.Errorf("container start %s (%s): %s", name, id, err)
-			t.Log().Errorf("%s", err)
+			log.Errorf("%s", err)
 			return err
 		}
 		return nil
 	case <-timerC:
 		err := fmt.Errorf("container start %s (%s): timeout", name, id)
-		t.Log().Errorf("%s", err)
+		log.Errorf("%s", err)
 		return err
 	}
 }
@@ -826,6 +837,9 @@ func (t *BT) pull(ctx context.Context) error {
 		var cancel context.CancelFunc
 		ctx, cancel = context.WithTimeout(ctx, *t.PullTimeout)
 		defer cancel()
+		if deadline, ok := ctx.Deadline(); ok {
+			t.Log().Debugf("pull deadline in %s", deadline.Sub(time.Now()))
+		}
 	}
 	if err := t.executer.Pull(ctx); err != nil {
 		return fmt.Errorf("can't pull image %s: %s", t.Image, err)
@@ -834,11 +848,12 @@ func (t *BT) pull(ctx context.Context) error {
 }
 
 func (t *BT) pullAndRun(ctx context.Context) error {
+	log := t.Log()
 	if t.executer == nil {
 		return fmt.Errorf("pullAndRun: undefined executer")
 	}
 	if t.IsAlwaysImagePullPolicy() {
-		t.Log().Tracef("container start: with image policy: always")
+		log.Tracef("container start: with image policy: always")
 		if err := t.pull(ctx); err != nil {
 			return err
 		}
@@ -854,6 +869,9 @@ func (t *BT) pullAndRun(ctx context.Context) error {
 	if t.StartTimeout != nil && *t.StartTimeout > 0 {
 		var cancel context.CancelFunc
 		ctx, cancel = context.WithTimeout(ctx, *t.StartTimeout)
+		if deadline, ok := ctx.Deadline(); ok {
+			log.Debugf("executer.Run deadline in %s", deadline.Sub(time.Now()))
+		}
 		defer cancel()
 	}
 
