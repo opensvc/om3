@@ -36,6 +36,12 @@ type (
 	registerResData struct {
 		UUID string `json:"uuid"`
 	}
+
+	// registerResOK structures the successful POST oc3 node register response body
+	registerResOK struct {
+		UUID string `json:"uuid"`
+		Info string `json:"info"`
+	}
 )
 
 // Register logs in to the collector using the provided user credentials.
@@ -120,9 +126,6 @@ func (t Node) registerAsUserV3(user, password, app string) error {
 	if app == "" {
 		app = t.MergedConfig().GetString(key.Parse("node.app"))
 	}
-	if app != "" {
-		path += "?app=" + app
-	}
 	if password == "" {
 		fmt.Printf("Password: ")
 		if b, err := term.ReadPassword(int(os.Stdin.Fd())); err != nil {
@@ -161,22 +164,18 @@ func (t Node) registerAsUserV3(user, password, app string) error {
 	}
 	defer func() { _ = resp.Body.Close() }()
 
-	if resp.StatusCode != http.StatusOK {
-		return fmt.Errorf("unexpected collector response status code for %s %s: wanted %d got %d",
-			method, path, http.StatusOK, resp.StatusCode)
+	if err := CollectorResponseStatusCheck(resp, method, path, []int{http.StatusOK}); err != nil {
+		return err
 	}
 	dec := json.NewDecoder(resp.Body)
-	data := registerRes{}
+	data := registerResOK{}
 	if err := dec.Decode(&data); err != nil {
 		return fmt.Errorf("decode response body: %w", err)
-	}
-	if data.Error != "" {
-		return errors.New(data.Error)
 	}
 	if data.Info != "" {
 		t.Log().Infof("%s", data.Info)
 	}
-	return t.writeUUID(data.Data.UUID)
+	return t.writeUUID(data.UUID)
 }
 
 func (t Node) registerAsUserV2(user, password, app string) error {
