@@ -18,5 +18,5 @@ const (
 )
 
 const (
-	ServerRegister = "/api/register"
+	ServerRegister = "/api/auth/node"
 )

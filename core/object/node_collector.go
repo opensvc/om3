@@ -3,9 +3,12 @@ package object
 import (
 	"crypto/tls"
 	"encoding/base64"
+	"encoding/json"
 	"errors"
+	"fmt"
 	"net/http"
 	"net/url"
+	"slices"
 	"strings"
 	"time"
 
@@ -34,6 +37,12 @@ type (
 		// private field
 		password string
 	}
+
+	CollectorProblem struct {
+		Detail string `json:"detail"`
+		Title  string `json:"title"`
+		Status int    `json:"status"`
+	}
 )
 
 var (
@@ -42,6 +51,22 @@ var (
 
 	defaultPostCollectorTimeout = 1 * time.Second
 )
+
+// CollectorResponseStatusCheck verifies if the HTTP response status code matches any of the expected codes in `wanted`.
+// If it doesn't match, attempts to decode the response body as a `CollectorProblem` and includes its details in the error.
+func CollectorResponseStatusCheck(resp *http.Response, method, path string, wanted []int) error {
+	if slices.Contains(wanted, resp.StatusCode) {
+		return nil
+	}
+	var data CollectorProblem
+	dec := json.NewDecoder(resp.Body)
+	if err := dec.Decode(&data); err != nil {
+		return fmt.Errorf("unexpected response status code for %s %s: wanted %v got %d",
+			method, path, wanted, resp.StatusCode)
+	}
+	return fmt.Errorf("unexpected response status code for %s %s: wanted %v got %d %s: %s",
+		method, path, wanted, resp.StatusCode, data.Title, data.Detail)
+}
 
 func (t *Node) CollectorRawConfig() *CollectorConfigRaw {
 	cfg := t.MergedConfig()
