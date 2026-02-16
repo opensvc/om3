@@ -121,7 +121,7 @@ func FlagDaemonListenerName(flags *pflag.FlagSet, p *string) {
 }
 
 func FlagDaemonLogLevel(flags *pflag.FlagSet, p *string) {
-	flags.StringVar(p, "level", "", "trace, debug, info, warn, error, fatal, panic")
+	flags.StringVar(p, "level", "", "trace, debug, info, warn, error, fatal, panic, none")
 }
 
 func FlagDepth(flags *pflag.FlagSet, p *int) {

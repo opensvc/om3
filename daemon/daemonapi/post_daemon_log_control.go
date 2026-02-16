@@ -29,8 +29,13 @@ func (a *DaemonAPI) PostDaemonLogControl(ctx echo.Context, nodename string) erro
 
 func (a *DaemonAPI) postLocalDaemonLogControl(ctx echo.Context, payload api.LogControl) error {
 	var level string
-	if payload.Level != "none" {
-		level = string(payload.Level)
+	switch payload.Level {
+	case "":
+		return JSONProblemf(ctx, http.StatusBadRequest, "Invalid body", "missing 'level' field")
+	case "none":
+		// NoLevel
+	default:
+		level = payload.Level
 	}
 	newLevel, err := zerolog.ParseLevel(level)
 	if err != nil {

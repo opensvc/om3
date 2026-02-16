@@ -30,6 +30,8 @@ func NewCmdDaemonLog() *cobra.Command {
 	flags := cmd.Flags()
 	FlagNodeSelector(flags, &options.NodeSelector)
 	FlagDaemonLogLevel(flags, &options.Level)
+	_ = cmd.MarkFlagRequired("level")
+
 	return cmd
 }
 
