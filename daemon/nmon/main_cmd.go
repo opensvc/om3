@@ -4,19 +4,16 @@ import (
 	"errors"
 	"fmt"
 	"os"
-	"runtime"
 	"slices"
 	"strings"
 	"time"
 
 	"github.com/opensvc/om3/v3/core/clusternode"
 	"github.com/opensvc/om3/v3/core/node"
-	"github.com/opensvc/om3/v3/core/object"
 	"github.com/opensvc/om3/v3/core/rawconfig"
 	"github.com/opensvc/om3/v3/daemon/msgbus"
 	"github.com/opensvc/om3/v3/util/errcontext"
 	"github.com/opensvc/om3/v3/util/file"
-	"github.com/opensvc/om3/v3/util/key"
 	"github.com/opensvc/om3/v3/util/toc"
 )
 
@@ -65,56 +62,6 @@ func (t *Manager) onConfigFileUpdated(_ *msgbus.ConfigFileUpdated) {
 
 	// recompute rejoin ticker, perhaps RejoinGracePeriod has been changed
 	t.checkRejoinTicker()
-}
-
-func (t *Manager) getNodeConfig() node.Config {
-	var (
-		keyMaintenanceGracePeriod = key.New("node", "maintenance_grace_period")
-		keyMaxParallel            = key.New("node", "max_parallel")
-		keyMaxKeySize             = key.New("node", "max_key_size")
-		keyReadyPeriod            = key.New("node", "ready_period")
-		keyRejoinGracePeriod      = key.New("node", "rejoin_grace_period")
-		keyEnv                    = key.New("node", "env")
-		keySplitAction            = key.New("node", "split_action")
-		keySSHKey                 = key.New("node", "sshkey")
-		keyPRKey                  = key.New("node", "prkey")
-		keyMinAvailMemPct         = key.New("node", "min_avail_mem_pct")
-		keyMinAvailSwapPct        = key.New("node", "min_avail_swap_pct")
-	)
-	cfg := node.Config{}
-	if d := t.config.GetDuration(keyMaintenanceGracePeriod); d != nil {
-		cfg.MaintenanceGracePeriod = *d
-	}
-	if d := t.config.GetDuration(keyReadyPeriod); d != nil {
-		cfg.ReadyPeriod = *d
-	}
-	if d := t.config.GetDuration(keyRejoinGracePeriod); d != nil {
-		cfg.RejoinGracePeriod = *d
-	}
-	if d := t.config.GetSize(keyMaxKeySize); d != nil {
-		cfg.MaxKeySize = *d
-	}
-	cfg.MinAvailMemPct = t.config.GetInt(keyMinAvailMemPct)
-	cfg.MinAvailSwapPct = t.config.GetInt(keyMinAvailSwapPct)
-	cfg.MaxParallel = t.config.GetInt(keyMaxParallel)
-	cfg.Env = t.config.GetString(keyEnv)
-	cfg.SplitAction = t.config.GetString(keySplitAction)
-	cfg.SSHKey = t.config.GetString(keySSHKey)
-	cfg.PRKey = t.config.GetString(keyPRKey)
-
-	if cfg.MaxParallel == 0 {
-		cfg.MaxParallel = runtime.NumCPU()
-	}
-	if cfg.MaxParallel < MinMaxParallel {
-		cfg.MaxParallel = MinMaxParallel
-	}
-
-	node, _ := object.NewNode(object.WithVolatile(true))
-	for _, e := range node.Schedules() {
-		cfg.Schedules = append(cfg.Schedules, e.Config)
-	}
-
-	return cfg
 }
 
 func (t *Manager) checkRejoinTicker() {

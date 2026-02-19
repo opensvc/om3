@@ -1,6 +1,7 @@
 package node
 
 import (
+	"slices"
 	"time"
 
 	"github.com/opensvc/om3/v3/core/schedule"
@@ -20,6 +21,15 @@ type (
 		SplitAction            string            `json:"split_action"`
 		SSHKey                 string            `json:"sshkey"`
 		PRKey                  string            `json:"prkey"`
+		Hooks                  []Hook            `json:"hooks"`
+	}
+
+	Hook struct {
+		Name    string   `json:"name"`
+		Events  []string `json:"events"`
+		Command []string `json:"command"`
+
+		sig string
 	}
 )
 
@@ -55,5 +65,36 @@ func (c Config) Equals(other Config) bool {
 		}
 	}
 
+	// Compare Hook slice
+	if len(c.Hooks) != len(other.Hooks) {
+		return false
+	}
+	for i := range c.Hooks {
+		if !c.Hooks[i].Equal(&other.Hooks[i]) {
+			return false
+		}
+	}
+
+	return true
+}
+
+func (t *Hook) Sig() string {
+	return t.sig
+}
+
+func (t *Hook) SetSig(sig string) {
+	t.sig = sig
+}
+
+func (t *Hook) Equal(o *Hook) bool {
+	if t.Name != o.Name {
+		return false
+	} else if t.sig != o.sig {
+		return false
+	} else if !slices.Equal(t.Events, o.Events) {
+		return false
+	} else if !slices.Equal(t.Command, o.Command) {
+		return false
+	}
 	return true
 }
