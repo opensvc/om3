@@ -501,13 +501,13 @@ The v3 agent needs to address a v3 relay.
 The v3 relay must have a user with the `heartbeat` grant that the client will need to use.
 ```
 om system/usr/relayuser create --kw grant=heartbeat
-om system/usr/relayuser add --key password --value $PASSWORD
+om system/usr/relayuser key add --name password --value $PASSWORD
 ```
 
 On the cluster nodes, store the relay password in a secret:
 ```
 om system/sec/relay-v3 create
-om system/sec/relay-v3 add --key password --value $PASSWORD
+om system/sec/relay-v3 key add --name password --value $PASSWORD
 ```
 
 And the heartbeat configuration:
@@ -594,7 +594,7 @@ Where the password is the value of the `þassword` key in `system/sec/relay-v3`.
 
 ### sec
 
-* Add "o[mx] rename --key old --to new" commands
+* Add "o[mx] key rename --name old --to new" commands
 
 ### svc
 
