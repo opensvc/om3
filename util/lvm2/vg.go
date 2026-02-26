@@ -439,7 +439,7 @@ func (t *VG) PVs(ctx context.Context) (device.L, error) {
 	return l, nil
 }
 
-func (t *VG) ActiveLVs() (device.L, error) {
+func (t *VG) ActiveLVDevices() (device.L, error) {
 	l := make(device.L, 0)
 	pattern := fmt.Sprintf("/dev/mapper/%s-*", t.VGName)
 	matches, err := filepath.Glob(pattern)
