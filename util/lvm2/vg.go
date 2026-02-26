@@ -457,3 +457,35 @@ func (t *VG) ActiveLVDevices() (device.L, error) {
 	}
 	return l, nil
 }
+
+// LVInfos retrieves information about logical volumes (LVs) in the volume group (VG)
+// as a list of LVInfo structures.
+// It runs the "lvs" command with JSON output format and processes the result.
+// Returns an error if the command fails.
+func (t *VG) LVInfos(ctx context.Context) (any, error) {
+	data := ShowData{}
+	cmd := command.New(
+		command.WithContext(ctx),
+		command.WithName("lvs"),
+		command.WithVarArgs("--reportformat", "json", t.VGName),
+		command.WithLogger(t.Log()),
+		command.WithCommandLogLevel(zerolog.TraceLevel),
+		command.WithStdoutLogLevel(zerolog.TraceLevel),
+		command.WithStderrLogLevel(zerolog.TraceLevel),
+		command.WithBufferedStdout(),
+	)
+	if err := cmd.Run(); err != nil {
+		if cmd.ExitCode() == 5 {
+			return nil, ErrExist
+		}
+		return nil, err
+	}
+	if err := json.Unmarshal(cmd.Stdout(), &data); err != nil {
+		return nil, err
+	}
+	if len(data.Report) == 1 {
+		var lvInfos LVInfos = data.Report[0].LV
+		return lvInfos, nil
+	}
+	return nil, nil
+}

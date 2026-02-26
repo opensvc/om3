@@ -41,6 +41,7 @@ type (
 		DelTag(context.Context, string) error
 		HasTag(context.Context, string) (bool, error)
 		Tags(context.Context) ([]string, error)
+		LVInfos(context.Context) (any, error)
 	}
 	VGDriverProvisioner interface {
 		Create(context.Context, string, []string, []string) error
@@ -53,6 +54,11 @@ type (
 	}
 	VGDriverImportDeviceser interface {
 		ImportDevices(context.Context) error
+	}
+
+	LVInfoser interface {
+		HasLV() bool
+		HasActiveLV() bool
 	}
 )
 
@@ -125,13 +131,31 @@ func (t *T) removeHolders(ctx context.Context) error {
 }
 
 func (t *T) Status(ctx context.Context) status.T {
-	if v, err := t.isUp(ctx); err != nil {
+	if isUp, err := t.isUp(ctx); err != nil {
 		t.StatusLog().Error("%s", err)
 		return status.Undef
-	} else if v {
-		return status.Up
+	} else if !isUp {
+		return status.Down
+	} else {
+		// vg is up, verify its volumes
+		if i, err := t.vg().LVInfos(ctx); err != nil {
+			t.StatusLog().Error("%s", err)
+			return status.Undef
+		} else if a, ok := i.(LVInfoser); !ok {
+			// can't verify more things
+			return status.Up
+		} else {
+			if !a.HasLV() {
+				// no lv ... happens in provisioning, where lv are not created yet
+				return status.Up
+			} else if a.HasActiveLV() {
+				// at least one lv is active
+				return status.Up
+			} else {
+				return status.Down
+			}
+		}
 	}
-	return status.Down
 }
 
 // Label implements Label from resource.Driver interface,

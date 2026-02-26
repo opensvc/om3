@@ -35,6 +35,9 @@ type (
 		MirrorLog       string `json:"mirror_log"`
 		Devices         string `json:"devices"`
 	}
+
+	LVInfos []LVInfo
+
 	LV struct {
 		driver
 		LVName string
@@ -301,4 +304,21 @@ func (t *LV) Remove(ctx context.Context, args []string) error {
 		return fmt.Errorf("%s error %d", cmd, cmd.ExitCode())
 	}
 	return nil
+}
+
+func (t LVInfo) IsActive() bool {
+	return LVAttrs(t.LVAttr).Attr(LVAttrIndexState) == LVAttrStateActive
+}
+
+func (t LVInfos) HasActiveLV() bool {
+	for _, l := range t {
+		if l.IsActive() {
+			return true
+		}
+	}
+	return false
+}
+
+func (t LVInfos) HasLV() bool {
+	return len(t) > 0
 }
