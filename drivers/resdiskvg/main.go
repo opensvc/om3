@@ -35,7 +35,7 @@ type (
 		FQN() string
 		Devices(context.Context) (device.L, error)
 		PVs(context.Context) (device.L, error)
-		ActiveLVs() (device.L, error)
+		ActiveLVDevices() (device.L, error)
 		DriverName() string
 		AddTag(context.Context, string) error
 		DelTag(context.Context, string) error
@@ -197,7 +197,7 @@ func (t *T) Provisioned(ctx context.Context) (provisioned.T, error) {
 }
 
 func (t *T) ExposedDevices(ctx context.Context) device.L {
-	if l, err := t.vg().ActiveLVs(); err == nil {
+	if l, err := t.vg().ActiveLVDevices(); err == nil {
 		return l
 	} else {
 		return device.L{}
