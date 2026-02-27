@@ -41,6 +41,8 @@ type (
 		DelTag(context.Context, string) error
 		HasTag(context.Context, string) (bool, error)
 		Tags(context.Context) ([]string, error)
+		GetLVSummary(context.Context) (lvm2.LVSummary, error)
+		NeedActivate(lvm2.LVSummary) bool
 	}
 	VGDriverProvisioner interface {
 		Create(context.Context, string, []string, []string) error
@@ -65,11 +67,19 @@ func (t *T) Start(ctx context.Context) error {
 	if err := t.startTag(ctx); err != nil {
 		return err
 	}
-	if v, err := t.isUp(ctx); err != nil {
+	if v, err := t.hasTag(ctx); err != nil {
 		return err
 	} else if v {
-		t.Log().Infof("Volume group %s is already up", t.Label(ctx))
-		return nil
+		vg := t.vg()
+		if r, err := vg.GetLVSummary(ctx); err != nil {
+			// log the unexpected error, but we can continue (Activate will be called)
+			t.Log().Warnf("can't detect if volume group has activable volumes: %s", err)
+		} else if vg.NeedActivate(r) {
+			t.Log().Debugf("Volume group %s need activation: has %d of %d volumes activated", t.Label(ctx), r.Activated, r.Total)
+		} else {
+			t.Log().Infof("Volume group %s is already up", t.Label(ctx))
+			return nil
+		}
 	}
 	if err := t.vg().Activate(ctx); err != nil {
 		return err
