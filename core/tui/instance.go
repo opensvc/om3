@@ -169,6 +169,7 @@ func (t *App) updateInstanceView() {
 	table.SetTitle(title)
 	table.SetBorder(false)
 	table.SetEvaluateAllRows(true)
+	table.SetSelectable(true, true)
 
 	table.SetSelectionChangedFunc(func(row, col int) {
 		t.viewRID = ""
@@ -199,6 +200,10 @@ func (t *App) updateInstanceView() {
 	}
 
 	table.SetSelectedFunc(selectedFunc)
+
+	table.SetSelectionChangedFunc(func(row, column int) {
+		t.position = Position{row: row, col: column}
+	})
 
 	setSelection := func(table *tview.Table) {
 		row, col := table.GetSelection()
@@ -257,11 +262,15 @@ func (t *App) updateInstanceView() {
 	i := 0
 
 	postamble := func() {
+		t.cleanCommand()
+
 		t.flex.Clear()
 		t.flex.AddItem(t.head, 1, 0, false)
 		t.flex.AddItem(table1, i+2, 0, false)
 		t.flex.AddItem(table, 0, 1, true)
 		t.app.SetFocus(table)
+
+		table.Select(t.position.row, t.position.col)
 	}
 
 	instanceState, ok := digest.Instances.ByNode()[t.viewNode]
@@ -335,7 +344,5 @@ func (t *App) updateInstanceView() {
 		table1.SetCell(i, 1, tview.NewTableCell(formatRel(instanceState.Monitor.Children)).SetSelectable(false))
 	}
 
-	if focusTable, ok := t.app.GetFocus().(*tview.Table); !t.focused && (!ok || focusTable.GetTitle() != table.GetTitle()) {
-		postamble()
-	}
+	postamble()
 }

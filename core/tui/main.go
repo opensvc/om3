@@ -429,6 +429,10 @@ func (t *App) initApp() {
 				}, AskInputData{"Seats", "1"}, AskInputData{"Greet timeout", "5s"})
 			}
 		case 'p':
+			if focusTable, ok := t.app.GetFocus().(*tview.Table); ok {
+				focusTable.Select(t.position.row, t.position.col)
+				t.infof("selected cell at row %d, col %d", t.position.row, t.position.col)
+			}
 		}
 		return event
 	})
@@ -865,17 +869,19 @@ func (t *App) isNodeSelected(node string) bool {
 	return ok
 }
 
-func (t *App) onRuneColumn(event *tcell.EventKey) {
-	clean := func() {
-		t.flex.RemoveItem(t.command)
-		t.command = nil
-		t.focused = false
-		if !t.isOnConfirmation {
-			t.app.SetFocus(t.flex.GetItem(1))
-		}
+func (t *App) cleanCommand() {
+	t.flex.RemoveItem(t.command)
+	t.command = nil
+	t.focused = false
+	if !t.isOnConfirmation {
+		t.app.SetFocus(t.flex.GetItem(1))
 	}
+}
+
+func (t *App) onRuneColumn(event *tcell.EventKey) {
+
 	if t.command != nil {
-		clean()
+		t.cleanCommand()
 		return
 	}
 	clusterAction := func(args []string) {
@@ -1046,14 +1052,14 @@ func (t *App) onRuneColumn(event *tcell.EventKey) {
 				case "quit", "q":
 					t.stop()
 				case "connect":
-					clean()
+					t.cleanCommand()
 					t.nav(viewContext)
 				case "filter":
 					if len(args) < 2 {
 						t.errorf("not enough arguments: filter <expression>")
 						return
 					}
-					clean()
+					t.cleanCommand()
 					t.setFilter(args[1])
 					return
 				case "go":
@@ -1063,35 +1069,35 @@ func (t *App) onRuneColumn(event *tcell.EventKey) {
 					}
 					switch args[1] {
 					case "sec":
-						clean()
+						t.cleanCommand()
 						t.setFilter("*/sec/*")
 						return
 					case "cfg":
-						clean()
+						t.cleanCommand()
 						t.setFilter("*/cfg/*")
 						return
 					case "usr":
-						clean()
+						t.cleanCommand()
 						t.setFilter("*/usr/*")
 						return
 					case "svc":
-						clean()
+						t.cleanCommand()
 						t.setFilter("*/svc/*")
 						return
 					case "vol":
-						clean()
+						t.cleanCommand()
 						t.setFilter("*/vol/*")
 						return
 					case "pool":
-						clean()
+						t.cleanCommand()
 						t.nav(viewPool)
 						return
 					case "network", "net":
-						clean()
+						t.cleanCommand()
 						t.nav(viewNetwork)
 						return
 					case "relay":
-						clean()
+						t.cleanCommand()
 						t.nav(viewRelay)
 						return
 					}
@@ -1100,7 +1106,7 @@ func (t *App) onRuneColumn(event *tcell.EventKey) {
 						t.errorf("not enough arguments: do <action>")
 						return
 					}
-					clean()
+					t.cleanCommand()
 					switch {
 					case len(t.selectedRIDs) > 0:
 						resourceAction(args[1:], t.selectedRIDs)
@@ -1143,7 +1149,7 @@ func (t *App) onRuneColumn(event *tcell.EventKey) {
 					}
 				}
 			case tcell.KeyEscape:
-				clean()
+				t.cleanCommand()
 			}
 		})
 	t.flex.RemoveItem(t.errs)
