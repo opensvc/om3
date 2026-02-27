@@ -67,7 +67,7 @@ func NewVG(vg string, opts ...funcopt.O) *VG {
 	return &t
 }
 
-func (t VG) FQN() string {
+func (t *VG) FQN() string {
 	return t.VGName
 }
 
