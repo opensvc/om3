@@ -121,6 +121,7 @@ func (t *T) exists(ctx context.Context) (bool, error) {
 	return t.vg().Exists(ctx)
 }
 
+// isUp checks if the volume group is active by verifying the presence of a specific tag.
 func (t *T) isUp(ctx context.Context) (bool, error) {
 	return t.hasTag(ctx)
 }
@@ -139,6 +140,14 @@ func (t *T) Status(ctx context.Context) status.T {
 		t.StatusLog().Error("%s", err)
 		return status.Undef
 	} else if v {
+		r, err := t.vg().GetLVSummary(ctx)
+		if err != nil {
+			t.StatusLog().Error("%s", err)
+			return status.Undef
+		}
+		if r.Activated != r.Total {
+			t.StatusLog().Warn("%d of %d volumes are not activated", r.Total-r.Activated, r.Total)
+		}
 		return status.Up
 	}
 	return status.Down
