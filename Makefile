@@ -21,7 +21,7 @@ OM := bin/om
 OX := bin/ox
 COMPOBJ := bin/compobj
 COMPOBJ_D := share/opensvc/compliance
-LOCAL_HOSTNAME := $(shell hostname)
+LOCAL_HOSTNAME := $(shell hostname 2>/dev/null || echo $${HOSTNAME:-localhost})
 
 .PHONY: version dist deploy restart
 
