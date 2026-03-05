@@ -67,7 +67,7 @@ func NewVG(vg string, opts ...funcopt.O) *VG {
 	return &t
 }
 
-func (t VG) FQN() string {
+func (t *VG) FQN() string {
 	return t.VGName
 }
 
@@ -439,7 +439,7 @@ func (t *VG) PVs(ctx context.Context) (device.L, error) {
 	return l, nil
 }
 
-func (t *VG) ActiveLVs() (device.L, error) {
+func (t *VG) ActiveLVDevices() (device.L, error) {
 	l := make(device.L, 0)
 	pattern := fmt.Sprintf("/dev/mapper/%s-*", t.VGName)
 	matches, err := filepath.Glob(pattern)
@@ -456,4 +456,54 @@ func (t *VG) ActiveLVs() (device.L, error) {
 		l = append(l, device.New(p, device.WithLogger(t.Log())))
 	}
 	return l, nil
+}
+
+// LVInfos retrieves information about logical volumes (LVs) in the volume group (VG)
+// as a list of LVInfo structures.
+// It runs the "lvs" command with JSON output format and processes the result.
+// Returns an error if the command fails.
+func (t *VG) LVInfos(ctx context.Context) ([]LVInfo, error) {
+	data := ShowData{}
+	cmd := command.New(
+		command.WithContext(ctx),
+		command.WithName("lvs"),
+		command.WithVarArgs("--reportformat", "json", t.VGName),
+		command.WithLogger(t.Log()),
+		command.WithCommandLogLevel(zerolog.TraceLevel),
+		command.WithStdoutLogLevel(zerolog.TraceLevel),
+		command.WithStderrLogLevel(zerolog.TraceLevel),
+		command.WithBufferedStdout(),
+	)
+	if err := cmd.Run(); err != nil {
+		if cmd.ExitCode() == 5 {
+			return nil, ErrExist
+		}
+		return nil, err
+	}
+	if err := json.Unmarshal(cmd.Stdout(), &data); err != nil {
+		return nil, err
+	}
+	if len(data.Report) == 1 {
+		return data.Report[0].LV, nil
+	}
+	return nil, nil
+}
+
+func (t *VG) GetLVSummary(ctx context.Context) (LVSummary, error) {
+	var result LVSummary
+	lvInfos, err := t.LVInfos(ctx)
+	if err != nil {
+		return result, err
+	}
+	result.Total = len(lvInfos)
+	for _, lvInfo := range lvInfos {
+		if LVAttrs(lvInfo.LVAttr).Attr(LVAttrIndexState) == LVAttrStateActive {
+			result.Activated++
+		}
+	}
+	return result, nil
+}
+
+func (t *VG) NeedActivate(s LVSummary) bool {
+	return s.Total > 0 && s.Activated < s.Total
 }

@@ -35,12 +35,14 @@ type (
 		FQN() string
 		Devices(context.Context) (device.L, error)
 		PVs(context.Context) (device.L, error)
-		ActiveLVs() (device.L, error)
+		ActiveLVDevices() (device.L, error)
 		DriverName() string
 		AddTag(context.Context, string) error
 		DelTag(context.Context, string) error
 		HasTag(context.Context, string) (bool, error)
 		Tags(context.Context) ([]string, error)
+		GetLVSummary(context.Context) (lvm2.LVSummary, error)
+		NeedActivate(lvm2.LVSummary) bool
 	}
 	VGDriverProvisioner interface {
 		Create(context.Context, string, []string, []string) error
@@ -65,11 +67,19 @@ func (t *T) Start(ctx context.Context) error {
 	if err := t.startTag(ctx); err != nil {
 		return err
 	}
-	if v, err := t.isUp(ctx); err != nil {
+	if v, err := t.hasTag(ctx); err != nil {
 		return err
 	} else if v {
-		t.Log().Infof("Volume group %s is already up", t.Label(ctx))
-		return nil
+		vg := t.vg()
+		if r, err := vg.GetLVSummary(ctx); err != nil {
+			// log the unexpected error, but we can continue (Activate will be called)
+			t.Log().Warnf("can't detect if volume group has activable volumes: %s", err)
+		} else if vg.NeedActivate(r) {
+			t.Log().Debugf("Volume group %s need activation: has %d of %d volumes activated", t.Label(ctx), r.Activated, r.Total)
+		} else {
+			t.Log().Infof("Volume group %s is already up", t.Label(ctx))
+			return nil
+		}
 	}
 	if err := t.vg().Activate(ctx); err != nil {
 		return err
@@ -111,6 +121,7 @@ func (t *T) exists(ctx context.Context) (bool, error) {
 	return t.vg().Exists(ctx)
 }
 
+// isUp checks if the volume group is active by verifying the presence of a specific tag.
 func (t *T) isUp(ctx context.Context) (bool, error) {
 	return t.hasTag(ctx)
 }
@@ -129,6 +140,14 @@ func (t *T) Status(ctx context.Context) status.T {
 		t.StatusLog().Error("%s", err)
 		return status.Undef
 	} else if v {
+		r, err := t.vg().GetLVSummary(ctx)
+		if err != nil {
+			t.StatusLog().Error("%s", err)
+			return status.Undef
+		}
+		if r.Activated != r.Total {
+			t.StatusLog().Warn("%d of %d volumes are not activated", r.Total-r.Activated, r.Total)
+		}
 		return status.Up
 	}
 	return status.Down
@@ -197,7 +216,7 @@ func (t *T) Provisioned(ctx context.Context) (provisioned.T, error) {
 }
 
 func (t *T) ExposedDevices(ctx context.Context) device.L {
-	if l, err := t.vg().ActiveLVs(); err == nil {
+	if l, err := t.vg().ActiveLVDevices(); err == nil {
 		return l
 	} else {
 		return device.L{}
