@@ -143,9 +143,13 @@ func init() {
 	}
 }
 
+func (t *T) DriverID() driver.ID {
+	return driver.NewID(driver.GroupFS, t.Type)
+}
+
 // Manifest exposes to the core the input expected by the driver.
 func (t *T) Manifest() *manifest.T {
-	m := manifest.New(driver.NewID(driver.GroupFS, t.Type), t)
+	m := manifest.New(t.DriverID(), t)
 	m.Kinds.Or(naming.KindSvc, naming.KindVol)
 	m.Add(manifest.ContextObjectPath)
 	m.AddKeywords(KeywordsBase...)

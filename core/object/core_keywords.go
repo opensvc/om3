@@ -9,6 +9,7 @@ import (
 	"github.com/opensvc/om3/v3/core/keyop"
 	"github.com/opensvc/om3/v3/core/keywords"
 	"github.com/opensvc/om3/v3/core/kwoption"
+	"github.com/opensvc/om3/v3/core/manifest"
 	"github.com/opensvc/om3/v3/core/naming"
 	"github.com/opensvc/om3/v3/core/placement"
 	"github.com/opensvc/om3/v3/core/priority"
@@ -739,7 +740,7 @@ func keywordLookup(store keywords.Store, k key.T, kind naming.Kind, sectionType 
 		if !ok {
 			continue
 		}
-		kws := allocator().Manifest().Keywords()
+		kws := manifest.Get(allocator()).Keywords()
 		if kws == nil {
 			continue
 		}
@@ -772,7 +773,7 @@ func KeywordStoreWithDrivers(kind naming.Kind) keywords.Store {
 			continue
 		}
 		r := factory()
-		manifest := r.Manifest()
+		manifest := manifest.Get(r)
 		if !manifest.Kinds.Has(kind) {
 			continue
 		}

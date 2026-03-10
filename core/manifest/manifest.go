@@ -2,6 +2,7 @@ package manifest
 
 import (
 	"context"
+	"sync"
 
 	"github.com/opensvc/om3/v3/core/driver"
 	"github.com/opensvc/om3/v3/core/keywords"
@@ -52,6 +53,11 @@ type (
 	Attr interface {
 		Name() string
 	}
+
+	tcache struct {
+		sync.RWMutex
+		m map[string]*T
+	}
 )
 
 type (
@@ -74,6 +80,16 @@ type (
 		Update(context.Context) error
 	}
 )
+
+var (
+	cache tcache
+)
+
+func init() {
+	cache = tcache{
+		m: make(map[string]*T),
+	}
+}
 
 func (t Context) Name() string {
 	return t.Attr
@@ -149,4 +165,23 @@ func (t *T) Keywords() []*keywords.Keyword {
 		}
 	}
 	return l
+}
+
+type manifester interface {
+	Manifest() *T
+	DriverID() driver.ID
+}
+
+// Get provides a manifest from a cache indexed by driver id.
+// If the cache
+func Get(r manifester) *T {
+	cache.Lock()
+	defer cache.Unlock()
+	key := r.DriverID().String()
+	if m, ok := cache.m[key]; ok {
+		return m
+	}
+	m := r.Manifest()
+	cache.m[key] = m
+	return m
 }

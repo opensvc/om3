@@ -245,7 +245,7 @@ func (t *T) IsInstanceSufficientlyStarted(ctx context.Context) (v bool, rids []s
 		case driver.GroupFS:
 		case driver.GroupShare:
 		case driver.GroupDisk:
-			switch r.Manifest().DriverID.Name {
+			switch r.DriverID().Name {
 			case "drbd":
 				continue
 			case "scsireserv":

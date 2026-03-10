@@ -28,7 +28,7 @@ func (t *actor) newObjectdevice(dev device.T, role objectdevice.Role, r resource
 		Device:     dev,
 		Role:       role,
 		RID:        r.RID(),
-		DriverID:   r.Manifest().DriverID,
+		DriverID:   r.DriverID(),
 		ObjectPath: t.path,
 	}
 }

@@ -37,6 +37,10 @@ func init() {
 	driver.Register(DrvID, New)
 }
 
+func (t *T) DriverID() driver.ID {
+	return DrvID
+}
+
 // Manifest ...
 func (t *T) Manifest() *manifest.T {
 	m := manifest.New(DrvID, t)

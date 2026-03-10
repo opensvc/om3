@@ -171,6 +171,10 @@ func init() {
 	driver.Register(altDrvID, New)
 }
 
+func (t *T) DriverID() driver.ID {
+	return drvID
+}
+
 // Manifest exposes to the core the input expected by the driver.
 func (t *T) Manifest() *manifest.T {
 	m := manifest.New(drvID, t)

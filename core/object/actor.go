@@ -345,7 +345,7 @@ func (t *actor) ReconfigureResource(r resource.Driver) error {
 func (t *actor) configureResource(r resource.Driver, rid string) error {
 	r.SetRID(rid)
 	r.SetObject(t)
-	m := r.Manifest()
+	m := manifest.Get(r)
 	getDNS := func() ([]string, error) {
 		n, err := t.Node()
 		if err != nil {
