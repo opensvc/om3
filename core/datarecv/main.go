@@ -83,9 +83,9 @@ func pop(words []string) (string, []string) {
 	return words[0], words[1:]
 }
 
-func Keywords(prefix string) []keywords.Keyword {
-	return []keywords.Keyword{
-		keywords.Keyword{
+func Keywords(prefix string) []*keywords.Keyword {
+	return []*keywords.Keyword{
+		{
 			Attr:      prefix + "Install",
 			Converter: "shlex",
 			Example:   "file from sec {name} key password to path /data/password mode 0600 user 1000 group 1000",
@@ -93,7 +93,7 @@ func Keywords(prefix string) []keywords.Keyword {
 			Scopable:  true,
 			Text:      keywords.NewText(fs, "text/kw/install"),
 		},
-		keywords.Keyword{
+		{
 			Attr:      prefix + "Configs",
 			Converter: "shlex",
 			Example:   "conf/mycnf:/etc/mysql/my.cnf:ro conf/sysctl:/etc/sysctl.d/01-db.conf",
@@ -101,7 +101,7 @@ func Keywords(prefix string) []keywords.Keyword {
 			Scopable:  true,
 			Text:      keywords.NewText(fs, "text/kw/configs"),
 		},
-		keywords.Keyword{
+		{
 			Attr:      prefix + "Secrets",
 			Converter: "shlex",
 			Default:   "",
@@ -111,7 +111,7 @@ func Keywords(prefix string) []keywords.Keyword {
 			Text:      keywords.NewText(fs, "text/kw/secrets"),
 			Types:     []string{"shm"},
 		},
-		keywords.Keyword{
+		{
 			Attr:      prefix + "Directories",
 			Converter: "list",
 			Default:   "",
@@ -120,21 +120,21 @@ func Keywords(prefix string) []keywords.Keyword {
 			Scopable:  true,
 			Text:      keywords.NewText(fs, "text/kw/directories"),
 		},
-		keywords.Keyword{
+		{
 			Attr:     prefix + "User",
 			Example:  "1001",
 			Option:   "user",
 			Scopable: true,
 			Text:     keywords.NewText(fs, "text/kw/user"),
 		},
-		keywords.Keyword{
+		{
 			Attr:     prefix + "Group",
 			Example:  "1001",
 			Option:   "group",
 			Scopable: true,
 			Text:     keywords.NewText(fs, "text/kw/group"),
 		},
-		keywords.Keyword{
+		{
 			Attr:      prefix + "Perm",
 			Converter: "filemode",
 			Example:   "660",
@@ -142,7 +142,7 @@ func Keywords(prefix string) []keywords.Keyword {
 			Scopable:  true,
 			Text:      keywords.NewText(fs, "text/kw/perm"),
 		},
-		keywords.Keyword{
+		{
 			Attr:      prefix + "DirPerm",
 			Converter: "filemode",
 			// Default value is fmt.Sprintf("%o", defaultDirPerm)
@@ -152,7 +152,7 @@ func Keywords(prefix string) []keywords.Keyword {
 			Scopable: true,
 			Text:     keywords.NewText(fs, "text/kw/dirperm"),
 		},
-		keywords.Keyword{
+		{
 			Attr:     prefix + "Signal",
 			Example:  "hup:container#1",
 			Option:   "signal",

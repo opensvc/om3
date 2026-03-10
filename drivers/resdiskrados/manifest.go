@@ -15,6 +15,41 @@ var (
 	fs embed.FS
 
 	drvID = driver.NewID(driver.GroupDisk, "rados")
+
+	kws = []*keywords.Keyword{
+		{
+			Attr:     "Name",
+			Example:  "pool1/cluster1/svc1",
+			Option:   "name",
+			Required: true,
+			Scopable: true,
+			Text:     keywords.NewText(fs, "text/kw/name"),
+		},
+		{
+			Attr:         "Size",
+			Example:      "100m",
+			Option:       "size",
+			Provisioning: true,
+			Scopable:     true,
+			Text:         keywords.NewText(fs, "text/kw/size"),
+		},
+		{
+			Attr:         "Access",
+			Candidates:   []string{"rwo", "roo", "rwx", "rox"},
+			Default:      "rwo",
+			Option:       "access",
+			Provisioning: true,
+			Scopable:     true,
+			Text:         keywords.NewText(fs, "text/kw/access"),
+		},
+		{
+			Attr:     "Keyring",
+			Option:   "keyring",
+			Scopable: true,
+			Example:  "from ./sec/ceph key eu1.keyring",
+			Text:     keywords.NewText(fs, "text/kw/keyring"),
+		},
+	}
 )
 
 func init() {
@@ -25,41 +60,10 @@ func init() {
 func (t *T) Manifest() *manifest.T {
 	m := manifest.New(drvID, t)
 	m.Kinds.Or(naming.KindSvc, naming.KindVol)
-	m.AddKeywords(resdisk.BaseKeywords...)
 	m.Add(
 		manifest.ContextObjectFQDN,
-		keywords.Keyword{
-			Attr:     "Name",
-			Example:  "pool1/cluster1/svc1",
-			Option:   "name",
-			Required: true,
-			Scopable: true,
-			Text:     keywords.NewText(fs, "text/kw/name"),
-		},
-		keywords.Keyword{
-			Attr:         "Size",
-			Example:      "100m",
-			Option:       "size",
-			Provisioning: true,
-			Scopable:     true,
-			Text:         keywords.NewText(fs, "text/kw/size"),
-		},
-		keywords.Keyword{
-			Attr:         "Access",
-			Candidates:   []string{"rwo", "roo", "rwx", "rox"},
-			Default:      "rwo",
-			Option:       "access",
-			Provisioning: true,
-			Scopable:     true,
-			Text:         keywords.NewText(fs, "text/kw/access"),
-		},
-		keywords.Keyword{
-			Attr:     "Keyring",
-			Option:   "keyring",
-			Scopable: true,
-			Example:  "from ./sec/ceph key eu1.keyring",
-			Text:     keywords.NewText(fs, "text/kw/keyring"),
-		},
 	)
+	m.AddKeywords(resdisk.BaseKeywords...)
+	m.AddKeywords(kws...)
 	return m
 }

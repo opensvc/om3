@@ -60,10 +60,10 @@ func FilterKeywordStore(store keywords.Store, driver, section, option *string, p
 		sectionType := o.Config().GetString(key.New(*section, "type"))
 		k := key.New(*section, *option)
 		kw := o.Config().Referrer.KeywordLookup(k, sectionType)
-		if kw.IsZero() {
-			store = []keywords.Keyword{}
+		if kw == nil {
+			store = []*keywords.Keyword{}
 		} else {
-			store = []keywords.Keyword{kw}
+			store = []*keywords.Keyword{kw}
 		}
 	}
 	return store, nil

@@ -15,6 +15,25 @@ var (
 	//go:embed text
 	fs    embed.FS
 	drvID = driver.NewID(driver.GroupContainer, "vbox")
+
+	kws = []*keywords.Keyword{
+		&rescontainer.KWRCmd,
+		&rescontainer.KWName,
+		&rescontainer.KWHostname,
+		&rescontainer.KWStartTimeout,
+		&rescontainer.KWStopTimeout,
+		&rescontainer.KWPromoteRW,
+		&rescontainer.KWOsvcRootPath,
+		&rescontainer.KWGuestOS,
+		{
+			Attr:       "Headless",
+			Converter:  "bool",
+			Default:    "false",
+			Deprecated: "3.0",
+			Option:     "headless",
+			Text:       keywords.NewText(fs, "text/kw/headless"),
+		},
+	}
 )
 
 func init() {
@@ -25,29 +44,14 @@ func init() {
 func (t *T) Manifest() *manifest.T {
 	m := manifest.New(drvID, t)
 	m.Kinds.Or(naming.KindSvc)
-	m.AddKeywords(manifest.SCSIPersistentReservationKeywords...)
 	m.Add(
 		manifest.ContextObjectPath,
 		manifest.ContextObjectID,
 		manifest.ContextPeers,
 		manifest.ContextDNS,
 		manifest.ContextTopology,
-		rescontainer.KWRCmd,
-		rescontainer.KWName,
-		rescontainer.KWHostname,
-		rescontainer.KWStartTimeout,
-		rescontainer.KWStopTimeout,
-		rescontainer.KWPromoteRW,
-		rescontainer.KWOsvcRootPath,
-		rescontainer.KWGuestOS,
-		keywords.Keyword{
-			Attr:       "Headless",
-			Converter:  "bool",
-			Default:    "false",
-			Deprecated: "3.0",
-			Option:     "headless",
-			Text:       keywords.NewText(fs, "text/kw/headless"),
-		},
 	)
+	m.AddKeywords(manifest.SCSIPersistentReservationKeywords...)
+	m.AddKeywords(kws...)
 	return m
 }

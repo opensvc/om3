@@ -19,6 +19,18 @@ var (
 
 var (
 	DrvID = driver.NewID(driver.GroupTask, "podman")
+
+	kws = []*keywords.Keyword{
+		&rescontainer.KWOsvcRootPath,
+		&rescontainer.KWGuestOS,
+		{
+			Option:   "userns",
+			Attr:     "UserNS",
+			Scopable: true,
+			Example:  "container#0",
+			Text:     keywords.NewText(fs, "text/kw/userns"),
+		},
+	}
 )
 
 func init() {
@@ -36,19 +48,9 @@ func (t *T) Manifest() *manifest.T {
 		manifest.ContextObjectID,
 		manifest.ContextDNS,
 		manifest.ContextCNIConfig,
-		rescontainer.KWOsvcRootPath,
-		rescontainer.KWGuestOS,
 	)
 	m.AddKeywords(restask.Keywords...)
 	m.AddKeywords(restaskocibase.Keywords...)
-	m.Add(
-		keywords.Keyword{
-			Option:   "userns",
-			Attr:     "UserNS",
-			Scopable: true,
-			Example:  "container#0",
-			Text:     keywords.NewText(fs, "text/kw/userns"),
-		},
-	)
+	m.AddKeywords(kws...)
 	return m
 }

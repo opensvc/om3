@@ -15,6 +15,58 @@ var (
 	fs embed.FS
 
 	drvID = driver.NewID(driver.GroupDisk, "raw")
+
+	kws = []*keywords.Keyword{
+		{
+			Attr:      "Devices",
+			Converter: "list",
+			Example:   "/dev/mapper/svc.d0:/dev/oracle/redo001 /dev/mapper/svc.d1",
+			Option:    "devs",
+			Required:  true,
+			Scopable:  true,
+			Text:      keywords.NewText(fs, "text/kw/devs"),
+		},
+		{
+			Attr:      "CreateCharDevices",
+			Converter: "bool",
+			Default:   "true",
+			Example:   "false",
+			Option:    "create_char_devices",
+			Scopable:  true,
+			Text:      keywords.NewText(fs, "text/kw/create_char_devices"),
+		},
+		{
+			Attr:      "User",
+			Converter: "user",
+			Example:   "root",
+			Option:    "user",
+			Scopable:  true,
+			Text:      keywords.NewText(fs, "text/kw/user"),
+		},
+		{
+			Attr:      "Group",
+			Converter: "group",
+			Example:   "sys",
+			Option:    "group",
+			Scopable:  true,
+			Text:      keywords.NewText(fs, "text/kw/group"),
+		},
+		{
+			Attr:      "Perm",
+			Converter: "filemode",
+			Example:   "600",
+			Option:    "perm",
+			Scopable:  true,
+			Text:      keywords.NewText(fs, "text/kw/perm"),
+		},
+		{
+			Attr:     "Zone",
+			Example:  "zone1",
+			Option:   "zone",
+			Scopable: true,
+			Text:     keywords.NewText(fs, "text/kw/zone"),
+		},
+	}
 )
 
 func init() {
@@ -26,56 +78,6 @@ func (t *T) Manifest() *manifest.T {
 	m := manifest.New(drvID, t)
 	m.Kinds.Or(naming.KindSvc, naming.KindVol)
 	m.AddKeywords(resdisk.BaseKeywords...)
-	m.Add(
-		keywords.Keyword{
-			Attr:      "Devices",
-			Converter: "list",
-			Example:   "/dev/mapper/svc.d0:/dev/oracle/redo001 /dev/mapper/svc.d1",
-			Option:    "devs",
-			Required:  true,
-			Scopable:  true,
-			Text:      keywords.NewText(fs, "text/kw/devs"),
-		},
-		keywords.Keyword{
-			Attr:      "CreateCharDevices",
-			Converter: "bool",
-			Default:   "true",
-			Example:   "false",
-			Option:    "create_char_devices",
-			Scopable:  true,
-			Text:      keywords.NewText(fs, "text/kw/create_char_devices"),
-		},
-		keywords.Keyword{
-			Attr:      "User",
-			Converter: "user",
-			Example:   "root",
-			Option:    "user",
-			Scopable:  true,
-			Text:      keywords.NewText(fs, "text/kw/user"),
-		},
-		keywords.Keyword{
-			Attr:      "Group",
-			Converter: "group",
-			Example:   "sys",
-			Option:    "group",
-			Scopable:  true,
-			Text:      keywords.NewText(fs, "text/kw/group"),
-		},
-		keywords.Keyword{
-			Attr:      "Perm",
-			Converter: "filemode",
-			Example:   "600",
-			Option:    "perm",
-			Scopable:  true,
-			Text:      keywords.NewText(fs, "text/kw/perm"),
-		},
-		keywords.Keyword{
-			Attr:     "Zone",
-			Example:  "zone1",
-			Option:   "zone",
-			Scopable: true,
-			Text:     keywords.NewText(fs, "text/kw/zone"),
-		},
-	)
+	m.AddKeywords(kws...)
 	return m
 }

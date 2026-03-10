@@ -54,11 +54,10 @@ var (
 		Text:          keywords.NewText(fs, "text/kw/schedule"),
 	}
 
-	BaseKeywords = append(
-		[]keywords.Keyword{},
-		KWMaxDelay,
-		KWSchedule,
-	)
+	BaseKeywords = []*keywords.Keyword{
+		&KWMaxDelay,
+		&KWSchedule,
+	}
 )
 
 // GetMaxDelay return the configured max_delay if set.

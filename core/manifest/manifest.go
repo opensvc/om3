@@ -84,22 +84,22 @@ func (t Context) Name() string {
 // When interfaces contains both value and pointer receiver r should be a pointer
 func (t *T) AddInterfacesKeywords(r any) *T {
 	if _, ok := r.(starter); ok {
-		t.Add(starterKeywords...)
+		t.AddKeywords(starterKeywords...)
 	}
 	if _, ok := r.(stopper); ok {
-		t.Add(stopperKeywords...)
+		t.AddKeywords(stopperKeywords...)
 	}
 	if _, ok := r.(provisioner); ok {
-		t.Add(provisionerKeywords...)
+		t.AddKeywords(provisionerKeywords...)
 	}
 	if _, ok := r.(unprovisioner); ok {
-		t.Add(unprovisionerKeywords...)
+		t.AddKeywords(unprovisionerKeywords...)
 	}
 	if _, ok := r.(syncer); ok {
-		t.Add(syncerKeywords...)
+		t.AddKeywords(syncerKeywords...)
 	}
 	if _, ok := r.(runner); ok {
-		t.Add(runnerKeywords...)
+		t.AddKeywords(runnerKeywords...)
 	}
 	return t
 }
@@ -113,7 +113,7 @@ func New(did driver.ID, r any) *T {
 		Attrs:    make(map[string]Attr),
 		Kinds:    make(naming.Kinds),
 	}
-	t.Add(genericKeywords...)
+	t.AddKeywords(genericKeywords...)
 	t.AddInterfacesKeywords(r)
 	return t
 }
@@ -126,18 +126,26 @@ func (t *T) Add(attrs ...Attr) *T {
 	return t
 }
 
-func (t *T) AddKeywords(attrs ...keywords.Keyword) *T {
+func (t *T) AddKeywords(attrs ...*keywords.Keyword) *T {
 	for _, attr := range attrs {
 		t.Attrs[attr.Name()] = attr
 	}
 	return t
 }
 
-func (t *T) Keywords() []keywords.Keyword {
-	l := make([]keywords.Keyword, 0)
+func (t *T) Keywords() []*keywords.Keyword {
+	n := 0
 	for _, attr := range t.Attrs {
-		if o, ok := attr.(keywords.Keyword); ok {
-			l = append(l, o)
+		if _, ok := attr.(*keywords.Keyword); ok {
+			n++
+		}
+	}
+	l := make([]*keywords.Keyword, n)
+	n = 0
+	for _, attr := range t.Attrs {
+		if o, ok := attr.(*keywords.Keyword); ok {
+			l[n] = o
+			n++
 		}
 	}
 	return l

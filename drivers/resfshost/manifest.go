@@ -97,43 +97,43 @@ var (
 		Text:      keywords.NewText(fs, "text/kw/check_read"),
 	}
 
-	KeywordsVirtual = []keywords.Keyword{
-		KeywordMountPoint,
-		KeywordMountOptions,
-		KeywordDevice,
-		KeywordStatTimeout,
-		KeywordZone,
-		KeywordCheckRead,
+	KeywordsVirtual = []*keywords.Keyword{
+		&KeywordMountPoint,
+		&KeywordMountOptions,
+		&KeywordDevice,
+		&KeywordStatTimeout,
+		&KeywordZone,
+		&KeywordCheckRead,
 	}
 
-	KeywordsBase = []keywords.Keyword{
-		KeywordMountPoint,
-		KeywordDevice,
-		KeywordMountOptions,
-		KeywordStatTimeout,
-		manifest.KWSCSIPersistentReservationKey,
-		manifest.KWSCSIPersistentReservationEnabled,
-		manifest.KWSCSIPersistentReservationNoPreemptAbort,
-		KeywordPromoteRW,
-		KeywordMKFSOptions,
-		KeywordZone,
-		KeywordUser,
-		KeywordGroup,
-		KeywordPerm,
-		KeywordCheckRead,
+	KeywordsBase = []*keywords.Keyword{
+		&KeywordMountPoint,
+		&KeywordDevice,
+		&KeywordMountOptions,
+		&KeywordStatTimeout,
+		&manifest.KWSCSIPersistentReservationKey,
+		&manifest.KWSCSIPersistentReservationEnabled,
+		&manifest.KWSCSIPersistentReservationNoPreemptAbort,
+		&KeywordPromoteRW,
+		&KeywordMKFSOptions,
+		&KeywordZone,
+		&KeywordUser,
+		&KeywordGroup,
+		&KeywordPerm,
+		&KeywordCheckRead,
 	}
 
-	KeywordsPooling = []keywords.Keyword{
-		KeywordMountPoint,
-		KeywordDevice,
-		KeywordMountOptions,
-		KeywordStatTimeout,
-		KeywordMKFSOptions,
-		KeywordZone,
-		KeywordUser,
-		KeywordGroup,
-		KeywordPerm,
-		KeywordCheckRead,
+	KeywordsPooling = []*keywords.Keyword{
+		&KeywordMountPoint,
+		&KeywordDevice,
+		&KeywordMountOptions,
+		&KeywordStatTimeout,
+		&KeywordMKFSOptions,
+		&KeywordZone,
+		&KeywordUser,
+		&KeywordGroup,
+		&KeywordPerm,
+		&KeywordCheckRead,
 	}
 )
 

@@ -17,6 +17,68 @@ var (
 	fs embed.FS
 
 	drvID = driver.NewID(driver.GroupDisk, "md")
+
+	kws = []*keywords.Keyword{
+		{
+			Attr:     "UUID",
+			Example:  "dev1",
+			Option:   "uuid",
+			Scopable: true,
+			Text:     keywords.NewText(fs, "text/kw/uuid"),
+		},
+		{
+			Attr:         "Devs",
+			Converter:    "list",
+			Example:      "/dev/mapper/23 /dev/mapper/24",
+			Option:       "devs",
+			Provisioning: true,
+			Scopable:     true,
+			Text:         keywords.NewText(fs, "text/kw/devs"),
+		},
+		{
+			Attr:        "Name",
+			Example:     "prettyname",
+			Option:      "name",
+			Scopable:    true,
+			Text:        keywords.NewText(fs, "text/kw/name"),
+			DefaultText: keywords.NewText(fs, "text/kw/name.default"),
+		},
+		{
+			Attr:         "Level",
+			Example:      "raid1",
+			Option:       "level",
+			Provisioning: true,
+			Scopable:     true,
+			Text:         keywords.NewText(fs, "text/kw/level"),
+		},
+		{
+			Attr:         "Chunk",
+			Converter:    "size",
+			Example:      "128k",
+			Option:       "chunk",
+			Provisioning: true,
+			Scopable:     true,
+			Text:         keywords.NewText(fs, "text/kw/chunk"),
+		},
+		{
+			Attr:         "Spares",
+			Converter:    "int",
+			Default:      "0",
+			Example:      "1",
+			Option:       "spares",
+			Provisioning: true,
+			Scopable:     true,
+			Text:         keywords.NewText(fs, "text/kw/spares"),
+		},
+		{
+			Attr:         "Bitmap",
+			Example:      "internal",
+			Option:       "bitmap",
+			Provisioning: true,
+			Scopable:     true,
+			Text:         keywords.NewText(fs, "text/kw/bitmap"),
+		},
+	}
 )
 
 func init() {
@@ -32,66 +94,6 @@ func (t *T) Manifest() *manifest.T {
 		manifest.ContextNodes,
 	)
 	m.AddKeywords(resdisk.BaseKeywords...)
-	m.Add(
-		keywords.Keyword{
-			Attr:     "UUID",
-			Example:  "dev1",
-			Option:   "uuid",
-			Scopable: true,
-			Text:     keywords.NewText(fs, "text/kw/uuid"),
-		},
-		keywords.Keyword{
-			Attr:         "Devs",
-			Converter:    "list",
-			Example:      "/dev/mapper/23 /dev/mapper/24",
-			Option:       "devs",
-			Provisioning: true,
-			Scopable:     true,
-			Text:         keywords.NewText(fs, "text/kw/devs"),
-		},
-		keywords.Keyword{
-			Attr:        "Name",
-			Example:     "prettyname",
-			Option:      "name",
-			Scopable:    true,
-			Text:        keywords.NewText(fs, "text/kw/name"),
-			DefaultText: keywords.NewText(fs, "text/kw/name.default"),
-		},
-		keywords.Keyword{
-			Attr:         "Level",
-			Example:      "raid1",
-			Option:       "level",
-			Provisioning: true,
-			Scopable:     true,
-			Text:         keywords.NewText(fs, "text/kw/level"),
-		},
-		keywords.Keyword{
-			Attr:         "Chunk",
-			Converter:    "size",
-			Example:      "128k",
-			Option:       "chunk",
-			Provisioning: true,
-			Scopable:     true,
-			Text:         keywords.NewText(fs, "text/kw/chunk"),
-		},
-		keywords.Keyword{
-			Attr:         "Spares",
-			Converter:    "int",
-			Default:      "0",
-			Example:      "1",
-			Option:       "spares",
-			Provisioning: true,
-			Scopable:     true,
-			Text:         keywords.NewText(fs, "text/kw/spares"),
-		},
-		keywords.Keyword{
-			Attr:         "Bitmap",
-			Example:      "internal",
-			Option:       "bitmap",
-			Provisioning: true,
-			Scopable:     true,
-			Text:         keywords.NewText(fs, "text/kw/bitmap"),
-		},
-	)
+	m.AddKeywords(kws...)
 	return m
 }

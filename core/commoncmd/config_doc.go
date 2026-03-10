@@ -11,7 +11,7 @@ import (
 
 func KeywordStoreFromAPI(items api.KeywordDefinitionItems) (store keywords.Store) {
 	for _, item := range items {
-		kw := keywords.Keyword{
+		kw := &keywords.Keyword{
 			Converter:     item.Converter,
 			Default:       item.Default,
 			DefaultOption: item.DefaultOption,

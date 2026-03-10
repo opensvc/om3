@@ -17,6 +17,49 @@ var (
 	fs embed.FS
 
 	drvID = driver.NewID(driver.GroupDisk, "crypt")
+
+	kws = []*keywords.Keyword{
+		{
+			Attr:        "Name",
+			DefaultText: keywords.NewText(fs, "text/kw/name.default"),
+			Example:     "{fqdn}-crypt",
+			Option:      "name",
+			Scopable:    true,
+			Text:        keywords.NewText(fs, "text/kw/name"),
+		},
+		{
+			Attr:     "Dev",
+			Example:  "/dev/{fqdn}/lv1",
+			Option:   "dev",
+			Required: true,
+			Scopable: true,
+			Text:     keywords.NewText(fs, "text/kw/dev"),
+		},
+		{
+			Attr:         "ManagePassphrase",
+			Converter:    "bool",
+			Default:      "true",
+			Option:       "manage_passphrase",
+			Provisioning: true,
+			Scopable:     true,
+			Text:         keywords.NewText(fs, "text/kw/manage_passphrase"),
+		},
+		{
+			Attr:     "Secret",
+			Default:  "{name}",
+			Option:   "secret",
+			Scopable: true,
+			Text:     keywords.NewText(fs, "text/kw/secret"),
+		},
+		{
+			Attr:         "FormatLabel",
+			Default:      "{fqdn}",
+			Option:       "label",
+			Provisioning: true,
+			Scopable:     true,
+			Text:         keywords.NewText(fs, "text/kw/label"),
+		},
+	}
 )
 
 func init() {
@@ -29,47 +72,6 @@ func (t *T) Manifest() *manifest.T {
 	m.Kinds.Or(naming.KindSvc, naming.KindVol)
 	m.Add(manifest.ContextObjectPath)
 	m.AddKeywords(resdisk.BaseKeywords...)
-	m.Add(
-		keywords.Keyword{
-			Attr:        "Name",
-			DefaultText: keywords.NewText(fs, "text/kw/name.default"),
-			Example:     "{fqdn}-crypt",
-			Option:      "name",
-			Scopable:    true,
-			Text:        keywords.NewText(fs, "text/kw/name"),
-		},
-		keywords.Keyword{
-			Attr:     "Dev",
-			Example:  "/dev/{fqdn}/lv1",
-			Option:   "dev",
-			Required: true,
-			Scopable: true,
-			Text:     keywords.NewText(fs, "text/kw/dev"),
-		},
-		keywords.Keyword{
-			Attr:         "ManagePassphrase",
-			Converter:    "bool",
-			Default:      "true",
-			Option:       "manage_passphrase",
-			Provisioning: true,
-			Scopable:     true,
-			Text:         keywords.NewText(fs, "text/kw/manage_passphrase"),
-		},
-		keywords.Keyword{
-			Attr:     "Secret",
-			Default:  "{name}",
-			Option:   "secret",
-			Scopable: true,
-			Text:     keywords.NewText(fs, "text/kw/secret"),
-		},
-		keywords.Keyword{
-			Attr:         "FormatLabel",
-			Default:      "{fqdn}",
-			Option:       "label",
-			Provisioning: true,
-			Scopable:     true,
-			Text:         keywords.NewText(fs, "text/kw/label"),
-		},
-	)
+	m.AddKeywords(kws...)
 	return m
 }

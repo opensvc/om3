@@ -15,6 +15,50 @@ var (
 	fs embed.FS
 
 	drvID = driver.NewID(driver.GroupDisk, "zpool")
+
+	kws = []*keywords.Keyword{
+		{
+			Aliases:  []string{"poolname"},
+			Attr:     "Name",
+			Example:  "tank",
+			Option:   "name",
+			Required: true,
+			Scopable: true,
+			Text:     keywords.NewText(fs, "text/kw/name"),
+		},
+		{
+			Attr:      "Multihost",
+			Converter: "tristate",
+			Example:   "yes",
+			Option:    "multihost",
+			Scopable:  true,
+			Text:      keywords.NewText(fs, "text/kw/multihost"),
+		},
+		{
+			Attr:         "VDev",
+			Converter:    "list",
+			Example:      "/dev/mapper/23 /dev/mapper/24",
+			Option:       "vdev",
+			Provisioning: true,
+			Scopable:     true,
+			Text:         keywords.NewText(fs, "text/kw/vdev"),
+		},
+		{
+			Attr:         "CreateOptions",
+			Converter:    "shlex",
+			Example:      "-O dedup=on",
+			Option:       "create_options",
+			Provisioning: true,
+			Scopable:     true,
+			Text:         keywords.NewText(fs, "text/kw/create_options"),
+		},
+		{
+			Attr:     "Zone",
+			Option:   "zone",
+			Scopable: true,
+			Text:     keywords.NewText(fs, "text/kw/zone"),
+		},
+	}
 )
 
 func init() {
@@ -26,48 +70,6 @@ func (t *T) Manifest() *manifest.T {
 	m := manifest.New(drvID, t)
 	m.Kinds.Or(naming.KindSvc, naming.KindVol)
 	m.AddKeywords(resdisk.BaseKeywords...)
-	m.Add(
-		keywords.Keyword{
-			Aliases:  []string{"poolname"},
-			Attr:     "Name",
-			Example:  "tank",
-			Option:   "name",
-			Required: true,
-			Scopable: true,
-			Text:     keywords.NewText(fs, "text/kw/name"),
-		},
-		keywords.Keyword{
-			Attr:      "Multihost",
-			Converter: "tristate",
-			Example:   "yes",
-			Option:    "multihost",
-			Scopable:  true,
-			Text:      keywords.NewText(fs, "text/kw/multihost"),
-		},
-		keywords.Keyword{
-			Attr:         "VDev",
-			Converter:    "list",
-			Example:      "/dev/mapper/23 /dev/mapper/24",
-			Option:       "vdev",
-			Provisioning: true,
-			Scopable:     true,
-			Text:         keywords.NewText(fs, "text/kw/vdev"),
-		},
-		keywords.Keyword{
-			Attr:         "CreateOptions",
-			Converter:    "shlex",
-			Example:      "-O dedup=on",
-			Option:       "create_options",
-			Provisioning: true,
-			Scopable:     true,
-			Text:         keywords.NewText(fs, "text/kw/create_options"),
-		},
-		keywords.Keyword{
-			Attr:     "Zone",
-			Option:   "zone",
-			Scopable: true,
-			Text:     keywords.NewText(fs, "text/kw/zone"),
-		},
-	)
+	m.AddKeywords(kws...)
 	return m
 }

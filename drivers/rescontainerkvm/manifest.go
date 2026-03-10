@@ -15,6 +15,40 @@ var (
 	fs embed.FS
 
 	drvID = driver.NewID(driver.GroupContainer, "kvm")
+
+	kws = []*keywords.Keyword{
+		{
+			Option:    "qga",
+			Attr:      "QGA",
+			Converter: "bool",
+			Text:      keywords.NewText(fs, "text/kw/qga"),
+			Scopable:  true,
+		},
+		{
+			Option:    "qga_operational_delay",
+			Attr:      "QGAOperationalDelay",
+			Converter: "duration",
+			Default:   "10s",
+			Text:      "Wait after we successfully tested a pwd in the container, so the os is sufficiently started to accept a encap start.",
+			Scopable:  true,
+		},
+		{
+			Option:       "virtinst",
+			Attr:         "VirtInst",
+			Provisioning: true,
+			Converter:    "shlex",
+			Text:         keywords.NewText(fs, "text/kw/virtinst"),
+			Example:      "--release focal",
+		},
+		&rescontainer.KWRCmd,
+		&rescontainer.KWName,
+		&rescontainer.KWHostname,
+		&rescontainer.KWStartTimeout,
+		&rescontainer.KWStopTimeout,
+		&rescontainer.KWPromoteRW,
+		&rescontainer.KWOsvcRootPath,
+		&rescontainer.KWGuestOS,
+	}
 )
 
 func init() {
@@ -25,7 +59,6 @@ func init() {
 func (t *T) Manifest() *manifest.T {
 	m := manifest.New(drvID, t)
 	m.Kinds.Or(naming.KindSvc)
-	m.AddKeywords(manifest.SCSIPersistentReservationKeywords...)
 	m.Add(
 		manifest.ContextObjectPath,
 		manifest.ContextObjectID,
@@ -33,37 +66,8 @@ func (t *T) Manifest() *manifest.T {
 		manifest.ContextPeers,
 		manifest.ContextDNS,
 		manifest.ContextTopology,
-		keywords.Keyword{
-			Option:    "qga",
-			Attr:      "QGA",
-			Converter: "bool",
-			Text:      keywords.NewText(fs, "text/kw/qga"),
-			Scopable:  true,
-		},
-		keywords.Keyword{
-			Option:    "qga_operational_delay",
-			Attr:      "QGAOperationalDelay",
-			Converter: "duration",
-			Default:   "10s",
-			Text:      "Wait after we successfully tested a pwd in the container, so the os is sufficiently started to accept a encap start.",
-			Scopable:  true,
-		},
-		keywords.Keyword{
-			Option:       "virtinst",
-			Attr:         "VirtInst",
-			Provisioning: true,
-			Converter:    "shlex",
-			Text:         keywords.NewText(fs, "text/kw/virtinst"),
-			Example:      "--release focal",
-		},
-		rescontainer.KWRCmd,
-		rescontainer.KWName,
-		rescontainer.KWHostname,
-		rescontainer.KWStartTimeout,
-		rescontainer.KWStopTimeout,
-		rescontainer.KWPromoteRW,
-		rescontainer.KWOsvcRootPath,
-		rescontainer.KWGuestOS,
 	)
+	m.AddKeywords(manifest.SCSIPersistentReservationKeywords...)
+	m.AddKeywords(kws...)
 	return m
 }

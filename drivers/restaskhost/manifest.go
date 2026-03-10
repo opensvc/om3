@@ -1,7 +1,10 @@
 package restaskhost
 
 import (
+	"embed"
+
 	"github.com/opensvc/om3/v3/core/driver"
+	"github.com/opensvc/om3/v3/core/keywords"
 	"github.com/opensvc/om3/v3/core/manifest"
 	"github.com/opensvc/om3/v3/core/naming"
 	"github.com/opensvc/om3/v3/drivers/resapp"
@@ -10,6 +13,18 @@ import (
 
 var (
 	drvID = driver.NewID(driver.GroupTask, "host")
+
+	//go:embed text
+	fs embed.FS
+
+	kws = []*keywords.Keyword{
+		{
+			Option:   "command",
+			Attr:     "RunCmd",
+			Scopable: true,
+			Text:     keywords.NewText(fs, "text/kw/command"),
+		},
+	}
 )
 
 func init() {
@@ -24,30 +39,32 @@ func (t *T) Manifest() *manifest.T {
 		manifest.ContextObjectPath,
 		manifest.ContextNodes,
 		manifest.ContextObjectID,
-		resapp.BaseKeywordTimeout,
-		resapp.BaseKeywordStopTimeout,
-		resapp.BaseKeywordSecretsEnv,
-		resapp.BaseKeywordConfigsEnv,
-		resapp.BaseKeywordEnv,
-		resapp.BaseKeywordRetCodes,
-		resapp.BaseKeywordUmask,
-		resapp.UnixKeywordStopCmd,
-		resapp.UnixKeywordCwd,
-		resapp.UnixKeywordUser,
-		resapp.UnixKeywordGroup,
-		resapp.UnixKeywordLimitCPU,
-		resapp.UnixKeywordLimitCore,
-		resapp.UnixKeywordLimitData,
-		resapp.UnixKeywordLimitFSize,
-		resapp.UnixKeywordLimitMemLock,
-		resapp.UnixKeywordLimitNoFile,
-		resapp.UnixKeywordLimitNProc,
-		resapp.UnixKeywordLimitRSS,
-		resapp.UnixKeywordLimitStack,
-		resapp.UnixKeywordLimitVmem,
-		resapp.UnixKeywordLimitAS,
+	)
+	m.AddKeywords(
+		&resapp.BaseKeywordTimeout,
+		&resapp.BaseKeywordStopTimeout,
+		&resapp.BaseKeywordSecretsEnv,
+		&resapp.BaseKeywordConfigsEnv,
+		&resapp.BaseKeywordEnv,
+		&resapp.BaseKeywordRetCodes,
+		&resapp.BaseKeywordUmask,
+		&resapp.UnixKeywordStopCmd,
+		&resapp.UnixKeywordCwd,
+		&resapp.UnixKeywordUser,
+		&resapp.UnixKeywordGroup,
+		&resapp.UnixKeywordLimitCPU,
+		&resapp.UnixKeywordLimitCore,
+		&resapp.UnixKeywordLimitData,
+		&resapp.UnixKeywordLimitFSize,
+		&resapp.UnixKeywordLimitMemLock,
+		&resapp.UnixKeywordLimitNoFile,
+		&resapp.UnixKeywordLimitNProc,
+		&resapp.UnixKeywordLimitRSS,
+		&resapp.UnixKeywordLimitStack,
+		&resapp.UnixKeywordLimitVmem,
+		&resapp.UnixKeywordLimitAS,
 	)
 	m.AddKeywords(restask.Keywords...)
-	m.AddKeywords(Keywords...)
+	m.AddKeywords(kws...)
 	return m
 }

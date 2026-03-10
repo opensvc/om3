@@ -469,7 +469,7 @@ func (t *actor) configureResource(r resource.Driver, rid string) error {
 	}
 	for _, attr := range m.Attrs {
 		switch o := attr.(type) {
-		case keywords.Keyword:
+		case *keywords.Keyword:
 			k := key.New(rid, o.Option)
 			val, err := t.config.EvalKeywordAs(k, o, "")
 			if err != nil {

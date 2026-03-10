@@ -14,6 +14,42 @@ var (
 	fs embed.FS
 
 	drvID = driver.NewID(driver.GroupIP, "route")
+
+	kws = []*keywords.Keyword{
+		{
+			Attr:     "NetNS",
+			Example:  "container#0",
+			Option:   "netns",
+			Required: true,
+			Scopable: true,
+			Text:     keywords.NewText(fs, "text/kw/netns"),
+		},
+		{
+			Attr:     "Gateway",
+			Option:   "gateway",
+			Example:  "1.2.3.4",
+			Required: true,
+			Scopable: true,
+			Text:     keywords.NewText(fs, "text/kw/gateway"),
+		},
+		{
+			Attr:     "To",
+			Example:  "192.168.100.0/24",
+			Option:   "to",
+			Required: true,
+			Scopable: true,
+			Text:     keywords.NewText(fs, "text/kw/to"),
+		},
+		{
+			Attr:        "Dev",
+			DefaultText: keywords.NewText(fs, "text/kw/dev.default"),
+			Example:     "eth1",
+			Option:      "dev",
+			Required:    false,
+			Scopable:    true,
+			Text:        keywords.NewText(fs, "text/kw/dev"),
+		},
+	}
 )
 
 func init() {
@@ -24,40 +60,6 @@ func init() {
 func (t *T) Manifest() *manifest.T {
 	m := manifest.New(drvID, t)
 	m.Kinds.Or(naming.KindSvc)
-	m.Add(
-		keywords.Keyword{
-			Attr:     "NetNS",
-			Example:  "container#0",
-			Option:   "netns",
-			Required: true,
-			Scopable: true,
-			Text:     keywords.NewText(fs, "text/kw/netns"),
-		},
-		keywords.Keyword{
-			Attr:     "Gateway",
-			Option:   "gateway",
-			Example:  "1.2.3.4",
-			Required: true,
-			Scopable: true,
-			Text:     keywords.NewText(fs, "text/kw/gateway"),
-		},
-		keywords.Keyword{
-			Attr:     "To",
-			Example:  "192.168.100.0/24",
-			Option:   "to",
-			Required: true,
-			Scopable: true,
-			Text:     keywords.NewText(fs, "text/kw/to"),
-		},
-		keywords.Keyword{
-			Attr:        "Dev",
-			DefaultText: keywords.NewText(fs, "text/kw/dev.default"),
-			Example:     "eth1",
-			Option:      "dev",
-			Required:    false,
-			Scopable:    true,
-			Text:        keywords.NewText(fs, "text/kw/dev"),
-		},
-	)
+	m.AddKeywords(kws...)
 	return m
 }

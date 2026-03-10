@@ -705,10 +705,10 @@ func driverIDFromRID(t Configurer, section string) (driver.ID, error) {
 	return did, nil
 }
 
-func keywordLookup(store keywords.Store, k key.T, kind naming.Kind, sectionType string) keywords.Keyword {
+func keywordLookup(store keywords.Store, k key.T, kind naming.Kind, sectionType string) *keywords.Keyword {
 	switch k.Section {
 	case "data", "env", "labels":
-		return keywords.Keyword{
+		return &keywords.Keyword{
 			Option:   "*", // trick IsZero()
 			Scopable: kind != naming.KindInvalid,
 			Inherit:  keywords.InheritLeaf,
@@ -743,17 +743,17 @@ func keywordLookup(store keywords.Store, k key.T, kind naming.Kind, sectionType 
 		if kws == nil {
 			continue
 		}
-		if kw := keywords.Store(kws).Lookup(k, kind, sectionType); !kw.IsZero() {
+		if kw := keywords.Store(kws).Lookup(k, kind, sectionType); kw != nil {
 			return kw
 		}
 	}
 
 	// base keyword
-	if kw := store.Lookup(k, kind, sectionType); !kw.IsZero() {
+	if kw := store.Lookup(k, kind, sectionType); kw != nil {
 		return kw
 	}
 
-	return keywords.Keyword{}
+	return nil
 }
 
 // KeywordStoreWithDrivers return the keywords supported by a specific

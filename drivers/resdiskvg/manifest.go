@@ -18,6 +18,36 @@ var (
 
 	drvID    = driver.NewID(driver.GroupDisk, "vg")
 	altDrvID = driver.NewID(driver.GroupDisk, "lvm") // deprecated, backward compat
+
+	kws = []*keywords.Keyword{
+		{
+			Aliases:  []string{"vgname"},
+			Attr:     "VGName",
+			Example:  "vg1",
+			Option:   "name",
+			Required: true,
+			Scopable: true,
+			Text:     keywords.NewText(fs, "text/kw/name"),
+		},
+		{
+			Attr:         "PVs",
+			Converter:    "list",
+			Example:      "/dev/mapper/23 /dev/mapper/24",
+			Option:       "pvs",
+			Provisioning: true,
+			Scopable:     true,
+			Text:         keywords.NewText(fs, "text/kw/pvs"),
+		},
+		{
+			Attr:         "Options",
+			Converter:    "shlex",
+			Example:      "--zero=y",
+			Option:       "options",
+			Provisioning: true,
+			Scopable:     true,
+			Text:         keywords.NewText(fs, "text/kw/options"),
+		},
+	}
 )
 
 func init() {
@@ -31,34 +61,6 @@ func (t *T) Manifest() *manifest.T {
 	m.Kinds.Or(naming.KindSvc, naming.KindVol)
 	m.Add(manifest.ContextObjectPath)
 	m.AddKeywords(resdisk.BaseKeywords...)
-	m.Add(
-		keywords.Keyword{
-			Aliases:  []string{"vgname"},
-			Attr:     "VGName",
-			Example:  "vg1",
-			Option:   "name",
-			Required: true,
-			Scopable: true,
-			Text:     keywords.NewText(fs, "text/kw/name"),
-		},
-		keywords.Keyword{
-			Attr:         "PVs",
-			Converter:    "list",
-			Example:      "/dev/mapper/23 /dev/mapper/24",
-			Option:       "pvs",
-			Provisioning: true,
-			Scopable:     true,
-			Text:         keywords.NewText(fs, "text/kw/pvs"),
-		},
-		keywords.Keyword{
-			Attr:         "Options",
-			Converter:    "shlex",
-			Example:      "--zero=y",
-			Option:       "options",
-			Provisioning: true,
-			Scopable:     true,
-			Text:         keywords.NewText(fs, "text/kw/options"),
-		},
-	)
+	m.AddKeywords(kws...)
 	return m
 }

@@ -15,6 +15,23 @@ var (
 	fs embed.FS
 
 	drvID = driver.NewID(driver.GroupShare, "nfs")
+
+	kwSharePath = keywords.Keyword{
+		Attr:     "SharePath",
+		Example:  "/srv/{fqdn}/share",
+		Option:   "path",
+		Required: true,
+		Scopable: true,
+		Text:     keywords.NewText(fs, "text/kw/path"),
+	}
+	kwShareOpts = keywords.Keyword{
+		Attr:     "ShareOpts",
+		Example:  "*(ro)",
+		Option:   "opts",
+		Required: true,
+		Scopable: true,
+		Text:     keywords.NewText(fs, "text/kw/opts"),
+	}
 )
 
 func init() {
@@ -27,22 +44,8 @@ func (t *T) Manifest() *manifest.T {
 	m := manifest.New(drvID, t)
 	m.Kinds.Or(naming.KindSvc, naming.KindVol)
 	m.Add(
-		keywords.Keyword{
-			Attr:     "SharePath",
-			Example:  "/srv/{fqdn}/share",
-			Option:   "path",
-			Required: true,
-			Scopable: true,
-			Text:     keywords.NewText(fs, "text/kw/path"),
-		},
-		keywords.Keyword{
-			Attr:     "ShareOpts",
-			Example:  "*(ro)",
-			Option:   "opts",
-			Required: true,
-			Scopable: true,
-			Text:     keywords.NewText(fs, "text/kw/opts"),
-		},
+		&kwSharePath,
+		&kwShareOpts,
 	)
 	return m
 }

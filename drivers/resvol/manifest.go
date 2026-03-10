@@ -15,6 +15,74 @@ var (
 	fs embed.FS
 
 	drvID = driver.NewID(driver.GroupVolume, "")
+
+	kws = []*keywords.Keyword{
+		{
+			Attr:     "Name",
+			Default:  "{name}-vol-{rindex}",
+			Option:   "name",
+			Scopable: true,
+			Text:     keywords.NewText(fs, "text/kw/name"),
+		},
+		{
+			Attr:         "PoolType",
+			Option:       "type",
+			Provisioning: true,
+			Scopable:     true,
+			Text:         keywords.NewText(fs, "text/kw/type"),
+		},
+		{
+			Attr:         "Volatile",
+			Converter:    "bool",
+			Default:      "false",
+			Option:       "volatile",
+			Provisioning: true,
+			Scopable:     true,
+			Text:         keywords.NewText(fs, "text/kw/volatile"),
+		},
+		{
+			Attr:         "Access",
+			Candidates:   []string{"rwo", "roo", "rwx", "rox"},
+			Default:      "rwo",
+			Option:       "access",
+			Provisioning: true,
+			Scopable:     true,
+			Text:         keywords.NewText(fs, "text/kw/access"),
+		},
+		{
+			Attr:         "Size",
+			Converter:    "size",
+			Option:       "size",
+			Provisioning: true,
+			Scopable:     true,
+			Text:         keywords.NewText(fs, "text/kw/size"),
+		},
+		{
+			Attr:         "Pool",
+			Option:       "pool",
+			Provisioning: true,
+			Scopable:     true,
+			Text:         keywords.NewText(fs, "text/kw/pool"),
+		},
+		{
+			Attr:         "VolNodes",
+			Converter:    "nodes",
+			Default:      "{.nodes}",
+			Option:       "nodes",
+			Provisioning: true,
+			Scopable:     true,
+			Text:         keywords.NewText(fs, "text/kw/nodes"),
+		},
+		{
+			Attr:         "Format",
+			Converter:    "bool",
+			Default:      "true",
+			Option:       "format",
+			Provisioning: true,
+			Scopable:     true,
+			Text:         keywords.NewText(fs, "text/kw/format"),
+		},
+	}
 )
 
 func init() {
@@ -31,71 +99,7 @@ func (t *T) Manifest() *manifest.T {
 		manifest.ContextObjectPath,
 		manifest.ContextObjectParents,
 		manifest.ContextTopology,
-		keywords.Keyword{
-			Attr:     "Name",
-			Default:  "{name}-vol-{rindex}",
-			Option:   "name",
-			Scopable: true,
-			Text:     keywords.NewText(fs, "text/kw/name"),
-		},
-		keywords.Keyword{
-			Attr:         "PoolType",
-			Option:       "type",
-			Provisioning: true,
-			Scopable:     true,
-			Text:         keywords.NewText(fs, "text/kw/type"),
-		},
-		keywords.Keyword{
-			Attr:         "Volatile",
-			Converter:    "bool",
-			Default:      "false",
-			Option:       "volatile",
-			Provisioning: true,
-			Scopable:     true,
-			Text:         keywords.NewText(fs, "text/kw/volatile"),
-		},
-		keywords.Keyword{
-			Attr:         "Access",
-			Candidates:   []string{"rwo", "roo", "rwx", "rox"},
-			Default:      "rwo",
-			Option:       "access",
-			Provisioning: true,
-			Scopable:     true,
-			Text:         keywords.NewText(fs, "text/kw/access"),
-		},
-		keywords.Keyword{
-			Attr:         "Size",
-			Converter:    "size",
-			Option:       "size",
-			Provisioning: true,
-			Scopable:     true,
-			Text:         keywords.NewText(fs, "text/kw/size"),
-		},
-		keywords.Keyword{
-			Attr:         "Pool",
-			Option:       "pool",
-			Provisioning: true,
-			Scopable:     true,
-			Text:         keywords.NewText(fs, "text/kw/pool"),
-		},
-		keywords.Keyword{
-			Attr:         "VolNodes",
-			Converter:    "nodes",
-			Default:      "{.nodes}",
-			Option:       "nodes",
-			Provisioning: true,
-			Scopable:     true,
-			Text:         keywords.NewText(fs, "text/kw/nodes"),
-		},
-		keywords.Keyword{
-			Attr:         "Format",
-			Converter:    "bool",
-			Default:      "true",
-			Option:       "format",
-			Provisioning: true,
-			Scopable:     true,
-			Text:         keywords.NewText(fs, "text/kw/format"),
-		},
 	)
+	m.AddKeywords(kws...)
 	return m
 }

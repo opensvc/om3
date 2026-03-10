@@ -26,6 +26,5 @@ func (t *T) Manifest() *manifest.T {
 	)
 	m.AddKeywords(resapp.BaseKeywords...)
 	m.AddKeywords(resapp.UnixKeywords...)
-	m.AddKeywords(Keywords...)
 	return m
 }

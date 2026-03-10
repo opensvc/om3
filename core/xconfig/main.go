@@ -45,7 +45,7 @@ type (
 	// Referrer is the interface implemented by node and object to
 	// provide a reference resolver using their private attributes.
 	Referrer interface {
-		KeywordLookup(key.T, string) keywords.Keyword
+		KeywordLookup(key.T, string) *keywords.Keyword
 		IsVolatile() bool
 		Config() *T
 		ConfigData() any
@@ -311,7 +311,10 @@ func (t *T) HasKeyMatchingOp(kop keyop.T) bool {
 				return true
 			}
 		}
-		converter := converters.Lookup(kw.Converter)
+		var converter converters.Converter
+		if kw != nil {
+			converter = converters.Lookup(kw.Converter)
+		}
 		if converter == nil {
 			iv := v
 			it := kop.Value
@@ -769,18 +772,18 @@ func (t *T) EvalAs(k key.T, impersonate string) (interface{}, error) {
 	return t.EvalKeywordAs(k, kw, impersonate)
 }
 
-func (t *T) getKeyword(k key.T) (keywords.Keyword, error) {
+func (t *T) getKeyword(k key.T) (*keywords.Keyword, error) {
 	switch k.Section {
 	case "env":
 		// forge a Keyword to satisfy the descoping algo requirements
-		return keywords.Keyword{
+		return &keywords.Keyword{
 			Section:  k.Section,
 			Option:   k.Option,
 			Scopable: true,
 			Inherit:  keywords.InheritLeaf,
 		}, nil
 	case "data", "labels":
-		return keywords.Keyword{
+		return &keywords.Keyword{
 			Section:  k.Section,
 			Option:   k.Option,
 			Scopable: false,
@@ -790,7 +793,7 @@ func (t *T) getKeyword(k key.T) (keywords.Keyword, error) {
 		sectionType := t.SectionType(k)
 		kw, err := getKeyword(k, sectionType, t.Referrer)
 		if err != nil {
-			return keywords.Keyword{}, err
+			return nil, err
 		}
 		return kw, err
 	}
@@ -836,7 +839,7 @@ func (t *T) SectionType(k key.T) string {
 	return t.GetString(key.New(k.Section, "type"))
 }
 
-func (t *T) EvalKeywordAs(k key.T, kw keywords.Keyword, impersonate string) (interface{}, error) {
+func (t *T) EvalKeywordAs(k key.T, kw *keywords.Keyword, impersonate string) (interface{}, error) {
 	v, err := t.evalStringAs(k, kw, impersonate, false, newDereferenceTrace())
 	if err != nil {
 		return nil, err
@@ -844,19 +847,19 @@ func (t *T) EvalKeywordAs(k key.T, kw keywords.Keyword, impersonate string) (int
 	return t.convert(v, kw)
 }
 
-func getKeyword(k key.T, sectionType string, referrer Referrer) (keywords.Keyword, error) {
-	var kw keywords.Keyword
+func getKeyword(k key.T, sectionType string, referrer Referrer) (*keywords.Keyword, error) {
+	var kw *keywords.Keyword
 	if referrer == nil {
 		return kw, fmt.Errorf("%w: no referrer", ErrNoKeyword)
 	}
 	kw = referrer.KeywordLookup(k, sectionType)
-	if kw.IsZero() {
+	if kw == nil {
 		return kw, fmt.Errorf("%w: %s", ErrNoKeyword, k)
 	}
 	return kw, nil
 }
 
-func (t *T) evalStringAs(k key.T, kw keywords.Keyword, impersonate string, count bool, trace *dereferenceTrace) (string, error) {
+func (t *T) evalStringAs(k key.T, kw *keywords.Keyword, impersonate string, count bool, trace *dereferenceTrace) (string, error) {
 	var (
 		v   string
 		err error
@@ -904,7 +907,7 @@ func (t *T) evalStringAs(k key.T, kw keywords.Keyword, impersonate string, count
 	return v, nil
 }
 
-func (t *T) evalDescopeStringAs(k key.T, kw keywords.Keyword, impersonate string, count bool, trace *dereferenceTrace) (string, error) {
+func (t *T) evalDescopeStringAs(k key.T, kw *keywords.Keyword, impersonate string, count bool, trace *dereferenceTrace) (string, error) {
 	v, err := t.mayDescope(k, kw, impersonate)
 	if err != nil {
 		return "", err
@@ -912,7 +915,7 @@ func (t *T) evalDescopeStringAs(k key.T, kw keywords.Keyword, impersonate string
 	return t.replaceReferences(v, k.Section, impersonate, count, trace)
 }
 
-func (t *T) convert(v string, kw keywords.Keyword) (any, error) {
+func (t *T) convert(v string, kw *keywords.Keyword) (any, error) {
 	converter := converters.Lookup(kw.Converter)
 	if converter == nil {
 		return v, nil
@@ -920,7 +923,7 @@ func (t *T) convert(v string, kw keywords.Keyword) (any, error) {
 	return converter.Convert(v)
 }
 
-func (t *T) mayDescope(k key.T, kw keywords.Keyword, impersonate string) (string, error) {
+func (t *T) mayDescope(k key.T, kw *keywords.Keyword, impersonate string) (string, error) {
 	var (
 		v   string
 		err error
@@ -991,7 +994,7 @@ func (t T) SectionMapStrict(section string) (map[string]string, error) {
 	return s.KeysHash(), nil
 }
 
-func (t *T) descope(k key.T, kw keywords.Keyword, impersonate string) (string, error) {
+func (t *T) descope(k key.T, kw *keywords.Keyword, impersonate string) (string, error) {
 	if impersonate == "" {
 		impersonate = hostname.Hostname()
 	}

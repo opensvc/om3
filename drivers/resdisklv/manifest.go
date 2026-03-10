@@ -17,6 +17,42 @@ var (
 	fs embed.FS
 
 	drvID = driver.NewID(driver.GroupDisk, "lv")
+
+	kws = []*keywords.Keyword{
+		{
+			Attr:     "LVName",
+			Example:  "lv1",
+			Option:   "name",
+			Required: true,
+			Scopable: true,
+			Text:     keywords.NewText(fs, "text/kw/name"),
+		},
+		{
+			Attr:     "VGName",
+			Example:  "vg1",
+			Option:   "vg",
+			Required: true,
+			Scopable: true,
+			Text:     keywords.NewText(fs, "text/kw/vg"),
+		},
+		{
+			Attr:         "Size",
+			Example:      "10m",
+			Option:       "size",
+			Provisioning: true,
+			Scopable:     true,
+			Text:         keywords.NewText(fs, "text/kw/size"),
+		},
+		{
+			Attr:         "CreateOptions",
+			Converter:    "shlex",
+			Example:      "--contiguous y",
+			Option:       "create_options",
+			Provisioning: true,
+			Scopable:     true,
+			Text:         keywords.NewText(fs, "text/kw/create_options"),
+		},
+	}
 )
 
 func init() {
@@ -28,40 +64,6 @@ func (t *T) Manifest() *manifest.T {
 	m := manifest.New(drvID, t)
 	m.Kinds.Or(naming.KindSvc, naming.KindVol)
 	m.AddKeywords(resdisk.BaseKeywords...)
-	m.Add(
-		keywords.Keyword{
-			Attr:     "LVName",
-			Example:  "lv1",
-			Option:   "name",
-			Required: true,
-			Scopable: true,
-			Text:     keywords.NewText(fs, "text/kw/name"),
-		},
-		keywords.Keyword{
-			Attr:     "VGName",
-			Example:  "vg1",
-			Option:   "vg",
-			Required: true,
-			Scopable: true,
-			Text:     keywords.NewText(fs, "text/kw/vg"),
-		},
-		keywords.Keyword{
-			Attr:         "Size",
-			Example:      "10m",
-			Option:       "size",
-			Provisioning: true,
-			Scopable:     true,
-			Text:         keywords.NewText(fs, "text/kw/size"),
-		},
-		keywords.Keyword{
-			Attr:         "CreateOptions",
-			Converter:    "shlex",
-			Example:      "--contiguous y",
-			Option:       "create_options",
-			Provisioning: true,
-			Scopable:     true,
-			Text:         keywords.NewText(fs, "text/kw/create_options"),
-		},
-	)
+	m.AddKeywords(kws...)
 	return m
 }
