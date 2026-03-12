@@ -13,7 +13,6 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/opensvc/om3/v3/core/actionrollback"
-	"github.com/opensvc/om3/v3/core/driver"
 	"github.com/opensvc/om3/v3/core/naming"
 	"github.com/opensvc/om3/v3/core/object"
 	"github.com/opensvc/om3/v3/core/rawconfig"
@@ -237,10 +236,6 @@ func TestStatus(t *testing.T) {
 			})
 		}
 	})
-}
-
-func (t *T) DriverID() driver.ID {
-	return drvID
 }
 
 func TestKeywordOptions(t *testing.T) {
