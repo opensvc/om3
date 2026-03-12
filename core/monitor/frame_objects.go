@@ -9,7 +9,6 @@ import (
 	"github.com/opensvc/om3/v3/core/placement"
 	"github.com/opensvc/om3/v3/core/rawconfig"
 	"github.com/opensvc/om3/v3/core/status"
-	"github.com/opensvc/om3/v3/core/topology"
 )
 
 func (f Frame) wObjects() {
@@ -99,9 +98,9 @@ func (f Frame) StrObjectRunning(path string) string {
 				switch {
 				//case !instanceStatus.Scale.IsZero():
 				//	expected = int(instanceStatus.Scale.ValueOrZero())
-				case objectStatus.Topology == topology.Flex:
+				case objectStatus.Flex != nil:
 					expected = objectStatus.Flex.Target
-				case objectStatus.Topology == topology.Failover:
+				default:
 					expected = 1
 				}
 			}
