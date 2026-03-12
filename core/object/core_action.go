@@ -306,13 +306,16 @@ func (t *actor) abortStartDrivers(ctx context.Context, resources resource.Driver
 	q := make(chan bool, len(resources))
 	var wg sync.WaitGroup
 	for _, r := range resources {
+		// No 'return' in this loop, so the routines wait can happen
 		if r.GetConfigurationError() != nil {
-			return nil
+			continue
 		}
-		if v, err := t.isEncapNodeMatchingResource(r); err != nil {
-			return err
+		var v bool
+		v, err = t.isEncapNodeMatchingResource(r)
+		if err != nil {
+			break
 		} else if !v {
-			return nil
+			continue
 		}
 
 		currentState := sb.Get(r.RID())
@@ -323,7 +326,7 @@ func (t *actor) abortStartDrivers(ctx context.Context, resources resource.Driver
 			continue
 		}
 		wg.Add(1)
-		added = added + 1
+		added++
 		go t.abortWorker(ctx, r, q, &wg)
 	}
 	wg.Wait()
