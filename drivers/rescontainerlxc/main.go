@@ -1254,13 +1254,20 @@ func (t *T) upPeer() (string, error) {
 		defer session.Close()
 		var b bytes.Buffer
 		session.Stdout = &b
+
+		// Try to get the PID of the main lxc process.
+		// If the lxc exists but is stopped, rc is 0 and output is empty.
 		err = session.Run(fmt.Sprintf("lxc-info -n %s -p", t.Name))
 		if err == nil {
-			return true, nil
+			if b.Len() > 0 {
+				return true, nil
+			} else {
+				return false, nil
+			}
 		}
 		ee := err.(*ssh.ExitError)
 		ec := ee.Waitmsg.ExitStatus()
-		return ec == 0, err
+		return ec == 0 && b.Len() > 0, err
 	}
 	for _, n := range t.Nodes {
 		if hn == n {
