@@ -453,6 +453,12 @@ func (t *actor) action(ctx context.Context, fn resourceset.DoFunc) error {
 			t.log.Tracef("skip freeze: action has daemon origin")
 			return nil
 		}
+		if v, err := t.Config().IsInEncapNodes(hostname.Hostname()); err != nil {
+			return err
+		} else if v {
+			t.log.Tracef("skip freeze: encap node don't need to freeze as they don't orchestrate ha start")
+			return nil
+		}
 		if err := freeze.Freeze(t.path.FrozenFile()); err != nil {
 			return err
 		}
