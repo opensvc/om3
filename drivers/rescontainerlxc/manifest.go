@@ -15,23 +15,9 @@ var (
 	fs embed.FS
 
 	drvID = driver.NewID(driver.GroupContainer, "lxc")
-)
 
-func init() {
-	driver.Register(drvID, New)
-}
-
-// Manifest exposes to the core the input expected by the driver.
-func (t *T) Manifest() *manifest.T {
-	m := manifest.New(drvID, t)
-	m.Kinds.Or(naming.KindSvc)
-	m.AddKeywords(manifest.SCSIPersistentReservationKeywords...)
-	m.Add(
-		manifest.ContextObjectPath,
-		manifest.ContextObjectID,
-		manifest.ContextNodes,
-		manifest.ContextDNS,
-		keywords.Keyword{
+	kws = []*keywords.Keyword{
+		{
 			Aliases:  []string{"container_data_dir"},
 			Attr:     "DataDir",
 			Example:  "/srv/svc1/data/containers",
@@ -39,28 +25,28 @@ func (t *T) Manifest() *manifest.T {
 			Scopable: true,
 			Text:     keywords.NewText(fs, "text/kw/data_dir"),
 		},
-		keywords.Keyword{
+		{
 			Attr:         "RootDir",
 			Example:      "/srv/svc1/data/containers",
 			Option:       "rootfs",
 			Provisioning: true,
 			Text:         keywords.NewText(fs, "text/kw/rootfs"),
 		},
-		keywords.Keyword{
+		{
 			Attr:         "ConfigFile",
 			Example:      "/srv/svc1/config",
 			Option:       "cf",
 			Provisioning: true,
 			Text:         keywords.NewText(fs, "text/kw/cf"),
 		},
-		keywords.Keyword{
+		{
 			Attr:         "Template",
 			Example:      "ubuntu",
 			Option:       "template",
 			Provisioning: true,
 			Text:         keywords.NewText(fs, "text/kw/template"),
 		},
-		keywords.Keyword{
+		{
 			Attr:         "TemplateOptions",
 			Converter:    "shlex",
 			Example:      "--release focal",
@@ -68,7 +54,7 @@ func (t *T) Manifest() *manifest.T {
 			Provisioning: true,
 			Text:         keywords.NewText(fs, "text/kw/template_options"),
 		},
-		keywords.Keyword{
+		{
 			Attr:         "CreateSecretsEnvironment",
 			Converter:    "shlex",
 			Example:      "CRT=cert1/server.crt PEM=cert1/server.pem",
@@ -77,7 +63,7 @@ func (t *T) Manifest() *manifest.T {
 			Scopable:     true,
 			Text:         keywords.NewText(fs, "text/kw/create_secrets_environment"),
 		},
-		keywords.Keyword{
+		{
 			Attr:         "CreateConfigsEnvironment",
 			Converter:    "shlex",
 			Example:      "CRT=cert1/server.crt PEM=cert1/server.pem",
@@ -86,7 +72,7 @@ func (t *T) Manifest() *manifest.T {
 			Scopable:     true,
 			Text:         keywords.NewText(fs, "text/kw/create_configs_environment"),
 		},
-		keywords.Keyword{
+		{
 			Attr:         "CreateEnvironment",
 			Converter:    "shlex",
 			Example:      "FOO=bar BAR=baz",
@@ -95,7 +81,7 @@ func (t *T) Manifest() *manifest.T {
 			Scopable:     true,
 			Text:         keywords.NewText(fs, "text/kw/create_environment"),
 		},
-		keywords.Keyword{
+		{
 			Attr:      "RCmd",
 			Converter: "shlex",
 			Example:   "lxc-attach -e -n osvtavnprov01 -- ",
@@ -103,13 +89,35 @@ func (t *T) Manifest() *manifest.T {
 			Scopable:  true,
 			Text:      keywords.NewText(fs, "text/kw/rcmd"),
 		},
-		rescontainer.KWName,
-		rescontainer.KWHostname,
-		rescontainer.KWStartTimeout,
-		rescontainer.KWStopTimeout,
-		rescontainer.KWPromoteRW,
-		rescontainer.KWOsvcRootPath,
-		rescontainer.KWGuestOS,
+		&rescontainer.KWName,
+		&rescontainer.KWHostname,
+		&rescontainer.KWStartTimeout,
+		&rescontainer.KWStopTimeout,
+		&rescontainer.KWPromoteRW,
+		&rescontainer.KWOsvcRootPath,
+		&rescontainer.KWGuestOS,
+	}
+)
+
+func init() {
+	driver.Register(drvID, New)
+}
+
+func (t *T) DriverID() driver.ID {
+	return drvID
+}
+
+// Manifest exposes to the core the input expected by the driver.
+func (t *T) Manifest() *manifest.T {
+	m := manifest.New(drvID, t)
+	m.Kinds.Or(naming.KindSvc)
+	m.Add(
+		manifest.ContextObjectPath,
+		manifest.ContextObjectID,
+		manifest.ContextNodes,
+		manifest.ContextDNS,
 	)
+	m.AddKeywords(manifest.SCSIPersistentReservationKeywords...)
+	m.AddKeywords(kws...)
 	return m
 }

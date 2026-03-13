@@ -258,8 +258,8 @@ func (t *Manager) orchestrateResourceRestart() {
 	started := t.state.LocalExpect == instance.MonitorLocalExpectStarted
 
 	for rid, rstat := range t.instStatus[t.localhost].Resources {
-		// Encap node don't manage restart restart for encap resources. The
-		// master node will manage.
+		// Encap node does not manage restart for encap resources.
+		// The master node will manage.
 		if rstat.IsEncap {
 			continue
 		}
@@ -296,9 +296,6 @@ func (t *Manager) orchestrateResourceRestart() {
 				continue
 			}
 			rmon := t.state.Resources.Get(rid)
-			if rmon == nil {
-				continue
-			}
 			needRestart, needMonitorAction, err := t.orchestrateResourcePlan(rid, rcfg, rmon, rstat, started)
 			if err != nil {
 				t.log.Errorf("orchestrate resource plan for resource %s: %s", rid, err)

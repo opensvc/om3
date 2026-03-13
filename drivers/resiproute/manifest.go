@@ -14,18 +14,9 @@ var (
 	fs embed.FS
 
 	drvID = driver.NewID(driver.GroupIP, "route")
-)
 
-func init() {
-	driver.Register(drvID, New)
-}
-
-// Manifest ...
-func (t *T) Manifest() *manifest.T {
-	m := manifest.New(drvID, t)
-	m.Kinds.Or(naming.KindSvc)
-	m.Add(
-		keywords.Keyword{
+	kws = []*keywords.Keyword{
+		{
 			Attr:     "NetNS",
 			Example:  "container#0",
 			Option:   "netns",
@@ -33,7 +24,7 @@ func (t *T) Manifest() *manifest.T {
 			Scopable: true,
 			Text:     keywords.NewText(fs, "text/kw/netns"),
 		},
-		keywords.Keyword{
+		{
 			Attr:     "Gateway",
 			Option:   "gateway",
 			Example:  "1.2.3.4",
@@ -41,7 +32,7 @@ func (t *T) Manifest() *manifest.T {
 			Scopable: true,
 			Text:     keywords.NewText(fs, "text/kw/gateway"),
 		},
-		keywords.Keyword{
+		{
 			Attr:     "To",
 			Example:  "192.168.100.0/24",
 			Option:   "to",
@@ -49,7 +40,7 @@ func (t *T) Manifest() *manifest.T {
 			Scopable: true,
 			Text:     keywords.NewText(fs, "text/kw/to"),
 		},
-		keywords.Keyword{
+		{
 			Attr:        "Dev",
 			DefaultText: keywords.NewText(fs, "text/kw/dev.default"),
 			Example:     "eth1",
@@ -58,6 +49,21 @@ func (t *T) Manifest() *manifest.T {
 			Scopable:    true,
 			Text:        keywords.NewText(fs, "text/kw/dev"),
 		},
-	)
+	}
+)
+
+func init() {
+	driver.Register(drvID, New)
+}
+
+func (t *T) DriverID() driver.ID {
+	return drvID
+}
+
+// Manifest ...
+func (t *T) Manifest() *manifest.T {
+	m := manifest.New(drvID, t)
+	m.Kinds.Or(naming.KindSvc)
+	m.AddKeywords(kws...)
 	return m
 }

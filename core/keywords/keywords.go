@@ -83,7 +83,7 @@ type (
 		ReplacedBy string
 	}
 
-	Store   []Keyword
+	Store   []*Keyword
 	Inherit int
 
 	Index   [2]string
@@ -168,7 +168,7 @@ func (t Indices) Swap(i, j int) {
 }
 
 // Name is a func required by the resource manifest Attr interface
-func (t Keyword) Name() string {
+func (t *Keyword) Name() string {
 	return t.Attr
 }
 
@@ -198,7 +198,7 @@ func (t Store) ByOption(option string) Store {
 	return Store{}
 }
 
-func (t Store) Lookup(k key.T, kind naming.Kind, sectionType string) Keyword {
+func (t Store) Lookup(k key.T, kind naming.Kind, sectionType string) *Keyword {
 	driverGroup := strings.Split(k.Section, "#")[0]
 	baseOption := k.BaseOption()
 	for _, kw := range t {
@@ -218,7 +218,7 @@ func (t Store) Lookup(k key.T, kind naming.Kind, sectionType string) Keyword {
 			return kw
 		}
 	}
-	return Keyword{}
+	return nil
 }
 
 func (t Store) Doc(w io.Writer, kind naming.Kind, driver, kw string, depth int) error {
@@ -259,7 +259,7 @@ func (t Store) Doc(w io.Writer, kind naming.Kind, driver, kw string, depth int) 
 	return nil
 }
 
-func (t Store) DriverKeywords(section, typ string, kind naming.Kind) ([]Keyword, error) {
+func (t Store) DriverKeywords(section, typ string, kind naming.Kind) ([]*Keyword, error) {
 	keywordsByDriver := t.KeywordsByDriver(kind)
 	index := Index{section, typ}
 	m, ok := keywordsByDriver[index]
@@ -277,7 +277,7 @@ func (t Store) DriverKeywords(section, typ string, kind naming.Kind) ([]Keyword,
 	return nil, fmt.Errorf("driver not found")
 }
 
-func driverDoc(w io.Writer, m map[string]Keyword, index Index, kind naming.Kind, depth int) error {
+func driverDoc(w io.Writer, m map[string]*Keyword, index Index, kind naming.Kind, depth int) error {
 	section := index[0]
 	typ := index[1]
 	title := index.String()
@@ -342,11 +342,13 @@ func driverDoc(w io.Writer, m map[string]Keyword, index Index, kind naming.Kind,
 	return nil
 }
 
-func (t Store) KeywordsByDriver(kind naming.Kind) map[Index]map[string]Keyword {
-	m := make(map[Index]map[string]Keyword)
+func (t Store) KeywordsByDriver(kind naming.Kind) map[Index]map[string]*Keyword {
+	m := make(map[Index]map[string]*Keyword)
 	sections := make(map[string]any)
 	typesByGroup := make(map[string][]string)
-	do := func(kw Keyword) {
+	do := func(ptr *Keyword, section string) {
+		kw := *ptr
+		kw.Section = section
 		var types []string
 		if len(kw.Types) > 0 {
 			types = kw.Types
@@ -358,9 +360,9 @@ func (t Store) KeywordsByDriver(kind naming.Kind) map[Index]map[string]Keyword {
 		for _, typ := range types {
 			key := Index{kw.Section, typ}
 			if _, ok := m[key]; !ok {
-				m[key] = make(map[string]Keyword)
+				m[key] = make(map[string]*Keyword)
 			}
-			m[key][kw.Option] = kw
+			m[key][kw.Option] = &kw
 		}
 	}
 	for _, kw := range t {
@@ -384,14 +386,13 @@ func (t Store) KeywordsByDriver(kind naming.Kind) map[Index]map[string]Keyword {
 			l = append(l, kw.Section)
 		}
 		for _, section := range l {
-			kw.Section = section
-			do(kw)
+			do(kw, section)
 		}
 	}
 	return m
 }
 
-func (t Keyword) DefaultKey() key.T {
+func (t *Keyword) DefaultKey() key.T {
 	k := key.T{
 		Section: "DEFAULT",
 		Option:  t.Option,
@@ -402,11 +403,7 @@ func (t Keyword) DefaultKey() key.T {
 	return k
 }
 
-func (t Keyword) IsZero() bool {
-	return t.Option == ""
-}
-
-func (t Keyword) Doc(w io.Writer, depth int) error {
+func (t *Keyword) Doc(w io.Writer, depth int) error {
 	fprintProp := func(a, b string) {
 		fmt.Fprintf(w, "\t%-12s %s\n", a+":", b)
 	}

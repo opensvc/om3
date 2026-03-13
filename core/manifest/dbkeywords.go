@@ -312,70 +312,70 @@ var (
 		Text:    keywords.NewText(fs, "text/kw/unprovision_requires"),
 	}
 
-	SCSIPersistentReservationKeywords = []keywords.Keyword{
-		KWSCSIPersistentReservationEnabled,
-		KWSCSIPersistentReservationKey,
-		KWSCSIPersistentReservationNoPreemptAbort,
+	SCSIPersistentReservationKeywords = []*keywords.Keyword{
+		&KWSCSIPersistentReservationEnabled,
+		&KWSCSIPersistentReservationKey,
+		&KWSCSIPersistentReservationNoPreemptAbort,
 	}
 
-	starterKeywords = []Attr{
-		KWBlockingPostStart,
-		KWBlockingPreStart,
-		KWPostStart,
-		KWPreStart,
-		KWRestart,
-		KWRestartDelay,
-		KWStartRequires,
+	starterKeywords = []*keywords.Keyword{
+		&KWBlockingPostStart,
+		&KWBlockingPreStart,
+		&KWPostStart,
+		&KWPreStart,
+		&KWRestart,
+		&KWRestartDelay,
+		&KWStartRequires,
 	}
 
-	stopperKeywords = []Attr{
-		KWBlockingPostStop,
-		KWBlockingPreStop,
-		KWPostStop,
-		KWPreStop,
-		KWStopRequires,
+	stopperKeywords = []*keywords.Keyword{
+		&KWBlockingPostStop,
+		&KWBlockingPreStop,
+		&KWPostStop,
+		&KWPreStop,
+		&KWStopRequires,
 	}
 
-	provisionerKeywords = []Attr{
-		KWBlockingPostProvision,
-		KWBlockingPreProvision,
-		KWEnableProvision,
-		KWPostProvision,
-		KWPreProvision,
-		KWProvisionRequires,
+	provisionerKeywords = []*keywords.Keyword{
+		&KWBlockingPostProvision,
+		&KWBlockingPreProvision,
+		&KWEnableProvision,
+		&KWPostProvision,
+		&KWPreProvision,
+		&KWProvisionRequires,
 	}
 
-	unprovisionerKeywords = []Attr{
-		KWBlockingPostUnprovision,
-		KWBlockingPreUnprovision,
-		KWEnableUnprovision,
-		KWPostUnprovision,
-		KWPreUnprovision,
-		KWUnprovisionRequires,
+	unprovisionerKeywords = []*keywords.Keyword{
+		&KWBlockingPostUnprovision,
+		&KWBlockingPreUnprovision,
+		&KWEnableUnprovision,
+		&KWPostUnprovision,
+		&KWPreUnprovision,
+		&KWUnprovisionRequires,
 	}
 
-	syncerKeywords = []Attr{
-		KWOptional,
-		KWSyncRequires,
+	syncerKeywords = []*keywords.Keyword{
+		&KWOptional,
+		&KWSyncRequires,
 	}
 
-	runnerKeywords = []Attr{
-		KWOptional,
-		KWBlockingPostRun,
-		KWBlockingPreRun,
-		KWPostRun,
-		KWPreRun,
-		KWRunRequires,
+	runnerKeywords = []*keywords.Keyword{
+		&KWOptional,
+		&KWBlockingPostRun,
+		&KWBlockingPreRun,
+		&KWPostRun,
+		&KWPreRun,
+		&KWRunRequires,
 	}
 
-	genericKeywords = []Attr{
-		KWDisable,
-		KWEncap,
-		KWMonitor,
-		KWOptional,
-		KWShared,
-		KWStandby,
-		KWSubset,
-		KWTags,
+	genericKeywords = []*keywords.Keyword{
+		&KWDisable,
+		&KWEncap,
+		&KWMonitor,
+		&KWOptional,
+		&KWShared,
+		&KWStandby,
+		&KWSubset,
+		&KWTags,
 	}
 )

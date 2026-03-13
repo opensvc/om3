@@ -15,10 +15,81 @@ var (
 	fs embed.FS
 
 	drvID = driver.NewID(driver.GroupIP, "host")
+
+	kws = []*keywords.Keyword{
+		&resip.KeywordWaitDNS,
+		{
+			Aliases:  []string{"ipname"},
+			Attr:     "Name",
+			Example:  "1.2.3.4",
+			Option:   "name",
+			Scopable: true,
+			Text:     keywords.NewText(fs, "text/kw/name"),
+		},
+		{
+			Aliases:  []string{"ipdev"},
+			Attr:     "Dev",
+			Example:  "eth0",
+			Option:   "dev",
+			Required: true,
+			Scopable: true,
+			Text:     keywords.NewText(fs, "text/kw/dev"),
+		},
+		{
+			Attr:     "Netmask",
+			Example:  "24",
+			Option:   "netmask",
+			Scopable: true,
+			Text:     keywords.NewText(fs, "text/kw/netmask"),
+		},
+		{
+			Attr:         "Gateway",
+			Option:       "gateway",
+			Provisioning: true,
+			Scopable:     true,
+			Text:         keywords.NewText(fs, "text/kw/gateway"),
+		},
+		{
+			Attr:         "Network",
+			Example:      "10.0.0.0/16",
+			Option:       "network",
+			Provisioning: true,
+			Scopable:     true,
+			Text:         keywords.NewText(fs, "text/kw/network"),
+		},
+		{
+			Attr:      "CheckCarrier",
+			Converter: "bool",
+			Default:   "true",
+			Option:    "check_carrier",
+			Scopable:  true,
+			Text:      keywords.NewText(fs, "text/kw/check_carrier"),
+		},
+		{
+			Attr:      "Alias",
+			Converter: "bool",
+			Default:   "true",
+			Option:    "alias",
+			Scopable:  true,
+			Text:      keywords.NewText(fs, "text/kw/alias"),
+		},
+		{
+			Attr:      "Expose",
+			Converter: "list",
+			Example:   "443/tcp:8443 53/udp",
+			Option:    "expose",
+			Scopable:  true,
+			Text:      keywords.NewText(fs, "text/kw/expose"),
+		},
+	}
 )
 
 func init() {
 	driver.Register(drvID, New)
+}
+
+func (t *T) DriverID() driver.ID {
+	return drvID
 }
 
 // Manifest exposes to the core the input expected by the driver.
@@ -29,70 +100,7 @@ func (t *T) Manifest() *manifest.T {
 		manifest.ContextObjectPath,
 		manifest.ContextObjectFQDN,
 		manifest.ContextDNS,
-		resip.KeywordWaitDNS,
-		keywords.Keyword{
-			Aliases:  []string{"ipname"},
-			Attr:     "Name",
-			Example:  "1.2.3.4",
-			Option:   "name",
-			Scopable: true,
-			Text:     keywords.NewText(fs, "text/kw/name"),
-		},
-		keywords.Keyword{
-			Aliases:  []string{"ipdev"},
-			Attr:     "Dev",
-			Example:  "eth0",
-			Option:   "dev",
-			Required: true,
-			Scopable: true,
-			Text:     keywords.NewText(fs, "text/kw/dev"),
-		},
-		keywords.Keyword{
-			Attr:     "Netmask",
-			Example:  "24",
-			Option:   "netmask",
-			Scopable: true,
-			Text:     keywords.NewText(fs, "text/kw/netmask"),
-		},
-		keywords.Keyword{
-			Attr:         "Gateway",
-			Option:       "gateway",
-			Provisioning: true,
-			Scopable:     true,
-			Text:         keywords.NewText(fs, "text/kw/gateway"),
-		},
-		keywords.Keyword{
-			Attr:         "Network",
-			Example:      "10.0.0.0/16",
-			Option:       "network",
-			Provisioning: true,
-			Scopable:     true,
-			Text:         keywords.NewText(fs, "text/kw/network"),
-		},
-		keywords.Keyword{
-			Attr:      "CheckCarrier",
-			Converter: "bool",
-			Default:   "true",
-			Option:    "check_carrier",
-			Scopable:  true,
-			Text:      keywords.NewText(fs, "text/kw/check_carrier"),
-		},
-		keywords.Keyword{
-			Attr:      "Alias",
-			Converter: "bool",
-			Default:   "true",
-			Option:    "alias",
-			Scopable:  true,
-			Text:      keywords.NewText(fs, "text/kw/alias"),
-		},
-		keywords.Keyword{
-			Attr:      "Expose",
-			Converter: "list",
-			Example:   "443/tcp:8443 53/udp",
-			Option:    "expose",
-			Scopable:  true,
-			Text:      keywords.NewText(fs, "text/kw/expose"),
-		},
 	)
+	m.AddKeywords(kws...)
 	return m
 }

@@ -15,23 +15,29 @@ var (
 
 var (
 	DrvID = driver.NewID(driver.GroupContainer, "docker")
-)
 
-func init() {
-	driver.Register(DrvID, New)
-}
-
-// Manifest exposes to the core the input expected by the driver.
-func (t *T) Manifest() *manifest.T {
-	m := t.BT.ManifestWithID(DrvID)
-	m.Add(
-		keywords.Keyword{
+	kws = []*keywords.Keyword{
+		{
 			Option:   "userns",
 			Attr:     "UserNS",
 			Scopable: true,
 			Example:  "container#0",
 			Text:     keywords.NewText(fs, "text/kw/userns"),
 		},
-	)
+	}
+)
+
+func init() {
+	driver.Register(DrvID, New)
+}
+
+func (t *T) DriverID() driver.ID {
+	return DrvID
+}
+
+// Manifest exposes to the core the input expected by the driver.
+func (t *T) Manifest() *manifest.T {
+	m := t.BT.ManifestWithID(DrvID)
+	m.AddKeywords(kws...)
 	return m
 }

@@ -97,43 +97,43 @@ var (
 		Text:      keywords.NewText(fs, "text/kw/check_read"),
 	}
 
-	KeywordsVirtual = []keywords.Keyword{
-		KeywordMountPoint,
-		KeywordMountOptions,
-		KeywordDevice,
-		KeywordStatTimeout,
-		KeywordZone,
-		KeywordCheckRead,
+	KeywordsVirtual = []*keywords.Keyword{
+		&KeywordMountPoint,
+		&KeywordMountOptions,
+		&KeywordDevice,
+		&KeywordStatTimeout,
+		&KeywordZone,
+		&KeywordCheckRead,
 	}
 
-	KeywordsBase = []keywords.Keyword{
-		KeywordMountPoint,
-		KeywordDevice,
-		KeywordMountOptions,
-		KeywordStatTimeout,
-		manifest.KWSCSIPersistentReservationKey,
-		manifest.KWSCSIPersistentReservationEnabled,
-		manifest.KWSCSIPersistentReservationNoPreemptAbort,
-		KeywordPromoteRW,
-		KeywordMKFSOptions,
-		KeywordZone,
-		KeywordUser,
-		KeywordGroup,
-		KeywordPerm,
-		KeywordCheckRead,
+	KeywordsBase = []*keywords.Keyword{
+		&KeywordMountPoint,
+		&KeywordDevice,
+		&KeywordMountOptions,
+		&KeywordStatTimeout,
+		&manifest.KWSCSIPersistentReservationKey,
+		&manifest.KWSCSIPersistentReservationEnabled,
+		&manifest.KWSCSIPersistentReservationNoPreemptAbort,
+		&KeywordPromoteRW,
+		&KeywordMKFSOptions,
+		&KeywordZone,
+		&KeywordUser,
+		&KeywordGroup,
+		&KeywordPerm,
+		&KeywordCheckRead,
 	}
 
-	KeywordsPooling = []keywords.Keyword{
-		KeywordMountPoint,
-		KeywordDevice,
-		KeywordMountOptions,
-		KeywordStatTimeout,
-		KeywordMKFSOptions,
-		KeywordZone,
-		KeywordUser,
-		KeywordGroup,
-		KeywordPerm,
-		KeywordCheckRead,
+	KeywordsPooling = []*keywords.Keyword{
+		&KeywordMountPoint,
+		&KeywordDevice,
+		&KeywordMountOptions,
+		&KeywordStatTimeout,
+		&KeywordMKFSOptions,
+		&KeywordZone,
+		&KeywordUser,
+		&KeywordGroup,
+		&KeywordPerm,
+		&KeywordCheckRead,
 	}
 )
 
@@ -143,9 +143,13 @@ func init() {
 	}
 }
 
+func (t *T) DriverID() driver.ID {
+	return driver.NewID(driver.GroupFS, t.Type)
+}
+
 // Manifest exposes to the core the input expected by the driver.
 func (t *T) Manifest() *manifest.T {
-	m := manifest.New(driver.NewID(driver.GroupFS, t.Type), t)
+	m := manifest.New(t.DriverID(), t)
 	m.Kinds.Or(naming.KindSvc, naming.KindVol)
 	m.Add(manifest.ContextObjectPath)
 	m.AddKeywords(KeywordsBase...)

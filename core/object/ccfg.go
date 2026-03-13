@@ -27,17 +27,15 @@ type (
 )
 
 var (
-	ccfgPrivateKeywords = []keywords.Keyword{
-		{
-			DefaultText: keywords.NewText(fs, "text/kw/ccfg/id.default"),
-			Option:      "id",
-			Scopable:    false,
-			Section:     "DEFAULT",
-			Text:        keywords.NewText(fs, "text/kw/ccfg/id"),
-		},
+	kwCcfgID = keywords.Keyword{
+		DefaultText: keywords.NewText(fs, "text/kw/ccfg/id.default"),
+		Option:      "id",
+		Scopable:    false,
+		Section:     "DEFAULT",
+		Text:        keywords.NewText(fs, "text/kw/ccfg/id"),
 	}
 
-	ccfgKeywordStore = keywords.Store(append(ccfgPrivateKeywords, nodeCommonKeywords...))
+	ccfgKeywordStore = keywords.Store(append(nodeCommonKeywords, &kwCcfgID))
 )
 
 func NewCluster(opts ...funcopt.O) (*Ccfg, error) {
@@ -53,7 +51,7 @@ func newCcfg(path naming.Path, opts ...funcopt.O) (*Ccfg, error) {
 	return s, err
 }
 
-func (t *Ccfg) KeywordLookup(k key.T, sectionType string) keywords.Keyword {
+func (t *Ccfg) KeywordLookup(k key.T, sectionType string) *keywords.Keyword {
 	return keywordLookup(ccfgKeywordStore, k, t.path.Kind, sectionType)
 }
 
