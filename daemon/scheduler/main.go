@@ -29,6 +29,8 @@ import (
 	"github.com/opensvc/om3/v3/util/plog"
 	"github.com/opensvc/om3/v3/util/pubsub"
 	"github.com/opensvc/om3/v3/util/runfiles"
+	"github.com/prometheus/client_golang/prometheus"
+	"github.com/prometheus/client_golang/prometheus/promauto"
 )
 
 type (
@@ -106,6 +108,27 @@ var (
 		node.MonitorStateShutdownProgress: nil,
 		node.MonitorStateUpgrade:          nil,
 	}
+
+	jobRunByPathKeyCount = promauto.NewCounterVec(
+		prometheus.CounterOpts{
+			Namespace: "opensvc",
+			Subsystem: "scheduler",
+			Name:      "object_job_runs_total",
+		}, []string{"action", "path", "key"})
+
+	jobRunByPathCount = promauto.NewCounterVec(
+		prometheus.CounterOpts{
+			Namespace: "opensvc",
+			Subsystem: "scheduler",
+			Name:      "object_runs_total",
+		}, []string{"action", "path"})
+
+	jobRunCount = promauto.NewCounterVec(
+		prometheus.CounterOpts{
+			Namespace: "opensvc",
+			Subsystem: "scheduler",
+			Name:      "runs_total",
+		}, []string{"action"})
 )
 
 func (t Schedules) Del(path naming.Path) {
@@ -419,6 +442,9 @@ func (t *T) onJobAlarm(c eventJobAlarm) {
 	}
 
 	go func() {
+		jobRunCount.WithLabelValues(e.Action).Inc()
+		jobRunByPathCount.WithLabelValues(e.Action, e.Path.String()).Inc()
+		jobRunByPathKeyCount.WithLabelValues(e.Action, e.Path.String(), e.Key).Inc()
 		if err := t.action(e); err != nil {
 			logger.Errorf("on exec: %s", err)
 		} else {
