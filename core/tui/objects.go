@@ -33,22 +33,7 @@ func (t *App) initObjectsTable() {
 		case row == 1 && col == 1:
 			t.nav(viewEvents)
 		case (row >= hbIndexRow && row <= hbIndexRow+2) && (col >= t.headerRightCol && col <= t.firstInstanceCol+len(t.Current.Cluster.Config.Nodes)-1):
-			if hbIndexRow == -1 {
-				return
-			}
-			var nodeFilter string
-			if col >= t.firstInstanceCol {
-				nodeFilter = table.GetCell(0, col).Text
-			}
-			var hbType string
-			if row > 8 {
-				hbType = table.GetCell(row, 3).Text[3:]
-			}
-			t.hbFilter = HbStatusFilter{
-				Name:     hbType,
-				NodeName: nodeFilter,
-			}
-			t.nav(viewHbStatus)
+			t.listHeartbeats(table, row, col)
 		}
 	}
 
@@ -149,6 +134,26 @@ func (t *App) initObjectsTable() {
 		return event
 	})
 	t.objects = table
+}
+
+func (t *App) listHeartbeats(table *tview.Table, row, col int) {
+	if hbIndexRow == -1 {
+		return
+	}
+	var nodeFilter string
+	if col >= t.firstInstanceCol {
+		nodeFilter = table.GetCell(0, col).Text
+	}
+	var hbDirection string
+	cellText := table.GetCell(row, 3).Text
+	if cellText == "  |rx" || cellText == "  |tx" {
+		hbDirection = cellText[3:]
+	}
+	t.hbFilter = HbStatusFilter{
+		Name:     hbDirection,
+		NodeName: nodeFilter,
+	}
+	t.nav(viewHbStatus)
 }
 
 func (t *App) updateObjects() {
