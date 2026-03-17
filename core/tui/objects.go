@@ -332,14 +332,6 @@ func (t *App) updateObjects() {
 			t.objects.SetCell(row, 5+j, t.cellInstanceStatus(path, nodename))
 		}
 	}
-
-	row, col := t.objects.GetSelection()
-	path := t.objects.GetCell(row, col).Text
-	p, err := naming.ParsePath(path)
-	if err != nil {
-		return
-	}
-	t.viewPath = p
 }
 
 func (t *App) cellObjectOrchestrate(path string) *tview.TableCell {
