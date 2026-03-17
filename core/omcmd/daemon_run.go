@@ -26,7 +26,7 @@ func (t *CmdDaemonRun) Run() error {
 	if err := cmd.LoadManager(ctx); err != nil {
 		return err
 	}
-	if cmd.Run(ctx, t.CPUProfile); errors.Is(err, daemoncmd.ErrAlreadyRunning) {
+	if err := cmd.Run(ctx, t.CPUProfile); errors.Is(err, daemoncmd.ErrAlreadyRunning) {
 		fmt.Println(err)
 		return nil
 	} else if err != nil {
