@@ -51,13 +51,14 @@ func (t *CmdDaemonCommon) backupLocalConfig(name string) error {
 	if v, err := file.ExistsAndDir(backupDir); err != nil {
 		return err
 	} else if !v {
-		_, _ = fmt.Fprintf(os.Stdout, "Empty %s, skip backup\n", backupDir)
+		_, _ = fmt.Fprintf(os.Stdout, "Missing directory %s, skip backup\n", backupDir)
 		return nil
 	}
 
 	backup := path.Join(backupDir, time.Now().Format(name+"-2006-01-02T15:04:05"))
 	_, _ = fmt.Fprintf(os.Stdout, "move all configs to %s\n", backup)
-	err := os.Rename(rawconfig.Paths.Etc, backup)
+	// Prefer file.Move to avoid syscall.EXDEV errors on os.Rename
+	err := file.Move(rawconfig.Paths.Etc, backup)
 	if err != nil {
 		return err
 	}

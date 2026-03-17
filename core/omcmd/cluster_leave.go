@@ -2,6 +2,7 @@ package omcmd
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"net/http"
 	"os"
@@ -32,7 +33,19 @@ type (
 	}
 )
 
-func (t *CmdClusterLeave) Run() (err error) {
+var (
+	ErrCmdClusterLeave = errors.New("command cluster leave")
+)
+
+func (t *CmdClusterLeave) Run() error {
+	err := t.run()
+	if err != nil {
+		return fmt.Errorf("%w: %w", ErrCmdClusterLeave, err)
+	}
+	return nil
+}
+
+func (t *CmdClusterLeave) run() (err error) {
 	var (
 		tk string
 
@@ -52,7 +65,7 @@ func (t *CmdClusterLeave) Run() (err error) {
 	}
 
 	if t.APINode, err = t.peerClusterNode(); err != nil {
-		return fmt.Errorf("daemon leave: unable to find a peer node to announce we are leaving: %w", err)
+		return fmt.Errorf("unable to find a peer node to announce we are leaving: %w", err)
 	}
 
 	if t.isRunning() {
@@ -182,9 +195,9 @@ func (t *CmdClusterLeave) leave(ctx context.Context, c *client.T) error {
 		Node: t.localhost,
 	}
 	if resp, err := c.PostClusterLeave(ctx, &params); err != nil {
-		return fmt.Errorf("daemon leave error: %w", err)
+		return fmt.Errorf("post cluster leave error: %w", err)
 	} else if resp.StatusCode != http.StatusOK {
-		return fmt.Errorf("daemon leave unexpected status code %s", resp.Status)
+		return fmt.Errorf("post cluster leave unexpected status code %s", resp.Status)
 	}
 	return nil
 }

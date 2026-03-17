@@ -461,7 +461,8 @@ func (t *Manager) removeConfigFileAndDisableRecover(p naming.Path, updatedAt tim
 	bckName := fmt.Sprintf("%s.%s.%s_%s.bck", p.Namespace, p.Kind, p.Name, time.Now().Format(time.RFC3339))
 	bckCfgFile := path.Join(rawconfig.Paths.Backup, bckName)
 	log.Infof("cfg: archive removed file %s to %s", cfgFile, bckCfgFile)
-	if err := os.Rename(cfgFile, bckCfgFile); err != nil {
+	// Prefer file.Move to avoid syscall.EXDEV errors on os.Rename
+	if err := file.Move(cfgFile, bckCfgFile); err != nil {
 		log.Tracef("cfg: archive removed file %s: %s", cfgFile, err)
 	}
 	if _, ok := t.cfgMTime[pathS]; ok {

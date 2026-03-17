@@ -1,11 +1,14 @@
 package file
 
 import (
+	"fmt"
 	"io"
 	"os"
 	"path/filepath"
 	"syscall"
 	"time"
+
+	"github.com/opensvc/om3/v3/util/command"
 )
 
 // IsProtected returns true if the file is too critical to alter or remove
@@ -293,4 +296,15 @@ func Sync(p string) error {
 	}
 	defer func() { _ = f.Close() }()
 	return f.Sync()
+}
+
+func Move(src, dst string) error {
+	cmd := command.New(
+		command.WithName("mv"),
+		command.WithArgs([]string{src, dst}),
+	)
+	if err := cmd.Run(); err != nil {
+		return fmt.Errorf("%s: %w", cmd, err)
+	}
+	return nil
 }
