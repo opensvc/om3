@@ -20,6 +20,7 @@ import (
 
 	"github.com/opensvc/om3/v3/core/cluster"
 	"github.com/opensvc/om3/v3/core/hbsecobject"
+	"github.com/opensvc/om3/v3/core/naming"
 	"github.com/opensvc/om3/v3/daemon/ccfg"
 	"github.com/opensvc/om3/v3/daemon/collector"
 	"github.com/opensvc/om3/v3/daemon/cstat"
@@ -216,8 +217,7 @@ func (t *T) Start(ctx context.Context) error {
 
 	initialHeartbeatSecret, err := hbsecobject.Get()
 	if err != nil {
-		err = fmt.Errorf("unexpected error with retrieving initial heartbeat secrets: %w", err)
-		panic(err)
+		return fmt.Errorf("retrieve initial heartbeat secrets %s: %w", naming.SecHb, err)
 	}
 	cryptoWorker := hbcrypto.T{}
 	t.ctx = hbcrypto.ContextWithCrypto(t.ctx, cryptoWorker.Start(t.ctx, initialCcfg.Name, *initialHeartbeatSecret))
