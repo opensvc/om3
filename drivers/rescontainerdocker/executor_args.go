@@ -8,7 +8,6 @@ import (
 	"time"
 
 	"github.com/opensvc/om3/v3/util/args"
-	"github.com/opensvc/om3/v3/util/capabilities"
 )
 
 // RunArgsBase append extra args for docker
@@ -88,20 +87,4 @@ func (ea *ExecutorArg) isRemoved(ctx context.Context) (bool, error) {
 		ea.BT.Log().Tracef("is removed: false")
 		return false, err
 	}
-}
-
-func timeoutFlag() string {
-	if capabilities.Has(capHasTimeoutFlag) {
-		return "--timeout"
-	} else {
-		return "--time"
-	}
-}
-
-func (ea *ExecutorArg) StopArgs() *args.T {
-	a := args.New("container", "stop", ea.BT.ContainerName())
-	if ea.BT.StopTimeout != nil && *ea.BT.StopTimeout > 0 {
-		a.Append(timeoutFlag(), fmt.Sprintf("%.0f", ea.BT.StopTimeout.Seconds()))
-	}
-	return a
 }

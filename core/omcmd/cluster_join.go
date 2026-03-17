@@ -37,7 +37,7 @@ type (
 )
 
 var (
-	ErrCmdClusterJoin = errors.New("command daemon join")
+	ErrCmdClusterJoin = errors.New("command cluster join")
 )
 
 func (t *CmdClusterJoin) Run() error {
