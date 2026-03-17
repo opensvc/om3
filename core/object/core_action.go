@@ -536,7 +536,7 @@ func (t *actor) action(ctx context.Context, fn resourceset.DoFunc) error {
 		}
 
 		options := make([]string, 0)
-		if s := actioncontext.RID(ctx); s != "" {
+		if actioncontext.RID(ctx) != "" || actioncontext.Tag(ctx) != "" || actioncontext.Subset(ctx) != "" || actioncontext.To(ctx) != "" {
 			options = append(options, "--rid", strings.Join(selectedEncapRIDs, ","))
 		}
 		if s := actioncontext.IsLeader(ctx); s {
