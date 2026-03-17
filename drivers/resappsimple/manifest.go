@@ -15,6 +15,10 @@ func init() {
 	driver.Register(drvID, New)
 }
 
+func (t *T) DriverID() driver.ID {
+	return drvID
+}
+
 // Manifest ...
 func (t *T) Manifest() *manifest.T {
 	m := manifest.New(drvID, t)
@@ -26,6 +30,5 @@ func (t *T) Manifest() *manifest.T {
 	)
 	m.AddKeywords(resapp.BaseKeywords...)
 	m.AddKeywords(resapp.UnixKeywords...)
-	m.AddKeywords(Keywords...)
 	return m
 }

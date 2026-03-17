@@ -67,6 +67,7 @@ type (
 
 		// common
 		ApplyPGChain(context.Context) error
+		DriverID() driver.ID
 		GetObject() any
 		GetPG() *pg.Config
 		GetPGID() string
@@ -577,7 +578,7 @@ func (t *T) TagSet() TagSet {
 }
 
 func formatResourceLabel(ctx context.Context, r Driver) string {
-	name := r.Manifest().DriverID.Name
+	name := r.DriverID().Name
 	if name == "" {
 		return r.Label(ctx)
 	} else {
@@ -1238,7 +1239,7 @@ func GetStatus(ctx context.Context, r Driver) Status {
 	resStatus := EvalStatus(ctx, r)
 	return Status{
 		Label:  formatResourceLabel(ctx, r),
-		Type:   r.Manifest().DriverID.String(),
+		Type:   r.DriverID().String(),
 		Status: resStatus,
 		Subset: r.RSubset(),
 		Tags:   r.TagSet(),

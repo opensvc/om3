@@ -40,7 +40,7 @@ func GetInfo(ctx context.Context, r Driver) (Info, error) {
 		Keys: InfoKeys{
 			{
 				Key:   "driver",
-				Value: fmt.Sprint(r.Manifest().DriverID),
+				Value: fmt.Sprint(r.DriverID()),
 			},
 			{
 				Key:   "standby",

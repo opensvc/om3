@@ -149,8 +149,7 @@ func (t *actor) withActionTimeout(ctx context.Context) (context.Context, func())
 	return t.withTimeoutFromKeywords(ctx, props.TimeoutKeywords)
 }
 
-func (t *actor) abortWorker(ctx context.Context, r resource.Driver, q chan bool, wg *sync.WaitGroup) {
-	defer wg.Done()
+func (t *actor) abortWorker(ctx context.Context, r resource.Driver, q chan bool) {
 	a, ok := r.(resource.Aborter)
 	if !ok {
 		q <- false
@@ -305,26 +304,35 @@ func (t *actor) abortStartDrivers(ctx context.Context, resources resource.Driver
 	added := 0
 	q := make(chan bool, len(resources))
 	var wg sync.WaitGroup
+	var resourcesToDo resource.Drivers
 	for _, r := range resources {
-		if r.GetConfigurationError() != nil {
-			return nil
+		if err := r.GetConfigurationError(); err != nil {
+			return fmt.Errorf("%s: configuration error prevents abort test: %s", r.RID(), err)
 		}
-		if v, err := t.isEncapNodeMatchingResource(r); err != nil {
-			return err
+		if r.IsDisabled() {
+			continue
+		}
+		var v bool
+		v, err = t.isEncapNodeMatchingResource(r)
+		if err != nil {
+			return fmt.Errorf("%s: error prevents abort test: %s", r.RID(), err)
 		} else if !v {
-			return nil
+			continue
 		}
 
 		currentState := sb.Get(r.RID())
 		if currentState.Is(status.Up, status.StandbyUp) {
 			continue
 		}
-		if r.IsDisabled() {
-			continue
-		}
+		resourcesToDo = append(resourcesToDo, r)
+	}
+	for _, r := range resourcesToDo {
 		wg.Add(1)
-		added = added + 1
-		go t.abortWorker(ctx, r, q, &wg)
+		added++
+		go func() {
+			t.abortWorker(ctx, r, q)
+			wg.Done()
+		}()
 	}
 	wg.Wait()
 	var ret bool
@@ -373,8 +381,8 @@ func (t *actor) action(ctx context.Context, fn resourceset.DoFunc) error {
 	resources := resourceSelector.Resources()
 	isDesc := resourceSelector.IsDesc()
 	isActionForMaster := actioncontext.IsActionForMaster(ctx)
-	hasEncapResourcesSelected := false
 	encaperRIDsAddedForSelectedEncapResources := make([]string, 0)
+	selectedEncapRIDs := make([]string, 0)
 
 	barrier := resources.Barrier(actioncontext.To(ctx))
 	if barrier != "" {
@@ -385,18 +393,20 @@ func (t *actor) action(ctx context.Context, fn resourceset.DoFunc) error {
 		return fmt.Errorf("resource does not exist")
 	}
 
-	for _, r := range t.Resources() {
-		if !hasEncapResourcesSelected && r.IsEncap() {
-			hasEncapResourcesSelected = true
-		}
-		if _, ok := r.(resource.Encaper); ok {
-			if !resources.HasRID(r.RID()) {
-				encaperRIDsAddedForSelectedEncapResources = append(encaperRIDsAddedForSelectedEncapResources, r.RID())
-			}
+	for _, r := range resources {
+		if r.IsEncap() {
+			selectedEncapRIDs = append(selectedEncapRIDs, r.RID())
 		}
 	}
-
-	if hasEncapResourcesSelected {
+	if len(selectedEncapRIDs) > 0 {
+		// add containers capable of encap to the selection
+		for _, r := range t.Resources() {
+			if _, ok := r.(resource.Encaper); ok {
+				if !resources.HasRID(r.RID()) {
+					encaperRIDsAddedForSelectedEncapResources = append(encaperRIDsAddedForSelectedEncapResources, r.RID())
+				}
+			}
+		}
 		resourceSelector.SelectRIDs(encaperRIDsAddedForSelectedEncapResources)
 	}
 
@@ -450,6 +460,12 @@ func (t *actor) action(ctx context.Context, fn resourceset.DoFunc) error {
 			t.log.Tracef("skip freeze: action has daemon origin")
 			return nil
 		}
+		if v, err := t.Config().IsInEncapNodes(hostname.Hostname()); err != nil {
+			return err
+		} else if v {
+			t.log.Tracef("skip freeze: encap node don't need to freeze as they don't orchestrate ha start")
+			return nil
+		}
 		if err := freeze.Freeze(t.path.FrozenFile()); err != nil {
 			return err
 		}
@@ -471,7 +487,7 @@ func (t *actor) action(ctx context.Context, fn resourceset.DoFunc) error {
 
 		hostname := encapContainer.GetHostname()
 
-		if !actioncontext.IsActionForSlave(ctx, hostname) && !hasEncapResourcesSelected {
+		if !actioncontext.IsActionForSlave(ctx, hostname) && len(selectedEncapRIDs) == 0 {
 			return nil
 		}
 
@@ -520,17 +536,8 @@ func (t *actor) action(ctx context.Context, fn resourceset.DoFunc) error {
 		}
 
 		options := make([]string, 0)
-		if s := actioncontext.RID(ctx); s != "" {
-			options = append(options, "--rid", s)
-		}
-		if s := actioncontext.Subset(ctx); s != "" {
-			options = append(options, "--subset", s)
-		}
-		if s := actioncontext.Tag(ctx); s != "" {
-			options = append(options, "--tag", s)
-		}
-		if s := actioncontext.To(ctx); s != "" {
-			options = append(options, "--to", s)
+		if actioncontext.RID(ctx) != "" || actioncontext.Tag(ctx) != "" || actioncontext.Subset(ctx) != "" || actioncontext.To(ctx) != "" {
+			options = append(options, "--rid", strings.Join(selectedEncapRIDs, ","))
 		}
 		if s := actioncontext.IsLeader(ctx); s {
 			options = append(options, "--leader")

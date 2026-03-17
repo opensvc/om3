@@ -50,7 +50,7 @@ func NewVol(path naming.Path, opts ...funcopt.O) (*vol, error) {
 	return s, err
 }
 
-func (t *vol) KeywordLookup(k key.T, sectionType string) keywords.Keyword {
+func (t *vol) KeywordLookup(k key.T, sectionType string) *keywords.Keyword {
 	return keywordLookup(keywordStore, k, t.path.Kind, sectionType)
 }
 
@@ -155,7 +155,7 @@ func (t *vol) SubDevice(ctx context.Context) *device.T {
 		driver.GroupVolume,
 	})
 	for _, r := range l {
-		if r.Manifest().DriverID.Name == "scsireserv" {
+		if r.DriverID().Name == "scsireserv" {
 			continue
 		}
 		var i interface{} = r
@@ -189,7 +189,7 @@ func (t *vol) ExposedDevice(ctx context.Context) *device.T {
 		driver.GroupVolume,
 	})
 	for _, r := range l {
-		if r.Manifest().DriverID.Name == "scsireserv" {
+		if r.DriverID().Name == "scsireserv" {
 			continue
 		}
 		var i interface{} = r

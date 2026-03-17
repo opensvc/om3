@@ -86,7 +86,7 @@ func NewSec(path naming.Path, opts ...funcopt.O) (*sec, error) {
 	return s, nil
 }
 
-func (t *sec) KeywordLookup(k key.T, sectionType string) keywords.Keyword {
+func (t *sec) KeywordLookup(k key.T, sectionType string) *keywords.Keyword {
 	return keywordLookup(keywordStore, k, t.path.Kind, sectionType)
 }
 

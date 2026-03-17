@@ -48,7 +48,7 @@ func NewUsr(path naming.Path, opts ...funcopt.O) (*usr, error) {
 	return s, nil
 }
 
-func (t *usr) KeywordLookup(k key.T, sectionType string) keywords.Keyword {
+func (t *usr) KeywordLookup(k key.T, sectionType string) *keywords.Keyword {
 	return keywordLookup(keywordStore, k, t.path.Kind, sectionType)
 }
 

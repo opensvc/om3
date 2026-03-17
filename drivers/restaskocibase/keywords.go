@@ -10,7 +10,7 @@ var (
 	//go:embed text
 	fs embed.FS
 
-	Keywords = []keywords.Keyword{
+	Keywords = []*keywords.Keyword{
 		{
 			Attr:        "Name",
 			DefaultText: keywords.NewText(fs, "text/kw/name.default"),

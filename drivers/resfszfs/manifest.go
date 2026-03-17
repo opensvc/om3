@@ -15,27 +15,18 @@ var (
 	fs embed.FS
 
 	drvID = driver.NewID(driver.GroupFS, "zfs")
-)
 
-func init() {
-	driver.Register(drvID, New)
-}
-
-// Manifest exposes to the core the input expected by the driver.
-func (t *T) Manifest() *manifest.T {
-	m := manifest.New(drvID, t)
-	m.Kinds.Or(naming.KindSvc, naming.KindVol)
-	m.Add(
-		resfshost.KeywordMountPoint,
-		resfshost.KeywordDevice,
-		resfshost.KeywordMountOptions,
-		resfshost.KeywordStatTimeout,
-		resfshost.KeywordMKFSOptions,
-		resfshost.KeywordZone,
-		resfshost.KeywordUser,
-		resfshost.KeywordGroup,
-		resfshost.KeywordPerm,
-		keywords.Keyword{
+	kws = []*keywords.Keyword{
+		&resfshost.KeywordMountPoint,
+		&resfshost.KeywordDevice,
+		&resfshost.KeywordMountOptions,
+		&resfshost.KeywordStatTimeout,
+		&resfshost.KeywordMKFSOptions,
+		&resfshost.KeywordZone,
+		&resfshost.KeywordUser,
+		&resfshost.KeywordGroup,
+		&resfshost.KeywordPerm,
+		{
 			Attr:         "Size",
 			Converter:    "size",
 			Option:       "size",
@@ -44,7 +35,7 @@ func (t *T) Manifest() *manifest.T {
 			Scopable:     true,
 			Text:         keywords.NewText(fs, "text/kw/size"),
 		},
-		keywords.Keyword{
+		{
 			Attr:         "RefQuota",
 			Option:       "refquota",
 			Provisioning: true,
@@ -53,7 +44,7 @@ func (t *T) Manifest() *manifest.T {
 			Text:         keywords.NewText(fs, "text/kw/refquota"),
 			Example:      "x1",
 		},
-		keywords.Keyword{
+		{
 			Attr:         "Quota",
 			Option:       "quota",
 			Provisioning: true,
@@ -61,7 +52,7 @@ func (t *T) Manifest() *manifest.T {
 			Scopable:     true,
 			Text:         keywords.NewText(fs, "text/kw/quota"),
 		},
-		keywords.Keyword{
+		{
 			Attr:         "RefReservation",
 			Option:       "refreservation",
 			Provisioning: true,
@@ -69,7 +60,7 @@ func (t *T) Manifest() *manifest.T {
 			Scopable:     true,
 			Text:         keywords.NewText(fs, "text/kw/refreservation"),
 		},
-		keywords.Keyword{
+		{
 			Attr:         "Reservation",
 			Option:       "reservation",
 			Provisioning: true,
@@ -77,6 +68,21 @@ func (t *T) Manifest() *manifest.T {
 			Scopable:     true,
 			Text:         keywords.NewText(fs, "text/kw/reservation"),
 		},
-	)
+	}
+)
+
+func init() {
+	driver.Register(drvID, New)
+}
+
+func (t *T) DriverID() driver.ID {
+	return drvID
+}
+
+// Manifest exposes to the core the input expected by the driver.
+func (t *T) Manifest() *manifest.T {
+	m := manifest.New(drvID, t)
+	m.Kinds.Or(naming.KindSvc, naming.KindVol)
+	m.AddKeywords(kws...)
 	return m
 }

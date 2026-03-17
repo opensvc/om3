@@ -15,19 +15,9 @@ var (
 	fs embed.FS
 
 	drvID = driver.NewID(driver.GroupDisk, "raw")
-)
 
-func init() {
-	driver.Register(drvID, New)
-}
-
-// Manifest exposes to the core the input expected by the driver.
-func (t *T) Manifest() *manifest.T {
-	m := manifest.New(drvID, t)
-	m.Kinds.Or(naming.KindSvc, naming.KindVol)
-	m.AddKeywords(resdisk.BaseKeywords...)
-	m.Add(
-		keywords.Keyword{
+	kws = []*keywords.Keyword{
+		{
 			Attr:      "Devices",
 			Converter: "list",
 			Example:   "/dev/mapper/svc.d0:/dev/oracle/redo001 /dev/mapper/svc.d1",
@@ -36,7 +26,7 @@ func (t *T) Manifest() *manifest.T {
 			Scopable:  true,
 			Text:      keywords.NewText(fs, "text/kw/devs"),
 		},
-		keywords.Keyword{
+		{
 			Attr:      "CreateCharDevices",
 			Converter: "bool",
 			Default:   "true",
@@ -45,7 +35,7 @@ func (t *T) Manifest() *manifest.T {
 			Scopable:  true,
 			Text:      keywords.NewText(fs, "text/kw/create_char_devices"),
 		},
-		keywords.Keyword{
+		{
 			Attr:      "User",
 			Converter: "user",
 			Example:   "root",
@@ -53,7 +43,7 @@ func (t *T) Manifest() *manifest.T {
 			Scopable:  true,
 			Text:      keywords.NewText(fs, "text/kw/user"),
 		},
-		keywords.Keyword{
+		{
 			Attr:      "Group",
 			Converter: "group",
 			Example:   "sys",
@@ -61,7 +51,7 @@ func (t *T) Manifest() *manifest.T {
 			Scopable:  true,
 			Text:      keywords.NewText(fs, "text/kw/group"),
 		},
-		keywords.Keyword{
+		{
 			Attr:      "Perm",
 			Converter: "filemode",
 			Example:   "600",
@@ -69,13 +59,29 @@ func (t *T) Manifest() *manifest.T {
 			Scopable:  true,
 			Text:      keywords.NewText(fs, "text/kw/perm"),
 		},
-		keywords.Keyword{
+		{
 			Attr:     "Zone",
 			Example:  "zone1",
 			Option:   "zone",
 			Scopable: true,
 			Text:     keywords.NewText(fs, "text/kw/zone"),
 		},
-	)
+	}
+)
+
+func init() {
+	driver.Register(drvID, New)
+}
+
+func (t *T) DriverID() driver.ID {
+	return drvID
+}
+
+// Manifest exposes to the core the input expected by the driver.
+func (t *T) Manifest() *manifest.T {
+	m := manifest.New(drvID, t)
+	m.Kinds.Or(naming.KindSvc, naming.KindVol)
+	m.AddKeywords(resdisk.BaseKeywords...)
+	m.AddKeywords(kws...)
 	return m
 }

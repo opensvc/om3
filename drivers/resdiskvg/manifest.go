@@ -18,21 +18,9 @@ var (
 
 	drvID    = driver.NewID(driver.GroupDisk, "vg")
 	altDrvID = driver.NewID(driver.GroupDisk, "lvm") // deprecated, backward compat
-)
 
-func init() {
-	driver.Register(drvID, New)
-	driver.Register(altDrvID, New)
-}
-
-// Manifest exposes to the core the input expected by the driver.
-func (t *T) Manifest() *manifest.T {
-	m := manifest.New(drvID, t)
-	m.Kinds.Or(naming.KindSvc, naming.KindVol)
-	m.Add(manifest.ContextObjectPath)
-	m.AddKeywords(resdisk.BaseKeywords...)
-	m.Add(
-		keywords.Keyword{
+	kws = []*keywords.Keyword{
+		{
 			Aliases:  []string{"vgname"},
 			Attr:     "VGName",
 			Example:  "vg1",
@@ -41,7 +29,7 @@ func (t *T) Manifest() *manifest.T {
 			Scopable: true,
 			Text:     keywords.NewText(fs, "text/kw/name"),
 		},
-		keywords.Keyword{
+		{
 			Attr:         "PVs",
 			Converter:    "list",
 			Example:      "/dev/mapper/23 /dev/mapper/24",
@@ -50,7 +38,7 @@ func (t *T) Manifest() *manifest.T {
 			Scopable:     true,
 			Text:         keywords.NewText(fs, "text/kw/pvs"),
 		},
-		keywords.Keyword{
+		{
 			Attr:         "Options",
 			Converter:    "shlex",
 			Example:      "--zero=y",
@@ -59,6 +47,24 @@ func (t *T) Manifest() *manifest.T {
 			Scopable:     true,
 			Text:         keywords.NewText(fs, "text/kw/options"),
 		},
-	)
+	}
+)
+
+func init() {
+	driver.Register(drvID, New)
+	driver.Register(altDrvID, New)
+}
+
+func (t *T) DriverID() driver.ID {
+	return drvID
+}
+
+// Manifest exposes to the core the input expected by the driver.
+func (t *T) Manifest() *manifest.T {
+	m := manifest.New(drvID, t)
+	m.Kinds.Or(naming.KindSvc, naming.KindVol)
+	m.Add(manifest.ContextObjectPath)
+	m.AddKeywords(resdisk.BaseKeywords...)
+	m.AddKeywords(kws...)
 	return m
 }

@@ -30,6 +30,6 @@ var (
 
 	BaseKeywords = append(
 		manifest.SCSIPersistentReservationKeywords,
-		KWPromoteRW,
+		&KWPromoteRW,
 	)
 )

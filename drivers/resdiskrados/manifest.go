@@ -15,20 +15,9 @@ var (
 	fs embed.FS
 
 	drvID = driver.NewID(driver.GroupDisk, "rados")
-)
 
-func init() {
-	driver.Register(drvID, New)
-}
-
-// Manifest exposes to the core the input expected by the driver.
-func (t *T) Manifest() *manifest.T {
-	m := manifest.New(drvID, t)
-	m.Kinds.Or(naming.KindSvc, naming.KindVol)
-	m.AddKeywords(resdisk.BaseKeywords...)
-	m.Add(
-		manifest.ContextObjectFQDN,
-		keywords.Keyword{
+	kws = []*keywords.Keyword{
+		{
 			Attr:     "Name",
 			Example:  "pool1/cluster1/svc1",
 			Option:   "name",
@@ -36,7 +25,7 @@ func (t *T) Manifest() *manifest.T {
 			Scopable: true,
 			Text:     keywords.NewText(fs, "text/kw/name"),
 		},
-		keywords.Keyword{
+		{
 			Attr:         "Size",
 			Example:      "100m",
 			Option:       "size",
@@ -44,7 +33,7 @@ func (t *T) Manifest() *manifest.T {
 			Scopable:     true,
 			Text:         keywords.NewText(fs, "text/kw/size"),
 		},
-		keywords.Keyword{
+		{
 			Attr:         "Access",
 			Candidates:   []string{"rwo", "roo", "rwx", "rox"},
 			Default:      "rwo",
@@ -53,13 +42,32 @@ func (t *T) Manifest() *manifest.T {
 			Scopable:     true,
 			Text:         keywords.NewText(fs, "text/kw/access"),
 		},
-		keywords.Keyword{
+		{
 			Attr:     "Keyring",
 			Option:   "keyring",
 			Scopable: true,
 			Example:  "from ./sec/ceph key eu1.keyring",
 			Text:     keywords.NewText(fs, "text/kw/keyring"),
 		},
+	}
+)
+
+func init() {
+	driver.Register(drvID, New)
+}
+
+func (t *T) DriverID() driver.ID {
+	return drvID
+}
+
+// Manifest exposes to the core the input expected by the driver.
+func (t *T) Manifest() *manifest.T {
+	m := manifest.New(drvID, t)
+	m.Kinds.Or(naming.KindSvc, naming.KindVol)
+	m.Add(
+		manifest.ContextObjectFQDN,
 	)
+	m.AddKeywords(resdisk.BaseKeywords...)
+	m.AddKeywords(kws...)
 	return m
 }

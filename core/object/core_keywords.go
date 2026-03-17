@@ -9,6 +9,7 @@ import (
 	"github.com/opensvc/om3/v3/core/keyop"
 	"github.com/opensvc/om3/v3/core/keywords"
 	"github.com/opensvc/om3/v3/core/kwoption"
+	"github.com/opensvc/om3/v3/core/manifest"
 	"github.com/opensvc/om3/v3/core/naming"
 	"github.com/opensvc/om3/v3/core/placement"
 	"github.com/opensvc/om3/v3/core/priority"
@@ -705,10 +706,10 @@ func driverIDFromRID(t Configurer, section string) (driver.ID, error) {
 	return did, nil
 }
 
-func keywordLookup(store keywords.Store, k key.T, kind naming.Kind, sectionType string) keywords.Keyword {
+func keywordLookup(store keywords.Store, k key.T, kind naming.Kind, sectionType string) *keywords.Keyword {
 	switch k.Section {
 	case "data", "env", "labels":
-		return keywords.Keyword{
+		return &keywords.Keyword{
 			Option:   "*", // trick IsZero()
 			Scopable: kind != naming.KindInvalid,
 			Inherit:  keywords.InheritLeaf,
@@ -739,21 +740,21 @@ func keywordLookup(store keywords.Store, k key.T, kind naming.Kind, sectionType 
 		if !ok {
 			continue
 		}
-		kws := allocator().Manifest().Keywords()
+		kws := manifest.Get(allocator()).Keywords()
 		if kws == nil {
 			continue
 		}
-		if kw := keywords.Store(kws).Lookup(k, kind, sectionType); !kw.IsZero() {
+		if kw := keywords.Store(kws).Lookup(k, kind, sectionType); kw != nil {
 			return kw
 		}
 	}
 
 	// base keyword
-	if kw := store.Lookup(k, kind, sectionType); !kw.IsZero() {
+	if kw := store.Lookup(k, kind, sectionType); kw != nil {
 		return kw
 	}
 
-	return keywords.Keyword{}
+	return nil
 }
 
 // KeywordStoreWithDrivers return the keywords supported by a specific
@@ -772,7 +773,7 @@ func KeywordStoreWithDrivers(kind naming.Kind) keywords.Store {
 			continue
 		}
 		r := factory()
-		manifest := r.Manifest()
+		manifest := manifest.Get(r)
 		if !manifest.Kinds.Has(kind) {
 			continue
 		}

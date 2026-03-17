@@ -15,19 +15,9 @@ var (
 	fs embed.FS
 
 	drvID = driver.NewID(driver.GroupDisk, "zvol")
-)
 
-func init() {
-	driver.Register(drvID, New)
-}
-
-// Manifest exposes to the core the input expected by the driver.
-func (t *T) Manifest() *manifest.T {
-	m := manifest.New(drvID, t)
-	m.Kinds.Or(naming.KindSvc, naming.KindVol)
-	m.AddKeywords(resdisk.BaseKeywords...)
-	m.Add(
-		keywords.Keyword{
+	kws = []*keywords.Keyword{
+		{
 			Attr:     "Name",
 			Example:  "tank/zvol1",
 			Option:   "name",
@@ -35,7 +25,7 @@ func (t *T) Manifest() *manifest.T {
 			Scopable: true,
 			Text:     keywords.NewText(fs, "text/kw/name"),
 		},
-		keywords.Keyword{
+		{
 			Attr:         "CreateOptions",
 			Converter:    "shlex",
 			Example:      "-o dedup=on",
@@ -44,7 +34,7 @@ func (t *T) Manifest() *manifest.T {
 			Scopable:     true,
 			Text:         keywords.NewText(fs, "text/kw/create_options"),
 		},
-		keywords.Keyword{
+		{
 			Attr:         "Size",
 			Converter:    "size",
 			Example:      "10m",
@@ -53,7 +43,7 @@ func (t *T) Manifest() *manifest.T {
 			Scopable:     true,
 			Text:         keywords.NewText(fs, "text/kw/size"),
 		},
-		keywords.Keyword{
+		{
 			Attr:         "BlockSize",
 			Converter:    "size",
 			Example:      "256k",
@@ -62,6 +52,22 @@ func (t *T) Manifest() *manifest.T {
 			Scopable:     true,
 			Text:         keywords.NewText(fs, "text/kw/blocksize"),
 		},
-	)
+	}
+)
+
+func init() {
+	driver.Register(drvID, New)
+}
+
+func (t *T) DriverID() driver.ID {
+	return drvID
+}
+
+// Manifest exposes to the core the input expected by the driver.
+func (t *T) Manifest() *manifest.T {
+	m := manifest.New(drvID, t)
+	m.Kinds.Or(naming.KindSvc, naming.KindVol)
+	m.AddKeywords(resdisk.BaseKeywords...)
+	m.AddKeywords(kws...)
 	return m
 }

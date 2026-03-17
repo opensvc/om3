@@ -10,7 +10,7 @@ var (
 	//go:embed text
 	fs embed.FS
 
-	Keywords = []keywords.Keyword{
+	Keywords = []*keywords.Keyword{
 		{
 			Attr:       "Check",
 			Candidates: []string{"last_run", "last_run_warn", ""},

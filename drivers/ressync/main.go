@@ -54,11 +54,10 @@ var (
 		Text:          keywords.NewText(fs, "text/kw/schedule"),
 	}
 
-	BaseKeywords = append(
-		[]keywords.Keyword{},
-		KWMaxDelay,
-		KWSchedule,
-	)
+	BaseKeywords = []*keywords.Keyword{
+		&KWMaxDelay,
+		&KWSchedule,
+	}
 )
 
 // GetMaxDelay return the configured max_delay if set.
@@ -246,7 +245,7 @@ func (t *T) IsInstanceSufficientlyStarted(ctx context.Context) (v bool, rids []s
 		case driver.GroupFS:
 		case driver.GroupShare:
 		case driver.GroupDisk:
-			switch r.Manifest().DriverID.Name {
+			switch r.DriverID().Name {
 			case "drbd":
 				continue
 			case "scsireserv":

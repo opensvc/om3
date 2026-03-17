@@ -14,25 +14,16 @@ var (
 	fs embed.FS
 
 	drvID = driver.NewID(driver.GroupFS, "directory")
-)
 
-func init() {
-	driver.Register(drvID, New)
-}
-
-// Manifest exposes to the core the input expected by the driver.
-func (t *T) Manifest() *manifest.T {
-	m := manifest.New(drvID, t)
-	m.Kinds.Or(naming.KindSvc, naming.KindVol)
-	m.Add(
-		keywords.Keyword{
+	kws = []*keywords.Keyword{
+		{
 			Attr:     "Path",
 			Option:   "path",
 			Required: true,
 			Scopable: true,
 			Text:     keywords.NewText(fs, "text/kw/path"),
 		},
-		keywords.Keyword{
+		{
 			Attr:      "User",
 			Converter: "user",
 			Example:   "root",
@@ -40,7 +31,7 @@ func (t *T) Manifest() *manifest.T {
 			Scopable:  true,
 			Text:      keywords.NewText(fs, "text/kw/user"),
 		},
-		keywords.Keyword{
+		{
 			Attr:      "Group",
 			Converter: "group",
 			Example:   "sys",
@@ -48,7 +39,7 @@ func (t *T) Manifest() *manifest.T {
 			Scopable:  true,
 			Text:      keywords.NewText(fs, "text/kw/group"),
 		},
-		keywords.Keyword{
+		{
 			Attr:      "Perm",
 			Converter: "filemode",
 			Example:   "1777",
@@ -56,12 +47,27 @@ func (t *T) Manifest() *manifest.T {
 			Scopable:  true,
 			Text:      keywords.NewText(fs, "text/kw/perm"),
 		},
-		keywords.Keyword{
+		{
 			Attr:     "Zone",
 			Option:   "zone",
 			Scopable: true,
 			Text:     keywords.NewText(fs, "text/kw/zone"),
 		},
-	)
+	}
+)
+
+func init() {
+	driver.Register(drvID, New)
+}
+
+func (t *T) DriverID() driver.ID {
+	return drvID
+}
+
+// Manifest exposes to the core the input expected by the driver.
+func (t *T) Manifest() *manifest.T {
+	m := manifest.New(drvID, t)
+	m.Kinds.Or(naming.KindSvc, naming.KindVol)
+	m.AddKeywords(kws...)
 	return m
 }

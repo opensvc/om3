@@ -28,6 +28,6 @@ func NewNscfg(path naming.Path, opts ...funcopt.O) (*nscfg, error) {
 	return s, nil
 }
 
-func (t *nscfg) KeywordLookup(k key.T, sectionType string) keywords.Keyword {
+func (t *nscfg) KeywordLookup(k key.T, sectionType string) *keywords.Keyword {
 	return keywordLookup(keywordStore, k, t.path.Kind, sectionType)
 }

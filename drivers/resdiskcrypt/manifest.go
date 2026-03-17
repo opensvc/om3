@@ -17,20 +17,9 @@ var (
 	fs embed.FS
 
 	drvID = driver.NewID(driver.GroupDisk, "crypt")
-)
 
-func init() {
-	driver.Register(drvID, New)
-}
-
-// Manifest exposes to the core the input expected by the driver.
-func (t *T) Manifest() *manifest.T {
-	m := manifest.New(drvID, t)
-	m.Kinds.Or(naming.KindSvc, naming.KindVol)
-	m.Add(manifest.ContextObjectPath)
-	m.AddKeywords(resdisk.BaseKeywords...)
-	m.Add(
-		keywords.Keyword{
+	kws = []*keywords.Keyword{
+		{
 			Attr:        "Name",
 			DefaultText: keywords.NewText(fs, "text/kw/name.default"),
 			Example:     "{fqdn}-crypt",
@@ -38,7 +27,7 @@ func (t *T) Manifest() *manifest.T {
 			Scopable:    true,
 			Text:        keywords.NewText(fs, "text/kw/name"),
 		},
-		keywords.Keyword{
+		{
 			Attr:     "Dev",
 			Example:  "/dev/{fqdn}/lv1",
 			Option:   "dev",
@@ -46,7 +35,7 @@ func (t *T) Manifest() *manifest.T {
 			Scopable: true,
 			Text:     keywords.NewText(fs, "text/kw/dev"),
 		},
-		keywords.Keyword{
+		{
 			Attr:         "ManagePassphrase",
 			Converter:    "bool",
 			Default:      "true",
@@ -55,14 +44,14 @@ func (t *T) Manifest() *manifest.T {
 			Scopable:     true,
 			Text:         keywords.NewText(fs, "text/kw/manage_passphrase"),
 		},
-		keywords.Keyword{
+		{
 			Attr:     "Secret",
 			Default:  "{name}",
 			Option:   "secret",
 			Scopable: true,
 			Text:     keywords.NewText(fs, "text/kw/secret"),
 		},
-		keywords.Keyword{
+		{
 			Attr:         "FormatLabel",
 			Default:      "{fqdn}",
 			Option:       "label",
@@ -70,6 +59,23 @@ func (t *T) Manifest() *manifest.T {
 			Scopable:     true,
 			Text:         keywords.NewText(fs, "text/kw/label"),
 		},
-	)
+	}
+)
+
+func init() {
+	driver.Register(drvID, New)
+}
+
+func (t *T) DriverID() driver.ID {
+	return drvID
+}
+
+// Manifest exposes to the core the input expected by the driver.
+func (t *T) Manifest() *manifest.T {
+	m := manifest.New(drvID, t)
+	m.Kinds.Or(naming.KindSvc, naming.KindVol)
+	m.Add(manifest.ContextObjectPath)
+	m.AddKeywords(resdisk.BaseKeywords...)
+	m.AddKeywords(kws...)
 	return m
 }

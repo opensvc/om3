@@ -63,13 +63,13 @@ var (
 		Text:      keywords.NewText(fs, "text/kw/umask"),
 	}
 
-	BaseKeywords = []keywords.Keyword{
-		BaseKeywordTimeout,
-		BaseKeywordStopTimeout,
-		BaseKeywordSecretsEnv,
-		BaseKeywordConfigsEnv,
-		BaseKeywordEnv,
-		BaseKeywordRetCodes,
-		BaseKeywordUmask,
+	BaseKeywords = []*keywords.Keyword{
+		&BaseKeywordTimeout,
+		&BaseKeywordStopTimeout,
+		&BaseKeywordSecretsEnv,
+		&BaseKeywordConfigsEnv,
+		&BaseKeywordEnv,
+		&BaseKeywordRetCodes,
+		&BaseKeywordUmask,
 	}
 )
