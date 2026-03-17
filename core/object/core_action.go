@@ -149,8 +149,7 @@ func (t *actor) withActionTimeout(ctx context.Context) (context.Context, func())
 	return t.withTimeoutFromKeywords(ctx, props.TimeoutKeywords)
 }
 
-func (t *actor) abortWorker(ctx context.Context, r resource.Driver, q chan bool, wg *sync.WaitGroup) {
-	defer wg.Done()
+func (t *actor) abortWorker(ctx context.Context, r resource.Driver, q chan bool) {
 	a, ok := r.(resource.Aborter)
 	if !ok {
 		q <- false
@@ -305,15 +304,18 @@ func (t *actor) abortStartDrivers(ctx context.Context, resources resource.Driver
 	added := 0
 	q := make(chan bool, len(resources))
 	var wg sync.WaitGroup
+	var resourcesToDo resource.Drivers
 	for _, r := range resources {
-		// No 'return' in this loop, so the routines wait can happen
-		if r.GetConfigurationError() != nil {
+		if err := r.GetConfigurationError(); err != nil {
+			return fmt.Errorf("%s: configuration error prevents abort test: %s", r.RID(), err)
+		}
+		if r.IsDisabled() {
 			continue
 		}
 		var v bool
 		v, err = t.isEncapNodeMatchingResource(r)
 		if err != nil {
-			break
+			return fmt.Errorf("%s: error prevents abort test: %s", r.RID(), err)
 		} else if !v {
 			continue
 		}
@@ -322,12 +324,15 @@ func (t *actor) abortStartDrivers(ctx context.Context, resources resource.Driver
 		if currentState.Is(status.Up, status.StandbyUp) {
 			continue
 		}
-		if r.IsDisabled() {
-			continue
-		}
+		resourcesToDo = append(resourcesToDo, r)
+	}
+	for _, r := range resourcesToDo {
 		wg.Add(1)
 		added++
-		go t.abortWorker(ctx, r, q, &wg)
+		go func() {
+			t.abortWorker(ctx, r, q)
+			wg.Done()
+		}()
 	}
 	wg.Wait()
 	var ret bool
