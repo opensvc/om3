@@ -15,6 +15,12 @@ type (
 	Logger struct {
 		logger zerolog.Logger
 		prefix string
+		q      chan LogMessage
+	}
+	LogMessage struct {
+		Level     zerolog.Level `json:"level"`
+		Message   string        `json:"message"`
+		Timestamp time.Time     `json:"time"`
 	}
 	ctxKey struct{}
 )
@@ -45,6 +51,7 @@ func (t *Logger) clone() *Logger {
 	return &Logger{
 		logger: t.logger,
 		prefix: t.prefix,
+		q:      t.q,
 	}
 }
 
@@ -64,42 +71,57 @@ func (t *Logger) Prefix() string {
 	return t.prefix
 }
 
+func levelToString(level zerolog.Level) string {
+	switch level {
+	case zerolog.TraceLevel:
+		return levelTrace
+	case zerolog.DebugLevel:
+		return levelDebug
+	case zerolog.InfoLevel:
+		return levelInfo
+	case zerolog.WarnLevel:
+		return levelWarn
+	case zerolog.ErrorLevel:
+		return levelError
+	default:
+		return level.String()
+	}
+}
+
 func (t *Logger) Msgf(format string, a ...any) string {
 	return fmt.Sprintf(t.prefix+format, a...)
 }
 
 func (t *Logger) Infof(format string, a ...any) {
-	t.logger.Info().Str(levelKey, levelInfo).Msg(t.Msgf(format, a...))
+	t.Levelf(zerolog.InfoLevel, format, a...)
 }
 
 func (t *Logger) Debugf(format string, a ...any) {
-	t.logger.Debug().Str(levelKey, levelDebug).Msg(t.Msgf(format, a...))
+	t.Levelf(zerolog.DebugLevel, format, a...)
 }
 
 func (t *Logger) Tracef(format string, a ...any) {
-	t.logger.Trace().Str(levelKey, levelTrace).Msg(t.Msgf(format, a...))
+	t.Levelf(zerolog.TraceLevel, format, a...)
 }
 
 func (t *Logger) Errorf(format string, a ...any) {
-	t.logger.Error().Str(levelKey, levelError).Msg(t.Msgf(format, a...))
+	t.Levelf(zerolog.ErrorLevel, format, a...)
 }
 
 func (t *Logger) Warnf(format string, a ...any) {
-	t.logger.Warn().Str(levelKey, levelWarn).Msg(t.Msgf(format, a...))
+	t.Levelf(zerolog.WarnLevel, format, a...)
 }
 
 func (t *Logger) Levelf(level zerolog.Level, format string, a ...any) {
-	switch level {
-	case zerolog.TraceLevel:
-		t.logger.Trace().Str(levelKey, levelTrace).Msg(t.Msgf(format, a...))
-	case zerolog.DebugLevel:
-		t.logger.Debug().Str(levelKey, levelDebug).Msg(t.Msgf(format, a...))
-	case zerolog.InfoLevel:
-		t.logger.Info().Str(levelKey, levelInfo).Msg(t.Msgf(format, a...))
-	case zerolog.WarnLevel:
-		t.logger.Warn().Str(levelKey, levelWarn).Msg(t.Msgf(format, a...))
-	case zerolog.ErrorLevel:
-		t.logger.Error().Str(levelKey, levelError).Msg(t.Msgf(format, a...))
+	msg := t.Msgf(format, a...)
+
+	t.logger.WithLevel(level).Str(levelKey, levelToString(level)).Msg(msg)
+
+	if t.q != nil {
+		select {
+		case t.q <- LogMessage{Level: level, Message: msg, Timestamp: time.Now()}:
+		default:
+		}
 	}
 }
 
@@ -145,6 +167,22 @@ func (t *Logger) Level(level zerolog.Level) *Logger {
 
 func (t *Logger) GetLevel() zerolog.Level {
 	return t.logger.GetLevel()
+}
+
+func (t *Logger) SetAuditQ(q chan LogMessage) error {
+	if t.q != nil {
+		return fmt.Errorf("cannot set audit q: already set")
+	}
+	t.q = q
+	return nil
+}
+
+func (t *Logger) UnsetAuditQ() error {
+	if t.q == nil {
+		return fmt.Errorf("cannot unset audit q: not set")
+	}
+	t.q = nil
+	return nil
 }
 
 func (t *Logger) Logger() zerolog.Logger {
