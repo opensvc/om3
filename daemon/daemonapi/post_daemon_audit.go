@@ -1,21 +1,30 @@
 package daemonapi
 
 import (
+	"bytes"
+	"context"
 	"encoding/json"
+	"errors"
+	"io"
 	"net/http"
 	"strconv"
 	"strings"
 
 	"github.com/labstack/echo/v4"
+	"github.com/opensvc/om3/v3/core/client"
 	"github.com/opensvc/om3/v3/core/clusternode"
 	"github.com/opensvc/om3/v3/daemon/api"
 	"github.com/opensvc/om3/v3/daemon/msgbus"
+	"github.com/opensvc/om3/v3/daemon/rbac"
 	"github.com/opensvc/om3/v3/util/plog"
 	"github.com/opensvc/om3/v3/util/pubsub"
 	"github.com/rs/zerolog"
 )
 
 func (a *DaemonAPI) PostDaemonAudit(ctx echo.Context, nodename string, params api.PostDaemonAuditParams) error {
+	if v, err := assertRoot(ctx); !v {
+		return err
+	}
 	if params.Level == nil {
 		return JSONProblemf(ctx, http.StatusBadRequest, "Invalid parameters", "Missing level param")
 	}
@@ -23,19 +32,63 @@ func (a *DaemonAPI) PostDaemonAudit(ctx echo.Context, nodename string, params ap
 		return JSONProblemf(ctx, http.StatusBadRequest, "Invalid parameters", "Missing sub param")
 	}
 	nodename = a.parseNodename(nodename)
-	if !clusternode.Has(nodename) {
+	if nodename == a.localhost || nodename == "localhost" {
+		return a.getLocalDaemonAudit(ctx, nodename, params)
+	} else if !clusternode.Has(nodename) {
 		return JSONProblemf(ctx, http.StatusBadRequest, "Invalid nodename", "field 'nodename' with value '%s' is not a cluster node", nodename)
 	}
-	return a.getDaemonAudit(ctx, nodename, params)
+	return a.getPeerDaemonAudit(ctx, nodename, params)
 }
 
-func (a *DaemonAPI) getDaemonAudit(ctx echo.Context, nodename string, params api.PostDaemonAuditParams) error {
+func (a *DaemonAPI) getPeerDaemonAudit(ctx echo.Context, nodename string, params api.PostDaemonAuditParams) error {
+	request := ctx.Request()
+	evCtx := request.Context()
+	log := LogHandler(ctx, "getPeerDaemonAudit")
+
+	c, err := a.newProxyClient(ctx, nodename, client.WithTimeout(0))
+	if err != nil {
+		return JSONProblemf(ctx, http.StatusInternalServerError, "New client", "%s: %s", nodename, err)
+	}
+
+	w := ctx.Response()
+	resp, err := c.PostDaemonAudit(evCtx, nodename, &params)
+	if err != nil {
+		return JSONProblemf(ctx, http.StatusInternalServerError, "Request peer", "%s: %s", nodename, err)
+	} else if resp.StatusCode != http.StatusOK {
+		w.WriteHeader(resp.StatusCode)
+		if _, err := io.Copy(w, resp.Body); err != nil {
+			return err
+		}
+	}
+
+	if request.Header.Get("accept") == "text/event-stream" {
+		setStreamHeaders(w)
+	}
+
+	w.WriteHeader(http.StatusOK)
+	w.Flush()
+
+	defer func() {
+		if err := resp.Body.Close(); err != nil {
+			log.Errorf("response from %s body close: %s", nodename, err)
+		}
+	}()
+	return streamCopyFlush(evCtx, w, resp.Body)
+}
+
+func (a *DaemonAPI) getLocalDaemonAudit(ctx echo.Context, nodename string, params api.PostDaemonAuditParams) error {
+	if v, err := assertRole(ctx, rbac.RoleRoot); err != nil {
+		return err
+	} else if !v {
+		return nil
+	}
+
 	level, err := zerolog.ParseLevel(string(*params.Level))
 	if err != nil {
 		return JSONProblemf(ctx, http.StatusBadRequest, "Invalid parameters", "Invalid level param: %s", err)
 	}
 
-	log := LogHandler(ctx, "getDaemonAudit")
+	log := LogHandler(ctx, "getLocalDaemonAudit")
 	request := ctx.Request()
 	evCtx := request.Context()
 
@@ -87,11 +140,39 @@ func formatMessage(msg plog.LogMessage, messageId uint64) ([]byte, error) {
 	var b []byte
 	b = append(b, []byte("id:"+strconv.FormatUint(messageId, 10))...)
 	b = append(b, []byte("\ndata:")...)
-	formatted, err := json.Marshal(msg)
+	buf := &bytes.Buffer{}
+	encoder := json.NewEncoder(buf)
+	encoder.SetEscapeHTML(false)
+	err := encoder.Encode(msg)
 	if err != nil {
 		return []byte{}, err
 	}
-	b = append(b, formatted...)
+	b = append(b, buf.Bytes()...)
 	b = append(b, []byte("\n\n")...)
 	return b, nil
+}
+
+func streamCopyFlush(ctx context.Context, w *echo.Response, src io.Reader) error {
+	buf := make([]byte, 32*1024)
+
+	for {
+		select {
+		case <-ctx.Done():
+			return nil
+		default:
+		}
+		n, err := src.Read(buf)
+		if n > 0 {
+			if _, werr := w.Write(buf[:n]); werr != nil {
+				return werr
+			}
+			w.Flush()
+		}
+		if err != nil {
+			if errors.Is(err, io.EOF) {
+				return nil
+			}
+			return err
+		}
+	}
 }
