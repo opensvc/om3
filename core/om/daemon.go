@@ -33,6 +33,7 @@ func init() {
 		newCmdDaemonStart(),
 		newCmdDaemonStop(),
 		commoncmd.NewCmdDaemonAuth(),
+		commoncmd.NewCmdDaemonAudit(),
 		commoncmd.NewCmdDaemonLog(),
 		commoncmd.NewCmdDaemonStatus(),
 	)
