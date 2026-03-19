@@ -1400,7 +1400,6 @@ paths:
           - bearerAuth: []
       tags:
           - node / daemon
-        
 
   /api/node/name/{nodename}/daemon/dns/dump:
     get:
