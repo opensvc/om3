@@ -45,8 +45,7 @@ func NewCmdDaemonAudit() *cobra.Command {
 	FlagNodeSelector(flags, &options.NodeSelector)
 	FlagOutput(flags, &options.Output)
 	flags.StringVar(&options.Level, "level", "trace", "audit level")
-	flags.StringSliceVar(&options.Subsystems, "sub", []string{}, "the names of the subsystems to audit (scheduler)")
-	_ = cmd.MarkFlagRequired("sub")
+	flags.StringSliceVar(&options.Subsystems, "sub", []string{}, "the names of the subsystems to audit (ccfg, collector, imon, hook, runner, daemondata, cstat, omon, dns, scheduler, discover, nmon, lsnrhttpinet, lsnrhttpux, istat, icfg, hb.peer_drop_worker, hb, daemonauth)")
 	return cmd
 }
 
@@ -122,7 +121,6 @@ func (t *CmdDaemonAudit) Run() error {
 				if err == nil || errors.Is(err, io.EOF) {
 					return resp, nil
 				}
-				fmt.Printf("%T : %v\n", err, err)
 				return resp, err
 			}
 		}
