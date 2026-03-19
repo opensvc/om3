@@ -17,6 +17,8 @@ func (t *Manager) omon(started chan<- bool) {
 	omonStarted := make(map[naming.Path]bool)
 	defer log.Infof("stopped")
 	sub := pubsub.SubFromContext(t.ctx, "daemon.discover.omon", t.subQS)
+	sub.AddFilter(&msgbus.AuditStart{})
+	sub.AddFilter(&msgbus.AuditStop{})
 	sub.AddFilter(&msgbus.InstanceConfigUpdated{})
 	sub.AddFilter(&msgbus.ObjectStatusDone{}, t.labelLocalhost)
 	sub.Start()
@@ -52,6 +54,10 @@ func (t *Manager) omon(started chan<- bool) {
 			return
 		case i := <-sub.C:
 			switch c := i.(type) {
+			case *msgbus.AuditStart:
+				t.log.HandleAuditStart(c.Q, c.Subsystems, "discover")
+			case *msgbus.AuditStop:
+				t.log.HandleAuditStop(c.Q, c.Subsystems, "discover")
 			case *msgbus.InstanceConfigUpdated:
 				if _, ok := omonStarted[c.Path]; !ok {
 					startOmon(c.Path, c.Value, "instance config updated")

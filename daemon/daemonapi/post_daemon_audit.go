@@ -106,7 +106,10 @@ func (a *DaemonAPI) getLocalDaemonAudit(ctx echo.Context, nodename string, param
 		labelOriginAPI,
 	}
 
-	subsystems := strings.Split(*params.Sub, ",")
+	var subsystems []string
+	if *params.Sub != "" {
+		subsystems = strings.Split(*params.Sub, ",")
+	}
 	a.Publisher.Pub(&msgbus.AuditStart{Q: q, Subsystems: subsystems}, labels...)
 	log.Infof("Publish audit start")
 
