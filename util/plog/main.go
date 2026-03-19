@@ -4,7 +4,9 @@ import (
 	"context"
 	"fmt"
 	"io"
+	"slices"
 	"strings"
+	"sync/atomic"
 	"time"
 
 	"github.com/rs/zerolog"
@@ -16,6 +18,8 @@ type (
 		logger zerolog.Logger
 		prefix string
 		q      chan LogMessage
+
+		dropped atomic.Uint64
 	}
 	LogMessage struct {
 		Level     zerolog.Level `json:"level"`
@@ -117,11 +121,32 @@ func (t *Logger) Levelf(level zerolog.Level, format string, a ...any) {
 
 	t.logger.WithLevel(level).Str(levelKey, levelToString(level)).Msg(msg)
 
-	if t.q != nil {
-		select {
-		case t.q <- LogMessage{Level: level, Message: msg, Timestamp: time.Now()}:
-		default:
+	t.sendAudit(level, msg)
+}
+
+func (t *Logger) sendAudit(level zerolog.Level, msg string) {
+	if t.q == nil {
+		return
+	}
+
+	lm := LogMessage{Level: level, Message: msg, Timestamp: time.Now()}
+
+	select {
+	case t.q <- lm:
+		if n := t.dropped.Swap(0); n > 0 {
+			warn := LogMessage{
+				Level:     zerolog.WarnLevel,
+				Message:   t.Msgf("audit queue saturated: %d message(s) dropped", n),
+				Timestamp: time.Now(),
+			}
+			select {
+			case t.q <- warn:
+			case <-time.After(200 * time.Millisecond):
+				t.dropped.Add(n)
+			}
 		}
+	default:
+		t.dropped.Add(1)
 	}
 }
 
@@ -177,12 +202,37 @@ func (t *Logger) SetAuditQ(q chan LogMessage) error {
 	return nil
 }
 
-func (t *Logger) UnsetAuditQ() error {
+func (t *Logger) UnsetAuditQ(q chan LogMessage) error {
 	if t.q == nil {
 		return fmt.Errorf("cannot unset audit q: not set")
 	}
+	if t.q != q {
+		return fmt.Errorf("cannot unset audit q: q does not match")
+	}
 	t.q = nil
 	return nil
+}
+
+func (t *Logger) HandleAuditStart(q chan LogMessage, selectedSubsystems []string, subsystem string) {
+	if len(selectedSubsystems) != 0 && !slices.Contains(selectedSubsystems, subsystem) {
+		return
+	}
+	if err := t.SetAuditQ(q); err != nil {
+		t.Warnf("set audit q: %s", err)
+		return
+	}
+	t.Infof("start auditing %s", subsystem)
+}
+
+func (t *Logger) HandleAuditStop(q chan LogMessage, selectedSubsystems []string, subsystem string) {
+	if len(selectedSubsystems) != 0 && !slices.Contains(selectedSubsystems, subsystem) {
+		return
+	}
+	if err := t.UnsetAuditQ(q); err != nil {
+		t.Warnf("unset audit q: %s", err)
+		return
+	}
+	t.Infof("stop auditing %s", subsystem)
 }
 
 func (t *Logger) Logger() zerolog.Logger {

@@ -395,6 +395,9 @@ func gensEqual(a, b node.Gen) bool {
 // or that must be forwarded to peers
 func (d *data) startSubscriptions(ctx context.Context, qs pubsub.QueueSizer) {
 	sub := pubsub.SubFromContext(ctx, "daemon.data", qs)
+	sub.AddFilter(&msgbus.AuditStart{})
+	sub.AddFilter(&msgbus.AuditStop{})
+
 	sub.AddFilter(&msgbus.ClusterConfigUpdated{}, d.labelLocalhost)
 	sub.AddFilter(&msgbus.ClusterStatusUpdated{}, d.labelLocalhost)
 
@@ -544,7 +547,11 @@ func (d *data) onSubEvent(i interface{}) {
 		}
 	}
 
-	switch i.(type) {
+	switch c := i.(type) {
+	case *msgbus.AuditStart:
+		d.log.HandleAuditStart(c.Q, c.Subsystems, "daemondata")
+	case *msgbus.AuditStop:
+		d.log.HandleAuditStop(c.Q, c.Subsystems, "daemondata")
 	case *msgbus.ClusterConfigUpdated:
 		ev := i.(*msgbus.ClusterConfigUpdated)
 		d.updateClusterNodes(ev.NodesAdded, ev.NodesRemoved)

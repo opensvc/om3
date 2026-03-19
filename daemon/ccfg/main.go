@@ -96,6 +96,8 @@ func (t *Manager) Stop() error {
 
 func (t *Manager) startSubscriptions() {
 	sub := pubsub.SubFromContext(t.ctx, "daemon.ccfg", t.subQS)
+	sub.AddFilter(&msgbus.AuditStart{})
+	sub.AddFilter(&msgbus.AuditStop{})
 	sub.AddFilter(&msgbus.ConfigFileUpdated{}, pubsub.Label{"path", "cluster"})
 	sub.Start()
 	t.sub = sub
@@ -113,6 +115,10 @@ func (t *Manager) worker() {
 			return
 		case i := <-t.sub.C:
 			switch c := i.(type) {
+			case *msgbus.AuditStart:
+				t.log.HandleAuditStart(c.Q, c.Subsystems, "ccfg")
+			case *msgbus.AuditStop:
+				t.log.HandleAuditStop(c.Q, c.Subsystems, "ccfg")
 			case *msgbus.ConfigFileUpdated:
 				t.onConfigFileUpdated(c)
 			}

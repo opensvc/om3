@@ -183,6 +183,8 @@ func (t *T) start(ctx context.Context, errC chan<- error) {
 func (t *T) janitor(ctx context.Context, errC chan<- error) {
 	var started bool
 	sub := pubsub.SubFromContext(ctx, "daemon.lsnr.http.inet")
+	sub.AddFilter(&msgbus.AuditStart{})
+	sub.AddFilter(&msgbus.AuditStop{})
 	sub.AddFilter(&msgbus.ClusterConfigUpdated{}, t.labelLocalhost)
 	sub.AddFilter(&msgbus.DaemonCtl{}, pubsub.Label{"id", "lsnr-http-inet"})
 	sub.Start()
@@ -227,6 +229,10 @@ func (t *T) janitor(ctx context.Context, errC chan<- error) {
 			return
 		case e := <-sub.C:
 			switch m := e.(type) {
+			case *msgbus.AuditStart:
+				t.log.HandleAuditStart(m.Q, m.Subsystems, "lsnrhttpinet")
+			case *msgbus.AuditStop:
+				t.log.HandleAuditStop(m.Q, m.Subsystems, "lsnrhttpinet")
 			case *msgbus.DaemonCtl:
 				t.log.Infof("daemon control %s asked", m.Action)
 				switch m.Action {

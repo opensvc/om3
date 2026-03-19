@@ -160,6 +160,8 @@ func (t *Manager) Stop() error {
 
 func (t *Manager) startSubscriptions() {
 	sub := pubsub.SubFromContext(t.ctx, "daemon.dns", t.subQS)
+	sub.AddFilter(&msgbus.AuditStart{})
+	sub.AddFilter(&msgbus.AuditStop{})
 	sub.AddFilter(&msgbus.InstanceStatusUpdated{})
 	sub.AddFilter(&msgbus.InstanceStatusDeleted{})
 	sub.AddFilter(&msgbus.ClusterConfigUpdated{})
@@ -184,6 +186,10 @@ func (t *Manager) worker() {
 			return
 		case i := <-t.sub.C:
 			switch c := i.(type) {
+			case *msgbus.AuditStart:
+				t.log.HandleAuditStart(c.Q, c.Subsystems, "dns")
+			case *msgbus.AuditStop:
+				t.log.HandleAuditStop(c.Q, c.Subsystems, "dns")
 			case *msgbus.InstanceStatusUpdated:
 				t.onInstanceStatusUpdated(c)
 			case *msgbus.InstanceStatusDeleted:

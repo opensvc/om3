@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
-	"slices"
 	"strings"
 	"sync"
 	"time"
@@ -555,9 +554,9 @@ func (t *T) loop() {
 		case ev := <-sub.C:
 			switch c := ev.(type) {
 			case *msgbus.AuditStart:
-				t.onAuditStart(c)
+				t.log.HandleAuditStart(c.Q, c.Subsystems, "scheduler")
 			case *msgbus.AuditStop:
-				t.onAuditStop(c)
+				t.log.HandleAuditStop(c.Q, c.Subsystems, "scheduler")
 			case *msgbus.InstanceStatusDeleted:
 				t.onInstanceStatusDeleted(c)
 			case *msgbus.NodeMonitorUpdated:
@@ -585,28 +584,6 @@ func (t *T) loop() {
 			return
 		}
 	}
-}
-
-func (t *T) onAuditStart(c *msgbus.AuditStart) {
-	if !slices.Contains(c.Subsystems, "scheduler") {
-		return
-	}
-	if err := t.log.SetAuditQ(c.Q); err != nil {
-		t.log.Warnf("set audit q: %s", err)
-		return
-	}
-	t.log.Infof("start auditing scheduler")
-}
-
-func (t *T) onAuditStop(c *msgbus.AuditStop) {
-	if !slices.Contains(c.Subsystems, "scheduler") {
-		return
-	}
-	if err := t.log.UnsetAuditQ(); err != nil {
-		t.log.Warnf("unset audit q: %s", err)
-		return
-	}
-	t.log.Infof("stop auditing scheduler")
 }
 
 func (t *T) onJobDone(c eventJobDone) {

@@ -82,6 +82,8 @@ func (t *T) Start(ctx context.Context) error {
 		t.publisher = pubsub.PubFromContext(t.ctx)
 
 		sub := pubsub.SubFromContext(t.ctx, "daemon.istats", t.subQS)
+		sub.AddFilter(&msgbus.AuditStart{})
+		sub.AddFilter(&msgbus.AuditStop{})
 		sub.AddFilter(&msgbus.InstanceConfigDeleted{}, t.labelLocalhost)
 		sub.AddFilter(&msgbus.InstanceFrozenFileRemoved{}, t.labelLocalhost)
 		sub.AddFilter(&msgbus.InstanceFrozenFileUpdated{}, t.labelLocalhost)
@@ -117,6 +119,10 @@ func (t *T) worker() {
 			return
 		case i := <-t.sub.C:
 			switch msg := i.(type) {
+			case *msgbus.AuditStart:
+				t.log.HandleAuditStart(msg.Q, msg.Subsystems, "istat")
+			case *msgbus.AuditStop:
+				t.log.HandleAuditStop(msg.Q, msg.Subsystems, "istat")
 			case *msgbus.InstanceConfigDeleted:
 				t.onInstanceConfigDeleted(msg)
 			case *msgbus.InstanceFrozenFileRemoved:
