@@ -5,6 +5,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"io"
 	"net/http"
 	"slices"
@@ -127,7 +128,7 @@ func (a *DaemonAPI) getLocalDaemonAudit(ctx echo.Context, nodename string, param
 			if msg.Level < level {
 				continue
 			}
-			formatted, err := formatMessage(msg, messageId)
+			formatted, err := formatMessage(msg, messageId, nodename)
 			if err != nil {
 				log.Warnf("Failed to format log message: %v", err)
 				return nil
@@ -145,13 +146,14 @@ func (a *DaemonAPI) getLocalDaemonAudit(ctx echo.Context, nodename string, param
 	}
 }
 
-func formatMessage(msg plog.LogMessage, messageId uint64) ([]byte, error) {
+func formatMessage(msg plog.LogMessage, messageId uint64, nodename string) ([]byte, error) {
 	var b []byte
 	b = append(b, []byte("id:"+strconv.FormatUint(messageId, 10))...)
 	b = append(b, []byte("\ndata:")...)
 	buf := &bytes.Buffer{}
 	encoder := json.NewEncoder(buf)
 	encoder.SetEscapeHTML(false)
+	msg.Message = fmt.Sprintf("%s: %s", nodename, msg.Message)
 	err := encoder.Encode(msg)
 	if err != nil {
 		return []byte{}, err
