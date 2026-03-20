@@ -24,6 +24,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"slices"
 	"sync/atomic"
 	"time"
 
@@ -413,9 +414,17 @@ func (t *Manager) worker(initialNodes []string) {
 			}
 			switch c := i.(type) {
 			case *msgbus.AuditStart:
-				t.log.HandleAuditStart(c.Q, c.Subsystems, "imon")
+				subsystem := "imon"
+				if !slices.Contains(c.Subsystems, subsystem) {
+					subsystem = "imon:" + t.path.String()
+				}
+				t.log.HandleAuditStart(c.Q, c.Subsystems, subsystem)
 			case *msgbus.AuditStop:
-				t.log.HandleAuditStop(c.Q, c.Subsystems, "imon")
+				subsystem := "imon"
+				if !slices.Contains(c.Subsystems, subsystem) {
+					subsystem = "imon:" + t.path.String()
+				}
+				t.log.HandleAuditStop(c.Q, c.Subsystems, subsystem)
 			case *msgbus.ForgetPeer:
 				t.onForgetPeer(c)
 			case *msgbus.InstanceStatusDeleted:
