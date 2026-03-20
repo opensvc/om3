@@ -7,6 +7,7 @@ import (
 	"errors"
 	"io"
 	"net/http"
+	"slices"
 	"strconv"
 	"strings"
 
@@ -109,6 +110,11 @@ func (a *DaemonAPI) getLocalDaemonAudit(ctx echo.Context, nodename string, param
 	var subsystems []string
 	if *params.Sub != "" {
 		subsystems = strings.Split(*params.Sub, ",")
+	}
+
+	if len(subsystems) == 0 || slices.Contains(subsystems, "pubsub") {
+		a.Auditor.AuditStart(q)
+		defer a.Auditor.AuditStop(q)
 	}
 	a.Publisher.Pub(&msgbus.AuditStart{Q: q, Subsystems: subsystems}, labels...)
 	log.Infof("Publish audit start")
