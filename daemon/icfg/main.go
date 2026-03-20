@@ -194,9 +194,17 @@ func (t *Manager) worker() {
 		case i := <-t.sub.C:
 			switch c := i.(type) {
 			case *msgbus.AuditStart:
-				t.log.HandleAuditStop(c.Q, c.Subsystems, "icfg")
+				subsystem := "icfg"
+				if !slices.Contains(c.Subsystems, subsystem) {
+					subsystem = "icfg:" + t.path.String()
+				}
+				t.log.HandleAuditStart(c.Q, c.Subsystems, subsystem)
 			case *msgbus.AuditStop:
-				t.log.HandleAuditStop(c.Q, c.Subsystems, "icfg")
+				subsystem := "icfg"
+				if !slices.Contains(c.Subsystems, subsystem) {
+					subsystem = "icfg:" + t.path.String()
+				}
+				t.log.HandleAuditStop(c.Q, c.Subsystems, subsystem)
 			case *msgbus.ClusterConfigUpdated:
 				t.onClusterConfigUpdated()
 			case *msgbus.ConfigFileRemoved:
