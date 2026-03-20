@@ -159,6 +159,9 @@ func (t *Manager) startSubscriptions(subQS pubsub.QueueSizer) {
 	sub := pubsub.SubFromContext(t.ctx, "daemon.omon "+pathString, subQS)
 
 	labelPath := pubsub.Label{"path", pathString}
+	sub.AddFilter(&msgbus.AuditStart{})
+	sub.AddFilter(&msgbus.AuditStop{})
+
 	sub.AddFilter(&msgbus.InstanceMonitorDeleted{}, labelPath)
 	sub.AddFilter(&msgbus.InstanceMonitorUpdated{}, labelPath)
 
@@ -230,6 +233,18 @@ func (t *Manager) worker() {
 			return
 		case i := <-t.sub.C:
 			switch c := i.(type) {
+			case *msgbus.AuditStart:
+				subsystem := "omon"
+				if !slices.Contains(c.Subsystems, subsystem) {
+					subsystem = "omon:" + t.path.String()
+				}
+				t.log.HandleAuditStart(c.Q, c.Subsystems, subsystem)
+			case *msgbus.AuditStop:
+				subsystem := "omon"
+				if !slices.Contains(c.Subsystems, subsystem) {
+					subsystem = "omon:" + t.path.String()
+				}
+				t.log.HandleAuditStop(c.Q, c.Subsystems, subsystem)
 			case *msgbus.InstanceMonitorUpdated:
 				t.srcEvent = c
 				t.instMonitor[c.Node] = c.Value

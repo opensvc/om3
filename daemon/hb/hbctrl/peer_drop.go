@@ -21,6 +21,8 @@ func peerDropWorker(ctx context.Context) {
 	databus := daemondata.FromContext(ctx)
 	log := plog.NewDefaultLogger().Attr("pkg", "daemon/hbctrl:peerDropWorker").WithPrefix("daemon: hbctrl: peer drop: ")
 	sub := pubsub.SubFromContext(ctx, "daemon.hb.peer_drop_worker")
+	sub.AddFilter(&msgbus.AuditStart{})
+	sub.AddFilter(&msgbus.AuditStop{})
 	sub.AddFilter(&msgbus.ConfigFileUpdated{}, pubsub.Label{"path", "cluster"})
 	sub.AddFilter(&msgbus.ConfigFileUpdated{}, pubsub.Label{"path", ""})
 	sub.AddFilter(&msgbus.NodeAlive{})
@@ -109,6 +111,10 @@ func peerDropWorker(ctx context.Context) {
 			return
 		case i := <-sub.C:
 			switch c := i.(type) {
+			case *msgbus.AuditStart:
+				log.HandleAuditStart(c.Q, c.Subsystems, "hb.peer_drop_worker")
+			case *msgbus.AuditStop:
+				log.HandleAuditStop(c.Q, c.Subsystems, "hb.peer_drop_worker")
 			case *msgbus.ConfigFileUpdated:
 				onConfigFileUpdated(c)
 			case *msgbus.NodeAlive:

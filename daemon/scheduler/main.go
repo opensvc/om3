@@ -29,6 +29,8 @@ import (
 	"github.com/opensvc/om3/v3/util/plog"
 	"github.com/opensvc/om3/v3/util/pubsub"
 	"github.com/opensvc/om3/v3/util/runfiles"
+	"github.com/prometheus/client_golang/prometheus"
+	"github.com/prometheus/client_golang/prometheus/promauto"
 )
 
 type (
@@ -106,6 +108,27 @@ var (
 		node.MonitorStateShutdownProgress: nil,
 		node.MonitorStateUpgrade:          nil,
 	}
+
+	jobRunByPathKeyCount = promauto.NewCounterVec(
+		prometheus.CounterOpts{
+			Namespace: "opensvc",
+			Subsystem: "scheduler",
+			Name:      "object_job_runs_total",
+		}, []string{"action", "path", "key"})
+
+	jobRunByPathCount = promauto.NewCounterVec(
+		prometheus.CounterOpts{
+			Namespace: "opensvc",
+			Subsystem: "scheduler",
+			Name:      "object_runs_total",
+		}, []string{"action", "path"})
+
+	jobRunCount = promauto.NewCounterVec(
+		prometheus.CounterOpts{
+			Namespace: "opensvc",
+			Subsystem: "scheduler",
+			Name:      "runs_total",
+		}, []string{"action"})
 )
 
 func (t Schedules) Del(path naming.Path) {
@@ -419,6 +442,9 @@ func (t *T) onJobAlarm(c eventJobAlarm) {
 	}
 
 	go func() {
+		jobRunCount.WithLabelValues(e.Action).Inc()
+		jobRunByPathCount.WithLabelValues(e.Action, e.Path.String()).Inc()
+		jobRunByPathKeyCount.WithLabelValues(e.Action, e.Path.String(), e.Key).Inc()
 		if err := t.action(e); err != nil {
 			logger.Errorf("on exec: %s", err)
 		} else {
@@ -480,6 +506,8 @@ func (t *T) Stop() error {
 func (t *T) startSubscriptions() *pubsub.Subscription {
 	sub := pubsub.SubFromContext(t.ctx, "daemon.scheduler", t.subQS)
 	labelLocalhost := pubsub.Label{"node", t.localhost}
+	sub.AddFilter(&msgbus.AuditStart{}, labelLocalhost)
+	sub.AddFilter(&msgbus.AuditStop{}, labelLocalhost)
 	sub.AddFilter(&msgbus.InstanceStatusDeleted{}, labelLocalhost)
 	sub.AddFilter(&msgbus.ObjectStatusDeleted{}, labelLocalhost)
 	sub.AddFilter(&msgbus.ObjectStatusUpdated{}, labelLocalhost)
@@ -525,6 +553,10 @@ func (t *T) loop() {
 		select {
 		case ev := <-sub.C:
 			switch c := ev.(type) {
+			case *msgbus.AuditStart:
+				t.log.HandleAuditStart(c.Q, c.Subsystems, "scheduler")
+			case *msgbus.AuditStop:
+				t.log.HandleAuditStop(c.Q, c.Subsystems, "scheduler")
 			case *msgbus.InstanceStatusDeleted:
 				t.onInstanceStatusDeleted(c)
 			case *msgbus.NodeMonitorUpdated:

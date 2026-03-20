@@ -24,6 +24,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"slices"
 	"sync/atomic"
 	"time"
 
@@ -299,6 +300,8 @@ func (t *Manager) newLogger(i uuid.UUID) *plog.Logger {
 
 func (t *Manager) startSubscriptions(qs pubsub.QueueSizer) {
 	sub := pubsub.SubFromContext(t.ctx, "daemon.imon "+t.id, qs)
+	sub.AddFilter(&msgbus.AuditStart{})
+	sub.AddFilter(&msgbus.AuditStop{})
 	sub.AddFilter(&msgbus.ForgetPeer{})
 	sub.AddFilter(&msgbus.NodeConfigUpdated{}, t.labelLocalhost)
 	sub.AddFilter(&msgbus.NodeMonitorUpdated{})
@@ -410,6 +413,18 @@ func (t *Manager) worker(initialNodes []string) {
 				return
 			}
 			switch c := i.(type) {
+			case *msgbus.AuditStart:
+				subsystem := "imon"
+				if !slices.Contains(c.Subsystems, subsystem) {
+					subsystem = "imon:" + t.path.String()
+				}
+				t.log.HandleAuditStart(c.Q, c.Subsystems, subsystem)
+			case *msgbus.AuditStop:
+				subsystem := "imon"
+				if !slices.Contains(c.Subsystems, subsystem) {
+					subsystem = "imon:" + t.path.String()
+				}
+				t.log.HandleAuditStop(c.Q, c.Subsystems, subsystem)
 			case *msgbus.ForgetPeer:
 				t.onForgetPeer(c)
 			case *msgbus.InstanceStatusDeleted:

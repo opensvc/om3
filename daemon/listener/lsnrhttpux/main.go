@@ -108,6 +108,8 @@ func (t *T) serve(ctx context.Context, errC chan<- error) {
 func (t *T) janitor(ctx context.Context, errC chan<- error) {
 	defer t.wg.Done()
 	sub := pubsub.SubFromContext(ctx, "daemon.lsnr.http.ux")
+	sub.AddFilter(&msgbus.AuditStart{})
+	sub.AddFilter(&msgbus.AuditStop{})
 	sub.AddFilter(&msgbus.DaemonCtl{}, pubsub.Label{"id", "lsnr-http-ux"})
 	sub.Start()
 	defer func() {
@@ -122,6 +124,10 @@ func (t *T) janitor(ctx context.Context, errC chan<- error) {
 			return
 		case e := <-sub.C:
 			switch m := e.(type) {
+			case *msgbus.AuditStart:
+				t.log.HandleAuditStart(m.Q, m.Subsystems, "lsnrhttpux")
+			case *msgbus.AuditStop:
+				t.log.HandleAuditStop(m.Q, m.Subsystems, "lsnrhttpux")
 			case *msgbus.DaemonCtl:
 				t.log.Infof("daemon control %s asked", m.Action)
 				switch m.Action {

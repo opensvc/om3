@@ -4,7 +4,9 @@ import (
 	"context"
 	"fmt"
 	"io"
+	"slices"
 	"strings"
+	"sync/atomic"
 	"time"
 
 	"github.com/rs/zerolog"
@@ -15,6 +17,14 @@ type (
 	Logger struct {
 		logger zerolog.Logger
 		prefix string
+		q      chan LogMessage
+
+		dropped atomic.Uint64
+	}
+	LogMessage struct {
+		Level     zerolog.Level `json:"level"`
+		Message   string        `json:"message"`
+		Timestamp time.Time     `json:"time"`
 	}
 	ctxKey struct{}
 )
@@ -45,6 +55,7 @@ func (t *Logger) clone() *Logger {
 	return &Logger{
 		logger: t.logger,
 		prefix: t.prefix,
+		q:      t.q,
 	}
 }
 
@@ -64,42 +75,78 @@ func (t *Logger) Prefix() string {
 	return t.prefix
 }
 
+func levelToString(level zerolog.Level) string {
+	switch level {
+	case zerolog.TraceLevel:
+		return levelTrace
+	case zerolog.DebugLevel:
+		return levelDebug
+	case zerolog.InfoLevel:
+		return levelInfo
+	case zerolog.WarnLevel:
+		return levelWarn
+	case zerolog.ErrorLevel:
+		return levelError
+	default:
+		return level.String()
+	}
+}
+
 func (t *Logger) Msgf(format string, a ...any) string {
 	return fmt.Sprintf(t.prefix+format, a...)
 }
 
 func (t *Logger) Infof(format string, a ...any) {
-	t.logger.Info().Str(levelKey, levelInfo).Msg(t.Msgf(format, a...))
+	t.Levelf(zerolog.InfoLevel, format, a...)
 }
 
 func (t *Logger) Debugf(format string, a ...any) {
-	t.logger.Debug().Str(levelKey, levelDebug).Msg(t.Msgf(format, a...))
+	t.Levelf(zerolog.DebugLevel, format, a...)
 }
 
 func (t *Logger) Tracef(format string, a ...any) {
-	t.logger.Trace().Str(levelKey, levelTrace).Msg(t.Msgf(format, a...))
+	t.Levelf(zerolog.TraceLevel, format, a...)
 }
 
 func (t *Logger) Errorf(format string, a ...any) {
-	t.logger.Error().Str(levelKey, levelError).Msg(t.Msgf(format, a...))
+	t.Levelf(zerolog.ErrorLevel, format, a...)
 }
 
 func (t *Logger) Warnf(format string, a ...any) {
-	t.logger.Warn().Str(levelKey, levelWarn).Msg(t.Msgf(format, a...))
+	t.Levelf(zerolog.WarnLevel, format, a...)
 }
 
 func (t *Logger) Levelf(level zerolog.Level, format string, a ...any) {
-	switch level {
-	case zerolog.TraceLevel:
-		t.logger.Trace().Str(levelKey, levelTrace).Msg(t.Msgf(format, a...))
-	case zerolog.DebugLevel:
-		t.logger.Debug().Str(levelKey, levelDebug).Msg(t.Msgf(format, a...))
-	case zerolog.InfoLevel:
-		t.logger.Info().Str(levelKey, levelInfo).Msg(t.Msgf(format, a...))
-	case zerolog.WarnLevel:
-		t.logger.Warn().Str(levelKey, levelWarn).Msg(t.Msgf(format, a...))
-	case zerolog.ErrorLevel:
-		t.logger.Error().Str(levelKey, levelError).Msg(t.Msgf(format, a...))
+	msg := t.Msgf(format, a...)
+
+	t.logger.WithLevel(level).Str(levelKey, levelToString(level)).Msg(msg)
+
+	t.sendAudit(level, msg)
+}
+
+func (t *Logger) sendAudit(level zerolog.Level, msg string) {
+	if t.q == nil {
+		return
+	}
+
+	lm := LogMessage{Level: level, Message: msg, Timestamp: time.Now()}
+
+	select {
+	case t.q <- lm:
+		if n := t.dropped.Swap(0); n > 0 {
+			warn := LogMessage{
+				Level:     zerolog.WarnLevel,
+				Message:   t.Msgf("audit queue saturated: %d message(s) dropped", n),
+				Timestamp: time.Now(),
+			}
+			select {
+			case t.q <- warn:
+			case <-time.After(200 * time.Millisecond):
+				t.dropped.Add(n)
+			}
+		}
+	default:
+		t.dropped.Add(1)
 	}
 }
 
@@ -145,6 +192,47 @@ func (t *Logger) Level(level zerolog.Level) *Logger {
 
 func (t *Logger) GetLevel() zerolog.Level {
 	return t.logger.GetLevel()
+}
+
+func (t *Logger) SetAuditQ(q chan LogMessage) error {
+	if t.q != nil {
+		return fmt.Errorf("cannot set audit q: already set")
+	}
+	t.q = q
+	return nil
+}
+
+func (t *Logger) UnsetAuditQ(q chan LogMessage) error {
+	if t.q == nil {
+		return fmt.Errorf("cannot unset audit q: not set")
+	}
+	if t.q != q {
+		return fmt.Errorf("cannot unset audit q: q does not match")
+	}
+	t.q = nil
+	return nil
+}
+
+func (t *Logger) HandleAuditStart(q chan LogMessage, selectedSubsystems []string, subsystem string) {
+	if len(selectedSubsystems) != 0 && !slices.Contains(selectedSubsystems, subsystem) {
+		return
+	}
+	if err := t.SetAuditQ(q); err != nil {
+		t.Warnf("set audit q: %s", err)
+		return
+	}
+	t.Infof("start auditing %s", subsystem)
+}
+
+func (t *Logger) HandleAuditStop(q chan LogMessage, selectedSubsystems []string, subsystem string) {
+	if len(selectedSubsystems) != 0 && !slices.Contains(selectedSubsystems, subsystem) {
+		return
+	}
+	if err := t.UnsetAuditQ(q); err != nil {
+		t.Warnf("unset audit q: %s", err)
+		return
+	}
+	t.Infof("stop auditing %s", subsystem)
 }
 
 func (t *Logger) Logger() zerolog.Logger {

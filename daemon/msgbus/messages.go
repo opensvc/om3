@@ -49,6 +49,7 @@ import (
 	"time"
 
 	"github.com/google/uuid"
+	"github.com/opensvc/om3/v3/util/plog"
 
 	"github.com/opensvc/om3/v3/core/cluster"
 	"github.com/opensvc/om3/v3/core/clusterdump"
@@ -75,6 +76,14 @@ type (
 var (
 	kindToT = map[string]func() any{
 		"ArbitratorError": func() any { return &ArbitratorError{} },
+
+		"AuditStart": func() any {
+			return &AuditStart{}
+		},
+
+		"AuditStop": func() any {
+			return &AuditStop{}
+		},
 
 		"ClusterConfigUpdated": func() any { return &ClusterConfigUpdated{} },
 
@@ -287,6 +296,18 @@ type (
 		Node       string `json:"node" yaml:"node"`
 		Name       string `json:"name" yaml:"name"`
 		ErrS       string `json:"error" yaml:"error"`
+	}
+
+	AuditStart struct {
+		pubsub.Msg `yaml:",inline"`
+		Q          chan plog.LogMessage `json:"q" yaml:"q"`
+		Subsystems []string             `json:"subsystems" yaml:"subsystems"`
+	}
+
+	AuditStop struct {
+		pubsub.Msg `yaml:",inline"`
+		Q          chan plog.LogMessage `json:"q" yaml:"q"`
+		Subsystems []string             `json:"subsystems" yaml:"subsystems"`
 	}
 
 	// ConfigFileRemoved is emitted by a fs watcher when a .conf file is removed in etc.
@@ -971,6 +992,14 @@ func DropPendingMsg(c <-chan any, duration time.Duration) {
 
 func (e *ArbitratorError) Kind() string {
 	return "ArbitratorError"
+}
+
+func (e *AuditStart) Kind() string {
+	return "AuditStart"
+}
+
+func (e *AuditStop) Kind() string {
+	return "AuditStop"
 }
 
 func (e *ClusterConfigUpdated) Kind() string {

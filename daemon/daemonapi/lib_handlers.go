@@ -26,6 +26,7 @@ type (
 		Daemondata *daemondata.T
 		SubFactory pubsub.Subscriber
 		Publisher  pubsub.Publisher
+		Auditor    pubsub.Auditor
 		JWTcreator JWTCreater
 
 		LabelLocalhost pubsub.Label
@@ -50,6 +51,7 @@ func New(ctx context.Context) *DaemonAPI {
 		Daemondata:     daemondata.FromContext(ctx),
 		SubFactory:     pubsub.BusFromContext(ctx),
 		Publisher:      pubsub.PubFromContext(ctx),
+		Auditor:        pubsub.BusFromContext(ctx),
 		JWTcreator:     daemonauth.JWTCreatorFromContext(ctx),
 		LabelLocalhost: pubsub.Label{"node", localhost},
 		localhost:      localhost,

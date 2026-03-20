@@ -152,6 +152,8 @@ func (t *Manager) startSubscriptions() {
 	labelLocalhost := pubsub.Label{"node", t.localhost}
 
 	t.sub = pubsub.SubFromContext(t.ctx, "daemon.icfg "+t.path.String())
+	t.sub.AddFilter(&msgbus.AuditStart{})
+	t.sub.AddFilter(&msgbus.AuditStop{})
 	t.sub.AddFilter(&msgbus.ConfigFileRemoved{}, labelPath)
 	if t.path.String() != clusterPathString {
 		t.sub.AddFilter(&msgbus.ConfigFileUpdated{}, labelPath)
@@ -190,7 +192,19 @@ func (t *Manager) worker() {
 		case <-t.ctx.Done():
 			return
 		case i := <-t.sub.C:
-			switch i.(type) {
+			switch c := i.(type) {
+			case *msgbus.AuditStart:
+				subsystem := "icfg"
+				if !slices.Contains(c.Subsystems, subsystem) {
+					subsystem = "icfg:" + t.path.String()
+				}
+				t.log.HandleAuditStart(c.Q, c.Subsystems, subsystem)
+			case *msgbus.AuditStop:
+				subsystem := "icfg"
+				if !slices.Contains(c.Subsystems, subsystem) {
+					subsystem = "icfg:" + t.path.String()
+				}
+				t.log.HandleAuditStop(c.Q, c.Subsystems, subsystem)
 			case *msgbus.ClusterConfigUpdated:
 				t.onClusterConfigUpdated()
 			case *msgbus.ConfigFileRemoved:
