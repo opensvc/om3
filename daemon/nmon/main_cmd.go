@@ -263,7 +263,11 @@ func (t *Manager) onForgetPeer(c *msgbus.ForgetPeer) {
 	}
 	t.log.Warnf("cluster is split, will call split action %s in %s", action, splitActionDelay)
 	time.Sleep(splitActionDelay)
+
+	// This log entry will not appear in logs if the split action is crash or reboot, as
+	// the logging daemon will not have fdatasync() yet.
 	t.log.Warnf("cluster is split, now calling split action %s", action)
+
 	if err := splitAction(); err != nil {
 		t.log.Errorf("split action %s failed: %s", action, err)
 	}
