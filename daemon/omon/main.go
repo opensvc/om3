@@ -23,6 +23,7 @@ import (
 	"github.com/opensvc/om3/v3/core/provisioned"
 	"github.com/opensvc/om3/v3/core/status"
 	"github.com/opensvc/om3/v3/core/topology"
+	"github.com/opensvc/om3/v3/daemon/daemonctx"
 	"github.com/opensvc/om3/v3/daemon/msgbus"
 	"github.com/opensvc/om3/v3/util/hostname"
 	"github.com/opensvc/om3/v3/util/plog"
@@ -180,6 +181,7 @@ func (t *Manager) startSubscriptions(subQS pubsub.QueueSizer) {
 func (t *Manager) worker() {
 	t.log.Infof("started")
 	defer t.log.Infof("done")
+	t.attachActiveAuditIfAny()
 
 	// Initiate cache
 	for n, v := range instance.MonitorData.GetByPath(t.path) {
@@ -498,6 +500,22 @@ func (t *Manager) updateStatus() {
 		updatePlacementState()
 	}
 	t.update()
+}
+
+func (t *Manager) attachActiveAuditIfAny() {
+	reg := daemonctx.AuditRegistry(t.ctx)
+	if reg == nil {
+		return
+	}
+	sess, ok := reg.Snapshot()
+	if !ok {
+		return
+	}
+	subsystem := "omon"
+	if !slices.Contains(sess.Subsystems, subsystem) {
+		subsystem = "omon:" + t.path.String()
+	}
+	t.log.HandleAuditStart(sess.Q, sess.Subsystems, subsystem)
 }
 
 func (t *Manager) delete() {

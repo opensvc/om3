@@ -7,9 +7,10 @@ import (
 	"time"
 
 	"github.com/labstack/echo/v4"
-
 	"github.com/opensvc/om3/v3/daemon/api"
+	"github.com/opensvc/om3/v3/daemon/auditstate"
 	"github.com/opensvc/om3/v3/daemon/daemonauth"
+	"github.com/opensvc/om3/v3/daemon/daemonctx"
 	"github.com/opensvc/om3/v3/daemon/daemondata"
 	"github.com/opensvc/om3/v3/daemon/daemonenv"
 	"github.com/opensvc/om3/v3/daemon/rbac"
@@ -23,11 +24,12 @@ type (
 	}
 
 	DaemonAPI struct {
-		Daemondata *daemondata.T
-		SubFactory pubsub.Subscriber
-		Publisher  pubsub.Publisher
-		Auditor    pubsub.Auditor
-		JWTcreator JWTCreater
+		Daemondata    *daemondata.T
+		AuditRegistry *auditstate.Registry
+		SubFactory    pubsub.Subscriber
+		Publisher     pubsub.Publisher
+		Auditor       pubsub.Auditor
+		JWTcreator    JWTCreater
 
 		LabelLocalhost pubsub.Label
 
@@ -49,6 +51,7 @@ func New(ctx context.Context) *DaemonAPI {
 
 	return &DaemonAPI{
 		Daemondata:     daemondata.FromContext(ctx),
+		AuditRegistry:  daemonctx.AuditRegistry(ctx),
 		SubFactory:     pubsub.BusFromContext(ctx),
 		Publisher:      pubsub.PubFromContext(ctx),
 		Auditor:        pubsub.BusFromContext(ctx),

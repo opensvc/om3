@@ -114,11 +114,17 @@ func (a *DaemonAPI) getLocalDaemonAudit(ctx echo.Context, nodename string, param
 	}
 
 	if len(subsystems) == 0 || slices.Contains(subsystems, "pubsub") {
-		a.Auditor.AuditStart(q)
-		defer a.Auditor.AuditStop(q)
+		err = a.Auditor.AuditStart(q)
+		if err == nil {
+			defer a.Auditor.AuditStop(q)
+		}
 	}
 	a.Publisher.Pub(&msgbus.AuditStart{Q: q, Subsystems: subsystems}, labels...)
 	log.Infof("Publish audit start")
+	if a.AuditRegistry != nil {
+		a.AuditRegistry.Start(q, subsystems)
+		defer a.AuditRegistry.Stop(q)
+	}
 
 	defer a.Publisher.Pub(&msgbus.AuditStop{Q: q, Subsystems: subsystems}, labels...)
 	var messageId uint64
