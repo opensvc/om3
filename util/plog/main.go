@@ -218,10 +218,10 @@ func (t *Logger) HandleAuditStart(q chan LogMessage, selectedSubsystems []string
 		return
 	}
 	if err := t.SetAuditQ(q); err != nil {
-		t.Warnf("set audit q: %s", err)
+		//t.Debugf("set audit q: %s", err)
 		return
 	}
-	t.Infof("start auditing %s", subsystem)
+	t.Debugf("start auditing")
 }
 
 func (t *Logger) HandleAuditStop(q chan LogMessage, selectedSubsystems []string, subsystem string) {
@@ -229,10 +229,10 @@ func (t *Logger) HandleAuditStop(q chan LogMessage, selectedSubsystems []string,
 		return
 	}
 	if err := t.UnsetAuditQ(q); err != nil {
-		t.Warnf("unset audit q: %s", err)
+		//t.Debugf("unset audit q: %s", err)
 		return
 	}
-	t.Infof("stop auditing %s", subsystem)
+	t.Debugf("stop auditing")
 }
 
 func (t *Logger) Logger() zerolog.Logger {
