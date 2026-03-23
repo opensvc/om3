@@ -31,6 +31,7 @@ import (
 	"github.com/opensvc/om3/v3/core/schedule"
 	"github.com/opensvc/om3/v3/core/topology"
 	"github.com/opensvc/om3/v3/core/xconfig"
+	"github.com/opensvc/om3/v3/daemon/daemonctx"
 	"github.com/opensvc/om3/v3/daemon/msgbus"
 	"github.com/opensvc/om3/v3/util/file"
 	"github.com/opensvc/om3/v3/util/hostname"
@@ -185,6 +186,7 @@ func (t *Manager) worker() {
 		return
 	}
 	defer t.delete()
+	t.attachActiveAuditIfAny()
 
 	t.log.Tracef("started")
 	for {
@@ -218,6 +220,22 @@ func (t *Manager) worker() {
 			}
 		}
 	}
+}
+
+func (t *Manager) attachActiveAuditIfAny() {
+	reg := daemonctx.AuditRegistry(t.ctx)
+	if reg == nil {
+		return
+	}
+	sess, ok := reg.Snapshot()
+	if !ok {
+		return
+	}
+	subsystem := "icfg"
+	if !slices.Contains(sess.Subsystems, subsystem) {
+		subsystem = "icfg:" + t.path.String()
+	}
+	t.log.HandleAuditStart(sess.Q, sess.Subsystems, subsystem)
 }
 
 func (t *Manager) configFileCheckRefresh(force bool) error {

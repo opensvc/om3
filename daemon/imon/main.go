@@ -29,6 +29,7 @@ import (
 	"time"
 
 	"github.com/google/uuid"
+	"github.com/opensvc/om3/v3/daemon/daemonctx"
 	"golang.org/x/time/rate"
 
 	"github.com/opensvc/om3/v3/core/instance"
@@ -318,6 +319,7 @@ func (t *Manager) startSubscriptions(qs pubsub.QueueSizer) {
 // worker watch for local imon updates
 func (t *Manager) worker(initialNodes []string) {
 	defer t.log.Tracef("worker stopped")
+	t.attachActiveAuditIfAny()
 
 	// runStatus and requestStatusRefresh will need instance config Priority
 	if iConfig := instance.ConfigData.GetByPathAndNode(t.path, t.localhost); iConfig != nil {
@@ -467,6 +469,22 @@ func (t *Manager) worker(initialNodes []string) {
 			t.onDelayTimer()
 		}
 	}
+}
+
+func (t *Manager) attachActiveAuditIfAny() {
+	reg := daemonctx.AuditRegistry(t.ctx)
+	if reg == nil {
+		return
+	}
+	sess, ok := reg.Snapshot()
+	if !ok {
+		return
+	}
+	subsystem := "imon"
+	if !slices.Contains(sess.Subsystems, subsystem) {
+		subsystem = "imon:" + t.path.String()
+	}
+	t.log.HandleAuditStart(sess.Q, sess.Subsystems, subsystem)
 }
 
 // ensureBooted runs the bot action on not yet booted object
