@@ -227,7 +227,7 @@ type (
 	}
 
 	Auditor interface {
-		AuditStart(q chan plog.LogMessage)
+		AuditStart(q chan plog.LogMessage) error
 		AuditStop(q chan plog.LogMessage)
 	}
 )
@@ -789,12 +789,14 @@ func (b *Bus) Pub(v Messager, labels ...Label) {
 	<-done
 }
 
-func (b *Bus) AuditStart(q chan plog.LogMessage) {
+func (b *Bus) AuditStart(q chan plog.LogMessage) error {
 	err := b.log.SetAuditQ(q)
 	if err != nil {
 		b.log.Warnf("failed to set audit q: %v", err)
+		return err
 	}
-	b.log.Infof("start auditing pubsub")
+	b.log.Infof("start auditing")
+	return nil
 }
 
 func (b *Bus) AuditStop(q chan plog.LogMessage) {
@@ -802,7 +804,7 @@ func (b *Bus) AuditStop(q chan plog.LogMessage) {
 	if err != nil {
 		b.log.Warnf("failed to unset audit q: %v", err)
 	}
-	b.log.Infof("stop auditing pubsub")
+	b.log.Infof("stop auditing")
 }
 
 func cmdPubFactory(v Messager, labels ...Label) *cmdPub {
