@@ -1374,13 +1374,13 @@ paths:
         - $ref: '#/components/parameters/inPathNodeName'
         - in: query
           name: level
-          description: the audit level.
+          description: the audit level
           schema:
             type: string
             enum: [error, warn, info, debug, trace]
         - in: query
           name: sub
-          description: the audit subsystem to target.
+          description: the names of the subsystems to audit
           schema:
             type: string
             example: scheduler
