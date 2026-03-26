@@ -8,6 +8,7 @@ import (
 	golog "log"
 	"net"
 	"net/http"
+	"slices"
 	"sync"
 	"time"
 
@@ -221,6 +222,34 @@ func (t *T) janitor(ctx context.Context, errC chan<- error) {
 		return nil
 	}
 
+	restart := func(q chan plog.LogMessage) {
+		stop()
+		select {
+		case <-ctx.Done():
+			return
+		default:
+		}
+
+		if q != nil {
+			ctx = daemonctx.WithLogQueue(ctx, q)
+		}
+
+		var oldQ chan plog.LogMessage
+		if t.log != nil {
+			oldQ = t.log.Q()
+		}
+		t.log = plog.NewDefaultLogger().
+			Attr("pkg", "daemon/listener/lsnrhttpinet").
+			Attr("lsnr_type", "inet").
+			Attr("lsnr_addr", t.addr).
+			WithPrefix("daemon: listener: inet: ").
+			WithQ(oldQ)
+		if err := start(); err != nil {
+			t.log.Errorf("on addr changed start failed: %s", err)
+		}
+		t.log.Infof("restarted on new addr %s", t.addr)
+	}
+
 	errC <- start()
 
 	for {
@@ -231,8 +260,14 @@ func (t *T) janitor(ctx context.Context, errC chan<- error) {
 			switch m := e.(type) {
 			case *msgbus.AuditStart:
 				t.log.HandleAuditStart(m.Q, m.Subsystems, "lsnrhttpinet")
+				if len(m.Subsystems) == 0 || slices.Contains(m.Subsystems, "api") {
+					restart(m.Q)
+				}
 			case *msgbus.AuditStop:
 				t.log.HandleAuditStop(m.Q, m.Subsystems, "lsnrhttpinet")
+				if len(m.Subsystems) == 0 || slices.Contains(m.Subsystems, "api") {
+					restart(m.Q)
+				}
 			case *msgbus.DaemonCtl:
 				t.log.Infof("daemon control %s asked", m.Action)
 				switch m.Action {
@@ -297,27 +332,7 @@ func (t *T) janitor(ctx context.Context, errC chan<- error) {
 				}
 
 				if needRestart {
-					stop()
-					select {
-					case <-ctx.Done():
-						return
-					default:
-					}
-
-					var oldQ chan plog.LogMessage
-					if t.log != nil {
-						oldQ = t.log.Q()
-					}
-					t.log = plog.NewDefaultLogger().
-						Attr("pkg", "daemon/listener/lsnrhttpinet").
-						Attr("lsnr_type", "inet").
-						Attr("lsnr_addr", t.addr).
-						WithPrefix("daemon: listener: inet: ").
-						WithQ(oldQ)
-					if err := start(); err != nil {
-						t.log.Errorf("on addr changed start failed: %s", err)
-					}
-					t.log.Infof("restarted on new addr %s", t.addr)
+					restart(nil)
 				}
 			}
 		}

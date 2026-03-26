@@ -68,6 +68,9 @@ func logWithFamilyAndAddr(family, addr string) *plog.Logger {
 func RateLimiterWithConfig(parent context.Context) echo.MiddlewareFunc {
 	family := daemonctx.LsnrType(parent)
 	log := logWithFamilyAndAddr(family, daemonctx.ListenAddr(parent))
+	if q := daemonctx.LogQueue(parent); q != nil {
+		log = log.WithQ(q)
+	}
 
 	rateLimiterConfig := daemonctx.ListenRateLimiterConfig(parent)
 	if rateLimiterConfig.Rate == 0 {
@@ -119,6 +122,9 @@ func RateLimiterWithConfig(parent context.Context) echo.MiddlewareFunc {
 func LogMiddleware(parent context.Context) echo.MiddlewareFunc {
 	family := daemonctx.LsnrType(parent)
 	log := logWithFamilyAndAddr(family, daemonctx.ListenAddr(parent))
+	if q := daemonctx.LogQueue(parent); q != nil {
+		log = log.WithQ(q)
+	}
 
 	return func(next echo.HandlerFunc) echo.HandlerFunc {
 		return func(c echo.Context) error {
