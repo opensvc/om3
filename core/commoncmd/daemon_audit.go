@@ -4,6 +4,7 @@ import (
 	"bufio"
 	"bytes"
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
@@ -25,6 +26,7 @@ type (
 		Output     string
 		Level      string
 		Subsystems []string
+		Preempt    bool
 	}
 )
 
@@ -46,6 +48,7 @@ func NewCmdDaemonAudit() *cobra.Command {
 	FlagOutput(flags, &options.Output)
 	flags.StringVar(&options.Level, "level", "trace", "audit level")
 	flags.StringSliceVar(&options.Subsystems, "sub", []string{}, "the names of the subsystems to audit (ccfg, collector, imon:<path>, hook, runner, daemondata, cstat, omon:<path>, dns, scheduler, discover, nmon, lsnrhttpinet, lsnrhttpux, istat, icfg:<path>, hb.peer_drop_worker, hb, daemonauth, pubsub)")
+	flags.BoolVar(&options.Preempt, "preempt", false, "preempt the current audit if any is running.")
 	return cmd
 }
 
@@ -61,8 +64,9 @@ func (t *CmdDaemonAudit) Run() error {
 
 		subsystems := strings.Join(t.Subsystems, ",")
 		params := &api.PostDaemonAuditParams{
-			Level: &level,
-			Sub:   &subsystems,
+			Level:   &level,
+			Sub:     &subsystems,
+			Preempt: &t.Preempt,
 		}
 		cli, err := client.New(client.WithTimeout(0))
 		if err != nil {
@@ -90,6 +94,13 @@ func (t *CmdDaemonAudit) Run() error {
 			return resp, fmt.Errorf("unauthorized: %s", resp.Status)
 		case http.StatusForbidden:
 			return resp, fmt.Errorf("forbidden: %s", resp.Status)
+		case http.StatusConflict:
+			b, _ := io.ReadAll(resp.Body)
+			var p api.Problem
+			if err := json.Unmarshal(b, &p); err == nil {
+				return resp, fmt.Errorf("conflict: %s", p.Detail)
+			}
+			return resp, fmt.Errorf("conflict: %s %s", resp.Status, string(b))
 		case http.StatusInternalServerError:
 			return resp, fmt.Errorf("internal server error: %s", resp.Status)
 		default:

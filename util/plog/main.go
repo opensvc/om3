@@ -71,6 +71,12 @@ func (t *Logger) WithPrefix(prefix string) *Logger {
 	return n
 }
 
+func (t *Logger) WithQ(q chan LogMessage) *Logger {
+	n := t.clone()
+	n.q = q
+	return n
+}
+
 func (t *Logger) Prefix() string {
 	return t.prefix
 }
@@ -122,6 +128,10 @@ func (t *Logger) Levelf(level zerolog.Level, format string, a ...any) {
 	t.logger.WithLevel(level).Str(levelKey, levelToString(level)).Msg(msg)
 
 	t.sendAudit(level, msg)
+}
+
+func (t *Logger) Q() chan LogMessage {
+	return t.q
 }
 
 func (t *Logger) sendAudit(level zerolog.Level, msg string) {
