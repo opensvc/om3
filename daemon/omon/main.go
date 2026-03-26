@@ -12,6 +12,7 @@ package omon
 import (
 	"context"
 	"errors"
+	"fmt"
 	"slices"
 	"strings"
 	"time"
@@ -507,13 +508,13 @@ func (t *Manager) attachActiveAuditIfAny() {
 	if reg == nil {
 		return
 	}
+	subsystem := "omon"
 	sess, ok := reg.Snapshot()
 	if !ok {
 		return
 	}
-	subsystem := "omon"
 	if !slices.Contains(sess.Subsystems, subsystem) {
-		subsystem = "omon:" + t.path.String()
+		subsystem = fmt.Sprintf("%s:%s", subsystem, t.path.String())
 	}
 	t.log.HandleAuditStart(sess.Q, sess.Subsystems, subsystem)
 }
