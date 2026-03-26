@@ -4746,6 +4746,22 @@ func NewPostDaemonAuditRequest(server string, nodename InPathNodeName, params *P
 
 		}
 
+		if params.Preempt != nil {
+
+			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "preempt", *params.Preempt, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "boolean", Format: ""}); err != nil {
+				return nil, err
+			} else if parsed, err := url.ParseQuery(queryFrag); err != nil {
+				return nil, err
+			} else {
+				for k, v := range parsed {
+					for _, v2 := range v {
+						queryValues.Add(k, v2)
+					}
+				}
+			}
+
+		}
+
 		queryURL.RawQuery = queryValues.Encode()
 	}
 
@@ -13983,6 +13999,7 @@ type PostDaemonAuditResponse struct {
 	JSON400      *N400
 	JSON401      *N401
 	JSON403      *N403
+	JSON409      *N409
 	JSON500      *N500
 }
 
@@ -20336,6 +20353,13 @@ func ParsePostDaemonAuditResponse(rsp *http.Response) (*PostDaemonAuditResponse,
 			return nil, err
 		}
 		response.JSON403 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 409:
+		var dest N409
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON409 = &dest
 
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
 		var dest N500

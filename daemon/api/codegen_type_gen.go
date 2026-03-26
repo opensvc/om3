@@ -2698,6 +2698,9 @@ type PostDaemonAuditParams struct {
 
 	// Sub the audit subsystem to target.
 	Sub *string `form:"sub,omitempty" json:"sub,omitempty"`
+
+	// Preempt preempt the current audit if any is running.
+	Preempt *bool `form:"preempt,omitempty" json:"preempt,omitempty"`
 }
 
 // PostDaemonAuditParamsLevel defines parameters for PostDaemonAudit.
