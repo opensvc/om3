@@ -1384,6 +1384,12 @@ paths:
           schema:
             type: string
             example: scheduler
+        - in: query
+          name: preempt
+          description: preempt the current audit if any is running.
+          schema:
+            type: boolean
+            default: false
       responses:
         200:
           description: OK
@@ -1393,6 +1399,8 @@ paths:
           $ref: '#/components/responses/401'
         403:
           $ref: '#/components/responses/403'
+        409:
+          $ref: '#/components/responses/409'
         500:
           $ref: '#/components/responses/500'
       security:
