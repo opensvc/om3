@@ -282,6 +282,13 @@ func GetLogger(c echo.Context) *plog.Logger {
 	return c.Get("logger").(*plog.Logger)
 }
 
+func uuidFromContext(c echo.Context) string {
+	if u, ok := c.Get("uuid").(uuid.UUID); ok {
+		return u.String()
+	}
+	return ""
+}
+
 // userFromContext returns the logged-in userFromContext information stored in the request context.
 func userFromContext(ctx echo.Context) auth.Info {
 	return ctx.Get("user").(auth.Info)
