@@ -287,16 +287,24 @@ func start(parent context.Context, qs pubsub.QueueSizer, p naming.Path, nodes []
 }
 
 func (t *Manager) newResourceLogger(s string) *plog.Logger {
-	return naming.LogWithPath(plog.NewDefaultLogger(), t.path).
+	logger := naming.LogWithPath(plog.NewDefaultLogger(), t.path).
 		Attr("pkg", "daemon/imon").
 		WithPrefix(fmt.Sprintf("daemon: imon: %s: %s: ", t.path, s))
+	if t.log != nil && t.log.Q() != nil {
+		return logger.WithQ(t.log.Q())
+	}
+	return logger
 }
 
 func (t *Manager) newLogger(i uuid.UUID) *plog.Logger {
-	return naming.LogWithPath(plog.NewDefaultLogger(), t.path).
+	logger := naming.LogWithPath(plog.NewDefaultLogger(), t.path).
 		Attr("pkg", "daemon/imon").
 		Attr("orchestration_id", i.String()).
 		WithPrefix(fmt.Sprintf("daemon: imon: %s: ", t.path.String()))
+	if t.log != nil && t.log.Q() != nil {
+		return logger.WithQ(t.log.Q())
+	}
+	return logger
 }
 
 func (t *Manager) startSubscriptions(qs pubsub.QueueSizer) {
@@ -476,13 +484,13 @@ func (t *Manager) attachActiveAuditIfAny() {
 	if reg == nil {
 		return
 	}
+	subsystem := "imon"
 	sess, ok := reg.Snapshot()
 	if !ok {
 		return
 	}
-	subsystem := "imon"
 	if !slices.Contains(sess.Subsystems, subsystem) {
-		subsystem = "imon:" + t.path.String()
+		subsystem = fmt.Sprintf("%s:%s", subsystem, t.path.String())
 	}
 	t.log.HandleAuditStart(sess.Q, sess.Subsystems, subsystem)
 }

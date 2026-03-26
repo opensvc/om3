@@ -304,11 +304,16 @@ func (t *T) janitor(ctx context.Context, errC chan<- error) {
 					default:
 					}
 
+					var oldQ chan plog.LogMessage
+					if t.log != nil {
+						oldQ = t.log.Q()
+					}
 					t.log = plog.NewDefaultLogger().
 						Attr("pkg", "daemon/listener/lsnrhttpinet").
 						Attr("lsnr_type", "inet").
 						Attr("lsnr_addr", t.addr).
-						WithPrefix("daemon: listener: inet: ")
+						WithPrefix("daemon: listener: inet: ").
+						WithQ(oldQ)
 					if err := start(); err != nil {
 						t.log.Errorf("on addr changed start failed: %s", err)
 					}
