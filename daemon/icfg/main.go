@@ -227,13 +227,13 @@ func (t *Manager) attachActiveAuditIfAny() {
 	if reg == nil {
 		return
 	}
+	subsystem := "icfg"
 	sess, ok := reg.Snapshot()
 	if !ok {
 		return
 	}
-	subsystem := "icfg"
 	if !slices.Contains(sess.Subsystems, subsystem) {
-		subsystem = "icfg:" + t.path.String()
+		subsystem = fmt.Sprintf("%s:%s", subsystem, t.path.String())
 	}
 	t.log.HandleAuditStart(sess.Q, sess.Subsystems, subsystem)
 }
