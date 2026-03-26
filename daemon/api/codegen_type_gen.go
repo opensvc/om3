@@ -2693,10 +2693,10 @@ type PostDaemonShutdownParams struct {
 
 // PostDaemonAuditParams defines parameters for PostDaemonAudit.
 type PostDaemonAuditParams struct {
-	// Level the audit level.
+	// Level the audit level
 	Level *PostDaemonAuditParamsLevel `form:"level,omitempty" json:"level,omitempty"`
 
-	// Sub the audit subsystem to target.
+	// Sub the names of the subsystems to audit
 	Sub *string `form:"sub,omitempty" json:"sub,omitempty"`
 
 	// Preempt preempt the current audit if any is running.

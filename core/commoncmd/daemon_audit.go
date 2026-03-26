@@ -46,8 +46,8 @@ func NewCmdDaemonAudit() *cobra.Command {
 	flags := cmd.Flags()
 	FlagNodeSelector(flags, &options.NodeSelector)
 	FlagOutput(flags, &options.Output)
-	flags.StringVar(&options.Level, "level", "trace", "audit level")
-	flags.StringSliceVar(&options.Subsystems, "sub", []string{}, "the names of the subsystems to audit (ccfg, collector, imon:<path>, hook, runner, daemondata, cstat, omon:<path>, dns, scheduler, discover, nmon, lsnrhttpinet, lsnrhttpux, istat, icfg:<path>, hb.peer_drop_worker, hb, daemonauth, pubsub, api)")
+	flags.StringVar(&options.Level, "level", "trace", "trace, debug, info, warn, error, fatal, panic")
+	flags.StringSliceVar(&options.Subsystems, "sub", []string{}, "the names of the subsystems to audit (ccfg, collector, imon, imon:<path>, hook, runner, daemondata, cstat, omon, omon:<path>, dns, scheduler, discover, nmon, lsnrhttpinet, lsnrhttpux, istat, icfg, icfg:<path>, hb.peer_drop_worker, hb, daemonauth, pubsub, api)")
 	flags.BoolVar(&options.Preempt, "preempt", false, "preempt the current audit if any is running.")
 	return cmd
 }
