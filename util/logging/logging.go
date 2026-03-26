@@ -179,7 +179,7 @@ func Configure(config Config) error {
 			writers = append(writers, fileWriter)
 		}
 	}
-	//mw := io.MultiWriter(writers...)
+
 	mw := zerolog.MultiLevelWriter(writers...)
 
 	logger := log.Output(mw)

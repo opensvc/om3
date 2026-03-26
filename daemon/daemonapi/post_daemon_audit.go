@@ -11,6 +11,7 @@ import (
 	"slices"
 	"strconv"
 	"strings"
+	"time"
 
 	"github.com/labstack/echo/v4"
 	"github.com/opensvc/om3/v3/core/client"
@@ -21,6 +22,7 @@ import (
 	"github.com/opensvc/om3/v3/util/plog"
 	"github.com/opensvc/om3/v3/util/pubsub"
 	"github.com/rs/zerolog"
+	"github.com/shaj13/go-guardian/v2/auth"
 )
 
 func (a *DaemonAPI) PostDaemonAudit(ctx echo.Context, nodename string, params api.PostDaemonAuditParams) error {
@@ -85,12 +87,28 @@ func (a *DaemonAPI) getLocalDaemonAudit(ctx echo.Context, nodename string, param
 		return nil
 	}
 
+	user := ctx.Get("user").(auth.Info)
+
 	level, err := zerolog.ParseLevel(string(*params.Level))
 	if err != nil {
 		return JSONProblemf(ctx, http.StatusBadRequest, "Invalid parameters", "Invalid level param: %s", err)
 	}
 
 	log := LogHandler(ctx, "getLocalDaemonAudit")
+	var preempt bool
+	if params.Preempt == nil || !*params.Preempt {
+		preempt = false
+	} else {
+		preempt = true
+	}
+
+	if sess, ok := a.AuditRegistry.Snapshot(); ok {
+		if !preempt {
+			return JSONProblemf(ctx, http.StatusConflict, "Audit already active", "refused, audit session is already running for user %s", sess.User)
+		}
+		sess.PreemptC <- struct{}{}
+	}
+
 	request := ctx.Request()
 	evCtx := request.Context()
 
@@ -103,6 +121,7 @@ func (a *DaemonAPI) getLocalDaemonAudit(ctx echo.Context, nodename string, param
 	w.Flush()
 
 	q := make(chan plog.LogMessage, 1000)
+	preemptC := make(chan struct{})
 	labels := []pubsub.Label{
 		{"node", nodename},
 		labelOriginAPI,
@@ -121,8 +140,9 @@ func (a *DaemonAPI) getLocalDaemonAudit(ctx echo.Context, nodename string, param
 	}
 	a.Publisher.Pub(&msgbus.AuditStart{Q: q, Subsystems: subsystems}, labels...)
 	log.Infof("Publish audit start")
+
 	if a.AuditRegistry != nil {
-		a.AuditRegistry.Start(q, subsystems)
+		a.AuditRegistry.Start(q, subsystems, preemptC, user.GetUserName())
 		defer a.AuditRegistry.Stop(q)
 	}
 
@@ -147,6 +167,23 @@ func (a *DaemonAPI) getLocalDaemonAudit(ctx echo.Context, nodename string, param
 			}
 			w.Flush()
 		case <-evCtx.Done():
+			return nil
+		case <-preemptC:
+			msg := plog.LogMessage{
+				Level:     zerolog.WarnLevel,
+				Timestamp: time.Now(),
+				Message:   "daemon audit: session preempted by another session",
+			}
+			formatted, err := formatMessage(msg, messageId, nodename)
+			if err != nil {
+				log.Warnf("Failed to format log message: %v", err)
+				return nil
+			}
+			_, err = w.Write(formatted)
+			if err != nil {
+				log.Warnf("Failed to write message: %v", err)
+				return nil
+			}
 			return nil
 		}
 	}

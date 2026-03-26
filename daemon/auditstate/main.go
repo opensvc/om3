@@ -9,7 +9,9 @@ import (
 type (
 	Session struct {
 		Q          chan plog.LogMessage
+		PreemptC   chan struct{}
 		Subsystems []string
+		User       string
 	}
 
 	Registry struct {
@@ -19,13 +21,15 @@ type (
 	}
 )
 
-func (r *Registry) Start(q chan plog.LogMessage, subsystems []string) {
+func (r *Registry) Start(q chan plog.LogMessage, subsystems []string, preemptC chan struct{}, user string) {
 	r.mu.Lock()
 	defer r.mu.Unlock()
 	r.active = true
 	r.current = Session{
 		Q:          q,
 		Subsystems: append([]string{}, subsystems...),
+		PreemptC:   preemptC,
+		User:       user,
 	}
 }
 
@@ -53,5 +57,13 @@ func (r *Registry) Snapshot() (Session, bool) {
 	return Session{
 		Q:          r.current.Q,
 		Subsystems: append([]string{}, r.current.Subsystems...),
+		PreemptC:   r.current.PreemptC,
+		User:       r.current.User,
 	}, true
+}
+
+func (r *Registry) Active() bool {
+	r.mu.RLock()
+	defer r.mu.RUnlock()
+	return r.active
 }
