@@ -87,6 +87,8 @@ func (a *DaemonAPI) getLocalDaemonAudit(ctx echo.Context, nodename string, param
 		return nil
 	}
 
+	var messageId uint64
+
 	user := ctx.Get("user").(auth.Info)
 
 	level, err := zerolog.ParseLevel(string(*params.Level))
@@ -139,33 +141,48 @@ func (a *DaemonAPI) getLocalDaemonAudit(ctx echo.Context, nodename string, param
 		}
 	}
 	a.Publisher.Pub(&msgbus.AuditStart{Q: q, Subsystems: subsystems}, labels...)
-	log.Infof("Publish audit start")
+	log.Infof("publish audit start session %s", uuidFromContext(ctx))
+	defer log.Infof("publish audit stop session %s", uuidFromContext(ctx))
 
 	if a.AuditRegistry != nil {
 		a.AuditRegistry.Start(q, subsystems, preemptC, user.GetUserName())
 		defer a.AuditRegistry.Stop(q)
 	}
 
+	write := func(msg plog.LogMessage) error {
+		formatted, err := formatMessage(msg, messageId, nodename)
+		if err != nil {
+			return fmt.Errorf("failed to format log message: %v", err)
+		}
+		_, err = w.Write(formatted)
+		messageId++
+		if err != nil {
+			return fmt.Errorf("failed to write message: %v", err)
+		}
+		w.Flush()
+		return nil
+	}
+
 	defer a.Publisher.Pub(&msgbus.AuditStop{Q: q, Subsystems: subsystems}, labels...)
-	var messageId uint64
+	msg := plog.LogMessage{
+		Level:     zerolog.InfoLevel,
+		Timestamp: time.Now(),
+		Message:   "daemon audit: audit started",
+	}
+	if err = write(msg); err != nil {
+		log.Warnf("%s", err)
+		return nil
+	}
 	for {
 		select {
 		case msg := <-q:
 			if msg.Level < level {
 				continue
 			}
-			formatted, err := formatMessage(msg, messageId, nodename)
-			if err != nil {
-				log.Warnf("Failed to format log message: %v", err)
+			if err = write(msg); err != nil {
+				log.Warnf("%s", err)
 				return nil
 			}
-			_, err = w.Write(formatted)
-			messageId++
-			if err != nil {
-				log.Warnf("Failed to write message: %v", err)
-				return nil
-			}
-			w.Flush()
 		case <-evCtx.Done():
 			return nil
 		case <-preemptC:
@@ -174,15 +191,8 @@ func (a *DaemonAPI) getLocalDaemonAudit(ctx echo.Context, nodename string, param
 				Timestamp: time.Now(),
 				Message:   "daemon audit: session preempted by another session",
 			}
-			formatted, err := formatMessage(msg, messageId, nodename)
-			if err != nil {
-				log.Warnf("Failed to format log message: %v", err)
-				return nil
-			}
-			_, err = w.Write(formatted)
-			if err != nil {
-				log.Warnf("Failed to write message: %v", err)
-				return nil
+			if err := write(msg); err != nil {
+				log.Warnf("%s", err)
 			}
 			return nil
 		}
