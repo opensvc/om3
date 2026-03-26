@@ -121,6 +121,7 @@ func init() {
 		newCmdObjectInstanceSyncIngest(kind),
 		newCmdObjectInstanceSyncFull(kind),
 		newCmdObjectInstanceSyncResync(kind),
+		newCmdObjectInstanceSyncSplit(kind),
 		newCmdObjectInstanceSyncUpdate(kind),
 	)
 	cmdObjectResource.AddCommand(

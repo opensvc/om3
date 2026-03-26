@@ -171,6 +171,11 @@ var (
 		MustLock: true,
 		PG:       true,
 	}
+	SyncSplit = Properties{
+		Name:     "sync_split",
+		MustLock: true,
+		PG:       true,
+	}
 	SyncUpdate = Properties{
 		Name:     "sync_update",
 		MustLock: true,

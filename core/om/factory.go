@@ -2824,6 +2824,25 @@ func newCmdObjectInstanceSyncResync(kind string) *cobra.Command {
 	return cmd
 }
 
+func newCmdObjectInstanceSyncSplit(kind string) *cobra.Command {
+	var options commands.CmdObjectInstanceSyncSplit
+	cmd := &cobra.Command{
+		Use:   "split",
+		Short: "make both ends of a replicated pair read-write",
+		Long:  "Only a subset of drivers support this interface.",
+		RunE: func(cmd *cobra.Command, args []string) error {
+			return options.Run(kind)
+		},
+	}
+	flags := cmd.Flags()
+	addFlagsGlobal(flags, &options.OptsGlobal)
+	commoncmd.FlagsLock(flags, &options.OptsLock)
+	commoncmd.FlagsResourceSelector(flags, &options.OptsResourceSelector)
+	commoncmd.FlagForce(flags, &options.Force)
+	hiddenFlagLocal(flags, &options.Local)
+	return cmd
+}
+
 func newCmdObjectInstanceSyncUpdate(kind string) *cobra.Command {
 	var options commands.CmdObjectInstanceSyncUpdate
 	cmd := &cobra.Command{
