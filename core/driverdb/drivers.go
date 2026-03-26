@@ -30,6 +30,7 @@ import (
 	_ "github.com/opensvc/om3/v3/drivers/resdiskmd"
 	_ "github.com/opensvc/om3/v3/drivers/resdiskraw"
 	_ "github.com/opensvc/om3/v3/drivers/resdiskvg"
+	_ "github.com/opensvc/om3/v3/drivers/resdiskxp8"
 	_ "github.com/opensvc/om3/v3/drivers/resfsdir"
 	_ "github.com/opensvc/om3/v3/drivers/resfsflag"
 	_ "github.com/opensvc/om3/v3/drivers/resfshost"

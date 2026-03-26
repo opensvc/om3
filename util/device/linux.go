@@ -179,6 +179,25 @@ func (t T) Holders() (L, error) {
 	return l, nil
 }
 
+func (t T) MultipathParent() (*T, error) {
+	parents, err := t.Holders()
+	if err != nil {
+		return nil, err
+	}
+	if len(parents) != 1 {
+		return nil, nil
+	}
+	parent := parents[0]
+	parentIsMultipath, err := parent.IsMultipath()
+	if err != nil {
+		return nil, err
+	}
+	if !parentIsMultipath {
+		return nil, nil
+	}
+	return &parent, nil
+}
+
 func (t T) Driver() (interface{}, error) {
 	major, err := t.Major()
 	if err != nil {
@@ -406,12 +425,15 @@ func (t T) WaitReady(ctx context.Context) error {
 	for i := 0; i < retries; i++ {
 		if v, err := t.IsReady(ctx); err != nil {
 			return err
-		} else if v {
+		} else if !v {
 			if i == 0 {
 				t.log.Infof("waiting for device %s to become ready (max %s)", t.path, time.Duration(retries)*delay)
 			}
-			time.Sleep(delay)
-			continue
+			select {
+			case <-ctx.Done():
+				return ctx.Err()
+			case <-time.After(time.Second):
+			}
 		} else {
 			return nil
 		}
