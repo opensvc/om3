@@ -149,16 +149,17 @@ func (t *T) Status(ctx context.Context) status.T {
 		args := []any{l.Volume, l.Role, l.State, l.Copied + "%"}
 		if l.Role == roleSMPL {
 			t.StatusLog().Info(fmt, args...)
-		}
-		switch l.State {
-		case pairStatePAIR:
-			t.StatusLog().Info(fmt, args...)
-		case pairStateCOPY, pairStateSYNC, pairStateSSUS, pairStatePSUS:
-			t.StatusLog().Warn(fmt, args...)
-		case "-":
-			t.StatusLog().Warn(fmt, args...)
-		default:
-			t.StatusLog().Error(fmt, args...)
+		} else {
+			switch l.State {
+			case pairStatePAIR:
+				t.StatusLog().Info(fmt, args...)
+			case pairStateCOPY, pairStateSYNC, pairStateSSUS, pairStatePSUS:
+				t.StatusLog().Warn(fmt, args...)
+			case "-":
+				t.StatusLog().Warn(fmt, args...)
+			default:
+				t.StatusLog().Error(fmt, args...)
+			}
 		}
 	}
 	return status.NotApplicable
