@@ -142,7 +142,7 @@ type (
 	resyncer interface {
 		Resync(context.Context) error
 	}
-	spliter interface {
+	splitter interface {
 		Split(context.Context) error
 	}
 	fuller interface {

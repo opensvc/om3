@@ -90,7 +90,7 @@ var (
 		"<":  Lesser,
 	}
 
-	// ":" is a suffixer, not a spliter
+	// ":" is a suffixer, not a splitter
 	splitOps    = []string{"+=", "-=", "|=", "^=", "!=", ">=", "<=", ">", "<", "="}
 	regexpIndex = regexp.MustCompile(`(.+)\[(\d+)]`)
 )

@@ -928,7 +928,7 @@ func Resync(ctx context.Context, r Driver) error {
 // Split execute the resource Split function, if implemented by the driver.
 func Split(ctx context.Context, r Driver) error {
 	var i any = r
-	s, ok := i.(spliter)
+	s, ok := i.(splitter)
 	if !ok {
 		return ErrActionNotSupported
 	}
