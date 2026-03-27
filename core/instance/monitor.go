@@ -246,6 +246,22 @@ func (t ResourceMonitors) Unstructured() map[string]map[string]any {
 func (mon Monitor) DeepCopy() *Monitor {
 	v := mon
 	v.Resources = v.Resources.DeepCopy()
+	if mon.Parents != nil {
+		v.Parents = make(map[string]status.T, len(mon.Parents))
+		for k, s := range mon.Parents {
+			v.Parents[k] = s
+		}
+	} else {
+		v.Parents = nil
+	}
+	if mon.Children != nil {
+		v.Children = make(map[string]status.T, len(mon.Children))
+		for k, s := range mon.Children {
+			v.Children[k] = s
+		}
+	} else {
+		v.Children = nil
+	}
 	if mon.GlobalExpectOptions != nil {
 		switch mon.GlobalExpect {
 		case MonitorGlobalExpectPlacedAt:

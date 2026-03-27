@@ -535,7 +535,7 @@ func (t *Manager) update() {
 	}
 
 	t.state.UpdatedAt = time.Now()
-	newValue := t.state
+	newValue := *t.state.DeepCopy()
 
 	instance.MonitorData.Set(t.path, t.localhost, newValue.DeepCopy())
 	t.publisher.Pub(&msgbus.InstanceMonitorUpdated{Path: t.path, Node: t.localhost, Value: newValue}, t.pubLabels...)
