@@ -6,6 +6,7 @@ import (
 	"io"
 	"slices"
 	"strings"
+	"sync"
 	"sync/atomic"
 	"time"
 
@@ -15,6 +16,7 @@ import (
 
 type (
 	Logger struct {
+		mu     sync.RWMutex
 		logger zerolog.Logger
 		prefix string
 		q      chan LogMessage
@@ -52,6 +54,8 @@ func NewLogger(logger zerolog.Logger) *Logger {
 }
 
 func (t *Logger) clone() *Logger {
+	t.mu.RLock()
+	defer t.mu.RUnlock()
 	return &Logger{
 		logger: t.logger,
 		prefix: t.prefix,
@@ -60,9 +64,13 @@ func (t *Logger) clone() *Logger {
 }
 
 func (t *Logger) AddPrefix(prefix string) *Logger {
-	n := t.clone()
-	n.prefix = t.prefix + prefix
-	return n
+	t.mu.RLock()
+	defer t.mu.RUnlock()
+	return &Logger{
+		logger: t.logger,
+		prefix: t.prefix + prefix,
+		q:      t.q,
+	}
 }
 
 func (t *Logger) WithPrefix(prefix string) *Logger {
@@ -131,18 +139,24 @@ func (t *Logger) Levelf(level zerolog.Level, format string, a ...any) {
 }
 
 func (t *Logger) Q() chan LogMessage {
+	t.mu.RLock()
+	defer t.mu.RUnlock()
 	return t.q
 }
 
 func (t *Logger) sendAudit(level zerolog.Level, msg string) {
-	if t.q == nil {
+	t.mu.RLock()
+	q := t.q
+	t.mu.RUnlock()
+
+	if q == nil {
 		return
 	}
 
 	lm := LogMessage{Level: level, Message: msg, Timestamp: time.Now()}
 
 	select {
-	case t.q <- lm:
+	case q <- lm:
 		if n := t.dropped.Swap(0); n > 0 {
 			warn := LogMessage{
 				Level:     zerolog.WarnLevel,
@@ -150,7 +164,7 @@ func (t *Logger) sendAudit(level zerolog.Level, msg string) {
 				Timestamp: time.Now(),
 			}
 			select {
-			case t.q <- warn:
+			case q <- warn:
 			case <-time.After(200 * time.Millisecond):
 				t.dropped.Add(n)
 			}
@@ -161,36 +175,44 @@ func (t *Logger) sendAudit(level zerolog.Level, msg string) {
 }
 
 func (t *Logger) Attr(k string, v any) *Logger {
-	n := t.clone()
+	t.mu.RLock()
+	logger := t.logger
+	prefix := t.prefix
+	q := t.q
+	t.mu.RUnlock()
+	n := &Logger{
+		prefix: prefix,
+		q:      q,
+	}
 	switch i := v.(type) {
 	case string:
-		n.logger = t.logger.With().Str(k, i).Logger()
+		n.logger = logger.With().Str(k, i).Logger()
 	case []string:
-		n.logger = t.logger.With().Strs(k, i).Logger()
+		n.logger = logger.With().Strs(k, i).Logger()
 	case []byte:
-		n.logger = t.logger.With().Bytes(k, i).Logger()
+		n.logger = logger.With().Bytes(k, i).Logger()
 	case float32:
-		n.logger = t.logger.With().Float32(k, i).Logger()
+		n.logger = logger.With().Float32(k, i).Logger()
 	case float64:
-		n.logger = t.logger.With().Float64(k, i).Logger()
+		n.logger = logger.With().Float64(k, i).Logger()
 	case bool:
-		n.logger = t.logger.With().Bool(k, i).Logger()
+		n.logger = logger.With().Bool(k, i).Logger()
 	case int:
-		n.logger = t.logger.With().Int(k, i).Logger()
+		n.logger = logger.With().Int(k, i).Logger()
 	case int32:
-		n.logger = t.logger.With().Int32(k, i).Logger()
+		n.logger = logger.With().Int32(k, i).Logger()
 	case int64:
-		n.logger = t.logger.With().Int64(k, i).Logger()
+		n.logger = logger.With().Int64(k, i).Logger()
 	case uint:
-		n.logger = t.logger.With().Uint(k, i).Logger()
+		n.logger = logger.With().Uint(k, i).Logger()
 	case uint32:
-		n.logger = t.logger.With().Uint32(k, i).Logger()
+		n.logger = logger.With().Uint32(k, i).Logger()
 	case uint64:
-		n.logger = t.logger.With().Uint64(k, i).Logger()
+		n.logger = logger.With().Uint64(k, i).Logger()
 	case time.Duration:
-		n.logger = t.logger.With().Dur(k, i).Logger()
+		n.logger = logger.With().Dur(k, i).Logger()
 	default:
-		n.logger = t.logger.With().Interface(k, v).Logger()
+		n.logger = logger.With().Interface(k, v).Logger()
 	}
 	return n
 }
@@ -205,6 +227,8 @@ func (t *Logger) GetLevel() zerolog.Level {
 }
 
 func (t *Logger) SetAuditQ(q chan LogMessage) error {
+	t.mu.Lock()
+	defer t.mu.Unlock()
 	if t.q != nil {
 		return fmt.Errorf("cannot set audit q: already set")
 	}
@@ -213,6 +237,8 @@ func (t *Logger) SetAuditQ(q chan LogMessage) error {
 }
 
 func (t *Logger) UnsetAuditQ(q chan LogMessage) error {
+	t.mu.Lock()
+	defer t.mu.Unlock()
 	if t.q == nil {
 		return fmt.Errorf("cannot unset audit q: not set")
 	}
