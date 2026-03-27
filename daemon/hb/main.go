@@ -460,6 +460,8 @@ func (t *T) janitor(ctx context.Context) {
 		defer t.wg.Done()
 		started <- true
 		sub := pubsub.SubFromContext(ctx, "daemon.hb")
+		sub.AddFilter(&msgbus.AuditStart{})
+		sub.AddFilter(&msgbus.AuditStop{})
 		sub.AddFilter(&msgbus.ClusterConfigUpdated{}, pubsub.Label{"node", hostname.Hostname()})
 		sub.AddFilter(&msgbus.DaemonCtl{})
 		sub.Start()
@@ -474,6 +476,10 @@ func (t *T) janitor(ctx context.Context) {
 				return
 			case i := <-sub.C:
 				switch msg := i.(type) {
+				case *msgbus.AuditStart:
+					t.log.HandleAuditStart(msg.Q, msg.Subsystems, "hb")
+				case *msgbus.AuditStop:
+					t.log.HandleAuditStop(msg.Q, msg.Subsystems, "hb")
 				case *msgbus.DaemonCtl:
 					hbID := msg.Component
 					action := msg.Action

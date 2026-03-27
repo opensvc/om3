@@ -19,38 +19,45 @@ import (
 )
 
 // Config is the configuration of the zerolog logger and writers
-type Config struct {
-	// WithCaller includes the caller file:line to the records
-	WithCaller bool
+type (
+	Config struct {
+		// WithCaller includes the caller file:line to the records
+		WithCaller bool
 
-	// Enable console logging
-	WithConsoleLog bool
+		// Enable console logging
+		WithConsoleLog bool
 
-	// Enable console logging coloring
-	WithColor bool
+		// Enable console logging coloring
+		WithColor bool
 
-	WithJournald bool
-	WithSyslogd  bool
+		WithJournald bool
+		WithSyslogd  bool
 
-	// LogFile makes the framework log to a file
-	LogFile string
+		// LogFile makes the framework log to a file
+		LogFile string
 
-	// SessionLogFile logs to a per-sessionid file
-	SessionLogFile string
+		// SessionLogFile logs to a per-sessionid file
+		SessionLogFile string
 
-	// Level is the minimum log record level to accept.
-	// debug, info, warn[ing], error, fatal, panic
-	Level string
+		// Level is the minimum log record level to accept.
+		// debug, info, warn[ing], error, fatal, panic
+		Level string
 
-	// MaxSize the max size in MB of the logfile before it's rolled
-	MaxSize int
+		// MaxSize the max size in MB of the logfile before it's rolled
+		MaxSize int
 
-	// MaxBackups the max number of rolled files to keep
-	MaxBackups int
+		// MaxBackups the max number of rolled files to keep
+		MaxBackups int
 
-	// MaxAge the max age in days to keep a logfile
-	MaxAge int
-}
+		// MaxAge the max age in days to keep a logfile
+		MaxAge int
+	}
+
+	minLevelWriter struct {
+		w   io.Writer
+		min zerolog.Level
+	}
+)
 
 // Logger is the opensvc specific zerolog logger
 const (
@@ -136,7 +143,10 @@ func Configure(config Config) error {
 
 	if config.WithJournald && journalEnabled() {
 		if writer := journald.NewJournalDWriter(); writer != nil {
-			writers = append(writers, writer)
+			writers = append(writers, minLevelWriter{
+				w:   writer,
+				min: zerolog.InfoLevel,
+			})
 		}
 	} else if config.WithSyslogd {
 		if writer, err := syslog.New(syslog.LOG_INFO|syslog.LOG_USER, "om"); err == nil {
@@ -169,7 +179,8 @@ func Configure(config Config) error {
 			writers = append(writers, fileWriter)
 		}
 	}
-	mw := io.MultiWriter(writers...)
+
+	mw := zerolog.MultiLevelWriter(writers...)
 
 	logger := log.Output(mw)
 
@@ -196,4 +207,18 @@ func newRollingFile(config Config) (io.Writer, error) {
 		MaxSize:    config.MaxSize,    // megabytes
 		MaxAge:     config.MaxAge,     // days
 	}, nil
+}
+
+func (t minLevelWriter) Write(p []byte) (int, error) {
+	return t.w.Write(p)
+}
+
+func (t minLevelWriter) WriteLevel(level zerolog.Level, p []byte) (int, error) {
+	if level < t.min {
+		return len(p), nil
+	}
+	if lw, ok := t.w.(zerolog.LevelWriter); ok {
+		return lw.WriteLevel(level, p)
+	}
+	return t.w.Write(p)
 }

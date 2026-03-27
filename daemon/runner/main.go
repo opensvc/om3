@@ -50,6 +50,8 @@ var (
 func (t *T) startSubscriptions() *pubsub.Subscription {
 	sub := pubsub.SubFromContext(t.ctx, "daemon.runner", t.subQS)
 	labelLocalhost := pubsub.Label{"node", hostname.Hostname()}
+	sub.AddFilter(&msgbus.AuditStart{})
+	sub.AddFilter(&msgbus.AuditStop{})
 	sub.AddFilter(&msgbus.NodeConfigUpdated{}, labelLocalhost)
 	sub.Start()
 	return sub
@@ -115,6 +117,10 @@ func (t *T) do(ctx context.Context) {
 		select {
 		case ev := <-sub.C:
 			switch c := ev.(type) {
+			case *msgbus.AuditStart:
+				t.log.HandleAuditStart(c.Q, c.Subsystems, "runner")
+			case *msgbus.AuditStop:
+				t.log.HandleAuditStop(c.Q, c.Subsystems, "runner")
 			case *msgbus.NodeConfigUpdated:
 				if c.Value.MaxParallel > 0 {
 					t.maxRunning = c.Value.MaxParallel

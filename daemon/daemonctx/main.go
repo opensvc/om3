@@ -5,6 +5,8 @@ import (
 	"time"
 
 	"github.com/google/uuid"
+	"github.com/opensvc/om3/v3/util/auditstate"
+	"github.com/opensvc/om3/v3/util/plog"
 	"golang.org/x/time/rate"
 
 	"github.com/opensvc/om3/v3/core/cluster"
@@ -21,6 +23,8 @@ var (
 	contextListenAddr            = contextKey("listen-addr")
 	contextLsnrType              = contextKey("lsnr-type")
 	contextLsnrRateLimiterConfig = contextKey("lsnr-rate-limiter-config")
+	contextAuditRegistry         = contextKey("audit-registry")
+	contextLogQueue              = contextKey("log-queue")
 )
 
 func (c contextKey) String() string {
@@ -99,4 +103,26 @@ func WithListenAddr(parent context.Context, addr string) context.Context {
 func WithListenRateLimiterConfig(ctx context.Context, rate rate.Limit, burst int, exp time.Duration) context.Context {
 	cfg := cluster.RateLimiterConfig{Rate: rate, Burst: burst, Expires: exp}
 	return context.WithValue(ctx, contextLsnrRateLimiterConfig, cfg)
+}
+
+func WithAuditRegistry(parent context.Context, r *auditstate.Registry) context.Context {
+	return context.WithValue(parent, contextAuditRegistry, r)
+}
+
+func AuditRegistry(ctx context.Context) *auditstate.Registry {
+	if v, ok := ctx.Value(contextAuditRegistry).(*auditstate.Registry); ok {
+		return v
+	}
+	return nil
+}
+
+func WithLogQueue(parent context.Context, q chan plog.LogMessage) context.Context {
+	return context.WithValue(parent, contextLogQueue, q)
+}
+
+func LogQueue(ctx context.Context) chan plog.LogMessage {
+	if q, ok := ctx.Value(contextLogQueue).(chan plog.LogMessage); ok {
+		return q
+	}
+	return nil
 }

@@ -24,10 +24,12 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"slices"
 	"sync/atomic"
 	"time"
 
 	"github.com/google/uuid"
+	"github.com/opensvc/om3/v3/daemon/daemonctx"
 	"golang.org/x/time/rate"
 
 	"github.com/opensvc/om3/v3/core/instance"
@@ -285,20 +287,30 @@ func start(parent context.Context, qs pubsub.QueueSizer, p naming.Path, nodes []
 }
 
 func (t *Manager) newResourceLogger(s string) *plog.Logger {
-	return naming.LogWithPath(plog.NewDefaultLogger(), t.path).
+	logger := naming.LogWithPath(plog.NewDefaultLogger(), t.path).
 		Attr("pkg", "daemon/imon").
 		WithPrefix(fmt.Sprintf("daemon: imon: %s: %s: ", t.path, s))
+	if t.log != nil && t.log.Q() != nil {
+		return logger.WithQ(t.log.Q())
+	}
+	return logger
 }
 
 func (t *Manager) newLogger(i uuid.UUID) *plog.Logger {
-	return naming.LogWithPath(plog.NewDefaultLogger(), t.path).
+	logger := naming.LogWithPath(plog.NewDefaultLogger(), t.path).
 		Attr("pkg", "daemon/imon").
 		Attr("orchestration_id", i.String()).
 		WithPrefix(fmt.Sprintf("daemon: imon: %s: ", t.path.String()))
+	if t.log != nil && t.log.Q() != nil {
+		return logger.WithQ(t.log.Q())
+	}
+	return logger
 }
 
 func (t *Manager) startSubscriptions(qs pubsub.QueueSizer) {
 	sub := pubsub.SubFromContext(t.ctx, "daemon.imon "+t.id, qs)
+	sub.AddFilter(&msgbus.AuditStart{})
+	sub.AddFilter(&msgbus.AuditStop{})
 	sub.AddFilter(&msgbus.ForgetPeer{})
 	sub.AddFilter(&msgbus.NodeConfigUpdated{}, t.labelLocalhost)
 	sub.AddFilter(&msgbus.NodeMonitorUpdated{})
@@ -315,6 +327,7 @@ func (t *Manager) startSubscriptions(qs pubsub.QueueSizer) {
 // worker watch for local imon updates
 func (t *Manager) worker(initialNodes []string) {
 	defer t.log.Tracef("worker stopped")
+	t.attachActiveAuditIfAny()
 
 	// runStatus and requestStatusRefresh will need instance config Priority
 	if iConfig := instance.ConfigData.GetByPathAndNode(t.path, t.localhost); iConfig != nil {
@@ -410,6 +423,18 @@ func (t *Manager) worker(initialNodes []string) {
 				return
 			}
 			switch c := i.(type) {
+			case *msgbus.AuditStart:
+				subsystem := "imon"
+				if !slices.Contains(c.Subsystems, subsystem) {
+					subsystem = "imon:" + t.path.String()
+				}
+				t.log.HandleAuditStart(c.Q, c.Subsystems, subsystem)
+			case *msgbus.AuditStop:
+				subsystem := "imon"
+				if !slices.Contains(c.Subsystems, subsystem) {
+					subsystem = "imon:" + t.path.String()
+				}
+				t.log.HandleAuditStop(c.Q, c.Subsystems, subsystem)
 			case *msgbus.ForgetPeer:
 				t.onForgetPeer(c)
 			case *msgbus.InstanceStatusDeleted:
@@ -454,6 +479,22 @@ func (t *Manager) worker(initialNodes []string) {
 	}
 }
 
+func (t *Manager) attachActiveAuditIfAny() {
+	reg := daemonctx.AuditRegistry(t.ctx)
+	if reg == nil {
+		return
+	}
+	subsystem := "imon"
+	sess, ok := reg.Snapshot()
+	if !ok {
+		return
+	}
+	if !slices.Contains(sess.Subsystems, subsystem) {
+		subsystem = fmt.Sprintf("%s:%s", subsystem, t.path.String())
+	}
+	t.log.HandleAuditStart(sess.Q, sess.Subsystems, subsystem)
+}
+
 // ensureBooted runs the bot action on not yet booted object
 func (t *Manager) ensureBooted() {
 	instanceLastBootID := lastBootID(t.path)
@@ -494,7 +535,7 @@ func (t *Manager) update() {
 	}
 
 	t.state.UpdatedAt = time.Now()
-	newValue := t.state
+	newValue := *t.state.DeepCopy()
 
 	instance.MonitorData.Set(t.path, t.localhost, newValue.DeepCopy())
 	t.publisher.Pub(&msgbus.InstanceMonitorUpdated{Path: t.path, Node: t.localhost, Value: newValue}, t.pubLabels...)

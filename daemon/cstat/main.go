@@ -86,6 +86,8 @@ func (o *T) Stop() error {
 
 func (o *T) startSubscriptions() {
 	sub := pubsub.SubFromContext(o.ctx, "daemon.cstat", o.subQS)
+	sub.AddFilter(&msgbus.AuditStart{})
+	sub.AddFilter(&msgbus.AuditStop{})
 	sub.AddFilter(&msgbus.NodeStatusUpdated{})
 	sub.Start()
 	o.sub = sub
@@ -101,6 +103,10 @@ func (o *T) worker() {
 			return
 		case i := <-o.sub.C:
 			switch c := i.(type) {
+			case *msgbus.AuditStart:
+				o.log.HandleAuditStart(c.Q, c.Subsystems, "cstat")
+			case *msgbus.AuditStop:
+				o.log.HandleAuditStop(c.Q, c.Subsystems, "cstat")
 			case *msgbus.NodeStatusUpdated:
 				o.onNodeStatusUpdated(c)
 			}

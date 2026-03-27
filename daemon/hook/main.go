@@ -198,6 +198,12 @@ func (t *Manager) hookLoop(ctx context.Context, sub *pubsub.Subscription, name s
 		case <-ctx.Done():
 			return
 		case i := <-sub.C:
+			switch c := i.(type) {
+			case *msgbus.AuditStart:
+				t.log.HandleAuditStart(c.Q, c.Subsystems, "hook")
+			case *msgbus.AuditStop:
+				t.log.HandleAuditStop(c.Q, c.Subsystems, "hook")
+			}
 			j += 1
 			ev := event.ToEvent(i, j)
 			if ev == nil {
@@ -222,6 +228,8 @@ func (t *Manager) hookLoop(ctx context.Context, sub *pubsub.Subscription, name s
 func (t *Manager) startHook(name string, kinds []string, args []string) func() {
 	ctx, cancel := context.WithCancel(t.ctx)
 	sub := pubsub.SubFromContext(ctx, "daemon.hook", t.subQS, pubsub.Timeout(time.Second))
+	sub.AddFilter(&msgbus.AuditStart{})
+	sub.AddFilter(&msgbus.AuditStop{})
 	added := 0
 	for _, kind := range kinds {
 		if !slices.Contains(AllowedEvents, kind) {

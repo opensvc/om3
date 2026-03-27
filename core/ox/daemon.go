@@ -26,6 +26,7 @@ func init() {
 		newCmdDaemonShutdown(),
 		newCmdDaemonStop(),
 		commoncmd.NewCmdDaemonAuth(),
+		commoncmd.NewCmdDaemonAudit(),
 		commoncmd.NewCmdDaemonLog(),
 		commoncmd.NewCmdDaemonStatus(),
 	)

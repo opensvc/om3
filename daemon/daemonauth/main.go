@@ -113,6 +113,8 @@ func Start(ctx context.Context, authCfg any) error {
 	}
 	Strategy.setStrategy(s)
 	sub := pubsub.SubFromContext(ctx, "daemon.auth")
+	sub.AddFilter(&msgbus.AuditStart{})
+	sub.AddFilter(&msgbus.AuditStop{})
 	sub.AddFilter(&msgbus.ClusterConfigUpdated{}, pubsub.Label{"node", hostname.Hostname()})
 	sub.Start()
 
@@ -137,17 +139,24 @@ func Start(ctx context.Context, authCfg any) error {
 						Strategy.setStrategy(s)
 					}
 				}
-			case <-sub.C:
-				newSetting := signature(authCfg)
-				if newSetting != currentSetting {
-					log.Infof("listener setting changed, refresh authentication strategies")
-					s, err := initStategies(ctx, authCfg)
-					if err != nil {
-						log.Errorf("failed to refresh authentication strategies: %s", err)
-					} else {
-						Strategy.setStrategy(s)
-						currentSetting = newSetting
-						ticker.Reset(authRefreshInterval)
+			case i := <-sub.C:
+				switch c := i.(type) {
+				case *msgbus.AuditStart:
+					log.HandleAuditStart(c.Q, c.Subsystems, "daemonauth")
+				case *msgbus.AuditStop:
+					log.HandleAuditStop(c.Q, c.Subsystems, "daemonauth")
+				case *msgbus.ClusterConfigUpdated:
+					newSetting := signature(authCfg)
+					if newSetting != currentSetting {
+						log.Infof("listener setting changed, refresh authentication strategies")
+						s, err := initStategies(ctx, authCfg)
+						if err != nil {
+							log.Errorf("failed to refresh authentication strategies: %s", err)
+						} else {
+							Strategy.setStrategy(s)
+							currentSetting = newSetting
+							ticker.Reset(authRefreshInterval)
+						}
 					}
 				}
 			}

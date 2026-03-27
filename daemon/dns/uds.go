@@ -13,6 +13,8 @@ import (
 	"time"
 
 	"github.com/opensvc/om3/v3/core/rawconfig"
+	"github.com/prometheus/client_golang/prometheus"
+	"github.com/prometheus/client_golang/prometheus/promauto"
 )
 
 type (
@@ -58,6 +60,22 @@ type (
 	request struct {
 		Method string `json:"method"`
 	}
+)
+
+var (
+	requestMethodCount = promauto.NewCounterVec(
+		prometheus.CounterOpts{
+			Namespace: "opensvc",
+			Subsystem: "dns",
+			Name:      "method_requests_total",
+		}, []string{"method"})
+
+	requestCount = promauto.NewCounterVec(
+		prometheus.CounterOpts{
+			Namespace: "opensvc",
+			Subsystem: "dns",
+			Name:      "requests_total",
+		}, []string{})
 )
 
 func (t *Manager) getAllDomainMetadata(b []byte) getAllDomainMetadataResponse {
@@ -334,6 +352,8 @@ func (t *Manager) startUDSListener() error {
 				t.log.Errorf("%d: close connection (%s), served %d requests", id, err, reqCount)
 				return
 			}
+			requestMethodCount.WithLabelValues(req.Method).Inc()
+			requestCount.WithLabelValues().Inc()
 			switch req.Method {
 			case "getAllDomainMetadata":
 				_ = send(id, conn, t.getAllDomainMetadata(message))
@@ -374,10 +394,12 @@ func (t *Manager) startUDSListener() error {
 			// TODO: limit number conn routines ?
 			t.wg.Add(1)
 			i += 1
-			go func() {
+			id := i
+			c := conn
+			go func(id uint64, conn net.Conn) {
 				defer t.wg.Done()
-				serve(i, conn)
-			}()
+				serve(id, conn)
+			}(id, c)
 		}
 	}
 
