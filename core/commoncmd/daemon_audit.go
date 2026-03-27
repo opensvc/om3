@@ -10,6 +10,7 @@ import (
 	"io"
 	"net/http"
 	"strings"
+	"time"
 
 	"github.com/fatih/color"
 	"github.com/opensvc/om3/v3/core/client"
@@ -174,7 +175,7 @@ func auditParse(ctx context.Context, body io.Reader, eventC chan<- string, errC 
 
 func newAuditConsoleWriter() io.Writer {
 	w := zerolog.NewConsoleWriter()
-	w.TimeFormat = "2006-01-02T15:04:05.000Z07:00"
+	w.TimeFormat = time.RFC3339Nano
 	w.NoColor = color.NoColor
 	w.FormatLevel = logging.FormatLevel
 	w.FormatFieldName = func(i any) string { return "" }
