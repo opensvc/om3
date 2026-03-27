@@ -146,17 +146,17 @@ func Start(ctx context.Context, authCfg any) error {
 				case *msgbus.AuditStop:
 					log.HandleAuditStop(c.Q, c.Subsystems, "daemonauth")
 				case *msgbus.ClusterConfigUpdated:
-				}
-				newSetting := signature(authCfg)
-				if newSetting != currentSetting {
-					log.Infof("listener setting changed, refresh authentication strategies")
-					s, err := initStategies(ctx, authCfg)
-					if err != nil {
-						log.Errorf("failed to refresh authentication strategies: %s", err)
-					} else {
-						Strategy.setStrategy(s)
-						currentSetting = newSetting
-						ticker.Reset(authRefreshInterval)
+					newSetting := signature(authCfg)
+					if newSetting != currentSetting {
+						log.Infof("listener setting changed, refresh authentication strategies")
+						s, err := initStategies(ctx, authCfg)
+						if err != nil {
+							log.Errorf("failed to refresh authentication strategies: %s", err)
+						} else {
+							Strategy.setStrategy(s)
+							currentSetting = newSetting
+							ticker.Reset(authRefreshInterval)
+						}
 					}
 				}
 			}
