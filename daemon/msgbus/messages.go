@@ -279,6 +279,9 @@ func KindToT(kind string) (any, error) {
 // EventToMessage converts event.Event message as pubsub.Messager
 func EventToMessage(ev event.Event) (pubsub.Messager, error) {
 	var c pubsub.Messager
+	if ev.Data == nil {
+		return c, nil
+	}
 	i, err := KindToT(ev.Kind)
 	if err != nil {
 		return c, errors.New("can't decode " + ev.Kind)
