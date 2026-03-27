@@ -145,6 +145,7 @@ func Start(ctx context.Context, authCfg any) error {
 					log.HandleAuditStart(c.Q, c.Subsystems, "daemonauth")
 				case *msgbus.AuditStop:
 					log.HandleAuditStop(c.Q, c.Subsystems, "daemonauth")
+				case *msgbus.ClusterConfigUpdated:
 				}
 				newSetting := signature(authCfg)
 				if newSetting != currentSetting {
