@@ -122,7 +122,8 @@ func (t *T) Info(ctx context.Context) (resource.InfoKeys, error) {
 	m := make(resource.InfoKeys, 0)
 	m = append(m,
 		resource.InfoKey{Key: "group", Value: t.Group},
-		resource.InfoKey{Key: "instance", Value: fmt.Sprint(t.Instance)},
+		resource.InfoKey{Key: "instance", Value: fmt.Sprintf("%d", t.Instance)},
+		resource.InfoKey{Key: "split_start", Value: fmt.Sprintf("%v", t.SplitStart)},
 	)
 	return m, nil
 }
