@@ -107,7 +107,7 @@ func NewUDS(config Config) (apiClient *api.ClientWithResponses, err error) {
 //	- Bearer
 //	- Authorization
 func NewInet(config Config) (apiClient *api.ClientWithResponses, err error) {
-	httpClient, err := httpclientcache.Client(httpclientcache.Options{
+	cachedClient, err := httpclientcache.Client(httpclientcache.Options{
 		CertFile:           config.Certificate,
 		KeyFile:            config.Key,
 		Timeout:            config.Timeout,
@@ -118,10 +118,12 @@ func NewInet(config Config) (apiClient *api.ClientWithResponses, err error) {
 		return nil, err
 	}
 
-	baseTransport := httpClient.Transport
+	baseTransport := cachedClient.Transport
 	if baseTransport == nil {
 		baseTransport = http.DefaultTransport
 	}
+
+	httpClient := *cachedClient
 	httpClient.Transport = &RefreshTransport{
 		Base:     baseTransport,
 		baseURL:  config.URL,
@@ -134,7 +136,7 @@ func NewInet(config Config) (apiClient *api.ClientWithResponses, err error) {
 		config.URL += fmt.Sprintf(":%d", daemonenv.HTTPPort)
 	}
 
-	options := []api.ClientOption{api.WithHTTPClient(httpClient)}
+	options := []api.ClientOption{api.WithHTTPClient(&httpClient)}
 
 	if config.Username != "" && config.Password != "" {
 		provider, err := securityprovider.NewSecurityProviderBasicAuth(config.Username, config.Password)
