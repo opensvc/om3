@@ -31,7 +31,7 @@ type (
 		ProvisionStart(context.Context) error
 	}
 	UnprovisionStoper interface {
-		UnprovisionStop(context.Context) error
+		UnprovisionStop(ctx context.Context, leader bool) error
 	}
 )
 
@@ -118,7 +118,7 @@ func Unprovision(ctx context.Context, r Driver, leader bool) error {
 		} else {
 			r.Log().Infof("unprovision is disabled, the current resource provisioning state is %s", prov)
 		}
-		if err := unprovisionStop(ctx, r); err != nil {
+		if err := unprovisionStop(ctx, r, leader); err != nil {
 			return err
 		}
 		r.Log().Infof("unprovision is disabled or n/a")
@@ -207,7 +207,8 @@ func provisionAsFollower(ctx context.Context, t Driver) error {
 }
 
 func unprovision(ctx context.Context, t Driver, leader bool) error {
-	if err := unprovisionStop(ctx, t); err != nil {
+	t.Log().Infof("unprovision leader: %#v", leader)
+	if err := unprovisionStop(ctx, t, leader); err != nil {
 		return err
 	}
 	if err := SCSIPersistentReservationStop(ctx, t); err != nil {
@@ -222,10 +223,10 @@ func unprovision(ctx context.Context, t Driver, leader bool) error {
 	return nil
 }
 
-func unprovisionStop(ctx context.Context, t Driver) error {
+func unprovisionStop(ctx context.Context, t Driver, leader bool) error {
 	switch o := t.(type) {
 	case UnprovisionStoper:
-		return o.UnprovisionStop(ctx)
+		return o.UnprovisionStop(ctx, leader)
 	case stopper:
 		return o.Stop(ctx)
 	default:
