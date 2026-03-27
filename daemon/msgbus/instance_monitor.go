@@ -19,7 +19,7 @@ func (data *ClusterData) onInstanceMonitorDeleted(m *InstanceMonitorDeleted) {
 // onInstanceMonitorUpdated updates .cluster.node.<node>.instance.<path>.monitor
 func (data *ClusterData) onInstanceMonitorUpdated(m *InstanceMonitorUpdated) {
 	s := m.Path.String()
-	value := &m.Value
+	value := m.Value.DeepCopy()
 	if cnode, ok := data.Cluster.Node[m.Node]; ok {
 		if cnode.Instance == nil {
 			cnode.Instance = make(map[string]instance.Instance)
