@@ -394,10 +394,12 @@ func (t *Manager) startUDSListener() error {
 			// TODO: limit number conn routines ?
 			t.wg.Add(1)
 			i += 1
-			go func() {
+			id := i
+			c := conn
+			go func(id uint64, conn net.Conn) {
 				defer t.wg.Done()
-				serve(i, conn)
-			}()
+				serve(id, conn)
+			}(id, c)
 		}
 	}
 
