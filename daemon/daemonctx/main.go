@@ -5,7 +5,7 @@ import (
 	"time"
 
 	"github.com/google/uuid"
-	"github.com/opensvc/om3/v3/daemon/auditstate"
+	"github.com/opensvc/om3/v3/util/auditstate"
 	"github.com/opensvc/om3/v3/util/plog"
 	"golang.org/x/time/rate"
 
