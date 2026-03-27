@@ -16,7 +16,6 @@ import (
 	"strings"
 	"time"
 
-	"github.com/opensvc/om3/v3/core/actioncontext"
 	"github.com/opensvc/om3/v3/core/naming"
 	"github.com/opensvc/om3/v3/core/provisioned"
 	"github.com/opensvc/om3/v3/core/resource"
@@ -68,6 +67,8 @@ type T struct {
 
 	// SplitStart must be set to allow start on a SSUS S-VOL (split pair)
 	SplitStart bool `json:"split_start"`
+
+	pairStatusCache *xpPairStatus
 }
 
 // pairdisplayLine represents one parsed line of pairdisplay -g <group> -l output.
@@ -101,6 +102,12 @@ func New() resource.Driver {
 	return &T{}
 }
 
+func (t *T) Configure() error {
+	log := t.Log().AddPrefix(t.Name() + ": ")
+	t.SetLoggerForTest(log)
+	return nil
+}
+
 // Label returns a short human-readable description of the resource.
 func (t *T) Label(_ context.Context) string {
 	return fmt.Sprintf("horcm%d/%s", t.Instance, t.Group)
@@ -126,10 +133,10 @@ func (t *T) Info(ctx context.Context) (resource.InfoKeys, error) {
 // COPY mean a resync is in progress — reported as Warn.
 // PSUS/PDUB are reported as Down.
 func (t *T) Status(ctx context.Context) status.T {
-	ps, err := t.pairStatus(ctx)
+	ps, err := t.cachedPairStatus(ctx)
 	if err != nil {
 		t.StatusLog().Error("%s", err)
-		return status.Undef
+		return status.NotApplicable
 	}
 	if len(ps.Lines) == 0 {
 		t.StatusLog().Info("no volume pairs")
@@ -137,19 +144,20 @@ func (t *T) Status(ctx context.Context) status.T {
 	}
 
 	for _, l := range ps.Lines {
-		msg := fmt.Sprintf("pair volume:%s role:%s state:%s", l.Volume, l.Role, l.State)
+		fmt := "pair volume:%s role:%s state:%s copied:%s"
+		args := []any{l.Volume, l.Role, l.State, l.Copied + "%"}
 		if l.Role == roleSMPL {
-			t.StatusLog().Info(msg)
+			t.StatusLog().Info(fmt, args...)
 		}
 		switch l.State {
 		case pairStatePAIR:
-			t.StatusLog().Info(msg)
+			t.StatusLog().Info(fmt, args...)
 		case pairStateCOPY, pairStateSYNC, pairStateSSUS, pairStatePSUS:
-			t.StatusLog().Warn(msg)
+			t.StatusLog().Warn(fmt, args...)
 		case "-":
-			t.StatusLog().Warn(msg)
+			t.StatusLog().Warn(fmt, args...)
 		default:
-			t.StatusLog().Error(msg)
+			t.StatusLog().Error(fmt, args...)
 		}
 	}
 	return status.NotApplicable
@@ -161,7 +169,7 @@ func (t *T) Boot(ctx context.Context) error {
 
 // Provisioned returns whether the XP8 pairs exist.
 func (t *T) Provisioned(ctx context.Context) (provisioned.T, error) {
-	ps, err := t.pairStatus(ctx)
+	ps, err := t.cachedPairStatus(ctx)
 	if err != nil {
 		return provisioned.False, err
 	}
@@ -173,7 +181,7 @@ func (t *T) Provisioned(ctx context.Context) (provisioned.T, error) {
 
 // SyncResync re-establishes the replication after a split.
 func (t *T) Resync(ctx context.Context) error {
-	ps, err := t.pairStatus(ctx)
+	ps, err := t.cachedPairStatus(ctx)
 	if err != nil {
 		return err
 	}
@@ -185,7 +193,7 @@ func (t *T) Resync(ctx context.Context) error {
 		}
 	}
 	if !needResync {
-		t.Log().Infof("group %s already in PAIR state, nothing to do", t.Group)
+		t.Log().Infof("already in PAIR state, nothing to do")
 		return nil
 	}
 	return t.resync(ctx)
@@ -193,7 +201,7 @@ func (t *T) Resync(ctx context.Context) error {
 
 // Abort prevents starting the instance when we can forsee it will fail at this resource.
 func (t *T) Abort(ctx context.Context) bool {
-	ps, err := t.pairStatus(ctx)
+	ps, err := t.cachedPairStatus(ctx)
 	if err != nil {
 		t.Log().Warnf("abort? %s", err)
 		return false
@@ -216,15 +224,6 @@ func (t *T) Abort(ctx context.Context) bool {
 			if !t.SplitStart {
 				t.Log().Infof("abort! %s role is %s and state is %s, set the %s.split_start=true keyword if you really want to start even if the replication is suspended (the datasets will diverge and one will need to be dropped at some point)", t.Name(), role, state, t.RID())
 				return true
-			}
-			if !actioncontext.IsForce(ctx) {
-				if delta := ps.MinDelta(); delta < 0 {
-					t.Log().Infof("abort! %s role is %s and state is %s with unknown diff, you have to manually return to a sane state or set --force.", t.Name(), role, state)
-					return true
-				} else if delta < 100 {
-					t.Log().Infof("abort! %s role is %s and state is %s with diff, you have to manually return to a sane state or set --force.", t.Name(), role, state)
-					return true
-				}
 			}
 		case pairStatePAIR:
 		default:
@@ -249,20 +248,22 @@ func (t *T) Start(ctx context.Context) error {
 	if err := t.testOrStartDaemon(ctx); err != nil {
 		return err
 	}
-	ps, err := t.pairStatus(ctx)
+	ps, err := t.cachedPairStatus(ctx)
 	if err != nil {
 		return err
 	}
 	role := ps.Role()
 	state := ps.Status()
+	copied := ps.MinDeltaString()
+	t.Log().Infof("role:%s state:%s copied:%s", role, state, copied)
 	switch role {
 	case roleSMPL:
 	case rolePVOL:
 		switch state {
 		case pairStatePAIR, pairStatePSUS, pairStatePSUE:
-			t.Log().Infof("%s role is %s and state is %s.", t.Name(), role, state)
+			t.Log().Infof("assume already writable")
 		default:
-			return fmt.Errorf("%s role is %s and state is unexpected %s, you have to manually return to a sane state.", t.Name(), role, state)
+			return fmt.Errorf("unexpected %s:%s state, you have to manually return to a sane state", role, state)
 		}
 	case roleSVOL:
 		switch state {
@@ -275,18 +276,11 @@ func (t *T) Start(ctx context.Context) error {
 			err = t.failover(ctx, ps)
 		case pairStateSSUS, pairStateSSUE, pairStateSSWS:
 			if !t.SplitStart {
-				return fmt.Errorf("%s role is %s and state is %s, set the %s.split_start=true keyword if you really want to start even if the replication is suspended (the datasets will diverge and one will need to be dropped at some point)", t.Name(), role, state, t.RID())
+				return fmt.Errorf("set the %s.split_start=true keyword if you really want to start even if the replication is suspended (the datasets will diverge and one will need to be dropped at some point)", t.RID())
 			}
-			if !actioncontext.IsForce(ctx) {
-				if delta := ps.MinDelta(); delta < 0 {
-					return fmt.Errorf("%s role is %s and state is %s with unknown diff, you have to manually return to a sane state or set --force.", t.Name(), role, state)
-				} else if delta < 100 {
-					return fmt.Errorf("%s role is %s and state is %s with diff, you have to manually return to a sane state or set --force.", t.Name(), role, state)
-				}
-			}
-			// no need to failover, the S-VOL should be writeable
+			t.Log().Infof("assume already writable")
 		default:
-			return fmt.Errorf("%s role is S-VOL and state is unexpected %s , you have to manually return to a sane state.", t.Name(), state)
+			return fmt.Errorf("unexpected %s:%s state, you have to manually return to a sane state", role, state)
 		}
 	default:
 		return fmt.Errorf("invalid role: %s", role)
@@ -311,7 +305,7 @@ func (t *T) failover(ctx context.Context, ps *xpPairStatus) error {
 		if err := t.waitForNotState(ctx, pairStateCOPY, pairStatePAIR); err != nil {
 			return err
 		}
-		ps, err = t.pairStatus(ctx)
+		ps, err = t.cachedPairStatus(ctx)
 		if err != nil {
 			return err
 		}
@@ -322,7 +316,7 @@ func (t *T) failover(ctx context.Context, ps *xpPairStatus) error {
 			}
 			return t.waitForState(ctx, pairStatePAIR)
 		}
-		return fmt.Errorf("the takeover failed with a pair end state %s we have no fallback plan for, you have to manually return to a sane state.", state)
+		return fmt.Errorf("the takeover failed with a pair end state %s we have no fallback plan for, you have to manually return to a sane state", state)
 	}
 	return nil
 }
@@ -330,7 +324,7 @@ func (t *T) failover(ctx context.Context, ps *xpPairStatus) error {
 // SyncSplit splits the pair (suspend replication), making the R-VOL
 // read-write accessible on the remote side.
 func (t *T) Split(ctx context.Context) error {
-	ps, err := t.pairStatus(ctx)
+	ps, err := t.cachedPairStatus(ctx)
 	if err != nil {
 		return err
 	}
@@ -342,7 +336,7 @@ func (t *T) Split(ctx context.Context) error {
 		}
 	}
 	if !needSplit {
-		t.Log().Infof("group %s already in PSUS state, nothing to do", t.Group)
+		t.Log().Infof("already in PSUS state, nothing to do")
 		return nil
 	}
 	return t.split(ctx)
@@ -363,11 +357,26 @@ func (t *T) takeover(ctx context.Context) (int, error) {
 		command.WithVarArgs("-g", t.Group, "-I"+t.instanceString()),
 		command.WithLogger(t.Log()),
 		command.WithCommandLogLevel(zerolog.InfoLevel),
-		command.WithStdoutLogLevel(zerolog.InfoLevel),
-		command.WithStderrLogLevel(zerolog.ErrorLevel),
+		command.WithBufferedStdout(),
+		command.WithBufferedStderr(),
 		command.WithIgnoredExitCodes(0, 1, 2, 3, 4, 5, 225),
 	)
 	err := cmd.Run()
+	if err != nil {
+		if b := cmd.Stdout(); len(b) > 0 {
+			t.Log().Infof(string(b))
+		}
+		if b := cmd.Stderr(); len(b) > 0 {
+			t.Log().Errorf(string(b))
+		}
+	} else {
+		if b := cmd.Stdout(); len(b) > 0 {
+			t.Log().Infof(string(b))
+		}
+		if b := cmd.Stderr(); len(b) > 0 {
+			t.Log().Infof(string(b))
+		}
+	}
 	exitCode := cmd.ExitCode()
 	return exitCode, err
 }
@@ -520,7 +529,15 @@ func (t *T) pairStatus(ctx context.Context) (*xpPairStatus, error) {
 	if err != nil {
 		return nil, fmt.Errorf("pairdisplay failed: %w", err)
 	}
-	return parsePairdisplay(out), nil
+	t.pairStatusCache = parsePairdisplay(out)
+	return t.pairStatusCache, nil
+}
+
+func (t *T) cachedPairStatus(ctx context.Context) (*xpPairStatus, error) {
+	if t.pairStatusCache != nil {
+		return t.pairStatusCache, nil
+	}
+	return t.pairStatus(ctx)
 }
 
 func (t *T) pairEvWait(ctx context.Context) error {
@@ -588,6 +605,10 @@ func parsePairdisplay(out string) *xpPairStatus {
 
 func (t *xpPairStatus) IsSSUSWritable() bool {
 	return true
+}
+
+func (t *xpPairStatus) MinDeltaString() string {
+	return fmt.Sprint(t.MinDelta()) + "%"
 }
 
 func (t *xpPairStatus) MinDelta() int {
@@ -695,12 +716,12 @@ func (t *T) waitForState(ctx context.Context, states ...string) error {
 		for _, l := range ps.Lines {
 			if _, ok := stateSet[l.State]; !ok {
 				allReached = false
-				t.Log().Debugf("waiting for %s/%s: current state %s",
-					t.Name(), l.Volume, l.State)
+				t.Log().Debugf("%s: waiting for state %s: current state %s", l.Volume, states, l.State)
 				break
 			}
 		}
 		if allReached {
+			t.Log().Debugf("all pair volumes reached state %s", states)
 			return nil
 		}
 		select {
@@ -725,12 +746,12 @@ func (t *T) waitForNotState(ctx context.Context, states ...string) error {
 		for _, l := range ps.Lines {
 			if _, ok := stateSet[l.State]; ok {
 				allReached = false
-				t.Log().Debugf("waiting for %s/%s: current state not %s",
-					t.Name(), l.Volume, l.State)
+				t.Log().Debugf("%s: waiting for state not %s: current state %s", l.Volume, states, l.State)
 				break
 			}
 		}
 		if allReached {
+			t.Log().Debugf("all pair volumes reached state not %s", states)
 			return nil
 		}
 		select {
@@ -762,7 +783,7 @@ func (t *T) runCmdOutput(ctx context.Context, name string, args ...string) (stri
 }
 
 func (t *T) SubDevices(ctx context.Context) device.L {
-	ps, err := t.pairStatus(ctx)
+	ps, err := t.cachedPairStatus(ctx)
 	if err != nil {
 		t.Log().Tracef("SubDevices: pairStatus: %s", err)
 		return device.L{}
