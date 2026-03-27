@@ -256,7 +256,7 @@ func (t *T) Start(ctx context.Context) error {
 	}
 	role := ps.Role()
 	state := ps.Status()
-	copied := ps.MinDeltaString()
+	copied := ps.MinCopiedString()
 	t.Log().Infof("role:%s state:%s copied:%s", role, state, copied)
 	switch role {
 	case roleSMPL:
@@ -609,11 +609,11 @@ func (t *xpPairStatus) IsSSUSWritable() bool {
 	return true
 }
 
-func (t *xpPairStatus) MinDeltaString() string {
-	return fmt.Sprint(t.MinDelta()) + "%"
+func (t *xpPairStatus) MinCopiedString() string {
+	return fmt.Sprint(t.MinCopied()) + "%"
 }
 
-func (t *xpPairStatus) MinDelta() int {
+func (t *xpPairStatus) MinCopied() int {
 	i := 100
 	for _, line := range t.Lines {
 		copied, err := strconv.Atoi(line.Copied)
