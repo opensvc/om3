@@ -1,1 +1,1 @@
-horcm_inst is the local HORCM instance number (used with -g and -I flags).
+The local HORCM instance number (used with -I flags).

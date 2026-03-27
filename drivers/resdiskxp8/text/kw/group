@@ -1,1 +1,1 @@
-dev_group is the device group name as defined in horcm.conf.
+The pair volume group name as defined in horcm.conf (used with -g flags in commands).
