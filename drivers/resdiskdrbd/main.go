@@ -397,7 +397,12 @@ func (t *T) Label(_ context.Context) string {
 }
 
 // UnprovisionStop is a noop to avoid calling the normal Stop before unprovision
-func (t *T) UnprovisionStop(_ context.Context) error {
+func (t *T) UnprovisionStop(ctx context.Context, leader bool) error {
+	if !leader {
+		t.Log().Debugf("stop for unprovision leader")
+		return t.Stop(ctx)
+	}
+	t.Log().Tracef("bypass stop for unprovision leader")
 	return nil
 }
 
