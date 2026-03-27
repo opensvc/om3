@@ -163,6 +163,9 @@
     1/ it is documented the exitcode is the instance status so we can not be ambiguous.
     2/ it is optimized for efficiency as the daemon executes this frequently to refresh instances status data.
 
+* `--format` is no longer supported with `print status`. The `om svc1 print config --format json | om svc2 create`
+  pattern can be replaced by `om svc1 config show | om svc2 create --config=-`
+
 * **Removed:**
     * `om node reboot`
 

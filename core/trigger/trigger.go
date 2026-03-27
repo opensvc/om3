@@ -29,6 +29,7 @@ const (
 	SyncDRP
 	SyncAll
 	SyncResync
+	SyncSplit
 	SyncUpdate
 	SyncRestore
 	Run
@@ -56,6 +57,7 @@ var (
 		SyncDRP:      "syncdrp",
 		SyncAll:      "syncall",
 		SyncResync:   "syncresync",
+		SyncSplit:    "syncsplit",
 		SyncUpdate:   "syncupdate",
 		SyncRestore:  "syncrestore",
 		Run:          "run",

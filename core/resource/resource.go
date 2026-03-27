@@ -18,6 +18,7 @@ import (
 	"github.com/rs/zerolog"
 
 	"github.com/opensvc/om3/v3/core/actioncontext"
+	"github.com/opensvc/om3/v3/core/actionrollback"
 	"github.com/opensvc/om3/v3/core/driver"
 	"github.com/opensvc/om3/v3/core/env"
 	"github.com/opensvc/om3/v3/core/manifest"
@@ -924,6 +925,24 @@ func Resync(ctx context.Context, r Driver) error {
 	return nil
 }
 
+// Split execute the resource Split function, if implemented by the driver.
+func Split(ctx context.Context, r Driver) error {
+	var i any = r
+	s, ok := i.(splitter)
+	if !ok {
+		return ErrActionNotSupported
+	}
+	defer EvalStatus(ctx, r)
+	if r.IsDisabled() || r.IsActionDisabled() {
+		return ErrDisabled
+	}
+	Setenv(r)
+	if err := s.Split(ctx); err != nil {
+		return err
+	}
+	return nil
+}
+
 // Full execute the resource Update function, if implemented by the driver.
 func Full(ctx context.Context, r Driver) error {
 	var i any = r
@@ -1220,7 +1239,13 @@ func SCSIPersistentReservationStart(ctx context.Context, r Driver) error {
 	if hdl := newSCSIPersistentRerservationHandle(ctx, r); hdl == nil {
 		return nil
 	} else {
-		return hdl.Start()
+		if err := hdl.Start(); err != nil {
+			return err
+		}
+		actionrollback.Register(ctx, func(ctx context.Context) error {
+			return hdl.Stop()
+		})
+		return nil
 	}
 }
 
