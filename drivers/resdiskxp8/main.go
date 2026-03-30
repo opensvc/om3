@@ -33,7 +33,7 @@ const (
 	pairStatePSUS = "PSUS"
 	pairStatePSUE = "PSUE"
 	pairStateSSUS = "SSUS"
-	pairStateSSUE = "PSUE"
+	pairStateSSUE = "SSUE"
 	pairStateSSWS = "SSWS"
 	pairStateSYNC = "SYNC"
 	pairStatePDUB = "PDUB"
