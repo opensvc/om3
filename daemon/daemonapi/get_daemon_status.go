@@ -45,6 +45,11 @@ func (a *DaemonAPI) GetClusterStatus(ctx echo.Context, params api.GetClusterStat
 
 	status := a.Daemondata.ClusterData()
 
+	if params.Selector != nil || params.Namespace != nil {
+		// Deep copy to avoid modifying the original
+		status = status.DeepCopy()
+	}
+
 	// Explicit object selector filtering
 	if params.Selector != nil {
 		status = status.WithSelector(*params.Selector)
