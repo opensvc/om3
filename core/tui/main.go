@@ -2216,12 +2216,12 @@ func (t *App) openTtyTerminal(insecure bool, url string) {
 func (t *App) updateConfigView() {
 	row, col := t.objects.GetSelection()
 	switch {
-	case !t.viewPath.IsZero():
-		t.updateObjectConfigView()
 	case t.viewNode != "":
 		t.updateNodeConfigView()
 	case row == 0 && col == 1:
 		t.updateClusterConfigView()
+	case !t.viewPath.IsZero():
+		t.updateObjectConfigView()
 	}
 }
 

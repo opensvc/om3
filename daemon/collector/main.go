@@ -306,6 +306,9 @@ func (t *T) startSubscriptions() *pubsub.Subscription {
 	sub := pubsub.SubFromContext(t.ctx, "daemon.collector", t.subQS)
 	labelLocalhost := pubsub.Label{"node", t.localhost}
 
+	sub.AddFilter(&msgbus.AuditStart{})
+	sub.AddFilter(&msgbus.AuditStop{})
+
 	sub.AddFilter(&msgbus.ClusterConfigUpdated{}, labelLocalhost)
 
 	sub.AddFilter(&msgbus.InstanceConfigUpdated{})
@@ -351,6 +354,10 @@ func (t *T) loop() {
 		select {
 		case ev := <-sub.C:
 			switch c := ev.(type) {
+			case *msgbus.AuditStart:
+				t.log.HandleAuditStart(c.Q, c.Subsystems, "collector")
+			case *msgbus.AuditStop:
+				t.log.HandleAuditStop(c.Q, c.Subsystems, "collector")
 			case *msgbus.ClusterConfigUpdated:
 				t.onClusterConfigUpdated(c)
 			case *msgbus.InstanceConfigDeleted:

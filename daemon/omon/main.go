@@ -12,6 +12,7 @@ package omon
 import (
 	"context"
 	"errors"
+	"fmt"
 	"slices"
 	"strings"
 	"time"
@@ -23,6 +24,7 @@ import (
 	"github.com/opensvc/om3/v3/core/provisioned"
 	"github.com/opensvc/om3/v3/core/status"
 	"github.com/opensvc/om3/v3/core/topology"
+	"github.com/opensvc/om3/v3/daemon/daemonctx"
 	"github.com/opensvc/om3/v3/daemon/msgbus"
 	"github.com/opensvc/om3/v3/util/hostname"
 	"github.com/opensvc/om3/v3/util/plog"
@@ -159,6 +161,9 @@ func (t *Manager) startSubscriptions(subQS pubsub.QueueSizer) {
 	sub := pubsub.SubFromContext(t.ctx, "daemon.omon "+pathString, subQS)
 
 	labelPath := pubsub.Label{"path", pathString}
+	sub.AddFilter(&msgbus.AuditStart{})
+	sub.AddFilter(&msgbus.AuditStop{})
+
 	sub.AddFilter(&msgbus.InstanceMonitorDeleted{}, labelPath)
 	sub.AddFilter(&msgbus.InstanceMonitorUpdated{}, labelPath)
 
@@ -177,6 +182,7 @@ func (t *Manager) startSubscriptions(subQS pubsub.QueueSizer) {
 func (t *Manager) worker() {
 	t.log.Infof("started")
 	defer t.log.Infof("done")
+	t.attachActiveAuditIfAny()
 
 	// Initiate cache
 	for n, v := range instance.MonitorData.GetByPath(t.path) {
@@ -230,6 +236,18 @@ func (t *Manager) worker() {
 			return
 		case i := <-t.sub.C:
 			switch c := i.(type) {
+			case *msgbus.AuditStart:
+				subsystem := "omon"
+				if !slices.Contains(c.Subsystems, subsystem) {
+					subsystem = "omon:" + t.path.String()
+				}
+				t.log.HandleAuditStart(c.Q, c.Subsystems, subsystem)
+			case *msgbus.AuditStop:
+				subsystem := "omon"
+				if !slices.Contains(c.Subsystems, subsystem) {
+					subsystem = "omon:" + t.path.String()
+				}
+				t.log.HandleAuditStop(c.Q, c.Subsystems, subsystem)
 			case *msgbus.InstanceMonitorUpdated:
 				t.srcEvent = c
 				t.instMonitor[c.Node] = c.Value
@@ -483,6 +501,22 @@ func (t *Manager) updateStatus() {
 		updatePlacementState()
 	}
 	t.update()
+}
+
+func (t *Manager) attachActiveAuditIfAny() {
+	reg := daemonctx.AuditRegistry(t.ctx)
+	if reg == nil {
+		return
+	}
+	subsystem := "omon"
+	sess, ok := reg.Snapshot()
+	if !ok {
+		return
+	}
+	if !slices.Contains(sess.Subsystems, subsystem) {
+		subsystem = fmt.Sprintf("%s:%s", subsystem, t.path.String())
+	}
+	t.log.HandleAuditStart(sess.Q, sess.Subsystems, subsystem)
 }
 
 func (t *Manager) delete() {

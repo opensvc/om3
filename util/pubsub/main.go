@@ -225,6 +225,11 @@ type (
 	Subscriber interface {
 		Sub(string, ...interface{}) *Subscription
 	}
+
+	Auditor interface {
+		AuditStart(q chan plog.LogMessage) error
+		AuditStop(q chan plog.LogMessage)
+	}
 )
 
 func NewLabels(l ...string) Labels {
@@ -782,6 +787,24 @@ func (b *Bus) Pub(v Messager, labels ...Label) {
 		return
 	}
 	<-done
+}
+
+func (b *Bus) AuditStart(q chan plog.LogMessage) error {
+	err := b.log.SetAuditQ(q)
+	if err != nil {
+		b.log.Warnf("failed to set audit q: %v", err)
+		return err
+	}
+	b.log.Debugf("start auditing")
+	return nil
+}
+
+func (b *Bus) AuditStop(q chan plog.LogMessage) {
+	err := b.log.UnsetAuditQ(q)
+	if err != nil {
+		b.log.Warnf("failed to unset audit q: %v", err)
+	}
+	b.log.Debugf("stop auditing")
 }
 
 func cmdPubFactory(v Messager, labels ...Label) *cmdPub {

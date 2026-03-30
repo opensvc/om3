@@ -68,6 +68,9 @@ func logWithFamilyAndAddr(family, addr string) *plog.Logger {
 func RateLimiterWithConfig(parent context.Context) echo.MiddlewareFunc {
 	family := daemonctx.LsnrType(parent)
 	log := logWithFamilyAndAddr(family, daemonctx.ListenAddr(parent))
+	if q := daemonctx.LogQueue(parent); q != nil {
+		log = log.WithQ(q)
+	}
 
 	rateLimiterConfig := daemonctx.ListenRateLimiterConfig(parent)
 	if rateLimiterConfig.Rate == 0 {
@@ -119,6 +122,9 @@ func RateLimiterWithConfig(parent context.Context) echo.MiddlewareFunc {
 func LogMiddleware(parent context.Context) echo.MiddlewareFunc {
 	family := daemonctx.LsnrType(parent)
 	log := logWithFamilyAndAddr(family, daemonctx.ListenAddr(parent))
+	if q := daemonctx.LogQueue(parent); q != nil {
+		log = log.WithQ(q)
+	}
 
 	return func(next echo.HandlerFunc) echo.HandlerFunc {
 		return func(c echo.Context) error {
@@ -274,6 +280,13 @@ func UIMiddleware(_ context.Context, prefix string, specURL string) echo.Middlew
 
 func GetLogger(c echo.Context) *plog.Logger {
 	return c.Get("logger").(*plog.Logger)
+}
+
+func uuidFromContext(c echo.Context) string {
+	if u, ok := c.Get("uuid").(uuid.UUID); ok {
+		return u.String()
+	}
+	return ""
 }
 
 // userFromContext returns the logged-in userFromContext information stored in the request context.

@@ -31,6 +31,7 @@ import (
 	"github.com/opensvc/om3/v3/core/schedule"
 	"github.com/opensvc/om3/v3/core/topology"
 	"github.com/opensvc/om3/v3/core/xconfig"
+	"github.com/opensvc/om3/v3/daemon/daemonctx"
 	"github.com/opensvc/om3/v3/daemon/msgbus"
 	"github.com/opensvc/om3/v3/util/file"
 	"github.com/opensvc/om3/v3/util/hostname"
@@ -152,6 +153,8 @@ func (t *Manager) startSubscriptions() {
 	labelLocalhost := pubsub.Label{"node", t.localhost}
 
 	t.sub = pubsub.SubFromContext(t.ctx, "daemon.icfg "+t.path.String())
+	t.sub.AddFilter(&msgbus.AuditStart{})
+	t.sub.AddFilter(&msgbus.AuditStop{})
 	t.sub.AddFilter(&msgbus.ConfigFileRemoved{}, labelPath)
 	if t.path.String() != clusterPathString {
 		t.sub.AddFilter(&msgbus.ConfigFileUpdated{}, labelPath)
@@ -183,6 +186,7 @@ func (t *Manager) worker() {
 		return
 	}
 	defer t.delete()
+	t.attachActiveAuditIfAny()
 
 	t.log.Tracef("started")
 	for {
@@ -190,7 +194,19 @@ func (t *Manager) worker() {
 		case <-t.ctx.Done():
 			return
 		case i := <-t.sub.C:
-			switch i.(type) {
+			switch c := i.(type) {
+			case *msgbus.AuditStart:
+				subsystem := "icfg"
+				if !slices.Contains(c.Subsystems, subsystem) {
+					subsystem = "icfg:" + t.path.String()
+				}
+				t.log.HandleAuditStart(c.Q, c.Subsystems, subsystem)
+			case *msgbus.AuditStop:
+				subsystem := "icfg"
+				if !slices.Contains(c.Subsystems, subsystem) {
+					subsystem = "icfg:" + t.path.String()
+				}
+				t.log.HandleAuditStop(c.Q, c.Subsystems, subsystem)
 			case *msgbus.ClusterConfigUpdated:
 				t.onClusterConfigUpdated()
 			case *msgbus.ConfigFileRemoved:
@@ -204,6 +220,22 @@ func (t *Manager) worker() {
 			}
 		}
 	}
+}
+
+func (t *Manager) attachActiveAuditIfAny() {
+	reg := daemonctx.AuditRegistry(t.ctx)
+	if reg == nil {
+		return
+	}
+	subsystem := "icfg"
+	sess, ok := reg.Snapshot()
+	if !ok {
+		return
+	}
+	if !slices.Contains(sess.Subsystems, subsystem) {
+		subsystem = fmt.Sprintf("%s:%s", subsystem, t.path.String())
+	}
+	t.log.HandleAuditStart(sess.Q, sess.Subsystems, subsystem)
 }
 
 func (t *Manager) configFileCheckRefresh(force bool) error {

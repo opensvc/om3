@@ -16,6 +16,7 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/opensvc/om3/v3/util/auditstate"
 	"github.com/retailnext/cannula"
 
 	"github.com/opensvc/om3/v3/core/cluster"
@@ -193,6 +194,7 @@ func (t *T) Start(ctx context.Context) error {
 
 	t.ctx = daemondata.ContextWithBus(t.ctx, dataCmd)
 	t.ctx = daemonctx.WithHBRecvMsgQ(t.ctx, dataMsgRecvQ)
+	t.ctx = daemonctx.WithAuditRegistry(t.ctx, &auditstate.Registry{})
 
 	// startup ccfg
 	if err := t.startComponent(t.ctx, ccfg.New(daemonenv.DrainChanDuration, qsSmall)); err != nil {
