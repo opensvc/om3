@@ -858,15 +858,15 @@ func (t *T) loggerWithPath(path naming.Path) *plog.Logger {
 
 func (t *T) onInstanceConfigUpdated(c *msgbus.InstanceConfigUpdated) bool {
 	if c.Value.ActorConfig == nil {
-		t.loggerWithPath(c.Path).Tracef("skip schedules on config change: not actor")
+		t.loggerWithPath(c.Path).Tracef("ignore config change: not actor")
 		return false
 	}
 	if c.Node != t.localhost {
-		t.loggerWithPath(c.Path).Tracef("skip schedules on config change: config update event is from a peer")
+		t.loggerWithPath(c.Path).Tracef("ignore config change: config update event is from a peer")
 		return false
 	}
 	if !t.enabled {
-		t.loggerWithPath(c.Path).Tracef("skip schedules on config change: scheduler is disabled")
+		t.loggerWithPath(c.Path).Tracef("ignore config change: scheduler is disabled")
 		return false
 	}
 	t.loggerWithPath(c.Path).Tracef("update schedules on config change")
