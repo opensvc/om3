@@ -40,6 +40,9 @@ func NewCmdDaemonAudit() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "audit",
 		Short: "read and render the log stream of the selected daemon subsystems up to debug and trace.",
+		Long: "Stream the logs of the selected daemon subsystems up to debug and trace.\n\n" +
+			"Auditable subsystems:\n\n" +
+			"ccfg, collector, imon, imon:<path>, hook, runner, daemondata, cstat, omon, omon:<path>, dns, scheduler, discover, nmon, lsnrhttpinet, lsnrhttpux, istat, icfg, icfg:<path>, hb.peer_drop_worker, hb, daemonauth, pubsub, api",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return options.Run()
 		},
@@ -48,7 +51,7 @@ func NewCmdDaemonAudit() *cobra.Command {
 	FlagNodeSelector(flags, &options.NodeSelector)
 	FlagOutput(flags, &options.Output)
 	flags.StringVar(&options.Level, "level", "trace", "trace, debug, info, warn, error, fatal, panic")
-	flags.StringSliceVar(&options.Subsystems, "sub", []string{}, "the names of the subsystems to audit (ccfg, collector, imon, imon:<path>, hook, runner, daemondata, cstat, omon, omon:<path>, dns, scheduler, discover, nmon, lsnrhttpinet, lsnrhttpux, istat, icfg, icfg:<path>, hb.peer_drop_worker, hb, daemonauth, pubsub, api)")
+	flags.StringSliceVar(&options.Subsystems, "sub", []string{}, "the names of the subsystems to audit, or empty for all")
 	flags.BoolVar(&options.Preempt, "preempt", false, "preempt the current audit if any is running.")
 	return cmd
 }
