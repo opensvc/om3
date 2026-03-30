@@ -709,6 +709,8 @@ func (t *T) waitForState(ctx context.Context, states ...string) error {
 	for _, s := range states {
 		stateSet[s] = struct{}{}
 	}
+	delay := time.Second
+	maxDelay := 10 * time.Second
 	for {
 		ps, err := t.pairStatus(ctx)
 		if err != nil {
@@ -730,6 +732,7 @@ func (t *T) waitForState(ctx context.Context, states ...string) error {
 		case <-ctx.Done():
 			return ctx.Err()
 		case <-time.After(10 * time.Second):
+			delay = min(delay*2, maxDelay)
 		}
 	}
 }
@@ -739,6 +742,8 @@ func (t *T) waitForNotState(ctx context.Context, states ...string) error {
 	for _, s := range states {
 		stateSet[s] = struct{}{}
 	}
+	delay := time.Second
+	maxDelay := 10 * time.Second
 	for {
 		ps, err := t.pairStatus(ctx)
 		if err != nil {
@@ -760,6 +765,7 @@ func (t *T) waitForNotState(ctx context.Context, states ...string) error {
 		case <-ctx.Done():
 			return ctx.Err()
 		case <-time.After(10 * time.Second):
+			delay = min(delay*2, maxDelay)
 		}
 	}
 }
