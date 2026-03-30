@@ -29,8 +29,9 @@ import (
 	"time"
 
 	"github.com/google/uuid"
-	"github.com/opensvc/om3/v3/daemon/daemonctx"
 	"golang.org/x/time/rate"
+
+	"github.com/opensvc/om3/v3/daemon/daemonctx"
 
 	"github.com/opensvc/om3/v3/core/instance"
 	"github.com/opensvc/om3/v3/core/naming"
@@ -535,10 +536,9 @@ func (t *Manager) update() {
 	}
 
 	t.state.UpdatedAt = time.Now()
-	newValue := *t.state.DeepCopy()
 
-	instance.MonitorData.Set(t.path, t.localhost, newValue.DeepCopy())
-	t.publisher.Pub(&msgbus.InstanceMonitorUpdated{Path: t.path, Node: t.localhost, Value: newValue}, t.pubLabels...)
+	instance.MonitorData.Set(t.path, t.localhost, t.state.DeepCopy())
+	t.publisher.Pub(&msgbus.InstanceMonitorUpdated{Path: t.path, Node: t.localhost, Value: *t.state.DeepCopy()}, t.pubLabels...)
 }
 
 func (t *Manager) transitionTo(newState instance.MonitorState) {
