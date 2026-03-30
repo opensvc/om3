@@ -510,6 +510,10 @@ func (t *Manager) onSetInstanceMonitor(c *msgbus.SetInstanceMonitor) {
 			err := fmt.Errorf("%w: daemon: imon: %s: a %s orchestration is already in progress with id %s", instance.ErrInvalidGlobalExpect, *c.Value.GlobalExpect, t.state.GlobalExpect, t.state.OrchestrationID)
 			return err
 		}
+		// Clone global expect options to prevent data race when we have to update its
+		// value when we guess destinations
+		var globalExpectOptions any = c.Value.GlobalExpectOptions
+
 		switch *c.Value.GlobalExpect {
 		case instance.MonitorGlobalExpectPlacedAt:
 			options, ok := c.Value.GlobalExpectOptions.(instance.MonitorGlobalExpectOptionsPlacedAt)
@@ -524,7 +528,7 @@ func (t *Manager) onSetInstanceMonitor(c *msgbus.SetInstanceMonitor) {
 					return err
 				}
 				options.Destination = []string{dst}
-				c.Value.GlobalExpectOptions = options
+				globalExpectOptions = options
 			} else if options.Live && len(options.Destination) > 1 {
 				err := fmt.Errorf("%w: daemon: imon: %s: live migration is not possible with multiple destinations", instance.ErrInvalidGlobalExpect, *c.Value.GlobalExpect)
 				globalExpectRefused()
@@ -547,7 +551,7 @@ func (t *Manager) onSetInstanceMonitor(c *msgbus.SetInstanceMonitor) {
 					t.log.Infof("set instance monitor: change destination nodes from %s to %s", want, can)
 				}
 				options.Destination = []string{can}
-				c.Value.GlobalExpectOptions = options
+				globalExpectOptions = options
 			}
 		case instance.MonitorGlobalExpectStarted:
 			if v, reason := t.isStartable(); !v {
@@ -581,7 +585,7 @@ func (t *Manager) onSetInstanceMonitor(c *msgbus.SetInstanceMonitor) {
 			}
 			t.change = true
 			t.state.GlobalExpect = *c.Value.GlobalExpect
-			t.state.GlobalExpectOptions = c.Value.GlobalExpectOptions
+			t.state.GlobalExpectOptions = globalExpectOptions
 			// update GlobalExpectUpdated now
 			// This will allow remote nodes to pickup most recent value
 			t.state.GlobalExpectUpdatedAt = time.Now()
