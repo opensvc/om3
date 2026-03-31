@@ -49,6 +49,7 @@ import (
 	"time"
 
 	"github.com/google/uuid"
+
 	"github.com/opensvc/om3/v3/util/plog"
 
 	"github.com/opensvc/om3/v3/core/cluster"
@@ -279,9 +280,6 @@ func KindToT(kind string) (any, error) {
 // EventToMessage converts event.Event message as pubsub.Messager
 func EventToMessage(ev event.Event) (pubsub.Messager, error) {
 	var c pubsub.Messager
-	if ev.Data == nil {
-		return c, nil
-	}
 	i, err := KindToT(ev.Kind)
 	if err != nil {
 		return c, errors.New("can't decode " + ev.Kind)
@@ -303,13 +301,13 @@ type (
 
 	AuditStart struct {
 		pubsub.Msg `yaml:",inline"`
-		Q          chan plog.LogMessage `json:"q" yaml:"q"`
+		Q          chan plog.LogMessage `json:"-" yaml:"-"`
 		Subsystems []string             `json:"subsystems" yaml:"subsystems"`
 	}
 
 	AuditStop struct {
 		pubsub.Msg `yaml:",inline"`
-		Q          chan plog.LogMessage `json:"q" yaml:"q"`
+		Q          chan plog.LogMessage `json:"-" yaml:"-"`
 		Subsystems []string             `json:"subsystems" yaml:"subsystems"`
 	}
 

@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"io"
 	"strconv"
+	"sync"
 	"time"
 
 	"github.com/opensvc/om3/v3/core/event"
@@ -42,6 +43,8 @@ type (
 		// timeout specifies the maximum duration to wait before Read returns
 		// nil if no events are available.
 		timeout time.Duration
+
+		mutex sync.RWMutex
 	}
 
 	Writer struct {
@@ -106,9 +109,12 @@ func (r *ReadCloser) Buffer(buf []byte, max int) {
 
 // Read returns *Event read from EventReader r
 func (r *ReadCloser) Read() (*event.Event, error) {
+	r.mutex.RLock()
 	if r.closed {
+		r.mutex.RUnlock()
 		return nil, ErrClosed
 	}
+	r.mutex.RUnlock()
 	if !r.parseStarted {
 		go r.parse()
 		r.parseStarted = true
@@ -147,6 +153,8 @@ func (r *ReadCloser) Read() (*event.Event, error) {
 
 // Close ask wrapped io.readCloser for Close
 func (r *ReadCloser) Close() error {
+	r.mutex.Lock()
+	defer r.mutex.Unlock()
 	if r.closed {
 		return ErrClosed
 	}
