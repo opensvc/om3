@@ -230,6 +230,12 @@ type (
 		AuditStart(q chan plog.LogMessage) error
 		AuditStop(q chan plog.LogMessage)
 	}
+
+	Buser interface {
+		Publisher
+		Subscriber
+		Auditor
+	}
 )
 
 func NewLabels(l ...string) Labels {

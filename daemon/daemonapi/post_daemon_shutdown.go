@@ -85,7 +85,7 @@ func (a *DaemonAPI) localPostDaemonShutdown(eCtx echo.Context, params api.PostDa
 
 	a.announceNodeState(log, node.MonitorStateShutdownProgress)
 
-	sub := a.SubFactory.Sub(fmt.Sprintf("api.post_daemon_shutdown %s", eCtx.Get("uuid")))
+	sub := a.Bus.Sub(fmt.Sprintf("api.post_daemon_shutdown %s", eCtx.Get("uuid")))
 	sub.AddFilter(&msgbus.InstanceMonitorUpdated{}, a.LabelLocalhost)
 	sub.Start()
 	defer func() {
@@ -151,7 +151,7 @@ func (a *DaemonAPI) localPostDaemonShutdown(eCtx echo.Context, params api.PostDa
 			msg, setImonErr := msgbus.NewSetInstanceMonitorWithErr(ctx, p, a.localhost, value)
 
 			naming.LogWithPath(log, p).Warnf("revert %s local expect %s to %s", p, mon.LocalExpect, localExpectNone)
-			a.Publisher.Pub(msg, pubsub.Label{"namespace", p.Namespace}, pubsub.Label{"path", p.String()}, labelOriginAPI)
+			a.Bus.Pub(msg, pubsub.Label{"namespace", p.Namespace}, pubsub.Label{"path", p.String()}, labelOriginAPI)
 
 			if err := setImonErr.Receive(); err != nil {
 				log.Warnf("can't revert %s local expect %s to %s: %s", p, mon.LocalExpect, localExpectNone, err)
@@ -182,7 +182,7 @@ func (a *DaemonAPI) localPostDaemonShutdown(eCtx echo.Context, params api.PostDa
 			}
 			msg, setImonErr := msgbus.NewSetInstanceMonitorWithErr(ctx, p, a.localhost, value)
 
-			a.Publisher.Pub(msg, pubsub.Label{"namespace", p.Namespace}, pubsub.Label{"path", p.String()}, labelOriginAPI)
+			a.Bus.Pub(msg, pubsub.Label{"namespace", p.Namespace}, pubsub.Label{"path", p.String()}, labelOriginAPI)
 
 			err := setImonErr.Receive()
 			cancel()
@@ -203,7 +203,7 @@ func (a *DaemonAPI) localPostDaemonShutdown(eCtx echo.Context, params api.PostDa
 	if len(shutdownWaiting) == 0 {
 		log.Infof("no local instances pending shutdown: daemon will stop immediately")
 		a.announceNodeState(log, node.MonitorStateShutdownSuccess)
-		a.Publisher.Pub(&msgbus.DaemonCtl{Component: "daemon", Action: "stop"},
+		a.Bus.Pub(&msgbus.DaemonCtl{Component: "daemon", Action: "stop"},
 			pubsub.Label{"id", "daemon"}, a.LabelLocalhost, labelOriginAPI)
 		log.Infof("succeed")
 		return JSONProblem(eCtx, http.StatusOK, "no local instances pending shutdown: daemon will stop immediately", "")
@@ -222,7 +222,7 @@ func (a *DaemonAPI) localPostDaemonShutdown(eCtx echo.Context, params api.PostDa
 				if len(shutdownFail) == 0 { // all local instance shut down occurred and no failures.
 					log.Infof("all local instances are in the shutdown state: daemon will stop immediately")
 					a.announceNodeState(log, node.MonitorStateShutdownSuccess)
-					a.Publisher.Pub(&msgbus.DaemonCtl{Component: "daemon", Action: "stop"},
+					a.Bus.Pub(&msgbus.DaemonCtl{Component: "daemon", Action: "stop"},
 						pubsub.Label{"id", "daemon"}, a.LabelLocalhost, labelOriginAPI)
 					log.Infof("succeed")
 					return JSONProblem(eCtx, http.StatusOK, "all local instances are in the shutdown state: daemon will stop immediately", "")

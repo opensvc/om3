@@ -24,7 +24,7 @@ func (a *DaemonAPI) PostClusterJoin(ctx echo.Context, params api.PostClusterJoin
 		return JSONProblem(ctx, http.StatusBadRequest, "Invalid parameters", "Missing node param")
 	}
 	log.Infof("publish join request for node %s", candidate)
-	a.Publisher.Pub(&msgbus.JoinRequest{CandidateNode: candidate}, a.LabelLocalhost, labelOriginAPI)
+	a.Bus.Pub(&msgbus.JoinRequest{CandidateNode: candidate}, a.LabelLocalhost, labelOriginAPI)
 	ctx.Response().Header().Add(api.HeaderServedBy, a.localhost)
 	return ctx.JSON(http.StatusOK, nil)
 }

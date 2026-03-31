@@ -97,7 +97,7 @@ func (t *T) sendObjectConfigChange() (err error) {
 		}
 
 		if checksum == sent.Checksum {
-			t.log.Infof("skip already sent instance config %s with checksum %s", p, checksum)
+			t.log.Debugf("skip already sent instance config %s with checksum %s", p, checksum)
 			continue
 		}
 		if err := t.doPostObjectConfig(checksum, b, p); err != nil {
@@ -180,7 +180,7 @@ func (t *T) asPostFeedObjectConfigBody(p naming.Path, v *msgbus.InstanceConfigUp
 		if err != nil {
 			return "", nil, fmt.Errorf("new client: %s", err)
 		}
-		t.log.Infof("retrieve remote config %s@%s", p, peer)
+		t.log.Debugf("retrieve remote config %s@%s", p, peer)
 		if resp, err := cli.GetObjectConfigFile(t.ctx, p.Namespace, p.Kind, p.Name); err != nil {
 			return "", []byte{}, err
 		} else if resp.StatusCode == http.StatusOK {
@@ -253,7 +253,7 @@ func (t *T) doPostObjectConfig(checksum string, b []byte, p naming.Path) error {
 		return fmt.Errorf("%s %s create request: %w", method, path, err)
 	}
 
-	t.log.Infof("%s %s %s", method, path, p)
+	t.log.Debugf("%s %s %s", method, path, p)
 	resp, err = t.client.Do(req)
 	if err != nil {
 		return fmt.Errorf("%s %s: %s", method, path, err)

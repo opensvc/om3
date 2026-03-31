@@ -41,7 +41,7 @@ func (a *DaemonAPI) localNodeActionDrain(eCtx echo.Context) error {
 	}
 
 	msg, errReceiver := msgbus.NewSetNodeMonitorWithErr(ctx, a.localhost, value)
-	a.Publisher.Pub(msg, a.LabelLocalhost, labelOriginAPI)
+	a.Bus.Pub(msg, a.LabelLocalhost, labelOriginAPI)
 
 	return JSONFromSetNodeMonitorError(eCtx, &value, errReceiver.Receive())
 }
