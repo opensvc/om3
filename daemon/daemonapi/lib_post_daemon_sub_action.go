@@ -32,7 +32,7 @@ func (a *DaemonAPI) postDaemonSubAction(ctx echo.Context, nodename api.InPathNod
 	if nodename == a.localhost || nodename == "localhost" {
 		log := LogHandler(ctx, "postDaemonSubAction")
 		log.Infof("ask to %s component: %s", action, localName)
-		a.Publisher.Pub(&msgbus.DaemonCtl{Component: localName, Action: action}, pubsub.Label{"id", localName}, labelOriginAPI)
+		a.Bus.Pub(&msgbus.DaemonCtl{Component: localName, Action: action}, pubsub.Label{"id", localName}, labelOriginAPI)
 		return JSONProblemf(ctx, http.StatusOK, "daemon action queued", "%s %s", action, localName)
 	}
 	return a.proxy(ctx, nodename, fn)

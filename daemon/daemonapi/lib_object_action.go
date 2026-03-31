@@ -32,7 +32,7 @@ func (a *DaemonAPI) postObjectAction(eCtx echo.Context, namespace string, kind n
 		}
 		msg, setImonErr := msgbus.NewSetInstanceMonitorWithErr(ctx, p, a.localhost, value)
 
-		a.Publisher.Pub(msg, pubsub.Label{"namespace", p.Namespace}, pubsub.Label{"path", p.String()}, labelOriginAPI)
+		a.Bus.Pub(msg, pubsub.Label{"namespace", p.Namespace}, pubsub.Label{"path", p.String()}, labelOriginAPI)
 
 		return JSONFromSetInstanceMonitorError(eCtx, &value, setImonErr.Receive())
 	}

@@ -55,7 +55,7 @@ func (a *DaemonAPI) postLocalClusterHeartbeatRotate(ctx echo.Context) error {
 	}
 	log.Infof("publish heartbeat rotate request")
 	id := ctx.Get("uuid").(uuid.UUID)
-	a.Publisher.Pub(&msgbus.HeartbeatRotateRequest{ID: id}, a.LabelLocalhost, labelOriginAPI)
+	a.Bus.Pub(&msgbus.HeartbeatRotateRequest{ID: id}, a.LabelLocalhost, labelOriginAPI)
 	go func() {
 		time.AfterFunc(heartbeatRotateMinCallInterval, func() {
 			heartbeatRotateLock.Unlock()

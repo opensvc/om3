@@ -14,6 +14,9 @@ import (
 	"time"
 
 	"github.com/labstack/echo/v4"
+	"github.com/rs/zerolog"
+	"github.com/shaj13/go-guardian/v2/auth"
+
 	"github.com/opensvc/om3/v3/core/client"
 	"github.com/opensvc/om3/v3/core/clusternode"
 	"github.com/opensvc/om3/v3/daemon/api"
@@ -21,8 +24,6 @@ import (
 	"github.com/opensvc/om3/v3/daemon/rbac"
 	"github.com/opensvc/om3/v3/util/plog"
 	"github.com/opensvc/om3/v3/util/pubsub"
-	"github.com/rs/zerolog"
-	"github.com/shaj13/go-guardian/v2/auth"
 )
 
 func (a *DaemonAPI) PostDaemonAudit(ctx echo.Context, nodename string, params api.PostDaemonAuditParams) error {
@@ -135,12 +136,12 @@ func (a *DaemonAPI) getLocalDaemonAudit(ctx echo.Context, nodename string, param
 	}
 
 	if len(subsystems) == 0 || slices.Contains(subsystems, "pubsub") {
-		err = a.Auditor.AuditStart(q)
+		err = a.Bus.AuditStart(q)
 		if err == nil {
-			defer a.Auditor.AuditStop(q)
+			defer a.Bus.AuditStop(q)
 		}
 	}
-	a.Publisher.Pub(&msgbus.AuditStart{Q: q, Subsystems: subsystems}, labels...)
+	a.Bus.Pub(&msgbus.AuditStart{Q: q, Subsystems: subsystems}, labels...)
 	log.Infof("publish audit start session %s", uuidFromContext(ctx))
 	defer log.Infof("publish audit stop session %s", uuidFromContext(ctx))
 
@@ -163,7 +164,7 @@ func (a *DaemonAPI) getLocalDaemonAudit(ctx echo.Context, nodename string, param
 		return nil
 	}
 
-	defer a.Publisher.Pub(&msgbus.AuditStop{Q: q, Subsystems: subsystems}, labels...)
+	defer a.Bus.Pub(&msgbus.AuditStop{Q: q, Subsystems: subsystems}, labels...)
 	msg := plog.LogMessage{
 		Level:     zerolog.InfoLevel,
 		Timestamp: time.Now(),
