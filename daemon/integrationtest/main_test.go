@@ -69,8 +69,10 @@ func Test_daemon(t *testing.T) {
 		require.Nil(t, err)
 
 		timeout := 2 * time.Second
+		ctx, cancel := context.WithTimeout(t.Context(), timeout)
+		defer cancel()
 		filters := []string{"NodeMonitorUpdated,node=node1"}
-		readCloser, err := cli.NewGetEvents().SetFilters(filters).SetDuration(timeout).GetReader()
+		readCloser, err := cli.NewGetEvents().SetFilters(filters).SetDuration(timeout).GetReader(ctx)
 		require.NoError(t, err)
 		defer func() {
 			require.Nil(t, readCloser.Close())
@@ -129,8 +131,10 @@ func checkRun(t *testing.T, timeout time.Duration, reqFunc func() (*http.Respons
 	cli, err := GetClient(t)
 	require.Nil(t, err)
 
+	ctx, cancel := context.WithTimeout(t.Context(), timeout)
+	defer cancel()
 	filters := []string{"NodeMonitorUpdated,node=node1"}
-	readCloser, err := cli.NewGetEvents().SetFilters(filters).SetDuration(timeout).GetReader()
+	readCloser, err := cli.NewGetEvents().SetFilters(filters).SetDuration(timeout).GetReader(ctx)
 	require.NoError(t, err)
 	defer func() { require.NoError(t, readCloser.Close()) }()
 	resp, err := reqFunc()

@@ -101,8 +101,10 @@ func (t *CmdNodeDrain) doRemote() error {
 				_, _ = fmt.Fprintln(os.Stderr, e)
 				return
 			}
+			ctx, cancel := context.WithCancel(context.Background())
+			defer cancel()
 			statusGetter := cli.NewGetClusterStatus().SetSelector(t.ObjectSelector)
-			evReader, err := cli.NewGetEvents().SetSelector(t.ObjectSelector).GetReader()
+			evReader, err := cli.NewGetEvents().SetSelector(t.ObjectSelector).GetReader(ctx)
 			if err != nil {
 				_, _ = fmt.Fprintln(os.Stderr, err)
 				return

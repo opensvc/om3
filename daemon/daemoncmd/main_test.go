@@ -126,10 +126,12 @@ func runTestDaemonStartup(t *testing.T, hasConfig bool) {
 		// TODO move test get node events to other location asap
 		//time.Sleep(150 * time.Millisecond)
 		logf("get node events")
+		ctx, cancel := context.WithTimeout(t.Context(), time.Second)
+		defer cancel()
 		readEv, err := cli.NewGetEvents().
 			SetLimit(1).
 			SetDuration(1 * time.Second).
-			GetReader()
+			GetReader(ctx)
 		require.NoError(t, err)
 		_, _ = cli.NewGetClusterStatus().Get()
 		events := make([]event.Event, 0)

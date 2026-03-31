@@ -256,15 +256,16 @@ func (t *CmdNodeEvents) nodeEventLoop(ctx context.Context, nodename string) {
 		maxRetries = 600
 	)
 
-	evReader, err := t.getEvReader(nodename)
-	if err != nil {
-		_, _ = fmt.Fprintf(os.Stderr, "getEvReader %s: %s", nodename, err)
-	}
 	if t.Duration > 0 {
 		var cancel context.CancelFunc
 		ctx, cancel = context.WithTimeout(ctx, t.Duration)
 		defer cancel()
 	}
+	evReader, err := t.getEvReader(ctx, nodename)
+	if err != nil {
+		_, _ = fmt.Fprintf(os.Stderr, "getEvReader %s: %s", nodename, err)
+	}
+
 	defer func() {
 		if evReader == nil {
 			return
@@ -315,7 +316,7 @@ func (t *CmdNodeEvents) nodeEventLoop(ctx context.Context, nodename string) {
 				_, _ = fmt.Fprintf(os.Stderr, "event read failed for node %s: '%s'\n", nodename, err)
 				_, _ = fmt.Fprintln(os.Stderr, "press ctrl+c to interrupt retries")
 			}
-			evReader, err = t.getEvReader(nodename)
+			evReader, err = t.getEvReader(ctx, nodename)
 			if err == nil {
 				_, _ = fmt.Fprintf(os.Stderr, "retry %d of %d ok for %s\n", retries, maxRetries, nodename)
 				retries = 0
@@ -326,7 +327,7 @@ func (t *CmdNodeEvents) nodeEventLoop(ctx context.Context, nodename string) {
 	}
 }
 
-func (t *CmdNodeEvents) getEvReader(nodename string) (event.ReadCloser, error) {
+func (t *CmdNodeEvents) getEvReader(ctx context.Context, nodename string) (event.ReadCloser, error) {
 	return t.cli.NewGetEvents().
 		SetRelatives(false).
 		SetLimit(t.Limit).
@@ -335,7 +336,7 @@ func (t *CmdNodeEvents) getEvReader(nodename string) (event.ReadCloser, error) {
 		SetDuration(t.Duration).
 		SetNodename(nodename).
 		SetSelector(t.ObjectSelector).
-		GetReader()
+		GetReader(ctx)
 }
 
 func (t *CmdNodeEvents) doEvent(e event.Event) {
