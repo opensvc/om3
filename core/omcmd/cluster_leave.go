@@ -102,7 +102,7 @@ func (t *CmdClusterLeave) run() (err error) {
 		return
 	}
 
-	if err := t.setEvReader(deadLine.Sub(time.Now())); err != nil {
+	if err := t.setEvReader(ctx, deadLine.Sub(time.Now())); err != nil {
 		return err
 	}
 	defer func() {
@@ -140,7 +140,7 @@ func (t *CmdClusterLeave) run() (err error) {
 	return nil
 }
 
-func (t *CmdClusterLeave) setEvReader(duration time.Duration) (err error) {
+func (t *CmdClusterLeave) setEvReader(ctx context.Context, duration time.Duration) (err error) {
 	filters := []string{
 		"LeaveSuccess,removed_node=" + t.localhost,
 		"LeaveError,candidate_node=" + t.localhost,
@@ -155,7 +155,7 @@ func (t *CmdClusterLeave) setEvReader(duration time.Duration) (err error) {
 		getEvents.SetDuration(duration)
 	}
 
-	t.evReader, err = getEvents.GetReader()
+	t.evReader, err = getEvents.GetReader(ctx)
 	return
 }
 

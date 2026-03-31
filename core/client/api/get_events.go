@@ -159,13 +159,15 @@ func (t *GetEvents) Do() (chan event.Event, error) {
 	return out, nil
 }
 
-// GetReader returns event.ReadCloser for GetEventReader
-func (t *GetEvents) GetReader() (event.ReadCloser, error) {
+// GetReader returns event.ReadCloser with context set to ctx
+func (t *GetEvents) GetReader(ctx context.Context) (event.ReadCloser, error) {
 	resp, err := t.eventsBase()
 	if err != nil {
 		return nil, err
 	}
-	return sseevent.NewReadCloser(resp.Body), nil
+	readCloser := sseevent.NewReadCloser(resp.Body)
+	readCloser.SetContext(ctx)
+	return readCloser, nil
 }
 
 // NewTimeoutReader returns a non-blocking event.ReadCloser that yields nil

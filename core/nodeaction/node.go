@@ -479,16 +479,14 @@ func (t T) waitRequesterSessionEnd(ctx context.Context, c *client.T, nodename st
 	if t.WaitDuration > 0 {
 		getEvents = getEvents.SetDuration(t.WaitDuration)
 	}
-	evReader, err = getEvents.GetReader()
+	evReader, err = getEvents.GetReader(ctx)
 	if err != nil {
 		return
 	}
 
-	if x, ok := evReader.(event.ContextSetter); ok {
-		x.SetContext(ctx)
-	}
 	go func() {
 		defer func() {
+			_ = evReader.Close()
 			if err != nil {
 				err = fmt.Errorf("wait requester session end failed on node %s: %w", nodename, err)
 			}
@@ -498,13 +496,6 @@ func (t T) waitRequesterSessionEnd(ctx context.Context, c *client.T, nodename st
 			}
 		}()
 
-		go func() {
-			// close reader when ctx is done
-			select {
-			case <-ctx.Done():
-				_ = evReader.Close()
-			}
-		}()
 		for {
 			ev, readError := evReader.Read()
 			if readError != nil {
@@ -561,17 +552,15 @@ func (t T) waitExpectation(ctx context.Context, c *client.T, exp Expectation, er
 	if t.WaitDuration > 0 {
 		getEvents = getEvents.SetDuration(t.WaitDuration)
 	}
-	evReader, err = getEvents.GetReader()
+	evReader, err = getEvents.GetReader(ctx)
 	if err != nil {
 		errC <- err
 		return
 	}
 
-	if x, ok := evReader.(event.ContextSetter); ok {
-		x.SetContext(ctx)
-	}
 	go func() {
 		defer func() {
+			_ = evReader.Close()
 			if err != nil {
 				err = fmt.Errorf("wait expectation %s failed: %w", exp, err)
 			}
@@ -581,13 +570,6 @@ func (t T) waitExpectation(ctx context.Context, c *client.T, exp Expectation, er
 			}
 		}()
 
-		go func() {
-			// close reader when ctx is done
-			select {
-			case <-ctx.Done():
-				_ = evReader.Close()
-			}
-		}()
 		for {
 			ev, readError := evReader.Read()
 			if readError != nil {
