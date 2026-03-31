@@ -1,6 +1,7 @@
 package commoncmd
 
 import (
+	"context"
 	"fmt"
 	"os"
 	"time"
@@ -67,7 +68,9 @@ func (t *CmdObjectMonitor) Run(selector, kind string) error {
 	if t.Watch {
 		maxRetries := 600
 		retries := 0
-		evReader, err := cli.NewGetEvents().SetSelector(mergedSelector).GetReader()
+		ctx, cancel := context.WithCancel(context.Background())
+		defer cancel()
+		evReader, err := cli.NewGetEvents().SetSelector(mergedSelector).GetReader(ctx)
 		if err != nil {
 			return err
 		}
@@ -89,7 +92,7 @@ func (t *CmdObjectMonitor) Run(selector, kind string) error {
 					_, _ = fmt.Fprintln(os.Stderr, "press ctrl+c to interrupt retries")
 				}
 				time.Sleep(time.Second)
-				evReader, err = cli.NewGetEvents().SetSelector(mergedSelector).GetReader()
+				evReader, err = cli.NewGetEvents().SetSelector(mergedSelector).GetReader(ctx)
 				if err == nil {
 					retries = 0
 					break

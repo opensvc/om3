@@ -89,25 +89,25 @@ func (t *CmdDaemonHeartbeatRotate) Run() error {
 }
 
 func startEventWatcher(ctx context.Context, c *client.T, done chan<- error, timeoutDuration time.Duration) error {
-	getEvents := c.NewGetEvents().
-		SetFilters([]string{"HeartbeatRotateSuccess", "HeartbeatRotateError"}).
-		SetDuration(timeoutDuration)
+	errC := make(chan error)
 
-	evReader, err := getEvents.GetReader()
-	if err != nil {
-		return err
-	}
-	started := make(chan struct{})
 	go func() {
 		ctx, cancel := context.WithTimeout(ctx, timeoutDuration)
 		defer cancel()
-		go func() {
-			select {
-			case <-ctx.Done():
-				_ = evReader.Close()
-			}
+		getEvents := c.NewGetEvents().
+			SetFilters([]string{"HeartbeatRotateSuccess", "HeartbeatRotateError"}).
+			SetDuration(timeoutDuration)
+
+		evReader, err := getEvents.GetReader(ctx)
+		if err != nil {
+			errC <- err
+			return
+		}
+		errC <- nil
+		defer func() {
+			_ = evReader.Close()
 		}()
-		started <- struct{}{}
+
 		for {
 			ev, readErr := evReader.Read()
 			if readErr != nil {
@@ -135,7 +135,6 @@ func startEventWatcher(ctx context.Context, c *client.T, done chan<- error, time
 			}
 		}
 	}()
-	<-started
 
-	return nil
+	return <-errC
 }

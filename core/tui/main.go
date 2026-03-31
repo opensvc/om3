@@ -577,7 +577,10 @@ func (t *App) initContext() {
 func (t *App) runEventReader() {
 	<-t.restartC
 	for {
-		evReader, err := t.streamClient.NewGetEvents().SetSelector(t.Selector).GetReader()
+		ctx, cancel := context.WithCancel(context.Background())
+		defer cancel()
+
+		evReader, err := t.streamClient.NewGetEvents().SetSelector(t.Selector).GetReader(ctx)
 		if err != nil {
 			//t.errorf("new reader: %s", err)
 			if t.exitFlag.Load() {

@@ -58,7 +58,9 @@ func (t *CmdClusterLogs) stream(node string) {
 		fmt.Fprintln(os.Stderr, err)
 		return
 	}
-	defer reader.Close()
+	defer func() {
+		_ = reader.Close()
+	}()
 
 	for {
 		event, err := reader.Read()

@@ -103,7 +103,7 @@ func (t *CmdClusterJoin) run() error {
 		SetRelatives(false).
 		SetFilters(filters).
 		SetDuration(t.Timeout).
-		GetReader()
+		GetReader(ctx)
 
 	if err != nil {
 		return err

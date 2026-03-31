@@ -17,7 +17,6 @@ import (
 
 	"github.com/opensvc/om3/v3/core/client"
 	"github.com/opensvc/om3/v3/core/clusterdump"
-	"github.com/opensvc/om3/v3/core/event"
 	"github.com/opensvc/om3/v3/core/naming"
 	"github.com/opensvc/om3/v3/core/nodeselector"
 	"github.com/opensvc/om3/v3/daemon/api"
@@ -149,32 +148,12 @@ func WaitAllInstanceMonitor(ctx context.Context, c *client.T, p naming.Path, tim
 	if timeout > 0 {
 		getEvents = getEvents.SetDuration(timeout)
 	}
-	evReader, err := getEvents.GetReader()
+	evReader, err := getEvents.GetReader(ctx)
 	if err != nil {
 		return err
 	}
 
-	var closeOnce sync.Once
-	closeReader := func() {
-		closeOnce.Do(func() {
-			_ = evReader.Close()
-		})
-	}
-
-	if x, ok := evReader.(event.ContextSetter); ok {
-		x.SetContext(ctx)
-	} else {
-		// evReader is not an event.ContextSetter, we have to early closeReader
-		// to early stop evReader.Read() within the wait event routine.
-		go func() {
-			select {
-			case <-ctx.Done():
-				closeReader()
-			}
-		}()
-	}
 	go func() {
-		defer closeReader()
 		var msgEvent any
 		monM := make(map[string]struct{})
 		nodeM := make(map[string]struct{})
@@ -206,6 +185,7 @@ func WaitAllInstanceMonitor(ctx context.Context, c *client.T, p naming.Path, tim
 				break
 			}
 		}
+		_ = evReader.Close()
 		return
 	}()
 	return nil
@@ -225,32 +205,12 @@ func WaitInstanceMonitor(ctx context.Context, c *client.T, p naming.Path, timeou
 	if timeout > 0 {
 		getEvents = getEvents.SetDuration(timeout)
 	}
-	evReader, err := getEvents.GetReader()
+	evReader, err := getEvents.GetReader(ctx)
 	if err != nil {
 		return err
 	}
 
-	var closeOnce sync.Once
-	closeReader := func() {
-		closeOnce.Do(func() {
-			_ = evReader.Close()
-		})
-	}
-
-	if x, ok := evReader.(event.ContextSetter); ok {
-		x.SetContext(ctx)
-	} else {
-		// evReader is not an event.ContextSetter, we have to early closeReader
-		// to early stop evReader.Read() within the wait event routine.
-		go func() {
-			select {
-			case <-ctx.Done():
-				closeReader()
-			}
-		}()
-	}
 	go func() {
-		defer closeReader()
 		ev, err := evReader.Read()
 		if err != nil {
 			if errors.Is(err, io.EOF) {
@@ -264,6 +224,7 @@ func WaitInstanceMonitor(ctx context.Context, c *client.T, p naming.Path, timeou
 			err = fmt.Errorf("wait instance monitor update failed on object %s after %s: %w", p, elapsed, err)
 		}
 		errC <- err
+		_ = evReader.Close()
 		return
 	}()
 	return nil
@@ -286,33 +247,12 @@ func WaitInstanceStatusUpdated(ctx context.Context, c *client.T, nodename string
 	if timeout > 0 {
 		getEvents = getEvents.SetDuration(timeout)
 	}
-	evReader, err := getEvents.GetReader()
+	evReader, err := getEvents.GetReader(ctx)
 	if err != nil {
 		return err
 	}
 
-	var closeOnce sync.Once
-	closeReader := func() {
-		closeOnce.Do(func() {
-			_ = evReader.Close()
-		})
-	}
-
-	if x, ok := evReader.(event.ContextSetter); ok {
-		x.SetContext(ctx)
-	} else {
-		// evReader is not an event.ContextSetter, we have to early closeReader
-		// to early stop evReader.Read() within the wait event routine.
-		go func() {
-			select {
-			case <-ctx.Done():
-				closeReader()
-			}
-		}()
-	}
-
 	go func() {
-		defer closeReader()
 		ev, err := evReader.Read()
 		if err != nil {
 			if errors.Is(err, io.EOF) {
@@ -326,6 +266,7 @@ func WaitInstanceStatusUpdated(ctx context.Context, c *client.T, nodename string
 			err = fmt.Errorf("wait instance status update failed on %s@%s after %s: %w", p, nodename, elapsed, err)
 		}
 		errC <- err
+		_ = evReader.Close()
 	}()
 	return nil
 }

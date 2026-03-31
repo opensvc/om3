@@ -1,6 +1,7 @@
 package actionrouter
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"os"
@@ -164,8 +165,10 @@ func Do(t Actioner) error {
 			_, _ = fmt.Fprintln(os.Stderr, e)
 			return e
 		}
+		ctx, cancel := context.WithCancel(context.Background())
+		defer cancel()
 		statusGetter := cli.NewGetClusterStatus().SetSelector(o.ObjectSelector)
-		evReader, err := cli.NewGetEvents().SetSelector(o.ObjectSelector).GetReader()
+		evReader, err := cli.NewGetEvents().SetSelector(o.ObjectSelector).GetReader(ctx)
 		errs = errors.Join(errs, err)
 		err = m.DoWatch(statusGetter, evReader, os.Stdout)
 		errs = errors.Join(errs, err)
