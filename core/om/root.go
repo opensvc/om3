@@ -29,7 +29,6 @@ import (
 
 var (
 	colorFlag    string
-	nodeFlag     string
 	selectorFlag string
 
 	callerFlag     bool
@@ -37,7 +36,6 @@ var (
 	traceFlag      bool
 	foregroundFlag bool
 	quietFlag      bool
-	versionFlag    bool
 
 	//go:embed bash_completion.sh
 	bashCompletionFunction string
