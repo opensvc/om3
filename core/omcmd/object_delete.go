@@ -25,6 +25,7 @@ func (t *CmdObjectDelete) Run(kind string) error {
 	return objectaction.New(
 		objectaction.WithLocal(t.Local),
 		objectaction.WithColor(t.Color),
+		objectaction.WithIgnoreNotFound(t.IgnoreNotFound),
 		objectaction.WithOutput(t.Output),
 		objectaction.WithObjectSelector(mergedSelector),
 		objectaction.WithAsyncTarget("deleted"),

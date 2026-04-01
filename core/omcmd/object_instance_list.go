@@ -8,6 +8,7 @@ import (
 	"github.com/opensvc/om3/v3/core/commoncmd"
 	"github.com/opensvc/om3/v3/core/output"
 	"github.com/opensvc/om3/v3/core/rawconfig"
+	"github.com/opensvc/om3/v3/core/xerrors"
 	"github.com/opensvc/om3/v3/daemon/api"
 )
 
@@ -36,6 +37,12 @@ func (t *CmdObjectInstanceList) Run(kind string) error {
 	var pb *api.Problem
 	switch resp.StatusCode() {
 	case 200:
+		if len(resp.JSON200.Items) == 0 && mergedSelector != "" {
+			if t.IgnoreNotFound {
+				return nil
+			}
+			return fmt.Errorf("%s: %w", mergedSelector, xerrors.InstanceNotFound)
+		}
 		output.Renderer{
 			DefaultOutput: "tab=OBJECT:meta.object,NODE:meta.node,AVAIL:data.status.avail",
 			Output:        t.Output,

@@ -20,5 +20,6 @@ func (t *CmdObjectCollectorTagCreate) Run(kind string) error {
 		objectaction.WithObjectSelector(mergedSelector),
 		objectaction.WithOutput(t.Output),
 		objectaction.WithColor(t.Color),
+		objectaction.WithIgnoreNotFound(t.IgnoreNotFound),
 	).Do()
 }

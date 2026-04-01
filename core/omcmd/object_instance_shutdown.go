@@ -39,6 +39,7 @@ func (t *CmdObjectInstanceShutdown) Run(kind string) error {
 		objectaction.WithMaster(t.Master),
 		objectaction.WithOutput(t.Output),
 		objectaction.WithColor(t.Color),
+		objectaction.WithIgnoreNotFound(t.IgnoreNotFound),
 		objectaction.WithLocal(t.Local),
 		objectaction.WithRemoteNodes(t.NodeSelector),
 		objectaction.WithLocalFunc(func(ctx context.Context, p naming.Path) (interface{}, error) {

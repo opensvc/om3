@@ -182,6 +182,10 @@ func FlagForce(flags *pflag.FlagSet, p *bool) {
 	flags.BoolVar(p, "force", false, "allow dangerous operations")
 }
 
+func FlagIgnoreNotFound(flags *pflag.FlagSet, p *bool) {
+	flags.BoolVar(p, "ignore-not-found", false, "allow empty object selections")
+}
+
 func FlagImpersonate(flags *pflag.FlagSet, p *string) {
 	flags.StringVar(p, "impersonate", "", "the name of a peer node to impersonate when evaluating keywords")
 }

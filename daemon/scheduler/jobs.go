@@ -16,6 +16,7 @@ import (
 )
 
 func (o *T) action(e schedule.Entry) error {
+	logger := o.jobLogger(e)
 	sid := uuid.New()
 	labels := []pubsub.Label{{"node", o.localhost}, {"origin", "scheduler"}}
 	cmdArgs := []string{}
@@ -58,7 +59,7 @@ func (o *T) action(e schedule.Entry) error {
 	//case "dequeue_actions":
 	//	cmdArgs = append(cmdArgs, "dequeue")
 	default:
-		o.log.Attr("action", e.Action).Attr("path", e.Path.String()).Errorf("unknown scheduler action")
+		logger.Errorf("unknown scheduler action")
 		return fmt.Errorf("unknown scheduler action")
 	}
 	var cmdEnv []string
@@ -80,20 +81,20 @@ func (o *T) action(e schedule.Entry) error {
 	cmd := command.New(
 		command.WithName(os.Args[0]),
 		command.WithArgs(cmdArgs),
-		command.WithLogger(o.log),
+		command.WithLogger(logger),
 		command.WithEnv(cmdEnv),
 	)
-	o.log.Debugf("-> exec %s", cmd)
+	logger.Debugf("-> exec %s", cmd)
 	o.publisher.Pub(&msgbus.Exec{Command: cmd.String(), Node: o.localhost, Origin: "scheduler", SessionID: sid}, labels...)
 	startTime := time.Now()
 	if err := cmd.Run(); err != nil {
 		duration := time.Now().Sub(startTime)
 		o.publisher.Pub(&msgbus.ExecFailed{Command: cmd.String(), Duration: duration, ErrS: err.Error(), Node: o.localhost, Origin: "scheduler", SessionID: sid}, labels...)
-		o.log.Errorf("%s: %s", cmd, err)
+		logger.Errorf("%s: %s", cmd, err)
 		return err
 	}
 	duration := time.Now().Sub(startTime)
 	o.publisher.Pub(&msgbus.ExecSuccess{Command: cmd.String(), Duration: duration, Node: o.localhost, Origin: "scheduler", SessionID: sid}, labels...)
-	o.log.Debugf("<- exec %s", cmd)
+	logger.Debugf("<- exec %s", cmd)
 	return nil
 }

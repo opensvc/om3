@@ -37,6 +37,9 @@ func (t *CmdObjectList) Run(kind string) error {
 	switch resp.StatusCode() {
 	case 200:
 		if len(resp.JSON200.Items) == 0 && mergedSelector != "" {
+			if t.IgnoreNotFound {
+				return nil
+			}
 			return fmt.Errorf("%s: %w", mergedSelector, xerrors.ObjectNotFound)
 		}
 		output.Renderer{

@@ -2784,6 +2784,7 @@ func newCmdObjectStart(kind string) *cobra.Command {
 	commoncmd.FlagColor(flags, &options.OptsGlobal.Color)
 	commoncmd.FlagOutput(flags, &options.OptsGlobal.Output)
 	commoncmd.FlagObjectSelector(flags, &options.OptsGlobal.ObjectSelector)
+	commoncmd.FlagIgnoreNotFound(flags, &options.IgnoreNotFound)
 	return cmd
 }
 
@@ -2824,6 +2825,7 @@ func newCmdObjectStop(kind string) *cobra.Command {
 	commoncmd.FlagColor(flags, &options.OptsGlobal.Color)
 	commoncmd.FlagOutput(flags, &options.OptsGlobal.Output)
 	commoncmd.FlagObjectSelector(flags, &options.OptsGlobal.ObjectSelector)
+	commoncmd.FlagIgnoreNotFound(flags, &options.IgnoreNotFound)
 	commoncmd.FlagsAsync(flags, &options.OptsAsync)
 	return cmd
 }

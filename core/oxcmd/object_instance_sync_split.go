@@ -23,5 +23,6 @@ func (t *CmdObjectInstanceSyncSplit) Run(kind string) error {
 		objectaction.WithSubset(t.Subset),
 		objectaction.WithOutput(t.Output),
 		objectaction.WithColor(t.Color),
+		objectaction.WithIgnoreNotFound(t.IgnoreNotFound),
 	).Do()
 }

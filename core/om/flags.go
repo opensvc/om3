@@ -14,6 +14,7 @@ func addFlagsGlobal(flags *pflag.FlagSet, options *commands.OptsGlobal) {
 	commoncmd.FlagColor(flags, &options.Color)
 	commoncmd.FlagOutput(flags, &options.Output)
 	commoncmd.FlagObjectSelector(flags, &options.ObjectSelector)
+	commoncmd.FlagIgnoreNotFound(flags, &options.IgnoreNotFound)
 }
 
 func flagLocal(flags *pflag.FlagSet, p *bool) {

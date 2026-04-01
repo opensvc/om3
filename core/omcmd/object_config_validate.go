@@ -42,6 +42,7 @@ func (t *CmdObjectConfigValidate) Run(kind string) error {
 
 	err := objectaction.New(
 		objectaction.WithColor(t.Color),
+		objectaction.WithIgnoreNotFound(t.IgnoreNotFound),
 		objectaction.WithObjectSelector(mergedSelector),
 		objectaction.WithLocalFunc(func(ctx context.Context, p naming.Path) (interface{}, error) {
 			wg.Add(1)

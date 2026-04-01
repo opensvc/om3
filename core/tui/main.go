@@ -95,6 +95,7 @@ type (
 		head     *tview.Table
 		errs     *tview.TextView
 		textView *tview.TextView
+		help     *tview.TextView
 		keys     *tview.Table
 		objects  *tview.Table
 		flex     *tview.Flex
@@ -387,7 +388,7 @@ func (t *App) initApp() {
 		switch event.Key() {
 		case tcell.KeyESC:
 			if n := t.resetSelected(); n > 0 || (t.Frame.Selector == "*/svc/*" && len(t.stack) == 0) {
-				return nil
+				return event
 			}
 			t.back()
 		}
@@ -1937,6 +1938,10 @@ func (t *App) onRuneH(event *tcell.EventKey) {
 
    filter <expression>
 `
+	if t.help != nil {
+		return
+	}
+
 	savedItem := t.flex.GetItem(1)
 	savedFocus := t.app.GetFocus()
 
@@ -1949,6 +1954,7 @@ func (t *App) onRuneH(event *tcell.EventKey) {
 		SetInputCapture(func(event *tcell.EventKey) *tcell.EventKey {
 			switch event.Key() {
 			case tcell.KeyESC:
+				t.help = nil
 				t.flex.RemoveItem(v)
 				t.flex.AddItem(t.head, 1, 0, false)
 				t.flex.AddItem(savedItem, 0, 1, true)
@@ -1959,6 +1965,7 @@ func (t *App) onRuneH(event *tcell.EventKey) {
 	t.flex.Clear()
 	t.flex.AddItem(v, 0, 1, true)
 	t.app.SetFocus(v)
+	t.help = v
 }
 
 func (t *App) updateLogTextView() {
