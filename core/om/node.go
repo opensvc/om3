@@ -171,7 +171,6 @@ func init() {
 		newCmdNodeSysreport(),
 		newCmdNodeUnfreeze(),
 		newCmdNodeUnset(),
-		newCmdNodeVersion(),
 	)
 	cmdNodeConfig.AddCommand(
 		omcmd.NewCmdNodeConfigDoc(),
