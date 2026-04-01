@@ -27,6 +27,7 @@ func (t *CmdObjectInstanceUnfreeze) Run(kind string) error {
 		objectaction.WithObjectSelector(mergedSelector),
 		objectaction.WithOutput(t.Output),
 		objectaction.WithColor(t.Color),
+		objectaction.WithIgnoreNotFound(t.IgnoreNotFound),
 		objectaction.WithAllSlaves(t.AllSlaves),
 		objectaction.WithMaster(t.Master),
 		objectaction.WithSlaves(t.Slaves),

@@ -1,9 +1,11 @@
 package xerrors
 
 var (
-	ExitCodeObjectNotFound = 2
+	ExitCodeObjectNotFound   = 2
+	ExitCodeInstanceNotFound = 3
 
-	ObjectNotFound = newIndexedError("object not found", ExitCodeObjectNotFound)
+	ObjectNotFound   = newIndexedError("object not found", ExitCodeObjectNotFound)
+	InstanceNotFound = newIndexedError("instance not found", ExitCodeInstanceNotFound)
 )
 
 type indexedError struct {

@@ -35,6 +35,7 @@ func (t *CmdObjectPurge) Run(kind string) error {
 		objectaction.WithLocal(t.Local),
 		objectaction.WithOutput(t.Output),
 		objectaction.WithColor(t.Color),
+		objectaction.WithIgnoreNotFound(t.IgnoreNotFound),
 		objectaction.WithRemoteNodes(t.NodeSelector),
 		objectaction.WithAsyncTarget("purged"),
 		objectaction.WithAsyncTime(t.Time),

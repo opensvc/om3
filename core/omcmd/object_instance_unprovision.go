@@ -46,6 +46,7 @@ func (t *CmdObjectInstanceUnprovision) Run(kind string) error {
 		objectaction.WithLocal(t.Local),
 		objectaction.WithOutput(t.Output),
 		objectaction.WithColor(t.Color),
+		objectaction.WithIgnoreNotFound(t.IgnoreNotFound),
 		objectaction.WithRemoteNodes(t.NodeSelector),
 		objectaction.WithRemoteFunc(func(ctx context.Context, p naming.Path, nodename string) (interface{}, error) {
 			c, err := client.New()

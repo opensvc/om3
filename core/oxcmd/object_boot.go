@@ -29,6 +29,7 @@ func (t *CmdObjectInstanceBoot) Run(kind string) error {
 		objectaction.WithTag(t.Tag),
 		objectaction.WithSubset(t.Subset),
 		objectaction.WithColor(t.Color),
+		objectaction.WithIgnoreNotFound(t.IgnoreNotFound),
 		objectaction.WithOutput(t.Output),
 		objectaction.WithObjectSelector(mergedSelector),
 		objectaction.WithRemoteNodes(t.NodeSelector),

@@ -32,6 +32,7 @@ import (
 	"github.com/opensvc/om3/v3/core/rawconfig"
 	"github.com/opensvc/om3/v3/core/status"
 	"github.com/opensvc/om3/v3/core/topology"
+	"github.com/opensvc/om3/v3/core/xerrors"
 	"github.com/opensvc/om3/v3/daemon/api"
 	"github.com/opensvc/om3/v3/daemon/msgbus"
 	"github.com/opensvc/om3/v3/util/funcopt"
@@ -133,6 +134,15 @@ func WithAllSlaves(s bool) funcopt.O {
 	return funcopt.F(func(i any) error {
 		t := i.(*T)
 		t.IsAllSlaves = s
+		return nil
+	})
+}
+
+// WithIgnoreNotFound allow empty selections.
+func WithIgnoreNotFound(s bool) funcopt.O {
+	return funcopt.F(func(i any) error {
+		t := i.(*T)
+		t.IgnoreNotFound = s
 		return nil
 	})
 }
@@ -352,11 +362,17 @@ func (t T) DoLocal() error {
 	)
 	paths, err := sel.MustExpand()
 	if err != nil {
+		if t.IgnoreNotFound && errors.Is(err, xerrors.ObjectNotFound) {
+			return nil
+		}
 		return err
 	}
 	paths = paths.Existing()
 	if len(paths) == 0 {
-		return fmt.Errorf("%s exists but has no local instance", t.ObjectSelector)
+		if t.IgnoreNotFound {
+			return nil
+		}
+		return fmt.Errorf("%w: %s", xerrors.InstanceNotFound, t.ObjectSelector)
 	}
 
 	if t.Digest && isatty.IsTerminal(os.Stdin.Fd()) && (zerolog.GlobalLevel() != zerolog.DebugLevel) {
@@ -426,6 +442,9 @@ func (t T) DoAsync() error {
 	)
 	paths, err := sel.MustExpand()
 	if err != nil {
+		if t.IgnoreNotFound && errors.Is(err, xerrors.ObjectNotFound) {
+			return nil
+		}
 		return err
 	}
 	var (

@@ -104,6 +104,7 @@ func (t *CmdObjectConfigGet) doObjectAction(mergedSelector string) error {
 		objectaction.LocalFirst(),
 		objectaction.WithLocal(t.Local),
 		objectaction.WithColor(t.Color),
+		objectaction.WithIgnoreNotFound(t.IgnoreNotFound),
 		objectaction.WithOutput(t.Output),
 		objectaction.WithObjectSelector(mergedSelector),
 		objectaction.WithLocalFunc(func(ctx context.Context, p naming.Path) (interface{}, error) {

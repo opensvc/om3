@@ -42,6 +42,7 @@ func (t *CmdObjectStart) Run(kind string) error {
 		objectaction.WithLocal(t.Local),
 		objectaction.WithOutput(t.Output),
 		objectaction.WithColor(t.Color),
+		objectaction.WithIgnoreNotFound(t.IgnoreNotFound),
 		objectaction.WithAsyncTarget("started"),
 		objectaction.WithAsyncTime(t.Time),
 		objectaction.WithAsyncWait(t.Wait),

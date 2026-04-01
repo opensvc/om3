@@ -6,6 +6,7 @@ import (
 
 	"github.com/spf13/pflag"
 
+	"github.com/opensvc/om3/v3/core/commoncmd"
 	commands "github.com/opensvc/om3/v3/core/oxcmd"
 )
 
@@ -13,7 +14,7 @@ func addFlagsGlobal(flagSet *pflag.FlagSet, p *commands.OptsGlobal) {
 	flagSet.StringVar(&p.Color, "color", "auto", "output colorization yes|no|auto")
 	flagSet.StringVarP(&p.Output, "output", "o", "auto", "output format json|flat|auto|tab=<header>:<jsonpath>,...")
 	flagSet.StringVarP(&p.ObjectSelector, "selector", "s", "", "execute on a list of objects")
-
+	commoncmd.FlagIgnoreNotFound(flagSet, &p.IgnoreNotFound)
 }
 
 func addFlagObject(flagSet *pflag.FlagSet, p *string) {
