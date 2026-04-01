@@ -1405,18 +1405,6 @@ func newCmdNodeUnfreeze() *cobra.Command {
 	return cmd
 }
 
-func newCmdNodeVersion() *cobra.Command {
-	cmd := &cobra.Command{
-		Use:    "version",
-		Short:  "display agent version",
-		Hidden: true,
-		Run: func(cmd *cobra.Command, args []string) {
-			commands.CmdNodeVersion()
-		},
-	}
-	return cmd
-}
-
 func newCmdObjectAbort(kind string) *cobra.Command {
 	var options commands.CmdObjectAbort
 	cmd := &cobra.Command{

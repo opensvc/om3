@@ -5,6 +5,7 @@ import (
 
 	"github.com/opensvc/om3/v3/core/commoncmd"
 	"github.com/opensvc/om3/v3/core/omcmd"
+	"github.com/opensvc/om3/v3/util/version"
 )
 
 var (
@@ -90,7 +91,24 @@ var (
 	cmdNodeValidate = newCmdNodeValidate()
 )
 
+// getCmdNodeWithVersion returns cmdNode with --version (for backward compatibility with b2.1)
+func getCmdNodeWithVersion() *cobra.Command {
+	cmdNode.Version = version.Version()
+	cmdNode.SetVersionTemplate(`{{printf "om node version %s\n" .Version}}`)
+
+	// hide --version flag from help
+	flags := cmdNode.Flags()
+	var showVersion bool
+	flags.BoolVar(&showVersion, "version", false, "show version")
+	_ = flags.MarkHidden("version")
+
+	return cmdNode
+}
+
 func init() {
+	// Add backward compatibility for --version flag
+	cmdNode = getCmdNodeWithVersion()
+
 	root.AddCommand(cmdNode)
 	cmdNode.AddCommand(cmdNodeCapabilities)
 	cmdNodeCapabilities.AddCommand(
@@ -171,7 +189,6 @@ func init() {
 		newCmdNodeSysreport(),
 		newCmdNodeUnfreeze(),
 		newCmdNodeUnset(),
-		newCmdNodeVersion(),
 	)
 	cmdNodeConfig.AddCommand(
 		omcmd.NewCmdNodeConfigDoc(),

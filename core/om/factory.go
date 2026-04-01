@@ -3324,18 +3324,6 @@ func newCmdNodeValidate() *cobra.Command {
 	return cmd
 }
 
-func newCmdNodeVersion() *cobra.Command {
-	cmd := &cobra.Command{
-		Use:    "version",
-		Short:  "display agent version",
-		Hidden: true,
-		Run: func(cmd *cobra.Command, args []string) {
-			commands.CmdNodeVersion()
-		},
-	}
-	return cmd
-}
-
 func newCmdObjectEval(kind string) *cobra.Command {
 	cmd := newCmdObjectConfigEval(kind)
 	cmd.Hidden = true
