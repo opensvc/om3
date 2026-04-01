@@ -37,11 +37,10 @@ func (t *CmdObjectList) Run(kind string) error {
 	switch resp.StatusCode() {
 	case 200:
 		if len(resp.JSON200.Items) == 0 {
-			err := fmt.Errorf("%s: %w", mergedSelector, xerrors.ObjectNotFound)
 			if t.IgnoreNotFound {
 				return nil
 			}
-			return err
+			return fmt.Errorf("%s: %w", mergedSelector, xerrors.ObjectNotFound)
 		}
 		output.Renderer{
 			DefaultOutput: "tab=OBJECT:meta.object,AVAIL:data.avail,OVERALL:data.overall",
