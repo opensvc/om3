@@ -12,6 +12,7 @@ import (
 
 	"github.com/opensvc/om3/v3/core/rawconfig"
 	"github.com/opensvc/om3/v3/util/file"
+	"github.com/opensvc/om3/v3/util/random"
 )
 
 type (
@@ -84,6 +85,8 @@ func ReadAllFrom(from string) (map[string][]byte, error) {
 		return nil, ErrFromEmpty
 	case "-", "stdin", "/dev/stdin":
 		return readAllFromStdin()
+	case "/dev/urandom":
+		return readFromURandom()
 	default:
 		u := New(from)
 		if u.IsValid() {
@@ -113,6 +116,12 @@ func readAllFromStdin() (map[string][]byte, error) {
 		return m, err
 	}
 	return m, fmt.Errorf("stdin must be a pipe")
+}
+
+func readFromURandom() (map[string][]byte, error) {
+	m := make(map[string][]byte)
+	m[""] = random.Password(32, nil)
+	return m, nil
 }
 
 func readAllFromRegular(p string) (map[string][]byte, error) {

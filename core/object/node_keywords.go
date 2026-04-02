@@ -835,7 +835,7 @@ var (
 		Types:     []string{"relay"},
 	}
 	kwNodeHBRelayRelay = keywords.Keyword{
-		Example:  "relaynode1",
+		Example:  "https://relay.acme.com:1215",
 		Option:   "relay",
 		Required: true,
 		Section:  "hb",
@@ -853,6 +853,7 @@ var (
 		Default: naming.NsSys + "/sec/relay",
 		Option:  "password",
 		Section: "hb",
+		Example: "from system/sec/relays key relay.acme.com/user1/password",
 		Text:    keywords.NewText(fs, "text/kw/node/hb.relay.password"),
 		Types:   []string{"relay"},
 	}
