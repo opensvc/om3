@@ -1,1 +1,3 @@
-The relay resolvable node name.
+The relay server uri.
+
+If not specified, the port value is 1215, i.e. the default opensvc listener port.

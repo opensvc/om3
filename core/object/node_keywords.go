@@ -835,7 +835,7 @@ var (
 		Types:     []string{"relay"},
 	}
 	kwNodeHBRelayRelay = keywords.Keyword{
-		Example:  "relaynode1",
+		Example:  "https://relay.acme.com:1215",
 		Option:   "relay",
 		Required: true,
 		Section:  "hb",
