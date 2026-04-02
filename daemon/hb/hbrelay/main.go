@@ -12,6 +12,7 @@ import (
 	"os"
 	"time"
 
+	"github.com/opensvc/om3/v3/core/datarecv"
 	"github.com/opensvc/om3/v3/core/hbcfg"
 	"github.com/opensvc/om3/v3/core/naming"
 	"github.com/opensvc/om3/v3/core/object"
@@ -93,17 +94,25 @@ func (t *T) Configure(ctx context.Context) {
 	t.SetRx(rx)
 }
 
-func (t *T) passwordSec() (object.Sec, error) {
-	secName := t.GetString("password")
-	secPath, err := naming.ParsePath(secName)
+func (t *T) password() (string, error) {
+	value := t.GetString("password")
+	km, err := datarecv.ParseKeyMetaRel(value, naming.NsSys)
 	if err != nil {
-		return nil, err
+		return t.backwardCompatPassword(value)
 	}
-	return object.NewSec(secPath, object.WithVolatile(true))
+	b, err := km.Decode()
+	if err != nil {
+		return "", err
+	}
+	return string(b), nil
 }
 
-func (t *T) password() (string, error) {
-	sec, err := t.passwordSec()
+func (t *T) backwardCompatPassword(secName string) (string, error) {
+	secPath, err := naming.ParsePath(secName)
+	if err != nil {
+		return "", err
+	}
+	sec, err := object.NewSec(secPath, object.WithVolatile(true))
 	if err != nil {
 		return "", err
 	}
