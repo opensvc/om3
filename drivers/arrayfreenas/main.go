@@ -1036,21 +1036,12 @@ func (t Array) password() (string, error) {
 	if err != nil {
 		return "", err
 	}
-	if len(strings.Fields(s)) == 1 {
-		// old format: password = system/sec/array1
-		path, err := naming.ParsePath(s)
-		if err != nil {
-			return "", err
-		}
-		km.Path = path
-		km.From = naming.NsSys
-		km.Key = "password"
-	} else {
-		// new format: password = from system/sec/array1 key password
-		km, err = datarecv.ParseKeyMetaRel(s, naming.NsSys)
-		if err != nil {
-			return "", err
-		}
+	// Parse key reference with backward compatibility
+	// New format: password = from system/sec/array1 key password
+	// Old format: password = system/sec/array1 (uses default key "password")
+	km, err = datarecv.ParseKeyMetaRelWithFallback(s, naming.NsSys, "password")
+	if err != nil {
+		return "", err
 	}
 	b, err := km.RootDecode()
 	if err != nil {
