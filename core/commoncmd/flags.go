@@ -383,7 +383,7 @@ func FlagUpdateUnset(flags *pflag.FlagSet, p *[]string) {
 }
 
 func FlagFrom(flags *pflag.FlagSet, p *string) {
-	flags.StringVar(p, "from", "", "the key value source (ex: uri, file, /dev/stdin)")
+	flags.StringVar(p, "from", "", "the key value source (ex: uri, file, /dev/stdin, /dev/urandom)")
 }
 
 func FlagKeyName(flags *pflag.FlagSet, p *string) {
