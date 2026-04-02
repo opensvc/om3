@@ -2,6 +2,7 @@ OSVC_CONTEXT =
 
 GOCMD ?= go
 GOBUILD := $(GOCMD) build
+GOBUILDRACE := GORACE="halt_on_error=1" $(GOCMD) build -race
 GOCLEAN := $(GOCMD) clean
 GOTEST := $(GOCMD) test
 GOGEN := $(GOCMD) generate
@@ -27,7 +28,11 @@ LOCAL_HOSTNAME := $(shell hostname 2>/dev/null || echo $${HOSTNAME:-localhost})
 
 all: clean vet test race build dist
 
+all-race: clean vet test race build-race dist
+
 build: version api om ox compobj
+
+build-race: version api om-race ox-race compobj-race
 
 deps:
 	$(GOINSTALL) github.com/oapi-codegen/oapi-codegen/v2/cmd/oapi-codegen@latest
@@ -42,6 +47,9 @@ clean:
 
 compobj:
 	$(GOBUILD) -o $(COMPOBJ) ./util/compobj/
+
+compobj-race:
+	$(GOBUILDRACE) -o $(COMPOBJ) ./util/compobj/
 
 deploy:
 	@for node in $(shell $(OM) node ls); do \
@@ -88,10 +96,16 @@ install:
 om:
 	$(GOBUILD) -o $(OM) ./cmd/om/
 
+om-race:
+	$(GOBUILDRACE) -o $(OM) ./cmd/om/
+
 ox:
 	$(GOBUILD) -o $(OX) ./cmd/ox/
 
-race:
+ox-race:
+	$(GOBUILDRACE) -o $(OX) ./cmd/ox/
+
+test-race:
 	$(GOTEST) -p 1 -timeout 240s ./... -race
 
 restart:
