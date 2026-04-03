@@ -408,9 +408,8 @@ func newCmdNodeCapabilitiesList() *cobra.Command {
 func newCmdNodeCapabilitiesScan() *cobra.Command {
 	var options commands.CmdNodeCapabilitiesScan
 	cmd := &cobra.Command{
-		Use:     "scan",
-		Short:   "scan the node capabilities",
-		Aliases: []string{"sca", "sc"},
+		Use:   "scan",
+		Short: "scan the node capabilities",
 		Long: `Scan the node for capabilities.
 
 Capabilities are normally scanned at daemon startup and when the installed 
@@ -429,9 +428,8 @@ installed software to be discovered without restarting the daemon.`,
 func newCmdNodeSCSIScan() *cobra.Command {
 	var options commands.CmdNodeSCSIScan
 	cmd := &cobra.Command{
-		Use:     "scan",
-		Short:   "scan the scsi hosts in search of new disks",
-		Aliases: []string{"sca", "sc"},
+		Use:   "scan",
+		Short: "scan the scsi hosts in search of new disks",
 		Long: `Scan the scsi hosts in search of new disks.
 
 This command scans SCSI hosts for new block devices. You can specify specific HBA, target, and LUN to scan.`,
@@ -3018,7 +3016,7 @@ func newCmdNodePrintSchedule() *cobra.Command {
 	cmd := newCmdNodeScheduleList()
 	cmd.Hidden = true
 	cmd.Use = "schedule"
-	cmd.Aliases = []string{"schedul", "schedu", "sched", "sche", "sch", "sc"}
+	cmd.Aliases = []string{"sched"}
 	return cmd
 }
 
@@ -3201,7 +3199,7 @@ func newCmdObjectPrintSchedule(kind string) *cobra.Command {
 	cmd := newCmdObjectScheduleList(kind)
 	cmd.Hidden = true
 	cmd.Use = "schedule"
-	cmd.Aliases = []string{"schedul", "schedu", "sched", "sche", "sch", "sc"}
+	cmd.Aliases = []string{"sched"}
 	return cmd
 }
 
