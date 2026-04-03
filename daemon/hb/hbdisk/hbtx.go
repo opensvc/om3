@@ -4,11 +4,13 @@ import (
 	"context"
 	"fmt"
 	"math/rand"
+	"strings"
 	"sync"
 	"time"
 
 	"github.com/opensvc/om3/v3/core/hbtype"
 	"github.com/opensvc/om3/v3/daemon/daemonsubsystem"
+	"github.com/opensvc/om3/v3/daemon/hb/hbaudit"
 	"github.com/opensvc/om3/v3/daemon/hb/hbctrl"
 	"github.com/opensvc/om3/v3/util/hostname"
 	"github.com/opensvc/om3/v3/util/plog"
@@ -61,6 +63,8 @@ func (t *tx) streamPeerDesc() string {
 
 // Start implements the Start function of Transmitter interface for tx
 func (t *tx) Start(cmdC chan<- interface{}, msgC <-chan []byte) error {
+	hbaudit.EnableAudit(t.ctx, strings.TrimLeft(t.id, "hb#"), t.log)
+
 	t.log.Infof("starting with storage area: metadata_size + (max_slots x slot_size): %d + (%d x %d)", metaSize(t.base.maxSlots), t.base.maxSlots, sign.SlotSize)
 	if t.base.maxSlots < len(t.nodes) {
 		return fmt.Errorf("startup failed: not enough slots for %d nodes", len(t.nodes))

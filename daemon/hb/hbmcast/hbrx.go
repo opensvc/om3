@@ -7,12 +7,14 @@ import (
 	"errors"
 	"fmt"
 	"net"
+	"strings"
 	"sync"
 	"sync/atomic"
 	"time"
 
 	"github.com/opensvc/om3/v3/core/hbtype"
 	"github.com/opensvc/om3/v3/core/omcrypto"
+	"github.com/opensvc/om3/v3/daemon/hb/hbaudit"
 	"github.com/opensvc/om3/v3/daemon/hb/hbcrypto"
 	"github.com/opensvc/om3/v3/daemon/hb/hbctrl"
 	"github.com/opensvc/om3/v3/util/hostname"
@@ -79,6 +81,9 @@ func (t *rx) Start(cmdC chan<- interface{}, msgC chan<- *hbtype.Msg) error {
 	t.cmdC = cmdC
 	t.msgC = msgC
 	t.cancel = cancel
+
+	hbaudit.EnableAudit(ctx, strings.TrimLeft(t.id, "hb#"), t.log)
+
 	t.log.Infof("starting")
 	t.assembly = make(assembly)
 	started := make(chan bool)

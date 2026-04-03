@@ -5,12 +5,14 @@ import (
 	"encoding/json"
 	"fmt"
 	"net"
+	"strings"
 	"sync"
 	"time"
 
 	"github.com/google/uuid"
 
 	"github.com/opensvc/om3/v3/core/hbtype"
+	"github.com/opensvc/om3/v3/daemon/hb/hbaudit"
 	"github.com/opensvc/om3/v3/daemon/hb/hbctrl"
 	"github.com/opensvc/om3/v3/util/plog"
 )
@@ -68,6 +70,8 @@ func (t *tx) Start(cmdC chan<- interface{}, msgC <-chan []byte) error {
 	ctx, cancel := context.WithCancel(t.ctx)
 	t.cancel = cancel
 	t.cmdC = cmdC
+
+	hbaudit.EnableAudit(ctx, strings.TrimLeft(t.id, "hb#"), t.log)
 
 	t.Add(1)
 	go func() {

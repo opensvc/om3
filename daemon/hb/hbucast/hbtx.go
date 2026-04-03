@@ -4,10 +4,12 @@ import (
 	"context"
 	"fmt"
 	"net"
+	"strings"
 	"sync"
 	"time"
 
 	"github.com/opensvc/om3/v3/core/hbtype"
+	"github.com/opensvc/om3/v3/daemon/hb/hbaudit"
 	"github.com/opensvc/om3/v3/daemon/hb/hbctrl"
 	"github.com/opensvc/om3/v3/util/hostname"
 	"github.com/opensvc/om3/v3/util/plog"
@@ -79,6 +81,7 @@ func (t *tx) Start(cmdC chan<- interface{}, msgC <-chan []byte) error {
 	t.cancel = cancel
 	t.cmdC = cmdC
 	t.Add(1)
+	hbaudit.EnableAudit(ctx, strings.TrimLeft(t.id, "hb#"), t.log)
 
 	go func() {
 		defer t.Done()
