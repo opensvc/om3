@@ -1,6 +1,7 @@
 package object
 
 import (
+	"context"
 	"fmt"
 
 	"github.com/google/uuid"
@@ -9,6 +10,7 @@ import (
 	"github.com/opensvc/om3/v3/core/xconfig"
 	"github.com/opensvc/om3/v3/util/funcopt"
 	"github.com/opensvc/om3/v3/util/plog"
+	"github.com/opensvc/om3/v3/util/scsi"
 )
 
 type (
@@ -70,4 +72,9 @@ func (t *Node) SetVolatile(v bool) {
 
 func (t Node) IsVolatile() bool {
 	return t.volatile
+}
+
+// ScanSCSI scans the SCSI hosts in search of new disks
+func (t Node) ScanSCSI(ctx context.Context, hba, target, lun string) error {
+	return scsi.ScanSCSIHosts(hba, target, lun)
 }

@@ -15,7 +15,6 @@ import (
 	"github.com/opensvc/om3/v3/core/datarecv"
 	"github.com/opensvc/om3/v3/core/hbcfg"
 	"github.com/opensvc/om3/v3/core/naming"
-	"github.com/opensvc/om3/v3/core/object"
 	"github.com/opensvc/om3/v3/util/hostname"
 	"github.com/opensvc/om3/v3/util/key"
 	"github.com/opensvc/om3/v3/util/plog"
@@ -96,27 +95,14 @@ func (t *T) Configure(ctx context.Context) {
 
 func (t *T) password() (string, error) {
 	value := t.GetString("password")
-	km, err := datarecv.ParseKeyMetaRel(value, naming.NsSys)
+	// Parse key reference with backward compatibility
+	// New format: password = from system/sec/relay key password
+	// Old format: password = system/sec/relay (uses default key "password")
+	km, err := datarecv.ParseKeyMetaRelWithFallback(value, naming.NsSys, "password")
 	if err != nil {
-		return t.backwardCompatPassword(value)
+		return "", err
 	}
 	b, err := km.Decode()
-	if err != nil {
-		return "", err
-	}
-	return string(b), nil
-}
-
-func (t *T) backwardCompatPassword(secName string) (string, error) {
-	secPath, err := naming.ParsePath(secName)
-	if err != nil {
-		return "", err
-	}
-	sec, err := object.NewSec(secPath, object.WithVolatile(true))
-	if err != nil {
-		return "", err
-	}
-	b, err := sec.DecodeKey("password")
 	if err != nil {
 		return "", err
 	}

@@ -785,21 +785,12 @@ func (t *Array) privateKey() ([]byte, error) {
 	if err != nil {
 		return nil, err
 	}
-	if len(strings.Fields(s)) == 1 {
-		// old format: private_key = system/sec/array1
-		path, err := naming.ParsePath(s)
-		if err != nil {
-			return nil, err
-		}
-		km.Path = path
-		km.From = naming.NsSys
-		km.Key = "private_key"
-	} else {
-		// new format: private_key = from system/sec/array1 key password
-		km, err = datarecv.ParseKeyMetaRel(s, naming.NsSys)
-		if err != nil {
-			return nil, err
-		}
+	// Parse key reference with backward compatibility
+	// New format: private_key = from system/sec/array1 key private_key
+	// Old format: private_key = system/sec/array1 (uses default key "private_key")
+	km, err = datarecv.ParseKeyMetaRelWithFallback(s, naming.NsSys, "private_key")
+	if err != nil {
+		return nil, err
 	}
 	return km.RootDecode()
 }

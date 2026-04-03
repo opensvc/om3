@@ -157,7 +157,7 @@ func (t T) Resync(ctx context.Context) error {
 		}
 	}
 	if removed > added {
-		return fmt.Errorf("no faulty device found to re-add to %s remaining %d removed legs", t.devpathFromUUID(), removed-added)
+		return fmt.Errorf("no faulty device found to re-add to %s remaining %d removed legs", t.devpathFromName(), removed-added)
 	}
 	return nil
 }
@@ -265,7 +265,8 @@ func (t T) UUID() string {
 }
 
 func (t T) reAdd(ctx context.Context, devpath string) error {
-	args := []string{"--re-add", t.devpathFromUUID(), devpath}
+	mdDevPath := t.devpathFromName()
+	args := []string{"--re-add", mdDevPath, devpath}
 	cmd := command.New(
 		command.WithContext(ctx),
 		command.WithName(mdadm),
@@ -273,7 +274,13 @@ func (t T) reAdd(ctx context.Context, devpath string) error {
 		command.WithLogger(t.log),
 		command.WithCommandLogLevel(zerolog.InfoLevel),
 		command.WithStdoutLogLevel(zerolog.InfoLevel),
-		command.WithStderrLogLevel(zerolog.ErrorLevel),
+		command.WithOnStderrLine(func(s string) {
+			if strings.HasSuffix(s, "succeed") {
+				t.log.Infof("%s", s)
+				return
+			}
+			t.log.Errorf(s)
+		}),
 	)
 	cmd.Run()
 	fcache.Clear("mdadm-E-scan-v")
@@ -281,7 +288,7 @@ func (t T) reAdd(ctx context.Context, devpath string) error {
 	case 0:
 		// ok
 	default:
-		return fmt.Errorf("failed to re-add %s to %s", devpath, t.devpathFromUUID())
+		return fmt.Errorf("failed to re-add %s to %s", devpath, mdDevPath)
 	}
 	return nil
 }

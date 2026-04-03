@@ -9,23 +9,65 @@ import (
 var (
 	cmdNode             = commoncmd.NewCmdNode()
 	cmdNodeCapabilities = &cobra.Command{
+		GroupID: commoncmd.GroupIDSubsystems,
 		Use:     "capabilities",
 		Short:   "scan and list what the node is capable of",
 		Aliases: []string{"capa", "caps", "cap"},
 	}
 	cmdNodeCollector = &cobra.Command{
+		GroupID: commoncmd.GroupIDSubsystems,
 		Use:     "collector",
 		Short:   "node collector data management commands",
 		Aliases: []string{"coll"},
 	}
+	cmdNodeSCSI = &cobra.Command{
+		GroupID: commoncmd.GroupIDSubsystems,
+		Use:     "scsi",
+		Short:   "scsi commands",
+	}
 	cmdNodeCollectorTag = &cobra.Command{
-		Use:   "tag",
-		Short: "collector tags management commands",
+		GroupID: commoncmd.GroupIDSubsystems,
+		Use:     "tag",
+		Short:   "collector tags commands",
 	}
 	cmdNodeCompliance = &cobra.Command{
+		GroupID: commoncmd.GroupIDSubsystems,
 		Use:     "compliance",
 		Short:   "node configuration manager commands",
 		Aliases: []string{"comp"},
+	}
+	cmdNodeRelay = &cobra.Command{
+		GroupID: commoncmd.GroupIDSubsystems,
+		Use:     "relay",
+		Short:   "relay commands",
+	}
+	cmdNodeSchedule = &cobra.Command{
+		GroupID: commoncmd.GroupIDSubsystems,
+		Use:     "schedule",
+		Short:   "scheduler commands",
+		Aliases: []string{"sched"},
+	}
+	cmdNodeSSH = &cobra.Command{
+		GroupID: commoncmd.GroupIDSubsystems,
+		Use:     "ssh",
+		Short:   "ssh commands",
+	}
+	cmdNodeConfig = &cobra.Command{
+		GroupID: commoncmd.GroupIDSubsystems,
+		Use:     "config",
+		Short:   "node configuration commands",
+	}
+
+	// backward compat
+
+	cmdNodePrint = &cobra.Command{
+		Use:     "print",
+		Short:   "print node discover information",
+		Aliases: []string{"prin", "pri", "pr"},
+	}
+	cmdNodePush = &cobra.Command{
+		Use:   "push",
+		Short: "push node discover information to the collector",
 	}
 	cmdNodeComplianceAttach = &cobra.Command{
 		Use:     "attach",
@@ -47,32 +89,7 @@ var (
 		Short:   "show modules, modulesets, rulesets, modules, attachments",
 		Aliases: []string{"sho", "sh", "s"},
 	}
-	cmdNodePrint = &cobra.Command{
-		Use:     "print",
-		Short:   "print node discover information",
-		Aliases: []string{"prin", "pri", "pr"},
-	}
-	cmdNodePush = &cobra.Command{
-		Use:   "push",
-		Short: "push node discover information to the collector",
-	}
-	cmdNodeRelay = &cobra.Command{
-		Use:   "relay",
-		Short: "relay subsystem commands",
-	}
-	cmdNodeSchedule = &cobra.Command{
-		Use:     "schedule",
-		Short:   "node scheduler commands",
-		Aliases: []string{"sched"},
-	}
-	cmdNodeSSH = &cobra.Command{
-		Use:   "ssh",
-		Short: "ssh subsystem commands",
-	}
-	cmdNodeConfig = &cobra.Command{
-		Use:   "config",
-		Short: "node configuration commands",
-	}
+
 	cmdNodeSystem    = newCmdNodeSystem()
 	cmdNodeSystemSAN = newCmdNodeSystemSAN()
 	cmdNodeEdit      = newCmdNodeEdit()
@@ -82,9 +99,21 @@ var (
 func init() {
 	root.AddCommand(cmdNode)
 	cmdNode.AddCommand(cmdNodeCapabilities)
+	cmdNode.AddGroup(
+		commoncmd.NewGroupSubsystems(),
+	)
+	cmdNodeCollector.AddGroup(
+		commoncmd.NewGroupSubsystems(),
+	)
+
 	cmdNodeCapabilities.AddCommand(
 		newCmdNodeCapabilitiesList(),
 		newCmdNodeCapabilitiesScan(),
+	)
+	cmdNode.AddCommand(cmdNodeSCSI)
+	cmdNodeSCSI.AddCommand(
+		newCmdNodeSCSIScan(),
+		newCmdNodeSCSIPRKey(),
 	)
 	cmdNode.AddCommand(cmdNodeCollector)
 	cmdNodeCollector.AddCommand(cmdNodeCollectorTag)
@@ -169,7 +198,6 @@ func init() {
 		newCmdNodeDrivers(),
 		newCmdNodeLogs(),
 		newCmdNodeList(),
-		newCmdNodePRKey(),
 		newCmdNodePing(),
 		newCmdNodeFreeze(),
 		newCmdNodeGet(),

@@ -32,6 +32,27 @@ func ParseKeyMetaRelObj(line string, i any) (KeyMeta, error) {
 	return ParseKeyMetaRel(line, o.Path().Namespace)
 }
 
+// ParseKeyMetaRelWithFallback parses a key reference in the format "from <path> key <key>"
+// and falls back to the legacy format "<path>" with a default key name for backward compatibility.
+func ParseKeyMetaRelWithFallback(line, namespace, defaultKey string) (KeyMeta, error) {
+	// Try new format first
+	km, err := ParseKeyMetaRel(line, namespace)
+	if err == nil {
+		return km, nil
+	}
+
+	// Fall back to legacy format: just the path, using defaultKey
+	path, err := naming.ParsePath(line)
+	if err != nil {
+		return KeyMeta{}, err
+	}
+	return KeyMeta{
+		Path: path,
+		From: namespace,
+		Key:  defaultKey,
+	}, nil
+}
+
 func ParseKeyMetaRel(line, namespace string) (KeyMeta, error) {
 	var (
 		km   KeyMeta

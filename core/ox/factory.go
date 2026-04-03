@@ -408,9 +408,8 @@ func newCmdNodeCapabilitiesList() *cobra.Command {
 func newCmdNodeCapabilitiesScan() *cobra.Command {
 	var options commands.CmdNodeCapabilitiesScan
 	cmd := &cobra.Command{
-		Use:     "scan",
-		Short:   "scan the node capabilities",
-		Aliases: []string{"sca", "sc"},
+		Use:   "scan",
+		Short: "scan the node capabilities",
 		Long: `Scan the node for capabilities.
 
 Capabilities are normally scanned at daemon startup and when the installed 
@@ -423,6 +422,27 @@ installed software to be discovered without restarting the daemon.`,
 	flags := cmd.Flags()
 	addFlagsGlobal(flags, &options.OptsGlobal)
 	commoncmd.FlagNodeSelector(flags, &options.NodeSelector)
+	return cmd
+}
+
+func newCmdNodeSCSIScan() *cobra.Command {
+	var options commands.CmdNodeSCSIScan
+	cmd := &cobra.Command{
+		Use:   "scan",
+		Short: "scan the scsi hosts in search of new disks",
+		Long: `Scan the scsi hosts in search of new disks.
+
+This command scans SCSI hosts for new block devices. You can specify specific HBA, target, and LUN to scan.`,
+		RunE: func(cmd *cobra.Command, args []string) error {
+			return options.Run()
+		},
+	}
+	flags := cmd.Flags()
+	addFlagsGlobal(flags, &options.OptsGlobal)
+	commoncmd.FlagNodeSelector(flags, &options.NodeSelector)
+	commoncmd.FlagSCSIHBA(flags, &options.HBA)
+	commoncmd.FlagSCSITarget(flags, &options.Target)
+	commoncmd.FlagSCSILUN(flags, &options.LUN)
 	return cmd
 }
 
@@ -828,9 +848,9 @@ func newCmdNodeDrain() *cobra.Command {
 func newCmdNodeDrivers() *cobra.Command {
 	var options commands.CmdNodeDrivers
 	cmd := &cobra.Command{
+		GroupID: commoncmd.GroupIDQuery,
 		Use:     "drivers",
 		Short:   "list builtin drivers",
-		Aliases: []string{"driver", "drive", "driv", "drv", "dr"},
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return options.Run()
 		},
@@ -1230,7 +1250,7 @@ func newCmdNodeList() *cobra.Command {
 	return cmd
 }
 
-func newCmdNodePRKey() *cobra.Command {
+func newCmdNodeSCSIPRKey() *cobra.Command {
 	var options commands.CmdNodePRKey
 	cmd := &cobra.Command{
 		Use:     "prkey",
@@ -2995,7 +3015,7 @@ func newCmdNodePrintSchedule() *cobra.Command {
 	cmd := newCmdNodeScheduleList()
 	cmd.Hidden = true
 	cmd.Use = "schedule"
-	cmd.Aliases = []string{"schedul", "schedu", "sched", "sche", "sch", "sc"}
+	cmd.Aliases = []string{"sched"}
 	return cmd
 }
 
@@ -3178,7 +3198,7 @@ func newCmdObjectPrintSchedule(kind string) *cobra.Command {
 	cmd := newCmdObjectScheduleList(kind)
 	cmd.Hidden = true
 	cmd.Use = "schedule"
-	cmd.Aliases = []string{"schedul", "schedu", "sched", "sche", "sch", "sc"}
+	cmd.Aliases = []string{"sched"}
 	return cmd
 }
 
