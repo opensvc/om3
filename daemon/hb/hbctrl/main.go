@@ -203,7 +203,7 @@ func (c *C) run() {
 	c.wg.Add(1)
 	go func() {
 		defer c.wg.Done()
-		peerDropWorker(c.ctx)
+		peerDropper(c.ctx)
 	}()
 
 	for {

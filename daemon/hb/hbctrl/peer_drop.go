@@ -14,12 +14,12 @@ import (
 	"github.com/opensvc/om3/v3/util/pubsub"
 )
 
-// peerDropWorker is responsible for dropping peer data on msgbus.NodeStale{Node: <peer>}.
+// peerDropper is responsible for dropping peer data on msgbus.NodeStale{Node: <peer>}.
 // If <peer> node is in MonitorStateMaintenance state, the drop is delayed until maintenanceGracePeriod is reached.
 // The delayed <peer> node drop is canceled on msgbus.NodeAlive{Node: <peer>}.
-func peerDropWorker(ctx context.Context) {
+func peerDropper(ctx context.Context) {
 	databus := daemondata.FromContext(ctx)
-	log := plog.NewDefaultLogger().Attr("pkg", "daemon/hbctrl:peerDropWorker").WithPrefix("daemon: hbctrl: peer drop: ")
+	log := plog.NewDefaultLogger().Attr("pkg", "daemon/hbctrl:peerDropper").WithPrefix("daemon: hbctrl: peer drop: ")
 	sub := pubsub.SubFromContext(ctx, "daemon.hb.peer_drop_worker")
 	sub.AddFilter(&msgbus.AuditStart{})
 	sub.AddFilter(&msgbus.AuditStop{})
@@ -112,9 +112,9 @@ func peerDropWorker(ctx context.Context) {
 		case i := <-sub.C:
 			switch c := i.(type) {
 			case *msgbus.AuditStart:
-				log.HandleAuditStart(c.Q, c.Subsystems, "hb", "hb.common")
+				log.HandleAuditStart(c.Q, c.Subsystems, "hb", "hb.peer_dropper")
 			case *msgbus.AuditStop:
-				log.HandleAuditStop(c.Q, c.Subsystems, "hb", "hb.common")
+				log.HandleAuditStop(c.Q, c.Subsystems, "hb", "hb.peer_dropper")
 			case *msgbus.ConfigFileUpdated:
 				onConfigFileUpdated(c)
 			case *msgbus.NodeAlive:
