@@ -60,7 +60,7 @@ type (
 
 func New(_ context.Context, opts ...funcopt.O) *T {
 	t := &T{
-		log: plog.NewDefaultLogger().Attr("pkg", "daemon/hb").WithPrefix("daemon: hb: "),
+		log: plog.NewDefaultLogger().Attr("pkg", "daemon/hb").WithPrefix("daemon: hb: main: "),
 	}
 	if err := funcopt.Apply(t, opts...); err != nil {
 		t.log.Warnf("funcopt apply: %s", err)
