@@ -2406,6 +2406,9 @@ type InQueryForce = bool
 // InQueryGreetTimeout defines model for inQueryGreetTimeout.
 type InQueryGreetTimeout = string
 
+// InQueryHBA defines model for inQueryHBA.
+type InQueryHBA = string
+
 // InQueryImpersonate The node name to impersonate when evaluating a keyword. Setting impersonate without evaluate=true returns a Bad Request error.
 type InQueryImpersonate = string
 
@@ -2417,6 +2420,9 @@ type Names = []string
 
 // InQueryKeywords defines model for inQueryKeywords.
 type InQueryKeywords = []string
+
+// InQueryLUN defines model for inQueryLUN.
+type InQueryLUN = string
 
 // InQueryLeader defines model for inQueryLeader.
 type InQueryLeader = bool
@@ -2468,6 +2474,9 @@ type InQuerySubset = string
 
 // InQueryTag defines model for inQueryTag.
 type InQueryTag = string
+
+// InQueryTarget defines model for inQueryTarget.
+type InQueryTarget = string
 
 // InQueryTo defines model for inQueryTo.
 type InQueryTo = string
@@ -2646,6 +2655,20 @@ type PostNodeActionPushPkgParams struct {
 // PostNodeActionScanCapabilitiesParams defines parameters for PostNodeActionScanCapabilities.
 type PostNodeActionScanCapabilitiesParams struct {
 	RequesterSid *InQueryRequesterSid `form:"requester_sid,omitempty" json:"requester_sid,omitempty"`
+}
+
+// PostNodeActionSCSIScanParams defines parameters for PostNodeActionSCSIScan.
+type PostNodeActionSCSIScanParams struct {
+	RequesterSid *InQueryRequesterSid `form:"requester_sid,omitempty" json:"requester_sid,omitempty"`
+
+	// Hba Specify a hba to scan for new block devices.
+	Hba *InQueryHBA `form:"hba,omitempty" json:"hba,omitempty"`
+
+	// Target Specify a target to scan for new block devices.
+	Target *InQueryTarget `form:"target,omitempty" json:"target,omitempty"`
+
+	// Lun Specify a logical unit number to scan for new block devices.
+	Lun *InQueryLUN `form:"lun,omitempty" json:"lun,omitempty"`
 }
 
 // PostNodeActionSysreportParams defines parameters for PostNodeActionSysreport.

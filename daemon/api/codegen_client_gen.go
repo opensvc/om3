@@ -192,6 +192,9 @@ type ClientInterface interface {
 	// PostNodeActionScanCapabilities request
 	PostNodeActionScanCapabilities(ctx context.Context, nodename InPathNodeName, params *PostNodeActionScanCapabilitiesParams, reqEditors ...RequestEditorFn) (*http.Response, error)
 
+	// PostNodeActionSCSIScan request
+	PostNodeActionSCSIScan(ctx context.Context, nodename InPathNodeName, params *PostNodeActionSCSIScanParams, reqEditors ...RequestEditorFn) (*http.Response, error)
+
 	// PostNodeActionSysreport request
 	PostNodeActionSysreport(ctx context.Context, nodename InPathNodeName, params *PostNodeActionSysreportParams, reqEditors ...RequestEditorFn) (*http.Response, error)
 
@@ -953,6 +956,18 @@ func (c *Client) PostNodeActionPushPkg(ctx context.Context, nodename InPathNodeN
 
 func (c *Client) PostNodeActionScanCapabilities(ctx context.Context, nodename InPathNodeName, params *PostNodeActionScanCapabilitiesParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
 	req, err := NewPostNodeActionScanCapabilitiesRequest(c.Server, nodename, params)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+func (c *Client) PostNodeActionSCSIScan(ctx context.Context, nodename InPathNodeName, params *PostNodeActionSCSIScanParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewPostNodeActionSCSIScanRequest(c.Server, nodename, params)
 	if err != nil {
 		return nil, err
 	}
@@ -4041,6 +4056,110 @@ func NewPostNodeActionScanCapabilitiesRequest(server string, nodename InPathNode
 		if params.RequesterSid != nil {
 
 			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "requester_sid", *params.RequesterSid, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "string", Format: "uuid"}); err != nil {
+				return nil, err
+			} else if parsed, err := url.ParseQuery(queryFrag); err != nil {
+				return nil, err
+			} else {
+				for k, v := range parsed {
+					for _, v2 := range v {
+						queryValues.Add(k, v2)
+					}
+				}
+			}
+
+		}
+
+		queryURL.RawQuery = queryValues.Encode()
+	}
+
+	req, err := http.NewRequest("POST", queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
+// NewPostNodeActionSCSIScanRequest generates requests for PostNodeActionSCSIScan
+func NewPostNodeActionSCSIScanRequest(server string, nodename InPathNodeName, params *PostNodeActionSCSIScanParams) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "nodename", nodename, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/api/node/name/%s/action/scsi/scan", pathParam0)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	if params != nil {
+		queryValues := queryURL.Query()
+
+		if params.RequesterSid != nil {
+
+			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "requester_sid", *params.RequesterSid, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "string", Format: "uuid"}); err != nil {
+				return nil, err
+			} else if parsed, err := url.ParseQuery(queryFrag); err != nil {
+				return nil, err
+			} else {
+				for k, v := range parsed {
+					for _, v2 := range v {
+						queryValues.Add(k, v2)
+					}
+				}
+			}
+
+		}
+
+		if params.Hba != nil {
+
+			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "hba", *params.Hba, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "string", Format: ""}); err != nil {
+				return nil, err
+			} else if parsed, err := url.ParseQuery(queryFrag); err != nil {
+				return nil, err
+			} else {
+				for k, v := range parsed {
+					for _, v2 := range v {
+						queryValues.Add(k, v2)
+					}
+				}
+			}
+
+		}
+
+		if params.Target != nil {
+
+			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "target", *params.Target, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "string", Format: ""}); err != nil {
+				return nil, err
+			} else if parsed, err := url.ParseQuery(queryFrag); err != nil {
+				return nil, err
+			} else {
+				for k, v := range parsed {
+					for _, v2 := range v {
+						queryValues.Add(k, v2)
+					}
+				}
+			}
+
+		}
+
+		if params.Lun != nil {
+
+			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "lun", *params.Lun, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "string", Format: ""}); err != nil {
 				return nil, err
 			} else if parsed, err := url.ParseQuery(queryFrag); err != nil {
 				return nil, err
@@ -12508,6 +12627,9 @@ type ClientWithResponsesInterface interface {
 	// PostNodeActionScanCapabilitiesWithResponse request
 	PostNodeActionScanCapabilitiesWithResponse(ctx context.Context, nodename InPathNodeName, params *PostNodeActionScanCapabilitiesParams, reqEditors ...RequestEditorFn) (*PostNodeActionScanCapabilitiesResponse, error)
 
+	// PostNodeActionSCSIScanWithResponse request
+	PostNodeActionSCSIScanWithResponse(ctx context.Context, nodename InPathNodeName, params *PostNodeActionSCSIScanParams, reqEditors ...RequestEditorFn) (*PostNodeActionSCSIScanResponse, error)
+
 	// PostNodeActionSysreportWithResponse request
 	PostNodeActionSysreportWithResponse(ctx context.Context, nodename InPathNodeName, params *PostNodeActionSysreportParams, reqEditors ...RequestEditorFn) (*PostNodeActionSysreportResponse, error)
 
@@ -13702,6 +13824,31 @@ func (r PostNodeActionScanCapabilitiesResponse) Status() string {
 
 // StatusCode returns HTTPResponse.StatusCode
 func (r PostNodeActionScanCapabilitiesResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+type PostNodeActionSCSIScanResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	JSON200      *NodeActionAccepted
+	JSON401      *N401
+	JSON403      *N403
+	JSON500      *N500
+}
+
+// Status returns HTTPResponse.Status
+func (r PostNodeActionSCSIScanResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r PostNodeActionSCSIScanResponse) StatusCode() int {
 	if r.HTTPResponse != nil {
 		return r.HTTPResponse.StatusCode
 	}
@@ -16949,6 +17096,15 @@ func (c *ClientWithResponses) PostNodeActionScanCapabilitiesWithResponse(ctx con
 	return ParsePostNodeActionScanCapabilitiesResponse(rsp)
 }
 
+// PostNodeActionSCSIScanWithResponse request returning *PostNodeActionSCSIScanResponse
+func (c *ClientWithResponses) PostNodeActionSCSIScanWithResponse(ctx context.Context, nodename InPathNodeName, params *PostNodeActionSCSIScanParams, reqEditors ...RequestEditorFn) (*PostNodeActionSCSIScanResponse, error) {
+	rsp, err := c.PostNodeActionSCSIScan(ctx, nodename, params, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParsePostNodeActionSCSIScanResponse(rsp)
+}
+
 // PostNodeActionSysreportWithResponse request returning *PostNodeActionSysreportResponse
 func (c *ClientWithResponses) PostNodeActionSysreportWithResponse(ctx context.Context, nodename InPathNodeName, params *PostNodeActionSysreportParams, reqEditors ...RequestEditorFn) (*PostNodeActionSysreportResponse, error) {
 	rsp, err := c.PostNodeActionSysreport(ctx, nodename, params, reqEditors...)
@@ -19694,6 +19850,53 @@ func ParsePostNodeActionScanCapabilitiesResponse(rsp *http.Response) (*PostNodeA
 	}
 
 	response := &PostNodeActionScanCapabilitiesResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest NodeActionAccepted
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest N401
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest N403
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON403 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
+		var dest N500
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON500 = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParsePostNodeActionSCSIScanResponse parses an HTTP response from a PostNodeActionSCSIScanWithResponse call
+func ParsePostNodeActionSCSIScanResponse(rsp *http.Response) (*PostNodeActionSCSIScanResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &PostNodeActionSCSIScanResponse{
 		Body:         bodyBytes,
 		HTTPResponse: rsp,
 	}

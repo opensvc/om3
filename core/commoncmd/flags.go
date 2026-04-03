@@ -522,3 +522,15 @@ func HiddenFlagObjectSelector(flags *pflag.FlagSet, p *string) {
 	FlagObjectSelector(flags, p)
 	flags.MarkHidden("selector")
 }
+
+func FlagSCSIHBA(flags *pflag.FlagSet, p *string) {
+	flags.StringVar(p, "hba", "", "Specify a hba to scan for new block devices. Example: 5001438002432430 or iqn.1993-08.org.debian:01:659b4bbd68bd.")
+}
+
+func FlagSCSITarget(flags *pflag.FlagSet, p *string) {
+	flags.StringVar(p, "target", "", "Specify a target to scan for new block devices. Example: 5000097358185088 or iqn.clementine.tgt1.")
+}
+
+func FlagSCSILUN(flags *pflag.FlagSet, p *string) {
+	flags.StringVar(p, "lun", "", "Specify a logical unit number to scan for new block devices. Example: 1.")
+}

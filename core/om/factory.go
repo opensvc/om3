@@ -522,6 +522,28 @@ installed software to be discovered without restarting the daemon.`,
 	return cmd
 }
 
+func newCmdNodeSCSIScan() *cobra.Command {
+	var options commands.CmdNodeSCSIScan
+	cmd := &cobra.Command{
+		Use:     "scan",
+		Short:   "scan the scsi hosts in search of new disks",
+		Aliases: []string{"sca", "sc"},
+		Long: `Scan the scsi hosts in search of new disks.
+
+This command scans SCSI hosts for new block devices. You can specify specific HBA, target, and LUN to scan.`,
+		RunE: func(cmd *cobra.Command, args []string) error {
+			return options.Run()
+		},
+	}
+	flags := cmd.Flags()
+	addFlagsGlobal(flags, &options.OptsGlobal)
+	commoncmd.FlagNodeSelector(flags, &options.NodeSelector)
+	commoncmd.FlagSCSIHBA(flags, &options.HBA)
+	commoncmd.FlagSCSITarget(flags, &options.Target)
+	commoncmd.FlagSCSILUN(flags, &options.LUN)
+	return cmd
+}
+
 func newCmdNodeChecks() *cobra.Command {
 	var options commands.CmdNodeChecks
 	cmd := &cobra.Command{

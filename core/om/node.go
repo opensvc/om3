@@ -54,6 +54,10 @@ var (
 		Short:   "configuration commands",
 		Aliases: []string{"conf", "c", "cf", "cfg"},
 	}
+	cmdNodeSCSI = &cobra.Command{
+		Use:   "scsi",
+		Short: "scsi subsystem commands",
+	}
 	cmdNodePrint = &cobra.Command{
 		Use:     "print",
 		Hidden:  true,
@@ -163,6 +167,7 @@ func init() {
 		cmdNodePush,
 		cmdNodeRelay,
 		cmdNodeScan,
+		cmdNodeSCSI,
 		cmdNodeSchedule,
 		cmdNodeSSH,
 		cmdNodeUpdate,
@@ -215,6 +220,9 @@ func init() {
 	)
 	cmdNodeScan.AddCommand(
 		newCmdNodeScanCapabilities(),
+	)
+	cmdNodeSCSI.AddCommand(
+		newCmdNodeSCSIScan(),
 	)
 	cmdNodeSchedule.AddCommand(
 		newCmdNodeScheduleList(),

@@ -18,6 +18,10 @@ var (
 		Short:   "node collector data management commands",
 		Aliases: []string{"coll"},
 	}
+	cmdNodeSCSI = &cobra.Command{
+		Use:   "scsi",
+		Short: "scsi subsystem commands",
+	}
 	cmdNodeCollectorTag = &cobra.Command{
 		Use:   "tag",
 		Short: "collector tags management commands",
@@ -85,6 +89,10 @@ func init() {
 	cmdNodeCapabilities.AddCommand(
 		newCmdNodeCapabilitiesList(),
 		newCmdNodeCapabilitiesScan(),
+	)
+	cmdNode.AddCommand(cmdNodeSCSI)
+	cmdNodeSCSI.AddCommand(
+		newCmdNodeSCSIScan(),
 	)
 	cmdNode.AddCommand(cmdNodeCollector)
 	cmdNodeCollector.AddCommand(cmdNodeCollectorTag)
