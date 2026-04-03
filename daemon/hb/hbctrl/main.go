@@ -43,6 +43,7 @@ import (
 	"time"
 
 	"github.com/opensvc/om3/v3/daemon/daemonsubsystem"
+	"github.com/opensvc/om3/v3/daemon/hb/hbaudit"
 	"github.com/opensvc/om3/v3/daemon/hbcache"
 	"github.com/opensvc/om3/v3/daemon/msgbus"
 	"github.com/opensvc/om3/v3/util/hostname"
@@ -172,6 +173,7 @@ func (c *C) Start(ctx context.Context) chan<- any {
 		defer c.wg.Done()
 		cmdC := make(chan any)
 		c.ctx, c.cancel = context.WithCancel(ctx)
+		hbaudit.EnableAudit(ctx, "hb.ctrl", c.log, "hb", "hb.ctrl")
 		c.cmd = cmdC
 		respC <- cmdC
 		c.run()
