@@ -3586,6 +3586,13 @@ func newCmdDataStoreRename(kind string) *cobra.Command {
 	return cmd
 }
 
+func newCmdNodeScanscsi() *cobra.Command {
+	cmd := newCmdNodeSCSIScan()
+	cmd.Use = "scanscsi"
+	cmd.Hidden = true
+	return cmd
+}
+
 func newCmdObjectGen(kind string) *cobra.Command {
 	return &cobra.Command{
 		Use:    "gen",

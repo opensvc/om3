@@ -189,6 +189,7 @@ func init() {
 		newCmdNodeEvents(),
 		newCmdNodeEval(),
 		newCmdNodeRegister(),
+		newCmdNodeScanscsi(),
 		newCmdNodeSet(),
 		newCmdNodeStonith(),
 		newCmdNodeSysreport(),
