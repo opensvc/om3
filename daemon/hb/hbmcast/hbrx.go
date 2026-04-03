@@ -82,7 +82,7 @@ func (t *rx) Start(cmdC chan<- interface{}, msgC chan<- *hbtype.Msg) error {
 	t.msgC = msgC
 	t.cancel = cancel
 
-	hbaudit.EnableAudit(ctx, strings.TrimLeft(t.id, "hb#"), t.log)
+	hbaudit.EnableAudit(t.ctx, t.id, t.log, "hb", strings.Replace(t.id, "hb#", "hb:", 1))
 
 	t.log.Infof("starting")
 	t.assembly = make(assembly)

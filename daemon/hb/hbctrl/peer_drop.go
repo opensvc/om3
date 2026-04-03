@@ -112,9 +112,9 @@ func peerDropWorker(ctx context.Context) {
 		case i := <-sub.C:
 			switch c := i.(type) {
 			case *msgbus.AuditStart:
-				log.HandleAuditStart(c.Q, c.Subsystems, "hb.peer_drop_worker")
+				log.HandleAuditStart(c.Q, c.Subsystems, "hb", "hb.common")
 			case *msgbus.AuditStop:
-				log.HandleAuditStop(c.Q, c.Subsystems, "hb.peer_drop_worker")
+				log.HandleAuditStop(c.Q, c.Subsystems, "hb", "hb.common")
 			case *msgbus.ConfigFileUpdated:
 				onConfigFileUpdated(c)
 			case *msgbus.NodeAlive:

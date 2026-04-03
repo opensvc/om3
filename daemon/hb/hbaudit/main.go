@@ -11,27 +11,32 @@ import (
 
 type (
 	T struct {
-		id  string
-		log *plog.Logger
+		id       string
+		log      *plog.Logger
+		matchers []string
 	}
 )
 
-func EnableAudit(ctx context.Context, id string, log *plog.Logger) {
+func EnableAudit(ctx context.Context, id string, log *plog.Logger, matchers ...string) {
 	t := &T{
-		id:  id,
-		log: log,
+		id:       id,
+		log:      log,
+		matchers: matchers,
 	}
 	enabled := make(chan bool)
-	go t.EnableAudit(ctx, enabled)
+	go t.enableAudit(ctx, enabled)
 	<-enabled
 }
 
-func (t *T) EnableAudit(ctx context.Context, enabled chan<- bool) {
+func (t *T) enableAudit(ctx context.Context, enabled chan<- bool) {
 	t.attachActiveAuditIfAny(ctx)
-	sub := pubsub.SubFromContext(ctx, "hb:"+t.id, pubsub.WithQueueSize(1024))
+	sub := pubsub.SubFromContext(ctx, t.id, pubsub.WithQueueSize(1024))
 	sub.AddFilter(&msgbus.AuditStart{})
 	sub.AddFilter(&msgbus.AuditStop{})
 	sub.Start()
+	defer func() {
+		_ = sub.Stop()
+	}()
 	enabled <- true
 	for {
 		select {
@@ -40,20 +45,11 @@ func (t *T) EnableAudit(ctx context.Context, enabled chan<- bool) {
 		case i := <-sub.C:
 			switch c := i.(type) {
 			case *msgbus.AuditStart:
-				t.log.HandleAuditStart(c.Q, c.Subsystems, "hb", "hb:"+t.id)
+				t.log.HandleAuditStart(c.Q, c.Subsystems, t.matchers...)
 			case *msgbus.AuditStop:
-				t.log.HandleAuditStop(c.Q, c.Subsystems, "hb", "hb:"+t.id)
+				t.log.HandleAuditStop(c.Q, c.Subsystems, t.matchers...)
 			}
 		}
-	}
-}
-
-func (t *T) onEvent(ev any) {
-	switch c := ev.(type) {
-	case *msgbus.AuditStart:
-		t.log.HandleAuditStart(c.Q, c.Subsystems, "hb", "hb:"+t.id)
-	case *msgbus.AuditStop:
-		t.log.HandleAuditStop(c.Q, c.Subsystems, "hb", "hb:"+t.id)
 	}
 }
 
@@ -66,5 +62,5 @@ func (t *T) attachActiveAuditIfAny(ctx context.Context) {
 	if !ok {
 		return
 	}
-	t.log.HandleAuditStart(sess.Q, sess.Subsystems, "hb", "hb:"+t.id)
+	t.log.HandleAuditStart(sess.Q, sess.Subsystems, t.matchers...)
 }

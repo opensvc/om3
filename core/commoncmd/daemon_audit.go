@@ -13,12 +13,13 @@ import (
 	"time"
 
 	"github.com/fatih/color"
+	"github.com/rs/zerolog"
+	"github.com/spf13/cobra"
+
 	"github.com/opensvc/om3/v3/core/client"
 	"github.com/opensvc/om3/v3/core/rawconfig"
 	"github.com/opensvc/om3/v3/daemon/api"
 	"github.com/opensvc/om3/v3/util/logging"
-	"github.com/rs/zerolog"
-	"github.com/spf13/cobra"
 )
 
 type (
@@ -42,7 +43,7 @@ func NewCmdDaemonAudit() *cobra.Command {
 		Short: "read and render the log stream of the selected daemon subsystems up to debug and trace.",
 		Long: "Stream the logs of the selected daemon subsystems up to debug and trace.\n\n" +
 			"Auditable subsystems:\n\n" +
-			"  api ccfg collector cstat daemonauth daemondata discover dns hb hb.peer_drop_worker hook\n" +
+			"  api ccfg collector cstat daemonauth daemondata discover dns hb hb.common hb:<hbid> hook\n" +
 			"  icfg icfg:<path> imon imon:<path> istat lsnrhttpinet lsnrhttpux nmon omon omon:<path> pubsub\n" +
 			"  runner scheduler",
 		RunE: func(cmd *cobra.Command, args []string) error {

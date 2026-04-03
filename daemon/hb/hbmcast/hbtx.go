@@ -71,7 +71,7 @@ func (t *tx) Start(cmdC chan<- interface{}, msgC <-chan []byte) error {
 	t.cancel = cancel
 	t.cmdC = cmdC
 
-	hbaudit.EnableAudit(ctx, strings.TrimLeft(t.id, "hb#"), t.log)
+	hbaudit.EnableAudit(t.ctx, t.id, t.log, "hb", strings.Replace(t.id, "hb#", "hb:", 1))
 
 	t.Add(1)
 	go func() {
