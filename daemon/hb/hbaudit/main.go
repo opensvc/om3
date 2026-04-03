@@ -28,6 +28,18 @@ func EnableAudit(ctx context.Context, id string, log *plog.Logger, matchers ...s
 	<-enabled
 }
 
+func AttachActiveAuditIfAny(ctx context.Context, log *plog.Logger, matchers ...string) {
+	reg := daemonctx.AuditRegistry(ctx)
+	if reg == nil {
+		return
+	}
+	sess, ok := reg.Snapshot()
+	if !ok {
+		return
+	}
+	log.HandleAuditStart(sess.Q, sess.Subsystems, matchers...)
+}
+
 func (t *T) enableAudit(ctx context.Context, enabled chan<- bool) {
 	t.attachActiveAuditIfAny(ctx)
 	sub := pubsub.SubFromContext(ctx, t.id, pubsub.WithQueueSize(1024))
@@ -54,13 +66,5 @@ func (t *T) enableAudit(ctx context.Context, enabled chan<- bool) {
 }
 
 func (t *T) attachActiveAuditIfAny(ctx context.Context) {
-	reg := daemonctx.AuditRegistry(ctx)
-	if reg == nil {
-		return
-	}
-	sess, ok := reg.Snapshot()
-	if !ok {
-		return
-	}
-	t.log.HandleAuditStart(sess.Q, sess.Subsystems, t.matchers...)
+	AttachActiveAuditIfAny(ctx, t.log, t.matchers...)
 }

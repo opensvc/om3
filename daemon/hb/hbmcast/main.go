@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/opensvc/om3/v3/core/hbcfg"
+	"github.com/opensvc/om3/v3/daemon/hb/hbaudit"
 	"github.com/opensvc/om3/v3/util/hostname"
 	"github.com/opensvc/om3/v3/util/key"
 	"github.com/opensvc/om3/v3/util/plog"
@@ -67,6 +68,7 @@ func init() {
 // Configure implements the Configure function of Confer interface for T
 func (t *T) Configure(ctx context.Context) {
 	log := plog.NewDefaultLogger().Attr("ctx", "daemon/hb/hbmcast").Attr("hb_name", t.Name()).WithPrefix("daemon: hb: mcast: " + t.Name() + ": configure: ")
+	hbaudit.AttachActiveAuditIfAny(ctx, log, "hb", "hb.main", strings.Replace(t.Name(), "hb#", "hb:", 1))
 	interval := t.GetDuration("interval", 5*time.Second)
 	timeout := t.GetDuration("timeout", 15*time.Second)
 	intf := t.GetString("intf")
