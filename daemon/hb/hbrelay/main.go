@@ -126,17 +126,9 @@ func (t *cfg) startSubscription(ctx context.Context) *pubsub.Subscription {
 func (t *cfg) onEvent(ev any) {
 	switch c := ev.(type) {
 	case *msgbus.AuditStart:
-		subsystem := "hb"
-		if !slices.Contains(c.Subsystems, subsystem) {
-			subsystem = strings.Replace(t.id, "hb#", "hb:", 1)
-		}
-		t.log.HandleAuditStart(c.Q, c.Subsystems, subsystem)
+		t.log.HandleAuditStart(c.Q, c.Subsystems, "hb", strings.Replace(t.id, "hb#", "hb:", 1))
 	case *msgbus.AuditStop:
-		subsystem := "hb"
-		if !slices.Contains(c.Subsystems, subsystem) {
-			subsystem = strings.Replace(t.id, "hb#", "hb:", 1)
-		}
-		t.log.HandleAuditStop(c.Q, c.Subsystems, subsystem)
+		t.log.HandleAuditStop(c.Q, c.Subsystems, "hb", strings.Replace(t.id, "hb#", "hb:", 1))
 	case *msgbus.InstanceConfigUpdated:
 		if err := t.refreshClient(); err != nil {
 			t.log.Errorf("refresh client on changed %s: %s", t.passwordFrom.Path, err)
@@ -150,15 +142,11 @@ func (t *cfg) attachActiveAuditIfAny(ctx context.Context) {
 	if reg == nil {
 		return
 	}
-	subsystem := "hb"
 	sess, ok := reg.Snapshot()
 	if !ok {
 		return
 	}
-	if !slices.Contains(sess.Subsystems, subsystem) {
-		subsystem = strings.Replace(t.id, "hb#", "hb:", 1)
-	}
-	t.log.HandleAuditStart(sess.Q, sess.Subsystems, subsystem)
+	t.log.HandleAuditStart(sess.Q, sess.Subsystems, "hb", strings.Replace(t.id, "hb#", "hb:", 1))
 }
 
 func (t *cfg) refreshClient() error {
