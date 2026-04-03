@@ -7,7 +7,6 @@ import (
 	"sync"
 	"time"
 
-	"github.com/opensvc/om3/v3/core/client"
 	"github.com/opensvc/om3/v3/core/cluster"
 	"github.com/opensvc/om3/v3/core/hbtype"
 	"github.com/opensvc/om3/v3/daemon/api"
@@ -20,18 +19,13 @@ type (
 	tx struct {
 		sync.WaitGroup
 
-		ctx      context.Context
-		id       string
-		nodes    []string
-		relay    string
-		username string
-		password string
-		insecure bool
-		timeout  time.Duration
-		interval time.Duration
+		cfg
 
-		name   string
-		log    *plog.Logger
+		ctx   context.Context
+		nodes []string
+
+		name string
+
 		cmdC   chan<- interface{}
 		msgC   chan<- *hbtype.Msg
 		cancel func()
@@ -67,11 +61,22 @@ func (t *tx) Start(cmdC chan<- interface{}, msgC <-chan []byte) error {
 	ctx, cancel := context.WithCancel(t.ctx)
 	t.cancel = cancel
 	t.cmdC = cmdC
+	errC := make(chan error)
 	t.Add(1)
 	go func() {
-		defer t.Done()
+		sub := t.startSubscription(ctx)
+		defer func() { _ = sub.Stop() }()
+		if err := t.refreshClient(); err != nil {
+			t.log.Errorf("start: create client: %s", err)
+			errC <- err
+			return
+		}
 		t.log.Infof("started")
-		defer t.log.Infof("stopped")
+		errC <- nil
+		defer func() {
+			t.Done()
+			t.log.Infof("stopped")
+		}()
 		for _, node := range t.nodes {
 			cmdC <- hbctrl.CmdAddWatcher{
 				HbID:     t.id,
@@ -94,6 +99,8 @@ func (t *tx) Start(cmdC chan<- interface{}, msgC <-chan []byte) error {
 				ticker.Reset(t.interval)
 			case <-ticker.C:
 				reason = "send msg (interval)"
+			case ev := <-sub.C:
+				t.onEvent(ev)
 			}
 			if len(b) == 0 {
 				continue
@@ -103,18 +110,12 @@ func (t *tx) Start(cmdC chan<- interface{}, msgC <-chan []byte) error {
 			}
 		}
 	}()
-	return nil
+
+	return <-errC
 }
 
 func (t *tx) send(b []byte) {
-	cli, err := client.New(
-		client.WithURL(t.relay),
-		client.WithUsername(t.username),
-		client.WithPassword(t.password),
-		client.WithInsecureSkipVerify(t.insecure),
-	)
-	if err != nil {
-		t.log.Tracef("send: new client: %s", err)
+	if t.cli == nil {
 		return
 	}
 
@@ -125,7 +126,7 @@ func (t *tx) send(b []byte) {
 		ClusterName: clusterConfig.Name,
 		Msg:         string(b),
 	}
-	resp, err := cli.PostRelayMessage(context.Background(), params)
+	resp, err := t.cli.PostRelayMessage(context.Background(), params)
 	if err != nil {
 		t.log.Tracef("send: PostRelayMessage: %s", err)
 		return
@@ -147,22 +148,18 @@ func (t *tx) send(b []byte) {
 	}
 }
 
-func newTx(ctx context.Context, name string, nodes []string, relay, username, password string, insecure bool, timeout, interval time.Duration) *tx {
+func newTx(ctx context.Context, name string, nodes []string, cfg cfg) *tx {
 	id := name + ".tx"
+	cfg.id = id
+	cfg.log = plog.NewDefaultLogger().Attr("pkg", "daemon/hb/hbrelay").
+		Attr("hb_func", "tx").
+		Attr("hb_name", name).
+		Attr("hb_id", id).
+		WithPrefix("daemon: hb: relay: tx: " + name + ": ")
+
 	return &tx{
-		ctx:      ctx,
-		id:       id,
-		nodes:    nodes,
-		relay:    relay,
-		username: username,
-		password: password,
-		insecure: insecure,
-		timeout:  timeout,
-		interval: interval,
-		log: plog.NewDefaultLogger().Attr("pkg", "daemon/hb/hbrelay").
-			Attr("hb_func", "tx").
-			Attr("hb_name", name).
-			Attr("hb_id", id).
-			WithPrefix("daemon: hb: relay: tx: " + name + ": "),
+		ctx:   ctx,
+		nodes: nodes,
+		cfg:   cfg,
 	}
 }

@@ -8,7 +8,6 @@ import (
 	"sync"
 	"time"
 
-	"github.com/opensvc/om3/v3/core/client"
 	"github.com/opensvc/om3/v3/core/cluster"
 	"github.com/opensvc/om3/v3/core/hbtype"
 	"github.com/opensvc/om3/v3/daemon/api"
@@ -21,19 +20,14 @@ type (
 	// rx holds a hb unicast receiver
 	rx struct {
 		sync.WaitGroup
-		ctx      context.Context
-		id       string
-		nodes    []string
-		relay    string
-		username string
-		password string
-		insecure bool
-		timeout  time.Duration
-		interval time.Duration
-		lastAt   time.Time
+
+		cfg
+
+		ctx    context.Context
+		nodes  []string
+		lastAt time.Time
 
 		name   string
-		log    *plog.Logger
 		cmdC   chan<- any
 		msgC   chan<- *hbtype.Msg
 		cancel func()
@@ -88,12 +82,24 @@ func (t *rx) Start(cmdC chan<- any, msgC chan<- *hbtype.Msg) error {
 		}
 	}
 
+	errC := make(chan error)
 	t.Add(1)
 	go func() {
-		defer t.Done()
-		defer ticker.Stop()
+		sub := t.startSubscription(ctx)
+		defer func() {
+			ticker.Stop()
+			_ = sub.Stop()
+			t.Done()
+			t.log.Infof("stopped")
+		}()
+		// ensure don't miss the first password update
+		if err := t.refreshClient(); err != nil {
+			t.log.Errorf("start: create client: %s", err)
+			errC <- err
+			return
+		}
 		t.log.Infof("started")
-		defer t.log.Infof("stopped")
+		errC <- nil
 		crypto := hbcrypto.CryptoFromContext(ctx)
 		for {
 			select {
@@ -103,10 +109,13 @@ func (t *rx) Start(cmdC chan<- any, msgC chan<- *hbtype.Msg) error {
 			case <-ticker.C:
 				t.crypto = crypto.Load()
 				t.onTick()
+			case ev := <-sub.C:
+				t.onEvent(ev)
 			}
 		}
 	}()
-	return nil
+
+	return <-errC
 }
 
 func (t *rx) onTick() {
@@ -116,23 +125,16 @@ func (t *rx) onTick() {
 }
 
 func (t *rx) recv(nodename string) {
-	clusterID := cluster.ConfigData.Get().ID
-	cli, err := client.New(
-		client.WithURL(t.relay),
-		client.WithUsername(t.username),
-		client.WithPassword(t.password),
-		client.WithInsecureSkipVerify(t.insecure),
-	)
-	if err != nil {
-		t.log.Errorf("recv: node %s new client: %s", nodename, err)
+	if t.cli == nil {
 		return
 	}
+	clusterID := cluster.ConfigData.Get().ID
 
 	params := api.GetRelayMessageParams{
 		Nodename:  nodename,
 		ClusterID: clusterID,
 	}
-	resp, err := cli.GetRelayMessageWithResponse(context.Background(), &params)
+	resp, err := t.cli.GetRelayMessageWithResponse(context.Background(), &params)
 	if err != nil {
 		t.log.Tracef("recv: node %s do request: %s", nodename, err)
 		return
@@ -188,22 +190,18 @@ func (t *rx) recv(nodename string) {
 	t.lastAt = c.UpdatedAt
 }
 
-func newRx(ctx context.Context, name string, nodes []string, relay, username, password string, insecure bool, timeout, interval time.Duration) *rx {
+func newRx(ctx context.Context, name string, nodes []string, cfg cfg) *rx {
 	id := name + ".rx"
+	cfg.id = id
+	cfg.log = plog.NewDefaultLogger().Attr("pkg", "daemon/hb/hbrelay").
+		Attr("hb_func", "rx").
+		Attr("hb_name", name).
+		Attr("hb_id", id).
+		WithPrefix("daemon: hb: relay: rx: " + name + ": ")
+
 	return &rx{
-		ctx:      ctx,
-		id:       id,
-		nodes:    nodes,
-		relay:    relay,
-		username: username,
-		password: password,
-		insecure: insecure,
-		timeout:  timeout,
-		interval: interval,
-		log: plog.NewDefaultLogger().Attr("pkg", "daemon/hb/hbrelay").
-			Attr("hb_func", "rx").
-			Attr("hb_name", name).
-			Attr("hb_id", id).
-			WithPrefix("daemon: hb: relay: rx: " + name + ": "),
+		ctx:   ctx,
+		nodes: nodes,
+		cfg:   cfg,
 	}
 }
