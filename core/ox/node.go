@@ -93,6 +93,7 @@ func init() {
 	cmdNode.AddCommand(cmdNodeSCSI)
 	cmdNodeSCSI.AddCommand(
 		newCmdNodeSCSIScan(),
+		newCmdNodeSCSIPRKey(),
 	)
 	cmdNode.AddCommand(cmdNodeCollector)
 	cmdNodeCollector.AddCommand(cmdNodeCollectorTag)
@@ -177,7 +178,6 @@ func init() {
 		newCmdNodeDrivers(),
 		newCmdNodeLogs(),
 		newCmdNodeList(),
-		newCmdNodePRKey(),
 		newCmdNodePing(),
 		newCmdNodeFreeze(),
 		newCmdNodeGet(),

@@ -1252,7 +1252,7 @@ func newCmdNodeList() *cobra.Command {
 	return cmd
 }
 
-func newCmdNodePRKey() *cobra.Command {
+func newCmdNodeSCSIPRKey() *cobra.Command {
 	var options commands.CmdNodePRKey
 	cmd := &cobra.Command{
 		Use:     "prkey",

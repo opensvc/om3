@@ -224,6 +224,7 @@ func init() {
 	)
 	cmdNodeSCSI.AddCommand(
 		newCmdNodeSCSIScan(),
+		newCmdNodeSCSIPRKey(),
 	)
 	cmdNodeSchedule.AddCommand(
 		newCmdNodeScheduleList(),

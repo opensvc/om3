@@ -1133,7 +1133,7 @@ func newCmdNodeList() *cobra.Command {
 	return cmd
 }
 
-func newCmdNodePRKey() *cobra.Command {
+func newCmdNodeSCSIPRKey() *cobra.Command {
 	var options commands.CmdNodePRKey
 	cmd := &cobra.Command{
 		Use:     "prkey",
@@ -3583,6 +3583,12 @@ func newCmdDataStoreRename(kind string) *cobra.Command {
 	addFlagsGlobal(flags, &options.OptsGlobal)
 	commoncmd.FlagKey(flags, &options.Name)
 	commoncmd.FlagKeyTo(flags, &options.To)
+	return cmd
+}
+
+func newCmdNodePRKey() *cobra.Command {
+	cmd := newCmdNodeSCSIPRKey()
+	cmd.Hidden = true
 	return cmd
 }
 
