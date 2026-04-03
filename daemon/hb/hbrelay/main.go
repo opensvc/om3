@@ -70,7 +70,8 @@ func (t *T) Configure(ctx context.Context) {
 		return
 	}
 	username := t.GetString("username")
-	passKM, err := t.getPasswordKM()
+	passwordLine := t.GetString("password")
+	passKM, err := datarecv.ParseKeyMetaRelWithFallback(passwordLine, naming.NsSys, "password")
 	if err != nil {
 		log.Errorf("no %s.password parsing: %s", t.Name(), err)
 		return
@@ -102,17 +103,6 @@ func (t *T) Configure(ctx context.Context) {
 	t.SetTx(tx)
 	rx := newRx(ctx, name, oNodes, cfg)
 	t.SetRx(rx)
-}
-
-func (t *T) getPasswordKM() (datarecv.KeyMeta, error) {
-	value := t.GetString("password")
-	km, err := datarecv.ParseKeyMetaRel(value, naming.NsSys)
-	if err != nil {
-		// backward compat
-		secPath, err := naming.ParsePath(value)
-		return datarecv.KeyMeta{Key: "password", Path: secPath, From: secPath.Namespace}, err
-	}
-	return km, nil
 }
 
 // drain reads and discards all data from the provided ReadCloser and closes
