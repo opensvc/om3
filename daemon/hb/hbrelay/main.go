@@ -24,18 +24,6 @@ type (
 	T struct {
 		hbcfg.T
 	}
-
-	capsule struct {
-		Updated time.Time `json:"updated"`
-		Msg     []byte    `json:"msg"`
-	}
-	peerConfigs map[string]peerConfig
-	peerConfig  struct {
-		Slot int
-	}
-	device struct {
-		file *os.File
-	}
 )
 
 func New() hbcfg.Confer {
