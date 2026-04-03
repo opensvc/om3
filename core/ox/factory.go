@@ -850,6 +850,7 @@ func newCmdNodeDrain() *cobra.Command {
 func newCmdNodeDrivers() *cobra.Command {
 	var options commands.CmdNodeDrivers
 	cmd := &cobra.Command{
+		GroupID: commoncmd.GroupIDQuery,
 		Use:     "drivers",
 		Short:   "list builtin drivers",
 		Aliases: []string{"driver", "drive", "driv", "drv", "dr"},

@@ -11,23 +11,80 @@ import (
 var (
 	cmdNode             = commoncmd.NewCmdNode()
 	cmdNodeCapabilities = &cobra.Command{
+		GroupID: commoncmd.GroupIDSubsystems,
 		Use:     "capabilities",
 		Short:   "scan and list what the node is capable of",
 		Aliases: []string{"capa", "caps", "cap"},
 	}
 	cmdNodeCollector = &cobra.Command{
+		GroupID: commoncmd.GroupIDSubsystems,
 		Use:     "collector",
 		Short:   "node collector data management commands",
 		Aliases: []string{"coll"},
 	}
 	cmdNodeCollectorTag = &cobra.Command{
-		Use:   "tag",
-		Short: "collector tags management commands",
+		GroupID: commoncmd.GroupIDSubsystems,
+		Use:     "tag",
+		Short:   "collector tags management commands",
 	}
 	cmdNodeCompliance = &cobra.Command{
+		GroupID: commoncmd.GroupIDSubsystems,
 		Use:     "compliance",
 		Short:   "node configuration manager commands",
 		Aliases: []string{"comp"},
+	}
+	cmdNodeConfig = &cobra.Command{
+		GroupID: commoncmd.GroupIDSubsystems,
+		Use:     "config",
+		Short:   "configuration commands",
+		Aliases: []string{"conf", "c", "cf", "cfg"},
+	}
+	cmdNodeSCSI = &cobra.Command{
+		GroupID: commoncmd.GroupIDSubsystems,
+		Use:     "scsi",
+		Short:   "scsi commands",
+	}
+	cmdNodeRelay = &cobra.Command{
+		GroupID: commoncmd.GroupIDSubsystems,
+		Use:     "relay",
+		Short:   "relay commands",
+	}
+	cmdNodeScan = &cobra.Command{
+		Use:    "scan",
+		Hidden: true,
+	}
+	cmdNodeSchedule = &cobra.Command{
+		GroupID: commoncmd.GroupIDSubsystems,
+		Use:     "schedule",
+		Short:   "scheduler commands",
+	}
+	cmdNodeSSH = &cobra.Command{
+		GroupID: commoncmd.GroupIDSubsystems,
+		Use:     "ssh",
+		Short:   "ssh commands",
+	}
+
+	// Backward compat
+
+	cmdNodeEdit     = newCmdNodeEdit()
+	cmdNodeValidate = newCmdNodeValidate()
+
+	cmdNodeUpdateSSH = &cobra.Command{
+		Use:    "ssh",
+		Hidden: true,
+	}
+	cmdNodePrint = &cobra.Command{
+		Use:     "print",
+		Hidden:  true,
+		Aliases: []string{"prin", "pri", "pr"},
+	}
+	cmdNodePush = &cobra.Command{
+		Use:   "push",
+		Short: "push node discover information to the collector",
+	}
+	cmdNodeUpdate = &cobra.Command{
+		Use:    "update",
+		Hidden: true,
 	}
 	cmdNodeComplianceAttach = &cobra.Command{
 		Use:     "attach",
@@ -49,50 +106,6 @@ var (
 		Short:   "show modules, modulesets, rulesets, modules, attachments",
 		Aliases: []string{"sho", "sh", "s"},
 	}
-	cmdNodeConfig = &cobra.Command{
-		Use:     "config",
-		Short:   "configuration commands",
-		Aliases: []string{"conf", "c", "cf", "cfg"},
-	}
-	cmdNodeSCSI = &cobra.Command{
-		Use:   "scsi",
-		Short: "scsi subsystem commands",
-	}
-	cmdNodePrint = &cobra.Command{
-		Use:     "print",
-		Hidden:  true,
-		Aliases: []string{"prin", "pri", "pr"},
-	}
-	cmdNodePush = &cobra.Command{
-		Use:   "push",
-		Short: "push node discover information to the collector",
-	}
-	cmdNodeRelay = &cobra.Command{
-		Use:   "relay",
-		Short: "relay subsystem commands",
-	}
-	cmdNodeScan = &cobra.Command{
-		Use:    "scan",
-		Hidden: true,
-	}
-	cmdNodeSchedule = &cobra.Command{
-		Use:   "schedule",
-		Short: "node scheduler commands",
-	}
-	cmdNodeSSH = &cobra.Command{
-		Use:   "ssh",
-		Short: "ssh subsystem commands",
-	}
-	cmdNodeUpdate = &cobra.Command{
-		Use:    "update",
-		Hidden: true,
-	}
-	cmdNodeUpdateSSH = &cobra.Command{
-		Use:    "ssh",
-		Hidden: true,
-	}
-	cmdNodeEdit     = newCmdNodeEdit()
-	cmdNodeValidate = newCmdNodeValidate()
 )
 
 // getCmdNodeWithVersion returns cmdNode with --version (for backward compatibility with b2.1)
@@ -112,6 +125,14 @@ func getCmdNodeWithVersion() *cobra.Command {
 func init() {
 	// Add backward compatibility for --version flag
 	cmdNode = getCmdNodeWithVersion()
+	cmdNode.AddGroup(
+		//		commoncmd.NewGroupOrchestratedActions(),
+		//		commoncmd.NewGroupQuery(),
+		commoncmd.NewGroupSubsystems(),
+	)
+	cmdNodeCollector.AddGroup(
+		commoncmd.NewGroupSubsystems(),
+	)
 
 	root.AddCommand(cmdNode)
 	cmdNode.AddCommand(cmdNodeCapabilities)
