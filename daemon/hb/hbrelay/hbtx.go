@@ -64,6 +64,7 @@ func (t *tx) Start(cmdC chan<- interface{}, msgC <-chan []byte) error {
 	errC := make(chan error)
 	t.Add(1)
 	go func() {
+		t.attachActiveAuditIfAny(ctx)
 		sub := t.startSubscription(ctx)
 		defer func() { _ = sub.Stop() }()
 		if err := t.refreshClient(); err != nil {

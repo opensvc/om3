@@ -7,12 +7,15 @@ import (
 	"context"
 	"fmt"
 	"io"
+	"slices"
+	"strings"
 	"time"
 
 	"github.com/opensvc/om3/v3/core/client"
 	"github.com/opensvc/om3/v3/core/datarecv"
 	"github.com/opensvc/om3/v3/core/hbcfg"
 	"github.com/opensvc/om3/v3/core/naming"
+	"github.com/opensvc/om3/v3/daemon/daemonctx"
 	"github.com/opensvc/om3/v3/daemon/msgbus"
 	"github.com/opensvc/om3/v3/util/hostname"
 	"github.com/opensvc/om3/v3/util/key"
@@ -123,19 +126,49 @@ func drain(rc io.ReadCloser, l *plog.Logger) {
 
 func (t *cfg) startSubscription(ctx context.Context) *pubsub.Subscription {
 	sub := pubsub.SubFromContext(ctx, "daemon.relay."+t.id, pubsub.WithQueueSize(1024))
+	sub.AddFilter(&msgbus.AuditStart{})
+	sub.AddFilter(&msgbus.AuditStop{})
 	sub.AddFilter(&msgbus.InstanceConfigUpdated{}, pubsub.Label{"path", t.passwordFrom.Path.String()}, pubsub.Label{"node", hostname.Hostname()})
 	sub.Start()
 	return sub
 }
 
 func (t *cfg) onEvent(ev any) {
-	switch _ := ev.(type) {
+	switch c := ev.(type) {
+	case *msgbus.AuditStart:
+		subsystem := "hb"
+		if !slices.Contains(c.Subsystems, subsystem) {
+			subsystem = strings.Replace(t.id, "hb#", "hb:", 1)
+		}
+		t.log.HandleAuditStart(c.Q, c.Subsystems, subsystem)
+	case *msgbus.AuditStop:
+		subsystem := "hb"
+		if !slices.Contains(c.Subsystems, subsystem) {
+			subsystem = strings.Replace(t.id, "hb#", "hb:", 1)
+		}
+		t.log.HandleAuditStop(c.Q, c.Subsystems, subsystem)
 	case *msgbus.InstanceConfigUpdated:
 		if err := t.refreshClient(); err != nil {
 			t.log.Errorf("refresh client on changed %s: %s", t.passwordFrom.Path, err)
 			return
 		}
 	}
+}
+
+func (t *cfg) attachActiveAuditIfAny(ctx context.Context) {
+	reg := daemonctx.AuditRegistry(ctx)
+	if reg == nil {
+		return
+	}
+	subsystem := "hb"
+	sess, ok := reg.Snapshot()
+	if !ok {
+		return
+	}
+	if !slices.Contains(sess.Subsystems, subsystem) {
+		subsystem = strings.Replace(t.id, "hb#", "hb:", 1)
+	}
+	t.log.HandleAuditStart(sess.Q, sess.Subsystems, subsystem)
 }
 
 func (t *cfg) refreshClient() error {

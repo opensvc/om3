@@ -85,6 +85,7 @@ func (t *rx) Start(cmdC chan<- any, msgC chan<- *hbtype.Msg) error {
 	errC := make(chan error)
 	t.Add(1)
 	go func() {
+		t.attachActiveAuditIfAny(ctx)
 		sub := t.startSubscription(ctx)
 		defer func() {
 			ticker.Stop()
