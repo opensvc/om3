@@ -19,8 +19,8 @@ import (
 // The delayed <peer> node drop is canceled on msgbus.NodeAlive{Node: <peer>}.
 func peerDropper(ctx context.Context) {
 	databus := daemondata.FromContext(ctx)
-	log := plog.NewDefaultLogger().Attr("pkg", "daemon/hbctrl:peerDropper").WithPrefix("daemon: hbctrl: peer drop: ")
-	sub := pubsub.SubFromContext(ctx, "daemon.hb.peer_drop_worker")
+	log := plog.NewDefaultLogger().Attr("pkg", "daemon/hb.peerDropper").WithPrefix("daemon: hb: peer_dropper: ")
+	sub := pubsub.SubFromContext(ctx, "daemon.hb.peer_dropper")
 	sub.AddFilter(&msgbus.AuditStart{})
 	sub.AddFilter(&msgbus.AuditStop{})
 	sub.AddFilter(&msgbus.ConfigFileUpdated{}, pubsub.Label{"path", "cluster"})
