@@ -477,9 +477,9 @@ func (t *T) janitor(ctx context.Context) {
 			case i := <-sub.C:
 				switch msg := i.(type) {
 				case *msgbus.AuditStart:
-					t.log.HandleAuditStart(msg.Q, msg.Subsystems, "hb")
+					t.log.HandleAuditStart(msg.Q, msg.Subsystems, "hb", "hb.common")
 				case *msgbus.AuditStop:
-					t.log.HandleAuditStop(msg.Q, msg.Subsystems, "hb")
+					t.log.HandleAuditStop(msg.Q, msg.Subsystems, "hb", "hb.common")
 				case *msgbus.DaemonCtl:
 					hbID := msg.Component
 					action := msg.Action
