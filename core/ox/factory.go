@@ -851,7 +851,6 @@ func newCmdNodeDrivers() *cobra.Command {
 		GroupID: commoncmd.GroupIDQuery,
 		Use:     "drivers",
 		Short:   "list builtin drivers",
-		Aliases: []string{"driver", "drive", "driv", "drv", "dr"},
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return options.Run()
 		},
