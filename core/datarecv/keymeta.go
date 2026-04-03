@@ -154,5 +154,8 @@ func (t *KeyMeta) CacheFile() (string, error) {
 		return "", err
 	}
 	return filename, nil
+}
 
+func (t *KeyMeta) String() string {
+	return fmt.Sprintf("%s:%s:%s", t.Path, t.Key, t.From)
 }
