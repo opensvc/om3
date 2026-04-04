@@ -132,7 +132,7 @@ func (t *cfg) onEvent(ev any) {
 		t.log.HandleAuditStop(c.Q, c.Subsystems, "hb", strings.Replace(t.id, "hb#", "hb:", 1))
 	case *msgbus.InstanceConfigUpdated:
 		if err := t.refreshClient(); err != nil {
-			t.log.Errorf("refresh client on changed %s: %s", t.passwordFrom.Path, err)
+			t.log.Warnf("refresh client on changed %s: %s", t.passwordFrom.Path, err)
 			return
 		}
 	}
@@ -152,12 +152,20 @@ func (t *cfg) attachActiveAuditIfAny(ctx context.Context) {
 
 func (t *cfg) refreshClient() error {
 	if b, err := t.passwordFrom.Decode(); err != nil {
-		return fmt.Errorf("decode password: %w", err)
+		t.log.Warnf("decode password key %s from %s: %s", t.passwordFrom.Key, t.passwordFrom.Path, err)
+		t.cli = nil
+		return nil
 	} else if string(b) != t.password {
+		newPassword := string(b)
 		if t.password != "" {
-			t.log.Debugf("password changed for %s", t.passwordFrom.Path)
+			t.log.Infof("password changed for %s key %s", t.passwordFrom.Path, t.passwordFrom.Key)
 		}
-		t.password = string(b)
+		if newPassword == "" {
+			t.log.Debugf("password is empty for %s key %s", t.passwordFrom.Path, t.passwordFrom.Key)
+			t.cli = nil
+			return nil
+		}
+		t.password = newPassword
 		cli, err := client.New(
 			client.WithURL(t.relay),
 			client.WithUsername(t.username),
@@ -172,7 +180,7 @@ func (t *cfg) refreshClient() error {
 		t.cli = cli
 		return nil
 	}
-	t.log.Debugf("password unhanged for %s", t.passwordFrom.Path)
+	t.log.Infof("password unhanged for %s", t.passwordFrom.Path)
 	return nil
 }
 

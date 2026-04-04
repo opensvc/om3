@@ -108,6 +108,9 @@ func (t *rx) Start(cmdC chan<- any, msgC chan<- *hbtype.Msg) error {
 				t.cancel()
 				return
 			case <-ticker.C:
+				if t.cli == nil {
+					continue
+				}
 				t.crypto = crypto.Load()
 				t.onTick()
 			case ev := <-sub.C:
