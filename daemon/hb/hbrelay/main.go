@@ -98,7 +98,7 @@ func (t *T) Configure(ctx context.Context) {
 	}
 	signature := fmt.Sprintf("type: hb.relay nodes: %s cfg: %s", nodes, cfg.signature())
 	t.SetSignature(signature)
-	log.Tracef("signature: [%s]", signature)
+	log.Debugf("signature: [%s]", signature)
 	name := t.Name()
 	tx := newTx(ctx, name, oNodes, cfg)
 	t.SetTx(tx)

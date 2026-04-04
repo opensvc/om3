@@ -88,7 +88,7 @@ func (t *T) Configure(ctx context.Context) {
 	signature := fmt.Sprintf("type: hb.mcast, port: %d nodes: %s timeout: %s intf: %s interval: %s",
 		port, nodes, timeout, intf, interval)
 	t.SetSignature(signature)
-	log.Tracef("signature: [%s]", signature)
+	log.Debugf("signature: [%s]", signature)
 	name := t.Name()
 
 	udpAddr, err := net.ResolveUDPAddr("udp", fmt.Sprintf("%s:%d", addr, port))
