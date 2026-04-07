@@ -14,13 +14,13 @@ import (
 	"github.com/opensvc/om3/v3/util/pubsub"
 )
 
-// peerDropWorker is responsible for dropping peer data on msgbus.NodeStale{Node: <peer>}.
+// peerDropper is responsible for dropping peer data on msgbus.NodeStale{Node: <peer>}.
 // If <peer> node is in MonitorStateMaintenance state, the drop is delayed until maintenanceGracePeriod is reached.
 // The delayed <peer> node drop is canceled on msgbus.NodeAlive{Node: <peer>}.
-func peerDropWorker(ctx context.Context) {
+func peerDropper(ctx context.Context) {
 	databus := daemondata.FromContext(ctx)
-	log := plog.NewDefaultLogger().Attr("pkg", "daemon/hbctrl:peerDropWorker").WithPrefix("daemon: hbctrl: peer drop: ")
-	sub := pubsub.SubFromContext(ctx, "daemon.hb.peer_drop_worker")
+	log := plog.NewDefaultLogger().Attr("pkg", "daemon/hbctrl").WithPrefix("daemon: hb: peer_dropper: ")
+	sub := pubsub.SubFromContext(ctx, "daemon.hb.peer_dropper")
 	sub.AddFilter(&msgbus.AuditStart{})
 	sub.AddFilter(&msgbus.AuditStop{})
 	sub.AddFilter(&msgbus.ConfigFileUpdated{}, pubsub.Label{"path", "cluster"})
