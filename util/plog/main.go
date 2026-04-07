@@ -249,9 +249,18 @@ func (t *Logger) UnsetAuditQ(q chan LogMessage) error {
 	return nil
 }
 
-func (t *Logger) HandleAuditStart(q chan LogMessage, selectedSubsystems []string, subsystem string) {
-	if len(selectedSubsystems) != 0 && !slices.Contains(selectedSubsystems, subsystem) {
-		return
+func (t *Logger) HandleAuditStart(q chan LogMessage, selectedSubsystems []string, matchers ...string) {
+	if len(selectedSubsystems) != 0 {
+		var matched bool
+		for _, subsystem := range matchers {
+			if slices.Contains(selectedSubsystems, subsystem) {
+				matched = true
+				break
+			}
+		}
+		if !matched {
+			return
+		}
 	}
 	if err := t.SetAuditQ(q); err != nil {
 		//t.Debugf("set audit q: %s", err)
@@ -260,9 +269,18 @@ func (t *Logger) HandleAuditStart(q chan LogMessage, selectedSubsystems []string
 	t.Debugf("start auditing")
 }
 
-func (t *Logger) HandleAuditStop(q chan LogMessage, selectedSubsystems []string, subsystem string) {
-	if len(selectedSubsystems) != 0 && !slices.Contains(selectedSubsystems, subsystem) {
-		return
+func (t *Logger) HandleAuditStop(q chan LogMessage, selectedSubsystems []string, matchers ...string) {
+	if len(selectedSubsystems) != 0 {
+		var matched bool
+		for _, subsystem := range matchers {
+			if slices.Contains(selectedSubsystems, subsystem) {
+				matched = true
+				break
+			}
+		}
+		if !matched {
+			return
+		}
 	}
 	if err := t.UnsetAuditQ(q); err != nil {
 		//t.Debugf("unset audit q: %s", err)

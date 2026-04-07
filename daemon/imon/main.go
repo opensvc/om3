@@ -24,7 +24,6 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
-	"slices"
 	"sync/atomic"
 	"time"
 
@@ -425,17 +424,9 @@ func (t *Manager) worker(initialNodes []string) {
 			}
 			switch c := i.(type) {
 			case *msgbus.AuditStart:
-				subsystem := "imon"
-				if !slices.Contains(c.Subsystems, subsystem) {
-					subsystem = "imon:" + t.path.String()
-				}
-				t.log.HandleAuditStart(c.Q, c.Subsystems, subsystem)
+				t.log.HandleAuditStart(c.Q, c.Subsystems, "imon", "imon:"+t.path.String())
 			case *msgbus.AuditStop:
-				subsystem := "imon"
-				if !slices.Contains(c.Subsystems, subsystem) {
-					subsystem = "imon:" + t.path.String()
-				}
-				t.log.HandleAuditStop(c.Q, c.Subsystems, subsystem)
+				t.log.HandleAuditStop(c.Q, c.Subsystems, "imon", "imon:"+t.path.String())
 			case *msgbus.ForgetPeer:
 				t.onForgetPeer(c)
 			case *msgbus.InstanceStatusDeleted:
@@ -485,15 +476,11 @@ func (t *Manager) attachActiveAuditIfAny() {
 	if reg == nil {
 		return
 	}
-	subsystem := "imon"
 	sess, ok := reg.Snapshot()
 	if !ok {
 		return
 	}
-	if !slices.Contains(sess.Subsystems, subsystem) {
-		subsystem = fmt.Sprintf("%s:%s", subsystem, t.path.String())
-	}
-	t.log.HandleAuditStart(sess.Q, sess.Subsystems, subsystem)
+	t.log.HandleAuditStart(sess.Q, sess.Subsystems, "imon", "imon:"+t.path.String())
 }
 
 // ensureBooted runs the bot action on not yet booted object
