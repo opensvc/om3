@@ -4,12 +4,12 @@ import (
 	"context"
 	"fmt"
 	"io"
-	"slices"
 	"strings"
 	"sync"
 	"sync/atomic"
 	"time"
 
+	"github.com/danwakefield/fnmatch"
 	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"
 )
@@ -249,13 +249,18 @@ func (t *Logger) UnsetAuditQ(q chan LogMessage) error {
 	return nil
 }
 
-func (t *Logger) HandleAuditStart(q chan LogMessage, selectedSubsystems []string, matchers ...string) {
+func (t *Logger) HandleAuditStart(q chan LogMessage, selectedSubsystems []string, labels ...string) {
 	if len(selectedSubsystems) != 0 {
 		var matched bool
-		for _, subsystem := range matchers {
-			if slices.Contains(selectedSubsystems, subsystem) {
-				matched = true
-				break
+		for _, label := range labels {
+			for _, pattern := range selectedSubsystems {
+				if matched {
+					break
+				}
+				if fnmatch.Match(pattern, label, 0) {
+					matched = true
+					break
+				}
 			}
 		}
 		if !matched {
@@ -269,13 +274,18 @@ func (t *Logger) HandleAuditStart(q chan LogMessage, selectedSubsystems []string
 	t.Debugf("start auditing")
 }
 
-func (t *Logger) HandleAuditStop(q chan LogMessage, selectedSubsystems []string, matchers ...string) {
+func (t *Logger) HandleAuditStop(q chan LogMessage, selectedSubsystems []string, labels ...string) {
 	if len(selectedSubsystems) != 0 {
 		var matched bool
-		for _, subsystem := range matchers {
-			if slices.Contains(selectedSubsystems, subsystem) {
-				matched = true
-				break
+		for _, label := range labels {
+			for _, pattern := range selectedSubsystems {
+				if matched {
+					break
+				}
+				if fnmatch.Match(pattern, label, 0) {
+					matched = true
+					break
+				}
 			}
 		}
 		if !matched {
