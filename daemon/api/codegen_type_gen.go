@@ -621,6 +621,21 @@ func (e PoolVolumeListKind) Valid() bool {
 	}
 }
 
+// Defines values for ProcessListKind.
+const (
+	ProcessListKindProcessList ProcessListKind = "ProcessList"
+)
+
+// Valid indicates whether the value is a known member of the ProcessListKind enum.
+func (e ProcessListKind) Valid() bool {
+	switch e {
+	case ProcessListKindProcessList:
+		return true
+	default:
+		return false
+	}
+}
+
 // Defines values for PropertyListKind.
 const (
 	PropertyListKindPropertyList PropertyListKind = "PropertyList"
@@ -1938,6 +1953,31 @@ type Problem struct {
 	Title string `json:"title"`
 }
 
+// ProcessItem defines model for ProcessItem.
+type ProcessItem struct {
+	Desc         string    `json:"desc"`
+	Elapsed      string    `json:"elapsed"`
+	GlobalExpect string    `json:"global_expect"`
+	Node         string    `json:"node"`
+	Object       string    `json:"object"`
+	Pid          int       `json:"pid"`
+	Sid          string    `json:"sid"`
+	StartedAt    time.Time `json:"started_at"`
+	Sub          string    `json:"sub"`
+}
+
+// ProcessItems defines model for ProcessItems.
+type ProcessItems = []ProcessItem
+
+// ProcessList defines model for ProcessList.
+type ProcessList struct {
+	Items ProcessItems    `json:"items"`
+	Kind  ProcessListKind `json:"kind"`
+}
+
+// ProcessListKind defines model for ProcessList.Kind.
+type ProcessListKind string
+
 // Property defines model for Property.
 type Property struct {
 	Error  string      `json:"error"`
@@ -2745,6 +2785,18 @@ type GetDaemonEventsParams struct {
 
 	// Selector selector
 	Selector *SelectorOptional `form:"selector,omitempty" json:"selector,omitempty"`
+}
+
+// DeleteDaemonProcessParams defines parameters for DeleteDaemonProcess.
+type DeleteDaemonProcessParams struct {
+	// Pid the pid of the process to kill.
+	Pid *[]int `form:"pid,omitempty" json:"pid,omitempty"`
+}
+
+// GetDaemonProcessParams defines parameters for GetDaemonProcess.
+type GetDaemonProcessParams struct {
+	// Sub the names of the subsystems to filter the processes
+	Sub *string `form:"sub,omitempty" json:"sub,omitempty"`
 }
 
 // GetNodeDRBDConfigParams defines parameters for GetNodeDRBDConfig.
