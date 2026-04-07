@@ -250,53 +250,36 @@ func (t *Logger) UnsetAuditQ(q chan LogMessage) error {
 }
 
 func (t *Logger) HandleAuditStart(q chan LogMessage, selectedSubsystems []string, labels ...string) {
-	if len(selectedSubsystems) != 0 {
-		var matched bool
-		for _, label := range labels {
-			for _, pattern := range selectedSubsystems {
-				if matched {
-					break
-				}
-				if fnmatch.Match(pattern, label, 0) {
-					matched = true
-					break
-				}
-			}
-		}
-		if !matched {
-			return
-		}
+	if t.auditMatch(selectedSubsystems, labels...) {
+		return
 	}
 	if err := t.SetAuditQ(q); err != nil {
-		//t.Debugf("set audit q: %s", err)
 		return
 	}
 	t.Debugf("start auditing")
 }
 
 func (t *Logger) HandleAuditStop(q chan LogMessage, selectedSubsystems []string, labels ...string) {
-	if len(selectedSubsystems) != 0 {
-		var matched bool
-		for _, label := range labels {
-			for _, pattern := range selectedSubsystems {
-				if matched {
-					break
-				}
-				if fnmatch.Match(pattern, label, 0) {
-					matched = true
-					break
-				}
-			}
-		}
-		if !matched {
-			return
-		}
+	if t.auditMatch(selectedSubsystems, labels...) {
+		return
 	}
 	if err := t.UnsetAuditQ(q); err != nil {
-		//t.Debugf("unset audit q: %s", err)
 		return
 	}
 	t.Debugf("stop auditing")
+}
+
+func (t *Logger) auditMatch(selectedSubsystems []string, labels ...string) bool {
+	if len(selectedSubsystems) != 0 {
+		for _, label := range labels {
+			for _, pattern := range selectedSubsystems {
+				if fnmatch.Match(pattern, label, 0) {
+					return true
+				}
+			}
+		}
+	}
+	return false
 }
 
 func (t *Logger) Logger() zerolog.Logger {
