@@ -16,6 +16,7 @@ import (
 	"github.com/opensvc/om3/v3/daemon/daemonctx"
 	"github.com/opensvc/om3/v3/daemon/daemondata"
 	"github.com/opensvc/om3/v3/daemon/daemonenv"
+	"github.com/opensvc/om3/v3/daemon/hb/hbaudit"
 	"github.com/opensvc/om3/v3/daemon/hb/hbcrypto"
 	"github.com/opensvc/om3/v3/daemon/hb/hbctrl"
 	"github.com/opensvc/om3/v3/daemon/msgbus"
@@ -59,7 +60,7 @@ type (
 
 func New(_ context.Context, opts ...funcopt.O) *T {
 	t := &T{
-		log: plog.NewDefaultLogger().Attr("pkg", "daemon/hb").WithPrefix("daemon: hb: "),
+		log: plog.NewDefaultLogger().Attr("pkg", "daemon/hb").WithPrefix("daemon: hb: main: "),
 	}
 	if err := funcopt.Apply(t, opts...); err != nil {
 		t.log.Warnf("funcopt apply: %s", err)
@@ -97,6 +98,8 @@ func (t *T) Start(ctx context.Context) error {
 	// create cancelable context to cancel other routines
 	ctx, cancel := context.WithCancel(ctx)
 	t.cancel = cancel
+
+	hbaudit.EnableAudit(ctx, "hb.main", t.log, "hb", "hb.main")
 	err := t.msgToTx(ctx)
 	if err != nil {
 		return err
@@ -326,7 +329,7 @@ func (t *T) msgToTx(ctx context.Context) error {
 			//    hbSendQ <- msg
 			go func() {
 				if err := databus.SetHBSendQ(nil); err != nil {
-					t.log.Errorf("msgToTx can't unset daemondata HBSendQ: %s", err)
+					t.log.Errorf("msgToTx: can't unset daemondata HBSendQ: %s", err)
 				}
 			}()
 
@@ -337,7 +340,7 @@ func (t *T) msgToTx(ctx context.Context) error {
 				case <-tC:
 					return
 				case <-msgC:
-					t.log.Tracef("msgToTx drop msg (done context)")
+					t.log.Tracef("msgToTx: drop msg (done context)")
 				case <-t.msgToTxRegister:
 				case <-t.msgToTxUnregister:
 				}
@@ -351,15 +354,15 @@ func (t *T) msgToTx(ctx context.Context) error {
 			case <-ctx.Done():
 				return
 			case c := <-t.msgToTxRegister:
-				t.log.Tracef("add %s to hb transmitters", c.id)
+				t.log.Tracef("msgToTx: add %s to hb transmitters", c.id)
 				registeredTxMsgQueue[c.id] = c.msgToSendQueue
 			case txID := <-t.msgToTxUnregister:
-				t.log.Tracef("remove %s from hb transmitters", txID)
+				t.log.Tracef("msgToTx: remove %s from hb transmitters", txID)
 				delete(registeredTxMsgQueue, txID)
 			case msg := <-msgC:
 				b, err := json.Marshal(msg)
 				if err != nil {
-					err = fmt.Errorf("marshal failure %s for msg %v", err, msg)
+					err = fmt.Errorf("msgToTx: marshal failure %s for msg %v", err, msg)
 					continue
 				}
 				cipher := crypto.Load()
@@ -416,7 +419,7 @@ func (t *T) msgFromRx(ctx context.Context) {
 		case <-ctx.Done():
 			return
 		case now := <-statTicker.C:
-			t.log.Tracef("received message: %.2f/s, goroutines %d", count/10, runtime.NumGoroutine())
+			t.log.Tracef("msgFromRx received message: %.2f/s, goroutines %d", count/10, runtime.NumGoroutine())
 			count = 0
 			for peer, updated := range msgTimes {
 				if now.Sub(updated) > msgTimeDuration {
@@ -426,7 +429,7 @@ func (t *T) msgFromRx(ctx context.Context) {
 		case msg := <-t.readMsgQueue:
 			peer := msg.Nodename
 			if msgTimes[peer].Equal(msg.UpdatedAt) {
-				t.log.Tracef("drop already processed msg %s from %s gens: %v", msg.Kind, msg.Nodename, msg.Gen)
+				t.log.Tracef("msgFromRx: drop already processed msg %s from %s gens: %v", msg.Kind, msg.Nodename, msg.Gen)
 				continue
 			}
 			select {
@@ -434,7 +437,7 @@ func (t *T) msgFromRx(ctx context.Context) {
 				// don't hang up when context is done
 				return
 			case dataMsgRecvQ <- msg:
-				t.log.Tracef("processed msg type %s from %s gens: %v", msg.Kind, msg.Nodename, msg.Gen)
+				t.log.Tracef("msgFromRx: processed msg type %s from %s gens: %v", msg.Kind, msg.Nodename, msg.Gen)
 				msgTimes[peer] = msg.UpdatedAt
 				count++
 			}
@@ -459,9 +462,7 @@ func (t *T) janitor(ctx context.Context) {
 	go func() {
 		defer t.wg.Done()
 		started <- true
-		sub := pubsub.SubFromContext(ctx, "daemon.hb")
-		sub.AddFilter(&msgbus.AuditStart{})
-		sub.AddFilter(&msgbus.AuditStop{})
+		sub := pubsub.SubFromContext(ctx, "daemon.hb.janitor")
 		sub.AddFilter(&msgbus.ClusterConfigUpdated{}, pubsub.Label{"node", hostname.Hostname()})
 		sub.AddFilter(&msgbus.DaemonCtl{})
 		sub.Start()
@@ -476,10 +477,6 @@ func (t *T) janitor(ctx context.Context) {
 				return
 			case i := <-sub.C:
 				switch msg := i.(type) {
-				case *msgbus.AuditStart:
-					t.log.HandleAuditStart(msg.Q, msg.Subsystems, "hb")
-				case *msgbus.AuditStop:
-					t.log.HandleAuditStop(msg.Q, msg.Subsystems, "hb")
 				case *msgbus.DaemonCtl:
 					hbID := msg.Component
 					action := msg.Action

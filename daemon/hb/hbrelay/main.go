@@ -5,19 +5,22 @@ package hbrelay
 
 import (
 	"context"
-	"crypto/md5"
-	"encoding/hex"
 	"fmt"
 	"io"
-	"os"
+	"strings"
 	"time"
 
+	"github.com/opensvc/om3/v3/core/client"
 	"github.com/opensvc/om3/v3/core/datarecv"
 	"github.com/opensvc/om3/v3/core/hbcfg"
 	"github.com/opensvc/om3/v3/core/naming"
+	"github.com/opensvc/om3/v3/daemon/daemonctx"
+	"github.com/opensvc/om3/v3/daemon/hb/hbaudit"
+	"github.com/opensvc/om3/v3/daemon/msgbus"
 	"github.com/opensvc/om3/v3/util/hostname"
 	"github.com/opensvc/om3/v3/util/key"
 	"github.com/opensvc/om3/v3/util/plog"
+	"github.com/opensvc/om3/v3/util/pubsub"
 )
 
 type (
@@ -25,16 +28,19 @@ type (
 		hbcfg.T
 	}
 
-	capsule struct {
-		Updated time.Time `json:"updated"`
-		Msg     []byte    `json:"msg"`
-	}
-	peerConfigs map[string]peerConfig
-	peerConfig  struct {
-		Slot int
-	}
-	device struct {
-		file *os.File
+	cfg struct {
+		relay        string
+		username     string
+		password     string
+		passwordFrom datarecv.KeyMeta
+		insecure     bool
+
+		timeout  time.Duration
+		interval time.Duration
+
+		id  string
+		log *plog.Logger
+		cli *client.T
 	}
 )
 
@@ -51,6 +57,7 @@ func init() {
 // Configure implements the Configure function of Confer interface for T
 func (t *T) Configure(ctx context.Context) {
 	log := plog.NewDefaultLogger().Attr("pkg", "daemon/hb/hbrelay").Attr("hb_name", t.Name()).WithPrefix("daemon: hb: relay: " + t.Name() + ": configure: ")
+	hbaudit.AttachActiveAuditIfAny(ctx, log, "hb", "hb.main", strings.Replace(t.Name(), "hb#", "hb:", 1))
 	timeout := t.GetDuration("timeout", 9*time.Second)
 	interval := t.GetDuration("interval", 4*time.Second)
 	if timeout < 2*interval+1*time.Second {
@@ -64,13 +71,12 @@ func (t *T) Configure(ctx context.Context) {
 		return
 	}
 	username := t.GetString("username")
-	password, err := t.password()
+	passwordLine := t.GetString("password")
+	passKM, err := datarecv.ParseKeyMetaRelWithFallback(passwordLine, naming.NsSys, "password")
 	if err != nil {
 		log.Errorf("no %s.password parsing: %s", t.Name(), err)
 		return
 	}
-	passwordHash := md5.Sum([]byte(password))
-	passwordMD5 := hex.EncodeToString(passwordHash[:])
 
 	insecure := t.GetBool("insecure")
 	nodes := t.GetStrings("nodes")
@@ -82,31 +88,22 @@ func (t *T) Configure(ctx context.Context) {
 	log.Tracef("timeout=%s interval=%s relay=%s insecure=%t nodes=%s onodes=%s", timeout, interval, relay, insecure, nodes, oNodes)
 	t.SetNodes(oNodes)
 	t.SetTimeout(timeout)
-	signature := fmt.Sprintf("type: hb.relay nodes: %s relay: %s timeout: %s interval: %s password-md5: %s",
-		nodes, relay, timeout, interval, passwordMD5)
+	cfg := cfg{
+		relay:        relay,
+		username:     username,
+		passwordFrom: passKM,
+		insecure:     insecure,
+		timeout:      timeout,
+		interval:     interval,
+	}
+	signature := fmt.Sprintf("type: hb.relay nodes: %s cfg: %s", nodes, cfg.signature())
 	t.SetSignature(signature)
-	log.Tracef("signature: [%s]", signature)
+	log.Debugf("signature: [%s]", signature)
 	name := t.Name()
-	tx := newTx(ctx, name, oNodes, relay, username, password, insecure, timeout, interval)
+	tx := newTx(ctx, name, oNodes, cfg)
 	t.SetTx(tx)
-	rx := newRx(ctx, name, oNodes, relay, username, password, insecure, timeout, interval)
+	rx := newRx(ctx, name, oNodes, cfg)
 	t.SetRx(rx)
-}
-
-func (t *T) password() (string, error) {
-	value := t.GetString("password")
-	// Parse key reference with backward compatibility
-	// New format: password = from system/sec/relay key password
-	// Old format: password = system/sec/relay (uses default key "password")
-	km, err := datarecv.ParseKeyMetaRelWithFallback(value, naming.NsSys, "password")
-	if err != nil {
-		return "", err
-	}
-	b, err := km.Decode()
-	if err != nil {
-		return "", err
-	}
-	return string(b), nil
 }
 
 // drain reads and discards all data from the provided ReadCloser and closes
@@ -116,4 +113,78 @@ func drain(rc io.ReadCloser, l *plog.Logger) {
 	if err := rc.Close(); err != nil {
 		l.Warnf("drain: %s", err)
 	}
+}
+
+func (t *cfg) startSubscription(ctx context.Context) *pubsub.Subscription {
+	sub := pubsub.SubFromContext(ctx, "daemon.relay."+t.id, pubsub.WithQueueSize(1024))
+	sub.AddFilter(&msgbus.AuditStart{})
+	sub.AddFilter(&msgbus.AuditStop{})
+	sub.AddFilter(&msgbus.InstanceConfigUpdated{}, pubsub.Label{"path", t.passwordFrom.Path.String()}, pubsub.Label{"node", hostname.Hostname()})
+	sub.Start()
+	return sub
+}
+
+func (t *cfg) onEvent(ev any) {
+	switch c := ev.(type) {
+	case *msgbus.AuditStart:
+		t.log.HandleAuditStart(c.Q, c.Subsystems, "hb", strings.Replace(t.id, "hb#", "hb:", 1))
+	case *msgbus.AuditStop:
+		t.log.HandleAuditStop(c.Q, c.Subsystems, "hb", strings.Replace(t.id, "hb#", "hb:", 1))
+	case *msgbus.InstanceConfigUpdated:
+		if err := t.refreshClient(); err != nil {
+			t.log.Warnf("refresh client on changed %s: %s", t.passwordFrom.Path, err)
+			return
+		}
+	}
+}
+
+func (t *cfg) attachActiveAuditIfAny(ctx context.Context) {
+	reg := daemonctx.AuditRegistry(ctx)
+	if reg == nil {
+		return
+	}
+	sess, ok := reg.Snapshot()
+	if !ok {
+		return
+	}
+	t.log.HandleAuditStart(sess.Q, sess.Subsystems, "hb", strings.Replace(t.id, "hb#", "hb:", 1))
+}
+
+func (t *cfg) refreshClient() error {
+	if b, err := t.passwordFrom.Decode(); err != nil {
+		t.log.Warnf("decode password key %s from %s: %s", t.passwordFrom.Key, t.passwordFrom.Path, err)
+		t.cli = nil
+		return nil
+	} else if string(b) != t.password {
+		newPassword := string(b)
+		if t.password != "" {
+			t.log.Infof("password changed for %s key %s", t.passwordFrom.Path, t.passwordFrom.Key)
+		}
+		if newPassword == "" {
+			t.log.Debugf("password is empty for %s key %s", t.passwordFrom.Path, t.passwordFrom.Key)
+			t.cli = nil
+			return nil
+		}
+		t.password = newPassword
+		cli, err := client.New(
+			client.WithURL(t.relay),
+			client.WithUsername(t.username),
+			client.WithPassword(t.password),
+			client.WithInsecureSkipVerify(t.insecure),
+		)
+		if err != nil {
+			return fmt.Errorf("new client: %w", err)
+		} else if cli == nil {
+			return fmt.Errorf("unexpected nil client")
+		}
+		t.cli = cli
+		return nil
+	}
+	t.log.Infof("password unhanged for %s", t.passwordFrom.Path)
+	return nil
+}
+
+func (t *cfg) signature() string {
+	return fmt.Sprintf("relay: %s username: %s passwordFrom: %s timeout: %s interval: %s insecure: %v",
+		t.relay, t.username, t.passwordFrom, t.timeout, t.interval, t.insecure)
 }

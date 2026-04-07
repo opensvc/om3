@@ -12,7 +12,6 @@ package omon
 import (
 	"context"
 	"errors"
-	"fmt"
 	"slices"
 	"strings"
 	"time"
@@ -237,17 +236,9 @@ func (t *Manager) worker() {
 		case i := <-t.sub.C:
 			switch c := i.(type) {
 			case *msgbus.AuditStart:
-				subsystem := "omon"
-				if !slices.Contains(c.Subsystems, subsystem) {
-					subsystem = "omon:" + t.path.String()
-				}
-				t.log.HandleAuditStart(c.Q, c.Subsystems, subsystem)
+				t.log.HandleAuditStart(c.Q, c.Subsystems, "omon", "omon:"+t.path.String())
 			case *msgbus.AuditStop:
-				subsystem := "omon"
-				if !slices.Contains(c.Subsystems, subsystem) {
-					subsystem = "omon:" + t.path.String()
-				}
-				t.log.HandleAuditStop(c.Q, c.Subsystems, subsystem)
+				t.log.HandleAuditStop(c.Q, c.Subsystems, "omon", "omon:"+t.path.String())
 			case *msgbus.InstanceMonitorUpdated:
 				t.srcEvent = c
 				t.instMonitor[c.Node] = c.Value
@@ -508,15 +499,11 @@ func (t *Manager) attachActiveAuditIfAny() {
 	if reg == nil {
 		return
 	}
-	subsystem := "omon"
 	sess, ok := reg.Snapshot()
 	if !ok {
 		return
 	}
-	if !slices.Contains(sess.Subsystems, subsystem) {
-		subsystem = fmt.Sprintf("%s:%s", subsystem, t.path.String())
-	}
-	t.log.HandleAuditStart(sess.Q, sess.Subsystems, subsystem)
+	t.log.HandleAuditStart(sess.Q, sess.Subsystems, "omon", "omon:"+t.path.String())
 }
 
 func (t *Manager) delete() {

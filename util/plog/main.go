@@ -4,12 +4,12 @@ import (
 	"context"
 	"fmt"
 	"io"
-	"slices"
 	"strings"
 	"sync"
 	"sync/atomic"
 	"time"
 
+	"github.com/danwakefield/fnmatch"
 	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"
 )
@@ -249,26 +249,37 @@ func (t *Logger) UnsetAuditQ(q chan LogMessage) error {
 	return nil
 }
 
-func (t *Logger) HandleAuditStart(q chan LogMessage, selectedSubsystems []string, subsystem string) {
-	if len(selectedSubsystems) != 0 && !slices.Contains(selectedSubsystems, subsystem) {
+func (t *Logger) HandleAuditStart(q chan LogMessage, selectedSubsystems []string, labels ...string) {
+	if t.auditMatch(selectedSubsystems, labels...) {
 		return
 	}
 	if err := t.SetAuditQ(q); err != nil {
-		//t.Debugf("set audit q: %s", err)
 		return
 	}
 	t.Debugf("start auditing")
 }
 
-func (t *Logger) HandleAuditStop(q chan LogMessage, selectedSubsystems []string, subsystem string) {
-	if len(selectedSubsystems) != 0 && !slices.Contains(selectedSubsystems, subsystem) {
+func (t *Logger) HandleAuditStop(q chan LogMessage, selectedSubsystems []string, labels ...string) {
+	if t.auditMatch(selectedSubsystems, labels...) {
 		return
 	}
 	if err := t.UnsetAuditQ(q); err != nil {
-		//t.Debugf("unset audit q: %s", err)
 		return
 	}
 	t.Debugf("stop auditing")
+}
+
+func (t *Logger) auditMatch(selectedSubsystems []string, labels ...string) bool {
+	if len(selectedSubsystems) != 0 {
+		for _, label := range labels {
+			for _, pattern := range selectedSubsystems {
+				if fnmatch.Match(pattern, label, 0) {
+					return true
+				}
+			}
+		}
+	}
+	return false
 }
 
 func (t *Logger) Logger() zerolog.Logger {
