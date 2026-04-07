@@ -34,7 +34,7 @@ func (a *DaemonAPI) getLocalDaemonProcess(ctx echo.Context, params api.GetDaemon
 }
 
 func procToProcessItem(elements []proc.T) api.ProcessItems {
-	var res api.ProcessItems
+	res := make(api.ProcessItems, 0, len(elements))
 	for _, item := range elements {
 		res = append(res, api.ProcessItem{
 			Pid:          item.Pid,

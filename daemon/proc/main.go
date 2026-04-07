@@ -63,7 +63,6 @@ func Get(pid int) (T, bool) {
 
 func List(subFilters []string) []T {
 	mu.RLock()
-	defer mu.RUnlock()
 	out := make([]T, 0, len(byPID))
 	for _, t := range byPID {
 		if len(subFilters) != 0 && !slices.Contains(subFilters, t.Sub) {
@@ -78,6 +77,7 @@ func List(subFilters []string) []T {
 		}
 		out = append(out, t)
 	}
+	mu.RUnlock()
 
 	sort.Slice(out, func(i, j int) bool {
 		return out[i].Pid < out[j].Pid

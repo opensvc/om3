@@ -36,7 +36,7 @@ func NewCmdDaemonPs() *cobra.Command {
 	FlagNodeSelector(flags, &options.NodeSelector)
 	FlagOutput(flags, &options.Output)
 	FlagColor(flags, &options.Color)
-	flags.StringVar(&options.Subsystems, "sub", "", "the name of the subsystem to filter on")
+	flags.StringVar(&options.Subsystems, "sub", "", "the name of the subsystem to filter on (scheduler, api, imon or nmon)")
 	return cmd
 }
 
