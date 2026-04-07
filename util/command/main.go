@@ -297,7 +297,7 @@ func (t *T) Wait() error {
 	}
 	if err != nil {
 		if exitError, ok := err.(*exec.ExitError); ok {
-			return t.checkExitCode(exitError.ExitCode())
+			return t.checkExitCode(normalizeExitCode(exitError))
 		}
 		if t.log != nil {
 			t.log.Attr("cmd", t.cmd.String()).Levelf(t.logLevel, "wait exec: %s", err)
@@ -305,6 +305,18 @@ func (t *T) Wait() error {
 		return err
 	}
 	return t.checkExitCode(t.ExitCode())
+}
+
+func normalizeExitCode(exitError *exec.ExitError) int {
+	if ws, ok := exitError.Sys().(syscall.WaitStatus); ok {
+		if ws.Signaled() {
+			return 128 + int(ws.Signal())
+		}
+		if ws.Exited() {
+			return ws.ExitStatus()
+		}
+	}
+	return exitError.ExitCode()
 }
 
 func (t *T) checkExitCode(exitCode int) error {

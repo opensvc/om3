@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"regexp"
 	"strings"
+	"unicode"
 
 	"github.com/danwakefield/fnmatch"
 	"github.com/goombaio/orderedset"
@@ -132,7 +133,10 @@ func (t *T) add(node string) {
 
 func (t *T) expand() error {
 	selector := t.selectorExpression
-	for _, s := range strings.Fields(selector) {
+	parts := strings.FieldsFunc(selector, func(r rune) bool {
+		return r == ',' || unicode.IsSpace(r)
+	})
+	for _, s := range parts {
 		pset, err := t.expandOne(s)
 		if err != nil {
 			return err

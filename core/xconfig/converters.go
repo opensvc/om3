@@ -2,6 +2,8 @@ package xconfig
 
 import (
 	"errors"
+	"fmt"
+	"strings"
 
 	"github.com/opensvc/om3/v3/core/env"
 	"github.com/opensvc/om3/v3/core/nodeselector"
@@ -29,6 +31,9 @@ func (t TNodesConverter) String() string {
 }
 
 func (t TNodesConverter) Convert(s string) (interface{}, error) {
+	if strings.ContainsRune(s, ',') {
+		return nil, fmt.Errorf("invalid node value %q: ',' is not allowed", s)
+	}
 	l, err := nodeselector.Expand(s)
 	if errors.Is(err, nodeselector.ErrClusterNodeCacheEmpty) {
 		// pass
