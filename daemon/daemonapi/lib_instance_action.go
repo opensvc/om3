@@ -7,6 +7,7 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/labstack/echo/v4"
+	"github.com/opensvc/om3/v3/daemon/proc"
 
 	"github.com/opensvc/om3/v3/core/env"
 	"github.com/opensvc/om3/v3/core/naming"
@@ -46,8 +47,21 @@ func (a *DaemonAPI) apiExec(ctx echo.Context, p naming.Path, requesterSid uuid.U
 		log.Errorf("exec StartProcess: %s", err)
 		return sid, fmt.Errorf("instance action failed: %w", err)
 	}
+	pid := cmd.Cmd().Process.Pid
+	proc.Register(proc.T{
+		Pid:          pid,
+		Node:         a.localhost,
+		Object:       p.String(),
+		Sid:          sid.String(),
+		StartedAt:    startTime,
+		Elapsed:      "",
+		GlobalExpect: "-",
+		Sub:          "api",
+		Desc:         cmd.String(),
+	})
 	go func() {
 		err := cmd.Wait()
+		proc.Unregister(pid)
 		log.Infof("<- exec %s", cmd)
 		duration := time.Now().Sub(startTime)
 		if err != nil {

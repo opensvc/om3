@@ -610,3 +610,17 @@ func (t AuthToken) Unstructured() map[string]any {
 	}
 	return m
 }
+
+func (t ProcessItem) Unstructured() map[string]any {
+	return map[string]any{
+		"node":          t.Node,
+		"pid":           t.Pid,
+		"object":        t.Object,
+		"started_at":    t.StartedAt,
+		"elapsed":       t.Elapsed,
+		"sub":           t.Sub,
+		"sid":           t.Sid,
+		"global_except": t.GlobalExpect,
+		"desc":          t.Desc,
+	}
+}
