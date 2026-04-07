@@ -250,7 +250,7 @@ func (t *Logger) UnsetAuditQ(q chan LogMessage) error {
 }
 
 func (t *Logger) HandleAuditStart(q chan LogMessage, selectedSubsystems []string, labels ...string) {
-	if t.auditMatch(selectedSubsystems, labels...) {
+	if !t.auditMatch(selectedSubsystems, labels...) {
 		return
 	}
 	if err := t.SetAuditQ(q); err != nil {
@@ -260,7 +260,7 @@ func (t *Logger) HandleAuditStart(q chan LogMessage, selectedSubsystems []string
 }
 
 func (t *Logger) HandleAuditStop(q chan LogMessage, selectedSubsystems []string, labels ...string) {
-	if t.auditMatch(selectedSubsystems, labels...) {
+	if !t.auditMatch(selectedSubsystems, labels...) {
 		return
 	}
 	if err := t.UnsetAuditQ(q); err != nil {
