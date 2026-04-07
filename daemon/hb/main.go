@@ -16,6 +16,7 @@ import (
 	"github.com/opensvc/om3/v3/daemon/daemonctx"
 	"github.com/opensvc/om3/v3/daemon/daemondata"
 	"github.com/opensvc/om3/v3/daemon/daemonenv"
+	"github.com/opensvc/om3/v3/daemon/hb/hbaudit"
 	"github.com/opensvc/om3/v3/daemon/hb/hbcrypto"
 	"github.com/opensvc/om3/v3/daemon/hb/hbctrl"
 	"github.com/opensvc/om3/v3/daemon/msgbus"
@@ -97,6 +98,8 @@ func (t *T) Start(ctx context.Context) error {
 	// create cancelable context to cancel other routines
 	ctx, cancel := context.WithCancel(ctx)
 	t.cancel = cancel
+
+	hbaudit.EnableAudit(ctx, "hb.main", t.log, "hb", "hb.main")
 	err := t.msgToTx(ctx)
 	if err != nil {
 		return err
@@ -459,9 +462,7 @@ func (t *T) janitor(ctx context.Context) {
 	go func() {
 		defer t.wg.Done()
 		started <- true
-		sub := pubsub.SubFromContext(ctx, "daemon.hb")
-		sub.AddFilter(&msgbus.AuditStart{})
-		sub.AddFilter(&msgbus.AuditStop{})
+		sub := pubsub.SubFromContext(ctx, "daemon.hb.janitor")
 		sub.AddFilter(&msgbus.ClusterConfigUpdated{}, pubsub.Label{"node", hostname.Hostname()})
 		sub.AddFilter(&msgbus.DaemonCtl{})
 		sub.Start()
@@ -476,10 +477,6 @@ func (t *T) janitor(ctx context.Context) {
 				return
 			case i := <-sub.C:
 				switch msg := i.(type) {
-				case *msgbus.AuditStart:
-					t.log.HandleAuditStart(msg.Q, msg.Subsystems, "hb")
-				case *msgbus.AuditStop:
-					t.log.HandleAuditStop(msg.Q, msg.Subsystems, "hb")
 				case *msgbus.DaemonCtl:
 					hbID := msg.Component
 					action := msg.Action

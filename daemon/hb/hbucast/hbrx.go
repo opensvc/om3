@@ -13,6 +13,7 @@ import (
 
 	"github.com/opensvc/om3/v3/core/hbtype"
 	"github.com/opensvc/om3/v3/daemon/encryptconn"
+	"github.com/opensvc/om3/v3/daemon/hb/hbaudit"
 	"github.com/opensvc/om3/v3/daemon/hb/hbcrypto"
 	"github.com/opensvc/om3/v3/daemon/hb/hbctrl"
 	"github.com/opensvc/om3/v3/util/plog"
@@ -100,6 +101,9 @@ func (t *rx) Start(cmdC chan<- interface{}, msgC chan<- *hbtype.Msg) error {
 	t.cmdC = cmdC
 	t.msgC = msgC
 	t.cancel = cancel
+
+	hbaudit.EnableAudit(t.ctx, t.id, t.log, "hb", strings.Replace(t.id, "hb#", "hb:", 1))
+
 	t.log.Infof("starting: timeout %s", t.timeout)
 
 	listenConfig := net.ListenConfig{
