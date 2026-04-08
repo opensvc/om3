@@ -27,7 +27,7 @@ func NewCmdDaemonPs() *cobra.Command {
 	options := CmdDaemonPs{}
 	cmd := &cobra.Command{
 		Use:   "ps",
-		Short: "audit subsystems",
+		Short: "list running daemon processes",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return options.Run()
 		},
