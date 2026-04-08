@@ -52,7 +52,11 @@
       ],
       "optional": true,
       "status": "down",
-      "type": "sync.rsync"
+      "type": "sync.rsync",
+      "provisioned": {
+              "mtime": "0001-01-01T00:00:00Z",
+              "state": "n/a"
+      }
     }
   },
   "subsets": {},
