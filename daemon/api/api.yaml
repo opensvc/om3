@@ -1758,6 +1758,65 @@ paths:
       tags:
         - node / daemon
 
+  /api/node/name/{nodename}/daemon/process:
+    get:
+      operationId: GetDaemonProcess
+      description: |
+        Get the daemon process information.
+      parameters:
+        - $ref: '#/components/parameters/inPathNodeName'
+        - in: query
+          name: sub
+          description: the names of the subsystems to filter the processes
+          schema:
+            type: string
+            example: scheduler
+      responses:
+        200:
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProcessList'
+        403:
+          $ref: '#/components/responses/403'
+        500:
+          $ref: '#/components/responses/500'
+      tags:
+        - node / daemon
+      security:
+        - basicAuth: []
+        - bearerAuth: []
+    delete:
+      operationId: DeleteDaemonProcess
+      description: |
+        Kill the daemon process.
+      parameters:
+        - $ref: '#/components/parameters/inPathNodeName'
+        - in: query
+          name: pid
+          description: the pid of the process to kill.
+          schema:
+            type: array
+            items:
+              type: integer
+      responses:
+        204:
+          $ref: '#/components/responses/204'
+        400:
+          $ref: '#/components/responses/400'
+        403:
+          $ref: '#/components/responses/403'
+        409:
+          $ref: '#/components/responses/409'
+        500:
+          $ref: '#/components/responses/500'
+      tags:
+        - node / daemon
+      security:
+        - basicAuth: []
+        - bearerAuth: []
+
   /api/node/name/{nodename}/drbd/allocation:
     get:
       description: |
@@ -6989,6 +7048,55 @@ components:
         - detail
         - status
         - title
+
+    ProcessItem:
+      type: object
+      required:
+        - node
+        - pid
+        - object
+        - started_at
+        - elapsed
+        - sub
+        - sid
+        - global_expect
+        - desc
+      properties:
+        node:
+          type: string
+        pid:
+          type: integer
+        object:
+          type: string
+        started_at:
+          type: string
+          format: date-time
+        elapsed:
+          type: string
+          format: duration
+        sub:
+          type: string
+        sid:
+          type: string
+        global_expect:
+          type: string
+        desc:
+          type: string
+
+    ProcessItems:
+      type: array
+      items:
+        $ref: '#/components/schemas/ProcessItem'
+
+    ProcessList:
+      type: object
+      required: [kind, items]
+      properties:
+        kind:
+          type: string
+          enum: [ProcessList]
+        items:
+          $ref: '#/components/schemas/ProcessItems'
 
     Property:
       type: object

@@ -6,6 +6,7 @@ import (
 
 	"github.com/opensvc/om3/v3/core/env"
 	"github.com/opensvc/om3/v3/daemon/msgbus"
+	"github.com/opensvc/om3/v3/daemon/proc"
 	"github.com/opensvc/om3/v3/util/command"
 	"github.com/opensvc/om3/v3/util/pubsub"
 )
@@ -65,7 +66,25 @@ func (t *Manager) crmAction(cmdArgs ...string) error {
 	labels := []pubsub.Label{t.labelLocalhost, {"origin", "nmon"}}
 	t.publisher.Pub(&msgbus.Exec{Command: cmd.String(), Node: t.localhost, Origin: "nmon"}, labels...)
 	startTime := time.Now()
-	if err := cmd.Run(); err != nil {
+	if err := cmd.Start(); err != nil {
+		t.log.Errorf("exec StartProcess: %s", err)
+		return err
+	}
+	pid := cmd.Cmd().Process.Pid
+	proc.Register(proc.T{
+		Pid:          pid,
+		Node:         t.localhost,
+		Object:       "-",
+		Sid:          "-",
+		StartedAt:    startTime,
+		Elapsed:      "",
+		GlobalExpect: t.state.GlobalExpect.String(),
+		Sub:          "nmon",
+		Desc:         cmd.String(),
+	})
+	err := cmd.Wait()
+	proc.Unregister(pid)
+	if err != nil {
 		duration := time.Now().Sub(startTime)
 		t.publisher.Pub(&msgbus.ExecFailed{Command: cmd.String(), Duration: duration, ErrS: err.Error(), Node: t.localhost, Origin: "nmon"}, labels...)
 		t.log.Errorf("failed %s: %s", cmd, err)

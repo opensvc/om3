@@ -297,7 +297,7 @@ func (t *T) Wait() error {
 	}
 	if err != nil {
 		if exitError, ok := err.(*exec.ExitError); ok {
-			return t.checkExitCode(exitError.ExitCode())
+			return t.checkExitCode(normalizeExitCode(exitError))
 		}
 		if t.log != nil {
 			t.log.Attr("cmd", t.cmd.String()).Levelf(t.logLevel, "wait exec: %s", err)
@@ -305,6 +305,26 @@ func (t *T) Wait() error {
 		return err
 	}
 	return t.checkExitCode(t.ExitCode())
+}
+
+// normalizeExitCode returns a normalized process exit code from an *exec.ExitError
+//
+// If the process was terminated by a Unix signal, it returns 128 + signal number
+// (shell convention, e.g. SIGKILL=9 -> 137).
+// If the process exited normally, it returns the native exit status.
+// Else, it returns exitError.ExitCode() from os/exec.
+//
+// This helps keep exit code handling consistent with common shell.
+func normalizeExitCode(exitError *exec.ExitError) int {
+	if ws, ok := exitError.Sys().(syscall.WaitStatus); ok {
+		if ws.Signaled() {
+			return 128 + int(ws.Signal())
+		}
+		if ws.Exited() {
+			return ws.ExitStatus()
+		}
+	}
+	return exitError.ExitCode()
 }
 
 func (t *T) checkExitCode(exitCode int) error {

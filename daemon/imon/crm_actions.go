@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/google/uuid"
+	"github.com/opensvc/om3/v3/daemon/proc"
 
 	"github.com/opensvc/om3/v3/core/env"
 	"github.com/opensvc/om3/v3/core/instance"
@@ -233,7 +234,25 @@ func (t *Manager) crmDefaultAction(title string, cmdArgs ...string) error {
 	}
 	t.publisher.Pub(&msgbus.Exec{Command: cmd.String(), Node: t.localhost, Origin: "imon", Title: title, SessionID: sid}, labels...)
 	startTime := time.Now()
-	if err := cmd.Run(); err != nil {
+	if err := cmd.Start(); err != nil {
+		t.loggerWithState().Errorf("exec StartProcess: %s", err)
+		return err
+	}
+	pid := cmd.Cmd().Process.Pid
+	proc.Register(proc.T{
+		Pid:          pid,
+		Node:         t.localhost,
+		Object:       t.path.String(),
+		Sid:          sid.String(),
+		StartedAt:    startTime,
+		Elapsed:      "",
+		GlobalExpect: t.state.GlobalExpect.String(),
+		Sub:          "imon",
+		Desc:         cmd.String(),
+	})
+	err := cmd.Wait()
+	proc.Unregister(pid)
+	if err != nil {
 		duration := time.Now().Sub(startTime)
 		t.publisher.Pub(&msgbus.ExecFailed{Command: cmd.String(), Duration: duration, ErrS: err.Error(), Node: t.localhost, Origin: "imon", Title: title, SessionID: sid}, labels...)
 		t.loggerWithState().Errorf("<- exec %s: %s", append([]string{cmdPath}, cmdArgs...), err)

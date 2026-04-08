@@ -80,7 +80,7 @@ func WithAsyncFunc(f func(context.Context) error) funcopt.O {
 	})
 }
 
-// WithRemoteFunc sets a function to run if the action is local
+// WithRemoteFunc sets a function to run if the action is remote
 func WithRemoteFunc(f func(context.Context, string) (any, error)) funcopt.O {
 	return funcopt.F(func(i any) error {
 		t := i.(*T)

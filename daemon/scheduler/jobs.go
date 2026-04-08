@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/google/uuid"
+	"github.com/opensvc/om3/v3/daemon/proc"
 	"github.com/rs/zerolog"
 
 	"github.com/opensvc/om3/v3/core/env"
@@ -87,7 +88,25 @@ func (o *T) action(e schedule.Entry) error {
 	logger.Debugf("-> exec %s", cmd)
 	o.publisher.Pub(&msgbus.Exec{Command: cmd.String(), Node: o.localhost, Origin: "scheduler", SessionID: sid}, labels...)
 	startTime := time.Now()
-	if err := cmd.Run(); err != nil {
+	if err := cmd.Start(); err != nil {
+		o.log.Errorf("exec StartProcess: %s", err)
+		return err
+	}
+	pid := cmd.Cmd().Process.Pid
+	proc.Register(proc.T{
+		Pid:          pid,
+		Node:         o.localhost,
+		Object:       e.Path.String(),
+		Sid:          sid.String(),
+		StartedAt:    startTime,
+		Elapsed:      "",
+		GlobalExpect: "-",
+		Sub:          "scheduler",
+		Desc:         cmd.String(),
+	})
+	err := cmd.Wait()
+	proc.Unregister(pid)
+	if err != nil {
 		duration := time.Now().Sub(startTime)
 		o.publisher.Pub(&msgbus.ExecFailed{Command: cmd.String(), Duration: duration, ErrS: err.Error(), Node: o.localhost, Origin: "scheduler", SessionID: sid}, labels...)
 		logger.Errorf("%s: %s", cmd, err)

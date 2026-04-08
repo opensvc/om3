@@ -36,6 +36,8 @@ func init() {
 		commoncmd.NewCmdDaemonAudit(),
 		commoncmd.NewCmdDaemonLog(),
 		commoncmd.NewCmdDaemonStatus(),
+		commoncmd.NewCmdDaemonPs(),
+		commoncmd.NewCmdDaemonKill(),
 	)
 
 	cmdDaemonDNS.AddCommand(
