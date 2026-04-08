@@ -153,9 +153,7 @@ func (t *T) Status(ctx context.Context) status.T {
 			switch l.State {
 			case pairStatePAIR:
 				t.StatusLog().Info(fmt, args...)
-			case pairStateCOPY, pairStateSYNC, pairStateSSUS, pairStatePSUS:
-				t.StatusLog().Warn(fmt, args...)
-			case "-":
+			case pairStateCOPY, pairStateSYNC, pairStateSSUS, pairStatePSUS, pairStateSSUE, pairStatePSUE, "-":
 				t.StatusLog().Warn(fmt, args...)
 			default:
 				t.StatusLog().Error(fmt, args...)
@@ -213,21 +211,24 @@ func (t *T) Abort(ctx context.Context) bool {
 	switch role {
 	case roleSMPL:
 	case rolePVOL:
-		switch state {
-		case pairStatePAIR, pairStatePSUS, pairStatePSUE:
+		switch {
+		case ps.StatusAll(pairStatePAIR, pairStatePSUS, pairStatePSUE):
 		default:
 			t.Log().Infof("abort! %s role is %s and state is unexpected %s, you have to manually return to a sane state.", t.Name(), role, state)
 			return true
 		}
 	case roleSVOL:
-		switch state {
-		case pairStateCOPY:
-		case pairStateSSUS, pairStateSSUE, pairStateSSWS:
+		switch {
+		case ps.IsSplit():
 			if !t.SplitStart {
 				t.Log().Infof("abort! %s role is %s and state is %s, set the %s.split_start=true keyword if you really want to start even if the replication is suspended (the datasets will diverge and one will need to be dropped at some point)", t.Name(), role, state, t.RID())
 				return true
 			}
-		case pairStatePAIR:
+			// let Start() do nothing
+		case ps.IsCopying():
+			// let Start() do the wait
+		case ps.IsPaired():
+			// let Start() do the takeover
 		default:
 			t.Log().Infof("abort! %s role is S-VOL and state is unexpected %s , you have to manually return to a sane state.", t.Name(), state)
 			return true
@@ -261,22 +262,22 @@ func (t *T) Start(ctx context.Context) error {
 	switch role {
 	case roleSMPL:
 	case rolePVOL:
-		switch state {
-		case pairStatePAIR, pairStatePSUS, pairStatePSUE:
+		switch {
+		case ps.StatusAll(pairStatePAIR, pairStatePSUS, pairStatePSUE):
 			t.Log().Infof("assume already writable")
 		default:
 			return fmt.Errorf("unexpected %s:%s state, you have to manually return to a sane state", role, state)
 		}
 	case roleSVOL:
-		switch state {
-		case pairStatePAIR:
+		switch {
+		case ps.IsPaired():
 			err = t.failover(ctx, ps)
-		case pairStateCOPY:
+		case ps.IsCopying():
 			if err := t.waitForState(ctx, pairStatePAIR); err != nil {
 				return err
 			}
 			err = t.failover(ctx, ps)
-		case pairStateSSUS, pairStateSSUE, pairStateSSWS:
+		case ps.IsSplit():
 			if !t.SplitStart {
 				return fmt.Errorf("set the %s.split_start=true keyword if you really want to start even if the replication is suspended (the datasets will diverge and one will need to be dropped at some point)", t.RID())
 			}
@@ -680,6 +681,43 @@ func (t *xpPairStatus) RoleSet() []string {
 
 func (t *xpPairStatus) Status() string {
 	return strings.Join(t.StatusSet(), ",")
+}
+
+func (t *xpPairStatus) IsPaired() bool {
+	for _, state := range t.StatusSet() {
+		if state != pairStatePAIR {
+			return false
+		}
+	}
+	return true
+}
+
+func (t *xpPairStatus) IsCopying() bool {
+	states := t.StatusSet()
+	if slices.Contains(states, pairStateCOPY) {
+		return true
+	}
+	return false
+}
+
+func (t *xpPairStatus) IsSplit() bool {
+	states := t.StatusSet()
+	if slices.Contains(states, pairStatePSUE) {
+		return true
+	}
+	if slices.Contains(states, pairStatePSUS) {
+		return true
+	}
+	if slices.Contains(states, pairStateSSUE) {
+		return true
+	}
+	if slices.Contains(states, pairStateSSUS) {
+		return true
+	}
+	if slices.Contains(states, pairStateSSWS) {
+		return true
+	}
+	return false
 }
 
 func (t *xpPairStatus) StatusSet() []string {
