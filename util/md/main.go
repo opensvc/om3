@@ -402,7 +402,7 @@ func (t T) devpathFromName() string {
 func (t *T) Create(ctx context.Context, level string, devs []string, spares int, layout string, chunk *int64, bitmap string) error {
 	dataDevsCount := len(devs) - spares
 	if dataDevsCount < 1 {
-		return fmt.Errorf("at least 1 device must be set in the 'devs' provisioning")
+		return fmt.Errorf("at least one device is required to create a md")
 	}
 	if err := t.validateName(); err != nil {
 		return err
