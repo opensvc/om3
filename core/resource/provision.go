@@ -160,7 +160,7 @@ func provision(ctx context.Context, t Driver, leader bool) error {
 
 func startLeader(ctx context.Context, t Driver, leader bool) error {
 	if !t.IsStandby() && !leader && t.IsShared() {
-		t.Log().Tracef("skip provision-start because resource is shared and neither standby or leader")
+		t.Log().Tracef("skip provision-start because resource is shared and neither standby nor leader")
 		return nil
 	}
 	switch o := t.(type) {
