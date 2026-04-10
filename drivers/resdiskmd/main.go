@@ -191,7 +191,7 @@ func (t *T) ProvisionAsLeader(ctx context.Context) error {
 		return err
 	}
 	if exists {
-		t.Log().Infof("md %s is already created", t.Label(ctx))
+		t.Log().Infof("md %s already exists", t.Label(ctx))
 		return nil
 	}
 	if err := devIntf.Create(ctx, t.Level, t.Devs, t.Spares, t.Layout, t.Chunk, t.Bitmap); err != nil {
