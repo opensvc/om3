@@ -207,7 +207,6 @@ func provisionAsFollower(ctx context.Context, t Driver) error {
 }
 
 func unprovision(ctx context.Context, t Driver, leader bool) error {
-	t.Log().Infof("unprovision leader: %#v", leader)
 	if err := unprovisionStop(ctx, t, leader); err != nil {
 		return err
 	}
