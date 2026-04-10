@@ -159,8 +159,8 @@ func provision(ctx context.Context, t Driver, leader bool) error {
 }
 
 func startLeader(ctx context.Context, t Driver, leader bool) error {
-	if !t.IsStandby() && !leader {
-		t.Log().Tracef("skip provision-start because resource is neither standby or leader")
+	if !t.IsStandby() && !leader && t.IsShared() {
+		t.Log().Tracef("skip provision-start because resource is shared and neither standby nor leader")
 		return nil
 	}
 	switch o := t.(type) {
@@ -207,7 +207,6 @@ func provisionAsFollower(ctx context.Context, t Driver) error {
 }
 
 func unprovision(ctx context.Context, t Driver, leader bool) error {
-	t.Log().Infof("unprovision leader: %#v", leader)
 	if err := unprovisionStop(ctx, t, leader); err != nil {
 		return err
 	}

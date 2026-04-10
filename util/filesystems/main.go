@@ -4,6 +4,7 @@ import (
 	"bufio"
 	"context"
 	"errors"
+	"fmt"
 	"os"
 	"strings"
 
@@ -61,6 +62,8 @@ type (
 var (
 	availTypesCache availTypesM
 	db              = make(map[string]any)
+
+	ErrNotImplemented = errors.New("not implemented")
 )
 
 func init() {
@@ -192,13 +195,19 @@ func DevicesFSCK(ctx context.Context, fs any, dl subDeviceLister) error {
 func DevicesFormated(ctx context.Context, fs any, dl subDeviceLister) (bool, error) {
 	i, ok := fs.(IsFormateder)
 	if !ok {
-		return false, errors.New("isFormated is not implemented")
+		return false, fmt.Errorf("isFormated: %w", ErrNotImplemented)
 	}
 	devices := dl.SubDevices(ctx)
 	if len(devices) == 0 {
 		return false, errors.New("no devices")
 	}
 	for _, dev := range devices {
+		_, err := dev.Stat()
+		if errors.Is(err, os.ErrNotExist) {
+			// Return an error so the false is not cached.
+			// The test will be executed again until the device appears.
+			return false, err
+		}
 		v, err := i.IsFormated(ctx, dev.Path())
 		if err != nil {
 			return false, err

@@ -157,7 +157,20 @@ func (t *T) Unprovision(ctx context.Context) error {
 }
 
 func (t *T) Provisioned(ctx context.Context) (provisioned.T, error) {
-	return provisioned.NotApplicable, nil
+	fs := t.fs()
+	v, err := filesystems.DevicesFormated(ctx, fs, t)
+	if errors.Is(err, filesystems.ErrNotImplemented) {
+		t.Log().Tracef("driver has not implemented IsFormatted")
+		return provisioned.NotApplicable, nil
+	} else if err != nil {
+		t.Log().Tracef("IsFormatted: %s", err)
+		return provisioned.Undef, err
+	}
+	t.Log().Tracef("IsFormatted: %v", v)
+	if v {
+		return provisioned.True, nil
+	}
+	return provisioned.False, nil
 }
 
 func (t *T) Info(ctx context.Context) (resource.InfoKeys, error) {
