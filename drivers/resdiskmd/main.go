@@ -55,6 +55,8 @@ type (
 	MDDriverProvisioner interface {
 		Create(ctx context.Context, level string, devs []string, spares int, layout string, chunk *int64, bitmap string) error
 		Remove(ctx context.Context) error
+	}
+	MDDriverUnprovisioner interface {
 		Wipe(ctx context.Context) error
 	}
 )
@@ -115,7 +117,7 @@ func (t *T) Stop(ctx context.Context) error {
 	if v, err := t.isUp(ctx); err != nil {
 		return err
 	} else if !v {
-		t.Log().Infof("%s is already down", t.Label(ctx))
+		t.Log().Infof("md %s is already down", t.Label(ctx))
 		return nil
 	}
 	if err := t.removeHolders(ctx); err != nil {
@@ -172,7 +174,10 @@ func (t *T) Status(ctx context.Context) status.T {
 // Label implements Label from resource.Driver interface,
 // it returns a formatted short description of the Resource
 func (t *T) Label(_ context.Context) string {
-	return t.UUID
+	if t.UUID != "" {
+		return fmt.Sprintf("%s UUID=%s", t.GetName(), t.UUID)
+	}
+	return t.GetName()
 }
 
 func (t *T) ProvisionAsLeader(ctx context.Context) error {
@@ -186,7 +191,7 @@ func (t *T) ProvisionAsLeader(ctx context.Context) error {
 		return err
 	}
 	if exists {
-		t.Log().Infof("md is already created")
+		t.Log().Infof("md %s is already created", t.Label(ctx))
 		return nil
 	}
 	if err := devIntf.Create(ctx, t.Level, t.Devs, t.Spares, t.Layout, t.Chunk, t.Bitmap); err != nil {
@@ -245,6 +250,7 @@ func (t *T) UnsetUUID(ctx context.Context) error {
 	if err = obj.Unset(ctx, t.uuidKey()); err != nil {
 		return err
 	}
+	t.Log().Infof("uuid unset from the resource configuration")
 
 	// unset in this driver
 	t.UUID = ""
@@ -261,7 +267,7 @@ func (t *T) UnprovisionAsLeader(ctx context.Context) error {
 		t.Log().Infof("already unprovisioned")
 		return nil
 	}
-	devIntf, ok := dev.(MDDriverProvisioner)
+	devIntf, ok := dev.(MDDriverUnprovisioner)
 	if !ok {
 		return fmt.Errorf("driver does not implement the provisioner interface")
 	}

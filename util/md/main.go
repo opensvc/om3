@@ -107,7 +107,7 @@ func (t T) examineScanVerbose(ctx context.Context) (string, error) {
 	cmd := command.New(
 		command.WithContext(ctx),
 		command.WithName(mdadm),
-		command.WithVarArgs("-E", "--scan", "-v"),
+		command.WithVarArgs("--examine", "--scan", "--verbose"),
 		command.WithLogger(t.log),
 		command.WithCommandLogLevel(zerolog.TraceLevel),
 		command.WithStdoutLogLevel(zerolog.TraceLevel),
@@ -167,7 +167,12 @@ func (t T) Wipe(ctx context.Context) error {
 	if err != nil {
 		return err
 	}
+	if len(devs) == 0 {
+		t.log.Infof("no devices to wipe md metadata from")
+		return nil
+	}
 	for _, d := range devs {
+		t.log.Tracef("wipe md metadata from %s", d.Path())
 		if err := t.wipeDevice(ctx, d.Path()); err != nil {
 			return err
 		}
@@ -220,20 +225,21 @@ func (t T) Exists(ctx context.Context) (bool, error) {
 	if err != nil {
 		return false, err
 	}
+	return t.ContainsUUIDOrName(buff), nil
+}
+
+func (t T) ContainsUUIDOrName(buff string) bool {
 	if t.uuid != "" && strings.Contains(buff, "UUID="+t.uuid) {
-		return true, nil
+		return true
 	}
 	if t.name != "" && strings.Contains(buff, t.devpathFromName()+" ") {
-		return true, nil
+		return true
 	}
-	return false, nil
+	return false
 }
 
 func (t T) Devices(ctx context.Context) (device.L, error) {
 	l := make(device.L, 0)
-	if t.uuid == "" {
-		return l, nil
-	}
 	buff, err := t.examineScanVerbose(ctx)
 	if err != nil {
 		return l, nil
@@ -241,7 +247,7 @@ func (t T) Devices(ctx context.Context) (device.L, error) {
 	scanner := bufio.NewScanner(strings.NewReader(buff))
 	for scanner.Scan() {
 		line := strings.TrimSpace(scanner.Text())
-		if strings.Contains(line, "UUID="+t.uuid) {
+		if t.ContainsUUIDOrName(line) {
 			scanner.Scan()
 			line := strings.TrimSpace(scanner.Text())
 			words := strings.SplitN(line, "devices=", 2)
@@ -254,7 +260,7 @@ func (t T) Devices(ctx context.Context) (device.L, error) {
 			break
 		}
 	}
-	// The `mdadm -E --scan -v` command can return a list with duplicates,
+	// The `mdadm --examine --scan --verbose` command can return a list with duplicates,
 	// like /dev/mpath0 /dev/sda /dev/sdb, where sda and sdb are paths of mpath0.
 	// In this case we want to return only the top holders of the list.
 	return l.HolderEndpoints()
