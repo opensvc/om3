@@ -287,12 +287,14 @@ func (t *Logger) HandleAuditStop(q chan LogMessage, selectedSubsystems []string,
 }
 
 func (t *Logger) auditMatch(selectedSubsystems []string, labels ...string) bool {
-	if len(selectedSubsystems) != 0 {
-		for _, label := range labels {
-			for _, pattern := range selectedSubsystems {
-				if fnmatch.Match(pattern, label, 0) {
-					return true
-				}
+	if len(selectedSubsystems) == 0 {
+		return true
+	}
+
+	for _, label := range labels {
+		for _, pattern := range selectedSubsystems {
+			if fnmatch.Match(pattern, label, 0) {
+				return true
 			}
 		}
 	}
