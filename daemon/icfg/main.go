@@ -180,13 +180,14 @@ func (t *Manager) startSubscriptions() {
 
 // worker watch for local instConfig config file updates until file is removed
 func (t *Manager) worker() {
+	t.attachActiveAuditIfAny()
+
 	// do once what we do later on msgbus.ConfigFileUpdated
 	if err := t.configFileCheck(); err != nil {
 		t.log.Tracef("initial: %s", err)
 		return
 	}
 	defer t.delete()
-	t.attachActiveAuditIfAny()
 
 	t.log.Tracef("started")
 	for {
@@ -244,7 +245,7 @@ func (t *Manager) onClusterConfigUpdated() {
 }
 
 func (t *Manager) onConfigFileUpdated() {
-	t.log.Tracef("config file updated => refresh if csum changed")
+	t.log.Debugf("config file updated => refresh if csum changed")
 	_ = t.configFileCheckRefresh(false)
 }
 
@@ -274,6 +275,7 @@ func (t *Manager) updateConfig(newConfig *instance.Config) {
 	t.instanceConfig = *newConfig
 	instance.ConfigData.Set(t.path, t.localhost, newConfig.DeepCopy())
 	t.publisher.Pub(&msgbus.InstanceConfigUpdated{Path: t.path, Node: t.localhost, Value: *newConfig.DeepCopy()}, t.pubLabel...)
+	t.log.Debugf("new config published")
 	t.published = true
 }
 

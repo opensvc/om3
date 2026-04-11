@@ -273,9 +273,12 @@ func start(parent context.Context, qs pubsub.QueueSizer, p naming.Path, nodes []
 		needStatusQ: make(chan priority.T, 1),
 	}
 
-	t.log = t.newLogger(uuid.Nil)
-	t.regularResourceOrchestrate.log = t.newResourceLogger("regular resource")
-	t.standbyResourceOrchestrate.log = t.newResourceLogger("standby resource")
+	t.log = naming.LogWithPath(plog.NewDefaultLogger(), t.path).
+		Attr("pkg", "daemon/imon").
+		WithPrefix(fmt.Sprintf("daemon: imon: %s: ", t.path.String()))
+	t.logSetOrchestrationID(uuid.Nil)
+	t.regularResourceOrchestrate.log = t.log.AddPrefix("regular resource: ")
+	t.standbyResourceOrchestrate.log = t.log.AddPrefix("standby resource: ")
 
 	t.startSubscriptions(qs)
 
@@ -286,25 +289,8 @@ func start(parent context.Context, qs pubsub.QueueSizer, p naming.Path, nodes []
 	return nil
 }
 
-func (t *Manager) newResourceLogger(s string) *plog.Logger {
-	logger := naming.LogWithPath(plog.NewDefaultLogger(), t.path).
-		Attr("pkg", "daemon/imon").
-		WithPrefix(fmt.Sprintf("daemon: imon: %s: %s: ", t.path, s))
-	if t.log != nil && t.log.Q() != nil {
-		return logger.WithQ(t.log.Q())
-	}
-	return logger
-}
-
-func (t *Manager) newLogger(i uuid.UUID) *plog.Logger {
-	logger := naming.LogWithPath(plog.NewDefaultLogger(), t.path).
-		Attr("pkg", "daemon/imon").
-		Attr("orchestration_id", i.String()).
-		WithPrefix(fmt.Sprintf("daemon: imon: %s: ", t.path.String()))
-	if t.log != nil && t.log.Q() != nil {
-		return logger.WithQ(t.log.Q())
-	}
-	return logger
+func (t *Manager) logSetOrchestrationID(i uuid.UUID) {
+	t.log = t.log.Attr("orchestration_id", i.String())
 }
 
 func (t *Manager) startSubscriptions(qs pubsub.QueueSizer) {
@@ -326,8 +312,8 @@ func (t *Manager) startSubscriptions(qs pubsub.QueueSizer) {
 
 // worker watch for local imon updates
 func (t *Manager) worker(initialNodes []string) {
-	defer t.log.Tracef("worker stopped")
 	t.attachActiveAuditIfAny()
+	defer t.log.Tracef("worker stopped")
 
 	// runStatus and requestStatusRefresh will need instance config Priority
 	if iConfig := instance.ConfigData.GetByPathAndNode(t.path, t.localhost); iConfig != nil {
@@ -425,8 +411,12 @@ func (t *Manager) worker(initialNodes []string) {
 			switch c := i.(type) {
 			case *msgbus.AuditStart:
 				t.log.HandleAuditStart(c.Q, c.Subsystems, "imon", "imon:"+t.path.String())
+				t.regularResourceOrchestrate.log = t.log.AddPrefix("regular resource: ")
+				t.standbyResourceOrchestrate.log = t.log.AddPrefix("standby resource: ")
 			case *msgbus.AuditStop:
 				t.log.HandleAuditStop(c.Q, c.Subsystems, "imon", "imon:"+t.path.String())
+				t.regularResourceOrchestrate.log = t.log.AddPrefix("regular resource: ")
+				t.standbyResourceOrchestrate.log = t.log.AddPrefix("standby resource: ")
 			case *msgbus.ForgetPeer:
 				t.onForgetPeer(c)
 			case *msgbus.InstanceStatusDeleted:
@@ -481,6 +471,8 @@ func (t *Manager) attachActiveAuditIfAny() {
 		return
 	}
 	t.log.HandleAuditStart(sess.Q, sess.Subsystems, "imon", "imon:"+t.path.String())
+	t.regularResourceOrchestrate.log = t.log.AddPrefix("regular resource: ")
+	t.standbyResourceOrchestrate.log = t.log.AddPrefix("standby resource: ")
 }
 
 // ensureBooted runs the bot action on not yet booted object

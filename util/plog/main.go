@@ -19,9 +19,15 @@ type (
 		mu     sync.RWMutex
 		logger zerolog.Logger
 		prefix string
-		q      chan LogMessage
+
+		// q is the audit queue, it is created from the head logger q.
+		q chan LogMessage
 
 		dropped atomic.Uint64
+
+		// head is the last logger in the chain.
+		// it is used for the queue and for cloning the logger chain.
+		head *Logger
 	}
 	LogMessage struct {
 		Level     zerolog.Level `json:"level"`
@@ -42,46 +48,50 @@ const (
 )
 
 func NewDefaultLogger() *Logger {
-	return &Logger{
+	l := &Logger{
 		logger: log.Logger,
 	}
+	l.head = l
+	return l
 }
 
 func NewLogger(logger zerolog.Logger) *Logger {
-	return &Logger{
+	l := &Logger{
 		logger: logger,
 	}
+	l.head = l
+	return l
 }
 
 func (t *Logger) clone() *Logger {
 	t.mu.RLock()
 	defer t.mu.RUnlock()
-	return &Logger{
+
+	l := &Logger{
 		logger: t.logger,
 		prefix: t.prefix,
-		q:      t.q,
+		head:   t.head,
 	}
+	if t.head != nil {
+		l.q = t.head.q
+	} else {
+		// unexpected
+		l.q = t.q
+		l.head = t
+	}
+
+	return l
 }
 
 func (t *Logger) AddPrefix(prefix string) *Logger {
-	t.mu.RLock()
-	defer t.mu.RUnlock()
-	return &Logger{
-		logger: t.logger,
-		prefix: t.prefix + prefix,
-		q:      t.q,
-	}
+	l := t.clone()
+	l.prefix = t.prefix + prefix
+	return l
 }
 
 func (t *Logger) WithPrefix(prefix string) *Logger {
 	n := t.clone()
 	n.prefix = prefix
-	return n
-}
-
-func (t *Logger) WithQ(q chan LogMessage) *Logger {
-	n := t.clone()
-	n.q = q
 	return n
 }
 
@@ -175,44 +185,36 @@ func (t *Logger) sendAudit(level zerolog.Level, msg string) {
 }
 
 func (t *Logger) Attr(k string, v any) *Logger {
-	t.mu.RLock()
-	logger := t.logger
-	prefix := t.prefix
-	q := t.q
-	t.mu.RUnlock()
-	n := &Logger{
-		prefix: prefix,
-		q:      q,
-	}
+	n := t.clone()
 	switch i := v.(type) {
 	case string:
-		n.logger = logger.With().Str(k, i).Logger()
+		n.logger = n.logger.With().Str(k, i).Logger()
 	case []string:
-		n.logger = logger.With().Strs(k, i).Logger()
+		n.logger = n.logger.With().Strs(k, i).Logger()
 	case []byte:
-		n.logger = logger.With().Bytes(k, i).Logger()
+		n.logger = n.logger.With().Bytes(k, i).Logger()
 	case float32:
-		n.logger = logger.With().Float32(k, i).Logger()
+		n.logger = n.logger.With().Float32(k, i).Logger()
 	case float64:
-		n.logger = logger.With().Float64(k, i).Logger()
+		n.logger = n.logger.With().Float64(k, i).Logger()
 	case bool:
-		n.logger = logger.With().Bool(k, i).Logger()
+		n.logger = n.logger.With().Bool(k, i).Logger()
 	case int:
-		n.logger = logger.With().Int(k, i).Logger()
+		n.logger = n.logger.With().Int(k, i).Logger()
 	case int32:
-		n.logger = logger.With().Int32(k, i).Logger()
+		n.logger = n.logger.With().Int32(k, i).Logger()
 	case int64:
-		n.logger = logger.With().Int64(k, i).Logger()
+		n.logger = n.logger.With().Int64(k, i).Logger()
 	case uint:
-		n.logger = logger.With().Uint(k, i).Logger()
+		n.logger = n.logger.With().Uint(k, i).Logger()
 	case uint32:
-		n.logger = logger.With().Uint32(k, i).Logger()
+		n.logger = n.logger.With().Uint32(k, i).Logger()
 	case uint64:
-		n.logger = logger.With().Uint64(k, i).Logger()
+		n.logger = n.logger.With().Uint64(k, i).Logger()
 	case time.Duration:
-		n.logger = logger.With().Dur(k, i).Logger()
+		n.logger = n.logger.With().Dur(k, i).Logger()
 	default:
-		n.logger = logger.With().Interface(k, v).Logger()
+		n.logger = n.logger.With().Interface(k, v).Logger()
 	}
 	return n
 }
@@ -229,10 +231,13 @@ func (t *Logger) GetLevel() zerolog.Level {
 func (t *Logger) SetAuditQ(q chan LogMessage) error {
 	t.mu.Lock()
 	defer t.mu.Unlock()
-	if t.q != nil {
-		return fmt.Errorf("cannot set audit q: already set")
-	}
 	t.q = q
+	if t.head != nil {
+		t.head.q = q
+	} else {
+		// unexpected
+		t.head = t
+	}
 	return nil
 }
 
@@ -246,6 +251,12 @@ func (t *Logger) UnsetAuditQ(q chan LogMessage) error {
 		return fmt.Errorf("cannot unset audit q: q does not match")
 	}
 	t.q = nil
+	if t.head != nil {
+		t.head.q = nil
+	} else {
+		// unexpected
+		t.head = t
+	}
 	return nil
 }
 
@@ -270,12 +281,14 @@ func (t *Logger) HandleAuditStop(q chan LogMessage, selectedSubsystems []string,
 }
 
 func (t *Logger) auditMatch(selectedSubsystems []string, labels ...string) bool {
-	if len(selectedSubsystems) != 0 {
-		for _, label := range labels {
-			for _, pattern := range selectedSubsystems {
-				if fnmatch.Match(pattern, label, 0) {
-					return true
-				}
+	if len(selectedSubsystems) == 0 {
+		return true
+	}
+
+	for _, label := range labels {
+		for _, pattern := range selectedSubsystems {
+			if fnmatch.Match(pattern, label, 0) {
+				return true
 			}
 		}
 	}

@@ -8,7 +8,6 @@ import (
 	golog "log"
 	"net"
 	"net/http"
-	"slices"
 	"sync"
 	"time"
 
@@ -79,6 +78,7 @@ func (t *T) Stop() error {
 
 // Start starts up the inet http janitor. Janitor startup initial inet http listener.
 func (t *T) Start(ctx context.Context) error {
+	ctx = daemonctx.WithLogger(ctx, t.log)
 	ctx = daemonctx.WithLsnrType(ctx, "inet")
 
 	t.publisher = pubsub.PubFromContext(ctx)
@@ -230,20 +230,6 @@ func (t *T) janitor(ctx context.Context, errC chan<- error) {
 		default:
 		}
 
-		if q != nil {
-			ctx = daemonctx.WithLogQueue(ctx, q)
-		}
-
-		var oldQ chan plog.LogMessage
-		if t.log != nil {
-			oldQ = t.log.Q()
-		}
-		t.log = plog.NewDefaultLogger().
-			Attr("pkg", "daemon/listener/lsnrhttpinet").
-			Attr("lsnr_type", "inet").
-			Attr("lsnr_addr", t.addr).
-			WithPrefix("daemon: listener: inet: ").
-			WithQ(oldQ)
 		if err := start(); err != nil {
 			t.log.Errorf("on addr changed start failed: %s", err)
 		}
@@ -259,15 +245,9 @@ func (t *T) janitor(ctx context.Context, errC chan<- error) {
 		case e := <-sub.C:
 			switch m := e.(type) {
 			case *msgbus.AuditStart:
-				t.log.HandleAuditStart(m.Q, m.Subsystems, "lsnrhttpinet")
-				if len(m.Subsystems) == 0 || slices.Contains(m.Subsystems, "api") {
-					restart(m.Q)
-				}
+				t.log.HandleAuditStart(m.Q, m.Subsystems, "api", "api.inet")
 			case *msgbus.AuditStop:
-				t.log.HandleAuditStop(m.Q, m.Subsystems, "lsnrhttpinet")
-				if len(m.Subsystems) == 0 || slices.Contains(m.Subsystems, "api") {
-					restart(m.Q)
-				}
+				t.log.HandleAuditStop(m.Q, m.Subsystems, "api", "api.inet")
 			case *msgbus.DaemonCtl:
 				t.log.Infof("daemon control %s asked", m.Action)
 				switch m.Action {
@@ -321,9 +301,9 @@ func (t *T) janitor(ctx context.Context, errC chan<- error) {
 				newAddr := fmt.Sprintf("%s:%d", clusterConfig.Listener.Addr, clusterConfig.Listener.Port)
 				newRateLimiterConfig := clusterConfig.Listener.RateLimiter
 				if t.addr != newAddr {
-					t.addr = newAddr
 					needRestart = true
 					t.log.Infof("will restart: addr changed %s -> %s", t.addr, newAddr)
+					t.addr = newAddr
 				}
 				if newRateLimiterConfig != t.status.RateLimiter {
 					t.status.RateLimiter = newRateLimiterConfig

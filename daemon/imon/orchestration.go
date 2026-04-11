@@ -161,7 +161,7 @@ func (t *Manager) endOrchestration() {
 	t.state.OrchestrationID = uuid.UUID{}
 	t.clearPending()
 	t.updateIfChange()
-	t.log = t.newLogger(uuid.Nil)
+	t.logSetOrchestrationID(uuid.Nil)
 }
 
 // doneAndIdle marks the orchestration as done on the local instance and
