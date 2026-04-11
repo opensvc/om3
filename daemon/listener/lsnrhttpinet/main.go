@@ -321,9 +321,9 @@ func (t *T) janitor(ctx context.Context, errC chan<- error) {
 				newAddr := fmt.Sprintf("%s:%d", clusterConfig.Listener.Addr, clusterConfig.Listener.Port)
 				newRateLimiterConfig := clusterConfig.Listener.RateLimiter
 				if t.addr != newAddr {
-					t.addr = newAddr
 					needRestart = true
 					t.log.Infof("will restart: addr changed %s -> %s", t.addr, newAddr)
+					t.addr = newAddr
 				}
 				if newRateLimiterConfig != t.status.RateLimiter {
 					t.status.RateLimiter = newRateLimiterConfig
