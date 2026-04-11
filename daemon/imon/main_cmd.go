@@ -628,7 +628,7 @@ func (t *Manager) onSetInstanceMonitor(c *msgbus.SetInstanceMonitor) {
 
 	if t.change {
 		if c.Value.CandidateOrchestrationID != uuid.Nil && t.state.OrchestrationID.String() != c.Value.CandidateOrchestrationID.String() {
-			t.log = t.newLogger(c.Value.CandidateOrchestrationID)
+			t.logSetOrchestrationID(c.Value.CandidateOrchestrationID)
 			t.state.OrchestrationID = c.Value.CandidateOrchestrationID
 			t.savePendingOrchestration()
 			t.publishOrchestrationAccepted()

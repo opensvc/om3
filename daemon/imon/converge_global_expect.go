@@ -41,7 +41,7 @@ func (t *Manager) convergeGlobalExpectFromRemote() {
 			t.state.OrchestrationIsDone = false
 			t.log.Tracef("reset previous orchestration is done on fetched global expect")
 		}
-		t.log = t.newLogger(t.state.OrchestrationID)
+		t.logSetOrchestrationID(t.state.OrchestrationID)
 		if t.state.GlobalExpect == instance.MonitorGlobalExpectAborted {
 			t.savePendingOrchestration()
 		}
