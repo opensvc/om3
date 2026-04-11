@@ -95,12 +95,6 @@ func (t *Logger) WithPrefix(prefix string) *Logger {
 	return n
 }
 
-func (t *Logger) WithQ(q chan LogMessage) *Logger {
-	n := t.clone()
-	n.q = q
-	return n
-}
-
 func (t *Logger) Prefix() string {
 	return t.prefix
 }
