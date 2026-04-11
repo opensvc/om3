@@ -109,7 +109,18 @@ func (a *DaemonAPI) getLocalDaemonAudit(ctx echo.Context, nodename string, param
 		if !preempt {
 			return JSONProblemf(ctx, http.StatusConflict, "Audit already active", "refused, audit session is already running for user %s", sess.User)
 		}
-		sess.PreemptC <- struct{}{}
+		select {
+		case sess.PreemptC <- struct{}{}:
+		case <-time.After(time.Second):
+			// Perhaps the session has been closed, verify if preempt is still needed
+			if sess, ok := a.AuditRegistry.Snapshot(); ok {
+				select {
+				case sess.PreemptC <- struct{}{}:
+				case <-time.After(250 * time.Millisecond):
+					return JSONProblemf(ctx, http.StatusConflict, "Audit already active", "refused, audit session is already running for user %s, but preempt is refused", sess.User)
+				}
+			}
+		}
 	}
 
 	request := ctx.Request()
