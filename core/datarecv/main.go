@@ -88,10 +88,17 @@ func Keywords(prefix string) []*keywords.Keyword {
 		{
 			Attr:      prefix + "Install",
 			Converter: "shlex",
-			Example:   "file from sec {name} key password to path /data/password mode 0600 user 1000 group 1000",
-			Option:    "install",
-			Scopable:  true,
-			Text:      keywords.NewText(fs, "text/kw/install"),
+			Example: `
+		/etc/ mode 0750 user 1000 group 1000
+		/etc/ssl/ mode 0700 user 1000 group 1000
+		/etc/ from test/cfg/haproxy key haproxy.cfg mode 0640 user 1000 group 1000 signal HUP:container#haproxy
+		/etc/ssl/front.pem from ./sec/d key fullpem mode 0640 user 1000 group 1001 required
+		/etc/ssl/front.chain from ./sec/d key certificate_chain required
+		/etc/profile.d/ from ./sec/d key etc/profile.d/*
+		/data/`,
+			Option:   "install",
+			Scopable: true,
+			Text:     keywords.NewText(fs, "text/kw/install"),
 		},
 		{
 			Attr:      prefix + "Configs",
