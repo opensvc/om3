@@ -71,6 +71,10 @@ func (t KVInstall) RelativeToPath() string {
 	return relativePath
 }
 
+func (t KVInstall) String() string {
+	return fmt.Sprintf("%#v", t)
+}
+
 func (t KVInstall) IsZero() bool {
 	return t.ToPath == "" && t.FromPattern == ""
 }
