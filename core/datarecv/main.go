@@ -428,14 +428,19 @@ func (t *DataRecv) InstallFromDatastore(ctx context.Context, from object.DataSto
 }
 
 func (t *DataRecv) install(ctx context.Context) (bool, error) {
+	t.to.Log().Tracef("install: def: %s", t.Install)
 	if len(t.Install) == 0 {
 		return false, nil
 	}
 
 	changed := false
 	head := t.to.Head()
+	t.to.Log().Tracef("install: head: %s", head)
+
 	path := t.to.GetObject().(object.Core).Path()
 	dirs, files := t.getInstallMetadata(head)
+	t.to.Log().Tracef("install: dirs: %s", dirs)
+	t.to.Log().Tracef("install: files: %s", files)
 
 	if len(dirs) == 0 && len(files) == 0 {
 		return false, nil
