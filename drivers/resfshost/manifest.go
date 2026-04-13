@@ -3,6 +3,7 @@ package resfshost
 import (
 	"embed"
 
+	"github.com/opensvc/om3/v3/core/datarecv"
 	"github.com/opensvc/om3/v3/core/driver"
 	"github.com/opensvc/om3/v3/core/keywords"
 	"github.com/opensvc/om3/v3/core/manifest"
@@ -154,5 +155,6 @@ func (t *T) Manifest() *manifest.T {
 	m.Add(manifest.ContextObjectPath)
 	m.AddKeywords(KeywordsBase...)
 	m.AddKeywords(manifest.SCSIPersistentReservationKeywords...)
+	m.AddKeywords(datarecv.Keywords("DataRecv.")...)
 	return m
 }

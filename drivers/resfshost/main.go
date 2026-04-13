@@ -16,6 +16,7 @@ import (
 	"golang.org/x/sys/unix"
 
 	"github.com/opensvc/om3/v3/core/actionrollback"
+	"github.com/opensvc/om3/v3/core/datarecv"
 	"github.com/opensvc/om3/v3/core/naming"
 	"github.com/opensvc/om3/v3/core/provisioned"
 	"github.com/opensvc/om3/v3/core/resource"
@@ -33,6 +34,7 @@ type (
 		resource.T
 		resource.Restart
 		resource.SCSIPersistentReservation
+		datarecv.DataRecv
 		Path            naming.Path
 		MountPoint      string         `json:"mnt"`
 		Device          string         `json:"dev"`
@@ -72,11 +74,20 @@ func New() resource.Driver {
 	return t
 }
 
+// Configure installs a resource backpointer in the DataStoreInstall
+func (t *T) Configure() error {
+	t.DataRecv.SetReceiver(t)
+	return nil
+}
+
 func (t *T) Start(ctx context.Context) error {
 	if err := t.mount(ctx); err != nil {
 		return err
 	}
 	if err := t.fsDir().Start(ctx); err != nil {
+		return err
+	}
+	if err := t.DataRecv.Do(ctx); err != nil {
 		return err
 	}
 	return nil
@@ -134,6 +145,7 @@ func (t *T) Status(ctx context.Context) status.T {
 			return status.Warn
 		}
 	}
+	t.DataRecv.Status()
 	return status.Up
 }
 
@@ -509,4 +521,12 @@ func (t *T) hasMountOption(option string) bool {
 		}
 	}
 	return false
+}
+
+func (t *T) CanInstall(ctx context.Context) (bool, error) {
+	state := t.Status(ctx)
+	if state != status.Up {
+		return false, nil
+	}
+	return true, nil
 }
