@@ -146,21 +146,19 @@ func (t *T) setOwnership(ctx context.Context) error {
 		return nil
 	}
 	p := t.path()
-	newUID := -1
-	newGID := -1
+	newUID := t.uid()
+	newGID := t.gid()
 	uid, gid, err := file.Ownership(p)
 	if err != nil {
 		return err
 	}
-	if uid != t.uid() {
-		t.Log().Infof("set %s user to %d (%s)", p, t.uid(), t.User.Username)
-		newUID = t.uid()
+	if newUID >= 0 && uid != newUID {
+		t.Log().Infof("set %s user to %d (%s)", p, newUID, t.User.Username)
 	}
-	if gid != t.gid() {
-		t.Log().Infof("set %s group to %d (%s)", p, t.gid(), t.Group.Name)
-		newGID = t.gid()
+	if newGID >= 0 && gid != newGID {
+		t.Log().Infof("set %s group to %d (%s)", p, newGID, t.Group.Name)
 	}
-	if newUID != -1 || newGID != -1 {
+	if newUID >= 0 || newGID >= 0 {
 		if err := os.Chown(p, newUID, newGID); err != nil {
 			return err
 		}
