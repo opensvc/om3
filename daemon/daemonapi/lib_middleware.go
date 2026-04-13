@@ -57,8 +57,14 @@ var (
 	)
 )
 
-func logWithFamilyAndAddr(family, addr string) *plog.Logger {
-	return plog.NewDefaultLogger().
+func logWithFamilyAndAddr(ctx context.Context) *plog.Logger {
+	l := daemonctx.Logger(ctx)
+	if l == nil {
+		l = plog.NewDefaultLogger()
+	}
+	family := daemonctx.LsnrType(ctx)
+	addr := daemonctx.ListenAddr(ctx)
+	return l.
 		Attr("pkg", "daemon/daemonapi").
 		Attr("lsnr_type", family).
 		Attr("lsnr_addr", addr).
@@ -66,11 +72,7 @@ func logWithFamilyAndAddr(family, addr string) *plog.Logger {
 }
 
 func RateLimiterWithConfig(parent context.Context) echo.MiddlewareFunc {
-	family := daemonctx.LsnrType(parent)
-	log := logWithFamilyAndAddr(family, daemonctx.ListenAddr(parent))
-	if q := daemonctx.LogQueue(parent); q != nil {
-		log = log.WithQ(q)
-	}
+	log := logWithFamilyAndAddr(parent)
 
 	rateLimiterConfig := daemonctx.ListenRateLimiterConfig(parent)
 	if rateLimiterConfig.Rate == 0 {
@@ -120,21 +122,18 @@ func RateLimiterWithConfig(parent context.Context) echo.MiddlewareFunc {
 }
 
 func LogMiddleware(parent context.Context) echo.MiddlewareFunc {
-	family := daemonctx.LsnrType(parent)
-	log := logWithFamilyAndAddr(family, daemonctx.ListenAddr(parent))
-	if q := daemonctx.LogQueue(parent); q != nil {
-		log = log.WithQ(q)
-	}
+	oLog := logWithFamilyAndAddr(parent)
+	prefix := oLog.Prefix()
 
 	return func(next echo.HandlerFunc) echo.HandlerFunc {
 		return func(c echo.Context) error {
 			requestUUID := uuid.New()
 			r := c.Request()
-			log := log.
+			log := oLog.
 				Attr("request_uuid", requestUUID.String()).
 				Attr("request_method", r.Method).
 				Attr("request_path", r.URL.Path).
-				WithPrefix(fmt.Sprintf("%s%s %s: ", log.Prefix(), r.Method, r.URL.Path)).
+				WithPrefix(fmt.Sprintf("%s%s %s: ", prefix, r.Method, r.URL.Path)).
 				Level(LogLevel)
 			c.Set("logger", log)
 			c.Set("uuid", requestUUID)

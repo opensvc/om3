@@ -5,9 +5,10 @@ import (
 	"time"
 
 	"github.com/google/uuid"
+	"golang.org/x/time/rate"
+
 	"github.com/opensvc/om3/v3/util/auditstate"
 	"github.com/opensvc/om3/v3/util/plog"
-	"golang.org/x/time/rate"
 
 	"github.com/opensvc/om3/v3/core/cluster"
 	"github.com/opensvc/om3/v3/core/hbtype"
@@ -24,7 +25,7 @@ var (
 	contextLsnrType              = contextKey("lsnr-type")
 	contextLsnrRateLimiterConfig = contextKey("lsnr-rate-limiter-config")
 	contextAuditRegistry         = contextKey("audit-registry")
-	contextLogQueue              = contextKey("log-queue")
+	contextLogger                = contextKey("logger")
 )
 
 func (c contextKey) String() string {
@@ -116,13 +117,13 @@ func AuditRegistry(ctx context.Context) *auditstate.Registry {
 	return nil
 }
 
-func WithLogQueue(parent context.Context, q chan plog.LogMessage) context.Context {
-	return context.WithValue(parent, contextLogQueue, q)
+func WithLogger(ctx context.Context, l *plog.Logger) context.Context {
+	return context.WithValue(ctx, contextLogger, l)
 }
 
-func LogQueue(ctx context.Context) chan plog.LogMessage {
-	if q, ok := ctx.Value(contextLogQueue).(chan plog.LogMessage); ok {
-		return q
+func Logger(ctx context.Context) *plog.Logger {
+	if l, ok := ctx.Value(contextLogger).(*plog.Logger); ok {
+		return l
 	}
 	return nil
 }

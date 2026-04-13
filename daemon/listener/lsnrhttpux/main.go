@@ -7,7 +7,6 @@ import (
 	"net"
 	"net/http"
 	"os"
-	"slices"
 	"sync"
 
 	"golang.org/x/net/http2"
@@ -36,7 +35,7 @@ type (
 
 func New(ctx context.Context, opts ...funcopt.O) *T {
 	t := &T{
-		log: plog.NewDefaultLogger().Attr("pkg", "daemon/listener/lsnrhttpux").Attr("lsnr_type", "http_ux").WithPrefix("daemon: listener: ux: "),
+		log: plog.NewDefaultLogger().Attr("pkg", "daemon/listener/lsnrhttpux").Attr("lsnr_type", "ux").WithPrefix("daemon: listener: ux: "),
 	}
 	if err := funcopt.Apply(t, opts...); err != nil {
 		t.log.Errorf("funcopt apply: %s", err)
@@ -47,6 +46,7 @@ func New(ctx context.Context, opts ...funcopt.O) *T {
 }
 
 func (t *T) Start(ctx context.Context) error {
+	ctx = daemonctx.WithLogger(ctx, t.log)
 	ctx = daemonctx.WithLsnrType(ctx, "ux")
 
 	errC := make(chan error)
@@ -66,7 +66,7 @@ func (t *T) Start(ctx context.Context) error {
 	t.wg.Add(1)
 	go t.serve(ctx, errC)
 
-	//t.wg.Add(1)
+	t.wg.Add(1)
 	go t.janitor(ctx, errC)
 
 	return <-errC
@@ -107,7 +107,7 @@ func (t *T) serve(ctx context.Context, errC chan<- error) {
 // events are: DaemonCtl,name=lsnr-http-ux, ClusterConfigUpdated,node=<localhost> with changed lsnr addr or port
 // TODO: also watch for tls setting changed
 func (t *T) janitor(ctx context.Context, errC chan<- error) {
-	//defer t.wg.Done()
+	defer t.wg.Done()
 	sub := pubsub.SubFromContext(ctx, "daemon.lsnr.http.ux")
 	sub.AddFilter(&msgbus.AuditStart{})
 	sub.AddFilter(&msgbus.AuditStop{})
@@ -119,45 +119,6 @@ func (t *T) janitor(ctx context.Context, errC chan<- error) {
 		}
 	}()
 
-	start := func() error {
-		t.log.Infof("janitor ask for start")
-		errC := make(chan error)
-		go t.Start(ctx)
-		err := <-errC
-		if err != nil {
-			t.log.Errorf("start failed: %s", err)
-			return err
-		}
-		return nil
-	}
-
-	restart := func(q chan plog.LogMessage) {
-		t.log.Infof("janitor ask for stop")
-		if err := t.Stop(); err != nil {
-			t.log.Errorf("stop failed: %s", err)
-			return
-		}
-
-		if q != nil {
-			ctx = daemonctx.WithLogQueue(ctx, q)
-		}
-
-		var oldQ chan plog.LogMessage
-		if t.log != nil {
-			oldQ = t.log.Q()
-		}
-		t.log = plog.NewDefaultLogger().
-			Attr("pkg", "daemon/listener/lsnrhttpinet").
-			Attr("lsnr_type", "inet").
-			Attr("lsnr_addr", t.addr).
-			WithPrefix("daemon: listener: inet: ").
-			WithQ(oldQ)
-		if err := start(); err != nil {
-			t.log.Errorf("on addr changed start failed: %s", err)
-		}
-		t.log.Infof("restarted on new addr %s", t.addr)
-	}
-
 	for {
 		select {
 		case <-ctx.Done():
@@ -165,15 +126,9 @@ func (t *T) janitor(ctx context.Context, errC chan<- error) {
 		case e := <-sub.C:
 			switch m := e.(type) {
 			case *msgbus.AuditStart:
-				t.log.HandleAuditStart(m.Q, m.Subsystems, "lsnrhttpux")
-				if len(m.Subsystems) == 0 || slices.Contains(m.Subsystems, "api") {
-					restart(m.Q)
-				}
+				t.log.HandleAuditStart(m.Q, m.Subsystems, "api", "api.ux")
 			case *msgbus.AuditStop:
-				t.log.HandleAuditStop(m.Q, m.Subsystems, "lsnrhttpux")
-				if len(m.Subsystems) == 0 || slices.Contains(m.Subsystems, "api") {
-					restart(m.Q)
-				}
+				t.log.HandleAuditStop(m.Q, m.Subsystems, "api", "api.ux")
 			case *msgbus.DaemonCtl:
 				t.log.Infof("daemon control %s asked", m.Action)
 				switch m.Action {
