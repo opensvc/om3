@@ -301,12 +301,13 @@ func (t *dataStore) writeKey(vk vKey, b []byte, opt KVInstall) (bool, error) {
 	usr := opt.AccessControl.User
 	grp := opt.AccessControl.Group
 	mtime := t.configModTime()
+	perm := os.ModePerm
+	if mode != nil {
+		perm = *mode
+	}
 	info, err := os.Stat(dst)
+
 	if errors.Is(err, os.ErrNotExist) {
-		perm := os.ModePerm
-		if mode != nil {
-			perm = *mode
-		}
 		opt.ToLog.Infof("install key %s from %s to %s with owner %s:%s perm %v", vk.Key, t.path, dst, usr, grp, perm)
 		if err := os.WriteFile(dst, b, perm); err != nil {
 			return true, err
@@ -344,6 +345,7 @@ func (t *dataStore) writeKey(vk vKey, b []byte, opt KVInstall) (bool, error) {
 	if err := os.WriteFile(dst, b, info.Mode()); err != nil {
 		return true, err
 	}
+	opt.ToLog.Infof("reinstall key %s from %s to %s with owner %s:%s perm %v", vk.Key, t.path, dst, usr, grp, perm)
 	return false, nil
 }
 
