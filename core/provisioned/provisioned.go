@@ -86,7 +86,8 @@ func (t T) IsOneOf(states ...T) bool {
 //	P  Not provisioned
 //	p  Mixed provisioned
 //	/  Not applicable
-//	?  Unknown
+//	?  Undefined
+//	!  Unknown
 func (t T) FlagString() string {
 	switch t {
 	case True:
@@ -98,9 +99,9 @@ func (t T) FlagString() string {
 	case NotApplicable:
 		return "/"
 	case Undef:
-		return "/"
-	default:
 		return "?"
+	default:
+		return "!"
 	}
 }
 
