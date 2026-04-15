@@ -22,6 +22,7 @@ import (
 	"github.com/opensvc/om3/v3/core/driver"
 	"github.com/opensvc/om3/v3/core/env"
 	"github.com/opensvc/om3/v3/core/manifest"
+	"github.com/opensvc/om3/v3/core/naming"
 	"github.com/opensvc/om3/v3/core/provisioned"
 	"github.com/opensvc/om3/v3/core/resourceid"
 	"github.com/opensvc/om3/v3/core/resourcereqs"
@@ -227,7 +228,14 @@ type (
 		// Tags is a set of words attached to the resource.
 		Tags TagSet `json:"tags,omitempty"`
 
+		// Files exposes the list of files the driver wants the daemon to replicate
+		// from the primary instance to secondary instances.
 		Files Files `json:"files,omitempty"`
+
+		// Datastores is the list of datastores used by the resource.
+		// The daemon must watch for these datastore changes
+		// (e.g. reinstall files in fs and volumes)
+		Datastores naming.Paths `json:"datastores,omitempty"`
 	}
 
 	Files []File
@@ -1263,14 +1271,15 @@ func GetStatus(ctx context.Context, r Driver) Status {
 	// on containers it will set the initial inspect.
 	resStatus := EvalStatus(ctx, r)
 	return Status{
-		Label:  formatResourceLabel(ctx, r),
-		Type:   r.DriverID().String(),
-		Status: resStatus,
-		Subset: r.RSubset(),
-		Tags:   r.TagSet(),
-		Log:    r.StatusLog().Entries(),
-		Info:   getStatusInfo(ctx, r),
-		Files:  getFiles(ctx, r),
+		Label:      formatResourceLabel(ctx, r),
+		Type:       r.DriverID().String(),
+		Status:     resStatus,
+		Subset:     r.RSubset(),
+		Tags:       r.TagSet(),
+		Log:        r.StatusLog().Entries(),
+		Info:       getStatusInfo(ctx, r),
+		Files:      getFiles(ctx, r),
+		Datastores: getDatastores(ctx, r),
 
 		IsStopped:   r.IsStopped(),
 		IsMonitored: r.IsMonitored(),
@@ -1523,6 +1532,14 @@ func createStoppedIfHasResourceSelector(ctx context.Context, r Driver) error {
 		return err
 	}
 	return file.Close()
+}
+
+func getDatastores(ctx context.Context, t Driver) naming.Paths {
+	i, ok := t.(datastoreLister)
+	if !ok {
+		return nil
+	}
+	return i.DatastoreList(ctx)
 }
 
 func getFiles(ctx context.Context, t Driver) Files {

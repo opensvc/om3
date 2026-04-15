@@ -66,30 +66,6 @@ var (
 		Scopable: true,
 		Text:     keywords.NewText(fs, "text/kw/zone"),
 	}
-	KeywordUser = keywords.Keyword{
-		Attr:      "User",
-		Converter: "user",
-		Example:   "root",
-		Option:    "user",
-		Scopable:  true,
-		Text:      keywords.NewText(fs, "text/kw/user"),
-	}
-	KeywordGroup = keywords.Keyword{
-		Attr:      "Group",
-		Converter: "group",
-		Example:   "sys",
-		Option:    "group",
-		Scopable:  true,
-		Text:      keywords.NewText(fs, "text/kw/group"),
-	}
-	KeywordPerm = keywords.Keyword{
-		Attr:      "Perm",
-		Converter: "filemode",
-		Example:   "1777",
-		Option:    "perm",
-		Scopable:  true,
-		Text:      keywords.NewText(fs, "text/kw/group"),
-	}
 	KeywordCheckRead = keywords.Keyword{
 		Attr:      "CheckRead",
 		Converter: "bool",
@@ -118,9 +94,6 @@ var (
 		&KeywordPromoteRW,
 		&KeywordMKFSOptions,
 		&KeywordZone,
-		&KeywordUser,
-		&KeywordGroup,
-		&KeywordPerm,
 		&KeywordCheckRead,
 	}
 
@@ -131,9 +104,6 @@ var (
 		&KeywordStatTimeout,
 		&KeywordMKFSOptions,
 		&KeywordZone,
-		&KeywordUser,
-		&KeywordGroup,
-		&KeywordPerm,
 		&KeywordCheckRead,
 	}
 )

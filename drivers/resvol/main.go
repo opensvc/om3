@@ -213,7 +213,6 @@ func (t *T) Status(ctx context.Context) status.T {
 	if data.Overall == status.Warn {
 		t.StatusLog().Warn("Volume %s has warnings", volume.Path())
 	}
-	t.DataRecv.Status()
 	if !t.flagInstalled() {
 		if data.Avail == status.Warn {
 			t.StatusLog().Error("%s avail %s", volume.Path(), data.Avail)
@@ -222,6 +221,7 @@ func (t *T) Status(ctx context.Context) status.T {
 		}
 		return status.Down
 	}
+	t.DataRecv.Status()
 	return data.Avail
 }
 

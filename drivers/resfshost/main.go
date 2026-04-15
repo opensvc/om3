@@ -87,9 +87,6 @@ func (t *T) Start(ctx context.Context) error {
 	if err := t.fsDir().Start(ctx); err != nil {
 		return err
 	}
-	if err := t.DataRecv.Do(ctx); err != nil {
-		return err
-	}
 	return nil
 }
 
@@ -199,9 +196,7 @@ func (t *T) fsDir() *resfsdir.T {
 	r.SetRID(t.RID())
 	r.SetObject(t.GetObject())
 	r.Path = t.MountPoint
-	r.User = t.User
-	r.Group = t.Group
-	r.Perm = t.Perm
+	r.DataRecv = t.DataRecv
 	return r
 }
 

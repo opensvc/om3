@@ -5,6 +5,7 @@ import (
 	"io"
 
 	"github.com/opensvc/om3/v3/core/actionresdeps"
+	"github.com/opensvc/om3/v3/core/naming"
 	"github.com/opensvc/om3/v3/core/schedule"
 	"github.com/opensvc/om3/v3/util/device"
 )
@@ -150,6 +151,9 @@ type (
 	}
 	updater interface {
 		Update(context.Context) error
+	}
+	datastoreLister interface {
+		DatastoreList(context.Context) naming.Paths
 	}
 	toSyncer interface {
 		ToSync(context.Context) []string

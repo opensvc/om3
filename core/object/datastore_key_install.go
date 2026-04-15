@@ -43,17 +43,17 @@ type (
 	KVInstallAccessControl struct {
 		User  string
 		Group string
-		Perm  *os.FileMode
+		Perm  os.FileMode
 
 		// always align dir access
 		DirUser  string
 		DirGroup string
-		DirPerm  *os.FileMode
+		DirPerm  os.FileMode
 
 		// only align dir access on makedir
 		MakedirUser  string
 		MakedirGroup string
-		MakedirPerm  *os.FileMode
+		MakedirPerm  os.FileMode
 	}
 )
 
@@ -230,19 +230,16 @@ func (t *dataStore) installDirKey(vk vKey, opt KVInstall) (bool, error) {
 	return changed, nil
 }
 
-func (t *dataStore) chmod(p string, mode *os.FileMode, info os.FileInfo, log *plog.Logger) error {
-	if mode == nil {
-		return nil
-	}
+func (t *dataStore) chmod(p string, perm os.FileMode, info os.FileInfo, log *plog.Logger) error {
 	if info != nil {
-		if *mode == info.Mode().Perm() {
+		if perm == info.Mode().Perm() {
 			return nil
 		}
-		log.Infof("change %s permissions from %s to %s", p, info.Mode().Perm(), mode)
+		log.Infof("change %s permissions from %s to %s", p, info.Mode().Perm(), perm)
 	} else {
-		log.Tracef("set %s permissions to %s", p, mode)
+		log.Tracef("set %s permissions to %s", p, perm)
 	}
-	return os.Chmod(p, *mode)
+	return os.Chmod(p, perm)
 }
 
 func (t *dataStore) chown(p string, usr, grp string, info os.FileInfo, log *plog.Logger) error {
@@ -297,14 +294,10 @@ func (t *dataStore) chown(p string, usr, grp string, info os.FileInfo, log *plog
 // This function return false if the dst content didn't change.
 func (t *dataStore) writeKey(vk vKey, b []byte, opt KVInstall) (bool, error) {
 	dst := opt.ToPath
-	mode := opt.AccessControl.Perm
+	perm := opt.AccessControl.Perm
 	usr := opt.AccessControl.User
 	grp := opt.AccessControl.Group
 	mtime := t.configModTime()
-	perm := os.ModePerm
-	if mode != nil {
-		perm = *mode
-	}
 	info, err := os.Stat(dst)
 
 	if errors.Is(err, os.ErrNotExist) {
@@ -319,7 +312,7 @@ func (t *dataStore) writeKey(vk vKey, b []byte, opt KVInstall) (bool, error) {
 	} else if err != nil {
 		return false, err
 	}
-	if err := t.chmod(dst, mode, info, opt.ToLog); err != nil {
+	if err := t.chmod(dst, perm, info, opt.ToLog); err != nil {
 		return false, err
 	}
 	if err := t.chown(dst, usr, grp, info, opt.ToLog); err != nil {
@@ -364,8 +357,8 @@ func (t *dataStore) makedir(path string, opt KVInstallAccessControl, log *plog.L
 		}
 		return nil
 	} else {
-		log.Infof("install dir %s with owner %s:%s perm %v", path, opt.MakedirUser, opt.MakedirGroup, *opt.MakedirPerm)
-		if err := os.MkdirAll(path, *opt.MakedirPerm); err != nil {
+		log.Infof("install dir %s with owner %s:%s perm %v", path, opt.MakedirUser, opt.MakedirGroup, opt.MakedirPerm)
+		if err := os.MkdirAll(path, opt.MakedirPerm); err != nil {
 			return err
 		}
 		if err := t.chown(path, opt.MakedirUser, opt.MakedirGroup, nil, log); err != nil {

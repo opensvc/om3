@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 	"os"
-	"os/user"
 	"path/filepath"
 	"strconv"
 	"strings"
@@ -13,6 +12,7 @@ import (
 	"github.com/rs/zerolog"
 
 	"github.com/opensvc/om3/v3/core/actionrollback"
+	"github.com/opensvc/om3/v3/core/datarecv"
 	"github.com/opensvc/om3/v3/core/provisioned"
 	"github.com/opensvc/om3/v3/core/resource"
 	"github.com/opensvc/om3/v3/core/status"
@@ -31,6 +31,7 @@ type (
 	T struct {
 		resource.T
 		resource.Restart
+		datarecv.DataRecv
 		MountPoint     string         `json:"mnt"`
 		Device         string         `json:"dev"`
 		MountOptions   string         `json:"mnt_opt"`
@@ -38,9 +39,6 @@ type (
 		Size           *int64         `json:"size"`
 		Zone           string         `json:"zone"`
 		MKFSOptions    []string       `json:"mkfs_opt"`
-		User           *user.User     `json:"user"`
-		Group          *user.Group    `json:"group"`
-		Perm           *os.FileMode   `json:"perm"`
 		RefQuota       string         `json:"refquota"`
 		Quota          string         `json:"quota"`
 		RefReservation string         `json:"refreservation"`
@@ -51,6 +49,20 @@ type (
 func New() resource.Driver {
 	t := &T{}
 	return t
+}
+
+// Configure installs a resource backpointer in the DataStoreInstall
+func (t *T) Configure() error {
+	t.DataRecv.SetReceiver(t)
+	return nil
+}
+
+func (t *T) CanInstall(ctx context.Context) (bool, error) {
+	state := t.Status(ctx)
+	if state != status.Up {
+		return false, nil
+	}
+	return true, nil
 }
 
 func (t *T) Start(ctx context.Context) error {
@@ -100,6 +112,7 @@ func (t *T) Status(ctx context.Context) status.T {
 	} else if !v {
 		return status.Down
 	}
+	t.DataRecv.Status()
 	return status.Up
 }
 
@@ -128,9 +141,7 @@ func (t *T) fsDir() *resfsdir.T {
 	r.SetRID(t.RID())
 	r.SetObject(t.GetObject())
 	r.Path = t.MountPoint
-	r.User = t.User
-	r.Group = t.Group
-	r.Perm = t.Perm
+	r.DataRecv = t.DataRecv
 	return r
 }
 

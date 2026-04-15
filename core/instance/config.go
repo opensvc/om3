@@ -73,7 +73,15 @@ type (
 )
 
 func (m ResourceConfigs) DeepCopy() ResourceConfigs {
-	return xmap.Copy(m)
+	newM := make(ResourceConfigs)
+	for rid, cfg := range m {
+		newCfg := cfg
+		if cfg.RestartDelay != nil {
+			newCfg.RestartDelay = &(*cfg.RestartDelay)
+		}
+		newM[rid] = newCfg
+	}
+	return newM
 }
 
 func (m SubsetConfigs) DeepCopy() SubsetConfigs {
