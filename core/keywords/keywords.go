@@ -281,8 +281,10 @@ func driverDoc(w io.Writer, m map[string]*Keyword, index Index, kind naming.Kind
 	section := index[0]
 	typ := index[1]
 	title := index.String()
-	if title != "" {
-		fmt.Fprintf(w, "%s %s\n\n", strings.Repeat("#", depth), index)
+	if title == "DEFAULT" {
+		fmt.Fprintf(w, "%s Section `%s`\n\n", strings.Repeat("#", depth), title)
+	} else if title != "" {
+		fmt.Fprintf(w, "%s Driver `%s`\n\n", strings.Repeat("#", depth), title)
 	}
 	optL := maps.Keys(m)
 	sort.Strings(optL)
@@ -308,7 +310,7 @@ func driverDoc(w io.Writer, m map[string]*Keyword, index Index, kind naming.Kind
 	}
 
 	if len(cfgL) > 0 {
-		fmt.Fprint(w, "Minimal configlet:\n\n")
+		fmt.Fprint(w, "**Minimal configlet:**\n\n")
 		if driver.NewGroup(section) == driver.GroupUnknown {
 			fmt.Fprintf(w, "\t[%s]\n", section)
 		} else {
@@ -318,7 +320,7 @@ func driverDoc(w io.Writer, m map[string]*Keyword, index Index, kind naming.Kind
 	}
 
 	if len(cmdL) > 0 {
-		fmt.Fprint(w, "Minimal setup command:\n\n")
+		fmt.Fprint(w, "**Minimal setup command:**\n\n")
 		var selector string
 		switch kind {
 		case naming.KindInvalid:
@@ -332,6 +334,14 @@ func driverDoc(w io.Writer, m map[string]*Keyword, index Index, kind naming.Kind
 		} else {
 			fmt.Fprintf(w, "\tom %s set %s\n\n", selector, cmdL[0])
 		}
+	}
+
+	if len(optL) > 0 {
+		fmt.Fprint(w, "**Supported keywords:**\n\n")
+		for _, opt := range optL {
+			fmt.Fprintf(w, "- %s\n", opt)
+		}
+		fmt.Fprintln(w, "")
 	}
 
 	for _, opt := range optL {
@@ -407,7 +417,7 @@ func (t *Keyword) Doc(w io.Writer, depth int) error {
 	fprintProp := func(a, b string) {
 		fmt.Fprintf(w, "\t%-12s %s\n", a+":", b)
 	}
-	fmt.Fprintf(w, "%s %s\n\n", strings.Repeat("#", depth+1), t.Option)
+	fmt.Fprintf(w, "%s Keyword `%s`\n\n", strings.Repeat("#", depth+1), t.Option)
 	fprintProp("required", fmt.Sprint(t.Required))
 	fprintProp("scopable", fmt.Sprint(t.Scopable))
 	if len(t.Candidates) > 0 {
@@ -420,20 +430,26 @@ func (t *Keyword) Doc(w io.Writer, depth int) error {
 		}
 		fprintProp("depends", strings.Join(l, ", "))
 	}
-	if t.DefaultText != "" {
-		fprintProp("default", t.DefaultText)
-	} else if t.Default != "" {
+	if t.Default != "" {
 		fprintProp("default", t.Default)
 	}
 	if t.Converter != "" {
 		fprintProp("convert", t.Converter)
 	}
 	fmt.Fprintln(w, "")
+
+	if t.DefaultText != "" {
+		fmt.Fprintln(w, "**Default:**")
+		fmt.Fprintln(w, "")
+		fmt.Fprintln(w, t.DefaultText)
+	}
 	if t.Example != "" {
-		fmt.Fprintln(w, "Example:")
+		fmt.Fprintln(w, "**Example:**")
 		fmt.Fprintln(w, "")
 		fmt.Fprintf(w, "\t%s=%s\n\n", t.Option, t.Example)
 	}
+	fmt.Fprintln(w, "**Description:**")
+	fmt.Fprintln(w, "")
 	fmt.Fprintln(w, t.Text)
 	return nil
 }
