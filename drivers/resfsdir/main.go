@@ -89,10 +89,10 @@ func (t *T) Unprovision(ctx context.Context) error {
 		return err
 	}
 	if !statInfo.IsDir() {
-		return fmt.Errorf("%s exists but is not a directory")
+		return fmt.Errorf("%s exists but is not a directory", head)
 	}
 	if file.IsProtected(head) {
-		return fmt.Errorf("%s exists but is a protected directory")
+		return fmt.Errorf("%s exists but is a protected directory", head)
 	}
 	return os.RemoveAll(head)
 }
