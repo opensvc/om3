@@ -139,6 +139,7 @@ func (t Kinds) String() string {
 	i := 0
 	for key := range t {
 		l[i] = key.String()
+		i++
 	}
 	return strings.Join(l, "|")
 }
