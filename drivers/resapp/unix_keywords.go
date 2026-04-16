@@ -18,24 +18,6 @@ var (
 		Scopable: true,
 		Text:     keywords.NewText(fs, "text/kw/script"),
 	}
-	UnixKeywordStartCmd = keywords.Keyword{
-		Attr:     "StartCmd",
-		Option:   "start",
-		Scopable: true,
-		Text:     keywords.NewText(fs, "text/kw/start"),
-	}
-	UnixKeywordStopCmd = keywords.Keyword{
-		Attr:     "StopCmd",
-		Option:   "stop",
-		Scopable: true,
-		Text:     keywords.NewText(fs, "text/kw/stop"),
-	}
-	UnixKeywordCheckCmd = keywords.Keyword{
-		Attr:     "CheckCmd",
-		Option:   "check",
-		Scopable: true,
-		Text:     keywords.NewText(fs, "text/kw/check"),
-	}
 	UnixKeywordInfoCmd = keywords.Keyword{
 		Attr:     "InfoCmd",
 		Default:  "false",
@@ -170,11 +152,9 @@ var (
 		Scopable: true,
 		Text:     keywords.NewText(fs, "text/kw/netns"),
 	}
+
 	UnixKeywords = []*keywords.Keyword{
 		&UnixKeywordScriptPath,
-		&UnixKeywordStartCmd,
-		&UnixKeywordStopCmd,
-		&UnixKeywordCheckCmd,
 		&UnixKeywordInfoCmd,
 		&UnixKeywordStatusLogKw,
 		&UnixKeywordCheckTimeout,

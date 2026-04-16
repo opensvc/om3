@@ -1,0 +1,11 @@
+* `true`
+
+   Execute the `script` command with `start` argument on `start` action.
+
+* `false`
+
+  Do nothing on `start` action.
+
+* `<shlex expression>`
+
+   Execute this command on `start` action.

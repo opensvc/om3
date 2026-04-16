@@ -25,6 +25,30 @@ var (
 			Scopable:  true,
 			Text:      keywords.NewText(fs, "text/kw/start_timeout"),
 		},
+		{
+			Attr:     "StartCmd",
+			Example:  "/usr/bin/touch /tmp/{fqdn}.{rindex}",
+			Option:   "start",
+			Scopable: true,
+			Text:     keywords.NewText(fs, "text/kw/start"),
+			Minimal:  true,
+		},
+		{
+			Attr:     "StopCmd",
+			Example:  "/usr/bin/rm -f /tmp/{fqdn}.{rindex}",
+			Option:   "stop",
+			Scopable: true,
+			Text:     keywords.NewText(fs, "text/kw/stop"),
+			Minimal:  true,
+		},
+		{
+			Attr:     "CheckCmd",
+			Example:  "/usr/bin/test -f /tmp/{fqdn}.{rindex}",
+			Option:   "check",
+			Scopable: true,
+			Text:     keywords.NewText(fs, "text/kw/check"),
+			Minimal:  true,
+		},
 	}
 )
 

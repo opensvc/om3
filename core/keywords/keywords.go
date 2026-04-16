@@ -81,6 +81,9 @@ type (
 
 		// ReplacedBy means the keyword is deprecated but another keyword can be used instead.
 		ReplacedBy string
+
+		// Minimal force the keyword to be included in the minimal configlet of the driver doc.
+		Minimal bool
 	}
 
 	Store   []*Keyword
@@ -302,7 +305,7 @@ func driverDoc(w io.Writer, m map[string]*Keyword, index Index, kind naming.Kind
 		if name == "type" {
 			continue
 		}
-		if !kw.Required {
+		if !kw.Required && !kw.Minimal {
 			continue
 		}
 		cfgL = append(cfgL, fmt.Sprintf("\t%s = %s\n", kw.Option, kw.Example))

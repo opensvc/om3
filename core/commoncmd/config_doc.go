@@ -21,6 +21,7 @@ func KeywordStoreFromAPI(items api.KeywordDefinitionItems) (store keywords.Store
 			Example:       item.Example,
 			Inherit:       keywords.ParseInherit(item.Inherit),
 			Kind:          naming.ParseKinds(item.Kind...),
+			Minimal:       item.Minimal,
 			Option:        item.Option,
 			Provisioning:  item.Provisioning,
 			Required:      item.Required,
