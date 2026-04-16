@@ -778,9 +778,10 @@ func KeywordStoreWithDrivers(kind naming.Kind) keywords.Store {
 			continue
 		}
 		for _, kw := range manifest.Keywords() {
-			kw.Section = drvID.Group.String()
-			kw.Types = []string{drvID.Name}
-			store = append(store, kw)
+			cloneKW := kw.Clone()
+			cloneKW.Section = drvID.Group.String()
+			cloneKW.Types = []string{drvID.Name}
+			store = append(store, cloneKW)
 		}
 	}
 	return store

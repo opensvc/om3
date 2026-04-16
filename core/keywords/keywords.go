@@ -355,7 +355,12 @@ func driverDoc(w io.Writer, m map[string]*Keyword, index Index, kind naming.Kind
 func (t Store) KeywordsByDriver(kind naming.Kind) map[Index]map[string]*Keyword {
 	m := make(map[Index]map[string]*Keyword)
 	sections := make(map[string]any)
+
 	typesByGroup := make(map[string][]string)
+	for group, names := range driver.NamesByGroup() {
+		typesByGroup[group.String()] = names
+	}
+
 	do := func(ptr *Keyword, section string) {
 		kw := *ptr
 		kw.Section = section
@@ -380,26 +385,32 @@ func (t Store) KeywordsByDriver(kind naming.Kind) map[Index]map[string]*Keyword 
 			sections[kw.Section] = nil
 		}
 	}
-	for group, names := range driver.NamesByGroup() {
-		typesByGroup[group.String()] = names
-	}
 	for _, kw := range t {
 		if !kw.Kind.Has(kind) {
 			continue
 		}
-		var l []string
 		if kw.Section == "" {
 			for section, _ := range sections {
-				l = append(l, section)
+				do(kw, section)
 			}
 		} else {
-			l = append(l, kw.Section)
-		}
-		for _, section := range l {
-			do(kw, section)
+			do(kw, kw.Section)
 		}
 	}
 	return m
+}
+
+func (t *Keyword) Clone() *Keyword {
+	if t == nil {
+		return t
+	}
+	clone := *t // copies all scalar fields
+	clone.Candidates = slices.Clone(t.Candidates)
+	clone.Depends = slices.Clone(t.Depends)
+	clone.Types = slices.Clone(t.Types)
+	clone.Aliases = slices.Clone(t.Aliases)
+	clone.Kind = t.Kind.Clone()
+	return &clone
 }
 
 func (t *Keyword) DefaultKey() key.T {

@@ -116,6 +116,16 @@ func NewKinds(kinds ...Kind) Kinds {
 	return m
 }
 
+func (t Kinds) Clone() Kinds {
+	if t == nil {
+		return nil
+	}
+	clone := make(Kinds, len(t))
+	for k, v := range t {
+		clone[k] = v
+	}
+	return clone
+}
 func (t Kinds) Has(kind Kind) bool {
 	if kind == KindInvalid {
 		return true
