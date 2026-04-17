@@ -1,0 +1,13 @@
+* `true`
+
+   Execute the `script` command with `stop` argument on `stop` action.
+
+* `false`
+
+  Do nothing on `stop` action.
+
+* `<shlex expression>`
+
+   Execute this command on `stop` action.
+
+If not set, the driver will lookup and kill the process it started.

@@ -1,0 +1,3 @@
+If `perm` is not set,
+* the permission of files from sec objects defaults to 0600
+* the permission of other files defaults to 0644

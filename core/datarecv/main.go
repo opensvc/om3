@@ -19,22 +19,33 @@ import (
 	"github.com/opensvc/om3/v3/core/object"
 	"github.com/opensvc/om3/v3/core/resource"
 	"github.com/opensvc/om3/v3/core/volsignal"
+	"github.com/opensvc/om3/v3/util/file"
 	"github.com/opensvc/om3/v3/util/plog"
 )
 
 type (
 	DataRecv struct {
-		Install []string     `json:"install"`
-		User    string       `json:"user"`
-		Group   string       `json:"group"`
-		Perm    *os.FileMode `json:"perm"`
-		DirPerm *os.FileMode `json:"dirperm"`
-		Signal  string       `json:"signal"`
+		// Install is the list of files or directories to install in the data receiver.
+		Install []string `json:"install"`
 
-		// Deprecated
+		// User is the default owner user of the installed items.
+		User string `json:"user"`
+
+		// Group is the default owner group of the installed items.
+		Group string `json:"group"`
+
+		// Perm is the default permission of the installed files.
+		Perm *os.FileMode `json:"perm"`
+
+		// DirPerm is the default permission of the installed directories.
+		// If not set, DirPerm defaults to Perm with execution bit over read bits (e.g. 0640 => 0750).
+		DirPerm *os.FileMode `json:"dirperm"`
+
+		// Deprecated by Install
 		Configs     []string `json:"configs"`
 		Secrets     []string `json:"secrets"`
 		Directories []string `json:"directories"`
+		Signal      string   `json:"signal"`
 
 		to receiver
 	}
@@ -43,6 +54,14 @@ type (
 	SigRoute struct {
 		Signum syscall.Signal
 		RID    string
+	}
+
+	dirDefinition struct {
+		Path     string
+		Perm     os.FileMode
+		User     string
+		Group    string
+		Required bool
 	}
 
 	receiver interface {
@@ -66,12 +85,15 @@ var (
 	// secrets parseReference when driver perm is undefined.
 	defaultSecPerm = os.FileMode(0600)
 
-	// defaultCfgPerm is the default KVInstall.AccessControl.Perm for
+	// defaultPerm is the default KVInstall.AccessControl.Perm for
 	// configs parseReference when driver perm is undefined.
-	defaultCfgPerm = os.FileMode(0644)
+	defaultPerm = os.FileMode(0644)
 
-	// defaultDirPerm
-	defaultDirPerm = os.FileMode(0700)
+	// defaultSecDirPerm
+	defaultSecDirPerm = os.FileMode(0700)
+
+	// defaultSecPerm
+	defaultDirPerm = os.FileMode(0755)
 )
 
 // pop returns "a", "b c d" from "a b c d".
@@ -88,10 +110,17 @@ func Keywords(prefix string) []*keywords.Keyword {
 		{
 			Attr:      prefix + "Install",
 			Converter: "shlex",
-			Example:   "file from sec {name} key password to path /data/password mode 0600 user 1000 group 1000",
-			Option:    "install",
-			Scopable:  true,
-			Text:      keywords.NewText(fs, "text/kw/install"),
+			Example: `
+		/etc/ mode 0750 user 1000 group 1000
+		/etc/ssl/ mode 0700 user 1000 group 1000
+		/etc/ from test/cfg/haproxy key haproxy.cfg mode 0640 user 1000 group 1000 signal HUP:container#haproxy
+		/etc/ssl/front.pem from ./sec/d key fullpem mode 0640 user 1000 group 1001 required
+		/etc/ssl/front.chain from ./sec/d key certificate_chain required
+		/etc/profile.d/ from ./sec/d key etc/profile.d/*
+		/data/`,
+			Option:   "install",
+			Scopable: true,
+			Text:     keywords.NewText(fs, "text/kw/install"),
 		},
 		{
 			Attr:      prefix + "Configs",
@@ -135,22 +164,22 @@ func Keywords(prefix string) []*keywords.Keyword {
 			Text:     keywords.NewText(fs, "text/kw/group"),
 		},
 		{
-			Attr:      prefix + "Perm",
-			Converter: "filemode",
-			Example:   "660",
-			Option:    "perm",
-			Scopable:  true,
-			Text:      keywords.NewText(fs, "text/kw/perm"),
+			Attr:        prefix + "Perm",
+			Converter:   "filemode",
+			DefaultText: keywords.NewText(fs, "text/kw/perm.default"),
+			Example:     "660",
+			Option:      "perm",
+			Scopable:    true,
+			Text:        keywords.NewText(fs, "text/kw/perm"),
 		},
 		{
-			Attr:      prefix + "DirPerm",
-			Converter: "filemode",
-			// Default value is fmt.Sprintf("%o", defaultDirPerm)
-			Default:  "700",
-			Example:  "750",
-			Option:   "dirperm",
-			Scopable: true,
-			Text:     keywords.NewText(fs, "text/kw/dirperm"),
+			Attr:        prefix + "DirPerm",
+			Converter:   "filemode",
+			DefaultText: keywords.NewText(fs, "text/kw/dirperm.default"),
+			Example:     "750",
+			Option:      "dirperm",
+			Scopable:    true,
+			Text:        keywords.NewText(fs, "text/kw/dirperm"),
 		},
 		{
 			Attr:     prefix + "Signal",
@@ -166,13 +195,39 @@ func (t *DataRecv) SetReceiver(to receiver) {
 	t.to = to
 }
 
+func (t *DataRecv) RootDirPerm() *os.FileMode {
+	if t.DirPerm != nil {
+		return t.DirPerm
+	} else if t.Perm != nil {
+		perm := file.DirPermFromFilePerm(*t.Perm)
+		return &perm
+	} else {
+		return nil
+	}
+}
+
 // getDirPerm returns the driver dir perm value. When t.DirPerm is nil (when kw
 // has no default value or unexpected value) the defaultDirPerm is returned.
-func (t *DataRecv) getDirPerm() *os.FileMode {
-	if t.DirPerm == nil {
-		return &defaultDirPerm
+func (t *DataRecv) getDirPerm() os.FileMode {
+	if t.DirPerm != nil {
+		return *t.DirPerm
 	}
-	return t.DirPerm
+	if t.Perm != nil {
+		return file.DirPermFromFilePerm(*t.Perm)
+	}
+	return defaultDirPerm
+}
+
+func (t *DataRecv) getPerm(kind naming.Kind) os.FileMode {
+	if t.Perm == nil {
+		switch kind {
+		case naming.KindSec:
+			return defaultSecPerm
+		default:
+			return defaultPerm
+		}
+	}
+	return *t.Perm
 }
 
 func (t *DataRecv) getRefs() []string {
@@ -199,6 +254,15 @@ func (t *DataRecv) getMetadata() []object.KVInstall {
 	_, files := t.getInstallMetadata(head)
 	l = append(l, files...)
 	l = append(l, t.getMetadataByKind(head, naming.KindSec, naming.KindCfg)...)
+	return l
+}
+
+func (t *DataRecv) DatastoreList(_ context.Context) naming.Paths {
+	files := t.getMetadata()
+	l := make(naming.Paths, len(files))
+	for i, f := range files {
+		l[i] = f.FromStore
+	}
 	return l
 }
 
@@ -302,17 +366,8 @@ func (t *DataRecv) parseReference(s string, withKind naming.Kind, head string) o
 	if p, err := naming.NewPath(path.Namespace, kind, l[0]); err != nil {
 		return object.KVInstall{}
 	} else {
-		var perm *os.FileMode
-		if t.Perm == nil {
-			switch kind {
-			case naming.KindSec:
-				perm = &defaultSecPerm
-			case naming.KindCfg:
-				perm = &defaultCfgPerm
-			}
-		} else {
-			perm = t.Perm
-		}
+		perm := t.getPerm(kind)
+		dirPerm := t.getDirPerm()
 		return object.KVInstall{
 			ToPath:      toPath, // /here
 			ToHead:      head,
@@ -324,17 +379,37 @@ func (t *DataRecv) parseReference(s string, withKind naming.Kind, head string) o
 				Perm:         perm,
 				DirUser:      t.User,
 				DirGroup:     t.Group,
-				DirPerm:      t.getDirPerm(),
+				DirPerm:      dirPerm,
 				MakedirUser:  t.User,
 				MakedirGroup: t.Group,
-				MakedirPerm:  t.getDirPerm(),
+				MakedirPerm:  dirPerm,
 			},
+		}
+	}
+}
+
+func (t *DataRecv) statusDirs(head string, dirs []dirDefinition) {
+	var rootDirDone bool
+	for _, dir := range dirs {
+		if dir.Path == "/" {
+			rootDirDone = true
+		}
+		t.statusDir(dir.Path, head, dir.Perm, dir.User, dir.Group)
+	}
+
+	if !rootDirDone {
+		perm := t.RootDirPerm()
+		if perm != nil {
+			t.statusDir("/", head, *perm, t.User, t.Group)
 		}
 	}
 }
 
 func (t *DataRecv) Status() {
 	path := t.to.GetObject().(object.Core).Path()
+	head := t.to.Head()
+	dirs, _ := t.getInstallMetadata(head)
+	t.statusDirs(head, dirs)
 	for _, md := range t.getMetadata() {
 		if !md.FromStore.Exists() {
 			t.to.StatusLog().Warn("store %s does not exist: key %s data can not be installed in the volume", md.FromStore, md.FromPattern)
@@ -362,14 +437,6 @@ func (t *DataRecv) Status() {
 	}
 }
 
-type dirDefinition struct {
-	Path     string
-	Perm     *os.FileMode
-	User     string
-	Group    string
-	Required bool
-}
-
 func (t *DataRecv) InstallFromDatastore(ctx context.Context, from object.DataStore) (bool, error) {
 	if len(t.Install) == 0 {
 		return false, nil
@@ -389,7 +456,7 @@ func (t *DataRecv) InstallFromDatastore(ctx context.Context, from object.DataSto
 	}
 
 	for _, dir := range dirs {
-		if err := t.installDir(dir.Path, head, *dir.Perm, dir.User, dir.Group); err != nil && dir.Required {
+		if err := t.installDir(dir.Path, head, dir.Perm, dir.User, dir.Group); err != nil && dir.Required {
 			return false, err
 		}
 	}
@@ -428,29 +495,39 @@ func (t *DataRecv) InstallFromDatastore(ctx context.Context, from object.DataSto
 }
 
 func (t *DataRecv) install(ctx context.Context) (bool, error) {
-	if len(t.Install) == 0 {
-		return false, nil
-	}
+	t.to.Log().Tracef("install: def: %s", t.Install)
 
 	changed := false
 	head := t.to.Head()
+	t.to.Log().Tracef("install: head: %s", head)
+
 	path := t.to.GetObject().(object.Core).Path()
 	dirs, files := t.getInstallMetadata(head)
-
-	if len(dirs) == 0 && len(files) == 0 {
-		return false, nil
-	}
+	t.to.Log().Tracef("install: dirs: %s", dirs)
+	t.to.Log().Tracef("install: files: %s", files)
 
 	if head == "" {
 		return false, fmt.Errorf("refuse to install in empty (ie /) head")
 	}
 
+	// rootDirDone tracks if `install` contains a / directory definition.
+	// If not, apply the default user, group and mode to the / directory, with required=true.
+	var rootDirDone bool
+
 	for _, dir := range dirs {
-		if err := t.installDir(dir.Path, head, *dir.Perm, dir.User, dir.Group); err != nil && dir.Required {
+		if dir.Path == "/" {
+			rootDirDone = true
+		}
+		if err := t.installDir(dir.Path, head, dir.Perm, dir.User, dir.Group); err != nil && dir.Required {
 			return false, err
 		}
 	}
 
+	if !rootDirDone {
+		if err := t.installRootDir("/", head, t.User, t.Group); err != nil {
+			return false, err
+		}
+	}
 	signals := volsignal.New()
 
 	for _, md := range files {
@@ -563,7 +640,7 @@ func (t *DataRecv) getInstallMetadata(head string) ([]dirDefinition, []object.KV
 				word, line = pop(line)
 				perm, _ := parseFileMode(word)
 				if perm != nil {
-					item.Perm = perm
+					item.Perm = *perm
 				}
 			case "required":
 				item.Required = true
@@ -609,9 +686,9 @@ func (t *DataRecv) getInstallMetadata(head string) ([]dirDefinition, []object.KV
 
 		switch fromStore.Kind {
 		case naming.KindSec:
-			item.AccessControl.Perm = &defaultSecPerm
+			item.AccessControl.Perm = defaultSecPerm
 		case naming.KindCfg:
-			item.AccessControl.Perm = &defaultCfgPerm
+			item.AccessControl.Perm = defaultPerm
 		default:
 			return
 		}
@@ -637,7 +714,7 @@ func (t *DataRecv) getInstallMetadata(head string) ([]dirDefinition, []object.KV
 				word, line = pop(line)
 				perm, _ := parseFileMode(word)
 				if perm != nil {
-					item.AccessControl.Perm = perm
+					item.AccessControl.Perm = *perm
 				}
 			case "required":
 				item.Required = true
@@ -746,27 +823,41 @@ func (t *DataRecv) chmod(p string, mode *os.FileMode) error {
 	return os.Chmod(p, *mode)
 }
 
-func (t *DataRecv) chown(p string, usr, grp string, info os.FileInfo) error {
-	var uid, gid int
-	if usr != "" {
-		if i, err := strconv.Atoi(usr); err == nil {
-			uid = i
-		} else if u, err := user.Lookup(usr); err == nil {
-			uid, _ = strconv.Atoi(u.Uid)
-		} else {
-			return fmt.Errorf("user %s is not numeric and not resolved", usr)
-		}
+func (t *DataRecv) uid(s string) (int, error) {
+	if s == "" {
+		return 0, nil
 	}
-	if grp != "" {
-		if i, err := strconv.Atoi(grp); err == nil {
-			gid = i
-		} else if g, err := user.LookupGroup(grp); err == nil {
-			gid, _ = strconv.Atoi(g.Gid)
-		} else {
-			return fmt.Errorf("group %s is not numeric and not resolved", grp)
-		}
+	if i, err := strconv.Atoi(s); err == nil {
+		return i, nil
+	} else if u, err := user.Lookup(s); err == nil {
+		i, _ = strconv.Atoi(u.Uid)
+		return i, nil
 	}
+	return 0, fmt.Errorf("user %s is not numeric and not resolved", s)
+}
 
+func (t *DataRecv) gid(s string) (int, error) {
+	if s == "" {
+		return 0, nil
+	}
+	if i, err := strconv.Atoi(s); err == nil {
+		return i, nil
+	} else if g, err := user.LookupGroup(s); err == nil {
+		i, _ = strconv.Atoi(g.Gid)
+		return i, nil
+	}
+	return 0, fmt.Errorf("group %s is not numeric and not resolved", s)
+}
+
+func (t *DataRecv) chown(p string, usr, grp string, info os.FileInfo) error {
+	uid, err := t.uid(usr)
+	if err != nil {
+		return err
+	}
+	gid, err := t.gid(grp)
+	if err != nil {
+		return err
+	}
 	if info != nil {
 		if stat, ok := info.Sys().(*syscall.Stat_t); ok {
 			currentUID := int(stat.Uid)
@@ -782,6 +873,56 @@ func (t *DataRecv) chown(p string, usr, grp string, info os.FileInfo) error {
 	}
 
 	return os.Chown(p, uid, gid)
+}
+
+func (t *DataRecv) statusDir(path string, head string, perm os.FileMode, user, group string) {
+	p := filepath.Join(head, path)
+	if head == "" {
+		return
+	}
+	uid, err := t.uid(user)
+	if err != nil {
+		return
+	}
+	gid, err := t.gid(group)
+	if err != nil {
+		return
+	}
+
+	info, err := os.Stat(p)
+	switch {
+	case os.IsNotExist(err):
+		t.to.StatusLog().Warn("%s does not exist", p)
+	case err != nil:
+		return
+	default:
+		if !info.IsDir() {
+			t.to.StatusLog().Warn("%s is already occupied by a non-directory", p)
+		}
+		if info.Mode().Perm() != perm {
+			t.to.StatusLog().Warn("%s permissions are %s instead of %s", p, info.Mode().Perm(), perm)
+		}
+		if stat, ok := info.Sys().(*syscall.Stat_t); ok {
+			currentUID := int(stat.Uid)
+			currentGID := int(stat.Gid)
+
+			if uid != currentUID || gid != currentGID {
+				t.to.StatusLog().Warn("%s owner are %d:%d instead of %d:%d", p, currentUID, currentGID, uid, gid)
+			}
+		}
+	}
+}
+
+func (t *DataRecv) installRootDir(path string, head string, user, group string) error {
+	perm := t.RootDirPerm()
+	if perm == nil {
+		t.to.Log().Tracef("no data receiver root dir perm set")
+		return nil
+	}
+	if err := t.installDir("/", head, *perm, t.User, t.Group); err != nil {
+		return err
+	}
+	return nil
 }
 
 func (t *DataRecv) installDir(path string, head string, perm os.FileMode, user, group string) error {
@@ -828,7 +969,7 @@ func (t *DataRecv) installDirs() error {
 	}
 	dirPerm := t.getDirPerm()
 	for _, dir := range t.Directories {
-		if err := t.installDir(dir, head, *dirPerm, t.User, t.Group); err != nil {
+		if err := t.installDir(dir, head, dirPerm, t.User, t.Group); err != nil {
 			return err
 		}
 	}

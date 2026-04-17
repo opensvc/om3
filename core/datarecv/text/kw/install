@@ -1,28 +1,31 @@
 A list of files and directories to install in the volume from cfg and sec keys.
 
-	<path> from <path|relpath> key <key> [mode <mode>] [user <user>] [group <group>] [signal <sig>:<rid>]
-	<path>/ [mode <mode>] [user <user>] [group <group>] [signal <sig>:<rid>]
+	<path> from <obj_path|obj_relpath> key <key> [mode <mode>] [user <user>] [group <group>] [signal <sig>:<rid>]
+	<path> [mode <mode>] [user <user>] [group <group>] [signal <sig>:<rid>]
 
-Where the namespace default value is the namespace of the declaring object.
-Where the perm, user and group default values are defined by the mode, user
-and group volume keyword.
+Where:
 
-If no `from` definition is found, a directory is created as <path>.
+* `<path>` (e.g. `/init/installed`, `/init/`)
+  * must start with a `/`.
+  * is relative to the target resource head.
+  * is considered a directory if it ends with a `/` or if `from <obj_path|obj_relpath>` is omitted.
+  * content is copied from the value of the key referenced by `from <obj_path|obj_relpath>`
 
-When a `from` definition is found, files are created in <path>, with
-their content fetched from sec or cfg objects.
+* `<obj_path>` (e.g. `ns1/sec/d`)
+  * is the absolute path of the datastore to install keys from. Note that if the datastore and
+    the installing object namespaces are different, the datastore must explicitely share its keys with
+    the installing object.
 
-Example:
+* `<obj_relpath>` (e.g. `./sec/d`)
+  * is the path of the datastore to install keys from, relative to the installing object namespace.
 
-	[volume#1]
-	type = shm
-	size = 1m
-	install =
-	  /etc/ mode 0750 user 1000 group 1000
-	  /etc/ssl/ mode 0700 user 1000 group 1000
-	  /etc/ from test/cfg/haproxy key haproxy.cfg mode 0640 user 1000 group 1000 signal HUP:container#haproxy
-	  /etc/ssl/front.pem from ./sec/d key fullpem mode 0640 user 1000 group 1001 required
-	  /etc/ssl/front.chain from ./sec/d key certificate_chain required
-	  /etc/profile.d/ from ./sec/d key etc/profile.d/*
-	  /data/
+* `<key>`
+  * is the key name or a globbing pattern from <obj_path|obj_relpath>
 
+* `<mode>`, `<user>`, `<group>` default values are defined by the `mode`, `user` and `group` resource keyword.
+
+* `<sig>:<rid>` (e.g. `HUP:container#haproxy`)
+  * `<sig>` is the signal to send to the target resource `<rid>` processes when the file content is modified.
+
+* `required`
+  * stop installing items if this item install failed

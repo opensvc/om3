@@ -3,6 +3,7 @@ package resfsdir
 import (
 	"embed"
 
+	"github.com/opensvc/om3/v3/core/datarecv"
 	"github.com/opensvc/om3/v3/core/driver"
 	"github.com/opensvc/om3/v3/core/keywords"
 	"github.com/opensvc/om3/v3/core/manifest"
@@ -23,36 +24,14 @@ var (
 			Scopable: true,
 			Text:     keywords.NewText(fs, "text/kw/path"),
 		},
-		{
-			Attr:      "User",
-			Converter: "user",
-			Example:   "root",
-			Option:    "user",
-			Scopable:  true,
-			Text:      keywords.NewText(fs, "text/kw/user"),
-		},
-		{
-			Attr:      "Group",
-			Converter: "group",
-			Example:   "sys",
-			Option:    "group",
-			Scopable:  true,
-			Text:      keywords.NewText(fs, "text/kw/group"),
-		},
-		{
-			Attr:      "Perm",
-			Converter: "filemode",
-			Example:   "1777",
-			Option:    "perm",
-			Scopable:  true,
-			Text:      keywords.NewText(fs, "text/kw/perm"),
-		},
-		{
-			Attr:     "Zone",
-			Option:   "zone",
-			Scopable: true,
-			Text:     keywords.NewText(fs, "text/kw/zone"),
-		},
+		/*
+			{
+				Attr:     "Zone",
+				Option:   "zone",
+				Scopable: true,
+				Text:     keywords.NewText(fs, "text/kw/zone"),
+			},
+		*/
 	}
 )
 
@@ -69,5 +48,6 @@ func (t *T) Manifest() *manifest.T {
 	m := manifest.New(drvID, t)
 	m.Kinds.Or(naming.KindSvc, naming.KindVol)
 	m.AddKeywords(kws...)
+	m.AddKeywords(datarecv.Keywords("DataRecv.")...)
 	return m
 }

@@ -3,6 +3,7 @@ package file
 import (
 	"fmt"
 	"io"
+	"io/fs"
 	"os"
 	"path/filepath"
 	"syscall"
@@ -307,4 +308,18 @@ func Move(src, dst string) error {
 		return fmt.Errorf("%s: %w", cmd, err)
 	}
 	return nil
+}
+
+func DirPermFromFilePerm(fp fs.FileMode) fs.FileMode {
+	var x fs.FileMode
+	if fp&0400 != 0 {
+		x |= 0100
+	} // owner r → owner x
+	if fp&0040 != 0 {
+		x |= 0010
+	} // group r → group x
+	if fp&0004 != 0 {
+		x |= 0001
+	} // other r → other x
+	return fp | x
 }

@@ -105,8 +105,8 @@ func (t *T) installCaFiles(clusterName string) error {
 
 	opt := object.KVInstall{
 		AccessControl: object.KVInstallAccessControl{
-			Perm:    &certFileMode,
-			DirPerm: &certDirMode,
+			Perm:    certFileMode,
+			DirPerm: certDirMode,
 			User:    certUsr,
 			Group:   certGrp,
 		},
@@ -188,8 +188,8 @@ func (t *T) installCertFiles(clusterName string) error {
 
 	opt := object.KVInstall{
 		AccessControl: object.KVInstallAccessControl{
-			Perm:    &certFileMode,
-			DirPerm: &certDirMode,
+			Perm:    certFileMode,
+			DirPerm: certDirMode,
 			User:    certUsr,
 			Group:   certGrp,
 		},

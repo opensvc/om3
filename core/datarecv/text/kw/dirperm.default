@@ -1,0 +1,11 @@
+The value of `perm` with the execute bit added to each class (user,
+group, other) that has the read bit set. For example, `perm = 0640`
+implies `dirperm = 0750`: user gets `x` because user has `r`, group
+gets `x` because group has `r`, other gets neither because other has
+no `r`.
+
+If `perm` is also not set,
+* the permission of the head directory of the receiver is unchecked
+* the permission of other directories defaults to 0755
+* the permission of files from sec objects defaults to 0600
+* the permission of other files defaults to 0644

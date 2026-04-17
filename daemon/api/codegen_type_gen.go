@@ -1370,6 +1370,7 @@ type KeywordDefinitionItem struct {
 	Example       string   `json:"example"`
 	Inherit       string   `json:"inherit"`
 	Kind          []string `json:"kind"`
+	Minimal       bool     `json:"minimal"`
 	Option        string   `json:"option"`
 	Provisioning  bool     `json:"provisioning"`
 	Required      bool     `json:"required"`

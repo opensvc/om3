@@ -24,6 +24,13 @@ var (
 			Scopable: true,
 			Text:     keywords.NewText(fs, "text/kw/command"),
 		},
+		{
+			Attr:     "StopCmd",
+			Example:  "/usr/bin/rm -f /tmp/{fqdn}.{rindex}",
+			Option:   "stop",
+			Scopable: true,
+			Text:     keywords.NewText(fs, "text/kw/stop"),
+		},
 	}
 )
 
@@ -52,7 +59,6 @@ func (t *T) Manifest() *manifest.T {
 		&resapp.BaseKeywordEnv,
 		&resapp.BaseKeywordRetCodes,
 		&resapp.BaseKeywordUmask,
-		&resapp.UnixKeywordStopCmd,
 		&resapp.UnixKeywordCwd,
 		&resapp.UnixKeywordUser,
 		&resapp.UnixKeywordGroup,

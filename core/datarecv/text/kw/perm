@@ -1,1 +1,3 @@
-The permissions, in octal notation, to apply to the installed files.
+The permissions to apply to installed files, in octal notation.
+
+Also used to compute a default value for `dirperm`.

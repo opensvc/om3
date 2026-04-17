@@ -24,7 +24,7 @@ type (
 func parsePoolUsage(b []byte) (PoolUsage, error) {
 	data := PoolUsage{}
 	lines := strings.Split(string(b), "\n")
-	if len(lines) != 3 {
+	if len(lines) != 4 {
 		return data, fmt.Errorf("unexpected 'zpool get -H size,alloc,free' output: %s", string(b))
 	}
 	parseLine := func(line string) (int64, error) {

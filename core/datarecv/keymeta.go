@@ -127,10 +127,10 @@ func (t *KeyMeta) CacheFile() (string, error) {
 		AccessControl: object.KVInstallAccessControl{
 			User:         "root",
 			Group:        "root",
-			Perm:         &defaultSecPerm,
+			Perm:         defaultSecPerm,
 			MakedirUser:  "root",
 			MakedirGroup: "root",
-			MakedirPerm:  &defaultDirPerm,
+			MakedirPerm:  defaultSecDirPerm,
 		},
 	}
 	fileinfo, err := os.Stat(filename)

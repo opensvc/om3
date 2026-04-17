@@ -3,6 +3,7 @@ package resfszfs
 import (
 	"embed"
 
+	"github.com/opensvc/om3/v3/core/datarecv"
 	"github.com/opensvc/om3/v3/core/driver"
 	"github.com/opensvc/om3/v3/core/keywords"
 	"github.com/opensvc/om3/v3/core/manifest"
@@ -23,9 +24,6 @@ var (
 		&resfshost.KeywordStatTimeout,
 		&resfshost.KeywordMKFSOptions,
 		&resfshost.KeywordZone,
-		&resfshost.KeywordUser,
-		&resfshost.KeywordGroup,
-		&resfshost.KeywordPerm,
 		{
 			Attr:         "Size",
 			Converter:    "size",
@@ -84,5 +82,6 @@ func (t *T) Manifest() *manifest.T {
 	m := manifest.New(drvID, t)
 	m.Kinds.Or(naming.KindSvc, naming.KindVol)
 	m.AddKeywords(kws...)
+	m.AddKeywords(datarecv.Keywords("DataRecv.")...)
 	return m
 }

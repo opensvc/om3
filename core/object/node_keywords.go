@@ -1043,6 +1043,16 @@ var (
 		Text:        keywords.NewText(fs, "text/kw/node/pool.drbd.addr"),
 		Types:       []string{"drbd"},
 	}
+	kwNodePoolDRBDMaxPeers = keywords.Keyword{
+		Attr:         "MaxPeers",
+		Converter:    "int",
+		DefaultText:  keywords.NewText(fs, "text/kw/pool.drbd.max_peers.default"),
+		Example:      "8",
+		Option:       "max_peers",
+		Provisioning: true,
+		Text:         keywords.NewText(fs, "text/kw/pool.drbd.max_peers"),
+		Types:        []string{"drbd"},
+	}
 	kwNodePoolDRBDTemplate = keywords.Keyword{
 		Attr:    "Template",
 		Example: "live-migration",
@@ -1091,11 +1101,12 @@ var (
 		Types:   []string{"directory"},
 	}
 	kwNodePoolVirtualTemplate = keywords.Keyword{
-		Example: "templates/vol/mpool-over-loop",
-		Option:  "template",
-		Section: "pool",
-		Text:    keywords.NewText(fs, "text/kw/node/pool.virtual.template"),
-		Types:   []string{"virtual"},
+		Example:  "templates/vol/mpool-over-loop",
+		Option:   "template",
+		Required: true,
+		Section:  "pool",
+		Text:     keywords.NewText(fs, "text/kw/node/pool.virtual.template"),
+		Types:    []string{"virtual"},
 	}
 	kwNodePoolVirtualVolumeEnv = keywords.Keyword{
 		Converter: "list",
@@ -1805,6 +1816,7 @@ var (
 		&kwNodePoolTruenasBlockSize,
 		&kwNodePoolName,
 		&kwNodePoolDRBDAddr,
+		&kwNodePoolDRBDMaxPeers,
 		&kwNodePoolDRBDTemplate,
 		&kwNodePoolDRBDVG,
 		&kwNodePoolZpoolName,
