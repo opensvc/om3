@@ -1051,6 +1051,7 @@ var (
 		Option:       "max_peers",
 		Provisioning: true,
 		Text:         keywords.NewText(fs, "text/kw/pool.drbd.max_peers"),
+		Types:        []string{"drbd"},
 	}
 	kwNodePoolDRBDTemplate = keywords.Keyword{
 		Attr:    "Template",
