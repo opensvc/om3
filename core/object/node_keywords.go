@@ -1101,11 +1101,12 @@ var (
 		Types:   []string{"directory"},
 	}
 	kwNodePoolVirtualTemplate = keywords.Keyword{
-		Example: "templates/vol/mpool-over-loop",
-		Option:  "template",
-		Section: "pool",
-		Text:    keywords.NewText(fs, "text/kw/node/pool.virtual.template"),
-		Types:   []string{"virtual"},
+		Example:  "templates/vol/mpool-over-loop",
+		Option:   "template",
+		Required: true,
+		Section:  "pool",
+		Text:     keywords.NewText(fs, "text/kw/node/pool.virtual.template"),
+		Types:    []string{"virtual"},
 	}
 	kwNodePoolVirtualVolumeEnv = keywords.Keyword{
 		Converter: "list",
