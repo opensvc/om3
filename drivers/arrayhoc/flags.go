@@ -1,6 +1,9 @@
 package arrayhoc
 
-import "github.com/spf13/cobra"
+import (
+	"github.com/opensvc/om3/v3/core/commoncmd"
+	"github.com/spf13/cobra"
+)
 
 var (
 	filter                  string
@@ -61,11 +64,11 @@ func useFlagLUN(cmd *cobra.Command) {
 }
 
 func useFlagMapping(cmd *cobra.Command) {
-	cmd.Flags().StringSliceVar(&mappings, "mapping", []string{}, "<hba_id>:<tgt_id>,<tgt_id>,... used in add map in replacement of --hostgroup. Can be specified multiple times")
+	commoncmd.RawStringSliceVar(cmd.Flags(), &mappings, "mapping", []string{}, "<hba_id>:<tgt_id>,<tgt_id>,... used in add map in replacement of --hostgroup. Can be specified multiple times")
 }
 
 func useFlagHostGroup(cmd *cobra.Command) {
-	cmd.Flags().StringSliceVar(&hostGroups, "hostGroup", []string{}, "can be specified multiple times")
+	commoncmd.RawStringSliceVar(cmd.Flags(), &hostGroups, "hostGroup", []string{}, "can be specified multiple times")
 }
 
 func useFlagVirtualStorageMachineId(cmd *cobra.Command) {

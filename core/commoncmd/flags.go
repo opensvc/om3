@@ -153,11 +153,11 @@ func FlagDuration(flags *pflag.FlagSet, p *time.Duration) {
 }
 
 func FlagEnv(flags *pflag.FlagSet, p *[]string) {
-	flags.StringSliceVar(p, "env", []string{}, "export the variable in the action environment")
+	RawStringSliceVar(flags, p, "env", []string{}, "export the variable in the action environment")
 }
 
 func FlagCreateEnv(flags *pflag.FlagSet, p *[]string) {
-	flags.StringSliceVar(p, "env", []string{}, "set a env section parameter in the service configuration file")
+	RawStringSliceVar(flags, p, "env", []string{}, "set a env section parameter in the service configuration file")
 }
 
 func FlagEval(flags *pflag.FlagSet, p *bool) {
@@ -195,7 +195,7 @@ func FlagKey(flags *pflag.FlagSet, p *string) {
 }
 
 func FlagKeys(flags *pflag.FlagSet, p *[]string) {
-	flags.StringSliceVar(p, "key", nil, "a data key name")
+	RawStringSliceVar(flags, p, "key", nil, "a data key name")
 }
 
 func FlagKeyTo(flags *pflag.FlagSet, p *string) {
@@ -207,11 +207,11 @@ func FlagKeyword(flags *pflag.FlagSet, p *string) {
 }
 
 func FlagKeywordOps(flags *pflag.FlagSet, p *[]string) {
-	flags.StringSliceVar(p, "kw", []string{}, "a configuration keyword operation: [<section>.]<option><op><value>, with op in = |= += -= ^=")
+	RawStringSliceVar(flags, p, "kw", []string{}, "a configuration keyword operation: [<section>.]<option><op><value>, with op in = |= += -= ^=")
 }
 
 func FlagKeywords(flags *pflag.FlagSet, p *[]string) {
-	flags.StringSliceVar(p, "kw", []string{}, "a configuration keyword: [<section>.]<option>")
+	RawStringSliceVar(flags, p, "kw", []string{}, "a configuration keyword: [<section>.]<option>")
 }
 
 func FlagLeader(flags *pflag.FlagSet, p *bool) {
@@ -375,7 +375,7 @@ func FlagUpdateDelete(flags *pflag.FlagSet, p *[]string) {
 }
 
 func FlagUpdateSet(flags *pflag.FlagSet, p *[]string) {
-	flags.StringSliceVar(p, "set", []string{}, "a keyword operation to apply to the configuration")
+	RawStringSliceVar(flags, p, "set", []string{}, "a keyword operation to apply to the configuration")
 }
 
 func FlagUpdateUnset(flags *pflag.FlagSet, p *[]string) {
@@ -391,7 +391,7 @@ func FlagKeyName(flags *pflag.FlagSet, p *string) {
 }
 
 func FlagKeyNames(flags *pflag.FlagSet, p *[]string) {
-	flags.StringSliceVar(p, "name", nil, "a data key name")
+	RawStringSliceVar(flags, p, "name", nil, "a data key name")
 }
 
 func FlagKeyValue(flags *pflag.FlagSet, p *string) {
