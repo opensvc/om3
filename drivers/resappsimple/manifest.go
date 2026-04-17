@@ -26,6 +26,20 @@ var (
 			Minimal:  true,
 			Example:  "/usr/bin/sleep 600",
 		},
+		{
+			Attr:     "StopCmd",
+			Example:  "/usr/local/bin/stop",
+			Option:   "stop",
+			Scopable: true,
+			Text:     keywords.NewText(fs, "text/kw/stop"),
+		},
+		{
+			Attr:     "CheckCmd",
+			Example:  "/usr/local/bin/check",
+			Option:   "check",
+			Scopable: true,
+			Text:     keywords.NewText(fs, "text/kw/check"),
+		},
 	}
 )
 
