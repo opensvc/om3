@@ -584,6 +584,13 @@ func (t *BT) Start(ctx context.Context) error {
 	}
 }
 
+func (t *BT) RemoveContainer(ctx context.Context) error {
+	if t.executer == nil {
+		return t.logMainAction("remove", errors.New("undefined executer"))
+	}
+	return t.executer.Remove(ctx)
+}
+
 func (t *BT) Stop(ctx context.Context) error {
 	name := t.ContainerName()
 	log := t.Log()
