@@ -1,6 +1,9 @@
 package key
 
-import "strings"
+import (
+	"fmt"
+	"strings"
+)
 
 type (
 	T struct {
@@ -38,24 +41,31 @@ func ParseStrings(l []string) L {
 // Parse function construct key T from the parsed string s.
 // On invalid string s the zero key is returned.
 func Parse(s string) T {
+	t, _ := ParseWithDefaultSection(s, "DEFAULT")
+	return t
+}
+
+// Parse function construct key T from the parsed string s.
+// Error is returned on invalid string s.
+func ParseStrict(s string) (T, error) {
 	return ParseWithDefaultSection(s, "DEFAULT")
 }
 
-func ParseWithDefaultSection(s, defaultSection string) T {
+func ParseWithDefaultSection(s, defaultSection string) (T, error) {
 	if s == "" || strings.ContainsAny(s, " \t") {
-		return T{}
+		return T{}, fmt.Errorf("invalid key: %q", s)
 	}
 	l := strings.SplitN(s, ".", 2)
 	switch len(l) {
 	case 1:
 		if strings.Index(s, "#") >= 0 {
-			return T{s, ""}
+			return T{s, ""}, fmt.Errorf("invalid key: %q", s)
 		}
-		return T{defaultSection, s}
+		return T{defaultSection, s}, nil
 	case 2:
-		return T{l[0], l[1]}
+		return T{l[0], l[1]}, nil
 	default:
-		return T{}
+		return T{}, fmt.Errorf("invalid key: %q", s)
 	}
 }
 
@@ -82,6 +92,10 @@ func (t T) String() string {
 		return t.Section
 	}
 	return t.Section + "." + t.Option
+}
+
+func (t T) QuotedFullString() string {
+	return fmt.Sprintf("%q", t.Section+"."+t.Option)
 }
 
 func (t T) IsZero() bool {

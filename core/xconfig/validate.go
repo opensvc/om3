@@ -98,13 +98,14 @@ func (t T) NewAlertUnknownDriver(k key.T, did driver.ID) Alert {
 	}
 }
 
-func (t T) NewAlertUnknown(k key.T, did driver.ID) Alert {
+func (t T) NewAlertUnknown(k key.T, did driver.ID, comment string) Alert {
 	return Alert{
-		Path:   t.Path,
-		Kind:   alertKindUnknown,
-		Level:  alertLevelWarn,
-		Key:    k,
-		Driver: did,
+		Path:    t.Path,
+		Kind:    alertKindUnknown,
+		Level:   alertLevelWarn,
+		Key:     k,
+		Driver:  did,
+		Comment: comment,
 	}
 }
 
@@ -275,8 +276,11 @@ func (t T) Validate() (Alerts, error) {
 			}
 		}
 		for option := range s.KeysHash() {
-			k := key.Parse(section + "." + option)
-			if k.BaseOption() == "type" {
+			k, err := key.ParseStrict(section + "." + option)
+			if err != nil {
+				alerts = append(alerts, t.NewAlertUnknown(k, did, err.Error()))
+				continue
+			} else if k.BaseOption() == "type" {
 				continue
 			}
 			kw, err := getKeyword(k, sectionType, t.Referrer)
@@ -286,13 +290,14 @@ func (t T) Validate() (Alerts, error) {
 					// raise an issue if a keyword exists in drivers, as it
 					// may be the default value for this keyword.
 					relaxedKey := key.T{Section: "*", Option: k.Option}
-					kw, err = getKeyword(relaxedKey, sectionType, t.Referrer)
-					if err != nil {
-						alerts = append(alerts, t.NewAlertUnknown(k, did))
+					var err1 error
+					kw, err1 = getKeyword(relaxedKey, sectionType, t.Referrer)
+					if err1 != nil {
+						alerts = append(alerts, t.NewAlertUnknown(k, did, err.Error()))
 						continue
 					}
 				} else {
-					alerts = append(alerts, t.NewAlertUnknown(k, did))
+					alerts = append(alerts, t.NewAlertUnknown(k, did, err.Error()))
 					continue
 				}
 			}

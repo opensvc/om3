@@ -850,11 +850,11 @@ func (t *T) EvalKeywordAs(k key.T, kw *keywords.Keyword, impersonate string) (in
 func getKeyword(k key.T, sectionType string, referrer Referrer) (*keywords.Keyword, error) {
 	var kw *keywords.Keyword
 	if referrer == nil {
-		return kw, fmt.Errorf("%w: no referrer", ErrNoKeyword)
+		return kw, fmt.Errorf("%w: no referrer: %s", ErrNoKeyword, k.QuotedFullString())
 	}
 	kw = referrer.KeywordLookup(k, sectionType)
 	if kw == nil {
-		return kw, fmt.Errorf("%w: %s", ErrNoKeyword, k)
+		return kw, fmt.Errorf("%w: %s", ErrNoKeyword, k.QuotedFullString())
 	}
 	return kw, nil
 }
@@ -1287,7 +1287,10 @@ func (t *dereferenceTrace) Set(doneKey string) error {
 }
 
 func (t T) dereferenceKey(ref string, section string, impersonate string, count bool, trace *dereferenceTrace) (string, error) {
-	refKey := key.ParseWithDefaultSection(ref, section)
+	refKey, err := key.ParseWithDefaultSection(ref, section)
+	if err != nil {
+		return "", err
+	}
 
 	if err := trace.SetKey(refKey); err != nil {
 		return "", err
