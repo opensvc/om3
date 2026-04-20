@@ -3,6 +3,7 @@
 package ressharenfs
 
 import (
+	"bytes"
 	"context"
 	"fmt"
 	"slices"
@@ -12,6 +13,7 @@ import (
 	"github.com/rs/zerolog"
 
 	"github.com/opensvc/om3/v3/core/actionrollback"
+	"github.com/opensvc/om3/v3/util/capabilities"
 	"github.com/opensvc/om3/v3/util/command"
 )
 
@@ -214,7 +216,7 @@ func parseOptsEntry(s string) (e OptsEntry, err error) {
 func (t *T) addExport(e OptsEntry) error {
 	opts := strings.Join(e.Opts, ",")
 	cmd := command.New(
-		command.WithName("exportfs"),
+		command.WithName(capabilities.GetPath("exportfs")),
 		command.WithVarArgs("-i", "-o", opts, e.Client+":"+t.SharePath),
 		command.WithBufferedStdout(),
 		command.WithLogger(t.Log()),
@@ -228,7 +230,7 @@ func (t *T) addExport(e OptsEntry) error {
 
 func (t *T) delExport(e OptsEntry) error {
 	cmd := command.New(
-		command.WithName("exportfs"),
+		command.WithName(capabilities.GetPath("exportfs")),
 		command.WithVarArgs("-u", e.Client+":"+t.SharePath),
 		command.WithBufferedStdout(),
 		command.WithLogger(t.Log()),
@@ -252,7 +254,7 @@ func (t *T) getShowmount() (Mount, error) {
 
 func (t *T) getShowmounts() (Mounts, error) {
 	cmd := command.New(
-		command.WithName("showmount"),
+		command.WithName(capabilities.GetPath("showmount")),
 		command.WithVarArgs("-e", "--no-headers", "127.0.0.1"),
 		command.WithBufferedStdout(),
 		command.WithLogger(t.Log()),
@@ -285,7 +287,7 @@ func (t *T) getExports() (Exports, error) {
 
 func (t *T) getAllExports() (Exports, error) {
 	cmd := command.New(
-		command.WithName("exportfs"),
+		command.WithName(capabilities.GetPath("exportfs")),
 		command.WithVarArgs("-v"),
 		command.WithBufferedStdout(),
 		command.WithLogger(t.Log()),
@@ -297,6 +299,8 @@ func (t *T) getAllExports() (Exports, error) {
 	if err != nil {
 		return nil, err
 	}
+	out = bytes.ReplaceAll(out, []byte("\n "), []byte{})
+	out = bytes.ReplaceAll(out, []byte("\n\t"), []byte{})
 	exports := make(Exports, 0)
 	for _, line := range strings.Split(string(out), "\n") {
 		if export, err := parseExport(line); err == nil {
@@ -307,17 +311,17 @@ func (t *T) getAllExports() (Exports, error) {
 }
 
 func parseShowmountLine(s string) (mount Mount, err error) {
-	l := strings.Fields(s)
-	if len(l) != 2 {
-		err = fmt.Errorf("invalid showmount -e output line format (expected 2 fields): %s", s)
+	idx := strings.LastIndex(s, " ")
+	if idx < 0 {
 		return
 	}
-	mount.Path = l[0]
-	if l[1] == "(everyone)" {
-		mount.Clients = []string{"*"}
-	} else {
-		mount.Clients = strings.Split(l[1], ",")
+	path := strings.TrimSpace(s[:idx])
+	clients := strings.Split(s[idx+1:len(s)], ",")
+	if len(clients) == 1 && clients[0] == "(everyone)" {
+		clients[0] = "*"
 	}
+	mount.Path = path
+	mount.Clients = clients
 	return
 }
 

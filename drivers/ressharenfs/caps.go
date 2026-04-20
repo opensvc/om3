@@ -12,9 +12,18 @@ func init() {
 }
 
 func capabilitiesScanner(ctx context.Context) ([]string, error) {
-	_, err := exec.LookPath("exportfs")
+	exportfsPath, err := exec.LookPath("exportfs")
 	if err != nil {
 		return []string{}, nil
 	}
-	return []string{drvID.Cap()}, nil
+	showmountPath, err := exec.LookPath("showmount")
+	if err != nil {
+		return []string{}, nil
+	}
+	caps := []string{
+		capabilities.MakePath("exportfs", exportfsPath),
+		capabilities.MakePath("showmount", showmountPath),
+		drvID.Cap(),
+	}
+	return caps, nil
 }
