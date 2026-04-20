@@ -1,6 +1,8 @@
 package zfs
 
 import (
+	"strings"
+
 	"github.com/rs/zerolog"
 
 	"github.com/opensvc/om3/v3/util/args"
@@ -49,6 +51,13 @@ func VolCreateWithBlockSize(size uint64) funcopt.O {
 	})
 }
 
+// createSizeString returns a string like 500m assumed to be a binary size,
+// which is what zvol create expects.
+func createSizeString(size uint64) string {
+	s := sizeconv.ExactBSizeCompact(float64(size))
+	return strings.TrimRight(s, "i")
+}
+
 func volCreateOptsToArgs(t volCreateOpts) []string {
 	a := args.New()
 	a.Append("create")
@@ -67,7 +76,7 @@ func volCreateOptsToArgs(t volCreateOpts) []string {
 
 	// zvol create -V <options> <size> <name>
 	//                          ^^^^^^
-	a.Append(sizeconv.ExactBSizeCompact(float64(t.Size)))
+	a.Append(createSizeString(t.Size))
 
 	// zvol create -V <options> <size> <name>
 	//                                 ^^^^^^
