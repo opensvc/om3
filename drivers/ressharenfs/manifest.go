@@ -7,7 +7,6 @@ import (
 	"github.com/opensvc/om3/v3/core/keywords"
 	"github.com/opensvc/om3/v3/core/manifest"
 	"github.com/opensvc/om3/v3/core/naming"
-	"github.com/opensvc/om3/v3/util/capabilities"
 )
 
 var (
@@ -36,7 +35,6 @@ var (
 
 func init() {
 	driver.Register(drvID, New)
-	capabilities.Register(capabilitiesScanner)
 }
 
 func (t *T) DriverID() driver.ID {
