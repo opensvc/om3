@@ -45,7 +45,7 @@ var (
 		{
 			Attr:         "Port",
 			Converter:    "int",
-			Example:      "1.2.3.4",
+			Example:      "1234",
 			Option:       "port",
 			Provisioning: true,
 			Scopable:     true,
