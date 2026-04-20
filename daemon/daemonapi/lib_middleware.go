@@ -123,7 +123,6 @@ func RateLimiterWithConfig(parent context.Context) echo.MiddlewareFunc {
 
 func LogMiddleware(parent context.Context) echo.MiddlewareFunc {
 	oLog := logWithFamilyAndAddr(parent)
-	prefix := oLog.Prefix()
 
 	return func(next echo.HandlerFunc) echo.HandlerFunc {
 		return func(c echo.Context) error {
@@ -133,7 +132,7 @@ func LogMiddleware(parent context.Context) echo.MiddlewareFunc {
 				Attr("request_uuid", requestUUID.String()).
 				Attr("request_method", r.Method).
 				Attr("request_path", r.URL.Path).
-				WithPrefix(fmt.Sprintf("%s%s %s: ", prefix, r.Method, r.URL.Path)).
+				AddPrefix(fmt.Sprintf("%s %s: ", r.Method, r.URL.Path)).
 				Level(LogLevel)
 			c.Set("logger", log)
 			c.Set("uuid", requestUUID)

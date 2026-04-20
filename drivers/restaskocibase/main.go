@@ -76,6 +76,7 @@ type (
 	ContainerTasker interface {
 		Start(context.Context) error
 		Stop(context.Context) error
+		RemoveContainer(context.Context) error
 		ContainerInspectRefresh(context.Context) (rescontainerocibase.Inspecter, error)
 		Signal(context.Context, syscall.Signal) error
 	}
@@ -114,7 +115,7 @@ func (t *T) lockedRun(ctx context.Context) (err error) {
 
 	startErr := container.Start(ctx)
 
-	// TODO: handle rm = true, detach = true ?
+	// TODO: handle detach = true ?
 
 	inspect, err := container.ContainerInspectRefresh(ctx)
 	if err != nil {
@@ -140,6 +141,11 @@ func (t *T) lockedRun(ctx context.Context) (err error) {
 		return err
 	} else if s != status.Up {
 		return fmt.Errorf("command exited with code %d", exitCode)
+	}
+	if t.Remove {
+		if err := container.RemoveContainer(ctx); err != nil {
+			return fmt.Errorf("remove container: %w", err)
+		}
 	}
 	return nil
 }
