@@ -1,6 +1,9 @@
 package arraypure
 
-import "github.com/spf13/cobra"
+import (
+	"github.com/opensvc/om3/v3/core/commoncmd"
+	"github.com/spf13/cobra"
+)
 
 var (
 	blocksize   string
@@ -44,7 +47,7 @@ func useFlagID(cmd *cobra.Command) {
 }
 
 func useFlagInitiator(cmd *cobra.Command) {
-	cmd.Flags().StringSliceVar(&initiators, "initiator", []string{}, "initiator hba ids")
+	commoncmd.RawStringSliceVar(cmd.Flags(), &initiators, "initiator", []string{}, "initiator hba ids")
 }
 
 func useFlagLUN(cmd *cobra.Command) {
@@ -52,7 +55,7 @@ func useFlagLUN(cmd *cobra.Command) {
 }
 
 func useFlagMapping(cmd *cobra.Command) {
-	cmd.Flags().StringSliceVar(&mappings, "mapping", []string{}, "<hba_id>:<tgt_id>,<tgt_id>,... used in add map in replacement of --host and --hostgroup. Can be specified multiple times")
+	commoncmd.RawStringSliceVar(cmd.Flags(), &mappings, "mapping", []string{}, "<hba_id>:<tgt_id>,<tgt_id>,... used in add map in replacement of --host and --hostgroup. Can be specified multiple times")
 }
 
 func useFlagName(cmd *cobra.Command) {
@@ -80,7 +83,7 @@ func useFlagSize(cmd *cobra.Command) {
 }
 
 func useFlagTarget(cmd *cobra.Command) {
-	cmd.Flags().StringSliceVar(&targets, "target", []string{}, "targets to export the disk through")
+	commoncmd.RawStringSliceVar(cmd.Flags(), &targets, "target", []string{}, "targets to export the disk through")
 }
 
 func useFlagTruncate(cmd *cobra.Command) {

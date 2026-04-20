@@ -24,6 +24,10 @@ type T struct {
 	issuesNone          []string
 }
 
+var (
+	errExportfsNotInstalled = fmt.Errorf("exportfs is not installed (rescan capabilities after install)")
+)
+
 func New() resource.Driver {
 	return &T{
 		issues:              make(map[string]string),
@@ -41,8 +45,8 @@ func (t *T) Label(_ context.Context) string {
 
 // Start the Resource
 func (t *T) Start(ctx context.Context) error {
-	if !capabilities.Has("node.x.exportfs") {
-		return fmt.Errorf("exportfs is not installed")
+	if !capabilities.Has(drvID.Cap()) {
+		return errExportfsNotInstalled
 	}
 	if _, err := t.isPathExported(); err != nil && len(t.issues) == 0 {
 		return err
@@ -59,8 +63,8 @@ func (t *T) Start(ctx context.Context) error {
 
 // Stop the Resource
 func (t *T) Stop(ctx context.Context) error {
-	if !capabilities.Has("node.x.exportfs") {
-		return fmt.Errorf("exportfs is not installed")
+	if !capabilities.Has(drvID.Cap()) {
+		return errExportfsNotInstalled
 	}
 	if _, err := t.isPathExported(); err != nil {
 		return err
@@ -81,8 +85,8 @@ func (t *T) Status(ctx context.Context) status.T {
 }
 
 func (t *T) status() status.T {
-	if !capabilities.Has("node.x.exportfs") {
-		t.StatusLog().Error("exportfs is not installed")
+	if !capabilities.Has(drvID.Cap()) {
+		t.StatusLog().Error(errExportfsNotInstalled.Error())
 		return status.NotApplicable
 	}
 	v, err := t.isPathExported()

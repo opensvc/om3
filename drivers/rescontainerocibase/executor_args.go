@@ -169,6 +169,7 @@ func (ea *ExecutorArg) RunArgsBase(ctx context.Context) (*args.T, error) {
 	a.Append(ea.runArgsDNSSearch()...)
 	a.Append(ea.runArgsDNSOption()...)
 	a.Append(ea.runArgsCGroupParent()...)
+	a.Append(ea.runArgsSysctl()...)
 
 	for _, v := range bt.Devices {
 		runArgs.DropOptionAndExactValue("--device", v)
@@ -256,6 +257,14 @@ func (ea *ExecutorArg) runArgsCGroupParent() []string {
 	// format the cgroup as systemd expects
 	l := strings.Split(pgID, "/")
 	return []string{"--cgroup-parent", l[len(l)-1]}
+}
+
+func (ea *ExecutorArg) runArgsSysctl() []string {
+	a := make([]string, 0, 2*len(ea.BT.Sysctl))
+	for _, s := range ea.BT.Sysctl {
+		a = append(a, "--sysctl", s)
+	}
+	return a
 }
 
 func (ea *ExecutorArg) runArgsDNS() []string {

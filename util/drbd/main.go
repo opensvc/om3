@@ -211,9 +211,6 @@ func Dump() ([]byte, error) {
 	cmd := command.New(
 		command.WithName(drbdadm),
 		command.WithVarArgs("dump-xml"),
-		command.WithCommandLogLevel(zerolog.TraceLevel),
-		command.WithStdoutLogLevel(zerolog.TraceLevel),
-		command.WithStderrLogLevel(zerolog.TraceLevel),
 		command.WithBufferedStdout(),
 	)
 	return cmd.Output()
@@ -477,6 +474,8 @@ func (t *T) HasMD(ctx context.Context) (bool, error) {
 				hasMeta = false
 			}
 		}),
+		command.WithLogger(t.log),
+		command.WithCommandLogLevel(zerolog.TraceLevel),
 		command.WithContext(ctx),
 	)
 	err := cmd.Run()
@@ -496,6 +495,8 @@ func (t *T) Role(ctx context.Context) (string, error) {
 		command.WithArgs(args),
 		command.WithBufferedStdout(),
 		command.WithContext(ctx),
+		command.WithLogger(t.log),
+		command.WithCommandLogLevel(zerolog.TraceLevel),
 	)
 	if b, err := cmd.Output(); err != nil {
 		return "", err
@@ -530,6 +531,8 @@ func (t *T) ConnStates(ctx context.Context) (CStateM, error) {
 			}
 		}),
 		command.WithContext(ctx),
+		command.WithLogger(t.log),
+		command.WithCommandLogLevel(zerolog.TraceLevel),
 	)
 	if err := cmd.Run(); err != nil {
 		if !isAttached || cmd.ExitCode() == 10 {
@@ -558,6 +561,8 @@ func (t *T) ConnState(ctx context.Context, nodeID string) (string, error) {
 		command.WithVarArgs("cstate", t.res, nodeID),
 		command.WithBufferedStdout(),
 		command.WithContext(ctx),
+		command.WithLogger(t.log),
+		command.WithCommandLogLevel(zerolog.TraceLevel),
 	)
 	if err := cmd.Run(); err != nil {
 		return "", err
@@ -572,6 +577,8 @@ func (t *T) DiskStates(ctx context.Context) ([]string, error) {
 		command.WithArgs(args),
 		command.WithBufferedStdout(),
 		command.WithContext(ctx),
+		command.WithLogger(t.log),
+		command.WithCommandLogLevel(zerolog.TraceLevel),
 	)
 	if err := cmd.Run(); err != nil {
 		return []string{}, err
@@ -602,6 +609,8 @@ func (t *T) IsDefined(ctx context.Context) (bool, error) {
 			}
 		}),
 		command.WithContext(ctx),
+		command.WithLogger(t.log),
+		command.WithCommandLogLevel(zerolog.TraceLevel),
 	)
 	err := cmd.Run()
 	if !isDefined {
@@ -862,6 +871,8 @@ func (t *T) Show(ctx context.Context) (DrbdShow, error) {
 		command.WithVarArgs("show", "--json", t.res),
 		command.WithBufferedStdout(),
 		command.WithContext(ctx),
+		command.WithLogger(t.log),
+		command.WithCommandLogLevel(zerolog.TraceLevel),
 	)
 	if b, err := cmd.Output(); err != nil {
 		return DrbdShow{}, err

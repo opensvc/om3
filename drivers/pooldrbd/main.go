@@ -64,8 +64,8 @@ func (t T) zpool() string {
 	return t.GetString("zpool")
 }
 
-func (t T) maxPeers() string {
-	return t.GetString("max_peers")
+func (t T) maxPeers() int {
+	return t.GetInt("max_peers")
 }
 
 func (t T) network() string {
@@ -234,12 +234,12 @@ func (t *T) blkTranslateZpool(name string, size int64, shared bool) (string, []s
 	data := []string{
 		"fs#0.type=flag",
 		"disk#1.type=zvol",
-		"disk#1.dev=" + t.zpool() + "/" + name,
+		"disk#1.name=" + t.zpool() + "/" + name,
 		"disk#1.size=" + sizeconv.ExactBSizeCompact(float64(size)),
 		"disk#1.standby=true",
 		"disk#2.type=drbd",
 		"disk#2.res=" + name,
-		"disk#2.disk=/dev/" + t.zpool() + "/" + name,
+		"disk#2.disk=/dev/zvol/" + t.zpool() + "/" + name,
 		"disk#2.standby=true",
 	}
 	if opts := t.MkblkOptions(); opts != "" {
@@ -250,7 +250,8 @@ func (t *T) blkTranslateZpool(name string, size int64, shared bool) (string, []s
 }
 
 func (t *T) commonDrbdKeywords(rid string) (l []string) {
-	if s := t.maxPeers(); s != "" {
+	if n := t.maxPeers(); n > 0 {
+		s := fmt.Sprintf("%d", n)
 		l = append(l, rid+".max_peers="+s)
 	}
 	if s := t.network(); s != "" {

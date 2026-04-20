@@ -14,10 +14,16 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"os"
 	"path/filepath"
 	"runtime"
 	"sort"
+	"strings"
+)
+
+var (
+	ExecPrefix = "node.x.path."
 )
 
 type (
@@ -68,6 +74,26 @@ func Has(cap string) bool {
 		}
 	}
 	return false
+}
+
+// MakePath returns "node.x.exportfs=/usr/sbin/exportfs" for the "exportfs" base and the "/usr/sbin/exportfs" path.
+// This format can then be parsed by GetPath() to return the path for a given base.
+func MakePath(base, path string) string {
+	return fmt.Sprintf("%s%s=%s", ExecPrefix, base, path)
+}
+
+// GetPath return the full path registered by a scanner for a executable base name.
+func GetPath(base string) string {
+	cap := fmt.Sprintf("%s%s", ExecPrefix, base)
+	for _, c := range cache() {
+		l := strings.Split(c, "=")
+		if len(l) == 2 {
+			if l[0] == cap {
+				return l[1]
+			}
+		}
+	}
+	return ""
 }
 
 // Scan refresh capabilities from the scanners function calls, then

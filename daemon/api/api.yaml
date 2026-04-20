@@ -5936,6 +5936,7 @@ components:
         - inherit
         - deprecated
         - required
+        - minimal
       properties:
         section:
           type: string
@@ -5982,6 +5983,8 @@ components:
         deprecated:
           type: string
         required:
+          type: boolean
+        minimal:
           type: boolean
 
     KeywordDefinitionItems:

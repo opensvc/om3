@@ -19,6 +19,7 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/opensvc/om3/v3/core/array"
+	"github.com/opensvc/om3/v3/core/commoncmd"
 	"github.com/opensvc/om3/v3/core/datarecv"
 	"github.com/opensvc/om3/v3/core/driver"
 	"github.com/opensvc/om3/v3/core/naming"
@@ -626,8 +627,8 @@ func (t *Array) Run(args []string) error {
 				}
 			},
 		}
-		cmd.Flags().StringSliceVar(&initiators, "initiator", []string{}, "")
-		cmd.Flags().StringSliceVar(&authNetworks, "auth-network", []string{}, "")
+		commoncmd.RawStringSliceVar(cmd.Flags(), &initiators, "initiator", []string{}, "")
+		commoncmd.RawStringSliceVar(cmd.Flags(), &authNetworks, "auth-network", []string{}, "")
 		cmd.Flags().StringVar(&name, "comment", "", "")
 		return cmd
 	}

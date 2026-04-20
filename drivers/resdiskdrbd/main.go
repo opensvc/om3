@@ -644,7 +644,7 @@ func (t *T) writeConfig(ctx context.Context) error {
 		return fmt.Errorf("get template text: %w", err)
 	}
 
-	f, err := os.OpenFile(cf, os.O_WRONLY|os.O_CREATE|os.O_TRUNC, os.ModePerm)
+	f, err := os.OpenFile(cf, os.O_WRONLY|os.O_CREATE|os.O_TRUNC, 0644)
 	if err != nil {
 		return err
 	}
