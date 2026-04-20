@@ -64,8 +64,8 @@ func (t T) zpool() string {
 	return t.GetString("zpool")
 }
 
-func (t T) maxPeers() string {
-	return t.GetString("max_peers")
+func (t T) maxPeers() int {
+	return t.GetInt("max_peers")
 }
 
 func (t T) network() string {
@@ -250,7 +250,8 @@ func (t *T) blkTranslateZpool(name string, size int64, shared bool) (string, []s
 }
 
 func (t *T) commonDrbdKeywords(rid string) (l []string) {
-	if s := t.maxPeers(); s != "" {
+	if n := t.maxPeers(); n > 0 {
+		s := fmt.Sprintf("%d", n)
 		l = append(l, rid+".max_peers="+s)
 	}
 	if s := t.network(); s != "" {
