@@ -149,6 +149,14 @@ var (
 			Text:      keywords.NewText(fs, "text/kw/volume_mounts"),
 		},
 		{
+			Option:    "sysctl",
+			Attr:      "Sysctl",
+			Scopable:  true,
+			Converter: "shlex",
+			Text:      keywords.NewText(fs, "text/kw/sysctl"),
+			Example:   "kernel.shm_rmid_forced=1 net.ipv4.tcp_syncookies=1",
+		},
+		{
 			Option:    "environment",
 			Attr:      "Env",
 			Scopable:  true,
