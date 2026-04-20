@@ -239,7 +239,7 @@ func (t *T) blkTranslateZpool(name string, size int64, shared bool) (string, []s
 		"disk#1.standby=true",
 		"disk#2.type=drbd",
 		"disk#2.res=" + name,
-		"disk#2.disk=/dev/" + t.zpool() + "/" + name,
+		"disk#2.disk=/dev/zvol/" + t.zpool() + "/" + name,
 		"disk#2.standby=true",
 	}
 	if opts := t.MkblkOptions(); opts != "" {

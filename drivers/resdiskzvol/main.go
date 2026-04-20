@@ -77,7 +77,7 @@ func (t *T) Info(ctx context.Context) (resource.InfoKeys, error) {
 
 func (t *T) devpath() string {
 	zn := zfs.DatasetName(t.Name)
-	return fmt.Sprintf("/dev/%s/%s", zn.PoolName(), zn.BaseName())
+	return fmt.Sprintf("/dev/zvol/%s/%s", zn.PoolName(), zn.BaseName())
 }
 
 func (t *T) zvol() *zfs.Vol {
