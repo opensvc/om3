@@ -234,7 +234,7 @@ func (t *T) blkTranslateZpool(name string, size int64, shared bool) (string, []s
 	data := []string{
 		"fs#0.type=flag",
 		"disk#1.type=zvol",
-		"disk#1.dev=" + t.zpool() + "/" + name,
+		"disk#1.name=" + t.zpool() + "/" + name,
 		"disk#1.size=" + sizeconv.ExactBSizeCompact(float64(size)),
 		"disk#1.standby=true",
 		"disk#2.type=drbd",
