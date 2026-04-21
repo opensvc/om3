@@ -12,6 +12,7 @@ package args
 
 import (
 	"regexp"
+	"strings"
 
 	"github.com/anmitsu/go-shlex"
 )
@@ -197,4 +198,39 @@ func (t *T) dropOption(opt matchOpt) {
 
 func (t *T) Append(s ...string) {
 	t.args = append(t.args, s...)
+}
+
+// shellQuote quotes a single argument for shell usage.
+// It follows basic shell quoting rules:
+// - If the argument contains no special characters, return as-is
+// - Otherwise, wrap in single quotes and escape any single quotes within
+func shellQuote(arg string) string {
+	// Characters that require quoting in shell
+	// Note: '=' is allowed in simple assignments like key=value
+	needsQuoting := false
+	for _, c := range arg {
+		if c <= ' ' || c == '\'' || c == '"' || c == '`' || c == '$' || c == '\\' || c == ';' || c == '&' || c == '|' || c == '(' || c == ')' || c == '<' || c == '>' || c == '[' || c == ']' || c == '{' || c == '}' || c == '*' || c == '?' || c == '#' || c == '~' || c == '%' {
+			needsQuoting = true
+			break
+		}
+	}
+
+	if !needsQuoting {
+		return arg
+	}
+
+	// Use single quotes and escape any single quotes within by closing,
+	// adding escaped single quote, and reopening
+	return "'" + strings.ReplaceAll(arg, "'", "'\\''") + "'"
+}
+
+// String returns a shell-escaped string representation of the arguments.
+// It quotes arguments containing spaces or special characters so the output
+// can be safely pasted into a shell.
+func (t T) String() string {
+	var quotedArgs []string
+	for _, arg := range t.args {
+		quotedArgs = append(quotedArgs, shellQuote(arg))
+	}
+	return strings.Join(quotedArgs, " ")
 }
