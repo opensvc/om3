@@ -73,7 +73,7 @@ var (
 			Attr:       "Mode",
 			Candidates: []string{"bridge", "dedicated", "macvlan", "ipvlan-l2", "ipvlan-l3", "ipvlan-l3s", "ovs"},
 			Default:    "bridge",
-			Example:    "access",
+			Example:    "bridge",
 			Option:     "mode",
 			Scopable:   true,
 			Text:       keywords.NewText(fs, "text/kw/mode"),
