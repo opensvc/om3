@@ -123,7 +123,15 @@ func (t *T) Translate(name string, size int64, shared bool) ([]string, error) {
 	if err != nil {
 		return nil, err
 	}
-	data = append(data, t.AddFS(name, shared, 1, 0, "disk#0")...)
+	fs := pool.FS{
+		Pool:      t,
+		Name:      name,
+		Shared:    shared,
+		FsIndex:   1,
+		DiskIndex: 0,
+		OnDisk:    "disk#0",
+	}
+	data = append(data, fs.Keywords()...)
 	return data, nil
 }
 

@@ -286,7 +286,15 @@ func (t *T) Translate(name string, size int64, shared bool) ([]string, error) {
 	if err != nil {
 		return nil, err
 	}
-	kws = append(kws, t.AddFS(name, shared, 1, 0, rid)...)
+	fs := pool.FS{
+		Pool:      t,
+		Name:      name,
+		Shared:    shared,
+		FsIndex:   1,
+		DiskIndex: 0,
+		OnDisk:    rid,
+	}
+	kws = append(kws, fs.Keywords()...)
 	kws = append(kws, "devices_from="+rid)
 	return kws, nil
 }

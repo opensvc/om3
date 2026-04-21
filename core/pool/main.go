@@ -15,6 +15,7 @@ import (
 	"github.com/opensvc/om3/v3/core/nodesinfo"
 	"github.com/opensvc/om3/v3/core/volaccess"
 	"github.com/opensvc/om3/v3/core/xconfig"
+	"github.com/opensvc/om3/v3/util/args"
 	"github.com/opensvc/om3/v3/util/key"
 	"github.com/opensvc/om3/v3/util/san"
 	"github.com/opensvc/om3/v3/util/sizeconv"
@@ -309,36 +310,58 @@ func (t *T) MntOptions() string {
 	return t.GetString("mnt_opt")
 }
 
-func (t *T) AddFS(name string, shared bool, fsIndex int, diskIndex int, onDisk string) []string {
+type fsPooler interface {
+	MntOptions() string
+	MkblkOptions() string
+	MkfsOptions() string
+	FSType() string
+}
+
+type FS struct {
+	Pool               fsPooler
+	Name               string
+	Shared             bool
+	FsIndex            int
+	DiskIndex          int
+	OnDisk             string
+	DefaultMkfsOptions []string
+	DefaultMntOptions  []string
+}
+
+func (t *FS) Keywords() []string {
 	data := make([]string, 0)
-	fsType := t.FSType()
+	fsType := t.Pool.FSType()
 	switch fsType {
 	case "zfs":
 		data = append(data, []string{
-			fmt.Sprintf("disk#%d.type=zpool", diskIndex),
-			fmt.Sprintf("disk#%d.name=%s", diskIndex, name),
-			fmt.Sprintf("disk#%d.vdev={%s.exposed_devs[0]}", diskIndex, onDisk),
-			fmt.Sprintf("disk#%d.shared=%t", diskIndex, shared),
-			fmt.Sprintf("fs#%d.type=zfs", fsIndex),
-			fmt.Sprintf("fs#%d.dev=%s/root", fsIndex, name),
-			fmt.Sprintf("fs#%d.mnt=%s", fsIndex, MountPointFromName(name)),
-			fmt.Sprintf("fs#%d.shared=%t", fsIndex, shared),
+			fmt.Sprintf("disk#%d.type=zpool", t.DiskIndex),
+			fmt.Sprintf("disk#%d.name=%s", t.DiskIndex, t.Name),
+			fmt.Sprintf("disk#%d.vdev={%s.exposed_devs[0]}", t.DiskIndex, t.OnDisk),
+			fmt.Sprintf("disk#%d.shared=%t", t.DiskIndex, t.Shared),
+			fmt.Sprintf("fs#%d.type=zfs", t.FsIndex),
+			fmt.Sprintf("fs#%d.dev=%s/root", t.FsIndex, t.Name),
+			fmt.Sprintf("fs#%d.mnt=%s", t.FsIndex, MountPointFromName(t.Name)),
+			fmt.Sprintf("fs#%d.shared=%t", t.FsIndex, t.Shared),
 		}...)
 	case "":
 		panic("fsType should not be empty at this point")
 	default:
 		data = append(data, []string{
-			fmt.Sprintf("fs#%d.type=%s", fsIndex, fsType),
-			fmt.Sprintf("fs#%d.dev={%s.exposed_devs[0]}", fsIndex, onDisk),
-			fmt.Sprintf("fs#%d.mnt=%s", fsIndex, MountPointFromName(name)),
-			fmt.Sprintf("fs#%d.shared=%t", fsIndex, shared),
+			fmt.Sprintf("fs#%d.type=%s", t.FsIndex, fsType),
+			fmt.Sprintf("fs#%d.dev={%s.exposed_devs[0]}", t.FsIndex, t.OnDisk),
+			fmt.Sprintf("fs#%d.mnt=%s", t.FsIndex, MountPointFromName(t.Name)),
+			fmt.Sprintf("fs#%d.shared=%t", t.FsIndex, t.Shared),
 		}...)
 	}
-	if opts := t.MkfsOptions(); opts != "" {
-		data = append(data, fmt.Sprintf("fs#%d.mkfs_opt=%s", fsIndex, opts))
+	if opts := t.Pool.MkfsOptions(); opts != "" {
+		data = append(data, fmt.Sprintf("fs#%d.mkfs_opt=%s", t.FsIndex, opts))
+	} else if len(t.DefaultMkfsOptions) > 0 {
+		data = append(data, fmt.Sprintf("fs#%d.mkfs_opt=%s", t.FsIndex, args.New(t.DefaultMkfsOptions...).String()))
 	}
-	if opts := t.MntOptions(); opts != "" {
-		data = append(data, fmt.Sprintf("fs#%d.mnt_opt=%s", fsIndex, opts))
+	if opts := t.Pool.MntOptions(); opts != "" {
+		data = append(data, fmt.Sprintf("fs#%d.mnt_opt=%s", t.FsIndex, opts))
+	} else if len(t.DefaultMntOptions) > 0 {
+		data = append(data, fmt.Sprintf("fs#%d.mnt_opt=%s", t.FsIndex, args.New(t.DefaultMntOptions...).String()))
 	}
 	return data
 }

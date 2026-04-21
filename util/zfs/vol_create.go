@@ -25,9 +25,6 @@ type (
 func VolCreateWithArgs(l []string) funcopt.O {
 	return funcopt.F(func(i interface{}) error {
 		t := i.(*volCreateOpts)
-		if t.Args == nil {
-			t.Args = make([]string, 0)
-		}
 		t.Args = append(t.Args, l...)
 		return nil
 	})
@@ -61,24 +58,22 @@ func createSizeString(size uint64) string {
 func volCreateOptsToArgs(t volCreateOpts) []string {
 	a := args.New()
 	a.Append("create")
+
+	// zvol create <options> -V <size> <name>
+	//             ^^^^^^^^^
+	a.Append(t.Args...)
+
 	if t.BlockSize > 0 {
 		a.DropOption("-b")
 		a.DropOptionAndMatchingValue("-o", "^volblocksize=.*")
 		a.Append("-b", sizeconv.ExactBSizeCompact(float64(t.BlockSize)))
 	}
-	a.Append("-V")
 
-	// zvol create -V <options> <size> <name>
-	//                ^^^^^^^^^
-	if t.Args != nil {
-		a.Append(t.Args...)
-	}
-
-	// zvol create -V <options> <size> <name>
+	// zvol create <options> -V <size> <name>
 	//                          ^^^^^^
-	a.Append(createSizeString(t.Size))
+	a.Append("-V", createSizeString(t.Size))
 
-	// zvol create -V <options> <size> <name>
+	// zvol create <options> -V <size> <name>
 	//                                 ^^^^^^
 	a.Append(t.Name)
 	return a.Get()
