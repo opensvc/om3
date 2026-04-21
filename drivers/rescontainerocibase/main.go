@@ -653,6 +653,20 @@ func (t *BT) Stop(ctx context.Context) error {
 	return nil
 }
 
+func (t *BT) StatusInfo(ctx context.Context) map[string]any {
+	m := make(map[string]any)
+	m["name"] = t.ContainerName()
+
+	inspect, err := t.executer.Inspect(ctx)
+	if err != nil {
+		return m
+	}
+	m["id"] = inspect.ID()
+	m["image_id"] = inspect.ImageID()
+	m["pid"] = inspect.PID()
+	return m
+}
+
 func (t *BT) Status(ctx context.Context) status.T {
 	if !t.Detach {
 		t.Log().Tracef("status n/a on not detach")
