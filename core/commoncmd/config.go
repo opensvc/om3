@@ -91,8 +91,8 @@ func ColorizeINI(b []byte) []byte {
 	var continuedValue string
 	var continuation bool
 
-	// Compile template regex once - match balanced braces
-	templateRE := regexp.MustCompile(`\{[^{}]*\}`)
+	// Compile regexes once
+	referenceRE := regexp.MustCompile(`\{[^{}]*\}`)
 
 	for scanner.Scan() {
 		line := scanner.Text()
@@ -157,21 +157,23 @@ func ColorizeINI(b []byte) []byte {
 					// The rest is the value
 					value := line[end:]
 
-					// Highlight templates in the value
-					templateMatches := templateRE.FindAllStringIndex(value, -1)
-					if len(templateMatches) > 0 {
+					// Highlight references in the value
+					referenceMatches := referenceRE.FindAllStringIndex(value, -1)
+					if len(referenceMatches) > 0 {
 						lastPos := 0
-						for _, match := range templateMatches {
-							// Write non-template part
+						for _, match := range referenceMatches {
+							// Write non-reference part
 							out.WriteString(value[lastPos:match[0]])
-							// Write template part in green + bold
-							templateText := value[match[0]:match[1]]
-							color.Set(color.FgGreen, color.Bold).Fprint(out, templateText)
+
+							// Write reference part in green + bold
+							referenceText := value[match[0]:match[1]]
+							color.Set(color.FgGreen, color.Bold).Fprint(out, referenceText)
 							lastPos = match[1]
 						}
-						// Write remaining part after last template
+						// Write remaining part after last reference
 						out.WriteString(value[lastPos:])
 					} else {
+						// No references
 						out.WriteString(value)
 					}
 				} else {
@@ -190,24 +192,26 @@ func ColorizeINI(b []byte) []byte {
 			}
 		}
 
-		// Unmatched line - check for templates
-		templateMatches := templateRE.FindAllStringIndex(line, -1)
-		if len(templateMatches) > 0 {
+		// Unmatched line - check for references
+		referenceMatches := referenceRE.FindAllStringIndex(line, -1)
+		if len(referenceMatches) > 0 {
 			lastPos := 0
-			for _, match := range templateMatches {
-				// Write non-template part
+			for _, match := range referenceMatches {
+				// Write non-reference part
 				out.WriteString(line[lastPos:match[0]])
-				// Write template part in green + bold
-				templateText := line[match[0]:match[1]]
-				color.Set(color.FgGreen, color.Bold).Fprint(out, templateText)
+
+				// Write reference part in green + bold
+				referenceText := line[match[0]:match[1]]
+				color.Set(color.FgGreen, color.Bold).Fprint(out, referenceText)
 				lastPos = match[1]
 			}
-			// Write remaining part after last template
+			// Write remaining part after last reference
 			out.WriteString(line[lastPos:])
 			out.WriteString("\n")
 		} else {
 			// Unmatched line (output as-is)
-			out.WriteString(line + "\n")
+			out.WriteString(line)
+			out.WriteString("\n")
 		}
 	}
 
