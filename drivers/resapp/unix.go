@@ -341,7 +341,7 @@ func (t *T) Info(ctx context.Context) (resource.InfoKeys, error) {
 	if errors.As(err, &errAccess) {
 		t.Log().Tracef("skip 'info' command (%s is %s)", errAccess.Path, errAccess.Avail)
 		return result, nil
-	} else {
+	} else if err != nil {
 		return result, err
 	}
 	if len(opts) == 0 {
