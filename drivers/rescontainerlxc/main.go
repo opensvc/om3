@@ -327,25 +327,20 @@ func (t *T) createEnv() ([]string, error) {
 	}
 	env = append(env, t.createEnvProxy()...)
 	env = append(env, t.CreateEnvironment...)
-	more, err := envprovider.From(t.CreateSecretsEnvironment, t.Path.Namespace, "sec")
+	ignoreCallback := func(err error) {
+		t.Log().Infof("ignore env %s", err)
+	}
+	more, err := envprovider.From(t.CreateSecretsEnvironment, t.Path.Namespace, "sec", envprovider.IgnoreExpected(ignoreCallback))
 	if err != nil {
 		return env, err
 	}
 	env = append(env, more...)
-	more, err = envprovider.From(t.CreateConfigsEnvironment, t.Path.Namespace, "cfg")
+	more, err = envprovider.From(t.CreateConfigsEnvironment, t.Path.Namespace, "cfg", envprovider.IgnoreExpected(ignoreCallback))
 	if err != nil {
 		return env, err
 	}
 	env = append(env, more...)
 	return env, nil
-}
-
-func (t *T) createEnvSecrets() ([]string, error) {
-	return envprovider.From(t.CreateSecretsEnvironment, t.Path.Namespace, "sec")
-}
-
-func (t *T) createEnvConfigs() ([]string, error) {
-	return envprovider.From(t.CreateConfigsEnvironment, t.Path.Namespace, "cfg")
 }
 
 func (t *T) createEnvProxy() []string {

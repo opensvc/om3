@@ -362,12 +362,15 @@ func (t *BT) GenEnv(ctx context.Context) (envL []string, envM map[string]string,
 	if len(t.Env) > 0 {
 		envL = append(envL, t.Env...)
 	}
-	if tempEnv, err := envprovider.From(t.ConfigsEnv, t.Path.Namespace, "cfg"); err != nil {
+	ignoreCallback := func(err error) {
+		t.Log().Infof("ignore env %s", err)
+	}
+	if tempEnv, err := envprovider.From(t.ConfigsEnv, t.Path.Namespace, "cfg", envprovider.IgnoreExpected(ignoreCallback)); err != nil {
 		return nil, nil, err
 	} else {
 		envL = append(envL, tempEnv...)
 	}
-	if tempEnv, err := envprovider.From(t.SecretsEnv, t.Path.Namespace, "sec"); err != nil {
+	if tempEnv, err := envprovider.From(t.SecretsEnv, t.Path.Namespace, "sec", envprovider.IgnoreExpected(ignoreCallback)); err != nil {
 		return nil, nil, err
 	} else {
 		for _, s := range tempEnv {

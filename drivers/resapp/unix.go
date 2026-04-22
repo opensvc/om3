@@ -298,7 +298,14 @@ func (t *T) GetFuncOpts(ctx context.Context, s string, action string) ([]funcopt
 	if err != nil || cmdArgs == nil {
 		return nil, err
 	}
-	env, err := t.getEnv(ctx)
+	var onIgnoreCallback func(err error)
+	if action != "status" {
+		onIgnoreCallback = func(err error) {
+			t.Log().Infof("prepare '%s' command: %s", action, err)
+		}
+	}
+
+	env, err := t.getEnv(ctx, onIgnoreCallback)
 	if err != nil {
 		return nil, err
 	}
