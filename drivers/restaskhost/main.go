@@ -161,7 +161,7 @@ func (t *T) Kill(ctx context.Context) error {
 
 func (t *T) stop(ctx context.Context) error {
 	app := t.App()
-	cmdArgs, err := app.BaseCmdArgs(app.StartCmd, "stop")
+	cmdArgs, err := app.BaseCmdArgs(ctx, app.StartCmd, "stop")
 	if err != nil {
 		return err
 	}

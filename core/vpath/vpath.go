@@ -5,20 +5,27 @@ package vpath
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"strings"
 
 	"github.com/opensvc/om3/v3/core/naming"
 	"github.com/opensvc/om3/v3/core/object"
 	"github.com/opensvc/om3/v3/core/status"
+	"github.com/opensvc/om3/v3/core/xerrors"
 	"github.com/opensvc/om3/v3/util/file"
 	"github.com/opensvc/om3/v3/util/loop"
 )
 
-var (
-	ErrAccess = errors.New("vol is not accessible")
+type (
+	ErrAccess struct {
+		Path  naming.Path
+		Avail status.T
+	}
 )
+
+func (t ErrAccess) Error() string {
+	return fmt.Sprintf("vol is not accessible: %s is avail %s", t.Path, t.Avail)
+}
 
 // HostPathAndVol expand a volume-relative path to a host full path. It returns
 // the host full path and the associated object volume if defined.
@@ -48,7 +55,7 @@ func HostPathAndVol(ctx context.Context, s string, namespace string) (hostPath s
 		return
 	}
 	if !vol.Path().Exists() {
-		err = fmt.Errorf("%s does not exist", vol.Path())
+		err = fmt.Errorf("%w: %s", xerrors.ObjectNotFound, vol.Path())
 		return
 	}
 
@@ -60,7 +67,10 @@ func HostPathAndVol(ctx context.Context, s string, namespace string) (hostPath s
 	switch volStatus.Avail {
 	case status.Up, status.NotApplicable, status.StandbyUp:
 	default:
-		err = fmt.Errorf("%w: %s(%s)", ErrAccess, volPath, volStatus.Avail)
+		err = ErrAccess{
+			Path:  volPath,
+			Avail: volStatus.Avail,
+		}
 		return
 	}
 	hostPath = vol.Head() + "/" + volRelativeSourcePath
@@ -127,7 +137,11 @@ func HostDevpath(ctx context.Context, s string, namespace string) (string, error
 	switch st.Avail {
 	case status.Up, status.NotApplicable, status.StandbyUp:
 	default:
-		return s, fmt.Errorf("%w: %s(%s)", ErrAccess, volPath, st.Avail)
+		err = ErrAccess{
+			Path:  volPath,
+			Avail: st.Avail,
+		}
+		return s, err
 	}
 	dev := vol.ExposedDevice(ctx)
 	if dev == nil {
