@@ -658,12 +658,11 @@ func (t *BT) StatusInfo(ctx context.Context) map[string]any {
 	m["name"] = t.ContainerName()
 
 	inspect, err := t.executer.Inspect(ctx)
-	if err != nil {
-		return m
+	if err == nil && inspect != nil {
+		m["id"] = inspect.ID()
+		m["image_id"] = inspect.ImageID()
+		m["pid"] = inspect.PID()
 	}
-	m["id"] = inspect.ID()
-	m["image_id"] = inspect.ImageID()
-	m["pid"] = inspect.PID()
 	return m
 }
 
