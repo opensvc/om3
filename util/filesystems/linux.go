@@ -60,18 +60,20 @@ func (t T) Umount(ctx context.Context, mnt string) error {
 }
 
 func (t T) KillUsers(ctx context.Context, mnt string) error {
-	var extraArgs string
-	if v, err := file.ExistsNotDir(mnt); err != nil {
+	var killArgs string
+	if v, err := file.ExistsAndDir(mnt); err != nil {
 		return err
 	} else if v {
-		extraArgs = "-kMmv"
+		// need to kill users on mount point and sub directories
+		killArgs = "-kMmv"
 	} else {
-		extraArgs = "-kMv"
+		// need to kill users on mount point
+		killArgs = "-kMv"
 	}
 	cmd := command.New(
 		command.WithContext(ctx),
 		command.WithName("fuser"),
-		command.WithVarArgs(mnt, extraArgs),
+		command.WithVarArgs(killArgs, mnt),
 		command.WithLogger(t.Log()),
 		command.WithTimeout(time.Minute),
 		command.WithCommandLogLevel(zerolog.InfoLevel),
