@@ -24,6 +24,7 @@ import (
 	"github.com/opensvc/om3/v3/core/client"
 	"github.com/opensvc/om3/v3/core/clientcontext"
 	"github.com/opensvc/om3/v3/core/clusterdump"
+	"github.com/opensvc/om3/v3/core/commoncmd"
 	"github.com/opensvc/om3/v3/core/event"
 	"github.com/opensvc/om3/v3/core/monitor"
 	"github.com/opensvc/om3/v3/core/naming"
@@ -2248,8 +2249,11 @@ func (t *App) updateClusterConfigView() {
 		return
 	}
 
-	text := tview.TranslateANSI(string(resp.Body))
-	t.textView.SetDynamicColors(false)
+	// Apply syntax highlighting to the config
+	colorizedConfig := commoncmd.ColorizeINI(resp.Body)
+	text := tview.Escape(string(colorizedConfig))
+	text = tview.TranslateANSI(text)
+	t.textView.SetDynamicColors(true)
 	t.textView.Clear()
 	t.textView.SetTitle("cluster configuration")
 	fmt.Fprint(t.textView, text)
@@ -2268,8 +2272,11 @@ func (t *App) updateNodeConfigView() {
 		return
 	}
 
-	text := tview.TranslateANSI(string(resp.Body))
-	t.textView.SetDynamicColors(false)
+	// Apply syntax highlighting to the config
+	colorizedConfig := commoncmd.ColorizeINI(resp.Body)
+	text := tview.Escape(string(colorizedConfig))
+	text = tview.TranslateANSI(text)
+	t.textView.SetDynamicColors(true)
 	t.textView.SetTitle(fmt.Sprintf("%s configuration", t.viewNode))
 	t.textView.Clear()
 	fmt.Fprint(t.textView, text)
@@ -2287,8 +2294,11 @@ func (t *App) updateObjectConfigView() {
 		return
 	}
 
-	text := tview.TranslateANSI(string(resp.Body))
-	t.textView.SetDynamicColors(false)
+	// Apply syntax highlighting to the config
+	colorizedConfig := commoncmd.ColorizeINI(resp.Body)
+	text := tview.Escape(string(colorizedConfig))
+	text = tview.TranslateANSI(text)
+	t.textView.SetDynamicColors(true)
 	t.textView.SetTitle(fmt.Sprintf("%s configuration", t.viewPath.String()))
 	t.textView.Clear()
 	fmt.Fprint(t.textView, text)
