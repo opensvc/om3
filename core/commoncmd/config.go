@@ -131,7 +131,11 @@ func ColorizeINI(b []byte) []byte {
 				equalAndValue := matches[2]
 
 				// Colorize key
+				key, scope, scopeFound := strings.Cut(key, "@")
 				color.Set(color.FgCyan).Fprint(out, key)
+				if scopeFound {
+					color.Set(color.FgHiMagenta).Fprint(out, "@"+scope)
+				}
 
 				// Find the equals sign position to preserve exact spacing
 				equalPos := strings.Index(line, "=")
