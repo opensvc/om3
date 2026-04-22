@@ -256,10 +256,11 @@ func (t *T) BaseCmdArgs(ctx context.Context, s string, action string) ([]string,
 }
 
 func (t *T) replaceVolumeHead(ctx context.Context, s string) (string, error) {
-	if strings.HasPrefix(s, "/") {
-		return s, nil
+	words := strings.Fields(s)
+	if !strings.HasPrefix(words[0], "/") && strings.Contains(words[0], "/") {
+		return vpath.HostPath(ctx, s, t.Path.Namespace)
 	}
-	return vpath.HostPath(ctx, s, t.Path.Namespace)
+	return s, nil
 }
 
 // CmdArgs returns the command argv of an action
