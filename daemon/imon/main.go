@@ -360,6 +360,12 @@ func (t *Manager) worker(initialNodes []string) {
 		t.instStatus[n] = *v
 	}
 
+	// force retrieval of possible lost global expectation from the peer
+	// instance monitor cache.
+	// This is usually checked on InstanceMonitorUpdated, but
+	// perhaps such events have been published before the subscription is running.
+	t.convergeGlobalExpectFromRemote()
+
 	t.delayTimer = time.NewTimer(time.Second)
 	if !t.delayTimer.Stop() {
 		<-t.delayTimer.C
