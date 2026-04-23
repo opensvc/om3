@@ -56,4 +56,25 @@ func Test(t *testing.T) {
 		args.DropOption("--init")
 		assert.Equal(t, l7, args.Get(), "")
 	})
+	t.Run("String", func(t *testing.T) {
+		// Test with various arguments including spaces and special characters
+		args, err := Parse("--init -o a=b -o b=c --comment 'bad trip' --comment 'good trap' -d /tmp/foo -f")
+		assert.NoError(t, err, "")
+
+		// The String() method should properly quote arguments with spaces
+		result := args.String()
+		expected := `--init -o a=b -o b=c --comment 'bad trip' --comment 'good trap' -d /tmp/foo -f`
+		assert.Equal(t, expected, result, "String() should properly quote arguments")
+
+		// Test with arguments that need quoting
+		args2 := New("arg1", "arg with spaces", "arg'with'quotes", `arg"with"double`, "$special")
+		result2 := args2.String()
+		// All arguments with special characters should be quoted
+		assert.Contains(t, result2, "arg1")
+		assert.Contains(t, result2, "'arg with spaces'")
+		assert.Contains(t, result2, "'arg'\\''with'\\''quotes'")
+		// For double quotes, shlex.Quote should handle them appropriately
+		assert.Contains(t, result2, "double")
+		assert.Contains(t, result2, "'$special'")
+	})
 }

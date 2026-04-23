@@ -8,6 +8,7 @@ import (
 
 	"github.com/opensvc/om3/v3/core/client"
 	"github.com/opensvc/om3/v3/core/naming"
+	"github.com/opensvc/om3/v3/core/rawconfig"
 )
 
 func createTempRemoteConfig(p naming.Path, c *client.T) (string, error) {
@@ -19,7 +20,7 @@ func createTempRemoteConfig(p naming.Path, c *client.T) (string, error) {
 	if buff, err = fetchConfig(p, c); err != nil {
 		return "", err
 	}
-	if f, err = os.CreateTemp("", ".opensvc.remote.config.*"); err != nil {
+	if f, err = os.CreateTemp(rawconfig.Paths.Tmp, "remote.*.conf.tmp"); err != nil {
 		return "", err
 	}
 	filename := f.Name()

@@ -70,6 +70,7 @@ type (
 		Secondary(context.Context) error
 		Up(context.Context) error
 		WipeMD(context.Context) error
+		WaitIsDefined(ctx context.Context, timeout time.Duration, target bool) error
 		WaitCState(ctx context.Context, nodeID string, timeout time.Duration, candidates ...string) (string, error)
 		WaitConnectingOrConnected(ctx context.Context, nodeID string) (string, error)
 		StartConnections(context.Context, ...string) error
@@ -999,12 +1000,16 @@ func (t *T) UnprovisionAsFollower(ctx context.Context) error {
 }
 
 func (t *T) unprovisionCommon(ctx context.Context) error {
-	isDefined, err := t.drbd(ctx).IsDefined(ctx)
+	dev := t.drbd(ctx)
+	isDefined, err := dev.IsDefined(ctx)
 	if err != nil {
 		return err
 	}
 	if isDefined {
 		if err := t.DownForce(ctx); err != nil {
+			return err
+		}
+		if err := dev.WaitIsDefined(ctx, 5*time.Second, false); err != nil {
 			return err
 		}
 		if err := t.WipeMD(ctx); err != nil {

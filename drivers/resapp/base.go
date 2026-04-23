@@ -30,8 +30,7 @@ type BaseT struct {
 	ObjectID     uuid.UUID      `json:"objectID"`
 }
 
-func (t *T) getEnv(ctx context.Context) (env []string, err error) {
-	var tempEnv []string
+func (t *T) getEnv(ctx context.Context, onIgnoreCallback func(err error)) (env []string, err error) {
 	env = []string{
 		"OPENSVC_RID=" + t.RID(),
 		"OPENSVC_NAME=" + t.Path.String(),
@@ -42,14 +41,16 @@ func (t *T) getEnv(ctx context.Context) (env []string, err error) {
 	if len(t.Env) > 0 {
 		env = append(env, t.Env...)
 	}
-	if tempEnv, err = envprovider.From(t.ConfigsEnv, t.Path.Namespace, "cfg"); err != nil {
+	if tempEnv, err := envprovider.From(t.ConfigsEnv, t.Path.Namespace, "cfg", envprovider.IgnoreExpected(onIgnoreCallback)); err != nil {
 		return nil, err
+	} else {
+		env = append(env, tempEnv...)
 	}
-	env = append(env, tempEnv...)
-	if tempEnv, err = envprovider.From(t.SecretsEnv, t.Path.Namespace, "sec"); err != nil {
+	if tempEnv, err := envprovider.From(t.SecretsEnv, t.Path.Namespace, "sec", envprovider.IgnoreExpected(onIgnoreCallback)); err != nil {
 		return nil, err
+	} else {
+		env = append(env, tempEnv...)
 	}
-	env = append(env, tempEnv...)
 	env = append(env, actioncontext.Env(ctx)...)
 	return env, nil
 }

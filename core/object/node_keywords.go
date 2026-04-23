@@ -1160,6 +1160,7 @@ var (
 		Text:    keywords.NewText(fs, "text/kw/node/pool.mkfs_opt"),
 	}
 	kwNodePoolMkblkOpt = keywords.Keyword{
+		Example: "-b 16k",
 		Option:  "mkblk_opt",
 		Section: "pool",
 		Text:    keywords.NewText(fs, "text/kw/node/pool.mkblk_opt"),

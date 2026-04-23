@@ -3,7 +3,6 @@ package commoncmd
 import (
 	"bufio"
 	"bytes"
-	"fmt"
 	"regexp"
 	"strings"
 
@@ -92,6 +91,9 @@ func ColorizeINI(b []byte) []byte {
 	var continuedValue string
 	var continuation bool
 
+	// Compile regexes once
+	referenceRE := regexp.MustCompile(`\{[^{}]*\}`)
+
 	for scanner.Scan() {
 		line := scanner.Text()
 
@@ -109,35 +111,108 @@ func ColorizeINI(b []byte) []byte {
 
 		// Section header
 		if sectionRE.MatchString(line) {
-			color.Set(color.FgYellow).Fprintln(out, line)
+			color.Set(color.FgHiYellow, color.Bold).Fprintln(out, line)
 			continue
 		}
 
 		// Comment
 		if commentRE.MatchString(line) {
-			color.Set(color.FgHiBlack).Fprintln(out, line)
+			color.Set(color.FgHiBlack, color.Italic).Fprintln(out, line)
 			continue
 		}
 
 		// Key-value
 		if strings.Contains(line, "=") && !strings.HasPrefix(line, " ") && !strings.HasPrefix(line, "\t") {
-			parts := strings.SplitN(line, "=", 2)
-			key := strings.TrimSpace(parts[0])
-			value := parts[1] // preserve spacing
-			color.Set(color.FgMagenta).Fprint(out, key)
-			out.WriteString(fmt.Sprintf(" =%s\n", value))
+			// Use regex to preserve spacing around equals sign
+			kvRE := regexp.MustCompile(`^(\s*[^=\s]+(?:\s+[^=\s]+)*)\s*=\s*(.*)$`)
+			matches := kvRE.FindStringSubmatch(line)
+			if len(matches) == 3 {
+				key := matches[1]
+				equalAndValue := matches[2]
 
-			// Check if line continues
-			if strings.HasSuffix(strings.TrimRight(value, " \t"), `\`) {
-				continuedValue = ""
-				continuedValue += value
-				continuation = true
+				// Colorize key
+				key, scope, scopeFound := strings.Cut(key, "@")
+				color.Set(color.FgCyan).Fprint(out, key)
+				if scopeFound {
+					color.Set(color.FgHiMagenta).Fprint(out, "@"+scope)
+				}
+
+				// Find the equals sign position to preserve exact spacing
+				equalPos := strings.Index(line, "=")
+				if equalPos >= 0 {
+					// Extract the equals sign with surrounding spaces
+					start := equalPos
+					end := equalPos + 1
+					// Include leading spaces
+					for start > 0 && line[start-1] == ' ' {
+						start--
+					}
+					// Include trailing spaces
+					for end < len(line) && line[end] == ' ' {
+						end++
+					}
+					equalSign := line[start:end]
+					color.Set(color.FgHiBlack).Fprint(out, equalSign)
+
+					// The rest is the value
+					value := line[end:]
+
+					// Highlight references in the value
+					referenceMatches := referenceRE.FindAllStringIndex(value, -1)
+					if len(referenceMatches) > 0 {
+						lastPos := 0
+						for _, match := range referenceMatches {
+							// Write non-reference part
+							out.WriteString(value[lastPos:match[0]])
+
+							// Write reference part in green + bold
+							referenceText := value[match[0]:match[1]]
+							color.Set(color.FgGreen, color.Bold).Fprint(out, referenceText)
+							lastPos = match[1]
+						}
+						// Write remaining part after last reference
+						out.WriteString(value[lastPos:])
+					} else {
+						// No references
+						out.WriteString(value)
+					}
+				} else {
+					// Fallback: output the rest as-is
+					out.WriteString(equalAndValue)
+				}
+				out.WriteString("\n")
+
+				// Check if line continues
+				if strings.HasSuffix(strings.TrimRight(line, " \t"), `\`) {
+					continuedValue = ""
+					continuedValue += line
+					continuation = true
+				}
+				continue
 			}
-			continue
 		}
 
-		// Unmatched line (output as-is)
-		out.WriteString(line + "\n")
+		// Unmatched line - check for references
+		referenceMatches := referenceRE.FindAllStringIndex(line, -1)
+		if len(referenceMatches) > 0 {
+			lastPos := 0
+			for _, match := range referenceMatches {
+				// Write non-reference part
+				out.WriteString(line[lastPos:match[0]])
+
+				// Write reference part in green + bold
+				referenceText := line[match[0]:match[1]]
+				color.Set(color.FgGreen, color.Bold).Fprint(out, referenceText)
+				lastPos = match[1]
+			}
+			// Write remaining part after last reference
+			out.WriteString(line[lastPos:])
+			out.WriteString("\n")
+		} else {
+			// Unmatched line (output as-is)
+			out.WriteString(line)
+			out.WriteString("\n")
+		}
 	}
 
 	return out.Bytes()

@@ -362,12 +362,15 @@ func (t *BT) GenEnv(ctx context.Context) (envL []string, envM map[string]string,
 	if len(t.Env) > 0 {
 		envL = append(envL, t.Env...)
 	}
-	if tempEnv, err := envprovider.From(t.ConfigsEnv, t.Path.Namespace, "cfg"); err != nil {
+	ignoreCallback := func(err error) {
+		t.Log().Infof("ignore env %s", err)
+	}
+	if tempEnv, err := envprovider.From(t.ConfigsEnv, t.Path.Namespace, "cfg", envprovider.IgnoreExpected(ignoreCallback)); err != nil {
 		return nil, nil, err
 	} else {
 		envL = append(envL, tempEnv...)
 	}
-	if tempEnv, err := envprovider.From(t.SecretsEnv, t.Path.Namespace, "sec"); err != nil {
+	if tempEnv, err := envprovider.From(t.SecretsEnv, t.Path.Namespace, "sec", envprovider.IgnoreExpected(ignoreCallback)); err != nil {
 		return nil, nil, err
 	} else {
 		for _, s := range tempEnv {
@@ -651,6 +654,19 @@ func (t *BT) Stop(ctx context.Context) error {
 		t.Log().Tracef("wait not running: done")
 	}
 	return nil
+}
+
+func (t *BT) StatusInfo(ctx context.Context) map[string]any {
+	m := make(map[string]any)
+	m["name"] = t.ContainerName()
+
+	inspect, err := t.ContainerInspect(ctx)
+	if err == nil && inspect != nil {
+		m["id"] = inspect.ID()
+		m["image_id"] = inspect.ImageID()
+		m["pid"] = inspect.PID()
+	}
+	return m
 }
 
 func (t *BT) Status(ctx context.Context) status.T {

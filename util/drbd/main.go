@@ -778,6 +778,37 @@ func (t *T) TryStartConnection(ctx context.Context, nodeID string) error {
 	return t.StartConnections(ctx, nodeID)
 }
 
+func (t *T) WaitIsDefined(ctx context.Context, timeout time.Duration, target bool) error {
+	t.log.Tracef("wait for %s isDefined=%v", t.res, target)
+	var state, lastState bool
+	ok, err := waitfor.TrueNoErrorCtx(ctx, timeout, waitConnectionStateDelay, func() (bool, error) {
+		var err error
+		state, err = t.IsDefined(ctx)
+
+		if err != nil {
+			return false, err
+		}
+
+		if target == state {
+			return true, nil
+		} else {
+			if state != lastState {
+				t.log.Infof("wait for %s defined %v, found current defined %v", t.res, target, state)
+				lastState = state
+			}
+			return false, nil
+		}
+	})
+	if err != nil {
+		return fmt.Errorf("wait for %s defined %v: %w", t.res, target, err)
+	} else if !ok {
+		return fmt.Errorf("wait for %s defined %v: timeout, last state was: %v", t.res, target, state)
+	}
+	t.log.Infof("wait for %s defined %v: succeed", t.res, target)
+	return nil
+
+}
+
 func (t *T) WaitCState(ctx context.Context, nodeID string, timeout time.Duration, candidates ...string) (string, error) {
 	t.log.Tracef("wait for %s node-id %s cstate in (%s)", t.res, nodeID, strings.Join(candidates, ","))
 	var state, lastState string

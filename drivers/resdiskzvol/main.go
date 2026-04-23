@@ -134,6 +134,9 @@ func (t *T) zvolCreate() error {
 	if t.BlockSize != nil {
 		opts = append(opts, zfs.VolCreateWithBlockSize(uint64(*t.BlockSize)))
 	}
+	if len(t.CreateOptions) > 0 {
+		opts = append(opts, zfs.VolCreateWithArgs(t.CreateOptions))
+	}
 	return t.zvol().Create(opts...)
 }
 

@@ -21,6 +21,7 @@ import (
 	"github.com/opensvc/om3/v3/core/resource"
 	"github.com/opensvc/om3/v3/core/status"
 	"github.com/opensvc/om3/v3/core/statusbus"
+	"github.com/opensvc/om3/v3/core/vpath"
 	"github.com/opensvc/om3/v3/util/command"
 	"github.com/opensvc/om3/v3/util/converters"
 	"github.com/opensvc/om3/v3/util/executable"
@@ -69,11 +70,12 @@ func (t *T) SortKey() string {
 // CommonStop stops the Resource
 func (t *T) CommonStop(ctx context.Context, r statuser) (err error) {
 	var opts []funcopt.O
-	if opts, err = t.GetFuncOpts(ctx, t.StopCmd, "stop"); err != nil {
+	var errAccess vpath.ErrAccess
+	opts, err = t.GetFuncOpts(ctx, t.StopCmd, "stop")
+	if errors.As(err, &errAccess) {
+		t.Log().Infof("skip 'stop' command (%s is %s)", errAccess.Path, errAccess.Avail)
+	} else if err != nil {
 		t.Log().Errorf("prepare 'stop' command: %s", err)
-		if t.StatusLogKw {
-			t.StatusLog().Error("prepare cmd %s", err)
-		}
 		return err
 	}
 	if len(opts) == 0 {
@@ -172,12 +174,16 @@ func (t *T) CommonStatus(ctx context.Context) status.T {
 			cannotExec = true
 		}
 	}
-	if opts, err = t.GetFuncOpts(ctx, t.CheckCmd, "status"); err != nil {
-		t.Log().Errorf("prepare 'status' command: %s", err)
-		if t.StatusLogKw {
-			t.StatusLog().Error("prepare cmd %s", err)
-			cannotExec = true
-		}
+
+	opts, err = t.GetFuncOpts(ctx, t.CheckCmd, "status")
+	var errAccess vpath.ErrAccess
+	if errors.As(err, &errAccess) {
+		t.StatusLog().Info("not evaluated (%s is %s)", errAccess.Path, errAccess.Avail)
+		// Other issues still can return Undef.
+		// If no other issues, N/A will be returned as opts is nil.
+	} else if err != nil {
+		t.StatusLog().Error("prepare cmd %s", err)
+		cannotExec = true
 	}
 	if cannotExec {
 		return status.Undef
@@ -232,7 +238,7 @@ func (t *T) Provisioned(ctx context.Context) (provisioned.T, error) {
 	return provisioned.NotApplicable, nil
 }
 
-func (t *T) BaseCmdArgs(s string, action string) ([]string, error) {
+func (t *T) BaseCmdArgs(ctx context.Context, s string, action string) ([]string, error) {
 	var err error
 	var baseCommand string
 	if baseCommand, err = t.getCmdStringFromBoolRule(s, action); err != nil {
@@ -242,7 +248,19 @@ func (t *T) BaseCmdArgs(s string, action string) ([]string, error) {
 		t.Log().Tracef("no base command for action '%v'", action)
 		return nil, nil
 	}
+	baseCommand, err = t.replaceVolumeHead(ctx, baseCommand)
+	if err != nil {
+		return nil, err
+	}
 	return command.CmdArgsFromString(baseCommand)
+}
+
+func (t *T) replaceVolumeHead(ctx context.Context, s string) (string, error) {
+	words := strings.Fields(s)
+	if !strings.HasPrefix(words[0], "/") && strings.Contains(words[0], "/") {
+		return vpath.HostPath(ctx, s, t.Path.Namespace)
+	}
+	return s, nil
 }
 
 // CmdArgs returns the command argv of an action
@@ -251,7 +269,7 @@ func (t *T) CmdArgs(ctx context.Context, s string, action string) ([]string, err
 		t.Log().Tracef("nothing to do for action '%v'", action)
 		return nil, nil
 	}
-	baseCommandSlice, err := t.BaseCmdArgs(s, action)
+	baseCommandSlice, err := t.BaseCmdArgs(ctx, s, action)
 	if err != nil || baseCommandSlice == nil {
 		return nil, err
 	}
@@ -280,7 +298,14 @@ func (t *T) GetFuncOpts(ctx context.Context, s string, action string) ([]funcopt
 	if err != nil || cmdArgs == nil {
 		return nil, err
 	}
-	env, err := t.getEnv(ctx)
+	var onIgnoreCallback func(err error)
+	if action != "status" {
+		onIgnoreCallback = func(err error) {
+			t.Log().Infof("prepare '%s' command: %s", action, err)
+		}
+	}
+
+	env, err := t.getEnv(ctx, onIgnoreCallback)
 	if err != nil {
 		return nil, err
 	}
@@ -318,12 +343,13 @@ func (t *T) Info(ctx context.Context) (resource.InfoKeys, error) {
 	)
 	var opts []funcopt.O
 	var err error
-	if opts, err = t.GetFuncOpts(ctx, t.InfoCmd, "info"); err != nil {
-		t.Log().Errorf("prepare 'info' command: %s", err)
-		if t.StatusLogKw {
-			t.StatusLog().Error("prepare cmd %s", err)
-		}
-		return nil, err
+	opts, err = t.GetFuncOpts(ctx, t.InfoCmd, "info")
+	var errAccess vpath.ErrAccess
+	if errors.As(err, &errAccess) {
+		t.Log().Tracef("skip 'info' command (%s is %s)", errAccess.Path, errAccess.Avail)
+		return result, nil
+	} else if err != nil {
+		return result, err
 	}
 	if len(opts) == 0 {
 		return result, nil

@@ -230,13 +230,13 @@ func (t *core) dereferenceVolumeHead(ref string) (string, error) {
 	var i any = t.config.Referrer
 	actor, ok := i.(Actor)
 	if !ok {
-		return ref, fmt.Errorf("can't dereference volume mnt on a non-actor object: %s", ref)
+		return ref, fmt.Errorf("can't dereference volume head on a non-actor object: %s", ref)
 	}
 	type header interface {
 		Head() string
 	}
 	if len(l) != 2 {
-		return ref, fmt.Errorf("misformatted volume mnt ref: %s", ref)
+		return ref, fmt.Errorf("misformatted volume head ref: %s", ref)
 	}
 	rid := l[0]
 	r := actor.ResourceByID(rid)

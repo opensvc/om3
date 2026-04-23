@@ -108,7 +108,7 @@ func (t *T) Stop(ctx context.Context) error {
 }
 
 func (t *T) stop(ctx context.Context) error {
-	cmdArgs, err := t.BaseCmdArgs(t.StartCmd, "stop")
+	cmdArgs, err := t.BaseCmdArgs(ctx, t.StartCmd, "stop")
 	if err != nil {
 		return err
 	}
@@ -148,7 +148,7 @@ func (t *T) Status(ctx context.Context) status.T {
 	if t.CheckCmd != "" {
 		return t.CommonStatus(ctx)
 	}
-	return t.status()
+	return t.status(ctx)
 }
 
 // Label implements Label from resource.Driver interface,
@@ -157,8 +157,8 @@ func (t *T) Label(_ context.Context) string {
 	return drvID.String()
 }
 
-func (t *T) status() status.T {
-	cmdArgs, err := t.BaseCmdArgs(t.StartCmd, "start")
+func (t *T) status(ctx context.Context) status.T {
+	cmdArgs, err := t.BaseCmdArgs(ctx, t.StartCmd, "start")
 	if err != nil {
 		t.StatusLog().Error("%s", err)
 		return status.Undef

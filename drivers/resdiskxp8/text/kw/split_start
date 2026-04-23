@@ -1,1 +1,13 @@
-split_start must be set to allow start on a SSUS S-VOL (split pair).
+Controls whether the start action is allowed on a split S-VOL (in states like SSUS, SSUE, or SSWS).
+
+- `false` (default):
+
+  The start action fails on a split S-VOL to prevent accidental divergence between pair legs. This is the recommended setting for normal operations.
+
+- `true`
+
+  The start action succeeds on a split S-VOL, allowing the administrator to manually decide which diverging dataset should survive during resynchronization.
+
+  **Use case**: Only enable this during disaster recovery or when intentional divergence is required.
+
+**Note**: Leaving split_start=false ensures data consistency by default. Switch to true only when necessary and with caution.
