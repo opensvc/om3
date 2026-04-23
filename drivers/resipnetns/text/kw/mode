@@ -1,4 +1,42 @@
 The ip link mode.
 
-If `dev` is set to a bridge interface the mode defaults to `bridge`, else
-defaults to `macvlan`. The `ipvlan` mode requires a 4.2+ Linux kernel.
+- `bridge`
+
+  Proven, simple and versatile default mode.
+
+- `dedicated`
+
+  Used when a container or namespace gets exclusive ownership of a physical NIC. Ideal for performance-sensitive workloads that need direct hardware access without virtualization overhead.
+
+- `macvlan`
+
+  Used when each container needs its own MAC address and appears as a distinct device on the physical network (L2 presence). Common in environments where containers must be directly reachable on the LAN, like VMs would be. This mode is not appropiate on VMWare with Vswitch default policies.
+
+- `ipvlan-l2`
+
+  Similar to macvlan but all sub-interfaces share the parent's MAC address. Used when the upstream switch limits the number of MAC addresses per port (e.g., cloud environments or strict switch policies).
+
+- `ipvlan-l3`
+
+  Used when you want the host to act as a router between namespaces and the external network. No L2 broadcast/multicast is propagated; each namespace is isolated at Layer 2. Suited for high-density, routed environments.
+
+- `ipvlan-l3s`
+
+  A variant of ipvlan-l3 that keeps traffic in the kernel's netfilter/iptables path (s = symmetric routing). Used when you still need NAT, firewalling, or policy routing rules to apply to ipvlan traffic, unlike pure l3 mode.
+
+- `ovs` (Open vSwitch)
+
+  Used in SDN (Software-Defined Networking) and multi-host environments. Chosen when you need advanced L2/L3 features like VLANs, tunneling (VXLAN, GRE), flow-based forwarding, or centralized network control.
+
+
+**Communication scope:**
+
+| Mode       | Host → Container | Container → Host | Container → Container |
+|------------|------------------|------------------|-----------------------|
+| bridge     | ok               | ok               | ok                    |
+| dedicated  |                  |                  |                       |
+| macvlan    |                  |                  | ok                    |
+| ipvlan-l2  |                  |                  | ok                    |
+| ipvlan-l3  |                  |                  | ok                    |
+| ipvlan-l3s | ok               | ok               | ok                    |
+| ovs        | ok               | ok               | ok                    |

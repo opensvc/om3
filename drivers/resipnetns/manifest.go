@@ -74,6 +74,7 @@ var (
 			Candidates: []string{"bridge", "dedicated", "macvlan", "ipvlan-l2", "ipvlan-l3", "ipvlan-l3s", "ovs"},
 			Default:    "bridge",
 			Example:    "bridge",
+			Minimal:    true,
 			Option:     "mode",
 			Scopable:   true,
 			Text:       keywords.NewText(fs, "text/kw/mode"),
@@ -104,6 +105,7 @@ var (
 			Aliases:  []string{"ipname"},
 			Attr:     "Name",
 			Example:  "1.2.3.4",
+			Minimal:  true,
 			Option:   "name",
 			Scopable: true,
 			Text:     keywords.NewText(fs, "text/kw/name"),
@@ -111,7 +113,7 @@ var (
 		{
 			Aliases:  []string{"ipdev"},
 			Attr:     "Dev",
-			Example:  "eth0",
+			Example:  "br-prd",
 			Option:   "dev",
 			Required: true,
 			Scopable: true,
@@ -120,6 +122,7 @@ var (
 		{
 			Attr:     "Netmask",
 			Example:  "24",
+			Minimal:  true,
 			Option:   "netmask",
 			Scopable: true,
 			Text:     keywords.NewText(fs, "text/kw/netmask"),
