@@ -10,7 +10,7 @@ import (
 )
 
 type (
-	CmdObjectEnter struct {
+	CmdObjectContainerEnter struct {
 		ObjectSelector string
 		RID            string
 	}
@@ -20,7 +20,7 @@ type (
 	}
 )
 
-func (t *CmdObjectEnter) Run(kind string) error {
+func (t *CmdObjectContainerEnter) Run(kind string) error {
 	mergedSelector := commoncmd.MergeSelector("", t.ObjectSelector, kind, "")
 	return objectaction.New(
 		objectaction.LocalFirst(),
