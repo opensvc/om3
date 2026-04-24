@@ -21,6 +21,7 @@ func init() {
 	cmdObjectSchedule := newCmdObjectSchedule(kind)
 	cmdObjectSet := newCmdObjectSet(kind)
 	cmdObjectConfig := commoncmd.NewCmdObjectConfig(kind)
+	cmdObjectContainer := commoncmd.NewCmdObjectContainer(kind)
 	cmdObjectPrint := newCmdObjectPrint(kind)
 	cmdObjectPrintConfig := newCmdObjectPrintConfig(kind)
 	cmdObjectResource := commoncmd.NewCmdObjectResource(kind)
@@ -39,6 +40,7 @@ func init() {
 		cmdObjectCollector,
 		cmdObjectCompliance,
 		cmdObjectConfig,
+		cmdObjectContainer,
 		cmdObjectEdit,
 		cmdObjectInstance,
 		cmdObjectPrint,
@@ -59,6 +61,7 @@ func init() {
 		newCmdObjectCreate(kind),
 		newCmdObjectDelete(kind),
 		newCmdObjectDeploy(kind),
+		newCmdObjectEnter(kind),
 		newCmdObjectEval(kind),
 		newCmdObjectFreeze(kind),
 		newCmdObjectGet(kind),
@@ -132,6 +135,9 @@ func init() {
 		newCmdObjectConfigShow(kind),
 		newCmdObjectConfigUpdate(kind),
 		newCmdObjectConfigValidate(kind),
+	)
+	cmdObjectContainer.AddCommand(
+		newCmdObjectContainerLogs(kind),
 	)
 	cmdObjectEdit.AddCommand(
 		newCmdObjectEditConfig(kind),

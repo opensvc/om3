@@ -80,6 +80,8 @@ type (
 		SyncUpdate(context.Context) error
 		SyncIngest(context.Context) error
 		Enter(context.Context, string) error
+		ContainerLogs(context.Context, string, bool, int) error
+		ContainerLogsStream(context.Context, string, bool, int) (<-chan []byte, error)
 
 		Schedules() schedule.Table
 		PushResInfo(context.Context) (resource.Infos, error)

@@ -361,3 +361,59 @@ func (e *Executor) inspectFromCache() (Inspecter, bool) {
 	}
 	return nil, false
 }
+
+func (e *Executor) Logs(ctx context.Context, follow bool, lines int) (<-chan []byte, error) {
+	if logArgser, ok := e.args.(ExecutorLogArgser); !ok {
+		return nil, fmt.Errorf("executor does not support logs")
+	} else {
+		args := e.getArgs(logArgser.LogsArgs(follow, lines).Get()...)
+		return e.doExecRunLogs(ctx, args...)
+	}
+}
+
+func (e *Executor) doExecRunLogs(ctx context.Context, a ...string) (<-chan []byte, error) {
+	cmdArgs := e.getArgs(a...)
+
+	// Create a command
+	cmd := exec.CommandContext(ctx, e.bin, cmdArgs...)
+
+	stderr, err := cmd.StderrPipe()
+	if err != nil {
+		return nil, fmt.Errorf("failed to get stderr pipe: %w", err)
+	}
+
+	cmd.Stdout = nil
+
+	// Start the command
+	if err := cmd.Start(); err != nil {
+		return nil, fmt.Errorf("failed to start command: %w", err)
+	}
+
+	// Create a channel for log lines
+	logChan := make(chan []byte)
+
+	// Read stderr in a goroutine
+	go func() {
+		defer close(logChan)
+		buf := make([]byte, 4096)
+		for {
+			n, err := stderr.Read(buf)
+			if err != nil {
+				if err != io.EOF {
+					e.log().Warnf("error reading logs: %s", err)
+				}
+				break
+			}
+			if n > 0 {
+				// Copy the data to a new slice to avoid race conditions
+				data := make([]byte, n)
+				copy(data, buf[:n])
+				logChan <- data
+			}
+		}
+		// Wait for command to finish
+		_ = cmd.Wait()
+	}()
+
+	return logChan, nil
+}

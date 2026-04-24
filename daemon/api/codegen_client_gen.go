@@ -363,6 +363,9 @@ type ClientInterface interface {
 	// PostInstanceResourceConsole request
 	PostInstanceResourceConsole(ctx context.Context, nodename InPathNodeName, namespace InPathNamespace, kind InPathKind, name InPathName, params *PostInstanceResourceConsoleParams, reqEditors ...RequestEditorFn) (*http.Response, error)
 
+	// GetInstanceContainerLog request
+	GetInstanceContainerLog(ctx context.Context, nodename InPathNodeName, namespace InPathNamespace, kind InPathKind, name InPathName, params *GetInstanceContainerLogParams, reqEditors ...RequestEditorFn) (*http.Response, error)
+
 	// GetInstanceLogs request
 	GetInstanceLogs(ctx context.Context, nodename InPathNodeName, namespace InPathNamespace, kind InPathKind, name InPathName, params *GetInstanceLogsParams, reqEditors ...RequestEditorFn) (*http.Response, error)
 
@@ -1658,6 +1661,18 @@ func (c *Client) GetInstanceConfigFile(ctx context.Context, nodename InPathNodeN
 
 func (c *Client) PostInstanceResourceConsole(ctx context.Context, nodename InPathNodeName, namespace InPathNamespace, kind InPathKind, name InPathName, params *PostInstanceResourceConsoleParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
 	req, err := NewPostInstanceResourceConsoleRequest(c.Server, nodename, namespace, kind, name, params)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+func (c *Client) GetInstanceContainerLog(ctx context.Context, nodename InPathNodeName, namespace InPathNamespace, kind InPathKind, name InPathName, params *GetInstanceContainerLogParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewGetInstanceContainerLogRequest(c.Server, nodename, namespace, kind, name, params)
 	if err != nil {
 		return nil, err
 	}
@@ -9317,6 +9332,115 @@ func NewPostInstanceResourceConsoleRequest(server string, nodename InPathNodeNam
 	return req, nil
 }
 
+// NewGetInstanceContainerLogRequest generates requests for GetInstanceContainerLog
+func NewGetInstanceContainerLogRequest(server string, nodename InPathNodeName, namespace InPathNamespace, kind InPathKind, name InPathName, params *GetInstanceContainerLogParams) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "nodename", nodename, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam1 string
+
+	pathParam1, err = runtime.StyleParamWithOptions("simple", false, "namespace", namespace, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam2 string
+
+	pathParam2, err = runtime.StyleParamWithOptions("simple", false, "kind", kind, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam3 string
+
+	pathParam3, err = runtime.StyleParamWithOptions("simple", false, "name", name, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/api/node/name/%s/instance/path/%s/%s/%s/container/log", pathParam0, pathParam1, pathParam2, pathParam3)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	if params != nil {
+		queryValues := queryURL.Query()
+
+		if params.Rid != nil {
+
+			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "rid", *params.Rid, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "string", Format: ""}); err != nil {
+				return nil, err
+			} else if parsed, err := url.ParseQuery(queryFrag); err != nil {
+				return nil, err
+			} else {
+				for k, v := range parsed {
+					for _, v2 := range v {
+						queryValues.Add(k, v2)
+					}
+				}
+			}
+
+		}
+
+		if params.Follow != nil {
+
+			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "follow", *params.Follow, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "boolean", Format: ""}); err != nil {
+				return nil, err
+			} else if parsed, err := url.ParseQuery(queryFrag); err != nil {
+				return nil, err
+			} else {
+				for k, v := range parsed {
+					for _, v2 := range v {
+						queryValues.Add(k, v2)
+					}
+				}
+			}
+
+		}
+
+		if params.Lines != nil {
+
+			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "lines", *params.Lines, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			} else if parsed, err := url.ParseQuery(queryFrag); err != nil {
+				return nil, err
+			} else {
+				for k, v := range parsed {
+					for _, v2 := range v {
+						queryValues.Add(k, v2)
+					}
+				}
+			}
+
+		}
+
+		queryURL.RawQuery = queryValues.Encode()
+	}
+
+	req, err := http.NewRequest("GET", queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
 // NewGetInstanceLogsRequest generates requests for GetInstanceLogs
 func NewGetInstanceLogsRequest(server string, nodename InPathNodeName, namespace InPathNamespace, kind InPathKind, name InPathName, params *GetInstanceLogsParams) (*http.Request, error) {
 	var err error
@@ -12940,6 +13064,9 @@ type ClientWithResponsesInterface interface {
 	// PostInstanceResourceConsoleWithResponse request
 	PostInstanceResourceConsoleWithResponse(ctx context.Context, nodename InPathNodeName, namespace InPathNamespace, kind InPathKind, name InPathName, params *PostInstanceResourceConsoleParams, reqEditors ...RequestEditorFn) (*PostInstanceResourceConsoleResponse, error)
 
+	// GetInstanceContainerLogWithResponse request
+	GetInstanceContainerLogWithResponse(ctx context.Context, nodename InPathNodeName, namespace InPathNamespace, kind InPathKind, name InPathName, params *GetInstanceContainerLogParams, reqEditors ...RequestEditorFn) (*GetInstanceContainerLogResponse, error)
+
 	// GetInstanceLogsWithResponse request
 	GetInstanceLogsWithResponse(ctx context.Context, nodename InPathNodeName, namespace InPathNamespace, kind InPathKind, name InPathName, params *GetInstanceLogsParams, reqEditors ...RequestEditorFn) (*GetInstanceLogsResponse, error)
 
@@ -15395,6 +15522,31 @@ func (r PostInstanceResourceConsoleResponse) StatusCode() int {
 	return 0
 }
 
+type GetInstanceContainerLogResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	JSON400      *N400
+	JSON401      *N401
+	JSON403      *N403
+	JSON500      *N500
+}
+
+// Status returns HTTPResponse.Status
+func (r GetInstanceContainerLogResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r GetInstanceContainerLogResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
 type GetInstanceLogsResponse struct {
 	Body         []byte
 	HTTPResponse *http.Response
@@ -17810,6 +17962,15 @@ func (c *ClientWithResponses) PostInstanceResourceConsoleWithResponse(ctx contex
 		return nil, err
 	}
 	return ParsePostInstanceResourceConsoleResponse(rsp)
+}
+
+// GetInstanceContainerLogWithResponse request returning *GetInstanceContainerLogResponse
+func (c *ClientWithResponses) GetInstanceContainerLogWithResponse(ctx context.Context, nodename InPathNodeName, namespace InPathNamespace, kind InPathKind, name InPathName, params *GetInstanceContainerLogParams, reqEditors ...RequestEditorFn) (*GetInstanceContainerLogResponse, error) {
+	rsp, err := c.GetInstanceContainerLog(ctx, nodename, namespace, kind, name, params, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseGetInstanceContainerLogResponse(rsp)
 }
 
 // GetInstanceLogsWithResponse request returning *GetInstanceLogsResponse
@@ -22969,6 +23130,53 @@ func ParsePostInstanceResourceConsoleResponse(rsp *http.Response) (*PostInstance
 			return nil, err
 		}
 		response.JSON404 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
+		var dest N500
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON500 = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseGetInstanceContainerLogResponse parses an HTTP response from a GetInstanceContainerLogWithResponse call
+func ParseGetInstanceContainerLogResponse(rsp *http.Response) (*GetInstanceContainerLogResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &GetInstanceContainerLogResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
+		var dest N400
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON400 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest N401
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest N403
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON403 = &dest
 
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
 		var dest N500

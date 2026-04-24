@@ -3035,6 +3035,17 @@ type PostInstanceResourceConsoleParams struct {
 	Seats        *InQuerySeats        `form:"seats,omitempty" json:"seats,omitempty"`
 }
 
+// GetInstanceContainerLogParams defines parameters for GetInstanceContainerLog.
+type GetInstanceContainerLogParams struct {
+	Rid *InQueryRid `form:"rid,omitempty" json:"rid,omitempty"`
+
+	// Follow follow the logs
+	Follow *LogFollow `form:"follow,omitempty" json:"follow,omitempty"`
+
+	// Lines report this number of past last log entries
+	Lines *LogLines `form:"lines,omitempty" json:"lines,omitempty"`
+}
+
 // GetInstanceLogsParams defines parameters for GetInstanceLogs.
 type GetInstanceLogsParams struct {
 	// Filter list of log filter

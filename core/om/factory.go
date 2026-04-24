@@ -2163,6 +2163,24 @@ func newCmdObjectEnter(kind string) *cobra.Command {
 	return cmd
 }
 
+func newCmdObjectContainerLogs(kind string) *cobra.Command {
+	var options commands.CmdObjectContainerLogs
+	cmd := &cobra.Command{
+		Use:     "logs",
+		Aliases: []string{"log"},
+		Short:   "show container logs",
+		RunE: func(cmd *cobra.Command, args []string) error {
+			return options.Run(kind)
+		},
+	}
+	flags := cmd.Flags()
+	addFlagsGlobal(flags, &options.OptsGlobal)
+	commoncmd.FlagRID(flags, &options.RID)
+	flags.BoolVarP(&options.Follow, "follow", "f", false, "follow log output")
+	flags.IntVarP(&options.Lines, "lines", "n", 100, "number of lines to show")
+	return cmd
+}
+
 func newCmdObjectConfigEval(kind string) *cobra.Command {
 	var options commands.CmdObjectConfigGet
 	cmd := &cobra.Command{

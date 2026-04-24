@@ -2,6 +2,7 @@ package rescontainerpodman
 
 import (
 	"context"
+	"fmt"
 	"os/exec"
 	"strings"
 
@@ -75,4 +76,22 @@ func (ea *ExecutorArg) wait(ctx context.Context, a ...string) error {
 
 func (ea *ExecutorArg) ExecBaseArgs() []string {
 	return ea.baseArgs
+}
+
+func (ea *ExecutorArg) LogsArgs(follow bool, lines int) *args.T {
+	a := args.New()
+	a.Append("container", "logs")
+	a.Append(ea.BT.ContainerName())
+
+	// Add follow flag if requested
+	if follow {
+		a.Append("--follow")
+	}
+
+	// Add tail option if lines > 0
+	if lines > 0 {
+		a.Append("--tail", fmt.Sprintf("%d", lines))
+	}
+
+	return a
 }
