@@ -19,14 +19,14 @@ import (
 )
 
 type (
-	CmdObjectEnter struct {
+	CmdObjectContainerEnter struct {
 		ObjectSelector string
 		RID            string
 		NodeSelector   string
 	}
 )
 
-func (t *CmdObjectEnter) Run(kind string) error {
+func (t *CmdObjectContainerEnter) Run(kind string) error {
 	if t.NodeSelector == "" {
 		if clientcontext.IsSet() {
 			return fmt.Errorf("--node must be set")
@@ -79,7 +79,7 @@ func (t *CmdObjectEnter) Run(kind string) error {
 	return nil
 }
 
-func (t *CmdObjectEnter) runTtyShare(url string, insecure bool) error {
+func (t *CmdObjectContainerEnter) runTtyShare(url string, insecure bool) error {
 	var args []string
 	if insecure {
 		args = append(args, "-k")

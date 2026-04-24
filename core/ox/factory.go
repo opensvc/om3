@@ -2073,8 +2073,8 @@ func newCmdObjectEnable(kind string) *cobra.Command {
 	return cmd
 }
 
-func newCmdObjectEnter(kind string) *cobra.Command {
-	var options commands.CmdObjectEnter
+func newCmdObjectContainerEnter(kind string) *cobra.Command {
+	var options commands.CmdObjectContainerEnter
 	cmd := &cobra.Command{
 		Use:   "enter",
 		Short: "open a shell in a container resource",
@@ -3689,5 +3689,11 @@ func NewCmdContextShow() *cobra.Command {
 		},
 	}
 
+	return cmd
+}
+
+func newCmdObjectEnter(kind string) *cobra.Command {
+	cmd := newCmdObjectContainerEnter(kind)
+	cmd.Hidden = true
 	return cmd
 }

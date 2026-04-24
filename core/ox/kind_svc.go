@@ -91,6 +91,7 @@ func init() {
 		newCmdObjectConfigValidate(kind),
 	)
 	cmdObjectContainer.AddCommand(
+		newCmdObjectContainerEnter(kind),
 		newCmdObjectContainerLogs(kind),
 	)
 	cmdObjectEdit.AddCommand(
