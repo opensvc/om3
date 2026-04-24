@@ -140,6 +140,11 @@ type (
 		WaitRemoved(context.Context) error
 	}
 
+	// ExecuteLogger interface defines the functions used to get container logs.
+	ExecuteLogger interface {
+		Logs(context.Context, bool, int) (<-chan []byte, error)
+	}
+
 	// Executer defines interfaces for container operations. It must be
 	// implemented by container executors.
 	Executer interface {
@@ -148,6 +153,7 @@ type (
 		ExecuteInspecter
 		ExecuteWaiter
 		ExecuteEncaper
+		ExecuteLogger
 	}
 
 	// ExecutorBaseArgser is an optional interface executor may implement to
@@ -180,6 +186,12 @@ type (
 		InspectParser([]byte) (Inspecter, error)
 	}
 
+	// ExecutorLogArgser defines interfaces functions that provides
+	// args for container resource log operations.
+	ExecutorLogArgser interface {
+		LogsArgs(follow bool, lines int) *args.T
+	}
+
 	// ExecutorImageArgser defines interfaces functions that provides args for
 	// image operations.
 	ExecutorImageArgser interface {
@@ -194,6 +206,7 @@ type (
 		ExecutorContainerArgser
 		ExecutorImageArgser
 		ExecutorInspectArgser
+		ExecutorLogArgser
 		ExecuteWaiter
 	}
 
@@ -1015,6 +1028,13 @@ func (t *BT) EncapCmd(ctx context.Context, args []string, env []string, stdin io
 
 func (t *BT) EncapCp(ctx context.Context, src, dst string) error {
 	return t.executer.EncapCp(ctx, src, dst)
+}
+
+func (t *BT) ContainerLogs(ctx context.Context, follow bool, lines int) (<-chan []byte, error) {
+	if t.executer == nil {
+		return nil, fmt.Errorf("container logs: undefined executer")
+	}
+	return t.executer.Logs(ctx, follow, lines)
 }
 
 func (t *BT) GetOsvcRootPath() string {

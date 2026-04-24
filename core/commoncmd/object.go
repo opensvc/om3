@@ -29,6 +29,14 @@ func NewCmdObjectConfig(kind string) *cobra.Command {
 	}
 }
 
+func NewCmdObjectContainer(kind string) *cobra.Command {
+	return &cobra.Command{
+		GroupID: GroupIDSubsystems,
+		Use:     "container",
+		Short:   "enter, stream logs",
+	}
+}
+
 func NewCmdObjectInstance(kind string) *cobra.Command {
 	cmd := &cobra.Command{
 		GroupID: GroupIDSubsystems,

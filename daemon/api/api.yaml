@@ -2867,6 +2867,44 @@ paths:
         500:
           $ref: '#/components/responses/500'
 
+  /api/node/name/{nodename}/instance/path/{namespace}/{kind}/{name}/container/log:
+    get:
+      operationId: GetInstanceContainerLog
+      tags:
+        - node / instance / svc
+        - node / instance / vol
+        - node / instance / cfg
+        - node / instance / sec
+        - node / instance / usr
+      security:
+        - basicAuth: []
+        - bearerAuth: []
+      description: |
+        Serve container logs
+      parameters:
+        - $ref: '#/components/parameters/inPathNodeName'
+        - $ref: '#/components/parameters/inPathNamespace'
+        - $ref: '#/components/parameters/inPathKind'
+        - $ref: '#/components/parameters/inPathName'
+        - $ref: '#/components/parameters/inQueryRid'
+        - $ref: '#/components/parameters/LogFollow'
+        - $ref: '#/components/parameters/LogLines'
+      responses:
+        200:
+          description: OK
+          content:
+            text/event-stream:
+              schema:
+                $ref: '#/components/schemas/LogList'
+        400:
+          $ref: '#/components/responses/400'
+        401:
+          $ref: '#/components/responses/401'
+        403:
+          $ref: '#/components/responses/403'
+        500:
+          $ref: '#/components/responses/500'
+
   /api/node/name/{nodename}/instance/path/{namespace}/{kind}/{name}/resource/file:
     get:
       operationId: GetInstanceResourceFile

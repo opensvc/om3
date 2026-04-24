@@ -1,7 +1,10 @@
 package client
 
 import (
+	"context"
 	"fmt"
+	"io"
+	"net/http"
 	"net/url"
 	"strings"
 	"time"
@@ -11,6 +14,7 @@ import (
 	"github.com/opensvc/om3/v3/core/client/tokencache"
 	"github.com/opensvc/om3/v3/core/clientcontext"
 	"github.com/opensvc/om3/v3/core/env"
+	"github.com/opensvc/om3/v3/core/naming"
 	"github.com/opensvc/om3/v3/core/nodesinfo"
 	oapi "github.com/opensvc/om3/v3/daemon/api"
 	"github.com/opensvc/om3/v3/daemon/daemonenv"
@@ -301,6 +305,78 @@ func (t *T) NewGetEvents() *api.GetEvents {
 
 func (t *T) NewGetLogs(nodename string) *api.GetLogs {
 	return api.NewGetLogs(t, nodename)
+}
+
+// GetInstanceContainerLog is a placeholder for the generated API type
+// This will be replaced by the actual generated type from the API spec
+type GetInstanceContainerLog struct {
+	client   *T
+	nodename string
+	path     naming.Path
+	rid      string
+}
+
+func (t *T) NewGetContainerLogs(path naming.Path, nodename, rid string) *GetInstanceContainerLog {
+	return &GetInstanceContainerLog{
+		client:   t,
+		nodename: nodename,
+		rid:      rid,
+		path:     path,
+	}
+}
+
+func (t *GetInstanceContainerLog) Logs(ctx context.Context, follow bool, lines int) (<-chan []byte, error) {
+	// Use the generated API client
+	params := &oapi.GetInstanceContainerLogParams{}
+	if t.rid != "" {
+		params.Rid = &t.rid
+	}
+	if follow {
+		params.Follow = &follow
+	}
+	if lines > 0 {
+		logLines := oapi.LogLines(lines)
+		params.Lines = &logLines
+	}
+
+	resp, err := t.client.GetInstanceContainerLog(ctx, t.nodename, t.path.Namespace, t.path.Kind, t.path.Name, params)
+	if err != nil {
+		return nil, fmt.Errorf("API request failed: %w", err)
+	}
+
+	// Check status code
+	if resp.StatusCode != http.StatusOK {
+		return nil, fmt.Errorf("API returned status %d", resp.StatusCode)
+	}
+
+	// Create log channel and stream response
+	logChan := make(chan []byte)
+
+	go func() {
+		defer resp.Body.Close()
+		defer close(logChan)
+
+		// Stream the response body
+		buf := make([]byte, 4096)
+		for {
+			n, err := resp.Body.Read(buf)
+			if err != nil {
+				if err == io.EOF {
+					return
+				}
+				// Log read error but don't fail the channel
+				return
+			}
+			if n > 0 {
+				// Copy data to avoid race conditions
+				data := make([]byte, n)
+				copy(data, buf[:n])
+				logChan <- data
+			}
+		}
+	}()
+
+	return logChan, nil
 }
 
 func (t *T) NewGetClusterStatus() *api.GetClusterStatus {
