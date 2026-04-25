@@ -1,0 +1,2 @@
+Set the minimum delay before next push daemon status changes to collector.
+Minimum value: 10s

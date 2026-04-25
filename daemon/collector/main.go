@@ -4,6 +4,7 @@ package collector
 import (
 	"context"
 	"errors"
+	"fmt"
 	"io"
 	"net/http"
 	"path/filepath"
@@ -44,12 +45,17 @@ type (
 
 		postTicker *time.Ticker
 
-		// postPingOrStatusAt is the timestamp of latest post daemon ping, status.
-		postPingOrStatusAt time.Time
+		// feedStatusAt is the timestamp of latest post daemon status.
+		feedStatusAt time.Time
 
-		// postPingDelay is the minimum delay to wait after postPingOrStatusAt
-		// for the next post daemon ping.
-		postPingDelay time.Duration
+		// feedPingOrStatusAt is the timestamp of latest post daemon ping, or status.
+		feedPingOrStatusAt time.Time
+
+		// pingInterval specifies the interval at which the daemon sends a ping (when no changes are detected).
+		pingInterval time.Duration
+
+		// statusDelay specifies the delay to wait before sending the daemon status when changes are detected.
+		statusDelay time.Duration
 
 		// previousUpdatedAt is the timestamp of the last successfully data sent to
 		// collector. It is used by the  collector to detect changes chain breaks.
@@ -164,6 +170,9 @@ type (
 const (
 	headerDaemonChange      = "XDaemonChange"
 	headerPreviousUpdatedAt = "XPreviousUpdatedAt"
+
+	minFeedStatusDelay  = 10 * time.Second
+	minFeedPingInterval = 60 * time.Second
 )
 
 var (
@@ -187,13 +196,11 @@ var (
 
 func New(ctx context.Context, subQS pubsub.QueueSizer, opts ...funcopt.O) *T {
 	now := time.Now()
-	postPingOrStatusMinInterval := 10 * time.Second
 	t := &T{
-		log:           plog.NewDefaultLogger().WithPrefix("daemon: collector: ").Attr("pkg", "daemon/collector"),
-		localhost:     hostname.Hostname(),
-		postPingDelay: postPingOrStatusMinInterval,
-		clusterData:   daemondata.FromContext(ctx),
-		subQS:         subQS,
+		log:         plog.NewDefaultLogger().WithPrefix("daemon: collector: ").Attr("pkg", "daemon/collector"),
+		localhost:   hostname.Hostname(),
+		clusterData: daemondata.FromContext(ctx),
+		subQS:       subQS,
 		status: daemonsubsystem.Collector{
 			Status: daemonsubsystem.Status{
 				CreatedAt: now,
@@ -203,8 +210,6 @@ func New(ctx context.Context, subQS pubsub.QueueSizer, opts ...funcopt.O) *T {
 			Url: "",
 		},
 		version: "3.0.0",
-
-		objectConfigToSendMinDelay: 2 * postPingOrStatusMinInterval,
 	}
 	if err := funcopt.Apply(t, opts...); err != nil {
 		t.log.Errorf("init: %s", err)
@@ -265,11 +270,18 @@ func (t *T) Start(ctx context.Context) error {
 
 	t.wg.Add(1)
 
-	initialNodeConfig := node.ConfigData.GetByNode(t.localhost)
-
 	go func(errC chan<- error) {
 		defer t.wg.Done()
-		if err := t.setNodeFeedClient(initialNodeConfig.Collector); err != nil {
+		initialNodeConfig := node.ConfigData.GetByNode(t.localhost)
+		if initialNodeConfig == nil {
+			errC <- fmt.Errorf("unexpected nil node config data")
+			return
+		}
+		cfg := initialNodeConfig.Collector
+
+		t.setThrottle(cfg)
+
+		if err := t.setNodeFeedClient(cfg); err != nil {
 			t.log.Infof("the collector routine is dormant: %s", err)
 		} else {
 			t.log.Infof("feeding %s", t.feedClient)
@@ -277,7 +289,7 @@ func (t *T) Start(ctx context.Context) error {
 			t.feedPinger.Start(t.ctx, FeedPingerInterval)
 			defer t.feedPinger.Stop()
 		}
-		if err := t.setupRequester(initialNodeConfig.Collector); err != nil {
+		if err := t.setupRequester(cfg); err != nil {
 			t.log.Errorf("can't setup requester: %s", err)
 		}
 		errC <- nil
@@ -498,4 +510,28 @@ func (t *T) publishOnChange(state string) {
 		t.status.UpdatedAt = time.Now()
 		t.publish()
 	}
+}
+
+// setThrottle adjusts the ping interval and status delay based on the provided configuration
+// or default values.
+func (t *T) setThrottle(cfg *collector.Config) {
+	var delay, interval time.Duration
+	if cfg == nil {
+		interval = minFeedPingInterval
+		delay = minFeedStatusDelay
+	} else {
+		interval = cfg.PingInterval
+		delay = cfg.StatusDelay
+	}
+	delay = max(delay, minFeedStatusDelay)
+	interval = max(interval, minFeedPingInterval)
+	if t.pingInterval != interval {
+		t.log.Infof("feeder ping interval: %s", interval)
+		t.pingInterval = interval
+	}
+	if t.statusDelay != delay {
+		t.log.Infof("feeder status delay: %s", delay)
+		t.statusDelay = delay
+	}
+	t.objectConfigToSendMinDelay = 2 * min(t.pingInterval, t.statusDelay)
 }

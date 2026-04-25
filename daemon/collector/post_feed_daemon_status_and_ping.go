@@ -61,10 +61,7 @@ func (t *T) sendCollectorDataLegacy() error {
 	if t.hasDaemonStatusChange() {
 		return t.postStatus()
 	} else {
-		if time.Now().After(t.postPingOrStatusAt.Add(t.postPingDelay)) {
-			return t.postPing()
-		}
-		return nil
+		return t.postPing()
 	}
 }
 
@@ -99,7 +96,12 @@ func (t *T) postPing() error {
 		path   = oc3path.FeedDaemonPing
 
 		ioReader io.Reader
+		now      = time.Now()
 	)
+	if now.Sub(t.feedPingOrStatusAt) < t.pingInterval {
+		t.log.Tracef("postPing throttled")
+		return nil
+	}
 
 	body := *t.postPingBody()
 	if b, err := json.Marshal(body); err != nil {
@@ -108,7 +110,6 @@ func (t *T) postPing() error {
 		ioReader = bytes.NewReader(b)
 	}
 	t.log.Tracef("postFeedDaemonPing: %v", body)
-	now := time.Now()
 
 	ctx, cancel := context.WithTimeout(t.ctx, defaultPostMaxDuration)
 	defer cancel()
@@ -123,7 +124,7 @@ func (t *T) postPing() error {
 	if err != nil {
 		return err
 	}
-	t.postPingOrStatusAt = time.Now()
+	t.feedPingOrStatusAt = time.Now()
 	defer func() { _ = resp.Body.Close() }()
 
 	switch resp.StatusCode {
@@ -230,6 +231,12 @@ func (t *T) postStatus() error {
 		t.dropChanges()
 		return nil
 	}
+	now := time.Now()
+	if !t.feedStatusAt.IsZero() && now.Sub(t.feedStatusAt) < t.statusDelay {
+		t.log.Tracef("postStatus throttled")
+		return nil
+	}
+
 	var (
 		req      *http.Request
 		resp     *http.Response
@@ -239,7 +246,6 @@ func (t *T) postStatus() error {
 
 		path = oc3path.FeedDaemonStatus
 	)
-	now := time.Now()
 	body := postFeedDaemonStatus{
 		PreviousUpdatedAt: t.previousUpdatedAt,
 		UpdatedAt:         now,
@@ -271,7 +277,8 @@ func (t *T) postStatus() error {
 	if err != nil {
 		return fmt.Errorf("%s %s: %w", method, path, err)
 	}
-	t.postPingOrStatusAt = time.Now()
+	t.feedStatusAt = time.Now()
+	t.feedPingOrStatusAt = t.feedStatusAt
 	defer func() { _ = resp.Body.Close() }()
 
 	switch resp.StatusCode {
@@ -363,7 +370,7 @@ func (t *T) objectConfigToSendFromBody(r io.Reader) (added []naming.Path, err er
 			if sent, ok := t.objectConfigSent[p]; ok {
 				if time.Now().Before(sent.SentAt.Add(t.objectConfigToSendMinDelay)) {
 					toAdd = false
-					t.log.Tracef("delay need instance config send %s", p)
+					t.log.Tracef("throttled instance config send %s", p)
 				}
 			}
 			if toAdd {

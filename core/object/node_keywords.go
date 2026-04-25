@@ -380,6 +380,24 @@ var (
 		Text:        keywords.NewText(fs, "text/kw/node/node.collector_feeder"),
 		DefaultText: keywords.NewText(fs, "text/kw/node/node.collector_feeder.default"),
 	}
+	kwNodeCollectorPingInterval = keywords.Keyword{
+		Example:   "120s",
+		Option:    "collector_ping_interval",
+		Aliases:   []string{"db_min_ping_interval"},
+		Section:   "node",
+		Converter: "duration",
+		Default:   "60s",
+		Text:      keywords.NewText(fs, "text/kw/node/node.collector_ping_interval"),
+	}
+	kwNodeCollectorStatusDelay = keywords.Keyword{
+		Example:   "30s",
+		Option:    "collector_status_delay",
+		Aliases:   []string{"db_min_update_interval"},
+		Section:   "node",
+		Converter: "duration",
+		Default:   "10s",
+		Text:      keywords.NewText(fs, "text/kw/node/node.collector_status_delay"),
+	}
 	kwNodeCollectorTimeout = keywords.Keyword{
 		Option:    "collector_timeout",
 		Section:   "node",
@@ -1724,6 +1742,8 @@ var (
 		&kwNodeCollector,
 		&kwNodeCollectorServer,
 		&kwNodeCollectorFeeder,
+		&kwNodeCollectorPingInterval,
+		&kwNodeCollectorStatusDelay,
 		&kwNodeCollectorTimeout,
 		&kwNodeBranch,
 		&kwNodeRepo,

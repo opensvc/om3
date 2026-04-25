@@ -123,11 +123,13 @@ func (t *T) onNodeConfigUpdated(c *msgbus.NodeConfigUpdated) {
 		t.log.Infof("disable collector clients")
 		collector.Alive.Store(false)
 	}
-	err := t.setNodeFeedClient(c.Value.Collector)
+	cfg := c.Value.Collector
+	t.setThrottle(cfg)
+	err := t.setNodeFeedClient(cfg)
 	if t.feedPinger != nil {
 		t.feedPinger.Stop()
 	}
-	if err := t.setupRequester(c.Value.Collector); err != nil {
+	if err := t.setupRequester(cfg); err != nil {
 		if !errors.Is(err, collector.ErrConfig) {
 			t.log.Errorf("can't setup requester: %s", err)
 		}

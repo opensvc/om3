@@ -7,10 +7,12 @@ import (
 
 type (
 	Config struct {
-		FeederUrl string        `json:"feeder_url"`
-		ServerUrl string        `json:"server_url"`
-		Timeout   time.Duration `json:"timeout"`
-		Insecure  bool          `json:"insecure"`
+		FeederUrl    string        `json:"feeder_url"`
+		ServerUrl    string        `json:"server_url"`
+		Timeout      time.Duration `json:"timeout"`
+		Insecure     bool          `json:"insecure"`
+		PingInterval time.Duration `json:"ping_interval"`
+		StatusDelay  time.Duration `json:"status_delay"`
 
 		// Hidden fields
 		Password string `json:"-"`

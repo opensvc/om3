@@ -25,6 +25,8 @@ type (
 		timeout      *time.Duration
 		insecure     bool
 		uuid         string
+		pingInterval *time.Duration
+		statusDelay  *time.Duration
 	}
 
 	CollectorProblem struct {
@@ -60,6 +62,8 @@ func (t *Node) CollectorRawConfig() *CollectorConfigRaw {
 		serverUrl:    cfg.GetString(key.Parse("node.collector_server")),
 		timeout:      cfg.GetDuration(key.Parse("node.collector_timeout")),
 		insecure:     cfg.GetBool(key.Parse("node.dbinsecure")),
+		pingInterval: cfg.GetDuration(key.Parse(kwNodeCollectorPingInterval.String())),
+		statusDelay:  cfg.GetDuration(key.Parse(kwNodeCollectorStatusDelay.String())),
 
 		// uuid is loaded from node.conf
 		uuid: t.Config().GetString(key.Parse("node.uuid")),
@@ -91,16 +95,24 @@ func (t *CollectorConfigRaw) ServerUrl() string {
 }
 
 func (t *CollectorConfigRaw) AsConfig() *collector.Config {
-	var timeout time.Duration
+	var timeout, pingInterval, statusDelay time.Duration
 	if t.timeout != nil {
 		timeout = *t.timeout
 	}
+	if t.pingInterval != nil {
+		pingInterval = *t.pingInterval
+	}
+	if t.statusDelay != nil {
+		statusDelay = *t.statusDelay
+	}
 	return &collector.Config{
-		FeederUrl: t.FeederUrl(),
-		ServerUrl: t.ServerUrl(),
-		Timeout:   timeout,
-		Insecure:  t.insecure,
-		Password:  t.uuid,
+		FeederUrl:    t.FeederUrl(),
+		ServerUrl:    t.ServerUrl(),
+		Timeout:      timeout,
+		Insecure:     t.insecure,
+		Password:     t.uuid,
+		PingInterval: pingInterval,
+		StatusDelay:  statusDelay,
 	}
 }
 
