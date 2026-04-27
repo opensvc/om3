@@ -175,6 +175,13 @@ func (t *Keyword) Name() string {
 	return t.Attr
 }
 
+func (t *Keyword) String() string {
+	if t.Section == "" {
+		return "DEFAULT." + t.Option
+	}
+	return t.Section + "." + t.Option
+}
+
 func (t Store) Len() int {
 	return len(t)
 }
