@@ -19,6 +19,7 @@ import (
 	"github.com/opensvc/om3/v3/core/node"
 	"github.com/opensvc/om3/v3/core/object"
 	"github.com/opensvc/om3/v3/core/rawconfig"
+	"github.com/opensvc/om3/v3/daemon/daemonctx"
 	"github.com/opensvc/om3/v3/daemon/daemondata"
 	"github.com/opensvc/om3/v3/daemon/daemonsubsystem"
 	"github.com/opensvc/om3/v3/daemon/msgbus"
@@ -534,4 +535,16 @@ func (t *T) setThrottle(cfg *collector.Config) {
 		t.statusDelay = delay
 	}
 	t.objectConfigToSendMinDelay = 2 * min(t.pingInterval, t.statusDelay)
+}
+
+func (t *T) attachActiveAuditIfAny() {
+	reg := daemonctx.AuditRegistry(t.ctx)
+	if reg == nil {
+		return
+	}
+	sess, ok := reg.Snapshot()
+	if !ok {
+		return
+	}
+	t.log.HandleAuditStart(sess.Q, sess.Subsystems, "collector")
 }
