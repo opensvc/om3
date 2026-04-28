@@ -45,7 +45,7 @@ func (t *CmdDaemonPs) Run() error {
 		mu    sync.Mutex
 		items api.ProcessItems
 	)
-	cols := "PID:pid,NODE:node,ELAPSED:elapsed,SUB:sub,GLOBAL_EXCEPT:global_except,DESC:desc"
+	cols := "PID:pid,SID:sid,NODE:node,ELAPSED:elapsed,SUB:sub,GLOBAL_EXCEPT:global_except,DESC:desc"
 
 	fn := func(ctx context.Context, c *client.T, nodename string) (response *http.Response, err error) {
 
