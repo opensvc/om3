@@ -499,16 +499,18 @@ func (t *DataRecv) install(ctx context.Context) (bool, error) {
 
 	changed := false
 	head := t.to.Head()
+	if head == "" {
+		// empty head is not installable
+		// example: volume on pool loop
+		t.to.Log().Tracef("install skipped (empty head)")
+		return false, nil
+	}
 	t.to.Log().Tracef("install: head: %s", head)
 
 	path := t.to.GetObject().(object.Core).Path()
 	dirs, files := t.getInstallMetadata(head)
 	t.to.Log().Tracef("install: dirs: %s", dirs)
 	t.to.Log().Tracef("install: files: %s", files)
-
-	if head == "" {
-		return false, fmt.Errorf("refuse to install in empty (ie /) head")
-	}
 
 	// rootDirDone tracks if `install` contains a / directory definition.
 	// If not, apply the default user, group and mode to the / directory, with required=true.
