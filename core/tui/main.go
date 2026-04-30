@@ -2440,9 +2440,21 @@ func (t *App) navFromTo(from, to viewId) {
 }
 
 func (t *App) createTable(creator CreateTableOptions) {
+	if t.focused {
+		return
+	}
 	v := tview.NewTable()
 	v.SetSelectable(true, true)
 	v.SetTitle(creator.title)
+
+	update := func() {
+		t.flex.Clear()
+		t.flex.AddItem(t.head, 1, 0, false)
+		t.flex.AddItem(v, 0, 1, true)
+		t.app.SetFocus(v)
+		t.updateHead()
+	}
+
 	for i, title := range creator.titles {
 		v.SetCell(0, i, tview.NewTableCell(title).SetTextColor(colorTitle).SetSelectable(false))
 	}
@@ -2471,12 +2483,36 @@ func (t *App) createTable(creator CreateTableOptions) {
 
 	v.Select(t.position.row, t.position.col)
 
-	if focusTable, ok := t.app.GetFocus().(*tview.Table); !t.focused && (!ok || focusTable.GetTitle() != v.GetTitle()) {
-		t.flex.Clear()
-		t.flex.AddItem(t.head, 1, 0, false)
-		t.flex.AddItem(v, 0, 1, true)
-		t.app.SetFocus(v)
-		t.updateHead()
+	tablesDiffer := func(a, b *tview.Table) bool {
+		if a.GetColumnCount() != b.GetColumnCount() || a.GetRowCount() != b.GetRowCount() {
+			return true
+		}
+
+		rows := a.GetRowCount()
+		cols := b.GetColumnCount()
+
+		for r := 1; r < rows; r++ {
+			for c := 0; c < cols; c++ {
+				ac := a.GetCell(r, c)
+				bc := b.GetCell(r, c)
+				if ac == nil && bc == nil {
+					continue
+				}
+				if ac == nil || bc == nil {
+					return true
+				}
+				if ac.Text != bc.Text {
+					return true
+				}
+			}
+		}
+
+		return false
+	}
+
+	focusTable, ok := t.app.GetFocus().(*tview.Table)
+	if !ok || focusTable.GetTitle() != v.GetTitle() || tablesDiffer(focusTable, v) {
+		update()
 	}
 }
 
