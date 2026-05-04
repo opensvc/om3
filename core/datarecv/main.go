@@ -507,7 +507,7 @@ func (t *DataRecv) install(ctx context.Context) (bool, error) {
 	t.to.Log().Tracef("install: files: %s", files)
 
 	if head == "" {
-		if len(dirs)+len(files) > 0 {
+		if len(dirs)+len(files) == 0 {
 			// ignore empty head when nothing to install
 			// example: volume on pool loop
 			t.to.Log().Tracef("install skipped (empty head)")
