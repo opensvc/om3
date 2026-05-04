@@ -21,6 +21,8 @@ func (a *DaemonAPI) GetInstanceContainerLog(ctx echo.Context, nodename string, n
 		return err
 	}
 
+	nodename = a.parseNodename(nodename)
+
 	if nodename == a.localhost || nodename == "localhost" {
 		return a.getLocalNodeInstanceContainerLog(ctx, namespace, kind, name, params)
 	} else if clusternode.Has(nodename) {
