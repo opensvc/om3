@@ -2873,9 +2873,6 @@ paths:
       tags:
         - node / instance / svc
         - node / instance / vol
-        - node / instance / cfg
-        - node / instance / sec
-        - node / instance / usr
       security:
         - basicAuth: []
         - bearerAuth: []
