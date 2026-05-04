@@ -48,7 +48,7 @@ func (a *DaemonAPI) getLocalNodeInstanceContainerLog(ctx echo.Context, namespace
 
 	path, err := naming.NewPath(namespace, kind, name)
 	if err != nil {
-		JSONProblemf(ctx, http.StatusBadRequest, "Command setup failed", "%s", err)
+		return JSONProblemf(ctx, http.StatusBadRequest, "Command setup failed", "%s", err)
 	}
 
 	// Execute the om command to get container logs
