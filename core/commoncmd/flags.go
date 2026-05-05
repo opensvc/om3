@@ -45,6 +45,7 @@ func FlagsLogs(flags *pflag.FlagSet, p *OptsLogs) {
 	flags.BoolVarP(&p.Follow, "follow", "f", false, "follow the log feed")
 	flags.IntVarP(&p.Lines, "lines", "n", 50, "report the last n log entries")
 	flags.StringArrayVar(&p.Filter, "filter", []string{}, "report only log entries matching labels (path=svc1)")
+	p.Grep = flags.String("grep", "", "report only log entries matching message patterns")
 }
 
 func FlagsLock(flags *pflag.FlagSet, p *OptsLock) {

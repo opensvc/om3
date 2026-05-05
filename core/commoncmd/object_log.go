@@ -68,6 +68,7 @@ func (t *CmdObjectLogs) stream(c *client.T, node string, paths naming.Paths) {
 	l := paths.StrSlice()
 	reader, err := c.NewGetLogs(node).
 		SetFilters(&t.Filter).
+		SetGrep(t.Grep).
 		SetLines(&t.Lines).
 		SetFollow(&t.Follow).
 		SetPaths(&l).

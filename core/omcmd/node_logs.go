@@ -45,6 +45,7 @@ func (t *CmdNodeLogs) local() error {
 		Follow:  t.Follow,
 		Lines:   t.Lines,
 		Matches: matches,
+		Grep:    t.Grep,
 	}
 	if err := stream.Start(streamConfig); err != nil {
 		return err
@@ -76,6 +77,7 @@ func (t *CmdNodeLogs) asCommonCmd() *commoncmd.CmdNodeLogs {
 			Follow: t.Follow,
 			Lines:  t.Lines,
 			Filter: t.Filter,
+			Grep:   t.Grep,
 		},
 		NodeSelector: t.NodeSelector,
 	}

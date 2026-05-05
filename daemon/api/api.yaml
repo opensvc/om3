@@ -2853,6 +2853,7 @@ paths:
         - $ref: '#/components/parameters/inPathKind'
         - $ref: '#/components/parameters/inPathName'
         - $ref: '#/components/parameters/LogFilter'
+        - $ref: '#/components/parameters/LogGrep'
         - $ref: '#/components/parameters/LogFollow'
         - $ref: '#/components/parameters/LogLines'
       responses:
@@ -3074,6 +3075,7 @@ paths:
       parameters:
         - $ref: '#/components/parameters/inPathNodeName'
         - $ref: '#/components/parameters/LogFilter'
+        - $ref: '#/components/parameters/LogGrep'
         - $ref: '#/components/parameters/LogFollow'
         - $ref: '#/components/parameters/LogLines'
         - $ref: '#/components/parameters/Paths'
@@ -7974,6 +7976,15 @@ components:
           type: string
           description: "a filter expression: label=value[,label=value]..."
           example: sid=9a8e04e6-bc12-43e6-83d1-fe10d5363ea7
+
+    LogGrep:
+      name: grep
+      in: query
+      description: list of log message filtering patterns
+      schema:
+        type: string
+        description: "a grep expression."
+        example: "do .*"
 
     LogFollow:
       name: follow

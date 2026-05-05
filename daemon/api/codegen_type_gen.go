@@ -2354,6 +2354,9 @@ type LogFilter = []string
 // LogFollow defines model for LogFollow.
 type LogFollow = bool
 
+// LogGrep a grep expression.
+type LogGrep = string
+
 // LogLines defines model for LogLines.
 type LogLines = int
 
@@ -3058,6 +3061,9 @@ type GetInstanceLogsParams struct {
 	// Filter list of log filter
 	Filter *LogFilter `form:"filter,omitempty" json:"filter,omitempty"`
 
+	// Grep list of log message filtering patterns
+	Grep *LogGrep `form:"grep,omitempty" json:"grep,omitempty"`
+
 	// Follow follow the logs
 	Follow *LogFollow `form:"follow,omitempty" json:"follow,omitempty"`
 
@@ -3078,6 +3084,9 @@ type GetInstanceResourceFileParams struct {
 type GetNodeLogsParams struct {
 	// Filter list of log filter
 	Filter *LogFilter `form:"filter,omitempty" json:"filter,omitempty"`
+
+	// Grep list of log message filtering patterns
+	Grep *LogGrep `form:"grep,omitempty" json:"grep,omitempty"`
 
 	// Follow follow the logs
 	Follow *LogFollow `form:"follow,omitempty" json:"follow,omitempty"`

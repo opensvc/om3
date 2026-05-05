@@ -16,6 +16,7 @@ type (
 		Follow bool
 		Lines  int
 		Filter []string
+		Grep   *string
 	}
 
 	// OptsResourceSelector contains options needed to initialize a
