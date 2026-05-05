@@ -50,7 +50,11 @@ func (event *Event) RenderConsole() {
 	w.FormatFieldName = func(i any) string { return "" }
 	w.FormatFieldValue = func(i any) string { return "" }
 	w.FormatMessage = func(i any) string {
-		return rawconfig.Colorize.Bold(i)
+		node := ""
+		if nodeVal, ok := event.M["NODE"].(string); ok {
+			node = rawconfig.Colorize.Bold(nodeVal + ": ")
+		}
+		return node + rawconfig.Colorize.Bold(i)
 	}
 	switch s := event.M["JSON"].(type) {
 	case string:
