@@ -99,13 +99,12 @@ func (t *CmdNodeAbort) doRemote() error {
 			}
 			ctx, cancel := context.WithCancel(context.Background())
 			defer cancel()
-			statusGetter := cli.NewGetClusterStatus().SetSelector(t.ObjectSelector)
-			evReader, err := cli.NewGetEvents().SetSelector(t.ObjectSelector).GetReader(ctx)
+			evReader, err := cli.NewGetEvents().SetSelector(t.ObjectSelector).SetLimit(0).SetWait(true).GetReader(ctx)
 			if err != nil {
 				_, _ = fmt.Fprintln(os.Stderr, err)
 				return
 			}
-			err = m.DoWatch(statusGetter, evReader, os.Stdout)
+			err = m.DoWatch(evReader, os.Stdout)
 			if err != nil {
 				_, _ = fmt.Fprintln(os.Stderr, err)
 				return
