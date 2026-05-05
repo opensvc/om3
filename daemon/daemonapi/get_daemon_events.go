@@ -403,7 +403,7 @@ func (a *DaemonAPI) getLocalDaemonEvents(ctx echo.Context, params api.GetDaemonE
 					if !isAllowed(msg) {
 						continue
 					}
-					if !isSelected(msg) {
+					if hasSelector && !isSelected(msg) {
 						continue
 					}
 				} else {
