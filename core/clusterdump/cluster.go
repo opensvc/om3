@@ -35,6 +35,20 @@ type (
 	}
 )
 
+// NewData initializes a new Data instance with an empty cluster and
+// daemon specific to the provided nodename.
+func NewData(fromNode string) *Data {
+	return &Data{
+		Cluster: Cluster{
+			Object: make(map[string]object.Status),
+			Node:   make(map[string]node.Node),
+		},
+		Daemon: daemonsubsystem.DaemonLocal{
+			Nodename: fromNode,
+		},
+	}
+}
+
 func (s *Data) DeepCopy() *Data {
 	b, err := json.Marshal(s)
 	if err != nil {
