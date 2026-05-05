@@ -99,7 +99,7 @@ func (t *CmdNodeAbort) doRemote() error {
 			}
 			ctx, cancel := context.WithCancel(context.Background())
 			defer cancel()
-			evReader, err := cli.NewGetEvents().SetSelector(t.ObjectSelector).SetLimit(0).SetWait(true).GetReader(ctx)
+			evReader, err := cli.NewGetEvents().SetSelector(t.ObjectSelector).SetLimit(0).WithCache().GetReader(ctx)
 			if err != nil {
 				_, _ = fmt.Fprintln(os.Stderr, err)
 				return

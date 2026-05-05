@@ -17,16 +17,16 @@ import (
 
 // GetEvents describes the events request options.
 type GetEvents struct {
-	client    api.ClientInterface
-	nodename  string
-	namespace *string
-	selector  *string
-	relatives *bool
-	Limit     *uint64
-	Filters   []string
-	Wait      bool
-	Duration  *time.Duration
-	ServedBy  string
+	client       api.ClientInterface
+	nodename     string
+	namespace    *string
+	selector     *string
+	relatives    *bool
+	Limit        *uint64
+	Filters      []string
+	CacheEnabled bool
+	Duration     *time.Duration
+	ServedBy     string
 }
 
 func (t *GetEvents) SetDuration(duration time.Duration) *GetEvents {
@@ -49,8 +49,13 @@ func (t *GetEvents) SetFilters(filters []string) *GetEvents {
 	return t
 }
 
-func (t *GetEvents) SetWait(wait bool) *GetEvents {
-	t.Wait = wait
+func (t *GetEvents) SetWithCache(b bool) *GetEvents {
+	t.CacheEnabled = b
+	return t
+}
+
+func (t *GetEvents) WithCache() *GetEvents {
+	t.CacheEnabled = true
 	return t
 }
 
@@ -205,7 +210,7 @@ func (t *GetEvents) eventsBase() (*http.Response, error) {
 	params := api.GetDaemonEventsParams{
 		Filter:   &t.Filters,
 		Selector: t.selector,
-		Cache:    &t.Wait,
+		Cache:    &t.CacheEnabled,
 	}
 	if t.Limit != nil {
 		i := int64(*t.Limit)

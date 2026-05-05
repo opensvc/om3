@@ -70,7 +70,7 @@ func (t *CmdObjectMonitor) Run(selector, kind string) error {
 		retries := 0
 		ctx, cancel := context.WithCancel(context.Background())
 		defer cancel()
-		evReader, err := cli.NewGetEvents().SetSelector(mergedSelector).SetLimit(0).SetWait(true).GetReader(ctx)
+		evReader, err := cli.NewGetEvents().SetSelector(mergedSelector).SetLimit(0).WithCache().GetReader(ctx)
 		if err != nil {
 			return err
 		}
@@ -91,7 +91,7 @@ func (t *CmdObjectMonitor) Run(selector, kind string) error {
 					_, _ = fmt.Fprintln(os.Stderr, "press ctrl+c to interrupt retries")
 				}
 				time.Sleep(time.Second)
-				evReader, err = cli.NewGetEvents().SetSelector(mergedSelector).SetLimit(0).SetWait(true).GetReader(ctx)
+				evReader, err = cli.NewGetEvents().SetSelector(mergedSelector).SetLimit(0).WithCache().GetReader(ctx)
 				if err == nil {
 					retries = 0
 					break

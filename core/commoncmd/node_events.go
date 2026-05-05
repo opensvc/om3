@@ -331,7 +331,7 @@ func (t *CmdNodeEvents) getEvReader(ctx context.Context, nodename string) (event
 	return t.cli.NewGetEvents().
 		SetRelatives(false).
 		SetLimit(t.Limit).
-		SetWait(t.Wait).
+		SetWithCache(t.Wait).
 		SetFilters(t.Filters).
 		SetDuration(t.Duration).
 		SetNodename(nodename).

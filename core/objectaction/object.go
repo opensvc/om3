@@ -1106,7 +1106,7 @@ func (t T) waitExpectation(ctx context.Context, c *client.T, idC <-chan uuid.UUI
 	case instance.MonitorGlobalExpectPlacedAt:
 		// switch --to same-node will not reproduce InstanceStatusUpdated events
 		// we need --wait to replay events from cache
-		getEvents = getEvents.SetWait(true)
+		getEvents = getEvents.WithCache()
 
 		filters = append(filters,
 			"InstanceStatusUpdated,path="+p.String(),

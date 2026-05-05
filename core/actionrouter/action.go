@@ -168,7 +168,7 @@ func Do(t Actioner) error {
 		}
 		ctx, cancel := context.WithCancel(context.Background())
 		defer cancel()
-		evReader, err := cli.NewGetEvents().SetSelector(o.ObjectSelector).SetLimit(0).SetWait(true).GetReader(ctx)
+		evReader, err := cli.NewGetEvents().SetSelector(o.ObjectSelector).SetLimit(0).WithCache().GetReader(ctx)
 		errs = errors.Join(errs, err)
 		err = m.DoWatch(evReader, os.Stdout)
 		errs = errors.Join(errs, err)
