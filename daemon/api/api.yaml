@@ -1475,6 +1475,7 @@ paths:
         - $ref: '#/components/parameters/Duration'
         - $ref: '#/components/parameters/Limit'
         - $ref: '#/components/parameters/EventFilter'
+        - $ref: '#/components/parameters/EventReplay'
         - $ref: '#/components/parameters/EventCache'
         - $ref: '#/components/parameters/SelectorOptional'
       responses:
@@ -7937,10 +7938,19 @@ components:
         type: string
         example: 5s
 
+    EventReplay:
+      name: replay
+      in: query
+      description: start the event feed replaying the latest past events from the cache that match the specified kind and labels.
+      schema:
+        type: boolean
+        default: false
+
     EventCache:
       name: cache
       in: query
-      description: start the event feed using the latest past events from the cache that match the specified kind and labels.
+      deprecated: true
+      description: deprecated alias of `replay`. Will be removed in a future version.
       schema:
         type: boolean
         default: false

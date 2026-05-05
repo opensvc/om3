@@ -379,7 +379,16 @@ func (a *DaemonAPI) getLocalDaemonEvents(ctx echo.Context, params api.GetDaemonE
 		return nil
 	}
 
-	if params.Cache != nil && *params.Cache {
+	// defines replay from the primary replay option, fallback to the deprecated
+	// cache value if any.
+	var replay bool
+	if params.Replay != nil && *params.Replay {
+		replay = true
+	} else if params.Cache != nil && *params.Cache {
+		replay = true
+	}
+
+	if replay {
 		data := msgbus.NewClusterData(a.Daemondata.ClusterData())
 		if len(filters) == 0 {
 			// Filters are not specified => all events are filtered,

@@ -210,7 +210,7 @@ func (t *GetEvents) eventsBase() (*http.Response, error) {
 	params := api.GetDaemonEventsParams{
 		Filter:   &t.Filters,
 		Selector: t.selector,
-		Cache:    &t.Replay,
+		Replay:   &t.Replay,
 	}
 	if t.Limit != nil {
 		i := int64(*t.Limit)
