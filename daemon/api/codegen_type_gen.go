@@ -2130,9 +2130,10 @@ type ResourceLogEntry struct {
 
 // ResourceMeta defines model for ResourceMeta.
 type ResourceMeta struct {
-	Node   string `json:"node"`
-	Object string `json:"object"`
-	RID    string `json:"rid"`
+	EncapNode string `json:"encap_node"`
+	Node      string `json:"node"`
+	Object    string `json:"object"`
+	RID       string `json:"rid"`
 }
 
 // ResourceMonitor defines model for ResourceMonitor.

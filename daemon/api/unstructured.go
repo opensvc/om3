@@ -407,9 +407,10 @@ func (t Resource) Unstructured() map[string]any {
 
 func (t ResourceMeta) Unstructured() map[string]any {
 	return map[string]any{
-		"node":   t.Node,
-		"object": t.Object,
-		"rid":    t.RID,
+		"encap_node": t.EncapNode,
+		"node":       t.Node,
+		"object":     t.Object,
+		"rid":        t.RID,
 	}
 }
 

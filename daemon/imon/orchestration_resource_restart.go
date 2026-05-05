@@ -286,8 +286,8 @@ func (t *Manager) orchestrateResourceRestart() {
 		}
 	}
 
-	for rid, encapStatus := range t.instStatus[t.localhost].Encap {
-		if rStatus, ok := t.instStatus[t.localhost].Resources[rid]; ok && !rStatus.Status.Is(status.Up, status.StandbyUp) {
+	for encapRID, encapStatus := range t.instStatus[t.localhost].Encap {
+		if rStatus, ok := t.instStatus[t.localhost].Resources[encapRID]; ok && !rStatus.Status.Is(status.Up, status.StandbyUp) {
 			continue
 		}
 		for rid, rstat := range encapStatus.Resources {
@@ -295,6 +295,7 @@ func (t *Manager) orchestrateResourceRestart() {
 			if rcfg == nil {
 				continue
 			}
+			// TODO: each encap rid should have a private rmon
 			rmon := t.state.Resources.Get(rid)
 			needRestart, needMonitorAction, err := t.orchestrateResourcePlan(rid, rcfg, rmon, rstat, started)
 			if err != nil {

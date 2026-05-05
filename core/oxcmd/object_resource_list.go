@@ -46,7 +46,7 @@ func (t *CmdObjectResourceList) Run(kind string) error {
 	switch resp.StatusCode() {
 	case 200:
 		output.Renderer{
-			DefaultOutput: "tab=OBJECT:meta.object,NODE:meta.node,RID:meta.rid,TYPE:data.status.type,STATUS:data.status.status,IS_MONITORED:data.config.is_monitored,IS_DISABLED:data.config.is_disabled,IS_STANDBY:data.config.is_standby,RESTART:data.config.restart,RESTART_REMAINING:data.monitor.restart.remaining",
+			DefaultOutput: "tab=OBJECT:meta.object,NODE:meta.node,RID:meta.rid,ENCAP_NODE:meta.encap_node,TYPE:data.status.type,STATUS:data.status.status,IS_MONITORED:data.config.is_monitored,IS_DISABLED:data.config.is_disabled,IS_STANDBY:data.config.is_standby,RESTART:data.config.restart,RESTART_REMAINING:data.monitor.restart.remaining",
 			Output:        t.Output,
 			Color:         t.Color,
 			Data:          resp.JSON200,
