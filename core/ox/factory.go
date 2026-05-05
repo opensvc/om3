@@ -1189,12 +1189,13 @@ func newCmdNodeEvents() *cobra.Command {
 	flags := cmd.Flags()
 	commoncmd.FlagColor(flags, &options.Color)
 	commoncmd.FlagDuration(flags, &options.Duration)
+	commoncmd.FlagEventReplay(flags, &options.Replay)
 	commoncmd.FlagEventFilters(flags, &options.Filters)
 	commoncmd.FlagEventOutput(flags, &options.Output)
 	commoncmd.FlagEventTemplate(flags, &options.Template)
+	commoncmd.FlagEventWait(flags, &options.Wait)
 	commoncmd.FlagNodeSelector(flags, &options.NodeSelector)
 	commoncmd.FlagObjectSelector(flags, &options.ObjectSelector)
-	commoncmd.FlagWait(flags, &options.Wait)
 	commoncmd.FlagEventLimit(flags, &options.Limit)
 	return cmd
 }

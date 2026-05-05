@@ -581,7 +581,7 @@ func (t *App) runEventReader() {
 		ctx, cancel := context.WithCancel(context.Background())
 		defer cancel()
 
-		evReader, err := t.streamClient.NewGetEvents().SetSelector(t.Selector).SetLimit(0).WithCache().GetReader(ctx)
+		evReader, err := t.streamClient.NewGetEvents().SetSelector(t.Selector).SetLimit(0).WithReplay().GetReader(ctx)
 		if err != nil {
 			//t.errorf("new reader: %s", err)
 			if t.exitFlag.Load() {
