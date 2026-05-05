@@ -26,6 +26,7 @@ type GetEvents struct {
 	Filters   []string
 	Wait      bool
 	Duration  *time.Duration
+	ServedBy  string
 }
 
 func (t *GetEvents) SetDuration(duration time.Duration) *GetEvents {
@@ -165,8 +166,10 @@ func (t *GetEvents) GetReader(ctx context.Context) (event.ReadCloser, error) {
 	if err != nil {
 		return nil, err
 	}
+	servedBy := resp.Header.Get(api.HeaderServedBy)
 	readCloser := sseevent.NewReadCloser(resp.Body)
 	readCloser.SetContext(ctx)
+	readCloser.SetServedBy(servedBy)
 	return readCloser, nil
 }
 
