@@ -399,6 +399,17 @@ func (a *DaemonAPI) getLocalDaemonEvents(ctx echo.Context, params api.GetDaemonE
 				return fmt.Errorf("get cached data: %w", err)
 			}
 			for _, anyE := range anyL {
+				if msg, ok := anyE.(pubsub.Messager); ok {
+					if !isAllowed(msg) {
+						continue
+					}
+					if !isSelected(msg) {
+						continue
+					}
+				} else {
+					// unexpected event type, skip it
+					continue
+				}
 				if err := doEvent(anyE); err != nil {
 					log.Tracef("do event failed on %v: %s", anyE, err)
 					return nil
