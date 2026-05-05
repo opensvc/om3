@@ -2,7 +2,7 @@ openapi: 3.0.0
 
 info:
   title: opensvc agent api
-  version: 4.1.4
+  version: 4.1.5
 
 paths:
   /api/array:
@@ -1480,6 +1480,10 @@ paths:
       responses:
         200:
           description: OK
+          headers:
+            OM-Served-By:
+              type: string
+              description: The node name of the daemon that served this response.
           content:
             text/event-stream:
               schema:

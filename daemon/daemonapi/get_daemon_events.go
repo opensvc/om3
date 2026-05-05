@@ -348,6 +348,7 @@ func (a *DaemonAPI) getLocalDaemonEvents(ctx echo.Context, params api.GetDaemonE
 			pathSelected = selected
 		}
 	}
+	w.Header().Add(api.HeaderServedBy, a.localhost)
 	w.WriteHeader(http.StatusOK)
 
 	// don't wait first event to flush response
