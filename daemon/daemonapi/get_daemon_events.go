@@ -141,7 +141,8 @@ func (a *DaemonAPI) getPeerDaemonEvents(ctx echo.Context, nodename string, param
 	}
 }
 
-// getLocalDaemonEvents handles streaming local daemon events based on provided filters, selectors, and parameters.
+// getLocalDaemonEvents handles requests to retrieve daemon events based on specified filters and parameters.
+// It supports real-time streaming through Server-Sent Events (SSE) and applies filters such as kind, labels, selectors, and data filters.
 func (a *DaemonAPI) getLocalDaemonEvents(ctx echo.Context, params api.GetDaemonEventsParams) error {
 	if v, err := assertRole(ctx, rbac.RoleGuest, rbac.RoleOperator, rbac.RoleAdmin, rbac.RoleRoot, rbac.RoleJoin, rbac.RoleLeave); !v {
 		return err
@@ -380,6 +381,14 @@ func (a *DaemonAPI) getLocalDaemonEvents(ctx echo.Context, params api.GetDaemonE
 
 	if params.Cache != nil && *params.Cache {
 		data := msgbus.NewClusterData(a.Daemondata.ClusterData())
+		if len(filters) == 0 {
+			// Filters are not specified => all events are filtered,
+			// So automatically use all extractable events.
+			filters = make([]Filter, 0, len(msgbus.ExtractableEvents))
+			for _, kind := range msgbus.ExtractableEvents {
+				filters = append(filters, Filter{Kind: kind})
+			}
+		}
 		for _, filter := range filters {
 			labels := pubsub.Labels{}
 			for _, lab := range filter.Labels {
