@@ -16,6 +16,7 @@ type GetLogs struct {
 	client   api.ClientInterface
 	nodename string
 	Filters  *[]string
+	Grep     *string
 	Paths    *[]string
 	Lines    *int
 	Follow   *bool
@@ -28,6 +29,11 @@ func (t *GetLogs) SetPaths(l *[]string) *GetLogs {
 
 func (t *GetLogs) SetFilters(filters *[]string) *GetLogs {
 	t.Filters = filters
+	return t
+}
+
+func (t *GetLogs) SetGrep(grep *string) *GetLogs {
+	t.Grep = grep
 	return t
 }
 
@@ -101,6 +107,7 @@ func (t *GetLogs) GetReader() (event.ReadCloser, error) {
 func (t GetLogs) eventsBase() (resp *http.Response, err error) {
 	params := api.GetNodeLogsParams{
 		Filter: t.Filters,
+		Grep:   t.Grep,
 		Follow: t.Follow,
 		Lines:  t.Lines,
 		Paths:  t.Paths,

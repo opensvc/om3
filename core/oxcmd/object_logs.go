@@ -30,6 +30,7 @@ func (t *CmdObjectLogs) asCommonCmd() *commoncmd.CmdObjectLogs {
 			Follow: t.Follow,
 			Lines:  t.Lines,
 			Filter: t.Filter,
+			Grep:   t.Grep,
 		},
 		NodeSelector: t.NodeSelector,
 	}

@@ -26,6 +26,7 @@ type (
 		Follow  bool
 		Lines   int
 		Matches []string
+		Grep    *string
 	}
 	Event struct {
 		B []byte
@@ -50,7 +51,11 @@ func (event *Event) RenderConsole() {
 	w.FormatFieldName = func(i any) string { return "" }
 	w.FormatFieldValue = func(i any) string { return "" }
 	w.FormatMessage = func(i any) string {
-		return rawconfig.Colorize.Bold(i)
+		node := ""
+		if nodeVal, ok := event.M["NODE"].(string); ok {
+			node = rawconfig.Colorize.Bold(nodeVal + ": ")
+		}
+		return node + rawconfig.Colorize.Bold(i)
 	}
 	switch s := event.M["JSON"].(type) {
 	case string:
@@ -180,6 +185,9 @@ func (stream *Stream) Start(streamConfig StreamConfig) error {
 	args = append(args, "-o", "json", "_COMM="+comm)
 	args = append(args, streamConfig.Matches...)
 	args = append(args, "-n", fmt.Sprint(streamConfig.Lines))
+	if streamConfig.Grep != nil {
+		args = append(args, "--grep", *streamConfig.Grep)
+	}
 	if streamConfig.Follow {
 		args = append(args, "-f")
 	}

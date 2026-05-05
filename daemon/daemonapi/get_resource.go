@@ -66,8 +66,17 @@ func (a *DaemonAPI) GetResources(ctx echo.Context, params api.GetResourcesParams
 			}
 			if e, ok := status.Resources[rid]; ok {
 				item.Data.Status = &e
+				items = append(items, item)
+			} else {
+				for encapNode, encapStatus := range status.Encap {
+					if e, ok := encapStatus.Resources[rid]; ok {
+						encapItem := item
+						encapItem.Meta.EncapNode = encapNode
+						encapItem.Data.Status = &e
+						items = append(items, encapItem)
+					}
+				}
 			}
-			items = append(items, item)
 		}
 	}
 	return ctx.JSON(http.StatusOK, api.ResourceList{Kind: "ResourceList", Items: items})

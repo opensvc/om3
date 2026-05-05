@@ -1,26 +1,16 @@
 package commoncmd
 
 import (
-	"errors"
-	"fmt"
-	"io"
-	"os"
-	"sync"
-
 	"github.com/spf13/cobra"
 
-	"github.com/opensvc/om3/v3/core/client"
-	"github.com/opensvc/om3/v3/core/nodeselector"
-	"github.com/opensvc/om3/v3/core/streamlog"
 	"github.com/opensvc/om3/v3/util/render"
 )
 
 type (
 	CmdClusterLogs struct {
 		OptsLogs
-		Color        string
-		NodeSelector string
-		Output       string
+		Color  string
+		Output string
 	}
 )
 
@@ -39,74 +29,26 @@ func NewCmdClusterLogs() *cobra.Command {
 	FlagColor(flags, &options.Color)
 	FlagOutput(flags, &options.Output)
 	FlagsLogs(flags, &options.OptsLogs)
-	FlagNodeSelector(flags, &options.NodeSelector)
 	return cmd
-}
-
-func (t *CmdClusterLogs) stream(node string) {
-	c, err := client.New(client.WithURL(node), client.WithTimeout(0))
-	if err != nil {
-		fmt.Fprintln(os.Stderr, err)
-		return
-	}
-	reader, err := c.NewGetLogs(node).
-		SetFilters(&t.Filter).
-		SetLines(&t.Lines).
-		SetFollow(&t.Follow).
-		GetReader()
-	if err != nil {
-		fmt.Fprintln(os.Stderr, err)
-		return
-	}
-	defer func() {
-		_ = reader.Close()
-	}()
-
-	for {
-		event, err := reader.Read()
-		if errors.Is(err, io.EOF) {
-			break
-		} else if err != nil {
-			fmt.Fprintf(os.Stderr, "%s\n", err)
-			break
-		}
-		rec, err := streamlog.NewEvent(event.Data)
-		if err != nil {
-			fmt.Fprintf(os.Stderr, "%s\n", err)
-			break
-		}
-		rec.Render(t.Output)
-	}
-}
-
-func (t *CmdClusterLogs) remote() error {
-	c, err := client.New(client.WithTimeout(0))
-	if err != nil {
-		return err
-	}
-	nodes, err := nodeselector.New(t.NodeSelector, nodeselector.WithClient(c)).Expand()
-	if err != nil {
-		return err
-	}
-	if len(nodes) == 0 {
-		return fmt.Errorf("no nodes to fetch logs from")
-	}
-	var wg sync.WaitGroup
-	wg.Add(len(nodes))
-	for _, node := range nodes {
-		go func(n string) {
-			defer wg.Done()
-			t.stream(n)
-		}(node)
-	}
-	wg.Wait()
-	return nil
 }
 
 func (t *CmdClusterLogs) Run() error {
 	render.SetColor(t.Color)
-	if t.NodeSelector == "" {
-		t.NodeSelector = "*"
+	return t.asCommonCmd().Remote()
+}
+
+func (t *CmdClusterLogs) asCommonCmd() *CmdNodeLogs {
+	return &CmdNodeLogs{
+		OptsGlobal: OptsGlobal{
+			Color:  t.Color,
+			Output: t.Output,
+		},
+		OptsLogs: OptsLogs{
+			Follow: t.Follow,
+			Lines:  t.Lines,
+			Filter: t.Filter,
+			Grep:   t.Grep,
+		},
+		NodeSelector: "*",
 	}
-	return t.remote()
 }

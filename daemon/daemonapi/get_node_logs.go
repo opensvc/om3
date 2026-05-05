@@ -135,6 +135,7 @@ func (a *DaemonAPI) getLocalNodeLogs(ctx echo.Context, params api.GetNodeLogsPar
 		Follow:  follow,
 		Lines:   lines,
 		Matches: matches,
+		Grep:    params.Grep,
 	}
 	if err := stream.Start(streamConfig); err != nil {
 		return JSONProblemf(ctx, http.StatusInternalServerError, http.StatusText(http.StatusInternalServerError), "%s", err)

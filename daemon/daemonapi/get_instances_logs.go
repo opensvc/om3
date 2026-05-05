@@ -23,6 +23,7 @@ func (a *DaemonAPI) GetInstanceLogs(ctx echo.Context, nodename string, namespace
 	return a.GetNodeLogs(ctx, nodename, api.GetNodeLogsParams{
 		Paths:  &paths,
 		Filter: params.Filter,
+		Grep:   params.Grep,
 		Follow: params.Follow,
 		Lines:  params.Lines,
 	})

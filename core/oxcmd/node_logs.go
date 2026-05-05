@@ -32,6 +32,7 @@ func (t *CmdNodeLogs) asCommonCmd() *commoncmd.CmdNodeLogs {
 			Follow: t.Follow,
 			Lines:  t.Lines,
 			Filter: t.Filter,
+			Grep:   t.Grep,
 		},
 		NodeSelector: t.NodeSelector,
 	}
