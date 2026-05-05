@@ -45,6 +45,10 @@ type (
 		Close() error
 	}
 
+	ServedByGetter interface {
+		GetServedBy() string
+	}
+
 	ContextSetter interface {
 		SetContext(ctx context.Context)
 	}
