@@ -24,8 +24,9 @@ type GetEvents struct {
 	relatives *bool
 	Limit     *uint64
 	Filters   []string
-	Wait      bool
+	Replay    bool
 	Duration  *time.Duration
+	ServedBy  string
 }
 
 func (t *GetEvents) SetDuration(duration time.Duration) *GetEvents {
@@ -48,8 +49,13 @@ func (t *GetEvents) SetFilters(filters []string) *GetEvents {
 	return t
 }
 
-func (t *GetEvents) SetWait(wait bool) *GetEvents {
-	t.Wait = wait
+func (t *GetEvents) SetReplay(b bool) *GetEvents {
+	t.Replay = b
+	return t
+}
+
+func (t *GetEvents) WithReplay() *GetEvents {
+	t.Replay = true
 	return t
 }
 
@@ -165,8 +171,10 @@ func (t *GetEvents) GetReader(ctx context.Context) (event.ReadCloser, error) {
 	if err != nil {
 		return nil, err
 	}
+	servedBy := resp.Header.Get(api.HeaderServedBy)
 	readCloser := sseevent.NewReadCloser(resp.Body)
 	readCloser.SetContext(ctx)
+	readCloser.SetServedBy(servedBy)
 	return readCloser, nil
 }
 
@@ -202,7 +210,7 @@ func (t *GetEvents) eventsBase() (*http.Response, error) {
 	params := api.GetDaemonEventsParams{
 		Filter:   &t.Filters,
 		Selector: t.selector,
-		Cache:    &t.Wait,
+		Replay:   &t.Replay,
 	}
 	if t.Limit != nil {
 		i := int64(*t.Limit)

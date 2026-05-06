@@ -70,13 +70,12 @@ func (t *CmdObjectMonitor) Run(selector, kind string) error {
 		retries := 0
 		ctx, cancel := context.WithCancel(context.Background())
 		defer cancel()
-		evReader, err := cli.NewGetEvents().SetSelector(mergedSelector).GetReader(ctx)
+		evReader, err := cli.NewGetEvents().SetSelector(mergedSelector).SetLimit(0).WithReplay().GetReader(ctx)
 		if err != nil {
 			return err
 		}
 		for {
-			statusGetter := cli.NewGetClusterStatus().SetSelector(mergedSelector)
-			err := m.DoWatch(statusGetter, evReader, os.Stdout)
+			err := m.DoWatch(evReader, os.Stdout)
 			if err1 := evReader.Close(); err1 != nil {
 				return fmt.Errorf("object monitor watch error '%s' + close event reader error '%s'", err, err1)
 			}
@@ -92,7 +91,7 @@ func (t *CmdObjectMonitor) Run(selector, kind string) error {
 					_, _ = fmt.Fprintln(os.Stderr, "press ctrl+c to interrupt retries")
 				}
 				time.Sleep(time.Second)
-				evReader, err = cli.NewGetEvents().SetSelector(mergedSelector).GetReader(ctx)
+				evReader, err = cli.NewGetEvents().SetSelector(mergedSelector).SetLimit(0).WithReplay().GetReader(ctx)
 				if err == nil {
 					retries = 0
 					break

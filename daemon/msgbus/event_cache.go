@@ -55,3 +55,44 @@ func (data *ClusterData) ExtractEvents(m any, labels pubsub.Labels) ([]any, erro
 	}
 	return nil, nil
 }
+
+var (
+	// ExtractableEvents Extractable events for event cache
+	// Try to keep this in sync with the list of events in the msgbus package that
+	// can be extracted.
+	//
+	// Keep ordered with NodeDataUpdated first, then with other events in the natural
+	// emission order.
+	ExtractableEvents = [24]any{
+		&NodeDataUpdated{},
+		&NodePoolStatusUpdated{},
+		&NodeAlive{},
+		&NodeStale{},
+
+		&NodeConfigUpdated{},
+		&NodeMonitorUpdated{},
+		&NodeOsPathsUpdated{},
+		&NodeStatsUpdated{},
+		&NodeStatusUpdated{},
+
+		&ClusterConfigUpdated{},
+		&ClusterStatusUpdated{},
+
+		&DaemonDataUpdated{},
+		&DaemonHeartbeatUpdated{},
+		&DaemonCollectorUpdated{},
+		&DaemonDnsUpdated{},
+		&DaemonListenerUpdated{},
+		&DaemonRunnerImonUpdated{},
+		&DaemonSchedulerUpdated{},
+
+		&HeartbeatAlive{},
+		&HeartbeatStale{},
+
+		&InstanceConfigUpdated{},
+		&InstanceMonitorUpdated{},
+		&InstanceStatusUpdated{},
+
+		&ObjectStatusUpdated{},
+	}
+)

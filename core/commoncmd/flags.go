@@ -165,6 +165,10 @@ func FlagEval(flags *pflag.FlagSet, p *bool) {
 	flags.BoolVar(p, "eval", false, "dereference and evaluate arythmetic expressions in value")
 }
 
+func FlagEventReplay(flags *pflag.FlagSet, p *bool) {
+	flags.BoolVar(p, "replay", false, "enable replay event from the cluster known state")
+}
+
 func FlagEventFilters(flags *pflag.FlagSet, p *[]string) {
 	flags.StringArrayVar(p, "filter", []string{}, "filter events on kind, labels and data (see above)")
 }
@@ -177,6 +181,10 @@ func FlagEventOutput(flags *pflag.FlagSet, p *string) {
 
 func FlagEventTemplate(flags *pflag.FlagSet, p *string) {
 	flags.StringVar(p, "template", "", "a go template with custom functions (see above)")
+}
+
+func FlagEventWait(flags *pflag.FlagSet, p *bool) {
+	flags.BoolVar(p, "wait", false, "wait for the event reach its target state. This automatically enables the --replay flag")
 }
 
 func FlagForce(flags *pflag.FlagSet, p *bool) {

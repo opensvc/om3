@@ -141,7 +141,8 @@ func (a *DaemonAPI) getPeerDaemonEvents(ctx echo.Context, nodename string, param
 	}
 }
 
-// getLocalDaemonEvents handles streaming local daemon events based on provided filters, selectors, and parameters.
+// getLocalDaemonEvents handles requests to retrieve daemon events based on specified filters and parameters.
+// It supports real-time streaming through Server-Sent Events (SSE) and applies filters such as kind, labels, selectors, and data filters.
 func (a *DaemonAPI) getLocalDaemonEvents(ctx echo.Context, params api.GetDaemonEventsParams) error {
 	if v, err := assertRole(ctx, rbac.RoleGuest, rbac.RoleOperator, rbac.RoleAdmin, rbac.RoleRoot, rbac.RoleJoin, rbac.RoleLeave); !v {
 		return err
@@ -378,8 +379,25 @@ func (a *DaemonAPI) getLocalDaemonEvents(ctx echo.Context, params api.GetDaemonE
 		return nil
 	}
 
-	if params.Cache != nil && *params.Cache {
+	// defines replay from the primary replay option, fallback to the deprecated
+	// cache value if any.
+	var replay bool
+	if params.Replay != nil && *params.Replay {
+		replay = true
+	} else if params.Cache != nil && *params.Cache {
+		replay = true
+	}
+
+	if replay {
 		data := msgbus.NewClusterData(a.Daemondata.ClusterData())
+		if len(filters) == 0 {
+			// Filters are not specified => all events are filtered,
+			// So automatically use all extractable events.
+			filters = make([]Filter, 0, len(msgbus.ExtractableEvents))
+			for _, kind := range msgbus.ExtractableEvents {
+				filters = append(filters, Filter{Kind: kind})
+			}
+		}
 		for _, filter := range filters {
 			labels := pubsub.Labels{}
 			for _, lab := range filter.Labels {
@@ -390,6 +408,17 @@ func (a *DaemonAPI) getLocalDaemonEvents(ctx echo.Context, params api.GetDaemonE
 				return fmt.Errorf("get cached data: %w", err)
 			}
 			for _, anyE := range anyL {
+				if msg, ok := anyE.(pubsub.Messager); ok {
+					if !isAllowed(msg) {
+						continue
+					}
+					if hasSelector && !isSelected(msg) {
+						continue
+					}
+				} else {
+					// unexpected event type, skip it
+					continue
+				}
 				if err := doEvent(anyE); err != nil {
 					log.Tracef("do event failed on %v: %s", anyE, err)
 					return nil

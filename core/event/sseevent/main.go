@@ -42,6 +42,9 @@ type (
 		// timeout specifies the maximum duration to wait before Read returns
 		// nil if no events are available.
 		timeout time.Duration
+
+		// SetServedBy is the nodename where we serve events
+		ServedBy string
 	}
 
 	Writer struct {
@@ -93,6 +96,16 @@ func (r *ReadCloser) SetContext(ctx context.Context) {
 	}
 	r.cancel()
 	r.ctx, r.cancel = context.WithCancel(ctx)
+}
+
+// SetServedBy set reader servedBy value, it can be used to retrieve
+// the api nodename from where we serve events.
+func (r *ReadCloser) SetServedBy(s string) {
+	r.ServedBy = s
+}
+
+func (t *ReadCloser) GetServedBy() string {
+	return t.ServedBy
 }
 
 // Buffer defines buffer value for internal go routine io.Scanner

@@ -166,15 +166,13 @@ func (m *T) doOneShot(data clusterdump.Data, clear bool, eventsetCount uint64, o
 	_, _ = fmt.Fprint(out, s)
 }
 
-func (m *T) DoWatch(statusGetter Getter, evReader event.ReadCloser, out io.Writer) error {
-	return m.watch(statusGetter, evReader, out)
+func (m *T) DoWatch(evReader event.ReadCloser, out io.Writer) error {
+	return m.watch(evReader, out)
 }
 
-func (m *T) watch(statusGetter Getter, evReader event.ReadCloser, out io.Writer) error {
+func (m *T) watch(evReader event.ReadCloser, out io.Writer) error {
 	var (
-		b    []byte
 		data *clusterdump.Data
-		err  error
 
 		errC   = make(chan error)
 		eventC = make(chan event.Event, 100)
@@ -206,12 +204,11 @@ func (m *T) watch(statusGetter Getter, evReader event.ReadCloser, out io.Writer)
 		}
 	}()
 
-	b, err = statusGetter.Get()
-	if err != nil {
-		return err
-	}
-	if err := json.Unmarshal(b, &data); err != nil {
-		return err
+	if a, ok := evReader.(event.ServedByGetter); ok {
+		servedBy := a.GetServedBy()
+		data = clusterdump.NewData(servedBy)
+	} else {
+		return fmt.Errorf("event reader does not implement GetServedByer")
 	}
 
 	cdata := msgbus.NewClusterData(data)

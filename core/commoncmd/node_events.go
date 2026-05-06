@@ -29,9 +29,13 @@ type (
 		Limit    uint64
 		Template string
 		Wait     bool
-		Quiet    bool
-		templ    *template.Template
-		helper   *templateHelper
+
+		// Replay is used to enable replay event from the cached state
+		Replay bool
+
+		Quiet  bool
+		templ  *template.Template
+		helper *templateHelper
 
 		cli          *client.T
 		NodeSelector string
@@ -331,7 +335,7 @@ func (t *CmdNodeEvents) getEvReader(ctx context.Context, nodename string) (event
 	return t.cli.NewGetEvents().
 		SetRelatives(false).
 		SetLimit(t.Limit).
-		SetWait(t.Wait).
+		SetReplay(t.Wait || t.Replay).
 		SetFilters(t.Filters).
 		SetDuration(t.Duration).
 		SetNodename(nodename).

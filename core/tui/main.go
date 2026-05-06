@@ -2,7 +2,6 @@ package tui
 
 import (
 	"context"
-	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
@@ -582,7 +581,7 @@ func (t *App) runEventReader() {
 		ctx, cancel := context.WithCancel(context.Background())
 		defer cancel()
 
-		evReader, err := t.streamClient.NewGetEvents().SetSelector(t.Selector).GetReader(ctx)
+		evReader, err := t.streamClient.NewGetEvents().SetSelector(t.Selector).SetLimit(0).WithReplay().GetReader(ctx)
 		if err != nil {
 			//t.errorf("new reader: %s", err)
 			if t.exitFlag.Load() {
@@ -592,8 +591,7 @@ func (t *App) runEventReader() {
 			continue
 		}
 
-		statusGetter := t.client.NewGetClusterStatus().SetSelector(t.Selector)
-		err = t.do(statusGetter, evReader)
+		err = t.do(evReader)
 		_ = evReader.Close()
 		if t.exitFlag.Load() {
 			return
@@ -605,11 +603,9 @@ func (t *App) runEventReader() {
 	}
 }
 
-func (t *App) do(statusGetter getter, evReader event.ReadCloser) error {
+func (t *App) do(evReader event.ReadCloser) error {
 	var (
-		b    []byte
 		data *clusterdump.Data
-		err  error
 
 		eventC = make(chan event.Event, 100)
 		dataC  = make(chan *clusterdump.Data)
@@ -636,13 +632,11 @@ func (t *App) do(statusGetter getter, evReader event.ReadCloser) error {
 		}
 	}()
 
-	//t.infof("get daemon status")
-	b, err = statusGetter.Get()
-	if err != nil {
-		return err
-	}
-	if err := json.Unmarshal(b, &data); err != nil {
-		return err
+	if a, ok := evReader.(event.ServedByGetter); ok {
+		servedBy := a.GetServedBy()
+		data = clusterdump.NewData(servedBy)
+	} else {
+		return fmt.Errorf("event reader does not implement GetServedByer")
 	}
 
 	cdata := msgbus.NewClusterData(data)

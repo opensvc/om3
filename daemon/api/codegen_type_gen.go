@@ -2345,6 +2345,9 @@ type EventCache = bool
 // EventFilter defines model for EventFilter.
 type EventFilter = []string
 
+// EventReplay defines model for EventReplay.
+type EventReplay = bool
+
 // Limit defines model for Limit.
 type Limit = int64
 
@@ -2791,7 +2794,10 @@ type GetDaemonEventsParams struct {
 	// Filter list of event filter
 	Filter *EventFilter `form:"filter,omitempty" json:"filter,omitempty"`
 
-	// Cache start the event feed using the latest past events from the cache that match the specified kind and labels.
+	// Replay start the event feed replaying the latest past events from the cache that match the specified kind and labels.
+	Replay *EventReplay `form:"replay,omitempty" json:"replay,omitempty"`
+
+	// Cache deprecated alias of `replay`. Will be removed in a future version.
 	Cache *EventCache `form:"cache,omitempty" json:"cache,omitempty"`
 
 	// Selector selector
