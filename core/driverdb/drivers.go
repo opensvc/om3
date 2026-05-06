@@ -25,6 +25,7 @@ import (
 	_ "github.com/opensvc/om3/v3/drivers/resappforking"
 	_ "github.com/opensvc/om3/v3/drivers/resappsimple"
 	_ "github.com/opensvc/om3/v3/drivers/resdiskdisk"
+	_ "github.com/opensvc/om3/v3/drivers/resdiskhp3par"
 	_ "github.com/opensvc/om3/v3/drivers/resdiskloop"
 	_ "github.com/opensvc/om3/v3/drivers/resdisklv"
 	_ "github.com/opensvc/om3/v3/drivers/resdiskmd"
