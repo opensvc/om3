@@ -396,6 +396,9 @@ func (t *App) initApp() {
 		case ':':
 			t.onRuneColumn(event)
 			return nil
+		case '/':
+			t.onRuneSlash(event)
+			return nil
 		case 'c':
 			t.onRuneC(event)
 		case 'e':
@@ -1877,6 +1880,7 @@ func (t *App) onRuneH(event *tcell.EventKey) {
  Command mode Shortcuts
  
    :                    Enter command mode
+   /                    Enter filter expression
    ESC                  Exit command mode
    Enter                Apply command to the selected cells
  
@@ -1923,8 +1927,6 @@ func (t *App) onRuneH(event *tcell.EventKey) {
    go <to>
 
      sec, cfg, vol, pool, net, relay
-
-   filter <expression>
 `
 	if t.help != nil {
 		return
@@ -2115,6 +2117,32 @@ func (t *App) onRuneR(event *tcell.EventKey) {
 	t.actionInstanceRefresh(map[[2]string]any{
 		key: nil,
 	})
+}
+
+func (t *App) onRuneSlash(event *tcell.EventKey) {
+	if t.command != nil {
+		t.cleanCommand()
+		return
+	}
+	t.command = tview.NewInputField().
+		SetLabel("/").
+		SetFieldWidth(0).
+		SetFieldBackgroundColor(colorHead3).
+		SetDoneFunc(func(key tcell.Key) {
+			switch key {
+			case tcell.KeyEnter:
+				text := strings.TrimSpace(t.command.GetText())
+				t.setFilter(text)
+				t.cleanCommand()
+			case tcell.KeyESC:
+				t.cleanCommand()
+			}
+		})
+	t.flex.RemoveItem(t.errs)
+	t.flex.AddItem(t.command, 1, 0, true)
+	t.app.SetFocus(t.command)
+	t.focused = true
+
 }
 
 func (t *App) onRuneC(event *tcell.EventKey) {
