@@ -430,11 +430,6 @@ func (t *App) initApp() {
 					return true
 				}, AskInputData{"Seats", "1"}, AskInputData{"Greet timeout", "5s"})
 			}
-		case 'p':
-			if focusTable, ok := t.app.GetFocus().(*tview.Table); ok {
-				focusTable.Select(t.position.row, t.position.col)
-				t.infof("selected cell at row %d, col %d", t.position.row, t.position.col)
-			}
 		}
 		return event
 	})
