@@ -429,11 +429,6 @@ func (t *App) initApp() {
 					return true
 				}, AskInputData{"Seats", "1"}, AskInputData{"Greet timeout", "5s"})
 			}
-		case 'p':
-			if focusTable, ok := t.app.GetFocus().(*tview.Table); ok {
-				focusTable.Select(t.position.row, t.position.col)
-				t.infof("selected cell at row %d, col %d", t.position.row, t.position.col)
-			}
 		}
 		return event
 	})
@@ -1053,14 +1048,6 @@ func (t *App) onRuneColumn(event *tcell.EventKey) {
 				case "connect":
 					t.cleanCommand()
 					t.nav(viewContext)
-				case "filter":
-					if len(args) < 2 {
-						t.errorf("not enough arguments: filter <expression>")
-						return
-					}
-					t.cleanCommand()
-					t.setFilter(args[1])
-					return
 				case "go":
 					if len(args) < 2 {
 						t.errorf("not enough arguments: go <to>")
@@ -1145,6 +1132,12 @@ func (t *App) onRuneColumn(event *tcell.EventKey) {
 							selection[[2]string{path, node}] = nil
 							instanceAction(args[1:], selection)
 						}
+					}
+				default:
+					if action[0] == '/' {
+						t.cleanCommand()
+						t.setFilter(action[1:])
+						return
 					}
 				}
 			case tcell.KeyEscape:

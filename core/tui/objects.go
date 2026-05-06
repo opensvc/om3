@@ -23,7 +23,7 @@ func (t *App) initObjectsTable() {
 	onEnter := func(event *tcell.EventKey) {
 		row, col := table.GetSelection()
 		switch {
-		case !t.viewPath.IsZero() && t.viewNode != "":
+		case !t.viewPath.IsZero() && t.viewNode != "" && !(t.viewPath.Kind == naming.KindCfg || t.viewPath.Kind == naming.KindSec):
 			t.initTextView()
 			t.nav(viewInstance)
 		case t.viewPath.Kind == naming.KindCfg || t.viewPath.Kind == naming.KindSec:
