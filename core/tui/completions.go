@@ -78,7 +78,6 @@ var (
 	}
 	nodeRoot = node{
 		"do":      nil,
-		"filter":  nil,
 		"connect": nil,
 		"go": node{
 			"sec":   nil,
