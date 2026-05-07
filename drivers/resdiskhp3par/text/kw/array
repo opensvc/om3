@@ -1,1 +1,1 @@
-Name of the HPE 3PAR storage array.
+Suffix of the array configuration section in cluster.conf (the part after # in array#<suffix>).

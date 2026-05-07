@@ -19,20 +19,11 @@ var kws = []*keywords.Keyword{
 	{
 		Aliases:  []string{"array"},
 		Attr:     "Array",
-		Example:  "3par-array-1",
+		Example:  "myarray",
 		Option:   "array",
 		Required: true,
 		Scopable: true,
 		Text:     keywords.NewText(fs, "text/kw/array"),
-	},
-	{
-		Aliases:  []string{"method"},
-		Attr:     "Method",
-		Example:  "cli",
-		Option:   "method",
-		Default:  "cli",
-		Scopable: true,
-		Text:     keywords.NewText(fs, "text/kw/method"),
 	},
 	{
 		Aliases:  []string{"rcg", "rcgroup"},

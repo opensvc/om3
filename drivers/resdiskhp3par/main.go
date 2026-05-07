@@ -5,6 +5,10 @@ package resdiskhp3par
 //
 // Each resource manages one remote copy group (RCG) for volume replication
 // between HPE 3PAR storage arrays.
+//
+// Configuration for the array connection is read from the cluster.conf
+// or node.conf array#<suffix> section, where <suffix> is the value of the
+// array keyword.
 
 import (
 	"context"
@@ -15,13 +19,16 @@ import (
 	"time"
 
 	"github.com/opensvc/om3/v3/core/actioncontext"
+	"github.com/opensvc/om3/v3/core/datarecv"
 	"github.com/opensvc/om3/v3/core/naming"
+	"github.com/opensvc/om3/v3/core/object"
 	"github.com/opensvc/om3/v3/core/provisioned"
 	"github.com/opensvc/om3/v3/core/resource"
 	"github.com/opensvc/om3/v3/core/status"
 	"github.com/opensvc/om3/v3/drivers/resdisk"
 	"github.com/opensvc/om3/v3/util/command"
 	"github.com/opensvc/om3/v3/util/device"
+	"github.com/opensvc/om3/v3/util/key"
 	"github.com/rs/zerolog"
 )
 
@@ -52,17 +59,30 @@ const (
 	lockName = "hp3par"
 )
 
+// Config holds the array configuration from the cluster config.
+type Config struct {
+	// Method is the connection method: ssh or cli
+	Method string `json:"method"`
+	// Manager is the array name or IP address
+	Manager string `json:"manager"`
+	// Username for SSH connections
+	Username string `json:"username,omitempty"`
+	// Key is the SSH private key file path or datastore reference
+	Key string `json:"key,omitempty"`
+	// CLI is the 3PAR CLI binary path or datastore reference
+	CLI string `json:"cli,omitempty"`
+	// PWF is the password file for CLI connections or datastore reference
+	PWF string `json:"pwf,omitempty"`
+}
+
 // T is the driver structure embedding the common disk resource base.
 type T struct {
 	resdisk.T
 
 	Path naming.Path `json:"path"`
 
-	// Array is the name of the HP 3PAR array to send commands to.
+	// Array is the suffix of the array configuration section (array#<suffix>).
 	Array string `json:"array"`
-
-	// Method is the method to use to submit commands to the arrays (ssh or cli).
-	Method string `json:"method"`
 
 	// RCG is the name of the HP 3PAR remote copy group.
 	RCG string `json:"rcg"`
@@ -75,6 +95,14 @@ type T struct {
 
 	// StartTimeout is the maximum duration to wait for start operations.
 	StartTimeout *time.Duration `json:"start_timeout"`
+
+	// arrayConfig holds the resolved array configuration
+	arrayConfig *Config
+
+	// Cached resolved values for datastore-referenced files
+	keyFileCache string
+	pwfCache     string
+	cliCache     string
 
 	rcgStatusCache *rcgStatus
 }
@@ -130,7 +158,6 @@ func (t *T) Info(ctx context.Context) (resource.InfoKeys, error) {
 	m := make(resource.InfoKeys, 0)
 	m = append(m,
 		resource.InfoKey{Key: "array", Value: t.Array},
-		resource.InfoKey{Key: "method", Value: t.Method},
 		resource.InfoKey{Key: "rcg", Value: t.RCG},
 		resource.InfoKey{Key: "mode", Value: t.Mode},
 	)
@@ -206,13 +233,17 @@ func (t *T) Provisioned(ctx context.Context) (provisioned.T, error) {
 	return provisioned.True, nil
 }
 
-// Boot ensures the array connection is working.
+// Abort ensures the array connection is working.
 func (t *T) Abort(ctx context.Context) error {
 	return t.testArrayConnection(ctx)
 }
 
 // Start starts the replication in the appropriate direction.
 func (t *T) Start(ctx context.Context) error {
+	if err := t.loadArrayConfig(); err != nil {
+		return fmt.Errorf("failed to load array configuration: %w", err)
+	}
+
 	ps, err := t.rcgStatus(ctx)
 	if err != nil {
 		return err
@@ -264,17 +295,17 @@ func (t *T) Stop(ctx context.Context) error {
 	return nil
 }
 
-// SyncResync re-establishes the replication after a split.
+// Resync re-establishes the replication after a split.
 func (t *T) Resync(ctx context.Context) error {
 	return t.syncRCG(ctx)
 }
 
-// SyncUpdate performs a sync operation.
+// Update performs a sync operation.
 func (t *T) Update(ctx context.Context) error {
 	return t.syncRCG(ctx)
 }
 
-// SyncSwap swaps the replication direction.
+// Swap swaps the replication direction.
 func (t *T) Swap(ctx context.Context) error {
 	disable := actioncontext.IsLockDisabled(ctx)
 	timeout := actioncontext.LockTimeout(ctx)
@@ -304,14 +335,206 @@ func (t *T) Swap(ctx context.Context) error {
 	return t.startRCG(ctx)
 }
 
-// SyncResume resumes the replication.
+// Resume resumes the replication.
 func (t *T) Resume(ctx context.Context) error {
 	return t.startRCG(ctx)
 }
 
-// SyncQuiesce quiesces the replication.
+// Split quiesces the replication.
 func (t *T) Split(ctx context.Context) error {
 	return t.stopRCG(ctx)
+}
+
+// ---------------------------------------------------------------------------
+// Array configuration loading
+// ---------------------------------------------------------------------------
+
+// arraySectionName returns the full array section name in cluster config.
+func (t *T) arraySectionName() string {
+	return fmt.Sprintf("array#%s", t.Array)
+}
+
+// loadArrayConfig loads the array configuration from the cluster config.
+// Configuration is read from the array#<suffix> section where <suffix> is t.Array.
+func (t *T) loadArrayConfig() error {
+	if t.arrayConfig != nil {
+		return nil
+	}
+
+	config := &Config{}
+
+	node, err := object.NewNode(object.WithVolatile(true))
+	if err != nil {
+		return err
+	}
+
+	cfg := node.MergedConfig()
+	if cfg == nil {
+		return fmt.Errorf("no node config available")
+	}
+
+	// Get the array section from cluster config
+	sectionName := t.arraySectionName()
+
+	// Get method
+	if v := cfg.GetString(key.T{Section: sectionName, Option: "method"}); v != "" {
+		config.Method = v
+	} else {
+		return fmt.Errorf("method is required in array#%s configuration", t.Array)
+	}
+
+	// Get manager (array name/IP)
+	if v := cfg.GetString(key.T{Section: sectionName, Option: "manager"}); v != "" {
+		config.Manager = v
+	} else {
+		// If manager is not set, use the array suffix as the manager name
+		config.Manager = t.Array
+	}
+
+	// Get username for SSH
+	if v := cfg.GetString(key.T{Section: sectionName, Option: "username"}); v != "" {
+		config.Username = v
+	}
+
+	// Get key (SSH private key) - can be a file path or datastore reference
+	if v := cfg.GetString(key.T{Section: sectionName, Option: "key"}); v != "" {
+		config.Key = v
+	}
+
+	// Get cli (CLI binary path) - can be a file path or datastore reference
+	if v := cfg.GetString(key.T{Section: sectionName, Option: "cli"}); v != "" {
+		config.CLI = v
+	} else {
+		config.CLI = "cli" // default
+	}
+
+	// Get pwf (password file) - can be a file path or datastore reference
+	if v := cfg.GetString(key.T{Section: sectionName, Option: "pwf"}); v != "" {
+		config.PWF = v
+	}
+
+	t.arrayConfig = config
+	return nil
+}
+
+// getArrayConfig returns the loaded array configuration.
+func (t *T) getArrayConfig() (*Config, error) {
+	if err := t.loadArrayConfig(); err != nil {
+		return nil, err
+	}
+	return t.arrayConfig, nil
+}
+
+// ---------------------------------------------------------------------------
+// Datastore-backed configuration resolution
+// ---------------------------------------------------------------------------
+
+// manager returns the resolved manager value from array config.
+func (t *T) manager() (string, error) {
+	config, err := t.getArrayConfig()
+	if err != nil {
+		return "", err
+	}
+	return config.Manager, nil
+}
+
+// username returns the resolved username value from array config.
+func (t *T) username() (string, error) {
+	config, err := t.getArrayConfig()
+	if err != nil {
+		return "", err
+	}
+	return config.Username, nil
+}
+
+// method returns the resolved method value from array config.
+func (t *T) method() (string, error) {
+	config, err := t.getArrayConfig()
+	if err != nil {
+		return "", err
+	}
+	return config.Method, nil
+}
+
+// keyFile returns the resolved keyfile path, supporting "from <path> key <key>" format.
+// The content is cached as a temporary file.
+func (t *T) keyFile() (string, error) {
+	config, err := t.getArrayConfig()
+	if err != nil {
+		return "", err
+	}
+	if config.Key == "" {
+		return "", nil
+	}
+	if t.keyFileCache != "" {
+		return t.keyFileCache, nil
+	}
+	km, err := datarecv.ParseKeyMetaRelObj(config.Key, t.GetObject())
+	if err != nil {
+		t.keyFileCache = ""
+		return "", err
+	}
+	file, err := km.CacheFile()
+	if err != nil {
+		t.keyFileCache = ""
+		return "", err
+	}
+	t.keyFileCache = file
+	return file, nil
+}
+
+// pwf returns the resolved pwf path, supporting "from <path> key <key>" format.
+// The content is cached as a temporary file.
+func (t *T) pwf() (string, error) {
+	config, err := t.getArrayConfig()
+	if err != nil {
+		return "", err
+	}
+	if config.PWF == "" {
+		return "", nil
+	}
+	if t.pwfCache != "" {
+		return t.pwfCache, nil
+	}
+	km, err := datarecv.ParseKeyMetaRelObj(config.PWF, t.GetObject())
+	if err != nil {
+		t.pwfCache = ""
+		return "", err
+	}
+	file, err := km.CacheFile()
+	if err != nil {
+		t.pwfCache = ""
+		return "", err
+	}
+	t.pwfCache = file
+	return file, nil
+}
+
+// cli returns the resolved cli path, supporting "from <path> key <key>" format.
+// The content is cached as a temporary file.
+func (t *T) cli() (string, error) {
+	config, err := t.getArrayConfig()
+	if err != nil {
+		return "", err
+	}
+	if config.CLI == "" {
+		return "cli", nil
+	}
+	if t.cliCache != "" {
+		return t.cliCache, nil
+	}
+	km, err := datarecv.ParseKeyMetaRelObj(config.CLI, t.GetObject())
+	if err != nil {
+		t.cliCache = ""
+		return "", err
+	}
+	file, err := km.CacheFile()
+	if err != nil {
+		t.cliCache = ""
+		return "", err
+	}
+	t.cliCache = file
+	return file, nil
 }
 
 // ---------------------------------------------------------------------------
@@ -386,28 +609,70 @@ func (t *T) buildArrayCommand(cmd string) string {
 	return prefix + cmd + "; exit"
 }
 
-func (t *T) buildSSHCommand(cmd string) []string {
-	// For SSH method: ssh -i <key> <username>@<array>
-	// This would need array connection details from configuration
-	// For now, return a placeholder
-	return []string{"ssh", "-i", "", "@" + t.Array, cmd}
+func (t *T) buildSSHCommand(cmd string) ([]string, error) {
+	// For SSH method: ssh -i <key> <username>@<manager>
+	keyFile, err := t.keyFile()
+	if err != nil {
+		return nil, fmt.Errorf("failed to resolve keyfile: %w", err)
+	}
+	username, err := t.username()
+	if err != nil {
+		return nil, fmt.Errorf("failed to resolve username: %w", err)
+	}
+	manager, err := t.manager()
+	if err != nil {
+		return nil, fmt.Errorf("failed to resolve manager: %w", err)
+	}
+
+	args := []string{"ssh"}
+	if keyFile != "" {
+		args = append(args, "-i", keyFile)
+	}
+	if username != "" {
+		args = append(args, username+"@"+manager)
+	} else {
+		args = append(args, manager)
+	}
+	args = append(args, cmd)
+	return args, nil
 }
 
-func (t *T) buildCLICommand(cmd string) []string {
-	// For CLI method: cli -sys <array> -nohdtot -csvtable <command>
-	args := []string{"cli", "-sys", t.Array, "-nohdtot", "-csvtable"}
+func (t *T) buildCLICommand(cmd string) ([]string, error) {
+	// For CLI method: <cli> -sys <manager> -nohdtot -csvtable -pwf <pwf> <command>
+	cli, err := t.cli()
+	if err != nil {
+		return nil, fmt.Errorf("failed to resolve cli: %w", err)
+	}
+	manager, err := t.manager()
+	if err != nil {
+		return nil, fmt.Errorf("failed to resolve manager: %w", err)
+	}
+	pwf, err := t.pwf()
+	if err != nil {
+		return nil, fmt.Errorf("failed to resolve pwf: %w", err)
+	}
+
+	args := []string{cli, "-sys", manager, "-nohdtot", "-csvtable"}
+	if pwf != "" {
+		args = append(args, "-pwf", pwf)
+	}
 	args = append(args, strings.Fields(cmd)...)
-	return args
+	return args, nil
 }
 
-func (t *T) buildCommand(cmd string) []string {
-	switch t.Method {
+func (t *T) buildCommand(cmd string) ([]string, error) {
+	method, err := t.method()
+	if err != nil {
+		return nil, fmt.Errorf("failed to resolve method: %w", err)
+	}
+
+	switch method {
 	case methodSSH:
 		return t.buildSSHCommand(cmd)
 	case methodCLI:
 		return t.buildCLICommand(cmd)
 	default:
-		return nil
+		return nil, fmt.Errorf("%w: unknown method %s", ErrBuildCommand, method)
 	}
 }
 
@@ -436,6 +701,11 @@ func (t *T) cachedRCGStatus(ctx context.Context) (*rcgStatus, error) {
 
 func (t *T) clearCaches() {
 	t.rcgStatusCache = nil
+	t.keyFileCache = ""
+	t.pwfCache = ""
+	t.cliCache = ""
+	// Clear array config to force reload on next access
+	t.arrayConfig = nil
 }
 
 func (t *T) parseRCGStatus(out string, rcgName string) (*rcgStatus, error) {
@@ -625,7 +895,10 @@ func (t *T) isSplitted(target string) bool {
 
 func (t *T) runFailoverRCG(ctx context.Context) error {
 	cmdS := fmt.Sprintf("setrcopygroup failover -f -waittask %s", t.RCG)
-	cmdV := t.buildCommand(cmdS)
+	cmdV, err := t.buildCommand(cmdS)
+	if err != nil {
+		return err
+	}
 	if len(cmdV) < 2 {
 		return fmt.Errorf("%w: %s", ErrBuildCommand, cmdS)
 	}
@@ -644,7 +917,10 @@ func (t *T) runFailoverRCG(ctx context.Context) error {
 
 func (t *T) runReverseRCG(ctx context.Context) error {
 	cmdS := fmt.Sprintf("setrcopygroup reverse -f -waittask %s", t.RCG)
-	cmdV := t.buildCommand(cmdS)
+	cmdV, err := t.buildCommand(cmdS)
+	if err != nil {
+		return err
+	}
 	if len(cmdV) < 2 {
 		return fmt.Errorf("%w: %s", ErrBuildCommand, cmdS)
 	}
@@ -663,7 +939,10 @@ func (t *T) runReverseRCG(ctx context.Context) error {
 
 func (t *T) runSyncRCG(ctx context.Context) error {
 	cmdS := fmt.Sprintf("syncrcopy -w %s", t.RCG)
-	cmdV := t.buildCommand(cmdS)
+	cmdV, err := t.buildCommand(cmdS)
+	if err != nil {
+		return err
+	}
 	if len(cmdV) < 2 {
 		return fmt.Errorf("%w: %s", ErrBuildCommand, cmdS)
 	}
@@ -682,7 +961,10 @@ func (t *T) runSyncRCG(ctx context.Context) error {
 
 func (t *T) runStartRCG(ctx context.Context) error {
 	cmdS := fmt.Sprintf("startrcopygroup %s", t.RCG)
-	cmdV := t.buildCommand(cmdS)
+	cmdV, err := t.buildCommand(cmdS)
+	if err != nil {
+		return err
+	}
 	if len(cmdV) < 2 {
 		return fmt.Errorf("%w: %s", ErrBuildCommand, cmdS)
 	}
@@ -701,7 +983,10 @@ func (t *T) runStartRCG(ctx context.Context) error {
 
 func (t *T) runStopRCG(ctx context.Context) error {
 	cmdS := fmt.Sprintf("stoprcopygroup -f %s", t.RCG)
-	cmdV := t.buildCommand(cmdS)
+	cmdV, err := t.buildCommand(cmdS)
+	if err != nil {
+		return err
+	}
 	if len(cmdV) < 2 {
 		return fmt.Errorf("%w: %s", ErrBuildCommand, cmdS)
 	}
