@@ -2681,6 +2681,11 @@ type GetNodesParams struct {
 	Node *NodeOptional `form:"node,omitempty" json:"node,omitempty"`
 }
 
+// PostPeerActionDequeueParams defines parameters for PostPeerActionDequeue.
+type PostPeerActionDequeueParams struct {
+	RequesterSid *InQueryRequesterSid `form:"requester_sid,omitempty" json:"requester_sid,omitempty"`
+}
+
 // PostPeerActionFreezeParams defines parameters for PostPeerActionFreeze.
 type PostPeerActionFreezeParams struct {
 	RequesterSid *InQueryRequesterSid `form:"requester_sid,omitempty" json:"requester_sid,omitempty"`
