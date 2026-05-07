@@ -7941,7 +7941,9 @@ components:
     EventReplay:
       name: replay
       in: query
-      description: start the event feed replaying the latest past events from the cache that match the specified kind and labels.
+      description: |
+        replay the compacted event history that creates the current cluster dataset.
+        filtering and selectors are applied to the compacted event history.
       schema:
         type: boolean
         default: false
