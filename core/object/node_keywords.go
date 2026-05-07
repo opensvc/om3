@@ -477,11 +477,6 @@ var (
 		Section:   "node",
 		Text:      keywords.NewText(fs, "text/kw/node/node.ready_period"),
 	}
-	kwNodeDequeueActionSchedule = keywords.Keyword{
-		Option:  "schedule",
-		Section: "dequeue_actions",
-		Text:    keywords.NewText(fs, "text/kw/node/dequeue_actions.schedule"),
-	}
 	kwNodeSysreportSchedule = keywords.Keyword{
 		Default: "~00:00-06:00",
 		Option:  "schedule",
@@ -1753,7 +1748,6 @@ var (
 		&kwNodeMaintenanceGracePeriod,
 		&kwNodeRejoinGracePeriod,
 		&kwNodeReadyPeriod,
-		&kwNodeDequeueActionSchedule,
 		&kwNodeSysreportSchedule,
 		&kwNodeComplianceSchedule,
 		&kwNodeArraySchedule,

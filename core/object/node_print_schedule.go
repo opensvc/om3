@@ -48,7 +48,6 @@ func (t *Node) Schedules() schedule.Table {
 		t.newScheduleEntry("pushpkg", "packages", "", "packages_push"),
 		t.newScheduleEntry("pushpatch", "patches", "", "patches_push"),
 		t.newScheduleEntry("sysreport", "sysreport", "", "sysreport_push"),
-		t.newScheduleEntry("dequeue_actions", "dequeue_actions", "", "dequeue_actions_push"),
 	)
 	for _, s := range t.config.SectionStrings() {
 		rid, err := resourceid.Parse(s)

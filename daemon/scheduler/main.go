@@ -131,7 +131,13 @@ var (
 		}, []string{"action"})
 )
 
-func (t Schedules) Del(path naming.Path) {
+func (t Schedules) Del(path naming.Path, key string) {
+	if m, ok := t[path]; ok {
+		delete(m, key)
+	}
+}
+
+func (t Schedules) DelPath(path naming.Path) {
 	delete(t, path)
 }
 
@@ -190,6 +196,12 @@ func New(subQS pubsub.QueueSizer, opts ...funcopt.O) *T {
 
 func newJobId(e schedule.Entry) string {
 	return fmt.Sprintf("%s:%s", e.Path, e.Key)
+}
+
+func splitJobId(s string) (naming.Path, string) {
+	pathS, key, _ := strings.Cut(s, ":")
+	path, _ := naming.ParsePath(pathS)
+	return path, key
 }
 
 func (t Jobs) PathIds(path naming.Path) []string {
@@ -1011,6 +1023,8 @@ func (t *T) scheduleNode() {
 			job := t.jobs[id]
 			t.jobLogger(job.schedule).Infof("unschedule (no longer configured)")
 			t.jobs.DelId(id)
+			_, key := splitJobId(id)
+			t.schedules.Del(path, key)
 		}
 	}
 
@@ -1141,6 +1155,8 @@ func (t *T) scheduleObject(path naming.Path) {
 			job := t.jobs[id]
 			t.jobLogger(job.schedule).Infof("unschedule (no longer configured)")
 			t.jobs.DelId(id)
+			_, key := splitJobId(id)
+			t.schedules.Del(path, key)
 		}
 	}
 
@@ -1167,7 +1183,7 @@ func (t *T) unscheduleRequireCollector() {
 
 func (t *T) unschedule(path naming.Path) {
 	t.reqSatisfied.UnsetPath(path)
-	t.schedules.Del(path)
+	t.schedules.DelPath(path)
 	t.jobs.DelPath(path)
 }
 
