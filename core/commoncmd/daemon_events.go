@@ -22,7 +22,7 @@ import (
 )
 
 type (
-	CmdNodeEvents struct {
+	CmdDaemonEvents struct {
 		OptsGlobal
 		Filters  []string
 		Duration time.Duration
@@ -154,7 +154,7 @@ func hasInstanceLabel(labels []pubsub.Label, expected ...string) bool {
 	return false
 }
 
-func (t *CmdNodeEvents) DoNodes() error {
+func (t *CmdDaemonEvents) DoNodes() error {
 	var (
 		err       error
 		now       = time.Now()
@@ -210,6 +210,7 @@ func (t *CmdNodeEvents) DoNodes() error {
 	}
 	defer cancel()
 
+	t.errC = make(chan error)
 	for _, nodename := range nodenames {
 		go t.nodeEventLoop(ctx, nodename)
 	}
@@ -247,14 +248,14 @@ func (t *CmdNodeEvents) DoNodes() error {
 					}
 					return nil
 				}
-			case _ = <-t.errC:
-				// TODO: verify if we can drop nodeEventLoop errors
+			case err = <-t.errC:
+				return err
 			}
 		}
 	}
 }
 
-func (t *CmdNodeEvents) nodeEventLoop(ctx context.Context, nodename string) {
+func (t *CmdDaemonEvents) nodeEventLoop(ctx context.Context, nodename string) {
 	var (
 		retries    = 0
 		maxRetries = 600
@@ -267,7 +268,8 @@ func (t *CmdNodeEvents) nodeEventLoop(ctx context.Context, nodename string) {
 	}
 	evReader, err := t.getEvReader(ctx, nodename)
 	if err != nil {
-		_, _ = fmt.Fprintf(os.Stderr, "getEvReader %s: %s", nodename, err)
+		t.errC <- fmt.Errorf("getEvReader %s: %w", nodename, err)
+		return
 	}
 
 	defer func() {
@@ -331,7 +333,7 @@ func (t *CmdNodeEvents) nodeEventLoop(ctx context.Context, nodename string) {
 	}
 }
 
-func (t *CmdNodeEvents) getEvReader(ctx context.Context, nodename string) (event.ReadCloser, error) {
+func (t *CmdDaemonEvents) getEvReader(ctx context.Context, nodename string) (event.ReadCloser, error) {
 	return t.cli.NewGetEvents().
 		SetRelatives(false).
 		SetLimit(t.Limit).
@@ -343,7 +345,7 @@ func (t *CmdNodeEvents) getEvReader(ctx context.Context, nodename string) (event
 		GetReader(ctx)
 }
 
-func (t *CmdNodeEvents) doEvent(e event.Event) {
+func (t *CmdDaemonEvents) doEvent(e event.Event) {
 	if t.Quiet {
 		return
 	}

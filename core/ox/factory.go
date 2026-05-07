@@ -1171,11 +1171,18 @@ func newCmdNodeConfigValidate() *cobra.Command {
 }
 
 func newCmdNodeEvents() *cobra.Command {
-	var options commands.CmdNodeEvents
+	cmd := newCmdDaemonEvents()
+	cmd.Hidden = true
+	cmd.Deprecated = "deprecated: 'node events' replaced by 'daemon events'"
+	return cmd
+}
+
+func newCmdDaemonEvents() *cobra.Command {
+	var options commands.CmdDaemonEvents
 	cmd := &cobra.Command{
 		Use:   "events",
-		Short: "print the node event stream",
-		Long:  "Print the node event stream\n\n" + commoncmd.UsageFlagEventFilter() + "\n" + commoncmd.UsageFlagEventTemplate(),
+		Short: "print the daemon event stream",
+		Long:  "Print the daemon event stream\n\n" + commoncmd.UsageFlagEventFilter() + "\n" + commoncmd.UsageFlagEventTemplate(),
 
 		Aliases: []string{"eve", "even", "event"},
 		RunE: func(cmd *cobra.Command, args []string) error {

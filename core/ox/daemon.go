@@ -22,6 +22,7 @@ func init() {
 		cmdDaemonHeartbeat,
 		cmdDaemonListener,
 		cmdDaemonRelay,
+		newCmdDaemonEvents(),
 		newCmdDaemonRestart(),
 		newCmdDaemonShutdown(),
 		newCmdDaemonStop(),

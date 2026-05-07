@@ -2794,7 +2794,8 @@ type GetDaemonEventsParams struct {
 	// Filter list of event filter
 	Filter *EventFilter `form:"filter,omitempty" json:"filter,omitempty"`
 
-	// Replay start the event feed replaying the latest past events from the cache that match the specified kind and labels.
+	// Replay replay the compacted event history that creates the current cluster dataset.
+	// filtering and selectors are applied to the compacted event history.
 	Replay *EventReplay `form:"replay,omitempty" json:"replay,omitempty"`
 
 	// Cache deprecated alias of `replay`. Will be removed in a future version.
