@@ -57,8 +57,6 @@ func (o *T) action(e schedule.Entry) error {
 		cmdArgs = append(cmdArgs, "sysreport")
 	case "sync_update":
 		cmdArgs = append(cmdArgs, "sync", "update")
-	//case "dequeue_actions":
-	//	cmdArgs = append(cmdArgs, "dequeue")
 	default:
 		logger.Errorf("unknown scheduler action")
 		return fmt.Errorf("unknown scheduler action")

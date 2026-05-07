@@ -82,6 +82,9 @@
     
     * `stats.disable`
     
+* **`dequeue_actions` section removed:**
+    * `dequeue_actions.schedule`
+
 ### Object Configuration
 
 * **References**
