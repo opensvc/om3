@@ -1059,6 +1059,20 @@ func newCmdNodeConfigEval() *cobra.Command {
 	return cmd
 }
 
+func newCmdNodeDequeue() *cobra.Command {
+	var options commands.CmdNodeDequeue
+	cmd := &cobra.Command{
+		Use:   "dequeue",
+		Short: "Dequeue and execute actions from the collector's action queue.",
+		RunE: func(cmd *cobra.Command, args []string) error {
+			return options.Run()
+		},
+	}
+	flags := cmd.Flags()
+	commoncmd.AddFlagsNodeGlobal(flags, &options.OptsNodeGlobal)
+	return cmd
+}
+
 func newCmdNodeEvents() *cobra.Command {
 	cmd := newCmdDaemonEvents()
 	cmd.Hidden = true

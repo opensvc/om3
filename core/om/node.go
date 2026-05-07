@@ -196,6 +196,7 @@ func init() {
 		newCmdNodeAbort(),
 		newCmdNodeChecks(),
 		newCmdNodeClear(),
+		newCmdNodeDequeue(),
 		newCmdNodeDrain(),
 		newCmdNodeDrivers(),
 		newCmdNodeLogs(),
