@@ -22,7 +22,7 @@ import (
 )
 
 type (
-	CmdNodeEvents struct {
+	CmdDaemonEvents struct {
 		OptsGlobal
 		Filters  []string
 		Duration time.Duration
@@ -154,7 +154,7 @@ func hasInstanceLabel(labels []pubsub.Label, expected ...string) bool {
 	return false
 }
 
-func (t *CmdNodeEvents) DoNodes() error {
+func (t *CmdDaemonEvents) DoNodes() error {
 	var (
 		err       error
 		now       = time.Now()
@@ -255,7 +255,7 @@ func (t *CmdNodeEvents) DoNodes() error {
 	}
 }
 
-func (t *CmdNodeEvents) nodeEventLoop(ctx context.Context, nodename string) {
+func (t *CmdDaemonEvents) nodeEventLoop(ctx context.Context, nodename string) {
 	var (
 		retries    = 0
 		maxRetries = 600
@@ -333,7 +333,7 @@ func (t *CmdNodeEvents) nodeEventLoop(ctx context.Context, nodename string) {
 	}
 }
 
-func (t *CmdNodeEvents) getEvReader(ctx context.Context, nodename string) (event.ReadCloser, error) {
+func (t *CmdDaemonEvents) getEvReader(ctx context.Context, nodename string) (event.ReadCloser, error) {
 	return t.cli.NewGetEvents().
 		SetRelatives(false).
 		SetLimit(t.Limit).
@@ -345,7 +345,7 @@ func (t *CmdNodeEvents) getEvReader(ctx context.Context, nodename string) (event
 		GetReader(ctx)
 }
 
-func (t *CmdNodeEvents) doEvent(e event.Event) {
+func (t *CmdDaemonEvents) doEvent(e event.Event) {
 	if t.Quiet {
 		return
 	}

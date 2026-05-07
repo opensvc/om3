@@ -1031,12 +1031,12 @@ func newCmdNodeConfigEval() *cobra.Command {
 	return cmd
 }
 
-func newCmdNodeEvents() *cobra.Command {
-	var options commands.CmdNodeEvents
+func newCmdDaemonEvents() *cobra.Command {
+	var options commands.CmdDaemonEvents
 	cmd := &cobra.Command{
 		Use:     "events",
-		Short:   "print the node event stream",
-		Long:    "Print the node event stream\n\n" + commoncmd.UsageFlagEventFilter() + "\n" + commoncmd.UsageFlagEventTemplate(),
+		Short:   "print the daemon event stream",
+		Long:    "Print the daemon event stream\n\n" + commoncmd.UsageFlagEventFilter() + "\n" + commoncmd.UsageFlagEventTemplate(),
 		Aliases: []string{"eve", "even", "event"},
 		RunE: func(cmd *cobra.Command, args []string) error {
 			if options.Wait && !cmd.Flags().Changed("limit") {
@@ -1056,6 +1056,13 @@ func newCmdNodeEvents() *cobra.Command {
 	commoncmd.FlagNodeSelector(flags, &options.NodeSelector)
 	commoncmd.FlagObjectSelector(flags, &options.ObjectSelector)
 	commoncmd.FlagEventLimit(flags, &options.Limit)
+	return cmd
+}
+
+func newCmdNodeEvents() *cobra.Command {
+	cmd := newCmdDaemonEvents()
+	cmd.Hidden = true
+	cmd.Deprecated = "deprecated: 'node events' replaced by 'daemon events'"
 	return cmd
 }
 

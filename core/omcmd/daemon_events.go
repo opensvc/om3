@@ -6,12 +6,12 @@ import (
 )
 
 type (
-	CmdNodeEvents struct {
-		commoncmd.CmdNodeEvents
+	CmdDaemonEvents struct {
+		commoncmd.CmdDaemonEvents
 	}
 )
 
-func (t *CmdNodeEvents) Run() error {
+func (t *CmdDaemonEvents) Run() error {
 	if t.NodeSelector == "" {
 		t.NodeSelector = hostname.Hostname()
 	}
