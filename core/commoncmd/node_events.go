@@ -210,6 +210,7 @@ func (t *CmdNodeEvents) DoNodes() error {
 	}
 	defer cancel()
 
+	t.errC = make(chan error)
 	for _, nodename := range nodenames {
 		go t.nodeEventLoop(ctx, nodename)
 	}
@@ -247,8 +248,8 @@ func (t *CmdNodeEvents) DoNodes() error {
 					}
 					return nil
 				}
-			case _ = <-t.errC:
-				// TODO: verify if we can drop nodeEventLoop errors
+			case err = <-t.errC:
+				return err
 			}
 		}
 	}
@@ -267,7 +268,8 @@ func (t *CmdNodeEvents) nodeEventLoop(ctx context.Context, nodename string) {
 	}
 	evReader, err := t.getEvReader(ctx, nodename)
 	if err != nil {
-		_, _ = fmt.Fprintf(os.Stderr, "getEvReader %s: %s", nodename, err)
+		t.errC <- fmt.Errorf("getEvReader %s: %w", nodename, err)
+		return
 	}
 
 	defer func() {
