@@ -131,6 +131,36 @@ func newCmdArrayList() *cobra.Command {
 	return cmd
 }
 
+func newCmdDaemonEvents() *cobra.Command {
+	var options commands.CmdDaemonEvents
+	cmd := &cobra.Command{
+		Use:   "events",
+		Short: "print the daemon event stream",
+		Long:  "Print the daemon event stream\n\n" + commoncmd.UsageFlagEventFilter() + "\n" + commoncmd.UsageFlagEventTemplate(),
+
+		Aliases: []string{"eve", "even", "event"},
+		RunE: func(cmd *cobra.Command, args []string) error {
+			options.Quiet = quietFlag
+			if options.Wait && !cmd.Flags().Changed("limit") {
+				options.Limit = 1
+			}
+			return options.Run()
+		},
+	}
+	flags := cmd.Flags()
+	commoncmd.FlagColor(flags, &options.Color)
+	commoncmd.FlagDuration(flags, &options.Duration)
+	commoncmd.FlagEventReplay(flags, &options.Replay)
+	commoncmd.FlagEventFilters(flags, &options.Filters)
+	commoncmd.FlagEventOutput(flags, &options.Output)
+	commoncmd.FlagEventTemplate(flags, &options.Template)
+	commoncmd.FlagEventWait(flags, &options.Wait)
+	commoncmd.FlagNodeSelector(flags, &options.NodeSelector)
+	commoncmd.FlagObjectSelector(flags, &options.ObjectSelector)
+	commoncmd.FlagEventLimit(flags, &options.Limit)
+	return cmd
+}
+
 func newCmdDaemonRestart() *cobra.Command {
 	var options commands.CmdDaemonRestart
 	cmd := &cobra.Command{
@@ -1174,36 +1204,6 @@ func newCmdNodeEvents() *cobra.Command {
 	cmd := newCmdDaemonEvents()
 	cmd.Hidden = true
 	cmd.Deprecated = "deprecated: 'node events' replaced by 'daemon events'"
-	return cmd
-}
-
-func newCmdDaemonEvents() *cobra.Command {
-	var options commands.CmdDaemonEvents
-	cmd := &cobra.Command{
-		Use:   "events",
-		Short: "print the daemon event stream",
-		Long:  "Print the daemon event stream\n\n" + commoncmd.UsageFlagEventFilter() + "\n" + commoncmd.UsageFlagEventTemplate(),
-
-		Aliases: []string{"eve", "even", "event"},
-		RunE: func(cmd *cobra.Command, args []string) error {
-			options.Quiet = quietFlag
-			if options.Wait && !cmd.Flags().Changed("limit") {
-				options.Limit = 1
-			}
-			return options.Run()
-		},
-	}
-	flags := cmd.Flags()
-	commoncmd.FlagColor(flags, &options.Color)
-	commoncmd.FlagDuration(flags, &options.Duration)
-	commoncmd.FlagEventReplay(flags, &options.Replay)
-	commoncmd.FlagEventFilters(flags, &options.Filters)
-	commoncmd.FlagEventOutput(flags, &options.Output)
-	commoncmd.FlagEventTemplate(flags, &options.Template)
-	commoncmd.FlagEventWait(flags, &options.Wait)
-	commoncmd.FlagNodeSelector(flags, &options.NodeSelector)
-	commoncmd.FlagObjectSelector(flags, &options.ObjectSelector)
-	commoncmd.FlagEventLimit(flags, &options.Limit)
 	return cmd
 }
 
