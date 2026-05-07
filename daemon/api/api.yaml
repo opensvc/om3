@@ -842,6 +842,33 @@ paths:
         500:
           $ref: '#/components/responses/500'
 
+  /api/node/name/{nodename}/action/dequeue:
+    post:
+      operationId: PostPeerActionDequeue
+      tags:
+        - node
+      security:
+        - basicAuth: []
+        - bearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/inPathNodeName'
+        - $ref: '#/components/parameters/inQueryRequesterSid'
+      responses:
+        200:
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/NodeActionAccepted'
+          description: OK
+        400:
+          $ref: '#/components/responses/400'
+        401:
+          $ref: '#/components/responses/401'
+        403:
+          $ref: '#/components/responses/403'
+        500:
+          $ref: '#/components/responses/500'
+
   /api/node/name/{nodename}/action/drain:
     post:
       operationId: PostPeerActionDrain
