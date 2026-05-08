@@ -11,10 +11,15 @@ import (
 	"net/http"
 	"time"
 
+	"github.com/opensvc/om3/v3/core/client"
 	"github.com/opensvc/om3/v3/core/clusterdump"
 	"github.com/opensvc/om3/v3/core/naming"
 	"github.com/opensvc/om3/v3/core/oc3path"
+	"github.com/opensvc/om3/v3/daemon/daemonauth"
+	"github.com/opensvc/om3/v3/daemon/daemonsubsystem"
 	"github.com/opensvc/om3/v3/daemon/msgbus"
+	"github.com/opensvc/om3/v3/daemon/rbac"
+	"github.com/opensvc/om3/v3/util/funcopt"
 	"github.com/opensvc/om3/v3/util/xmap"
 )
 
@@ -37,7 +42,8 @@ type (
 
 	// PingStatusResponse used to decode the response of post feed daemon status and ping
 	PingStatusResponse struct {
-		ObjectWithoutConfig *[]string `json:"object_without_config"`
+		ObjectWithoutConfig   *[]string `json:"object_without_config"`
+		NodeWithoActionQueued *[]string `json:"node_with_action_queued"`
 	}
 )
 
@@ -340,6 +346,14 @@ func (t *T) handlePingOrStatusResponse(method, path string, resp *http.Response)
 			t.log.Debugf("%s %s status code %d", method, path, resp.StatusCode)
 		}
 	}
+	if data.NodeWithoActionQueued != nil {
+		for _, nodename := range *data.NodeWithoActionQueued {
+			t.log.Infof("%s %s delegate dequeue action for %s", method, path, nodename)
+			if err := t.dequeueAction(nodename); err != nil {
+				t.log.Warnf("%s %s delegate dequeue action for %s: %s", method, path, nodename, err)
+			}
+		}
+	}
 
 	return nil
 }
@@ -411,4 +425,44 @@ func (t *T) dropInstanceConfigSentFlag(sent objectConfigSent) bool {
 		t.log.Tracef("dropped previous instance config sent flag %s", sent.path)
 		return true
 	}
+}
+
+func (t *T) dequeueAction(nodename string) error {
+	if _, ok := t.clusterNode[nodename]; !ok {
+		return fmt.Errorf("node %s not found in cluster", nodename)
+	}
+	tkDuration := 5 * time.Second
+	tkProvider := daemonauth.JWTCreator{}
+	claims := map[string]any{
+		"sub":   t.localhost,
+		"iss":   t.localhost,
+		"grant": []string{rbac.GrantRoot.String()},
+
+		daemonauth.TkUseClaim: daemonauth.TkUseAccess,
+	}
+	tk, _, err := tkProvider.CreateToken(tkDuration, claims)
+	if err != nil {
+		return fmt.Errorf("create token: %s", err)
+	}
+	options := []funcopt.O{
+		client.WithURL(daemonsubsystem.PeerURL(nodename)),
+		client.WithBearer(tk),
+		client.WithTimeout(tkDuration),
+	}
+	cli, err := client.New(options...)
+	if err != nil {
+		return fmt.Errorf("new client: %s", err)
+	}
+	ctx, cancel := context.WithTimeout(context.Background(), tkDuration)
+	defer cancel()
+	resp, err := cli.PostPeerActionDequeue(ctx, nodename, nil)
+	if err != nil {
+		return fmt.Errorf("post action dequeue %s: %w", nodename, err)
+	}
+	if resp.StatusCode == http.StatusOK {
+		t.log.Infof("dequeue action accepted by %s", nodename)
+	} else {
+		return fmt.Errorf("post action dequeue %s: status code %d", nodename, resp.StatusCode)
+	}
+	return nil
 }
