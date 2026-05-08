@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"net/http"
 	"os"
+	"sync/atomic"
 	"time"
 
 	"github.com/golang-jwt/jwt/v5"
@@ -34,7 +35,8 @@ type (
 )
 
 var (
-	jwtSignKey *rsa.PrivateKey // Stores the RSA private key for signing
+	jwtSignKey atomic.Pointer[rsa.PrivateKey] // Stores the RSA private key for signing
+
 	// jwtVerifyKeySign is the jwt verify key signature initialized during initAuthJWT
 	jwtVerifyKeySign string
 )
@@ -67,7 +69,7 @@ func initJWT(_ context.Context, i interface{}) (string, auth.Strategy, error) {
 	if err != nil {
 		return name, nil, err
 	}
-	jwtSignKey = signKey // Assign to the global variable
+	jwtSignKey.Store(signKey) // Assign to the global variable
 	validate := func(ctx context.Context, r *http.Request, s string) (info auth.Info, exp time.Time, err error) {
 		var tk *jwt.Token
 
@@ -144,7 +146,7 @@ func initAuthJWT(i interface{}) (*rsa.PublicKey, *rsa.PrivateKey, error) {
 // It generates a JWT with the specified duration and custom claims,
 // returning the token, expiration time, and error if any.
 func (*JWTCreator) CreateToken(duration time.Duration, xClaims map[string]interface{}) (tk string, expiredAt time.Time, err error) {
-	if jwtSignKey == nil {
+	if jwtSignKey.Load() == nil {
 		return
 	}
 	expiredAt = time.Now().Add(duration)
@@ -159,7 +161,7 @@ func (*JWTCreator) CreateToken(duration time.Duration, xClaims map[string]interf
 	token := jwt.NewWithClaims(jwt.SigningMethodRS256, allClaims)
 
 	// Sign the token using the RSA private key
-	if tk, err = token.SignedString(jwtSignKey); err != nil {
+	if tk, err = token.SignedString(jwtSignKey.Load()); err != nil {
 		return
 	}
 
