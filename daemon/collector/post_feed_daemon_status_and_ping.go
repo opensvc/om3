@@ -35,8 +35,8 @@ type (
 		Version           string            `json:"version"`
 	}
 
-	// ObjectWithoutConfig used to decode response of post feed daemon status and ping
-	ObjectWithoutConfig struct {
+	// PingStatusResponse used to decode the response of post feed daemon status and ping
+	PingStatusResponse struct {
 		ObjectWithoutConfig *[]string `json:"object_without_config"`
 	}
 )
@@ -138,12 +138,9 @@ func (t *T) postPing() error {
 		// collector accept changes, we can drop pending change
 		t.previousUpdatedAt = now
 		t.dropChanges()
-		if addedPath, err := t.objectConfigToSendFromBody(resp.Body); err != nil {
-			t.log.Warnf("%s %s status code %d can't detect missing instance config: %s", method, path, resp.StatusCode, err)
-		} else if len(addedPath) > 0 {
-			t.log.Infof("%s %s status code %d got missing instance config: %s", method, path, resp.StatusCode, addedPath)
-		} else {
-			t.log.Debugf("%s %s status code %d", method, path, resp.StatusCode)
+
+		if err := t.handlePingOrStatusResponse(method, path, resp); err != nil {
+			t.log.Errorf("handle %s %s response error: %v", method, path, err)
 		}
 		return nil
 	default:
@@ -290,15 +287,12 @@ func (t *T) postStatus() error {
 		return nil
 	case http.StatusAccepted:
 		// collector accept changes, we can drop pending change
-		if addedPath, err := t.objectConfigToSendFromBody(resp.Body); err != nil {
-			t.log.Warnf("%s %s status code %d can't detect missing instance config: %s", method, path, resp.StatusCode, err)
-		} else if len(addedPath) > 0 {
-			t.log.Infof("%s %s status code %d got missing instance config: %s", method, path, resp.StatusCode, addedPath)
-		} else {
-			t.log.Debugf("%s %s status code %d", method, path, resp.StatusCode)
-		}
 		t.previousUpdatedAt = now
 		t.dropChanges()
+
+		if err := t.handlePingOrStatusResponse(method, path, resp); err != nil {
+			t.log.Errorf("handle %s %s response: %s", method, path, err)
+		}
 		return nil
 	default:
 		b := make([]byte, 512)
@@ -326,7 +320,31 @@ func (c *changesData) asPostBody(previous, current time.Time) ([]byte, error) {
 	})
 }
 
-// objectConfigToSendFromBody updates t.objectConfigToSend with missing
+func (t *T) decodePingStatusResponse(r io.Reader) (obj PingStatusResponse, err error) {
+	err = json.NewDecoder(r).Decode(&obj)
+	return
+}
+
+func (t *T) handlePingOrStatusResponse(method, path string, resp *http.Response) error {
+	data, err := t.decodePingStatusResponse(resp.Body)
+	if err != nil {
+		t.log.Warnf("%s %s status code %d can't decode response: %s", method, path, resp.StatusCode, err)
+		return nil
+	}
+	if data.ObjectWithoutConfig != nil {
+		if addedPath, err := t.updateConfigToSend(*data.ObjectWithoutConfig); err != nil {
+			t.log.Warnf("%s %s status code %d can't detect missing instance config: %s", method, path, resp.StatusCode, err)
+		} else if len(addedPath) > 0 {
+			t.log.Infof("%s %s status code %d got missing instance config: %s", method, path, resp.StatusCode, addedPath)
+		} else {
+			t.log.Debugf("%s %s status code %d", method, path, resp.StatusCode)
+		}
+	}
+
+	return nil
+}
+
+// updateConfigToSend updates t.objectConfigToSend with missing
 // paths that are found from the decoded r into the ObjectWithoutConfig.
 // It returns the added paths.
 //
@@ -351,16 +369,8 @@ func (c *changesData) asPostBody(previous, current time.Time) ([]byte, error) {
 //   - @oc3-api prepare job ping
 //     respond with previous job ping or status ObjectWithoutConfig "obj1"
 //   - @collector-speaker don't add "obj1" because of the objectConfigToSendMinDelay
-func (t *T) objectConfigToSendFromBody(r io.Reader) (added []naming.Path, err error) {
-	var obj ObjectWithoutConfig
-	if err = json.NewDecoder(r).Decode(&obj); err != nil {
-		return
-	}
-	if obj.ObjectWithoutConfig == nil {
-		return
-	}
-
-	for _, s := range *obj.ObjectWithoutConfig {
+func (t *T) updateConfigToSend(objWithoutConfig []string) (added []naming.Path, err error) {
+	for _, s := range objWithoutConfig {
 		p, err := naming.ParsePath(s)
 		if err != nil {
 			continue
