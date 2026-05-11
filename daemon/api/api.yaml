@@ -1776,6 +1776,18 @@ paths:
           schema:
             type: string
             example: scheduler
+        - in: query
+          name: selector
+          description: execute on a list of objects
+          schema:
+            type: string
+            example: 'foo'
+        - in: query
+          name: rid
+          description: a resource selector expression
+          schema:
+            type: string
+            example: 'task#1'
       responses:
         200:
           description: OK
@@ -7105,7 +7117,8 @@ components:
         - sub
         - sid
         - global_expect
-        - desc
+        - cmd
+        - rid
       properties:
         node:
           type: string
@@ -7125,7 +7138,9 @@ components:
           type: string
         global_expect:
           type: string
-        desc:
+        cmd:
+          type: string
+        rid:
           type: string
 
     ProcessItems:
