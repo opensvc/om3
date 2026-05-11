@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/opensvc/om3/v3/core/naming"
+	"github.com/opensvc/om3/v3/core/resourceid"
 )
 
 type (
@@ -72,7 +73,7 @@ func List(subFilters []string, paths naming.Paths, rid string) []T {
 		if len(subFilters) != 0 && !slices.Contains(subFilters, t.Sub) {
 			continue
 		}
-		if rid != "" && rid != t.Rid {
+		if rid != "" && !resourceid.Match(t.Rid, rid) {
 			continue
 		}
 		if len(pathsList) > 0 && !slices.Contains(pathsList, t.Object) {
