@@ -100,7 +100,8 @@ func (o *T) action(e schedule.Entry) error {
 		Elapsed:      "",
 		GlobalExpect: "-",
 		Sub:          "scheduler",
-		Desc:         cmd.String(),
+		Cmd:          cmd.String(),
+		Rid:          e.RID(),
 	})
 	err := cmd.Wait()
 	proc.Unregister(pid)

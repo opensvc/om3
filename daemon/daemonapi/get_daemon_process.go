@@ -6,6 +6,9 @@ import (
 
 	"github.com/labstack/echo/v4"
 	"github.com/opensvc/om3/v3/core/client"
+	"github.com/opensvc/om3/v3/core/naming"
+	"github.com/opensvc/om3/v3/core/object"
+	"github.com/opensvc/om3/v3/core/objectselector"
 	"github.com/opensvc/om3/v3/daemon/api"
 	"github.com/opensvc/om3/v3/daemon/proc"
 )
@@ -25,11 +28,30 @@ func (a *DaemonAPI) GetDaemonProcess(ctx echo.Context, nodename string, params a
 }
 
 func (a *DaemonAPI) getLocalDaemonProcess(ctx echo.Context, params api.GetDaemonProcessParams) error {
-	var subFilter []string
+	var (
+		subFilter []string
+		paths     naming.Paths
+		rid       string
+		err       error
+	)
 	if params.Sub != nil && *params.Sub != "" {
 		subFilter = strings.Split(*params.Sub, ",")
 	}
-	items := procToProcessItem(proc.List(subFilter))
+	if params.Selector != nil && *params.Selector != "" {
+		selector := objectselector.New(
+			*params.Selector,
+			objectselector.WithLocal(true),
+			objectselector.WithConfigFilterDisabled(),
+			objectselector.WithPaths(object.StatusData.GetPaths()))
+		paths, err = selector.Expand()
+		if err != nil {
+			return err
+		}
+	}
+	if params.Rid != nil && *params.Rid != "" {
+		rid = *params.Rid
+	}
+	items := procToProcessItem(proc.List(subFilter, paths, rid))
 	return ctx.JSON(http.StatusOK, api.ProcessList{Kind: "ProcessList", Items: items})
 }
 
@@ -45,7 +67,8 @@ func procToProcessItem(elements []proc.T) api.ProcessItems {
 			Elapsed:      item.Elapsed,
 			GlobalExpect: item.GlobalExpect,
 			Sub:          item.Sub,
-			Desc:         item.Desc,
+			Cmd:          item.Cmd,
+			Rid:          item.Rid,
 		})
 	}
 	return res
