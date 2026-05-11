@@ -57,7 +57,8 @@ func (a *DaemonAPI) apiExec(ctx echo.Context, p naming.Path, requesterSid uuid.U
 		Elapsed:      "",
 		GlobalExpect: "-",
 		Sub:          "api",
-		Desc:         cmd.String(),
+		Cmd:          cmd.String(),
+		Rid:          "-",
 	})
 	go func() {
 		err := cmd.Wait()

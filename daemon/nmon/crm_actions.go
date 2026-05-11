@@ -80,7 +80,8 @@ func (t *Manager) crmAction(cmdArgs ...string) error {
 		Elapsed:      "",
 		GlobalExpect: t.state.GlobalExpect.String(),
 		Sub:          "nmon",
-		Desc:         cmd.String(),
+		Cmd:          cmd.String(),
+		Rid:          "-",
 	})
 	err := cmd.Wait()
 	proc.Unregister(pid)

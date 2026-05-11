@@ -5,6 +5,8 @@ import (
 	"sort"
 	"sync"
 	"time"
+
+	"github.com/opensvc/om3/v3/core/naming"
 )
 
 type (
@@ -17,7 +19,8 @@ type (
 		Elapsed      string
 		GlobalExpect string
 		Sub          string
-		Desc         string
+		Cmd          string
+		Rid          string
 	}
 )
 
@@ -61,11 +64,18 @@ func Get(pid int) (T, bool) {
 	return t, true
 }
 
-func List(subFilters []string) []T {
+func List(subFilters []string, paths naming.Paths, rid string) []T {
 	mu.RLock()
 	out := make([]T, 0, len(byPID))
+	pathsList := paths.StrSlice()
 	for _, t := range byPID {
 		if len(subFilters) != 0 && !slices.Contains(subFilters, t.Sub) {
+			continue
+		}
+		if rid != "" && rid != t.Rid {
+			continue
+		}
+		if len(pathsList) > 0 && !slices.Contains(pathsList, t.Object) {
 			continue
 		}
 		if !t.StartedAt.IsZero() {
