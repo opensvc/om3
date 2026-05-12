@@ -32,7 +32,7 @@ func validate(s string) error {
 	if strings.Trim(s[0:1], alnums) != "" {
 		return fmt.Errorf("invalid first character")
 	}
-	if strings.Trim(s[1:], alnums+"-") != "" {
+	if strings.Trim(s[1:], alnums+".-") != "" {
 		return fmt.Errorf("invalid characters")
 	}
 	return nil
