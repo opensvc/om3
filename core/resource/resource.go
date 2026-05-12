@@ -1406,7 +1406,7 @@ func (t SCSIPersistentReservation) IsSCSIPersistentReservationEnabled() bool {
 }
 
 func (t SCSIPersistentReservation) PersistentReservationKey() string {
-	return t.Key
+	return scsi.FormatPRKey(t.Key)
 }
 
 func (t *Status) DeepCopy() *Status {
