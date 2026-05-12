@@ -14,7 +14,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"os/exec"
 	"strings"
 	"time"
 
@@ -102,7 +101,6 @@ type T struct {
 	// Cached resolved values for datastore-referenced files
 	keyFileCache string
 	pwfCache     string
-	cliCache     string
 
 	rcgStatusCache *rcgStatus
 }
@@ -146,7 +144,7 @@ func (t *T) Configure() error {
 
 // Label returns a short human-readable description of the resource.
 func (t *T) Label(_ context.Context) string {
-	return fmt.Sprintf("%s %s %s", t.Array, t.Mode, t.RCG)
+	return t.Name()
 }
 
 func (t *T) Name() string {
@@ -218,6 +216,7 @@ func (t *T) Status(ctx context.Context) status.T {
 		}
 	}
 
+	t.StatusLog().Info(ps.String())
 	return status.NotApplicable
 }
 
@@ -254,7 +253,9 @@ func (t *T) Start(ctx context.Context) error {
 	}
 
 	// Check if we are split from target
-	if t.isSplitted(ps.Target) {
+	if v, err := t.isSplitted(ctx, ps.Target); err != nil {
+		return err
+	} else if v {
 		t.Log().Infof("we are split from %s array", ps.Target)
 		return t.startSplitted(ctx)
 	}
@@ -414,6 +415,7 @@ func (t *T) loadArrayConfig() error {
 	}
 
 	t.arrayConfig = config
+	t.Log().Tracef("loaded array config: %#v", config)
 	return nil
 }
 
@@ -466,6 +468,9 @@ func (t *T) keyFile() (string, error) {
 	if config.Key == "" {
 		return "", nil
 	}
+	if strings.HasPrefix(config.Key, "/") {
+		return config.Key, nil
+	}
 	if t.keyFileCache != "" {
 		return t.keyFileCache, nil
 	}
@@ -493,6 +498,9 @@ func (t *T) pwf() (string, error) {
 	if config.PWF == "" {
 		return "", nil
 	}
+	if strings.HasPrefix(config.PWF, "/") {
+		return config.PWF, nil
+	}
 	if t.pwfCache != "" {
 		return t.pwfCache, nil
 	}
@@ -510,31 +518,14 @@ func (t *T) pwf() (string, error) {
 	return file, nil
 }
 
-// cli returns the resolved cli path, supporting "from <path> key <key>" format.
+// cli returns the resolved cli path.
 // The content is cached as a temporary file.
 func (t *T) cli() (string, error) {
 	config, err := t.getArrayConfig()
 	if err != nil {
 		return "", err
 	}
-	if config.CLI == "" {
-		return "cli", nil
-	}
-	if t.cliCache != "" {
-		return t.cliCache, nil
-	}
-	km, err := datarecv.ParseKeyMetaRelObj(config.CLI, t.GetObject())
-	if err != nil {
-		t.cliCache = ""
-		return "", err
-	}
-	file, err := km.CacheFile()
-	if err != nil {
-		t.cliCache = ""
-		return "", err
-	}
-	t.cliCache = file
-	return file, nil
+	return config.CLI, nil
 }
 
 // ---------------------------------------------------------------------------
@@ -562,54 +553,33 @@ func (t *T) syncMaxDelay() int64 {
 }
 
 func (t *T) testArrayConnection(ctx context.Context) error {
-	_, err := t.runCmdOutput(ctx, "showsys")
-	return err
-}
-
-func (t *T) runCmd(ctx context.Context, name string, args ...string) error {
-	_, err := t.runCmdOutput(ctx, name, args...)
-	return err
-}
-
-func (t *T) runCmdOutput(ctx context.Context, cmd string, args ...string) (string, error) {
-	fullCmd := cmd
-	if len(args) > 0 {
-		fullCmd += " " + strings.Join(args, " ")
-	}
-	t.Log().Debugf("exec: %s", fullCmd)
-
-	var stdout, stderr strings.Builder
-	cmdStr := t.buildArrayCommand(fullCmd)
-
-	cmdExec := exec.CommandContext(ctx, "sh", "-c", cmdStr)
-	cmdExec.Stdout = &stdout
-	cmdExec.Stderr = &stderr
-
-	err := cmdExec.Run()
-	out := stdout.String()
-	errOut := stderr.String()
-
+	cmdS := "showsys"
+	cmdV, err := t.buildCommand(cmdS)
 	if err != nil {
-		if len(errOut) > 0 {
-			t.Log().Errorf("stderr: %s", errOut)
-		}
-		return out, fmt.Errorf("command failed: %w\n%s", err, out)
+		return err
 	}
-
-	if len(errOut) > 0 {
-		t.Log().Debugf("stderr: %s", errOut)
+	if len(cmdV) < 2 {
+		return fmt.Errorf("%w: %s", ErrBuildCommand, cmdS)
 	}
-
-	return out, nil
+	cmd := command.New(
+		command.WithContext(ctx),
+		command.WithName(cmdV[0]),
+		command.WithArgs(cmdV[1:]),
+		command.WithLogger(t.Log()),
+		command.WithCommandLogLevel(zerolog.DebugLevel),
+		command.WithStdoutLogLevel(zerolog.TraceLevel),
+		command.WithStderrLogLevel(zerolog.TraceLevel),
+	)
+	return cmd.Run()
 }
 
-func (t *T) buildArrayCommand(cmd string) string {
-	// Prefix commands with 3PAR CLI environment settings
-	prefix := "setclienv csvtable 1; setclienv nohdtot 1;"
-	return prefix + cmd + "; exit"
+func (t *T) wrapSSHCommand(cmd string) string {
+	return fmt.Sprintf("setclienv csvtable 1; setclienv nohdtot 1; %s; exit", cmd)
 }
 
 func (t *T) buildSSHCommand(cmd string) ([]string, error) {
+	cmd = t.wrapSSHCommand(cmd)
+
 	// For SSH method: ssh -i <key> <username>@<manager>
 	keyFile, err := t.keyFile()
 	if err != nil {
@@ -676,20 +646,29 @@ func (t *T) buildCommand(cmd string) ([]string, error) {
 	}
 }
 
-func (t *T) runArrayCommand(ctx context.Context, cmd string) (string, error) {
-	// Based on method, use appropriate command execution
-	// For simplicity, we'll use a generic approach
-	// In a real implementation, this would use the array connection config
-	return t.runCmdOutput(ctx, cmd)
-}
-
 func (t *T) rcgStatus(ctx context.Context) (*rcgStatus, error) {
-	out, err := t.runArrayCommand(ctx, "showrcopy groups")
+	cmdS := "showrcopy groups"
+	cmdV, err := t.buildCommand(cmdS)
 	if err != nil {
 		return nil, err
 	}
-
-	return t.parseRCGStatus(out, t.RCG)
+	if len(cmdV) < 2 {
+		return nil, fmt.Errorf("%w: %s", ErrBuildCommand, cmdS)
+	}
+	cmd := command.New(
+		command.WithContext(ctx),
+		command.WithName(cmdV[0]),
+		command.WithArgs(cmdV[1:]),
+		command.WithLogger(t.Log()),
+		command.WithCommandLogLevel(zerolog.DebugLevel),
+		command.WithBufferedStdout(),
+		command.WithStderrLogLevel(zerolog.TraceLevel),
+	)
+	out, err := cmd.Output()
+	if err != nil {
+		return nil, err
+	}
+	return t.parseRCGStatus(string(out), t.RCG)
 }
 
 func (t *T) cachedRCGStatus(ctx context.Context) (*rcgStatus, error) {
@@ -701,9 +680,6 @@ func (t *T) cachedRCGStatus(ctx context.Context) (*rcgStatus, error) {
 
 func (t *T) clearCaches() {
 	t.rcgStatusCache = nil
-	t.keyFileCache = ""
-	t.pwfCache = ""
-	t.cliCache = ""
 	// Clear array config to force reload on next access
 	t.arrayConfig = nil
 }
@@ -867,30 +843,46 @@ func (t *T) splitCSV(line string) []string {
 	return parts
 }
 
-func (t *T) isSplitted(target string) bool {
+func (t *T) isSplitted(ctx context.Context, target string) (bool, error) {
 	// Check if replication links to target are down
-	out, err := t.runArrayCommand(context.Background(), "showrcopy links")
+	cmdS := "showrcopy links"
+	cmdV, err := t.buildCommand(cmdS)
 	if err != nil {
-		t.Log().Warnf("unable to check rcopy links: %s", err)
-		return false
+		return false, err
+	}
+	if len(cmdV) < 2 {
+		return false, fmt.Errorf("%w: %s", ErrBuildCommand, cmdS)
+	}
+	cmd := command.New(
+		command.WithContext(ctx),
+		command.WithName(cmdV[0]),
+		command.WithArgs(cmdV[1:]),
+		command.WithLogger(t.Log()),
+		command.WithCommandLogLevel(zerolog.DebugLevel),
+		command.WithBufferedStdout(),
+		command.WithStderrLogLevel(zerolog.TraceLevel),
+	)
+	out, err := cmd.Output()
+	if err != nil {
+		return false, err
 	}
 
 	// Parse showrcopy links output
 	// Format: Target,Node,Address,Status,Options
-	lines := strings.Split(out, "\n")
+	lines := strings.Split(string(out), "\n")
 	for _, line := range lines {
 		parts := strings.Split(line, ",")
 		if len(parts) >= 4 {
 			if strings.TrimSpace(parts[0]) == target {
 				status := strings.TrimSpace(parts[3])
 				if status == "Up" {
-					return false
+					return false, nil
 				}
 			}
 		}
 	}
 
-	return true
+	return true, nil
 }
 
 func (t *T) runFailoverRCG(ctx context.Context) error {
@@ -1135,6 +1127,16 @@ func (t *T) PromoteRW(ctx context.Context) error {
 	return nil
 }
 
+func (t *rcgStatus) Oldest() time.Time {
+	var oldest time.Time
+	for i, vv := range t.Volumes {
+		if i == 0 || vv.LastSyncTime.Before(oldest) {
+			oldest = vv.LastSyncTime
+		}
+	}
+	return oldest
+}
+
 func (t *rcgStatus) Period() (time.Duration, error) {
 	var period time.Duration
 	for _, opt := range t.Options {
@@ -1143,8 +1145,16 @@ func (t *rcgStatus) Period() (time.Duration, error) {
 			if len(fields) < 2 {
 				return period, fmt.Errorf("unexpected number of fields in RCG option: %s", opt)
 			}
-			return time.ParseDuration(fields[2])
+			return time.ParseDuration(fields[1])
 		}
 	}
 	return period, nil
+}
+
+func (t *rcgStatus) String() string {
+	var l []string
+	l = append(l, "status:"+t.Status)
+	l = append(l, "role:"+t.Role)
+	l = append(l, fmt.Sprintf("last:%s", t.Oldest()))
+	return strings.Join(l, " ")
 }
