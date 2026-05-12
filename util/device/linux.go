@@ -111,6 +111,7 @@ func (t T) Delete() error {
 func (t T) SlaveHosts() ([]string, error) {
 	var errs error
 	l := make([]string, 0)
+	m := make(map[string]any)
 	slaves, err := t.Slaves()
 	if err != nil {
 		return l, err
@@ -119,7 +120,8 @@ func (t T) SlaveHosts() ([]string, error) {
 		if host, err := slave.Host(); err != nil {
 			errs = errors.Join(errs, err)
 			continue
-		} else {
+		} else if _, ok := m[host]; !ok {
+			m[host] = nil
 			l = append(l, host)
 		}
 	}
@@ -137,7 +139,7 @@ func (t T) Host() (string, error) {
 		return "", err
 	}
 	hbtl := strings.Split(filepath.Base(devicePath), ":")
-	if len(hbtl) == 4 {
+	if len(hbtl) != 4 {
 		return "", fmt.Errorf("dev %s host device path unexpected format: %v", devicePath, hbtl)
 	}
 	return "host" + hbtl[0], nil
