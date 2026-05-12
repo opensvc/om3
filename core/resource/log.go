@@ -27,7 +27,11 @@ var (
 )
 
 func (t StatusLogEntry) String() string {
-	return fmt.Sprintf("%s: %s", t.Level, t.Message)
+	if t.Level == InfoLevel {
+		return t.Message
+	} else {
+		return fmt.Sprintf("%s: %s", t.Level, t.Message)
+	}
 }
 
 func push(l *StatusLog, lvl Level, s string, args ...any) {
