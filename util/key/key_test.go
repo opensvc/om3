@@ -42,6 +42,16 @@ func TestKey(t *testing.T) {
 			render: "fs#1.dev",
 		},
 		{
+			s:      "array#baie.acme.com.",
+			t:      T{"array#baie.acme.com", ""},
+			render: "array#baie.acme.com.",
+		},
+		{
+			s:      "array#baie.acme.com.api",
+			t:      T{"array#baie.acme.com", "api"},
+			render: "array#baie.acme.com.api",
+		},
+		{
 			s:      "data.a.b/C.D",
 			t:      T{"data", "a.b/C.D"},
 			render: "data.a.b/C.D",
@@ -49,7 +59,7 @@ func TestKey(t *testing.T) {
 		{
 			s:      "container#1",
 			t:      T{"container#1", ""},
-			render: "container#1",
+			render: "container#1.",
 		},
 		{
 			s:      ".foo",

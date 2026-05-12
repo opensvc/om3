@@ -63,7 +63,16 @@ func ParseWithDefaultSection(s, defaultSection string) (T, error) {
 		}
 		return T{defaultSection, s}, nil
 	case 2:
-		return T{l[0], l[1]}, nil
+		switch l[0] {
+		case "env", "data":
+			// "data.c.d" parses as {"data", "c.d"}
+			return T{l[0], l[1]}, nil
+		default:
+			// "a#b.c.d" parses as {"a#b.c", "d"}
+			// because resource index can contain a dot, and resource options never have a dot
+			lastDotIndex := strings.LastIndex(s, ".")
+			return T{s[0:lastDotIndex], s[lastDotIndex+1:]}, nil
+		}
 	default:
 		return T{}, fmt.Errorf("invalid key: %q", s)
 	}
@@ -88,8 +97,8 @@ func (t T) String() string {
 	if t.Section == "DEFAULT" {
 		return t.Option
 	}
-	if t.Option == "" {
-		return t.Section
+	if t.Section == "" && t.Option == "" {
+		return ""
 	}
 	return t.Section + "." + t.Option
 }
