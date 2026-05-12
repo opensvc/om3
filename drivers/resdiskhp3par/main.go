@@ -27,6 +27,7 @@ import (
 	"github.com/opensvc/om3/v3/drivers/resdisk"
 	"github.com/opensvc/om3/v3/util/command"
 	"github.com/opensvc/om3/v3/util/device"
+	"github.com/opensvc/om3/v3/util/duration"
 	"github.com/opensvc/om3/v3/util/key"
 	"github.com/rs/zerolog"
 )
@@ -1153,8 +1154,10 @@ func (t *rcgStatus) Period() (time.Duration, error) {
 
 func (t *rcgStatus) String() string {
 	var l []string
-	l = append(l, "status:"+t.Status)
+	age := time.Now().Sub(t.Oldest())
 	l = append(l, "role:"+t.Role)
-	l = append(l, fmt.Sprintf("last:%s", t.Oldest()))
+	l = append(l, "state:"+t.Status)
+	l = append(l, fmt.Sprintf("age:%s", duration.FmtShortDuration(age)))
+	l = append(l, "mode:"+t.Mode)
 	return strings.Join(l, " ")
 }
