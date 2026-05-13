@@ -14,6 +14,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"slices"
 	"strings"
 	"time"
 
@@ -47,6 +48,9 @@ const (
 	// Remote copy group modes
 	rcgModeSync     = "Sync"
 	rcgModePeriodic = "Periodic"
+
+	// Remote copy group options
+	rcgOptionAutoRecover = "auto_recover"
 
 	// Volume sync status
 	vvSyncStatusSynced  = "Synced"
@@ -96,8 +100,8 @@ type T struct {
 	// StartTimeout is the maximum duration to wait for start operations.
 	StartTimeout *time.Duration `json:"start_timeout"`
 
-	// arrayConfig holds the resolved array configuration
-	arrayConfig *Config
+	// arrayConfig holds the resolved array configurations
+	arrayConfig map[string]*Config
 
 	// Cached resolved values for datastore-referenced files
 	keyFileCache string
@@ -182,23 +186,26 @@ func (t *T) Status(ctx context.Context) status.T {
 		return status.NotApplicable
 	}
 
+	t.StatusLog().Info(ps.String())
+
 	// Check overall RCG status
 	if ps.Status != rcgStatusStarted {
-		t.StatusLog().Info("rcg status is %s (expected Started)", ps.Status)
+		t.StatusLog().Warn("state should be %s", rcgStatusStarted)
 	}
 
 	// Check role based on mode
 	if t.Mode == "sync" {
-		if ps.Role != rcgRolePrimary {
-			t.StatusLog().Warn("rcg role is %s (expected Primary for sync mode)", ps.Role)
+		if ps.Mode != rcgModeSync {
+			t.StatusLog().Warn("mode should be %s", rcgModeSync)
 		}
 	} else if t.Mode == "async" {
-		if ps.Role != rcgRolePrimary {
-			t.StatusLog().Warn("rcg role is %s (expected Primary for async mode)", ps.Role)
-		}
 		if ps.Mode != rcgModePeriodic {
-			t.StatusLog().Warn("rcg mode is %s (expected Periodic for async mode)", ps.Mode)
+			t.StatusLog().Warn("mode should be %s", rcgModePeriodic)
 		}
+	}
+
+	if !slices.Contains(ps.Options, rcgOptionAutoRecover) {
+		t.StatusLog().Warn("option %s should be set", rcgOptionAutoRecover)
 	}
 
 	// Check volume sync status
@@ -217,7 +224,6 @@ func (t *T) Status(ctx context.Context) status.T {
 		}
 	}
 
-	t.StatusLog().Info(ps.String())
 	return status.NotApplicable
 }
 
@@ -231,11 +237,6 @@ func (t *T) Provisioned(ctx context.Context) (provisioned.T, error) {
 		return provisioned.False, nil
 	}
 	return provisioned.True, nil
-}
-
-// Abort ensures the array connection is working.
-func (t *T) Abort(ctx context.Context) error {
-	return t.testArrayConnection(ctx)
 }
 
 // Start starts the replication in the appropriate direction.
@@ -259,10 +260,10 @@ func (t *T) Start(ctx context.Context) error {
 	} else if v {
 		t.Log().Infof("we are split from %s array", ps.Target)
 		return t.startSplitted(ctx)
+	} else {
+		t.Log().Infof("we are joined with %s array", ps.Target)
+		return t.startJoined(ctx)
 	}
-
-	t.Log().Infof("we are joined with %s array", ps.Target)
-	return t.startJoined(ctx)
 }
 
 func (t *T) startJoined(ctx context.Context) error {
@@ -351,15 +352,14 @@ func (t *T) Split(ctx context.Context) error {
 // Array configuration loading
 // ---------------------------------------------------------------------------
 
-// arraySectionName returns the full array section name in cluster config.
-func (t *T) arraySectionName() string {
-	return fmt.Sprintf("array#%s", t.Array)
-}
-
 // loadArrayConfig loads the array configuration from the cluster config.
 // Configuration is read from the array#<suffix> section where <suffix> is t.Array.
 func (t *T) loadArrayConfig() error {
-	if t.arrayConfig != nil {
+	return t.loadThisArrayConfig(t.Array)
+}
+
+func (t *T) loadThisArrayConfig(arrayName string) error {
+	if _, ok := t.arrayConfig[arrayName]; ok {
 		return nil
 	}
 
@@ -376,7 +376,7 @@ func (t *T) loadArrayConfig() error {
 	}
 
 	// Get the array section from cluster config
-	sectionName := t.arraySectionName()
+	sectionName := fmt.Sprintf("array#%s", arrayName)
 
 	// Get method
 	if v := cfg.GetString(key.T{Section: sectionName, Option: "method"}); v != "" {
@@ -415,17 +415,20 @@ func (t *T) loadArrayConfig() error {
 		config.PWF = v
 	}
 
-	t.arrayConfig = config
+	if t.arrayConfig == nil {
+		t.arrayConfig = make(map[string]*Config)
+	}
+	t.arrayConfig[arrayName] = config
 	t.Log().Tracef("loaded array config: %#v", config)
 	return nil
 }
 
 // getArrayConfig returns the loaded array configuration.
-func (t *T) getArrayConfig() (*Config, error) {
-	if err := t.loadArrayConfig(); err != nil {
+func (t *T) getArrayConfig(arrayName string) (*Config, error) {
+	if err := t.loadThisArrayConfig(arrayName); err != nil {
 		return nil, err
 	}
-	return t.arrayConfig, nil
+	return t.arrayConfig[arrayName], nil
 }
 
 // ---------------------------------------------------------------------------
@@ -433,8 +436,8 @@ func (t *T) getArrayConfig() (*Config, error) {
 // ---------------------------------------------------------------------------
 
 // manager returns the resolved manager value from array config.
-func (t *T) manager() (string, error) {
-	config, err := t.getArrayConfig()
+func (t *T) manager(arrayName string) (string, error) {
+	config, err := t.getArrayConfig(arrayName)
 	if err != nil {
 		return "", err
 	}
@@ -442,8 +445,8 @@ func (t *T) manager() (string, error) {
 }
 
 // username returns the resolved username value from array config.
-func (t *T) username() (string, error) {
-	config, err := t.getArrayConfig()
+func (t *T) username(arrayName string) (string, error) {
+	config, err := t.getArrayConfig(arrayName)
 	if err != nil {
 		return "", err
 	}
@@ -451,8 +454,8 @@ func (t *T) username() (string, error) {
 }
 
 // method returns the resolved method value from array config.
-func (t *T) method() (string, error) {
-	config, err := t.getArrayConfig()
+func (t *T) method(arrayName string) (string, error) {
+	config, err := t.getArrayConfig(arrayName)
 	if err != nil {
 		return "", err
 	}
@@ -461,8 +464,8 @@ func (t *T) method() (string, error) {
 
 // keyFile returns the resolved keyfile path, supporting "from <path> key <key>" format.
 // The content is cached as a temporary file.
-func (t *T) keyFile() (string, error) {
-	config, err := t.getArrayConfig()
+func (t *T) keyFile(arrayName string) (string, error) {
+	config, err := t.getArrayConfig(arrayName)
 	if err != nil {
 		return "", err
 	}
@@ -491,8 +494,8 @@ func (t *T) keyFile() (string, error) {
 
 // pwf returns the resolved pwf path, supporting "from <path> key <key>" format.
 // The content is cached as a temporary file.
-func (t *T) pwf() (string, error) {
-	config, err := t.getArrayConfig()
+func (t *T) pwf(arrayName string) (string, error) {
+	config, err := t.getArrayConfig(arrayName)
 	if err != nil {
 		return "", err
 	}
@@ -521,8 +524,8 @@ func (t *T) pwf() (string, error) {
 
 // cli returns the resolved cli path.
 // The content is cached as a temporary file.
-func (t *T) cli() (string, error) {
-	config, err := t.getArrayConfig()
+func (t *T) cli(arrayName string) (string, error) {
+	config, err := t.getArrayConfig(arrayName)
 	if err != nil {
 		return "", err
 	}
@@ -553,44 +556,23 @@ func (t *T) syncMaxDelay() int64 {
 	return defaultMaxDelay
 }
 
-func (t *T) testArrayConnection(ctx context.Context) error {
-	cmdS := "showsys"
-	cmdV, err := t.buildCommand(cmdS)
-	if err != nil {
-		return err
-	}
-	if len(cmdV) < 2 {
-		return fmt.Errorf("%w: %s", ErrBuildCommand, cmdS)
-	}
-	cmd := command.New(
-		command.WithContext(ctx),
-		command.WithName(cmdV[0]),
-		command.WithArgs(cmdV[1:]),
-		command.WithLogger(t.Log()),
-		command.WithCommandLogLevel(zerolog.DebugLevel),
-		command.WithStdoutLogLevel(zerolog.TraceLevel),
-		command.WithStderrLogLevel(zerolog.TraceLevel),
-	)
-	return cmd.Run()
-}
-
 func (t *T) wrapSSHCommand(cmd string) string {
 	return fmt.Sprintf("setclienv csvtable 1; setclienv nohdtot 1; %s; exit", cmd)
 }
 
-func (t *T) buildSSHCommand(cmd string) ([]string, error) {
+func (t *T) buildSSHCommand(arrayName, cmd string) ([]string, error) {
 	cmd = t.wrapSSHCommand(cmd)
 
 	// For SSH method: ssh -i <key> <username>@<manager>
-	keyFile, err := t.keyFile()
+	keyFile, err := t.keyFile(arrayName)
 	if err != nil {
 		return nil, fmt.Errorf("failed to resolve keyfile: %w", err)
 	}
-	username, err := t.username()
+	username, err := t.username(arrayName)
 	if err != nil {
 		return nil, fmt.Errorf("failed to resolve username: %w", err)
 	}
-	manager, err := t.manager()
+	manager, err := t.manager(arrayName)
 	if err != nil {
 		return nil, fmt.Errorf("failed to resolve manager: %w", err)
 	}
@@ -608,17 +590,17 @@ func (t *T) buildSSHCommand(cmd string) ([]string, error) {
 	return args, nil
 }
 
-func (t *T) buildCLICommand(cmd string) ([]string, error) {
+func (t *T) buildCLICommand(arrayName, cmd string) ([]string, error) {
 	// For CLI method: <cli> -sys <manager> -nohdtot -csvtable -pwf <pwf> <command>
-	cli, err := t.cli()
+	cli, err := t.cli(arrayName)
 	if err != nil {
 		return nil, fmt.Errorf("failed to resolve cli: %w", err)
 	}
-	manager, err := t.manager()
+	manager, err := t.manager(arrayName)
 	if err != nil {
 		return nil, fmt.Errorf("failed to resolve manager: %w", err)
 	}
-	pwf, err := t.pwf()
+	pwf, err := t.pwf(arrayName)
 	if err != nil {
 		return nil, fmt.Errorf("failed to resolve pwf: %w", err)
 	}
@@ -631,17 +613,17 @@ func (t *T) buildCLICommand(cmd string) ([]string, error) {
 	return args, nil
 }
 
-func (t *T) buildCommand(cmd string) ([]string, error) {
-	method, err := t.method()
+func (t *T) buildCommand(arrayName, cmd string) ([]string, error) {
+	method, err := t.method(arrayName)
 	if err != nil {
 		return nil, fmt.Errorf("failed to resolve method: %w", err)
 	}
 
 	switch method {
 	case methodSSH:
-		return t.buildSSHCommand(cmd)
+		return t.buildSSHCommand(arrayName, cmd)
 	case methodCLI:
-		return t.buildCLICommand(cmd)
+		return t.buildCLICommand(arrayName, cmd)
 	default:
 		return nil, fmt.Errorf("%w: unknown method %s", ErrBuildCommand, method)
 	}
@@ -649,7 +631,7 @@ func (t *T) buildCommand(cmd string) ([]string, error) {
 
 func (t *T) rcgStatus(ctx context.Context) (*rcgStatus, error) {
 	cmdS := "showrcopy groups"
-	cmdV, err := t.buildCommand(cmdS)
+	cmdV, err := t.buildCommand(t.Array, cmdS)
 	if err != nil {
 		return nil, err
 	}
@@ -847,7 +829,7 @@ func (t *T) splitCSV(line string) []string {
 func (t *T) isSplitted(ctx context.Context, target string) (bool, error) {
 	// Check if replication links to target are down
 	cmdS := "showrcopy links"
-	cmdV, err := t.buildCommand(cmdS)
+	cmdV, err := t.buildCommand(t.Array, cmdS)
 	if err != nil {
 		return false, err
 	}
@@ -888,7 +870,7 @@ func (t *T) isSplitted(ctx context.Context, target string) (bool, error) {
 
 func (t *T) runFailoverRCG(ctx context.Context) error {
 	cmdS := fmt.Sprintf("setrcopygroup failover -f -waittask %s", t.RCG)
-	cmdV, err := t.buildCommand(cmdS)
+	cmdV, err := t.buildCommand(t.Array, cmdS)
 	if err != nil {
 		return err
 	}
@@ -910,7 +892,7 @@ func (t *T) runFailoverRCG(ctx context.Context) error {
 
 func (t *T) runReverseRCG(ctx context.Context) error {
 	cmdS := fmt.Sprintf("setrcopygroup reverse -f -waittask %s", t.RCG)
-	cmdV, err := t.buildCommand(cmdS)
+	cmdV, err := t.buildCommand(t.Array, cmdS)
 	if err != nil {
 		return err
 	}
@@ -932,7 +914,7 @@ func (t *T) runReverseRCG(ctx context.Context) error {
 
 func (t *T) runSyncRCG(ctx context.Context) error {
 	cmdS := fmt.Sprintf("syncrcopy -w %s", t.RCG)
-	cmdV, err := t.buildCommand(cmdS)
+	cmdV, err := t.buildCommand(t.Array, cmdS)
 	if err != nil {
 		return err
 	}
@@ -954,7 +936,7 @@ func (t *T) runSyncRCG(ctx context.Context) error {
 
 func (t *T) runStartRCG(ctx context.Context) error {
 	cmdS := fmt.Sprintf("startrcopygroup %s", t.RCG)
-	cmdV, err := t.buildCommand(cmdS)
+	cmdV, err := t.buildCommand(t.Array, cmdS)
 	if err != nil {
 		return err
 	}
@@ -974,9 +956,44 @@ func (t *T) runStartRCG(ctx context.Context) error {
 	return cmd.Run()
 }
 
+func (t *T) rcgNames() (map[string]string, error) {
+	m := make(map[string]string)
+	obj, err := object.NewConfigurer(t.Path)
+	if err != nil {
+		return nil, err
+	}
+	nodes, err := obj.Config().NodeReferrer.Nodes()
+	if err != nil {
+		return nil, err
+	}
+	rid := t.RID()
+	for _, node := range nodes {
+		arrayName := obj.Config().GetStringAs(key.T{rid, "array"}, node)
+		rcgName := obj.Config().GetStringAs(key.T{rid, "rcg"}, node)
+		m[arrayName] = rcgName
+	}
+	return m, nil
+}
+
+func (t *T) runStopArrayRCG(ctx context.Context, target string) error {
+	m, err := t.rcgNames()
+	if err != nil {
+		return err
+	}
+	rcg, ok := m[target]
+	if !ok {
+		return fmt.Errorf("no can not determine rcg name on array %s, verify the resource config has rcg@<node> and array@<node> keywords set for all nodes.", target)
+	}
+	return t.runStopThisRCG(ctx, target, rcg)
+}
+
 func (t *T) runStopRCG(ctx context.Context) error {
-	cmdS := fmt.Sprintf("stoprcopygroup -f %s", t.RCG)
-	cmdV, err := t.buildCommand(cmdS)
+	return t.runStopThisRCG(ctx, t.Array, t.RCG)
+}
+
+func (t *T) runStopThisRCG(ctx context.Context, arrayName, rcg string) error {
+	cmdS := fmt.Sprintf("stoprcopygroup -f %s", rcg)
+	cmdV, err := t.buildCommand(arrayName, cmdS)
 	if err != nil {
 		return err
 	}
@@ -1012,11 +1029,9 @@ func (t *T) stopRCG(ctx context.Context) error {
 			return err
 		}
 	} else {
-		// For non-primary, stop on the target
-		target := ps.Target
-		// In a real implementation, we'd run the command on the target array
-		// For now, we'll just log this
-		t.Log().Infof("would stop rcopy group %s on target array %s", t.RCG, target)
+		if err := t.runStopArrayRCG(ctx, ps.Target); err != nil {
+			return err
+		}
 	}
 
 	t.clearCaches()
