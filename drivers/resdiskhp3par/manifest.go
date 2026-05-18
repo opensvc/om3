@@ -17,7 +17,6 @@ var drvID = driver.NewID(driver.GroupDisk, "hp3par")
 
 var kws = []*keywords.Keyword{
 	{
-		Aliases:  []string{"array"},
 		Attr:     "Array",
 		Example:  "myarray",
 		Option:   "array",
@@ -26,22 +25,45 @@ var kws = []*keywords.Keyword{
 		Text:     keywords.NewText(fs, "text/kw/array"),
 	},
 	{
-		Aliases:  []string{"rcg", "rcgroup"},
-		Attr:     "RCG",
-		Example:  "rcg1",
-		Option:   "rcg",
+		Aliases:  []string{"rcg"},
+		Attr:     "Group",
+		Example:  "u",
+		Option:   "group",
 		Required: true,
 		Scopable: true,
 		Text:     keywords.NewText(fs, "text/kw/rcg"),
 	},
 	{
-		Aliases:  []string{"replication_mode", "repmode"},
 		Attr:     "Mode",
 		Example:  "sync",
 		Option:   "mode",
 		Default:  "sync",
 		Scopable: true,
 		Text:     keywords.NewText(fs, "text/kw/mode"),
+	},
+	{
+		Attr:      "AutoTakeover",
+		Converter: "bool",
+		Option:    "auto_takeover",
+		Default:   "false",
+		Scopable:  true,
+		Text:      keywords.NewText(fs, "text/kw/auto_takeover"),
+	},
+	{
+		Attr:      "ForceSync",
+		Converter: "bool",
+		Option:    "force_sync",
+		Default:   "false",
+		Scopable:  false,
+		Text:      keywords.NewText(fs, "text/kw/force_sync"),
+	},
+	{
+		Attr:      "SwapRoles",
+		Converter: "bool",
+		Option:    "swap_roles",
+		Default:   "false",
+		Scopable:  true,
+		Text:      keywords.NewText(fs, "text/kw/swap_roles"),
 	},
 	{
 		Attr:         "Timeout",
