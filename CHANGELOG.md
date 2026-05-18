@@ -305,6 +305,9 @@
     
     The `task` and `sync` resources are now `optional=false` by default, but their status is not aggregated in the instance availability status whatever the `optional` value. Errors in the run produce a non-zero exitcode if optional=false, zero if optional=true.
 
+* **`om <selector> run --env a=1`:**
+    The previous release treated `1` as an override value of the `env.a=0` configuration key, which prevented access to the original `env.a` value.
+    Now `om` just propagate the `a=1` in the task command execution environment, so task commands using references like `{env.a}`, expecting the evaluation is `1` if `--env a=1` else `0`, must change to `${a:-{env.a}}`.
 
 * **`om <kvstore> key change`:**
     This action is no longer failing if the key does not exist. The key is added instead.
