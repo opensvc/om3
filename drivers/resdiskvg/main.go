@@ -64,13 +64,22 @@ func New() resource.Driver {
 }
 
 func (t *T) Start(ctx context.Context) error {
+	vg := t.vg()
+	exists, err := vg.Exists(ctx)
+	if err != nil {
+		return err
+	}
+	if !exists {
+		if err := lvm2.PVScan(t.Log()); err != nil {
+			return err
+		}
+	}
 	if err := t.startTag(ctx); err != nil {
 		return err
 	}
 	if v, err := t.hasTag(ctx); err != nil {
 		return err
 	} else if v {
-		vg := t.vg()
 		if r, err := vg.GetLVSummary(ctx); err != nil {
 			// log the unexpected error, but we can continue (Activate will be called)
 			t.Log().Warnf("can't detect if volume group has activable volumes: %s", err)
