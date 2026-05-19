@@ -26,6 +26,7 @@ import (
 	"github.com/opensvc/om3/v3/core/resource"
 	"github.com/opensvc/om3/v3/core/status"
 	"github.com/opensvc/om3/v3/drivers/resdisk"
+	"github.com/opensvc/om3/v3/util/ageingcache"
 	"github.com/opensvc/om3/v3/util/command"
 	"github.com/opensvc/om3/v3/util/device"
 	"github.com/opensvc/om3/v3/util/duration"
@@ -665,13 +666,7 @@ func (t *T) syncMaxDelay() int64 {
 	return defaultMaxDelay
 }
 
-func (t *T) wrapSSHCommand(cmd string) string {
-	return fmt.Sprintf("setclienv csvtable 1; setclienv nohdtot 1; %s; exit", cmd)
-}
-
 func (t *T) buildSSHCommand(arrayName, cmd string) ([]string, error) {
-	cmd = t.wrapSSHCommand(cmd)
-
 	// For SSH method: ssh -i <key> <username>@<manager>
 	keyFile, err := t.keyFile(arrayName)
 	if err != nil {
@@ -700,7 +695,7 @@ func (t *T) buildSSHCommand(arrayName, cmd string) ([]string, error) {
 }
 
 func (t *T) buildCLICommand(arrayName, cmd string) ([]string, error) {
-	// For CLI method: <cli> -sys <manager> -nohdtot -csvtable -pwf <pwf> <command>
+	// For CLI method: <cli> -sys <manager> -pwf <pwf> <command>
 	cli, err := t.cli(arrayName)
 	if err != nil {
 		return nil, fmt.Errorf("failed to resolve cli: %w", err)
@@ -714,7 +709,7 @@ func (t *T) buildCLICommand(arrayName, cmd string) ([]string, error) {
 		return nil, fmt.Errorf("failed to resolve pwf: %w", err)
 	}
 
-	args := []string{cli, "-sys", manager, "-nohdtot", "-csvtable"}
+	args := []string{cli, "-sys", manager}
 	if pwf != "" {
 		args = append(args, "-pwf", pwf)
 	}
@@ -799,7 +794,7 @@ func (t *T) waitValidTargetStatus(ctx context.Context, target string) error {
 }
 
 func (t *T) getTargetStatus(ctx context.Context) (*targetStatus, error) {
-	cmdS := fmt.Sprintf("showrcopy targets %s", t.groupStatus.Target)
+	cmdS := fmt.Sprintf("showrcopy targets -csvtable -nohdtot")
 	cmdV, err := t.buildCommand(t.Array, cmdS)
 	if err != nil {
 		return nil, err
@@ -816,7 +811,14 @@ func (t *T) getTargetStatus(ctx context.Context) (*targetStatus, error) {
 		command.WithBufferedStdout(),
 		command.WithStderrLogLevel(zerolog.TraceLevel),
 	)
-	out, err := cmd.Output()
+	var out []byte
+	if actioncontext.Props(ctx).Name == actioncontext.Status.Name {
+		sig := fmt.Sprintf("hp3par-%s-showrcopy-targets", t.Array)
+		maxAge := 1 * time.Minute
+		out, err = ageingcache.Output(cmd, sig, maxAge)
+	} else {
+		out, err = cmd.Output()
+	}
 	if err != nil {
 		return nil, err
 	}
@@ -824,7 +826,7 @@ func (t *T) getTargetStatus(ctx context.Context) (*targetStatus, error) {
 }
 
 func (t *T) getGroupStatus(ctx context.Context) (*groupStatus, error) {
-	cmdS := fmt.Sprintf("showrcopy groups %s", t.Group)
+	cmdS := fmt.Sprintf("showrcopy groups -csvtable -nohdtot")
 	cmdV, err := t.buildCommand(t.Array, cmdS)
 	if err != nil {
 		return nil, err
@@ -841,11 +843,18 @@ func (t *T) getGroupStatus(ctx context.Context) (*groupStatus, error) {
 		command.WithBufferedStdout(),
 		command.WithStderrLogLevel(zerolog.TraceLevel),
 	)
-	out, err := cmd.Output()
+	var out []byte
+	if actioncontext.Props(ctx).Name == actioncontext.Status.Name {
+		sig := fmt.Sprintf("hp3par-%s-showrcopy-groups", t.Array)
+		maxAge := 1 * time.Minute
+		out, err = ageingcache.Output(cmd, sig, maxAge)
+	} else {
+		out, err = cmd.Output()
+	}
 	if err != nil {
 		return nil, err
 	}
-	return t.parseRCGStatus(string(out), t.Group)
+	return t.parseGroupStatus(string(out), t.Group)
 }
 
 func (t *T) initStatus(ctx context.Context) error {
@@ -890,19 +899,22 @@ func (t *T) parseTargetStatus(out string) (*targetStatus, error) {
 		if len(fields) < 6 {
 			return nil, fmt.Errorf("unexpected target status format: %s", line)
 		}
-		return &targetStatus{
+		ts := targetStatus{
 			Name:    fields[0],
 			ID:      fields[1],
 			Type:    fields[2],
 			Status:  fields[3],
 			Options: fields[4],
 			Policy:  fields[5],
-		}, nil
+		}
+		if ts.Name == t.groupStatus.Target {
+			return &ts, nil
+		}
 	}
 	return nil, fmt.Errorf("target not found")
 }
 
-func (t *T) parseRCGStatus(out string, groupName string) (*groupStatus, error) {
+func (t *T) parseGroupStatus(out string, groupName string) (*groupStatus, error) {
 	// Parse the showrcopy groups output
 	// Format:
 	// Name,Target,Status,Role,Mode,Options
