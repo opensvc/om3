@@ -13,7 +13,7 @@ import (
 
 	"github.com/opensvc/om3/v3/util/command"
 	"github.com/opensvc/om3/v3/util/device"
-	"github.com/opensvc/om3/v3/util/fcache"
+	"github.com/opensvc/om3/v3/util/sessioncache"
 	"github.com/opensvc/om3/v3/util/file"
 	"github.com/opensvc/om3/v3/util/funcopt"
 	"github.com/opensvc/om3/v3/util/sizeconv"
@@ -124,8 +124,8 @@ func (t *LV) change(ctx context.Context, args []string) error {
 	cmd.Run()
 
 	// deactivating the last lv of a vg changes it's activation state
-	fcache.Clear("vgs")
-	fcache.Clear("vgs-devices")
+	sessioncache.Clear("vgs")
+	sessioncache.Clear("vgs-devices")
 
 	if cmd.ExitCode() != 0 {
 		return fmt.Errorf("%s error %d", cmd, cmd.ExitCode())

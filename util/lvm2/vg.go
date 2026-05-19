@@ -16,7 +16,7 @@ import (
 
 	"github.com/opensvc/om3/v3/util/command"
 	"github.com/opensvc/om3/v3/util/device"
-	"github.com/opensvc/om3/v3/util/fcache"
+	"github.com/opensvc/om3/v3/util/sessioncache"
 	"github.com/opensvc/om3/v3/util/file"
 	"github.com/opensvc/om3/v3/util/funcopt"
 	"github.com/opensvc/om3/v3/util/hostname"
@@ -98,8 +98,8 @@ func (t *VG) ImportDevices(ctx context.Context) error {
 	if pathErr, ok := err.(*os.PathError); ok && pathErr.Err == syscall.ENOENT {
 		return nil
 	}
-	fcache.Clear("vgs")
-	fcache.Clear("vgs-devices")
+	sessioncache.Clear("vgs")
+	sessioncache.Clear("vgs-devices")
 	if cmd.ExitCode() != 0 {
 		return fmt.Errorf("%s error %d", cmd, cmd.ExitCode())
 	}
@@ -117,8 +117,8 @@ func (t *VG) change(ctx context.Context, args []string) error {
 		command.WithStderrLogLevel(zerolog.ErrorLevel),
 	)
 	cmd.Run()
-	fcache.Clear("vgs")
-	fcache.Clear("vgs-devices")
+	sessioncache.Clear("vgs")
+	sessioncache.Clear("vgs-devices")
 	if cmd.ExitCode() != 0 {
 		return fmt.Errorf("%s error %d", cmd, cmd.ExitCode())
 	}
@@ -144,8 +144,8 @@ func (t *VG) DelTag(ctx context.Context, s string) error {
 		command.WithStderrLogLevel(zerolog.ErrorLevel),
 	)
 	cmd.Run()
-	fcache.Clear("vgs")
-	fcache.Clear("vgs-devices")
+	sessioncache.Clear("vgs")
+	sessioncache.Clear("vgs-devices")
 	if cmd.ExitCode() != 0 {
 		return fmt.Errorf("%s error %d", cmd, cmd.ExitCode())
 	}
@@ -163,8 +163,8 @@ func (t *VG) AddTag(ctx context.Context, s string) error {
 		command.WithStderrLogLevel(zerolog.ErrorLevel),
 	)
 	cmd.Run()
-	fcache.Clear("vgs")
-	fcache.Clear("vgs-devices")
+	sessioncache.Clear("vgs")
+	sessioncache.Clear("vgs-devices")
 	if cmd.ExitCode() != 0 {
 		return fmt.Errorf("%s error %d", cmd, cmd.ExitCode())
 	}
@@ -187,7 +187,7 @@ func (t *VG) CachedDevicesShow(ctx context.Context) (*VGInfo, error) {
 		command.WithStderrLogLevel(zerolog.TraceLevel),
 		command.WithBufferedStdout(),
 	)
-	if out, err = fcache.Output(cmd, "vgs-devices"); err != nil {
+	if out, err = sessioncache.Output(cmd, "vgs-devices"); err != nil {
 		return nil, err
 	}
 	if err = json.Unmarshal(out, &data); err != nil {
@@ -232,7 +232,7 @@ func (t *VG) CachedNormalShow(ctx context.Context) (l []VGInfo, err error) {
 		command.WithStderrLogLevel(zerolog.TraceLevel),
 		command.WithBufferedStdout(),
 	)
-	if out, err = fcache.Output(cmd, "vgs"); err != nil {
+	if out, err = sessioncache.Output(cmd, "vgs"); err != nil {
 		return
 	}
 	if err = json.Unmarshal(out, &data); err != nil {
@@ -391,8 +391,8 @@ func (t *VG) Create(ctx context.Context, size string, pvs []string, options []st
 		command.WithStderrLogLevel(zerolog.ErrorLevel),
 	)
 	cmd.Run()
-	fcache.Clear("vgs")
-	fcache.Clear("vgs-devices")
+	sessioncache.Clear("vgs")
+	sessioncache.Clear("vgs-devices")
 	if cmd.ExitCode() != 0 {
 		return fmt.Errorf("%s error %d", cmd, cmd.ExitCode())
 	}
@@ -414,8 +414,8 @@ func (t *VG) Remove(ctx context.Context, args []string) error {
 		command.WithStderrLogLevel(zerolog.ErrorLevel),
 	)
 	cmd.Run()
-	fcache.Clear("vgs")
-	fcache.Clear("vgs-devices")
+	sessioncache.Clear("vgs")
+	sessioncache.Clear("vgs-devices")
 	if cmd.ExitCode() != 0 {
 		return fmt.Errorf("%s error %d", cmd, cmd.ExitCode())
 	}

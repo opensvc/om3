@@ -1,5 +1,5 @@
-// Package fcache provide session cache for functions
-package fcache
+// Package sessioncache provide session cache for functions
+package sessioncache
 
 import (
 	"fmt"

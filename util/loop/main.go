@@ -11,7 +11,7 @@ import (
 	"github.com/rs/zerolog"
 
 	"github.com/opensvc/om3/v3/util/command"
-	"github.com/opensvc/om3/v3/util/fcache"
+	"github.com/opensvc/om3/v3/util/sessioncache"
 	"github.com/opensvc/om3/v3/util/funcopt"
 	"github.com/opensvc/om3/v3/util/plog"
 	"github.com/opensvc/om3/v3/util/udevadm"
@@ -105,7 +105,7 @@ func (t T) Data(ctx context.Context) (InfoEntries, error) {
 		command.WithStderrLogLevel(zerolog.TraceLevel),
 		command.WithBufferedStdout(),
 	)
-	if out, err = fcache.Output(cmd, "losetup"); err != nil {
+	if out, err = sessioncache.Output(cmd, "losetup"); err != nil {
 		return nil, err
 	}
 	if len(out) == 0 {
@@ -138,7 +138,7 @@ func (t T) lockedAdd(ctx context.Context, filePath string) error {
 		command.WithStderrLogLevel(zerolog.ErrorLevel),
 	)
 	cmd.Run()
-	fcache.Clear("losetup")
+	sessioncache.Clear("losetup")
 	if cmd.ExitCode() != 0 {
 		return fmt.Errorf("%s error %d", cmd, cmd.ExitCode())
 	}
@@ -156,7 +156,7 @@ func (t T) Delete(ctx context.Context, devPath string) error {
 		command.WithStderrLogLevel(zerolog.ErrorLevel),
 	)
 	cmd.Run()
-	fcache.Clear("losetup")
+	sessioncache.Clear("losetup")
 	if cmd.ExitCode() != 0 {
 		return fmt.Errorf("%s error %d", cmd, cmd.ExitCode())
 	}

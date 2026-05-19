@@ -9,7 +9,7 @@ import (
 	"github.com/rs/zerolog"
 
 	"github.com/opensvc/om3/v3/util/command"
-	"github.com/opensvc/om3/v3/util/fcache"
+	"github.com/opensvc/om3/v3/util/sessioncache"
 	"github.com/opensvc/om3/v3/util/funcopt"
 	"github.com/opensvc/om3/v3/util/plog"
 )
@@ -71,8 +71,8 @@ func PVScan(log *plog.Logger) error {
 		command.WithStderrLogLevel(zerolog.ErrorLevel),
 	)
 	defer func() {
-		fcache.Clear("vgs")
-		fcache.Clear("vgs-devices")
+		sessioncache.Clear("vgs")
+		sessioncache.Clear("vgs-devices")
 	}()
 	return cmd.Run()
 }
