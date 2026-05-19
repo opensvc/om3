@@ -14,7 +14,7 @@ import (
 
 	"github.com/opensvc/om3/v3/util/command"
 	"github.com/opensvc/om3/v3/util/device"
-	"github.com/opensvc/om3/v3/util/fcache"
+	"github.com/opensvc/om3/v3/util/sessioncache"
 	"github.com/opensvc/om3/v3/util/file"
 	"github.com/opensvc/om3/v3/util/funcopt"
 	"github.com/opensvc/om3/v3/util/plog"
@@ -114,7 +114,7 @@ func (t T) examineScanVerbose(ctx context.Context) (string, error) {
 		command.WithStderrLogLevel(zerolog.TraceLevel),
 		command.WithBufferedStdout(),
 	)
-	if out, err := fcache.Output(cmd, "mdadm-E-scan-v"); err != nil {
+	if out, err := sessioncache.Output(cmd, "mdadm-E-scan-v"); err != nil {
 		return "", err
 	} else {
 		return string(out), nil
@@ -289,7 +289,7 @@ func (t T) reAdd(ctx context.Context, devpath string) error {
 		}),
 	)
 	cmd.Run()
-	fcache.Clear("mdadm-E-scan-v")
+	sessioncache.Clear("mdadm-E-scan-v")
 	switch cmd.ExitCode() {
 	case 0:
 		// ok
@@ -311,7 +311,7 @@ func (t T) wipeDevice(ctx context.Context, devpath string) error {
 		command.WithStderrLogLevel(zerolog.ErrorLevel),
 	)
 	cmd.Run()
-	fcache.Clear("mdadm-E-scan-v")
+	sessioncache.Clear("mdadm-E-scan-v")
 	switch cmd.ExitCode() {
 	case 0:
 		// ok
@@ -344,7 +344,7 @@ func (t T) Deactivate(ctx context.Context) error {
 		command.WithOnStderrLine(filterStderrFunc),
 	)
 	cmd.Run()
-	fcache.Clear("mdadm-E-scan-v")
+	sessioncache.Clear("mdadm-E-scan-v")
 	switch cmd.ExitCode() {
 	case 0:
 		// ok
@@ -377,7 +377,7 @@ func (t T) Activate(ctx context.Context) error {
 		command.WithOnStderrLine(filterStderrFunc),
 	)
 	cmd.Run()
-	fcache.Clear("mdadm-E-scan-v")
+	sessioncache.Clear("mdadm-E-scan-v")
 	switch cmd.ExitCode() {
 	case 0:
 		// ok
@@ -444,7 +444,7 @@ func (t *T) Create(ctx context.Context, level string, devs []string, spares int,
 		command.WithStderrLogLevel(zerolog.ErrorLevel),
 	)
 	cmd.Run()
-	fcache.Clear("mdadm-E-scan-v")
+	sessioncache.Clear("mdadm-E-scan-v")
 	if cmd.ExitCode() != 0 {
 		return fmt.Errorf("%s error %d", cmd, cmd.ExitCode())
 	}

@@ -18,7 +18,7 @@ import (
 	"github.com/opensvc/om3/v3/util/command"
 	"github.com/opensvc/om3/v3/util/device"
 	"github.com/opensvc/om3/v3/util/devicedriver"
-	"github.com/opensvc/om3/v3/util/fcache"
+	"github.com/opensvc/om3/v3/util/sessioncache"
 	"github.com/opensvc/om3/v3/util/file"
 	"github.com/opensvc/om3/v3/util/funcopt"
 	"github.com/opensvc/om3/v3/util/plog"
@@ -161,7 +161,7 @@ func (t T) QueryAll() (Binds, error) {
 		command.WithBufferedStdout(),
 		command.WithEnv([]string{"LANG=C"}),
 	)
-	if out, err = fcache.Output(cmd, "raw"); err != nil {
+	if out, err = sessioncache.Output(cmd, "raw"); err != nil {
 		return nil, err
 	}
 	sc := bufio.NewScanner(bytes.NewReader(out))
@@ -244,7 +244,7 @@ func (t T) lockedBind(bDevPath string) (int, error) {
 		command.WithStderrLogLevel(zerolog.ErrorLevel),
 	)
 	err = cmd.Run()
-	fcache.Clear("raw")
+	sessioncache.Clear("raw")
 	if err != nil {
 		return 0, fmt.Errorf("%s run error %v", cmd, err)
 	}
@@ -288,7 +288,7 @@ func (t T) Unbind(cDevPath string) error {
 		command.WithStderrLogLevel(zerolog.ErrorLevel),
 	)
 	err := cmd.Run()
-	fcache.Clear("raw")
+	sessioncache.Clear("raw")
 	if err != nil {
 		return fmt.Errorf("%s run error %v", cmd, err)
 	}
