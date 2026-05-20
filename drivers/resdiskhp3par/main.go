@@ -67,6 +67,9 @@ const (
 	vvSyncStatusSynced    = "Synced"
 	vvSyncStatusSyncing   = "Syncing"
 
+	// Volume last sync time (a valid date for async or "NA")
+	vvLastSyncTimeNA = "NA"
+
 	// Command method
 	methodSSH = "ssh"
 	methodCLI = "cli"
@@ -1030,7 +1033,7 @@ func (t *T) parseVVLine(line string) *vvStatus {
 
 	// Parse LastSyncTime
 	timeStr := strings.TrimSpace(parts[5])
-	if timeStr != "" {
+	if timeStr != "" && timeStr != vvLastSyncTimeNA {
 		// Try to parse the time string
 		parsedTime, err := time.Parse("2006-01-02 15:04:05 MST", timeStr)
 		if err == nil {
@@ -1448,9 +1451,16 @@ func (t *groupStatus) SyncStatus() (s string) {
 	return
 }
 
+// Oldest returns the oldest LastSyncTime of all VV.
+// For Sync mode all VV LastSyncTime are zero, so Oldest will return zero.
 func (t *groupStatus) Oldest() time.Time {
 	var oldest time.Time
 	for i, vv := range t.Volumes {
+		if vv.LastSyncTime.IsZero() {
+			// In Sync mode, VV LastSyncTime is reported as "NA"
+			// parsed as a zero time.
+			continue
+		}
 		if i == 0 || vv.LastSyncTime.Before(oldest) {
 			oldest = vv.LastSyncTime
 		}
@@ -1474,10 +1484,12 @@ func (t *groupStatus) Period() (time.Duration, error) {
 
 func (t *groupStatus) String() string {
 	var l []string
-	age := time.Now().Sub(t.Oldest())
 	l = append(l, "role:"+t.Role)
 	l = append(l, "state:"+t.Status)
-	l = append(l, fmt.Sprintf("age:%s", duration.FmtShortDuration(age)))
 	l = append(l, "mode:"+t.Mode)
+	if t.Mode == groupModePeriodic {
+		age := time.Now().Sub(t.Oldest())
+		l = append(l, fmt.Sprintf("age:%s", duration.FmtShortDuration(age)))
+	}
 	return strings.Join(l, " ")
 }
