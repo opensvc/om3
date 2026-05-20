@@ -562,8 +562,8 @@ paths:
         - basicAuth: []
         - bearerAuth: []
       parameters:
-        - $ref: '#/components/parameters/NamespaceOptional'
-        - $ref: '#/components/parameters/SelectorOptional'
+        - $ref: '#/components/parameters/inQueryNamespaceOptional'
+        - $ref: '#/components/parameters/inQuerySelectorOptional'
       responses:
         200:
           description: OK
@@ -1477,7 +1477,7 @@ paths:
         - $ref: '#/components/parameters/EventFilter'
         - $ref: '#/components/parameters/EventReplay'
         - $ref: '#/components/parameters/EventCache'
-        - $ref: '#/components/parameters/SelectorOptional'
+        - $ref: '#/components/parameters/inQuerySelectorOptional'
       responses:
         200:
           description: OK
@@ -1776,18 +1776,8 @@ paths:
           schema:
             type: string
             example: scheduler
-        - in: query
-          name: selector
-          description: execute on a list of objects
-          schema:
-            type: string
-            example: 'foo'
-        - in: query
-          name: rid
-          description: a resource selector expression
-          schema:
-            type: string
-            example: 'task#1'
+        - $ref: '#/components/parameters/inQuerySelectorOptional'
+        - $ref: '#/components/parameters/inQueryRid'
       responses:
         200:
           description: OK
@@ -8027,7 +8017,7 @@ components:
       schema:
         type: integer
 
-    NamespaceOptional:
+    inQueryNamespaceOptional:
       name: namespace
       in: query
       description: namespace
@@ -8145,7 +8135,7 @@ components:
         items:
           $ref: '#/components/schemas/Role'
 
-    SelectorOptional:
+    inQuerySelectorOptional:
       name: selector
       in: query
       description: selector
@@ -8440,6 +8430,7 @@ components:
     inQueryRid:
       in: query
       name: rid
+      description: a resource selector expression
       schema:
         type: string
 
