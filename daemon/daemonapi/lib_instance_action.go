@@ -49,16 +49,14 @@ func (a *DaemonAPI) apiExec(ctx echo.Context, p naming.Path, requesterSid uuid.U
 	}
 	pid := cmd.Cmd().Process.Pid
 	proc.Register(proc.T{
-		Pid:          pid,
-		Node:         a.localhost,
-		Object:       p.String(),
-		Sid:          sid.String(),
-		StartedAt:    startTime,
-		Elapsed:      "",
-		GlobalExpect: "-",
-		Sub:          "api",
-		Cmd:          cmd.String(),
-		Rid:          "-",
+		Pid:       pid,
+		Node:      a.localhost,
+		Object:    p.String(),
+		Sid:       sid.String(),
+		StartedAt: startTime,
+		Elapsed:   "",
+		Sub:       "api",
+		Cmd:       cmd.String(),
 	})
 	go func() {
 		err := cmd.Wait()
