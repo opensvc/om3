@@ -39,6 +39,7 @@ type (
 		StatusLogger                statusLogger
 		persistentReservationDriver PersistentReservationDriver
 		CurrentStatus               PersistentReservationStatus
+		CoresourceStatus            status.T
 	}
 
 	PersistentReservationStatus struct {
@@ -179,7 +180,7 @@ func (t *PersistentReservationHandle) DeviceStatus(dev device.T) status.T {
 	}
 
 	var expectedRegistrationCount int
-	if s == status.Up {
+	if t.CoresourceStatus == status.Up {
 		expectedRegistrationCount, err = t.DeviceExpectedRegistrationCount(dev)
 		if err != nil {
 			t.StatusLogger.Error("%s expected registration count: %s", dev, err)

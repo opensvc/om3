@@ -1168,7 +1168,7 @@ func EvalStatus(ctx context.Context, r Driver) status.T {
 	} else if !r.IsDisabled() {
 		Setenv(r)
 		s = r.Status(ctx)
-		prStatus := SCSIPersistentReservationStatus(ctx, r)
+		prStatus := SCSIPersistentReservationStatus(ctx, r, s)
 		if s == status.NotApplicable {
 			s.Add(prStatus)
 		}
@@ -1257,10 +1257,11 @@ func SCSIPersistentReservationStart(ctx context.Context, r Driver) error {
 	}
 }
 
-func SCSIPersistentReservationStatus(ctx context.Context, r Driver) status.T {
+func SCSIPersistentReservationStatus(ctx context.Context, r Driver, coresourceStatus status.T) status.T {
 	if hdl := newSCSIPersistentRerservationHandle(ctx, r); hdl == nil {
 		return status.NotApplicable
 	} else {
+		hdl.CoresourceStatus = coresourceStatus
 		return hdl.Status()
 	}
 }
