@@ -108,6 +108,9 @@ func (t T) Delete() error {
 		return err
 	}
 	p = p + "/device/delete"
+	if t.log != nil {
+		t.log.Infof("echo 1 > %s", p)
+	}
 	return os.WriteFile(p, []byte("1"), os.ModePerm)
 }
 
