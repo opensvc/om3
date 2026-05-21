@@ -8,9 +8,7 @@ import (
 	"path/filepath"
 	"time"
 
-	"github.com/opensvc/om3/v3/core/naming"
 	"github.com/opensvc/om3/v3/core/rawconfig"
-	"github.com/opensvc/om3/v3/util/hostname"
 )
 
 type (
@@ -101,11 +99,7 @@ func lookup(name string) (net.IP, error) {
 }
 
 func lookupAndCache(name string) (net.IP, error) {
-	if !naming.IsValidFQDN(name) && !hostname.IsValid(name) {
-		ip := net.ParseIP(name)
-		if ip == nil {
-			return nil, fmt.Errorf("unparsable ip %s", name)
-		}
+	if ip := net.ParseIP(name); ip != nil {
 		return ip, nil
 	}
 	ip, err := lookup(name)

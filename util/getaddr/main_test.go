@@ -2,6 +2,7 @@ package getaddr
 
 import (
 	"errors"
+	"fmt"
 	"net"
 	"os"
 	"path/filepath"
@@ -189,7 +190,10 @@ func TestLookupAndCache(t *testing.T) {
 			name:     "invalid IP string",
 			input:    "1.2.3.?",
 			expected: nil,
-			err:      errors.New("unparsable ip 1.2.3.?"),
+			err:      errors.New("foo"),
+			mockFunc: func(name string) ([]net.IP, error) {
+				return nil, fmt.Errorf("foo")
+			},
 		},
 		{
 			name:  "valid FQDN",
