@@ -283,7 +283,7 @@ func (t *T) Start(ctx context.Context) error {
 		if t.groupStatus.Status != groupStatusStarted {
 			t.Log().Warnf("group status is %s", t.groupStatus.Status)
 		}
-		return nil
+		return t.promoteRW(ctx)
 	}
 
 	// Wait for target status to leave the failing state
@@ -306,7 +306,7 @@ func (t *T) Start(ctx context.Context) error {
 		return fmt.Errorf("unsupported target status: %s", t.groupStatus.Target)
 	}
 
-	return nil
+	return t.promoteRW(ctx)
 }
 
 func (t *T) rsyncGroupRemote(ctx context.Context) error {
@@ -790,6 +790,37 @@ func (t *T) waitValidTargetStatus(ctx context.Context, target string) error {
 		return nil
 	}
 	return nil
+}
+
+func (t *T) getGroupWWN(ctx context.Context) ([]string, error) {
+	cmdS := fmt.Sprintf("showvv -showcols VV_WWN -p -type base -rcopygroup %s -csvtable -nohdtot", t.Group)
+	cmdV, err := t.buildCommand(t.Array, cmdS)
+	if err != nil {
+		return nil, err
+	}
+	if len(cmdV) < 2 {
+		return nil, fmt.Errorf("%w: %s", ErrBuildCommand, cmdS)
+	}
+	cmd := command.New(
+		command.WithContext(ctx),
+		command.WithName(cmdV[0]),
+		command.WithArgs(cmdV[1:]),
+		command.WithLogger(t.Log()),
+		command.WithCommandLogLevel(zerolog.DebugLevel),
+		command.WithBufferedStdout(),
+		command.WithStderrLogLevel(zerolog.TraceLevel),
+	)
+	out, err := cmd.Output()
+	if err != nil {
+		return nil, err
+	}
+	var wwns []string
+	for _, line := range strings.Split(string(out), "\n") {
+		if strings.HasPrefix(line, "6") {
+			wwns = append(wwns, line)
+		}
+	}
+	return wwns, nil
 }
 
 func (t *T) getTargetStatus(ctx context.Context) (*targetStatus, error) {
@@ -1425,15 +1456,33 @@ func (t *T) setRCGReverse(ctx context.Context) error {
 
 // SubDevices returns the list of device files managed by this resource.
 func (t *T) SubDevices(ctx context.Context) device.L {
-	// In a real implementation, this would return the device files
-	// for the volumes in the RCG
-	return device.L{}
+	wwns, err := t.getGroupWWN(ctx)
+	if err != nil {
+		return device.L{}
+	}
+	var devs device.L
+	for _, wwn := range wwns {
+		devPath := "/dev/disk/by-id/scsi-3" + strings.ToLower(wwn)
+		dest, err := filepath.EvalSymlinks(devPath)
+		if err != nil {
+			t.Log().Debugf("SubDevices: ReadLink(%s) ignored error: %s", devPath, err)
+			continue
+		}
+		dev := device.New(dest, device.WithLogger(t.Log()))
+		devs = append(devs, dev)
+	}
+	return devs
 }
 
-// PromoteRW promotes the devices to read-write.
-func (t *T) PromoteRW(ctx context.Context) error {
-	// In a real implementation, this would promote the volumes
-	// to read-write after failover
+// promoteRW promotes the devices to read-write.
+func (t *T) promoteRW(ctx context.Context) error {
+	devs := t.SubDevices(ctx)
+	t.Log().Tracef("devices to promote rw: %s", devs)
+	for _, dev := range devs {
+		if err := dev.PromoteRW(ctx); err != nil {
+			return err
+		}
+	}
 	return nil
 }
 
