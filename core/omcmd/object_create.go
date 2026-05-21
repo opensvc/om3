@@ -80,8 +80,8 @@ func (t *CmdObjectCreate) Run(kind string) error {
 		if t.path.Exists() {
 			return false, nil
 		}
-		// need dedicated client that override default client timeout with t.Timeout (zero means no timeout).
-		c, err := client.New(client.WithTimeout(t.Timeout))
+		// need dedicated client that overrides default client timeout with t.Time (zero means no timeout).
+		c, err := client.New(client.WithTimeout(t.Time))
 		if err != nil {
 			return false, err
 		}
