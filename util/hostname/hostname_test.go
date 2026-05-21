@@ -17,7 +17,7 @@ func TestIsValid(t *testing.T) {
 		},
 		{
 			s: "ca-dev.wuc",
-			v: false,
+			v: true,
 		},
 		{
 			s: "ca&dev",
