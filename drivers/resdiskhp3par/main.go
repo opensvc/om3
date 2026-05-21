@@ -14,7 +14,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"slices"
+	"path/filepath"
 	"strings"
 	"time"
 
@@ -239,10 +239,6 @@ func (t *T) Status(ctx context.Context) status.T {
 		if t.groupStatus.Mode != groupModePeriodic {
 			t.StatusLog().Warn("mode should be %s", groupModePeriodic)
 		}
-	}
-
-	if !slices.Contains(t.groupStatus.Options, groupOptionAutoRecover) {
-		t.StatusLog().Warn("option %s should be set", groupOptionAutoRecover)
 	}
 
 	// Check volume sync status
