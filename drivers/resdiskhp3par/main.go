@@ -752,7 +752,7 @@ func (t *T) waitRCGStatusSync(ctx context.Context) error {
 		if gs.SyncStatus() == vvSyncStatusSyncing {
 			t.Log().Infof("vv are still syncing, retry later")
 			if deadline.Before(time.Now().Add(interval)) {
-				return fmt.Errorf("%w: timeout waiting for all vv to leave the 'syncing' status")
+				return fmt.Errorf("timeout waiting for all vv to leave the 'syncing' status")
 			}
 			time.Sleep(interval)
 			continue
@@ -782,7 +782,7 @@ func (t *T) waitValidTargetStatus(ctx context.Context, target string) error {
 		if t.targetStatus.Status == targetStatusFailing {
 			t.Log().Infof("target failing, retry later")
 			if deadline.Before(time.Now().Add(interval)) {
-				return fmt.Errorf("%w: timeout waiting for target to leave the 'failing' status")
+				return fmt.Errorf("timeout waiting for target to leave the 'failing' status")
 			}
 			time.Sleep(interval)
 			continue
@@ -1277,7 +1277,7 @@ func (t *T) runStartGroup(ctx context.Context) error {
 			if retryable {
 				t.Log().Infof("currently promoting, retry later")
 				if deadline.Before(time.Now().Add(interval)) {
-					return fmt.Errorf("%w: timeout waiting for promote to finish")
+					return fmt.Errorf("timeout waiting for promote to finish")
 				}
 				time.Sleep(interval)
 				continue
