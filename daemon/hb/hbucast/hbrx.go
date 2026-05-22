@@ -124,14 +124,17 @@ func (t *rx) Start(cmdC chan<- interface{}, msgC chan<- *hbtype.Msg) error {
 		if err != nil {
 			if strings.Contains(err.Error(), "address already in use") {
 				delay := time.Duration(int(time.Millisecond) * 100 * i)
-				t.log.Infof("%s: retry in %s", err, delay)
+				t.log.Debugf("%s: retry in %s", err, delay)
 				time.Sleep(delay)
 				continue
 			}
-			t.log.Errorf("listen failed: %s", err)
 			return err
 		}
 		break
+	}
+
+	if listener == nil {
+		return err
 	}
 
 	started := make(chan bool)
