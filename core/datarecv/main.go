@@ -4,6 +4,8 @@ import (
 	"context"
 	"embed"
 	"fmt"
+	"io"
+	"net/http"
 	"os"
 	"os/user"
 	"path/filepath"
@@ -22,6 +24,49 @@ import (
 	"github.com/opensvc/om3/v3/util/file"
 	"github.com/opensvc/om3/v3/util/plog"
 )
+
+// seedKeyFromSource fetches data from a URI or local file and adds it as a key to the datastore.
+// It only seeds the key if it doesn't already exist.
+// Supports both HTTP/HTTPS URIs (http://, https://) and local file paths.
+func seedKeyFromSource(ds object.DataStore, keyName, sourceURI string, log *plog.Logger) error {
+	log.Infof("seeding key %s from source %s", keyName, sourceURI)
+
+	var data []byte
+	var err error
+
+	// Check if source is a local file path or a URI
+	if strings.HasPrefix(sourceURI, "http://") || strings.HasPrefix(sourceURI, "https://") {
+		// Fetch data from the HTTP/HTTPS URI
+		resp, err := http.Get(sourceURI)
+		if err != nil {
+			return fmt.Errorf("failed to fetch from %s: %w", sourceURI, err)
+		}
+		defer resp.Body.Close()
+
+		if resp.StatusCode != http.StatusOK {
+			return fmt.Errorf("failed to fetch from %s: HTTP %d", sourceURI, resp.StatusCode)
+		}
+
+		// Read the response body
+		data, err = io.ReadAll(resp.Body)
+		if err != nil {
+			return fmt.Errorf("failed to read from %s: %w", sourceURI, err)
+		}
+	} else {
+		// Treat as local file path
+		data, err = os.ReadFile(sourceURI)
+		if err != nil {
+			return fmt.Errorf("failed to read file %s: %w", sourceURI, err)
+		}
+	}
+
+	// Add the data as a key to the datastore
+	if err := ds.AddKey(keyName, data); err != nil {
+		return fmt.Errorf("failed to add key %s to datastore: %w", keyName, err)
+	}
+
+	return nil
+}
 
 type (
 	DataRecv struct {
@@ -117,6 +162,8 @@ func Keywords(prefix string) []*keywords.Keyword {
 		/etc/ssl/front.pem from ./sec/d key fullpem mode 0640 user 1000 group 1001 required
 		/etc/ssl/front.chain from ./sec/d key certificate_chain required
 		/etc/profile.d/ from ./sec/d key etc/profile.d/*
+		/init/nfs from ./cfg/{name} key init/nfs mode 0755 source https://raw.githubusercontent.com/opensvc/opensvc_templates/refs/heads/main/nfs/script
+		/init/backup from ./cfg/{name} key init/backup mode 0755 source /tmp/scripts/backup.sh
 		/data/`,
 			Option:   "install",
 			Scopable: true,
@@ -481,6 +528,20 @@ func (t *DataRecv) InstallFromDatastore(ctx context.Context, from object.DataSto
 			path := strings.TrimPrefix(md.ToPath, md.ToHead)
 			return false, fmt.Errorf("unauthorized install ...%s from %s key %s", path, md.FromStore, md.FromPattern)
 		}
+		// Seed the datastore key from source URI if provided and key doesn't exist
+		if md.Source != "" && md.FromPattern != "" {
+			if !from.HasKey(md.FromPattern) {
+				if err := seedKeyFromSource(from, md.FromPattern, md.Source, t.to.Log()); err != nil {
+					if md.Required {
+						return false, fmt.Errorf("failed to seed key %s from source %s: %w", md.FromPattern, md.Source, err)
+					} else {
+						t.to.Log().Warnf("failed to seed key %s from source %s: %v", md.FromPattern, md.Source, err)
+					}
+				} else {
+					t.to.Log().Infof("seeded key %s from source %s", md.FromPattern, md.Source)
+				}
+			}
+		}
 		md.ToLog = t.to.Log()
 		if err := from.InstallKeyTo(md); err != nil && md.Required {
 			return false, err
@@ -555,6 +616,20 @@ func (t *DataRecv) install(ctx context.Context) (bool, error) {
 		if !slices.Contains(shares, "*") && !slices.Contains(shares, path.Namespace) {
 			path := strings.TrimPrefix(md.ToPath, md.ToHead)
 			return false, fmt.Errorf("unauthorized install ...%s from %s key %s", path, md.FromStore, md.FromPattern)
+		}
+		// Seed the datastore key from source URI if provided and key doesn't exist
+		if md.Source != "" && md.FromPattern != "" {
+			if !dataStore.HasKey(md.FromPattern) {
+				if err := seedKeyFromSource(dataStore, md.FromPattern, md.Source, t.to.Log()); err != nil {
+					if md.Required {
+						return false, fmt.Errorf("failed to seed key %s from source %s: %w", md.FromPattern, md.Source, err)
+					} else {
+						t.to.Log().Warnf("failed to seed key %s from source %s: %v", md.FromPattern, md.Source, err)
+					}
+				} else {
+					t.to.Log().Infof("seeded key %s from source %s", md.FromPattern, md.Source)
+				}
+			}
 		}
 		md.ToLog = t.to.Log()
 		if err = dataStore.InstallKeyTo(md); err != nil && md.Required {
@@ -728,6 +803,9 @@ func (t *DataRecv) getInstallMetadata(head string) ([]dirDefinition, []object.KV
 			case "signal":
 				word, line = pop(line)
 				item.Signals.Parse(word)
+			case "source":
+				word, line = pop(line)
+				item.Source = word
 			}
 		}
 

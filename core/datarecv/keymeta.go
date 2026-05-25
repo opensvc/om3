@@ -14,9 +14,10 @@ import (
 
 type (
 	KeyMeta struct {
-		Key  string
-		Path naming.Path
-		From string
+		Key    string
+		Path   naming.Path
+		From   string
+		Source string
 	}
 
 	pather interface {
@@ -79,6 +80,9 @@ func ParseKeyMetaRel(line, namespace string) (KeyMeta, error) {
 		case "key":
 			word, words = pop(words)
 			km.Key = word
+		case "source":
+			word, words = pop(words)
+			km.Source = word
 		}
 	}
 	if km.Key == "" {

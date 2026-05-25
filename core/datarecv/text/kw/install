@@ -1,6 +1,6 @@
 A list of files and directories to install in the volume from cfg and sec keys.
 
-	<path> from <obj_path|obj_relpath> key <key> [mode <mode>] [user <user>] [group <group>] [signal <sig>:<rid>]
+	<path> from <obj_path|obj_relpath> key <key> [mode <mode>] [user <user>] [group <group>] [signal <sig>:<rid>] [source <uri>]
 	<path> [mode <mode>] [user <user>] [group <group>] [signal <sig>:<rid>]
 
 Where:
@@ -26,6 +26,11 @@ Where:
 
 * `<sig>:<rid>` (e.g. `HUP:container#haproxy`)
   * `<sig>` is the signal to send to the target resource `<rid>` processes when the file content is modified.
+
+* `<uri>`
+  * is the source URI or local file path to seed the datastore key with during provision if the key doesn't already exist.
+  * HTTP/HTTPS URIs (http://, https://) are fetched via HTTP GET.
+  * Local file paths are read directly from the filesystem.
 
 * `required`
   * stop installing items if this item install failed
