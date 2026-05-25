@@ -6,6 +6,8 @@ import (
 	"fmt"
 	"math"
 	"os"
+	"path/filepath"
+	"regexp"
 	"slices"
 	"strconv"
 	"strings"
@@ -14,10 +16,10 @@ import (
 
 	"github.com/opensvc/om3/v3/util/command"
 	"github.com/opensvc/om3/v3/util/device"
-	"github.com/opensvc/om3/v3/util/sessioncache"
 	"github.com/opensvc/om3/v3/util/file"
 	"github.com/opensvc/om3/v3/util/funcopt"
 	"github.com/opensvc/om3/v3/util/plog"
+	"github.com/opensvc/om3/v3/util/sessioncache"
 )
 
 type (
@@ -26,6 +28,11 @@ type (
 		uuid string
 		log  *plog.Logger
 	}
+)
+
+const (
+	mdadm string = "/sbin/mdadm"
+	blkid string = "/sbin/blkid"
 )
 
 var (
@@ -97,24 +104,6 @@ func (t T) detail(ctx context.Context) (string, error) {
 		command.WithBufferedStdout(),
 	)
 	if out, err := cmd.Output(); err != nil {
-		return "", err
-	} else {
-		return string(out), nil
-	}
-}
-
-func (t T) examineScanVerbose(ctx context.Context) (string, error) {
-	cmd := command.New(
-		command.WithContext(ctx),
-		command.WithName(mdadm),
-		command.WithVarArgs("--examine", "--scan", "--verbose"),
-		command.WithLogger(t.log),
-		command.WithCommandLogLevel(zerolog.TraceLevel),
-		command.WithStdoutLogLevel(zerolog.TraceLevel),
-		command.WithStderrLogLevel(zerolog.TraceLevel),
-		command.WithBufferedStdout(),
-	)
-	if out, err := sessioncache.Output(cmd, "mdadm-E-scan-v"); err != nil {
 		return "", err
 	} else {
 		return string(out), nil
@@ -221,7 +210,7 @@ func (t T) IsActive(ctx context.Context) (bool, string, error) {
 }
 
 func (t T) Exists(ctx context.Context) (bool, error) {
-	buff, err := t.examineScanVerbose(ctx)
+	buff, err := t.blkidOutput(ctx)
 	if err != nil {
 		return false, err
 	}
@@ -229,38 +218,47 @@ func (t T) Exists(ctx context.Context) (bool, error) {
 }
 
 func (t T) ContainsUUIDOrName(buff string) bool {
-	if t.uuid != "" && strings.Contains(buff, "UUID="+t.uuid) {
-		return true
+	if blkidUUID, err := t.AsBlkID(); err == nil {
+		if strings.Contains(buff, "UUID=\""+blkidUUID+"\"") {
+			return true
+		}
 	}
-	if t.name != "" && strings.Contains(buff, t.devpathFromName()+" ") {
-		return true
+	if t.name != "" {
+		// ignore hostname into the expected label: LABEL="<hostname>:<devname>"
+		m := regexp.MustCompile(`LABEL="[^:]*:` + t.name + `"`)
+		if m.MatchString(buff) {
+			return true
+		}
 	}
 	return false
 }
 
+func (t T) AsBlkID() (string, error) {
+	clean := strings.ReplaceAll(t.uuid, ":", "")
+	if len(clean) != 32 {
+		return "", fmt.Errorf("invalid uuid '%s'", t.uuid)
+	}
+	return fmt.Sprintf("%s-%s-%s-%s-%s", clean[0:8], clean[8:12], clean[12:16], clean[16:20], clean[20:32]), nil
+}
+
+func (t T) String() string {
+	return fmt.Sprintf("md name: %s, uuid: %s", t.name, t.uuid)
+}
+
 func (t T) Devices(ctx context.Context) (device.L, error) {
 	l := make(device.L, 0)
-	buff, err := t.examineScanVerbose(ctx)
+	s, err := t.blkidOutput(ctx)
 	if err != nil {
 		return l, nil
 	}
-	scanner := bufio.NewScanner(strings.NewReader(buff))
-	for scanner.Scan() {
-		line := strings.TrimSpace(scanner.Text())
-		if t.ContainsUUIDOrName(line) {
-			scanner.Scan()
-			line := strings.TrimSpace(scanner.Text())
-			words := strings.SplitN(line, "devices=", 2)
-			if len(words) != 2 {
-				break
-			}
-			for _, d := range strings.Split(words[1], ",") {
-				l = append(l, device.New(d, device.WithLogger(t.log)))
-			}
-			break
+	for _, d := range t.devsFromBlkidOutput(s) {
+		resolvedDev, err := filepath.EvalSymlinks(d)
+		if err != nil {
+			continue
 		}
+		l = append(l, device.New(resolvedDev, device.WithLogger(t.log)))
 	}
-	// The `mdadm --examine --scan --verbose` command can return a list with duplicates,
+	// devsFromBlkidOutput may return a list with duplicates,
 	// like /dev/mpath0 /dev/sda /dev/sdb, where sda and sdb are paths of mpath0.
 	// In this case we want to return only the top holders of the list.
 	return l.HolderEndpoints()
@@ -513,4 +511,41 @@ func (t T) DisableAutoActivation() error {
 		return err
 	}
 	return nil
+}
+
+func (t T) blkidOutput(ctx context.Context) (string, error) {
+	cmd := command.New(
+		command.WithContext(ctx),
+		command.WithName(blkid),
+		command.WithVarArgs("-t", "TYPE=linux_raid_member"),
+		command.WithLogger(t.log),
+		command.WithCommandLogLevel(zerolog.TraceLevel),
+		command.WithStdoutLogLevel(zerolog.TraceLevel),
+		command.WithStderrLogLevel(zerolog.TraceLevel),
+		command.WithIgnoredExitCodes(0, 2), // 2 is the exit code of blkid when no match is found
+		command.WithBufferedStdout(),
+	)
+	if out, err := cmd.Output(); err != nil {
+		return "", err
+	} else {
+		return string(out), nil
+	}
+}
+
+// devsFromBlkidOutput parses blkid command output and extracts device names
+// from lines containing UUIDs or names.
+func (t T) devsFromBlkidOutput(s string) []string {
+	var l []string
+	scanner := bufio.NewScanner(strings.NewReader(s))
+	for scanner.Scan() {
+		line := strings.TrimSpace(scanner.Text())
+		if t.ContainsUUIDOrName(line) {
+			words := strings.SplitN(line, ":", 2)
+			if len(words) != 2 {
+				continue
+			}
+			l = append(l, words[0])
+		}
+	}
+	return l
 }
