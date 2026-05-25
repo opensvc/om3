@@ -42,8 +42,8 @@ type (
 
 	// PingStatusResponse used to decode the response of post feed daemon status and ping
 	PingStatusResponse struct {
-		ObjectWithoutConfig   *[]string `json:"object_without_config"`
-		NodeWithoActionQueued *[]string `json:"node_with_action_queued"`
+		ObjectWithoutConfig  *[]string `json:"object_without_config"`
+		NodeWithActionQueued *[]string `json:"node_with_action_queued"`
 	}
 )
 
@@ -346,8 +346,8 @@ func (t *T) handlePingOrStatusResponse(method, path string, resp *http.Response)
 			t.log.Debugf("%s %s status code %d", method, path, resp.StatusCode)
 		}
 	}
-	if data.NodeWithoActionQueued != nil {
-		for _, nodename := range *data.NodeWithoActionQueued {
+	if data.NodeWithActionQueued != nil {
+		for _, nodename := range *data.NodeWithActionQueued {
 			t.log.Infof("%s %s delegate dequeue action for %s", method, path, nodename)
 			if err := t.dequeueAction(nodename); err != nil {
 				t.log.Warnf("%s %s delegate dequeue action for %s: %s", method, path, nodename, err)
