@@ -11,6 +11,12 @@ import (
 	"github.com/opensvc/om3/v3/daemon/rbac"
 )
 
+func AddFlagsNodeGlobal(flagSet *pflag.FlagSet, p *OptsNodeGlobal) {
+	flagSet.StringVar(&p.Color, "color", "auto", "output colorization yes|no|auto")
+	flagSet.StringVarP(&p.Output, "output", "o", "auto", "output format json|flat|auto|tab=<header>:<jsonpath>,...")
+	FlagNodeSelector(flagSet, &p.NodeSelector)
+}
+
 func DeprecatedFlagDownTo(flags *pflag.FlagSet, p *string) {
 	flags.StringVar(p, "downto", "", "DEPRECATED: stop down to the specified rid or driver group")
 	flags.MarkDeprecated("downto", "Please use --to instead.")

@@ -31,6 +31,13 @@ type (
 		Output         string
 		ObjectSelector string
 	}
+
+	OptsNodeGlobal struct {
+		Color          string
+		Output         string
+		NodeSelector   string
+		IgnoreNotFound bool
+	}
 )
 
 func SelectorFromStdin() string {
