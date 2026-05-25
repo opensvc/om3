@@ -68,6 +68,59 @@ func seedKeyFromSource(ds object.DataStore, keyName, sourceURI string, log *plog
 	return nil
 }
 
+// ensureDataStoreExists creates the datastore object if it doesn't exist and the namespace matches.
+// Returns the DataStore interface and a boolean indicating if the datastore was created.
+// Note: Creating the datastore will trigger postCommit callbacks, but we check in InstallFromDatastore
+// and install() to avoid re-creating it.
+func ensureDataStoreExists(fromStore naming.Path, serviceNamespace string, log *plog.Logger) (object.DataStore, bool, error) {
+	// Check if the datastore already exists
+	if fromStore.Exists() {
+		// Try to get the existing datastore
+		ds, err := object.NewDataStore(fromStore)
+		if err != nil {
+			return nil, false, fmt.Errorf("failed to init existing datastore %s: %w", fromStore, err)
+		}
+		return ds, false, nil
+	}
+
+	// Datastore doesn't exist - check if namespace matches
+	if fromStore.Namespace != serviceNamespace {
+		return nil, false, fmt.Errorf("datastore %s does not exist and namespace %s doesn't match service namespace %s",
+			fromStore, fromStore.Namespace, serviceNamespace)
+	}
+
+	// Create the datastore object based on its kind
+	var ds object.DataStore
+	var err error
+
+	switch fromStore.Kind {
+	case naming.KindCfg:
+		ds, err = object.NewCfg(fromStore)
+		if err != nil {
+			return nil, false, fmt.Errorf("failed to create cfg datastore %s: %w", fromStore, err)
+		}
+	case naming.KindSec:
+		ds, err = object.NewSec(fromStore)
+		if err != nil {
+			return nil, false, fmt.Errorf("failed to create sec datastore %s: %w", fromStore, err)
+		}
+	default:
+		return nil, false, fmt.Errorf("unsupported datastore kind %s for %s", fromStore.Kind, fromStore)
+	}
+
+	// Save the empty datastore to disk
+	if err := ds.Config().Commit(); err != nil {
+		return nil, false, fmt.Errorf("failed to save new datastore %s: %w", fromStore, err)
+	}
+
+	// Return the datastore with volatile mode for further operations
+	newDs, err := object.NewDataStore(fromStore)
+	if err != nil {
+		return nil, false, fmt.Errorf("failed to reinit datastore %s after creation: %w", fromStore, err)
+	}
+	return newDs, true, nil
+}
+
 type (
 	DataRecv struct {
 		// Install is the list of files or directories to install in the data receiver.
@@ -599,18 +652,30 @@ func (t *DataRecv) install(ctx context.Context) (bool, error) {
 	signals := volsignal.New()
 
 	for _, md := range files {
+		var dataStore object.DataStore
+		var err error
+		// If datastore doesn't exist, try to create it if namespace matches
 		if !md.FromStore.Exists() {
-			err := fmt.Errorf("store %s does not exist: key %s data can not be installed in the volume", md.FromStore, md.FromPattern)
-			if md.Required {
-				return false, err
-			} else {
-				t.to.Log().Warnf("%s", err)
+			var created bool
+			dataStore, created, err = ensureDataStoreExists(md.FromStore, path.Namespace, t.to.Log())
+			if err != nil {
+				err := fmt.Errorf("store %s does not exist: key %s data can not be installed in the volume: %w", md.FromStore, md.FromPattern, err)
+				if md.Required {
+					return false, err
+				} else {
+					t.to.Log().Warnf("%s", err)
+					continue
+				}
+			}
+			if created {
+				t.to.Log().Infof("created datastore %s for seeding", md.FromStore)
+			}
+		} else {
+			dataStore, err = object.NewDataStore(md.FromStore)
+			if err != nil {
+				t.to.Log().Warnf("store %s init error: %s", md.FromStore, err)
 				continue
 			}
-		}
-		dataStore, err := object.NewDataStore(md.FromStore, object.WithVolatile(true))
-		if err != nil {
-			t.to.Log().Warnf("store %s init error: %s", md.FromStore, err)
 		}
 		shares := dataStore.Shares()
 		if !slices.Contains(shares, "*") && !slices.Contains(shares, path.Namespace) {
