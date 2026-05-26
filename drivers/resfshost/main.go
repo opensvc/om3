@@ -149,12 +149,17 @@ func (t *T) Status(ctx context.Context) status.T {
 // Label implements Label from resource.Driver interface,
 // it returns a formatted short description of the Resource
 func (t *T) Label(ctx context.Context) string {
-	s := t.devpath(ctx)
-	m := t.mountPoint()
-	if m != "" {
-		s += "@" + m
+	devpath := t.devpath(ctx)
+	mountPoint := t.mountPoint()
+	var buff strings.Builder
+	if devpath != "none" {
+		buff.WriteString(devpath)
 	}
-	return s
+	if mountPoint != "" {
+		buff.WriteString("@")
+		buff.WriteString(mountPoint)
+	}
+	return buff.String()
 }
 
 func (t *T) Provision(ctx context.Context) error {
@@ -249,7 +254,11 @@ func (t *T) mount(ctx context.Context) error {
 	if v, err := t.isMounted(ctx); err != nil {
 		return err
 	} else if v {
-		t.Log().Infof("%s already mounted on %s", t.devpath(ctx), t.mountPoint())
+		if devpath := t.devpath(ctx); devpath != "none" {
+			t.Log().Infof("%s already mounted on %s", devpath, t.mountPoint())
+		} else {
+			t.Log().Infof("already mounted on %s", t.mountPoint())
+		}
 		return nil
 	}
 	if err := t.createDevice(ctx); err != nil {
@@ -440,7 +449,7 @@ func (t *T) Head() string {
 }
 
 func (t *T) canCheckWriteAccess() bool {
-	if t.fs().IsNetworked() || t.hasMountOption("ro") {
+	if t.fs().IsNetworked() || t.fs().IsReadOnly() || t.hasMountOption("ro") {
 		return false
 	}
 	return true

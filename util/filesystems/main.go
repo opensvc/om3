@@ -18,6 +18,7 @@ type (
 	T struct {
 		fsType        string
 		isNetworked   bool
+		isReadOnly    bool
 		isMultiDevice bool
 		isFileBacked  bool
 		isVirtual     bool
@@ -33,6 +34,7 @@ type (
 		Type() string
 		IsZero() bool
 		IsNetworked() bool
+		IsReadOnly() bool
 		IsVirtual() bool
 		IsFileBacked() bool
 		IsMultiDevice() bool
@@ -68,6 +70,7 @@ var (
 
 func init() {
 	registerFS(&T{fsType: "tmpfs", isVirtual: true})
+	registerFS(&T{fsType: "rpc_pipefs", isVirtual: true, isReadOnly: true})
 	registerFS(&T{fsType: "none", isFileBacked: true})
 	registerFS(&T{fsType: "bind", isFileBacked: true})
 	registerFS(&T{fsType: "lofs", isFileBacked: true})
@@ -130,6 +133,10 @@ func (t T) IsZero() bool {
 
 func (t T) IsNetworked() bool {
 	return t.isNetworked
+}
+
+func (t T) IsReadOnly() bool {
+	return t.isReadOnly
 }
 
 func (t T) IsVirtual() bool {
