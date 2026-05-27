@@ -17,9 +17,9 @@ var (
 
 	KeywordDevice = keywords.Keyword{
 		Attr:     "Device",
+		Default:  "none",
 		Example:  "/dev/disk/by-id/nvme-eui.002538ba11b75ec8",
 		Option:   "dev",
-		Required: true,
 		Scopable: true,
 		Text:     keywords.NewText(fs, "text/kw/dev"),
 	}
