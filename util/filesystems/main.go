@@ -10,6 +10,7 @@ import (
 
 	"github.com/opensvc/om3/v3/util/command"
 	"github.com/opensvc/om3/v3/util/device"
+	"github.com/opensvc/om3/v3/util/findmnt"
 	"github.com/opensvc/om3/v3/util/plog"
 	"github.com/opensvc/om3/v3/util/xmap"
 )
@@ -192,7 +193,18 @@ func DevicesFSCK(ctx context.Context, fs any, dl subDeviceLister) error {
 	}
 	devices := dl.SubDevices(ctx)
 	for _, dev := range devices {
-		if err := i.FSCK(ctx, dev.Path()); err != nil {
+		devPath := dev.Path()
+
+		// If the device is mounted anywhere, no need to fsck.
+		// This avoids the exitcode 8 returned by e2fsck on a filesystem with
+		// an active bind mounted file.
+		if v, err := findmnt.HasDev(ctx, devPath); err != nil {
+			return err
+		} else if v {
+			continue
+		}
+
+		if err := i.FSCK(ctx, devPath); err != nil {
 			return err
 		}
 	}

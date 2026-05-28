@@ -1,6 +1,7 @@
 package file
 
 import (
+	"errors"
 	"fmt"
 	"io"
 	"io/fs"
@@ -10,6 +11,11 @@ import (
 	"time"
 
 	"github.com/opensvc/om3/v3/util/command"
+	"golang.org/x/sys/unix"
+)
+
+var (
+	ErrNotSame = errors.New("not same files")
 )
 
 // IsProtected returns true if the file is too critical to alter or remove
@@ -322,4 +328,39 @@ func DirPermFromFilePerm(fp fs.FileMode) fs.FileMode {
 		x |= 0001
 	} // other r → other x
 	return fp | x
+}
+
+func VerifySameMajorMinorAndInode(p1, p2 string) error {
+	var (
+		err          error
+		stat1, stat2 unix.Stat_t
+	)
+	if err = unix.Stat(p1, &stat1); err != nil {
+		return err
+	}
+	if err = unix.Stat(p2, &stat2); err != nil {
+		return err
+	}
+
+	maj1 := unix.Major(stat1.Rdev)
+	maj2 := unix.Major(stat2.Rdev)
+	if maj1 != maj2 {
+		return fmt.Errorf("%w: major of %s is %d, %s is %d",
+			ErrNotSame, p1, maj1, p2, maj2,
+		)
+	}
+
+	min1 := unix.Minor(stat1.Rdev)
+	min2 := unix.Minor(stat2.Rdev)
+	if min1 != min2 {
+		return fmt.Errorf("%w: minor of %s is %d, %s is %d",
+			ErrNotSame, p1, min1, p2, min2,
+		)
+	}
+	if stat1.Ino != stat2.Ino {
+		return fmt.Errorf("%w: inode of %s is %d, %s is %d",
+			ErrNotSame, p1, stat1.Ino, p2, stat2.Ino,
+		)
+	}
+	return nil
 }
