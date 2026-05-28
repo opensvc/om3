@@ -351,7 +351,7 @@ func (t *T) createMountPointDir(dir string) error {
 	}
 
 	if err := os.MkdirAll(dir, perm); err != nil {
-		return fmt.Errorf("error creating mountpoint %s: %s", dir)
+		return fmt.Errorf("error creating mountpoint %s: %w", dir, err)
 	}
 	return nil
 }
