@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"sort"
+	"strings"
 	"time"
 
 	"github.com/ssrathi/go-attr"
@@ -14,11 +15,13 @@ import (
 	"github.com/opensvc/om3/v3/core/keywords"
 	"github.com/opensvc/om3/v3/core/manifest"
 	"github.com/opensvc/om3/v3/core/naming"
+	"github.com/opensvc/om3/v3/core/provisioned"
 	"github.com/opensvc/om3/v3/core/resource"
 	"github.com/opensvc/om3/v3/core/resourceid"
 	"github.com/opensvc/om3/v3/core/resourceset"
 	"github.com/opensvc/om3/v3/core/schedule"
 	"github.com/opensvc/om3/v3/core/xconfig"
+	"github.com/opensvc/om3/v3/util/device"
 	"github.com/opensvc/om3/v3/util/funcopt"
 	"github.com/opensvc/om3/v3/util/hostname"
 	"github.com/opensvc/om3/v3/util/key"
@@ -72,6 +75,8 @@ type (
 		PRStop(context.Context) error
 		Provision(context.Context) error
 		Unprovision(context.Context) error
+		ResourceHandlingDevice(ctx context.Context, p device.T) (resource.Driver, error)
+		ResourceHandlingFile(ctx context.Context, filename string) (resource.Driver, error)
 		SetProvisioned(context.Context) error
 		SetUnprovisioned(context.Context) error
 		SyncFull(context.Context) error
@@ -553,4 +558,64 @@ func (t *actor) EncapNodes() ([]string, error) {
 		return nil, err
 	}
 	return l.([]string), nil
+}
+
+func (t *actor) ResourceHandlingDevice(ctx context.Context, p device.T) (resource.Driver, error) {
+	type exposedDevicer interface {
+		ExposedDevices(context.Context) device.L
+	}
+	for _, r := range t.Resources() {
+		h, ok := r.(exposedDevicer)
+		if !ok {
+			continue
+		}
+		if v, err := r.Provisioned(ctx); err != nil {
+			return nil, err
+		} else if v == provisioned.False {
+			continue
+		}
+		if v, err := h.ExposedDevices(ctx).Contains(p); err != nil {
+			return nil, err
+		} else if v {
+			return r, nil
+		}
+	}
+	return nil, nil
+}
+
+// ResourceHandlingFile returns the resource hosting a filename.
+// If multiple resource have a head matching the filename prefix,
+// return the longuest.
+// e.g.
+//
+//	fs#1 head is /a
+//	fs#2 head is /a/b
+//	ResourceHandlingFile("/a/b/c") must return fs#2
+func (t *actor) ResourceHandlingFile(ctx context.Context, filename string) (resource.Driver, error) {
+	type header interface {
+		Head() string
+	}
+	var (
+		longestHeadLen    int
+		longestHeadDriver resource.Driver
+	)
+	for _, r := range t.Resources() {
+		h, ok := r.(header)
+		if !ok {
+			continue
+		}
+		if v, err := r.Provisioned(ctx); err != nil {
+			return nil, err
+		} else if v == provisioned.False {
+			continue
+		}
+		head := strings.TrimRight(h.Head(), "/") + "/"
+		if strings.HasPrefix(filename, head) {
+			if n := len(head); n > longestHeadLen {
+				longestHeadLen = n
+				longestHeadDriver = r
+			}
+		}
+	}
+	return longestHeadDriver, nil
 }

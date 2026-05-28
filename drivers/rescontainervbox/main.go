@@ -25,7 +25,6 @@ import (
 	"github.com/opensvc/om3/v3/core/actionrollback"
 	"github.com/opensvc/om3/v3/core/naming"
 	"github.com/opensvc/om3/v3/core/object"
-	"github.com/opensvc/om3/v3/core/provisioned"
 	"github.com/opensvc/om3/v3/core/resource"
 	"github.com/opensvc/om3/v3/core/status"
 	"github.com/opensvc/om3/v3/core/topology"
@@ -612,25 +611,7 @@ func (t *T) resourceHandlingFile(ctx context.Context, p string) (resource.Driver
 	if err != nil {
 		return nil, err
 	}
-	b, ok := obj.(resourceLister)
-	if !ok {
-		return nil, nil
-	}
-	for _, r := range b.Resources() {
-		h, ok := r.(header)
-		if !ok {
-			continue
-		}
-		if v, err := r.Provisioned(ctx); err != nil {
-			continue
-		} else if v == provisioned.False {
-			continue
-		}
-		if h.Head() == p {
-			return r, nil
-		}
-	}
-	return nil, nil
+	return obj.(object.Actor).ResourceHandlingFile(ctx, p)
 }
 
 // cgroupDir returns the container resource cgroup path, relative to a controller head.

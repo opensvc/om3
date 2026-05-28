@@ -16,6 +16,7 @@ import (
 
 	"github.com/opensvc/om3/v3/core/driver"
 	"github.com/opensvc/om3/v3/core/naming"
+	"github.com/opensvc/om3/v3/core/object"
 	"github.com/opensvc/om3/v3/core/provisioned"
 	"github.com/opensvc/om3/v3/core/rawconfig"
 	"github.com/opensvc/om3/v3/core/resource"
@@ -70,6 +71,7 @@ func (t *T) SortKey() string {
 
 // CommonStop stops the Resource
 func (t *T) CommonStop(ctx context.Context, r statuser) (err error) {
+
 	var opts []funcopt.O
 	var errAccess vpath.ErrAccess
 	opts, err = t.GetFuncOpts(ctx, t.StopCmd, "stop")
@@ -81,6 +83,22 @@ func (t *T) CommonStop(ctx context.Context, r statuser) (err error) {
 	}
 	if len(opts) == 0 {
 		return nil
+	}
+
+	o, ok := t.GetObject().(object.Actor)
+	if ok {
+		coResource, err := o.ResourceHandlingFile(ctx, t.StopCmd)
+		if err != nil {
+			return err
+		}
+		if coResource != nil {
+			coResourceRID := coResource.RID()
+			coResourceStatus := statusbus.FromContext(ctx).Get(coResourceRID)
+			if coResourceStatus != status.Up {
+				t.Log().Infof("skip 'stop' command (%s is %s)", coResourceRID, coResourceStatus)
+				return nil
+			}
+		}
 	}
 
 	opts = append(opts,
@@ -215,6 +233,10 @@ func (t *T) CommonStatus(ctx context.Context) status.T {
 	if err = cmd.Wait(); err != nil {
 		if errors.Is(err, context.DeadlineExceeded) {
 			t.StatusLog().Warn("%s", err)
+		}
+		if errors.Is(err, os.ErrNotExist) {
+			t.StatusLog().Info("not evaluated (executable not found)")
+			return status.Undef
 		}
 		t.Log().Tracef("status is down")
 		return status.Down
@@ -365,6 +387,7 @@ func (t *T) Info(ctx context.Context) (resource.InfoKeys, error) {
 	if err := cmd.Run(); err != nil {
 		return nil, err
 	}
+
 	lines := strings.Split(string(cmd.Stdout()), "\n")
 	for _, line := range lines {
 		lineSplit := strings.Split(line, ":")
