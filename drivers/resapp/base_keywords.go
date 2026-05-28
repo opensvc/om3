@@ -5,6 +5,13 @@ import (
 )
 
 var (
+	BaseKeywordDesc = keywords.Keyword{
+		Attr:     "Desc",
+		Example:  "rpc.idmapd",
+		Option:   "desc",
+		Scopable: true,
+		Text:     keywords.NewText(fs, "text/kw/desc"),
+	}
 	BaseKeywordTimeout = keywords.Keyword{
 		Attr:      "Timeout",
 		Converter: "duration",
@@ -64,6 +71,7 @@ var (
 	}
 
 	BaseKeywords = []*keywords.Keyword{
+		&BaseKeywordDesc,
 		&BaseKeywordTimeout,
 		&BaseKeywordStopTimeout,
 		&BaseKeywordSecretsEnv,

@@ -52,6 +52,7 @@ type (
 		PG           pg.Config      `json:"pg"`
 		Limit        ulimit.Config  `json:"limit"`
 		NetNS        string         `json:"netns"`
+		Desc         string         `json:"desc"`
 	}
 
 	statuser interface {
