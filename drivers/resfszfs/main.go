@@ -16,7 +16,6 @@ import (
 	"github.com/opensvc/om3/v3/core/provisioned"
 	"github.com/opensvc/om3/v3/core/resource"
 	"github.com/opensvc/om3/v3/core/status"
-	"github.com/opensvc/om3/v3/drivers/resfsdir"
 	"github.com/opensvc/om3/v3/util/args"
 	"github.com/opensvc/om3/v3/util/command"
 	"github.com/opensvc/om3/v3/util/device"
@@ -46,6 +45,10 @@ type (
 	}
 )
 
+const (
+	defaultPerm = 0755
+)
+
 func New() resource.Driver {
 	t := &T{}
 	return t
@@ -69,7 +72,7 @@ func (t *T) Start(ctx context.Context) error {
 	if err := t.mount(ctx); err != nil {
 		return err
 	}
-	if err := t.fsDir().Start(ctx); err != nil {
+	if err := t.DataRecv.Do(ctx); err != nil {
 		return err
 	}
 	return nil
@@ -134,15 +137,6 @@ func (t *T) Info(ctx context.Context) (resource.InfoKeys, error) {
 		{Key: "mnt_opt", Value: t.MountOptions},
 	}
 	return m, nil
-}
-
-func (t *T) fsDir() *resfsdir.T {
-	r := resfsdir.New().(*resfsdir.T)
-	r.SetRID(t.RID())
-	r.SetObject(t.GetObject())
-	r.Path = t.MountPoint
-	r.DataRecv = t.DataRecv
-	return r
 }
 
 func (t *T) testFile() string {
@@ -286,8 +280,16 @@ func (t *T) createMountPoint(ctx context.Context) error {
 	if file.Exists(t.MountPoint) {
 		return fmt.Errorf("mountpoint %s already exists but is not a directory", t.MountPoint)
 	}
+
 	t.Log().Infof("create missing mountpoint %s", t.MountPoint)
-	if err := os.MkdirAll(t.MountPoint, 0755); err != nil {
+	var perm os.FileMode
+	if p := t.DataRecv.RootDirPerm(); p != nil {
+		perm = *p
+	} else {
+		perm = defaultPerm
+	}
+
+	if err := os.MkdirAll(t.MountPoint, perm); err != nil {
 		return fmt.Errorf("error creating mountpoint %s: %s", t.MountPoint, err)
 	}
 	return nil
