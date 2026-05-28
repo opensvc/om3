@@ -1,6 +1,7 @@
 package datarecv
 
 import (
+	"bytes"
 	"context"
 	"embed"
 	"fmt"
@@ -13,6 +14,7 @@ import (
 	"strconv"
 	"strings"
 	"syscall"
+	"text/template"
 
 	"golang.org/x/sys/unix"
 
@@ -21,14 +23,17 @@ import (
 	"github.com/opensvc/om3/v3/core/object"
 	"github.com/opensvc/om3/v3/core/resource"
 	"github.com/opensvc/om3/v3/core/volsignal"
+	"github.com/opensvc/om3/v3/core/xconfig"
 	"github.com/opensvc/om3/v3/util/file"
+	"github.com/opensvc/om3/v3/util/key"
 	"github.com/opensvc/om3/v3/util/plog"
 )
 
 // seedKeyFromSource fetches data from a URI or local file and adds it as a key to the datastore.
 // It only seeds the key if it doesn't already exist.
 // Supports both HTTP/HTTPS URIs (http://, https://) and local file paths.
-func seedKeyFromSource(ds object.DataStore, keyName, sourceURI string, log *plog.Logger) error {
+// If isTemplate is true, the content is executed as a Go template with the config env section exposed.
+func seedKeyFromSource(ds object.DataStore, keyName, sourceURI string, log *plog.Logger, config *xconfig.T, isTemplate bool) error {
 	log.Infof("seeding key %s from source %s", keyName, sourceURI)
 
 	var data []byte
@@ -60,12 +65,44 @@ func seedKeyFromSource(ds object.DataStore, keyName, sourceURI string, log *plog
 		}
 	}
 
+	// If template flag is set, execute the content as a Go template
+	if isTemplate && config != nil {
+		log.Infof("executing template for key %s from source %s", keyName, sourceURI)
+		// Build template data from the env section of the config
+		templateData := buildEnvTemplateData(config)
+
+		tmpl, err := template.New("source").Parse(string(data))
+		if err != nil {
+			return fmt.Errorf("failed to parse template for key %s: %w", keyName, err)
+		}
+
+		var buf bytes.Buffer
+		if err := tmpl.Execute(&buf, templateData); err != nil {
+			return fmt.Errorf("failed to execute template for key %s: %w", keyName, err)
+		}
+
+		data = buf.Bytes()
+	}
+
 	// Add the data as a key to the datastore
 	if err := ds.AddKey(keyName, data); err != nil {
 		return fmt.Errorf("failed to add key %s to datastore: %w", keyName, err)
 	}
 
 	return nil
+}
+
+// buildEnvTemplateData builds a map of environment variables from the config's env section
+func buildEnvTemplateData(config *xconfig.T) map[string]string {
+	data := make(map[string]string)
+
+	// Get all keys from the env section
+	keyNames := config.Keys("env")
+	for _, keyName := range keyNames {
+		data[keyName] = config.GetString(key.New("env", keyName))
+	}
+
+	return data
 }
 
 // ensureDataStoreExists creates the datastore object if it doesn't exist and the namespace matches.
@@ -217,6 +254,7 @@ func Keywords(prefix string) []*keywords.Keyword {
 		/etc/profile.d/ from ./sec/d key etc/profile.d/*
 		/init/nfs from ./cfg/{name} key init/nfs mode 0755 source https://raw.githubusercontent.com/opensvc/opensvc_templates/refs/heads/main/nfs/script
 		/init/backup from ./cfg/{name} key init/backup mode 0755 source /tmp/scripts/backup.sh
+		/init/config.sh from ./cfg/{name} key init/config.sh mode 0755 source https://example.com/templates/config.sh template
 		/data/`,
 			Option:   "install",
 			Scopable: true,
@@ -512,7 +550,7 @@ func (t *DataRecv) Status() {
 	t.statusDirs(head, dirs)
 	for _, md := range t.getMetadata() {
 		if !md.FromStore.Exists() {
-			t.to.StatusLog().Warn("store %s does not exist: key %s data can not be installed in the volume", md.FromStore, md.FromPattern)
+			t.to.StatusLog().Warn("store %s does not exist: missing key %s", md.FromStore, md.FromPattern)
 			continue
 		}
 		dataStore, err := object.NewDataStore(md.FromStore, object.WithVolatile(true))
@@ -532,7 +570,7 @@ func (t *DataRecv) Status() {
 			continue
 		}
 		if len(matches) == 0 {
-			t.to.StatusLog().Warn("store %s has no keys matching %s: data can not be installed in the volume", md.FromStore, md.FromPattern)
+			t.to.StatusLog().Warn("store %s has no keys matching %s", md.FromStore, md.FromPattern)
 		}
 	}
 }
@@ -584,7 +622,9 @@ func (t *DataRecv) InstallFromDatastore(ctx context.Context, from object.DataSto
 		// Seed the datastore key from source URI if provided and key doesn't exist
 		if md.Source != "" && md.FromPattern != "" {
 			if !from.HasKey(md.FromPattern) {
-				if err := seedKeyFromSource(from, md.FromPattern, md.Source, t.to.Log()); err != nil {
+				// Get the config from the receiver object
+				config := t.to.GetObject().(object.Core).Config()
+				if err := seedKeyFromSource(from, md.FromPattern, md.Source, t.to.Log(), config, md.IsTemplate); err != nil {
 					if md.Required {
 						return false, fmt.Errorf("failed to seed key %s from source %s: %w", md.FromPattern, md.Source, err)
 					} else {
@@ -685,7 +725,9 @@ func (t *DataRecv) install(ctx context.Context) (bool, error) {
 		// Seed the datastore key from source URI if provided and key doesn't exist
 		if md.Source != "" && md.FromPattern != "" {
 			if !dataStore.HasKey(md.FromPattern) {
-				if err := seedKeyFromSource(dataStore, md.FromPattern, md.Source, t.to.Log()); err != nil {
+				// Get the config from the receiver object
+				config := t.to.GetObject().(object.Core).Config()
+				if err := seedKeyFromSource(dataStore, md.FromPattern, md.Source, t.to.Log(), config, md.IsTemplate); err != nil {
 					if md.Required {
 						return false, fmt.Errorf("failed to seed key %s from source %s: %w", md.FromPattern, md.Source, err)
 					} else {
@@ -721,7 +763,15 @@ func (t *DataRecv) getInstallMetadata(head string) ([]dirDefinition, []object.KV
 		if !strings.HasPrefix(word, "/") {
 			return false
 		}
-		return i < 1 || t.Install[i-1] != "key"
+		if i == 0 {
+			return true
+		}
+		prevWord := t.Install[i-1]
+		switch prevWord {
+		case "key", "source":
+			return false
+		}
+		return true
 	}
 
 	split := func() [][]string {
@@ -815,6 +865,12 @@ func (t *DataRecv) getInstallMetadata(head string) ([]dirDefinition, []object.KV
 		var word string
 
 		word, line = pop(line)
+
+		// Set a default value for the "key" field.
+		// e.g. the /a/b file default key is a/b
+		item.FromPattern = strings.TrimLeft(word, "/")
+
+		// Forge the fullpath of the file to install.
 		item.ToPath = filepath.Join(head, word)
 		if strings.HasSuffix(word, "/") {
 			item.ToPath += "/"
@@ -871,6 +927,8 @@ func (t *DataRecv) getInstallMetadata(head string) ([]dirDefinition, []object.KV
 			case "source":
 				word, line = pop(line)
 				item.Source = word
+			case "template":
+				item.IsTemplate = true
 			}
 		}
 
@@ -1083,7 +1141,7 @@ func (t *DataRecv) installDir(path string, head string, perm os.FileMode, user, 
 	info, err := os.Stat(p)
 	switch {
 	case os.IsNotExist(err):
-		t.to.Log().Infof("install directory %s with ower %s:%s and perm %s", p, user, group, perm)
+		t.to.Log().Infof("install directory %s with owner %s:%s and perm %s", p, user, group, perm)
 		if err := os.MkdirAll(p, perm); err != nil {
 			return err
 		}
