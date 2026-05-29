@@ -9,7 +9,6 @@ import (
 	"github.com/opensvc/om3/v3/core/keyop"
 	"github.com/opensvc/om3/v3/core/naming"
 	"github.com/opensvc/om3/v3/daemon/api"
-	"github.com/opensvc/om3/v3/daemon/rbac"
 	"github.com/opensvc/om3/v3/util/key"
 )
 
@@ -44,16 +43,6 @@ func (a *DaemonAPI) PatchObjectConfig(ctx echo.Context, namespace string, kind n
 		return JSONProblemf(ctx, http.StatusBadRequest, "No valid update requested", "")
 	}
 
-	grants := grantsFromContext(ctx)
-
-	if !grants.HasGrant(rbac.GrantRoot) {
-		for _, kop := range sets {
-			if err := keyopRbac(grants, kop); err != nil {
-				return JSONProblemf(ctx, http.StatusForbidden, "Forbidden", "Keyword operation: %s: %s", kop, err)
-			}
-		}
-	}
-
 	p, err := naming.NewPath(namespace, kind, name)
 	if err != nil {
 		return JSONProblemf(ctx, http.StatusBadRequest, "Invalid parameters", "%s", err)
@@ -63,7 +52,7 @@ func (a *DaemonAPI) PatchObjectConfig(ctx echo.Context, namespace string, kind n
 	instanceConfigData := instance.ConfigData.GetByPath(p)
 
 	if _, ok := instanceConfigData[a.localhost]; ok {
-		changed, err := configUpdate(log, p, deletes, unsets, sets)
+		changed, err := configUpdate(ctx, log, p, deletes, unsets, sets)
 		if err != nil {
 			return JSONProblemf(ctx, http.StatusInternalServerError, "Update config", "%s", err)
 		}
