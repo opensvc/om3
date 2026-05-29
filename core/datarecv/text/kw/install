@@ -1,6 +1,6 @@
 A list of files and directories to install in the volume from cfg and sec keys.
 
-	<path> from <obj_path|obj_relpath> key <key> [mode <mode>] [user <user>] [group <group>] [signal <sig>:<rid>]
+	<path> from <obj_path|obj_relpath> [key <key>] [mode <mode>] [user <user>] [group <group>] [signal <sig>:<rid>] [source <uri>] [template] [required]
 	<path> [mode <mode>] [user <user>] [group <group>] [signal <sig>:<rid>]
 
 Where:
@@ -9,7 +9,9 @@ Where:
   * must start with a `/`.
   * is relative to the target resource head.
   * is considered a directory if it ends with a `/` or if `from <obj_path|obj_relpath>` is omitted.
-  * content is copied from the value of the key referenced by `from <obj_path|obj_relpath>`
+  * content is copied from the value of the key referenced by `from <obj_path|obj_relpath>`.
+  * if `key <key>` is not specified, the key name defaults to the `<path>` with the leading `/` stripped.
+    e.g. `fs#1.install = /a/b from ./sec/sec1` will install `<fs#1 head>/a/b` from the `./sec/sec1` key named `a/b`.
 
 * `<obj_path>` (e.g. `ns1/sec/d`)
   * is the absolute path of the datastore to install keys from. Note that if the datastore and
@@ -19,13 +21,25 @@ Where:
 * `<obj_relpath>` (e.g. `./sec/d`)
   * is the path of the datastore to install keys from, relative to the installing object namespace.
 
-* `<key>`
-  * is the key name or a globbing pattern from <obj_path|obj_relpath>
+* `key <key>`
+  * `<key>` is the key name or a globbing pattern from <obj_path|obj_relpath>.
+  * if not specified, defaults to the `<path>` with the leading `/` stripped.
+    e.g. `fs#1.install = /a/b from ./sec/sec1` will install `<fs#1 head>/a/b` from the `./sec/sec1` key named `a/b`.
 
 * `<mode>`, `<user>`, `<group>` default values are defined by the `mode`, `user` and `group` resource keyword.
 
 * `<sig>:<rid>` (e.g. `HUP:container#haproxy`)
   * `<sig>` is the signal to send to the target resource `<rid>` processes when the file content is modified.
 
+* `<uri>`
+  * is the source URI or local file path to seed the datastore key with during provision if the key doesn't already exist.
+  * HTTP/HTTPS URIs (http://, https://) are fetched via HTTP GET.
+  * Local file paths are read directly from the filesystem.
+
 * `required`
-  * stop installing items if this item install failed
+  * stop installing items if this item install failed.
+
+* `source <uri>`
+  * seed the datastore key with the content of <uri>.
+  * if `template` is also set, treat the <uri> content as a go template, and execute using the [env] section keys as the dataset.
+    e.g. {{.foo}} is replaced by the evaluated value of `env.foo`.

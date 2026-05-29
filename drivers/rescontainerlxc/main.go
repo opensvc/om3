@@ -790,25 +790,7 @@ func (t *T) resourceHandlingFile(ctx context.Context, p string) (resource.Driver
 	if err != nil {
 		return nil, err
 	}
-	b, ok := obj.(resourceLister)
-	if !ok {
-		return nil, nil
-	}
-	for _, r := range b.Resources() {
-		h, ok := r.(header)
-		if !ok {
-			continue
-		}
-		if v, err := r.Provisioned(ctx); err != nil {
-			continue
-		} else if v == provisioned.False {
-			continue
-		}
-		if h.Head() == p {
-			return r, nil
-		}
-	}
-	return nil, nil
+	return obj.(object.Actor).ResourceHandlingFile(ctx, p)
 }
 
 // ContainerHead implements the interface replacing b2.1 the zonepath resource attribute

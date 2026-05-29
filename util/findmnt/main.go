@@ -12,7 +12,6 @@ import (
 	"time"
 
 	"github.com/opensvc/om3/v3/util/capabilities"
-	"github.com/opensvc/om3/v3/util/file"
 )
 
 type (
@@ -60,6 +59,24 @@ func HasMntWithTypes(ctx context.Context, fsTypes []string, mnt string) (bool, e
 	return false, nil
 }
 
+// HasMnt returns true when a fs is mounted on {mnt} using the findmnt command
+func HasMnt(ctx context.Context, mnt string) (bool, error) {
+	l, err := List(ctx, "", mnt)
+	if err != nil {
+		return false, err
+	}
+	return len(l) > 0, nil
+}
+
+// HasDev returns true when a fs is mounted from {dev} using the findmnt command
+func HasDev(ctx context.Context, dev string) (bool, error) {
+	l, err := List(ctx, dev, "")
+	if err != nil {
+		return false, err
+	}
+	return len(l) > 0, nil
+}
+
 // HasFromMount returns true when {dev} is mounted on {mnt} using the mount command
 func HasFromMount(dev string, mnt string) (bool, error) {
 	cmd := mountCmd()
@@ -95,18 +112,21 @@ func newInfo() *info {
 // Instead findmnt -J -S {dev} is used, then mnt is filtered within List function.
 func List(ctx context.Context, dev string, mnt string) (mounts []MountInfo, err error) {
 	var (
-		devIsDir, devIsNfs bool
+		devIsDir, devIsRegular, devIsNfs bool
 	)
 
 	if _, err = exec.LookPath("findmnt"); err != nil {
 		return
 	}
 
-	if dev != "" {
-		if devIsDir, err = file.ExistsAndDir(dev); err != nil {
-			return
-		} else if !devIsDir {
+	if dev != "" && dev != "none" {
+		var stat os.FileInfo
+		stat, err = os.Stat(dev)
+		if os.IsNotExist(err) {
 			devIsNfs = isNfsPath(dev)
+		} else {
+			devIsDir = stat.Mode().IsDir()
+			devIsRegular = stat.Mode().IsRegular()
 		}
 	}
 
@@ -126,7 +146,7 @@ func List(ctx context.Context, dev string, mnt string) (mounts []MountInfo, err 
 		mounts = filtered
 	}
 
-	if devIsDir {
+	if devIsDir || devIsRegular {
 		filtered := make([]MountInfo, 0)
 		pattern := fmt.Sprintf("[%s]", dev)
 		for _, mi := range mounts {

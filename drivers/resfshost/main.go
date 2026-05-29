@@ -22,7 +22,6 @@ import (
 	"github.com/opensvc/om3/v3/core/resource"
 	"github.com/opensvc/om3/v3/core/status"
 	"github.com/opensvc/om3/v3/core/vpath"
-	"github.com/opensvc/om3/v3/drivers/resfsdir"
 	"github.com/opensvc/om3/v3/util/device"
 	"github.com/opensvc/om3/v3/util/file"
 	"github.com/opensvc/om3/v3/util/filesystems"
@@ -61,6 +60,10 @@ type (
 	}
 )
 
+const (
+	defaultPerm = 0755
+)
+
 func NewF(s string) func() resource.Driver {
 	n := func() resource.Driver {
 		t := &T{Type: s}
@@ -84,7 +87,7 @@ func (t *T) Start(ctx context.Context) error {
 	if err := t.mount(ctx); err != nil {
 		return err
 	}
-	if err := t.fsDir().Start(ctx); err != nil {
+	if err := t.DataRecv.Do(ctx); err != nil {
 		return err
 	}
 	return nil
@@ -149,12 +152,17 @@ func (t *T) Status(ctx context.Context) status.T {
 // Label implements Label from resource.Driver interface,
 // it returns a formatted short description of the Resource
 func (t *T) Label(ctx context.Context) string {
-	s := t.devpath(ctx)
-	m := t.mountPoint()
-	if m != "" {
-		s += "@" + m
+	devpath := t.devpath(ctx)
+	mountPoint := t.mountPoint()
+	var buff strings.Builder
+	if devpath != "none" {
+		buff.WriteString(devpath)
 	}
-	return s
+	if mountPoint != "" {
+		buff.WriteString("@")
+		buff.WriteString(mountPoint)
+	}
+	return buff.String()
 }
 
 func (t *T) Provision(ctx context.Context) error {
@@ -189,15 +197,6 @@ func (t *T) Info(ctx context.Context) (resource.InfoKeys, error) {
 		{Key: "mnt_opt", Value: t.MountOptions},
 	}
 	return m, nil
-}
-
-func (t *T) fsDir() *resfsdir.T {
-	r := resfsdir.New().(*resfsdir.T)
-	r.SetRID(t.RID())
-	r.SetObject(t.GetObject())
-	r.Path = t.MountPoint
-	r.DataRecv = t.DataRecv
-	return r
 }
 
 func (t *T) testFile() string {
@@ -249,7 +248,11 @@ func (t *T) mount(ctx context.Context) error {
 	if v, err := t.isMounted(ctx); err != nil {
 		return err
 	} else if v {
-		t.Log().Infof("%s already mounted on %s", t.devpath(ctx), t.mountPoint())
+		if devpath := t.devpath(ctx); devpath != "none" {
+			t.Log().Infof("%s already mounted on %s", devpath, t.mountPoint())
+		} else {
+			t.Log().Infof("already mounted on %s", t.mountPoint())
+		}
 		return nil
 	}
 	if err := t.createDevice(ctx); err != nil {
@@ -280,24 +283,75 @@ func (t *T) createDevice(ctx context.Context) error {
 		return nil
 	}
 	t.Log().Infof("create missing device %s", p)
-	if err := os.MkdirAll(p, 0755); err != nil {
+	if err := os.MkdirAll(p, defaultPerm); err != nil {
 		return fmt.Errorf("error creating device %s: %s", p, err)
 	}
 	return nil
 }
 
 func (t *T) createMountPoint(ctx context.Context) error {
-	if v, err := file.ExistsAndDir(t.MountPoint); err != nil {
+	if isRegular, err := file.ExistsAndRegular(t.Device); err != nil {
+		return err
+	} else if isRegular {
+		return t.createMountPointFile()
+	} else {
+		return t.createMountPointDir(t.MountPoint)
+	}
+}
+
+// createMountPointFile handles the creation of the hosting dir and mnt
+// file for a file bind mount like:
+//
+//	[fs#1]
+//	type = bind
+//	dev = /a/foo
+//	mnt = /b/foo
+func (t *T) createMountPointFile() error {
+	dir := filepath.Dir(t.MountPoint)
+	if err := t.createMountPointDir(dir); err != nil {
+		return err
+	}
+
+	if stat, err := os.Stat(t.MountPoint); err == nil {
+		// file already exists
+		if stat.Mode().IsRegular() {
+			return nil
+		} else {
+			return fmt.Errorf("the mountpoint already exists but is not a regular file")
+		}
+	} else if os.IsNotExist(err) {
+		t.Log().Infof("create missing mountpoint file %s", t.MountPoint)
+		if f, err := os.Create(t.MountPoint); err != nil {
+			return err
+		} else {
+			f.Close()
+			return nil
+		}
+	} else {
+		return err
+	}
+}
+
+func (t *T) createMountPointDir(dir string) error {
+	if v, err := file.ExistsAndDir(dir); err != nil {
 		return err
 	} else if v {
 		return nil
 	}
-	if file.Exists(t.MountPoint) {
-		return fmt.Errorf("mountpoint %s already exists but is not a directory", t.MountPoint)
+	if file.Exists(dir) {
+		return fmt.Errorf("mountpoint %s already exists but is not a directory", dir)
 	}
-	t.Log().Infof("create missing mountpoint %s", t.MountPoint)
-	if err := os.MkdirAll(t.MountPoint, 0755); err != nil {
-		return fmt.Errorf("error creating mountpoint %s: %s", t.MountPoint, err)
+
+	t.Log().Infof("create missing mountpoint dir %s", dir)
+	var perm os.FileMode
+	if p := t.DataRecv.RootDirPerm(); p != nil {
+		perm = *p
+	} else {
+		perm = defaultPerm
+	}
+
+	if err := os.MkdirAll(dir, perm); err != nil {
+		return fmt.Errorf("error creating mountpoint %s: %w", dir, err)
 	}
 	return nil
 }
@@ -400,12 +454,36 @@ func (t *T) fsck(ctx context.Context) error {
 	return filesystems.DevicesFSCK(ctx, fs, t)
 }
 
+func (t *T) isBindMounted(ctx context.Context) (bool, error) {
+	isMounted, err := findmnt.HasMnt(ctx, t.mountPoint())
+	if err != nil || !isMounted {
+		return isMounted, err
+	}
+
+	// We know we have a entry in findmnt, but not yet sure it's our bind mount.
+	// Verify the dev and mnt have the same maj:min and inode.
+	err = file.VerifySameMajorMinorAndInode(t.Device, t.MountPoint)
+	if errors.Is(err, os.ErrNotExist) {
+		return false, nil
+	} else if errors.Is(err, file.ErrNotSame) {
+		t.StatusLog().Info("%s", err)
+		return false, nil
+	} else if err != nil {
+		return false, err
+	} else {
+		return true, nil
+	}
+}
+
 func (t *T) isMounted(ctx context.Context) (bool, error) {
 	if t.hasMountOption("loop") {
 		return findmnt.HasFromMount(t.devpath(ctx), t.mountPoint())
 	}
-	if t.Type == "tmpfs" {
-		return findmnt.HasMntWithTypes(ctx, []string{"tmpfs"}, t.mountPoint())
+	if t.hasMountOption("bind") || t.Type == "bind" {
+		return t.isBindMounted(ctx)
+	}
+	if t.fs().IsVirtual() {
+		return findmnt.HasMntWithTypes(ctx, []string{t.Type}, t.mountPoint())
 	}
 	return findmnt.Has(ctx, t.devpath(ctx), t.mountPoint())
 }
@@ -440,7 +518,8 @@ func (t *T) Head() string {
 }
 
 func (t *T) canCheckWriteAccess() bool {
-	if t.fs().IsNetworked() || t.hasMountOption("ro") {
+	fs := t.fs()
+	if fs.IsNetworked() || fs.IsReadOnly() || t.hasMountOption("ro") || fs.IsVirtual() || fs.Type() == "bind" {
 		return false
 	}
 	return true

@@ -15,7 +15,12 @@ import (
 )
 
 func (t T) Mount(ctx context.Context, dev string, mnt string, options string) error {
-	args := []string{"-t", t.Type()}
+	var args []string
+	if fsType := t.Type(); fsType == "bind" {
+		args = []string{"-o", "bind"}
+	} else {
+		args = []string{"-t", fsType}
+	}
 	if len(options) > 0 {
 		args = append(args, "-o", options)
 	}

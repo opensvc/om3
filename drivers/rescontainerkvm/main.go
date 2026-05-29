@@ -930,53 +930,7 @@ func (t *T) resourceHandlingDevice(ctx context.Context, p device.T) (resource.Dr
 	if err != nil {
 		return nil, err
 	}
-	b, ok := obj.(resourceLister)
-	if !ok {
-		return nil, nil
-	}
-	for _, r := range b.Resources() {
-		h, ok := r.(exposedDevicer)
-		if !ok {
-			continue
-		}
-		if v, err := r.Provisioned(ctx); err != nil {
-			return nil, err
-		} else if v == provisioned.False {
-			continue
-		}
-		if v, err := h.ExposedDevices(ctx).Contains(p); err != nil {
-			return nil, err
-		} else if v {
-			return r, nil
-		}
-	}
-	return nil, nil
-}
-
-func (t *T) resourceHandlingFile(ctx context.Context, p string) (resource.Driver, error) {
-	obj, err := t.obj()
-	if err != nil {
-		return nil, err
-	}
-	b, ok := obj.(resourceLister)
-	if !ok {
-		return nil, nil
-	}
-	for _, r := range b.Resources() {
-		h, ok := r.(header)
-		if !ok {
-			continue
-		}
-		if v, err := r.Provisioned(ctx); err != nil {
-			return nil, err
-		} else if v == provisioned.False {
-			continue
-		}
-		if h.Head() == p {
-			return r, nil
-		}
-	}
-	return nil, nil
+	return obj.(object.Actor).ResourceHandlingDevice(ctx, p)
 }
 
 /*

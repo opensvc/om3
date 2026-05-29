@@ -37,6 +37,8 @@ type (
 		ToPath        string
 		FromPattern   string
 		FromStore     naming.Path
+		Source        string
+		IsTemplate    bool
 		AccessControl KVInstallAccessControl
 		Signals       *volsignal.T
 	}

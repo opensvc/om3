@@ -1,6 +1,7 @@
 package xconfig
 
 import (
+	"bytes"
 	"crypto/md5"
 	"encoding/hex"
 	"errors"
@@ -717,6 +718,15 @@ func (t *T) writeReferrerConfigData() error {
 		return err
 	}
 	return nil
+}
+
+func (t *T) Dump() ([]byte, error) {
+	var buf bytes.Buffer
+	_, err := t.file.WriteTo(&buf)
+	if err != nil {
+		return nil, err
+	}
+	return buf.Bytes(), nil
 }
 
 func (t *T) write() (err error) {

@@ -159,6 +159,9 @@ func (t T) Slaves() (L, error) {
 	}
 	root = root + "/slaves"
 	err = filepath.Walk(root, func(path string, info os.FileInfo, err error) error {
+		if info == nil {
+			return nil
+		}
 		if info.IsDir() {
 			return nil
 		}
@@ -177,6 +180,9 @@ func (t T) Holders() (L, error) {
 	}
 	root = root + "/holders"
 	err = filepath.Walk(root, func(path string, info os.FileInfo, err error) error {
+		if info == nil {
+			return nil
+		}
 		if info.IsDir() {
 			return nil
 		}

@@ -3,6 +3,7 @@ package daemonapi
 import (
 	"fmt"
 
+	"github.com/labstack/echo/v4"
 	"github.com/opensvc/om3/v3/core/keyop"
 	"github.com/opensvc/om3/v3/core/naming"
 	"github.com/opensvc/om3/v3/core/object"
@@ -10,7 +11,7 @@ import (
 	"github.com/opensvc/om3/v3/util/plog"
 )
 
-func configUpdate(log *plog.Logger, p naming.Path, deletes []string, unsets []key.T, sets []keyop.T) (bool, error) {
+func configUpdate(ctx echo.Context, log *plog.Logger, p naming.Path, deletes []string, unsets []key.T, sets []keyop.T) (bool, error) {
 	oc, err := object.NewConfigurer(p)
 	if err != nil {
 		return false, fmt.Errorf("new configurer %s: %w", p, err)
@@ -18,6 +19,12 @@ func configUpdate(log *plog.Logger, p naming.Path, deletes []string, unsets []ke
 	if err := oc.Config().PrepareUpdate(deletes, unsets, sets); err != nil {
 		log.Tracef("prepare configuration update for object %s: %s", p, err)
 		return false, fmt.Errorf("prepare configuration update for object %s: %w", p, err)
+	}
+	if b, err := oc.Config().Dump(); err != nil {
+		log.Tracef("configuration dump for object %s: %s", p, err)
+		return false, fmt.Errorf("configuration dump for object %s: %w", p, err)
+	} else if err := configRbac(ctx, p, b); err != nil {
+		return false, err
 	}
 	if alerts, err := oc.Config().Validate(); err != nil {
 		log.Tracef("configuration validation for object %s: %s", p, err)

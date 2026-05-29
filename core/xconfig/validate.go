@@ -374,11 +374,11 @@ func (t Alerts) GetItems() any {
 func (t Alert) Icon() string {
 	switch t.Level {
 	case alertLevelWarn:
-		return "⚠️"
+		return "warning"
 	case alertLevelError:
-		return "❌"
+		return "error"
 	default:
-		return ""
+		return "info"
 	}
 }
 

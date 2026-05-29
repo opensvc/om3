@@ -9,12 +9,7 @@ import (
 	"github.com/opensvc/om3/v3/core/keyop"
 	"github.com/opensvc/om3/v3/core/naming"
 	"github.com/opensvc/om3/v3/daemon/api"
-	"github.com/opensvc/om3/v3/daemon/rbac"
 	"github.com/opensvc/om3/v3/util/key"
-)
-
-var (
-	priorityKey = key.Parse("priority")
 )
 
 func (a *DaemonAPI) PatchObjectConfig(ctx echo.Context, namespace string, kind naming.Kind, name string, params api.PatchObjectConfigParams) error {
@@ -48,22 +43,6 @@ func (a *DaemonAPI) PatchObjectConfig(ctx echo.Context, namespace string, kind n
 		return JSONProblemf(ctx, http.StatusBadRequest, "No valid update requested", "")
 	}
 
-	hasGrantRoot := grantsFromContext(ctx).HasGrant(rbac.GrantRoot)
-	hasGrantPrioritizer := grantsFromContext(ctx).HasGrant(rbac.GrantPrioritizer)
-
-	if !hasGrantRoot {
-		for _, kop := range sets {
-			// Dangerous keywords require GrantRoot.
-			if err := keyopRbac(kop); err != nil {
-				return JSONProblemf(ctx, http.StatusForbidden, "Forbidden", "Keyword operation: %s: %s", kop, err)
-			}
-			// Priorities have cross-namespaces consequences, so require GrantRoot or a dedicated GrantPrioritizer
-			if !hasGrantPrioritizer && (kop.Key == priorityKey) {
-				return JSONProblemf(ctx, http.StatusForbidden, "Forbidden", "Keyword operation: %s: %s", kop, "setting priority requires the root or prioritizer grant")
-			}
-		}
-	}
-
 	p, err := naming.NewPath(namespace, kind, name)
 	if err != nil {
 		return JSONProblemf(ctx, http.StatusBadRequest, "Invalid parameters", "%s", err)
@@ -73,7 +52,7 @@ func (a *DaemonAPI) PatchObjectConfig(ctx echo.Context, namespace string, kind n
 	instanceConfigData := instance.ConfigData.GetByPath(p)
 
 	if _, ok := instanceConfigData[a.localhost]; ok {
-		changed, err := configUpdate(log, p, deletes, unsets, sets)
+		changed, err := configUpdate(ctx, log, p, deletes, unsets, sets)
 		if err != nil {
 			return JSONProblemf(ctx, http.StatusInternalServerError, "Update config", "%s", err)
 		}
