@@ -11,6 +11,8 @@ import (
 )
 
 func (a *DaemonAPI) PostObjectConfigFile(ctx echo.Context, namespace string, kind naming.Kind, name string) error {
+	log := LogHandler(ctx, "PostObjectConfigFile")
+
 	if v, err := assertAdmin(ctx, namespace); !v {
 		return err
 	}
@@ -30,8 +32,11 @@ func (a *DaemonAPI) PostObjectConfigFile(ctx echo.Context, namespace string, kin
 
 	// Validate RBAC rules for config keys
 	if err := configRbac(ctx, p, body); err != nil {
+		log.Warnf("%s: rbac: %s", p, err)
 		return JSONProblemf(ctx, http.StatusForbidden, "Forbidden", "Config validation: %s", err)
 	}
+
+	log.Tracef("%s: rbac passed", p)
 
 	return a.writeObjectConfigFile(ctx, p, body)
 }

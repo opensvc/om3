@@ -19,7 +19,7 @@ import (
 // It checks if the user has root grant, and if not, validates each key.
 // Returns an error if any key violates RBAC rules.
 func configRbac(ctx echo.Context, p naming.Path, body []byte) error {
-	o, err := object.New(p, object.WithConfigData(body))
+	o, err := object.New(p, object.WithConfigData(body), object.WithVolatile(true))
 	if err != nil {
 		return fmt.Errorf("new object: %s", err)
 	}
@@ -38,10 +38,14 @@ func configRbac(ctx echo.Context, p naming.Path, body []byte) error {
 		for _, option := range keys {
 			k := key.New(section, option)
 			// Create a key operation for this key
+			v, err := cfg.Eval(k)
+			if err != nil {
+				return err
+			}
 			kop := keyop.T{
 				Key:   k,
 				Op:    keyop.Set,
-				Value: cfg.GetString(k),
+				Value: fmt.Sprint(v),
 				Index: 0,
 			}
 			// Validate this key operation against RBAC rules
@@ -204,6 +208,24 @@ func keyopRbac(grants rbac.Grants, op keyop.T) error {
 				return fmt.Errorf("denied: %s: server-local source uri requires the root grant", op)
 			}
 		}
+	case "fs":
+		switch option {
+		case "type":
+			switch op.Value {
+			case "flag":
+			default:
+				return fmt.Errorf("denied: %s: type requires the root grant", op)
+			}
+		}
+	case "ip":
+		switch option {
+		case "type":
+			switch op.Value {
+			case "cni":
+			default:
+				return fmt.Errorf("denied: %s: type requires the root grant", op)
+			}
+		}
 	case "DEFAULT":
 		switch option {
 		case "priority":
@@ -221,6 +243,8 @@ func keyopRbac(grants rbac.Grants, op keyop.T) error {
 			return fmt.Errorf("denied: %s: requires the root grant", op)
 
 		}
+	case "env":
+		// allowed
 	default:
 		return fmt.Errorf("denied: %s: this driver group requires the root grant", op)
 	}
