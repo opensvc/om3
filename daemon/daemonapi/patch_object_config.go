@@ -13,10 +13,6 @@ import (
 	"github.com/opensvc/om3/v3/util/key"
 )
 
-var (
-	priorityKey = key.Parse("priority")
-)
-
 func (a *DaemonAPI) PatchObjectConfig(ctx echo.Context, namespace string, kind naming.Kind, name string, params api.PatchObjectConfigParams) error {
 	log := LogHandler(ctx, "patchObjectConfig")
 
@@ -48,18 +44,12 @@ func (a *DaemonAPI) PatchObjectConfig(ctx echo.Context, namespace string, kind n
 		return JSONProblemf(ctx, http.StatusBadRequest, "No valid update requested", "")
 	}
 
-	hasGrantRoot := grantsFromContext(ctx).HasGrant(rbac.GrantRoot)
-	hasGrantPrioritizer := grantsFromContext(ctx).HasGrant(rbac.GrantPrioritizer)
+	grants := grantsFromContext(ctx)
 
-	if !hasGrantRoot {
+	if !grants.HasGrant(rbac.GrantRoot) {
 		for _, kop := range sets {
-			// Dangerous keywords require GrantRoot.
-			if err := keyopRbac(kop); err != nil {
+			if err := keyopRbac(grants, kop); err != nil {
 				return JSONProblemf(ctx, http.StatusForbidden, "Forbidden", "Keyword operation: %s: %s", kop, err)
-			}
-			// Priorities have cross-namespaces consequences, so require GrantRoot or a dedicated GrantPrioritizer
-			if !hasGrantPrioritizer && (kop.Key == priorityKey) {
-				return JSONProblemf(ctx, http.StatusForbidden, "Forbidden", "Keyword operation: %s: %s", kop, "setting priority requires the root or prioritizer grant")
 			}
 		}
 	}

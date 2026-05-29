@@ -10,11 +10,7 @@ import (
 	"github.com/opensvc/om3/v3/core/object"
 )
 
-func (a *DaemonAPI) writeObjectConfigFile(ctx echo.Context, p naming.Path) error {
-	body, err := io.ReadAll(ctx.Request().Body)
-	if err != nil {
-		return JSONProblemf(ctx, http.StatusInternalServerError, "Read body", "%s", err)
-	}
+func (a *DaemonAPI) writeObjectConfigFile(ctx echo.Context, p naming.Path, body []byte) error {
 	o, err := object.New(p, object.WithConfigData(body))
 	if err != nil {
 		return JSONProblemf(ctx, http.StatusInternalServerError, "New object", "%s", err)

@@ -66,23 +66,23 @@ func ParseKeyMetaRel(line, namespace string) (KeyMeta, error) {
 	}
 	words := strings.Fields(line)
 	for {
-		word, words = pop(words)
+		word, words = Pop(words)
 		if word == "" {
 			break
 		}
 		switch word {
 		case "from":
-			word, words = pop(words)
+			word, words = Pop(words)
 			path, err := naming.ParsePathRel(word, namespace)
 			if err != nil {
 				return km, err
 			}
 			km.Path = path
 		case "key":
-			word, words = pop(words)
+			word, words = Pop(words)
 			km.Key = word
 		case "source":
-			word, words = pop(words)
+			word, words = Pop(words)
 			km.Source = word
 		case "template":
 			km.IsTemplate = true

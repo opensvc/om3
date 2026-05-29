@@ -231,9 +231,9 @@ var (
 	defaultDirPerm = os.FileMode(0755)
 )
 
-// pop returns "a", "b c d" from "a b c d".
-// This function is used in a loop to iterate all words of a line until pop returns "", "".
-func pop(words []string) (string, []string) {
+// Pop returns "a", "b c d" from "a b c d".
+// This function is used in a loop to iterate all words of a line until Pop returns "", "".
+func Pop(words []string) (string, []string) {
 	if len(words) == 0 {
 		return "", words
 	}
@@ -751,54 +751,54 @@ func (t *DataRecv) install(ctx context.Context) (bool, error) {
 	return changed, nil
 }
 
+func isSep(text []string, word string, i int) bool {
+	if !strings.HasPrefix(word, "/") {
+		return false
+	}
+	if i == 0 {
+		return true
+	}
+	prevWord := text[i-1]
+	switch prevWord {
+	case "key", "source":
+		return false
+	}
+	return true
+}
+
+func Split(text []string) [][]string {
+	var line []string
+	lines := make([][]string, 0)
+	in := false
+	for i, word := range text {
+		if isSep(text, word, i) {
+			if in {
+				lines = append(lines, line)
+				line = []string{word}
+			} else {
+				line = []string{word}
+				in = true
+			}
+		} else {
+			if in {
+				line = append(line, word)
+			} else {
+				// ignore heading garbage
+			}
+		}
+	}
+	if len(line) >= 1 {
+		lines = append(lines, line)
+	}
+	return lines
+}
+
 func (t *DataRecv) getInstallMetadata(head string) ([]dirDefinition, []object.KVInstall) {
 	path := t.to.GetObject().(object.Core).Path()
 	files := make([]object.KVInstall, 0)
 	dirs := make([]dirDefinition, 0)
 	if head == "" {
 		return dirs, files
-	}
-
-	isSep := func(word string, i int) bool {
-		if !strings.HasPrefix(word, "/") {
-			return false
-		}
-		if i == 0 {
-			return true
-		}
-		prevWord := t.Install[i-1]
-		switch prevWord {
-		case "key", "source":
-			return false
-		}
-		return true
-	}
-
-	split := func() [][]string {
-		var line []string
-		lines := make([][]string, 0)
-		in := false
-		for i, word := range t.Install {
-			if isSep(word, i) {
-				if in {
-					lines = append(lines, line)
-					line = []string{word}
-				} else {
-					line = []string{word}
-					in = true
-				}
-			} else {
-				if in {
-					line = append(line, word)
-				} else {
-					// ignore heading garbage
-				}
-			}
-		}
-		if len(line) >= 1 {
-			lines = append(lines, line)
-		}
-		return lines
 	}
 
 	parseFileMode := func(s string) (*os.FileMode, error) {
@@ -818,23 +818,23 @@ func (t *DataRecv) getInstallMetadata(head string) ([]dirDefinition, []object.KV
 		}
 		var word string
 
-		word, line = pop(line)
+		word, line = Pop(line)
 		item.Path = word
 
 		for {
-			word, line = pop(line)
+			word, line = Pop(line)
 			if word == "" {
 				break
 			}
 			switch word {
 			case "user":
-				word, line = pop(line)
+				word, line = Pop(line)
 				item.User = word
 			case "group":
-				word, line = pop(line)
+				word, line = Pop(line)
 				item.Group = word
 			case "mode", "perm":
-				word, line = pop(line)
+				word, line = Pop(line)
 				perm, _ := parseFileMode(word)
 				if perm != nil {
 					item.Perm = *perm
@@ -864,7 +864,7 @@ func (t *DataRecv) getInstallMetadata(head string) ([]dirDefinition, []object.KV
 
 		var word string
 
-		word, line = pop(line)
+		word, line = Pop(line)
 
 		// Set a default value for the "key" field.
 		// e.g. the /a/b file default key is a/b
@@ -876,12 +876,12 @@ func (t *DataRecv) getInstallMetadata(head string) ([]dirDefinition, []object.KV
 			item.ToPath += "/"
 		}
 
-		word, line = pop(line)
+		word, line = Pop(line)
 		if word != "from" {
 			return
 		}
 
-		word, line = pop(line)
+		word, line = Pop(line)
 		fromStore, err := naming.ParsePathRel(word, path.Namespace)
 		if err != nil {
 			return
@@ -899,22 +899,22 @@ func (t *DataRecv) getInstallMetadata(head string) ([]dirDefinition, []object.KV
 		item.FromStore = fromStore
 
 		for {
-			word, line = pop(line)
+			word, line = Pop(line)
 			if word == "" {
 				break
 			}
 			switch word {
 			case "key":
-				word, line = pop(line)
+				word, line = Pop(line)
 				item.FromPattern = word
 			case "user":
-				word, line = pop(line)
+				word, line = Pop(line)
 				item.AccessControl.User = word
 			case "group":
-				word, line = pop(line)
+				word, line = Pop(line)
 				item.AccessControl.Group = word
 			case "mode", "perm":
-				word, line = pop(line)
+				word, line = Pop(line)
 				perm, _ := parseFileMode(word)
 				if perm != nil {
 					item.AccessControl.Perm = *perm
@@ -922,10 +922,10 @@ func (t *DataRecv) getInstallMetadata(head string) ([]dirDefinition, []object.KV
 			case "required":
 				item.Required = true
 			case "signal":
-				word, line = pop(line)
+				word, line = Pop(line)
 				item.Signals.Parse(word)
 			case "source":
-				word, line = pop(line)
+				word, line = Pop(line)
 				item.Source = word
 			case "template":
 				item.IsTemplate = true
@@ -935,7 +935,7 @@ func (t *DataRecv) getInstallMetadata(head string) ([]dirDefinition, []object.KV
 		files = append(files, item)
 	}
 
-	for _, line := range split() {
+	for _, line := range Split(t.Install) {
 		if slices.Contains(line, "from") {
 			parseFile(line)
 		} else {

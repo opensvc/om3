@@ -185,6 +185,7 @@ func (t *cfg) refreshClient() error {
 }
 
 func (t *cfg) signature() string {
+	passwordFrom := t.passwordFrom.String()
 	return fmt.Sprintf("relay: %s username: %s passwordFrom: %s timeout: %s interval: %s insecure: %v",
-		t.relay, t.username, t.passwordFrom, t.timeout, t.interval, t.insecure)
+		t.relay, t.username, passwordFrom, t.timeout, t.interval, t.insecure)
 }
