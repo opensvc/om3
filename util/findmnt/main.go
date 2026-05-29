@@ -120,17 +120,12 @@ func List(ctx context.Context, dev string, mnt string) (mounts []MountInfo, err 
 	}
 
 	if dev != "" && dev != "none" {
-		if !strings.HasPrefix(dev, "/") {
-			return
-		}
 		var stat os.FileInfo
 		stat, err = os.Stat(dev)
-		if err != nil {
-			return
-		}
-		devIsDir = stat.Mode().IsDir()
-		if !devIsDir {
+		if os.IsNotExist(err) {
 			devIsNfs = isNfsPath(dev)
+		} else {
+			devIsDir = stat.Mode().IsDir()
 			devIsRegular = stat.Mode().IsRegular()
 		}
 	}
