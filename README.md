@@ -2,7 +2,7 @@
 
 [![Go](https://github.com/opensvc/om3/actions/workflows/go.yml/badge.svg?branch=main)](https://github.com/opensvc/om3/actions/workflows/go.yml)
 
-> **_NOTE:_** This project is the alpha stage of the golang port of https://github.com/opensvc/opensvc.
+**_NOTE:_** This project is the golang port and next release of https://github.com/opensvc/opensvc.
 
 > **_NOTE:_** General Availability is expected Q1 2025
 
