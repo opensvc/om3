@@ -149,7 +149,7 @@ type (
 		restartC chan error
 		exitFlag atomic.Bool
 
-		logCloser io.Closer
+		logCloser AtomicCloserSlice
 	}
 
 	getter interface {
@@ -1981,21 +1981,6 @@ func (t *App) updateLogTextView() {
 
 	lines := 50
 	follow := true
-	log := t.streamClient.NewGetLogs(t.viewNode).
-		//SetFilters(nil).
-		SetLines(&lines).
-		SetFollow(&follow)
-	if !t.viewPath.IsZero() {
-		l := naming.Paths{t.viewPath}.StrSlice()
-		log.SetPaths(&l)
-	}
-	reader, err := log.GetReader()
-	if err != nil {
-		t.errorf("%s", err)
-		return
-	}
-	t.logCloser = reader
-
 	w := zerolog.NewConsoleWriter()
 	w.Out = tview.ANSIWriter(t.textView)
 	w.TimeFormat = "2006-01-02T15:04:05.000Z07:00"
@@ -2006,28 +1991,71 @@ func (t *App) updateLogTextView() {
 		return rawconfig.Colorize.Bold(i)
 	}
 
-	go func() {
-		for {
-			event, err := reader.Read()
-			if errors.Is(err, io.EOF) {
-				break
-			} else if errors.Is(err, context.Canceled) {
-				break
-			} else if err != nil {
-				t.errorf("%s", err)
-				break
-			}
-			rec, err := streamlog.NewEvent(event.Data)
-			if err != nil {
-				t.errorf("%s", err)
-				break
-			}
-			switch s := rec.M["JSON"].(type) {
-			case string:
-				_, _ = w.Write([]byte(s))
+	var nodes []string
+	if t.viewNode != "" {
+		// instance or node logs
+		nodes = []string{t.viewNode}
+	} else if !t.viewPath.IsZero() {
+		// object logs
+		path := t.viewPath.String()
+		for node, nodeData := range t.Current.Cluster.Node {
+			if _, ok := nodeData.Instance[path]; ok {
+				nodes = append(nodes, node)
 			}
 		}
-	}()
+	} else {
+		// cluster logs
+		for node, _ := range t.Current.Cluster.Node {
+			nodes = append(nodes, node)
+		}
+	}
+
+	for _, node := range nodes {
+		go func(n string) {
+			log := t.streamClient.NewGetLogs(n).
+				//SetFilters(nil).
+				SetLines(&lines).
+				SetFollow(&follow)
+			if !t.viewPath.IsZero() {
+				l := naming.Paths{t.viewPath}.StrSlice()
+				log = log.SetPaths(&l)
+			}
+			reader, err := log.GetReader()
+			if err != nil {
+				t.errorf("%s", err)
+				return
+			}
+			t.logCloser.Append(reader)
+
+			for {
+				event, err := reader.Read()
+				if errors.Is(err, io.EOF) {
+					break
+				} else if errors.Is(err, context.Canceled) {
+					break
+				} else if err != nil {
+					t.errorf("%s", err)
+					break
+				}
+				rec, err := streamlog.NewEvent(event.Data)
+				if err != nil {
+					t.errorf("%s", err)
+					break
+				}
+				w.FormatMessage = func(i any) string {
+					node := ""
+					if nodeVal, ok := rec.M["NODE"].(string); ok {
+						node = rawconfig.Colorize.Bold(nodeVal + ": ")
+					}
+					return node + rawconfig.Colorize.Bold(i)
+				}
+				switch s := rec.M["JSON"].(type) {
+				case string:
+					_, _ = w.Write([]byte(s))
+				}
+			}
+		}(node)
+	}
 }
 
 func (t *App) getConfigUpdatedAt() time.Time {
@@ -2385,9 +2413,7 @@ func (t *App) navFromTo(from, to viewId) {
 	case viewLog:
 		t.textView.SetChangedFunc(nil)
 		t.textView = nil
-		if t.logCloser != nil {
-			t.logCloser.Close()
-		}
+		t.logCloser.CloseAll()
 	case viewConfig, viewInstance, viewKey:
 		t.textView = nil
 	case viewKeys:
