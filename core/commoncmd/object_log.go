@@ -53,7 +53,7 @@ func (t *CmdObjectLogs) Remote(selStr string) error {
 	// Create readers for all nodes
 	streams := make([]logreader.NodeStream, 0, len(nodes))
 	l := paths.StrSlice()
-	for _, node := range nodes {
+	for i, node := range nodes {
 		reader, err := c.NewGetLogs(node).
 			SetFilters(&t.Filter).
 			SetGrep(t.Grep).
@@ -68,6 +68,7 @@ func (t *CmdObjectLogs) Remote(selStr string) error {
 		streams = append(streams, logreader.NodeStream{
 			Node:   node,
 			Reader: reader,
+			Index:  i,
 		})
 	}
 

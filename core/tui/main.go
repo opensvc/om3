@@ -2002,7 +2002,7 @@ func (t *App) updateLogTextView() {
 
 	// Create streams for all nodes
 	streams := make([]logreader.NodeStream, 0, len(nodes))
-	for _, node := range nodes {
+	for i, node := range nodes {
 		log := t.streamClient.NewGetLogs(node).
 			SetLines(&lines).
 			SetFollow(&follow)
@@ -2020,6 +2020,7 @@ func (t *App) updateLogTextView() {
 		streams = append(streams, logreader.NodeStream{
 			Node:   node,
 			Reader: reader,
+			Index:  i,
 		})
 	}
 

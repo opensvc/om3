@@ -6,6 +6,7 @@ import (
 	"io"
 	"sort"
 	"strconv"
+	"strings"
 	"sync"
 	"time"
 
@@ -26,10 +27,11 @@ const DefaultDrainInterval = 500 * time.Millisecond
 
 // logEntry represents a log message with its timestamp and node information
 type logEntry struct {
-	event streamlog.Event
-	node  string
-	time  time.Time
-	index int // for sort stability
+	event       streamlog.Event
+	node        string
+	time        time.Time
+	index       int // for sort stability
+	streamIndex int // the index of the stream/node for prefix selection
 }
 
 // Config holds configuration for the log reader
@@ -71,6 +73,7 @@ func WithHeapSize(size int) Option {
 type NodeStream struct {
 	Node   string
 	Reader event.ReadCloser
+	Index  int // Position index for prefix selection (0-based)
 }
 
 // LogReader manages multi-node log reading with in-memory sorting
@@ -131,7 +134,7 @@ func (lr *LogReader) Start(streams []NodeStream, output io.Writer, renderer Rend
 
 	// Process sorted entries
 	for entry := range sorted {
-		if err := renderer(entry.event, entry.node, output); err != nil {
+		if err := renderer(entry.event, entry.node, entry.streamIndex, output); err != nil {
 			// If we can't write, stop processing
 			break
 		}
@@ -174,10 +177,11 @@ func (lr *LogReader) readNode(stream NodeStream, follow bool) {
 
 			// Create log entry
 			entry := logEntry{
-				event: rec,
-				node:  stream.Node,
-				time:  timestamp,
-				index: lr.nextIndex(),
+				event:       rec,
+				node:        stream.Node,
+				time:        timestamp,
+				index:       lr.nextIndex(),
+				streamIndex: stream.Index,
 			}
 
 			// Add to slice
@@ -290,7 +294,7 @@ func (lr *LogReader) extractTimestamp(event streamlog.Event) time.Time {
 }
 
 // renderEvent renders a streamlog.Event to the provided writer in the specified format
-func renderEvent(e streamlog.Event, node string, format string, output io.Writer) error {
+func renderEvent(e streamlog.Event, node string, streamIndex int, numStreams int, format string, output io.Writer) error {
 	switch format {
 	case "json":
 		_, err := output.Write(e.B)
@@ -304,14 +308,45 @@ func renderEvent(e streamlog.Event, node string, format string, output io.Writer
 		w := zerolog.NewConsoleWriter()
 		w.Out = output
 		w.NoColor = color.NoColor
-		w.TimeFormat = "2006-01-02T15:04:05.000Z07:00"
+		w.TimeFormat = "2006-01-02T15:04:05.000000Z07:00"
 		w.FormatLevel = logging.FormatLevel
 		w.FormatFieldName = func(i any) string { return "" }
 		w.FormatFieldValue = func(i any) string { return "" }
+
+		// Determine prefix based on stream index
+		prefix := ""
+		if node != "" {
+			prefixes := []string{"⣇", "⣸"}
+			runePosition := streamIndex / 2
+			paddingWidth := (numStreams)/2 + 1
+
+			var terminator string
+
+			// test if last rune is not filled with streams
+			if numStreams%2 != 0 && streamIndex == numStreams-1 {
+				prefix = "⡇"
+			} else {
+				prefix = prefixes[streamIndex%2]
+				if numStreams%2 != 0 {
+					terminator = "⡀"
+				} else {
+					terminator = "⣀"
+				}
+			}
+
+			// Pad prefix to the calculated width
+			prefix = strings.Repeat("⣀", runePosition) + prefix
+
+			if n := paddingWidth - runePosition - 2; n > 0 {
+				prefix += strings.Repeat("⣀", paddingWidth-runePosition-2)
+			}
+			prefix += terminator
+		}
+
 		w.FormatMessage = func(i any) string {
 			nodePrefix := ""
 			if node != "" {
-				nodePrefix = rawconfig.Colorize.Bold(node + ": ")
+				nodePrefix = rawconfig.Colorize.Bold(prefix) + " " + rawconfig.Colorize.Bold(node+": ")
 			}
 			return nodePrefix + rawconfig.Colorize.Bold(i)
 		}
@@ -329,14 +364,15 @@ func renderEvent(e streamlog.Event, node string, format string, output io.Writer
 }
 
 // RenderFunc is a function that renders a log event to an output writer
-// It receives the event, node name, and output writer
+// It receives the event, node name, stream index, and output writer
 // This allows callers to customize how events are rendered
-type RenderFunc func(streamlog.Event, string, io.Writer) error
+type RenderFunc func(streamlog.Event, string, int, io.Writer) error
 
 // DefaultRenderFunc returns a default renderer that uses streamlog.Event.Render
-func DefaultRenderFunc(format string) RenderFunc {
-	return func(e streamlog.Event, node string, w io.Writer) error {
-		return renderEvent(e, node, format, w)
+// numStreams is the total number of streams for calculating padding width
+func DefaultRenderFunc(format string, numStreams int) RenderFunc {
+	return func(e streamlog.Event, node string, streamIndex int, w io.Writer) error {
+		return renderEvent(e, node, streamIndex, numStreams, format, w)
 	}
 }
 
@@ -378,5 +414,5 @@ func CollectAndSort(streams []NodeStream, output io.Writer, renderer RenderFunc,
 // - follow: whether to continue reading new logs after initial backlog
 // - opts: optional configuration options (max entries, drain interval)
 func CollectAndSortWithFormat(streams []NodeStream, output io.Writer, format string, follow bool, opts ...Option) {
-	CollectAndSort(streams, output, DefaultRenderFunc(format), follow, opts...)
+	CollectAndSort(streams, output, DefaultRenderFunc(format, len(streams)), follow, opts...)
 }
