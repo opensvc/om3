@@ -602,6 +602,7 @@ func (t ProcessItem) Unstructured() map[string]any {
 		"sub":           t.Sub,
 		"sid":           t.Sid,
 		"global_except": t.GlobalExpect,
-		"desc":          t.Desc,
+		"cmd":           t.Cmd,
+		"rid":           t.Rid,
 	}
 }

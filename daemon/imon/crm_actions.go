@@ -248,7 +248,7 @@ func (t *Manager) crmDefaultAction(title string, cmdArgs ...string) error {
 		Elapsed:      "",
 		GlobalExpect: t.state.GlobalExpect.String(),
 		Sub:          "imon",
-		Desc:         cmd.String(),
+		Cmd:          cmd.String(),
 	})
 	err := cmd.Wait()
 	proc.Unregister(pid)

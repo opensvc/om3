@@ -74,13 +74,11 @@ func (t *Manager) crmAction(cmdArgs ...string) error {
 	proc.Register(proc.T{
 		Pid:          pid,
 		Node:         t.localhost,
-		Object:       "-",
-		Sid:          "-",
 		StartedAt:    startTime,
 		Elapsed:      "",
 		GlobalExpect: t.state.GlobalExpect.String(),
 		Sub:          "nmon",
-		Desc:         cmd.String(),
+		Cmd:          cmd.String(),
 	})
 	err := cmd.Wait()
 	proc.Unregister(pid)

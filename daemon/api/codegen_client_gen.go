@@ -5641,6 +5641,30 @@ func NewGetDaemonProcessRequest(server string, nodename InPathNodeName, params *
 
 		}
 
+		if params.Selector != nil {
+
+			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "selector", *params.Selector, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "string", Format: ""}); err != nil {
+				return nil, err
+			} else {
+				for _, qp := range strings.Split(queryFrag, "&") {
+					rawQueryFragments = append(rawQueryFragments, qp)
+				}
+			}
+
+		}
+
+		if params.Rid != nil {
+
+			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "rid", *params.Rid, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "string", Format: ""}); err != nil {
+				return nil, err
+			} else {
+				for _, qp := range strings.Split(queryFrag, "&") {
+					rawQueryFragments = append(rawQueryFragments, qp)
+				}
+			}
+
+		}
+
 		if encoded := queryValues.Encode(); encoded != "" {
 			rawQueryFragments = append(rawQueryFragments, encoded)
 		}
