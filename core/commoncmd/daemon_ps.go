@@ -20,6 +20,8 @@ type (
 		Output     string
 		Color      string
 		Subsystems string
+		Selector   string
+		Rid        string
 	}
 )
 
@@ -36,6 +38,8 @@ func NewCmdDaemonPs() *cobra.Command {
 	FlagNodeSelector(flags, &options.NodeSelector)
 	FlagOutput(flags, &options.Output)
 	FlagColor(flags, &options.Color)
+	FlagObjectSelector(flags, &options.Selector)
+	FlagRID(flags, &options.Rid)
 	flags.StringVar(&options.Subsystems, "sub", "", "the name of the subsystem to filter on (scheduler, api, imon or nmon)")
 	return cmd
 }
@@ -45,12 +49,14 @@ func (t *CmdDaemonPs) Run() error {
 		mu    sync.Mutex
 		items api.ProcessItems
 	)
-	cols := "PID:pid,SID:sid,NODE:node,ELAPSED:elapsed,SUB:sub,GLOBAL_EXCEPT:global_except,DESC:desc"
+	cols := "PID:pid,SID:sid,NODE:node,OBJECT:object,ELAPSED:elapsed,SUB:sub,GLOBAL_EXCEPT:global_except,CMD:cmd"
 
 	fn := func(ctx context.Context, c *client.T, nodename string) (response *http.Response, err error) {
 
 		params := &api.GetDaemonProcessParams{
-			Sub: &t.Subsystems,
+			Sub:      &t.Subsystems,
+			Rid:      &t.Rid,
+			Selector: &t.Selector,
 		}
 
 		resp, err := c.GetDaemonProcessWithResponse(ctx, nodename, params)

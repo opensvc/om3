@@ -562,8 +562,8 @@ paths:
         - basicAuth: []
         - bearerAuth: []
       parameters:
-        - $ref: '#/components/parameters/NamespaceOptional'
-        - $ref: '#/components/parameters/SelectorOptional'
+        - $ref: '#/components/parameters/inQueryNamespaceOptional'
+        - $ref: '#/components/parameters/inQuerySelectorOptional'
       responses:
         200:
           description: OK
@@ -1504,7 +1504,7 @@ paths:
         - $ref: '#/components/parameters/EventFilter'
         - $ref: '#/components/parameters/EventReplay'
         - $ref: '#/components/parameters/EventCache'
-        - $ref: '#/components/parameters/SelectorOptional'
+        - $ref: '#/components/parameters/inQuerySelectorOptional'
       responses:
         200:
           description: OK
@@ -1803,6 +1803,8 @@ paths:
           schema:
             type: string
             example: scheduler
+        - $ref: '#/components/parameters/inQuerySelectorOptional'
+        - $ref: '#/components/parameters/inQueryRid'
       responses:
         200:
           description: OK
@@ -7132,7 +7134,8 @@ components:
         - sub
         - sid
         - global_expect
-        - desc
+        - cmd
+        - rid
       properties:
         node:
           type: string
@@ -7152,7 +7155,9 @@ components:
           type: string
         global_expect:
           type: string
-        desc:
+        cmd:
+          type: string
+        rid:
           type: string
 
     ProcessItems:
@@ -8039,7 +8044,7 @@ components:
       schema:
         type: integer
 
-    NamespaceOptional:
+    inQueryNamespaceOptional:
       name: namespace
       in: query
       description: namespace
@@ -8157,7 +8162,7 @@ components:
         items:
           $ref: '#/components/schemas/Role'
 
-    SelectorOptional:
+    inQuerySelectorOptional:
       name: selector
       in: query
       description: selector
@@ -8452,6 +8457,7 @@ components:
     inQueryRid:
       in: query
       name: rid
+      description: a resource selector expression
       schema:
         type: string
 
