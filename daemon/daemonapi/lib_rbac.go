@@ -59,17 +59,36 @@ func configRbac(ctx echo.Context, p naming.Path, body []byte) error {
 
 // assertGuest asserts that the authenticated user has is either granted the "guest", "operator" or "admin" role on the namespace or is granted the "root" role.
 func assertGuest(ctx echo.Context, namespace string) (bool, error) {
-	return assertGrant(ctx, rbac.NewGrant(rbac.RoleGuest, namespace), rbac.NewGrant(rbac.RoleOperator, namespace), rbac.NewGrant(rbac.RoleAdmin, namespace), rbac.GrantJoin, rbac.GrantRoot)
+	return assertGrant(ctx,
+		rbac.NewGrant(rbac.RoleGuest, namespace),
+		rbac.NewGrant(rbac.RoleOperator, namespace),
+		rbac.NewGrant(rbac.RoleAdmin, namespace),
+		rbac.NewGrant(rbac.RoleGuest, ""),
+		rbac.NewGrant(rbac.RoleOperator, ""),
+		rbac.NewGrant(rbac.RoleAdmin, ""),
+		rbac.GrantJoin,
+		rbac.GrantRoot,
+	)
 }
 
 // assertOperator asserts that the authenticated user has is either granted the "operator" or "admin" role on the namespace or is granted the "root" role.
 func assertOperator(ctx echo.Context, namespace string) (bool, error) {
-	return assertGrant(ctx, rbac.NewGrant(rbac.RoleOperator, namespace), rbac.NewGrant(rbac.RoleAdmin, namespace), rbac.GrantRoot)
+	return assertGrant(ctx,
+		rbac.NewGrant(rbac.RoleOperator, namespace),
+		rbac.NewGrant(rbac.RoleAdmin, namespace),
+		rbac.NewGrant(rbac.RoleOperator, ""),
+		rbac.NewGrant(rbac.RoleAdmin, ""),
+		rbac.GrantRoot,
+	)
 }
 
 // assertAdmin asserts that the authenticated user has is either granted the "admin" role on the namespace or is granted the "root" role.
 func assertAdmin(ctx echo.Context, namespace string) (bool, error) {
-	return assertGrant(ctx, rbac.NewGrant(rbac.RoleAdmin, namespace), rbac.GrantRoot)
+	return assertGrant(ctx,
+		rbac.NewGrant(rbac.RoleAdmin, namespace),
+		rbac.NewGrant(rbac.RoleAdmin, ""),
+		rbac.GrantRoot,
+	)
 }
 
 // assertRoot asserts that the authenticated user has is granted the "root" role.
