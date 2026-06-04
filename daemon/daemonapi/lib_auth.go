@@ -70,19 +70,8 @@ func validateRole(r *api.Roles) error {
 		return nil
 	}
 	for _, r := range *r {
-		role := rbac.Role(r)
-		switch role {
-		case rbac.RoleJoin:
-		case rbac.RoleAdmin:
-		case rbac.RoleBlacklistAdmin:
-		case rbac.RoleGuest:
-		case rbac.RoleHeartbeat:
-		case rbac.RoleLeave:
-		case rbac.RoleOperator:
-		case rbac.RoleRoot:
-		case rbac.RoleSquatter:
-		case rbac.RoleUndef:
-		default:
+		role := rbac.ParseRole(string(r))
+		if role == rbac.RoleUndef {
 			return fmt.Errorf("unexpected role %s: %w", role, errBadRequest)
 		}
 	}
@@ -90,52 +79,29 @@ func validateRole(r *api.Roles) error {
 }
 
 // filterGrant filters the requested roles and scopes based on the allowed grants.
-func filterGrant(allowed []string, rolePtr *api.Roles, scopePtr *string) (grants []string, err error) {
+func filterGrant(allowed []string, rolePtr *api.Roles, scopePtr *string) ([]string, error) {
+	var (
+		scope string
+		roles []rbac.Role
+	)
+
 	if err := validateRole(rolePtr); err != nil {
 		return nil, err
 	}
-	var roles []rbac.Role
-	if rolePtr == nil {
-		added := make(map[string]struct{})
-		for _, v := range allowed {
-			if _, ok := added[v]; ok {
-				continue
+
+	if rolePtr != nil {
+		for _, e := range *rolePtr {
+			if role := rbac.ParseRole(string(e)); role != rbac.RoleUndef {
+				roles = append(roles, role)
 			}
-			g := rbac.Grant(v)
-			r, _ := g.Split()
-			roles = append(roles, rbac.Role(r))
-		}
-	} else {
-		for _, r := range *rolePtr {
-			roles = append(roles, rbac.Role(r))
 		}
 	}
-	allowedGrants := rbac.NewGrants(allowed...)
-	var scope string
 	if scopePtr != nil {
 		scope = *scopePtr
 	}
-	roleDone := make(map[rbac.Role]bool)
-	for _, role := range roles {
-		if _, ok := roleDone[role]; ok {
-			continue
-		}
-		if role == rbac.RoleUndef {
-			continue
-		}
-		grant := rbac.NewGrant(role, scope)
-		if allowedGrants.HasGrant(grant) {
-			grants = append(grants, grant.String())
-		} else if allowedGrants.Has(rbac.RoleRoot, "") {
-			// TODO: clarify this rule
-			grants = append(grants, grant.String())
-		} else {
-			err = fmt.Errorf("refused grant %s: %w", grant, errForbidden)
-			return
-		}
-		roleDone[role] = true
-	}
-	return
+
+	grants := rbac.FilterGrantStrings(allowed, roles, scope)
+	return grants.AsStringList(), nil
 }
 
 // xClaims returns new user and Claims from p and current user
@@ -192,6 +158,8 @@ func (a *DaemonAPI) createAccessToken(ctx echo.Context, username string, duratio
 
 	if grantL, err := filterGrant(grantL, rolePtr, scopePtr); err != nil {
 		return d, fmt.Errorf("filter grant: %w", err)
+	} else if len(grantL) == 0 {
+		return d, errors.Join(errForbidden, fmt.Errorf("no grant matching role and scope for username '%s'", username))
 	} else if claims, err := a.xClaimForGrants(grantL); err != nil {
 		return d, fmt.Errorf("create claims: %w", err)
 	} else if tk, exp, err := a.createToken(username, daemonauth.TkUseAccess, duration, claims); err != nil {
