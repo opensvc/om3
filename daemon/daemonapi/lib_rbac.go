@@ -272,15 +272,15 @@ func keyopRbac(grants rbac.Grants, op keyop.T) error {
 
 // hasRoleGuestOn checks if the given `grants` contains the roles `guest`, `operator` or `admin` for the specified `namespace`.
 func hasRoleGuestOn(grants rbac.Grants, namespace string) bool {
-	return grants.HasRoleOn(namespace, rbac.RoleGuest, rbac.RoleOperator, rbac.RoleAdmin)
+	return grants.AssertRoleOn(namespace, rbac.RoleGuest, rbac.RoleOperator, rbac.RoleAdmin)
 }
 
 // hasRoleOperatorOn checks if the Grants contain either `RoleOperator` or `RoleAdmin` for the specified `namespace`.
 func hasRoleOperatorOn(grants rbac.Grants, namespace string) bool {
-	return grants.HasRoleOn(namespace, rbac.RoleOperator, rbac.RoleAdmin)
+	return grants.AssertRoleOn(namespace, rbac.RoleOperator, rbac.RoleAdmin)
 }
 
 // hasRoleAdminOn determines if the given grants contain the `RoleAdmin` for the specified `namespace`.
 func hasRoleAdminOn(grants rbac.Grants, namespace string) bool {
-	return grants.HasRoleOn(namespace, rbac.RoleAdmin)
+	return grants.AssertRoleOn(namespace, rbac.RoleAdmin)
 }
