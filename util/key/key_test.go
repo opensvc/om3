@@ -37,6 +37,12 @@ func TestKey(t *testing.T) {
 			scope:  "nodes",
 		},
 		{
+			s:      "DEFAULT.topology@n1.opensvc.com",
+			t:      T{"DEFAULT", "topology@n1.opensvc.com"},
+			render: "topology@n1.opensvc.com",
+			scope:  "n1.opensvc.com",
+		},
+		{
 			s:      "fs#1.dev",
 			t:      T{"fs#1", "dev"},
 			render: "fs#1.dev",
