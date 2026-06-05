@@ -2889,6 +2889,19 @@ type PostInstanceActionFreezeParams struct {
 	RequesterSid *InQueryRequesterSid `form:"requester_sid,omitempty" json:"requester_sid,omitempty"`
 }
 
+// PostInstanceActionPGUpdateParams defines parameters for PostInstanceActionPGUpdate.
+type PostInstanceActionPGUpdateParams struct {
+	Slaves       *InQueryAllSlaves    `form:"slaves,omitempty" json:"slaves,omitempty"`
+	Master       *InQueryMaster       `form:"master,omitempty" json:"master,omitempty"`
+	RequesterSid *InQueryRequesterSid `form:"requester_sid,omitempty" json:"requester_sid,omitempty"`
+
+	// Rid a resource selector expression
+	Rid    *InQueryRid    `form:"rid,omitempty" json:"rid,omitempty"`
+	Slave  *InQuerySlaves `form:"slave,omitempty" json:"slave,omitempty"`
+	Subset *InQuerySubset `form:"subset,omitempty" json:"subset,omitempty"`
+	Tag    *InQueryTag    `form:"tag,omitempty" json:"tag,omitempty"`
+}
+
 // PostInstanceActionProvisionParams defines parameters for PostInstanceActionProvision.
 type PostInstanceActionProvisionParams struct {
 	Slaves          *InQueryAllSlaves       `form:"slaves,omitempty" json:"slaves,omitempty"`

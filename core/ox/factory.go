@@ -2464,6 +2464,25 @@ func newCmdObjectInstanceUnprovision(kind string) *cobra.Command {
 	return cmd
 }
 
+func newCmdObjectInstancePGUpdate(kind string) *cobra.Command {
+	var options commands.CmdObjectInstancePGUpdate
+	cmd := &cobra.Command{
+		Use:   "update",
+		Short: "update instance process group settings",
+		Long:  "Update the process group settings (pg_* keywords) for the instance resources.\n\nThis is usually done automatically on start, but can be run manually after changing pg_* keyword values.",
+		RunE: func(cmd *cobra.Command, args []string) error {
+			return options.Run(kind)
+		},
+	}
+	flags := cmd.Flags()
+	addFlagsGlobal(flags, &options.OptsGlobal)
+	commoncmd.FlagsEncap(flags, &options.OptsEncap)
+	commoncmd.FlagsLock(flags, &options.OptsLock)
+	commoncmd.FlagsResourceSelector(flags, &options.OptsResourceSelector)
+	commoncmd.FlagNodeSelector(flags, &options.NodeSelector)
+	return cmd
+}
+
 func newCmdObjectInstanceStatus(kind string) *cobra.Command {
 	var options commands.CmdObjectInstanceStatus
 	cmd := &cobra.Command{
