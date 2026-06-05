@@ -100,6 +100,7 @@ type (
 		Requires(string) *resourcereqs.T
 		RID() string
 		RSubset() string
+		SetDisabled(v bool)
 		SetObject(any)
 		SetPG(*pg.Config)
 		SetRID(string) error
@@ -473,6 +474,12 @@ func (t *T) SetRID(v string) error {
 	}
 	t.ResourceID = rid
 	return nil
+}
+
+// SetDisable is used by the resource configurer to disable the resource if
+// the instance is disabled.
+func (t *T) SetDisabled(v bool) {
+	t.Disable = v
 }
 
 // SetPG sets the process group config parsed from the config

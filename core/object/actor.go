@@ -497,6 +497,12 @@ func (t *actor) configureResource(r resource.Driver, rid string) error {
 			}
 		}
 	}
+
+	// A disabled instance disables all its resources, even if they have disable=false
+	if t.IsDisabled() {
+		r.SetDisabled(true)
+	}
+
 	r.SetPG(t.pgConfig(rid))
 	if i, ok := r.(resource.Configurer); ok {
 		if err := i.Configure(); err != nil {
