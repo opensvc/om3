@@ -108,6 +108,9 @@ type T struct {
 	// Mode is the replication mode: "sync" or "async".
 	Mode string `json:"mode"`
 
+	// MaxDelay is the max age of the last sync.
+	MaxDelay *time.Duration `json:"max_delay"`
+
 	// ForceSync trigger a sync before migrate if the group mode is Periodic.
 	ForceSync bool
 
@@ -246,13 +249,14 @@ func (t *T) Status(ctx context.Context) status.T {
 	if err != nil {
 		t.StatusLog().Error("%s", err)
 	} else if period > 0 {
-		elapsed := time.Now().UTC().Add(-1 * period)
+		maxDelay := t.getMaxDelay(period)
 		for _, vv := range t.groupStatus.Volumes {
 			if vv.SyncStatus != vvSyncStatusSynced {
 				t.StatusLog().Warn("volume %s sync status is %s (expected Synced)", vv.LocalVV, vv.SyncStatus)
 			}
-			if vv.LastSyncTime.Before(elapsed) {
-				t.StatusLog().Warn("volume %s last sync too old (%s)", vv.LocalVV, vv.LastSyncTime.Format("2006-01-02 15:04:05"))
+			cutoff := time.Now().UTC().Add(-1 * maxDelay)
+			if vv.LastSyncTime.Before(cutoff) {
+				t.StatusLog().Warn("volume %s last sync too old (%s, over %s)", vv.LocalVV, vv.LastSyncTime.Format("2006-01-02 15:04:05"), duration.FmtShortDuration(maxDelay))
 			}
 		}
 	}
@@ -307,6 +311,13 @@ func (t *T) Start(ctx context.Context) error {
 	}
 
 	return t.promoteRW(ctx)
+}
+
+func (t *T) getMaxDelay(period time.Duration) time.Duration {
+	if t.MaxDelay != nil && *t.MaxDelay > 0 {
+		return *t.MaxDelay
+	}
+	return period * 2
 }
 
 func (t *T) rsyncGroupRemote(ctx context.Context) error {
@@ -657,12 +668,6 @@ func (t *T) startTimeoutArg() string {
 		return fmt.Sprintf("%d", int(t.StartTimeout.Seconds()))
 	}
 	return "300"
-}
-
-func (t *T) syncMaxDelay() int64 {
-	// Default to 300 seconds (5 minutes)
-	const defaultMaxDelay = 300
-	return defaultMaxDelay
 }
 
 func (t *T) buildSSHCommand(arrayName, cmd string) ([]string, error) {
