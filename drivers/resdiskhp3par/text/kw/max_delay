@@ -1,0 +1,5 @@
+The delay above which the status log of the resource reports a warning about last sync too old.
+
+It should be set according to your application service level agreement.
+
+The rcp sync period should be lower than `max_delay` minus the expected sync duration.

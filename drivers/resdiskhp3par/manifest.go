@@ -85,6 +85,15 @@ var kws = []*keywords.Keyword{
 		Scopable:     true,
 		Text:         keywords.NewText(fs, "text/kw/start_timeout"),
 	},
+	{
+		Aliases:       []string{"sync_max_delay"},
+		Attr:          "MaxDelay",
+		Converter:     "duration",
+		DefaultOption: "sync_max_delay",
+		DefaultText:   "Two times the rcg sync period.",
+		Option:        "max_delay",
+		Text:          keywords.NewText(fs, "text/kw/max_delay"),
+	},
 }
 
 func init() {
