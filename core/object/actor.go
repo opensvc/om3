@@ -73,6 +73,7 @@ type (
 		Stop(context.Context) error
 		PRStart(context.Context) error
 		PRStop(context.Context) error
+		PGUpdate(context.Context) error
 		Provision(context.Context) error
 		Unprovision(context.Context) error
 		ResourceHandlingDevice(ctx context.Context, p device.T) (resource.Driver, error)

@@ -876,6 +876,17 @@ func StartStandby(ctx context.Context, r Driver) error {
 	return nil
 }
 
+func PGUpdate(ctx context.Context, r Driver) error {
+	defer EvalStatus(ctx, r)
+	if r.IsDisabled() || r.IsActionDisabled() {
+		return ErrDisabled
+	}
+	if err := r.ApplyPGChain(ctx); err != nil {
+		return err
+	}
+	return nil
+}
+
 // Start activates a resource interfacer
 func Start(ctx context.Context, r Driver) error {
 	var i any = r
@@ -891,6 +902,9 @@ func Start(ctx context.Context, r Driver) error {
 		return ErrDisabled
 	}
 	Setenv(r)
+	if err := r.ApplyPGChain(ctx); err != nil {
+		return err
+	}
 	if err := checkRequires(ctx, r); err != nil {
 		return fmt.Errorf("start requires: %w", err)
 	}
