@@ -554,10 +554,6 @@ func (t *BT) Start(ctx context.Context) error {
 		return t.logMainAction("start", errors.New("undefined executer"))
 	}
 
-	if err := t.ApplyPGChain(ctx); err != nil {
-		return err
-	}
-
 	callAndRegisterRollbackOnSuccess := func(ctx context.Context, f func(context.Context) error) error {
 		if err := f(ctx); err != nil {
 			return logError(err)

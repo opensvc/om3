@@ -330,9 +330,6 @@ func (t *T) doPartitions() error {
 }
 
 func (t *T) Start(ctx context.Context) error {
-	if err := t.ApplyPGChain(ctx); err != nil {
-		return err
-	}
 	if v, err := t.isUp(ctx); err != nil {
 		return err
 	} else if v {

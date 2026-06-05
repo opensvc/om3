@@ -277,9 +277,6 @@ func (t *BaseTask) RunIf(ctx context.Context, fn func(context.Context) error) er
 	if err := t.handleConfirmation(ctx); err != nil {
 		return err
 	}
-	if err := t.ApplyPGChain(ctx); err != nil {
-		return err
-	}
 
 	return fn(ctx)
 }
