@@ -68,10 +68,19 @@ func ParseWithDefaultSection(s, defaultSection string) (T, error) {
 			// "data.c.d" parses as {"data", "c.d"}
 			return T{l[0], l[1]}, nil
 		default:
-			// "a#b.c.d" parses as {"a#b.c", "d"}
-			// because resource index can contain a dot, and resource options never have a dot
-			lastDotIndex := strings.LastIndex(s, ".")
-			return T{s[0:lastDotIndex], s[lastDotIndex+1:]}, nil
+			// "a#b.c.d@n1.acme.com" parses as {"a#b.c", "d@n1.acme.com"}
+			// note:
+			// * resource index can contain dots
+			// * scope can contain dots
+			// * resource options never have a dot
+			prefix, scope, ok := strings.Cut(s, "@")
+			lastDotIndex := strings.LastIndex(prefix, ".")
+			section := prefix[0:lastDotIndex]
+			option := prefix[lastDotIndex+1:]
+			if ok {
+				option += "@" + scope
+			}
+			return T{section, option}, nil
 		}
 	default:
 		return T{}, fmt.Errorf("invalid key: %q", s)
