@@ -92,11 +92,20 @@ func (t Grants) WithRole(roles ...Role) (grants Grants) {
 
 // HasRoleOn checks if any of the specified roles with the given scope exist in the Grants.
 func (t Grants) HasRoleOn(scope string, roles ...Role) bool {
-	grants := make(Grants, len(roles))
-	for i, role := range roles {
-		grants[i] = NewGrant(role, scope)
+	for _, role := range roles {
+		if match(t, role, scope) {
+			return true
+		}
 	}
-	return matchGrants(t, grants...)
+	return false
+}
+
+func (t Grants) AssertRoleOn(scope string, roles ...Role) bool {
+	if scope != "" {
+		return t.HasRoleOn("", roles...) || t.HasRoleOn(scope, roles...)
+	} else {
+		return t.HasRoleOn(scope, roles...)
+	}
 }
 
 func (t Grants) Has(role Role, scope string) bool {
@@ -246,7 +255,7 @@ func IsScopedRole(role Role) bool {
 	}
 }
 
-func (t Grants) FilterRole(role Role) (grants Grants) {
+func (t Grants) filterRole(role Role) (grants Grants) {
 	grant := NewGrant(role, "")
 	if t.HasRole(RoleRoot) {
 		return append(grants, grant)
@@ -285,7 +294,7 @@ func (t Grants) FilterRole(role Role) (grants Grants) {
 	return
 }
 
-func (t Grants) FilterGrant(grant Grant) (grants Grants) {
+func (t Grants) filterGrant(grant Grant) (grants Grants) {
 	role := grant.Role()
 	scope := grant.Scope()
 	if t.HasRole(RoleRoot) {
@@ -313,7 +322,7 @@ func (t Grants) FilterGrant(grant Grant) (grants Grants) {
 	return
 }
 
-func (t Grants) FilterScope(scope string) (grants Grants) {
+func (t Grants) filterScope(scope string) (grants Grants) {
 	if t.HasRole(RoleRoot) {
 		// give admin role to all given scope
 		grant := NewGrant(RoleAdmin, scope)
@@ -338,60 +347,78 @@ func (t Grants) FilterScope(scope string) (grants Grants) {
 	return
 }
 
+// FilterGrantStrings return a subset of allowed grants capped by the requested
+// role and scope.
+//
+// 1/ with no role and no scope,
+//
+//	return all user grants.
+//
+//	Request    Request   User                             Returned
+//	Role       Scope     Grants                           Grants
+//	---        ---       ---                              ---
+//	                     root                             root
+//	                     admin                            admin
+//	                     admin:ns1,admin:ns2,guest:ns3    admin:ns1,admin:ns2,guest:ns3
+//
+// 2/ with roles and scope,
+//
+//	Request    Request   User                             Returned
+//	Role       Scope     Grants                           Grants
+//	---        ---       ---                              ---
+//	admin      ns2       root                             admin:ns2
+//	admin      ns2       admin                            admin:ns2
+//	guest      ns2       admin                            guest:ns2
+//	admin      ns2       admin:ns1,admin:ns2,guest:ns3    admin:ns2
+//	admin      ns3       admin:ns1,admin:ns2,guest:ns3
+//	guest      ns2       admin:ns1,admin:ns2,guest:ns3    guest:ns2
+//
+// 3/ with roles and no scope,
+//
+//	Role       Scope     Grants                           Filtered Grants
+//	---        ---       ---                              ---
+//	root                 root                             root
+//	admin                root                             admin
+//	root                 admin
+//	admin                admin                            admin
+//	guest                admin                            guest
+//	root                 admin:ns1,admin:ns2,guest:ns3
+//	admin                admin:ns1,admin:ns2,guest:ns3    admin:ns1,admin:ns2
+//	guest                admin:ns1,admin:ns2,guest:ns3    guest:ns3
+//
+// 4/ with scope and no role,
+//
+//	Role       Scope     Grants                           Filtered Grants
+//	---        ---       ---                              ---
+//	           ns1       root                             admin:ns1
+//	           ns1       guest                            guest:ns1
+//	           ns1       admin:ns1,admin:ns2,guest:ns3    admin:ns1
+//	           ns3       admin:ns1,admin:ns2,guest:ns3    guest:ns3
 func FilterGrantStrings(allowed []string, roles []Role, scope string) Grants {
 	allowedGrants := NewGrants(allowed...)
 	var grants Grants
 
-	// Role       Scope     Grants                           Filtered Grants
-	// ---        ---       ---                              ---
-	// nil        nil       root                             root
-	// nil        nil       admin                            admin
-	// nil        nil       admin:ns1,admin:ns2,guest:ns3    admin:ns1,admin:ns2,guest:ns3
 	if len(roles) == 0 && scope == "" {
 		return allowedGrants
 	}
 
-	// Role       Scope     Grants                           Filtered Grants
-	// ---        ---       ---                              ---
-	// admin      ns2       root                             admin:ns2
-	// admin      ns2       admin                            admin:ns2
-	// guest      ns2       admin                            guest:ns2
-	// admin      ns2       admin:ns1,admin:ns2,guest:ns3    admin:ns2
-	// admin      ns3       admin:ns1,admin:ns2,guest:ns3
-	// guest      ns2       admin:ns1,admin:ns2,guest:ns3    guest:ns2
 	if len(roles) > 0 && scope != "" {
 		for _, role := range roles {
 			grant := NewGrant(role, scope)
-			grants = append(grants, allowedGrants.FilterGrant(grant)...)
+			grants = append(grants, allowedGrants.filterGrant(grant)...)
 		}
 		return grants
 	}
 
-	// Role       Scope     Grants                           Filtered Grants
-	// ---        ---       ---                              ---
-	// root       nil       root                             root
-	// admin      nil       root                             admin
-	// root       nil       admin
-	// admin      nil       admin                            admin
-	// guest      nil       admin                            guest
-	// root       nil       admin:ns1,admin:ns2,guest:ns3
-	// admin      nil       admin:ns1,admin:ns2,guest:ns3    admin:ns1,admin:ns2
-	// guest      nil       admin:ns1,admin:ns2,guest:ns3    guest:ns3
 	if len(roles) > 0 && scope == "" {
 		for _, role := range roles {
-			grants = append(grants, allowedGrants.FilterRole(role)...)
+			grants = append(grants, allowedGrants.filterRole(role)...)
 		}
 		return grants
 	}
 
-	// Role       Scope     Grants                           Filtered Grants
-	// ---        ---       ---                              ---
-	// nil        ns1       root                             admin:ns1
-	// nil        ns1       guest                            guest:ns1
-	// nil        ns1       admin:ns1,admin:ns2,guest:ns3    admin:ns1
-	// nil        ns3       admin:ns1,admin:ns2,guest:ns3    guest:ns3
 	if len(roles) == 0 && scope != "" {
-		grants = append(grants, allowedGrants.FilterScope(scope)...)
+		grants = append(grants, allowedGrants.filterScope(scope)...)
 		return grants
 	}
 
