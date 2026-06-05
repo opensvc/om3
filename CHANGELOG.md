@@ -6,6 +6,14 @@
 
     * [2.1-1890] Don't purge /etc/opensvc and /var/lib/opensvc on `apt [auto]remove --purge`
 
+* Set a explicit unit to every `max_delay` keyword.
+
+    ```
+    [sync#1]
+    max_delay = 10   # interpreted as 10m in om2, but 10s in om3 => Bad
+    max_delay = 10m  # interpreted as 10m in om2 and om3         => Good
+    ```
+
 ## Breaking Changes
 
 ### Cluster and Node Configuration
@@ -454,6 +462,9 @@
 
 * **`sync full` and `sync update`:**
     Now both accept a `--target nodes|drpnodes|node_selector_expr` flag.
+
+* **Changed Keyword:**
+  * `max_delay` (a.k.a. `sync_max_delay`) default unit is changed from minutes to seconds, so all duration keywords use the same default unit. Set a explicit unit before migration.
 
 ### Driver: app
 
