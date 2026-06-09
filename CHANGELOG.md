@@ -246,6 +246,9 @@
         
     * `om <selector> <action> --dry-run`
 
+    * `om <selector> create|update --resource <json>`
+        Replaced by `-kw`.
+
 * **Duration flags now require a unit:**
     ```
 	--waitlock=60  ->  --waitlock=1m
