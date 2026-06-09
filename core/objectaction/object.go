@@ -53,9 +53,9 @@ type (
 	}
 
 	asyncResult struct {
-		Path            string    `json:"path"`
 		OrchestrationID uuid.UUID `json:"orchestration_id,omitempty"`
-		Error           error     `json:"error,omitempty"`
+		Path            string    `json:"path"`
+		Status          string    `json:"status,omitempty"`
 	}
 
 	asyncResults []asyncResult
@@ -425,6 +425,100 @@ func (t T) DoLocal() error {
 	return errs
 }
 
+// doPostObjectAction makes the appropriate API call based on target and handles the response.
+// This factorizes the per-target switch and error handling.
+func doPostObjectAction(ctx context.Context, c *client.T, target instance.MonitorGlobalExpect, p naming.Path, targetOptions any) ([]byte, error) {
+	switch target {
+	case instance.MonitorGlobalExpectAborted:
+		resp, err := c.PostObjectActionAbortWithResponse(ctx, p.Namespace, p.Kind, p.Name)
+		if err != nil {
+			return nil, err
+		}
+		return handleStatusCode(resp.StatusCode(), resp.Body, resp.JSON400, resp.JSON401, resp.JSON403, resp.JSON404, resp.JSON408, resp.JSON409, resp.JSON500)
+	case instance.MonitorGlobalExpectDeleted:
+		resp, err := c.PostObjectActionDeleteWithResponse(ctx, p.Namespace, p.Kind, p.Name)
+		if err != nil {
+			return nil, err
+		}
+		return handleStatusCode(resp.StatusCode(), resp.Body, resp.JSON400, resp.JSON401, resp.JSON403, resp.JSON404, resp.JSON408, resp.JSON409, resp.JSON500)
+	case instance.MonitorGlobalExpectFrozen:
+		resp, err := c.PostObjectActionFreezeWithResponse(ctx, p.Namespace, p.Kind, p.Name)
+		if err != nil {
+			return nil, err
+		}
+		return handleStatusCode(resp.StatusCode(), resp.Body, resp.JSON400, resp.JSON401, resp.JSON403, resp.JSON404, resp.JSON408, resp.JSON409, resp.JSON500)
+	case instance.MonitorGlobalExpectProvisioned:
+		resp, err := c.PostObjectActionProvisionWithResponse(ctx, p.Namespace, p.Kind, p.Name)
+		if err != nil {
+			return nil, err
+		}
+		return handleStatusCode(resp.StatusCode(), resp.Body, resp.JSON400, resp.JSON401, resp.JSON403, resp.JSON404, resp.JSON408, resp.JSON409, resp.JSON500)
+	case instance.MonitorGlobalExpectPurged:
+		resp, err := c.PostObjectActionPurgeWithResponse(ctx, p.Namespace, p.Kind, p.Name)
+		if err != nil {
+			return nil, err
+		}
+		return handleStatusCode(resp.StatusCode(), resp.Body, resp.JSON400, resp.JSON401, resp.JSON403, resp.JSON404, resp.JSON408, resp.JSON409, resp.JSON500)
+	case instance.MonitorGlobalExpectRestarted:
+		params := api.PostObjectActionRestart{}
+		if options, ok := targetOptions.(instance.MonitorGlobalExpectOptionsRestarted); !ok {
+			return nil, fmt.Errorf("unexpected orchestration options: %#v", targetOptions)
+		} else {
+			params.Force = &options.Force
+		}
+		resp, err := c.PostObjectActionRestartWithResponse(ctx, p.Namespace, p.Kind, p.Name, params)
+		if err != nil {
+			return nil, err
+		}
+		return handleStatusCode(resp.StatusCode(), resp.Body, resp.JSON400, resp.JSON401, resp.JSON403, resp.JSON404, resp.JSON408, resp.JSON409, resp.JSON500)
+	case instance.MonitorGlobalExpectStarted:
+		resp, err := c.PostObjectActionStartWithResponse(ctx, p.Namespace, p.Kind, p.Name)
+		if err != nil {
+			return nil, err
+		}
+		return handleStatusCode(resp.StatusCode(), resp.Body, resp.JSON400, resp.JSON401, resp.JSON403, resp.JSON404, resp.JSON408, resp.JSON409, resp.JSON500)
+	case instance.MonitorGlobalExpectStopped:
+		resp, err := c.PostObjectActionStopWithResponse(ctx, p.Namespace, p.Kind, p.Name)
+		if err != nil {
+			return nil, err
+		}
+		return handleStatusCode(resp.StatusCode(), resp.Body, resp.JSON400, resp.JSON401, resp.JSON403, resp.JSON404, resp.JSON408, resp.JSON409, resp.JSON500)
+	case instance.MonitorGlobalExpectUnfrozen:
+		resp, err := c.PostObjectActionUnfreezeWithResponse(ctx, p.Namespace, p.Kind, p.Name)
+		if err != nil {
+			return nil, err
+		}
+		return handleStatusCode(resp.StatusCode(), resp.Body, resp.JSON400, resp.JSON401, resp.JSON403, resp.JSON404, resp.JSON408, resp.JSON409, resp.JSON500)
+	case instance.MonitorGlobalExpectUnprovisioned:
+		resp, err := c.PostObjectActionUnprovisionWithResponse(ctx, p.Namespace, p.Kind, p.Name)
+		if err != nil {
+			return nil, err
+		}
+		return handleStatusCode(resp.StatusCode(), resp.Body, resp.JSON400, resp.JSON401, resp.JSON403, resp.JSON404, resp.JSON408, resp.JSON409, resp.JSON500)
+	case instance.MonitorGlobalExpectPlaced:
+		resp, err := c.PostObjectActionGivebackWithResponse(ctx, p.Namespace, p.Kind, p.Name)
+		if err != nil {
+			return nil, err
+		}
+		return handleStatusCode(resp.StatusCode(), resp.Body, resp.JSON400, resp.JSON401, resp.JSON403, resp.JSON404, resp.JSON408, resp.JSON409, resp.JSON500)
+	case instance.MonitorGlobalExpectPlacedAt:
+		params := api.PostObjectActionSwitch{}
+		if options, ok := targetOptions.(instance.MonitorGlobalExpectOptionsPlacedAt); !ok {
+			return nil, fmt.Errorf("unexpected orchestration options: %#v", targetOptions)
+		} else {
+			params.Destination = options.Destination
+			params.Live = options.Live
+		}
+		resp, err := c.PostObjectActionSwitchWithResponse(ctx, p.Namespace, p.Kind, p.Name, params)
+		if err != nil {
+			return nil, err
+		}
+		return handleStatusCode(resp.StatusCode(), resp.Body, resp.JSON400, resp.JSON401, resp.JSON403, resp.JSON404, resp.JSON408, resp.JSON409, resp.JSON500)
+	default:
+		return nil, fmt.Errorf("unexpected global expect: %s", target)
+	}
+}
+
 // DoAsync uses the agent API to submit a target state to reach via an
 // orchestration.
 func (t T) DoAsync() error {
@@ -477,306 +571,13 @@ func (t T) DoAsync() error {
 			t.waitExpectation(ctx, c, idC, target, p, waitC, t.TargetOptions)
 		}
 
-		switch target {
-		case instance.MonitorGlobalExpectAborted:
-			if resp, e := c.PostObjectActionAbortWithResponse(ctx, p.Namespace, p.Kind, p.Name); e != nil {
-				err = e
-			} else {
-				switch resp.StatusCode() {
-				case http.StatusOK:
-					b = resp.Body
-				case 400:
-					err = fmt.Errorf("%s", resp.JSON400)
-				case 401:
-					err = fmt.Errorf("%s", resp.JSON401)
-				case 403:
-					err = fmt.Errorf("%s", resp.JSON403)
-				case 404:
-					err = fmt.Errorf("%s", resp.JSON404)
-				case 408:
-					err = fmt.Errorf("%s", resp.JSON408)
-				case 409:
-					err = fmt.Errorf("%s", resp.JSON409)
-				case 500:
-					err = fmt.Errorf("%s", resp.JSON500)
-				}
-			}
-		case instance.MonitorGlobalExpectDeleted:
-			if resp, e := c.PostObjectActionDeleteWithResponse(ctx, p.Namespace, p.Kind, p.Name); e != nil {
-				err = e
-			} else {
-				switch resp.StatusCode() {
-				case http.StatusOK:
-					b = resp.Body
-				case 400:
-					err = fmt.Errorf("%s", resp.JSON400)
-				case 401:
-					err = fmt.Errorf("%s", resp.JSON401)
-				case 403:
-					err = fmt.Errorf("%s", resp.JSON403)
-				case 404:
-					err = fmt.Errorf("%s", resp.JSON404)
-				case 408:
-					err = fmt.Errorf("%s", resp.JSON408)
-				case 409:
-					err = fmt.Errorf("%s", resp.JSON409)
-				case 500:
-					err = fmt.Errorf("%s", resp.JSON500)
-				}
-			}
-		case instance.MonitorGlobalExpectFrozen:
-			if resp, e := c.PostObjectActionFreezeWithResponse(ctx, p.Namespace, p.Kind, p.Name); e != nil {
-				err = e
-			} else {
-				switch resp.StatusCode() {
-				case http.StatusOK:
-					b = resp.Body
-				case 400:
-					err = fmt.Errorf("%s", resp.JSON400)
-				case 401:
-					err = fmt.Errorf("%s", resp.JSON401)
-				case 403:
-					err = fmt.Errorf("%s", resp.JSON403)
-				case 404:
-					err = fmt.Errorf("%s", resp.JSON404)
-				case 408:
-					err = fmt.Errorf("%s", resp.JSON408)
-				case 409:
-					err = fmt.Errorf("%s", resp.JSON409)
-				case 500:
-					err = fmt.Errorf("%s", resp.JSON500)
-				}
-			}
-		case instance.MonitorGlobalExpectProvisioned:
-			if resp, e := c.PostObjectActionProvisionWithResponse(ctx, p.Namespace, p.Kind, p.Name); e != nil {
-				err = e
-			} else {
-				switch resp.StatusCode() {
-				case http.StatusOK:
-					b = resp.Body
-				case 400:
-					err = fmt.Errorf("%s", resp.JSON400)
-				case 401:
-					err = fmt.Errorf("%s", resp.JSON401)
-				case 403:
-					err = fmt.Errorf("%s", resp.JSON403)
-				case 404:
-					err = fmt.Errorf("%s", resp.JSON404)
-				case 408:
-					err = fmt.Errorf("%s", resp.JSON408)
-				case 409:
-					err = fmt.Errorf("%s", resp.JSON409)
-				case 500:
-					err = fmt.Errorf("%s", resp.JSON500)
-				}
-			}
-		case instance.MonitorGlobalExpectPurged:
-			if resp, e := c.PostObjectActionPurgeWithResponse(ctx, p.Namespace, p.Kind, p.Name); e != nil {
-				err = e
-			} else {
-				switch resp.StatusCode() {
-				case http.StatusOK:
-					b = resp.Body
-				case 400:
-					err = fmt.Errorf("%s", resp.JSON400)
-				case 401:
-					err = fmt.Errorf("%s", resp.JSON401)
-				case 403:
-					err = fmt.Errorf("%s", resp.JSON403)
-				case 404:
-					err = fmt.Errorf("%s", resp.JSON404)
-				case 408:
-					err = fmt.Errorf("%s", resp.JSON408)
-				case 409:
-					err = fmt.Errorf("%s", resp.JSON409)
-				case 500:
-					err = fmt.Errorf("%s", resp.JSON500)
-				}
-			}
-		case instance.MonitorGlobalExpectRestarted:
-			params := api.PostObjectActionRestart{}
-			if options, ok := t.TargetOptions.(instance.MonitorGlobalExpectOptionsRestarted); !ok {
-				return fmt.Errorf("unexpected orchestration options: %#v", t.TargetOptions)
-			} else {
-				params.Force = &options.Force
-			}
-
-			if resp, e := c.PostObjectActionRestartWithResponse(ctx, p.Namespace, p.Kind, p.Name, params); e != nil {
-				err = e
-			} else {
-				switch resp.StatusCode() {
-				case http.StatusOK:
-					b = resp.Body
-				case 400:
-					err = fmt.Errorf("%s", resp.JSON400)
-				case 401:
-					err = fmt.Errorf("%s", resp.JSON401)
-				case 403:
-					err = fmt.Errorf("%s", resp.JSON403)
-				case 404:
-					err = fmt.Errorf("%s", resp.JSON404)
-				case 408:
-					err = fmt.Errorf("%s", resp.JSON408)
-				case 409:
-					err = fmt.Errorf("%s", resp.JSON409)
-				case 500:
-					err = fmt.Errorf("%s", resp.JSON500)
-				}
-			}
-		case instance.MonitorGlobalExpectStarted:
-			if resp, e := c.PostObjectActionStartWithResponse(ctx, p.Namespace, p.Kind, p.Name); e != nil {
-				err = e
-			} else {
-				switch resp.StatusCode() {
-				case http.StatusOK:
-					b = resp.Body
-				case 400:
-					err = fmt.Errorf("%s", resp.JSON400)
-				case 401:
-					err = fmt.Errorf("%s", resp.JSON401)
-				case 403:
-					err = fmt.Errorf("%s", resp.JSON403)
-				case 404:
-					err = fmt.Errorf("%s", resp.JSON404)
-				case 408:
-					err = fmt.Errorf("%s", resp.JSON408)
-				case 409:
-					err = fmt.Errorf("%s", resp.JSON409)
-				case 500:
-					err = fmt.Errorf("%s", resp.JSON500)
-				}
-			}
-		case instance.MonitorGlobalExpectStopped:
-			if resp, e := c.PostObjectActionStopWithResponse(ctx, p.Namespace, p.Kind, p.Name); e != nil {
-				err = e
-			} else {
-				switch resp.StatusCode() {
-				case http.StatusOK:
-					b = resp.Body
-				case 400:
-					err = fmt.Errorf("%s", resp.JSON400)
-				case 401:
-					err = fmt.Errorf("%s", resp.JSON401)
-				case 403:
-					err = fmt.Errorf("%s", resp.JSON403)
-				case 404:
-					err = fmt.Errorf("%s", resp.JSON404)
-				case 408:
-					err = fmt.Errorf("%s", resp.JSON408)
-				case 409:
-					err = fmt.Errorf("%s", resp.JSON409)
-				case 500:
-					err = fmt.Errorf("%s", resp.JSON500)
-				}
-			}
-		case instance.MonitorGlobalExpectUnfrozen:
-			if resp, e := c.PostObjectActionUnfreezeWithResponse(ctx, p.Namespace, p.Kind, p.Name); e != nil {
-				err = e
-			} else {
-				switch resp.StatusCode() {
-				case http.StatusOK:
-					b = resp.Body
-				case 400:
-					err = fmt.Errorf("%s", resp.JSON400)
-				case 401:
-					err = fmt.Errorf("%s", resp.JSON401)
-				case 403:
-					err = fmt.Errorf("%s", resp.JSON403)
-				case 404:
-					err = fmt.Errorf("%s", resp.JSON404)
-				case 408:
-					err = fmt.Errorf("%s", resp.JSON408)
-				case 409:
-					err = fmt.Errorf("%s", resp.JSON409)
-				case 500:
-					err = fmt.Errorf("%s", resp.JSON500)
-				}
-			}
-		case instance.MonitorGlobalExpectUnprovisioned:
-			if resp, e := c.PostObjectActionUnprovisionWithResponse(ctx, p.Namespace, p.Kind, p.Name); e != nil {
-				err = e
-			} else {
-				switch resp.StatusCode() {
-				case http.StatusOK:
-					b = resp.Body
-				case 400:
-					err = fmt.Errorf("%s", resp.JSON400)
-				case 401:
-					err = fmt.Errorf("%s", resp.JSON401)
-				case 403:
-					err = fmt.Errorf("%s", resp.JSON403)
-				case 404:
-					err = fmt.Errorf("%s", resp.JSON404)
-				case 408:
-					err = fmt.Errorf("%s", resp.JSON408)
-				case 409:
-					err = fmt.Errorf("%s", resp.JSON409)
-				case 500:
-					err = fmt.Errorf("%s", resp.JSON500)
-				}
-			}
-		case instance.MonitorGlobalExpectPlaced:
-			if resp, e := c.PostObjectActionGivebackWithResponse(ctx, p.Namespace, p.Kind, p.Name); e != nil {
-				err = e
-			} else {
-				switch resp.StatusCode() {
-				case http.StatusOK:
-					b = resp.Body
-				case 400:
-					err = fmt.Errorf("%s", resp.JSON400)
-				case 401:
-					err = fmt.Errorf("%s", resp.JSON401)
-				case 403:
-					err = fmt.Errorf("%s", resp.JSON403)
-				case 404:
-					err = fmt.Errorf("%s", resp.JSON404)
-				case 408:
-					err = fmt.Errorf("%s", resp.JSON408)
-				case 409:
-					err = fmt.Errorf("%s", resp.JSON409)
-				case 500:
-					err = fmt.Errorf("%s", resp.JSON500)
-				}
-			}
-		case instance.MonitorGlobalExpectPlacedAt:
-			params := api.PostObjectActionSwitch{}
-			if options, ok := t.TargetOptions.(instance.MonitorGlobalExpectOptionsPlacedAt); !ok {
-				return fmt.Errorf("unexpected orchestration options: %#v", t.TargetOptions)
-			} else {
-				params.Destination = options.Destination
-				params.Live = options.Live
-			}
-			if resp, e := c.PostObjectActionSwitchWithResponse(ctx, p.Namespace, p.Kind, p.Name, params); e != nil {
-				err = e
-			} else {
-				switch resp.StatusCode() {
-				case http.StatusOK:
-					b = resp.Body
-				case 400:
-					err = fmt.Errorf("%s", resp.JSON400)
-				case 401:
-					err = fmt.Errorf("%s", resp.JSON401)
-				case 403:
-					err = fmt.Errorf("%s", resp.JSON403)
-				case 404:
-					err = fmt.Errorf("%s", resp.JSON404)
-				case 408:
-					err = fmt.Errorf("%s", resp.JSON408)
-				case 409:
-					err = fmt.Errorf("%s", resp.JSON409)
-				case 500:
-					err = fmt.Errorf("%s", resp.JSON500)
-				}
-			}
-		default:
-			return fmt.Errorf("unexpected global expect: %s", target)
-		}
+		b, err = doPostObjectAction(ctx, c, target, p, t.TargetOptions)
 		var r asyncResult
 		if err != nil {
-			postErrCount += 1
+			postErrCount++
 			r = asyncResult{
-				Error: err,
-				Path:  p.String(),
+				Path:   p.String(),
+				Status: err.Error(),
 			}
 			if t.Wait {
 				idC <- uuid.Nil
@@ -788,14 +589,15 @@ func (t T) DoAsync() error {
 				r = asyncResult{
 					OrchestrationID: orchestrationQueued.OrchestrationID,
 					Path:            p.String(),
+					Status:          "accepted",
 				}
 				if t.Wait {
 					idC <- r.OrchestrationID
 				}
 			} else {
 				r = asyncResult{
-					Error: err,
-					Path:  p.String(),
+					Path:   p.String(),
+					Status: err.Error(),
 				}
 				if t.Wait {
 					idC <- uuid.Nil
@@ -805,7 +607,7 @@ func (t T) DoAsync() error {
 		rs = append(rs, r)
 	}
 	output.Renderer{
-		DefaultOutput: "tab=OBJECT:path,ORCHESTRATION_ID:orchestration_id,ERROR:error",
+		DefaultOutput: "tab=OBJECT:path,ORCHESTRATION_ID:orchestration_id,STATUS:status",
 		Output:        t.Output,
 		Color:         t.Color,
 		Data:          rs,
@@ -981,6 +783,41 @@ func (t T) DoRemote() error {
 
 func (t T) Do() error {
 	return actionrouter.Do(t)
+}
+
+// handleStatusCode returns an error based on the HTTP status code and the corresponding
+// JSON error field. This factorizes the common status code handling pattern.
+func handleStatusCode(status int, body []byte, json400, json401, json403, json404, json408, json409, json500 any) ([]byte, error) {
+	handleProblem := func(code int, i any) error {
+		if i == nil {
+			return fmt.Errorf("error: %s", http.StatusText(code))
+		}
+		if prob, ok := i.(*api.Problem); ok {
+			return fmt.Errorf("error: %s", prob.Detail)
+		}
+		return fmt.Errorf("error: unexpected problem format: %#v", i)
+	}
+
+	switch status {
+	case http.StatusOK:
+		return body, nil
+	case 400:
+		return nil, handleProblem(400, json400)
+	case 401:
+		return nil, handleProblem(401, json401)
+	case 403:
+		return nil, handleProblem(403, json403)
+	case 404:
+		return nil, handleProblem(404, json404)
+	case 408:
+		return nil, handleProblem(408, json408)
+	case 409:
+		return nil, handleProblem(409, json409)
+	case 500:
+		return nil, handleProblem(500, json500)
+	default:
+		return nil, fmt.Errorf("unexpected status code: %d", status)
+	}
 }
 
 // instanceDo executes the action in a goroutine
@@ -1280,16 +1117,10 @@ func (t T) waitRequesterSessionEnd(ctx context.Context, c *client.T, requesterSi
 }
 
 func (t asyncResult) Unstructured() map[string]any {
-	var errorString string
-	if t.Error != nil {
-		errorString = t.Error.Error()
-	} else {
-		errorString = "-"
-	}
 	return map[string]any{
 		"orchestration_id": t.OrchestrationID.String(),
 		"path":             t.Path,
-		"error":            errorString,
+		"status":           t.Status,
 	}
 }
 
