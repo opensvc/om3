@@ -11,6 +11,7 @@ import (
 	"github.com/opensvc/om3/v3/daemon/daemonauth"
 	"github.com/opensvc/om3/v3/daemon/msgbus"
 	"github.com/opensvc/om3/v3/util/pubsub"
+	"github.com/opensvc/om3/v3/util/xsession"
 )
 
 func (a *DaemonAPI) PostInstanceProgress(ctx echo.Context, namespace string, kind naming.Kind, name string) error {
@@ -38,7 +39,7 @@ func (a *DaemonAPI) PostInstanceProgress(ctx echo.Context, namespace string, kin
 	if payload.IsPartial != nil {
 		isPartial = *payload.IsPartial
 	}
-	a.Bus.Pub(&msgbus.ProgressInstanceMonitor{Path: p, Node: a.localhost, SessionID: payload.SessionID, State: state, IsPartial: isPartial},
+	a.Bus.Pub(&msgbus.ProgressInstanceMonitor{Path: p, Node: a.localhost, SessionID: xsession.NewSid(payload.SessionID), State: state, IsPartial: isPartial},
 		pubsub.Label{"namespace", p.Namespace},
 		pubsub.Label{"path", p.String()},
 		a.LabelLocalhost,

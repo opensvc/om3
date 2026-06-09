@@ -35,8 +35,8 @@ func (t *CmdObjectInstanceFreeze) Run(kind string) error {
 			}
 			params := api.PostInstanceActionFreezeParams{}
 			{
-				sid := xsession.ID
-				params.RequesterSid = &sid
+				sid := xsession.Sid().UUID()
+				params.SessionId = &sid
 			}
 			response, err := c.PostInstanceActionFreezeWithResponse(ctx, nodename, p.Namespace, p.Kind, p.Name, &params)
 			if err != nil {

@@ -40,8 +40,8 @@ func (a *DaemonAPI) postLocalInstanceActionPGUpdate(ctx echo.Context, namespace 
 	if params.Master != nil && *params.Master {
 		args = append(args, "--master")
 	}
-	if params.RequesterSid != nil {
-		requesterSid = *params.RequesterSid
+	if params.SessionId != nil {
+		requesterSid = *params.SessionId
 	}
 	if params.Rid != nil && *params.Rid != "" {
 		args = append(args, "--rid", *params.Rid)

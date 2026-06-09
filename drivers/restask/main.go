@@ -217,7 +217,7 @@ func (t *BaseTask) WriteLastRun(retcode int) error {
 	lastRun := LastRun{
 		ExitCode:  retcode,
 		At:        time.Now(),
-		SessionID: xsession.ID,
+		SessionID: xsession.Sid().UUID(),
 	}
 	b, err := json.Marshal(lastRun)
 	if err != nil {
@@ -261,7 +261,7 @@ func (t *BaseTask) RunIf(ctx context.Context, fn func(context.Context) error) er
 		if n >= t.MaxParallel {
 			return fmt.Errorf("task is already running %d times", n)
 		}
-		if err := runDir.Create([]byte(xsession.ID.String())); err != nil {
+		if err := runDir.Create([]byte(xsession.Sid().String())); err != nil {
 			return err
 		}
 		return nil

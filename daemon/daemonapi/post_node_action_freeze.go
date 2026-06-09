@@ -28,8 +28,8 @@ func (a *DaemonAPI) localNodeActionFreeze(ctx echo.Context, params api.PostPeerA
 	log := LogHandler(ctx, "PostPeerActionFreeze")
 	var requesterSid uuid.UUID
 	args := []string{"node", "freeze"}
-	if params.RequesterSid != nil {
-		requesterSid = *params.RequesterSid
+	if params.SessionId != nil {
+		requesterSid = *params.SessionId
 	}
 	if sid, err := a.apiExec(ctx, naming.Path{}, requesterSid, args, log); err != nil {
 		return JSONProblemf(ctx, http.StatusInternalServerError, "", "%s", err)

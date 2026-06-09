@@ -28,8 +28,8 @@ func (a *DaemonAPI) localNodeActionPushDisk(ctx echo.Context, params api.PostNod
 	log := LogHandler(ctx, "PostNodeActionPushDisk")
 	var requesterSID uuid.UUID
 	args := []string{"node", "push", "disk"}
-	if params.RequesterSid != nil {
-		requesterSID = *params.RequesterSid
+	if params.SessionId != nil {
+		requesterSID = *params.SessionId
 	}
 	if sid, err := a.apiExec(ctx, naming.Path{}, requesterSID, args, log); err != nil {
 		return JSONProblemf(ctx, http.StatusInternalServerError, "", "%s", err)

@@ -376,7 +376,7 @@ func (t T) DoLocal() error {
 	}
 
 	if t.Digest && isatty.IsTerminal(os.Stdin.Fd()) && (zerolog.GlobalLevel() != zerolog.DebugLevel) {
-		fmt.Printf("sid=%s\n", xsession.ID)
+		fmt.Printf("sid=%s\n", xsession.Sid())
 	}
 	var errs error
 	results := make([]actionrouter.Result, 0)
@@ -869,7 +869,7 @@ func (t T) DoRemote() error {
 	resultQ := make(chan actionrouter.Result)
 	done := 0
 	todo := 0
-	requesterSid := xsession.ID
+	requesterSid := xsession.Sid().UUID()
 
 	var (
 		cancel context.CancelFunc
@@ -1227,8 +1227,8 @@ func (t T) waitRequesterSessionEnd(ctx context.Context, c *client.T, requesterSi
 	)
 	filters = []string{
 		fmt.Sprintf("ObjectStatusDeleted,path=%s", p),
-		fmt.Sprintf("ExecFailed,path=%s,.requester_session_id=%s", p, requesterSid),
-		fmt.Sprintf("ExecSuccess,path=%s,.requester_session_id=%s", p, requesterSid),
+		fmt.Sprintf("ExecFailed,path=%s,.session_id=%s", p, requesterSid),
+		fmt.Sprintf("ExecSuccess,path=%s,.session_id=%s", p, requesterSid),
 	}
 	getEvents := c.NewGetEvents().SetFilters(filters)
 	if t.WaitDuration > 0 {

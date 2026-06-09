@@ -3825,9 +3825,9 @@ func NewPostPeerActionDequeueRequest(server string, nodename InPathNodeName, par
 		// per the OpenAPI spec (e.g. "color=blue,black,brown").
 		var rawQueryFragments []string
 
-		if params.RequesterSid != nil {
+		if params.SessionId != nil {
 
-			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "requester_sid", *params.RequesterSid, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "string", Format: "uuid"}); err != nil {
+			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "session_id", *params.SessionId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "string", Format: "uuid"}); err != nil {
 				return nil, err
 			} else {
 				for _, qp := range strings.Split(queryFrag, "&") {
@@ -3920,9 +3920,9 @@ func NewPostPeerActionFreezeRequest(server string, nodename InPathNodeName, para
 		// per the OpenAPI spec (e.g. "color=blue,black,brown").
 		var rawQueryFragments []string
 
-		if params.RequesterSid != nil {
+		if params.SessionId != nil {
 
-			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "requester_sid", *params.RequesterSid, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "string", Format: "uuid"}); err != nil {
+			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "session_id", *params.SessionId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "string", Format: "uuid"}); err != nil {
 				return nil, err
 			} else {
 				for _, qp := range strings.Split(queryFrag, "&") {
@@ -3981,9 +3981,9 @@ func NewPostNodeActionPushAssetRequest(server string, nodename InPathNodeName, p
 		// per the OpenAPI spec (e.g. "color=blue,black,brown").
 		var rawQueryFragments []string
 
-		if params.RequesterSid != nil {
+		if params.SessionId != nil {
 
-			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "requester_sid", *params.RequesterSid, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "string", Format: "uuid"}); err != nil {
+			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "session_id", *params.SessionId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "string", Format: "uuid"}); err != nil {
 				return nil, err
 			} else {
 				for _, qp := range strings.Split(queryFrag, "&") {
@@ -4042,9 +4042,9 @@ func NewPostNodeActionPushDiskRequest(server string, nodename InPathNodeName, pa
 		// per the OpenAPI spec (e.g. "color=blue,black,brown").
 		var rawQueryFragments []string
 
-		if params.RequesterSid != nil {
+		if params.SessionId != nil {
 
-			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "requester_sid", *params.RequesterSid, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "string", Format: "uuid"}); err != nil {
+			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "session_id", *params.SessionId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "string", Format: "uuid"}); err != nil {
 				return nil, err
 			} else {
 				for _, qp := range strings.Split(queryFrag, "&") {
@@ -4103,9 +4103,9 @@ func NewPostNodeActionPushPatchRequest(server string, nodename InPathNodeName, p
 		// per the OpenAPI spec (e.g. "color=blue,black,brown").
 		var rawQueryFragments []string
 
-		if params.RequesterSid != nil {
+		if params.SessionId != nil {
 
-			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "requester_sid", *params.RequesterSid, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "string", Format: "uuid"}); err != nil {
+			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "session_id", *params.SessionId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "string", Format: "uuid"}); err != nil {
 				return nil, err
 			} else {
 				for _, qp := range strings.Split(queryFrag, "&") {
@@ -4164,9 +4164,9 @@ func NewPostNodeActionPushPkgRequest(server string, nodename InPathNodeName, par
 		// per the OpenAPI spec (e.g. "color=blue,black,brown").
 		var rawQueryFragments []string
 
-		if params.RequesterSid != nil {
+		if params.SessionId != nil {
 
-			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "requester_sid", *params.RequesterSid, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "string", Format: "uuid"}); err != nil {
+			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "session_id", *params.SessionId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "string", Format: "uuid"}); err != nil {
 				return nil, err
 			} else {
 				for _, qp := range strings.Split(queryFrag, "&") {
@@ -4225,9 +4225,9 @@ func NewPostNodeActionScanCapabilitiesRequest(server string, nodename InPathNode
 		// per the OpenAPI spec (e.g. "color=blue,black,brown").
 		var rawQueryFragments []string
 
-		if params.RequesterSid != nil {
+		if params.SessionId != nil {
 
-			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "requester_sid", *params.RequesterSid, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "string", Format: "uuid"}); err != nil {
+			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "session_id", *params.SessionId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "string", Format: "uuid"}); err != nil {
 				return nil, err
 			} else {
 				for _, qp := range strings.Split(queryFrag, "&") {
@@ -4286,9 +4286,9 @@ func NewPostNodeActionSCSIScanRequest(server string, nodename InPathNodeName, pa
 		// per the OpenAPI spec (e.g. "color=blue,black,brown").
 		var rawQueryFragments []string
 
-		if params.RequesterSid != nil {
+		if params.SessionId != nil {
 
-			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "requester_sid", *params.RequesterSid, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "string", Format: "uuid"}); err != nil {
+			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "session_id", *params.SessionId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "string", Format: "uuid"}); err != nil {
 				return nil, err
 			} else {
 				for _, qp := range strings.Split(queryFrag, "&") {
@@ -4395,9 +4395,9 @@ func NewPostNodeActionSysreportRequest(server string, nodename InPathNodeName, p
 
 		}
 
-		if params.RequesterSid != nil {
+		if params.SessionId != nil {
 
-			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "requester_sid", *params.RequesterSid, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "string", Format: "uuid"}); err != nil {
+			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "session_id", *params.SessionId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "string", Format: "uuid"}); err != nil {
 				return nil, err
 			} else {
 				for _, qp := range strings.Split(queryFrag, "&") {
@@ -4456,9 +4456,9 @@ func NewPostPeerActionUnfreezeRequest(server string, nodename InPathNodeName, pa
 		// per the OpenAPI spec (e.g. "color=blue,black,brown").
 		var rawQueryFragments []string
 
-		if params.RequesterSid != nil {
+		if params.SessionId != nil {
 
-			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "requester_sid", *params.RequesterSid, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "string", Format: "uuid"}); err != nil {
+			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "session_id", *params.SessionId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "string", Format: "uuid"}); err != nil {
 				return nil, err
 			} else {
 				for _, qp := range strings.Split(queryFrag, "&") {
@@ -6298,9 +6298,9 @@ func NewPostInstanceActionBootRequest(server string, nodename InPathNodeName, na
 
 		}
 
-		if params.RequesterSid != nil {
+		if params.SessionId != nil {
 
-			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "requester_sid", *params.RequesterSid, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "string", Format: "uuid"}); err != nil {
+			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "session_id", *params.SessionId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "string", Format: "uuid"}); err != nil {
 				return nil, err
 			} else {
 				for _, qp := range strings.Split(queryFrag, "&") {
@@ -6440,9 +6440,9 @@ func NewPostInstanceActionDeleteRequest(server string, nodename InPathNodeName, 
 		// per the OpenAPI spec (e.g. "color=blue,black,brown").
 		var rawQueryFragments []string
 
-		if params.RequesterSid != nil {
+		if params.SessionId != nil {
 
-			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "requester_sid", *params.RequesterSid, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "string", Format: "uuid"}); err != nil {
+			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "session_id", *params.SessionId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "string", Format: "uuid"}); err != nil {
 				return nil, err
 			} else {
 				for _, qp := range strings.Split(queryFrag, "&") {
@@ -6558,9 +6558,9 @@ func NewPostInstanceActionFreezeRequest(server string, nodename InPathNodeName, 
 
 		}
 
-		if params.RequesterSid != nil {
+		if params.SessionId != nil {
 
-			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "requester_sid", *params.RequesterSid, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "string", Format: "uuid"}); err != nil {
+			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "session_id", *params.SessionId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "string", Format: "uuid"}); err != nil {
 				return nil, err
 			} else {
 				for _, qp := range strings.Split(queryFrag, "&") {
@@ -6664,9 +6664,9 @@ func NewPostInstanceActionPGUpdateRequest(server string, nodename InPathNodeName
 
 		}
 
-		if params.RequesterSid != nil {
+		if params.SessionId != nil {
 
-			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "requester_sid", *params.RequesterSid, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "string", Format: "uuid"}); err != nil {
+			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "session_id", *params.SessionId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "string", Format: "uuid"}); err != nil {
 				return nil, err
 			} else {
 				for _, qp := range strings.Split(queryFrag, "&") {
@@ -6854,9 +6854,9 @@ func NewPostInstanceActionProvisionRequest(server string, nodename InPathNodeNam
 
 		}
 
-		if params.RequesterSid != nil {
+		if params.SessionId != nil {
 
-			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "requester_sid", *params.RequesterSid, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "string", Format: "uuid"}); err != nil {
+			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "session_id", *params.SessionId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "string", Format: "uuid"}); err != nil {
 				return nil, err
 			} else {
 				for _, qp := range strings.Split(queryFrag, "&") {
@@ -7056,9 +7056,9 @@ func NewPostInstanceActionPRStartRequest(server string, nodename InPathNodeName,
 
 		}
 
-		if params.RequesterSid != nil {
+		if params.SessionId != nil {
 
-			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "requester_sid", *params.RequesterSid, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "string", Format: "uuid"}); err != nil {
+			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "session_id", *params.SessionId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "string", Format: "uuid"}); err != nil {
 				return nil, err
 			} else {
 				for _, qp := range strings.Split(queryFrag, "&") {
@@ -7246,9 +7246,9 @@ func NewPostInstanceActionPRStopRequest(server string, nodename InPathNodeName, 
 
 		}
 
-		if params.RequesterSid != nil {
+		if params.SessionId != nil {
 
-			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "requester_sid", *params.RequesterSid, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "string", Format: "uuid"}); err != nil {
+			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "session_id", *params.SessionId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "string", Format: "uuid"}); err != nil {
 				return nil, err
 			} else {
 				for _, qp := range strings.Split(queryFrag, "&") {
@@ -7388,9 +7388,9 @@ func NewPostInstanceActionPushResourceInfoRequest(server string, nodename InPath
 		// per the OpenAPI spec (e.g. "color=blue,black,brown").
 		var rawQueryFragments []string
 
-		if params.RequesterSid != nil {
+		if params.SessionId != nil {
 
-			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "requester_sid", *params.RequesterSid, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "string", Format: "uuid"}); err != nil {
+			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "session_id", *params.SessionId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "string", Format: "uuid"}); err != nil {
 				return nil, err
 			} else {
 				for _, qp := range strings.Split(queryFrag, "&") {
@@ -7518,9 +7518,9 @@ func NewPostInstanceActionRestartRequest(server string, nodename InPathNodeName,
 
 		}
 
-		if params.RequesterSid != nil {
+		if params.SessionId != nil {
 
-			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "requester_sid", *params.RequesterSid, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "string", Format: "uuid"}); err != nil {
+			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "session_id", *params.SessionId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "string", Format: "uuid"}); err != nil {
 				return nil, err
 			} else {
 				for _, qp := range strings.Split(queryFrag, "&") {
@@ -7720,9 +7720,9 @@ func NewPostInstanceActionRunRequest(server string, nodename InPathNodeName, nam
 
 		}
 
-		if params.RequesterSid != nil {
+		if params.SessionId != nil {
 
-			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "requester_sid", *params.RequesterSid, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "string", Format: "uuid"}); err != nil {
+			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "session_id", *params.SessionId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "string", Format: "uuid"}); err != nil {
 				return nil, err
 			} else {
 				for _, qp := range strings.Split(queryFrag, "&") {
@@ -7910,9 +7910,9 @@ func NewPostInstanceActionShutdownRequest(server string, nodename InPathNodeName
 
 		}
 
-		if params.RequesterSid != nil {
+		if params.SessionId != nil {
 
-			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "requester_sid", *params.RequesterSid, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "string", Format: "uuid"}); err != nil {
+			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "session_id", *params.SessionId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "string", Format: "uuid"}); err != nil {
 				return nil, err
 			} else {
 				for _, qp := range strings.Split(queryFrag, "&") {
@@ -8100,9 +8100,9 @@ func NewPostInstanceActionStartRequest(server string, nodename InPathNodeName, n
 
 		}
 
-		if params.RequesterSid != nil {
+		if params.SessionId != nil {
 
-			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "requester_sid", *params.RequesterSid, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "string", Format: "uuid"}); err != nil {
+			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "session_id", *params.SessionId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "string", Format: "uuid"}); err != nil {
 				return nil, err
 			} else {
 				for _, qp := range strings.Split(queryFrag, "&") {
@@ -8290,9 +8290,9 @@ func NewPostInstanceActionStartStandbyRequest(server string, nodename InPathNode
 
 		}
 
-		if params.RequesterSid != nil {
+		if params.SessionId != nil {
 
-			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "requester_sid", *params.RequesterSid, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "string", Format: "uuid"}); err != nil {
+			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "session_id", *params.SessionId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "string", Format: "uuid"}); err != nil {
 				return nil, err
 			} else {
 				for _, qp := range strings.Split(queryFrag, "&") {
@@ -8432,9 +8432,9 @@ func NewPostInstanceActionStatusRequest(server string, nodename InPathNodeName, 
 		// per the OpenAPI spec (e.g. "color=blue,black,brown").
 		var rawQueryFragments []string
 
-		if params.RequesterSid != nil {
+		if params.SessionId != nil {
 
-			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "requester_sid", *params.RequesterSid, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "string", Format: "uuid"}); err != nil {
+			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "session_id", *params.SessionId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "string", Format: "uuid"}); err != nil {
 				return nil, err
 			} else {
 				for _, qp := range strings.Split(queryFrag, "&") {
@@ -8562,9 +8562,9 @@ func NewPostInstanceActionStopRequest(server string, nodename InPathNodeName, na
 
 		}
 
-		if params.RequesterSid != nil {
+		if params.SessionId != nil {
 
-			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "requester_sid", *params.RequesterSid, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "string", Format: "uuid"}); err != nil {
+			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "session_id", *params.SessionId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "string", Format: "uuid"}); err != nil {
 				return nil, err
 			} else {
 				for _, qp := range strings.Split(queryFrag, "&") {
@@ -8704,9 +8704,9 @@ func NewPostInstanceActionSyncIngestRequest(server string, nodename InPathNodeNa
 		// per the OpenAPI spec (e.g. "color=blue,black,brown").
 		var rawQueryFragments []string
 
-		if params.RequesterSid != nil {
+		if params.SessionId != nil {
 
-			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "requester_sid", *params.RequesterSid, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "string", Format: "uuid"}); err != nil {
+			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "session_id", *params.SessionId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "string", Format: "uuid"}); err != nil {
 				return nil, err
 			} else {
 				for _, qp := range strings.Split(queryFrag, "&") {
@@ -8858,9 +8858,9 @@ func NewPostInstanceActionUnfreezeRequest(server string, nodename InPathNodeName
 
 		}
 
-		if params.RequesterSid != nil {
+		if params.SessionId != nil {
 
-			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "requester_sid", *params.RequesterSid, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "string", Format: "uuid"}); err != nil {
+			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "session_id", *params.SessionId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "string", Format: "uuid"}); err != nil {
 				return nil, err
 			} else {
 				for _, qp := range strings.Split(queryFrag, "&") {
@@ -8988,9 +8988,9 @@ func NewPostInstanceActionUnprovisionRequest(server string, nodename InPathNodeN
 
 		}
 
-		if params.RequesterSid != nil {
+		if params.SessionId != nil {
 
-			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "requester_sid", *params.RequesterSid, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "string", Format: "uuid"}); err != nil {
+			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "session_id", *params.SessionId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "string", Format: "uuid"}); err != nil {
 				return nil, err
 			} else {
 				for _, qp := range strings.Split(queryFrag, "&") {

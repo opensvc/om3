@@ -3,18 +3,17 @@ package object
 import (
 	"context"
 	"fmt"
-	"os"
 	"sync"
 
 	"github.com/google/uuid"
 
-	"github.com/opensvc/om3/v3/core/env"
 	"github.com/opensvc/om3/v3/core/instance"
 	"github.com/opensvc/om3/v3/core/naming"
 	"github.com/opensvc/om3/v3/core/xconfig"
 	"github.com/opensvc/om3/v3/util/compliance"
 	"github.com/opensvc/om3/v3/util/funcopt"
 	"github.com/opensvc/om3/v3/util/plog"
+	"github.com/opensvc/om3/v3/util/xsession"
 )
 
 type (
@@ -95,7 +94,7 @@ func (t *core) init(referrer xconfig.Referrer, path naming.Path, opts ...funcopt
 		return err
 	}
 	t.log = naming.LogWithPath(plog.NewDefaultLogger(), t.path).WithPrefix(fmt.Sprintf("instance: %s: ", t.path))
-	if v := os.Getenv(env.ActionOrchestrationIDVar); v != "" {
+	if v := xsession.Oid().String(); v != "" {
 		t.log = t.log.Attr("ORCHESTRATION_ID", v)
 	}
 	if err := t.loadConfig(referrer); err != nil {

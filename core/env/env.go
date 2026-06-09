@@ -3,8 +3,7 @@ package env
 import (
 	"fmt"
 	"os"
-
-	"github.com/opensvc/om3/v3/util/xsession"
+	"strings"
 )
 
 type (
@@ -12,18 +11,16 @@ type (
 )
 
 var (
-	ActionOrchestrationIDVar                 = "OSVC_ACTION_ORCHESTRATION_ID"
 	ActionOriginVar                          = "OSVC_ACTION_ORIGIN"
 	ActionOriginUser            ActionOrigin = "user"
 	ActionOriginDaemonAPI       ActionOrigin = "daemon/api"
 	ActionOriginDaemonMonitor   ActionOrigin = "daemon/monitor"
 	ActionOriginDaemonScheduler ActionOrigin = "daemon/scheduler"
 
-	ParentSessionIDVar = "OSVC_PARENT_SESSION_UUID"
-	NameVar            = "OSVC_NAME"
-	NamespaceVar       = "OSVC_NAMESPACE"
-	KindVar            = "OSVC_KIND"
-	ContextVar         = "OSVC_CONTEXT"
+	NameVar      = "OSVC_NAME"
+	NamespaceVar = "OSVC_NAMESPACE"
+	KindVar      = "OSVC_KIND"
+	ContextVar   = "OSVC_CONTEXT"
 
 	NoLogFileVar = "OSVC_NO_LOG_FILE"
 )
@@ -62,18 +59,14 @@ func Origin() ActionOrigin {
 	return ActionOrigin(s)
 }
 
-// OriginSetenvArg returns the arg to pass to environment variable
-// setter functions to hint the called CRM command was launched from a daemon
-// policy.
-func OriginSetenvArg(s ActionOrigin) string {
-	return fmt.Sprintf("%s=%s", ActionOriginVar, s)
-}
-
-// ParentSessionIDSetenvArg returns the arg to pass to environment variable
-// setter functions to hint the called CRM command was launched with a different
-// session id.
-func ParentSessionIDSetenvArg() string {
-	return ParentSessionIDVar + "=" + xsession.ID.String()
+// Var returns the arg to pass to environment variable setter functions to hint
+// the called CRM command was launched from a daemon policy.
+func (t ActionOrigin) Var() string {
+	var buff strings.Builder
+	buff.WriteString(ActionOriginVar)
+	buff.WriteString("=")
+	buff.WriteString(string(t))
+	return buff.String()
 }
 
 // Namespace returns the namespace filter forced via the OSVC_NAMESPACE environment

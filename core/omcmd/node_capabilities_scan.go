@@ -37,8 +37,8 @@ func (t *CmdNodeCapabilitiesScan) Run() error {
 			}
 			params := api.PostNodeActionScanCapabilitiesParams{}
 			{
-				sid := xsession.ID
-				params.RequesterSid = &sid
+				sid := xsession.Sid().UUID()
+				params.SessionId = &sid
 			}
 			response, err := c.PostNodeActionScanCapabilitiesWithResponse(ctx, nodename, &params)
 			if err != nil {

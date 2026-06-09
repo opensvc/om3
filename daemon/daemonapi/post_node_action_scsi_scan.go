@@ -39,8 +39,8 @@ func (a *DaemonAPI) localNodeActionSCSIScan(ctx echo.Context, params api.PostNod
 		args = append(args, "--lun", *params.Lun)
 	}
 
-	if params.RequesterSid != nil {
-		requesterSid = *params.RequesterSid
+	if params.SessionId != nil {
+		requesterSid = *params.SessionId
 	}
 	if sid, err := a.apiExec(ctx, naming.Path{}, requesterSid, args, log); err != nil {
 		return JSONProblemf(ctx, http.StatusInternalServerError, "", "%s", err)

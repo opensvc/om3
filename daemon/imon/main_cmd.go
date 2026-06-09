@@ -434,18 +434,14 @@ func (t *Manager) onProgressInstanceMonitor(c *msgbus.ProgressInstanceMonitor) {
 	}
 
 	// state change
-	switch t.state.SessionID {
-	case uuid.Nil:
-	case c.SessionID:
-		// pass
-	default:
+	if !t.state.SessionID.IsZero() && t.state.SessionID != c.SessionID {
 		t.log.Warnf("received progress instance monitor for wrong sid state %s(%s) -> %s(%s)", t.state.State, t.state.SessionID, c.State, c.SessionID)
 	}
 	t.log.Infof("progress instance monitor state %s -> %s", t.state.State, c.State)
 	t.change = true
 	t.state.State = c.State
 	if c.State == instance.MonitorStateIdle {
-		t.state.SessionID = uuid.Nil
+		t.state.SessionID.Zero()
 	} else {
 		t.state.SessionID = c.SessionID
 	}

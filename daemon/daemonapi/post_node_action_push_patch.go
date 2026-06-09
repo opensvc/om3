@@ -28,8 +28,8 @@ func (a *DaemonAPI) localNodeActionPushPatch(ctx echo.Context, params api.PostNo
 	log := LogHandler(ctx, "PostNodeActionPushPatch")
 	var requesterSID uuid.UUID
 	args := []string{"node", "push", "patch"}
-	if params.RequesterSid != nil {
-		requesterSID = *params.RequesterSid
+	if params.SessionId != nil {
+		requesterSID = *params.SessionId
 	}
 	if sid, err := a.apiExec(ctx, naming.Path{}, requesterSID, args, log); err != nil {
 		return JSONProblemf(ctx, http.StatusInternalServerError, "", "%s", err)

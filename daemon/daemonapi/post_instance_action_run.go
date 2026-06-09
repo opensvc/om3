@@ -69,8 +69,8 @@ func (a *DaemonAPI) postLocalInstanceActionRun(ctx echo.Context, namespace strin
 			args = append(args, "--env", s)
 		}
 	}
-	if params.RequesterSid != nil {
-		requesterSid = *params.RequesterSid
+	if params.SessionId != nil {
+		requesterSid = *params.SessionId
 	}
 	if sid, err := a.apiExec(ctx, p, requesterSid, args, log); err != nil {
 		return JSONProblemf(ctx, http.StatusInternalServerError, "", "%s", err)

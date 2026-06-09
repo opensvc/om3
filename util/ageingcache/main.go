@@ -29,9 +29,9 @@ func Clear(sig string) error {
 }
 
 func outputLockP(name string) fcache.Locker {
-	sessionID := xsession.ID
+	sid := xsession.Sid().String()
 	path := filepath.Join(rawconfig.Paths.Lock, "ageing-out-"+name)
-	return flock.New(path, sessionID.String(), fcntllock.New)
+	return flock.New(path, sid, fcntllock.New)
 }
 
 func cacheDir() string {

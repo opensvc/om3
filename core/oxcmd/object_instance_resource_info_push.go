@@ -34,8 +34,8 @@ func (t *CmdObjectInstanceResourceInfoPush) Run(kind string) error {
 			}
 			params := api.PostInstanceActionPushResourceInfoParams{}
 			{
-				sid := xsession.ID
-				params.RequesterSid = &sid
+				sid := xsession.Sid().UUID()
+				params.SessionId = &sid
 			}
 			response, err := c.PostInstanceActionPushResourceInfoWithResponse(ctx, nodename, p.Namespace, p.Kind, p.Name, &params)
 			if err != nil {
