@@ -386,7 +386,7 @@ func (t T) DoRemote() error {
 	count := len(nodenames)
 	done := 0
 	todo := 0
-	requesterSid := xsession.ID
+	requesterSid := xsession.Sid().UUID()
 
 	var (
 		cancel context.CancelFunc
@@ -472,8 +472,8 @@ func (t T) waitRequesterSessionEnd(ctx context.Context, c *client.T, nodename st
 	)
 	filters = []string{
 		fmt.Sprintf("NodeMonitorDeleted"),
-		fmt.Sprintf("ExecFailed,.requester_session_id=%s", requesterSid),
-		fmt.Sprintf("ExecSuccess,.requester_session_id=%s", requesterSid),
+		fmt.Sprintf("ExecFailed,.session_id=%s", requesterSid),
+		fmt.Sprintf("ExecSuccess,.session_id=%s", requesterSid),
 	}
 	getEvents := c.NewGetEvents().SetFilters(filters)
 	if t.WaitDuration > 0 {

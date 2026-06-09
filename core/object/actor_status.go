@@ -312,9 +312,9 @@ func (t *actor) installEncapConfig(ctx context.Context, encapContainer resource.
 	// Execute `om <path> create --config=- --restore --wait` in the encap container with the config piped in
 	args := []string{encapContainer.GetOsvcRootPath(), t.path.String(), "create", "--config=-", "--restore", "--wait"}
 	envs := []string{
-		"OSVC_SESSION_ID=" + xsession.ID.String(),
-		env.ActionOrchestrationIDVar + "=" + os.Getenv(env.ActionOrchestrationIDVar),
-		env.OriginSetenvArg(env.Origin()),
+		xsession.Oid().Var(),
+		xsession.Sid().Var(),
+		env.Origin().Var(),
 	}
 	cmd, err := encapContainer.EncapCmd(ctx, args, envs, pipeReader)
 	if err != nil {
@@ -346,9 +346,9 @@ func (t *actor) resourceStatusEvalEncap(ctx context.Context, encapContainer reso
 
 	args := []string{encapContainer.GetOsvcRootPath(), t.path.String(), "instance", "status", "-r", "-o", "json"}
 	envs := []string{
-		"OSVC_SESSION_ID=" + xsession.ID.String(),
-		env.ActionOrchestrationIDVar + "=" + os.Getenv(env.ActionOrchestrationIDVar),
-		env.OriginSetenvArg(env.Origin()),
+		xsession.Oid().Var(),
+		xsession.Sid().Var(),
+		env.Origin().Var(),
 	}
 	cmd, err := encapContainer.EncapCmd(ctx, args, envs, nil)
 	if err != nil {

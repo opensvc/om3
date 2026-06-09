@@ -48,8 +48,8 @@ func (t *CmdObjectInstanceSyncIngest) Run(kind string) error {
 				params.Tag = &t.OptsResourceSelector.Tag
 			}
 			{
-				sid := xsession.ID
-				params.RequesterSid = &sid
+				sid := xsession.Sid().UUID()
+				params.SessionId = &sid
 			}
 			response, err := c.PostInstanceActionSyncIngestWithResponse(ctx, nodename, p.Namespace, p.Kind, p.Name, &params)
 			if err != nil {

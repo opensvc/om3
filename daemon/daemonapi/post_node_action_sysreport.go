@@ -31,8 +31,8 @@ func (a *DaemonAPI) localNodeActionSysreport(ctx echo.Context, params api.PostNo
 	if params.Force != nil && *params.Force {
 		args = append(args, "--force")
 	}
-	if params.RequesterSid != nil {
-		requesterSid = *params.RequesterSid
+	if params.SessionId != nil {
+		requesterSid = *params.SessionId
 	}
 	if sid, err := a.apiExec(ctx, naming.Path{}, requesterSid, args, log); err != nil {
 		return JSONProblemf(ctx, http.StatusInternalServerError, "", "%s", err)

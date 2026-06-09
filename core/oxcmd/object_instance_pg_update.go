@@ -58,8 +58,8 @@ func (t *CmdObjectInstancePGUpdate) Run(kind string) error {
 				params.Slave = &t.OptsEncap.Slaves
 			}
 			{
-				sid := xsession.ID
-				params.RequesterSid = &sid
+				sid := xsession.Sid().UUID()
+				params.SessionId = &sid
 			}
 			response, err := c.PostInstanceActionPGUpdateWithResponse(ctx, nodename, p.Namespace, p.Kind, p.Name, &params)
 			if err != nil {

@@ -1,4 +1,4 @@
-package omcmd
+package oxcmd
 
 import (
 	"context"
@@ -6,23 +6,19 @@ import (
 
 	"github.com/opensvc/om3/v3/core/client"
 	"github.com/opensvc/om3/v3/core/nodeaction"
-	"github.com/opensvc/om3/v3/core/object"
 	"github.com/opensvc/om3/v3/daemon/api"
 	"github.com/opensvc/om3/v3/util/xsession"
 )
 
 type (
-	CmdNodeSysreport struct {
+	CmdNodePushPatch struct {
 		OptsGlobal
-		Force        bool
-		Local        bool
 		NodeSelector string
 	}
 )
 
-func (t *CmdNodeSysreport) Run() error {
+func (t *CmdNodePushPatch) Run() error {
 	return nodeaction.New(
-		nodeaction.WithLocal(t.Local),
 		nodeaction.WithRemoteNodes(t.NodeSelector),
 		nodeaction.WithFormat(t.Output),
 		nodeaction.WithColor(t.Color),
@@ -31,16 +27,12 @@ func (t *CmdNodeSysreport) Run() error {
 			if err != nil {
 				return nil, err
 			}
-			params := api.PostNodeActionSysreportParams{}
-			if t.Force {
-				v := true
-				params.Force = &v
-			}
+			params := api.PostNodeActionPushPatchParams{}
 			{
 				sid := xsession.Sid().UUID()
 				params.SessionId = &sid
 			}
-			response, err := c.PostNodeActionSysreportWithResponse(ctx, nodename, &params)
+			response, err := c.PostNodeActionPushPatchWithResponse(ctx, nodename, &params)
 			if err != nil {
 				return nil, err
 			}
@@ -55,19 +47,6 @@ func (t *CmdNodeSysreport) Run() error {
 				return nil, fmt.Errorf("node %s: %s", nodename, *response.JSON500)
 			default:
 				return nil, fmt.Errorf("node %s: unexpected response: %s", nodename, response.Status())
-			}
-		}),
-		nodeaction.WithLocalFunc(func() (interface{}, error) {
-			n, err := object.NewNode()
-			if err != nil {
-				return nil, err
-			}
-			if t.Force {
-				err := n.ForceSysreport()
-				return nil, err
-			} else {
-				err := n.Sysreport()
-				return nil, err
 			}
 		}),
 	).Do()

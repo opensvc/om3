@@ -40,8 +40,8 @@ func (t *CmdObjectDelete) Run(kind string) error {
 			}
 			params := api.PostInstanceActionDeleteParams{}
 			{
-				sid := xsession.ID
-				params.RequesterSid = &sid
+				sid := xsession.Sid().UUID()
+				params.SessionId = &sid
 			}
 			response, err := c.PostInstanceActionDeleteWithResponse(ctx, nodename, p.Namespace, p.Kind, p.Name, &params)
 			if err != nil {

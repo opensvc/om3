@@ -35,7 +35,9 @@ func (t *CmdNodeDequeue) Remote() error {
 	ctx := context.Background()
 	for _, nodename := range nodenames {
 		go func(nodename string) {
-			if resp, err := c.PostPeerActionDequeueWithResponse(ctx, nodename, &api.PostPeerActionDequeueParams{RequesterSid: &xsession.ID}); err != nil {
+			sid := xsession.Sid().UUID()
+			params := api.PostPeerActionDequeueParams{SessionId: &sid}
+			if resp, err := c.PostPeerActionDequeueWithResponse(ctx, nodename, &params); err != nil {
 				errC <- err
 			} else {
 				switch resp.StatusCode() {

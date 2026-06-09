@@ -44,8 +44,8 @@ func (t *CmdNodePushPkg) Run() error {
 			}
 			params := api.PostNodeActionPushPkgParams{}
 			{
-				sid := xsession.ID
-				params.RequesterSid = &sid
+				sid := xsession.Sid().UUID()
+				params.SessionId = &sid
 			}
 			response, err := c.PostNodeActionPushPkgWithResponse(ctx, nodename, &params)
 			if err != nil {

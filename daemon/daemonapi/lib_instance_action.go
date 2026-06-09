@@ -15,6 +15,7 @@ import (
 	"github.com/opensvc/om3/v3/util/command"
 	"github.com/opensvc/om3/v3/util/plog"
 	"github.com/opensvc/om3/v3/util/pubsub"
+	"github.com/opensvc/om3/v3/util/xsession"
 )
 
 func (a *DaemonAPI) apiExec(ctx echo.Context, p naming.Path, requesterSid uuid.UUID, args []string, log *plog.Logger) (uuid.UUID, error) {
@@ -22,16 +23,17 @@ func (a *DaemonAPI) apiExec(ctx echo.Context, p naming.Path, requesterSid uuid.U
 	if err != nil {
 		return uuid.Nil, fmt.Errorf("can't detect om execname: %w", err)
 	}
-	sid := uuid.New()
+	sid := xsession.NewSid(requesterSid)
+	eid := xsession.NewEid()
 	cmd := command.New(
 		command.WithName(execname),
 		command.WithArgs(args),
 		command.WithLogger(log),
 		command.WithVarEnv(
-			env.OriginSetenvArg(env.ActionOriginDaemonAPI),
-			"OSVC_SESSION_ID="+sid.String(),
+			env.ActionOriginDaemonAPI.Var(),
+			sid.Var(),
+			eid.Var(),
 			"OSVC_REQUEST_ID="+fmt.Sprint(ctx.Get("uuid")),
-			"OSVC_REQUESTER_SESSION_ID="+fmt.Sprint(requesterSid),
 		),
 	)
 	labels := []pubsub.Label{labelOriginAPI}
@@ -39,13 +41,18 @@ func (a *DaemonAPI) apiExec(ctx echo.Context, p naming.Path, requesterSid uuid.U
 		labels = append(labels, pubsub.Label{"namespace", p.Namespace}, pubsub.Label{"path", p.String()})
 	}
 	log.Infof("-> exec %s", cmd)
-	msg := msgbus.Exec{Command: cmd.String(), Node: a.localhost,
-		Origin: "api", SessionID: sid, RequesterSessionID: requesterSid}
+	msg := msgbus.Exec{
+		Command:   cmd.String(),
+		Node:      a.localhost,
+		Origin:    "api",
+		SessionID: sid,
+		ExecID:    eid,
+	}
 	a.Bus.Pub(&msg, labels...)
 	startTime := time.Now()
 	if err = cmd.Start(); err != nil {
 		log.Errorf("exec StartProcess: %s", err)
-		return sid, fmt.Errorf("instance action failed: %w", err)
+		return sid.UUID(), fmt.Errorf("instance action failed: %w", err)
 	}
 	pid := cmd.Cmd().Process.Pid
 	proc.Register(proc.T{
@@ -64,16 +71,27 @@ func (a *DaemonAPI) apiExec(ctx echo.Context, p naming.Path, requesterSid uuid.U
 		log.Infof("<- exec %s", cmd)
 		duration := time.Now().Sub(startTime)
 		if err != nil {
-			msg := msgbus.ExecFailed{Command: cmd.String(), Duration: duration, Node: a.localhost,
-				Origin: "api", SessionID: sid, RequesterSessionID: requesterSid,
-				ErrS: err.Error(),
+			msg := msgbus.ExecFailed{
+				Command:   cmd.String(),
+				Duration:  duration,
+				Node:      a.localhost,
+				Origin:    "api",
+				SessionID: sid,
+				ExecID:    eid,
+				ErrS:      err.Error(),
 			}
 			a.Bus.Pub(&msg, labels...)
 		} else {
-			msg := msgbus.ExecSuccess{Command: cmd.String(), Duration: duration, Node: a.localhost,
-				Origin: "api", SessionID: sid, RequesterSessionID: requesterSid}
+			msg := msgbus.ExecSuccess{
+				Command:   cmd.String(),
+				Duration:  duration,
+				Node:      a.localhost,
+				Origin:    "api",
+				SessionID: sid,
+				ExecID:    eid,
+			}
 			a.Bus.Pub(&msg, labels...)
 		}
 	}()
-	return sid, nil
+	return sid.UUID(), nil
 }

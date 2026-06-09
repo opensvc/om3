@@ -28,8 +28,8 @@ func (a *DaemonAPI) localNodeActionScanCapabilities(ctx echo.Context, params api
 	log := LogHandler(ctx, "PostNodeActionScanCapabilities")
 	var requesterSid uuid.UUID
 	args := []string{"node", "scan", "capabilities"}
-	if params.RequesterSid != nil {
-		requesterSid = *params.RequesterSid
+	if params.SessionId != nil {
+		requesterSid = *params.SessionId
 	}
 	if sid, err := a.apiExec(ctx, naming.Path{}, requesterSid, args, log); err != nil {
 		return JSONProblemf(ctx, http.StatusInternalServerError, "", "%s", err)

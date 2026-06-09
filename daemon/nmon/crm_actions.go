@@ -45,7 +45,7 @@ func (t *Manager) crmAction(cmdArgs ...string) error {
 	var cmdEnv []string
 	cmdEnv = append(
 		cmdEnv,
-		env.OriginSetenvArg(env.ActionOriginDaemonMonitor),
+		env.ActionOriginDaemonMonitor.Var(),
 	)
 
 	// for tests

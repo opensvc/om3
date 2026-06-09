@@ -42,7 +42,12 @@ func (t *CmdNodeFreeze) doRemote() error {
 	ctx := context.Background()
 	for _, nodename := range nodenames {
 		go func(nodename string) {
-			if resp, err := c.PostPeerActionFreezeWithResponse(ctx, nodename, &api.PostPeerActionFreezeParams{RequesterSid: &xsession.ID}); err != nil {
+			params := api.PostPeerActionFreezeParams{}
+			{
+				sid := xsession.Sid().UUID()
+				params.SessionId = &sid
+			}
+			if resp, err := c.PostPeerActionFreezeWithResponse(ctx, nodename, &params); err != nil {
 				errC <- err
 			} else {
 				switch resp.StatusCode() {

@@ -88,8 +88,8 @@ func (t *CmdObjectInstanceStartStandby) Run(kind string) error {
 				params.To = &t.OptTo.To
 			}
 			{
-				sid := xsession.ID
-				params.RequesterSid = &sid
+				sid := xsession.Sid().UUID()
+				params.SessionId = &sid
 			}
 			response, err := c.PostInstanceActionStartStandbyWithResponse(ctx, nodename, p.Namespace, p.Kind, p.Name, &params)
 			if err != nil {
