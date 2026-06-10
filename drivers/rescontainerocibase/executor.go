@@ -71,14 +71,17 @@ func (e *Executor) Enter(ctx context.Context) error {
 	ctx, cancel := context.WithTimeout(ctx, 10*time.Second)
 	inspect, err := e.Inspect(ctx)
 	if err != nil {
+		cancel()
 		return err
 	}
 	if inspect == nil {
+		cancel()
 		return fmt.Errorf("the container is not running")
 	}
 	pid := inspect.PID()
 	env, err := pidEnv(pid)
 	if err != nil {
+		cancel()
 		return err
 	}
 
