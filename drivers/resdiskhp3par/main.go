@@ -302,10 +302,14 @@ func (t *T) Start(ctx context.Context) error {
 	switch t.targetStatus.Status {
 	case targetStatusFailed:
 		t.Log().Infof("we are split from %s array", t.groupStatus.Target)
-		return t.failover(ctx)
+		if err := t.failover(ctx); err != nil {
+			return err
+		}
 	case targetStatusReady:
 		t.Log().Infof("we are joined with %s array", t.groupStatus.Target)
-		return t.migrate(ctx)
+		if err := t.migrate(ctx); err != nil {
+			return err
+		}
 	default:
 		return fmt.Errorf("unsupported target status: %s", t.groupStatus.Target)
 	}
@@ -764,7 +768,6 @@ func (t *T) waitRCGStatusSync(ctx context.Context) error {
 		}
 		return nil
 	}
-	return nil
 }
 
 func (t *T) waitValidTargetStatus(ctx context.Context, target string) error {
@@ -794,7 +797,6 @@ func (t *T) waitValidTargetStatus(ctx context.Context, target string) error {
 		}
 		return nil
 	}
-	return nil
 }
 
 func (t *T) getGroupWWN(ctx context.Context) ([]string, error) {
@@ -1292,7 +1294,6 @@ func (t *T) runStartGroup(ctx context.Context) error {
 		}
 		return nil
 	}
-	return nil
 }
 
 func (t *T) groupNames() (map[string]string, error) {
