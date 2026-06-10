@@ -2390,6 +2390,7 @@ func newCmdObjectInstanceDelete(kind string) *cobra.Command {
 	}
 	flags := cmd.Flags()
 	addFlagsGlobal(flags, &options.OptsGlobal)
+	commoncmd.FlagsAsync(flags, &options.OptsAsync)
 	commoncmd.FlagsLock(flags, &options.OptsLock)
 	commoncmd.FlagNodeSelector(flags, &options.NodeSelector)
 	return cmd
@@ -2441,6 +2442,7 @@ func newCmdObjectInstanceFreeze(kind string) *cobra.Command {
 	}
 	flags := cmd.Flags()
 	addFlagsGlobal(flags, &options.OptsGlobal)
+	commoncmd.FlagsAsync(flags, &options.OptsAsync)
 	commoncmd.FlagSlave(flags, &options.Slaves)
 	commoncmd.FlagSlaves(flags, &options.AllSlaves)
 	commoncmd.FlagMaster(flags, &options.Master)
@@ -2461,6 +2463,7 @@ func newCmdObjectInstanceProvision(kind string) *cobra.Command {
 	}
 	flags := cmd.Flags()
 	addFlagsGlobal(flags, &options.OptsGlobal)
+	commoncmd.FlagsAsync(flags, &options.OptsAsync)
 	commoncmd.FlagsLock(flags, &options.OptsLock)
 	commoncmd.FlagsEncap(flags, &options.OptsEncap)
 	commoncmd.FlagsResourceSelector(flags, &options.OptsResourceSelector)
@@ -2484,6 +2487,7 @@ func newCmdObjectInstancePRStart(kind string) *cobra.Command {
 	}
 	flags := cmd.Flags()
 	addFlagsGlobal(flags, &options.OptsGlobal)
+	commoncmd.FlagsAsync(flags, &options.OptsAsync)
 	commoncmd.FlagsLock(flags, &options.OptsLock)
 	commoncmd.FlagsEncap(flags, &options.OptsEncap)
 	commoncmd.FlagsResourceSelector(flags, &options.OptsResourceSelector)
@@ -2508,6 +2512,7 @@ func newCmdObjectInstancePRStop(kind string) *cobra.Command {
 	}
 	flags := cmd.Flags()
 	addFlagsGlobal(flags, &options.OptsGlobal)
+	commoncmd.FlagsAsync(flags, &options.OptsAsync)
 	commoncmd.FlagsLock(flags, &options.OptsLock)
 	commoncmd.FlagsEncap(flags, &options.OptsEncap)
 	commoncmd.FlagsResourceSelector(flags, &options.OptsResourceSelector)
@@ -2532,6 +2537,7 @@ func newCmdObjectInstancePGUpdate(kind string) *cobra.Command {
 	}
 	flags := cmd.Flags()
 	addFlagsGlobal(flags, &options.OptsGlobal)
+	commoncmd.FlagsAsync(flags, &options.OptsAsync)
 	commoncmd.FlagsLock(flags, &options.OptsLock)
 	commoncmd.FlagsEncap(flags, &options.OptsEncap)
 	commoncmd.FlagsResourceSelector(flags, &options.OptsResourceSelector)
@@ -2550,6 +2556,7 @@ func newCmdObjectInstanceRestart(kind string) *cobra.Command {
 	}
 	flags := cmd.Flags()
 	addFlagsGlobal(flags, &options.OptsGlobal)
+	commoncmd.FlagsAsync(flags, &options.OptsAsync)
 	commoncmd.FlagsLock(flags, &options.OptsLock)
 	commoncmd.FlagsEncap(flags, &options.OptsEncap)
 	commoncmd.FlagsResourceSelector(flags, &options.OptsResourceSelector)
@@ -2574,6 +2581,7 @@ func newCmdObjectInstanceRun(kind string) *cobra.Command {
 	}
 	flags := cmd.Flags()
 	addFlagsGlobal(flags, &options.OptsGlobal)
+	commoncmd.FlagsAsync(flags, &options.OptsAsync)
 	commoncmd.FlagsLock(flags, &options.OptsLock)
 	commoncmd.FlagsEncap(flags, &options.OptsEncap)
 	commoncmd.FlagsResourceSelector(flags, &options.OptsResourceSelector)
@@ -2599,6 +2607,7 @@ func newCmdObjectInstanceStart(kind string) *cobra.Command {
 	}
 	flags := cmd.Flags()
 	addFlagsGlobal(flags, &options.OptsGlobal)
+	commoncmd.FlagsAsync(flags, &options.OptsAsync)
 	commoncmd.FlagsLock(flags, &options.OptsLock)
 	commoncmd.FlagsEncap(flags, &options.OptsEncap)
 	commoncmd.FlagsResourceSelector(flags, &options.OptsResourceSelector)
@@ -2623,6 +2632,7 @@ func newCmdObjectInstanceStop(kind string) *cobra.Command {
 	}
 	flags := cmd.Flags()
 	addFlagsGlobal(flags, &options.OptsGlobal)
+	commoncmd.FlagsAsync(flags, &options.OptsAsync)
 	commoncmd.FlagsLock(flags, &options.OptsLock)
 	commoncmd.FlagsEncap(flags, &options.OptsEncap)
 	commoncmd.FlagsResourceSelector(flags, &options.OptsResourceSelector)
@@ -2679,6 +2689,7 @@ func newCmdObjectInstanceUnfreeze(kind string) *cobra.Command {
 	}
 	flags := cmd.Flags()
 	addFlagsGlobal(flags, &options.OptsGlobal)
+	commoncmd.FlagsAsync(flags, &options.OptsAsync)
 	commoncmd.FlagSlave(flags, &options.Slaves)
 	commoncmd.FlagSlaves(flags, &options.AllSlaves)
 	commoncmd.FlagMaster(flags, &options.Master)
@@ -2857,6 +2868,7 @@ func newCmdObjectInstanceSyncIngest(kind string) *cobra.Command {
 	}
 	flags := cmd.Flags()
 	addFlagsGlobal(flags, &options.OptsGlobal)
+	commoncmd.FlagsAsync(flags, &options.OptsAsync)
 	commoncmd.FlagsLock(flags, &options.OptsLock)
 	commoncmd.FlagsResourceSelector(flags, &options.OptsResourceSelector)
 	hiddenFlagLocal(flags, &options.Local)
@@ -2875,6 +2887,7 @@ func newCmdObjectInstanceSyncFull(kind string) *cobra.Command {
 	}
 	flags := cmd.Flags()
 	addFlagsGlobal(flags, &options.OptsGlobal)
+	commoncmd.FlagsAsync(flags, &options.OptsAsync)
 	commoncmd.FlagsLock(flags, &options.OptsLock)
 	commoncmd.FlagsResourceSelector(flags, &options.OptsResourceSelector)
 	commoncmd.FlagForce(flags, &options.Force)
@@ -2895,6 +2908,7 @@ func newCmdObjectInstanceSyncResync(kind string) *cobra.Command {
 	}
 	flags := cmd.Flags()
 	addFlagsGlobal(flags, &options.OptsGlobal)
+	commoncmd.FlagsAsync(flags, &options.OptsAsync)
 	commoncmd.FlagsLock(flags, &options.OptsLock)
 	commoncmd.FlagsResourceSelector(flags, &options.OptsResourceSelector)
 	commoncmd.FlagForce(flags, &options.Force)
@@ -2914,6 +2928,7 @@ func newCmdObjectInstanceSyncSplit(kind string) *cobra.Command {
 	}
 	flags := cmd.Flags()
 	addFlagsGlobal(flags, &options.OptsGlobal)
+	commoncmd.FlagsAsync(flags, &options.OptsAsync)
 	commoncmd.FlagsLock(flags, &options.OptsLock)
 	commoncmd.FlagsResourceSelector(flags, &options.OptsResourceSelector)
 	commoncmd.FlagForce(flags, &options.Force)
@@ -2933,6 +2948,7 @@ func newCmdObjectInstanceSyncUpdate(kind string) *cobra.Command {
 	}
 	flags := cmd.Flags()
 	addFlagsGlobal(flags, &options.OptsGlobal)
+	commoncmd.FlagsAsync(flags, &options.OptsAsync)
 	commoncmd.FlagsLock(flags, &options.OptsLock)
 	commoncmd.FlagsResourceSelector(flags, &options.OptsResourceSelector)
 	commoncmd.FlagForce(flags, &options.Force)
@@ -3047,6 +3063,7 @@ func newCmdObjectInstanceShutdown(kind string) *cobra.Command {
 	}
 	flags := cmd.Flags()
 	addFlagsGlobal(flags, &options.OptsGlobal)
+	commoncmd.FlagsAsync(flags, &options.OptsAsync)
 	commoncmd.FlagsLock(flags, &options.OptsLock)
 	commoncmd.FlagsEncap(flags, &options.OptsEncap)
 	commoncmd.FlagsResourceSelector(flags, &options.OptsResourceSelector)
@@ -3095,6 +3112,7 @@ func newCmdObjectInstanceStartStandby(kind string) *cobra.Command {
 	}
 	flags := cmd.Flags()
 	addFlagsGlobal(flags, &options.OptsGlobal)
+	commoncmd.FlagsAsync(flags, &options.OptsAsync)
 	commoncmd.FlagsLock(flags, &options.OptsLock)
 	commoncmd.FlagsEncap(flags, &options.OptsEncap)
 	commoncmd.FlagsResourceSelector(flags, &options.OptsResourceSelector)

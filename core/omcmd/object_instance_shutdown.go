@@ -17,6 +17,7 @@ import (
 type (
 	CmdObjectInstanceShutdown struct {
 		OptsGlobal
+		commoncmd.OptsAsync
 		commoncmd.OptsEncap
 		commoncmd.OptsLock
 		commoncmd.OptsResourceSelector
@@ -40,6 +41,9 @@ func (t *CmdObjectInstanceShutdown) Run(kind string) error {
 		objectaction.WithOutput(t.Output),
 		objectaction.WithColor(t.Color),
 		objectaction.WithIgnoreNotFound(t.IgnoreNotFound),
+		objectaction.WithAsyncTime(t.Time),
+		objectaction.WithAsyncWait(t.Wait),
+		objectaction.WithAsyncWatch(t.Watch),
 		objectaction.WithLocal(t.Local),
 		objectaction.WithRemoteNodes(t.NodeSelector),
 		objectaction.WithLocalFunc(func(ctx context.Context, p naming.Path) (interface{}, error) {
