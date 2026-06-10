@@ -45,7 +45,7 @@ var (
 		"blacklistadmin": RoleBlacklistAdmin,
 		"heartbeat":      RoleHeartbeat,
 		"join":           RoleJoin,
-		"leave":          RoleJoin,
+		"leave":          RoleLeave,
 	}
 
 	GrantRoot           = NewGrant("root", "")
