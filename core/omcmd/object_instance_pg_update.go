@@ -13,6 +13,7 @@ import (
 type (
 	CmdObjectInstancePGUpdate struct {
 		OptsGlobal
+		commoncmd.OptsAsync
 		commoncmd.OptsEncap
 		commoncmd.OptsLock
 		commoncmd.OptsResourceSelector
@@ -29,6 +30,9 @@ func (t *CmdObjectInstancePGUpdate) Run(kind string) error {
 		objectaction.WithOutput(t.Output),
 		objectaction.WithColor(t.Color),
 		objectaction.WithIgnoreNotFound(t.IgnoreNotFound),
+		objectaction.WithAsyncTime(t.Time),
+		objectaction.WithAsyncWait(t.Wait),
+		objectaction.WithAsyncWatch(t.Watch),
 		objectaction.WithSlaves(t.Slaves),
 		objectaction.WithAllSlaves(t.AllSlaves),
 		objectaction.WithMaster(t.Master),

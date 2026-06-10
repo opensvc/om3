@@ -13,6 +13,7 @@ import (
 type (
 	CmdObjectInstanceSyncUpdate struct {
 		OptsGlobal
+		commoncmd.OptsAsync
 		commoncmd.OptsLock
 		commoncmd.OptsResourceSelector
 		Force  bool
@@ -31,6 +32,9 @@ func (t *CmdObjectInstanceSyncUpdate) Run(kind string) error {
 		objectaction.WithOutput(t.Output),
 		objectaction.WithColor(t.Color),
 		objectaction.WithIgnoreNotFound(t.IgnoreNotFound),
+		objectaction.WithAsyncTime(t.Time),
+		objectaction.WithAsyncWait(t.Wait),
+		objectaction.WithAsyncWatch(t.Watch),
 		objectaction.WithLocal(t.Local),
 		objectaction.WithLocalFunc(func(ctx context.Context, p naming.Path) (interface{}, error) {
 			o, err := object.NewActor(p)

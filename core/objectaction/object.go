@@ -730,7 +730,7 @@ func (t T) DoRemote() error {
 				return err
 			}
 			if t.Wait {
-				t.waitRequesterSessionEnd(ctx, c, requesterSid, p, waitC)
+				t.waitRequesterSessionEnd(ctx, c, requesterSid, n, p, waitC)
 			}
 			t.instanceDo(ctx, resultQ, n, p, func(ctx context.Context, n string, p naming.Path) (any, error) {
 				return t.RemoteFunc(ctx, p, n)
@@ -1054,7 +1054,7 @@ func (t T) waitExpectation(ctx context.Context, c *client.T, idC <-chan uuid.UUI
 	}()
 }
 
-func (t T) waitRequesterSessionEnd(ctx context.Context, c *client.T, requesterSid uuid.UUID, p naming.Path, errC chan<- error) {
+func (t T) waitRequesterSessionEnd(ctx context.Context, c *client.T, requesterSid uuid.UUID, n string, p naming.Path, errC chan<- error) {
 	var (
 		filters []string
 		msg     pubsub.Messager
@@ -1064,10 +1064,10 @@ func (t T) waitRequesterSessionEnd(ctx context.Context, c *client.T, requesterSi
 	)
 	filters = []string{
 		fmt.Sprintf("ObjectStatusDeleted,path=%s", p),
-		fmt.Sprintf("ExecFailed,path=%s,.session_id=%s", p, requesterSid),
-		fmt.Sprintf("ExecSuccess,path=%s,.session_id=%s", p, requesterSid),
+		fmt.Sprintf("ExecFailed,path=%s,.session_id=\"%s\"", p, requesterSid),
+		fmt.Sprintf("ExecSuccess,path=%s,.session_id=\"%s\"", p, requesterSid),
 	}
-	getEvents := c.NewGetEvents().SetFilters(filters)
+	getEvents := c.NewGetEvents().SetFilters(filters).SetNodename(n)
 	if t.WaitDuration > 0 {
 		getEvents = getEvents.SetDuration(t.WaitDuration)
 	}

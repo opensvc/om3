@@ -13,6 +13,7 @@ import (
 type (
 	CmdObjectInstanceDelete struct {
 		OptsGlobal
+		commoncmd.OptsAsync
 		commoncmd.OptsLock
 		NodeSelector string
 	}
@@ -25,6 +26,9 @@ func (t *CmdObjectInstanceDelete) Run(kind string) error {
 		objectaction.WithIgnoreNotFound(t.IgnoreNotFound),
 		objectaction.WithOutput(t.Output),
 		objectaction.WithObjectSelector(mergedSelector),
+		objectaction.WithAsyncTime(t.Time),
+		objectaction.WithAsyncWait(t.Wait),
+		objectaction.WithAsyncWatch(t.Watch),
 		objectaction.WithRemoteNodes(t.NodeSelector),
 		objectaction.WithRemoteFunc(commoncmd.ObjectInstanceDeleteRemoteFunc),
 		objectaction.WithLocalFunc(func(ctx context.Context, p naming.Path) (interface{}, error) {
