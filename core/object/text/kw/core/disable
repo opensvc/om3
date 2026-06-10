@@ -1,5 +1,6 @@
-Disables the object instance, which has the following effects:
+Disables the object instance:
 
-* The instance status and the status of all its resource is `n/a`.
-* Stop and start actions have no effect, and not produce error.
-* Disabled resources are not enabled when DEFAULT.disable=false.
+* Instance and all resource statuses become `n/a`.
+* Instance actions (e.g. start, stop, ...) are silently ignored.
+* Resources stay disabled regardless of `DEFAULT.disable=false`.
+* `disable=false` on a resource does not override `DEFAULT.disable=true`.
