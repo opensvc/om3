@@ -11,7 +11,7 @@ import (
 
 type (
 	T struct {
-		Log plog.Logger
+		Log *plog.Logger
 	}
 
 	stringer interface {
