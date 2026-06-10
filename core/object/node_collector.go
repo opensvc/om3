@@ -30,7 +30,7 @@ type (
 	}
 
 	CollectorProblem struct {
-		text string `json:"text"`
+		text string
 	}
 )
 
