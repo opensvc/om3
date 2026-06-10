@@ -293,11 +293,11 @@ func (t *actor) ConfigureResources() {
 		}
 		r := factory()
 		isEncapResource := func() bool {
-			encap := t.config.GetBool(key.T{k, "encap"})
+			encap := t.config.GetBool(key.New(k, "encap"))
 			if encap {
 				return true
 			}
-			tags := t.config.GetSet(key.T{k, "tags"})
+			tags := t.config.GetSet(key.New(k, "tags"))
 			if tags.Has("encap") {
 				return true
 			}

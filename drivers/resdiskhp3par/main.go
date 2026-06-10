@@ -1307,8 +1307,8 @@ func (t *T) groupNames() (map[string]string, error) {
 	}
 	rid := t.RID()
 	for _, node := range nodes {
-		arrayName := obj.Config().GetStringAs(key.T{rid, "array"}, node)
-		groupName := obj.Config().GetStringAs(key.T{rid, "group"}, node)
+		arrayName := obj.Config().GetStringAs(key.New(rid, "array"), node)
+		groupName := obj.Config().GetStringAs(key.New(rid, "group"), node)
 		m[arrayName] = groupName
 	}
 	return m, nil
