@@ -319,6 +319,11 @@ func (t Grants) filterGrant(grant Grant) (grants Grants) {
 			return append(grants, grant)
 		}
 	}
+	if role == RoleAdmin {
+		if t.HasRoleOn("", RoleAdmin) {
+			return append(grants, grant)
+		}
+	}
 	return
 }
 
