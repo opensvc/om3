@@ -58,6 +58,12 @@ func TestKey(t *testing.T) {
 			render: "array#baie.acme.com.api",
 		},
 		{
+			s:      "array#baie.acme.com.api@n1.opensvc.com",
+			t:      T{"array#baie.acme.com", "api@n1.opensvc.com"},
+			render: "array#baie.acme.com.api@n1.opensvc.com",
+			scope:  "n1.opensvc.com",
+		},
+		{
 			s:      "data.a.b/C.D",
 			t:      T{"data", "a.b/C.D"},
 			render: "data.a.b/C.D",
