@@ -41,6 +41,7 @@ import (
 	"github.com/opensvc/om3/v3/daemon/listener"
 	"github.com/opensvc/om3/v3/daemon/msgbus"
 	"github.com/opensvc/om3/v3/daemon/nmon"
+	"github.com/opensvc/om3/v3/daemon/pgmetrics"
 	"github.com/opensvc/om3/v3/daemon/runner"
 	"github.com/opensvc/om3/v3/daemon/scheduler"
 	"github.com/opensvc/om3/v3/util/converters"
@@ -243,6 +244,7 @@ func (t *T) Start(ctx context.Context) error {
 		nmon.NewManager(daemonenv.DrainChanDuration, qsMedium),
 		hook.NewManager(daemonenv.DrainChanDuration, qsSmall),
 		dns.NewManager(daemonenv.DrainChanDuration, qsMedium),
+		pgmetrics.New(qsMedium),
 		discover.NewManager(daemonenv.DrainChanDuration, qsHuge).
 			WithOmonSubQS(qsMedium).
 			WithImonStarter(imonFactory),
