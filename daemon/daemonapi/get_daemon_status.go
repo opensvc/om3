@@ -62,10 +62,10 @@ func (a *DaemonAPI) GetClusterStatus(ctx echo.Context, params api.GetClusterStat
 
 	// RBAC namespace filtering
 	userGrants := grantsFromContext(ctx)
-	if !userGrants.HasRole(rbac.RoleRoot) {
-		// If the user has no "root" grant, filter out all objects from namespaces
-		// he has no role for. The guest:ns1 grant is sufficient to see all
-		// objects in ns1.
+	if !userGrants.HasRoleOn("", rbac.RoleRoot, rbac.RoleAdmin, rbac.RoleOperator, rbac.RoleGuest) {
+		// If the user has no "root", "admin", "operator" or "guest" grant, filter
+		// out all objects from namespaces he has no role for.
+		// The guest:ns1 grant is sufficient to see all objects in ns1.
 		status = status.WithNamespace(userGrants.Namespaces()...)
 	}
 
