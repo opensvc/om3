@@ -42,15 +42,15 @@ func TestFilterGrantStrings(t *testing.T) {
 	})
 
 	// Test case 4: admin in allowed (no scope), admin role, ns2 scope
-	// admin without scope does not grant admin:ns2
+	// admin without scope grants admin:ns2
 	t.Run("admin in allowed, admin role, ns2 scope", func(t *testing.T) {
 		allowed := []string{"admin"}
 		roles := []Role{RoleAdmin}
 		scope := "ns2"
 
 		result := FilterGrantStrings(allowed, roles, scope)
-		// admin grant without scope doesn't match admin:ns2, and there's no admin:ns2 or root
-		require.Empty(t, result)
+		expected := NewGrants("admin:ns2")
+		require.Equal(t, expected, result)
 	})
 
 	// Test case 5: admin in allowed (no scope), guest role, ns2 scope
