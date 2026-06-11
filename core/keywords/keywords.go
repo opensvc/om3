@@ -208,6 +208,15 @@ func (t Store) ByOption(option string) Store {
 	return Store{}
 }
 
+func (t Store) WithKind(kind naming.Kind) (store Store) {
+	for _, kw := range t {
+		if kw.Kind.Has(kind) {
+			store = append(store, kw)
+		}
+	}
+	return store
+}
+
 func (t Store) Lookup(k key.T, kind naming.Kind, sectionType string) *Keyword {
 	driverGroup := strings.Split(k.Section, "#")[0]
 	baseOption := k.BaseOption()
