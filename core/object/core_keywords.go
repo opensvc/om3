@@ -764,7 +764,7 @@ func KeywordStoreWithDrivers(kind naming.Kind) keywords.Store {
 	if kind == naming.KindCcfg {
 		store = append(store, ccfgKeywordStore...)
 	} else {
-		store = append(store, keywordStore...)
+		store = keywordStore.WithKind(kind)
 	}
 	for _, drvID := range driver.List() {
 		factory := resource.NewResourceFunc(drvID)
