@@ -84,18 +84,27 @@ func (t *Logger) clone() *Logger {
 }
 
 func (t *Logger) AddPrefix(prefix string) *Logger {
+	if t == nil {
+		return nil
+	}
 	l := t.clone()
 	l.prefix = t.prefix + prefix
 	return l
 }
 
 func (t *Logger) WithPrefix(prefix string) *Logger {
+	if t == nil {
+		return nil
+	}
 	n := t.clone()
 	n.prefix = prefix
 	return n
 }
 
 func (t *Logger) Prefix() string {
+	if t == nil {
+		return ""
+	}
 	return t.prefix
 }
 
@@ -117,6 +126,9 @@ func levelToString(level zerolog.Level) string {
 }
 
 func (t *Logger) Msgf(format string, a ...any) string {
+	if t == nil {
+		return ""
+	}
 	return fmt.Sprintf(t.prefix+format, a...)
 }
 
@@ -141,6 +153,9 @@ func (t *Logger) Warnf(format string, a ...any) {
 }
 
 func (t *Logger) Levelf(level zerolog.Level, format string, a ...any) {
+	if t == nil {
+		return
+	}
 	msg := t.Msgf(format, a...)
 
 	t.logger.WithLevel(level).Str(levelKey, levelToString(level)).Msg(msg)
@@ -149,6 +164,9 @@ func (t *Logger) Levelf(level zerolog.Level, format string, a ...any) {
 }
 
 func (t *Logger) Q() chan LogMessage {
+	if t == nil {
+		return nil
+	}
 	t.mu.RLock()
 	defer t.mu.RUnlock()
 	return t.q
@@ -185,6 +203,9 @@ func (t *Logger) sendAudit(level zerolog.Level, msg string) {
 }
 
 func (t *Logger) Attr(k string, v any) *Logger {
+	if t == nil {
+		return nil
+	}
 	n := t.clone()
 	switch i := v.(type) {
 	case string:
@@ -220,15 +241,24 @@ func (t *Logger) Attr(k string, v any) *Logger {
 }
 
 func (t *Logger) Level(level zerolog.Level) *Logger {
+	if t == nil {
+		return nil
+	}
 	t.logger = t.logger.Level(level)
 	return t
 }
 
 func (t *Logger) GetLevel() zerolog.Level {
+	if t == nil {
+		return zerolog.Disabled
+	}
 	return t.logger.GetLevel()
 }
 
 func (t *Logger) SetAuditQ(q chan LogMessage) error {
+	if t == nil {
+		return nil
+	}
 	t.mu.Lock()
 	defer t.mu.Unlock()
 	t.q = q
@@ -242,6 +272,9 @@ func (t *Logger) SetAuditQ(q chan LogMessage) error {
 }
 
 func (t *Logger) UnsetAuditQ(q chan LogMessage) error {
+	if t == nil {
+		return nil
+	}
 	t.mu.Lock()
 	defer t.mu.Unlock()
 	if t.q == nil {
@@ -261,6 +294,9 @@ func (t *Logger) UnsetAuditQ(q chan LogMessage) error {
 }
 
 func (t *Logger) HandleAuditStart(q chan LogMessage, selectedSubsystems []string, labels ...string) {
+	if t == nil {
+		return
+	}
 	if !t.auditMatch(selectedSubsystems, labels...) {
 		return
 	}
@@ -271,6 +307,9 @@ func (t *Logger) HandleAuditStart(q chan LogMessage, selectedSubsystems []string
 }
 
 func (t *Logger) HandleAuditStop(q chan LogMessage, selectedSubsystems []string, labels ...string) {
+	if t == nil {
+		return
+	}
 	if !t.auditMatch(selectedSubsystems, labels...) {
 		return
 	}
@@ -296,10 +335,16 @@ func (t *Logger) auditMatch(selectedSubsystems []string, labels ...string) bool 
 }
 
 func (t *Logger) Logger() zerolog.Logger {
+	if t == nil {
+		return zerolog.Nop()
+	}
 	return t.logger
 }
 
 func (t *Logger) WithContext(ctx context.Context) context.Context {
+	if t == nil {
+		return ctx
+	}
 	if lp, ok := ctx.Value(ctxKey{}).(*Logger); ok {
 		if lp == t {
 			// Do not store same logger.
