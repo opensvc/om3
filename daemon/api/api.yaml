@@ -3161,6 +3161,36 @@ paths:
         500:
           $ref: '#/components/responses/500'
 
+  /api/node/name/{nodename}/metrics:
+    get:
+      description: |
+        Proxy to node's /metrics endpoint, filtering metrics based on requester's RBAC grants.
+        Guest role on the namespace or all namespaces or better is sufficient to access object metrics.
+        Root role is necessary to access daemon metrics.
+      operationId: GetNodeMetrics
+      tags:
+        - node
+      security:
+        - basicAuth: []
+        - bearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/inPathNodeName'
+      responses:
+        200:
+          description: OK
+          content:
+            text/plain:
+              schema:
+                type: string
+        400:
+          $ref: '#/components/responses/400'
+        401:
+          $ref: '#/components/responses/401'
+        403:
+          $ref: '#/components/responses/403'
+        500:
+          $ref: '#/components/responses/500'
+
   /api/node/name/{nodename}/ping:
     get:
       description: |
