@@ -34,6 +34,25 @@ func (t *nscfg) KeywordLookup(k key.T, sectionType string) *keywords.Keyword {
 	return keywordLookup(keywordStore, k, t.path.Kind, sectionType)
 }
 
+func (t *nscfg) Boot(ctx context.Context) error {
+	ctx = actioncontext.WithProps(ctx, actioncontext.Boot)
+	if err := t.validateAction(); err != nil {
+		return err
+	}
+	t.setenv("boot", false)
+	unlock, err := t.lockAction(ctx)
+	if err != nil {
+		return err
+	}
+	defer unlock()
+	return t.lockedBoot(ctx)
+}
+
+func (t *nscfg) lockedBoot(ctx context.Context) error {
+	// For nscfg, boot action calls PGUpdate instead of resource.Boot
+	return t.PGUpdate(ctx)
+}
+
 func (t *nscfg) PGUpdate(ctx context.Context) error {
 	ctx = actioncontext.WithProps(ctx, actioncontext.PGUpdate)
 	if err := t.validateAction(); err != nil {

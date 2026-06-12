@@ -41,6 +41,7 @@ func init() {
 
 	cmdObjectInstance.AddCommand(
 		cmdObjectInstancePG,
+		newCmdObjectInstanceBoot(kind),
 		newCmdObjectInstanceClear(kind),
 		newCmdObjectInstanceList(kind),
 		newCmdObjectInstanceDelete(kind),
