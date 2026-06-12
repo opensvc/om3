@@ -562,8 +562,8 @@ paths:
         - basicAuth: []
         - bearerAuth: []
       parameters:
-        - $ref: '#/components/parameters/inQueryNamespaceOptional'
-        - $ref: '#/components/parameters/inQuerySelectorOptional'
+        - $ref: '#/components/parameters/NamespaceOptional'
+        - $ref: '#/components/parameters/SelectorOptional'
       responses:
         200:
           description: OK
@@ -852,7 +852,7 @@ paths:
         - bearerAuth: []
       parameters:
         - $ref: '#/components/parameters/inPathNodeName'
-        - $ref: '#/components/parameters/inQuerySessionID'
+        - $ref: '#/components/parameters/inQueryRequesterSid'
       responses:
         200:
           content:
@@ -938,7 +938,7 @@ paths:
       description: Refresh and send to the collector the asset discovery.
       parameters:
         - $ref: '#/components/parameters/inPathNodeName'
-        - $ref: '#/components/parameters/inQuerySessionID'
+        - $ref: '#/components/parameters/inQueryRequesterSid'
       responses:
         200:
           content:
@@ -962,32 +962,6 @@ paths:
         - basicAuth: []
         - bearerAuth: []
       description: Refresh and send to the collector the disk discovery.
-      parameters:
-        - $ref: '#/components/parameters/inPathNodeName'
-        - $ref: '#/components/parameters/inQueryRequesterSid'
-      responses:
-        200:
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/NodeActionAccepted'
-          description: OK
-        401:
-          $ref: '#/components/responses/401'
-        403:
-          $ref: '#/components/responses/403'
-        500:
-          $ref: '#/components/responses/500'
-
-  /api/node/name/{nodename}/action/push/patch:
-    post:
-      operationId: PostNodeActionPushPatch
-      tags:
-        - node
-      security:
-        - basicAuth: []
-        - bearerAuth: []
-      description: Refresh and send to the collector the package discovery.
       parameters:
         - $ref: '#/components/parameters/inPathNodeName'
         - $ref: '#/components/parameters/inQueryRequesterSid'
@@ -1045,7 +1019,7 @@ paths:
         Capabalities are used to enable or disable features based on the current operating system state.
       parameters:
         - $ref: '#/components/parameters/inPathNodeName'
-        - $ref: '#/components/parameters/inQuerySessionID'
+        - $ref: '#/components/parameters/inQueryRequesterSid'
       responses:
         200:
           content:
@@ -1504,7 +1478,7 @@ paths:
         - $ref: '#/components/parameters/EventFilter'
         - $ref: '#/components/parameters/EventReplay'
         - $ref: '#/components/parameters/EventCache'
-        - $ref: '#/components/parameters/inQuerySelectorOptional'
+        - $ref: '#/components/parameters/SelectorOptional'
       responses:
         200:
           description: OK
@@ -1803,8 +1777,6 @@ paths:
           schema:
             type: string
             example: scheduler
-        - $ref: '#/components/parameters/inQuerySelectorOptional'
-        - $ref: '#/components/parameters/inQueryRid'
       responses:
         200:
           description: OK
@@ -2108,7 +2080,7 @@ paths:
         - $ref: '#/components/parameters/inPathName'
         - $ref: '#/components/parameters/inQueryAllSlaves'
         - $ref: '#/components/parameters/inQueryMaster'
-        - $ref: '#/components/parameters/inQuerySessionID'
+        - $ref: '#/components/parameters/inQueryRequesterSid'
         - $ref: '#/components/parameters/inQueryRid'
         - $ref: '#/components/parameters/inQuerySlaves'
         - $ref: '#/components/parameters/inQuerySubset'
@@ -2145,7 +2117,7 @@ paths:
         - $ref: '#/components/parameters/inPathNamespace'
         - $ref: '#/components/parameters/inPathKind'
         - $ref: '#/components/parameters/inPathName'
-        - $ref: '#/components/parameters/inQuerySessionID'
+        - $ref: '#/components/parameters/inQueryRequesterSid'
       responses:
         200:
           content:
@@ -2184,7 +2156,7 @@ paths:
         - $ref: '#/components/parameters/inQueryAllSlaves'
         - $ref: '#/components/parameters/inQueryMaster'
         - $ref: '#/components/parameters/inQuerySlaves'
-        - $ref: '#/components/parameters/inQuerySessionID'
+        - $ref: '#/components/parameters/inQueryRequesterSid'
       responses:
         200:
           content:
@@ -2221,7 +2193,7 @@ paths:
         - $ref: '#/components/parameters/inQueryForce'
         - $ref: '#/components/parameters/inQueryLeader'
         - $ref: '#/components/parameters/inQueryMaster'
-        - $ref: '#/components/parameters/inQuerySessionID'
+        - $ref: '#/components/parameters/inQueryRequesterSid'
         - $ref: '#/components/parameters/inQueryRid'
         - $ref: '#/components/parameters/inQuerySlaves'
         - $ref: '#/components/parameters/inQueryStateOnly'
@@ -2264,7 +2236,7 @@ paths:
         - $ref: '#/components/parameters/inQueryDisableRollback'
         - $ref: '#/components/parameters/inQueryForce'
         - $ref: '#/components/parameters/inQueryMaster'
-        - $ref: '#/components/parameters/inQuerySessionID'
+        - $ref: '#/components/parameters/inQueryRequesterSid'
         - $ref: '#/components/parameters/inQueryRid'
         - $ref: '#/components/parameters/inQuerySlaves'
         - $ref: '#/components/parameters/inQuerySubset'
@@ -2306,7 +2278,7 @@ paths:
         - $ref: '#/components/parameters/inQueryDisableRollback'
         - $ref: '#/components/parameters/inQueryForce'
         - $ref: '#/components/parameters/inQueryMaster'
-        - $ref: '#/components/parameters/inQuerySessionID'
+        - $ref: '#/components/parameters/inQueryRequesterSid'
         - $ref: '#/components/parameters/inQueryRid'
         - $ref: '#/components/parameters/inQuerySlaves'
         - $ref: '#/components/parameters/inQuerySubset'
@@ -2343,7 +2315,7 @@ paths:
         - $ref: '#/components/parameters/inPathNamespace'
         - $ref: '#/components/parameters/inPathKind'
         - $ref: '#/components/parameters/inPathName'
-        - $ref: '#/components/parameters/inQuerySessionID'
+        - $ref: '#/components/parameters/inQueryRequesterSid'
       responses:
         200:
           content:
@@ -2377,7 +2349,7 @@ paths:
         - $ref: '#/components/parameters/inQueryDisableRollback'
         - $ref: '#/components/parameters/inQueryForce'
         - $ref: '#/components/parameters/inQueryMaster'
-        - $ref: '#/components/parameters/inQuerySessionID'
+        - $ref: '#/components/parameters/inQueryRequesterSid'
         - $ref: '#/components/parameters/inQueryRid'
         - $ref: '#/components/parameters/inQuerySlaves'
         - $ref: '#/components/parameters/inQuerySubset'
@@ -2460,7 +2432,7 @@ paths:
         - $ref: '#/components/parameters/inQueryAllSlaves'
         - $ref: '#/components/parameters/inQueryForce'
         - $ref: '#/components/parameters/inQueryMaster'
-        - $ref: '#/components/parameters/inQuerySessionID'
+        - $ref: '#/components/parameters/inQueryRequesterSid'
         - $ref: '#/components/parameters/inQueryRid'
         - $ref: '#/components/parameters/inQuerySlaves'
         - $ref: '#/components/parameters/inQuerySubset'
@@ -2501,7 +2473,7 @@ paths:
         - $ref: '#/components/parameters/inQueryDisableRollback'
         - $ref: '#/components/parameters/inQueryForce'
         - $ref: '#/components/parameters/inQueryMaster'
-        - $ref: '#/components/parameters/inQuerySessionID'
+        - $ref: '#/components/parameters/inQueryRequesterSid'
         - $ref: '#/components/parameters/inQueryRid'
         - $ref: '#/components/parameters/inQuerySlaves'
         - $ref: '#/components/parameters/inQuerySubset'
@@ -2542,7 +2514,7 @@ paths:
         - $ref: '#/components/parameters/inQueryDisableRollback'
         - $ref: '#/components/parameters/inQueryForce'
         - $ref: '#/components/parameters/inQueryMaster'
-        - $ref: '#/components/parameters/inQuerySessionID'
+        - $ref: '#/components/parameters/inQueryRequesterSid'
         - $ref: '#/components/parameters/inQueryRid'
         - $ref: '#/components/parameters/inQuerySlaves'
         - $ref: '#/components/parameters/inQuerySubset'
@@ -2615,50 +2587,12 @@ paths:
         - $ref: '#/components/parameters/inQueryForce'
         - $ref: '#/components/parameters/inQueryMaster'
         - $ref: '#/components/parameters/inQueryMoveTo'
-        - $ref: '#/components/parameters/inQuerySessionID'
+        - $ref: '#/components/parameters/inQueryRequesterSid'
         - $ref: '#/components/parameters/inQueryRid'
         - $ref: '#/components/parameters/inQuerySlaves'
         - $ref: '#/components/parameters/inQuerySubset'
         - $ref: '#/components/parameters/inQueryTag'
         - $ref: '#/components/parameters/inQueryTo'
-      responses:
-        200:
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/InstanceActionAccepted'
-          description: OK
-        400:
-          $ref: '#/components/responses/400'
-        401:
-          $ref: '#/components/responses/401'
-        403:
-          $ref: '#/components/responses/403'
-        500:
-          $ref: '#/components/responses/500'
-      security:
-        - basicAuth: []
-        - bearerAuth: []
-      tags:
-        - node / instance / svc
-        - node / instance / vol
-
-  /api/node/name/{nodename}/instance/path/{namespace}/{kind}/{name}/action/pg/update:
-    post:
-      description: Update the process group settings for the object instance.
-      operationId: PostInstanceActionPGUpdate
-      parameters:
-        - $ref: '#/components/parameters/inPathNodeName'
-        - $ref: '#/components/parameters/inPathNamespace'
-        - $ref: '#/components/parameters/inPathKind'
-        - $ref: '#/components/parameters/inPathName'
-        - $ref: '#/components/parameters/inQueryAllSlaves'
-        - $ref: '#/components/parameters/inQueryMaster'
-        - $ref: '#/components/parameters/inQuerySessionID'
-        - $ref: '#/components/parameters/inQueryRid'
-        - $ref: '#/components/parameters/inQuerySlaves'
-        - $ref: '#/components/parameters/inQuerySubset'
-        - $ref: '#/components/parameters/inQueryTag'
       responses:
         200:
           content:
@@ -2690,7 +2624,7 @@ paths:
         - $ref: '#/components/parameters/inPathNamespace'
         - $ref: '#/components/parameters/inPathKind'
         - $ref: '#/components/parameters/inPathName'
-        - $ref: '#/components/parameters/inQuerySessionID'
+        - $ref: '#/components/parameters/inQueryRequesterSid'
         - $ref: '#/components/parameters/inQueryRid'
         - $ref: '#/components/parameters/inQuerySubset'
         - $ref: '#/components/parameters/inQueryTag'
@@ -2728,7 +2662,7 @@ paths:
         - $ref: '#/components/parameters/inQueryAllSlaves'
         - $ref: '#/components/parameters/inQueryMaster'
         - $ref: '#/components/parameters/inQuerySlaves'
-        - $ref: '#/components/parameters/inQuerySessionID'
+        - $ref: '#/components/parameters/inQueryRequesterSid'
       responses:
         200:
           content:
@@ -3154,36 +3088,6 @@ paths:
             text/event-stream:
               schema:
                 $ref: '#/components/schemas/LogList'
-        401:
-          $ref: '#/components/responses/401'
-        403:
-          $ref: '#/components/responses/403'
-        500:
-          $ref: '#/components/responses/500'
-
-  /api/node/name/{nodename}/metrics:
-    get:
-      description: |
-        Proxy to node's /metrics endpoint, filtering metrics based on requester's RBAC grants.
-        Guest role on the namespace or all namespaces or better is sufficient to access object metrics.
-        Root role is necessary to access daemon metrics.
-      operationId: GetNodeMetrics
-      tags:
-        - node
-      security:
-        - basicAuth: []
-        - bearerAuth: []
-      parameters:
-        - $ref: '#/components/parameters/inPathNodeName'
-      responses:
-        200:
-          description: OK
-          content:
-            text/plain:
-              schema:
-                type: string
-        400:
-          $ref: '#/components/responses/400'
         401:
           $ref: '#/components/responses/401'
         403:
@@ -7125,8 +7029,7 @@ components:
         - sub
         - sid
         - global_expect
-        - cmd
-        - rid
+        - desc
       properties:
         node:
           type: string
@@ -7146,9 +7049,7 @@ components:
           type: string
         global_expect:
           type: string
-        cmd:
-          type: string
-        rid:
+        desc:
           type: string
 
     ProcessItems:
@@ -8035,7 +7936,7 @@ components:
       schema:
         type: integer
 
-    inQueryNamespaceOptional:
+    NamespaceOptional:
       name: namespace
       in: query
       description: namespace
@@ -8153,7 +8054,7 @@ components:
         items:
           $ref: '#/components/schemas/Role'
 
-    inQuerySelectorOptional:
+    SelectorOptional:
       name: selector
       in: query
       description: selector
@@ -8398,9 +8299,9 @@ components:
       schema:
         type: string
 
-    inQuerySessionID:
+    inQueryRequesterSid:
       in: query
-      name: session_id
+      name: requester_sid
       schema:
         type: string
         format: uuid
@@ -8448,7 +8349,6 @@ components:
     inQueryRid:
       in: query
       name: rid
-      description: a resource selector expression
       schema:
         type: string
 

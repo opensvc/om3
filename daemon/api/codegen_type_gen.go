@@ -1897,13 +1897,12 @@ type Problem struct {
 
 // ProcessItem defines model for ProcessItem.
 type ProcessItem struct {
-	Cmd          string    `json:"cmd"`
+	Desc         string    `json:"desc"`
 	Elapsed      string    `json:"elapsed"`
 	GlobalExpect string    `json:"global_expect"`
 	Node         string    `json:"node"`
 	Object       string    `json:"object"`
 	Pid          int       `json:"pid"`
-	Rid          string    `json:"rid"`
 	Sid          string    `json:"sid"`
 	StartedAt    time.Time `json:"started_at"`
 	Sub          string    `json:"sub"`
@@ -2305,6 +2304,9 @@ type LogGrep = string
 // LogLines defines model for LogLines.
 type LogLines = int
 
+// NamespaceOptional defines model for NamespaceOptional.
+type NamespaceOptional = string
+
 // NodeOptional defines model for NodeOptional.
 type NodeOptional = string
 
@@ -2337,6 +2339,9 @@ type RidOptional = string
 
 // Roles defines model for Roles.
 type Roles = []Role
+
+// SelectorOptional defines model for SelectorOptional.
+type SelectorOptional = string
 
 // InPathHeartbeatName Heartbeat name, example '1.rx' for heartbeat receiver of 'hb#1' section
 type InPathHeartbeatName = DaemonHeartbeatName
@@ -2417,9 +2422,6 @@ type InQueryMaster = bool
 // InQueryMoveTo defines model for inQueryMoveTo.
 type InQueryMoveTo = string
 
-// InQueryNamespaceOptional defines model for inQueryNamespaceOptional.
-type InQueryNamespaceOptional = string
-
 // InQueryNodeSelector defines model for inQueryNodeSelector.
 type InQueryNodeSelector = string
 
@@ -2428,6 +2430,9 @@ type InQueryOption = string
 
 // InQueryPoolName defines model for inQueryPoolName.
 type InQueryPoolName = string
+
+// InQueryRequesterSid defines model for inQueryRequesterSid.
+type InQueryRequesterSid = openapi_types.UUID
 
 // InQueryResourceFileName defines model for inQueryResourceFileName.
 type InQueryResourceFileName = string
@@ -2443,12 +2448,6 @@ type InQuerySeats = int
 
 // InQuerySection defines model for inQuerySection.
 type InQuerySection = string
-
-// InQuerySelectorOptional defines model for inQuerySelectorOptional.
-type InQuerySelectorOptional = string
-
-// InQuerySessionID defines model for inQuerySessionID.
-type InQuerySessionID = openapi_types.UUID
 
 // InQuerySets defines model for inQuerySets.
 type InQuerySets = []string
@@ -2590,10 +2589,10 @@ type PostClusterLeaveParams struct {
 // GetClusterStatusParams defines parameters for GetClusterStatus.
 type GetClusterStatusParams struct {
 	// Namespace namespace
-	Namespace *InQueryNamespaceOptional `form:"namespace,omitempty" json:"namespace,omitempty"`
+	Namespace *NamespaceOptional `form:"namespace,omitempty" json:"namespace,omitempty"`
 
 	// Selector selector
-	Selector *InQuerySelectorOptional `form:"selector,omitempty" json:"selector,omitempty"`
+	Selector *SelectorOptional `form:"selector,omitempty" json:"selector,omitempty"`
 }
 
 // GetInstancesParams defines parameters for GetInstances.
@@ -2625,37 +2624,37 @@ type GetNodesParams struct {
 
 // PostPeerActionDequeueParams defines parameters for PostPeerActionDequeue.
 type PostPeerActionDequeueParams struct {
-	SessionId *InQuerySessionID `form:"session_id,omitempty" json:"session_id,omitempty"`
+	RequesterSid *InQueryRequesterSid `form:"requester_sid,omitempty" json:"requester_sid,omitempty"`
 }
 
 // PostPeerActionFreezeParams defines parameters for PostPeerActionFreeze.
 type PostPeerActionFreezeParams struct {
-	SessionId *InQuerySessionID `form:"session_id,omitempty" json:"session_id,omitempty"`
+	RequesterSid *InQueryRequesterSid `form:"requester_sid,omitempty" json:"requester_sid,omitempty"`
 }
 
 // PostNodeActionPushAssetParams defines parameters for PostNodeActionPushAsset.
 type PostNodeActionPushAssetParams struct {
-	SessionId *InQuerySessionID `form:"session_id,omitempty" json:"session_id,omitempty"`
+	RequesterSid *InQueryRequesterSid `form:"requester_sid,omitempty" json:"requester_sid,omitempty"`
 }
 
 // PostNodeActionPushDiskParams defines parameters for PostNodeActionPushDisk.
 type PostNodeActionPushDiskParams struct {
-	SessionId *InQuerySessionID `form:"session_id,omitempty" json:"session_id,omitempty"`
+	RequesterSid *InQueryRequesterSid `form:"requester_sid,omitempty" json:"requester_sid,omitempty"`
 }
 
 // PostNodeActionPushPkgParams defines parameters for PostNodeActionPushPkg.
 type PostNodeActionPushPkgParams struct {
-	SessionId *InQuerySessionID `form:"session_id,omitempty" json:"session_id,omitempty"`
+	RequesterSid *InQueryRequesterSid `form:"requester_sid,omitempty" json:"requester_sid,omitempty"`
 }
 
 // PostNodeActionScanCapabilitiesParams defines parameters for PostNodeActionScanCapabilities.
 type PostNodeActionScanCapabilitiesParams struct {
-	SessionId *InQuerySessionID `form:"session_id,omitempty" json:"session_id,omitempty"`
+	RequesterSid *InQueryRequesterSid `form:"requester_sid,omitempty" json:"requester_sid,omitempty"`
 }
 
 // PostNodeActionSCSIScanParams defines parameters for PostNodeActionSCSIScan.
 type PostNodeActionSCSIScanParams struct {
-	SessionId *InQuerySessionID `form:"session_id,omitempty" json:"session_id,omitempty"`
+	RequesterSid *InQueryRequesterSid `form:"requester_sid,omitempty" json:"requester_sid,omitempty"`
 
 	// Hba Specify a hba to scan for new block devices.
 	Hba *InQueryHBA `form:"hba,omitempty" json:"hba,omitempty"`
@@ -2669,13 +2668,13 @@ type PostNodeActionSCSIScanParams struct {
 
 // PostNodeActionSysreportParams defines parameters for PostNodeActionSysreport.
 type PostNodeActionSysreportParams struct {
-	Force     *InQueryForce     `form:"force,omitempty" json:"force,omitempty"`
-	SessionId *InQuerySessionID `form:"session_id,omitempty" json:"session_id,omitempty"`
+	Force        *InQueryForce        `form:"force,omitempty" json:"force,omitempty"`
+	RequesterSid *InQueryRequesterSid `form:"requester_sid,omitempty" json:"requester_sid,omitempty"`
 }
 
 // PostPeerActionUnfreezeParams defines parameters for PostPeerActionUnfreeze.
 type PostPeerActionUnfreezeParams struct {
-	SessionId *InQuerySessionID `form:"session_id,omitempty" json:"session_id,omitempty"`
+	RequesterSid *InQueryRequesterSid `form:"requester_sid,omitempty" json:"requester_sid,omitempty"`
 }
 
 // GetNodeConfigParams defines parameters for GetNodeConfig.
@@ -2744,7 +2743,7 @@ type GetDaemonEventsParams struct {
 	Cache *EventCache `form:"cache,omitempty" json:"cache,omitempty"`
 
 	// Selector selector
-	Selector *InQuerySelectorOptional `form:"selector,omitempty" json:"selector,omitempty"`
+	Selector *SelectorOptional `form:"selector,omitempty" json:"selector,omitempty"`
 }
 
 // DeleteDaemonProcessParams defines parameters for DeleteDaemonProcess.
@@ -2757,12 +2756,6 @@ type DeleteDaemonProcessParams struct {
 type GetDaemonProcessParams struct {
 	// Sub the names of the subsystems to filter the processes
 	Sub *string `form:"sub,omitempty" json:"sub,omitempty"`
-
-	// Selector selector
-	Selector *InQuerySelectorOptional `form:"selector,omitempty" json:"selector,omitempty"`
-
-	// Rid a resource selector expression
-	Rid *InQueryRid `form:"rid,omitempty" json:"rid,omitempty"`
 }
 
 // GetNodeDRBDConfigParams defines parameters for GetNodeDRBDConfig.
@@ -2800,42 +2793,27 @@ type PostNodeDRBDSecondaryParams struct {
 
 // PostInstanceActionBootParams defines parameters for PostInstanceActionBoot.
 type PostInstanceActionBootParams struct {
-	Slaves    *InQueryAllSlaves `form:"slaves,omitempty" json:"slaves,omitempty"`
-	Master    *InQueryMaster    `form:"master,omitempty" json:"master,omitempty"`
-	SessionId *InQuerySessionID `form:"session_id,omitempty" json:"session_id,omitempty"`
-
-	// Rid a resource selector expression
-	Rid    *InQueryRid    `form:"rid,omitempty" json:"rid,omitempty"`
-	Slave  *InQuerySlaves `form:"slave,omitempty" json:"slave,omitempty"`
-	Subset *InQuerySubset `form:"subset,omitempty" json:"subset,omitempty"`
-	Tag    *InQueryTag    `form:"tag,omitempty" json:"tag,omitempty"`
-	To     *InQueryTo     `form:"to,omitempty" json:"to,omitempty"`
+	Slaves       *InQueryAllSlaves    `form:"slaves,omitempty" json:"slaves,omitempty"`
+	Master       *InQueryMaster       `form:"master,omitempty" json:"master,omitempty"`
+	RequesterSid *InQueryRequesterSid `form:"requester_sid,omitempty" json:"requester_sid,omitempty"`
+	Rid          *InQueryRid          `form:"rid,omitempty" json:"rid,omitempty"`
+	Slave        *InQuerySlaves       `form:"slave,omitempty" json:"slave,omitempty"`
+	Subset       *InQuerySubset       `form:"subset,omitempty" json:"subset,omitempty"`
+	Tag          *InQueryTag          `form:"tag,omitempty" json:"tag,omitempty"`
+	To           *InQueryTo           `form:"to,omitempty" json:"to,omitempty"`
 }
 
 // PostInstanceActionDeleteParams defines parameters for PostInstanceActionDelete.
 type PostInstanceActionDeleteParams struct {
-	SessionId *InQuerySessionID `form:"session_id,omitempty" json:"session_id,omitempty"`
+	RequesterSid *InQueryRequesterSid `form:"requester_sid,omitempty" json:"requester_sid,omitempty"`
 }
 
 // PostInstanceActionFreezeParams defines parameters for PostInstanceActionFreeze.
 type PostInstanceActionFreezeParams struct {
-	Slaves    *InQueryAllSlaves `form:"slaves,omitempty" json:"slaves,omitempty"`
-	Master    *InQueryMaster    `form:"master,omitempty" json:"master,omitempty"`
-	Slave     *InQuerySlaves    `form:"slave,omitempty" json:"slave,omitempty"`
-	SessionId *InQuerySessionID `form:"session_id,omitempty" json:"session_id,omitempty"`
-}
-
-// PostInstanceActionPGUpdateParams defines parameters for PostInstanceActionPGUpdate.
-type PostInstanceActionPGUpdateParams struct {
-	Slaves    *InQueryAllSlaves `form:"slaves,omitempty" json:"slaves,omitempty"`
-	Master    *InQueryMaster    `form:"master,omitempty" json:"master,omitempty"`
-	SessionId *InQuerySessionID `form:"session_id,omitempty" json:"session_id,omitempty"`
-
-	// Rid a resource selector expression
-	Rid    *InQueryRid    `form:"rid,omitempty" json:"rid,omitempty"`
-	Slave  *InQuerySlaves `form:"slave,omitempty" json:"slave,omitempty"`
-	Subset *InQuerySubset `form:"subset,omitempty" json:"subset,omitempty"`
-	Tag    *InQueryTag    `form:"tag,omitempty" json:"tag,omitempty"`
+	Slaves       *InQueryAllSlaves    `form:"slaves,omitempty" json:"slaves,omitempty"`
+	Master       *InQueryMaster       `form:"master,omitempty" json:"master,omitempty"`
+	Slave        *InQuerySlaves       `form:"slave,omitempty" json:"slave,omitempty"`
+	RequesterSid *InQueryRequesterSid `form:"requester_sid,omitempty" json:"requester_sid,omitempty"`
 }
 
 // PostInstanceActionProvisionParams defines parameters for PostInstanceActionProvision.
@@ -2845,15 +2823,13 @@ type PostInstanceActionProvisionParams struct {
 	Force           *InQueryForce           `form:"force,omitempty" json:"force,omitempty"`
 	Leader          *InQueryLeader          `form:"leader,omitempty" json:"leader,omitempty"`
 	Master          *InQueryMaster          `form:"master,omitempty" json:"master,omitempty"`
-	SessionId       *InQuerySessionID       `form:"session_id,omitempty" json:"session_id,omitempty"`
-
-	// Rid a resource selector expression
-	Rid       *InQueryRid       `form:"rid,omitempty" json:"rid,omitempty"`
-	Slave     *InQuerySlaves    `form:"slave,omitempty" json:"slave,omitempty"`
-	StateOnly *InQueryStateOnly `form:"state_only,omitempty" json:"state_only,omitempty"`
-	Subset    *InQuerySubset    `form:"subset,omitempty" json:"subset,omitempty"`
-	Tag       *InQueryTag       `form:"tag,omitempty" json:"tag,omitempty"`
-	To        *InQueryTo        `form:"to,omitempty" json:"to,omitempty"`
+	RequesterSid    *InQueryRequesterSid    `form:"requester_sid,omitempty" json:"requester_sid,omitempty"`
+	Rid             *InQueryRid             `form:"rid,omitempty" json:"rid,omitempty"`
+	Slave           *InQuerySlaves          `form:"slave,omitempty" json:"slave,omitempty"`
+	StateOnly       *InQueryStateOnly       `form:"state_only,omitempty" json:"state_only,omitempty"`
+	Subset          *InQuerySubset          `form:"subset,omitempty" json:"subset,omitempty"`
+	Tag             *InQueryTag             `form:"tag,omitempty" json:"tag,omitempty"`
+	To              *InQueryTo              `form:"to,omitempty" json:"to,omitempty"`
 }
 
 // PostInstanceActionPRStartParams defines parameters for PostInstanceActionPRStart.
@@ -2862,14 +2838,12 @@ type PostInstanceActionPRStartParams struct {
 	DisableRollback *InQueryDisableRollback `form:"disable_rollback,omitempty" json:"disable_rollback,omitempty"`
 	Force           *InQueryForce           `form:"force,omitempty" json:"force,omitempty"`
 	Master          *InQueryMaster          `form:"master,omitempty" json:"master,omitempty"`
-	SessionId       *InQuerySessionID       `form:"session_id,omitempty" json:"session_id,omitempty"`
-
-	// Rid a resource selector expression
-	Rid    *InQueryRid    `form:"rid,omitempty" json:"rid,omitempty"`
-	Slave  *InQuerySlaves `form:"slave,omitempty" json:"slave,omitempty"`
-	Subset *InQuerySubset `form:"subset,omitempty" json:"subset,omitempty"`
-	Tag    *InQueryTag    `form:"tag,omitempty" json:"tag,omitempty"`
-	To     *InQueryTo     `form:"to,omitempty" json:"to,omitempty"`
+	RequesterSid    *InQueryRequesterSid    `form:"requester_sid,omitempty" json:"requester_sid,omitempty"`
+	Rid             *InQueryRid             `form:"rid,omitempty" json:"rid,omitempty"`
+	Slave           *InQuerySlaves          `form:"slave,omitempty" json:"slave,omitempty"`
+	Subset          *InQuerySubset          `form:"subset,omitempty" json:"subset,omitempty"`
+	Tag             *InQueryTag             `form:"tag,omitempty" json:"tag,omitempty"`
+	To              *InQueryTo              `form:"to,omitempty" json:"to,omitempty"`
 }
 
 // PostInstanceActionPRStopParams defines parameters for PostInstanceActionPRStop.
@@ -2878,19 +2852,17 @@ type PostInstanceActionPRStopParams struct {
 	DisableRollback *InQueryDisableRollback `form:"disable_rollback,omitempty" json:"disable_rollback,omitempty"`
 	Force           *InQueryForce           `form:"force,omitempty" json:"force,omitempty"`
 	Master          *InQueryMaster          `form:"master,omitempty" json:"master,omitempty"`
-	SessionId       *InQuerySessionID       `form:"session_id,omitempty" json:"session_id,omitempty"`
-
-	// Rid a resource selector expression
-	Rid    *InQueryRid    `form:"rid,omitempty" json:"rid,omitempty"`
-	Slave  *InQuerySlaves `form:"slave,omitempty" json:"slave,omitempty"`
-	Subset *InQuerySubset `form:"subset,omitempty" json:"subset,omitempty"`
-	Tag    *InQueryTag    `form:"tag,omitempty" json:"tag,omitempty"`
-	To     *InQueryTo     `form:"to,omitempty" json:"to,omitempty"`
+	RequesterSid    *InQueryRequesterSid    `form:"requester_sid,omitempty" json:"requester_sid,omitempty"`
+	Rid             *InQueryRid             `form:"rid,omitempty" json:"rid,omitempty"`
+	Slave           *InQuerySlaves          `form:"slave,omitempty" json:"slave,omitempty"`
+	Subset          *InQuerySubset          `form:"subset,omitempty" json:"subset,omitempty"`
+	Tag             *InQueryTag             `form:"tag,omitempty" json:"tag,omitempty"`
+	To              *InQueryTo              `form:"to,omitempty" json:"to,omitempty"`
 }
 
 // PostInstanceActionPushResourceInfoParams defines parameters for PostInstanceActionPushResourceInfo.
 type PostInstanceActionPushResourceInfoParams struct {
-	SessionId *InQuerySessionID `form:"session_id,omitempty" json:"session_id,omitempty"`
+	RequesterSid *InQueryRequesterSid `form:"requester_sid,omitempty" json:"requester_sid,omitempty"`
 }
 
 // PostInstanceActionRestartParams defines parameters for PostInstanceActionRestart.
@@ -2899,47 +2871,41 @@ type PostInstanceActionRestartParams struct {
 	DisableRollback *InQueryDisableRollback `form:"disable_rollback,omitempty" json:"disable_rollback,omitempty"`
 	Force           *InQueryForce           `form:"force,omitempty" json:"force,omitempty"`
 	Master          *InQueryMaster          `form:"master,omitempty" json:"master,omitempty"`
-	SessionId       *InQuerySessionID       `form:"session_id,omitempty" json:"session_id,omitempty"`
-
-	// Rid a resource selector expression
-	Rid    *InQueryRid    `form:"rid,omitempty" json:"rid,omitempty"`
-	Slave  *InQuerySlaves `form:"slave,omitempty" json:"slave,omitempty"`
-	Subset *InQuerySubset `form:"subset,omitempty" json:"subset,omitempty"`
-	Tag    *InQueryTag    `form:"tag,omitempty" json:"tag,omitempty"`
-	To     *InQueryTo     `form:"to,omitempty" json:"to,omitempty"`
+	RequesterSid    *InQueryRequesterSid    `form:"requester_sid,omitempty" json:"requester_sid,omitempty"`
+	Rid             *InQueryRid             `form:"rid,omitempty" json:"rid,omitempty"`
+	Slave           *InQuerySlaves          `form:"slave,omitempty" json:"slave,omitempty"`
+	Subset          *InQuerySubset          `form:"subset,omitempty" json:"subset,omitempty"`
+	Tag             *InQueryTag             `form:"tag,omitempty" json:"tag,omitempty"`
+	To              *InQueryTo              `form:"to,omitempty" json:"to,omitempty"`
 }
 
 // PostInstanceActionRunParams defines parameters for PostInstanceActionRun.
 type PostInstanceActionRunParams struct {
-	Slaves    *InQueryAllSlaves `form:"slaves,omitempty" json:"slaves,omitempty"`
-	Confirm   *InQueryConfirm   `form:"confirm,omitempty" json:"confirm,omitempty"`
-	Cron      *InQueryCron      `form:"cron,omitempty" json:"cron,omitempty"`
-	Force     *InQueryForce     `form:"force,omitempty" json:"force,omitempty"`
-	Master    *InQueryMaster    `form:"master,omitempty" json:"master,omitempty"`
-	SessionId *InQuerySessionID `form:"session_id,omitempty" json:"session_id,omitempty"`
-
-	// Rid a resource selector expression
-	Rid    *InQueryRid    `form:"rid,omitempty" json:"rid,omitempty"`
-	Slave  *InQuerySlaves `form:"slave,omitempty" json:"slave,omitempty"`
-	Subset *InQuerySubset `form:"subset,omitempty" json:"subset,omitempty"`
-	Tag    *InQueryTag    `form:"tag,omitempty" json:"tag,omitempty"`
-	To     *InQueryTo     `form:"to,omitempty" json:"to,omitempty"`
-	Env    *InQueryEnvs   `form:"env,omitempty" json:"env,omitempty"`
+	Slaves       *InQueryAllSlaves    `form:"slaves,omitempty" json:"slaves,omitempty"`
+	Confirm      *InQueryConfirm      `form:"confirm,omitempty" json:"confirm,omitempty"`
+	Cron         *InQueryCron         `form:"cron,omitempty" json:"cron,omitempty"`
+	Force        *InQueryForce        `form:"force,omitempty" json:"force,omitempty"`
+	Master       *InQueryMaster       `form:"master,omitempty" json:"master,omitempty"`
+	RequesterSid *InQueryRequesterSid `form:"requester_sid,omitempty" json:"requester_sid,omitempty"`
+	Rid          *InQueryRid          `form:"rid,omitempty" json:"rid,omitempty"`
+	Slave        *InQuerySlaves       `form:"slave,omitempty" json:"slave,omitempty"`
+	Subset       *InQuerySubset       `form:"subset,omitempty" json:"subset,omitempty"`
+	Tag          *InQueryTag          `form:"tag,omitempty" json:"tag,omitempty"`
+	To           *InQueryTo           `form:"to,omitempty" json:"to,omitempty"`
+	Env          *InQueryEnvs         `form:"env,omitempty" json:"env,omitempty"`
 }
 
 // PostInstanceActionShutdownParams defines parameters for PostInstanceActionShutdown.
 type PostInstanceActionShutdownParams struct {
-	Slaves    *InQueryAllSlaves `form:"slaves,omitempty" json:"slaves,omitempty"`
-	Force     *InQueryForce     `form:"force,omitempty" json:"force,omitempty"`
-	Master    *InQueryMaster    `form:"master,omitempty" json:"master,omitempty"`
-	SessionId *InQuerySessionID `form:"session_id,omitempty" json:"session_id,omitempty"`
-
-	// Rid a resource selector expression
-	Rid    *InQueryRid    `form:"rid,omitempty" json:"rid,omitempty"`
-	Slave  *InQuerySlaves `form:"slave,omitempty" json:"slave,omitempty"`
-	Subset *InQuerySubset `form:"subset,omitempty" json:"subset,omitempty"`
-	Tag    *InQueryTag    `form:"tag,omitempty" json:"tag,omitempty"`
-	To     *InQueryTo     `form:"to,omitempty" json:"to,omitempty"`
+	Slaves       *InQueryAllSlaves    `form:"slaves,omitempty" json:"slaves,omitempty"`
+	Force        *InQueryForce        `form:"force,omitempty" json:"force,omitempty"`
+	Master       *InQueryMaster       `form:"master,omitempty" json:"master,omitempty"`
+	RequesterSid *InQueryRequesterSid `form:"requester_sid,omitempty" json:"requester_sid,omitempty"`
+	Rid          *InQueryRid          `form:"rid,omitempty" json:"rid,omitempty"`
+	Slave        *InQuerySlaves       `form:"slave,omitempty" json:"slave,omitempty"`
+	Subset       *InQuerySubset       `form:"subset,omitempty" json:"subset,omitempty"`
+	Tag          *InQueryTag          `form:"tag,omitempty" json:"tag,omitempty"`
+	To           *InQueryTo           `form:"to,omitempty" json:"to,omitempty"`
 }
 
 // PostInstanceActionStartParams defines parameters for PostInstanceActionStart.
@@ -2948,14 +2914,12 @@ type PostInstanceActionStartParams struct {
 	DisableRollback *InQueryDisableRollback `form:"disable_rollback,omitempty" json:"disable_rollback,omitempty"`
 	Force           *InQueryForce           `form:"force,omitempty" json:"force,omitempty"`
 	Master          *InQueryMaster          `form:"master,omitempty" json:"master,omitempty"`
-	SessionId       *InQuerySessionID       `form:"session_id,omitempty" json:"session_id,omitempty"`
-
-	// Rid a resource selector expression
-	Rid    *InQueryRid    `form:"rid,omitempty" json:"rid,omitempty"`
-	Slave  *InQuerySlaves `form:"slave,omitempty" json:"slave,omitempty"`
-	Subset *InQuerySubset `form:"subset,omitempty" json:"subset,omitempty"`
-	Tag    *InQueryTag    `form:"tag,omitempty" json:"tag,omitempty"`
-	To     *InQueryTo     `form:"to,omitempty" json:"to,omitempty"`
+	RequesterSid    *InQueryRequesterSid    `form:"requester_sid,omitempty" json:"requester_sid,omitempty"`
+	Rid             *InQueryRid             `form:"rid,omitempty" json:"rid,omitempty"`
+	Slave           *InQuerySlaves          `form:"slave,omitempty" json:"slave,omitempty"`
+	Subset          *InQuerySubset          `form:"subset,omitempty" json:"subset,omitempty"`
+	Tag             *InQueryTag             `form:"tag,omitempty" json:"tag,omitempty"`
+	To              *InQueryTo              `form:"to,omitempty" json:"to,omitempty"`
 }
 
 // PostInstanceActionStartStandbyParams defines parameters for PostInstanceActionStartStandby.
@@ -2964,75 +2928,66 @@ type PostInstanceActionStartStandbyParams struct {
 	DisableRollback *InQueryDisableRollback `form:"disable_rollback,omitempty" json:"disable_rollback,omitempty"`
 	Force           *InQueryForce           `form:"force,omitempty" json:"force,omitempty"`
 	Master          *InQueryMaster          `form:"master,omitempty" json:"master,omitempty"`
-	SessionId       *InQuerySessionID       `form:"session_id,omitempty" json:"session_id,omitempty"`
-
-	// Rid a resource selector expression
-	Rid    *InQueryRid    `form:"rid,omitempty" json:"rid,omitempty"`
-	Slave  *InQuerySlaves `form:"slave,omitempty" json:"slave,omitempty"`
-	Subset *InQuerySubset `form:"subset,omitempty" json:"subset,omitempty"`
-	Tag    *InQueryTag    `form:"tag,omitempty" json:"tag,omitempty"`
-	To     *InQueryTo     `form:"to,omitempty" json:"to,omitempty"`
+	RequesterSid    *InQueryRequesterSid    `form:"requester_sid,omitempty" json:"requester_sid,omitempty"`
+	Rid             *InQueryRid             `form:"rid,omitempty" json:"rid,omitempty"`
+	Slave           *InQuerySlaves          `form:"slave,omitempty" json:"slave,omitempty"`
+	Subset          *InQuerySubset          `form:"subset,omitempty" json:"subset,omitempty"`
+	Tag             *InQueryTag             `form:"tag,omitempty" json:"tag,omitempty"`
+	To              *InQueryTo              `form:"to,omitempty" json:"to,omitempty"`
 }
 
 // PostInstanceActionStatusParams defines parameters for PostInstanceActionStatus.
 type PostInstanceActionStatusParams struct {
-	SessionId *InQuerySessionID `form:"session_id,omitempty" json:"session_id,omitempty"`
+	RequesterSid *InQueryRequesterSid `form:"requester_sid,omitempty" json:"requester_sid,omitempty"`
 }
 
 // PostInstanceActionStopParams defines parameters for PostInstanceActionStop.
 type PostInstanceActionStopParams struct {
-	Slaves    *InQueryAllSlaves `form:"slaves,omitempty" json:"slaves,omitempty"`
-	Force     *InQueryForce     `form:"force,omitempty" json:"force,omitempty"`
-	Master    *InQueryMaster    `form:"master,omitempty" json:"master,omitempty"`
-	MoveTo    *InQueryMoveTo    `form:"move-to,omitempty" json:"move-to,omitempty"`
-	SessionId *InQuerySessionID `form:"session_id,omitempty" json:"session_id,omitempty"`
-
-	// Rid a resource selector expression
-	Rid    *InQueryRid    `form:"rid,omitempty" json:"rid,omitempty"`
-	Slave  *InQuerySlaves `form:"slave,omitempty" json:"slave,omitempty"`
-	Subset *InQuerySubset `form:"subset,omitempty" json:"subset,omitempty"`
-	Tag    *InQueryTag    `form:"tag,omitempty" json:"tag,omitempty"`
-	To     *InQueryTo     `form:"to,omitempty" json:"to,omitempty"`
+	Slaves       *InQueryAllSlaves    `form:"slaves,omitempty" json:"slaves,omitempty"`
+	Force        *InQueryForce        `form:"force,omitempty" json:"force,omitempty"`
+	Master       *InQueryMaster       `form:"master,omitempty" json:"master,omitempty"`
+	MoveTo       *InQueryMoveTo       `form:"move-to,omitempty" json:"move-to,omitempty"`
+	RequesterSid *InQueryRequesterSid `form:"requester_sid,omitempty" json:"requester_sid,omitempty"`
+	Rid          *InQueryRid          `form:"rid,omitempty" json:"rid,omitempty"`
+	Slave        *InQuerySlaves       `form:"slave,omitempty" json:"slave,omitempty"`
+	Subset       *InQuerySubset       `form:"subset,omitempty" json:"subset,omitempty"`
+	Tag          *InQueryTag          `form:"tag,omitempty" json:"tag,omitempty"`
+	To           *InQueryTo           `form:"to,omitempty" json:"to,omitempty"`
 }
 
 // PostInstanceActionSyncIngestParams defines parameters for PostInstanceActionSyncIngest.
 type PostInstanceActionSyncIngestParams struct {
-	SessionId *InQuerySessionID `form:"session_id,omitempty" json:"session_id,omitempty"`
-
-	// Rid a resource selector expression
-	Rid    *InQueryRid    `form:"rid,omitempty" json:"rid,omitempty"`
-	Subset *InQuerySubset `form:"subset,omitempty" json:"subset,omitempty"`
-	Tag    *InQueryTag    `form:"tag,omitempty" json:"tag,omitempty"`
+	RequesterSid *InQueryRequesterSid `form:"requester_sid,omitempty" json:"requester_sid,omitempty"`
+	Rid          *InQueryRid          `form:"rid,omitempty" json:"rid,omitempty"`
+	Subset       *InQuerySubset       `form:"subset,omitempty" json:"subset,omitempty"`
+	Tag          *InQueryTag          `form:"tag,omitempty" json:"tag,omitempty"`
 }
 
 // PostInstanceActionUnfreezeParams defines parameters for PostInstanceActionUnfreeze.
 type PostInstanceActionUnfreezeParams struct {
-	Slaves    *InQueryAllSlaves `form:"slaves,omitempty" json:"slaves,omitempty"`
-	Master    *InQueryMaster    `form:"master,omitempty" json:"master,omitempty"`
-	Slave     *InQuerySlaves    `form:"slave,omitempty" json:"slave,omitempty"`
-	SessionId *InQuerySessionID `form:"session_id,omitempty" json:"session_id,omitempty"`
+	Slaves       *InQueryAllSlaves    `form:"slaves,omitempty" json:"slaves,omitempty"`
+	Master       *InQueryMaster       `form:"master,omitempty" json:"master,omitempty"`
+	Slave        *InQuerySlaves       `form:"slave,omitempty" json:"slave,omitempty"`
+	RequesterSid *InQueryRequesterSid `form:"requester_sid,omitempty" json:"requester_sid,omitempty"`
 }
 
 // PostInstanceActionUnprovisionParams defines parameters for PostInstanceActionUnprovision.
 type PostInstanceActionUnprovisionParams struct {
-	Slaves    *InQueryAllSlaves `form:"slaves,omitempty" json:"slaves,omitempty"`
-	Force     *InQueryForce     `form:"force,omitempty" json:"force,omitempty"`
-	Leader    *InQueryLeader    `form:"leader,omitempty" json:"leader,omitempty"`
-	Master    *InQueryMaster    `form:"master,omitempty" json:"master,omitempty"`
-	SessionId *InQuerySessionID `form:"session_id,omitempty" json:"session_id,omitempty"`
-
-	// Rid a resource selector expression
-	Rid       *InQueryRid       `form:"rid,omitempty" json:"rid,omitempty"`
-	StateOnly *InQueryStateOnly `form:"state_only,omitempty" json:"state_only,omitempty"`
-	Slave     *InQuerySlaves    `form:"slave,omitempty" json:"slave,omitempty"`
-	Subset    *InQuerySubset    `form:"subset,omitempty" json:"subset,omitempty"`
-	Tag       *InQueryTag       `form:"tag,omitempty" json:"tag,omitempty"`
-	To        *InQueryTo        `form:"to,omitempty" json:"to,omitempty"`
+	Slaves       *InQueryAllSlaves    `form:"slaves,omitempty" json:"slaves,omitempty"`
+	Force        *InQueryForce        `form:"force,omitempty" json:"force,omitempty"`
+	Leader       *InQueryLeader       `form:"leader,omitempty" json:"leader,omitempty"`
+	Master       *InQueryMaster       `form:"master,omitempty" json:"master,omitempty"`
+	RequesterSid *InQueryRequesterSid `form:"requester_sid,omitempty" json:"requester_sid,omitempty"`
+	Rid          *InQueryRid          `form:"rid,omitempty" json:"rid,omitempty"`
+	StateOnly    *InQueryStateOnly    `form:"state_only,omitempty" json:"state_only,omitempty"`
+	Slave        *InQuerySlaves       `form:"slave,omitempty" json:"slave,omitempty"`
+	Subset       *InQuerySubset       `form:"subset,omitempty" json:"subset,omitempty"`
+	Tag          *InQueryTag          `form:"tag,omitempty" json:"tag,omitempty"`
+	To           *InQueryTo           `form:"to,omitempty" json:"to,omitempty"`
 }
 
 // PostInstanceResourceConsoleParams defines parameters for PostInstanceResourceConsole.
 type PostInstanceResourceConsoleParams struct {
-	// Rid a resource selector expression
 	Rid          *InQueryRid          `form:"rid,omitempty" json:"rid,omitempty"`
 	GreetTimeout *InQueryGreetTimeout `form:"greet_timeout,omitempty" json:"greet_timeout,omitempty"`
 	Seats        *InQuerySeats        `form:"seats,omitempty" json:"seats,omitempty"`
@@ -3040,7 +2995,6 @@ type PostInstanceResourceConsoleParams struct {
 
 // GetInstanceContainerLogParams defines parameters for GetInstanceContainerLog.
 type GetInstanceContainerLogParams struct {
-	// Rid a resource selector expression
 	Rid *InQueryRid `form:"rid,omitempty" json:"rid,omitempty"`
 
 	// Follow follow the logs
@@ -3106,7 +3060,6 @@ type GetObjectPathsParams struct {
 
 // PostSvcDisableParams defines parameters for PostSvcDisable.
 type PostSvcDisableParams struct {
-	// Rid a resource selector expression
 	Rid    *InQueryRid    `form:"rid,omitempty" json:"rid,omitempty"`
 	Subset *InQuerySubset `form:"subset,omitempty" json:"subset,omitempty"`
 	Tag    *InQueryTag    `form:"tag,omitempty" json:"tag,omitempty"`
@@ -3114,7 +3067,6 @@ type PostSvcDisableParams struct {
 
 // PostSvcEnableParams defines parameters for PostSvcEnable.
 type PostSvcEnableParams struct {
-	// Rid a resource selector expression
 	Rid    *InQueryRid    `form:"rid,omitempty" json:"rid,omitempty"`
 	Subset *InQuerySubset `form:"subset,omitempty" json:"subset,omitempty"`
 	Tag    *InQueryTag    `form:"tag,omitempty" json:"tag,omitempty"`
