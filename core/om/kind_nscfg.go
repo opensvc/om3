@@ -16,6 +16,9 @@ func init() {
 	}
 	cmdObjectConfig := commoncmd.NewCmdObjectConfig(kind)
 	cmdObjectInstance := commoncmd.NewCmdObjectInstance(kind)
+	cmdObjectInstancePG := commoncmd.NewCmdObjectInstancePG(kind)
+	cmdObjectPG := commoncmd.NewCmdObjectInstancePG(kind)
+	cmdObjectPG.Hidden = true
 
 	root.AddCommand(
 		cmdObject,
@@ -28,6 +31,7 @@ func init() {
 	cmdObject.AddCommand(
 		cmdObjectConfig,
 		cmdObjectInstance,
+		cmdObjectPG,
 		newCmdObjectCreate(kind),
 		newCmdObjectDelete(kind),
 		newCmdObjectAbort(kind),
@@ -36,6 +40,7 @@ func init() {
 	)
 
 	cmdObjectInstance.AddCommand(
+		cmdObjectInstancePG,
 		newCmdObjectInstanceClear(kind),
 		newCmdObjectInstanceList(kind),
 		newCmdObjectInstanceDelete(kind),
@@ -50,5 +55,12 @@ func init() {
 		newCmdObjectConfigShow(kind),
 		newCmdObjectConfigUpdate(kind),
 		newCmdObjectConfigValidate(kind),
+	)
+
+	cmdObjectInstancePG.AddCommand(
+		newCmdObjectInstancePGUpdate(kind),
+	)
+	cmdObjectPG.AddCommand(
+		newCmdObjectInstancePGUpdate(kind),
 	)
 }
