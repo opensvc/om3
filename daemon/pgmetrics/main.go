@@ -262,7 +262,25 @@ func (m *Manager) Stop() error {
 	defer m.log.Infof("stopped")
 	m.cancel()
 	m.wg.Wait()
+	m.unregisterMetrics()
 	return nil
+}
+
+func (m *Manager) unregisterMetrics() {
+	prometheus.Unregister(pgCgroupCPUUsage)
+	prometheus.Unregister(pgCgroupCPUUserUsage)
+	prometheus.Unregister(pgCgroupCPUSystemUsage)
+	prometheus.Unregister(pgCgroupMemoryCurrent)
+	prometheus.Unregister(pgCgroupMemoryMax)
+	prometheus.Unregister(pgCgroupMemoryStat)
+	prometheus.Unregister(pgCgroupMemoryStatPages)
+	prometheus.Unregister(pgCgroupCPUStat)
+	prometheus.Unregister(pgCgroupCPUShares)
+	prometheus.Unregister(pgCgroupCPUQuota)
+	prometheus.Unregister(pgCgroupCPUPeriod)
+	prometheus.Unregister(pgCgroupCPUCpus)
+	prometheus.Unregister(pgCgroupBlkioWeight)
+	prometheus.Unregister(pgCgroupExists)
 }
 
 func (m *Manager) registerMetrics() {
@@ -431,28 +449,28 @@ func parseMemoryStat(content, namespace, objPath string) {
 	// Page-based memory statistics (in pages, not bytes)
 	// These are page counters that should have the _pages suffix
 	pageStats := map[string]bool{
-		"workingset_refault_anon":    true,
-		"workingset_refault_file":    true,
-		"workingset_activate_anon":    true,
-		"workingset_activate_file":    true,
-		"workingset_restore_anon":    true,
-		"workingset_restore_file":    true,
-		"workingset_nodereclaim":     true,
-		"pgscan":                    true,
-		"pgsteal":                   true,
-		"pgscan_kswapd":             true,
-		"pgscan_direct":             true,
-		"pgscan_khugepaged":         true,
-		"pgsteal_kswapd":            true,
-		"pgsteal_direct":            true,
-		"pgsteal_khugepaged":        true,
+		"workingset_refault_anon":  true,
+		"workingset_refault_file":  true,
+		"workingset_activate_anon": true,
+		"workingset_activate_file": true,
+		"workingset_restore_anon":  true,
+		"workingset_restore_file":  true,
+		"workingset_nodereclaim":   true,
+		"pgscan":                   true,
+		"pgsteal":                  true,
+		"pgscan_kswapd":            true,
+		"pgscan_direct":            true,
+		"pgscan_khugepaged":        true,
+		"pgsteal_kswapd":           true,
+		"pgsteal_direct":           true,
+		"pgsteal_khugepaged":       true,
 		"pgfault":                  true,
-		"pgmajfault":                true,
-		"pgrefill":                  true,
-		"pgactivate":                true,
-		"pgdeactivate":              true,
-		"pglazyfree":                true,
-		"pglazyfreed":               true,
+		"pgmajfault":               true,
+		"pgrefill":                 true,
+		"pgactivate":               true,
+		"pgdeactivate":             true,
+		"pglazyfree":               true,
+		"pglazyfreed":              true,
 		"zswpin":                   true,
 		"zswpout":                  true,
 		"zswpwb":                   true,
