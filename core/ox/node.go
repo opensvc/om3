@@ -160,7 +160,6 @@ func init() {
 		newCmdNodeSystemHardware(),
 		newCmdNodeSystemIPAddress(),
 		newCmdNodeSystemPackage(),
-		newCmdNodeSystemPatch(),
 		newCmdNodeSystemProperty(),
 		newCmdNodeSystemUser(),
 	)
@@ -218,7 +217,6 @@ func init() {
 	cmdNodePush.AddCommand(
 		newCmdNodePushAsset(),
 		newCmdNodePushDisk(),
-		newCmdNodePushPatch(),
 		newCmdNodePushPkg(),
 	)
 	cmdNodeValidate.AddCommand(

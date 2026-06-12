@@ -508,12 +508,6 @@ var (
 		Section: "packages",
 		Text:    keywords.NewText(fs, "text/kw/node/packages.schedule"),
 	}
-	kwNodePatchesSchedule = keywords.Keyword{
-		Default: "~00:00-06:00",
-		Option:  "schedule",
-		Section: "patches",
-		Text:    keywords.NewText(fs, "text/kw/node/patches.schedule"),
-	}
 	kwNodeAssetSchedule = keywords.Keyword{
 		Default: "~00:00-06:00",
 		Option:  "schedule",
@@ -1756,7 +1750,6 @@ var (
 		&kwNodeComplianceAutoUpdate,
 		&kwNodeChecksSchedule,
 		&kwNodePackagesSchedule,
-		&kwNodePatchesSchedule,
 		&kwNodeAssetSchedule,
 		&kwNodeDisksSchedule,
 		&kwNodeListenerCRL,
