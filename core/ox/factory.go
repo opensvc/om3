@@ -1010,22 +1010,6 @@ func newCmdNodeSystemPackage() *cobra.Command {
 	return cmd
 }
 
-func newCmdNodeSystemPatch() *cobra.Command {
-	var options commands.CmdNodeSystemPatch
-	cmd := &cobra.Command{
-		Use:     "patch",
-		Short:   "show node system patch",
-		Aliases: []string{"pacth"},
-		RunE: func(cmd *cobra.Command, args []string) error {
-			return options.Run()
-		},
-	}
-	flags := cmd.Flags()
-	addFlagsGlobal(flags, &options.OptsGlobal)
-	commoncmd.FlagNodeSelector(flags, &options.NodeSelector)
-	return cmd
-}
-
 func newCmdNodeSystemProperty() *cobra.Command {
 	var options commands.CmdNodeSystemProperty
 	cmd := &cobra.Command{
@@ -1335,22 +1319,6 @@ func newCmdNodePushDisk() *cobra.Command {
 		Use:     "disk",
 		Short:   "run the disk discovery, push and print the result",
 		Aliases: []string{"disks", "dis", "di"},
-		RunE: func(cmd *cobra.Command, args []string) error {
-			return options.Run()
-		},
-	}
-	flags := cmd.Flags()
-	addFlagsGlobal(flags, &options.OptsGlobal)
-	commoncmd.FlagNodeSelector(flags, &options.NodeSelector)
-	return cmd
-}
-
-func newCmdNodePushPatch() *cobra.Command {
-	var options commands.CmdNodePushPatch
-	cmd := &cobra.Command{
-		Use:     "patch",
-		Short:   "run the node installed patches discovery, push and print the result",
-		Aliases: []string{"patc", "pat", "pa"},
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return options.Run()
 		},

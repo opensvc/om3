@@ -979,32 +979,6 @@ paths:
         500:
           $ref: '#/components/responses/500'
 
-  /api/node/name/{nodename}/action/push/patch:
-    post:
-      operationId: PostNodeActionPushPatch
-      tags:
-        - node
-      security:
-        - basicAuth: []
-        - bearerAuth: []
-      description: Refresh and send to the collector the package discovery.
-      parameters:
-        - $ref: '#/components/parameters/inPathNodeName'
-        - $ref: '#/components/parameters/inQueryRequesterSid'
-      responses:
-        200:
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/NodeActionAccepted'
-          description: OK
-        401:
-          $ref: '#/components/responses/401'
-        403:
-          $ref: '#/components/responses/403'
-        500:
-          $ref: '#/components/responses/500'
-
   /api/node/name/{nodename}/action/push/pkg:
     post:
       operationId: PostNodeActionPushPkg
@@ -3372,33 +3346,6 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/PackageList'
-        400:
-          $ref: '#/components/responses/400'
-        401:
-          $ref: '#/components/responses/401'
-        403:
-          $ref: '#/components/responses/403'
-        500:
-          $ref: '#/components/responses/500'
-      security:
-        - basicAuth: [ ]
-        - bearerAuth: [ ]
-      tags:
-        - node
-
-  /api/node/name/{nodename}/system/patch:
-    get:
-      description: View the patch
-      operationId: GetNodeSystemPatch
-      parameters:
-        - $ref: '#/components/parameters/inPathNodeName'
-      responses:
-        200:
-          description: OK
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/PatchList'
         400:
           $ref: '#/components/responses/400'
         401:
@@ -6803,22 +6750,6 @@ components:
         items:
           $ref: '#/components/schemas/PackageItems'
 
-    Patch:
-      type: object
-      required:
-        - number
-        - revision
-        - installedat
-      properties:
-        number:
-          type: string
-        revision:
-          type: string
-        installedat:
-          format: date-time
-          x-go-type: "time.Time"
-          x-go-name: InstalledAt
-
     PatchDataKey:
       type: object
       required:
@@ -6846,40 +6777,6 @@ components:
       type: array
       items:
         $ref: '#/components/schemas/PatchDataKey'
-
-    PatchItem:
-      type: object
-      required:
-        - kind
-        - data
-        - meta
-      properties:
-        kind:
-          type: string
-          enum:
-            - PacthItem
-        data:
-          $ref: '#/components/schemas/Patch'
-        meta:
-          $ref: '#/components/schemas/NodeMeta'
-
-    PatchItems:
-      type: array
-      items:
-        $ref: '#/components/schemas/PatchItem'
-
-    PatchList:
-      type: object
-      required:
-        - kind
-        - items
-      properties:
-        kind:
-          type: string
-          enum:
-            - PatchList
-        items:
-          $ref: '#/components/schemas/PatchItems'
 
     PathRelation:
       type: array
