@@ -2678,6 +2678,7 @@ paths:
         - basicAuth: []
         - bearerAuth: []
       tags:
+        - node / instance / nscfg
         - node / instance / svc
         - node / instance / vol
 
