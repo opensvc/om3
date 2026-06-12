@@ -204,7 +204,6 @@ func init() {
 		newCmdNodePRKey(),
 		newCmdNodePushasset(),
 		newCmdNodePushdisk(),
-		newCmdNodePushpatch(),
 		newCmdNodePushpkg(),
 		newCmdNodeFreeze(),
 		newCmdNodeGet(),
@@ -235,7 +234,6 @@ func init() {
 	cmdNodePush.AddCommand(
 		newCmdNodePushAsset(),
 		newCmdNodePushDisk(),
-		newCmdNodePushPatch(),
 		newCmdNodePushPkg(),
 	)
 	cmdNodeRelay.AddCommand(
