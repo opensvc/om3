@@ -9,6 +9,7 @@ import (
 	"github.com/opensvc/om3/v3/daemon/proc"
 	"github.com/opensvc/om3/v3/util/command"
 	"github.com/opensvc/om3/v3/util/pubsub"
+	"github.com/opensvc/om3/v3/util/xsession"
 )
 
 var (
@@ -30,22 +31,30 @@ func SetCmdPathForTest(s string) {
 }
 
 func (t *Manager) crmDrain() error {
-	return t.crmAction("*/svc/*", "instance", "shutdown")
+	return t.crmAction("drain", "*/svc/*", "instance", "shutdown")
 }
 
 func (t *Manager) crmFreeze() error {
-	return t.crmAction("node", "freeze")
+	return t.crmAction("freeze", "node", "freeze")
 }
 
 func (t *Manager) crmUnfreeze() error {
-	return t.crmAction("node", "unfreeze")
+	return t.crmAction("unfreeze", "node", "unfreeze")
 }
 
-func (t *Manager) crmAction(cmdArgs ...string) error {
+func (t *Manager) crmAction(title string, cmdArgs ...string) error {
 	var cmdEnv []string
+
+	sid := xsession.NewSid()
+	eid := xsession.NewEid()
+	oid := xsession.NewOid(t.state.OrchestrationID)
+
 	cmdEnv = append(
 		cmdEnv,
-		env.OriginSetenvArg(env.ActionOriginDaemonMonitor),
+		env.ActionOriginDaemonMonitor.Var(),
+		eid.Var(),
+		oid.Var(),
+		sid.Var(),
 	)
 
 	// for tests
@@ -62,9 +71,20 @@ func (t *Manager) crmAction(cmdArgs ...string) error {
 		command.WithEnv(cmdEnv),
 		command.WithLogger(t.log),
 	)
-	t.log.Tracef("-> exec %s %s", cmdPath, cmd)
+	if title != "" {
+		t.log.Infof("-> exec %s %s", cmdPath, cmd)
+	} else {
+		t.log.Tracef("-> exec %s %s", cmdPath, cmd)
+	}
 	labels := []pubsub.Label{t.labelLocalhost, {"origin", "nmon"}}
-	t.publisher.Pub(&msgbus.Exec{Command: cmd.String(), Node: t.localhost, Origin: "nmon"}, labels...)
+	t.publisher.Pub(&msgbus.Exec{
+		Command:   cmd.String(),
+		Node:      t.localhost,
+		Origin:    "nmon",
+		ExecID:    eid,
+		SessionID: sid,
+		Title:     title,
+	}, labels...)
 	startTime := time.Now()
 	if err := cmd.Start(); err != nil {
 		t.log.Errorf("exec StartProcess: %s", err)
@@ -74,24 +94,44 @@ func (t *Manager) crmAction(cmdArgs ...string) error {
 	proc.Register(proc.T{
 		Pid:          pid,
 		Node:         t.localhost,
-		Object:       "-",
-		Sid:          "-",
+		Sid:          sid.String(),
 		StartedAt:    startTime,
 		Elapsed:      "",
 		GlobalExpect: t.state.GlobalExpect.String(),
 		Sub:          "nmon",
-		Desc:         cmd.String(),
+		Cmd:          cmd.String(),
 	})
 	err := cmd.Wait()
 	proc.Unregister(pid)
 	if err != nil {
 		duration := time.Now().Sub(startTime)
-		t.publisher.Pub(&msgbus.ExecFailed{Command: cmd.String(), Duration: duration, ErrS: err.Error(), Node: t.localhost, Origin: "nmon"}, labels...)
+		t.publisher.Pub(&msgbus.ExecFailed{
+			Command:   cmd.String(),
+			Duration:  duration,
+			ErrS:      err.Error(),
+			Node:      t.localhost,
+			Origin:    "nmon",
+			ExecID:    eid,
+			SessionID: sid,
+			Title:     title,
+		}, labels...)
 		t.log.Errorf("failed %s: %s", cmd, err)
 		return err
 	}
 	duration := time.Now().Sub(startTime)
-	t.publisher.Pub(&msgbus.ExecSuccess{Command: cmd.String(), Duration: duration, Node: t.localhost, Origin: "nmon"}, labels...)
-	t.log.Tracef("<- exec %s %s", cmdPath, cmd)
+	t.publisher.Pub(&msgbus.ExecSuccess{
+		Command:   cmd.String(),
+		Duration:  duration,
+		Node:      t.localhost,
+		Origin:    "nmon",
+		ExecID:    eid,
+		SessionID: sid,
+		Title:     title,
+	}, labels...)
+	if title != "" {
+		t.log.Infof("<- exec %s %s", cmdPath, cmd)
+	} else {
+		t.log.Tracef("<- exec %s %s", cmdPath, cmd)
+	}
 	return nil
 }

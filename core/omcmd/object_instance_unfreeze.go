@@ -16,6 +16,7 @@ import (
 type (
 	CmdObjectInstanceUnfreeze struct {
 		OptsGlobal
+		commoncmd.OptsAsync
 		commoncmd.OptsEncap
 		NodeSelector string
 	}
@@ -28,6 +29,9 @@ func (t *CmdObjectInstanceUnfreeze) Run(kind string) error {
 		objectaction.WithOutput(t.Output),
 		objectaction.WithColor(t.Color),
 		objectaction.WithIgnoreNotFound(t.IgnoreNotFound),
+		objectaction.WithAsyncTime(t.Time),
+		objectaction.WithAsyncWait(t.Wait),
+		objectaction.WithAsyncWatch(t.Watch),
 		objectaction.WithAllSlaves(t.AllSlaves),
 		objectaction.WithMaster(t.Master),
 		objectaction.WithSlaves(t.Slaves),
@@ -48,8 +52,8 @@ func (t *CmdObjectInstanceUnfreeze) Run(kind string) error {
 				params.Slave = &t.OptsEncap.Slaves
 			}
 			{
-				sid := xsession.ID
-				params.RequesterSid = &sid
+				sid := xsession.Sid().UUID()
+				params.SessionId = &sid
 			}
 			response, err := c.PostInstanceActionUnfreezeWithResponse(ctx, nodename, p.Namespace, p.Kind, p.Name, &params)
 			if err != nil {

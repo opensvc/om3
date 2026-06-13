@@ -15,6 +15,7 @@ import (
 type (
 	CmdObjectInstanceUnfreeze struct {
 		OptsGlobal
+		commoncmd.OptsAsync
 		NodeSelector string
 		commoncmd.OptsEncap
 	}
@@ -27,6 +28,9 @@ func (t *CmdObjectInstanceUnfreeze) Run(kind string) error {
 		objectaction.WithOutput(t.Output),
 		objectaction.WithColor(t.Color),
 		objectaction.WithIgnoreNotFound(t.IgnoreNotFound),
+		objectaction.WithAsyncTime(t.Time),
+		objectaction.WithAsyncWait(t.Wait),
+		objectaction.WithAsyncWatch(t.Watch),
 		objectaction.WithRemoteNodes(t.NodeSelector),
 		objectaction.WithRemoteFunc(func(ctx context.Context, p naming.Path, nodename string) (interface{}, error) {
 			c, err := client.New()
@@ -35,8 +39,8 @@ func (t *CmdObjectInstanceUnfreeze) Run(kind string) error {
 			}
 			params := api.PostInstanceActionUnfreezeParams{}
 			{
-				sid := xsession.ID
-				params.RequesterSid = &sid
+				sid := xsession.Sid().UUID()
+				params.SessionId = &sid
 			}
 			if t.OptsEncap.Master {
 				params.Master = &t.OptsEncap.Master

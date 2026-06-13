@@ -113,9 +113,6 @@ func (t *T) Label(_ context.Context) string {
 func (t *T) Start(ctx context.Context) error {
 	ctx, cancel := context.WithTimeout(ctx, *t.StartTimeout)
 	defer cancel()
-	if err := t.ApplyPGChain(ctx); err != nil {
-		return err
-	}
 
 	if isContainerUp, err := t.isUp(); errors.Is(err, ErrNotRegistered) {
 		if err := t.registerVM(); err != nil {

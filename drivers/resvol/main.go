@@ -365,7 +365,7 @@ func (t *T) createVolume(ctx context.Context, volume object.Vol) (object.Vol, er
 		return nil, err
 	}
 	p := filepath.Join(volume.Path().VarDir(), "create_volume.lock")
-	lock := flock.New(p, xsession.ID.String(), fcntllock.New)
+	lock := flock.New(p, xsession.Sid().String(), fcntllock.New)
 	if err := lock.Lock(20*time.Second, ""); err != nil {
 		return nil, err
 	}

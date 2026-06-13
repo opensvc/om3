@@ -15,6 +15,7 @@ import (
 type (
 	CmdObjectInstanceRun struct {
 		OptsGlobal
+		commoncmd.OptsAsync
 		commoncmd.OptsEncap
 		commoncmd.OptsLock
 		commoncmd.OptsResourceSelector
@@ -37,6 +38,9 @@ func (t *CmdObjectInstanceRun) Run(kind string) error {
 		objectaction.WithOutput(t.Output),
 		objectaction.WithColor(t.Color),
 		objectaction.WithIgnoreNotFound(t.IgnoreNotFound),
+		objectaction.WithAsyncTime(t.Time),
+		objectaction.WithAsyncWait(t.Wait),
+		objectaction.WithAsyncWatch(t.Watch),
 		objectaction.WithRemoteNodes(t.NodeSelector),
 		objectaction.WithRemoteFunc(func(ctx context.Context, p naming.Path, nodename string) (interface{}, error) {
 			c, err := client.New()
@@ -81,8 +85,8 @@ func (t *CmdObjectInstanceRun) Run(kind string) error {
 				params.To = &t.OptTo.To
 			}
 			{
-				sid := xsession.ID
-				params.RequesterSid = &sid
+				sid := xsession.Sid().UUID()
+				params.SessionId = &sid
 			}
 			response, err := c.PostInstanceActionRunWithResponse(ctx, nodename, p.Namespace, p.Kind, p.Name, &params)
 			if err != nil {

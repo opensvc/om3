@@ -1,17 +1,14 @@
 package commoncmd
 
 import (
-	"errors"
 	"fmt"
-	"io"
 	"os"
-	"sync"
 
 	"github.com/opensvc/om3/v3/core/client"
 	"github.com/opensvc/om3/v3/core/naming"
 	"github.com/opensvc/om3/v3/core/nodeselector"
 	"github.com/opensvc/om3/v3/core/objectselector"
-	"github.com/opensvc/om3/v3/core/streamlog"
+	"github.com/opensvc/om3/v3/util/logreader"
 )
 
 type (
@@ -52,46 +49,40 @@ func (t *CmdObjectLogs) Remote(selStr string) error {
 			return err
 		}
 	}
-	var wg sync.WaitGroup
-	wg.Add(len(nodes))
-	for _, node := range nodes {
-		go func(n string) {
-			defer wg.Done()
-			t.stream(c, n, paths)
-		}(node)
-	}
-	wg.Wait()
-	return nil
-}
 
-func (t *CmdObjectLogs) stream(c *client.T, node string, paths naming.Paths) {
+	// Create readers for all nodes
+	streams := make([]logreader.NodeStream, 0, len(nodes))
 	l := paths.StrSlice()
-	reader, err := c.NewGetLogs(node).
-		SetFilters(&t.Filter).
-		SetGrep(t.Grep).
-		SetLines(&t.Lines).
-		SetFollow(&t.Follow).
-		SetPaths(&l).
-		GetReader()
-	if err != nil {
-		fmt.Fprintln(os.Stderr, err)
-		return
-	}
-	defer reader.Close()
-
-	for {
-		event, err := reader.Read()
-		if errors.Is(err, io.EOF) {
-			break
-		} else if err != nil {
-			fmt.Fprintf(os.Stderr, "%s\n", err)
-			break
-		}
-		rec, err := streamlog.NewEvent(event.Data)
+	for i, node := range nodes {
+		reader, err := c.NewGetLogs(node).
+			SetFilters(&t.Filter).
+			SetGrep(t.Grep).
+			SetLines(&t.Lines).
+			SetFollow(&t.Follow).
+			SetPaths(&l).
+			GetReader()
 		if err != nil {
-			fmt.Fprintf(os.Stderr, "%s\n", err)
-			break
+			fmt.Fprintln(os.Stderr, err)
+			continue
 		}
-		rec.Render(t.Output)
+		streams = append(streams, logreader.NodeStream{
+			Node:   node,
+			Reader: reader,
+			Index:  i,
+		})
 	}
+
+	if len(streams) == 0 {
+		return fmt.Errorf("no valid log streams to read from")
+	}
+
+	// Use the logreader utility to collect, sort, and display logs
+	logreader.CollectAndSortWithFormat(
+		streams,
+		os.Stdout, // output writer
+		t.Output,  // format (e.g., "", "json")
+		t.Follow,  // follow mode
+	)
+
+	return nil
 }

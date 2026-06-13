@@ -123,6 +123,7 @@ func (t *CmdContextLogin) Run(cmd *cobra.Command) error {
 	params := api.PostAuthTokenParams{}
 	refresh := true
 	params.Refresh = &refresh
+	params.Scope = clientc.Namespace
 
 	if v := chooseDuration(duration.New(t.RefreshDuration), config.Contexts[t.Context].RefreshTokenDuration); v.Positive() {
 		refreshDurationStr := v.String()

@@ -4,7 +4,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"io"
 	"net/http"
 	"os"
 	"os/exec"
@@ -18,7 +17,6 @@ import (
 
 	"github.com/gdamore/tcell/v2"
 	"github.com/rivo/tview"
-	"github.com/rs/zerolog"
 
 	"github.com/opensvc/om3/v3/core/client"
 	"github.com/opensvc/om3/v3/core/clientcontext"
@@ -29,12 +27,10 @@ import (
 	"github.com/opensvc/om3/v3/core/naming"
 	"github.com/opensvc/om3/v3/core/oxcmd"
 	"github.com/opensvc/om3/v3/core/pool"
-	"github.com/opensvc/om3/v3/core/rawconfig"
-	"github.com/opensvc/om3/v3/core/streamlog"
 	"github.com/opensvc/om3/v3/daemon/api"
 	"github.com/opensvc/om3/v3/daemon/msgbus"
 	"github.com/opensvc/om3/v3/util/hostname"
-	"github.com/opensvc/om3/v3/util/logging"
+	"github.com/opensvc/om3/v3/util/logreader"
 )
 
 type (
@@ -149,7 +145,7 @@ type (
 		restartC chan error
 		exitFlag atomic.Bool
 
-		logCloser io.Closer
+		logCloser AtomicCloserSlice
 	}
 
 	getter interface {
@@ -1981,53 +1977,63 @@ func (t *App) updateLogTextView() {
 
 	lines := 50
 	follow := true
-	log := t.streamClient.NewGetLogs(t.viewNode).
-		//SetFilters(nil).
-		SetLines(&lines).
-		SetFollow(&follow)
-	if !t.viewPath.IsZero() {
-		l := naming.Paths{t.viewPath}.StrSlice()
-		log.SetPaths(&l)
-	}
-	reader, err := log.GetReader()
-	if err != nil {
-		t.errorf("%s", err)
-		return
-	}
-	t.logCloser = reader
 
-	w := zerolog.NewConsoleWriter()
-	w.Out = tview.ANSIWriter(t.textView)
-	w.TimeFormat = "2006-01-02T15:04:05.000Z07:00"
-	w.FormatLevel = logging.FormatLevel
-	w.FormatFieldName = func(i any) string { return "" }
-	w.FormatFieldValue = func(i any) string { return "" }
-	w.FormatMessage = func(i any) string {
-		return rawconfig.Colorize.Bold(i)
-	}
+	// Create the output writer for the TUI text view
+	outputWriter := tview.ANSIWriter(t.textView)
 
-	go func() {
-		for {
-			event, err := reader.Read()
-			if errors.Is(err, io.EOF) {
-				break
-			} else if errors.Is(err, context.Canceled) {
-				break
-			} else if err != nil {
-				t.errorf("%s", err)
-				break
-			}
-			rec, err := streamlog.NewEvent(event.Data)
-			if err != nil {
-				t.errorf("%s", err)
-				break
-			}
-			switch s := rec.M["JSON"].(type) {
-			case string:
-				_, _ = w.Write([]byte(s))
+	var nodes []string
+	if t.viewNode != "" {
+		// instance or node logs
+		nodes = []string{t.viewNode}
+	} else if !t.viewPath.IsZero() {
+		// object logs
+		path := t.viewPath.String()
+		for node, nodeData := range t.Current.Cluster.Node {
+			if _, ok := nodeData.Instance[path]; ok {
+				nodes = append(nodes, node)
 			}
 		}
-	}()
+	} else {
+		// cluster logs
+		for node, _ := range t.Current.Cluster.Node {
+			nodes = append(nodes, node)
+		}
+	}
+
+	// Create streams for all nodes
+	streams := make([]logreader.NodeStream, 0, len(nodes))
+	for i, node := range nodes {
+		log := t.streamClient.NewGetLogs(node).
+			SetLines(&lines).
+			SetFollow(&follow)
+		if !t.viewPath.IsZero() {
+			l := naming.Paths{t.viewPath}.StrSlice()
+			log = log.SetPaths(&l)
+		}
+		reader, err := log.GetReader()
+		if err != nil {
+			t.errorf("%s", err)
+			continue
+		}
+		t.logCloser.Append(reader)
+
+		streams = append(streams, logreader.NodeStream{
+			Node:   node,
+			Reader: reader,
+			Index:  i,
+		})
+	}
+
+	if len(streams) > 0 {
+		// Use the logreader utility to collect, sort, and display logs
+		// Pass the TUI text view writer as the output
+		go logreader.CollectAndSortWithFormat(
+			streams,
+			outputWriter, // TUI text view writer
+			"",           // output format
+			follow,       // follow mode
+		)
+	}
 }
 
 func (t *App) getConfigUpdatedAt() time.Time {
@@ -2385,9 +2391,7 @@ func (t *App) navFromTo(from, to viewId) {
 	case viewLog:
 		t.textView.SetChangedFunc(nil)
 		t.textView = nil
-		if t.logCloser != nil {
-			t.logCloser.Close()
-		}
+		t.logCloser.CloseAll()
 	case viewConfig, viewInstance, viewKey:
 		t.textView = nil
 	case viewKeys:

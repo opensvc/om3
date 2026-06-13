@@ -39,8 +39,8 @@ func (t *CmdNodePushDisks) Run() error {
 			}
 			params := api.PostNodeActionPushDiskParams{}
 			{
-				sid := xsession.ID
-				params.RequesterSid = &sid
+				sid := xsession.Sid().UUID()
+				params.SessionId = &sid
 			}
 			response, err := c.PostNodeActionPushDiskWithResponse(ctx, nodename, &params)
 			if err != nil {

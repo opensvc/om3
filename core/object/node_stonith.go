@@ -27,7 +27,7 @@ func (t *Node) Stonith(nodename string) error {
 	if !slices.Contains(nodenames, nodename) {
 		return fmt.Errorf("node %s is not a peer", nodename)
 	}
-	argv := t.mergedConfig.GetStrings(key.T{"stonith#" + nodename, "command"})
+	argv := t.mergedConfig.GetStrings(key.New("stonith#"+nodename, "command"))
 	if len(argv) == 0 {
 		return fmt.Errorf("fencing command for node %s is not defined", nodename)
 	}

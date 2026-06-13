@@ -100,6 +100,7 @@ type (
 		Requires(string) *resourcereqs.T
 		RID() string
 		RSubset() string
+		SetDisabled(v bool)
 		SetObject(any)
 		SetPG(*pg.Config)
 		SetRID(string) error
@@ -161,7 +162,7 @@ type (
 
 		configurationError error
 		statusLog          StatusLog
-		log                plog.Logger
+		log                *plog.Logger
 		object             any
 		objectDriver       ObjectDriver
 		pg                 *pg.Config
@@ -475,6 +476,12 @@ func (t *T) SetRID(v string) error {
 	return nil
 }
 
+// SetDisable is used by the resource configurer to disable the resource if
+// the instance is disabled.
+func (t *T) SetDisabled(v bool) {
+	t.Disable = v
+}
+
 // SetPG sets the process group config parsed from the config
 func (t *T) SetPG(v *pg.Config) {
 	t.pg = v
@@ -528,7 +535,7 @@ func (t *T) SetObject(o any) {
 		panic("SetObject accepts only ObjectDriver")
 	} else {
 		t.object = o
-		t.log = *t.getLoggerFromObjectDriver(od)
+		t.log = t.getLoggerFromObjectDriver(od)
 	}
 }
 
@@ -552,7 +559,7 @@ func (t *T) getLoggerFromObjectDriver(o ObjectDriver) *plog.Logger {
 
 // Log returns the resource logger
 func (t *T) Log() *plog.Logger {
-	return &t.log
+	return t.log
 }
 
 // MatchRID returns true if:
@@ -606,7 +613,7 @@ func (t *T) trigger(ctx context.Context, s string) error {
 	cmd := command.New(
 		command.WithName(cmdArgs[0]),
 		command.WithVarArgs(cmdArgs[1:]...),
-		command.WithLogger(&t.log),
+		command.WithLogger(t.log),
 		command.WithEnv(append(os.Environ(), "OPENSVC_RID="+t.RID())),
 		command.WithStdoutLogLevel(zerolog.InfoLevel),
 		command.WithStderrLogLevel(zerolog.ErrorLevel))
@@ -876,6 +883,17 @@ func StartStandby(ctx context.Context, r Driver) error {
 	return nil
 }
 
+func PGUpdate(ctx context.Context, r Driver) error {
+	defer EvalStatus(ctx, r)
+	if r.IsDisabled() || r.IsActionDisabled() {
+		return ErrDisabled
+	}
+	if err := r.ApplyPGChain(ctx); err != nil {
+		return err
+	}
+	return nil
+}
+
 // Start activates a resource interfacer
 func Start(ctx context.Context, r Driver) error {
 	var i any = r
@@ -891,6 +909,9 @@ func Start(ctx context.Context, r Driver) error {
 		return ErrDisabled
 	}
 	Setenv(r)
+	if err := r.ApplyPGChain(ctx); err != nil {
+		return err
+	}
 	if err := checkRequires(ctx, r); err != nil {
 		return fmt.Errorf("start requires: %w", err)
 	}
@@ -1337,13 +1358,13 @@ func Action(ctx context.Context, r Driver) error {
 
 // SetLoggerForTest can be used to set resource log for testing purpose
 func (t *T) SetLoggerForTest(l *plog.Logger) {
-	t.log = *l
+	t.log = l
 }
 
 func (t *T) RunningFromLock(intent string) (RunningInfoList, error) {
 	var l RunningInfoList
 	p := filepath.Join(t.VarDir(), intent)
-	lock := flock.New(p, xsession.ID.String(), fcntllock.New)
+	lock := flock.New(p, xsession.Sid().String(), fcntllock.New)
 	meta, err := lock.Probe()
 	if err != nil {
 		return l, nil
@@ -1367,7 +1388,7 @@ func (t *T) Lock(disable bool, timeout time.Duration, intent string) (func(), er
 		return func() {}, nil
 	}
 	p := filepath.Join(t.VarDir(), intent)
-	lock := flock.New(p, xsession.ID.String(), fcntllock.New)
+	lock := flock.New(p, xsession.Sid().String(), fcntllock.New)
 	err := lock.Lock(timeout, intent)
 	if err != nil {
 		return nil, err

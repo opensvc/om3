@@ -89,7 +89,7 @@ type (
 		PullTimeout     *time.Duration `json:"pull_timeout"`
 		StartTimeout    *time.Duration `json:"start_timeout"`
 		StopTimeout     *time.Duration `json:"stop_timeout"`
-		Sysctl          []string       `json:sysctl`
+		Sysctl          []string       `json:"sysctl"`
 		LogOutputs      bool           `json:"log_outputs"`
 
 		executer   Executer
@@ -552,10 +552,6 @@ func (t *BT) Start(ctx context.Context) error {
 
 	if t.executer == nil {
 		return t.logMainAction("start", errors.New("undefined executer"))
-	}
-
-	if err := t.ApplyPGChain(ctx); err != nil {
-		return err
 	}
 
 	callAndRegisterRollbackOnSuccess := func(ctx context.Context, f func(context.Context) error) error {

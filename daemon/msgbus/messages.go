@@ -51,6 +51,7 @@ import (
 	"github.com/google/uuid"
 
 	"github.com/opensvc/om3/v3/util/plog"
+	"github.com/opensvc/om3/v3/util/xsession"
 
 	"github.com/opensvc/om3/v3/core/cluster"
 	"github.com/opensvc/om3/v3/core/clusterdump"
@@ -426,10 +427,10 @@ type (
 		// Node is the nodename that will call exec
 		Node string `json:"node" yaml:"node"`
 		// Origin describes the exec caller: example: imon, nmon, scheduler...
-		Origin             string    `json:"origin" yaml:"origin"`
-		Title              string    `json:"title" yaml:"title"`
-		SessionID          uuid.UUID `json:"session_id" yaml:"session_id"`
-		RequesterSessionID uuid.UUID `json:"requester_session_id" yaml:"requester_session_id"`
+		Origin    string      `json:"origin" yaml:"origin"`
+		Title     string      `json:"title" yaml:"title"`
+		SessionID xsession.Id `json:"session_id" yaml:"session_id"`
+		ExecID    xsession.Id `json:"exec_id" yaml:"exec_id"`
 	}
 
 	// ExecFailed message describes failed exec call
@@ -441,10 +442,10 @@ type (
 		// Node is the nodename that called exec
 		Node string `json:"node" yaml:"node"`
 		// Origin describes the exec caller: example: imon, nmon, scheduler...
-		Origin             string    `json:"origin" yaml:"origin"`
-		Title              string    `json:"title" yaml:"title"`
-		SessionID          uuid.UUID `json:"session_id" yaml:"session_id"`
-		RequesterSessionID uuid.UUID `json:"requester_session_id" yaml:"requester_session_id"`
+		Origin    string      `json:"origin" yaml:"origin"`
+		Title     string      `json:"title" yaml:"title"`
+		SessionID xsession.Id `json:"session_id" yaml:"session_id"`
+		ExecID    xsession.Id `json:"exec_id" yaml:"exec_id"`
 	}
 
 	// ExecSuccess message describes successfully exec call
@@ -455,10 +456,10 @@ type (
 		// Node is the nodename that called exec
 		Node string `json:"node" yaml:"node"`
 		// Origin describes the exec caller: example: imon, nmon, scheduler...
-		Origin             string    `json:"origin" yaml:"origin"`
-		Title              string    `json:"title" yaml:"title"`
-		SessionID          uuid.UUID `json:"session_id" yaml:"session_id"`
-		RequesterSessionID uuid.UUID `json:"requester_session_id" yaml:"requester_session_id"`
+		Origin    string      `json:"origin" yaml:"origin"`
+		Title     string      `json:"title" yaml:"title"`
+		SessionID xsession.Id `json:"session_id" yaml:"session_id"`
+		ExecID    xsession.Id `json:"exec_id" yaml:"exec_id"`
 	}
 
 	Exit struct {
@@ -885,7 +886,7 @@ type (
 		Path       naming.Path           `json:"path" yaml:"path"`
 		Node       string                `json:"node" yaml:"node"`
 		State      instance.MonitorState `json:"instance_monitor_state" yaml:"instance_monitor_state"`
-		SessionID  uuid.UUID             `json:"session_id" yaml:"session_id"`
+		SessionID  xsession.Id           `json:"session_id" yaml:"session_id"`
 		IsPartial  bool                  `json:"is_partial" yaml:"is_partial"`
 	}
 

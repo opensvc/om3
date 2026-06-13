@@ -73,6 +73,7 @@ type (
 		Stop(context.Context) error
 		PRStart(context.Context) error
 		PRStop(context.Context) error
+		PGUpdate(context.Context) error
 		Provision(context.Context) error
 		Unprovision(context.Context) error
 		ResourceHandlingDevice(ctx context.Context, p device.T) (resource.Driver, error)
@@ -292,11 +293,11 @@ func (t *actor) ConfigureResources() {
 		}
 		r := factory()
 		isEncapResource := func() bool {
-			encap := t.config.GetBool(key.T{k, "encap"})
+			encap := t.config.GetBool(key.New(k, "encap"))
 			if encap {
 				return true
 			}
-			tags := t.config.GetSet(key.T{k, "tags"})
+			tags := t.config.GetSet(key.New(k, "tags"))
 			if tags.Has("encap") {
 				return true
 			}
@@ -496,6 +497,12 @@ func (t *actor) configureResource(r resource.Driver, rid string) error {
 			}
 		}
 	}
+
+	// A disabled instance disables all its resources, even if they have disable=false
+	if t.IsDisabled() {
+		r.SetDisabled(true)
+	}
+
 	r.SetPG(t.pgConfig(rid))
 	if i, ok := r.(resource.Configurer); ok {
 		if err := i.Configure(); err != nil {

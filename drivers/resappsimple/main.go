@@ -51,9 +51,6 @@ func (t *T) Start(ctx context.Context) (err error) {
 		t.Log().Infof("already up")
 		return nil
 	}
-	if err := t.ApplyPGChain(ctx); err != nil {
-		return err
-	}
 	opts = append(opts,
 		command.WithLogger(t.Log()),
 		command.WithErrorExitCodeLogLevel(zerolog.WarnLevel),

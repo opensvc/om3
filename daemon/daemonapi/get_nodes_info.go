@@ -6,10 +6,11 @@ import (
 	"github.com/labstack/echo/v4"
 
 	"github.com/opensvc/om3/v3/core/nodesinfo"
+	"github.com/opensvc/om3/v3/daemon/rbac"
 )
 
 func (a *DaemonAPI) GetNodesInfo(ctx echo.Context) error {
-	if v, err := assertRoot(ctx); !v {
+	if v, err := assertRole(ctx, rbac.RoleGuest, rbac.RoleOperator, rbac.RoleAdmin, rbac.RoleRoot, rbac.RoleJoin, rbac.RoleLeave); !v {
 		return err
 	}
 	log := LogHandler(ctx, "GetNodesInfo")

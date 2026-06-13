@@ -126,6 +126,11 @@ var (
 		TimeoutKeywords: []string{"stop_timeout", "timeout"},
 		PG:              true,
 	}
+	PGUpdate = Properties{
+		Name:     "pg_update",
+		MustLock: true,
+		PG:       true,
+	}
 	Start = Properties{
 		Name:            "start",
 		Target:          "started",

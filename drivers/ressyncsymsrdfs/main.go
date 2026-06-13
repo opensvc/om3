@@ -608,10 +608,10 @@ func (t *T) postIngest(ctx context.Context) error {
 			continue
 		}
 		rid := t.RID()
-		sid := xsession.ID
+		sid := xsession.Sid().UUID()
 		params := api.PostInstanceActionSyncIngestParams{
-			Rid:          &rid,
-			RequesterSid: &sid,
+			Rid:       &rid,
+			SessionId: &sid,
 		}
 		resp, err := c.PostInstanceActionSyncIngestWithResponse(ctx, nodename, t.Path.Namespace, t.Path.Kind, t.Path.Name, &params)
 		if err != nil {

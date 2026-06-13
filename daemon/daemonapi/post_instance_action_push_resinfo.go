@@ -33,8 +33,8 @@ func (a *DaemonAPI) postLocalInstanceActionPushResourceInfo(ctx echo.Context, na
 	}
 	log = naming.LogWithPath(log, p)
 	args := []string{p.String(), "instance", "push", "resinfo"}
-	if params.RequesterSid != nil {
-		requesterSid = *params.RequesterSid
+	if params.SessionId != nil {
+		requesterSid = *params.SessionId
 	}
 	if sid, err := a.apiExec(ctx, p, requesterSid, args, log); err != nil {
 		return JSONProblemf(ctx, http.StatusInternalServerError, "", "%s", err)

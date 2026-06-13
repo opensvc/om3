@@ -449,7 +449,7 @@ func (b *Bus) Start(ctx context.Context) {
 	go func() {
 		defer b.Done()
 
-		watchDuration := &durationlog.T{Log: *b.log}
+		watchDuration := &durationlog.T{Log: b.log}
 		watchDurationCtx, watchDurationCancel := context.WithCancel(context.Background())
 		defer watchDurationCancel()
 		var beginCmd = make(chan any)

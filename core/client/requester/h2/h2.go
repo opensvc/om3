@@ -65,7 +65,7 @@ func (t Config) String() string {
 	return "H2" + string(b)
 }
 
-func NewUDS(config Config) (apiClient *api.ClientWithResponses, err error) {
+func NewUDSClient(config Config) *http.Client {
 	if config.URL == "" {
 		config.URL = daemonenv.HTTPUnixFile()
 	}
@@ -93,11 +93,12 @@ func NewUDS(config Config) (apiClient *api.ClientWithResponses, err error) {
 		Transport: tp,
 		Timeout:   config.Timeout,
 	}
-	if apiClient, err = api.NewClientWithResponses("http://localhost", api.WithHTTPClient(httpClient)); err != nil {
-		return apiClient, err
-	} else {
-		return apiClient, nil
-	}
+	return httpClient
+}
+
+func NewUDS(config Config) (apiClient *api.ClientWithResponses, err error) {
+	httpClient := NewUDSClient(config)
+	return api.NewClientWithResponses("http://localhost", api.WithHTTPClient(httpClient))
 }
 
 // NewInet returns api *api.ClientWithResponses from config.

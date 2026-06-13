@@ -19,10 +19,10 @@ import (
 	"github.com/opensvc/om3/v3/core/object"
 	"github.com/opensvc/om3/v3/core/osagentservice"
 	"github.com/opensvc/om3/v3/core/rawconfig"
-	"github.com/opensvc/om3/v3/util/sessioncache"
 	"github.com/opensvc/om3/v3/util/hostname"
 	"github.com/opensvc/om3/v3/util/logging"
 	"github.com/opensvc/om3/v3/util/render"
+	"github.com/opensvc/om3/v3/util/sessioncache"
 	"github.com/opensvc/om3/v3/util/version"
 	"github.com/opensvc/om3/v3/util/xsession"
 )
@@ -105,7 +105,8 @@ func configureLogger() error {
 	log.Logger = log.Logger.With().
 		Str("node", hostname.Hostname()).
 		Str("version", version.Version()).
-		Stringer("sid", xsession.ID).
+		Stringer("sid", xsession.Sid()).
+		Stringer("eid", xsession.Eid()).
 		Logger()
 	if requestID := os.Getenv("OSVC_REQUEST_ID"); requestID != "" {
 		log.Logger = log.Logger.With().Str("request_id", requestID).Logger()

@@ -17,6 +17,7 @@ import (
 type (
 	CmdObjectInstanceRestart struct {
 		OptsGlobal
+		commoncmd.OptsAsync
 		commoncmd.OptsLock
 		commoncmd.OptsEncap
 		commoncmd.OptsResourceSelector
@@ -42,6 +43,9 @@ func (t *CmdObjectInstanceRestart) Run(kind string) error {
 		objectaction.WithOutput(t.Output),
 		objectaction.WithColor(t.Color),
 		objectaction.WithIgnoreNotFound(t.IgnoreNotFound),
+		objectaction.WithAsyncTime(t.Time),
+		objectaction.WithAsyncWait(t.Wait),
+		objectaction.WithAsyncWatch(t.Watch),
 		objectaction.WithRemoteNodes(t.NodeSelector),
 		objectaction.WithLocalFunc(func(ctx context.Context, p naming.Path) (interface{}, error) {
 			o, err := object.NewActor(p)
@@ -91,8 +95,8 @@ func (t *CmdObjectInstanceRestart) Run(kind string) error {
 				params.To = &t.OptTo.To
 			}
 			{
-				sid := xsession.ID
-				params.RequesterSid = &sid
+				sid := xsession.Sid().UUID()
+				params.SessionId = &sid
 			}
 			response, err := c.PostInstanceActionRestartWithResponse(ctx, nodename, p.Namespace, p.Kind, p.Name, &params)
 			if err != nil {

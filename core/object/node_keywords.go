@@ -236,7 +236,7 @@ var (
 		Section: "node",
 		Text:    keywords.NewText(fs, "text/kw/node/node.env"),
 	}
-	kwNodeMaxGreetTimeout = keywords.Keyword{
+	kwNodeConsoleMaxGreetTimeout = keywords.Keyword{
 		Converter: "duration",
 		Option:    "max_greet_timeout",
 		Section:   "console",
@@ -1712,6 +1712,7 @@ var (
 		&kwNodeMinAvailMemPct,
 		&kwNodeMinAvailSwapPct,
 		&kwNodeEnv,
+		&kwNodeConsoleMaxGreetTimeout,
 		&kwNodeConsoleMaxSeats,
 		&kwNodeConsoleInsecure,
 		&kwNodeConsoleServer,

@@ -54,7 +54,7 @@ func (a *DaemonAPI) deleteLocalDaemonProcess(ctx echo.Context, params api.Delete
 }
 
 func localDaemonProcessPIDSet() map[int]struct{} {
-	items := proc.List([]string{})
+	items := proc.List([]string{}, nil, "")
 	out := make(map[int]struct{}, len(items))
 	for _, item := range items {
 		out[item.Pid] = struct{}{}

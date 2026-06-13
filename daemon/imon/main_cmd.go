@@ -434,18 +434,14 @@ func (t *Manager) onProgressInstanceMonitor(c *msgbus.ProgressInstanceMonitor) {
 	}
 
 	// state change
-	switch t.state.SessionID {
-	case uuid.Nil:
-	case c.SessionID:
-		// pass
-	default:
+	if !t.state.SessionID.IsZero() && t.state.SessionID != c.SessionID {
 		t.log.Warnf("received progress instance monitor for wrong sid state %s(%s) -> %s(%s)", t.state.State, t.state.SessionID, c.State, c.SessionID)
 	}
 	t.log.Infof("progress instance monitor state %s -> %s", t.state.State, c.State)
 	t.change = true
 	t.state.State = c.State
 	if c.State == instance.MonitorStateIdle {
-		t.state.SessionID = uuid.Nil
+		t.state.SessionID.Zero()
 	} else {
 		t.state.SessionID = c.SessionID
 	}
@@ -507,7 +503,7 @@ func (t *Manager) onSetInstanceMonitor(c *msgbus.SetInstanceMonitor) {
 			return err
 		}
 		if t.state.OrchestrationID != uuid.Nil && *c.Value.GlobalExpect != instance.MonitorGlobalExpectAborted {
-			err := fmt.Errorf("%w: daemon: imon: %s: a %s orchestration is already in progress with id %s", instance.ErrInvalidGlobalExpect, *c.Value.GlobalExpect, t.state.GlobalExpect, t.state.OrchestrationID)
+			err := fmt.Errorf("orchestration %s (>%s) already in progress", t.state.OrchestrationID, t.state.GlobalExpect)
 			return err
 		}
 		// Clone global expect options to prevent data race when we have to update its
@@ -522,7 +518,7 @@ func (t *Manager) onSetInstanceMonitor(c *msgbus.SetInstanceMonitor) {
 				// Select some nodes automatically.
 				dst := t.nextPlacedAtCandidate()
 				if dst == "" {
-					err := fmt.Errorf("%w: daemon: imon: %s: no destination node could be selected from candidates", instance.ErrInvalidGlobalExpect, *c.Value.GlobalExpect)
+					err := fmt.Errorf("no destination node candidate")
 					t.log.Infof("set instance monitor: %s", err)
 					globalExpectRefused()
 					return err
@@ -530,20 +526,20 @@ func (t *Manager) onSetInstanceMonitor(c *msgbus.SetInstanceMonitor) {
 				options.Destination = []string{dst}
 				globalExpectOptions = options
 			} else if options.Live && len(options.Destination) > 1 {
-				err := fmt.Errorf("%w: daemon: imon: %s: live migration is not possible with multiple destinations", instance.ErrInvalidGlobalExpect, *c.Value.GlobalExpect)
+				err := fmt.Errorf("live migration is not possible with multiple destinations")
 				globalExpectRefused()
 				return err
 			} else {
 				want := options.Destination
 				can, err := t.nextPlacedAtCandidates(want)
 				if err != nil {
-					err2 := fmt.Errorf("%w: daemon: imon: %s: no destination node could ne selected from %s: %s", instance.ErrInvalidGlobalExpect, *c.Value.GlobalExpect, want, err)
+					err2 := fmt.Errorf("no destination node could be selected from %s: %s", want, err)
 					t.log.Infof("set instance monitor: %s", err)
 					globalExpectRefused()
 					return err2
 				}
 				if can == "" {
-					err := fmt.Errorf("%w: daemon: imon: %s: no destination node could ne selected from %s", instance.ErrInvalidGlobalExpect, *c.Value.GlobalExpect, want)
+					err := fmt.Errorf("no destination node could be selected from %s", want)
 					t.log.Infof("set instance monitor: %s", err)
 					globalExpectRefused()
 					return err
@@ -555,7 +551,7 @@ func (t *Manager) onSetInstanceMonitor(c *msgbus.SetInstanceMonitor) {
 			}
 		case instance.MonitorGlobalExpectStarted:
 			if v, reason := t.isStartable(); !v {
-				err := fmt.Errorf("%w: daemon: imon: %s: %s", instance.ErrInvalidGlobalExpect, *c.Value.GlobalExpect, reason)
+				err := fmt.Errorf("%s", reason)
 				t.log.Infof("set instance monitor %s", t.path, err)
 				globalExpectRefused()
 				return err
@@ -572,7 +568,7 @@ func (t *Manager) onSetInstanceMonitor(c *msgbus.SetInstanceMonitor) {
 				continue
 			}
 			if instMon.GlobalExpectUpdatedAt.After(t.state.GlobalExpectUpdatedAt) {
-				err := fmt.Errorf("%w: daemon: imon: %s: more recent value %s on node %s", instance.ErrInvalidGlobalExpect, *c.Value.GlobalExpect, instMon.GlobalExpect, node)
+				err := fmt.Errorf("more recent global expect %s on node %s", instMon.GlobalExpect, node)
 				t.log.Infof("set instance monitor: %s", t.path, err)
 				globalExpectRefused()
 				return err

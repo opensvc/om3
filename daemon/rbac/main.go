@@ -2,6 +2,7 @@ package rbac
 
 import (
 	"fmt"
+	"slices"
 	"strings"
 )
 
@@ -44,7 +45,7 @@ var (
 		"blacklistadmin": RoleBlacklistAdmin,
 		"heartbeat":      RoleHeartbeat,
 		"join":           RoleJoin,
-		"leave":          RoleJoin,
+		"leave":          RoleLeave,
 	}
 
 	GrantRoot           = NewGrant("root", "")
@@ -80,13 +81,31 @@ func (t Grants) HasRole(roles ...Role) bool {
 	return matchRoles(t, roles...)
 }
 
+func (t Grants) WithRole(roles ...Role) (grants Grants) {
+	for _, grant := range t {
+		if r := grant.Role(); slices.Contains(roles, r) {
+			grants = append(grants, grant)
+		}
+	}
+	return
+}
+
 // HasRoleOn checks if any of the specified roles with the given scope exist in the Grants.
 func (t Grants) HasRoleOn(scope string, roles ...Role) bool {
-	grants := make(Grants, len(roles))
-	for i, role := range roles {
-		grants[i] = NewGrant(role, scope)
+	for _, role := range roles {
+		if match(t, role, scope) {
+			return true
+		}
 	}
-	return matchGrants(t, grants...)
+	return false
+}
+
+func (t Grants) AssertRoleOn(scope string, roles ...Role) bool {
+	if scope != "" {
+		return t.HasRoleOn("", roles...) || t.HasRoleOn(scope, roles...)
+	} else {
+		return t.HasRoleOn(scope, roles...)
+	}
 }
 
 func (t Grants) Has(role Role, scope string) bool {
@@ -119,6 +138,7 @@ func (t Grants) Namespaces(roles ...Role) []string {
 	i := 0
 	for k := range m {
 		l[i] = k
+		i++
 	}
 	return l
 }
@@ -164,14 +184,14 @@ func matchRoles(userGrants Grants, roles ...Role) bool {
 // SplitGrant extract role and scope from a grant
 func SplitGrant(grant Grant) (r Role, ns string) {
 	l := strings.SplitN(string(grant), ":", 2)
-	r = toRole(l[0])
+	r = ParseRole(l[0])
 	if len(l) == 2 {
 		ns = l[1]
 	}
 	return
 }
 
-func toRole(s string) Role {
+func ParseRole(s string) Role {
 	if v, ok := roleMap[s]; ok {
 		return v
 	} else {
@@ -179,14 +199,19 @@ func toRole(s string) Role {
 	}
 }
 
+func (t *Grant) Role() Role {
+	role, _, _ := strings.Cut(string(*t), ":")
+	return Role(role)
+}
+
+func (t *Grant) Scope() string {
+	_, scope, _ := strings.Cut(string(*t), ":")
+	return scope
+}
+
 func (t *Grant) Split() (string, string) {
-	l := strings.SplitN(string(*t), ":", 2)
-	switch len(l) {
-	case 2:
-		return l[0], l[1]
-	default:
-		return l[0], ""
-	}
+	role, scope, _ := strings.Cut(string(*t), ":")
+	return role, scope
 }
 
 func (t *Grant) String() string {
@@ -219,4 +244,188 @@ func Roles() []string {
 		l = append(l, s)
 	}
 	return l
+}
+
+func IsScopedRole(role Role) bool {
+	switch role {
+	case RoleAdmin, RoleOperator, RoleGuest:
+		return true
+	default:
+		return false
+	}
+}
+
+func (t Grants) filterRole(role Role) (grants Grants) {
+	grant := NewGrant(role, "")
+	if t.HasRole(RoleRoot) {
+		return append(grants, grant)
+	}
+	if role == RoleGuest {
+		if t.HasRoleOn("", RoleOperator, RoleAdmin, RoleGuest) {
+			return append(grants, grant)
+		}
+		for _, namespace := range t.Namespaces(RoleAdmin, RoleOperator, RoleGuest) {
+			grants = append(grants, NewGrant(role, namespace))
+		}
+		return
+	}
+	if role == RoleOperator {
+		if t.HasRoleOn("", RoleAdmin, RoleOperator) {
+			return append(grants, grant)
+		}
+		for _, namespace := range t.Namespaces(RoleAdmin, RoleOperator) {
+			grants = append(grants, NewGrant(role, namespace))
+		}
+		return
+	}
+	if role == RoleAdmin {
+		if t.HasRoleOn("", RoleAdmin) {
+			return append(grants, grant)
+		}
+		for _, namespace := range t.Namespaces(RoleAdmin) {
+			grants = append(grants, NewGrant(role, namespace))
+		}
+		return
+	}
+	if t.HasGrant(grant) {
+		return append(grants, grant)
+	}
+
+	return
+}
+
+func (t Grants) filterGrant(grant Grant) (grants Grants) {
+	role := grant.Role()
+	scope := grant.Scope()
+	if t.HasRole(RoleRoot) {
+		return append(grants, grant)
+	}
+	if t.HasGrant(grant) {
+		return append(grants, grant)
+	}
+	if role == RoleGuest {
+		if t.HasRoleOn(scope, RoleOperator, RoleAdmin) {
+			return append(grants, grant)
+		}
+		if t.HasRoleOn("", RoleOperator, RoleAdmin) {
+			return append(grants, grant)
+		}
+	}
+	if role == RoleOperator {
+		if t.HasRoleOn(scope, RoleAdmin) {
+			return append(grants, grant)
+		}
+		if t.HasRoleOn("", RoleAdmin) {
+			return append(grants, grant)
+		}
+	}
+	if role == RoleAdmin {
+		if t.HasRoleOn("", RoleAdmin) {
+			return append(grants, grant)
+		}
+	}
+	return
+}
+
+func (t Grants) filterScope(scope string) (grants Grants) {
+	if t.HasRole(RoleRoot) {
+		// give admin role to all given scope
+		grant := NewGrant(RoleAdmin, scope)
+		grants = append(grants, grant)
+		return
+	}
+	if t.Has(RoleAdmin, scope) || t.Has(RoleAdmin, "") {
+		grant := NewGrant(RoleAdmin, scope)
+		grants = append(grants, grant)
+		return
+	}
+	if t.Has(RoleOperator, scope) || t.Has(RoleOperator, "") {
+		grant := NewGrant(RoleOperator, scope)
+		grants = append(grants, grant)
+		return
+	}
+	if t.Has(RoleGuest, scope) || t.Has(RoleGuest, "") {
+		grant := NewGrant(RoleGuest, scope)
+		grants = append(grants, grant)
+		return
+	}
+	return
+}
+
+// FilterGrantStrings return a subset of allowed grants capped by the requested
+// role and scope.
+//
+// 1/ with no role and no scope,
+//
+//	return all user grants.
+//
+//	Request    Request   User                             Returned
+//	Role       Scope     Grants                           Grants
+//	---        ---       ---                              ---
+//	                     root                             root
+//	                     admin                            admin
+//	                     admin:ns1,admin:ns2,guest:ns3    admin:ns1,admin:ns2,guest:ns3
+//
+// 2/ with roles and scope,
+//
+//	Request    Request   User                             Returned
+//	Role       Scope     Grants                           Grants
+//	---        ---       ---                              ---
+//	admin      ns2       root                             admin:ns2
+//	admin      ns2       admin                            admin:ns2
+//	guest      ns2       admin                            guest:ns2
+//	admin      ns2       admin:ns1,admin:ns2,guest:ns3    admin:ns2
+//	admin      ns3       admin:ns1,admin:ns2,guest:ns3
+//	guest      ns2       admin:ns1,admin:ns2,guest:ns3    guest:ns2
+//
+// 3/ with roles and no scope,
+//
+//	Role       Scope     Grants                           Filtered Grants
+//	---        ---       ---                              ---
+//	root                 root                             root
+//	admin                root                             admin
+//	root                 admin
+//	admin                admin                            admin
+//	guest                admin                            guest
+//	root                 admin:ns1,admin:ns2,guest:ns3
+//	admin                admin:ns1,admin:ns2,guest:ns3    admin:ns1,admin:ns2
+//	guest                admin:ns1,admin:ns2,guest:ns3    guest:ns3
+//
+// 4/ with scope and no role,
+//
+//	Role       Scope     Grants                           Filtered Grants
+//	---        ---       ---                              ---
+//	           ns1       root                             admin:ns1
+//	           ns1       guest                            guest:ns1
+//	           ns1       admin:ns1,admin:ns2,guest:ns3    admin:ns1
+//	           ns3       admin:ns1,admin:ns2,guest:ns3    guest:ns3
+func FilterGrantStrings(allowed []string, roles []Role, scope string) Grants {
+	allowedGrants := NewGrants(allowed...)
+	var grants Grants
+
+	if len(roles) == 0 && scope == "" {
+		return allowedGrants
+	}
+
+	if len(roles) > 0 && scope != "" {
+		for _, role := range roles {
+			grant := NewGrant(role, scope)
+			grants = append(grants, allowedGrants.filterGrant(grant)...)
+		}
+		return grants
+	}
+
+	if len(roles) > 0 && scope == "" {
+		for _, role := range roles {
+			grants = append(grants, allowedGrants.filterRole(role)...)
+		}
+		return grants
+	}
+
+	if len(roles) == 0 && scope != "" {
+		grants = append(grants, allowedGrants.filterScope(scope)...)
+		return grants
+	}
+
+	return grants
 }

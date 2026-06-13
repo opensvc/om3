@@ -209,7 +209,7 @@ func (t *Run) moduleEnv(mod *Module) ([]string, error) {
 	m["OSVC_PATH_LOG"] = rawconfig.Paths.Log
 	m["OSVC_NODEMGR"] = filepath.Join(rawconfig.Paths.Bin, "nodemgr")
 	m["OSVC_SVCMGR"] = filepath.Join(rawconfig.Paths.Bin, "svcmgr")
-	m["OSVC_SESSION_UUID"] = xsession.ID
+	m["OSVC_SESSION_UUID"] = xsession.Sid().String()
 
 	if runtime.GOOS != "windows" {
 		m["PATH"] = rawconfig.Paths.Bin + ":" + os.Getenv("PATH")

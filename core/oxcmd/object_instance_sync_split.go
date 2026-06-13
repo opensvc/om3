@@ -8,6 +8,7 @@ import (
 type (
 	CmdObjectInstanceSyncSplit struct {
 		OptsGlobal
+		commoncmd.OptsAsync
 		commoncmd.OptsLock
 		commoncmd.OptsResourceSelector
 		Force bool
@@ -24,5 +25,8 @@ func (t *CmdObjectInstanceSyncSplit) Run(kind string) error {
 		objectaction.WithOutput(t.Output),
 		objectaction.WithColor(t.Color),
 		objectaction.WithIgnoreNotFound(t.IgnoreNotFound),
+		objectaction.WithAsyncTime(t.Time),
+		objectaction.WithAsyncWait(t.Wait),
+		objectaction.WithAsyncWatch(t.Watch),
 	).Do()
 }

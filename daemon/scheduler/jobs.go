@@ -5,7 +5,6 @@ import (
 	"os"
 	"time"
 
-	"github.com/google/uuid"
 	"github.com/opensvc/om3/v3/daemon/proc"
 	"github.com/rs/zerolog"
 
@@ -14,11 +13,13 @@ import (
 	"github.com/opensvc/om3/v3/daemon/msgbus"
 	"github.com/opensvc/om3/v3/util/command"
 	"github.com/opensvc/om3/v3/util/pubsub"
+	"github.com/opensvc/om3/v3/util/xsession"
 )
 
 func (o *T) action(e schedule.Entry) error {
 	logger := o.jobLogger(e)
-	sid := uuid.New()
+	eid := xsession.NewEid()
+	sid := xsession.NewSid()
 	labels := []pubsub.Label{{"node", o.localhost}, {"origin", "scheduler"}}
 	cmdArgs := []string{}
 	if e.Path.IsZero() {
@@ -64,9 +65,10 @@ func (o *T) action(e schedule.Entry) error {
 	var cmdEnv []string
 	cmdEnv = append(
 		cmdEnv,
-		env.OriginSetenvArg(env.ActionOriginDaemonScheduler),
-		env.ParentSessionIDSetenvArg(),
-		"OSVC_SESSION_ID="+sid.String(),
+		env.ActionOriginDaemonScheduler.Var(),
+		xsession.Sid().ParentVar(),
+		eid.Var(),
+		sid.Var(),
 	)
 
 	// Unless the daemon runs with --debug or --trace, we don't want to
@@ -84,7 +86,13 @@ func (o *T) action(e schedule.Entry) error {
 		command.WithEnv(cmdEnv),
 	)
 	logger.Debugf("-> exec %s", cmd)
-	o.publisher.Pub(&msgbus.Exec{Command: cmd.String(), Node: o.localhost, Origin: "scheduler", SessionID: sid}, labels...)
+	o.publisher.Pub(&msgbus.Exec{
+		Command:   cmd.String(),
+		Node:      o.localhost,
+		Origin:    "scheduler",
+		ExecID:    eid,
+		SessionID: sid,
+	}, labels...)
 	startTime := time.Now()
 	if err := cmd.Start(); err != nil {
 		o.log.Errorf("exec StartProcess: %s", err)
@@ -100,18 +108,34 @@ func (o *T) action(e schedule.Entry) error {
 		Elapsed:      "",
 		GlobalExpect: "-",
 		Sub:          "scheduler",
-		Desc:         cmd.String(),
+		Cmd:          cmd.String(),
+		Rid:          e.RID(),
 	})
 	err := cmd.Wait()
 	proc.Unregister(pid)
 	if err != nil {
 		duration := time.Now().Sub(startTime)
-		o.publisher.Pub(&msgbus.ExecFailed{Command: cmd.String(), Duration: duration, ErrS: err.Error(), Node: o.localhost, Origin: "scheduler", SessionID: sid}, labels...)
+		o.publisher.Pub(&msgbus.ExecFailed{
+			Command:   cmd.String(),
+			Duration:  duration,
+			ErrS:      err.Error(),
+			Node:      o.localhost,
+			Origin:    "scheduler",
+			ExecID:    eid,
+			SessionID: sid,
+		}, labels...)
 		logger.Errorf("%s: %s", cmd, err)
 		return err
 	}
 	duration := time.Now().Sub(startTime)
-	o.publisher.Pub(&msgbus.ExecSuccess{Command: cmd.String(), Duration: duration, Node: o.localhost, Origin: "scheduler", SessionID: sid}, labels...)
+	o.publisher.Pub(&msgbus.ExecSuccess{
+		Command:   cmd.String(),
+		Duration:  duration,
+		Node:      o.localhost,
+		Origin:    "scheduler",
+		ExecID:    eid,
+		SessionID: sid,
+	}, labels...)
 	logger.Debugf("<- exec %s", cmd)
 	return nil
 }

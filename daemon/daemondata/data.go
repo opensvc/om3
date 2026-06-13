@@ -224,7 +224,7 @@ func (d *data) run(ctx context.Context, cmdC <-chan Caller, hbRecvQ <-chan *hbty
 	d.log = plog.NewDefaultLogger().WithPrefix("daemon: data: ").Attr("pkg", "daemon/daemondata")
 	d.log.Infof("starting")
 	defer d.log.Infof("stopped")
-	watchCmd := &durationlog.T{Log: *d.log}
+	watchCmd := &durationlog.T{Log: d.log}
 	watchDurationCtx, watchDurationCancel := context.WithCancel(context.Background())
 	defer watchDurationCancel()
 	var beginCmd = make(chan interface{})

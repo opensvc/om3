@@ -55,8 +55,8 @@ func (a *DaemonAPI) postLocalInstanceActionSyncIngest(ctx echo.Context, namespac
 	if params.Tag != nil && *params.Tag != "" {
 		args = append(args, "--tag", *params.Tag)
 	}
-	if params.RequesterSid != nil {
-		requesterSid = *params.RequesterSid
+	if params.SessionId != nil {
+		requesterSid = *params.SessionId
 	}
 	if sid, err := a.apiExec(ctx, p, requesterSid, args, log); err != nil {
 		return JSONProblemf(ctx, http.StatusInternalServerError, "", "%s", err)

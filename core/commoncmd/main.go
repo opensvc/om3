@@ -283,9 +283,9 @@ func WaitInstanceStatusUpdated(ctx context.Context, c *client.T, nodename string
 // Returns an error if client creation, API calls, or processing fails.
 func RefreshInstanceStatusFromClusterStatus(ctx context.Context, clusterStatus clusterdump.Data) error {
 	var wg sync.WaitGroup
-	sid := api.InQueryRequesterSid(xsession.ID)
+	sid := api.InQuerySessionID(xsession.Sid().UUID())
 	params := &api.PostInstanceActionStatusParams{
-		RequesterSid: &sid,
+		SessionId: &sid,
 	}
 	c, err := client.New(client.WithTimeout(0))
 	if err != nil {
