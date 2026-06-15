@@ -100,6 +100,10 @@ func NewPathFromStrings(namespace, kind, name string) (Path, error) {
 		return path, fmt.Errorf("%w: invalid kind %s", ErrInvalid, kind)
 	case KindNscfg:
 		name = "namespace"
+	case KindSvc:
+		if namespace == NsRoot && name == "namespace" {
+			return path, fmt.Errorf("%w: the 'namespace' svc name is reserved in the root ns", ErrInvalid)
+		}
 	}
 
 	if name == "" {
@@ -475,14 +479,21 @@ func (t Path) ConfigFile() string {
 	if s == "" {
 		return ""
 	}
-	if t.Kind == KindNscfg {
-		s = Separator + "namespace"
-	}
-	switch t.Namespace {
-	case "", NsRoot:
-		s = fmt.Sprintf("%s/%s.conf", rawconfig.Paths.Etc, s)
+	switch t.Kind {
+	case KindCcfg:
+		s = fmt.Sprintf("%s/cluster.conf", rawconfig.Paths.Etc)
+	case KindNscfg:
+		if t.Namespace == "" || t.Namespace == NsRoot {
+			s = fmt.Sprintf("%s/namespace.conf", rawconfig.Paths.Etc)
+		} else {
+			s = fmt.Sprintf("%s/%s/namespace.conf", rawconfig.Paths.EtcNs, t.Namespace)
+		}
 	default:
-		s = fmt.Sprintf("%s/%s.conf", rawconfig.Paths.EtcNs, s)
+		if t.Namespace == "" || t.Namespace == NsRoot {
+			s = fmt.Sprintf("%s/%s.conf", rawconfig.Paths.Etc, s)
+		} else {
+			s = fmt.Sprintf("%s/%s.conf", rawconfig.Paths.EtcNs, s)
+		}
 	}
 	return filepath.FromSlash(s)
 }
@@ -533,4 +544,36 @@ func InstalledPaths() (Paths, error) {
 		l = append(l, p)
 	}
 	return l, nil
+}
+
+// ConfigFilePath return the object path owning the config file pass as
+// argument.
+//
+// e.g.
+// * /etc/opensvc/namespace.conf => path.T{Namespace: "root", Kind: KindNscfg, Name: "namespace"}
+// * /etc/opensvc/sec/namespace.conf => path.T{Namespace: "root", Kind: KindSec, Name: "namespace"}
+// * /etc/opensvc/namespaces/test/namespace.conf => path.T{Namespace: "test", Kind: KindNscfg, Name: "namespace"}
+// * /etc/opensvc/namespaces/test/svc/namespace.conf => path.T{Namespace: "test", Kind: KindSvc, Name: "namespace"}
+func ConfigFilePath(filename string) (Path, error) {
+	svcName := strings.TrimPrefix(filename, rawconfig.Paths.Etc+"/")
+	if svcName == "namespace.conf" {
+		return Path{
+			Namespace: NsRoot, Kind: KindNscfg, Name: "namespace"}, nil
+	}
+	if svcName == "cluster.conf" {
+		return Path{Namespace: NsRoot, Kind: KindCcfg, Name: "cluster"}, nil
+	}
+	svcName = strings.TrimPrefix(svcName, "namespaces/")
+	svcName = strings.TrimSuffix(svcName, ".conf")
+	elements := strings.Split(svcName, "/")
+	if len(elements) == 2 && elements[1] == "namespace" {
+		if ParseKind(elements[0]) == KindInvalid {
+			// ns1/namespace => ns1/
+			svcName = strings.TrimSuffix(svcName, "namespace")
+		}
+	}
+	if len(svcName) == 0 {
+		return Path{}, fmt.Errorf("skipped null filename")
+	}
+	return ParsePath(svcName)
 }

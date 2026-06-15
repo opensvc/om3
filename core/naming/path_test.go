@@ -81,6 +81,13 @@ func TestNewPath(t *testing.T) {
 			output:    "",
 			ok:        false,
 		},
+		"reserved svc name": {
+			name:      "namespace",
+			namespace: "root",
+			kind:      "svc",
+			output:    "",
+			ok:        false,
+		},
 		"empty name": {
 			name:      "",
 			namespace: NsRoot,
@@ -100,6 +107,20 @@ func TestNewPath(t *testing.T) {
 			namespace: NsRoot,
 			kind:      "ccfg",
 			output:    "cluster",
+			ok:        true,
+		},
+		"root nscfg": {
+			name:      "namespace",
+			namespace: NsRoot,
+			kind:      "nscfg",
+			output:    "/",
+			ok:        true,
+		},
+		"non-root nscfg": {
+			name:      "namespace",
+			namespace: "test",
+			kind:      "nscfg",
+			output:    "test/",
 			ok:        true,
 		},
 		"zero value": {
@@ -537,6 +558,20 @@ func TestConfigFile(t *testing.T) {
 			cf:        "/etc/opensvc/cluster.conf",
 			root:      "",
 		},
+		"root namespace": {
+			name:      "namespace",
+			namespace: "",
+			kind:      "nscfg",
+			cf:        "/etc/opensvc/namespace.conf",
+			root:      "",
+		},
+		"non-root namespace": {
+			name:      "namespace",
+			namespace: "test",
+			kind:      "nscfg",
+			cf:        "/etc/opensvc/namespaces/test/namespace.conf",
+			root:      "",
+		},
 		"namespaced, dev install": {
 			name:      "svc1",
 			namespace: "ns1",
@@ -596,4 +631,55 @@ func TestPathEqual(t *testing.T) {
 func TestNsNames(t *testing.T) {
 	assert.Equal(t, "root", NsRoot)
 	assert.Equal(t, "system", NsSys)
+}
+
+func TestConfigFilePath(t *testing.T) {
+	tests := map[string]struct {
+		filename string
+		expected Path
+		ok       bool
+	}{
+		"cluster.conf in /etc/opensvc/": {
+			filename: "/etc/opensvc/cluster.conf",
+			expected: Path{Namespace: NsRoot, Kind: KindCcfg, Name: "cluster"},
+			ok:       true,
+		},
+		"namespace.conf in /etc/opensvc/": {
+			filename: "/etc/opensvc/namespace.conf",
+			expected: Path{Namespace: NsRoot, Kind: KindNscfg, Name: "namespace"},
+			ok:       true,
+		},
+		"namespace.conf in /etc/opensvc/sec/": {
+			filename: "/etc/opensvc/sec/namespace.conf",
+			expected: Path{Namespace: NsRoot, Kind: KindSec, Name: "namespace"},
+			ok:       true,
+		},
+		"namespace.conf in /etc/opensvc/test/": {
+			filename: "/etc/opensvc/test/namespace.conf",
+			expected: Path{Namespace: "test", Kind: KindNscfg, Name: "namespace"},
+			ok:       true,
+		},
+		"namespace.conf in /etc/opensvc/test/svc/": {
+			filename: "/etc/opensvc/test/svc/namespace.conf",
+			expected: Path{Namespace: "test", Kind: KindSvc, Name: "namespace"},
+			ok:       true,
+		},
+	}
+	for testName, test := range tests {
+		t.Run(testName, func(t *testing.T) {
+			_ = testhelper.SetupEnvWithoutCreateMandatoryDirectories(testhelper.Env{
+				TestingT: t,
+				Root:     "",
+			})
+			path, err := ConfigFilePath(test.filename)
+			if test.ok {
+				assert.NoError(t, err)
+				assert.Equal(t, test.expected.Namespace, path.Namespace)
+				assert.Equal(t, test.expected.Kind, path.Kind)
+				assert.Equal(t, test.expected.Name, path.Name)
+			} else {
+				assert.Error(t, err)
+			}
+		})
+	}
 }
