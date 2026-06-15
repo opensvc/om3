@@ -227,6 +227,12 @@ func TestParsePath(t *testing.T) {
 			kind:      "nscfg",
 			ok:        true,
 		},
+		"ns1/nscfg/namespace": {
+			name:      "namespace",
+			namespace: "ns1",
+			kind:      "nscfg",
+			ok:        true,
+		},
 		"cluster": {
 			name:      "cluster",
 			namespace: NsRoot,
