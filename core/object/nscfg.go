@@ -7,6 +7,7 @@ import (
 	"github.com/opensvc/om3/v3/core/actioncontext"
 	"github.com/opensvc/om3/v3/core/keywords"
 	"github.com/opensvc/om3/v3/core/naming"
+	"github.com/opensvc/om3/v3/core/schedule"
 	"github.com/opensvc/om3/v3/util/funcopt"
 	"github.com/opensvc/om3/v3/util/key"
 	"github.com/opensvc/om3/v3/util/pg"
@@ -32,6 +33,10 @@ func NewNscfg(path naming.Path, opts ...funcopt.O) (*nscfg, error) {
 
 func (t *nscfg) KeywordLookup(k key.T, sectionType string) *keywords.Keyword {
 	return keywordLookup(keywordStore, k, t.path.Kind, sectionType)
+}
+
+func (t *nscfg) Schedules() (l schedule.Table) {
+	return
 }
 
 func (t *nscfg) Boot(ctx context.Context) error {
@@ -78,7 +83,7 @@ func (t *nscfg) pgConfigNamespace() *pg.Config {
 	data.MemOOMControl, _ = t.config.EvalNoConv(key.New("", "pg_mem_oom_control"))
 	data.MemSwappiness, _ = t.config.EvalNoConv(key.New("", "pg_mem_swappiness"))
 	data.BlockIOWeight, _ = t.config.EvalNoConv(key.New("", "pg_blkio_weight"))
-	
+
 	// Build the namespace cgroup path only
 	// The ID must match the expected format for both cgroups v1 and v2
 	// For v2: relative path like "opensvc-ns.test.slice" (no leading slash, dots in name)
