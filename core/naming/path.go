@@ -16,7 +16,6 @@ import (
 	"github.com/opensvc/om3/v3/util/file"
 	"github.com/opensvc/om3/v3/util/hostname"
 	"github.com/opensvc/om3/v3/util/xmap"
-	"github.com/opensvc/om3/v3/util/xstrings"
 )
 
 type (
@@ -509,8 +508,9 @@ func InstalledPaths() (Paths, error) {
 	matches := make([]string, 0)
 	patterns := []string{
 		fmt.Sprintf("%s/*.conf", rawconfig.Paths.Etc),       // root svc
-		fmt.Sprintf("%s/*/*.conf", rawconfig.Paths.Etc),     // root other
-		fmt.Sprintf("%s/*/*/*.conf", rawconfig.Paths.EtcNs), // namespaces
+		fmt.Sprintf("%s/*/*.conf", rawconfig.Paths.Etc),     // root other-kind
+		fmt.Sprintf("%s/*/*.conf", rawconfig.Paths.EtcNs),   // namespaces nscfg
+		fmt.Sprintf("%s/*/*/*.conf", rawconfig.Paths.EtcNs), // namespaces other-kind
 	}
 	for _, pattern := range patterns {
 		m, err := filepath.Glob(pattern)
@@ -519,21 +519,14 @@ func InstalledPaths() (Paths, error) {
 		}
 		matches = append(matches, m...)
 	}
-	replacements := []string{
-		fmt.Sprintf("%s/", rawconfig.Paths.EtcNs),
-		fmt.Sprintf("%s/", rawconfig.Paths.Etc),
-	}
+
 	envNamespace := env.Namespace()
 	envKind := ParseKind(env.Kind())
+
 	for _, ps := range matches {
-		for _, r := range replacements {
-			ps = strings.Replace(ps, r, "", 1)
-			ps = strings.Replace(ps, r, "", 1)
-		}
-		ps = xstrings.TrimLast(ps, 5) // strip trailing .conf
-		p, err := ParsePath(ps)
+		p, err := ConfigFilePath(ps)
 		if err != nil {
-			continue
+			l = append(l, p)
 		}
 		if envKind != KindInvalid && envKind != p.Kind {
 			continue
