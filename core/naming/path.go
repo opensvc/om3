@@ -415,12 +415,16 @@ func (t Path) VarDir() string {
 	if t.IsZero() {
 		return filepath.Join(rawconfig.Paths.Var, "node")
 	}
-
 	switch t.Namespace {
 	case "", NsRoot:
 		s = filepath.Join(rawconfig.Paths.Var, t.Kind.String(), t.Name)
 	default:
-		s = filepath.Join(rawconfig.Paths.VarNs, t.String())
+		if t.Kind == KindNscfg {
+			s = filepath.Join(rawconfig.Paths.VarNs, t.FQN())
+		} else {
+
+			s = filepath.Join(rawconfig.Paths.VarNs, t.String())
+		}
 	}
 	return s
 }
