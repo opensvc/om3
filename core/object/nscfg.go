@@ -60,9 +60,6 @@ func (t *nscfg) lockedBoot(ctx context.Context) error {
 
 func (t *nscfg) PGUpdate(ctx context.Context) error {
 	ctx = actioncontext.WithProps(ctx, actioncontext.PGUpdate)
-	if err := t.validateAction(); err != nil {
-		return err
-	}
 	unlock, err := t.lockAction(ctx)
 	if err != nil {
 		return err
