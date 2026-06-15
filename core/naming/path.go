@@ -156,6 +156,13 @@ func (t Path) String() string {
 	if t.Kind == KindInvalid {
 		return ""
 	}
+	if t.Kind == KindNscfg {
+		if t.Namespace == NsRoot {
+			return Separator
+		} else {
+			return t.Namespace + Separator
+		}
+	}
 	if t.Namespace != "" && t.Namespace != NsRoot {
 		s += t.Namespace + Separator
 	}
@@ -463,6 +470,9 @@ func (t Path) ConfigFile() string {
 	s := t.String()
 	if s == "" {
 		return ""
+	}
+	if t.Kind == KindNscfg {
+		s = Separator + "namespace"
 	}
 	switch t.Namespace {
 	case "", NsRoot:
