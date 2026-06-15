@@ -1,3 +1,16 @@
+// Package prioqueue implements a priority queue using a heap-based implementation.
+//
+// Items are ordered according to the Interface.Before method. The queue is a min-heap:
+// items for which Before returns true come first. This means lower priority values
+// (as defined by the Before implementation) are popped before higher values.
+//
+// For example, the daemon/runner implements:
+//
+//	func (a *MyItem) Before(b prioqueue.Interface) bool {
+//	    return a.Priority < b.(*MyItem).Priority
+//	}
+//
+// Then an item with Priority=1 will be popped before an item with Priority=2.
 package prioqueue
 
 import (
