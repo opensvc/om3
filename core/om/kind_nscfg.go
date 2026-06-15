@@ -15,6 +15,7 @@ func init() {
 		Short: "manage namespace configurations",
 	}
 	cmdObjectConfig := commoncmd.NewCmdObjectConfig(kind)
+	cmdObjectEdit := newCmdObjectEdit(kind)
 	cmdObjectInstance := commoncmd.NewCmdObjectInstance(kind)
 	cmdObjectInstancePG := commoncmd.NewCmdObjectInstancePG(kind)
 	cmdObjectPG := commoncmd.NewCmdObjectInstancePG(kind)
@@ -30,6 +31,7 @@ func init() {
 	)
 	cmdObject.AddCommand(
 		cmdObjectConfig,
+		cmdObjectEdit,
 		cmdObjectInstance,
 		cmdObjectPG,
 		newCmdObjectCreate(kind),
@@ -38,7 +40,9 @@ func init() {
 		newCmdObjectList(kind),
 		commoncmd.NewCmdObjectMonitor("", kind),
 	)
-
+	cmdObjectEdit.AddCommand(
+		newCmdObjectEditConfig(kind),
+	)
 	cmdObjectInstance.AddCommand(
 		cmdObjectInstancePG,
 		newCmdObjectInstanceBoot(kind),
