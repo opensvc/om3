@@ -46,7 +46,6 @@ func (t *Node) Schedules() schedule.Table {
 		t.newScheduleEntry("compliance_auto", "compliance", "", "comp_check"),
 		t.newScheduleEntry("pushdisks", "disks", "", "disks_push"),
 		t.newScheduleEntry("pushpkg", "packages", "", "packages_push"),
-		t.newScheduleEntry("pushpatch", "patches", "", "patches_push"),
 		t.newScheduleEntry("sysreport", "sysreport", "", "sysreport_push"),
 	)
 	for _, s := range t.config.SectionStrings() {

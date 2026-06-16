@@ -50,8 +50,6 @@ func (o *T) action(e schedule.Entry) error {
 		cmdArgs = append(cmdArgs, "push", "disk")
 	case "pushpkg":
 		cmdArgs = append(cmdArgs, "push", "pkg")
-	case "pushpatch":
-		cmdArgs = append(cmdArgs, "push", "patch")
 	case "pushstats":
 		cmdArgs = append(cmdArgs, "push", "stats")
 	case "sysreport":
