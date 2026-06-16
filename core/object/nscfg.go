@@ -7,7 +7,6 @@ import (
 	"github.com/opensvc/om3/v3/core/actioncontext"
 	"github.com/opensvc/om3/v3/core/keywords"
 	"github.com/opensvc/om3/v3/core/naming"
-	"github.com/opensvc/om3/v3/core/schedule"
 	"github.com/opensvc/om3/v3/util/funcopt"
 	"github.com/opensvc/om3/v3/util/key"
 	"github.com/opensvc/om3/v3/util/pg"
@@ -15,11 +14,13 @@ import (
 
 type (
 	nscfg struct {
-		actor
+		pg *pg.Config
+		core
 	}
 
 	Nscfg interface {
-		Actor
+		Core
+		PG() *pg.Config
 	}
 )
 
@@ -33,29 +34,6 @@ func NewNscfg(path naming.Path, opts ...funcopt.O) (*nscfg, error) {
 
 func (t *nscfg) KeywordLookup(k key.T, sectionType string) *keywords.Keyword {
 	return keywordLookup(keywordStore, k, t.path.Kind, sectionType)
-}
-
-func (t *nscfg) Schedules() (l schedule.Table) {
-	return
-}
-
-func (t *nscfg) Boot(ctx context.Context) error {
-	ctx = actioncontext.WithProps(ctx, actioncontext.Boot)
-	if err := t.validateAction(); err != nil {
-		return err
-	}
-	t.setenv("boot", false)
-	unlock, err := t.lockAction(ctx)
-	if err != nil {
-		return err
-	}
-	defer unlock()
-	return t.lockedBoot(ctx)
-}
-
-func (t *nscfg) lockedBoot(ctx context.Context) error {
-	// For nscfg, boot action calls PGUpdate instead of resource.Boot
-	return t.PGUpdate(ctx)
 }
 
 func (t *nscfg) PGUpdate(ctx context.Context) error {

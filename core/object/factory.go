@@ -88,6 +88,28 @@ func NewList(paths naming.Paths, opts ...funcopt.O) ([]any, error) {
 	return l, errs
 }
 
+// NewT allocates a new kinded and uninitialized object
+func NewT(p naming.Path) any {
+	switch p.Kind {
+	case naming.KindSvc:
+		return &svc{}
+	case naming.KindVol:
+		return &vol{}
+	case naming.KindCfg:
+		return &cfg{}
+	case naming.KindSec:
+		return &sec{}
+	case naming.KindUsr:
+		return &usr{}
+	case naming.KindCcfg:
+		return &Ccfg{}
+	case naming.KindNscfg:
+		return &nscfg{}
+	default:
+		return nil
+	}
+}
+
 // New allocates a new kinded object
 func New(p naming.Path, opts ...funcopt.O) (any, error) {
 	switch p.Kind {
