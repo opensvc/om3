@@ -3,9 +3,11 @@ package omcmd
 import (
 	"context"
 	"fmt"
+	"strings"
 
 	"github.com/opensvc/om3/v3/core/client"
 	"github.com/opensvc/om3/v3/core/nodeaction"
+	"github.com/opensvc/om3/v3/core/nodeselector"
 	"github.com/opensvc/om3/v3/core/object"
 	"github.com/opensvc/om3/v3/daemon/api"
 	"github.com/opensvc/om3/v3/util/xsession"
@@ -14,13 +16,30 @@ import (
 type (
 	CmdNodePushAsset struct {
 		OptsGlobal
-		Local        bool
-		NodeSelector string
+		Local                       bool
+		NodeSelector                string
+		DryRun                      bool
+		IgnoreNoCollectorConfigured bool
 	}
 )
 
 func (t *CmdNodePushAsset) Run() error {
-	return nodeaction.New(
+	if t.DryRun {
+		c, err := client.New()
+		if err != nil {
+			return err
+		}
+		nodes, err := nodeselector.New(t.NodeSelector, nodeselector.WithClient(c)).Expand()
+		if err != nil {
+			return err
+		}
+		for _, n := range nodes {
+			fmt.Println(n)
+		}
+		return nil
+	}
+
+	err := nodeaction.New(
 		nodeaction.WithLocal(t.Local),
 		nodeaction.WithRemoteNodes(t.NodeSelector),
 		nodeaction.WithFormat(t.Output),
@@ -60,4 +79,13 @@ func (t *CmdNodePushAsset) Run() error {
 			}
 		}),
 	).Do()
+
+	if err != nil && t.IgnoreNoCollectorConfigured && isNoCollectorError(err) {
+		return nil
+	}
+	return err
+}
+
+func isNoCollectorError(err error) bool {
+	return strings.Contains(err.Error(), "no collector configured")
 }

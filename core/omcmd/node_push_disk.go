@@ -6,21 +6,44 @@ import (
 
 	"github.com/opensvc/om3/v3/core/client"
 	"github.com/opensvc/om3/v3/core/nodeaction"
+	"github.com/opensvc/om3/v3/core/nodeselector"
 	"github.com/opensvc/om3/v3/core/object"
 	"github.com/opensvc/om3/v3/daemon/api"
+	"github.com/opensvc/om3/v3/util/hostname"
 	"github.com/opensvc/om3/v3/util/xsession"
 )
 
 type (
 	CmdNodePushDisks struct {
 		OptsGlobal
-		Local        bool
-		NodeSelector string
+		Local                       bool
+		NodeSelector                string
+		DryRun                      bool
+		IgnoreNoCollectorConfigured bool
 	}
 )
 
 func (t *CmdNodePushDisks) Run() error {
-	return nodeaction.New(
+	if t.DryRun {
+		if t.NodeSelector == "" {
+			fmt.Println(hostname.Hostname())
+			return nil
+		}
+		c, err := client.New()
+		if err != nil {
+			return err
+		}
+		nodes, err := nodeselector.New(t.NodeSelector, nodeselector.WithClient(c)).Expand()
+		if err != nil {
+			return err
+		}
+		for _, n := range nodes {
+			fmt.Println(n)
+		}
+		return nil
+	}
+
+	err := nodeaction.New(
 		nodeaction.WithLocal(t.Local),
 		nodeaction.WithRemoteNodes(t.NodeSelector),
 		nodeaction.WithFormat(t.Output),
@@ -60,4 +83,9 @@ func (t *CmdNodePushDisks) Run() error {
 			}
 		}),
 	).Do()
+
+	if err != nil && t.IgnoreNoCollectorConfigured && isNoCollectorError(err) {
+		return nil
+	}
+	return err
 }
