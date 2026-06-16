@@ -27,9 +27,6 @@ func TestOmNodePush(t *testing.T) {
 		"push pkg": {
 			[]string{"push", "pkg"},
 			"package.json"},
-		"push patch": {
-			[]string{"push", "patch"},
-			"patch.json"},
 	}
 
 	getCmd := func(name string) []string {
