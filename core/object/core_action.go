@@ -745,6 +745,11 @@ func (t *actor) action(ctx context.Context, fn resourceset.DoFunc) error {
 		t.announceIdle(ctxWithTimeout)
 		return err
 	}
+	if action.PG {
+		if pgErr := t.callNamespacePGUpdate(ctxWithTimeout); pgErr != nil {
+			t.log.Warnf("namespace pg update: %s", pgErr)
+		}
+	}
 	if err := t.ResourceSets().Do(ctxWithTimeout, resourceSelector, barrier, "link-"+action.Name, progressWrap(linkWrap(encapWrap(fn)))); errors.Is(err, resource.ErrBarrier) {
 		// pass
 	} else if err != nil {
