@@ -1,13 +1,25 @@
 package commoncmd
 
 import (
+	"context"
 	_ "embed"
+	"encoding/json"
 	"fmt"
+	"os"
+	"path/filepath"
+	"regexp"
 	"strings"
 	"time"
 
+	"github.com/spf13/cobra"
 	"github.com/spf13/pflag"
 
+	"github.com/opensvc/om3/v3/core/client"
+	"github.com/opensvc/om3/v3/core/instance"
+	"github.com/opensvc/om3/v3/core/naming"
+	"github.com/opensvc/om3/v3/core/object"
+	"github.com/opensvc/om3/v3/core/objectselector"
+	"github.com/opensvc/om3/v3/core/rawconfig"
 	"github.com/opensvc/om3/v3/daemon/rbac"
 )
 
@@ -65,10 +77,11 @@ func FlagsEncap(flags *pflag.FlagSet, p *OptsEncap) {
 	FlagMaster(flags, &p.Master)
 }
 
-func FlagsResourceSelector(flags *pflag.FlagSet, p *OptsResourceSelector) {
+func FlagsResourceSelector(cmd *cobra.Command, p *OptsResourceSelector) {
+	flags := cmd.Flags()
 	DeprecatedFlagSubsets(flags, &p.Tag)
 	DeprecatedFlagTags(flags, &p.Tag)
-	FlagRID(flags, &p.RID)
+	FlagRIDWithCompletion(cmd, &p.RID)
 	FlagSubset(flags, &p.Subset)
 	FlagTag(flags, &p.Tag)
 }
@@ -305,6 +318,221 @@ func FlagRID(flags *pflag.FlagSet, p *string) {
 	flags.StringVar(p, "rid", "", "a resource selector expression (ex: ip#1,app,disk.type=zvol)")
 }
 
+// fnmatchExpressionRegex matches selector expressions with wildcards
+var fnmatchExpressionRegex = regexp.MustCompile(`[?*\[\]]`)
+
+// listRIDs returns all resource ID directories found in the var directory
+func listRIDs() []string {
+	seen := make(map[string]bool)
+	var rids []string
+	basePath := rawconfig.Paths.Var
+
+	// Walk the var directory and collect all *#* directories
+	filepath.Walk(basePath, func(path string, info os.FileInfo, err error) error {
+		if err != nil {
+			return nil // skip errors, continue walking
+		}
+		if !info.IsDir() {
+			return nil
+		}
+
+		// Get the base name of the directory
+		baseName := filepath.Base(path)
+
+		// Check if it matches the pattern *#* (contains # with at least one char before and after)
+		if idx := strings.Index(baseName, "#"); idx > 0 && idx < len(baseName)-1 {
+			if !seen[baseName] {
+				seen[baseName] = true
+				rids = append(rids, baseName)
+			}
+		}
+
+		return nil
+	})
+
+	return rids
+}
+
+// getSelectorFromCommand tries to get the selector from the command's flags or arguments
+func getSelectorFromCommand(cmd *cobra.Command) string {
+	// Try to get from -s or --selector flag on the current command
+	if selector, _ := cmd.Flags().GetString("selector"); selector != "" {
+		return selector
+	}
+	if selector, _ := cmd.Flags().GetString("s"); selector != "" {
+		return selector
+	}
+
+	// If not found in current command's flags, it might be in a parent command's flags
+	// Walk up the command tree to find it
+	for current := cmd.Parent(); current != nil; current = current.Parent() {
+		if selector, _ := current.Flags().GetString("selector"); selector != "" {
+			return selector
+		}
+		if selector, _ := current.Flags().GetString("s"); selector != "" {
+			return selector
+		}
+	}
+
+	return ""
+}
+
+// isSimplePath checks if a selector is a simple path (not a filtering expression)
+func isSimplePath(selector string) bool {
+	// If it contains wildcard characters, it's a filter expression
+	if fnmatchExpressionRegex.MatchString(selector) {
+		return false
+	}
+	// Try to parse as a path
+	_, err := naming.ParsePath(selector)
+	return err == nil
+}
+
+// getRIDsFromStatus extracts RIDs from an instance.Status
+func getRIDsFromStatus(status instance.Status) []string {
+	rids := make([]string, 0, len(status.Resources))
+	for rid := range status.Resources {
+		rids = append(rids, rid)
+	}
+	return rids
+}
+
+// loadStatusFromFile loads instance.Status from a status.json file
+func loadStatusFromFile(statusFile string) (instance.Status, error) {
+	var status instance.Status
+	data, err := os.ReadFile(statusFile)
+	if err != nil {
+		return status, err
+	}
+	err = json.Unmarshal(data, &status)
+	return status, err
+}
+
+// getRIDsForSelector returns RIDs for a given selector if it's a valid path
+func getRIDsForSelector(selector string) []string {
+	// Check if selector is a simple path
+	if !isSimplePath(selector) {
+		return nil
+	}
+
+	path, err := naming.ParsePath(selector)
+	if err != nil {
+		return nil
+	}
+
+	// Try to load status from local file first
+	var status instance.Status
+	var statusFile string
+
+	// Get the var directory for this path
+	statusFile = filepath.Join(path.VarDir(), "status.json")
+
+	// Try to read from local status.json
+	if _, err := os.Stat(statusFile); err == nil {
+		status, err = loadStatusFromFile(statusFile)
+		if err == nil && len(status.Resources) > 0 {
+			return getRIDsFromStatus(status)
+		}
+	}
+
+	// Fall back to API
+	status, err = getStatusFromAPI(path)
+	if err == nil && len(status.Resources) > 0 {
+		return getRIDsFromStatus(status)
+	}
+
+	return nil
+}
+
+// getStatusFromAPI gets instance.Status from the API
+func getStatusFromAPI(path naming.Path) (instance.Status, error) {
+	var status instance.Status
+
+	// Try to get client
+	c, err := client.New()
+	if err != nil {
+		return status, err
+	}
+
+	// Use objectselector to get the status
+	sel := objectselector.New(
+		path.String(),
+		objectselector.WithClient(c),
+		objectselector.WithLocal(false),
+	)
+
+	paths, err := sel.MustExpand()
+	if err != nil || len(paths) == 0 {
+		return status, fmt.Errorf("failed to expand selector: %w", err)
+	}
+
+	// Get the first path (should be the only one if it's a simple path)
+	p := paths[0]
+
+	// Get the object
+	obj, err := object.NewCore(p)
+	if err != nil {
+		return status, err
+	}
+
+	// Try to get status
+	ctx := context.Background()
+	status, err = obj.Status(ctx)
+	if err != nil {
+		return status, err
+	}
+
+	return status, nil
+}
+
+// FlagRIDWithCompletion adds the --rid flag to the given command and registers
+// bash completion for it using the instance.Status resource map.
+// Only provides completion if the selector is a valid path (not a filtering expression).
+// Gets RIDs from status.json if present in the object's var directory (om only),
+// otherwise falls back to the API.
+func FlagRIDWithCompletion(cmd *cobra.Command, p *string) {
+	flags := cmd.Flags()
+	flags.StringVar(p, "rid", "", "a resource selector expression (ex: ip#1,app,disk.type=zvol)")
+
+	// Register completion function for the rid flag
+	cmd.RegisterFlagCompletionFunc("rid", func(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
+		// Get the selector from the command
+		selector := getSelectorFromCommand(cmd)
+
+		// If no selector, try to extract from args
+		if selector == "" && len(args) > 0 {
+			// The first arg might be the selector
+			selector = args[0]
+		}
+
+		// Only provide RID completion if selector is a valid simple path
+		if !isSimplePath(selector) {
+			return nil, cobra.ShellCompDirectiveNoFileComp
+		}
+
+		// Get RIDs for the selector from its status
+		all := getRIDsForSelector(selector)
+
+		if toComplete == "" {
+			return all, cobra.ShellCompDirectiveNoFileComp
+		}
+		l := make([]string, 0)
+		for _, candidate := range all {
+			if strings.HasPrefix(candidate, toComplete) {
+				l = append(l, candidate)
+			}
+		}
+		return l, cobra.ShellCompDirectiveNoFileComp
+	})
+}
+
+// HiddenFlagRIDWithCompletion adds the hidden --rid flag to the given command and registers
+// bash completion for it using the instance.Status resource map.
+func HiddenFlagRIDWithCompletion(cmd *cobra.Command, p *string) {
+	FlagRIDWithCompletion(cmd, p)
+	cmd.Flags().MarkHidden("rid")
+}
+
 func FlagStateOnly(flags *pflag.FlagSet, p *bool) {
 	flags.BoolVar(p, "state-only", false, "change only internal state")
 }
@@ -460,6 +688,14 @@ func HiddenFlagsResourceSelector(flags *pflag.FlagSet, p *OptsResourceSelector) 
 	HiddenFlagRID(flags, &p.RID)
 	HiddenFlagSubset(flags, &p.Subset)
 	HiddenFlagTag(flags, &p.Tag)
+}
+
+// HiddenFlagsResourceSelectorWithCompletion adds hidden resource selector flags to the given command
+// and registers bash completion for the --rid flag
+func HiddenFlagsResourceSelectorWithCompletion(cmd *cobra.Command, p *OptsResourceSelector) {
+	HiddenFlagRIDWithCompletion(cmd, &p.RID)
+	HiddenFlagSubset(cmd.Flags(), &p.Subset)
+	HiddenFlagTag(cmd.Flags(), &p.Tag)
 }
 
 func HiddenFlagsTo(flags *pflag.FlagSet, p *OptTo) {
