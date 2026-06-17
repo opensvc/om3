@@ -9,6 +9,7 @@ import (
 	"sort"
 	"strconv"
 	"strings"
+	"sync"
 
 	"github.com/opensvc/om3/v3/util/plog"
 	"github.com/opensvc/om3/v3/util/xmap"
@@ -30,6 +31,7 @@ type (
 		log           *plog.Logger
 	}
 	Mgr struct {
+		mu      sync.Mutex
 		configs map[string]*Config
 	}
 	CPUQuota string
@@ -62,6 +64,8 @@ func (m *Mgr) Register(c *Config) {
 	if c == nil {
 		return
 	}
+	m.mu.Lock()
+	defer m.mu.Unlock()
 	if _, ok := m.configs[c.ID]; ok {
 		// Don't reset the "applied" bool if the config is registered again.
 		// We don't need to handle in-run config changes.
@@ -73,6 +77,8 @@ func (m *Mgr) Register(c *Config) {
 // ApplyConfigs applies all registered pg configs in order (base to leaf).
 // Each config is applied only if not already applied.
 func (m *Mgr) ApplyConfigs() error {
+	m.mu.Lock()
+	defer m.mu.Unlock()
 	var errs error
 	ids := xmap.Keys(m.configs)
 	sort.Strings(ids)
@@ -86,6 +92,8 @@ func (m *Mgr) ApplyConfigs() error {
 }
 
 func (m *Mgr) Clean() {
+	m.mu.Lock()
+	defer m.mu.Unlock()
 	// Clean in reverse order (LIFO)
 	ids := xmap.Keys(m.configs)
 	sort.Strings(ids)
