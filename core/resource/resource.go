@@ -68,7 +68,7 @@ type (
 		Unprovision(context.Context) error
 
 		// common
-		ApplyPGChain(context.Context) error
+		ApplyPG(context.Context) error
 		DriverID() driver.ID
 		GetObject() any
 		GetPG() *pg.Config
@@ -484,7 +484,7 @@ func (t *T) SetDisabled(v bool) {
 
 // SetPG sets the process group config parsed from the config
 func (t *T) SetPG(v *pg.Config) {
-	t.pg = v
+	t.pg = v.WithLogger(t.log)
 }
 
 // GetPG returns the private pg resource field
@@ -500,33 +500,22 @@ func (t *T) GetPGID() string {
 	return t.pg.ID
 }
 
-// ApplyPGChain fetches the pg manager from the action context and
-// apply the pg configuration to all unconfigured pg on the pg id
-// hierarchy (resource=>subset=>object).
-//
-// The pg manager remembers which pg have been configured to avoid
-// doing the config twice.
-func (t *T) ApplyPGChain(ctx context.Context) error {
-	mgr := pg.FromContext(ctx)
-	if mgr == nil {
-		// probably testing
+// ApplyPG applies the pg configuration for the parents pg and for this resource pg.
+func (t *T) ApplyPG(ctx context.Context) error {
+	pgConfig := t.GetPG()
+	if pgConfig == nil {
 		return nil
 	}
-	var errs error
-	for _, run := range mgr.Apply(t.GetPGID()) {
-		if !run.Changed {
-			continue
-		}
-		if configStr := run.Config.String(); strings.Contains(configStr, "=") {
-			t.Log().Infof("applied %s", configStr)
-		} else {
-			t.Log().Tracef("create %s", configStr)
-		}
-		if run.Err != nil {
-			errs = errors.Join(errs, run.Err)
+	mgr := pg.FromContext(ctx)
+	if mgr != nil {
+		mgr.Register(pgConfig)
+
+		// Apply all deferred pg updates (namespace, object, resourceset) before applying this resource
+		if err := mgr.ApplyConfigs(); err != nil {
+			return err
 		}
 	}
-	return errs
+	return nil
 }
 
 // SetObject holds the useful interface of the parent object of the resource.
@@ -888,7 +877,7 @@ func PGUpdate(ctx context.Context, r Driver) error {
 	if r.IsDisabled() || r.IsActionDisabled() {
 		return ErrDisabled
 	}
-	if err := r.ApplyPGChain(ctx); err != nil {
+	if err := r.ApplyPG(ctx); err != nil {
 		return err
 	}
 	return nil
@@ -909,11 +898,11 @@ func Start(ctx context.Context, r Driver) error {
 		return ErrDisabled
 	}
 	Setenv(r)
-	if err := r.ApplyPGChain(ctx); err != nil {
-		return err
-	}
 	if err := checkRequires(ctx, r); err != nil {
 		return fmt.Errorf("start requires: %w", err)
+	}
+	if err := r.ApplyPG(ctx); err != nil {
+		return err
 	}
 	if err := r.Trigger(ctx, trigger.Block, trigger.Pre, trigger.Start); err != nil {
 		return fmt.Errorf("pre start trigger: %w", err)

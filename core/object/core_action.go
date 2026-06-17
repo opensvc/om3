@@ -746,8 +746,11 @@ func (t *actor) action(ctx context.Context, fn resourceset.DoFunc) error {
 		return err
 	}
 	if action.PG {
-		if pgErr := t.callNamespacePGUpdate(ctxWithTimeout); pgErr != nil {
-			t.log.Warnf("namespace pg update: %s", pgErr)
+		if pgErr := t.registerNamespacePG(ctxWithTimeout); pgErr != nil {
+			t.log.Warnf("register namespace pg: %s", pgErr)
+		}
+		if pgErr := t.registerObjectPG(ctxWithTimeout); pgErr != nil {
+			t.log.Warnf("register object pg: %s", pgErr)
 		}
 	}
 	if err := t.ResourceSets().Do(ctxWithTimeout, resourceSelector, barrier, "link-"+action.Name, progressWrap(linkWrap(encapWrap(fn)))); errors.Is(err, resource.ErrBarrier) {
@@ -775,7 +778,7 @@ func (t *actor) action(ctx context.Context, fn resourceset.DoFunc) error {
 	defer cancelCtxWithTimeout()
 
 	if action.Order.IsDesc() {
-		t.CleanPG(ctxWithTimeout)
+		t.PGClean(ctxWithTimeout)
 	}
 	err := t.postStartStopStatusEval(ctxWithTimeout)
 	if err == nil {

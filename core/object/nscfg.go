@@ -2,7 +2,6 @@ package object
 
 import (
 	"context"
-	"strings"
 
 	"github.com/opensvc/om3/v3/core/actioncontext"
 	"github.com/opensvc/om3/v3/core/keywords"
@@ -46,18 +45,9 @@ func (t *nscfg) PGUpdate(ctx context.Context) error {
 	return t.lockedPGUpdate(ctx)
 }
 
-func (t *nscfg) pgConfigNamespace() *pg.Config {
+func (t *nscfg) PGConfig() *pg.Config {
 	// For nscfg, we want to control the namespace cgroup, not the object cgroup
-	data := pg.Config{}
-	data.CPUShares, _ = t.config.EvalNoConv(key.New("", "pg_cpu_shares"))
-	data.CPUs, _ = t.config.EvalNoConv(key.New("", "pg_cpus"))
-	data.Mems, _ = t.config.EvalNoConv(key.New("", "pg_mems"))
-	data.CPUQuota, _ = t.config.EvalNoConv(key.New("", "pg_cpu_quota"))
-	data.MemLimit, _ = t.config.EvalNoConv(key.New("", "pg_mem_limit"))
-	data.VMemLimit, _ = t.config.EvalNoConv(key.New("", "pg_vmem_limit"))
-	data.MemOOMControl, _ = t.config.EvalNoConv(key.New("", "pg_mem_oom_control"))
-	data.MemSwappiness, _ = t.config.EvalNoConv(key.New("", "pg_mem_swappiness"))
-	data.BlockIOWeight, _ = t.config.EvalNoConv(key.New("", "pg_blkio_weight"))
+	data := t.pgAnonConfig("")
 
 	// Build the namespace cgroup path only
 	// The ID must match the expected format for both cgroups v1 and v2
@@ -65,37 +55,15 @@ func (t *nscfg) pgConfigNamespace() *pg.Config {
 	// For v1: full path like "/opensvc.slice/opensvc-ns.test.slice" (leading slash, slashes for hierarchy)
 	// We'll use the v1 format with leading slash, which should work for both
 	if t.path.Namespace == naming.NsRoot {
-		data.ID = "/opensvc.slice/opensvc.slice"
+		data.ID = "/opensvc.slice"
 	} else {
 		ns := pgNameNamespace(t.path.Namespace)
 		data.ID = "/opensvc.slice/opensvc-" + ns + ".slice"
 	}
-	return &data
+	return data.WithLogger(t.log)
 }
 
 func (t *nscfg) lockedPGUpdate(ctx context.Context) error {
 	// For nscfg, we control the namespace cgroup, not the object cgroup
-	pgConfig := t.pgConfigNamespace()
-	if pgConfig == nil {
-		return nil
-	}
-	mgr := pg.FromContext(ctx)
-	if mgr == nil {
-		return nil
-	}
-	mgr.Register(pgConfig)
-	for _, run := range mgr.Apply(pgConfig.ID) {
-		if !run.Changed {
-			continue
-		}
-		if configStr := run.Config.String(); strings.Contains(configStr, "=") {
-			t.log.Infof("applied %s", configStr)
-		} else {
-			t.log.Tracef("create %s", configStr)
-		}
-		if run.Err != nil {
-			return run.Err
-		}
-	}
-	return nil
+	return t.PGConfig().Apply()
 }
