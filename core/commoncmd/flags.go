@@ -1,7 +1,6 @@
 package commoncmd
 
 import (
-	"context"
 	_ "embed"
 	"encoding/json"
 	"fmt"
@@ -15,11 +14,9 @@ import (
 	"github.com/spf13/pflag"
 
 	"github.com/opensvc/om3/v3/core/client"
+	"github.com/opensvc/om3/v3/core/clusterdump"
 	"github.com/opensvc/om3/v3/core/instance"
 	"github.com/opensvc/om3/v3/core/naming"
-	"github.com/opensvc/om3/v3/core/object"
-	"github.com/opensvc/om3/v3/core/objectselector"
-	"github.com/opensvc/om3/v3/core/rawconfig"
 	"github.com/opensvc/om3/v3/daemon/rbac"
 )
 
@@ -321,38 +318,6 @@ func FlagRID(flags *pflag.FlagSet, p *string) {
 // fnmatchExpressionRegex matches selector expressions with wildcards
 var fnmatchExpressionRegex = regexp.MustCompile(`[?*\[\]]`)
 
-// listRIDs returns all resource ID directories found in the var directory
-func listRIDs() []string {
-	seen := make(map[string]bool)
-	var rids []string
-	basePath := rawconfig.Paths.Var
-
-	// Walk the var directory and collect all *#* directories
-	filepath.Walk(basePath, func(path string, info os.FileInfo, err error) error {
-		if err != nil {
-			return nil // skip errors, continue walking
-		}
-		if !info.IsDir() {
-			return nil
-		}
-
-		// Get the base name of the directory
-		baseName := filepath.Base(path)
-
-		// Check if it matches the pattern *#* (contains # with at least one char before and after)
-		if idx := strings.Index(baseName, "#"); idx > 0 && idx < len(baseName)-1 {
-			if !seen[baseName] {
-				seen[baseName] = true
-				rids = append(rids, baseName)
-			}
-		}
-
-		return nil
-	})
-
-	return rids
-}
-
 // getSelectorFromCommand tries to get the selector from the command's flags or arguments
 func getSelectorFromCommand(cmd *cobra.Command) string {
 	// Try to get from -s or --selector flag on the current command
@@ -446,42 +411,31 @@ func getRIDsForSelector(selector string) []string {
 
 // getStatusFromAPI gets instance.Status from the API
 func getStatusFromAPI(path naming.Path) (instance.Status, error) {
-	var status instance.Status
+	var (
+		status        instance.Status
+		clusterStatus clusterdump.Data
+	)
 
 	// Try to get client
 	c, err := client.New()
 	if err != nil {
 		return status, err
 	}
-
-	// Use objectselector to get the status
-	sel := objectselector.New(
-		path.String(),
-		objectselector.WithClient(c),
-		objectselector.WithLocal(false),
-	)
-
-	paths, err := sel.MustExpand()
-	if err != nil || len(paths) == 0 {
-		return status, fmt.Errorf("failed to expand selector: %w", err)
-	}
-
-	// Get the first path (should be the only one if it's a simple path)
-	p := paths[0]
-
-	// Get the object
-	obj, err := object.NewCore(p)
+	pathStr := path.String()
+	b, err := c.NewGetClusterStatus().SetSelector(pathStr).Get()
 	if err != nil {
 		return status, err
 	}
-
-	// Try to get status
-	ctx := context.Background()
-	status, err = obj.Status(ctx)
+	err = json.Unmarshal(b, &clusterStatus)
 	if err != nil {
 		return status, err
 	}
-
+	for _, nodeData := range clusterStatus.Cluster.Node {
+		instanceData, ok := nodeData.Instance[pathStr]
+		if ok && instanceData.Status != nil {
+			return *instanceData.Status, nil
+		}
+	}
 	return status, nil
 }
 
