@@ -5,8 +5,9 @@ __om_handle_word()
         local k
         case "${words[c]}" in
             "") ;;
-	    svc|vol|sec|cfg|usr|ccfg|nscfg|ccfg|all|cluster) ;;
-	    pool|network|array|completion|create|daemon|mon|monitor|help) ;;
+            svc|vol|sec|cfg|usr|ccfg|nscfg|ccfg|all|node) ;;
+            pool|network|array|completion|create|daemon|mon|monitor|help) ;;
+            cluster) k="ccfg" ;;
             *,*) k="all" ;;
             */svc/*|svc/*) k="svc" ;;
             */vol/*|vol/*) k="vol" ;;
