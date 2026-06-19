@@ -3,6 +3,7 @@ package oxcmd
 import (
 	"context"
 	"fmt"
+	"strings"
 
 	"github.com/opensvc/om3/v3/core/client"
 	"github.com/opensvc/om3/v3/core/nodeaction"
@@ -13,12 +14,13 @@ import (
 type (
 	CmdNodePushAsset struct {
 		OptsGlobal
-		NodeSelector string
+		NodeSelector                string
+		IgnoreNoCollectorConfigured bool
 	}
 )
 
 func (t *CmdNodePushAsset) Run() error {
-	return nodeaction.New(
+	err := nodeaction.New(
 		nodeaction.WithRemoteNodes(t.NodeSelector),
 		nodeaction.WithFormat(t.Output),
 		nodeaction.WithColor(t.Color),
@@ -50,4 +52,13 @@ func (t *CmdNodePushAsset) Run() error {
 			}
 		}),
 	).Do()
+
+	if err != nil && t.IgnoreNoCollectorConfigured && isNoCollectorError(err) {
+		return nil
+	}
+	return err
+}
+
+func isNoCollectorError(err error) bool {
+	return strings.Contains(err.Error(), "no collector configured")
 }
