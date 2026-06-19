@@ -241,6 +241,11 @@ func (t *T) migrateCaPathV2(clusterName string) (ok bool, err error) {
 	t.log.Infof("migrate ca from %s to %s", caPathV2, caPath)
 	if err = os.Rename(caPathV2.ConfigFile(), caPath.ConfigFile()); err != nil {
 		err = fmt.Errorf("migrate ca %s to %s: %w", caPathV2, caPath, err)
+		return
+	}
+	if err := os.RemoveAll(caPathV2.VarDir()); err != nil {
+		// Ignore errors when deleting the directory; log a warning instead.
+		t.log.Warnf("migrate previous ca %s can't remove directory %s: %s", caPathV2, caPathV2.VarDir(), err)
 	}
 	return
 }
@@ -297,6 +302,12 @@ func (t *T) migrateCertPathV2(clusterName string) (hasV2cert bool, err error) {
 	}
 	t.log.Infof("update migrated cert ca keyword to %s", caPath)
 	op := keyop.New(key.New("DEFAULT", "ca"), keyop.Set, caPath.String(), 0)
-	err = certSec.Config().Set(*op)
+	if err = certSec.Config().Set(*op); err != nil {
+		return
+	}
+	if err := os.RemoveAll(certPathV2.VarDir()); err != nil {
+		// Ignore errors when deleting the directory; log a warning instead.
+		t.log.Warnf("migrate previous cert %s can't remove directory %s: %s", certPathV2, certPathV2.VarDir(), err)
+	}
 	return
 }
