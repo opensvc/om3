@@ -16,6 +16,7 @@ type (
 	CmdNodePushAsset struct {
 		OptsGlobal
 		Local                       bool
+		DryRun                      bool
 		NodeSelector                string
 		IgnoreNoCollectorConfigured bool
 	}
@@ -32,6 +33,9 @@ func (t *CmdNodePushAsset) Run() error {
 			if err != nil {
 				return nil, err
 			}
+			if t.DryRun {
+				return n.PushAssetDryRun()
+			}
 			return n.PushAsset()
 		}),
 		nodeaction.WithRemoteFunc(func(ctx context.Context, nodename string) (interface{}, error) {
@@ -39,6 +43,25 @@ func (t *CmdNodePushAsset) Run() error {
 			if err != nil {
 				return nil, err
 			}
+			if t.DryRun {
+				response, err := c.GetNodeSystemPropertyWithResponse(ctx, nodename)
+				if err != nil {
+					return nil, err
+				}
+				switch {
+				case response.JSON200 != nil:
+					return *response.JSON200, nil
+				case response.JSON401 != nil:
+					return nil, fmt.Errorf("node %s: %v", nodename, response.JSON401)
+				case response.JSON403 != nil:
+					return nil, fmt.Errorf("node %s: %v", nodename, response.JSON403)
+				case response.JSON500 != nil:
+					return nil, fmt.Errorf("node %s: %v", nodename, response.JSON500)
+				default:
+					return nil, fmt.Errorf("node %s: unexpected response: %s", nodename, response.Status())
+				}
+			}
+
 			params := api.PostNodeActionPushAssetParams{}
 			{
 				sid := xsession.Sid().UUID()

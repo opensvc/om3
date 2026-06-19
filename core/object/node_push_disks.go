@@ -72,6 +72,22 @@ func (t Node) PushDisks() (disks.Disks, error) {
 	return l, nil
 }
 
+func (t Node) PushDisksDryRun() (disks.Disks, error) {
+	claims, err := allObjectsDeviceClaims()
+	if err != nil {
+		return nil, err
+	}
+	t.Log().Attr("claims", claims).Tracef("PushDisksDryRun %s", claims)
+	l, err := disks.GetDisks(claims)
+	if err != nil {
+		return l, err
+	}
+	if err := t.dumpDisks(l); err != nil {
+		return l, err
+	}
+	return l, nil
+}
+
 func (t Node) dumpDisks(data disks.Disks) error {
 	file, err := os.OpenFile(t.nodeDisksCacheFile(), os.O_RDWR|os.O_CREATE|os.O_TRUNC, 0660)
 	if err != nil {

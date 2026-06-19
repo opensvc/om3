@@ -144,6 +144,17 @@ func (t Node) PushAsset() (asset.Data, error) {
 	return data, nil
 }
 
+func (t Node) PushAssetDryRun() (asset.Data, error) {
+	data, err := t.getAsset()
+	if err != nil {
+		return data, err
+	}
+	if err := t.dumpSystem(data); err != nil {
+		return data, err
+	}
+	return data, nil
+}
+
 func (t Node) dumpSystem(data asset.Data) error {
 	filename := t.nodeSystemCacheFile()
 	tryOpen := func() (*os.File, error) {
