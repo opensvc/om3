@@ -1,6 +1,7 @@
 package commoncmd
 
 import (
+	"context"
 	_ "embed"
 	"encoding/json"
 	"fmt"
@@ -14,7 +15,6 @@ import (
 	"github.com/spf13/pflag"
 
 	"github.com/opensvc/om3/v3/core/client"
-	"github.com/opensvc/om3/v3/core/clusterdump"
 	"github.com/opensvc/om3/v3/core/instance"
 	"github.com/opensvc/om3/v3/core/naming"
 	"github.com/opensvc/om3/v3/daemon/rbac"
@@ -412,8 +412,7 @@ func getRIDsForSelector(selector string) []string {
 // getStatusFromAPI gets instance.Status from the API
 func getStatusFromAPI(path naming.Path) (instance.Status, error) {
 	var (
-		status        instance.Status
-		clusterStatus clusterdump.Data
+		status instance.Status
 	)
 
 	// Try to get client
@@ -421,18 +420,19 @@ func getStatusFromAPI(path naming.Path) (instance.Status, error) {
 	if err != nil {
 		return status, err
 	}
-	pathStr := path.String()
-	b, err := c.NewGetClusterStatus().SetSelector(pathStr).Get()
+	ctx, cancel := context.WithTimeout(context.Background(), time.Second)
+	defer cancel()
+	response, err := c.GetObjectWithResponse(ctx, path.Namespace, path.Kind, path.Name)
 	if err != nil {
 		return status, err
 	}
-	err = json.Unmarshal(b, &clusterStatus)
+	o, err := response.JSON200.Data.AsObjectActor()
 	if err != nil {
 		return status, err
 	}
-	for _, nodeData := range clusterStatus.Cluster.Node {
-		instanceData, ok := nodeData.Instance[pathStr]
-		if ok && instanceData.Status != nil {
+
+	for _, instanceData := range o.Instances {
+		if instanceData.Status != nil {
 			return *instanceData.Status, nil
 		}
 	}
@@ -636,12 +636,6 @@ func HiddenFlagsEncap(flags *pflag.FlagSet, p *OptsEncap) {
 func HiddenFlagsLock(flags *pflag.FlagSet, p *OptsLock) {
 	HiddenFlagNoLock(flags, &p.Disable)
 	HiddenFlagWaitLock(flags, &p.Timeout)
-}
-
-func HiddenFlagsResourceSelector(flags *pflag.FlagSet, p *OptsResourceSelector) {
-	HiddenFlagRID(flags, &p.RID)
-	HiddenFlagSubset(flags, &p.Subset)
-	HiddenFlagTag(flags, &p.Tag)
 }
 
 // HiddenFlagsResourceSelectorWithCompletion adds hidden resource selector flags to the given command
