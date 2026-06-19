@@ -14,14 +14,15 @@ import (
 type (
 	CmdNodeSysreport struct {
 		OptsGlobal
-		Force        bool
-		Local        bool
-		NodeSelector string
+		Force                       bool
+		Local                       bool
+		NodeSelector                string
+		IgnoreNoCollectorConfigured bool
 	}
 )
 
 func (t *CmdNodeSysreport) Run() error {
-	return nodeaction.New(
+	err := nodeaction.New(
 		nodeaction.WithLocal(t.Local),
 		nodeaction.WithRemoteNodes(t.NodeSelector),
 		nodeaction.WithFormat(t.Output),
@@ -71,4 +72,9 @@ func (t *CmdNodeSysreport) Run() error {
 			}
 		}),
 	).Do()
+
+	if err != nil && t.IgnoreNoCollectorConfigured && isNoCollectorError(err) {
+		return nil
+	}
+	return err
 }

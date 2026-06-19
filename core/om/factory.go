@@ -1413,6 +1413,7 @@ func newCmdNodeSysreport() *cobra.Command {
 	commoncmd.FlagForce(flags, &options.Force)
 	commoncmd.FlagNodeSelector(flags, &options.NodeSelector)
 	flagLocal(flags, &options.Local)
+	commoncmd.FlagIgnoreNoCollectorConfigured(flags, &options.IgnoreNoCollectorConfigured)
 	return cmd
 }
 
