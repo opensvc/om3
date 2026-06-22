@@ -5,6 +5,7 @@ import (
 	"sort"
 	"time"
 
+	"github.com/opensvc/om3/v3/core/clusternode"
 	"github.com/opensvc/om3/v3/daemon/daemonsubsystem"
 	"github.com/opensvc/om3/v3/daemon/hbcache"
 	"github.com/opensvc/om3/v3/daemon/msgbus"
@@ -70,7 +71,7 @@ func (d *data) setHbMsgType(node string, msgType string) {
 			Node:          node,
 			From:          previous,
 			To:            msgType,
-			Nodes:         append([]string{}, d.clusterData.Cluster.Config.Nodes...),
+			Nodes:         clusternode.Get(),
 			JoinedNodes:   joinedNodes,
 			InstalledGens: d.deepCopyLocalGens(),
 		}, pubsub.Label{"node", node})
