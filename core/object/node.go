@@ -2,6 +2,7 @@ package object
 
 import (
 	"context"
+	"errors"
 	"fmt"
 
 	"github.com/google/uuid"
@@ -12,6 +13,8 @@ import (
 	"github.com/opensvc/om3/v3/util/plog"
 	"github.com/opensvc/om3/v3/util/scsi"
 )
+
+var ErrCollectorNotConfigured = errors.New("collector is not configured")
 
 type (
 	// Node is the node struct.

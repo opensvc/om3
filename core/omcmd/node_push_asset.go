@@ -2,8 +2,8 @@ package omcmd
 
 import (
 	"context"
+	"errors"
 	"fmt"
-	"strings"
 
 	"github.com/opensvc/om3/v3/core/client"
 	"github.com/opensvc/om3/v3/core/nodeaction"
@@ -93,5 +93,5 @@ func (t *CmdNodePushAsset) Run() error {
 }
 
 func isNoCollectorError(err error) bool {
-	return strings.Contains(err.Error(), "no collector configured")
+	return errors.Is(err, object.ErrCollectorNotConfigured)
 }
