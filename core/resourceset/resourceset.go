@@ -9,6 +9,7 @@ import (
 
 	"github.com/rs/zerolog"
 
+	"github.com/opensvc/om3/v3/core/actioncontext"
 	"github.com/opensvc/om3/v3/core/driver"
 	"github.com/opensvc/om3/v3/core/resource"
 	"github.com/opensvc/om3/v3/util/pg"
@@ -177,6 +178,13 @@ func (t T) filterResources(resourceLister ResourceLister) resource.Drivers {
 	return l
 }
 
+// registerResourcesetPG registers the resourceset pg config to be applied later
+func (t T) registerResourcesetPG(pgMgr *pg.Mgr) {
+	if t.PG != nil && pgMgr != nil {
+		pgMgr.Register(t.PG.WithLogger(t.Log()))
+	}
+}
+
 func (t T) Do(ctx context.Context, l ResourceLister, barrier, desc string, fn DoFunc) (hasHitBarrier bool, err error) {
 	rsetResources := t.Resources()
 	resources := l.Resources().Intersection(rsetResources)
@@ -185,8 +193,8 @@ func (t T) Do(ctx context.Context, l ResourceLister, barrier, desc string, fn Do
 		resources.Reverse()
 	}
 	pgMgr := pg.FromContext(ctx)
-	if pgMgr != nil {
-		pgMgr.Register(t.PG)
+	if desc != "status" && actioncontext.Props(ctx).PG {
+		t.registerResourcesetPG(pgMgr)
 	}
 	if t.Parallel {
 		hasHitBarrier, err = t.doParallel(ctx, l, resources, barrier, desc, pgMgr, fn)
@@ -242,9 +250,6 @@ func (t T) doParallel(ctx context.Context, l ResourceLister, resources resource.
 		rid := r.RID()
 		if rid == barrier {
 			hasHitBarrier = true
-		}
-		if pgMgr != nil {
-			pgMgr.Register(r.GetPG())
 		}
 		nResources += 1
 		go do(q, r)
@@ -307,9 +312,6 @@ func (t T) doSerial(ctx context.Context, l ResourceLister, resources resource.Dr
 		rid := r.RID()
 		if rid == barrier {
 			hasHitBarrier = true
-		}
-		if pgMgr != nil {
-			pgMgr.Register(r.GetPG())
 		}
 		if err := l.ReconfigureResource(r); err != nil {
 			r.SetConfigurationError(err)

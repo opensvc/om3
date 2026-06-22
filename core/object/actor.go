@@ -103,6 +103,34 @@ func (t *actor) PG() *pg.Config {
 	return t.pg
 }
 
+func (t *actor) registerNamespacePG(ctx context.Context) error {
+	nscfgPath := naming.Path{
+		Namespace: t.path.Namespace,
+		Kind:      naming.KindNscfg,
+		Name:      "namespace",
+	}
+	nscfgObj, err := NewNscfg(nscfgPath, WithVolatile(true))
+	if err != nil {
+		return fmt.Errorf("new nscfg %s: %w", nscfgPath, err)
+	}
+	mgr := pg.FromContext(ctx)
+	if mgr != nil {
+		mgr.Register(nscfgObj.PGConfig())
+	}
+	return nil
+}
+
+func (t *actor) registerObjectPG(ctx context.Context) error {
+	if t.pg == nil {
+		return nil
+	}
+	mgr := pg.FromContext(ctx)
+	if mgr != nil {
+		mgr.Register(t.pg.WithLogger(t.log))
+	}
+	return nil
+}
+
 func (t *actor) init(referrer xconfig.Referrer, path naming.Path, opts ...funcopt.O) error {
 	if err := t.core.init(referrer, path, opts...); err != nil {
 		return err

@@ -1,4 +1,4 @@
-package om
+package ox
 
 import (
 	"github.com/spf13/cobra"
@@ -46,7 +46,7 @@ func init() {
 	cmdObjectInstance.AddCommand(
 		cmdObjectInstancePG,
 		newCmdObjectInstanceBoot(kind),
-		newCmdObjectInstanceClear(kind),
+		commoncmd.NewCmdObjectClear(kind),
 		newCmdObjectInstanceList(kind),
 		newCmdObjectInstanceDelete(kind),
 	)
@@ -56,7 +56,6 @@ func init() {
 		newCmdObjectConfigEdit(kind),
 		newCmdObjectConfigEval(kind),
 		newCmdObjectConfigGet(kind),
-		newCmdObjectConfigMtime(kind),
 		newCmdObjectConfigShow(kind),
 		newCmdObjectConfigUpdate(kind),
 		newCmdObjectConfigValidate(kind),

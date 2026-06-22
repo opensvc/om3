@@ -16,10 +16,10 @@ import (
 )
 
 // ApplyProc creates the cgroup, set caps, and add the specified process
-func (c Config) ApplyProc(pid int) error {
-	var errs error
+func (c Config) ApplyProc(pid int) (created bool, errs error) {
 	if c.ID == "" {
-		return fmt.Errorf("the pg config application requires a non empty pg id")
+		errs = fmt.Errorf("the pg config application requires a non empty pg id")
+		return
 	}
 	r := specs.LinuxResources{
 		CPU:     &specs.LinuxCPU{},
@@ -94,12 +94,14 @@ func (c Config) ApplyProc(pid int) error {
 		if err != nil {
 			errs = errors.Join(errs, fmt.Errorf("new pg %s: %w", c.ID, err))
 		} else if pid == 0 {
+			created = true
 			// pass
 		} else if err := control.Add(cgroups.Process{Pid: pid}); err != nil {
+			created = true
 			errs = errors.Join(errs, fmt.Errorf("add pid to pg %s: %w", c.ID, err))
 		}
 	}
-	return errs
+	return
 }
 
 func (c Config) Delete() (bool, error) {

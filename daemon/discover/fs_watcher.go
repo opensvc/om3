@@ -2,7 +2,6 @@ package discover
 
 import (
 	"context"
-	"fmt"
 	"io/fs"
 	"os"
 	"path/filepath"
@@ -271,17 +270,7 @@ func (t *Manager) fsWatcherStart() (func(), error) {
 }
 
 func cfgFilenameToPath(filename string) (naming.Path, error) {
-	return filenameToPath(filename, rawconfig.Paths.Etc, ".conf")
-}
-
-func filenameToPath(filename, prefix, suffix string) (naming.Path, error) {
-	svcName := strings.TrimPrefix(filename, prefix+"/")
-	svcName = strings.TrimPrefix(svcName, "namespaces/")
-	svcName = strings.TrimSuffix(svcName, suffix)
-	if len(svcName) == 0 {
-		return naming.Path{}, fmt.Errorf("skipped null filename")
-	}
-	return naming.ParsePath(svcName)
+	return naming.ConfigFilePath(filename)
 }
 
 func runFilenameToPathAndRID(filename string) (naming.Path, string, error) {

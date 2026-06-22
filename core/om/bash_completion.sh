@@ -1,11 +1,33 @@
 __om_handle_word()
 {
-    [ $cword -gt 1 ] && [ ! -z "${words[1]}" ] && ! __om_contains_word ${words[1]} svc vol sec cfg usr ccfg nscfg all completion create daemon monitor help && {
-        words[1]="all"
+     __om_debug "${FUNCNAME[0]}: c is $c words[c] is ${words[c]}"
+     [ $c -eq 1 ] && [ $cword -gt 1 ] && {
+        local k
+        case "${words[c]}" in
+            "") ;;
+            svc|vol|sec|cfg|usr|ccfg|nscfg|ccfg|all|node) ;;
+            pool|network|array|completion|create|daemon|mon|monitor|help) ;;
+            cluster) k="ccfg" ;;
+            *,*) k="all" ;;
+            */svc/*|svc/*) k="svc" ;;
+            */vol/*|vol/*) k="vol" ;;
+            */sec/*|sec/*) k="sec" ;;
+            */usr/*|usr/*) k="usr" ;;
+            */cfg/*|cfg/*) k="cfg" ;;
+            */nscfg|nscfg/*|*/) k="nscfg" ;;
+            *=*|*\**|*\?*) k="all" ;;
+            *) k="svc" ;;
+        esac
+        [ ! -z "$k" ] && {
+          # replace "om cfg/foo" with "om cfg -s cfg/foo"
+          words=("${words[@]:0:c}" "$k" "-s" "${words[c]}" "${words[@]:c+1}")
+          cword=$(($cword+2))
+          __om_debug "${FUNCNAME[0]}: >>> ${words[*]}"
+        }
     }
     ___om_handle_word
-}       
-        
+}
+
 ___om_handle_word()
 {
     if [[ $c -ge $cword ]]; then

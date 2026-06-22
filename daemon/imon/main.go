@@ -481,7 +481,7 @@ func (t *Manager) attachActiveAuditIfAny() {
 	t.standbyResourceOrchestrate.log = t.log.AddPrefix("standby resource: ")
 }
 
-// ensureBooted runs the bot action on not yet booted object
+// ensureBooted runs the boot action on not yet booted object
 func (t *Manager) ensureBooted() {
 	instanceLastBootID := lastBootID(t.path)
 	nodeLastBootID := bootid.Get()

@@ -733,10 +733,6 @@ func (t *BT) Status(ctx context.Context) status.T {
 	}
 
 	if !inspect.Running() {
-		if t.Remove {
-			t.StatusLog().Warn("not removed container")
-			return status.Down
-		}
 		return status.Down
 	}
 	return status.Up

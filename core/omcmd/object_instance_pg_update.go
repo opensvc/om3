@@ -8,6 +8,7 @@ import (
 	"github.com/opensvc/om3/v3/core/naming"
 	"github.com/opensvc/om3/v3/core/object"
 	"github.com/opensvc/om3/v3/core/objectaction"
+	"github.com/opensvc/om3/v3/core/xerrors"
 )
 
 type (
@@ -37,13 +38,20 @@ func (t *CmdObjectInstancePGUpdate) Run(kind string) error {
 		objectaction.WithAllSlaves(t.AllSlaves),
 		objectaction.WithMaster(t.Master),
 		objectaction.WithLocalFunc(func(ctx context.Context, p naming.Path) (interface{}, error) {
-			o, err := object.NewActor(p)
+			type pgUpdater interface {
+				PGUpdate(context.Context) error
+			}
+			o, err := object.New(p)
 			if err != nil {
 				return nil, err
 			}
+			i, ok := o.(pgUpdater)
+			if !ok {
+				return nil, xerrors.InstanceActionNotSupported
+			}
 			ctx = actioncontext.WithLockDisabled(ctx, t.Disable)
 			ctx = actioncontext.WithLockTimeout(ctx, t.Timeout)
-			return nil, o.PGUpdate(ctx)
+			return nil, i.PGUpdate(ctx)
 		}),
 	).Do()
 }

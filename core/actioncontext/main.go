@@ -231,7 +231,7 @@ func WithProps(ctx context.Context, props Properties) context.Context {
 	if props.Rollback {
 		ctx = actionrollback.NewContext(ctx)
 	}
-	if props.PG {
+	if props.PG && pg.FromContext(ctx) == nil {
 		ctx = pg.NewContext(ctx)
 	}
 	return ctx

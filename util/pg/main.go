@@ -2,14 +2,16 @@ package pg
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"os"
-	"path/filepath"
 	"runtime"
 	"sort"
 	"strconv"
 	"strings"
+	"sync"
 
+	"github.com/opensvc/om3/v3/util/plog"
 	"github.com/opensvc/om3/v3/util/xmap"
 )
 
@@ -25,49 +27,29 @@ type (
 		VMemLimit     string
 		MemSwappiness string
 		BlockIOWeight string
+		applied       bool
+		log           *plog.Logger
+	}
+	Mgr struct {
+		mu      sync.Mutex
+		configs map[string]*Config
 	}
 	CPUQuota string
 	key      int
-	State    int
-	entry    struct {
-		State  State
-		Config *Config
-	}
-	Run struct {
-		Err     error
-		Config  *Config
-		Changed bool
-	}
-	Mgr map[string]*entry
 )
 
-const (
-	Init State = iota
-	Applied
-	Deleted
-)
-
-var (
-	mgrKey key = 0
-)
-
-func UnifiedPath() string {
-	mnt := "/sys/fs/cgroup"
-	_, err := os.Stat(mnt + "/cgroup.procs")
-	if err == nil {
-		return mnt
-	}
-	return mnt + "/unified"
+// WithLogger sets the logger for this Config and returns itself for chaining.
+func (c *Config) WithLogger(l *plog.Logger) *Config {
+	c.log = l
+	return c
 }
 
-func (e entry) NewRun() *Run {
-	r := Run{Config: e.Config}
-	return &r
-}
+var mgrKey key = 0
 
 func NewContext(ctx context.Context) context.Context {
-	t := make(Mgr)
-	return context.WithValue(ctx, mgrKey, &t)
+	return context.WithValue(ctx, mgrKey, &Mgr{
+		configs: make(map[string]*Config),
+	})
 }
 
 func FromContext(ctx context.Context) *Mgr {
@@ -78,128 +60,103 @@ func FromContext(ctx context.Context) *Mgr {
 	return v.(*Mgr)
 }
 
-func (t Mgr) Register(c *Config) {
+func (m *Mgr) Register(c *Config) {
 	if c == nil {
 		return
 	}
-	if _, ok := t[c.ID]; ok {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	if _, ok := m.configs[c.ID]; ok {
+		// Don't reset the "applied" bool if the config is registered again.
+		// We don't need to handle in-run config changes.
 		return
 	}
-	t[c.ID] = &entry{
-		Config: c,
+	m.configs[c.ID] = c
+}
+
+// ApplyConfigs applies all registered pg configs in order (base to leaf).
+// Each config is applied only if not already applied.
+func (m *Mgr) ApplyConfigs() error {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	var errs error
+	ids := xmap.Keys(m.configs)
+	sort.Strings(ids)
+	for _, id := range ids {
+		c := m.configs[id]
+		if _, err := c.ApplyOnce(); err != nil {
+			errs = errors.Join(errs, err)
+		}
+	}
+	return errs
+}
+
+func (m *Mgr) Clean() {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	// Clean in reverse order (LIFO)
+	ids := xmap.Keys(m.configs)
+	sort.Strings(ids)
+	for i := len(ids) - 1; i >= 0; i-- {
+		id := ids[i]
+		m.configs[id].Clean()
 	}
 }
 
-// RevChain returns the list of self and parents from closest to farthest
-func RevChain(id string) []string {
-	chain := make([]string, 0)
-	for {
-		chain = append(chain, id)
-		nid := filepath.Dir(id)
-		if nid == id {
-			break
-		}
-		id = nid
+func UnifiedPath() string {
+	mnt := "/sys/fs/cgroup"
+	_, err := os.Stat(mnt + "/cgroup.procs")
+	if err == nil {
+		return mnt
 	}
-	return chain
+	return mnt + "/unified"
 }
 
-func Chain(id string) []string {
-	l := RevChain(id)
-	sort.Sort(sort.StringSlice(l))
-	return l
-}
-
-func (t Mgr) IDs() []string {
-	return xmap.Keys(t)
-}
-
-func (t Mgr) RevIDs() []string {
-	l := t.IDs()
-	sort.Sort(sort.Reverse(sort.StringSlice(l)))
-	return l
-}
-
-func (t Mgr) Clean() []Run {
-	runs := make([]Run, 0)
-	for _, p := range t.RevIDs() {
-		e, ok := t[p]
-		if !ok {
-			continue
-		}
-		r := e.NewRun()
-		switch e.State {
-		case Init, Applied:
-			if r.Changed, r.Err = e.Config.Delete(); r.Changed {
-				e.State = Deleted
+// ApplyOnce applies the pg configuration if it hasn't been applied already.
+// Returns true if the config was applied, false if it was already applied.
+func (c *Config) ApplyOnce() (bool, error) {
+	if c == nil {
+		return false, fmt.Errorf("no pg config")
+	}
+	if c.applied {
+		return false, nil
+	}
+	created, err := c.ApplyProc(0)
+	if err == nil {
+		c.applied = true
+		// Log at info level
+		if c.log != nil {
+			configStr := c.String()
+			if strings.Contains(configStr, "=") {
+				c.log.Infof("applied %s", configStr)
+			} else if created {
+				c.log.Infof("created %s", configStr)
+			} else {
+				c.log.Debugf("pg already exists: %s", configStr)
 			}
-		default:
-			r.Changed = false
-		}
-		runs = append(runs, *r)
-	}
-	return runs
-}
-
-func (e *entry) Run() *Run {
-	r := e.NewRun()
-	if e.Config == nil {
-		r.Err = fmt.Errorf("no pg config")
-		r.Changed = false
-		return r
-	}
-	switch e.State {
-	case Init, Deleted:
-		e.State = Applied
-		r.Err = e.Config.ApplyNoProc()
-		r.Changed = true
-	case Applied:
-		r.Changed = false
-		return r
-	}
-	return r
-}
-
-func (t Mgr) Apply(id string) []Run {
-	runs := make([]Run, 0)
-	for _, p := range Chain(id) {
-		if e, ok := t[p]; ok {
-			r := e.Run()
-			runs = append(runs, *r)
 		}
 	}
-	return runs
+	return err == nil, err
 }
 
-func (c Config) needApply() bool {
-	if c.CPUs != "" {
-		return true
+// Clean removes the pg configuration if it was applied.
+func (c *Config) Clean() (bool, error) {
+	if c == nil || !c.applied {
+		return false, nil
 	}
-	if c.Mems != "" {
-		return true
+	c.applied = false
+	changed, err := c.Delete()
+	if changed && c.log != nil {
+		c.log.Debugf("remove pg %s", c.ID)
 	}
-	if c.CPUShares != "" {
-		return true
-	}
-	if c.CPUQuota != "" {
-		return true
-	}
-	if c.MemOOMControl != "" {
-		return true
-	}
-	if c.MemLimit != "" {
-		return true
-	}
-	if c.VMemLimit != "" {
-		return true
-	}
-	if c.MemSwappiness != "" {
-		return true
-	}
-	if c.BlockIOWeight != "" {
-		return true
-	}
-	return false
+	return changed, err
+}
+
+// Apply is a convenience method for compatibility.
+// Use (*Config).Apply() for state-tracking apply.
+func (c Config) Apply() error {
+	_, err := c.ApplyProc(os.Getpid())
+	return err
 }
 
 func (c Config) String() string {
@@ -286,14 +243,4 @@ func (t CPUQuota) Convert(period uint64) (int64, error) {
 		return 0, fmt.Errorf(invalidFmtError+":%w", t, err)
 	}
 	return int64(pct) * int64(period) * int64(cpus) / int64(maxCpus) / 100, nil
-}
-
-// ApplyNoProc creates the cgroup, set caps, but does not add a process
-func (c Config) ApplyNoProc() error {
-	return c.ApplyProc(0)
-}
-
-// Apply creates the cgroup, set caps, and add the running process
-func (c Config) Apply() error {
-	return c.ApplyProc(os.Getpid())
 }

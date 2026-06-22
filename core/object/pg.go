@@ -2,9 +2,7 @@ package object
 
 import (
 	"context"
-	"errors"
 	"fmt"
-	"os"
 	"strings"
 
 	"github.com/opensvc/om3/v3/core/naming"
@@ -52,7 +50,7 @@ func pgNameResource(s string) string {
 // Without namespace, without subset:
 //
 //	/opensvc/opensvc-svc.s1/opensvc-svc.s1-app.1
-func (t *core) pgConfig(section string) *pg.Config {
+func (t *core) pgAnonConfig(section string) *pg.Config {
 	data := pg.Config{}
 	data.CPUShares, _ = t.config.EvalNoConv(key.New(section, "pg_cpu_shares"))
 	data.CPUs, _ = t.config.EvalNoConv(key.New(section, "pg_cpus"))
@@ -63,6 +61,11 @@ func (t *core) pgConfig(section string) *pg.Config {
 	data.MemOOMControl, _ = t.config.EvalNoConv(key.New(section, "pg_mem_oom_control"))
 	data.MemSwappiness, _ = t.config.EvalNoConv(key.New(section, "pg_mem_swappiness"))
 	data.BlockIOWeight, _ = t.config.EvalNoConv(key.New(section, "pg_blkio_weight"))
+	return &data
+}
+
+func (t *core) pgConfig(section string) *pg.Config {
+	data := t.pgAnonConfig(section)
 	subsetName := func(s string) string {
 		if s == "" {
 			return ""
@@ -119,23 +122,13 @@ func (t *core) pgConfig(section string) *pg.Config {
 		return "/" + strings.Join(l, "/")
 	}
 	data.ID = pgName(section)
-	return &data
+	return data
 }
 
-func (t *core) CleanPG(ctx context.Context) {
+func (t *core) PGClean(ctx context.Context) {
 	mgr := pg.FromContext(ctx)
 	if mgr == nil {
 		return
 	}
-	for _, run := range mgr.Clean() {
-		if run.Err != nil {
-			if errors.Is(run.Err, os.ErrPermission) {
-				t.log.Tracef("remove pg %s: still active", run.Config.ID)
-			} else {
-				t.log.Errorf("remove pg %s error: %s", run.Config.ID, run.Err)
-			}
-		} else if run.Changed {
-			t.log.Tracef("remove pg %s", run.Config.ID)
-		}
-	}
+	mgr.Clean()
 }
