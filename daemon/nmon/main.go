@@ -268,6 +268,11 @@ func (t *Manager) Start(parent context.Context) error {
 	t.setArbitratorConfig()
 
 	t.startSubscriptions()
+
+	if clusterConfig := cluster.ConfigData.Get(); clusterConfig != nil {
+		t.clusterConfig = *clusterConfig
+	}
+
 	t.wg.Add(1)
 	go func() {
 		defer t.wg.Done()
