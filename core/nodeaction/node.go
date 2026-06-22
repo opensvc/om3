@@ -593,6 +593,9 @@ func (t T) waitExpectation(ctx context.Context, c *client.T, exp Expectation, er
 					if nmon.State == v {
 						reached[msg.Node] = true
 						log.Tracef("NodeMonitorUpdated reached state %s", v)
+					} else if v == node.MonitorStateDrainSuccess && nmon.State == node.MonitorStateDrainFailure {
+						err = fmt.Errorf("drain failed")
+						return
 					} else if reached[msg.Node] && nmon.State == node.MonitorStateIdle {
 						log.Tracef("NodeMonitorUpdated reached state %s unset", v)
 						return
