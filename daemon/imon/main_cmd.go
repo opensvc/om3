@@ -1190,7 +1190,7 @@ func (t *Manager) onNodeRejoin(c *msgbus.NodeRejoin) {
 		if peerStatus.FrozenAt.After(c.LastShutdownAt) {
 			msg := fmt.Sprintf("Freeze %s instance because peer %s instance was frozen while this daemon was down", t.path, peer)
 			if err := t.queueFreeze(); err != nil {
-				t.log.Infof("%s: %s", msg, err)
+				t.log.Errorf("%s: %s", msg, err)
 			} else {
 				t.log.Infof(msg)
 			}
