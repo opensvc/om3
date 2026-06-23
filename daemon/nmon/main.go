@@ -170,12 +170,12 @@ func NewManager(drainDuration time.Duration, subQS pubsub.QueueSizer) *Manager {
 		state: node.Monitor{
 			LocalExpect:  node.MonitorLocalExpectNone,
 			GlobalExpect: node.MonitorGlobalExpectNone,
-			State:        node.MonitorStateInit, // this prevents imon orchestration
+			State:        node.MonitorStateRejoin, // this prevents imon orchestration
 		},
 		previousState: node.Monitor{
 			LocalExpect:  node.MonitorLocalExpectNone,
 			GlobalExpect: node.MonitorGlobalExpectNone,
-			State:        node.MonitorStateInit,
+			State:        node.MonitorStateRejoin,
 		},
 		cmdC:        make(chan any),
 		poolC:       make(chan any, 1),
@@ -364,6 +364,12 @@ func (t *Manager) startRejoin() {
 	l := missingNodes(hbMessageType.Nodes, hbMessageType.JoinedNodes)
 	if (hbMessageType.Type == "patch") && len(l) == 0 {
 		// Skip the rejoin state phase.
+		t.log.Infof("we are late to the party, immediate rejoin")
+		t.publisher.Pub(&msgbus.NodeRejoin{
+			Nodes:          hbMessageType.Nodes,
+			LastShutdownAt: file.ModTime(rawconfig.Paths.LastShutdown),
+			IsUpgrading:    os.Getenv("OPENSVC_AGENT_UPGRADE") != "",
+		}, t.labelLocalhost)
 		t.rejoinTicker = time.NewTicker(time.Second)
 		t.rejoinTicker.Stop()
 		t.transitionTo(node.MonitorStateIdle)
@@ -505,25 +511,35 @@ func (t *Manager) worker() {
 	}
 }
 
-func (t *Manager) onRejoinGracePeriodExpire() {
+func (t *Manager) nodeFreeze() (bool, error) {
 	nodeFrozenFile := filepath.Join(rawconfig.Paths.Var, "node", "frozen")
-	frozen := file.ModTime(nodeFrozenFile)
-	if frozen.Equal(time.Time{}) {
-		f, err := os.OpenFile(nodeFrozenFile, os.O_RDONLY|os.O_CREATE, 0666)
+	frozenAt := file.ModTime(nodeFrozenFile)
+	if !frozenAt.IsZero() {
+		return false, nil
+	}
+	f, err := os.OpenFile(nodeFrozenFile, os.O_RDONLY|os.O_CREATE, 0666)
+	if err != nil {
+		return false, err
+	}
+	if err := f.Close(); err != nil {
+		return true, err
+	}
+	return true, nil
+}
+
+func (t *Manager) onRejoinGracePeriodExpire() {
+	changed, err := t.nodeFreeze()
+	msg := "rejoin grace period expired"
+	if changed {
 		if err != nil {
-			t.log.Errorf("rejoin grace period expired: freeze node: %s", err)
+			t.log.Errorf("%s: freezing local node: %s", msg, err)
 			t.rejoinTicker.Reset(2 * time.Second)
 			return
 		}
-		t.log.Infof("rejoin grace period expired: freeze node")
-		if err := f.Close(); err != nil {
-			t.log.Errorf("rejoin grace period expired: freeze node: %s", err)
-			t.rejoinTicker.Reset(2 * time.Second)
-			return
-		}
+		t.log.Infof("%s: local node has been frozen", msg)
 		t.transitionTo(node.MonitorStateIdle)
 	} else {
-		t.log.Infof("rejoin grace period expired: the node is already frozen")
+		t.log.Infof("%s: local node is already frozen", msg)
 		t.transitionTo(node.MonitorStateIdle)
 	}
 	t.rejoinTicker.Stop()

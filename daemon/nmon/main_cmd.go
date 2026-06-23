@@ -357,13 +357,10 @@ func (t *Manager) onNodeRejoin(c *msgbus.NodeRejoin) {
 		// no need to merge frozen on a single node cluster
 		return
 	}
-	if !t.nodeStatus.FrozenAt.IsZero() {
-		// already frozen
-		return
-	}
 	if t.state.GlobalExpect == node.MonitorGlobalExpectUnfrozen {
 		return
 	}
+	var frozenPeers []string
 	for _, peer := range t.clusterConfig.Nodes {
 		if peer == t.localhost {
 			continue
@@ -373,13 +370,28 @@ func (t *Manager) onNodeRejoin(c *msgbus.NodeRejoin) {
 			continue
 		}
 		if peerStatus.FrozenAt.After(c.LastShutdownAt) {
-			if err := t.crmFreeze(); err != nil {
-				t.log.Infof("node freeze error: %s", err)
-			} else {
-				t.log.Infof("node freeze because peer %s was frozen while this daemon was down", peer)
-			}
-			return
+			frozenPeers = append(frozenPeers, peer)
 		}
+	}
+
+	var msg string
+	switch len(frozenPeers) {
+	case 0:
+		// no peer frozen while this daemon was shutdown
+		return
+	case 1:
+		msg = fmt.Sprintf("peer %s was frozen while this daemon was down", frozenPeers[0])
+	default:
+		msg = fmt.Sprintf("peers %s were frozen while this daemon was down", frozenPeers)
+	}
+
+	changed, err := t.nodeFreeze()
+	if err != nil {
+		t.log.Errorf("%s: freezing local node: %s", msg, err)
+	} else if changed {
+		t.log.Infof("%s: local node has been frozen", msg)
+	} else {
+		t.log.Infof("%s: local node is already frozen", msg)
 	}
 }
 
