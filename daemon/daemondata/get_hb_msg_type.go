@@ -3,6 +3,7 @@ package daemondata
 import (
 	"context"
 
+	"github.com/opensvc/om3/v3/core/clusternode"
 	"github.com/opensvc/om3/v3/core/node"
 	"github.com/opensvc/om3/v3/util/xmap"
 )
@@ -39,7 +40,7 @@ func (t T) GetHbMessageType() HbMessageType {
 func (o opGetHbMessageType) call(ctx context.Context, d *data) error {
 	o.result <- HbMessageType{
 		Type:        d.hbMessageType,
-		Nodes:       d.clusterData.Cluster.Config.Nodes,
+		Nodes:       clusternode.Get(),
 		JoinedNodes: xmap.Keys(d.hbGens[d.localNode]),
 		Gens:        d.deepCopyLocalGens(),
 	}
