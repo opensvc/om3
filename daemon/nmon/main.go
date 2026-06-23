@@ -387,9 +387,9 @@ func (t *Manager) startRejoin() {
 func (t *Manager) touchLastShutdown() {
 	// remember the last shutdown date via a file mtime
 	if err := file.Touch(rawconfig.Paths.LastShutdown, time.Now()); err != nil {
-		t.log.Errorf("touch %s: %s", rawconfig.Paths.LastShutdown, err)
+		t.log.Warnf("touch %s: %s", rawconfig.Paths.LastShutdown, err)
 	} else {
-		t.log.Infof("touch %s", rawconfig.Paths.LastShutdown)
+		t.log.Tracef("touch %s", rawconfig.Paths.LastShutdown)
 	}
 }
 
@@ -442,9 +442,15 @@ func (t *Manager) worker() {
 
 	statsTicker := time.NewTicker(statsInterval)
 	defer statsTicker.Stop()
+
 	arbitratorTicker := time.NewTicker(arbitratorInterval)
 	defer arbitratorTicker.Stop()
 	defer t.touchLastShutdown()
+
+	// lastShutdownFileTouchTicker is used to periodically touch LastShutdown file
+	// when the daemon is in a state where rejoinTicker has been stopped
+	lastShutdownFileTouchTicker := time.NewTicker(10 * time.Second)
+	defer lastShutdownFileTouchTicker.Stop()
 
 	// TODO refreshSanPaths should be refreshed on events,  on ticker ?
 	for {
@@ -507,8 +513,17 @@ func (t *Manager) worker() {
 			t.onArbitratorTicker()
 		case <-t.rejoinTicker.C:
 			t.onRejoinGracePeriodExpire()
+		case <-lastShutdownFileTouchTicker.C:
+			t.onLastShutdownFileTouchTicker()
 		}
 	}
+}
+
+func (t *Manager) onLastShutdownFileTouchTicker() {
+	if t.state.State == node.MonitorStateRejoin {
+		return
+	}
+	t.touchLastShutdown()
 }
 
 func (t *Manager) nodeFreeze() (bool, error) {
