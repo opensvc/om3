@@ -365,13 +365,16 @@ func (t *Manager) startRejoin() {
 	if (hbMessageType.Type == "patch") && len(l) == 0 {
 		// Skip the rejoin state phase.
 		t.log.Infof("we are late to the party, immediate rejoin")
+		leftAt := file.ModTime(rawconfig.Paths.LastShutdown)
 		t.publisher.Pub(&msgbus.NodeRejoin{
 			Nodes:          hbMessageType.Nodes,
-			LastShutdownAt: file.ModTime(rawconfig.Paths.LastShutdown),
+			LastShutdownAt: leftAt,
 			IsUpgrading:    os.Getenv("OPENSVC_AGENT_UPGRADE") != "",
 		}, t.labelLocalhost)
 		t.rejoinTicker = time.NewTicker(time.Second)
 		t.rejoinTicker.Stop()
+		t.nodeStatus.LeftAt = leftAt
+		t.nodeStatus.RejoinedAt = time.Now()
 		t.transitionTo(node.MonitorStateIdle)
 	} else {
 		// Begin the rejoin state phase.

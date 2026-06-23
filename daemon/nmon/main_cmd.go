@@ -340,11 +340,14 @@ func (t *Manager) onHeartbeatMessageTypeUpdated(c *msgbus.HeartbeatMessageTypeUp
 		return
 	}
 	t.rejoinTicker.Stop()
+	leftAt := file.ModTime(rawconfig.Paths.LastShutdown)
 	t.publisher.Pub(&msgbus.NodeRejoin{
 		Nodes:          c.Nodes,
-		LastShutdownAt: file.ModTime(rawconfig.Paths.LastShutdown),
+		LastShutdownAt: leftAt,
 		IsUpgrading:    os.Getenv("OPENSVC_AGENT_UPGRADE") != "",
 	}, t.labelLocalhost)
+	t.nodeStatus.LeftAt = leftAt
+	t.nodeStatus.RejoinedAt = time.Now()
 	_ = os.Unsetenv("OPENSVC_AGENT_UPGRADE")
 	t.transitionTo(node.MonitorStateIdle)
 }
