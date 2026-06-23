@@ -81,6 +81,7 @@ type (
 		SetProvisioned(context.Context) error
 		SetUnprovisioned(context.Context) error
 		SyncFull(context.Context) error
+		SyncRestore(context.Context, string, string) error
 		SyncResync(context.Context) error
 		SyncSplit(context.Context) error
 		SyncUpdate(context.Context) error
