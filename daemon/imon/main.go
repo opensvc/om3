@@ -169,6 +169,11 @@ type (
 
 		// standbyResourceOrchestrate is the orchestrationResource for regular resources
 		regularResourceOrchestrate orchestrationResource
+
+		// isPeerFrozenMerged remembers we already mirrored locally a peer instance freeze
+		// that happened during this daemon last blackout (crash time => rejoin).
+		// i.e. this boolean shortcuts the t.mergePeerFrozen func.
+		isPeerFrozenMerged bool
 	}
 
 	// cmdOrchestrate can be used from post action go routines
@@ -371,6 +376,7 @@ func (t *Manager) worker(initialNodes []string) {
 		<-t.delayTimer.C
 	}
 
+	t.mergePeerFrozen()
 	t.initRelationAvailStatus()
 	t.initResourceMonitor()
 	t.initLocalResourceFiles()

@@ -366,16 +366,17 @@ func (t *Manager) startRejoin() {
 		// Skip the rejoin state phase.
 		t.log.Infof("we are late to the party, immediate rejoin")
 		leftAt := file.ModTime(rawconfig.Paths.LastShutdown)
+		t.rejoinTicker = time.NewTicker(time.Second)
+		t.rejoinTicker.Stop()
+		t.nodeStatus.LeftAt = leftAt
+		t.nodeStatus.RejoinedAt = time.Now()
+		_ = os.Unsetenv("OPENSVC_AGENT_UPGRADE")
+		t.transitionTo(node.MonitorStateIdle)
 		t.publisher.Pub(&msgbus.NodeRejoin{
 			Nodes:          hbMessageType.Nodes,
 			LastShutdownAt: leftAt,
 			IsUpgrading:    os.Getenv("OPENSVC_AGENT_UPGRADE") != "",
 		}, t.labelLocalhost)
-		t.rejoinTicker = time.NewTicker(time.Second)
-		t.rejoinTicker.Stop()
-		t.nodeStatus.LeftAt = leftAt
-		t.nodeStatus.RejoinedAt = time.Now()
-		t.transitionTo(node.MonitorStateIdle)
 	} else {
 		// Begin the rejoin state phase.
 		// Arm the re-join grace period ticker.
