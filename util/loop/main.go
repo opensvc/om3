@@ -2,8 +2,8 @@ package loop
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
+	"strings"
 	"time"
 
 	"github.com/opensvc/fcntllock"
@@ -31,14 +31,8 @@ type (
 	}
 
 	InfoEntry struct {
-		Name      string `json:"name"`      // "/dev/loop1"
-		BackFile  string `json:"back-file"` // "/var/lib/snapd/snaps/gnome-3-34-1804_66.snap"
-		SizeLimit any    `json:"sizelimit"` // 0, "0"
-		Offset    any    `json:"offset"`    // 0, "0"
-		AutoClear any    `json:"autoclear"` // true, 0
-		ReadOnly  any    `json:"ro"`        // true, 0
-		DirectIO  any    `json:"dio"`       // false, 0
-		LogSec    any    `json:"log-sec"`   // 512, "512"
+		Name     string `json:"name"`      // "/dev/loop1"
+		BackFile string `json:"back-file"` // "/var/lib/snapd/snaps/gnome-3-34-1804_66.snap"
 	}
 
 	InfoEntries []InfoEntry
@@ -94,14 +88,14 @@ func (t T) Get(ctx context.Context, name string) (*InfoEntry, error) {
 
 func (t T) Data(ctx context.Context) (InfoEntries, error) {
 	var (
-		out []byte
-		err error
+		out     []byte
+		err     error
+		entries InfoEntries
 	)
-	data := Info{}
 	cmd := command.New(
 		command.WithContext(ctx),
 		command.WithName(losetup),
-		command.WithVarArgs("-J"),
+		command.WithVarArgs("-O", "NAME,BACK-FILE"), // The -J and -n options are not supported by losetup on RHEL 7.
 		command.WithLogger(t.log),
 		command.WithCommandLogLevel(zerolog.TraceLevel),
 		command.WithStdoutLogLevel(zerolog.TraceLevel),
@@ -114,10 +108,25 @@ func (t T) Data(ctx context.Context) (InfoEntries, error) {
 	if len(out) == 0 {
 		return InfoEntries{}, nil
 	}
-	if err = json.Unmarshal(out, &data); err != nil {
-		return nil, err
+	/*
+		Output to parse: losetup -O NAME,BACK-FILE
+		NAME       BACK-FILE
+		/dev/loop0 /tmp/loopfile0 (deleted)
+		/dev/loop1 /tmp/loopfile1
+	*/
+	for line := range strings.Lines(string(out)) {
+		l := strings.Fields(line)
+		if len(l) >= 2 {
+			if l[0] == "NAME" {
+				continue
+			}
+			entries = append(entries, InfoEntry{
+				Name:     l[0],
+				BackFile: l[1],
+			})
+		}
 	}
-	return data.LoopDevices, nil
+	return entries, nil
 }
 
 func (t T) Add(ctx context.Context, filePath string) error {
@@ -190,9 +199,6 @@ func (t InfoEntries) Name(s string) *InfoEntry {
 func (t InfoEntries) File(s string) *InfoEntry {
 	for _, i := range t {
 		if i.BackFile == s {
-			return &i
-		}
-		if i.BackFile == s+" (deleted)" {
 			return &i
 		}
 	}
