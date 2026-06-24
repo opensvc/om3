@@ -11,9 +11,9 @@ import (
 	"github.com/rs/zerolog"
 
 	"github.com/opensvc/om3/v3/util/command"
-	"github.com/opensvc/om3/v3/util/sessioncache"
 	"github.com/opensvc/om3/v3/util/funcopt"
 	"github.com/opensvc/om3/v3/util/plog"
+	"github.com/opensvc/om3/v3/util/sessioncache"
 	"github.com/opensvc/om3/v3/util/udevadm"
 )
 
@@ -25,19 +25,22 @@ type (
 	T struct {
 		log *plog.Logger
 	}
+
 	Info struct {
 		LoopDevices []InfoEntry `json:"loopdevices"`
 	}
+
 	InfoEntry struct {
 		Name      string `json:"name"`      // "/dev/loop1"
-		SizeLimit int64  `json:"sizelimit"` // 0
-		Offset    int64  `json:"offset"`    // 0
-		AutoClear bool   `json:"autoclear"` // true
-		ReadOnly  bool   `json:"ro"`        // true
 		BackFile  string `json:"back-file"` // "/var/lib/snapd/snaps/gnome-3-34-1804_66.snap"
-		DirectIO  bool   `json:"dio"`       // false
-		LogSec    int64  `json:"log-sec"`   // 512
+		SizeLimit any    `json:"sizelimit"` // 0, "0"
+		Offset    any    `json:"offset"`    // 0, "0"
+		AutoClear any    `json:"autoclear"` // true, 0
+		ReadOnly  any    `json:"ro"`        // true, 0
+		DirectIO  any    `json:"dio"`       // false, 0
+		LogSec    any    `json:"log-sec"`   // 512, "512"
 	}
+
 	InfoEntries []InfoEntry
 )
 
