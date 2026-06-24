@@ -1,0 +1,3 @@
+The integer value to use in `create-md --max-peers <n>`.
+
+The driver ensures the value is not lesser than the number of instances.
