@@ -119,7 +119,7 @@ func (t *CollectorConfigRaw) AsConfig() *collector.Config {
 func (t *Node) CollectorFeedClient() (*collector.Client, error) {
 	cfg := t.CollectorRawConfig().AsConfig()
 	if cfg.FeederUrl == "" {
-		return nil, fmt.Errorf("%w: %v", ErrCollectorNotConfigured, collector.ErrConfig)
+		return nil, collector.ErrConfig
 	}
 	return cfg.NewFeedClient()
 }
@@ -188,7 +188,7 @@ func (t *Node) CollectorFeeder() (*httphelper.T, error) {
 	cfg := t.CollectorRawConfig().AsConfig()
 
 	if cfg.FeederUrl == "" {
-		return nil, fmt.Errorf("%w: %v", ErrCollectorNotConfigured, collector.ErrConfig)
+		return nil, collector.ErrConfig
 	} else if cfg.Password == "" {
 		return nil, collector.ErrUnregistered
 	}

@@ -2,10 +2,11 @@ package oxcmd
 
 import (
 	"context"
+	"errors"
 	"fmt"
-	"strings"
 
 	"github.com/opensvc/om3/v3/core/client"
+	"github.com/opensvc/om3/v3/core/collector"
 	"github.com/opensvc/om3/v3/core/nodeaction"
 	"github.com/opensvc/om3/v3/daemon/api"
 	"github.com/opensvc/om3/v3/util/xsession"
@@ -95,5 +96,5 @@ func (t *CmdNodePushAsset) doDryRun() error {
 }
 
 func isNoCollectorError(err error) bool {
-	return strings.Contains(err.Error(), "no collector configured")
+	return errors.Is(err, collector.ErrConfig)
 }

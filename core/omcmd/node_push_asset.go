@@ -6,6 +6,7 @@ import (
 	"fmt"
 
 	"github.com/opensvc/om3/v3/core/client"
+	"github.com/opensvc/om3/v3/core/collector"
 	"github.com/opensvc/om3/v3/core/nodeaction"
 	"github.com/opensvc/om3/v3/core/object"
 	"github.com/opensvc/om3/v3/daemon/api"
@@ -93,5 +94,5 @@ func (t *CmdNodePushAsset) Run() error {
 }
 
 func isNoCollectorError(err error) bool {
-	return errors.Is(err, object.ErrCollectorNotConfigured)
+	return errors.Is(err, collector.ErrConfig)
 }
