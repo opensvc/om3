@@ -202,8 +202,7 @@ func (t *T) mountLegacy() error {
 	a.Append("-t", "zfs")
 	mountOptions := t.mountOptions()
 	if len(mountOptions) > 0 {
-		a.Append("-o")
-		a.Append(t.mountOptions()...)
+		a.Append("-o", strings.Join(mountOptions, ","))
 	}
 	a.Append(t.Device, t.MountPoint)
 	cmd := command.New(
