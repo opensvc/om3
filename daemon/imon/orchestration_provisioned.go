@@ -29,6 +29,8 @@ func (t *Manager) orchestrateProvisioned() {
 	case instance.MonitorStateUnfreezeProgress:
 	case instance.MonitorStateUnfreezeFailure:
 		// TODO: clear ?
+	case instance.MonitorStateWaitParents:
+		t.setWaitParents()
 	}
 }
 
@@ -48,6 +50,9 @@ func (t *Manager) provisionedFromProvisionFailed() {
 
 func (t *Manager) provisionedFromIdle() {
 	if t.provisionedClearIfReached() {
+		return
+	}
+	if t.setWaitParents() {
 		return
 	}
 	if t.isProvisioningLeader() {
