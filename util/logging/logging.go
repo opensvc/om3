@@ -186,7 +186,7 @@ func Configure(config Config) error {
 
 	if config.WithCaller {
 		// skip one more for plog wrappers
-		logger = logger.With().CallerWithSkipFrameCount(zerolog.CallerSkipFrameCount + 1).Logger()
+		logger = logger.With().CallerWithSkipFrameCount(zerolog.CallerSkipFrameCount + 2).Logger()
 	}
 
 	log.Logger = logger
