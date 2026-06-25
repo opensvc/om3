@@ -2,9 +2,11 @@ package omcmd
 
 import (
 	"context"
+	"errors"
 	"fmt"
 
 	"github.com/opensvc/om3/v3/core/client"
+	"github.com/opensvc/om3/v3/core/collector"
 	"github.com/opensvc/om3/v3/core/nodeaction"
 	"github.com/opensvc/om3/v3/core/object"
 	"github.com/opensvc/om3/v3/daemon/api"
@@ -14,13 +16,15 @@ import (
 type (
 	CmdNodePushAsset struct {
 		OptsGlobal
-		Local        bool
-		NodeSelector string
+		Local                       bool
+		DryRun                      bool
+		NodeSelector                string
+		IgnoreNoCollectorConfigured bool
 	}
 )
 
 func (t *CmdNodePushAsset) Run() error {
-	return nodeaction.New(
+	err := nodeaction.New(
 		nodeaction.WithLocal(t.Local),
 		nodeaction.WithRemoteNodes(t.NodeSelector),
 		nodeaction.WithFormat(t.Output),
@@ -30,6 +34,9 @@ func (t *CmdNodePushAsset) Run() error {
 			if err != nil {
 				return nil, err
 			}
+			if t.DryRun {
+				return n.PushAssetDryRun()
+			}
 			return n.PushAsset()
 		}),
 		nodeaction.WithRemoteFunc(func(ctx context.Context, nodename string) (interface{}, error) {
@@ -37,6 +44,25 @@ func (t *CmdNodePushAsset) Run() error {
 			if err != nil {
 				return nil, err
 			}
+			if t.DryRun {
+				response, err := c.GetNodeSystemPropertyWithResponse(ctx, nodename)
+				if err != nil {
+					return nil, err
+				}
+				switch {
+				case response.JSON200 != nil:
+					return *response.JSON200, nil
+				case response.JSON401 != nil:
+					return nil, fmt.Errorf("node %s: %v", nodename, response.JSON401)
+				case response.JSON403 != nil:
+					return nil, fmt.Errorf("node %s: %v", nodename, response.JSON403)
+				case response.JSON500 != nil:
+					return nil, fmt.Errorf("node %s: %v", nodename, response.JSON500)
+				default:
+					return nil, fmt.Errorf("node %s: unexpected response: %s", nodename, response.Status())
+				}
+			}
+
 			params := api.PostNodeActionPushAssetParams{}
 			{
 				sid := xsession.Sid().UUID()
@@ -60,4 +86,13 @@ func (t *CmdNodePushAsset) Run() error {
 			}
 		}),
 	).Do()
+
+	if err != nil && t.IgnoreNoCollectorConfigured && isNoCollectorError(err) {
+		return nil
+	}
+	return err
+}
+
+func isNoCollectorError(err error) bool {
+	return errors.Is(err, collector.ErrConfig)
 }

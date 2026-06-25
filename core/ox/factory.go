@@ -1310,6 +1310,8 @@ func newCmdNodePushAsset() *cobra.Command {
 	flags := cmd.Flags()
 	addFlagsGlobal(flags, &options.OptsGlobal)
 	commoncmd.FlagNodeSelector(flags, &options.NodeSelector)
+	commoncmd.FlagDryRun(flags, &options.DryRun)
+	commoncmd.FlagIgnoreNoCollectorConfigured(flags, &options.IgnoreNoCollectorConfigured)
 	return cmd
 }
 
@@ -1326,6 +1328,8 @@ func newCmdNodePushDisk() *cobra.Command {
 	flags := cmd.Flags()
 	addFlagsGlobal(flags, &options.OptsGlobal)
 	commoncmd.FlagNodeSelector(flags, &options.NodeSelector)
+	commoncmd.FlagDryRun(flags, &options.DryRun)
+	commoncmd.FlagIgnoreNoCollectorConfigured(flags, &options.IgnoreNoCollectorConfigured)
 	return cmd
 }
 
@@ -1342,6 +1346,8 @@ func newCmdNodePushPkg() *cobra.Command {
 	flags := cmd.Flags()
 	addFlagsGlobal(flags, &options.OptsGlobal)
 	commoncmd.FlagNodeSelector(flags, &options.NodeSelector)
+	commoncmd.FlagDryRun(flags, &options.DryRun)
+	commoncmd.FlagIgnoreNoCollectorConfigured(flags, &options.IgnoreNoCollectorConfigured)
 	return cmd
 }
 
@@ -1396,6 +1402,7 @@ func newCmdNodeSysreport() *cobra.Command {
 	addFlagsGlobal(flags, &options.OptsGlobal)
 	commoncmd.FlagForce(flags, &options.Force)
 	commoncmd.FlagNodeSelector(flags, &options.NodeSelector)
+	commoncmd.FlagIgnoreNoCollectorConfigured(flags, &options.IgnoreNoCollectorConfigured)
 	return cmd
 }
 
@@ -2727,6 +2734,7 @@ func newCmdObjectInstanceResourceInfoPush(kind string) *cobra.Command {
 	addFlagsGlobal(flags, &options.OptsGlobal)
 	commoncmd.FlagsAsync(flags, &options.OptsAsync)
 	commoncmd.FlagNodeSelector(flags, &options.NodeSelector)
+	commoncmd.FlagIgnoreNoCollectorConfigured(flags, &options.IgnoreNoCollectorConfigured)
 	return cmd
 }
 

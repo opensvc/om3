@@ -118,6 +118,9 @@ func (t *CollectorConfigRaw) AsConfig() *collector.Config {
 
 func (t *Node) CollectorFeedClient() (*collector.Client, error) {
 	cfg := t.CollectorRawConfig().AsConfig()
+	if cfg.FeederUrl == "" {
+		return nil, collector.ErrConfig
+	}
 	return cfg.NewFeedClient()
 }
 
@@ -160,24 +163,6 @@ func (t *Node) CollectorRestAPIClient() *http.Client {
 		},
 	}
 	return client
-}
-
-// CollectorClient returns new client collector from config
-func (t *Node) CollectorClient() (*httphelper.T, error) {
-	dbopensvc := t.MergedConfig().GetString(key.Parse("node.dbopensvc"))
-	insecure := t.MergedConfig().GetBool(key.Parse("node.dbinsecure"))
-	pass := t.MergedConfig().GetString(key.Parse("node.uuid"))
-
-	if dbopensvc == "" || dbopensvc == "none" {
-		return nil, collector.ErrConfig
-	}
-
-	if dbopensvc != "" && pass == "" {
-		return nil, collector.ErrUnregistered
-	}
-
-	auth := "Basic " + base64.StdEncoding.EncodeToString([]byte(hostname.Hostname()+":"+pass))
-	return collector.NewRequester(dbopensvc, auth, insecure)
 }
 
 // CollectorFeeder returns new collector feeder client from config

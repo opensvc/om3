@@ -13,13 +13,14 @@ import (
 type (
 	CmdNodeSysreport struct {
 		OptsGlobal
-		Force        bool
-		NodeSelector string
+		Force                       bool
+		NodeSelector                string
+		IgnoreNoCollectorConfigured bool
 	}
 )
 
 func (t *CmdNodeSysreport) Run() error {
-	return nodeaction.New(
+	err := nodeaction.New(
 		nodeaction.WithRemoteNodes(t.NodeSelector),
 		nodeaction.WithFormat(t.Output),
 		nodeaction.WithColor(t.Color),
@@ -55,4 +56,9 @@ func (t *CmdNodeSysreport) Run() error {
 			}
 		}),
 	).Do()
+
+	if err != nil && t.IgnoreNoCollectorConfigured && isNoCollectorError(err) {
+		return nil
+	}
+	return err
 }

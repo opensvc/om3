@@ -733,3 +733,7 @@ func FlagSCSITarget(flags *pflag.FlagSet, p *string) {
 func FlagSCSILUN(flags *pflag.FlagSet, p *string) {
 	flags.StringVar(p, "lun", "", "Specify a logical unit number to scan for new block devices. Example: 1.")
 }
+
+func FlagIgnoreNoCollectorConfigured(flags *pflag.FlagSet, p *bool) {
+	flags.BoolVar(p, "ignore-no-collector-configured", false, "ignore absence of collector configuration")
+}

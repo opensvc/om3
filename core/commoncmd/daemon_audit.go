@@ -9,6 +9,7 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"os"
 	"strings"
 	"time"
 
@@ -75,74 +76,147 @@ func (t *CmdDaemonAudit) Run() error {
 			Sub:     &subsystems,
 			Preempt: &t.Preempt,
 		}
-		cli, err := client.New(client.WithTimeout(0))
-		if err != nil {
-			return nil, fmt.Errorf("client new : %s", err)
-		}
 
-		resp, err := cli.PostDaemonAudit(ctx, nodename, params)
-		if err != nil {
-			return resp, err
-		}
-
-		if resp == nil || resp.Body == nil {
-			return resp, fmt.Errorf("empty response body")
-		}
-
-		defer func() {
-			_ = resp.Body.Close()
-		}()
-
-		switch resp.StatusCode {
-		case http.StatusOK:
-		case http.StatusBadRequest:
-			return resp, fmt.Errorf("bad request: %s", resp.Status)
-		case http.StatusUnauthorized:
-			return resp, fmt.Errorf("unauthorized: %s", resp.Status)
-		case http.StatusForbidden:
-			return resp, fmt.Errorf("forbidden: %s", resp.Status)
-		case http.StatusConflict:
-			b, _ := io.ReadAll(resp.Body)
-			var p api.Problem
-			if err := json.Unmarshal(b, &p); err == nil {
-				return resp, fmt.Errorf("conflict: %s", p.Detail)
-			}
-			return resp, fmt.Errorf("conflict: %s %s", resp.Status, string(b))
-		case http.StatusInternalServerError:
-			return resp, fmt.Errorf("internal server error: %s", resp.Status)
-		default:
-			return resp, fmt.Errorf("unexpected status code %s", resp.Status)
-		}
-		eventC := make(chan string)
-		errC := make(chan error)
 		if t.Output != "json" {
 			writer = newAuditConsoleWriter()
 		}
-		body := resp.Body
-		go auditParse(ctx, body, eventC, errC)
 
-		for eventC != nil || errC != nil {
+		retries := 0
+		maxRetries := 600
+
+		for {
 			select {
 			case <-ctx.Done():
-				err = ctx.Err()
-				return resp, err
-			case msg, ok := <-eventC:
-				if !ok {
-					eventC = nil
-					continue
+				return nil, ctx.Err()
+			default:
+			}
+
+			cli, err := client.New(client.WithTimeout(0))
+			if err != nil {
+				if retries >= maxRetries {
+					return nil, err
 				}
-				if err := auditRender(writer, msg, t.Output); err != nil {
-					return resp, err
+				if retries == 0 {
+					fmt.Fprintf(os.Stderr, "audit stream connection to %s failed: %s\n", nodename, err)
+					fmt.Fprintln(os.Stderr, "press ctrl+c to interrupt retries")
+				} else {
+					fmt.Fprint(os.Stderr, ".")
 				}
-			case err := <-errC:
-				errC = nil
-				if err == nil || errors.Is(err, io.EOF) {
-					return resp, nil
+				retries++
+				time.Sleep(100 * time.Millisecond)
+				continue
+			}
+
+			resp, err := cli.PostDaemonAudit(ctx, nodename, params)
+			if err != nil {
+				if retries >= maxRetries {
+					return nil, err
 				}
-				return resp, err
+				if retries == 0 {
+					fmt.Fprintf(os.Stderr, "audit stream connection to %s failed: %s\n", nodename, err)
+					fmt.Fprintln(os.Stderr, "press ctrl+c to interrupt retries")
+				} else {
+					fmt.Fprint(os.Stderr, ".")
+				}
+				retries++
+				time.Sleep(100 * time.Millisecond)
+				continue
+			}
+
+			if resp == nil || resp.Body == nil {
+				if retries >= maxRetries {
+					return nil, fmt.Errorf("empty response body")
+				}
+				if retries == 0 {
+					fmt.Fprintf(os.Stderr, "audit stream connection to %s failed: empty response body\n", nodename)
+					fmt.Fprintln(os.Stderr, "press ctrl+c to interrupt retries")
+				} else {
+					fmt.Fprint(os.Stderr, ".")
+				}
+				retries++
+				time.Sleep(100 * time.Millisecond)
+				continue
+			}
+
+			switch resp.StatusCode {
+			case http.StatusOK:
+			case http.StatusBadRequest:
+				body, _ := io.ReadAll(resp.Body)
+				resp.Body.Close()
+				return resp, fmt.Errorf("bad request: %s, body: %s", resp.Status, string(body))
+			case http.StatusUnauthorized:
+				body, _ := io.ReadAll(resp.Body)
+				resp.Body.Close()
+				return resp, fmt.Errorf("unauthorized: %s, body: %s", resp.Status, string(body))
+			case http.StatusForbidden:
+				body, _ := io.ReadAll(resp.Body)
+				resp.Body.Close()
+				return resp, fmt.Errorf("forbidden: %s, body: %s", resp.Status, string(body))
+			case http.StatusConflict:
+				b, _ := io.ReadAll(resp.Body)
+				resp.Body.Close()
+				var p api.Problem
+				if err := json.Unmarshal(b, &p); err == nil {
+					return resp, fmt.Errorf("conflict: %s", p.Detail)
+				}
+				return resp, fmt.Errorf("conflict: %s %s", resp.Status, string(b))
+			case http.StatusInternalServerError:
+				body, _ := io.ReadAll(resp.Body)
+				resp.Body.Close()
+				return resp, fmt.Errorf("internal server error: %s, body: %s", resp.Status, string(body))
+			default:
+				body, _ := io.ReadAll(resp.Body)
+				resp.Body.Close()
+				if retries >= maxRetries {
+					return resp, fmt.Errorf("unexpected status code %s, body: %s", resp.Status, string(body))
+				}
+				if retries == 0 {
+					fmt.Fprintf(os.Stderr, "audit stream connection to %s failed: unexpected status %s\n", nodename, resp.Status)
+					fmt.Fprintln(os.Stderr, "press ctrl+c to interrupt retries")
+				} else {
+					fmt.Fprint(os.Stderr, ".")
+				}
+				retries++
+				time.Sleep(100 * time.Millisecond)
+				continue
+			}
+
+			retries = 0
+
+			eventC := make(chan string)
+			errC := make(chan error)
+			go auditParse(ctx, resp.Body, eventC, errC)
+
+			func() {
+				defer resp.Body.Close()
+				for {
+					select {
+					case <-ctx.Done():
+						return
+					case msg, ok := <-eventC:
+						if !ok {
+							eventC = nil
+							continue
+						}
+						if err := auditRender(writer, msg, t.Output); err != nil {
+							return
+						}
+					case err := <-errC:
+						if err == nil || errors.Is(err, io.EOF) {
+							return
+						}
+						fmt.Fprintf(os.Stderr, "audit read error from %s: %s\n", nodename, err)
+						return
+					}
+				}
+			}()
+
+			select {
+			case <-ctx.Done():
+				return nil, ctx.Err()
+			default:
 			}
 		}
-		return resp, nil
 	}
 	return t.CmdDaemonSubAction.Run(fn)
 }

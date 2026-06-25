@@ -14,13 +14,15 @@ import (
 type (
 	CmdNodePushPkg struct {
 		OptsGlobal
-		Local        bool
-		NodeSelector string
+		Local                       bool
+		DryRun                      bool
+		NodeSelector                string
+		IgnoreNoCollectorConfigured bool
 	}
 )
 
 func (t *CmdNodePushPkg) Run() error {
-	return nodeaction.New(
+	err := nodeaction.New(
 		nodeaction.WithLocal(t.Local),
 		nodeaction.WithRemoteNodes(t.NodeSelector),
 		nodeaction.WithFormat(t.Output),
@@ -29,6 +31,14 @@ func (t *CmdNodePushPkg) Run() error {
 			n, err := object.NewNode()
 			if err != nil {
 				return nil, err
+			}
+			if t.DryRun {
+				l, err := n.PushPkgDryRun()
+				if err != nil {
+					return nil, err
+				}
+				fmt.Printf("Found %d installed packages (dry-run).\n", len(l))
+				return nil, nil
 			}
 			l, err := n.PushPkg()
 			if err != nil {
@@ -42,6 +52,25 @@ func (t *CmdNodePushPkg) Run() error {
 			if err != nil {
 				return nil, err
 			}
+			if t.DryRun {
+				response, err := c.GetNodeSystemPackageWithResponse(ctx, nodename)
+				if err != nil {
+					return nil, err
+				}
+				switch {
+				case response.JSON200 != nil:
+					return *response.JSON200, nil
+				case response.JSON401 != nil:
+					return nil, fmt.Errorf("node %s: %v", nodename, response.JSON401)
+				case response.JSON403 != nil:
+					return nil, fmt.Errorf("node %s: %v", nodename, response.JSON403)
+				case response.JSON500 != nil:
+					return nil, fmt.Errorf("node %s: %v", nodename, response.JSON500)
+				default:
+					return nil, fmt.Errorf("node %s: unexpected response: %s", nodename, response.Status())
+				}
+			}
+
 			params := api.PostNodeActionPushPkgParams{}
 			{
 				sid := xsession.Sid().UUID()
@@ -65,4 +94,9 @@ func (t *CmdNodePushPkg) Run() error {
 			}
 		}),
 	).Do()
+
+	if err != nil && t.IgnoreNoCollectorConfigured && isNoCollectorError(err) {
+		return nil
+	}
+	return err
 }

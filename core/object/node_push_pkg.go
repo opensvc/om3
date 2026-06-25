@@ -35,6 +35,17 @@ func (t Node) PushPkg() ([]packages.Pkg, error) {
 	return l, nil
 }
 
+func (t Node) PushPkgDryRun() ([]packages.Pkg, error) {
+	l, err := packages.List()
+	if err != nil {
+		return l, err
+	}
+	if err = t.dumpPkg(l); err != nil {
+		return l, err
+	}
+	return l, nil
+}
+
 func (t Node) dumpPkg(data []packages.Pkg) error {
 	file, err := os.OpenFile(t.nodePackageCacheFile(), os.O_RDWR|os.O_CREATE|os.O_TRUNC, 0660)
 	if err != nil {

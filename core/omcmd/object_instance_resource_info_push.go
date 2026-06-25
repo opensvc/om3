@@ -19,7 +19,8 @@ type (
 	CmdObjectInstanceResourceInfoPush struct {
 		OptsGlobal
 		commoncmd.OptsLock
-		NodeSelector string
+		NodeSelector                string
+		IgnoreNoCollectorConfigured bool
 	}
 )
 
@@ -52,6 +53,9 @@ func (t *CmdObjectInstanceResourceInfoPush) doLocal(selector string) (api.Resour
 		}
 		infos, err := i.PushResInfo(ctx)
 		if err != nil {
+			if t.IgnoreNoCollectorConfigured && isNoCollectorError(err) {
+				continue
+			}
 			errs = errors.Join(errs, fmt.Errorf("%s: %w", path, err))
 			continue
 		}

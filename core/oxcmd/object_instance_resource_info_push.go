@@ -16,13 +16,14 @@ type (
 	CmdObjectInstanceResourceInfoPush struct {
 		OptsGlobal
 		commoncmd.OptsAsync
-		NodeSelector string
+		NodeSelector                string
+		IgnoreNoCollectorConfigured bool
 	}
 )
 
 func (t *CmdObjectInstanceResourceInfoPush) Run(kind string) error {
 	mergedSelector := commoncmd.MergeSelector("", t.ObjectSelector, kind, "")
-	return objectaction.New(
+	err := objectaction.New(
 		objectaction.WithObjectSelector(mergedSelector),
 		objectaction.WithOutput(t.Output),
 		objectaction.WithColor(t.Color),
@@ -59,4 +60,9 @@ func (t *CmdObjectInstanceResourceInfoPush) Run(kind string) error {
 			}
 		}),
 	).Do()
+
+	if err != nil && t.IgnoreNoCollectorConfigured && isNoCollectorError(err) {
+		return nil
+	}
+	return err
 }

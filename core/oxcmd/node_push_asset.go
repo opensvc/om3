@@ -2,9 +2,11 @@ package oxcmd
 
 import (
 	"context"
+	"errors"
 	"fmt"
 
 	"github.com/opensvc/om3/v3/core/client"
+	"github.com/opensvc/om3/v3/core/collector"
 	"github.com/opensvc/om3/v3/core/nodeaction"
 	"github.com/opensvc/om3/v3/daemon/api"
 	"github.com/opensvc/om3/v3/util/xsession"
@@ -13,12 +15,18 @@ import (
 type (
 	CmdNodePushAsset struct {
 		OptsGlobal
-		NodeSelector string
+		NodeSelector                string
+		DryRun                      bool
+		IgnoreNoCollectorConfigured bool
 	}
 )
 
 func (t *CmdNodePushAsset) Run() error {
-	return nodeaction.New(
+	if t.DryRun {
+		return t.doDryRun()
+	}
+
+	err := nodeaction.New(
 		nodeaction.WithRemoteNodes(t.NodeSelector),
 		nodeaction.WithFormat(t.Output),
 		nodeaction.WithColor(t.Color),
@@ -50,4 +58,43 @@ func (t *CmdNodePushAsset) Run() error {
 			}
 		}),
 	).Do()
+
+	if err != nil && t.IgnoreNoCollectorConfigured && isNoCollectorError(err) {
+		return nil
+	}
+	return err
+}
+
+func (t *CmdNodePushAsset) doDryRun() error {
+	return nodeaction.New(
+		nodeaction.WithRemoteNodes(t.NodeSelector),
+		nodeaction.WithFormat(t.Output),
+		nodeaction.WithColor(t.Color),
+		nodeaction.WithRemoteFunc(func(ctx context.Context, nodename string) (interface{}, error) {
+			c, err := client.New()
+			if err != nil {
+				return nil, err
+			}
+			response, err := c.GetNodeSystemPropertyWithResponse(ctx, nodename)
+			if err != nil {
+				return nil, err
+			}
+			switch {
+			case response.JSON200 != nil:
+				return *response.JSON200, nil
+			case response.JSON401 != nil:
+				return nil, fmt.Errorf("node %s: %v", nodename, response.JSON401)
+			case response.JSON403 != nil:
+				return nil, fmt.Errorf("node %s: %v", nodename, response.JSON403)
+			case response.JSON500 != nil:
+				return nil, fmt.Errorf("node %s: %v", nodename, response.JSON500)
+			default:
+				return nil, fmt.Errorf("node %s: unexpected response: %s", nodename, response.Status())
+			}
+		}),
+	).Do()
+}
+
+func isNoCollectorError(err error) bool {
+	return errors.Is(err, collector.ErrConfig)
 }
