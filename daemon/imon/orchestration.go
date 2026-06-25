@@ -2,10 +2,12 @@ package imon
 
 import (
 	"fmt"
+	"strings"
 
 	"github.com/google/uuid"
 
 	"github.com/opensvc/om3/v3/core/instance"
+	"github.com/opensvc/om3/v3/core/naming"
 	"github.com/opensvc/om3/v3/core/node"
 	"github.com/opensvc/om3/v3/core/status"
 )
@@ -108,6 +110,27 @@ func (t *Manager) orchestrate() {
 		t.orchestrateUnprovisioned()
 	}
 	t.updateIfChange()
+}
+
+func (t *Manager) isAnyParentWaitingChilren() bool {
+	l := make([]string, 0)
+	for relation, _ := range t.state.Parents {
+		path, err := naming.ParsePath(relation)
+		if err != nil {
+			t.log.Errorf("%s", err)
+			return false
+		}
+		for nodename, instMon := range instance.MonitorData.GetByPath(path) {
+			if instMon.State == instance.MonitorStateWaitChildren {
+				l = append(l, fmt.Sprintf("%s@%s", path, nodename))
+			}
+		}
+	}
+	if len(l) > 0 {
+		t.log.Infof("instances of parents are still waiting for children: %s", strings.Join(l, ","))
+		return true
+	}
+	return false
 }
 
 func (t *Manager) setWaitParents() bool {

@@ -49,7 +49,7 @@ func InitColor() {
 	iconUp = green("O")
 	iconWarning = yellow("!")
 	iconDownIssue = hired("X")
-	iconPlacementAlert = hired("^")
+	iconPlacementAlert = yellow("^")
 	iconProvisionAlert = hired("P")
 	iconStandbyDown = hired("x")
 	iconStandbyUpIssue = hired("o")
