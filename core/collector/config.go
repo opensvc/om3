@@ -20,7 +20,7 @@ type (
 )
 
 var (
-	ErrConfig       = errors.New("collector is not configured: empty configuration keyword node.dbopensvc")
+	ErrConfig       = errors.New("collector is not configured")
 	ErrUnregistered = errors.New("this node is not registered. try 'om node register'")
 )
 
