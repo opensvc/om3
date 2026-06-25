@@ -24,10 +24,19 @@ func (t *Manager) orchestrateFailoverPlacedStart() {
 	case instance.MonitorStateStopProgress:
 	case instance.MonitorStateStartProgress:
 	case instance.MonitorStateWaitParents:
-		t.setWaitParents()
+		t.orchestratePlacedAtSetWaitParents()
 	default:
 		t.log.Errorf("don't know how to orchestrate placed start from %s", t.state.State)
 	}
+}
+
+// orchestratePlacedAtSetWaitParents return true if the caller must not
+// move forward to starting the instance.
+func (t *Manager) orchestratePlacedAtSetWaitParents() bool {
+	if t.isAnyParentWaitingChilren() {
+		return true
+	}
+	return t.setWaitParents()
 }
 
 func (t *Manager) orchestrateFlexPlacedStart() {
@@ -47,7 +56,7 @@ func (t *Manager) orchestrateFlexPlacedStart() {
 	case instance.MonitorStateStopProgress:
 	case instance.MonitorStateStartProgress:
 	case instance.MonitorStateWaitParents:
-		t.setWaitParents()
+		t.orchestratePlacedAtSetWaitParents()
 	default:
 		t.log.Errorf("don't know how to orchestrate placed start from %s", t.state.State)
 	}
@@ -145,7 +154,7 @@ func (t *Manager) doPlacedStart() {
 }
 
 func (t *Manager) placedStart() {
-	if t.setWaitParents() {
+	if t.orchestratePlacedAtSetWaitParents() {
 		return
 	}
 
