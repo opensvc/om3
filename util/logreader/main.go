@@ -314,33 +314,45 @@ func renderEvent(e streamlog.Event, node string, streamIndex int, numStreams int
 		w.FormatFieldValue = func(i any) string { return "" }
 
 		// Determine prefix based on stream index
-		prefix := ""
-		if node != "" {
-			prefixes := []string{"⣇", "⣸"}
-			runePosition := streamIndex / 2
-			paddingWidth := (numStreams)/2 + 1
+		var prefix string
+		if node != "" && numStreams > 1 {
+			// Format a prefix helping the reader grap wich node emited the entry:
+			//
+			//   ⣇⡀ node1: foo
+			//   ⣸⡀ node2: foo
+			//   ⣀⡇ node3: foo
+			//
+			runes := []rune("⣇⣸⣀⡀⡇")
+			runeA := runes[0]
+			runeB := runes[1]
+			runeZ := runes[2]
+			runeHalfZ := runes[3]
+			runeHalfA := runes[4]
 
-			var terminator string
+			streamPosition := streamIndex / 2
+			paddedWidth := (numStreams + 1) / 2
+			evenStreamCount := numStreams%2 == 0
+			evenStreamIndex := streamIndex%2 == 0
+			prefix = strings.Repeat("⣀", paddedWidth)
+			runeset := []rune(prefix)
 
-			// test if last rune is not filled with streams
-			if numStreams%2 != 0 && streamIndex == numStreams-1 {
-				prefix = "⡇"
+			if evenStreamIndex {
+				runeset[streamPosition] = runeA
 			} else {
-				prefix = prefixes[streamIndex%2]
-				if numStreams%2 != 0 {
-					terminator = "⡀"
-				} else {
-					terminator = "⣀"
+				runeset[streamPosition] = runeB
+			}
+
+			if !evenStreamCount {
+				switch runeset[paddedWidth-1] {
+				case runeA:
+					runeset[paddedWidth-1] = runeHalfA
+				case runeZ:
+					runeset[paddedWidth-1] = runeHalfZ
 				}
 			}
 
-			// Pad prefix to the calculated width
-			prefix = strings.Repeat("⣀", runePosition) + prefix
+			prefix = string(runeset)
 
-			if n := paddingWidth - runePosition - 2; n > 0 {
-				prefix += strings.Repeat("⣀", paddingWidth-runePosition-2)
-			}
-			prefix += terminator
 		}
 
 		w.FormatMessage = func(i any) string {

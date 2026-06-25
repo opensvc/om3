@@ -137,7 +137,7 @@ func TestDaemonData(t *testing.T) {
 		refreshed := bus.ClusterNodeData(localNode)
 		assert.NotNil(t, refreshed)
 		assert.Equal(t, uint64(1), refreshed.Status.Gen[localNode])
-		assert.Equal(t, node.MonitorStateInit, refreshed.Monitor.State)
+		assert.Equal(t, node.MonitorStateRejoin, refreshed.Monitor.State)
 	})
 	require.False(t, t.Failed()) // fail on first error
 
@@ -154,7 +154,7 @@ func TestDaemonData(t *testing.T) {
 		initial.GlobalExpectUpdatedAt = time.Now()
 
 		refreshed := *node.MonitorData.GetByNode(localNode)
-		require.Equal(t, node.MonitorStateInit, refreshed.State, "State changed !")
+		require.Equal(t, node.MonitorStateRejoin, refreshed.State, "State changed !")
 		require.Equal(t, initialUpdated, refreshed.StateUpdatedAt, "StateUpdated changed !")
 		require.Equal(t, initialStateUpdated, refreshed.StateUpdatedAt, "StateUpdated changed !")
 		require.Equal(t, node.MonitorGlobalExpectNone, refreshed.GlobalExpect, "GlobalExpect changed !")

@@ -255,6 +255,7 @@ func (t *Manager) onMyInstanceStatusUpdated(srcNode string, srcCmd *msgbus.Insta
 		return
 	}
 	t.instStatus[srcCmd.Node] = srcCmd.Value
+	t.mergePeerFrozen()
 	t.clearStonith(srcCmd.Node, srcCmd.Value.Avail)
 	t.handleResourceFiles(srcCmd)
 }
@@ -1161,10 +1162,56 @@ func (t *Manager) initResourceMonitor() {
 	t.change = true
 }
 
-func (t *Manager) onNodeRejoin(c *msgbus.NodeRejoin) {
-	if c.IsUpgrading {
+func (t *Manager) mergePeerFrozen() {
+	if t.isPeerFrozenMerged {
 		return
 	}
+	leftAt := t.nodeStatus[t.localhost].LeftAt
+	rejoinedAt := t.nodeStatus[t.localhost].RejoinedAt
+	if leftAt.IsZero() || rejoinedAt.IsZero() {
+		// we will do that on NodeRejoin event
+		t.log.Tracef("not rejoined yet, defer merge peer frozen")
+		return
+	}
+	if len(t.instStatus) < 2 {
+		t.log.Tracef("not enough instances, delay merge peer frozen")
+		return
+	}
+	instStatus, ok := t.instStatus[t.localhost]
+	if !ok {
+		t.log.Tracef("local instance status is not evaluated yet, defer merge peer frozen")
+		return
+	}
+	if !instStatus.FrozenAt.IsZero() {
+		t.log.Tracef("local instance is already frozen, skip merge peer frozen")
+		return
+	}
+	if t.state.GlobalExpect == instance.MonitorGlobalExpectUnfrozen {
+		t.log.Tracef("global expect is unfrozen, skip merge peer frozen")
+		return
+	}
+	if t.instConfig.ActorConfig != nil && t.instConfig.ActorConfig.Orchestrate != "ha" {
+		t.log.Tracef("object is not a ha actor, skip merge peer frozen")
+		return
+	}
+	for peer, peerStatus := range t.instStatus {
+		if peer == t.localhost {
+			continue
+		}
+		if peerStatus.FrozenAt.After(leftAt) && peerStatus.FrozenAt.Before(rejoinedAt) {
+			msg := fmt.Sprintf("freeze %s instance because peer %s instance was frozen while this daemon was down", t.path, peer)
+			if err := t.queueFreeze(); err != nil {
+				t.log.Errorf("%s: %s", msg, err)
+			} else {
+				t.isPeerFrozenMerged = true
+				t.log.Infof(msg)
+			}
+			return
+		}
+	}
+}
+
+func (t *Manager) onNodeRejoin(c *msgbus.NodeRejoin) {
 	if len(t.instStatus) < 2 {
 		// no need to merge frozen if the object has a single instance
 		return
@@ -1190,7 +1237,7 @@ func (t *Manager) onNodeRejoin(c *msgbus.NodeRejoin) {
 		if peerStatus.FrozenAt.After(c.LastShutdownAt) {
 			msg := fmt.Sprintf("Freeze %s instance because peer %s instance was frozen while this daemon was down", t.path, peer)
 			if err := t.queueFreeze(); err != nil {
-				t.log.Infof("%s: %s", msg, err)
+				t.log.Errorf("%s: %s", msg, err)
 			} else {
 				t.log.Infof(msg)
 			}

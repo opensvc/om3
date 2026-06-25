@@ -18,6 +18,15 @@ type (
 		IsLeader     bool                        `json:"is_leader"`
 		IsOverloaded bool                        `json:"is_overloaded"`
 		BootedAt     time.Time                   `json:"booted_at"`
+
+		// LeftAt is the last time the nmon advanced the last_shutdown file,
+		// i.e. the last time it proved it was alive and rejoined.
+		LeftAt time.Time `json:"left_at"`
+
+		// RejoinedAt is the time nmon state transitioned from rejoin to idle.
+		// This happens either when the rejoin_grace_period expires or when
+		// we received data from all peers.
+		RejoinedAt time.Time `json:"rejoined_at"`
 	}
 
 	// Instances groups instances configuration digest and status
