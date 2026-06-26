@@ -9,7 +9,9 @@ import (
 	"time"
 
 	"github.com/opensvc/om3/v3/core/clusternode"
+	"github.com/opensvc/om3/v3/core/network"
 	"github.com/opensvc/om3/v3/core/node"
+	"github.com/opensvc/om3/v3/core/object"
 	"github.com/opensvc/om3/v3/core/rawconfig"
 	"github.com/opensvc/om3/v3/daemon/msgbus"
 	"github.com/opensvc/om3/v3/util/errcontext"
@@ -48,6 +50,22 @@ func (t *Manager) onClusterConfigUpdated(c *msgbus.ClusterConfigUpdated) {
 
 	// recompute rejoin ticker, perhaps RejoinGracePeriod has been changed
 	t.checkRejoinTicker()
+
+	if len(c.NetworkChanged) > 0 {
+		t.onNetworkChanged(c.NetworkChanged)
+	}
+}
+
+func (t *Manager) onNetworkChanged(networkNames []string) {
+	if n, err := object.NewNode(object.WithLogger(t.log)); err != nil {
+		t.log.Errorf("allocate Node for network setup: %s", err)
+	} else {
+		t.log.Infof("reconfigure networks")
+		if err := network.Setup(n, networkNames...); err != nil {
+			t.log.Infof("reconfigure networks: %s", err.Error())
+		}
+	}
+	return
 }
 
 // onConfigFileUpdated reloads the config parser and emits the updated

@@ -24,7 +24,7 @@ var (
 	ErrInvalidType = errors.New("invalid network type")
 )
 
-func Setup(n *object.Node) error {
+func Setup(n *object.Node, names ...string) error {
 	errs := make([]error, 0)
 	dir, err := mkCNIConfigDir(n)
 	if err != nil {
@@ -34,7 +34,7 @@ func Setup(n *object.Node) error {
 	if err != nil {
 		return err
 	}
-	nws := Networks(n)
+	nws := Networks(n, names...)
 	needCommit := make([]string, 0)
 	kops := make(keyop.L, 0)
 	for _, nw := range nws {

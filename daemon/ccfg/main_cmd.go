@@ -5,7 +5,6 @@ import (
 
 	"github.com/opensvc/om3/v3/core/cluster"
 	"github.com/opensvc/om3/v3/core/clusternode"
-	"github.com/opensvc/om3/v3/core/network"
 	"github.com/opensvc/om3/v3/core/object"
 	"github.com/opensvc/om3/v3/daemon/msgbus"
 	"github.com/opensvc/om3/v3/util/pubsub"
@@ -30,7 +29,6 @@ func (t *Manager) pubClusterConfig() {
 	for _, issue := range state.Issues {
 		t.log.Warnf("issue: %s", issue)
 	}
-	t.handleConfigChanges()
 
 	t.state = *state.DeepCopy()
 	labelLocalhost := pubsub.Label{"node", t.localhost}
@@ -45,7 +43,13 @@ func (t *Manager) pubClusterConfig() {
 	cluster.ConfigData.Set(&state)
 	clusternode.Set(state.Nodes)
 
-	t.publisher.Pub(&msgbus.ClusterConfigUpdated{Node: t.localhost, Value: state, NodesAdded: added, NodesRemoved: removed}, labelLocalhost)
+	t.publisher.Pub(&msgbus.ClusterConfigUpdated{
+		Node:           t.localhost,
+		Value:          state,
+		NodesAdded:     added,
+		NodesRemoved:   removed,
+		NetworkChanged: t.networkConfigChanged(),
+	}, labelLocalhost)
 
 	for _, v := range added {
 		t.publisher.Pub(&msgbus.JoinSuccess{AddedNode: v}, labelLocalhost, pubsub.Label{"added_node", v})
@@ -55,34 +59,24 @@ func (t *Manager) pubClusterConfig() {
 	}
 }
 
-func (t *Manager) handleConfigChanges() {
+func (t *Manager) networkConfigChanged() (names []string) {
 	clu, err := object.NewCluster()
 	if err != nil {
 		t.log.Errorf("%s", err)
 		return
 	}
-	var change bool
 
 	for _, name := range clu.Config().SectionStrings() {
 		if strings.HasPrefix(name, "network#") || name == "cni" {
 			lastSig, _ := t.networkSigs[name]
 			sig := clu.Config().SectionSig(name)
 			if sig != lastSig {
-				change = true
-				t.log.Infof("configuration section %s changed (sig %s is now %s)", name, lastSig, sig)
+				names = append(names, name)
+				t.log.Tracef("network %s sig %s => %s", name, lastSig, sig)
 				t.networkSigs[name] = sig
 			}
 		}
 	}
-	if change {
-		if n, err := object.NewNode(object.WithLogger(t.log)); err != nil {
-			t.log.Errorf("allocate Node for network setup: %s", err)
-		} else {
-			t.log.Infof("reconfigure networks")
-			if err := network.Setup(n); err != nil {
-				t.log.Infof("reconfigure networks: %s", err.Error())
-			}
-		}
-	}
+	t.log.Infof("network %v configuration changed", names)
 	return
 }
