@@ -13,6 +13,7 @@ import (
 	"github.com/opensvc/om3/v3/core/naming"
 	"github.com/opensvc/om3/v3/core/resourceid"
 	"github.com/opensvc/om3/v3/util/unstructured"
+	"github.com/opensvc/om3/v3/util/xmap"
 )
 
 func (t Renderer) renderTemplate(options string) (string, error) {
@@ -144,6 +145,7 @@ func (t Renderer) renderTemplate(options string) (string, error) {
 		"fnMatch":      fnMatch,
 		"hasPrefix":    hasPrefix,
 		"hasSuffix":    hasSuffix,
+		"keys":         xmap.Keys,
 		"objKind":      objKind,
 		"objName":      objName,
 		"objNamespace": objNamespace,

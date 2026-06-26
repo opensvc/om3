@@ -10,6 +10,8 @@ The template syntax follows the go template standard, with a few custom extra fu
 
 * `hasInstanceLabel(labels []pubsub.Label, expected ...string) bool`
 
+* `keys(map) []string`
+
 * `passSet(s string, b bool)`
 
   Add s to passed if b else remove s from passed.
