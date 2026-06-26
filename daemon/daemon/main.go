@@ -40,6 +40,7 @@ import (
 	"github.com/opensvc/om3/v3/daemon/istat"
 	"github.com/opensvc/om3/v3/daemon/listener"
 	"github.com/opensvc/om3/v3/daemon/msgbus"
+	"github.com/opensvc/om3/v3/daemon/netmon"
 	"github.com/opensvc/om3/v3/daemon/nmon"
 	"github.com/opensvc/om3/v3/daemon/pgmetrics"
 	"github.com/opensvc/om3/v3/daemon/runner"
@@ -242,6 +243,7 @@ func (t *T) Start(ctx context.Context) error {
 		istat.New(qsLarge),
 		listener.New(),
 		nmon.NewManager(daemonenv.DrainChanDuration, qsMedium),
+		netmon.NewManager(daemonenv.DrainChanDuration, qsSmall),
 		hook.NewManager(daemonenv.DrainChanDuration, qsSmall),
 		dns.NewManager(daemonenv.DrainChanDuration, qsMedium),
 		pgmetrics.New(qsMedium),

@@ -268,6 +268,11 @@ var (
 		"ZoneRecordDeleted": func() any { return &ZoneRecordDeleted{} },
 
 		"ZoneRecordUpdated": func() any { return &ZoneRecordUpdated{} },
+
+		"NetLinkDown": func() any { return &NetLinkDown{} },
+		"NetLinkUp":   func() any { return &NetLinkUp{} },
+		"NetIPAddrAdded":   func() any { return &NetIPAddrAdded{} },
+		"NetIPAddrDeleted": func() any { return &NetIPAddrDeleted{} },
 	}
 )
 
@@ -974,6 +979,40 @@ type (
 		TTL        int         `json:"ttl" yaml:"ttl"`
 		Content    string      `json:"content" yaml:"content"`
 	}
+
+	// NetLinkDown is published when a network link goes down
+	NetLinkDown struct {
+		pubsub.Msg `yaml:",inline"`
+		Node       string `json:"node" yaml:"node"`
+		LinkIndex  int    `json:"link_index" yaml:"link_index"`
+		LinkName   string `json:"link_name" yaml:"link_name"`
+	}
+
+	// NetLinkUp is published when a network link goes up
+	NetLinkUp struct {
+		pubsub.Msg `yaml:",inline"`
+		Node       string `json:"node" yaml:"node"`
+		LinkIndex  int    `json:"link_index" yaml:"link_index"`
+		LinkName   string `json:"link_name" yaml:"link_name"`
+	}
+
+	// NetIPAddrAdded is published when an IP address is added to a link
+	NetIPAddrAdded struct {
+		pubsub.Msg `yaml:",inline"`
+		Node       string `json:"node" yaml:"node"`
+		LinkIndex  int    `json:"link_index" yaml:"link_index"`
+		LinkName   string `json:"link_name" yaml:"link_name"`
+		Address    string `json:"address" yaml:"address"`
+	}
+
+	// NetIPAddrDeleted is published when an IP address is deleted from a link
+	NetIPAddrDeleted struct {
+		pubsub.Msg `yaml:",inline"`
+		Node       string `json:"node" yaml:"node"`
+		LinkIndex  int    `json:"link_index" yaml:"link_index"`
+		LinkName   string `json:"link_name" yaml:"link_name"`
+		Address    string `json:"address" yaml:"address"`
+	}
 )
 
 func DropPendingMsg(c <-chan any, duration time.Duration) {
@@ -1491,6 +1530,38 @@ func (e *ZoneRecordUpdated) Kind() string {
 
 func (e *ZoneRecordUpdated) Key() string {
 	return fmt.Sprintf("ZoneRecordUpdated,path=%s,node=%s,name=%s,type=%s", e.Path, e.Node, e.Name, e.Type)
+}
+
+func (e *NetLinkDown) Kind() string {
+	return "NetLinkDown"
+}
+
+func (e *NetLinkDown) Key() string {
+	return fmt.Sprintf("NetLinkDown,node=%s,link_name=%s", e.Node, e.LinkName)
+}
+
+func (e *NetLinkUp) Kind() string {
+	return "NetLinkUp"
+}
+
+func (e *NetLinkUp) Key() string {
+	return fmt.Sprintf("NetLinkUp,node=%s,link_name=%s", e.Node, e.LinkName)
+}
+
+func (e *NetIPAddrAdded) Kind() string {
+	return "NetIPAddrAdded"
+}
+
+func (e *NetIPAddrAdded) Key() string {
+	return fmt.Sprintf("NetIPAddrAdded,node=%s,link_name=%s,address=%s", e.Node, e.LinkName, e.Address)
+}
+
+func (e *NetIPAddrDeleted) Kind() string {
+	return "NetIPAddrDeleted"
+}
+
+func (e *NetIPAddrDeleted) Key() string {
+	return fmt.Sprintf("NetIPAddrDeleted,node=%s,link_name=%s,address=%s", e.Node, e.LinkName, e.Address)
 }
 
 func NewSetInstanceMonitorWithErr(ctx context.Context, p naming.Path, nodename string, value instance.MonitorUpdate) (*SetInstanceMonitor, errcontext.ErrReceiver) {

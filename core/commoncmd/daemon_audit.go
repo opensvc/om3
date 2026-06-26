@@ -45,7 +45,7 @@ func NewCmdDaemonAudit() *cobra.Command {
 		Long: "Stream the logs of the selected daemon subsystems up to debug and trace.\n\n" +
 			"Auditable subsystems:\n\n" +
 			"  api api.inet api.ux ccfg collector cstat daemonauth daemondata discover dns hb hb.main hb.ctrl\n" +
-			"  hb.peer_dropper hb:<hbid> hook icfg icfg:<path> imon imon:<path> istat nmon omon omon:<path> pubsub\n" +
+			"  hb.peer_dropper hb:<hbid> hook icfg icfg:<path> imon imon:<path> istat netmon nmon omon omon:<path> pubsub\n" +
 			"  runner scheduler",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return options.Run()
