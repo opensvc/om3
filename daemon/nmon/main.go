@@ -355,6 +355,7 @@ func (t *Manager) startSubscriptions() {
 	sub.AddFilter(&msgbus.NodeStatusGenUpdates{}, t.labelLocalhost)
 	sub.AddFilter(&msgbus.NodeLabelsUpdated{}, pubsub.Label{"from", "peer"})
 	sub.AddFilter(&msgbus.SetNodeMonitor{})
+	sub.AddFilter(&msgbus.NetLinkUp{})
 	sub.Start()
 	t.sub = sub
 }
@@ -505,6 +506,8 @@ func (t *Manager) worker() {
 				t.onNodeRejoin(c)
 			case *msgbus.SetNodeMonitor:
 				t.onSetNodeMonitor(c)
+			case *msgbus.NetLinkUp:
+				t.onNetLinkUp(c)
 			}
 		case i := <-t.cmdC:
 			switch c := i.(type) {
