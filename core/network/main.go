@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"math/bits"
 	"net"
+	"slices"
 	"strings"
 
 	"github.com/opensvc/om3/v3/core/client"
@@ -427,12 +428,15 @@ func getClusterIPList(c *client.T, selector string) (clusterip.L, error) {
 	return clusterip.NewL().Load(clusterStatus), nil
 }
 
-func Networks(noder Noder) []Networker {
+func Networks(noder Noder, names ...string) []Networker {
 	l := make([]Networker, 0)
 	hasLO := false
 	hasDefault := false
 
 	for _, name := range namesInConfig(noder) {
+		if len(names) > 0 && !slices.Contains(names, name) {
+			continue
+		}
 		p := NewFromNoder(name, noder)
 		if p == nil {
 			continue

@@ -341,11 +341,12 @@ type (
 	}
 
 	ClusterConfigUpdated struct {
-		pubsub.Msg   `yaml:",inline"`
-		Node         string         `json:"node" yaml:"node"`
-		Value        cluster.Config `json:"cluster_config" yaml:"cluster_config"`
-		NodesAdded   []string       `json:"nodes_added" yaml:"nodes_added"`
-		NodesRemoved []string       `json:"nodes_removed" yaml:"nodes_removed"`
+		pubsub.Msg     `yaml:",inline"`
+		Node           string         `json:"node"`
+		Value          cluster.Config `json:"cluster_config"`
+		NodesAdded     []string       `json:"nodes_added"`
+		NodesRemoved   []string       `json:"nodes_removed"`
+		NetworkChanged []string       `json:"network_changed"`
 	}
 
 	ClusterStatusUpdated struct {
