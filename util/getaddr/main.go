@@ -78,24 +78,29 @@ func cache(name string, ip net.IP) error {
 }
 
 func lookup(name string) (net.IP, error) {
-	var (
-		l   []net.IP
-		err error
-	)
-	l, err = netLookupIP(name)
+	ips, err := netLookupIP(name)
 	if err != nil {
 		return nil, err
 	}
-	n := len(l)
-	switch n {
-	case 0:
-		return nil, fmt.Errorf("name %s is unresolvable", name)
-	case 1:
-		// ok
-	default:
-		return l[0], ErrManyAddr{name: name, count: n}
+
+	// Deduplicate
+	seen := make(map[string]bool)
+	var unique []net.IP
+	for _, ip := range ips {
+		if !seen[ip.String()] {
+			seen[ip.String()] = true
+			unique = append(unique, ip)
+		}
 	}
-	return l[0], nil
+
+	n := len(unique)
+	if n == 0 {
+		return nil, fmt.Errorf("name %s is unresolvable", name)
+	}
+	if n > 1 {
+		return unique[0], ErrManyAddr{name: name, count: n}
+	}
+	return unique[0], nil
 }
 
 func lookupAndCache(name string) (net.IP, error) {
