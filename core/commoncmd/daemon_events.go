@@ -19,6 +19,7 @@ import (
 	"github.com/opensvc/om3/v3/daemon/msgbus"
 	"github.com/opensvc/om3/v3/util/flatten"
 	"github.com/opensvc/om3/v3/util/pubsub"
+	"github.com/opensvc/om3/v3/util/xmap"
 )
 
 type (
@@ -183,6 +184,7 @@ func (t *CmdDaemonEvents) DoNodes() error {
 			"stringsContains":  strings.Contains,
 			"stringsHasPrefix": strings.HasPrefix,
 			"stringsHasSuffix": strings.HasSuffix,
+			"keys":             xmap.Keys,
 		}
 
 		evTemplate.Funcs(funcMap)

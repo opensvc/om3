@@ -48,3 +48,37 @@ func (data *ClusterData) nodeStatusUpdated(labels pubsub.Labels) ([]any, error) 
 	}
 	return l, nil
 }
+
+func (data *ClusterData) nodeStatusArbitratorsUpdated(labels pubsub.Labels) ([]any, error) {
+	l := make([]any, 0)
+	if nodename := labels["node"]; nodename != "" {
+		if nodeData, ok := data.Cluster.Node[nodename]; ok {
+			m := make(map[string]node.ArbitratorStatus)
+			for k, v := range nodeData.Status.Arbitrators {
+				m[k] = v
+			}
+			l = append(l, &NodeStatusArbitratorsUpdated{
+				Msg: pubsub.Msg{
+					Labels: pubsub.NewLabels("node", nodename, "from", "cache"),
+				},
+				Node:  nodename,
+				Value: m,
+			})
+		}
+	} else {
+		for nodename, nodeData := range data.Cluster.Node {
+			m := make(map[string]node.ArbitratorStatus)
+			for k, v := range nodeData.Status.Arbitrators {
+				m[k] = v
+			}
+			l = append(l, &NodeStatusArbitratorsUpdated{
+				Msg: pubsub.Msg{
+					Labels: pubsub.NewLabels("node", nodename, "from", "cache"),
+				},
+				Node:  nodename,
+				Value: m,
+			})
+		}
+	}
+	return l, nil
+}
