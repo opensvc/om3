@@ -68,10 +68,11 @@ func (t *tx) streamPeerDesc() string {
 func (t *tx) Start(cmdC chan<- interface{}, msgC <-chan []byte) error {
 	started := make(chan bool)
 	ctx, cancel := context.WithCancel(t.ctx)
+	t.ctx = ctx
 	t.cancel = cancel
 	t.cmdC = cmdC
 
-	hbaudit.EnableAudit(t.ctx, t.id, t.log, "hb", strings.Replace(t.id, "hb#", "hb:", 1))
+	hbaudit.EnableAudit(ctx, t.id, t.log, "hb", strings.Replace(t.id, "hb#", "hb:", 1))
 
 	t.Add(1)
 	go func() {

@@ -80,9 +80,10 @@ func (t *rx) Start(cmdC chan<- interface{}, msgC chan<- *hbtype.Msg) error {
 	ctx, cancel := context.WithCancel(t.ctx)
 	t.cmdC = cmdC
 	t.msgC = msgC
+	t.ctx = ctx
 	t.cancel = cancel
 
-	hbaudit.EnableAudit(t.ctx, t.id, t.log, "hb", strings.Replace(t.id, "hb#", "hb:", 1))
+	hbaudit.EnableAudit(ctx, t.id, t.log, "hb", strings.Replace(t.id, "hb#", "hb:", 1))
 
 	t.log.Infof("starting")
 	t.assembly = make(assembly)

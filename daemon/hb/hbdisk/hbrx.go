@@ -83,26 +83,31 @@ func (t *rx) streamPeerDesc(node string) string {
 
 // Start implements the Start function of the Receiver interface for rx
 func (t *rx) Start(cmdC chan<- any, msgC chan<- *hbtype.Msg) error {
-	hbaudit.EnableAudit(t.ctx, t.id, t.log, "hb", strings.Replace(t.id, "hb#", "hb:", 1))
+	ctx, cancel := context.WithCancel(t.ctx)
+	t.ctx = ctx
+	t.cancel = cancel
+
+	hbaudit.EnableAudit(ctx, t.id, t.log, "hb", strings.Replace(t.id, "hb#", "hb:", 1))
 
 	t.log.Infof("starting with storage area: metadata_size + (max_slots x slot_size): %d + (%d x %d)", metaSize(t.base.maxSlots), t.base.maxSlots, sign.SlotSize)
 	nodeCount := len(t.nodes) + 1
 	if t.base.maxSlots < nodeCount {
+		cancel()
 		return fmt.Errorf("can't start: not enough slots for %d nodes", nodeCount)
 	}
 	if err := t.base.device.open(); err != nil {
 		err := fmt.Errorf("device %s: %w", t.base.path, err)
 		t.log.Warnf("startup failed: %s", err)
+		cancel()
 		return err
 	}
 	if err := t.base.scanMetadata(append(t.nodes, t.base.localhost)...); err != nil {
+		cancel()
 		return err
 	}
 
-	ctx, cancel := context.WithCancel(t.ctx)
 	t.cmdC = cmdC
 	t.msgC = msgC
-	t.cancel = cancel
 
 	for _, node := range t.nodes {
 		cmdC <- hbctrl.CmdAddWatcher{
