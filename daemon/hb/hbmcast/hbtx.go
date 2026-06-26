@@ -56,6 +56,10 @@ func (t *tx) Stop() error {
 	return nil
 }
 
+func (t *tx) Ctx() context.Context {
+	return t.ctx
+}
+
 func (t *tx) streamPeerDesc() string {
 	if t.laddr == nil {
 		return fmt.Sprintf("→ %s", t.udpAddr)

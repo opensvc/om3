@@ -2,6 +2,7 @@
 package hbtype
 
 import (
+	"context"
 	"time"
 
 	"github.com/opensvc/om3/v3/core/event"
@@ -31,6 +32,9 @@ type (
 	Transmitter interface {
 		IDStopper
 		Start(cmdC chan<- interface{}, dataC <-chan []byte) error
+
+		// Ctx returns the context of the running hb driver
+		Ctx() context.Context
 	}
 
 	// Receiver is the interface that wraps the basic methods for hb driver to receive hb messages

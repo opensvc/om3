@@ -188,12 +188,16 @@ func (t *T) startHbTx(hb hbcfg.Confer) error {
 	// It can't be stalled because of slow hb transmitter.
 	debouncedMsgQ := make(chan []byte)
 	msgToSendQ := make(chan []byte)
-	go debounceLatestMsgToTx(t.msgToTxCtx, msgToSendQ, debouncedMsgQ)
 
 	if err := tx.Start(t.ctrlC, debouncedMsgQ); err != nil {
 		t.ctrlC <- hbctrl.CmdSetState{ID: tx.ID(), State: "failed"}
 		return err
 	}
+	go func(ctx context.Context) {
+		debounceLatestMsgToTx(ctx, t.msgToTxCtx, msgToSendQ, debouncedMsgQ)
+		t.log.Infof("debounceLatestMsgToTx done for %s", tx.ID())
+	}(tx.Ctx())
+
 	select {
 	case <-t.msgToTxCtx.Done():
 		// don't hang up when context is done
@@ -626,7 +630,8 @@ func (t *T) getHbConfiguredComponent(ctx context.Context, rid string) (c hbcfg.C
 // debounceLatestMsgToTx is used to relay dequeued messages from inQ
 // to outC, without blocking on outQ (the last dequeued message from
 // inQ will replace the relay bloqued message to outQ).
-func debounceLatestMsgToTx(ctx context.Context, inQ <-chan []byte, outC chan<- []byte) {
+// the function returns when tx context, or msgToTxCtx is Done
+func debounceLatestMsgToTx(txCtx, msgToTxCtx context.Context, inQ <-chan []byte, outC chan<- []byte) {
 	var (
 		b []byte
 		o chan<- []byte
@@ -637,7 +642,9 @@ func debounceLatestMsgToTx(ctx context.Context, inQ <-chan []byte, outC chan<- [
 			o = outC
 		case o <- b:
 			o = nil
-		case <-ctx.Done():
+		case <-txCtx.Done():
+			return
+		case <-msgToTxCtx.Done():
 			return
 		}
 	}

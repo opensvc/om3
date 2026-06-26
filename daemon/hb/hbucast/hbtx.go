@@ -58,6 +58,10 @@ func (t *tx) Stop() error {
 	return nil
 }
 
+func (t *tx) Ctx() context.Context {
+	return t.ctx
+}
+
 func (t *tx) streamPeerDesc(addr string) string {
 	if len(t.localIP) > 0 {
 		if t.intf != "" {
