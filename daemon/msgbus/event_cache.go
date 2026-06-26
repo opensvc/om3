@@ -52,6 +52,8 @@ func (data *ClusterData) ExtractEvents(m any, labels pubsub.Labels) ([]any, erro
 		return data.nodeStale(labels)
 	case *NodeStatusUpdated:
 		return data.nodeStatusUpdated(labels)
+	case *NodeStatusArbitratorsUpdated:
+		return data.nodeStatusArbitratorsUpdated(labels)
 	}
 	return nil, nil
 }
