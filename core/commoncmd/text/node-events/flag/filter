@@ -79,6 +79,10 @@ Receive only events matching the filtering expression formatted as:
      ObjectOrchestrationAccepted, ObjectOrchestrationEnd, ObjectOrchestrationRefused
      ObjectStatusDeleted, ObjectStatusDone, ObjectStatusUpdated
 
+### Netlink
+
+     NetLinkDown, NetLinkUp, NetIPAddrAdded, NetIPAddrDeleted
+
 ### Event Subscription
 
      ClientSubscribed, ClientUnsubscribed, SubscriptionError, SubscriptionQueueThreshold
