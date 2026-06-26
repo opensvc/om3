@@ -68,6 +68,47 @@ func (t *Manager) onNetworkChanged(networkNames []string) {
 	return
 }
 
+func (t *Manager) onNetLinkUp(c *msgbus.NetLinkUp) {
+	// Only handle events for the local node
+	if c.Node != t.localhost {
+		return
+	}
+
+	// Get all network names from node configuration
+	n, err := object.NewNode(object.WithLogger(t.log))
+	if err != nil {
+		t.log.Errorf("allocate Node for network link up: %s", err)
+		return
+	}
+
+	// Get all networks configured on this node
+	networks := network.Networks(n)
+
+	// backendDevNamer is the interface for networks that have a backend device name
+	type backendDevNamer interface {
+		BackendDevName() string
+	}
+
+	// Find networks that use this link as their backend device
+	var matchingNetworks []string
+	for _, nw := range networks {
+		// Check if this network implements backendDevNamer
+		if backendNamer, ok := nw.(backendDevNamer); ok {
+			if backendDevName := backendNamer.BackendDevName(); backendDevName == c.LinkName {
+				matchingNetworks = append(matchingNetworks, nw.Name())
+				t.log.Infof("netlink up: found network %s using backend device %s", nw.Name(), c.LinkName)
+			}
+		}
+	}
+
+	if len(matchingNetworks) > 0 {
+		t.log.Infof("netlink up: configuring networks %v for link %s", matchingNetworks, c.LinkName)
+		if err := network.Setup(n, matchingNetworks...); err != nil {
+			t.log.Infof("netlink up: network setup for %v: %s", matchingNetworks, err.Error())
+		}
+	}
+}
+
 // onConfigFileUpdated reloads the config parser and emits the updated
 // node.Config data in a NodeConfigUpdated event, so other go routine
 // can just subscribe to this event to maintain the cache of keywords
