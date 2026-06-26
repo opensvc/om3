@@ -277,7 +277,10 @@ func (t *T) unclaim(volume object.Vol) error {
 		return nil
 	}
 	t.Log().Infof("unclaim volume %s", volume.Path())
-	return volume.Config().Set(keyop.T{Key: key.Parse("children"), Op: keyop.Remove, Value: t.Path.String()})
+	return volume.Config().Set(
+		keyop.T{Key: key.Parse("children"), Op: keyop.Remove, Value: t.Path.String()},
+		keyop.T{Key: key.Parse("children"), Op: keyop.Remove, Value: t.Path.String() + "@{nodename}"},
+	)
 }
 
 func (t *T) incompatibleClaims(volumeChildren naming.Relations) []string {
@@ -327,7 +330,13 @@ func (t *T) claim(volume object.Vol) error {
 		}
 	}
 	t.Log().Infof("claim volume %s", volume.Path())
-	return volume.Config().Set(keyop.T{Key: key.Parse("children"), Op: keyop.Merge, Value: t.Path.String()})
+
+	// use a local relation so the vol instance shutdown does not wait for a peer instance to stop
+	// e.g. a drbd vol is "stdby up" on secondary nodes, so shutdown must stop these instance and
+	// we don't want them waiting for their remote children to stop.
+	child := fmt.Sprintf("%s@{nodename}", t.Path)
+
+	return volume.Config().Set(keyop.T{Key: key.Parse("children"), Op: keyop.Merge, Value: child})
 }
 
 func (t *T) access() volaccess.T {
