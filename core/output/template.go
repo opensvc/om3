@@ -16,6 +16,19 @@ import (
 )
 
 func (t Renderer) renderTemplate(options string) (string, error) {
+	contains := func(slice any, entry any) (bool, error) {
+		if s, ok := slice.([]string); ok {
+			if e, ok := entry.(string); ok {
+				return slices.Contains(s, e), nil
+			}
+		}
+		if s, ok := slice.([]int); ok {
+			if e, ok := entry.(int); ok {
+				return slices.Contains(s, e), nil
+			}
+		}
+		return false, nil
+	}
 	drvName := func(i any) string {
 		var drvID driver.ID
 		switch a := i.(type) {
@@ -42,31 +55,14 @@ func (t Renderer) renderTemplate(options string) (string, error) {
 		}
 		return drvID.Group.String()
 	}
-	resName := func(i any) string {
-		var rid *resourceid.T
-		switch a := i.(type) {
-		case *resourceid.T:
-			rid = a
-		case string:
-			rid, _ = resourceid.Parse(a)
-		}
-		if rid == nil {
-			return ""
-		}
-		return rid.Index()
+	fnMatch := func(pattern, s string) bool {
+		return fnmatch.Match(pattern, s, 0)
 	}
-	resGroup := func(i any) string {
-		var rid *resourceid.T
-		switch a := i.(type) {
-		case *resourceid.T:
-			rid = a
-		case string:
-			rid, _ = resourceid.Parse(a)
-		}
-		if rid == nil {
-			return ""
-		}
-		return rid.DriverGroup().String()
+	hasPrefix := func(s, prefix string) bool {
+		return strings.HasPrefix(s, prefix)
+	}
+	hasSuffix := func(s, suffix string) bool {
+		return strings.HasSuffix(s, suffix)
 	}
 	objKind := func(i any) string {
 		var path naming.Path
@@ -107,28 +103,6 @@ func (t Renderer) renderTemplate(options string) (string, error) {
 		}
 		return path.Namespace
 	}
-	hasPrefix := func(s, prefix string) bool {
-		return strings.HasPrefix(s, prefix)
-	}
-	hasSuffix := func(s, suffix string) bool {
-		return strings.HasSuffix(s, suffix)
-	}
-	contains := func(slice any, entry any) (bool, error) {
-		if s, ok := slice.([]string); ok {
-			if e, ok := entry.(string); ok {
-				return slices.Contains(s, e), nil
-			}
-		}
-		if s, ok := slice.([]int); ok {
-			if e, ok := entry.(int); ok {
-				return slices.Contains(s, e), nil
-			}
-		}
-		return false, nil
-	}
-	fnMatch := func(pattern, s string) bool {
-		return fnmatch.Match(pattern, s, 0)
-	}
 	reMatch := func(pattern, s string) (bool, error) {
 		r, err := regexp.Compile(pattern)
 		if err != nil {
@@ -137,19 +111,45 @@ func (t Renderer) renderTemplate(options string) (string, error) {
 
 		return r.MatchString(s), nil
 	}
+	resGroup := func(i any) string {
+		var rid *resourceid.T
+		switch a := i.(type) {
+		case *resourceid.T:
+			rid = a
+		case string:
+			rid, _ = resourceid.Parse(a)
+		}
+		if rid == nil {
+			return ""
+		}
+		return rid.DriverGroup().String()
+	}
+	resName := func(i any) string {
+		var rid *resourceid.T
+		switch a := i.(type) {
+		case *resourceid.T:
+			rid = a
+		case string:
+			rid, _ = resourceid.Parse(a)
+		}
+		if rid == nil {
+			return ""
+		}
+		return rid.Index()
+	}
 	tmpl := template.New("output").Funcs(template.FuncMap{
+		"contains":     contains,
 		"drvName":      drvName,
 		"drvGroup":     drvGroup,
-		"resName":      resName,
-		"resGroup":     resGroup,
+		"fnMatch":      fnMatch,
+		"hasPrefix":    hasPrefix,
+		"hasSuffix":    hasSuffix,
 		"objKind":      objKind,
 		"objName":      objName,
 		"objNamespace": objNamespace,
-		"hasPrefix":    hasPrefix,
-		"hasSuffix":    hasSuffix,
-		"contains":     contains,
 		"reMatch":      reMatch,
-		"fnMatch":      fnMatch,
+		"resGroup":     resGroup,
+		"resName":      resName,
 	})
 	tmpl, err := tmpl.Parse(options)
 	if err != nil {
