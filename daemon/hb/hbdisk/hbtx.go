@@ -57,21 +57,29 @@ func (t *tx) Stop() error {
 	return nil
 }
 
+func (t *tx) Ctx() context.Context {
+	return t.ctx
+}
+
 func (t *tx) streamPeerDesc() string {
 	return fmt.Sprintf("→ %s slot %d", t.base.device.file.Name(), t.slot)
 }
 
 // Start implements the Start function of Transmitter interface for tx
 func (t *tx) Start(cmdC chan<- interface{}, msgC <-chan []byte) error {
-	hbaudit.EnableAudit(t.ctx, t.id, t.log, "hb", strings.Replace(t.id, "hb#", "hb:", 1))
-
+	ctx, cancel := context.WithCancel(t.ctx)
+	t.ctx = ctx
+	t.cancel = cancel
+	hbaudit.EnableAudit(ctx, t.id, t.log, "hb", strings.Replace(t.id, "hb#", "hb:", 1))
 	t.log.Infof("starting with storage area: metadata_size + (max_slots x slot_size): %d + (%d x %d)", metaSize(t.base.maxSlots), t.base.maxSlots, sign.SlotSize)
 	if t.base.maxSlots < len(t.nodes) {
+		cancel()
 		return fmt.Errorf("startup failed: not enough slots for %d nodes", len(t.nodes))
 	}
 	if err := t.base.device.open(); err != nil {
 		err := fmt.Errorf("device %s: %w", t.base.path, err)
 		t.log.Warnf("startup failed: %s", err)
+		cancel()
 		return err
 	}
 
@@ -84,8 +92,6 @@ func (t *tx) Start(cmdC chan<- interface{}, msgC <-chan []byte) error {
 		t.slot = slot
 	}
 	reasonTick := fmt.Sprintf("send msg (interval %s)", t.interval)
-	ctx, cancel := context.WithCancel(t.ctx)
-	t.cancel = cancel
 	t.cmdC = cmdC
 	t.Add(1)
 	go func() {
