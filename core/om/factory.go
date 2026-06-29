@@ -2869,6 +2869,26 @@ func newCmdObjectInstanceSyncFull(kind string) *cobra.Command {
 	return cmd
 }
 
+func newCmdObjectInstanceSyncRestore(kind string) *cobra.Command {
+	var options commands.CmdObjectInstanceSyncRestore
+	cmd := &cobra.Command{
+		Use:   "restore",
+		Short: "restore",
+		RunE: func(cmd *cobra.Command, args []string) error {
+			return options.Run(kind)
+		},
+	}
+	flags := cmd.Flags()
+	addFlagsGlobal(flags, &options.OptsGlobal)
+	commoncmd.FlagsLock(flags, &options.OptsLock)
+	commoncmd.FlagsResourceSelector(cmd, &options.OptsResourceSelector)
+	commoncmd.FlagForce(flags, &options.Force)
+	flags.StringVarP(&options.To, "to", "t", "", "restore in the path given")
+	flags.StringVar(&options.Src, "src", "", "the source to restore")
+	hiddenFlagLocal(flags, &options.Local)
+	return cmd
+}
+
 func newCmdObjectInstanceSyncResync(kind string) *cobra.Command {
 	var options commands.CmdObjectInstanceSyncResync
 	cmd := &cobra.Command{

@@ -117,18 +117,26 @@ func (t *KeyMeta) Decode() ([]byte, error) {
 }
 
 func (t *KeyMeta) CacheFile() (string, error) {
-	ds, err := object.NewDataStore(t.Path, object.WithVolatile(true))
-	if !ds.Allow(t.From) {
-		return "", fmt.Errorf("the %s namespace is not allowed to access %s keys", t.From, t.Path)
-	}
 	filename := filepath.Join(rawconfig.Paths.Run, t.Path.FQN(), "key", t.Key)
-	dsModTime, err := t.Path.ModTime()
+	err := t.CacheFileAt(filename)
 	if err != nil {
 		return "", err
 	}
+	return filename, nil
+}
+
+func (t *KeyMeta) CacheFileAt(path string) error {
+	ds, err := object.NewDataStore(t.Path, object.WithVolatile(true))
+	if !ds.Allow(t.From) {
+		return fmt.Errorf("the %s namespace is not allowed to access %s keys", t.From, t.Path)
+	}
+	dsModTime, err := t.Path.ModTime()
+	if err != nil {
+		return err
+	}
 	kvInstall := object.KVInstall{
 		Required:    true,
-		ToPath:      filename,
+		ToPath:      path,
 		FromPattern: t.Key,
 		FromStore:   t.Path,
 		AccessControl: object.KVInstallAccessControl{
@@ -140,27 +148,27 @@ func (t *KeyMeta) CacheFile() (string, error) {
 			MakedirPerm:  defaultSecDirPerm,
 		},
 	}
-	fileinfo, err := os.Stat(filename)
+	fileinfo, err := os.Stat(path)
 	if errors.Is(err, os.ErrNotExist) {
 		// cache file does not exist... install
 		if err := ds.InstallKeyTo(kvInstall); err != nil {
-			return "", err
+			return err
 		}
-		return filename, nil
+		return nil
 	} else if err != nil {
-		return "", err
+		return err
 	}
 
 	if fileinfo.ModTime() == dsModTime {
 		// cache file is up to date... serve as is
-		return filename, nil
+		return nil
 	}
 
 	// cache file is outdated... reinstall
 	if err := ds.InstallKeyTo(kvInstall); err != nil {
-		return "", err
+		return err
 	}
-	return filename, nil
+	return nil
 }
 
 func (t *KeyMeta) String() string {
