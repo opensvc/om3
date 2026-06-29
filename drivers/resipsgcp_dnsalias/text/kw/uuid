@@ -1,0 +1,3 @@
+The DNS alias uuid to control. If set, the stop does not delete the DNS API object,
+but sets 'none.' as the target instead.
+If not set, the start tries to detect uuid to update, or create new one, the stop delete alias with name.
