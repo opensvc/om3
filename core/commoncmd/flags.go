@@ -263,6 +263,10 @@ func FlagNetworkStatusExtended(flags *pflag.FlagSet, p *bool) {
 	flags.BoolVarP(p, "extended", "x", false, "include network addresses")
 }
 
+func FlagNetworkName(flags *pflag.FlagSet, p *[]string) {
+	flags.StringSliceVar(p, "name", []string{}, "a network name to setup")
+}
+
 func FlagNodeSelectorFilter(flags *pflag.FlagSet, p *string) {
 	flags.StringVar(p, "node", "", "filter on a list of nodes (ex: *, az=fr1)")
 }
