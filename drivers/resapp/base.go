@@ -31,7 +31,14 @@ type BaseT struct {
 }
 
 func (t *T) getEnv(ctx context.Context, onIgnoreCallback func(err error)) (env []string, err error) {
+	var envPath string
+	if currentPath := os.Getenv("PATH"); currentPath == "" {
+		envPath = t.Path.Initd()
+	} else {
+		envPath = currentPath + ":" + t.Path.Initd()
+	}
 	env = []string{
+		"PATH=" + envPath,
 		"OPENSVC_RID=" + t.RID(),
 		"OPENSVC_NAME=" + t.Path.String(),
 		"OPENSVC_KIND=" + t.Path.Kind.String(),
