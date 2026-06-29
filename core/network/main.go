@@ -129,7 +129,7 @@ func (t *T) Log() *plog.Logger {
 			Attr("netDriver", t.driver).
 			Attr("netNetwork", t.network).
 			Attr("netImplicit", t.isImplicit).
-			WithPrefix("network: " + t.name + ": ")
+			AddPrefix("network: " + t.name + ": ")
 	}
 	return t.log
 }
