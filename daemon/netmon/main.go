@@ -44,7 +44,6 @@ type (
 
 		// Track last published state and timestamp for debouncing
 		lastPublished map[string]linkPublishState
-		publishMu     sync.RWMutex
 
 		wg sync.WaitGroup
 	}
@@ -64,7 +63,6 @@ func NewManager(drainDuration time.Duration, subQS pubsub.QueueSizer) *Manager {
 		localhost:      localhost,
 		labelLocalhost: pubsub.Label{"node", localhost},
 		subQS:          subQS,
-		lastPublished:  make(map[string]linkPublishState),
 	}
 }
 
@@ -138,6 +136,8 @@ func (t *Manager) worker() {
 	addrUpdates := make(chan netlink.AddrUpdate, 100)
 	linkUpdates := make(chan netlink.LinkUpdate, 100)
 
+	t.lastPublished = make(map[string]linkPublishState)
+
 	// Subscribe to address changes
 	if err := netlink.AddrSubscribe(addrUpdates, t.ctx.Done()); err != nil {
 		t.log.Errorf("failed to subscribe to address updates: %s", err)
@@ -193,30 +193,19 @@ func (t *Manager) handleAddrUpdate(update netlink.AddrUpdate) {
 	// Debounce: track last published address event per (link, address) combination
 	addrKey := fmt.Sprintf("%s:%s", linkName, update.LinkAddress.String())
 
-	t.publishMu.RLock()
 	lastPub, exists := t.lastPublished[addrKey]
-	t.publishMu.RUnlock()
 
 	// Determine if this is an add or delete
 	isAdded := update.NewAddr
 
-	// If we published the same operation recently (within 100ms), skip
-	if exists && lastPub.isUp == isAdded {
-		elapsed := time.Since(lastPub.publishedAt)
-		if elapsed < 100*time.Millisecond {
-			t.log.Debugf("address %s on %s: debouncing event (same operation=%t, elapsed=%v)",
-				update.LinkAddress.String(), linkName, isAdded, elapsed)
-			return
-		}
-	}
-
-	// Only publish if operation changed or it's the first event
 	if exists && lastPub.isUp == isAdded {
 		// Same operation as last published, skip
 		t.log.Debugf("address %s on %s: duplicate operation event (isAdded=%t)",
 			update.LinkAddress.String(), linkName, isAdded)
 		return
 	}
+
+	// Publish (operation changed or it's the first event)
 
 	var eventType string
 	var msg pubsub.Messager
@@ -240,13 +229,11 @@ func (t *Manager) handleAddrUpdate(update netlink.AddrUpdate) {
 	}
 
 	// Update last published state for this address on this link
-	t.publishMu.Lock()
 	t.lastPublished[addrKey] = linkPublishState{
 		isUp:        isAdded,
 		operState:   0, // Not used for addresses
 		publishedAt: time.Now(),
 	}
-	t.publishMu.Unlock()
 
 	t.log.Infof("address %s: %s on %s", eventType, update.LinkAddress.String(), linkName)
 	t.publisher.Pub(msg, t.labelLocalhost)
@@ -281,22 +268,8 @@ func (t *Manager) handleLinkUpdate(update netlink.LinkUpdate) {
 		operState == netlink.OperLowerLayerDown || operState == netlink.OperTesting
 
 	// Debounce: check if we recently published an event for this link in the same state
-	t.publishMu.RLock()
 	lastPub, exists := t.lastPublished[linkName]
-	t.publishMu.RUnlock()
 
-	// If we published the same state recently (within 100ms), skip this event
-	if exists && lastPub.isUp == !isDown && lastPub.operState == operState {
-		elapsed := time.Since(lastPub.publishedAt)
-		if elapsed < 100*time.Millisecond {
-			t.log.Debugf("link %s: debouncing event (same state=%t, oper_state=%d, elapsed=%v)",
-				linkName, !isDown, operState, elapsed)
-			return
-		}
-	}
-
-	// Only publish if state actually changed (not just a transient event)
-	// Always publish the first event, or if state changed from last published
 	if exists && lastPub.isUp == !isDown && lastPub.operState == operState {
 		// Same state as last published and not debounced, skip
 		t.log.Debugf("link %s: duplicate state event (isUp=%t, oper_state=%d)",
@@ -304,7 +277,8 @@ func (t *Manager) handleLinkUpdate(update netlink.LinkUpdate) {
 		return
 	}
 
-	// Publish the event
+	// Publish (state changed or first event)
+
 	var eventType string
 	var msg pubsub.Messager
 
@@ -325,13 +299,11 @@ func (t *Manager) handleLinkUpdate(update netlink.LinkUpdate) {
 	}
 
 	// Update last published state
-	t.publishMu.Lock()
 	t.lastPublished[linkName] = linkPublishState{
 		isUp:        !isDown,
 		operState:   operState,
 		publishedAt: time.Now(),
 	}
-	t.publishMu.Unlock()
 
 	t.log.Infof("link %s: %s (index %d)", eventType, linkName, linkIndex)
 	t.publisher.Pub(msg, t.labelLocalhost)
