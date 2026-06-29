@@ -9,6 +9,7 @@ import (
 type (
 	CmdNetworkSetup struct {
 		OptsGlobal
+		Names []string
 	}
 )
 

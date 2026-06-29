@@ -8,6 +8,7 @@ import (
 type (
 	CmdNetworkSetup struct {
 		OptsGlobal
+		Names []string
 	}
 )
 
@@ -20,5 +21,5 @@ func (t *CmdNetworkSetup) doLocal() error {
 	if err != nil {
 		return err
 	}
-	return network.Setup(n)
+	return network.Setup(n, t.Names...)
 }
