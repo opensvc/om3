@@ -1,0 +1,2 @@
+Allows daemon resource start to call operation 'switchover' when the 'failover' operation fails with status code 412.
+When '--force' option is used, the setting has no effect because operation during start is always 'failover'.
