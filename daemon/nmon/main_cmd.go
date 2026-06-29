@@ -56,16 +56,28 @@ func (t *Manager) onClusterConfigUpdated(c *msgbus.ClusterConfigUpdated) {
 	}
 }
 
-func (t *Manager) onNetworkChanged(networkNames []string) {
-	if n, err := object.NewNode(object.WithLogger(t.log)); err != nil {
+func (t *Manager) onNetworkChanged(sectionsChanged []string) {
+	n, err := object.NewNode(object.WithLogger(t.log))
+	if err != nil {
 		t.log.Errorf("allocate Node for network setup: %s", err)
-	} else {
-		t.log.Infof("reconfigure networks")
-		if err := network.Setup(n, networkNames...); err != nil {
-			t.log.Infof("reconfigure networks: %s", err.Error())
-		}
 	}
-	return
+	var networkNames []string
+	for _, change := range sectionsChanged {
+		if change == "cni" {
+			// if the cni section changed, reconfigure all networks
+			networkNames = nil
+			break
+		}
+		networkNames = append(networkNames, strings.TrimPrefix(change, "network#"))
+	}
+	if len(networkNames) > 0 {
+		t.log.Infof("reconfigure networks %s", strings.Join(networkNames, ","))
+	} else {
+		t.log.Infof("reconfigure all networks")
+	}
+	if err := network.Setup(n, networkNames...); err != nil {
+		t.log.Infof("reconfigure networks failed: %s", err.Error())
+	}
 }
 
 func (t *Manager) onNetLinkUp(c *msgbus.NetLinkUp) {
