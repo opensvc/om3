@@ -472,6 +472,12 @@ func (t Path) FrozenFile() string {
 	return filepath.Join(t.VarDir(), "frozen")
 }
 
+// Initd returns a path-private directory that can contain app scripts.
+func (t Path) Initd() string {
+	p := t.ConfigFile()
+	return filepath.Join(filepath.Dir(p), t.Name+".d")
+}
+
 // ConfigFile returns the object configuration file path on the local filesystem.
 func (t Path) ConfigFile() string {
 	s := t.String()

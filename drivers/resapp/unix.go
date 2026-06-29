@@ -18,7 +18,6 @@ import (
 	"github.com/opensvc/om3/v3/core/naming"
 	"github.com/opensvc/om3/v3/core/object"
 	"github.com/opensvc/om3/v3/core/provisioned"
-	"github.com/opensvc/om3/v3/core/rawconfig"
 	"github.com/opensvc/om3/v3/core/resource"
 	"github.com/opensvc/om3/v3/core/status"
 	"github.com/opensvc/om3/v3/core/statusbus"
@@ -411,7 +410,7 @@ func (t *T) getCmdStringFromBoolRule(s string, action string) (string, error) {
 	if scriptCommandBool, ok := boolRule(s); ok {
 		switch scriptCommandBool {
 		case true:
-			scriptValue := t.getScript()
+			scriptValue := t.ScriptPath
 			if scriptValue == "" {
 				t.Log().Warnf("action '%v' as true value but 'script' keyword is empty", action)
 				return "", fmt.Errorf("unable to get script value")
@@ -422,28 +421,6 @@ func (t *T) getCmdStringFromBoolRule(s string, action string) (string, error) {
 		}
 	}
 	return s, nil
-}
-
-// getScript return script kw value
-// when script is a basename:
-//
-//	<pathetc>/namespaces/<namespace>/<kind>/<svcname>.d/<script> (when namespace is not root)
-//	<pathetc>/<svcname>.d/<script> (when namespace is root)
-func (t *T) getScript() string {
-	s := t.ScriptPath
-	if len(s) == 0 {
-		return ""
-	}
-	if s[0] == os.PathSeparator {
-		return s
-	}
-	var p string
-	if t.Path.Namespace != "root" {
-		p = fmt.Sprintf("%s/namespaces/%s/%s/%s.d/%s", rawconfig.Paths.Etc, t.Path.Namespace, t.Path.Kind, t.Path.Name, s)
-	} else {
-		p = fmt.Sprintf("%s/%s.d/%s", rawconfig.Paths.Etc, t.Path.Name, s)
-	}
-	return filepath.FromSlash(p)
 }
 
 // boolRule return bool, ok
