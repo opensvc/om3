@@ -268,7 +268,7 @@ func (t *vol) Children() (naming.Relations, error) {
 		t.log.Errorf("%s", err)
 		return naming.Relations{}, err
 	}
-	return naming.ParseRelations(l), nil
+	return naming.ParseRelations(l, t.Path().Namespace), nil
 }
 
 // Access returns the volaccess.Parse result of volume kw 'access'.

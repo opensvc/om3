@@ -56,10 +56,42 @@ func (relations Relations) Strings() []string {
 	return l
 }
 
-func ParseRelations(l []string) Relations {
-	relations := make(Relations, len(l))
-	for i, s := range l {
-		relations[i] = Relation(s)
+// ParseRelations resolves test/svc/svc1 relations with a local-centric
+// policy.
+//
+// Explicitely local:
+//
+//	children = ./svc/svc2    => test/svc/svc2
+//
+// Implicitely local:
+//
+//	children = svc3          => test/svc/svc3
+//
+// Explicitely foreign:
+//
+//	children = root/svc/svc2 => root/svc/svc2
+//
+// Implicitely local with scope:
+//
+//	children svc4@n1         => test/svc/svc4@n1
+func ParseRelations(l []string, ns string) Relations {
+	relations := make(Relations, 0)
+	for _, s := range l {
+		if !strings.Contains(s, "/") {
+			// implicitely local
+			s = "./svc/" + s
+		}
+		s, node, ok := strings.Cut(s, "@")
+		path, err := ParsePathRel(s, ns)
+		if err != nil {
+			continue
+		}
+		if ok {
+			s = path.String() + "@" + node
+		} else {
+			s = path.String()
+		}
+		relations = append(relations, Relation(s))
 	}
 	return relations
 }
