@@ -442,7 +442,7 @@ func (t *Manager) onRemoteConfigUpdated(p naming.Path, node string, remoteInstan
 		}
 	}
 	var needFreeze bool
-	if remoteInstanceConfig.ActorConfig != nil && remoteInstanceConfig.ActorConfig.Orchestrate == "ha" && len(remoteInstanceConfig.Scope) > 1 {
+	if !p.Exists() && remoteInstanceConfig.ActorConfig != nil && remoteInstanceConfig.ActorConfig.Orchestrate == "ha" && len(remoteInstanceConfig.Scope) > 1 {
 		needFreeze = true
 	}
 	log.Infof("cfg: fetch config from %s@%s", pathS, node)
