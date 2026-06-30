@@ -629,8 +629,13 @@ func (t *Manager) abortRetainForeignConfig(p naming.Path) {
 func (t *Manager) onRemoteConfigFetched(c *msgbus.RemoteFileConfig) {
 	log := t.objectLogger(c.Path)
 
-	freezeIfOrchestrateHA := func(confFile string) error {
+	handleFreeze := func(confFile string) error {
 		if !c.Freeze {
+			// The fetcher didn't ask for freeze
+			return nil
+		}
+		if instance.ConfigData.GetByPathAndNode(c.Path, t.localhost) != nil {
+			// We already have a local instance, never freeze on fetch
 			return nil
 		}
 		if err := freeze.Freeze(c.Path.FrozenFile()); err != nil {
@@ -647,11 +652,9 @@ func (t *Manager) onRemoteConfigFetched(c *msgbus.RemoteFileConfig) {
 		c.Err <- nil
 	default:
 		confFile := c.Path.ConfigFile()
-		if instance.ConfigData.GetByPathAndNode(c.Path, t.localhost) == nil {
-			if err := freezeIfOrchestrateHA(confFile); err != nil {
-				c.Err <- err
-				return
-			}
+		if err := handleFreeze(confFile); err != nil {
+			c.Err <- err
+			return
 		}
 		if err := os.Rename(c.File, confFile); err != nil {
 			log.Errorf("cfg: can't install %s config fetched from node %s to %s: %s", c.Path, c.Node, confFile, err)
