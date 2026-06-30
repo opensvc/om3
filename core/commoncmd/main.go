@@ -296,7 +296,10 @@ func RefreshInstanceStatusFromClusterStatus(ctx context.Context, clusterStatus c
 	// completion: The WaitInstanceStatusUpdated have to be called before refresh
 	// calls.
 	for nodename, node := range clusterStatus.Cluster.Node {
-		for ps, _ := range node.Instance {
+		for ps, inst := range node.Instance {
+			if inst.IsZero() {
+				continue
+			}
 			path, _ := naming.ParsePath(ps)
 
 			// errC must be buffered because of early return if an error occurs
