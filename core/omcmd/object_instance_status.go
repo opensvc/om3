@@ -192,19 +192,26 @@ func (t *CmdObjectInstanceStatus) getNodenames(c *client.T) ([]string, error) {
 
 func (t *CmdObjectInstanceStatus) Run(kind string) error {
 	var (
-		data []object.Digest
-		err  error
+		data  []object.Digest
+		err   error
+		paths naming.Paths
 	)
 	mergedSelector := commoncmd.MergeSelector("", t.ObjectSelector, kind, "")
 	c, err := client.New()
 	if err != nil {
 		return err
 	}
+	isLocal := t.NodeSelector == "" || t.NodeSelector == hostname.Hostname()
 	sel := objectselector.New(
 		mergedSelector,
 		objectselector.WithClient(c),
+		objectselector.WithLocal(isLocal),
 	)
-	paths, err := sel.MustExpand()
+	if t.IgnoreNotFound {
+		paths, err = sel.ExpandRelaxed()
+	} else {
+		paths, err = sel.MustExpand()
+	}
 	if err != nil {
 		return fmt.Errorf("expand object selection: %w", err)
 	}
