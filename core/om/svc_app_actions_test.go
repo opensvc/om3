@@ -23,6 +23,14 @@ func TestAppStop(t *testing.T) {
 	runtime.GOOS == "solaris" {
 		operationNotPermittedMsg = " not owner"
 	}
+
+	env := testhelper.Setup(t)
+	env.InstallFile("../../testdata/nodes_info.json", "var/nodes_info.json")
+	env.InstallFile("../../testdata/cluster.conf", "etc/cluster.conf")
+	env.InstallFile("../../testdata/svcappforking.conf", "etc/svcappforking.conf")
+	env.InstallFile("../../testdata/cfg1_svcappforking.conf", "etc/cfg/svcappforking.conf")
+	env.InstallFile("../../testdata/sec1_svcappforking.conf", "etc/sec/svcappforking.conf")
+
 	cases := map[string]struct {
 		extraArgs       []string
 		expectedResults []string
@@ -37,7 +45,11 @@ func TestAppStop(t *testing.T) {
 		},
 		"env": {
 			[]string{"--rid", "app#env", "--debug"},
-			[]string{"FOO=foo", "acceptMixedCase=value1"},
+			[]string{
+				"FOO=foo",
+				"acceptMixedCase=value1",
+				env.Root + "/etc/svcappforking.d", // test if the <etc>/<path>.d is in PATH
+			},
 		},
 		"cwd": {
 			[]string{"--rid", "app#cwd", "--debug"},
@@ -69,7 +81,7 @@ func TestAppStop(t *testing.T) {
 		},
 		"stopTrueScript": {
 			[]string{"--rid", "app#stopTrueScript", "--debug"},
-			[]string{"noSuchFile.opensvc.test"},
+			[]string{"executable file not found"},
 		},
 		"stoptrue": {
 			[]string{"--rid", "app#stoptrue", "--debug"},
@@ -140,13 +152,6 @@ func TestAppStop(t *testing.T) {
 		args = append(args, cases[name].extraArgs...)
 		return args
 	}
-
-	env := testhelper.Setup(t)
-	env.InstallFile("../../testdata/nodes_info.json", "var/nodes_info.json")
-	env.InstallFile("../../testdata/cluster.conf", "etc/cluster.conf")
-	env.InstallFile("../../testdata/svcappforking.conf", "etc/svcappforking.conf")
-	env.InstallFile("../../testdata/cfg1_svcappforking.conf", "etc/cfg/svcappforking.conf")
-	env.InstallFile("../../testdata/sec1_svcappforking.conf", "etc/sec/svcappforking.conf")
 
 	t.Run("logInfo", func(t *testing.T) {
 		name := "logInfo"
@@ -302,7 +307,7 @@ func TestAppStop(t *testing.T) {
 		out, err := cmd.CombinedOutput()
 		assert.NotNil(t, err, "scoped app action error was ignored", string(out))
 		for _, expected := range cases[name].expectedResults {
-			assert.Containsf(t, string(out), env.Root+"/etc/svcappforking.d/"+expected+": no such file or directory", "got: '%v'", string(out))
+			assert.Containsf(t, string(out), expected, "got: '%v'", string(out))
 		}
 	})
 
