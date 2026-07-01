@@ -1355,3 +1355,68 @@ func (t *Manager) onNetIPAddrDeleted(c *msgbus.NetIPAddrDeleted) {
 	ip := extractIP(c.Address)
 	t.checkResourceForIPMatch(ip, c.LinkName, "deleted")
 }
+
+// checkResourceForMountMatch checks if any resource has a matching mount point
+func (t *Manager) checkResourceForMountMatch(mountPoint string, fsType string, eventType string) {
+	// Get local instance status
+	instStatus, ok := t.instStatus[t.localhost]
+	if !ok {
+		t.log.Tracef("no local instance status found for filesystem %s event", eventType)
+		return
+	}
+
+	// Check if any resource has a matching mount point
+	for rid, rstat := range instStatus.Resources {
+		if mnt, ok := rstat.Info["mnt"]; ok {
+			// mnt can be a string, convert to string for comparison
+			var mntStr string
+			switch v := mnt.(type) {
+			case string:
+				mntStr = v
+			default:
+				mntStr = fmt.Sprintf("%v", v)
+			}
+
+			if mntStr == mountPoint {
+				t.log.Infof("filesystem %s event on mount point %s, matching resource %s - triggering status refresh", eventType, mountPoint, rid)
+				t.requestStatusRefresh(t.instConfig.Priority)
+				return
+			}
+		}
+	}
+
+	t.log.Tracef("no resource found with mount point %s", mountPoint)
+}
+
+// onFSMounted is called when a filesystem is mounted.
+// It checks if any instance resource has a matching mount point in its info,
+// and if so, triggers a status refresh to update the resource status.
+func (t *Manager) onFSMounted(c *msgbus.FSMounted) {
+	// Only handle events for the localhost
+	if c.Node != t.localhost {
+		return
+	}
+	t.checkResourceForMountMatch(c.MountPoint, c.FSType, "mounted")
+}
+
+// onFSUmounted is called when a filesystem is unmounted.
+// It checks if any instance resource has a matching mount point in its info,
+// and if so, triggers a status refresh to update the resource status.
+func (t *Manager) onFSUmounted(c *msgbus.FSUmounted) {
+	// Only handle events for the localhost
+	if c.Node != t.localhost {
+		return
+	}
+	t.checkResourceForMountMatch(c.MountPoint, c.FSType, "unmounted")
+}
+
+// onFSRemounted is called when a filesystem is remounted.
+// It checks if any instance resource has a matching mount point in its info,
+// and if so, triggers a status refresh to update the resource status.
+func (t *Manager) onFSRemounted(c *msgbus.FSRemounted) {
+	// Only handle events for the localhost
+	if c.Node != t.localhost {
+		return
+	}
+	t.checkResourceForMountMatch(c.MountPoint, c.FSType, "remounted")
+}
