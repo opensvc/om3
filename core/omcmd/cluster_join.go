@@ -194,6 +194,7 @@ func (t *CmdClusterJoin) createTmpCertFile(b []byte) (certFile string, err error
 
 func (t *CmdClusterJoin) onJoined(ctx context.Context, cli *client.T) (err error) {
 	filePaths := make(map[string]naming.Path)
+	fileTimestamps := make(map[string]time.Time)
 	toFetch := []naming.Path{
 		naming.Cluster,
 		naming.SecCa,
@@ -209,9 +210,12 @@ func (t *CmdClusterJoin) onJoined(ctx context.Context, cli *client.T) (err error
 
 	fetchObjectConfigData := make(map[naming.Path][]byte)
 	for _, p := range toFetch {
-		var file string
+		var (
+			file      string
+			timestamp time.Time
+		)
 		_, _ = fmt.Fprintf(os.Stdout, "Fetch %s from %s\n", p, t.Node)
-		file, _, err = remoteconfig.FetchObjectConfigFile(cli, p)
+		file, timestamp, err = remoteconfig.FetchObjectConfigFile(cli, p)
 		if err != nil {
 			return fmt.Errorf("%w: for path %s: %w", commoncmd.ErrFetchFile, p, err)
 		}
@@ -221,6 +225,7 @@ func (t *CmdClusterJoin) onJoined(ctx context.Context, cli *client.T) (err error
 			return fmt.Errorf("%w: for path %s: %w", commoncmd.ErrFetchFile, p, err)
 		}
 		filePaths[file] = p
+		fileTimestamps[file] = timestamp
 	}
 
 	if t.isRunning() {
@@ -242,7 +247,7 @@ func (t *CmdClusterJoin) onJoined(ctx context.Context, cli *client.T) (err error
 	}
 
 	for fileName, p := range filePaths {
-		_, _ = fmt.Fprintf(os.Stdout, "Install fetched config %s\n", p)
+		_, _ = fmt.Fprintf(os.Stdout, "Install fetched config %s with timestamp %s\n", p, fileTimestamps[fileName])
 		configFile := p.ConfigFile()
 		dir := filepath.Dir(configFile)
 		if err := os.MkdirAll(dir, os.ModePerm); err != nil {
@@ -250,6 +255,9 @@ func (t *CmdClusterJoin) onJoined(ctx context.Context, cli *client.T) (err error
 		}
 		if err := os.WriteFile(configFile, fetchObjectConfigData[p], 0600); err != nil {
 			return fmt.Errorf("%w: config %s from file %s: %w", commoncmd.ErrInstallFile, p, fileName, err)
+		}
+		if err := file.Touch(configFile, fileTimestamps[fileName]); err != nil {
+			return fmt.Errorf("%w: config %s set file timestamp %s: %w", commoncmd.ErrInstallFile, p, configFile, err)
 		}
 		if err := file.Sync(configFile); err != nil {
 			return fmt.Errorf("%w: config %s sync file %s: %w", commoncmd.ErrInstallFile, p, fileName, err)
