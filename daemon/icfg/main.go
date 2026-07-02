@@ -353,6 +353,7 @@ func (t *Manager) configFileCheck() error {
 	cfg.Scope = scope
 	cfg.UpdatedAt = mtime
 	cfg.Priority = t.getPriority(cf)
+	cfg.Labels = cf.SectionMap("labels")
 	if t.path.Kind == naming.KindVol {
 		cfg.VolConfig = &instance.VolConfig{
 			Pool: cf.GetString(keyPool),
@@ -471,7 +472,7 @@ func (t *Manager) getResources(cf *xconfig.T) instance.ResourceConfigs {
 	m := make(instance.ResourceConfigs, 0)
 	for _, section := range cf.SectionStrings() {
 		switch section {
-		case "env", "DEFAULT":
+		case "env", "labels", "DEFAULT":
 			continue
 		}
 		if resourceset.IsSubsetSection(section) {

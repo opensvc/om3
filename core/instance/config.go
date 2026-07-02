@@ -1,6 +1,7 @@
 package instance
 
 import (
+	"maps"
 	"time"
 
 	"github.com/opensvc/om3/v3/core/naming"
@@ -8,6 +9,7 @@ import (
 	"github.com/opensvc/om3/v3/core/priority"
 	"github.com/opensvc/om3/v3/core/schedule"
 	"github.com/opensvc/om3/v3/core/topology"
+	"github.com/opensvc/om3/v3/util/label"
 	"github.com/opensvc/om3/v3/util/stringslice"
 	"github.com/opensvc/om3/v3/util/xmap"
 )
@@ -21,6 +23,7 @@ type (
 		Priority  priority.T  `json:"priority"`
 		Scope     []string    `json:"scope"`
 		UpdatedAt time.Time   `json:"updated_at"`
+		Labels    label.M     `json:"labels,omitempty"`
 
 		*ActorConfig
 		*VolConfig
@@ -96,6 +99,7 @@ func (cfg *Config) DeepCopy() *Config {
 	newCfg.Scope = append([]string{}, cfg.Scope...)
 	newCfg.ActorConfig = cfg.ActorConfig.DeepCopy()
 	newCfg.VolConfig = cfg.VolConfig.DeepCopy()
+	newCfg.Labels = cfg.Labels.DeepCopy()
 	return &newCfg
 }
 
@@ -129,6 +133,9 @@ func ConfigEqual(a, b *Config) bool {
 		return false
 	}
 	if !stringslice.Equal(a.Scope, b.Scope) {
+		return false
+	}
+	if !maps.Equal(a.Labels, b.Labels) {
 		return false
 	}
 	return true
