@@ -1,6 +1,7 @@
 package daemonapi
 
 import (
+	"errors"
 	"net/http"
 
 	"github.com/labstack/echo/v4"
@@ -8,6 +9,7 @@ import (
 	"github.com/opensvc/om3/v3/core/instance"
 	"github.com/opensvc/om3/v3/core/naming"
 	"github.com/opensvc/om3/v3/core/object"
+	"github.com/opensvc/om3/v3/core/xconfig"
 	"github.com/opensvc/om3/v3/daemon/api"
 	"github.com/opensvc/om3/v3/util/key"
 )
@@ -71,7 +73,9 @@ func (a *DaemonAPI) GetObjectConfig(ctx echo.Context, namespace string, kind nam
 			}
 
 			if isEvaluated {
-				if i, err := oc.EvalAs(k, evaluatedAs); err != nil {
+				if i, err := oc.EvalAs(k, evaluatedAs); errors.Is(err, xconfig.ErrNoKeyword) {
+					return JSONProblemf(ctx, http.StatusBadRequest, "EvalAs", "%s", err)
+				} else if err != nil {
 					return JSONProblemf(ctx, http.StatusInternalServerError, "EvalAs", "%s", err)
 				} else {
 					item.Evaluated = &i

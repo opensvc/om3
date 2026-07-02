@@ -27,6 +27,7 @@ func Parse(s string) (*T, error) {
 	case s == "":
 	case s == "env":
 	case s == "data":
+	case s == "labels":
 	case s == "DEFAULT":
 	case strings.HasPrefix(s, "subset#"):
 	default:

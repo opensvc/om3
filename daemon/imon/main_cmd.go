@@ -5,6 +5,7 @@ import (
 	"crypto/md5"
 	"errors"
 	"fmt"
+	"net"
 	"slices"
 	"sort"
 	"strings"
@@ -1282,4 +1283,140 @@ func (t *Manager) savePendingOrchestration() {
 		t.orchestrationAborted.Aborted = true
 		t.orchestrationPending = nil
 	}
+}
+
+// extractIP extracts just the IP address from various formats (CIDR, with port, plain IP)
+func extractIP(addr string) string {
+	if host, _, err := net.SplitHostPort(addr); err == nil {
+		return host
+	}
+	if ip, _, err := net.ParseCIDR(addr); err == nil {
+		return ip.String()
+	}
+	return addr
+}
+
+// checkResourceForIPMatch checks if any resource has a matching IP address and triggers status refresh if found
+func (t *Manager) checkResourceForIPMatch(ip string, linkName string, eventType string) {
+	// Get local instance status
+	instStatus, ok := t.instStatus[t.localhost]
+	if !ok {
+		t.log.Tracef("no local instance status found for IP address %s event", eventType)
+		return
+	}
+
+	// Check if any resource has a matching IP address
+	for rid, rstat := range instStatus.Resources {
+		if ipaddr, ok := rstat.Info["ipaddr"]; ok {
+			// ipaddr can be a string or net.IP, convert to string for comparison
+			var ipaddrStr string
+			switch v := ipaddr.(type) {
+			case string:
+				ipaddrStr = v
+			case net.IP:
+				ipaddrStr = v.String()
+			default:
+				ipaddrStr = fmt.Sprintf("%v", v)
+			}
+
+			if ipaddrStr == ip {
+				t.log.Infof("IP address %s on link %s, matching resource %s - triggering status refresh", ip, linkName, rid)
+				t.requestStatusRefresh(t.instConfig.Priority)
+				return
+			}
+		}
+	}
+
+	t.log.Tracef("no resource found with IP address %s on link %s", ip, linkName)
+}
+
+// onNetIPAddrAdded is called when a network IP address is added to a link.
+// It checks if any instance resource has a matching IP address in its info,
+// and if so, triggers a status refresh to update the resource status.
+func (t *Manager) onNetIPAddrAdded(c *msgbus.NetIPAddrAdded) {
+	// Only handle events for the localhost
+	if c.Node != t.localhost {
+		return
+	}
+
+	ip := extractIP(c.Address)
+	t.checkResourceForIPMatch(ip, c.LinkName, "added")
+}
+
+// onNetIPAddrDeleted is called when a network IP address is deleted from a link.
+// It checks if any instance resource has a matching IP address in its info,
+// and if so, triggers a status refresh to update the resource status.
+func (t *Manager) onNetIPAddrDeleted(c *msgbus.NetIPAddrDeleted) {
+	// Only handle events for the localhost
+	if c.Node != t.localhost {
+		return
+	}
+
+	ip := extractIP(c.Address)
+	t.checkResourceForIPMatch(ip, c.LinkName, "deleted")
+}
+
+// checkResourceForMountMatch checks if any resource has a matching mount point
+func (t *Manager) checkResourceForMountMatch(mountPoint string, fsType string, eventType string) {
+	// Get local instance status
+	instStatus, ok := t.instStatus[t.localhost]
+	if !ok {
+		t.log.Tracef("no local instance status found for filesystem %s event", eventType)
+		return
+	}
+
+	// Check if any resource has a matching mount point
+	for rid, rstat := range instStatus.Resources {
+		if mnt, ok := rstat.Info["mnt"]; ok {
+			// mnt can be a string, convert to string for comparison
+			var mntStr string
+			switch v := mnt.(type) {
+			case string:
+				mntStr = v
+			default:
+				mntStr = fmt.Sprintf("%v", v)
+			}
+
+			if mntStr == mountPoint {
+				t.log.Infof("filesystem %s event on mount point %s, matching resource %s - triggering status refresh", eventType, mountPoint, rid)
+				t.requestStatusRefresh(t.instConfig.Priority)
+				return
+			}
+		}
+	}
+
+	t.log.Tracef("no resource found with mount point %s", mountPoint)
+}
+
+// onFSMounted is called when a filesystem is mounted.
+// It checks if any instance resource has a matching mount point in its info,
+// and if so, triggers a status refresh to update the resource status.
+func (t *Manager) onFSMounted(c *msgbus.FSMounted) {
+	// Only handle events for the localhost
+	if c.Node != t.localhost {
+		return
+	}
+	t.checkResourceForMountMatch(c.MountPoint, c.FSType, "mounted")
+}
+
+// onFSUmounted is called when a filesystem is unmounted.
+// It checks if any instance resource has a matching mount point in its info,
+// and if so, triggers a status refresh to update the resource status.
+func (t *Manager) onFSUmounted(c *msgbus.FSUmounted) {
+	// Only handle events for the localhost
+	if c.Node != t.localhost {
+		return
+	}
+	t.checkResourceForMountMatch(c.MountPoint, c.FSType, "unmounted")
+}
+
+// onFSRemounted is called when a filesystem is remounted.
+// It checks if any instance resource has a matching mount point in its info,
+// and if so, triggers a status refresh to update the resource status.
+func (t *Manager) onFSRemounted(c *msgbus.FSRemounted) {
+	// Only handle events for the localhost
+	if c.Node != t.localhost {
+		return
+	}
+	t.checkResourceForMountMatch(c.MountPoint, c.FSType, "remounted")
 }

@@ -64,7 +64,7 @@ func ParseWithDefaultSection(s, defaultSection string) (T, error) {
 		return T{defaultSection, s}, nil
 	case 2:
 		switch l[0] {
-		case "env", "data":
+		case "env", "data", "labels":
 			// "data.c.d" parses as {"data", "c.d"}
 			return T{l[0], l[1]}, nil
 		default:

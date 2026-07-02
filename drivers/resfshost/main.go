@@ -199,6 +199,13 @@ func (t *T) Info(ctx context.Context) (resource.InfoKeys, error) {
 	return m, nil
 }
 
+// StatusInfo implements resource.StatusInfoer
+func (t *T) StatusInfo(ctx context.Context) map[string]interface{} {
+	data := make(map[string]interface{})
+	data["mnt"] = t.mountPoint()
+	return data
+}
+
 func (t *T) testFile() string {
 	return filepath.Join(t.mountPoint(), ".opensvc")
 }

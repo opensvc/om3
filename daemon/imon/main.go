@@ -311,6 +311,11 @@ func (t *Manager) startSubscriptions(qs pubsub.QueueSizer) {
 	sub.AddFilter(&msgbus.ObjectStatusUpdated{}, t.labelPath)
 	sub.AddFilter(&msgbus.ProgressInstanceMonitor{}, t.labelPath)
 	sub.AddFilter(&msgbus.SetInstanceMonitor{}, t.labelPath)
+	sub.AddFilter(&msgbus.NetIPAddrAdded{}, t.labelLocalhost)
+	sub.AddFilter(&msgbus.NetIPAddrDeleted{}, t.labelLocalhost)
+	sub.AddFilter(&msgbus.FSMounted{}, t.labelLocalhost)
+	sub.AddFilter(&msgbus.FSUmounted{}, t.labelLocalhost)
+	sub.AddFilter(&msgbus.FSRemounted{}, t.labelLocalhost)
 	sub.Start()
 	t.sub = sub
 }
@@ -453,6 +458,16 @@ func (t *Manager) worker(initialNodes []string) {
 				t.onNodeStatusUpdated(c)
 			case *msgbus.NodeStatsUpdated:
 				t.onNodeStatsUpdated(c)
+			case *msgbus.NetIPAddrAdded:
+				t.onNetIPAddrAdded(c)
+			case *msgbus.NetIPAddrDeleted:
+				t.onNetIPAddrDeleted(c)
+			case *msgbus.FSMounted:
+				t.onFSMounted(c)
+			case *msgbus.FSUmounted:
+				t.onFSUmounted(c)
+			case *msgbus.FSRemounted:
+				t.onFSRemounted(c)
 			}
 		case i := <-t.cmdC:
 			if t.ctx.Err() != nil {
