@@ -6,6 +6,7 @@ import (
 
 	"github.com/opensvc/om3/v3/core/client"
 	"github.com/opensvc/om3/v3/core/commoncmd"
+	"github.com/opensvc/om3/v3/core/naming"
 	"github.com/opensvc/om3/v3/core/objectselector"
 	"github.com/opensvc/om3/v3/core/output"
 	"github.com/opensvc/om3/v3/core/rawconfig"
@@ -28,7 +29,12 @@ func (t *CmdObjectConfigGet) Run(kind string) error {
 		return err
 	}
 	sel := objectselector.New(mergedSelector, objectselector.WithClient(c))
-	paths, err := sel.MustExpand()
+	var paths naming.Paths
+	if t.IgnoreNotFound {
+		paths, err = sel.ExpandRelaxed()
+	} else {
+		paths, err = sel.MustExpand()
+	}
 	if err != nil {
 		return err
 	}
