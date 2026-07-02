@@ -20,9 +20,9 @@ func (a *DaemonAPI) GetObjectPaths(ctx echo.Context, params api.GetObjectPathsPa
 		objectselector.WithPaths(paths),
 		objectselector.WithLocal(true),
 	)
-	matchedPaths, err := selection.Expand()
+	matchedPaths, err := selection.ExpandRelaxed()
 	if err != nil {
-		log.Errorf("expand selection from param selector %s: %s", params.Path, err)
+		log.Warnf("expand selection from param selector %s: %s", params.Path, err)
 		return JSONProblem(ctx, http.StatusInternalServerError, "Server error", "expand selection")
 	}
 	result := api.ObjectPaths{}
