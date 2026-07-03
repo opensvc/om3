@@ -114,6 +114,10 @@ restart:
 test:
 	$(GOTEST) -p 1 -timeout 60s ./...
 
+test-cover:
+	$(GOTEST) -p 1 -timeout 60s -race -coverprofile=coverage.out ./...
+	$(GOCMD) tool cover -html=coverage.out -o coverage.html
+
 testinfo:
 	TEST_LOG_LEVEL=info $(GOTEST) -p 1 -timeout 60s ./...
 
@@ -123,4 +127,29 @@ version:
 vet:
 	$(GOVET) ./...
 
+
+help:
+	@echo "Available targets:"
+	@echo "  api            - Generate the api code from api.yaml"
+	@echo "  build          - Build om and ox"
+	@echo "  compobj        - Build the compliance modules pack"
+	@echo "  dist           - Build, strip binaries and make a tarball"
+	@echo "  om             - Build om"
+	@echo "  ox             - Build ox"
+	@echo "  install        - Install o[mx] to /usr/bin"
+	@echo "  restart        - Restart the daemon"
+	@echo "  deploy         - Install and restart on all nodes"
+	@echo "  clean          - Clean build artifacts"
+	@echo "  deps           - Update dependencies"
+	@echo "  test           - Run tests"
+	@echo "  test-cover     - Run tests with coverage"
+	@echo "  vet            - Run go static analyzer"
+	@echo "  version        - Update the version string from git status"
+	@echo
+	@echo "Available -race targets:"
+	@echo "  build-race     - Build om and ox if race-free"
+	@echo "  compobj-race   - Build the compliance modules pack if race-free"
+	@echo "  om-race        - Build om if race-free"
+	@echo "  ox-race        - Build ox if race-free"
+	@echo "  test-race      - Run tests with race detection"
 
