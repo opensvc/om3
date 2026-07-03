@@ -1,6 +1,6 @@
 module github.com/opensvc/om3/v3
 
-go 1.24.3
+go 1.25.0
 
 require (
 	github.com/allenai/go-swaggerui v0.1.0
@@ -76,12 +76,12 @@ require (
 	github.com/ybbus/jsonrpc v2.1.2+incompatible
 	github.com/yookoala/realpath v1.0.0
 	github.com/zcalusic/sysinfo v0.0.0-20210831153053-2c6e1d254246
-	golang.org/x/crypto v0.48.0
+	golang.org/x/crypto v0.51.0
 	golang.org/x/exp v0.0.0-20230725093048-515e97ebf090
-	golang.org/x/net v0.50.0
-	golang.org/x/sync v0.19.0
-	golang.org/x/sys v0.41.0
-	golang.org/x/term v0.40.0
+	golang.org/x/net v0.55.0
+	golang.org/x/sync v0.20.0
+	golang.org/x/sys v0.45.0
+	golang.org/x/term v0.43.0
 	golang.org/x/time v0.11.0
 	gopkg.in/errgo.v2 v2.1.0
 	gopkg.in/natefinch/lumberjack.v2 v2.0.0
@@ -137,9 +137,9 @@ require (
 	github.com/valyala/fasttemplate v1.2.2 // indirect
 	github.com/woodsbury/decimal128 v1.4.0 // indirect
 	go.uber.org/goleak v1.3.0 // indirect
-	golang.org/x/mod v0.33.0 // indirect
-	golang.org/x/text v0.34.0 // indirect
-	golang.org/x/tools v0.42.0 // indirect
+	golang.org/x/mod v0.35.0 // indirect
+	golang.org/x/text v0.37.0 // indirect
+	golang.org/x/tools v0.44.0 // indirect
 	golang.org/x/tools/go/expect v0.1.1-deprecated // indirect
 	google.golang.org/protobuf v1.36.6 // indirect
 	gopkg.in/go-jose/go-jose.v2 v2.6.3 // indirect
