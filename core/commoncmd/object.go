@@ -17,7 +17,7 @@ func NewCmdObjectCompliance(kind string) *cobra.Command {
 		GroupID: GroupIDSubsystems,
 		Use:     "compliance",
 		Short:   "analyze, enforce node configuration compliance",
-		Aliases: []string{"compli", "comp", "com", "co"},
+		Aliases: []string{"comp"},
 	}
 }
 
@@ -25,6 +25,7 @@ func NewCmdObjectConfig(kind string) *cobra.Command {
 	return &cobra.Command{
 		GroupID: GroupIDSubsystems,
 		Use:     "config",
+		Aliases: []string{"conf", "cf", "cfg"},
 		Short:   "show, alter object configuration",
 	}
 }
@@ -42,7 +43,7 @@ func NewCmdObjectInstance(kind string) *cobra.Command {
 		GroupID: GroupIDSubsystems,
 		Use:     "instance",
 		Short:   "query, action object instances",
-		Aliases: []string{"inst", "in"},
+		Aliases: []string{"inst"},
 	}
 	cmd.AddGroup(
 		NewGroupQuery(),
@@ -111,6 +112,7 @@ func NewCmdObjectInstanceResource(kind string) *cobra.Command {
 		GroupID: GroupIDSubsystems,
 		Use:     "resource",
 		Short:   "query, push instance resources",
+		Aliases: []string{"res"},
 	}
 	cmd.AddGroup(
 		NewGroupSubsystems(),
