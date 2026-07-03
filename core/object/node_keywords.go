@@ -1209,6 +1209,7 @@ var (
 		Converter:  "int",
 		Default:    "1024",
 		Deprecated: "3.0.0",
+		ReplacedBy: "mask_per_node",
 		Option:     "ips_per_node",
 		Section:    "network",
 		Text:       keywords.NewText(fs, "text/kw/node/network.routed_bridge.ips_per_node"),
