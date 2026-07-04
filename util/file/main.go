@@ -10,8 +10,9 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/opensvc/om3/v3/util/command"
 	"golang.org/x/sys/unix"
+
+	"github.com/opensvc/om3/v3/util/command"
 )
 
 var (
@@ -342,16 +343,16 @@ func VerifySameMajorMinorAndInode(p1, p2 string) error {
 		return err
 	}
 
-	maj1 := unix.Major(stat1.Rdev)
-	maj2 := unix.Major(stat2.Rdev)
+	maj1 := unix.Major(uint64(stat1.Rdev))
+	maj2 := unix.Major(uint64(stat2.Rdev))
 	if maj1 != maj2 {
 		return fmt.Errorf("%w: major of %s is %d, %s is %d",
 			ErrNotSame, p1, maj1, p2, maj2,
 		)
 	}
 
-	min1 := unix.Minor(stat1.Rdev)
-	min2 := unix.Minor(stat2.Rdev)
+	min1 := unix.Minor(uint64(stat1.Rdev))
+	min2 := unix.Minor(uint64(stat2.Rdev))
 	if min1 != min2 {
 		return fmt.Errorf("%w: minor of %s is %d, %s is %d",
 			ErrNotSame, p1, min1, p2, min2,
