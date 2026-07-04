@@ -7,11 +7,26 @@ import (
 	"github.com/opensvc/fcache"
 	"github.com/opensvc/fcntllock"
 	"github.com/opensvc/flock"
+
 	"github.com/opensvc/om3/v3/core/rawconfig"
 	"github.com/opensvc/om3/v3/util/xsession"
 )
 
 var maxLockDuration = 30 * time.Second
+
+type (
+	Outputter struct {
+		f func() ([]byte, error)
+	}
+)
+
+func NewOutputter(f func() ([]byte, error)) *Outputter {
+	return &Outputter{f: f}
+}
+
+func (t *Outputter) Output() ([]byte, error) {
+	return t.f()
+}
 
 // Output manage output session function cache
 func Output(o fcache.Outputter, sig string, maxAge time.Duration) (out []byte, err error) {
