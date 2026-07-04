@@ -27,3 +27,16 @@ func (t *dataStore) decode(keyname string) ([]byte, error) {
 func (t *dataStore) DecodeKey(keyname string) ([]byte, error) {
 	return t.decode(keyname)
 }
+
+// DecodeKeys returns the decoded bytes of the key value
+func (t *dataStore) DecodeKeys(keynames ...string) ([][]byte, error) {
+	var l [][]byte
+	for _, keyname := range keynames {
+		if b, err := t.decode(keyname); err != nil {
+			return nil, fmt.Errorf("decode key %s: %w", keyname, err)
+		} else {
+			l = append(l, b)
+		}
+	}
+	return l, nil
+}
