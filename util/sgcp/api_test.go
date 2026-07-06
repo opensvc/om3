@@ -25,11 +25,6 @@ func (ttk *TTkBuilder) Get(ctx context.Context, scope ...string) (string, error)
 
 func TestDo(t *testing.T) {
 	defer Setup(t)()
-	InstallConfig(t)
-
-	cfg, err := LoadConfig()
-	require.NoError(t, err)
-	require.NotNil(t, cfg)
 
 	// Create a test server
 	var calls []string

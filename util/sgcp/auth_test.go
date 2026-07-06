@@ -17,10 +17,8 @@ import (
 
 func TestTokenFactory(t *testing.T) {
 	defer Setup(t)()
-	InstallConfig(t)
 
-	cfg, err := LoadConfig()
-	require.NoError(t, err)
+	cfg := GetConfig()
 	require.NotNil(t, cfg)
 
 	// Create a test server

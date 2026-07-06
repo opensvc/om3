@@ -1,44 +1,29 @@
 package sgcp
 
 import (
-	"embed"
-	"os"
-	"path/filepath"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+
+	"github.com/opensvc/om3/v3/util/sgcp/testsgcphelper"
 )
 
-var (
-	//go:embed text
-	fs embed.FS
-)
-
-func Setup(t *testing.T) (cleanup func()) {
+func Setup(t *testing.T) func() {
 	t.Helper()
-	tmpDir := t.TempDir()
-	OrigDefaultConfigPath := DefaultConfigPath
-	DefaultConfigPath = filepath.Join(tmpDir, "sgcp.yaml")
-	cleanup = func() {
-		DefaultConfigPath = OrigDefaultConfigPath
+	cfgFile := testsgcphelper.InstallConfig(t)
+	SetConfigForTest(cfgFile)
+
+	return func() {
+		SetConfigForTest("")
 	}
-	return cleanup
-}
-
-func InstallConfig(t *testing.T) {
-	t.Helper()
-	b, err := fs.ReadFile("text/config.yaml")
-	require.NoError(t, err)
-	require.NoError(t, os.WriteFile(DefaultConfigPath, b, 0755))
 }
 
 // TestGetScopes tests the GetScopes function
 func TestGetScopes(t *testing.T) {
 	defer Setup(t)()
-	InstallConfig(t)
-	cfg, err := LoadConfig()
-	require.NoError(t, err)
+
+	cfg := GetConfig()
 	require.NotNil(t, cfg)
 
 	scopes := cfg.GetScopes("custom_admin")
@@ -52,35 +37,26 @@ func TestGetScopes(t *testing.T) {
 // TestGetDefaultSecret tests the GetDefaultSecret function
 func TestGetDefaultSecret(t *testing.T) {
 	defer Setup(t)()
-	InstallConfig(t)
 
-	config, err := LoadConfig()
-	require.NoError(t, err)
+	cfg := GetConfig()
+	require.NotNil(t, cfg)
 
-	secret := config.GetDefaultSecret()
+	secret := cfg.GetDefaultSecret()
 	assert.Equal(t, "the-secret", secret)
 }
 
-// TestDefaultConfigPath tests the default config path value
-func TestDefaultConfigPath(t *testing.T) {
-	assert.Equal(t, "/etc/om3/sgcp.yaml", DefaultConfigPath)
-}
-
 // TestGetConfig tests the global config getter when no config exists
-func TestGetConfigWhenNotPresnt(t *testing.T) {
-	defer Setup(t)()
-	cfg, err := LoadConfig()
-	assert.NotNil(t, err)
+func TestGetConfigWhenNotPresent(t *testing.T) {
+	SetConfigForTest("")
+	cfg := GetConfig()
 	assert.Nil(t, cfg)
 }
 
 // TestLoadConfig tests loading the configuration from a file
 func TestLoadConfig(t *testing.T) {
 	defer Setup(t)()
-	InstallConfig(t)
 
-	cfg, err := LoadConfig()
-	require.NoError(t, err)
+	cfg := GetConfig()
 	require.NotNil(t, cfg)
 
 	// Test files configuration

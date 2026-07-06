@@ -58,42 +58,45 @@ type (
 // SGCPConfig is the global configuration instance
 var (
 	config     *Config
+	configLck  sync.RWMutex
 	configOnce sync.Once
 	logger     = plog.NewDefaultLogger()
 
 	DefaultConfigPath = "/etc/om3/sgcp.yaml"
 )
 
-const (
-	DefaultBaseURL = "https://localhost/file/v1"
-)
-
-// LoadConfig loads the SGCP configuration
-func LoadConfig() (*Config, error) {
-	data, err := os.ReadFile(DefaultConfigPath)
-	if err != nil {
-		return nil, fmt.Errorf("failed to read config file %s: %w", DefaultConfigPath, err)
-	}
-
-	var config Config
-	if err := yaml.Unmarshal(data, &config); err != nil {
-		return nil, fmt.Errorf("failed to parse config file %s: %w", DefaultConfigPath, err)
-	}
-
-	return &config, nil
-}
-
 // GetConfig returns the global SGCP configuration, loading it once
 func GetConfig() *Config {
+	configLck.Lock()
+	defer configLck.Unlock()
 	configOnce.Do(func() {
 		var err error
-		config, err = LoadConfig()
+		config, err = loadConfig(DefaultConfigPath)
 		if err != nil {
 			logger.Debugf("Failed to load SGCP config: %v", err)
 		}
 	})
 
 	return config.Clone()
+}
+
+// SetConfigForTest sets the global configuration for testing,
+// loading it from the specified file, or resetting it if null configFile is passed.
+func SetConfigForTest(configFile string) {
+	// Need to call GetConfig to ensure configOnce is initialized
+	_ = GetConfig()
+
+	configLck.Lock()
+	defer configLck.Unlock()
+	if configFile == "" {
+		config = nil
+		return
+	}
+	var err error
+	config, err = loadConfig(configFile)
+	if err != nil {
+		logger.Debugf("Failed to load SGCP config: %v", err)
+	}
 }
 
 func (c *Config) Clone() *Config {
@@ -141,4 +144,19 @@ func (c *Config) GetDefaultSecret() string {
 		return ""
 	}
 	return c.Auth.DefaultSecret
+}
+
+// loadConfig loads the SGCP configuration
+func loadConfig(s string) (*Config, error) {
+	data, err := os.ReadFile(s)
+	if err != nil {
+		return nil, fmt.Errorf("failed to read config file %s: %w", s, err)
+	}
+
+	var config Config
+	if err := yaml.Unmarshal(data, &config); err != nil {
+		return nil, fmt.Errorf("failed to parse config file %s: %w", s, err)
+	}
+
+	return &config, nil
 }
