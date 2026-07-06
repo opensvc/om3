@@ -13,10 +13,11 @@ import (
 type (
 	// Config represents the SGCP configuration structure
 	Config struct {
-		Files FilesConfig `yaml:"files"`
-		DNS   DNSConfig   `yaml:"dns"`
-		Auth  AuthConfig  `yaml:"auth"`
-		Cache CacheConfig `yaml:"cache"`
+		Files        FilesConfig `yaml:"files"`
+		DNS          DNSConfig   `yaml:"dns"`
+		Auth         AuthConfig  `yaml:"auth"`
+		Cache        CacheConfig `yaml:"cache"`
+		DisabledFlag string      `yaml:"disabled_flag"`
 	}
 
 	// FilesConfig contains file-related API configuration

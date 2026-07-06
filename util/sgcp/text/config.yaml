@@ -31,3 +31,5 @@ auth:
 cache:
   ttl_seconds: 14400  # 4 hours
   enabled: true
+
+disabled_flag: /var/lib/opensvc/sgcp_disabled
