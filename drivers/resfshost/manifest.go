@@ -66,11 +66,21 @@ var (
 		Scopable: true,
 		Text:     keywords.NewText(fs, "text/kw/zone"),
 	}
-	KeywordCheckRead = keywords.Keyword{
+	KeywordCheckReadDisabled = keywords.Keyword{
+		Attr:      "CheckRead",
+		Converter: "bool",
+		Option:    "check_read",
+		Default:   "false",
+		Scopable:  true,
+		Text:      keywords.NewText(fs, "text/kw/check_read"),
+	}
+
+	KeywordCheckReadEnabled = keywords.Keyword{
 		Attr:      "CheckRead",
 		Converter: "bool",
 		Option:    "check_read",
 		Scopable:  true,
+		Default:   "true",
 		Text:      keywords.NewText(fs, "text/kw/check_read"),
 	}
 
@@ -82,7 +92,7 @@ var (
 		&KeywordPromoteRW,
 		&KeywordMKFSOptions,
 		&KeywordZone,
-		&KeywordCheckRead,
+		&KeywordCheckReadDisabled,
 	}
 )
 
