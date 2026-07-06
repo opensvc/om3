@@ -98,21 +98,26 @@ func (t *T) Configure() error {
 	if t.Secret == "" {
 		t.Secret = cfg.Auth.DefaultSecret
 	}
+	if t.Secret == "" {
+		return fmt.Errorf("secret is required (neither defined into secret keyword nor config file %s", sgcp.DefaultConfigPath)
+	} else {
+		cfg = cfg.WithAuthSecret(t.Secret)
+	}
+
 	if t.Endpoint == "" {
 		t.Endpoint = cfg.Files.BaseURL
 	}
+	if t.Endpoint == "" {
+		return fmt.Errorf("file endpoint is required (neither defined into endpoint keyword nor config file %s", sgcp.DefaultConfigPath)
+	} else {
+		cfg = cfg.WithFileURL(t.Endpoint)
+	}
+
 	if t.Permission == "" {
 		t.Permission = DefaultPermission
 	}
 	if t.Protocol == "" {
 		t.Protocol = DefaultProtocol
-	}
-
-	if t.Endpoint != "" {
-		cfg = cfg.WithFileURL(t.Endpoint)
-	}
-	if t.Secret != "" {
-		cfg = cfg.WithAuthSecret(t.Secret)
 	}
 
 	if err := t.configureMgr(cfg); err != nil {
