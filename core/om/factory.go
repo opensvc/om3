@@ -2117,10 +2117,14 @@ func newCmdObjectEnable(kind string) *cobra.Command {
 func newCmdObjectContainerEnter(kind string) *cobra.Command {
 	var options commands.CmdObjectContainerEnter
 	cmd := &cobra.Command{
-		Use:   "enter",
+		Use:   "enter [ID]",
 		Short: "open a shell in a container resource",
-		Long:  "Enter any container resource if --rid is not set.",
+		Long:  "Enter any container resource. Specify a container ID as a positional argument or let om select the container if unambiguous.",
+		Args:  cobra.MaximumNArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
+			if len(args) > 0 {
+				options.RID = "container#" + args[0]
+			}
 			return options.Run(kind)
 		},
 	}
@@ -3649,7 +3653,18 @@ func newCmdObjectRun(kind string) *cobra.Command {
 }
 
 func newCmdObjectEnter(kind string) *cobra.Command {
-	cmd := newCmdObjectContainerEnter(kind)
+	var options commands.CmdObjectContainerEnter
+	cmd := &cobra.Command{
+		Use:   "enter",
+		Short: "open a shell in a container resource",
+		Long:  "Enter any container resource. Use --rid to specify which container to enter.",
+		RunE: func(cmd *cobra.Command, args []string) error {
+			return options.Run(kind)
+		},
+	}
+	flags := cmd.Flags()
+	addFlagObject(flags, &options.ObjectSelector)
+	commoncmd.FlagRIDWithCompletion(cmd, &options.RID)
 	cmd.Hidden = true
 	return cmd
 }

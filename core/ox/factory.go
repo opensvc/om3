@@ -1077,8 +1077,8 @@ func newCmdNodeSystemUser() *cobra.Command {
 func newCmdNodeConfigEdit() *cobra.Command {
 	var options commands.CmdNodeConfigEdit
 	cmd := &cobra.Command{
-		Use:   "edit",
-		Short: "edit the node configuration",
+		Use:     "edit",
+		Short:   "edit the node configuration",
 		Aliases: []string{"ed"},
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return options.Run()
@@ -1849,8 +1849,8 @@ func newCmdObjectComplianceEnv(kind string) *cobra.Command {
 func newCmdObjectComplianceListModules(kind string) *cobra.Command {
 	var options commands.CmdObjectComplianceListModules
 	cmd := &cobra.Command{
-		Use:   "modules",
-		Short: "list modules available on this object",
+		Use:     "modules",
+		Short:   "list modules available on this object",
 		Aliases: []string{"mod"},
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return options.Run(kind)
@@ -1864,8 +1864,8 @@ func newCmdObjectComplianceListModules(kind string) *cobra.Command {
 func newCmdObjectComplianceListModuleset(kind string) *cobra.Command {
 	var options commands.CmdObjectComplianceListModuleset
 	cmd := &cobra.Command{
-		Use:   "moduleset",
-		Short: "list modulesets available to this object",
+		Use:     "moduleset",
+		Short:   "list modulesets available to this object",
 		Aliases: []string{"modulesets", "modset"},
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return options.Run(kind)
@@ -1880,8 +1880,8 @@ func newCmdObjectComplianceListModuleset(kind string) *cobra.Command {
 func newCmdObjectComplianceListRuleset(kind string) *cobra.Command {
 	var options commands.CmdObjectComplianceListRuleset
 	cmd := &cobra.Command{
-		Use:   "ruleset",
-		Short: "list rulesets available to this object",
+		Use:     "ruleset",
+		Short:   "list rulesets available to this object",
 		Aliases: []string{"rulesets"},
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return options.Run(kind)
@@ -2052,10 +2052,14 @@ func newCmdObjectEnable(kind string) *cobra.Command {
 func newCmdObjectContainerEnter(kind string) *cobra.Command {
 	var options commands.CmdObjectContainerEnter
 	cmd := &cobra.Command{
-		Use:   "enter",
+		Use:   "enter [ID]",
 		Short: "open a shell in a container resource",
-		Long:  "Enter any container resource if --rid is not set.",
+		Long:  "Enter any container resource. Specify a container ID as a positional argument or let om select the container if unambiguous.",
+		Args:  cobra.MaximumNArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
+			if len(args) > 0 {
+				options.RID = "container#" + args[0]
+			}
 			return options.Run(kind)
 		},
 	}
@@ -2450,7 +2454,7 @@ func newCmdObjectInstancePGUpdate(kind string) *cobra.Command {
 func newCmdObjectInstanceStatus(kind string) *cobra.Command {
 	var options commands.CmdObjectInstanceStatus
 	cmd := &cobra.Command{
-		Use:   "status",
+		Use:     "status",
 		Aliases: []string{"stat"},
 		Short:   "print the object instances status",
 		Long: `Resources Flags:
@@ -3708,7 +3712,19 @@ func NewCmdContextShow() *cobra.Command {
 }
 
 func newCmdObjectEnter(kind string) *cobra.Command {
-	cmd := newCmdObjectContainerEnter(kind)
+	var options commands.CmdObjectContainerEnter
+	cmd := &cobra.Command{
+		Use:   "enter",
+		Short: "open a shell in a container resource",
+		Long:  "Enter any container resource. Use --rid to specify which container to enter.",
+		RunE: func(cmd *cobra.Command, args []string) error {
+			return options.Run(kind)
+		},
+	}
+	flags := cmd.Flags()
+	addFlagObject(flags, &options.ObjectSelector)
+	commoncmd.FlagRIDWithCompletion(cmd, &options.RID)
+	commoncmd.FlagNodeSelector(flags, &options.NodeSelector)
 	cmd.Hidden = true
 	return cmd
 }

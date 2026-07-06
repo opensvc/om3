@@ -19,7 +19,7 @@ func (t *actor) Enter(ctx context.Context, rid string) error {
 		if i, ok := r.(enterer); !ok {
 			continue
 		} else if container != nil {
-			return fmt.Errorf("multiple resources support enter. use the --rid option")
+			return fmt.Errorf("multiple resources support enter. specify a container id")
 		} else {
 			container = i
 			rid = r.RID()
