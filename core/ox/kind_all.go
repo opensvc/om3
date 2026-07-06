@@ -133,6 +133,11 @@ func init() {
 		newCmdObjectInstanceSyncUpdate(kind),
 	)
 	cmdObjectSync.AddCommand(
+		newCmdObjectSyncFull(kind),
+		newCmdObjectSyncIngest(kind),
+		newCmdObjectSyncResync(kind),
+		newCmdObjectSyncSplit(kind),
+		newCmdObjectSyncUpdate(kind),
 		newCmdObjectSyncList(kind),
 	)
 	cmdObjectResource.AddCommand(

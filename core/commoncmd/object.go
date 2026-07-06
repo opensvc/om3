@@ -94,7 +94,7 @@ func NewCmdObjectSync(kind string) *cobra.Command {
 		GroupID: GroupIDSubsystems,
 		Use:     "sync",
 		Short:   "replicate data, list sync resources",
-		Hidden:  true,
+		Long:    "Replicate instance data, execute sync actions, list sync resources.",
 		Aliases: []string{"syn", "sy"},
 	}
 }
@@ -111,7 +111,7 @@ func NewCmdObjectResource(kind string) *cobra.Command {
 	return &cobra.Command{
 		GroupID: GroupIDSubsystems,
 		Use:     "resource",
-		Short:   "query object instance resources",
+		Short:   "query, action object instance resources",
 		Aliases: []string{"res"},
 	}
 }

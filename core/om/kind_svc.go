@@ -184,11 +184,11 @@ func init() {
 		newCmdObjectPushResourceInfo(kind),
 	)
 	cmdObjectSync.AddCommand(
-		newCmdObjectInstanceSyncFull(kind),
-		newCmdObjectInstanceSyncIngest(kind),
-		newCmdObjectInstanceSyncResync(kind),
-		newCmdObjectInstanceSyncSplit(kind),
-		newCmdObjectInstanceSyncUpdate(kind),
+		newCmdObjectSyncFull(kind),
+		newCmdObjectSyncIngest(kind),
+		newCmdObjectSyncResync(kind),
+		newCmdObjectSyncSplit(kind),
+		newCmdObjectSyncUpdate(kind),
 		newCmdObjectSyncList(kind),
 	)
 	cmdObjectValidate.AddCommand(

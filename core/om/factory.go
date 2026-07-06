@@ -2205,6 +2205,125 @@ func newCmdObjectTaskRun(kind string) *cobra.Command {
 	return cmd
 }
 
+func newCmdObjectSyncUpdate(kind string) *cobra.Command {
+	var options commands.CmdObjectInstanceSyncUpdate
+	cmd := &cobra.Command{
+		Use:   "update [ID]",
+		Short: "synchronize the copy of the local dataset on peers",
+		Long:  "Execute a sync update action. Specify a sync ID as a positional argument or let om select the sync if unambiguous.",
+		Args:  cobra.MaximumNArgs(1),
+		RunE: func(cmd *cobra.Command, args []string) error {
+			if len(args) > 0 {
+				options.RID = "sync#" + args[0]
+			}
+			return options.Run(kind)
+		},
+	}
+	flags := cmd.Flags()
+	addFlagsGlobal(flags, &options.OptsGlobal)
+	commoncmd.FlagsAsync(flags, &options.OptsAsync)
+	commoncmd.FlagsLock(flags, &options.OptsLock)
+	commoncmd.FlagsResourceSelector(cmd, &options.OptsResourceSelector)
+	commoncmd.FlagForce(flags, &options.Force)
+	commoncmd.FlagTarget(flags, &options.Target)
+	hiddenFlagLocal(flags, &options.Local)
+	return cmd
+}
+
+func newCmdObjectSyncFull(kind string) *cobra.Command {
+	var options commands.CmdObjectInstanceSyncFull
+	cmd := &cobra.Command{
+		Use:   "full [ID]",
+		Short: "full copy of the local dataset on peers",
+		Long:  "Execute a sync full action. Specify a sync ID as a positional argument or let om select the sync if unambiguous.",
+		Args:  cobra.MaximumNArgs(1),
+		RunE: func(cmd *cobra.Command, args []string) error {
+			if len(args) > 0 {
+				options.RID = "sync#" + args[0]
+			}
+			return options.Run(kind)
+		},
+	}
+	flags := cmd.Flags()
+	addFlagsGlobal(flags, &options.OptsGlobal)
+	commoncmd.FlagsAsync(flags, &options.OptsAsync)
+	commoncmd.FlagsLock(flags, &options.OptsLock)
+	commoncmd.FlagsResourceSelector(cmd, &options.OptsResourceSelector)
+	commoncmd.FlagForce(flags, &options.Force)
+	commoncmd.FlagTarget(flags, &options.Target)
+	hiddenFlagLocal(flags, &options.Local)
+	return cmd
+}
+
+func newCmdObjectSyncIngest(kind string) *cobra.Command {
+	var options commands.CmdObjectInstanceSyncIngest
+	cmd := &cobra.Command{
+		Use:   "ingest [ID]",
+		Short: "ingest files received from the active instance",
+		Long:  "Execute a sync ingest action. Specify a sync ID as a positional argument or let om select the sync if unambiguous.",
+		Args:  cobra.MaximumNArgs(1),
+		RunE: func(cmd *cobra.Command, args []string) error {
+			if len(args) > 0 {
+				options.RID = "sync#" + args[0]
+			}
+			return options.Run(kind)
+		},
+	}
+	flags := cmd.Flags()
+	addFlagsGlobal(flags, &options.OptsGlobal)
+	commoncmd.FlagsAsync(flags, &options.OptsAsync)
+	commoncmd.FlagsLock(flags, &options.OptsLock)
+	commoncmd.FlagsResourceSelector(cmd, &options.OptsResourceSelector)
+	hiddenFlagLocal(flags, &options.Local)
+	return cmd
+}
+
+func newCmdObjectSyncResync(kind string) *cobra.Command {
+	var options commands.CmdObjectInstanceSyncResync
+	cmd := &cobra.Command{
+		Use:   "resync [ID]",
+		Short: "restore optimal synchronization",
+		Long:  "Execute a sync resync action. Specify a sync ID as a positional argument or let om select the sync if unambiguous.",
+		Args:  cobra.MaximumNArgs(1),
+		RunE: func(cmd *cobra.Command, args []string) error {
+			if len(args) > 0 {
+				options.RID = "sync#" + args[0]
+			}
+			return options.Run(kind)
+		},
+	}
+	flags := cmd.Flags()
+	addFlagsGlobal(flags, &options.OptsGlobal)
+	commoncmd.FlagsAsync(flags, &options.OptsAsync)
+	commoncmd.FlagsLock(flags, &options.OptsLock)
+	commoncmd.FlagsResourceSelector(cmd, &options.OptsResourceSelector)
+	hiddenFlagLocal(flags, &options.Local)
+	return cmd
+}
+
+func newCmdObjectSyncSplit(kind string) *cobra.Command {
+	var options commands.CmdObjectInstanceSyncSplit
+	cmd := &cobra.Command{
+		Use:   "split [ID]",
+		Short: "make both ends of a replicated pair read-write",
+		Long:  "Execute a sync split action. Specify a sync ID as a positional argument or let om select the sync if unambiguous.",
+		Args:  cobra.MaximumNArgs(1),
+		RunE: func(cmd *cobra.Command, args []string) error {
+			if len(args) > 0 {
+				options.RID = "sync#" + args[0]
+			}
+			return options.Run(kind)
+		},
+	}
+	flags := cmd.Flags()
+	addFlagsGlobal(flags, &options.OptsGlobal)
+	commoncmd.FlagsAsync(flags, &options.OptsAsync)
+	commoncmd.FlagsLock(flags, &options.OptsLock)
+	commoncmd.FlagsResourceSelector(cmd, &options.OptsResourceSelector)
+	hiddenFlagLocal(flags, &options.Local)
+	return cmd
+}
+
 func newCmdObjectSyncList(kind string) *cobra.Command {
 	var options commands.CmdObjectResourceList
 	options.RID = "sync"
