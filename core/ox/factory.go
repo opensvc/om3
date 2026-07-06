@@ -1967,6 +1967,34 @@ func newCmdObjectContainerList(kind string) *cobra.Command {
 	return cmd
 }
 
+func newCmdObjectTaskRun(kind string) *cobra.Command {
+	var options commands.CmdObjectInstanceRun
+	cmd := &cobra.Command{
+		Use:   "run [ID]",
+		Short: "execute a task resource",
+		Long:  "Execute a task resource. Specify a task ID as a positional argument or let om select the task if unambiguous.",
+		Args:  cobra.MaximumNArgs(1),
+		RunE: func(cmd *cobra.Command, args []string) error {
+			if len(args) > 0 {
+				options.RID = "task#" + args[0]
+			}
+			return options.Run(kind)
+		},
+	}
+	flags := cmd.Flags()
+	addFlagsGlobal(flags, &options.OptsGlobal)
+	commoncmd.FlagsAsync(flags, &options.OptsAsync)
+	commoncmd.FlagsLock(flags, &options.OptsLock)
+	commoncmd.FlagsEncap(flags, &options.OptsEncap)
+	commoncmd.FlagsResourceSelector(cmd, &options.OptsResourceSelector)
+	commoncmd.FlagsTo(flags, &options.OptTo)
+	commoncmd.FlagConfirm(flags, &options.Confirm)
+	commoncmd.FlagCron(flags, &options.Cron)
+	commoncmd.FlagNodeSelector(flags, &options.NodeSelector)
+	commoncmd.FlagEnv(flags, &options.Env)
+	return cmd
+}
+
 func newCmdObjectTaskList(kind string) *cobra.Command {
 	var options commands.CmdObjectResourceList
 	options.RID = "task"

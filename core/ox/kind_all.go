@@ -150,6 +150,7 @@ func init() {
 	)
 	cmdObjectTask.AddCommand(
 		newCmdObjectTaskList(kind),
+		newCmdObjectTaskRun(kind),
 	)
 	cmdObjectEdit.AddCommand(
 		newCmdObjectEditConfig(kind),

@@ -42,7 +42,7 @@ func NewCmdObjectTask(kind string) *cobra.Command {
 	return &cobra.Command{
 		GroupID: GroupIDSubsystems,
 		Use:     "task",
-		Short:   "list tasks",
+		Short:   "list, run tasks",
 	}
 }
 
