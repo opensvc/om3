@@ -9,6 +9,7 @@ import (
 	"github.com/opensvc/om3/v3/core/output"
 	"github.com/opensvc/om3/v3/core/rawconfig"
 	"github.com/opensvc/om3/v3/daemon/api"
+	"github.com/opensvc/om3/v3/util/hostname"
 )
 
 type (
@@ -33,6 +34,10 @@ func (t *CmdObjectResourceList) Run(kind string) error {
 	params := api.GetResourcesParams{Path: &mergedSelector}
 	if t.NodeSelector != "" {
 		params.Node = &t.NodeSelector
+	} else {
+		// Default to local node for om command
+		localNode := hostname.Hostname()
+		params.Node = &localNode
 	}
 	if t.RID != "" {
 		params.Resource = &t.RID
