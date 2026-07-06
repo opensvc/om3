@@ -1338,6 +1338,9 @@ func (t *Manager) onNetIPAddrAdded(c *msgbus.NetIPAddrAdded) {
 	if c.Node != t.localhost {
 		return
 	}
+	if !t.canRefreshOnEvent() {
+		return
+	}
 
 	ip := extractIP(c.Address)
 	t.checkResourceForIPMatch(ip, c.LinkName, "added")
@@ -1349,6 +1352,9 @@ func (t *Manager) onNetIPAddrAdded(c *msgbus.NetIPAddrAdded) {
 func (t *Manager) onNetIPAddrDeleted(c *msgbus.NetIPAddrDeleted) {
 	// Only handle events for the localhost
 	if c.Node != t.localhost {
+		return
+	}
+	if !t.canRefreshOnEvent() {
 		return
 	}
 
@@ -1392,8 +1398,11 @@ func (t *Manager) checkResourceForMountMatch(mountPoint string, fsType string, e
 // It checks if any instance resource has a matching mount point in its info,
 // and if so, triggers a status refresh to update the resource status.
 func (t *Manager) onFSMounted(c *msgbus.FSMounted) {
-	// Only handle events for the localhost
+	// Only handlgoinge events for the localhost
 	if c.Node != t.localhost {
+		return
+	}
+	if !t.canRefreshOnEvent() {
 		return
 	}
 	t.checkResourceForMountMatch(c.MountPoint, c.FSType, "mounted")
@@ -1407,6 +1416,9 @@ func (t *Manager) onFSUmounted(c *msgbus.FSUmounted) {
 	if c.Node != t.localhost {
 		return
 	}
+	if !t.canRefreshOnEvent() {
+		return
+	}
 	t.checkResourceForMountMatch(c.MountPoint, c.FSType, "unmounted")
 }
 
@@ -1418,5 +1430,12 @@ func (t *Manager) onFSRemounted(c *msgbus.FSRemounted) {
 	if c.Node != t.localhost {
 		return
 	}
+	if !t.canRefreshOnEvent() {
+		return
+	}
 	t.checkResourceForMountMatch(c.MountPoint, c.FSType, "remounted")
+}
+
+func (t *Manager) canRefreshOnEvent() bool {
+	return !t.state.State.IsDoing()
 }
