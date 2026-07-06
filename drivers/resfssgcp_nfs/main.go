@@ -94,6 +94,10 @@ func New() resource.Driver {
 func (t *T) Configure() error {
 	cfg := sgcp.GetConfig()
 
+	if cfg == nil {
+		return fmt.Errorf("mandatory config file is required: %s", sgcp.DefaultConfigPath)
+	}
+
 	// set defaults when kw are not set
 	if t.Secret == "" {
 		t.Secret = cfg.Auth.DefaultSecret

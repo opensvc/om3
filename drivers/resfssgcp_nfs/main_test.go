@@ -14,6 +14,7 @@ import (
 	"github.com/opensvc/om3/v3/core/resource"
 	"github.com/opensvc/om3/v3/core/status"
 	"github.com/opensvc/om3/v3/util/sgcp"
+	"github.com/opensvc/om3/v3/util/sgcp/testsgcphelper"
 )
 
 func newDrvWithRid(s string) *T {
@@ -55,6 +56,18 @@ func tCreateAuthInfo(s string) *tAuthInfo {
 	return &tAuthInfo{AuthInfo: a}
 }
 
+// Setup initializes the test environment by configuring SGCP with a temporary configuration file.
+// It returns a cleanup function that resets the configuration to a null state when invoked.
+func Setup(t *testing.T) func() {
+	cfgFile := testsgcphelper.InstallConfig(t)
+	sgcp.SetConfigForTest(cfgFile)
+	require.NotNil(t, sgcp.GetConfig())
+
+	return func() {
+		sgcp.SetConfigForTest("")
+	}
+}
+
 // TestDriverID tests that the driver has the correct ID
 func TestDriverID(t *testing.T) {
 	drv := New()
@@ -73,6 +86,8 @@ func TestNew(t *testing.T) {
 
 // TestConfigure tests driver configuration
 func TestConfigure(t *testing.T) {
+	defer Setup(t)()
+
 	drv := newDrvWithRid("test-rid")
 	drv.authInfoer = tCreateAuthInfo("id1")
 	// Set configuration
@@ -87,12 +102,29 @@ func TestConfigure(t *testing.T) {
 	// Check defaults
 	assert.Equal(t, "read-write", drv.Permission)
 	assert.Equal(t, "nfs4.1", drv.Protocol)
-	assert.Equal(t, "iam", drv.Secret)
-	assert.Equal(t, sgcp.DefaultBaseURL, drv.Endpoint)
+	assert.Equal(t, "the-secret", drv.Secret)
+	assert.Equal(t, "https://127.0.0.1:1215/file", drv.Endpoint)
+}
+
+// TestConfigure tests driver configuration
+func TestConfigureWhenNoConfig(t *testing.T) {
+	sgcp.SetConfigForTest("")
+
+	drv := newDrvWithRid("test-rid")
+	drv.authInfoer = tCreateAuthInfo("id1")
+	// Set configuration
+	drv.UUID = "test-uuid"
+	drv.Host = "test-host"
+	drv.Permission = "read-write"
+	drv.Protocol = "nfs4.1"
+	// Configure should not fail with valid config
+	require.Error(t, drv.Configure(), "mandatory config file is required: /etc/om3/sgcp.yaml")
 }
 
 // TestConfigureWithMissingUUID tests configuration validation
 func TestConfigureWithMissingUUID(t *testing.T) {
+	defer Setup(t)()
+
 	drv := newDrvWithRid("test-rid")
 	drv.authInfoer = tCreateAuthInfo("id1")
 
@@ -104,6 +136,8 @@ func TestConfigureWithMissingUUID(t *testing.T) {
 
 // TestIsClientIgnored tests the client ignored functionality
 func TestIsClientIgnored(t *testing.T) {
+	defer Setup(t)()
+
 	drv := newDrvWithRid("test-rid")
 	drv.authInfoer = tCreateAuthInfo("id1")
 
@@ -136,6 +170,8 @@ func TestClientString(t *testing.T) {
 
 // TestGetNFSClients tests filtering of NFS clients
 func TestGetNFSClients(t *testing.T) {
+	defer Setup(t)()
+
 	drv := newDrvWithRid("test-rid")
 	drv.authInfoer = tCreateAuthInfo("id1")
 	require.NoError(t, drv.Configure())
@@ -264,6 +300,8 @@ func (t *T) fileStatusFromInfo(fileInfo *FilesystemInfo) status.T {
 
 // TestLabel tests the label functionality
 func TestLabel(t *testing.T) {
+	defer Setup(t)()
+
 	drv := newDrvWithRid("test-rid")
 	drv.authInfoer = tCreateAuthInfo("id1")
 
