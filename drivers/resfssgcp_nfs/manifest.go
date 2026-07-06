@@ -8,6 +8,14 @@ import (
 	"github.com/opensvc/om3/v3/core/keywords"
 	"github.com/opensvc/om3/v3/core/manifest"
 	"github.com/opensvc/om3/v3/core/naming"
+	"github.com/opensvc/om3/v3/drivers/resfshost"
+)
+
+const (
+	DefaultPermission = "read-write"
+	DefaultProtocol   = "nfs4.1"
+	DefaultExclusive  = "false"
+	SecretDefaultName = "iam"
 )
 
 var (
@@ -42,8 +50,8 @@ var (
 		{
 			Attr:      "Exclusive",
 			Option:    "exclusive",
-			Converter: "boolean",
-			Default:   "false", // TODO: move to config
+			Converter: "bool",
+			Default:   DefaultExclusive,
 			Scopable:  true,
 			Text:      keywords.NewText(fs, "text/kw/exclusive"),
 		},
@@ -65,7 +73,6 @@ var (
 		{
 			Attr:     "Endpoint",
 			Option:   "endpoint",
-			Default:  "https://localhost/v1", // TODO: move to config
 			Scopable: true,
 			Text:     keywords.NewText(fs, "text/kw/endpoint"),
 		},
@@ -85,6 +92,14 @@ func (t *T) Manifest() *manifest.T {
 	m := manifest.New(drvID, t)
 	m.Kinds.Or(naming.KindSvc, naming.KindVol)
 	m.AddKeywords(kws...)
+	m.AddKeywords(
+		&resfshost.KeywordDevice,
+		&resfshost.KeywordMountPoint,
+		&resfshost.KeywordMountOptions,
+		&resfshost.KeywordStatTimeout,
+		&resfshost.KeywordZone,
+		&resfshost.KeywordCheckReadEnabled,
+	)
 	m.AddKeywords(datarecv.Keywords("DataRecv.")...)
 	return m
 }
