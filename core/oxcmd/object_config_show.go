@@ -56,7 +56,10 @@ func (t *CmdObjectConfigShow) Run(kind string) error {
 	if err != nil {
 		return err
 	}
-	b = commoncmd.Sections(b, t.Sections)
+	b, err = commoncmd.Sections(b, t.Sections)
+	if err != nil {
+		return err
+	}
 	b = commoncmd.ColorizeINI(b)
 	_, err = os.Stdout.Write(b)
 	return err

@@ -3,6 +3,7 @@ package commoncmd
 import (
 	"bufio"
 	"bytes"
+	"fmt"
 	"regexp"
 	"strings"
 
@@ -38,28 +39,46 @@ var (
 	commentRE = regexp.MustCompile(`^\s*[#;]`)
 )
 
-func Sections(b []byte, sections []string) []byte {
+func Sections(b []byte, sections []string) ([]byte, error) {
 	if len(sections) == 0 {
-		return b
+		return b, nil
 	}
-	out := bytes.NewBuffer(nil)
+
+	requested := make(map[string]bool)
+	for _, sec := range sections {
+		requested[sec] = false
+	}
+
 	scanner := bufio.NewScanner(bytes.NewReader(b))
+	sectionName := func(s string) string {
+		s = strings.TrimSpace(s)
+		if !strings.HasPrefix(s, "[") || !strings.HasSuffix(s, "]") {
+			return ""
+		}
+		return strings.TrimSpace(s[1 : len(s)-1])
+	}
+
+	for scanner.Scan() {
+		line := scanner.Text()
+		if name := sectionName(line); name != "" {
+			if _, found := requested[name]; found {
+				requested[name] = true
+			}
+		}
+	}
+
+	for sec, found := range requested {
+		if !found {
+			return nil, fmt.Errorf("no such section %s", sec)
+		}
+	}
+
+	out := bytes.NewBuffer(nil)
+	scanner = bufio.NewScanner(bytes.NewReader(b))
 	var inValidSection bool
 	m := make(map[string]any)
 	for _, section := range sections {
 		m[section] = nil
-	}
-	sectionName := func(s string) string {
-		s = strings.TrimSpace(s)
-		if !strings.HasPrefix(s, "[") {
-			return ""
-		}
-		if !strings.HasSuffix(s, "]") {
-			return ""
-		}
-		s = s[1 : len(s)-1]
-		s = strings.TrimSpace(s)
-		return s
 	}
 	isValidSection := func(s string) bool {
 		_, ok := m[s]
@@ -79,7 +98,7 @@ func Sections(b []byte, sections []string) []byte {
 			}
 		}
 	}
-	return out.Bytes()
+	return out.Bytes(), nil
 }
 
 func ColorizeINI(b []byte) []byte {
