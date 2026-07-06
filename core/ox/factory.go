@@ -1928,10 +1928,15 @@ func newCmdObjectComplianceShowRuleset(kind string) *cobra.Command {
 func newCmdObjectContainerLogs(kind string) *cobra.Command {
 	var options commands.CmdObjectContainerLogs
 	cmd := &cobra.Command{
-		Use:     "logs",
+		Use:     "logs [ID]",
 		Aliases: []string{"log"},
 		Short:   "show container logs",
+		Long:    "Show container logs. Specify a container ID as a positional argument or let om select the container if unambiguous.",
+		Args:    cobra.MaximumNArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
+			if len(args) > 0 {
+				options.RID = "container#" + args[0]
+			}
 			return options.Run(kind)
 		},
 	}
