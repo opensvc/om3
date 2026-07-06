@@ -93,6 +93,7 @@ func NewCmdObjectSync(kind string) *cobra.Command {
 	return &cobra.Command{
 		GroupID: GroupIDSubsystems,
 		Use:     "sync",
+		Short:   "replicate data, list sync resources",
 		Hidden:  true,
 		Aliases: []string{"syn", "sy"},
 	}

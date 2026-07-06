@@ -2205,6 +2205,24 @@ func newCmdObjectTaskRun(kind string) *cobra.Command {
 	return cmd
 }
 
+func newCmdObjectSyncList(kind string) *cobra.Command {
+	var options commands.CmdObjectResourceList
+	options.RID = "sync"
+	cmd := &cobra.Command{
+		Use:     "list",
+		Aliases: []string{"ls"},
+		Short:   "list sync resources",
+		Long:    "List sync resources. Equivalent to 'resource ls --rid sync'.",
+		RunE: func(cmd *cobra.Command, args []string) error {
+			return options.Run(kind)
+		},
+	}
+	flags := cmd.Flags()
+	addFlagsGlobal(flags, &options.OptsGlobal)
+	commoncmd.FlagNodeSelector(flags, &options.NodeSelector)
+	return cmd
+}
+
 func newCmdObjectTaskList(kind string) *cobra.Command {
 	var options commands.CmdObjectResourceList
 	options.RID = "task"

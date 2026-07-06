@@ -29,6 +29,7 @@ func init() {
 	cmdObjectResource := commoncmd.NewCmdObjectResource(kind)
 	cmdObjectResourceInfo := commoncmd.NewCmdObjectResourceInfo(kind)
 	cmdObjectPush := newCmdObjectPush(kind)
+	cmdObjectSync := commoncmd.NewCmdObjectSync(kind)
 	cmdObjectValidate := newCmdObjectValidate(kind)
 
 	root.AddCommand(
@@ -53,6 +54,7 @@ func init() {
 		cmdObjectResource,
 		cmdObjectSet,
 		cmdObjectSchedule,
+		cmdObjectSync,
 		cmdObjectValidate,
 		newCmdDataStoreAdd(kind),
 		newCmdDataStoreChange(kind),
@@ -129,6 +131,9 @@ func init() {
 		newCmdObjectInstanceSyncResync(kind),
 		newCmdObjectInstanceSyncSplit(kind),
 		newCmdObjectInstanceSyncUpdate(kind),
+	)
+	cmdObjectSync.AddCommand(
+		newCmdObjectSyncList(kind),
 	)
 	cmdObjectResource.AddCommand(
 		newCmdObjectResourceList(kind),

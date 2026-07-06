@@ -176,6 +176,7 @@ func init() {
 		newCmdObjectInstanceSyncResync(kind),
 		newCmdObjectInstanceSyncSplit(kind),
 		newCmdObjectInstanceSyncUpdate(kind),
+		newCmdObjectSyncList(kind),
 	)
 	cmdObjectValidate.AddCommand(
 		newCmdObjectValidateConfig(kind),
