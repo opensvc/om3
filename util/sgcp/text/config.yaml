@@ -1,0 +1,33 @@
+# SGCP API Configuration
+# This file contains all API paths for SGCP services
+# Do not hardcode API paths in the code - use this config instead
+
+files:
+  base_url: "https://127.0.0.1:1215/file"
+  path:
+    fs: "/fs"
+    client: "/client"
+    cg: "/cg"
+
+dns:
+  base_url: "https://127.0.0.1:1215/dns"
+  path:
+    alias: "/alias"
+    zone: "/zone"
+
+# Authentication and caching settings
+auth:
+  base_url: "https://127.0.0.1:1215/auth"
+  default_secret: "the-secret"
+  scopes:
+    files_read: ["files:read"]
+    files_write: ["files:write"]
+    dns_read: ["dns:read"]
+    dns_write: ["dns:write"]
+    custom_admin: ["custom:read", "custom:write"]
+  timeout: 10
+  ttl_seconds: 1140 # 19 minutes
+
+cache:
+  ttl_seconds: 14400  # 4 hours
+  enabled: true
