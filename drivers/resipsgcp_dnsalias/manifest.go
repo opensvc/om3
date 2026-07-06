@@ -48,14 +48,12 @@ var (
 		{
 			Attr:     "Secret",
 			Option:   "secret",
-			Default:  SecretDefaultName,
 			Scopable: true,
 			Text:     keywords.NewText(fs, "text/kw/secret"),
 		},
 		{
 			Attr:     "Endpoint",
 			Option:   "endpoint",
-			Default:  "https://localhost/v1", // TODO: move to config
 			Scopable: true,
 			Text:     keywords.NewText(fs, "text/kw/endpoint"),
 		},
