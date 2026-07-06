@@ -252,6 +252,9 @@ func (t *T) Boot(ctx context.Context) error {
 
 // fileStart handles the SGCP API part of starting the filesystem
 func (t *T) fileStart(ctx context.Context) error {
+	defer func() {
+		_ = t.clearFileStatusCache()
+	}()
 	if sgcp.IsDisabled(rawconfig.NodeVarDir()) {
 		t.Log().Infof("skipping file start %s: SGCP API disabled", t.UUID)
 		return nil
@@ -276,6 +279,9 @@ func (t *T) fileStart(ctx context.Context) error {
 
 // fileStop handles the SGCP API part of stopping the filesystem
 func (t *T) fileStop(ctx context.Context) error {
+	defer func() {
+		_ = t.clearFileStatusCache()
+	}()
 	if sgcp.IsDisabled(rawconfig.NodeVarDir()) {
 		t.Log().Infof("skipping file stop %s: SGCP API disabled", t.UUID)
 		return nil
