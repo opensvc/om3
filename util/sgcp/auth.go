@@ -10,6 +10,8 @@ import (
 	"strings"
 	"time"
 
+	"golang.org/x/sync/singleflight"
+
 	"github.com/opensvc/om3/v3/util/ageingcache"
 	"github.com/opensvc/om3/v3/util/plog"
 )
@@ -42,6 +44,10 @@ type (
 	}
 )
 
+var (
+	singleFlightGrp singleflight.Group
+)
+
 // NewTokenFactory initializes a new instance of TokenFactory with the provided logger, authentication config, and auth info.
 func NewTokenFactory(log *plog.Logger, client *http.Client, authCfg *AuthConfig, authInfo *AuthInfo) *TokenFactory {
 	return &TokenFactory{
@@ -65,11 +71,17 @@ func (t *TokenFactory) Get(ctx context.Context, scope ...string) (string, error)
 		}
 		return []byte(token.AccessToken), nil
 	})
-	data, err := ageingcache.Output(o, sig, cacheMaxAge)
+	i, err, _ := singleFlightGrp.Do(sig, func() (interface{}, error) {
+		return ageingcache.Output(o, sig, cacheMaxAge)
+	})
+
 	if err != nil {
 		return "", err
 	}
-	return string(data), nil
+	if b, ok := i.([]byte); ok {
+		return string(b), nil
+	}
+	return "", fmt.Errorf("unexpected returned token type")
 }
 
 // Clear removes the cached authentication token associated with the provided scope(s).
