@@ -144,6 +144,7 @@ func init() {
 	cmdObjectContainer.AddCommand(
 		newCmdObjectContainerEnter(kind),
 		newCmdObjectContainerLogs(kind),
+		newCmdObjectContainerList(kind),
 	)
 	cmdObjectEdit.AddCommand(
 		newCmdObjectEditConfig(kind),

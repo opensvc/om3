@@ -2157,6 +2157,24 @@ func newCmdObjectContainerLogs(kind string) *cobra.Command {
 	return cmd
 }
 
+func newCmdObjectContainerList(kind string) *cobra.Command {
+	var options commands.CmdObjectResourceList
+	options.RID = "container"
+	cmd := &cobra.Command{
+		Use:     "list",
+		Aliases: []string{"ls"},
+		Short:   "list container resources",
+		Long:    "List container resources. Equivalent to 'resource ls --rid container'.",
+		RunE: func(cmd *cobra.Command, args []string) error {
+			return options.Run(kind)
+		},
+	}
+	flags := cmd.Flags()
+	addFlagsGlobal(flags, &options.OptsGlobal)
+	commoncmd.FlagNodeSelector(flags, &options.NodeSelector)
+	return cmd
+}
+
 func newCmdObjectConfigEval(kind string) *cobra.Command {
 	var options commands.CmdObjectConfigGet
 	cmd := &cobra.Command{
