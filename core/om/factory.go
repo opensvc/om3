@@ -2902,7 +2902,7 @@ func newCmdObjectInstanceSyncUpdate(kind string) *cobra.Command {
 	return cmd
 }
 
-func newCmdObjectInstanceResourceInfoList(kind string) *cobra.Command {
+func newCmdObjectResourceInfoList(kind string) *cobra.Command {
 	var options commands.CmdObjectInstanceResourceInfoList
 	cmd := &cobra.Command{
 		Use:     "list",
@@ -2918,7 +2918,7 @@ func newCmdObjectInstanceResourceInfoList(kind string) *cobra.Command {
 	return cmd
 }
 
-func newCmdObjectInstanceResourceInfoPush(kind string) *cobra.Command {
+func newCmdObjectResourceInfoPush(kind string) *cobra.Command {
 	var options commands.CmdObjectInstanceResourceInfoPush
 	cmd := &cobra.Command{
 		Use:   "push",
