@@ -9,6 +9,8 @@ import (
 	"github.com/opensvc/om3/v3/core/manifest"
 	"github.com/opensvc/om3/v3/core/naming"
 	"github.com/opensvc/om3/v3/drivers/resfshost"
+	"github.com/opensvc/om3/v3/util/file"
+	"github.com/opensvc/om3/v3/util/sgcp"
 )
 
 const (
@@ -80,7 +82,9 @@ var (
 )
 
 func init() {
-	driver.Register(drvID, New)
+	if file.Exists(sgcp.DefaultConfigPath) {
+		driver.Register(drvID, New)
+	}
 }
 
 func (t *T) DriverID() driver.ID {
