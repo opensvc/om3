@@ -1967,6 +1967,24 @@ func newCmdObjectContainerList(kind string) *cobra.Command {
 	return cmd
 }
 
+func newCmdObjectTaskList(kind string) *cobra.Command {
+	var options commands.CmdObjectResourceList
+	options.RID = "task"
+	cmd := &cobra.Command{
+		Use:     "list",
+		Aliases: []string{"ls"},
+		Short:   "list task resources",
+		Long:    "List task resources. Equivalent to 'resource ls --rid task'.",
+		RunE: func(cmd *cobra.Command, args []string) error {
+			return options.Run(kind)
+		},
+	}
+	flags := cmd.Flags()
+	addFlagsGlobal(flags, &options.OptsGlobal)
+	commoncmd.FlagNodeSelector(flags, &options.NodeSelector)
+	return cmd
+}
+
 func newCmdObjectCreate(kind string) *cobra.Command {
 	var options commands.CmdObjectCreate
 	cmd := &cobra.Command{

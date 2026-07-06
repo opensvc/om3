@@ -38,6 +38,14 @@ func NewCmdObjectContainer(kind string) *cobra.Command {
 	}
 }
 
+func NewCmdObjectTask(kind string) *cobra.Command {
+	return &cobra.Command{
+		GroupID: GroupIDSubsystems,
+		Use:     "task",
+		Short:   "list tasks",
+	}
+}
+
 func NewCmdObjectInstance(kind string) *cobra.Command {
 	cmd := &cobra.Command{
 		GroupID: GroupIDSubsystems,
