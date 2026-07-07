@@ -15,6 +15,12 @@ func init() {
 	cmdObjectComplianceList := newCmdObjectComplianceList(kind)
 	cmdObjectConfig := commoncmd.NewCmdObjectConfig(kind)
 	cmdObjectContainer := commoncmd.NewCmdObjectContainer(kind)
+	cmdObjectIP := commoncmd.NewCmdObjectIP(kind)
+	cmdObjectFS := commoncmd.NewCmdObjectFS(kind)
+	cmdObjectVolume := commoncmd.NewCmdObjectVolume(kind)
+	cmdObjectDisk := commoncmd.NewCmdObjectDisk(kind)
+	cmdObjectShare := commoncmd.NewCmdObjectShare(kind)
+	cmdObjectApp := commoncmd.NewCmdObjectApp(kind)
 	cmdObjectTask := commoncmd.NewCmdObjectTask(kind)
 	cmdObjectEdit := newCmdObjectEdit(kind)
 	cmdObjectInstance := commoncmd.NewCmdObjectInstance(kind)
@@ -46,6 +52,12 @@ func init() {
 		cmdObjectCompliance,
 		cmdObjectConfig,
 		cmdObjectContainer,
+		cmdObjectIP,
+		cmdObjectFS,
+		cmdObjectVolume,
+		cmdObjectDisk,
+		cmdObjectShare,
+		cmdObjectApp,
 		cmdObjectTask,
 		cmdObjectEdit,
 		cmdObjectInstance,
@@ -101,6 +113,51 @@ func init() {
 		newCmdObjectContainerEnter(kind),
 		newCmdObjectContainerLogs(kind),
 		newCmdObjectContainerList(kind),
+		newCmdObjectContainerStart(kind),
+		newCmdObjectContainerStop(kind),
+		newCmdObjectContainerRestart(kind),
+		newCmdObjectContainerProvision(kind),
+		newCmdObjectContainerUnprovision(kind),
+	)
+	cmdObjectIP.AddCommand(
+		newCmdObjectIPStart(kind),
+		newCmdObjectIPStop(kind),
+		newCmdObjectIPRestart(kind),
+		newCmdObjectIPProvision(kind),
+		newCmdObjectIPUnprovision(kind),
+	)
+	cmdObjectFS.AddCommand(
+		newCmdObjectFSStart(kind),
+		newCmdObjectFSStop(kind),
+		newCmdObjectFSRestart(kind),
+		newCmdObjectFSProvision(kind),
+		newCmdObjectFSUnprovision(kind),
+	)
+	cmdObjectVolume.AddCommand(
+		newCmdObjectVolumeStart(kind),
+		newCmdObjectVolumeStop(kind),
+		newCmdObjectVolumeRestart(kind),
+		newCmdObjectVolumeProvision(kind),
+		newCmdObjectVolumeUnprovision(kind),
+	)
+	cmdObjectDisk.AddCommand(
+		newCmdObjectDiskStart(kind),
+		newCmdObjectDiskStop(kind),
+		newCmdObjectDiskRestart(kind),
+		newCmdObjectDiskProvision(kind),
+		newCmdObjectDiskUnprovision(kind),
+	)
+	cmdObjectShare.AddCommand(
+		newCmdObjectShareStart(kind),
+		newCmdObjectShareStop(kind),
+		newCmdObjectShareRestart(kind),
+		newCmdObjectShareProvision(kind),
+		newCmdObjectShareUnprovision(kind),
+	)
+	cmdObjectApp.AddCommand(
+		newCmdObjectAppStart(kind),
+		newCmdObjectAppStop(kind),
+		newCmdObjectAppRestart(kind),
 	)
 	cmdObjectTask.AddCommand(
 		newCmdObjectTaskList(kind),

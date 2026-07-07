@@ -38,6 +38,67 @@ func NewCmdObjectContainer(kind string) *cobra.Command {
 	}
 }
 
+func NewCmdObjectIP(kind string) *cobra.Command {
+	return &cobra.Command{
+		GroupID: GroupIDSubsystems,
+		Use:     "ip",
+		Short:   "query, action ip resources",
+		Aliases: []string{"ipaddr", "address"},
+	}
+}
+
+func NewCmdObjectFS(kind string) *cobra.Command {
+	return &cobra.Command{
+		GroupID: GroupIDSubsystems,
+		Use:     "fs",
+		Short:   "query, action fs resources",
+		Aliases: []string{"filesystem"},
+	}
+}
+
+func NewCmdObjectVolume(kind string) *cobra.Command {
+	return &cobra.Command{
+		GroupID: GroupIDSubsystems,
+		Use:     "volume",
+		Short:   "query, action volume resources",
+		Aliases: []string{"vol"},
+	}
+}
+
+func NewCmdObjectDisk(kind string) *cobra.Command {
+	return &cobra.Command{
+		GroupID: GroupIDSubsystems,
+		Use:     "disk",
+		Short:   "query, action disk resources",
+	}
+}
+
+func NewCmdObjectShare(kind string) *cobra.Command {
+	return &cobra.Command{
+		GroupID: GroupIDSubsystems,
+		Use:     "share",
+		Short:   "query, action share resources",
+	}
+}
+
+func NewCmdObjectApp(kind string) *cobra.Command {
+	return &cobra.Command{
+		GroupID: GroupIDSubsystems,
+		Use:     "app",
+		Short:   "query, action app resources",
+		Aliases: []string{"application"},
+	}
+}
+
+func NewCmdObjectGroups(kind string) *cobra.Command {
+	return &cobra.Command{
+		GroupID: GroupIDSubsystems,
+		Use:     "groups",
+		Short:   "query, action groups resources",
+		Aliases: []string{"grp"},
+	}
+}
+
 func NewCmdObjectTask(kind string) *cobra.Command {
 	return &cobra.Command{
 		GroupID: GroupIDSubsystems,
