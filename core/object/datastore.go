@@ -30,6 +30,7 @@ type (
 		AddKey(name string, b []byte) error
 		ChangeKey(name string, b []byte) error
 		DecodeKey(name string) ([]byte, error)
+		DecodeKeys(name ...string) ([][]byte, error)
 		EditKey(name string) error
 		InstallKey(name string) error
 		InstallKeyTo(KVInstall) error

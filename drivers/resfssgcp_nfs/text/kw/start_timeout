@@ -1,0 +1,3 @@
+Wait for `<duration>` before declaring the start action a failure.
+
+If undefined, the object start_timeout will be used.
