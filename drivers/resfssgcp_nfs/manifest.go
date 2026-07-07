@@ -15,7 +15,6 @@ const (
 	DefaultPermission = "read-write"
 	DefaultProtocol   = "nfs4.1"
 	DefaultExclusive  = "false"
-	SecretDefaultName = "iam"
 )
 
 var (
@@ -66,7 +65,6 @@ var (
 		{
 			Attr:     "Secret",
 			Option:   "secret",
-			Default:  SecretDefaultName,
 			Scopable: true,
 			Text:     keywords.NewText(fs, "text/kw/secret"),
 		},
