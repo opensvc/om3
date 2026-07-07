@@ -128,7 +128,7 @@ func (t *T) Configure() error {
 		return fmt.Errorf("configure mgr: %w", err)
 	}
 
-	if err := t.configureUnderlyingFilesystem("nfs"); err != nil {
+	if err := t.configureUnderlyingFilesystem("nfs4"); err != nil {
 		return fmt.Errorf("configure underlying filesystem: %w", err)
 	}
 
