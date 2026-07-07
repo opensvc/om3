@@ -26,7 +26,7 @@ func NewCmdObjectConfig(kind string) *cobra.Command {
 		GroupID: GroupIDSubsystems,
 		Use:     "config",
 		Aliases: []string{"conf", "cf", "cfg"},
-		Short:   "show, alter object configuration",
+		Short:   "show, edit, update, ...",
 	}
 }
 
@@ -34,7 +34,7 @@ func NewCmdObjectContainer(kind string) *cobra.Command {
 	return &cobra.Command{
 		GroupID: GroupIDResourceGroups,
 		Use:     "container",
-		Short:   "list, action container resources, enter, stream logs",
+		Short:   "list, start, stop, enter, logs, ...",
 	}
 }
 
@@ -42,7 +42,7 @@ func NewCmdObjectIP(kind string) *cobra.Command {
 	return &cobra.Command{
 		GroupID: GroupIDResourceGroups,
 		Use:     "ip",
-		Short:   "list, action ip resources",
+		Short:   "list, start, stop, ...",
 		Aliases: []string{"ipaddr", "address"},
 	}
 }
@@ -51,7 +51,7 @@ func NewCmdObjectFS(kind string) *cobra.Command {
 	return &cobra.Command{
 		GroupID: GroupIDResourceGroups,
 		Use:     "fs",
-		Short:   "list, action fs resources",
+		Short:   "list, start, stop, ...",
 		Aliases: []string{"filesystem"},
 	}
 }
@@ -60,7 +60,7 @@ func NewCmdObjectVolume(kind string) *cobra.Command {
 	return &cobra.Command{
 		GroupID: GroupIDResourceGroups,
 		Use:     "volume",
-		Short:   "list, action volume resources",
+		Short:   "list, start, stop, ...",
 		Aliases: []string{"vol"},
 	}
 }
@@ -69,7 +69,7 @@ func NewCmdObjectDisk(kind string) *cobra.Command {
 	return &cobra.Command{
 		GroupID: GroupIDResourceGroups,
 		Use:     "disk",
-		Short:   "list, action disk resources",
+		Short:   "list, start, stop, ...",
 	}
 }
 
@@ -77,7 +77,7 @@ func NewCmdObjectShare(kind string) *cobra.Command {
 	return &cobra.Command{
 		GroupID: GroupIDResourceGroups,
 		Use:     "share",
-		Short:   "list, action share resources",
+		Short:   "list, start, stop, ...",
 	}
 }
 
@@ -85,7 +85,7 @@ func NewCmdObjectApp(kind string) *cobra.Command {
 	return &cobra.Command{
 		GroupID: GroupIDResourceGroups,
 		Use:     "app",
-		Short:   "list, action app resources",
+		Short:   "list, start, stop, ...",
 		Aliases: []string{"application"},
 	}
 }
@@ -94,7 +94,7 @@ func NewCmdObjectTask(kind string) *cobra.Command {
 	return &cobra.Command{
 		GroupID: GroupIDResourceGroups,
 		Use:     "task",
-		Short:   "list, run tasks",
+		Short:   "list, run, ...",
 	}
 }
 
@@ -102,7 +102,7 @@ func NewCmdObjectInstance(kind string) *cobra.Command {
 	cmd := &cobra.Command{
 		GroupID: GroupIDSubsystems,
 		Use:     "instance",
-		Short:   "query, action object instances",
+		Short:   "list, start, stop, ...",
 		Aliases: []string{"inst"},
 	}
 	cmd.AddGroup(
@@ -145,7 +145,7 @@ func NewCmdObjectSync(kind string) *cobra.Command {
 	return &cobra.Command{
 		GroupID: GroupIDResourceGroups,
 		Use:     "sync",
-		Short:   "list, action sync resources",
+		Short:   "list, update, ...",
 		Long:    "Replicate instance data, execute sync actions, list sync resources.",
 		Aliases: []string{"syn", "sy"},
 	}
@@ -163,7 +163,7 @@ func NewCmdObjectResource(kind string) *cobra.Command {
 	return &cobra.Command{
 		GroupID: GroupIDSubsystems,
 		Use:     "resource",
-		Short:   "list, action object instance resources",
+		Short:   "list, start, stop, ...",
 		Aliases: []string{"res"},
 	}
 }

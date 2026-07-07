@@ -9,6 +9,8 @@ func init() {
 	cmdObjectCollector := commoncmd.NewCmdObjectCollector(kind)
 	cmdObjectCollectorTag := newCmdObjectCollectorTag(kind)
 	cmdObjectConfig := commoncmd.NewCmdObjectConfig(kind)
+	cmdObjectVolume := commoncmd.NewCmdObjectVolume(kind)
+	cmdObjectDisk := commoncmd.NewCmdObjectDisk(kind)
 	cmdObjectEdit := newCmdObjectEdit(kind)
 	cmdObjectInstance := commoncmd.NewCmdObjectInstance(kind)
 	cmdObjectInstanceDevice := commoncmd.NewCmdObjectInstanceDevice(kind)
@@ -37,6 +39,8 @@ func init() {
 	cmdObject.AddCommand(
 		cmdObjectCollector,
 		cmdObjectConfig,
+		cmdObjectVolume,
+		cmdObjectDisk,
 		cmdObjectEdit,
 		cmdObjectInstance,
 		cmdObjectPG,
@@ -73,6 +77,12 @@ func init() {
 		newCmdObjectUnset(kind),
 		newCmdObjectUpdate(kind),
 		newCmdTUI(kind),
+	)
+	cmdObjectVolume.AddCommand(
+		newCmdObjectVolumeList(kind),
+	)
+	cmdObjectDisk.AddCommand(
+		newCmdObjectDiskList(kind),
 	)
 	cmdObjectCollector.AddCommand(
 		cmdObjectCollectorTag,

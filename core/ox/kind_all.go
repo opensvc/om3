@@ -23,6 +23,12 @@ func init() {
 	cmdObjectSet := newCmdObjectSet(kind)
 	cmdObjectConfig := commoncmd.NewCmdObjectConfig(kind)
 	cmdObjectContainer := commoncmd.NewCmdObjectContainer(kind)
+	cmdObjectIP := commoncmd.NewCmdObjectIP(kind)
+	cmdObjectFS := commoncmd.NewCmdObjectFS(kind)
+	cmdObjectVolume := commoncmd.NewCmdObjectVolume(kind)
+	cmdObjectDisk := commoncmd.NewCmdObjectDisk(kind)
+	cmdObjectShare := commoncmd.NewCmdObjectShare(kind)
+	cmdObjectApp := commoncmd.NewCmdObjectApp(kind)
 	cmdObjectTask := commoncmd.NewCmdObjectTask(kind)
 	cmdObjectPrint := newCmdObjectPrint(kind)
 	cmdObjectPrintConfig := newCmdObjectPrintConfig(kind)
@@ -46,6 +52,12 @@ func init() {
 		cmdObjectCompliance,
 		cmdObjectConfig,
 		cmdObjectContainer,
+		cmdObjectIP,
+		cmdObjectFS,
+		cmdObjectVolume,
+		cmdObjectDisk,
+		cmdObjectShare,
+		cmdObjectApp,
 		cmdObjectTask,
 		cmdObjectEdit,
 		cmdObjectInstance,
@@ -158,6 +170,24 @@ func init() {
 		newCmdObjectContainerEnter(kind),
 		newCmdObjectContainerLogs(kind),
 		newCmdObjectContainerList(kind),
+	)
+	cmdObjectIP.AddCommand(
+		newCmdObjectIPList(kind),
+	)
+	cmdObjectFS.AddCommand(
+		newCmdObjectFSList(kind),
+	)
+	cmdObjectVolume.AddCommand(
+		newCmdObjectVolumeList(kind),
+	)
+	cmdObjectDisk.AddCommand(
+		newCmdObjectDiskList(kind),
+	)
+	cmdObjectShare.AddCommand(
+		newCmdObjectShareList(kind),
+	)
+	cmdObjectApp.AddCommand(
+		newCmdObjectAppList(kind),
 	)
 	cmdObjectTask.AddCommand(
 		newCmdObjectTaskList(kind),

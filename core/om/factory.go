@@ -2124,6 +2124,8 @@ func newCmdObjectContainerEnter(kind string) *cobra.Command {
 		RunE: func(cmd *cobra.Command, args []string) error {
 			if len(args) > 0 {
 				options.RID = "container#" + args[0]
+			} else if options.RID == "" {
+				options.RID = "container"
 			}
 			return options.Run(kind)
 		},
@@ -2145,6 +2147,8 @@ func newCmdObjectContainerLogs(kind string) *cobra.Command {
 		RunE: func(cmd *cobra.Command, args []string) error {
 			if len(args) > 0 {
 				options.RID = "container#" + args[0]
+			} else if options.RID == "" {
+				options.RID = "container"
 			}
 			return options.Run(kind)
 		},
@@ -2175,6 +2179,150 @@ func newCmdObjectContainerList(kind string) *cobra.Command {
 	return cmd
 }
 
+func newCmdObjectIPList(kind string) *cobra.Command {
+	var options commands.CmdObjectResourceList
+	options.RID = "ip"
+	cmd := &cobra.Command{
+		Use:     "list",
+		Aliases: []string{"ls"},
+		Short:   "list ip resources",
+		Long:    "List ip resources. Equivalent to 'resource ls --rid ip'.",
+		RunE: func(cmd *cobra.Command, args []string) error {
+			return options.Run(kind)
+		},
+	}
+	flags := cmd.Flags()
+	addFlagsGlobal(flags, &options.OptsGlobal)
+	commoncmd.FlagNodeSelector(flags, &options.NodeSelector)
+	return cmd
+}
+
+func newCmdObjectFSList(kind string) *cobra.Command {
+	var options commands.CmdObjectResourceList
+	options.RID = "fs"
+	cmd := &cobra.Command{
+		Use:     "list",
+		Aliases: []string{"ls"},
+		Short:   "list fs resources",
+		Long:    "List fs resources. Equivalent to 'resource ls --rid fs'.",
+		RunE: func(cmd *cobra.Command, args []string) error {
+			return options.Run(kind)
+		},
+	}
+	flags := cmd.Flags()
+	addFlagsGlobal(flags, &options.OptsGlobal)
+	commoncmd.FlagNodeSelector(flags, &options.NodeSelector)
+	return cmd
+}
+
+func newCmdObjectVolumeList(kind string) *cobra.Command {
+	var options commands.CmdObjectResourceList
+	options.RID = "volume"
+	cmd := &cobra.Command{
+		Use:     "list",
+		Aliases: []string{"ls"},
+		Short:   "list volume resources",
+		Long:    "List volume resources. Equivalent to 'resource ls --rid volume'.",
+		RunE: func(cmd *cobra.Command, args []string) error {
+			return options.Run(kind)
+		},
+	}
+	flags := cmd.Flags()
+	addFlagsGlobal(flags, &options.OptsGlobal)
+	commoncmd.FlagNodeSelector(flags, &options.NodeSelector)
+	return cmd
+}
+
+func newCmdObjectDiskList(kind string) *cobra.Command {
+	var options commands.CmdObjectResourceList
+	options.RID = "disk"
+	cmd := &cobra.Command{
+		Use:     "list",
+		Aliases: []string{"ls"},
+		Short:   "list disk resources",
+		Long:    "List disk resources. Equivalent to 'resource ls --rid disk'.",
+		RunE: func(cmd *cobra.Command, args []string) error {
+			return options.Run(kind)
+		},
+	}
+	flags := cmd.Flags()
+	addFlagsGlobal(flags, &options.OptsGlobal)
+	commoncmd.FlagNodeSelector(flags, &options.NodeSelector)
+	return cmd
+}
+
+func newCmdObjectShareList(kind string) *cobra.Command {
+	var options commands.CmdObjectResourceList
+	options.RID = "share"
+	cmd := &cobra.Command{
+		Use:     "list",
+		Aliases: []string{"ls"},
+		Short:   "list share resources",
+		Long:    "List share resources. Equivalent to 'resource ls --rid share'.",
+		RunE: func(cmd *cobra.Command, args []string) error {
+			return options.Run(kind)
+		},
+	}
+	flags := cmd.Flags()
+	addFlagsGlobal(flags, &options.OptsGlobal)
+	commoncmd.FlagNodeSelector(flags, &options.NodeSelector)
+	return cmd
+}
+
+func newCmdObjectAppList(kind string) *cobra.Command {
+	var options commands.CmdObjectResourceList
+	options.RID = "app"
+	cmd := &cobra.Command{
+		Use:     "list",
+		Aliases: []string{"ls"},
+		Short:   "list app resources",
+		Long:    "List app resources. Equivalent to 'resource ls --rid app'.",
+		RunE: func(cmd *cobra.Command, args []string) error {
+			return options.Run(kind)
+		},
+	}
+	flags := cmd.Flags()
+	addFlagsGlobal(flags, &options.OptsGlobal)
+	commoncmd.FlagNodeSelector(flags, &options.NodeSelector)
+	return cmd
+}
+
+func newCmdObjectDriverList(kind string) *cobra.Command {
+	var options commands.CmdObjectResourceList
+	options.RID = "driver"
+	cmd := &cobra.Command{
+		Use:     "list",
+		Aliases: []string{"ls"},
+		Short:   "list driver resources",
+		Long:    "List driver resources. Equivalent to 'resource ls --rid driver'.",
+		RunE: func(cmd *cobra.Command, args []string) error {
+			return options.Run(kind)
+		},
+	}
+	flags := cmd.Flags()
+	addFlagsGlobal(flags, &options.OptsGlobal)
+	commoncmd.FlagNodeSelector(flags, &options.NodeSelector)
+	return cmd
+}
+
+func newCmdObjectGroupsList(kind string) *cobra.Command {
+	var options commands.CmdObjectResourceList
+	options.RID = "groups"
+	cmd := &cobra.Command{
+		Use:     "list",
+		Aliases: []string{"ls"},
+		Short:   "list groups resources",
+		Long:    "List groups resources. Equivalent to 'resource ls --rid groups'.",
+		RunE: func(cmd *cobra.Command, args []string) error {
+			return options.Run(kind)
+		},
+	}
+	flags := cmd.Flags()
+	addFlagsGlobal(flags, &options.OptsGlobal)
+	commoncmd.FlagNodeSelector(flags, &options.NodeSelector)
+	return cmd
+}
+
 func newCmdObjectContainerStart(kind string) *cobra.Command {
 	var options commands.CmdObjectInstanceStart
 	cmd := &cobra.Command{
@@ -2185,6 +2333,8 @@ func newCmdObjectContainerStart(kind string) *cobra.Command {
 		RunE: func(cmd *cobra.Command, args []string) error {
 			if len(args) > 0 {
 				options.RID = "container#" + args[0]
+			} else if options.RID == "" {
+				options.RID = "container"
 			}
 			return options.Run(kind)
 		},
@@ -2214,6 +2364,8 @@ func newCmdObjectContainerStop(kind string) *cobra.Command {
 		RunE: func(cmd *cobra.Command, args []string) error {
 			if len(args) > 0 {
 				options.RID = "container#" + args[0]
+			} else if options.RID == "" {
+				options.RID = "container"
 			}
 			return options.Run(kind)
 		},
@@ -2243,6 +2395,8 @@ func newCmdObjectContainerRestart(kind string) *cobra.Command {
 		RunE: func(cmd *cobra.Command, args []string) error {
 			if len(args) > 0 {
 				options.RID = "container#" + args[0]
+			} else if options.RID == "" {
+				options.RID = "container"
 			}
 			return options.Run(kind)
 		},
@@ -2272,6 +2426,8 @@ func newCmdObjectContainerProvision(kind string) *cobra.Command {
 		RunE: func(cmd *cobra.Command, args []string) error {
 			if len(args) > 0 {
 				options.RID = "container#" + args[0]
+			} else if options.RID == "" {
+				options.RID = "container"
 			}
 			return options.Run(kind)
 		},
@@ -2301,6 +2457,8 @@ func newCmdObjectContainerUnprovision(kind string) *cobra.Command {
 		RunE: func(cmd *cobra.Command, args []string) error {
 			if len(args) > 0 {
 				options.RID = "container#" + args[0]
+			} else if options.RID == "" {
+				options.RID = "container"
 			}
 			return options.Run(kind)
 		},
@@ -2329,6 +2487,8 @@ func newCmdObjectIPStart(kind string) *cobra.Command {
 		RunE: func(cmd *cobra.Command, args []string) error {
 			if len(args) > 0 {
 				options.RID = "ip#" + args[0]
+			} else if options.RID == "" {
+				options.RID = "ip"
 			}
 			return options.Run(kind)
 		},
@@ -2358,6 +2518,8 @@ func newCmdObjectIPStop(kind string) *cobra.Command {
 		RunE: func(cmd *cobra.Command, args []string) error {
 			if len(args) > 0 {
 				options.RID = "ip#" + args[0]
+			} else if options.RID == "" {
+				options.RID = "ip"
 			}
 			return options.Run(kind)
 		},
@@ -2387,6 +2549,8 @@ func newCmdObjectIPRestart(kind string) *cobra.Command {
 		RunE: func(cmd *cobra.Command, args []string) error {
 			if len(args) > 0 {
 				options.RID = "ip#" + args[0]
+			} else if options.RID == "" {
+				options.RID = "ip"
 			}
 			return options.Run(kind)
 		},
@@ -2416,6 +2580,8 @@ func newCmdObjectIPProvision(kind string) *cobra.Command {
 		RunE: func(cmd *cobra.Command, args []string) error {
 			if len(args) > 0 {
 				options.RID = "ip#" + args[0]
+			} else if options.RID == "" {
+				options.RID = "ip"
 			}
 			return options.Run(kind)
 		},
@@ -2445,6 +2611,8 @@ func newCmdObjectIPUnprovision(kind string) *cobra.Command {
 		RunE: func(cmd *cobra.Command, args []string) error {
 			if len(args) > 0 {
 				options.RID = "ip#" + args[0]
+			} else if options.RID == "" {
+				options.RID = "ip"
 			}
 			return options.Run(kind)
 		},
@@ -2473,6 +2641,8 @@ func newCmdObjectFSStart(kind string) *cobra.Command {
 		RunE: func(cmd *cobra.Command, args []string) error {
 			if len(args) > 0 {
 				options.RID = "fs#" + args[0]
+			} else if options.RID == "" {
+				options.RID = "fs"
 			}
 			return options.Run(kind)
 		},
@@ -2502,6 +2672,8 @@ func newCmdObjectFSStop(kind string) *cobra.Command {
 		RunE: func(cmd *cobra.Command, args []string) error {
 			if len(args) > 0 {
 				options.RID = "fs#" + args[0]
+			} else if options.RID == "" {
+				options.RID = "fs"
 			}
 			return options.Run(kind)
 		},
@@ -2531,6 +2703,8 @@ func newCmdObjectFSRestart(kind string) *cobra.Command {
 		RunE: func(cmd *cobra.Command, args []string) error {
 			if len(args) > 0 {
 				options.RID = "fs#" + args[0]
+			} else if options.RID == "" {
+				options.RID = "fs"
 			}
 			return options.Run(kind)
 		},
@@ -2560,6 +2734,8 @@ func newCmdObjectFSProvision(kind string) *cobra.Command {
 		RunE: func(cmd *cobra.Command, args []string) error {
 			if len(args) > 0 {
 				options.RID = "fs#" + args[0]
+			} else if options.RID == "" {
+				options.RID = "fs"
 			}
 			return options.Run(kind)
 		},
@@ -2589,6 +2765,8 @@ func newCmdObjectFSUnprovision(kind string) *cobra.Command {
 		RunE: func(cmd *cobra.Command, args []string) error {
 			if len(args) > 0 {
 				options.RID = "fs#" + args[0]
+			} else if options.RID == "" {
+				options.RID = "fs"
 			}
 			return options.Run(kind)
 		},
@@ -2617,6 +2795,8 @@ func newCmdObjectVolumeStart(kind string) *cobra.Command {
 		RunE: func(cmd *cobra.Command, args []string) error {
 			if len(args) > 0 {
 				options.RID = "volume#" + args[0]
+			} else if options.RID == "" {
+				options.RID = "volume"
 			}
 			return options.Run(kind)
 		},
@@ -2646,6 +2826,8 @@ func newCmdObjectVolumeStop(kind string) *cobra.Command {
 		RunE: func(cmd *cobra.Command, args []string) error {
 			if len(args) > 0 {
 				options.RID = "volume#" + args[0]
+			} else if options.RID == "" {
+				options.RID = "volume"
 			}
 			return options.Run(kind)
 		},
@@ -2675,6 +2857,8 @@ func newCmdObjectVolumeRestart(kind string) *cobra.Command {
 		RunE: func(cmd *cobra.Command, args []string) error {
 			if len(args) > 0 {
 				options.RID = "volume#" + args[0]
+			} else if options.RID == "" {
+				options.RID = "volume"
 			}
 			return options.Run(kind)
 		},
@@ -2704,6 +2888,8 @@ func newCmdObjectVolumeProvision(kind string) *cobra.Command {
 		RunE: func(cmd *cobra.Command, args []string) error {
 			if len(args) > 0 {
 				options.RID = "volume#" + args[0]
+			} else if options.RID == "" {
+				options.RID = "volume"
 			}
 			return options.Run(kind)
 		},
@@ -2733,6 +2919,8 @@ func newCmdObjectVolumeUnprovision(kind string) *cobra.Command {
 		RunE: func(cmd *cobra.Command, args []string) error {
 			if len(args) > 0 {
 				options.RID = "volume#" + args[0]
+			} else if options.RID == "" {
+				options.RID = "volume"
 			}
 			return options.Run(kind)
 		},
@@ -2761,6 +2949,8 @@ func newCmdObjectDiskStart(kind string) *cobra.Command {
 		RunE: func(cmd *cobra.Command, args []string) error {
 			if len(args) > 0 {
 				options.RID = "disk#" + args[0]
+			} else if options.RID == "" {
+				options.RID = "disk"
 			}
 			return options.Run(kind)
 		},
@@ -2790,6 +2980,8 @@ func newCmdObjectDiskStop(kind string) *cobra.Command {
 		RunE: func(cmd *cobra.Command, args []string) error {
 			if len(args) > 0 {
 				options.RID = "disk#" + args[0]
+			} else if options.RID == "" {
+				options.RID = "disk"
 			}
 			return options.Run(kind)
 		},
@@ -2819,6 +3011,8 @@ func newCmdObjectDiskRestart(kind string) *cobra.Command {
 		RunE: func(cmd *cobra.Command, args []string) error {
 			if len(args) > 0 {
 				options.RID = "disk#" + args[0]
+			} else if options.RID == "" {
+				options.RID = "disk"
 			}
 			return options.Run(kind)
 		},
@@ -2848,6 +3042,8 @@ func newCmdObjectDiskProvision(kind string) *cobra.Command {
 		RunE: func(cmd *cobra.Command, args []string) error {
 			if len(args) > 0 {
 				options.RID = "disk#" + args[0]
+			} else if options.RID == "" {
+				options.RID = "disk"
 			}
 			return options.Run(kind)
 		},
@@ -2877,6 +3073,8 @@ func newCmdObjectDiskUnprovision(kind string) *cobra.Command {
 		RunE: func(cmd *cobra.Command, args []string) error {
 			if len(args) > 0 {
 				options.RID = "disk#" + args[0]
+			} else if options.RID == "" {
+				options.RID = "disk"
 			}
 			return options.Run(kind)
 		},
@@ -2905,6 +3103,8 @@ func newCmdObjectShareStart(kind string) *cobra.Command {
 		RunE: func(cmd *cobra.Command, args []string) error {
 			if len(args) > 0 {
 				options.RID = "share#" + args[0]
+			} else if options.RID == "" {
+				options.RID = "share"
 			}
 			return options.Run(kind)
 		},
@@ -2934,6 +3134,8 @@ func newCmdObjectShareStop(kind string) *cobra.Command {
 		RunE: func(cmd *cobra.Command, args []string) error {
 			if len(args) > 0 {
 				options.RID = "share#" + args[0]
+			} else if options.RID == "" {
+				options.RID = "share"
 			}
 			return options.Run(kind)
 		},
@@ -2963,6 +3165,8 @@ func newCmdObjectShareRestart(kind string) *cobra.Command {
 		RunE: func(cmd *cobra.Command, args []string) error {
 			if len(args) > 0 {
 				options.RID = "share#" + args[0]
+			} else if options.RID == "" {
+				options.RID = "share"
 			}
 			return options.Run(kind)
 		},
@@ -2992,6 +3196,8 @@ func newCmdObjectShareProvision(kind string) *cobra.Command {
 		RunE: func(cmd *cobra.Command, args []string) error {
 			if len(args) > 0 {
 				options.RID = "share#" + args[0]
+			} else if options.RID == "" {
+				options.RID = "share"
 			}
 			return options.Run(kind)
 		},
@@ -3021,6 +3227,8 @@ func newCmdObjectShareUnprovision(kind string) *cobra.Command {
 		RunE: func(cmd *cobra.Command, args []string) error {
 			if len(args) > 0 {
 				options.RID = "share#" + args[0]
+			} else if options.RID == "" {
+				options.RID = "share"
 			}
 			return options.Run(kind)
 		},
@@ -3049,6 +3257,8 @@ func newCmdObjectAppStart(kind string) *cobra.Command {
 		RunE: func(cmd *cobra.Command, args []string) error {
 			if len(args) > 0 {
 				options.RID = "app#" + args[0]
+			} else if options.RID == "" {
+				options.RID = "app"
 			}
 			return options.Run(kind)
 		},
@@ -3078,6 +3288,8 @@ func newCmdObjectAppStop(kind string) *cobra.Command {
 		RunE: func(cmd *cobra.Command, args []string) error {
 			if len(args) > 0 {
 				options.RID = "app#" + args[0]
+			} else if options.RID == "" {
+				options.RID = "app"
 			}
 			return options.Run(kind)
 		},
@@ -3107,6 +3319,8 @@ func newCmdObjectAppRestart(kind string) *cobra.Command {
 		RunE: func(cmd *cobra.Command, args []string) error {
 			if len(args) > 0 {
 				options.RID = "app#" + args[0]
+			} else if options.RID == "" {
+				options.RID = "app"
 			}
 			return options.Run(kind)
 		},
@@ -3136,6 +3350,8 @@ func newCmdObjectTaskRun(kind string) *cobra.Command {
 		RunE: func(cmd *cobra.Command, args []string) error {
 			if len(args) > 0 {
 				options.RID = "task#" + args[0]
+			} else if options.RID == "" {
+				options.RID = "task"
 			}
 			return options.Run(kind)
 		},
@@ -3166,6 +3382,8 @@ func newCmdObjectSyncUpdate(kind string) *cobra.Command {
 		RunE: func(cmd *cobra.Command, args []string) error {
 			if len(args) > 0 {
 				options.RID = "sync#" + args[0]
+			} else if options.RID == "" {
+				options.RID = "sync"
 			}
 			return options.Run(kind)
 		},
@@ -3191,6 +3409,8 @@ func newCmdObjectSyncFull(kind string) *cobra.Command {
 		RunE: func(cmd *cobra.Command, args []string) error {
 			if len(args) > 0 {
 				options.RID = "sync#" + args[0]
+			} else if options.RID == "" {
+				options.RID = "sync"
 			}
 			return options.Run(kind)
 		},
@@ -3216,6 +3436,8 @@ func newCmdObjectSyncIngest(kind string) *cobra.Command {
 		RunE: func(cmd *cobra.Command, args []string) error {
 			if len(args) > 0 {
 				options.RID = "sync#" + args[0]
+			} else if options.RID == "" {
+				options.RID = "sync"
 			}
 			return options.Run(kind)
 		},
@@ -3239,6 +3461,8 @@ func newCmdObjectSyncResync(kind string) *cobra.Command {
 		RunE: func(cmd *cobra.Command, args []string) error {
 			if len(args) > 0 {
 				options.RID = "sync#" + args[0]
+			} else if options.RID == "" {
+				options.RID = "sync"
 			}
 			return options.Run(kind)
 		},
@@ -3262,6 +3486,8 @@ func newCmdObjectSyncSplit(kind string) *cobra.Command {
 		RunE: func(cmd *cobra.Command, args []string) error {
 			if len(args) > 0 {
 				options.RID = "sync#" + args[0]
+			} else if options.RID == "" {
+				options.RID = "sync"
 			}
 			return options.Run(kind)
 		},

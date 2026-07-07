@@ -1967,6 +1967,150 @@ func newCmdObjectContainerList(kind string) *cobra.Command {
 	return cmd
 }
 
+func newCmdObjectIPList(kind string) *cobra.Command {
+	var options commands.CmdObjectResourceList
+	options.RID = "ip"
+	cmd := &cobra.Command{
+		Use:     "list",
+		Aliases: []string{"ls"},
+		Short:   "list ip resources",
+		Long:    "List ip resources. Equivalent to 'resource ls --rid ip'.",
+		RunE: func(cmd *cobra.Command, args []string) error {
+			return options.Run(kind)
+		},
+	}
+	flags := cmd.Flags()
+	addFlagsGlobal(flags, &options.OptsGlobal)
+	commoncmd.FlagNodeSelector(flags, &options.NodeSelector)
+	return cmd
+}
+
+func newCmdObjectFSList(kind string) *cobra.Command {
+	var options commands.CmdObjectResourceList
+	options.RID = "fs"
+	cmd := &cobra.Command{
+		Use:     "list",
+		Aliases: []string{"ls"},
+		Short:   "list fs resources",
+		Long:    "List fs resources. Equivalent to 'resource ls --rid fs'.",
+		RunE: func(cmd *cobra.Command, args []string) error {
+			return options.Run(kind)
+		},
+	}
+	flags := cmd.Flags()
+	addFlagsGlobal(flags, &options.OptsGlobal)
+	commoncmd.FlagNodeSelector(flags, &options.NodeSelector)
+	return cmd
+}
+
+func newCmdObjectVolumeList(kind string) *cobra.Command {
+	var options commands.CmdObjectResourceList
+	options.RID = "volume"
+	cmd := &cobra.Command{
+		Use:     "list",
+		Aliases: []string{"ls"},
+		Short:   "list volume resources",
+		Long:    "List volume resources. Equivalent to 'resource ls --rid volume'.",
+		RunE: func(cmd *cobra.Command, args []string) error {
+			return options.Run(kind)
+		},
+	}
+	flags := cmd.Flags()
+	addFlagsGlobal(flags, &options.OptsGlobal)
+	commoncmd.FlagNodeSelector(flags, &options.NodeSelector)
+	return cmd
+}
+
+func newCmdObjectDiskList(kind string) *cobra.Command {
+	var options commands.CmdObjectResourceList
+	options.RID = "disk"
+	cmd := &cobra.Command{
+		Use:     "list",
+		Aliases: []string{"ls"},
+		Short:   "list disk resources",
+		Long:    "List disk resources. Equivalent to 'resource ls --rid disk'.",
+		RunE: func(cmd *cobra.Command, args []string) error {
+			return options.Run(kind)
+		},
+	}
+	flags := cmd.Flags()
+	addFlagsGlobal(flags, &options.OptsGlobal)
+	commoncmd.FlagNodeSelector(flags, &options.NodeSelector)
+	return cmd
+}
+
+func newCmdObjectShareList(kind string) *cobra.Command {
+	var options commands.CmdObjectResourceList
+	options.RID = "share"
+	cmd := &cobra.Command{
+		Use:     "list",
+		Aliases: []string{"ls"},
+		Short:   "list share resources",
+		Long:    "List share resources. Equivalent to 'resource ls --rid share'.",
+		RunE: func(cmd *cobra.Command, args []string) error {
+			return options.Run(kind)
+		},
+	}
+	flags := cmd.Flags()
+	addFlagsGlobal(flags, &options.OptsGlobal)
+	commoncmd.FlagNodeSelector(flags, &options.NodeSelector)
+	return cmd
+}
+
+func newCmdObjectAppList(kind string) *cobra.Command {
+	var options commands.CmdObjectResourceList
+	options.RID = "app"
+	cmd := &cobra.Command{
+		Use:     "list",
+		Aliases: []string{"ls"},
+		Short:   "list app resources",
+		Long:    "List app resources. Equivalent to 'resource ls --rid app'.",
+		RunE: func(cmd *cobra.Command, args []string) error {
+			return options.Run(kind)
+		},
+	}
+	flags := cmd.Flags()
+	addFlagsGlobal(flags, &options.OptsGlobal)
+	commoncmd.FlagNodeSelector(flags, &options.NodeSelector)
+	return cmd
+}
+
+func newCmdObjectDriverList(kind string) *cobra.Command {
+	var options commands.CmdObjectResourceList
+	options.RID = "driver"
+	cmd := &cobra.Command{
+		Use:     "list",
+		Aliases: []string{"ls"},
+		Short:   "list driver resources",
+		Long:    "List driver resources. Equivalent to 'resource ls --rid driver'.",
+		RunE: func(cmd *cobra.Command, args []string) error {
+			return options.Run(kind)
+		},
+	}
+	flags := cmd.Flags()
+	addFlagsGlobal(flags, &options.OptsGlobal)
+	commoncmd.FlagNodeSelector(flags, &options.NodeSelector)
+	return cmd
+}
+
+func newCmdObjectGroupsList(kind string) *cobra.Command {
+	var options commands.CmdObjectResourceList
+	options.RID = "groups"
+	cmd := &cobra.Command{
+		Use:     "list",
+		Aliases: []string{"ls"},
+		Short:   "list groups resources",
+		Long:    "List groups resources. Equivalent to 'resource ls --rid groups'.",
+		RunE: func(cmd *cobra.Command, args []string) error {
+			return options.Run(kind)
+		},
+	}
+	flags := cmd.Flags()
+	addFlagsGlobal(flags, &options.OptsGlobal)
+	commoncmd.FlagNodeSelector(flags, &options.NodeSelector)
+	return cmd
+}
+
 func newCmdObjectContainerStart(kind string) *cobra.Command {
 	var options commands.CmdObjectInstanceStart
 	cmd := &cobra.Command{

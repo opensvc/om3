@@ -121,6 +121,7 @@ func init() {
 		newCmdObjectContainerUnprovision(kind),
 	)
 	cmdObjectIP.AddCommand(
+		newCmdObjectIPList(kind),
 		newCmdObjectIPStart(kind),
 		newCmdObjectIPStop(kind),
 		newCmdObjectIPRestart(kind),
@@ -128,6 +129,7 @@ func init() {
 		newCmdObjectIPUnprovision(kind),
 	)
 	cmdObjectFS.AddCommand(
+		newCmdObjectFSList(kind),
 		newCmdObjectFSStart(kind),
 		newCmdObjectFSStop(kind),
 		newCmdObjectFSRestart(kind),
@@ -135,6 +137,7 @@ func init() {
 		newCmdObjectFSUnprovision(kind),
 	)
 	cmdObjectVolume.AddCommand(
+		newCmdObjectVolumeList(kind),
 		newCmdObjectVolumeStart(kind),
 		newCmdObjectVolumeStop(kind),
 		newCmdObjectVolumeRestart(kind),
@@ -142,6 +145,7 @@ func init() {
 		newCmdObjectVolumeUnprovision(kind),
 	)
 	cmdObjectDisk.AddCommand(
+		newCmdObjectDiskList(kind),
 		newCmdObjectDiskStart(kind),
 		newCmdObjectDiskStop(kind),
 		newCmdObjectDiskRestart(kind),
@@ -149,6 +153,7 @@ func init() {
 		newCmdObjectDiskUnprovision(kind),
 	)
 	cmdObjectShare.AddCommand(
+		newCmdObjectShareList(kind),
 		newCmdObjectShareStart(kind),
 		newCmdObjectShareStop(kind),
 		newCmdObjectShareRestart(kind),
@@ -156,6 +161,7 @@ func init() {
 		newCmdObjectShareUnprovision(kind),
 	)
 	cmdObjectApp.AddCommand(
+		newCmdObjectAppList(kind),
 		newCmdObjectAppStart(kind),
 		newCmdObjectAppStop(kind),
 		newCmdObjectAppRestart(kind),
