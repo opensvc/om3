@@ -76,6 +76,14 @@ var (
 			Scopable: true,
 			Text:     keywords.NewText(fs, "text/kw/endpoint"),
 		},
+		{
+			Attr:      "StartTimeout",
+			Converter: "duration",
+			Example:   "1m5s",
+			Option:    "start_timeout",
+			Scopable:  true,
+			Text:      keywords.NewText(fs, "text/kw/start_timeout"),
+		},
 	}
 )
 

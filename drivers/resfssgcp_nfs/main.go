@@ -57,6 +57,7 @@ type (
 		Type         string         `json:"type"`
 		MountOptions string         `json:"mnt_opt"`
 		StatTimeout  *time.Duration `json:"stat_timeout"`
+		StartTimeout *time.Duration `json:"start_timeout"`
 		Zone         string         `json:"zone"`
 		CheckRead    bool           `json:"check_read"`
 
@@ -194,6 +195,16 @@ func (t *T) configureUnderlyingFilesystem(resType string) error {
 
 // Start starts the SGCP NFS filesystem resource
 func (t *T) Start(ctx context.Context) error {
+	if t.StartTimeout != nil && *t.StartTimeout > 0 {
+		var cancel context.CancelFunc
+		ctx, cancel = context.WithTimeout(ctx, *t.StartTimeout)
+		defer cancel()
+	}
+	deadline, ok := ctx.Deadline()
+	if ok {
+		t.Log().Tracef("action context deadline: %v", deadline)
+	}
+
 	// Start the XaaS (SGCP API) part
 	if err := t.fileStart(ctx); err != nil {
 		return err
