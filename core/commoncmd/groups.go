@@ -6,6 +6,7 @@ var (
 	GroupIDOrchestratedActions = "orchestrated actions"
 	GroupIDQuery               = "query"
 	GroupIDSubsystems          = "subsystems"
+	GroupIDResourceGroups      = "resource groups"
 )
 
 func NewGroupOrchestratedActions() *cobra.Group {
@@ -26,5 +27,12 @@ func NewGroupSubsystems() *cobra.Group {
 	return &cobra.Group{
 		ID:    GroupIDSubsystems,
 		Title: "Subsystems:",
+	}
+}
+
+func NewGroupResources() *cobra.Group {
+	return &cobra.Group{
+		ID:    GroupIDResourceGroups,
+		Title: "Resource Groups:",
 	}
 }

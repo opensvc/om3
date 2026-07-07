@@ -32,76 +32,67 @@ func NewCmdObjectConfig(kind string) *cobra.Command {
 
 func NewCmdObjectContainer(kind string) *cobra.Command {
 	return &cobra.Command{
-		GroupID: GroupIDSubsystems,
+		GroupID: GroupIDResourceGroups,
 		Use:     "container",
-		Short:   "enter, stream logs",
+		Short:   "list, action container resources, enter, stream logs",
 	}
 }
 
 func NewCmdObjectIP(kind string) *cobra.Command {
 	return &cobra.Command{
-		GroupID: GroupIDSubsystems,
+		GroupID: GroupIDResourceGroups,
 		Use:     "ip",
-		Short:   "query, action ip resources",
+		Short:   "list, action ip resources",
 		Aliases: []string{"ipaddr", "address"},
 	}
 }
 
 func NewCmdObjectFS(kind string) *cobra.Command {
 	return &cobra.Command{
-		GroupID: GroupIDSubsystems,
+		GroupID: GroupIDResourceGroups,
 		Use:     "fs",
-		Short:   "query, action fs resources",
+		Short:   "list, action fs resources",
 		Aliases: []string{"filesystem"},
 	}
 }
 
 func NewCmdObjectVolume(kind string) *cobra.Command {
 	return &cobra.Command{
-		GroupID: GroupIDSubsystems,
+		GroupID: GroupIDResourceGroups,
 		Use:     "volume",
-		Short:   "query, action volume resources",
+		Short:   "list, action volume resources",
 		Aliases: []string{"vol"},
 	}
 }
 
 func NewCmdObjectDisk(kind string) *cobra.Command {
 	return &cobra.Command{
-		GroupID: GroupIDSubsystems,
+		GroupID: GroupIDResourceGroups,
 		Use:     "disk",
-		Short:   "query, action disk resources",
+		Short:   "list, action disk resources",
 	}
 }
 
 func NewCmdObjectShare(kind string) *cobra.Command {
 	return &cobra.Command{
-		GroupID: GroupIDSubsystems,
+		GroupID: GroupIDResourceGroups,
 		Use:     "share",
-		Short:   "query, action share resources",
+		Short:   "list, action share resources",
 	}
 }
 
 func NewCmdObjectApp(kind string) *cobra.Command {
 	return &cobra.Command{
-		GroupID: GroupIDSubsystems,
+		GroupID: GroupIDResourceGroups,
 		Use:     "app",
-		Short:   "query, action app resources",
+		Short:   "list, action app resources",
 		Aliases: []string{"application"},
-	}
-}
-
-func NewCmdObjectGroups(kind string) *cobra.Command {
-	return &cobra.Command{
-		GroupID: GroupIDSubsystems,
-		Use:     "groups",
-		Short:   "query, action groups resources",
-		Aliases: []string{"grp"},
 	}
 }
 
 func NewCmdObjectTask(kind string) *cobra.Command {
 	return &cobra.Command{
-		GroupID: GroupIDSubsystems,
+		GroupID: GroupIDResourceGroups,
 		Use:     "task",
 		Short:   "list, run tasks",
 	}
@@ -152,9 +143,9 @@ func NewCmdObjectSSH(kind string) *cobra.Command {
 
 func NewCmdObjectSync(kind string) *cobra.Command {
 	return &cobra.Command{
-		GroupID: GroupIDSubsystems,
+		GroupID: GroupIDResourceGroups,
 		Use:     "sync",
-		Short:   "replicate data, list sync resources",
+		Short:   "list, action sync resources",
 		Long:    "Replicate instance data, execute sync actions, list sync resources.",
 		Aliases: []string{"syn", "sy"},
 	}
@@ -172,7 +163,7 @@ func NewCmdObjectResource(kind string) *cobra.Command {
 	return &cobra.Command{
 		GroupID: GroupIDSubsystems,
 		Use:     "resource",
-		Short:   "query, action object instance resources",
+		Short:   "list, action object instance resources",
 		Aliases: []string{"res"},
 	}
 }
