@@ -8,7 +8,7 @@ import (
 func init() {
 	kind := "sec"
 
-	cmdObject := newCmdSec()
+	cmdObject := commoncmd.NewCmdSec()
 	cmdObjectCertificate := newCmdObjectCertificate(kind)
 	cmdObjectConfig := commoncmd.NewCmdObjectConfig(kind)
 	cmdObjectEdit := newCmdObjectEdit(kind)

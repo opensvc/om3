@@ -4,7 +4,7 @@ import "github.com/opensvc/om3/v3/core/commoncmd"
 
 func init() {
 	kind := ""
-	cmdObject := newCmdAll()
+	cmdObject := commoncmd.NewCmdAll()
 	cmdObjectCollector := commoncmd.NewCmdObjectCollector(kind)
 	cmdObjectCollectorTag := newCmdObjectCollectorTag(kind)
 	cmdObjectCompliance := commoncmd.NewCmdObjectCompliance(kind)

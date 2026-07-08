@@ -9,7 +9,7 @@ import (
 func init() {
 	kind := "vol"
 
-	cmdObject := newCmdVol()
+	cmdObject := commoncmd.NewCmdVol()
 	cmdObjectCollector := commoncmd.NewCmdObjectCollector(kind)
 	cmdObjectCollectorTag := newCmdObjectCollectorTag(kind)
 	cmdObjectEdit := newCmdObjectEdit(kind)

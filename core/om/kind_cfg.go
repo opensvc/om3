@@ -8,7 +8,7 @@ import (
 func init() {
 	kind := "cfg"
 
-	cmdObject := newCmdCfg()
+	cmdObject := commoncmd.NewCmdCfg()
 	cmdObjectConfig := commoncmd.NewCmdObjectConfig(kind)
 	cmdObjectEdit := newCmdObjectEdit(kind)
 	cmdObjectKey := commoncmd.NewCmdObjectKey(kind)

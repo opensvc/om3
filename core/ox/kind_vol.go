@@ -5,7 +5,7 @@ import "github.com/opensvc/om3/v3/core/commoncmd"
 func init() {
 	kind := "vol"
 
-	cmdObject := newCmdVol()
+	cmdObject := commoncmd.NewCmdVol()
 	cmdObjectCollector := commoncmd.NewCmdObjectCollector(kind)
 	cmdObjectCollectorTag := newCmdObjectCollectorTag(kind)
 	cmdObjectConfig := commoncmd.NewCmdObjectConfig(kind)

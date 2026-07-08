@@ -8,7 +8,7 @@ import (
 
 func init() {
 	kind := ""
-	cmdObject := newCmdAll()
+	cmdObject := commoncmd.NewCmdAll()
 	cmdObjectCollector := commoncmd.NewCmdObjectCollector(kind)
 	cmdObjectCollectorTag := newCmdObjectCollectorTag(kind)
 	cmdObjectCompliance := commoncmd.NewCmdObjectCompliance(kind)

@@ -1,11 +1,10 @@
 package omcmd
 
+import "github.com/opensvc/om3/v3/core/commoncmd"
+
 type (
 	// OptsGlobal contains options accepted by all actions
 	OptsGlobal struct {
-		Color           string
-		Output          string
-		ObjectSelector  string
-		IgnoreNotFound  bool
+		commoncmd.OptsGlobal
 	}
 )
