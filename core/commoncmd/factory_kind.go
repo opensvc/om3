@@ -119,3 +119,103 @@ func NewCmdNscfg() *cobra.Command {
 		Short: "manage namespace configurations",
 	}
 }
+
+// NewCmdNetwork creates the "network" command
+func NewCmdNetwork() *cobra.Command {
+	return &cobra.Command{
+		Use:     "network",
+		Short:   "manage backend networks",
+		Aliases: []string{"net"},
+		Long:    "A backend network provides ip addresses to svc objects via ip.cni resources. These addresses are automatically allocated, accessible from all cluster nodes, and resolved by the cluster dns.",
+	}
+}
+
+// NewCmdNetworkIP creates the "ip" subcommand for network
+func NewCmdNetworkIP() *cobra.Command {
+	return &cobra.Command{
+		Use:   "ip",
+		Short: "manage ip on backend networks",
+	}
+}
+
+// NewCmdPool creates the "pool" command
+func NewCmdPool() *cobra.Command {
+	return &cobra.Command{
+		Use:   "pool",
+		Short: "manage storage pools",
+		Long:  " A pool is a vol provider. Pools abstract the hardware and software specificities of the cluster infrastructure.",
+	}
+}
+
+// NewCmdPoolVolume creates the "volume" subcommand for pool
+func NewCmdPoolVolume() *cobra.Command {
+	return &cobra.Command{
+		Use:     "volume",
+		Short:   "manage storage pool volumes",
+		Aliases: []string{"vol"},
+	}
+}
+
+// NewCmdNodeCapabilities creates the "capabilities" subcommand for node
+func NewCmdNodeCapabilities() *cobra.Command {
+	return &cobra.Command{
+		GroupID: GroupIDSubsystems,
+		Use:     "capabilities",
+		Short:   "scan and list what the node is capable of",
+		Aliases: []string{"capa", "caps", "cap"},
+	}
+}
+
+// NewCmdNodeCollector creates the "collector" subcommand for node
+func NewCmdNodeCollector() *cobra.Command {
+	return &cobra.Command{
+		GroupID: GroupIDSubsystems,
+		Use:     "collector",
+		Short:   "node collector data management commands",
+	}
+}
+
+// NewCmdNodeCollectorTag creates the "tag" subcommand for node collector
+func NewCmdNodeCollectorTag() *cobra.Command {
+	return &cobra.Command{
+		GroupID: GroupIDSubsystems,
+		Use:     "tag",
+		Short:   "collector tags management commands",
+	}
+}
+
+// NewCmdNodeCompliance creates the "compliance" subcommand for node
+func NewCmdNodeCompliance() *cobra.Command {
+	return &cobra.Command{
+		GroupID: GroupIDSubsystems,
+		Use:     "compliance",
+		Short:   "node configuration manager commands",
+	}
+}
+
+// NewCmdNodeSCSI creates the "scsi" subcommand for node
+func NewCmdNodeSCSI() *cobra.Command {
+	return &cobra.Command{
+		GroupID: GroupIDSubsystems,
+		Use:     "scsi",
+		Short:   "scsi commands",
+	}
+}
+
+// NewCmdNodeRelay creates the "relay" subcommand for node
+func NewCmdNodeRelay() *cobra.Command {
+	return &cobra.Command{
+		GroupID: GroupIDSubsystems,
+		Use:     "relay",
+		Short:   "relay commands",
+	}
+}
+
+// NewCmdNodeSSH creates the "ssh" subcommand for node
+func NewCmdNodeSSH() *cobra.Command {
+	return &cobra.Command{
+		GroupID: GroupIDSubsystems,
+		Use:     "ssh",
+		Short:   "ssh commands",
+	}
+}

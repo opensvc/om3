@@ -8,50 +8,28 @@ import (
 
 var (
 	cmdNode             = commoncmd.NewCmdNode()
-	cmdNodeCapabilities = &cobra.Command{
-		GroupID: commoncmd.GroupIDSubsystems,
-		Use:     "capabilities",
-		Short:   "scan and list what the node is capable of",
-		Aliases: []string{"capa", "caps", "cap"},
-	}
+	cmdNodeCapabilities = commoncmd.NewCmdNodeCapabilities()
 	cmdNodeCollector = &cobra.Command{
 		GroupID: commoncmd.GroupIDSubsystems,
 		Use:     "collector",
 		Short:   "node collector data management commands",
 		Aliases: []string{"coll"},
 	}
-	cmdNodeSCSI = &cobra.Command{
-		GroupID: commoncmd.GroupIDSubsystems,
-		Use:     "scsi",
-		Short:   "scsi commands",
-	}
+	cmdNodeSCSI = commoncmd.NewCmdNodeSCSI()
 	cmdNodeCollectorTag = &cobra.Command{
 		GroupID: commoncmd.GroupIDSubsystems,
 		Use:     "tag",
 		Short:   "collector tags commands",
 	}
-	cmdNodeCompliance = &cobra.Command{
-		GroupID: commoncmd.GroupIDSubsystems,
-		Use:     "compliance",
-		Short:   "node configuration manager commands",
-		Aliases: []string{"comp"},
-	}
-	cmdNodeRelay = &cobra.Command{
-		GroupID: commoncmd.GroupIDSubsystems,
-		Use:     "relay",
-		Short:   "relay commands",
-	}
+	cmdNodeCompliance = commoncmd.NewCmdNodeCompliance()
+	cmdNodeRelay     = commoncmd.NewCmdNodeRelay()
 	cmdNodeSchedule = &cobra.Command{
 		GroupID: commoncmd.GroupIDSubsystems,
 		Use:     "schedule",
 		Short:   "scheduler commands",
 		Aliases: []string{"sched"},
 	}
-	cmdNodeSSH = &cobra.Command{
-		GroupID: commoncmd.GroupIDSubsystems,
-		Use:     "ssh",
-		Short:   "ssh commands",
-	}
+	cmdNodeSSH = commoncmd.NewCmdNodeSSH()
 	cmdNodeConfig = &cobra.Command{
 		GroupID: commoncmd.GroupIDSubsystems,
 		Use:     "config",
