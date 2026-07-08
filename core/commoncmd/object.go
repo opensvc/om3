@@ -159,13 +159,30 @@ func NewCmdObjectInstanceSync(kind string) *cobra.Command {
 	}
 }
 
+func NewCmdObjectResourceSync(kind string) *cobra.Command {
+	cmd := &cobra.Command{
+		GroupID: GroupIDSubsystems,
+		Use:     "sync",
+		Short:   "replicate object instance data",
+	}
+	cmd.AddGroup(
+		NewGroupSubsystems(),
+	)
+	return cmd
+}
+
 func NewCmdObjectResource(kind string) *cobra.Command {
-	return &cobra.Command{
+	cmd := &cobra.Command{
 		GroupID: GroupIDSubsystems,
 		Use:     "resource",
 		Short:   "list, start, stop, ...",
 		Aliases: []string{"res"},
 	}
+	cmd.AddGroup(
+		NewGroupQuery(),
+		NewGroupSubsystems(),
+	)
+	return cmd
 }
 
 func NewCmdObjectResourceInfo(kind string) *cobra.Command {

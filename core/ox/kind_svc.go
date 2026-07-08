@@ -138,23 +138,31 @@ func init() {
 	)
 	cmdObjectVolume.AddCommand(
 		newCmdObjectVolumeList(kind),
+		newCmdObjectVolumeProvision(kind),
+		newCmdObjectVolumeShutdown(kind),
 		newCmdObjectVolumeStart(kind),
+		newCmdObjectVolumeStartStandby(kind),
 		newCmdObjectVolumeStop(kind),
 		newCmdObjectVolumeRestart(kind),
-		newCmdObjectVolumeProvision(kind),
 		newCmdObjectVolumeUnprovision(kind),
 	)
 	cmdObjectDisk.AddCommand(
 		newCmdObjectDiskList(kind),
+		newCmdObjectDiskProvision(kind),
+		newCmdObjectDiskPRStart(kind),
+		newCmdObjectDiskShutdown(kind),
+		newCmdObjectDiskPRStop(kind),
 		newCmdObjectDiskStart(kind),
+		newCmdObjectDiskStartStandby(kind),
 		newCmdObjectDiskStop(kind),
 		newCmdObjectDiskRestart(kind),
-		newCmdObjectDiskProvision(kind),
 		newCmdObjectDiskUnprovision(kind),
 	)
 	cmdObjectShare.AddCommand(
 		newCmdObjectShareList(kind),
+		newCmdObjectShareShutdown(kind),
 		newCmdObjectShareStart(kind),
+		newCmdObjectShareStartStandby(kind),
 		newCmdObjectShareStop(kind),
 		newCmdObjectShareRestart(kind),
 		newCmdObjectShareProvision(kind),
@@ -162,7 +170,9 @@ func init() {
 	)
 	cmdObjectApp.AddCommand(
 		newCmdObjectAppList(kind),
+		newCmdObjectAppShutdown(kind),
 		newCmdObjectAppStart(kind),
+		newCmdObjectAppStartStandby(kind),
 		newCmdObjectAppStop(kind),
 		newCmdObjectAppRestart(kind),
 	)

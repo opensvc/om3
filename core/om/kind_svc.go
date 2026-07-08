@@ -38,6 +38,7 @@ func init() {
 	cmdObjectPush := newCmdObjectPush(kind)
 	cmdObjectResource := commoncmd.NewCmdObjectResource(kind)
 	cmdObjectResourceInfo := commoncmd.NewCmdObjectResourceInfo(kind)
+	cmdObjectResourceSync := newCmdObjectResourceSync(kind)
 	cmdObjectSchedule := commoncmd.NewCmdObjectSchedule(kind)
 	cmdObjectSet := newCmdObjectSet(kind)
 	cmdObjectSync := commoncmd.NewCmdObjectSync(kind)
@@ -121,7 +122,11 @@ func init() {
 		newCmdObjectContainerEnter(kind),
 		newCmdObjectContainerLogs(kind),
 		newCmdObjectContainerList(kind),
+		newCmdObjectContainerPRStart(kind),
+		newCmdObjectContainerPRStop(kind),
 		newCmdObjectContainerStart(kind),
+		newCmdObjectContainerStartStandby(kind),
+		newCmdObjectContainerShutdown(kind),
 		newCmdObjectContainerStop(kind),
 		newCmdObjectContainerRestart(kind),
 		newCmdObjectContainerProvision(kind),
@@ -130,6 +135,8 @@ func init() {
 	cmdObjectIP.AddCommand(
 		newCmdObjectIPList(kind),
 		newCmdObjectIPStart(kind),
+		newCmdObjectIPStartStandby(kind),
+		newCmdObjectIPShutdown(kind),
 		newCmdObjectIPStop(kind),
 		newCmdObjectIPRestart(kind),
 		newCmdObjectIPProvision(kind),
@@ -137,31 +144,45 @@ func init() {
 	)
 	cmdObjectFS.AddCommand(
 		newCmdObjectFSList(kind),
-		newCmdObjectFSStart(kind),
-		newCmdObjectFSStop(kind),
-		newCmdObjectFSRestart(kind),
 		newCmdObjectFSProvision(kind),
+		newCmdObjectFSPRStart(kind),
+		newCmdObjectFSPRStop(kind),
+		newCmdObjectFSRestart(kind),
+		newCmdObjectFSShutdown(kind),
+		newCmdObjectFSStart(kind),
+		newCmdObjectFSStartStandby(kind),
+		newCmdObjectFSStop(kind),
 		newCmdObjectFSUnprovision(kind),
 	)
 	cmdObjectVolume.AddCommand(
 		newCmdObjectVolumeList(kind),
-		newCmdObjectVolumeStart(kind),
-		newCmdObjectVolumeStop(kind),
-		newCmdObjectVolumeRestart(kind),
 		newCmdObjectVolumeProvision(kind),
+		newCmdObjectVolumePRStart(kind),
+		newCmdObjectVolumePRStop(kind),
+		newCmdObjectVolumeRestart(kind),
+		newCmdObjectVolumeShutdown(kind),
+		newCmdObjectVolumeStart(kind),
+		newCmdObjectVolumeStartStandby(kind),
+		newCmdObjectVolumeStop(kind),
 		newCmdObjectVolumeUnprovision(kind),
 	)
 	cmdObjectDisk.AddCommand(
 		newCmdObjectDiskList(kind),
+		newCmdObjectDiskProvision(kind),
+		newCmdObjectDiskPRStart(kind),
+		newCmdObjectDiskPRStop(kind),
+		newCmdObjectDiskShutdown(kind),
 		newCmdObjectDiskStart(kind),
+		newCmdObjectDiskStartStandby(kind),
 		newCmdObjectDiskStop(kind),
 		newCmdObjectDiskRestart(kind),
-		newCmdObjectDiskProvision(kind),
 		newCmdObjectDiskUnprovision(kind),
 	)
 	cmdObjectShare.AddCommand(
 		newCmdObjectShareList(kind),
+		newCmdObjectShareShutdown(kind),
 		newCmdObjectShareStart(kind),
+		newCmdObjectShareStartStandby(kind),
 		newCmdObjectShareStop(kind),
 		newCmdObjectShareRestart(kind),
 		newCmdObjectShareProvision(kind),
@@ -170,7 +191,9 @@ func init() {
 	cmdObjectApp.AddCommand(
 		newCmdObjectAppList(kind),
 		newCmdObjectAppRestart(kind),
+		newCmdObjectAppShutdown(kind),
 		newCmdObjectAppStart(kind),
+		newCmdObjectAppStartStandby(kind),
 		newCmdObjectAppStop(kind),
 	)
 	cmdObjectTask.AddCommand(
@@ -186,6 +209,16 @@ func init() {
 	cmdObjectResource.AddCommand(
 		newCmdObjectResourceList(kind),
 		cmdObjectResourceInfo,
+		cmdObjectResourceSync,
+		newCmdObjectResourceProvision(kind),
+		newCmdObjectResourceUnprovision(kind),
+		newCmdObjectResourcePRStart(kind),
+		newCmdObjectResourcePRStop(kind),
+		newCmdObjectResourceRestart(kind),
+		newCmdObjectResourceRun(kind),
+		newCmdObjectResourceStart(kind),
+		newCmdObjectResourceStartStandby(kind),
+		newCmdObjectResourceStop(kind),
 	)
 	cmdObjectInstance.AddCommand(
 		cmdObjectInstanceDevice,
