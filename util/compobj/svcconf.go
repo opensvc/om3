@@ -11,6 +11,8 @@ import (
 	"github.com/opensvc/om3/v3/core/naming"
 	"github.com/opensvc/om3/v3/core/object"
 	"github.com/opensvc/om3/v3/util/key"
+
+	_ "github.com/opensvc/om3/v3/core/driverdb"
 )
 
 type (
@@ -243,7 +245,8 @@ func (t CompSvcconfs) checkValue(resourceName string, keyName string, value stri
 	if op == "unset" {
 		return !o.Config().HasKey(key.New(resourceName, keyName))
 	}
-	return o.Config().HasKeyMatchingOp(*keyop.Parse(resourceName + "." + keyName + op + value))
+	kop := keyop.Parse(resourceName + "." + keyName + op + value)
+	return o.Config().HasKeyMatchingOp(*kop)
 }
 
 func (t CompSvcconfs) checkSection(resourceName string, rule CompSvcconf) bool {
