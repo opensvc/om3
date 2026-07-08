@@ -111,3 +111,11 @@ to satisfy a demand from a volume resource in a service.
 Volumes and their subdirectories can be mounted inside containers.`,
 	}
 }
+
+// NewCmdNscfg creates the "nscfg" command
+func NewCmdNscfg() *cobra.Command {
+	return &cobra.Command{
+		Use:   "nscfg",
+		Short: "manage namespace configurations",
+	}
+}
