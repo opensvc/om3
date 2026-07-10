@@ -1,4 +1,4 @@
-package sgcpdnshelper
+package sgcpdnstesthelper
 
 import (
 	"context"
