@@ -5,7 +5,6 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"io"
 	"net/http"
 	"net/url"
 	"strings"
@@ -54,9 +53,10 @@ func (a *DNSAPI) GetAliases(ctx context.Context, zoneID, name, uuid string) (met
 }
 
 // CreateAlias creates a new DNS alias.
-func (a *DNSAPI) CreateAlias(ctx context.Context, zoneID, name, target string) (method, url string, code int, data []byte, err error) {
-	method = http.MethodPost
-	url = a.getAliasesCreateURL(zoneID)
+func (a *DNSAPI) CreateAlias(ctx context.Context, zoneID, name, target string) (alias *Alias, err error) {
+	var result Alias
+	method := http.MethodPost
+	path := a.getAliasesCreateURL(zoneID)
 
 	payload := map[string]any{"name": name, "target": target, "ttl": 60}
 	var b []byte
@@ -65,15 +65,21 @@ func (a *DNSAPI) CreateAlias(ctx context.Context, zoneID, name, target string) (
 		err = fmt.Errorf("failed to marshal create payload: %w", err)
 		return
 	}
-	a.log.Infof("%s %s data=%s", method, url, string(b))
-	code, data, err = a.do(ctx, method, url, bytes.NewReader(b), a.GetScopes("dns_write")...)
-	return
+	a.log.Infof("%s %s data=%s", method, path, string(b))
+	if code, data, err := a.do(ctx, method, path, bytes.NewReader(b), a.GetScopes("dns_write")...); err != nil {
+		return nil, fmt.Errorf("%s %s: %w", method, path, err)
+	} else if err := a.CheckStatusCode(method, path, code, http.StatusCreated); err != nil {
+		return nil, err
+	} else if err := json.Unmarshal(data, &result); err != nil {
+		return nil, fmt.Errorf("%s %s unmarshal created alias: %w", method, path, err)
+	}
+	return &result, nil
 }
 
 // UpdateAlias updates an existing DNS alias.
-func (a *DNSAPI) UpdateAlias(ctx context.Context, zoneID, aliasUUID, name, target string) (method, url string, code int, data []byte, err error) {
-	method = http.MethodPut
-	url = a.getAliasURL(zoneID, aliasUUID)
+func (a *DNSAPI) UpdateAlias(ctx context.Context, zoneID, aliasUUID, name, target string) (alias *Alias, err error) {
+	method := http.MethodPut
+	path := a.getAliasURL(zoneID, aliasUUID)
 
 	payload := map[string]any{"name": name, "target": target, "ttl": 60}
 	var b []byte
@@ -82,19 +88,29 @@ func (a *DNSAPI) UpdateAlias(ctx context.Context, zoneID, aliasUUID, name, targe
 		err = fmt.Errorf("failed to marshal update payload: %w", err)
 		return
 	}
-	a.log.Infof("%s %s data=%s", method, url, string(b))
-	code, data, err = a.do(ctx, method, url, bytes.NewReader(b), a.GetScopes("dns_write")...)
+	a.log.Infof("%s %s data=%s", method, path, string(b))
+	if code, data, err := a.do(ctx, method, path, bytes.NewReader(b), a.GetScopes("dns_write")...); err != nil {
+		return nil, err
+	} else if err := a.CheckStatusCode(method, path, code, http.StatusOK); err != nil {
+		return nil, err
+	} else if err := json.Unmarshal(data, &alias); err != nil {
+		return nil, fmt.Errorf("failed to unmarshal alias: %w", err)
+	}
 	return
 }
 
 // DeleteAlias deletes a DNS alias.
-func (a *DNSAPI) DeleteAlias(ctx context.Context, zoneID, aliasUUID string) (method, url string, code int, data []byte, err error) {
-	method = http.MethodDelete
-	url = a.getAliasURL(zoneID, aliasUUID)
+func (a *DNSAPI) DeleteAlias(ctx context.Context, zoneID, aliasUUID string) error {
+	method := http.MethodDelete
+	path := a.getAliasURL(zoneID, aliasUUID)
 
-	a.log.Infof("%s %s", method, url)
-	code, data, err = a.do(ctx, method, url, nil, a.GetScopes("dns_write")...)
-	return
+	a.log.Infof("%s %s", method, path)
+	if code, _, err := a.do(ctx, method, path, nil, a.GetScopes("dns_write")...); err != nil {
+		return err
+	} else if err := a.CheckStatusCode(method, path, code, http.StatusNoContent); err != nil {
+		return err
+	}
+	return nil
 }
 
 // GetScopes returns the scopes for a given scope type.
@@ -114,33 +130,21 @@ func (a *DNSAPI) getAliasesURL(zoneID, name, uuid string) string {
 	}
 	base := strings.TrimRight(a.config.DNS.BaseURL, "/")
 	path := a.config.DNS.Path.Alias
-	if path == "" {
-		path = "/aliases" // fallback
-	}
-	return base + path + "?" + values.Encode()
+	return fmt.Sprintf("%s%s?%s", base, path, values.Encode())
 }
 
 // getAliasesCreateURL constructs the URL for creating an alias.
 func (a *DNSAPI) getAliasesCreateURL(zoneID string) string {
 	base := strings.TrimRight(a.config.DNS.BaseURL, "/")
 	zonePath := a.config.DNS.Path.Zone
-	if zonePath == "" {
-		zonePath = "/zones"
-	}
-	return fmt.Sprintf("%s%s/%s/aliases", base, zonePath, zoneID)
+	aliasPath := a.config.DNS.Path.Alias
+	return fmt.Sprintf("%s%s/%s%s", base, zonePath, zoneID, aliasPath)
 }
 
 // getAliasURL constructs the URL for a specific alias.
 func (a *DNSAPI) getAliasURL(zoneID, aliasUUID string) string {
 	base := strings.TrimRight(a.config.DNS.BaseURL, "/")
 	zonePath := a.config.DNS.Path.Zone
-	if zonePath == "" {
-		zonePath = "/zones"
-	}
-	return fmt.Sprintf("%s%s/%s/aliases/%s", base, zonePath, zoneID, aliasUUID)
-}
-
-// do is the function that executes the HTTP request (redundant but kept for consistency)
-func (a *DNSAPI) do(ctx context.Context, method, url string, body io.Reader, scopes ...string) (statusCode int, b []byte, err error) {
-	return a.Api.do(ctx, method, url, body, scopes...)
+	aliasPath := a.config.DNS.Path.Alias
+	return fmt.Sprintf("%s%s/%s%s/%s", base, zonePath, zoneID, aliasPath, aliasUUID)
 }
