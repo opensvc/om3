@@ -143,10 +143,12 @@ func (t *T) configureMgr(cfg *sgcp.Config) error {
 }
 
 func (t *T) Start(ctx context.Context) error {
+	// TODO: implement cache cleanup
 	return t.mgr.createOrUpdate(ctx, t.Target)
 }
 
 func (t *T) Stop(ctx context.Context) error {
+	// TODO: implement cache cleanup
 	if t.UUID != "" {
 		return t.mgr.createOrUpdate(ctx, noneTarget)
 	}
@@ -154,6 +156,7 @@ func (t *T) Stop(ctx context.Context) error {
 }
 
 func (t *T) Status(ctx context.Context) status.T {
+	// TODO: implement cache cleanup if command is not called from the scheduler
 	aliases, err := t.mgr.getAliases(ctx)
 	if err != nil {
 		t.StatusLog().Error("get alias failed: %s", err)

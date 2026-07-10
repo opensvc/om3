@@ -77,6 +77,7 @@ func (m *mgr) delete(ctx context.Context) error {
 
 // getAliases retrieves a list of aliases for the specified zone, name, and UUID or returns an error if unsuccessful.
 func (m *mgr) getAliases(ctx context.Context) ([]sgcp.Alias, error) {
+	// TODO: Use ageing cache
 	method, url, code, data, err := m.api.GetAliases(ctx, m.alias.ZoneID, m.alias.Name, m.alias.UUID)
 	if err != nil {
 		return nil, err
