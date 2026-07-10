@@ -2,489 +2,585 @@ package resipsgcp_dnsalias
 
 import (
 	"context"
-	"encoding/json"
-	"net/http"
-	"net/http/httptest"
-	"strings"
+	"fmt"
 	"testing"
+	"time"
 
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
+
+	"github.com/opensvc/om3/v3/core/resource"
 	"github.com/opensvc/om3/v3/core/status"
-	"github.com/opensvc/om3/v3/util/plog"
+	"github.com/opensvc/om3/v3/util/sgcpdnstesthelper"
+	"github.com/opensvc/om3/v3/util/testsgcphelper"
+
 	"github.com/opensvc/om3/v3/util/sgcp"
 )
 
-type mockTokenGetter struct {
-	token string
+// setup initializes the test environment by configuring SGCP with a temporary configuration file.
+// It returns a cleanup function that resets the configuration to a null state when invoked.
+func setup(t *testing.T) func() {
+	t.Helper()
+	cfgFile := testsgcphelper.InstallConfig(t)
+	sgcp.SetConfigForTest(cfgFile)
+	require.NotNil(t, sgcp.GetConfig())
+
+	return func() {
+		sgcp.SetConfigForTest("")
+	}
 }
 
-func (m *mockTokenGetter) Get(ctx context.Context, scope ...string) (string, error) {
-	return m.token, nil
+// newDBAndDrv initializes a database and driver instance for testing with preset
+// entries and configurations.
+func newDBAndDrv(t *testing.T, s string, entries []sgcpdnstesthelper.DBEntry) (*sgcpdnstesthelper.DB, *T) {
+	t.Helper()
+	drv := New().(*T)
+	require.NoError(t, drv.SetRID(s))
+	db := sgcpdnstesthelper.NewDB()
+	db.Setup(entries)
+	drv.api = sgcpdnstesthelper.NewApi(db)
+	return db, drv
 }
 
-func newTestDNSAPI(t *testing.T, handler func(w http.ResponseWriter, r *http.Request) (int, interface{})) (*sgcp.DNSAPI, *httptest.Server) {
-	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		statusCode, resp := handler(w, r)
-		if resp != nil {
-			w.Header().Set("Content-Type", "application/json")
-			w.WriteHeader(statusCode)
-			if err := json.NewEncoder(w).Encode(resp); err != nil {
-				t.Errorf("failed to encode response: %v", err)
-			}
-		} else {
-			w.WriteHeader(statusCode)
-		}
-	}))
+func TestStatus(t *testing.T) {
+	cleanup := setup(t)
+	defer cleanup()
 
-	cfg := &sgcp.Config{
-		DNS: sgcp.DNSConfig{
-			BaseURL: server.URL,
-			Path: struct {
-				Alias string `yaml:"alias"`
-				Zone  string `yaml:"zone"`
-			}{
-				Alias: "/aliases",
-				Zone:  "/zones",
+	dbEntries := []sgcpdnstesthelper.DBEntry{
+		{
+			Name:   "svc1",
+			UUID:   "a1",
+			ZoneID: "z1",
+			AliasL: []sgcp.Alias{
+				{
+					UUID:   "a1",
+					Name:   "svc1",
+					Target: "none.",
+					FQDN:   "svc1.example.org",
+					ZoneID: "z1",
+				},
 			},
 		},
-		Auth: sgcp.AuthConfig{
-			Scopes: map[string][]string{
-				"dns_read":  {"dns:read_dns_records"},
-				"dns_write": {"dns:admin_dns_records"},
+		{
+			Name:   "svc2",
+			UUID:   "a2",
+			ZoneID: "z1",
+			AliasL: []sgcp.Alias{
+				{
+					UUID:   "a2",
+					Name:   "svc2",
+					Target: "tgt2",
+					FQDN:   "svc2.example.org",
+					ZoneID: "z1",
+				},
 			},
 		},
-	}
-	client := server.Client()
-	logger := plog.NewDefaultLogger()
-	tk := &mockTokenGetter{token: "fake-token"}
-
-	api := sgcp.NewDNSAPI(cfg, client, logger, tk)
-	return api, server
-}
-
-func TestManagerCreateOrUpdateCreatesAliasWhenMissing(t *testing.T) {
-	var requests int
-	api, server := newTestDNSAPI(t, func(w http.ResponseWriter, r *http.Request) (int, interface{}) {
-		requests++
-		switch {
-		case r.Method == http.MethodGet && r.URL.Path == "/aliases":
-			return http.StatusOK, map[string]interface{}{"aliases": []interface{}{}}
-		case r.Method == http.MethodPost && r.URL.Path == "/zones/zone-1/aliases":
-			return http.StatusCreated, map[string]interface{}{
-				"id":      "alias-1",
-				"name":    "svc1",
-				"target":  "node1",
-				"fqdn":    "svc1.example.org",
-				"zone_id": "zone-1",
-			}
-		default:
-			t.Fatalf("unexpected request: %s %s", r.Method, r.URL.String())
-			return http.StatusNotFound, nil
-		}
-	})
-	defer server.Close()
-
-	mgr := &aliasManager{alias: alias{ZoneID: "zone-1", Name: "svc1", Target: "node1"}, api: api}
-
-	if err := mgr.createOrUpdate(context.Background(), "node1"); err != nil {
-		t.Fatalf("createOrUpdate returned error: %v", err)
-	}
-	if requests != 2 {
-		t.Fatalf("expected 2 requests, got %d", requests)
-	}
-	if mgr.alias.UUID != "alias-1" {
-		t.Fatalf("expected alias uuid alias-1, got %s", mgr.alias.UUID)
-	}
-}
-
-func TestManagerCreateOrUpdateUpdatesExistingAlias(t *testing.T) {
-	var requests int
-	api, server := newTestDNSAPI(t, func(w http.ResponseWriter, r *http.Request) (int, interface{}) {
-		requests++
-		switch {
-		case r.Method == http.MethodGet && r.URL.Path == "/aliases":
-			return http.StatusOK, map[string]interface{}{
-				"aliases": []interface{}{
-					map[string]interface{}{
-						"id":      "alias-1",
-						"name":    "svc1",
-						"target":  "old-node",
-						"fqdn":    "svc1.example.org",
-						"zone_id": "zone-1",
-					},
+		{
+			Name:   "svc3",
+			UUID:   "a3",
+			ZoneID: "z1",
+			AliasL: []sgcp.Alias{
+				{
+					UUID:   "a3",
+					Name:   "svc3bis",
+					Target: "node1",
+					FQDN:   "svc1.example.org",
+					ZoneID: "z1",
 				},
-			}
-		case r.Method == http.MethodPut && r.URL.Path == "/zones/zone-1/aliases/alias-1":
-			var payload map[string]interface{}
-			if err := json.NewDecoder(r.Body).Decode(&payload); err != nil {
-				t.Errorf("invalid payload: %v", err)
-				return http.StatusBadRequest, nil
-			}
-			if payload["name"] != "svc1" || payload["target"] != "node1" {
-				t.Errorf("unexpected payload: %v", payload)
-				return http.StatusBadRequest, nil
-			}
-			return http.StatusOK, map[string]interface{}{
-				"id":      "alias-1",
-				"name":    "svc1",
-				"target":  "node1",
-				"fqdn":    "svc1.example.org",
-				"zone_id": "zone-1",
-			}
-		default:
-			t.Fatalf("unexpected request: %s %s", r.Method, r.URL.String())
-			return http.StatusNotFound, nil
-		}
-	})
-	defer server.Close()
-
-	mgr := &aliasManager{alias: alias{ZoneID: "zone-1", Name: "svc1", Target: "node1"}, api: api}
-
-	if err := mgr.createOrUpdate(context.Background(), "node1"); err != nil {
-		t.Fatalf("createOrUpdate returned error: %v", err)
-	}
-	if requests != 2 {
-		t.Fatalf("expected 2 requests, got %d", requests)
-	}
-	if mgr.alias.Target != "node1" {
-		t.Fatalf("expected target node1, got %s", mgr.alias.Target)
-	}
-}
-
-func TestManagerCreateOrUpdateMultipleAliasesError(t *testing.T) {
-	api, server := newTestDNSAPI(t, func(w http.ResponseWriter, r *http.Request) (int, interface{}) {
-		if r.Method == http.MethodGet && r.URL.Path == "/aliases" {
-			return http.StatusOK, map[string]interface{}{
-				"aliases": []interface{}{
-					map[string]interface{}{"id": "a1", "name": "svc1", "target": "node1", "zone_id": "zone-1"},
-					map[string]interface{}{"id": "a2", "name": "svc1", "target": "node2", "zone_id": "zone-1"},
+			},
+		},
+		{
+			Name:   "svc4",
+			UUID:   "id4",
+			ZoneID: "z1",
+			AliasL: []sgcp.Alias{
+				{
+					UUID:   "svc4-bad-id",
+					Name:   "svc4",
+					Target: "node1",
+					FQDN:   "svc1.example.org",
+					ZoneID: "z1",
 				},
-			}
-		}
-		t.Fatalf("unexpected request: %s %s", r.Method, r.URL.String())
-		return http.StatusNotFound, nil
-	})
-	defer server.Close()
-
-	mgr := &aliasManager{alias: alias{ZoneID: "zone-1", Name: "svc1"}, api: api}
-
-	err := mgr.createOrUpdate(context.Background(), "node1")
-	if err == nil {
-		t.Fatal("expected error for multiple aliases, got nil")
-	}
-	if !strings.Contains(err.Error(), "multiple aliases") {
-		t.Errorf("expected error containing 'multiple aliases', got %v", err)
-	}
-}
-
-func TestManagerCreateOrUpdateWithUUIDNotFoundError(t *testing.T) {
-	api, server := newTestDNSAPI(t, func(w http.ResponseWriter, r *http.Request) (int, interface{}) {
-		if r.Method == http.MethodGet && r.URL.Path == "/aliases" {
-			return http.StatusOK, map[string]interface{}{"aliases": []interface{}{}}
-		}
-		t.Fatalf("unexpected request: %s %s", r.Method, r.URL.String())
-		return http.StatusNotFound, nil
-	})
-	defer server.Close()
-
-	mgr := &aliasManager{alias: alias{ZoneID: "zone-1", UUID: "uuid-1", Name: "svc1"}, api: api}
-
-	err := mgr.createOrUpdate(context.Background(), "node1")
-	if err == nil {
-		t.Fatal("expected error when UUID provided but alias not found")
-	}
-	if !strings.Contains(err.Error(), "no such alias") {
-		t.Errorf("expected error containing 'no such alias', got %v", err)
-	}
-}
-
-func TestManagerDeleteDeletesAlias(t *testing.T) {
-	var requests int
-	api, server := newTestDNSAPI(t, func(w http.ResponseWriter, r *http.Request) (int, interface{}) {
-		requests++
-		switch {
-		case r.Method == http.MethodGet && r.URL.Path == "/aliases":
-			return http.StatusOK, map[string]interface{}{
-				"aliases": []interface{}{
-					map[string]interface{}{"id": "alias-1", "name": "svc1", "target": "node1", "zone_id": "zone-1"},
+			},
+		},
+		{
+			Name:   "multiple",
+			UUID:   "multipleId",
+			ZoneID: "z1",
+			AliasL: []sgcp.Alias{
+				{
+					UUID:   "id1",
+					Name:   "multiple1",
+					Target: "node1",
+					FQDN:   "node1.example.org",
+					ZoneID: "z1",
 				},
-			}
-		case r.Method == http.MethodDelete && r.URL.Path == "/zones/zone-1/aliases/alias-1":
-			return http.StatusNoContent, nil
-		default:
-			t.Fatalf("unexpected request: %s %s", r.Method, r.URL.String())
-			return http.StatusNotFound, nil
-		}
-	})
-	defer server.Close()
-
-	mgr := &aliasManager{alias: alias{ZoneID: "zone-1", Name: "svc1"}, api: api}
-
-	if err := mgr.delete(context.Background()); err != nil {
-		t.Fatalf("delete returned error: %v", err)
+				{
+					UUID:   "id2",
+					Name:   "multiple2",
+					Target: "node2",
+					FQDN:   "node2.example.org",
+					ZoneID: "z1",
+				},
+			},
+		},
+		{
+			Name:       "bad500",
+			ZoneID:     "z1",
+			StatusCode: 500,
+		},
 	}
-	if requests != 2 {
-		t.Fatalf("expected 2 requests, got %d", requests)
-	}
-}
 
-func TestManagerDeleteWhenAliasMissingDoesNothing(t *testing.T) {
-	var requests int
-	api, server := newTestDNSAPI(t, func(w http.ResponseWriter, r *http.Request) (int, interface{}) {
-		requests++
-		if r.Method == http.MethodGet && r.URL.Path == "/aliases" {
-			return http.StatusOK, map[string]interface{}{"aliases": []interface{}{}}
-		}
-		t.Fatalf("unexpected request: %s %s", r.Method, r.URL.String())
-		return http.StatusNotFound, nil
-	})
-	defer server.Close()
+	cases := map[string]struct {
+		resUUID        string
+		resName        string
+		resZoneID      string
+		resTarget      string
+		expectedUID    string
+		expectedName   string
+		expectedZoneID string
+		expectedTarget string
 
-	mgr := &aliasManager{alias: alias{ZoneID: "zone-1", Name: "svc1"}, api: api}
-
-	if err := mgr.delete(context.Background()); err != nil {
-		t.Fatalf("delete returned error: %v", err)
-	}
-	if requests != 1 {
-		t.Fatalf("expected 1 request (only GET), got %d", requests)
-	}
-}
-
-func TestTStatus(t *testing.T) {
-	tests := []struct {
-		name         string
-		aliasResp    []interface{}
-		configUUID   string
-		configName   string
-		configTarget string
-		wantStatus   status.T
+		expectedStatus    status.T
+		expectedStatusLog []resource.StatusLogEntry
 	}{
-		{
-			name:         "alias not found => Down",
-			aliasResp:    []interface{}{},
-			configName:   "svc1",
-			configTarget: "node1",
-			wantStatus:   status.Down,
-		},
-		{
-			name: "alias found with target none. => Down",
-			aliasResp: []interface{}{
-				map[string]interface{}{"id": "a1", "name": "svc1", "target": "none.", "fqdn": "svc1.example.org", "zone_id": "z1"},
+		"when alias is not found": {
+			resName:        "svc1",
+			resZoneID:      "z2",
+			resTarget:      "node1",
+			expectedStatus: status.Down,
+			expectedStatusLog: []resource.StatusLogEntry{
+				{Level: "info", Message: "not found"},
 			},
-			configName:   "svc1",
-			configTarget: "node1",
-			wantStatus:   status.Down,
 		},
-		{
-			name: "alias target mismatch => Down",
-			aliasResp: []interface{}{
-				map[string]interface{}{"id": "a1", "name": "svc1", "target": "other", "fqdn": "svc1.example.org", "zone_id": "z1"},
+		"find alias from name": {
+			resName:        "svc2",
+			resZoneID:      "z1",
+			resTarget:      "tgt2",
+			expectedStatus: status.Up,
+			expectedStatusLog: []resource.StatusLogEntry{
+				{Level: "info", Message: "svc2.example.org => tgt2"},
 			},
-			configName:   "svc1",
-			configTarget: "node1",
-			wantStatus:   status.Down,
 		},
-		{
-			name: "name mismatch => Warn",
-			aliasResp: []interface{}{
-				map[string]interface{}{"id": "a1", "name": "wrong", "target": "node1", "fqdn": "svc1.example.org", "zone_id": "z1"},
+		"found target is none": {
+			resName:        "svc1",
+			resZoneID:      "z1",
+			resTarget:      "node1",
+			expectedStatus: status.Down,
+			expectedStatusLog: []resource.StatusLogEntry{
+				{Level: "info", Message: "alias target is disabled"},
 			},
-			configName:   "svc1",
-			configTarget: "node1",
-			wantStatus:   status.Warn,
 		},
-		{
-			name: "UUID mismatch => Warn",
-			aliasResp: []interface{}{
-				map[string]interface{}{"id": "wrong-uuid", "name": "svc1", "target": "node1", "fqdn": "svc1.example.org", "zone_id": "z1"},
+		"target mismatch": {
+			resName:        "svc2",
+			resZoneID:      "z1",
+			resTarget:      "tgtx",
+			expectedStatus: status.Down,
+			expectedStatusLog: []resource.StatusLogEntry{
+				{Level: "info", Message: "alias target tgt2 != tgtx"},
 			},
-			configUUID:   "expected-uuid",
-			configName:   "svc1",
-			configTarget: "node1",
-			wantStatus:   status.Warn,
 		},
-		{
-			name: "multiple aliases => Warn",
-			aliasResp: []interface{}{
-				map[string]interface{}{"id": "a1", "name": "svc1", "target": "node1", "zone_id": "z1"},
-				map[string]interface{}{"id": "a2", "name": "svc1", "target": "node1", "zone_id": "z1"},
+		"name mismatch": {
+			resName:        "svc3",
+			resZoneID:      "z1",
+			resTarget:      "node1",
+			expectedStatus: status.Warn,
+			expectedStatusLog: []resource.StatusLogEntry{
+				{Level: "warn", Message: "alias name mismatch: found svc3bis instead of svc3"},
 			},
-			configName:   "svc1",
-			configTarget: "node1",
-			wantStatus:   status.Warn,
 		},
-		{
-			name: "perfect match => Up",
-			aliasResp: []interface{}{
-				map[string]interface{}{"id": "a1", "name": "svc1", "target": "node1", "fqdn": "svc1.example.org", "zone_id": "z1"},
+		"uuid mismatch": {
+			resUUID:        "id4",
+			resName:        "svc4",
+			resZoneID:      "z1",
+			resTarget:      "node1",
+			expectedStatus: status.Warn,
+			expectedStatusLog: []resource.StatusLogEntry{
+				{Level: "warn", Message: "alias uuid mismatch: found svc4-bad-id instead of id4"},
 			},
-			configUUID:   "a1",
-			configName:   "svc1",
-			configTarget: "node1",
-			wantStatus:   status.Up,
+		},
+		"find multiple aliases": {
+			resName:        "multiple",
+			resZoneID:      "z1",
+			resTarget:      "node1",
+			expectedStatus: status.Warn,
+			expectedStatusLog: []resource.StatusLogEntry{
+				{Level: "warn", Message: "found multiple aliases: [{id1 multiple1 node1 node1.example.org z1} {id2 multiple2 node2 node2.example.org z1}]"},
+			},
+		},
+		"perfect match": {
+			resUUID:        "a2",
+			resName:        "svc2",
+			resZoneID:      "z1",
+			resTarget:      "tgt2",
+			expectedStatus: status.Up,
+			expectedStatusLog: []resource.StatusLogEntry{
+				{Level: "info", Message: "svc2.example.org => tgt2"},
+			},
+		},
+		"api error 500": {
+			resName:        "bad500",
+			resZoneID:      "z1",
+			resTarget:      "tgt2",
+			expectedStatus: status.Down,
+			expectedStatusLog: []resource.StatusLogEntry{
+				{Level: "error", Message: "get alias failed: unexpected status code for GET /file/alias got 500 wanted [200 404]"},
+				{Level: "info", Message: "not found"},
+			},
+		},
+		"status up when found from only uuid": {
+			resUUID:        "a2",
+			resZoneID:      "z1",
+			resTarget:      "tgt2",
+			expectedStatus: status.Up,
+			expectedStatusLog: []resource.StatusLogEntry{
+				{Level: "info", Message: "svc2.example.org => tgt2"},
+			},
 		},
 	}
 
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			api, server := newTestDNSAPI(t, func(w http.ResponseWriter, r *http.Request) (int, interface{}) {
-				if r.Method == http.MethodGet && r.URL.Path == "/aliases" {
-					return http.StatusOK, map[string]interface{}{"aliases": tt.aliasResp}
-				}
-				t.Fatalf("unexpected request: %s %s", r.Method, r.URL.String())
-				return http.StatusNotFound, nil
-			})
-			defer server.Close()
+	for name, tc := range cases {
+		ctx, cancel := context.WithTimeout(context.Background(), time.Second)
+		defer cancel()
+		t.Run(fmt.Sprintf("%s expect status %s", name, tc.expectedStatus), func(t *testing.T) {
+			_, drv := newDBAndDrv(t, "rid1", dbEntries)
+			drv.UUID = tc.resUUID
+			drv.Name = tc.resName
+			drv.Target = tc.resTarget
+			drv.ZoneID = tc.resZoneID
+			require.NoError(t, drv.Configure())
 
-			tRes := &T{
-				UUID:       tt.configUUID,
-				Name:       tt.configName,
-				Target:     tt.configTarget,
-				ZoneID:     "z1",
-				Endpoint:   server.URL,
-				api:        api,
-				configured: true,
-			}
-
-			got := tRes.Status(context.Background())
-			if got != tt.wantStatus {
-				t.Errorf("Status() = %v, want %v", got, tt.wantStatus)
-			}
+			dStatus := drv.Status(ctx)
+			assert.Equalf(t, tc.expectedStatus, dStatus, "expected %s, got %s", tc.expectedStatus, dStatus)
+			statusLog := drv.StatusLog()
+			assert.Equal(t, tc.expectedStatusLog, statusLog.Entries())
 		})
 	}
 }
 
-func TestTStartStop(t *testing.T) {
-	t.Run("Start creates alias", func(t *testing.T) {
-		api, server := newTestDNSAPI(t, func(w http.ResponseWriter, r *http.Request) (int, interface{}) {
-			switch {
-			case r.Method == http.MethodGet && r.URL.Path == "/aliases":
-				return http.StatusOK, map[string]interface{}{"aliases": []interface{}{}}
-			case r.Method == http.MethodPost && r.URL.Path == "/zones/zone-1/aliases":
-				return http.StatusCreated, map[string]interface{}{
-					"id": "a1", "name": "svc1", "target": "node1", "fqdn": "svc1.example.org", "zone_id": "zone-1",
-				}
-			default:
-				t.Fatalf("unexpected request: %s %s", r.Method, r.URL.String())
-				return http.StatusNotFound, nil
-			}
-		})
-		defer server.Close()
+func TestStart(t *testing.T) {
+	ctx, cancel := context.WithTimeout(context.Background(), time.Second)
+	defer cancel()
+	defer setup(t)()
 
-		tRes := &T{
-			Name:       "svc1",
-			Target:     "node1",
-			ZoneID:     "zone-1",
-			Endpoint:   server.URL,
-			api:        api,
-			configured: true,
-		}
+	dbEntries := []sgcpdnstesthelper.DBEntry{
+		{
+			Name:   "name1",
+			UUID:   "uuid1",
+			ZoneID: "z1",
+			AliasL: []sgcp.Alias{
+				{
+					UUID:   "uuid1",
+					Name:   "name1",
+					Target: "target1",
+					FQDN:   "name1.z1",
+					ZoneID: "z1",
+				},
+			},
+		},
+		{
+			Name:   "name2",
+			UUID:   "uuid2",
+			ZoneID: "z1",
+			AliasL: []sgcp.Alias{
+				{
+					UUID:   "uuid2",
+					Name:   "name2",
+					Target: "target2",
+					FQDN:   "name2.z1",
+					ZoneID: "z1",
+				},
+			},
+		},
+	}
 
-		if err := tRes.Start(context.Background()); err != nil {
-			t.Fatalf("Start returned error: %v", err)
-		}
+	t.Run("Create missing alias when uuid is unset", func(t *testing.T) {
+		db, drv := newDBAndDrv(t, "rid1", dbEntries)
+		drv.Name = "foo"
+		drv.Target = "foo-target"
+		drv.ZoneID = "z1"
+		require.NoError(t, drv.Configure())
+
+		t.Log("verify alias doesn't exits")
+		alias, ok := db.Search("z1", "foo", "")
+		require.Falsef(t, ok, "unexpected found alias")
+
+		db.ResetCalls()
+		t.Log("Start will create new alias")
+		require.NoError(t, drv.Start(ctx), "unexpected to Start error")
+		require.NotEmptyf(t, drv.mgr.alias.UUID, "mgr didn't retrieve alias UUID")
+		createdUUID := drv.mgr.alias.UUID
+		t.Logf("Created alias uuid: %s", createdUUID)
+
+		call := db.CallCounts()
+		t.Logf("call counts: %+v", call)
+		require.Equal(t, 0, call.Delete, "unexpected api delete call")
+		require.Equal(t, 1, call.Update, "unexpected api update call")
+		assert.Equal(t, 1, call.Search, "unexpected api search call")
+
+		t.Log("verify alias has been created in db")
+		alias, ok = db.Search("z1", "foo", "")
+		require.True(t, ok)
+		assert.NotNil(t, alias)
+		assert.Equal(t, createdUUID, alias.UUID)
+		assert.Equal(t, "foo", alias.Name)
+		t.Logf("created alias: %v", alias)
 	})
 
-	t.Run("Stop with UUID sets target to none.", func(t *testing.T) {
-		api, server := newTestDNSAPI(t, func(w http.ResponseWriter, r *http.Request) (int, interface{}) {
-			switch {
-			case r.Method == http.MethodGet && r.URL.Path == "/aliases":
-				return http.StatusOK, map[string]interface{}{
-					"aliases": []interface{}{
-						map[string]interface{}{"id": "a1", "name": "svc1", "target": "node1", "zone_id": "zone-1"},
-					},
-				}
-			case r.Method == http.MethodPut && r.URL.Path == "/zones/zone-1/aliases/a1":
-				var payload map[string]interface{}
-				json.NewDecoder(r.Body).Decode(&payload)
-				if payload["target"] != "none." {
-					t.Errorf("expected target 'none.', got %v", payload["target"])
-				}
-				return http.StatusOK, map[string]interface{}{
-					"id": "a1", "name": "svc1", "target": "none.", "fqdn": "svc1.example.org", "zone_id": "zone-1",
-				}
-			default:
-				t.Fatalf("unexpected request: %s %s", r.Method, r.URL.String())
-				return http.StatusNotFound, nil
-			}
-		})
-		defer server.Close()
+	t.Run("Don't update alias when all is correct", func(t *testing.T) {
+		db, drv := newDBAndDrv(t, "rid1", dbEntries)
+		drv.UUID = "uuid1"
+		drv.Name = "name1"
+		drv.Target = "target1"
+		drv.ZoneID = "z1"
+		require.NoError(t, drv.Configure())
 
-		tRes := &T{
-			UUID:       "a1",
-			Name:       "svc1",
-			Target:     "node1",
-			ZoneID:     "zone-1",
-			Endpoint:   server.URL,
-			api:        api,
-			configured: true,
-		}
+		t.Log("verify alias initially exits")
+		alias, ok := db.Search("z1", "name1", "uuid1")
+		require.Truef(t, ok, "didn't find alias")
+		t.Logf("initial alias: %v", alias)
+		require.NotNil(t, alias)
+		assert.Equal(t, "uuid1", alias.UUID, "unexpected initial alias UUID")
+		assert.Equal(t, "name1", alias.Name, "unexpected initial alias name")
 
-		if err := tRes.Stop(context.Background()); err != nil {
-			t.Fatalf("Stop returned error: %v", err)
-		}
+		db.ResetCalls()
+		t.Log("Start don't have to update alias")
+		require.NoError(t, drv.Start(ctx), "unexpected to Start error")
+		require.Equalf(t, "uuid1", drv.mgr.alias.UUID, "unexpected alias UUID")
+
+		call := db.CallCounts()
+		t.Logf("call counts: %+v", call)
+		require.Equal(t, 0, call.Delete, "unexpected api delete call")
+		require.Equal(t, 0, call.Update, "unexpected api update call")
+		assert.Equal(t, 1, call.Search, "unexpected api search call")
 	})
 
-	t.Run("Stop without UUID deletes alias", func(t *testing.T) {
-		api, server := newTestDNSAPI(t, func(w http.ResponseWriter, r *http.Request) (int, interface{}) {
-			switch {
-			case r.Method == http.MethodGet && r.URL.Path == "/aliases":
-				return http.StatusOK, map[string]interface{}{
-					"aliases": []interface{}{
-						map[string]interface{}{"id": "a1", "name": "svc1", "target": "node1", "zone_id": "zone-1"},
-					},
-				}
-			case r.Method == http.MethodDelete && r.URL.Path == "/zones/zone-1/aliases/a1":
-				return http.StatusNoContent, nil
-			default:
-				t.Fatalf("unexpected request: %s %s", r.Method, r.URL.String())
-				return http.StatusNotFound, nil
-			}
-		})
-		defer server.Close()
+	t.Run("update alias target", func(t *testing.T) {
+		db, drv := newDBAndDrv(t, "rid1", dbEntries)
+		drv.UUID = "uuid2"
+		drv.Name = "name2"
+		drv.Target = "newTarget2"
+		drv.ZoneID = "z1"
+		require.NoError(t, drv.Configure())
 
-		tRes := &T{
-			Name:       "svc1",
-			Target:     "node1",
-			ZoneID:     "zone-1",
-			Endpoint:   server.URL,
-			api:        api,
-			configured: true,
-		}
+		t.Log("verify alias exits initially, with alternate target")
+		alias, ok := db.Search("z1", "name2", "uuid2")
+		require.Truef(t, ok, "didn't find alias")
+		require.NotNil(t, alias)
+		t.Logf("initial alias: %v", alias)
+		require.Equal(t, drv.UUID, alias.UUID)
+		require.Equal(t, drv.Name, alias.Name)
+		t.Logf("Existing target for %s is %s", alias.Name, alias.Target)
+		require.NotEqual(t, drv.Target, alias.Target)
 
-		if err := tRes.Stop(context.Background()); err != nil {
-			t.Fatalf("Stop returned error: %v", err)
-		}
+		db.ResetCalls()
+		t.Log("Start must update alias target")
+		require.NoError(t, drv.Start(ctx), "unexpected to Start error")
+		require.Equalf(t, "newTarget2", drv.mgr.alias.Target, "unexpected alias target")
+
+		call := db.CallCounts()
+		t.Logf("call counts: %+v", call)
+		require.Equal(t, 0, call.Delete, "unexpected api delete call")
+		require.Equal(t, 1, call.Update, "unexpected api update call")
+		require.Equal(t, 1, call.Search, "unexpected api search call")
+
+		t.Log("verify alias has been created in db")
+		alias, ok = db.Search(drv.ZoneID, drv.Name, drv.UUID)
+		require.True(t, ok)
+		require.NotNil(t, alias, "final alias not found")
+		t.Logf("final alias: %v", alias)
+		require.Equal(t, drv.Target, alias.Target,
+			"unexpected final alias target value")
 	})
 }
 
-func TestAliasAPIHTTPErrors(t *testing.T) {
-	t.Run("GetAliases returns error on non-200", func(t *testing.T) {
-		api, server := newTestDNSAPI(t, func(w http.ResponseWriter, r *http.Request) (int, interface{}) {
-			return http.StatusInternalServerError, nil
-		})
-		defer server.Close()
+func TestStop(t *testing.T) {
+	ctx, cancel := context.WithTimeout(context.Background(), time.Second)
+	defer cancel()
+	defer setup(t)()
 
-		_, _, code, _, err := api.GetAliases(context.Background(), "z1", "", "")
-		if err == nil {
-			t.Fatal("expected error, got nil")
-		}
-		if code != http.StatusInternalServerError {
-			t.Errorf("expected status 500, got %d", code)
-		}
+	dbEntries := []sgcpdnstesthelper.DBEntry{
+		{
+			Name:   "name1",
+			UUID:   "uuid1",
+			ZoneID: "z1",
+			AliasL: []sgcp.Alias{
+				{
+					UUID:   "uuid1",
+					Name:   "name1",
+					Target: "target1",
+					FQDN:   "name1.z1",
+					ZoneID: "z1",
+				},
+			},
+		},
+		{
+			Name:   "name2",
+			UUID:   "uuid2",
+			ZoneID: "z1",
+			AliasL: []sgcp.Alias{
+				{
+					UUID:   "uuid2",
+					Name:   "name2",
+					Target: "target2",
+					FQDN:   "name2.z1",
+					ZoneID: "z1",
+				},
+			},
+		},
+		{
+			Name:   "name-none",
+			UUID:   "uuid-none",
+			ZoneID: "z1",
+			AliasL: []sgcp.Alias{
+				{
+					UUID:   "uuid-none",
+					Name:   "name-none",
+					Target: "none.",
+					FQDN:   "name2.z1",
+					ZoneID: "z1",
+				},
+			},
+		},
+	}
+
+	t.Run("drv with kw uuid: returns error alias is not found", func(t *testing.T) {
+		db, drv := newDBAndDrv(t, "rid1", dbEntries)
+
+		drv.UUID = "uuid-no-present"
+		drv.Name = "no-present-name"
+		drv.Target = "target"
+		drv.ZoneID = "z1"
+		require.NoError(t, drv.Configure())
+
+		t.Log("verify alias doesn't exits")
+		_, ok := db.Search(drv.ZoneID, drv.Name, drv.UUID)
+		require.Falsef(t, ok, "unexpected found alias")
+
+		db.ResetCalls()
+		t.Log("call Stop")
+		err := drv.Stop(ctx)
+		t.Logf("error: %v", err)
+		require.Error(t, err)
+		require.ErrorIsf(t, err, ErrUpdateNotFound, "unexpected to Stop error")
+
+		call := db.CallCounts()
+		t.Logf("call counts: %+v", call)
+		require.Equal(t, 0, call.Delete, "unexpected api delete call")
+		require.Equal(t, 0, call.Update, "unexpected api update call")
+		assert.Equal(t, 1, call.Search, "unexpected api search call")
 	})
 
-	t.Run("CreateAlias returns error on non-201", func(t *testing.T) {
-		api, server := newTestDNSAPI(t, func(w http.ResponseWriter, r *http.Request) (int, interface{}) {
-			return http.StatusBadRequest, map[string]string{"error": "bad request"}
-		})
-		defer server.Close()
+	t.Run("drv without kw: returns no error if alias is not found", func(t *testing.T) {
+		db, drv := newDBAndDrv(t, "rid1", dbEntries)
+		drv.Name = "no-present-name"
+		drv.Target = "target"
+		drv.ZoneID = "z1"
+		require.NoError(t, drv.Configure())
 
-		_, _, code, _, err := api.CreateAlias(context.Background(), "z1", "svc1", "node1")
-		if err == nil {
-			t.Fatal("expected error, got nil")
-		}
-		if code != http.StatusBadRequest {
-			t.Errorf("expected status 400, got %d", code)
-		}
+		t.Log("verify alias doesn't exits")
+		_, ok := db.Search(drv.ZoneID, drv.Name, drv.UUID)
+		require.Falsef(t, ok, "unexpected found alias")
+
+		db.ResetCalls()
+		t.Log("call Stop")
+		require.NoError(t, drv.Stop(ctx))
+
+		call := db.CallCounts()
+		t.Logf("call counts: %+v", call)
+		require.Equal(t, 0, call.Delete, "unexpected api delete call")
+		require.Equal(t, 0, call.Update, "unexpected api update call")
+		assert.Equal(t, 1, call.Search, "unexpected api search call")
+	})
+
+	t.Run("drv with kw uuid must update alias target to none", func(t *testing.T) {
+		db, drv := newDBAndDrv(t, "rid1", dbEntries)
+		drv.Name = "name1"
+		drv.UUID = "uuid1"
+		drv.Target = "target1"
+		drv.ZoneID = "z1"
+		require.NoError(t, drv.Configure())
+
+		t.Log("verify initial exits")
+		alias, ok := db.Search(drv.ZoneID, drv.Name, drv.UUID)
+		require.Truef(t, ok, "initial found alias")
+		t.Logf("initial alias: %+v", alias)
+		require.Equal(t, drv.Target, alias.Target)
+
+		db.ResetCalls()
+		t.Log("call Stop")
+		require.NoError(t, drv.Stop(ctx))
+
+		call := db.CallCounts()
+		t.Logf("call counts: %+v", call)
+		require.Equal(t, 0, call.Delete, "unexpected api delete call")
+		require.Equal(t, 1, call.Update, "unexpected api update call")
+		assert.Equal(t, 1, call.Search, "unexpected api search call")
+
+		t.Log("verify alias has been updated")
+		alias, ok = db.Search(drv.ZoneID, drv.Name, drv.UUID)
+		require.Truef(t, ok, "final found alias")
+		t.Logf("final alias: %+v", alias)
+		require.Equal(t, noneTarget, alias.Target)
+	})
+
+	t.Run("drv with kw uuid and target already none is noop", func(t *testing.T) {
+		db, drv := newDBAndDrv(t, "rid1", dbEntries)
+		drv.Name = "name-none"
+		drv.UUID = "uuid-none"
+		drv.Target = "none."
+		drv.ZoneID = "z1"
+		require.NoError(t, drv.Configure())
+
+		t.Log("verify initial exits with taget none")
+		alias, ok := db.Search(drv.ZoneID, drv.Name, drv.UUID)
+		require.Truef(t, ok, "initial found alias")
+		t.Logf("initial alias: %+v", alias)
+		require.Equal(t, noneTarget, alias.Target)
+
+		db.ResetCalls()
+		t.Log("call Stop")
+		require.NoError(t, drv.Stop(ctx))
+
+		call := db.CallCounts()
+		t.Logf("call counts: %+v", call)
+		require.Equal(t, 0, call.Delete, "unexpected api delete call")
+		require.Equal(t, 0, call.Update, "unexpected api update call")
+		assert.Equal(t, 1, call.Search, "unexpected api search call")
+
+		t.Log("verify alias has been updated")
+		alias, ok = db.Search(drv.ZoneID, drv.Name, drv.UUID)
+		require.Truef(t, ok, "final found alias")
+		t.Logf("final alias: %+v", alias)
+		require.Equal(t, noneTarget, alias.Target)
+	})
+
+	t.Run("drv without kw uuid must delete alias", func(t *testing.T) {
+		db, drv := newDBAndDrv(t, "rid1", dbEntries)
+		drv.Name = "name1"
+		drv.Target = "target1"
+		drv.ZoneID = "z1"
+		require.NoError(t, drv.Configure())
+
+		t.Log("verify initial exits")
+		initial, ok := db.Search(drv.ZoneID, drv.Name, drv.UUID)
+		require.Truef(t, ok, "initial found alias")
+		t.Logf("initial alias: %+v", initial)
+		require.Equal(t, drv.Target, initial.Target)
+
+		db.ResetCalls()
+		t.Log("call Stop")
+		require.NoError(t, drv.Stop(ctx))
+
+		call := db.CallCounts()
+		t.Logf("call counts: %+v", call)
+		require.Equal(t, 1, call.Delete, "unexpected api delete call")
+		require.Equal(t, 0, call.Update, "unexpected api update call")
+		assert.Equal(t, 1, call.Search, "unexpected api search call")
+
+		t.Log("verify alias has been deleted")
+		final, ok := db.Search(drv.ZoneID, drv.Name, drv.UUID)
+		require.Falsef(t, ok, "found alias")
+		t.Logf("final alias: %+v", final)
 	})
 }
