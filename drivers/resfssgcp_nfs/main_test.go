@@ -8,6 +8,7 @@ import (
 	"testing"
 
 	"github.com/opensvc/om3/v3/drivers/sgcpauthtesthelper"
+	"github.com/opensvc/om3/v3/util/testsgcphelper"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -16,7 +17,6 @@ import (
 	"github.com/opensvc/om3/v3/core/resource"
 	"github.com/opensvc/om3/v3/core/status"
 	"github.com/opensvc/om3/v3/util/sgcp"
-	"github.com/opensvc/om3/v3/util/sgcp/testsgcphelper"
 )
 
 func newDrvWithRid(s string) *T {
