@@ -169,6 +169,8 @@ func (a *DB) ResetCalls() {
 	a.callCount = Counters{}
 }
 
+// search looks up a DBEntry in the database matching the specified zoneID, name, and uuid.
+// Returns the matched DBEntry and a boolean indicating success or failure.
 func (a *DB) search(zoneID, name, uuid string) (v *DBEntry, ok bool) {
 	a.rLock.RLock()
 	defer a.rLock.RUnlock()
@@ -181,6 +183,16 @@ func (a *DB) search(zoneID, name, uuid string) (v *DBEntry, ok bool) {
 	}
 	v = v.clone()
 	return
+}
+
+// Search retrieves an sgcp.Alias from the database using zoneID, name, and uuid as search parameters.
+// Returns the matched alias and a boolean indicating whether the alias was found.
+func (a *DB) Search(zoneID, name, uuid string) (alias *sgcp.Alias, ok bool) {
+	v, ok := a.search(zoneID, name, uuid)
+	if !ok {
+		return nil, ok
+	}
+	return v.asAlias(), ok
 }
 
 func (v *DBEntry) asAlias() *sgcp.Alias {
