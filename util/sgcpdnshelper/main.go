@@ -104,7 +104,8 @@ func (t *Api) UpdateAlias(_ context.Context, zoneID string, aliasUUID string, na
 		return nil, fmt.Errorf("can't update: len aliases=%d", len(v.AliasL))
 	}
 	v.AliasL[0].Target = target
-	return v.asAlias(), nil
+	t.update(v)
+	return v.AsAlias(), nil
 }
 
 func (a *DB) delete(v *DBEntry) {
