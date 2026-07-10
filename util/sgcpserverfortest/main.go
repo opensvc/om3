@@ -175,14 +175,13 @@ func deleteFileClient(w http.ResponseWriter, r *http.Request) {
 
 func dnsGetAliasHandler(a *sgcpdnstesthelper.Api) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		zoneID := r.PathValue("zone_id")
-		id := r.PathValue("id")
+		zoneID := r.PathValue("zoneID")
 		query := r.URL.Query()
-		qName := query.Get("name")
-		qUUID := query.Get("uuid")
+		name := query.Get("name")
+		id := query.Get("id")
 
-		slog.Info(GetDnsAlias, "zoneID", zoneID, "id", id)
-		alias, ok := a.DB.Search(zoneID, qName, qUUID)
+		slog.Info(GetDnsAlias, "zoneID", zoneID, "cnameID", id, "name", name)
+		alias, ok := a.DB.Search(zoneID, name, id)
 		if !ok {
 			logStatusCode(GetDnsAlias, http.StatusNotFound)
 			http.Error(w, fmt.Sprintf("no such alias %s", id), http.StatusNotFound)
@@ -257,7 +256,7 @@ var (
 	DeleteFileClient = "DELETE /file/fs/{id}/client/{clientID}"
 
 	// TODO: verify path
-	GetDnsAlias = "GET /dns/zone/{zone_id}/cname-entry/{id}"
+	GetDnsAlias = "GET /dns/zone/{zoneID}/cname-entry"
 
 	PostAuth = "POST /auth/access_token"
 )
