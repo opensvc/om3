@@ -6,7 +6,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	"github.com/opensvc/om3/v3/util/sgcp/testsgcphelper"
+	"github.com/opensvc/om3/v3/util/testsgcphelper"
 )
 
 func Setup(t *testing.T) func() {
@@ -67,7 +67,7 @@ func TestLoadConfig(t *testing.T) {
 
 	// Test DNS configuration
 	assert.Equal(t, "https://127.0.0.1:1215/dns", cfg.DNS.BaseURL)
-	assert.Equal(t, "/alias", cfg.DNS.Path.Alias)
+	assert.Equal(t, "/cname-entry", cfg.DNS.Path.CName)
 	assert.Equal(t, "/zone", cfg.DNS.Path.Zone)
 
 	// Test auth configuration

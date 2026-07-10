@@ -34,7 +34,7 @@ type (
 	DNSConfig struct {
 		BaseURL string `yaml:"base_url"`
 		Path    struct {
-			Alias string `yaml:"alias"`
+			CName string `yaml:"cname"`
 			Zone  string `yaml:"zone"`
 		} `yaml:"path"`
 	}

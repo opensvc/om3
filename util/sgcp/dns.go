@@ -129,7 +129,7 @@ func (a *DNSAPI) getAliasesURL(zoneID, name, uuid string) string {
 		values.Set("id", uuid)
 	}
 	base := strings.TrimRight(a.config.DNS.BaseURL, "/")
-	path := a.config.DNS.Path.Alias
+	path := a.config.DNS.Path.CName
 	return fmt.Sprintf("%s%s?%s", base, path, values.Encode())
 }
 
@@ -137,7 +137,7 @@ func (a *DNSAPI) getAliasesURL(zoneID, name, uuid string) string {
 func (a *DNSAPI) getAliasesCreateURL(zoneID string) string {
 	base := strings.TrimRight(a.config.DNS.BaseURL, "/")
 	zonePath := a.config.DNS.Path.Zone
-	aliasPath := a.config.DNS.Path.Alias
+	aliasPath := a.config.DNS.Path.CName
 	return fmt.Sprintf("%s%s/%s%s", base, zonePath, zoneID, aliasPath)
 }
 
@@ -145,6 +145,6 @@ func (a *DNSAPI) getAliasesCreateURL(zoneID string) string {
 func (a *DNSAPI) getAliasURL(zoneID, aliasUUID string) string {
 	base := strings.TrimRight(a.config.DNS.BaseURL, "/")
 	zonePath := a.config.DNS.Path.Zone
-	aliasPath := a.config.DNS.Path.Alias
+	aliasPath := a.config.DNS.Path.CName
 	return fmt.Sprintf("%s%s/%s%s/%s", base, zonePath, zoneID, aliasPath, aliasUUID)
 }
