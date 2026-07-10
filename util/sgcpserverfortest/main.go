@@ -15,6 +15,9 @@ import (
 	"gopkg.in/yaml.v3"
 
 	"github.com/google/uuid"
+
+	"github.com/opensvc/om3/v3/util/sgcp"
+	"github.com/opensvc/om3/v3/util/sgcpdnstesthelper"
 )
 
 type (
@@ -170,6 +173,30 @@ func deleteFileClient(w http.ResponseWriter, r *http.Request) {
 	return
 }
 
+func dnsGetAliasHandler(a *sgcpdnstesthelper.Api) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		zoneID := r.PathValue("zone_id")
+		id := r.PathValue("id")
+		query := r.URL.Query()
+		qName := query.Get("name")
+		qUUID := query.Get("uuid")
+
+		slog.Info(GetDnsAlias, "zoneID", zoneID, "id", id)
+		alias, ok := a.DB.Search(zoneID, qName, qUUID)
+		if !ok {
+			logStatusCode(GetDnsAlias, http.StatusNotFound)
+			http.Error(w, fmt.Sprintf("no such alias %s", id), http.StatusNotFound)
+			return
+		}
+		setHeader(w, GetDnsAlias, http.StatusOK)
+		// TODO: verify mapping
+		body := map[string]sgcp.Alias{
+			"alias": *alias,
+		}
+		json.NewEncoder(w).Encode(body)
+	}
+}
+
 func postAuthToken(w http.ResponseWriter, r *http.Request) {
 	slog.Info(PostAuth)
 	auth := r.Header.Get("Authorization")
@@ -229,6 +256,9 @@ var (
 	GetFileClient    = "Get /file/fs/{id}/client"
 	DeleteFileClient = "DELETE /file/fs/{id}/client/{clientID}"
 
+	// TODO: verify path
+	GetDnsAlias = "GET /dns/zone/{zone_id}/cname-entry/{id}"
+
 	PostAuth = "POST /auth/access_token"
 )
 
@@ -257,6 +287,8 @@ func main() {
 	var err error
 	createdTokenCount.Store(0)
 	mux := http.NewServeMux()
+	dnsDB := sgcpdnstesthelper.NewDB()
+	dnsApi := sgcpdnstesthelper.NewApi(dnsDB)
 
 	users, err = loadUsers()
 	if err != nil {
@@ -272,6 +304,9 @@ func main() {
 
 	// url: /file/fs/{id}/client/{clientID}
 	mux.HandleFunc(DeleteFileClient, deleteFileClient)
+
+	// url: /dns/alias/{id}
+	mux.HandleFunc(GetDnsAlias, dnsGetAliasHandler(dnsApi))
 
 	// url: /auth/access_token
 	mux.HandleFunc(PostAuth, postAuthToken)
