@@ -7,6 +7,8 @@ import (
 	"net/http/httptest"
 	"testing"
 
+	"github.com/opensvc/om3/v3/drivers/sgcpauthtesthelper"
+
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
@@ -25,40 +27,10 @@ func newDrvWithRid(s string) *T {
 	return d
 }
 
-type (
-	tAuthInfo struct {
-		sgcp.AuthInfo
-	}
-)
-
-func (a *tAuthInfo) GetAuthInfo(string) (*sgcp.AuthInfo, error) {
-	return &a.AuthInfo, nil
-}
-
-func tCreateAuthInfo(s string) *tAuthInfo {
-	var a sgcp.AuthInfo
-	switch s {
-	case "id1":
-		a = sgcp.AuthInfo{
-			AccountID:    "account_1",
-			ClientID:     "client_id_1",
-			ClientSecret: "client_secret_1",
-			Signature:    "1",
-		}
-	default:
-		a = sgcp.AuthInfo{
-			AccountID:    "account_default",
-			ClientID:     "client_id_efault",
-			ClientSecret: "client_secret_default",
-			Signature:    "default",
-		}
-	}
-	return &tAuthInfo{AuthInfo: a}
-}
-
 // Setup initializes the test environment by configuring SGCP with a temporary configuration file.
 // It returns a cleanup function that resets the configuration to a null state when invoked.
 func Setup(t *testing.T) func() {
+	t.Helper()
 	cfgFile := testsgcphelper.InstallConfig(t)
 	sgcp.SetConfigForTest(cfgFile)
 	require.NotNil(t, sgcp.GetConfig())
@@ -89,7 +61,7 @@ func TestConfigure(t *testing.T) {
 	defer Setup(t)()
 
 	drv := newDrvWithRid("test-rid")
-	drv.authInfoer = tCreateAuthInfo("id1")
+	drv.authInfoer = sgcpauthtesthelper.NewMockGetAuthInfoProvider("id1")
 	// Set configuration
 	drv.UUID = "test-uuid"
 	drv.Host = "test-host"
@@ -111,7 +83,7 @@ func TestConfigureWhenNoConfig(t *testing.T) {
 	sgcp.SetConfigForTest("")
 
 	drv := newDrvWithRid("test-rid")
-	drv.authInfoer = tCreateAuthInfo("id1")
+	drv.authInfoer = sgcpauthtesthelper.NewMockGetAuthInfoProvider("id1")
 	// Set configuration
 	drv.UUID = "test-uuid"
 	drv.Host = "test-host"
@@ -126,7 +98,7 @@ func TestConfigureWithMissingUUID(t *testing.T) {
 	defer Setup(t)()
 
 	drv := newDrvWithRid("test-rid")
-	drv.authInfoer = tCreateAuthInfo("id1")
+	drv.authInfoer = sgcpauthtesthelper.NewMockGetAuthInfoProvider("id1")
 
 	// This should still work since UUID is set via the configuration
 	drv.UUID = "test-uuid"
@@ -139,7 +111,7 @@ func TestIsClientIgnored(t *testing.T) {
 	defer Setup(t)()
 
 	drv := newDrvWithRid("test-rid")
-	drv.authInfoer = tCreateAuthInfo("id1")
+	drv.authInfoer = sgcpauthtesthelper.NewMockGetAuthInfoProvider("id1")
 
 	err := drv.Configure()
 	assert.NoError(t, err)
@@ -173,7 +145,7 @@ func TestGetNFSClients(t *testing.T) {
 	defer Setup(t)()
 
 	drv := newDrvWithRid("test-rid")
-	drv.authInfoer = tCreateAuthInfo("id1")
+	drv.authInfoer = sgcpauthtesthelper.NewMockGetAuthInfoProvider("id1")
 	require.NoError(t, drv.Configure())
 
 	// Set up ignored hosts
@@ -303,7 +275,7 @@ func TestLabel(t *testing.T) {
 	defer Setup(t)()
 
 	drv := newDrvWithRid("test-rid")
-	drv.authInfoer = tCreateAuthInfo("id1")
+	drv.authInfoer = sgcpauthtesthelper.NewMockGetAuthInfoProvider("id1")
 
 	drv.UUID = "test-uuid"
 	drv.MountPoint = "/tmp/foo"
