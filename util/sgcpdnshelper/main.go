@@ -23,6 +23,14 @@ type (
 		byId            map[string]*DBEntry
 		byZoneAndName   map[string]*DBEntry
 		byIdZoneAndName map[string]*DBEntry
+
+		callCount Counters
+	}
+
+	Counters struct {
+		Delete int
+		Update int
+		Search int
 	}
 
 	DBEntry struct {
@@ -76,6 +84,9 @@ func (a *Api) DeleteAlias(_ context.Context, zoneID, aliasUUID string) error {
 
 func (a *Api) GetAliases(_ context.Context, zoneID, name, uuid string) (method, url string, code int, data []byte, err error) {
 	resp, ok := a.search(zoneID, name, uuid)
+	a.rLock.RLock()
+	a.callCount.Search++
+	a.rLock.RUnlock()
 	method = http.MethodGet
 	url = "/file/alias"
 	if ok {
@@ -105,7 +116,7 @@ func (t *Api) UpdateAlias(_ context.Context, zoneID string, aliasUUID string, na
 	}
 	v.AliasL[0].Target = target
 	t.update(v)
-	return v.AsAlias(), nil
+	return v.asAlias(), nil
 }
 
 func (a *DB) delete(v *DBEntry) {
@@ -114,6 +125,7 @@ func (a *DB) delete(v *DBEntry) {
 	delete(a.byId, v.UUID)
 	delete(a.byZoneAndName, v.Name+"@"+v.ZoneID)
 	delete(a.byIdZoneAndName, v.Name+"@"+v.ZoneID+"@"+v.UUID)
+	a.callCount.Delete++
 }
 
 func (a *DB) update(v *DBEntry) {
@@ -132,6 +144,7 @@ func (a *DB) update(v *DBEntry) {
 	if nv.UUID != "" && nv.Name != "" && nv.ZoneID != "" {
 		a.byIdZoneAndName[nv.Name+"@"+nv.ZoneID+"@"+nv.UUID] = nv
 	}
+	a.callCount.Update++
 }
 
 func (a *DB) Setup(l []DBEntry) {
@@ -141,6 +154,19 @@ func (a *DB) Setup(l []DBEntry) {
 	for _, v := range l {
 		a.update(v.clone())
 	}
+}
+
+func (a *DB) CallCounts() Counters {
+	a.rLock.RLock()
+	calls := a.callCount
+	a.rLock.RUnlock()
+	return calls
+}
+
+func (a *DB) ResetCalls() {
+	a.rLock.Lock()
+	defer a.rLock.Unlock()
+	a.callCount = Counters{}
 }
 
 func (a *DB) search(zoneID, name, uuid string) (v *DBEntry, ok bool) {
