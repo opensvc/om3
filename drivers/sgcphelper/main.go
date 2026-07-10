@@ -12,6 +12,11 @@ type (
 	GetAuthInfoFromDatastorePather struct{}
 )
 
+func AuthInfoFromPath(s string) (*sgcp.AuthInfo, error) {
+	t := &GetAuthInfoFromDatastorePather{}
+	return t.GetAuthInfo(s)
+}
+
 // GetAuthInfo retrieves authentication information from the specified datastore path and returns an AuthInfo struct.
 func (g *GetAuthInfoFromDatastorePather) GetAuthInfo(datastorePath string) (*sgcp.AuthInfo, error) {
 	var (
