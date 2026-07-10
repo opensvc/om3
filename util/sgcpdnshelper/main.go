@@ -119,67 +119,67 @@ func (t *Api) UpdateAlias(_ context.Context, zoneID string, aliasUUID string, na
 	return v.asAlias(), nil
 }
 
-func (a *DB) delete(v *DBEntry) {
-	a.rLock.Lock()
-	defer a.rLock.Unlock()
-	delete(a.byId, v.UUID)
-	delete(a.byZoneAndName, v.Name+"@"+v.ZoneID)
-	delete(a.byIdZoneAndName, v.Name+"@"+v.ZoneID+"@"+v.UUID)
-	a.callCount.Delete++
+func (db *DB) delete(v *DBEntry) {
+	db.rLock.Lock()
+	defer db.rLock.Unlock()
+	delete(db.byId, v.UUID)
+	delete(db.byZoneAndName, v.Name+"@"+v.ZoneID)
+	delete(db.byIdZoneAndName, v.Name+"@"+v.ZoneID+"@"+v.UUID)
+	db.callCount.Delete++
 }
 
-func (a *DB) update(v *DBEntry) {
+func (db *DB) update(v *DBEntry) {
 	if v == nil {
 		return
 	}
 	nv := v.clone()
-	a.rLock.Lock()
-	defer a.rLock.Unlock()
+	db.rLock.Lock()
+	defer db.rLock.Unlock()
 	if nv.UUID != "" {
-		a.byId[nv.UUID] = nv
+		db.byId[nv.UUID] = nv
 	}
 	if nv.Name != "" && nv.ZoneID != "" {
-		a.byZoneAndName[nv.Name+"@"+nv.ZoneID] = nv
+		db.byZoneAndName[nv.Name+"@"+nv.ZoneID] = nv
 	}
 	if nv.UUID != "" && nv.Name != "" && nv.ZoneID != "" {
-		a.byIdZoneAndName[nv.Name+"@"+nv.ZoneID+"@"+nv.UUID] = nv
+		db.byIdZoneAndName[nv.Name+"@"+nv.ZoneID+"@"+nv.UUID] = nv
 	}
-	a.callCount.Update++
+	db.callCount.Update++
 }
 
-func (a *DB) Setup(l []DBEntry) {
-	a.byId = make(map[string]*DBEntry)
-	a.byZoneAndName = make(map[string]*DBEntry)
-	a.byIdZoneAndName = make(map[string]*DBEntry)
+func (db *DB) Setup(l []DBEntry) {
+	db.byId = make(map[string]*DBEntry)
+	db.byZoneAndName = make(map[string]*DBEntry)
+	db.byIdZoneAndName = make(map[string]*DBEntry)
 	for _, v := range l {
-		a.update(v.clone())
+		db.update(v.clone())
 	}
 }
 
-func (a *DB) CallCounts() Counters {
-	a.rLock.RLock()
-	calls := a.callCount
-	a.rLock.RUnlock()
+func (db *DB) CallCounts() Counters {
+	db.rLock.RLock()
+	calls := db.callCount
+	db.rLock.RUnlock()
 	return calls
 }
 
-func (a *DB) ResetCalls() {
-	a.rLock.Lock()
-	defer a.rLock.Unlock()
-	a.callCount = Counters{}
+func (db *DB) ResetCalls() {
+	db.rLock.Lock()
+	defer db.rLock.Unlock()
+	db.callCount = Counters{}
 }
 
 // search looks up a DBEntry in the database matching the specified zoneID, name, and uuid.
 // Returns the matched DBEntry and a boolean indicating success or failure.
-func (a *DB) search(zoneID, name, uuid string) (v *DBEntry, ok bool) {
-	a.rLock.RLock()
-	defer a.rLock.RUnlock()
+func (db *DB) search(zoneID, name, uuid string) (v *DBEntry, ok bool) {
+	db.rLock.RLock()
+	defer db.rLock.RUnlock()
 	if zoneID != "" && name != "" && uuid != "" {
-		v, ok = a.byIdZoneAndName[name+"@"+zoneID+"@"+uuid]
+		v, ok = db.byIdZoneAndName[name+"@"+zoneID+"@"+uuid]
 	} else if zoneID != "" && name != "" {
-		v, ok = a.byZoneAndName[name+"@"+zoneID]
+		v, ok = db.byZoneAndName[name+"@"+zoneID]
 	} else if uuid != "" {
-		v, ok = a.byId[uuid]
+		v, ok = db.byId[uuid]
 	}
 	v = v.clone()
 	return
@@ -187,8 +187,8 @@ func (a *DB) search(zoneID, name, uuid string) (v *DBEntry, ok bool) {
 
 // Search retrieves an sgcp.Alias from the database using zoneID, name, and uuid as search parameters.
 // Returns the matched alias and a boolean indicating whether the alias was found.
-func (a *DB) Search(zoneID, name, uuid string) (alias *sgcp.Alias, ok bool) {
-	v, ok := a.search(zoneID, name, uuid)
+func (db *DB) Search(zoneID, name, uuid string) (alias *sgcp.Alias, ok bool) {
+	v, ok := db.search(zoneID, name, uuid)
 	if !ok {
 		return nil, ok
 	}
