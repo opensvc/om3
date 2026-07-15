@@ -380,12 +380,15 @@ func (e *Executor) doExecRunLogs(ctx context.Context, a ...string) (<-chan []byt
 	// Create a command
 	cmd := exec.CommandContext(ctx, e.bin, cmdArgs...)
 
+	stdout, err := cmd.StdoutPipe()
+	if err != nil {
+		return nil, fmt.Errorf("failed to get stdout pipe: %w", err)
+	}
+
 	stderr, err := cmd.StderrPipe()
 	if err != nil {
 		return nil, fmt.Errorf("failed to get stderr pipe: %w", err)
 	}
-
-	cmd.Stdout = nil
 
 	// Start the command
 	if err := cmd.Start(); err != nil {
@@ -395,27 +398,40 @@ func (e *Executor) doExecRunLogs(ctx context.Context, a ...string) (<-chan []byt
 	// Create a channel for log lines
 	logChan := make(chan []byte)
 
-	// Read stderr in a goroutine
-	go func() {
-		defer close(logChan)
+	var wg sync.WaitGroup
+	readStream := func(name string, stream io.Reader) {
+		defer wg.Done()
 		buf := make([]byte, 4096)
 		for {
-			n, err := stderr.Read(buf)
-			if err != nil {
-				if err != io.EOF {
-					e.log().Warnf("error reading logs: %s", err)
-				}
-				break
-			}
+			n, err := stream.Read(buf)
 			if n > 0 {
 				// Copy the data to a new slice to avoid race conditions
 				data := make([]byte, n)
 				copy(data, buf[:n])
-				logChan <- data
+				select {
+				case logChan <- data:
+				case <-ctx.Done():
+					return
+				}
+			}
+			if err != nil {
+				if err != io.EOF {
+					e.log().Warnf("error reading container logs %s: %s", name, err)
+				}
+				return
 			}
 		}
+	}
+
+	wg.Add(2)
+	go readStream("stdout", stdout)
+	go readStream("stderr", stderr)
+
+	go func() {
+		wg.Wait()
 		// Wait for command to finish
 		_ = cmd.Wait()
+		close(logChan)
 	}()
 
 	return logChan, nil
