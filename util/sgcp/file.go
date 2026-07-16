@@ -71,6 +71,29 @@ func (a *FilesAPI) DeleteNFSClients(ctx context.Context, fsUUID, clientUUID stri
 	return
 }
 
+// GetConsistencyGroup fetches a consistency group by uuid.
+func (a *FilesAPI) GetConsistencyGroup(ctx context.Context, uuid string) (method, url string, code int, data []byte, err error) {
+	method = http.MethodGet
+	url = a.GetConsistencyGroupURL(uuid)
+	code, data, err = a.do(ctx, method, url, nil, a.GetScopes("files_read")...)
+	return
+}
+
+func (a *FilesAPI) PatchConsistencyGroup(ctx context.Context, uuid string, payload any) (method, url string, code int, data []byte, err error) {
+	var b []byte
+	method = http.MethodPatch
+	url = a.GetConsistencyGroupURL(uuid)
+
+	b, err = json.Marshal(payload)
+	if err != nil {
+		err = fmt.Errorf("failed to marshal consistency group patch: %w", err)
+		return
+	}
+	a.log.Infof("%s %s data=%s", method, url, string(b))
+	code, data, err = a.do(ctx, method, url, bytes.NewReader(b), a.GetScopes("files_write")...)
+	return
+}
+
 func (a *FilesAPI) GetScopes(scopeType string) []string {
 	return a.config.GetScopes(scopeType)
 }
