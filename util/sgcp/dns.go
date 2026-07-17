@@ -24,12 +24,7 @@ type Alias struct {
 	Name   string `json:"name,omitempty"`
 	Target string `json:"target,omitempty"`
 	FQDN   string `json:"fqdn,omitempty"`
-	ZoneID string `json:"zone_id,omitempty"`
-}
-
-// aliasListResponse is the API response for listing aliases.
-type aliasListResponse struct {
-	Aliases []Alias `json:"aliases"`
+	ZoneID string `json:"zoneId,omitempty"`
 }
 
 // NewDNSAPI creates a new DNSAPI instance.
@@ -76,12 +71,12 @@ func (a *DNSAPI) CreateAlias(ctx context.Context, zoneID, name, target string) (
 	return &result, nil
 }
 
-// UpdateAlias updates an existing DNS alias.
+// UpdateAlias updates an existing DNS alias (PATCH, target only).
 func (a *DNSAPI) UpdateAlias(ctx context.Context, zoneID, aliasUUID, name, target string) (alias *Alias, err error) {
-	method := http.MethodPut
+	method := http.MethodPatch
 	path := a.getAliasURL(zoneID, aliasUUID)
 
-	payload := map[string]any{"name": name, "target": target, "ttl": 60}
+	payload := map[string]any{"target": target, "ttl": 60}
 	var b []byte
 	b, err = json.Marshal(payload)
 	if err != nil {
@@ -121,7 +116,6 @@ func (a *DNSAPI) GetScopes(scopeType string) []string {
 // getAliasesURL constructs the URL for listing aliases with query parameters.
 func (a *DNSAPI) getAliasesURL(zoneID, name, uuid string) string {
 	values := url.Values{}
-	values.Set("zone_id", zoneID)
 	if name != "" {
 		values.Set("name", name)
 	}
@@ -129,8 +123,9 @@ func (a *DNSAPI) getAliasesURL(zoneID, name, uuid string) string {
 		values.Set("id", uuid)
 	}
 	base := strings.TrimRight(a.config.DNS.BaseURL, "/")
-	path := a.config.DNS.Path.CName
-	return fmt.Sprintf("%s%s?%s", base, path, values.Encode())
+	zonePath := a.config.DNS.Path.Zone
+	aliasPath := a.config.DNS.Path.CName
+	return fmt.Sprintf("%s%s/%s%s?%s", base, zonePath, zoneID, aliasPath, values.Encode())
 }
 
 // getAliasesCreateURL constructs the URL for creating an alias.

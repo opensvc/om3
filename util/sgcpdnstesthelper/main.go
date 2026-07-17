@@ -88,14 +88,22 @@ func (a *Api) GetAliases(_ context.Context, zoneID, name, uuid string) (method, 
 	a.callCount.Search++
 	a.rLock.RUnlock()
 	method = http.MethodGet
-	url = "/file/alias"
+	base := "https://dns.example.com"
+	url = fmt.Sprintf("%s/zones/%s/cname-records", base, zoneID)
+	if name != "" && uuid != "" {
+		url += fmt.Sprintf("?name=%s&id=%s", name, uuid)
+	} else if name != "" {
+		url += fmt.Sprintf("?name=%s", name)
+	} else if uuid != "" {
+		url += fmt.Sprintf("?id=%s", uuid)
+	}
 	if ok {
 		code := resp.StatusCode
 		if code == 0 {
 			code = http.StatusOK
 		}
 		m := map[string][]sgcp.Alias{
-			"aliases": resp.AliasL,
+			"cnameRecords": resp.AliasL,
 		}
 		b, err := json.Marshal(m)
 		if err == nil {

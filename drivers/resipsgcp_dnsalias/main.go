@@ -16,8 +16,6 @@ import (
 	"github.com/opensvc/om3/v3/util/sgcp"
 )
 
-const noneTarget = "none."
-
 type (
 	T struct {
 		resource.T
@@ -33,7 +31,8 @@ type (
 		mgr *mgr
 
 		// for tests
-		api apiProvider
+		api        apiProvider
+		noneTarget string
 	}
 
 	mgr struct {
@@ -52,7 +51,7 @@ type (
 	}
 
 	aliasListResponse struct {
-		Aliases []sgcp.Alias `json:"aliases"`
+		CnameRecords []sgcp.Alias `json:"cnameRecords"`
 	}
 
 	apiProvider interface {
@@ -61,10 +60,6 @@ type (
 		DeleteAlias(ctx context.Context, zoneID, aliasUUID string) (err error)
 		GetAliases(ctx context.Context, zoneID, name, uuid string) (method, url string, code int, data []byte, err error)
 		UpdateAlias(ctx context.Context, zoneID string, aliasUUID string, name string, target string) (alias *sgcp.Alias, err error)
-	}
-
-	authInfoProvider interface {
-		GetAuthInfo(string) (*sgcp.AuthInfo, error)
 	}
 )
 
@@ -79,6 +74,11 @@ func (t *T) Configure() error {
 	}
 	if t.Target == "" {
 		t.Target = hostname.Hostname()
+	}
+
+	t.noneTarget = cfg.DNS.NoneTarget
+	if t.noneTarget == "" {
+		return fmt.Errorf("dns.none_target is required in sgcp config")
 	}
 
 	// secret is mandatory: define from keyword, fallback to cfg default, ensure not empty
@@ -150,7 +150,7 @@ func (t *T) Start(ctx context.Context) error {
 func (t *T) Stop(ctx context.Context) error {
 	// TODO: implement cache cleanup
 	if t.UUID != "" {
-		return t.mgr.createOrUpdate(ctx, noneTarget)
+		return t.mgr.createOrUpdate(ctx, t.noneTarget)
 	}
 	return t.mgr.delete(ctx)
 }
@@ -171,7 +171,7 @@ func (t *T) Status(ctx context.Context) status.T {
 		return status.Warn
 	}
 	found := aliases[0]
-	if found.Target == noneTarget || found.Target == strings.TrimSuffix(noneTarget, ".") {
+	if found.Target == t.noneTarget || found.Target == strings.TrimSuffix(t.noneTarget, ".") {
 		t.StatusLog().Info("alias target is disabled")
 		return status.Down
 	}

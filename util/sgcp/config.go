@@ -32,8 +32,9 @@ type (
 
 	// DNSConfig contains DNS-related API configuration
 	DNSConfig struct {
-		BaseURL string `yaml:"base_url"`
-		Path    struct {
+		BaseURL    string `yaml:"base_url"`
+		NoneTarget string `yaml:"none_target"`
+		Path       struct {
 			CName string `yaml:"cname"`
 			Zone  string `yaml:"zone"`
 		} `yaml:"path"`
