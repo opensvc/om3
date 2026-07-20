@@ -11,6 +11,7 @@ files:
 
 dns:
   base_url: "https://127.0.0.1:1215/dns"
+  none_target: "none.xxx"
   path:
     cname: "/cname-entry"
     zone: "/zone"

@@ -55,7 +55,7 @@ func TestStatus(t *testing.T) {
 				{
 					UUID:   "a1",
 					Name:   "svc1",
-					Target: "none.",
+					Target: "none.xxx",
 					FQDN:   "svc1.example.org",
 					ZoneID: "z1",
 				},
@@ -224,7 +224,7 @@ func TestStatus(t *testing.T) {
 			resTarget:      "tgt2",
 			expectedStatus: status.Down,
 			expectedStatusLog: []resource.StatusLogEntry{
-				{Level: "error", Message: "get alias failed: unexpected status code for GET /file/alias got 500 wanted [200 404]"},
+				{Level: "error", Message: "get alias failed: unexpected status code for GET https://dns.example.com/zones/z1/cname-records?name=bad500 got 500 wanted [200 404]"},
 				{Level: "info", Message: "not found"},
 			},
 		},
@@ -436,7 +436,7 @@ func TestStop(t *testing.T) {
 				{
 					UUID:   "uuid-none",
 					Name:   "name-none",
-					Target: "none.",
+					Target: "none.xxx",
 					FQDN:   "name2.z1",
 					ZoneID: "z1",
 				},
@@ -521,22 +521,22 @@ func TestStop(t *testing.T) {
 		alias, ok = db.Search(drv.ZoneID, drv.Name, drv.UUID)
 		require.Truef(t, ok, "final found alias")
 		t.Logf("final alias: %+v", alias)
-		require.Equal(t, noneTarget, alias.Target)
+		require.Equal(t, drv.noneTarget, alias.Target)
 	})
 
 	t.Run("drv with kw uuid and target already none is noop", func(t *testing.T) {
 		db, drv := newDBAndDrv(t, "rid1", dbEntries)
 		drv.Name = "name-none"
 		drv.UUID = "uuid-none"
-		drv.Target = "none."
+		drv.Target = "none.xxx"
 		drv.ZoneID = "z1"
 		require.NoError(t, drv.Configure())
 
-		t.Log("verify initial exits with taget none")
+		t.Log("verify initial exits with target none")
 		alias, ok := db.Search(drv.ZoneID, drv.Name, drv.UUID)
 		require.Truef(t, ok, "initial found alias")
 		t.Logf("initial alias: %+v", alias)
-		require.Equal(t, noneTarget, alias.Target)
+		require.Equal(t, drv.noneTarget, alias.Target)
 
 		db.ResetCalls()
 		t.Log("call Stop")
@@ -548,11 +548,11 @@ func TestStop(t *testing.T) {
 		require.Equal(t, 0, call.Update, "unexpected api update call")
 		assert.Equal(t, 1, call.Search, "unexpected api search call")
 
-		t.Log("verify alias has been updated")
+		t.Log("verify alias has not been updated")
 		alias, ok = db.Search(drv.ZoneID, drv.Name, drv.UUID)
 		require.Truef(t, ok, "final found alias")
 		t.Logf("final alias: %+v", alias)
-		require.Equal(t, noneTarget, alias.Target)
+		require.Equal(t, drv.noneTarget, alias.Target)
 	})
 
 	t.Run("drv without kw uuid must delete alias", func(t *testing.T) {

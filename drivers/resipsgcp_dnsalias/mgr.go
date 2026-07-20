@@ -92,7 +92,7 @@ func (m *mgr) getAliases(ctx context.Context) ([]sgcp.Alias, error) {
 	if err := json.Unmarshal(data, &resp); err != nil {
 		return nil, fmt.Errorf("decode aliases: %w", err)
 	}
-	return resp.Aliases, nil
+	return resp.CnameRecords, nil
 }
 
 // create creates a new alias with the specified target and returns the created alias or an error if the operation fails.
