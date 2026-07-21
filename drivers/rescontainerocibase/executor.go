@@ -404,12 +404,6 @@ func (e *Executor) doExecRunLogs(ctx context.Context, a ...string) (<-chan []byt
 		buf := make([]byte, 4096)
 		for {
 			n, err := stream.Read(buf)
-			if err != nil {
-				if err != io.EOF {
-					e.log().Warnf("error reading container logs %s: %s", name, err)
-				}
-				return
-			}
 			if n > 0 {
 				// Copy the data to a new slice to avoid race conditions
 				data := make([]byte, n)
@@ -419,6 +413,12 @@ func (e *Executor) doExecRunLogs(ctx context.Context, a ...string) (<-chan []byt
 				case <-ctx.Done():
 					return
 				}
+			}
+			if err != nil {
+				if err != io.EOF {
+					e.log().Warnf("error reading container logs %s: %s", name, err)
+				}
+				return
 			}
 		}
 	}
