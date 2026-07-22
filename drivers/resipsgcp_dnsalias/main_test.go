@@ -249,6 +249,7 @@ func TestStatus(t *testing.T) {
 			drv.Target = tc.resTarget
 			drv.ZoneID = tc.resZoneID
 			require.NoError(t, drv.Configure())
+			drv.mgr.CacheTTL = 0
 
 			dStatus := drv.Status(ctx)
 			assert.Equalf(t, tc.expectedStatus, dStatus, "expected %s, got %s", tc.expectedStatus, dStatus)
@@ -300,6 +301,7 @@ func TestStart(t *testing.T) {
 		drv.Target = "foo-target"
 		drv.ZoneID = "z1"
 		require.NoError(t, drv.Configure())
+		drv.mgr.CacheTTL = 0
 
 		t.Log("verify alias doesn't exits")
 		alias, ok := db.Search("z1", "foo", "")
@@ -334,6 +336,7 @@ func TestStart(t *testing.T) {
 		drv.Target = "target1"
 		drv.ZoneID = "z1"
 		require.NoError(t, drv.Configure())
+		drv.mgr.CacheTTL = 0
 
 		t.Log("verify alias initially exits")
 		alias, ok := db.Search("z1", "name1", "uuid1")
@@ -362,6 +365,7 @@ func TestStart(t *testing.T) {
 		drv.Target = "newTarget2"
 		drv.ZoneID = "z1"
 		require.NoError(t, drv.Configure())
+		drv.mgr.CacheTTL = 0
 
 		t.Log("verify alias exits initially, with alternate target")
 		alias, ok := db.Search("z1", "name2", "uuid2")
@@ -452,6 +456,7 @@ func TestStop(t *testing.T) {
 		drv.Target = "target"
 		drv.ZoneID = "z1"
 		require.NoError(t, drv.Configure())
+		drv.mgr.CacheTTL = 0
 
 		t.Log("verify alias doesn't exits")
 		_, ok := db.Search(drv.ZoneID, drv.Name, drv.UUID)
@@ -477,6 +482,7 @@ func TestStop(t *testing.T) {
 		drv.Target = "target"
 		drv.ZoneID = "z1"
 		require.NoError(t, drv.Configure())
+		drv.mgr.CacheTTL = 0
 
 		t.Log("verify alias doesn't exits")
 		_, ok := db.Search(drv.ZoneID, drv.Name, drv.UUID)
@@ -500,6 +506,7 @@ func TestStop(t *testing.T) {
 		drv.Target = "target1"
 		drv.ZoneID = "z1"
 		require.NoError(t, drv.Configure())
+		drv.mgr.CacheTTL = 0
 
 		t.Log("verify initial exits")
 		alias, ok := db.Search(drv.ZoneID, drv.Name, drv.UUID)
@@ -531,6 +538,7 @@ func TestStop(t *testing.T) {
 		drv.Target = "none.xxx"
 		drv.ZoneID = "z1"
 		require.NoError(t, drv.Configure())
+		drv.mgr.CacheTTL = 0
 
 		t.Log("verify initial exits with target none")
 		alias, ok := db.Search(drv.ZoneID, drv.Name, drv.UUID)
@@ -561,6 +569,7 @@ func TestStop(t *testing.T) {
 		drv.Target = "target1"
 		drv.ZoneID = "z1"
 		require.NoError(t, drv.Configure())
+		drv.mgr.CacheTTL = 0
 
 		t.Log("verify initial exits")
 		initial, ok := db.Search(drv.ZoneID, drv.Name, drv.UUID)

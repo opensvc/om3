@@ -36,9 +36,10 @@ type (
 	}
 
 	mgr struct {
-		alias alias
-		api   apiProvider
-		log   *plog.Logger
+		alias    alias
+		api      apiProvider
+		log      *plog.Logger
+		CacheTTL time.Duration
 	}
 
 	// alias decoupled from sgcp.Alias to allow for future changes
@@ -62,6 +63,8 @@ type (
 		UpdateAlias(ctx context.Context, zoneID string, aliasUUID string, name string, target string) (alias *sgcp.Alias, err error)
 	}
 )
+
+const defaultCacheTTL = 30 * time.Second
 
 func New() resource.Driver {
 	return &T{}
@@ -110,8 +113,9 @@ func (t *T) Configure() error {
 
 func (t *T) configureMgr(cfg *sgcp.Config) error {
 	mgr := &mgr{
-		alias: alias{UUID: t.UUID, Name: t.Name, Target: t.Target, ZoneID: t.ZoneID},
-		log:   t.Log(),
+		alias:    alias{UUID: t.UUID, Name: t.Name, Target: t.Target, ZoneID: t.ZoneID},
+		log:      t.Log(),
+		CacheTTL: defaultCacheTTL,
 	}
 	if t.api != nil {
 		// allow custom api for tests
@@ -143,12 +147,16 @@ func (t *T) configureMgr(cfg *sgcp.Config) error {
 }
 
 func (t *T) Start(ctx context.Context) error {
-	// TODO: implement cache cleanup
+	if err := t.mgr.cacheClear(); err != nil {
+		t.Log().Debugf("cache clear error: %s", err)
+	}
 	return t.mgr.createOrUpdate(ctx, t.Target)
 }
 
 func (t *T) Stop(ctx context.Context) error {
-	// TODO: implement cache cleanup
+	if err := t.mgr.cacheClear(); err != nil {
+		t.Log().Debugf("cache clear error: %s", err)
+	}
 	if t.UUID != "" {
 		return t.mgr.createOrUpdate(ctx, t.noneTarget)
 	}
@@ -156,7 +164,9 @@ func (t *T) Stop(ctx context.Context) error {
 }
 
 func (t *T) Status(ctx context.Context) status.T {
-	// TODO: implement cache cleanup if command is not called from the scheduler
+	if err := t.mgr.cacheClear(); err != nil {
+		t.Log().Debugf("cache clear error: %s", err)
+	}
 	aliases, err := t.mgr.getAliases(ctx)
 	if err != nil {
 		t.StatusLog().Error("get alias failed: %s", err)

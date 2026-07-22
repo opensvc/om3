@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"net/http"
 
+	"github.com/opensvc/om3/v3/util/ageingcache"
 	"github.com/opensvc/om3/v3/util/sgcp"
 )
 
@@ -27,6 +28,9 @@ func (m *mgr) createOrUpdate(ctx context.Context, target string) error {
 			return fmt.Errorf("create alias: %w", err)
 		} else {
 			m.alias = *v
+			if err := m.cacheClear(); err != nil {
+				m.log.Debugf("cache clear error: %s", err)
+			}
 			return nil
 		}
 	}
@@ -51,6 +55,9 @@ func (m *mgr) createOrUpdate(ctx context.Context, target string) error {
 		return fmt.Errorf("update alias unexpected nil")
 	} else {
 		m.alias = *v
+		if err := m.cacheClear(); err != nil {
+			m.log.Debugf("cache clear error: %s", err)
+		}
 		return nil
 	}
 }
@@ -72,20 +79,37 @@ func (m *mgr) delete(ctx context.Context) error {
 	if err := m.api.DeleteAlias(ctx, alias.ZoneID, alias.UUID); err != nil {
 		return fmt.Errorf("delete alias: %w", err)
 	}
+	if err := m.cacheClear(); err != nil {
+		m.log.Debugf("cache clear error: %s", err)
+	}
 	return nil
 }
 
 // getAliases retrieves a list of aliases for the specified zone, name, and UUID or returns an error if unsuccessful.
 func (m *mgr) getAliases(ctx context.Context) ([]sgcp.Alias, error) {
-	// TODO: Use ageing cache
-	method, url, code, data, err := m.api.GetAliases(ctx, m.alias.ZoneID, m.alias.Name, m.alias.UUID)
+	if m.CacheTTL <= 0 {
+		data, err := m.getAliasesFactory(ctx)()
+		if err != nil {
+			return nil, err
+		}
+		if data == nil || string(data) == "null" {
+			return nil, nil
+		}
+		var resp aliasListResponse
+		if err := json.Unmarshal(data, &resp); err != nil {
+			return nil, fmt.Errorf("decode aliases: %w", err)
+		}
+		return resp.CnameRecords, nil
+	}
+
+	o := ageingcache.NewOutputter(m.getAliasesFactory(ctx))
+	sig := m.cacheSig()
+	data, err := ageingcache.Output(o, sig, m.CacheTTL)
 	if err != nil {
+		m.log.Debugf("getAliases cache miss: %s", err)
 		return nil, err
 	}
-	if err := m.api.CheckStatusCode(method, url, code, http.StatusOK, http.StatusNotFound); err != nil {
-		return nil, err
-	}
-	if code == http.StatusNotFound {
+	if data == nil || string(data) == "null" {
 		return nil, nil
 	}
 	var resp aliasListResponse
@@ -95,7 +119,22 @@ func (m *mgr) getAliases(ctx context.Context) ([]sgcp.Alias, error) {
 	return resp.CnameRecords, nil
 }
 
-// create creates a new alias with the specified target and returns the created alias or an error if the operation fails.
+func (m *mgr) getAliasesFactory(ctx context.Context) func() ([]byte, error) {
+	return func() ([]byte, error) {
+		method, url, code, data, err := m.api.GetAliases(ctx, m.alias.ZoneID, m.alias.Name, m.alias.UUID)
+		if err != nil {
+			return nil, err
+		}
+		if err := m.api.CheckStatusCode(method, url, code, http.StatusOK, http.StatusNotFound); err != nil {
+			return nil, err
+		}
+		if code == http.StatusNotFound {
+			return []byte("null"), nil
+		}
+		return data, nil
+	}
+}
+
 func (m *mgr) create(ctx context.Context, target string) (*alias, error) {
 	v, err := m.api.CreateAlias(ctx, m.alias.ZoneID, m.alias.Name, target)
 	if err != nil {
@@ -104,7 +143,6 @@ func (m *mgr) create(ctx context.Context, target string) (*alias, error) {
 	return toAlias(v), nil
 }
 
-// update modifies an existing alias with the specified parameters and returns the updated alias or an error if any occurs.
 func (m *mgr) update(ctx context.Context, zoneID, aliasUUID, aliasName, target string) (*alias, error) {
 	v, err := m.api.UpdateAlias(ctx, zoneID, aliasUUID, aliasName, target)
 	if err != nil {
@@ -113,7 +151,6 @@ func (m *mgr) update(ctx context.Context, zoneID, aliasUUID, aliasName, target s
 	return toAlias(v), nil
 }
 
-// toAlias converts a sgcp.Alias object to an alias object by mapping corresponding fields.
 func toAlias(v *sgcp.Alias) *alias {
 	return &alias{
 		UUID:   v.UUID,
@@ -124,8 +161,6 @@ func toAlias(v *sgcp.Alias) *alias {
 	}
 }
 
-// Equal compares two alias objects and returns true if they are equal, or false otherwise.
-// It doesn't compare the FQDN field.
 func (a *alias) Equal(b *alias) bool {
 	if a == nil && b == nil {
 		return true
@@ -137,4 +172,15 @@ func (a *alias) Equal(b *alias) bool {
 		a.Name == b.Name &&
 		a.Target == b.Target &&
 		a.ZoneID == b.ZoneID
+}
+
+func (m *mgr) cacheSig() string {
+	return fmt.Sprintf("dnsalias:%s:%s:%s", m.alias.ZoneID, m.alias.Name, m.alias.UUID)
+}
+
+func (m *mgr) cacheClear() error {
+	if m.CacheTTL <= 0 {
+		return nil
+	}
+	return ageingcache.Clear(m.cacheSig())
 }
