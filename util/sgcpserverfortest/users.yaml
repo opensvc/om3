@@ -1,0 +1,8 @@
+account1:
+  client_id: account1
+  client_secret: secret1
+  scopes:
+    - account1:sgcp:files:read
+    - account1:sgcp:files:write
+    - account1:sgcp:dns:read
+    - account1:sgcp:dns:write
