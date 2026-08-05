@@ -1,0 +1,6 @@
+Which nodes should receive this data sync from the `PRD` node where the
+instance is up and running.
+
+A shared filesystem (shared disk, replicated disk, clustered fs or
+networked fs) should not have a rsync target containing nodes where the
+fs resource can be started.

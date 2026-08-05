@@ -171,6 +171,11 @@ var (
 		MustLock: true,
 		PG:       true,
 	}
+	SyncRestore = Properties{
+		Name:     "sync_restore",
+		MustLock: true,
+		PG:       true,
+	}
 	SyncResync = Properties{
 		Name:     "sync_resync",
 		MustLock: true,

@@ -943,6 +943,23 @@ func Resync(ctx context.Context, r Driver) error {
 	return nil
 }
 
+func Restore(ctx context.Context, r Driver, to, src string) error {
+	var i any = r
+	s, ok := i.(restorer)
+	if !ok {
+		return ErrActionNotSupported
+	}
+	defer EvalStatus(ctx, r)
+	if r.IsDisabled() || r.IsActionDisabled() {
+		return ErrDisabled
+	}
+	Setenv(r)
+	if err := s.Restore(ctx, to, src); err != nil {
+		return err
+	}
+	return nil
+}
+
 // Split execute the resource Split function, if implemented by the driver.
 func Split(ctx context.Context, r Driver) error {
 	var i any = r

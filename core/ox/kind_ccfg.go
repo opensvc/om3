@@ -16,7 +16,6 @@ func init() {
 
 	root.AddCommand(
 		cmdObject,
-		commoncmd.NewCmdMonitor(),
 	)
 	cmdObject.AddGroup(
 		commoncmd.NewGroupOrchestratedActions(),
