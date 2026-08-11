@@ -200,7 +200,7 @@ func (t *T) hasNetNS() bool {
 }
 
 func (t *T) purgeCNIVarWithNetNS(ns string) error {
-	pattern := fmt.Sprintf("/var/lib/cni/networks/%s/*.*.*.*", t.Network)
+	pattern := fmt.Sprintf("/var/lib/cni/networks/%s/{*.*.*.*,*:*}", t.Network)
 	paths, err := filepath.Glob(pattern)
 	if err != nil {
 		return err
@@ -210,9 +210,23 @@ func (t *T) purgeCNIVarWithNetNS(ns string) error {
 		if err != nil {
 			return err
 		}
-		line := strings.Fields(string(buff))[0]
-		if line == ns {
+		var (
+			line       string
+			wantRemove bool
+		)
+		if len(buff) != 0 {
+			line = strings.Fields(string(buff))[0]
+		}
+		if line == "" {
+			if file.ModTime(p).Add(5 * time.Second).Before(time.Now()) {
+				t.Log().Infof("remove empty %s (and more than 5s old)", p)
+				wantRemove = true
+			}
+		} else if line == ns {
 			t.Log().Infof("remove leftover %s", p)
+			wantRemove = true
+		}
+		if wantRemove {
 			if err := os.Remove(p); err != nil {
 				return err
 			}
@@ -267,7 +281,7 @@ func (t *T) delObjectNetNS() error {
 }
 
 func (t *T) purgeCNIVarDir() error {
-	pattern := fmt.Sprintf("/var/lib/cni/networks/%s/*.*.*.*", t.Network)
+	pattern := fmt.Sprintf("/var/lib/cni/networks/%s/{*.*.*.*,*:*}", t.Network)
 	paths, err := filepath.Glob(pattern)
 	if err != nil {
 		return err
