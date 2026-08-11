@@ -1829,9 +1829,7 @@ func newCmdObjectContainerLogs(kind string) *cobra.Command {
 		Long:    "Show container logs. Specify a container ID as a positional argument or let om select the container if unambiguous.",
 		Args:    cobra.MaximumNArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			if len(args) > 0 {
-				options.RID = "container#" + args[0]
-			}
+			commoncmd.SetRIDFromArgs(&options.RID, args, "container", "container")
 			return options.Run(kind)
 		},
 	}
@@ -2014,9 +2012,7 @@ func newCmdObjectContainerStart(kind string) *cobra.Command {
 		Long:  "Start a container resource. Specify a container ID as a positional argument. Equivalent to 'instance start --rid container#<ID>'.",
 		Args:  cobra.MaximumNArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			if len(args) > 0 {
-				options.RID = "container#" + args[0]
-			}
+			commoncmd.SetRIDFromArgs(&options.RID, args, "container", "container")
 			return options.Run(kind)
 		},
 	}
@@ -2043,9 +2039,7 @@ func newCmdObjectContainerStop(kind string) *cobra.Command {
 		Long:  "Stop a container resource. Specify a container ID as a positional argument. Equivalent to 'instance stop --rid container#<ID>'.",
 		Args:  cobra.MaximumNArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			if len(args) > 0 {
-				options.RID = "container#" + args[0]
-			}
+			commoncmd.SetRIDFromArgs(&options.RID, args, "container", "container")
 			return options.Run(kind)
 		},
 	}
@@ -2072,9 +2066,7 @@ func newCmdObjectContainerRestart(kind string) *cobra.Command {
 		Long:  "Restart a container resource. Specify a container ID as a positional argument. Equivalent to 'instance restart --rid container#<ID>'.",
 		Args:  cobra.MaximumNArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			if len(args) > 0 {
-				options.RID = "container#" + args[0]
-			}
+			commoncmd.SetRIDFromArgs(&options.RID, args, "container", "container")
 			return options.Run(kind)
 		},
 	}
@@ -2101,9 +2093,7 @@ func newCmdObjectContainerProvision(kind string) *cobra.Command {
 		Long:  "Provision a container resource. Specify a container ID as a positional argument. Equivalent to 'instance provision --rid container#<ID>'.",
 		Args:  cobra.MaximumNArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			if len(args) > 0 {
-				options.RID = "container#" + args[0]
-			}
+			commoncmd.SetRIDFromArgs(&options.RID, args, "container", "container")
 			return options.Run(kind)
 		},
 	}
@@ -2130,9 +2120,7 @@ func newCmdObjectContainerUnprovision(kind string) *cobra.Command {
 		Long:  "Unprovision a container resource. Specify a container ID as a positional argument. Equivalent to 'instance unprovision --rid container#<ID>'.",
 		Args:  cobra.MaximumNArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			if len(args) > 0 {
-				options.RID = "container#" + args[0]
-			}
+			commoncmd.SetRIDFromArgs(&options.RID, args, "container", "container")
 			return options.Run(kind)
 		},
 	}
@@ -2158,9 +2146,7 @@ func newCmdObjectIPStart(kind string) *cobra.Command {
 		Long:  "Start an ip resource. Specify an ip ID as a positional argument. Equivalent to 'instance start --rid ip#<ID>'.",
 		Args:  cobra.MaximumNArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			if len(args) > 0 {
-				options.RID = "ip#" + args[0]
-			}
+			commoncmd.SetRIDFromArgs(&options.RID, args, "ip", "ip")
 			return options.Run(kind)
 		},
 	}
@@ -2187,9 +2173,7 @@ func newCmdObjectIPStop(kind string) *cobra.Command {
 		Long:  "Stop an ip resource. Specify an ip ID as a positional argument. Equivalent to 'instance stop --rid ip#<ID>'.",
 		Args:  cobra.MaximumNArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			if len(args) > 0 {
-				options.RID = "ip#" + args[0]
-			}
+			commoncmd.SetRIDFromArgs(&options.RID, args, "ip", "ip")
 			return options.Run(kind)
 		},
 	}
@@ -2216,9 +2200,7 @@ func newCmdObjectIPRestart(kind string) *cobra.Command {
 		Long:  "Restart an ip resource. Specify an ip ID as a positional argument. Equivalent to 'instance restart --rid ip#<ID>'.",
 		Args:  cobra.MaximumNArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			if len(args) > 0 {
-				options.RID = "ip#" + args[0]
-			}
+			commoncmd.SetRIDFromArgs(&options.RID, args, "ip", "ip")
 			return options.Run(kind)
 		},
 	}
@@ -2245,9 +2227,7 @@ func newCmdObjectIPProvision(kind string) *cobra.Command {
 		Long:  "Provision an ip resource. Specify an ip ID as a positional argument. Equivalent to 'instance provision --rid ip#<ID>'.",
 		Args:  cobra.MaximumNArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			if len(args) > 0 {
-				options.RID = "ip#" + args[0]
-			}
+			commoncmd.SetRIDFromArgs(&options.RID, args, "ip", "ip")
 			return options.Run(kind)
 		},
 	}
@@ -2274,9 +2254,7 @@ func newCmdObjectIPUnprovision(kind string) *cobra.Command {
 		Long:  "Unprovision an ip resource. Specify an ip ID as a positional argument. Equivalent to 'instance unprovision --rid ip#<ID>'.",
 		Args:  cobra.MaximumNArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			if len(args) > 0 {
-				options.RID = "ip#" + args[0]
-			}
+			commoncmd.SetRIDFromArgs(&options.RID, args, "ip", "ip")
 			return options.Run(kind)
 		},
 	}
@@ -2302,9 +2280,7 @@ func newCmdObjectFSStart(kind string) *cobra.Command {
 		Long:  "Start a fs resource. Specify a fs ID as a positional argument. Equivalent to 'instance start --rid fs#<ID>'.",
 		Args:  cobra.MaximumNArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			if len(args) > 0 {
-				options.RID = "fs#" + args[0]
-			}
+			commoncmd.SetRIDFromArgs(&options.RID, args, "fs", "fs")
 			return options.Run(kind)
 		},
 	}
@@ -2331,9 +2307,7 @@ func newCmdObjectFSStop(kind string) *cobra.Command {
 		Long:  "Stop a fs resource. Specify a fs ID as a positional argument. Equivalent to 'instance stop --rid fs#<ID>'.",
 		Args:  cobra.MaximumNArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			if len(args) > 0 {
-				options.RID = "fs#" + args[0]
-			}
+			commoncmd.SetRIDFromArgs(&options.RID, args, "fs", "fs")
 			return options.Run(kind)
 		},
 	}
@@ -2360,9 +2334,7 @@ func newCmdObjectFSRestart(kind string) *cobra.Command {
 		Long:  "Restart a fs resource. Specify a fs ID as a positional argument. Equivalent to 'instance restart --rid fs#<ID>'.",
 		Args:  cobra.MaximumNArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			if len(args) > 0 {
-				options.RID = "fs#" + args[0]
-			}
+			commoncmd.SetRIDFromArgs(&options.RID, args, "fs", "fs")
 			return options.Run(kind)
 		},
 	}
@@ -2389,9 +2361,7 @@ func newCmdObjectFSProvision(kind string) *cobra.Command {
 		Long:  "Provision a fs resource. Specify a fs ID as a positional argument. Equivalent to 'instance provision --rid fs#<ID>'.",
 		Args:  cobra.MaximumNArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			if len(args) > 0 {
-				options.RID = "fs#" + args[0]
-			}
+			commoncmd.SetRIDFromArgs(&options.RID, args, "fs", "fs")
 			return options.Run(kind)
 		},
 	}
@@ -2418,9 +2388,7 @@ func newCmdObjectFSUnprovision(kind string) *cobra.Command {
 		Long:  "Unprovision a fs resource. Specify a fs ID as a positional argument. Equivalent to 'instance unprovision --rid fs#<ID>'.",
 		Args:  cobra.MaximumNArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			if len(args) > 0 {
-				options.RID = "fs#" + args[0]
-			}
+			commoncmd.SetRIDFromArgs(&options.RID, args, "fs", "fs")
 			return options.Run(kind)
 		},
 	}
@@ -2445,9 +2413,7 @@ func newCmdObjectFSPRStart(kind string) *cobra.Command {
 		Short: "preempt devices exclusive write access reservation for a fs resource",
 		Args:  cobra.MaximumNArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			if len(args) > 0 {
-				options.RID = "fs#" + args[0]
-			}
+			commoncmd.SetRIDFromArgs(&options.RID, args, "fs", "fs")
 			return options.Run(kind)
 		},
 	}
@@ -2471,9 +2437,7 @@ func newCmdObjectFSPRStop(kind string) *cobra.Command {
 		Short: "release devices exclusive write access reservation for a fs resource",
 		Args:  cobra.MaximumNArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			if len(args) > 0 {
-				options.RID = "fs#" + args[0]
-			}
+			commoncmd.SetRIDFromArgs(&options.RID, args, "fs", "fs")
 			return options.Run(kind)
 		},
 	}
@@ -2497,9 +2461,7 @@ func newCmdObjectFSShutdown(kind string) *cobra.Command {
 		Long:  "Shutdown a fs resource. Specify a fs ID as a positional argument. Equivalent to 'instance shutdown --rid fs#<ID>'.",
 		Args:  cobra.MaximumNArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			if len(args) > 0 {
-				options.RID = "fs#" + args[0]
-			}
+			commoncmd.SetRIDFromArgs(&options.RID, args, "fs", "fs")
 			return options.Run(kind)
 		},
 	}
@@ -2523,9 +2485,7 @@ func newCmdObjectFSStartStandby(kind string) *cobra.Command {
 		Long:  "Start a fs resource in standby mode. Specify a fs ID as a positional argument. Equivalent to 'instance startstandby --rid fs#<ID>'.",
 		Args:  cobra.MaximumNArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			if len(args) > 0 {
-				options.RID = "fs#" + args[0]
-			}
+			commoncmd.SetRIDFromArgs(&options.RID, args, "fs", "fs")
 			return options.Run(kind)
 		},
 	}
@@ -2550,9 +2510,7 @@ func newCmdObjectVolumeStart(kind string) *cobra.Command {
 		Long:  "Start a volume resource. Specify a volume ID as a positional argument. Equivalent to 'instance start --rid volume#<ID>'.",
 		Args:  cobra.MaximumNArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			if len(args) > 0 {
-				options.RID = "volume#" + args[0]
-			}
+			commoncmd.SetRIDFromArgs(&options.RID, args, "volume", "volume")
 			return options.Run(kind)
 		},
 	}
@@ -2579,9 +2537,7 @@ func newCmdObjectVolumeStop(kind string) *cobra.Command {
 		Long:  "Stop a volume resource. Specify a volume ID as a positional argument. Equivalent to 'instance stop --rid volume#<ID>'.",
 		Args:  cobra.MaximumNArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			if len(args) > 0 {
-				options.RID = "volume#" + args[0]
-			}
+			commoncmd.SetRIDFromArgs(&options.RID, args, "volume", "volume")
 			return options.Run(kind)
 		},
 	}
@@ -2608,9 +2564,7 @@ func newCmdObjectVolumeRestart(kind string) *cobra.Command {
 		Long:  "Restart a volume resource. Specify a volume ID as a positional argument. Equivalent to 'instance restart --rid volume#<ID>'.",
 		Args:  cobra.MaximumNArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			if len(args) > 0 {
-				options.RID = "volume#" + args[0]
-			}
+			commoncmd.SetRIDFromArgs(&options.RID, args, "volume", "volume")
 			return options.Run(kind)
 		},
 	}
@@ -2637,9 +2591,7 @@ func newCmdObjectVolumeProvision(kind string) *cobra.Command {
 		Long:  "Provision a volume resource. Specify a volume ID as a positional argument. Equivalent to 'instance provision --rid volume#<ID>'.",
 		Args:  cobra.MaximumNArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			if len(args) > 0 {
-				options.RID = "volume#" + args[0]
-			}
+			commoncmd.SetRIDFromArgs(&options.RID, args, "volume", "volume")
 			return options.Run(kind)
 		},
 	}
@@ -2666,9 +2618,7 @@ func newCmdObjectVolumeUnprovision(kind string) *cobra.Command {
 		Long:  "Unprovision a volume resource. Specify a volume ID as a positional argument. Equivalent to 'instance unprovision --rid volume#<ID>'.",
 		Args:  cobra.MaximumNArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			if len(args) > 0 {
-				options.RID = "volume#" + args[0]
-			}
+			commoncmd.SetRIDFromArgs(&options.RID, args, "volume", "volume")
 			return options.Run(kind)
 		},
 	}
@@ -2693,9 +2643,7 @@ func newCmdObjectVolumePRStart(kind string) *cobra.Command {
 		Short: "preempt devices exclusive write access reservation for a volume resource",
 		Args:  cobra.MaximumNArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			if len(args) > 0 {
-				options.RID = "volume#" + args[0]
-			}
+			commoncmd.SetRIDFromArgs(&options.RID, args, "volume", "volume")
 			return options.Run(kind)
 		},
 	}
@@ -2719,9 +2667,7 @@ func newCmdObjectVolumePRStop(kind string) *cobra.Command {
 		Short: "release devices exclusive write access reservation for a volume resource",
 		Args:  cobra.MaximumNArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			if len(args) > 0 {
-				options.RID = "volume#" + args[0]
-			}
+			commoncmd.SetRIDFromArgs(&options.RID, args, "volume", "volume")
 			return options.Run(kind)
 		},
 	}
@@ -2745,9 +2691,7 @@ func newCmdObjectVolumeShutdown(kind string) *cobra.Command {
 		Long:  "Shutdown a volume resource. Specify a volume ID as a positional argument. Equivalent to 'instance shutdown --rid volume#<ID>'.",
 		Args:  cobra.MaximumNArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			if len(args) > 0 {
-				options.RID = "volume#" + args[0]
-			}
+			commoncmd.SetRIDFromArgs(&options.RID, args, "volume", "volume")
 			return options.Run(kind)
 		},
 	}
@@ -2771,9 +2715,7 @@ func newCmdObjectVolumeStartStandby(kind string) *cobra.Command {
 		Long:  "Start a volume resource in standby mode. Specify a volume ID as a positional argument. Equivalent to 'instance startstandby --rid volume#<ID>'.",
 		Args:  cobra.MaximumNArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			if len(args) > 0 {
-				options.RID = "volume#" + args[0]
-			}
+			commoncmd.SetRIDFromArgs(&options.RID, args, "volume", "volume")
 			return options.Run(kind)
 		},
 	}
@@ -2798,9 +2740,7 @@ func newCmdObjectDiskStart(kind string) *cobra.Command {
 		Long:  "Start a disk resource. Specify a disk ID as a positional argument. Equivalent to 'instance start --rid disk#<ID>'.",
 		Args:  cobra.MaximumNArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			if len(args) > 0 {
-				options.RID = "disk#" + args[0]
-			}
+			commoncmd.SetRIDFromArgs(&options.RID, args, "disk", "disk")
 			return options.Run(kind)
 		},
 	}
@@ -2827,9 +2767,7 @@ func newCmdObjectDiskStop(kind string) *cobra.Command {
 		Long:  "Stop a disk resource. Specify a disk ID as a positional argument. Equivalent to 'instance stop --rid disk#<ID>'.",
 		Args:  cobra.MaximumNArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			if len(args) > 0 {
-				options.RID = "disk#" + args[0]
-			}
+			commoncmd.SetRIDFromArgs(&options.RID, args, "disk", "disk")
 			return options.Run(kind)
 		},
 	}
@@ -2856,9 +2794,7 @@ func newCmdObjectDiskRestart(kind string) *cobra.Command {
 		Long:  "Restart a disk resource. Specify a disk ID as a positional argument. Equivalent to 'instance restart --rid disk#<ID>'.",
 		Args:  cobra.MaximumNArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			if len(args) > 0 {
-				options.RID = "disk#" + args[0]
-			}
+			commoncmd.SetRIDFromArgs(&options.RID, args, "disk", "disk")
 			return options.Run(kind)
 		},
 	}
@@ -2885,9 +2821,7 @@ func newCmdObjectDiskProvision(kind string) *cobra.Command {
 		Long:  "Provision a disk resource. Specify a disk ID as a positional argument. Equivalent to 'instance provision --rid disk#<ID>'.",
 		Args:  cobra.MaximumNArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			if len(args) > 0 {
-				options.RID = "disk#" + args[0]
-			}
+			commoncmd.SetRIDFromArgs(&options.RID, args, "disk", "disk")
 			return options.Run(kind)
 		},
 	}
@@ -2914,9 +2848,7 @@ func newCmdObjectDiskUnprovision(kind string) *cobra.Command {
 		Long:  "Unprovision a disk resource. Specify a disk ID as a positional argument. Equivalent to 'instance unprovision --rid disk#<ID>'.",
 		Args:  cobra.MaximumNArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			if len(args) > 0 {
-				options.RID = "disk#" + args[0]
-			}
+			commoncmd.SetRIDFromArgs(&options.RID, args, "disk", "disk")
 			return options.Run(kind)
 		},
 	}
@@ -2941,9 +2873,7 @@ func newCmdObjectDiskPRStart(kind string) *cobra.Command {
 		Short: "preempt devices exclusive write access reservation for a disk resource",
 		Args:  cobra.MaximumNArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			if len(args) > 0 {
-				options.RID = "disk#" + args[0]
-			}
+			commoncmd.SetRIDFromArgs(&options.RID, args, "disk", "disk")
 			return options.Run(kind)
 		},
 	}
@@ -2967,9 +2897,7 @@ func newCmdObjectDiskPRStop(kind string) *cobra.Command {
 		Short: "release devices exclusive write access reservation for a disk resource",
 		Args:  cobra.MaximumNArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			if len(args) > 0 {
-				options.RID = "disk#" + args[0]
-			}
+			commoncmd.SetRIDFromArgs(&options.RID, args, "disk", "disk")
 			return options.Run(kind)
 		},
 	}
@@ -2993,9 +2921,7 @@ func newCmdObjectDiskShutdown(kind string) *cobra.Command {
 		Long:  "Shutdown a disk resource. Specify a disk ID as a positional argument. Equivalent to 'instance shutdown --rid disk#<ID>'.",
 		Args:  cobra.MaximumNArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			if len(args) > 0 {
-				options.RID = "disk#" + args[0]
-			}
+			commoncmd.SetRIDFromArgs(&options.RID, args, "disk", "disk")
 			return options.Run(kind)
 		},
 	}
@@ -3019,9 +2945,7 @@ func newCmdObjectDiskStartStandby(kind string) *cobra.Command {
 		Long:  "Start a disk resource in standby mode. Specify a disk ID as a positional argument. Equivalent to 'instance startstandby --rid disk#<ID>'.",
 		Args:  cobra.MaximumNArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			if len(args) > 0 {
-				options.RID = "disk#" + args[0]
-			}
+			commoncmd.SetRIDFromArgs(&options.RID, args, "disk", "disk")
 			return options.Run(kind)
 		},
 	}
@@ -3046,9 +2970,7 @@ func newCmdObjectShareStart(kind string) *cobra.Command {
 		Long:  "Start a share resource. Specify a share ID as a positional argument. Equivalent to 'instance start --rid share#<ID>'.",
 		Args:  cobra.MaximumNArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			if len(args) > 0 {
-				options.RID = "share#" + args[0]
-			}
+			commoncmd.SetRIDFromArgs(&options.RID, args, "share", "share")
 			return options.Run(kind)
 		},
 	}
@@ -3075,9 +2997,7 @@ func newCmdObjectShareStop(kind string) *cobra.Command {
 		Long:  "Stop a share resource. Specify a share ID as a positional argument. Equivalent to 'instance stop --rid share#<ID>'.",
 		Args:  cobra.MaximumNArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			if len(args) > 0 {
-				options.RID = "share#" + args[0]
-			}
+			commoncmd.SetRIDFromArgs(&options.RID, args, "share", "share")
 			return options.Run(kind)
 		},
 	}
@@ -3104,9 +3024,7 @@ func newCmdObjectShareRestart(kind string) *cobra.Command {
 		Long:  "Restart a share resource. Specify a share ID as a positional argument. Equivalent to 'instance restart --rid share#<ID>'.",
 		Args:  cobra.MaximumNArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			if len(args) > 0 {
-				options.RID = "share#" + args[0]
-			}
+			commoncmd.SetRIDFromArgs(&options.RID, args, "share", "share")
 			return options.Run(kind)
 		},
 	}
@@ -3133,9 +3051,7 @@ func newCmdObjectShareProvision(kind string) *cobra.Command {
 		Long:  "Provision a share resource. Specify a share ID as a positional argument. Equivalent to 'instance provision --rid share#<ID>'.",
 		Args:  cobra.MaximumNArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			if len(args) > 0 {
-				options.RID = "share#" + args[0]
-			}
+			commoncmd.SetRIDFromArgs(&options.RID, args, "share", "share")
 			return options.Run(kind)
 		},
 	}
@@ -3162,9 +3078,7 @@ func newCmdObjectShareUnprovision(kind string) *cobra.Command {
 		Long:  "Unprovision a share resource. Specify a share ID as a positional argument. Equivalent to 'instance unprovision --rid share#<ID>'.",
 		Args:  cobra.MaximumNArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			if len(args) > 0 {
-				options.RID = "share#" + args[0]
-			}
+			commoncmd.SetRIDFromArgs(&options.RID, args, "share", "share")
 			return options.Run(kind)
 		},
 	}
@@ -3190,9 +3104,7 @@ func newCmdObjectShareShutdown(kind string) *cobra.Command {
 		Long:  "Shutdown a share resource. Specify a share ID as a positional argument. Equivalent to 'instance shutdown --rid share#<ID>'.",
 		Args:  cobra.MaximumNArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			if len(args) > 0 {
-				options.RID = "share#" + args[0]
-			}
+			commoncmd.SetRIDFromArgs(&options.RID, args, "share", "share")
 			return options.Run(kind)
 		},
 	}
@@ -3216,9 +3128,7 @@ func newCmdObjectShareStartStandby(kind string) *cobra.Command {
 		Long:  "Start a share resource in standby mode. Specify a share ID as a positional argument. Equivalent to 'instance startstandby --rid share#<ID>'.",
 		Args:  cobra.MaximumNArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			if len(args) > 0 {
-				options.RID = "share#" + args[0]
-			}
+			commoncmd.SetRIDFromArgs(&options.RID, args, "share", "share")
 			return options.Run(kind)
 		},
 	}
@@ -3243,9 +3153,7 @@ func newCmdObjectAppStart(kind string) *cobra.Command {
 		Long:  "Start an app resource. Specify an app ID as a positional argument. Equivalent to 'instance start --rid app#<ID>'.",
 		Args:  cobra.MaximumNArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			if len(args) > 0 {
-				options.RID = "app#" + args[0]
-			}
+			commoncmd.SetRIDFromArgs(&options.RID, args, "app", "app")
 			return options.Run(kind)
 		},
 	}
@@ -3272,9 +3180,7 @@ func newCmdObjectAppStop(kind string) *cobra.Command {
 		Long:  "Stop an app resource. Specify an app ID as a positional argument. Equivalent to 'instance stop --rid app#<ID>'.",
 		Args:  cobra.MaximumNArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			if len(args) > 0 {
-				options.RID = "app#" + args[0]
-			}
+			commoncmd.SetRIDFromArgs(&options.RID, args, "app", "app")
 			return options.Run(kind)
 		},
 	}
@@ -3301,9 +3207,7 @@ func newCmdObjectAppRestart(kind string) *cobra.Command {
 		Long:  "Restart an app resource. Specify an app ID as a positional argument. Equivalent to 'instance restart --rid app#<ID>'.",
 		Args:  cobra.MaximumNArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			if len(args) > 0 {
-				options.RID = "app#" + args[0]
-			}
+			commoncmd.SetRIDFromArgs(&options.RID, args, "app", "app")
 			return options.Run(kind)
 		},
 	}
@@ -3330,9 +3234,7 @@ func newCmdObjectAppShutdown(kind string) *cobra.Command {
 		Long:  "Shutdown an app resource. Specify an app ID as a positional argument. Equivalent to 'instance shutdown --rid app#<ID>'.",
 		Args:  cobra.MaximumNArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			if len(args) > 0 {
-				options.RID = "app#" + args[0]
-			}
+			commoncmd.SetRIDFromArgs(&options.RID, args, "app", "app")
 			return options.Run(kind)
 		},
 	}
@@ -3356,9 +3258,7 @@ func newCmdObjectAppStartStandby(kind string) *cobra.Command {
 		Long:  "Start an app resource in standby mode. Specify an app ID as a positional argument. Equivalent to 'instance startstandby --rid app#<ID>'.",
 		Args:  cobra.MaximumNArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			if len(args) > 0 {
-				options.RID = "app#" + args[0]
-			}
+			commoncmd.SetRIDFromArgs(&options.RID, args, "app", "app")
 			return options.Run(kind)
 		},
 	}
@@ -3383,9 +3283,7 @@ func newCmdObjectTaskRun(kind string) *cobra.Command {
 		Long:  "Execute a task resource. Specify a task ID as a positional argument or let om select the task if unambiguous.",
 		Args:  cobra.MaximumNArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			if len(args) > 0 {
-				options.RID = "task#" + args[0]
-			}
+			commoncmd.SetRIDFromArgs(&options.RID, args, "task", "task")
 			return options.Run(kind)
 		},
 	}
@@ -3411,9 +3309,7 @@ func newCmdObjectSyncUpdate(kind string) *cobra.Command {
 		Long:  "Execute a sync update action. Specify a sync ID as a positional argument or let om select the sync if unambiguous.",
 		Args:  cobra.MaximumNArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			if len(args) > 0 {
-				options.RID = "sync#" + args[0]
-			}
+			commoncmd.SetRIDFromArgs(&options.RID, args, "sync", "sync")
 			return options.Run(kind)
 		},
 	}
@@ -3435,9 +3331,7 @@ func newCmdObjectSyncFull(kind string) *cobra.Command {
 		Long:  "Execute a sync full action. Specify a sync ID as a positional argument or let om select the sync if unambiguous.",
 		Args:  cobra.MaximumNArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			if len(args) > 0 {
-				options.RID = "sync#" + args[0]
-			}
+			commoncmd.SetRIDFromArgs(&options.RID, args, "sync", "sync")
 			return options.Run(kind)
 		},
 	}
@@ -3459,9 +3353,7 @@ func newCmdObjectSyncIngest(kind string) *cobra.Command {
 		Long:  "Execute a sync ingest action. Specify a sync ID as a positional argument or let om select the sync if unambiguous.",
 		Args:  cobra.MaximumNArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			if len(args) > 0 {
-				options.RID = "sync#" + args[0]
-			}
+			commoncmd.SetRIDFromArgs(&options.RID, args, "sync", "sync")
 			return options.Run(kind)
 		},
 	}
@@ -3481,9 +3373,7 @@ func newCmdObjectSyncResync(kind string) *cobra.Command {
 		Long:  "Execute a sync resync action. Specify a sync ID as a positional argument or let om select the sync if unambiguous.",
 		Args:  cobra.MaximumNArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			if len(args) > 0 {
-				options.RID = "sync#" + args[0]
-			}
+			commoncmd.SetRIDFromArgs(&options.RID, args, "sync", "sync")
 			return options.Run(kind)
 		},
 	}
@@ -3504,9 +3394,7 @@ func newCmdObjectSyncSplit(kind string) *cobra.Command {
 		Long:  "Execute a sync split action. Specify a sync ID as a positional argument or let om select the sync if unambiguous.",
 		Args:  cobra.MaximumNArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			if len(args) > 0 {
-				options.RID = "sync#" + args[0]
-			}
+			commoncmd.SetRIDFromArgs(&options.RID, args, "sync", "sync")
 			return options.Run(kind)
 		},
 	}
@@ -3668,9 +3556,7 @@ func newCmdObjectContainerEnter(kind string) *cobra.Command {
 		Long:  "Enter any container resource. Specify a container ID as a positional argument or let om select the container if unambiguous.",
 		Args:  cobra.MaximumNArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			if len(args) > 0 {
-				options.RID = "container#" + args[0]
-			}
+			commoncmd.SetRIDFromArgs(&options.RID, args, "container", "container")
 			return options.Run(kind)
 		},
 	}
