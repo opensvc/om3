@@ -1272,6 +1272,7 @@ func SCSIPersistentReservationStatus(ctx context.Context, r Driver, coresourceSt
 		return status.NotApplicable
 	} else {
 		hdl.CoresourceStatus = coresourceStatus
+		hdl.CoresourceDisabled = r.IsDisabled()
 		return hdl.Status()
 	}
 }

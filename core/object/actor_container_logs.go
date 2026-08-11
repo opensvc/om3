@@ -20,7 +20,7 @@ func (t *actor) ContainerLogs(ctx context.Context, rid string, follow bool, line
 		if i, ok := r.(containerLogger); !ok {
 			continue
 		} else if container != nil {
-			return fmt.Errorf("multiple resources support container logs. use the --rid option")
+			return fmt.Errorf("multiple resources support container logs. specify a container id")
 		} else {
 			container = i
 			rid = r.RID()
@@ -51,7 +51,7 @@ func (t *actor) ContainerLogsStream(ctx context.Context, rid string, follow bool
 		if i, ok := r.(containerLogger); !ok {
 			continue
 		} else if container != nil {
-			return nil, fmt.Errorf("multiple resources support container logs. use the --rid option")
+			return nil, fmt.Errorf("multiple resources support container logs. specify a container id")
 		} else {
 			container = i
 			rid = r.RID()

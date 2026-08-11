@@ -8,12 +8,27 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"path/filepath"
 	"time"
 
 	"github.com/opensvc/om3/v3/util/command"
+	"github.com/opensvc/om3/v3/util/plog"
 )
 
+const (
+	leakedPidsDir = "qemu-exec-leaked-pids"
+)
+
+// pidsCollected is used to ensure we only collect leaked pids once per om exec
+var pidsCollected = false
+
 type (
+	qgaPingRequest struct {
+		Execute string `json:"execute"`
+	}
+	qgaPingResponse struct {
+		Return struct{} `json:"return"`
+	}
 	qgaCommandStatusRequest struct {
 		Execute   string `json:"execute"`
 		Arguments struct {
@@ -88,12 +103,14 @@ type (
 	}
 
 	qgaCommand struct {
-		Ctx   context.Context
-		Name  string
-		Path  string
-		Args  []string
-		Envs  []string
-		Stdin io.Reader
+		Ctx    context.Context
+		Name   string
+		Path   string
+		Args   []string
+		Envs   []string
+		Stdin  io.Reader
+		varDir string
+		logger *plog.Logger
 
 		pid    int
 		status *qgaCommandStatus
@@ -122,6 +139,9 @@ func (t *qgaCommand) Start() error {
 	if t.status != nil {
 		return nil
 	}
+	// Try to free QTAILQ slots
+	collectPids(t.Ctx, t.logger, t.varDir, t.Name)
+
 	var response qgaExecCommandResponse
 	request := qgaCommandRequest{
 		Execute: "guest-exec",
@@ -135,7 +155,7 @@ func (t *qgaCommand) Start() error {
 	} else {
 		request.Arguments.InputData = inputData
 	}
-	err := qgaPost(t.Name, &request, &response)
+	err := qgaPost(t.Ctx, t.Name, &request, &response)
 	if err != nil {
 		return err
 	}
@@ -160,9 +180,11 @@ func (t *qgaCommand) Wait() error {
 	for {
 		select {
 		case <-t.Ctx.Done():
-			return nil
+			// Context was cancelled (likely timeout), write the pid for future cleanup
+			writePid(t.Ctx, t.logger, t.varDir, t.Name, t.pid)
+			return fmt.Errorf("timeout waiting for qemu guest exec result, pid %d", t.pid)
 		case <-ticker.C:
-			status, err := qgaExecStatus(t.Name, t.pid)
+			status, err := qgaExecStatus(t.Ctx, t.Name, t.pid)
 			if err != nil {
 				return err
 			}
@@ -244,13 +266,14 @@ func newQGAFileCloseCommand(handle int) *qgaCommandFileCloseRequest {
 	return &cmd
 }
 
-func qgaPost(name string, request any, result any) error {
+func qgaPost(ctx context.Context, name string, request any, result any) error {
 	requestBytes, err := json.Marshal(request)
 	if err != nil {
 		return err
 	}
 	args := []string{"qemu-agent-command", name, string(requestBytes)}
 	cmd := command.New(
+		command.WithContext(ctx),
 		command.WithName("virsh"),
 		command.WithArgs(args),
 		command.WithBufferedStdout(),
@@ -267,26 +290,26 @@ func qgaPost(name string, request any, result any) error {
 	}
 	return nil
 }
-func qgaFileOpen(name, path, mode string) (int, error) {
+func qgaFileOpen(ctx context.Context, name, path, mode string) (int, error) {
 	var response qgaFileOpenCommandResponse
 	request := newQGAFileOpenCommand(path, mode)
-	err := qgaPost(name, request, &response)
+	err := qgaPost(ctx, name, request, &response)
 	if err != nil {
 		return 0, err
 	}
 	return response.Return, nil
 }
 
-func qgaFileClose(name string, handle int) error {
+func qgaFileClose(ctx context.Context, name string, handle int) error {
 	var response qgaFileCloseCommandResponse
 	request := newQGAFileCloseCommand(handle)
-	return qgaPost(name, request, &response)
+	return qgaPost(ctx, name, request, &response)
 }
 
-func qgaFileWrite(name string, handle int, b []byte) error {
+func qgaFileWrite(ctx context.Context, name string, handle int, b []byte) error {
 	var response qgaFileWriteCommandResponse
 	request := newQGAFileWriteCommand(handle, b)
-	err := qgaPost(name, request, &response)
+	err := qgaPost(ctx, name, request, &response)
 	if err != nil {
 		return err
 	}
@@ -294,28 +317,110 @@ func qgaFileWrite(name string, handle int, b []byte) error {
 }
 
 func qgaCp(ctx context.Context, name, src, dst string) error {
-	handle, err := qgaFileOpen(name, dst, "w")
+	handle, err := qgaFileOpen(ctx, name, dst, "w")
 	if err != nil {
 		return err
 	}
-	defer qgaFileClose(name, handle)
+	defer qgaFileClose(ctx, name, handle)
 	b, err := os.ReadFile(src)
 	if err != nil {
 		return err
 	}
-	if err := qgaFileWrite(name, handle, b); err != nil {
+	if err := qgaFileWrite(ctx, name, handle, b); err != nil {
 		return err
 	}
 	return nil
 }
 
-func qgaExecStatus(name string, pid int) (*qgaCommandStatus, error) {
+func qgaExecStatus(ctx context.Context, name string, pid int) (*qgaCommandStatus, error) {
 	var response qgaCommandStatus
 	request := newQGAExecStatusCommandRequest(pid)
-	err := qgaPost(name, request, &response)
+	err := qgaPost(ctx, name, request, &response)
 	if err != nil {
 		return nil, err
 	}
 	//fmt.Printf("%s [%d]: qga response: %#v\n", name, pid, response)
 	return &response, nil
+}
+
+func qgaPing(ctx context.Context, name string) error {
+	var response qgaPingResponse
+	request := qgaPingRequest{
+		Execute: "guest-ping",
+	}
+	return qgaPost(ctx, name, request, &response)
+}
+
+// pidFile returns the path to the pid file for tracking leaked qemu exec pids
+func pidFile(varDir string, pid int) string {
+	return filepath.Join(varDir, leakedPidsDir, fmt.Sprintf("%d", pid))
+}
+
+// collectPids tries to free QTAILQ slots by checking on previously leaked pids
+func collectPids(ctx context.Context, logger *plog.Logger, varDir, name string) {
+	if pidsCollected {
+		return
+	}
+	pidsCollected = true
+
+	pidDir := filepath.Join(varDir, leakedPidsDir)
+	entries, err := os.ReadDir(pidDir)
+	if err != nil {
+		if !os.IsNotExist(err) {
+			logger.Debugf("collectPids: read dir %s: %s", pidDir, err)
+		}
+		return
+	}
+
+	for _, entry := range entries {
+		if entry.IsDir() {
+			continue
+		}
+		pidStr := entry.Name()
+		var pid int
+		if _, err := fmt.Sscanf(pidStr, "%d", &pid); err != nil {
+			logger.Debugf("collectPids: invalid pid filename %s: %s", pidStr, err)
+			continue
+		}
+
+		pidPath := pidFile(varDir, pid)
+		status, err := qgaExecStatus(ctx, name, pid)
+		if err != nil {
+			logger.Debugf("collectPids: exec_status for pid %d", pid, err)
+			if removeErr := os.Remove(pidPath); removeErr != nil {
+				logger.Debugf("collectPids: remove %s: %s", pidPath, removeErr)
+			}
+			continue
+		}
+
+		if status.Return.Exited {
+			logger.Debugf("collectPids: remove %s: exec exited", pidPath)
+			if removeErr := os.Remove(pidPath); removeErr != nil {
+				logger.Debugf("collectPids: remove %s: %s", pidPath, removeErr)
+			}
+		} else {
+			logger.Debugf("collectPids: keep %s: exec still not exited", pidPath)
+		}
+	}
+}
+
+// writePid writes a pid file to track a leaked qemu exec pid for future cleanup
+func writePid(ctx context.Context, logger *plog.Logger, varDir, name string, pid int) {
+	pidPath := pidFile(varDir, pid)
+	logger.Debugf("write %s for a future 'guest-exec-status <pid>'", pidPath)
+
+	// Ensure the directory exists
+	pidDir := filepath.Join(varDir, leakedPidsDir)
+	if err := os.MkdirAll(pidDir, 0755); err != nil {
+		logger.Debugf("writePid: mkdir %s", pidDir, err)
+		return
+	}
+
+	f, err := os.Create(pidPath)
+	if err != nil {
+		logger.Debugf("writePid: create %s", pidPath, err)
+		return
+	}
+	defer f.Close()
+	// Empty file, just for tracking
 }

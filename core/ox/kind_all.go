@@ -4,7 +4,7 @@ import "github.com/opensvc/om3/v3/core/commoncmd"
 
 func init() {
 	kind := ""
-	cmdObject := newCmdAll()
+	cmdObject := commoncmd.NewCmdAll()
 	cmdObjectCollector := commoncmd.NewCmdObjectCollector(kind)
 	cmdObjectCollectorTag := newCmdObjectCollectorTag(kind)
 	cmdObjectCompliance := commoncmd.NewCmdObjectCompliance(kind)
@@ -16,19 +16,26 @@ func init() {
 	cmdObjectInstance := commoncmd.NewCmdObjectInstance(kind)
 	cmdObjectInstanceDevice := commoncmd.NewCmdObjectInstanceDevice(kind)
 	cmdObjectInstancePG := commoncmd.NewCmdObjectInstancePG(kind)
-	cmdObjectInstanceResource := commoncmd.NewCmdObjectInstanceResource(kind)
 	cmdObjectPG := commoncmd.NewCmdObjectInstancePG(kind)
 	cmdObjectPG.Hidden = true
-	cmdObjectInstanceResourceInfo := commoncmd.NewCmdObjectInstanceResourceInfo(kind)
 	cmdObjectInstanceSync := commoncmd.NewCmdObjectInstanceSync(kind)
 	cmdObjectSchedule := newCmdObjectSchedule(kind)
 	cmdObjectSet := newCmdObjectSet(kind)
 	cmdObjectConfig := commoncmd.NewCmdObjectConfig(kind)
 	cmdObjectContainer := commoncmd.NewCmdObjectContainer(kind)
+	cmdObjectIP := commoncmd.NewCmdObjectIP(kind)
+	cmdObjectFS := commoncmd.NewCmdObjectFS(kind)
+	cmdObjectVolume := commoncmd.NewCmdObjectVolume(kind)
+	cmdObjectDisk := commoncmd.NewCmdObjectDisk(kind)
+	cmdObjectShare := commoncmd.NewCmdObjectShare(kind)
+	cmdObjectApp := commoncmd.NewCmdObjectApp(kind)
+	cmdObjectTask := commoncmd.NewCmdObjectTask(kind)
 	cmdObjectPrint := newCmdObjectPrint(kind)
 	cmdObjectPrintConfig := newCmdObjectPrintConfig(kind)
 	cmdObjectResource := commoncmd.NewCmdObjectResource(kind)
+	cmdObjectResourceInfo := commoncmd.NewCmdObjectResourceInfo(kind)
 	cmdObjectPush := newCmdObjectPush(kind)
+	cmdObjectSync := commoncmd.NewCmdObjectSync(kind)
 	cmdObjectValidate := newCmdObjectValidate(kind)
 
 	root.AddCommand(
@@ -37,6 +44,7 @@ func init() {
 	cmdObject.AddGroup(
 		commoncmd.NewGroupOrchestratedActions(),
 		commoncmd.NewGroupQuery(),
+		commoncmd.NewGroupResources(),
 		commoncmd.NewGroupSubsystems(),
 	)
 	cmdObject.AddCommand(
@@ -44,6 +52,13 @@ func init() {
 		cmdObjectCompliance,
 		cmdObjectConfig,
 		cmdObjectContainer,
+		cmdObjectIP,
+		cmdObjectFS,
+		cmdObjectVolume,
+		cmdObjectDisk,
+		cmdObjectShare,
+		cmdObjectApp,
+		cmdObjectTask,
 		cmdObjectEdit,
 		cmdObjectInstance,
 		cmdObjectPG,
@@ -52,6 +67,7 @@ func init() {
 		cmdObjectResource,
 		cmdObjectSet,
 		cmdObjectSchedule,
+		cmdObjectSync,
 		cmdObjectValidate,
 		newCmdDataStoreAdd(kind),
 		newCmdDataStoreChange(kind),
@@ -92,7 +108,6 @@ func init() {
 	cmdObjectInstance.AddCommand(
 		cmdObjectInstanceDevice,
 		cmdObjectInstancePG,
-		cmdObjectInstanceResource,
 		cmdObjectInstanceSync,
 		newCmdObjectInstanceBoot(kind),
 		newCmdObjectInstanceDelete(kind),
@@ -118,12 +133,10 @@ func init() {
 	cmdObjectInstancePG.AddCommand(
 		newCmdObjectInstancePGUpdate(kind),
 	)
-	cmdObjectInstanceResource.AddCommand(
-		cmdObjectInstanceResourceInfo,
-	)
-	cmdObjectInstanceResourceInfo.AddCommand(
-		newCmdObjectInstanceResourceInfoList(kind),
-		newCmdObjectInstanceResourceInfoPush(kind),
+
+	cmdObjectResourceInfo.AddCommand(
+		newCmdObjectResourceInfoList(kind),
+		newCmdObjectResourceInfoPush(kind),
 	)
 	cmdObjectInstanceSync.AddCommand(
 		newCmdObjectInstanceSyncIngest(kind),
@@ -132,8 +145,17 @@ func init() {
 		newCmdObjectInstanceSyncSplit(kind),
 		newCmdObjectInstanceSyncUpdate(kind),
 	)
+	cmdObjectSync.AddCommand(
+		newCmdObjectSyncFull(kind),
+		newCmdObjectSyncIngest(kind),
+		newCmdObjectSyncResync(kind),
+		newCmdObjectSyncSplit(kind),
+		newCmdObjectSyncUpdate(kind),
+		newCmdObjectSyncList(kind),
+	)
 	cmdObjectResource.AddCommand(
 		newCmdObjectResourceList(kind),
+		cmdObjectResourceInfo,
 	)
 	cmdObjectConfig.AddCommand(
 		commoncmd.NewCmdObjectConfigDoc(kind),
@@ -147,6 +169,29 @@ func init() {
 	cmdObjectContainer.AddCommand(
 		newCmdObjectContainerEnter(kind),
 		newCmdObjectContainerLogs(kind),
+		newCmdObjectContainerList(kind),
+	)
+	cmdObjectIP.AddCommand(
+		newCmdObjectIPList(kind),
+	)
+	cmdObjectFS.AddCommand(
+		newCmdObjectFSList(kind),
+	)
+	cmdObjectVolume.AddCommand(
+		newCmdObjectVolumeList(kind),
+	)
+	cmdObjectDisk.AddCommand(
+		newCmdObjectDiskList(kind),
+	)
+	cmdObjectShare.AddCommand(
+		newCmdObjectShareList(kind),
+	)
+	cmdObjectApp.AddCommand(
+		newCmdObjectAppList(kind),
+	)
+	cmdObjectTask.AddCommand(
+		newCmdObjectTaskList(kind),
+		newCmdObjectTaskRun(kind),
 	)
 	cmdObjectEdit.AddCommand(
 		newCmdObjectEditConfig(kind),

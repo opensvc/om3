@@ -5,7 +5,7 @@ import "github.com/opensvc/om3/v3/core/commoncmd"
 func init() {
 	kind := "usr"
 
-	cmdObject := newCmdUsr()
+	cmdObject := commoncmd.NewCmdUsr()
 	cmdObjectCertificate := newCmdObjectCertificate(kind)
 	cmdObjectConfig := commoncmd.NewCmdObjectConfig(kind)
 	cmdObjectEdit := newCmdObjectEdit(kind)

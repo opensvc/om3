@@ -14,6 +14,56 @@
     max_delay = 10m  # interpreted as 10m in om2 and om3         => Good
     ```
 
+## What's New in v3
+
+OpenSVC v3 is a major evolution, rebuilt in Go for performance, reliability, and maintainability. Beyond the migration considerations, v3 introduces exciting new capabilities:
+
+### Architecture & Performance
+
+* **Complete Go rewrite**: The agent is now written in Go, delivering a compiled, statically-linked binary with improved performance, memory safety, and lower resource footprint compared to the Python v2 agent.
+
+* **Simplified deployment**: Single binary distribution with minimal dependencies.
+
+* **OpenAPI 3 based API**: Modern RESTful API with OpenAPI 3 specification, served over both Unix socket and inet, with bearer token authentication, replacing the custom raw JSON-RPC protocol.
+
+### User Experience
+
+* **New `ox` terminal UI**: A dedicated terminal interface for real-time cluster monitoring and management, complementing the `om` CLI. Open an `ox` session to watch services move around the cluster interactively.
+
+* **Enhanced logging with journald**: All agent logs now integrate with systemd-journald, enabling fast filtering with `journalctl _COMM=om` and adding indexed attributes like `OBJ_PATH` for precise log queries.
+
+### Orchestration & Management
+
+* **Live migration for KVM**: Full support for live migration of KVM instances with data on `disk.disk` and `disk.drbd` resources using `om <svc> switch --live` and `om <svc> takeover --live` commands.
+
+* **New placement policy**: `last start` policy uses the mtime of `<objvar>/last_start` as the candidate sort key, with more recent starts having higher priority.
+
+* **Improved object labels**: Enhanced support for labeling objects, enabling better organization and selection. Labels help third-party solutions like backup tools, ingress gateways, and monitoring systems identify and handle objects appropriately.
+
+* **Better container management**: New commands for container operations including `om <svc> container ls`, `om <svc> container enter <id>`, and `om <svc> container logs <id>`.
+
+* **Task management**: New commands for task operations including `om <svc> task ls` and `om <svc> task run <id>`.
+
+* **Resource group commands**: New per-driver-group command sets for more targeted resource management.
+
+### Configuration & Operations
+
+* **Unified configuration update**: The new `update` command with `--set`, `--unset`, and `--delete` flags allows atomic commits for different types of configuration changes.
+
+* **Quiet mode**: New `--quiet` flag for instance actions disables both progress rendering and console logging, useful for scripts and automation.
+
+* **Enhanced secret management**: New commands like `om <kvstore> key rename` for better key management in secret stores.
+
+### Network & Storage
+
+* **Modern firewall management**: Configuration now uses nftables exclusively, with better support for large subnets including IPv6 via the new `mask_per_node` keyword.
+
+* **Improved mount monitoring**: New daemon manager (`mntmon`) for monitoring mount events and refreshing instance status when mounts change.
+
+* **Network event handling**: New daemon network monitor (`netmon`) relays netlink events to pubsub, enabling faster response to network changes.
+
+* **New install keyword**: For fs and volume resources, the new `install` keyword enables deployment of complex file trees on start, with support for sec keys, cfg keys, local files or remote URIs, file/directory nesting, and user/group/permission setup.
+
 ## Breaking Changes
 
 ### Cluster and Node Configuration

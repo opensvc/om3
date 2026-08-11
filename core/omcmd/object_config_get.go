@@ -36,7 +36,12 @@ func (t *CmdObjectConfigGet) Run(kind string) error {
 		return err
 	}
 	sel := objectselector.New(mergedSelector, objectselector.WithClient(c))
-	paths, err := sel.MustExpand()
+	var paths naming.Paths
+	if t.IgnoreNotFound {
+		paths, err = sel.ExpandRelaxed()
+	} else {
+		paths, err = sel.MustExpand()
+	}
 	if err != nil {
 		return err
 	}

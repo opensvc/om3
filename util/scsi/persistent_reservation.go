@@ -39,6 +39,7 @@ type (
 		StatusLogger                statusLogger
 		persistentReservationDriver PersistentReservationDriver
 		CurrentStatus               PersistentReservationStatus
+		CoresourceDisabled          bool
 		CoresourceStatus            status.T
 	}
 
@@ -180,7 +181,7 @@ func (t *PersistentReservationHandle) DeviceStatus(dev device.T) status.T {
 	}
 
 	var expectedRegistrationCount int
-	if t.CoresourceStatus == status.Up {
+	if t.CoresourceStatus == status.Up || (t.CoresourceStatus == status.NotApplicable && !t.CoresourceDisabled) {
 		expectedRegistrationCount, err = t.DeviceExpectedRegistrationCount(dev)
 		if err != nil {
 			t.StatusLogger.Error("%s expected registration count: %s", dev, err)

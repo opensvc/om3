@@ -262,7 +262,7 @@ func keyopRbac(grants rbac.Grants, op keyop.T) error {
 			return fmt.Errorf("denied: %s: requires the root grant", op)
 
 		}
-	case "env":
+	case "env", "labels":
 		// allowed
 	default:
 		return fmt.Errorf("denied: %s: this driver group requires the root grant", op)

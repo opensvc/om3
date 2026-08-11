@@ -30,6 +30,7 @@ type (
 		Color          string
 		Output         string
 		ObjectSelector string
+		IgnoreNotFound bool
 	}
 
 	OptsNodeGlobal struct {

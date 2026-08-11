@@ -17,7 +17,7 @@ func NewCmdObjectCompliance(kind string) *cobra.Command {
 		GroupID: GroupIDSubsystems,
 		Use:     "compliance",
 		Short:   "analyze, enforce node configuration compliance",
-		Aliases: []string{"compli", "comp", "com", "co"},
+		Aliases: []string{"comp"},
 	}
 }
 
@@ -25,15 +25,76 @@ func NewCmdObjectConfig(kind string) *cobra.Command {
 	return &cobra.Command{
 		GroupID: GroupIDSubsystems,
 		Use:     "config",
-		Short:   "show, alter object configuration",
+		Aliases: []string{"conf", "cf", "cfg"},
+		Short:   "show, edit, update, ...",
 	}
 }
 
 func NewCmdObjectContainer(kind string) *cobra.Command {
 	return &cobra.Command{
-		GroupID: GroupIDSubsystems,
+		GroupID: GroupIDResourceGroups,
 		Use:     "container",
-		Short:   "enter, stream logs",
+		Short:   "list, start, stop, enter, logs, ...",
+	}
+}
+
+func NewCmdObjectIP(kind string) *cobra.Command {
+	return &cobra.Command{
+		GroupID: GroupIDResourceGroups,
+		Use:     "ip",
+		Short:   "list, start, stop, ...",
+		Aliases: []string{"ipaddr", "address"},
+	}
+}
+
+func NewCmdObjectFS(kind string) *cobra.Command {
+	return &cobra.Command{
+		GroupID: GroupIDResourceGroups,
+		Use:     "fs",
+		Short:   "list, start, stop, ...",
+		Aliases: []string{"filesystem"},
+	}
+}
+
+func NewCmdObjectVolume(kind string) *cobra.Command {
+	return &cobra.Command{
+		GroupID: GroupIDResourceGroups,
+		Use:     "volume",
+		Short:   "list, start, stop, ...",
+		Aliases: []string{"vol"},
+	}
+}
+
+func NewCmdObjectDisk(kind string) *cobra.Command {
+	return &cobra.Command{
+		GroupID: GroupIDResourceGroups,
+		Use:     "disk",
+		Short:   "list, start, stop, ...",
+	}
+}
+
+func NewCmdObjectShare(kind string) *cobra.Command {
+	return &cobra.Command{
+		GroupID: GroupIDResourceGroups,
+		Use:     "share",
+		Short:   "list, start, stop, ...",
+	}
+}
+
+func NewCmdObjectApp(kind string) *cobra.Command {
+	return &cobra.Command{
+		GroupID: GroupIDResourceGroups,
+		Use:     "app",
+		Short:   "list, start, stop, ...",
+		Aliases: []string{"application"},
+	}
+}
+
+func NewCmdObjectTask(kind string) *cobra.Command {
+	return &cobra.Command{
+		GroupID: GroupIDResourceGroups,
+		Use:     "task",
+		Short:   "list, run, ...",
 	}
 }
 
@@ -41,8 +102,8 @@ func NewCmdObjectInstance(kind string) *cobra.Command {
 	cmd := &cobra.Command{
 		GroupID: GroupIDSubsystems,
 		Use:     "instance",
-		Short:   "query, action object instances",
-		Aliases: []string{"inst", "in"},
+		Short:   "list, start, stop, ...",
+		Aliases: []string{"inst"},
 	}
 	cmd.AddGroup(
 		NewGroupQuery(),
@@ -82,9 +143,10 @@ func NewCmdObjectSSH(kind string) *cobra.Command {
 
 func NewCmdObjectSync(kind string) *cobra.Command {
 	return &cobra.Command{
-		GroupID: GroupIDSubsystems,
+		GroupID: GroupIDResourceGroups,
 		Use:     "sync",
-		Hidden:  true,
+		Short:   "list, update, ...",
+		Long:    "Replicate instance data, execute sync actions, list sync resources.",
 		Aliases: []string{"syn", "sy"},
 	}
 }
@@ -97,20 +159,11 @@ func NewCmdObjectInstanceSync(kind string) *cobra.Command {
 	}
 }
 
-func NewCmdObjectResource(kind string) *cobra.Command {
-	return &cobra.Command{
-		GroupID: GroupIDSubsystems,
-		Use:     "resource",
-		Short:   "query object instance resources",
-		Aliases: []string{"res"},
-	}
-}
-
-func NewCmdObjectInstanceResource(kind string) *cobra.Command {
+func NewCmdObjectResourceSync(kind string) *cobra.Command {
 	cmd := &cobra.Command{
 		GroupID: GroupIDSubsystems,
-		Use:     "resource",
-		Short:   "query, push instance resources",
+		Use:     "sync",
+		Short:   "replicate object instance data",
 	}
 	cmd.AddGroup(
 		NewGroupSubsystems(),
@@ -118,10 +171,23 @@ func NewCmdObjectInstanceResource(kind string) *cobra.Command {
 	return cmd
 }
 
-func NewCmdObjectInstanceResourceInfo(kind string) *cobra.Command {
-	return &cobra.Command{
+func NewCmdObjectResource(kind string) *cobra.Command {
+	cmd := &cobra.Command{
 		GroupID: GroupIDSubsystems,
-		Use:     "info",
-		Short:   "list, push the key-values reported by resources",
+		Use:     "resource",
+		Short:   "list, start, stop, ...",
+		Aliases: []string{"res"},
+	}
+	cmd.AddGroup(
+		NewGroupQuery(),
+		NewGroupSubsystems(),
+	)
+	return cmd
+}
+
+func NewCmdObjectResourceInfo(kind string) *cobra.Command {
+	return &cobra.Command{
+		Use:   "info",
+		Short: "list, push the key-values reported by resources",
 	}
 }

@@ -134,7 +134,7 @@ func (t T) NewAlertEval(k key.T, did driver.ID, comment string) Alert {
 func (t T) NewAlertDeprecated(k key.T, did driver.ID, release, replacedBy string) Alert {
 	comment := fmt.Sprintf("since %s", release)
 	if replacedBy != "" {
-		comment += fmt.Sprintf("replaced by %s", replacedBy)
+		comment += fmt.Sprintf(", replaced by %s", replacedBy)
 	}
 	return Alert{
 		Path:    t.Path,

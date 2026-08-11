@@ -1,8 +1,6 @@
 package ox
 
 import (
-	"github.com/spf13/cobra"
-
 	"github.com/opensvc/om3/v3/core/commoncmd"
 	"github.com/opensvc/om3/v3/core/omcmd"
 )
@@ -10,10 +8,7 @@ import (
 func init() {
 	kind := "nscfg"
 
-	cmdObject := &cobra.Command{
-		Use:   "nscfg",
-		Short: "manage namespace configurations",
-	}
+	cmdObject := commoncmd.NewCmdNscfg()
 	cmdObjectConfig := commoncmd.NewCmdObjectConfig(kind)
 	cmdObjectEdit := newCmdObjectEdit(kind)
 	cmdObjectInstance := commoncmd.NewCmdObjectInstance(kind)

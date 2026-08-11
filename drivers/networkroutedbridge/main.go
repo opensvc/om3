@@ -4,8 +4,8 @@ package networkroutedbridge
 
 import (
 	"fmt"
-	"math"
 	"math/big"
+	"math/bits"
 	"net"
 	"strings"
 
@@ -123,6 +123,23 @@ func (t *T) bridgeIP() (net.IP, error) {
 	return ip, nil
 }
 
+func ipsToMaskOnes(requestedIPs uint64, totalBits int) (int, error) {
+	if requestedIPs == 0 {
+		return totalBits, nil
+	}
+
+	// Find the next highest power of 2.
+	// Example: 250 IPs -> 250-1 = 249. Binary length of 249 is 8 bits. 2^8 = 256.
+	hostBits := bits.Len64(requestedIPs - 1)
+
+	if hostBits > totalBits {
+		return 0, fmt.Errorf("requested allocation size of %d IPs exceeds maximum %d-bit address space", requestedIPs, totalBits)
+	}
+
+	ones := totalBits - hostBits
+	return ones, nil
+}
+
 func (t *T) allocateSubnets() error {
 	subnetMap, err := t.subnets()
 	if err != nil {
@@ -135,21 +152,22 @@ func (t *T) allocateSubnets() error {
 		}
 	}
 
+	ip, netwk, err := net.ParseCIDR(t.Network())
+	if err != nil {
+		return err
+	}
+	ones, bits := netwk.Mask.Size()
+
 	maskPerNode := t.GetInt("mask_per_node")
 	if maskPerNode <= 0 {
 		ipsPerNode := t.GetInt("ips_per_node")
 		if ipsPerNode <= 0 {
 			return fmt.Errorf("either mask_per_node or ips_per_node must be set to a value greater than 0")
 		}
-		if ipsPerNode&(ipsPerNode-1) == 1 {
-			return fmt.Errorf("ips_per_node must be a power of 2")
+		maskPerNode, err = ipsToMaskOnes(uint64(ipsPerNode), bits)
+		if err != nil {
+			return err
 		}
-		maskPerNode = int(math.Log2(float64(ipsPerNode)))
-	}
-
-	ip, netwk, err := net.ParseCIDR(t.Network())
-	if err != nil {
-		return err
 	}
 
 	nodes, err := t.Nodes()
@@ -161,11 +179,10 @@ func (t *T) allocateSubnets() error {
 		return err
 	}
 
-	_, bits := netwk.Mask.Size()
 	m := make(map[string]string)
 
 	for i, nodename := range nodes {
-		nodeIp, subnet, err := computeSubnet(ip, int64(i), maskPerNode, bits, maskPerNode)
+		nodeIp, subnet, err := computeSubnet(ip, int64(i), maskPerNode, ones, bits)
 		if err != nil {
 			return err
 		}
@@ -181,24 +198,35 @@ func (t *T) allocateSubnets() error {
 	return nil
 }
 
-func computeSubnet(baseIP net.IP, nodeIndex int64, maskPerNode int, bits, subnetOnes int) (net.IP, string, error) {
+func computeSubnet(baseIP net.IP, nodeIndex int64, maskPerNode int, ones, bits int) (net.IP, string, error) {
 	ip16 := baseIP.To16()
 	if ip16 == nil {
 		return nil, "", fmt.Errorf("invalid base ip %s", baseIP)
 	}
 
-	ipsPerNode := new(big.Int).Lsh(big.NewInt(1), uint(maskPerNode))
+	if maskPerNode > bits || maskPerNode < 0 {
+		return nil, "", fmt.Errorf("maskPerNode /%d out of bounds for %d-bit space", maskPerNode, bits)
+	}
+	hostBits := bits - maskPerNode
+	ipsPerNode := new(big.Int).Lsh(big.NewInt(1), uint(hostBits))
 
+	// Compute the offset block: nodeIndex * ipsPerNode
 	baseInt := new(big.Int).SetBytes(ip16)
 	idxBig := big.NewInt(nodeIndex)
 	offset := new(big.Int).Mul(idxBig, ipsPerNode)
 
+	// Add the offset to the base address
 	nodeInt := new(big.Int).Add(baseInt, offset)
 
-	if nodeInt.BitLen() > 128 {
-		return nil, "", fmt.Errorf("computed ip exceeds maximum size")
+	parentHostBits := bits - ones
+	parentSize := new(big.Int).Lsh(big.NewInt(1), uint(parentHostBits))
+	parentCeiling := new(big.Int).Add(baseInt, parentSize)
+
+	if nodeInt.Cmp(parentCeiling) >= 0 {
+		return nil, "", fmt.Errorf("computed subnet index %d overflows the parent network boundary", nodeIndex)
 	}
 
+	// Unpack bytes back to net.IP
 	nodeBytes := nodeInt.FillBytes(make([]byte, 16))
 	nodeIP := net.IP(nodeBytes)
 
@@ -206,21 +234,44 @@ func computeSubnet(baseIP net.IP, nodeIndex int64, maskPerNode int, bits, subnet
 		nodeIP = nodeIP.To4()
 	}
 
-	prefix := bits - subnetOnes
-	subnet := fmt.Sprintf("%s/%d", nodeIP.String(), prefix)
+	subnet := fmt.Sprintf("%s/%d", nodeIP.String(), maskPerNode)
+
 	return nodeIP, subnet, nil
 }
 
 func (t *T) checkMaxIpsPerNode(network *net.IPNet, maskPerNode int, nodes []string) error {
-	ipsPerNode := new(big.Int).Lsh(big.NewInt(1), uint(maskPerNode))
-	one := big.NewInt(1)
+	if network == nil || network.Mask == nil {
+		return fmt.Errorf("invalid network context provided")
+	}
+
+	numNodes := int64(len(nodes))
+	if numNodes == 0 {
+		// Nothing to distribute
+		return nil
+	}
+
 	ones, bits := network.Mask.Size()
+
+	if maskPerNode < ones || maskPerNode > bits {
+		return fmt.Errorf("requested node mask /%d is out of bounds for parent network %s", maskPerNode, network)
+	}
+
+	one := big.NewInt(1)
+
 	maxIPs := new(big.Int).Lsh(one, uint(bits-ones))
-	maxIPsPerNodes := new(big.Int).Div(maxIPs, big.NewInt(int64(len(nodes))))
-	minSubnetOnes := maxIPsPerNodes.BitLen() - 1
-	maxIPsPerNodes = new(big.Int).Lsh(one, uint(minSubnetOnes))
-	if ipsPerNode.Cmp(maxIPsPerNodes) > 0 {
-		return fmt.Errorf("ips_per_node=%s must be <=%s (%s has %s ips to distribute to %d nodes)", ipsPerNode.String(), maxIPsPerNodes.String(), network, maxIPs.String(), len(nodes))
+	requestedIPsPerNode := new(big.Int).Lsh(one, uint(bits-maskPerNode))
+	totalRequiredIPs := new(big.Int).Mul(requestedIPsPerNode, big.NewInt(numNodes))
+	if totalRequiredIPs.Cmp(maxIPs) > 0 {
+		maxIPsPerNodePossible := new(big.Int).Div(maxIPs, big.NewInt(numNodes))
+		return fmt.Errorf("ips_per_node=%s (/%d) is too large. Total required across %d nodes is %s, but %s only provides %s total IPs (max possible per node is ~%s)",
+			requestedIPsPerNode.String(),
+			maskPerNode,
+			numNodes,
+			totalRequiredIPs.String(),
+			network.String(),
+			maxIPs.String(),
+			maxIPsPerNodePossible.String(),
+		)
 	}
 	return nil
 }

@@ -5,7 +5,7 @@ import "github.com/opensvc/om3/v3/core/commoncmd"
 func init() {
 	kind := "cfg"
 
-	cmdObject := newCmdCfg()
+	cmdObject := commoncmd.NewCmdCfg()
 	cmdObjectConfig := commoncmd.NewCmdObjectConfig(kind)
 	cmdObjectEdit := newCmdObjectEdit(kind)
 	cmdObjectKey := commoncmd.NewCmdObjectKey(kind)

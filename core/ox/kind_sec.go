@@ -5,7 +5,7 @@ import "github.com/opensvc/om3/v3/core/commoncmd"
 func init() {
 	kind := "sec"
 
-	cmdObject := newCmdSec()
+	cmdObject := commoncmd.NewCmdSec()
 	cmdObjectCertificate := newCmdObjectCertificate(kind)
 	cmdObjectConfig := commoncmd.NewCmdObjectConfig(kind)
 	cmdObjectEdit := newCmdObjectEdit(kind)
