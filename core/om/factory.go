@@ -364,16 +364,27 @@ func newCmdObjectKeyRemove(kind string) *cobra.Command {
 func newCmdObjectKeyRename(kind string) *cobra.Command {
 	var options commands.CmdObjectKeyRename
 	cmd := &cobra.Command{
-		Use:   "rename",
-		Short: "rename a key",
+		Use:     "rename [NAME] [TO]",
+		Short:   "rename a key",
+		Aliases: []string{"mv"},
 		RunE: func(cmd *cobra.Command, args []string) error {
+			n := len(args)
+			if n > 0 {
+				options.Name = args[0]
+			}
+			if n > 1 {
+				options.To = args[1]
+			}
 			return options.Run(kind)
 		},
 	}
+	commoncmd.CmdWithArg(cmd, "NAME  The key name.\nTO    The new key name.")
 	flags := cmd.Flags()
 	addFlagsGlobal(flags, &options.OptsGlobal)
 	commoncmd.FlagKeyName(flags, &options.Name)
 	commoncmd.FlagKeyTo(flags, &options.To)
+	flags.MarkHidden("name")
+	flags.MarkHidden("to")
 	return cmd
 }
 
