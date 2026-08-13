@@ -233,7 +233,7 @@ func guessSubsystem(s string) string {
 }
 
 func init() {
-	commoncmd.SetCustomHelpTemplate(root)
+	commoncmd.SetCustomUsageTemplate(root)
 	root.PersistentFlags().StringVar(&colorFlag, "color", "auto", "output colorization (yes|no|auto)")
 	root.PersistentFlags().BoolVarP(&quietFlag, "quiet", "q", false, "do not display logs on the console")
 	root.PersistentFlags().BoolVar(&debugFlag, "debug", false, "display logs at debug level")

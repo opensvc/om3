@@ -47,32 +47,49 @@ func formatArgText(arg string) string {
 	return strings.Join(lines, "\n")
 }
 
-// helpTemplate is the custom template that conditionally includes Arguments section
-// and uses [FLAGS] (uppercase) instead of [flags] for consistency with [ID]
+// usageTemplate is the custom template that conditionally includes Arguments section
 // Note: We cannot use nindent as it's a Cobra internal function, so we rely on the fact
 // that the data is already properly formatted
-const helpTemplate = `{{if .Long}}{{.Long}}
+// Note: This is a copy of the defaultUsageTemplate in cobra/command.go with the
+// Argument section added. We may have to update the copy if cobra new features rely on
+// changes in the defaultUsageTemplate.
+var usageTemplate = `Usage:{{if .Runnable}}
+  {{.UseLine}}{{end}}{{if .HasAvailableSubCommands}}
+  {{.CommandPath}} [command]{{end}}{{if gt (len .Aliases) 0}}
 
-{{end}}Usage:{{if .Runnable}}
-  {{.Use}}{{if or .HasAvailableLocalFlags .HasAvailableInheritedFlags}} [FLAGS]{{end}}{{if .HasAvailableSubCommands}} [command]{{end}}{{else}}
-  {{.CommandPath}}{{end}}{{if .HasExample}}
+Aliases:
+  {{.NameAndAliases}}{{end}}{{if .HasExample}}
+
 Examples:
-  {{.Example}}{{end}}{{if .HasAvailableSubCommands}}
+{{.Example}}{{end}}{{if .HasAvailableSubCommands}}{{$cmds := .Commands}}{{if eq (len .Groups) 0}}
 
-Available Commands:{{range .Commands}}{{if .IsAvailableCommand}}
-  {{rpad .Name .NamePadding }} {{.Short}}{{end}}{{end}}
-{{end}}{{if .Annotations.args}}
+Available Commands:{{range $cmds}}{{if (or .IsAvailableCommand (eq .Name "help"))}}
+  {{rpad .Name .NamePadding }} {{.Short}}{{end}}{{end}}{{else}}{{range $group := .Groups}}
+
+{{.Title}}{{range $cmds}}{{if (and (eq .GroupID $group.ID) (or .IsAvailableCommand (eq .Name "help")))}}
+  {{rpad .Name .NamePadding }} {{.Short}}{{end}}{{end}}{{end}}{{if not .AllChildCommandsHaveGroup}}
+
+Additional Commands:{{range $cmds}}{{if (and (eq .GroupID "") (or .IsAvailableCommand (eq .Name "help")))}}
+  {{rpad .Name .NamePadding }} {{.Short}}{{end}}{{end}}{{end}}{{end}}{{end}}{{if .Annotations.args}}
 
 Arguments:
 {{.Annotations.args}}{{end}}{{if .HasAvailableLocalFlags}}
 
 Flags:
-{{.LocalFlags.FlagUsages}}{{end}}{{if .HasAvailableInheritedFlags}}
-{{end}}`
+{{.LocalFlags.FlagUsages | trimTrailingWhitespaces}}{{end}}{{if .HasAvailableInheritedFlags}}
 
-// SetCustomHelpTemplate sets the custom help template on a command.
+Global Flags:
+{{.InheritedFlags.FlagUsages | trimTrailingWhitespaces}}{{end}}{{if .HasHelpSubCommands}}
+
+Additional help topics:{{range .Commands}}{{if .IsAdditionalHelpTopicCommand}}
+  {{rpad .CommandPath .CommandPathPadding}} {{.Short}}{{end}}{{end}}{{end}}{{if .HasAvailableSubCommands}}
+
+Use "{{.CommandPath}} [command] --help" for more information about a command.{{end}}
+`
+
+// SetCustomUsageTemplate sets the custom help template on a command.
 // This template will display an Arguments section if the command has an "args" annotation.
 // It uses [FLAGS] (uppercase) instead of [flags] for consistency with [ID].
-func SetCustomHelpTemplate(cmd *cobra.Command) {
-	cmd.SetHelpTemplate(helpTemplate)
+func SetCustomUsageTemplate(cmd *cobra.Command) {
+	cmd.SetUsageTemplate(usageTemplate)
 }
