@@ -205,16 +205,22 @@ func newCmdObjectKeyInstall(kind string) *cobra.Command {
 func newCmdObjectKeyList(kind string) *cobra.Command {
 	var options commands.CmdObjectKeyList
 	cmd := &cobra.Command{
-		Use:     "list",
+		Use:     "list [PATTERN]",
 		Short:   "list the keys",
 		Aliases: []string{"ls"},
+		Args:    cobra.MaximumNArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
+			if len(args) > 0 {
+				options.Match = args[0]
+			}
 			return options.Run(kind)
 		},
 	}
+	commoncmd.CmdWithArg(cmd, "PATTERN  A fnmatch key name filter.")
 	flags := cmd.Flags()
 	addFlagsGlobal(flags, &options.OptsGlobal)
 	commoncmd.FlagMatch(flags, &options.Match)
+	flags.MarkHidden("match")
 	return cmd
 }
 
