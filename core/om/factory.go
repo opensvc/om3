@@ -199,8 +199,9 @@ func newCmdObjectKeyAdd(kind string) *cobra.Command {
 	var options commands.CmdObjectKeyAdd
 	var from, value string
 	cmd := &cobra.Command{
-		Use:   "add",
+		Use:   "add [NAME]",
 		Short: "add new keys",
+		Args:  cobra.MaximumNArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			if cmd.Flag("from").Changed {
 				options.From = &from
@@ -208,9 +209,13 @@ func newCmdObjectKeyAdd(kind string) *cobra.Command {
 			if cmd.Flag("value").Changed {
 				options.Value = &value
 			}
+			if len(args) > 0 {
+				options.Name = args[0]
+			}
 			return options.Run(kind)
 		},
 	}
+	commoncmd.CmdWithArg(cmd, "NAME  The key name.")
 	flags := cmd.Flags()
 	addFlagsGlobal(flags, &options.OptsGlobal)
 	commoncmd.FlagsLock(flags, &options.OptsLock)
@@ -218,6 +223,7 @@ func newCmdObjectKeyAdd(kind string) *cobra.Command {
 	commoncmd.FlagKeyName(flags, &options.Name)
 	commoncmd.FlagKeyValue(flags, &value)
 	cmd.MarkFlagsMutuallyExclusive("from", "value")
+	flags.MarkHidden("name")
 	return cmd
 }
 
@@ -225,8 +231,9 @@ func newCmdObjectKeyChange(kind string) *cobra.Command {
 	var options commands.CmdObjectKeyChange
 	var from, value string
 	cmd := &cobra.Command{
-		Use:   "change",
+		Use:   "change [NAME]",
 		Short: "change existing keys value",
+		Args:  cobra.MaximumNArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			if cmd.Flag("from").Changed {
 				options.From = &from
@@ -234,46 +241,63 @@ func newCmdObjectKeyChange(kind string) *cobra.Command {
 			if cmd.Flag("value").Changed {
 				options.Value = &value
 			}
+			if len(args) > 0 {
+				options.Name = args[0]
+			}
 			return options.Run(kind)
 		},
 	}
+	commoncmd.CmdWithArg(cmd, "NAME  The key name.")
 	flags := cmd.Flags()
 	addFlagsGlobal(flags, &options.OptsGlobal)
 	commoncmd.FlagFrom(flags, &from)
 	commoncmd.FlagKeyName(flags, &options.Name)
 	commoncmd.FlagKeyValue(flags, &value)
 	cmd.MarkFlagsMutuallyExclusive("from", "value")
+	flags.MarkHidden("name")
 	return cmd
 }
 
 func newCmdObjectKeyDecode(kind string) *cobra.Command {
 	var options commands.CmdObjectKeyDecode
 	cmd := &cobra.Command{
-		Use:   "decode",
+		Use:   "decode [NAME]",
 		Short: "decode a key value",
+		Args:  cobra.MaximumNArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
+			if len(args) > 0 {
+				options.Name = args[0]
+			}
 			return options.Run(kind)
 		},
 	}
+	commoncmd.CmdWithArg(cmd, "NAME  The key name.")
 	flags := cmd.Flags()
 	addFlagsGlobal(flags, &options.OptsGlobal)
 	commoncmd.FlagKeyName(flags, &options.Name)
+	flags.MarkHidden("name")
 	return cmd
 }
 
 func newCmdObjectKeyEdit(kind string) *cobra.Command {
 	var options commands.CmdObjectKeyEdit
 	cmd := &cobra.Command{
-		Use:     "edit",
+		Use:     "edit [NAME]",
 		Short:   "edit a key value",
 		Aliases: []string{"ed"},
+		Args:    cobra.MaximumNArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
+			if len(args) > 0 {
+				options.Name = args[0]
+			}
 			return options.Run(kind)
 		},
 	}
+	commoncmd.CmdWithArg(cmd, "NAME  The key name.")
 	flags := cmd.Flags()
 	addFlagsGlobal(flags, &options.OptsGlobal)
 	commoncmd.FlagKeyName(flags, &options.Name)
+	flags.MarkHidden("name")
 	return cmd
 }
 
@@ -319,15 +343,21 @@ func newCmdObjectKeyList(kind string) *cobra.Command {
 func newCmdObjectKeyRemove(kind string) *cobra.Command {
 	var options commands.CmdObjectKeyRemove
 	cmd := &cobra.Command{
-		Use:   "remove",
-		Short: "remove a key",
+		Aliases: []string{"rm"},
+		Use:     "remove [NAME...]",
+		Short:   "remove a key",
 		RunE: func(cmd *cobra.Command, args []string) error {
+			if len(args) > 0 {
+				options.Names = args
+			}
 			return options.Run(kind)
 		},
 	}
+	commoncmd.CmdWithArg(cmd, "NAME...  The key names to remove.")
 	flags := cmd.Flags()
 	addFlagsGlobal(flags, &options.OptsGlobal)
 	commoncmd.FlagKeyNames(flags, &options.Names)
+	flags.MarkHidden("name")
 	return cmd
 }
 
