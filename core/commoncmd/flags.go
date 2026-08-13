@@ -106,7 +106,7 @@ func FlagCPUProfile(flags *pflag.FlagSet, p *string) {
 }
 
 func FlagCreateConfig(flags *pflag.FlagSet, p *string) {
-	flags.StringVar(p, "config", "", "the initial configuration source: -, /dev/stdin, file path, url, object path or template://<name>")
+	flags.StringVar(p, "config", "", "the initial configuration source: -, /dev/stdin, file path, http[s] url, object path or template://<name>")
 }
 
 func FlagCreateForce(flags *pflag.FlagSet, p *bool) {

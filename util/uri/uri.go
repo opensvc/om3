@@ -12,6 +12,7 @@ import (
 
 	"github.com/opensvc/om3/v3/core/rawconfig"
 	"github.com/opensvc/om3/v3/util/file"
+	"github.com/opensvc/om3/v3/util/httppolicy"
 	"github.com/opensvc/om3/v3/util/random"
 )
 
@@ -33,6 +34,10 @@ func New(s string) T {
 }
 
 func (t T) Fetch() (string, error) {
+	policy := httppolicy.New(rawconfig.SSRFWhiteListUrl, rawconfig.SSRFBlockedCIDR)
+	if err := policy.Check(t.uri); err != nil {
+		return "", err
+	}
 	resp, err := http.Get(t.uri)
 	if err != nil {
 		return "", err
