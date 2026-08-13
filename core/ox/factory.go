@@ -212,17 +212,23 @@ func newCmdObjectKeyEdit(kind string) *cobra.Command {
 func newCmdObjectKeyInstall(kind string) *cobra.Command {
 	var options commands.CmdObjectKeyInstall
 	cmd := &cobra.Command{
-		Use:   "install",
+		Use:   "install [NAME]",
 		Short: "install keys as files in volumes",
-		Long:  "Keys of sec and cfg can be projected to volumes via the configs and secrets keywords of volume resources. When a key value change all projections are automatically refreshed. This command triggers manually the same operations.",
+		Long:  "Keys of sec and cfg can be projected to volumes via the configs and secrets keywords of volume resources. When a key value changes all projections are automatically refreshed. This command triggers manually the same operations. If no key name is given, all keys in the datastore will be reinstalled.",
+		Args:  cobra.MaximumNArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
+			if len(args) > 0 {
+				options.Name = args[0]
+			}
 			return options.Run(kind)
 		},
 	}
+	commoncmd.CmdWithArg(cmd, "NAME  The key name.")
 	flags := cmd.Flags()
 	addFlagsGlobal(flags, &options.OptsGlobal)
 	commoncmd.FlagNodeSelector(flags, &options.NodeSelector)
 	commoncmd.FlagKeyName(flags, &options.Name)
+	flags.MarkHidden("name")
 	return cmd
 }
 
