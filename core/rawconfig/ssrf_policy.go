@@ -4,7 +4,7 @@ import "strings"
 
 var (
 	defaultSSRFAllowedURL = []string{
-		"https://raw.githubusercontent.com/opensvc/opensvc_templates",
+		"https://raw.githubusercontent.com/opensvc/opensvc_templates/*",
 	}
 
 	defaultSSRFBlockedURL = []string{

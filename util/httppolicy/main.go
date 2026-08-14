@@ -12,7 +12,7 @@ import (
 
 type (
 	T struct {
-		// AllowedUrl defines the list of URL that are explicitly
+		// AllowedUrl defines the list of URL patterns that are explicitly
 		// permitted by the policy regardless BlockedUrl setting.
 		AllowedUrl []string
 
@@ -104,64 +104,88 @@ func parseRequestURL(rawURL string) (*url.URL, error) {
 	return parsedURL, nil
 }
 
+func normalizePattern(pattern string) string {
+	if !strings.Contains(pattern, "://") {
+		return pattern
+	}
+
+	u, err := url.Parse(pattern)
+	if err != nil {
+		return pattern
+	}
+
+	port := u.Port()
+	if port == "" {
+		switch u.Scheme {
+		case "http":
+			port = "80"
+		case "https":
+			port = "443"
+		default:
+			return pattern
+		}
+	}
+
+	normalizedPath := path.Clean(u.Path)
+	if normalizedPath == "." {
+		normalizedPath = "/"
+	} else if !strings.HasPrefix(normalizedPath, "/") {
+		normalizedPath = "/" + normalizedPath
+	}
+
+	return fmt.Sprintf("%s://%s:%s%s", u.Scheme, u.Hostname(), port, normalizedPath)
+}
+
+func normalizeURL(u *url.URL) string {
+	scheme := u.Scheme
+	host := u.Hostname()
+	port := u.Port()
+
+	if port == "" {
+		switch scheme {
+		case "http":
+			port = "80"
+		case "https":
+			port = "443"
+		default:
+			return ""
+		}
+	}
+
+	normalizedPath := path.Clean(u.Path)
+	if normalizedPath == "." {
+		normalizedPath = "/"
+	} else if !strings.HasPrefix(normalizedPath, "/") {
+		normalizedPath = "/" + normalizedPath
+	}
+
+	return fmt.Sprintf("%s://%s:%s%s", scheme, host, port, normalizedPath)
+}
+
 func rejectURL(requestURL *url.URL, allowed, blocked []string) error {
-	host := requestURL.Hostname()
-	scheme := requestURL.Scheme
-	port := requestURL.Port()
-	normalizedPath := path.Clean(requestURL.Path)
+	normalizedURL := normalizeURL(requestURL)
+	if normalizedURL == "" {
+		return fmt.Errorf("invalid url scheme")
+	}
 
 	// Verify exception from the allowed list
-	for _, u := range allowed {
-		allowedURL, err := url.Parse(u)
-		if err != nil {
-			continue
-		}
-
-		if isAllowedURLMatch(scheme, host, port, normalizedPath, allowedURL) {
+	for _, pattern := range allowed {
+		if fnmatch.Match(normalizePattern(pattern), normalizedURL, 0) {
 			return nil
 		}
 	}
 
 	// verify if match blocked url
-	requestURL = &url.URL{
-		Scheme: requestURL.Scheme,
-		Host:   requestURL.Host,
-		Path:   path.Clean(requestURL.Path),
-	}
-
 	if len(blocked) == 0 {
 		blocked = []string{"*"}
 	}
-	requestURLString := requestURL.String()
-	for _, u := range blocked {
-		if fnmatch.Match(u, requestURLString, 0) {
-			return fmt.Errorf("reject url %s: pattern %s is blocked (see SSRF blocked/allowed url lists)", requestURLString, u)
+	for _, pattern := range blocked {
+		if fnmatch.Match(normalizePattern(pattern), normalizedURL, 0) {
+			return fmt.Errorf("reject url %s: pattern %s is blocked (see SSRF blocked/allowed url lists)", normalizedURL, pattern)
 		}
 	}
 
 	return nil
-}
-
-func isAllowedURLMatch(scheme, host, port, normalizedPath string, allowedURL *url.URL) bool {
-	if allowedURL.Scheme != "http" && allowedURL.Scheme != "https" {
-		return false
-	}
-
-	allowedHost := allowedURL.Hostname()
-	if allowedHost == "" {
-		return false
-	}
-
-	if scheme != allowedURL.Scheme || host != allowedHost || port != allowedURL.Port() {
-		return false
-	}
-
-	if allowedURL.Path == "" {
-		return true
-	}
-
-	allowedPath := path.Clean(allowedURL.Path)
-	return normalizedPath == allowedPath || strings.HasPrefix(normalizedPath, allowedPath+"/")
 }
 
 func parseBlockedCIDRs(blockedCIDRs []string) []*net.IPNet {

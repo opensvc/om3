@@ -130,12 +130,12 @@ func TestCheck(t *testing.T) {
 			expectedErr: true,
 		},
 		{
-			name:        "reject_ula_ipv6_cidr",
+			name:        "rejects_ula_ipv6_cidr",
 			inputURL:    "https://[fd7a:115c:a1e0:ab12:4843:cd96:626b:626b]",
 			expectedErr: true,
 		},
 		{
-			name:        "allow_ula_ipv6_cidr_exception",
+			name:        "allows_ula_ipv6_cidr_exception",
 			inputURL:    "https://[fd7a:115c:a1e0:ab12:4843:cd96:626b:430b]",
 			expectedErr: false,
 		},
@@ -161,7 +161,32 @@ func TestCheck(t *testing.T) {
 		},
 		{
 			name:        "rejects_unresolvable_host",
-			inputURL:    "https://invalid-host-lookup.opensvc.com",
+			inputURL:    "https://invalid-host-lookup.opensvc.com/foo/bar",
+			expectedErr: true,
+		},
+		{
+			name:        "accepts_*.opensvc.com_with_/foo/bar",
+			inputURL:    "https://www.opensvc.com/foo/bar",
+			expectedErr: false,
+		},
+		{
+			name:        "accepts_*.opensvc.com_with_/foo/bar/baz",
+			inputURL:    "https://www.opensvc.com/foo/bar/baz",
+			expectedErr: false,
+		},
+		{
+			name:        "accepts_*.opensvc.com_with_/foo/bar/",
+			inputURL:    "https://www.opensvc.com/foo/bar/baz/",
+			expectedErr: false,
+		},
+		{
+			name:        "rejects_*.opensvc.com_with_/foo",
+			inputURL:    "https://www.opensvc.com/foo",
+			expectedErr: true,
+		},
+		{
+			name:        "rejects_*.opensvc.com_with_/foo1/bar",
+			inputURL:    "https://www.opensvc.com/foo1/bar",
 			expectedErr: true,
 		},
 		{
@@ -189,13 +214,13 @@ func TestCheck(t *testing.T) {
 	t.Run("raw config checker", func(t *testing.T) {
 		v := New(rawconfig.SSRFAllowedURL, rawconfig.SSRFBlockedURL, rawconfig.SSRFAllowedCIDR, rawconfig.SSRFBlockedCIDR)
 
-		v.AllowedUrl = append(v.AllowedUrl, "https://8.8.8.8", "https://github.com:8888/opensvc/om3", "https://www.github.com")
+		v.AllowedUrl = append(v.AllowedUrl, "https://8.8.8.8", "https://github.com:8888/opensvc/om3", "https://github.com:8888/opensvc/om3/*", "https://www.github.com")
 
 		// to verify loopback ranges
 		v.AllowedUrl = append(v.AllowedUrl, "https://localhost", "https://[::1]")
 
-		// to verify invalid host lookup
-		v.AllowedUrl = append(v.AllowedUrl, "https://invalid-host-lookup.opensvc.com")
+		// wildcard exception
+		v.AllowedUrl = append(v.AllowedUrl, "https://*.opensvc.com/foo/bar*")
 
 		v.AllowedUrl = append(v.AllowedUrl, "https://127.0.0.2/foo", "https://127.0.0.3/foo")
 		v.AllowedUrl = append(v.AllowedUrl, "https://[::ffff:127.0.0.2]/foo", "https://[::ffff:127.0.0.3]/foo")
@@ -207,10 +232,10 @@ func TestCheck(t *testing.T) {
 		)
 		v.AllowedCIDR = append(v.AllowedCIDR, "fd7a:115c:a1e0:ab12:4843:cd96:626b:430b/128")
 
-		t.Logf("policy AllowedCIDR: %s", v.AllowedCIDR)
+		t.Logf("policy AllowedUrl: %s", v.AllowedUrl)
 		t.Logf("policy BlockedUrl: %s", v.BlockedUrl)
-		t.Logf("policy BlockedCIDR: %s", v.BlockedCIDR)
 		t.Logf("policy AllowedCIDR: %s", v.AllowedCIDR)
+		t.Logf("policy BlockedCIDR: %s", v.BlockedCIDR)
 		for _, tc := range cases {
 			t.Run(tc.name, func(t *testing.T) {
 				t.Logf("Check url: %s", tc.inputURL)
@@ -243,5 +268,4 @@ func TestCheck(t *testing.T) {
 			})
 		}
 	})
-
 }
