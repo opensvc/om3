@@ -12,7 +12,7 @@ import (
 
 type (
 	T struct {
-		// AllowedUrl defines the list of URL patterns that are explicitly
+		// AllowedUrl defines the list of URL that are explicitly
 		// permitted by the policy regardless BlockedUrl setting.
 		AllowedUrl []string
 
@@ -64,13 +64,13 @@ func (t *T) Check(rawURL string) (ip net.IP, port string, err error) {
 	}
 
 	if err := rejectURL(parsedURL, t.AllowedUrl, t.BlockedUrl); err != nil {
-		return nil, "", fmt.Errorf("reject url %s: %w", parsedURL, err)
+		return nil, "", err
 	}
 
 	allowedNets := parseBlockedCIDRs(t.AllowedCIDR)
 	blockedNets := parseBlockedCIDRs(t.BlockedCIDR)
 	if ip, err = rejectIPs(ips, allowedNets, blockedNets); err != nil {
-		return nil, "", fmt.Errorf("reject host %s ip %s: %w", host, ip, err)
+		return nil, "", fmt.Errorf("reject url with host=%s ip=%s: %w", host, ip, err)
 	}
 	port = parsedURL.Port()
 	if port == "" {
@@ -135,7 +135,7 @@ func rejectURL(requestURL *url.URL, allowed, blocked []string) error {
 	requestURLString := requestURL.String()
 	for _, u := range blocked {
 		if fnmatch.Match(u, requestURLString, 0) {
-			return fmt.Errorf("url %s is blocked by pattern %s and not in allowed list %s", requestURLString, u, allowed)
+			return fmt.Errorf("reject url %s: pattern %s is blocked (see SSRF blocked/allowed url lists)", requestURLString, u)
 		}
 	}
 
@@ -192,7 +192,7 @@ func rejectIPs(ips []net.IP, allowedNet, blockedNets []*net.IPNet) (ip net.IP, e
 						return ip, nil
 					}
 				}
-				return ip, fmt.Errorf("blocked net %s and not in exception net list %s", blockedNet, allowedNet)
+				return ip, fmt.Errorf("subnet %s is blocked (see SSRF blocked/allowed cidr lists)", blockedNet)
 			}
 		}
 	}

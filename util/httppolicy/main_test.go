@@ -218,7 +218,7 @@ func TestCheck(t *testing.T) {
 				if tc.expectedErr {
 					assert.Errorf(t, err, "expected error for %s", tc.inputURL)
 					if err != nil {
-						t.Logf("got expected error: %s", err)
+						t.Logf("Check url error: %s", err)
 					}
 				} else {
 					t.Logf("url detected ip %s, port %s", ip, port)
@@ -235,7 +235,7 @@ func TestCheck(t *testing.T) {
 			t.Run(tc.name, func(t *testing.T) {
 				t.Logf("Check url: %s", tc.inputURL)
 				ip, port, err := v.Check(tc.inputURL)
-				assert.Errorf(t, err, "expected error for %s", tc.inputURL)
+				assert.Errorf(t, err, "Check url for %s", tc.inputURL)
 				t.Logf("url detected ip %s, port %s", ip, port)
 				if err != nil {
 					t.Logf("got expected error: %s", err)
