@@ -29,6 +29,12 @@ var (
 )
 
 // setSSRF configures SSRF protection settings, including allowed/blocked URLs, CIDR ranges, and redirect behavior.
+// Default is:
+// OSVC_SSRF_ALLOWED_URL = https://raw.githubusercontent.com/opensvc/opensvc_templates
+// OSVC_SSRF_BLOCKED_URL = *
+// OSVC_SSRF_BLOCKED_CIDR = 10.0.0.0/8 172.16.0.0/12 192.168.0.0/16 fc00::/7 127.0.0.0/8 ::1/128
+// OSVC_SSRF_ALLOWED_CIDR =
+// OSVC_SSRF_ENABLE_REDIRECTS = false
 func setSSRF(allowedURL, blockedURL, AllowedCIDR, blockedCIDR, enableRedirects string) {
 	if allowedURL == "" {
 		SSRFAllowedURL = defaultSSRFAllowedURL
