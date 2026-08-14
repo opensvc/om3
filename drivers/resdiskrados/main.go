@@ -31,9 +31,11 @@ type (
 		Size       string `json:"size"`
 		Access     string `json:"access"`
 		Keyring    string `json:"keyring"`
+		Config     string `json:"config"`
 
-		featureDisabled  []string
-		keyringArgsCache []string
+		featureDisabled    []string
+		keyringArgsCache   []string
+		configArgsCache    []string
 	}
 
 	RBDMap struct {
@@ -116,7 +118,7 @@ func (t *T) mapDevice(ctx context.Context) error {
 		t.Log().Infof("%s is already mapped", t.Name)
 		return nil
 	}
-	args, err := t.keyringArgs()
+	args, err := t.rbdArgs()
 	if err != nil {
 		return err
 	}
@@ -148,7 +150,7 @@ func (t *T) unmapDevice(ctx context.Context) error {
 		return err
 	}
 	udevadm.Settle()
-	args, err := t.keyringArgs()
+	args, err := t.rbdArgs()
 	if err != nil {
 		return err
 	}
@@ -174,7 +176,7 @@ func (t *T) createDevice(ctx context.Context) error {
 	if err != nil {
 		return err
 	}
-	args, err := t.keyringArgs()
+	args, err := t.rbdArgs()
 	if err != nil {
 		return err
 	}
@@ -197,7 +199,7 @@ func (t *T) createDevice(ctx context.Context) error {
 }
 
 func (t *T) removeDevice(ctx context.Context) error {
-	args, err := t.keyringArgs()
+	args, err := t.rbdArgs()
 	if err != nil {
 		return err
 	}
@@ -225,7 +227,7 @@ func (t *T) lockDevice(ctx context.Context) error {
 		t.Log().Infof("%s is already locked", t.Name)
 		return nil
 	}
-	args, err := t.keyringArgs()
+	args, err := t.rbdArgs()
 	if err != nil {
 		return err
 	}
@@ -258,7 +260,7 @@ func (t *T) unlockDevice(ctx context.Context) error {
 		t.Log().Infof("%s is already unlocked", t.Name)
 		return nil
 	}
-	args, err := t.keyringArgs()
+	args, err := t.rbdArgs()
 	if err != nil {
 		return err
 	}
@@ -292,7 +294,7 @@ func (t *T) Info(ctx context.Context) (resource.InfoKeys, error) {
 }
 
 func (t *T) deviceInfo(ctx context.Context) (*RBDInfo, error) {
-	args, err := t.keyringArgs()
+	args, err := t.rbdArgs()
 	if err != nil {
 		return nil, err
 	}
@@ -321,7 +323,7 @@ func (t *T) deviceInfo(ctx context.Context) (*RBDInfo, error) {
 }
 
 func (t *T) listLocks(ctx context.Context) ([]RBDLock, error) {
-	args, err := t.keyringArgs()
+	args, err := t.rbdArgs()
 	if err != nil {
 		return nil, err
 	}
@@ -347,7 +349,7 @@ func (t *T) listLocks(ctx context.Context) ([]RBDLock, error) {
 }
 
 func (t *T) listDevices(ctx context.Context) ([]RBDMap, error) {
-	args, err := t.keyringArgs()
+	args, err := t.rbdArgs()
 	if err != nil {
 		return nil, err
 	}
@@ -547,7 +549,7 @@ func (t *T) PreMove(ctx context.Context, to string) error {
 }
 
 func (t *T) disableFeature(ctx context.Context, feature string) error {
-	args, err := t.keyringArgs()
+	args, err := t.rbdArgs()
 	if err != nil {
 		return err
 	}
@@ -569,7 +571,7 @@ func (t *T) disableFeature(ctx context.Context, feature string) error {
 }
 
 func (t *T) enableFeature(ctx context.Context, feature string) error {
-	args, err := t.keyringArgs()
+	args, err := t.rbdArgs()
 	if err != nil {
 		return err
 	}
@@ -644,4 +646,40 @@ func (t *T) keyringArgs() ([]string, error) {
 	}
 	t.keyringArgsCache = []string{"--keyring", keyringFile}
 	return t.keyringArgsCache, nil
+}
+
+func (t *T) configArgs() ([]string, error) {
+	if t.Config == "" {
+		return []string{}, nil
+	}
+	if t.configArgsCache != nil {
+		return t.configArgsCache, nil
+	}
+	km, err := datarecv.ParseKeyMetaRelObj(t.Config, t.GetObject())
+	if err != nil {
+		t.configArgsCache = []string{}
+		return t.configArgsCache, err
+	}
+	configFile, err := km.CacheFile()
+	if err != nil {
+		t.configArgsCache = []string{}
+		return t.configArgsCache, err
+	}
+	t.configArgsCache = []string{"-c", configFile}
+	return t.configArgsCache, nil
+}
+
+func (t *T) rbdArgs() ([]string, error) {
+	var args []string
+	keyringArgs, err := t.keyringArgs()
+	if err != nil {
+		return nil, err
+	}
+	args = append(args, keyringArgs...)
+	configArgs, err := t.configArgs()
+	if err != nil {
+		return nil, err
+	}
+	args = append(args, configArgs...)
+	return args, nil
 }

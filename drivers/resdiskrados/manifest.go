@@ -49,6 +49,13 @@ var (
 			Example:  "from ./sec/ceph key eu1.keyring",
 			Text:     keywords.NewText(fs, "text/kw/keyring"),
 		},
+		{
+			Attr:     "Config",
+			Option:   "config",
+			Scopable: true,
+			Example:  "from ./cfg/ceph key ceph.conf",
+			Text:     keywords.NewText(fs, "text/kw/config"),
+		},
 	}
 )
 
