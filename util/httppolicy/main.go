@@ -6,46 +6,85 @@ import (
 	"net/url"
 	"path"
 	"strings"
+
+	"github.com/danwakefield/fnmatch"
 )
 
 type (
 	T struct {
-		WhiteListUrls []string
-		BlockedCIDRs  []string
+		// AllowedUrl defines the list of URL patterns that are explicitly
+		// permitted by the policy regardless BlockedUrl setting.
+		AllowedUrl []string
+
+		// BlockedURL define the URLs patterns that are explicitly disallowed by the policy.
+		// Empty value is treated the same as a []string{"*"} (all URLs are blocked
+		// unless explicitly allowed).
+		BlockedUrl []string
+
+		// AllowedCIDR defines CIDR blocks explicitly allowed by the policy,
+		// overriding any entries in BlockedCIDR.
+		AllowedCIDR []string
+
+		// BlockedCIDR defines a list of CIDR blocks that are explicitly disallowed
+		// by the policy for incoming requests.
+		BlockedCIDR []string
 	}
 )
 
 // New creates and returns a new instance of T initialized with the provided whitelist URLs and blocked CIDRs.
-func New(whiteListUrls, blockedCIDRs []string) *T {
+func New(allowedURL, blockedURL, allowedCIDR, blockedCIDR []string) *T {
 	return &T{
-		WhiteListUrls: append([]string(nil), whiteListUrls...),
-		BlockedCIDRs:  append([]string(nil), blockedCIDRs...),
+		AllowedUrl:  append([]string(nil), allowedURL...),
+		BlockedUrl:  append([]string(nil), blockedURL...),
+		AllowedCIDR: append([]string(nil), allowedCIDR...),
+		BlockedCIDR: append([]string(nil), blockedCIDR...),
 	}
 }
 
-// Check checks if the provided raw URL is valid, matches whitelist criteria,
-// and is not blocked by CIDR rules.
-func (t *T) Check(rawURL string) error {
+// Check validates the given rawURL, resolves its IP, determines its port, and ensures it complies with set rules.
+// The accepted ip, port is returned to prevent TOCTOU bugs.
+func (t *T) Check(rawURL string) (ip net.IP, port string, err error) {
 	if t == nil {
-		return fmt.Errorf("unexpected validator")
+		return nil, "", fmt.Errorf("unexpected validator")
 	}
 
 	parsedURL, err := parseRequestURL(rawURL)
 	if err != nil {
-		return err
+		return nil, "", err
 	}
 
 	host := parsedURL.Hostname()
 	if host == "" {
-		return fmt.Errorf("empty host")
+		return nil, "", fmt.Errorf("empty host")
+	}
+	var ips []net.IP
+	ips, err = net.LookupIP(host)
+	if err != nil {
+		return nil, "", err
 	}
 
-	if !isURLWhitelisted(parsedURL, t.WhiteListUrls) {
-		return fmt.Errorf("url %s not in white list url %s", parsedURL, t.WhiteListUrls)
+	if err := rejectURL(parsedURL, t.AllowedUrl, t.BlockedUrl); err != nil {
+		return nil, "", fmt.Errorf("reject url %s: %w", parsedURL, err)
 	}
 
-	blockedNets := parseBlockedCIDRs(t.BlockedCIDRs)
-	return rejectBlockedResolvedIPs(host, blockedNets)
+	allowedNets := parseBlockedCIDRs(t.AllowedCIDR)
+	blockedNets := parseBlockedCIDRs(t.BlockedCIDR)
+	if ip, err = rejectIPs(ips, allowedNets, blockedNets); err != nil {
+		return nil, "", fmt.Errorf("reject host %s ip %s: %w", host, ip, err)
+	}
+	port = parsedURL.Port()
+	if port == "" {
+		// set port based on the allowed URL scheme
+		switch parsedURL.Scheme {
+		case "http":
+			port = "80"
+		case "https":
+			port = "443"
+		default:
+			return nil, "", fmt.Errorf("can't detect port for unsupported scheme %s", parsedURL.Scheme)
+		}
+	}
+	return ip, port, nil
 }
 
 func parseRequestURL(rawURL string) (*url.URL, error) {
@@ -65,24 +104,42 @@ func parseRequestURL(rawURL string) (*url.URL, error) {
 	return parsedURL, nil
 }
 
-func isURLWhitelisted(requestURL *url.URL, whitelistURLs []string) bool {
+func rejectURL(requestURL *url.URL, allowed, blocked []string) error {
 	host := requestURL.Hostname()
 	scheme := requestURL.Scheme
 	port := requestURL.Port()
 	normalizedPath := path.Clean(requestURL.Path)
 
-	for _, whitelistURL := range whitelistURLs {
-		allowedURL, err := url.Parse(whitelistURL)
+	// Verify exception from the allowed list
+	for _, u := range allowed {
+		allowedURL, err := url.Parse(u)
 		if err != nil {
 			continue
 		}
 
 		if isAllowedURLMatch(scheme, host, port, normalizedPath, allowedURL) {
-			return true
+			return nil
 		}
 	}
 
-	return false
+	// verify if match blocked url
+	requestURL = &url.URL{
+		Scheme: requestURL.Scheme,
+		Host:   requestURL.Host,
+		Path:   path.Clean(requestURL.Path),
+	}
+
+	if len(blocked) == 0 {
+		blocked = []string{"*"}
+	}
+	requestURLString := requestURL.String()
+	for _, u := range blocked {
+		if fnmatch.Match(u, requestURLString, 0) {
+			return fmt.Errorf("url %s is blocked by pattern %s and not in allowed list %s", requestURLString, u, allowed)
+		}
+	}
+
+	return nil
 }
 
 func isAllowedURLMatch(scheme, host, port, normalizedPath string, allowedURL *url.URL) bool {
@@ -122,19 +179,23 @@ func parseBlockedCIDRs(blockedCIDRs []string) []*net.IPNet {
 	return blockedNets
 }
 
-func rejectBlockedResolvedIPs(host string, blockedNets []*net.IPNet) error {
-	ips, err := net.LookupIP(host)
-	if err != nil {
-		return err
+func rejectIPs(ips []net.IP, allowedNet, blockedNets []*net.IPNet) (ip net.IP, err error) {
+	if len(ips) == 0 {
+		return ip, fmt.Errorf("empty ip list provided")
 	}
-
-	for _, ip := range ips {
+	for _, ip = range ips {
 		for _, blockedNet := range blockedNets {
 			if blockedNet.Contains(ip) {
-				return fmt.Errorf("ip %s from %s is blocked by CIDR %s", ip, host, blockedNet)
+				// verify exceptions
+				for _, allowed := range allowedNet {
+					if allowed.Contains(ip) {
+						return ip, nil
+					}
+				}
+				return ip, fmt.Errorf("blocked net %s and not in exception net list %s", blockedNet, allowedNet)
 			}
 		}
 	}
-
-	return nil
+	// ips are no blocked, return fist ip from ip list
+	return ips[0], nil
 }
