@@ -56,6 +56,13 @@ var (
 			Example:  "from ./cfg/ceph key ceph.conf",
 			Text:     keywords.NewText(fs, "text/kw/config"),
 		},
+		{
+			Attr:     "Group",
+			Option:   "group",
+			Scopable: true,
+			Example:  "mygroup",
+			Text:     keywords.NewText(fs, "text/kw/group"),
+		},
 	}
 )
 
