@@ -28,7 +28,8 @@ var (
 	}
 )
 
-func setSSRF(allowedURL, blockedURL, AllowedCIDR, blockedCIDR string) {
+// setSSRF configures SSRF protection settings, including allowed/blocked URLs, CIDR ranges, and redirect behavior.
+func setSSRF(allowedURL, blockedURL, AllowedCIDR, blockedCIDR, enableRedirects string) {
 	if allowedURL == "" {
 		SSRFAllowedURL = defaultSSRFAllowedURL
 	} else {
@@ -48,5 +49,11 @@ func setSSRF(allowedURL, blockedURL, AllowedCIDR, blockedCIDR string) {
 		SSRFBlockedCIDR = defaultSSRFBlockedCIDR
 	} else {
 		SSRFBlockedCIDR = strings.Fields(blockedCIDR)
+	}
+
+	// SSRFEnableRedirects is always false by default unless enableRedirects == "true"
+	SSRFEnableRedirects = false
+	if enableRedirects == "true" {
+		SSRFEnableRedirects = true
 	}
 }

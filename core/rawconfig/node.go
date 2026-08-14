@@ -29,10 +29,11 @@ var (
 	Color    *palette.ColorPalette
 	Paths    AgentPaths
 
-	SSRFAllowedURL  []string
-	SSRFBlockedURL  []string
-	SSRFAllowedCIDR []string
-	SSRFBlockedCIDR []string
+	SSRFAllowedURL      []string
+	SSRFBlockedURL      []string
+	SSRFAllowedCIDR     []string
+	SSRFBlockedCIDR     []string
+	SSRFEnableRedirects bool
 )
 
 func init() {
@@ -53,7 +54,8 @@ func Load(env map[string]string) {
 		allowedURL, _ := env["OSVC_SSRF_ALLOWED_URL"]
 		blockedCIDR, _ := env["OSVC_SSRF_BLOCKED_CIDR"]
 		allowedCIDR, _ := env["OSVC_SSRF_ALLOWED_CIDR"]
-		setSSRF(allowedURL, blockedURL, allowedCIDR, blockedCIDR)
+		enableRedirects, _ := env["OSVC_SSRF_ENABLE_REDIRECTS"]
+		setSSRF(allowedURL, blockedURL, allowedCIDR, blockedCIDR, enableRedirects)
 	}
 
 	var root string
