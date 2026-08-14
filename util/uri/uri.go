@@ -2,9 +2,11 @@ package uri
 
 import (
 	"bufio"
+	"context"
 	"errors"
 	"fmt"
 	"io"
+	"net"
 	"net/http"
 	"net/url"
 	"os"
@@ -34,11 +36,15 @@ func New(s string) T {
 }
 
 func (t T) Fetch() (string, error) {
-	policy := httppolicy.New(rawconfig.SSRFWhiteListUrl, rawconfig.SSRFBlockedCIDR)
-	if err := policy.Check(t.uri); err != nil {
+	var resp *http.Response
+	policy := httppolicy.New(rawconfig.SSRFAllowedURL, rawconfig.SSRFBlockedURL, rawconfig.SSRFAllowedCIDR, rawconfig.SSRFBlockedCIDR)
+	ip, port, err := policy.Check(t.uri)
+	if err != nil {
 		return "", err
 	}
-	resp, err := http.Get(t.uri)
+
+	client := clientForIP(ip, port, rawconfig.SSRFEnableRedirects)
+	resp, err = client.Get(t.uri)
 	if err != nil {
 		return "", err
 	}
@@ -109,6 +115,35 @@ func ReadAllFrom(from string) (map[string][]byte, error) {
 		}
 		return nil, ErrFromUnknown
 	}
+}
+
+func clientForIP(ip net.IP, port string, enableRedirects bool) *http.Client {
+	dialer := &net.Dialer{}
+
+	transport := &http.Transport{
+		DialContext: func(
+			ctx context.Context,
+			network, _ string,
+		) (net.Conn, error) {
+			return dialer.DialContext(
+				ctx,
+				network,
+				net.JoinHostPort(ip.String(), port),
+			)
+		},
+	}
+
+	client := &http.Client{
+		Transport: transport,
+	}
+
+	if !enableRedirects {
+		// Never follow redirects.
+		client.CheckRedirect = func(req *http.Request, via []*http.Request) error {
+			return http.ErrUseLastResponse
+		}
+	}
+	return client
 }
 
 func readAllFromStdin() (map[string][]byte, error) {
