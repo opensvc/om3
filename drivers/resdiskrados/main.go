@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"slices"
+	"strings"
 	"time"
 
 	"github.com/rs/zerolog"
@@ -33,9 +34,9 @@ type (
 		Keyring    string `json:"keyring"`
 		Config     string `json:"config"`
 
-		featureDisabled    []string
-		keyringArgsCache   []string
-		configArgsCache    []string
+		featureDisabled  []string
+		keyringArgsCache []string
+		configArgsCache  []string
 	}
 
 	RBDMap struct {
@@ -93,12 +94,21 @@ func New() resource.Driver {
 	return t
 }
 
-func (t RBDMap) ImageSpec() string {
+func (t *RBDMap) ImageSpec() string {
 	s := t.Pool
 	if t.Namespace != "" {
 		s += "/" + t.Namespace
 	}
 	return s + "/" + t.Name
+}
+
+func (t *T) spec() string {
+	if strings.Contains(t.Name, "/") {
+		return t.Name
+	} else {
+		// prefix with then default pool so we can compare with RBDMap ImageSpec()
+		return "rbd/" + t.Name
+	}
 }
 
 func (t *T) Start(ctx context.Context) error {
@@ -405,7 +415,7 @@ func (t *T) isMapped(ctx context.Context) (bool, error) {
 		return false, err
 	}
 	for _, dev := range data {
-		if dev.ImageSpec() == t.Name {
+		if dev.ImageSpec() == t.spec() {
 			return true, nil
 		}
 	}
@@ -490,7 +500,7 @@ func (t *T) Provisioned(ctx context.Context) (provisioned.T, error) {
 }
 
 func (t *T) devpath() string {
-	return "/dev/rbd/" + t.Name
+	return "/dev/rbd/" + t.spec()
 }
 
 func (t *T) exposedDevice() device.T {
