@@ -3,12 +3,17 @@ package rawconfig
 import "strings"
 
 var (
-	defaultWhitelistURLs = []string{
-		"https://raw.githubusercontent.com",
-		"https://gitlab.com",
+	defaultSSRFAllowedURL = []string{
+		"https://raw.githubusercontent.com/opensvc/opensvc_templates",
 	}
 
-	defaultBlockedCIDRs = []string{
+	defaultSSRFBlockedURL = []string{
+		"*",
+	}
+
+	defaultSSRFAllowedCIDR = []string{}
+
+	defaultSSRFBlockedCIDR = []string{
 		// RFC 1918 private address ranges
 		"10.0.0.0/8",
 		"172.16.0.0/12",
@@ -23,14 +28,24 @@ var (
 	}
 )
 
-func setSSRF(whiteListUrl, blockedCIDR string) {
-	if whiteListUrl == "" {
-		SSRFWhiteListUrl = defaultWhitelistURLs
+func setSSRF(allowedURL, blockedURL, AllowedCIDR, blockedCIDR string) {
+	if allowedURL == "" {
+		SSRFAllowedURL = defaultSSRFAllowedURL
 	} else {
-		SSRFWhiteListUrl = strings.Fields(whiteListUrl)
+		SSRFAllowedURL = strings.Fields(allowedURL)
+	}
+	if blockedURL == "" {
+		SSRFBlockedURL = defaultSSRFBlockedURL
+	} else {
+		SSRFBlockedURL = strings.Fields(blockedURL)
+	}
+	if AllowedCIDR == "" {
+		SSRFAllowedCIDR = defaultSSRFAllowedCIDR
+	} else {
+		SSRFAllowedCIDR = strings.Fields(AllowedCIDR)
 	}
 	if blockedCIDR == "" {
-		SSRFBlockedCIDR = defaultBlockedCIDRs
+		SSRFBlockedCIDR = defaultSSRFBlockedCIDR
 	} else {
 		SSRFBlockedCIDR = strings.Fields(blockedCIDR)
 	}

@@ -29,8 +29,10 @@ var (
 	Color    *palette.ColorPalette
 	Paths    AgentPaths
 
-	SSRFWhiteListUrl []string
-	SSRFBlockedCIDR  []string
+	SSRFAllowedURL  []string
+	SSRFBlockedURL  []string
+	SSRFAllowedCIDR []string
+	SSRFBlockedCIDR []string
 )
 
 func init() {
@@ -47,9 +49,11 @@ func Load(env map[string]string) {
 	}
 
 	if env != nil {
-		allowed, _ := env["OSVC_SSRF_WHITELIST_URL"]
-		blocked, _ := env["OSVC_SSRF_BLOCKED_CIDR"]
-		setSSRF(allowed, blocked)
+		blockedURL, _ := env["OSVC_SSRF_BLOCKED_URL"]
+		allowedURL, _ := env["OSVC_SSRF_ALLOWED_URL"]
+		blockedCIDR, _ := env["OSVC_SSRF_BLOCKED_CIDR"]
+		allowedCIDR, _ := env["OSVC_SSRF_ALLOWED_CIDR"]
+		setSSRF(allowedURL, blockedURL, allowedCIDR, blockedCIDR)
 	}
 
 	var root string
