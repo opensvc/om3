@@ -50,12 +50,7 @@ func Load(env map[string]string) {
 	}
 
 	if env != nil {
-		blockedURL, _ := env["OSVC_SSRF_BLOCKED_URL"]
-		allowedURL, _ := env["OSVC_SSRF_ALLOWED_URL"]
-		blockedCIDR, _ := env["OSVC_SSRF_BLOCKED_CIDR"]
-		allowedCIDR, _ := env["OSVC_SSRF_ALLOWED_CIDR"]
-		enableRedirects, _ := env["OSVC_SSRF_ENABLE_REDIRECTS"]
-		setSSRF(allowedURL, blockedURL, allowedCIDR, blockedCIDR, enableRedirects)
+		setSSRF(env)
 	}
 
 	var root string
