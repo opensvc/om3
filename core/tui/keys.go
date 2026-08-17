@@ -68,7 +68,7 @@ func (t *App) updateKeysView() {
 	if t.skipIfConfigNotUpdated() {
 		return
 	}
-	resp, err := t.client.GetObjectDataKeysWithResponse(context.Background(), t.viewPath.Namespace, t.viewPath.Kind, t.viewPath.Name)
+	resp, err := t.client.GetObjectDataKeysWithResponse(context.Background(), t.viewPath.Namespace, t.viewPath.Kind, t.viewPath.Name, nil)
 	if err != nil {
 		return
 	}

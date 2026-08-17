@@ -4573,6 +4573,7 @@ paths:
         - $ref: '#/components/parameters/inPathNamespace'
         - $ref: '#/components/parameters/inPathKind'
         - $ref: '#/components/parameters/inPathName'
+        - $ref: '#/components/parameters/inQueryKeyFilter'
       responses:
         200:
           content:
@@ -7966,6 +7967,14 @@ components:
           description: |
             filter expression: [kind][,label=value]*[.dataxxx=value]
           example: ObjectStatusUpdated,path=foo
+
+    inQueryKeyFilter:
+      name: filter
+      in: query
+      description: fnmatch pattern filter for datastore key names
+      schema:
+        type: string
+        example: "pass*"
 
     Limit:
       name: limit

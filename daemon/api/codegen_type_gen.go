@@ -2396,6 +2396,9 @@ type InQueryHBA = string
 // InQueryImpersonate The node name to impersonate when evaluating a keyword. Setting impersonate without evaluate=true returns a Bad Request error.
 type InQueryImpersonate = string
 
+// InQueryKeyFilter defines model for inQueryKeyFilter.
+type InQueryKeyFilter = string
+
 // InQueryKeyName A datastore key name
 type InQueryKeyName = string
 
@@ -3169,6 +3172,12 @@ type PostObjectDataKeyParams struct {
 // PutObjectDataKeyParams defines parameters for PutObjectDataKey.
 type PutObjectDataKeyParams struct {
 	Name InQueryKeyName `form:"name" json:"name"`
+}
+
+// GetObjectDataKeysParams defines parameters for GetObjectDataKeys.
+type GetObjectDataKeysParams struct {
+	// Filter fnmatch pattern filter for datastore key names
+	Filter *InQueryKeyFilter `form:"filter,omitempty" json:"filter,omitempty"`
 }
 
 // GetPoolsParams defines parameters for GetPools.
