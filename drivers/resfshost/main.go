@@ -299,7 +299,7 @@ func (t *T) createDevice(ctx context.Context) error {
 func (t *T) createMountPoint(ctx context.Context) error {
 	if isRegular, err := file.ExistsAndRegular(t.Device); err != nil {
 		return err
-	} else if isRegular {
+	} else if isRegular && t.isBind() {
 		return t.createMountPointFile()
 	} else {
 		return t.createMountPointDir(t.MountPoint)
@@ -482,11 +482,15 @@ func (t *T) isBindMounted(ctx context.Context) (bool, error) {
 	}
 }
 
+func (t *T) isBind() bool {
+	return t.hasMountOption("bind") || t.Type == "bind"
+}
+
 func (t *T) isMounted(ctx context.Context) (bool, error) {
 	if t.hasMountOption("loop") {
 		return findmnt.HasFromMount(t.devpath(ctx), t.mountPoint())
 	}
-	if t.hasMountOption("bind") || t.Type == "bind" {
+	if t.isBind() {
 		return t.isBindMounted(ctx)
 	}
 	if t.fs().IsVirtual() {
