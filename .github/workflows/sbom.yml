@@ -33,7 +33,7 @@ jobs:
         run: mkdir -p $HOME/bin
 
       - name: Install Syft
-        uses: anchore/sbom-action/download-syft@v0.24.0
+        uses: anchore/sbom-action/download-syft@e22c389904149dbc22b58101806040fa8d37a610 # v0.24.0
         with:
           syft-version: v1.51.1
 
@@ -56,9 +56,7 @@ jobs:
         run: cyclonedx validate --input-file sbom.json
 
       - name: Upload sbom.json to release
-        uses: softprops/action-gh-release@v3.0.2
-        with:
-          files:
-            sbom.json
         env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh release upload "${{ github.ref_name }}" sbom.json
