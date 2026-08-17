@@ -32,10 +32,10 @@ jobs:
       - name: Create ~/bin directory
         run: mkdir -p $HOME/bin
 
-      - name: Download Syft
-        run: |
-          curl -sSfL https://raw.githubusercontent.com/anchore/syft/main/install.sh | sh -s -- -b $HOME/bin
-          $HOME/bin/syft version
+      - name: Install Syft
+        uses: anchore/sbom-action/download-syft@v0.24.0
+        with:
+          syft-version: v1.51.1
 
       - name: Download CycloneDX CLI
         run: |
@@ -49,7 +49,7 @@ jobs:
 
       - name: Generate SBOM
         run: |
-          syft scan . -o cyclonedx-json > sbom.json
+          syft scan . -o cyclonedx-json=sbom.json
           syft scan . -o table
 
       - name: Validate SBOM
