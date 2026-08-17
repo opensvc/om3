@@ -10,10 +10,11 @@ jobs:
 
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v5.0.0
+        uses: actions/checkout@v7.0.1
         with:
           fetch-depth: 0
           fetch-tags: true
+          persist-credentials: false
 
       - name: Display sha hash
         run: |
@@ -31,33 +32,31 @@ jobs:
       - name: Create ~/bin directory
         run: mkdir -p $HOME/bin
 
-      - name: Download Syft
-        run: |
-          curl -sSfL https://raw.githubusercontent.com/anchore/syft/main/install.sh | sh -s -- -b $HOME/bin
-          $HOME/bin/syft version
+      - name: Install Syft
+        uses: anchore/sbom-action/download-syft@e22c389904149dbc22b58101806040fa8d37a610 # v0.24.0
+        with:
+          syft-version: v1.51.1
 
       - name: Download CycloneDX CLI
         run: |
-          curl -sSfL https://github.com/CycloneDX/cyclonedx-cli/releases/download/v0.29.1/cyclonedx-linux-x64 \
+          curl -sSfL https://github.com/CycloneDX/cyclonedx-cli/releases/download/v0.33.1/cyclonedx-linux-x64 \
             -o $HOME/bin/cyclonedx
+          echo "bfc8b2538da86fe239bc53658bbb63c1c8c510a293c1e6891aa5bea5d3c58746 $HOME/bin/cyclonedx" | sha256sum -c -
           chmod +x $HOME/bin/cyclonedx
-          $HOME/bin/cyclonedx --version || echo "CycloneDX CLI installed"
 
       - name: Add ~/bin to PATH
         run: echo "$HOME/bin" >> $GITHUB_PATH
 
       - name: Generate SBOM
         run: |
-          syft scan . -o cyclonedx-json > sbom.json
+          syft scan . -o cyclonedx-json=sbom.json
           syft scan . -o table
 
       - name: Validate SBOM
         run: cyclonedx validate --input-file sbom.json
 
       - name: Upload sbom.json to release
-        uses: softprops/action-gh-release@v1
-        with:
-          files:
-            sbom.json
         env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh release upload "${{ github.ref_name }}" sbom.json

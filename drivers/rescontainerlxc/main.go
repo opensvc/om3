@@ -250,6 +250,11 @@ func (t *T) purgeLxcVar(ctx context.Context) error {
 		return nil
 	}
 	p = filepath.Join(p, t.Name)
+
+	if !strings.HasPrefix(p, filepath.Clean(t.lxcPath(ctx))+string(filepath.Separator)) {
+		return fmt.Errorf("purge lxc var: detect path traversal detected in %s", t.Name)
+	}
+
 	if !file.Exists(p) {
 		t.Log().Infof("%s is already cleaned up", p)
 		return nil

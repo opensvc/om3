@@ -26,7 +26,7 @@ require (
 	github.com/getkin/kin-openapi v0.144.0
 	github.com/goccy/go-json v0.10.2
 	github.com/golang-collections/collections v0.0.0-20130729185459-604e922904d3
-	github.com/golang-jwt/jwt/v5 v5.2.2
+	github.com/golang-jwt/jwt/v5 v5.3.0
 	github.com/golang/mock v1.5.0
 	github.com/google/go-cmp v0.7.0
 	github.com/google/nftables v0.0.0-20220129182606-a46119e5928d
@@ -40,10 +40,10 @@ require (
 	github.com/jaypipes/pcidb v0.6.0
 	github.com/juju/ansiterm v0.0.0-20180109212912-720a0952cc2a
 	github.com/kballard/go-shellquote v0.0.0-20180428030007-95032a82bc51
-	github.com/labstack/echo-contrib v0.17.4
-	github.com/labstack/echo/v4 v4.13.4
-	github.com/labstack/gommon v0.4.2
-	github.com/mattn/go-isatty v0.0.20
+	github.com/labstack/echo-contrib v0.50.1
+	github.com/labstack/echo/v4 v4.15.4
+	github.com/labstack/gommon v0.5.0
+	github.com/mattn/go-isatty v0.0.22
 	github.com/mattn/go-runewidth v0.0.15
 	github.com/mitchellh/go-homedir v1.1.0
 	github.com/mlafeldt/sysrq v0.0.0-20171106101645-38dd78d6e663
@@ -58,8 +58,8 @@ require (
 	github.com/opensvc/testhelper v1.0.0
 	github.com/pbar1/pkill-go v1.0.0
 	github.com/pkg/errors v0.9.1
-	github.com/prometheus/client_golang v1.22.0
-	github.com/prometheus/procfs v0.16.1
+	github.com/prometheus/client_golang v1.23.2
+	github.com/prometheus/procfs v0.19.2
 	github.com/retailnext/cannula v0.0.0-20160516234737-f1c21e7f5695
 	github.com/rivo/tview v0.0.0-20240921122403-a64fc48d7654
 	github.com/rs/zerolog v1.34.0
@@ -76,13 +76,13 @@ require (
 	github.com/ybbus/jsonrpc v2.1.2+incompatible
 	github.com/yookoala/realpath v1.0.0
 	github.com/zcalusic/sysinfo v0.0.0-20210831153053-2c6e1d254246
-	golang.org/x/crypto v0.52.0
+	golang.org/x/crypto v0.53.0
 	golang.org/x/exp v0.0.0-20230725093048-515e97ebf090
-	golang.org/x/net v0.55.0
-	golang.org/x/sync v0.20.0
-	golang.org/x/sys v0.45.0
-	golang.org/x/term v0.43.0
-	golang.org/x/time v0.11.0
+	golang.org/x/net v0.56.0
+	golang.org/x/sync v0.21.0
+	golang.org/x/sys v0.46.0
+	golang.org/x/term v0.44.0
+	golang.org/x/time v0.15.0
 	gopkg.in/errgo.v2 v2.1.0
 	gopkg.in/natefinch/lumberjack.v2 v2.0.0
 	gopkg.in/yaml.v3 v3.0.1
@@ -115,7 +115,7 @@ require (
 	github.com/logrusorgru/aurora v2.0.3+incompatible // indirect
 	github.com/lucasb-eyer/go-colorful v1.2.0 // indirect
 	github.com/lunixbochs/vtclean v1.0.0 // indirect
-	github.com/mattn/go-colorable v0.1.14 // indirect
+	github.com/mattn/go-colorable v0.1.15 // indirect
 	github.com/mdlayher/netlink v1.4.2 // indirect
 	github.com/mdlayher/socket v0.0.0-20211102153432-57e3fa563ecb // indirect
 	github.com/mitchellh/go-ps v1.0.0 // indirect
@@ -126,19 +126,19 @@ require (
 	github.com/opensvc/locker v1.0.3 // indirect
 	github.com/pmezard/go-difflib v1.0.1-0.20181226105442-5d4384ee4fb2 // indirect
 	github.com/prometheus/client_model v0.6.2 // indirect
-	github.com/prometheus/common v0.63.0 // indirect
+	github.com/prometheus/common v0.67.5 // indirect
 	github.com/rivo/uniseg v0.4.7 // indirect
 	github.com/safchain/ethtool v0.0.0-20200218184317-f459e2d13664 // indirect
 	github.com/santhosh-tekuri/jsonschema/v6 v6.0.2 // indirect
 	github.com/sirupsen/logrus v1.9.1 // indirect
 	github.com/valyala/bytebufferpool v1.0.0 // indirect
 	github.com/valyala/fasttemplate v1.2.2 // indirect
-	go.uber.org/goleak v1.3.0 // indirect
-	golang.org/x/mod v0.35.0 // indirect
-	golang.org/x/text v0.37.0 // indirect
-	golang.org/x/tools v0.44.0 // indirect
+	go.yaml.in/yaml/v2 v2.4.3 // indirect
+	golang.org/x/mod v0.36.0 // indirect
+	golang.org/x/text v0.38.0 // indirect
+	golang.org/x/tools v0.45.0 // indirect
 	golang.org/x/tools/go/expect v0.1.1-deprecated // indirect
-	google.golang.org/protobuf v1.36.6 // indirect
+	google.golang.org/protobuf v1.36.11 // indirect
 	gopkg.in/go-jose/go-jose.v2 v2.6.3 // indirect
 	gopkg.in/yaml.v2 v2.4.0 // indirect
 	honnef.co/go/tools v0.2.2 // indirect
