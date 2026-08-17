@@ -287,13 +287,8 @@ func newCmdObjectKeyRename(kind string) *cobra.Command {
 		Aliases: []string{"mv"},
 		Args:    cobra.ExactArgs(2),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			n := len(args)
-			if n > 0 {
-				options.Name = args[0]
-			}
-			if n > 1 {
-				options.To = args[1]
-			}
+			options.Name = args[0]
+			options.To = args[1]
 			return options.Run(kind)
 		},
 	}
