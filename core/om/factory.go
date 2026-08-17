@@ -334,7 +334,6 @@ func newCmdObjectKeyList(kind string) *cobra.Command {
 		Use:     "list [PATTERN]",
 		Short:   "list the keys",
 		Aliases: []string{"ls"},
-		Args:    cobra.MaximumNArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			if len(args) > 0 {
 				options.Match = args[0]
@@ -354,7 +353,7 @@ func newCmdObjectKeyRemove(kind string) *cobra.Command {
 	var options commands.CmdObjectKeyRemove
 	cmd := &cobra.Command{
 		Aliases: []string{"rm"},
-		Use:     "remove [NAME...]",
+		Use:     "remove [NAME]...",
 		Short:   "remove key",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			if len(args) > 0 {
@@ -2065,16 +2064,15 @@ func newCmdObjectEnable(kind string) *cobra.Command {
 func newCmdObjectContainerEnter(kind string) *cobra.Command {
 	var options commands.CmdObjectContainerEnter
 	cmd := &cobra.Command{
-		Use:   "enter [ID]",
+		Use:   "enter [PATTERN]...",
 		Short: "open a shell in a container resource",
 		Long:  "Enter any container resource.",
-		Args:  cobra.MaximumNArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			commoncmd.SetRIDFromArgs(&options.RID, args, "container", "container")
 			return options.Run(kind)
 		},
 	}
-	commoncmd.CmdWithArg(cmd, "ID  A container resource index.")
+	commoncmd.CmdWithArg(cmd, "PATTERN  A fnmatch resource index filter.")
 	flags := cmd.Flags()
 	addFlagObject(flags, &options.ObjectSelector)
 	commoncmd.FlagRIDWithCompletion(cmd, &options.RID)
@@ -2084,17 +2082,16 @@ func newCmdObjectContainerEnter(kind string) *cobra.Command {
 func newCmdObjectContainerLogs(kind string) *cobra.Command {
 	var options commands.CmdObjectContainerLogs
 	cmd := &cobra.Command{
-		Use:     "logs [ID]",
+		Use:     "logs [PATTERN]...",
 		Aliases: []string{"log"},
 		Short:   "show container logs",
 		Long:    "Show container logs.",
-		Args:    cobra.MaximumNArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			commoncmd.SetRIDFromArgs(&options.RID, args, "container", "container")
 			return options.Run(kind)
 		},
 	}
-	commoncmd.CmdWithArg(cmd, "ID  A container resource index.")
+	commoncmd.CmdWithArg(cmd, "PATTERN  A fnmatch resource index filter.")
 	flags := cmd.Flags()
 	addFlagsGlobal(flags, &options.OptsGlobal)
 	commoncmd.FlagRIDWithCompletion(cmd, &options.RID)
@@ -2107,17 +2104,21 @@ func newCmdObjectContainerList(kind string) *cobra.Command {
 	var options commands.CmdObjectResourceList
 	options.RID = "container"
 	cmd := &cobra.Command{
-		Use:     "list [ID]",
+		Use:     "list [PATTERN]...",
 		Aliases: []string{"ls"},
 		Short:   "list container resources",
 		Long:    "List container resources. Equivalent to 'resource ls --rid container'.",
-		Args:    cobra.MaximumNArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			commoncmd.SetRIDFromArgs(&options.RID, args, "container", "container")
 			return options.Run(kind)
 		},
+		Example: `  # list all container resources in system/svc/dns
+  om system/svc/dns container ls
+
+  # list all containers with resource index ending with 'or' or 'er'
+  om svc container ls '*or' '*er'`,
 	}
-	commoncmd.CmdWithArg(cmd, "ID  A container resource index.")
+	commoncmd.CmdWithArg(cmd, "PATTERN  A fnmatch resource index filter.")
 	flags := cmd.Flags()
 	addFlagsGlobal(flags, &options.OptsGlobal)
 	commoncmd.FlagNodeSelector(flags, &options.NodeSelector)
@@ -2128,17 +2129,21 @@ func newCmdObjectIPList(kind string) *cobra.Command {
 	var options commands.CmdObjectResourceList
 	options.RID = "ip"
 	cmd := &cobra.Command{
-		Use:     "list [ID]",
+		Use:     "list [PATTERN]...",
 		Aliases: []string{"ls"},
 		Short:   "list ip resources",
 		Long:    "List ip resources. Equivalent to 'resource ls --rid ip'.",
-		Args:    cobra.MaximumNArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			commoncmd.SetRIDFromArgs(&options.RID, args, "ip", "ip")
 			return options.Run(kind)
 		},
+		Example: `  # list all ip resources in system/svc/dns
+  om system/svc/dns ip ls
+
+  # list all ips with resource index ending with '1' or '2'
+  om svc ip ls '*1' '*2'`,
 	}
-	commoncmd.CmdWithArg(cmd, "ID  A ip resource index.")
+	commoncmd.CmdWithArg(cmd, "PATTERN  A fnmatch resource index filter.")
 	flags := cmd.Flags()
 	addFlagsGlobal(flags, &options.OptsGlobal)
 	commoncmd.FlagNodeSelector(flags, &options.NodeSelector)
@@ -2149,17 +2154,21 @@ func newCmdObjectFSList(kind string) *cobra.Command {
 	var options commands.CmdObjectResourceList
 	options.RID = "fs"
 	cmd := &cobra.Command{
-		Use:     "list [ID]",
+		Use:     "list [PATTERN]...",
 		Aliases: []string{"ls"},
 		Short:   "list fs resources",
 		Long:    "List fs resources. Equivalent to 'resource ls --rid fs'.",
-		Args:    cobra.MaximumNArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			commoncmd.SetRIDFromArgs(&options.RID, args, "fs", "fs")
 			return options.Run(kind)
 		},
+		Example: `  # list all fs resources in system/svc/dns
+  om system/svc/dns fs ls
+
+  # list all fs with resource index ending with '1' or '2'
+  om svc fs ls '*1' '*2'`,
 	}
-	commoncmd.CmdWithArg(cmd, "ID  A fs resource index.")
+	commoncmd.CmdWithArg(cmd, "PATTERN  A fnmatch resource index filter.")
 	flags := cmd.Flags()
 	addFlagsGlobal(flags, &options.OptsGlobal)
 	commoncmd.FlagNodeSelector(flags, &options.NodeSelector)
@@ -2170,17 +2179,21 @@ func newCmdObjectVolumeList(kind string) *cobra.Command {
 	var options commands.CmdObjectResourceList
 	options.RID = "volume"
 	cmd := &cobra.Command{
-		Use:     "list [ID]",
+		Use:     "list [PATTERN]...",
 		Aliases: []string{"ls"},
 		Short:   "list volume resources",
 		Long:    "List volume resources. Equivalent to 'resource ls --rid volume'.",
-		Args:    cobra.MaximumNArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			commoncmd.SetRIDFromArgs(&options.RID, args, "volume", "volume")
 			return options.Run(kind)
 		},
+		Example: `  # list all volume resources in system/svc/dns
+  om system/svc/dns volume ls
+
+  # list all volumes with resource index ending with '1' or '2'
+  om svc volume ls '*1' '*2'`,
 	}
-	commoncmd.CmdWithArg(cmd, "ID  A volume resource index.")
+	commoncmd.CmdWithArg(cmd, "PATTERN  A fnmatch resource index filter.")
 	flags := cmd.Flags()
 	addFlagsGlobal(flags, &options.OptsGlobal)
 	commoncmd.FlagNodeSelector(flags, &options.NodeSelector)
@@ -2191,17 +2204,21 @@ func newCmdObjectDiskList(kind string) *cobra.Command {
 	var options commands.CmdObjectResourceList
 	options.RID = "disk"
 	cmd := &cobra.Command{
-		Use:     "list [ID]",
+		Use:     "list [PATTERN]...",
 		Aliases: []string{"ls"},
 		Short:   "list disk resources",
 		Long:    "List disk resources. Equivalent to 'resource ls --rid disk'.",
-		Args:    cobra.MaximumNArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			commoncmd.SetRIDFromArgs(&options.RID, args, "disk", "disk")
 			return options.Run(kind)
 		},
+		Example: `  # list all disk resources in system/svc/dns
+  om system/svc/dns disk ls
+
+  # list all disks with resource index ending with '1' or '2'
+  om svc disk ls '*1' '*2'`,
 	}
-	commoncmd.CmdWithArg(cmd, "ID  A disk resource index.")
+	commoncmd.CmdWithArg(cmd, "PATTERN  A fnmatch resource index filter.")
 	flags := cmd.Flags()
 	addFlagsGlobal(flags, &options.OptsGlobal)
 	commoncmd.FlagNodeSelector(flags, &options.NodeSelector)
@@ -2212,17 +2229,21 @@ func newCmdObjectShareList(kind string) *cobra.Command {
 	var options commands.CmdObjectResourceList
 	options.RID = "share"
 	cmd := &cobra.Command{
-		Use:     "list [ID]",
+		Use:     "list [PATTERN]...",
 		Aliases: []string{"ls"},
 		Short:   "list share resources",
 		Long:    "List share resources. Equivalent to 'resource ls --rid share'.",
-		Args:    cobra.MaximumNArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			commoncmd.SetRIDFromArgs(&options.RID, args, "share", "share")
 			return options.Run(kind)
 		},
+		Example: `  # list all share resources in system/svc/dns
+  om system/svc/dns share ls
+
+  # list all shares with resource index ending with '1' or '2'
+  om svc share ls '*1' '*2'`,
 	}
-	commoncmd.CmdWithArg(cmd, "ID  A share resource index.")
+	commoncmd.CmdWithArg(cmd, "PATTERN  A fnmatch resource index filter.")
 	flags := cmd.Flags()
 	addFlagsGlobal(flags, &options.OptsGlobal)
 	commoncmd.FlagNodeSelector(flags, &options.NodeSelector)
@@ -2233,17 +2254,21 @@ func newCmdObjectAppList(kind string) *cobra.Command {
 	var options commands.CmdObjectResourceList
 	options.RID = "app"
 	cmd := &cobra.Command{
-		Use:     "list [ID]",
+		Use:     "list [PATTERN]...",
 		Aliases: []string{"ls"},
 		Short:   "list app resources",
 		Long:    "List app resources. Equivalent to 'resource ls --rid app'.",
-		Args:    cobra.MaximumNArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			commoncmd.SetRIDFromArgs(&options.RID, args, "app", "app")
 			return options.Run(kind)
 		},
+		Example: `  # list all app resources in system/svc/dns
+  om system/svc/dns app ls
+
+  # list all apps with resource index ending with '1' or '2'
+  om svc app ls '*1' '*2'`,
 	}
-	commoncmd.CmdWithArg(cmd, "ID  A app resource index.")
+	commoncmd.CmdWithArg(cmd, "PATTERN  A fnmatch resource index filter.")
 	flags := cmd.Flags()
 	addFlagsGlobal(flags, &options.OptsGlobal)
 	commoncmd.FlagNodeSelector(flags, &options.NodeSelector)
@@ -2289,16 +2314,15 @@ func newCmdObjectGroupsList(kind string) *cobra.Command {
 func newCmdObjectContainerStart(kind string) *cobra.Command {
 	var options commands.CmdObjectInstanceStart
 	cmd := &cobra.Command{
-		Use:   "start [ID]",
+		Use:   "start [PATTERN]...",
 		Short: "start a container resource",
 		Long:  "Start a container resource. Equivalent to 'instance start --rid container#<ID>'.",
-		Args:  cobra.MaximumNArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			commoncmd.SetRIDFromArgs(&options.RID, args, "container", "container")
 			return options.Run(kind)
 		},
 	}
-	commoncmd.CmdWithArg(cmd, "ID  A container resource index.")
+	commoncmd.CmdWithArg(cmd, "PATTERN  A fnmatch resource index filter.")
 	flags := cmd.Flags()
 	addFlagsGlobal(flags, &options.OptsGlobal)
 	commoncmd.FlagsAsync(flags, &options.OptsAsync)
@@ -2316,16 +2340,15 @@ func newCmdObjectContainerStart(kind string) *cobra.Command {
 func newCmdObjectContainerStop(kind string) *cobra.Command {
 	var options commands.CmdObjectInstanceStop
 	cmd := &cobra.Command{
-		Use:   "stop [ID]",
+		Use:   "stop [PATTERN]...",
 		Short: "stop a container resource",
 		Long:  "Stop a container resource. Equivalent to 'instance stop --rid container#<ID>'.",
-		Args:  cobra.MaximumNArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			commoncmd.SetRIDFromArgs(&options.RID, args, "container", "container")
 			return options.Run(kind)
 		},
 	}
-	commoncmd.CmdWithArg(cmd, "ID  A container resource index.")
+	commoncmd.CmdWithArg(cmd, "PATTERN  A fnmatch resource index filter.")
 	flags := cmd.Flags()
 	addFlagsGlobal(flags, &options.OptsGlobal)
 	commoncmd.FlagsAsync(flags, &options.OptsAsync)
@@ -2343,16 +2366,15 @@ func newCmdObjectContainerStop(kind string) *cobra.Command {
 func newCmdObjectContainerRestart(kind string) *cobra.Command {
 	var options commands.CmdObjectInstanceRestart
 	cmd := &cobra.Command{
-		Use:   "restart [ID]",
+		Use:   "restart [PATTERN]...",
 		Short: "restart a container resource",
 		Long:  "Restart a container resource. Equivalent to 'instance restart --rid container#<ID>'.",
-		Args:  cobra.MaximumNArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			commoncmd.SetRIDFromArgs(&options.RID, args, "container", "container")
 			return options.Run(kind)
 		},
 	}
-	commoncmd.CmdWithArg(cmd, "ID  A container resource index.")
+	commoncmd.CmdWithArg(cmd, "PATTERN  A fnmatch resource index filter.")
 	flags := cmd.Flags()
 	addFlagsGlobal(flags, &options.OptsGlobal)
 	commoncmd.FlagsAsync(flags, &options.OptsAsync)
@@ -2370,16 +2392,15 @@ func newCmdObjectContainerRestart(kind string) *cobra.Command {
 func newCmdObjectContainerProvision(kind string) *cobra.Command {
 	var options commands.CmdObjectInstanceProvision
 	cmd := &cobra.Command{
-		Use:   "provision [ID]",
+		Use:   "provision [PATTERN]...",
 		Short: "provision a container resource",
 		Long:  "Provision a container resource. Equivalent to 'instance provision --rid container#<ID>'.",
-		Args:  cobra.MaximumNArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			commoncmd.SetRIDFromArgs(&options.RID, args, "container", "container")
 			return options.Run(kind)
 		},
 	}
-	commoncmd.CmdWithArg(cmd, "ID  A container resource index.")
+	commoncmd.CmdWithArg(cmd, "PATTERN  A fnmatch resource index filter.")
 	flags := cmd.Flags()
 	addFlagsGlobal(flags, &options.OptsGlobal)
 	commoncmd.FlagsAsync(flags, &options.OptsAsync)
@@ -2397,16 +2418,15 @@ func newCmdObjectContainerProvision(kind string) *cobra.Command {
 func newCmdObjectContainerUnprovision(kind string) *cobra.Command {
 	var options commands.CmdObjectInstanceUnprovision
 	cmd := &cobra.Command{
-		Use:   "unprovision [ID]",
+		Use:   "unprovision [PATTERN]...",
 		Short: "unprovision a container resource",
 		Long:  "Unprovision a container resource. Equivalent to 'instance unprovision --rid container#<ID>'.",
-		Args:  cobra.MaximumNArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			commoncmd.SetRIDFromArgs(&options.RID, args, "container", "container")
 			return options.Run(kind)
 		},
 	}
-	commoncmd.CmdWithArg(cmd, "ID  A container resource index.")
+	commoncmd.CmdWithArg(cmd, "PATTERN  A fnmatch resource index filter.")
 	flags := cmd.Flags()
 	addFlagsGlobal(flags, &options.OptsGlobal)
 	commoncmd.FlagsAsync(flags, &options.OptsAsync)
@@ -2423,16 +2443,15 @@ func newCmdObjectContainerUnprovision(kind string) *cobra.Command {
 func newCmdObjectContainerStartStandby(kind string) *cobra.Command {
 	var options commands.CmdObjectInstanceStartStandby
 	cmd := &cobra.Command{
-		Use:   "startstandby [ID]",
+		Use:   "startstandby [PATTERN]...",
 		Short: "start a container resource in standby mode",
 		Long:  "Start a container resource in standby mode. Equivalent to 'instance startstandby --rid container#<ID>'.",
-		Args:  cobra.MaximumNArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			commoncmd.SetRIDFromArgs(&options.RID, args, "container", "container")
 			return options.Run(kind)
 		},
 	}
-	commoncmd.CmdWithArg(cmd, "ID  A container resource index.")
+	commoncmd.CmdWithArg(cmd, "PATTERN  A fnmatch resource index filter.")
 	flags := cmd.Flags()
 	addFlagsGlobal(flags, &options.OptsGlobal)
 	commoncmd.FlagsAsync(flags, &options.OptsAsync)
@@ -2447,16 +2466,15 @@ func newCmdObjectContainerStartStandby(kind string) *cobra.Command {
 func newCmdObjectContainerShutdown(kind string) *cobra.Command {
 	var options commands.CmdObjectInstanceShutdown
 	cmd := &cobra.Command{
-		Use:   "shutdown [ID]",
+		Use:   "shutdown [PATTERN]...",
 		Short: "shutdown a container resource",
 		Long:  "Shutdown a container resource. Equivalent to 'instance shutdown --rid container#<ID>'.",
-		Args:  cobra.MaximumNArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			commoncmd.SetRIDFromArgs(&options.RID, args, "container", "container")
 			return options.Run(kind)
 		},
 	}
-	commoncmd.CmdWithArg(cmd, "ID  A container resource index.")
+	commoncmd.CmdWithArg(cmd, "PATTERN  A fnmatch resource index filter.")
 	flags := cmd.Flags()
 	addFlagsGlobal(flags, &options.OptsGlobal)
 	commoncmd.FlagsAsync(flags, &options.OptsAsync)
@@ -2471,16 +2489,15 @@ func newCmdObjectContainerShutdown(kind string) *cobra.Command {
 func newCmdObjectContainerPRStart(kind string) *cobra.Command {
 	var options commands.CmdObjectInstancePRStart
 	cmd := &cobra.Command{
-		Use:   "prstart [ID]",
+		Use:   "prstart [PATTERN]...",
 		Short: "preempt devices exclusive write access reservation for a container resource",
 		Long:  "Preempt devices exclusive write access reservation for a container resource. Equivalent to 'instance prstart --rid container#<ID>'.",
-		Args:  cobra.MaximumNArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			commoncmd.SetRIDFromArgs(&options.RID, args, "container", "container")
 			return options.Run(kind)
 		},
 	}
-	commoncmd.CmdWithArg(cmd, "ID  A container resource index.")
+	commoncmd.CmdWithArg(cmd, "PATTERN  A fnmatch resource index filter.")
 	flags := cmd.Flags()
 	addFlagsGlobal(flags, &options.OptsGlobal)
 	commoncmd.FlagsAsync(flags, &options.OptsAsync)
@@ -2497,16 +2514,15 @@ func newCmdObjectContainerPRStart(kind string) *cobra.Command {
 func newCmdObjectContainerPRStop(kind string) *cobra.Command {
 	var options commands.CmdObjectInstancePRStop
 	cmd := &cobra.Command{
-		Use:   "prstop [ID]",
+		Use:   "prstop [PATTERN]...",
 		Short: "release devices exclusive write access reservation for a container resource",
 		Long:  "Release devices exclusive write access reservation for a container resource. Equivalent to 'instance prstop --rid container#<ID>'.",
-		Args:  cobra.MaximumNArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			commoncmd.SetRIDFromArgs(&options.RID, args, "container", "container")
 			return options.Run(kind)
 		},
 	}
-	commoncmd.CmdWithArg(cmd, "ID  A container resource index.")
+	commoncmd.CmdWithArg(cmd, "PATTERN  A fnmatch resource index filter.")
 	flags := cmd.Flags()
 	addFlagsGlobal(flags, &options.OptsGlobal)
 	commoncmd.FlagsAsync(flags, &options.OptsAsync)
@@ -2522,16 +2538,15 @@ func newCmdObjectContainerPRStop(kind string) *cobra.Command {
 func newCmdObjectIPStart(kind string) *cobra.Command {
 	var options commands.CmdObjectInstanceStart
 	cmd := &cobra.Command{
-		Use:   "start [ID]",
+		Use:   "start [PATTERN]...",
 		Short: "start an ip resource",
 		Long:  "Start an ip resource. Equivalent to 'instance start --rid ip#<ID>'.",
-		Args:  cobra.MaximumNArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			commoncmd.SetRIDFromArgs(&options.RID, args, "ip", "ip")
 			return options.Run(kind)
 		},
 	}
-	commoncmd.CmdWithArg(cmd, "ID  A ip resource index.")
+	commoncmd.CmdWithArg(cmd, "PATTERN  A fnmatch resource index filter.")
 	flags := cmd.Flags()
 	addFlagsGlobal(flags, &options.OptsGlobal)
 	commoncmd.FlagsAsync(flags, &options.OptsAsync)
@@ -2549,16 +2564,15 @@ func newCmdObjectIPStart(kind string) *cobra.Command {
 func newCmdObjectIPStop(kind string) *cobra.Command {
 	var options commands.CmdObjectInstanceStop
 	cmd := &cobra.Command{
-		Use:   "stop [ID]",
+		Use:   "stop [PATTERN]...",
 		Short: "stop an ip resource",
 		Long:  "Stop an ip resource. Equivalent to 'instance stop --rid ip#<ID>'.",
-		Args:  cobra.MaximumNArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			commoncmd.SetRIDFromArgs(&options.RID, args, "ip", "ip")
 			return options.Run(kind)
 		},
 	}
-	commoncmd.CmdWithArg(cmd, "ID  A ip resource index.")
+	commoncmd.CmdWithArg(cmd, "PATTERN  A fnmatch resource index filter.")
 	flags := cmd.Flags()
 	addFlagsGlobal(flags, &options.OptsGlobal)
 	commoncmd.FlagsAsync(flags, &options.OptsAsync)
@@ -2576,16 +2590,15 @@ func newCmdObjectIPStop(kind string) *cobra.Command {
 func newCmdObjectIPRestart(kind string) *cobra.Command {
 	var options commands.CmdObjectInstanceRestart
 	cmd := &cobra.Command{
-		Use:   "restart [ID]",
+		Use:   "restart [PATTERN]...",
 		Short: "restart an ip resource",
 		Long:  "Restart an ip resource. Equivalent to 'instance restart --rid ip#<ID>'.",
-		Args:  cobra.MaximumNArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			commoncmd.SetRIDFromArgs(&options.RID, args, "ip", "ip")
 			return options.Run(kind)
 		},
 	}
-	commoncmd.CmdWithArg(cmd, "ID  A ip resource index.")
+	commoncmd.CmdWithArg(cmd, "PATTERN  A fnmatch resource index filter.")
 	flags := cmd.Flags()
 	addFlagsGlobal(flags, &options.OptsGlobal)
 	commoncmd.FlagsAsync(flags, &options.OptsAsync)
@@ -2603,16 +2616,15 @@ func newCmdObjectIPRestart(kind string) *cobra.Command {
 func newCmdObjectIPProvision(kind string) *cobra.Command {
 	var options commands.CmdObjectInstanceProvision
 	cmd := &cobra.Command{
-		Use:   "provision [ID]",
+		Use:   "provision [PATTERN]...",
 		Short: "provision an ip resource",
 		Long:  "Provision an ip resource. Equivalent to 'instance provision --rid ip#<ID>'.",
-		Args:  cobra.MaximumNArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			commoncmd.SetRIDFromArgs(&options.RID, args, "ip", "ip")
 			return options.Run(kind)
 		},
 	}
-	commoncmd.CmdWithArg(cmd, "ID  A ip resource index.")
+	commoncmd.CmdWithArg(cmd, "PATTERN  A fnmatch resource index filter.")
 	flags := cmd.Flags()
 	addFlagsGlobal(flags, &options.OptsGlobal)
 	commoncmd.FlagsAsync(flags, &options.OptsAsync)
@@ -2630,16 +2642,15 @@ func newCmdObjectIPProvision(kind string) *cobra.Command {
 func newCmdObjectIPUnprovision(kind string) *cobra.Command {
 	var options commands.CmdObjectInstanceUnprovision
 	cmd := &cobra.Command{
-		Use:   "unprovision [ID]",
+		Use:   "unprovision [PATTERN]...",
 		Short: "unprovision an ip resource",
 		Long:  "Unprovision an ip resource. Equivalent to 'instance unprovision --rid ip#<ID>'.",
-		Args:  cobra.MaximumNArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			commoncmd.SetRIDFromArgs(&options.RID, args, "ip", "ip")
 			return options.Run(kind)
 		},
 	}
-	commoncmd.CmdWithArg(cmd, "ID  A ip resource index.")
+	commoncmd.CmdWithArg(cmd, "PATTERN  A fnmatch resource index filter.")
 	flags := cmd.Flags()
 	addFlagsGlobal(flags, &options.OptsGlobal)
 	commoncmd.FlagsAsync(flags, &options.OptsAsync)
@@ -2656,16 +2667,15 @@ func newCmdObjectIPUnprovision(kind string) *cobra.Command {
 func newCmdObjectIPStartStandby(kind string) *cobra.Command {
 	var options commands.CmdObjectInstanceStartStandby
 	cmd := &cobra.Command{
-		Use:   "startstandby [ID]",
+		Use:   "startstandby [PATTERN]...",
 		Short: "start an ip resource in standby mode",
 		Long:  "Start an ip resource in standby mode. Equivalent to 'instance startstandby --rid ip#<ID>'.",
-		Args:  cobra.MaximumNArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			commoncmd.SetRIDFromArgs(&options.RID, args, "ip", "ip")
 			return options.Run(kind)
 		},
 	}
-	commoncmd.CmdWithArg(cmd, "ID  A ip resource index.")
+	commoncmd.CmdWithArg(cmd, "PATTERN  A fnmatch resource index filter.")
 	flags := cmd.Flags()
 	addFlagsGlobal(flags, &options.OptsGlobal)
 	commoncmd.FlagsAsync(flags, &options.OptsAsync)
@@ -2680,16 +2690,15 @@ func newCmdObjectIPStartStandby(kind string) *cobra.Command {
 func newCmdObjectIPShutdown(kind string) *cobra.Command {
 	var options commands.CmdObjectInstanceShutdown
 	cmd := &cobra.Command{
-		Use:   "shutdown [ID]",
+		Use:   "shutdown [PATTERN]...",
 		Short: "shutdown an ip resource",
 		Long:  "Shutdown an ip resource. Equivalent to 'instance shutdown --rid ip#<ID>'.",
-		Args:  cobra.MaximumNArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			commoncmd.SetRIDFromArgs(&options.RID, args, "ip", "ip")
 			return options.Run(kind)
 		},
 	}
-	commoncmd.CmdWithArg(cmd, "ID  A ip resource index.")
+	commoncmd.CmdWithArg(cmd, "PATTERN  A fnmatch resource index filter.")
 	flags := cmd.Flags()
 	addFlagsGlobal(flags, &options.OptsGlobal)
 	commoncmd.FlagsAsync(flags, &options.OptsAsync)
@@ -2704,16 +2713,15 @@ func newCmdObjectIPShutdown(kind string) *cobra.Command {
 func newCmdObjectFSStart(kind string) *cobra.Command {
 	var options commands.CmdObjectInstanceStart
 	cmd := &cobra.Command{
-		Use:   "start [ID]",
+		Use:   "start [PATTERN]...",
 		Short: "start a fs resource",
 		Long:  "Start a fs resource. Equivalent to 'instance start --rid fs#<ID>'.",
-		Args:  cobra.MaximumNArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			commoncmd.SetRIDFromArgs(&options.RID, args, "fs", "fs")
 			return options.Run(kind)
 		},
 	}
-	commoncmd.CmdWithArg(cmd, "ID  A fs resource index.")
+	commoncmd.CmdWithArg(cmd, "PATTERN  A fnmatch resource index filter.")
 	flags := cmd.Flags()
 	addFlagsGlobal(flags, &options.OptsGlobal)
 	commoncmd.FlagsAsync(flags, &options.OptsAsync)
@@ -2731,15 +2739,14 @@ func newCmdObjectFSStart(kind string) *cobra.Command {
 func newCmdObjectFSStartStandby(kind string) *cobra.Command {
 	var options commands.CmdObjectInstanceStartStandby
 	cmd := &cobra.Command{
-		Use:   "startstandby [ID]",
+		Use:   "startstandby [PATTERN]...",
 		Short: "start a fs resource in standby mode",
-		Args:  cobra.MaximumNArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			commoncmd.SetRIDFromArgs(&options.RID, args, "fs", "fs")
 			return options.Run(kind)
 		},
 	}
-	commoncmd.CmdWithArg(cmd, "ID  A fs resource index.")
+	commoncmd.CmdWithArg(cmd, "PATTERN  A fnmatch resource index filter.")
 	flags := cmd.Flags()
 	addFlagsGlobal(flags, &options.OptsGlobal)
 	commoncmd.FlagsAsync(flags, &options.OptsAsync)
@@ -2754,15 +2761,14 @@ func newCmdObjectFSStartStandby(kind string) *cobra.Command {
 func newCmdObjectFSShutdown(kind string) *cobra.Command {
 	var options commands.CmdObjectInstanceShutdown
 	cmd := &cobra.Command{
-		Use:   "shutdown [ID]",
+		Use:   "shutdown [PATTERN]...",
 		Short: "shutdown a fs resource",
-		Args:  cobra.MaximumNArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			commoncmd.SetRIDFromArgs(&options.RID, args, "fs", "fs")
 			return options.Run(kind)
 		},
 	}
-	commoncmd.CmdWithArg(cmd, "ID  A fs resource index.")
+	commoncmd.CmdWithArg(cmd, "PATTERN  A fnmatch resource index filter.")
 	flags := cmd.Flags()
 	addFlagsGlobal(flags, &options.OptsGlobal)
 	commoncmd.FlagsAsync(flags, &options.OptsAsync)
@@ -2777,15 +2783,14 @@ func newCmdObjectFSShutdown(kind string) *cobra.Command {
 func newCmdObjectFSPRStart(kind string) *cobra.Command {
 	var options commands.CmdObjectInstancePRStart
 	cmd := &cobra.Command{
-		Use:   "prstart [ID]",
+		Use:   "prstart [PATTERN]...",
 		Short: "preempt devices exclusive write access reservation for a fs resource",
-		Args:  cobra.MaximumNArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			commoncmd.SetRIDFromArgs(&options.RID, args, "fs", "fs")
 			return options.Run(kind)
 		},
 	}
-	commoncmd.CmdWithArg(cmd, "ID  A fs resource index.")
+	commoncmd.CmdWithArg(cmd, "PATTERN  A fnmatch resource index filter.")
 	flags := cmd.Flags()
 	addFlagsGlobal(flags, &options.OptsGlobal)
 	commoncmd.FlagsAsync(flags, &options.OptsAsync)
@@ -2802,15 +2807,14 @@ func newCmdObjectFSPRStart(kind string) *cobra.Command {
 func newCmdObjectFSPRStop(kind string) *cobra.Command {
 	var options commands.CmdObjectInstancePRStop
 	cmd := &cobra.Command{
-		Use:   "prstop [ID]",
+		Use:   "prstop [PATTERN]...",
 		Short: "release devices exclusive write access reservation for a fs resource",
-		Args:  cobra.MaximumNArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			commoncmd.SetRIDFromArgs(&options.RID, args, "fs", "fs")
 			return options.Run(kind)
 		},
 	}
-	commoncmd.CmdWithArg(cmd, "ID  A fs resource index.")
+	commoncmd.CmdWithArg(cmd, "PATTERN  A fnmatch resource index filter.")
 	flags := cmd.Flags()
 	addFlagsGlobal(flags, &options.OptsGlobal)
 	commoncmd.FlagsAsync(flags, &options.OptsAsync)
@@ -2826,16 +2830,15 @@ func newCmdObjectFSPRStop(kind string) *cobra.Command {
 func newCmdObjectFSStop(kind string) *cobra.Command {
 	var options commands.CmdObjectInstanceStop
 	cmd := &cobra.Command{
-		Use:   "stop [ID]",
+		Use:   "stop [PATTERN]...",
 		Short: "stop a fs resource",
 		Long:  "Stop a fs resource. Equivalent to 'instance stop --rid fs#<ID>'.",
-		Args:  cobra.MaximumNArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			commoncmd.SetRIDFromArgs(&options.RID, args, "fs", "fs")
 			return options.Run(kind)
 		},
 	}
-	commoncmd.CmdWithArg(cmd, "ID  A fs resource index.")
+	commoncmd.CmdWithArg(cmd, "PATTERN  A fnmatch resource index filter.")
 	flags := cmd.Flags()
 	addFlagsGlobal(flags, &options.OptsGlobal)
 	commoncmd.FlagsAsync(flags, &options.OptsAsync)
@@ -2853,16 +2856,15 @@ func newCmdObjectFSStop(kind string) *cobra.Command {
 func newCmdObjectFSRestart(kind string) *cobra.Command {
 	var options commands.CmdObjectInstanceRestart
 	cmd := &cobra.Command{
-		Use:   "restart [ID]",
+		Use:   "restart [PATTERN]...",
 		Short: "restart a fs resource",
 		Long:  "Restart a fs resource. Equivalent to 'instance restart --rid fs#<ID>'.",
-		Args:  cobra.MaximumNArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			commoncmd.SetRIDFromArgs(&options.RID, args, "fs", "fs")
 			return options.Run(kind)
 		},
 	}
-	commoncmd.CmdWithArg(cmd, "ID  A fs resource index.")
+	commoncmd.CmdWithArg(cmd, "PATTERN  A fnmatch resource index filter.")
 	flags := cmd.Flags()
 	addFlagsGlobal(flags, &options.OptsGlobal)
 	commoncmd.FlagsAsync(flags, &options.OptsAsync)
@@ -2880,16 +2882,15 @@ func newCmdObjectFSRestart(kind string) *cobra.Command {
 func newCmdObjectFSProvision(kind string) *cobra.Command {
 	var options commands.CmdObjectInstanceProvision
 	cmd := &cobra.Command{
-		Use:   "provision [ID]",
+		Use:   "provision [PATTERN]...",
 		Short: "provision a fs resource",
 		Long:  "Provision a fs resource. Equivalent to 'instance provision --rid fs#<ID>'.",
-		Args:  cobra.MaximumNArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			commoncmd.SetRIDFromArgs(&options.RID, args, "fs", "fs")
 			return options.Run(kind)
 		},
 	}
-	commoncmd.CmdWithArg(cmd, "ID  A fs resource index.")
+	commoncmd.CmdWithArg(cmd, "PATTERN  A fnmatch resource index filter.")
 	flags := cmd.Flags()
 	addFlagsGlobal(flags, &options.OptsGlobal)
 	commoncmd.FlagsAsync(flags, &options.OptsAsync)
@@ -2907,16 +2908,15 @@ func newCmdObjectFSProvision(kind string) *cobra.Command {
 func newCmdObjectFSUnprovision(kind string) *cobra.Command {
 	var options commands.CmdObjectInstanceUnprovision
 	cmd := &cobra.Command{
-		Use:   "unprovision [ID]",
+		Use:   "unprovision [PATTERN]...",
 		Short: "unprovision a fs resource",
 		Long:  "Unprovision a fs resource. Equivalent to 'instance unprovision --rid fs#<ID>'.",
-		Args:  cobra.MaximumNArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			commoncmd.SetRIDFromArgs(&options.RID, args, "fs", "fs")
 			return options.Run(kind)
 		},
 	}
-	commoncmd.CmdWithArg(cmd, "ID  A fs resource index.")
+	commoncmd.CmdWithArg(cmd, "PATTERN  A fnmatch resource index filter.")
 	flags := cmd.Flags()
 	addFlagsGlobal(flags, &options.OptsGlobal)
 	commoncmd.FlagsAsync(flags, &options.OptsAsync)
@@ -2933,16 +2933,15 @@ func newCmdObjectFSUnprovision(kind string) *cobra.Command {
 func newCmdObjectVolumeStart(kind string) *cobra.Command {
 	var options commands.CmdObjectInstanceStart
 	cmd := &cobra.Command{
-		Use:   "start [ID]",
+		Use:   "start [PATTERN]...",
 		Short: "start a volume resource",
 		Long:  "Start a volume resource. Equivalent to 'instance start --rid volume#<ID>'.",
-		Args:  cobra.MaximumNArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			commoncmd.SetRIDFromArgs(&options.RID, args, "volume", "volume")
 			return options.Run(kind)
 		},
 	}
-	commoncmd.CmdWithArg(cmd, "ID  A volume resource index.")
+	commoncmd.CmdWithArg(cmd, "PATTERN  A fnmatch resource index filter.")
 	flags := cmd.Flags()
 	addFlagsGlobal(flags, &options.OptsGlobal)
 	commoncmd.FlagsAsync(flags, &options.OptsAsync)
@@ -2960,16 +2959,15 @@ func newCmdObjectVolumeStart(kind string) *cobra.Command {
 func newCmdObjectVolumeStop(kind string) *cobra.Command {
 	var options commands.CmdObjectInstanceStop
 	cmd := &cobra.Command{
-		Use:   "stop [ID]",
+		Use:   "stop [PATTERN]...",
 		Short: "stop a volume resource",
 		Long:  "Stop a volume resource. Equivalent to 'instance stop --rid volume#<ID>'.",
-		Args:  cobra.MaximumNArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			commoncmd.SetRIDFromArgs(&options.RID, args, "volume", "volume")
 			return options.Run(kind)
 		},
 	}
-	commoncmd.CmdWithArg(cmd, "ID  A volume resource index.")
+	commoncmd.CmdWithArg(cmd, "PATTERN  A fnmatch resource index filter.")
 	flags := cmd.Flags()
 	addFlagsGlobal(flags, &options.OptsGlobal)
 	commoncmd.FlagsAsync(flags, &options.OptsAsync)
@@ -2987,16 +2985,15 @@ func newCmdObjectVolumeStop(kind string) *cobra.Command {
 func newCmdObjectVolumeRestart(kind string) *cobra.Command {
 	var options commands.CmdObjectInstanceRestart
 	cmd := &cobra.Command{
-		Use:   "restart [ID]",
+		Use:   "restart [PATTERN]...",
 		Short: "restart a volume resource",
 		Long:  "Restart a volume resource. Equivalent to 'instance restart --rid volume#<ID>'.",
-		Args:  cobra.MaximumNArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			commoncmd.SetRIDFromArgs(&options.RID, args, "volume", "volume")
 			return options.Run(kind)
 		},
 	}
-	commoncmd.CmdWithArg(cmd, "ID  A volume resource index.")
+	commoncmd.CmdWithArg(cmd, "PATTERN  A fnmatch resource index filter.")
 	flags := cmd.Flags()
 	addFlagsGlobal(flags, &options.OptsGlobal)
 	commoncmd.FlagsAsync(flags, &options.OptsAsync)
@@ -3014,16 +3011,15 @@ func newCmdObjectVolumeRestart(kind string) *cobra.Command {
 func newCmdObjectVolumeProvision(kind string) *cobra.Command {
 	var options commands.CmdObjectInstanceProvision
 	cmd := &cobra.Command{
-		Use:   "provision [ID]",
+		Use:   "provision [PATTERN]...",
 		Short: "provision a volume resource",
 		Long:  "Provision a volume resource. Equivalent to 'instance provision --rid volume#<ID>'.",
-		Args:  cobra.MaximumNArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			commoncmd.SetRIDFromArgs(&options.RID, args, "volume", "volume")
 			return options.Run(kind)
 		},
 	}
-	commoncmd.CmdWithArg(cmd, "ID  A volume resource index.")
+	commoncmd.CmdWithArg(cmd, "PATTERN  A fnmatch resource index filter.")
 	flags := cmd.Flags()
 	addFlagsGlobal(flags, &options.OptsGlobal)
 	commoncmd.FlagsAsync(flags, &options.OptsAsync)
@@ -3041,16 +3037,15 @@ func newCmdObjectVolumeProvision(kind string) *cobra.Command {
 func newCmdObjectVolumeUnprovision(kind string) *cobra.Command {
 	var options commands.CmdObjectInstanceUnprovision
 	cmd := &cobra.Command{
-		Use:   "unprovision [ID]",
+		Use:   "unprovision [PATTERN]...",
 		Short: "unprovision a volume resource",
 		Long:  "Unprovision a volume resource. Equivalent to 'instance unprovision --rid volume#<ID>'.",
-		Args:  cobra.MaximumNArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			commoncmd.SetRIDFromArgs(&options.RID, args, "volume", "volume")
 			return options.Run(kind)
 		},
 	}
-	commoncmd.CmdWithArg(cmd, "ID  A volume resource index.")
+	commoncmd.CmdWithArg(cmd, "PATTERN  A fnmatch resource index filter.")
 	flags := cmd.Flags()
 	addFlagsGlobal(flags, &options.OptsGlobal)
 	commoncmd.FlagsAsync(flags, &options.OptsAsync)
@@ -3067,16 +3062,15 @@ func newCmdObjectVolumeUnprovision(kind string) *cobra.Command {
 func newCmdObjectVolumeStartStandby(kind string) *cobra.Command {
 	var options commands.CmdObjectInstanceStartStandby
 	cmd := &cobra.Command{
-		Use:   "startstandby [ID]",
+		Use:   "startstandby [PATTERN]...",
 		Short: "start a volume resource in standby mode",
 		Long:  "Start a volume resource in standby mode. Equivalent to 'instance startstandby --rid volume#<ID>'.",
-		Args:  cobra.MaximumNArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			commoncmd.SetRIDFromArgs(&options.RID, args, "volume", "volume")
 			return options.Run(kind)
 		},
 	}
-	commoncmd.CmdWithArg(cmd, "ID  A volume resource index.")
+	commoncmd.CmdWithArg(cmd, "PATTERN  A fnmatch resource index filter.")
 	flags := cmd.Flags()
 	addFlagsGlobal(flags, &options.OptsGlobal)
 	commoncmd.FlagsAsync(flags, &options.OptsAsync)
@@ -3093,16 +3087,15 @@ func newCmdObjectVolumeStartStandby(kind string) *cobra.Command {
 func newCmdObjectVolumeShutdown(kind string) *cobra.Command {
 	var options commands.CmdObjectInstanceShutdown
 	cmd := &cobra.Command{
-		Use:   "shutdown [ID]",
+		Use:   "shutdown [PATTERN]...",
 		Short: "shutdown a volume resource",
 		Long:  "Shutdown a volume resource. Equivalent to 'instance shutdown --rid volume#<ID>'.",
-		Args:  cobra.MaximumNArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			commoncmd.SetRIDFromArgs(&options.RID, args, "volume", "volume")
 			return options.Run(kind)
 		},
 	}
-	commoncmd.CmdWithArg(cmd, "ID  A volume resource index.")
+	commoncmd.CmdWithArg(cmd, "PATTERN  A fnmatch resource index filter.")
 	flags := cmd.Flags()
 	addFlagsGlobal(flags, &options.OptsGlobal)
 	commoncmd.FlagsAsync(flags, &options.OptsAsync)
@@ -3118,15 +3111,14 @@ func newCmdObjectVolumeShutdown(kind string) *cobra.Command {
 func newCmdObjectVolumePRStart(kind string) *cobra.Command {
 	var options commands.CmdObjectInstancePRStart
 	cmd := &cobra.Command{
-		Use:   "prstart [ID]",
+		Use:   "prstart [PATTERN]...",
 		Short: "preempt devices exclusive write access reservation for a volume resource",
-		Args:  cobra.MaximumNArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			commoncmd.SetRIDFromArgs(&options.RID, args, "volume", "volume")
 			return options.Run(kind)
 		},
 	}
-	commoncmd.CmdWithArg(cmd, "ID  A volume resource index.")
+	commoncmd.CmdWithArg(cmd, "PATTERN  A fnmatch resource index filter.")
 	flags := cmd.Flags()
 	addFlagsGlobal(flags, &options.OptsGlobal)
 	commoncmd.FlagsAsync(flags, &options.OptsAsync)
@@ -3143,15 +3135,14 @@ func newCmdObjectVolumePRStart(kind string) *cobra.Command {
 func newCmdObjectVolumePRStop(kind string) *cobra.Command {
 	var options commands.CmdObjectInstancePRStop
 	cmd := &cobra.Command{
-		Use:   "prstop [ID]",
+		Use:   "prstop [PATTERN]...",
 		Short: "release devices exclusive write access reservation for a volume resource",
-		Args:  cobra.MaximumNArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			commoncmd.SetRIDFromArgs(&options.RID, args, "volume", "volume")
 			return options.Run(kind)
 		},
 	}
-	commoncmd.CmdWithArg(cmd, "ID  A volume resource index.")
+	commoncmd.CmdWithArg(cmd, "PATTERN  A fnmatch resource index filter.")
 	flags := cmd.Flags()
 	addFlagsGlobal(flags, &options.OptsGlobal)
 	commoncmd.FlagsAsync(flags, &options.OptsAsync)
@@ -3167,16 +3158,15 @@ func newCmdObjectVolumePRStop(kind string) *cobra.Command {
 func newCmdObjectDiskStart(kind string) *cobra.Command {
 	var options commands.CmdObjectInstanceStart
 	cmd := &cobra.Command{
-		Use:   "start [ID]",
+		Use:   "start [PATTERN]...",
 		Short: "start a disk resource",
 		Long:  "Start a disk resource. Equivalent to 'instance start --rid disk#<ID>'.",
-		Args:  cobra.MaximumNArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			commoncmd.SetRIDFromArgs(&options.RID, args, "disk", "disk")
 			return options.Run(kind)
 		},
 	}
-	commoncmd.CmdWithArg(cmd, "ID  A disk resource index.")
+	commoncmd.CmdWithArg(cmd, "PATTERN  A fnmatch resource index filter.")
 	flags := cmd.Flags()
 	addFlagsGlobal(flags, &options.OptsGlobal)
 	commoncmd.FlagsAsync(flags, &options.OptsAsync)
@@ -3194,16 +3184,15 @@ func newCmdObjectDiskStart(kind string) *cobra.Command {
 func newCmdObjectDiskStop(kind string) *cobra.Command {
 	var options commands.CmdObjectInstanceStop
 	cmd := &cobra.Command{
-		Use:   "stop [ID]",
+		Use:   "stop [PATTERN]...",
 		Short: "stop a disk resource",
 		Long:  "Stop a disk resource. Equivalent to 'instance stop --rid disk#<ID>'.",
-		Args:  cobra.MaximumNArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			commoncmd.SetRIDFromArgs(&options.RID, args, "disk", "disk")
 			return options.Run(kind)
 		},
 	}
-	commoncmd.CmdWithArg(cmd, "ID  A disk resource index.")
+	commoncmd.CmdWithArg(cmd, "PATTERN  A fnmatch resource index filter.")
 	flags := cmd.Flags()
 	addFlagsGlobal(flags, &options.OptsGlobal)
 	commoncmd.FlagsAsync(flags, &options.OptsAsync)
@@ -3221,16 +3210,15 @@ func newCmdObjectDiskStop(kind string) *cobra.Command {
 func newCmdObjectDiskRestart(kind string) *cobra.Command {
 	var options commands.CmdObjectInstanceRestart
 	cmd := &cobra.Command{
-		Use:   "restart [ID]",
+		Use:   "restart [PATTERN]...",
 		Short: "restart a disk resource",
 		Long:  "Restart a disk resource. Equivalent to 'instance restart --rid disk#<ID>'.",
-		Args:  cobra.MaximumNArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			commoncmd.SetRIDFromArgs(&options.RID, args, "disk", "disk")
 			return options.Run(kind)
 		},
 	}
-	commoncmd.CmdWithArg(cmd, "ID  A disk resource index.")
+	commoncmd.CmdWithArg(cmd, "PATTERN  A fnmatch resource index filter.")
 	flags := cmd.Flags()
 	addFlagsGlobal(flags, &options.OptsGlobal)
 	commoncmd.FlagsAsync(flags, &options.OptsAsync)
@@ -3248,16 +3236,15 @@ func newCmdObjectDiskRestart(kind string) *cobra.Command {
 func newCmdObjectDiskProvision(kind string) *cobra.Command {
 	var options commands.CmdObjectInstanceProvision
 	cmd := &cobra.Command{
-		Use:   "provision [ID]",
+		Use:   "provision [PATTERN]...",
 		Short: "provision a disk resource",
 		Long:  "Provision a disk resource. Equivalent to 'instance provision --rid disk#<ID>'.",
-		Args:  cobra.MaximumNArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			commoncmd.SetRIDFromArgs(&options.RID, args, "disk", "disk")
 			return options.Run(kind)
 		},
 	}
-	commoncmd.CmdWithArg(cmd, "ID  A disk resource index.")
+	commoncmd.CmdWithArg(cmd, "PATTERN  A fnmatch resource index filter.")
 	flags := cmd.Flags()
 	addFlagsGlobal(flags, &options.OptsGlobal)
 	commoncmd.FlagsAsync(flags, &options.OptsAsync)
@@ -3275,16 +3262,15 @@ func newCmdObjectDiskProvision(kind string) *cobra.Command {
 func newCmdObjectDiskUnprovision(kind string) *cobra.Command {
 	var options commands.CmdObjectInstanceUnprovision
 	cmd := &cobra.Command{
-		Use:   "unprovision [ID]",
+		Use:   "unprovision [PATTERN]...",
 		Short: "unprovision a disk resource",
 		Long:  "Unprovision a disk resource. Equivalent to 'instance unprovision --rid disk#<ID>'.",
-		Args:  cobra.MaximumNArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			commoncmd.SetRIDFromArgs(&options.RID, args, "disk", "disk")
 			return options.Run(kind)
 		},
 	}
-	commoncmd.CmdWithArg(cmd, "ID  A disk resource index.")
+	commoncmd.CmdWithArg(cmd, "PATTERN  A fnmatch resource index filter.")
 	flags := cmd.Flags()
 	addFlagsGlobal(flags, &options.OptsGlobal)
 	commoncmd.FlagsAsync(flags, &options.OptsAsync)
@@ -3301,16 +3287,15 @@ func newCmdObjectDiskUnprovision(kind string) *cobra.Command {
 func newCmdObjectDiskStartStandby(kind string) *cobra.Command {
 	var options commands.CmdObjectInstanceStartStandby
 	cmd := &cobra.Command{
-		Use:   "startstandby [ID]",
+		Use:   "startstandby [PATTERN]...",
 		Short: "start a disk resource in standby mode",
 		Long:  "Start a disk resource in standby mode. Equivalent to 'instance startstandby --rid disk#<ID>'.",
-		Args:  cobra.MaximumNArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			commoncmd.SetRIDFromArgs(&options.RID, args, "disk", "disk")
 			return options.Run(kind)
 		},
 	}
-	commoncmd.CmdWithArg(cmd, "ID  A disk resource index.")
+	commoncmd.CmdWithArg(cmd, "PATTERN  A fnmatch resource index filter.")
 	flags := cmd.Flags()
 	addFlagsGlobal(flags, &options.OptsGlobal)
 	commoncmd.FlagsAsync(flags, &options.OptsAsync)
@@ -3327,16 +3312,15 @@ func newCmdObjectDiskStartStandby(kind string) *cobra.Command {
 func newCmdObjectDiskShutdown(kind string) *cobra.Command {
 	var options commands.CmdObjectInstanceShutdown
 	cmd := &cobra.Command{
-		Use:   "shutdown [ID]",
+		Use:   "shutdown [PATTERN]...",
 		Short: "shutdown a disk resource",
 		Long:  "Shutdown a disk resource. Equivalent to 'instance shutdown --rid disk#<ID>'.",
-		Args:  cobra.MaximumNArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			commoncmd.SetRIDFromArgs(&options.RID, args, "disk", "disk")
 			return options.Run(kind)
 		},
 	}
-	commoncmd.CmdWithArg(cmd, "ID  A disk resource index.")
+	commoncmd.CmdWithArg(cmd, "PATTERN  A fnmatch resource index filter.")
 	flags := cmd.Flags()
 	addFlagsGlobal(flags, &options.OptsGlobal)
 	commoncmd.FlagsAsync(flags, &options.OptsAsync)
@@ -3352,15 +3336,14 @@ func newCmdObjectDiskShutdown(kind string) *cobra.Command {
 func newCmdObjectDiskPRStart(kind string) *cobra.Command {
 	var options commands.CmdObjectInstancePRStart
 	cmd := &cobra.Command{
-		Use:   "prstart [ID]",
+		Use:   "prstart [PATTERN]...",
 		Short: "preempt devices exclusive write access reservation for a disk resource",
-		Args:  cobra.MaximumNArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			commoncmd.SetRIDFromArgs(&options.RID, args, "disk", "disk")
 			return options.Run(kind)
 		},
 	}
-	commoncmd.CmdWithArg(cmd, "ID  A disk resource index.")
+	commoncmd.CmdWithArg(cmd, "PATTERN  A fnmatch resource index filter.")
 	flags := cmd.Flags()
 	addFlagsGlobal(flags, &options.OptsGlobal)
 	commoncmd.FlagsAsync(flags, &options.OptsAsync)
@@ -3377,15 +3360,14 @@ func newCmdObjectDiskPRStart(kind string) *cobra.Command {
 func newCmdObjectDiskPRStop(kind string) *cobra.Command {
 	var options commands.CmdObjectInstancePRStop
 	cmd := &cobra.Command{
-		Use:   "prstop [ID]",
+		Use:   "prstop [PATTERN]...",
 		Short: "release devices exclusive write access reservation for a disk resource",
-		Args:  cobra.MaximumNArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			commoncmd.SetRIDFromArgs(&options.RID, args, "disk", "disk")
 			return options.Run(kind)
 		},
 	}
-	commoncmd.CmdWithArg(cmd, "ID  A disk resource index.")
+	commoncmd.CmdWithArg(cmd, "PATTERN  A fnmatch resource index filter.")
 	flags := cmd.Flags()
 	addFlagsGlobal(flags, &options.OptsGlobal)
 	commoncmd.FlagsAsync(flags, &options.OptsAsync)
@@ -3401,16 +3383,15 @@ func newCmdObjectDiskPRStop(kind string) *cobra.Command {
 func newCmdObjectShareStart(kind string) *cobra.Command {
 	var options commands.CmdObjectInstanceStart
 	cmd := &cobra.Command{
-		Use:   "start [ID]",
+		Use:   "start [PATTERN]...",
 		Short: "start a share resource",
 		Long:  "Start a share resource. Equivalent to 'instance start --rid share#<ID>'.",
-		Args:  cobra.MaximumNArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			commoncmd.SetRIDFromArgs(&options.RID, args, "share", "share")
 			return options.Run(kind)
 		},
 	}
-	commoncmd.CmdWithArg(cmd, "ID  A share resource index.")
+	commoncmd.CmdWithArg(cmd, "PATTERN  A fnmatch resource index filter.")
 	flags := cmd.Flags()
 	addFlagsGlobal(flags, &options.OptsGlobal)
 	commoncmd.FlagsAsync(flags, &options.OptsAsync)
@@ -3428,16 +3409,15 @@ func newCmdObjectShareStart(kind string) *cobra.Command {
 func newCmdObjectShareStop(kind string) *cobra.Command {
 	var options commands.CmdObjectInstanceStop
 	cmd := &cobra.Command{
-		Use:   "stop [ID]",
+		Use:   "stop [PATTERN]...",
 		Short: "stop a share resource",
 		Long:  "Stop a share resource. Equivalent to 'instance stop --rid share#<ID>'.",
-		Args:  cobra.MaximumNArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			commoncmd.SetRIDFromArgs(&options.RID, args, "share", "share")
 			return options.Run(kind)
 		},
 	}
-	commoncmd.CmdWithArg(cmd, "ID  A share resource index.")
+	commoncmd.CmdWithArg(cmd, "PATTERN  A fnmatch resource index filter.")
 	flags := cmd.Flags()
 	addFlagsGlobal(flags, &options.OptsGlobal)
 	commoncmd.FlagsAsync(flags, &options.OptsAsync)
@@ -3455,16 +3435,15 @@ func newCmdObjectShareStop(kind string) *cobra.Command {
 func newCmdObjectShareRestart(kind string) *cobra.Command {
 	var options commands.CmdObjectInstanceRestart
 	cmd := &cobra.Command{
-		Use:   "restart [ID]",
+		Use:   "restart [PATTERN]...",
 		Short: "restart a share resource",
 		Long:  "Restart a share resource. Equivalent to 'instance restart --rid share#<ID>'.",
-		Args:  cobra.MaximumNArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			commoncmd.SetRIDFromArgs(&options.RID, args, "share", "share")
 			return options.Run(kind)
 		},
 	}
-	commoncmd.CmdWithArg(cmd, "ID  A share resource index.")
+	commoncmd.CmdWithArg(cmd, "PATTERN  A fnmatch resource index filter.")
 	flags := cmd.Flags()
 	addFlagsGlobal(flags, &options.OptsGlobal)
 	commoncmd.FlagsAsync(flags, &options.OptsAsync)
@@ -3482,16 +3461,15 @@ func newCmdObjectShareRestart(kind string) *cobra.Command {
 func newCmdObjectShareProvision(kind string) *cobra.Command {
 	var options commands.CmdObjectInstanceProvision
 	cmd := &cobra.Command{
-		Use:   "provision [ID]",
+		Use:   "provision [PATTERN]...",
 		Short: "provision a share resource",
 		Long:  "Provision a share resource. Equivalent to 'instance provision --rid share#<ID>'.",
-		Args:  cobra.MaximumNArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			commoncmd.SetRIDFromArgs(&options.RID, args, "share", "share")
 			return options.Run(kind)
 		},
 	}
-	commoncmd.CmdWithArg(cmd, "ID  A share resource index.")
+	commoncmd.CmdWithArg(cmd, "PATTERN  A fnmatch resource index filter.")
 	flags := cmd.Flags()
 	addFlagsGlobal(flags, &options.OptsGlobal)
 	commoncmd.FlagsAsync(flags, &options.OptsAsync)
@@ -3509,16 +3487,15 @@ func newCmdObjectShareProvision(kind string) *cobra.Command {
 func newCmdObjectShareUnprovision(kind string) *cobra.Command {
 	var options commands.CmdObjectInstanceUnprovision
 	cmd := &cobra.Command{
-		Use:   "unprovision [ID]",
+		Use:   "unprovision [PATTERN]...",
 		Short: "unprovision a share resource",
 		Long:  "Unprovision a share resource. Equivalent to 'instance unprovision --rid share#<ID>'.",
-		Args:  cobra.MaximumNArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			commoncmd.SetRIDFromArgs(&options.RID, args, "share", "share")
 			return options.Run(kind)
 		},
 	}
-	commoncmd.CmdWithArg(cmd, "ID  A share resource index.")
+	commoncmd.CmdWithArg(cmd, "PATTERN  A fnmatch resource index filter.")
 	flags := cmd.Flags()
 	addFlagsGlobal(flags, &options.OptsGlobal)
 	commoncmd.FlagsAsync(flags, &options.OptsAsync)
@@ -3535,16 +3512,15 @@ func newCmdObjectShareUnprovision(kind string) *cobra.Command {
 func newCmdObjectShareStartStandby(kind string) *cobra.Command {
 	var options commands.CmdObjectInstanceStartStandby
 	cmd := &cobra.Command{
-		Use:   "startstandby [ID]",
+		Use:   "startstandby [PATTERN]...",
 		Short: "start a share resource in standby mode",
 		Long:  "Start a share resource in standby mode. Equivalent to 'instance startstandby --rid share#<ID>'.",
-		Args:  cobra.MaximumNArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			commoncmd.SetRIDFromArgs(&options.RID, args, "share", "share")
 			return options.Run(kind)
 		},
 	}
-	commoncmd.CmdWithArg(cmd, "ID  A share resource index.")
+	commoncmd.CmdWithArg(cmd, "PATTERN  A fnmatch resource index filter.")
 	flags := cmd.Flags()
 	addFlagsGlobal(flags, &options.OptsGlobal)
 	commoncmd.FlagsAsync(flags, &options.OptsAsync)
@@ -3561,16 +3537,15 @@ func newCmdObjectShareStartStandby(kind string) *cobra.Command {
 func newCmdObjectShareShutdown(kind string) *cobra.Command {
 	var options commands.CmdObjectInstanceShutdown
 	cmd := &cobra.Command{
-		Use:   "shutdown [ID]",
+		Use:   "shutdown [PATTERN]...",
 		Short: "shutdown a share resource",
 		Long:  "Shutdown a share resource. Equivalent to 'instance shutdown --rid share#<ID>'.",
-		Args:  cobra.MaximumNArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			commoncmd.SetRIDFromArgs(&options.RID, args, "share", "share")
 			return options.Run(kind)
 		},
 	}
-	commoncmd.CmdWithArg(cmd, "ID  A share resource index.")
+	commoncmd.CmdWithArg(cmd, "PATTERN  A fnmatch resource index filter.")
 	flags := cmd.Flags()
 	addFlagsGlobal(flags, &options.OptsGlobal)
 	commoncmd.FlagsAsync(flags, &options.OptsAsync)
@@ -3586,16 +3561,15 @@ func newCmdObjectShareShutdown(kind string) *cobra.Command {
 func newCmdObjectAppStart(kind string) *cobra.Command {
 	var options commands.CmdObjectInstanceStart
 	cmd := &cobra.Command{
-		Use:   "start [ID]",
+		Use:   "start [PATTERN]...",
 		Short: "start an app resource",
 		Long:  "Start an app resource. Equivalent to 'instance start --rid app#<ID>'.",
-		Args:  cobra.MaximumNArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			commoncmd.SetRIDFromArgs(&options.RID, args, "app", "app")
 			return options.Run(kind)
 		},
 	}
-	commoncmd.CmdWithArg(cmd, "ID  A app resource index.")
+	commoncmd.CmdWithArg(cmd, "PATTERN  A fnmatch resource index filter.")
 	flags := cmd.Flags()
 	addFlagsGlobal(flags, &options.OptsGlobal)
 	commoncmd.FlagsAsync(flags, &options.OptsAsync)
@@ -3613,16 +3587,15 @@ func newCmdObjectAppStart(kind string) *cobra.Command {
 func newCmdObjectAppStop(kind string) *cobra.Command {
 	var options commands.CmdObjectInstanceStop
 	cmd := &cobra.Command{
-		Use:   "stop [ID]",
+		Use:   "stop [PATTERN]...",
 		Short: "stop an app resource",
 		Long:  "Stop an app resource. Equivalent to 'instance stop --rid app#<ID>'.",
-		Args:  cobra.MaximumNArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			commoncmd.SetRIDFromArgs(&options.RID, args, "app", "app")
 			return options.Run(kind)
 		},
 	}
-	commoncmd.CmdWithArg(cmd, "ID  A app resource index.")
+	commoncmd.CmdWithArg(cmd, "PATTERN  A fnmatch resource index filter.")
 	flags := cmd.Flags()
 	addFlagsGlobal(flags, &options.OptsGlobal)
 	commoncmd.FlagsAsync(flags, &options.OptsAsync)
@@ -3640,16 +3613,15 @@ func newCmdObjectAppStop(kind string) *cobra.Command {
 func newCmdObjectAppRestart(kind string) *cobra.Command {
 	var options commands.CmdObjectInstanceRestart
 	cmd := &cobra.Command{
-		Use:   "restart [ID]",
+		Use:   "restart [PATTERN]...",
 		Short: "restart an app resource",
 		Long:  "Restart an app resource. Equivalent to 'instance restart --rid app#<ID>'.",
-		Args:  cobra.MaximumNArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			commoncmd.SetRIDFromArgs(&options.RID, args, "app", "app")
 			return options.Run(kind)
 		},
 	}
-	commoncmd.CmdWithArg(cmd, "ID  A app resource index.")
+	commoncmd.CmdWithArg(cmd, "PATTERN  A fnmatch resource index filter.")
 	flags := cmd.Flags()
 	addFlagsGlobal(flags, &options.OptsGlobal)
 	commoncmd.FlagsAsync(flags, &options.OptsAsync)
@@ -3667,15 +3639,14 @@ func newCmdObjectAppRestart(kind string) *cobra.Command {
 func newCmdObjectAppShutdown(kind string) *cobra.Command {
 	var options commands.CmdObjectInstanceShutdown
 	cmd := &cobra.Command{
-		Use:   "shutdown [ID]",
+		Use:   "shutdown [PATTERN]...",
 		Short: "shutdown an app resource",
-		Args:  cobra.MaximumNArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			commoncmd.SetRIDFromArgs(&options.RID, args, "app", "app")
 			return options.Run(kind)
 		},
 	}
-	commoncmd.CmdWithArg(cmd, "ID  A app resource index.")
+	commoncmd.CmdWithArg(cmd, "PATTERN  A fnmatch resource index filter.")
 	flags := cmd.Flags()
 	addFlagsGlobal(flags, &options.OptsGlobal)
 	commoncmd.FlagsAsync(flags, &options.OptsAsync)
@@ -3691,16 +3662,15 @@ func newCmdObjectAppShutdown(kind string) *cobra.Command {
 func newCmdObjectAppStartStandby(kind string) *cobra.Command {
 	var options commands.CmdObjectInstanceStartStandby
 	cmd := &cobra.Command{
-		Use:   "startstandby [ID]",
+		Use:   "startstandby [PATTERN]...",
 		Short: "start a app resource in standby mode",
 		Long:  "Start a app resource in standby mode. Equivalent to 'instance startstandby --rid app#<ID>'.",
-		Args:  cobra.MaximumNArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			commoncmd.SetRIDFromArgs(&options.RID, args, "app", "app")
 			return options.Run(kind)
 		},
 	}
-	commoncmd.CmdWithArg(cmd, "ID  A app resource index.")
+	commoncmd.CmdWithArg(cmd, "PATTERN  A fnmatch resource index filter.")
 	flags := cmd.Flags()
 	addFlagsGlobal(flags, &options.OptsGlobal)
 	commoncmd.FlagsAsync(flags, &options.OptsAsync)
@@ -3717,16 +3687,15 @@ func newCmdObjectAppStartStandby(kind string) *cobra.Command {
 func newCmdObjectTaskRun(kind string) *cobra.Command {
 	var options commands.CmdObjectInstanceRun
 	cmd := &cobra.Command{
-		Use:   "run [ID]",
+		Use:   "run [PATTERN]...",
 		Short: "execute a task resource",
 		Long:  "Execute a task resource.",
-		Args:  cobra.MaximumNArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			commoncmd.SetRIDFromArgs(&options.RID, args, "task", "task")
 			return options.Run(kind)
 		},
 	}
-	commoncmd.CmdWithArg(cmd, "ID  A task resource index.")
+	commoncmd.CmdWithArg(cmd, "PATTERN  A fnmatch resource index filter.")
 	flags := cmd.Flags()
 	addFlagsGlobal(flags, &options.OptsGlobal)
 	commoncmd.FlagsAsync(flags, &options.OptsAsync)
@@ -3745,16 +3714,15 @@ func newCmdObjectTaskRun(kind string) *cobra.Command {
 func newCmdObjectSyncUpdate(kind string) *cobra.Command {
 	var options commands.CmdObjectInstanceSyncUpdate
 	cmd := &cobra.Command{
-		Use:   "update [ID]",
+		Use:   "update [PATTERN]...",
 		Short: "synchronize the copy of the local dataset on peers",
 		Long:  "Execute a sync update action.",
-		Args:  cobra.MaximumNArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			commoncmd.SetRIDFromArgs(&options.RID, args, "sync", "sync")
 			return options.Run(kind)
 		},
 	}
-	commoncmd.CmdWithArg(cmd, "ID  A sync resource index.")
+	commoncmd.CmdWithArg(cmd, "PATTERN  A fnmatch resource index filter.")
 	flags := cmd.Flags()
 	addFlagsGlobal(flags, &options.OptsGlobal)
 	commoncmd.FlagsAsync(flags, &options.OptsAsync)
@@ -3768,16 +3736,15 @@ func newCmdObjectSyncUpdate(kind string) *cobra.Command {
 func newCmdObjectSyncFull(kind string) *cobra.Command {
 	var options commands.CmdObjectInstanceSyncFull
 	cmd := &cobra.Command{
-		Use:   "full [ID]",
+		Use:   "full [PATTERN]...",
 		Short: "full copy of the local dataset on peers",
 		Long:  "Execute a sync full action.",
-		Args:  cobra.MaximumNArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			commoncmd.SetRIDFromArgs(&options.RID, args, "sync", "sync")
 			return options.Run(kind)
 		},
 	}
-	commoncmd.CmdWithArg(cmd, "ID  A sync resource index.")
+	commoncmd.CmdWithArg(cmd, "PATTERN  A fnmatch resource index filter.")
 	flags := cmd.Flags()
 	addFlagsGlobal(flags, &options.OptsGlobal)
 	commoncmd.FlagsAsync(flags, &options.OptsAsync)
@@ -3791,16 +3758,15 @@ func newCmdObjectSyncFull(kind string) *cobra.Command {
 func newCmdObjectSyncIngest(kind string) *cobra.Command {
 	var options commands.CmdObjectInstanceSyncIngest
 	cmd := &cobra.Command{
-		Use:   "ingest [ID]",
+		Use:   "ingest [PATTERN]...",
 		Short: "ingest files received from the active instance",
 		Long:  "Execute a sync ingest action.",
-		Args:  cobra.MaximumNArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			commoncmd.SetRIDFromArgs(&options.RID, args, "sync", "sync")
 			return options.Run(kind)
 		},
 	}
-	commoncmd.CmdWithArg(cmd, "ID  A sync resource index.")
+	commoncmd.CmdWithArg(cmd, "PATTERN  A fnmatch resource index filter.")
 	flags := cmd.Flags()
 	addFlagsGlobal(flags, &options.OptsGlobal)
 	commoncmd.FlagsAsync(flags, &options.OptsAsync)
@@ -3812,16 +3778,15 @@ func newCmdObjectSyncIngest(kind string) *cobra.Command {
 func newCmdObjectSyncResync(kind string) *cobra.Command {
 	var options commands.CmdObjectInstanceSyncResync
 	cmd := &cobra.Command{
-		Use:   "resync [ID]",
+		Use:   "resync [PATTERN]...",
 		Short: "restore optimal synchronization",
 		Long:  "Execute a sync resync action.",
-		Args:  cobra.MaximumNArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			commoncmd.SetRIDFromArgs(&options.RID, args, "sync", "sync")
 			return options.Run(kind)
 		},
 	}
-	commoncmd.CmdWithArg(cmd, "ID  A sync resource index.")
+	commoncmd.CmdWithArg(cmd, "PATTERN  A fnmatch resource index filter.")
 	flags := cmd.Flags()
 	addFlagsGlobal(flags, &options.OptsGlobal)
 	commoncmd.FlagsAsync(flags, &options.OptsAsync)
@@ -3833,16 +3798,15 @@ func newCmdObjectSyncResync(kind string) *cobra.Command {
 func newCmdObjectSyncSplit(kind string) *cobra.Command {
 	var options commands.CmdObjectInstanceSyncSplit
 	cmd := &cobra.Command{
-		Use:   "split [ID]",
+		Use:   "split [PATTERN]...",
 		Short: "make both ends of a replicated pair read-write",
 		Long:  "Execute a sync split action.",
-		Args:  cobra.MaximumNArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			commoncmd.SetRIDFromArgs(&options.RID, args, "sync", "sync")
 			return options.Run(kind)
 		},
 	}
-	commoncmd.CmdWithArg(cmd, "ID  A sync resource index.")
+	commoncmd.CmdWithArg(cmd, "PATTERN  A fnmatch resource index filter.")
 	flags := cmd.Flags()
 	addFlagsGlobal(flags, &options.OptsGlobal)
 	commoncmd.FlagsAsync(flags, &options.OptsAsync)
@@ -3855,17 +3819,21 @@ func newCmdObjectSyncList(kind string) *cobra.Command {
 	var options commands.CmdObjectResourceList
 	options.RID = "sync"
 	cmd := &cobra.Command{
-		Use:     "list [ID]",
+		Use:     "list [PATTERN]...",
 		Aliases: []string{"ls"},
 		Short:   "list sync resources",
 		Long:    "List sync resources. Equivalent to 'resource ls --rid sync'.",
-		Args:    cobra.MaximumNArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			commoncmd.SetRIDFromArgs(&options.RID, args, "sync", "sync")
 			return options.Run(kind)
 		},
+		Example: `  # list all sync resources in system/svc/dns
+  om system/svc/dns sync ls
+
+  # list all syncs with resource index ending with '1' or '2'
+  om svc sync ls '*1' '*2'`,
 	}
-	commoncmd.CmdWithArg(cmd, "ID  A sync resource index.")
+	commoncmd.CmdWithArg(cmd, "PATTERN  A fnmatch resource index filter.")
 	flags := cmd.Flags()
 	addFlagsGlobal(flags, &options.OptsGlobal)
 	commoncmd.FlagNodeSelector(flags, &options.NodeSelector)
@@ -3876,17 +3844,21 @@ func newCmdObjectTaskList(kind string) *cobra.Command {
 	var options commands.CmdObjectResourceList
 	options.RID = "task"
 	cmd := &cobra.Command{
-		Use:     "list [ID]",
+		Use:     "list [PATTERN]...",
 		Aliases: []string{"ls"},
 		Short:   "list task resources",
 		Long:    "List task resources. Equivalent to 'resource ls --rid task'.",
-		Args:    cobra.MaximumNArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			commoncmd.SetRIDFromArgs(&options.RID, args, "task", "task")
 			return options.Run(kind)
 		},
+		Example: `  # list all task resources in system/svc/dns
+  om system/svc/dns task ls
+
+  # list all tasks with resource index ending with '1' or '2'
+  om svc task ls '*1' '*2'`,
 	}
-	commoncmd.CmdWithArg(cmd, "ID  A task resource index.")
+	commoncmd.CmdWithArg(cmd, "PATTERN  A fnmatch resource index filter.")
 	flags := cmd.Flags()
 	addFlagsGlobal(flags, &options.OptsGlobal)
 	commoncmd.FlagNodeSelector(flags, &options.NodeSelector)
@@ -4700,13 +4672,12 @@ func newCmdObjectResourceList(kind string) *cobra.Command {
 func newCmdObjectResourceProvision(kind string) *cobra.Command {
 	var options commands.CmdObjectInstanceProvision
 	cmd := &cobra.Command{
-		Use:     "provision <rid selector>",
+		Use:     "provision [PATTERN]...",
 		Short:   "allocate the system resources of the instance resources",
 		Long:    "Allocate the system resources required by the object instance resources identified by the rid selector.\n\nFor example, provision a fs.ext3 resource means format the device with the mkfs.ext3 command.",
 		Aliases: []string{"prov"},
-		Args:    cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			options.OptsResourceSelector.RID = args[0]
+			commoncmd.SetRIDFromArgs(&options.OptsResourceSelector.RID, args, "", "")
 			return options.Run(kind)
 		},
 	}
@@ -4727,13 +4698,12 @@ func newCmdObjectResourceProvision(kind string) *cobra.Command {
 func newCmdObjectResourceUnprovision(kind string) *cobra.Command {
 	var options commands.CmdObjectInstanceUnprovision
 	cmd := &cobra.Command{
-		Use:     "unprovision <rid selector>",
+		Use:     "unprovision [PATTERN]...",
 		Short:   "deallocate the system resources of the instance resources",
 		Long:    "Deallocate the system resources used by the object instance resources identified by the rid selector.",
 		Aliases: []string{"unprov"},
-		Args:    cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			options.OptsResourceSelector.RID = args[0]
+			commoncmd.SetRIDFromArgs(&options.OptsResourceSelector.RID, args, "", "")
 			return options.Run(kind)
 		},
 	}
@@ -4751,11 +4721,10 @@ func newCmdObjectResourceUnprovision(kind string) *cobra.Command {
 func newCmdObjectResourcePRStart(kind string) *cobra.Command {
 	var options commands.CmdObjectInstancePRStart
 	cmd := &cobra.Command{
-		Use:   "prstart <rid selector>",
+		Use:   "prstart [PATTERN]...",
 		Short: "preempt devices exclusive write access reservation",
-		Args:  cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			options.OptsResourceSelector.RID = args[0]
+			commoncmd.SetRIDFromArgs(&options.OptsResourceSelector.RID, args, "", "")
 			return options.Run(kind)
 		},
 	}
@@ -4774,11 +4743,10 @@ func newCmdObjectResourcePRStart(kind string) *cobra.Command {
 func newCmdObjectResourcePRStop(kind string) *cobra.Command {
 	var options commands.CmdObjectInstancePRStop
 	cmd := &cobra.Command{
-		Use:   "prstop <rid selector>",
+		Use:   "prstop [PATTERN]...",
 		Short: "release devices exclusive write access reservation",
-		Args:  cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			options.OptsResourceSelector.RID = args[0]
+			commoncmd.SetRIDFromArgs(&options.OptsResourceSelector.RID, args, "", "")
 			return options.Run(kind)
 		},
 	}
@@ -4796,11 +4764,10 @@ func newCmdObjectResourcePRStop(kind string) *cobra.Command {
 func newCmdObjectResourceRestart(kind string) *cobra.Command {
 	var options commands.CmdObjectInstanceRestart
 	cmd := &cobra.Command{
-		Use:   "restart <rid selector>",
+		Use:   "restart [PATTERN]...",
 		Short: "restart the instance resources",
-		Args:  cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			options.OptsResourceSelector.RID = args[0]
+			commoncmd.SetRIDFromArgs(&options.OptsResourceSelector.RID, args, "", "")
 			return options.Run(kind)
 		},
 	}
@@ -4818,11 +4785,10 @@ func newCmdObjectResourceRestart(kind string) *cobra.Command {
 func newCmdObjectResourceRun(kind string) *cobra.Command {
 	var options commands.CmdObjectInstanceRun
 	cmd := &cobra.Command{
-		Use:   "run <rid selector>",
+		Use:   "run [PATTERN]...",
 		Short: "execute the instance resource run action",
-		Args:  cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			options.OptsResourceSelector.RID = args[0]
+			commoncmd.SetRIDFromArgs(&options.OptsResourceSelector.RID, args, "", "")
 			return options.Run(kind)
 		},
 	}
@@ -4840,11 +4806,10 @@ func newCmdObjectResourceRun(kind string) *cobra.Command {
 func newCmdObjectResourceStart(kind string) *cobra.Command {
 	var options commands.CmdObjectInstanceStart
 	cmd := &cobra.Command{
-		Use:   "start <rid selector>",
+		Use:   "start [PATTERN]...",
 		Short: "start the instance resources",
-		Args:  cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			options.OptsResourceSelector.RID = args[0]
+			commoncmd.SetRIDFromArgs(&options.OptsResourceSelector.RID, args, "", "")
 			return options.Run(kind)
 		},
 	}
@@ -4862,11 +4827,10 @@ func newCmdObjectResourceStart(kind string) *cobra.Command {
 func newCmdObjectResourceStartStandby(kind string) *cobra.Command {
 	var options commands.CmdObjectInstanceStartStandby
 	cmd := &cobra.Command{
-		Use:   "startstandby <rid selector>",
+		Use:   "startstandby [PATTERN]...",
 		Short: "start the instance resources in standby mode",
-		Args:  cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			options.OptsResourceSelector.RID = args[0]
+			commoncmd.SetRIDFromArgs(&options.OptsResourceSelector.RID, args, "", "")
 			return options.Run(kind)
 		},
 	}
@@ -4884,11 +4848,10 @@ func newCmdObjectResourceStartStandby(kind string) *cobra.Command {
 func newCmdObjectResourceStop(kind string) *cobra.Command {
 	var options commands.CmdObjectInstanceStop
 	cmd := &cobra.Command{
-		Use:   "stop <rid selector>",
+		Use:   "stop [PATTERN]...",
 		Short: "stop the instance resources",
-		Args:  cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			options.OptsResourceSelector.RID = args[0]
+			commoncmd.SetRIDFromArgs(&options.OptsResourceSelector.RID, args, "", "")
 			return options.Run(kind)
 		},
 	}
@@ -4918,11 +4881,10 @@ func newCmdObjectResourceSync(kind string) *cobra.Command {
 func newCmdObjectResourceSyncFull(kind string) *cobra.Command {
 	var options commands.CmdObjectInstanceSyncFull
 	cmd := &cobra.Command{
-		Use:   "full <rid selector>",
+		Use:   "full [PATTERN]...",
 		Short: "synchronize the copy of the local dataset on peers by sending the full data",
-		Args:  cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			options.OptsResourceSelector.RID = args[0]
+			commoncmd.SetRIDFromArgs(&options.OptsResourceSelector.RID, args, "", "")
 			return options.Run(kind)
 		},
 	}
@@ -4939,11 +4901,10 @@ func newCmdObjectResourceSyncFull(kind string) *cobra.Command {
 func newCmdObjectResourceSyncIngest(kind string) *cobra.Command {
 	var options commands.CmdObjectInstanceSyncIngest
 	cmd := &cobra.Command{
-		Use:   "ingest <rid selector>",
+		Use:   "ingest [PATTERN]...",
 		Short: "synchronize the copy of the local dataset on peers by receiving the full data",
-		Args:  cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			options.OptsResourceSelector.RID = args[0]
+			commoncmd.SetRIDFromArgs(&options.OptsResourceSelector.RID, args, "", "")
 			return options.Run(kind)
 		},
 	}
@@ -4958,11 +4919,10 @@ func newCmdObjectResourceSyncIngest(kind string) *cobra.Command {
 func newCmdObjectResourceSyncResync(kind string) *cobra.Command {
 	var options commands.CmdObjectInstanceSyncResync
 	cmd := &cobra.Command{
-		Use:   "resync <rid selector>",
+		Use:   "resync [PATTERN]...",
 		Short: "synchronize the copy of the local dataset on peers by receiving incremental data",
-		Args:  cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			options.OptsResourceSelector.RID = args[0]
+			commoncmd.SetRIDFromArgs(&options.OptsResourceSelector.RID, args, "", "")
 			return options.Run(kind)
 		},
 	}
@@ -4978,11 +4938,10 @@ func newCmdObjectResourceSyncResync(kind string) *cobra.Command {
 func newCmdObjectResourceSyncSplit(kind string) *cobra.Command {
 	var options commands.CmdObjectInstanceSyncSplit
 	cmd := &cobra.Command{
-		Use:   "split <rid selector>",
+		Use:   "split [PATTERN]...",
 		Short: "change the sync peer list",
-		Args:  cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			options.OptsResourceSelector.RID = args[0]
+			commoncmd.SetRIDFromArgs(&options.OptsResourceSelector.RID, args, "", "")
 			return options.Run(kind)
 		},
 	}
@@ -4995,12 +4954,11 @@ func newCmdObjectResourceSyncSplit(kind string) *cobra.Command {
 func newCmdObjectResourceSyncUpdate(kind string) *cobra.Command {
 	var options commands.CmdObjectInstanceSyncUpdate
 	cmd := &cobra.Command{
-		Use:   "update <rid selector>",
+		Use:   "update [PATTERN]...",
 		Short: "synchronize the copy of the local dataset on peers",
 		Long:  "Synchronize the copy of the local dataset on peers for the instance resource identified by the rid selector. This update can use either full or incremental copy, depending on the resource drivers and host capabilities.",
-		Args:  cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			options.OptsResourceSelector.RID = args[0]
+			commoncmd.SetRIDFromArgs(&options.OptsResourceSelector.RID, args, "", "")
 			return options.Run(kind)
 		},
 	}

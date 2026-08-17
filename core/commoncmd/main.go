@@ -365,13 +365,20 @@ func SetRIDFromArgs(rid *string, args []string, group, defaultRID string) {
 	if rid == nil {
 		panic("SetRIDFromArgs call with a nil rid pointer")
 	} else if len(args) > 0 {
-		*rid = parseRIDFromArg(args[0], group)
+		*rid = parseRIDFromArgs(args, group)
 	} else if *rid == "" {
 		*rid = defaultRID
 	}
 }
 
+func parseRIDFromArgs(args []string, group string) string {
+	return parseRIDFromArg(strings.Join(args, ","), group)
+}
+
 func parseRIDFromArg(s, group string) string {
+	if group == "" {
+		return s
+	}
 	var sb strings.Builder
 	if !strings.Contains(s, ",") {
 		sb.WriteString(group)
