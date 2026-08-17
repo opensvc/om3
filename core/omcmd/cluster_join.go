@@ -155,10 +155,14 @@ func (t *CmdClusterJoin) extractCaClaim() (ca []byte, err error) {
 		token  *jwt.Token
 	)
 
-	// Parse the token without verifying the signature (part of a secure
-	// bootstrap trust mechanism) to extract the CA certificate for a TLS trust
-	// establishment, not for authentication.
-	// Authentication happens server-side through JWT signature validation.
+	// Parse the token without verifying the signature to extract the CA certificate.
+	// This is part of a secure bootstrap trust mechanism:
+	// 1. The CA certificate is used only to establish TLS trust with the cluster node
+	// 2. The same token is sent as a Bearer token and validated server-side with signature verification
+	// 3. The server validates the JWT signature (daemon/daemonauth/jwt.go) using the cluster's RSA public key
+	// 4. The server checks for RoleJoin grant (daemon/daemonapi/post_cluster_join.go) before processing the join request
+	// 5. No privileged operations occur until server-side signature validation succeeds
+	// The CA extraction is safe because authentication happens server-side, not client-side.
 	token, _, err = parser.ParseUnverified(t.Token, &joinClaim{})
 	if err != nil {
 		return
