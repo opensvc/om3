@@ -38,7 +38,6 @@ require (
 	github.com/inancgumus/screen v0.0.0-20190314163918-06e984b86ed3
 	github.com/j-keck/arping v0.0.0-20160618110441-2cf9dc699c56
 	github.com/jaypipes/pcidb v0.6.0
-	github.com/juju/ansiterm v0.0.0-20180109212912-720a0952cc2a
 	github.com/kballard/go-shellquote v0.0.0-20180428030007-95032a82bc51
 	github.com/labstack/echo-contrib v0.50.1
 	github.com/labstack/echo/v4 v4.15.4
@@ -114,7 +113,6 @@ require (
 	github.com/koneu/natend v0.0.0-20150829182554-ec0926ea948d // indirect
 	github.com/logrusorgru/aurora v2.0.3+incompatible // indirect
 	github.com/lucasb-eyer/go-colorful v1.2.0 // indirect
-	github.com/lunixbochs/vtclean v1.0.0 // indirect
 	github.com/mattn/go-colorable v0.1.15 // indirect
 	github.com/mdlayher/netlink v1.4.2 // indirect
 	github.com/mdlayher/socket v0.0.0-20211102153432-57e3fa563ecb // indirect
