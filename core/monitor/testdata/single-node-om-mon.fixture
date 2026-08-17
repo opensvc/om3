@@ -1,17 +1,17 @@
-Daemon              node3    
- uptime           | 1016d    
- state            | dns      
- hb queue         | ?        
- hb rx            | /        
- hb tx            | /        
-                             
-Nodes               node3    
- uptime           | 1017d    
- score            | 96       
-  load15m         | 0.1      
-  mem             | 26%1.94g 
-  swap            | 0%1.92g  
-  compat    warn  | 12       
- state            | *        
-                             
-Objects ~ *         node3    
+Daemon               node3      
+ uptime            | 1016d      
+ state             | dns        
+ hb queue          | ?          
+ hb rx             | /          
+ hb tx             | /          
+                                
+Nodes                node3      
+ uptime            | 1017d      
+ score             | 96         
+  load15m          | 0.1        
+  mem              | 26%1.94g   
+  swap             | 0%1.92g    
+  compat    warn   | 12         
+ state             | *          
+                                
+Objects ~ *          node3      

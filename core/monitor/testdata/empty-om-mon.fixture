@@ -1,17 +1,17 @@
-Daemon              
- uptime             
- state              
- hb queue           
- hb rx              
- hb tx              
-                    
-Nodes               
- uptime             
- score              
-  load15m           
-  mem               
-  swap              
-  compat    warn    
- state              
-                    
-Objects ~ *         
+Daemon                 
+ uptime                
+ state                 
+ hb queue              
+ hb rx                 
+ hb tx                 
+                       
+Nodes                  
+ uptime                
+ score                 
+  load15m              
+  mem                  
+  swap                 
+  compat    warn       
+ state                 
+                       
+Objects ~ *            

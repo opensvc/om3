@@ -6,9 +6,9 @@ import (
 	"time"
 
 	"github.com/fatih/color"
-	tabwriter "github.com/juju/ansiterm"
 
 	"github.com/opensvc/om3/v3/core/clusterdump"
+	"github.com/opensvc/om3/v3/util/tabwriter"
 )
 
 const (
@@ -77,7 +77,7 @@ type (
 		Nodename string
 
 		// private
-		w           *tabwriter.TabWriter
+		w           *tabwriter.Writer
 		sectionMask int
 		info        struct {
 			nodeCount   int
@@ -123,7 +123,7 @@ func (f *Frame) Render() string {
 
 	f.setSectionMask()
 	f.scanData()
-	f.w = tabwriter.NewTabWriter(&builder, 1, 1, 1, ' ', 0)
+	f.w = tabwriter.NewWriter(&builder, 1, 1, 1, ' ', 0)
 	if f.hasSection("daemon") {
 		f.wDaemons()
 	}
