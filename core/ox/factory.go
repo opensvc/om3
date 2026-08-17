@@ -4938,23 +4938,6 @@ func newCmdDataStoreRemove(kind string) *cobra.Command {
 	return cmd
 }
 
-func newCmdDataStoreRename(kind string) *cobra.Command {
-	var options commands.CmdObjectKeyRename
-	cmd := &cobra.Command{
-		Hidden: true,
-		Use:    "rename",
-		Short:  "rename key",
-		RunE: func(cmd *cobra.Command, args []string) error {
-			return options.Run(kind)
-		},
-	}
-	flags := cmd.Flags()
-	addFlagsGlobal(flags, &options.OptsGlobal)
-	commoncmd.FlagKey(flags, &options.Name)
-	commoncmd.FlagKeyTo(flags, &options.To)
-	return cmd
-}
-
 func newCmdObjectGenCert(kind string) *cobra.Command {
 	cmd := newCmdObjectCertificateCreate(kind)
 	cmd.Use = "cert"

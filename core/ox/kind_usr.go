@@ -38,7 +38,6 @@ func init() {
 		newCmdDataStoreDecode(kind),
 		newCmdDataStoreKeys(kind),
 		newCmdDataStoreRemove(kind),
-		newCmdDataStoreRename(kind),
 		newCmdObjectCreate(kind),
 		newCmdObjectDelete(kind),
 		newCmdObjectEval(kind),
