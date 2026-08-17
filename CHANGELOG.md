@@ -54,6 +54,25 @@ OpenSVC v3 is a major evolution, rebuilt in Go for performance, reliability, and
 
 * **Enhanced secret management**: New commands like `om <kvstore> key rename` for better key management in secret stores.
 
+### Security
+
+* **SSRF protection for HTTP fetches**: 
+
+    All configuration, cfg, and secret 
+    values fetched from HTTP(S) URLs are now validated against SSRF policies. 
+    By default, only `https://raw.githubusercontent.com/opensvc/opensvc_templates/*` 
+    URLs are allowed, while all other URLs and private/internal CIDR ranges 
+    (including loopback, RFC 1918, link-local, TEST-NET, and IPv6 ULA) are blocked. 
+    Redirects are disabled by default. Administrators can override these defaults 
+    via environment variables in `/etc/default/opensvc` or `/etc/sysconfig/opensvc`:
+  ```
+  OSVC_SSRF_ALLOWED_URL
+  OSVC_SSRF_BLOCKED_URL
+  OSVC_SSRF_ALLOWED_CIDR
+  OSVC_SSRF_BLOCKED_CIDR
+  OSVC_SSRF_ENABLE_REDIRECTS
+  ```
+
 ### Network & Storage
 
 * **Modern firewall management**: Configuration now uses nftables exclusively, with better support for large subnets including IPv6 via the new `mask_per_node` keyword.
