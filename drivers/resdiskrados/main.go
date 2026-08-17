@@ -450,27 +450,29 @@ func (t *T) removeHolders(ctx context.Context) error {
 }
 
 func (t *T) Status(ctx context.Context) status.T {
-	if v, err := t.isMapped(ctx); err != nil {
+	v, err := t.isMapped(ctx)
+	if err != nil {
 		t.StatusLog().Error("%s", err)
 		return status.Undef
-	} else if v {
-		// Check group status if group is defined
-		if t.Group != "" {
-			groupExists, err := t.groupExists(ctx)
+	}
+	// Check group status if group is defined
+	if t.Group != "" {
+		groupExists, err := t.groupExists(ctx)
+		if err != nil {
+			t.StatusLog().Warn("failed to check group existence: %v", err)
+		} else if !groupExists {
+			t.StatusLog().Warn("group %s does not exist", t.Group)
+		} else {
+			// Only check if image is in group if group exists
+			imageInGroup, err := t.imageInGroup(ctx)
 			if err != nil {
-				t.StatusLog().Warn("failed to check group existence: %v", err)
-			} else if !groupExists {
-				t.StatusLog().Warn("group %s does not exist", t.Group)
-			} else {
-				// Only check if image is in group if group exists
-				imageInGroup, err := t.imageInGroup(ctx)
-				if err != nil {
-					t.StatusLog().Warn("failed to check if image is in group: %v", err)
-				} else if !imageInGroup {
-					t.StatusLog().Warn("image %s is not in group %s", t.Name, t.Group)
-				}
+				t.StatusLog().Warn("failed to check if image is in group: %v", err)
+			} else if !imageInGroup {
+				t.StatusLog().Warn("image %s is not in group %s", t.Name, t.Group)
 			}
 		}
+	}
+	if v {
 		return status.Up
 	}
 	return status.Down
