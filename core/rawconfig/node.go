@@ -28,6 +28,12 @@ var (
 	Colorize *palette.ColorPaletteFunc
 	Color    *palette.ColorPalette
 	Paths    AgentPaths
+
+	SSRFAllowedURL      []string
+	SSRFBlockedURL      []string
+	SSRFAllowedCIDR     []string
+	SSRFBlockedCIDR     []string
+	SSRFEnableRedirects bool
 )
 
 func init() {
@@ -41,6 +47,10 @@ func Load(env map[string]string) {
 		} else {
 			env = m
 		}
+	}
+
+	if env != nil {
+		setSSRF(env)
 	}
 
 	var root string
