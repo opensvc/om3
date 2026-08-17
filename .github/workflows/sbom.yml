@@ -39,10 +39,10 @@ jobs:
 
       - name: Download CycloneDX CLI
         run: |
-          curl -sSfL https://github.com/CycloneDX/cyclonedx-cli/releases/download/v0.29.1/cyclonedx-linux-x64 \
+          curl -sSfL https://github.com/CycloneDX/cyclonedx-cli/releases/download/v0.33.1/cyclonedx-linux-x64 \
             -o $HOME/bin/cyclonedx
+          echo "bfc8b2538da86fe239bc53658bbb63c1c8c510a293c1e6891aa5bea5d3c58746 $HOME/bin/cyclonedx" | sha256sum -c -
           chmod +x $HOME/bin/cyclonedx
-          $HOME/bin/cyclonedx --version || echo "CycloneDX CLI installed"
 
       - name: Add ~/bin to PATH
         run: echo "$HOME/bin" >> $GITHUB_PATH
