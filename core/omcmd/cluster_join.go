@@ -155,6 +155,10 @@ func (t *CmdClusterJoin) extractCaClaim() (ca []byte, err error) {
 		token  *jwt.Token
 	)
 
+	// Parse the token without verifying the signature (part of a secure
+	// bootstrap trust mechanism) to extract the CA certificate for a TLS trust
+	// establishment, not for authentication.
+	// Authentication happens server-side through JWT signature validation.
 	token, _, err = parser.ParseUnverified(t.Token, &joinClaim{})
 	if err != nil {
 		return
