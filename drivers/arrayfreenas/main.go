@@ -1760,6 +1760,9 @@ func basicAuth(username, password string) string {
 
 func (t *Array) newRequest(ctx context.Context, method string, path string, params map[string]string, data interface{}) (*http.Request, error) {
 	fpath := t.api() + Head + path
+	if _, _, err := uri.CheckHttpUrl(fpath); err != nil {
+		return nil, err
+	}
 	baseURL, err := url.Parse(fpath)
 	if err != nil {
 		return nil, err
