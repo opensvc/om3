@@ -31,19 +31,23 @@ var (
 		"services": sectionObjects,
 		"threads":  sectionDaemon,
 	}
-	green, yellow, hired, red, blue, hiblue, hiblack, bold                                                                                                                                                                 func(a ...interface{}) string
-	iconUp, iconWarning, iconDownIssue, iconPlacementAlert, iconProvisionAlert, iconStandbyDown, iconStandbyUpIssue, iconUndef, iconFrozen, iconDown, iconDRP, iconLeader, iconNotApplicable, iconPreserved, iconStandbyUp string
-	now                                                                                                                                                                                                                    = time.Now
+
+	green, yellow, hired, hiBlue, hiBlack, bold func(a ...interface{}) string
+
+	iconUp, iconWarning, iconDownIssue, iconPlacementAlert  string
+	iconProvisionAlert, iconStandbyDown, iconStandbyUpIssue string
+	iconUndef, iconFrozen, iconDown, iconDRP, iconLeader    string
+	iconNotApplicable, iconPreserved, iconStandbyUp         string
+
+	now = time.Now
 )
 
 func InitColor() {
 	green = color.New(color.FgGreen).SprintFunc()
 	yellow = color.New(color.FgYellow).SprintFunc()
-	red = color.New(color.FgRed).SprintFunc()
 	hired = color.New(color.FgHiRed).SprintFunc()
-	blue = color.New(color.FgBlue).SprintFunc()
-	hiblue = color.New(color.FgHiBlue).SprintFunc()
-	hiblack = color.New(color.FgHiBlack).SprintFunc()
+	hiBlue = color.New(color.FgHiBlue).SprintFunc()
+	hiBlack = color.New(color.FgHiBlack).SprintFunc()
 	bold = color.New(color.Bold).SprintFunc()
 
 	iconUp = green("O")
@@ -54,17 +58,17 @@ func InitColor() {
 	iconStandbyDown = hired("x")
 	iconStandbyUpIssue = hired("o")
 	iconUndef = hired("?")
-	iconFrozen = bold(hiblue("*"))
-	iconDown = hiblack("X")
-	iconDRP = hiblack("#")
-	iconLeader = hiblack("^")
-	iconNotApplicable = hiblack("/")
-	iconPreserved = hiblack("?")
-	iconStandbyUp = hiblack("o")
+	iconFrozen = bold(hiBlue("*"))
+	iconDown = hiBlack("X")
+	iconDRP = hiBlack("#")
+	iconLeader = hiBlack("^")
+	iconNotApplicable = hiBlack("/")
+	iconPreserved = hiBlack("?")
+	iconStandbyUp = hiBlack("o")
 }
 
 type (
-	// Frame exposes daemon status renderer tunables.
+	// Frame exposes the daemon status renderer.
 	Frame struct {
 		Selector string
 		Nodes    []string
@@ -106,20 +110,11 @@ func (f Frame) hasSection(section string) bool {
 	return f.sectionMask&sectionToID[section] != 0
 }
 
-// Render return a string buffer containing a human-friendly
+// Render returns a string buffer containing a human-friendly
 // representation of Render.
 func (f *Frame) Render() string {
 	var builder strings.Builder
 	InitColor()
-
-	green = color.New(color.FgGreen).SprintFunc()
-	yellow = color.New(color.FgYellow).SprintFunc()
-	red = color.New(color.FgRed).SprintFunc()
-	hired = color.New(color.FgHiRed).SprintFunc()
-	blue = color.New(color.FgBlue).SprintFunc()
-	hiblue = color.New(color.FgHiBlue).SprintFunc()
-	hiblack = color.New(color.FgHiBlack).SprintFunc()
-	bold = color.New(color.Bold).SprintFunc()
 
 	f.setSectionMask()
 	f.scanData()
@@ -136,14 +131,13 @@ func (f *Frame) Render() string {
 	if f.hasSection("objects") {
 		f.wObjects()
 	}
-	f.w.Flush()
+	_ = f.w.Flush()
 	return builder.String()
 }
 
 func (f *Frame) scanData() {
 	f.info.nodeCount = len(f.Current.Cluster.Config.Nodes)
-	// +1 for the separator between static cols and node cols
-	f.info.columns = staticCols + f.info.nodeCount + 1
+	f.info.columns = staticCols + f.info.nodeCount
 	f.info.empty = strings.Repeat("\t", f.info.columns)
 	f.info.emptyNodes = strings.Repeat("\t", f.info.nodeCount)
 	if f.info.nodeCount > 0 {
@@ -165,9 +159,9 @@ func (f *Frame) scanData() {
 }
 
 func (f Frame) title(s string) string {
-	s += "\t\t\t\t"
+	s += "\t\t\t"
 	for _, v := range f.Current.Cluster.Config.Nodes {
-		s += bold(v) + "\t"
+		s += "\t" + bold(v)
 	}
 	return s
 }

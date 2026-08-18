@@ -33,7 +33,7 @@ func newCmdDaemonEvents() *cobra.Command {
 		Short: "print the daemon event stream",
 		Long:  "Print the daemon event stream\n\n" + commoncmd.UsageFlagEventFilter() + "\n" + commoncmd.UsageFlagEventTemplate(),
 
-		Aliases: []string{"ev"},
+		Aliases: []string{"ev", "event"},
 		RunE: func(cmd *cobra.Command, args []string) error {
 			options.Quiet = quietFlag
 			if options.Wait && !cmd.Flags().Changed("limit") {

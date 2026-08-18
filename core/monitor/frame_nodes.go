@@ -19,10 +19,10 @@ func (f Frame) sNodeScoreLine() string {
 	sb.WriteString(bold("score"))
 	sb.WriteString("\t\t\t")
 	sb.WriteString(f.info.separator)
-	sb.WriteString("\t")
+
 	for _, n := range f.Current.Cluster.Config.Nodes {
-		sb.WriteString(f.StrNodeScore(n))
 		sb.WriteString("\t")
+		sb.WriteString(f.StrNodeScore(n))
 	}
 	return sb.String()
 }
@@ -33,10 +33,10 @@ func (f Frame) sNodeLoadLine() string {
 	sb.WriteString(bold("load15m"))
 	sb.WriteString("\t\t\t")
 	sb.WriteString(f.info.separator)
-	sb.WriteString("\t")
+
 	for _, n := range f.Current.Cluster.Config.Nodes {
-		sb.WriteString(f.StrNodeLoad(n))
 		sb.WriteString("\t")
+		sb.WriteString(f.StrNodeLoad(n))
 	}
 	return sb.String()
 }
@@ -47,10 +47,10 @@ func (f Frame) sNodeMemLine() string {
 	sb.WriteString(bold("mem"))
 	sb.WriteString("\t\t\t")
 	sb.WriteString(f.info.separator)
-	sb.WriteString("\t")
+
 	for _, n := range f.Current.Cluster.Config.Nodes {
-		sb.WriteString(f.StrNodeMem(n))
 		sb.WriteString("\t")
+		sb.WriteString(f.StrNodeMem(n))
 	}
 	return sb.String()
 }
@@ -61,10 +61,10 @@ func (f Frame) sNodeSwapLine() string {
 	sb.WriteString(bold("swap"))
 	sb.WriteString("\t\t\t")
 	sb.WriteString(f.info.separator)
-	sb.WriteString("\t")
+
 	for _, n := range f.Current.Cluster.Config.Nodes {
-		sb.WriteString(f.StrNodeSwap(n))
 		sb.WriteString("\t")
+		sb.WriteString(f.StrNodeSwap(n))
 	}
 	return sb.String()
 }
@@ -83,10 +83,10 @@ func (f Frame) sNodeWarningsLine() string {
 	sb.WriteString(bold("state"))
 	sb.WriteString("\t\t\t")
 	sb.WriteString(f.info.separator)
-	sb.WriteString("\t")
+
 	for _, n := range f.Current.Cluster.Config.Nodes {
-		sb.WriteString(f.StrNodeStates(n))
 		sb.WriteString("\t")
+		sb.WriteString(f.StrNodeStates(n))
 	}
 	return sb.String()
 }
@@ -112,10 +112,10 @@ func (f Frame) sNodeVersionLine() string {
 	sb.WriteString(yellow("warn"))
 	sb.WriteString("\t\t")
 	sb.WriteString(f.info.separator)
-	sb.WriteString("\t")
+
 	for _, n := range f.Current.Cluster.Config.Nodes {
-		sb.WriteString(f.StrNodeVersion(n))
 		sb.WriteString("\t")
+		sb.WriteString(f.StrNodeVersion(n))
 	}
 	return sb.String() + "\n"
 }
@@ -131,10 +131,10 @@ func (f Frame) sNodeCompatLine() string {
 	sb.WriteString(yellow("warn"))
 	sb.WriteString("\t\t")
 	sb.WriteString(f.info.separator)
-	sb.WriteString("\t")
+
 	for _, n := range f.Current.Cluster.Config.Nodes {
-		sb.WriteString(f.sNodeCompat(n))
 		sb.WriteString("\t")
+		sb.WriteString(f.sNodeCompat(n))
 	}
 	return sb.String() + "\n"
 }
@@ -162,10 +162,10 @@ func BSizeCompactFromMB(n uint64) string {
 func (f Frame) StrNodeMem(n string) string {
 	if val, ok := f.Current.Cluster.Node[n]; ok {
 		if val.Stats.MemTotalMB == 0 {
-			return hiblue("-")
+			return hiBlue("-")
 		}
 		if val.Stats.MemAvailPct == 0 {
-			return hiblue("-")
+			return hiBlue("-")
 		}
 		limit := 100 - val.Config.MinAvailMemPct
 		usage := 100 - val.Stats.MemAvailPct
@@ -194,10 +194,10 @@ func (f Frame) StrNodeMem(n string) string {
 func (f Frame) StrNodeSwap(n string) string {
 	if val, ok := f.Current.Cluster.Node[n]; ok {
 		if val.Stats.SwapTotalMB == 0 {
-			return hiblue("-")
+			return hiBlue("-")
 		}
 		if val.Stats.SwapAvailPct == 0 {
-			return hiblue("-")
+			return hiBlue("-")
 		}
 		limit := 100 - val.Config.MinAvailSwapPct
 		usage := 100 - val.Stats.SwapAvailPct
@@ -273,9 +273,8 @@ func (f Frame) StrNodeVersion(n string) string {
 		if len(val.Status.Agent) == 40 {
 			// commit id => abbrev
 			return fmt.Sprintf("%s", val.Status.Agent[:8])
-		} else {
-			return fmt.Sprintf("%s", val.Status.Agent)
 		}
+		return fmt.Sprintf("%s", val.Status.Agent)
 	}
 	return iconUndef
 }
@@ -286,10 +285,10 @@ func (f Frame) sNodeHbMode() string {
 	sb.WriteString(bold("hb-q"))
 	sb.WriteString("\t\t\t")
 	sb.WriteString(f.info.separator)
-	sb.WriteString("\t")
+
 	for _, peer := range f.Current.Cluster.Config.Nodes {
-		sb.WriteString(f.StrNodeHbMode(peer))
 		sb.WriteString("\t")
+		sb.WriteString(f.StrNodeHbMode(peer))
 	}
 	return sb.String()
 }
@@ -327,10 +326,10 @@ func (f Frame) sNodeUptimeLine() string {
 	sb.WriteString(bold("uptime"))
 	sb.WriteString("\t\t\t")
 	sb.WriteString(f.info.separator)
-	sb.WriteString("\t")
+
 	for _, n := range f.Current.Cluster.Config.Nodes {
-		sb.WriteString(f.StrNodeUptime(n))
 		sb.WriteString("\t")
+		sb.WriteString(f.StrNodeUptime(n))
 	}
 	return sb.String()
 }
@@ -348,14 +347,14 @@ func (f Frame) StrNodeUptime(n string) string {
 }
 
 func (f Frame) wNodes() {
-	fmt.Fprintln(f.w, f.title("Nodes"))
-	fmt.Fprintln(f.w, f.sNodeUptimeLine())
-	fmt.Fprintln(f.w, f.sNodeScoreLine())
-	fmt.Fprintln(f.w, f.sNodeLoadLine())
-	fmt.Fprintln(f.w, f.sNodeMemLine())
-	fmt.Fprintln(f.w, f.sNodeSwapLine())
-	fmt.Fprint(f.w, f.sNodeVersionLine())
-	fmt.Fprint(f.w, f.sNodeCompatLine())
-	fmt.Fprintln(f.w, f.sNodeWarningsLine())
-	fmt.Fprintln(f.w, f.info.empty)
+	_, _ = fmt.Fprintln(f.w, f.title("Nodes"))
+	_, _ = fmt.Fprintln(f.w, f.sNodeUptimeLine())
+	_, _ = fmt.Fprintln(f.w, f.sNodeScoreLine())
+	_, _ = fmt.Fprintln(f.w, f.sNodeLoadLine())
+	_, _ = fmt.Fprintln(f.w, f.sNodeMemLine())
+	_, _ = fmt.Fprintln(f.w, f.sNodeSwapLine())
+	_, _ = fmt.Fprint(f.w, f.sNodeVersionLine())
+	_, _ = fmt.Fprint(f.w, f.sNodeCompatLine())
+	_, _ = fmt.Fprintln(f.w, f.sNodeWarningsLine())
+	_, _ = fmt.Fprintln(f.w, f.info.empty)
 }
