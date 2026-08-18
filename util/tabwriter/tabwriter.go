@@ -14,6 +14,7 @@ import (
 	"io"
 	"strings"
 	"sync"
+	"text/tabwriter"
 
 	"github.com/fatih/color"
 )
@@ -65,6 +66,12 @@ type Writer struct {
 	// Track if we've computed widths
 	widthsComputed bool
 
+	// flags specifies optional behavior configurations for the writer,
+	// typically used for compatibility or future extensions.
+	flags uint
+
+	debug bool
+
 	mu sync.Mutex
 }
 
@@ -85,6 +92,8 @@ func NewWriter(w io.Writer, minwidth, tabwidth, padding int, padchar byte, flags
 		minwidth: minwidth,
 		padchar:  padchar,
 		padding:  padding,
+		flags:    flags,
+		debug:    flags&Debug != 0,
 	}
 }
 
@@ -237,22 +246,24 @@ func (w *Writer) computeWidths() {
 	w.maxWidths = make([]int, maxCols)
 
 	for col := 0; col < maxCols; col++ {
-		max := 0
+		maxWidths := 0
 		for _, cells := range w.lines {
 			if col < len(cells) {
 				width := visibleWidth(cells[col])
-				if width > max {
-					max = width
+				if width > maxWidths {
+					maxWidths = width
 				}
 			}
 		}
-		// Apply minwidth
-		if max < w.minwidth {
-			max = w.minwidth
-		}
+
 		// Add padding
-		max += w.padding
-		w.maxWidths[col] = max
+		maxWidths += w.padding
+
+		// Apply minwidth
+		if maxWidths < w.minwidth {
+			maxWidths = w.minwidth
+		}
+		w.maxWidths[col] = maxWidths
 	}
 
 	w.widthsComputed = true
@@ -276,6 +287,9 @@ func (w *Writer) writeLine(cells []string) error {
 				return err
 			}
 		}
+		if w.debug {
+			_, _ = fmt.Fprintf(w.writer, "|")
+		}
 	}
 
 	// Write newline
@@ -288,6 +302,5 @@ func (w *Writer) writeLine(cells []string) error {
 
 // Format helper constants for compatibility with text/tabwriter
 const (
-	AlignRight = 1 << iota
-	Debug
+	Debug = tabwriter.Debug
 )
