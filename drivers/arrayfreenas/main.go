@@ -3,7 +3,6 @@ package arrayfreenas
 import (
 	"bytes"
 	"context"
-	"crypto/tls"
 	"encoding/base64"
 	"encoding/json"
 	"fmt"
@@ -25,6 +24,7 @@ import (
 	"github.com/opensvc/om3/v3/core/naming"
 	"github.com/opensvc/om3/v3/util/san"
 	"github.com/opensvc/om3/v3/util/sizeconv"
+	"github.com/opensvc/om3/v3/util/uri"
 )
 
 var (
@@ -1176,7 +1176,12 @@ func (t Array) dumpISCSITargets(ctx context.Context) error {
 }
 
 func (t *Array) Do(req *http.Request, v interface{}) (*http.Response, error) {
-	resp, err := t.client().Do(req)
+	cli, err := t.safeClient(req.URL)
+	if err != nil {
+		return nil, fmt.Errorf("safe client: %w", err)
+	}
+	var resp *http.Response
+	resp, err = cli.Do(req)
 	if err != nil {
 		return nil, fmt.Errorf("do request failed: %w", err)
 	}
@@ -1733,22 +1738,19 @@ func (t Array) addISCSIPortal(ctx context.Context, params CreateISCSIPortalParam
 	return &data, nil
 }
 
-func (t *Array) client() *http.Client {
-	c := http.Client{
-		Timeout: t.timeout(),
-	}
-	u, err := url.Parse(t.api())
+func (t *Array) safeClient(u *url.URL) (*http.Client, error) {
+	c, err := uri.SafeHttpClient(u.String())
 	if err != nil {
-		return &c
+		return nil, err
 	}
+	c.Timeout = t.timeout()
 	if u.Scheme == "https" {
-		c.Transport = &http.Transport{
-			TLSClientConfig: &tls.Config{
-				InsecureSkipVerify: t.insecure(),
-			},
+		if transport, ok := c.Transport.(*http.Transport); ok {
+			transport.TLSClientConfig.InsecureSkipVerify = t.insecure()
+			c.Transport = transport
 		}
 	}
-	return &c
+	return c, nil
 }
 
 func basicAuth(username, password string) string {
