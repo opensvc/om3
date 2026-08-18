@@ -252,8 +252,8 @@ func (t *CmdObjectCreate) dataFromConfig() ([]byte, error) {
 	switch {
 	case file.Exists(t.Config):
 		return commoncmd.DataFromConfigFile(t.Config)
-	case u.IsValid():
-		return commoncmd.DataFromConfigURI(u)
+	case u.IsValidHttp():
+		return commoncmd.DataFromConfigHttp(u)
 	default:
 		return nil, fmt.Errorf("invalid configuration: %s is not a file, nor an uri", t.Config)
 	}

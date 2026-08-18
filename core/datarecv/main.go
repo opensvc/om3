@@ -27,6 +27,7 @@ import (
 	"github.com/opensvc/om3/v3/util/file"
 	"github.com/opensvc/om3/v3/util/key"
 	"github.com/opensvc/om3/v3/util/plog"
+	"github.com/opensvc/om3/v3/util/uri"
 )
 
 // seedKeyFromSource fetches data from a URI or local file and adds it as a key to the datastore.
@@ -39,10 +40,14 @@ func seedKeyFromSource(ds object.DataStore, keyName, sourceURI string, log *plog
 	var data []byte
 	var err error
 
-	// Check if source is a local file path or a URI
-	if strings.HasPrefix(sourceURI, "http://") || strings.HasPrefix(sourceURI, "https://") {
-		// Fetch data from the HTTP/HTTPS URI
-		resp, err := http.Get(sourceURI)
+	// Retrieve date from http url or a local file
+	if uri.IsValidHttp(sourceURI) {
+		var resp *http.Response
+		client, err := uri.SafeHttpClient(sourceURI)
+		if err != nil {
+			return fmt.Errorf("failed to create http client for %s: %w", sourceURI, err)
+		}
+		resp, err = client.Get(sourceURI)
 		if err != nil {
 			return fmt.Errorf("failed to fetch from %s: %w", sourceURI, err)
 		}

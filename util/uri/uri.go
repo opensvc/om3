@@ -35,15 +35,47 @@ func New(s string) T {
 	}
 }
 
-func (t T) Fetch() (string, error) {
+func CheckHttpUrl(s string) (net.IP, string, error) {
+	return checkHttpUrl(s)
+}
+
+// IsValidHttp validates if the provided string is a well-formed HTTP or HTTPS URL.
+func IsValidHttp(s string) bool {
+	_, err := url.ParseRequestURI(s)
+	if err != nil {
+		return false
+	}
+	u, err := url.Parse(s)
+	if err != nil || u.Host == "" {
+		return false
+	}
+	switch u.Scheme {
+	case "http", "https":
+		return true
+	default:
+		return false
+	}
+}
+
+// SafeHttpClient returns an HTTP client configured with rules to prevent
+// SSRF vulnerabilities for the provided URL.
+func SafeHttpClient(s string) (*http.Client, error) {
+	return safeHttpClient(s)
+}
+
+// IsValidHttp checks if the encapsulated URI is a valid HTTP or HTTPS URL.
+func (t T) IsValidHttp() bool {
+	return IsValidHttp(t.uri)
+}
+
+func (t T) HttpFetch() (string, error) {
 	var resp *http.Response
-	policy := httppolicy.New(rawconfig.SSRFAllowedURL, rawconfig.SSRFBlockedURL, rawconfig.SSRFAllowedCIDR, rawconfig.SSRFBlockedCIDR)
-	ip, port, err := policy.Check(t.uri)
+
+	client, err := SafeHttpClient(t.uri)
 	if err != nil {
 		return "", err
 	}
 
-	client := clientForIP(ip, port, rawconfig.SSRFEnableRedirects)
 	resp, err = client.Get(t.uri)
 	if err != nil {
 		return "", err
@@ -74,22 +106,6 @@ func (t T) Fetch() (string, error) {
 	return fName, nil
 }
 
-func (t T) IsValid() bool {
-	return IsValid(t.uri)
-}
-
-func IsValid(s string) bool {
-	_, err := url.ParseRequestURI(s)
-	if err != nil {
-		return false
-	}
-	u, err := url.Parse(s)
-	if err != nil || u.Scheme == "" || u.Host == "" {
-		return false
-	}
-	return true
-}
-
 func ReadAllFrom(from string) (map[string][]byte, error) {
 	switch from {
 	case "":
@@ -100,8 +116,8 @@ func ReadAllFrom(from string) (map[string][]byte, error) {
 		return readFromURandom()
 	default:
 		u := New(from)
-		if u.IsValid() {
-			return readAllFromURI(u)
+		if u.IsValidHttp() {
+			return readAllFromHttp(u)
 		}
 		if v, err := file.ExistsAndRegular(from); err != nil {
 			return nil, err
@@ -144,6 +160,19 @@ func clientForIP(ip net.IP, port string, enableRedirects bool) *http.Client {
 		}
 	}
 	return client
+}
+
+func checkHttpUrl(s string) (net.IP, string, error) {
+	policy := httppolicy.New(rawconfig.SSRFAllowedURL, rawconfig.SSRFBlockedURL, rawconfig.SSRFAllowedCIDR, rawconfig.SSRFBlockedCIDR)
+	return policy.Check(s)
+}
+
+func safeHttpClient(s string) (*http.Client, error) {
+	ip, port, err := checkHttpUrl(s)
+	if err != nil {
+		return nil, err
+	}
+	return clientForIP(ip, port, rawconfig.SSRFEnableRedirects), nil
 }
 
 func readAllFromStdin() (map[string][]byte, error) {
@@ -192,8 +221,8 @@ func readAllFromDir(p string) (map[string][]byte, error) {
 	return m, err
 }
 
-func readAllFromURI(u T) (map[string][]byte, error) {
-	fName, err := u.Fetch()
+func readAllFromHttp(u T) (map[string][]byte, error) {
+	fName, err := u.HttpFetch()
 	if err != nil {
 		return nil, err
 	}
