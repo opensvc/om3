@@ -13,10 +13,10 @@ func (f Frame) sDaemonUptimeLine() string {
 	sb.WriteString(bold("uptime"))
 	sb.WriteString("\t\t\t")
 	sb.WriteString(f.info.separator)
-	sb.WriteString("\t")
+
 	for _, n := range f.Current.Cluster.Config.Nodes {
-		sb.WriteString(f.StrDaemonUptime(n))
 		sb.WriteString("\t")
+		sb.WriteString(f.StrDaemonUptime(n))
 	}
 	return sb.String()
 }
@@ -35,10 +35,10 @@ func (f Frame) sDaemonStateLine() string {
 	sb.WriteString(bold("state"))
 	sb.WriteString("\t\t\t")
 	sb.WriteString(f.info.separator)
-	sb.WriteString("\t")
+
 	for _, node := range f.Current.Cluster.Config.Nodes {
-		sb.WriteString(f.StrDaemonState(node))
 		sb.WriteString("\t")
+		sb.WriteString(f.StrDaemonState(node))
 	}
 	return sb.String()
 }
@@ -62,9 +62,9 @@ func (f Frame) StrDaemonState(n string) string {
 }
 
 func (f Frame) sHbQueueLine() string {
-	s := fmt.Sprintf(" %s\t\t\t%s\t", bold("hb queue"), f.info.separator)
+	s := fmt.Sprintf(" %s\t\t\t%s", bold("hb queue"), f.info.separator)
 	for _, node := range f.Current.Cluster.Config.Nodes {
-		s += f.StrHbQueue(node) + "\t"
+		s += "\t" + f.StrHbQueue(node)
 	}
 	return s
 }
@@ -105,11 +105,10 @@ func (f Frame) sHeartbeatLine(hbType string) string {
 	sb.WriteString(bold("hb " + hbType))
 	sb.WriteString("\t\t\t")
 	sb.WriteString(f.info.separator)
-	sb.WriteString("\t")
 
 	for _, node := range f.Current.Cluster.Config.Nodes {
-		sb.WriteString(f.StrHeartbeat(node, hbType))
 		sb.WriteString("\t")
+		sb.WriteString(f.StrHeartbeat(node, hbType))
 	}
 
 	return sb.String()

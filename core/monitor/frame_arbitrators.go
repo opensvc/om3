@@ -13,12 +13,8 @@ func (f Frame) wArbitrators() {
 		return
 	}
 	var sb strings.Builder
-	sb.WriteString(bold("arbitrators"))
-	sb.WriteString("\t\t\t")
-	sb.WriteString(f.info.separator)
-	sb.WriteString("\t")
-	sb.WriteString(f.info.emptyNodes)
-	sb.WriteString("\n")
+	fmt.Fprintln(f.w, f.title("Arbitrators"))
+
 	arbitrators := make([]string, 0)
 	for name := range f.info.arbitrators {
 		arbitrators = append(arbitrators, name)
@@ -27,13 +23,12 @@ func (f Frame) wArbitrators() {
 	for _, name := range arbitrators {
 		for i, node := range f.Current.Cluster.Config.Nodes {
 			if i == 0 {
-				sb.WriteString(bold(name))
+				sb.WriteString(" " + bold(name))
 				sb.WriteString("\t\t\t")
 				sb.WriteString(f.info.separator)
-				sb.WriteString("\t")
 			}
-			sb.WriteString(f.StrNodeArbitratorStatus(name, node))
 			sb.WriteString("\t")
+			sb.WriteString(f.StrNodeArbitratorStatus(name, node))
 		}
 		sb.WriteString("\n")
 	}

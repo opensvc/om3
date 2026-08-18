@@ -142,8 +142,7 @@ func (f *Frame) Render() string {
 
 func (f *Frame) scanData() {
 	f.info.nodeCount = len(f.Current.Cluster.Config.Nodes)
-	// +1 for the separator between static cols and node cols
-	f.info.columns = staticCols + f.info.nodeCount + 1
+	f.info.columns = staticCols + f.info.nodeCount
 	f.info.empty = strings.Repeat("\t", f.info.columns)
 	f.info.emptyNodes = strings.Repeat("\t", f.info.nodeCount)
 	if f.info.nodeCount > 0 {
@@ -165,9 +164,9 @@ func (f *Frame) scanData() {
 }
 
 func (f Frame) title(s string) string {
-	s += "\t\t\t\t"
+	s += "\t\t\t"
 	for _, v := range f.Current.Cluster.Config.Nodes {
-		s += bold(v) + "\t"
+		s += "\t" + bold(v)
 	}
 	return s
 }

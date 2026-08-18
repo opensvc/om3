@@ -141,9 +141,10 @@ func (f Frame) sObject(path string) string {
 	sb.WriteString(f.sObjectOrchestrateAndRunning(path))
 	sb.WriteString("\t")
 	sb.WriteString(f.info.separator)
-	sb.WriteString("\t")
+
 	for _, node := range f.Current.Cluster.Config.Nodes {
-		sb.WriteString(f.StrObjectInstance(path, node, d.Scope) + "\t")
+		sb.WriteString("\t")
+		sb.WriteString(f.StrObjectInstance(path, node, d.Scope))
 	}
 	return sb.String()
 }
