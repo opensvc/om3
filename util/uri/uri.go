@@ -35,6 +35,10 @@ func New(s string) T {
 	}
 }
 
+func CheckHttpUrl(s string) (net.IP, string, error) {
+	return checkHttpUrl(s)
+}
+
 // IsValidHttp validates if the provided string is a well-formed HTTP or HTTPS URL.
 func IsValidHttp(s string) bool {
 	_, err := url.ParseRequestURI(s)
@@ -158,9 +162,13 @@ func clientForIP(ip net.IP, port string, enableRedirects bool) *http.Client {
 	return client
 }
 
-func safeHttpClient(s string) (*http.Client, error) {
+func checkHttpUrl(s string) (net.IP, string, error) {
 	policy := httppolicy.New(rawconfig.SSRFAllowedURL, rawconfig.SSRFBlockedURL, rawconfig.SSRFAllowedCIDR, rawconfig.SSRFBlockedCIDR)
-	ip, port, err := policy.Check(s)
+	return policy.Check(s)
+}
+
+func safeHttpClient(s string) (*http.Client, error) {
+	ip, port, err := checkHttpUrl(s)
 	if err != nil {
 		return nil, err
 	}
