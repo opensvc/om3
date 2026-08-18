@@ -71,8 +71,9 @@ func sObjectInstanceAvail(objectAvail status.T, instance instance.Status, mon in
 			return iconStandbyUp
 		}
 		return iconStandbyUpIssue
+	default:
+		return instance.Avail.String()
 	}
-	return instance.Avail.String()
 }
 
 func sObjectInstanceOverall(instance instance.Status) string {
@@ -132,6 +133,6 @@ func sObjectInstanceMonitorGlobalExpect(instanceMonitor instance.Monitor) string
 	case instance.MonitorGlobalExpectNone:
 		return ""
 	default:
-		return hiblue(" >" + instanceMonitor.GlobalExpect.String())
+		return hiBlue(" >" + instanceMonitor.GlobalExpect.String())
 	}
 }

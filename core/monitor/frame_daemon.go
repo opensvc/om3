@@ -143,20 +143,18 @@ func (f Frame) StrHeartbeat(n string, hbType string) string {
 			return iconUp
 		} else if valid > 0 {
 			return iconUp + iconWarning
-		} else {
-			return iconDownIssue
 		}
+		return iconDownIssue
 	}
 	return iconUndef
 }
 
 func (f Frame) wDaemons() {
-	fmt.Fprintln(f.w, f.title("Daemon"))
-	fmt.Fprintln(f.w, f.sDaemonUptimeLine())
-	fmt.Fprintln(f.w, f.sDaemonStateLine())
-	fmt.Fprintln(f.w, f.sHbQueueLine())
-	fmt.Fprintln(f.w, f.sHeartbeatLine("rx"))
-	fmt.Fprintln(f.w, f.sHeartbeatLine("tx"))
-	fmt.Fprintln(f.w, f.info.empty)
-
+	_, _ = fmt.Fprintln(f.w, f.title("Daemon"))
+	_, _ = fmt.Fprintln(f.w, f.sDaemonUptimeLine())
+	_, _ = fmt.Fprintln(f.w, f.sDaemonStateLine())
+	_, _ = fmt.Fprintln(f.w, f.sHbQueueLine())
+	_, _ = fmt.Fprintln(f.w, f.sHeartbeatLine("rx"))
+	_, _ = fmt.Fprintln(f.w, f.sHeartbeatLine("tx"))
+	_, _ = fmt.Fprintln(f.w, f.info.empty)
 }

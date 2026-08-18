@@ -162,10 +162,10 @@ func BSizeCompactFromMB(n uint64) string {
 func (f Frame) StrNodeMem(n string) string {
 	if val, ok := f.Current.Cluster.Node[n]; ok {
 		if val.Stats.MemTotalMB == 0 {
-			return hiblue("-")
+			return hiBlue("-")
 		}
 		if val.Stats.MemAvailPct == 0 {
-			return hiblue("-")
+			return hiBlue("-")
 		}
 		limit := 100 - val.Config.MinAvailMemPct
 		usage := 100 - val.Stats.MemAvailPct
@@ -194,10 +194,10 @@ func (f Frame) StrNodeMem(n string) string {
 func (f Frame) StrNodeSwap(n string) string {
 	if val, ok := f.Current.Cluster.Node[n]; ok {
 		if val.Stats.SwapTotalMB == 0 {
-			return hiblue("-")
+			return hiBlue("-")
 		}
 		if val.Stats.SwapAvailPct == 0 {
-			return hiblue("-")
+			return hiBlue("-")
 		}
 		limit := 100 - val.Config.MinAvailSwapPct
 		usage := 100 - val.Stats.SwapAvailPct
@@ -273,9 +273,8 @@ func (f Frame) StrNodeVersion(n string) string {
 		if len(val.Status.Agent) == 40 {
 			// commit id => abbrev
 			return fmt.Sprintf("%s", val.Status.Agent[:8])
-		} else {
-			return fmt.Sprintf("%s", val.Status.Agent)
 		}
+		return fmt.Sprintf("%s", val.Status.Agent)
 	}
 	return iconUndef
 }
@@ -348,14 +347,14 @@ func (f Frame) StrNodeUptime(n string) string {
 }
 
 func (f Frame) wNodes() {
-	fmt.Fprintln(f.w, f.title("Nodes"))
-	fmt.Fprintln(f.w, f.sNodeUptimeLine())
-	fmt.Fprintln(f.w, f.sNodeScoreLine())
-	fmt.Fprintln(f.w, f.sNodeLoadLine())
-	fmt.Fprintln(f.w, f.sNodeMemLine())
-	fmt.Fprintln(f.w, f.sNodeSwapLine())
-	fmt.Fprint(f.w, f.sNodeVersionLine())
-	fmt.Fprint(f.w, f.sNodeCompatLine())
-	fmt.Fprintln(f.w, f.sNodeWarningsLine())
-	fmt.Fprintln(f.w, f.info.empty)
+	_, _ = fmt.Fprintln(f.w, f.title("Nodes"))
+	_, _ = fmt.Fprintln(f.w, f.sNodeUptimeLine())
+	_, _ = fmt.Fprintln(f.w, f.sNodeScoreLine())
+	_, _ = fmt.Fprintln(f.w, f.sNodeLoadLine())
+	_, _ = fmt.Fprintln(f.w, f.sNodeMemLine())
+	_, _ = fmt.Fprintln(f.w, f.sNodeSwapLine())
+	_, _ = fmt.Fprint(f.w, f.sNodeVersionLine())
+	_, _ = fmt.Fprint(f.w, f.sNodeCompatLine())
+	_, _ = fmt.Fprintln(f.w, f.sNodeWarningsLine())
+	_, _ = fmt.Fprintln(f.w, f.info.empty)
 }
