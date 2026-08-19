@@ -66,9 +66,10 @@ func (t *T) Ping() (bool, error) {
 		if t.Ctx.Err() == context.DeadlineExceeded {
 			return false, nil
 		}
-		if cmd.ProcessState.ExitCode() == 1 {
+		switch cmd.ProcessState.ExitCode() {
+		case 1, 2:
 			return false, nil
-		} else {
+		default:
 			return false, err
 		}
 	}
