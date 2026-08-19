@@ -554,7 +554,6 @@ OpenSVC v3 is a major evolution, rebuilt in Go for performance, reliability, and
 * **Removed environment variables:**
     The following variables are no longer added to process environment during actions:
 	* `OPENSVC_SVCNAME`
-    
 	* `OPENSVC_SVC_ID`
 
 * **Changed environment variables:**
@@ -569,6 +568,9 @@ OpenSVC v3 is a major evolution, rebuilt in Go for performance, reliability, and
         In 2.1 the default behaviour was to try to identify the topmost process matching the start command in the process command line, and having the matching env vars, but this guess is not accurate enough as processes can change their cmdline via PRCTL or via execv.
     
         If the new behaviour is not acceptable, users can provide their own stopper via the "stop" keyword.
+
+* **Status**
+    The instance container resources are no longer considered when evaluating if the instance is sufficiently started to execute the app checker. Services that have only a container resource as witness can add a `fs.flag`.
 
 ### Object: sec
 
