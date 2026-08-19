@@ -960,6 +960,9 @@ func (t *T) Abort(ctx context.Context) bool {
 }
 
 func (t *T) abortPing(hn string) bool {
+	if t.QGA {
+		return false
+	}
 	timeout := 5 * time.Second
 	t.Log().Infof("abort? checking %s availability with ping (%s)", hn, timeout)
 	isAlive, err := ping.Ping(hn, timeout)
