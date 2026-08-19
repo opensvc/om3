@@ -8,7 +8,7 @@ func NewCmdNode() *cobra.Command {
 		Short: "manage a opensvc cluster node",
 	}
 	cmd.AddGroup(
-		NewGroupOrchestratedActions(),
+		NewGroupOrchestrated(),
 		NewGroupQuery(),
 	)
 	return cmd

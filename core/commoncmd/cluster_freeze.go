@@ -15,7 +15,7 @@ type CmdClusterFreeze struct {
 func NewCmdClusterFreeze() *cobra.Command {
 	var options CmdClusterFreeze
 	cmd := &cobra.Command{
-		GroupID: GroupIDOrchestratedActions,
+		GroupID: GroupIDOrchestrated,
 		Use:     "freeze",
 		Short:   "block ha automatic start and split action on all nodes",
 		RunE: func(cmd *cobra.Command, args []string) error {

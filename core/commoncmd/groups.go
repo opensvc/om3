@@ -3,16 +3,24 @@ package commoncmd
 import "github.com/spf13/cobra"
 
 var (
-	GroupIDOrchestratedActions = "orchestrated actions"
-	GroupIDQuery               = "query"
-	GroupIDSubsystems          = "subsystems"
-	GroupIDResourceGroups      = "resource groups"
+	GroupIDOrchestrated   = "orchestrated"
+	GroupIDQuery          = "query"
+	GroupIDSubsystems     = "subsystems"
+	GroupIDResourceGroups = "resource groups"
+	GroupIDReplication    = "replication"
 )
 
-func NewGroupOrchestratedActions() *cobra.Group {
+func NewGroupOrchestrated() *cobra.Group {
 	return &cobra.Group{
-		ID:    GroupIDOrchestratedActions,
-		Title: "Orchestrated Actions:",
+		ID:    GroupIDOrchestrated,
+		Title: "Orchestrated Commands:",
+	}
+}
+
+func NewGroupReplication() *cobra.Group {
+	return &cobra.Group{
+		ID:    GroupIDReplication,
+		Title: "Replication Commands:",
 	}
 }
 

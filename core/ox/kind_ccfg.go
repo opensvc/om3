@@ -9,7 +9,7 @@ func init() {
 	cmdObjectConfig := commoncmd.NewCmdObjectConfig(kind)
 	cmdObjectEdit := newCmdObjectEdit(kind)
 	cmdObjectSet := newCmdObjectSet(kind)
-	cmdObjectPrint := newCmdObjectPrint(kind)
+	cmdObjectPrint := commoncmd.NewCmdObjectPrint(kind)
 	cmdObjectPrintConfig := newCmdObjectPrintConfig(kind)
 	cmdObjectSSH := commoncmd.NewCmdObjectSSH(kind)
 	cmdObjectValidate := newCmdObjectValidate(kind)
@@ -19,7 +19,7 @@ func init() {
 		commoncmd.NewCmdMonitor(),
 	)
 	cmdObject.AddGroup(
-		commoncmd.NewGroupOrchestratedActions(),
+		commoncmd.NewGroupOrchestrated(),
 		commoncmd.NewGroupQuery(),
 		commoncmd.NewGroupSubsystems(),
 	)
