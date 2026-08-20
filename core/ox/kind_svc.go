@@ -33,7 +33,6 @@ func init() {
 	cmdObject.AddGroup(
 		commoncmd.NewGroupOrchestrated(),
 		commoncmd.NewGroupQuery(),
-		commoncmd.NewGroupReplication(),
 		commoncmd.NewGroupResources(),
 		commoncmd.NewGroupSubsystems(),
 	)
