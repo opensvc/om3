@@ -1,6 +1,8 @@
 package commoncmd
 
 import (
+	"fmt"
+
 	"github.com/spf13/cobra"
 )
 
@@ -301,6 +303,23 @@ func NewCmdObjectGroupRun(kind, group string) *cobra.Command {
 		Use:   "run [PATTERN]...",
 		Short: "execute resources command",
 		Long:  "Execute resources command.",
+	}
+	CmdWithArg(cmd, "PATTERN  A fnmatch resource index filter.")
+	return cmd
+}
+
+func NewCmdObjectGroupList(kind, group string) *cobra.Command {
+	cmd := &cobra.Command{
+		Use:     "list [PATTERN]...",
+		Aliases: []string{"ls"},
+		Short:   fmt.Sprintf("list %s resources", group),
+		Long:    fmt.Sprintf("List %s resources.", group),
+		GroupID: GroupIDQuery,
+		Example: fmt.Sprintf(`  # list all %s resources in system/svc/dns
+  om system/svc/dns %s ls
+
+  # list all %s resources with index ending with '1' or '2'
+  om svc %s ls '*1' '*2'`, group, group, group, group),
 	}
 	CmdWithArg(cmd, "PATTERN  A fnmatch resource index filter.")
 	return cmd

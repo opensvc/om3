@@ -1979,23 +1979,11 @@ func newCmdObjectEnable(kind string) *cobra.Command {
 
 func newCmdObjectGroupList(kind, group string) *cobra.Command {
 	var options commands.CmdObjectResourceList
-	cmd := &cobra.Command{
-		Use:     "list [PATTERN]...",
-		Aliases: []string{"ls"},
-		Short:   fmt.Sprintf("list %s resources", group),
-		Long:    fmt.Sprintf("List %s resources. Equivalent to 'resource ls --rid %s'.", group, group),
-		GroupID: commoncmd.GroupIDQuery,
-		RunE: func(cmd *cobra.Command, args []string) error {
-			commoncmd.SetRIDFromArgs(&options.RID, args, group, group)
-			return options.Run(kind)
-		},
-		Example: fmt.Sprintf(`  # list all %s resources in system/svc/dns
-  om system/svc/dns %s ls
-
-  # list all %s resources with index ending with '1' or '2'
-  om svc %s ls '*1' '*2'`, group, group, group),
+	cmd := commoncmd.NewCmdObjectGroupList(kind, group)
+	cmd.RunE = func(cmd *cobra.Command, args []string) error {
+		commoncmd.SetRIDFromArgs(&options.RID, args, group, group)
+		return options.Run(kind)
 	}
-	commoncmd.CmdWithArg(cmd, "PATTERN  A fnmatch resource index filter.")
 	flags := cmd.Flags()
 	addFlagsGlobal(flags, &options.OptsGlobal)
 	commoncmd.FlagNodeSelector(flags, &options.NodeSelector)
