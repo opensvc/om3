@@ -40,7 +40,6 @@ import (
 	"context"
 	"fmt"
 	"reflect"
-	"slices"
 	"sort"
 	"strings"
 	"sync"
@@ -70,9 +69,6 @@ type (
 
 	// Label is a {key, val} array
 	Label [2]string
-
-	// subscriptions is a hash of subscription indexed by multiple lookup criteria
-	subscriptionMap map[string]map[uuid.UUID]any
 
 	filter struct {
 		labels   Labels
@@ -125,7 +121,6 @@ type (
 		labels   Labels
 		dataType string
 		data     any
-		pubKeys  []string
 		resp     chan<- bool
 	}
 
@@ -171,7 +166,6 @@ type (
 		log         *plog.Logger
 		ctx         context.Context
 		subs        map[uuid.UUID]*Subscription
-		subMap      subscriptionMap
 		beginNotify chan uuid.UUID
 		endNotify   chan uuid.UUID
 		started     bool
@@ -199,6 +193,9 @@ type (
 		bufferedPublicationC chan cmdPub
 		// bufferedPublicationEnabled is true if publication buffering is enabled
 		bufferedPublicationEnabled bool
+
+		// index is the inverted index for efficient label-based subscription matching.
+		index *invertedIndex
 	}
 
 	stringer interface {
@@ -351,37 +348,17 @@ func (t Labels) Key() string {
 	return s
 }
 
-// Keys returns all the combination of the labels, including the empty label.
-// keys are sorted first to avoid need of permutation.
-// ex:
-//
-//			keys of l1=foo l2=foo l3=foo:
-//	      [
-//	     	"",
-//			 	"{l1=foo}",
-//			 	"{l1=foo}{l2=foo}",
-//			 	"{l1=foo}{l2=foo}{l3=foo}",
-//			 	"{l1=foo}{l3=foo}",
-//			 	"{l2=foo}",
-//			 	"{l2=foo}{l3=foo}",
-//			 	"{l3=foo}",
-//	      ]
+// Keys returns the label key string representation.
 func (t Labels) Keys() []string {
-	m := map[string]any{"": ""}
-	keys := xmap.Keys(t)
-	slices.Sort(keys)
-	for _, comb := range combinations(keys) {
-		var builder strings.Builder
-		for _, key := range comb {
-			builder.WriteString("{")
-			builder.WriteString(key)
-			builder.WriteString("=")
-			builder.WriteString(t[key])
-			builder.WriteString("}")
-		}
-		m[builder.String()] = nil
+	if len(t) == 0 {
+		return []string{"", ":"}
 	}
-	return xmap.Keys(m)
+	keys := xmap.Keys(t)
+	result := make([]string, 0, len(keys))
+	for _, key := range keys {
+		result = append(result, "{"+key+"="+t[key]+"}")
+	}
+	return result
 }
 
 // FilterFmt returns a string that identify a filter
@@ -431,6 +408,7 @@ func NewBus(name string) *Bus {
 	b.log = plog.NewDefaultLogger().WithPrefix(fmt.Sprintf("%s: pubsub: ", name)).Attr("pkg", "util/pubsub").Attr("bus_name", name)
 	b.drainChanDuration = defaultDrainChanDuration
 	b.subQueueSize = defaultSubscriptionQueueSize
+	b.index = newInvertedIndex()
 	return b
 }
 
@@ -442,7 +420,6 @@ func (b *Bus) Start(ctx context.Context) {
 	b.ctx, b.cancel = context.WithCancel(ctx)
 	started := make(chan bool)
 	b.subs = make(map[uuid.UUID]*Subscription)
-	b.subMap = make(subscriptionMap)
 	b.onPubCmd = b.doPublication
 
 	b.Add(1)
@@ -609,7 +586,10 @@ func (b *Bus) onUnsubCmd(c cmdUnsub) {
 	}
 	sub.cancel()
 	delete(b.subs, c.id)
-	b.subMap.Del(c.id, sub.keys()...)
+
+	// Remove from inverted index
+	b.index.RemoveSubscription(c.id)
+
 	select {
 	case <-b.ctx.Done():
 		c.err <- b.ctx.Err()
@@ -632,77 +612,75 @@ func (b *Bus) doBufferedPublication(c cmdPub) {
 }
 
 func (b *Bus) doPublication(c cmdPub) {
-	for _, toFilterKey := range c.pubKeys {
-		// search subscribers that listen to on one of cmdPub.keys
-		if subIDMap, ok := b.subMap[toFilterKey]; ok {
-			for subID := range subIDMap {
-				sub, ok := b.subs[subID]
-				if !ok {
-					// This should not happen
-					b.log.Warnf("filter key %s has a dead subscription %s", toFilterKey, subID)
-					continue
+	// Use inverted index to find matching subscriptions
+	matchingSubIDs := b.index.FindMatchingSubscriptions(c.dataType, c.labels)
+
+	for _, subID := range matchingSubIDs {
+		sub, ok := b.subs[subID]
+		if !ok {
+			// This should not happen
+			b.log.Warnf("inverted index has a dead subscription %s", subID)
+			continue
+		}
+		b.log.Tracef("route %s to %s", c, sub)
+		queueLen := sub.queued.Add(1)
+		sub.q <- c.data
+		publicationPushedTotal.With(prometheus.Labels{"filterkey": "inverted_index"}).Inc()
+		if queueLen >= sub.queuedSize {
+			subscriptionQueueFullTotal.With(prometheus.Labels{"family": sub.family, "block": sub.block}).Inc()
+		}
+		if queueLen >= sub.queuedSize && sub.timeout == 0 && b.panicOnFullQueueGraceTime > 0 {
+			// TODO: increase queue size instead of panic ?
+			err := fmt.Errorf("subscription %s has reached maximum %d of %d queued pending message, "+
+				"allow %s for decrease before panic", sub.name, queueLen, sub.queuedSize, b.panicOnFullQueueGraceTime)
+			b.log.Warnf("%s", err)
+			go func() {
+				<-time.After(b.panicOnFullQueueGraceTime)
+				if sub.queued.Load() >= sub.queuedSize {
+					err := fmt.Errorf("maximum queued pending message for subscription %s %d of %d", sub.name, queueLen, sub.queuedSize)
+					b.log.Errorf("panic: %s", err)
+					panic(err)
+				} else {
+					b.log.Infof("abort panic: subscription %s has leave maximum %d of %d queued pending message", sub.name, sub.queued.Load(), sub.queuedSize)
 				}
-				b.log.Tracef("route %s to %s", c, sub)
-				queueLen := sub.queued.Add(1)
-				sub.q <- c.data
-				publicationPushedTotal.With(prometheus.Labels{"filterkey": toFilterKey}).Inc()
-				if queueLen >= sub.queuedSize {
-					subscriptionQueueFullTotal.With(prometheus.Labels{"family": sub.family, "block": sub.block}).Inc()
-				}
-				if queueLen >= sub.queuedSize && sub.timeout == 0 && b.panicOnFullQueueGraceTime > 0 {
-					// TODO: increase queue size instead of panic ?
-					err := fmt.Errorf("subscription %s has reached maximum %d of %d queued pending message, "+
-						"allow %s for decrease before panic", sub.name, queueLen, sub.queuedSize, b.panicOnFullQueueGraceTime)
-					b.log.Warnf("%s", err)
-					go func() {
-						<-time.After(b.panicOnFullQueueGraceTime)
-						if sub.queued.Load() >= sub.queuedSize {
-							err := fmt.Errorf("maximum queued pending message for subscription %s %d of %d", sub.name, queueLen, sub.queuedSize)
-							b.log.Errorf("panic: %s", err)
-							panic(err)
-						} else {
-							b.log.Infof("abort panic: subscription %s has leave maximum %d of %d queued pending message", sub.name, sub.queued.Load(), sub.queuedSize)
-						}
-					}()
-				}
-				if queueLen > sub.queuedMax {
-					inc := sub.queuedSize / 4
-					previous := sub.queuedMax
-					sub.queuedMax += inc
-					left := sub.queuedSize - sub.queuedMax
-					level := "debug"
-					if left < inc {
-						// 3/4 full
-						level = "warn"
-						b.log.Errorf("subscription %s has reached high %d queued pending message, increase threshold %d -> %d of limit %d", sub.name, queueLen, previous, sub.queuedMax, sub.queuedSize)
-						subscriptionQueueThresholdTotal.With(prometheus.Labels{"family": sub.family, "change": "increase", "block": sub.block, "level": "warn"}).Inc()
-					} else if left < sub.queuedSize/2 {
-						// 1/2 full
-						level = "info"
-						b.log.Warnf("subscription %s has reached high %d queued pending message, increase threshold %d -> %d of limit %d", sub.name, queueLen, previous, sub.queuedMax, sub.queuedSize)
-						subscriptionQueueThresholdTotal.With(prometheus.Labels{"family": sub.family, "change": "increase", "block": sub.block, "level": "info"}).Inc()
-					} else {
-						b.log.Tracef("subscription %s has reached high %d queued pending message, increase threshold %d -> %d of limit %d", sub.name, queueLen, previous, sub.queuedMax, sub.queuedSize)
-						subscriptionQueueThresholdTotal.With(prometheus.Labels{"family": sub.family, "change": "increase", "block": sub.block, "level": "debug"}).Inc()
-					}
-					go sub.publisher.Pub(&SubscriptionQueueThreshold{Name: sub.name, ID: sub.id, Count: queueLen, From: previous, To: sub.queuedMax, Limit: sub.queuedSize}, Label{"counter", ""}, Label{"level", level})
-				} else if queueLen > sub.queuedMin && queueLen < sub.queuedMax/4 {
-					previous := sub.queuedMax
-					sub.queuedMax /= 8
-					left := sub.queuedSize - sub.queuedMax
-					level := "debug"
-					if left < sub.queuedSize/2 {
-						// 1/2 full
-						level = "info"
-						b.log.Infof("subscription %s has reached low %d queued pending message, decrease threshold %d -> %d of limit %d", sub.name, queueLen, previous, sub.queuedMax, sub.queuedSize)
-						subscriptionQueueThresholdTotal.With(prometheus.Labels{"family": sub.family, "change": "decrease", "block": sub.block, "level": "info"}).Inc()
-					} else {
-						b.log.Tracef("subscription %s has reached low %d queued pending message, decrease threshold %d -> %d of limit %d", sub.name, queueLen, previous, sub.queuedMax, sub.queuedSize)
-						subscriptionQueueThresholdTotal.With(prometheus.Labels{"family": sub.family, "change": "decrease", "block": sub.block, "level": "debug"}).Inc()
-					}
-					go sub.publisher.Pub(&SubscriptionQueueThreshold{Name: sub.name, ID: sub.id, Count: queueLen, From: previous, To: sub.queuedMax, Limit: sub.queuedSize}, Label{"counter", ""}, Label{"level", level})
-				}
+			}()
+		}
+		if queueLen > sub.queuedMax {
+			inc := sub.queuedSize / 4
+			previous := sub.queuedMax
+			sub.queuedMax += inc
+			left := sub.queuedSize - sub.queuedMax
+			level := "debug"
+			if left < inc {
+				// 3/4 full
+				level = "warn"
+				b.log.Errorf("subscription %s has reached high %d queued pending message, increase threshold %d -> %d of limit %d", sub.name, queueLen, previous, sub.queuedMax, sub.queuedSize)
+				subscriptionQueueThresholdTotal.With(prometheus.Labels{"family": sub.family, "change": "increase", "block": sub.block, "level": "warn"}).Inc()
+			} else if left < sub.queuedSize/2 {
+				// 1/2 full
+				level = "info"
+				b.log.Warnf("subscription %s has reached high %d queued pending message, increase threshold %d -> %d of limit %d", sub.name, queueLen, previous, sub.queuedMax, sub.queuedSize)
+				subscriptionQueueThresholdTotal.With(prometheus.Labels{"family": sub.family, "change": "increase", "block": sub.block, "level": "info"}).Inc()
+			} else {
+				b.log.Tracef("subscription %s has reached high %d queued pending message, increase threshold %d -> %d of limit %d", sub.name, queueLen, previous, sub.queuedMax, sub.queuedSize)
+				subscriptionQueueThresholdTotal.With(prometheus.Labels{"family": sub.family, "change": "increase", "block": sub.block, "level": "debug"}).Inc()
 			}
+			go sub.publisher.Pub(&SubscriptionQueueThreshold{Name: sub.name, ID: sub.id, Count: queueLen, From: previous, To: sub.queuedMax, Limit: sub.queuedSize}, Label{"counter", ""}, Label{"level", level})
+		} else if queueLen > sub.queuedMin && queueLen < sub.queuedMax/4 {
+			previous := sub.queuedMax
+			sub.queuedMax /= 8
+			left := sub.queuedSize - sub.queuedMax
+			level := "debug"
+			if left < sub.queuedSize/2 {
+				// 1/2 full
+				level = "info"
+				b.log.Infof("subscription %s has reached low %d queued pending message, decrease threshold %d -> %d of limit %d", sub.name, queueLen, previous, sub.queuedMax, sub.queuedSize)
+				subscriptionQueueThresholdTotal.With(prometheus.Labels{"family": sub.family, "change": "decrease", "block": sub.block, "level": "info"}).Inc()
+			} else {
+				b.log.Tracef("subscription %s has reached low %d queued pending message, decrease threshold %d -> %d of limit %d", sub.name, queueLen, previous, sub.queuedMax, sub.queuedSize)
+				subscriptionQueueThresholdTotal.With(prometheus.Labels{"family": sub.family, "change": "decrease", "block": sub.block, "level": "debug"}).Inc()
+			}
+			go sub.publisher.Pub(&SubscriptionQueueThreshold{Name: sub.name, ID: sub.id, Count: queueLen, From: previous, To: sub.queuedMax, Limit: sub.queuedSize}, Label{"counter", ""}, Label{"level", level})
 		}
 	}
 	if c.resp != nil {
@@ -723,8 +701,10 @@ func (b *Bus) onSubAddFilter(c cmdSubAddFilter) {
 		labels:   c.labels,
 	})
 	b.subs[c.id] = sub
-	b.subMap.Del(c.id, ":")
-	b.subMap.Add(c.id, sub.keys()...)
+
+	// Update inverted index
+	b.index.AddSubscription(c.id, sub.filters)
+
 	c.resp <- nil
 }
 
@@ -744,8 +724,10 @@ func (b *Bus) onSubDelFilter(c cmdSubDelFilter) {
 	}
 	sub.filters = filters
 	b.subs[c.id] = sub
-	b.subMap.Del(c.id, ":")
-	b.subMap.Add(c.id, sub.keys()...)
+
+	// Update inverted index
+	b.index.AddSubscription(c.id, filters)
+
 	c.resp <- nil
 }
 
@@ -828,7 +810,6 @@ func cmdPubFactory(v Messager, labels ...Label) *cmdPub {
 		labels:   pubLabels,
 		data:     v,
 		dataType: dataType,
-		pubKeys:  pubKeysForDatatype(dataType, pubLabels.Keys()),
 	}
 }
 
@@ -1064,25 +1045,6 @@ func (sub *Subscription) drain() {
 	}
 }
 
-// keys return [] of sub filterkeys where labels are sorted to match publication
-// combination.
-//
-//	[]string{
-//	        "<Type>:",  // a filter of <Type> without labels
-//	        "<Type>:{<name>:<value>}{<name>:<value>}....
-//	}
-func (sub *Subscription) keys() []string {
-	if len(sub.filters) == 0 {
-		return []string{":"}
-	}
-	l := make([]string, len(sub.filters))
-	for i, f := range sub.filters {
-		l[i] = f.key()
-	}
-	slices.Sort(l)
-	return l
-}
-
 func (pub cmdPub) String() string {
 	var dataStr string
 	switch data := pub.data.(type) {
@@ -1104,24 +1066,6 @@ func (t filter) key() string {
 
 func fmtKey(dataType string, labels Labels) string {
 	return dataType + ":" + labels.Key()
-}
-
-// pubKeysForDatatype return [] of pub filterkeys
-//
-//	[]string{
-//	        "<Type>:",  // a filter of <Type> without labels
-//	        "<Type>:{<name>:<value>}{<name>:<value>}....
-//	}
-func pubKeysForDatatype(dataType string, keys []string) []string {
-	l := make([]string, 0)
-	if len(keys) == 0 {
-		l = append(l, dataType+":", ":")
-	} else {
-		for _, key := range keys {
-			l = append(l, dataType+":"+key, ":"+key)
-		}
-	}
-	return l
 }
 
 func (sub *Subscription) String() string {
@@ -1268,57 +1212,4 @@ func (sub *Subscription) push(i any) error {
 		}
 	}
 	return nil
-}
-
-func (subM subscriptionMap) Del(id uuid.UUID, keys ...string) {
-	for _, key := range keys {
-		if m, ok := subM[key]; ok {
-			delete(m, id)
-			subM[key] = m
-		}
-	}
-}
-
-func (subM subscriptionMap) Add(id uuid.UUID, keys ...string) {
-	for _, key := range keys {
-		if m, ok := subM[key]; ok {
-			m[id] = nil
-			subM[key] = m
-		} else {
-			m = map[uuid.UUID]any{id: nil}
-			subM[key] = m
-		}
-	}
-}
-
-func (subM subscriptionMap) String() string {
-	s := "subscriptionMap{"
-	for key, m := range subM {
-		s += "\"" + key + "\": ["
-		for u := range m {
-			s += u.String() + " "
-		}
-		s = strings.TrimSuffix(s, " ") + "], "
-	}
-	s = strings.TrimSuffix(s, ", ") + "}"
-	return s
-}
-
-func combinations(elements []string) [][]string {
-	var result [][]string
-
-	var helper func(start int, current []string)
-	helper = func(start int, current []string) {
-		if len(current) > 0 {
-			combination := make([]string, len(current))
-			copy(combination, current)
-			result = append(result, combination)
-		}
-		for i := start; i < len(elements); i++ {
-			helper(i+1, append(current, elements[i]))
-		}
-	}
-
-	helper(0, []string{})
-	return result
 }

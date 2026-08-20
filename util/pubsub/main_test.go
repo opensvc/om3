@@ -65,40 +65,6 @@ func TestPub(t *testing.T) {
 	pub.Pub(&msgT{v: "foobar"})
 }
 
-func TestGenerateCombinations(t *testing.T) {
-	cases := map[string]struct {
-		input    []string
-		expected [][]string
-	}{
-		"empty input": {
-			input:    []string{},
-			expected: [][]string{},
-		},
-		"single element": {
-			input:    []string{"a"},
-			expected: [][]string{{"a"}},
-		},
-		"two elements": {
-			input:    []string{"a", "b"},
-			expected: [][]string{{"a"}, {"b"}, {"a", "b"}},
-		},
-		"three elements": {
-			input:    []string{"a", "b", "c"},
-			expected: [][]string{{"a"}, {"b"}, {"a", "b"}, {"c"}, {"a", "c"}, {"b", "c"}, {"a", "b", "c"}},
-		},
-		"duplicate elements": {
-			input:    []string{"a", "a"},
-			expected: [][]string{{"a"}, {"a"}, {"a", "a"}},
-		},
-	}
-
-	for name, c := range cases {
-		t.Run("combinations "+name, func(t *testing.T) {
-			result := combinations(c.input)
-			assert.ElementsMatch(t, c.expected, result)
-		})
-	}
-}
 func TestSub(t *testing.T) {
 	type (
 		testPub struct {
@@ -275,41 +241,32 @@ func TestLabelsKeys(t *testing.T) {
 	}{
 		"empty labels": {
 			labels:   Labels{},
-			expected: []string{""},
+			expected: []string{"", ":"},
 		},
 		"single key-value pair": {
 			labels:   Labels{"a": "1"},
-			expected: []string{"", "{a=1}"},
+			expected: []string{"{a=1}"},
 		},
 		"two key-value pairs": {
 			labels:   Labels{"a": "1", "b": "2"},
-			expected: []string{"", "{a=1}", "{a=1}{b=2}", "{b=2}"},
+			expected: []string{"{a=1}", "{b=2}"},
 		},
 		"three key-value pairs": {
 			labels: Labels{"a": "1", "b": "2", "c": "3"},
 			expected: []string{
-				"",
 				"{a=1}", "{b=2}", "{c=3}",
-				"{a=1}{b=2}", "{a=1}{c=3}", "{b=2}{c=3}",
-				"{a=1}{b=2}{c=3}",
 			},
 		},
 		"four key-value pairs": {
 			labels: Labels{"a": "1", "b": "2", "c": "3", "d": "4"},
 			expected: []string{
-				"",
 				"{a=1}", "{b=2}", "{c=3}", "{d=4}",
-				"{a=1}{b=2}", "{a=1}{c=3}", "{a=1}{d=4}", "{b=2}{c=3}", "{b=2}{d=4}", "{c=3}{d=4}",
-				"{a=1}{b=2}{c=3}", "{a=1}{b=2}{d=4}", "{a=1}{c=3}{d=4}", "{b=2}{c=3}{d=4}",
-				"{a=1}{b=2}{c=3}{d=4}",
 			},
 		},
 		"keys with equal values": {
 			labels: Labels{"x": "val", "y": "val"},
 			expected: []string{
-				"",
 				"{x=val}", "{y=val}",
-				"{x=val}{y=val}",
 			},
 		},
 	}
@@ -322,68 +279,4 @@ func TestLabelsKeys(t *testing.T) {
 	}
 }
 
-func TestSubscriptionKeys(t *testing.T) {
-	cases := map[string]struct {
-		filters  filters
-		expected []string
-	}{
-		"no filters": {
-			filters:  filters{},
-			expected: []string{":"},
-		},
-		"single filter": {
-			filters: filters{
-				filter{
-					labels:   map[string]string{"a": "1"},
-					dataType: "type1",
-				},
-			},
-			expected: []string{"type1:{a=1}"},
-		},
-		"multiple filters unsorted must return filter with sorted labels to match combination": {
-			filters: filters{
-				filter{
-					labels:   map[string]string{"c": "3", "b": "2", "a": "1"},
-					dataType: "type1",
-				},
-			},
-			expected: []string{"type1:{a=1}{b=2}{c=3}"},
-		},
-		"multiple datatype and filters unsorted": {
-			filters: filters{
-				filter{
-					labels:   map[string]string{"C": "3", "B": "2", "A": "1"},
-					dataType: "type3",
-				},
-				filter{
-					labels:   map[string]string{"c": "3", "b": "2", "a": "1"},
-					dataType: "type1",
-				},
-			},
-			expected: []string{"type1:{a=1}{b=2}{c=3}", "type3:{A=1}{B=2}{C=3}"},
-		},
-		"multiple datatype and filters unsorted with same key": {
-			filters: filters{
-				filter{
-					labels:   map[string]string{"C": "3", "B": "2", "A": "1"},
-					dataType: "type3",
-				},
-				filter{
-					labels:   map[string]string{"C": "5", "B": "2", "A": "1"},
-					dataType: "type3",
-				},
-			},
-			expected: []string{"type3:{A=1}{B=2}{C=3}", "type3:{A=1}{B=2}{C=5}"},
-		},
-	}
 
-	for name, c := range cases {
-		t.Run(name, func(t *testing.T) {
-			sub := &Subscription{
-				filters: c.filters,
-			}
-			result := sub.keys()
-			assert.Equal(t, c.expected, result, "keys() output mismatch")
-		})
-	}
-}
