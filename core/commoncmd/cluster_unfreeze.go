@@ -15,7 +15,7 @@ type CmdClusterUnfreeze struct {
 func NewCmdClusterUnfreeze() *cobra.Command {
 	var options CmdClusterUnfreeze
 	cmd := &cobra.Command{
-		GroupID: GroupIDOrchestratedActions,
+		GroupID: GroupIDOrchestrated,
 		Use:     "unfreeze",
 		Hidden:  false,
 		Short:   "unblock ha automatic and split action start on all nodes",

@@ -9,6 +9,12 @@ import (
 
 // TransactionRenameKey changes the key name and return uncommitted
 func (t *dataStore) TransactionRenameKey(name, to string) error {
+	if name == "" {
+		return fmt.Errorf("old %w", ErrKeyEmpty)
+	}
+	if to == "" {
+		return fmt.Errorf("new %w", ErrKeyEmpty)
+	}
 	if t.HasKey(to) {
 		return fmt.Errorf("%w: %s", ErrKeyExist, to)
 	}

@@ -82,8 +82,18 @@ func Match(s1, s2 string) bool {
 	if rid1, err := Parse(s1); err != nil {
 		return false
 	} else {
-		return rid1.Match(s2)
+		return rid1.MatchUnion(s2)
 	}
+}
+
+func (t T) MatchUnion(s string) bool {
+	f := func(c rune) bool { return c == ',' }
+	for _, pattern := range strings.FieldsFunc(s, f) {
+		if t.Match(pattern) {
+			return true
+		}
+	}
+	return false
 }
 
 func (t T) Match(s string) bool {

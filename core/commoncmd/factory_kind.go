@@ -219,3 +219,13 @@ func NewCmdNodeSSH() *cobra.Command {
 		Short:   "ssh commands",
 	}
 }
+
+func NewCmdArrayList() *cobra.Command {
+	cmd := &cobra.Command{
+		Use:     "list",
+		Short:   "list the cluster-managed storage arrays",
+		Aliases: []string{"ls"},
+		GroupID: GroupIDQuery,
+	}
+	return cmd
+}

@@ -116,8 +116,11 @@ func HostDevpath(ctx context.Context, s string, namespace string) (string, error
 	} else if v {
 		if lo, err := loop.New().FileGet(ctx, s); err != nil {
 			return "", err
-		} else {
+		} else if lo != nil {
 			return lo.Name, nil
+		} else {
+			// loopback not active
+			return "", nil
 		}
 	}
 	// volume device

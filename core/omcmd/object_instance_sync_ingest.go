@@ -11,7 +11,7 @@ import (
 )
 
 type (
-	CmdObjectInstanceSyncIngest struct {
+	CmdObjectInstanceIngest struct {
 		OptsGlobal
 		commoncmd.OptsAsync
 		commoncmd.OptsLock
@@ -20,7 +20,7 @@ type (
 	}
 )
 
-func (t *CmdObjectInstanceSyncIngest) Run(kind string) error {
+func (t *CmdObjectInstanceIngest) Run(kind string) error {
 	mergedSelector := commoncmd.MergeSelector("", t.ObjectSelector, kind, "")
 	return objectaction.New(
 		objectaction.WithObjectSelector(mergedSelector),

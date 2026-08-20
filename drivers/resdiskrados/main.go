@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"slices"
+	"strings"
 	"time"
 
 	"github.com/rs/zerolog"
@@ -31,9 +32,12 @@ type (
 		Size       string `json:"size"`
 		Access     string `json:"access"`
 		Keyring    string `json:"keyring"`
+		Config     string `json:"config"`
+		Group      string `json:"group"`
 
 		featureDisabled  []string
 		keyringArgsCache []string
+		configArgsCache  []string
 	}
 
 	RBDMap struct {
@@ -43,6 +47,13 @@ type (
 		Name      string `json:"name"`
 		Snap      string `json:"snap"`
 		Device    string `json:"device"`
+	}
+
+	RBDGroupImage struct {
+		Image     string `json:"image"`
+		Pool      string `json:"pool"`
+		Namespace string `json:"namespace"`
+		State     int    `json:"state"`
 	}
 
 	RBDInfo struct {
@@ -62,6 +73,7 @@ type (
 		AccessTimestamp string         `json:"access_timestamp"`
 		ModifyTimestamp string         `json:"modify_timestamp"`
 		Parent          *RBDParentInfo `json:"parent,omitempty"`
+		Group           string         `json:"group,omitempty"`
 	}
 
 	RBDParentInfo struct {
@@ -91,12 +103,21 @@ func New() resource.Driver {
 	return t
 }
 
-func (t RBDMap) ImageSpec() string {
+func (t *RBDMap) ImageSpec() string {
 	s := t.Pool
 	if t.Namespace != "" {
 		s += "/" + t.Namespace
 	}
 	return s + "/" + t.Name
+}
+
+func (t *T) spec() string {
+	if strings.Contains(t.Name, "/") {
+		return t.Name
+	} else {
+		// prefix with then default pool so we can compare with RBDMap ImageSpec()
+		return "rbd/" + t.Name
+	}
 }
 
 func (t *T) Start(ctx context.Context) error {
@@ -116,7 +137,7 @@ func (t *T) mapDevice(ctx context.Context) error {
 		t.Log().Infof("%s is already mapped", t.Name)
 		return nil
 	}
-	args, err := t.keyringArgs()
+	args, err := t.rbdArgs()
 	if err != nil {
 		return err
 	}
@@ -148,7 +169,7 @@ func (t *T) unmapDevice(ctx context.Context) error {
 		return err
 	}
 	udevadm.Settle()
-	args, err := t.keyringArgs()
+	args, err := t.rbdArgs()
 	if err != nil {
 		return err
 	}
@@ -174,7 +195,7 @@ func (t *T) createDevice(ctx context.Context) error {
 	if err != nil {
 		return err
 	}
-	args, err := t.keyringArgs()
+	args, err := t.rbdArgs()
 	if err != nil {
 		return err
 	}
@@ -197,7 +218,7 @@ func (t *T) createDevice(ctx context.Context) error {
 }
 
 func (t *T) removeDevice(ctx context.Context) error {
-	args, err := t.keyringArgs()
+	args, err := t.rbdArgs()
 	if err != nil {
 		return err
 	}
@@ -225,7 +246,7 @@ func (t *T) lockDevice(ctx context.Context) error {
 		t.Log().Infof("%s is already locked", t.Name)
 		return nil
 	}
-	args, err := t.keyringArgs()
+	args, err := t.rbdArgs()
 	if err != nil {
 		return err
 	}
@@ -258,7 +279,7 @@ func (t *T) unlockDevice(ctx context.Context) error {
 		t.Log().Infof("%s is already unlocked", t.Name)
 		return nil
 	}
-	args, err := t.keyringArgs()
+	args, err := t.rbdArgs()
 	if err != nil {
 		return err
 	}
@@ -292,7 +313,7 @@ func (t *T) Info(ctx context.Context) (resource.InfoKeys, error) {
 }
 
 func (t *T) deviceInfo(ctx context.Context) (*RBDInfo, error) {
-	args, err := t.keyringArgs()
+	args, err := t.rbdArgs()
 	if err != nil {
 		return nil, err
 	}
@@ -320,8 +341,53 @@ func (t *T) deviceInfo(ctx context.Context) (*RBDInfo, error) {
 	return &data, nil
 }
 
+func (t *T) imageGroup(ctx context.Context) (string, error) {
+	args, err := t.rbdArgs()
+	if err != nil {
+		return "", err
+	}
+	args = append(args, "group", "image", "info", t.Name, "--format", "json")
+	cmd := command.New(
+		command.WithContext(ctx),
+		command.WithTimeout(DefaultQueryTimeout),
+		command.WithName("rbd"),
+		command.WithArgs(args),
+		command.WithLogger(t.Log()),
+		command.WithBufferedStdout(),
+		command.WithIgnoredExitCodes(0, 2),
+	)
+	b, err := cmd.Output()
+	if cmd.ExitCode() == 2 {
+		return "", nil
+	}
+	if err != nil {
+		// Fall back to checking device info
+		info, err := t.deviceInfo(ctx)
+		if err != nil {
+			return "", err
+		}
+		if info != nil {
+			return info.Group, nil
+		}
+		return "", fmt.Errorf("group image info: %v", err)
+	}
+	var data map[string]string
+	if err := json.Unmarshal(b, &data); err != nil {
+		// Fall back to checking device info
+		info, err := t.deviceInfo(ctx)
+		if err != nil {
+			return "", err
+		}
+		if info != nil {
+			return info.Group, nil
+		}
+		return "", fmt.Errorf("group image info unmarshal: %v", err)
+	}
+	return data["group"], nil
+}
+
 func (t *T) listLocks(ctx context.Context) ([]RBDLock, error) {
-	args, err := t.keyringArgs()
+	args, err := t.rbdArgs()
 	if err != nil {
 		return nil, err
 	}
@@ -347,7 +413,7 @@ func (t *T) listLocks(ctx context.Context) ([]RBDLock, error) {
 }
 
 func (t *T) listDevices(ctx context.Context) ([]RBDMap, error) {
-	args, err := t.keyringArgs()
+	args, err := t.rbdArgs()
 	if err != nil {
 		return nil, err
 	}
@@ -384,10 +450,29 @@ func (t *T) removeHolders(ctx context.Context) error {
 }
 
 func (t *T) Status(ctx context.Context) status.T {
-	if v, err := t.isMapped(ctx); err != nil {
+	v, err := t.isMapped(ctx)
+	if err != nil {
 		t.StatusLog().Error("%s", err)
 		return status.Undef
-	} else if v {
+	}
+	// Check group status if group is defined
+	if t.Group != "" {
+		groupExists, err := t.groupExists(ctx)
+		if err != nil {
+			t.StatusLog().Warn("failed to check group existence: %v", err)
+		} else if !groupExists {
+			t.StatusLog().Warn("group %s does not exist", t.Group)
+		} else {
+			// Only check if image is in group if group exists
+			imageInGroup, err := t.imageInGroup(ctx)
+			if err != nil {
+				t.StatusLog().Warn("failed to check if image is in group: %v", err)
+			} else if !imageInGroup {
+				t.StatusLog().Warn("image %s is not in group %s", t.Name, t.Group)
+			}
+		}
+	}
+	if v {
 		return status.Up
 	}
 	return status.Down
@@ -403,7 +488,7 @@ func (t *T) isMapped(ctx context.Context) (bool, error) {
 		return false, err
 	}
 	for _, dev := range data {
-		if dev.ImageSpec() == t.Name {
+		if dev.ImageSpec() == t.spec() {
 			return true, nil
 		}
 	}
@@ -457,16 +542,43 @@ func (t *T) ProvisionAsLeader(ctx context.Context) error {
 	if err != nil {
 		return err
 	}
-	if exists {
+	if !exists {
+		if err := t.createDevice(ctx); err != nil {
+			return err
+		}
+		actionrollback.Register(ctx, func(ctx context.Context) error {
+			return t.removeDevice(ctx)
+		})
+	} else {
 		t.Log().Infof("%s is already provisioned", t.Name)
-		return nil
 	}
-	if err := t.createDevice(ctx); err != nil {
-		return err
+
+	// Handle group operations
+	if t.Group != "" {
+		groupExists, err := t.groupExists(ctx)
+		if err != nil {
+			return err
+		}
+		if !groupExists {
+			if err := t.groupCreate(ctx); err != nil {
+				return err
+			}
+			actionrollback.Register(ctx, func(ctx context.Context) error {
+				return t.groupRemove(ctx)
+			})
+		}
+
+		// Add image to group (handles checking if already in group and moving from other groups)
+		if err := t.groupImageAdd(ctx); err != nil {
+			return err
+		}
+		// Register rollback to remove image from group if it was added
+		// Note: we don't remove the group itself on rollback, as it might contain other images
+		actionrollback.Register(ctx, func(ctx context.Context) error {
+			return t.groupImageRemove(ctx)
+		})
 	}
-	actionrollback.Register(ctx, func(ctx context.Context) error {
-		return t.removeDevice(ctx)
-	})
+
 	return nil
 }
 
@@ -479,6 +591,36 @@ func (t *T) UnprovisionAsLeader(ctx context.Context) error {
 		t.Log().Infof("%s is already unprovisioned", t.Name)
 		return nil
 	}
+
+	// Handle group operations before removing device
+	if t.Group != "" {
+		groupExists, err := t.groupExists(ctx)
+		if err != nil {
+			return err
+		}
+		if groupExists {
+			imageInGroup, err := t.imageInGroup(ctx)
+			if err != nil {
+				return err
+			}
+			if imageInGroup {
+				if err := t.groupImageRemove(ctx); err != nil {
+					return err
+				}
+				// Check if group is now empty and remove it
+				isEmpty, err := t.groupIsEmpty(ctx)
+				if err != nil {
+					return err
+				}
+				if isEmpty {
+					if err := t.groupRemove(ctx); err != nil {
+						return err
+					}
+				}
+			}
+		}
+	}
+
 	return t.removeDevice(ctx)
 }
 
@@ -488,7 +630,7 @@ func (t *T) Provisioned(ctx context.Context) (provisioned.T, error) {
 }
 
 func (t *T) devpath() string {
-	return "/dev/rbd/" + t.Name
+	return "/dev/rbd/" + t.spec()
 }
 
 func (t *T) exposedDevice() device.T {
@@ -547,7 +689,7 @@ func (t *T) PreMove(ctx context.Context, to string) error {
 }
 
 func (t *T) disableFeature(ctx context.Context, feature string) error {
-	args, err := t.keyringArgs()
+	args, err := t.rbdArgs()
 	if err != nil {
 		return err
 	}
@@ -569,7 +711,7 @@ func (t *T) disableFeature(ctx context.Context, feature string) error {
 }
 
 func (t *T) enableFeature(ctx context.Context, feature string) error {
-	args, err := t.keyringArgs()
+	args, err := t.rbdArgs()
 	if err != nil {
 		return err
 	}
@@ -644,4 +786,323 @@ func (t *T) keyringArgs() ([]string, error) {
 	}
 	t.keyringArgsCache = []string{"--keyring", keyringFile}
 	return t.keyringArgsCache, nil
+}
+
+func (t *T) configArgs() ([]string, error) {
+	if t.Config == "" {
+		return []string{}, nil
+	}
+	if t.configArgsCache != nil {
+		return t.configArgsCache, nil
+	}
+	km, err := datarecv.ParseKeyMetaRelObj(t.Config, t.GetObject())
+	if err != nil {
+		t.configArgsCache = []string{}
+		return t.configArgsCache, err
+	}
+	configFile, err := km.CacheFile()
+	if err != nil {
+		t.configArgsCache = []string{}
+		return t.configArgsCache, err
+	}
+	t.configArgsCache = []string{"-c", configFile}
+	return t.configArgsCache, nil
+}
+
+func (t *T) rbdArgs() ([]string, error) {
+	var args []string
+	keyringArgs, err := t.keyringArgs()
+	if err != nil {
+		return nil, err
+	}
+	args = append(args, keyringArgs...)
+	configArgs, err := t.configArgs()
+	if err != nil {
+		return nil, err
+	}
+	args = append(args, configArgs...)
+	return args, nil
+}
+
+func (t *T) groupExists(ctx context.Context) (bool, error) {
+	if t.Group == "" {
+		return false, nil
+	}
+	args, err := t.rbdArgs()
+	if err != nil {
+		return false, err
+	}
+	args = append(args, "group", "list", "--format", "json")
+	cmd := command.New(
+		command.WithContext(ctx),
+		command.WithTimeout(DefaultQueryTimeout),
+		command.WithName("rbd"),
+		command.WithArgs(args),
+		command.WithLogger(t.Log()),
+		command.WithBufferedStdout(),
+		command.WithStderrLogLevel(zerolog.ErrorLevel),
+	)
+	b, err := cmd.Output()
+	if err != nil {
+		return false, fmt.Errorf("group list: %v", err)
+	}
+	var groups []string
+	if err := json.Unmarshal(b, &groups); err != nil {
+		return false, fmt.Errorf("group list unmarshal: %v", err)
+	}
+	for _, group := range groups {
+		if group == t.Group {
+			return true, nil
+		}
+	}
+	return false, nil
+}
+
+func (t *T) imageInGroup(ctx context.Context) (bool, error) {
+	if t.Group == "" {
+		return false, nil
+	}
+	args, err := t.rbdArgs()
+	if err != nil {
+		return false, err
+	}
+	args = append(args, "group", "image", "list", t.Group, "--format", "json")
+	cmd := command.New(
+		command.WithContext(ctx),
+		command.WithTimeout(DefaultQueryTimeout),
+		command.WithName("rbd"),
+		command.WithArgs(args),
+		command.WithLogger(t.Log()),
+		command.WithBufferedStdout(),
+		command.WithStderrLogLevel(zerolog.ErrorLevel),
+	)
+	b, err := cmd.Output()
+	if err != nil {
+		return false, fmt.Errorf("group image list: %v", err)
+	}
+	var images []RBDGroupImage
+	if err := json.Unmarshal(b, &images); err != nil {
+		return false, fmt.Errorf("group image list unmarshal: %v", err)
+	}
+	for _, img := range images {
+		if img.Image == t.Name {
+			return true, nil
+		}
+	}
+	return false, nil
+}
+
+func (t *T) groupCreate(ctx context.Context) error {
+	if t.Group == "" {
+		return nil
+	}
+	args, err := t.rbdArgs()
+	if err != nil {
+		return err
+	}
+	args = append(args, "group", "create", t.Group)
+	cmd := command.New(
+		command.WithContext(ctx),
+		command.WithTimeout(DefaultCommandTimeout),
+		command.WithName("rbd"),
+		command.WithArgs(args),
+		command.WithLogger(t.Log()),
+		command.WithCommandLogLevel(zerolog.InfoLevel),
+		command.WithStdoutLogLevel(zerolog.InfoLevel),
+		command.WithStderrLogLevel(zerolog.ErrorLevel),
+	)
+	if err := cmd.Run(); err != nil {
+		return fmt.Errorf("group create: %v", err)
+	}
+	return nil
+}
+
+func (t *T) groupImageAdd(ctx context.Context) error {
+	if t.Group == "" {
+		return nil
+	}
+
+	// First check if image is already in the target group
+	imageInGroup, err := t.imageInGroup(ctx)
+	if err != nil {
+		return err
+	}
+	if imageInGroup {
+		return nil // Already in the group, nothing to do
+	}
+
+	// Try to add the image to the group
+	args, err := t.rbdArgs()
+	if err != nil {
+		return err
+	}
+	args = append(args, "group", "image", "add", t.Group, t.Name)
+	cmd := command.New(
+		command.WithContext(ctx),
+		command.WithTimeout(DefaultCommandTimeout),
+		command.WithName("rbd"),
+		command.WithArgs(args),
+		command.WithLogger(t.Log()),
+		command.WithCommandLogLevel(zerolog.InfoLevel),
+		command.WithStdoutLogLevel(zerolog.InfoLevel),
+		command.WithStderrLogLevel(zerolog.ErrorLevel),
+		command.WithIgnoredExitCodes(0, 17),
+	)
+	err = cmd.Run()
+	if err != nil {
+		// Any error other than exit code 17 (which we ignored) should be propagated
+		return fmt.Errorf("group image add: %v", err)
+	}
+	// Check exit code for 17 (File exists) - image is in another group
+	if cmd.ExitCode() == 17 {
+		// Image might be in another group, try to find and remove it
+		if err := t.moveImageToGroup(ctx); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func (t *T) moveImageToGroup(ctx context.Context) error {
+	// Directly query which group the image is in
+	currentGroup, err := t.imageGroup(ctx)
+	if err != nil {
+		return err
+	}
+	if currentGroup == "" {
+		// Image is not in any group, just try to add it
+		return t.addImageToGroup(ctx)
+	}
+	if currentGroup == t.Group {
+		// Image is already in the target group
+		return nil
+	}
+	// Image is in a different group, remove it from there and add to target group
+	if err := t.groupImageRemoveFromGroup(ctx, currentGroup); err != nil {
+		return err
+	}
+	return t.addImageToGroup(ctx)
+}
+
+func (t *T) groupImageRemoveFromGroup(ctx context.Context, group string) error {
+	args, err := t.rbdArgs()
+	if err != nil {
+		return err
+	}
+	args = append(args, "group", "image", "remove", group, t.Name)
+	cmd := command.New(
+		command.WithContext(ctx),
+		command.WithTimeout(DefaultCommandTimeout),
+		command.WithName("rbd"),
+		command.WithArgs(args),
+		command.WithLogger(t.Log()),
+		command.WithCommandLogLevel(zerolog.InfoLevel),
+		command.WithStdoutLogLevel(zerolog.InfoLevel),
+		command.WithStderrLogLevel(zerolog.ErrorLevel),
+	)
+	if err := cmd.Run(); err != nil {
+		return fmt.Errorf("group image remove from %s: %v", group, err)
+	}
+	return nil
+}
+
+func (t *T) addImageToGroup(ctx context.Context) error {
+	args, err := t.rbdArgs()
+	if err != nil {
+		return err
+	}
+	args = append(args, "group", "image", "add", t.Group, t.Name)
+	cmd := command.New(
+		command.WithContext(ctx),
+		command.WithTimeout(DefaultCommandTimeout),
+		command.WithName("rbd"),
+		command.WithArgs(args),
+		command.WithLogger(t.Log()),
+		command.WithCommandLogLevel(zerolog.InfoLevel),
+		command.WithStdoutLogLevel(zerolog.InfoLevel),
+		command.WithStderrLogLevel(zerolog.ErrorLevel),
+	)
+	if err := cmd.Run(); err != nil {
+		return fmt.Errorf("group image add: %v", err)
+	}
+	return nil
+}
+
+func (t *T) groupImageRemove(ctx context.Context) error {
+	if t.Group == "" {
+		return nil
+	}
+	args, err := t.rbdArgs()
+	if err != nil {
+		return err
+	}
+	args = append(args, "group", "image", "remove", t.Group, t.Name)
+	cmd := command.New(
+		command.WithContext(ctx),
+		command.WithTimeout(DefaultCommandTimeout),
+		command.WithName("rbd"),
+		command.WithArgs(args),
+		command.WithLogger(t.Log()),
+		command.WithCommandLogLevel(zerolog.InfoLevel),
+		command.WithStdoutLogLevel(zerolog.InfoLevel),
+		command.WithStderrLogLevel(zerolog.ErrorLevel),
+	)
+	if err := cmd.Run(); err != nil {
+		return fmt.Errorf("group image remove: %v", err)
+	}
+	return nil
+}
+
+func (t *T) groupRemove(ctx context.Context) error {
+	if t.Group == "" {
+		return nil
+	}
+	args, err := t.rbdArgs()
+	if err != nil {
+		return err
+	}
+	args = append(args, "group", "remove", t.Group)
+	cmd := command.New(
+		command.WithContext(ctx),
+		command.WithTimeout(DefaultCommandTimeout),
+		command.WithName("rbd"),
+		command.WithArgs(args),
+		command.WithLogger(t.Log()),
+		command.WithCommandLogLevel(zerolog.InfoLevel),
+		command.WithStdoutLogLevel(zerolog.InfoLevel),
+		command.WithStderrLogLevel(zerolog.ErrorLevel),
+	)
+	if err := cmd.Run(); err != nil {
+		return fmt.Errorf("group remove: %v", err)
+	}
+	return nil
+}
+
+func (t *T) groupIsEmpty(ctx context.Context) (bool, error) {
+	if t.Group == "" {
+		return false, nil
+	}
+	args, err := t.rbdArgs()
+	if err != nil {
+		return false, err
+	}
+	args = append(args, "group", "image", "list", t.Group, "--format", "json")
+	cmd := command.New(
+		command.WithContext(ctx),
+		command.WithTimeout(DefaultQueryTimeout),
+		command.WithName("rbd"),
+		command.WithArgs(args),
+		command.WithLogger(t.Log()),
+		command.WithBufferedStdout(),
+		command.WithStderrLogLevel(zerolog.ErrorLevel),
+	)
+	b, err := cmd.Output()
+	if err != nil {
+		return false, fmt.Errorf("group image list: %v", err)
+	}
+	var images []RBDGroupImage
+	if err := json.Unmarshal(b, &images); err != nil {
+		return false, fmt.Errorf("group image list unmarshal: %v", err)
+	}
+	return len(images) == 0, nil
 }

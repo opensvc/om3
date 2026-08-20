@@ -14,6 +14,7 @@ import (
 	"github.com/rs/zerolog/log"
 	"github.com/spf13/cobra"
 
+	"github.com/opensvc/om3/v3/core/commoncmd"
 	"github.com/opensvc/om3/v3/core/env"
 	"github.com/opensvc/om3/v3/core/naming"
 	"github.com/opensvc/om3/v3/core/object"
@@ -232,6 +233,7 @@ func guessSubsystem(s string) string {
 }
 
 func init() {
+	commoncmd.SetCustomUsageTemplate(root)
 	root.PersistentFlags().StringVar(&colorFlag, "color", "auto", "output colorization (yes|no|auto)")
 	root.PersistentFlags().BoolVarP(&quietFlag, "quiet", "q", false, "do not display logs on the console")
 	root.PersistentFlags().BoolVar(&debugFlag, "debug", false, "display logs at debug level")

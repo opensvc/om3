@@ -11,7 +11,7 @@ import (
 )
 
 type (
-	CmdObjectInstanceSyncResync struct {
+	CmdObjectInstanceResync struct {
 		OptsGlobal
 		commoncmd.OptsAsync
 		commoncmd.OptsLock
@@ -21,7 +21,7 @@ type (
 	}
 )
 
-func (t *CmdObjectInstanceSyncResync) Run(kind string) error {
+func (t *CmdObjectInstanceResync) Run(kind string) error {
 	mergedSelector := commoncmd.MergeSelector("", t.ObjectSelector, kind, "")
 	return objectaction.New(
 		objectaction.WithObjectSelector(mergedSelector),

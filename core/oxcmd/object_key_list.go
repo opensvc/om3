@@ -61,7 +61,11 @@ func (t *CmdObjectKeyList) Run(kind string) error {
 }
 
 func (t *CmdObjectKeyList) RunForPath(ctx context.Context, c *client.T, path naming.Path) (api.DataKeyListItems, error) {
-	response, err := c.GetObjectDataKeysWithResponse(ctx, path.Namespace, path.Kind, path.Name)
+	var filter *string
+	if t.Match != "" {
+		filter = &t.Match
+	}
+	response, err := c.GetObjectDataKeysWithResponse(ctx, api.InPathNamespace(path.Namespace), api.InPathKind(path.Kind), api.InPathName(path.Name), &api.GetObjectDataKeysParams{Filter: filter})
 	if err != nil {
 		return nil, err
 	}

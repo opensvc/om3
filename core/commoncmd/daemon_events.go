@@ -20,6 +20,7 @@ import (
 	"github.com/opensvc/om3/v3/util/flatten"
 	"github.com/opensvc/om3/v3/util/pubsub"
 	"github.com/opensvc/om3/v3/util/xmap"
+	"github.com/spf13/cobra"
 )
 
 type (
@@ -67,6 +68,16 @@ func UsageFlagEventTemplate() string {
 
 func UsageFlagEventFilter() string {
 	return usageFlagEventFilter
+}
+
+func NewCmdDaemonEvents() *cobra.Command {
+	cmd := &cobra.Command{
+		Use:     "events",
+		Short:   "print the daemon event stream",
+		Long:    "Print the daemon event stream\n\n" + UsageFlagEventFilter() + "\n" + UsageFlagEventTemplate(),
+		Aliases: []string{"ev", "event"},
+	}
+	return cmd
 }
 
 func (c *templateHelper) passSet(s string, b bool) (changed bool) {

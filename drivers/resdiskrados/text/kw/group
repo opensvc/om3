@@ -1,0 +1,9 @@
+This keyword specifies the RBD group name for the image.
+
+On provision, the group will be created if it doesn't exist, and the image will be added to the group if it's not already a member.
+
+On status, a warning will be logged if the group doesn't exist or the image is not in the group.
+
+On unprovision, the image will be removed from the group, and the group will be removed if it becomes empty.
+
+Value format: a simple group name string.

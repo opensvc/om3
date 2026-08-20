@@ -360,3 +360,44 @@ func InstanceStatusUpdatedWaiter(ctx context.Context, paths naming.Paths) (func(
 	}
 	return func() { wg.Wait() }, nil
 }
+
+func SetRIDFromArgs(rid *string, args []string, group, defaultRID string) {
+	if rid == nil {
+		panic("SetRIDFromArgs call with a nil rid pointer")
+	} else if len(args) > 0 {
+		*rid = parseRIDFromArgs(args, group)
+	} else if *rid == "" {
+		*rid = defaultRID
+	}
+}
+
+func parseRIDFromArgs(args []string, group string) string {
+	return parseRIDFromArg(strings.Join(args, ","), group)
+}
+
+func parseRIDFromArg(s, group string) string {
+	if group == "" {
+		return s
+	}
+	var sb strings.Builder
+	if !strings.Contains(s, ",") {
+		sb.WriteString(group)
+		sb.WriteString("#")
+		sb.WriteString(s)
+		return sb.String()
+	}
+	elements := strings.Split(s, ",")
+	n := len(elements) - 1
+	for i, element := range elements {
+		if element == "" {
+			continue
+		}
+		sb.WriteString(group)
+		sb.WriteString("#")
+		sb.WriteString(element)
+		if i < n {
+			sb.WriteString(",")
+		}
+	}
+	return sb.String()
+}

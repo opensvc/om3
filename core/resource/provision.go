@@ -67,6 +67,9 @@ func getProvisionStatus(ctx context.Context, t Driver) ProvisionStatus {
 
 // Provision handles triggers around provision() and resource dependencies
 func Provision(ctx context.Context, r Driver, leader bool) error {
+	if err := removeStopped(r); err != nil {
+		return err
+	}
 	defer EvalStatus(ctx, r)
 	if r.IsDisabled() {
 		return nil

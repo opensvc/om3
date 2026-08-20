@@ -13,7 +13,7 @@ func init() {
 	cmdObjectKey := commoncmd.NewCmdObjectKey(kind)
 	cmdObjectInstance := commoncmd.NewCmdObjectInstance(kind)
 	cmdObjectSet := newCmdObjectSet(kind)
-	cmdObjectPrint := newCmdObjectPrint(kind)
+	cmdObjectPrint := commoncmd.NewCmdObjectPrint(kind)
 	cmdObjectPrintConfig := newCmdObjectPrintConfig(kind)
 	cmdObjectValidate := newCmdObjectValidate(kind)
 
@@ -21,7 +21,7 @@ func init() {
 		cmdObject,
 	)
 	cmdObject.AddGroup(
-		commoncmd.NewGroupOrchestratedActions(),
+		commoncmd.NewGroupOrchestrated(),
 		commoncmd.NewGroupQuery(),
 		commoncmd.NewGroupSubsystems(),
 	)
@@ -41,7 +41,6 @@ func init() {
 		newCmdDataStoreKeys(kind),
 		newCmdDataStoreInstall(kind),
 		newCmdDataStoreRemove(kind),
-		newCmdDataStoreRename(kind),
 		newCmdObjectCreate(kind),
 		newCmdObjectDelete(kind),
 		newCmdObjectEval(kind),

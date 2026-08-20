@@ -143,6 +143,7 @@ func ExecuteArgs(args []string) {
 }
 
 func init() {
+	commoncmd.SetCustomUsageTemplate(root)
 	root.PersistentFlags().StringVar(&colorFlag, "color", "auto", "Output colorization yes|no|auto.")
 	root.PersistentFlags().BoolVarP(&quietFlag, "quiet", "q", false, "do not display logs on the console")
 	root.PersistentFlags().StringVar(&serverFlag, "server", "", "URI of the opensvc api server.")

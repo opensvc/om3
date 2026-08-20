@@ -1,1 +1,1 @@
-The arguments to pass through `lxc-create` to the per-template script.
+The command to use to create the container. Usually a `virt-install` command or a custom script.

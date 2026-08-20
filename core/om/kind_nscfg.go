@@ -20,7 +20,7 @@ func init() {
 		cmdObject,
 	)
 	cmdObject.AddGroup(
-		commoncmd.NewGroupOrchestratedActions(),
+		commoncmd.NewGroupOrchestrated(),
 		commoncmd.NewGroupQuery(),
 		commoncmd.NewGroupSubsystems(),
 	)

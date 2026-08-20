@@ -38,7 +38,7 @@ var (
 			Provisioning: true,
 			Converter:    "shlex",
 			Text:         keywords.NewText(fs, "text/kw/virtinst"),
-			Example:      "--release focal",
+			Example:      "virt-install --name {fqdn} --memory 2048 --vcpus 2 --disk size=8 --cdrom /path/to/rhel9.iso --os-variant rhel9",
 		},
 		&rescontainer.KWRCmd,
 		&rescontainer.KWName,

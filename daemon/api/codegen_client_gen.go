@@ -526,7 +526,7 @@ type ClientInterface interface {
 	PutObjectDataKeyWithBody(ctx context.Context, namespace InPathNamespace, kind InPathKind, name InPathName, params *PutObjectDataKeyParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// GetObjectDataKeys request
-	GetObjectDataKeys(ctx context.Context, namespace InPathNamespace, kind InPathKind, name InPathName, reqEditors ...RequestEditorFn) (*http.Response, error)
+	GetObjectDataKeys(ctx context.Context, namespace InPathNamespace, kind InPathKind, name InPathName, params *GetObjectDataKeysParams, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// GetObjectResourceInfo request
 	GetObjectResourceInfo(ctx context.Context, namespace InPathNamespace, kind InPathKind, name InPathName, reqEditors ...RequestEditorFn) (*http.Response, error)
@@ -2334,8 +2334,8 @@ func (c *Client) PutObjectDataKeyWithBody(ctx context.Context, namespace InPathN
 	return c.Client.Do(req)
 }
 
-func (c *Client) GetObjectDataKeys(ctx context.Context, namespace InPathNamespace, kind InPathKind, name InPathName, reqEditors ...RequestEditorFn) (*http.Response, error) {
-	req, err := NewGetObjectDataKeysRequest(c.Server, namespace, kind, name)
+func (c *Client) GetObjectDataKeys(ctx context.Context, namespace InPathNamespace, kind InPathKind, name InPathName, params *GetObjectDataKeysParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewGetObjectDataKeysRequest(c.Server, namespace, kind, name, params)
 	if err != nil {
 		return nil, err
 	}
@@ -12130,7 +12130,7 @@ func NewPutObjectDataKeyRequestWithBody(server string, namespace InPathNamespace
 }
 
 // NewGetObjectDataKeysRequest generates requests for GetObjectDataKeys
-func NewGetObjectDataKeysRequest(server string, namespace InPathNamespace, kind InPathKind, name InPathName) (*http.Request, error) {
+func NewGetObjectDataKeysRequest(server string, namespace InPathNamespace, kind InPathKind, name InPathName, params *GetObjectDataKeysParams) (*http.Request, error) {
 	var err error
 
 	var pathParam0 string
@@ -12167,6 +12167,33 @@ func NewGetObjectDataKeysRequest(server string, namespace InPathNamespace, kind 
 	queryURL, err := serverURL.Parse(operationPath)
 	if err != nil {
 		return nil, err
+	}
+
+	if params != nil {
+		// queryValues collects non-styled parameters (passthrough, JSON)
+		// that are safe to round-trip through url.Values.Encode().
+		queryValues := queryURL.Query()
+		// rawQueryFragments collects pre-encoded query fragments from
+		// styled parameters, preserving literal commas as delimiters
+		// per the OpenAPI spec (e.g. "color=blue,black,brown").
+		var rawQueryFragments []string
+
+		if params.Filter != nil {
+
+			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "filter", *params.Filter, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "string", Format: ""}); err != nil {
+				return nil, err
+			} else {
+				for _, qp := range strings.Split(queryFrag, "&") {
+					rawQueryFragments = append(rawQueryFragments, qp)
+				}
+			}
+
+		}
+
+		if encoded := queryValues.Encode(); encoded != "" {
+			rawQueryFragments = append(rawQueryFragments, encoded)
+		}
+		queryURL.RawQuery = strings.Join(rawQueryFragments, "&")
 	}
 
 	req, err := http.NewRequest(http.MethodGet, queryURL.String(), nil)
@@ -13154,7 +13181,7 @@ type ClientWithResponsesInterface interface {
 	PutObjectDataKeyWithBodyWithResponse(ctx context.Context, namespace InPathNamespace, kind InPathKind, name InPathName, params *PutObjectDataKeyParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*PutObjectDataKeyResponse, error)
 
 	// GetObjectDataKeysWithResponse request
-	GetObjectDataKeysWithResponse(ctx context.Context, namespace InPathNamespace, kind InPathKind, name InPathName, reqEditors ...RequestEditorFn) (*GetObjectDataKeysResponse, error)
+	GetObjectDataKeysWithResponse(ctx context.Context, namespace InPathNamespace, kind InPathKind, name InPathName, params *GetObjectDataKeysParams, reqEditors ...RequestEditorFn) (*GetObjectDataKeysResponse, error)
 
 	// GetObjectResourceInfoWithResponse request
 	GetObjectResourceInfoWithResponse(ctx context.Context, namespace InPathNamespace, kind InPathKind, name InPathName, reqEditors ...RequestEditorFn) (*GetObjectResourceInfoResponse, error)
@@ -19613,8 +19640,8 @@ func (c *ClientWithResponses) PutObjectDataKeyWithBodyWithResponse(ctx context.C
 }
 
 // GetObjectDataKeysWithResponse request returning *GetObjectDataKeysResponse
-func (c *ClientWithResponses) GetObjectDataKeysWithResponse(ctx context.Context, namespace InPathNamespace, kind InPathKind, name InPathName, reqEditors ...RequestEditorFn) (*GetObjectDataKeysResponse, error) {
-	rsp, err := c.GetObjectDataKeys(ctx, namespace, kind, name, reqEditors...)
+func (c *ClientWithResponses) GetObjectDataKeysWithResponse(ctx context.Context, namespace InPathNamespace, kind InPathKind, name InPathName, params *GetObjectDataKeysParams, reqEditors ...RequestEditorFn) (*GetObjectDataKeysResponse, error) {
+	rsp, err := c.GetObjectDataKeys(ctx, namespace, kind, name, params, reqEditors...)
 	if err != nil {
 		return nil, err
 	}
