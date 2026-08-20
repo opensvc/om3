@@ -201,7 +201,7 @@ func (a *DaemonAPI) getLocalDaemonEvents(ctx echo.Context, params api.GetDaemonE
 		labels := m.GetLabels()
 		for _, k := range labels.Keys() {
 			// need verify both kind:label and nil:label
-			for _, s := range []string{kind + ":" + k, kind + ":" + k} {
+			for _, s := range []string{kind + ":" + k, kind + ":"} {
 				if _, ok := requestedFilterByFilterIdentifier[s]; ok {
 					return true
 				}
@@ -279,20 +279,19 @@ func (a *DaemonAPI) getLocalDaemonEvents(ctx echo.Context, params api.GetDaemonE
 
 	for _, filter := range filters {
 		if filter.Kind == nil {
-			log.Tracef("filtering %v %v", filter.Kind, filter.Labels)
+			log.Tracef("add expliticit filter: %v,%v", filter.Kind, filter.Labels)
 			requestedFilterByFilterIdentifier[pubsub.FilterFmt("", filter.Labels...)] = nil
 		} else if kind, ok := filter.Kind.(event.Kinder); ok {
 			requestedFilterByFilterIdentifier[pubsub.FilterFmt(kind.Kind(), filter.Labels...)] = nil
 
 			if len(filter.DataFilters) > 0 {
-				log.Tracef("filtering %s label:%v data:%v", kind.Kind(), filter.Labels, filter.DataFilters)
+				log.Tracef("add explicit filter: %s,%v data:%v", kind.Kind(), filter.Labels, filter.DataFilters)
 				dataFiltersByKind[kind.Kind()] = filter.DataFilters
 			} else {
-				log.Tracef("filtering %s label:%v", kind.Kind(), filter.Labels)
-				log.Tracef("filtering %s %v", kind.Kind(), filter.Labels)
+				log.Tracef("add explicit filter: %s,%v", kind.Kind(), filter.Labels)
 			}
 		} else {
-			log.Warnf("skip filtering of %s %v", reflect.TypeOf(filter.Kind), filter.Labels)
+			log.Warnf("skip explicit filter: %s,%v", reflect.TypeOf(filter.Kind), filter.Labels)
 			continue
 		}
 		sub.AddFilter(filter.Kind, filter.Labels...)
@@ -312,13 +311,13 @@ func (a *DaemonAPI) getLocalDaemonEvents(ctx echo.Context, params api.GetDaemonE
 		createdMsg := &msgbus.ObjectCreated{}
 		createdMsg.AddLabels(a.LabelLocalhost)
 		if !needForwardEvent("ObjectCreated", createdMsg) {
-			log.Tracef("add hidden filtering: ObjectCreated")
+			log.Tracef("add hidden filter: ObjectCreated")
 			sub.AddFilter(&msgbus.ObjectCreated{})
 		}
 		deleteMsg := &msgbus.ObjectDeleted{}
 		deleteMsg.AddLabels(a.LabelLocalhost)
 		if !needForwardEvent("ObjectDeleted", deleteMsg) {
-			log.Tracef("add hidden filtering: ObjectDeleted,node=%s", a.localhost)
+			log.Tracef("add hidden filter: ObjectDeleted,node=%s", a.localhost)
 			sub.AddFilter(&msgbus.ObjectDeleted{}, a.LabelLocalhost)
 		}
 	}
