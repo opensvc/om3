@@ -10,90 +10,125 @@
 package pubsub
 
 import (
-	"sync"
-
 	"github.com/google/uuid"
 )
 
-// invertedIndex implements efficient label-based subscription matching.
-// It maps label key-value pairs to the set of subscriptions that have that label.
-type invertedIndex struct {
-	mu sync.RWMutex
+// subFilterKey uniquely identifies a filter within a subscription.
+// Used as the key in the label index to track which specific filter
+// contains each label, allowing efficient verification of only the
+// relevant filters during matching.
+type subFilterKey struct {
+	subID    uuid.UUID
+	filterIdx int
+}
 
-	// labelIndex: key -> value -> subscriptionID -> struct{}
-	// Maps each label key-value pair to the set of subscriptions that have it
-	labelIndex map[string]map[string]map[uuid.UUID]struct{}
+// invertedIndex implements efficient label-based subscription matching.
+// It maps label key-value pairs to the set of (subscription, filter) pairs that have that label.
+//
+// Note: This index is designed to be used in a single-threaded context (e.g.,
+// serialized by the bus command channel). No mutex is needed for the intended
+// usage pattern where all operations are sequential.
+type invertedIndex struct {
+	// labelIndex: flatKey -> subFilterKey -> struct{}
+	// Maps each label key:value pair to the set of (subscription, filter) pairs that have it.
+	// flatKey format: "key:value" for regular labels, "__datatype__:value" for dataType.
+	labelIndex map[string]map[subFilterKey]struct{}
 
 	// subFilters: subscriptionID -> []filter
 	// Stores the complete set of filters for each subscription
 	subFilters map[uuid.UUID][]filter
 
-	// subLabelCount: subscriptionID -> int
-	// Number of label filters for each subscription (for quick superset check)
-	subLabelCount map[uuid.UUID]int
+	// subMinLabelCount: subscriptionID -> int
+	// Minimum number of labels in any filter for each subscription.
+	// Used for early pruning: if min > len(msgLabels), no filter can match.
+	subMinLabelCount map[uuid.UUID]int
+
+	// matchAllSubs: subscriptionID -> filterIdx
+	// Tracks filters with empty dataType and empty labels (match everything)
+	// These are not indexed by labels, so need special handling
+	matchAllSubs map[uuid.UUID][]int
 }
 
 // newInvertedIndex creates a new inverted index.
 func newInvertedIndex() *invertedIndex {
 	return &invertedIndex{
-		labelIndex:    make(map[string]map[string]map[uuid.UUID]struct{}),
-		subFilters:    make(map[uuid.UUID][]filter),
-		subLabelCount: make(map[uuid.UUID]int),
+		labelIndex:        make(map[string]map[subFilterKey]struct{}),
+		subFilters:        make(map[uuid.UUID][]filter),
+		subMinLabelCount: make(map[uuid.UUID]int),
+		matchAllSubs:      make(map[uuid.UUID][]int),
 	}
 }
 
 // AddSubscription adds a subscription with the given filters to the index.
+// Must be called from a single thread (serialized by the bus command channel).
 func (idx *invertedIndex) AddSubscription(subID uuid.UUID, filters []filter) {
-	idx.mu.Lock()
-	defer idx.mu.Unlock()
-
 	// Remove any existing entry for this subscription
-	idx.removeSubscriptionLockHeld(subID)
+	idx.removeSubscription(subID)
 
-	labelCount := 0
-	for _, f := range filters {
-		// Count non-empty label filters (dataType is handled separately)
-		if len(f.labels) > 0 {
-			labelCount++
-			// Index each label in this filter
-			for key, value := range f.labels {
-				if _, ok := idx.labelIndex[key]; !ok {
-					idx.labelIndex[key] = make(map[string]map[uuid.UUID]struct{})
-				}
-				if _, ok := idx.labelIndex[key][value]; !ok {
-					idx.labelIndex[key][value] = make(map[uuid.UUID]struct{})
-				}
-				idx.labelIndex[key][value][subID] = struct{}{}
+	// Track minimum number of labels across all filters for this subscription
+	// Also track match-all filters (empty dataType and empty labels)
+	minLabelCount := -1
+	var matchAllFilterIdxs []int
+	for filterIdx, f := range filters {
+		// Index each label in this filter with the filter index
+		sfk := subFilterKey{subID: subID, filterIdx: filterIdx}
+		for key, value := range f.labels {
+			flatKey := key + ":" + value
+			if _, ok := idx.labelIndex[flatKey]; !ok {
+				idx.labelIndex[flatKey] = make(map[subFilterKey]struct{})
 			}
+			idx.labelIndex[flatKey][sfk] = struct{}{}
 		}
+		// Index dataType as a special label for non-empty dataTypes
+		// This allows using dataType as a filter dimension during lookup
+		if f.dataType != "" {
+			flatKey := "__datatype__:" + f.dataType
+			if _, ok := idx.labelIndex[flatKey]; !ok {
+				idx.labelIndex[flatKey] = make(map[subFilterKey]struct{})
+			}
+			idx.labelIndex[flatKey][sfk] = struct{}{}
+		} else if len(f.labels) == 0 {
+			// Match-all filter: empty dataType and empty labels
+			matchAllFilterIdxs = append(matchAllFilterIdxs, filterIdx)
+		}
+		// Track minimum label count across all filters
+		labelCount := len(f.labels)
+		if minLabelCount < 0 || labelCount < minLabelCount {
+			minLabelCount = labelCount
+		}
+	}
+	// If all filters have no labels, minLabelCount remains -1, set to 0
+	if minLabelCount < 0 {
+		minLabelCount = 0
 	}
 
 	idx.subFilters[subID] = filters
-	idx.subLabelCount[subID] = labelCount
+	idx.subMinLabelCount[subID] = minLabelCount
+	idx.matchAllSubs[subID] = matchAllFilterIdxs
 }
 
 // RemoveSubscription removes a subscription from the index.
+// Must be called from a single thread (serialized by the bus command channel).
 func (idx *invertedIndex) RemoveSubscription(subID uuid.UUID) {
-	idx.mu.Lock()
-	defer idx.mu.Unlock()
-	idx.removeSubscriptionLockHeld(subID)
+	idx.removeSubscription(subID)
 }
 
-// removeSubscriptionLockHeld removes a subscription. Must be called with mu held.
-func (idx *invertedIndex) removeSubscriptionLockHeld(subID uuid.UUID) {
+// removeSubscription removes a subscription from the index.
+func (idx *invertedIndex) removeSubscription(subID uuid.UUID) {
 	delete(idx.subFilters, subID)
-	delete(idx.subLabelCount, subID)
+	delete(idx.subMinLabelCount, subID)
+	delete(idx.matchAllSubs, subID)
 
-	// Remove from all label index entries
-	for key, valueMap := range idx.labelIndex {
-		for value, subMap := range valueMap {
-			delete(subMap, subID)
-			if len(subMap) == 0 {
-				delete(valueMap, value)
+	// Remove from all label index entries (including __datatype__)
+	for flatKey, sfkMap := range idx.labelIndex {
+		// Delete all entries for this subscription
+		for sfk := range sfkMap {
+			if sfk.subID == subID {
+				delete(sfkMap, sfk)
 			}
 		}
-		if len(valueMap) == 0 {
-			delete(idx.labelIndex, key)
+		if len(sfkMap) == 0 {
+			delete(idx.labelIndex, flatKey)
 		}
 	}
 }
@@ -105,67 +140,86 @@ func (idx *invertedIndex) removeSubscriptionLockHeld(subID uuid.UUID) {
 // 1. The filter's dataType is empty or matches the message dataType
 // 2. All of the filter's labels are present in the message labels with matching values
 //    (i.e., filter_labels ⊆ message_labels)
+//
+// Must be called from a single thread (serialized by the bus command channel).
 func (idx *invertedIndex) FindMatchingSubscriptions(dataType string, msgLabels Labels) []uuid.UUID {
-	idx.mu.RLock()
-	defer idx.mu.RUnlock()
-
 	if len(idx.subFilters) == 0 {
 		return nil
 	}
 
-	// Collect candidate subscriptions: those that have at least one label
-	// matching the message. We'll then verify full filter match.
-	candidateSubs := make(map[uuid.UUID]struct{})
+	// Collect candidate (subscription, filter) pairs: those that have at least one label
+	// matching the message (including dataType as a synthetic label). This allows us to
+	// verify only the relevant filters.
+	candidateFilterKeys := make(map[subFilterKey]struct{})
 
-	// If message has labels, find subscriptions with matching labels
-	if len(msgLabels) > 0 {
-		for key, value := range msgLabels {
-			if valueMap, ok := idx.labelIndex[key]; ok {
-				if subMap, ok := valueMap[value]; ok {
-					for subID := range subMap {
-						candidateSubs[subID] = struct{}{}
-					}
+	// Build effective flat keys: include dataType as a special label if present
+	// For regular labels: "key:value"
+	// For dataType: "__datatype__:value"
+	effectiveFlatKeys := make(map[string]struct{})
+	for k, v := range msgLabels {
+		effectiveFlatKeys[k+":"+v] = struct{}{}
+	}
+	if dataType != "" {
+		effectiveFlatKeys["__datatype__:"+dataType] = struct{}{}
+	}
+
+	// If there are effective flat keys, find (sub, filter) pairs with matching labels
+	if len(effectiveFlatKeys) > 0 {
+		for flatKey := range effectiveFlatKeys {
+			if sfkMap, ok := idx.labelIndex[flatKey]; ok {
+				for sfk := range sfkMap {
+					candidateFilterKeys[sfk] = struct{}{}
 				}
 			}
 		}
-		// Also include subscriptions that might have empty-label filters
-		// (they won't be in labelIndex but could still match via dataType)
-		for subID, filters := range idx.subFilters {
-			for _, f := range filters {
-				// If filter has no labels and matches dataType, include it
-				if len(f.labels) == 0 && (f.dataType == "" || f.dataType == dataType) {
-					candidateSubs[subID] = struct{}{}
-					break
-				}
+		// Also include match-all filters (empty dataType and empty labels)
+		// These match everything, so need to be candidates for any message
+		for subID, filterIdxs := range idx.matchAllSubs {
+			for _, filterIdx := range filterIdxs {
+				sfk := subFilterKey{subID: subID, filterIdx: filterIdx}
+				candidateFilterKeys[sfk] = struct{}{}
 			}
 		}
 	} else {
-		// Message has no labels - all subscriptions are candidates
-		// (we'll filter by dataType and empty label filters below)
-		for subID := range idx.subFilters {
-			candidateSubs[subID] = struct{}{}
+		// Message has no labels and no dataType - all filters are candidates
+		for subID, filters := range idx.subFilters {
+			for filterIdx := range filters {
+				sfk := subFilterKey{subID: subID, filterIdx: filterIdx}
+				candidateFilterKeys[sfk] = struct{}{}
+			}
+		}
+		// Also include match-all filters
+		for subID, filterIdxs := range idx.matchAllSubs {
+			for _, filterIdx := range filterIdxs {
+				sfk := subFilterKey{subID: subID, filterIdx: filterIdx}
+				candidateFilterKeys[sfk] = struct{}{}
+			}
 		}
 	}
 
-	// Check each candidate subscription
-	var result []uuid.UUID
-	for subID := range candidateSubs {
-		if idx.subscriptionMatches(subID, dataType, msgLabels) {
-			result = append(result, subID)
+	// Check each candidate filter, deduplicating by subscription ID
+	result := make([]uuid.UUID, 0, len(candidateFilterKeys))
+	seenSubs := make(map[uuid.UUID]struct{})
+	for sfk := range candidateFilterKeys {
+		// Skip if we've already found a match for this subscription
+		if _, ok := seenSubs[sfk.subID]; ok {
+			continue
 		}
-	}
 
-	return result
-}
+		// Early pruning: if the minimum number of labels in any filter for this
+		// subscription is greater than the number of message labels, no filter
+		// can match (a filter with N labels cannot match a message with <N labels)
+		if minLabels := idx.subMinLabelCount[sfk.subID]; minLabels > len(msgLabels) {
+			continue
+		}
 
-// subscriptionMatches checks if a subscription matches the message.
-func (idx *invertedIndex) subscriptionMatches(subID uuid.UUID, dataType string, msgLabels Labels) bool {
-	filters, ok := idx.subFilters[subID]
-	if !ok {
-		return false
-	}
+		// Verify only this specific filter
+		filters := idx.subFilters[sfk.subID]
+		if sfk.filterIdx >= len(filters) {
+			continue
+		}
+		f := filters[sfk.filterIdx]
 
-	for _, f := range filters {
 		// Check dataType match
 		if f.dataType != "" && f.dataType != dataType {
 			continue
@@ -174,7 +228,9 @@ func (idx *invertedIndex) subscriptionMatches(subID uuid.UUID, dataType string, 
 		// Check if all filter labels are in message labels
 		if len(f.labels) == 0 {
 			// No label filters, dataType already matched - matches everything
-			return true
+			result = append(result, sfk.subID)
+			seenSubs[sfk.subID] = struct{}{}
+			continue
 		}
 
 		// If message has no labels but filter has labels, can't match
@@ -182,6 +238,7 @@ func (idx *invertedIndex) subscriptionMatches(subID uuid.UUID, dataType string, 
 			continue
 		}
 
+		// Verify all labels in this filter match the message
 		allMatch := true
 		for key, value := range f.labels {
 			if msgLabels[key] != value {
@@ -190,9 +247,10 @@ func (idx *invertedIndex) subscriptionMatches(subID uuid.UUID, dataType string, 
 			}
 		}
 		if allMatch {
-			return true
+			result = append(result, sfk.subID)
+			seenSubs[sfk.subID] = struct{}{}
 		}
 	}
 
-	return false
+	return result
 }

@@ -7,6 +7,9 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+// All tests in this file run sequentially, matching the bus's single-threaded
+// usage pattern where all index operations are serialized via the bus cmdC channel.
+
 func TestInvertedIndex_Basic(t *testing.T) {
 	idx := newInvertedIndex()
 
