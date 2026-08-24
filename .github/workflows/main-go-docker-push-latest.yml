@@ -29,16 +29,16 @@ jobs:
           cache-dependency-path: go.sum
 
       - name: Go build om
-        run: go build -v ./cmd/om
+        run: sudo go build -v ./cmd/om
 
       - name: Go build ox
-        run: go build -v ./cmd/ox
+        run: sudo go build -v ./cmd/ox
 
       - name: Run Go tests
-        run: go test -p 1 -timeout 60s ./...
+        run: sudo go test -p 1 -timeout 60s ./...
 
       - name: Run Go tests with race detector
-        run: go test -p 1 -timeout 600s --race ./...
+        run: sudo go test -p 1 -timeout 600s --race ./...
 
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
