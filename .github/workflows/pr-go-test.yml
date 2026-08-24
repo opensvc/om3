@@ -1,0 +1,36 @@
+name: PR Go Test
+
+on:
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  build-and-test:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Set up Go
+        uses: actions/setup-go@v7.0.0
+        with:
+          go-version-file: 'go.mod'
+          cache-dependency-path: go.sum
+
+      - name: Go build om
+        run: sudo go build -v ./cmd/om
+
+      - name: Go build ox
+        run: sudo go build -v ./cmd/ox
+
+      - name: Run Go tests
+        run: sudo go test -p 1 -timeout 60s ./...
+
+      - name: Run Go tests with race detector
+        run: sudo go test -p 1 -timeout 600s --race ./...
