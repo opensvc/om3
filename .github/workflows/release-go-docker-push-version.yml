@@ -70,10 +70,10 @@ jobs:
         run: sudo go test -p 1 -timeout 600s --race ./...
 
       - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v3
+        uses: docker/setup-buildx-action@v4.3.0
 
       - name: Log in to the Container registry
-        uses: docker/login-action@v3
+        uses: docker/login-action@v4.6.0
         with:
           registry: ${{ env.REGISTRY }}
           username: ${{ github.actor }}
@@ -91,7 +91,7 @@ jobs:
 
       - name: Extract metadata (tags, labels) for om
         id: meta-om
-        uses: docker/metadata-action@v5
+        uses: docker/metadata-action@v6.2.0
         with:
           images: ${{ env.REGISTRY }}/${{ env.IMAGE_OWNER }}/om
           tags: |
@@ -108,7 +108,7 @@ jobs:
 
       - name: Build and push om
         id: build-om
-        uses: docker/build-push-action@v6
+        uses: docker/build-push-action@v7.3.0
         with:
           context: .
           file: docker/om/Dockerfile
@@ -121,7 +121,7 @@ jobs:
 
       - name: Extract metadata (tags, labels) for ox
         id: meta-ox
-        uses: docker/metadata-action@v5
+        uses: docker/metadata-action@v6.2.0
         with:
           images: ${{ env.REGISTRY }}/${{ env.IMAGE_OWNER }}/ox
           tags: |
@@ -138,7 +138,7 @@ jobs:
 
       - name: Build and push ox
         id: build-ox
-        uses: docker/build-push-action@v6
+        uses: docker/build-push-action@v7.3.0
         with:
           context: .
           file: docker/ox/Dockerfile
@@ -151,7 +151,7 @@ jobs:
 
       - name: Extract metadata (tags, labels) for omx
         id: meta-omx
-        uses: docker/metadata-action@v5
+        uses: docker/metadata-action@v6.2.0
         with:
           images: ${{ env.REGISTRY }}/${{ env.IMAGE_OWNER }}/omx
           tags: |
@@ -168,7 +168,7 @@ jobs:
 
       - name: Build and push omx
         id: build-omx
-        uses: docker/build-push-action@v6
+        uses: docker/build-push-action@v7.3.0
         with:
           context: .
           file: docker/omx/Dockerfile
