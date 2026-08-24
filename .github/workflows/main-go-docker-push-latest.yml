@@ -9,7 +9,7 @@ env:
   IMAGE_OWNER: opensvc
 
 jobs:
-  build-and-push:
+  build-and-push-latest:
     runs-on: ubuntu-latest
     permissions:
       contents: read
