@@ -1,0 +1,130 @@
+name: Docker Build and Push (Release)
+
+on:
+  release:
+    types: [created]
+
+env:
+  REGISTRY: ghcr.io
+  IMAGE_OWNER: opensvc
+
+jobs:
+  build-and-push:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v7.0.1
+        with:
+          fetch-depth: 0
+          fetch-tags: true
+          persist-credentials: false
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Log in to the Container registry
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Extract release version
+        id: version
+        run: |
+          # Extract version from tag, removing 'v' prefix if present
+          VERSION=${{ github.ref_name }}
+          echo "version=${VERSION#v}" >> $GITHUB_OUTPUT
+
+      - name: Extract metadata (tags, labels) for om
+        id: meta-om
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ env.REGISTRY }}/${{ env.IMAGE_OWNER }}/om
+          tags: |
+            type=raw,value=${{ steps.version.outputs.version }}
+            type=raw,value=latest
+
+      - name: Build and push om
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: docker/om/Dockerfile
+          push: true
+          tags: ${{ steps.meta-om.outputs.tags }}
+          labels: |
+            ${{ steps.meta-om.outputs.labels }}
+            org.opencontainers.image.authors=OpenSVC SAS
+            org.opencontainers.image.created=${{ github.event.repository.updated_at }}
+            org.opencontainers.image.licenses=Apache-2.0
+            org.opencontainers.image.source=https://github.com/opensvc/om3
+            org.opencontainers.image.url=https://github.com/opensvc/om3
+            org.opencontainers.image.title=OpenSVC cluster orchestrator
+            org.opencontainers.image.version=${{ steps.version.outputs.version }}
+          build-args: |
+            VERSION=${{ steps.version.outputs.version }}
+            BUILDTIME=${{ github.event.repository.updated_at }}
+
+      - name: Extract metadata (tags, labels) for ox
+        id: meta-ox
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ env.REGISTRY }}/${{ env.IMAGE_OWNER }}/ox
+          tags: |
+            type=raw,value=${{ steps.version.outputs.version }}
+            type=raw,value=latest
+
+      - name: Build and push ox
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: docker/ox/Dockerfile
+          push: true
+          tags: ${{ steps.meta-ox.outputs.tags }}
+          labels: |
+            ${{ steps.meta-ox.outputs.labels }}
+            org.opencontainers.image.authors=OpenSVC SAS
+            org.opencontainers.image.created=${{ github.event.repository.updated_at }}
+            org.opencontainers.image.licenses=Apache-2.0
+            org.opencontainers.image.source=https://github.com/opensvc/om3
+            org.opencontainers.image.url=https://github.com/opensvc/om3
+            org.opencontainers.image.title=OpenSVC cluster orchestrator client
+            org.opencontainers.image.version=${{ steps.version.outputs.version }}
+          build-args: |
+            VERSION=${{ steps.version.outputs.version }}
+            BUILDTIME=${{ github.event.repository.updated_at }}
+
+      - name: Extract metadata (tags, labels) for omx
+        id: meta-omx
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ env.REGISTRY }}/${{ env.IMAGE_OWNER }}/omx
+          tags: |
+            type=raw,value=${{ steps.version.outputs.version }}
+            type=raw,value=latest
+
+      - name: Build and push omx
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: docker/omx/Dockerfile
+          push: true
+          tags: ${{ steps.meta-omx.outputs.tags }}
+          labels: |
+            ${{ steps.meta-omx.outputs.labels }}
+            org.opencontainers.image.authors=OpenSVC SAS
+            org.opencontainers.image.created=${{ github.event.repository.updated_at }}
+            org.opencontainers.image.licenses=Apache-2.0
+            org.opencontainers.image.source=https://github.com/opensvc/om3
+            org.opencontainers.image.url=https://github.com/opensvc/om3
+            org.opencontainers.image.title=OpenSVC cluster orchestrator server & client
+            org.opencontainers.image.version=${{ steps.version.outputs.version }}
+          build-args: |
+            VERSION=${{ steps.version.outputs.version }}
+            BUILDTIME=${{ github.event.repository.updated_at }}
+            OM_IMAGE=${{ env.REGISTRY }}/${{ env.IMAGE_OWNER }}/om:${{ steps.version.outputs.version }}
+            OX_IMAGE=${{ env.REGISTRY }}/${{ env.IMAGE_OWNER }}/ox:${{ steps.version.outputs.version }}
