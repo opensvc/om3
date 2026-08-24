@@ -21,6 +21,7 @@ jobs:
         uses: actions/checkout@v7.0.1
         with:
           persist-credentials: false
+          fetch-depth: 0  # Ensures full history and tags are fetched
 
       - name: Set up Go
         uses: actions/setup-go@v7.0.0
@@ -28,11 +29,20 @@ jobs:
           go-version-file: 'go.mod'
           cache-dependency-path: go.sum
 
+      - name: set opensvc version file
+        run: git describe --tags --abbrev > ./util/version/text/VERSION
+
       - name: Go build om
-        run: sudo go build -v ./cmd/om
+        run: sudo go build -v -o ./bin/om ./cmd/om
+
+      - name: Show om version
+        run: ./bin/om --version
 
       - name: Go build ox
-        run: sudo go build -v ./cmd/ox
+        run: sudo go build -v -o ./bin/ox ./cmd/ox
+
+      - name: Show ox version
+        run: ./bin/ox --version
 
       - name: Run Go tests
         run: sudo go test -p 1 -timeout 60s ./...
@@ -59,6 +69,14 @@ jobs:
         with:
           images: ${{ env.REGISTRY }}/${{ env.IMAGE_OWNER }}/om
           tags: type=raw,value=latest
+          labels: |
+            org.opencontainers.image.authors=OpenSVC SAS
+            org.opencontainers.image.created=${{ github.event.repository.updated_at }}
+            org.opencontainers.image.licenses=Apache-2.0
+            org.opencontainers.image.source=https://github.com/opensvc/om3
+            org.opencontainers.image.url=https://github.com/opensvc/om3
+            org.opencontainers.image.title=OpenSVC cluster orchestrator
+            org.opencontainers.image.version=latest
 
       - name: Build and push om
         id: build-om
@@ -68,18 +86,7 @@ jobs:
           file: docker/om/Dockerfile
           push: true
           tags: ${{ steps.meta-om.outputs.tags }}
-          labels: |
-            ${{ steps.meta-om.outputs.labels }}
-            org.opencontainers.image.authors=OpenSVC SAS
-            org.opencontainers.image.created=${{ github.event.repository.updated_at }}
-            org.opencontainers.image.licenses=Apache-2.0
-            org.opencontainers.image.source=https://github.com/opensvc/om3
-            org.opencontainers.image.url=https://github.com/opensvc/om3
-            org.opencontainers.image.title=OpenSVC cluster orchestrator
-            org.opencontainers.image.version=latest
-          build-args: |
-            VERSION=latest
-            BUILDTIME=${{ github.event.repository.updated_at }}
+          labels: ${{ steps.meta-om.outputs.labels }}
 
       - name: Sign om image
         run: cosign sign --yes "${{ env.REGISTRY }}/${{ env.IMAGE_OWNER }}/om@${{ steps.build-om.outputs.digest }}"
@@ -90,6 +97,14 @@ jobs:
         with:
           images: ${{ env.REGISTRY }}/${{ env.IMAGE_OWNER }}/ox
           tags: type=raw,value=latest
+          labels: |
+            org.opencontainers.image.authors=OpenSVC SAS
+            org.opencontainers.image.created=${{ github.event.repository.updated_at }}
+            org.opencontainers.image.licenses=Apache-2.0
+            org.opencontainers.image.source=https://github.com/opensvc/om3
+            org.opencontainers.image.url=https://github.com/opensvc/om3
+            org.opencontainers.image.title=OpenSVC cluster orchestrator client
+            org.opencontainers.image.version=latest
 
       - name: Build and push ox
         id: build-ox
@@ -99,18 +114,7 @@ jobs:
           file: docker/ox/Dockerfile
           push: true
           tags: ${{ steps.meta-ox.outputs.tags }}
-          labels: |
-            ${{ steps.meta-ox.outputs.labels }}
-            org.opencontainers.image.authors=OpenSVC SAS
-            org.opencontainers.image.created=${{ github.event.repository.updated_at }}
-            org.opencontainers.image.licenses=Apache-2.0
-            org.opencontainers.image.source=https://github.com/opensvc/om3
-            org.opencontainers.image.url=https://github.com/opensvc/om3
-            org.opencontainers.image.title=OpenSVC cluster orchestrator client
-            org.opencontainers.image.version=latest
-          build-args: |
-            VERSION=latest
-            BUILDTIME=${{ github.event.repository.updated_at }}
+          labels: ${{ steps.meta-ox.outputs.labels }}
 
       - name: Sign ox image
         run: cosign sign --yes "${{ env.REGISTRY }}/${{ env.IMAGE_OWNER }}/ox@${{ steps.build-ox.outputs.digest }}"
@@ -121,6 +125,14 @@ jobs:
         with:
           images: ${{ env.REGISTRY }}/${{ env.IMAGE_OWNER }}/omx
           tags: type=raw,value=latest
+          labels: |
+            org.opencontainers.image.authors=OpenSVC SAS
+            org.opencontainers.image.created=${{ github.event.repository.updated_at }}
+            org.opencontainers.image.licenses=Apache-2.0
+            org.opencontainers.image.source=https://github.com/opensvc/om3
+            org.opencontainers.image.url=https://github.com/opensvc/om3
+            org.opencontainers.image.title=OpenSVC cluster orchestrator server & client
+            org.opencontainers.image.version=latest
 
       - name: Build and push omx
         id: build-omx
@@ -130,18 +142,8 @@ jobs:
           file: docker/omx/Dockerfile
           push: true
           tags: ${{ steps.meta-omx.outputs.tags }}
-          labels: |
-            ${{ steps.meta-omx.outputs.labels }}
-            org.opencontainers.image.authors=OpenSVC SAS
-            org.opencontainers.image.created=${{ github.event.repository.updated_at }}
-            org.opencontainers.image.licenses=Apache-2.0
-            org.opencontainers.image.source=https://github.com/opensvc/om3
-            org.opencontainers.image.url=https://github.com/opensvc/om3
-            org.opencontainers.image.title=OpenSVC cluster orchestrator server & client
-            org.opencontainers.image.version=latest
+          labels: ${{ steps.meta-omx.outputs.labels }}
           build-args: |
-            VERSION=latest
-            BUILDTIME=${{ github.event.repository.updated_at }}
             OM_IMAGE=${{ env.REGISTRY }}/${{ env.IMAGE_OWNER }}/om:latest
             OX_IMAGE=${{ env.REGISTRY }}/${{ env.IMAGE_OWNER }}/ox:latest
 
