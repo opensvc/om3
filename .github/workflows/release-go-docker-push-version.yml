@@ -9,7 +9,7 @@ env:
   IMAGE_OWNER: opensvc
 
 jobs:
-  build-and-push:
+  build-and-push-release:
     runs-on: ubuntu-latest
     permissions:
       contents: write # to allow upload sbom
