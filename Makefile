@@ -127,6 +127,16 @@ version:
 vet:
 	$(GOVET) ./...
 
+om-image:
+	docker buildx build -t opensvc/om:dev -f ./docker/om/Dockerfile .
+
+ox-image:
+	docker buildx build -t opensvc/ox:dev -f ./docker/ox/Dockerfile .
+
+omx-image:
+	docker buildx build -t opensvc/omx:dev -f ./docker/omx/Dockerfile .
+
+all-image: om-image ox-image omx-image
 
 help:
 	@echo "Available targets:"
