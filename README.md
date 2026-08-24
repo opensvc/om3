@@ -35,3 +35,18 @@ Then open an `ox` session and watch it move around the cluster.
 
 Browse [ready-to-use templates](https://github.com/opensvc/opensvc_templates) — VIPs,
 cluster DNS, ingress gateways, ACME, HA NFS, meshed VPN backend networks, and more.
+
+## Docker Image Signing
+
+All OpenSVC Docker images published to `ghcr.io/opensvc` are signed with [Cosign](https://docs.sigstore.dev/cosign/) using Sigstore's keyless signing via GitHub Actions OIDC. The signing is performed automatically by the [release workflow](.github/workflows/release-go-docker-push-version.yml) on Git tag creation.
+
+To verify an image signature:
+
+```bash
+cosign verify \
+  --certificate-oidc-issuer=https://token.actions.githubusercontent.com \
+  --certificate-identity-regexp='^https://github.com/opensvc/om3/.github/workflows/release-go-docker-push-version.yml@' \
+  ghcr.io/opensvc/om:TAG
+```
+
+Replace `TAG` with the version (e.g., `3.0.0-rc30`). Note that the `v` prefix from Git tags is stripped in Docker image tags.
