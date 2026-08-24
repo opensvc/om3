@@ -1,8 +1,8 @@
-name: Docker Build and Push (Latest)
+name: Release Go Docker Push (Versioned)
 
 on:
-  push:
-    branches: [ main ]
+  release:
+    types: [created]
 
 env:
   REGISTRY: ghcr.io
@@ -19,7 +19,27 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v7.0.1
         with:
+          fetch-depth: 0
+          fetch-tags: true
           persist-credentials: false
+
+      - name: Set up Go
+        uses: actions/setup-go@v6.0.0
+        with:
+          go-version-file: 'go.mod'
+          cache-dependency-path: go.sum
+
+      - name: Go build om
+        run: go build -v ./cmd/om
+
+      - name: Go build ox
+        run: go build -v ./cmd/ox
+
+      - name: Run Go tests
+        run: go test -p 1 -timeout 60s ./...
+
+      - name: Run Go tests with race detector
+        run: go test -p 1 -timeout 600s --race ./...
 
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
@@ -31,12 +51,21 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
+      - name: Extract release version
+        id: version
+        run: |
+          # Extract version from tag, removing 'v' prefix if present
+          VERSION=${{ github.ref_name }}
+          echo "version=${VERSION#v}" >> $GITHUB_OUTPUT
+
       - name: Extract metadata (tags, labels) for om
         id: meta-om
         uses: docker/metadata-action@v5
         with:
           images: ${{ env.REGISTRY }}/${{ env.IMAGE_OWNER }}/om
-          tags: type=raw,value=latest
+          tags: |
+            type=raw,value=${{ steps.version.outputs.version }}
+            type=raw,value=latest
 
       - name: Build and push om
         uses: docker/build-push-action@v6
@@ -53,9 +82,9 @@ jobs:
             org.opencontainers.image.source=https://github.com/opensvc/om3
             org.opencontainers.image.url=https://github.com/opensvc/om3
             org.opencontainers.image.title=OpenSVC cluster orchestrator
-            org.opencontainers.image.version=latest
+            org.opencontainers.image.version=${{ steps.version.outputs.version }}
           build-args: |
-            VERSION=latest
+            VERSION=${{ steps.version.outputs.version }}
             BUILDTIME=${{ github.event.repository.updated_at }}
 
       - name: Extract metadata (tags, labels) for ox
@@ -63,7 +92,9 @@ jobs:
         uses: docker/metadata-action@v5
         with:
           images: ${{ env.REGISTRY }}/${{ env.IMAGE_OWNER }}/ox
-          tags: type=raw,value=latest
+          tags: |
+            type=raw,value=${{ steps.version.outputs.version }}
+            type=raw,value=latest
 
       - name: Build and push ox
         uses: docker/build-push-action@v6
@@ -80,9 +111,9 @@ jobs:
             org.opencontainers.image.source=https://github.com/opensvc/om3
             org.opencontainers.image.url=https://github.com/opensvc/om3
             org.opencontainers.image.title=OpenSVC cluster orchestrator client
-            org.opencontainers.image.version=latest
+            org.opencontainers.image.version=${{ steps.version.outputs.version }}
           build-args: |
-            VERSION=latest
+            VERSION=${{ steps.version.outputs.version }}
             BUILDTIME=${{ github.event.repository.updated_at }}
 
       - name: Extract metadata (tags, labels) for omx
@@ -90,7 +121,9 @@ jobs:
         uses: docker/metadata-action@v5
         with:
           images: ${{ env.REGISTRY }}/${{ env.IMAGE_OWNER }}/omx
-          tags: type=raw,value=latest
+          tags: |
+            type=raw,value=${{ steps.version.outputs.version }}
+            type=raw,value=latest
 
       - name: Build and push omx
         uses: docker/build-push-action@v6
@@ -107,9 +140,9 @@ jobs:
             org.opencontainers.image.source=https://github.com/opensvc/om3
             org.opencontainers.image.url=https://github.com/opensvc/om3
             org.opencontainers.image.title=OpenSVC cluster orchestrator server & client
-            org.opencontainers.image.version=latest
+            org.opencontainers.image.version=${{ steps.version.outputs.version }}
           build-args: |
-            VERSION=latest
+            VERSION=${{ steps.version.outputs.version }}
             BUILDTIME=${{ github.event.repository.updated_at }}
-            OM_IMAGE=${{ env.REGISTRY }}/${{ env.IMAGE_OWNER }}/om:latest
-            OX_IMAGE=${{ env.REGISTRY }}/${{ env.IMAGE_OWNER }}/ox:latest
+            OM_IMAGE=${{ env.REGISTRY }}/${{ env.IMAGE_OWNER }}/om:${{ steps.version.outputs.version }}
+            OX_IMAGE=${{ env.REGISTRY }}/${{ env.IMAGE_OWNER }}/ox:${{ steps.version.outputs.version }}
