@@ -3,6 +3,7 @@
 !**/*.json
 !**/testdata/**
 !**/*.yaml
+!**/*.yml
 !**/*.conf
 !**/
 !**/text/**
