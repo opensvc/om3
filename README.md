@@ -1,6 +1,7 @@
 # om3
 
-[![Go](https://github.com/opensvc/om3/actions/workflows/go.yml/badge.svg?branch=main)](https://github.com/opensvc/om3/actions/workflows/go.yml)
+[![Main Go Docker Push (Latest)](https://github.com/opensvc/om3/actions/workflows/main-go-docker-push-latest.yml/badge.svg?branch=main)](https://github.com/opensvc/om3/actions/workflows/main-go-docker-push-latest.yml)
+[![Release Go Docker Push (Versioned)](https://github.com/opensvc/om3/actions/workflows/release-go-docker-push-version.yml/badge.svg)](https://github.com/opensvc/om3/actions/workflows/release-go-docker-push-version.yml)
 
 *The Go port and continuation of [opensvc/opensvc](https://github.com/opensvc/opensvc).*
 
