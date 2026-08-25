@@ -15,6 +15,7 @@ import (
 type (
 	CmdObjectConfigShow struct {
 		ObjectSelector string
+		RedactSecrets  bool
 		Sections       []string
 	}
 )
@@ -57,6 +58,9 @@ func (t *CmdObjectConfigShow) Run(kind string) error {
 		return err
 	}
 	b = commoncmd.Sections(b, t.Sections)
+	if t.RedactSecrets {
+		b = commoncmd.RedactSecrets(b, kind)
+	}
 	b = commoncmd.ColorizeINI(b)
 	_, err = os.Stdout.Write(b)
 	return err

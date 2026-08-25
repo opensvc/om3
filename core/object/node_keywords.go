@@ -29,9 +29,10 @@ var (
 		Text:    keywords.NewText(fs, "text/kw/node/node.oci"),
 	}
 	kwNodeUUID = keywords.Keyword{
-		Option:  "uuid",
-		Section: "node",
-		Text:    keywords.NewText(fs, "text/kw/node/node.uuid"),
+		Option:       "uuid",
+		Section:      "node",
+		Text:         keywords.NewText(fs, "text/kw/node/node.uuid"),
+		RedactSecret: true,
 	}
 	kwNodePRKey = keywords.Keyword{
 		DefaultText: keywords.NewText(fs, "text/kw/node/node.prkey.default"),
@@ -667,11 +668,12 @@ var (
 		Text:        keywords.NewText(fs, "text/kw/node/cluster.name"),
 	}
 	kwNodeClusterSecret = keywords.Keyword{
-		DefaultText: keywords.NewText(fs, "text/kw/node/cluster.secret.default"),
-		Option:      "secret",
-		Scopable:    true,
-		Section:     "cluster",
-		Text:        keywords.NewText(fs, "text/kw/node/cluster.secret"),
+		DefaultText:  keywords.NewText(fs, "text/kw/node/cluster.secret.default"),
+		Option:       "secret",
+		Scopable:     true,
+		Section:      "cluster",
+		Text:         keywords.NewText(fs, "text/kw/node/cluster.secret"),
+		RedactSecret: true,
 	}
 	kwNodeClusterNodes = keywords.Keyword{
 		Converter: "list",
