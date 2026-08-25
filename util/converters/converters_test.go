@@ -118,6 +118,7 @@ func TestBooleanConvert(t *testing.T) {
 			"t":     true,
 			"T":     true,
 			"1":     true,
+			"":      false,
 			"false": false,
 			"False": false,
 			"no":    false,
@@ -126,6 +127,10 @@ func TestBooleanConvert(t *testing.T) {
 			"f":     false,
 			"N":     false,
 			"0":     false,
+			"0.0":   false,
+			"none":  false,
+			"[]":    false,
+			"{}":    false,
 		}
 
 		invalidStrings = []string{
@@ -146,12 +151,6 @@ func TestBooleanConvert(t *testing.T) {
 				assert.Equal(t, expected, result.(bool))
 			})
 		}
-	})
-
-	t.Run("empty String returns false", func(t *testing.T) {
-		result, err := Lookup("bool").Convert("")
-		assert.NoError(t, err)
-		assert.Equal(t, false, result.(bool))
 	})
 
 	t.Run("invalid boolean expression returns (nil, error)", func(t *testing.T) {

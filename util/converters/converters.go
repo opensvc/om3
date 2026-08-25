@@ -135,7 +135,7 @@ func (t TBool) Convert(s string) (any, error) {
 	switch s {
 	case "y", "yes", "t", "true", "1":
 		return true, nil
-	case "n", "no", "f", "false", "0":
+	case "n", "no", "f", "false", "0", "0.0", "", "none", "[]", "{}":
 		return false, nil
 	default:
 		return nil, fmt.Errorf("invalid boolean value: %q", s)
