@@ -9,7 +9,9 @@ import (
 	"github.com/opensvc/om3/v3/core/client"
 	"github.com/opensvc/om3/v3/core/commoncmd"
 	"github.com/opensvc/om3/v3/core/naming"
+	"github.com/opensvc/om3/v3/core/object"
 	"github.com/opensvc/om3/v3/core/objectselector"
+	"github.com/opensvc/om3/v3/daemon/api"
 )
 
 type (
@@ -54,7 +56,10 @@ func (t *CmdObjectConfigShow) extractPath(p naming.Path, c *client.T) ([]byte, e
 }
 
 func (t *CmdObjectConfigShow) extractFromDaemon(p naming.Path, c *client.T) ([]byte, error) {
-	resp, err := c.GetObjectConfigFileWithResponse(context.Background(), p.Namespace, p.Kind, p.Name)
+	params := api.GetObjectConfigFileParams{
+		RedactSecrets: &t.RedactSecrets,
+	}
+	resp, err := c.GetObjectConfigFileWithResponse(context.Background(), p.Namespace, p.Kind, p.Name, &params)
 
 	if err != nil {
 		return nil, err
@@ -72,7 +77,7 @@ func (t *CmdObjectConfigShow) Run(kind string) error {
 	}
 	b = commoncmd.Sections(b, t.Sections)
 	if t.RedactSecrets {
-		b = commoncmd.RedactSecrets(b, kind)
+		b = object.RedactSecrets(b, kind)
 	}
 	b = commoncmd.ColorizeINI(b)
 	_, err = os.Stdout.Write(b)

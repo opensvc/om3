@@ -20,6 +20,7 @@ import (
 	"github.com/opensvc/om3/v3/core/naming"
 	"github.com/opensvc/om3/v3/core/oc3path"
 	"github.com/opensvc/om3/v3/core/rawconfig"
+	"github.com/opensvc/om3/v3/daemon/api"
 	"github.com/opensvc/om3/v3/daemon/daemonenv"
 	"github.com/opensvc/om3/v3/daemon/daemonsubsystem"
 	"github.com/opensvc/om3/v3/daemon/msgbus"
@@ -181,7 +182,8 @@ func (t *T) asPostFeedObjectConfigBody(p naming.Path, v *msgbus.InstanceConfigUp
 			return "", nil, fmt.Errorf("new client: %s", err)
 		}
 		t.log.Debugf("retrieve remote config %s@%s", p, peer)
-		if resp, err := cli.GetObjectConfigFile(t.ctx, p.Namespace, p.Kind, p.Name); err != nil {
+		params := &api.GetObjectConfigFileParams{}
+		if resp, err := cli.GetObjectConfigFile(t.ctx, p.Namespace, p.Kind, p.Name, params); err != nil {
 			return "", []byte{}, err
 		} else if resp.StatusCode == http.StatusOK {
 			if b, err := io.ReadAll(resp.Body); err != nil {
