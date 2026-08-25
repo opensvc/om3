@@ -8,7 +8,7 @@ require (
 	github.com/anmitsu/go-shlex v0.0.0-20200514113438-38f4b401e2be
 	github.com/antchfx/xmlquery v1.3.10
 	github.com/atomicgo/cursor v0.0.1
-	github.com/containerd/cgroups v1.0.1
+	github.com/containerd/cgroups v1.1.0
 	github.com/containerd/cgroups/v3 v3.0.3
 	github.com/containernetworking/cni v0.8.1
 	github.com/containernetworking/plugins v0.9.1
@@ -29,7 +29,7 @@ require (
 	github.com/golang-jwt/jwt/v5 v5.3.0
 	github.com/golang/mock v1.5.0
 	github.com/google/go-cmp v0.7.0
-	github.com/google/nftables v0.0.0-20220129182606-a46119e5928d
+	github.com/google/nftables v0.3.0
 	github.com/google/uuid v1.6.0
 	github.com/goombaio/orderedset v0.0.0-20180925151225-8e67b20a9b77
 	github.com/hashicorp/go-version v1.4.0
@@ -70,13 +70,13 @@ require (
 	github.com/stretchr/testify v1.11.1
 	github.com/subosito/gotenv v1.2.0
 	github.com/talos-systems/go-smbios v0.1.1
-	github.com/vishvananda/netlink v1.1.1-0.20211118161826-650dca95af54
-	github.com/vishvananda/netns v0.0.0-20210104183010-2eb08e3e575f
+	github.com/vishvananda/netlink v1.3.0
+	github.com/vishvananda/netns v0.0.4
 	github.com/ybbus/jsonrpc v2.1.2+incompatible
 	github.com/yookoala/realpath v1.0.0
 	github.com/zcalusic/sysinfo v0.0.0-20210831153053-2c6e1d254246
 	golang.org/x/crypto v0.53.0
-	golang.org/x/exp v0.0.0-20230725093048-515e97ebf090
+	golang.org/x/exp v0.0.0-20241108190413-2d47ceb2692f
 	golang.org/x/net v0.56.0
 	golang.org/x/sync v0.21.0
 	golang.org/x/sys v0.46.0
@@ -91,31 +91,28 @@ require (
 )
 
 require (
-	github.com/BurntSushi/toml v1.3.2 // indirect
 	github.com/antchfx/xpath v1.3.6 // indirect
 	github.com/apapsch/go-jsonmerge/v2 v2.0.0 // indirect
 	github.com/beorn7/perks v1.0.1 // indirect
 	github.com/cespare/xxhash/v2 v2.3.0 // indirect
-	github.com/cilium/ebpf v0.11.0 // indirect
+	github.com/cilium/ebpf v0.18.0 // indirect
 	github.com/coreos/go-iptables v0.5.0 // indirect
 	github.com/davecgh/go-spew v1.1.2-0.20180830191138-d8f796af33cc // indirect
-	github.com/docker/go-units v0.4.0 // indirect
+	github.com/docker/go-units v0.5.0 // indirect
 	github.com/gdamore/encoding v1.0.0 // indirect
 	github.com/go-openapi/jsonpointer v0.22.5 // indirect
 	github.com/go-openapi/swag/jsonname v0.25.5 // indirect
-	github.com/godbus/dbus/v5 v5.0.4 // indirect
+	github.com/godbus/dbus/v5 v5.1.0 // indirect
 	github.com/gogo/protobuf v1.3.2 // indirect
 	github.com/golang/gddo v0.0.0-20210115222349-20d68f94ee1f // indirect
 	github.com/golang/groupcache v0.0.0-20210331224755-41bb18bfe9da // indirect
 	github.com/goombaio/orderedmap v0.0.0-20180924084748-ba921b7e2419 // indirect
 	github.com/inconshreveable/mousetrap v1.1.0 // indirect
-	github.com/josharian/native v0.0.0-20200817173448-b6b71def0850 // indirect
-	github.com/koneu/natend v0.0.0-20150829182554-ec0926ea948d // indirect
 	github.com/logrusorgru/aurora v2.0.3+incompatible // indirect
 	github.com/lucasb-eyer/go-colorful v1.2.0 // indirect
 	github.com/mattn/go-colorable v0.1.15 // indirect
-	github.com/mdlayher/netlink v1.4.2 // indirect
-	github.com/mdlayher/socket v0.0.0-20211102153432-57e3fa563ecb // indirect
+	github.com/mdlayher/netlink v1.7.3-0.20250113171957-fbb4dce95f42 // indirect
+	github.com/mdlayher/socket v0.5.0 // indirect
 	github.com/mitchellh/go-ps v1.0.0 // indirect
 	github.com/munnerz/goautoneg v0.0.0-20191010083416-a7dc8b61c822 // indirect
 	github.com/nxadm/tail v1.4.8 // indirect
@@ -128,16 +125,12 @@ require (
 	github.com/rivo/uniseg v0.4.7 // indirect
 	github.com/safchain/ethtool v0.0.0-20200218184317-f459e2d13664 // indirect
 	github.com/santhosh-tekuri/jsonschema/v6 v6.0.2 // indirect
-	github.com/sirupsen/logrus v1.9.1 // indirect
+	github.com/sirupsen/logrus v1.9.3 // indirect
 	github.com/valyala/bytebufferpool v1.0.0 // indirect
 	github.com/valyala/fasttemplate v1.2.2 // indirect
 	go.yaml.in/yaml/v2 v2.4.3 // indirect
-	golang.org/x/mod v0.37.0 // indirect
 	golang.org/x/text v0.39.0 // indirect
-	golang.org/x/tools v0.47.0 // indirect
-	golang.org/x/tools/go/expect v0.1.1-deprecated // indirect
 	google.golang.org/protobuf v1.36.11 // indirect
 	gopkg.in/go-jose/go-jose.v2 v2.6.3 // indirect
 	gopkg.in/yaml.v2 v2.4.0 // indirect
-	honnef.co/go/tools v0.2.2 // indirect
 )
