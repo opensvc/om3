@@ -4125,6 +4125,21 @@ func newCmdObjectPrintSchedule(kind string) *cobra.Command {
 	return cmd
 }
 
+func newCmdObjectKey(kind string) *cobra.Command {
+	cmd := commoncmd.NewCmdObjectKey(kind)
+	cmd.AddCommand(
+		newCmdObjectKeyAdd(kind),
+		newCmdObjectKeyChange(kind),
+		newCmdObjectKeyDecode(kind),
+		newCmdObjectKeyEdit(kind),
+		newCmdObjectKeyInstall(kind),
+		newCmdObjectKeyList(kind),
+		newCmdObjectKeyRemove(kind),
+		newCmdObjectKeyRename(kind),
+	)
+	return cmd
+}
+
 func newCmdDataStoreAdd(kind string) *cobra.Command {
 	var options commands.CmdObjectKeyAdd
 	var from, value string
