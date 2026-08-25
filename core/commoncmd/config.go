@@ -34,8 +34,9 @@ func APIKeywordItemsToRaw(items api.KeywordItems) rawconfig.T {
 }
 
 var (
-	sectionRE = regexp.MustCompile(`^\s*\[.*\]\s*$`)
-	commentRE = regexp.MustCompile(`^\s*[#;]`)
+	sectionRE  = regexp.MustCompile(`^\s*\[.*\]\s*$`)
+	commentRE  = regexp.MustCompile(`^\s*[#;]`)
+	keyValueRE = regexp.MustCompile(`^(\s*[^=\s#;]+)(\s*=\s*)([^#;]*)(.*)$`)
 )
 
 func Sections(b []byte, sections []string) []byte {
@@ -124,11 +125,12 @@ func ColorizeINI(b []byte) []byte {
 		// Key-value
 		if strings.Contains(line, "=") && !strings.HasPrefix(line, " ") && !strings.HasPrefix(line, "\t") {
 			// Use regex to preserve spacing around equals sign
-			kvRE := regexp.MustCompile(`^(\s*[^=\s]+(?:\s+[^=\s]+)*)\s*=\s*(.*)$`)
-			matches := kvRE.FindStringSubmatch(line)
-			if len(matches) == 3 {
+			matches := keyValueRE.FindStringSubmatch(line)
+			if len(matches) == 5 {
 				key := matches[1]
-				equalAndValue := matches[2]
+				delim := matches[2]
+				value := matches[3]
+				inlineComment := matches[4]
 
 				// Colorize key
 				key, scope, scopeFound := strings.Cut(key, "@")
@@ -137,49 +139,33 @@ func ColorizeINI(b []byte) []byte {
 					color.Set(color.FgHiMagenta).Fprint(out, "@"+scope)
 				}
 
-				// Find the equals sign position to preserve exact spacing
-				equalPos := strings.Index(line, "=")
-				if equalPos >= 0 {
-					// Extract the equals sign with surrounding spaces
-					start := equalPos
-					end := equalPos + 1
-					// Include leading spaces
-					for start > 0 && line[start-1] == ' ' {
-						start--
-					}
-					// Include trailing spaces
-					for end < len(line) && line[end] == ' ' {
-						end++
-					}
-					equalSign := line[start:end]
-					color.Set(color.FgHiBlack).Fprint(out, equalSign)
+				// Colorize delimiter
+				color.Set(color.FgHiBlack).Fprint(out, delim)
 
-					// The rest is the value
-					value := line[end:]
+				// Highlight references in the value
+				referenceMatches := referenceRE.FindAllStringIndex(value, -1)
+				if len(referenceMatches) > 0 {
+					lastPos := 0
+					for _, match := range referenceMatches {
+						// Write non-reference part
+						out.WriteString(value[lastPos:match[0]])
 
-					// Highlight references in the value
-					referenceMatches := referenceRE.FindAllStringIndex(value, -1)
-					if len(referenceMatches) > 0 {
-						lastPos := 0
-						for _, match := range referenceMatches {
-							// Write non-reference part
-							out.WriteString(value[lastPos:match[0]])
-
-							// Write reference part in green + bold
-							referenceText := value[match[0]:match[1]]
-							color.Set(color.FgGreen, color.Bold).Fprint(out, referenceText)
-							lastPos = match[1]
-						}
-						// Write remaining part after last reference
-						out.WriteString(value[lastPos:])
-					} else {
-						// No references
-						out.WriteString(value)
+						// Write reference part in green + bold
+						referenceText := value[match[0]:match[1]]
+						color.Set(color.FgGreen, color.Bold).Fprint(out, referenceText)
+						lastPos = match[1]
 					}
+					// Write remaining part after last reference
+					out.WriteString(value[lastPos:])
 				} else {
-					// Fallback: output the rest as-is
-					out.WriteString(equalAndValue)
+					// No references
+					out.WriteString(value)
 				}
+
+				if inlineComment != "" {
+					color.Set(color.FgHiBlack, color.Italic).Fprint(out, inlineComment)
+				}
+
 				out.WriteString("\n")
 
 				// Check if line continues
