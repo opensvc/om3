@@ -13,8 +13,9 @@ import (
 
 type (
 	CmdNodeConfigShow struct {
-		NodeSelector string
-		Sections     []string
+		NodeSelector  string
+		RedactSecrets bool
+		Sections      []string
 	}
 )
 
@@ -46,6 +47,9 @@ func (t *CmdNodeConfigShow) Run() error {
 		return err
 	}
 	b = commoncmd.Sections(b, t.Sections)
+	if t.RedactSecrets {
+		b = commoncmd.RedactSecrets(b, "")
+	}
 	b = commoncmd.ColorizeINI(b)
 	_, err = os.Stdout.Write(b)
 	return err

@@ -8,11 +8,29 @@ import (
 
 	"github.com/fatih/color"
 	"github.com/iancoleman/orderedmap"
+	"github.com/opensvc/om3/v3/core/keywords"
+	"github.com/opensvc/om3/v3/core/naming"
+	"github.com/opensvc/om3/v3/core/object"
 
 	"github.com/opensvc/om3/v3/core/rawconfig"
 	"github.com/opensvc/om3/v3/daemon/api"
 	"github.com/opensvc/om3/v3/util/key"
 )
+
+type parsedLine struct {
+	raw           string
+	isKV          bool
+	key           string
+	keyPrefix     string
+	delim         string
+	inlineComment string
+}
+
+type sectionData struct {
+	name   string
+	lines  []parsedLine
+	values map[string]string
+}
 
 func APIKeywordItemsToRaw(items api.KeywordItems) rawconfig.T {
 	r := rawconfig.T{}
@@ -39,6 +57,19 @@ var (
 	keyValueRE = regexp.MustCompile(`^(\s*[^=\s#;]+)(\s*=\s*)([^#;]*)(.*)$`)
 )
 
+func sectionName(s string) string {
+	s = strings.TrimSpace(s)
+	if !strings.HasPrefix(s, "[") {
+		return ""
+	}
+	if !strings.HasSuffix(s, "]") {
+		return ""
+	}
+	s = s[1 : len(s)-1]
+	s = strings.TrimSpace(s)
+	return s
+}
+
 func Sections(b []byte, sections []string) []byte {
 	if len(sections) == 0 {
 		return b
@@ -49,18 +80,6 @@ func Sections(b []byte, sections []string) []byte {
 	m := make(map[string]any)
 	for _, section := range sections {
 		m[section] = nil
-	}
-	sectionName := func(s string) string {
-		s = strings.TrimSpace(s)
-		if !strings.HasPrefix(s, "[") {
-			return ""
-		}
-		if !strings.HasSuffix(s, "]") {
-			return ""
-		}
-		s = s[1 : len(s)-1]
-		s = strings.TrimSpace(s)
-		return s
 	}
 	isValidSection := func(s string) bool {
 		_, ok := m[s]
@@ -197,6 +216,76 @@ func ColorizeINI(b []byte) []byte {
 		} else {
 			// Unmatched line (output as-is)
 			out.WriteString(line)
+			out.WriteString("\n")
+		}
+	}
+
+	return out.Bytes()
+}
+
+func RedactSecrets(b []byte, kind string) []byte {
+	out := bytes.NewBuffer(nil)
+	scanner := bufio.NewScanner(bytes.NewReader(b))
+	var sections []sectionData
+	var current sectionData
+
+	for scanner.Scan() {
+		line := scanner.Text()
+		if sectionRE.MatchString(line) {
+			if current.name != "" && len(current.lines) > 0 {
+				sections = append(sections, current)
+			}
+			current = sectionData{
+				name:   sectionName(line),
+				values: make(map[string]string),
+			}
+			current.lines = append(current.lines, parsedLine{raw: line})
+			continue
+		}
+
+		matches := keyValueRE.FindStringSubmatch(line)
+		if len(matches) == 5 && !commentRE.MatchString(line) {
+			k := strings.TrimSpace(matches[1])
+			v := strings.TrimSpace(matches[3])
+
+			current.values[k] = v
+			current.lines = append(current.lines, parsedLine{
+				raw:           line,
+				isKV:          true,
+				keyPrefix:     matches[1],
+				delim:         matches[2],
+				key:           k,
+				inlineComment: matches[4],
+			})
+			continue
+		}
+		current.lines = append(current.lines, parsedLine{raw: line})
+	}
+	sections = append(sections, current)
+
+	k := naming.Kind(kind)
+	var store keywords.Store
+	if k == naming.KindInvalid {
+		store = object.NodeKeywordStore
+	} else {
+		store = object.KeywordStoreWithDrivers(k)
+	}
+	for _, section := range sections {
+		sectionType := section.values["type"]
+		dataSec := (k == naming.KindSec || k == naming.KindUsr) && section.name == "data"
+		for _, l := range section.lines {
+			if l.isKV {
+				kw := store.Lookup(key.New(section.name, l.key), k, sectionType)
+				if dataSec || (kw != nil && kw.RedactSecret) {
+					out.WriteString(l.keyPrefix)
+					out.WriteString(l.delim)
+					out.WriteString("********")
+					out.WriteString(l.inlineComment)
+					out.WriteString("\n")
+					continue
+				}
+			}
+			out.WriteString(l.raw)
 			out.WriteString("\n")
 		}
 	}

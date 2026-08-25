@@ -745,3 +745,7 @@ func FlagSCSILUN(flags *pflag.FlagSet, p *string) {
 func FlagIgnoreNoCollectorConfigured(flags *pflag.FlagSet, p *bool) {
 	flags.BoolVar(p, "ignore-no-collector-configured", false, "ignore absence of collector configuration")
 }
+
+func FlagRedactSecrets(flags *pflag.FlagSet, p *bool) {
+	flags.BoolVar(p, "redact-secrets", false, "hide secret values in the output")
+}

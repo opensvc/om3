@@ -1026,6 +1026,7 @@ func newCmdNodeConfigShow() *cobra.Command {
 	flags := cmd.Flags()
 	commoncmd.FlagSections(flags, &options.Sections)
 	commoncmd.FlagNodeSelector(flags, &options.NodeSelector)
+	commoncmd.FlagRedactSecrets(flags, &options.RedactSecrets)
 	return cmd
 }
 
@@ -1522,6 +1523,7 @@ func newCmdObjectConfigShow(kind string) *cobra.Command {
 	flags := cmd.Flags()
 	commoncmd.FlagObjectSelector(flags, &options.ObjectSelector)
 	commoncmd.FlagSections(flags, &options.Sections)
+	commoncmd.FlagRedactSecrets(flags, &options.RedactSecrets)
 	return cmd
 }
 
