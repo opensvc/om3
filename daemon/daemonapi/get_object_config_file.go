@@ -2,9 +2,11 @@ package daemonapi
 
 import (
 	"net/http"
+	"os"
 	"time"
 
 	"github.com/labstack/echo/v4"
+	"github.com/opensvc/om3/v3/core/object"
 
 	"github.com/opensvc/om3/v3/core/client"
 	"github.com/opensvc/om3/v3/core/instance"
@@ -13,7 +15,7 @@ import (
 	"github.com/opensvc/om3/v3/util/file"
 )
 
-func (a *DaemonAPI) GetObjectConfigFile(ctx echo.Context, namespace string, kind naming.Kind, name string) error {
+func (a *DaemonAPI) GetObjectConfigFile(ctx echo.Context, namespace string, kind naming.Kind, name string, params api.GetObjectConfigFileParams) error {
 	if v, err := assertGuest(ctx, namespace); !v {
 		return err
 	}
@@ -39,11 +41,19 @@ func (a *DaemonAPI) GetObjectConfigFile(ctx echo.Context, namespace string, kind
 
 		ctx.Response().Header().Add(api.HeaderLastModified, mtime.Format(time.RFC3339Nano))
 		log.Infof("serve config file %s to %s", objPath, userFromContext(ctx).GetUserName())
-		return ctx.File(filename)
+
+		content, err := os.ReadFile(filename)
+		if err != nil {
+			log.Warnf("%s: failed to read config file %s: %s", logName, filename, err)
+			return JSONProblemf(ctx, http.StatusInternalServerError, "Internal server error", "Failed to read config file: %s", filename)
+		}
+
+		b := object.RedactSecrets(content, kind.String())
+		return ctx.Blob(http.StatusOK, "application/octet-stream", b)
 	}
 	for nodename := range instance.ConfigData.GetByPath(objPath) {
 		return a.proxy(ctx, nodename, func(c *client.T) (*http.Response, error) {
-			return c.GetObjectConfigFile(ctx.Request().Context(), namespace, kind, name)
+			return c.GetObjectConfigFile(ctx.Request().Context(), namespace, kind, name, &params)
 		})
 	}
 	return JSONProblemf(ctx, http.StatusNotFound, "Not found", "object not found: %s", objPath)

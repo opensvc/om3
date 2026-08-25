@@ -2199,7 +2199,8 @@ func (t *App) updateNodeConfigView() {
 		return
 	}
 	t.lastUpdatedAt = time.Now()
-	resp, err := t.client.GetNodeConfigFileWithResponse(context.Background(), t.viewNode)
+	params := api.GetNodeConfigFileParams{}
+	resp, err := t.client.GetNodeConfigFileWithResponse(context.Background(), t.viewNode, &params)
 	if err != nil {
 		return
 	}
@@ -2221,7 +2222,8 @@ func (t *App) updateObjectConfigView() {
 	if t.skipIfConfigNotUpdated() {
 		return
 	}
-	resp, err := t.client.GetObjectConfigFileWithResponse(context.Background(), t.viewPath.Namespace, t.viewPath.Kind, t.viewPath.Name)
+	params := api.GetObjectConfigFileParams{}
+	resp, err := t.client.GetObjectConfigFileWithResponse(context.Background(), t.viewPath.Namespace, t.viewPath.Kind, t.viewPath.Name, &params)
 	if err != nil {
 		return
 	}

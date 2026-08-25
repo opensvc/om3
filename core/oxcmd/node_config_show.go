@@ -47,14 +47,11 @@ func (t *CmdNodeConfigShow) Run() error {
 		return fmt.Errorf("match more than one node: %s", nodenames)
 	}
 
-	b, err := fetchNodeConfig(nodenames[0], c)
+	b, err := fetchNodeConfig(nodenames[0], c, t.RedactSecrets)
 	if err != nil {
 		return err
 	}
 	b = commoncmd.Sections(b, t.Sections)
-	if t.RedactSecrets {
-		b = commoncmd.RedactSecrets(b, "")
-	}
 	b = commoncmd.ColorizeINI(b)
 	_, err = os.Stdout.Write(b)
 	return err
