@@ -84,6 +84,9 @@ type (
 
 		// Minimal force the keyword to be included in the minimal configlet of the driver doc.
 		Minimal bool
+
+		// RedactSecret means the keyword value will be hidden on config show with the flag --redact-secrets.
+		RedactSecret bool
 	}
 
 	Store   []*Keyword
