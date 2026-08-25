@@ -129,8 +129,17 @@ func (t TBool) Convert(s string) (any, error) {
 	if s == "" {
 		return false, nil
 	}
-	s = strings.TrimSpace(s)
-	return strconv.ParseBool(s)
+
+	s = strings.ToLower(strings.TrimSpace(s))
+
+	switch s {
+	case "y", "yes", "t", "true", "1":
+		return true, nil
+	case "n", "no", "f", "false", "0", "0.0", "", "none", "[]", "{}":
+		return false, nil
+	default:
+		return nil, fmt.Errorf("invalid boolean value: %q", s)
+	}
 }
 
 func (t TBool) String() string {
