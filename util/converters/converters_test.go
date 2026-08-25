@@ -106,3 +106,60 @@ func TestSizeConvert(t *testing.T) {
 		}
 	})
 }
+
+func TestBooleanConvert(t *testing.T) {
+	var (
+		validStrings = map[string]bool{
+			"true":  true,
+			"TRUE":  true,
+			"yes":   true,
+			"Yes":   true,
+			"y":     true,
+			"t":     true,
+			"T":     true,
+			"1":     true,
+			"false": false,
+			"False": false,
+			"no":    false,
+			"NO":    false,
+			"n":     false,
+			"f":     false,
+			"N":     false,
+			"0":     false,
+		}
+
+		invalidStrings = []string{
+			"maybe",
+			"2",
+			"oui",
+			"non",
+			"o",
+			"n0",
+		}
+	)
+
+	t.Run("valid boolean expression returns expected values", func(t *testing.T) {
+		for s, expected := range validStrings {
+			t.Run(s, func(t *testing.T) {
+				result, err := Lookup("bool").Convert(s)
+				require.NoError(t, err)
+				assert.Equal(t, expected, result.(bool))
+			})
+		}
+	})
+
+	t.Run("empty String returns false", func(t *testing.T) {
+		result, err := Lookup("bool").Convert("")
+		assert.NoError(t, err)
+		assert.Equal(t, false, result.(bool))
+	})
+
+	t.Run("invalid boolean expression returns (nil, error)", func(t *testing.T) {
+		for _, s := range invalidStrings {
+			t.Run(s, func(t *testing.T) {
+				_, err := Lookup("bool").Convert(s)
+				assert.Error(t, err)
+			})
+		}
+	})
+}
