@@ -268,7 +268,11 @@ func (t *Manager) startUDSListener() error {
 
 	sendBytes := func(id uint64, conn net.Conn, b []byte) error {
 		b = append(b, []byte("\n")...)
-		t.log.Tracef("%d: >>> %s", id, string(b))
+		content := string(b)
+		if len(content) > 1024 {
+			content = content[:1024] + "..."
+		}
+		t.log.Tracef("%d: >>> %s", id, content)
 		if err := conn.SetWriteDeadline(time.Now().Add(time.Second)); err != nil {
 			t.log.Warnf("%d: can't set response write deadline: %s", id, err)
 		}
