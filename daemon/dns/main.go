@@ -42,9 +42,9 @@ type (
 		drainDuration time.Duration
 
 		// state is a map indexed by object path where the key is a zone fragment regrouping all records created for this object.
-		// Using this map layout permits fast records drop on InstanceStatusDeleted.
+		// Using this map layout permits fast records drop on InstanceStatusDeleted and safeguards against duplicate records.
 		// The zone data is obtained by merging all map values.
-		state map[stateKey]Zone
+		state map[stateKey]map[recordKey]Record
 
 		// score stores the node.Stats.Score values, to use as weight in SRV records
 		score map[string]int
@@ -101,7 +101,7 @@ func NewManager(d time.Duration, subQS pubsub.QueueSizer) *Manager {
 	return &Manager{
 		cmdC:          make(chan any),
 		drainDuration: d,
-		state:         make(map[stateKey]Zone),
+		state:         make(map[stateKey]map[recordKey]Record),
 		score:         make(map[string]int),
 		subQS:         subQS,
 
