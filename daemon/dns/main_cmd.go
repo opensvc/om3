@@ -104,28 +104,27 @@ func (t *Manager) onInstanceStatusUpdated(c *msgbus.InstanceStatusUpdated) {
 	name := naming.NewFQDN(c.Path, t.clusterConfig.Name).String() + "."
 	nameOnNode := fmt.Sprintf("%s.%s.%s.%s.node.%s.", c.Path.Name, c.Path.Namespace, c.Path.Kind, c.Node, t.clusterConfig.Name)
 	records := make(Zone, 0)
-	updatedRecords := make(map[string]any)
-	existingRecords := t.getExistingRecords(key)
+	existingRecords := t.state[key]
+
+	// Build a map of existing records by their unique identifier
+	existingRecordsMap := make(map[Record]Record)
+	for _, record := range existingRecords {
+		existingRecordsMap[record] = record
+	}
+
+	// Track which existing records are still present
+	newRecordsMap := make(map[Record]struct{})
+
 	stage := func(record Record) {
 		records = append(records, record)
-		existingRecord, ok := existingRecords[record.Name]
-		var change bool
-		switch {
-		case !ok:
-			change = true
-		case existingRecord.Content != record.Content:
-			change = true
-		case existingRecord.Type != record.Type:
-			change = true
-		case existingRecord.DomainID != record.DomainID:
-			change = true
-		case existingRecord.TTL != record.TTL:
-			change = true
-		}
-		if change {
+		newRecordsMap[record] = struct{}{}
+
+		// Check if this exact record already exists
+		// If not, it means the record is new or has changed (any field difference creates a different key)
+		if _, ok := existingRecordsMap[record]; !ok {
 			t.pubUpdated(record, c.Path, c.Node)
-			updatedRecords[record.Name] = nil
 		}
+		// If the record with the same key exists, it's identical, so no need to publish
 	}
 	stageSRV := func(s string) error {
 		expose, err := ParseExpose(s)
@@ -273,11 +272,13 @@ func (t *Manager) onInstanceStatusUpdated(c *msgbus.InstanceStatusUpdated) {
 		stageSRVs(rid, rstat)
 	}
 
-	for key, record := range existingRecords {
-		if _, ok := updatedRecords[key]; !ok {
-			t.pubDeleted(record, c.Path, c.Node)
+	// Delete records that no longer exist
+	for _, existingRecord := range existingRecords {
+		if _, ok := newRecordsMap[existingRecord]; !ok {
+			t.pubDeleted(existingRecord, c.Path, c.Node)
 		}
 	}
+
 	if len(records) > 0 {
 		t.state[key] = records
 	} else {
@@ -339,18 +340,6 @@ func (t *Manager) zone() Zone {
 		zone = append(zone, records...)
 	}
 	return zone
-}
-
-func (t *Manager) getExistingRecords(key stateKey) map[string]Record {
-	m := make(map[string]Record)
-	records, ok := t.state[key]
-	if !ok {
-		return m
-	}
-	for _, record := range records {
-		m[record.Name] = record
-	}
-	return m
 }
 
 func uitoa(val uint) string {
