@@ -40,9 +40,6 @@ type (
 )
 
 var (
-	// messageTimeout
-	messageTimeout = 500 * time.Millisecond
-
 	msgMaxSize = 10000000 // max kind=full msg size
 
 	// Create a new sync.Pool to manage the byte buffers. Used to reduce memory usage
@@ -202,10 +199,6 @@ func (t *rx) Start(cmdC chan<- interface{}, msgC chan<- *hbtype.Msg) error {
 				if err := conn.Close(); err != nil {
 					t.log.Warnf("failed to close unexpected connection from %s: %s", connAddr, err)
 				}
-				continue
-			}
-			if err := conn.SetDeadline(time.Now().Add(messageTimeout)); err != nil {
-				t.log.Infof("can't set read deadline for %s: %s", connAddr, err)
 				continue
 			}
 			clearConn := encryptconn.New(conn, crypto.Load())
