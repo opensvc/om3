@@ -223,51 +223,6 @@ func (t *rx) Start(cmdC chan<- interface{}, msgC chan<- *hbtype.Msg) error {
 	return nil
 }
 
-func (t *rx) handle(conn encryptconn.ConnNoder) {
-	// For backward compatibility with old senders that create new connections per message,
-	// we read one message and close the connection
-	defer func() {
-		if err := conn.Close(); err != nil {
-			t.log.Warnf("unexpected error while closing connection from %s: %s", conn.RemoteAddr(), err)
-		}
-	}()
-	data := msgPool.Get().([]byte)
-	defer func() { msgPool.Put(data) }()
-	
-	t.log.Tracef("handle: reading single message from %s", conn.RemoteAddr())
-	i, nodename, err := conn.ReadWithNode(data)
-	if err != nil {
-		t.log.Warnf("handle: read failed from %s: %s", conn.RemoteAddr(), err)
-		return
-	}
-	t.log.Tracef("handle: received %d bytes from node %s", i, nodename)
-	
-	if i >= (msgMaxSize - 10000) {
-		t.log.Warnf("read huge message from node %s:%s msg size: %d", nodename, conn.RemoteAddr(), i)
-	}
-	msg := hbtype.Msg{}
-	if err := json.Unmarshal(data[:i], &msg); err != nil {
-		t.log.Warnf("unmarshal message failed from node %s:%s: %s", nodename, conn.RemoteAddr(), err)
-		return
-	}
-	t.log.Tracef("handle: successfully decoded message from node %s (kind=%s)", nodename, msg.Kind)
-	
-	cmdPeerSuccess := hbctrl.CmdSetPeerSuccess{
-		Nodename: msg.Nodename,
-		HbID:     t.id,
-		Success:  true,
-	}
-	select {
-	case <-t.ctx.Done():
-		return
-	case t.cmdC <- cmdPeerSuccess:
-	}
-	select {
-	case <-t.ctx.Done():
-	case t.msgC <- &msg:
-	}
-}
-
 func (t *rx) handleLoop(conn encryptconn.ConnNoder) {
 	// Read messages in a loop to support connection reuse from pool on sender side
 	// When sender uses connection pooling, multiple messages are sent on the same connection.
