@@ -72,6 +72,8 @@ func (t *Manager) onClusterConfigUpdated(c *msgbus.ClusterConfigUpdated) {
 	if change {
 		t.publishSubsystemDnsUpdated()
 	}
+	// Rebuild nameIndex since SOA/NS records depend on clusterConfig.DNS
+	t.rebuildNameIndex()
 }
 
 func (t *Manager) pubDeleted(record Record, p naming.Path, node string) {
@@ -104,6 +106,8 @@ func (t *Manager) onInstanceStatusDeleted(c *msgbus.InstanceStatusDeleted) {
 		}
 		delete(t.state, key)
 	}
+	// Rebuild nameIndex for O(1) lookups
+	t.rebuildNameIndex()
 }
 
 func (t *Manager) onInstanceStatusUpdated(c *msgbus.InstanceStatusUpdated) {
@@ -289,18 +293,30 @@ func (t *Manager) onInstanceStatusUpdated(c *msgbus.InstanceStatusUpdated) {
 	} else {
 		delete(t.state, key)
 	}
+	// Rebuild nameIndex for O(1) lookups
+	t.rebuildNameIndex()
 }
 
 func (t *Manager) onCmdGet(c cmdGet) {
-	zone := make(Zone, 0)
-	for _, record := range t.zone() {
-		if record.Name != c.Name {
-			continue
-		}
+	// Use nameIndex for O(1) lookup
+	records, ok := t.nameIndex[c.Name]
+	if !ok {
+		c.errC <- nil
+		c.resp <- Zone{}
+		return
+	}
+	// Pre-size slice with estimated capacity (Fix 3)
+	zone := make(Zone, 0, len(records))
+	seen := make(map[recordKey]bool)
+	for _, record := range records {
 		if (c.Type != "ANY") && (record.Type != c.Type) {
 			continue
 		}
-		zone = append(zone, record)
+		key := recordKey{record.Name, record.Type, record.Content}
+		if !seen[key] {
+			zone = append(zone, record)
+			seen[key] = true
+		}
 	}
 	c.errC <- nil
 	c.resp <- zone
@@ -352,6 +368,53 @@ func (t *Manager) zone() Zone {
 		}
 	}
 	return zone
+}
+
+// rebuildNameIndex rebuilds the name-to-records index including both
+// state records and cluster-level SOA/NS records
+func (t *Manager) rebuildNameIndex() {
+	t.nameIndex = make(map[string][]Record)
+	
+	// Add cluster-level SOA and NS records
+	zoneName := t.clusterConfig.Name + "."
+	for i, dns := range t.clusterConfig.DNS {
+		nsName := fmt.Sprintf("ns%d.%s", i+1, zoneName)
+		soaContent := fmt.Sprintf("dns.%s %s %d %d %d %d %d", zoneName, contact, serial, refresh, retry, expire, minimum)
+		
+		// SOA record
+		t.nameIndex[zoneName] = append(t.nameIndex[zoneName], Record{
+			Name:     zoneName,
+			DomainID: -1,
+			Type:     "SOA",
+			TTL:      60,
+			Content:  soaContent,
+		})
+		
+		// A record for nameserver
+		t.nameIndex[nsName] = append(t.nameIndex[nsName], Record{
+			Name:     nsName,
+			DomainID: -1,
+			Type:     "A",
+			TTL:      60,
+			Content:  dns,
+		})
+		
+		// NS record
+		t.nameIndex[zoneName] = append(t.nameIndex[zoneName], Record{
+			Name:     zoneName,
+			DomainID: -1,
+			Type:     "NS",
+			TTL:      3600,
+			Content:  nsName,
+		})
+	}
+	
+	// Add instance records from state
+	for _, recordMap := range t.state {
+		for _, record := range recordMap {
+			t.nameIndex[record.Name] = append(t.nameIndex[record.Name], record)
+		}
+	}
 }
 
 func uitoa(val uint) string {

@@ -46,6 +46,9 @@ type (
 		// The zone data is obtained by merging all map values.
 		state map[stateKey]map[recordKey]Record
 
+		// nameIndex maps record names to their records for O(1) lookups
+		nameIndex map[string][]Record
+
 		// score stores the node.Stats.Score values, to use as weight in SRV records
 		score map[string]int
 
@@ -102,6 +105,7 @@ func NewManager(d time.Duration, subQS pubsub.QueueSizer) *Manager {
 		cmdC:          make(chan any),
 		drainDuration: d,
 		state:         make(map[stateKey]map[recordKey]Record),
+		nameIndex:     make(map[string][]Record),
 		score:         make(map[string]int),
 		subQS:         subQS,
 
