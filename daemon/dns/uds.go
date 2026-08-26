@@ -1,6 +1,7 @@
 package dns
 
 import (
+	"bytes"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -267,12 +268,12 @@ func (t *Manager) startUDSListener() error {
 	}
 
 	sendBytes := func(id uint64, conn net.Conn, b []byte) error {
-		b = append(b, []byte("\n")...)
-		content := string(b)
-		if len(content) > 1024 {
-			content = content[:1024] + "..."
+		if len(b) > 1024 {
+			t.log.Tracef("%d: >>> %s...", id, b[:1024])
+		} else {
+			t.log.Tracef("%d: >>> %s", id, b)
 		}
-		t.log.Tracef("%d: >>> %s", id, content)
+		b = append(b, []byte("\n")...)
 		if err := conn.SetWriteDeadline(time.Now().Add(time.Second)); err != nil {
 			t.log.Warnf("%d: can't set response write deadline: %s", id, err)
 		}
@@ -296,7 +297,7 @@ func (t *Manager) startUDSListener() error {
 			Result: false,
 		}
 		b, _ := json.Marshal(response)
-		t.log.Tracef("%d: >>> %s", id, string(b))
+		t.log.Tracef("%d: >>> %s", id, b)
 		return sendBytes(id, conn, b)
 	}
 
@@ -351,7 +352,7 @@ func (t *Manager) startUDSListener() error {
 			}
 
 			reqCount++
-			t.log.Tracef("%d: <<< %s", id, string(message))
+			t.log.Tracef("%d: <<< %s", id, bytes.TrimRight(message, "\r\n"))
 
 			if err := json.Unmarshal(message, &req); err != nil {
 				t.log.Errorf("%d: close connection (%s), served %d requests", id, err, reqCount)
