@@ -330,7 +330,8 @@ func (t *Manager) startUDSListener() error {
 			message = buffer[:n]
 
 			if os.IsTimeout(err) {
-				t.log.Tracef("%d: alive", id)
+				// Only add this trace if needed, as it is logging every second
+				//t.log.Tracef("%d: alive", id)
 				continue
 			} else if errors.Is(err, io.EOF) {
 				t.log.Tracef("%d: close connection (%s), served %d requests", id, err, reqCount)
