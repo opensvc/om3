@@ -169,10 +169,13 @@ func (t *Manager) onInstanceStatusUpdated(c *msgbus.InstanceStatusUpdated) {
 			continue
 		}
 		ipAddr, ok := i.(string)
-		if !ok {
+		if !ok || ipAddr == "" {
 			continue
 		}
 		ip := net.ParseIP(ipAddr)
+		if ip == nil {
+			continue
+		}
 		isIPV4 := ip.To4() != nil
 		var aType, ptrType string
 		if isIPV4 {
@@ -338,9 +341,14 @@ func (t *Manager) zone() Zone {
 			},
 		)
 	}
+	seen := make(map[recordKey]bool)
 	for _, recordMap := range t.state {
 		for _, record := range recordMap {
-			zone = append(zone, record)
+			key := recordKey{record.Name, record.Type, record.Content}
+			if !seen[key] {
+				zone = append(zone, record)
+				seen[key] = true
+			}
 		}
 	}
 	return zone
