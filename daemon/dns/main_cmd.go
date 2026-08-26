@@ -38,6 +38,13 @@ func (t *Manager) stateKey(p naming.Path, node string) stateKey {
 	}
 }
 
+// recordKey uniquely identifies a DNS record (excluding TTL and DomainID which are metadata)
+type recordKey struct {
+	Name    string
+	Type    string
+	Content string
+}
+
 func (t *Manager) onNodeStatsUpdated(c *msgbus.NodeStatsUpdated) {
 	t.score[c.Node] = c.Value.Score
 }
@@ -91,8 +98,8 @@ func (t *Manager) pubUpdated(record Record, p naming.Path, node string) {
 
 func (t *Manager) onInstanceStatusDeleted(c *msgbus.InstanceStatusDeleted) {
 	key := t.stateKey(c.Path, c.Node)
-	if records, ok := t.state[key]; ok {
-		for _, record := range records {
+	if recordMap, ok := t.state[key]; ok {
+		for _, record := range recordMap {
 			t.pubDeleted(record, c.Path, c.Node)
 		}
 		delete(t.state, key)
@@ -103,28 +110,22 @@ func (t *Manager) onInstanceStatusUpdated(c *msgbus.InstanceStatusUpdated) {
 	key := t.stateKey(c.Path, c.Node)
 	name := naming.NewFQDN(c.Path, t.clusterConfig.Name).String() + "."
 	nameOnNode := fmt.Sprintf("%s.%s.%s.%s.node.%s.", c.Path.Name, c.Path.Namespace, c.Path.Kind, c.Node, t.clusterConfig.Name)
-	records := make(Zone, 0)
-	existingRecords := t.state[key]
-
-	// Build a map of existing records by their unique identifier
-	existingRecordsMap := make(map[Record]Record)
-	for _, record := range existingRecords {
-		existingRecordsMap[record] = record
-	}
-
-	// Track which existing records are still present
-	newRecordsMap := make(map[Record]struct{})
+	newRecordsMap := make(map[recordKey]Record)
+	existingRecordsMap := t.state[key]
 
 	stage := func(record Record) {
-		records = append(records, record)
-		newRecordsMap[record] = struct{}{}
+		recordKey := recordKey{record.Name, record.Type, record.Content}
 
-		// Check if this exact record already exists
-		// If not, it means the record is new or has changed (any field difference creates a different key)
-		if _, ok := existingRecordsMap[record]; !ok {
+		// Check if this record already exists (by identity, not by TTL/DomainID)
+		if existingRecord, ok := existingRecordsMap[recordKey]; !ok {
+			// New record, publish update
+			t.pubUpdated(record, c.Path, c.Node)
+		} else if existingRecord != record {
+			// Record exists but has changed (TTL or DomainID difference)
 			t.pubUpdated(record, c.Path, c.Node)
 		}
-		// If the record with the same key exists, it's identical, so no need to publish
+		// Store in new records map (preserves the full Record with current TTL/DomainID)
+		newRecordsMap[recordKey] = record
 	}
 	stageSRV := func(s string) error {
 		expose, err := ParseExpose(s)
@@ -273,14 +274,15 @@ func (t *Manager) onInstanceStatusUpdated(c *msgbus.InstanceStatusUpdated) {
 	}
 
 	// Delete records that no longer exist
-	for _, existingRecord := range existingRecords {
-		if _, ok := newRecordsMap[existingRecord]; !ok {
+	for recordKey, existingRecord := range existingRecordsMap {
+		if _, ok := newRecordsMap[recordKey]; !ok {
 			t.pubDeleted(existingRecord, c.Path, c.Node)
 		}
 	}
 
-	if len(records) > 0 {
-		t.state[key] = records
+	// Update state: if we have new records, store them; otherwise clean up
+	if len(newRecordsMap) > 0 {
+		t.state[key] = newRecordsMap
 	} else {
 		delete(t.state, key)
 	}
@@ -336,8 +338,10 @@ func (t *Manager) zone() Zone {
 			},
 		)
 	}
-	for _, records := range t.state {
-		zone = append(zone, records...)
+	for _, recordMap := range t.state {
+		for _, record := range recordMap {
+			zone = append(zone, record)
+		}
 	}
 	return zone
 }
