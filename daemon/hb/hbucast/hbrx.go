@@ -212,7 +212,7 @@ func (t *rx) Start(cmdC chan<- interface{}, msgC chan<- *hbtype.Msg) error {
 			wg.Add(1)
 			go func() {
 				defer wg.Done()
-				t.handle(clearConn)
+				t.handleLoop(clearConn)
 			}()
 		}
 		wg.Wait()
@@ -224,6 +224,8 @@ func (t *rx) Start(cmdC chan<- interface{}, msgC chan<- *hbtype.Msg) error {
 }
 
 func (t *rx) handle(conn encryptconn.ConnNoder) {
+	// For backward compatibility with old senders that create new connections per message,
+	// we read one message and close the connection
 	defer func() {
 		if err := conn.Close(); err != nil {
 			t.log.Warnf("unexpected error while closing connection from %s: %s", conn.RemoteAddr(), err)
@@ -231,11 +233,15 @@ func (t *rx) handle(conn encryptconn.ConnNoder) {
 	}()
 	data := msgPool.Get().([]byte)
 	defer func() { msgPool.Put(data) }()
+	
+	t.log.Tracef("handle: reading single message from %s", conn.RemoteAddr())
 	i, nodename, err := conn.ReadWithNode(data)
 	if err != nil {
-		t.log.Warnf("read failed from %s: %s", conn.RemoteAddr(), err)
+		t.log.Warnf("handle: read failed from %s: %s", conn.RemoteAddr(), err)
 		return
 	}
+	t.log.Tracef("handle: received %d bytes from node %s", i, nodename)
+	
 	if i >= (msgMaxSize - 10000) {
 		t.log.Warnf("read huge message from node %s:%s msg size: %d", nodename, conn.RemoteAddr(), i)
 	}
@@ -244,6 +250,8 @@ func (t *rx) handle(conn encryptconn.ConnNoder) {
 		t.log.Warnf("unmarshal message failed from node %s:%s: %s", nodename, conn.RemoteAddr(), err)
 		return
 	}
+	t.log.Tracef("handle: successfully decoded message from node %s (kind=%s)", nodename, msg.Kind)
+	
 	cmdPeerSuccess := hbctrl.CmdSetPeerSuccess{
 		Nodename: msg.Nodename,
 		HbID:     t.id,
@@ -257,6 +265,75 @@ func (t *rx) handle(conn encryptconn.ConnNoder) {
 	select {
 	case <-t.ctx.Done():
 	case t.msgC <- &msg:
+	}
+}
+
+func (t *rx) handleLoop(conn encryptconn.ConnNoder) {
+	// Read messages in a loop to support connection reuse from pool on sender side
+	// When sender uses connection pooling, multiple messages are sent on the same connection.
+	// We don't set a read deadline here to avoid timing out on idle connections between heartbeats.
+	// The connection will be closed by the sender when it's done.
+	defer func() {
+		t.log.Tracef("handleLoop: connection closed from %s", conn.RemoteAddr())
+		if err := conn.Close(); err != nil {
+			t.log.Warnf("unexpected error while closing connection from %s: %s", conn.RemoteAddr(), err)
+		}
+	}()
+	
+	t.log.Tracef("handleLoop: starting to read messages from %s", conn.RemoteAddr())
+	
+	data := msgPool.Get().([]byte)
+	defer func() { msgPool.Put(data) }()
+	
+	msgCount := 0
+	for {
+		// Reset buffer for each message
+		buffer := data[:cap(data)]
+		
+		// No deadline - connection is kept open by sender with persistent connections
+		// Read will block until data arrives or connection is closed
+		i, nodename, err := conn.ReadWithNode(buffer)
+		if err != nil {
+			if err.Error() != "EOF" {
+				t.log.Tracef("handleLoop: read failed from %s after %d messages: %s", conn.RemoteAddr(), msgCount, err)
+			} else {
+				t.log.Tracef("handleLoop: EOF from %s after %d messages", conn.RemoteAddr(), msgCount)
+			}
+			return
+		}
+		msgCount++
+		
+		t.log.Tracef("handleLoop: received %d bytes from node %s (msg #%d)", i, nodename, msgCount)
+		
+		if i >= (msgMaxSize - 10000) {
+			t.log.Warnf("read huge message from node %s:%s msg size: %d", nodename, conn.RemoteAddr(), i)
+		}
+		msg := hbtype.Msg{}
+		if err := json.Unmarshal(buffer[:i], &msg); err != nil {
+			t.log.Warnf("handleLoop: unmarshal message failed from node %s:%s: %s", nodename, conn.RemoteAddr(), err)
+			return
+		}
+		t.log.Tracef("handleLoop: successfully decoded message from node %s (kind=%s)", nodename, msg.Kind)
+		
+		cmdPeerSuccess := hbctrl.CmdSetPeerSuccess{
+			Nodename: msg.Nodename,
+			HbID:     t.id,
+			Success:  true,
+		}
+		select {
+		case <-t.ctx.Done():
+			t.log.Tracef("handleLoop: context done, stopping after %d messages", msgCount)
+			return
+		case t.cmdC <- cmdPeerSuccess:
+			t.log.Tracef("handleLoop: sent peer success for node %s", msg.Nodename)
+		}
+		select {
+		case <-t.ctx.Done():
+			t.log.Tracef("handleLoop: context done while sending msg, stopping after %d messages", msgCount)
+			return
+		case t.msgC <- &msg:
+			t.log.Tracef("handleLoop: sent message to msgC (node=%s, kind=%s)", msg.Nodename, msg.Kind)
+		}
 	}
 }
 
