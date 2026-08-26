@@ -8,6 +8,7 @@ import (
 	"github.com/opensvc/om3/v3/core/naming"
 	"github.com/opensvc/om3/v3/core/resource"
 	"github.com/opensvc/om3/v3/core/resourceid"
+	"github.com/opensvc/om3/v3/core/status"
 	"github.com/opensvc/om3/v3/daemon/msgbus"
 	"github.com/opensvc/om3/v3/util/pubsub"
 )
@@ -168,6 +169,9 @@ func (t *Manager) onInstanceStatusUpdated(c *msgbus.InstanceStatusUpdated) {
 		}
 	}
 	for rid, rstat := range c.Value.Resources {
+		if !rstat.Status.Is(status.Up) {
+			continue
+		}
 		i, ok := rstat.Info[ipAddrInfoKey]
 		if !ok {
 			continue
