@@ -30,17 +30,28 @@ type (
 		localIP     net.IP
 		lastNodeErr sync.Map
 
-		name      string
-		log       *plog.Logger
-		cmdC      chan<- interface{}
-		msgC      chan<- *hbtype.Msg
-		cancel    func()
+		name   string
+		log    *plog.Logger
+		cmdC   chan<- interface{}
+		msgC   chan<- *hbtype.Msg
+		cancel func()
 		// Per-peer connections that are kept open (sync.Map for concurrent access)
 		peerConns sync.Map
 		// Per-peer connection locks to prevent duplicate dial attempts
 		peerLocks sync.Map
+		// Per-peer send queues to serialize sends to the same node
+		sendQueues sync.Map
+		// WaitGroup for send worker goroutines
+		sendWorkers sync.WaitGroup
 	}
 )
+
+// sendRequest holds data for a send operation
+type sendRequest struct {
+	node string
+	addr string
+	data []byte
+}
 
 // ID implements the ID function of Transmitter interface for tx
 func (t *tx) ID() string {
@@ -63,7 +74,14 @@ func (t *tx) Stop() error {
 		conn.Close()
 		return true
 	})
+	// Close all send queues to unblock workers
+	t.sendQueues.Range(func(key, value any) bool {
+		q := value.(chan sendRequest)
+		close(q)
+		return true
+	})
 	t.Wait()
+	t.sendWorkers.Wait()
 	t.log.Tracef("wait done")
 	return nil
 }
@@ -85,6 +103,35 @@ func (t *tx) streamPeerDesc(addr string) string {
 		} else {
 			return fmt.Sprintf("→ %s", addr)
 		}
+	}
+}
+
+// sendToNode queues a send request for a specific node
+// It creates a worker goroutine for the node if one doesn't exist
+func (t *tx) sendToNode(node, addr string, b []byte) {
+	// Get or create send queue for this node
+	queueI, loaded := t.sendQueues.LoadOrStore(node, make(chan sendRequest, 1))
+	queue := queueI.(chan sendRequest)
+
+	// If this is the first time we're creating the queue, start a worker
+	if !loaded {
+		t.sendWorkers.Add(1)
+		go func(node, addr string, q chan sendRequest) {
+			defer t.sendWorkers.Done()
+			for req := range q {
+				t.doSend(req.node, req.addr, req.data)
+			}
+		}(node, addr, queue)
+	}
+
+	// Try to send without blocking first (non-blocking send)
+	select {
+	case queue <- sendRequest{node: node, addr: addr, data: b}:
+		// Successfully queued
+	default:
+		// Queue is full, drop the message to avoid blocking
+		// This means a send is already in progress and we don't want to stack up
+		t.log.Tracef("send queue full for node %s, dropping message", node)
 	}
 }
 
@@ -158,7 +205,7 @@ func (t *tx) Start(cmdC chan<- interface{}, msgC <-chan []byte) error {
 				protectedB := make([]byte, len(b))
 				copy(protectedB, b)
 				for node, addr := range t.nodes {
-					go t.send(node, addr, protectedB)
+					t.sendToNode(node, addr, protectedB)
 				}
 			}
 		}
@@ -184,7 +231,7 @@ func (t *tx) defaultLocalIP() (net.IP, error) {
 	return addrs[0].IP, nil
 }
 
-func (t *tx) send(node, addr string, b []byte) {
+func (t *tx) doSend(node, addr string, b []byte) {
 	t.log.Tracef("send: starting for node %s, addr %s, data len %d", node, addr, len(b))
 	localAddr := net.TCPAddr{
 		IP:   t.localIP,
@@ -211,7 +258,7 @@ func (t *tx) send(node, addr string, b []byte) {
 	// with the null terminator
 	// For now, just write b + null byte directly
 	dataWithTerminator := append(b, 0x00)
-	
+
 	t.log.Tracef("sending %d bytes (+%d terminator) to %s", len(b), 1, addr)
 	if n, err := rawConn.Write(dataWithTerminator); err != nil {
 		t.log.Tracef("write failed to %s: %v (wrote %d/%d bytes)", addr, err, n, len(dataWithTerminator))
@@ -244,12 +291,12 @@ func (t *tx) getPeerConn(node, addr string, localAddr net.TCPAddr) (net.Conn, er
 	lock := lockI.(*sync.Mutex)
 	lock.Lock()
 	defer lock.Unlock()
-	
+
 	// Check if connection already exists (under per-peer lock)
 	if connI, exists := t.peerConns.Load(node); exists {
 		return connI.(net.Conn), nil
 	}
-	
+
 	// Create new connection outside the global lock to avoid blocking other peers
 	dialer := net.Dialer{
 		Timeout:   t.timeout,
@@ -259,7 +306,7 @@ func (t *tx) getPeerConn(node, addr string, localAddr net.TCPAddr) (net.Conn, er
 	if err != nil {
 		return nil, err
 	}
-	
+
 	// Store the connection (still under per-peer lock)
 	t.peerConns.Store(node, conn)
 	t.log.Tracef("created new persistent connection to %s (%s)", node, addr)
@@ -273,7 +320,7 @@ func (t *tx) removePeerConn(node string) {
 	lock := lockI.(*sync.Mutex)
 	lock.Lock()
 	defer lock.Unlock()
-	
+
 	if connI, exists := t.peerConns.Load(node); exists {
 		conn := connI.(net.Conn)
 		conn.Close()
