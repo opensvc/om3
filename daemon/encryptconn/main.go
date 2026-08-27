@@ -7,7 +7,6 @@ import (
 	"bufio"
 	"bytes"
 	"net"
-	"sync"
 )
 
 type (
@@ -24,8 +23,7 @@ type (
 		srcNode          string
 		encryptDecrypter encryptDecrypter
 		// Persistent scanner for reading NUL-delimited frames
-		scanner    *bufio.Scanner
-		scannerBuf []byte
+		scanner *bufio.Scanner
 	}
 
 	ConnNoder interface {
@@ -38,26 +36,22 @@ var (
 	msgUsualSize = 1000 // usual event size
 
 	msgMaxSize = 10000000 // max kind=full event size
-
-	// Create a new sync.Pool to manage the byte buffers. Used to reduce memory usage
-	// when many messages are scanned.
-	msgPool = sync.Pool{
-		New: func() interface{} {
-			// This creates a new byte slice of the specified size.
-			return make([]byte, msgMaxSize)
-		},
-	}
 )
 
 // New returns a new *T that will use encrypted net.Conn
+//
+// The scanner buffer is owned by the returned *T for its whole lifetime: it is
+// not pooled, so that a Close() concurrent with a reader can't hand the buffer
+// to another connection while the scanner still points into it. It starts at
+// the usual message size and is grown by the scanner, up to the max message
+// size, when a bigger message is read.
 func New(encConn net.Conn, ed encryptDecrypter) *T {
 	t := &T{
 		Conn:             encConn,
 		encryptDecrypter: ed,
-		scannerBuf:       msgPool.Get().([]byte),
 	}
 	t.scanner = bufio.NewScanner(encConn)
-	t.scanner.Buffer(t.scannerBuf, msgMaxSize)
+	t.scanner.Buffer(make([]byte, msgUsualSize), msgMaxSize)
 	t.scanner.Split(splitFunc)
 	return t
 }
@@ -100,16 +94,6 @@ func (t *T) ReadWithNode(b []byte) (n int, nodename string, err error) {
 // SrcNode returns the encrypter nodename
 func (t *T) SrcNode() string {
 	return t.srcNode
-}
-
-// Close closes the underlying connection and releases the scanner buffer
-func (t *T) Close() error {
-	if t.scannerBuf != nil {
-		msgPool.Put(t.scannerBuf)
-		t.scannerBuf = nil
-		t.scanner = nil
-	}
-	return t.Conn.Close()
 }
 
 // dropCR drops a terminal \r from the data.
