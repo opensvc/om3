@@ -35,12 +35,12 @@ type (
 		cmdC   chan<- interface{}
 		msgC   chan<- *hbtype.Msg
 		cancel func()
-		// Per-peer send queues to serialize sends to the same node. Start
-		// creates one per configured node, before anything can use them,
-		// and Stop closes them once the sender is done.
-		sendQueues map[string]chan sendRequest
+		// Per-peer send workers, to serialize the sends to the same node.
+		// Start creates one per configured node, before anything can use
+		// them, and Stop closes them once the sender is done.
+		sendWorkers map[string]*sendWorker
 		// WaitGroup for send worker goroutines
-		sendWorkers sync.WaitGroup
+		sendWorkersWG sync.WaitGroup
 	}
 )
 
@@ -52,6 +52,42 @@ type sendRequest struct {
 	// carried by the request because t.localIP is refreshed by the Start
 	// goroutine, which is the only one allowed to read or write it.
 	localIP net.IP
+}
+
+// sendWorker serializes the sends to one peer node
+type sendWorker struct {
+	queue chan sendRequest
+
+	// mu protects conn, which the worker goroutine owns, and Stop closes
+	// to interrupt a write to a peer that stopped reading. Its deadline
+	// would otherwise hold the shutdown for a whole timeout.
+	mu   sync.Mutex
+	conn net.Conn
+}
+
+// getConn returns the worker connection, nil when it has to dial one
+func (w *sendWorker) getConn() net.Conn {
+	w.mu.Lock()
+	defer w.mu.Unlock()
+	return w.conn
+}
+
+// setConn publishes the connection the worker just dialed
+func (w *sendWorker) setConn(conn net.Conn) {
+	w.mu.Lock()
+	defer w.mu.Unlock()
+	w.conn = conn
+}
+
+// closeConn closes the worker connection, if it has one. The worker calls
+// it when a send fails, and Stop to interrupt a blocked send.
+func (w *sendWorker) closeConn() {
+	w.mu.Lock()
+	defer w.mu.Unlock()
+	if w.conn != nil {
+		_ = w.conn.Close()
+		w.conn = nil
+	}
 }
 
 // ID implements the ID function of Transmitter interface for tx
@@ -73,12 +109,15 @@ func (t *tx) Stop() error {
 	// so the send queues have no writer left once it is done. Closing them
 	// before would risk a send on a closed channel.
 	t.Wait()
-	// Close all send queues to unblock workers
-	for node, queue := range t.sendQueues {
-		delete(t.sendQueues, node)
-		close(queue)
+	// Close the queues to unblock the workers, and their connections: a
+	// worker can be parked in a write to a peer that stopped reading, and
+	// only its own deadline, a timeout away, would end it.
+	for node, w := range t.sendWorkers {
+		delete(t.sendWorkers, node)
+		close(w.queue)
+		w.closeConn()
 	}
-	t.sendWorkers.Wait()
+	t.sendWorkersWG.Wait()
 	t.log.Tracef("wait done")
 	return nil
 }
@@ -107,16 +146,16 @@ func (t *tx) streamPeerDesc(addr string) string {
 //
 // Must be called from the Start goroutine: it reads t.localIP.
 func (t *tx) sendToNode(node string, b []byte) {
-	queue, ok := t.sendQueues[node]
+	w, ok := t.sendWorkers[node]
 	if !ok {
-		// can't happen: Start creates a queue per configured node
-		t.log.Warnf("no send queue for node %s", node)
+		// can't happen: Start creates a worker per configured node
+		t.log.Warnf("no send worker for node %s", node)
 		return
 	}
 
 	// Try to send without blocking first (non-blocking send)
 	select {
-	case queue <- sendRequest{data: b, localIP: t.localIP}:
+	case w.queue <- sendRequest{data: b, localIP: t.localIP}:
 		// Successfully queued
 	default:
 		// Queue is full, drop the message to avoid blocking
@@ -129,40 +168,36 @@ func (t *tx) sendToNode(node string, b []byte) {
 // node. It maintains its own connection, redialing when a send fails or
 // the local ip changes, and exits when the transmitter context is done or
 // the queue is closed.
-func (t *tx) startSendWorker(node, addr string, q chan sendRequest) {
-	t.sendWorkers.Add(1)
+func (t *tx) startSendWorker(node, addr string, w *sendWorker) {
+	t.sendWorkersWG.Add(1)
 	go func() {
-		defer t.sendWorkers.Done()
-		// Worker maintains its own persistent connection
-		var conn net.Conn
-		// connLocalIP is the source address conn is bound to, to
-		// detect a local ip change while conn is established
+		defer t.sendWorkersWG.Done()
+		// The worker connection is closed on every exit path, and by Stop
+		// when it has to interrupt a send.
+		defer w.closeConn()
+		// connLocalIP is the source address the connection is bound to, to
+		// detect a local ip change while it is established
 		var connLocalIP net.IP
 
 		for {
 			select {
 			case <-t.ctx.Done():
-				// Context cancelled, close connection and exit
-				if conn != nil {
-					conn.Close()
-					conn = nil
-				}
+				// Context cancelled, exit
 				return
-			case req, ok := <-q:
+			case req, ok := <-w.queue:
 				if !ok {
 					// Queue closed, exit
-					if conn != nil {
-						conn.Close()
-					}
 					return
 				}
+
+				conn := w.getConn()
 
 				if conn != nil && !connLocalIP.Equal(req.localIP) {
 					// The local ip changed since we dialed: the
 					// connection is bound to an address the node may
 					// not own anymore, redial from the new one.
 					t.log.Infof("local ip changed from %s to %s, reconnect to %s", connLocalIP, req.localIP, addr)
-					conn.Close()
+					w.closeConn()
 					conn = nil
 				}
 
@@ -191,13 +226,13 @@ func (t *tx) startSendWorker(node, addr string, q chan sendRequest) {
 					}
 					conn = newConn
 					connLocalIP = req.localIP
+					w.setConn(conn)
 				}
 
 				// Set deadline on the connection
 				if err := conn.SetDeadline(time.Now().Add(t.timeout)); err != nil {
 					t.handleSendError(node, err)
-					conn.Close()
-					conn = nil
+					w.closeConn()
 					continue
 				}
 
@@ -205,13 +240,11 @@ func (t *tx) startSendWorker(node, addr string, q chan sendRequest) {
 				if n, err := conn.Write(req.data); err != nil {
 					t.log.Tracef("write failed to %s: %v (wrote %d/%d bytes)", addr, err, n, len(req.data))
 					t.handleSendError(node, err)
-					conn.Close()
-					conn = nil
+					w.closeConn()
 				} else if n != len(req.data) {
 					t.log.Tracef("short write to %s: %d/%d bytes", addr, n, len(req.data))
 					t.handleSendError(node, fmt.Errorf("short write: %d/%d", n, len(req.data)))
-					conn.Close()
-					conn = nil
+					w.closeConn()
 				} else {
 					t.log.Tracef("sent %d bytes to %s", len(req.data), addr)
 					t.clearDedupLog(node)
@@ -224,10 +257,6 @@ func (t *tx) startSendWorker(node, addr string, q chan sendRequest) {
 					}:
 					case <-t.ctx.Done():
 						// Context cancelled, skip notification
-						if conn != nil {
-							conn.Close()
-							conn = nil
-						}
 						return
 					}
 
@@ -252,13 +281,13 @@ func (t *tx) Start(cmdC chan<- interface{}, msgC <-chan []byte) error {
 	t.Add(1)
 	hbaudit.EnableAudit(ctx, t.id, t.log, "hb", strings.Replace(t.id, "hb#", "hb:", 1))
 
-	// One queue and one worker per peer node, created before the sender
-	// can reach them, so the map is never written again.
-	t.sendQueues = make(map[string]chan sendRequest, len(t.nodes))
+	// One worker per peer node, created before the sender can reach them,
+	// so the map is never written again.
+	t.sendWorkers = make(map[string]*sendWorker, len(t.nodes))
 	for node, addr := range t.nodes {
-		queue := make(chan sendRequest, 1)
-		t.sendQueues[node] = queue
-		t.startSendWorker(node, addr, queue)
+		w := &sendWorker{queue: make(chan sendRequest, 1)}
+		t.sendWorkers[node] = w
+		t.startSendWorker(node, addr, w)
 	}
 
 	go func() {
@@ -352,6 +381,10 @@ func (t *tx) defaultLocalIP() (net.IP, error) {
 
 // handleSendError handles send errors with deduplication logging
 func (t *tx) handleSendError(node string, err error) {
+	if t.ctx.Err() != nil {
+		// stopping: the error is the dial or the send Stop just interrupted
+		return
+	}
 	newErr := err.Error()
 	if lastErr, ok := t.lastNodeErr.Load(node); ok {
 		if lastErr == newErr {
