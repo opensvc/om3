@@ -35,10 +35,6 @@ type (
 		cmdC   chan<- interface{}
 		msgC   chan<- *hbtype.Msg
 		cancel func()
-		// Per-peer connections that are kept open (sync.Map for concurrent access)
-		peerConns sync.Map
-		// Per-peer connection locks to prevent duplicate dial attempts
-		peerLocks sync.Map
 		// Per-peer send queues to serialize sends to the same node
 		sendQueues sync.Map
 		// WaitGroup for send worker goroutines
@@ -68,12 +64,6 @@ func (t *tx) Stop() error {
 			Nodename: node,
 		}
 	}
-	// Close all peer connections
-	t.peerConns.Range(func(key, value any) bool {
-		conn := value.(net.Conn)
-		conn.Close()
-		return true
-	})
 	// Close all send queues to unblock workers
 	t.sendQueues.Range(func(key, value any) bool {
 		q := value.(chan sendRequest)
@@ -118,8 +108,62 @@ func (t *tx) sendToNode(node, addr string, b []byte) {
 		t.sendWorkers.Add(1)
 		go func(node, addr string, q chan sendRequest) {
 			defer t.sendWorkers.Done()
+			// Worker maintains its own persistent connection
+			var conn net.Conn
+			
 			for req := range q {
-				t.doSend(req.node, req.addr, req.data)
+				if conn == nil {
+					// Create new connection
+					localAddr := net.TCPAddr{
+						IP:   t.localIP,
+						Port: 0,
+					}
+					dialer := net.Dialer{
+						Timeout:   t.timeout,
+						LocalAddr: &localAddr,
+					}
+					var err error
+					conn, err = dialer.Dial("tcp", addr)
+					if err != nil {
+						t.handleSendError(node, err)
+						continue
+					}
+				}
+				
+				// Set deadline on the connection
+				if err := conn.SetDeadline(time.Now().Add(t.timeout)); err != nil {
+					t.handleSendError(node, err)
+					conn.Close()
+					conn = nil
+					continue
+				}
+				
+				// Send the data with null terminator
+				dataWithTerminator := append(req.data, 0x00)
+				t.log.Tracef("sending %d bytes (+%d terminator) to %s", len(req.data), 1, addr)
+				if n, err := conn.Write(dataWithTerminator); err != nil {
+					t.log.Tracef("write failed to %s: %v (wrote %d/%d bytes)", addr, err, n, len(dataWithTerminator))
+					t.handleSendError(node, err)
+					conn.Close()
+					conn = nil
+				} else if n != len(dataWithTerminator) {
+					t.log.Tracef("short write to %s: %d/%d bytes", addr, n, len(dataWithTerminator))
+					t.handleSendError(node, fmt.Errorf("short write: %d/%d", n, len(dataWithTerminator)))
+					conn.Close()
+					conn = nil
+				} else {
+					t.log.Tracef("successfully sent %d bytes to %s", len(req.data), addr)
+					t.clearDedupLog(node)
+					t.cmdC <- hbctrl.CmdSetPeerSuccess{
+						Nodename: node,
+						HbID:     t.id,
+						Success:  true,
+					}
+				}
+			}
+			// Close connection when worker exits
+			if conn != nil {
+				conn.Close()
 			}
 		}(node, addr, queue)
 	}
@@ -229,104 +273,6 @@ func (t *tx) defaultLocalIP() (net.IP, error) {
 		return nil, fmt.Errorf("lookup sender addr: %s: no address found ", t.addr)
 	}
 	return addrs[0].IP, nil
-}
-
-func (t *tx) doSend(node, addr string, b []byte) {
-	t.log.Tracef("send: starting for node %s, addr %s, data len %d", node, addr, len(b))
-	localAddr := net.TCPAddr{
-		IP:   t.localIP,
-		Port: 0,
-	}
-
-	// Get or create persistent connection for this peer
-	rawConn, err := t.getPeerConn(node, addr, localAddr)
-	if err != nil {
-		t.handleSendError(node, err)
-		return
-	}
-
-	// Set deadline on the raw connection
-	if err := rawConn.SetDeadline(time.Now().Add(t.timeout)); err != nil {
-		t.handleSendError(node, err)
-		return
-	}
-
-	// Create encryptconn wrapper to add null terminator
-	// The data in b is already encrypted by the main hb code, but we need to add
-	// the null terminator that encryptconn.ReadWithNode expects
-	// However, b is already the final encrypted message, so we need to write it
-	// with the null terminator
-	// For now, just write b + null byte directly
-	dataWithTerminator := append(b, 0x00)
-
-	t.log.Tracef("sending %d bytes (+%d terminator) to %s", len(b), 1, addr)
-	if n, err := rawConn.Write(dataWithTerminator); err != nil {
-		t.log.Tracef("write failed to %s: %v (wrote %d/%d bytes)", addr, err, n, len(dataWithTerminator))
-		t.handleSendError(node, err)
-		// Remove the connection so we can reconnect next time
-		t.removePeerConn(node)
-		return
-	} else if n != len(dataWithTerminator) {
-		t.log.Tracef("short write to %s: %d/%d bytes", addr, n, len(dataWithTerminator))
-		t.handleSendError(node, fmt.Errorf("short write: %d/%d", n, len(dataWithTerminator)))
-		// Remove the connection so we can reconnect next time
-		t.removePeerConn(node)
-		return
-	}
-
-	t.log.Tracef("successfully sent %d bytes to %s", len(b), addr)
-	t.clearDedupLog(node)
-
-	t.cmdC <- hbctrl.CmdSetPeerSuccess{
-		Nodename: node,
-		HbID:     t.id,
-		Success:  true,
-	}
-}
-
-// getPeerConn returns the persistent connection for a peer, creating it if necessary
-func (t *tx) getPeerConn(node, addr string, localAddr net.TCPAddr) (net.Conn, error) {
-	// Get or create per-peer lock using sync.Map
-	lockI, _ := t.peerLocks.LoadOrStore(node, &sync.Mutex{})
-	lock := lockI.(*sync.Mutex)
-	lock.Lock()
-	defer lock.Unlock()
-
-	// Check if connection already exists (under per-peer lock)
-	if connI, exists := t.peerConns.Load(node); exists {
-		return connI.(net.Conn), nil
-	}
-
-	// Create new connection outside the global lock to avoid blocking other peers
-	dialer := net.Dialer{
-		Timeout:   t.timeout,
-		LocalAddr: &localAddr,
-	}
-	conn, err := dialer.Dial("tcp", addr)
-	if err != nil {
-		return nil, err
-	}
-
-	// Store the connection (still under per-peer lock)
-	t.peerConns.Store(node, conn)
-	t.log.Tracef("created new persistent connection to %s (%s)", node, addr)
-	return conn, nil
-}
-
-// removePeerConn removes a peer connection from the map
-func (t *tx) removePeerConn(node string) {
-	// Use per-peer lock to avoid blocking other peers
-	lockI, _ := t.peerLocks.LoadOrStore(node, &sync.Mutex{})
-	lock := lockI.(*sync.Mutex)
-	lock.Lock()
-	defer lock.Unlock()
-
-	if connI, exists := t.peerConns.Load(node); exists {
-		conn := connI.(net.Conn)
-		conn.Close()
-		t.peerConns.Delete(node)
-		t.log.Tracef("removed connection to %s", node)
-	}
 }
 
 // handleSendError handles send errors with deduplication logging
