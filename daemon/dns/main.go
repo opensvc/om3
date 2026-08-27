@@ -128,6 +128,7 @@ func (t *Manager) Start(parent context.Context) error {
 
 	t.startSubscriptions()
 	t.clusterConfig = *cluster.ConfigData.Get()
+	t.rebuildNameIndex()
 
 	if err := t.startUDSListener(); err != nil {
 		return err
