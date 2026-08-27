@@ -25,6 +25,13 @@ import (
 	"github.com/opensvc/om3/v3/util/plog"
 )
 
+// defaultHTTPPort is the port a daemon started with no cluster config
+// listens on. Captured here because daemon.Start overwrites
+// daemonenv.HTTPPort with the port of the config it starts with, while
+// the listener.port keyword default, which the configless daemon uses,
+// keeps the value this package var holds.
+var defaultHTTPPort = daemonenv.HTTPPort
+
 func newClient(serverUrl string) (*client.T, error) {
 	return client.New(client.WithURL(serverUrl), client.WithPassword(cluster.ConfigData.Get().Secret()))
 	//return client.New(client.WithURL(serverUrl), client.WithInsecureSkipVerify(true))
@@ -249,6 +256,12 @@ func TestDaemonStartupWithConfig(t *testing.T) {
 func TestDaemonStartupWithoutConfig(t *testing.T) {
 	if runtime.GOOS != "darwin" && os.Getuid() != 0 {
 		t.Skip("skipped for non root user")
+	}
+	// This one starts a daemon with no cluster config, so it can't be told
+	// to listen elsewhere: the port comes from the listener.port keyword
+	// default. A daemon alive on this node holds it.
+	if err := testhelper.TCPPortAvailable(fmt.Sprint(defaultHTTPPort)); err != nil {
+		t.Skipf("skipped: a daemon started without config needs port %d: %s", defaultHTTPPort, err)
 	}
 	runTestDaemonStartup(t, false)
 }
