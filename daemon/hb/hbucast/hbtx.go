@@ -187,17 +187,16 @@ func (t *tx) sendToNode(node, addr string, b []byte) {
 						continue
 					}
 
-					// Send the data with null terminator
-					dataWithTerminator := append(req.data, 0x00)
-					t.log.Tracef("sending %d bytes (+%d terminator) to %s", len(req.data), 1, addr)
-					if n, err := conn.Write(dataWithTerminator); err != nil {
-						t.log.Tracef("write failed to %s: %v (wrote %d/%d bytes)", addr, err, n, len(dataWithTerminator))
+					// Send the data, already null terminated by the sender
+					t.log.Tracef("sending %d bytes to %s", len(req.data), addr)
+					if n, err := conn.Write(req.data); err != nil {
+						t.log.Tracef("write failed to %s: %v (wrote %d/%d bytes)", addr, err, n, len(req.data))
 						t.handleSendError(node, err)
 						conn.Close()
 						conn = nil
-					} else if n != len(dataWithTerminator) {
-						t.log.Tracef("short write to %s: %d/%d bytes", addr, n, len(dataWithTerminator))
-						t.handleSendError(node, fmt.Errorf("short write: %d/%d", n, len(dataWithTerminator)))
+					} else if n != len(req.data) {
+						t.log.Tracef("short write to %s: %d/%d bytes", addr, n, len(req.data))
+						t.handleSendError(node, fmt.Errorf("short write: %d/%d", n, len(req.data)))
 						conn.Close()
 						conn = nil
 					} else {
@@ -308,7 +307,10 @@ func (t *tx) Start(cmdC chan<- interface{}, msgC <-chan []byte) error {
 				continue
 			} else {
 				t.log.Tracef(reason)
-				protectedB := make([]byte, len(b))
+				// The extra byte is the null frame terminator the peer rx
+				// scans for, left at zero by make. Framing the message here
+				// keeps the buffer the workers share read-only for them.
+				protectedB := make([]byte, len(b)+1)
 				copy(protectedB, b)
 				for node, addr := range t.nodes {
 					t.sendToNode(node, addr, protectedB)
