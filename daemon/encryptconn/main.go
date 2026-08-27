@@ -6,7 +6,6 @@ package encryptconn
 import (
 	"bufio"
 	"bytes"
-	"io"
 	"net"
 	"sync"
 )
@@ -24,6 +23,9 @@ type (
 		// srcNode is the encrypter nodename returned by ReadWithNode
 		srcNode          string
 		encryptDecrypter encryptDecrypter
+		// Persistent scanner for reading NUL-delimited frames
+		scanner    *bufio.Scanner
+		scannerBuf []byte
 	}
 
 	ConnNoder interface {
@@ -49,10 +51,15 @@ var (
 
 // New returns a new *T that will use encrypted net.Conn
 func New(encConn net.Conn, ed encryptDecrypter) *T {
-	return &T{
+	t := &T{
 		Conn:             encConn,
 		encryptDecrypter: ed,
+		scannerBuf:       msgPool.Get().([]byte),
 	}
+	t.scanner = bufio.NewScanner(encConn)
+	t.scanner.Buffer(t.scannerBuf, msgMaxSize)
+	t.scanner.Split(splitFunc)
+	return t
 }
 
 // Write implement Writer interface for T
@@ -80,7 +87,7 @@ func (t *T) Read(b []byte) (n int, err error) {
 // read and decrypt data read from t.Conn
 func (t *T) ReadWithNode(b []byte) (n int, nodename string, err error) {
 	var encBytes, clearBytes []byte
-	if encBytes, err = getMessage(t.Conn); err != nil {
+	if encBytes, err = t.getMessage(); err != nil {
 		return
 	}
 	if clearBytes, nodename, err = t.encryptDecrypter.DecryptWithNode(encBytes); err != nil {
@@ -93,6 +100,16 @@ func (t *T) ReadWithNode(b []byte) (n int, nodename string, err error) {
 // SrcNode returns the encrypter nodename
 func (t *T) SrcNode() string {
 	return t.srcNode
+}
+
+// Close closes the underlying connection and releases the scanner buffer
+func (t *T) Close() error {
+	if t.scannerBuf != nil {
+		msgPool.Put(t.scannerBuf)
+		t.scannerBuf = nil
+		t.scanner = nil
+	}
+	return t.Conn.Close()
 }
 
 // dropCR drops a terminal \r from the data.
@@ -121,15 +138,13 @@ func splitFunc(data []byte, atEOF bool) (advance int, token []byte, err error) {
 	return 0, nil, nil
 }
 
-func getMessage(r io.Reader) ([]byte, error) {
-	scanner := bufio.NewScanner(r)
-	sharedBuffer := msgPool.Get().([]byte)
-	defer func() { msgPool.Put(sharedBuffer) }()
-	scanner.Buffer(sharedBuffer, msgMaxSize)
-	scanner.Split(splitFunc)
-	scanner.Scan()
-	sharedB := scanner.Bytes()
+// getMessage reads a single NUL-delimited frame from the persistent scanner
+func (t *T) getMessage() ([]byte, error) {
+	if !t.scanner.Scan() {
+		return nil, t.scanner.Err()
+	}
+	sharedB := t.scanner.Bytes()
 	b := make([]byte, len(sharedB))
 	copy(b, sharedB)
-	return b, scanner.Err()
+	return b, nil
 }
