@@ -47,6 +47,11 @@ type sendRequest struct {
 	node string
 	addr string
 	data []byte
+
+	// localIP is the source address the worker must dial from. It is
+	// carried by the request because t.localIP is refreshed by the Start
+	// goroutine, which is the only one allowed to read or write it.
+	localIP net.IP
 }
 
 // ID implements the ID function of Transmitter interface for tx
@@ -102,6 +107,8 @@ func (t *tx) streamPeerDesc(addr string) string {
 
 // sendToNode queues a send request for a specific node
 // It creates a worker goroutine for the node if one doesn't exist
+//
+// Must be called from the Start goroutine: it reads t.localIP.
 func (t *tx) sendToNode(node, addr string, b []byte) {
 	// Get or create send queue for this node
 	queueI, loaded := t.sendQueues.LoadOrStore(node, make(chan sendRequest, 1))
@@ -114,10 +121,9 @@ func (t *tx) sendToNode(node, addr string, b []byte) {
 			defer t.sendWorkers.Done()
 			// Worker maintains its own persistent connection
 			var conn net.Conn
-			localAddr := net.TCPAddr{
-				IP:   t.localIP,
-				Port: 0,
-			}
+			// connLocalIP is the source address conn is bound to, to
+			// detect a local ip change while conn is established
+			var connLocalIP net.IP
 
 			for {
 				select {
@@ -137,8 +143,21 @@ func (t *tx) sendToNode(node, addr string, b []byte) {
 						return
 					}
 
+					if conn != nil && !connLocalIP.Equal(req.localIP) {
+						// The local ip changed since we dialed: the
+						// connection is bound to an address the node may
+						// not own anymore, redial from the new one.
+						t.log.Infof("local ip changed from %s to %s, reconnect to %s", connLocalIP, req.localIP, addr)
+						conn.Close()
+						conn = nil
+					}
+
 					if conn == nil {
 						// Create new connection with context-aware dialer
+						localAddr := net.TCPAddr{
+							IP:   req.localIP,
+							Port: 0,
+						}
 						dialer := &net.Dialer{
 							Timeout:   t.timeout,
 							LocalAddr: &localAddr,
@@ -157,6 +176,7 @@ func (t *tx) sendToNode(node, addr string, b []byte) {
 							continue
 						}
 						conn = newConn
+						connLocalIP = req.localIP
 					}
 
 					// Set deadline on the connection
@@ -212,7 +232,7 @@ func (t *tx) sendToNode(node, addr string, b []byte) {
 
 	// Try to send without blocking first (non-blocking send)
 	select {
-	case queue <- sendRequest{node: node, addr: addr, data: b}:
+	case queue <- sendRequest{node: node, addr: addr, data: b, localIP: t.localIP}:
 		// Successfully queued
 	default:
 		// Queue is full, drop the message to avoid blocking
