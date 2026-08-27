@@ -48,15 +48,6 @@ type (
 
 var (
 	msgMaxSize = 10000000 // max kind=full msg size
-
-	// Create a new sync.Pool to manage the byte buffers. Used to reduce memory usage
-	// during handling the messages.
-	msgPool = sync.Pool{
-		New: func() interface{} {
-			// This creates a new byte slice of the specified size.
-			return make([]byte, msgMaxSize)
-		},
-	}
 )
 
 // ID implements the ID function of the Receiver interface for rx
@@ -319,8 +310,6 @@ func (t *rx) handleLoop(conn encryptconn.ConnNoder, peerAddr string) {
 		deadline = 10 * time.Second
 	}
 	t.log.Tracef("starting to read messages from %s", peerAddr)
-	data := msgPool.Get().([]byte)
-	defer func() { msgPool.Put(data) }()
 
 	msgCount := 0
 	for {
@@ -338,11 +327,10 @@ func (t *rx) handleLoop(conn encryptconn.ConnNoder, peerAddr string) {
 			return
 		}
 
-		// Reset buffer for each message
-		buffer := data[:cap(data)]
-
-		// Read will block until data arrives, connection is closed, or deadline is reached
-		i, nodename, err := conn.ReadWithNode(buffer)
+		// Read will block until data arrives, connection is closed, or
+		// deadline is reached. The returned message is sized for the frame
+		// read, so an idle connection retains nothing.
+		b, nodename, err := conn.MessageWithNode()
 		if err != nil {
 			switch {
 			case errors.Is(err, io.EOF):
@@ -360,15 +348,15 @@ func (t *rx) handleLoop(conn encryptconn.ConnNoder, peerAddr string) {
 		}
 		msgCount++
 
-		if i >= (msgMaxSize - 10000) {
-			t.log.Warnf("read huge message from node %s:%s msg size: %d", nodename, peerAddr, i)
+		if len(b) >= (msgMaxSize - 10000) {
+			t.log.Warnf("read huge message from node %s:%s msg size: %d", nodename, peerAddr, len(b))
 		}
 		msg := hbtype.Msg{}
-		if err := json.Unmarshal(buffer[:i], &msg); err != nil {
+		if err := json.Unmarshal(b, &msg); err != nil {
 			t.log.Warnf("unmarshal message failed from node %s:%s: %s", nodename, peerAddr, err)
 			return
 		}
-		t.log.Tracef("read %d bytes from node %s (kind=%s, msg #%d)", i, nodename, msg.Kind, msgCount)
+		t.log.Tracef("read %d bytes from node %s (kind=%s, msg #%d)", len(b), nodename, msg.Kind, msgCount)
 
 		cmdPeerSuccess := hbctrl.CmdSetPeerSuccess{
 			Nodename: msg.Nodename,
