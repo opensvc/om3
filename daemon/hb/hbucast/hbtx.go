@@ -143,15 +143,20 @@ func (t *tx) sendToNode(node, addr string, b []byte) {
 							Timeout:   t.timeout,
 							LocalAddr: &localAddr,
 						}
-						// Use a separate context for dial that respects t.ctx
+						// Use a separate context for dial that respects t.ctx.
+						// Cancel as soon as the dial returns: cancelling after a
+						// successful dial doesn't affect the connection, and this
+						// worker goroutine lives as long as the transmitter, so a
+						// deferred cancel would pile up on its stack, one per
+						// reconnect.
 						dialCtx, dialCancel := context.WithTimeout(t.ctx, t.timeout)
-						defer dialCancel()
-						var err error
-						conn, err = dialer.DialContext(dialCtx, "tcp", addr)
+						newConn, err := dialer.DialContext(dialCtx, "tcp", addr)
+						dialCancel()
 						if err != nil {
 							t.handleSendError(node, err)
 							continue
 						}
+						conn = newConn
 					}
 
 					// Set deadline on the connection
