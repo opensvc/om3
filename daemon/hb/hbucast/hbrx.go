@@ -187,7 +187,9 @@ func (t *rx) Start(cmdC chan<- interface{}, msgC chan<- *hbtype.Msg) error {
 		}()
 		t.log.Infof("listen to %s for %s", t.addr+":"+t.port, otherNodeIPL)
 		started <- true
-		crypto := hbcrypto.CryptoFromContext(ctx)
+		// Decrypt through a loader, not through a snapshot of the crypto:
+		// a connection outlives heartbeat secret rotations.
+		crypto := hbcrypto.LoaderFromContext(ctx)
 		for {
 			conn, err := listener.Accept()
 			if err != nil {
@@ -209,7 +211,7 @@ func (t *rx) Start(cmdC chan<- interface{}, msgC chan<- *hbtype.Msg) error {
 				conn.Close()
 				continue
 			}
-			clearConn := encryptconn.New(conn, crypto.Load())
+			clearConn := encryptconn.New(conn, crypto)
 			// Check if we already have a handler for this peer and close its connection
 			// This is done atomically in the accept loop before starting new handler
 			if oldConnI, hasOld := t.peerConns.Load(connAddr); hasOld {
