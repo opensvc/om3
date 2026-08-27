@@ -110,60 +110,93 @@ func (t *tx) sendToNode(node, addr string, b []byte) {
 			defer t.sendWorkers.Done()
 			// Worker maintains its own persistent connection
 			var conn net.Conn
-			
-			for req := range q {
-				if conn == nil {
-					// Create new connection
-					localAddr := net.TCPAddr{
-						IP:   t.localIP,
-						Port: 0,
+			localAddr := net.TCPAddr{
+				IP:   t.localIP,
+				Port: 0,
+			}
+
+			for {
+				select {
+				case <-t.ctx.Done():
+					// Context cancelled, close connection and exit
+					if conn != nil {
+						conn.Close()
+						conn = nil
 					}
-					dialer := net.Dialer{
-						Timeout:   t.timeout,
-						LocalAddr: &localAddr,
+					return
+				case req, ok := <-q:
+					if !ok {
+						// Queue closed, exit
+						if conn != nil {
+							conn.Close()
+						}
+						return
 					}
-					var err error
-					conn, err = dialer.Dial("tcp", addr)
-					if err != nil {
+
+					if conn == nil {
+						// Create new connection with context-aware dialer
+						dialer := &net.Dialer{
+							Timeout:   t.timeout,
+							LocalAddr: &localAddr,
+						}
+						// Use a separate context for dial that respects t.ctx
+						dialCtx, dialCancel := context.WithTimeout(t.ctx, t.timeout)
+						defer dialCancel()
+						var err error
+						conn, err = dialer.DialContext(dialCtx, "tcp", addr)
+						if err != nil {
+							t.handleSendError(node, err)
+							continue
+						}
+					}
+
+					// Set deadline on the connection
+					if err := conn.SetDeadline(time.Now().Add(t.timeout)); err != nil {
 						t.handleSendError(node, err)
+						conn.Close()
+						conn = nil
 						continue
 					}
-				}
-				
-				// Set deadline on the connection
-				if err := conn.SetDeadline(time.Now().Add(t.timeout)); err != nil {
-					t.handleSendError(node, err)
-					conn.Close()
-					conn = nil
-					continue
-				}
-				
-				// Send the data with null terminator
-				dataWithTerminator := append(req.data, 0x00)
-				t.log.Tracef("sending %d bytes (+%d terminator) to %s", len(req.data), 1, addr)
-				if n, err := conn.Write(dataWithTerminator); err != nil {
-					t.log.Tracef("write failed to %s: %v (wrote %d/%d bytes)", addr, err, n, len(dataWithTerminator))
-					t.handleSendError(node, err)
-					conn.Close()
-					conn = nil
-				} else if n != len(dataWithTerminator) {
-					t.log.Tracef("short write to %s: %d/%d bytes", addr, n, len(dataWithTerminator))
-					t.handleSendError(node, fmt.Errorf("short write: %d/%d", n, len(dataWithTerminator)))
-					conn.Close()
-					conn = nil
-				} else {
-					t.log.Tracef("successfully sent %d bytes to %s", len(req.data), addr)
-					t.clearDedupLog(node)
-					t.cmdC <- hbctrl.CmdSetPeerSuccess{
-						Nodename: node,
-						HbID:     t.id,
-						Success:  true,
+
+					// Send the data with null terminator
+					dataWithTerminator := append(req.data, 0x00)
+					t.log.Tracef("sending %d bytes (+%d terminator) to %s", len(req.data), 1, addr)
+					if n, err := conn.Write(dataWithTerminator); err != nil {
+						t.log.Tracef("write failed to %s: %v (wrote %d/%d bytes)", addr, err, n, len(dataWithTerminator))
+						t.handleSendError(node, err)
+						conn.Close()
+						conn = nil
+					} else if n != len(dataWithTerminator) {
+						t.log.Tracef("short write to %s: %d/%d bytes", addr, n, len(dataWithTerminator))
+						t.handleSendError(node, fmt.Errorf("short write: %d/%d", n, len(dataWithTerminator)))
+						conn.Close()
+						conn = nil
+					} else {
+						t.log.Tracef("successfully sent %d bytes to %s", len(req.data), addr)
+						t.clearDedupLog(node)
+						// Send success notification, but don't block on it
+						select {
+						case t.cmdC <- hbctrl.CmdSetPeerSuccess{
+							Nodename: node,
+							HbID:     t.id,
+							Success:  true,
+						}:
+						case <-t.ctx.Done():
+							// Context cancelled, skip notification
+							if conn != nil {
+								conn.Close()
+								conn = nil
+							}
+							return
+						}
+
+						// Reset deadline for next write (connection stays open)
+						if err := conn.SetDeadline(time.Now().Add(t.timeout)); err != nil {
+							t.log.Tracef("failed to reset deadline for %s: %v", addr, err)
+							// Continue with connection, it might still work
+						}
 					}
 				}
-			}
-			// Close connection when worker exits
-			if conn != nil {
-				conn.Close()
 			}
 		}(node, addr, queue)
 	}
