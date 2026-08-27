@@ -46,6 +46,12 @@ type recordKey struct {
 	Content string
 }
 
+// Key returns the identity of the record, the part of it that TTL and
+// DomainID changes don't affect.
+func (t Record) Key() recordKey {
+	return recordKey{t.Name, t.Type, t.Content}
+}
+
 func (t *Manager) onNodeStatsUpdated(c *msgbus.NodeStatsUpdated) {
 	t.score[c.Node] = c.Value.Score
 }
@@ -73,8 +79,8 @@ func (t *Manager) onClusterConfigUpdated(c *msgbus.ClusterConfigUpdated) {
 	if change {
 		t.publishSubsystemDnsUpdated()
 	}
-	// Rebuild nameIndex since SOA/NS records depend on clusterConfig.DNS
-	t.rebuildNameIndex()
+	// Refresh the indexed SOA/NS records, they depend on clusterConfig.DNS
+	t.setClusterRecords()
 }
 
 func (t *Manager) pubDeleted(record Record, p naming.Path, node string) {
@@ -105,10 +111,8 @@ func (t *Manager) onInstanceStatusDeleted(c *msgbus.InstanceStatusDeleted) {
 		for _, record := range recordMap {
 			t.pubDeleted(record, c.Path, c.Node)
 		}
-		delete(t.state, key)
+		t.setStateRecords(key, nil)
 	}
-	// Rebuild nameIndex for O(1) lookups
-	t.rebuildNameIndex()
 }
 
 func (t *Manager) onInstanceStatusUpdated(c *msgbus.InstanceStatusUpdated) {
@@ -119,10 +123,10 @@ func (t *Manager) onInstanceStatusUpdated(c *msgbus.InstanceStatusUpdated) {
 	existingRecordsMap := t.state[key]
 
 	stage := func(record Record) {
-		recordKey := recordKey{record.Name, record.Type, record.Content}
+		recKey := record.Key()
 
 		// Check if this record already exists (by identity, not by TTL/DomainID)
-		if existingRecord, ok := existingRecordsMap[recordKey]; !ok {
+		if existingRecord, ok := existingRecordsMap[recKey]; !ok {
 			// New record, publish update
 			t.pubUpdated(record, c.Path, c.Node)
 		} else if existingRecord != record {
@@ -130,7 +134,7 @@ func (t *Manager) onInstanceStatusUpdated(c *msgbus.InstanceStatusUpdated) {
 			t.pubUpdated(record, c.Path, c.Node)
 		}
 		// Store in new records map (preserves the full Record with current TTL/DomainID)
-		newRecordsMap[recordKey] = record
+		newRecordsMap[recKey] = record
 	}
 	stageSRV := func(s string) error {
 		expose, err := ParseExpose(s)
@@ -291,14 +295,7 @@ func (t *Manager) onInstanceStatusUpdated(c *msgbus.InstanceStatusUpdated) {
 		}
 	}
 
-	// Update state: if we have new records, store them; otherwise clean up
-	if len(newRecordsMap) > 0 {
-		t.state[key] = newRecordsMap
-	} else {
-		delete(t.state, key)
-	}
-	// Rebuild nameIndex for O(1) lookups
-	t.rebuildNameIndex()
+	t.setStateRecords(key, newRecordsMap)
 }
 
 func (t *Manager) onCmdGet(c cmdGet) {
@@ -316,7 +313,7 @@ func (t *Manager) onCmdGet(c cmdGet) {
 		if (c.Type != "ANY") && (record.Type != c.Type) {
 			continue
 		}
-		key := recordKey{record.Name, record.Type, record.Content}
+		key := record.Key()
 		if !seen[key] {
 			zone = append(zone, record)
 			seen[key] = true
@@ -332,6 +329,23 @@ func (t *Manager) onCmdGetZone(c cmdGetZone) {
 }
 
 func (t *Manager) zone() Zone {
+	zone := t.clusterRecordZone()
+	seen := make(map[recordKey]bool)
+	for _, recordMap := range t.state {
+		for _, record := range recordMap {
+			key := record.Key()
+			if !seen[key] {
+				zone = append(zone, record)
+				seen[key] = true
+			}
+		}
+	}
+	return zone
+}
+
+// clusterRecordZone returns the cluster level records: the zone SOA, and
+// the NS and A records of each configured nameserver.
+func (t *Manager) clusterRecordZone() Zone {
 	zone := make(Zone, 0)
 	zoneName := t.clusterConfig.Name + "."
 	for i, dns := range t.clusterConfig.DNS {
@@ -361,63 +375,66 @@ func (t *Manager) zone() Zone {
 			},
 		)
 	}
-	seen := make(map[recordKey]bool)
-	for _, recordMap := range t.state {
-		for _, record := range recordMap {
-			key := recordKey{record.Name, record.Type, record.Content}
-			if !seen[key] {
-				zone = append(zone, record)
-				seen[key] = true
-			}
-		}
-	}
 	return zone
 }
 
-// rebuildNameIndex rebuilds the name-to-records index including both
-// state records and cluster-level SOA/NS records
-func (t *Manager) rebuildNameIndex() {
-	t.nameIndex = make(map[string][]Record)
-	
-	// Add cluster-level SOA and NS records
-	zoneName := t.clusterConfig.Name + "."
-	for i, dns := range t.clusterConfig.DNS {
-		nsName := fmt.Sprintf("ns%d.%s", i+1, zoneName)
-		soaContent := fmt.Sprintf("dns.%s %s %d %d %d %d %d", zoneName, contact, serial, refresh, retry, expire, minimum)
-		
-		// SOA record
-		t.nameIndex[zoneName] = append(t.nameIndex[zoneName], Record{
-			Name:     zoneName,
-			DomainID: -1,
-			Type:     "SOA",
-			TTL:      60,
-			Content:  soaContent,
-		})
-		
-		// A record for nameserver
-		t.nameIndex[nsName] = append(t.nameIndex[nsName], Record{
-			Name:     nsName,
-			DomainID: -1,
-			Type:     "A",
-			TTL:      60,
-			Content:  dns,
-		})
-		
-		// NS record
-		t.nameIndex[zoneName] = append(t.nameIndex[zoneName], Record{
-			Name:     zoneName,
-			DomainID: -1,
-			Type:     "NS",
-			TTL:      3600,
-			Content:  nsName,
-		})
+// setClusterRecords replaces the cluster level records in the name index
+// with the ones the current cluster config yields.
+func (t *Manager) setClusterRecords() {
+	for _, record := range t.clusterRecords {
+		t.delIndexRecord(record)
 	}
-	
-	// Add instance records from state
-	for _, recordMap := range t.state {
-		for _, record := range recordMap {
-			t.nameIndex[record.Name] = append(t.nameIndex[record.Name], record)
+	t.clusterRecords = t.clusterRecordZone()
+	for _, record := range t.clusterRecords {
+		t.addIndexRecord(record)
+	}
+}
+
+// setStateRecords replaces the records of a state key, and keeps the name
+// index in sync: only the records of this key are reindexed, so the cost
+// doesn't grow with the number of objects in the cluster.
+//
+// A nil recordMap drops the state key.
+func (t *Manager) setStateRecords(key stateKey, recordMap map[recordKey]Record) {
+	for _, record := range t.state[key] {
+		t.delIndexRecord(record)
+	}
+	for _, record := range recordMap {
+		t.addIndexRecord(record)
+	}
+	if len(recordMap) > 0 {
+		t.state[key] = recordMap
+	} else {
+		delete(t.state, key)
+	}
+}
+
+// addIndexRecord adds a record to the name index
+func (t *Manager) addIndexRecord(record Record) {
+	t.nameIndex[record.Name] = append(t.nameIndex[record.Name], record)
+}
+
+// delIndexRecord removes one occurrence of record from the name index.
+// The same record can be indexed more than once, when several state keys
+// or several nameservers yield it, so the other occurrences are kept.
+func (t *Manager) delIndexRecord(record Record) {
+	records, ok := t.nameIndex[record.Name]
+	if !ok {
+		return
+	}
+	key := record.Key()
+	for i, indexed := range records {
+		if indexed.Key() != key {
+			continue
 		}
+		records[i] = records[len(records)-1]
+		records = records[:len(records)-1]
+		if len(records) == 0 {
+			delete(t.nameIndex, record.Name)
+		} else {
+			t.nameIndex[record.Name] = records
+		}
+		return
 	}
 }
 
