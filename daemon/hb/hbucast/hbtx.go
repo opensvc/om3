@@ -64,13 +64,17 @@ func (t *tx) Stop() error {
 			Nodename: node,
 		}
 	}
+	// Wait for the Start goroutine first: it is the only sendToNode caller,
+	// so the send queues have no writer left once it is done. Closing them
+	// before would risk a send on a closed channel.
+	t.Wait()
 	// Close all send queues to unblock workers
 	t.sendQueues.Range(func(key, value any) bool {
 		q := value.(chan sendRequest)
+		t.sendQueues.Delete(key)
 		close(q)
 		return true
 	})
-	t.Wait()
 	t.sendWorkers.Wait()
 	t.log.Tracef("wait done")
 	return nil
