@@ -46,8 +46,15 @@ type (
 		// The zone data is obtained by merging all map values.
 		state map[stateKey]map[recordKey]Record
 
-		// nameIndex maps record names to their records for O(1) lookups
+		// nameIndex maps record names to their records for O(1) lookups.
+		// It is maintained incrementally: a state change only reindexes
+		// the records of the state key it changes, and a cluster config
+		// change only the cluster records.
 		nameIndex map[string][]Record
+
+		// clusterRecords is the cluster level records (zone SOA, nameservers
+		// NS and A) currently indexed in nameIndex.
+		clusterRecords Zone
 
 		// score stores the node.Stats.Score values, to use as weight in SRV records
 		score map[string]int
@@ -128,7 +135,7 @@ func (t *Manager) Start(parent context.Context) error {
 
 	t.startSubscriptions()
 	t.clusterConfig = *cluster.ConfigData.Get()
-	t.rebuildNameIndex()
+	t.setClusterRecords()
 
 	if err := t.startUDSListener(); err != nil {
 		return err
