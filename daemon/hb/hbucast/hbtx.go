@@ -35,9 +35,10 @@ type (
 		cmdC      chan<- interface{}
 		msgC      chan<- *hbtype.Msg
 		cancel    func()
-		// Per-peer connections that are kept open
-		peerConns map[string]net.Conn
-		peerMutex sync.Mutex
+		// Per-peer connections that are kept open (sync.Map for concurrent access)
+		peerConns sync.Map
+		// Per-peer connection locks to prevent duplicate dial attempts
+		peerLocks sync.Map
 	}
 )
 
@@ -57,12 +58,11 @@ func (t *tx) Stop() error {
 		}
 	}
 	// Close all peer connections
-	t.peerMutex.Lock()
-	for _, conn := range t.peerConns {
+	t.peerConns.Range(func(key, value any) bool {
+		conn := value.(net.Conn)
 		conn.Close()
-	}
-	t.peerConns = make(map[string]net.Conn)
-	t.peerMutex.Unlock()
+		return true
+	})
 	t.Wait()
 	t.log.Tracef("wait done")
 	return nil
@@ -95,7 +95,6 @@ func (t *tx) Start(cmdC chan<- interface{}, msgC <-chan []byte) error {
 	t.ctx = ctx
 	t.cancel = cancel
 	t.cmdC = cmdC
-	t.peerConns = make(map[string]net.Conn)
 	t.Add(1)
 	hbaudit.EnableAudit(ctx, t.id, t.log, "hb", strings.Replace(t.id, "hb#", "hb:", 1))
 
@@ -240,14 +239,18 @@ func (t *tx) send(node, addr string, b []byte) {
 
 // getPeerConn returns the persistent connection for a peer, creating it if necessary
 func (t *tx) getPeerConn(node, addr string, localAddr net.TCPAddr) (net.Conn, error) {
-	t.peerMutex.Lock()
-	defer t.peerMutex.Unlock()
+	// Get or create per-peer lock using sync.Map
+	lockI, _ := t.peerLocks.LoadOrStore(node, &sync.Mutex{})
+	lock := lockI.(*sync.Mutex)
+	lock.Lock()
+	defer lock.Unlock()
 	
-	if conn, exists := t.peerConns[node]; exists {
-		return conn, nil
+	// Check if connection already exists (under per-peer lock)
+	if connI, exists := t.peerConns.Load(node); exists {
+		return connI.(net.Conn), nil
 	}
 	
-	// Create new connection
+	// Create new connection outside the global lock to avoid blocking other peers
 	dialer := net.Dialer{
 		Timeout:   t.timeout,
 		LocalAddr: &localAddr,
@@ -257,18 +260,24 @@ func (t *tx) getPeerConn(node, addr string, localAddr net.TCPAddr) (net.Conn, er
 		return nil, err
 	}
 	
-	t.peerConns[node] = conn
+	// Store the connection (still under per-peer lock)
+	t.peerConns.Store(node, conn)
 	t.log.Tracef("created new persistent connection to %s (%s)", node, addr)
 	return conn, nil
 }
 
 // removePeerConn removes a peer connection from the map
 func (t *tx) removePeerConn(node string) {
-	t.peerMutex.Lock()
-	defer t.peerMutex.Unlock()
-	if conn, exists := t.peerConns[node]; exists {
+	// Use per-peer lock to avoid blocking other peers
+	lockI, _ := t.peerLocks.LoadOrStore(node, &sync.Mutex{})
+	lock := lockI.(*sync.Mutex)
+	lock.Lock()
+	defer lock.Unlock()
+	
+	if connI, exists := t.peerConns.Load(node); exists {
+		conn := connI.(net.Conn)
 		conn.Close()
-		delete(t.peerConns, node)
+		t.peerConns.Delete(node)
 		t.log.Tracef("removed connection to %s", node)
 	}
 }
