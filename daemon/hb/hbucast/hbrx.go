@@ -5,7 +5,9 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"io"
 	"net"
+	"os"
 	"strings"
 	"sync"
 	"syscall"
@@ -278,10 +280,17 @@ func (t *rx) handleLoop(conn encryptconn.ConnNoder, peerAddr string) {
 		// Read will block until data arrives, connection is closed, or deadline is reached
 		i, nodename, err := conn.ReadWithNode(buffer)
 		if err != nil {
-			if err.Error() != "EOF" {
-				t.log.Tracef("handleLoop: read failed from %s after %d messages: %s", peerAddr, msgCount, err)
-			} else {
+			switch {
+			case errors.Is(err, io.EOF):
+				// the peer closed the connection, it will reconnect
 				t.log.Tracef("handleLoop: EOF from %s after %d messages", peerAddr, msgCount)
+			case errors.Is(err, net.ErrClosed):
+				// we closed the connection: peer reconnect, or stop
+				t.log.Tracef("handleLoop: connection from %s closed after %d messages", peerAddr, msgCount)
+			case errors.Is(err, os.ErrDeadlineExceeded):
+				t.log.Warnf("handleLoop: no message from %s for %s, closing the connection", peerAddr, deadline)
+			default:
+				t.log.Warnf("handleLoop: read from %s failed after %d messages: %s", peerAddr, msgCount, err)
 			}
 			return
 		}
