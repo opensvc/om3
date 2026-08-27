@@ -71,9 +71,9 @@ func (t *rx) Stop() error {
 			Nodename: node,
 		}
 	}
-	// Note: We don't close active connections here. The handlers will exit
-	// when their read deadline expires or when the peer closes the connection.
-	// The listener is closed which prevents new connections.
+	// Note: the active connections are closed by the accept loop when it
+	// stops, so a handler blocked in ReadWithNode doesn't hold the shutdown
+	// until its read deadline expires.
 	t.Wait()
 	t.log.Tracef("wait done")
 	return nil
@@ -227,6 +227,15 @@ func (t *rx) Start(cmdC chan<- interface{}, msgC chan<- *hbtype.Msg) error {
 				t.handleLoop(c, peerAddr)
 			}(connAddr, clearConn)
 		}
+		// The accept loop is the only writer of peerConns and it is done:
+		// no new connection can show up. Close the ones still tracked to
+		// unblock their handler, which would otherwise sit in ReadWithNode
+		// until its read deadline expires.
+		t.peerConns.Range(func(key, value any) bool {
+			t.peerConns.Delete(key)
+			_ = value.(encryptconn.ConnNoder).Close()
+			return true
+		})
 		wg.Wait()
 		t.log.Infof("stopped %s", t.addr)
 	}()
