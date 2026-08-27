@@ -29,6 +29,7 @@ type (
 	ConnNoder interface {
 		net.Conn
 		ReadWithNode(b []byte) (n int, nodename string, err error)
+		MessageWithNode() (b []byte, nodename string, err error)
 	}
 )
 
@@ -79,16 +80,30 @@ func (t *T) Read(b []byte) (n int, err error) {
 // ReadWithNode implement ConnNoder interface for T
 //
 // read and decrypt data read from t.Conn
+//
+// Prefer MessageWithNode when the message size is not known in advance: b
+// has to be as large as the largest message to expect, where the slice
+// MessageWithNode returns is as large as the message actually read.
 func (t *T) ReadWithNode(b []byte) (n int, nodename string, err error) {
-	var encBytes, clearBytes []byte
-	if encBytes, err = t.getMessage(); err != nil {
-		return
-	}
-	if clearBytes, nodename, err = t.encryptDecrypter.DecryptWithNode(encBytes); err != nil {
+	var clearBytes []byte
+	if clearBytes, nodename, err = t.MessageWithNode(); err != nil {
 		return
 	}
 	n = copy(b, clearBytes)
 	return
+}
+
+// MessageWithNode implement ConnNoder interface for T
+//
+// read and decrypt the next message from t.Conn, and return it with the
+// nodename of its encrypter. The returned slice is sized for the message
+// and belongs to the caller: a connection reading nothing retains nothing.
+func (t *T) MessageWithNode() (b []byte, nodename string, err error) {
+	var encBytes []byte
+	if encBytes, err = t.getMessage(); err != nil {
+		return
+	}
+	return t.encryptDecrypter.DecryptWithNode(encBytes)
 }
 
 // SrcNode returns the encrypter nodename
