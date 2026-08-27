@@ -36,6 +36,10 @@ type (
 		cmdC   chan<- interface{}
 		msgC   chan<- *hbtype.Msg
 		cancel func()
+
+		// Track current connection per peer (peerAddr -> encryptconn.ConnNoder)
+		// Accept loop is the only writer; handlers only read their own connection
+		peerConns sync.Map
 	}
 )
 
@@ -67,6 +71,9 @@ func (t *rx) Stop() error {
 			Nodename: node,
 		}
 	}
+	// Note: We don't close active connections here. The handlers will exit
+	// when their read deadline expires or when the peer closes the connection.
+	// The listener is closed which prevents new connections.
 	t.Wait()
 	t.log.Tracef("wait done")
 	return nil
@@ -192,21 +199,33 @@ func (t *rx) Start(cmdC chan<- interface{}, msgC chan<- *hbtype.Msg) error {
 			connAddr, _, err := net.SplitHostPort(conn.RemoteAddr().String())
 			if err != nil {
 				t.log.Warnf("%s", err)
+				conn.Close()
 				continue
 			}
 			if _, ok := otherNodeIPM[connAddr]; !ok {
 				t.log.Warnf("unexpected connection from %s", connAddr)
-				if err := conn.Close(); err != nil {
-					t.log.Warnf("failed to close unexpected connection from %s: %s", connAddr, err)
-				}
+				conn.Close()
 				continue
 			}
 			clearConn := encryptconn.New(conn, crypto.Load())
+			// Check if we already have a handler for this peer and close its connection
+			// This is done atomically in the accept loop before starting new handler
+			if oldConnI, hasOld := t.peerConns.Load(connAddr); hasOld {
+				oldConn := oldConnI.(encryptconn.ConnNoder)
+				t.log.Tracef("replacing existing connection from %s with new one", connAddr)
+				// Close old connection; its handler will exit on next read with error
+				oldConn.Close()
+				t.peerConns.Delete(connAddr)
+			}
+			// Store new connection before starting handler to prevent race
+			t.peerConns.Store(connAddr, clearConn)
 			wg.Add(1)
-			go func() {
+			go func(peerAddr string, c encryptconn.ConnNoder) {
 				defer wg.Done()
-				t.handleLoop(clearConn)
-			}()
+				defer c.Close()
+				// Do NOT touch peerConns map - only accept loop manages it
+				t.handleLoop(c, peerAddr)
+			}(connAddr, clearConn)
 		}
 		wg.Wait()
 		t.log.Infof("stopped %s", t.addr)
@@ -216,53 +235,61 @@ func (t *rx) Start(cmdC chan<- interface{}, msgC chan<- *hbtype.Msg) error {
 	return nil
 }
 
-func (t *rx) handleLoop(conn encryptconn.ConnNoder) {
-	// Read messages in a loop to support connection reuse from pool on sender side
-	// When sender uses connection pooling, multiple messages are sent on the same connection.
-	// We don't set a read deadline here to avoid timing out on idle connections between heartbeats.
-	// The connection will be closed by the sender when it's done.
-	defer func() {
-		t.log.Tracef("handleLoop: connection closed from %s", conn.RemoteAddr())
-		if err := conn.Close(); err != nil {
-			t.log.Warnf("unexpected error while closing connection from %s: %s", conn.RemoteAddr(), err)
-		}
-	}()
-	
-	t.log.Tracef("handleLoop: starting to read messages from %s", conn.RemoteAddr())
-	
+func (t *rx) handleLoop(conn encryptconn.ConnNoder, peerAddr string) {
+	// Set a generous read deadline to prevent idle connections from blocking indefinitely.
+	// This is long enough to cover the heartbeat interval (default 5s) with some margin.
+	// The deadline will be reset before each read operation.
+	deadline := t.timeout * 3
+	if deadline < 10*time.Second {
+		deadline = 10 * time.Second
+	}
+	t.log.Tracef("handleLoop: starting to read messages from %s", peerAddr)
 	data := msgPool.Get().([]byte)
 	defer func() { msgPool.Put(data) }()
-	
+
 	msgCount := 0
 	for {
+		// Check context before blocking on read
+		select {
+		case <-t.ctx.Done():
+			t.log.Tracef("handleLoop: context cancelled, stopping after %d messages from %s", msgCount, peerAddr)
+			return
+		default:
+		}
+
+		// Set read deadline for this iteration
+		if err := conn.SetReadDeadline(time.Now().Add(deadline)); err != nil {
+			t.log.Warnf("handleLoop: failed to set read deadline for %s: %v", peerAddr, err)
+			return
+		}
+
 		// Reset buffer for each message
 		buffer := data[:cap(data)]
-		
-		// No deadline - connection is kept open by sender with persistent connections
-		// Read will block until data arrives or connection is closed
+
+		// Read will block until data arrives, connection is closed, or deadline is reached
 		i, nodename, err := conn.ReadWithNode(buffer)
 		if err != nil {
 			if err.Error() != "EOF" {
-				t.log.Tracef("handleLoop: read failed from %s after %d messages: %s", conn.RemoteAddr(), msgCount, err)
+				t.log.Tracef("handleLoop: read failed from %s after %d messages: %s", peerAddr, msgCount, err)
 			} else {
-				t.log.Tracef("handleLoop: EOF from %s after %d messages", conn.RemoteAddr(), msgCount)
+				t.log.Tracef("handleLoop: EOF from %s after %d messages", peerAddr, msgCount)
 			}
 			return
 		}
 		msgCount++
-		
+
 		t.log.Tracef("handleLoop: received %d bytes from node %s (msg #%d)", i, nodename, msgCount)
-		
+
 		if i >= (msgMaxSize - 10000) {
-			t.log.Warnf("read huge message from node %s:%s msg size: %d", nodename, conn.RemoteAddr(), i)
+			t.log.Warnf("read huge message from node %s:%s msg size: %d", nodename, peerAddr, i)
 		}
 		msg := hbtype.Msg{}
 		if err := json.Unmarshal(buffer[:i], &msg); err != nil {
-			t.log.Warnf("handleLoop: unmarshal message failed from node %s:%s: %s", nodename, conn.RemoteAddr(), err)
+			t.log.Warnf("handleLoop: unmarshal message failed from node %s:%s: %s", nodename, peerAddr, err)
 			return
 		}
 		t.log.Tracef("handleLoop: successfully decoded message from node %s (kind=%s)", nodename, msg.Kind)
-		
+
 		cmdPeerSuccess := hbctrl.CmdSetPeerSuccess{
 			Nodename: msg.Nodename,
 			HbID:     t.id,
