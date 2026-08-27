@@ -202,7 +202,6 @@ func (t *tx) startSendWorker(node, addr string, q chan sendRequest) {
 				}
 
 				// Send the data, already null terminated by the sender
-				t.log.Tracef("sending %d bytes to %s", len(req.data), addr)
 				if n, err := conn.Write(req.data); err != nil {
 					t.log.Tracef("write failed to %s: %v (wrote %d/%d bytes)", addr, err, n, len(req.data))
 					t.handleSendError(node, err)
@@ -214,7 +213,7 @@ func (t *tx) startSendWorker(node, addr string, q chan sendRequest) {
 					conn.Close()
 					conn = nil
 				} else {
-					t.log.Tracef("successfully sent %d bytes to %s", len(req.data), addr)
+					t.log.Tracef("sent %d bytes to %s", len(req.data), addr)
 					t.clearDedupLog(node)
 					// Send success notification, but don't block on it
 					select {
