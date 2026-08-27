@@ -254,7 +254,7 @@ func (t *rx) handleLoop(conn encryptconn.ConnNoder, peerAddr string) {
 	if deadline < 10*time.Second {
 		deadline = 10 * time.Second
 	}
-	t.log.Tracef("handleLoop: starting to read messages from %s", peerAddr)
+	t.log.Tracef("starting to read messages from %s", peerAddr)
 	data := msgPool.Get().([]byte)
 	defer func() { msgPool.Put(data) }()
 
@@ -263,14 +263,14 @@ func (t *rx) handleLoop(conn encryptconn.ConnNoder, peerAddr string) {
 		// Check context before blocking on read
 		select {
 		case <-t.ctx.Done():
-			t.log.Tracef("handleLoop: context cancelled, stopping after %d messages from %s", msgCount, peerAddr)
+			t.log.Tracef("context cancelled, stopping after %d messages from %s", msgCount, peerAddr)
 			return
 		default:
 		}
 
 		// Set read deadline for this iteration
 		if err := conn.SetReadDeadline(time.Now().Add(deadline)); err != nil {
-			t.log.Warnf("handleLoop: failed to set read deadline for %s: %v", peerAddr, err)
+			t.log.Warnf("failed to set read deadline for %s: %v", peerAddr, err)
 			return
 		}
 
@@ -283,30 +283,28 @@ func (t *rx) handleLoop(conn encryptconn.ConnNoder, peerAddr string) {
 			switch {
 			case errors.Is(err, io.EOF):
 				// the peer closed the connection, it will reconnect
-				t.log.Tracef("handleLoop: EOF from %s after %d messages", peerAddr, msgCount)
+				t.log.Tracef("EOF from %s after %d messages", peerAddr, msgCount)
 			case errors.Is(err, net.ErrClosed):
 				// we closed the connection: peer reconnect, or stop
-				t.log.Tracef("handleLoop: connection from %s closed after %d messages", peerAddr, msgCount)
+				t.log.Tracef("connection from %s closed after %d messages", peerAddr, msgCount)
 			case errors.Is(err, os.ErrDeadlineExceeded):
-				t.log.Warnf("handleLoop: no message from %s for %s, closing the connection", peerAddr, deadline)
+				t.log.Warnf("no message from %s for %s, closing the connection", peerAddr, deadline)
 			default:
-				t.log.Warnf("handleLoop: read from %s failed after %d messages: %s", peerAddr, msgCount, err)
+				t.log.Warnf("read from %s failed after %d messages: %s", peerAddr, msgCount, err)
 			}
 			return
 		}
 		msgCount++
-
-		t.log.Tracef("handleLoop: received %d bytes from node %s (msg #%d)", i, nodename, msgCount)
 
 		if i >= (msgMaxSize - 10000) {
 			t.log.Warnf("read huge message from node %s:%s msg size: %d", nodename, peerAddr, i)
 		}
 		msg := hbtype.Msg{}
 		if err := json.Unmarshal(buffer[:i], &msg); err != nil {
-			t.log.Warnf("handleLoop: unmarshal message failed from node %s:%s: %s", nodename, peerAddr, err)
+			t.log.Warnf("unmarshal message failed from node %s:%s: %s", nodename, peerAddr, err)
 			return
 		}
-		t.log.Tracef("handleLoop: successfully decoded message from node %s (kind=%s)", nodename, msg.Kind)
+		t.log.Tracef("read %d bytes from node %s (kind=%s, msg #%d)", i, nodename, msg.Kind, msgCount)
 
 		cmdPeerSuccess := hbctrl.CmdSetPeerSuccess{
 			Nodename: msg.Nodename,
@@ -315,17 +313,15 @@ func (t *rx) handleLoop(conn encryptconn.ConnNoder, peerAddr string) {
 		}
 		select {
 		case <-t.ctx.Done():
-			t.log.Tracef("handleLoop: context done, stopping after %d messages", msgCount)
+			t.log.Tracef("context done, stopping after %d messages", msgCount)
 			return
 		case t.cmdC <- cmdPeerSuccess:
-			t.log.Tracef("handleLoop: sent peer success for node %s", msg.Nodename)
 		}
 		select {
 		case <-t.ctx.Done():
-			t.log.Tracef("handleLoop: context done while sending msg, stopping after %d messages", msgCount)
+			t.log.Tracef("context done while sending msg, stopping after %d messages", msgCount)
 			return
 		case t.msgC <- &msg:
-			t.log.Tracef("handleLoop: sent message to msgC (node=%s, kind=%s)", msg.Nodename, msg.Kind)
 		}
 	}
 }
