@@ -8,6 +8,7 @@ import (
 	"io"
 	"net"
 	"os"
+	"slices"
 	"strings"
 	"sync"
 	"syscall"
@@ -149,9 +150,6 @@ func (t *rx) Start(cmdC chan<- interface{}, msgC chan<- *hbtype.Msg) error {
 	t.Add(1)
 	go func() {
 		defer t.Done()
-		otherNodeIPM := make(map[string]struct{})
-		otherNodeIPL := make([]string, 0)
-		resolver := net.Resolver{}
 
 		for node, addr := range t.nodes {
 			cmdC <- hbctrl.CmdAddWatcher{
@@ -161,30 +159,33 @@ func (t *rx) Start(cmdC chan<- interface{}, msgC chan<- *hbtype.Msg) error {
 				Timeout:  t.timeout,
 				Desc:     t.streamPeerDesc(addr),
 			}
-			addr, _, _ := strings.Cut(addr, ":")
-			addrs, err := resolver.LookupHost(ctx, addr)
-			if err != nil {
-				continue
-			}
-			for _, addr := range addrs {
-				t.log.Infof("add expected %s address: %s", node, addr)
-				otherNodeIPM[addr] = struct{}{}
-				otherNodeIPL = append(otherNodeIPL, addr)
+		}
+
+		// peerIPs, and the set and list derived from it, are owned by this
+		// accept loop, which refreshes them when an unknown address shows up.
+		peerIPs := t.resolvePeerIPs(ctx, nil)
+		resolvedAt := time.Now()
+		otherNodeIPM, otherNodeIPL := peerIPSet(peerIPs)
+		logExpected := func() {
+			for node, addrs := range peerIPs {
+				t.log.Infof("add expected %s address: %s", node, addrs)
 			}
 		}
+		logExpected()
+
 		var wg sync.WaitGroup
 		wg.Add(1)
-		go func() {
+		go func(peerIPL []string) {
 			defer wg.Done()
 			select {
 			case <-ctx.Done():
-				t.log.Infof("closing listener %s for %s", t.addr+":"+t.port, otherNodeIPL)
+				t.log.Infof("closing listener %s for %s", t.addr+":"+t.port, peerIPL)
 				_ = listener.Close()
 				time.Sleep(100 * time.Millisecond)
 				t.cancel()
 				return
 			}
-		}()
+		}(otherNodeIPL)
 		t.log.Infof("listen to %s for %s", t.addr+":"+t.port, otherNodeIPL)
 		started <- true
 		// Decrypt through a loader, not through a snapshot of the crypto:
@@ -207,9 +208,25 @@ func (t *rx) Start(cmdC chan<- interface{}, msgC chan<- *hbtype.Msg) error {
 				continue
 			}
 			if _, ok := otherNodeIPM[connAddr]; !ok {
-				t.log.Warnf("unexpected connection from %s", connAddr)
-				conn.Close()
-				continue
+				// A connection from an unknown address is the signal that a
+				// peer may have moved: the tx dials from the address its own
+				// name resolves to, so the name we resolved at startup now
+				// points elsewhere. Resolve again, rate limited so that a
+				// stranger hammering the port can't turn into a lookup storm.
+				if time.Since(resolvedAt) > t.timeout {
+					resolvedAt = time.Now()
+					peerIPs = t.resolvePeerIPs(ctx, peerIPs)
+					if set, list := peerIPSet(peerIPs); !slices.Equal(list, otherNodeIPL) {
+						otherNodeIPM, otherNodeIPL = set, list
+						logExpected()
+					}
+				}
+				if _, ok := otherNodeIPM[connAddr]; !ok {
+					t.log.Warnf("unexpected connection from %s", connAddr)
+					conn.Close()
+					continue
+				}
+				t.log.Infof("accept connection from %s, a peer address changed", connAddr)
 			}
 			clearConn := encryptconn.New(conn, crypto)
 			// Check if we already have a handler for this peer and close its connection
@@ -246,6 +263,51 @@ func (t *rx) Start(cmdC chan<- interface{}, msgC chan<- *hbtype.Msg) error {
 	<-started
 	t.log.Infof("started %s", t.addr)
 	return nil
+}
+
+// resolvePeerIPs returns the addresses of each peer node, indexed by node.
+//
+// A node whose lookup fails keeps the addresses it has in previous, so that
+// a transient resolver failure doesn't empty the allow list the accept loop
+// checks the connections against.
+func (t *rx) resolvePeerIPs(ctx context.Context, previous map[string][]string) map[string][]string {
+	resolver := net.Resolver{}
+	peerIPs := make(map[string][]string, len(t.nodes))
+	for node, addr := range t.nodes {
+		addr, _, _ := strings.Cut(addr, ":")
+		addrs, err := resolver.LookupHost(ctx, addr)
+		if err != nil {
+			if kept, ok := previous[node]; ok {
+				t.log.Debugf("lookup %s: %s: keep the known addresses %s", node, err, kept)
+				peerIPs[node] = kept
+			} else {
+				t.log.Debugf("lookup %s: %s", node, err)
+			}
+			continue
+		}
+		slices.Sort(addrs)
+		peerIPs[node] = addrs
+	}
+	return peerIPs
+}
+
+// peerIPSet returns the addresses of peerIPs as a set, to check the source
+// address of a connection against, and as a sorted list, to log them and to
+// tell two resolutions apart.
+func peerIPSet(peerIPs map[string][]string) (map[string]struct{}, []string) {
+	set := make(map[string]struct{})
+	list := make([]string, 0)
+	for _, addrs := range peerIPs {
+		for _, addr := range addrs {
+			if _, ok := set[addr]; ok {
+				continue
+			}
+			set[addr] = struct{}{}
+			list = append(list, addr)
+		}
+	}
+	slices.Sort(list)
+	return set, list
 }
 
 func (t *rx) handleLoop(conn encryptconn.ConnNoder, peerAddr string) {
