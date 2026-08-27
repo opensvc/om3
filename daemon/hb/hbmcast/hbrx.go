@@ -9,11 +9,9 @@ import (
 	"net"
 	"strings"
 	"sync"
-	"sync/atomic"
 	"time"
 
 	"github.com/opensvc/om3/v3/core/hbtype"
-	"github.com/opensvc/om3/v3/core/omcrypto"
 	"github.com/opensvc/om3/v3/daemon/hb/hbaudit"
 	"github.com/opensvc/om3/v3/daemon/hb/hbcrypto"
 	"github.com/opensvc/om3/v3/daemon/hb/hbctrl"
@@ -39,7 +37,9 @@ type (
 		msgC   chan<- *hbtype.Msg
 		cancel func()
 
-		crypto atomic.Pointer[omcrypto.T]
+		// crypto decrypts with the crypto current at call time: the
+		// receiver outlives heartbeat secret rotations.
+		crypto hbcrypto.Loader
 	}
 	assembly map[string]msgMap
 	msgMap   map[string]dataMap
@@ -122,7 +122,7 @@ func (t *rx) Start(cmdC chan<- interface{}, msgC chan<- *hbtype.Msg) error {
 			}
 		}()
 		started <- true
-		t.crypto = *hbcrypto.CryptoFromContext(ctx)
+		t.crypto = hbcrypto.LoaderFromContext(ctx)
 		b := make([]byte, MaxDatagramSize)
 		for {
 			n, src, err := listener.ReadFromUDP(b)
@@ -214,9 +214,7 @@ func (t *rx) recv(src *net.UDPAddr, n int, b []byte) {
 	} else {
 		encMsg = chunks[1]
 	}
-	crypto := t.crypto.Load()
-
-	b, err := crypto.Decrypt(encMsg)
+	b, err := t.crypto.Decrypt(encMsg)
 	if err != nil {
 		t.log.Tracef("recv: decrypting msg from %s: %s: %s", s, hex.Dump(encMsg), err)
 		return
