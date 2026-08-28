@@ -38,6 +38,7 @@ var (
 	iconProvisionAlert, iconStandbyDown, iconStandbyUpIssue string
 	iconUndef, iconFrozen, iconDown, iconDRP, iconLeader    string
 	iconNotApplicable, iconPreserved, iconStandbyUp         string
+	iconRunning                                             string
 
 	now = time.Now
 )
@@ -65,6 +66,7 @@ func InitColor() {
 	iconNotApplicable = hiBlack("/")
 	iconPreserved = hiBlack("?")
 	iconStandbyUp = hiBlack("o")
+	iconRunning = hiBlue("R")
 }
 
 type (

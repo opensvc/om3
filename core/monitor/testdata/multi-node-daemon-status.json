@@ -247,6 +247,14 @@
                             "last_started_at": "0001-01-01T00:00:00Z",
                             "overall": "up",
                             "provisioned": "true",
+                            "running": [
+                                {
+                                    "at": "2026-08-28T10:16:28.053350726+02:00",
+                                    "pid": 2265402,
+                                    "rid": "task#3",
+                                    "session_id": "0f94b866-97b0-4504-acc6-88d9ebe15b0c"
+                                }
+                            ],
                             "resources": {
                                 "fs#1": {
                                     "label": "flag /dev/shm/opensvc/svc/foo/fs#1.flag",
@@ -718,6 +726,14 @@
                             "last_started_at": "0001-01-01T00:00:00Z",
                             "overall": "down",
                             "provisioned": "true",
+                            "running": [
+                                {
+                                    "at": "2026-08-28T10:16:28.053350726+02:00",
+                                    "pid": 2265402,
+                                    "rid": "task#3",
+                                    "session_id": "0f94b866-97b0-4504-acc6-88d9ebe15b0c"
+                                }
+                            ],
                             "resources": {
                                 "fs#1": {
                                     "label": "flag /dev/shm/opensvc/svc/foo/fs#1.flag",
