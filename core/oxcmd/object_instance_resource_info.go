@@ -58,7 +58,7 @@ func (t *CmdObjectInstanceResourceInfo) refresh(kind string) error {
 			if err != nil {
 				return nil, err
 			}
-			params := api.PostInstanceActionPushResourceInfoParams{}
+			params := api.PostInstanceActionInfoParams{}
 			{
 				sid := xsession.Sid().UUID()
 				params.SessionId = &sid
@@ -67,7 +67,7 @@ func (t *CmdObjectInstanceResourceInfo) refresh(kind string) error {
 				rid := t.RID
 				params.Rid = &rid
 			}
-			response, err := c.PostInstanceActionPushResourceInfoWithResponse(ctx, nodename, p.Namespace, p.Kind, p.Name, &params)
+			response, err := c.PostInstanceActionInfoWithResponse(ctx, nodename, p.Namespace, p.Kind, p.Name, &params)
 			if err != nil {
 				return nil, err
 			}
