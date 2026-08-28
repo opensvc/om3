@@ -229,9 +229,16 @@ func (t *App) frame() *frame {
 	return &t.stack[len(t.stack)-1]
 }
 
-// focus returns the id of the focused view.
+// focus returns the id of the focused view. The navigation stack is owned by
+// the tview loop: call focusAsync() from any other goroutine.
 func (t *App) focus() viewId {
 	return t.frame().id
+}
+
+// focusAsync returns the id of the focused view, read from the atomic mirror
+// enterView() keeps up to date. Safe to call off the tview loop.
+func (t *App) focusAsync() viewId {
+	return viewId(t.focusedView.Load())
 }
 
 // atRoot returns true when the focused view is the one ESC can not pop.
@@ -285,6 +292,7 @@ func (t *App) back() {
 }
 
 func (t *App) enterView(v viewId) {
+	t.focusedView.Store(int32(v))
 	t.lastUpdatedAt = time.Time{}
 	if enter := viewDefs[v].enter; enter != nil {
 		enter(t)

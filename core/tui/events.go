@@ -19,7 +19,7 @@ func formatJSON(data json.RawMessage) string {
 
 func (t *App) getEventsViewTitle() string {
 	state := ""
-	if t.stopEvents {
+	if t.stopEvents.Load() {
 		state = "(paused)"
 	}
 	return fmt.Sprintf("events %s", state)
@@ -30,7 +30,7 @@ func (t *App) initEventsView() {
 	t.textView.Clear()
 	t.textView.SetInputCapture(func(event *tcell.EventKey) *tcell.EventKey {
 		if event.Rune() == ' ' {
-			t.stopEvents = !t.stopEvents
+			t.stopEvents.Store(!t.stopEvents.Load())
 			t.textView.SetTitle(t.getEventsViewTitle())
 		}
 		return event
@@ -43,7 +43,6 @@ func (t *App) initEventsView() {
 }
 
 func (t *App) updateEventsView() {
-
 	if t.textView == nil {
 		return
 	}
@@ -52,32 +51,29 @@ func (t *App) updateEventsView() {
 		t.eventsCancel()
 	}
 
-	t.eventsCtx, t.eventsCancel = context.WithCancel(context.Background())
+	var ctx context.Context
+	ctx, t.eventsCancel = context.WithCancel(context.Background())
+
+	// Hand the text view and the context over to the goroutine: t.textView is
+	// nil'ed by the view leave hook, on the tview loop.
+	view := t.textView
 
 	go func() {
 		for {
 			select {
 			case event := <-t.events:
-				if t.stopEvents {
+				if t.stopEvents.Load() {
 					continue
 				}
-
-				if t.textView == nil {
-					return
-				}
-				err := eventTemplate.Execute(t.textView, event)
-
-				if err != nil {
+				if err := eventTemplate.Execute(view, event); err != nil {
 					t.errorf("%s", err)
 					return
 				}
-
-				fmt.Fprintln(t.textView)
-				t.textView.ScrollToEnd()
-			case <-t.eventsCtx.Done():
+				fmt.Fprintln(view)
+				view.ScrollToEnd()
+			case <-ctx.Done():
 				return
 			}
 		}
 	}()
-
 }
