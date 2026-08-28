@@ -27,14 +27,6 @@ func TestSmokeLiveDaemon(t *testing.T) {
 		t.Skipf("no daemon: %s", resp.Status())
 	}
 
-	if raceDetectorEnabled {
-		// The log and the events views stream into their tview TextView from a
-		// goroutine, racing with the tview draw loop. That predates the view
-		// registry, and fixing it means funneling those writes through
-		// QueueUpdateDraw.
-		t.Skip("the log and events views race with the tview draw loop")
-	}
-
 	screen := tcell.NewSimulationScreen("UTF-8")
 	if err := screen.Init(); err != nil {
 		t.Fatal(err)
@@ -93,6 +85,28 @@ func TestSmokeLiveDaemon(t *testing.T) {
 		sync(func() { s = readScreen() })
 		return s
 	}
+	// state is a snapshot of the application state, read on the tview loop:
+	// nav() and the table cursor callbacks own it from there.
+	type state struct {
+		focus     viewId
+		stack     string
+		depth     int
+		element   string
+		flexItems int
+	}
+	inspect := func() state {
+		var st state
+		sync(func() {
+			st = state{
+				focus:     a.focus(),
+				stack:     a.stack.String(),
+				depth:     len(a.stack),
+				element:   a.selectedElement,
+				flexItems: a.flex.GetItemCount(),
+			}
+		})
+		return st
+	}
 	sync(func() {
 		t.Logf("nodes=%d objects=%d", len(a.Current.Cluster.Config.Nodes), len(a.Current.Cluster.Object))
 	})
@@ -104,55 +118,73 @@ func TestSmokeLiveDaemon(t *testing.T) {
 	for _, v := range []viewId{viewHbStatus, viewPool, viewNetwork, viewRelay, viewEvents, viewConfig, viewLog} {
 		sync(func() { a.nav(v) })
 		time.Sleep(300 * time.Millisecond)
-		if got := a.focus(); got != v {
-			t.Fatalf("nav to %s: focused on %s", v, got)
+		if st := inspect(); st.focus != v {
+			t.Fatalf("nav to %s: focused on %s", v, st.focus)
 		}
 		for i := 0; i < 3; i++ {
 			key(tcell.KeyPgDn)
 		}
 		key(tcell.KeyPgUp)
 		key(tcell.KeyDown)
-		if n := a.flex.GetItemCount(); n < 3 {
-			t.Errorf("%s: only %d flex items", v, n)
+
+		st := inspect()
+		if st.flexItems < 3 {
+			t.Errorf("%s: only %d flex items", v, st.flexItems)
 		}
 		head := strings.TrimSpace(strings.SplitN(dump(), "\n", 2)[0])
-		t.Logf("%-18s head=%q stack=%s", v, head, a.stack)
+		t.Logf("%-18s head=%q stack=%s", v, head, st.stack)
 		if head == "" {
 			t.Errorf("%s: the head bar is empty", v)
 		}
+
 		sync(func() { a.back() })
 		time.Sleep(200 * time.Millisecond)
-		if !a.atRoot() || a.focus() != viewObject {
-			t.Fatalf("back from %s: stack is %s", v, a.stack)
+		if st := inspect(); st.depth != 1 || st.focus != viewObject {
+			t.Fatalf("back from %s: stack is %s", v, st.stack)
 		}
 	}
+
 	// drill down into the first pool, and back out
 	sync(func() { a.nav(viewPool) })
 	time.Sleep(300 * time.Millisecond)
-	table, ok := a.body().(*tview.Table)
-	if !ok {
-		t.Fatalf("the pool view body is a %T", a.body())
+	var (
+		poolName string
+		rows     int
+		isTable  bool
+	)
+	sync(func() {
+		table, ok := a.body().(*tview.Table)
+		if !ok {
+			return
+		}
+		isTable = true
+		if rows = table.GetRowCount(); rows < 2 {
+			return
+		}
+		table.Select(1, 0)
+		poolName = table.GetCell(1, 0).Text
+	})
+	if !isTable {
+		t.Fatal("the pool view body is not a table")
 	}
-	if table.GetRowCount() < 2 {
+	if rows < 2 {
 		t.Skip("no pool to drill down into")
 	}
-	sync(func() { table.Select(1, 0) })
-	poolName := table.GetCell(1, 0).Text
 	key(tcell.KeyEnter)
 	time.Sleep(300 * time.Millisecond)
-	if a.focus() != viewPool || len(a.stack) != 3 || a.selectedElement != poolName {
-		t.Fatalf("drilling into pool %q: stack=%s element=%q", poolName, a.stack, a.selectedElement)
+	if st := inspect(); st.focus != viewPool || st.depth != 3 || st.element != poolName {
+		t.Fatalf("drilling into pool %q: stack=%s element=%q", poolName, st.stack, st.element)
 	}
 	t.Logf("drilled into pool %q, head=%q", poolName, strings.TrimSpace(strings.SplitN(dump(), "\n", 2)[0]))
 
 	sync(func() { a.back() })
 	time.Sleep(300 * time.Millisecond)
-	if a.focus() != viewPool || len(a.stack) != 2 || a.selectedElement != "" {
-		t.Fatalf("back to the pool list: stack=%s element=%q", a.stack, a.selectedElement)
+	if st := inspect(); st.focus != viewPool || st.depth != 2 || st.element != "" {
+		t.Fatalf("back to the pool list: stack=%s element=%q", st.stack, st.element)
 	}
 	sync(func() { a.back() })
-	if !a.atRoot() {
-		t.Fatalf("back to the object view: stack=%s", a.stack)
+	if st := inspect(); st.depth != 1 {
+		t.Fatalf("back to the object view: stack=%s", st.stack)
 	}
 
 	t.Logf("final screen:\n%s", dump())

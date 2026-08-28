@@ -28,6 +28,12 @@ func (t *App) getEventsViewTitle() string {
 func (t *App) initEventsView() {
 	t.textView.SetTitle(t.getEventsViewTitle())
 	t.textView.Clear()
+
+	// Follow the tail, and let the writes refresh the screen. Both have to be
+	// set here, on the tview loop: see updateLogTextView().
+	t.textView.ScrollToEnd()
+	t.textView.SetChangedFunc(func() { t.app.Draw() })
+
 	t.textView.SetInputCapture(func(event *tcell.EventKey) *tcell.EventKey {
 		if event.Rune() == ' ' {
 			t.stopEvents.Store(!t.stopEvents.Load())
@@ -70,7 +76,6 @@ func (t *App) updateEventsView() {
 					return
 				}
 				fmt.Fprintln(view)
-				view.ScrollToEnd()
 			case <-ctx.Done():
 				return
 			}

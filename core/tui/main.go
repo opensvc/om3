@@ -1847,10 +1847,18 @@ func (t *App) updateLogTextView() {
 
 	t.textView.SetTitle(title())
 	t.textView.SetDynamicColors(true)
-	t.textView.SetChangedFunc(func() {
-		t.textView.ScrollToEnd()
-	})
 	t.textView.Clear()
+
+	// Follow the tail. TextView.ScrollToEnd() writes unlocked fields, so it
+	// belongs here, on the tview loop, not in the changed handler which tview
+	// calls from a goroutine of its own. Once set, the flag survives the
+	// writes: only the user scrolling up clears it.
+	t.textView.ScrollToEnd()
+
+	// The log readers write into the text view from their own goroutine, and
+	// writing does not refresh the screen. Application.Draw() is the one call
+	// tview allows from a changed handler.
+	t.textView.SetChangedFunc(func() { t.app.Draw() })
 
 	var nodes []string
 	if t.viewNode != "" {
