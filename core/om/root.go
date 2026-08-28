@@ -159,7 +159,8 @@ func Execute() {
 	sessioncache.PurgeCache()
 }
 
-func setExecuteArgs(args []string) {
+// setExecuteArgs sets the args cobra will parse, and returns them.
+func setExecuteArgs(args []string) []string {
 	var lookupArgs, cobraArgs []string
 	//
 	// Note:
@@ -184,7 +185,7 @@ func setExecuteArgs(args []string) {
 		lookupArgs = args
 		cobraArgs = []string{}
 	} else {
-		return
+		return args
 	}
 
 	_, _, err := root.Find(lookupArgs)
@@ -200,8 +201,10 @@ func setExecuteArgs(args []string) {
 			args = append(args, lookupArgs[1:]...)
 			root.SetArgs(args)
 			cobra.CompDebug(fmt.Sprintf("modified args: %s\n", args), false)
+			return args
 		}
 	}
+	return args
 }
 
 // ExecuteArgs parses args and executes the cobra command.
@@ -214,7 +217,10 @@ func ExecuteArgs(args []string) {
 	}
 	var xc int
 	var xerr exitcoder
-	setExecuteArgs(args)
+	if err := commoncmd.ValidateArgs(root, setExecuteArgs(args)); err != nil {
+		fmt.Fprintln(os.Stderr, "Error:", err)
+		os.Exit(1)
+	}
 	if err := root.Execute(); err != nil {
 		if errors.As(err, &xerr) {
 			xc = xerr.ExitCode()
