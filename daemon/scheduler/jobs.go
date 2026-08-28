@@ -58,7 +58,7 @@ func CmdArgs(e schedule.Entry) ([]string, error) {
 	case "resource_monitor":
 		tail = []string{"instance", "status", "-m"}
 	case "push_resinfo":
-		tail = []string{"resource", "info", "-r"}
+		tail = []string{"instance", "info", "--refresh"}
 	case "run":
 		tail = []string{"instance", "run", "--rid", e.RID()}
 	case "sync_update":

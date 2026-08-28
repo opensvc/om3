@@ -32,7 +32,12 @@ func (a *DaemonAPI) postLocalInstanceActionPushResourceInfo(ctx echo.Context, na
 		return JSONProblemf(ctx, http.StatusBadRequest, "Invalid parameters", "%s", err)
 	}
 	log = naming.LogWithPath(log, p)
-	args := []string{p.String(), "resource", "info", "-r"}
+	args := []string{p.String(), "instance", "info", "--refresh"}
+	if params.Rid != nil && *params.Rid != "" {
+		// the info command takes the resource selector as a positional arg,
+		// like its sibling group commands do.
+		args = append(args, *params.Rid)
+	}
 	if params.SessionId != nil {
 		requesterSid = *params.SessionId
 	}

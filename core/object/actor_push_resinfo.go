@@ -46,7 +46,14 @@ func (t *actor) lockedRefreshResInfo(ctx context.Context) (resource.Infos, error
 	} else {
 		infos.Resources = append(infos.Resources, more...)
 	}
-	if err := t.saveResInfo(infos); err != nil {
+	// A resource selector refreshes a subset of the resources: merge it over
+	// the cached key-values, so the rids left out keep theirs instead of being
+	// dropped from the cache.
+	cached := infos
+	if actioncontext.HasResourceSelector(ctx) {
+		cached = t.mergeResInfo(infos)
+	}
+	if err := t.saveResInfo(cached); err != nil {
 		t.log.Warnf("%s", err)
 		return infos, nil
 	}
@@ -92,6 +99,32 @@ func (t *actor) saveResInfo(data resource.Infos) error {
 	}
 	tempFile.Close()
 	return os.Rename(tempFilename, filename)
+}
+
+// mergeResInfo returns the cached resource info with the refreshed ones
+// overriding the entries of the same rid, preserving the cached rid order and
+// appending the rids the cache does not know yet.
+func (t *actor) mergeResInfo(refreshed resource.Infos) resource.Infos {
+	cached, err := t.LoadResInfo()
+	if err != nil {
+		// no usable cache to merge over
+		return refreshed
+	}
+	merged := resource.NewInfos(t.Path())
+	index := make(map[string]int)
+	for _, info := range cached.Resources {
+		merged.Resources = append(merged.Resources, info)
+		index[info.RID] = len(merged.Resources) - 1
+	}
+	for _, info := range refreshed.Resources {
+		if i, ok := index[info.RID]; ok {
+			merged.Resources[i] = info
+		} else {
+			merged.Resources = append(merged.Resources, info)
+			index[info.RID] = len(merged.Resources) - 1
+		}
+	}
+	return merged
 }
 
 func (t *actor) masterResInfo(ctx context.Context) ([]resource.Info, error) {
