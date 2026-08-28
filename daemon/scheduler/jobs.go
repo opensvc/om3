@@ -3,6 +3,7 @@ package scheduler
 import (
 	"fmt"
 	"os"
+	"slices"
 	"time"
 
 	"github.com/opensvc/om3/v3/daemon/proc"
@@ -16,49 +17,83 @@ import (
 	"github.com/opensvc/om3/v3/util/xsession"
 )
 
+// NodeActions and ObjectActions list the schedule entry actions CmdArgs knows
+// how to run, split by the scope of the om command each one runs.
+var (
+	NodeActions = []string{
+		"checks",
+		"compliance_auto",
+		"pushasset",
+		"pushdisks",
+		"pushpkg",
+		"sysreport",
+	}
+	ObjectActions = []string{
+		"push_resinfo",
+		"resource_monitor",
+		"run",
+		"status",
+		"sync_update",
+	}
+)
+
+// CmdArgs returns the om argv the scheduler runs for the entry.
+//
+// These words are a contract with the om command tree, and nothing but that
+// tree enforces it: an argv naming no command has om print a help text and
+// exit 0, which the scheduler reports as a successful run. core/om's
+// TestSchedulerCmdArgsResolve keeps this function and the tree in sync.
+func CmdArgs(e schedule.Entry) ([]string, error) {
+	var head, tail []string
+
+	if slices.Contains(NodeActions, e.Action) {
+		head = []string{"node"}
+	} else {
+		head = []string{e.Path.String()}
+	}
+
+	switch e.Action {
+	case "status":
+		tail = []string{"instance", "status", "-r"}
+	case "resource_monitor":
+		tail = []string{"instance", "status", "-m"}
+	case "push_resinfo":
+		tail = []string{"resource", "info", "push"}
+	case "run":
+		tail = []string{"instance", "run", "--rid", e.RID()}
+	case "sync_update":
+		tail = []string{"instance", "update", "--rid", e.RID()}
+	case "pushasset":
+		tail = []string{"push", "asset"}
+	case "pushdisks":
+		tail = []string{"push", "disk"}
+	case "pushpkg":
+		tail = []string{"push", "pkg"}
+	case "checks":
+		tail = []string{"checks"}
+	case "compliance_auto":
+		tail = []string{"compliance", "auto"}
+	case "sysreport":
+		tail = []string{"sysreport"}
+	default:
+		return nil, fmt.Errorf("unknown scheduler action: %s", e.Action)
+	}
+
+	return append(head, tail...), nil
+}
+
 func (o *T) action(e schedule.Entry) error {
 	logger := o.jobLogger(e)
 	eid := xsession.NewEid()
 	sid := xsession.NewSid()
 	labels := []pubsub.Label{{"node", o.localhost}, {"origin", "scheduler"}}
-	cmdArgs := []string{}
-	if e.Path.IsZero() {
-		cmdArgs = append(cmdArgs, "node")
-	} else {
-		p := e.Path.String()
-		cmdArgs = append(cmdArgs, p, "instance")
-		labels = append(labels, pubsub.Label{"namespace", e.Path.Namespace}, pubsub.Label{"path", p})
+	if !e.Path.IsZero() {
+		labels = append(labels, pubsub.Label{"namespace", e.Path.Namespace}, pubsub.Label{"path", e.Path.String()})
 	}
-	switch e.Action {
-	case "status":
-		cmdArgs = append(cmdArgs, "status", "-r")
-	case "resource_monitor":
-		cmdArgs = append(cmdArgs, "status", "-m")
-	case "push_resinfo":
-		cmdArgs = append(cmdArgs, "resource", "info", "push")
-	case "run":
-		cmdArgs = append(cmdArgs, "run", "--rid", e.RID())
-	case "pushasset":
-		cmdArgs = append(cmdArgs, "push", "asset")
-	case "reboot":
-		cmdArgs = append(cmdArgs, "reboot")
-	case "checks":
-		cmdArgs = append(cmdArgs, "checks")
-	case "compliance_auto":
-		cmdArgs = append(cmdArgs, "compliance", "auto")
-	case "pushdisks":
-		cmdArgs = append(cmdArgs, "push", "disk")
-	case "pushpkg":
-		cmdArgs = append(cmdArgs, "push", "pkg")
-	case "pushstats":
-		cmdArgs = append(cmdArgs, "push", "stats")
-	case "sysreport":
-		cmdArgs = append(cmdArgs, "sysreport")
-	case "sync_update":
-		cmdArgs = append(cmdArgs, "sync", "update")
-	default:
-		logger.Errorf("unknown scheduler action")
-		return fmt.Errorf("unknown scheduler action")
+	cmdArgs, err := CmdArgs(e)
+	if err != nil {
+		logger.Errorf("%s", err)
+		return err
 	}
 	var cmdEnv []string
 	cmdEnv = append(
@@ -109,7 +144,7 @@ func (o *T) action(e schedule.Entry) error {
 		Cmd:          cmd.String(),
 		Rid:          e.RID(),
 	})
-	err := cmd.Wait()
+	err = cmd.Wait()
 	proc.Unregister(pid)
 	if err != nil {
 		duration := time.Now().Sub(startTime)
