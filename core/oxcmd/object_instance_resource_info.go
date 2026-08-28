@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"strings"
 	"time"
 
 	"github.com/opensvc/om3/v3/core/client"
@@ -13,6 +14,7 @@ import (
 	"github.com/opensvc/om3/v3/core/objectselector"
 	"github.com/opensvc/om3/v3/core/output"
 	"github.com/opensvc/om3/v3/core/rawconfig"
+	"github.com/opensvc/om3/v3/core/resourceid"
 	"github.com/opensvc/om3/v3/daemon/api"
 	"github.com/opensvc/om3/v3/util/xsession"
 )
@@ -21,6 +23,7 @@ type (
 	CmdObjectInstanceResourceInfo struct {
 		OptsGlobal
 		commoncmd.OptsAsync
+		commoncmd.OptsResourceSelector
 		NodeSelector string
 
 		// Refresh recomputes the resource info cache before reporting it.
@@ -60,6 +63,10 @@ func (t *CmdObjectInstanceResourceInfo) refresh(kind string) error {
 				sid := xsession.Sid().UUID()
 				params.SessionId = &sid
 			}
+			if t.RID != "" {
+				rid := t.RID
+				params.Rid = &rid
+			}
 			response, err := c.PostInstanceActionPushResourceInfoWithResponse(ctx, nodename, p.Namespace, p.Kind, p.Name, &params)
 			if err != nil {
 				return nil, err
@@ -78,6 +85,24 @@ func (t *CmdObjectInstanceResourceInfo) refresh(kind string) error {
 			}
 		}),
 	).Do()
+}
+
+// filterItems keeps the key-values of the selected rids only. The cache holds
+// every rid, so the group commands and the PATTERN args filter on report.
+func (t *CmdObjectInstanceResourceInfo) filterItems(items api.ResourceInfoItems) api.ResourceInfoItems {
+	if t.RID == "" {
+		return items
+	}
+	filtered := make(api.ResourceInfoItems, 0, len(items))
+	for _, item := range items {
+		for _, e := range strings.Split(t.RID, ",") {
+			if resourceid.Match(item.Rid, e) {
+				filtered = append(filtered, item)
+				break
+			}
+		}
+	}
+	return filtered
 }
 
 func (t *CmdObjectInstanceResourceInfo) list(kind string) error {
@@ -110,7 +135,7 @@ func (t *CmdObjectInstanceResourceInfo) list(kind string) error {
 			}
 			switch {
 			case response.JSON200 != nil:
-				q <- response.JSON200.Items
+				q <- t.filterItems(response.JSON200.Items)
 			case response.JSON401 != nil:
 				errC <- fmt.Errorf("%s: %s", p, *response.JSON401)
 			case response.JSON403 != nil:

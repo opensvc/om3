@@ -4,6 +4,9 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"strings"
+
+	"github.com/opensvc/om3/v3/core/actioncontext"
 
 	"github.com/opensvc/om3/v3/core/commoncmd"
 	"github.com/opensvc/om3/v3/core/object"
@@ -11,6 +14,7 @@ import (
 	"github.com/opensvc/om3/v3/core/output"
 	"github.com/opensvc/om3/v3/core/rawconfig"
 	"github.com/opensvc/om3/v3/core/resource"
+	"github.com/opensvc/om3/v3/core/resourceid"
 	"github.com/opensvc/om3/v3/daemon/api"
 	"github.com/opensvc/om3/v3/util/hostname"
 )
@@ -19,6 +23,7 @@ type (
 	CmdObjectInstanceResourceInfo struct {
 		OptsGlobal
 		commoncmd.OptsLock
+		commoncmd.OptsResourceSelector
 		NodeSelector string
 
 		// Refresh recomputes the resource info cache before reporting it.
@@ -78,7 +83,7 @@ func (t *CmdObjectInstanceResourceInfo) extractLocal(selector string) (api.Resou
 			if !ok {
 				continue
 			}
-			infos, err = i.RefreshResInfo(ctx)
+			infos, err = i.RefreshResInfo(t.withResourceSelector(ctx))
 		} else {
 			i, ok := obj.(loadResInfoer)
 			if !ok {
@@ -90,10 +95,43 @@ func (t *CmdObjectInstanceResourceInfo) extractLocal(selector string) (api.Resou
 			errs = errors.Join(errs, fmt.Errorf("%s: %w", path, err))
 			continue
 		}
-		more := resourceInfosToAPI(infos, path.String(), hostname.Hostname())
+		more := resourceInfosToAPI(t.filterResInfo(infos), path.String(), hostname.Hostname())
 		data.Items = append(data.Items, more.Items...)
 	}
 	return data, errs
+}
+
+// withResourceSelector puts the resource selector in the context the refresh
+// runs with, so it only recomputes the selected resources.
+func (t *CmdObjectInstanceResourceInfo) withResourceSelector(ctx context.Context) context.Context {
+	if t.RID != "" {
+		ctx = actioncontext.WithRID(ctx, t.RID)
+	}
+	if t.Subset != "" {
+		ctx = actioncontext.WithSubset(ctx, t.Subset)
+	}
+	if t.Tag != "" {
+		ctx = actioncontext.WithTag(ctx, t.Tag)
+	}
+	return ctx
+}
+
+// filterResInfo keeps the key-values of the selected rids only. The cache holds
+// every rid, so the group commands and the PATTERN args filter on report.
+func (t *CmdObjectInstanceResourceInfo) filterResInfo(infos resource.Infos) resource.Infos {
+	if t.RID == "" {
+		return infos
+	}
+	filtered := resource.NewInfos(infos.ObjectPath)
+	for _, info := range infos.Resources {
+		for _, e := range strings.Split(t.RID, ",") {
+			if resourceid.Match(info.RID, e) {
+				filtered.Resources = append(filtered.Resources, info)
+				break
+			}
+		}
+	}
+	return filtered
 }
 
 func (t *CmdObjectInstanceResourceInfo) Run(kind string) error {

@@ -2893,6 +2893,8 @@ type PostInstanceActionPRStopParams struct {
 
 // PostInstanceActionPushResourceInfoParams defines parameters for PostInstanceActionPushResourceInfo.
 type PostInstanceActionPushResourceInfoParams struct {
+	// Rid a resource selector expression
+	Rid       *InQueryRid       `form:"rid,omitempty" json:"rid,omitempty"`
 	SessionId *InQuerySessionID `form:"session_id,omitempty" json:"session_id,omitempty"`
 }
 

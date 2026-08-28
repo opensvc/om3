@@ -208,12 +208,30 @@ func NewCmdObjectResource(kind string) *cobra.Command {
 	return cmd
 }
 
-func NewCmdObjectResourceInfo(kind string) *cobra.Command {
-	return &cobra.Command{
-		GroupID: GroupIDSubsystems,
-		Use:     "info",
-		Short:   "report the key-values reported by resources",
+func NewCmdObjectGroupInfo(kind, group string) *cobra.Command {
+	// the group commands are also mounted where no group filters the
+	// resources, as "instance info" and "resource info".
+	subject, parent := group+" resources", group
+	if group == "" {
+		subject, parent = "the instance resources", "instance"
 	}
+	cmd := &cobra.Command{
+		Use:   "info [PATTERN]...",
+		Short: fmt.Sprintf("report the key-values reported by %s", subject),
+		Long: fmt.Sprintf(`Report the key-values reported by %s.
+
+The key-values are read from a cache, which the --refresh flag recomputes.
+Feeding them to the collector is the collector speaker's job, done on its
+own schedule.`, subject),
+		GroupID: GroupIDQuery,
+		Example: fmt.Sprintf(`  # report the key-values of system/svc/dns
+  om system/svc/dns %s info
+
+  # refresh the cache, then report
+  om system/svc/dns %s info --refresh`, parent, parent),
+	}
+	CmdWithArg(cmd, "PATTERN  A fnmatch resource index filter.")
+	return cmd
 }
 
 func NewCmdObjectPrint(kind string) *cobra.Command {

@@ -25,7 +25,6 @@ func init() {
 	cmdObjectPG.Hidden = true
 	cmdObjectPrint := commoncmd.NewCmdObjectPrint(kind)
 	cmdObjectPrintConfig := newCmdObjectPrintConfig(kind)
-	cmdObjectPush := newCmdObjectPush(kind)
 	cmdObjectSet := newCmdObjectSet(kind)
 	cmdObjectSchedule := commoncmd.NewCmdObjectSchedule(kind)
 	cmdObjectValidate := newCmdObjectValidate(kind)
@@ -62,7 +61,6 @@ func init() {
 		cmdObjectInstance,
 		cmdObjectPG,
 		cmdObjectPrint,
-		cmdObjectPush,
 		newCmdObjectResource(kind),
 		cmdObjectSet,
 		cmdObjectSchedule,
@@ -106,6 +104,7 @@ func init() {
 		newCmdObjectInstanceBoot(kind),
 		newCmdObjectInstanceDelete(kind),
 		newCmdObjectInstanceFreeze(kind),
+		newCmdObjectGroupInfo(kind, ""),
 		newCmdObjectInstanceList(kind),
 		newCmdObjectInstanceRun(kind),
 		newCmdObjectInstanceStatus(kind),
@@ -166,9 +165,6 @@ func init() {
 	)
 	cmdObjectPrintConfig.AddCommand(
 		newCmdObjectConfigMtime(kind),
-	)
-	cmdObjectPush.AddCommand(
-		newCmdObjectPushResourceInfo(kind),
 	)
 	cmdObjectValidate.AddCommand(
 		newCmdObjectValidateConfig(kind),
