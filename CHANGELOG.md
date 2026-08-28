@@ -168,6 +168,16 @@ OpenSVC v3 is a major evolution, rebuilt in Go for performance, reliability, and
 
     * Drop support for arithmetic expressions in references
 
+* **Keywords renamed** (with backward compatibility)
+
+    * `resinfo_schedule` => `info_schedule`
+        The old name is still accepted as an alias, so existing
+        configurations keep working. The schedule entry it drives is now
+        named `info` instead of `push_resinfo`, and its last run is recorded
+        in `<objvar>/last_info`. An upgraded object therefore has no last run
+        for the new name and refreshes its resource info once, shortly after
+        the upgrade.
+
 * **Keywords removed:**
     * `svc_flex_cpu_low_threshold`
     
@@ -262,6 +272,12 @@ OpenSVC v3 is a major evolution, rebuilt in Go for performance, reliability, and
     * `om node abort`
         Replaced by `om cluster abort` to abort the pending cluster action orchestration.
 
+    * `om xx push resinfo`
+        Replaced by `om xx instance info --refresh`, which refreshes the
+        instance resource info cache. Feeding the collector is no longer the
+        pushing node's job: the collector speaker reports the refreshed
+        key-values on its own schedule.
+
 * **Moved** (with backward compatibility)
     * `om daemon status` => `om cluster status`
     * `om xx edit` => `om xx config edit`
@@ -277,8 +293,7 @@ OpenSVC v3 is a major evolution, rebuilt in Go for performance, reliability, and
     * `om xx print schedule` => `om xx instance schedule`
     * `om xx print status` => `om xx instance status`
     * `om xx print devs` => `om xx instance device`
-    * `om xx print resinfo` => `om xx resource info list`
-    * `om xx push resinfo` => `om xx resource info push`
+    * `om xx print resinfo` => `om xx instance info`
     * `om xx clear --local` => `om xx instance clear`
     * `om xx delete --local` => `om xx instance delete`
     * `om xx provision --local` => `om xx instance provision`
@@ -685,6 +700,10 @@ Where the password is the value of the `þassword` key in `system/sec/relay-v3`.
 * The daemon now resets the local_expect=started instance monitor state when a sysadmin stops a resource, preventing automatic resource restarts.
 
     In version 2.1, a partially stopped instance caused by executing om foo stop --rid xx could inadvertently be restarted by the resource monitoring subsystem.
+
+* The instance resource info is reported to the collector by the collector speaker, like the instance status already was.
+
+    Every node used to post the resource info of its own instances straight to the collector. The refreshing node now only signals its peers, and the speaker fetches the key-values and reports them on its own throttled schedule, so a cluster talks to the collector through a single node and coalesces what it sends.
 
 ### sec
 
