@@ -549,18 +549,21 @@ func (t *App) do(evReader event.ReadCloser) error {
 	wg.Add(1)
 	go func(d *clusterdump.Data) {
 		defer wg.Done()
-		t.Current = *d
-		t.Nodename = data.Daemon.Nodename
+		// The cluster snapshot the views read is published from the tview
+		// loop: the views also read it from the key handlers, which run
+		// there, with no ordering against this goroutine.
 		t.app.QueueUpdateDraw(func() {
+			t.Current = *d
+			t.Nodename = data.Daemon.Nodename
 			t.updateHead()
 			t.updateObjects()
 		})
 		// show data when new data published on dataC
 		for d := range dataC {
-			t.Current = *d
-			t.Nodename = data.Daemon.Nodename
-			t.eventCount++
 			t.app.QueueUpdateDraw(func() {
+				t.Current = *d
+				t.Nodename = data.Daemon.Nodename
+				t.eventCount++
 				// TODO: detect if t.updateInstanceView and t.updateConfigView need to be called (config mtime change, ...)
 				t.refreshView()
 			})
