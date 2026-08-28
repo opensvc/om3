@@ -3030,6 +3030,41 @@ paths:
       tags:
         - node / instance / svc
         - node / instance / vol
+    post:
+      operationId: PostInstanceResourceInfo
+      description: |
+        Signal the daemon that the resource info cache of the object instance
+        has been refreshed on this node.
+
+        The daemon reads the refreshed cache itself and publishes a
+        InstanceResourceInfoUpdated event, so this request has no body. The
+        collector speaker fetches the key-values with GetInstanceResourceInfo
+        when it is ready to report them.
+      parameters:
+        - $ref: '#/components/parameters/inPathNodeName'
+        - $ref: '#/components/parameters/inPathNamespace'
+        - $ref: '#/components/parameters/inPathKind'
+        - $ref: '#/components/parameters/inPathName'
+      responses:
+        200:
+          description: OK
+        400:
+          $ref: '#/components/responses/400'
+        401:
+          $ref: '#/components/responses/401'
+        403:
+          $ref: '#/components/responses/403'
+        404:
+          $ref: '#/components/responses/404'
+        500:
+          $ref: '#/components/responses/500'
+      security:
+        - basicAuth: []
+        - bearerAuth: []
+      tags:
+        - node / instance / svc
+        - node / instance / vol
+      x-internal: true
 
   /api/node/name/{nodename}/instance/path/{namespace}/{kind}/{name}/schedule:
     get:

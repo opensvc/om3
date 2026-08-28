@@ -90,7 +90,7 @@ type (
 		ContainerLogsStream(context.Context, string, bool, int) (<-chan []byte, error)
 
 		Schedules() schedule.Table
-		PushResInfo(context.Context) (resource.Infos, error)
+		RefreshResInfo(context.Context) (resource.Infos, error)
 
 		HardAffinity() []string
 		HardAntiAffinity() []string

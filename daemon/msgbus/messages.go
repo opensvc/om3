@@ -163,6 +163,8 @@ var (
 
 		"InstanceMonitorUpdated": func() any { return &InstanceMonitorUpdated{} },
 
+		"InstanceResourceInfoUpdated": func() any { return &InstanceResourceInfoUpdated{} },
+
 		"InstanceStatusDeleted": func() any { return &InstanceStatusDeleted{} },
 
 		"InstanceStatusPost": func() any { return &InstanceStatusPost{} },
@@ -604,6 +606,18 @@ type (
 		Path       naming.Path      `json:"path" yaml:"path"`
 		Node       string           `json:"node" yaml:"node"`
 		Value      instance.Monitor `json:"instance_monitor" yaml:"instance_monitor"`
+	}
+
+	// InstanceResourceInfoUpdated is emitted when a node refreshed the resource
+	// info cache of one of its instances. It is a signal only: the key-values
+	// are not carried, the collector speaker fetches them from Node with the
+	// GetInstanceResourceInfo api when it is ready to report them.
+	InstanceResourceInfoUpdated struct {
+		pubsub.Msg `yaml:",inline"`
+		Path       naming.Path `json:"path" yaml:"path"`
+		Node       string      `json:"node" yaml:"node"`
+		Checksum   string      `json:"checksum" yaml:"checksum"`
+		UpdatedAt  time.Time   `json:"updated_at" yaml:"updated_at"`
 	}
 
 	InstanceStatusDeleted struct {
@@ -1284,6 +1298,14 @@ func (e *InstanceMonitorUpdated) Kind() string {
 
 func (e *InstanceMonitorUpdated) Key() string {
 	return fmt.Sprintf("InstanceMonitorUpdated,path=%s,node=%s", e.Path, e.Node)
+}
+
+func (e *InstanceResourceInfoUpdated) Kind() string {
+	return "InstanceResourceInfoUpdated"
+}
+
+func (e *InstanceResourceInfoUpdated) Key() string {
+	return fmt.Sprintf("InstanceResourceInfoUpdated,path=%s,node=%s", e.Path, e.Node)
 }
 
 func (e *InstanceStatusDeleted) Kind() string {

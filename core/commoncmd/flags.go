@@ -307,6 +307,10 @@ func FlagRefresh(flags *pflag.FlagSet, p *bool) {
 	flags.BoolVarP(p, "refresh", "r", false, "refresh the status data")
 }
 
+func FlagRefreshResInfo(flags *pflag.FlagSet, p *bool) {
+	flags.BoolVarP(p, "refresh", "r", false, "refresh the resource info cache before reporting it")
+}
+
 func FlagRecover(flags *pflag.FlagSet, p *bool) {
 	flags.BoolVar(p, "recover", false, "recover the stashed, invalid, configuration file leftover of a previous execution")
 }

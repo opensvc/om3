@@ -212,7 +212,7 @@ func NewCmdObjectResourceInfo(kind string) *cobra.Command {
 	return &cobra.Command{
 		GroupID: GroupIDSubsystems,
 		Use:     "info",
-		Short:   "list, push the key-values reported by resources",
+		Short:   "report the key-values reported by resources",
 	}
 }
 

@@ -1063,7 +1063,7 @@ func newCmdNodeConfigShow() *cobra.Command {
 }
 
 func newCmdObjectPrintResourceInfo(kind string) *cobra.Command {
-	var options commands.CmdObjectInstanceResourceInfoList
+	var options commands.CmdObjectInstanceResourceInfo
 	cmd := &cobra.Command{
 		Hidden: true,
 		Use:    "resinfo",
@@ -3162,11 +3162,12 @@ func newCmdObjectPurge(kind string) *cobra.Command {
 }
 
 func newCmdObjectPushResourceInfo(kind string) *cobra.Command {
-	var options commands.CmdObjectInstanceResourceInfoPush
+	var options commands.CmdObjectInstanceResourceInfo
+	options.Refresh = true
 	cmd := &cobra.Command{
 		Hidden: true,
 		Use:    "resinfo",
-		Short:  "push key-values reported by resources",
+		Short:  "refresh the key-values reported by resources",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return options.Run(kind)
 		},
@@ -3303,45 +3304,17 @@ func newCmdObjectInstanceUpdate(kind string) *cobra.Command {
 	return cmd
 }
 
-func newCmdObjectResourceInfoList(kind string) *cobra.Command {
-	var options commands.CmdObjectInstanceResourceInfoList
-	cmd := &cobra.Command{
-		Use:     "list",
-		Short:   "list the key-values reported by the resources",
-		Aliases: []string{"ls"},
-		RunE: func(cmd *cobra.Command, args []string) error {
-			return options.Run(kind)
-		},
-	}
-	flags := cmd.Flags()
-	addFlagsGlobal(flags, &options.OptsGlobal)
-	commoncmd.FlagNodeSelector(flags, &options.NodeSelector)
-	return cmd
-}
-
-func newCmdObjectResourceInfoPush(kind string) *cobra.Command {
-	var options commands.CmdObjectInstanceResourceInfoPush
-	cmd := &cobra.Command{
-		Use:   "push",
-		Short: "push key-values reported by resources",
-		RunE: func(cmd *cobra.Command, args []string) error {
-			return options.Run(kind)
-		},
+func newCmdObjectResourceInfo(kind string) *cobra.Command {
+	var options commands.CmdObjectInstanceResourceInfo
+	cmd := commoncmd.NewCmdObjectResourceInfo(kind)
+	cmd.RunE = func(cmd *cobra.Command, args []string) error {
+		return options.Run(kind)
 	}
 	flags := cmd.Flags()
 	addFlagsGlobal(flags, &options.OptsGlobal)
 	commoncmd.FlagsLock(flags, &options.OptsLock)
 	commoncmd.FlagNodeSelector(flags, &options.NodeSelector)
-	commoncmd.FlagIgnoreNoCollectorConfigured(flags, &options.IgnoreNoCollectorConfigured)
-	return cmd
-}
-
-func newCmdObjectResourceInfo(kind string) *cobra.Command {
-	cmd := commoncmd.NewCmdObjectResourceInfo(kind)
-	cmd.AddCommand(
-		newCmdObjectResourceInfoList(kind),
-		newCmdObjectResourceInfoPush(kind),
-	)
+	commoncmd.FlagRefreshResInfo(flags, &options.Refresh)
 	return cmd
 }
 
