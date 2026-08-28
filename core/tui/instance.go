@@ -171,17 +171,6 @@ func (t *App) updateInstanceView() {
 	table.SetEvaluateAllRows(true)
 	table.SetSelectable(true, true)
 
-	table.SetSelectionChangedFunc(func(row, col int) {
-		t.viewRID = ""
-		if row == 0 {
-			return
-		}
-		if col == 0 {
-			t.viewRID = table.GetCell(row, col).Text
-		}
-
-	})
-
 	selectedFunc := func(row, col int) {
 		cell := table.GetCell(row, col)
 		rid := table.GetCell(row, 0).Text
@@ -201,8 +190,13 @@ func (t *App) updateInstanceView() {
 
 	table.SetSelectedFunc(selectedFunc)
 
-	table.SetSelectionChangedFunc(func(row, column int) {
-		t.position = Position{row: row, col: column}
+	// a single selection changed func: tview only keeps the last one set.
+	table.SetSelectionChangedFunc(func(row, col int) {
+		t.frame().position = Position{row: row, col: col}
+		t.viewRID = ""
+		if row > 0 && col == 0 {
+			t.viewRID = table.GetCell(row, col).Text
+		}
 	})
 
 	setSelection := func(table *tview.Table) {
@@ -263,14 +257,8 @@ func (t *App) updateInstanceView() {
 
 	postamble := func() {
 		t.cleanCommand()
-
-		t.flex.Clear()
-		t.flex.AddItem(t.head, 1, 0, false)
-		t.flex.AddItem(table1, i+2, 0, false)
-		t.flex.AddItem(table, 0, 1, true)
-		t.app.SetFocus(table)
-
-		table.Select(t.position.row, t.position.col)
+		t.mount(table, mountBanner{primitive: table1, height: i + 2})
+		table.Select(t.frame().position.row, t.frame().position.col)
 	}
 
 	instanceState, ok := digest.Instances.ByNode()[t.viewNode]

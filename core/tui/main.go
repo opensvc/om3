@@ -34,9 +34,6 @@ import (
 )
 
 type (
-	viewId    int
-	viewStack []viewId
-
 	Position struct {
 		row int
 		col int
@@ -104,9 +101,12 @@ type (
 
 		lastDraw time.Time
 
-		selectedElement         string
-		previousSelectedElement string
-		position                Position
+		// selectedElement is the element the focused view drilled down
+		// into. Saved in and restored from the navigation stack frames.
+		selectedElement string
+
+		// mounted is the layout of the focused view.
+		mounted mountSpec
 
 		events        chan event.Event
 		stopEvents    bool
@@ -115,7 +115,6 @@ type (
 		isInEventView atomic.Bool
 
 		isOnConfirmation bool
-		backToContext    bool
 
 		viewPath naming.Path
 		viewNode string
@@ -153,24 +152,6 @@ type (
 	}
 )
 
-const (
-	viewObject viewId = iota
-	viewContext
-	viewConfig
-	viewKey
-	viewKeys
-	viewInstance
-	viewLog
-	viewPool
-	viewPoolVolume
-	viewNetwork
-	viewNetworkIpList
-	viewEvents
-	viewHbStatus
-	viewRelay
-	viewLast // marker, not a real view
-)
-
 var (
 	colorNone      = tcell.ColorNone
 	colorSelected  = tcell.ColorDarkSlateGray
@@ -179,9 +160,6 @@ var (
 	colorHead2     = tcell.NewHexColor(0x386890)
 	colorHead3     = tcell.NewHexColor(0x23415A)
 	colorHighlight = tcell.ColorWhite
-
-	forceUpdate    = true
-	updateIfChange = false
 
 	dataLostMessage            = "I understand data will be lost."
 	confLostMessage            = "I understand the configuration will be lost."
@@ -203,26 +181,7 @@ func Run(options *Options) error {
 	return app.Run()
 }
 
-func (t viewStack) String() string {
-	l := []string{
-		viewObject.String(),
-	}
-	for _, v := range t {
-		l = append(l, v.String())
-	}
-	return strings.Join(l, " > ")
-}
-
 func (t *App) updateHead() {
-	type titler interface{ GetTitle() string }
-	if t.flex.GetItemCount() < 2 {
-		return
-	}
-	primitive := t.flex.GetItem(1)
-	box, ok := primitive.(titler)
-	if !ok {
-		return
-	}
 	conn := func() string {
 		endpoint := ""
 		if t.client != nil {
@@ -237,71 +196,19 @@ func (t *App) updateHead() {
 			return fmt.Sprintf("%s@%s", t.user, endpoint)
 		}
 	}
-	title := box.GetTitle()
+	var title string
+	if box, ok := t.body().(interface{ GetTitle() string }); ok {
+		title = box.GetTitle()
+	}
 
 	t.head.SetCell(0, 0, tview.NewTableCell(conn()).SetBackgroundColor(colorHead3))
 	t.head.SetCell(0, 1, tview.NewTableCell(" "+t.Frame.Current.Cluster.Config.Name).SetBackgroundColor(colorHead))
 	t.head.SetCell(0, 2, tview.NewTableCell(" "+title).SetBackgroundColor(colorHead2).SetExpansion(1))
 }
 
-func (t viewId) String() string {
-	switch t {
-	case viewObject:
-		return "objects"
-	case viewContext:
-		return "context"
-	case viewConfig:
-		return "configuration"
-	case viewKey:
-		return "key"
-	case viewKeys:
-		return "keys"
-	case viewInstance:
-		return "instance"
-	case viewLog:
-		return "log"
-	case viewPool:
-		return "pool"
-	case viewPoolVolume:
-		return "pool volume"
-	case viewNetwork:
-		return "network"
-	case viewNetworkIpList:
-		return "network ip list"
-	case viewHbStatus:
-		return "heartbeat status"
-	case viewRelay:
-		return "relay"
-	default:
-		return ""
-	}
-}
-
-func (t *App) push(v viewId) {
-	t.stack = append(t.stack, v)
-}
-
-func (t *App) pop() viewId {
-	n := len(t.stack)
-	if n == 0 {
-		return viewObject
-	}
-	v := t.stack[n-1]
-	t.stack = t.stack[:n-1]
-	return v
-}
-
-func (t *App) focus() viewId {
-	n := len(t.stack)
-	if n == 0 {
-		return viewObject
-	}
-	return t.stack[n-1]
-}
-
 func NewApp(options *Options) *App {
 	return &App{
-		stack:            make([]viewId, 0),
+		stack:            viewStack{{id: viewObject}},
 		firstInstanceCol: 5,
 		headerRightCol:   3,
 		maxRetries:       600,
@@ -321,9 +228,9 @@ func NewApp(options *Options) *App {
 	}
 }
 
+// resetSelected drops the selection of the focused view and returns the number
+// of entries it dropped.
 func (t *App) resetSelected() int {
-	t.selectedElement = t.previousSelectedElement
-	t.previousSelectedElement = ""
 	switch t.focus() {
 	case viewInstance:
 		n := len(t.selectedRIDs)
@@ -351,17 +258,6 @@ func (t *App) initErrsTextView() {
 	t.errs.SetBorder(false)
 }
 
-func (t *App) viewPrimitive(v viewId) tview.Primitive {
-	switch v {
-	case viewConfig, viewInstance, viewKey, viewLog, viewEvents:
-		return t.textView
-	case viewKeys:
-		return t.keys
-	default:
-		return t.objects
-	}
-}
-
 func (t *App) initApp() {
 	t.initHeadTextView()
 	t.initObjectsTable()
@@ -369,10 +265,8 @@ func (t *App) initApp() {
 
 	t.app = tview.NewApplication()
 	t.flex = tview.NewFlex().SetDirection(tview.FlexRow)
-	t.flex.AddItem(t.head, 1, 0, false)
-	t.updateHead()
-	t.flex.AddItem(t.objects, 0, 1, true)
 	t.app.SetRoot(t.flex, true)
+	t.mount(t.objects)
 
 	t.app.SetInputCapture(func(event *tcell.EventKey) *tcell.EventKey {
 		if t.command != nil {
@@ -383,7 +277,7 @@ func (t *App) initApp() {
 		}
 		switch event.Key() {
 		case tcell.KeyESC:
-			if n := t.resetSelected(); n > 0 || (t.Frame.Selector == "*/svc/*" && len(t.stack) == 0) {
+			if n := t.resetSelected(); n > 0 || (t.atRoot() && t.Frame.Selector == t.defaultSelector()) {
 				return event
 			}
 			t.back()
@@ -441,7 +335,9 @@ func (t *App) init() error {
 	return nil
 }
 
-func (t *App) listContexts() {
+// updateContextList is the viewContext enter hook: it builds the context table
+// and mounts it.
+func (t *App) updateContextList() {
 	cfg, err := clientcontext.Load()
 	if err != nil {
 		t.errorf("%s", err)
@@ -502,37 +398,29 @@ func (t *App) listContexts() {
 			t.errorf("%s", err)
 		} else if resp, err := cli.GetAuthWhoAmIWithResponse(context.Background()); err != nil {
 			t.errorf("%s", err)
-			t.listContexts()
+			t.navRoot(viewContext)
 		} else if resp.StatusCode() == http.StatusOK {
 			t.client = cli
 			if streamClient, err := client.New(client.WithTimeout(0)); err != nil {
 				t.errorf("new stream client: %s", err)
-				t.listContexts()
+				t.navRoot(viewContext)
 			} else {
 				t.streamClient = streamClient
 				t.user = resp.JSON200.Name
 				t.reconnect()
-				t.flex.Clear()
-				t.flex.AddItem(t.head, 1, 0, false)
-				t.flex.AddItem(t.objects, 0, 1, true)
-				t.app.SetFocus(t.objects)
-				t.updateHead()
 				if resp.JSON200.RawGrant == "heartbeat" {
+					// this user is only granted the relay view: keep the
+					// context view as the stack root, so ESC comes back here.
+					t.resetStack(viewContext)
 					t.nav(viewRelay)
-					t.backToContext = true
-				} else if t.backToContext {
-					t.backToContext = false
-					t.pop()
+				} else {
+					t.navRoot(viewObject)
 				}
 			}
 		}
 	})
 
-	t.flex.Clear()
-	t.flex.AddItem(t.head, 1, 0, false)
-	t.flex.AddItem(v, 0, 1, true)
-	t.app.SetFocus(v)
-	t.updateHead()
+	t.mount(v)
 }
 
 func (t *App) Run() error {
@@ -549,23 +437,26 @@ func (t *App) initContext() {
 		t.errorf("%s", err)
 	} else if resp, err := cli.GetAuthWhoAmIWithResponse(context.Background()); err != nil {
 		t.errorf("%s", err)
-		t.listContexts()
+		t.navRoot(viewContext)
 	} else if resp.StatusCode() == http.StatusOK {
 		t.client = cli
 		if streamClient, err := client.New(client.WithTimeout(0)); err != nil {
 			t.errorf("new stream client: %s", err)
-			t.listContexts()
+			t.navRoot(viewContext)
 		} else {
 			t.streamClient = streamClient
 			t.user = resp.JSON200.Name
 			t.reconnect()
 			if resp.JSON200.RawGrant == "heartbeat" {
+				// this user is only granted the relay view: root the
+				// navigation stack on the context view so ESC offers to
+				// connect elsewhere.
+				t.resetStack(viewContext)
 				t.nav(viewRelay)
-				t.backToContext = true
 			}
 		}
 	} else {
-		t.listContexts()
+		t.navRoot(viewContext)
 	}
 }
 
@@ -650,31 +541,7 @@ func (t *App) do(evReader event.ReadCloser) error {
 			t.eventCount++
 			t.app.QueueUpdateDraw(func() {
 				// TODO: detect if t.updateInstanceView and t.updateConfigView need to be called (config mtime change, ...)
-				t.updateHead()
-				switch t.focus() {
-				case viewInstance:
-					t.updateInstanceView()
-				case viewConfig:
-					t.updateConfigView()
-				case viewKeys:
-					t.updateKeysView()
-				case viewPool:
-					t.updatePoolList(updateIfChange)
-				case viewPoolVolume:
-					t.updatePoolVolume(t.selectedElement)
-				case viewNetwork:
-					t.updateNetworkList()
-				case viewNetworkIpList:
-					t.updateNetworkIpList(t.selectedElement)
-				case viewEvents:
-					t.updateEventsView()
-				case viewHbStatus:
-					t.updateHbStatus()
-				case viewRelay:
-					t.updateRelayStatus()
-				default:
-					t.updateObjects()
-				}
+				t.refreshView()
 			})
 		}
 	}(data.DeepCopy())
@@ -863,11 +730,13 @@ func (t *App) isNodeSelected(node string) bool {
 }
 
 func (t *App) cleanCommand() {
+	// the command input took the errors bar place: give it back
 	t.flex.RemoveItem(t.command)
+	t.flex.AddItem(t.errs, 1, 0, false)
 	t.command = nil
 	t.focused = false
 	if !t.isOnConfirmation {
-		t.app.SetFocus(t.flex.GetItem(1))
+		t.app.SetFocus(t.body())
 	}
 }
 
@@ -1105,7 +974,7 @@ func (t *App) onRuneColumn(event *tcell.EventKey) {
 						row, col := t.objects.GetSelection()
 						switch {
 						case t.focus() == viewInstance && row > 1:
-							if table, ok := t.flex.GetItem(2).(*tview.Table); ok {
+							if table, ok := t.body().(*tview.Table); ok {
 								row, col := table.GetSelection()
 								rid := table.GetCell(row, col).Text
 								selection := make(map[[3]string]any)
@@ -1176,7 +1045,7 @@ func (t *App) confirmAction(action func(), messages ...string) {
 		if oldFocus != nil && t.focus() != viewObject {
 			t.app.SetFocus(oldFocus)
 		} else {
-			t.app.SetFocus(t.flex.GetItem(1))
+			t.app.SetFocus(t.body())
 		}
 		t.isOnConfirmation = false
 		t.focused = false
@@ -1928,7 +1797,7 @@ func (t *App) onRuneH(event *tcell.EventKey) {
 		return
 	}
 
-	savedItem := t.flex.GetItem(1)
+	savedMount := t.mounted
 	savedFocus := t.app.GetFocus()
 
 	v := tview.NewTextView().
@@ -1941,9 +1810,7 @@ func (t *App) onRuneH(event *tcell.EventKey) {
 			switch event.Key() {
 			case tcell.KeyESC:
 				t.help = nil
-				t.flex.RemoveItem(v)
-				t.flex.AddItem(t.head, 1, 0, false)
-				t.flex.AddItem(savedItem, 0, 1, true)
+				t.remount(savedMount)
 				t.app.SetFocus(savedFocus)
 			}
 			return event
@@ -1975,12 +1842,6 @@ func (t *App) updateLogTextView() {
 	})
 	t.textView.Clear()
 
-	lines := 50
-	follow := true
-
-	// Create the output writer for the TUI text view
-	outputWriter := tview.ANSIWriter(t.textView)
-
 	var nodes []string
 	if t.viewNode != "" {
 		// instance or node logs
@@ -1999,6 +1860,12 @@ func (t *App) updateLogTextView() {
 			nodes = append(nodes, node)
 		}
 	}
+
+	lines := 50
+	follow := true
+
+	// Create the output writer for the TUI text view
+	outputWriter := tview.ANSIWriter(t.textView)
 
 	// Create streams for all nodes
 	streams := make([]logreader.NodeStream, 0, len(nodes))
@@ -2152,8 +2019,6 @@ func (t *App) onRuneSlash(event *tcell.EventKey) {
 }
 
 func (t *App) onRuneC(event *tcell.EventKey) {
-	t.initTextView()
-	t.updateConfigView()
 	t.nav(viewConfig)
 }
 
@@ -2338,124 +2203,13 @@ func (t *App) errorf(format string, args ...any) {
 }
 
 func (t *App) printf(color tcell.Color, format string, args ...any) {
-	t.flex.AddItem(t.errs, 1, 0, false)
 	t.errs.Clear()
 	t.errs.SetBackgroundColor(color)
 	fmt.Fprintf(t.errs, format, args...)
 	time.AfterFunc(5*time.Second, func() {
-		t.flex.RemoveItem(t.errs)
+		t.errs.Clear()
+		t.errs.SetBackgroundColor(colorNone)
 	})
-}
-
-func (t *App) nav(to viewId) {
-	from := t.focus()
-	if t.backToContext && to == viewRelay {
-		t.navFromTo(from, to)
-		return
-	}
-	t.push(to)
-	if to == from {
-		return
-	}
-	t.navFromTo(from, to)
-}
-
-func (t *App) back() {
-	if t.backToContext {
-		if t.focus() == viewContext {
-			return
-		}
-		t.listContexts()
-		return
-	}
-	if t.resetSelected() == 0 && len(t.stack) == 0 && !t.focused {
-		filter := "*/svc/*"
-		if t.options != nil && t.options.Selector != "" {
-			filter = t.options.Selector
-		}
-		t.setFilter(filter)
-		return
-	}
-	from := t.pop()
-	to := t.focus()
-	t.navFromTo(from, to)
-}
-
-func (t *App) navFromTo(from, to viewId) {
-	t.flex.Clear()
-	t.flex.AddItem(t.head, 1, 0, false)
-	t.lastUpdatedAt = time.Time{}
-	t.position = Position{row: 0, col: 0}
-	switch from {
-	case viewObject:
-	case viewLog:
-		t.textView.SetChangedFunc(nil)
-		t.textView = nil
-		t.logCloser.CloseAll()
-	case viewConfig, viewInstance, viewKey:
-		t.textView = nil
-	case viewKeys:
-		t.keys = nil
-	case viewEvents:
-		t.textView = nil
-		if t.eventsCancel != nil {
-			t.eventsCancel()
-		}
-		t.isInEventView.Store(false)
-	}
-	switch to {
-	case viewContext:
-		t.listContexts()
-	case viewLog:
-		t.initTextView()
-		t.flex.AddItem(t.textView, 0, 1, true)
-		t.app.SetFocus(t.textView)
-		t.updateLogTextView()
-	case viewConfig:
-		t.initTextView()
-		t.flex.AddItem(t.textView, 0, 1, true)
-		t.app.SetFocus(t.textView)
-	case viewKey:
-		t.initTextView()
-		t.flex.AddItem(t.textView, 0, 1, true)
-		t.app.SetFocus(t.textView)
-		t.updateKeyTextView()
-	case viewInstance:
-		t.initTextView()
-		t.flex.AddItem(t.textView, 0, 1, true)
-		t.app.SetFocus(t.textView)
-		t.updateInstanceView()
-	case viewKeys:
-		t.initKeysTable()
-		t.flex.AddItem(t.keys, 0, 1, true)
-		t.app.SetFocus(t.keys)
-		t.updateKeysView()
-	case viewObject:
-		t.flex.AddItem(t.objects, 0, 1, true)
-		t.app.SetFocus(t.objects)
-		t.updateObjects()
-	case viewNetwork:
-		t.updateNetworkList()
-	case viewPool:
-		t.updatePoolList(forceUpdate)
-	case viewNetworkIpList:
-		t.updateNetworkIpList(t.selectedElement)
-	case viewPoolVolume:
-		t.updatePoolVolume(t.selectedElement)
-	case viewEvents:
-		t.isInEventView.Store(true)
-		t.initTextView()
-		t.initEventsView()
-		t.flex.AddItem(t.textView, 0, 1, true)
-		t.app.SetFocus(t.textView)
-		t.updateEventsView()
-	case viewHbStatus:
-		t.updateHbStatus()
-	case viewRelay:
-		t.updateRelayStatus()
-	}
-	t.updateHead()
-	t.flex.AddItem(t.errs, 1, 0, false)
 }
 
 func (t *App) createTable(creator CreateTableOptions) {
@@ -2474,11 +2228,7 @@ func (t *App) createTable(creator CreateTableOptions) {
 	v.SetTitle(creator.title)
 
 	update := func() {
-		t.flex.Clear()
-		t.flex.AddItem(t.head, 1, 0, false)
-		t.flex.AddItem(v, 0, 1, true)
-		t.app.SetFocus(v)
-		t.updateHead()
+		t.mount(v)
 	}
 
 	for i, title := range creator.titles {
@@ -2496,7 +2246,7 @@ func (t *App) createTable(creator CreateTableOptions) {
 	})
 
 	v.SetSelectionChangedFunc(func(row, column int) {
-		t.position = Position{row: row, col: column}
+		t.frame().position = Position{row: row, col: column}
 	})
 
 	for i, elements := range creator.elementsList {
@@ -2508,7 +2258,7 @@ func (t *App) createTable(creator CreateTableOptions) {
 	}
 
 	if isSelectable {
-		v.Select(t.position.row, t.position.col)
+		v.Select(t.frame().position.row, t.frame().position.col)
 	}
 
 	tablesDiffer := func(a, b *tview.Table) bool {
@@ -2544,7 +2294,7 @@ func (t *App) createTable(creator CreateTableOptions) {
 		return
 	}
 	if isSameTable && !isSelectable {
-		// No selection to restore from t.position: carry the scroll offset over
+		// No selection to restore from the frame cursor: carry the scroll offset over
 		// so a refresh does not send the reader back to the first row.
 		v.SetOffset(focusTable.GetOffset())
 	}
@@ -2565,17 +2315,6 @@ func (t *App) selectedString() string {
 			return t.viewPath.String() + "@" + t.viewNode
 		}
 	}
-}
-
-func (t *App) initTextView() {
-	if t.textView != nil {
-		return
-	}
-	v := tview.NewTextView()
-	v.SetScrollable(true)
-	v.SetBorder(false)
-	t.textView = v
-	return
 }
 
 func (t *App) reconnect() {
