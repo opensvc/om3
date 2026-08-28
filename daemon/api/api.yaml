@@ -2,7 +2,7 @@ openapi: 3.0.0
 
 info:
   title: opensvc agent api
-  version: 4.1.5
+  version: 4.2.0
 
 paths:
   /api/array:
@@ -2181,6 +2181,41 @@ paths:
         - node / instance / svc
         - node / instance / vol
 
+  /api/node/name/{nodename}/instance/path/{namespace}/{kind}/{name}/action/info:
+    post:
+      operationId: PostInstanceActionInfo
+      description: |
+        Refresh the object instance resource info cache.
+
+        The refreshed key-values are reported to the collector by the collector
+        speaker, on its own schedule.
+      parameters:
+        - $ref: '#/components/parameters/inPathNodeName'
+        - $ref: '#/components/parameters/inPathNamespace'
+        - $ref: '#/components/parameters/inPathKind'
+        - $ref: '#/components/parameters/inPathName'
+        - $ref: '#/components/parameters/inQueryRid'
+        - $ref: '#/components/parameters/inQuerySessionID'
+      responses:
+        200:
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/InstanceActionAccepted'
+          description: OK
+        401:
+          $ref: '#/components/responses/401'
+        403:
+          $ref: '#/components/responses/403'
+        500:
+          $ref: '#/components/responses/500'
+      security:
+        - basicAuth: []
+        - bearerAuth: []
+      tags:
+        - node / instance / svc
+        - node / instance / vol
+
   /api/node/name/{nodename}/instance/path/{namespace}/{kind}/{name}/action/provision:
     post:
       description: Provision the object instance. When state_only parameter is true, only internal provisioned state is changed.
@@ -2295,41 +2330,6 @@ paths:
           description: OK
         400:
           $ref: '#/components/responses/400'
-        401:
-          $ref: '#/components/responses/401'
-        403:
-          $ref: '#/components/responses/403'
-        500:
-          $ref: '#/components/responses/500'
-      security:
-        - basicAuth: []
-        - bearerAuth: []
-      tags:
-        - node / instance / svc
-        - node / instance / vol
-
-  /api/node/name/{nodename}/instance/path/{namespace}/{kind}/{name}/action/push/resource/info:
-    post:
-      operationId: PostInstanceActionPushResourceInfo
-      description: |
-        Refresh the object instance resource info cache.
-
-        The refreshed key-values are reported to the collector by the collector
-        speaker, on its own schedule.
-      parameters:
-        - $ref: '#/components/parameters/inPathNodeName'
-        - $ref: '#/components/parameters/inPathNamespace'
-        - $ref: '#/components/parameters/inPathKind'
-        - $ref: '#/components/parameters/inPathName'
-        - $ref: '#/components/parameters/inQueryRid'
-        - $ref: '#/components/parameters/inQuerySessionID'
-      responses:
-        200:
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/InstanceActionAccepted'
-          description: OK
         401:
           $ref: '#/components/responses/401'
         403:

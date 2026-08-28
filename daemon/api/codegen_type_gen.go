@@ -2828,6 +2828,13 @@ type PostInstanceActionFreezeParams struct {
 	SessionId *InQuerySessionID `form:"session_id,omitempty" json:"session_id,omitempty"`
 }
 
+// PostInstanceActionInfoParams defines parameters for PostInstanceActionInfo.
+type PostInstanceActionInfoParams struct {
+	// Rid a resource selector expression
+	Rid       *InQueryRid       `form:"rid,omitempty" json:"rid,omitempty"`
+	SessionId *InQuerySessionID `form:"session_id,omitempty" json:"session_id,omitempty"`
+}
+
 // PostInstanceActionPGUpdateParams defines parameters for PostInstanceActionPGUpdate.
 type PostInstanceActionPGUpdateParams struct {
 	Slaves    *InQueryAllSlaves `form:"slaves,omitempty" json:"slaves,omitempty"`
@@ -2889,13 +2896,6 @@ type PostInstanceActionPRStopParams struct {
 	Subset *InQuerySubset `form:"subset,omitempty" json:"subset,omitempty"`
 	Tag    *InQueryTag    `form:"tag,omitempty" json:"tag,omitempty"`
 	To     *InQueryTo     `form:"to,omitempty" json:"to,omitempty"`
-}
-
-// PostInstanceActionPushResourceInfoParams defines parameters for PostInstanceActionPushResourceInfo.
-type PostInstanceActionPushResourceInfoParams struct {
-	// Rid a resource selector expression
-	Rid       *InQueryRid       `form:"rid,omitempty" json:"rid,omitempty"`
-	SessionId *InQuerySessionID `form:"session_id,omitempty" json:"session_id,omitempty"`
 }
 
 // PostInstanceActionRestartParams defines parameters for PostInstanceActionRestart.
