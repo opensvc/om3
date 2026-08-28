@@ -150,9 +150,10 @@ func init() {
 				t.updateLogTextView()
 			},
 			leave: func(t *App) {
-				if t.textView != nil {
-					t.textView.SetChangedFunc(nil)
-				}
+				// Don't clear the changed handler: TextView.SetChangedFunc()
+				// writes an unlocked field, which the log readers are reading
+				// from their own goroutine. The handler only asks for a
+				// redraw, so it is harmless on a text view left behind.
 				t.releaseTextView()
 				t.logCloser.CloseAll()
 			},
