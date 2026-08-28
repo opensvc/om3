@@ -27,7 +27,15 @@ var (
 	//go:embed bash_completion.sh
 	bashCompletionFunction string
 
-	root = &cobra.Command{
+	root = newRootCmd()
+)
+
+// newRootCmd builds the root command and declares the sections its commands
+// sort into. It is called from a package level variable initializer, which the
+// runtime runs before every init() of the package: the command files can
+// register into those sections whatever order they run in.
+func newRootCmd() *cobra.Command {
+	cmd := &cobra.Command{
 		Use:                    filepath.Base(os.Args[0]),
 		Short:                  "the opensvc cluster management command",
 		SilenceUsage:           true,
@@ -36,7 +44,13 @@ var (
 		BashCompletionFunction: bashCompletionFunction,
 		Version:                version.Version(),
 	}
-)
+	cmd.AddGroup(
+		commoncmd.NewGroupQuery(),
+		commoncmd.NewGroupObjectKinds(),
+		commoncmd.NewGroupSubsystems(),
+	)
+	return cmd
+}
 
 func validArgs(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
 	return listObjectPaths(), cobra.ShellCompDirectiveNoFileComp
