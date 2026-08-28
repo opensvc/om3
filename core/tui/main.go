@@ -84,6 +84,10 @@ type (
 
 		stack viewStack
 
+		// focusedView mirrors the id of the focused stack frame, for the
+		// goroutines running off the tview loop.
+		focusedView atomic.Int32
+
 		app      *tview.Application
 		top      *tview.TextView
 		head     *tview.Table
@@ -110,8 +114,7 @@ type (
 		mounted mountSpec
 
 		events        chan event.Event
-		stopEvents    bool
-		eventsCtx     context.Context
+		stopEvents    atomic.Bool
 		eventsCancel  context.CancelFunc
 		isInEventView atomic.Bool
 
@@ -560,7 +563,13 @@ func (t *App) do(evReader event.ReadCloser) error {
 			return err
 		case e := <-eventC:
 			if t.isInEventView.Load() {
-				t.events <- e
+				// Never block the event pipeline on the events view: it stops
+				// draining as soon as the user leaves it, and a blocked send
+				// here deadlocks the whole application.
+				select {
+				case t.events <- e:
+				default:
+				}
 			}
 			if nextEventID == 0 {
 				nextEventID = e.ID
@@ -581,7 +590,7 @@ func (t *App) do(evReader event.ReadCloser) error {
 			if changes {
 				dataC <- cdata.DeepCopy()
 				changes = false
-			} else if t.focus() == viewObject {
+			} else if t.focusAsync() == viewObject {
 				t.app.QueueUpdateDraw(func() {
 					s := fmt.Sprint(time.Now().Truncate(time.Second).Sub(t.lastDraw.Truncate(time.Second)))
 					t.objects.SetCell(2, 1, tview.NewTableCell(s).SetSelectable(false))
