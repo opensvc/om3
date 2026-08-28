@@ -15,9 +15,10 @@ import (
 var (
 	arrayName string
 	cmdArray  = &cobra.Command{
-		Use:   "array",
-		Short: "manage storage arrays",
-		Long:  `A array is a backend storage provider for pools.`,
+		GroupID: commoncmd.GroupIDSubsystems,
+		Use:     "array",
+		Short:   "manage storage arrays",
+		Long:    `A array is a backend storage provider for pools.`,
 		RunE: func(_ *cobra.Command, args []string) error {
 			return runArray(args)
 		},

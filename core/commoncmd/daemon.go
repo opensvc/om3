@@ -4,8 +4,9 @@ import "github.com/spf13/cobra"
 
 func NewCmdDaemon() *cobra.Command {
 	return &cobra.Command{
-		Use:   "daemon",
-		Short: "manage the daemon and its components",
+		GroupID: GroupIDSubsystems,
+		Use:     "daemon",
+		Short:   "manage the daemon and its components",
 	}
 }
 
