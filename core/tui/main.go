@@ -50,6 +50,12 @@ type (
 		defaultText string
 	}
 
+	// errsMessage is a message queued for display in the errors bar.
+	errsMessage struct {
+		color tcell.Color
+		text  string
+	}
+
 	CreateTableOptions struct {
 		title             string
 		titles            []string
@@ -144,9 +150,15 @@ type (
 		selectedInstances map[[2]string]any
 		selectedRIDs      map[[3]string]any
 
-		errC     chan error
-		restartC chan error
-		exitFlag atomic.Bool
+		// errsC carries the messages printf() queues for the errors bar, and
+		// errsLinger is how long each of them stays displayed.
+		errsC      chan errsMessage
+		errsLinger time.Duration
+		errC       chan error
+		restartC   chan error
+		stopC      chan struct{}
+		stopOnce   sync.Once
+		exitFlag   atomic.Bool
 
 		logCloser AtomicCloserSlice
 	}
@@ -228,6 +240,9 @@ func NewApp(options *Options) *App {
 		selectedRIDs:      make(map[[3]string]any),
 		errC:              make(chan error),
 		restartC:          make(chan error),
+		stopC:             make(chan struct{}),
+		errsC:             make(chan errsMessage, 8),
+		errsLinger:        5 * time.Second,
 		events:            make(chan event.Event, 100),
 	}
 }
@@ -271,6 +286,8 @@ func (t *App) initApp() {
 	t.flex = tview.NewFlex().SetDirection(tview.FlexRow)
 	t.app.SetRoot(t.flex, true)
 	t.mount(t.objects)
+
+	go t.runErrsBar()
 
 	t.app.SetInputCapture(func(event *tcell.EventKey) *tcell.EventKey {
 		if t.command != nil {
@@ -2231,14 +2248,45 @@ func (t *App) errorf(format string, args ...any) {
 	t.printf(tcell.ColorRed, format, args...)
 }
 
+// printf queues a message for the errors bar. Safe to call from any
+// goroutine: the bar is owned by runErrsBar(), the only writer, and it only
+// writes from the tview loop.
+//
+// The send never blocks, so the goroutines feeding the event pipeline are
+// never held up by the display. A message dropped because the bar is
+// congested is a message nobody had the time to read anyway.
 func (t *App) printf(color tcell.Color, format string, args ...any) {
-	t.errs.Clear()
-	t.errs.SetBackgroundColor(color)
-	fmt.Fprintf(t.errs, format, args...)
-	time.AfterFunc(5*time.Second, func() {
-		t.errs.Clear()
-		t.errs.SetBackgroundColor(colorNone)
-	})
+	select {
+	case t.errsC <- errsMessage{color: color, text: fmt.Sprintf(format, args...)}:
+	default:
+	}
+}
+
+// runErrsBar displays the messages printf() queues, each of them lingering
+// errsLinger before the bar goes back to empty. It owns the errors bar
+// primitive: tview.Box.SetBackgroundColor() writes an unlocked field, so it
+// has to run on the tview loop, concurrently with nothing.
+func (t *App) runErrsBar() {
+	show := func(color tcell.Color, text string) {
+		t.app.QueueUpdateDraw(func() {
+			t.errs.SetBackgroundColor(color)
+			t.errs.Clear()
+			fmt.Fprint(t.errs, text)
+		})
+	}
+	var lingerC <-chan time.Time
+	for {
+		select {
+		case <-t.stopC:
+			return
+		case m := <-t.errsC:
+			show(m.color, m.text)
+			lingerC = time.After(t.errsLinger)
+		case <-lingerC:
+			lingerC = nil
+			show(colorNone, "")
+		}
+	}
 }
 
 func (t *App) createTable(creator CreateTableOptions) {
@@ -2355,6 +2403,7 @@ func (t *App) reconnect() {
 
 func (t *App) stop() {
 	t.exitFlag.Store(true)
+	t.stopOnce.Do(func() { close(t.stopC) })
 	select {
 	case t.errC <- nil:
 	default:
