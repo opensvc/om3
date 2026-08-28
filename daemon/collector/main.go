@@ -108,6 +108,17 @@ type (
 		// collector.
 		objectConfigSent map[naming.Path]objectConfigSent
 
+		// resInfoToSend is a map of instance key (<path>@<node>) to the most
+		// recent InstanceResourceInfoUpdated signal not reported yet.
+		//
+		// The signal carries no key-values: on the refresh ticker the speaker
+		// fetches them from the instance node and POSTs them to the collector.
+		resInfoToSend map[string]*msgbus.InstanceResourceInfoUpdated
+
+		// resInfoSent is a cache of the resource info checksums already sent to
+		// the collector, keyed by instance key (<path>@<node>).
+		resInfoSent map[string]resInfoSent
+
 		// isSpeaker is true when localhost NodeStatus.IsLeader is true
 		isSpeaker bool
 
@@ -326,6 +337,7 @@ func (t *T) startSubscriptions() *pubsub.Subscription {
 
 	sub.AddFilter(&msgbus.InstanceConfigUpdated{})
 	sub.AddFilter(&msgbus.InstanceConfigDeleted{})
+	sub.AddFilter(&msgbus.InstanceResourceInfoUpdated{})
 	sub.AddFilter(&msgbus.InstanceStatusDeleted{})
 	sub.AddFilter(&msgbus.InstanceStatusUpdated{})
 
@@ -350,6 +362,11 @@ func (t *T) loop() {
 	t.publishOnChange(t.getState())
 
 	t.initChanges()
+	if t.isSpeaker {
+		// onNodeStatusUpdated fires no transition when the daemon starts while
+		// already speaker, so seed here too.
+		t.seedResInfoToSend()
+	}
 	sub := t.startSubscriptions()
 	defer func() {
 		t.status.State = "disabled"
@@ -377,6 +394,8 @@ func (t *T) loop() {
 				t.onInstanceConfigDeleted(c)
 			case *msgbus.InstanceConfigUpdated:
 				t.onInstanceConfigUpdated(c)
+			case *msgbus.InstanceResourceInfoUpdated:
+				t.onInstanceResourceInfoUpdated(c)
 			case *msgbus.InstanceStatusDeleted:
 				t.onInstanceStatusDeleted(c)
 			case *msgbus.InstanceStatusUpdated:
@@ -423,6 +442,8 @@ func (t *T) initChanges() {
 	t.nodeFrozenAt = map[string]time.Time{}
 	t.objectConfigToSend = make(map[naming.Path]*msgbus.InstanceConfigUpdated)
 	t.objectConfigSent = make(map[naming.Path]objectConfigSent)
+	t.resInfoToSend = make(map[string]*msgbus.InstanceResourceInfoUpdated)
+	t.resInfoSent = make(map[string]resInfoSent)
 
 	for _, v := range object.StatusData.GetAll() {
 		t.daemonStatusChange[v.Path.String()] = struct{}{}

@@ -52,6 +52,10 @@ func CollectorSentDir() string {
 	return filepath.Join(Paths.Var, "node", "collector", "config_sent")
 }
 
+func CollectorResInfoSentDir() string {
+	return filepath.Join(Paths.Var, "node", "collector", "resinfo_sent")
+}
+
 func NodeConfigFile() string {
 	return filepath.Join(Paths.Etc, "node.conf")
 }
@@ -64,6 +68,7 @@ func CreateMandatoryDirectories() error {
 	mandatoryDirs := []string{
 		NodeVarDir(),
 		CollectorSentDir(),
+		CollectorResInfoSentDir(),
 		DNSUDSDir(),
 		Paths.Certs,
 		Paths.Etc,

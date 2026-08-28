@@ -26,6 +26,9 @@ func (t *T) onRefreshTicker() {
 				t.log.Warnf("sendObjectConfigChange", err)
 			}
 		}
+		if len(t.resInfoToSend) > 0 {
+			t.sendResInfoChange()
+		}
 	} else {
 		t.previousUpdatedAt = time.Time{}
 		t.dropChanges()
@@ -101,12 +104,28 @@ func (t *T) onInstanceConfigUpdated(c *msgbus.InstanceConfigUpdated) {
 	t.objectConfigToSend[c.Path] = c
 }
 
+func (t *T) onInstanceResourceInfoUpdated(c *msgbus.InstanceResourceInfoUpdated) {
+	i := instance.InstanceString(c.Path, c.Node)
+	if sent, ok := t.resInfoSent[i]; ok && sent.Checksum == c.Checksum {
+		t.log.Tracef("onInstanceResourceInfoUpdated %s skipped on same checksum %s", i, c.Checksum)
+		return
+	}
+	t.log.Tracef("onInstanceResourceInfoUpdated %s checksum %s need send", i, c.Checksum)
+	t.resInfoToSend[i] = c
+}
+
 func (t *T) onInstanceStatusDeleted(c *msgbus.InstanceStatusDeleted) {
 	i := instance.InstanceString(c.Path, c.Node)
 	delete(t.changes.instanceStatusUpdates, i)
 	delete(t.instances, i)
 	t.changes.instanceStatusDeletes[i] = c
 	t.daemonStatusChange[i] = struct{}{}
+	delete(t.resInfoToSend, i)
+	delete(t.resInfoSent, i)
+	sent := resInfoSent{path: c.Path, nodename: c.Node}
+	if err := sent.drop(); err != nil {
+		t.log.Warnf("drop sent resource info flag for %s: %s", i, err)
+	}
 }
 
 func (t *T) onInstanceStatusUpdated(c *msgbus.InstanceStatusUpdated) {
@@ -159,6 +178,9 @@ func (t *T) onNodeStatusUpdated(c *msgbus.NodeStatusUpdated) {
 		isSpeaker := !t.disable && c.Value.IsLeader
 		if isSpeaker != t.isSpeaker {
 			t.isSpeaker = isSpeaker
+			if isSpeaker {
+				t.seedResInfoToSend()
+			}
 			t.publishOnChange(t.getState())
 		}
 	}

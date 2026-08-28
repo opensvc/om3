@@ -54,6 +54,7 @@ Receive only events matching the filtering expression formatted as:
      InstanceConfigDeleted, InstanceConfigManagerDone, InstanceConfigUpdated
      InstanceFrozenFileRemoved, InstanceFrozenFileUpdated
      InstanceMonitorAction, InstanceMonitorDeleted, InstanceMonitorUpdated
+     InstanceResourceInfoUpdated
      InstanceStatusDeleted, InstanceStatusPost, InstanceStatusUpdated
      ProgressInstanceMonitor, SetInstanceMonitorRefused
      RunFileUpdated, RunFileRemoved

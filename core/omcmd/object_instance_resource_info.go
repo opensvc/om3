@@ -1,6 +1,7 @@
 package omcmd
 
 import (
+	"context"
 	"errors"
 	"fmt"
 
@@ -15,10 +16,14 @@ import (
 )
 
 type (
-	CmdObjectInstanceResourceInfoList struct {
+	CmdObjectInstanceResourceInfo struct {
 		OptsGlobal
 		commoncmd.OptsLock
 		NodeSelector string
+
+		// Refresh recomputes the resource info cache before reporting it.
+		// Without it, the cached key-values are reported as-is.
+		Refresh bool
 	}
 )
 
@@ -41,7 +46,7 @@ func resourceInfosToAPI(infos resource.Infos, path, nodename string) api.Resourc
 	return data
 }
 
-func (t *CmdObjectInstanceResourceInfoList) extractLocal(selector string) (api.ResourceInfoList, error) {
+func (t *CmdObjectInstanceResourceInfo) extractLocal(selector string) (api.ResourceInfoList, error) {
 	data := api.ResourceInfoList{
 		Kind: "ResourceInfoList",
 	}
@@ -52,22 +57,35 @@ func (t *CmdObjectInstanceResourceInfoList) extractLocal(selector string) (api.R
 	type loadResInfoer interface {
 		LoadResInfo() (resource.Infos, error)
 	}
+	type refreshResInfoer interface {
+		RefreshResInfo(context.Context) (resource.Infos, error)
+	}
 	paths, err := sel.MustExpand()
 	if err != nil {
 		return data, err
 	}
 	var errs error
+	ctx := context.Background()
 	for _, path := range paths {
 		obj, err := object.New(path)
 		if err != nil {
 			errs = errors.Join(errs, fmt.Errorf("%s: %w", path, err))
 			continue
 		}
-		i, ok := obj.(loadResInfoer)
-		if !ok {
-			continue
+		var infos resource.Infos
+		if t.Refresh {
+			i, ok := obj.(refreshResInfoer)
+			if !ok {
+				continue
+			}
+			infos, err = i.RefreshResInfo(ctx)
+		} else {
+			i, ok := obj.(loadResInfoer)
+			if !ok {
+				continue
+			}
+			infos, err = i.LoadResInfo()
 		}
-		infos, err := i.LoadResInfo()
 		if err != nil {
 			errs = errors.Join(errs, fmt.Errorf("%s: %w", path, err))
 			continue
@@ -78,7 +96,7 @@ func (t *CmdObjectInstanceResourceInfoList) extractLocal(selector string) (api.R
 	return data, errs
 }
 
-func (t *CmdObjectInstanceResourceInfoList) Run(kind string) error {
+func (t *CmdObjectInstanceResourceInfo) Run(kind string) error {
 	mergedSelector := commoncmd.MergeSelector("", t.ObjectSelector, kind, "")
 	data, err := t.extractLocal(mergedSelector)
 	if err != nil {
