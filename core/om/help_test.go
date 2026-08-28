@@ -1,6 +1,7 @@
 package om
 
 import (
+	"slices"
 	"strings"
 	"testing"
 
@@ -70,20 +71,54 @@ func TestHelpListsEveryVisibleCommand(t *testing.T) {
 	})
 }
 
-// A command holding subcommands is a subsystem, and belongs to that group
-// when its parent sorts its commands in groups. Left ungrouped, it lands in
-// the "Additional Commands" section, below the empty group title it should
-// have filled.
+// A command holding subcommands belongs to a section of its parent help, be
+// it the subsystems one or the resource groups one. Left ungrouped it lands in
+// the "Additional Commands" section, among the verbs of the parent, and below
+// the section title it should have filled.
+//
+// Only the parents offering a subsystems section are checked: the root command
+// sorts none of its object kinds and subsystems yet.
 func TestSubsystemCommandsAreGrouped(t *testing.T) {
-	for _, kind := range []string{"svc", "vol", "all"} {
-		cmd, _, err := root.Find([]string{kind, "resource", "info"})
-		if !assert.NoErrorf(t, err, "om %s resource info", kind) {
-			continue
+	walkCommands(root, func(cmd *cobra.Command) {
+		if !slices.ContainsFunc(cmd.Groups(), func(g *cobra.Group) bool {
+			return g.ID == commoncmd.GroupIDSubsystems
+		}) {
+			return
 		}
-		assert.Equalf(t, "info", cmd.Name(), "om %s resource info", kind)
-		assert.Equalf(t, commoncmd.GroupIDSubsystems, cmd.GroupID,
-			"om %s resource info is not in the subsystems group", kind)
-	}
+		for _, sub := range cmd.Commands() {
+			if !sub.IsAvailableCommand() || !sub.HasAvailableSubCommands() {
+				continue
+			}
+			assert.NotEmptyf(t, sub.GroupID,
+				"%q holds commands but no section of %q lists it",
+				sub.CommandPath(), cmd.CommandPath())
+		}
+	})
+}
+
+// Two commands sharing a name under the same parent: cobra runs the first one
+// and the second is unreachable, its help line printed twice. "om daemon" had
+// two "run" commands, the running one having been built from the run
+// constructor.
+func TestNoDuplicateCommandName(t *testing.T) {
+	walkCommands(root, func(cmd *cobra.Command) {
+		seen := make(map[string]string)
+		for _, sub := range cmd.Commands() {
+			if !sub.IsAvailableCommand() {
+				// a hidden command a visible one shadows is a backward
+				// compatibility spelling, not a duplicate
+				continue
+			}
+			names := append([]string{sub.Name()}, sub.Aliases...)
+			slices.Sort(names)
+			for _, name := range slices.Compact(names) {
+				assert.Emptyf(t, seen[name],
+					"%q calls both %q and %q %q",
+					cmd.CommandPath(), seen[name], sub.Name(), name)
+				seen[name] = sub.Name()
+			}
+		}
+	})
 }
 
 // TestHelpSectionsAreNotEmpty guards the section titles the template prints

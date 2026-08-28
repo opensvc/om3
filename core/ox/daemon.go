@@ -16,6 +16,7 @@ func init() {
 	)
 	cmdDaemon.AddGroup(
 		commoncmd.NewGroupQuery(),
+		commoncmd.NewGroupSubsystems(),
 	)
 	cmdDaemon.AddCommand(
 		cmdDaemonDNS,

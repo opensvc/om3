@@ -11,29 +11,33 @@ func NewCmdDaemon() *cobra.Command {
 
 func NewCmdDaemonDNS() *cobra.Command {
 	return &cobra.Command{
-		Use:   "dns",
-		Short: "manage the nameserver",
+		GroupID: GroupIDSubsystems,
+		Use:     "dns",
+		Short:   "manage the nameserver",
 	}
 }
 
 func NewCmdDaemonHeartbeat() *cobra.Command {
 	return &cobra.Command{
-		Use:   "hb",
-		Short: "manage heartbeats",
+		GroupID: GroupIDSubsystems,
+		Use:     "hb",
+		Short:   "manage heartbeats",
 	}
 }
 
 func NewCmdDaemonListener() *cobra.Command {
 	return &cobra.Command{
-		Use:   "listener",
-		Short: "manage listeners",
+		GroupID: GroupIDSubsystems,
+		Use:     "listener",
+		Short:   "manage listeners",
 	}
 }
 
 func NewCmdDaemonRelay() *cobra.Command {
 	return &cobra.Command{
-		Use:   "relay",
-		Short: "manage the relay server",
+		GroupID: GroupIDSubsystems,
+		Use:     "relay",
+		Short:   "manage the relay server",
 	}
 }
 
