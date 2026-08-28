@@ -1,15 +1,21 @@
+Plug a key-value source into the instance resource info.
+
 * `true`
 
-   Execute the `script` command with `info` argument on `push resinfo` action.
+   Execute the `script` command with the `info` argument on `instance info --refresh`.
 
 * `false`
 
-  Do nothing on `push resinfo` action.
+  Do nothing on `instance info --refresh`.
 
 * `<shlex expression>`
 
-   Execute this command on `push resinfo` action.
+   Execute this command on `instance info --refresh`.
 
 Stdout lines must contain only one `key:value`.
 
-Invalid lines are dropped.
+Invalid lines are dropped. A line whose value contains a `:`, like a url or a
+timestamp, has more than one separator and is dropped too.
+
+The command must exit 0: a failure aborts the refresh of the whole instance,
+which then reports no key-value at all.
