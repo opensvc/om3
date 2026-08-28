@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"io"
 	"net/http"
 	"os"
 	"os/exec"
@@ -1861,20 +1862,26 @@ func (t *App) updateLogTextView() {
 		}
 	}
 
+	// Opening the log readers is a blocking daemon call, served on the
+	// connection the event stream is served on. That stream is only drained by
+	// the goroutine feeding QueueUpdateDraw, which waits for the tview loop:
+	// opening the readers here would deadlock the application.
+	go t.streamLogs(nodes, t.viewPath, tview.ANSIWriter(t.textView))
+}
+
+// streamLogs opens a log reader per node and streams them, merged, into w. It
+// runs outside of the tview loop.
+func (t *App) streamLogs(nodes []string, path naming.Path, w io.Writer) {
 	lines := 50
 	follow := true
 
-	// Create the output writer for the TUI text view
-	outputWriter := tview.ANSIWriter(t.textView)
-
-	// Create streams for all nodes
 	streams := make([]logreader.NodeStream, 0, len(nodes))
 	for i, node := range nodes {
 		log := t.streamClient.NewGetLogs(node).
 			SetLines(&lines).
 			SetFollow(&follow)
-		if !t.viewPath.IsZero() {
-			l := naming.Paths{t.viewPath}.StrSlice()
+		if !path.IsZero() {
+			l := naming.Paths{path}.StrSlice()
 			log = log.SetPaths(&l)
 		}
 		reader, err := log.GetReader()
@@ -1882,7 +1889,11 @@ func (t *App) updateLogTextView() {
 			t.errorf("%s", err)
 			continue
 		}
-		t.logCloser.Append(reader)
+		if !t.logCloser.Append(reader) {
+			// the user left the log view while the readers were opening
+			_ = reader.Close()
+			return
+		}
 
 		streams = append(streams, logreader.NodeStream{
 			Node:   node,
@@ -1891,16 +1902,17 @@ func (t *App) updateLogTextView() {
 		})
 	}
 
-	if len(streams) > 0 {
-		// Use the logreader utility to collect, sort, and display logs
-		// Pass the TUI text view writer as the output
-		go logreader.CollectAndSortWithFormat(
-			streams,
-			outputWriter, // TUI text view writer
-			"",           // output format
-			follow,       // follow mode
-		)
+	if len(streams) == 0 {
+		return
 	}
+	// Use the logreader utility to collect, sort, and display logs.
+	// Pass the TUI text view writer as the output.
+	logreader.CollectAndSortWithFormat(
+		streams,
+		w,      // TUI text view writer
+		"",     // output format
+		follow, // follow mode
+	)
 }
 
 func (t *App) getConfigUpdatedAt() time.Time {

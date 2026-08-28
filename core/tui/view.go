@@ -144,6 +144,7 @@ func init() {
 			title: "log",
 			enter: func(t *App) {
 				t.mountTextView()
+				t.logCloser.Reset()
 				// updateLogTextView() opens the log readers and lets them stream
 				// into the text view: it must not be called on data updates.
 				t.updateLogTextView()
