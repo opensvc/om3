@@ -2462,8 +2462,15 @@ func (t *App) createTable(creator CreateTableOptions) {
 	if t.focused {
 		return
 	}
+	// tview's table page-up/page-down handlers spin forever on a table that has
+	// selection enabled but not a single selectable cell: they use the current
+	// selection as the sentinel of their cell scan, and Table.Draw() has already
+	// pushed that selection past the last row looking for a selectable cell.
+	// Views declaring no selectable column are plain scrollable tables.
+	isSelectable := len(creator.selectableColumns) > 0
+
 	v := tview.NewTable()
-	v.SetSelectable(true, true)
+	v.SetSelectable(isSelectable, isSelectable)
 	v.SetTitle(creator.title)
 
 	update := func() {
@@ -2495,12 +2502,14 @@ func (t *App) createTable(creator CreateTableOptions) {
 	for i, elements := range creator.elementsList {
 		row := i + 1
 		for j, element := range elements {
-			selectable := creator.selectableColumns != nil && slices.Contains(creator.selectableColumns, j)
+			selectable := slices.Contains(creator.selectableColumns, j)
 			v.SetCell(row, j, tview.NewTableCell(element).SetSelectable(selectable))
 		}
 	}
 
-	v.Select(t.position.row, t.position.col)
+	if isSelectable {
+		v.Select(t.position.row, t.position.col)
+	}
 
 	tablesDiffer := func(a, b *tview.Table) bool {
 		if a.GetColumnCount() != b.GetColumnCount() || a.GetRowCount() != b.GetRowCount() {
@@ -2530,9 +2539,16 @@ func (t *App) createTable(creator CreateTableOptions) {
 	}
 
 	focusTable, ok := t.app.GetFocus().(*tview.Table)
-	if !ok || focusTable.GetTitle() != v.GetTitle() || tablesDiffer(focusTable, v) {
-		update()
+	isSameTable := ok && focusTable.GetTitle() == v.GetTitle()
+	if isSameTable && !tablesDiffer(focusTable, v) {
+		return
 	}
+	if isSameTable && !isSelectable {
+		// No selection to restore from t.position: carry the scroll offset over
+		// so a refresh does not send the reader back to the first row.
+		v.SetOffset(focusTable.GetOffset())
+	}
+	update()
 }
 
 func (t *App) selectedString() string {
