@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"io"
 	"strconv"
+	"sync/atomic"
 	"time"
 
 	"github.com/opensvc/om3/v3/core/event"
@@ -27,8 +28,10 @@ type (
 		// parseStarted become true during first Read (internal go routine is parseStarted)
 		parseStarted bool
 
-		// closed is true when Close() is called
-		closed bool
+		// closed is true when Close() is called. Read() and Close() are
+		// called from different goroutines: the log and event readers are
+		// closed by the reader of their stream.
+		closed atomic.Bool
 
 		// max is the maxTokenSize for internal scanner
 		max int
@@ -72,7 +75,6 @@ func NewReadCloser(r io.ReadCloser) *ReadCloser {
 		errC:         make(chan error),
 		wrapped:      r,
 		parseStarted: false,
-		closed:       false,
 		max:          MaxScanTokenSize,
 		buf:          make([]byte, initialBufferSize),
 	}
@@ -119,7 +121,7 @@ func (r *ReadCloser) Buffer(buf []byte, max int) {
 
 // Read returns *Event read from EventReader r
 func (r *ReadCloser) Read() (*event.Event, error) {
-	if r.closed {
+	if r.closed.Load() {
 		return nil, ErrClosed
 	}
 	if !r.parseStarted {
@@ -160,11 +162,10 @@ func (r *ReadCloser) Read() (*event.Event, error) {
 
 // Close ask wrapped io.readCloser for Close
 func (r *ReadCloser) Close() error {
-	if r.closed {
+	if r.closed.Swap(true) {
 		return ErrClosed
 	}
 	r.cancel()
-	r.closed = true
 	return r.wrapped.Close()
 }
 
