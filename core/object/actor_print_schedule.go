@@ -82,7 +82,7 @@ func (t *actor) Schedules() schedule.Table {
 		table = table.Add(e)
 	}
 	if len(listResources(t)) > 0 {
-		e := t.newScheduleEntry("push_resinfo", kwoption.ScheduleResinfo, "", "push_resinfo", true, false)
+		e := t.newScheduleEntry("info", kwoption.ScheduleInfo, "", "info", true, false)
 		table = table.Add(e)
 	}
 	return table

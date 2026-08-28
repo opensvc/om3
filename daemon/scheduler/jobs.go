@@ -29,7 +29,7 @@ var (
 		"sysreport",
 	}
 	ObjectActions = []string{
-		"push_resinfo",
+		"info",
 		"resource_monitor",
 		"run",
 		"status",
@@ -57,7 +57,7 @@ func CmdArgs(e schedule.Entry) ([]string, error) {
 		tail = []string{"instance", "status", "-r"}
 	case "resource_monitor":
 		tail = []string{"instance", "status", "-m"}
-	case "push_resinfo":
+	case "info":
 		tail = []string{"instance", "info", "--refresh"}
 	case "run":
 		tail = []string{"instance", "run", "--rid", e.RID()}
