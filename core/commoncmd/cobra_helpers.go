@@ -47,6 +47,25 @@ func formatArgText(arg string) string {
 	return strings.Join(lines, "\n")
 }
 
+func init() {
+	cobra.AddTemplateFunc("hasGroupCommands", hasGroupCommands)
+}
+
+// hasGroupCommands is true when at least one command of cmd shows up in the
+// group. The usage template asks before printing a group title, so a group
+// holding no command, or only hidden ones, leaves no empty section behind.
+func hasGroupCommands(cmd *cobra.Command, groupID string) bool {
+	for _, sub := range cmd.Commands() {
+		if sub.GroupID != groupID {
+			continue
+		}
+		if sub.IsAvailableCommand() || sub.Name() == "help" {
+			return true
+		}
+	}
+	return false
+}
+
 // usageTemplate is the custom template that conditionally includes Arguments section
 // Note: We cannot use nindent as it's a Cobra internal function, so we rely on the fact
 // that the data is already properly formatted
@@ -64,10 +83,10 @@ Examples:
 {{.Example}}{{end}}{{if .HasAvailableSubCommands}}{{$cmds := .Commands}}{{if eq (len .Groups) 0}}
 
 Available Commands:{{range $cmds}}{{if (or .IsAvailableCommand (eq .Name "help"))}}
-  {{rpad .Name .NamePadding }} {{.Short}}{{end}}{{end}}{{else}}{{range $group := .Groups}}
+  {{rpad .Name .NamePadding }} {{.Short}}{{end}}{{end}}{{else}}{{range $group := .Groups}}{{if hasGroupCommands $ $group.ID}}
 
 {{.Title}}{{range $cmds}}{{if (and (eq .GroupID $group.ID) (or .IsAvailableCommand (eq .Name "help")))}}
-  {{rpad .Name .NamePadding }} {{.Short}}{{end}}{{end}}{{end}}{{if not .AllChildCommandsHaveGroup}}
+  {{rpad .Name .NamePadding }} {{.Short}}{{end}}{{end}}{{end}}{{end}}{{if not .AllChildCommandsHaveGroup}}
 
 Additional Commands:{{range $cmds}}{{if (and (eq .GroupID "") (or .IsAvailableCommand (eq .Name "help")))}}
   {{rpad .Name .NamePadding }} {{.Short}}{{end}}{{end}}{{end}}{{end}}{{end}}{{if .Annotations.args}}
