@@ -118,7 +118,7 @@ func newCmdDaemonRun() *cobra.Command {
 
 func newCmdDaemonRunning() *cobra.Command {
 	var options commands.CmdDaemonRunning
-	cmd := commoncmd.NewCmdDaemonRun()
+	cmd := commoncmd.NewCmdDaemonRunning()
 	cmd.RunE = func(cmd *cobra.Command, args []string) error {
 		return options.Run()
 	}
@@ -1383,6 +1383,7 @@ func newCmdNodeUpdateSSHKeys() *cobra.Command {
 
 func newCmdObjectCertificate(kind string) *cobra.Command {
 	return &cobra.Command{
+		GroupID: commoncmd.GroupIDSubsystems,
 		Aliases: []string{"cert", "crt"},
 		Use:     "certificate",
 		Short:   "create, renew, delete certificates",
@@ -3047,7 +3048,7 @@ func newCmdObjectInstanceUnprovision(kind string) *cobra.Command {
 		Use:     "unprovision",
 		Short:   "free the system resources of the instance resources (data-loss danger)",
 		Long:    "Free the system resources required by the object instance resources.\n\nOperate on a selection of instances asynchronously using --node=<selector>.",
-		Aliases: []string{"prov"},
+		Aliases: []string{"unprov"},
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return options.Run(kind)
 		},
