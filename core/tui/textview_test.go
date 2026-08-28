@@ -2,6 +2,7 @@ package tui
 
 import (
 	"fmt"
+	"strings"
 	"sync/atomic"
 	"testing"
 	"time"
@@ -104,5 +105,74 @@ func TestStreamedTextViewRedraws(t *testing.T) {
 				t.Logf("%s: %d screen refreshes for 20 written lines", test.name, got-before)
 			}
 		})
+	}
+}
+
+// The errors bar is written into from any goroutine, tview.Box's background
+// color being an unlocked field: only runErrsBar() may touch it, and only from
+// the tview loop. Run with -race.
+func TestErrorBarWritesFromAnyGoroutine(t *testing.T) {
+	sim := tcell.NewSimulationScreen("UTF-8")
+	if err := sim.Init(); err != nil {
+		t.Fatal(err)
+	}
+	sim.SetSize(120, 10)
+
+	a := NewApp(nil)
+	a.errsLinger = 300 * time.Millisecond
+	a.initHeadTextView()
+	a.initObjectsTable()
+	a.initErrsTextView()
+	a.app = tview.NewApplication().SetScreen(sim)
+	a.flex = tview.NewFlex().SetDirection(tview.FlexRow)
+	a.app.SetRoot(a.flex, true)
+	a.mount(a.objects)
+	go a.runErrsBar()
+
+	done := make(chan struct{})
+	go func() { defer close(done); _ = a.app.Run() }()
+
+	barText := func() string {
+		var s string
+		ch := make(chan struct{})
+		a.app.QueueUpdateDraw(func() { s = a.errs.GetText(true); close(ch) })
+		select {
+		case <-ch:
+		case <-time.After(5 * time.Second):
+			t.Fatal("the event loop is wedged")
+		}
+		return s
+	}
+	await := func(what string, ok func(string) bool) string {
+		deadline := time.Now().Add(5 * time.Second)
+		for {
+			s := barText()
+			if ok(s) {
+				return s
+			}
+			if time.Now().After(deadline) {
+				t.Fatalf("%s: the errors bar holds %q", what, s)
+			}
+			time.Sleep(20 * time.Millisecond)
+		}
+	}
+
+	// off the tview loop, as do() and the streaming goroutines do
+	go a.errorf("boom %d", 42)
+
+	got := await("the message never showed", func(s string) bool {
+		return strings.Contains(s, "boom 42")
+	})
+	t.Logf("errors bar: %q", strings.TrimSpace(got))
+
+	await("the message never expired", func(s string) bool {
+		return strings.TrimSpace(s) == ""
+	})
+
+	a.stop()
+	select {
+	case <-done:
+	case <-time.After(5 * time.Second):
+		t.Error("the application did not stop")
 	}
 }
