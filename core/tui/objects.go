@@ -24,12 +24,11 @@ func (t *App) initObjectsTable() {
 		row, col := table.GetSelection()
 		switch {
 		case !t.viewPath.IsZero() && t.viewNode != "" && !(t.viewPath.Kind == naming.KindCfg || t.viewPath.Kind == naming.KindSec):
-			t.initTextView()
 			t.nav(viewInstance)
 		case t.viewPath.Kind == naming.KindCfg || t.viewPath.Kind == naming.KindSec:
 			t.nav(viewKeys)
 		case row == 0 && col == 1:
-			t.listContexts()
+			t.nav(viewContext)
 		case row == 1 && col == 1:
 			t.nav(viewEvents)
 		case (row >= hbIndexRow && row <= hbIndexRow+2) && (col >= t.headerRightCol && col <= t.firstInstanceCol+len(t.Current.Cluster.Config.Nodes)-1):
@@ -107,7 +106,7 @@ func (t *App) initObjectsTable() {
 		if col >= t.firstInstanceCol {
 			t.viewNode = t.objects.GetCell(0, col).Text
 		}
-		t.position = Position{row: row, col: col}
+		t.frame().position = Position{row: row, col: col}
 		handleCursorPosition(row, col)
 	})
 	table.SetInputCapture(func(event *tcell.EventKey) *tcell.EventKey {

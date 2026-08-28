@@ -108,7 +108,9 @@ func (t *App) updateKeyTextView() {
 		return
 	}
 
-	t.initTextView()
+	if t.textView == nil {
+		return
+	}
 	text := string(resp.Body)
 	title := fmt.Sprintf("%s key %s", t.viewPath, t.viewKey)
 	t.textView.SetTitle(title)
