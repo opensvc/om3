@@ -6,5 +6,9 @@ The list is whitespace-separated.
 Parents are looked up in the same namespace first, so for a test/svc/svc1,
 the `svc2` relation is interpreted as `test/svc/svc2`.
 
+The `./svc/svc2` notation states that explicitly. It resolves in the namespace
+of the object declaring it, so a set of objects cloned into another namespace
+keeps referring to its own members.
+
 To declare a relation to `svc2` in the root namespace, use the fully
 qualified path notation `root/svc/svc2`.
