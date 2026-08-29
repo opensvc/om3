@@ -124,7 +124,7 @@ var keywordStore = keywords.Store{
 		Kind:     naming.NewKinds(naming.KindSvc, naming.KindVol, naming.KindNscfg),
 		Option:   "pg_cpu_quota",
 		Scopable: true,
-		Text:     keywords.NewText(fs, "text/kw/core/pg_cpu_shares"),
+		Text:     keywords.NewText(fs, "text/kw/core/pg_cpu_quota"),
 	},
 	{
 		Attr:     "PG.MemOOMControl",
