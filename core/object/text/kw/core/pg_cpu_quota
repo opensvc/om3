@@ -1,0 +1,18 @@
+The percentage of cpu time the processes of the group may use.
+
+Accepted expressions:
+
+* `50%`
+  Half of one cpu.
+
+* `50%@all`
+  Half of every cpu the node has.
+
+* `10%@2`
+  A tenth of two cpus.
+
+* `1000`
+  A raw quota, in microseconds per period.
+
+Unlike `pg_cpu_shares`, which only arbitrates when the node is cpu-bound, a
+quota caps the group whether or not the node is busy.
