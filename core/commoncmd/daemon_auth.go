@@ -44,7 +44,7 @@ func NewCmdDaemonAuth() *cobra.Command {
 	FlagRoles(flags, &options.Roles)
 	flags.DurationVar(&options.AccessDuration, "duration", 60*time.Second, "access_token duration.")
 	flags.DurationVar(&options.RefreshDuration, "refresh-duration", 24*time.Hour, "refresh_token duration.")
-	flags.StringVarP(&options.Out, "output", "o", "auto", "output format json|flat|auto|tab=<header>:<jsonpath>,...")
+	flags.StringVarP(&options.Out, "output", "o", "auto", "output format auto|json|jsonline|yaml|flat|tab=<header>:<jsonpath>,...|template=<go template>")
 	flags.StringVar(&options.Subject, "subject", "", "the subject of the token")
 	flags.StringVar(&options.Scope, "scope", "", "the scope of the token grant")
 	flags.BoolVar(&options.Refresh, "refresh", false, "also provide refresh token")

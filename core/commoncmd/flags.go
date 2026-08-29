@@ -22,7 +22,7 @@ import (
 
 func AddFlagsNodeGlobal(flagSet *pflag.FlagSet, p *OptsNodeGlobal) {
 	flagSet.StringVar(&p.Color, "color", "auto", "output colorization yes|no|auto")
-	flagSet.StringVarP(&p.Output, "output", "o", "auto", "output format json|flat|auto|tab=<header>:<jsonpath>,...")
+	flagSet.StringVarP(&p.Output, "output", "o", "auto", "output format auto|json|jsonline|yaml|flat|tab=<header>:<jsonpath>,...|template=<go template>")
 	FlagNodeSelector(flagSet, &p.NodeSelector)
 }
 
@@ -190,8 +190,8 @@ func FlagEventFilters(flags *pflag.FlagSet, p *[]string) {
 }
 
 func FlagEventOutput(flags *pflag.FlagSet, p *string) {
-	flags.StringVarP(p, "output", "o", "auto", "output format json|flat|diff|auto|tab=<header>:<jsonpath>,...|template=<go template>")
-	flags.StringVar(p, "format", "auto", "output format json|flat|diff|auto|tab=<header>:<jsonpath>,...|template=<go template>")
+	flags.StringVarP(p, "output", "o", "auto", "output format auto|json|jsonline|yaml|flat|diff|tab=<header>:<jsonpath>,...|template=<go template>")
+	flags.StringVar(p, "format", "auto", "output format auto|json|jsonline|yaml|flat|diff|tab=<header>:<jsonpath>,...|template=<go template>")
 	flags.MarkHidden("format")
 }
 
@@ -624,8 +624,8 @@ func FlagColor(flags *pflag.FlagSet, p *string) {
 }
 
 func FlagOutput(flags *pflag.FlagSet, p *string) {
-	flags.StringVarP(p, "output", "o", "auto", "output format json|flat|auto|tab=<header>:<jsonpath>,...")
-	flags.StringVar(p, "format", "auto", "output format json|flat|auto|tab=<header>:<jsonpath>,...")
+	flags.StringVarP(p, "output", "o", "auto", "output format auto|json|jsonline|yaml|flat|tab=<header>:<jsonpath>,...|template=<go template>")
+	flags.StringVar(p, "format", "auto", "output format auto|json|jsonline|yaml|flat|tab=<header>:<jsonpath>,...|template=<go template>")
 	flags.MarkHidden("format")
 }
 
