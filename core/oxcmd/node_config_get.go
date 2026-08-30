@@ -112,7 +112,9 @@ func (t *CmdNodeConfigGet) Run() error {
 out:
 	var defaultOutput string
 	if t.Eval {
-		if len(l) > 1 {
+		if hasEvalError(l) {
+			defaultOutput = "tab=NODE:node,KEYWORD:keyword,VALUE:value,EVALUATED:evaluated,EVALUATED_AS:evaluated_as,ERROR:error"
+		} else if len(l) > 1 {
 			defaultOutput = "tab=NODE:node,KEYWORD:keyword,VALUE:value,EVALUATED:evaluated,EVALUATED_AS:evaluated_as"
 		} else {
 			defaultOutput = "tab=evaluated"

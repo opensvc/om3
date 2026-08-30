@@ -80,7 +80,9 @@ func (t *CmdObjectConfigGet) Run(kind string) error {
 
 	var defaultOutput string
 	if t.Eval {
-		if len(l) > 1 {
+		if hasEvalError(l) {
+			defaultOutput = "tab=OBJECT:object,KEYWORD:keyword,VALUE:value,EVALUATED:evaluated,EVALUATED_AS:evaluated_as,ERROR:error"
+		} else if len(l) > 1 {
 			defaultOutput = "tab=OBJECT:object,KEYWORD:keyword,VALUE:value,EVALUATED:evaluated,EVALUATED_AS:evaluated_as"
 		} else {
 			defaultOutput = "tab=evaluated"

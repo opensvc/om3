@@ -1,12 +1,14 @@
 package daemonapi
 
 import (
+	"errors"
 	"net/http"
 
 	"github.com/labstack/echo/v4"
 
 	"github.com/opensvc/om3/v3/core/clusternode"
 	"github.com/opensvc/om3/v3/core/object"
+	"github.com/opensvc/om3/v3/core/xconfig"
 	"github.com/opensvc/om3/v3/daemon/api"
 	"github.com/opensvc/om3/v3/util/key"
 )
@@ -45,7 +47,13 @@ func (a *DaemonAPI) GetNodeConfig(ctx echo.Context, nodename string, params api.
 		}
 		conf := oc.Config()
 		var keys key.L
-		if params.Kw == nil {
+
+		// A key selection is a user input, so a key it can not evaluate is an
+		// error. The whole config is not: it can hold keys no keyword declares,
+		// and failing the request on the first one would hide all the others.
+		isWholeConfig := params.Kw == nil
+
+		if isWholeConfig {
 			keys = conf.KeyList()
 		} else {
 			for _, s := range *params.Kw {
@@ -63,9 +71,17 @@ func (a *DaemonAPI) GetNodeConfig(ctx echo.Context, nodename string, params api.
 				item.Value = s
 			}
 			if isEvaluated {
-				if i, err := oc.MergedConfig().EvalAs(k, evaluatedAs); err != nil {
+				i, err := oc.MergedConfig().EvalAs(k, evaluatedAs)
+				switch {
+				case err != nil && isWholeConfig:
+					s := err.Error()
+					item.Error = &s
+					item.EvaluatedAs = evaluatedAs
+				case errors.Is(err, xconfig.ErrNoKeyword):
+					return JSONProblemf(ctx, http.StatusBadRequest, "EvalAs", "%s", err)
+				case err != nil:
 					return JSONProblemf(ctx, http.StatusInternalServerError, "EvalAs", "%s", err)
-				} else {
+				default:
 					item.Evaluated = &i
 					item.EvaluatedAs = evaluatedAs
 				}
