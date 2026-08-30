@@ -16,6 +16,13 @@ const (
 )
 
 var (
+	kwNodeID = keywords.Keyword{
+		DefaultText: keywords.NewText(fs, "text/kw/node/id.default"),
+		Option:      "id",
+		Scopable:    false,
+		Section:     "DEFAULT",
+		Text:        keywords.NewText(fs, "text/kw/node/id"),
+	}
 	kwNodeOCI = keywords.Keyword{
 		Option:  "oci",
 		Section: "node",
@@ -181,6 +188,7 @@ var (
 		Text:    keywords.NewText(fs, "text/kw/node/switch.schedule"),
 	}
 	nodePrivateKeywords = []*keywords.Keyword{
+		&kwNodeID,
 		&kwNodeOCI,
 		&kwNodeUUID,
 		&kwNodePRKey,
@@ -205,6 +213,13 @@ var (
 		&kwNodeModel,
 		&kwNodeBackupSchedule,
 		&kwNodeSwitchSchedule,
+	}
+
+	// kwNodeComment has no Section, so it is accepted in any section of the
+	// node and cluster configurations, like the core objects counterpart.
+	kwNodeComment = keywords.Keyword{
+		Option: "comment",
+		Text:   keywords.NewText(fs, "text/kw/core/comment"),
 	}
 
 	kwNodeSecureFetch = keywords.Keyword{
@@ -1703,6 +1718,7 @@ var (
 	}
 
 	nodeCommonKeywords = []*keywords.Keyword{
+		&kwNodeComment,
 		&kwNodeSecureFetch,
 		&kwNodeMinAvailMemPct,
 		&kwNodeMinAvailSwapPct,

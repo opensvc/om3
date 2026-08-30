@@ -6144,6 +6144,10 @@ components:
       properties:
         evaluated:
           x-go-type: any
+        error:
+          type: string
+          description: |
+            The reason the keyword could not be evaluated. Only set when the whole configuration is evaluated, where a single unresolvable key must not fail the request. When a keyword selection is passed, an unresolvable key is reported as a 400 instead.
         node:
           type: string
         object:
