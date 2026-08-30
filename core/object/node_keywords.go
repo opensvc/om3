@@ -574,6 +574,7 @@ var (
 		Text:      keywords.NewText(fs, "text/kw/node/listener.port"),
 	}
 	kwNodeListenerOpenIDIssuer = keywords.Keyword{
+		Aliases: []string{"openid_authority"},
 		Example: "https://keycloak.opensvc.com/auth/realms/clusters",
 		Option:  "openid_issuer",
 		Section: "listener",
