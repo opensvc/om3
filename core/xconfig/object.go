@@ -6,8 +6,8 @@ import (
 	"path/filepath"
 	"reflect"
 
-	"github.com/cvaroqui/ini"
 	"github.com/iancoleman/orderedmap"
+	"github.com/opensvc/om3/v3/util/ini"
 )
 
 // NewObject configures and returns a T instance pointer.
@@ -20,7 +20,7 @@ func NewObject(p string, sources ...any) (*T, error) {
 	t := &T{
 		ConfigFilePath: filepath.FromSlash(p),
 	}
-	loadOptions := ini.LoadOptions{
+	loadOptions := ini.Options{
 		Loose:                      true,
 		AllowPythonMultilineValues: true,
 		SpaceBeforeInlineComment:   true,
@@ -35,7 +35,7 @@ func NewObject(p string, sources ...any) (*T, error) {
 	if len(sources) == 0 {
 		sources = append(sources, []byte{})
 	}
-	if f, err := ini.LoadSources(loadOptions, sources[0], sources[1:]...); err != nil {
+	if f, err := ini.Load(loadOptions, sources...); err != nil {
 		return nil, fmt.Errorf("load config sources error: %w", err)
 	} else {
 		t.file = f

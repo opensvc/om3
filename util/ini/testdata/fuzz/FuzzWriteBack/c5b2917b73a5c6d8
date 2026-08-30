@@ -1,0 +1,2 @@
+go test fuzz v1
+[]byte("t=0\n00=0\nt=0")

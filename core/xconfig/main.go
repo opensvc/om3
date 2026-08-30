@@ -14,7 +14,6 @@ import (
 	"strings"
 	"time"
 
-	"github.com/cvaroqui/ini"
 	"github.com/golang-collections/collections/set"
 	"github.com/google/uuid"
 	"github.com/iancoleman/orderedmap"
@@ -26,6 +25,7 @@ import (
 	"github.com/opensvc/om3/v3/util/converters"
 	"github.com/opensvc/om3/v3/util/file"
 	"github.com/opensvc/om3/v3/util/hostname"
+	"github.com/opensvc/om3/v3/util/ini"
 	"github.com/opensvc/om3/v3/util/key"
 	"github.com/opensvc/om3/v3/util/stringslice"
 	"github.com/opensvc/om3/v3/util/xstrings"
@@ -730,18 +730,12 @@ func (t *T) Dump() ([]byte, error) {
 }
 
 func (t *T) write() (err error) {
-	ini.DefaultHeader = true
 	f, err := t.tempConfigFile()
 	if err != nil {
 		return err
 	}
 	fName := f.Name()
 	defer os.Remove(fName)
-
-	ini.PrettyEqual = false
-	ini.PrettyFormat = false
-	ini.DefaultFormatLeft = " "
-	ini.DefaultFormatRight = " "
 
 	if _, err = t.file.WriteTo(f); err != nil {
 		return err
