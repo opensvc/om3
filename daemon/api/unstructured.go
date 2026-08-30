@@ -291,6 +291,9 @@ func (t KeywordItem) Unstructured() map[string]any {
 	if t.Evaluated != nil {
 		m["evaluated"] = *t.Evaluated
 	}
+	if t.Error != nil {
+		m["error"] = *t.Error
+	}
 	return m
 }
 
