@@ -77,7 +77,9 @@ func (t *CmdObjectConfigShow) Run(kind string) error {
 	}
 	b = commoncmd.Sections(b, t.Sections)
 	if t.RedactSecrets {
-		b = object.RedactSecrets(b, kind)
+		if b, err = object.RedactSecrets(b, kind); err != nil {
+			return err
+		}
 	}
 	b = commoncmd.ColorizeINI(b)
 	_, err = os.Stdout.Write(b)

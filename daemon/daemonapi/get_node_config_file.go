@@ -40,7 +40,11 @@ func (a *DaemonAPI) GetNodeConfigFile(ctx echo.Context, nodename string, params 
 				return JSONProblemf(ctx, http.StatusInternalServerError, "Internal server error", "Failed to read node config file")
 			}
 
-			b := object.RedactSecrets(content, "")
+			b, err := object.RedactSecrets(content, "")
+			if err != nil {
+				log.Warnf("redact node config file: %s", err)
+				return JSONProblemf(ctx, http.StatusInternalServerError, "Internal server error", "Failed to redact node config file")
+			}
 			return ctx.Blob(http.StatusOK, "application/octet-stream", b)
 		}
 		return JSONProblemf(ctx, http.StatusNotFound, "Not found", "Node config file not found")

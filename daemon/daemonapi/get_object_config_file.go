@@ -52,7 +52,11 @@ func (a *DaemonAPI) GetObjectConfigFile(ctx echo.Context, namespace string, kind
 			return JSONProblemf(ctx, http.StatusInternalServerError, "Internal server error", "Failed to read config file: %s", filename)
 		}
 
-		b := object.RedactSecrets(content, kind.String())
+		b, err := object.RedactSecrets(content, kind.String())
+		if err != nil {
+			log.Warnf("%s: %s: %s", logName, filename, err)
+			return JSONProblemf(ctx, http.StatusInternalServerError, "Internal server error", "Failed to redact config file: %s", filename)
+		}
 		return ctx.Blob(http.StatusOK, "application/octet-stream", b)
 	}
 	for nodename := range instance.ConfigData.GetByPath(objPath) {
