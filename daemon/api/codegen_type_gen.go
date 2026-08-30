@@ -1343,11 +1343,17 @@ type KeywordDefinitionItem struct {
 	Minimal       bool     `json:"minimal"`
 	Option        string   `json:"option"`
 	Provisioning  bool     `json:"provisioning"`
-	Required      bool     `json:"required"`
-	Scopable      bool     `json:"scopable"`
-	Section       string   `json:"section"`
-	Text          string   `json:"text"`
-	Types         []string `json:"types"`
+
+	// RedactSecret True when the keyword value is a secret, hidden by the config show --redact-secrets flag.
+	RedactSecret bool `json:"redactSecret"`
+
+	// ReplacedBy The name of the keyword to use instead of this deprecated one.
+	ReplacedBy string   `json:"replacedBy"`
+	Required   bool     `json:"required"`
+	Scopable   bool     `json:"scopable"`
+	Section    string   `json:"section"`
+	Text       string   `json:"text"`
+	Types      []string `json:"types"`
 }
 
 // KeywordDefinitionItems defines model for KeywordDefinitionItems.
