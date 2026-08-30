@@ -211,7 +211,7 @@ type ClientInterface interface {
 	PatchNodeConfig(ctx context.Context, nodename InPathNodeName, params *PatchNodeConfigParams, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// GetNodeConfigFile request
-	GetNodeConfigFile(ctx context.Context, nodename InPathNodeName, reqEditors ...RequestEditorFn) (*http.Response, error)
+	GetNodeConfigFile(ctx context.Context, nodename InPathNodeName, params *GetNodeConfigFileParams, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// PutNodeConfigFileWithBody request with any body
 	PutNodeConfigFileWithBody(ctx context.Context, nodename InPathNodeName, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
@@ -497,7 +497,7 @@ type ClientInterface interface {
 	PatchObjectConfig(ctx context.Context, namespace InPathNamespace, kind InPathKind, name InPathName, params *PatchObjectConfigParams, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// GetObjectConfigFile request
-	GetObjectConfigFile(ctx context.Context, namespace InPathNamespace, kind InPathKind, name InPathName, reqEditors ...RequestEditorFn) (*http.Response, error)
+	GetObjectConfigFile(ctx context.Context, namespace InPathNamespace, kind InPathKind, name InPathName, params *GetObjectConfigFileParams, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// PostObjectConfigFileWithBody request with any body
 	PostObjectConfigFileWithBody(ctx context.Context, namespace InPathNamespace, kind InPathKind, name InPathName, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
@@ -1053,8 +1053,8 @@ func (c *Client) PatchNodeConfig(ctx context.Context, nodename InPathNodeName, p
 	return c.Client.Do(req)
 }
 
-func (c *Client) GetNodeConfigFile(ctx context.Context, nodename InPathNodeName, reqEditors ...RequestEditorFn) (*http.Response, error) {
-	req, err := NewGetNodeConfigFileRequest(c.Server, nodename)
+func (c *Client) GetNodeConfigFile(ctx context.Context, nodename InPathNodeName, params *GetNodeConfigFileParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewGetNodeConfigFileRequest(c.Server, nodename, params)
 	if err != nil {
 		return nil, err
 	}
@@ -2217,8 +2217,8 @@ func (c *Client) PatchObjectConfig(ctx context.Context, namespace InPathNamespac
 	return c.Client.Do(req)
 }
 
-func (c *Client) GetObjectConfigFile(ctx context.Context, namespace InPathNamespace, kind InPathKind, name InPathName, reqEditors ...RequestEditorFn) (*http.Response, error) {
-	req, err := NewGetObjectConfigFileRequest(c.Server, namespace, kind, name)
+func (c *Client) GetObjectConfigFile(ctx context.Context, namespace InPathNamespace, kind InPathKind, name InPathName, params *GetObjectConfigFileParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewGetObjectConfigFileRequest(c.Server, namespace, kind, name, params)
 	if err != nil {
 		return nil, err
 	}
@@ -4626,7 +4626,7 @@ func NewPatchNodeConfigRequest(server string, nodename InPathNodeName, params *P
 }
 
 // NewGetNodeConfigFileRequest generates requests for GetNodeConfigFile
-func NewGetNodeConfigFileRequest(server string, nodename InPathNodeName) (*http.Request, error) {
+func NewGetNodeConfigFileRequest(server string, nodename InPathNodeName, params *GetNodeConfigFileParams) (*http.Request, error) {
 	var err error
 
 	var pathParam0 string
@@ -4649,6 +4649,33 @@ func NewGetNodeConfigFileRequest(server string, nodename InPathNodeName) (*http.
 	queryURL, err := serverURL.Parse(operationPath)
 	if err != nil {
 		return nil, err
+	}
+
+	if params != nil {
+		// queryValues collects non-styled parameters (passthrough, JSON)
+		// that are safe to round-trip through url.Values.Encode().
+		queryValues := queryURL.Query()
+		// rawQueryFragments collects pre-encoded query fragments from
+		// styled parameters, preserving literal commas as delimiters
+		// per the OpenAPI spec (e.g. "color=blue,black,brown").
+		var rawQueryFragments []string
+
+		if params.RedactSecrets != nil {
+
+			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "redact-secrets", *params.RedactSecrets, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "boolean", Format: ""}); err != nil {
+				return nil, err
+			} else {
+				for _, qp := range strings.Split(queryFrag, "&") {
+					rawQueryFragments = append(rawQueryFragments, qp)
+				}
+			}
+
+		}
+
+		if encoded := queryValues.Encode(); encoded != "" {
+			rawQueryFragments = append(rawQueryFragments, encoded)
+		}
+		queryURL.RawQuery = strings.Join(rawQueryFragments, "&")
 	}
 
 	req, err := http.NewRequest(http.MethodGet, queryURL.String(), nil)
@@ -11541,7 +11568,7 @@ func NewPatchObjectConfigRequest(server string, namespace InPathNamespace, kind 
 }
 
 // NewGetObjectConfigFileRequest generates requests for GetObjectConfigFile
-func NewGetObjectConfigFileRequest(server string, namespace InPathNamespace, kind InPathKind, name InPathName) (*http.Request, error) {
+func NewGetObjectConfigFileRequest(server string, namespace InPathNamespace, kind InPathKind, name InPathName, params *GetObjectConfigFileParams) (*http.Request, error) {
 	var err error
 
 	var pathParam0 string
@@ -11578,6 +11605,33 @@ func NewGetObjectConfigFileRequest(server string, namespace InPathNamespace, kin
 	queryURL, err := serverURL.Parse(operationPath)
 	if err != nil {
 		return nil, err
+	}
+
+	if params != nil {
+		// queryValues collects non-styled parameters (passthrough, JSON)
+		// that are safe to round-trip through url.Values.Encode().
+		queryValues := queryURL.Query()
+		// rawQueryFragments collects pre-encoded query fragments from
+		// styled parameters, preserving literal commas as delimiters
+		// per the OpenAPI spec (e.g. "color=blue,black,brown").
+		var rawQueryFragments []string
+
+		if params.RedactSecrets != nil {
+
+			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "redact-secrets", *params.RedactSecrets, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "boolean", Format: ""}); err != nil {
+				return nil, err
+			} else {
+				for _, qp := range strings.Split(queryFrag, "&") {
+					rawQueryFragments = append(rawQueryFragments, qp)
+				}
+			}
+
+		}
+
+		if encoded := queryValues.Encode(); encoded != "" {
+			rawQueryFragments = append(rawQueryFragments, encoded)
+		}
+		queryURL.RawQuery = strings.Join(rawQueryFragments, "&")
 	}
 
 	req, err := http.NewRequest(http.MethodGet, queryURL.String(), nil)
@@ -12948,7 +13002,7 @@ type ClientWithResponsesInterface interface {
 	PatchNodeConfigWithResponse(ctx context.Context, nodename InPathNodeName, params *PatchNodeConfigParams, reqEditors ...RequestEditorFn) (*PatchNodeConfigResponse, error)
 
 	// GetNodeConfigFileWithResponse request
-	GetNodeConfigFileWithResponse(ctx context.Context, nodename InPathNodeName, reqEditors ...RequestEditorFn) (*GetNodeConfigFileResponse, error)
+	GetNodeConfigFileWithResponse(ctx context.Context, nodename InPathNodeName, params *GetNodeConfigFileParams, reqEditors ...RequestEditorFn) (*GetNodeConfigFileResponse, error)
 
 	// PutNodeConfigFileWithBodyWithResponse request with any body
 	PutNodeConfigFileWithBodyWithResponse(ctx context.Context, nodename InPathNodeName, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*PutNodeConfigFileResponse, error)
@@ -13234,7 +13288,7 @@ type ClientWithResponsesInterface interface {
 	PatchObjectConfigWithResponse(ctx context.Context, namespace InPathNamespace, kind InPathKind, name InPathName, params *PatchObjectConfigParams, reqEditors ...RequestEditorFn) (*PatchObjectConfigResponse, error)
 
 	// GetObjectConfigFileWithResponse request
-	GetObjectConfigFileWithResponse(ctx context.Context, namespace InPathNamespace, kind InPathKind, name InPathName, reqEditors ...RequestEditorFn) (*GetObjectConfigFileResponse, error)
+	GetObjectConfigFileWithResponse(ctx context.Context, namespace InPathNamespace, kind InPathKind, name InPathName, params *GetObjectConfigFileParams, reqEditors ...RequestEditorFn) (*GetObjectConfigFileResponse, error)
 
 	// PostObjectConfigFileWithBodyWithResponse request with any body
 	PostObjectConfigFileWithBodyWithResponse(ctx context.Context, namespace InPathNamespace, kind InPathKind, name InPathName, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*PostObjectConfigFileResponse, error)
@@ -18802,8 +18856,8 @@ func (c *ClientWithResponses) PatchNodeConfigWithResponse(ctx context.Context, n
 }
 
 // GetNodeConfigFileWithResponse request returning *GetNodeConfigFileResponse
-func (c *ClientWithResponses) GetNodeConfigFileWithResponse(ctx context.Context, nodename InPathNodeName, reqEditors ...RequestEditorFn) (*GetNodeConfigFileResponse, error) {
-	rsp, err := c.GetNodeConfigFile(ctx, nodename, reqEditors...)
+func (c *ClientWithResponses) GetNodeConfigFileWithResponse(ctx context.Context, nodename InPathNodeName, params *GetNodeConfigFileParams, reqEditors ...RequestEditorFn) (*GetNodeConfigFileResponse, error) {
+	rsp, err := c.GetNodeConfigFile(ctx, nodename, params, reqEditors...)
 	if err != nil {
 		return nil, err
 	}
@@ -19670,8 +19724,8 @@ func (c *ClientWithResponses) PatchObjectConfigWithResponse(ctx context.Context,
 }
 
 // GetObjectConfigFileWithResponse request returning *GetObjectConfigFileResponse
-func (c *ClientWithResponses) GetObjectConfigFileWithResponse(ctx context.Context, namespace InPathNamespace, kind InPathKind, name InPathName, reqEditors ...RequestEditorFn) (*GetObjectConfigFileResponse, error) {
-	rsp, err := c.GetObjectConfigFile(ctx, namespace, kind, name, reqEditors...)
+func (c *ClientWithResponses) GetObjectConfigFileWithResponse(ctx context.Context, namespace InPathNamespace, kind InPathKind, name InPathName, params *GetObjectConfigFileParams, reqEditors ...RequestEditorFn) (*GetObjectConfigFileResponse, error) {
+	rsp, err := c.GetObjectConfigFile(ctx, namespace, kind, name, params, reqEditors...)
 	if err != nil {
 		return nil, err
 	}

@@ -30,6 +30,10 @@ func (a *DaemonAPI) GetNodeConfigFile(ctx echo.Context, nodename string, params 
 			ctx.Response().Header().Add(api.HeaderLastModified, mtime.Format(time.RFC3339Nano))
 			log.Infof("serve node config file to %s", userFromContext(ctx).GetUserName())
 
+			if params.RedactSecrets == nil || !*params.RedactSecrets {
+				return ctx.File(filename)
+			}
+
 			content, err := os.ReadFile(filename)
 			if err != nil {
 				log.Warnf("failed to read node config file: %s", err)

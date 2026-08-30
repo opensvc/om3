@@ -2,7 +2,6 @@ package redact
 
 import (
 	"bytes"
-	"strings"
 )
 
 type (
@@ -26,19 +25,6 @@ type (
 		Key         string
 	}
 )
-
-func sectionName(s string) string {
-	s = strings.TrimSpace(s)
-	if !strings.HasPrefix(s, "[") {
-		return ""
-	}
-	if !strings.HasSuffix(s, "]") {
-		return ""
-	}
-	s = s[1 : len(s)-1]
-	s = strings.TrimSpace(s)
-	return s
-}
 
 func RedactSecrets(sections []SectionData, secrets map[KeywordItem]bool) []byte {
 	out := bytes.NewBuffer(nil)
