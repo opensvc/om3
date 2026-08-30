@@ -9,4 +9,8 @@ If the token is valid,
 
 * the user grant list is obtained by joining the multiple `entitlements` claims.
 
-The keyword replaced deprecated `openid_well_known`.
+The keyword was named `openid_authority`, and that name is still accepted.
+
+It replaced `openid_well_known`, which is not accepted anymore.
+`openid_well_known` was the metadata endpoint itself, where `openid_issuer` is
+the base URL that endpoint is derived from.

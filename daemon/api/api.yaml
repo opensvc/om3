@@ -6077,6 +6077,8 @@ components:
         - aliases
         - inherit
         - deprecated
+        - replacedBy
+        - redactSecret
         - required
         - minimal
       properties:
@@ -6124,6 +6126,12 @@ components:
           type: string
         deprecated:
           type: string
+        replacedBy:
+          type: string
+          description: The name of the keyword to use instead of this deprecated one.
+        redactSecret:
+          type: boolean
+          description: True when the keyword value is a secret, hidden by the config show --redact-secrets flag.
         required:
           type: boolean
         minimal:

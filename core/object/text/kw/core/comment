@@ -1,1 +1,8 @@
-Comments help the users understand the role of the object and its resources.
+A free form text describing the role of the object, of the node, or of the
+section it is set in.
+
+The keyword is accepted in any section, so the DEFAULT section can document a
+configuration as a whole, and a resource, pool, heartbeat, array or network
+section can document itself.
+
+The agent does not interpret the value.
