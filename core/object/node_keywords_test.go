@@ -49,6 +49,11 @@ func TestNodeAndClusterKeywordLookup(t *testing.T) {
 			kind:  naming.KindCcfg,
 			key:   key.Parse("hb#1.comment"),
 		},
+		"the name listener.openid_issuer had before the rename": {
+			store: ccfgKeywordStore,
+			kind:  naming.KindCcfg,
+			key:   key.Parse("listener.openid_authority"),
+		},
 	}
 	for title, c := range cases {
 		t.Run(title, func(t *testing.T) {
