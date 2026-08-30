@@ -42,6 +42,10 @@ func (a *DaemonAPI) GetObjectConfigFile(ctx echo.Context, namespace string, kind
 		ctx.Response().Header().Add(api.HeaderLastModified, mtime.Format(time.RFC3339Nano))
 		log.Infof("serve config file %s to %s", objPath, userFromContext(ctx).GetUserName())
 
+		if params.RedactSecrets == nil || !*params.RedactSecrets {
+			return ctx.File(filename)
+		}
+
 		content, err := os.ReadFile(filename)
 		if err != nil {
 			log.Warnf("%s: failed to read config file %s: %s", logName, filename, err)

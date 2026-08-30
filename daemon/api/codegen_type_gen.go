@@ -2697,6 +2697,12 @@ type PatchNodeConfigParams struct {
 	Set    *InQuerySets    `form:"set,omitempty" json:"set,omitempty"`
 }
 
+// GetNodeConfigFileParams defines parameters for GetNodeConfigFile.
+type GetNodeConfigFileParams struct {
+	// RedactSecrets if true, redact secrets in the cluster configuration file
+	RedactSecrets *bool `form:"redact-secrets,omitempty" json:"redact-secrets,omitempty"`
+}
+
 // GetNodeConfigKeywordsParams defines parameters for GetNodeConfigKeywords.
 type GetNodeConfigKeywordsParams struct {
 	// Driver show only keywords of this driver
@@ -3139,6 +3145,12 @@ type PatchObjectConfigParams struct {
 	Delete *InQueryDeletes `form:"delete,omitempty" json:"delete,omitempty"`
 	Unset  *InQueryUnsets  `form:"unset,omitempty" json:"unset,omitempty"`
 	Set    *InQuerySets    `form:"set,omitempty" json:"set,omitempty"`
+}
+
+// GetObjectConfigFileParams defines parameters for GetObjectConfigFile.
+type GetObjectConfigFileParams struct {
+	// RedactSecrets if true, redact secrets in the cluster configuration file
+	RedactSecrets *bool `form:"redact-secrets,omitempty" json:"redact-secrets,omitempty"`
 }
 
 // GetObjectConfigKeywordsParams defines parameters for GetObjectConfigKeywords.
