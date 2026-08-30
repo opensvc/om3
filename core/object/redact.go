@@ -1,77 +1,42 @@
 package object
 
 import (
-	"bufio"
-	"bytes"
-	"regexp"
-	"strings"
+	"fmt"
 
 	"github.com/opensvc/om3/v3/core/keywords"
 	"github.com/opensvc/om3/v3/core/naming"
+	"github.com/opensvc/om3/v3/util/ini"
 	"github.com/opensvc/om3/v3/util/key"
-	"github.com/opensvc/om3/v3/util/redact"
 )
 
-var (
-	sectionRE  = regexp.MustCompile(`^\s*\[.*\]\s*$`)
-	commentRE  = regexp.MustCompile(`^\s*[#;]`)
-	keyValueRE = regexp.MustCompile(`^(\s*[^=\s#;]+)(\s*=\s*)([^#;]*)(.*)$`)
-)
+// redacted is what the value of a secret holding keyword is replaced with.
+const redacted = "********"
 
-func sectionName(s string) string {
-	s = strings.TrimSpace(s)
-	if !strings.HasPrefix(s, "[") {
-		return ""
-	}
-	if !strings.HasSuffix(s, "]") {
-		return ""
-	}
-	s = s[1 : len(s)-1]
-	s = strings.TrimSpace(s)
-	return s
+// redactOptions reads a configuration file the way xconfig reads it, so the
+// keys seen here are the keys the agent sees.
+var redactOptions = ini.Options{
+	Loose:                      true,
+	AllowPythonMultilineValues: true,
+	SpaceBeforeInlineComment:   true,
 }
 
-func RedactSecrets(b []byte, kind string) []byte {
-	var (
-		sections []redact.SectionData
-		current  redact.SectionData
-		secrets  map[redact.KeywordItem]bool
-	)
-	secrets = make(map[redact.KeywordItem]bool)
-	scanner := bufio.NewScanner(bytes.NewReader(b))
-	for scanner.Scan() {
-		line := scanner.Text()
-		if sectionRE.MatchString(line) {
-			if current.Name != "" && len(current.Lines) > 0 {
-				sections = append(sections, current)
-			}
-			current = redact.SectionData{
-				Name:   sectionName(line),
-				Values: make(map[string]string),
-			}
-			current.Lines = append(current.Lines, redact.ParsedLine{Raw: line})
-			continue
-		}
-
-		matches := keyValueRE.FindStringSubmatch(line)
-		if len(matches) == 5 && !commentRE.MatchString(line) {
-			k := strings.TrimSpace(matches[1])
-			v := strings.TrimSpace(matches[3])
-
-			current.Values[k] = v
-			current.Lines = append(current.Lines, redact.ParsedLine{
-				Raw:           line,
-				IsKV:          true,
-				KeyPrefix:     matches[1],
-				Delim:         matches[2],
-				Key:           k,
-				InlineComment: matches[4],
-			})
-			continue
-		}
-		current.Lines = append(current.Lines, redact.ParsedLine{Raw: line})
+// RedactSecrets returns b with the value of every keyword declared with
+// RedactSecret, and of every key of a sec or usr data section, replaced by
+// asterisks. kind is the object kind the configuration belongs to, empty for a
+// node or cluster configuration.
+//
+// Only those values change. The parser writes back verbatim the lines it was
+// not asked to touch, so comments, blank lines, spacing, inline comments and
+// multiline layout are all preserved, and the substitution is refused if it
+// would not parse back to the redacted value.
+//
+// An unparseable configuration is an error rather than a configuration
+// returned unredacted.
+func RedactSecrets(b []byte, kind string) ([]byte, error) {
+	f, err := ini.Load(redactOptions, b)
+	if err != nil {
+		return nil, fmt.Errorf("redact secrets: %w", err)
 	}
-	sections = append(sections, current)
 
 	k := naming.Kind(kind)
 	var store keywords.Store
@@ -81,17 +46,27 @@ func RedactSecrets(b []byte, kind string) []byte {
 		store = KeywordStoreWithDrivers(k)
 	}
 
-	for _, section := range sections {
-		sectionType := section.Values["type"]
-		dataSec := (k == naming.KindSec || k == naming.KindUsr) && section.Name == "data"
-		for _, l := range section.Lines {
-			kw := store.Lookup(key.New(section.Name, l.Key), k, sectionType)
-			if dataSec || (kw != nil && kw.RedactSecret) {
-				secrets[redact.KeywordItem{SectionName: section.Name, Key: l.Key}] = true
-				continue
+	for _, section := range f.Sections() {
+		// A datastore holds its keys as the values of the data section, so
+		// there is no keyword to declare and all of them are secret.
+		isData := (k == naming.KindSec || k == naming.KindUsr) && section.Name() == "data"
+
+		sectionType := section.KeysHash()["type"]
+
+		for _, sectionKey := range section.Keys() {
+			if !isData {
+				kw := store.Lookup(key.New(section.Name(), sectionKey.Name()), k, sectionType)
+				if kw == nil || !kw.RedactSecret {
+					continue
+				}
 			}
+			sectionKey.SetValueKeepFormat(redacted)
 		}
 	}
 
-	return redact.RedactSecrets(sections, secrets)
+	out, err := f.Bytes()
+	if err != nil {
+		return nil, fmt.Errorf("redact secrets: %w", err)
+	}
+	return out, nil
 }

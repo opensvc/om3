@@ -49,7 +49,9 @@ func (t *CmdNodeConfigShow) Run() error {
 	}
 	b = commoncmd.Sections(b, t.Sections)
 	if t.RedactSecrets {
-		b = object.RedactSecrets(b, "")
+		if b, err = object.RedactSecrets(b, ""); err != nil {
+			return err
+		}
 	}
 	b = commoncmd.ColorizeINI(b)
 	_, err = os.Stdout.Write(b)
