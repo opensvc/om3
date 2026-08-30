@@ -1,0 +1,3 @@
+The shlex expression of the command to execute to stop a running task.
+
+Without it, the task is stopped by killing the processes its `command` started.

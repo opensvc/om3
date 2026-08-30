@@ -35,7 +35,7 @@ var (
 			Option:      "target",
 			Required:    false,
 			Scopable:    true,
-			DefaultText: keywords.NewText(fs, "text/kw/target_default"),
+			DefaultText: keywords.NewText(fs, "text/kw/target.default"),
 			Text:        keywords.NewText(fs, "text/kw/target"),
 		},
 		{

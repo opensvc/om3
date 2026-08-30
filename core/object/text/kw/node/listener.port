@@ -4,4 +4,4 @@ In pull action mode, the collector post request to notify
 there are actions to unqueue. The opensvc daemon executes the
 `dequeue actions` node action upon receive.
 
-The `listener.port` value is sent to the collector on `pushasset`.
+The `listener.port` value is sent to the collector on `om node push asset`.
