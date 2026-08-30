@@ -8,6 +8,7 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/opensvc/om3/v3/util/ini"
 	"github.com/opensvc/om3/v3/util/key"
 	"github.com/opensvc/om3/v3/util/xmap"
 )
@@ -192,7 +193,11 @@ func Parse(s string) *T {
 	//
 	k := s[0:i]
 	t.Op = ParseOp(bestOp)
-	t.Value = s[i+len(bestOp):]
+
+	// Strip the quote pair surrounding the value, as reading the same value
+	// from a configuration file would, so "--kw 'x=\"1 2\"'" and the "x = \"1 2\""
+	// line it writes mean the same thing.
+	t.Value = ini.Unquote(s[i+len(bestOp):])
 
 	//
 	// Example submatch result:
