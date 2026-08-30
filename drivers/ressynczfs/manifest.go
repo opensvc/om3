@@ -63,7 +63,7 @@ var (
 			Default:   "true",
 			Option:    "recursive",
 			Scopable:  true,
-			Text:      keywords.NewText(fs, "text/kw/target"),
+			Text:      keywords.NewText(fs, "text/kw/recursive"),
 		},
 	}
 )

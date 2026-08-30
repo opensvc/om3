@@ -139,63 +139,63 @@ var (
 		Attr:     "PostRun",
 		Option:   "post_run",
 		Scopable: true,
-		Text:     keywords.NewText(fs, "text/kw/post_provision"),
+		Text:     keywords.NewText(fs, "text/kw/post_run"),
 	}
 
 	KWPostStart = keywords.Keyword{
 		Attr:     "PostStart",
 		Option:   "post_start",
 		Scopable: true,
-		Text:     keywords.NewText(fs, "text/kw/post_provision"),
+		Text:     keywords.NewText(fs, "text/kw/post_start"),
 	}
 
 	KWPostStop = keywords.Keyword{
 		Attr:     "PostStop",
 		Option:   "post_stop",
 		Scopable: true,
-		Text:     keywords.NewText(fs, "text/kw/post_provision"),
+		Text:     keywords.NewText(fs, "text/kw/post_stop"),
 	}
 
 	KWPostUnprovision = keywords.Keyword{
 		Attr:     "PostUnprovision",
 		Option:   "post_unprovision",
 		Scopable: true,
-		Text:     keywords.NewText(fs, "text/kw/post_provision"),
+		Text:     keywords.NewText(fs, "text/kw/post_unprovision"),
 	}
 
 	KWPreProvision = keywords.Keyword{
 		Attr:     "PreProvision",
 		Option:   "pre_provision",
 		Scopable: true,
-		Text:     keywords.NewText(fs, "text/kw/post_provision"),
+		Text:     keywords.NewText(fs, "text/kw/pre_provision"),
 	}
 
 	KWPreRun = keywords.Keyword{
 		Attr:     "PreRun",
 		Option:   "pre_run",
 		Scopable: true,
-		Text:     keywords.NewText(fs, "text/kw/post_provision"),
+		Text:     keywords.NewText(fs, "text/kw/pre_run"),
 	}
 
 	KWPreStart = keywords.Keyword{
 		Attr:     "PreStart",
 		Option:   "pre_start",
 		Scopable: true,
-		Text:     keywords.NewText(fs, "text/kw/post_provision"),
+		Text:     keywords.NewText(fs, "text/kw/pre_start"),
 	}
 
 	KWPreStop = keywords.Keyword{
 		Attr:     "PreStop",
 		Option:   "pre_stop",
 		Scopable: true,
-		Text:     keywords.NewText(fs, "text/kw/post_provision"),
+		Text:     keywords.NewText(fs, "text/kw/pre_stop"),
 	}
 
 	KWPreUnprovision = keywords.Keyword{
 		Attr:     "PreUnprovision",
 		Option:   "pre_unprovision",
 		Scopable: true,
-		Text:     keywords.NewText(fs, "text/kw/post_provision"),
+		Text:     keywords.NewText(fs, "text/kw/pre_unprovision"),
 	}
 
 	KWProvisionRequires = keywords.Keyword{
@@ -220,7 +220,7 @@ var (
 		Default:   "500ms",
 		Option:    "restart_delay",
 		Scopable:  true,
-		Text:      keywords.NewText(fs, "text/kw/post_provision"),
+		Text:      keywords.NewText(fs, "text/kw/restart_delay"),
 	}
 
 	KWRunRequires = keywords.Keyword{
@@ -287,7 +287,7 @@ var (
 		Attr:     "Subset",
 		Option:   "subset",
 		Scopable: true,
-		Text:     keywords.NewText(fs, "text/kw/post_provision"),
+		Text:     keywords.NewText(fs, "text/kw/subset"),
 	}
 
 	KWSyncRequires = keywords.Keyword{

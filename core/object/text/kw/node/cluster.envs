@@ -1,0 +1,5 @@
+The list of environment codes the cluster uses, offered as the choice for the
+`env` keyword of the node and of the objects.
+
+The agent does not restrict `env` to this list. It is a site convention, which
+the user interfaces read from the cluster configuration.

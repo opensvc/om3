@@ -1,0 +1,9 @@
+The name of the subset this resource is assigned to.
+
+Resources of a same driver group and a same subset are ordered and acted upon
+together, and are configured as a whole in a `[subset#<group>:<name>]` section,
+or in a less precise `[subset#<name>]` one.
+
+That section accepts `parallel`, to act on the members concurrently rather than
+one after the other, and the `pg_*` keywords, to place the members in their own
+process group.
