@@ -11,6 +11,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"sync"
 )
 
 type (
@@ -252,9 +253,32 @@ func newIV() []byte {
 	return b
 }
 
+// zlibWriterPool and zlibReaderPool hold the zlib codec state across calls.
+//
+// A zlib writer carries about 800KB of compressor state, and a reader its
+// window and huffman tables. Allocating them per message made the compression
+// of the heartbeat messages the largest source of garbage in the daemon, and
+// the collection of that garbage a measurable share of its idle cpu. Both
+// types are documented as resettable for reuse.
+var (
+	zlibWriterPool = sync.Pool{
+		New: func() any {
+			return zlib.NewWriter(io.Discard)
+		},
+	}
+
+	zlibReaderPool = sync.Pool{}
+)
+
 func compress(b []byte) ([]byte, error) {
 	var bb bytes.Buffer
-	w := zlib.NewWriter(&bb)
+	w := zlibWriterPool.Get().(*zlib.Writer)
+	defer func() {
+		// don't keep the pooled writer pointing at the local buffer
+		w.Reset(io.Discard)
+		zlibWriterPool.Put(w)
+	}()
+	w.Reset(&bb)
 	if _, err := w.Write(b); err != nil {
 		return nil, err
 	}
@@ -268,11 +292,24 @@ func compress(b []byte) ([]byte, error) {
 }
 
 func decompress(b []byte) ([]byte, error) {
+	// a *bytes.Reader is a flate.Reader, so the zlib reader wraps it in no
+	// buffer of its own
 	bb := bytes.NewReader(b)
-	r, err := zlib.NewReader(bb)
-	if err != nil {
-		return nil, err
+
+	r, pooled := zlibReaderPool.Get().(io.ReadCloser)
+	if !pooled {
+		var err error
+		if r, err = zlib.NewReader(bb); err != nil {
+			return nil, err
+		}
 	}
-	defer r.Close()
+	defer zlibReaderPool.Put(r)
+	if pooled {
+		// Reset zeroes the reader but for the decompressor state it is
+		// pooled for, so a reader stays reusable even after a failed reset
+		if err := r.(zlib.Resetter).Reset(bb, nil); err != nil {
+			return nil, err
+		}
+	}
 	return io.ReadAll(r)
 }
