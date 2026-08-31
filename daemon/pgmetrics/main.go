@@ -152,7 +152,21 @@ var (
 			Namespace: "opensvc",
 			Subsystem: "pg",
 			Name:      "cgroup_cpu_shares",
-			Help:      "CPU shares for the cgroup",
+			Help:      "CPU shares for the cgroup (cgroup v1, 2-262144, 1024 by default)",
+		},
+		[]string{"namespace", "path"},
+	)
+
+	// pgCgroupCPUWeight reports the cgroup v2 cpu weight. It is not
+	// cgroup_cpu_shares under another name: the scales differ, so folding
+	// the two into one metric would make its value mean different things
+	// depending on the host it came from.
+	pgCgroupCPUWeight = prometheus.NewGaugeVec(
+		prometheus.GaugeOpts{
+			Namespace: "opensvc",
+			Subsystem: "pg",
+			Name:      "cgroup_cpu_weight",
+			Help:      "CPU weight for the cgroup (cgroup v2, 1-10000, 100 by default)",
 		},
 		[]string{"namespace", "path"},
 	)
@@ -163,7 +177,7 @@ var (
 			Namespace: "opensvc",
 			Subsystem: "pg",
 			Name:      "cgroup_cpu_quota",
-			Help:      "CPU quota for the cgroup",
+			Help:      "CPU quota in microseconds per period for the cgroup (+Inf = not throttled)",
 		},
 		[]string{"namespace", "path"},
 	)
@@ -174,7 +188,7 @@ var (
 			Namespace: "opensvc",
 			Subsystem: "pg",
 			Name:      "cgroup_cpu_period",
-			Help:      "CPU period for the cgroup",
+			Help:      "CPU period in microseconds for the cgroup",
 		},
 		[]string{"namespace", "path"},
 	)
@@ -196,7 +210,7 @@ var (
 			Namespace: "opensvc",
 			Subsystem: "pg",
 			Name:      "cgroup_blkio_weight",
-			Help:      "Block IO weight for the cgroup",
+			Help:      "Block IO default weight for the cgroup",
 		},
 		[]string{"namespace", "path"},
 	)
@@ -227,6 +241,7 @@ var (
 		pgCgroupMemoryStatPages,
 		pgCgroupCPUStat,
 		pgCgroupCPUShares,
+		pgCgroupCPUWeight,
 		pgCgroupCPUQuota,
 		pgCgroupCPUPeriod,
 		pgCgroupCPUCpus,
@@ -421,24 +436,37 @@ func (m *Manager) collectCgroupMetrics(cgroupPath, namespace, objPath string) {
 		parseMemoryStat(memStat, namespace, objPath)
 	}
 
-	// Read cpu.shares
+	// Read cpu.weight (cgroup v2) or cpu.shares (cgroup v1), into their
+	// own metrics, the two not being the same scale.
+	if cpuWeight, err := readFile(cgroupPath, "cpu.weight"); err == nil {
+		if val, err := parseUint(cpuWeight); err == nil {
+			pgCgroupCPUWeight.WithLabelValues(namespace, objPath).Set(float64(val))
+		}
+	}
 	if cpuShares, err := readFile(cgroupPath, "cpu.shares"); err == nil {
 		if val, err := parseUint(cpuShares); err == nil {
 			pgCgroupCPUShares.WithLabelValues(namespace, objPath).Set(float64(val))
 		}
 	}
 
-	// Read cpu.cfs_quota_us
-	if cpuQuota, err := readFile(cgroupPath, "cpu.cfs_quota_us"); err == nil {
-		if val, err := parseInt(cpuQuota); err == nil {
-			pgCgroupCPUQuota.WithLabelValues(namespace, objPath).Set(float64(val))
+	// Read cpu.max (cgroup v2), which carries the quota and the period in
+	// one file, or the pair of cgroup v1 files that hold them separately.
+	// Both are microseconds, so they feed the same two metrics.
+	if cpuMax, err := readFile(cgroupPath, "cpu.max"); err == nil {
+		if quota, period, err := parseCPUMax(cpuMax); err == nil {
+			pgCgroupCPUQuota.WithLabelValues(namespace, objPath).Set(quota)
+			pgCgroupCPUPeriod.WithLabelValues(namespace, objPath).Set(period)
 		}
-	}
-
-	// Read cpu.cfs_period_us
-	if cpuPeriod, err := readFile(cgroupPath, "cpu.cfs_period_us"); err == nil {
-		if val, err := parseUint(cpuPeriod); err == nil {
-			pgCgroupCPUPeriod.WithLabelValues(namespace, objPath).Set(float64(val))
+	} else {
+		if cpuQuota, err := readFile(cgroupPath, "cpu.cfs_quota_us"); err == nil {
+			if val, err := parseInt(cpuQuota); err == nil {
+				pgCgroupCPUQuota.WithLabelValues(namespace, objPath).Set(cfsQuota(val))
+			}
+		}
+		if cpuPeriod, err := readFile(cgroupPath, "cpu.cfs_period_us"); err == nil {
+			if val, err := parseUint(cpuPeriod); err == nil {
+				pgCgroupCPUPeriod.WithLabelValues(namespace, objPath).Set(float64(val))
+			}
 		}
 	}
 
@@ -450,8 +478,8 @@ func (m *Manager) collectCgroupMetrics(cgroupPath, namespace, objPath string) {
 	}
 
 	// Read io.weight (for cgroup v2) or blkio.weight (for cgroup v1)
-	if blkioWeight, err := readFile(cgroupPath, "io.weight"); err == nil {
-		if val, err := parseUint(blkioWeight); err == nil {
+	if ioWeight, err := readFile(cgroupPath, "io.weight"); err == nil {
+		if val, err := parseIOWeight(ioWeight); err == nil {
 			pgCgroupBlkioWeight.WithLabelValues(namespace, objPath).Set(float64(val))
 		}
 	} else if blkioWeight, err := readFile(cgroupPath, "blkio.weight"); err == nil {
@@ -584,6 +612,48 @@ func parseLimit(s string) (float64, error) {
 		return 0, err
 	}
 	return float64(v), nil
+}
+
+// parseCPUMax parses cgroup v2 cpu.max, which is "$QUOTA $PERIOD" in
+// microseconds, $QUOTA being the literal "max" on a cgroup that is not
+// throttled.
+func parseCPUMax(s string) (quota, period float64, err error) {
+	fields := strings.Fields(s)
+	if len(fields) != 2 {
+		return 0, 0, fmt.Errorf("cpu.max: want 2 fields, got %d in %q", len(fields), strings.TrimSpace(s))
+	}
+	if quota, err = parseLimit(fields[0]); err != nil {
+		return 0, 0, err
+	}
+	if period, err = parseLimit(fields[1]); err != nil {
+		return 0, 0, err
+	}
+	return quota, period, nil
+}
+
+// cfsQuota converts a cgroup v1 cpu.cfs_quota_us value, which uses -1 for
+// no throttling, to the +Inf cgroup v2 and every other limit here report,
+// so that one query works whichever version the node runs.
+func cfsQuota(v int64) float64 {
+	if v < 0 {
+		return math.Inf(1)
+	}
+	return float64(v)
+}
+
+// parseIOWeight reads the default weight out of io.weight, whose cgroup
+// v2 form is "default $WEIGHT" followed by optional per device lines,
+// where the cgroup v1 blkio.weight is a bare number.
+func parseIOWeight(s string) (uint64, error) {
+	line, _, _ := strings.Cut(strings.TrimSpace(s), "\n")
+	fields := strings.Fields(line)
+	switch {
+	case len(fields) == 2 && fields[0] == "default":
+		return parseUint(fields[1])
+	case len(fields) == 1:
+		return parseUint(fields[0])
+	}
+	return 0, fmt.Errorf("io.weight: no default weight in %q", line)
 }
 
 func parseInt(s string) (int64, error) {
