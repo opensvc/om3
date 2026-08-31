@@ -124,8 +124,6 @@ func (t *actor) lockedMonitorStatusEval(ctx context.Context, data instance.Statu
 		return data, fmt.Errorf("resource status eval: %w", err)
 	}
 	if len(data.Resources) == 0 {
-		data.Avail = status.NotApplicable
-		data.Overall = status.NotApplicable
 		data.Optional = status.NotApplicable
 	}
 	var err error
@@ -145,8 +143,6 @@ func (t *actor) lockedStatusEval(ctx context.Context) (instance.Status, error) {
 		return data, fmt.Errorf("resource status eval: %w", err)
 	}
 	if len(data.Resources) == 0 {
-		data.Avail = status.NotApplicable
-		data.Overall = status.NotApplicable
 		data.Optional = status.NotApplicable
 	}
 	var err error
@@ -293,6 +289,16 @@ func (t *actor) resourceStatusEval(ctx context.Context, data *instance.Status, m
 		return nil
 	})
 	mu.Lock()
+	// No resource contributed to the aggregated status when the object has no
+	// resources at all, or when all its resources are excluded from the
+	// aggregation, like the task and sync ones for avail. Report not
+	// applicable instead of leaving the zero value undef.
+	if data.Avail == status.Undef {
+		data.Avail = status.NotApplicable
+	}
+	if data.Overall == status.Undef {
+		data.Overall = status.NotApplicable
+	}
 	sb.Post("avail", data.Avail, false)
 	sb.Post("overall", data.Overall, false)
 	mu.Unlock()
