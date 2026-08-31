@@ -9,6 +9,8 @@ import (
 
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/common/expfmt"
+
+	"github.com/opensvc/om3/v3/util/metricsreg"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -183,4 +185,52 @@ func TestParsersAcceptThisHostsCgroupFiles(t *testing.T) {
 		assert.NoError(t, parse(content), "%s holds %q, which the parser rejects", name, strings.TrimSpace(content))
 	}
 	assert.Greater(t, checked, 0, "no cgroup file was readable, the test proved nothing")
+}
+
+// TestMetricsGoToTheDetailRegistry pins which registry the per cgroup
+// series land in. They carry a path label, so on a large cluster they are
+// most of what /metrics used to cost, and they are served at /metrics/pg
+// instead.
+func TestMetricsGoToTheDetailRegistry(t *testing.T) {
+	m := New(nil)
+	m.registerMetrics()
+	t.Cleanup(m.unregisterMetrics)
+
+	for _, metric := range cgroupMetrics {
+		name := metricName(t, metric)
+		assert.True(t, isRegistered(metricsreg.PG, name), "%s must be served at /metrics/pg", name)
+		assert.False(t, isRegistered(prometheus.DefaultRegisterer, name), "%s must not be on /metrics", name)
+	}
+
+	// The hints stay where the normal scrape finds them.
+	for _, name := range []string{
+		"opensvc_pg_cgroups",
+		"opensvc_pg_objects_without_cgroup",
+		"opensvc_pg_cgroup_memory_utilization_max_ratio",
+	} {
+		assert.True(t, isRegistered(prometheus.DefaultRegisterer, name), "%s is the hint, it belongs on /metrics", name)
+		assert.False(t, isRegistered(metricsreg.PG, name), "%s must not also be at /metrics/pg", name)
+	}
+}
+
+func isRegistered(reg prometheus.Registerer, name string) bool {
+	probe := prometheus.NewGauge(prometheus.GaugeOpts{Name: name, Help: "probe"})
+	if err := reg.Register(probe); err != nil {
+		return true
+	}
+	reg.Unregister(probe)
+	return false
+}
+
+func metricName(t *testing.T, vec *prometheus.GaugeVec) string {
+	t.Helper()
+	ch := make(chan *prometheus.Desc, 1)
+	vec.Describe(ch)
+	close(ch)
+	desc := <-ch
+	// Desc.String() is "Desc{fqName: "x", ...}", the fqName being what a
+	// registry keys on.
+	s := desc.String()
+	start := strings.Index(s, `fqName: "`) + len(`fqName: "`)
+	return s[start : start+strings.Index(s[start:], `"`)]
 }

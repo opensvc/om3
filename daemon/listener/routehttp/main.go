@@ -14,10 +14,12 @@ import (
 	"github.com/labstack/echo-contrib/echoprometheus"
 	"github.com/labstack/echo-contrib/pprof"
 	"github.com/labstack/echo/v4"
+	"github.com/prometheus/client_golang/prometheus/promhttp"
 
 	"github.com/opensvc/om3/v3/core/rawconfig"
 	"github.com/opensvc/om3/v3/daemon/api"
 	"github.com/opensvc/om3/v3/daemon/daemonapi"
+	"github.com/opensvc/om3/v3/util/metricsreg"
 )
 
 type (
@@ -34,7 +36,8 @@ var (
 // it prepares middlewares and routes for Opensvc daemon listeners
 // ui is handled from /ui/ with index.html
 // when enableUI is true swagger-ui is served from /api/docs/
-// metrics are served from /metrics
+// metrics are served from /metrics, and the high cardinality subsystems
+// from /metrics/<subsystem>
 // profiling are served from /debug/pprof/
 //
 // redirections:
@@ -44,6 +47,7 @@ var (
 func New(ctx context.Context, enableUI bool) *T {
 	indexFilename := filepath.Join(rawconfig.Paths.HTML, "index.html")
 	metricsURL := "/metrics"
+	detailMetricsURL := metricsURL + "/"
 	docPrefixURL := "/api/docs"
 	docSpecURL := "/api/openapi"
 	webappURL := "/ui"
@@ -52,6 +56,14 @@ func New(ctx context.Context, enableUI bool) *T {
 	pprof.Register(e)
 	e.Use(mwProm)
 	e.GET(metricsURL, echoprometheus.NewHandler())
+	// The subsystems whose series carry a label per object are served
+	// apart, so the endpoint scraped at the cluster's interval stays
+	// small and they can be scraped on their own, longer one. What is
+	// left on /metrics for each is a few aggregates, enough to tell that
+	// coming here is worth it. See util/metricsreg.
+	for name, registry := range metricsreg.Detail {
+		e.GET(detailMetricsURL+name, echo.WrapHandler(promhttp.HandlerFor(registry, promhttp.HandlerOpts{})))
+	}
 	if enableUI {
 		e.Group(docPrefixURL).Use(daemonapi.UIMiddleware(ctx, docPrefixURL, docSpecURL))
 	}
