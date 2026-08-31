@@ -12,6 +12,7 @@ import (
 	"time"
 
 	"github.com/opensvc/om3/v3/core/actioncontext"
+	"github.com/opensvc/om3/v3/core/env"
 	"github.com/opensvc/om3/v3/core/rawconfig"
 	"github.com/opensvc/om3/v3/core/resource"
 	"github.com/opensvc/om3/v3/core/status"
@@ -165,11 +166,11 @@ func (m *cgMgr) Switchover(ctx context.Context, targetAZ string) error {
 	m.log.Infof("switchover consistency group %s to az %s ...", m.uuid, targetAZ)
 	ts := time.Now()
 	method, url, code, data, err := m.api.PatchConsistencyGroup(ctx, m.uuid, payload)
-	if err != nil {
-		return err
-	}
 	if code == http.StatusPreconditionFailed {
 		return &PreConditionError{Err: fmt.Errorf("switchover consistency group %s: status %d (method=%s url=%s)", m.uuid, code, method, url)}
+	}
+	if err != nil {
+		return err
 	}
 	if code != http.StatusAccepted {
 		return fmt.Errorf("switchover consistency group %s: unexpected status %d (method=%s url=%s body=%s)", m.uuid, code, method, url, string(data))
@@ -226,7 +227,6 @@ type T struct {
 	Failover bool          `json:"failover"`
 
 	lastWaitMsg time.Time
-	cgInfoCache *CgInfo
 	mgr         *cgMgr
 	authInfoer  GetAuthInfoer
 }
@@ -282,21 +282,6 @@ func (t *T) configureMgr(cfg *sgcp.Config) error {
 
 func (t *T) Label(_ context.Context) string {
 	return t.UUID
-}
-
-func (t *T) getCgCached(ctx context.Context) (*CgInfo, error) {
-	if t.cgInfoCache != nil {
-		return t.cgInfoCache, nil
-	}
-	cg, err := t.mgr.GetCg(ctx)
-	if err == nil {
-		t.cgInfoCache = cg
-	}
-	return cg, err
-}
-
-func (t *T) clearGetCgCache() {
-	t.cgInfoCache = nil
 }
 
 func (t *T) logGeoRedundancies(cg *CgInfo) {
@@ -384,7 +369,7 @@ func (t *T) Status(ctx context.Context) status.T {
 		t.StatusLog().Info("xaas status disabled")
 		return status.NotApplicable
 	}
-	cg, err := t.getCgCached(ctx)
+	cg, err := t.mgr.GetCg(ctx)
 	if err != nil {
 		t.StatusLog().Warn(fmt.Sprintf("get consistency group: %s", err))
 		return status.NotApplicable
@@ -429,6 +414,42 @@ func (t *T) waitStatus(ctx context.Context, expectedStates []string) error {
 	return t.waitForFn(ctx, fn, t.Timeout, RetryWaitDelay, errMsg)
 }
 
+func (t *T) waitStatusAndAZ(ctx context.Context, expectedStates []string, expectedAZ string) error {
+	t.lastWaitMsg = time.Time{}
+	fn := func() (bool, error) {
+		cg, err := t.mgr.GetCg(ctx)
+		if err != nil {
+			return false, err
+		}
+		now := time.Now()
+		if contains(expectedStates, cg.Status) {
+			if expectedAZ != "" && cg.AvailabilityZone != expectedAZ {
+				msg := fmt.Sprintf("consistency group %s reached status %s but in availability zone %s (expected %s)",
+					t.UUID, cg.Status, cg.AvailabilityZone, expectedAZ)
+				t.Log().Warnf(msg)
+				// Continue waiting; the AZ may still be transitioning.
+				return false, nil
+			}
+			t.Log().Infof("| consistency group %s status is now %s", t.UUID, cg.Status)
+			return true, nil
+		}
+		if strings.Contains(cg.Status, "failed") || strings.Contains(cg.Status, "rollback") {
+			msg := fmt.Sprintf("abort waiting for consistency group %s status in '%v' because found status %s",
+				t.UUID, expectedStates, cg.Status)
+			t.Log().Warnf(msg)
+			return false, errors.New(msg)
+		}
+		if now.Sub(t.lastWaitMsg) >= waitMsgInterval {
+			t.Log().Infof("| waiting for consistency group %s status in %v and availability zone %s. current status is %s (az %s)",
+				t.UUID, expectedStates, expectedAZ, cg.Status, cg.AvailabilityZone)
+			t.lastWaitMsg = now
+		}
+		return false, nil
+	}
+	errMsg := fmt.Sprintf("timeout waiting for consistency group %s status in %v and availability zone %s", t.UUID, expectedStates, expectedAZ)
+	return t.waitForFn(ctx, fn, t.Timeout, RetryWaitDelay, errMsg)
+}
+
 func (t *T) waitForFn(ctx context.Context, fn func() (bool, error), timeout, retryDelay time.Duration, errMsg string) error {
 	deadline := time.Now().Add(timeout)
 	for {
@@ -455,8 +476,6 @@ func (t *T) waitReady(ctx context.Context) error {
 }
 
 func (t *T) Start(ctx context.Context) error {
-	t.clearGetCgCache()
-	defer t.clearGetCgCache()
 	return t.start(ctx)
 }
 
@@ -496,7 +515,9 @@ func (t *T) start(ctx context.Context) error {
 			t.Log().Errorf("%s, skip failover fallback (resource failover is False)", msg)
 			return err
 		}
-		if os.Getenv("OSVC_ACTION_ORIGIN") != "daemon" {
+		// Accept both the literal "daemon" (legacy/test) and canonical daemon origins.
+		origin := os.Getenv("OSVC_ACTION_ORIGIN")
+		if origin != "daemon" && !env.HasDaemonOrigin() {
 			t.Log().Errorf("%s, skip failover fallback, use --force if you want to try failover", msg)
 			return err
 		}
@@ -505,7 +526,7 @@ func (t *T) start(ctx context.Context) error {
 			return err
 		}
 	}
-	return t.waitStatus(ctx, []string{"ready"})
+	return t.waitStatusAndAZ(ctx, []string{"ready"}, t.AZ)
 }
 
 func (t *T) Stop(ctx context.Context) error {
@@ -513,15 +534,19 @@ func (t *T) Stop(ctx context.Context) error {
 	if sgcp.IsDisabled(rawconfig.NodeVarDir()) {
 		return nil
 	}
-	t.clearGetCgCache()
-	defer t.clearGetCgCache()
 	return nil
 }
 
+// Resync implements the resource.Resyncer interface and is the entry point
+// for the sync-resync action.
+func (t *T) Resync(ctx context.Context) error {
+	return t.SyncResume(ctx)
+}
+
+// SyncResume performs the actual resume-replication logic and is kept for
+// backward compatibility with existing callers/tests.
 func (t *T) SyncResume(ctx context.Context) error {
 	t.Log().Infof("sync resume ...")
-	t.clearGetCgCache()
-	defer t.clearGetCgCache()
 	if err := t.syncResume(ctx); err != nil {
 		t.Log().Errorf("sync resume failed")
 		return err
@@ -587,15 +612,35 @@ func (t *T) checkResumable(cg *CgInfo) error {
 }
 
 func (t *T) checkResumableReplicationAndGeo(cg *CgInfo) error {
-	localRepStatus := t.localRepStatus(cg)
-	geoStatus := cg.GeoRedundancies()[0].Status
+	// Reject explicitly forbidden in-progress or failed operations
+	switch cg.Status {
+	case "failover", "failed", "rollback":
+		return fmt.Errorf("sync resume not allowed on cg %s in status %s", t.UUID, cg.Status)
+	}
 
-	if !contains([]string{"passive", "resuming"}, cg.Status) &&
-		!contains([]string{"unknown", "replicated", "replicating"}, localRepStatus) {
+	localRepStatus := t.localRepStatus(cg)
+	if localRepStatus == "" {
+		return fmt.Errorf("sync resume not allowed on cg %s: no local replication target found", t.UUID)
+	}
+	if !contains([]string{"unknown", "replicated", "replicating"}, localRepStatus) {
 		return fmt.Errorf("sync resume not allowed on cg %s where status is %s and local replication status is %s",
 			t.UUID, cg.Status, localRepStatus)
 	}
-	if contains([]string{"passive", "replicated"}, localRepStatus) && geoStatus == "replicated" {
+
+	geos := cg.GeoRedundancies()
+	if len(geos) == 0 {
+		return fmt.Errorf("sync resume not allowed on cg %s: georedundancy has no target availability zones", t.UUID)
+	}
+	allGeoReplicated := true
+	for _, g := range geos {
+		if g.Status != "replicated" {
+			allGeoReplicated = false
+			break
+		}
+	}
+
+	// Already resumed if local replication is passive/replicated and all geo targets are replicated
+	if contains([]string{"passive", "replicated"}, localRepStatus) && allGeoReplicated {
 		return ErrAlreadyResumed
 	}
 	if cg.Status == "resuming" {
@@ -635,9 +680,14 @@ func (t *T) checkResumableGeoOnly(cg *CgInfo) error {
 	if cg.Status != "ready" {
 		return fmt.Errorf("sync resume not allowed when cg %s status is %s", t.UUID, cg.Status)
 	}
-	geoStatus := cg.GeoRedundancies()[0].Status
-	if !contains([]string{"broken", "unknown"}, geoStatus) {
-		return fmt.Errorf("sync resume not allowed on '%s' cg %s where georedundancy status is '%s'", cg.Status, t.UUID, geoStatus)
+	geos := cg.GeoRedundancies()
+	if len(geos) == 0 {
+		return fmt.Errorf("sync resume not allowed on cg %s: georedundancy has no target availability zones", t.UUID)
+	}
+	for _, g := range geos {
+		if !contains([]string{"broken", "unknown"}, g.Status) {
+			return fmt.Errorf("sync resume not allowed on '%s' cg %s where georedundancy status is '%s'", cg.Status, t.UUID, g.Status)
+		}
 	}
 	return nil
 }
@@ -651,6 +701,12 @@ func (t *T) localRepStatus(cg *CgInfo) string {
 	}
 	if len(localRep) == 1 {
 		return localRep[0].Status
+	}
+	// If multiple local targets (unusual) return the first non-empty status
+	for _, rep := range localRep {
+		if rep.Status != "" {
+			return rep.Status
+		}
 	}
 	if cg.AvailabilityZone == t.AZ {
 		return cg.Status
