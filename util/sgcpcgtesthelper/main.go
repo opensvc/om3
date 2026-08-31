@@ -170,11 +170,6 @@ func (a *API) PatchConsistencyGroup(ctx context.Context, uuid string, payload an
 		a.mu.Lock()
 		a.callCount.Resume++
 		a.mu.Unlock()
-		if a.PatchResumeFunc != nil {
-			if err := a.PatchResumeFunc(ctx, uuid); err != nil {
-				return http.MethodPatch, "/consistency-groups/" + uuid, http.StatusInternalServerError, nil, err
-			}
-		}
 		a.mu.Lock()
 		for i := range entry.Replication.TargetAvailabilityZones {
 			if entry.Replication.TargetAvailabilityZones[i].AvailabilityZone == entry.AvailabilityZone {
@@ -188,6 +183,12 @@ func (a *API) PatchConsistencyGroup(ctx context.Context, uuid string, payload an
 		}
 		entry.Status = "ready"
 		a.mu.Unlock()
+
+		if a.PatchResumeFunc != nil {
+			if err := a.PatchResumeFunc(ctx, uuid); err != nil {
+				return http.MethodPatch, "/consistency-groups/" + uuid, http.StatusInternalServerError, nil, err
+			}
+		}
 		return http.MethodPatch, "/consistency-groups/" + uuid, http.StatusAccepted, nil, nil
 
 	default:
