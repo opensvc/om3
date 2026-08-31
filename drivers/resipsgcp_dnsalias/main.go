@@ -40,6 +40,8 @@ type (
 		api      apiProvider
 		log      *plog.Logger
 		CacheTTL time.Duration
+		Endpoint string
+		Secret   string
 	}
 
 	// alias decoupled from sgcp.Alias to allow for future changes
@@ -116,6 +118,8 @@ func (t *T) configureMgr(cfg *sgcp.Config) error {
 		alias:    alias{UUID: t.UUID, Name: t.Name, Target: t.Target, ZoneID: t.ZoneID},
 		log:      t.Log(),
 		CacheTTL: defaultCacheTTL,
+		Endpoint: t.Endpoint,
+		Secret:   t.Secret,
 	}
 	if t.api != nil {
 		// allow custom api for tests
@@ -136,27 +140,17 @@ func (t *T) configureMgr(cfg *sgcp.Config) error {
 
 	tokenFactory := sgcp.NewTokenFactory(t.Log(), httpClient, &cfg.Auth, authInfo)
 
-	if t.api != nil {
-		mgr.api = t.api
-	} else {
-		mgr.api = sgcp.NewDNSAPI(cfg, httpClient, t.Log(), tokenFactory)
-	}
+	mgr.api = sgcp.NewDNSAPI(cfg, httpClient, t.Log(), tokenFactory)
 
 	t.mgr = mgr
 	return nil
 }
 
 func (t *T) Start(ctx context.Context) error {
-	if err := t.mgr.cacheClear(); err != nil {
-		t.Log().Debugf("cache clear error: %s", err)
-	}
 	return t.mgr.createOrUpdate(ctx, t.Target)
 }
 
 func (t *T) Stop(ctx context.Context) error {
-	if err := t.mgr.cacheClear(); err != nil {
-		t.Log().Debugf("cache clear error: %s", err)
-	}
 	if t.UUID != "" {
 		return t.mgr.createOrUpdate(ctx, t.noneTarget)
 	}
@@ -164,9 +158,6 @@ func (t *T) Stop(ctx context.Context) error {
 }
 
 func (t *T) Status(ctx context.Context) status.T {
-	if err := t.mgr.cacheClear(); err != nil {
-		t.Log().Debugf("cache clear error: %s", err)
-	}
 	aliases, err := t.mgr.getAliases(ctx)
 	if err != nil {
 		t.StatusLog().Error("get alias failed: %s", err)
