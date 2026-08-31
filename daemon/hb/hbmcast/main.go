@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"net"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/google/uuid"
@@ -78,6 +79,55 @@ const (
 	fragVersion1  = '1'
 	fragHeaderLen = 24
 )
+
+// selfIDs remembers the message ids this node's tx put on the wire.
+//
+// A multicast datagram is delivered to every member of the group, the
+// sender included, so on a three node cluster a third of what this
+// receiver reads is its own. Recognising that from the fragment header
+// costs a map lookup. Recognising it the way the receiver had to before,
+// from the nodename inside the message, means reassembling every fragment
+// of it, hashing it and decrypting it first.
+//
+// Only the last few ids are kept. Our own datagrams come back at once and
+// a message's fragments arrive together, so nothing older is ever asked
+// about, and the ring bounds it without a clock.
+type selfIDs struct {
+	mu   sync.Mutex
+	ids  map[string]struct{}
+	ring [maxSelfIDs]string
+	next int
+}
+
+// maxSelfIDs is how many of this node's recent message ids are kept. A tx
+// sends one message per interval at rest, so this is many seconds of
+// them.
+const maxSelfIDs = 16
+
+func newSelfIDs() *selfIDs {
+	return &selfIDs{ids: make(map[string]struct{}, maxSelfIDs)}
+}
+
+func (t *selfIDs) add(id string) {
+	t.mu.Lock()
+	defer t.mu.Unlock()
+	if _, ok := t.ids[id]; ok {
+		return
+	}
+	if evicted := t.ring[t.next]; evicted != "" {
+		delete(t.ids, evicted)
+	}
+	t.ring[t.next] = id
+	t.next = (t.next + 1) % maxSelfIDs
+	t.ids[id] = struct{}{}
+}
+
+func (t *selfIDs) has(id string) bool {
+	t.mu.Lock()
+	defer t.mu.Unlock()
+	_, ok := t.ids[id]
+	return ok
+}
 
 // encodeFragment frames one chunk for the wire.
 func encodeFragment(msgID uuid.UUID, index, total int, chunk []byte) []byte {
@@ -214,8 +264,12 @@ func (t *T) Configure(ctx context.Context) {
 		log.Tracef("set tx interface %s laddr %s", ifi.Name, laddr)
 	}
 
-	tx := newTx(ctx, name, oNodes, laddr, udpAddr, timeout, interval)
+	// Shared so the receiver can drop this node's own datagrams on their
+	// header. The pair is per heartbeat, which is what it has to be: a
+	// datagram only comes back on the group its tx sent it to.
+	sent := newSelfIDs()
+	tx := newTx(ctx, name, oNodes, laddr, udpAddr, timeout, interval, sent)
 	t.SetTx(tx)
-	rx := newRx(ctx, name, oNodes, udpAddr, ifi, timeout)
+	rx := newRx(ctx, name, oNodes, udpAddr, ifi, timeout, sent)
 	t.SetRx(rx)
 }

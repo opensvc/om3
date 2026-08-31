@@ -27,6 +27,8 @@ type (
 		interval time.Duration
 		timeout  time.Duration
 
+		sent *selfIDs
+
 		name   string
 		log    *plog.Logger
 		cmdC   chan<- interface{}
@@ -130,6 +132,7 @@ func (t *tx) send(b []byte) {
 	}
 	defer c.Close()
 	msgID := uuid.New()
+	t.sent.add(string(msgID[:]))
 	msgLength := len(b)
 	total := msgLength / MaxChunkSize
 	if (msgLength % MaxChunkSize) != 0 {
@@ -167,9 +170,10 @@ func (t *tx) send(b []byte) {
 	}
 }
 
-func newTx(ctx context.Context, name string, nodes []string, laddr, udpAddr *net.UDPAddr, timeout, interval time.Duration) *tx {
+func newTx(ctx context.Context, name string, nodes []string, laddr, udpAddr *net.UDPAddr, timeout, interval time.Duration, sent *selfIDs) *tx {
 	id := name + ".tx"
 	return &tx{
+		sent:     sent,
 		ctx:      ctx,
 		id:       id,
 		nodes:    nodes,
