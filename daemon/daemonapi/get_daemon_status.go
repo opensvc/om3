@@ -44,11 +44,13 @@ func (a *DaemonAPI) GetClusterStatus(ctx echo.Context, params api.GetClusterStat
 	subRefreshed.Unlock()
 
 	status := a.Daemondata.ClusterData()
-
-	if params.Selector != nil || params.Namespace != nil {
-		// Deep copy to avoid modifying the original
-		status = status.DeepCopy()
+	if status == nil {
+		return JSONProblemf(ctx, http.StatusInternalServerError, "Internal Server Error", "get cluster data")
 	}
+
+	// The filters below return a new dataset instead of purging this one:
+	// ClusterData is behind a singleflight, so concurrent callers share the
+	// returned pointer and must not modify it.
 
 	// Explicit object selector filtering
 	if params.Selector != nil {
