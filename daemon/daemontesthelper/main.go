@@ -25,6 +25,7 @@ import (
 	"github.com/opensvc/om3/v3/daemon/daemondata"
 	"github.com/opensvc/om3/v3/daemon/daemonenv"
 	"github.com/opensvc/om3/v3/daemon/hb/hbcrypto"
+	"github.com/opensvc/om3/v3/daemon/hb/hbdedup"
 	"github.com/opensvc/om3/v3/daemon/hbcache"
 	"github.com/opensvc/om3/v3/daemon/runner"
 	"github.com/opensvc/om3/v3/testhelper"
@@ -82,6 +83,7 @@ func Setup(t *testing.T, env *testhelper.Env) *D {
 	assert.NoError(t, err)
 	cryptoWorker := hbcrypto.T{}
 	ctx = hbcrypto.ContextWithCrypto(ctx, cryptoWorker.Start(ctx, initialCcfg.Name, *initialHeartbeatSecret))
+	ctx = hbdedup.ContextWithCache(ctx, hbdedup.NewCache(hbdedup.DefaultWindow))
 
 	qsSmall := pubsub.WithQueueSize(daemonenv.SubQSSmall)
 	testRunner := runner.NewDefault(qsSmall)

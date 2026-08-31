@@ -30,6 +30,8 @@ type (
 		net.Conn
 		ReadWithNode(b []byte) (n int, nodename string, err error)
 		MessageWithNode() (b []byte, nodename string, err error)
+		Frame() (b []byte, err error)
+		DecryptFrame(frame []byte) (b []byte, nodename string, err error)
 	}
 )
 
@@ -104,6 +106,24 @@ func (t *T) MessageWithNode() (b []byte, nodename string, err error) {
 		return
 	}
 	return t.encryptDecrypter.DecryptWithNode(encBytes)
+}
+
+// Frame implement ConnNoder interface for T
+//
+// read the next message from t.Conn, still encrypted. Callers wanting to
+// decide on the frame before paying its decryption, like the heartbeat
+// receivers dropping the frames another link already delivered, read it and
+// hand it back to DecryptFrame.
+func (t *T) Frame() (b []byte, err error) {
+	return t.getMessage()
+}
+
+// DecryptFrame implement ConnNoder interface for T
+//
+// decrypt a frame Frame returned, and return it with the nodename of its
+// encrypter.
+func (t *T) DecryptFrame(frame []byte) (b []byte, nodename string, err error) {
+	return t.encryptDecrypter.DecryptWithNode(frame)
 }
 
 // SrcNode returns the encrypter nodename

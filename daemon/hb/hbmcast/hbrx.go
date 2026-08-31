@@ -15,6 +15,7 @@ import (
 	"github.com/opensvc/om3/v3/daemon/hb/hbaudit"
 	"github.com/opensvc/om3/v3/daemon/hb/hbcrypto"
 	"github.com/opensvc/om3/v3/daemon/hb/hbctrl"
+	"github.com/opensvc/om3/v3/daemon/hb/hbdedup"
 	"github.com/opensvc/om3/v3/util/hostname"
 	"github.com/opensvc/om3/v3/util/plog"
 )
@@ -40,6 +41,9 @@ type (
 		// crypto decrypts with the crypto current at call time: the
 		// receiver outlives heartbeat secret rotations.
 		crypto hbcrypto.Loader
+
+		// dedup holds the frames the other hb links already delivered
+		dedup *hbdedup.Cache
 	}
 	assembly map[string]msgMap
 	msgMap   map[string]dataMap
@@ -123,6 +127,7 @@ func (t *rx) Start(cmdC chan<- interface{}, msgC chan<- *hbtype.Msg) error {
 		}()
 		started <- true
 		t.crypto = hbcrypto.LoaderFromContext(ctx)
+		t.dedup = hbdedup.CacheFromContext(ctx)
 		b := make([]byte, MaxDatagramSize)
 		for {
 			n, src, err := listener.ReadFromUDP(b)
@@ -214,6 +219,19 @@ func (t *rx) recv(src *net.UDPAddr, n int, b []byte) {
 	} else {
 		encMsg = chunks[1]
 	}
+	key := hbdedup.NewKey(encMsg)
+	if nodename, ok := t.dedup.Seen(key); ok {
+		// another hb link delivered this very frame: the peer is alive on
+		// this one too, but the message is already in the daemon
+		t.log.Tracef("recv: msg from %s already delivered by another hb", s)
+		t.cmdC <- hbctrl.CmdSetPeerSuccess{
+			Nodename: nodename,
+			HbID:     t.id,
+			Success:  true,
+		}
+		return
+	}
+
 	b, err := t.crypto.Decrypt(encMsg)
 	if err != nil {
 		t.log.Tracef("recv: decrypting msg from %s: %s: %s", s, hex.Dump(encMsg), err)
@@ -225,6 +243,9 @@ func (t *rx) recv(src *net.UDPAddr, n int, b []byte) {
 		return
 	}
 	if data.Nodename == hostname.Hostname() {
+		// our own multicast, coming back to us. Not recorded as delivered:
+		// it never reaches the daemon, and a peer frame can't collide with
+		// it on the nodename the dedup would then serve.
 		t.log.Tracef("recv: drop msg from self")
 		return
 	}
@@ -234,6 +255,7 @@ func (t *rx) recv(src *net.UDPAddr, n int, b []byte) {
 		Success:  true,
 	}
 	t.msgC <- &data
+	t.dedup.Delivered(key, data.Nodename)
 }
 
 func newRx(ctx context.Context, name string, nodes []string, udpAddr *net.UDPAddr, intf *net.Interface, timeout time.Duration) *rx {

@@ -19,6 +19,7 @@ import (
 	"github.com/opensvc/om3/v3/daemon/hb/hbaudit"
 	"github.com/opensvc/om3/v3/daemon/hb/hbcrypto"
 	"github.com/opensvc/om3/v3/daemon/hb/hbctrl"
+	"github.com/opensvc/om3/v3/daemon/hb/hbdedup"
 	"github.com/opensvc/om3/v3/util/plog"
 )
 
@@ -39,6 +40,9 @@ type (
 		cmdC   chan<- interface{}
 		msgC   chan<- *hbtype.Msg
 		cancel func()
+
+		// dedup holds the frames the other hb links already delivered
+		dedup *hbdedup.Cache
 
 		// Track current connection per peer (peerAddr -> encryptconn.ConnNoder)
 		// Accept loop is the only writer; handlers only read their own connection
@@ -182,6 +186,7 @@ func (t *rx) Start(cmdC chan<- interface{}, msgC chan<- *hbtype.Msg) error {
 		// Decrypt through a loader, not through a snapshot of the crypto:
 		// a connection outlives heartbeat secret rotations.
 		crypto := hbcrypto.LoaderFromContext(ctx)
+		t.dedup = hbdedup.CacheFromContext(ctx)
 		for {
 			conn, err := listener.Accept()
 			if err != nil {
@@ -312,6 +317,20 @@ func (t *rx) handleLoop(conn encryptconn.ConnNoder, peerAddr string) {
 	t.log.Tracef("starting to read messages from %s", peerAddr)
 
 	msgCount := 0
+	logReadErr := func(err error) {
+		switch {
+		case errors.Is(err, io.EOF):
+			// the peer closed the connection, it will reconnect
+			t.log.Tracef("EOF from %s after %d messages", peerAddr, msgCount)
+		case errors.Is(err, net.ErrClosed):
+			// we closed the connection: peer reconnect, or stop
+			t.log.Tracef("connection from %s closed after %d messages", peerAddr, msgCount)
+		case errors.Is(err, os.ErrDeadlineExceeded):
+			t.log.Warnf("no message from %s for %s, closing the connection", peerAddr, deadline)
+		default:
+			t.log.Warnf("read from %s failed after %d messages: %s", peerAddr, msgCount, err)
+		}
+	}
 	for {
 		// Check context before blocking on read
 		select {
@@ -328,25 +347,36 @@ func (t *rx) handleLoop(conn encryptconn.ConnNoder, peerAddr string) {
 		}
 
 		// Read will block until data arrives, connection is closed, or
-		// deadline is reached. The returned message is sized for the frame
+		// deadline is reached. The returned frame is sized for the frame
 		// read, so an idle connection retains nothing.
-		b, nodename, err := conn.MessageWithNode()
+		frame, err := conn.Frame()
 		if err != nil {
-			switch {
-			case errors.Is(err, io.EOF):
-				// the peer closed the connection, it will reconnect
-				t.log.Tracef("EOF from %s after %d messages", peerAddr, msgCount)
-			case errors.Is(err, net.ErrClosed):
-				// we closed the connection: peer reconnect, or stop
-				t.log.Tracef("connection from %s closed after %d messages", peerAddr, msgCount)
-			case errors.Is(err, os.ErrDeadlineExceeded):
-				t.log.Warnf("no message from %s for %s, closing the connection", peerAddr, deadline)
-			default:
-				t.log.Warnf("read from %s failed after %d messages: %s", peerAddr, msgCount, err)
-			}
+			logReadErr(err)
 			return
 		}
 		msgCount++
+
+		// Drop the frames another hb link already delivered before paying
+		// their decryption and decoding, which is the same message decoded
+		// once per configured heartbeat otherwise. The peer is alive on this
+		// link all the same, so its liveness is still reported.
+		key := hbdedup.NewKey(frame)
+		if nodename, ok := t.dedup.Seen(key); ok {
+			t.log.Tracef("read %d bytes from node %s, already delivered by another hb (msg #%d)", len(frame), nodename, msgCount)
+			select {
+			case <-t.ctx.Done():
+				t.log.Tracef("context done, stopping after %d messages", msgCount)
+				return
+			case t.cmdC <- hbctrl.CmdSetPeerSuccess{Nodename: nodename, HbID: t.id, Success: true}:
+			}
+			continue
+		}
+
+		b, nodename, err := conn.DecryptFrame(frame)
+		if err != nil {
+			logReadErr(err)
+			return
+		}
 
 		if len(b) >= (msgMaxSize - 10000) {
 			t.log.Warnf("read huge message from node %s:%s msg size: %d", nodename, peerAddr, len(b))
@@ -375,6 +405,7 @@ func (t *rx) handleLoop(conn encryptconn.ConnNoder, peerAddr string) {
 			return
 		case t.msgC <- &msg:
 		}
+		t.dedup.Delivered(key, msg.Nodename)
 	}
 }
 
