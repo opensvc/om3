@@ -45,7 +45,9 @@ func (a *DaemonAPI) postLocalInstanceActionSyncIngest(ctx echo.Context, namespac
 		return JSONProblemf(ctx, http.StatusBadRequest, "Invalid parameters", "%s", err)
 	}
 	log = naming.LogWithPath(log, p)
-	args := []string{p.String(), "instance", "sync", "ingest"}
+	// "instance ingest", not "sync ingest": the ingest action is not the sole
+	// business of the sync resources, and no rid means every rid.
+	args := []string{p.String(), "instance", "ingest"}
 	if params.Rid != nil && *params.Rid != "" {
 		args = append(args, "--rid", *params.Rid)
 	}

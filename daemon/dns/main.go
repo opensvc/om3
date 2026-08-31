@@ -42,9 +42,19 @@ type (
 		drainDuration time.Duration
 
 		// state is a map indexed by object path where the key is a zone fragment regrouping all records created for this object.
-		// Using this map layout permits fast records drop on InstanceStatusDeleted.
+		// Using this map layout permits fast records drop on InstanceStatusDeleted and safeguards against duplicate records.
 		// The zone data is obtained by merging all map values.
-		state map[stateKey]Zone
+		state map[stateKey]map[recordKey]Record
+
+		// nameIndex maps record names to their records for O(1) lookups.
+		// It is maintained incrementally: a state change only reindexes
+		// the records of the state key it changes, and a cluster config
+		// change only the cluster records.
+		nameIndex map[string][]Record
+
+		// clusterRecords is the cluster level records (zone SOA, nameservers
+		// NS and A) currently indexed in nameIndex.
+		clusterRecords Zone
 
 		// score stores the node.Stats.Score values, to use as weight in SRV records
 		score map[string]int
@@ -101,7 +111,8 @@ func NewManager(d time.Duration, subQS pubsub.QueueSizer) *Manager {
 	return &Manager{
 		cmdC:          make(chan any),
 		drainDuration: d,
-		state:         make(map[stateKey]Zone),
+		state:         make(map[stateKey]map[recordKey]Record),
+		nameIndex:     make(map[string][]Record),
 		score:         make(map[string]int),
 		subQS:         subQS,
 
@@ -124,6 +135,7 @@ func (t *Manager) Start(parent context.Context) error {
 
 	t.startSubscriptions()
 	t.clusterConfig = *cluster.ConfigData.Get()
+	t.setClusterRecords()
 
 	if err := t.startUDSListener(); err != nil {
 		return err

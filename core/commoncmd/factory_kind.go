@@ -7,16 +7,18 @@ import (
 // NewCmdAll creates the "all" command
 func NewCmdAll() *cobra.Command {
 	return &cobra.Command{
-		Use:   "all",
-		Short: "manage a mix of objects, tentatively exposing all commands",
+		GroupID: GroupIDObjectKinds,
+		Use:     "all",
+		Short:   "manage a mix of objects, tentatively exposing all commands",
 	}
 }
 
 // NewCmdCcfg creates the "ccfg" command
 func NewCmdCcfg() *cobra.Command {
 	return &cobra.Command{
-		Use:   "ccfg",
-		Short: "manage the cluster shared configuration",
+		GroupID: GroupIDObjectKinds,
+		Use:     "ccfg",
+		Short:   "manage the cluster shared configuration",
 		Long: `The cluster nodes merge their private configuration
 over the cluster shared configuration.
 
@@ -29,8 +31,9 @@ eventually replicated).`,
 // NewCmdCfg creates the "cfg" command
 func NewCmdCfg() *cobra.Command {
 	return &cobra.Command{
-		Use:   "cfg",
-		Short: "manage configmaps",
+		GroupID: GroupIDObjectKinds,
+		Use:     "cfg",
+		Short:   "manage configmaps",
 		Long: `A configmap is an unencrypted key-value store.
 
 Values can be binary or text.
@@ -52,8 +55,9 @@ when installing the key in a volume.`,
 // NewCmdSec creates the "sec" command
 func NewCmdSec() *cobra.Command {
 	return &cobra.Command{
-		Use:   "sec",
-		Short: "manage secrets",
+		GroupID: GroupIDObjectKinds,
+		Use:     "sec",
+		Short:   "manage secrets",
 		Long: `A secret is an encrypted key-value store.
 
 Values can be binary or text.
@@ -75,8 +79,9 @@ when installing the key in a volume.`,
 // NewCmdSVC creates the "svc" command
 func NewCmdSVC() *cobra.Command {
 	return &cobra.Command{
-		Use:   "svc",
-		Short: "manage services",
+		GroupID: GroupIDObjectKinds,
+		Use:     "svc",
+		Short:   "manage services",
 		Long: `Service objects subsystem.
 
 A service is typically made of ip, app, container and task resources.
@@ -89,8 +94,9 @@ isolate lifecycles or to abstract cluster-specific knowledge.`,
 // NewCmdUsr creates the "usr" command
 func NewCmdUsr() *cobra.Command {
 	return &cobra.Command{
-		Use:   "usr",
-		Short: "manage users",
+		GroupID: GroupIDObjectKinds,
+		Use:     "usr",
+		Short:   "manage users",
 		Long: `A user stores the grants and credentials of user of the agent API.
 
 User objects are not necessary with OpenID authentication, as the
@@ -101,8 +107,9 @@ grants are embedded in the trusted bearer tokens.`,
 // NewCmdVol creates the "vol" command
 func NewCmdVol() *cobra.Command {
 	return &cobra.Command{
-		Use:   "vol",
-		Short: "manage volumes",
+		GroupID: GroupIDObjectKinds,
+		Use:     "vol",
+		Short:   "manage volumes",
 		Long: `A volume is a persistent data provider.
 
 A volume is made of disk, fs and sync resources. It is created by a pool,
@@ -115,14 +122,16 @@ Volumes and their subdirectories can be mounted inside containers.`,
 // NewCmdNscfg creates the "nscfg" command
 func NewCmdNscfg() *cobra.Command {
 	return &cobra.Command{
-		Use:   "nscfg",
-		Short: "manage namespace configurations",
+		GroupID: GroupIDObjectKinds,
+		Use:     "nscfg",
+		Short:   "manage namespace configurations",
 	}
 }
 
 // NewCmdNetwork creates the "network" command
 func NewCmdNetwork() *cobra.Command {
 	return &cobra.Command{
+		GroupID: GroupIDSubsystems,
 		Use:     "network",
 		Short:   "manage backend networks",
 		Aliases: []string{"net"},
@@ -141,9 +150,10 @@ func NewCmdNetworkIP() *cobra.Command {
 // NewCmdPool creates the "pool" command
 func NewCmdPool() *cobra.Command {
 	return &cobra.Command{
-		Use:   "pool",
-		Short: "manage storage pools",
-		Long:  " A pool is a vol provider. Pools abstract the hardware and software specificities of the cluster infrastructure.",
+		GroupID: GroupIDSubsystems,
+		Use:     "pool",
+		Short:   "manage storage pools",
+		Long:    " A pool is a vol provider. Pools abstract the hardware and software specificities of the cluster infrastructure.",
 	}
 }
 

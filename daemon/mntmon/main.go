@@ -16,6 +16,8 @@ import (
 	"github.com/opensvc/om3/v3/util/hostname"
 	"github.com/opensvc/om3/v3/util/plog"
 	"github.com/opensvc/om3/v3/util/pubsub"
+	"github.com/prometheus/client_golang/prometheus"
+	"github.com/prometheus/client_golang/prometheus/promauto"
 	"golang.org/x/sys/unix"
 )
 
@@ -26,6 +28,7 @@ type mountEntry struct {
 }
 
 func parseMountinfo(path string) (map[string]mountEntry, error) {
+	mntmonParseMountinfoTotal.Inc()
 	f, err := os.Open(path)
 	if err != nil {
 		return nil, err
@@ -87,6 +90,17 @@ type (
 
 		wg sync.WaitGroup
 	}
+)
+
+var (
+	mntmonParseMountinfoTotal = promauto.NewCounter(
+		prometheus.CounterOpts{
+			Namespace: "opensvc",
+			Subsystem: "mntmon",
+			Name:      "parse_mountinfo_total",
+			Help:      "Total number of /proc/self/mountinfo parsing calls",
+		},
+	)
 )
 
 // NewManager creates a new mount monitor manager
@@ -197,7 +211,7 @@ func (t *Manager) watchMounts() {
 		}
 
 		// Poll with finite timeout
-		_, err := unix.Poll(pfd, int(pollTimeout.Milliseconds()))
+		n, err := unix.Poll(pfd, int(pollTimeout.Milliseconds()))
 		if err != nil {
 			if err == unix.EINTR {
 				continue
@@ -212,6 +226,11 @@ func (t *Manager) watchMounts() {
 			t.log.Infof("context done, stopping mount monitor")
 			return
 		default:
+		}
+
+		if n == 0 {
+			// no event, poll just timed out
+			continue
 		}
 
 		cur, err := parseMountinfo(mountinfoPath)

@@ -6,9 +6,7 @@ package encryptconn
 import (
 	"bufio"
 	"bytes"
-	"io"
 	"net"
-	"sync"
 )
 
 type (
@@ -24,11 +22,14 @@ type (
 		// srcNode is the encrypter nodename returned by ReadWithNode
 		srcNode          string
 		encryptDecrypter encryptDecrypter
+		// Persistent scanner for reading NUL-delimited frames
+		scanner *bufio.Scanner
 	}
 
 	ConnNoder interface {
 		net.Conn
 		ReadWithNode(b []byte) (n int, nodename string, err error)
+		MessageWithNode() (b []byte, nodename string, err error)
 	}
 )
 
@@ -36,23 +37,24 @@ var (
 	msgUsualSize = 1000 // usual event size
 
 	msgMaxSize = 10000000 // max kind=full event size
-
-	// Create a new sync.Pool to manage the byte buffers. Used to reduce memory usage
-	// when many messages are scanned.
-	msgPool = sync.Pool{
-		New: func() interface{} {
-			// This creates a new byte slice of the specified size.
-			return make([]byte, msgMaxSize)
-		},
-	}
 )
 
 // New returns a new *T that will use encrypted net.Conn
+//
+// The scanner buffer is owned by the returned *T for its whole lifetime: it is
+// not pooled, so that a Close() concurrent with a reader can't hand the buffer
+// to another connection while the scanner still points into it. It starts at
+// the usual message size and is grown by the scanner, up to the max message
+// size, when a bigger message is read.
 func New(encConn net.Conn, ed encryptDecrypter) *T {
-	return &T{
+	t := &T{
 		Conn:             encConn,
 		encryptDecrypter: ed,
 	}
+	t.scanner = bufio.NewScanner(encConn)
+	t.scanner.Buffer(make([]byte, msgUsualSize), msgMaxSize)
+	t.scanner.Split(splitFunc)
+	return t
 }
 
 // Write implement Writer interface for T
@@ -78,16 +80,30 @@ func (t *T) Read(b []byte) (n int, err error) {
 // ReadWithNode implement ConnNoder interface for T
 //
 // read and decrypt data read from t.Conn
+//
+// Prefer MessageWithNode when the message size is not known in advance: b
+// has to be as large as the largest message to expect, where the slice
+// MessageWithNode returns is as large as the message actually read.
 func (t *T) ReadWithNode(b []byte) (n int, nodename string, err error) {
-	var encBytes, clearBytes []byte
-	if encBytes, err = getMessage(t.Conn); err != nil {
-		return
-	}
-	if clearBytes, nodename, err = t.encryptDecrypter.DecryptWithNode(encBytes); err != nil {
+	var clearBytes []byte
+	if clearBytes, nodename, err = t.MessageWithNode(); err != nil {
 		return
 	}
 	n = copy(b, clearBytes)
 	return
+}
+
+// MessageWithNode implement ConnNoder interface for T
+//
+// read and decrypt the next message from t.Conn, and return it with the
+// nodename of its encrypter. The returned slice is sized for the message
+// and belongs to the caller: a connection reading nothing retains nothing.
+func (t *T) MessageWithNode() (b []byte, nodename string, err error) {
+	var encBytes []byte
+	if encBytes, err = t.getMessage(); err != nil {
+		return
+	}
+	return t.encryptDecrypter.DecryptWithNode(encBytes)
 }
 
 // SrcNode returns the encrypter nodename
@@ -121,15 +137,13 @@ func splitFunc(data []byte, atEOF bool) (advance int, token []byte, err error) {
 	return 0, nil, nil
 }
 
-func getMessage(r io.Reader) ([]byte, error) {
-	scanner := bufio.NewScanner(r)
-	sharedBuffer := msgPool.Get().([]byte)
-	defer func() { msgPool.Put(sharedBuffer) }()
-	scanner.Buffer(sharedBuffer, msgMaxSize)
-	scanner.Split(splitFunc)
-	scanner.Scan()
-	sharedB := scanner.Bytes()
+// getMessage reads a single NUL-delimited frame from the persistent scanner
+func (t *T) getMessage() ([]byte, error) {
+	if !t.scanner.Scan() {
+		return nil, t.scanner.Err()
+	}
+	sharedB := t.scanner.Bytes()
 	b := make([]byte, len(sharedB))
 	copy(b, sharedB)
-	return b, scanner.Err()
+	return b, nil
 }

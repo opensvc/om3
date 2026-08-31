@@ -21,7 +21,22 @@ type (
 		cancel context.CancelFunc
 	}
 
+	// Loader encrypts and decrypts with the crypto current at call time,
+	// instead of the one current when it was created. Users outliving a
+	// heartbeat secret rotation, like a hb.ucast connection, must go
+	// through it: a rotation is only seamless for those decrypting with
+	// the up to date secret, which knows both the previous and the next
+	// key.
+	Loader struct {
+		p *atomic.Pointer[omcrypto.T]
+	}
+
 	contextKey int
+)
+
+var (
+	// assert Loader implements the omcrypto.EncryptDecrypter interface
+	_ = omcrypto.EncryptDecrypter(Loader{})
 )
 
 const (
@@ -85,4 +100,21 @@ func CryptoFromContext(ctx context.Context) *atomic.Pointer[omcrypto.T] {
 		return c
 	}
 	panic("context has no crypto")
+}
+
+// LoaderFromContext returns a Loader on the context crypto
+func LoaderFromContext(ctx context.Context) Loader {
+	return Loader{p: CryptoFromContext(ctx)}
+}
+
+func (t Loader) DecryptWithNode(data []byte) ([]byte, string, error) {
+	return t.p.Load().DecryptWithNode(data)
+}
+
+func (t Loader) Decrypt(data []byte) ([]byte, error) {
+	return t.p.Load().Decrypt(data)
+}
+
+func (t Loader) Encrypt(data []byte) ([]byte, error) {
+	return t.p.Load().Encrypt(data)
 }

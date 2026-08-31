@@ -44,8 +44,9 @@ var (
 		Aliases: []string{"prin", "pri", "pr"},
 	}
 	cmdNodePush = &cobra.Command{
-		Use:   "push",
-		Short: "push node discover information to the collector",
+		GroupID: commoncmd.GroupIDSubsystems,
+		Use:     "push",
+		Short:   "push node discover information to the collector",
 	}
 	cmdNodeComplianceAttach = &cobra.Command{
 		Use:     "attach",

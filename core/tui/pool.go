@@ -75,8 +75,13 @@ func (t *App) skipIfPoolNotUpdated() bool {
 	return true
 }
 
-func (t *App) updatePoolList(forceUpdate bool) {
-	if !forceUpdate && t.skipIfPoolNotUpdated() {
+// updatePools is the viewPool enter and refresh hook. It lists all the pools,
+// or, when the view drilled down into one, the per node status of that pool.
+func (t *App) updatePools() {
+	if t.skipIfPoolNotUpdated() && !t.lastUpdatedAt.IsZero() {
+		// No pool data change to paint. A still zero lastUpdatedAt means the
+		// view was just entered and no node has published pool data yet:
+		// paint the empty table, so the previous view is not left on screen.
 		return
 	}
 	title := "pools"
@@ -144,15 +149,9 @@ func (t *App) updatePoolList(forceUpdate bool) {
 				if row == 0 {
 					break
 				}
-				poolName := v.GetCell(row, 0).Text
-				if col == 0 && t.selectedElement != "" {
-					t.previousSelectedElement = t.selectedElement
-				}
-				t.selectedElement = poolName
+				t.selectedElement = v.GetCell(row, 0).Text
 				if col == 0 {
 					t.nav(viewPool)
-					t.position = Position{row: 0, col: 0}
-					t.updatePoolList(forceUpdate)
 				} else if col == 4 {
 					t.nav(viewPoolVolume)
 				}
@@ -162,7 +161,9 @@ func (t *App) updatePoolList(forceUpdate bool) {
 	})
 }
 
-func (t *App) updatePoolVolume(name string) {
+// updatePoolVolumes is the viewPoolVolume enter and refresh hook.
+func (t *App) updatePoolVolumes() {
+	name := t.selectedElement
 	title := fmt.Sprintf("%s volumes", name)
 	titles := []string{"POOL", "PATH", "SIZE", "CHILDREN", "IS_ORPHAN"}
 	var elementsList [][]string

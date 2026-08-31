@@ -92,7 +92,9 @@ func (t *App) updateNetworkList() {
 	})
 }
 
-func (t *App) updateNetworkIpList(name string) {
+// updateNetworkIps is the viewNetworkIpList enter and refresh hook.
+func (t *App) updateNetworkIps() {
+	name := t.selectedElement
 	title := fmt.Sprintf("Network %s IPs", name)
 	titles := []string{"OBJECT", "NODE", "RID", "IP", "NET_NAME", "NET_TYPE"}
 	var elementsList [][]string

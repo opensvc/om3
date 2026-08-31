@@ -51,6 +51,7 @@ Instance Flags:
   *       Frozen
   ^       Placement leader
   #       DRP instance
+  R       Resource run in progress
 `
 
 // New allocates a monitor.

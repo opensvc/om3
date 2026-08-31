@@ -27,7 +27,15 @@ var (
 	//go:embed bash_completion.sh
 	bashCompletionFunction string
 
-	root = &cobra.Command{
+	root = newRootCmd()
+)
+
+// newRootCmd builds the root command and declares the sections its commands
+// sort into. It is called from a package level variable initializer, which the
+// runtime runs before every init() of the package: the command files can
+// register into those sections whatever order they run in.
+func newRootCmd() *cobra.Command {
+	cmd := &cobra.Command{
 		Use:                    filepath.Base(os.Args[0]),
 		Short:                  "the opensvc cluster management command",
 		SilenceUsage:           true,
@@ -36,7 +44,13 @@ var (
 		BashCompletionFunction: bashCompletionFunction,
 		Version:                version.Version(),
 	}
-)
+	cmd.AddGroup(
+		commoncmd.NewGroupQuery(),
+		commoncmd.NewGroupObjectKinds(),
+		commoncmd.NewGroupSubsystems(),
+	)
+	return cmd
+}
 
 func validArgs(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
 	return listObjectPaths(), cobra.ShellCompDirectiveNoFileComp
@@ -70,7 +84,8 @@ func Execute() {
 	ExecuteArgs(os.Args[1:])
 }
 
-func setExecuteArgs(args []string) {
+// setExecuteArgs sets the args cobra will parse, and returns them.
+func setExecuteArgs(args []string) []string {
 	var lookupArgs, cobraArgs []string
 	//
 	// Note:
@@ -117,8 +132,10 @@ func setExecuteArgs(args []string) {
 			}
 			root.SetArgs(args)
 			cobra.CompDebug(fmt.Sprintf("modified args: %s\n", args), false)
+			return args
 		}
 	}
+	return args
 }
 
 // ExecuteArgs parses args and executes the cobra command.
@@ -131,7 +148,10 @@ func ExecuteArgs(args []string) {
 	}
 	var xc int
 	var xerr exitcoder
-	setExecuteArgs(args)
+	if err := commoncmd.ValidateArgs(root, setExecuteArgs(args)); err != nil {
+		fmt.Fprintln(os.Stderr, "Error:", err)
+		os.Exit(1)
+	}
 	if err := root.Execute(); err != nil {
 		if errors.As(err, &xerr) {
 			xc = xerr.ExitCode()

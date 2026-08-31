@@ -1,6 +1,7 @@
 package dns
 
 import (
+	"bytes"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -267,8 +268,12 @@ func (t *Manager) startUDSListener() error {
 	}
 
 	sendBytes := func(id uint64, conn net.Conn, b []byte) error {
+		if len(b) > 1024 {
+			t.log.Tracef("%d: >>> %s...", id, b[:1024])
+		} else {
+			t.log.Tracef("%d: >>> %s", id, b)
+		}
 		b = append(b, []byte("\n")...)
-		t.log.Tracef("%d: >>> %s", id, string(b))
 		if err := conn.SetWriteDeadline(time.Now().Add(time.Second)); err != nil {
 			t.log.Warnf("%d: can't set response write deadline: %s", id, err)
 		}
@@ -292,7 +297,7 @@ func (t *Manager) startUDSListener() error {
 			Result: false,
 		}
 		b, _ := json.Marshal(response)
-		t.log.Tracef("%d: >>> %s", id, string(b))
+		t.log.Tracef("%d: >>> %s", id, b)
 		return sendBytes(id, conn, b)
 	}
 
@@ -330,7 +335,8 @@ func (t *Manager) startUDSListener() error {
 			message = buffer[:n]
 
 			if os.IsTimeout(err) {
-				t.log.Tracef("%d: alive", id)
+				// Only add this trace if needed, as it is logging every second
+				//t.log.Tracef("%d: alive", id)
 				continue
 			} else if errors.Is(err, io.EOF) {
 				t.log.Tracef("%d: close connection (%s), served %d requests", id, err, reqCount)
@@ -346,7 +352,7 @@ func (t *Manager) startUDSListener() error {
 			}
 
 			reqCount++
-			t.log.Tracef("%d: <<< %s", id, string(message))
+			t.log.Tracef("%d: <<< %s", id, bytes.TrimRight(message, "\r\n"))
 
 			if err := json.Unmarshal(message, &req); err != nil {
 				t.log.Errorf("%d: close connection (%s), served %d requests", id, err, reqCount)

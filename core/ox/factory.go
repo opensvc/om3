@@ -801,8 +801,9 @@ func newCmdNodeScheduleList() *cobra.Command {
 
 func newCmdNodeSystem() *cobra.Command {
 	cmd := &cobra.Command{
-		Use:   "system",
-		Short: "node system commands",
+		GroupID: commoncmd.GroupIDSubsystems,
+		Use:     "system",
+		Short:   "node system commands",
 	}
 	return cmd
 }
@@ -1148,6 +1149,7 @@ func newCmdNodeSCSIPRKey() *cobra.Command {
 
 func newCmdObjectSchedule(kind string) *cobra.Command {
 	cmd := &cobra.Command{
+		GroupID: commoncmd.GroupIDSubsystems,
 		Use:     "schedule",
 		Short:   "object scheduler commands",
 		Aliases: []string{"sched"},
@@ -1329,6 +1331,7 @@ func newCmdNodeSSHTrust() *cobra.Command {
 
 func newCmdObjectCertificate(kind string) *cobra.Command {
 	return &cobra.Command{
+		GroupID: commoncmd.GroupIDSubsystems,
 		Aliases: []string{"cert", "crt"},
 		Use:     "certificate",
 		Short:   "create, renew, delete certificates",
@@ -3292,7 +3295,7 @@ func newCmdObjectInstanceUnprovision(kind string) *cobra.Command {
 		Use:     "unprovision",
 		Short:   "free the system resources of the instance resources (data-loss danger)",
 		Long:    "Free the system resources required by the object instance resources.\n\nOperate on a selection of instances asynchronously using --node=<selector>.",
-		Aliases: []string{"prov"},
+		Aliases: []string{"unprov"},
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return options.Run(kind)
 		},
@@ -3889,8 +3892,9 @@ func newCmdPoolVolumeList() *cobra.Command {
 func newCmdTUI(kind string) *cobra.Command {
 	var options tui.Options
 	cmd := &cobra.Command{
-		Use:   "tui",
-		Short: "interactive terminal user interface",
+		GroupID: commoncmd.GroupIDQuery,
+		Use:     "tui",
+		Short:   "interactive terminal user interface",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			options.Selector = mergeSelector("", kind, "")
 			return tui.Run(&options)
@@ -4282,7 +4286,8 @@ func newCmdObjectGen(kind string) *cobra.Command {
 
 func NewCmdContext() *cobra.Command {
 	return &cobra.Command{
-		Use: "context",
+		GroupID: commoncmd.GroupIDSubsystems,
+		Use:     "context",
 		Long: `A context groups the namespace, authentication and endpoint metadata needed to connect and manage a remote cluster.
 
 Once configured, you can login and logout from this context.`,
