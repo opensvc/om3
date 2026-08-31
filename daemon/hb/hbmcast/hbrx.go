@@ -151,11 +151,10 @@ func (t *rx) Start(cmdC chan<- interface{}, msgC chan<- *hbtype.Msg) error {
 
 func (t *rx) recv(src *net.UDPAddr, n int, b []byte) {
 	s := fmt.Sprint(src)
-	f := fragment{}
 	b = b[:n]
-	//fmt.Println("xx <<<\n", hex.Dump(b))
-	if err := json.Unmarshal(b, &f); err != nil {
-		t.log.Warnf("unmarshal fragment from src %s: %s", s, err)
+	f, err := decodeFragment(b)
+	if err != nil {
+		t.log.Warnf("decode fragment from src %s: %s", s, err)
 		return
 	}
 
@@ -232,7 +231,7 @@ func (t *rx) recv(src *net.UDPAddr, n int, b []byte) {
 		return
 	}
 
-	b, err := t.crypto.Decrypt(encMsg)
+	b, err = t.crypto.Decrypt(encMsg)
 	if err != nil {
 		t.log.Tracef("recv: decrypting msg from %s: %s: %s", s, hex.Dump(encMsg), err)
 		return

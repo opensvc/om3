@@ -2,7 +2,6 @@ package hbmcast
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
 	"net"
 	"strings"
@@ -130,7 +129,7 @@ func (t *tx) send(b []byte) {
 		return
 	}
 	defer c.Close()
-	msgID := uuid.New().String()
+	msgID := uuid.New()
 	msgLength := len(b)
 	total := msgLength / MaxChunkSize
 	if (msgLength % MaxChunkSize) != 0 {
@@ -143,24 +142,19 @@ func (t *tx) send(b []byte) {
 		return
 	}
 	for i := 1; i <= total; i++ {
-		f := fragment{
-			MsgID: msgID,
-			Index: i,
-			Total: total,
-		}
+		var chunk []byte
 		if i == total {
-			f.Chunk = b
+			chunk = b
 		} else {
-			f.Chunk = b[:MaxChunkSize]
+			chunk = b[:MaxChunkSize]
 			b = b[MaxChunkSize:]
 		}
-		dgram, err := json.Marshal(f)
-		if err != nil {
-			t.log.Tracef("marshal frame: %s", err)
-			return
-		}
-		if _, err := c.Write(dgram); err != nil {
-			t.log.Tracef("write in udp conn to %s: %s", t.udpAddr, err)
+		if _, err := c.Write(encodeFragment(msgID, i, total, chunk)); err != nil {
+			// Not Tracef. A write that fails here abandons the whole
+			// message, and the framing this replaces made that the
+			// normal outcome for any message over MaxChunkSize while
+			// saying nothing at any usual log level.
+			t.log.Warnf("write fragment %d/%d of msg %s to %s: %s", i, total, msgID, t.udpAddr, err)
 			return
 		}
 	}
