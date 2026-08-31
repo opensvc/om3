@@ -1,7 +1,6 @@
 package clusterdump
 
 import (
-	"encoding/json"
 	"sort"
 
 	"github.com/opensvc/om3/v3/core/cluster"
@@ -49,16 +48,34 @@ func NewData(fromNode string) *Data {
 	}
 }
 
+// DeepCopy returns a copy of the cluster dataset sharing nothing with it.
+//
+// This used to be a json.Marshal followed by a json.Unmarshal of the whole
+// dataset, which on an idle daemon was the single most expensive thing it
+// did, and did it on the daemondata goroutine, where it blocked every other
+// cluster data operation for its duration.
+//
+// A nil Object or Node map is kept nil rather than made empty: neither
+// field has omitempty, so the two do not serialize alike.
 func (s *Data) DeepCopy() *Data {
-	b, err := json.Marshal(s)
-	if err != nil {
-		panic(err)
+	if s == nil {
+		return nil
 	}
-	newStatus := Data{}
-	if err := json.Unmarshal(b, &newStatus); err != nil {
-		panic(err)
+	c := *s
+	c.Cluster.Config = *s.Cluster.Config.DeepCopy()
+	if s.Cluster.Object != nil {
+		c.Cluster.Object = make(map[string]object.Status, len(s.Cluster.Object))
+		for path, objectData := range s.Cluster.Object {
+			c.Cluster.Object[path] = *objectData.DeepCopy()
+		}
 	}
-	return &newStatus
+	if s.Cluster.Node != nil {
+		c.Cluster.Node = make(map[string]node.Node, len(s.Cluster.Node))
+		for nodename, nodeData := range s.Cluster.Node {
+			c.Cluster.Node[nodename] = *nodeData.DeepCopy()
+		}
+	}
+	return &c
 }
 
 func (s *Data) ArbitratorNames() []string {

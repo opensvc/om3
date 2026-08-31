@@ -15,6 +15,7 @@ import (
 	"github.com/opensvc/om3/v3/core/rawconfig"
 	"github.com/opensvc/om3/v3/core/status"
 	"github.com/opensvc/om3/v3/core/topology"
+	"github.com/opensvc/om3/v3/util/deepcopy"
 	"github.com/opensvc/om3/v3/util/render/tree"
 	"github.com/opensvc/om3/v3/util/xmap"
 )
@@ -180,6 +181,6 @@ func (s *Status) DeepCopy() *Status {
 	newStatus := *s
 	newStatus.ActorStatus = s.ActorStatus.DeepCopy()
 	newStatus.VolStatus = s.VolStatus.DeepCopy()
-	newStatus.Scope = append([]string{}, s.Scope...)
+	newStatus.Scope = deepcopy.Slice(s.Scope)
 	return &newStatus
 }
