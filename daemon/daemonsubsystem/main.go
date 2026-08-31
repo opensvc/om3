@@ -72,16 +72,20 @@ type (
 	}
 )
 
+// DeepCopy returns a copy of the daemon state sharing nothing with it.
+//
+// It copies the struct first and deepens the members after, rather than
+// listing the fields it wants: enumerating them silently dropped Nodename
+// here, and SecretVersion and UpdatedAt in Heartbeat, until a real
+// clusterdump.Data.DeepCopy started routing through these methods.
 func (d *Daemon) DeepCopy() *Daemon {
-	return &Daemon{
-		Pid:        d.Pid,
-		StartedAt:  d.StartedAt,
-		Collector:  *d.Collector.DeepCopy(),
-		Daemondata: *d.Daemondata.DeepCopy(),
-		Dns:        *d.Dns.DeepCopy(),
-		Heartbeat:  *d.Heartbeat.DeepCopy(),
-		Listener:   *d.Listener.DeepCopy(),
-		RunnerImon: *d.RunnerImon.DeepCopy(),
-		Scheduler:  *d.Scheduler.DeepCopy(),
-	}
+	n := *d
+	n.Collector = *d.Collector.DeepCopy()
+	n.Daemondata = *d.Daemondata.DeepCopy()
+	n.Dns = *d.Dns.DeepCopy()
+	n.Heartbeat = *d.Heartbeat.DeepCopy()
+	n.Listener = *d.Listener.DeepCopy()
+	n.RunnerImon = *d.RunnerImon.DeepCopy()
+	n.Scheduler = *d.Scheduler.DeepCopy()
+	return &n
 }

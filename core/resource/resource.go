@@ -30,6 +30,7 @@ import (
 	"github.com/opensvc/om3/v3/core/statusbus"
 	"github.com/opensvc/om3/v3/core/trigger"
 	"github.com/opensvc/om3/v3/util/command"
+	"github.com/opensvc/om3/v3/util/deepcopy"
 	"github.com/opensvc/om3/v3/util/device"
 	"github.com/opensvc/om3/v3/util/file"
 	"github.com/opensvc/om3/v3/util/pg"
@@ -1422,13 +1423,20 @@ func (t SCSIPersistentReservation) PersistentReservationKey() string {
 }
 
 func (t *Status) DeepCopy() *Status {
-	newValue := Status{}
-	if b, err := json.Marshal(t); err != nil {
-		return &Status{}
-	} else if err := json.Unmarshal(b, &newValue); err == nil {
-		return &newValue
+	if t == nil {
+		return nil
 	}
-	return &Status{}
+	n := *t
+	if t.ResourceID != nil {
+		resourceID := *t.ResourceID
+		n.ResourceID = &resourceID
+	}
+	n.Log = deepcopy.Slice(t.Log)
+	n.Tags = deepcopy.Slice(t.Tags)
+	n.Files = deepcopy.Slice(t.Files)
+	n.Datastores = deepcopy.Slice(t.Datastores)
+	n.Info = deepcopy.Any(t.Info)
+	return &n
 }
 
 func (t *Status) Unstructured() map[string]any {

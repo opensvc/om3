@@ -9,6 +9,7 @@ import (
 	"github.com/opensvc/om3/v3/core/priority"
 	"github.com/opensvc/om3/v3/core/schedule"
 	"github.com/opensvc/om3/v3/core/topology"
+	"github.com/opensvc/om3/v3/util/deepcopy"
 	"github.com/opensvc/om3/v3/util/label"
 	"github.com/opensvc/om3/v3/util/stringslice"
 	"github.com/opensvc/om3/v3/util/xmap"
@@ -80,7 +81,9 @@ func (m ResourceConfigs) DeepCopy() ResourceConfigs {
 	for rid, cfg := range m {
 		newCfg := cfg
 		if cfg.RestartDelay != nil {
-			newCfg.RestartDelay = &(*cfg.RestartDelay)
+			// Not &(*cfg.RestartDelay), which is cfg.RestartDelay again.
+			restartDelay := *cfg.RestartDelay
+			newCfg.RestartDelay = &restartDelay
 		}
 		newM[rid] = newCfg
 	}
@@ -96,7 +99,7 @@ func (cfg *Config) DeepCopy() *Config {
 		return nil
 	}
 	newCfg := *cfg
-	newCfg.Scope = append([]string{}, cfg.Scope...)
+	newCfg.Scope = deepcopy.Slice(cfg.Scope)
 	newCfg.ActorConfig = cfg.ActorConfig.DeepCopy()
 	newCfg.VolConfig = cfg.VolConfig.DeepCopy()
 	newCfg.Labels = cfg.Labels.DeepCopy()
@@ -116,9 +119,16 @@ func (cfg *ActorConfig) DeepCopy() *ActorConfig {
 		return nil
 	}
 	newCfg := *cfg
+	newCfg.Children = deepcopy.Slice(cfg.Children)
+	newCfg.MonitorAction = deepcopy.Slice(cfg.MonitorAction)
+	newCfg.Parents = deepcopy.Slice(cfg.Parents)
+	newCfg.Schedules = deepcopy.Slice(cfg.Schedules)
 	newCfg.Subsets = cfg.Subsets.DeepCopy()
 	newCfg.Resources = cfg.Resources.DeepCopy()
-	newCfg.Schedules = append([]schedule.Config{}, cfg.Schedules...)
+	if cfg.Flex != nil {
+		flex := *cfg.Flex
+		newCfg.Flex = &flex
+	}
 	return &newCfg
 }
 

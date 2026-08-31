@@ -16,6 +16,7 @@ import (
 	"github.com/opensvc/om3/v3/core/volaccess"
 	"github.com/opensvc/om3/v3/core/xconfig"
 	"github.com/opensvc/om3/v3/util/args"
+	"github.com/opensvc/om3/v3/util/deepcopy"
 	"github.com/opensvc/om3/v3/util/key"
 	"github.com/opensvc/om3/v3/util/san"
 	"github.com/opensvc/om3/v3/util/sizeconv"
@@ -522,19 +523,10 @@ func (t *Status) HasCapability(s Capability) bool {
 }
 
 func (t *Status) DeepCopy() *Status {
-	return &Status{
-		Type:         t.Type,
-		Head:         t.Head,
-		VolumeCount:  t.VolumeCount,
-		Capabilities: append(Capabilities{}, t.Capabilities...),
-		UpdatedAt:    t.UpdatedAt,
-		Usage: Usage{
-			Free: t.Usage.Free,
-			Size: t.Usage.Size,
-			Used: t.Usage.Used,
-		},
-		Errors: append([]string{}, t.Errors...),
-	}
+	n := *t
+	n.Capabilities = deepcopy.Slice(t.Capabilities)
+	n.Errors = deepcopy.Slice(t.Errors)
+	return &n
 }
 
 func GetMappings(ctx context.Context, p ArrayPooler, nodes []string, pathType string) (array.Mappings, error) {

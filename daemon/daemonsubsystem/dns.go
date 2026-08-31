@@ -10,10 +10,10 @@ type (
 	}
 )
 
+// DeepCopy returns a copy of the dns state sharing nothing with it.
+// Nameservers comes out non-nil, see Heartbeat.DeepCopy.
 func (c *Dns) DeepCopy() *Dns {
-	return &Dns{
-		Status: c.Status,
-
-		Nameservers: append([]string{}, c.Nameservers...),
-	}
+	n := *c
+	n.Nameservers = append([]string{}, c.Nameservers...)
+	return &n
 }
