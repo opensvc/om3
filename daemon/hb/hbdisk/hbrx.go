@@ -16,6 +16,7 @@ import (
 	"github.com/opensvc/om3/v3/daemon/hb/hbaudit"
 	"github.com/opensvc/om3/v3/daemon/hb/hbcrypto"
 	"github.com/opensvc/om3/v3/daemon/hb/hbctrl"
+	"github.com/opensvc/om3/v3/daemon/hb/hbdedup"
 	"github.com/opensvc/om3/v3/util/hostname"
 	"github.com/opensvc/om3/v3/util/plog"
 	"github.com/opensvc/om3/v3/util/sign"
@@ -40,6 +41,9 @@ type (
 		cancel func()
 
 		crypto decryptWithNoder
+
+		// dedup holds the frames the other hb links already delivered
+		dedup *hbdedup.Cache
 
 		// rescanMetadataReason stores the most recent reason for a metadata rescan,
 		// helping to prevent excessive logging of the same reason.
@@ -129,6 +133,7 @@ func (t *rx) Start(cmdC chan<- any, msgC chan<- *hbtype.Msg) error {
 		t.sendAlert()
 
 		crypto := hbcrypto.CryptoFromContext(ctx)
+		t.dedup = hbdedup.CacheFromContext(ctx)
 		ticker := time.NewTicker(t.interval)
 		defer ticker.Stop()
 		tickerChecSignature := time.NewTicker(120 * t.interval)
@@ -182,6 +187,25 @@ func (t *rx) recv(nodename string) {
 		t.log.Tracef("node %s slot %d has not been updated for %s", nodename, slot, elapsed)
 		return
 	}
+	key := hbdedup.NewKey(c.Msg)
+	if msgNodename, ok := t.dedup.Seen(key); ok {
+		// another hb link delivered this very frame: the peer is alive on
+		// this one too, but the message is already in the daemon
+		if nodename != msgNodename {
+			reason := fmt.Sprintf("node %s slot %d was stolen by node %s", nodename, slot, msgNodename)
+			t.rescanMetadata(reason)
+			return
+		}
+		t.log.Tracef("node %s slot %d ok, already delivered by another hb", nodename, slot)
+		t.cmdC <- hbctrl.CmdSetPeerSuccess{
+			Nodename: msgNodename,
+			HbID:     t.id,
+			Success:  true,
+		}
+		t.last = c.Updated
+		return
+	}
+
 	b, msgNodename, err := t.crypto.DecryptWithNode(c.Msg)
 	if err != nil {
 		t.log.Tracef("node %s slot %d decrypt: %s", nodename, slot, err)
@@ -206,6 +230,7 @@ func (t *rx) recv(nodename string) {
 		Success:  true,
 	}
 	t.msgC <- &msg
+	t.dedup.Delivered(key, msg.Nodename)
 	t.last = c.Updated
 }
 

@@ -13,6 +13,7 @@ import (
 	"github.com/opensvc/om3/v3/daemon/api"
 	"github.com/opensvc/om3/v3/daemon/hb/hbcrypto"
 	"github.com/opensvc/om3/v3/daemon/hb/hbctrl"
+	"github.com/opensvc/om3/v3/daemon/hb/hbdedup"
 	"github.com/opensvc/om3/v3/util/plog"
 )
 
@@ -33,6 +34,9 @@ type (
 		cancel func()
 
 		crypto decryptWithNoder
+
+		// dedup holds the frames the other hb links already delivered
+		dedup *hbdedup.Cache
 	}
 
 	decryptWithNoder interface {
@@ -102,6 +106,7 @@ func (t *rx) Start(cmdC chan<- any, msgC chan<- *hbtype.Msg) error {
 		t.log.Infof("started")
 		errC <- nil
 		crypto := hbcrypto.CryptoFromContext(ctx)
+		t.dedup = hbdedup.CacheFromContext(ctx)
 		for {
 			select {
 			case <-ctx.Done():
@@ -168,7 +173,26 @@ func (t *rx) recv(nodename string) {
 		t.log.Tracef("recv: node %s data has not been updated for %s", nodename, elapsed)
 		return
 	}
-	b, msgNodename, err := t.crypto.DecryptWithNode([]byte(c.Msg))
+	frame := []byte(c.Msg)
+	key := hbdedup.NewKey(frame)
+	if msgNodename, ok := t.dedup.Seen(key); ok {
+		// another hb link delivered this very frame: the peer is alive on
+		// this one too, but the message is already in the daemon
+		if nodename != msgNodename {
+			t.log.Tracef("recv: node %s data was written by unexpected node %s", nodename, msgNodename)
+			return
+		}
+		t.log.Tracef("recv: node %s, already delivered by another hb", nodename)
+		t.cmdC <- hbctrl.CmdSetPeerSuccess{
+			Nodename: msgNodename,
+			HbID:     t.id,
+			Success:  true,
+		}
+		t.lastAt = c.UpdatedAt
+		return
+	}
+
+	b, msgNodename, err := t.crypto.DecryptWithNode(frame)
 	if err != nil {
 		t.log.Tracef("recv: decrypting node %s: %s", nodename, err)
 		return
@@ -191,6 +215,7 @@ func (t *rx) recv(nodename string) {
 		Success:  true,
 	}
 	t.msgC <- &msg
+	t.dedup.Delivered(key, msg.Nodename)
 	t.lastAt = c.UpdatedAt
 }
 
