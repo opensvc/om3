@@ -26,6 +26,7 @@ import (
 	"github.com/opensvc/om3/v3/daemon/msgbus"
 	"github.com/opensvc/om3/v3/util/funcopt"
 	"github.com/opensvc/om3/v3/util/hostname"
+	"github.com/opensvc/om3/v3/util/metricsreg"
 	"github.com/opensvc/om3/v3/util/plog"
 	"github.com/opensvc/om3/v3/util/pubsub"
 	"github.com/opensvc/om3/v3/util/runfiles"
@@ -109,27 +110,41 @@ var (
 		node.MonitorStateUpgrade:          nil,
 	}
 
-	jobRunByPathKeyCount = promauto.NewCounterVec(
+	// The two object scoped counters carry a path label, so they grow
+	// with the cluster: 288 of the 292 scheduler series on a 103 object
+	// cluster. They go to /metrics/scheduler.
+	jobRunByPathKeyCount = prometheus.NewCounterVec(
 		prometheus.CounterOpts{
 			Namespace: "opensvc",
 			Subsystem: "scheduler",
 			Name:      "object_job_runs_total",
+			Help:      "The number of schedule entry runs, by object and schedule key",
 		}, []string{"action", "path", "key"})
 
-	jobRunByPathCount = promauto.NewCounterVec(
+	jobRunByPathCount = prometheus.NewCounterVec(
 		prometheus.CounterOpts{
 			Namespace: "opensvc",
 			Subsystem: "scheduler",
 			Name:      "object_runs_total",
+			Help:      "The number of schedule entry runs, by object",
 		}, []string{"action", "path"})
 
+	// jobRunCount is bounded by the number of actions, so it stays on the
+	// default registry, where it is the hint: a rise in failures or a
+	// flat line where runs were expected is what sends you to
+	// /metrics/scheduler to find which object.
 	jobRunCount = promauto.NewCounterVec(
 		prometheus.CounterOpts{
 			Namespace: "opensvc",
 			Subsystem: "scheduler",
 			Name:      "runs_total",
+			Help:      "The number of schedule entry runs, by action",
 		}, []string{"action"})
 )
+
+func init() {
+	metricsreg.Scheduler.MustRegister(jobRunByPathKeyCount, jobRunByPathCount)
+}
 
 func (t Schedules) Del(path naming.Path, key string) {
 	if m, ok := t[path]; ok {

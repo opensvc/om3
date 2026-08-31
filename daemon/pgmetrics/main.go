@@ -19,10 +19,12 @@ import (
 	"github.com/opensvc/om3/v3/core/naming"
 	"github.com/opensvc/om3/v3/core/object"
 	"github.com/opensvc/om3/v3/util/hostname"
+	"github.com/opensvc/om3/v3/util/metricsreg"
 	"github.com/opensvc/om3/v3/util/plog"
 	"github.com/opensvc/om3/v3/util/pubsub"
 	"github.com/opensvc/om3/v3/util/systemd"
 	"github.com/prometheus/client_golang/prometheus"
+	"github.com/prometheus/client_golang/prometheus/promauto"
 )
 
 const (
@@ -227,6 +229,43 @@ var (
 	)
 )
 
+// The hint metrics, on the default registry. Every metric above carries a
+// path label and so grows with the cluster, which is why they are served
+// apart, at /metrics/pg. These three are what tells you to go look.
+var (
+	// pgCgroups is the size of the detail set: how many series /metrics/pg
+	// is carrying, in units of cgroups.
+	pgCgroups = promauto.NewGauge(
+		prometheus.GaugeOpts{
+			Namespace: "opensvc",
+			Subsystem: "pg",
+			Name:      "cgroups",
+			Help:      "The number of cgroups reported at /metrics/pg",
+		})
+
+	// pgObjectsWithoutCgroup counts the objects that have none. A rise
+	// means objects stopped, or pg configuration did not take effect.
+	pgObjectsWithoutCgroup = promauto.NewGauge(
+		prometheus.GaugeOpts{
+			Namespace: "opensvc",
+			Subsystem: "pg",
+			Name:      "objects_without_cgroup",
+			Help:      "The number of objects with no cgroup",
+		})
+
+	// pgMemoryUtilizationMax is the highest memory.current/memory.max of
+	// the cgroups that have a limit, so one series says whether anything
+	// is near being reclaimed against. Cgroups with no limit do not
+	// count, their ratio being zero over an infinity.
+	pgMemoryUtilizationMax = promauto.NewGauge(
+		prometheus.GaugeOpts{
+			Namespace: "opensvc",
+			Subsystem: "pg",
+			Name:      "cgroup_memory_utilization_max_ratio",
+			Help:      "The highest memory usage over memory limit ratio among the limited cgroups",
+		})
+)
+
 var (
 	// cgroupUsageMetrics are the series describing a cgroup that is there.
 	// They are what has to be dropped when one goes away, and listing them
@@ -333,13 +372,13 @@ func (m *Manager) Stop() error {
 
 func (m *Manager) unregisterMetrics() {
 	for _, metric := range cgroupMetrics {
-		prometheus.Unregister(metric)
+		metricsreg.PG.Unregister(metric)
 	}
 }
 
 func (m *Manager) registerMetrics() {
 	for _, metric := range cgroupMetrics {
-		prometheus.MustRegister(metric)
+		metricsreg.PG.MustRegister(metric)
 	}
 }
 
@@ -372,6 +411,7 @@ func (m *Manager) collect() {
 
 	// Iterate over object paths and forge their expected cgroup paths
 	seen := make(map[cgroupKey]struct{}, len(objectPaths))
+	cgroups, withoutCgroup, utilizationMax := 0, 0, 0.0
 	for _, objPath := range objectPaths {
 		key := cgroupKey{namespace: objPath.Namespace, path: objPath.String()}
 		seen[key] = struct{}{}
@@ -387,6 +427,7 @@ func (m *Manager) collect() {
 			// as a cgroup that is still running.
 			pgCgroupExists.WithLabelValues(key.namespace, key.path).Set(0)
 			forgetUsage(key)
+			withoutCgroup++
 			continue
 		}
 
@@ -394,8 +435,14 @@ func (m *Manager) collect() {
 		pgCgroupExists.WithLabelValues(key.namespace, key.path).Set(1)
 
 		// Collect all metrics for this cgroup
-		m.collectCgroupMetrics(cgroupPath, key.namespace, key.path)
+		cgroups++
+		if utilization := m.collectCgroupMetrics(cgroupPath, key.namespace, key.path); utilization > utilizationMax {
+			utilizationMax = utilization
+		}
 	}
+	pgCgroups.Set(float64(cgroups))
+	pgObjectsWithoutCgroup.Set(float64(withoutCgroup))
+	pgMemoryUtilizationMax.Set(utilizationMax)
 
 	// An object gone from the cluster keeps nothing, not even an exists
 	// series. Prometheus vectors never forget a label combination on
@@ -411,16 +458,23 @@ func (m *Manager) collect() {
 	m.exported = seen
 }
 
-func (m *Manager) collectCgroupMetrics(cgroupPath, namespace, objPath string) {
+// collectCgroupMetrics publishes one cgroup's series and returns its
+// memory usage over its memory limit, or 0 when it has no limit or either
+// value could not be read. The caller keeps the highest, which is the one
+// series on the default registry that says whether to come and look here.
+func (m *Manager) collectCgroupMetrics(cgroupPath, namespace, objPath string) (memoryUtilization float64) {
 	// Read cpu.stat
 	if cpuStat, err := readFile(cgroupPath, "cpu.stat"); err == nil {
 		parseCPUStat(cpuStat, namespace, objPath)
 	}
 
 	// Read memory.current
+	var memCurrentVal, memMaxVal float64
+	var haveCurrent, haveMax bool
 	if memCurrent, err := readFile(cgroupPath, "memory.current"); err == nil {
 		if val, err := parseUint(memCurrent); err == nil {
 			pgCgroupMemoryCurrent.WithLabelValues(namespace, objPath).Set(float64(val))
+			memCurrentVal, haveCurrent = float64(val), true
 		}
 	}
 
@@ -428,7 +482,11 @@ func (m *Manager) collectCgroupMetrics(cgroupPath, namespace, objPath string) {
 	if memMax, err := readFile(cgroupPath, "memory.max"); err == nil {
 		if val, err := parseLimit(memMax); err == nil {
 			pgCgroupMemoryMax.WithLabelValues(namespace, objPath).Set(val)
+			memMaxVal, haveMax = val, true
 		}
+	}
+	if haveCurrent && haveMax && !math.IsInf(memMaxVal, 1) && memMaxVal > 0 {
+		memoryUtilization = memCurrentVal / memMaxVal
 	}
 
 	// Read memory.stat
@@ -487,6 +545,8 @@ func (m *Manager) collectCgroupMetrics(cgroupPath, namespace, objPath string) {
 			pgCgroupBlkioWeight.WithLabelValues(namespace, objPath).Set(float64(val))
 		}
 	}
+
+	return memoryUtilization
 }
 
 func parseCPUStat(content, namespace, objPath string) {
