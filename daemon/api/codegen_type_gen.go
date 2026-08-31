@@ -2768,6 +2768,9 @@ type GetDaemonEventsParams struct {
 type DeleteDaemonProcessParams struct {
 	// Pid the pid of the process to kill.
 	Pid *[]int `form:"pid,omitempty" json:"pid,omitempty"`
+
+	// Signal the signal to send, as a name (TERM, SIGTERM) or a number (15). Defaults to SIGKILL.
+	Signal *string `form:"signal,omitempty" json:"signal,omitempty"`
 }
 
 // GetDaemonProcessParams defines parameters for GetDaemonProcess.

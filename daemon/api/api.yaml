@@ -1805,7 +1805,9 @@ paths:
     delete:
       operationId: DeleteDaemonProcess
       description: |
-        Kill the daemon process.
+        Signal the daemon process.
+
+        Only the processes listed by GetDaemonProcess can be signaled.
       parameters:
         - $ref: '#/components/parameters/inPathNodeName'
         - in: query
@@ -1815,6 +1817,12 @@ paths:
             type: array
             items:
               type: integer
+        - in: query
+          name: signal
+          description: the signal to send, as a name (TERM, SIGTERM) or a number (15). Defaults to SIGKILL.
+          schema:
+            type: string
+            example: TERM
       responses:
         204:
           $ref: '#/components/responses/204'
