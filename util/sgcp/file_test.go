@@ -3,7 +3,6 @@ package sgcp
 import (
 	"context"
 	"encoding/json"
-	"net"
 	"net/http"
 	"net/http/httptest"
 	"testing"
@@ -66,17 +65,10 @@ func TestGetFilesystem(t *testing.T) {
 		w.WriteHeader(http.StatusNotFound)
 	})
 
-	ts := httptest.NewUnstartedServer(handler)
-
-	ln, err := net.Listen("tcp", "127.0.0.1:1215")
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	ts.EnableHTTP2 = true
-	ts.Listener = ln
-	ts.StartTLS()
+	ts := httptest.NewTLSServer(handler)
 	defer ts.Close()
+
+	cfg.Files.BaseURL = ts.URL + "/file"
 
 	client := ts.Client()
 	log := plog.NewDefaultLogger()

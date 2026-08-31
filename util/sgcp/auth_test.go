@@ -4,7 +4,6 @@ import (
 	"context"
 	"encoding/base64"
 	"encoding/json"
-	"net"
 	"net/http"
 	"net/http/httptest"
 	"strings"
@@ -17,6 +16,8 @@ import (
 
 func TestTokenFactory(t *testing.T) {
 	defer Setup(t)()
+
+	t.Setenv("OSVC_VAR_DIR", t.TempDir())
 
 	cfg := GetConfig()
 	require.NotNil(t, cfg)
@@ -59,17 +60,10 @@ func TestTokenFactory(t *testing.T) {
 		w.WriteHeader(http.StatusNotFound)
 	})
 
-	ts := httptest.NewUnstartedServer(handler)
-
-	ln, err := net.Listen("tcp", "127.0.0.1:1215")
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	ts.EnableHTTP2 = true
-	ts.Listener = ln
-	ts.StartTLS()
+	ts := httptest.NewTLSServer(handler)
 	defer ts.Close()
+
+	cfg.Auth.BaseURL = ts.URL + "/auth"
 
 	authInfo := &AuthInfo{
 		AccountID:    "account1",
