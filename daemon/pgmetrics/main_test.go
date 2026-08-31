@@ -1,7 +1,9 @@
 package pgmetrics
 
 import (
+	"fmt"
 	"math"
+	"os"
 	"path/filepath"
 	"testing"
 
@@ -10,6 +12,8 @@ import (
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/common/expfmt"
 
+	"github.com/opensvc/om3/v3/core/naming"
+	"github.com/opensvc/om3/v3/core/object"
 	"github.com/opensvc/om3/v3/util/metricsreg"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -233,4 +237,76 @@ func metricName(t *testing.T, vec *prometheus.GaugeVec) string {
 	s := desc.String()
 	start := strings.Index(s, `fqName: "`) + len(`fqName: "`)
 	return s[start : start+strings.Index(s[start:], `"`)]
+}
+
+// withFakeCgroupTree points CgroupRoot at a temp dir and populates
+// object.StatusData, so collect() can be driven without a live daemon.
+func withFakeCgroupTree(t testing.TB, paths []string, withCgroup []string) *Manager {
+	t.Helper()
+	root := t.TempDir()
+	wasRoot, wasData := CgroupRoot, object.StatusData
+	CgroupRoot = root
+	object.StatusData = object.NewData[object.Status]()
+	t.Cleanup(func() { CgroupRoot, object.StatusData = wasRoot, wasData })
+
+	for _, ps := range paths {
+		p, err := naming.ParsePath(ps)
+		require.NoError(t, err)
+		object.StatusData.Set(p, &object.Status{})
+	}
+	for _, ps := range withCgroup {
+		p, err := naming.ParsePath(ps)
+		require.NoError(t, err)
+		dir := forgeCgroupPath(p)
+		require.NoError(t, os.MkdirAll(dir, 0755))
+		require.NoError(t, os.WriteFile(filepath.Join(dir, "memory.current"), []byte("16384\n"), 0644))
+		require.NoError(t, os.WriteFile(filepath.Join(dir, "memory.max"), []byte("max\n"), 0644))
+		require.NoError(t, os.WriteFile(filepath.Join(dir, "cpu.max"), []byte("max 100000\n"), 0644))
+	}
+
+	m := New(nil)
+	m.registerMetrics()
+	t.Cleanup(m.unregisterMetrics)
+	return m
+}
+
+func TestCollectDropsTheSeriesOfAVanishedCgroup(t *testing.T) {
+	m := withFakeCgroupTree(t, []string{"ns1/svc/a", "ns1/svc/b"}, []string{"ns1/svc/a"})
+
+	m.collect()
+	assert.Equal(t, 1, countSeries(pgCgroupMemoryCurrent), "only the object with a cgroup reports usage")
+	assert.Equal(t, 2, countSeries(pgCgroupExists), "both objects report whether they have one")
+
+	p, err := naming.ParsePath("ns1/svc/a")
+	require.NoError(t, err)
+	require.NoError(t, os.RemoveAll(forgeCgroupPath(p)))
+
+	m.collect()
+	assert.Equal(t, 0, countSeries(pgCgroupMemoryCurrent), "the usage series must go with the cgroup")
+	assert.Equal(t, 2, countSeries(pgCgroupExists), "and exists must stay, to report it is gone")
+
+	// The object leaves the cluster: nothing of it is left.
+	object.StatusData.Unset(p)
+	m.collect()
+	assert.Equal(t, 1, countSeries(pgCgroupExists))
+}
+
+// BenchmarkCollectWithoutCgroups pins what a regression already cost once.
+// forgetUsage was called on every tick for every object with no cgroup,
+// and DeletePartialMatch walks every series of every vector, since a
+// partial label match cannot be indexed. On a cluster where 79 of 103
+// objects have no cgroup that was 9.4% of the daemon's cpu, measured. It
+// is only called on the transition now, so this should not scale with the
+// number of objects that have none.
+func BenchmarkCollectWithoutCgroups(b *testing.B) {
+	paths := make([]string, 0, 100)
+	for i := range 100 {
+		paths = append(paths, fmt.Sprintf("ns1/svc/o%d", i))
+	}
+	m := withFakeCgroupTree(b, paths, paths[:20])
+	m.collect()
+	b.ResetTimer()
+	for b.Loop() {
+		m.collect()
+	}
 }
