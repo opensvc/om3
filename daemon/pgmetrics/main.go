@@ -8,6 +8,7 @@ package pgmetrics
 import (
 	"context"
 	"fmt"
+	"math"
 	"os"
 	"path/filepath"
 	"strconv"
@@ -107,7 +108,7 @@ var (
 			Namespace: "opensvc",
 			Subsystem: "pg",
 			Name:      "cgroup_memory_max_bytes",
-			Help:      "Memory max limit in bytes for the cgroup (0 = unlimited)",
+			Help:      "Memory max limit in bytes for the cgroup (+Inf = unlimited)",
 		},
 		[]string{"namespace", "path"},
 	)
@@ -212,6 +213,50 @@ var (
 	)
 )
 
+var (
+	// cgroupUsageMetrics are the series describing a cgroup that is there.
+	// They are what has to be dropped when one goes away, and listing them
+	// once is what keeps register, unregister and drop from drifting apart.
+	cgroupUsageMetrics = []*prometheus.GaugeVec{
+		pgCgroupCPUUsage,
+		pgCgroupCPUUserUsage,
+		pgCgroupCPUSystemUsage,
+		pgCgroupMemoryCurrent,
+		pgCgroupMemoryMax,
+		pgCgroupMemoryStat,
+		pgCgroupMemoryStatPages,
+		pgCgroupCPUStat,
+		pgCgroupCPUShares,
+		pgCgroupCPUQuota,
+		pgCgroupCPUPeriod,
+		pgCgroupCPUCpus,
+		pgCgroupBlkioWeight,
+	}
+
+	// cgroupMetrics is every metric this package registers.
+	cgroupMetrics = append([]*prometheus.GaugeVec{pgCgroupExists}, cgroupUsageMetrics...)
+)
+
+// cgroupKey identifies the object a cgroup belongs to, and is the label
+// pair every metric here carries.
+type cgroupKey struct {
+	namespace string
+	path      string
+}
+
+func (k cgroupKey) labels() prometheus.Labels {
+	return prometheus.Labels{"namespace": k.namespace, "path": k.path}
+}
+
+// forgetUsage drops every series describing k's cgroup. The exists series
+// is left alone: it is the one that reports the cgroup is gone.
+func forgetUsage(k cgroupKey) {
+	labels := k.labels()
+	for _, metric := range cgroupUsageMetrics {
+		metric.DeletePartialMatch(labels)
+	}
+}
+
 // Manager manages the collection and reporting of cgroup metrics
 type Manager struct {
 	ctx       context.Context
@@ -220,6 +265,10 @@ type Manager struct {
 	localhost string
 	sub       *pubsub.Subscription
 	subQS     pubsub.QueueSizer
+
+	// exported is the objects the last collection published a series for,
+	// so the next one can tell which have since disappeared.
+	exported map[cgroupKey]struct{}
 
 	wg sync.WaitGroup
 }
@@ -230,6 +279,7 @@ func New(subQS pubsub.QueueSizer) *Manager {
 	return &Manager{
 		localhost: localhost,
 		subQS:     subQS,
+		exported:  make(map[cgroupKey]struct{}),
 		log: plog.NewDefaultLogger().
 			Attr("pkg", "daemon/pgmetrics").
 			WithPrefix("daemon: pgmetrics: "),
@@ -267,39 +317,15 @@ func (m *Manager) Stop() error {
 }
 
 func (m *Manager) unregisterMetrics() {
-	prometheus.Unregister(pgCgroupCPUUsage)
-	prometheus.Unregister(pgCgroupCPUUserUsage)
-	prometheus.Unregister(pgCgroupCPUSystemUsage)
-	prometheus.Unregister(pgCgroupMemoryCurrent)
-	prometheus.Unregister(pgCgroupMemoryMax)
-	prometheus.Unregister(pgCgroupMemoryStat)
-	prometheus.Unregister(pgCgroupMemoryStatPages)
-	prometheus.Unregister(pgCgroupCPUStat)
-	prometheus.Unregister(pgCgroupCPUShares)
-	prometheus.Unregister(pgCgroupCPUQuota)
-	prometheus.Unregister(pgCgroupCPUPeriod)
-	prometheus.Unregister(pgCgroupCPUCpus)
-	prometheus.Unregister(pgCgroupBlkioWeight)
-	prometheus.Unregister(pgCgroupExists)
+	for _, metric := range cgroupMetrics {
+		prometheus.Unregister(metric)
+	}
 }
 
 func (m *Manager) registerMetrics() {
-	prometheus.MustRegister(
-		pgCgroupCPUUsage,
-		pgCgroupCPUUserUsage,
-		pgCgroupCPUSystemUsage,
-		pgCgroupMemoryCurrent,
-		pgCgroupMemoryMax,
-		pgCgroupMemoryStat,
-		pgCgroupMemoryStatPages,
-		pgCgroupCPUStat,
-		pgCgroupCPUShares,
-		pgCgroupCPUQuota,
-		pgCgroupCPUPeriod,
-		pgCgroupCPUCpus,
-		pgCgroupBlkioWeight,
-		pgCgroupExists,
-	)
+	for _, metric := range cgroupMetrics {
+		prometheus.MustRegister(metric)
+	}
 }
 
 func (m *Manager) collectLoop() {
@@ -330,22 +356,44 @@ func (m *Manager) collect() {
 	objectPaths := object.StatusData.GetPaths()
 
 	// Iterate over object paths and forge their expected cgroup paths
+	seen := make(map[cgroupKey]struct{}, len(objectPaths))
 	for _, objPath := range objectPaths {
+		key := cgroupKey{namespace: objPath.Namespace, path: objPath.String()}
+		seen[key] = struct{}{}
+
 		// Forge the expected cgroup path from the object path
 		cgroupPath := forgeCgroupPath(objPath)
 
 		// Check if the cgroup path exists
 		if _, err := os.Stat(cgroupPath); os.IsNotExist(err) {
-			// Cgroup doesn't exist, skip this object
+			// The object has no cgroup at the moment. Report that, and
+			// drop the series a previous collection left behind, which
+			// would otherwise go on serving their last values and read
+			// as a cgroup that is still running.
+			pgCgroupExists.WithLabelValues(key.namespace, key.path).Set(0)
+			forgetUsage(key)
 			continue
 		}
 
 		// Set the exists metric
-		pgCgroupExists.WithLabelValues(objPath.Namespace, objPath.String()).Set(1)
+		pgCgroupExists.WithLabelValues(key.namespace, key.path).Set(1)
 
 		// Collect all metrics for this cgroup
-		m.collectCgroupMetrics(cgroupPath, objPath.Namespace, objPath.String())
+		m.collectCgroupMetrics(cgroupPath, key.namespace, key.path)
 	}
+
+	// An object gone from the cluster keeps nothing, not even an exists
+	// series. Prometheus vectors never forget a label combination on
+	// their own, so without this the endpoint grows for as long as the
+	// daemon runs, and every object it ever saw stays in it.
+	for key := range m.exported {
+		if _, ok := seen[key]; ok {
+			continue
+		}
+		forgetUsage(key)
+		pgCgroupExists.DeletePartialMatch(key.labels())
+	}
+	m.exported = seen
 }
 
 func (m *Manager) collectCgroupMetrics(cgroupPath, namespace, objPath string) {
@@ -363,8 +411,8 @@ func (m *Manager) collectCgroupMetrics(cgroupPath, namespace, objPath string) {
 
 	// Read memory.max
 	if memMax, err := readFile(cgroupPath, "memory.max"); err == nil {
-		if val, err := parseUint(memMax); err == nil {
-			pgCgroupMemoryMax.WithLabelValues(namespace, objPath).Set(float64(val))
+		if val, err := parseLimit(memMax); err == nil {
+			pgCgroupMemoryMax.WithLabelValues(namespace, objPath).Set(val)
 		}
 	}
 
@@ -516,6 +564,26 @@ func readFile(dir, filename string) (string, error) {
 
 func parseUint(s string) (uint64, error) {
 	return strconv.ParseUint(strings.TrimSpace(s), 10, 64)
+}
+
+// parseLimit parses a cgroup v2 limit file, which holds a number or the
+// literal "max" when the resource is not limited.
+//
+// Unlimited comes back as +Inf, which is what prometheus uses for no
+// limit. Returning an error instead, as parsing it as a number did, left
+// the series unpublished on every cgroup that had no limit set, which is
+// all of them by default: cgroup_memory_max_bytes was empty. And 0 would
+// not do either, being indistinguishable from a limit of zero.
+func parseLimit(s string) (float64, error) {
+	s = strings.TrimSpace(s)
+	if s == "max" {
+		return math.Inf(1), nil
+	}
+	v, err := parseUint(s)
+	if err != nil {
+		return 0, err
+	}
+	return float64(v), nil
 }
 
 func parseInt(s string) (int64, error) {
