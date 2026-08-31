@@ -89,7 +89,37 @@ func (s *Data) ObjectPaths() naming.Paths {
 	return allPaths
 }
 
-// WithSelector purges the dataset from objects not matching the selector expression
+// filter returns a view of the dataset restricted to the object paths keep
+// accepts.
+//
+// The receiver is left untouched: Cluster.Object and every node Instance map
+// are rebuilt, and everything the filter does not look at is shared with the
+// receiver. Both must therefore be treated as read-only, which is what the
+// callers do: they serialize the result.
+func (s *Data) filter(keep func(ps string) bool) *Data {
+	filtered := *s
+	filtered.Cluster.Object = make(map[string]object.Status, len(s.Cluster.Object))
+	for ps, objectData := range s.Cluster.Object {
+		if keep(ps) {
+			filtered.Cluster.Object[ps] = objectData
+		}
+	}
+	filtered.Cluster.Node = make(map[string]node.Node, len(s.Cluster.Node))
+	for nodename, nodeData := range s.Cluster.Node {
+		instances := make(map[string]instance.Instance, len(nodeData.Instance))
+		for ps, instanceData := range nodeData.Instance {
+			if keep(ps) {
+				instances[ps] = instanceData
+			}
+		}
+		nodeData.Instance = instances
+		filtered.Cluster.Node[nodename] = nodeData
+	}
+	return &filtered
+}
+
+// WithSelector returns a view of the dataset without the objects not matching
+// the selector expression. The receiver is not modified, see filter.
 func (s *Data) WithSelector(selector string) *Data {
 	if selector == "" {
 		return s
@@ -102,45 +132,24 @@ func (s *Data) WithSelector(selector string) *Data {
 		return s
 	}
 	selected := paths.StrMap()
-	for nodename, nodeData := range s.Cluster.Node {
-		for ps := range nodeData.Instance {
-			if !selected.Has(ps) {
-				delete(s.Cluster.Node[nodename].Instance, ps)
-			}
-		}
-	}
-	for ps := range s.Cluster.Object {
-		if !selected.Has(ps) {
-			delete(s.Cluster.Object, ps)
-		}
-	}
-	return s
+	return s.filter(selected.Has)
 }
 
-// WithNamespace purges the dataset from objects not matching the namespace
+// WithNamespace returns a view of the dataset without the objects not matching
+// the namespaces. The receiver is not modified, see filter.
 func (s *Data) WithNamespace(namespaces ...string) *Data {
 	if len(namespaces) == 0 {
 		return s
 	}
-	allowedNamespaces := make(map[string]any)
+	allowedNamespaces := make(map[string]any, len(namespaces))
 	for _, namespace := range namespaces {
 		allowedNamespaces[namespace] = nil
 	}
-	for nodename, nodeData := range s.Cluster.Node {
-		for ps := range nodeData.Instance {
-			p, _ := naming.ParsePath(ps)
-			if _, ok := allowedNamespaces[p.Namespace]; !ok {
-				delete(s.Cluster.Node[nodename].Instance, ps)
-			}
-		}
-	}
-	for ps := range s.Cluster.Object {
+	return s.filter(func(ps string) bool {
 		p, _ := naming.ParsePath(ps)
-		if _, ok := allowedNamespaces[p.Namespace]; !ok {
-			delete(s.Cluster.Object, ps)
-		}
-	}
-	return s
+		_, ok := allowedNamespaces[p.Namespace]
+		return ok
+	})
 }
 
 // GetNodeData extracts from the cluster dataset all information relative
