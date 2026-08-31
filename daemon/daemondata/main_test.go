@@ -12,6 +12,7 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/opensvc/om3/v3/core/cluster"
+	"github.com/opensvc/om3/v3/core/clusterdump"
 	"github.com/opensvc/om3/v3/core/hbtype"
 	"github.com/opensvc/om3/v3/core/instance"
 	"github.com/opensvc/om3/v3/core/node"
@@ -289,6 +290,29 @@ func TestDaemonData(t *testing.T) {
 			remoteNodeInstanceX := cluster.Node["node2"].Instance["foo"]
 			require.Equal(t, status.Down, remoteNodeInstanceX.Status.Avail)
 			require.Equal(t, instance.MonitorStateStartProgress, remoteNodeInstanceX.Monitor.State)
+		})
+		require.False(t, t.Failed()) // fail on first error
+
+		// ClusterDataJSON exists to spare the callers that put the dataset
+		// on the wire two of the three serializations they were paying. It
+		// is only worth anything if what it returns is what they would
+		// have sent, byte for byte: the collector feed and
+		// GET /daemon/status both answer with it now.
+		t.Run("ClusterDataJSON marshals what ClusterData would have", func(t *testing.T) {
+			b, err := bus.ClusterDataJSON()
+			require.NoError(t, err)
+			require.NotEmpty(t, b)
+
+			want, err := json.Marshal(bus.ClusterData())
+			require.NoError(t, err)
+			require.Equal(t, string(want), string(b))
+
+			// And it has to be the real dataset, not an empty one that
+			// would compare equal to an equally empty copy.
+			var data clusterdump.Data
+			require.NoError(t, json.Unmarshal(b, &data))
+			require.NotEmpty(t, data.Cluster.Node, "the comparison above proves nothing on an empty dataset")
+			require.Equal(t, "cluster1", data.Cluster.Config.Name)
 		})
 		require.False(t, t.Failed()) // fail on first error
 	})

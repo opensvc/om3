@@ -12,7 +12,6 @@ import (
 	"time"
 
 	"github.com/opensvc/om3/v3/core/client"
-	"github.com/opensvc/om3/v3/core/clusterdump"
 	"github.com/opensvc/om3/v3/core/naming"
 	"github.com/opensvc/om3/v3/core/oc3path"
 	"github.com/opensvc/om3/v3/daemon/daemonauth"
@@ -33,11 +32,14 @@ type (
 
 	// postFeedDaemonStatus describes the POST feed daemon status payload
 	postFeedDaemonStatus struct {
-		PreviousUpdatedAt time.Time         `json:"previous_updated_at"`
-		UpdatedAt         time.Time         `json:"updated_at"`
-		Data              *clusterdump.Data `json:"data"`
-		Changes           []string          `json:"changes"`
-		Version           string            `json:"version"`
+		PreviousUpdatedAt time.Time `json:"previous_updated_at"`
+		UpdatedAt         time.Time `json:"updated_at"`
+		// Data is the cluster dataset as daemondata marshalled it. Raw,
+		// so that embedding it here copies bytes instead of walking the
+		// dataset a second time.
+		Data    json.RawMessage `json:"data"`
+		Changes []string        `json:"changes"`
+		Version string          `json:"version"`
 	}
 
 	// PingStatusResponse used to decode the response of post feed daemon status and ping
@@ -249,15 +251,19 @@ func (t *T) postStatus() error {
 
 		path = oc3path.FeedDaemonStatus
 	)
+	data, err := t.clusterData.ClusterDataJSON()
+	if err != nil {
+		return fmt.Errorf("%s %s marshal cluster data: %w", method, path, err)
+	}
+	if len(data) == 0 {
+		return fmt.Errorf("%s %s abort on empty cluster data", method, path)
+	}
 	body := postFeedDaemonStatus{
 		PreviousUpdatedAt: t.previousUpdatedAt,
 		UpdatedAt:         now,
-		Data:              t.clusterData.ClusterData(),
+		Data:              data,
 		Changes:           xmap.Keys(t.daemonStatusChange),
 		Version:           t.version,
-	}
-	if body.Data == nil {
-		return fmt.Errorf("%s %s abort on empty cluster data", method, path)
 	}
 	if b, err := json.Marshal(body); err != nil {
 		return fmt.Errorf("post daemon status body: %s", err)

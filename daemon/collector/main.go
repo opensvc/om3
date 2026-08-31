@@ -145,6 +145,7 @@ type (
 
 	clusterDataer interface {
 		ClusterData() *clusterdump.Data
+		ClusterDataJSON() ([]byte, error)
 	}
 
 	changesData struct {
