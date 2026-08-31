@@ -62,6 +62,13 @@ type (
 	}
 )
 
+const (
+	// netnsRunDir is iproute2's NETNS_RUN_DIR, where "ip netns add" binds the
+	// network namespaces. Use the /run canonical path, not the /var/run
+	// compatibility symlink.
+	netnsRunDir = "/run/netns"
+)
+
 var (
 	ErrNoIPAddrAvail = errors.New("no ip address available")
 	ErrDupIPAlloc    = errors.New("duplicate ip allocation")
@@ -119,7 +126,7 @@ func (t *T) objectNSPID() string {
 }
 
 func (t *T) objectNSPIDFile() string {
-	return "/var/run/netns/" + t.objectNSPID()
+	return filepath.Join(netnsRunDir, t.objectNSPID())
 }
 
 func (t *T) getObjectNSPID() (string, error) {
@@ -303,7 +310,7 @@ func (t *T) purgeCNIVarFile(p string) error {
 	line := strings.Fields(string(buff))[0]
 	_, err = strconv.Atoi(line)
 	if _, err := strconv.Atoi(line); err != nil {
-		runNetNSFile := fmt.Sprintf("/run/netns/%s", line)
+		runNetNSFile := filepath.Join(netnsRunDir, line)
 		if _, err := os.Stat(runNetNSFile); err == nil || !errors.Is(err, os.ErrNotExist) {
 			// the process is still alive, don't remove
 			return nil
