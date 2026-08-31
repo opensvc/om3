@@ -44,6 +44,10 @@ type (
 
 		// dedup holds the frames the other hb links already delivered
 		dedup *hbdedup.Cache
+
+		// sent holds this node's own recent message ids, so its own
+		// multicast can be dropped on the fragment header
+		sent *selfIDs
 	}
 	assembly map[string]msgMap
 	msgMap   map[string]dataMap
@@ -162,6 +166,14 @@ func (t *rx) recv(src *net.UDPAddr, n int, b []byte) {
 		t.log.Tracef("not a udp message frame")
 		return
 	}
+	if t.sent.has(f.MsgID) {
+		// Our own multicast, coming back to us. Dropped here rather than
+		// after the message it belongs to has been reassembled and
+		// decrypted, which is where the nodename that identifies it as
+		// ours can first be read.
+		t.log.Tracef("recv: drop own fragment")
+		return
+	}
 	// verify message DoS
 	if msgs, ok := t.assembly[s]; !ok {
 		t.assembly[s] = msgMap{}
@@ -242,9 +254,13 @@ func (t *rx) recv(src *net.UDPAddr, n int, b []byte) {
 		return
 	}
 	if data.Nodename == hostname.Hostname() {
-		// our own multicast, coming back to us. Not recorded as delivered:
-		// it never reaches the daemon, and a peer frame can't collide with
-		// it on the nodename the dedup would then serve.
+		// Our own multicast, coming back to us. The fragment header check
+		// above catches these first now; this stays as the backstop for
+		// what it cannot see, a datagram from a tx that has since
+		// restarted, or one whose id has aged out of the ring. Not
+		// recorded as delivered: it never reaches the daemon, and a peer
+		// frame can't collide with it on the nodename the dedup would
+		// then serve.
 		t.log.Tracef("recv: drop msg from self")
 		return
 	}
@@ -257,9 +273,10 @@ func (t *rx) recv(src *net.UDPAddr, n int, b []byte) {
 	t.dedup.Delivered(key, data.Nodename)
 }
 
-func newRx(ctx context.Context, name string, nodes []string, udpAddr *net.UDPAddr, intf *net.Interface, timeout time.Duration) *rx {
+func newRx(ctx context.Context, name string, nodes []string, udpAddr *net.UDPAddr, intf *net.Interface, timeout time.Duration, sent *selfIDs) *rx {
 	id := name + ".rx"
 	return &rx{
+		sent:    sent,
 		ctx:     ctx,
 		id:      id,
 		nodes:   nodes,

@@ -108,3 +108,43 @@ func BenchmarkDecodeFragmentJSON(b *testing.B) {
 		}
 	}
 }
+
+func TestSelfIDs(t *testing.T) {
+	s := newSelfIDs()
+	assert.False(t, s.has("a"), "an empty ring recognises nothing")
+
+	s.add("a")
+	assert.True(t, s.has("a"))
+	assert.False(t, s.has("b"))
+
+	// Adding the same id twice must not consume two ring slots, or a
+	// retransmitted message would evict ids still in flight.
+	for range maxSelfIDs * 2 {
+		s.add("a")
+	}
+	assert.True(t, s.has("a"))
+
+	// The oldest goes when the ring wraps.
+	for i := range maxSelfIDs {
+		s.add(string(rune('A' + i)))
+	}
+	assert.False(t, s.has("a"), "the first id must have been evicted")
+	assert.True(t, s.has(string(rune('A'+maxSelfIDs-1))), "the newest is kept")
+}
+
+func TestSelfIDsIsConcurrent(t *testing.T) {
+	// The tx adds from its send goroutine, one per message, while the rx
+	// asks on every datagram it reads. Run under -race.
+	s := newSelfIDs()
+	done := make(chan struct{})
+	go func() {
+		defer close(done)
+		for i := range 1000 {
+			s.add(string(rune(i)))
+		}
+	}()
+	for range 1000 {
+		s.has("whatever")
+	}
+	<-done
+}
