@@ -3,7 +3,6 @@ package sgcp
 import (
 	"context"
 	"encoding/json"
-	"net"
 	"net/http"
 	"net/http/httptest"
 	"strings"
@@ -49,16 +48,7 @@ func TestDo(t *testing.T) {
 		}
 	})
 
-	ts := httptest.NewUnstartedServer(handler)
-
-	ln, err := net.Listen("tcp", "127.0.0.1:1215")
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	ts.EnableHTTP2 = true
-	ts.Listener = ln
-	ts.StartTLS()
+	ts := httptest.NewTLSServer(handler)
 	defer ts.Close()
 
 	client := ts.Client()
@@ -73,11 +63,12 @@ func TestDo(t *testing.T) {
 	ctx := context.Background()
 
 	// First request should hit the server
-	code, data1, err := api.do(ctx, "GET", "https://127.0.0.1:1215/foo/bar", nil, "scope1", "scope2")
+	url := ts.URL + "/foo/bar"
+	code, data1, err := api.do(ctx, "GET", url, nil, "scope1", "scope2")
 	require.Equal(t, 200, code)
 	require.NoError(t, err)
 	t.Logf("First request result: %s", string(data1))
-	assert.Equal(t, string([]byte(`{"test":["test"]}`)), strings.TrimSuffix(string(data1), "\n"))
+	assert.Equal(t, `{"test":["test"]}`, strings.TrimSuffix(string(data1), "\n"))
 }
 
 // TestCheckStatusCode tests the status code checking
