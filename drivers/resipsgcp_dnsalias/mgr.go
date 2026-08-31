@@ -2,6 +2,7 @@ package resipsgcp_dnsalias
 
 import (
 	"context"
+	"crypto/sha256"
 	"encoding/json"
 	"fmt"
 	"net/http"
@@ -175,7 +176,15 @@ func (a *alias) Equal(b *alias) bool {
 }
 
 func (m *mgr) cacheSig() string {
-	return fmt.Sprintf("dnsalias:%s:%s:%s", m.alias.ZoneID, m.alias.Name, m.alias.UUID)
+	data := fmt.Sprintf("%s|%s|%s|%s|%s",
+		m.Endpoint,
+		m.Secret,
+		m.alias.ZoneID,
+		m.alias.Name,
+		m.alias.UUID,
+	)
+	hash := sha256.Sum256([]byte(data))
+	return fmt.Sprintf("dnsalias:%x", hash)
 }
 
 func (m *mgr) cacheClear() error {
