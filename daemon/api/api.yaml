@@ -5325,8 +5325,15 @@ components:
 
     DaemonListenerName:
       type: string
-      example: http-inet
-      description: Listener name
+      example: api.inet
+      enum:
+        - api.ux
+        - api.inet
+      description: |
+        Listener name.
+
+        The listeners are named the same here and in the audit subsystem
+        list: api.ux serves the unix socket, api.inet the tcp port.
 
     DaemonLocal:
       type: object
@@ -6224,11 +6231,17 @@ components:
       x-go-type: LogControl
       required:
         - level
+      description: |
+        The level below which the daemon logs are not emitted.
+
+        The daemon writes to journald, which is not given anything below
+        the info level, so info is the most verbose value here. A debug
+        or trace feed is obtained from POST /daemon/audit, which reads
+        the messages before they reach a writer.
       properties:
         level:
           type: string
           enum:
-            - debug
             - info
             - warn
             - error

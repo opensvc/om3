@@ -90,6 +90,24 @@ func (e CapabilityListKind) Valid() bool {
 	}
 }
 
+// Defines values for DaemonListenerName.
+const (
+	ApiInet DaemonListenerName = "api.inet"
+	ApiUx   DaemonListenerName = "api.ux"
+)
+
+// Valid indicates whether the value is a known member of the DaemonListenerName enum.
+func (e DaemonListenerName) Valid() bool {
+	switch e {
+	case ApiInet:
+		return true
+	case ApiUx:
+		return true
+	default:
+		return false
+	}
+}
+
 // Defines values for DataKeyListKind.
 const (
 	DataKeyListKindDataKeyList DataKeyListKind = "DataKeyList"
@@ -1062,8 +1080,11 @@ type DaemonListener struct {
 	UpdatedAt    time.Time `json:"updated_at"`
 }
 
-// DaemonListenerName Listener name
-type DaemonListenerName = string
+// DaemonListenerName Listener name.
+//
+// The listeners are named the same here and in the audit subsystem
+// list: api.ux serves the unix socket, api.inet the tcp port.
+type DaemonListenerName string
 
 // DaemonPid defines model for DaemonPid.
 type DaemonPid struct {
@@ -1395,7 +1416,12 @@ type KeywordListKind string
 // Kind defines model for Kind.
 type Kind = naming.Kind
 
-// LogControlBody defines model for LogControlBody.
+// LogControlBody The level below which the daemon logs are not emitted.
+//
+// The daemon writes to journald, which is not given anything below
+// the info level, so info is the most verbose value here. A debug
+// or trace feed is obtained from POST /daemon/audit, which reads
+// the messages before they reach a writer.
 type LogControlBody = LogControl
 
 // LogList responseLogList is a list of sse
@@ -2352,7 +2378,10 @@ type InPathHeartbeatName = DaemonHeartbeatName
 // InPathKind defines model for inPathKind.
 type InPathKind = Kind
 
-// InPathListenerName Listener name
+// InPathListenerName Listener name.
+//
+// The listeners are named the same here and in the audit subsystem
+// list: api.ux serves the unix socket, api.inet the tcp port.
 type InPathListenerName = DaemonListenerName
 
 // InPathName defines model for inPathName.

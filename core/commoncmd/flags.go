@@ -134,11 +134,11 @@ func FlagDaemonHeartbeatName(flags *pflag.FlagSet, p *string) {
 }
 
 func FlagDaemonListenerName(flags *pflag.FlagSet, p *string) {
-	flags.StringVar(p, "name", "", "listener name http-inet|http-ux")
+	flags.StringVar(p, "name", "", "listener name api.inet|api.ux")
 }
 
 func FlagDaemonLogLevel(flags *pflag.FlagSet, p *string) {
-	flags.StringVar(p, "level", "", "trace, debug, info, warn, error, fatal, panic, none")
+	flags.StringVar(p, "level", "", "info, warn, error, fatal, panic, none")
 }
 
 func FlagDepth(flags *pflag.FlagSet, p *int) {

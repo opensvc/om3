@@ -9,6 +9,27 @@ import (
 	"github.com/opensvc/om3/v3/core/rawconfig"
 )
 
+// The listeners are named the same wherever they are named: the audit
+// subsystem a client selects with "om daemon audit --sub", the label the
+// listener subscribes to daemon control messages with, and the name the
+// api takes in the path of the listener actions. They used to differ,
+// so an action addressed to the name the audit taxonomy uses was
+// accepted, queued, and matched by no subscriber.
+const (
+	// ListenerNameUX is the listener serving the unix socket.
+	ListenerNameUX = "api.ux"
+
+	// ListenerNameInet is the listener serving the tcp port.
+	ListenerNameInet = "api.inet"
+
+	// ListenerNameFamily is the parent of both, for a client selecting
+	// the whole api rather than one of its listeners.
+	ListenerNameFamily = "api"
+)
+
+// ListenerNames are the listeners an api action may be addressed to.
+var ListenerNames = []string{ListenerNameUX, ListenerNameInet}
+
 var (
 	HTTPPort = 1215
 

@@ -8,6 +8,7 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/opensvc/om3/v3/core/client"
+	"github.com/opensvc/om3/v3/daemon/api"
 )
 
 type (
@@ -35,7 +36,7 @@ func NewCmdDaemonListenerRestart() *cobra.Command {
 
 func (t *CmdDaemonListenerRestart) Run() error {
 	fn := func(ctx context.Context, c *client.T, nodename string) (response *http.Response, err error) {
-		return c.PostDaemonListenerRestart(ctx, nodename, t.Name)
+		return c.PostDaemonListenerRestart(ctx, nodename, api.InPathListenerName(t.Name))
 	}
 	return t.CmdDaemonSubAction.Run(fn)
 }
