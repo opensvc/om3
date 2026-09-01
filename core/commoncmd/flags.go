@@ -129,14 +129,6 @@ func FlagDaemonHeartbeatFilter(flags *pflag.FlagSet, p *string) {
 	flags.StringVar(p, "name", "", "filter on heartbeat name or stream name (ex: hb#1, hb#1.rx, 1, 1.rx)")
 }
 
-func FlagDaemonHeartbeatName(flags *pflag.FlagSet, p *string) {
-	flags.StringVar(p, "name", "", "stream name (ex: 1.rx)")
-}
-
-func FlagDaemonListenerName(flags *pflag.FlagSet, p *string) {
-	flags.StringVar(p, "name", "", "listener name api.inet|api.ux")
-}
-
 func FlagDaemonLogLevel(flags *pflag.FlagSet, p *string) {
 	flags.StringVar(p, "level", "", "info, warn, error, fatal, panic, none")
 }

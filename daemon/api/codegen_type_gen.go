@@ -2761,8 +2761,9 @@ type PostDaemonAuditParams struct {
 	// Level the audit level
 	Level *PostDaemonAuditParamsLevel `form:"level,omitempty" json:"level,omitempty"`
 
-	// Sub the names of the subsystems to audit
-	Sub *string `form:"sub,omitempty" json:"sub,omitempty"`
+	// Sub The names of the subsystems to audit, repeated once per
+	// subsystem. All of them are audited when none is named.
+	Sub *[]string `form:"sub,omitempty" json:"sub,omitempty"`
 
 	// Preempt preempt the current audit if any is running.
 	Preempt *bool `form:"preempt,omitempty" json:"preempt,omitempty"`

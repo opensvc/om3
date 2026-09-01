@@ -20,16 +20,16 @@ type (
 func NewCmdDaemonHeartbeatStart() *cobra.Command {
 	options := CmdDaemonHeartbeatStart{}
 	cmd := &cobra.Command{
-		Use:   "start",
+		Use:   "start NAME",
 		Short: fmt.Sprintf("start a daemon heartbeat rx or tx"),
+		Args:  cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
+			options.Name = args[0]
 			return options.Run()
 		},
 	}
 	flags := cmd.Flags()
 	FlagNodeSelector(flags, &options.NodeSelector)
-	FlagDaemonHeartbeatName(flags, &options.Name)
-	cmd.MarkFlagRequired("name")
 	return cmd
 }
 

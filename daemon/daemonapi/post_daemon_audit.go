@@ -10,7 +10,6 @@ import (
 	"net/http"
 	"slices"
 	"strconv"
-	"strings"
 	"time"
 
 	"github.com/labstack/echo/v4"
@@ -31,9 +30,6 @@ func (a *DaemonAPI) PostDaemonAudit(ctx echo.Context, nodename string, params ap
 	}
 	if params.Level == nil {
 		return JSONProblemf(ctx, http.StatusBadRequest, "Invalid parameters", "Missing level param")
-	}
-	if params.Sub == nil {
-		return JSONProblemf(ctx, http.StatusBadRequest, "Invalid parameters", "Missing sub param")
 	}
 	nodename = a.parseNodename(nodename)
 	if nodename == a.localhost || nodename == "localhost" {
@@ -141,8 +137,8 @@ func (a *DaemonAPI) getLocalDaemonAudit(ctx echo.Context, nodename string, param
 	}
 
 	var subsystems []string
-	if *params.Sub != "" {
-		subsystems = strings.Split(*params.Sub, ",")
+	if params.Sub != nil {
+		subsystems = *params.Sub
 	}
 
 	if len(subsystems) == 0 || slices.Contains(subsystems, "pubsub") {

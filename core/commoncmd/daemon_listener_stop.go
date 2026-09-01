@@ -21,16 +21,17 @@ type (
 func NewCmdDaemonListenerStop() *cobra.Command {
 	options := CmdDaemonListenerStop{}
 	cmd := &cobra.Command{
-		Use:   "stop",
-		Short: fmt.Sprintf("stop a daemon listener"),
+		Use:               "stop NAME",
+		Short:             fmt.Sprintf("stop a daemon listener"),
+		Args:              cobra.ExactArgs(1),
+		ValidArgsFunction: validListenerNames,
 		RunE: func(cmd *cobra.Command, args []string) error {
+			options.Name = args[0]
 			return options.Run()
 		},
 	}
 	flags := cmd.Flags()
 	FlagNodeSelector(flags, &options.NodeSelector)
-	FlagDaemonListenerName(flags, &options.Name)
-	cmd.MarkFlagRequired("name")
 	return cmd
 }
 

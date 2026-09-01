@@ -1418,10 +1418,16 @@ paths:
             enum: [error, warn, info, debug, trace]
         - in: query
           name: sub
-          description: the names of the subsystems to audit
+          description: |
+            The names of the subsystems to audit, repeated once per
+            subsystem. All of them are audited when none is named.
+          style: form
+          explode: true
           schema:
-            type: string
-            example: scheduler
+            type: array
+            items:
+              type: string
+            example: [scheduler, "imon:*"]
         - in: query
           name: preempt
           description: preempt the current audit if any is running.
