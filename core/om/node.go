@@ -180,6 +180,7 @@ func init() {
 		newCmdNodeDrivers(),
 		newCmdNodeLogs(),
 		newCmdNodeList(),
+		commoncmd.NewCmdNodeMetrics(),
 		newCmdNodePRKey(),
 		newCmdNodePushasset(),
 		newCmdNodePushdisk(),
