@@ -53,7 +53,6 @@ func init() {
 		commoncmd.NewCmdDaemonListenerRestart(),
 		commoncmd.NewCmdDaemonListenerStart(),
 		commoncmd.NewCmdDaemonListenerStop(),
-		commoncmd.NewCmdDaemonListenerLog(),
 	)
 
 	cmdDaemonRelay.AddCommand(

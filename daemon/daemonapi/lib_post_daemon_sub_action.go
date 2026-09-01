@@ -19,13 +19,6 @@ func (a *DaemonAPI) postDaemonSubAction(ctx echo.Context, nodename api.InPathNod
 	case "restart":
 	case "start":
 	case "stop":
-	case "log-level-panic":
-	case "log-level-fatal":
-	case "log-level-error":
-	case "log-level-warn":
-	case "log-level-info":
-	case "log-level-debug":
-	case "log-level-trace":
 	default:
 		return JSONProblemf(ctx, http.StatusBadRequest, "Invalid parameter", "unexpected action: %s", action)
 	}

@@ -3259,9 +3259,6 @@ type PostInstanceProgressJSONRequestBody = PostInstanceProgress
 // PostInstanceStatusJSONRequestBody defines body for PostInstanceStatus for application/json ContentType.
 type PostInstanceStatusJSONRequestBody = InstanceStatus
 
-// PostDaemonListenerLogControlJSONRequestBody defines body for PostDaemonListenerLogControl for application/json ContentType.
-type PostDaemonListenerLogControlJSONRequestBody = LogControlBody
-
 // PostDaemonLogControlJSONRequestBody defines body for PostDaemonLogControl for application/json ContentType.
 type PostDaemonLogControlJSONRequestBody = LogControlBody
 

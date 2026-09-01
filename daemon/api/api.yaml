@@ -1711,37 +1711,6 @@ paths:
         500:
           $ref: '#/components/responses/500'
 
-  /api/node/name/{nodename}/daemon/listener/name/{name}/log/control:
-    post:
-      operationId: PostDaemonListenerLogControl
-      parameters:
-        - $ref: '#/components/parameters/inPathNodeName'
-        - $ref: '#/components/parameters/inPathListenerName'
-      tags:
-        - node / daemon
-      security:
-        - basicAuth: []
-        - bearerAuth: []
-      requestBody:
-        description: |
-          Set a daemon listener log level.
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/LogControlBody'
-      responses:
-        200:
-          $ref: '#/components/responses/200'
-        400:
-          $ref: '#/components/responses/400'
-        401:
-          $ref: '#/components/responses/401'
-        403:
-          $ref: '#/components/responses/403'
-        500:
-          $ref: '#/components/responses/500'
-
   /api/node/name/{nodename}/daemon/log/control:
     get:
       operationId: GetDaemonLogControl
