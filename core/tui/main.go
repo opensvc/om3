@@ -1788,13 +1788,15 @@ func (t *App) onRuneH(event *tcell.EventKey) {
  
  Misc Shortcuts
  
-   c                    Show object configuration
+   c                    Show cluster, node or object configuration
+   e                    Edit cluster, node or object configuration
    h                    Show this help
-   l                    Show node, object or instance logs
+   l                    Show cluster, node, object or instance logs
    q                    Quit
    r                    Refresh the instance status
-   t                    Enter the container
-   Enter                Show the detailed instance status
+   t                    Enter the container (dedicated session)
+   T                    Enter the container (shared session)
+   Enter                Drill down the selected item
    ESC                  Close popup
 
  Commands:
