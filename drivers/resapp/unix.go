@@ -285,38 +285,41 @@ func (t *T) replaceVolumeHead(ctx context.Context, s string) (string, error) {
 	return s, nil
 }
 
-// CmdArgs returns the command argv of an action
-func (t *T) CmdArgs(ctx context.Context, s string, action string) ([]string, error) {
+// CmdArgs returns the command argv of an action, and the identity it is
+// to run as.
+func (t *T) CmdArgs(ctx context.Context, s string, action string) ([]string, execCredential, error) {
+	var cred execCredential
 	if len(s) == 0 {
 		t.Log().Tracef("nothing to do for action '%v'", action)
-		return nil, nil
+		return nil, cred, nil
 	}
 	baseCommandSlice, err := t.BaseCmdArgs(ctx, s, action)
 	if err != nil || baseCommandSlice == nil {
-		return nil, err
+		return nil, cred, err
 	}
 	prog := ""
 	if prog, err = executable.Path(); err != nil {
-		return nil, fmt.Errorf("lookup prog: %w", err)
+		return nil, cred, fmt.Errorf("lookup prog: %w", err)
 	}
+	cred = t.credential(baseCommandSlice)
 	var args []string
 	args = append(args, prog, "exec")
-	args = append(args, t.toCaps().Argv()...)
+	args = append(args, t.toCaps(cred).Argv()...)
 	args = append(args, "--")
 	if t.NetNS != "" {
 		netNS, err := t.NetNSPath(ctx)
 		if err != nil {
-			return args, err
+			return args, cred, err
 		}
 		args = append(args, "ip", "netns", "exec", filepath.Base(netNS))
 	}
 	args = append(args, baseCommandSlice...)
-	return args, nil
+	return args, cred, nil
 }
 
 // GetFuncOpts returns a list of functional options to use with command.New()
 func (t *T) GetFuncOpts(ctx context.Context, s string, action string) ([]funcopt.O, error) {
-	cmdArgs, err := t.CmdArgs(ctx, s, action)
+	cmdArgs, cred, err := t.CmdArgs(ctx, s, action)
 	if err != nil || cmdArgs == nil {
 		return nil, err
 	}
@@ -331,6 +334,9 @@ func (t *T) GetFuncOpts(ctx context.Context, s string, action string) ([]funcopt
 	if err != nil {
 		return nil, err
 	}
+	// The identity variables come after getEnv, so that an env keyword
+	// naming one of them still wins.
+	env = append(cred.env(), env...)
 	if len(cmdArgs) == 0 {
 		return nil, fmt.Errorf("no command for action %s", action)
 	}
