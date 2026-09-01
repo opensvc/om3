@@ -302,19 +302,19 @@ var (
 	publicationTotal = promauto.NewCounter(
 		prometheus.CounterOpts{
 			Name: "opensvc_pubsub_publication_total",
-			Help: "The total number of pubsub publications",
+			Help: "The total number of pubsub publications (per message kind at /metrics/pubsub)",
 		})
 
 	publicationPushedTotal = promauto.NewCounter(
 		prometheus.CounterOpts{
 			Name: "opensvc_pubsub_publication_pushed_total",
-			Help: "The total number of pubsub publications pushed to a subscriber",
+			Help: "The total number of pubsub publications pushed to a subscriber (per subscription filter key at /metrics/pubsub)",
 		})
 
 	subscriptionFilterTotal = promauto.NewCounter(
 		prometheus.CounterOpts{
 			Name: "opensvc_pubsub_subscription_filter_total",
-			Help: "The total number of pubsub subscription filter operations",
+			Help: "The total number of pubsub subscription filter operations (per message kind at /metrics/pubsub)",
 		})
 
 	// filterKeys reports how many distinct filter keys
@@ -324,7 +324,7 @@ var (
 	filterKeys = promauto.NewGauge(
 		prometheus.GaugeOpts{
 			Name: "opensvc_pubsub_filterkeys",
-			Help: "The number of distinct pubsub filter keys published to",
+			Help: "The number of distinct pubsub filter keys published to (the keys themselves at /metrics/pubsub)",
 		})
 
 	subscriptionTotal = promauto.NewCounterVec(

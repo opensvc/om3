@@ -120,9 +120,9 @@ var (
 	cgroupsDesc = prometheus.NewDesc("opensvc_pg_cgroups",
 		"The number of cgroups reported at /metrics/pg", nil, nil)
 	objectsWithoutCgroupDesc = prometheus.NewDesc("opensvc_pg_objects_without_cgroup",
-		"The number of objects with no cgroup", nil, nil)
+		"The number of objects with no cgroup (the cgroups that do exist are at /metrics/pg)", nil, nil)
 	memoryUtilizationMaxDesc = prometheus.NewDesc("opensvc_pg_cgroup_memory_utilization_max_ratio",
-		"The highest memory usage over memory limit ratio among the limited cgroups", nil, nil)
+		"The highest memory usage over memory limit ratio among the limited cgroups (per cgroup at /metrics/pg)", nil, nil)
 )
 
 // Manager manages the collection and reporting of cgroup metrics

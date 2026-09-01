@@ -138,7 +138,7 @@ var (
 			Namespace: "opensvc",
 			Subsystem: "scheduler",
 			Name:      "runs_total",
-			Help:      "The number of schedule entry runs, by action",
+			Help:      "The number of schedule entry runs, by action (per object at /metrics/scheduler)",
 		}, []string{"action"})
 )
 
