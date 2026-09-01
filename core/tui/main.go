@@ -1793,6 +1793,7 @@ func (t *App) onRuneH(event *tcell.EventKey) {
    l                    Show node, object or instance logs
    q                    Quit
    r                    Refresh the instance status
+   t                    Enter the container
    Enter                Show the detailed instance status
    ESC                  Close popup
 
@@ -1998,25 +1999,27 @@ func (t *App) skipIfInstanceNotUpdated() bool {
 func (t *App) onRuneE(event *tcell.EventKey) {
 	t.app.Suspend(func() {
 		row, col := t.objects.GetSelection()
-		switch {
-		case !t.viewPath.IsZero() && t.viewKey != "":
+		if !t.viewPath.IsZero() && t.viewKey != "" {
 			cmd := oxcmd.CmdObjectKeyEdit{
 				Name: t.viewKey,
 			}
 			if err := cmd.DoRemote(t.viewPath, t.client); err != nil {
 				t.errorf("%s", err)
 			}
-		case !t.viewPath.IsZero():
+			return
+		}
+		switch configTargetFor(t.viewPath, t.viewNode, row, col) {
+		case configTargetObject:
 			cmd := oxcmd.CmdObjectConfigEdit{}
 			if err := cmd.DoRemote(t.viewPath, t.client); err != nil {
 				t.errorf("%s", err)
 			}
-		case t.viewNode != "":
+		case configTargetNode:
 			cmd := oxcmd.CmdNodeConfigEdit{}
 			if err := cmd.DoRemote(t.viewNode, t.client); err != nil {
 				t.errorf("%s", err)
 			}
-		case row == 0 && col == 1:
+		case configTargetCluster:
 			cmd := oxcmd.CmdObjectConfigEdit{}
 			if err := cmd.DoRemote(naming.Cluster, t.client); err != nil {
 				t.errorf("%s", err)
@@ -2159,15 +2162,48 @@ func (t *App) openTtyTerminal(insecure bool, url string) {
 	})
 }
 
+// configTarget is the configuration the highlighted cell points at.
+type configTarget int
+
+const (
+	configTargetNone configTarget = iota
+	configTargetObject
+	configTargetNode
+	configTargetCluster
+)
+
+// configTargetFor decides which configuration a cell is about.
+//
+// The precedence is the whole point of it, and the reason it is one
+// function rather than a switch written out at each place that needs it.
+// An instance cell has both a path and a node, because the selection
+// handler sets them from the row and the column independently, and what
+// is wanted there is the object's configuration, not the node's. 'c' and
+// 'e' each had their own copy of this and disagreed: 'c' showed the node
+// configuration for the very cell 'e' would edit the object
+// configuration of.
+func configTargetFor(path naming.Path, node string, row, col int) configTarget {
+	switch {
+	case !path.IsZero():
+		return configTargetObject
+	case node != "":
+		return configTargetNode
+	case row == 0 && col == 1:
+		return configTargetCluster
+	default:
+		return configTargetNone
+	}
+}
+
 func (t *App) updateConfigView() {
 	row, col := t.objects.GetSelection()
-	switch {
-	case t.viewNode != "":
-		t.updateNodeConfigView()
-	case row == 0 && col == 1:
-		t.updateClusterConfigView()
-	case !t.viewPath.IsZero():
+	switch configTargetFor(t.viewPath, t.viewNode, row, col) {
+	case configTargetObject:
 		t.updateObjectConfigView()
+	case configTargetNode:
+		t.updateNodeConfigView()
+	case configTargetCluster:
+		t.updateClusterConfigView()
 	}
 }
 
