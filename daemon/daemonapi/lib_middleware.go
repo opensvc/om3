@@ -195,9 +195,13 @@ func AuthMiddleware(parent context.Context) echo.MiddlewareFunc {
 			user, err := strategies.AuthenticateRequest(req.WithContext(reqCtx))
 			if err != nil {
 				r := c.Request()
+				// The error says what each strategy made of the request,
+				// which is for the log and not for the caller: it tells
+				// an unauthenticated client whether a username exists,
+				// and which strategies this listener runs.
 				log.Errorf("authenticating request from %s: %s", r.RemoteAddr, err)
 				code := http.StatusUnauthorized
-				return JSONProblem(c, code, http.StatusText(code), err.Error())
+				return JSONProblem(c, code, http.StatusText(code), "Invalid or missing credentials")
 			}
 			log.Tracef("user %s authenticated", user.Username)
 			c.Set("user", user)
