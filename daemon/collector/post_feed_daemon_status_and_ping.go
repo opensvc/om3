@@ -9,6 +9,7 @@ import (
 	"io"
 	"io/fs"
 	"net/http"
+	"strings"
 	"time"
 
 	"github.com/opensvc/om3/v3/core/client"
@@ -34,12 +35,10 @@ type (
 	postFeedDaemonStatus struct {
 		PreviousUpdatedAt time.Time `json:"previous_updated_at"`
 		UpdatedAt         time.Time `json:"updated_at"`
-		// Data is the cluster dataset as daemondata marshalled it. Raw,
-		// so that embedding it here copies bytes instead of walking the
-		// dataset a second time.
-		Data    json.RawMessage `json:"data"`
-		Changes []string        `json:"changes"`
-		Version string          `json:"version"`
+		// The cluster dataset is not a field here: see reader. It is
+		// spliced into the body rather than handed to encoding/json.
+		Changes []string `json:"changes"`
+		Version string   `json:"version"`
 	}
 
 	// PingStatusResponse used to decode the response of post feed daemon status and ping
@@ -48,6 +47,34 @@ type (
 		NodeWithActionQueued *[]string `json:"node_with_action_queued"`
 	}
 )
+
+// reader returns the request body, with data spliced in as its "data"
+// field, without encoding/json ever seeing the dataset.
+//
+// A json.RawMessage field is the obvious way and is the wrong one:
+// Marshal compacts a RawMessage, validating and copying it, and on a
+// 600KB dataset that costs more than the deep copy it was meant to
+// spare. Measured over a 103 object cluster: 8.2ms for the RawMessage
+// field, 5.5ms for marshalling the dataset struct outright, 4.3ms for
+// splicing.
+//
+// The envelope is a json object with at least one field, none of them
+// omitempty, so it ends in "}" and the dataset can go in before it.
+func (b postFeedDaemonStatus) reader(data []byte) (io.Reader, error) {
+	envelope, err := json.Marshal(b)
+	if err != nil {
+		return nil, err
+	}
+	if n := len(envelope); n < 2 || envelope[n-1] != '}' {
+		return nil, fmt.Errorf("unexpected daemon status envelope: %.32s", envelope)
+	}
+	return io.MultiReader(
+		bytes.NewReader(envelope[:len(envelope)-1]),
+		strings.NewReader(`,"data":`),
+		bytes.NewReader(data),
+		strings.NewReader("}"),
+	), nil
+}
 
 func (t *T) sendCollectorData() error {
 	if t.featurePostChange {
@@ -261,14 +288,11 @@ func (t *T) postStatus() error {
 	body := postFeedDaemonStatus{
 		PreviousUpdatedAt: t.previousUpdatedAt,
 		UpdatedAt:         now,
-		Data:              data,
 		Changes:           xmap.Keys(t.daemonStatusChange),
 		Version:           t.version,
 	}
-	if b, err := json.Marshal(body); err != nil {
+	if ioReader, err = body.reader(data); err != nil {
 		return fmt.Errorf("post daemon status body: %s", err)
-	} else {
-		ioReader = bytes.NewReader(b)
 	}
 
 	ctx, cancel := context.WithTimeout(t.ctx, defaultPostMaxDuration)
