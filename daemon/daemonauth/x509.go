@@ -3,7 +3,6 @@ package daemonauth
 import (
 	"context"
 	"crypto/x509"
-	"encoding/pem"
 	"fmt"
 	"net/http"
 	"os"
@@ -72,12 +71,10 @@ func initX509(_ context.Context, i interface{}) (string, Strategy, error) {
 		return name, nil, fmt.Errorf("missing ca certificates")
 	}
 	caCertsFile := caFiler.X509CACertFile()
-	cert, err := x509CertificateFromFile(caCertsFile)
+	roots, err := x509CertPoolFromFile(caCertsFile)
 	if err != nil {
 		return name, nil, fmt.Errorf("initX509 retrieve cert from file %s: %w", caCertsFile, err)
 	}
-	roots := x509.NewCertPool()
-	roots.AddCert(cert)
 	userDB, ok := i.(UserGranter)
 	if !ok {
 		return name, nil, fmt.Errorf("UserGranter interface is not implemented")
@@ -91,18 +88,22 @@ func initX509(_ context.Context, i interface{}) (string, Strategy, error) {
 	}, nil
 }
 
-func x509CertificateFromFile(s string) (*x509.Certificate, error) {
-	ca, err := os.ReadFile(s)
+// x509CertPoolFromFile returns the authorities a client certificate may
+// be signed by.
+//
+// The file holds the certificate chain of every sec of the cluster ca
+// keyword, whose documented promise is that a client certificate trusted
+// by any CA certificate found in them is accepted. Only the first
+// certificate of the file used to be read, so the promise held for one
+// authority and the others were silently ignored.
+func x509CertPoolFromFile(s string) (*x509.CertPool, error) {
+	b, err := os.ReadFile(s)
 	if err != nil {
 		return nil, fmt.Errorf("read file: %w", err)
 	}
-	p, _ := pem.Decode(ca)
-	if p == nil {
-		return nil, fmt.Errorf("pem decode: %w", err)
+	pool := x509.NewCertPool()
+	if !pool.AppendCertsFromPEM(b) {
+		return nil, fmt.Errorf("no certificate in %s", s)
 	}
-	cert, err := x509.ParseCertificate(p.Bytes)
-	if err != nil {
-		return nil, fmt.Errorf("x509 parse certificate: %w", err)
-	}
-	return cert, nil
+	return pool, nil
 }

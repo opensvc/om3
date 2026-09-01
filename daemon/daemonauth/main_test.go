@@ -7,9 +7,12 @@ import (
 	"crypto/tls"
 	"crypto/x509"
 	"crypto/x509/pkix"
+	"encoding/pem"
 	"fmt"
 	"math/big"
 	"net/http"
+	"os"
+	"path/filepath"
 	"testing"
 	"time"
 
@@ -49,6 +52,18 @@ func (db fakeUserDB) GrantsFromUsernameAndPassword(username, password string) ([
 		return nil, fmt.Errorf("wrong password")
 	}
 	return db.GrantsFromUsername(username)
+}
+
+// testAuthOption implements the interfaces initX509 asks of the value it
+// is configured with.
+type testAuthOption struct {
+	caCertFile string
+}
+
+func (o testAuthOption) X509CACertFile() string { return o.caCertFile }
+
+func (o testAuthOption) GrantsFromUsername(username string) ([]string, error) {
+	return testUserDB().GrantsFromUsername(username)
 }
 
 func testUserDB() fakeUserDB {
@@ -142,6 +157,13 @@ func TestBasicUserStrategyCachesPerCredential(t *testing.T) {
 	require.NoError(t, err)
 	_, err = s.Authenticate(context.Background(), basicRequest(t, "alice", "guess"))
 	assert.Error(t, err)
+}
+
+// testCAPEM returns the pem encoding of a certificate, as the
+// certificate_chain key of a ca sec object holds it.
+func testCAPEM(t *testing.T, cert *x509.Certificate) []byte {
+	t.Helper()
+	return pem.EncodeToMemory(&pem.Block{Type: "CERTIFICATE", Bytes: cert.Raw})
 }
 
 // testCA returns a certificate authority and a function signing client
@@ -241,4 +263,46 @@ func TestX509StrategyRefusals(t *testing.T) {
 		_, err := s.Authenticate(context.Background(), tlsRequest(t, sign("bob")))
 		assert.Error(t, err)
 	})
+}
+
+// TestX509StrategyTrustsEveryAuthorityInTheCAFile covers the ca file the
+// listener writes: the chain of the cluster ca, then the chain of each ca
+// of the cluster ca_sec_paths. A client signed by any of them is a client
+// this cluster was told to trust.
+func TestX509StrategyTrustsEveryAuthorityInTheCAFile(t *testing.T) {
+	authCache = newCache()
+	clusterCA, signCluster := testCA(t)
+	secondCA, signSecond := testCA(t)
+
+	dir := t.TempDir()
+	caFile := filepath.Join(dir, "ca_certificates")
+	pems := append(testCAPEM(t, clusterCA), testCAPEM(t, secondCA)...)
+	require.NoError(t, os.WriteFile(caFile, pems, 0600))
+
+	_, strategy, err := initX509(context.Background(), testAuthOption{caCertFile: caFile})
+	require.NoError(t, err)
+	require.NotNil(t, strategy)
+
+	for name, cert := range map[string]*x509.Certificate{
+		"the cluster ca": signCluster("alice"),
+		"a secondary ca": signSecond("alice"),
+	} {
+		t.Run(name, func(t *testing.T) {
+			info, err := strategy.Authenticate(context.Background(), tlsRequest(t, cert))
+			require.NoError(t, err)
+			assert.Equal(t, "alice", info.Username)
+		})
+	}
+
+	_, signUnknown := testCA(t)
+	_, err = strategy.Authenticate(context.Background(), tlsRequest(t, signUnknown("alice")))
+	assert.Error(t, err, "an authority the cluster was not told about stays untrusted")
+}
+
+func TestInitX509WithoutACertificate(t *testing.T) {
+	dir := t.TempDir()
+	caFile := filepath.Join(dir, "ca_certificates")
+	require.NoError(t, os.WriteFile(caFile, []byte("not a certificate\n"), 0600))
+	_, _, err := initX509(context.Background(), testAuthOption{caCertFile: caFile})
+	assert.Error(t, err)
 }
