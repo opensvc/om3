@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"net/http"
+	"strconv"
 	"sync"
 	"time"
 
@@ -115,10 +116,14 @@ func (t *tx) Start(cmdC chan<- interface{}, msgC <-chan []byte) error {
 // The last message is kept after it was posted, because a post with the
 // same payload refreshes the timestamp the peers read the liveness of
 // this stream from.
-func (t *tx) postLoop(ctx context.Context, msgC <-chan []byte, subC <-chan any, post func([]byte)) {
+func (t *tx) postLoop(ctx context.Context, msgC <-chan []byte, subC <-chan any, post func([]byte) (bool, time.Duration)) {
 	var (
-		latest     []byte
-		lastSentAt time.Time
+		latest []byte
+
+		// lastAttemptAt paces the attempts, including the failed ones,
+		// so that an unreachable relay is not posted to once per
+		// message the daemon produces.
+		lastAttemptAt time.Time
 	)
 	ticker := time.NewTicker(t.interval)
 	defer ticker.Stop()
@@ -126,10 +131,27 @@ func (t *tx) postLoop(ctx context.Context, msgC <-chan []byte, subC <-chan any, 
 		if len(latest) == 0 {
 			return
 		}
-		lastSentAt = time.Now()
-		ticker.Reset(t.interval)
+		lastAttemptAt = time.Now()
 		t.log.Tracef("send msg")
-		post(latest)
+		ok, retryAfter := post(latest)
+		if ok {
+			ticker.Reset(t.interval)
+			return
+		}
+		// A failed post is a missed beat: the peers read the liveness
+		// of this stream from the timestamp the relay sets on a post,
+		// so nothing refreshes it until the next one lands. Retrying
+		// inside the interval keeps a transient refusal from costing a
+		// whole beat, and the relay is asked no more often than it
+		// said to.
+		delay := t.retryDelay()
+		if retryAfter > delay {
+			delay = retryAfter
+		}
+		if delay > t.interval {
+			delay = t.interval
+		}
+		ticker.Reset(delay)
 	}
 	for {
 		select {
@@ -137,7 +159,7 @@ func (t *tx) postLoop(ctx context.Context, msgC <-chan []byte, subC <-chan any, 
 			return
 		case b := <-msgC:
 			latest = b
-			if time.Since(lastSentAt) >= t.interval {
+			if time.Since(lastAttemptAt) >= t.interval {
 				// Nothing was posted for an interval, so this is not a
 				// burst: a node that just started, or a cluster that
 				// just changed after a quiet spell, reaches its peers
@@ -152,9 +174,23 @@ func (t *tx) postLoop(ctx context.Context, msgC <-chan []byte, subC <-chan any, 
 	}
 }
 
-func (t *tx) send(b []byte) {
+// retryDelay is how long a failed post waits before it is tried again.
+// A quarter of the interval retries three times inside the beat it
+// missed, and never posts more often than a stream configured with an
+// interval four times shorter would.
+func (t *tx) retryDelay() time.Duration {
+	delay := t.interval / 4
+	if delay < time.Second {
+		delay = time.Second
+	}
+	return delay
+}
+
+// send posts b to the relay. It reports whether the relay took it, and
+// how long it asked to be left alone when it refused.
+func (t *tx) send(b []byte) (bool, time.Duration) {
 	if t.cli == nil {
-		return
+		return false, 0
 	}
 
 	clusterConfig := cluster.ConfigData.Get()
@@ -167,14 +203,15 @@ func (t *tx) send(b []byte) {
 	resp, err := t.cli.PostRelayMessage(context.Background(), params)
 	if err != nil {
 		t.logFailure("post to %s: %s", t.relay, err)
-		return
+		return false, 0
 	}
 
 	defer drain(resp.Body, t.log)
 
 	if resp.StatusCode != http.StatusOK {
-		t.logFailure("post to %s: %s", t.relay, resp.Status)
-		return
+		retryAfter := retryAfterOf(resp.Header)
+		t.logFailure("post to %s: %s (retry after %s)", t.relay, resp.Status, retryAfter)
+		return false, retryAfter
 	}
 	t.logRecovery()
 
@@ -185,6 +222,23 @@ func (t *tx) send(b []byte) {
 			Success:  true,
 		}
 	}
+	return true, 0
+}
+
+// retryAfterOf returns the delay a refusing relay asked for, in the
+// delta seconds form of the header. The http date form is ignored: a
+// relay that answers one is asking a client whose clock it does not
+// know to compute the wait itself.
+func retryAfterOf(h http.Header) time.Duration {
+	s := h.Get("Retry-After")
+	if s == "" {
+		return 0
+	}
+	seconds, err := strconv.Atoi(s)
+	if err != nil || seconds <= 0 {
+		return 0
+	}
+	return time.Duration(seconds) * time.Second
 }
 
 func newTx(ctx context.Context, name string, nodes []string, cfg cfg) *tx {

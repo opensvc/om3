@@ -60,10 +60,16 @@ func (t *T) Configure(ctx context.Context) {
 	hbaudit.AttachActiveAuditIfAny(ctx, log, "hb", "hb.main", strings.Replace(t.Name(), "hb#", "hb:", 1))
 	timeout := t.GetDuration("timeout", 9*time.Second)
 	interval := t.GetDuration("interval", 4*time.Second)
-	if timeout < 2*interval+1*time.Second {
+	// The transmitter posts once per interval and the receiver reads
+	// once per interval, so a peer is seen alive once per interval at
+	// best, and a failed post costs a whole one. The floor leaves room
+	// for three missed beats before a peer is declared stale: a relay
+	// is reached over a network this cluster does not own, and one
+	// refused or lost post is not news.
+	if minTimeout := 4*interval + 1*time.Second; timeout < minTimeout {
 		oldTimeout := timeout
-		timeout = interval*2 + 1*time.Second
-		log.Warnf("reajust timeout: %s => %s (<interval>*2+1s)", oldTimeout, timeout)
+		timeout = minTimeout
+		log.Warnf("reajust timeout: %s => %s (<interval>*4+1s)", oldTimeout, timeout)
 	}
 	relay := t.GetString("relay")
 	if relay == "" {
