@@ -22,6 +22,11 @@ package metricsreg
 import "github.com/prometheus/client_golang/prometheus"
 
 var (
+	// API holds the per route series of the http listener, the ones the
+	// echo middleware breaks down by url, and the rate limiter denials
+	// broken down the same way.
+	API = prometheus.NewRegistry()
+
 	// PG holds the per cgroup series, one set per object with a pg.
 	PG = prometheus.NewRegistry()
 
@@ -38,6 +43,7 @@ var (
 // the registry itself. The router reads this, so serving a new subsystem
 // is a line here rather than a route.
 var Detail = map[string]*prometheus.Registry{
+	"api":       API,
 	"pg":        PG,
 	"pubsub":    Pubsub,
 	"scheduler": Scheduler,

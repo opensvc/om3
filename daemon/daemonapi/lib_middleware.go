@@ -18,6 +18,7 @@ import (
 	"github.com/opensvc/om3/v3/daemon/daemonauth"
 	"github.com/opensvc/om3/v3/daemon/daemonctx"
 	"github.com/opensvc/om3/v3/daemon/rbac"
+	"github.com/opensvc/om3/v3/util/metricsreg"
 	"github.com/opensvc/om3/v3/util/plog"
 )
 
@@ -41,10 +42,20 @@ var (
 		// "/api/instance/path/:namespace/:kind/:name/status": zerolog.InfoLevel,
 	}
 
-	rateLimitDeniedTotal = promauto.NewCounterVec(
+	// rateLimitDeniedTotal is the hint: it is what an alert on a client
+	// hitting the limit fires on. The same denials broken down by route
+	// are served at /metrics/api, next to the other per route series.
+	rateLimitDeniedTotal = promauto.NewCounter(
 		prometheus.CounterOpts{
 			Name: "opensvc_listener_rate_limiter_denied_total",
-			Help: "The total number of requests denied by rate limiting",
+			Help: "The total number of requests denied by rate limiting (per route at /metrics/api)",
+		},
+	)
+
+	rateLimitRouteDeniedTotal = prometheus.NewCounterVec(
+		prometheus.CounterOpts{
+			Name: "opensvc_listener_rate_limiter_route_denied_total",
+			Help: "The total number of requests denied by rate limiting, by method and route",
 		},
 		[]string{"method", "path"},
 	)
@@ -56,6 +67,10 @@ var (
 		},
 	)
 )
+
+func init() {
+	metricsreg.API.MustRegister(rateLimitRouteDeniedTotal)
+}
 
 func logWithFamilyAndAddr(ctx context.Context) *plog.Logger {
 	l := daemonctx.Logger(ctx)
@@ -114,7 +129,8 @@ func RateLimiterWithConfig(parent context.Context) echo.MiddlewareFunc {
 				GetLogger(c).Tracef("rate limiter deny from %s: %s", c.RealIP(), err)
 			}
 
-			rateLimitDeniedTotal.WithLabelValues(c.Request().Method, c.Path()).Inc()
+			rateLimitDeniedTotal.Inc()
+			rateLimitRouteDeniedTotal.WithLabelValues(c.Request().Method, c.Path()).Inc()
 			return c.JSON(http.StatusForbidden, nil)
 		},
 	}

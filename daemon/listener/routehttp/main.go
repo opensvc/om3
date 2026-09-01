@@ -28,10 +28,6 @@ type (
 	}
 )
 
-var (
-	mwProm = echoprometheus.NewMiddleware("opensvc_api")
-)
-
 // New returns *T with log, rootDaemon
 // it prepares middlewares and routes for Opensvc daemon listeners
 // ui is handled from /ui/ with index.html
@@ -54,6 +50,7 @@ func New(ctx context.Context, enableUI bool) *T {
 
 	e := echo.New()
 	pprof.Register(e)
+	e.Use(mwPromHint)
 	e.Use(mwProm)
 	e.GET(metricsURL, echoprometheus.NewHandler())
 	// The subsystems whose series carry a label per object are served

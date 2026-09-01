@@ -8,6 +8,7 @@ import (
 	"github.com/stretchr/testify/require"
 
 	// Imported for their metric registrations, which happen in init.
+	_ "github.com/opensvc/om3/v3/daemon/listener/routehttp"
 	_ "github.com/opensvc/om3/v3/daemon/scheduler"
 	_ "github.com/opensvc/om3/v3/util/pubsub"
 
@@ -60,6 +61,13 @@ func TestNoMetricNameIsServedTwice(t *testing.T) {
 // went. These are the names the split exists for.
 func TestDetailIsNotOnTheDefaultRegistry(t *testing.T) {
 	for endpoint, want := range map[string][]string{
+		"api": {
+			"opensvc_api_route_requests_total",
+			"opensvc_api_route_request_duration_seconds",
+			"opensvc_api_route_request_size_bytes",
+			"opensvc_api_route_response_size_bytes",
+			"opensvc_listener_rate_limiter_route_denied_total",
+		},
 		"pubsub": {
 			"opensvc_pubsub_publication_pushed_by_filter_total",
 			"opensvc_pubsub_publication_by_kind_total",
@@ -82,6 +90,10 @@ func TestDetailIsNotOnTheDefaultRegistry(t *testing.T) {
 // hidden the subsystem instead of summarising it.
 func TestHintsAreOnTheDefaultRegistry(t *testing.T) {
 	for _, name := range []string{
+		"opensvc_api_requests_total",
+		"opensvc_api_request_duration_seconds",
+		"opensvc_listener_rate_limiter_denied_total",
+		"opensvc_listener_rate_limiter_errors_total",
 		"opensvc_pubsub_publication_total",
 		"opensvc_pubsub_publication_pushed_total",
 		"opensvc_pubsub_subscription_filter_total",
