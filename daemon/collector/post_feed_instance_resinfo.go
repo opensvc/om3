@@ -50,6 +50,12 @@ type (
 	}
 )
 
+// resInfoKinds are the object kinds that have resources, and so resource
+// info to report. The others are datastores and configurations: asking
+// the local instance for info it has no way to hold answers "object does
+// not support resource info", and asking a peer's api for it answers 400.
+var resInfoKinds = naming.NewKinds(naming.KindSvc, naming.KindVol)
+
 // seedResInfoToSend queues the instances we have no sent trace for, so a node
 // that becomes speaker still reports resource info refreshed while it was not
 // speaking.
@@ -59,6 +65,9 @@ type (
 // the fetch burst on speaker change.
 func (t *T) seedResInfoToSend() {
 	for _, v := range instance.StatusData.GetAll() {
+		if !resInfoKinds.Has(v.Path.Kind) {
+			continue
+		}
 		i := instance.InstanceString(v.Path, v.Node)
 		if _, ok := t.resInfoToSend[i]; ok {
 			continue
