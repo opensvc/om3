@@ -18,7 +18,7 @@ func (a *DaemonAPI) GetRelayMessage(ctx echo.Context, params api.GetRelayMessage
 	if grantsFromContext(ctx).HasGrant(rbac.GrantRoot) && params.Username != nil {
 		username = *params.Username
 	} else {
-		username = userFromContext(ctx).GetUserName()
+		username = userFromContext(ctx).Username
 	}
 	if slot, ok := relay.Map.Load(username, params.ClusterID, params.Nodename); !ok {
 		return JSONProblem(ctx, http.StatusNotFound, "Not found", "")

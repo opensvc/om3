@@ -6,12 +6,11 @@ import (
 	"fmt"
 	"net/http"
 	"os"
+	"strings"
 	"sync/atomic"
 	"time"
 
 	"github.com/golang-jwt/jwt/v5"
-	"github.com/shaj13/go-guardian/v2/auth"
-	"github.com/shaj13/go-guardian/v2/auth/strategies/token"
 	"golang.org/x/crypto/ssh"
 
 	"github.com/opensvc/om3/v3/daemon/rbac"
@@ -22,11 +21,15 @@ type (
 	// JWTCreator implements CreateUserToken method
 	JWTCreator struct{}
 
-	// apiClaims defines api claims
+	// apiClaims defines api claims.
+	//
+	// RegisteredClaims is embedded by value: as a pointer it stays nil
+	// for a token that carries none of the registered claims, and the
+	// validator dereferences it to read the expiration.
 	apiClaims struct {
 		Grant    []string `json:"grant"`
 		TokenUse string   `json:"token_use"`
-		*jwt.RegisteredClaims
+		jwt.RegisteredClaims
 	}
 
 	// JWTFiler is the interface that groups SignKeyFile and VerifyKeyFile methods
@@ -58,43 +61,68 @@ const (
 	TkUseProxy = "proxy"
 )
 
-// initJWT initializes the JWT authentication strategy using provided configuration and context.
-// It returns the strategy name ("jwt"), an instance of the auth.Strategy, and any error encountered.
-func initJWT(_ context.Context, i interface{}) (string, auth.Strategy, error) {
-	var (
-		err       error
-		verifyKey *rsa.PublicKey
-		name      = "jwt"
-	)
+// bearerToken returns the token of an Authorization: Bearer header.
+//
+// The scheme is matched case sensitively, as the previous implementation
+// did, and as every client of this api sends it.
+func bearerToken(r *http.Request) (string, error) {
+	header := strings.TrimSpace(r.Header.Get("Authorization"))
+	scheme, tk, found := strings.Cut(header, " ")
+	if !found || scheme != "Bearer" || tk == "" {
+		return "", fmt.Errorf("request has no bearer token")
+	}
+	return tk, nil
+}
 
-	var signKey *rsa.PrivateKey // Temporary variable to capture the signKey
-	verifyKey, signKey, err = initAuthJWT(i)
+// jwtStrategy authenticates the tokens this cluster issues itself, the
+// ones signed with the cluster CA private key.
+type jwtStrategy struct {
+	verifyKey *rsa.PublicKey
+}
+
+func (t *jwtStrategy) Authenticate(_ context.Context, r *http.Request) (*Info, error) {
+	tkString, err := bearerToken(r)
+	if err != nil {
+		return nil, fmt.Errorf("strategies/jwt: %w", err)
+	}
+	key := cacheKey(StrategyJWT, tkString)
+	if info, ok := authCache.get(key); ok {
+		return info, nil
+	}
+	claims := &apiClaims{}
+	// Without WithValidMethods a token naming a signing method we never
+	// issue is handed to that method's verifier with our rsa key, and
+	// what happens next is that package's business rather than ours.
+	// WithExpirationRequired refuses the token that has no exp claim,
+	// which is the one that never stops being valid.
+	if _, err := jwt.ParseWithClaims(tkString, claims,
+		func(*jwt.Token) (interface{}, error) { return t.verifyKey, nil },
+		jwt.WithValidMethods([]string{jwt.SigningMethodRS256.Alg()}),
+		jwt.WithExpirationRequired(),
+	); err != nil {
+		return nil, fmt.Errorf("strategies/jwt: %w", err)
+	}
+	info := &Info{
+		Username: claims.Subject,
+		Strategy: StrategyJWT,
+		Issuer:   claims.Issuer,
+		TokenUse: claims.TokenUse,
+		Grants:   claims.Grant,
+	}
+	authCache.set(key, info, time.Until(claims.ExpiresAt.Time))
+	return info, nil
+}
+
+// initJWT initializes the JWT authentication strategy using provided configuration and context.
+// It returns the strategy name ("jwt"), an instance of the Strategy, and any error encountered.
+func initJWT(_ context.Context, i interface{}) (string, Strategy, error) {
+	name := "jwt"
+	verifyKey, signKey, err := initAuthJWT(i)
 	if err != nil {
 		return name, nil, err
 	}
-	jwtSignKey.Store(signKey) // Assign to the global variable
-	validate := func(ctx context.Context, r *http.Request, s string) (info auth.Info, exp time.Time, err error) {
-		var tk *jwt.Token
-
-		tk, err = jwt.ParseWithClaims(s, &apiClaims{}, func(token *jwt.Token) (interface{}, error) {
-			return verifyKey, nil
-		})
-		if err != nil {
-			return
-		}
-		claims := tk.Claims.(*apiClaims)
-		exp = claims.ExpiresAt.Time
-		iss := claims.Issuer
-
-		extensions := authenticatedExtensions(StrategyJWT, iss, claims.Grant...)
-		if claims.TokenUse != "" {
-			extensions.Set(TkUseClaim, claims.TokenUse)
-		}
-		info = auth.NewUserInfo(claims.Subject, claims.Subject, nil, *extensions)
-		return
-	}
-
-	return name, token.New(validate, cache), nil
+	jwtSignKey.Store(signKey)
+	return name, &jwtStrategy{verifyKey: verifyKey}, nil
 }
 
 // initAuthJWT initialize auth JWT and returns verify key and sign key

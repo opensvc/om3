@@ -7,9 +7,6 @@ import (
 	"fmt"
 	"net/http"
 	"os"
-
-	"github.com/shaj13/go-guardian/v2/auth"
-	x509Strategy "github.com/shaj13/go-guardian/v2/auth/strategies/x509"
 )
 
 type (
@@ -19,25 +16,56 @@ type (
 	}
 
 	X509Strategy struct {
-		baseStrategy auth.Strategy
-		userDB       UserGranter
+		verifyOptions x509.VerifyOptions
+		userDB        UserGranter
 	}
 )
 
-func (s *X509Strategy) Authenticate(ctx context.Context, r *http.Request) (auth.Info, error) {
-	authInfo, err := s.baseStrategy.Authenticate(ctx, r)
-	if err != nil {
-		return nil, err
+// Authenticate verifies the client certificate against the cluster CA and
+// reads the grants of the usr object named by its common name.
+//
+// The certificate is the credential and the common name is the identity:
+// a certificate that verifies but names nobody this cluster knows is not
+// authenticated.
+func (s *X509Strategy) Authenticate(_ context.Context, r *http.Request) (*Info, error) {
+	if r.TLS == nil || len(r.TLS.PeerCertificates) == 0 {
+		return nil, fmt.Errorf("strategies/x509: request has no client certificate")
 	}
-	username := authInfo.GetUserName()
+	opts := s.verifyOptions
+	// The chain the client sent, minus its own certificate, is what the
+	// verification may need to reach the CA.
+	if len(r.TLS.PeerCertificates) > 1 {
+		opts.Intermediates = x509.NewCertPool()
+		for _, intermediate := range r.TLS.PeerCertificates[1:] {
+			opts.Intermediates.AddCert(intermediate)
+		}
+	}
+	chain, err := r.TLS.PeerCertificates[0].Verify(opts)
+	if err != nil {
+		return nil, fmt.Errorf("strategies/x509: %w", err)
+	}
+	username := chain[0][0].Subject.CommonName
+	if username == "" {
+		return nil, fmt.Errorf("strategies/x509: certificate subject has no common name")
+	}
+	key := cacheKey(StrategyX509, username)
+	if info, ok := authCache.get(key); ok {
+		return info, nil
+	}
 	grants, err := s.userDB.GrantsFromUsername(username)
 	if err != nil {
-		return nil, fmt.Errorf("invalid user %s: %w", username, err)
+		return nil, fmt.Errorf("strategies/x509: invalid user %s: %w", username, err)
 	}
-	return auth.NewUserInfo(username, "", nil, *authenticatedExtensions(StrategyX509, "", grants...)), nil
+	info := &Info{
+		Username: username,
+		Strategy: StrategyX509,
+		Grants:   grants,
+	}
+	authCache.set(key, info, cacheTTL)
+	return info, nil
 }
 
-func initX509(_ context.Context, i interface{}) (string, auth.Strategy, error) {
+func initX509(_ context.Context, i interface{}) (string, Strategy, error) {
 	name := "x509"
 	caFiler, ok := i.(X509CACertFiler)
 	if !ok {
@@ -50,22 +78,17 @@ func initX509(_ context.Context, i interface{}) (string, auth.Strategy, error) {
 	}
 	roots := x509.NewCertPool()
 	roots.AddCert(cert)
-	opts := x509.VerifyOptions{
-		KeyUsages: []x509.ExtKeyUsage{x509.ExtKeyUsageClientAuth},
-		Roots:     roots,
-	}
 	userDB, ok := i.(UserGranter)
 	if !ok {
 		return name, nil, fmt.Errorf("UserGranter interface is not implemented")
 	}
-
-	x509Strategy := &X509Strategy{
-		baseStrategy: x509Strategy.New(opts),
-		userDB:       userDB,
-	}
-
-	return name, x509Strategy, nil
-
+	return name, &X509Strategy{
+		verifyOptions: x509.VerifyOptions{
+			KeyUsages: []x509.ExtKeyUsage{x509.ExtKeyUsageClientAuth},
+			Roots:     roots,
+		},
+		userDB: userDB,
+	}, nil
 }
 
 func x509CertificateFromFile(s string) (*x509.Certificate, error) {

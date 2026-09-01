@@ -28,7 +28,7 @@ func (a *DaemonAPI) GetNodeConfigFile(ctx echo.Context, nodename string, params 
 		mtime := file.ModTime(filename)
 		if !mtime.IsZero() {
 			ctx.Response().Header().Add(api.HeaderLastModified, mtime.Format(time.RFC3339Nano))
-			log.Infof("serve node config file to %s", userFromContext(ctx).GetUserName())
+			log.Infof("serve node config file to %s", userFromContext(ctx).Username)
 
 			if params.RedactSecrets == nil || !*params.RedactSecrets {
 				return ctx.File(filename)

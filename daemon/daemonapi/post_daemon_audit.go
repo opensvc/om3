@@ -15,7 +15,6 @@ import (
 
 	"github.com/labstack/echo/v4"
 	"github.com/rs/zerolog"
-	"github.com/shaj13/go-guardian/v2/auth"
 
 	"github.com/opensvc/om3/v3/core/client"
 	"github.com/opensvc/om3/v3/core/clusternode"
@@ -90,7 +89,7 @@ func (a *DaemonAPI) getLocalDaemonAudit(ctx echo.Context, nodename string, param
 
 	var messageId uint64
 
-	user := ctx.Get("user").(auth.Info)
+	user := userFromContext(ctx)
 
 	level, err := zerolog.ParseLevel(string(*params.Level))
 	if err != nil {
@@ -157,7 +156,7 @@ func (a *DaemonAPI) getLocalDaemonAudit(ctx echo.Context, nodename string, param
 	defer log.Infof("publish audit stop session %s", uuidFromContext(ctx))
 
 	if a.AuditRegistry != nil {
-		a.AuditRegistry.Start(q, subsystems, preemptC, user.GetUserName())
+		a.AuditRegistry.Start(q, subsystems, preemptC, user.Username)
 		defer a.AuditRegistry.Stop(q)
 	}
 

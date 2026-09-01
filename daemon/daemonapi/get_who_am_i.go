@@ -12,12 +12,11 @@ import (
 func (a *DaemonAPI) GetAuthWhoAmI(ctx echo.Context) error {
 	pts := func(s string) *string { return &s }
 	user := userFromContext(ctx)
-	extensions := user.GetExtensions()
 	grants := grantsFromContext(ctx)
 	data := api.UserIdentity{
-		Auth:      pts(extensions.Get("strategy")),
+		Auth:      pts(user.Strategy),
 		Grant:     map[string][]string{},
-		Name:      user.GetUserName(),
+		Name:      user.Username,
 		Namespace: naming.NsSys,
 		RawGrant:  grants.String(),
 	}

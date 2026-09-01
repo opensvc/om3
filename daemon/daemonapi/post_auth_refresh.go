@@ -5,7 +5,6 @@ import (
 	"net/http"
 
 	"github.com/labstack/echo/v4"
-	"github.com/shaj13/go-guardian/v2/auth"
 
 	"github.com/opensvc/om3/v3/daemon/api"
 )
@@ -24,7 +23,7 @@ func (a *DaemonAPI) PostAuthRefresh(ctx echo.Context, params api.PostAuthRefresh
 		return JSONProblemf(ctx, http.StatusBadRequest, "Invalid parameters", "Invalid role: %s", err)
 	}
 
-	username := ctx.Get("user").(auth.Info).GetUserName()
+	username := userFromContext(ctx).Username
 	if d, err := a.createAccessToken(ctx, username, duration, params.Role, params.Scope); err != nil {
 		log := LogHandler(ctx, "PostAuthRefresh")
 		if errors.Is(err, errBadRequest) {

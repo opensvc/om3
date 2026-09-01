@@ -40,7 +40,7 @@ func (a *DaemonAPI) GetObjectConfigFile(ctx echo.Context, namespace string, kind
 		}
 
 		ctx.Response().Header().Add(api.HeaderLastModified, mtime.Format(time.RFC3339Nano))
-		log.Infof("serve config file %s to %s", objPath, userFromContext(ctx).GetUserName())
+		log.Infof("serve config file %s to %s", objPath, userFromContext(ctx).Username)
 
 		if params.RedactSecrets == nil || !*params.RedactSecrets {
 			return ctx.File(filename)

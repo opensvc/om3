@@ -42,7 +42,7 @@ func (a *DaemonAPI) getRelayStatusLocal(ctx echo.Context, params api.GetRelaySta
 		slots = relay.Map.List("")
 	} else {
 		// non-root is allowed to read its own user relay slots
-		username := userFromContext(ctx).GetUserName()
+		username := userFromContext(ctx).Username
 		slots = relay.Map.List(username)
 	}
 	for _, slot := range slots {

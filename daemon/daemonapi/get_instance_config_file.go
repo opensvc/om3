@@ -33,7 +33,7 @@ func (a *DaemonAPI) GetInstanceConfigFile(ctx echo.Context, nodename, namespace 
 		mtime := file.ModTime(filename)
 		if !mtime.IsZero() {
 			ctx.Response().Header().Add(api.HeaderLastModified, mtime.Format(time.RFC3339Nano))
-			log.Infof("serve config file %s to %s", objPath, userFromContext(ctx).GetUserName())
+			log.Infof("serve config file %s to %s", objPath, userFromContext(ctx).Username)
 			return ctx.File(filename)
 		}
 		return JSONProblemf(ctx, http.StatusNotFound, "Not found", "Config file not found for %s@%s", objPath, a.localhost)
