@@ -266,6 +266,9 @@ type ClientInterface interface {
 
 	PostDaemonListenerLogControl(ctx context.Context, nodename InPathNodeName, name InPathListenerName, body PostDaemonListenerLogControlJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
 
+	// GetDaemonLogControl request
+	GetDaemonLogControl(ctx context.Context, nodename InPathNodeName, reqEditors ...RequestEditorFn) (*http.Response, error)
+
 	// PostDaemonLogControlWithBody request with any body
 	PostDaemonLogControlWithBody(ctx context.Context, nodename InPathNodeName, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
 
@@ -1271,6 +1274,18 @@ func (c *Client) PostDaemonListenerLogControlWithBody(ctx context.Context, noden
 
 func (c *Client) PostDaemonListenerLogControl(ctx context.Context, nodename InPathNodeName, name InPathListenerName, body PostDaemonListenerLogControlJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
 	req, err := NewPostDaemonListenerLogControlRequest(c.Server, nodename, name, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+func (c *Client) GetDaemonLogControl(ctx context.Context, nodename InPathNodeName, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewGetDaemonLogControlRequest(c.Server, nodename)
 	if err != nil {
 		return nil, err
 	}
@@ -5554,6 +5569,40 @@ func NewPostDaemonListenerLogControlRequestWithBody(server string, nodename InPa
 	}
 
 	req.Header.Add("Content-Type", contentType)
+
+	return req, nil
+}
+
+// NewGetDaemonLogControlRequest generates requests for GetDaemonLogControl
+func NewGetDaemonLogControlRequest(server string, nodename InPathNodeName) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "nodename", nodename, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/api/node/name/%s/daemon/log/control", pathParam0)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodGet, queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
 
 	return req, nil
 }
@@ -13069,6 +13118,9 @@ type ClientWithResponsesInterface interface {
 
 	PostDaemonListenerLogControlWithResponse(ctx context.Context, nodename InPathNodeName, name InPathListenerName, body PostDaemonListenerLogControlJSONRequestBody, reqEditors ...RequestEditorFn) (*PostDaemonListenerLogControlResponse, error)
 
+	// GetDaemonLogControlWithResponse request
+	GetDaemonLogControlWithResponse(ctx context.Context, nodename InPathNodeName, reqEditors ...RequestEditorFn) (*GetDaemonLogControlResponse, error)
+
 	// PostDaemonLogControlWithBodyWithResponse request with any body
 	PostDaemonLogControlWithBodyWithResponse(ctx context.Context, nodename InPathNodeName, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*PostDaemonLogControlResponse, error)
 
@@ -15284,6 +15336,39 @@ func (r PostDaemonListenerLogControlResponse) StatusCode() int {
 
 // ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
 func (r PostDaemonListenerLogControlResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+type GetDaemonLogControlResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	JSON200      *LogControlBody
+	JSON401      *N401
+	JSON403      *N403
+	JSON500      *N500
+}
+
+// Status returns HTTPResponse.Status
+func (r GetDaemonLogControlResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r GetDaemonLogControlResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r GetDaemonLogControlResponse) ContentType() string {
 	if r.HTTPResponse != nil {
 		return r.HTTPResponse.Header.Get("Content-Type")
 	}
@@ -19035,6 +19120,15 @@ func (c *ClientWithResponses) PostDaemonListenerLogControlWithResponse(ctx conte
 		return nil, err
 	}
 	return ParsePostDaemonListenerLogControlResponse(rsp)
+}
+
+// GetDaemonLogControlWithResponse request returning *GetDaemonLogControlResponse
+func (c *ClientWithResponses) GetDaemonLogControlWithResponse(ctx context.Context, nodename InPathNodeName, reqEditors ...RequestEditorFn) (*GetDaemonLogControlResponse, error) {
+	rsp, err := c.GetDaemonLogControl(ctx, nodename, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseGetDaemonLogControlResponse(rsp)
 }
 
 // PostDaemonLogControlWithBodyWithResponse request with arbitrary body returning *PostDaemonLogControlResponse
@@ -22898,6 +22992,53 @@ func ParsePostDaemonListenerLogControlResponse(rsp *http.Response) (*PostDaemonL
 			return nil, err
 		}
 		response.JSON400 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest N401
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest N403
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON403 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
+		var dest N500
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON500 = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseGetDaemonLogControlResponse parses an HTTP response from a GetDaemonLogControlWithResponse call
+func ParseGetDaemonLogControlResponse(rsp *http.Response) (*GetDaemonLogControlResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &GetDaemonLogControlResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest LogControlBody
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
 
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
 		var dest N401

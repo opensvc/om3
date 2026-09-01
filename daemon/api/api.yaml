@@ -1743,6 +1743,35 @@ paths:
           $ref: '#/components/responses/500'
 
   /api/node/name/{nodename}/daemon/log/control:
+    get:
+      operationId: GetDaemonLogControl
+      description: |
+        Report the level below which the daemon logs are not emitted.
+
+        The daemon writes to journald, which is capped at info: a level
+        below that is refused by the post, and a trace or debug feed is
+        obtained from POST /daemon/audit instead.
+      parameters:
+        - $ref: '#/components/parameters/inPathNodeName'
+      security:
+        - basicAuth: []
+        - bearerAuth: []
+      tags:
+        - node / daemon
+      responses:
+        200:
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LogControlBody'
+        401:
+          $ref: '#/components/responses/401'
+        403:
+          $ref: '#/components/responses/403'
+        500:
+          $ref: '#/components/responses/500'
+
     post:
       operationId: PostDaemonLogControl
       parameters:

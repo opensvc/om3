@@ -2,13 +2,16 @@ package commoncmd
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
+	"io"
 	"net/http"
 
 	"github.com/opensvc/om3/v3/core/client"
 	"github.com/opensvc/om3/v3/core/clientcontext"
 	"github.com/opensvc/om3/v3/core/nodeselector"
+	"github.com/opensvc/om3/v3/daemon/api"
 	"github.com/opensvc/om3/v3/util/hostname"
 )
 
@@ -16,10 +19,19 @@ type (
 	CmdDaemonSubAction struct {
 		Debug        bool
 		NodeSelector string
+
+		// OnResponse, when set, receives the body each node answered
+		// with. It is called from the goroutine handling that node, so
+		// an implementation shared by several nodes serializes itself.
+		OnResponse func(nodename string, b []byte)
 	}
 
 	apiFuncWithNode func(context.Context, *client.T, string) (*http.Response, error)
 )
+
+// maxSubActionBodySize bounds the daemon answer read into memory. The
+// answers are a problem document or a small json object.
+const maxSubActionBodySize = 1 << 20
 
 // Run daemon sub-component action
 func (t *CmdDaemonSubAction) Run(fn apiFuncWithNode) error {
@@ -75,8 +87,40 @@ func (t *CmdDaemonSubAction) doNode(ctx context.Context, cli *client.T, nodename
 	resp, err := fn(ctx, cli, nodename)
 	if err != nil {
 		return fmt.Errorf("action failed on node %s: %w", nodename, err)
-	} else if resp.StatusCode < 200 || resp.StatusCode >= 300 {
+	}
+	defer func() { _ = resp.Body.Close() }()
+
+	b, err := io.ReadAll(io.LimitReader(resp.Body, maxSubActionBodySize))
+	if err != nil {
+		return fmt.Errorf("action failed on node %s: read response: %w", nodename, err)
+	}
+	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
+		// The daemon says why in the body. Reporting only the status
+		// code makes the caller guess what a 400 was about.
+		if s := problemString(b); s != "" {
+			return fmt.Errorf("action failed on node %s: %s", nodename, s)
+		}
 		return fmt.Errorf("action failed on node %s: unexpected status code %d", nodename, resp.StatusCode)
 	}
+	if t.OnResponse != nil {
+		t.OnResponse(nodename, b)
+	}
 	return nil
+}
+
+// problemString renders the problem document a daemon answers an error
+// with, or an empty string when the body is not one.
+func problemString(b []byte) string {
+	var problem api.Problem
+	if err := json.Unmarshal(b, &problem); err != nil {
+		return ""
+	}
+	switch {
+	case problem.Title != "" && problem.Detail != "":
+		return problem.Title + ": " + problem.Detail
+	case problem.Title != "":
+		return problem.Title
+	default:
+		return problem.Detail
+	}
 }
