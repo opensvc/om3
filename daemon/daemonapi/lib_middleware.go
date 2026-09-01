@@ -3,7 +3,9 @@ package daemonapi
 import (
 	"context"
 	"fmt"
+	"math"
 	"net/http"
+	"strconv"
 	"strings"
 
 	"github.com/allenai/go-swaggerui"
@@ -13,6 +15,7 @@ import (
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promauto"
 	"github.com/rs/zerolog"
+	"golang.org/x/time/rate"
 
 	"github.com/opensvc/om3/v3/daemon/daemonauth"
 	"github.com/opensvc/om3/v3/daemon/daemonctx"
@@ -63,6 +66,16 @@ func init() {
 	metricsreg.API.MustRegister(rateLimitRouteDeniedTotal)
 }
 
+// retryAfterSeconds returns the number of seconds a caller refused by the
+// rate limiter is asked to wait, which is the time the limiter needs to
+// grant one token, rounded up to the second the header is expressed in.
+func retryAfterSeconds(r rate.Limit) int {
+	if r <= 0 {
+		return 1
+	}
+	return max(1, int(math.Ceil(1/float64(r))))
+}
+
 func logWithFamilyAndAddr(ctx context.Context) *plog.Logger {
 	l := daemonctx.Logger(ctx)
 	if l == nil {
@@ -107,13 +120,17 @@ func RateLimiterWithConfig(parent context.Context) echo.MiddlewareFunc {
 			id := c.RealIP()
 			return id, nil
 		},
+		// ErrorHandler is called when the identifier of the caller
+		// could not be extracted, which is a fault of this listener and
+		// not of the caller.
 		ErrorHandler: func(c echo.Context, err error) error {
 			if err != nil {
-				GetLogger(c).Tracef("rate limiter: too many request from %s: %s", c.RealIP(), err)
+				GetLogger(c).Warnf("rate limiter: identify %s: %s", c.RealIP(), err)
 			}
 
 			rateLimitErrorsTotal.Inc()
-			return c.JSON(http.StatusTooManyRequests, nil)
+			code := http.StatusInternalServerError
+			return JSONProblem(c, code, http.StatusText(code), "The rate limiter could not identify the caller")
 		},
 		DenyHandler: func(c echo.Context, identifier string, err error) error {
 			if err != nil {
@@ -122,7 +139,15 @@ func RateLimiterWithConfig(parent context.Context) echo.MiddlewareFunc {
 
 			rateLimitDeniedTotal.Inc()
 			rateLimitRouteDeniedTotal.WithLabelValues(c.Request().Method, c.Path()).Inc()
-			return c.JSON(http.StatusForbidden, nil)
+
+			// A caller told to go away has to learn that it was for
+			// asking too often, and how long to wait: refusing with a
+			// 403 and an empty body reads as a permission problem, and
+			// leaves a client that would pace itself nothing to pace
+			// by.
+			c.Response().Header().Set(echo.HeaderRetryAfter, strconv.Itoa(retryAfterSeconds(rateLimiterConfig.Rate)))
+			code := http.StatusTooManyRequests
+			return JSONProblem(c, code, http.StatusText(code), "Too many requests from "+c.RealIP())
 		},
 	}
 	return middleware.RateLimiterWithConfig(config)

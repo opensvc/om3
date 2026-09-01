@@ -5,6 +5,7 @@ import (
 
 	"github.com/rs/zerolog"
 	"github.com/stretchr/testify/assert"
+	"golang.org/x/time/rate"
 )
 
 // TestLogControlLevel pins the spelling the api answers with, which is
@@ -29,5 +30,24 @@ func TestLogControlLevel(t *testing.T) {
 			zerolog.SetGlobalLevel(tc.level)
 			assert.Equal(t, tc.want, logControlLevel())
 		})
+	}
+}
+
+// TestRetryAfterSeconds pins the pacing hint a refused caller gets: the
+// header is in seconds, and a limiter granting more than one token per
+// second still has to say something a client can wait for.
+func TestRetryAfterSeconds(t *testing.T) {
+	for _, tc := range []struct {
+		rate rate.Limit
+		want int
+	}{
+		{20, 1},
+		{1, 1},
+		{0.5, 2},
+		{0.1, 10},
+		{0, 1},
+		{-1, 1},
+	} {
+		assert.Equal(t, tc.want, retryAfterSeconds(tc.rate), "rate %v", tc.rate)
 	}
 }

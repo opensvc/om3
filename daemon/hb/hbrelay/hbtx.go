@@ -29,6 +29,11 @@ type (
 		cmdC   chan<- interface{}
 		msgC   chan<- *hbtype.Msg
 		cancel func()
+
+		// failing is true while the relay is refusing or unreachable,
+		// so that the transition is logged rather than every beat of an
+		// outage.
+		failing bool
 	}
 )
 
@@ -91,32 +96,60 @@ func (t *tx) Start(cmdC chan<- interface{}, msgC <-chan []byte) error {
 				Desc:     t.streamPeerDesc(),
 			}
 		}
-		var b []byte
-		ticker := time.NewTicker(t.interval)
-		defer ticker.Stop()
-		var reason string
-		for {
-			select {
-			case <-ctx.Done():
-				return
-			case b = <-msgC:
-				reason = "send msg"
-				ticker.Reset(t.interval)
-			case <-ticker.C:
-				reason = "send msg (interval)"
-			case ev := <-sub.C:
-				t.onEvent(ev)
-			}
-			if len(b) == 0 {
-				continue
-			} else {
-				t.log.Tracef(reason)
-				t.send(b)
-			}
-		}
+		t.postLoop(ctx, msgC, sub.C, t.send)
 	}()
 
 	return <-errC
+}
+
+// postLoop posts the freshest message the daemon produced, at most once
+// per interval and at least once per interval.
+//
+// The relay keeps one message per node, overwritten by each post, and a
+// peer reads it once per its own interval. So the interval is what to
+// post at: posting on every message the daemon produces, which is one
+// per propagation tick when anything changes, overwrites mail nobody
+// read yet, at a rate the relay has to carry for every cluster that
+// uses it.
+//
+// The last message is kept after it was posted, because a post with the
+// same payload refreshes the timestamp the peers read the liveness of
+// this stream from.
+func (t *tx) postLoop(ctx context.Context, msgC <-chan []byte, subC <-chan any, post func([]byte)) {
+	var (
+		latest     []byte
+		lastSentAt time.Time
+	)
+	ticker := time.NewTicker(t.interval)
+	defer ticker.Stop()
+	send := func() {
+		if len(latest) == 0 {
+			return
+		}
+		lastSentAt = time.Now()
+		ticker.Reset(t.interval)
+		t.log.Tracef("send msg")
+		post(latest)
+	}
+	for {
+		select {
+		case <-ctx.Done():
+			return
+		case b := <-msgC:
+			latest = b
+			if time.Since(lastSentAt) >= t.interval {
+				// Nothing was posted for an interval, so this is not a
+				// burst: a node that just started, or a cluster that
+				// just changed after a quiet spell, reaches its peers
+				// without waiting for the next tick.
+				send()
+			}
+		case <-ticker.C:
+			send()
+		case ev := <-subC:
+			t.onEvent(ev)
+		}
+	}
 }
 
 func (t *tx) send(b []byte) {
@@ -133,16 +166,17 @@ func (t *tx) send(b []byte) {
 	}
 	resp, err := t.cli.PostRelayMessage(context.Background(), params)
 	if err != nil {
-		t.log.Tracef("send: PostRelayMessage: %s", err)
+		t.logFailure("post to %s: %s", t.relay, err)
 		return
 	}
 
 	defer drain(resp.Body, t.log)
 
 	if resp.StatusCode != http.StatusOK {
-		t.log.Tracef("send: unexpected PostRelayMessage status: %s", resp.Status)
+		t.logFailure("post to %s: %s", t.relay, resp.Status)
 		return
 	}
+	t.logRecovery()
 
 	for _, node := range t.nodes {
 		t.cmdC <- hbctrl.CmdSetPeerSuccess{
@@ -167,4 +201,27 @@ func newTx(ctx context.Context, name string, nodes []string, cfg cfg) *tx {
 		nodes: nodes,
 		cfg:   cfg,
 	}
+}
+
+// logFailure reports a beat the relay did not take.
+//
+// Only the first of a run is a warning: the beats are paced by the
+// interval, so an outage would otherwise write one line per interval for
+// as long as it lasts, and the state of the stream is already in the
+// daemon status. The rest are traces, for an audit of the stream.
+func (t *tx) logFailure(format string, a ...any) {
+	if t.failing {
+		t.log.Tracef(format, a...)
+		return
+	}
+	t.failing = true
+	t.log.Warnf(format, a...)
+}
+
+func (t *tx) logRecovery() {
+	if !t.failing {
+		return
+	}
+	t.failing = false
+	t.log.Infof("post to %s: relaying again", t.relay)
 }

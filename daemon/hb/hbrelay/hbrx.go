@@ -37,6 +37,11 @@ type (
 
 		// dedup holds the frames the other hb links already delivered
 		dedup *hbdedup.Cache
+
+		// failing is true while the relay is refusing or unreachable,
+		// so that the transition is logged rather than every beat of an
+		// outage.
+		failing bool
 	}
 
 	decryptWithNoder interface {
@@ -145,16 +150,17 @@ func (t *rx) recv(nodename string) {
 	}
 	resp, err := t.cli.GetRelayMessageWithResponse(context.Background(), &params)
 	if err != nil {
-		t.log.Tracef("recv: node %s do request: %s", nodename, err)
+		t.logFailure("get %s from %s: %s", nodename, t.relay, err)
 		return
 	}
 
 	defer drain(resp.HTTPResponse.Body, t.log)
 
 	if resp.StatusCode() != http.StatusOK {
-		t.log.Tracef("unexpected get relay message %s status %s", nodename, resp.Status())
+		t.logFailure("get %s from %s: %s", nodename, t.relay, resp.Status())
 		return
 	}
+	t.logRecovery()
 	if resp.JSON200 == nil {
 		t.log.Tracef("recv: node %s data has no stored data", nodename)
 		return
@@ -233,4 +239,23 @@ func newRx(ctx context.Context, name string, nodes []string, cfg cfg) *rx {
 		nodes: nodes,
 		cfg:   cfg,
 	}
+}
+
+// logFailure reports a beat the relay did not answer. Only the first of
+// a run is a warning, as for the transmitter.
+func (t *rx) logFailure(format string, a ...any) {
+	if t.failing {
+		t.log.Tracef(format, a...)
+		return
+	}
+	t.failing = true
+	t.log.Warnf(format, a...)
+}
+
+func (t *rx) logRecovery() {
+	if !t.failing {
+		return
+	}
+	t.failing = false
+	t.log.Infof("get from %s: reading again", t.relay)
 }
