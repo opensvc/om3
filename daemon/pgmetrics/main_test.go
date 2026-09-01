@@ -6,6 +6,7 @@ import (
 	"os"
 	"path/filepath"
 	"testing"
+	"time"
 
 	"strings"
 
@@ -19,9 +20,9 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// countSeries counts the label combinations a vector currently holds.
-// Done by hand rather than with prometheus' testutil, which is not in the
-// module graph and would cost a go mod tidy to add.
+// countSeries counts the metrics a collector emits. Done by hand rather
+// than with prometheus' testutil, which is not in the module graph and
+// would cost a go mod tidy to add.
 func countSeries(c prometheus.Collector) int {
 	ch := make(chan prometheus.Metric, 1024)
 	c.Collect(ch)
@@ -49,49 +50,6 @@ func TestParseLimit(t *testing.T) {
 	assert.Error(t, err)
 }
 
-func TestForgetUsageDropsEverySeriesOfOneCgroupOnly(t *testing.T) {
-	gone := cgroupKey{namespace: "ns1", path: "ns1/svc/gone"}
-	kept := cgroupKey{namespace: "ns2", path: "ns2/svc/kept"}
-	for _, k := range []cgroupKey{gone, kept} {
-		pgCgroupMemoryCurrent.WithLabelValues(k.namespace, k.path).Set(1)
-		pgCgroupCPUUsage.WithLabelValues(k.namespace, k.path).Set(1)
-		// a vec with a third label, to check the partial match reaches it
-		pgCgroupMemoryStat.WithLabelValues(k.namespace, k.path, "anon").Set(1)
-		pgCgroupMemoryStat.WithLabelValues(k.namespace, k.path, "file").Set(1)
-		pgCgroupExists.WithLabelValues(k.namespace, k.path).Set(1)
-	}
-	t.Cleanup(func() {
-		forgetUsage(kept)
-		pgCgroupExists.DeletePartialMatch(kept.labels())
-		pgCgroupExists.DeletePartialMatch(gone.labels())
-	})
-
-	forgetUsage(gone)
-
-	assert.Equal(t, 1, countSeries(pgCgroupMemoryCurrent))
-	assert.Equal(t, 1, countSeries(pgCgroupCPUUsage))
-	assert.Equal(t, 2, countSeries(pgCgroupMemoryStat), "both stat series of the kept cgroup, neither of the gone one")
-
-	// exists is deliberately left behind by forgetUsage: it is the series
-	// that reports the cgroup is not there.
-	assert.Equal(t, 2, countSeries(pgCgroupExists))
-}
-
-// TestCgroupMetricsCoversTheUsageMetrics guards the enumeration: register,
-// unregister and forgetUsage all read these lists, and a metric left out
-// of one of them is the failure mode this consolidation removes.
-func TestCgroupMetricsCoversTheUsageMetrics(t *testing.T) {
-	assert.Len(t, cgroupMetrics, len(cgroupUsageMetrics)+1, "cgroupMetrics is the usage metrics plus exists")
-	for _, metric := range cgroupUsageMetrics {
-		assert.NotNil(t, metric)
-		assert.NotSame(t, pgCgroupExists, metric, "exists is not a usage metric, forgetUsage must not drop it")
-	}
-}
-
-// TestUnlimitedRendersAsPlusInf is about the choice parseLimit makes, not
-// about the library: it records that +Inf survives the text exposition
-// format, so "unlimited" is a value a query can ask about rather than a
-// missing series indistinguishable from a collection failure.
 func TestUnlimitedRendersAsPlusInf(t *testing.T) {
 	reg := prometheus.NewRegistry()
 	vec := prometheus.NewGaugeVec(prometheus.GaugeOpts{Name: "m"}, []string{"p"})
@@ -195,52 +153,6 @@ func TestParsersAcceptThisHostsCgroupFiles(t *testing.T) {
 // series land in. They carry a path label, so on a large cluster they are
 // most of what /metrics used to cost, and they are served at /metrics/pg
 // instead.
-func TestMetricsGoToTheDetailRegistry(t *testing.T) {
-	m := New(nil)
-	m.registerMetrics()
-	t.Cleanup(m.unregisterMetrics)
-
-	for _, metric := range cgroupMetrics {
-		name := metricName(t, metric)
-		assert.True(t, isRegistered(metricsreg.PG, name), "%s must be served at /metrics/pg", name)
-		assert.False(t, isRegistered(prometheus.DefaultRegisterer, name), "%s must not be on /metrics", name)
-	}
-
-	// The hints stay where the normal scrape finds them.
-	for _, name := range []string{
-		"opensvc_pg_cgroups",
-		"opensvc_pg_objects_without_cgroup",
-		"opensvc_pg_cgroup_memory_utilization_max_ratio",
-	} {
-		assert.True(t, isRegistered(prometheus.DefaultRegisterer, name), "%s is the hint, it belongs on /metrics", name)
-		assert.False(t, isRegistered(metricsreg.PG, name), "%s must not also be at /metrics/pg", name)
-	}
-}
-
-func isRegistered(reg prometheus.Registerer, name string) bool {
-	probe := prometheus.NewGauge(prometheus.GaugeOpts{Name: name, Help: "probe"})
-	if err := reg.Register(probe); err != nil {
-		return true
-	}
-	reg.Unregister(probe)
-	return false
-}
-
-func metricName(t *testing.T, vec *prometheus.GaugeVec) string {
-	t.Helper()
-	ch := make(chan *prometheus.Desc, 1)
-	vec.Describe(ch)
-	close(ch)
-	desc := <-ch
-	// Desc.String() is "Desc{fqName: "x", ...}", the fqName being what a
-	// registry keys on.
-	s := desc.String()
-	start := strings.Index(s, `fqName: "`) + len(`fqName: "`)
-	return s[start : start+strings.Index(s[start:], `"`)]
-}
-
-// withFakeCgroupTree points CgroupRoot at a temp dir and populates
-// object.StatusData, so collect() can be driven without a live daemon.
 func withFakeCgroupTree(t testing.TB, paths []string, withCgroup []string) *Manager {
 	t.Helper()
 	root := t.TempDir()
@@ -259,54 +171,149 @@ func withFakeCgroupTree(t testing.TB, paths []string, withCgroup []string) *Mana
 		require.NoError(t, err)
 		dir := forgeCgroupPath(p)
 		require.NoError(t, os.MkdirAll(dir, 0755))
-		require.NoError(t, os.WriteFile(filepath.Join(dir, "memory.current"), []byte("16384\n"), 0644))
-		require.NoError(t, os.WriteFile(filepath.Join(dir, "memory.max"), []byte("max\n"), 0644))
-		require.NoError(t, os.WriteFile(filepath.Join(dir, "cpu.max"), []byte("max 100000\n"), 0644))
+		for name, content := range map[string]string{
+			"memory.current": "16384\n",
+			"memory.max":     "65536\n",
+			"cpu.max":        "max 100000\n",
+			"cpu.weight":     "100\n",
+			"io.weight":      "default 100\n",
+			"cpu.stat":       "usage_usec 1000\nuser_usec 600\nsystem_usec 400\nnr_periods 3\n",
+			"memory.stat":    "anon 4096\nfile 8192\npgfault 12\n",
+		} {
+			require.NoError(t, os.WriteFile(filepath.Join(dir, name), []byte(content), 0644))
+		}
 	}
-
-	m := New(nil)
-	m.registerMetrics()
-	t.Cleanup(m.unregisterMetrics)
-	return m
+	return New()
 }
 
-func TestCollectDropsTheSeriesOfAVanishedCgroup(t *testing.T) {
+func isRegistered(reg prometheus.Registerer, name string) bool {
+	probe := prometheus.NewGauge(prometheus.GaugeOpts{Name: name, Help: "probe"})
+	if err := reg.Register(probe); err != nil {
+		return true
+	}
+	reg.Unregister(probe)
+	return false
+}
+
+func TestCollectorsGoToTheRightRegistries(t *testing.T) {
+	m := New()
+	m.registerMetrics()
+	t.Cleanup(m.unregisterMetrics)
+
+	for _, desc := range detailDescs {
+		name := descName(t, desc)
+		assert.True(t, isRegistered(metricsreg.PG, name), "%s must be served at /metrics/pg", name)
+		assert.False(t, isRegistered(prometheus.DefaultRegisterer, name), "%s must not be on /metrics", name)
+	}
+	for _, name := range []string{
+		"opensvc_pg_cgroups",
+		"opensvc_pg_objects_without_cgroup",
+		"opensvc_pg_cgroup_memory_utilization_max_ratio",
+	} {
+		assert.True(t, isRegistered(prometheus.DefaultRegisterer, name), "%s is the hint, it belongs on /metrics", name)
+		assert.False(t, isRegistered(metricsreg.PG, name), "%s must not also be at /metrics/pg", name)
+	}
+}
+
+func descName(t *testing.T, desc *prometheus.Desc) string {
+	t.Helper()
+	s := desc.String()
+	start := strings.Index(s, `fqName: "`) + len(`fqName: "`)
+	return s[start : start+strings.Index(s[start:], `"`)]
+}
+
+// TestAVanishedCgroupLeavesNoSeries is what used to need a deletion pass
+// over every vector, and a pair of maps to know which cgroups to run it
+// for. A walk emits metrics for what it found, so a cgroup that is gone
+// is simply not in the next one.
+func TestAVanishedCgroupLeavesNoSeries(t *testing.T) {
 	m := withFakeCgroupTree(t, []string{"ns1/svc/a", "ns1/svc/b"}, []string{"ns1/svc/a"})
 
-	m.collect()
-	assert.Equal(t, 1, countSeries(pgCgroupMemoryCurrent), "only the object with a cgroup reports usage")
-	assert.Equal(t, 2, countSeries(pgCgroupExists), "both objects report whether they have one")
+	s := m.snapshot(true)
+	assert.Equal(t, 1, s.cgroups)
+	assert.Equal(t, 1, s.withoutCgroup)
+	assert.Contains(t, metricNames(s.detail), "opensvc_pg_cgroup_memory_current_bytes")
 
 	p, err := naming.ParsePath("ns1/svc/a")
 	require.NoError(t, err)
 	require.NoError(t, os.RemoveAll(forgeCgroupPath(p)))
 
-	m.collect()
-	assert.Equal(t, 0, countSeries(pgCgroupMemoryCurrent), "the usage series must go with the cgroup")
-	assert.Equal(t, 2, countSeries(pgCgroupExists), "and exists must stay, to report it is gone")
-
-	// The object leaves the cluster: nothing of it is left.
-	object.StatusData.Unset(p)
-	m.collect()
-	assert.Equal(t, 1, countSeries(pgCgroupExists))
+	m.snap = nil // the cache would otherwise still hold the walk above
+	s = m.snapshot(true)
+	assert.Equal(t, 0, s.cgroups)
+	assert.Equal(t, 2, s.withoutCgroup)
+	assert.NotContains(t, metricNames(s.detail), "opensvc_pg_cgroup_memory_current_bytes",
+		"the usage series must go with the cgroup")
+	assert.Contains(t, metricNames(s.detail), "opensvc_pg_cgroup_exists",
+		"and exists must stay, to report it is gone")
 }
 
-// BenchmarkCollectWithoutCgroups pins what a regression already cost once.
-// forgetUsage was called on every tick for every object with no cgroup,
-// and DeletePartialMatch walks every series of every vector, since a
-// partial label match cannot be indexed. On a cluster where 79 of 103
-// objects have no cgroup that was 9.4% of the daemon's cpu, measured. It
-// is only called on the transition now, so this should not scale with the
-// number of objects that have none.
-func BenchmarkCollectWithoutCgroups(b *testing.B) {
+func metricNames(metrics []prometheus.Metric) []string {
+	seen := make(map[string]bool, len(metrics))
+	l := make([]string, 0, len(metrics))
+	for _, metric := range metrics {
+		name := metric.Desc().String()
+		start := strings.Index(name, `fqName: "`) + len(`fqName: "`)
+		name = name[start : start+strings.Index(name[start:], `"`)]
+		if !seen[name] {
+			seen[name] = true
+			l = append(l, name)
+		}
+	}
+	return l
+}
+
+// TestTheHintWalkDoesNotPayForTheDetail is the point of the split: a
+// scrape of /metrics happens every few seconds and must not open the ten
+// files per cgroup that /metrics/pg needs.
+func TestTheHintWalkDoesNotPayForTheDetail(t *testing.T) {
+	m := withFakeCgroupTree(t, []string{"ns1/svc/a", "ns1/svc/b"}, []string{"ns1/svc/a"})
+
+	s := m.snapshot(false)
+	assert.Empty(t, s.detail, "the cheap walk emits no detail")
+	assert.Equal(t, 1, s.cgroups, "but still counts the cgroups")
+	assert.Equal(t, 1, s.withoutCgroup)
+	assert.InDelta(t, 16384.0/65536.0, s.utilizationMax, 1e-9, "and still reads the two files the ratio needs")
+}
+
+// TestSnapshotIsReusedWithinMinInterval keeps the walk from happening on
+// every scrape: /metrics is scraped far more often than the tree changes.
+func TestSnapshotIsReusedWithinMinInterval(t *testing.T) {
+	m := withFakeCgroupTree(t, []string{"ns1/svc/a"}, []string{"ns1/svc/a"})
+
+	first := m.snapshot(true)
+	assert.Same(t, first, m.snapshot(true), "a second scrape reuses the walk")
+	assert.Same(t, first, m.snapshot(false), "and a hint scrape is happy with a full one")
+
+	// A hint walk is not enough for the detail, though.
+	cheap := &snapshot{at: time.Now(), full: false}
+	m.snap = cheap
+	got := m.snapshot(true)
+	assert.NotSame(t, cheap, got, "the detail must not be served from a cheap walk")
+	assert.True(t, got.full)
+	assert.NotEmpty(t, got.detail)
+}
+
+func BenchmarkWalkFull(b *testing.B) {
+	m := benchTree(b)
+	b.ResetTimer()
+	for b.Loop() {
+		m.walk(true)
+	}
+}
+
+func BenchmarkWalkHint(b *testing.B) {
+	m := benchTree(b)
+	b.ResetTimer()
+	for b.Loop() {
+		m.walk(false)
+	}
+}
+
+func benchTree(b *testing.B) *Manager {
 	paths := make([]string, 0, 100)
 	for i := range 100 {
 		paths = append(paths, fmt.Sprintf("ns1/svc/o%d", i))
 	}
-	m := withFakeCgroupTree(b, paths, paths[:20])
-	m.collect()
-	b.ResetTimer()
-	for b.Loop() {
-		m.collect()
-	}
+	return withFakeCgroupTree(b, paths, paths[:24])
 }

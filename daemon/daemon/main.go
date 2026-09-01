@@ -253,7 +253,7 @@ func (t *T) Start(ctx context.Context) error {
 		mntmon.NewManager(daemonenv.DrainChanDuration, qsSmall),
 		hook.NewManager(daemonenv.DrainChanDuration, qsSmall),
 		dns.NewManager(daemonenv.DrainChanDuration, qsMedium),
-		pgmetrics.New(qsMedium),
+		pgmetrics.New(),
 		discover.NewManager(daemonenv.DrainChanDuration, qsHuge).
 			WithOmonSubQS(qsMedium).
 			WithImonStarter(imonFactory),

@@ -18,13 +18,10 @@ import (
 
 	"github.com/opensvc/om3/v3/core/naming"
 	"github.com/opensvc/om3/v3/core/object"
-	"github.com/opensvc/om3/v3/util/hostname"
 	"github.com/opensvc/om3/v3/util/metricsreg"
 	"github.com/opensvc/om3/v3/util/plog"
-	"github.com/opensvc/om3/v3/util/pubsub"
 	"github.com/opensvc/om3/v3/util/systemd"
 	"github.com/prometheus/client_golang/prometheus"
-	"github.com/prometheus/client_golang/prometheus/promauto"
 )
 
 var (
@@ -60,439 +57,253 @@ func forgeCgroupPath(objPath naming.Path) string {
 }
 
 // Metrics for cgroup resource usage
+// The metrics are emitted as const metrics by the collectors below,
+// built during the walk that reads them, rather than held in vectors a
+// timer keeps up to date.
+//
+// That is what lets the walk happen at scrape time. It also removes a
+// class of bug rather than fixing it: a vector remembers every label
+// combination it was ever given, so a cgroup that went away had to be
+// deleted from each of them by hand, and forgetting to do that left a
+// stopped object reporting the values of the last collection that found
+// it, for as long as the daemon ran. Const metrics only exist for what
+// the current walk found.
 var (
-	// pgCgroupCPUUsage reports CPU usage in usec for each cgroup
-	pgCgroupCPUUsage = prometheus.NewGaugeVec(
-		prometheus.GaugeOpts{
-			Namespace: "opensvc",
-			Subsystem: "pg",
-			Name:      "cgroup_cpu_usage_usec",
-			Help:      "Total CPU usage in microseconds for the cgroup",
-		},
-		[]string{"namespace", "path"},
-	)
+	cgroupExistsDesc = prometheus.NewDesc("opensvc_pg_cgroup_exists",
+		"Whether the cgroup exists (1) or not (0)", cgroupLabels, nil)
+	cpuUsageDesc = prometheus.NewDesc("opensvc_pg_cgroup_cpu_usage_usec",
+		"Total CPU usage in microseconds for the cgroup", cgroupLabels, nil)
+	cpuUserUsageDesc = prometheus.NewDesc("opensvc_pg_cgroup_cpu_user_usage_usec",
+		"Total user CPU usage in microseconds for the cgroup", cgroupLabels, nil)
+	cpuSystemUsageDesc = prometheus.NewDesc("opensvc_pg_cgroup_cpu_system_usage_usec",
+		"Total system CPU usage in microseconds for the cgroup", cgroupLabels, nil)
+	memoryCurrentDesc = prometheus.NewDesc("opensvc_pg_cgroup_memory_current_bytes",
+		"Current memory usage in bytes for the cgroup", cgroupLabels, nil)
+	memoryMaxDesc = prometheus.NewDesc("opensvc_pg_cgroup_memory_max_bytes",
+		"Memory max limit in bytes for the cgroup (+Inf = unlimited)", cgroupLabels, nil)
+	cpuSharesDesc = prometheus.NewDesc("opensvc_pg_cgroup_cpu_shares",
+		"CPU shares for the cgroup (cgroup v1, 2-262144, 1024 by default)", cgroupLabels, nil)
+	cpuWeightDesc = prometheus.NewDesc("opensvc_pg_cgroup_cpu_weight",
+		"CPU weight for the cgroup (cgroup v2, 1-10000, 100 by default)", cgroupLabels, nil)
+	cpuQuotaDesc = prometheus.NewDesc("opensvc_pg_cgroup_cpu_quota",
+		"CPU quota in microseconds per period for the cgroup (+Inf = not throttled)", cgroupLabels, nil)
+	cpuPeriodDesc = prometheus.NewDesc("opensvc_pg_cgroup_cpu_period",
+		"CPU period in microseconds for the cgroup", cgroupLabels, nil)
+	cpuCpusDesc = prometheus.NewDesc("opensvc_pg_cgroup_cpu_cpus",
+		"CPUs allowed for the cgroup (count)", cgroupLabels, nil)
+	blkioWeightDesc = prometheus.NewDesc("opensvc_pg_cgroup_blkio_weight",
+		"Block IO default weight for the cgroup", cgroupLabels, nil)
+	memoryStatDesc = prometheus.NewDesc("opensvc_pg_cgroup_memory_stat_bytes",
+		"Memory statistics in bytes for the cgroup", cgroupStatLabels, nil)
+	memoryStatPagesDesc = prometheus.NewDesc("opensvc_pg_cgroup_memory_stat_pages",
+		"Page-based memory statistics for the cgroup", cgroupStatLabels, nil)
+	cpuStatDesc = prometheus.NewDesc("opensvc_pg_cgroup_cpu_stat",
+		"CPU statistics for the cgroup", cgroupStatLabels, nil)
 
-	// pgCgroupCPUUserUsage reports user CPU usage in usec for each cgroup
-	pgCgroupCPUUserUsage = prometheus.NewGaugeVec(
-		prometheus.GaugeOpts{
-			Namespace: "opensvc",
-			Subsystem: "pg",
-			Name:      "cgroup_cpu_user_usage_usec",
-			Help:      "Total user CPU usage in microseconds for the cgroup",
-		},
-		[]string{"namespace", "path"},
-	)
-
-	// pgCgroupCPUSystemUsage reports system CPU usage in usec for each cgroup
-	pgCgroupCPUSystemUsage = prometheus.NewGaugeVec(
-		prometheus.GaugeOpts{
-			Namespace: "opensvc",
-			Subsystem: "pg",
-			Name:      "cgroup_cpu_system_usage_usec",
-			Help:      "Total system CPU usage in microseconds for the cgroup",
-		},
-		[]string{"namespace", "path"},
-	)
-
-	// pgCgroupMemoryCurrent reports current memory usage in bytes for each cgroup
-	pgCgroupMemoryCurrent = prometheus.NewGaugeVec(
-		prometheus.GaugeOpts{
-			Namespace: "opensvc",
-			Subsystem: "pg",
-			Name:      "cgroup_memory_current_bytes",
-			Help:      "Current memory usage in bytes for the cgroup",
-		},
-		[]string{"namespace", "path"},
-	)
-
-	// pgCgroupMemoryMax reports memory max limit in bytes for each cgroup
-	pgCgroupMemoryMax = prometheus.NewGaugeVec(
-		prometheus.GaugeOpts{
-			Namespace: "opensvc",
-			Subsystem: "pg",
-			Name:      "cgroup_memory_max_bytes",
-			Help:      "Memory max limit in bytes for the cgroup (+Inf = unlimited)",
-		},
-		[]string{"namespace", "path"},
-	)
-
-	// pgCgroupMemoryStat reports various memory statistics in bytes for each cgroup
-	pgCgroupMemoryStat = prometheus.NewGaugeVec(
-		prometheus.GaugeOpts{
-			Namespace: "opensvc",
-			Subsystem: "pg",
-			Name:      "cgroup_memory_stat_bytes",
-			Help:      "Memory statistics in bytes for the cgroup",
-		},
-		[]string{"namespace", "path", "stat"},
-	)
-
-	// pgCgroupMemoryStatPages reports page-based memory statistics for each cgroup
-	pgCgroupMemoryStatPages = prometheus.NewGaugeVec(
-		prometheus.GaugeOpts{
-			Namespace: "opensvc",
-			Subsystem: "pg",
-			Name:      "cgroup_memory_stat_pages",
-			Help:      "Page-based memory statistics for the cgroup",
-		},
-		[]string{"namespace", "path", "stat"},
-	)
-
-	// pgCgroupCPUStat reports CPU statistics for each cgroup
-	pgCgroupCPUStat = prometheus.NewGaugeVec(
-		prometheus.GaugeOpts{
-			Namespace: "opensvc",
-			Subsystem: "pg",
-			Name:      "cgroup_cpu_stat",
-			Help:      "CPU statistics for the cgroup",
-		},
-		[]string{"namespace", "path", "stat"},
-	)
-
-	// pgCgroupCPUShares reports CPU shares for each cgroup
-	pgCgroupCPUShares = prometheus.NewGaugeVec(
-		prometheus.GaugeOpts{
-			Namespace: "opensvc",
-			Subsystem: "pg",
-			Name:      "cgroup_cpu_shares",
-			Help:      "CPU shares for the cgroup (cgroup v1, 2-262144, 1024 by default)",
-		},
-		[]string{"namespace", "path"},
-	)
-
-	// pgCgroupCPUWeight reports the cgroup v2 cpu weight. It is not
-	// cgroup_cpu_shares under another name: the scales differ, so folding
-	// the two into one metric would make its value mean different things
-	// depending on the host it came from.
-	pgCgroupCPUWeight = prometheus.NewGaugeVec(
-		prometheus.GaugeOpts{
-			Namespace: "opensvc",
-			Subsystem: "pg",
-			Name:      "cgroup_cpu_weight",
-			Help:      "CPU weight for the cgroup (cgroup v2, 1-10000, 100 by default)",
-		},
-		[]string{"namespace", "path"},
-	)
-
-	// pgCgroupCPUQuota reports CPU quota for each cgroup
-	pgCgroupCPUQuota = prometheus.NewGaugeVec(
-		prometheus.GaugeOpts{
-			Namespace: "opensvc",
-			Subsystem: "pg",
-			Name:      "cgroup_cpu_quota",
-			Help:      "CPU quota in microseconds per period for the cgroup (+Inf = not throttled)",
-		},
-		[]string{"namespace", "path"},
-	)
-
-	// pgCgroupCPUPeriod reports CPU period for each cgroup
-	pgCgroupCPUPeriod = prometheus.NewGaugeVec(
-		prometheus.GaugeOpts{
-			Namespace: "opensvc",
-			Subsystem: "pg",
-			Name:      "cgroup_cpu_period",
-			Help:      "CPU period in microseconds for the cgroup",
-		},
-		[]string{"namespace", "path"},
-	)
-
-	// pgCgroupCPUCpus reports CPU cpus allowed for each cgroup
-	pgCgroupCPUCpus = prometheus.NewGaugeVec(
-		prometheus.GaugeOpts{
-			Namespace: "opensvc",
-			Subsystem: "pg",
-			Name:      "cgroup_cpu_cpus",
-			Help:      "CPUs allowed for the cgroup (count)",
-		},
-		[]string{"namespace", "path"},
-	)
-
-	// pgCgroupBlkioWeight reports block IO weight for each cgroup
-	pgCgroupBlkioWeight = prometheus.NewGaugeVec(
-		prometheus.GaugeOpts{
-			Namespace: "opensvc",
-			Subsystem: "pg",
-			Name:      "cgroup_blkio_weight",
-			Help:      "Block IO default weight for the cgroup",
-		},
-		[]string{"namespace", "path"},
-	)
-
-	// pgCgroupExists reports whether a cgroup exists (1) or not (0)
-	pgCgroupExists = prometheus.NewGaugeVec(
-		prometheus.GaugeOpts{
-			Namespace: "opensvc",
-			Subsystem: "pg",
-			Name:      "cgroup_exists",
-			Help:      "Whether the cgroup exists (1) or not (0)",
-		},
-		[]string{"namespace", "path"},
-	)
-)
-
-// The hint metrics, on the default registry. Every metric above carries a
-// path label and so grows with the cluster, which is why they are served
-// apart, at /metrics/pg. These three are what tells you to go look.
-var (
-	// pgCgroups is the size of the detail set: how many series /metrics/pg
-	// is carrying, in units of cgroups.
-	pgCgroups = promauto.NewGauge(
-		prometheus.GaugeOpts{
-			Namespace: "opensvc",
-			Subsystem: "pg",
-			Name:      "cgroups",
-			Help:      "The number of cgroups reported at /metrics/pg",
-		})
-
-	// pgObjectsWithoutCgroup counts the objects that have none. A rise
-	// means objects stopped, or pg configuration did not take effect.
-	pgObjectsWithoutCgroup = promauto.NewGauge(
-		prometheus.GaugeOpts{
-			Namespace: "opensvc",
-			Subsystem: "pg",
-			Name:      "objects_without_cgroup",
-			Help:      "The number of objects with no cgroup",
-		})
-
-	// pgMemoryUtilizationMax is the highest memory.current/memory.max of
-	// the cgroups that have a limit, so one series says whether anything
-	// is near being reclaimed against. Cgroups with no limit do not
-	// count, their ratio being zero over an infinity.
-	pgMemoryUtilizationMax = promauto.NewGauge(
-		prometheus.GaugeOpts{
-			Namespace: "opensvc",
-			Subsystem: "pg",
-			Name:      "cgroup_memory_utilization_max_ratio",
-			Help:      "The highest memory usage over memory limit ratio among the limited cgroups",
-		})
-)
-
-var (
-	// cgroupUsageMetrics are the series describing a cgroup that is there.
-	// They are what has to be dropped when one goes away, and listing them
-	// once is what keeps register, unregister and drop from drifting apart.
-	cgroupUsageMetrics = []*prometheus.GaugeVec{
-		pgCgroupCPUUsage,
-		pgCgroupCPUUserUsage,
-		pgCgroupCPUSystemUsage,
-		pgCgroupMemoryCurrent,
-		pgCgroupMemoryMax,
-		pgCgroupMemoryStat,
-		pgCgroupMemoryStatPages,
-		pgCgroupCPUStat,
-		pgCgroupCPUShares,
-		pgCgroupCPUWeight,
-		pgCgroupCPUQuota,
-		pgCgroupCPUPeriod,
-		pgCgroupCPUCpus,
-		pgCgroupBlkioWeight,
+	// detailDescs is what /metrics/pg answers with.
+	detailDescs = []*prometheus.Desc{
+		cgroupExistsDesc, cpuUsageDesc, cpuUserUsageDesc, cpuSystemUsageDesc,
+		memoryCurrentDesc, memoryMaxDesc, cpuSharesDesc, cpuWeightDesc,
+		cpuQuotaDesc, cpuPeriodDesc, cpuCpusDesc, blkioWeightDesc,
+		memoryStatDesc, memoryStatPagesDesc, cpuStatDesc,
 	}
-
-	// cgroupMetrics is every metric this package registers.
-	cgroupMetrics = append([]*prometheus.GaugeVec{pgCgroupExists}, cgroupUsageMetrics...)
 )
 
-// cgroupKey identifies the object a cgroup belongs to, and is the label
-// pair every metric here carries.
-type cgroupKey struct {
-	namespace string
-	path      string
-}
+var cgroupLabels = []string{"namespace", "path"}
+var cgroupStatLabels = []string{"namespace", "path", "stat"}
 
-func (k cgroupKey) labels() prometheus.Labels {
-	return prometheus.Labels{"namespace": k.namespace, "path": k.path}
-}
-
-// forgetUsage drops every series describing k's cgroup. The exists series
-// is left alone: it is the one that reports the cgroup is gone.
-func forgetUsage(k cgroupKey) {
-	labels := k.labels()
-	for _, metric := range cgroupUsageMetrics {
-		metric.DeletePartialMatch(labels)
-	}
-}
+// The hints, on the default registry. Every metric above carries a path
+// label and so grows with the cluster, which is why they are served
+// apart, at /metrics/pg. These three are what tells you to go look, and
+// they are cheap enough to answer on every scrape of /metrics.
+var (
+	cgroupsDesc = prometheus.NewDesc("opensvc_pg_cgroups",
+		"The number of cgroups reported at /metrics/pg", nil, nil)
+	objectsWithoutCgroupDesc = prometheus.NewDesc("opensvc_pg_objects_without_cgroup",
+		"The number of objects with no cgroup", nil, nil)
+	memoryUtilizationMaxDesc = prometheus.NewDesc("opensvc_pg_cgroup_memory_utilization_max_ratio",
+		"The highest memory usage over memory limit ratio among the limited cgroups", nil, nil)
+)
 
 // Manager manages the collection and reporting of cgroup metrics
 type Manager struct {
-	ctx       context.Context
-	cancel    context.CancelFunc
-	log       *plog.Logger
-	localhost string
-	sub       *pubsub.Subscription
-	subQS     pubsub.QueueSizer
+	ctx    context.Context
+	cancel context.CancelFunc
+	log    *plog.Logger
 
-	// exported is the objects the last collection published a series for,
-	// so the next one can tell which have since disappeared.
-	exported map[cgroupKey]struct{}
+	// mu guards snap, and is held across a walk so that concurrent
+	// scrapes wait for the one in flight instead of each starting theirs.
+	mu   sync.Mutex
+	snap *snapshot
 
-	// withCgroup is the subset of those that had a cgroup, so that the
-	// usage series are dropped once, when one goes away, rather than on
-	// every tick for every object that has none.
-	withCgroup map[cgroupKey]struct{}
-
-	wg sync.WaitGroup
+	detail detailCollector
+	hint   hintCollector
 }
 
-// New creates a new pgmetrics manager with the specified queue size
-func New(subQS pubsub.QueueSizer) *Manager {
-	localhost := hostname.Hostname()
+// snapshot is one walk of the cgroup tree.
+//
+// The detail is built as const metrics during the walk, so a scrape only
+// forwards them, and two scrapes can share one snapshot without copying:
+// a const metric cannot be modified.
+type snapshot struct {
+	at     time.Time
+	full   bool
+	detail []prometheus.Metric
+
+	cgroups        int
+	withoutCgroup  int
+	utilizationMax float64
+}
+
+// minInterval is how old a snapshot may be before a scrape walks the tree
+// again. It is the period of the ticker this replaces, so the data is no
+// less fresh than it was. What changes is that nothing walks while
+// nothing is scraping, and that a detail endpoint scraped every five
+// minutes is read every five minutes rather than every fifteen seconds.
+var minInterval = 15 * time.Second
+
+// emitter accumulates the const metrics of one walk.
+type emitter struct{ out []prometheus.Metric }
+
+func (e *emitter) gauge(desc *prometheus.Desc, v float64, labels ...string) {
+	e.out = append(e.out, prometheus.MustNewConstMetric(desc, prometheus.GaugeValue, v, labels...))
+}
+
+// detailCollector answers /metrics/pg, walking the cgroup tree when it is
+// scraped rather than on a timer.
+type detailCollector struct{ m *Manager }
+
+func (c detailCollector) Describe(ch chan<- *prometheus.Desc) {
+	for _, desc := range detailDescs {
+		ch <- desc
+	}
+}
+
+func (c detailCollector) Collect(ch chan<- prometheus.Metric) {
+	for _, metric := range c.m.snapshot(true).detail {
+		ch <- metric
+	}
+}
+
+// hintCollector answers the pg metrics on /metrics. It asks for the cheap
+// walk: the two counts need only a stat per object, and the utilization
+// ratio two files per cgroup, where the detail opens ten.
+type hintCollector struct{ m *Manager }
+
+func (c hintCollector) Describe(ch chan<- *prometheus.Desc) {
+	ch <- cgroupsDesc
+	ch <- objectsWithoutCgroupDesc
+	ch <- memoryUtilizationMaxDesc
+}
+
+func (c hintCollector) Collect(ch chan<- prometheus.Metric) {
+	s := c.m.snapshot(false)
+	ch <- prometheus.MustNewConstMetric(cgroupsDesc, prometheus.GaugeValue, float64(s.cgroups))
+	ch <- prometheus.MustNewConstMetric(objectsWithoutCgroupDesc, prometheus.GaugeValue, float64(s.withoutCgroup))
+	ch <- prometheus.MustNewConstMetric(memoryUtilizationMaxDesc, prometheus.GaugeValue, s.utilizationMax)
+}
+
+// snapshot returns a walk no older than minInterval, doing one when what
+// is cached is too old, or was the cheap walk and the detail is wanted.
+func (m *Manager) snapshot(full bool) *snapshot {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	if s := m.snap; s != nil && time.Since(s.at) < minInterval && (s.full || !full) {
+		return s
+	}
+	m.snap = m.walk(full)
+	return m.snap
+}
+
+func (m *Manager) walk(full bool) *snapshot {
+	s := &snapshot{at: time.Now(), full: full}
+	if _, err := os.Stat(CgroupRoot); os.IsNotExist(err) {
+		m.log.Tracef("cgroup root %s does not exist, skipping collection", CgroupRoot)
+		return s
+	}
+	var e emitter
+	for _, objPath := range object.StatusData.GetPaths() {
+		namespace, path := objPath.Namespace, objPath.String()
+		cgroupPath := forgeCgroupPath(objPath)
+		if _, err := os.Stat(cgroupPath); os.IsNotExist(err) {
+			s.withoutCgroup++
+			if full {
+				e.gauge(cgroupExistsDesc, 0, namespace, path)
+			}
+			continue
+		}
+		s.cgroups++
+		if full {
+			e.gauge(cgroupExistsDesc, 1, namespace, path)
+		}
+		if utilization := m.collectCgroupMetrics(&e, full, cgroupPath, namespace, path); utilization > s.utilizationMax {
+			s.utilizationMax = utilization
+		}
+	}
+	s.detail = e.out
+	return s
+}
+
+// New creates a new pgmetrics manager.
+//
+// It takes no queue sizer any more: it subscribes to nothing, having no
+// goroutine left to receive on. The cgroup tree is read by the scrapes
+// that ask for it.
+func New() *Manager {
 	return &Manager{
-		localhost:  localhost,
-		subQS:      subQS,
-		exported:   make(map[cgroupKey]struct{}),
-		withCgroup: make(map[cgroupKey]struct{}),
 		log: plog.NewDefaultLogger().
 			Attr("pkg", "daemon/pgmetrics").
 			WithPrefix("daemon: pgmetrics: "),
 	}
 }
 
-// Start starts the manager goroutine
+// Start registers the collectors. There is no goroutine to start any
+// more: the work happens on the scrapes that ask for it.
 func (m *Manager) Start(parent context.Context) error {
 	m.log.Infof("starting")
 	defer m.log.Infof("started")
-
 	m.ctx, m.cancel = context.WithCancel(parent)
-
-	// Register prometheus metrics
 	m.registerMetrics()
-
-	m.wg.Add(1)
-	go func() {
-		defer m.wg.Done()
-		defer m.log.Infof("stopped")
-		m.collectLoop()
-	}()
-
 	return nil
 }
 
-// Stop stops the manager
 func (m *Manager) Stop() error {
 	m.log.Infof("stopping")
 	defer m.log.Infof("stopped")
 	m.cancel()
-	m.wg.Wait()
 	m.unregisterMetrics()
 	return nil
 }
 
-func (m *Manager) unregisterMetrics() {
-	for _, metric := range cgroupMetrics {
-		metricsreg.PG.Unregister(metric)
-	}
-}
-
 func (m *Manager) registerMetrics() {
-	for _, metric := range cgroupMetrics {
-		metricsreg.PG.MustRegister(metric)
-	}
+	m.detail = detailCollector{m: m}
+	m.hint = hintCollector{m: m}
+	metricsreg.PG.MustRegister(m.detail)
+	prometheus.MustRegister(m.hint)
 }
 
-func (m *Manager) collectLoop() {
-	// Initial collection
-	m.collect()
-
-	// Then collect periodically - every 15 seconds
-	ticker := time.NewTicker(15 * time.Second)
-	defer ticker.Stop()
-
-	for {
-		select {
-		case <-m.ctx.Done():
-			return
-		case <-ticker.C:
-			m.collect()
-		}
-	}
+func (m *Manager) unregisterMetrics() {
+	metricsreg.PG.Unregister(m.detail)
+	prometheus.Unregister(m.hint)
 }
 
-func (m *Manager) collect() {
-	if _, err := os.Stat(CgroupRoot); os.IsNotExist(err) {
-		m.log.Tracef("cgroup root %s does not exist, skipping collection", CgroupRoot)
-		return
-	}
-
-	// Get all object paths from the object status data
-	objectPaths := object.StatusData.GetPaths()
-
-	// Iterate over object paths and forge their expected cgroup paths
-	seen := make(map[cgroupKey]struct{}, len(objectPaths))
-	withCgroup := make(map[cgroupKey]struct{}, len(m.withCgroup))
-	cgroups, withoutCgroup, utilizationMax := 0, 0, 0.0
-	for _, objPath := range objectPaths {
-		key := cgroupKey{namespace: objPath.Namespace, path: objPath.String()}
-		seen[key] = struct{}{}
-
-		// Forge the expected cgroup path from the object path
-		cgroupPath := forgeCgroupPath(objPath)
-
-		// Check if the cgroup path exists
-		if _, err := os.Stat(cgroupPath); os.IsNotExist(err) {
-			// The object has no cgroup at the moment. Report that, and
-			// drop the series a previous collection left behind, which
-			// would otherwise go on serving their last values and read
-			// as a cgroup that is still running.
-			pgCgroupExists.WithLabelValues(key.namespace, key.path).Set(0)
-			if _, had := m.withCgroup[key]; had {
-				// Only on the transition. DeletePartialMatch has to
-				// walk every series of every vector, since a partial
-				// label match cannot be indexed, and calling it each
-				// tick for each object that has no cgroup cost 9.4% of
-				// the daemon's cpu on a cluster where 79 of 103 objects
-				// have none.
-				forgetUsage(key)
-			}
-			withoutCgroup++
-			continue
-		}
-
-		// Set the exists metric
-		withCgroup[key] = struct{}{}
-		pgCgroupExists.WithLabelValues(key.namespace, key.path).Set(1)
-
-		// Collect all metrics for this cgroup
-		cgroups++
-		if utilization := m.collectCgroupMetrics(cgroupPath, key.namespace, key.path); utilization > utilizationMax {
-			utilizationMax = utilization
-		}
-	}
-	pgCgroups.Set(float64(cgroups))
-	pgObjectsWithoutCgroup.Set(float64(withoutCgroup))
-	pgMemoryUtilizationMax.Set(utilizationMax)
-
-	// An object gone from the cluster keeps nothing, not even an exists
-	// series. Prometheus vectors never forget a label combination on
-	// their own, so without this the endpoint grows for as long as the
-	// daemon runs, and every object it ever saw stays in it.
-	for key := range m.exported {
-		if _, ok := seen[key]; ok {
-			continue
-		}
-		if _, had := m.withCgroup[key]; had {
-			forgetUsage(key)
-		}
-		pgCgroupExists.DeletePartialMatch(key.labels())
-	}
-	m.exported, m.withCgroup = seen, withCgroup
-}
-
-// collectCgroupMetrics publishes one cgroup's series and returns its
-// memory usage over its memory limit, or 0 when it has no limit or either
-// value could not be read. The caller keeps the highest, which is the one
-// series on the default registry that says whether to come and look here.
-func (m *Manager) collectCgroupMetrics(cgroupPath, namespace, objPath string) (memoryUtilization float64) {
-	// Read cpu.stat
-	if cpuStat, err := readFile(cgroupPath, "cpu.stat"); err == nil {
-		parseCPUStat(cpuStat, namespace, objPath)
-	}
-
-	// Read memory.current
+// collectCgroupMetrics reads one cgroup and returns its memory usage over
+// its memory limit, or 0 when it has no limit or either value could not
+// be read.
+//
+// With full false it reads only the two files that ratio needs and emits
+// nothing. That is the walk a scrape of /metrics wants: the hint tells
+// you whether to go and look, and it should not cost what looking costs.
+func (m *Manager) collectCgroupMetrics(e *emitter, full bool, cgroupPath, namespace, objPath string) (memoryUtilization float64) {
+	// Read memory.current and memory.max first: they are the only files
+	// the hint walk opens, and the ratio is computed from them.
 	var memCurrentVal, memMaxVal float64
 	var haveCurrent, haveMax bool
 	if memCurrent, err := readFile(cgroupPath, "memory.current"); err == nil {
 		if val, err := parseUint(memCurrent); err == nil {
-			pgCgroupMemoryCurrent.WithLabelValues(namespace, objPath).Set(float64(val))
+			if full {
+				e.gauge(memoryCurrentDesc, float64(val), namespace, objPath)
+			}
 			memCurrentVal, haveCurrent = float64(val), true
 		}
 	}
@@ -500,29 +311,39 @@ func (m *Manager) collectCgroupMetrics(cgroupPath, namespace, objPath string) (m
 	// Read memory.max
 	if memMax, err := readFile(cgroupPath, "memory.max"); err == nil {
 		if val, err := parseLimit(memMax); err == nil {
-			pgCgroupMemoryMax.WithLabelValues(namespace, objPath).Set(val)
+			if full {
+				e.gauge(memoryMaxDesc, val, namespace, objPath)
+			}
 			memMaxVal, haveMax = val, true
 		}
 	}
 	if haveCurrent && haveMax && !math.IsInf(memMaxVal, 1) && memMaxVal > 0 {
 		memoryUtilization = memCurrentVal / memMaxVal
 	}
+	if !full {
+		return memoryUtilization
+	}
+
+	// Read cpu.stat
+	if cpuStat, err := readFile(cgroupPath, "cpu.stat"); err == nil {
+		parseCPUStat(e, cpuStat, namespace, objPath)
+	}
 
 	// Read memory.stat
 	if memStat, err := readFile(cgroupPath, "memory.stat"); err == nil {
-		parseMemoryStat(memStat, namespace, objPath)
+		parseMemoryStat(e, memStat, namespace, objPath)
 	}
 
 	// Read cpu.weight (cgroup v2) or cpu.shares (cgroup v1), into their
 	// own metrics, the two not being the same scale.
 	if cpuWeight, err := readFile(cgroupPath, "cpu.weight"); err == nil {
 		if val, err := parseUint(cpuWeight); err == nil {
-			pgCgroupCPUWeight.WithLabelValues(namespace, objPath).Set(float64(val))
+			e.gauge(cpuWeightDesc, float64(val), namespace, objPath)
 		}
 	}
 	if cpuShares, err := readFile(cgroupPath, "cpu.shares"); err == nil {
 		if val, err := parseUint(cpuShares); err == nil {
-			pgCgroupCPUShares.WithLabelValues(namespace, objPath).Set(float64(val))
+			e.gauge(cpuSharesDesc, float64(val), namespace, objPath)
 		}
 	}
 
@@ -531,18 +352,18 @@ func (m *Manager) collectCgroupMetrics(cgroupPath, namespace, objPath string) (m
 	// Both are microseconds, so they feed the same two metrics.
 	if cpuMax, err := readFile(cgroupPath, "cpu.max"); err == nil {
 		if quota, period, err := parseCPUMax(cpuMax); err == nil {
-			pgCgroupCPUQuota.WithLabelValues(namespace, objPath).Set(quota)
-			pgCgroupCPUPeriod.WithLabelValues(namespace, objPath).Set(period)
+			e.gauge(cpuQuotaDesc, quota, namespace, objPath)
+			e.gauge(cpuPeriodDesc, period, namespace, objPath)
 		}
 	} else {
 		if cpuQuota, err := readFile(cgroupPath, "cpu.cfs_quota_us"); err == nil {
 			if val, err := parseInt(cpuQuota); err == nil {
-				pgCgroupCPUQuota.WithLabelValues(namespace, objPath).Set(cfsQuota(val))
+				e.gauge(cpuQuotaDesc, cfsQuota(val), namespace, objPath)
 			}
 		}
 		if cpuPeriod, err := readFile(cgroupPath, "cpu.cfs_period_us"); err == nil {
 			if val, err := parseUint(cpuPeriod); err == nil {
-				pgCgroupCPUPeriod.WithLabelValues(namespace, objPath).Set(float64(val))
+				e.gauge(cpuPeriodDesc, float64(val), namespace, objPath)
 			}
 		}
 	}
@@ -551,24 +372,24 @@ func (m *Manager) collectCgroupMetrics(cgroupPath, namespace, objPath string) (m
 	if cpusetCPUs, err := readFile(cgroupPath, "cpuset.cpus"); err == nil {
 		cpus := strings.TrimSpace(cpusetCPUs)
 		count := countCPUs(cpus)
-		pgCgroupCPUCpus.WithLabelValues(namespace, objPath).Set(float64(count))
+		e.gauge(cpuCpusDesc, float64(count), namespace, objPath)
 	}
 
 	// Read io.weight (for cgroup v2) or blkio.weight (for cgroup v1)
 	if ioWeight, err := readFile(cgroupPath, "io.weight"); err == nil {
 		if val, err := parseIOWeight(ioWeight); err == nil {
-			pgCgroupBlkioWeight.WithLabelValues(namespace, objPath).Set(float64(val))
+			e.gauge(blkioWeightDesc, float64(val), namespace, objPath)
 		}
 	} else if blkioWeight, err := readFile(cgroupPath, "blkio.weight"); err == nil {
 		if val, err := parseUint(blkioWeight); err == nil {
-			pgCgroupBlkioWeight.WithLabelValues(namespace, objPath).Set(float64(val))
+			e.gauge(blkioWeightDesc, float64(val), namespace, objPath)
 		}
 	}
 
 	return memoryUtilization
 }
 
-func parseCPUStat(content, namespace, objPath string) {
+func parseCPUStat(e *emitter, content, namespace, objPath string) {
 	lines := strings.Split(content, "\n")
 	for _, line := range lines {
 		line = strings.TrimSpace(line)
@@ -588,19 +409,19 @@ func parseCPUStat(content, namespace, objPath string) {
 		// Set the specific metric based on stat name
 		switch statName {
 		case "usage_usec":
-			pgCgroupCPUUsage.WithLabelValues(namespace, objPath).Set(float64(statValue))
+			e.gauge(cpuUsageDesc, float64(statValue), namespace, objPath)
 		case "user_usec":
-			pgCgroupCPUUserUsage.WithLabelValues(namespace, objPath).Set(float64(statValue))
+			e.gauge(cpuUserUsageDesc, float64(statValue), namespace, objPath)
 		case "system_usec":
-			pgCgroupCPUSystemUsage.WithLabelValues(namespace, objPath).Set(float64(statValue))
+			e.gauge(cpuSystemUsageDesc, float64(statValue), namespace, objPath)
 		default:
 			// Other CPU stats
-			pgCgroupCPUStat.WithLabelValues(namespace, objPath, statName).Set(float64(statValue))
+			e.gauge(cpuStatDesc, float64(statValue), namespace, objPath, statName)
 		}
 	}
 }
 
-func parseMemoryStat(content, namespace, objPath string) {
+func parseMemoryStat(e *emitter, content, namespace, objPath string) {
 	// Page-based memory statistics (in pages, not bytes)
 	// These are page counters that should have the _pages suffix
 	pageStats := map[string]bool{
@@ -653,9 +474,9 @@ func parseMemoryStat(content, namespace, objPath string) {
 
 		// Route to appropriate metric based on whether it's page-based or byte-based
 		if pageStats[statName] {
-			pgCgroupMemoryStatPages.WithLabelValues(namespace, objPath, statName).Set(float64(statValue))
+			e.gauge(memoryStatPagesDesc, float64(statValue), namespace, objPath, statName)
 		} else {
-			pgCgroupMemoryStat.WithLabelValues(namespace, objPath, statName).Set(float64(statValue))
+			e.gauge(memoryStatDesc, float64(statValue), namespace, objPath, statName)
 		}
 	}
 }
