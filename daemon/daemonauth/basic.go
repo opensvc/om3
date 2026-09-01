@@ -21,11 +21,6 @@ type (
 	UserGranter interface {
 		GrantsFromUsername(username string) ([]string, error)
 	}
-
-	// NodeAuthenticater is the interface for AuthenticateNode method for node basic auth.
-	NodeAuthenticater interface {
-		AuthenticateNode(nodename, password string) error
-	}
 )
 
 func initBasicUser(_ context.Context, i any) (string, auth.Strategy, error) {
@@ -42,21 +37,4 @@ func initBasicUser(_ context.Context, i any) (string, auth.Strategy, error) {
 		return auth.NewUserInfo(userName, "", nil, *authenticatedExtensions(StrategyUser, hostname.Hostname(), grants...)), nil
 	}
 	return name, basic.NewCached(validateUser, cache), nil
-}
-
-func initBasicNode(_ context.Context, i interface{}) (string, auth.Strategy, error) {
-	name := "basicauth node"
-	n, ok := i.(NodeAuthenticater)
-	if !ok {
-		return name, nil, fmt.Errorf("NodeAuthenticater interface is not implemented")
-	}
-	validate := func(_ context.Context, _ *http.Request, userName string, password string) (auth.Info, error) {
-		if err := n.AuthenticateNode(userName, password); err != nil {
-			return nil, fmt.Errorf("invalid nodename %s: %w", userName, err)
-		}
-		extensions := authenticatedExtensions(StrategyNode, "", "root")
-		info := auth.NewUserInfo("node-"+userName, "", nil, *extensions)
-		return info, nil
-	}
-	return name, basic.NewCached(validate, cache), nil
 }

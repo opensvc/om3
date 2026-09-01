@@ -13,6 +13,9 @@ import (
 	"github.com/shaj13/go-guardian/v2/auth"
 	"github.com/shaj13/go-guardian/v2/auth/strategies/token"
 	"golang.org/x/crypto/ssh"
+
+	"github.com/opensvc/om3/v3/daemon/rbac"
+	"github.com/opensvc/om3/v3/util/hostname"
 )
 
 type (
@@ -146,7 +149,13 @@ func initAuthJWT(i interface{}) (*rsa.PublicKey, *rsa.PrivateKey, error) {
 // It generates a JWT with the specified duration and custom claims,
 // returning the token, expiration time, and error if any.
 func (*JWTCreator) CreateToken(duration time.Duration, xClaims map[string]interface{}) (tk string, expiredAt time.Time, err error) {
-	if jwtSignKey.Load() == nil {
+	signKey := jwtSignKey.Load()
+	if signKey == nil {
+		// This returned an empty token and no error, which the caller
+		// then sent as its bearer and read the 401 back as a credentials
+		// problem, at the other end of the cluster from the node whose
+		// jwt strategy failed to initialize.
+		err = fmt.Errorf("jwt sign key is not loaded")
 		return
 	}
 	expiredAt = time.Now().Add(duration)
@@ -161,7 +170,7 @@ func (*JWTCreator) CreateToken(duration time.Duration, xClaims map[string]interf
 	token := jwt.NewWithClaims(jwt.SigningMethodRS256, allClaims)
 
 	// Sign the token using the RSA private key
-	if tk, err = token.SignedString(jwtSignKey.Load()); err != nil {
+	if tk, err = token.SignedString(signKey); err != nil {
 		return
 	}
 
@@ -169,4 +178,33 @@ func (*JWTCreator) CreateToken(duration time.Duration, xClaims map[string]interf
 		err = fmt.Errorf("empty token")
 	}
 	return
+}
+
+// nodeTokenDuration is how long a node to node token is valid. It covers
+// one request, and the clock difference between the node that signs it
+// and the peer that verifies it.
+const nodeTokenDuration = 5 * time.Second
+
+// CreateNodeToken returns a bearer token authenticating the local node to
+// its peers, with the root grant.
+//
+// This is what node to node api calls use. They used to send the cluster
+// secret as a basic auth password, which the peer compared to its own
+// copy: the secret is also the key every sec object is encrypted with, so
+// a call that reached the wrong listener handed over more than access to
+// one config file. The token is signed with the cluster CA private key,
+// which every node of the cluster has, so any peer verifies it, and it is
+// worthless five seconds later.
+func CreateNodeToken() (string, error) {
+	nodename := hostname.Hostname()
+	tk, _, err := (&JWTCreator{}).CreateToken(nodeTokenDuration, map[string]any{
+		"sub":      nodename,
+		"iss":      nodename,
+		"grant":    []string{rbac.GrantRoot.String()},
+		TkUseClaim: TkUseAccess,
+	})
+	if err != nil {
+		return "", fmt.Errorf("create node token: %w", err)
+	}
+	return tk, nil
 }

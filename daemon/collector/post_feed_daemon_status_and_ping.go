@@ -18,7 +18,6 @@ import (
 	"github.com/opensvc/om3/v3/daemon/daemonauth"
 	"github.com/opensvc/om3/v3/daemon/daemonsubsystem"
 	"github.com/opensvc/om3/v3/daemon/msgbus"
-	"github.com/opensvc/om3/v3/daemon/rbac"
 	"github.com/opensvc/om3/v3/util/funcopt"
 	"github.com/opensvc/om3/v3/util/xmap"
 )
@@ -462,17 +461,9 @@ func (t *T) dequeueAction(nodename string) error {
 		return fmt.Errorf("node %s not found in cluster", nodename)
 	}
 	tkDuration := 5 * time.Second
-	tkProvider := daemonauth.JWTCreator{}
-	claims := map[string]any{
-		"sub":   t.localhost,
-		"iss":   t.localhost,
-		"grant": []string{rbac.GrantRoot.String()},
-
-		daemonauth.TkUseClaim: daemonauth.TkUseAccess,
-	}
-	tk, _, err := tkProvider.CreateToken(tkDuration, claims)
+	tk, err := daemonauth.CreateNodeToken()
 	if err != nil {
-		return fmt.Errorf("create token: %s", err)
+		return err
 	}
 	options := []funcopt.O{
 		client.WithURL(daemonsubsystem.PeerURL(nodename)),

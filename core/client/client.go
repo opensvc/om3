@@ -185,9 +185,6 @@ func (t *T) configure() error {
 		}
 	} else if t.url == "" {
 		t.url = daemonenv.HTTPUnixURL()
-	} else if t.bearer == "" && t.username == "" && t.authorization == "" {
-		// TODO: need refactor or remove, this may send credential to unexpected url
-		t.username = hostname.Hostname()
 	}
 
 	err := t.newRequester()

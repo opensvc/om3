@@ -13,7 +13,6 @@ import (
 	"time"
 
 	"github.com/opensvc/om3/v3/core/client"
-	"github.com/opensvc/om3/v3/core/cluster"
 	"github.com/opensvc/om3/v3/core/instance"
 	"github.com/opensvc/om3/v3/core/naming"
 	"github.com/opensvc/om3/v3/core/object"
@@ -21,6 +20,7 @@ import (
 	"github.com/opensvc/om3/v3/core/rawconfig"
 	"github.com/opensvc/om3/v3/core/resource"
 	"github.com/opensvc/om3/v3/daemon/api"
+	"github.com/opensvc/om3/v3/daemon/daemonauth"
 	"github.com/opensvc/om3/v3/daemon/daemonenv"
 	"github.com/opensvc/om3/v3/daemon/daemonsubsystem"
 	"github.com/opensvc/om3/v3/daemon/msgbus"
@@ -128,10 +128,13 @@ func (t *T) getLocalResInfo(p naming.Path) (resource.Infos, error) {
 
 func (t *T) getPeerResInfo(p naming.Path, nodename string) (resource.Infos, error) {
 	infos := resource.NewInfos(p)
+	tk, err := daemonauth.CreateNodeToken()
+	if err != nil {
+		return infos, err
+	}
 	c, err := client.New(
 		client.WithURL(daemonsubsystem.PeerURL(nodename)),
-		client.WithUsername(t.localhost),
-		client.WithPassword(cluster.ConfigData.Get().Secret()),
+		client.WithBearer(tk),
 		client.WithCertificate(daemonenv.CertChainFile()),
 	)
 	if err != nil {

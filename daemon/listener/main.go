@@ -8,7 +8,6 @@ import (
 
 	"github.com/opensvc/om3/v3/core/cluster"
 	"github.com/opensvc/om3/v3/core/object"
-	"github.com/opensvc/om3/v3/daemon/ccfg"
 	"github.com/opensvc/om3/v3/daemon/daemonauth"
 	"github.com/opensvc/om3/v3/daemon/daemonctx"
 	"github.com/opensvc/om3/v3/daemon/daemonenv"
@@ -27,7 +26,6 @@ type (
 
 	// authOption implements interfaces for daemonauth.Init
 	authOption struct {
-		*ccfg.NodeDB
 		*object.UsrDB
 	}
 )

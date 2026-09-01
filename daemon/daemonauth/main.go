@@ -26,7 +26,6 @@ type (
 		ListenAddresser
 		JWTFiler
 		X509CACertFiler
-		NodeAuthenticater
 		UserGranter
 	}
 	contextKey int
@@ -55,7 +54,6 @@ const (
 	StrategyUX        = "ux"
 	StrategyJWT       = "jwt"
 	StrategyJWTOpenID = "jwt-openid"
-	StrategyNode      = "node"
 	StrategyUser      = "user"
 	StrategyX509      = "x509"
 )
@@ -177,7 +175,6 @@ func initStategies(ctx context.Context, i any) (union.Union, error) {
 		initUX,
 		initJWT,
 		initJWTOpenID,
-		initBasicNode,
 		initBasicUser,
 		initX509,
 	} {
