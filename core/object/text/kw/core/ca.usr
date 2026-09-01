@@ -1,0 +1,7 @@
+The name of the secret containing a certificate to use as a Certificate
+Authority. This secret must be in the same namespace.
+
+It defaults to the cluster certificate authority, which is the one the agent
+listener verifies a client certificate against. A certificate signed by
+anything else is refused, so a certificate created with another value here is
+not for the api.
