@@ -232,8 +232,11 @@ func (m *cgMgr) Failover(ctx context.Context, az string) error {
 	return nil
 }
 
-func (m *cgMgr) ResumeReplication(ctx context.Context, az string) error {
-	_ = az
+// ResumeReplication asks the provider to resume the replication of the
+// consistency group. Unlike the switchover and the failover, the operation
+// takes no availability zone: the group resumes toward the targets it is
+// already configured with.
+func (m *cgMgr) ResumeReplication(ctx context.Context) error {
 	payload := map[string]any{"operation": "resume-replication"}
 	m.log.Infof("resume-replication consistency group %s ...", m.uuid)
 	ts := time.Now()
@@ -636,7 +639,7 @@ func (t *T) syncResume(ctx context.Context) error {
 		}
 	}
 	if !pendingResume {
-		if err := t.mgr.ResumeReplication(ctx, t.AZ); err != nil {
+		if err := t.mgr.ResumeReplication(ctx); err != nil {
 			return err
 		}
 	}
