@@ -46,6 +46,11 @@ func (f *File) Bytes() ([]byte, error) {
 	buf := bytes.NewBuffer(nil)
 	buf.Write(f.bom)
 	for i, n := range f.nodes {
+		// The byte order mark is not content: a section header written right
+		// after it still heads the document.
+		if f.separatesSection(n, bodies[i], buf.Bytes()[len(f.bom):]) {
+			buf.WriteString(f.Format.LineBreak)
+		}
 		buf.Write(n.trivia)
 		buf.Write(bodies[i])
 	}
@@ -58,6 +63,40 @@ func (f *File) Bytes() ([]byte, error) {
 		return nil, fmt.Errorf("the document would start with a UTF-16 byte order mark")
 	}
 	return out, nil
+}
+
+// separatesSection reports whether a blank line is to be written before the
+// node, which is the case of an encoded section header that neither heads the
+// document nor already has a blank line before it.
+//
+// A section header written back from its source bytes is left alone, so a
+// document nobody reformatted is reproduced exactly. Written is what has been
+// written so far, the trivia of the node excluded: the blank line goes before
+// the comments heading the section, which document it.
+func (f *File) separatesSection(n *node, body, written []byte) bool {
+	if !f.Format.BlankLineBeforeSection {
+		return false
+	}
+	if n.section == nil || n.body != nil || len(body) == 0 {
+		return false
+	}
+	if len(written) == 0 {
+		return false
+	}
+	return !endsWithBlankLine(written)
+}
+
+// endsWithBlankLine reports whether b ends with an empty line, a line holding
+// nothing but whitespace included.
+func endsWithBlankLine(b []byte) bool {
+	if !endsWithLineBreak(b) {
+		return false
+	}
+	b = b[:len(b)-1]
+	if i := bytes.LastIndexByte(b, '\n'); i >= 0 {
+		b = b[i+1:]
+	}
+	return len(bytes.TrimSpace(b)) == 0
 }
 
 // renderNode returns the bytes of a node, probe being the lines it is about to

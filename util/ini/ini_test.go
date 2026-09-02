@@ -199,6 +199,149 @@ func TestBareLeadingKeysKeepNoDefaultHeader(t *testing.T) {
 	}
 }
 
+func TestKeyAddedToABareDefaultSectionHeadsTheDocument(t *testing.T) {
+	// The default section of a parsed document has no header node to insert
+	// after. Its keys still belong before the first section header: appended
+	// at the end of the document they would be read back as keys of the last
+	// section.
+	f := load(t, "[fs#1]\ntype = flag\n")
+	f.Section("DEFAULT").Key("nodes").SetValue("*")
+	f.Section("DEFAULT").Key("id").SetValue("xxx")
+	if got, want := f.String(), "nodes = *\nid = xxx\n[fs#1]\ntype = flag\n"; got != want {
+		t.Fatalf("got %q, want %q", got, want)
+	}
+	g := load(t, f.String())
+	if got := g.Section("DEFAULT").Key("nodes").Value(); got != "*" {
+		t.Errorf("reparsed DEFAULT nodes = %q, want %q", got, "*")
+	}
+	if g.Section("fs#1").HasKey("nodes") {
+		t.Error("reparsed fs#1 has the nodes key of the default section")
+	}
+}
+
+func TestKeyAddedToABareDefaultSectionKeepsTheHeadComments(t *testing.T) {
+	// The comments heading the first section header document that section,
+	// not the key inserted before it.
+	f := load(t, "# about fs#1\n[fs#1]\ntype = flag\n")
+	f.Section("DEFAULT").Key("nodes").SetValue("*")
+	if got, want := f.String(), "nodes = *\n# about fs#1\n[fs#1]\ntype = flag\n"; got != want {
+		t.Errorf("got %q, want %q", got, want)
+	}
+}
+
+func TestMaterializeDefaultSection(t *testing.T) {
+	for _, tc := range []struct {
+		name string
+		src  string
+		want string
+	}{
+		{
+			name: "a document with no default section header gains one",
+			src:  "[fs#1]\ntype = flag\n",
+			want: "[DEFAULT]\n[fs#1]\ntype = flag\n",
+		},
+		{
+			name: "the header heads the bare leading keys it groups",
+			src:  "# about nodes\nnodes = n1\n\n[fs#1]\ntype = flag\n",
+			want: "[DEFAULT]\n# about nodes\nnodes = n1\n\n[fs#1]\ntype = flag\n",
+		},
+		{
+			name: "a document that has the header is written back untouched",
+			src:  sample,
+			want: sample,
+		},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			f := load(t, tc.src)
+			f.MaterializeDefaultSection()
+			f.MaterializeDefaultSection() // idempotent
+			if got := f.String(); got != tc.want {
+				t.Errorf("got %q, want %q", got, tc.want)
+			}
+		})
+	}
+}
+
+func TestMaterializedDefaultSectionCollectsItsKeys(t *testing.T) {
+	f := load(t, "[fs#1]\ntype = flag\n")
+	f.MaterializeDefaultSection()
+	f.Section("DEFAULT").Key("nodes").SetValue("*")
+	f.Section("DEFAULT").Key("id").SetValue("xxx")
+	if got, want := f.String(), "[DEFAULT]\nnodes = *\nid = xxx\n[fs#1]\ntype = flag\n"; got != want {
+		t.Errorf("got %q, want %q", got, want)
+	}
+}
+
+func TestAddedSectionsAreSeparatedByABlankLine(t *testing.T) {
+	f := Empty(testOptions)
+	f.Section("DEFAULT").Key("nodes").SetValue("*")
+	f.Section("fs#1").Key("type").SetValue("flag")
+	f.Section("app#1").Key("type").SetValue("simple")
+	want := "[DEFAULT]\nnodes = *\n\n[fs#1]\ntype = flag\n\n[app#1]\ntype = simple\n"
+	if got := f.String(); got != want {
+		t.Errorf("got %q, want %q", got, want)
+	}
+}
+
+func TestASectionHeadingTheDocumentHasNoBlankLineBeforeIt(t *testing.T) {
+	f := Empty(testOptions)
+	f.Section("fs#1").Key("type").SetValue("flag")
+	want := "[DEFAULT]\n\n[fs#1]\ntype = flag\n"
+	if got := f.String(); got != want {
+		t.Errorf("got %q, want %q", got, want)
+	}
+}
+
+func TestBlankLineBeforeSectionIsOptional(t *testing.T) {
+	f := Empty(testOptions)
+	f.Format.BlankLineBeforeSection = false
+	f.Section("DEFAULT").Key("nodes").SetValue("*")
+	f.Section("fs#1").Key("type").SetValue("flag")
+	want := "[DEFAULT]\nnodes = *\n[fs#1]\ntype = flag\n"
+	if got := f.String(); got != want {
+		t.Errorf("got %q, want %q", got, want)
+	}
+}
+
+func TestAParsedSectionKeepsTheBlankLinesItHad(t *testing.T) {
+	// Only an encoded header is separated: a document nobody reformatted is
+	// written back exactly, blank lines and all.
+	const src = "[a]\nx = 1\n[b]\ny = 2\n"
+	f := load(t, src)
+	if got := f.String(); got != src {
+		t.Errorf("got %q, want %q", got, src)
+	}
+	f.Section("c").Key("z").SetValue("3")
+	if got, want := f.String(), src+"\n[c]\nz = 3\n"; got != want {
+		t.Errorf("got %q, want %q", got, want)
+	}
+}
+
+func TestASectionAddedAfterABlankLineIsNotSeparatedTwice(t *testing.T) {
+	f := load(t, "[a]\nx = 1\n")
+	f.Section("b").Key("y").SetValue("2")
+	f.Section("c").Key("z").SetValue("3")
+	want := "[a]\nx = 1\n\n[b]\ny = 2\n\n[c]\nz = 3\n"
+	if got := f.String(); got != want {
+		t.Errorf("got %q, want %q", got, want)
+	}
+	// Reparsing the result must not grow it further.
+	g := load(t, want)
+	if got := g.String(); got != want {
+		t.Errorf("reparsed: got %q, want %q", got, want)
+	}
+}
+
+func TestBOMDoesNotSeparateTheFirstSection(t *testing.T) {
+	f := load(t, string(bomUTF8)+"[a]\nx = 1\n")
+	f.Section("a").DeleteKey("x")
+	f.DeleteSection("a")
+	f.Section("b").Key("y").SetValue("2")
+	if got, want := f.String(), string(bomUTF8)+"[b]\ny = 2\n"; got != want {
+		t.Errorf("got %q, want %q", got, want)
+	}
+}
+
 func TestChildSectionFallback(t *testing.T) {
 	f := load(t, "[a]\nx = 1\n[a.b]\ny = 2\n")
 	if got := f.Section("a.b").Key("x").Value(); got != "1" {

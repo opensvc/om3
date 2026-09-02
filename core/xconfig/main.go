@@ -1399,6 +1399,19 @@ func (t T) deleteSection(section string) {
 	t.file.DeleteSection(section)
 }
 
+// MaterializeDefaultSection gives the DEFAULT section a header, so the
+// configuration is written with the "[DEFAULT]" line and the keywords of that
+// section are visibly grouped under it instead of floating above the first
+// driver section header.
+//
+// This is what the create codepaths do, so a new object configuration looks
+// like the OpenSVC v2 ones. A configuration that already has the header is
+// left untouched.
+func (t *T) MaterializeDefaultSection() {
+	t.file.MaterializeDefaultSection()
+	t.changed = true
+}
+
 func (t T) initDefaultSection() error {
 	defaultSection, err := t.file.GetSection("DEFAULT")
 	if err != nil {
