@@ -266,7 +266,11 @@ func (t *T) fileStart(ctx context.Context) error {
 	defer func() {
 		_ = t.clearFileStatusCache()
 	}()
-	if sgcp.IsDisabled(rawconfig.NodeVarDir()) {
+	disabled, err := sgcp.IsDisabled(rawconfig.NodeVarDir())
+	if err != nil {
+		return err
+	}
+	if disabled {
 		t.Log().Infof("skipping file start %s: SGCP API disabled", t.UUID)
 		return nil
 	}
@@ -293,7 +297,11 @@ func (t *T) fileStop(ctx context.Context) error {
 	defer func() {
 		_ = t.clearFileStatusCache()
 	}()
-	if sgcp.IsDisabled(rawconfig.NodeVarDir()) {
+	disabled, err := sgcp.IsDisabled(rawconfig.NodeVarDir())
+	if err != nil {
+		return err
+	}
+	if disabled {
 		t.Log().Infof("skipping file stop %s: SGCP API disabled", t.UUID)
 		return nil
 	}
@@ -316,7 +324,10 @@ func (t *T) fileStop(ctx context.Context) error {
 // fileStatus returns the status of the filesystem from the SGCP API
 func (t *T) fileStatus(ctx context.Context) status.T {
 	// Check if XaaS status is disabled
-	if sgcp.IsDisabled(rawconfig.NodeVarDir()) {
+	if disabled, err := sgcp.IsDisabled(rawconfig.NodeVarDir()); err != nil {
+		t.StatusLog().Warn("%s", err)
+		return status.NotApplicable
+	} else if disabled {
 		t.Log().Debugf("skipping file status %s: SGCP API disabled", t.UUID)
 		return status.NotApplicable
 	}
