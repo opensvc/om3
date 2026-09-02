@@ -583,17 +583,23 @@ func (t *T) start(ctx context.Context) error {
 	return t.waitStatusAndAZ(ctx, []string{"ready"}, t.AZ)
 }
 
+// Stop does not move the consistency group. It stays in the availability zone
+// the last start switched it to, and the start of the instance elsewhere is
+// what moves it. The action says so rather than passing silently, so that an
+// operator watching a stop is not left wondering whether it did anything.
+//
+// Having nothing to undo, it also treats an undecidable disabled flag as a
+// warning where start has to refuse to go on.
 func (t *T) Stop(ctx context.Context) error {
 	_ = ctx
-	// Stop has nothing to undo: the consistency group is left where the last
-	// start put it. An unknown disabled state is thus only worth a warning,
-	// where start has to refuse to go on.
 	disabled, err := sgcp.IsDisabled(rawconfig.NodeVarDir())
 	switch {
 	case err != nil:
 		t.Log().Warnf("%s", err)
 	case disabled:
 		t.Log().Infof("skip stop of consistency group %s: sgcp support disabled", t.UUID)
+	default:
+		t.Log().Infof("stop leaves consistency group %s where it is, a start elsewhere moves it", t.UUID)
 	}
 	return nil
 }
