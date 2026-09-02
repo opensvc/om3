@@ -636,6 +636,47 @@ func TestSyncResume_ReplicationOnly_Success(t *testing.T) {
 	assert.Equal(t, 1, calls.Resume)
 }
 
+// TestSyncResume_ReportsTheReason verifies a resume that does not take is
+// reported with what checkResumable said about the group, and not with the
+// bare "still not resumed" it used to return, the reason going to the log
+// alone.
+func TestSyncResume_ReportsTheReason(t *testing.T) {
+	cleanup := setup(t)
+	defer cleanup()
+
+	id := uuid.New().String()
+
+	db, api := setupMockCG(t, []sgcpcgtesthelper.CgEntry{
+		{
+			UUID:             id,
+			AvailabilityZone: region1AZ2,
+			Status:           "ready",
+			Replication: sgcpcgtesthelper.ReplicationInfo{
+				ReplicationMode: "sync",
+				TargetAvailabilityZones: []sgcpcgtesthelper.AZStatus{
+					{AvailabilityZone: region1AZ1, Status: "unknown"},
+				},
+			},
+		},
+	})
+
+	// The group settles in a state a resume is not allowed from.
+	db.PatchResumeFunc = func(ctx context.Context, u string) error {
+		entry, _ := db.Search(u)
+		entry.Status = "passive"
+		_ = db.Update(entry)
+		return nil
+	}
+
+	drv := newTestDriver(t, id, region1AZ1, 5*time.Second, false, api)
+	ctx := context.Background()
+
+	err := drv.SyncResume(ctx)
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "still not resumed")
+	assert.Containsf(t, err.Error(), "status is passive", "the returned error drops the reason: %s", err)
+}
+
 func TestSyncResume_AlreadyResumed(t *testing.T) {
 	cleanup := setup(t)
 	defer cleanup()

@@ -627,7 +627,7 @@ func (t *T) syncResume(ctx context.Context) error {
 	if err := t.checkResumable(cg); err != nil {
 		switch {
 		case errors.Is(err, ErrAlreadyResumed):
-			t.Log().Infof("%s doesn't require sync resume", t.UUID)
+			t.Log().Infof("%s doesn't require sync resume", msgPrefix)
 			return nil
 		case errors.Is(err, ErrResumeInProgress):
 			pendingResume = true
@@ -652,8 +652,10 @@ func (t *T) syncResume(ctx context.Context) error {
 			t.Log().Infof("%s now resumed", msgPrefix)
 			return nil
 		}
-		t.Log().Errorf("ERREUR : %s", err)
+		return fmt.Errorf("%s still not resumed: %w", msgPrefix, err)
 	}
+	// The group accepts a resume again, which is not the resumed state the
+	// operation was waiting for.
 	return fmt.Errorf("%s still not resumed", msgPrefix)
 }
 
