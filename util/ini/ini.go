@@ -92,6 +92,16 @@ type (
 		// created empty. A parsed document is written back with the header
 		// it had, or without one if it had none.
 		DefaultHeader bool
+
+		// BlankLineBeforeSection writes a blank line before an encoded
+		// section header, so the sections of a document built from scratch
+		// are separated. It writes none before the header heading the
+		// document, and none where a blank line already stands.
+		//
+		// Like the rest of Format it only applies to an encoded header: a
+		// section header written back from its source bytes keeps the blank
+		// lines the source had, and no more.
+		BlankLineBeforeSection bool
 	}
 
 	// Writer is the interface WriteTo writes to.

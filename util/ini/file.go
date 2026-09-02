@@ -82,11 +82,11 @@ func Empty(opts ...Options) *File {
 		o = opts[0]
 	}
 	f := newFile(o)
-	s := f.forceSection(f.opts.DefaultSectionName)
 	// Give the default section a header to encode, so a document built from
 	// scratch is written with the "[DEFAULT]" line the OpenSVC configuration
-	// files are expected to carry. A parsed document keeps the header it had.
-	f.appendNode(&node{section: s})
+	// files are expected to carry. A parsed document keeps the header it had,
+	// until MaterializeDefaultSection is called on it.
+	f.MaterializeDefaultSection()
 	return f
 }
 
@@ -129,6 +129,7 @@ func newFile(opts Options) *File {
 		index: make(map[string]*Section),
 	}
 	f.Format.DefaultHeader = true
+	f.Format.BlankLineBeforeSection = true
 	f.Format.withDefaults()
 	return f
 }
@@ -193,7 +194,13 @@ func (f *File) insertNodeAfterSection(s *Section, n *node) {
 		}
 	}
 	if last < 0 {
-		f.nodes = append(f.nodes, n)
+		// The section has no node yet. Only the default section of a parsed
+		// document can be in that case: it always exists, even when the
+		// source carries neither a "[DEFAULT]" header nor a key before the
+		// first section header. Its keys are the ones written before the
+		// first section header, so head the document with the node instead
+		// of appending it, which would land the key in the last section.
+		f.nodes = append([]*node{n}, f.nodes...)
 		return
 	}
 	f.nodes = append(f.nodes, nil)
@@ -252,6 +259,28 @@ func (f *File) NewSection(name string) (*Section, error) {
 	s := f.forceSection(name)
 	f.appendNode(&node{section: s})
 	return s, nil
+}
+
+// MaterializeDefaultSection gives the default section a header to encode when
+// it has none, so the document is written with the "[DEFAULT]" line and the
+// keys of the default section are visibly grouped under it.
+//
+// The default section of a parsed document has no header when the source had
+// none: the keys defined before the first section header are its keys, and the
+// document is written back without a header it never had. Materializing the
+// header inserts it at the head of the document, before those keys.
+//
+// A document that already has a default section header is left untouched, and
+// so is its byte-identical write back. The header is encoded only when
+// Format.DefaultHeader is set, which it is by default.
+func (f *File) MaterializeDefaultSection() {
+	s := f.forceSection(f.opts.DefaultSectionName)
+	for _, n := range f.nodes {
+		if n.section == s {
+			return
+		}
+	}
+	f.nodes = append([]*node{{section: s}}, f.nodes...)
 }
 
 // HasSection reports whether the named section exists.

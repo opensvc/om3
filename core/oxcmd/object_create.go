@@ -171,6 +171,11 @@ func (t *CmdObjectCreate) fromData(p naming.Path, b []byte) error {
 		return err
 	}
 
+	// Write the new configuration with a "[DEFAULT]" header, as OpenSVC v2
+	// did, so the keywords of that section are grouped under it whatever
+	// their rank in the keyword list.
+	oc.Config().MaterializeDefaultSection()
+
 	ops := keyop.ParseOps(t.Keywords)
 	if !t.Restore {
 		op := keyop.Parse("id=" + uuid.New().String())
