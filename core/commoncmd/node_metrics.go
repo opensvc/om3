@@ -24,8 +24,9 @@ type (
 func NewCmdNodeMetrics() *cobra.Command {
 	options := CmdNodeMetrics{}
 	cmd := &cobra.Command{
-		Use:   "metrics",
-		Short: "print the prometheus metrics of the selected nodes",
+		GroupID: GroupIDQuery,
+		Use:     "metrics",
+		Short:   "print the prometheus metrics of the selected nodes",
 		Long: "Print what the node listener exposes at /metrics, which is what a\n" +
 			"prometheus scrape of this cluster collects.\n\n" +
 			"The metrics of the high cardinality subsystems are served apart, at\n" +
