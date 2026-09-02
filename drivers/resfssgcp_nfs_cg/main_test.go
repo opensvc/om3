@@ -857,9 +857,41 @@ func TestSyncResume_GeoOnly_Success(t *testing.T) {
 	assert.Equal(t, 1, calls.Resume)
 }
 
+// TestStatus_ReadsTheProviderOutsideTheScheduler verifies every origin but the
+// scheduler reads the provider: the point of asking for a status is to see
+// where the group is now.
+func TestStatus_ReadsTheProviderOutsideTheScheduler(t *testing.T) {
+	for _, origin := range []env.ActionOrigin{
+		env.ActionOriginUser,
+		env.ActionOriginDaemonMonitor,
+		env.ActionOriginDaemonAPI,
+	} {
+		t.Run(string(origin), func(t *testing.T) {
+			cleanup := setup(t)
+			defer cleanup()
+			t.Setenv(env.ActionOriginVar, string(origin))
+
+			id := uuid.New().String()
+			db, api := setupMockCG(t, []sgcpcgtesthelper.CgEntry{
+				{UUID: id, AvailabilityZone: region1AZ1, Status: "ready"},
+			})
+			drv := newTestDriver(t, id, region1AZ1, 5*time.Second, false, api)
+
+			ctx := context.Background()
+			for i := 0; i < 3; i++ {
+				assert.Equal(t, status.NotApplicable, drv.Status(ctx))
+			}
+			assert.Equal(t, 3, db.CallCounts().Get, "a status evaluation was served by the cache")
+		})
+	}
+}
+
+// TestStatus covers the status evaluations the daemon scheduler makes, which
+// are the ones the cache is for.
 func TestStatus(t *testing.T) {
 	cleanup := setup(t)
 	defer cleanup()
+	t.Setenv(env.ActionOriginVar, string(env.ActionOriginDaemonScheduler))
 
 	id := uuid.New().String()
 	db, api := setupMockCG(t, []sgcpcgtesthelper.CgEntry{

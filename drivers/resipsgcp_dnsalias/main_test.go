@@ -11,6 +11,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
+	"github.com/opensvc/om3/v3/core/env"
 	"github.com/opensvc/om3/v3/core/resource"
 	"github.com/opensvc/om3/v3/core/status"
 	"github.com/opensvc/om3/v3/util/sgcpdnstesthelper"
@@ -60,12 +61,67 @@ func TestConfigureCacheTTL(t *testing.T) {
 	assert.Equal(t, expected, drv.mgr.CacheTTL)
 }
 
+// TestStatus_ReadsTheProviderOutsideTheScheduler verifies every origin but the
+// scheduler reads the api, the scheduler alone being served the cache.
+func TestStatus_ReadsTheProviderOutsideTheScheduler(t *testing.T) {
+	ctx, cancel := context.WithTimeout(context.Background(), time.Second)
+	defer cancel()
+
+	entries := []sgcpdnstesthelper.DBEntry{
+		{
+			Name: "name1", UUID: "uuid1", ZoneID: "z1",
+			AliasL: []sgcp.Alias{{UUID: "uuid1", Name: "name1", Target: "target1", ZoneID: "z1"}},
+		},
+	}
+	newDrv := func(t *testing.T) (*sgcpdnstesthelper.DB, *T) {
+		db, drv := newDBAndDrv(t, "rid1", entries)
+		drv.UUID = "uuid1"
+		drv.Name = "name1"
+		drv.Target = "target1"
+		drv.ZoneID = "z1"
+		require.NoError(t, drv.Configure())
+		require.NotZerof(t, drv.mgr.CacheTTL, "the test needs the cache enabled")
+		return db, drv
+	}
+
+	for _, origin := range []env.ActionOrigin{
+		env.ActionOriginUser,
+		env.ActionOriginDaemonMonitor,
+		env.ActionOriginDaemonAPI,
+	} {
+		t.Run(string(origin)+" reads the api every time", func(t *testing.T) {
+			defer setup(t)()
+			t.Setenv(env.ActionOriginVar, string(origin))
+			db, drv := newDrv(t)
+
+			for i := 0; i < 3; i++ {
+				assert.Equal(t, status.Up, drv.Status(ctx))
+			}
+			assert.Equal(t, 3, db.CallCounts().Search, "a status evaluation was served by the cache")
+		})
+	}
+
+	t.Run("the scheduler is served the cache", func(t *testing.T) {
+		defer setup(t)()
+		t.Setenv(env.ActionOriginVar, string(env.ActionOriginDaemonScheduler))
+		db, drv := newDrv(t)
+
+		for i := 0; i < 3; i++ {
+			assert.Equal(t, status.Up, drv.Status(ctx))
+		}
+		assert.Equal(t, 1, db.CallCounts().Search, "the cache did not serve the repeated evaluations")
+	})
+}
+
 // TestCacheInvalidation verifies a started alias is not read back from the
 // ageing cache the status evaluation filled before the change. The two drivers
 // stand for the two processes an om run uses: the one that starts the resource
 // and the one that evaluates its status afterwards.
 func TestCacheInvalidation(t *testing.T) {
 	defer setup(t)()
+	// The scheduler origin: every other status reads the provider instead
+	// of the cache, and would not show the staleness this test is about.
+	t.Setenv(env.ActionOriginVar, string(env.ActionOriginDaemonScheduler))
 
 	ctx, cancel := context.WithTimeout(context.Background(), time.Second)
 	defer cancel()

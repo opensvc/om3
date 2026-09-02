@@ -3,10 +3,23 @@ package sgcphelper
 import (
 	"fmt"
 
+	"github.com/opensvc/om3/v3/core/env"
 	"github.com/opensvc/om3/v3/core/naming"
 	"github.com/opensvc/om3/v3/core/object"
 	"github.com/opensvc/om3/v3/util/sgcp"
 )
+
+// NeedsCacheClear tells whether a driver has to drop what it cached and read
+// the provider again. Only the daemon scheduler is served the cache: its
+// status evaluations run over and over on their own, and the cache is what
+// keeps them off the provider api. Everyone else, an operator asking for a
+// status first of all, is asking what the provider says now.
+//
+// This lives here rather than in util/sgcp because it reads the action
+// origin, and a util package does not depend on core.
+func NeedsCacheClear() bool {
+	return !env.HasDaemonSchedulerOrigin()
+}
 
 type (
 	GetAuthInfoFromDatastorePather struct{}
