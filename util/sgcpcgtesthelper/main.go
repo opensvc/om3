@@ -33,12 +33,21 @@ type CgEntry struct {
 }
 
 type DB struct {
-	mu                      sync.RWMutex
-	byUUID                  map[string]*CgEntry
-	callCount               Counters
-	PatchSwitchoverFunc     func(ctx context.Context, uuid, targetAZ string) error
-	PatchFailoverFunc       func(ctx context.Context, uuid, targetAZ string) error
-	PatchResumeFunc         func(ctx context.Context, uuid string) error
+	mu        sync.RWMutex
+	byUUID    map[string]*CgEntry
+	callCount Counters
+
+	// PatchSwitchoverFunc and PatchFailoverFunc inject a failure: returning
+	// an error makes the operation fail and leaves the group alone, and the
+	// group moves as it would otherwise.
+	PatchSwitchoverFunc func(ctx context.Context, uuid, targetAZ string) error
+	PatchFailoverFunc   func(ctx context.Context, uuid, targetAZ string) error
+
+	// PatchResumeFunc decides the outcome of a resume instead of injecting
+	// one: what it writes through Update() is what the group becomes, and
+	// the error it returns fails the operation without touching the group.
+	PatchResumeFunc func(ctx context.Context, uuid string) error
+
 	GetConsistencyGroupFunc func(ctx context.Context, uuid string) (method, url string, code int, data []byte, err error)
 }
 
@@ -170,6 +179,19 @@ func (a *API) PatchConsistencyGroup(ctx context.Context, uuid string, payload an
 		a.mu.Lock()
 		a.callCount.Resume++
 		a.mu.Unlock()
+
+		// PatchResumeFunc says what the group becomes, the test writing it
+		// through Update(). A hook that fails leaves the group as it was,
+		// which is what a provider refusing the operation does.
+		if a.PatchResumeFunc != nil {
+			if err := a.PatchResumeFunc(ctx, uuid); err != nil {
+				return http.MethodPatch, "/consistency-groups/" + uuid, http.StatusInternalServerError, nil, err
+			}
+			return http.MethodPatch, "/consistency-groups/" + uuid, http.StatusAccepted, nil, nil
+		}
+
+		// Without a hook, the targets in the group's own availability zone
+		// replicate again, and the group is ready.
 		a.mu.Lock()
 		for i := range entry.Replication.TargetAvailabilityZones {
 			if entry.Replication.TargetAvailabilityZones[i].AvailabilityZone == entry.AvailabilityZone {
@@ -183,12 +205,6 @@ func (a *API) PatchConsistencyGroup(ctx context.Context, uuid string, payload an
 		}
 		entry.Status = "ready"
 		a.mu.Unlock()
-
-		if a.PatchResumeFunc != nil {
-			if err := a.PatchResumeFunc(ctx, uuid); err != nil {
-				return http.MethodPatch, "/consistency-groups/" + uuid, http.StatusInternalServerError, nil, err
-			}
-		}
 		return http.MethodPatch, "/consistency-groups/" + uuid, http.StatusAccepted, nil, nil
 
 	default:
