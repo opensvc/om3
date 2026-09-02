@@ -353,28 +353,27 @@ func (t *T) logGeoRedundancies(cg *CgInfo) {
 			case isOnlyStatus(geoStates, "unknown"):
 				t.StatusLog().Warn("geo mode failover on local ?")
 			default:
-				t.StatusLog().Info(fmt.Sprintf("geo mode transitioning states %s", joinStates(geoStates)))
+				t.StatusLog().Info("geo mode transitioning states %s", joinStates(geoStates))
 			}
 		} else {
 			t.StatusLog().Info("geo mode remote -> remote")
 		}
 	default:
-		t.StatusLog().Warn(fmt.Sprintf("geo mode states '%s'", joinStates(geoStates)))
+		t.StatusLog().Warn("geo mode states '%s'", joinStates(geoStates))
 	}
-	t.StatusLog().Info(fmt.Sprintf("geo local az %s", t.AZ))
+	t.StatusLog().Info("geo local az %s", t.AZ)
 	regions := map[string]struct{}{}
 	for _, target := range geos {
 		regions[target.Region] = struct{}{}
 	}
 	for _, region := range sortedKeys(regions) {
-		t.StatusLog().Info(fmt.Sprintf("geo remote region %s", region))
+		t.StatusLog().Info("geo remote region %s", region)
 	}
 	for _, target := range geos {
-		msg := fmt.Sprintf("geo %s %s", target.AZ, target.Status)
 		if target.Status == "replicated" {
-			t.StatusLog().Info(msg)
+			t.StatusLog().Info("geo %s %s", target.AZ, target.Status)
 		} else {
-			t.StatusLog().Warn(msg)
+			t.StatusLog().Warn("geo %s %s", target.AZ, target.Status)
 		}
 	}
 }
@@ -390,23 +389,21 @@ func (t *T) logReplications(cg *CgInfo) {
 	}
 	switch {
 	case cg.AvailabilityZone == t.AZ:
-		t.StatusLog().Info(fmt.Sprintf("rep mode %s local -> remote", mode))
+		t.StatusLog().Info("rep mode %s local -> remote", mode)
 	case repTargetsContainAZ(reps, t.AZ):
-		t.StatusLog().Info(fmt.Sprintf("rep mode %s remote -> local", mode))
+		t.StatusLog().Info("rep mode %s remote -> local", mode)
 	default:
-		t.StatusLog().Info(fmt.Sprintf("rep mode %s", mode))
+		t.StatusLog().Info("rep mode %s", mode)
 	}
 	for _, target := range reps {
-		var msg string
+		where := "remote"
 		if target.AZ == t.AZ {
-			msg = fmt.Sprintf("rep local %s %s", target.AZ, target.Status)
-		} else {
-			msg = fmt.Sprintf("rep remote %s %s", target.AZ, target.Status)
+			where = "local"
 		}
 		if target.Status == "replicated" {
-			t.StatusLog().Info(msg)
+			t.StatusLog().Info("rep %s %s %s", where, target.AZ, target.Status)
 		} else {
-			t.StatusLog().Warn(msg)
+			t.StatusLog().Warn("rep %s %s %s", where, target.AZ, target.Status)
 		}
 	}
 }
@@ -421,14 +418,13 @@ func (t *T) Status(ctx context.Context) status.T {
 	}
 	cg, err := t.mgr.GetCachedCg(ctx)
 	if err != nil {
-		t.StatusLog().Warn(fmt.Sprintf("get consistency group: %s", err))
+		t.StatusLog().Warn("get consistency group: %s", err)
 		return status.NotApplicable
 	}
-	msg := fmt.Sprintf("status %s %s", cg.Status, cg.AvailabilityZone)
 	if cg.Status == "ready" || cg.Status == "passive" {
-		t.StatusLog().Info(msg)
+		t.StatusLog().Info("status %s %s", cg.Status, cg.AvailabilityZone)
 	} else {
-		t.StatusLog().Warn(msg)
+		t.StatusLog().Warn("status %s %s", cg.Status, cg.AvailabilityZone)
 	}
 	t.logGeoRedundancies(cg)
 	t.logReplications(cg)
@@ -450,7 +446,7 @@ func (t *T) waitStatus(ctx context.Context, expectedStates []string) error {
 		if strings.Contains(cg.Status, "failed") || strings.Contains(cg.Status, "rollback") {
 			msg := fmt.Sprintf("abort waiting for consistency group %s status in '%v' because found status %s",
 				t.UUID, expectedStates, cg.Status)
-			t.Log().Warnf(msg)
+			t.Log().Warnf("%s", msg)
 			return false, errors.New(msg)
 		}
 		if now.Sub(t.lastWaitMsg) >= waitMsgInterval {
@@ -476,7 +472,7 @@ func (t *T) waitStatusAndAZ(ctx context.Context, expectedStates []string, expect
 			if expectedAZ != "" && cg.AvailabilityZone != expectedAZ {
 				msg := fmt.Sprintf("consistency group %s reached status %s but in availability zone %s (expected %s)",
 					t.UUID, cg.Status, cg.AvailabilityZone, expectedAZ)
-				t.Log().Warnf(msg)
+				t.Log().Warnf("%s", msg)
 				// Continue waiting; the AZ may still be transitioning.
 				return false, nil
 			}
@@ -486,7 +482,7 @@ func (t *T) waitStatusAndAZ(ctx context.Context, expectedStates []string, expect
 		if strings.Contains(cg.Status, "failed") || strings.Contains(cg.Status, "rollback") {
 			msg := fmt.Sprintf("abort waiting for consistency group %s status in '%v' because found status %s",
 				t.UUID, expectedStates, cg.Status)
-			t.Log().Warnf(msg)
+			t.Log().Warnf("%s", msg)
 			return false, errors.New(msg)
 		}
 		if now.Sub(t.lastWaitMsg) >= waitMsgInterval {
