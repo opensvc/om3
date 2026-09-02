@@ -29,12 +29,8 @@ const (
 var (
 	ErrAlreadyResumed   = errors.New("already resumed")
 	ErrResumeInProgress = errors.New("resume in progress")
+	ErrPrecondition     = errors.New("precondition error")
 )
-
-type PreConditionError struct{ Err error }
-
-func (e *PreConditionError) Error() string { return fmt.Sprintf("precondition error: %s", e.Err) }
-func (e *PreConditionError) Unwrap() error { return e.Err }
 
 type (
 	AZStatus struct {
@@ -167,7 +163,7 @@ func (m *cgMgr) Switchover(ctx context.Context, targetAZ string) error {
 	ts := time.Now()
 	method, url, code, data, err := m.api.PatchConsistencyGroup(ctx, m.uuid, payload)
 	if code == http.StatusPreconditionFailed {
-		return &PreConditionError{Err: fmt.Errorf("switchover consistency group %s: status %d (method=%s url=%s)", m.uuid, code, method, url)}
+		return fmt.Errorf("switchover consistency group %s: status %d (method=%s url=%s): %w", m.uuid, code, method, url, ErrPrecondition)
 	}
 	if err != nil {
 		return err
@@ -506,8 +502,7 @@ func (t *T) start(ctx context.Context) error {
 			return err
 		}
 	} else if err := t.mgr.Switchover(ctx, t.AZ); err != nil {
-		var preErr *PreConditionError
-		if !errors.As(err, &preErr) {
+		if !errors.Is(err, ErrPrecondition) {
 			return err
 		}
 		msg := fmt.Sprintf("consistency group %s switchover 412 error", t.UUID)

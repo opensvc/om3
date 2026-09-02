@@ -424,7 +424,7 @@ func TestStart_Switchover412_FailoverAllowed(t *testing.T) {
 		},
 	})
 	db.PatchSwitchoverFunc = func(ctx context.Context, u, targetAZ string) error {
-		return &PreConditionError{Err: fmt.Errorf("simulated precondition failed")}
+		return fmt.Errorf("simulated precondition failed: %w", ErrPrecondition)
 	}
 	drv := newTestDriver(t, uuid, region1AZ1, 5*time.Second, true, api)
 	t.Setenv("OSVC_ACTION_ORIGIN", "daemon")
@@ -458,7 +458,7 @@ func TestStart_Switchover412_FailoverNotAllowed_NoDaemon(t *testing.T) {
 		},
 	})
 	db.PatchSwitchoverFunc = func(ctx context.Context, u, targetAZ string) error {
-		return &PreConditionError{Err: fmt.Errorf("simulated precondition failed")}
+		return fmt.Errorf("simulated precondition failed: %w", ErrPrecondition)
 	}
 	drv := newTestDriver(t, uuid, region1AZ1, 5*time.Second, false, api)
 	t.Setenv("OSVC_ACTION_ORIGIN", "cli")
@@ -466,8 +466,7 @@ func TestStart_Switchover412_FailoverNotAllowed_NoDaemon(t *testing.T) {
 	ctx := context.Background()
 	err := drv.Start(ctx)
 	require.Error(t, err)
-	var preErr *PreConditionError
-	assert.True(t, errors.As(err, &preErr))
+	assert.True(t, errors.Is(err, ErrPrecondition))
 
 	calls := db.CallCounts()
 	assert.Equal(t, 1, calls.Get)
