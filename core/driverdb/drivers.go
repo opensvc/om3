@@ -36,6 +36,7 @@ import (
 	_ "github.com/opensvc/om3/v3/drivers/resfsflag"
 	_ "github.com/opensvc/om3/v3/drivers/resfshost"
 	_ "github.com/opensvc/om3/v3/drivers/resfssgcp_nfs"
+	_ "github.com/opensvc/om3/v3/drivers/resfssgcp_nfs_cg"
 	_ "github.com/opensvc/om3/v3/drivers/resfszfs"
 	_ "github.com/opensvc/om3/v3/drivers/resiphost"
 	_ "github.com/opensvc/om3/v3/drivers/resiproute"
