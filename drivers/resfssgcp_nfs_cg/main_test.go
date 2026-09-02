@@ -847,7 +847,7 @@ func TestStatus(t *testing.T) {
 	calls = db.CallCounts()
 	assert.Equal(t, expectedGetCall, calls.Get, "cache has not been used as expected")
 
-	drv.mgr.cacheClearGetCg()
+	require.NoError(t, drv.mgr.cacheClearGetCg())
 	statusVal = drv.Status(ctx)
 	calls = db.CallCounts()
 	assert.Equal(t, expectedGetCall+1, calls.Get, "expected call get after clear cache")

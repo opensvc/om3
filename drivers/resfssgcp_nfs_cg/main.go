@@ -141,8 +141,14 @@ type (
 	}
 )
 
+// GetCg reads the consistency group past the cache. A cache that can not be
+// dropped is an error: the read that follows would serve the entry GetCg was
+// asked to go without, and the callers polling for a status change would spin
+// on it until they time out.
 func (m *cgMgr) GetCg(ctx context.Context) (*CgInfo, error) {
-	m.cacheClearGetCg()
+	if err := m.cacheClearGetCg(); err != nil {
+		return nil, fmt.Errorf("clear the consistency group %s cache: %w", m.uuid, err)
+	}
 	return m.GetCachedCg(ctx)
 }
 
@@ -178,9 +184,8 @@ func (m *cgMgr) getCgOutputter(ctx context.Context) func() ([]byte, error) {
 	}
 }
 
-func (m *cgMgr) cacheClearGetCg() {
-	sig := m.cacheSig(cacheKeyGetCgInfo)
-	ageingcache.Clear(sig)
+func (m *cgMgr) cacheClearGetCg() error {
+	return ageingcache.Clear(m.cacheSig(cacheKeyGetCgInfo))
 }
 
 func (m *cgMgr) Switchover(ctx context.Context, targetAZ string) error {
@@ -241,11 +246,6 @@ func (m *cgMgr) ResumeReplication(ctx context.Context, az string) error {
 	}
 	m.log.Infof("| resume-replication %s (duration %.2f)", m.uuid, time.Since(ts).Seconds())
 	return nil
-}
-
-func (m *cgMgr) cacheClear(name string) error {
-	cacheSig := m.cacheSig(name)
-	return ageingcache.Clear(cacheSig)
 }
 
 func (m *cgMgr) cacheSig(name string) string {
