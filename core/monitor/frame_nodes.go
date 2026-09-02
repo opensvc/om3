@@ -74,7 +74,22 @@ func (f Frame) StrNodeStates(n string) string {
 	sb.WriteString(f.sNodeMonState(n))
 	sb.WriteString(f.sNodeFrozen(n))
 	sb.WriteString(f.sNodeMonTarget(n))
+	sb.WriteString(f.StrNodeIssues(n))
 	return sb.String()
+}
+
+// StrNodeIssues marks a node whose configuration has something for a
+// human to correct. What it is, is in the node config issues: the tui
+// opens them from this mark, and om node config get reads them.
+func (f Frame) StrNodeIssues(n string) string {
+	val, ok := f.Current.Cluster.Node[n]
+	if !ok {
+		return ""
+	}
+	if len(val.Config.Issues) == 0 {
+		return ""
+	}
+	return iconWarning
 }
 
 func (f Frame) sNodeWarningsLine() string {

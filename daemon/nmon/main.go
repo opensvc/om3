@@ -752,6 +752,7 @@ func (t *Manager) onPeerNodeConfigUpdated(m *msgbus.NodeConfigUpdated) {
 	t.cacheNodesInfo[m.Node] = peerNodeInfo
 	t.saveNodesInfo()
 	t.checkPRKey()
+	t.refreshNodeIssues()
 }
 
 func (t *Manager) onPeerNodeOsPathsUpdated(m *msgbus.NodeOsPathsUpdated) {
@@ -825,6 +826,7 @@ func (t *Manager) loadConfig() error {
 	}
 	t.config = n.MergedConfig()
 	t.nodeConfig = t.getNodeConfig()
+	t.nodeConfig.Issues = t.nodeIssues(t.nodeConfig)
 	localNodeInfo := t.cacheNodesInfo[t.localhost]
 	localNodeInfo.Labels = t.nodeConfig.Labels
 	localNodeInfo.Env = t.nodeConfig.Env

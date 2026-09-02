@@ -128,8 +128,12 @@ type (
 
 		viewPath naming.Path
 		viewNode string
-		viewKey  string
-		viewRID  string
+
+		// viewNodeIssues is the node whose configuration issues the
+		// issues view lists.
+		viewNodeIssues string
+		viewKey        string
+		viewRID        string
 
 		focused bool
 

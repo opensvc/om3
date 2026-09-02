@@ -1492,19 +1492,23 @@ type NodeActionAccepted struct {
 
 // NodeConfig defines model for NodeConfig.
 type NodeConfig struct {
-	Collector              *NodeConfigCollector `json:"collector,omitempty"`
-	Env                    string               `json:"env"`
-	Hooks                  []NodeConfigHook     `json:"hooks"`
-	Labels                 map[string]string    `json:"labels"`
-	MaintenanceGracePeriod time.Duration        `json:"maintenance_grace_period"`
-	MaxParallel            int                  `json:"max_parallel"`
-	MinAvailMemPct         int                  `json:"min_avail_mem_pct"`
-	MinAvailSwapPct        int                  `json:"min_avail_swap_pct"`
-	PRKey                  string               `json:"prkey"`
-	ReadyPeriod            time.Duration        `json:"ready_period"`
-	RejoinGracePeriod      time.Duration        `json:"rejoin_grace_period"`
-	SplitAction            string               `json:"split_action"`
-	SSHKey                 string               `json:"sshkey"`
+	Collector *NodeConfigCollector `json:"collector,omitempty"`
+	Env       string               `json:"env"`
+	Hooks     []NodeConfigHook     `json:"hooks"`
+
+	// Issues The configuration faults found on this node that a human has
+	// to correct, as the cluster configuration has its own.
+	Issues                 *[]string         `json:"issues,omitempty"`
+	Labels                 map[string]string `json:"labels"`
+	MaintenanceGracePeriod time.Duration     `json:"maintenance_grace_period"`
+	MaxParallel            int               `json:"max_parallel"`
+	MinAvailMemPct         int               `json:"min_avail_mem_pct"`
+	MinAvailSwapPct        int               `json:"min_avail_swap_pct"`
+	PRKey                  string            `json:"prkey"`
+	ReadyPeriod            time.Duration     `json:"ready_period"`
+	RejoinGracePeriod      time.Duration     `json:"rejoin_grace_period"`
+	SplitAction            string            `json:"split_action"`
+	SSHKey                 string            `json:"sshkey"`
 }
 
 // NodeConfigCollector defines model for NodeConfigCollector.

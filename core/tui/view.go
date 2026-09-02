@@ -79,6 +79,11 @@ const (
 	viewEvents
 	viewHbStatus
 	viewRelay
+	viewNodeIssues
+
+	// viewLast is not a view. It bounds the enum, so that a view added
+	// above is walked by the tests that check the registry.
+	viewLast
 )
 
 // viewDefs is the view registry. Adding a view is adding an entry here.
@@ -204,6 +209,11 @@ func init() {
 			title:   "relay",
 			enter:   (*App).updateRelayStatus,
 			refresh: (*App).updateRelayStatus,
+		},
+		viewNodeIssues: {
+			title:   "node issues",
+			enter:   (*App).updateNodeIssues,
+			refresh: (*App).updateNodeIssues,
 		},
 	}
 }

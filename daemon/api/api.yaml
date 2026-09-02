@@ -6435,6 +6435,13 @@ components:
         prkey:
           type: string
           x-go-name: PRKey
+        issues:
+          type: array
+          description: |
+            The configuration faults found on this node that a human has
+            to correct, as the cluster configuration has its own.
+          items:
+            type: string
 
     NodeConfigCollector:
       type: object

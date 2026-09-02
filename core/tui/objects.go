@@ -12,7 +12,13 @@ import (
 )
 
 var (
-	hbIndexRow   = -1
+	hbIndexRow = -1
+
+	// stateIndexRow is the row of the node states, where a node with a
+	// configuration issue is marked. The mark is selectable, and opens
+	// what it is about.
+	stateIndexRow = -1
+
 	separatorBar = "│"
 )
 
@@ -33,6 +39,8 @@ func (t *App) initObjectsTable() {
 			t.nav(viewEvents)
 		case (row >= hbIndexRow && row <= hbIndexRow+2) && (col >= t.headerRightCol && col <= t.firstInstanceCol+len(t.Current.Cluster.Config.Nodes)-1):
 			t.listHeartbeats(table, row, col)
+		case row == stateIndexRow && col >= t.firstInstanceCol:
+			t.listNodeIssues(table, col)
 		}
 	}
 
@@ -135,6 +143,17 @@ func (t *App) initObjectsTable() {
 	t.objects = table
 }
 
+// listNodeIssues opens the configuration issues of the node of a column,
+// which is where the mark on its states line points.
+func (t *App) listNodeIssues(table *tview.Table, col int) {
+	nodename := table.GetCell(0, col).Text
+	if len(t.nodeIssues(nodename)) == 0 {
+		return
+	}
+	t.viewNodeIssues = nodename
+	t.nav(viewNodeIssues)
+}
+
 func (t *App) listHeartbeats(table *tview.Table, row, col int) {
 	if hbIndexRow == -1 {
 		return
@@ -174,7 +193,9 @@ func (t *App) updateObjects() {
 	nodesLoadCells := func(row int) { nodesPopulate(row, false, func(n string) string { return t.StrNodeLoad(n) }) }
 	nodesMemCells := func(row int) { nodesPopulate(row, false, func(n string) string { return t.StrNodeMem(n) }) }
 	nodesSwapCells := func(row int) { nodesPopulate(row, false, func(n string) string { return t.StrNodeSwap(n) }) }
-	nodesStateCells := func(row int) { nodesPopulate(row, false, func(n string) string { return t.StrNodeStates(n) }) }
+	// The states of a node with an issue end with a mark. The cell is
+	// selectable so that the mark can be followed to what it is about.
+	nodesStateCells := func(row int) { nodesPopulate(row, true, func(n string) string { return t.StrNodeStates(n) }) }
 	nodesHbCells := func(row int) { nodesPopulate(row, true, func(n string) string { return t.StrNodeHbMode(n) }) }
 	nodesHb1Cells := func(row int, hbType string) {
 		nodesPopulate(row, true, func(n string) string { return t.StrHeartbeat(n, hbType) })
@@ -284,6 +305,7 @@ func (t *App) updateObjects() {
 		}
 	}
 
+	stateIndexRow = len(objects)
 	objects = append(objects,
 		HeaderObject{
 			Left:     HeaderCell{},
@@ -371,6 +393,16 @@ func (t *App) cellNode(node string, selectable bool) *tview.TableCell {
 		cell.SetBackgroundColor(colorSelected)
 	}
 	return cell
+}
+
+// nodeIssues returns the configuration faults the node reports about
+// itself.
+func (t *App) nodeIssues(node string) []string {
+	nodeData, ok := t.Current.Cluster.Node[node]
+	if !ok {
+		return nil
+	}
+	return nodeData.Config.Issues
 }
 
 func (t *App) cellObjectPath(path string) *tview.TableCell {

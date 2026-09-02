@@ -30,6 +30,13 @@ type (
 		SplitAction            string            `json:"split_action"`
 		SSHKey                 string            `json:"sshkey"`
 		PRKey                  string            `json:"prkey"`
+
+		// Issues are the configuration faults found on this node that
+		// a human has to correct, as the cluster configuration has its
+		// own. They are found by the node they name, and travel with
+		// its configuration so that a peer, om mon and the tui can
+		// report them without repeating the search.
+		Issues []string `json:"issues"`
 	}
 
 	Hooks []Hook
@@ -43,6 +50,7 @@ type (
 
 func (cfg *Config) DeepCopy() *Config {
 	newCfg := *cfg
+	newCfg.Issues = append([]string{}, cfg.Issues...)
 	newCfg.Schedules = append([]schedule.Config{}, cfg.Schedules...)
 	newCfg.Labels = cfg.Labels.DeepCopy()
 	newCfg.Hooks = cfg.Hooks.DeepCopy()
@@ -66,6 +74,9 @@ func (c Config) Equal(other Config) bool {
 		return false
 	}
 
+	if !slices.Equal(c.Issues, other.Issues) {
+		return false
+	}
 	if !c.Collector.Equal(other.Collector) {
 		return false
 	}
