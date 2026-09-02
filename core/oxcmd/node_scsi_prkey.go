@@ -5,6 +5,7 @@ import (
 	"fmt"
 
 	"github.com/opensvc/om3/v3/core/client"
+	"github.com/opensvc/om3/v3/core/commoncmd"
 	"github.com/opensvc/om3/v3/core/output"
 	"github.com/opensvc/om3/v3/daemon/api"
 )
@@ -50,5 +51,7 @@ func (t *CmdNodePRKey) Run() error {
 		Color:         t.Color,
 		Data:          *resp.JSON200,
 	}.Print()
-	return nil
+	// The keys are on stdout by now. Whether each is its node's alone
+	// is the other half of the answer, and the exit code carries it.
+	return commoncmd.CheckPRKeyUniqueness()
 }
