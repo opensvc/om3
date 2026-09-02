@@ -15,6 +15,7 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/opensvc/om3/v3/core/actioncontext"
+	"github.com/opensvc/om3/v3/core/env"
 	"github.com/opensvc/om3/v3/core/status"
 	"github.com/opensvc/om3/v3/util/sgcp"
 	"github.com/opensvc/om3/v3/util/sgcpcgtesthelper"
@@ -446,7 +447,7 @@ func TestStart_Switchover412_FailoverAllowed(t *testing.T) {
 		return fmt.Errorf("simulated precondition failed: %w", ErrPrecondition)
 	}
 	drv := newTestDriver(t, id, region1AZ1, 5*time.Second, true, api)
-	t.Setenv("OSVC_ACTION_ORIGIN", "daemon")
+	t.Setenv(env.ActionOriginVar, string(env.ActionOriginDaemonMonitor))
 
 	ctx := context.Background()
 	err := drv.Start(ctx)
@@ -480,7 +481,7 @@ func TestStart_Switchover412_FailoverNotAllowed_NoDaemon(t *testing.T) {
 		return fmt.Errorf("simulated precondition failed: %w", ErrPrecondition)
 	}
 	drv := newTestDriver(t, id, region1AZ1, 5*time.Second, false, api)
-	t.Setenv("OSVC_ACTION_ORIGIN", "cli")
+	t.Setenv(env.ActionOriginVar, string(env.ActionOriginUser))
 
 	ctx := context.Background()
 	err := drv.Start(ctx)
