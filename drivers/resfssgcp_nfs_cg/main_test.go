@@ -185,6 +185,18 @@ func TestCgInfo_Mixed(t *testing.T) {
 	}
 }
 
+func TestConfigure_RequiresAZ(t *testing.T) {
+	cleanup := setup(t)
+	defer cleanup()
+
+	// The az keyword defaults to {node.labels.az}, which evaluates to an
+	// empty string on a node where the label is not set.
+	drv := &T{UUID: cgUUIDRegion1}
+	err := drv.Configure()
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "az is required")
+}
+
 func TestCheckResumable_NotSyncable(t *testing.T) {
 	tests := []struct {
 		name    string

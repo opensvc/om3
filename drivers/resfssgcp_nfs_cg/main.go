@@ -291,6 +291,13 @@ func (t *T) Configure() error {
 		return fmt.Errorf("file endpoint is required (neither defined into endpoint keyword nor config file %s", sgcp.DefaultConfigPath)
 	}
 	cfg = cfg.WithFileURL(t.Endpoint)
+	if t.AZ == "" {
+		// The az keyword defaults to {node.labels.az}, which evaluates to
+		// an empty string on a node where that label is not set. Refuse
+		// now: without a local az, start would ask for a switchover to
+		// the "" availability zone.
+		return fmt.Errorf("az is required (neither defined into the az keyword nor by the node az label)")
+	}
 	return t.configureMgr(cfg)
 }
 
