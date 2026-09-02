@@ -1066,7 +1066,17 @@ type DRBDConfig struct {
 	Data []byte `json:"data"`
 }
 
-// DaemonHeartbeatName Heartbeat name, example '1.rx' for heartbeat receiver of 'hb#1' section
+// DaemonHeartbeatName Heartbeat name.
+//
+// A stream action (start, stop, restart) takes a stream: the index of a
+// 'hb#<index>' section of the cluster configuration suffixed with '.rx'
+// for the receiver or '.tx' for the sender, '1.rx' for the receiver of
+// 'hb#1'. A disk action (sign, wipe) takes the heartbeat itself, '1' for
+// 'hb#1'.
+//
+// The 'hb#' prefix a heartbeat status shows in a stream id is accepted
+// in both, so a name read there can be sent back. A name the node does
+// not configure is refused.
 type DaemonHeartbeatName = string
 
 // DaemonListener defines model for DaemonListener.
@@ -2376,7 +2386,17 @@ type RidOptional = string
 // Roles defines model for Roles.
 type Roles = []Role
 
-// InPathHeartbeatName Heartbeat name, example '1.rx' for heartbeat receiver of 'hb#1' section
+// InPathHeartbeatName Heartbeat name.
+//
+// A stream action (start, stop, restart) takes a stream: the index of a
+// 'hb#<index>' section of the cluster configuration suffixed with '.rx'
+// for the receiver or '.tx' for the sender, '1.rx' for the receiver of
+// 'hb#1'. A disk action (sign, wipe) takes the heartbeat itself, '1' for
+// 'hb#1'.
+//
+// The 'hb#' prefix a heartbeat status shows in a stream id is accepted
+// in both, so a name read there can be sent back. A name the node does
+// not configure is refused.
 type InPathHeartbeatName = DaemonHeartbeatName
 
 // InPathKind defines model for inPathKind.

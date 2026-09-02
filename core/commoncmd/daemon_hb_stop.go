@@ -2,7 +2,6 @@ package commoncmd
 
 import (
 	"context"
-	"fmt"
 	"net/http"
 
 	"github.com/spf13/cobra"
@@ -21,8 +20,16 @@ func NewCmdDaemonHeartbeatStop() *cobra.Command {
 	options := CmdDaemonHeartbeatStop{}
 	cmd := &cobra.Command{
 		Use:   "stop NAME",
-		Short: fmt.Sprintf("stop a daemon heartbeat rx or tx"),
-		Args:  cobra.ExactArgs(1),
+		Short: "stop a daemon heartbeat rx or tx",
+		Long: ForProgram("Stop one direction of a configured heartbeat.\n\n" +
+			HeartbeatStreamNameHelp),
+		Example: ForProgram(`  # stop the receiver of hb#1 on the local node
+  om daemon hb stop 1.rx
+
+  # stop the sender of hb#1 on every node
+  om daemon hb stop 1.tx --node '*'`),
+		Args:              cobra.ExactArgs(1),
+		ValidArgsFunction: validHeartbeatStreamNames,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			options.Name = args[0]
 			return options.Run()

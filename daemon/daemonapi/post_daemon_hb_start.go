@@ -1,7 +1,6 @@
 package daemonapi
 
 import (
-	"fmt"
 	"net/http"
 
 	"github.com/labstack/echo/v4"
@@ -15,7 +14,11 @@ func (a *DaemonAPI) PostDaemonHeartbeatStart(ctx echo.Context, nodename api.InPa
 		return err
 	}
 	nodename = a.parseNodename(nodename)
-	return a.postDaemonSubAction(ctx, nodename, "start", fmt.Sprintf("hb#%s", name), func(c *client.T) (*http.Response, error) {
+	localName, err := heartbeatStreamName(name)
+	if err != nil {
+		return JSONProblemf(ctx, http.StatusBadRequest, "Invalid parameter", "%s", err)
+	}
+	return a.postDaemonSubAction(ctx, nodename, "start", localName, func(c *client.T) (*http.Response, error) {
 		return c.PostDaemonHeartbeatStart(ctx.Request().Context(), nodename, name)
 	})
 }

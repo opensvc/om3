@@ -1,6 +1,7 @@
 package commoncmd
 
 import (
+	"os"
 	"strings"
 	"testing"
 
@@ -37,4 +38,41 @@ func TestFilterPrefix(t *testing.T) {
 	assert.Equal(t, AuditSubsystems, filterPrefix(AuditSubsystems, ""))
 	assert.Equal(t, []string{"icfg", "icfg:"}, filterPrefix(AuditSubsystems, "icf"))
 	assert.Empty(t, filterPrefix(AuditSubsystems, "nosuch"))
+}
+
+// TestListenerNameHelpNamesThemAll pins that the help a user reads names
+// every listener an action may be addressed to, rather than a list kept
+// beside them by hand.
+func TestListenerNameHelpNamesThemAll(t *testing.T) {
+	for _, name := range daemonenv.ListenerNames {
+		assert.Containsf(t, strings.Fields(ListenerNameHelp), name, "%s is missing from the help", name)
+	}
+}
+
+func TestForProgram(t *testing.T) {
+	withProgram := func(t *testing.T, path string) {
+		t.Helper()
+		saved := os.Args[0]
+		os.Args[0] = path
+		t.Cleanup(func() { os.Args[0] = saved })
+	}
+	const help = `  # start it
+  om daemon hb start 1.rx
+
+  the id "om daemon hb status" shows, from the om command`
+
+	t.Run("om reads its own name", func(t *testing.T) {
+		withProgram(t, "/usr/bin/om")
+		assert.Equal(t, help, ForProgram(help))
+	})
+	t.Run("ox reads its own name", func(t *testing.T) {
+		withProgram(t, "/usr/bin/ox")
+		got := ForProgram(help)
+		assert.NotContains(t, strings.Fields(got), "om", "an ox help must not tell its reader to type om")
+		assert.Contains(t, got, "ox daemon hb start 1.rx")
+		assert.Contains(t, got, `"ox daemon hb status"`)
+
+		// A word ending with the command name is not the command name.
+		assert.Contains(t, got, "from the ox command")
+	})
 }

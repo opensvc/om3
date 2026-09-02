@@ -28,25 +28,28 @@ func (a *DaemonAPI) PostDaemonHeartbeatWipe(ctx echo.Context, nodename api.InPat
 
 func localPostDaemonHeartbeatWipe(ctx echo.Context, name api.InPathHeartbeatName) error {
 	log := LogHandler(ctx, "postDaemonHeartbeatWipe")
+	section, err := heartbeatName(name)
+	if err != nil {
+		return JSONProblemf(ctx, http.StatusBadRequest, "Invalid parameter", "%s", err)
+	}
 	var i any
-	i, err := object.NewCluster(object.WithVolatile(true))
+	i, err = object.NewCluster(object.WithVolatile(true))
 	if err != nil {
 		log.Warnf("new cluster object failed: %v", err)
 		return JSONProblemf(ctx, http.StatusInternalServerError, "NewCluster", "new cluster object failed: %v", err)
 	}
 	config := (i.(configProvider)).Config()
-	section := "hb#" + string(name)
 
 	hbType := config.GetString(key.New(section, "type"))
 	if hbType != "disk" {
-		log.Tracef("refuse to wipe heartbeat disk: unexpected hb#%s.type %s", name, hbType)
-		return JSONProblemf(ctx, http.StatusBadRequest, "Invalid parameter", "refuse to wipe heartbeat disk: unexpected hb#%s.type %s", name, hbType)
+		log.Tracef("refuse to wipe heartbeat disk: unexpected %s.type %s", section, hbType)
+		return JSONProblemf(ctx, http.StatusBadRequest, "Invalid parameter", "refuse to wipe heartbeat disk: unexpected %s.type %s", section, hbType)
 	}
 
 	devPath := config.GetString(key.New(section, "dev"))
 	if devPath == "" {
-		log.Warnf("refuse to wipe heartbeat disk: unexpected empty hb#%s.dev", name)
-		return JSONProblemf(ctx, http.StatusBadRequest, "Invalid parameter", "refuse to wipe heartbeat disk: unexpected empty hb#%s.dev", name)
+		log.Warnf("refuse to wipe heartbeat disk: unexpected empty %s.dev", section)
+		return JSONProblemf(ctx, http.StatusBadRequest, "Invalid parameter", "refuse to wipe heartbeat disk: unexpected empty %s.dev", section)
 	}
 
 	hasSignature, err := sign.EnsureSignature(devPath)
@@ -56,16 +59,16 @@ func localPostDaemonHeartbeatWipe(ctx echo.Context, name api.InPathHeartbeatName
 	}
 
 	if !hasSignature {
-		log.Infof("heartbeat %s dev %s has no signature, nothing to wipe", name, devPath)
-		return JSONProblemf(ctx, http.StatusBadRequest, "Invalid parameter", "heartbeat %s dev %s has no signature, nothing to wipe", name, devPath)
+		log.Infof("heartbeat %s dev %s has no signature, nothing to wipe", section, devPath)
+		return JSONProblemf(ctx, http.StatusBadRequest, "Invalid parameter", "heartbeat %s dev %s has no signature, nothing to wipe", section, devPath)
 	}
 
-	log.Infof("wipe heartbeat %s dev %s", name, devPath)
+	log.Infof("wipe heartbeat %s dev %s", section, devPath)
 	err = sign.RemoveHeaderFromDisk(devPath)
 	if err != nil {
-		log.Warnf("wipe heartbeat disk %s dev %s failed: remove header: %s", name, devPath, err)
-		return JSONProblemf(ctx, http.StatusInternalServerError, "RemoveHeaderFromDisk", "wipe heartbeat disk %s dev %s failed: remove header: %s", name, devPath, err)
+		log.Warnf("wipe heartbeat disk %s dev %s failed: remove header: %s", section, devPath, err)
+		return JSONProblemf(ctx, http.StatusInternalServerError, "RemoveHeaderFromDisk", "wipe heartbeat disk %s dev %s failed: remove header: %s", section, devPath, err)
 	}
 
-	return JSONProblemf(ctx, http.StatusOK, "heartbeat disk wiped", "wipe heartbeat %s on %s", name, devPath)
+	return JSONProblemf(ctx, http.StatusOK, "heartbeat disk wiped", "wipe heartbeat %s on %s", section, devPath)
 }
