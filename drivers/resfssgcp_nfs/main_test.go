@@ -5,7 +5,10 @@ import (
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
+	"os"
+	"path/filepath"
 	"testing"
+	"time"
 
 	"github.com/opensvc/om3/v3/drivers/sgcpauthtesthelper"
 	"github.com/opensvc/om3/v3/util/testsgcphelper"
@@ -14,8 +17,11 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/opensvc/om3/v3/core/driver"
+	"github.com/opensvc/om3/v3/core/env"
+	"github.com/opensvc/om3/v3/core/rawconfig"
 	"github.com/opensvc/om3/v3/core/resource"
 	"github.com/opensvc/om3/v3/core/status"
+	"github.com/opensvc/om3/v3/util/ageingcache"
 	"github.com/opensvc/om3/v3/util/sgcp"
 )
 
@@ -174,6 +180,66 @@ func TestGetNFSClients(t *testing.T) {
 }
 
 // TestFileStatusWithNoClients tests status when no clients are available
+// TestFileStatusCache verifies the cached filesystem info the scheduler fills
+// is not served to anyone else asking for a status.
+func TestFileStatusCache(t *testing.T) {
+	cachedFiles := func(t *testing.T) []string {
+		t.Helper()
+		entries, err := os.ReadDir(filepath.Join(rawconfig.Paths.Cache, "ageing"))
+		if err != nil {
+			return nil
+		}
+		l := make([]string, 0, len(entries))
+		for _, e := range entries {
+			l = append(l, e.Name())
+		}
+		return l
+	}
+
+	// fill the cache the way a status evaluation does, then ask for a status
+	// and see what became of the entry.
+	fill := func(t *testing.T) *T {
+		t.Helper()
+		drv := newDrvWithRid("test-rid")
+		drv.authInfoer = sgcpauthtesthelper.NewMockGetAuthInfoProvider("id1")
+		drv.UUID = "test-uuid"
+		drv.Host = "test-host"
+		drv.Permission = "read-write"
+		require.NoError(t, drv.Configure())
+
+		sig := drv.mgr.cacheSig("getFileInfo")
+		o := ageingcache.NewOutputter(func() ([]byte, error) { return []byte("null"), nil })
+		_, err := ageingcache.Output(o, sig, time.Hour)
+		require.NoError(t, err)
+		require.NotEmpty(t, cachedFiles(t), "the cache was not filled")
+		return drv
+	}
+
+	for _, origin := range []env.ActionOrigin{
+		env.ActionOriginUser,
+		env.ActionOriginDaemonMonitor,
+		env.ActionOriginDaemonAPI,
+	} {
+		t.Run(string(origin)+" drops it", func(t *testing.T) {
+			defer Setup(t)()
+			t.Setenv(env.ActionOriginVar, string(origin))
+			drv := fill(t)
+
+			drv.Status(context.Background())
+			assert.Empty(t, cachedFiles(t), "the status evaluation was served the cache")
+		})
+	}
+
+	t.Run("the scheduler keeps it", func(t *testing.T) {
+		defer Setup(t)()
+		t.Setenv(env.ActionOriginVar, string(env.ActionOriginDaemonScheduler))
+		drv := fill(t)
+
+		drv.Status(context.Background())
+		assert.NotEmpty(t, cachedFiles(t), "the scheduler evaluation dropped the cache")
+	})
+}
+
 func TestFileStatusWithNoClients(t *testing.T) {
 	// Create a test server
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {

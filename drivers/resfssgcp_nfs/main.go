@@ -231,6 +231,11 @@ func (t *T) Stop(ctx context.Context) error {
 
 // Status returns the combined status of the file and fs
 func (t *T) Status(ctx context.Context) status.T {
+	if sgcphelper.NeedsCacheClear() {
+		if err := t.clearFileStatusCache(); err != nil {
+			t.Log().Debugf("clear file status cache: %s", err)
+		}
+	}
 	fileStatus := t.fileStatus(ctx)
 
 	// Get underlying filesystem status

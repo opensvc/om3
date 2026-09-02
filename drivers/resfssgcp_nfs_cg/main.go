@@ -416,6 +416,11 @@ func (t *T) Status(ctx context.Context) status.T {
 		t.StatusLog().Info("xaas status disabled")
 		return status.NotApplicable
 	}
+	if sgcphelper.NeedsCacheClear() {
+		if err := t.mgr.cacheClearGetCg(); err != nil {
+			t.Log().Debugf("clear the consistency group cache: %s", err)
+		}
+	}
 	cg, err := t.mgr.GetCachedCg(ctx)
 	if err != nil {
 		t.StatusLog().Warn("get consistency group: %s", err)
