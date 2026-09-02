@@ -126,20 +126,23 @@ func (t HeartbeatStreamPeerStatusTableEntry) Unstructured() map[string]any {
 	}
 
 	return map[string]any{
-		"node":            t.Node,
-		"peer":            peer,
-		"type":            t.Type,
-		"alerts":          t.Alerts,
-		"id":              t.Status.ID,
-		"state":           stateText,
-		"state_icon":      stateIcon,
-		"state_text":      stateText,
-		"configured_at":   t.Status.ConfiguredAt,
-		"updated_at":      t.Status.UpdatedAt,
-		"created_at":      t.Status.CreatedAt,
-		"desc":            desc,
-		"changed_at":      t.ChangedAt.Format(time.RFC3339Nano),
-		"last_beating_at": t.LastBeatingAt.Format(time.RFC3339Nano),
+		"node":          t.Node,
+		"peer":          peer,
+		"type":          t.Type,
+		"alerts":        t.Alerts,
+		"id":            t.Status.ID,
+		"state":         stateText,
+		"state_icon":    stateIcon,
+		"state_text":    stateText,
+		"configured_at": t.Status.ConfiguredAt,
+		"updated_at":    t.Status.UpdatedAt,
+		"created_at":    t.Status.CreatedAt,
+		"desc":          desc,
+		// The times are values, not text: the renderer prints them to
+		// the second, and the datasets keep the nanoseconds the type
+		// carries. The three above are already handed over this way.
+		"changed_at":      t.ChangedAt,
+		"last_beating_at": t.LastBeatingAt,
 		"is_beating":      t.IsBeating,
 		"beating":         beatingText,
 		"beating_icon":    beatingIcon,
