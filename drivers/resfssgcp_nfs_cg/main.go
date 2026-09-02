@@ -17,16 +17,20 @@ import (
 	"github.com/opensvc/om3/v3/core/resource"
 	"github.com/opensvc/om3/v3/core/status"
 	"github.com/opensvc/om3/v3/drivers/sgcphelper"
+	"github.com/opensvc/om3/v3/util/ageingcache"
 	"github.com/opensvc/om3/v3/util/httpclientcache"
 	"github.com/opensvc/om3/v3/util/sgcp"
 )
 
 const (
-	RetryWaitDelay  = 2 * time.Second
 	waitMsgInterval = 10 * time.Second
+
+	cacheKeyGetCgInfo = "getSGCPCGInfo"
 )
 
 var (
+	retryWaitDelay = 2 * time.Second
+
 	ErrAlreadyResumed   = errors.New("already resumed")
 	ErrResumeInProgress = errors.New("resume in progress")
 	ErrPrecondition     = errors.New("precondition error")
@@ -117,32 +121,42 @@ type (
 	GetAuthInfoer interface {
 		GetAuthInfo(string) (*sgcp.AuthInfo, error)
 	}
+
 	logger interface {
 		Debugf(format string, args ...any)
 		Infof(format string, args ...any)
 		Warnf(format string, args ...any)
 		Errorf(format string, args ...any)
 	}
+
 	cgAPI interface {
 		GetConsistencyGroup(ctx context.Context, uuid string) (method, url string, code int, data []byte, err error)
 		PatchConsistencyGroup(ctx context.Context, uuid string, payload any) (method, url string, code int, data []byte, err error)
 	}
+
 	cgMgr struct {
-		uuid string
-		log  logger
-		api  cgAPI
+		uuid  string
+		log   logger
+		api   cgAPI
+		cache sgcp.CacheConfig
 	}
 )
 
 func (m *cgMgr) GetCg(ctx context.Context) (*CgInfo, error) {
+	m.cacheClearGetCg()
+	return m.GetCachedCg(ctx)
+}
+
+func (m *cgMgr) GetCachedCg(ctx context.Context) (*CgInfo, error) {
 	m.log.Debugf("get consistency group %s info", m.uuid)
 	ts := time.Now()
-	method, url, code, data, err := m.api.GetConsistencyGroup(ctx, m.uuid)
+
+	sig := m.cacheSig(cacheKeyGetCgInfo)
+	ttl := time.Duration(m.cache.TTLSeconds) * time.Second
+	o := ageingcache.NewOutputter(m.getCgOutputter(ctx))
+	data, err := ageingcache.Output(o, sig, ttl)
 	if err != nil {
-		return nil, err
-	}
-	if code != http.StatusOK {
-		return nil, fmt.Errorf("get consistency group %s: unexpected status %d (method=%s url=%s)", m.uuid, code, method, url)
+		return nil, fmt.Errorf("get consistency group %s: %w", m.uuid, err)
 	}
 	var cg CgInfo
 	if err := json.Unmarshal(data, &cg); err != nil {
@@ -150,6 +164,24 @@ func (m *cgMgr) GetCg(ctx context.Context) (*CgInfo, error) {
 	}
 	m.log.Debugf("consistency group details: %+v (duration %.2f)", &cg, time.Since(ts).Seconds())
 	return &cg, nil
+}
+
+func (m *cgMgr) getCgOutputter(ctx context.Context) func() ([]byte, error) {
+	return func() ([]byte, error) {
+		method, url, code, data, err := m.api.GetConsistencyGroup(ctx, m.uuid)
+		if err != nil {
+			return nil, err
+		}
+		if code != http.StatusOK {
+			return nil, fmt.Errorf("get consistency group %s: unexpected status %d (method=%s url=%s)", m.uuid, code, method, url)
+		}
+		return data, nil
+	}
+}
+
+func (m *cgMgr) cacheClearGetCg() {
+	sig := m.cacheSig(cacheKeyGetCgInfo)
+	ageingcache.Clear(sig)
 }
 
 func (m *cgMgr) Switchover(ctx context.Context, targetAZ string) error {
@@ -212,6 +244,15 @@ func (m *cgMgr) ResumeReplication(ctx context.Context, az string) error {
 	return nil
 }
 
+func (m *cgMgr) cacheClear(name string) error {
+	cacheSig := m.cacheSig(name)
+	return ageingcache.Clear(cacheSig)
+}
+
+func (m *cgMgr) cacheSig(name string) string {
+	return fmt.Sprintf("%s:%s", name, m.uuid)
+}
+
 type T struct {
 	resource.T
 
@@ -269,9 +310,10 @@ func (t *T) configureMgr(cfg *sgcp.Config) error {
 	}
 	tk := sgcp.NewTokenFactory(t.Log(), httpClient, &cfg.Auth, authInfo)
 	t.mgr = &cgMgr{
-		uuid: t.UUID,
-		log:  t.Log(),
-		api:  sgcp.NewFilesAPI(cfg, httpClient, t.Log(), tk),
+		uuid:  t.UUID,
+		log:   t.Log(),
+		api:   sgcp.NewFilesAPI(cfg, httpClient, t.Log(), tk),
+		cache: cfg.Cache,
 	}
 	return nil
 }
@@ -365,7 +407,7 @@ func (t *T) Status(ctx context.Context) status.T {
 		t.StatusLog().Info("xaas status disabled")
 		return status.NotApplicable
 	}
-	cg, err := t.mgr.GetCg(ctx)
+	cg, err := t.mgr.GetCachedCg(ctx)
 	if err != nil {
 		t.StatusLog().Warn(fmt.Sprintf("get consistency group: %s", err))
 		return status.NotApplicable
@@ -407,7 +449,7 @@ func (t *T) waitStatus(ctx context.Context, expectedStates []string) error {
 		return false, nil
 	}
 	errMsg := fmt.Sprintf("timeout waiting for consistency group %s status in %v", t.UUID, expectedStates)
-	return t.waitForFn(ctx, fn, t.Timeout, RetryWaitDelay, errMsg)
+	return t.waitForFn(ctx, fn, t.Timeout, retryWaitDelay, errMsg)
 }
 
 func (t *T) waitStatusAndAZ(ctx context.Context, expectedStates []string, expectedAZ string) error {
@@ -443,7 +485,7 @@ func (t *T) waitStatusAndAZ(ctx context.Context, expectedStates []string, expect
 		return false, nil
 	}
 	errMsg := fmt.Sprintf("timeout waiting for consistency group %s status in %v and availability zone %s", t.UUID, expectedStates, expectedAZ)
-	return t.waitForFn(ctx, fn, t.Timeout, RetryWaitDelay, errMsg)
+	return t.waitForFn(ctx, fn, t.Timeout, retryWaitDelay, errMsg)
 }
 
 func (t *T) waitForFn(ctx context.Context, fn func() (bool, error), timeout, retryDelay time.Duration, errMsg string) error {
@@ -488,7 +530,7 @@ func (t *T) start(ctx context.Context) error {
 		if err := t.waitReady(ctx); err != nil {
 			return err
 		}
-		cg, err = t.mgr.GetCg(ctx)
+		cg, err = t.mgr.GetCachedCg(ctx)
 		if err != nil {
 			return err
 		}
@@ -576,7 +618,7 @@ func (t *T) syncResume(ctx context.Context) error {
 	if err := t.waitStatus(ctx, []string{"ready", "passive"}); err != nil {
 		return err
 	}
-	cg, err = t.mgr.GetCg(ctx)
+	cg, err = t.mgr.GetCachedCg(ctx)
 	if err != nil {
 		return err
 	}
