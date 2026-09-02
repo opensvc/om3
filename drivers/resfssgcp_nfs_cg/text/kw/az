@@ -1,1 +1,5 @@
 The availability zone of the local node. Use a reference to a node label or a scoped value.
+
+The default resolves the az node label, so a node where that label is unset
+has to set this keyword. The resource refuses to configure without it: the
+start action would then ask for a switchover to an empty availability zone.
