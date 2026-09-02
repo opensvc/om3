@@ -44,6 +44,22 @@ func newDBAndDrv(t *testing.T, s string, entries []sgcpdnstesthelper.DBEntry) (*
 	return db, drv
 }
 
+// TestConfigureCacheTTL verifies the alias cache ages as the configuration
+// says, and not on a duration of the driver's own.
+func TestConfigureCacheTTL(t *testing.T) {
+	defer setup(t)()
+
+	_, drv := newDBAndDrv(t, "rid1", nil)
+	drv.Name = "name1"
+	drv.Target = "target1"
+	drv.ZoneID = "z1"
+	require.NoError(t, drv.Configure())
+
+	expected := time.Duration(sgcp.GetConfig().Cache.TTLSeconds) * time.Second
+	require.NotZerof(t, expected, "the test configuration has to set a cache ttl")
+	assert.Equal(t, expected, drv.mgr.CacheTTL)
+}
+
 // TestCacheInvalidation verifies a started alias is not read back from the
 // ageing cache the status evaluation filled before the change. The two drivers
 // stand for the two processes an om run uses: the one that starts the resource

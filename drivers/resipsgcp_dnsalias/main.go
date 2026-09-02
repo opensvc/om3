@@ -67,8 +67,6 @@ type (
 	}
 )
 
-const defaultCacheTTL = 30 * time.Second
-
 func New() resource.Driver {
 	return &T{}
 }
@@ -118,7 +116,7 @@ func (t *T) configureMgr(cfg *sgcp.Config) error {
 	mgr := &mgr{
 		alias:    alias{UUID: t.UUID, Name: t.Name, Target: t.Target, ZoneID: t.ZoneID},
 		log:      t.Log(),
-		CacheTTL: defaultCacheTTL,
+		CacheTTL: time.Duration(cfg.Cache.TTLSeconds) * time.Second,
 		Endpoint: t.Endpoint,
 		Secret:   t.Secret,
 	}

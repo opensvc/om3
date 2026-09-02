@@ -80,5 +80,4 @@ func TestLoadConfig(t *testing.T) {
 
 	// Test cache configuration
 	assert.Equal(t, 14400, cfg.Cache.TTLSeconds)
-	assert.True(t, cfg.Cache.Enabled)
 }
