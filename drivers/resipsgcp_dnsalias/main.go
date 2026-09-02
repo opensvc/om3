@@ -7,6 +7,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/opensvc/om3/v3/core/rawconfig"
 	"github.com/opensvc/om3/v3/core/resource"
 	"github.com/opensvc/om3/v3/core/status"
 	"github.com/opensvc/om3/v3/drivers/sgcphelper"
@@ -147,17 +148,43 @@ func (t *T) configureMgr(cfg *sgcp.Config) error {
 }
 
 func (t *T) Start(ctx context.Context) error {
+	if disabled, err := t.isDisabled(); err != nil {
+		return err
+	} else if disabled {
+		t.Log().Infof("skip start of alias %s: sgcp support disabled", t.Name)
+		return nil
+	}
 	return t.mgr.createOrUpdate(ctx, t.Target)
 }
 
 func (t *T) Stop(ctx context.Context) error {
+	if disabled, err := t.isDisabled(); err != nil {
+		return err
+	} else if disabled {
+		t.Log().Infof("skip stop of alias %s: sgcp support disabled", t.Name)
+		return nil
+	}
 	if t.UUID != "" {
 		return t.mgr.createOrUpdate(ctx, t.noneTarget)
 	}
 	return t.mgr.delete(ctx)
 }
 
+// isDisabled tells whether the operator has disabled the sgcp support. An
+// undecidable flag is an error the actions report, rather than a reason to
+// quietly skip the work they were asked to do.
+func (t *T) isDisabled() (bool, error) {
+	return sgcp.IsDisabled(rawconfig.NodeVarDir())
+}
+
 func (t *T) Status(ctx context.Context) status.T {
+	if disabled, err := t.isDisabled(); err != nil {
+		t.StatusLog().Warn("%s", err)
+		return status.NotApplicable
+	} else if disabled {
+		t.StatusLog().Info("xaas status disabled")
+		return status.NotApplicable
+	}
 	aliases, err := t.mgr.getAliases(ctx)
 	if err != nil {
 		t.StatusLog().Error("get alias failed: %s", err)

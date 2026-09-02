@@ -3,6 +3,8 @@ package resipsgcp_dnsalias
 import (
 	"context"
 	"fmt"
+	"os"
+	"path/filepath"
 	"testing"
 	"time"
 
@@ -40,6 +42,79 @@ func newDBAndDrv(t *testing.T, s string, entries []sgcpdnstesthelper.DBEntry) (*
 	db.Setup(entries)
 	drv.api = sgcpdnstesthelper.NewApi(db)
 	return db, drv
+}
+
+// TestDisabled verifies the actions honor the disabled flag of the sgcp
+// configuration, and that they report a flag they can not decide about
+// instead of taking it for a disable.
+func TestDisabled(t *testing.T) {
+	ctx, cancel := context.WithTimeout(context.Background(), time.Second)
+	defer cancel()
+
+	dbEntries := []sgcpdnstesthelper.DBEntry{
+		{
+			Name:   "name1",
+			UUID:   "uuid1",
+			ZoneID: "z1",
+			AliasL: []sgcp.Alias{
+				{UUID: "uuid1", Name: "name1", Target: "target1", ZoneID: "z1"},
+			},
+		},
+	}
+
+	newDrv := func(t *testing.T) (*sgcpdnstesthelper.DB, *T) {
+		db, drv := newDBAndDrv(t, "rid1", dbEntries)
+		drv.UUID = "uuid1"
+		drv.Name = "name1"
+		drv.Target = "target2"
+		drv.ZoneID = "z1"
+		require.NoError(t, drv.Configure())
+		drv.mgr.CacheTTL = 0
+		db.ResetCalls()
+		return db, drv
+	}
+
+	t.Run("the actions are skipped when the flag exists", func(t *testing.T) {
+		defer setup(t)()
+		require.NoError(t, os.WriteFile(sgcp.GetConfig().DisabledFlag, nil, 0644))
+		db, drv := newDrv(t)
+
+		require.NoError(t, drv.Start(ctx))
+		require.NoError(t, drv.Stop(ctx))
+		assert.Equal(t, status.NotApplicable, drv.Status(ctx))
+
+		call := db.CallCounts()
+		assert.Zerof(t, call.Update, "the api was called on a disabled node: %+v", call)
+		assert.Zerof(t, call.Delete, "the api was called on a disabled node: %+v", call)
+		assert.Zerof(t, call.Search, "the api was called on a disabled node: %+v", call)
+	})
+
+	t.Run("the actions run when the flag is absent", func(t *testing.T) {
+		defer setup(t)()
+		db, drv := newDrv(t)
+
+		require.NoError(t, drv.Start(ctx))
+		assert.NotZerof(t, db.CallCounts().Update, "the alias was not updated")
+	})
+
+	t.Run("an undecidable flag is reported", func(t *testing.T) {
+		defer setup(t)()
+		db, drv := newDrv(t)
+
+		// A regular file as the flag parent directory: stat then fails with
+		// something else than "does not exist", whatever the user running
+		// the test.
+		notADir := filepath.Join(t.TempDir(), "file")
+		require.NoError(t, os.WriteFile(notADir, nil, 0644))
+		cfgFile := filepath.Join(t.TempDir(), "sgcp.yaml")
+		require.NoError(t, os.WriteFile(cfgFile, []byte("disabled_flag: "+filepath.Join(notADir, "flag")+"\n"), 0644))
+		sgcp.SetConfigForTest(cfgFile)
+
+		require.Error(t, drv.Start(ctx))
+		require.Error(t, drv.Stop(ctx))
+		assert.Equal(t, status.NotApplicable, drv.Status(ctx))
+		assert.Zerof(t, db.CallCounts().Update, "the api was called with an undecidable flag")
+	})
 }
 
 func TestStatus(t *testing.T) {
