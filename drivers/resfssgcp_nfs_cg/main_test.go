@@ -680,6 +680,50 @@ func TestSyncResume_ReportsTheReason(t *testing.T) {
 	assert.Containsf(t, err.Error(), "status is passive", "the returned error drops the reason: %s", err)
 }
 
+// TestSyncResume_FailedResumeLeavesTheGroupAlone verifies a refused resume
+// leaves the group as it was. The mock used to apply its own outcome before
+// asking the hook, so a test injecting a failure still got a resumed group.
+func TestSyncResume_FailedResumeLeavesTheGroupAlone(t *testing.T) {
+	cleanup := setup(t)
+	defer cleanup()
+
+	id := uuid.New().String()
+
+	// A target in the group's own az: the outcome the mock applies on its
+	// own is visible there, and has to stay out of a failed resume.
+	db, api := setupMockCG(t, []sgcpcgtesthelper.CgEntry{
+		{
+			UUID:             id,
+			AvailabilityZone: region1AZ2,
+			Status:           "ready",
+			Replication: sgcpcgtesthelper.ReplicationInfo{
+				ReplicationMode: "sync",
+				TargetAvailabilityZones: []sgcpcgtesthelper.AZStatus{
+					{AvailabilityZone: region1AZ2, Status: "unknown"},
+					{AvailabilityZone: region1AZ1, Status: "unknown"},
+				},
+			},
+		},
+	})
+	db.PatchResumeFunc = func(ctx context.Context, u string) error {
+		return fmt.Errorf("the provider refused the resume")
+	}
+
+	drv := newTestDriver(t, id, region1AZ1, 5*time.Second, false, api)
+	ctx := context.Background()
+
+	err := drv.SyncResume(ctx)
+	require.Error(t, err)
+
+	entry, ok := db.Search(id)
+	require.True(t, ok)
+	assert.Equal(t, 1, db.CallCounts().Resume)
+	assert.Equal(t, "ready", entry.Status)
+	for _, target := range entry.Replication.TargetAvailabilityZones {
+		assert.Equalf(t, "unknown", target.Status, "az %s replicates after a refused resume", target.AvailabilityZone)
+	}
+}
+
 func TestSyncResume_AlreadyResumed(t *testing.T) {
 	cleanup := setup(t)
 	defer cleanup()
