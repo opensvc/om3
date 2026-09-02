@@ -18,7 +18,7 @@ func (a *DaemonAPI) PostDaemonListenerStop(ctx echo.Context, nodename api.InPath
 	if err != nil {
 		return JSONProblemf(ctx, http.StatusBadRequest, "Invalid parameter", "%s", err)
 	}
-	return a.postDaemonSubAction(ctx, nodename, "stop", localName, func(c *client.T) (*http.Response, error) {
+	return a.postDaemonSubAction(ctx, nodename, "stop", []string{localName}, func(c *client.T) (*http.Response, error) {
 		return c.PostDaemonListenerStop(ctx.Request().Context(), nodename, name)
 	})
 }

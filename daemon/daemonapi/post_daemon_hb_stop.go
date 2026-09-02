@@ -14,11 +14,11 @@ func (a *DaemonAPI) PostDaemonHeartbeatStop(ctx echo.Context, nodename api.InPat
 		return err
 	}
 	nodename = a.parseNodename(nodename)
-	localName, err := heartbeatStreamName(name)
+	localNames, err := heartbeatStreamNames(name)
 	if err != nil {
 		return JSONProblemf(ctx, http.StatusBadRequest, "Invalid parameter", "%s", err)
 	}
-	return a.postDaemonSubAction(ctx, nodename, "stop", localName, func(c *client.T) (*http.Response, error) {
+	return a.postDaemonSubAction(ctx, nodename, "stop", localNames, func(c *client.T) (*http.Response, error) {
 		return c.PostDaemonHeartbeatStop(ctx.Request().Context(), nodename, name)
 	})
 }

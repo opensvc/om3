@@ -20,7 +20,7 @@ func (a *DaemonAPI) PostDaemonListenerStart(ctx echo.Context, nodename api.InPat
 	if err != nil {
 		return JSONProblemf(ctx, http.StatusBadRequest, "Invalid parameter", "%s", err)
 	}
-	return a.postDaemonSubAction(ctx, nodename, "start", localName, func(c *client.T) (*http.Response, error) {
+	return a.postDaemonSubAction(ctx, nodename, "start", []string{localName}, func(c *client.T) (*http.Response, error) {
 		return c.PostDaemonListenerStart(ctx.Request().Context(), nodename, name)
 	})
 }

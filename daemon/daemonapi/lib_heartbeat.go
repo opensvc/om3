@@ -40,29 +40,41 @@ func heartbeatName(name api.InPathHeartbeatName) (string, error) {
 	if slices.Contains(names, section) {
 		return section, nil
 	}
-	return "", fmt.Errorf("unknown heartbeat: %s%s", name, expectedHeartbeatNames(names, false))
+	return "", fmt.Errorf("unknown heartbeat: %s%s", name, expectedHeartbeatNames(names))
 }
 
-// heartbeatStreamName returns the component name of the heartbeat stream an
-// action addresses, "hb#1.rx" for "1.rx".
+// heartbeatStreamNames returns the component names of the heartbeat streams an
+// action addresses: the one a stream name designates, "hb#1.rx" for "1.rx", or
+// both of the ones a heartbeat name does, "hb#1.rx" and "hb#1.tx" for "1".
+//
+// The two streams of a heartbeat run and stop on their own, which is why they
+// are addressed on their own. They are one thing to a caller naming the
+// heartbeat, who had to name both to say so.
 //
 // The action is published as a message the heartbeat janitor subscribes to by
 // component name, so a name no stream answers to is accepted, queued and acted
 // on by nobody: "1.rxx" was a no-op the caller was told nothing about.
-func heartbeatStreamName(name api.InPathHeartbeatName) (string, error) {
+func heartbeatStreamNames(name api.InPathHeartbeatName) ([]string, error) {
 	names, err := configuredHeartbeatNames()
 	if err != nil {
-		return "", err
+		return nil, err
 	}
 	stream := sectionOfHeartbeatName(name)
 	for _, section := range names {
+		if stream == section {
+			l := make([]string, 0, len(heartbeatStreamSuffixes))
+			for _, suffix := range heartbeatStreamSuffixes {
+				l = append(l, section+"."+suffix)
+			}
+			return l, nil
+		}
 		for _, suffix := range heartbeatStreamSuffixes {
 			if stream == section+"."+suffix {
-				return stream, nil
+				return []string{stream}, nil
 			}
 		}
 	}
-	return "", fmt.Errorf("unknown heartbeat stream: %s%s", name, expectedHeartbeatNames(names, true))
+	return nil, fmt.Errorf("unknown heartbeat stream: %s%s", name, expectedHeartbeatStreamNames(names))
 }
 
 // sectionOfHeartbeatName returns the name as the configuration spells it,
@@ -71,22 +83,44 @@ func sectionOfHeartbeatName(name api.InPathHeartbeatName) string {
 	return "hb#" + strings.TrimPrefix(string(name), "hb#")
 }
 
-// expectedHeartbeatNames renders the tail of the error a refused name is
-// reported with, naming what the node would have accepted.
-func expectedHeartbeatNames(names []string, streams bool) string {
-	l := make([]string, 0, len(names)*2)
-	for _, section := range names {
-		short := strings.TrimPrefix(section, "hb#")
-		if !streams {
-			l = append(l, short)
-			continue
-		}
-		for _, suffix := range heartbeatStreamSuffixes {
-			l = append(l, short+"."+suffix)
-		}
-	}
+// expectedHeartbeatNames renders the tail of the error a refused heartbeat
+// name is reported with, naming the heartbeats the node would have accepted.
+func expectedHeartbeatNames(names []string) string {
+	l := shortHeartbeatNames(names)
 	if len(l) == 0 {
-		return ", and this node configures no heartbeat"
+		return noHeartbeatConfigured
 	}
 	return ", expected one of " + strings.Join(l, ", ")
+}
+
+// expectedHeartbeatStreamNames renders the same tail for a refused stream
+// name, naming the streams and then the heartbeats, which stand for both of
+// their streams.
+func expectedHeartbeatStreamNames(names []string) string {
+	short := shortHeartbeatNames(names)
+	if len(short) == 0 {
+		return noHeartbeatConfigured
+	}
+	l := make([]string, 0, len(short)*len(heartbeatStreamSuffixes))
+	for _, name := range short {
+		for _, suffix := range heartbeatStreamSuffixes {
+			l = append(l, name+"."+suffix)
+		}
+	}
+	return ", expected one of " + strings.Join(l, ", ") +
+		", or " + strings.Join(short, ", ") + " for both streams of a heartbeat"
+}
+
+// noHeartbeatConfigured is the tail of the error a name is refused with when
+// no name at all would have been accepted.
+const noHeartbeatConfigured = ", and this node configures no heartbeat"
+
+// shortHeartbeatNames renders the section names as the api takes them, "1"
+// for "hb#1".
+func shortHeartbeatNames(names []string) []string {
+	l := make([]string, 0, len(names))
+	for _, section := range names {
+		l = append(l, strings.TrimPrefix(section, "hb#"))
+	}
+	return l
 }

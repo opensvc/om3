@@ -19,35 +19,41 @@ func withConfiguredHeartbeats(t *testing.T, names ...string) {
 	t.Cleanup(func() { configuredHeartbeatNames = saved })
 }
 
-func TestHeartbeatStreamName(t *testing.T) {
+func TestHeartbeatStreamNames(t *testing.T) {
 	withConfiguredHeartbeats(t, "hb#1", "hb#11")
 	for _, tc := range []struct {
 		name string
-		want string
+		want []string
 	}{
-		{"1.rx", "hb#1.rx"},
-		{"1.tx", "hb#1.tx"},
-		{"11.rx", "hb#11.rx"},
+		{"1.rx", []string{"hb#1.rx"}},
+		{"1.tx", []string{"hb#1.tx"}},
+		{"11.rx", []string{"hb#11.rx"}},
 
 		// The stream id "om daemon hb status" shows carries the prefix, so
 		// a name read there is typed back as it was read.
-		{"hb#1.rx", "hb#1.rx"},
+		{"hb#1.rx", []string{"hb#1.rx"}},
+
+		// A heartbeat is both of its streams: naming it is naming them,
+		// which the caller had to spell out.
+		{"1", []string{"hb#1.rx", "hb#1.tx"}},
+		{"hb#11", []string{"hb#11.rx", "hb#11.tx"}},
 	} {
-		got, err := heartbeatStreamName(api.InPathHeartbeatName(tc.name))
+		got, err := heartbeatStreamNames(api.InPathHeartbeatName(tc.name))
 		require.NoErrorf(t, err, "%s must be accepted", tc.name)
 		assert.Equal(t, tc.want, got)
 	}
 }
 
-func TestHeartbeatStreamNameRefusesWhatNoStreamAnswersTo(t *testing.T) {
+func TestHeartbeatStreamNamesRefusesWhatNoStreamAnswersTo(t *testing.T) {
 	withConfiguredHeartbeats(t, "hb#1", "hb#11")
 	// "1.rxx" is the one to refuse loudest: it was accepted, queued, and
-	// acted on by nobody. "1" is the heartbeat, not a stream of it, and
-	// "2.rx" is a stream of a heartbeat this node does not configure.
-	for _, name := range []string{"", "1", "hb#1", "1.rxx", "1.RX", "2.rx", "1.rx.tx"} {
-		_, err := heartbeatStreamName(api.InPathHeartbeatName(name))
+	// acted on by nobody. "2.rx" is a stream of a heartbeat this node does
+	// not configure, and "2" a heartbeat it does not configure at all.
+	for _, name := range []string{"", "1.rxx", "1.RX", "2.rx", "2", "1.rx.tx"} {
+		_, err := heartbeatStreamNames(api.InPathHeartbeatName(name))
 		require.Errorf(t, err, "%s must not be accepted", name)
 		assert.Containsf(t, err.Error(), "1.rx, 1.tx, 11.rx, 11.tx", "the error must name the streams that exist, got %s", err)
+		assert.Containsf(t, err.Error(), "or 1, 11 for both streams", "the error must say a heartbeat names both, got %s", err)
 	}
 }
 
@@ -76,7 +82,7 @@ func TestHeartbeatNameOnANodeWithNoHeartbeat(t *testing.T) {
 	withConfiguredHeartbeats(t)
 	for _, err := range []error{
 		second(heartbeatName(api.InPathHeartbeatName("1"))),
-		second(heartbeatStreamName(api.InPathHeartbeatName("1.rx"))),
+		secondOfSlice(heartbeatStreamNames(api.InPathHeartbeatName("1.rx"))),
 	} {
 		require.Error(t, err)
 		assert.Contains(t, err.Error(), "configures no heartbeat")
@@ -84,5 +90,9 @@ func TestHeartbeatNameOnANodeWithNoHeartbeat(t *testing.T) {
 }
 
 func second(_ string, err error) error {
+	return err
+}
+
+func secondOfSlice(_ []string, err error) error {
 	return err
 }

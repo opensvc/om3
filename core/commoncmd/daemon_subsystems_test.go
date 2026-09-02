@@ -84,3 +84,21 @@ func TestForProgram(t *testing.T) {
 		assert.Contains(t, got, "from the ox command")
 	})
 }
+
+// TestHeartbeatStreamNamesHoldTheHeartbeats pins that the completion of a
+// stream action offers the heartbeats too, since naming one addresses both
+// of its streams.
+func TestHeartbeatStreamNamesHoldTheHeartbeats(t *testing.T) {
+	saved := heartbeatSectionNames
+	heartbeatSectionNames = func() []string { return []string{"hb#1", "hb#11"} }
+	t.Cleanup(func() { heartbeatSectionNames = saved })
+
+	assert.Equal(t, []string{"1", "11"}, HeartbeatNames())
+	assert.Equal(t, []string{"1", "1.rx", "1.tx", "11", "11.rx", "11.tx"}, HeartbeatStreamNames())
+}
+
+func TestWithout(t *testing.T) {
+	assert.Equal(t, []string{"1.rx"}, without([]string{"1.rx", "1.tx"}, []string{"1.tx"}))
+	assert.Equal(t, []string{"1.rx", "1.tx"}, without([]string{"1.rx", "1.tx"}, nil))
+	assert.Empty(t, without([]string{"1.rx"}, []string{"1.rx"}))
+}
