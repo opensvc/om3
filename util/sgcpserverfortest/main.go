@@ -273,12 +273,15 @@ func getCG(w http.ResponseWriter, r *http.Request) {
 	if !assertAuth(GetCG, w, r, "account1:sgcp:files:read") {
 		return
 	}
-	// Simple stub
+	// A group the driver can read: "ready" and "passive" are the states it
+	// settles in, "online" was none of them.
 	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(map[string]string{
-		"uuid":   id,
-		"name":   "test-cg",
-		"status": "online",
+	setHeader(w, GetCG, http.StatusOK)
+	json.NewEncoder(w).Encode(map[string]any{
+		"uuid":             id,
+		"name":             "test-cg",
+		"availabilityZone": "region1-az1",
+		"status":           "ready",
 	})
 }
 
@@ -359,10 +362,11 @@ func loadUsers() (*Users, error) {
 	if err := yaml.Unmarshal(data, &u); err != nil {
 		return nil, fmt.Errorf("failed to parse config file %s: %w", configFile, err)
 	}
+	// The client secrets stay out of the output: this reads a file an
+	// operator may well have filled with the credentials of a real account.
 	for userID, user := range u {
-		slog.Info("loaded user", "userID", userID, "clientSecret", user.ClientSecret, "scopes", user.Scopes)
+		slog.Info("loaded user", "userID", userID, "clientID", user.ClientID, "scopes", user.Scopes)
 	}
-	fmt.Printf("loaded users: %#v\n", u)
 	return &u, nil
 }
 
