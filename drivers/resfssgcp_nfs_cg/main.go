@@ -410,7 +410,10 @@ func (t *T) logReplications(cg *CgInfo) {
 }
 
 func (t *T) Status(ctx context.Context) status.T {
-	if sgcp.IsDisabled(rawconfig.NodeVarDir()) {
+	if disabled, err := sgcp.IsDisabled(rawconfig.NodeVarDir()); err != nil {
+		t.StatusLog().Warn("%s", err)
+		return status.NotApplicable
+	} else if disabled {
 		t.StatusLog().Info("xaas status disabled")
 		return status.NotApplicable
 	}
@@ -525,7 +528,15 @@ func (t *T) Start(ctx context.Context) error {
 }
 
 func (t *T) start(ctx context.Context) error {
-	if sgcp.IsDisabled(rawconfig.NodeVarDir()) {
+	// An unknown disabled state has to stop the action here. Reading it as
+	// disabled would return success without switching the consistency group
+	// over, and the instance would be declared up in the wrong az.
+	disabled, err := sgcp.IsDisabled(rawconfig.NodeVarDir())
+	if err != nil {
+		return err
+	}
+	if disabled {
+		t.Log().Infof("skip start of consistency group %s: sgcp support disabled", t.UUID)
 		return nil
 	}
 	cg, err := t.mgr.GetCg(ctx)
@@ -575,8 +586,15 @@ func (t *T) start(ctx context.Context) error {
 
 func (t *T) Stop(ctx context.Context) error {
 	_ = ctx
-	if sgcp.IsDisabled(rawconfig.NodeVarDir()) {
-		return nil
+	// Stop has nothing to undo: the consistency group is left where the last
+	// start put it. An unknown disabled state is thus only worth a warning,
+	// where start has to refuse to go on.
+	disabled, err := sgcp.IsDisabled(rawconfig.NodeVarDir())
+	switch {
+	case err != nil:
+		t.Log().Warnf("%s", err)
+	case disabled:
+		t.Log().Infof("skip stop of consistency group %s: sgcp support disabled", t.UUID)
 	}
 	return nil
 }
