@@ -1,2 +1,3 @@
-Allows daemon resource start to call operation 'switchover' when the 'failover' operation fails with status code 412.
-When '--force' option is used, the setting has no effect because operation during start is always 'failover'.
+The failover keyword is used during the start action when --force is not specified.
+When set to true, it enables fallback to the failover operation if the initial switchover operation fails with status code 412 and the action originates from the daemon.
+When start --force is used, the failover operation is used directly, without first trying switchover, regardless of the failover keyword value.
