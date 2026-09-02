@@ -16,6 +16,12 @@ var (
 )
 
 func (m *mgr) createOrUpdate(ctx context.Context, target string) error {
+	// The signature the read below caches under. The alias identity changes
+	// on the way when the create assigns the uuid the keyword did not carry,
+	// so the entry to drop afterwards is this one, not the one the alias
+	// computes once updated: nothing was ever cached under that one.
+	sig := m.cacheSig()
+
 	aliases, err := m.getAliases(ctx)
 	if err != nil {
 		return fmt.Errorf("get aliases: %w", err)
@@ -29,7 +35,7 @@ func (m *mgr) createOrUpdate(ctx context.Context, target string) error {
 			return fmt.Errorf("create alias: %w", err)
 		} else {
 			m.alias = *v
-			if err := m.cacheClear(); err != nil {
+			if err := m.cacheClear(sig); err != nil {
 				m.log.Debugf("cache clear error: %s", err)
 			}
 			return nil
@@ -56,7 +62,7 @@ func (m *mgr) createOrUpdate(ctx context.Context, target string) error {
 		return fmt.Errorf("update alias unexpected nil")
 	} else {
 		m.alias = *v
-		if err := m.cacheClear(); err != nil {
+		if err := m.cacheClear(sig); err != nil {
 			m.log.Debugf("cache clear error: %s", err)
 		}
 		return nil
@@ -64,6 +70,8 @@ func (m *mgr) createOrUpdate(ctx context.Context, target string) error {
 }
 
 func (m *mgr) delete(ctx context.Context) error {
+	sig := m.cacheSig()
+
 	aliases, err := m.getAliases(ctx)
 	if err != nil {
 		return fmt.Errorf("get aliases: %w", err)
@@ -80,7 +88,7 @@ func (m *mgr) delete(ctx context.Context) error {
 	if err := m.api.DeleteAlias(ctx, alias.ZoneID, alias.UUID); err != nil {
 		return fmt.Errorf("delete alias: %w", err)
 	}
-	if err := m.cacheClear(); err != nil {
+	if err := m.cacheClear(sig); err != nil {
 		m.log.Debugf("cache clear error: %s", err)
 	}
 	return nil
@@ -187,9 +195,12 @@ func (m *mgr) cacheSig() string {
 	return fmt.Sprintf("dnsalias:%x", hash)
 }
 
-func (m *mgr) cacheClear() error {
+// cacheClear drops the cached aliases read under sig. The caller captures
+// that signature before the alias it names is changed, so an alias whose
+// identity the api completed is still invalidated where it was cached.
+func (m *mgr) cacheClear(sig string) error {
 	if m.CacheTTL <= 0 {
 		return nil
 	}
-	return ageingcache.Clear(m.cacheSig())
+	return ageingcache.Clear(sig)
 }
