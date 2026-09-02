@@ -44,6 +44,55 @@ func newDBAndDrv(t *testing.T, s string, entries []sgcpdnstesthelper.DBEntry) (*
 	return db, drv
 }
 
+// TestCacheInvalidation verifies a started alias is not read back from the
+// ageing cache the status evaluation filled before the change. The two drivers
+// stand for the two processes an om run uses: the one that starts the resource
+// and the one that evaluates its status afterwards.
+func TestCacheInvalidation(t *testing.T) {
+	defer setup(t)()
+
+	ctx, cancel := context.WithTimeout(context.Background(), time.Second)
+	defer cancel()
+
+	db := sgcpdnstesthelper.NewDB()
+	db.Setup([]sgcpdnstesthelper.DBEntry{
+		{
+			Name:   "name1",
+			UUID:   "uuid1",
+			ZoneID: "z1",
+			AliasL: []sgcp.Alias{
+				{UUID: "uuid1", Name: "name1", Target: "target1", FQDN: "name1.z1", ZoneID: "z1"},
+			},
+		},
+	})
+
+	// No uuid keyword: the alias is looked up by name, and the api completes
+	// its identity. The cache signature thus differs before and after a start.
+	newDrv := func(rid string) *T {
+		drv := New().(*T)
+		require.NoError(t, drv.SetRID(rid))
+		drv.api = sgcpdnstesthelper.NewApi(db)
+		drv.Name = "name1"
+		drv.Target = "target2"
+		drv.ZoneID = "z1"
+		require.NoError(t, drv.Configure())
+		require.NotZerof(t, drv.mgr.CacheTTL, "the test needs the cache enabled")
+		return drv
+	}
+
+	starter := newDrv("rid1")
+	t.Log("evaluate the status first, so the aliases are cached")
+	require.Equal(t, status.Down, starter.Status(ctx))
+
+	require.NoError(t, starter.Start(ctx))
+	alias, ok := db.Search("z1", "name1", "uuid1")
+	require.True(t, ok)
+	require.Equal(t, "target2", alias.Target, "the alias was not retargeted")
+
+	t.Log("another driver sees the change, not the entry cached before it")
+	assert.Equal(t, status.Up, newDrv("rid2").Status(ctx))
+}
+
 // TestDisabled verifies the actions honor the disabled flag of the sgcp
 // configuration, and that they report a flag they can not decide about
 // instead of taking it for a disable.
