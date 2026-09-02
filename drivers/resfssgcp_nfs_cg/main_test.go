@@ -10,6 +10,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/google/uuid"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
@@ -25,8 +26,11 @@ func setup(t *testing.T) func() {
 	cfgFile := testsgcphelper.InstallConfig(t)
 	sgcp.SetConfigForTest(cfgFile)
 	require.NotNil(t, sgcp.GetConfig())
+	defaultRetryWaitDelay := retryWaitDelay
+	retryWaitDelay = 150 * time.Millisecond
 	return func() {
 		sgcp.SetConfigForTest("")
+		retryWaitDelay = defaultRetryWaitDelay
 	}
 }
 
@@ -359,18 +363,19 @@ func setupMockCG(t *testing.T, entries []sgcpcgtesthelper.CgEntry) (*sgcpcgtesth
 	return db, api
 }
 
-func newTestDriver(t *testing.T, uuid, az string, timeout time.Duration, failover bool, api *sgcpcgtesthelper.API) *T {
+func newTestDriver(t *testing.T, id, az string, timeout time.Duration, failover bool, api *sgcpcgtesthelper.API) *T {
 	t.Helper()
 	drv := &T{
-		UUID:     uuid,
+		UUID:     id,
 		AZ:       az,
 		Timeout:  timeout,
 		Failover: failover,
 	}
 	drv.mgr = &cgMgr{
-		uuid: uuid,
-		log:  drv.Log(),
-		api:  api,
+		uuid:  id,
+		log:   drv.Log(),
+		api:   api,
+		cache: sgcp.CacheConfig{TTLSeconds: 1},
 	}
 	return drv
 }
@@ -379,10 +384,11 @@ func TestStart_SwitchoverSuccess(t *testing.T) {
 	cleanup := setup(t)
 	defer cleanup()
 
-	uuid := "test-uuid"
+	id := uuid.New().String()
+
 	db, api := setupMockCG(t, []sgcpcgtesthelper.CgEntry{
 		{
-			UUID:             uuid,
+			UUID:             id,
 			AvailabilityZone: region1AZ2,
 			Status:           "ready",
 			Replication: sgcpcgtesthelper.ReplicationInfo{
@@ -393,13 +399,13 @@ func TestStart_SwitchoverSuccess(t *testing.T) {
 			},
 		},
 	})
-	drv := newTestDriver(t, uuid, region1AZ1, 5*time.Second, false, api)
+	drv := newTestDriver(t, id, region1AZ1, 5*time.Second, false, api)
 
 	ctx := context.Background()
 	err := drv.Start(ctx)
 	assert.NoError(t, err)
 
-	entry, ok := db.Search(uuid)
+	entry, ok := db.Search(id)
 	require.True(t, ok)
 	assert.Equal(t, region1AZ1, entry.AvailabilityZone)
 	assert.Equal(t, "ready", entry.Status)
@@ -415,10 +421,11 @@ func TestStart_Switchover412_FailoverAllowed(t *testing.T) {
 	cleanup := setup(t)
 	defer cleanup()
 
-	uuid := "test-uuid"
+	id := uuid.New().String()
+
 	db, api := setupMockCG(t, []sgcpcgtesthelper.CgEntry{
 		{
-			UUID:             uuid,
+			UUID:             id,
 			AvailabilityZone: region1AZ2,
 			Status:           "ready",
 		},
@@ -426,14 +433,14 @@ func TestStart_Switchover412_FailoverAllowed(t *testing.T) {
 	db.PatchSwitchoverFunc = func(ctx context.Context, u, targetAZ string) error {
 		return fmt.Errorf("simulated precondition failed: %w", ErrPrecondition)
 	}
-	drv := newTestDriver(t, uuid, region1AZ1, 5*time.Second, true, api)
+	drv := newTestDriver(t, id, region1AZ1, 5*time.Second, true, api)
 	t.Setenv("OSVC_ACTION_ORIGIN", "daemon")
 
 	ctx := context.Background()
 	err := drv.Start(ctx)
 	assert.NoError(t, err)
 
-	entry, ok := db.Search(uuid)
+	entry, ok := db.Search(id)
 	require.True(t, ok)
 	assert.Equal(t, region1AZ1, entry.AvailabilityZone)
 	assert.Equal(t, "ready", entry.Status)
@@ -449,10 +456,10 @@ func TestStart_Switchover412_FailoverNotAllowed_NoDaemon(t *testing.T) {
 	cleanup := setup(t)
 	defer cleanup()
 
-	uuid := "test-uuid"
+	id := uuid.New().String()
 	db, api := setupMockCG(t, []sgcpcgtesthelper.CgEntry{
 		{
-			UUID:             uuid,
+			UUID:             id,
 			AvailabilityZone: region1AZ2,
 			Status:           "ready",
 		},
@@ -460,7 +467,7 @@ func TestStart_Switchover412_FailoverNotAllowed_NoDaemon(t *testing.T) {
 	db.PatchSwitchoverFunc = func(ctx context.Context, u, targetAZ string) error {
 		return fmt.Errorf("simulated precondition failed: %w", ErrPrecondition)
 	}
-	drv := newTestDriver(t, uuid, region1AZ1, 5*time.Second, false, api)
+	drv := newTestDriver(t, id, region1AZ1, 5*time.Second, false, api)
 	t.Setenv("OSVC_ACTION_ORIGIN", "cli")
 
 	ctx := context.Background()
@@ -479,21 +486,22 @@ func TestStart_ForceFailover(t *testing.T) {
 	cleanup := setup(t)
 	defer cleanup()
 
-	uuid := "test-uuid"
+	id := uuid.New().String()
+
 	db, api := setupMockCG(t, []sgcpcgtesthelper.CgEntry{
 		{
-			UUID:             uuid,
+			UUID:             id,
 			AvailabilityZone: region1AZ2,
 			Status:           "ready",
 		},
 	})
-	drv := newTestDriver(t, uuid, region1AZ1, 5*time.Second, false, api)
+	drv := newTestDriver(t, id, region1AZ1, 5*time.Second, false, api)
 
 	ctx := actioncontext.WithForce(context.Background(), true)
 	err := drv.Start(ctx)
 	assert.NoError(t, err)
 
-	entry, ok := db.Search(uuid)
+	entry, ok := db.Search(id)
 	require.True(t, ok)
 	assert.Equal(t, region1AZ1, entry.AvailabilityZone)
 	assert.Equal(t, "ready", entry.Status)
@@ -509,15 +517,16 @@ func TestStart_AlreadyUp(t *testing.T) {
 	cleanup := setup(t)
 	defer cleanup()
 
-	uuid := "test-uuid"
+	id := uuid.New().String()
+
 	db, api := setupMockCG(t, []sgcpcgtesthelper.CgEntry{
 		{
-			UUID:             uuid,
+			UUID:             id,
 			AvailabilityZone: region1AZ1,
 			Status:           "ready",
 		},
 	})
-	drv := newTestDriver(t, uuid, region1AZ1, 5*time.Second, false, api)
+	drv := newTestDriver(t, id, region1AZ1, 5*time.Second, false, api)
 
 	ctx := context.Background()
 	err := drv.Start(ctx)
@@ -532,27 +541,28 @@ func TestStart_OperationInProgress_WaitReady(t *testing.T) {
 	cleanup := setup(t)
 	defer cleanup()
 
-	uuid := "test-uuid"
+	id := uuid.New().String()
+
 	db, api := setupMockCG(t, []sgcpcgtesthelper.CgEntry{
 		{
-			UUID:             uuid,
+			UUID:             id,
 			AvailabilityZone: region1AZ1,
 			Status:           "failover",
 		},
 	})
 	go func() {
 		time.Sleep(100 * time.Millisecond)
-		entry, _ := db.Search(uuid)
+		entry, _ := db.Search(id)
 		entry.Status = "ready"
 		_ = db.Update(entry)
 	}()
 
-	drv := newTestDriver(t, uuid, region1AZ1, 2*time.Second, false, api)
+	drv := newTestDriver(t, id, region1AZ1, 2*time.Second, false, api)
 	ctx := context.Background()
 	err := drv.Start(ctx)
 	assert.NoError(t, err)
 
-	entry, ok := db.Search(uuid)
+	entry, ok := db.Search(id)
 	require.True(t, ok)
 	assert.Equal(t, "ready", entry.Status)
 	assert.Equal(t, region1AZ1, entry.AvailabilityZone)
@@ -566,10 +576,11 @@ func TestSyncResume_ReplicationOnly_Success(t *testing.T) {
 	cleanup := setup(t)
 	defer cleanup()
 
-	uuid := "test-uuid"
+	id := uuid.New().String()
+
 	db, api := setupMockCG(t, []sgcpcgtesthelper.CgEntry{
 		{
-			UUID:             uuid,
+			UUID:             id,
 			AvailabilityZone: region1AZ2,
 			Status:           "ready",
 			Replication: sgcpcgtesthelper.ReplicationInfo{
@@ -589,13 +600,12 @@ func TestSyncResume_ReplicationOnly_Success(t *testing.T) {
 		return nil
 	}
 
-	drv := newTestDriver(t, uuid, region1AZ1, 5*time.Second, false, api)
-
+	drv := newTestDriver(t, id, region1AZ1, 5*time.Second, false, api)
 	ctx := context.Background()
 	err := drv.SyncResume(ctx)
 	assert.NoError(t, err)
 
-	entry, ok := db.Search(uuid)
+	entry, ok := db.Search(id)
 	require.True(t, ok)
 	var localStatus string
 	for _, rep := range entry.Replication.TargetAvailabilityZones {
@@ -608,7 +618,7 @@ func TestSyncResume_ReplicationOnly_Success(t *testing.T) {
 	assert.Equal(t, "ready", entry.Status)
 
 	calls := db.CallCounts()
-	assert.Equal(t, 3, calls.Get)
+	assert.Equal(t, 2, calls.Get)
 	assert.Equal(t, 1, calls.Patch)
 	assert.Equal(t, 1, calls.Resume)
 }
@@ -617,10 +627,11 @@ func TestSyncResume_AlreadyResumed(t *testing.T) {
 	cleanup := setup(t)
 	defer cleanup()
 
-	uuid := "test-uuid"
+	id := uuid.New().String()
+
 	db, api := setupMockCG(t, []sgcpcgtesthelper.CgEntry{
 		{
-			UUID:             uuid,
+			UUID:             id,
 			AvailabilityZone: region1AZ2,
 			Status:           "ready",
 			Replication: sgcpcgtesthelper.ReplicationInfo{
@@ -631,7 +642,7 @@ func TestSyncResume_AlreadyResumed(t *testing.T) {
 			},
 		},
 	})
-	drv := newTestDriver(t, uuid, region1AZ1, 5*time.Second, false, api)
+	drv := newTestDriver(t, id, region1AZ1, 5*time.Second, false, api)
 
 	ctx := context.Background()
 	err := drv.SyncResume(ctx)
@@ -646,10 +657,11 @@ func TestSyncResume_ResumeInProgress(t *testing.T) {
 	cleanup := setup(t)
 	defer cleanup()
 
-	uuid := "test-uuid"
+	id := uuid.New().String()
+
 	db, api := setupMockCG(t, []sgcpcgtesthelper.CgEntry{
 		{
-			UUID:             uuid,
+			UUID:             id,
 			AvailabilityZone: region1AZ2,
 			Status:           "resuming",
 			Replication: sgcpcgtesthelper.ReplicationInfo{
@@ -682,12 +694,12 @@ func TestSyncResume_ResumeInProgress(t *testing.T) {
 		return api.GetConsistencyGroup(ctx, u)
 	}
 
-	drv := newTestDriver(t, uuid, region1AZ1, 2*time.Second, false, api)
+	drv := newTestDriver(t, id, region1AZ1, 2*time.Second, false, api)
 	ctx := context.Background()
 	err := drv.SyncResume(ctx)
 	assert.NoError(t, err)
 
-	entry, ok := db.Search(uuid)
+	entry, ok := db.Search(id)
 	require.True(t, ok)
 	assert.Equal(t, "ready", entry.Status)
 	localStatus := entry.Replication.TargetAvailabilityZones[0].Status
@@ -703,10 +715,11 @@ func TestSyncResume_GeoOnly_Success(t *testing.T) {
 	cleanup := setup(t)
 	defer cleanup()
 
-	uuid := "test-uuid"
+	id := uuid.New().String()
+
 	db, api := setupMockCG(t, []sgcpcgtesthelper.CgEntry{
 		{
-			UUID:             uuid,
+			UUID:             id,
 			AvailabilityZone: region1AZ2,
 			Status:           "ready",
 			GeoRedundancy: sgcpcgtesthelper.GeoRedundancyInfo{
@@ -725,20 +738,20 @@ func TestSyncResume_GeoOnly_Success(t *testing.T) {
 		return nil
 	}
 
-	drv := newTestDriver(t, uuid, region1AZ1, 5*time.Second, false, api)
+	drv := newTestDriver(t, id, region1AZ1, 5*time.Second, false, api)
 
 	ctx := context.Background()
 	err := drv.SyncResume(ctx)
 	assert.NoError(t, err)
 
-	entry, ok := db.Search(uuid)
+	entry, ok := db.Search(id)
 	require.True(t, ok)
 	geoStatus := entry.GeoRedundancy.TargetAvailabilityZones[0].Status
 	assert.Equal(t, "replicated", geoStatus)
 	assert.Equal(t, "passive", entry.Status)
 
 	calls := db.CallCounts()
-	assert.Equal(t, 3, calls.Get)
+	assert.Equal(t, 2, calls.Get)
 	assert.Equal(t, 1, calls.Patch)
 	assert.Equal(t, 1, calls.Resume)
 }
@@ -747,10 +760,10 @@ func TestStatus(t *testing.T) {
 	cleanup := setup(t)
 	defer cleanup()
 
-	uuid := "test-uuid"
+	id := uuid.New().String()
 	db, api := setupMockCG(t, []sgcpcgtesthelper.CgEntry{
 		{
-			UUID:             uuid,
+			UUID:             id,
 			AvailabilityZone: region1AZ1,
 			Status:           "ready",
 			Replication: sgcpcgtesthelper.ReplicationInfo{
@@ -761,13 +774,27 @@ func TestStatus(t *testing.T) {
 			},
 		},
 	})
-	drv := newTestDriver(t, uuid, region1AZ1, 5*time.Second, false, api)
+	drv := newTestDriver(t, id, region1AZ1, 5*time.Second, false, api)
 
 	ctx := context.Background()
 	statusVal := drv.Status(ctx)
 	assert.Equal(t, status.NotApplicable, statusVal)
 
 	calls := db.CallCounts()
-	assert.Equal(t, 1, calls.Get)
+	expectedGetCall := 1
+	assert.Equal(t, expectedGetCall, calls.Get)
 	assert.Equal(t, 0, calls.Patch)
+
+	statusVal = drv.Status(ctx)
+	statusVal = drv.Status(ctx)
+	statusVal = drv.Status(ctx)
+	statusVal = drv.Status(ctx)
+	statusVal = drv.Status(ctx)
+	calls = db.CallCounts()
+	assert.Equal(t, expectedGetCall, calls.Get, "cache has not been used as expected")
+
+	drv.mgr.cacheClearGetCg()
+	statusVal = drv.Status(ctx)
+	calls = db.CallCounts()
+	assert.Equal(t, expectedGetCall+1, calls.Get, "expected call get after clear cache")
 }
