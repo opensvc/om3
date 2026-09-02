@@ -101,15 +101,18 @@ func (t *T) serve(ctx context.Context, errC chan<- error) {
 	t.log.Infof("stopped")
 }
 
-// janitor startup initial http ux listener, then watch events to stop, start or restart listener.
-// events are: DaemonCtl,name=api.ux, ClusterConfigUpdated,node=<localhost> with changed lsnr addr or port
-// TODO: also watch for tls setting changed
+// janitor watches the events the ux listener acts on, which are the audit
+// sessions starting and stopping.
+//
+// It subscribes to no daemon control message: this listener has no start,
+// stop or restart of its own, it lives as long as the daemon does, and the
+// api refuses those actions rather than publishing a message it would
+// receive and ignore.
 func (t *T) janitor(ctx context.Context, errC chan<- error) {
 	defer t.wg.Done()
 	sub := pubsub.SubFromContext(ctx, "daemon.lsnr.http.ux")
 	sub.AddFilter(&msgbus.AuditStart{})
 	sub.AddFilter(&msgbus.AuditStop{})
-	sub.AddFilter(&msgbus.DaemonCtl{}, pubsub.Label{"id", daemonenv.ListenerNameUX})
 	sub.Start()
 	defer func() {
 		if err := sub.Stop(); err != nil {
@@ -127,11 +130,6 @@ func (t *T) janitor(ctx context.Context, errC chan<- error) {
 				t.log.HandleAuditStart(m.Q, m.Subsystems, daemonenv.ListenerNameFamily, daemonenv.ListenerNameUX)
 			case *msgbus.AuditStop:
 				t.log.HandleAuditStop(m.Q, m.Subsystems, daemonenv.ListenerNameFamily, daemonenv.ListenerNameUX)
-			case *msgbus.DaemonCtl:
-				// The log level actions were the only ones this
-				// listener acted on. It has no start, stop or restart
-				// of its own: it lives as long as the daemon does.
-				t.log.Infof("daemon control %s asked, ignored", m.Action)
 			}
 		}
 	}

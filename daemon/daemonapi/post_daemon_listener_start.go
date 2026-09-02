@@ -16,7 +16,7 @@ func (a *DaemonAPI) PostDaemonListenerStart(ctx echo.Context, nodename api.InPat
 	// parseNodename here too: start was the one action of the three not
 	// normalizing the nodename it was given.
 	nodename = a.parseNodename(nodename)
-	localName, err := listenerName(name)
+	localName, err := lifecycleListenerName(name, "start")
 	if err != nil {
 		return JSONProblemf(ctx, http.StatusBadRequest, "Invalid parameter", "%s", err)
 	}

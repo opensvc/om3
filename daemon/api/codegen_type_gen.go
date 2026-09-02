@@ -1094,6 +1094,11 @@ type DaemonListener struct {
 //
 // The listeners are named the same here and in the audit subsystem
 // list: api.ux serves the unix socket, api.inet the tcp port.
+//
+// Only api.inet answers to a start, stop or restart. api.ux lives as
+// long as the daemon does, and the request asking for it travels
+// through it, so the three actions refuse it: restart the daemon to
+// restart it.
 type DaemonListenerName string
 
 // DaemonPid defines model for DaemonPid.
@@ -2406,6 +2411,11 @@ type InPathKind = Kind
 //
 // The listeners are named the same here and in the audit subsystem
 // list: api.ux serves the unix socket, api.inet the tcp port.
+//
+// Only api.inet answers to a start, stop or restart. api.ux lives as
+// long as the daemon does, and the request asking for it travels
+// through it, so the three actions refuse it: restart the daemon to
+// restart it.
 type InPathListenerName = DaemonListenerName
 
 // InPathName defines model for inPathName.

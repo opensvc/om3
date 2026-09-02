@@ -80,12 +80,13 @@ func validAuditSubsystems(_ *cobra.Command, args []string, toComplete string) ([
 	return filterPrefix(AuditSubsystems, toComplete), cobra.ShellCompDirectiveNoFileComp
 }
 
-// validListenerNames completes the listeners an action may address.
+// validListenerNames completes the listeners a start, stop or restart may
+// address, which the unix socket listener is not one of.
 func validListenerNames(_ *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
 	if len(args) > 0 {
 		return nil, cobra.ShellCompDirectiveNoFileComp
 	}
-	return filterPrefix(daemonenv.ListenerNames, toComplete), cobra.ShellCompDirectiveNoFileComp
+	return filterPrefix(daemonenv.LifecycleListenerNames, toComplete), cobra.ShellCompDirectiveNoFileComp
 }
 
 func filterPrefix(candidates []string, toComplete string) []string {
@@ -116,13 +117,21 @@ sender, "1.rx" for the receiver of "hb#1". The "hb#" prefix the ID column
 of "om daemon hb status" shows is accepted too. A stream the node does
 not configure is refused.`
 
-// ListenerNameHelp is the NAME paragraph of the listener actions, naming
-// the listeners that exist. There are only two, and they are the same on
-// every node, so they are named here rather than looked up.
-var ListenerNameHelp = `NAME is one of:
+// ListenerNameHelp is the NAME paragraph of the listener lifecycle actions,
+// naming the listeners they may be addressed to. There are only two
+// listeners, and they are the same on every node, so they are named here
+// rather than looked up.
+//
+// The unix socket listener is named too, saying why it is not a value: a
+// reader who knows it exists, from an audit or from a status, would take its
+// absence for an oversight.
+var ListenerNameHelp = `NAME is:
 
-  ` + daemonenv.ListenerNameUX + `    the listener serving the unix socket
-  ` + daemonenv.ListenerNameInet + `  the listener serving the tcp port`
+  ` + daemonenv.ListenerNameInet + `  the listener serving the tcp port
+
+` + daemonenv.ListenerNameUX + `, the listener serving the unix socket, has no start, stop or restart
+of its own: it lives as long as the daemon does, and the request asking
+for it travels through it. Restart the daemon to restart it.`
 
 // HeartbeatNames returns the heartbeats the local cluster configuration
 // defines, named as the actions take them: "1" for the "hb#1" section.

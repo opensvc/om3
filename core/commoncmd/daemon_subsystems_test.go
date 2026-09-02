@@ -41,12 +41,20 @@ func TestFilterPrefix(t *testing.T) {
 }
 
 // TestListenerNameHelpNamesThemAll pins that the help a user reads names
-// every listener an action may be addressed to, rather than a list kept
-// beside them by hand.
+// every listener, rather than a list kept beside them by hand: the ones a
+// start, stop or restart may address, and the one that answers to none of
+// the three, whose absence would otherwise read as an oversight.
 func TestListenerNameHelpNamesThemAll(t *testing.T) {
 	for _, name := range daemonenv.ListenerNames {
-		assert.Containsf(t, strings.Fields(ListenerNameHelp), name, "%s is missing from the help", name)
+		assert.Containsf(t, ListenerNameHelp, name, "%s is missing from the help", name)
 	}
+	for _, name := range daemonenv.LifecycleListenerNames {
+		assert.Containsf(t, daemonenv.ListenerNames, name, "%s is addressable but is no listener", name)
+	}
+	assert.NotContains(t, daemonenv.LifecycleListenerNames, daemonenv.ListenerNameUX,
+		"the unix socket listener lives as long as the daemon does")
+	assert.Contains(t, ListenerNameHelp, "lives as long as the daemon",
+		"the help must say why the unix socket listener is not a value")
 }
 
 func TestForProgram(t *testing.T) {

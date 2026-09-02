@@ -14,7 +14,7 @@ func (a *DaemonAPI) PostDaemonListenerStop(ctx echo.Context, nodename api.InPath
 		return err
 	}
 	nodename = a.parseNodename(nodename)
-	localName, err := listenerName(name)
+	localName, err := lifecycleListenerName(name, "stop")
 	if err != nil {
 		return JSONProblemf(ctx, http.StatusBadRequest, "Invalid parameter", "%s", err)
 	}
