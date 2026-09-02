@@ -6,7 +6,6 @@ import (
 	"errors"
 	"fmt"
 	"net/http"
-	"os"
 	"sort"
 	"strings"
 	"time"
@@ -570,9 +569,10 @@ func (t *T) start(ctx context.Context) error {
 			t.Log().Errorf("%s, skip failover fallback (resource failover is False)", msg)
 			return err
 		}
-		// Accept both the literal "daemon" (legacy/test) and canonical daemon origins.
-		origin := os.Getenv("OSVC_ACTION_ORIGIN")
-		if origin != "daemon" && !env.HasDaemonOrigin() {
+		// A failover is not a switchover: it is only tried on its own for an
+		// orchestration the daemon drives. An operator asks for it with
+		// --force, which does not come here.
+		if !env.HasDaemonOrigin() {
 			t.Log().Errorf("%s, skip failover fallback, use --force if you want to try failover", msg)
 			return err
 		}
