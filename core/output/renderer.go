@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"os"
+	"reflect"
 	"regexp"
 	"strings"
 	"time"
@@ -18,7 +19,6 @@ import (
 	"github.com/opensvc/om3/v3/util/flatten"
 	"github.com/opensvc/om3/v3/util/render"
 	"github.com/opensvc/om3/v3/util/render/palette"
-	"github.com/opensvc/om3/v3/util/unstructured"
 )
 
 type (
@@ -175,6 +175,12 @@ func (t Renderer) Sprint() (string, error) {
 	}
 }
 
+// unstructureder is the view a type composes for a tab render, when
+// its columns are not its fields.
+type unstructureder interface {
+	Unstructured() map[string]any
+}
+
 var jsonRegexp = regexp.MustCompile(`^\{\.?([^{}]+)\}$|^\.?([^{}]+)$`)
 
 // RelaxedJSONPathExpression attempts to be flexible with JSONPath expressions, it accepts:
@@ -204,6 +210,55 @@ func RelaxedJSONPathExpression(pathExpression string) (string, error) {
 		fieldSpec = submatches[2]
 	}
 	return fmt.Sprintf("{.%s}", fieldSpec), nil
+}
+
+// indirect returns the value a cell is about, which for the optional
+// fields of the api types is what their pointer points at. It reports
+// false when there is nothing behind it.
+func indirect(v reflect.Value) (reflect.Value, bool) {
+	for v.Kind() == reflect.Pointer || v.Kind() == reflect.Interface {
+		if v.IsNil() {
+			return v, false
+		}
+		v = v.Elem()
+	}
+	return v, v.IsValid()
+}
+
+// rows returns the values a tab render makes a row of.
+//
+// They are handed to the jsonpath as they are, typed. The jsonpath
+// resolves a struct field by its json tag, which is the name the tab
+// expressions already use, so nothing has to restate the types to be
+// selectable: what the api sends and what a tab render selects cannot
+// drift apart.
+//
+// A type whose columns are not its fields, the heartbeat table entry
+// and its beating and stale words for example, implements Unstructured
+// and is rendered from the map it returns. That is what the interface
+// is for now: a view the type composes, not a copy of the type.
+func rows(data any) []any {
+	if data == nil {
+		return nil
+	}
+	switch reflect.TypeOf(data).Kind() {
+	case reflect.Slice, reflect.Array:
+		v := reflect.ValueOf(data)
+		l := make([]any, 0, v.Len())
+		for i := 0; i < v.Len(); i++ {
+			l = append(l, row(v.Index(i).Interface()))
+		}
+		return l
+	default:
+		return []any{row(data)}
+	}
+}
+
+func row(v any) any {
+	if i, ok := v.(unstructureder); ok {
+		return i.Unstructured()
+	}
+	return v
 }
 
 func (t Renderer) renderTab(options string) (string, error) {
@@ -245,10 +300,7 @@ func (t Renderer) renderTab(options string) (string, error) {
 	} else {
 		data = t.Data
 	}
-	unstructuredData, err := unstructured.NewListWithData(data)
-	if err != nil {
-		return "", err
-	}
+	lines := rows(data)
 	w := bytes.NewBuffer([]byte{})
 	needAlign := len(jsonPaths) > 1
 
@@ -294,7 +346,7 @@ func (t Renderer) renderTab(options string) (string, error) {
 	if hasHeader {
 		rows = append(rows, headers)
 	}
-	for _, line := range unstructuredData {
+	for _, line := range lines {
 		row := make([]string, len(jsonPaths))
 		for i, jsonPath := range jsonPaths {
 			values, err := jsonPath.FindResults(line)
@@ -309,13 +361,23 @@ func (t Renderer) renderTab(options string) (string, error) {
 			}
 			for arrIx := range values {
 				for valIx := range values[arrIx] {
-					switch i := values[arrIx][valIx].Interface().(type) {
+					v, ok := indirect(values[arrIx][valIx])
+					if !ok {
+						// An optional field the sender left out has
+						// nothing to print, as an absent key had.
+						continue
+					}
+					switch i := v.Interface().(type) {
 					case time.Time:
 						valueStrings = append(valueStrings, i.Format(time.RFC3339))
 					default:
 						valueStrings = append(valueStrings, fmt.Sprintf("%v", i))
 					}
 				}
+			}
+			if len(valueStrings) == 0 {
+				row[i] = "-"
+				continue
 			}
 			row[i] = strings.Join(valueStrings, ",")
 		}

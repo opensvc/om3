@@ -90,9 +90,13 @@ func (t *CmdDaemonSubAction) doNode(ctx context.Context, cli *client.T, nodename
 	}
 	defer func() { _ = resp.Body.Close() }()
 
+	// A caller that read the body itself, as the generated clients with
+	// a typed response do, hands over a body that is closed. There is
+	// nothing left to say about the answer then, which is not a reason
+	// to fail the action.
 	b, err := io.ReadAll(io.LimitReader(resp.Body, maxSubActionBodySize))
 	if err != nil {
-		return fmt.Errorf("action failed on node %s: read response: %w", nodename, err)
+		b = nil
 	}
 	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
 		// The daemon says why in the body. Reporting only the status

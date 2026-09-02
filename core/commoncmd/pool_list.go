@@ -9,7 +9,6 @@ import (
 	"github.com/opensvc/om3/v3/core/rawconfig"
 	"github.com/opensvc/om3/v3/daemon/api"
 	"github.com/opensvc/om3/v3/util/sizeconv"
-	"github.com/opensvc/om3/v3/util/unstructured"
 )
 
 type (
@@ -17,6 +16,20 @@ type (
 		OptsGlobal
 		Name         string
 		NodeSelector string
+	}
+
+	// PoolLine is a pool as a listing shows it: the pool the api sent,
+	// and the sizes in the units a reader reads.
+	//
+	// The embedded value is inlined, by the json encoder and by the
+	// jsonpath the tab expressions are written in alike, so a column
+	// names a pool field directly and the columns added here sit next
+	// to them.
+	PoolLine struct {
+		api.Pool
+		BinSize string `json:"bin_size"`
+		BinUsed string `json:"bin_used"`
+		BinFree string `json:"bin_free"`
 	}
 )
 
@@ -54,13 +67,9 @@ func (t *CmdPoolList) Run() error {
 	}
 
 	render := func(items api.PoolItems) {
-		lines := make(unstructured.List, len(items))
+		lines := make([]PoolLine, len(items))
 		for i, item := range items {
-			u := item.Unstructured()
-			u["bin_free"] = sizeconv.BSizeCompact(float64(item.Free))
-			u["bin_used"] = sizeconv.BSizeCompact(float64(item.Used))
-			u["bin_size"] = sizeconv.BSizeCompact(float64(item.Size))
-			lines[i] = u
+			lines[i] = NewPoolLine(item)
 		}
 		output.Renderer{
 			DefaultOutput: "tab=" + cols,
@@ -73,4 +82,14 @@ func (t *CmdPoolList) Run() error {
 
 	render(l)
 	return nil
+}
+
+// NewPoolLine returns the pool as a listing shows it.
+func NewPoolLine(item api.Pool) PoolLine {
+	return PoolLine{
+		Pool:    item,
+		BinSize: sizeconv.BSizeCompact(float64(item.Size)),
+		BinUsed: sizeconv.BSizeCompact(float64(item.Used)),
+		BinFree: sizeconv.BSizeCompact(float64(item.Free)),
+	}
 }

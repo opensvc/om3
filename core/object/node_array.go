@@ -8,8 +8,8 @@ import (
 )
 
 type ArrayItem struct {
-	Name string
-	Type string
+	Name string `json:"name"`
+	Type string `json:"type"`
 }
 
 func (t *Node) Array(name string) array.Driver {
