@@ -385,10 +385,13 @@ func newTestDriver(t *testing.T, id, az string, timeout time.Duration, failover 
 		Failover: failover,
 	}
 	drv.mgr = &cgMgr{
-		uuid:  id,
-		log:   drv.Log(),
-		api:   api,
-		cache: sgcp.CacheConfig{TTLSeconds: 1},
+		uuid: id,
+		log:  drv.Log(),
+		api:  api,
+		// Long enough that no test can outlive it, and that a slow run
+		// can not turn a cache hit into a miss. The tests that want a
+		// fresh read drop the entry, which is what the driver does.
+		cache: sgcp.CacheConfig{TTLSeconds: 60},
 	}
 	return drv
 }
@@ -831,24 +834,23 @@ func TestStatus(t *testing.T) {
 	drv := newTestDriver(t, id, region1AZ1, 5*time.Second, false, api)
 
 	ctx := context.Background()
-	statusVal := drv.Status(ctx)
-	assert.Equal(t, status.NotApplicable, statusVal)
+	assert.Equal(t, status.NotApplicable, drv.Status(ctx))
 
 	calls := db.CallCounts()
 	expectedGetCall := 1
 	assert.Equal(t, expectedGetCall, calls.Get)
 	assert.Equal(t, 0, calls.Patch)
 
-	statusVal = drv.Status(ctx)
-	statusVal = drv.Status(ctx)
-	statusVal = drv.Status(ctx)
-	statusVal = drv.Status(ctx)
-	statusVal = drv.Status(ctx)
+	t.Log("the next evaluations are served by the cache")
+	for i := 0; i < 5; i++ {
+		assert.Equalf(t, status.NotApplicable, drv.Status(ctx), "status evaluation %d", i+2)
+	}
 	calls = db.CallCounts()
 	assert.Equal(t, expectedGetCall, calls.Get, "cache has not been used as expected")
 
+	t.Log("dropping the entry sends the next evaluation to the api")
 	require.NoError(t, drv.mgr.cacheClearGetCg())
-	statusVal = drv.Status(ctx)
+	assert.Equal(t, status.NotApplicable, drv.Status(ctx))
 	calls = db.CallCounts()
 	assert.Equal(t, expectedGetCall+1, calls.Get, "expected call get after clear cache")
 }
