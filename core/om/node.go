@@ -217,6 +217,7 @@ func init() {
 		newCmdNodePushPkg(),
 	)
 	cmdNodeRelay.AddCommand(
+		newCmdNodeRelayList(),
 		newCmdNodeRelayStatus(),
 	)
 	cmdNodeScan.AddCommand(

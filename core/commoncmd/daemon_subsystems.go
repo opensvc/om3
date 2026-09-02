@@ -107,8 +107,8 @@ func filterPrefix(candidates []string, toComplete string) []string {
 // heartbeat as a whole, which all take the same argument.
 const HeartbeatNameHelp = `NAME is a heartbeat: the index of a hb#<index> section of the cluster
 configuration, "1" for "hb#1". The "hb#" prefix the ID column of
-"om daemon hb status" shows is accepted too. A heartbeat the node does
-not configure is refused.
+"om daemon hb ls" shows is accepted too. A heartbeat the node does not
+configure is refused.
 
 Several names may be given, and the action is attempted on each.`
 
@@ -117,8 +117,8 @@ Several names may be given, and the action is attempted on each.`
 const HeartbeatStreamNameHelp = `NAME is a heartbeat stream: the index of a hb#<index> section of the
 cluster configuration, suffixed with .rx for the receiver or .tx for the
 sender, "1.rx" for the receiver of "hb#1". The "hb#" prefix the ID column
-of "om daemon hb status" shows is accepted too. A stream the node does
-not configure is refused.
+of "om daemon hb ls" shows is accepted too. A stream the node does not
+configure is refused.
 
 A heartbeat named without a suffix, "1", addresses both of its streams.
 

@@ -5,6 +5,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/spf13/cobra"
 	"github.com/stretchr/testify/assert"
 
 	"github.com/opensvc/om3/v3/daemon/daemonenv"
@@ -67,7 +68,7 @@ func TestForProgram(t *testing.T) {
 	const help = `  # start it
   om daemon hb start 1.rx
 
-  the id "om daemon hb status" shows, from the om command`
+  the id "om daemon hb ls" shows, from the om command`
 
 	t.Run("om reads its own name", func(t *testing.T) {
 		withProgram(t, "/usr/bin/om")
@@ -78,7 +79,7 @@ func TestForProgram(t *testing.T) {
 		got := ForProgram(help)
 		assert.NotContains(t, strings.Fields(got), "om", "an ox help must not tell its reader to type om")
 		assert.Contains(t, got, "ox daemon hb start 1.rx")
-		assert.Contains(t, got, `"ox daemon hb status"`)
+		assert.Contains(t, got, `"ox daemon hb ls"`)
 
 		// A word ending with the command name is not the command name.
 		assert.Contains(t, got, "from the ox command")
@@ -101,4 +102,23 @@ func TestWithout(t *testing.T) {
 	assert.Equal(t, []string{"1.rx"}, without([]string{"1.rx", "1.tx"}, []string{"1.tx"}))
 	assert.Equal(t, []string{"1.rx", "1.tx"}, without([]string{"1.rx", "1.tx"}, nil))
 	assert.Empty(t, without([]string{"1.rx"}, []string{"1.rx"}))
+}
+
+// TestListingsAreNamedList pins the rule CONTRIBUTING.md states: a command whose
+// answer is a row per thing is named list, aliased ls, and the name it
+// answered to before stays, hidden.
+func TestListingsAreNamedList(t *testing.T) {
+	for name, cmds := range map[string][2]*cobra.Command{
+		"daemon hb":    {NewCmdDaemonHeartbeatList(""), NewCmdDaemonHeartbeatStatus("")},
+		"daemon relay": {NewCmdDaemonRelayList(), NewCmdDaemonRelayStatus()},
+	} {
+		list, legacy := cmds[0], cmds[1]
+		assert.Equalf(t, "list", list.Use, "%s renders a row per thing", name)
+		assert.Containsf(t, list.Aliases, "ls", "%s list must answer to ls", name)
+		assert.Falsef(t, list.Hidden, "%s list must be advertised", name)
+
+		assert.Equalf(t, "status", legacy.Use, "%s must still answer to its former name", name)
+		assert.Truef(t, legacy.Hidden, "%s status must not be advertised", name)
+		assert.Emptyf(t, legacy.Aliases, "%s status must not carry the aliases of the name that replaced it", name)
+	}
 }

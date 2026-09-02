@@ -1247,11 +1247,12 @@ func newCmdNodeRegister() *cobra.Command {
 	return cmd
 }
 
-func newCmdNodeRelayStatus() *cobra.Command {
-	var options commands.CmdNodeRelayStatus
+func newCmdNodeRelayList() *cobra.Command {
+	var options commands.CmdNodeRelayList
 	cmd := &cobra.Command{
-		Use:   "status",
-		Short: "show the clients and last data update time of the configured relays",
+		Use:     "list",
+		Short:   "list the clients of the configured relays and their last data update time",
+		Aliases: []string{"ls"},
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return options.Run()
 		},
@@ -1259,6 +1260,17 @@ func newCmdNodeRelayStatus() *cobra.Command {
 	flagSet := cmd.Flags()
 	addFlagsGlobal(flagSet, &options.OptsGlobal)
 	commoncmd.FlagRelay(flagSet, &options.Relays)
+	return cmd
+}
+
+// newCmdNodeRelayStatus is the name the list command answered to before the
+// listings were named after what they render: a row per relay client. It is
+// kept for the readers whose fingers and scripts type it.
+func newCmdNodeRelayStatus() *cobra.Command {
+	cmd := newCmdNodeRelayList()
+	cmd.Use = "status"
+	cmd.Aliases = nil
+	cmd.Hidden = true
 	return cmd
 }
 

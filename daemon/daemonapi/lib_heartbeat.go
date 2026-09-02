@@ -29,7 +29,7 @@ var configuredHeartbeatNames = func() ([]string, error) {
 // heartbeatName returns the configuration section of the heartbeat an action
 // addresses, "hb#1" for "1".
 //
-// The "hb#" prefix "om daemon hb status" shows in a stream id is accepted too,
+// The "hb#" prefix "om daemon hb ls" shows in a stream id is accepted too,
 // so a name read there can be typed back.
 func heartbeatName(name api.InPathHeartbeatName) (string, error) {
 	names, err := configuredHeartbeatNames()

@@ -32,7 +32,7 @@ func NewCmdDaemonHeartbeatStart() *cobra.Command {
   # start the sender of hb#1 and the receiver of hb#2 on every node
   om daemon hb start 1.tx 2.rx --node '*'
 
-  # the id "om daemon hb status" shows is accepted as it reads
+  # the id "om daemon hb ls" shows is accepted as it reads
   om daemon hb start hb#1.rx`),
 		Args:              cobra.MinimumNArgs(1),
 		ValidArgsFunction: validHeartbeatStreamNames,

@@ -29,7 +29,7 @@ func TestHeartbeatStreamNames(t *testing.T) {
 		{"1.tx", []string{"hb#1.tx"}},
 		{"11.rx", []string{"hb#11.rx"}},
 
-		// The stream id "om daemon hb status" shows carries the prefix, so
+		// The stream id "om daemon hb ls" shows carries the prefix, so
 		// a name read there is typed back as it was read.
 		{"hb#1.rx", []string{"hb#1.rx"}},
 

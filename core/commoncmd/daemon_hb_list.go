@@ -2,7 +2,6 @@ package commoncmd
 
 import (
 	"encoding/json"
-	"fmt"
 	"sort"
 	"strings"
 
@@ -17,7 +16,7 @@ import (
 )
 
 type (
-	CmdDaemonHeartbeatStatus struct {
+	CmdDaemonHeartbeatList struct {
 		Color        string
 		Output       string
 		NodeSelector string
@@ -26,13 +25,14 @@ type (
 	}
 )
 
-func NewCmdDaemonHeartbeatStatus(defaultNodeSelectorFilter string) *cobra.Command {
-	options := CmdDaemonHeartbeatStatus{
+func NewCmdDaemonHeartbeatList(defaultNodeSelectorFilter string) *cobra.Command {
+	options := CmdDaemonHeartbeatList{
 		NodeSelector: defaultNodeSelectorFilter,
 	}
 	cmd := &cobra.Command{
-		Use:   "status",
-		Short: fmt.Sprintf("daemon heartbeat status"),
+		Use:     "list",
+		Short:   "list the heartbeat streams and their state",
+		Aliases: []string{"ls"},
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return options.Run()
 		},
@@ -46,7 +46,7 @@ func NewCmdDaemonHeartbeatStatus(defaultNodeSelectorFilter string) *cobra.Comman
 	return cmd
 }
 
-func (t *CmdDaemonHeartbeatStatus) Run() error {
+func (t *CmdDaemonHeartbeatList) Run() error {
 	cli, err := client.New()
 	if err != nil {
 		return err
@@ -127,4 +127,15 @@ func (t *CmdDaemonHeartbeatStatus) Run() error {
 	}.Print()
 
 	return nil
+}
+
+// NewCmdDaemonHeartbeatStatus is the name the list command answered to
+// before the listings were named after what they render: a row per stream.
+// It is kept for the readers whose fingers and scripts type it.
+func NewCmdDaemonHeartbeatStatus(defaultNodeSelectorFilter string) *cobra.Command {
+	cmd := NewCmdDaemonHeartbeatList(defaultNodeSelectorFilter)
+	cmd.Use = "status"
+	cmd.Aliases = nil
+	cmd.Hidden = true
+	return cmd
 }
