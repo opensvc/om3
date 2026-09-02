@@ -13,8 +13,9 @@ import (
 
 type (
 	CmdNodeConfigShow struct {
-		NodeSelector string
-		Sections     []string
+		NodeSelector  string
+		RedactSecrets bool
+		Sections      []string
 	}
 )
 
@@ -46,7 +47,7 @@ func (t *CmdNodeConfigShow) Run() error {
 		return fmt.Errorf("match more than one node: %s", nodenames)
 	}
 
-	b, err := fetchNodeConfig(nodenames[0], c)
+	b, err := fetchNodeConfig(nodenames[0], c, t.RedactSecrets)
 	if err != nil {
 		return err
 	}

@@ -7,14 +7,16 @@ import (
 	"github.com/opensvc/om3/v3/core/client"
 	"github.com/opensvc/om3/v3/core/commoncmd"
 	"github.com/opensvc/om3/v3/core/nodeselector"
+	"github.com/opensvc/om3/v3/core/object"
 	"github.com/opensvc/om3/v3/core/rawconfig"
 	"github.com/opensvc/om3/v3/util/hostname"
 )
 
 type (
 	CmdNodeConfigShow struct {
-		NodeSelector string
-		Sections     []string
+		NodeSelector  string
+		RedactSecrets bool
+		Sections      []string
 	}
 )
 
@@ -40,12 +42,17 @@ func (t *CmdNodeConfigShow) Run() error {
 	if nodenames[0] == hostname.Hostname() {
 		b, err = os.ReadFile(rawconfig.NodeConfigFile())
 	} else {
-		b, err = fetchNodeConfig(nodenames[0], c)
+		b, err = fetchNodeConfig(nodenames[0], c, t.RedactSecrets)
 	}
 	if err != nil {
 		return err
 	}
 	b = commoncmd.Sections(b, t.Sections)
+	if t.RedactSecrets {
+		if b, err = object.RedactSecrets(b, ""); err != nil {
+			return err
+		}
+	}
 	b = commoncmd.ColorizeINI(b)
 	_, err = os.Stdout.Write(b)
 	return err

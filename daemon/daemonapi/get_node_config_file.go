@@ -2,9 +2,11 @@ package daemonapi
 
 import (
 	"net/http"
+	"os"
 	"time"
 
 	"github.com/labstack/echo/v4"
+	"github.com/opensvc/om3/v3/core/object"
 
 	"github.com/opensvc/om3/v3/core/client"
 	"github.com/opensvc/om3/v3/core/rawconfig"
@@ -12,7 +14,7 @@ import (
 	"github.com/opensvc/om3/v3/util/file"
 )
 
-func (a *DaemonAPI) GetNodeConfigFile(ctx echo.Context, nodename string) error {
+func (a *DaemonAPI) GetNodeConfigFile(ctx echo.Context, nodename string, params api.GetNodeConfigFileParams) error {
 	if v, err := assertRoot(ctx); !v {
 		return err
 	}
@@ -26,12 +28,28 @@ func (a *DaemonAPI) GetNodeConfigFile(ctx echo.Context, nodename string) error {
 		mtime := file.ModTime(filename)
 		if !mtime.IsZero() {
 			ctx.Response().Header().Add(api.HeaderLastModified, mtime.Format(time.RFC3339Nano))
-			log.Infof("serve node config file to %s", userFromContext(ctx).GetUserName())
-			return ctx.File(filename)
+			log.Infof("serve node config file to %s", userFromContext(ctx).Username)
+
+			if params.RedactSecrets == nil || !*params.RedactSecrets {
+				return ctx.File(filename)
+			}
+
+			content, err := os.ReadFile(filename)
+			if err != nil {
+				log.Warnf("failed to read node config file: %s", err)
+				return JSONProblemf(ctx, http.StatusInternalServerError, "Internal server error", "Failed to read node config file")
+			}
+
+			b, err := object.RedactSecrets(content, "")
+			if err != nil {
+				log.Warnf("redact node config file: %s", err)
+				return JSONProblemf(ctx, http.StatusInternalServerError, "Internal server error", "Failed to redact node config file")
+			}
+			return ctx.Blob(http.StatusOK, "application/octet-stream", b)
 		}
 		return JSONProblemf(ctx, http.StatusNotFound, "Not found", "Node config file not found")
 	}
 	return a.proxy(ctx, nodename, func(c *client.T) (*http.Response, error) {
-		return c.GetNodeConfigFile(ctx.Request().Context(), nodename)
+		return c.GetNodeConfigFile(ctx.Request().Context(), nodename, &params)
 	})
 }

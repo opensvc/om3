@@ -19,6 +19,7 @@ import (
 	"github.com/opensvc/om3/v3/core/object"
 	"github.com/opensvc/om3/v3/core/rawconfig"
 	"github.com/opensvc/om3/v3/core/resourceid"
+	"github.com/opensvc/om3/v3/daemon/daemonauth"
 	"github.com/opensvc/om3/v3/daemon/daemonenv"
 	"github.com/opensvc/om3/v3/daemon/daemonsubsystem"
 	"github.com/opensvc/om3/v3/daemon/icfg"
@@ -790,11 +791,13 @@ func fetch(ctx context.Context, cli *client.T, p naming.Path, peer string, cmdC 
 }
 
 func newDaemonClient(n string) (*client.T, error) {
-	// TODO add WithRootCa to avoid send password to wrong url ?
+	tk, err := daemonauth.CreateNodeToken()
+	if err != nil {
+		return nil, err
+	}
 	return client.New(
 		client.WithURL(daemonsubsystem.PeerURL(n)),
-		client.WithUsername(hostname.Hostname()),
-		client.WithPassword(cluster.ConfigData.Get().Secret()),
+		client.WithBearer(tk),
 		client.WithCertificate(daemonenv.CertChainFile()),
 	)
 }

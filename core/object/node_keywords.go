@@ -16,15 +16,23 @@ const (
 )
 
 var (
+	kwNodeID = keywords.Keyword{
+		DefaultText: keywords.NewText(fs, "text/kw/node/id.default"),
+		Option:      "id",
+		Scopable:    false,
+		Section:     "DEFAULT",
+		Text:        keywords.NewText(fs, "text/kw/node/id"),
+	}
 	kwNodeOCI = keywords.Keyword{
 		Option:  "oci",
 		Section: "node",
 		Text:    keywords.NewText(fs, "text/kw/node/node.oci"),
 	}
 	kwNodeUUID = keywords.Keyword{
-		Option:  "uuid",
-		Section: "node",
-		Text:    keywords.NewText(fs, "text/kw/node/node.uuid"),
+		Option:       "uuid",
+		Section:      "node",
+		Text:         keywords.NewText(fs, "text/kw/node/node.uuid"),
+		RedactSecret: true,
 	}
 	kwNodePRKey = keywords.Keyword{
 		DefaultText: keywords.NewText(fs, "text/kw/node/node.prkey.default"),
@@ -181,6 +189,7 @@ var (
 		Text:    keywords.NewText(fs, "text/kw/node/switch.schedule"),
 	}
 	nodePrivateKeywords = []*keywords.Keyword{
+		&kwNodeID,
 		&kwNodeOCI,
 		&kwNodeUUID,
 		&kwNodePRKey,
@@ -205,6 +214,13 @@ var (
 		&kwNodeModel,
 		&kwNodeBackupSchedule,
 		&kwNodeSwitchSchedule,
+	}
+
+	// kwNodeComment has no Section, so it is accepted in any section of the
+	// node and cluster configurations, like the core objects counterpart.
+	kwNodeComment = keywords.Keyword{
+		Option: "comment",
+		Text:   keywords.NewText(fs, "text/kw/core/comment"),
 	}
 
 	kwNodeSecureFetch = keywords.Keyword{
@@ -558,6 +574,7 @@ var (
 		Text:      keywords.NewText(fs, "text/kw/node/listener.port"),
 	}
 	kwNodeListenerOpenIDIssuer = keywords.Keyword{
+		Aliases: []string{"openid_authority"},
 		Example: "https://keycloak.opensvc.com/auth/realms/clusters",
 		Option:  "openid_issuer",
 		Section: "listener",
@@ -652,11 +669,12 @@ var (
 		Text:        keywords.NewText(fs, "text/kw/node/cluster.name"),
 	}
 	kwNodeClusterSecret = keywords.Keyword{
-		DefaultText: keywords.NewText(fs, "text/kw/node/cluster.secret.default"),
-		Option:      "secret",
-		Scopable:    true,
-		Section:     "cluster",
-		Text:        keywords.NewText(fs, "text/kw/node/cluster.secret"),
+		DefaultText:  keywords.NewText(fs, "text/kw/node/cluster.secret.default"),
+		Option:       "secret",
+		Scopable:     true,
+		Section:      "cluster",
+		Text:         keywords.NewText(fs, "text/kw/node/cluster.secret"),
+		RedactSecret: true,
 	}
 	kwNodeClusterNodes = keywords.Keyword{
 		Converter: "list",
@@ -1053,11 +1071,11 @@ var (
 	kwNodePoolDRBDMaxPeers = keywords.Keyword{
 		Attr:         "MaxPeers",
 		Converter:    "int",
-		DefaultText:  keywords.NewText(fs, "text/kw/pool.drbd.max_peers.default"),
+		DefaultText:  keywords.NewText(fs, "text/kw/node/pool.drbd.max_peers.default"),
 		Example:      "8",
 		Option:       "max_peers",
 		Provisioning: true,
-		Text:         keywords.NewText(fs, "text/kw/pool.drbd.max_peers"),
+		Text:         keywords.NewText(fs, "text/kw/node/pool.drbd.max_peers"),
 		Types:        []string{"drbd"},
 	}
 	kwNodePoolDRBDTemplate = keywords.Keyword{
@@ -1703,6 +1721,7 @@ var (
 	}
 
 	nodeCommonKeywords = []*keywords.Keyword{
+		&kwNodeComment,
 		&kwNodeSecureFetch,
 		&kwNodeMinAvailMemPct,
 		&kwNodeMinAvailSwapPct,

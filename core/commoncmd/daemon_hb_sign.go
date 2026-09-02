@@ -19,16 +19,16 @@ type (
 func NewCmdHeartbeatSign() *cobra.Command {
 	options := CmdDaemonHeartbeatSign{}
 	cmd := &cobra.Command{
-		Use:   "sign",
+		Use:   "sign NAME",
 		Short: "sign a heartbeat disk",
+		Args:  cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
+			options.Name = args[0]
 			return options.Run()
 		},
 	}
 	flags := cmd.Flags()
 	FlagNodeSelector(flags, &options.NodeSelector)
-	FlagDaemonHeartbeatName(flags, &options.Name)
-	cmd.MarkFlagRequired("name")
 	return cmd
 }
 

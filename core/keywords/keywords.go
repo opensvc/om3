@@ -84,6 +84,9 @@ type (
 
 		// Minimal force the keyword to be included in the minimal configlet of the driver doc.
 		Minimal bool
+
+		// RedactSecret means the keyword value will be hidden on config show with the flag --redact-secrets.
+		RedactSecret bool
 	}
 
 	Store   []*Keyword
@@ -450,6 +453,20 @@ func (t *Keyword) Doc(w io.Writer, depth int) error {
 	fmt.Fprintf(w, "%s Keyword `%s`\n\n", strings.Repeat("#", depth+1), t.Option)
 	fprintProp("required", fmt.Sprint(t.Required))
 	fprintProp("scopable", fmt.Sprint(t.Scopable))
+	if t.Deprecated != "" {
+		// The same phrasing as the config validate alert.
+		s := "since " + t.Deprecated
+		if t.ReplacedBy != "" {
+			s += ", replaced by " + t.ReplacedBy
+		}
+		fprintProp("deprecated", s)
+	}
+	if len(t.Aliases) > 0 {
+		fprintProp("aliases", strings.Join(t.Aliases, ", "))
+	}
+	if t.RedactSecret {
+		fprintProp("secret", "true")
+	}
 	if len(t.Candidates) > 0 {
 		fprintProp("candidates", strings.Join(t.Candidates, ", "))
 	}

@@ -22,7 +22,7 @@ import (
 
 func AddFlagsNodeGlobal(flagSet *pflag.FlagSet, p *OptsNodeGlobal) {
 	flagSet.StringVar(&p.Color, "color", "auto", "output colorization yes|no|auto")
-	flagSet.StringVarP(&p.Output, "output", "o", "auto", "output format json|flat|auto|tab=<header>:<jsonpath>,...")
+	flagSet.StringVarP(&p.Output, "output", "o", "auto", "output format auto|json|jsonline|yaml|flat|tab=<header>:<jsonpath>,...|template=<go template>")
 	FlagNodeSelector(flagSet, &p.NodeSelector)
 }
 
@@ -129,16 +129,8 @@ func FlagDaemonHeartbeatFilter(flags *pflag.FlagSet, p *string) {
 	flags.StringVar(p, "name", "", "filter on heartbeat name or stream name (ex: hb#1, hb#1.rx, 1, 1.rx)")
 }
 
-func FlagDaemonHeartbeatName(flags *pflag.FlagSet, p *string) {
-	flags.StringVar(p, "name", "", "stream name (ex: 1.rx)")
-}
-
-func FlagDaemonListenerName(flags *pflag.FlagSet, p *string) {
-	flags.StringVar(p, "name", "", "listener name http-inet|http-ux")
-}
-
 func FlagDaemonLogLevel(flags *pflag.FlagSet, p *string) {
-	flags.StringVar(p, "level", "", "trace, debug, info, warn, error, fatal, panic, none")
+	flags.StringVar(p, "level", "", "info, warn, error, fatal, panic, none")
 }
 
 func FlagDepth(flags *pflag.FlagSet, p *int) {
@@ -190,8 +182,8 @@ func FlagEventFilters(flags *pflag.FlagSet, p *[]string) {
 }
 
 func FlagEventOutput(flags *pflag.FlagSet, p *string) {
-	flags.StringVarP(p, "output", "o", "auto", "output format json|flat|diff|auto|tab=<header>:<jsonpath>,...|template=<go template>")
-	flags.StringVar(p, "format", "auto", "output format json|flat|diff|auto|tab=<header>:<jsonpath>,...|template=<go template>")
+	flags.StringVarP(p, "output", "o", "auto", "output format auto|json|jsonline|yaml|flat|diff|tab=<header>:<jsonpath>,...|template=<go template>")
+	flags.StringVar(p, "format", "auto", "output format auto|json|jsonline|yaml|flat|diff|tab=<header>:<jsonpath>,...|template=<go template>")
 	flags.MarkHidden("format")
 }
 
@@ -305,6 +297,10 @@ func FlagProvision(flags *pflag.FlagSet, p *bool) {
 
 func FlagRefresh(flags *pflag.FlagSet, p *bool) {
 	flags.BoolVarP(p, "refresh", "r", false, "refresh the status data")
+}
+
+func FlagRefreshResInfo(flags *pflag.FlagSet, p *bool) {
+	flags.BoolVarP(p, "refresh", "r", false, "refresh the resource info cache before reporting it")
 }
 
 func FlagRecover(flags *pflag.FlagSet, p *bool) {
@@ -620,8 +616,8 @@ func FlagColor(flags *pflag.FlagSet, p *string) {
 }
 
 func FlagOutput(flags *pflag.FlagSet, p *string) {
-	flags.StringVarP(p, "output", "o", "auto", "output format json|flat|auto|tab=<header>:<jsonpath>,...")
-	flags.StringVar(p, "format", "auto", "output format json|flat|auto|tab=<header>:<jsonpath>,...")
+	flags.StringVarP(p, "output", "o", "auto", "output format auto|json|jsonline|yaml|flat|tab=<header>:<jsonpath>,...|template=<go template>")
+	flags.StringVar(p, "format", "auto", "output format auto|json|jsonline|yaml|flat|tab=<header>:<jsonpath>,...|template=<go template>")
 	flags.MarkHidden("format")
 }
 
@@ -740,4 +736,8 @@ func FlagSCSILUN(flags *pflag.FlagSet, p *string) {
 
 func FlagIgnoreNoCollectorConfigured(flags *pflag.FlagSet, p *bool) {
 	flags.BoolVar(p, "ignore-no-collector-configured", false, "ignore absence of collector configuration")
+}
+
+func FlagRedactSecrets(flags *pflag.FlagSet, p *bool) {
+	flags.BoolVar(p, "redact-secrets", false, "hide secret values in the output")
 }

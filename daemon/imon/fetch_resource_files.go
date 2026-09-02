@@ -12,11 +12,11 @@ import (
 	"github.com/opensvc/om3/v3/util/file"
 
 	"github.com/opensvc/om3/v3/core/client"
-	"github.com/opensvc/om3/v3/core/cluster"
 	"github.com/opensvc/om3/v3/core/instance"
 	"github.com/opensvc/om3/v3/core/resource"
 	"github.com/opensvc/om3/v3/core/status"
 	"github.com/opensvc/om3/v3/daemon/api"
+	"github.com/opensvc/om3/v3/daemon/daemonauth"
 	"github.com/opensvc/om3/v3/daemon/daemonenv"
 	"github.com/opensvc/om3/v3/daemon/daemonsubsystem"
 	"github.com/opensvc/om3/v3/daemon/msgbus"
@@ -254,10 +254,13 @@ func (t *Manager) fetchResourceFiles(fetched ridFiles, localInstanceStatus insta
 
 func (t *Manager) fetchResourceFile(rid string, peerFile resource.File, from string) error {
 	t.log.Infof("%s: file %s fetch from %s", rid, peerFile.Name, from)
+	tk, err := daemonauth.CreateNodeToken()
+	if err != nil {
+		return err
+	}
 	c, err := client.New(
 		client.WithURL(daemonsubsystem.PeerURL(from)),
-		client.WithUsername(t.localhost),
-		client.WithPassword(cluster.ConfigData.Get().Secret()),
+		client.WithBearer(tk),
 		client.WithCertificate(daemonenv.CertChainFile()),
 	)
 	if err != nil {

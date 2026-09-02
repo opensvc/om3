@@ -3,7 +3,9 @@ package daemonapi
 import (
 	"context"
 	"fmt"
+	"math"
 	"net/http"
+	"strconv"
 	"strings"
 
 	"github.com/allenai/go-swaggerui"
@@ -13,23 +15,16 @@ import (
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promauto"
 	"github.com/rs/zerolog"
-	"github.com/shaj13/go-guardian/v2/auth"
+	"golang.org/x/time/rate"
 
 	"github.com/opensvc/om3/v3/daemon/daemonauth"
 	"github.com/opensvc/om3/v3/daemon/daemonctx"
 	"github.com/opensvc/om3/v3/daemon/rbac"
+	"github.com/opensvc/om3/v3/util/metricsreg"
 	"github.com/opensvc/om3/v3/util/plog"
 )
 
-type (
-	Strategier interface {
-		AuthenticateRequest(r *http.Request) (auth.Strategy, auth.Info, error)
-	}
-)
-
 var (
-	LogLevel = zerolog.InfoLevel
-
 	// logRequestLevelPerPath defines logRequestMiddleWare log level per path.
 	// The default value is LevelInfo
 	logRequestLevelPerPrefix = map[string]zerolog.Level{
@@ -41,10 +36,20 @@ var (
 		// "/api/instance/path/:namespace/:kind/:name/status": zerolog.InfoLevel,
 	}
 
-	rateLimitDeniedTotal = promauto.NewCounterVec(
+	// rateLimitDeniedTotal is the hint: it is what an alert on a client
+	// hitting the limit fires on. The same denials broken down by route
+	// are served at /metrics/api, next to the other per route series.
+	rateLimitDeniedTotal = promauto.NewCounter(
 		prometheus.CounterOpts{
 			Name: "opensvc_listener_rate_limiter_denied_total",
-			Help: "The total number of requests denied by rate limiting",
+			Help: "The total number of requests denied by rate limiting (per route at /metrics/api)",
+		},
+	)
+
+	rateLimitRouteDeniedTotal = prometheus.NewCounterVec(
+		prometheus.CounterOpts{
+			Name: "opensvc_listener_rate_limiter_route_denied_total",
+			Help: "The total number of requests denied by rate limiting, by method and route",
 		},
 		[]string{"method", "path"},
 	)
@@ -56,6 +61,20 @@ var (
 		},
 	)
 )
+
+func init() {
+	metricsreg.API.MustRegister(rateLimitRouteDeniedTotal)
+}
+
+// retryAfterSeconds returns the number of seconds a caller refused by the
+// rate limiter is asked to wait, which is the time the limiter needs to
+// grant one token, rounded up to the second the header is expressed in.
+func retryAfterSeconds(r rate.Limit) int {
+	if r <= 0 {
+		return 1
+	}
+	return max(1, int(math.Ceil(1/float64(r))))
+}
 
 func logWithFamilyAndAddr(ctx context.Context) *plog.Logger {
 	l := daemonctx.Logger(ctx)
@@ -101,21 +120,34 @@ func RateLimiterWithConfig(parent context.Context) echo.MiddlewareFunc {
 			id := c.RealIP()
 			return id, nil
 		},
+		// ErrorHandler is called when the identifier of the caller
+		// could not be extracted, which is a fault of this listener and
+		// not of the caller.
 		ErrorHandler: func(c echo.Context, err error) error {
 			if err != nil {
-				GetLogger(c).Tracef("rate limiter: too many request from %s: %s", c.RealIP(), err)
+				GetLogger(c).Warnf("rate limiter: identify %s: %s", c.RealIP(), err)
 			}
 
 			rateLimitErrorsTotal.Inc()
-			return c.JSON(http.StatusTooManyRequests, nil)
+			code := http.StatusInternalServerError
+			return JSONProblem(c, code, http.StatusText(code), "The rate limiter could not identify the caller")
 		},
 		DenyHandler: func(c echo.Context, identifier string, err error) error {
 			if err != nil {
 				GetLogger(c).Tracef("rate limiter deny from %s: %s", c.RealIP(), err)
 			}
 
-			rateLimitDeniedTotal.WithLabelValues(c.Request().Method, c.Path()).Inc()
-			return c.JSON(http.StatusForbidden, nil)
+			rateLimitDeniedTotal.Inc()
+			rateLimitRouteDeniedTotal.WithLabelValues(c.Request().Method, c.Path()).Inc()
+
+			// A caller told to go away has to learn that it was for
+			// asking too often, and how long to wait: refusing with a
+			// 403 and an empty body reads as a permission problem, and
+			// leaves a client that would pace itself nothing to pace
+			// by.
+			c.Response().Header().Set(echo.HeaderRetryAfter, strconv.Itoa(retryAfterSeconds(rateLimiterConfig.Rate)))
+			code := http.StatusTooManyRequests
+			return JSONProblem(c, code, http.StatusText(code), "Too many requests from "+c.RealIP())
 		},
 	}
 	return middleware.RateLimiterWithConfig(config)
@@ -132,8 +164,7 @@ func LogMiddleware(parent context.Context) echo.MiddlewareFunc {
 				Attr("request_uuid", requestUUID.String()).
 				Attr("request_method", r.Method).
 				Attr("request_path", r.URL.Path).
-				AddPrefix(fmt.Sprintf("%s %s: ", r.Method, r.URL.Path)).
-				Level(LogLevel)
+				AddPrefix(fmt.Sprintf("%s %s: ", r.Method, r.URL.Path))
 			c.Set("logger", log)
 			c.Set("uuid", requestUUID)
 			return next(c)
@@ -143,9 +174,6 @@ func LogMiddleware(parent context.Context) echo.MiddlewareFunc {
 
 func AuthMiddleware(parent context.Context) echo.MiddlewareFunc {
 	serverAddr := daemonctx.ListenAddr(parent)
-	newExtensions := func(strategy string) *auth.Extensions {
-		return &auth.Extensions{"strategy": []string{strategy}}
-	}
 
 	isPublic := func(c echo.Context) bool {
 		if c.Request().Method != http.MethodGet {
@@ -168,8 +196,7 @@ func AuthMiddleware(parent context.Context) echo.MiddlewareFunc {
 		return func(c echo.Context) error {
 			// TODO verify for alternate method for /public, /metrics
 			if isPublic(c) {
-				user := auth.NewUserInfo("nobody", "", nil, *newExtensions("public"))
-				c.Set("user", user)
+				c.Set("user", &daemonauth.Info{Username: "nobody", Strategy: "public"})
 				c.Set("grants", rbac.Grants{})
 				return next(c)
 			}
@@ -177,35 +204,38 @@ func AuthMiddleware(parent context.Context) echo.MiddlewareFunc {
 			req := c.Request()
 			// serverAddr is used by AuthenticateRequest
 			reqCtx := daemonctx.WithListenAddr(req.Context(), serverAddr)
-			daemonauth.Strategy.Mutex.RLock()
-			strategies := daemonauth.Strategy.Value
-			daemonauth.Strategy.Mutex.RUnlock()
+			daemonauth.Strategies.Mutex.RLock()
+			strategies := daemonauth.Strategies.Value
+			daemonauth.Strategies.Mutex.RUnlock()
 
-			if strategies == nil {
+			if len(strategies) == 0 {
 				err := fmt.Errorf("can't authenticate from undefined stategies")
 				code := http.StatusInternalServerError
 				return JSONProblem(c, code, http.StatusText(code), err.Error())
 			}
 
-			_, user, err := strategies.AuthenticateRequest(req.WithContext(reqCtx))
+			user, err := strategies.AuthenticateRequest(req.WithContext(reqCtx))
 			if err != nil {
 				r := c.Request()
+				// The error says what each strategy made of the request,
+				// which is for the log and not for the caller: it tells
+				// an unauthenticated client whether a username exists,
+				// and which strategies this listener runs.
 				log.Errorf("authenticating request from %s: %s", r.RemoteAddr, err)
 				code := http.StatusUnauthorized
-				return JSONProblem(c, code, http.StatusText(code), err.Error())
+				return JSONProblem(c, code, http.StatusText(code), "Invalid or missing credentials")
 			}
-			log.Tracef("user %s authenticated", user.GetUserName())
-			extensions := user.GetExtensions()
+			log.Tracef("user %s authenticated", user.Username)
 			c.Set("user", user)
-			c.Set("grants", rbac.NewGrants(extensions.Values("grant")...))
-			if iss := extensions.Get("iss"); iss != "" {
-				c.Set("iss", iss)
+			c.Set("grants", rbac.NewGrants(user.Grants...))
+			if user.Issuer != "" {
+				c.Set("iss", user.Issuer)
 			}
-			if strategy := extensions.Get("strategy"); strategy != "" {
-				c.Set("strategy", strategy)
+			if user.Strategy != "" {
+				c.Set("strategy", user.Strategy)
 			}
-			if s := extensions.Get(daemonauth.TkUseClaim); s != "" {
-				c.Set(daemonauth.TkUseClaim, s)
+			if user.TokenUse != "" {
+				c.Set(daemonauth.TkUseClaim, user.TokenUse)
 			}
 			return next(c)
 		}
@@ -216,13 +246,12 @@ func LogUserMiddleware(parent context.Context) echo.MiddlewareFunc {
 	return func(next echo.HandlerFunc) echo.HandlerFunc {
 		return func(c echo.Context) error {
 			authUser := userFromContext(c)
-			extensions := authUser.GetExtensions()
 			log := GetLogger(c).
-				Attr("auth_user", authUser.GetUserName()).
-				Attr("auth_grant", extensions.Values("grant")).
-				Attr("auth_strategy", extensions.Get("strategy"))
-			if iss := extensions.Get("iss"); iss != "" {
-				log = log.Attr("auth_iss", iss)
+				Attr("auth_user", authUser.Username).
+				Attr("auth_grant", authUser.Grants).
+				Attr("auth_strategy", authUser.Strategy)
+			if authUser.Issuer != "" {
+				log = log.Attr("auth_iss", authUser.Issuer)
 			}
 
 			c.Set("logger", log)
@@ -245,7 +274,7 @@ func LogRequestMiddleWare(parent context.Context) echo.MiddlewareFunc {
 				}
 			}
 			if level != zerolog.NoLevel {
-				userDesc := userFromContext(c).GetUserName()
+				userDesc := userFromContext(c).Username
 				if strategy, ok := c.Get("strategy").(string); ok && strategy != "" {
 					userDesc += " strategy " + strategy
 				}
@@ -288,8 +317,8 @@ func uuidFromContext(c echo.Context) string {
 }
 
 // userFromContext returns the logged-in userFromContext information stored in the request context.
-func userFromContext(ctx echo.Context) auth.Info {
-	return ctx.Get("user").(auth.Info)
+func userFromContext(ctx echo.Context) *daemonauth.Info {
+	return ctx.Get("user").(*daemonauth.Info)
 }
 
 // strategyFromContext returns the strategy used to authenticate request stored

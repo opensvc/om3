@@ -8,7 +8,6 @@ import (
 	"github.com/opensvc/om3/v3/core/output"
 	"github.com/opensvc/om3/v3/core/rawconfig"
 	"github.com/opensvc/om3/v3/daemon/api"
-	"github.com/opensvc/om3/v3/util/unstructured"
 )
 
 type (
@@ -48,15 +47,11 @@ func (t *CmdArrayList) Run() error {
 	}
 
 	render := func(items api.ArrayItems) {
-		lines := make(unstructured.List, 0)
-		for _, a := range items {
-			lines = append(lines, a.Unstructured())
-		}
 		output.Renderer{
 			DefaultOutput: "tab=" + cols,
 			Output:        t.Output,
 			Color:         t.Color,
-			Data:          lines,
+			Data:          items,
 			Colorize:      rawconfig.Colorize,
 		}.Print()
 	}

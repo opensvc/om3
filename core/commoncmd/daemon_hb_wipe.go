@@ -19,16 +19,16 @@ type (
 func NewCmdHeartbeatWipe() *cobra.Command {
 	options := CmdDaemonHeartbeatWipe{}
 	cmd := &cobra.Command{
-		Use:   "wipe",
+		Use:   "wipe NAME",
 		Short: "wipe a heartbeat disk",
+		Args:  cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
+			options.Name = args[0]
 			return options.Run()
 		},
 	}
 	flags := cmd.Flags()
 	FlagNodeSelector(flags, &options.NodeSelector)
-	FlagDaemonHeartbeatName(flags, &options.Name)
-	cmd.MarkFlagRequired("name")
 	return cmd
 }
 

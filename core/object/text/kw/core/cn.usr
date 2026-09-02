@@ -1,0 +1,6 @@
+Certificate Signing Request Common Name.
+
+The api reads this common name as the username of the client presenting the
+certificate, and looks its grants up in the usr object of that name. It
+defaults to the name of this object, which is what makes a generated
+certificate authenticate as this user.

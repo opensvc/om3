@@ -9,10 +9,11 @@ import (
 	"github.com/opensvc/om3/v3/core/client"
 	"github.com/opensvc/om3/v3/core/naming"
 	"github.com/opensvc/om3/v3/core/rawconfig"
+	"github.com/opensvc/om3/v3/daemon/api"
 )
 
 func createTempRemoteNodeConfig(nodename string, c *client.T) (string, error) {
-	if buff, err := fetchNodeConfig(nodename, c); err != nil {
+	if buff, err := fetchNodeConfig(nodename, c, false); err != nil {
 		return "", err
 	} else {
 		return createTempRemoteConfig(buff)
@@ -20,7 +21,7 @@ func createTempRemoteNodeConfig(nodename string, c *client.T) (string, error) {
 }
 
 func createTempRemoteObjectConfig(p naming.Path, c *client.T) (string, error) {
-	if buff, err := fetchObjectConfig(p, c); err != nil {
+	if buff, err := fetchObjectConfig(p, c, false); err != nil {
 		return "", err
 	} else {
 		return createTempRemoteConfig(buff)
@@ -40,8 +41,11 @@ func createTempRemoteConfig(buff []byte) (string, error) {
 	return filename, nil
 }
 
-func fetchNodeConfig(nodename string, c *client.T) ([]byte, error) {
-	resp, err := c.GetNodeConfigFileWithResponse(context.Background(), nodename)
+func fetchNodeConfig(nodename string, c *client.T, redactSecrets bool) ([]byte, error) {
+	params := api.GetNodeConfigFileParams{
+		RedactSecrets: &redactSecrets,
+	}
+	resp, err := c.GetNodeConfigFileWithResponse(context.Background(), nodename, &params)
 	if err != nil {
 		return nil, err
 	} else if resp.StatusCode() != http.StatusOK {
@@ -50,8 +54,11 @@ func fetchNodeConfig(nodename string, c *client.T) ([]byte, error) {
 	return resp.Body, nil
 }
 
-func fetchObjectConfig(p naming.Path, c *client.T) ([]byte, error) {
-	resp, err := c.GetObjectConfigFileWithResponse(context.Background(), p.Namespace, p.Kind, p.Name)
+func fetchObjectConfig(p naming.Path, c *client.T, redactSecrets bool) ([]byte, error) {
+	params := api.GetObjectConfigFileParams{
+		RedactSecrets: &redactSecrets,
+	}
+	resp, err := c.GetObjectConfigFileWithResponse(context.Background(), p.Namespace, p.Kind, p.Name, &params)
 	if err != nil {
 		return nil, err
 	} else if resp.StatusCode() != http.StatusOK {

@@ -13,12 +13,12 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/opensvc/om3/v3/core/client"
-	"github.com/opensvc/om3/v3/core/cluster"
 	"github.com/opensvc/om3/v3/core/clusterdump"
 	"github.com/opensvc/om3/v3/core/event"
 	"github.com/opensvc/om3/v3/core/naming"
 	"github.com/opensvc/om3/v3/core/om"
 	"github.com/opensvc/om3/v3/core/rawconfig"
+	"github.com/opensvc/om3/v3/daemon/daemonauth"
 	"github.com/opensvc/om3/v3/daemon/daemoncmd"
 	"github.com/opensvc/om3/v3/daemon/daemonenv"
 	"github.com/opensvc/om3/v3/testhelper"
@@ -33,8 +33,11 @@ import (
 var defaultHTTPPort = daemonenv.HTTPPort
 
 func newClient(serverUrl string) (*client.T, error) {
-	return client.New(client.WithURL(serverUrl), client.WithPassword(cluster.ConfigData.Get().Secret()))
-	//return client.New(client.WithURL(serverUrl), client.WithInsecureSkipVerify(true))
+	tk, err := daemonauth.CreateNodeToken()
+	if err != nil {
+		return nil, err
+	}
+	return client.New(client.WithURL(serverUrl), client.WithBearer(tk))
 }
 
 func setup(t *testing.T, withConfig bool) testhelper.Env {
@@ -211,7 +214,7 @@ func runTestDaemonStartup(t *testing.T, hasConfig bool) {
 			logf("daemonCli.Stop...")
 			// Use UrlInetHttp to avoid failed stop because of still running handler
 			// cli, err := client.New(client.WithURL(getClientUrl(hasConfig)["UrlUxHttp"]))
-			cli, err := client.New(client.WithPassword(cluster.ConfigData.Get().Secret()), client.WithURL(getClientUrl(hasConfig)["UrlInetHttp"]))
+			cli, err := newClient(getClientUrl(hasConfig)["UrlInetHttp"])
 			require.NoError(t, err)
 			daemonCli = daemoncmd.New(cli)
 			e := daemonCli.StopWithoutManager()

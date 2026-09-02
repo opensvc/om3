@@ -1,3 +1,5 @@
+The command to execute to fence the node named by the section, `stonith#<nodename>`.
+
 Shoot The Other Node In The Head, aka fence, using a callout.
 
 The callout is triggered after a quorum vote won, when the surviving node is

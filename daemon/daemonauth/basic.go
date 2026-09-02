@@ -5,9 +5,6 @@ import (
 	"fmt"
 	"net/http"
 
-	"github.com/shaj13/go-guardian/v2/auth"
-	"github.com/shaj13/go-guardian/v2/auth/strategies/basic"
-
 	"github.com/opensvc/om3/v3/util/hostname"
 )
 
@@ -22,41 +19,45 @@ type (
 		GrantsFromUsername(username string) ([]string, error)
 	}
 
-	// NodeAuthenticater is the interface for AuthenticateNode method for node basic auth.
-	NodeAuthenticater interface {
-		AuthenticateNode(nodename, password string) error
+	basicUserStrategy struct {
+		userDB UserAndPasswordGranter
 	}
 )
 
-func initBasicUser(_ context.Context, i any) (string, auth.Strategy, error) {
+// Authenticate reads the credentials of a usr object from the request's
+// basic auth header.
+//
+// The answer is cached for a few seconds because verifying it reads and
+// decrypts the usr object from disk, and a client polling the api
+// presents the same password on every request.
+func (t *basicUserStrategy) Authenticate(_ context.Context, r *http.Request) (*Info, error) {
+	username, password, ok := r.BasicAuth()
+	if !ok {
+		return nil, fmt.Errorf("strategies/basic: request has no basic auth credentials")
+	}
+	key := cacheKey(StrategyUser, username, password)
+	if info, ok := authCache.get(key); ok {
+		return info, nil
+	}
+	grants, err := t.userDB.GrantsFromUsernameAndPassword(username, password)
+	if err != nil {
+		return nil, fmt.Errorf("strategies/basic: invalid user %s: %w", username, err)
+	}
+	info := &Info{
+		Username: username,
+		Strategy: StrategyUser,
+		Issuer:   hostname.Hostname(),
+		Grants:   grants,
+	}
+	authCache.set(key, info, cacheTTL)
+	return info, nil
+}
+
+func initBasicUser(_ context.Context, i any) (string, Strategy, error) {
 	name := "basicauth user"
 	userDB, ok := i.(UserAndPasswordGranter)
 	if !ok {
 		return name, nil, fmt.Errorf("UserAndPasswordGranter interface is not implemented")
 	}
-	validateUser := func(_ context.Context, _ *http.Request, userName string, password string) (auth.Info, error) {
-		grants, err := userDB.GrantsFromUsernameAndPassword(userName, password)
-		if err != nil {
-			return nil, fmt.Errorf("invalid user %s: %w", userName, err)
-		}
-		return auth.NewUserInfo(userName, "", nil, *authenticatedExtensions(StrategyUser, hostname.Hostname(), grants...)), nil
-	}
-	return name, basic.NewCached(validateUser, cache), nil
-}
-
-func initBasicNode(_ context.Context, i interface{}) (string, auth.Strategy, error) {
-	name := "basicauth node"
-	n, ok := i.(NodeAuthenticater)
-	if !ok {
-		return name, nil, fmt.Errorf("NodeAuthenticater interface is not implemented")
-	}
-	validate := func(_ context.Context, _ *http.Request, userName string, password string) (auth.Info, error) {
-		if err := n.AuthenticateNode(userName, password); err != nil {
-			return nil, fmt.Errorf("invalid nodename %s: %w", userName, err)
-		}
-		extensions := authenticatedExtensions(StrategyNode, "", "root")
-		info := auth.NewUserInfo("node-"+userName, "", nil, *extensions)
-		return info, nil
-	}
-	return name, basic.NewCached(validate, cache), nil
+	return name, &basicUserStrategy{userDB: userDB}, nil
 }

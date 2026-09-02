@@ -2,7 +2,7 @@ openapi: 3.0.0
 
 info:
   title: opensvc agent api
-  version: 4.1.5
+  version: 4.2.0
 
 paths:
   /api/array:
@@ -1220,6 +1220,13 @@ paths:
         - bearerAuth: []
       parameters:
         - $ref: '#/components/parameters/inPathNodeName'
+        - in: query
+          name: redact-secrets
+          description: if true, redact secrets in the cluster configuration file
+          required: false
+          schema:
+            type: boolean
+            default: false
       responses:
         200:
           description: OK
@@ -1411,10 +1418,16 @@ paths:
             enum: [error, warn, info, debug, trace]
         - in: query
           name: sub
-          description: the names of the subsystems to audit
+          description: |
+            The names of the subsystems to audit, repeated once per
+            subsystem. All of them are audited when none is named.
+          style: form
+          explode: true
           schema:
-            type: string
-            example: scheduler
+            type: array
+            items:
+              type: string
+            example: [scheduler, "imon:*"]
         - in: query
           name: preempt
           description: preempt the current audit if any is running.
@@ -1704,30 +1717,29 @@ paths:
         500:
           $ref: '#/components/responses/500'
 
-  /api/node/name/{nodename}/daemon/listener/name/{name}/log/control:
-    post:
-      operationId: PostDaemonListenerLogControl
+  /api/node/name/{nodename}/daemon/log/control:
+    get:
+      operationId: GetDaemonLogControl
+      description: |
+        Report the level below which the daemon logs are not emitted.
+
+        The daemon writes to journald, which is capped at info: a level
+        below that is refused by the post, and a trace or debug feed is
+        obtained from POST /daemon/audit instead.
       parameters:
         - $ref: '#/components/parameters/inPathNodeName'
-        - $ref: '#/components/parameters/inPathListenerName'
-      tags:
-        - node / daemon
       security:
         - basicAuth: []
         - bearerAuth: []
-      requestBody:
-        description: |
-          Set a daemon listener log level.
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/LogControlBody'
+      tags:
+        - node / daemon
       responses:
         200:
-          $ref: '#/components/responses/200'
-        400:
-          $ref: '#/components/responses/400'
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LogControlBody'
         401:
           $ref: '#/components/responses/401'
         403:
@@ -1735,7 +1747,6 @@ paths:
         500:
           $ref: '#/components/responses/500'
 
-  /api/node/name/{nodename}/daemon/log/control:
     post:
       operationId: PostDaemonLogControl
       parameters:
@@ -1798,7 +1809,9 @@ paths:
     delete:
       operationId: DeleteDaemonProcess
       description: |
-        Kill the daemon process.
+        Signal the daemon process.
+
+        Only the processes listed by GetDaemonProcess can be signaled.
       parameters:
         - $ref: '#/components/parameters/inPathNodeName'
         - in: query
@@ -1808,6 +1821,12 @@ paths:
             type: array
             items:
               type: integer
+        - in: query
+          name: signal
+          description: the signal to send, as a name (TERM, SIGTERM) or a number (15). Defaults to SIGKILL.
+          schema:
+            type: string
+            example: TERM
       responses:
         204:
           $ref: '#/components/responses/204'
@@ -2181,6 +2200,41 @@ paths:
         - node / instance / svc
         - node / instance / vol
 
+  /api/node/name/{nodename}/instance/path/{namespace}/{kind}/{name}/action/info:
+    post:
+      operationId: PostInstanceActionInfo
+      description: |
+        Refresh the object instance resource info cache.
+
+        The refreshed key-values are reported to the collector by the collector
+        speaker, on its own schedule.
+      parameters:
+        - $ref: '#/components/parameters/inPathNodeName'
+        - $ref: '#/components/parameters/inPathNamespace'
+        - $ref: '#/components/parameters/inPathKind'
+        - $ref: '#/components/parameters/inPathName'
+        - $ref: '#/components/parameters/inQueryRid'
+        - $ref: '#/components/parameters/inQuerySessionID'
+      responses:
+        200:
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/InstanceActionAccepted'
+          description: OK
+        401:
+          $ref: '#/components/responses/401'
+        403:
+          $ref: '#/components/responses/403'
+        500:
+          $ref: '#/components/responses/500'
+      security:
+        - basicAuth: []
+        - bearerAuth: []
+      tags:
+        - node / instance / svc
+        - node / instance / vol
+
   /api/node/name/{nodename}/instance/path/{namespace}/{kind}/{name}/action/provision:
     post:
       description: Provision the object instance. When state_only parameter is true, only internal provisioned state is changed.
@@ -2295,36 +2349,6 @@ paths:
           description: OK
         400:
           $ref: '#/components/responses/400'
-        401:
-          $ref: '#/components/responses/401'
-        403:
-          $ref: '#/components/responses/403'
-        500:
-          $ref: '#/components/responses/500'
-      security:
-        - basicAuth: []
-        - bearerAuth: []
-      tags:
-        - node / instance / svc
-        - node / instance / vol
-
-  /api/node/name/{nodename}/instance/path/{namespace}/{kind}/{name}/action/push/resource/info:
-    post:
-      operationId: PostInstanceActionPushResourceInfo
-      description: Refresh and send to the collector the object instance resource information.
-      parameters:
-        - $ref: '#/components/parameters/inPathNodeName'
-        - $ref: '#/components/parameters/inPathNamespace'
-        - $ref: '#/components/parameters/inPathKind'
-        - $ref: '#/components/parameters/inPathName'
-        - $ref: '#/components/parameters/inQuerySessionID'
-      responses:
-        200:
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/InstanceActionAccepted'
-          description: OK
         401:
           $ref: '#/components/responses/401'
         403:
@@ -3030,6 +3054,41 @@ paths:
       tags:
         - node / instance / svc
         - node / instance / vol
+    post:
+      operationId: PostInstanceResourceInfo
+      description: |
+        Signal the daemon that the resource info cache of the object instance
+        has been refreshed on this node.
+
+        The daemon reads the refreshed cache itself and publishes a
+        InstanceResourceInfoUpdated event, so this request has no body. The
+        collector speaker fetches the key-values with GetInstanceResourceInfo
+        when it is ready to report them.
+      parameters:
+        - $ref: '#/components/parameters/inPathNodeName'
+        - $ref: '#/components/parameters/inPathNamespace'
+        - $ref: '#/components/parameters/inPathKind'
+        - $ref: '#/components/parameters/inPathName'
+      responses:
+        200:
+          description: OK
+        400:
+          $ref: '#/components/responses/400'
+        401:
+          $ref: '#/components/responses/401'
+        403:
+          $ref: '#/components/responses/403'
+        404:
+          $ref: '#/components/responses/404'
+        500:
+          $ref: '#/components/responses/500'
+      security:
+        - basicAuth: []
+        - bearerAuth: []
+      tags:
+        - node / instance / svc
+        - node / instance / vol
+      x-internal: true
 
   /api/node/name/{nodename}/instance/path/{namespace}/{kind}/{name}/schedule:
     get:
@@ -4216,6 +4275,13 @@ paths:
         - $ref: '#/components/parameters/inPathNamespace'
         - $ref: '#/components/parameters/inPathKind'
         - $ref: '#/components/parameters/inPathName'
+        - in: query
+          name: redact-secrets
+          description: if true, redact secrets in the cluster configuration file
+          required: false
+          schema:
+            type: boolean
+            default: false
       responses:
         200:
           description: OK
@@ -5265,8 +5331,15 @@ components:
 
     DaemonListenerName:
       type: string
-      example: http-inet
-      description: Listener name
+      example: api.inet
+      enum:
+        - api.ux
+        - api.inet
+      description: |
+        Listener name.
+
+        The listeners are named the same here and in the audit subsystem
+        list: api.ux serves the unix socket, api.inet the tcp port.
 
     DaemonLocal:
       type: object
@@ -6023,6 +6096,8 @@ components:
         - aliases
         - inherit
         - deprecated
+        - replacedBy
+        - redactSecret
         - required
         - minimal
       properties:
@@ -6070,6 +6145,12 @@ components:
           type: string
         deprecated:
           type: string
+        replacedBy:
+          type: string
+          description: The name of the keyword to use instead of this deprecated one.
+        redactSecret:
+          type: boolean
+          description: True when the keyword value is a secret, hidden by the config show --redact-secrets flag.
         required:
           type: boolean
         minimal:
@@ -6104,6 +6185,10 @@ components:
       properties:
         evaluated:
           x-go-type: any
+        error:
+          type: string
+          description: |
+            The reason the keyword could not be evaluated. Only set when the whole configuration is evaluated, where a single unresolvable key must not fail the request. When a keyword selection is passed, an unresolvable key is reported as a 400 instead.
         node:
           type: string
         object:
@@ -6152,11 +6237,17 @@ components:
       x-go-type: LogControl
       required:
         - level
+      description: |
+        The level below which the daemon logs are not emitted.
+
+        The daemon writes to journald, which is not given anything below
+        the info level, so info is the most verbose value here. A debug
+        or trace feed is obtained from POST /daemon/audit, which reads
+        the messages before they reach a writer.
       properties:
         level:
           type: string
           enum:
-            - debug
             - info
             - warn
             - error
@@ -6344,6 +6435,13 @@ components:
         prkey:
           type: string
           x-go-name: PRKey
+        issues:
+          type: array
+          description: |
+            The configuration faults found on this node that a human has
+            to correct, as the cluster configuration has its own.
+          items:
+            type: string
 
     NodeConfigCollector:
       type: object

@@ -6,12 +6,12 @@ import (
 	"net/http"
 	"sync"
 
+	"github.com/spf13/cobra"
+
 	"github.com/opensvc/om3/v3/core/client"
 	"github.com/opensvc/om3/v3/core/output"
 	"github.com/opensvc/om3/v3/core/rawconfig"
 	"github.com/opensvc/om3/v3/daemon/api"
-	"github.com/opensvc/om3/v3/util/unstructured"
-	"github.com/spf13/cobra"
 )
 
 type (
@@ -84,16 +84,11 @@ func (t *CmdDaemonPs) Run() error {
 	}
 
 	render := func(items api.ProcessItems) {
-		lines := make(unstructured.List, len(items))
-		for i, item := range items {
-			u := item.Unstructured()
-			lines[i] = u
-		}
 		output.Renderer{
 			DefaultOutput: "tab=" + cols,
 			Output:        t.Output,
 			Color:         t.Color,
-			Data:          lines,
+			Data:          items,
 			Colorize:      rawconfig.Colorize,
 		}.Print()
 	}

@@ -43,12 +43,31 @@ func (a *DaemonAPI) GetClusterStatus(ctx echo.Context, params api.GetClusterStat
 	}
 	subRefreshed.Unlock()
 
-	status := a.Daemondata.ClusterData()
-
-	if params.Selector != nil || params.Namespace != nil {
-		// Deep copy to avoid modifying the original
-		status = status.DeepCopy()
+	// A caller with a cluster wide role and no selector has nothing
+	// filtered out of its answer, and gets the dataset as the daemondata
+	// goroutine marshalled it. That is the whole of it: no deep copy, and
+	// no second serialization here. The filtered paths below still need a
+	// struct to filter, so they take the copy.
+	userGrants := grantsFromContext(ctx)
+	// The guest:ns1 grant is sufficient to see all objects in ns1, so a
+	// grant on no namespace in particular is what means "everything".
+	seesEverything := userGrants.HasRoleOn("", rbac.RoleRoot, rbac.RoleAdmin, rbac.RoleOperator, rbac.RoleGuest)
+	if params.Selector == nil && params.Namespace == nil && seesEverything {
+		b, err := a.Daemondata.ClusterDataJSON()
+		if err != nil {
+			return JSONProblemf(ctx, http.StatusInternalServerError, "Internal Server Error", "marshal cluster data: %s", err)
+		}
+		return ctx.JSONBlob(http.StatusOK, b)
 	}
+
+	status := a.Daemondata.ClusterData()
+	if status == nil {
+		return JSONProblemf(ctx, http.StatusInternalServerError, "Internal Server Error", "get cluster data")
+	}
+
+	// The filters below return a new dataset instead of purging this one:
+	// ClusterData is behind a singleflight, so concurrent callers share the
+	// returned pointer and must not modify it.
 
 	// Explicit object selector filtering
 	if params.Selector != nil {
@@ -61,11 +80,8 @@ func (a *DaemonAPI) GetClusterStatus(ctx echo.Context, params api.GetClusterStat
 	}
 
 	// RBAC namespace filtering
-	userGrants := grantsFromContext(ctx)
-	if !userGrants.HasRoleOn("", rbac.RoleRoot, rbac.RoleAdmin, rbac.RoleOperator, rbac.RoleGuest) {
-		// If the user has no "root", "admin", "operator" or "guest" grant, filter
-		// out all objects from namespaces he has no role for.
-		// The guest:ns1 grant is sufficient to see all objects in ns1.
+	if !seesEverything {
+		// Filter out all objects from namespaces the user has no role for.
 		status = status.WithNamespace(userGrants.Namespaces()...)
 	}
 

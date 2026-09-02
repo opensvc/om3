@@ -10,12 +10,10 @@ import (
 	"net/http"
 	"slices"
 	"strconv"
-	"strings"
 	"time"
 
 	"github.com/labstack/echo/v4"
 	"github.com/rs/zerolog"
-	"github.com/shaj13/go-guardian/v2/auth"
 
 	"github.com/opensvc/om3/v3/core/client"
 	"github.com/opensvc/om3/v3/core/clusternode"
@@ -32,9 +30,6 @@ func (a *DaemonAPI) PostDaemonAudit(ctx echo.Context, nodename string, params ap
 	}
 	if params.Level == nil {
 		return JSONProblemf(ctx, http.StatusBadRequest, "Invalid parameters", "Missing level param")
-	}
-	if params.Sub == nil {
-		return JSONProblemf(ctx, http.StatusBadRequest, "Invalid parameters", "Missing sub param")
 	}
 	nodename = a.parseNodename(nodename)
 	if nodename == a.localhost || nodename == "localhost" {
@@ -90,7 +85,7 @@ func (a *DaemonAPI) getLocalDaemonAudit(ctx echo.Context, nodename string, param
 
 	var messageId uint64
 
-	user := ctx.Get("user").(auth.Info)
+	user := userFromContext(ctx)
 
 	level, err := zerolog.ParseLevel(string(*params.Level))
 	if err != nil {
@@ -142,8 +137,8 @@ func (a *DaemonAPI) getLocalDaemonAudit(ctx echo.Context, nodename string, param
 	}
 
 	var subsystems []string
-	if *params.Sub != "" {
-		subsystems = strings.Split(*params.Sub, ",")
+	if params.Sub != nil {
+		subsystems = *params.Sub
 	}
 
 	if len(subsystems) == 0 || slices.Contains(subsystems, "pubsub") {
@@ -157,7 +152,7 @@ func (a *DaemonAPI) getLocalDaemonAudit(ctx echo.Context, nodename string, param
 	defer log.Infof("publish audit stop session %s", uuidFromContext(ctx))
 
 	if a.AuditRegistry != nil {
-		a.AuditRegistry.Start(q, subsystems, preemptC, user.GetUserName())
+		a.AuditRegistry.Start(q, subsystems, preemptC, user.Username)
 		defer a.AuditRegistry.Stop(q)
 	}
 

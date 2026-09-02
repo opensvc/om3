@@ -54,7 +54,13 @@ func (a *DaemonAPI) GetObjectConfig(ctx echo.Context, namespace string, kind nam
 		}
 		conf := oc.Config()
 		var keys key.L
-		if params.Kw == nil {
+
+		// A key selection is a user input, so a key it can not evaluate is an
+		// error. The whole config is not: it can hold keys no keyword declares,
+		// and failing the request on the first one would hide all the others.
+		isWholeConfig := params.Kw == nil
+
+		if isWholeConfig {
 			keys = conf.KeyList()
 		} else {
 			for _, s := range *params.Kw {
@@ -73,11 +79,17 @@ func (a *DaemonAPI) GetObjectConfig(ctx echo.Context, namespace string, kind nam
 			}
 
 			if isEvaluated {
-				if i, err := oc.EvalAs(k, evaluatedAs); errors.Is(err, xconfig.ErrNoKeyword) {
+				i, err := oc.EvalAs(k, evaluatedAs)
+				switch {
+				case err != nil && isWholeConfig:
+					s := err.Error()
+					item.Error = &s
+					item.EvaluatedAs = evaluatedAs
+				case errors.Is(err, xconfig.ErrNoKeyword):
 					return JSONProblemf(ctx, http.StatusBadRequest, "EvalAs", "%s", err)
-				} else if err != nil {
+				case err != nil:
 					return JSONProblemf(ctx, http.StatusInternalServerError, "EvalAs", "%s", err)
-				} else {
+				default:
 					item.Evaluated = &i
 					item.EvaluatedAs = evaluatedAs
 				}

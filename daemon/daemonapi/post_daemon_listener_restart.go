@@ -1,7 +1,6 @@
 package daemonapi
 
 import (
-	"fmt"
 	"net/http"
 
 	"github.com/labstack/echo/v4"
@@ -15,7 +14,11 @@ func (a *DaemonAPI) PostDaemonListenerRestart(ctx echo.Context, nodename api.InP
 		return err
 	}
 	nodename = a.parseNodename(nodename)
-	return a.postDaemonSubAction(ctx, nodename, "restart", fmt.Sprintf("lsnr-%s", name), func(c *client.T) (*http.Response, error) {
+	localName, err := listenerName(name)
+	if err != nil {
+		return JSONProblemf(ctx, http.StatusBadRequest, "Invalid parameter", "%s", err)
+	}
+	return a.postDaemonSubAction(ctx, nodename, "restart", localName, func(c *client.T) (*http.Response, error) {
 		return c.PostDaemonListenerRestart(ctx.Request().Context(), nodename, name)
 	})
 }

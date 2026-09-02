@@ -7,15 +7,25 @@ import (
 	"strconv"
 )
 
-// UIDFromString function tries to retrieve user id from a user string 's'
-// 's' may be an user id or a user name
-func UIDFromString(s string) (uint32, error) {
+// LookupUser returns the passwd entry of the user 's' names, which may
+// be a user name or a user id.
+func LookupUser(s string) (*user.User, error) {
 	lookup, err := user.Lookup(s)
 	if err != nil {
 		lookup, err = user.LookupId(s)
 		if err != nil {
-			return 0, fmt.Errorf("unknown user %s", s)
+			return nil, fmt.Errorf("unknown user %s", s)
 		}
+	}
+	return lookup, nil
+}
+
+// UIDFromString function tries to retrieve user id from a user string 's'
+// 's' may be an user id or a user name
+func UIDFromString(s string) (uint32, error) {
+	lookup, err := LookupUser(s)
+	if err != nil {
+		return 0, err
 	}
 	var id int64
 	id, err = strconv.ParseInt(lookup.Uid, 10, 32)

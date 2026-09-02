@@ -30,6 +30,6 @@ func (a *DaemonAPI) GetClusterConfigFile(ctx echo.Context) error {
 	}
 
 	ctx.Response().Header().Add(api.HeaderLastModified, mtime.Format(time.RFC3339Nano))
-	log.Infof("serve config file %s to %s", objPath, userFromContext(ctx).GetUserName())
+	log.Infof("serve config file %s to %s", objPath, userFromContext(ctx).Username)
 	return ctx.File(filename)
 }

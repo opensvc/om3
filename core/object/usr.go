@@ -1,6 +1,7 @@
 package object
 
 import (
+	"crypto/subtle"
 	"fmt"
 
 	"github.com/opensvc/om3/v3/core/keywords"
@@ -63,7 +64,11 @@ func (_ *UsrDB) GrantsFromUsernameAndPassword(username, password string) ([]stri
 	if err != nil {
 		return nil, fmt.Errorf("read password from %s: %w", usrPath, err)
 	}
-	if string(storedPassword) != password {
+	// The comparison is constant time so that it is one less thing to
+	// think about. The reply this leads to says only that the
+	// credentials were refused, which is what actually keeps the two
+	// failures below apart from a caller.
+	if subtle.ConstantTimeCompare(storedPassword, []byte(password)) != 1 {
 		return nil, fmt.Errorf("wrong password")
 	}
 	return user.Config().GetStrings(key.T{Section: "DEFAULT", Option: "grant"}), nil

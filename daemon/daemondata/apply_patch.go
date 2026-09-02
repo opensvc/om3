@@ -179,6 +179,10 @@ func (d *data) setCacheAndPublish(ev event.Event) error {
 	case *msgbus.InstanceMonitorUpdated:
 		instance.MonitorData.Set(c.Path, c.Node, &c.Value)
 		d.publisher.Pub(c, labelFromPeer)
+	case *msgbus.InstanceResourceInfoUpdated:
+		// signal only: no replicated resource info cache to feed, the collector
+		// speaker fetches the key-values from c.Node when it reports them.
+		d.publisher.Pub(c, labelFromPeer)
 	case *msgbus.InstanceStatusDeleted:
 		instance.StatusData.Unset(c.Path, c.Node)
 		d.publisher.Pub(c, labelFromPeer)

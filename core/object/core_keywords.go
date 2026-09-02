@@ -124,7 +124,7 @@ var keywordStore = keywords.Store{
 		Kind:     naming.NewKinds(naming.KindSvc, naming.KindVol, naming.KindNscfg),
 		Option:   "pg_cpu_quota",
 		Scopable: true,
-		Text:     keywords.NewText(fs, "text/kw/core/pg_cpu_shares"),
+		Text:     keywords.NewText(fs, "text/kw/core/pg_cpu_quota"),
 	},
 	{
 		Attr:     "PG.MemOOMControl",
@@ -405,11 +405,23 @@ var keywordStore = keywords.Store{
 	// Secrets
 	{
 		Example:  "test.opensvc.com",
-		Kind:     naming.NewKinds(naming.KindSec, naming.KindUsr),
+		Kind:     naming.NewKinds(naming.KindSec),
 		Option:   "cn",
 		Scopable: true,
 		Section:  "DEFAULT",
 		Text:     keywords.NewText(fs, "text/kw/core/cn"),
+	},
+	{
+		// The api authenticates a client certificate as the user named
+		// by its common name, so the certificate of a usr object is
+		// worth nothing unless this is the name of that object.
+		Default:  "{name}",
+		Example:  "usr1",
+		Kind:     naming.NewKinds(naming.KindUsr),
+		Option:   "cn",
+		Scopable: true,
+		Section:  "DEFAULT",
+		Text:     keywords.NewText(fs, "text/kw/core/cn.usr"),
 	},
 	{
 		Example:  "FR",
@@ -511,11 +523,33 @@ var keywordStore = keywords.Store{
 	},
 	{
 		Example:  "ca",
-		Kind:     naming.NewKinds(naming.KindSec, naming.KindUsr),
+		Kind:     naming.NewKinds(naming.KindSec),
 		Option:   "ca",
 		Scopable: true,
 		Section:  "DEFAULT",
 		Text:     keywords.NewText(fs, "text/kw/core/ca"),
+	},
+	{
+		// Unset, the certificate is self signed, and the listener
+		// refuses it. The cluster ca is the one it verifies client
+		// certificates against, and the only signer that makes a usr
+		// certificate usable.
+		Default:  naming.SecCa.String(),
+		Example:  "ca",
+		Kind:     naming.NewKinds(naming.KindUsr),
+		Option:   "ca",
+		Scopable: true,
+		Section:  "DEFAULT",
+		Text:     keywords.NewText(fs, "text/kw/core/ca.usr"),
+	},
+	{
+		Aliases:  []string{kwoption.ScheduleInfoAlias},
+		Default:  "@60m",
+		Kind:     naming.NewKinds(naming.KindSvc, naming.KindVol),
+		Option:   kwoption.ScheduleInfo,
+		Scopable: true,
+		Section:  "DEFAULT",
+		Text:     keywords.NewText(fs, "text/kw/core/info_schedule"),
 	},
 	{
 		Default:  "@1m",
@@ -524,14 +558,6 @@ var keywordStore = keywords.Store{
 		Scopable: true,
 		Section:  "DEFAULT",
 		Text:     keywords.NewText(fs, "text/kw/core/monitor_schedule"),
-	},
-	{
-		Default:  "@60m",
-		Kind:     naming.NewKinds(naming.KindSvc, naming.KindVol),
-		Option:   kwoption.ScheduleResinfo,
-		Scopable: true,
-		Section:  "DEFAULT",
-		Text:     keywords.NewText(fs, "text/kw/core/resinfo_schedule"),
 	},
 	{
 		Default:  "@10m",

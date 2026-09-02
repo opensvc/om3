@@ -6,7 +6,6 @@ import (
 	"time"
 
 	"github.com/labstack/echo/v4"
-	"github.com/shaj13/go-guardian/v2/auth"
 
 	"github.com/opensvc/om3/v3/daemon/api"
 	"github.com/opensvc/om3/v3/daemon/daemonauth"
@@ -49,7 +48,7 @@ func (a *DaemonAPI) PostAuthToken(ctx echo.Context, params api.PostAuthTokenPara
 		return JSONProblemf(ctx, http.StatusBadRequest, "Invalid parameters", "Invalid role: %s", err)
 	}
 
-	username := ctx.Get("user").(auth.Info).GetUserName()
+	username := userFromContext(ctx).Username
 
 	if params.Subject != nil && *params.Subject != "" {
 		if v, err := assertRole(ctx, rbac.RoleRoot); err != nil {

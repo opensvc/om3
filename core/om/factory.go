@@ -1059,11 +1059,12 @@ func newCmdNodeConfigShow() *cobra.Command {
 	flags := cmd.Flags()
 	commoncmd.FlagNodeSelector(flags, &options.NodeSelector)
 	commoncmd.FlagSections(flags, &options.Sections)
+	commoncmd.FlagRedactSecrets(flags, &options.RedactSecrets)
 	return cmd
 }
 
 func newCmdObjectPrintResourceInfo(kind string) *cobra.Command {
-	var options commands.CmdObjectInstanceResourceInfoList
+	var options commands.CmdObjectInstanceResourceInfo
 	cmd := &cobra.Command{
 		Hidden: true,
 		Use:    "resinfo",
@@ -1434,13 +1435,6 @@ func newCmdObjectCertificatePKCS(kind string) *cobra.Command {
 	flags := cmd.Flags()
 	addFlagsGlobal(flags, &options.OptsGlobal)
 	return cmd
-}
-
-func newCmdObjectPush(kind string) *cobra.Command {
-	return &cobra.Command{
-		Use:   "push",
-		Short: "push information about the object to the collector",
-	}
 }
 
 func newCmdObjectCollectorTag(kind string) *cobra.Command {
@@ -2051,6 +2045,7 @@ func newCmdObjectContainer(kind string) *cobra.Command {
 		newCmdObjectContainerEnter(kind),
 		newCmdObjectContainerLogs(kind),
 		newCmdObjectGroupList(kind, "container"),
+		newCmdObjectGroupInfo(kind, "container"),
 		newCmdObjectGroupPRStart(kind, "container"),
 		newCmdObjectGroupPRStop(kind, "container"),
 		newCmdObjectGroupStart(kind, "container"),
@@ -2068,6 +2063,7 @@ func newCmdObjectIP(kind string) *cobra.Command {
 	cmd := commoncmd.NewCmdObjectIP(kind)
 	cmd.AddCommand(
 		newCmdObjectGroupList(kind, "ip"),
+		newCmdObjectGroupInfo(kind, "ip"),
 		newCmdObjectGroupProvision(kind, "ip"),
 		newCmdObjectGroupStart(kind, "ip"),
 		newCmdObjectGroupStartStandby(kind, "ip"),
@@ -2083,6 +2079,7 @@ func newCmdObjectFS(kind string) *cobra.Command {
 	cmd := commoncmd.NewCmdObjectFS(kind)
 	cmd.AddCommand(
 		newCmdObjectGroupList(kind, "fs"),
+		newCmdObjectGroupInfo(kind, "fs"),
 		newCmdObjectGroupProvision(kind, "fs"),
 		newCmdObjectGroupPRStart(kind, "fs"),
 		newCmdObjectGroupPRStop(kind, "fs"),
@@ -2100,6 +2097,7 @@ func newCmdObjectVolume(kind string) *cobra.Command {
 	cmd := commoncmd.NewCmdObjectVolume(kind)
 	cmd.AddCommand(
 		newCmdObjectGroupList(kind, "volume"),
+		newCmdObjectGroupInfo(kind, "volume"),
 		newCmdObjectGroupProvision(kind, "volume"),
 		newCmdObjectGroupPRStart(kind, "volume"),
 		newCmdObjectGroupPRStop(kind, "volume"),
@@ -2117,6 +2115,7 @@ func newCmdObjectDisk(kind string) *cobra.Command {
 	cmd := commoncmd.NewCmdObjectDisk(kind)
 	cmd.AddCommand(
 		newCmdObjectGroupList(kind, "disk"),
+		newCmdObjectGroupInfo(kind, "disk"),
 		newCmdObjectGroupProvision(kind, "disk"),
 		newCmdObjectGroupPRStart(kind, "disk"),
 		newCmdObjectGroupPRStop(kind, "disk"),
@@ -2139,6 +2138,7 @@ func newCmdObjectShare(kind string) *cobra.Command {
 	cmd := commoncmd.NewCmdObjectShare(kind)
 	cmd.AddCommand(
 		newCmdObjectGroupList(kind, "share"),
+		newCmdObjectGroupInfo(kind, "share"),
 		newCmdObjectGroupShutdown(kind, "share"),
 		newCmdObjectGroupStart(kind, "share"),
 		newCmdObjectGroupStartStandby(kind, "share"),
@@ -2154,6 +2154,7 @@ func newCmdObjectApp(kind string) *cobra.Command {
 	cmd := commoncmd.NewCmdObjectApp(kind)
 	cmd.AddCommand(
 		newCmdObjectGroupList(kind, "app"),
+		newCmdObjectGroupInfo(kind, "app"),
 		newCmdObjectGroupRestart(kind, "app"),
 		newCmdObjectGroupShutdown(kind, "app"),
 		newCmdObjectGroupStart(kind, "app"),
@@ -2167,6 +2168,7 @@ func newCmdObjectTask(kind string) *cobra.Command {
 	cmd := commoncmd.NewCmdObjectTask(kind)
 	cmd.AddCommand(
 		newCmdObjectGroupList(kind, "task"),
+		newCmdObjectGroupInfo(kind, "task"),
 		newCmdObjectGroupRun(kind, "task"),
 	)
 	return cmd
@@ -2175,8 +2177,8 @@ func newCmdObjectTask(kind string) *cobra.Command {
 func newCmdObjectResource(kind string) *cobra.Command {
 	cmd := commoncmd.NewCmdObjectResource(kind)
 	cmd.AddCommand(
-		newCmdObjectResourceInfo(kind),
 		newCmdObjectGroupList(kind, ""),
+		newCmdObjectGroupInfo(kind, ""),
 		newCmdObjectGroupProvision(kind, ""),
 		newCmdObjectGroupUnprovision(kind, ""),
 		newCmdObjectGroupPRStart(kind, ""),
@@ -2455,6 +2457,7 @@ func newCmdObjectSync(kind string) *cobra.Command {
 		newCmdObjectGroupFull(kind, "sync"),
 		newCmdObjectGroupIngest(kind, "sync"),
 		newCmdObjectGroupList(kind, "sync"),
+		newCmdObjectGroupInfo(kind, "sync"),
 		newCmdObjectGroupResync(kind, "sync"),
 		newCmdObjectGroupSplit(kind, "sync"),
 		newCmdObjectGroupUpdate(kind, "sync"),
@@ -2667,6 +2670,7 @@ func newCmdObjectConfigShow(kind string) *cobra.Command {
 	flags := cmd.Flags()
 	commoncmd.FlagObjectSelector(flags, &options.ObjectSelector)
 	commoncmd.FlagSections(flags, &options.Sections)
+	commoncmd.FlagRedactSecrets(flags, &options.RedactSecrets)
 	return cmd
 }
 
@@ -3161,23 +3165,6 @@ func newCmdObjectPurge(kind string) *cobra.Command {
 	return cmd
 }
 
-func newCmdObjectPushResourceInfo(kind string) *cobra.Command {
-	var options commands.CmdObjectInstanceResourceInfoPush
-	cmd := &cobra.Command{
-		Hidden: true,
-		Use:    "resinfo",
-		Short:  "push key-values reported by resources",
-		RunE: func(cmd *cobra.Command, args []string) error {
-			return options.Run(kind)
-		},
-	}
-	flags := cmd.Flags()
-	addFlagsGlobal(flags, &options.OptsGlobal)
-	commoncmd.FlagsLock(flags, &options.OptsLock)
-	commoncmd.FlagNodeSelector(flags, &options.NodeSelector)
-	return cmd
-}
-
 func newCmdObjectRestart(kind string) *cobra.Command {
 	var options commands.CmdObjectRestart
 	cmd := &cobra.Command{
@@ -3303,45 +3290,18 @@ func newCmdObjectInstanceUpdate(kind string) *cobra.Command {
 	return cmd
 }
 
-func newCmdObjectResourceInfoList(kind string) *cobra.Command {
-	var options commands.CmdObjectInstanceResourceInfoList
-	cmd := &cobra.Command{
-		Use:     "list",
-		Short:   "list the key-values reported by the resources",
-		Aliases: []string{"ls"},
-		RunE: func(cmd *cobra.Command, args []string) error {
-			return options.Run(kind)
-		},
-	}
-	flags := cmd.Flags()
-	addFlagsGlobal(flags, &options.OptsGlobal)
-	commoncmd.FlagNodeSelector(flags, &options.NodeSelector)
-	return cmd
-}
-
-func newCmdObjectResourceInfoPush(kind string) *cobra.Command {
-	var options commands.CmdObjectInstanceResourceInfoPush
-	cmd := &cobra.Command{
-		Use:   "push",
-		Short: "push key-values reported by resources",
-		RunE: func(cmd *cobra.Command, args []string) error {
-			return options.Run(kind)
-		},
+func newCmdObjectGroupInfo(kind, group string) *cobra.Command {
+	var options commands.CmdObjectInstanceResourceInfo
+	cmd := commoncmd.NewCmdObjectGroupInfo(kind, group)
+	cmd.RunE = func(cmd *cobra.Command, args []string) error {
+		commoncmd.SetRIDFromArgs(&options.RID, args, group, group)
+		return options.Run(kind)
 	}
 	flags := cmd.Flags()
 	addFlagsGlobal(flags, &options.OptsGlobal)
 	commoncmd.FlagsLock(flags, &options.OptsLock)
 	commoncmd.FlagNodeSelector(flags, &options.NodeSelector)
-	commoncmd.FlagIgnoreNoCollectorConfigured(flags, &options.IgnoreNoCollectorConfigured)
-	return cmd
-}
-
-func newCmdObjectResourceInfo(kind string) *cobra.Command {
-	cmd := commoncmd.NewCmdObjectResourceInfo(kind)
-	cmd.AddCommand(
-		newCmdObjectResourceInfoList(kind),
-		newCmdObjectResourceInfoPush(kind),
-	)
+	commoncmd.FlagRefreshResInfo(flags, &options.Refresh)
 	return cmd
 }
 

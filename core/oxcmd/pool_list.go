@@ -5,11 +5,10 @@ import (
 	"fmt"
 
 	"github.com/opensvc/om3/v3/core/client"
+	"github.com/opensvc/om3/v3/core/commoncmd"
 	"github.com/opensvc/om3/v3/core/output"
 	"github.com/opensvc/om3/v3/core/rawconfig"
 	"github.com/opensvc/om3/v3/daemon/api"
-	"github.com/opensvc/om3/v3/util/sizeconv"
-	"github.com/opensvc/om3/v3/util/unstructured"
 )
 
 type (
@@ -22,13 +21,9 @@ type (
 func (t *CmdPoolList) Run() error {
 
 	render := func(items api.PoolItems) {
-		lines := make(unstructured.List, len(items))
+		lines := make([]commoncmd.PoolLine, len(items))
 		for i, item := range items {
-			u := item.Unstructured()
-			u["bin_free"] = sizeconv.BSizeCompact(float64(item.Free))
-			u["bin_used"] = sizeconv.BSizeCompact(float64(item.Used))
-			u["bin_size"] = sizeconv.BSizeCompact(float64(item.Size))
-			lines[i] = u
+			lines[i] = commoncmd.NewPoolLine(item)
 		}
 		output.Renderer{
 			DefaultOutput: "tab=NAME:name,TYPE:type,CAPABILITIES:capabilities[*],HEAD:head,VOLUME_COUNT:volume_count,BIN_SIZE:bin_size,BIN_USED:bin_used,BIN_FREE:bin_free",

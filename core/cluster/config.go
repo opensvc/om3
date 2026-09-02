@@ -5,6 +5,7 @@ import (
 
 	"golang.org/x/time/rate"
 
+	"github.com/opensvc/om3/v3/util/deepcopy"
 	"github.com/opensvc/om3/v3/util/file"
 )
 
@@ -71,17 +72,12 @@ func (t Nodes) Contains(s string) bool {
 }
 
 func (t *Config) DeepCopy() *Config {
-	return &Config{
-		ID:         t.ID,
-		Name:       t.Name,
-		Nodes:      append(Nodes{}, t.Nodes...),
-		DNS:        append([]string{}, t.DNS...),
-		CASecPaths: append([]string{}, t.CASecPaths...),
-		Listener:   t.Listener,
-		Quorum:     t.Quorum,
-		secret:     t.secret,
-		sshKeyFile: t.sshKeyFile,
-	}
+	n := *t
+	n.Issues = deepcopy.Slice(t.Issues)
+	n.Nodes = deepcopy.Slice(t.Nodes)
+	n.DNS = deepcopy.Slice(t.DNS)
+	n.CASecPaths = deepcopy.Slice(t.CASecPaths)
+	return &n
 }
 
 // SSHKeyFile returns the configured SSH key file path and a boolean indicating

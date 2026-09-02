@@ -1,6 +1,8 @@
 package unstructured
 
 import (
+	"bytes"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"reflect"
@@ -26,12 +28,35 @@ func Append(l List, v any) List {
 }
 
 func AppendStrict(l List, v any) (List, error) {
-	if i, ok := v.(unstructureder); !ok {
-		return l, fmt.Errorf("%w: %s", ErrNoInterface, reflect.TypeOf(v))
-	} else {
-		l = append(l, i.Unstructured())
+	if i, ok := v.(unstructureder); ok {
+		return append(l, i.Unstructured()), nil
 	}
-	return l, nil
+	m, err := fromJSON(v)
+	if err != nil {
+		return l, fmt.Errorf("%w: %s: %s", ErrNoInterface, reflect.TypeOf(v), err)
+	}
+	return append(l, m), nil
+}
+
+// fromJSON returns the map a value marshals to, keyed by the json names
+// its tags declare.
+//
+// This is for the readers that need a map and cannot walk a struct, the
+// go templates of the template renderer among them. The numbers are
+// decoded as json.Number rather than as float64, so that a large int64,
+// a size in bytes for example, prints its digits and not an exponent.
+func fromJSON(v any) (Map, error) {
+	b, err := json.Marshal(v)
+	if err != nil {
+		return nil, err
+	}
+	m := make(Map)
+	dec := json.NewDecoder(bytes.NewReader(b))
+	dec.UseNumber()
+	if err := dec.Decode(&m); err != nil {
+		return nil, err
+	}
+	return m, nil
 }
 
 func NewList() List {

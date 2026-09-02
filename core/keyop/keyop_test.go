@@ -105,6 +105,34 @@ func TestParse(t *testing.T) {
 			op:   Set,
 			val:  "mirror {volume#1.exposed_devs[0]} {volume#2.exposed_devs[0]}",
 		},
+		{
+			// A quote pair around the value is the configuration file
+			// quoting, and means the same here as it does there.
+			expr: `section.test="7"`,
+			key:  key.T{Section: "section", Option: "test"},
+			op:   Set,
+			val:  "7",
+		},
+		{
+			expr: `section.test=' padded '`,
+			key:  key.T{Section: "section", Option: "test"},
+			op:   Set,
+			val:  " padded ",
+		},
+		{
+			// The quote is part of the value when it is not a surrounding
+			// pair.
+			expr: `section.test=a"b`,
+			key:  key.T{Section: "section", Option: "test"},
+			op:   Set,
+			val:  `a"b`,
+		},
+		{
+			expr: `section.test="a"b"`,
+			key:  key.T{Section: "section", Option: "test"},
+			op:   Set,
+			val:  `"a"b"`,
+		},
 	}
 	for _, test := range tests {
 		t.Run(test.expr, func(t *testing.T) {

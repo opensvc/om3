@@ -90,6 +90,24 @@ func (e CapabilityListKind) Valid() bool {
 	}
 }
 
+// Defines values for DaemonListenerName.
+const (
+	ApiInet DaemonListenerName = "api.inet"
+	ApiUx   DaemonListenerName = "api.ux"
+)
+
+// Valid indicates whether the value is a known member of the DaemonListenerName enum.
+func (e DaemonListenerName) Valid() bool {
+	switch e {
+	case ApiInet:
+		return true
+	case ApiUx:
+		return true
+	default:
+		return false
+	}
+}
+
 // Defines values for DataKeyListKind.
 const (
 	DataKeyListKindDataKeyList DataKeyListKind = "DataKeyList"
@@ -1062,8 +1080,11 @@ type DaemonListener struct {
 	UpdatedAt    time.Time `json:"updated_at"`
 }
 
-// DaemonListenerName Listener name
-type DaemonListenerName = string
+// DaemonListenerName Listener name.
+//
+// The listeners are named the same here and in the audit subsystem
+// list: api.ux serves the unix socket, api.inet the tcp port.
+type DaemonListenerName string
 
 // DaemonPid defines model for DaemonPid.
 type DaemonPid struct {
@@ -1343,11 +1364,17 @@ type KeywordDefinitionItem struct {
 	Minimal       bool     `json:"minimal"`
 	Option        string   `json:"option"`
 	Provisioning  bool     `json:"provisioning"`
-	Required      bool     `json:"required"`
-	Scopable      bool     `json:"scopable"`
-	Section       string   `json:"section"`
-	Text          string   `json:"text"`
-	Types         []string `json:"types"`
+
+	// RedactSecret True when the keyword value is a secret, hidden by the config show --redact-secrets flag.
+	RedactSecret bool `json:"redactSecret"`
+
+	// ReplacedBy The name of the keyword to use instead of this deprecated one.
+	ReplacedBy string   `json:"replacedBy"`
+	Required   bool     `json:"required"`
+	Scopable   bool     `json:"scopable"`
+	Section    string   `json:"section"`
+	Text       string   `json:"text"`
+	Types      []string `json:"types"`
 }
 
 // KeywordDefinitionItems defines model for KeywordDefinitionItems.
@@ -1364,12 +1391,14 @@ type KeywordDefinitionListKind string
 
 // KeywordItem defines model for KeywordItem.
 type KeywordItem struct {
-	Evaluated   *any   `json:"evaluated,omitempty"`
-	EvaluatedAs string `json:"evaluated_as"`
-	Keyword     string `json:"keyword"`
-	Node        string `json:"node"`
-	Object      string `json:"object"`
-	Value       string `json:"value"`
+	// Error The reason the keyword could not be evaluated. Only set when the whole configuration is evaluated, where a single unresolvable key must not fail the request. When a keyword selection is passed, an unresolvable key is reported as a 400 instead.
+	Error       *string `json:"error,omitempty"`
+	Evaluated   *any    `json:"evaluated,omitempty"`
+	EvaluatedAs string  `json:"evaluated_as"`
+	Keyword     string  `json:"keyword"`
+	Node        string  `json:"node"`
+	Object      string  `json:"object"`
+	Value       string  `json:"value"`
 }
 
 // KeywordItems defines model for KeywordItems.
@@ -1387,7 +1416,12 @@ type KeywordListKind string
 // Kind defines model for Kind.
 type Kind = naming.Kind
 
-// LogControlBody defines model for LogControlBody.
+// LogControlBody The level below which the daemon logs are not emitted.
+//
+// The daemon writes to journald, which is not given anything below
+// the info level, so info is the most verbose value here. A debug
+// or trace feed is obtained from POST /daemon/audit, which reads
+// the messages before they reach a writer.
 type LogControlBody = LogControl
 
 // LogList responseLogList is a list of sse
@@ -1458,19 +1492,23 @@ type NodeActionAccepted struct {
 
 // NodeConfig defines model for NodeConfig.
 type NodeConfig struct {
-	Collector              *NodeConfigCollector `json:"collector,omitempty"`
-	Env                    string               `json:"env"`
-	Hooks                  []NodeConfigHook     `json:"hooks"`
-	Labels                 map[string]string    `json:"labels"`
-	MaintenanceGracePeriod time.Duration        `json:"maintenance_grace_period"`
-	MaxParallel            int                  `json:"max_parallel"`
-	MinAvailMemPct         int                  `json:"min_avail_mem_pct"`
-	MinAvailSwapPct        int                  `json:"min_avail_swap_pct"`
-	PRKey                  string               `json:"prkey"`
-	ReadyPeriod            time.Duration        `json:"ready_period"`
-	RejoinGracePeriod      time.Duration        `json:"rejoin_grace_period"`
-	SplitAction            string               `json:"split_action"`
-	SSHKey                 string               `json:"sshkey"`
+	Collector *NodeConfigCollector `json:"collector,omitempty"`
+	Env       string               `json:"env"`
+	Hooks     []NodeConfigHook     `json:"hooks"`
+
+	// Issues The configuration faults found on this node that a human has
+	// to correct, as the cluster configuration has its own.
+	Issues                 *[]string         `json:"issues,omitempty"`
+	Labels                 map[string]string `json:"labels"`
+	MaintenanceGracePeriod time.Duration     `json:"maintenance_grace_period"`
+	MaxParallel            int               `json:"max_parallel"`
+	MinAvailMemPct         int               `json:"min_avail_mem_pct"`
+	MinAvailSwapPct        int               `json:"min_avail_swap_pct"`
+	PRKey                  string            `json:"prkey"`
+	ReadyPeriod            time.Duration     `json:"ready_period"`
+	RejoinGracePeriod      time.Duration     `json:"rejoin_grace_period"`
+	SplitAction            string            `json:"split_action"`
+	SSHKey                 string            `json:"sshkey"`
 }
 
 // NodeConfigCollector defines model for NodeConfigCollector.
@@ -2344,7 +2382,10 @@ type InPathHeartbeatName = DaemonHeartbeatName
 // InPathKind defines model for inPathKind.
 type InPathKind = Kind
 
-// InPathListenerName Listener name
+// InPathListenerName Listener name.
+//
+// The listeners are named the same here and in the audit subsystem
+// list: api.ux serves the unix socket, api.inet the tcp port.
 type InPathListenerName = DaemonListenerName
 
 // InPathName defines model for inPathName.
@@ -2695,6 +2736,12 @@ type PatchNodeConfigParams struct {
 	Set    *InQuerySets    `form:"set,omitempty" json:"set,omitempty"`
 }
 
+// GetNodeConfigFileParams defines parameters for GetNodeConfigFile.
+type GetNodeConfigFileParams struct {
+	// RedactSecrets if true, redact secrets in the cluster configuration file
+	RedactSecrets *bool `form:"redact-secrets,omitempty" json:"redact-secrets,omitempty"`
+}
+
 // GetNodeConfigKeywordsParams defines parameters for GetNodeConfigKeywords.
 type GetNodeConfigKeywordsParams struct {
 	// Driver show only keywords of this driver
@@ -2718,8 +2765,9 @@ type PostDaemonAuditParams struct {
 	// Level the audit level
 	Level *PostDaemonAuditParamsLevel `form:"level,omitempty" json:"level,omitempty"`
 
-	// Sub the names of the subsystems to audit
-	Sub *string `form:"sub,omitempty" json:"sub,omitempty"`
+	// Sub The names of the subsystems to audit, repeated once per
+	// subsystem. All of them are audited when none is named.
+	Sub *[]string `form:"sub,omitempty" json:"sub,omitempty"`
 
 	// Preempt preempt the current audit if any is running.
 	Preempt *bool `form:"preempt,omitempty" json:"preempt,omitempty"`
@@ -2754,6 +2802,9 @@ type GetDaemonEventsParams struct {
 type DeleteDaemonProcessParams struct {
 	// Pid the pid of the process to kill.
 	Pid *[]int `form:"pid,omitempty" json:"pid,omitempty"`
+
+	// Signal the signal to send, as a name (TERM, SIGTERM) or a number (15). Defaults to SIGKILL.
+	Signal *string `form:"signal,omitempty" json:"signal,omitempty"`
 }
 
 // GetDaemonProcessParams defines parameters for GetDaemonProcess.
@@ -2828,6 +2879,13 @@ type PostInstanceActionFreezeParams struct {
 	SessionId *InQuerySessionID `form:"session_id,omitempty" json:"session_id,omitempty"`
 }
 
+// PostInstanceActionInfoParams defines parameters for PostInstanceActionInfo.
+type PostInstanceActionInfoParams struct {
+	// Rid a resource selector expression
+	Rid       *InQueryRid       `form:"rid,omitempty" json:"rid,omitempty"`
+	SessionId *InQuerySessionID `form:"session_id,omitempty" json:"session_id,omitempty"`
+}
+
 // PostInstanceActionPGUpdateParams defines parameters for PostInstanceActionPGUpdate.
 type PostInstanceActionPGUpdateParams struct {
 	Slaves    *InQueryAllSlaves `form:"slaves,omitempty" json:"slaves,omitempty"`
@@ -2889,11 +2947,6 @@ type PostInstanceActionPRStopParams struct {
 	Subset *InQuerySubset `form:"subset,omitempty" json:"subset,omitempty"`
 	Tag    *InQueryTag    `form:"tag,omitempty" json:"tag,omitempty"`
 	To     *InQueryTo     `form:"to,omitempty" json:"to,omitempty"`
-}
-
-// PostInstanceActionPushResourceInfoParams defines parameters for PostInstanceActionPushResourceInfo.
-type PostInstanceActionPushResourceInfoParams struct {
-	SessionId *InQuerySessionID `form:"session_id,omitempty" json:"session_id,omitempty"`
 }
 
 // PostInstanceActionRestartParams defines parameters for PostInstanceActionRestart.
@@ -3137,6 +3190,12 @@ type PatchObjectConfigParams struct {
 	Set    *InQuerySets    `form:"set,omitempty" json:"set,omitempty"`
 }
 
+// GetObjectConfigFileParams defines parameters for GetObjectConfigFile.
+type GetObjectConfigFileParams struct {
+	// RedactSecrets if true, redact secrets in the cluster configuration file
+	RedactSecrets *bool `form:"redact-secrets,omitempty" json:"redact-secrets,omitempty"`
+}
+
 // GetObjectConfigKeywordsParams defines parameters for GetObjectConfigKeywords.
 type GetObjectConfigKeywordsParams struct {
 	// Driver show only keywords of this driver
@@ -3233,9 +3292,6 @@ type PostInstanceProgressJSONRequestBody = PostInstanceProgress
 
 // PostInstanceStatusJSONRequestBody defines body for PostInstanceStatus for application/json ContentType.
 type PostInstanceStatusJSONRequestBody = InstanceStatus
-
-// PostDaemonListenerLogControlJSONRequestBody defines body for PostDaemonListenerLogControl for application/json ContentType.
-type PostDaemonListenerLogControlJSONRequestBody = LogControlBody
 
 // PostDaemonLogControlJSONRequestBody defines body for PostDaemonLogControl for application/json ContentType.
 type PostDaemonLogControlJSONRequestBody = LogControlBody

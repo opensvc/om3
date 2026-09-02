@@ -51,6 +51,8 @@ import (
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promauto"
 
+	"github.com/opensvc/om3/v3/util/metricsreg"
+
 	"github.com/opensvc/om3/v3/util/durationlog"
 	"github.com/opensvc/om3/v3/util/plog"
 	"github.com/opensvc/om3/v3/util/xmap"
@@ -287,19 +289,43 @@ var (
 
 	uint64Incr = uint64(1)
 
-	publicationTotal = promauto.NewCounterVec(
+	// The counters below are split between the default registry, which is
+	// scraped at the cluster's normal interval, and the pubsub registry
+	// served at /metrics/pubsub. What decides is whether the label set
+	// grows with the cluster: publicationPushedByFilterTotal alone is 425
+	// series on a 103 object cluster, three quarters of all pubsub series.
+	//
+	// The aggregates carry the plain names and the detail says which
+	// dimension it is broken down by, following what the scheduler
+	// already does with runs_total against object_runs_total.
+
+	publicationTotal = promauto.NewCounter(
 		prometheus.CounterOpts{
 			Name: "opensvc_pubsub_publication_total",
-			Help: "The total number of pubsub publications",
-		},
-		[]string{"kind"})
+			Help: "The total number of pubsub publications (per message kind at /metrics/pubsub)",
+		})
 
-	publicationPushedTotal = promauto.NewCounterVec(
+	publicationPushedTotal = promauto.NewCounter(
 		prometheus.CounterOpts{
 			Name: "opensvc_pubsub_publication_pushed_total",
-			Help: "The total number of pubsub publications pushed",
-		},
-		[]string{"filterkey"})
+			Help: "The total number of pubsub publications pushed to a subscriber (per subscription filter key at /metrics/pubsub)",
+		})
+
+	subscriptionFilterTotal = promauto.NewCounter(
+		prometheus.CounterOpts{
+			Name: "opensvc_pubsub_subscription_filter_total",
+			Help: "The total number of pubsub subscription filter operations (per message kind at /metrics/pubsub)",
+		})
+
+	// filterKeys reports how many distinct filter keys
+	// publicationPushedByFilterTotal is broken down by, which is what
+	// makes /metrics/pubsub big. Watching it is how the size of the
+	// detail set is known without scraping the detail.
+	filterKeys = promauto.NewGauge(
+		prometheus.GaugeOpts{
+			Name: "opensvc_pubsub_filterkeys",
+			Help: "The number of distinct pubsub filter keys published to (the keys themselves at /metrics/pubsub)",
+		})
 
 	subscriptionTotal = promauto.NewCounterVec(
 		prometheus.CounterOpts{
@@ -308,21 +334,14 @@ var (
 		},
 		[]string{"operation"})
 
-	subscriptionFilterTotal = promauto.NewCounterVec(
-		prometheus.CounterOpts{
-			Name: "opensvc_pubsub_subscription_filter_total",
-			Help: "The total number of pubsub subscription filter operations",
-		},
-		[]string{"kind"})
-
 	subscriptionQueueThresholdTotal = promauto.NewCounterVec(
 		prometheus.CounterOpts{
 			Name: "opensvc_pubsub_subscription_queue_threshold_total",
 			Help: "The total number of pubsub subscription queue threshold operations" +
-				" by family (imon, omon, daemondata, api, ...)," +
-				" by change (increase or decrease)," +
-				" by block (yes when subscription has no timeout, else no)" +
-				" by level (debug, info, warn).",
+				" (family: the subscription family," +
+				" change: increase or decrease," +
+				" block: the blocking subscription id," +
+				" level: the threshold level)",
 		},
 		[]string{"family", "change", "block", "level"})
 
@@ -330,10 +349,48 @@ var (
 		prometheus.CounterOpts{
 			Name: "opensvc_pubsub_subscription_queue_full_total",
 			Help: "The total number of pubsub subscription queue full operations" +
-				" by family (imon, omon, daemondata, api, ...)," +
-				" by block (yes when subscription has no timeout, else no).",
+				" (family: the subscription family," +
+				" block: the blocking subscription id)",
 		},
 		[]string{"family", "block"})
+
+	// Detail, served at /metrics/pubsub.
+
+	publicationByKindTotal = prometheus.NewCounterVec(
+		prometheus.CounterOpts{
+			Name: "opensvc_pubsub_publication_by_kind_total",
+			Help: "The total number of pubsub publications, by message kind",
+		},
+		[]string{"kind"})
+
+	publicationPushedByFilterTotal = prometheus.NewCounterVec(
+		prometheus.CounterOpts{
+			Name: "opensvc_pubsub_publication_pushed_by_filter_total",
+			Help: "The total number of pubsub publications pushed, by subscription filter key",
+		},
+		[]string{"filterkey"})
+
+	subscriptionFilterByKindTotal = prometheus.NewCounterVec(
+		prometheus.CounterOpts{
+			Name: "opensvc_pubsub_subscription_filter_by_kind_total",
+			Help: "The total number of pubsub subscription filter operations, by message kind",
+		},
+		[]string{"kind"})
+)
+
+func init() {
+	metricsreg.Pubsub.MustRegister(
+		publicationByKindTotal,
+		publicationPushedByFilterTotal,
+		subscriptionFilterByKindTotal,
+	)
+}
+
+var (
+	// pushedFilterKeys is what filterKeys reports the size of. Only
+	// doPublication writes it, and that runs on the bus command
+	// goroutine, the same one that reads subMap and subs without a mutex.
+	pushedFilterKeys = make(map[string]struct{})
 )
 
 // Key returns labelMap key as a string
@@ -645,7 +702,12 @@ func (b *Bus) doPublication(c cmdPub) {
 				b.log.Tracef("route %s to %s", c, sub)
 				queueLen := sub.queued.Add(1)
 				sub.q <- c.data
-				publicationPushedTotal.With(prometheus.Labels{"filterkey": toFilterKey}).Inc()
+				publicationPushedTotal.Inc()
+				publicationPushedByFilterTotal.With(prometheus.Labels{"filterkey": toFilterKey}).Inc()
+				if _, ok := pushedFilterKeys[toFilterKey]; !ok {
+					pushedFilterKeys[toFilterKey] = struct{}{}
+					filterKeys.Set(float64(len(pushedFilterKeys)))
+				}
 				if queueLen >= sub.queuedSize {
 					subscriptionQueueFullTotal.With(prometheus.Labels{"family": sub.family, "block": sub.block}).Inc()
 				}
@@ -708,7 +770,8 @@ func (b *Bus) doPublication(c cmdPub) {
 	if c.resp != nil {
 		c.resp <- true
 	}
-	publicationTotal.With(prometheus.Labels{"kind": c.dataType}).Inc()
+	publicationTotal.Inc()
+	publicationByKindTotal.With(prometheus.Labels{"kind": c.dataType}).Inc()
 }
 
 func (b *Bus) onSubAddFilter(c cmdSubAddFilter) {
@@ -1156,7 +1219,8 @@ func (sub *Subscription) DelFilter(v any, labels ...Label) {
 		return
 	}
 	<-respC
-	subscriptionFilterTotal.With(prometheus.Labels{"kind": op.dataType}).Inc()
+	subscriptionFilterTotal.Inc()
+	subscriptionFilterByKindTotal.With(prometheus.Labels{"kind": op.dataType}).Inc()
 }
 
 func (sub *Subscription) AddFilter(v any, labels ...Label) {
@@ -1176,7 +1240,8 @@ func (sub *Subscription) AddFilter(v any, labels ...Label) {
 		return
 	}
 	<-respC
-	subscriptionFilterTotal.With(prometheus.Labels{"kind": op.dataType}).Inc()
+	subscriptionFilterTotal.Inc()
+	subscriptionFilterByKindTotal.With(prometheus.Labels{"kind": op.dataType}).Inc()
 }
 
 func (sub *Subscription) Start() {

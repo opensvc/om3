@@ -267,6 +267,7 @@ func (t *T) run(ctx context.Context) error {
 	if err := rawconfig.CreateMandatoryDirectories(); err != nil {
 		return fmt.Errorf("create mandatory directories: %w", err)
 	}
+	setupCrashReport()
 	release, err := getLock("Run")
 	if err != nil {
 		return err

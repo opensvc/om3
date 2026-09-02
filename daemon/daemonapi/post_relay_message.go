@@ -22,7 +22,7 @@ func (a *DaemonAPI) PostRelayMessage(ctx echo.Context) error {
 	if v, err := assertGrant(ctx, rbac.GrantHeartbeat); !v {
 		return err
 	}
-	username := userFromContext(ctx).GetUserName()
+	username := userFromContext(ctx).Username
 
 	if err := ctx.Bind(&payload); err != nil {
 		return JSONProblemf(ctx, http.StatusBadRequest, "Invalid body", "%s", err)

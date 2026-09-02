@@ -2,7 +2,6 @@ package commoncmd
 
 import (
 	"context"
-	"fmt"
 	"net/http"
 
 	"github.com/spf13/cobra"
@@ -20,16 +19,16 @@ type (
 func NewCmdDaemonHeartbeatRestart() *cobra.Command {
 	options := CmdDaemonHeartbeatRestart{}
 	cmd := &cobra.Command{
-		Use:   "restart",
-		Short: fmt.Sprintf("restart daemon heartbeat component `name`"),
+		Use:   "restart NAME",
+		Short: "restart a daemon heartbeat rx or tx",
+		Args:  cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
+			options.Name = args[0]
 			return options.Run()
 		},
 	}
 	flags := cmd.Flags()
 	FlagNodeSelector(flags, &options.NodeSelector)
-	FlagDaemonHeartbeatName(flags, &options.Name)
-	cmd.MarkFlagRequired("name")
 	return cmd
 }
 

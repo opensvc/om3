@@ -20,3 +20,18 @@ func (t *Instance) IsZero() bool {
 	}
 	return true
 }
+
+// DeepCopy returns a copy of the instance sharing nothing with it.
+func (t *Instance) DeepCopy() *Instance {
+	if t == nil {
+		return nil
+	}
+	n := Instance{Config: t.Config.DeepCopy()}
+	if t.Monitor != nil {
+		n.Monitor = t.Monitor.DeepCopy()
+	}
+	if t.Status != nil {
+		n.Status = t.Status.DeepCopy()
+	}
+	return &n
+}

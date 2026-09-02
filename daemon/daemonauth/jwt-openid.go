@@ -10,22 +10,27 @@ import (
 	"path"
 	"time"
 
-	"github.com/shaj13/go-guardian/v2/auth"
-	"github.com/shaj13/go-guardian/v2/auth/claims"
-	"github.com/shaj13/go-guardian/v2/auth/strategies/oauth2"
-	"github.com/shaj13/go-guardian/v2/auth/strategies/oauth2/jwt"
-	"github.com/shaj13/go-guardian/v2/auth/strategies/token"
-	"github.com/shaj13/libcache"
+	"github.com/golang-jwt/jwt/v5"
 )
 
 type (
-	k struct {
-		baseStrategy auth.Strategy
+	// openIDStrategy authenticates the id tokens of the openid provider
+	// the cluster is configured with.
+	openIDStrategy struct {
+		jwks     *jwks
+		issuer   string
+		clientID string
 	}
 
-	IDTokenGrant struct {
-		*jwt.IDToken
-		Grant []string `json:"entitlements"`
+	// openIDClaims is what this daemon reads from an id token. The
+	// entitlements claim is where the provider is expected to put the
+	// opensvc grants: the rest of the claims say who the user is, this
+	// one says what they may do.
+	openIDClaims struct {
+		PreferredUsername string   `json:"preferred_username"`
+		Email             string   `json:"email"`
+		Grant             []string `json:"entitlements"`
+		jwt.RegisteredClaims
 	}
 
 	OpenIDConfiguration struct {
@@ -40,39 +45,85 @@ type (
 	}
 )
 
-func (i IDTokenGrant) New() oauth2.ClaimsResolver {
-	return &IDTokenGrant{
-		IDToken: &jwt.IDToken{
-			Info:     auth.NewUserInfo("", "", []string{}, make(auth.Extensions)),
-			Standard: new(claims.Standard),
-		},
-		Grant: make([]string, 0),
-	}
+// openIDSigningMethods are the algorithms an id token may be signed with.
+//
+// The list is asymmetric algorithms only: the provider signs with a
+// private key we never see, and we verify with the public key its jwks
+// publishes. A token naming HMAC would have us verify it with a key
+// anyone can fetch, and one naming none would have us verify nothing.
+var openIDSigningMethods = []string{
+	"RS256", "RS384", "RS512",
+	"PS256", "PS384", "PS512",
+	"ES256", "ES384", "ES512",
 }
 
-func (i IDTokenGrant) Verify(options claims.VerifyOptions) error {
-	return i.IDToken.Verify(options)
-}
-
-func (i IDTokenGrant) Resolve() auth.Info {
-	return i
-}
-
-// Authenticate verifies user credentials using the base strategy and maps
-// the ID token to user information with extensions with grant.
-func (s *k) Authenticate(ctx context.Context, r *http.Request) (auth.Info, error) {
-	info, err := s.baseStrategy.Authenticate(ctx, r)
+func (s *openIDStrategy) Authenticate(ctx context.Context, r *http.Request) (*Info, error) {
+	tkString, err := bearerToken(r)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("strategies/openid: %w", err)
 	}
-	tk := info.(IDTokenGrant)
-	extensions := authenticatedExtensions(StrategyJWTOpenID, tk.Issuer, tk.Grant...)
-	return auth.NewUserInfo(info.GetUserName(), info.GetUserName(), nil, *extensions), nil
+	key := cacheKey(StrategyJWTOpenID, tkString)
+	if info, ok := authCache.get(key); ok {
+		return info, nil
+	}
+	claims := &openIDClaims{}
+	if _, err := jwt.ParseWithClaims(tkString, claims, s.keyFunc(ctx),
+		jwt.WithValidMethods(openIDSigningMethods),
+		jwt.WithIssuer(s.issuer),
+		jwt.WithAudience(s.clientID),
+		jwt.WithExpirationRequired(),
+	); err != nil {
+		return nil, fmt.Errorf("strategies/openid: %w", err)
+	}
+	info := &Info{
+		Username: claims.username(),
+		Strategy: StrategyJWTOpenID,
+		Issuer:   claims.Issuer,
+		Grants:   claims.Grant,
+	}
+	authCache.set(key, info, time.Until(claims.ExpiresAt.Time))
+	return info, nil
+}
+
+// keyFunc returns the public key a token is to be verified with, the one
+// its kid header names in the provider's key set.
+//
+// The key set says which algorithm each key is for, and a token asking
+// for a different one is refused rather than verified: a key published
+// for RS256 is not to be used to check an ES256 signature, whatever the
+// token says.
+func (s *openIDStrategy) keyFunc(ctx context.Context) jwt.Keyfunc {
+	return func(token *jwt.Token) (interface{}, error) {
+		kid, ok := token.Header["kid"].(string)
+		if !ok || kid == "" {
+			return nil, fmt.Errorf("token has no kid header")
+		}
+		key, err := s.jwks.get(ctx, kid)
+		if err != nil {
+			return nil, err
+		}
+		if key.alg != "" && key.alg != token.Method.Alg() {
+			return nil, fmt.Errorf("token alg %s does not match the alg %s of key %s",
+				token.Method.Alg(), key.alg, kid)
+		}
+		return key.key, nil
+	}
+}
+
+// username is who the token is about: what the provider calls them, then
+// their email, then the subject, which is the only one it must have.
+func (c *openIDClaims) username() string {
+	for _, candidate := range []string{c.PreferredUsername, c.Email, c.Subject} {
+		if candidate != "" {
+			return candidate
+		}
+	}
+	return ""
 }
 
 // initJWTOpenID initializes the JWT OpenID authentication strategy using the provided input interface.
 // Returns the strategy name, the initialized authentication strategy, or an error if initialization fails.
-func initJWTOpenID(cxt context.Context, i interface{}) (string, auth.Strategy, error) {
+func initJWTOpenID(ctx context.Context, i interface{}) (string, Strategy, error) {
 	settings, ok := i.(OpenIDSettings)
 	if !ok {
 		return StrategyJWTOpenID, nil, nil
@@ -85,33 +136,20 @@ func initJWTOpenID(cxt context.Context, i interface{}) (string, auth.Strategy, e
 	if clientID == "" {
 		return StrategyJWTOpenID, nil, fmt.Errorf("undefined client id for provider %s", providerURL)
 	}
-	config, err := fetchOpenIDConfiguration(cxt, discoverOpenIDTimeout, providerURL)
+	config, err := fetchOpenIDConfiguration(ctx, discoverOpenIDTimeout, providerURL)
 	if err != nil {
 		return StrategyJWTOpenID, nil, err
 	} else if config == nil {
 		return StrategyJWTOpenID, nil, nil
 	}
-
 	if config.JwsksUri == "" {
 		return StrategyJWTOpenID, nil, fmt.Errorf("jwks uri is empty")
 	}
-	cache := libcache.FIFO.New(100)
-	cache.SetTTL(time.Second)
-	verifyOptions := claims.VerifyOptions{
-		Audience: []string{clientID},
-		Issuer:   config.Issuer,
-		Time: func() time.Time {
-			return time.Now().Add(time.Second * 5)
-		},
-		Extra: nil,
-	}
-	opt := []auth.Option{
-		token.SetParser(token.AuthorizationParser("Bearer")),
-		jwt.SetVerifyOptions(verifyOptions),
-		jwt.SetClaimResolver(&IDTokenGrant{}),
-	}
-	strategy := jwt.New(config.JwsksUri, cache, opt...)
-	return StrategyJWTOpenID, &k{baseStrategy: strategy}, nil
+	return StrategyJWTOpenID, &openIDStrategy{
+		jwks:     newJWKS(config.JwsksUri),
+		issuer:   config.Issuer,
+		clientID: clientID,
+	}, nil
 }
 
 // fetchOpenIDConfiguration retrieves OpenID issuer configuration from the given configuration URL.

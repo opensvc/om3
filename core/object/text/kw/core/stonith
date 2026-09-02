@@ -1,3 +1,5 @@
+Enable the stonith callout for this object.
+
 Shoot The Other Node In The Head, aka fence, using a callout.
 
 The callout is triggered after a quorum vote won, when the surviving node is
@@ -7,5 +9,5 @@ a unreachable peer node.
 The callout is meant to prevent the peer from writing to shared disks, remote
 databases, and from responding to clients.
 
-The [Fence Agents](https://github.com/ClusterLabs/fence-agents) project is a
-well known bundle of callout used by many clustering tools.
+The callout itself is the `command` keyword of the peer `stonith#<nodename>`
+section of the node configuration.

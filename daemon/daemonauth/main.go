@@ -2,16 +2,11 @@ package daemonauth
 
 import (
 	"context"
+	"errors"
 	"fmt"
+	"net/http"
 	"sync"
 	"time"
-
-	// Build the fifo cache driver
-	_ "github.com/shaj13/libcache/fifo"
-
-	"github.com/shaj13/go-guardian/v2/auth"
-	"github.com/shaj13/go-guardian/v2/auth/strategies/union"
-	"github.com/shaj13/libcache"
 
 	"github.com/opensvc/om3/v3/daemon/daemonlogctx"
 	"github.com/opensvc/om3/v3/daemon/msgbus"
@@ -26,19 +21,82 @@ type (
 		ListenAddresser
 		JWTFiler
 		X509CACertFiler
-		NodeAuthenticater
 		UserGranter
 	}
 	contextKey int
 
+	// Info is what a strategy returns when it accepts a request: the
+	// identity the rest of the daemon works with, and how it was
+	// established.
+	//
+	// The grants are the ones the credential carries, not the ones the
+	// user has: a token can be issued for a subset of its owner's grants,
+	// and that subset is what is here.
+	Info struct {
+		// Username is who the request is from, as the rbac and the audit
+		// trail name them.
+		Username string
+
+		// Strategy is the name of the strategy that accepted the
+		// request, one of the Strategy* constants.
+		Strategy string
+
+		// Issuer is the node or the openid provider that issued the
+		// credential, empty when it was not issued by anyone.
+		Issuer string
+
+		// TokenUse tells an access token from a refresh token from a
+		// proxy token. It is empty for everything that is not a token.
+		TokenUse string
+
+		// Grants are the rbac grants the request is allowed to use.
+		Grants []string
+	}
+
+	// Strategy authenticates a request, or explains why it will not.
+	//
+	// A strategy that does not recognize the credential a request carries
+	// must return an error rather than an anonymous Info: the union tries
+	// the next strategy on error, and stops at the first success.
+	Strategy interface {
+		Authenticate(ctx context.Context, r *http.Request) (*Info, error)
+	}
+
+	// Union is the chain of strategies the listener authenticates with.
+	Union []Strategy
+
 	StrategyManager struct {
 		Mutex sync.RWMutex
-		Value union.Union
+		Value Union
 	}
 )
 
+// AuthenticateRequest returns the Info of the first strategy that accepts
+// r. When none does, it returns what each of them had to say, because
+// which one was supposed to work is the caller's business, not ours: a
+// client sending a bearer token learns nothing from the basic auth
+// strategy saying the request has no basic auth header.
+func (u Union) AuthenticateRequest(r *http.Request) (*Info, error) {
+	// errors.Join of nothing is nil, and a nil error here would say the
+	// request is authenticated as nobody.
+	if len(u) == 0 {
+		return nil, fmt.Errorf("no authentication strategy is initialized")
+	}
+	errs := make([]error, 0, len(u))
+	for _, s := range u {
+		info, err := s.Authenticate(r.Context(), r)
+		if err == nil {
+			return info, nil
+		}
+		errs = append(errs, err)
+	}
+	return nil, errors.Join(errs...)
+}
+
 var (
-	Strategy = &StrategyManager{}
+	// Strategies is the chain the listener authenticates with. It is
+	// replaced, not mutated, when the auth configuration changes.
+	Strategies = &StrategyManager{}
 
 	discoverOpenIDTimeout = time.Second
 
@@ -47,7 +105,11 @@ var (
 )
 
 var (
-	cache                libcache.Cache
+	// authCache is shared by the strategies that would otherwise redo an
+	// expensive check per request. initStategies replaces it, so a
+	// strategy refresh forgets what the previous configuration accepted.
+	authCache = newCache()
+
 	jwtCreatorContextKey contextKey = 1
 )
 
@@ -55,37 +117,9 @@ const (
 	StrategyUX        = "ux"
 	StrategyJWT       = "jwt"
 	StrategyJWTOpenID = "jwt-openid"
-	StrategyNode      = "node"
 	StrategyUser      = "user"
 	StrategyX509      = "x509"
 )
-
-// authenticatedExtensions returns extensions with grants and used strategy
-func authenticatedExtensions(strategy string, iss string, grants ...string) *auth.Extensions {
-	extensions := auth.Extensions{"strategy": []string{strategy}, "grant": grants}
-	if iss != "" {
-		extensions.Set("iss", iss)
-	}
-	return &extensions
-}
-
-func initCache() error {
-	cache = libcache.FIFO.New(0)
-	cache.SetTTL(time.Second * 5)
-	/*
-		q := make(chan libcache.Event)
-		cache.Notify(q, libcache.Remove)
-		go func() {
-			for {
-				select {
-				case ev := <-q:
-					cache.Peek(ev.Key)
-				}
-			}
-		}()
-	*/
-	return nil
-}
 
 func ContextWithJWTCreator(ctx context.Context) context.Context {
 	return context.WithValue(ctx, jwtCreatorContextKey, &JWTCreator{})
@@ -111,7 +145,7 @@ func Start(ctx context.Context, authCfg any) error {
 	if err != nil {
 		return err
 	}
-	Strategy.setStrategy(s)
+	Strategies.setStrategy(s)
 	sub := pubsub.SubFromContext(ctx, "daemon.auth")
 	sub.AddFilter(&msgbus.AuditStart{})
 	sub.AddFilter(&msgbus.AuditStop{})
@@ -136,7 +170,7 @@ func Start(ctx context.Context, authCfg any) error {
 					if err != nil {
 						log.Errorf("failed to refresh authentication strategies: %s", err)
 					} else {
-						Strategy.setStrategy(s)
+						Strategies.setStrategy(s)
 					}
 				}
 			case i := <-sub.C:
@@ -153,7 +187,7 @@ func Start(ctx context.Context, authCfg any) error {
 						if err != nil {
 							log.Errorf("failed to refresh authentication strategies: %s", err)
 						} else {
-							Strategy.setStrategy(s)
+							Strategies.setStrategy(s)
 							currentSetting = newSetting
 							ticker.Reset(authRefreshInterval)
 						}
@@ -167,17 +201,14 @@ func Start(ctx context.Context, authCfg any) error {
 }
 
 // to enable all strategies, i has to implement AllStrategieser
-func initStategies(ctx context.Context, i any) (union.Union, error) {
-	if err := initCache(); err != nil {
-		return nil, err
-	}
+func initStategies(ctx context.Context, i any) (Union, error) {
+	authCache = newCache()
 	log := plog.NewLogger(daemonlogctx.Logger(ctx)).WithPrefix("daemon: auth: ").Attr("pkg", "daemon/auth")
-	l := make([]auth.Strategy, 0)
-	for _, fn := range []func(ctx context.Context, i interface{}) (string, auth.Strategy, error){
+	l := make(Union, 0)
+	for _, fn := range []func(ctx context.Context, i interface{}) (string, Strategy, error){
 		initUX,
 		initJWT,
 		initJWTOpenID,
-		initBasicNode,
 		initBasicUser,
 		initX509,
 	} {
@@ -192,10 +223,10 @@ func initStategies(ctx context.Context, i any) (union.Union, error) {
 			l = append(l, s)
 		}
 	}
-	return union.New(l...), nil
+	return l, nil
 }
 
-func (m *StrategyManager) setStrategy(s union.Union) {
+func (m *StrategyManager) setStrategy(s Union) {
 	m.Mutex.Lock()
 	defer m.Mutex.Unlock()
 	m.Value = s

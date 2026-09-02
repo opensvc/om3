@@ -49,7 +49,7 @@ func stubViews(t *testing.T, log *[]string, ids ...viewId) {
 // Every view id must be declared in the registry: viewId.String() and the
 // enter, leave and refresh dispatches all go through it.
 func TestViewDefsAreComplete(t *testing.T) {
-	for id := viewObject; id <= viewRelay; id++ {
+	for id := viewObject; id < viewLast; id++ {
 		def, ok := viewDefs[id]
 		if !ok {
 			t.Errorf("view id %d has no viewDefs entry", int(id))

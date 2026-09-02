@@ -423,6 +423,8 @@ func (d *data) startSubscriptions(ctx context.Context, qs pubsub.QueueSizer) {
 	sub.AddFilter(&msgbus.InstanceMonitorDeleted{}, d.labelLocalhost)
 	sub.AddFilter(&msgbus.InstanceMonitorUpdated{}, d.labelLocalhost)
 
+	sub.AddFilter(&msgbus.InstanceResourceInfoUpdated{}, d.labelLocalhost)
+
 	sub.AddFilter(&msgbus.InstanceStatusUpdated{}, d.labelLocalhost)
 	sub.AddFilter(&msgbus.InstanceStatusDeleted{}, d.labelLocalhost)
 
@@ -487,6 +489,7 @@ func localEventMustBeForwarded(i interface{}) bool {
 	case *msgbus.InstanceConfigUpdated:
 	case *msgbus.InstanceMonitorDeleted:
 	case *msgbus.InstanceMonitorUpdated:
+	case *msgbus.InstanceResourceInfoUpdated:
 	case *msgbus.InstanceStatusUpdated:
 	case *msgbus.InstanceStatusDeleted:
 

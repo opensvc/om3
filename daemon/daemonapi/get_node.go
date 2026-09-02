@@ -48,6 +48,7 @@ func (a *DaemonAPI) GetNodes(ctx echo.Context, params api.GetNodesParams) error 
 				MaxParallel:            config.Value.MaxParallel,
 				MinAvailMemPct:         config.Value.MinAvailMemPct,
 				MinAvailSwapPct:        config.Value.MinAvailSwapPct,
+				Issues:                 &config.Value.Issues,
 				PRKey:                  config.Value.PRKey,
 				SSHKey:                 config.Value.SSHKey,
 				ReadyPeriod:            config.Value.ReadyPeriod,

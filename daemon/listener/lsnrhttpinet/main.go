@@ -11,10 +11,8 @@ import (
 	"sync"
 	"time"
 
-	"github.com/rs/zerolog"
-
-	"github.com/opensvc/om3/v3/daemon/daemonapi"
 	"github.com/opensvc/om3/v3/daemon/daemonctx"
+	"github.com/opensvc/om3/v3/daemon/daemonenv"
 	"github.com/opensvc/om3/v3/daemon/daemonsubsystem"
 	"github.com/opensvc/om3/v3/daemon/listener/routehttp"
 	"github.com/opensvc/om3/v3/daemon/msgbus"
@@ -179,7 +177,7 @@ func (t *T) start(ctx context.Context, errC chan<- error) {
 }
 
 // janitor startup initial http inet listener, then watch events to stop, start or restart listener.
-// events are: DaemonCtl,name=lsnr-http-inet, ClusterConfigUpdated,node=<localhost> with changed lsnr addr or port
+// events are: DaemonCtl,name=api.inet, ClusterConfigUpdated,node=<localhost> with changed lsnr addr or port
 // TODO: also watch for tls setting changed
 func (t *T) janitor(ctx context.Context, errC chan<- error) {
 	var started bool
@@ -187,7 +185,7 @@ func (t *T) janitor(ctx context.Context, errC chan<- error) {
 	sub.AddFilter(&msgbus.AuditStart{})
 	sub.AddFilter(&msgbus.AuditStop{})
 	sub.AddFilter(&msgbus.ClusterConfigUpdated{}, t.labelLocalhost)
-	sub.AddFilter(&msgbus.DaemonCtl{}, pubsub.Label{"id", "lsnr-http-inet"})
+	sub.AddFilter(&msgbus.DaemonCtl{}, pubsub.Label{"id", daemonenv.ListenerNameInet})
 	sub.Start()
 	defer func() {
 		if err := sub.Stop(); err != nil {
@@ -245,9 +243,9 @@ func (t *T) janitor(ctx context.Context, errC chan<- error) {
 		case e := <-sub.C:
 			switch m := e.(type) {
 			case *msgbus.AuditStart:
-				t.log.HandleAuditStart(m.Q, m.Subsystems, "api", "api.inet")
+				t.log.HandleAuditStart(m.Q, m.Subsystems, daemonenv.ListenerNameFamily, daemonenv.ListenerNameInet)
 			case *msgbus.AuditStop:
-				t.log.HandleAuditStop(m.Q, m.Subsystems, "api", "api.inet")
+				t.log.HandleAuditStop(m.Q, m.Subsystems, daemonenv.ListenerNameFamily, daemonenv.ListenerNameInet)
 			case *msgbus.DaemonCtl:
 				t.log.Infof("daemon control %s asked", m.Action)
 				switch m.Action {
@@ -267,27 +265,6 @@ func (t *T) janitor(ctx context.Context, errC chan<- error) {
 					if err := start(); err != nil {
 						t.log.Errorf("on daemon control %s start failed: %s", m.Action, err)
 					}
-				case "log-level-panic":
-					t.log.Level(zerolog.PanicLevel)
-					daemonapi.LogLevel = zerolog.PanicLevel
-				case "log-level-fatal":
-					t.log.Level(zerolog.FatalLevel)
-					daemonapi.LogLevel = zerolog.FatalLevel
-				case "log-level-error":
-					t.log.Level(zerolog.ErrorLevel)
-					daemonapi.LogLevel = zerolog.ErrorLevel
-				case "log-level-warn":
-					t.log.Level(zerolog.WarnLevel)
-					daemonapi.LogLevel = zerolog.WarnLevel
-				case "log-level-info":
-					t.log.Level(zerolog.InfoLevel)
-					daemonapi.LogLevel = zerolog.InfoLevel
-				case "log-level-debug":
-					t.log.Level(zerolog.DebugLevel)
-					daemonapi.LogLevel = zerolog.DebugLevel
-				case "log-level-trace":
-					t.log.Level(zerolog.TraceLevel)
-					daemonapi.LogLevel = zerolog.TraceLevel
 				}
 			case *msgbus.ClusterConfigUpdated:
 				var needRestart bool

@@ -12,10 +12,8 @@ import (
 	"golang.org/x/net/http2"
 	"golang.org/x/net/http2/h2c"
 
-	"github.com/rs/zerolog"
-
-	"github.com/opensvc/om3/v3/daemon/daemonapi"
 	"github.com/opensvc/om3/v3/daemon/daemonctx"
+	"github.com/opensvc/om3/v3/daemon/daemonenv"
 	"github.com/opensvc/om3/v3/daemon/listener/routehttp"
 	"github.com/opensvc/om3/v3/daemon/msgbus"
 	"github.com/opensvc/om3/v3/util/funcopt"
@@ -104,14 +102,14 @@ func (t *T) serve(ctx context.Context, errC chan<- error) {
 }
 
 // janitor startup initial http ux listener, then watch events to stop, start or restart listener.
-// events are: DaemonCtl,name=lsnr-http-ux, ClusterConfigUpdated,node=<localhost> with changed lsnr addr or port
+// events are: DaemonCtl,name=api.ux, ClusterConfigUpdated,node=<localhost> with changed lsnr addr or port
 // TODO: also watch for tls setting changed
 func (t *T) janitor(ctx context.Context, errC chan<- error) {
 	defer t.wg.Done()
 	sub := pubsub.SubFromContext(ctx, "daemon.lsnr.http.ux")
 	sub.AddFilter(&msgbus.AuditStart{})
 	sub.AddFilter(&msgbus.AuditStop{})
-	sub.AddFilter(&msgbus.DaemonCtl{}, pubsub.Label{"id", "lsnr-http-ux"})
+	sub.AddFilter(&msgbus.DaemonCtl{}, pubsub.Label{"id", daemonenv.ListenerNameUX})
 	sub.Start()
 	defer func() {
 		if err := sub.Stop(); err != nil {
@@ -126,39 +124,14 @@ func (t *T) janitor(ctx context.Context, errC chan<- error) {
 		case e := <-sub.C:
 			switch m := e.(type) {
 			case *msgbus.AuditStart:
-				t.log.HandleAuditStart(m.Q, m.Subsystems, "api", "api.ux")
+				t.log.HandleAuditStart(m.Q, m.Subsystems, daemonenv.ListenerNameFamily, daemonenv.ListenerNameUX)
 			case *msgbus.AuditStop:
-				t.log.HandleAuditStop(m.Q, m.Subsystems, "api", "api.ux")
+				t.log.HandleAuditStop(m.Q, m.Subsystems, daemonenv.ListenerNameFamily, daemonenv.ListenerNameUX)
 			case *msgbus.DaemonCtl:
-				t.log.Infof("daemon control %s asked", m.Action)
-				switch m.Action {
-				case "log-level-panic":
-					t.log.Level(zerolog.PanicLevel)
-					daemonapi.LogLevel = zerolog.PanicLevel
-				case "log-level-fatal":
-					t.log.Level(zerolog.FatalLevel)
-					daemonapi.LogLevel = zerolog.FatalLevel
-				case "log-level-error":
-					t.log.Level(zerolog.ErrorLevel)
-					daemonapi.LogLevel = zerolog.ErrorLevel
-				case "log-level-warn":
-					t.log.Level(zerolog.WarnLevel)
-					daemonapi.LogLevel = zerolog.WarnLevel
-				case "log-level-info":
-					t.log.Level(zerolog.InfoLevel)
-					daemonapi.LogLevel = zerolog.InfoLevel
-				case "log-level-debug":
-					t.log.Level(zerolog.DebugLevel)
-					daemonapi.LogLevel = zerolog.DebugLevel
-				case "log-level-trace":
-					t.log.Level(zerolog.TraceLevel)
-					daemonapi.LogLevel = zerolog.TraceLevel
-				default:
-					continue
-				}
-				if t.server != nil {
-					t.server.ErrorLog = golog.New(t.log.Logger(), "", 0)
-				}
+				// The log level actions were the only ones this
+				// listener acted on. It has no start, stop or restart
+				// of its own: it lives as long as the daemon does.
+				t.log.Infof("daemon control %s asked, ignored", m.Action)
 			}
 		}
 	}

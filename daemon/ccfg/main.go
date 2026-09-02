@@ -11,7 +11,6 @@ package ccfg
 import (
 	"context"
 	"errors"
-	"fmt"
 	"sync"
 	"time"
 
@@ -50,9 +49,6 @@ type (
 
 		wg sync.WaitGroup
 	}
-
-	// NodeDB implements AuthenticateNode
-	NodeDB struct{}
 )
 
 func New(drainDuration time.Duration, subQS pubsub.QueueSizer) *Manager {
@@ -124,23 +120,4 @@ func (t *Manager) worker() {
 			}
 		}
 	}
-}
-
-// AuthenticateNode returns nil if nodename is a cluster node and password is cluster secret
-func (*NodeDB) AuthenticateNode(nodename, password string) error {
-	if nodename == "" {
-		return fmt.Errorf("can't authenticate: nodename is empty")
-	}
-	clu := cluster.ConfigData.Get()
-	if !clu.Nodes.Contains(nodename) {
-		return fmt.Errorf("can't authenticate: %s is not a cluster node", nodename)
-	}
-	clusterSecret := clu.Secret()
-	if clusterSecret == "" {
-		return fmt.Errorf("can't authenticate: empty cluster secret")
-	}
-	if clusterSecret != password {
-		return fmt.Errorf("can't authenticate: %s has wrong password", nodename)
-	}
-	return nil
 }

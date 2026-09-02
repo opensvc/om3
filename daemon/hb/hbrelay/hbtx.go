@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"net/http"
+	"strconv"
 	"sync"
 	"time"
 
@@ -29,6 +30,11 @@ type (
 		cmdC   chan<- interface{}
 		msgC   chan<- *hbtype.Msg
 		cancel func()
+
+		// failing is true while the relay is refusing or unreachable,
+		// so that the transition is logged rather than every beat of an
+		// outage.
+		failing bool
 	}
 )
 
@@ -91,37 +97,100 @@ func (t *tx) Start(cmdC chan<- interface{}, msgC <-chan []byte) error {
 				Desc:     t.streamPeerDesc(),
 			}
 		}
-		var b []byte
-		ticker := time.NewTicker(t.interval)
-		defer ticker.Stop()
-		var reason string
-		for {
-			select {
-			case <-ctx.Done():
-				return
-			case b = <-msgC:
-				reason = "send msg"
-				ticker.Reset(t.interval)
-			case <-ticker.C:
-				reason = "send msg (interval)"
-			case ev := <-sub.C:
-				t.onEvent(ev)
-			}
-			if len(b) == 0 {
-				continue
-			} else {
-				t.log.Tracef(reason)
-				t.send(b)
-			}
-		}
+		t.postLoop(ctx, msgC, sub.C, t.send)
 	}()
 
 	return <-errC
 }
 
-func (t *tx) send(b []byte) {
+// postLoop posts the freshest message the daemon produced, at most once
+// per interval and at least once per interval.
+//
+// The relay keeps one message per node, overwritten by each post, and a
+// peer reads it once per its own interval. So the interval is what to
+// post at: posting on every message the daemon produces, which is one
+// per propagation tick when anything changes, overwrites mail nobody
+// read yet, at a rate the relay has to carry for every cluster that
+// uses it.
+//
+// The last message is kept after it was posted, because a post with the
+// same payload refreshes the timestamp the peers read the liveness of
+// this stream from.
+func (t *tx) postLoop(ctx context.Context, msgC <-chan []byte, subC <-chan any, post func([]byte) (bool, time.Duration)) {
+	var (
+		latest []byte
+
+		// lastAttemptAt paces the attempts, including the failed ones,
+		// so that an unreachable relay is not posted to once per
+		// message the daemon produces.
+		lastAttemptAt time.Time
+	)
+	ticker := time.NewTicker(t.interval)
+	defer ticker.Stop()
+	send := func() {
+		if len(latest) == 0 {
+			return
+		}
+		lastAttemptAt = time.Now()
+		t.log.Tracef("send msg")
+		ok, retryAfter := post(latest)
+		if ok {
+			ticker.Reset(t.interval)
+			return
+		}
+		// A failed post is a missed beat: the peers read the liveness
+		// of this stream from the timestamp the relay sets on a post,
+		// so nothing refreshes it until the next one lands. Retrying
+		// inside the interval keeps a transient refusal from costing a
+		// whole beat, and the relay is asked no more often than it
+		// said to.
+		delay := t.retryDelay()
+		if retryAfter > delay {
+			delay = retryAfter
+		}
+		if delay > t.interval {
+			delay = t.interval
+		}
+		ticker.Reset(delay)
+	}
+	for {
+		select {
+		case <-ctx.Done():
+			return
+		case b := <-msgC:
+			latest = b
+			if time.Since(lastAttemptAt) >= t.interval {
+				// Nothing was posted for an interval, so this is not a
+				// burst: a node that just started, or a cluster that
+				// just changed after a quiet spell, reaches its peers
+				// without waiting for the next tick.
+				send()
+			}
+		case <-ticker.C:
+			send()
+		case ev := <-subC:
+			t.onEvent(ev)
+		}
+	}
+}
+
+// retryDelay is how long a failed post waits before it is tried again.
+// A quarter of the interval retries three times inside the beat it
+// missed, and never posts more often than a stream configured with an
+// interval four times shorter would.
+func (t *tx) retryDelay() time.Duration {
+	delay := t.interval / 4
+	if delay < time.Second {
+		delay = time.Second
+	}
+	return delay
+}
+
+// send posts b to the relay. It reports whether the relay took it, and
+// how long it asked to be left alone when it refused.
+func (t *tx) send(b []byte) (bool, time.Duration) {
 	if t.cli == nil {
-		return
+		return false, 0
 	}
 
 	clusterConfig := cluster.ConfigData.Get()
@@ -133,16 +202,18 @@ func (t *tx) send(b []byte) {
 	}
 	resp, err := t.cli.PostRelayMessage(context.Background(), params)
 	if err != nil {
-		t.log.Tracef("send: PostRelayMessage: %s", err)
-		return
+		t.logFailure("post to %s: %s", t.relay, err)
+		return false, 0
 	}
 
 	defer drain(resp.Body, t.log)
 
 	if resp.StatusCode != http.StatusOK {
-		t.log.Tracef("send: unexpected PostRelayMessage status: %s", resp.Status)
-		return
+		retryAfter := retryAfterOf(resp.Header)
+		t.logFailure("post to %s: %s (retry after %s)", t.relay, resp.Status, retryAfter)
+		return false, retryAfter
 	}
+	t.logRecovery()
 
 	for _, node := range t.nodes {
 		t.cmdC <- hbctrl.CmdSetPeerSuccess{
@@ -151,6 +222,23 @@ func (t *tx) send(b []byte) {
 			Success:  true,
 		}
 	}
+	return true, 0
+}
+
+// retryAfterOf returns the delay a refusing relay asked for, in the
+// delta seconds form of the header. The http date form is ignored: a
+// relay that answers one is asking a client whose clock it does not
+// know to compute the wait itself.
+func retryAfterOf(h http.Header) time.Duration {
+	s := h.Get("Retry-After")
+	if s == "" {
+		return 0
+	}
+	seconds, err := strconv.Atoi(s)
+	if err != nil || seconds <= 0 {
+		return 0
+	}
+	return time.Duration(seconds) * time.Second
 }
 
 func newTx(ctx context.Context, name string, nodes []string, cfg cfg) *tx {
@@ -167,4 +255,27 @@ func newTx(ctx context.Context, name string, nodes []string, cfg cfg) *tx {
 		nodes: nodes,
 		cfg:   cfg,
 	}
+}
+
+// logFailure reports a beat the relay did not take.
+//
+// Only the first of a run is a warning: the beats are paced by the
+// interval, so an outage would otherwise write one line per interval for
+// as long as it lasts, and the state of the stream is already in the
+// daemon status. The rest are traces, for an audit of the stream.
+func (t *tx) logFailure(format string, a ...any) {
+	if t.failing {
+		t.log.Tracef(format, a...)
+		return
+	}
+	t.failing = true
+	t.log.Warnf(format, a...)
+}
+
+func (t *tx) logRecovery() {
+	if !t.failing {
+		return
+	}
+	t.failing = false
+	t.log.Infof("post to %s: relaying again", t.relay)
 }

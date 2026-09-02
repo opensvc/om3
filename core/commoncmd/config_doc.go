@@ -18,6 +18,8 @@ func KeywordStoreFromAPI(items api.KeywordDefinitionItems) (store keywords.Store
 			DefaultText:   item.DefaultText,
 			Depends:       keyop.ParseList(item.Depends...),
 			Deprecated:    item.Deprecated,
+			ReplacedBy:    item.ReplacedBy,
+			RedactSecret:  item.RedactSecret,
 			Example:       item.Example,
 			Inherit:       keywords.ParseInherit(item.Inherit),
 			Kind:          naming.ParseKinds(item.Kind...),

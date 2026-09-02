@@ -10,7 +10,6 @@ import (
 	"io"
 	"net/http"
 	"os"
-	"strings"
 	"time"
 
 	"github.com/fatih/color"
@@ -40,14 +39,18 @@ const (
 func NewCmdDaemonAudit() *cobra.Command {
 	options := &CmdDaemonAudit{}
 	cmd := &cobra.Command{
-		Use:   "audit",
+		Use:   "audit [SUBSYSTEM...]",
 		Short: "read and render the log stream of the selected daemon subsystems up to debug and trace.",
-		Long: "Stream the logs of the selected daemon subsystems up to debug and trace.\n\n" +
+		Long: "Stream the logs of the named daemon subsystems up to debug and trace.\n\n" +
+			"All of them are streamed when none is named. A name is a glob pattern,\n" +
+			"so 'imon:*' selects every object monitor. The names ending with a colon\n" +
+			"take a suffix: an object path for icfg, imon and omon, a heartbeat id\n" +
+			"for hb.\n\n" +
 			"Auditable subsystems:\n\n" +
-			"  api api.inet api.ux ccfg collector cstat daemonauth daemondata discover dns hb hb.main hb.ctrl\n" +
-			"  hb.peer_dropper hb:<hbid> hook icfg icfg:<path> imon imon:<path> istat netmon nmon omon omon:<path> pubsub\n" +
-			"  runner scheduler",
+			auditSubsystemsHelp(),
+		ValidArgsFunction: validAuditSubsystems,
 		RunE: func(cmd *cobra.Command, args []string) error {
+			options.Subsystems = args
 			return options.Run()
 		},
 	}
@@ -55,7 +58,6 @@ func NewCmdDaemonAudit() *cobra.Command {
 	FlagNodeSelector(flags, &options.NodeSelector)
 	FlagOutput(flags, &options.Output)
 	flags.StringVar(&options.Level, "level", "trace", "trace, debug, info, warn, error, fatal, panic")
-	flags.StringSliceVar(&options.Subsystems, "sub", []string{}, "the names of the subsystems to audit, or empty for all")
 	flags.BoolVar(&options.Preempt, "preempt", false, "preempt the current audit if any is running.")
 	return cmd
 }
@@ -70,10 +72,9 @@ func (t *CmdDaemonAudit) Run() error {
 			return nil, fmt.Errorf("invalid level: %s", t.Level)
 		}
 
-		subsystems := strings.Join(t.Subsystems, ",")
 		params := &api.PostDaemonAuditParams{
 			Level:   &level,
-			Sub:     &subsystems,
+			Sub:     &t.Subsystems,
 			Preempt: &t.Preempt,
 		}
 

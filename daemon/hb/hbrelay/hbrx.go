@@ -13,6 +13,7 @@ import (
 	"github.com/opensvc/om3/v3/daemon/api"
 	"github.com/opensvc/om3/v3/daemon/hb/hbcrypto"
 	"github.com/opensvc/om3/v3/daemon/hb/hbctrl"
+	"github.com/opensvc/om3/v3/daemon/hb/hbdedup"
 	"github.com/opensvc/om3/v3/util/plog"
 )
 
@@ -33,6 +34,14 @@ type (
 		cancel func()
 
 		crypto decryptWithNoder
+
+		// dedup holds the frames the other hb links already delivered
+		dedup *hbdedup.Cache
+
+		// failing is true while the relay is refusing or unreachable,
+		// so that the transition is logged rather than every beat of an
+		// outage.
+		failing bool
 	}
 
 	decryptWithNoder interface {
@@ -102,6 +111,7 @@ func (t *rx) Start(cmdC chan<- any, msgC chan<- *hbtype.Msg) error {
 		t.log.Infof("started")
 		errC <- nil
 		crypto := hbcrypto.CryptoFromContext(ctx)
+		t.dedup = hbdedup.CacheFromContext(ctx)
 		for {
 			select {
 			case <-ctx.Done():
@@ -140,16 +150,17 @@ func (t *rx) recv(nodename string) {
 	}
 	resp, err := t.cli.GetRelayMessageWithResponse(context.Background(), &params)
 	if err != nil {
-		t.log.Tracef("recv: node %s do request: %s", nodename, err)
+		t.logFailure("get %s from %s: %s", nodename, t.relay, err)
 		return
 	}
 
 	defer drain(resp.HTTPResponse.Body, t.log)
 
 	if resp.StatusCode() != http.StatusOK {
-		t.log.Tracef("unexpected get relay message %s status %s", nodename, resp.Status())
+		t.logFailure("get %s from %s: %s", nodename, t.relay, resp.Status())
 		return
 	}
+	t.logRecovery()
 	if resp.JSON200 == nil {
 		t.log.Tracef("recv: node %s data has no stored data", nodename)
 		return
@@ -168,7 +179,26 @@ func (t *rx) recv(nodename string) {
 		t.log.Tracef("recv: node %s data has not been updated for %s", nodename, elapsed)
 		return
 	}
-	b, msgNodename, err := t.crypto.DecryptWithNode([]byte(c.Msg))
+	frame := []byte(c.Msg)
+	key := hbdedup.NewKey(frame)
+	if msgNodename, ok := t.dedup.Seen(key); ok {
+		// another hb link delivered this very frame: the peer is alive on
+		// this one too, but the message is already in the daemon
+		if nodename != msgNodename {
+			t.log.Tracef("recv: node %s data was written by unexpected node %s", nodename, msgNodename)
+			return
+		}
+		t.log.Tracef("recv: node %s, already delivered by another hb", nodename)
+		t.cmdC <- hbctrl.CmdSetPeerSuccess{
+			Nodename: msgNodename,
+			HbID:     t.id,
+			Success:  true,
+		}
+		t.lastAt = c.UpdatedAt
+		return
+	}
+
+	b, msgNodename, err := t.crypto.DecryptWithNode(frame)
 	if err != nil {
 		t.log.Tracef("recv: decrypting node %s: %s", nodename, err)
 		return
@@ -191,6 +221,7 @@ func (t *rx) recv(nodename string) {
 		Success:  true,
 	}
 	t.msgC <- &msg
+	t.dedup.Delivered(key, msg.Nodename)
 	t.lastAt = c.UpdatedAt
 }
 
@@ -208,4 +239,23 @@ func newRx(ctx context.Context, name string, nodes []string, cfg cfg) *rx {
 		nodes: nodes,
 		cfg:   cfg,
 	}
+}
+
+// logFailure reports a beat the relay did not answer. Only the first of
+// a run is a warning, as for the transmitter.
+func (t *rx) logFailure(format string, a ...any) {
+	if t.failing {
+		t.log.Tracef(format, a...)
+		return
+	}
+	t.failing = true
+	t.log.Warnf(format, a...)
+}
+
+func (t *rx) logRecovery() {
+	if !t.failing {
+		return
+	}
+	t.failing = false
+	t.log.Infof("get from %s: reading again", t.relay)
 }

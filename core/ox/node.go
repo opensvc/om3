@@ -177,6 +177,7 @@ func init() {
 		newCmdNodeDrivers(),
 		newCmdNodeLogs(),
 		newCmdNodeList(),
+		commoncmd.NewCmdNodeMetrics(),
 		newCmdNodePing(),
 		newCmdNodeFreeze(),
 		newCmdNodeGet(),

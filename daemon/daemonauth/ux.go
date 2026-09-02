@@ -6,7 +6,7 @@ import (
 	"net"
 	"net/http"
 
-	"github.com/shaj13/go-guardian/v2/auth"
+	"github.com/opensvc/om3/v3/daemon/rbac"
 )
 
 type (
@@ -20,16 +20,19 @@ type (
 	}
 )
 
-func (t uxStrategy) Authenticate(ctx context.Context, _ *http.Request) (auth.Info, error) {
+func (t uxStrategy) Authenticate(ctx context.Context, _ *http.Request) (*Info, error) {
 	addr := t.getter.ListenAddr(ctx)
 	if _, _, err := net.SplitHostPort(addr); err == nil {
 		return nil, fmt.Errorf("strategies/ux: is a inet address family client (%s)", addr) // How to continue ?
 	}
-	info := auth.NewUserInfo("root", "", nil, *authenticatedExtensions(StrategyUX, "", "root"))
-	return info, nil
+	return &Info{
+		Username: "root",
+		Strategy: StrategyUX,
+		Grants:   []string{rbac.GrantRoot.String()},
+	}, nil
 }
 
-func initUX(_ context.Context, i interface{}) (string, auth.Strategy, error) {
+func initUX(_ context.Context, i interface{}) (string, Strategy, error) {
 	name := "ux auth"
 	fn, ok := i.(ListenAddresser)
 	if !ok {

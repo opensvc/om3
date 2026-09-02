@@ -126,20 +126,23 @@ func (t HeartbeatStreamPeerStatusTableEntry) Unstructured() map[string]any {
 	}
 
 	return map[string]any{
-		"node":            t.Node,
-		"peer":            peer,
-		"type":            t.Type,
-		"alerts":          t.Alerts,
-		"id":              t.Status.ID,
-		"state":           stateText,
-		"state_icon":      stateIcon,
-		"state_text":      stateText,
-		"configured_at":   t.Status.ConfiguredAt,
-		"updated_at":      t.Status.UpdatedAt,
-		"created_at":      t.Status.CreatedAt,
-		"desc":            desc,
-		"changed_at":      t.ChangedAt.Format(time.RFC3339Nano),
-		"last_beating_at": t.LastBeatingAt.Format(time.RFC3339Nano),
+		"node":          t.Node,
+		"peer":          peer,
+		"type":          t.Type,
+		"alerts":        t.Alerts,
+		"id":            t.Status.ID,
+		"state":         stateText,
+		"state_icon":    stateIcon,
+		"state_text":    stateText,
+		"configured_at": t.Status.ConfiguredAt,
+		"updated_at":    t.Status.UpdatedAt,
+		"created_at":    t.Status.CreatedAt,
+		"desc":          desc,
+		// The times are values, not text: the renderer prints them to
+		// the second, and the datasets keep the nanoseconds the type
+		// carries. The three above are already handed over this way.
+		"changed_at":      t.ChangedAt,
+		"last_beating_at": t.LastBeatingAt,
 		"is_beating":      t.IsBeating,
 		"beating":         beatingText,
 		"beating_icon":    beatingIcon,
@@ -176,27 +179,33 @@ func (c *Heartbeat) Table(nodeName string, isSingleNode bool) HeartbeatStreamPee
 	return table
 }
 
+// DeepCopy returns a copy of the heartbeat state sharing nothing with it.
+//
+// The collections come out non-nil even when they went in nil, which is
+// not what a copy would normally do. It is deliberate: this is the
+// daemon's publication path, none of these fields carry omitempty, and
+// a nil serializes as null where an empty one serializes as []. hbctrl
+// builds Alerts with append to a nil slice, so an alert-free stream
+// arrives here nil and would reach an api client as null without this.
+// TestDeepCopyKeepsCollectionsNonNil pins it.
 func (c *Heartbeat) DeepCopy() *Heartbeat {
-	streams := make([]HeartbeatStream, 0, len(c.Streams))
-	for _, stream := range c.Streams {
-		streams = append(streams, *stream.DeepCopy())
+	n := *c
+	n.LastMessages = append([]HeartbeatLastMessage{}, c.LastMessages...)
+	n.Streams = make([]HeartbeatStream, len(c.Streams))
+	for i, stream := range c.Streams {
+		n.Streams[i] = *stream.DeepCopy()
 	}
-	return &Heartbeat{
-		LastMessages: append([]HeartbeatLastMessage{}, c.LastMessages...),
-		LastMessage:  c.LastMessage,
-		Streams:      append([]HeartbeatStream{}, streams...),
-	}
+	return &n
 }
 
+// DeepCopy returns a copy of the stream state sharing nothing with it.
+// Its collections come out non-nil, see Heartbeat.DeepCopy.
 func (c *HeartbeatStream) DeepCopy() *HeartbeatStream {
-	peers := make(map[string]HeartbeatStreamPeerStatus)
-	for k, v := range c.Peers {
-		peers[k] = v
+	n := *c
+	n.Peers = make(map[string]HeartbeatStreamPeerStatus, len(c.Peers))
+	for nodename, peerStatus := range c.Peers {
+		n.Peers[nodename] = peerStatus
 	}
-	return &HeartbeatStream{
-		Status: c.Status,
-		Type:   c.Type,
-		Peers:  peers,
-		Alerts: append([]Alert{}, c.Alerts...),
-	}
+	n.Alerts = append([]Alert{}, c.Alerts...)
+	return &n
 }

@@ -34,12 +34,13 @@ import (
 	"github.com/opensvc/om3/v3/daemon/dns"
 	"github.com/opensvc/om3/v3/daemon/hb"
 	"github.com/opensvc/om3/v3/daemon/hb/hbcrypto"
+	"github.com/opensvc/om3/v3/daemon/hb/hbdedup"
 	"github.com/opensvc/om3/v3/daemon/hbcache"
 	"github.com/opensvc/om3/v3/daemon/hook"
 	"github.com/opensvc/om3/v3/daemon/imon"
 	"github.com/opensvc/om3/v3/daemon/istat"
-	"github.com/opensvc/om3/v3/daemon/mntmon"
 	"github.com/opensvc/om3/v3/daemon/listener"
+	"github.com/opensvc/om3/v3/daemon/mntmon"
 	"github.com/opensvc/om3/v3/daemon/msgbus"
 	"github.com/opensvc/om3/v3/daemon/netmon"
 	"github.com/opensvc/om3/v3/daemon/nmon"
@@ -228,6 +229,10 @@ func (t *T) Start(ctx context.Context) error {
 	t.ctx = hbcrypto.ContextWithCrypto(t.ctx, cryptoWorker.Start(t.ctx, initialCcfg.Name, *initialHeartbeatSecret))
 	t.stopFuncs = append(t.stopFuncs, cryptoWorker.Stop)
 
+	// shared by the hb rx drivers, so that the copies of a message the peer
+	// sent over the other links are not decoded again
+	t.ctx = hbdedup.ContextWithCache(t.ctx, hbdedup.NewCache(hbdedup.DefaultWindow))
+
 	t.ctx = daemonapi.WithSubQS(t.ctx, qsMedium)
 	for _, s := range []startStopper{
 		hbcache.New(2 * daemonenv.DrainChanDuration),
@@ -248,7 +253,7 @@ func (t *T) Start(ctx context.Context) error {
 		mntmon.NewManager(daemonenv.DrainChanDuration, qsSmall),
 		hook.NewManager(daemonenv.DrainChanDuration, qsSmall),
 		dns.NewManager(daemonenv.DrainChanDuration, qsMedium),
-		pgmetrics.New(qsMedium),
+		pgmetrics.New(),
 		discover.NewManager(daemonenv.DrainChanDuration, qsHuge).
 			WithOmonSubQS(qsMedium).
 			WithImonStarter(imonFactory),
