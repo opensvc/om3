@@ -3,6 +3,7 @@ package resfssgcp_nfs
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"net/http"
 	"net/http/httptest"
 	"os"
@@ -180,6 +181,101 @@ func TestGetNFSClients(t *testing.T) {
 }
 
 // TestFileStatusWithNoClients tests status when no clients are available
+// sgcpServer runs an sgcp api the driver can talk to, and points the
+// configuration at it. The handler answers the token request; everything else
+// is up to the test.
+func sgcpServer(t *testing.T, handler http.HandlerFunc) *httptest.Server {
+	t.Helper()
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		if r.URL.Path == "/auth/access_token" {
+			fmt.Fprint(w, `{"access_token": "a-token"}`)
+			return
+		}
+		handler(w, r)
+	}))
+	t.Cleanup(srv.Close)
+
+	root := filepath.Dir(testsgcphelper.InstallConfig(t))
+	cfgFile := filepath.Join(root, "server.yaml")
+	require.NoError(t, os.WriteFile(cfgFile, []byte(`
+auth:
+  base_url: "`+srv.URL+`/auth"
+  default_secret: "the-secret"
+  scopes:
+    files_read: ["files:read"]
+    files_write: ["files:write"]
+  timeout: 5
+  ttl_seconds: 60
+files:
+  base_url: "`+srv.URL+`/file"
+  path:
+    fs: "/fs"
+    client: "/client"
+    cg: "/cg"
+cache:
+  ttl_seconds: 0
+`), 0644))
+	sgcp.SetConfigForTest(cfgFile)
+	t.Cleanup(func() { sgcp.SetConfigForTest("") })
+	return srv
+}
+
+func sgcpDriver(t *testing.T) *T {
+	t.Helper()
+	drv := newDrvWithRid("test-rid")
+	drv.authInfoer = sgcpauthtesthelper.NewMockGetAuthInfoProvider("id1")
+	drv.UUID = "fs-uuid"
+	drv.Host = "test-host"
+	drv.Permission = "read-write"
+	require.NoError(t, drv.Configure())
+	return drv
+}
+
+// TestFilesystemNotFound verifies a filesystem the provider does not have is
+// an absence the driver converges on, not an error. The api reports every
+// status over 400 as an error, which used to leave the not-found branch and
+// every "fileInfo == nil" guard behind it unreachable.
+func TestFilesystemNotFound(t *testing.T) {
+	sgcpServer(t, func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusNotFound)
+		fmt.Fprint(w, `{"message": "no such filesystem"}`)
+	})
+	drv := sgcpDriver(t)
+	ctx := context.Background()
+
+	fileInfo, err := drv.mgr.getFileInfo(ctx)
+	require.NoError(t, err, "an absent filesystem is reported as a failure")
+	assert.Nil(t, fileInfo, "an absent filesystem is reported as a filesystem")
+
+	assert.Equal(t, status.Down, drv.fileStatus(ctx))
+	assert.NoError(t, drv.fileStop(ctx), "the stop of an absent filesystem does not converge")
+}
+
+// TestDeleteNFSClientPreconditionFailed verifies the provider refusing to drop
+// a client while the consistency group is busy reaches the operator as the
+// message written for it.
+func TestDeleteNFSClientPreconditionFailed(t *testing.T) {
+	sgcpServer(t, func(w http.ResponseWriter, r *http.Request) {
+		switch {
+		case r.Method == http.MethodDelete:
+			w.WriteHeader(http.StatusPreconditionFailed)
+			fmt.Fprint(w, `{"message": "consistency group busy"}`)
+		default:
+			fmt.Fprint(w, `{"uuid": "fs-uuid", "status": "online", "nfsClients": [
+				{"uuid": "client-uuid", "host": "test-host", "permission": "read-write", "protocol": "nfs4.1"}]}`)
+		}
+	})
+	drv := sgcpDriver(t)
+	ctx := context.Background()
+
+	require.Equal(t, status.Up, drv.fileStatus(ctx), "the test needs a granted client to drop")
+
+	err := drv.fileStop(ctx)
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "consistency group is not in ready")
+}
+
 // TestFileStatusCache verifies the cached filesystem info the scheduler fills
 // is not served to anyone else asking for a status.
 func TestFileStatusCache(t *testing.T) {
