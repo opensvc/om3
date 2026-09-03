@@ -17,7 +17,16 @@ import (
 	"strings"
 
 	"github.com/opensvc/om3/v3/core/naming"
+	"github.com/opensvc/om3/v3/core/rawconfig"
 )
+
+// StoreDir returns where the reservations of a network are recorded.
+//
+// One place, so the allocator a resource builds and the adoption a network
+// setup runs record in the same directory.
+func StoreDir(name string) string {
+	return filepath.Join(rawconfig.Paths.Var, "ipam", name)
+}
 
 type (
 	// T allocates in one network, on one node.
@@ -43,7 +52,19 @@ type (
 		// InUse reports the addresses the cluster says are taken. The daemon
 		// replicates the resource status of every instance, so this sees the
 		// addresses of objects whose reservation file this node cannot read.
+		//
+		// Neither network driver needs it: a routed_bridge gives this node a
+		// range no other node draws from, and the addresses of a bridge are
+		// node local and not routable. It is here for a network type that is
+		// neither.
 		InUse func() ([]net.IP, error)
+	}
+
+	// Reservation is an address already held by a resource, which an adoption
+	// records so the resource keeps it.
+	Reservation struct {
+		IP  net.IP
+		Key string
 	}
 )
 
@@ -97,6 +118,40 @@ func (t *T) Allocate(key string) (net.IP, error) {
 		offset.Mod(offset, size)
 	}
 	return nil, fmt.Errorf("network %s: no free address in %s after %d probes", t.Name, t.Range, probes)
+}
+
+// Adopt records the addresses resources already hold, so the allocator hands
+// out the addresses that are free rather than the addresses that have no
+// reservation yet.
+//
+// It is how the allocation of a network moves from an allocator that was
+// keeping its own record. The record of the host-local plugin cannot serve:
+// it names the holder of an address by the pid of a network namespace, which
+// says nothing about which resource that is. The cluster status can, since it
+// carries the object and the rid alongside the address.
+//
+// An address already reserved is left alone, whoever holds it, so an adoption
+// run twice changes nothing and an adoption run late does not take an address
+// from the resource that drew it. The count returned is of the addresses this
+// call recorded, which is how a setup says whether it had anything to adopt.
+func (t *T) Adopt(reservations []Reservation) (int, error) {
+	n := 0
+	for _, reservation := range reservations {
+		if reservation.IP == nil || reservation.Key == "" {
+			continue
+		}
+		if t.Range != nil && !t.Range.Contains(reservation.IP) {
+			continue
+		}
+		ok, err := t.reserve(reservation.IP, reservation.Key)
+		if err != nil {
+			return n, err
+		}
+		if ok {
+			n++
+		}
+	}
+	return n, nil
 }
 
 // Allocated returns the address key holds, or nil when it holds none.

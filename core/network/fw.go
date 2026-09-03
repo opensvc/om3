@@ -94,13 +94,6 @@ func (t *nftHandle) Run(argv []string) error {
 	return cmd.Run()
 }
 
-// invalidate drops the cached tables and chains, so a lookup made after a
-// deletion reads the ruleset again instead of finding what was removed.
-func (t *nftHandle) invalidate() {
-	t.tables = nil
-	t.chains = nil
-}
-
 func (t *nftHandle) Tables() ([]*nftables.Table, error) {
 	if t.tables != nil {
 		return t.tables, nil
@@ -170,14 +163,6 @@ func fmtFamily(family nftables.TableFamily) string {
 		return "ip6"
 	default:
 		return ""
-	}
-}
-
-func networkFamily(nw Networker) nftables.TableFamily {
-	if nw.IsIP6() {
-		return nftables.TableFamilyIPv6
-	} else {
-		return nftables.TableFamilyIPv4
 	}
 }
 

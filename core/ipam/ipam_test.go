@@ -250,3 +250,83 @@ func TestAllocateResolvesTheCollisionsOfASmallRange(t *testing.T) {
 	_, err = ipam.Allocate(Key(p, "ip#13"))
 	require.Error(t, err, "the range is full")
 }
+
+// TestAdoptKeepsTheAddressAResourceHolds pins the move from another
+// allocator: a resource that already has an address keeps it, rather than
+// being handed a new one and renumbered.
+func TestAdoptKeepsTheAddressAResourceHolds(t *testing.T) {
+	ipam := newT(t, "10.100.0.0/24")
+	p, err := naming.ParsePath("root/svc/pod1")
+	require.NoError(t, err)
+	key := Key(p, "ip#0")
+
+	_, err = ipam.Adopt([]Reservation{{IP: net.ParseIP("10.100.0.22"), Key: key}})
+	require.NoError(t, err)
+
+	ip, err := ipam.Allocate(key)
+	require.NoError(t, err)
+	assert.Equal(t, "10.100.0.22", ip.String(), "the address the resource already holds")
+}
+
+// TestAdoptDoesNotHandOutAnAdoptedAddress pins the other half: an address
+// recorded for one resource is not drawn by another.
+func TestAdoptDoesNotHandOutAnAdoptedAddress(t *testing.T) {
+	// .0 names the range, .1 is the gateway, .7 is the broadcast address.
+	ipam := newT(t, "10.100.0.0/29")
+	adopted := []Reservation{
+		{IP: net.ParseIP("10.100.0.2"), Key: "a"},
+		{IP: net.ParseIP("10.100.0.3"), Key: "b"},
+		{IP: net.ParseIP("10.100.0.4"), Key: "c"},
+		{IP: net.ParseIP("10.100.0.5"), Key: "d"},
+	}
+	n, err := ipam.Adopt(adopted)
+	require.NoError(t, err)
+	assert.Equal(t, 4, n, "four addresses recorded")
+
+	ip, err := ipam.Allocate("e")
+	require.NoError(t, err)
+	assert.Equal(t, "10.100.0.6", ip.String(), "the only address left")
+}
+
+// TestAdoptIsIdempotentAndLate pins that an adoption run twice changes
+// nothing, and that one run after an allocation does not take an address from
+// the resource that drew it.
+func TestAdoptIsIdempotentAndLate(t *testing.T) {
+	ipam := newT(t, "10.100.0.0/24")
+	drawn, err := ipam.Allocate("first")
+	require.NoError(t, err)
+
+	adopted := []Reservation{{IP: drawn, Key: "late"}}
+	n, err := ipam.Adopt(adopted)
+	require.NoError(t, err)
+	assert.Equal(t, 0, n, "the address is already reserved by the resource that drew it")
+	_, err = ipam.Adopt(adopted)
+	require.NoError(t, err)
+
+	held, err := ipam.Allocated("first")
+	require.NoError(t, err)
+	assert.Equal(t, drawn.String(), held.String(), "the resource that drew it keeps it")
+
+	other, err := ipam.Allocate("late")
+	require.NoError(t, err)
+	assert.NotEqual(t, drawn.String(), other.String(), "the late adoption gets an address of its own")
+}
+
+// TestAdoptSkipsWhatIsNotThisNodeRange pins that an address of another node,
+// which the cluster status reports alongside this node's, is not recorded
+// here.
+func TestAdoptSkipsWhatIsNotThisNodeRange(t *testing.T) {
+	ipam := newT(t, "10.100.0.0/24")
+	n, err := ipam.Adopt([]Reservation{
+		{IP: net.ParseIP("10.100.1.22"), Key: "on another node"},
+		{IP: nil, Key: "no address"},
+		{IP: net.ParseIP("10.100.0.22"), Key: ""},
+	})
+	require.NoError(t, err)
+	assert.Equal(t, 0, n)
+	entries, err := os.ReadDir(ipam.Dir)
+	if !os.IsNotExist(err) {
+		require.NoError(t, err)
+		assert.Empty(t, entries, "nothing of another range is recorded")
+	}
+}
