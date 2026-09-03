@@ -541,6 +541,41 @@ OpenSVC v3 is a major evolution, rebuilt in Go for performance, reliability, and
     to the hostname the record is published under, so a second address of the
     same container answers to `<hostname><suffix>.<objectfqdn>`.
 
+* **Changed keyword, `ip.netns.network`:**
+    It names the om network the address is drawn from, as it does on `ip.cni`.
+    An object attaches to a cluster network with one line:
+
+    ```
+    [ip#0]
+    type = netns
+    netns = container#0
+    network = default
+    ```
+
+    The `dev`, `netmask` and `gateway` of the resource are read from that
+    network when the configuration does not set them, and an empty `name` has
+    the address allocated from it. An explicit value still wins, so a
+    configuration setting them keeps working unchanged. `dev` is no longer a
+    required keyword: a network names it.
+
+    The keyword used to hold the address of the network, in dotted notation,
+    which set the destination of the route `del_net_route` removes. That
+    destination is the connected route the kernel adds along with the address,
+    which is the address masked, and the keyword could name no other: the
+    prefix length has always come from `netmask`. It is derived now. A value
+    still in that form is reported as obsolete and ignored, and a value that is
+    neither an address nor the name of a network is refused, naming the
+    networks that exist.
+
+* **Address allocation:**
+    om allocates the addresses of its `bridge` and `routed_bridge` networks
+    itself, rather than leaving them to the `host-local` cni plugin. A resource
+    draws the same address every time it starts, from a hash of the object and
+    the rid, so an object is not renumbered by a restart and the name it is
+    published under keeps resolving to the same place. `host-local` allocates
+    the first free address instead, which moves as the neighbours of an object
+    come and go.
+
 * **Collector DNS zone:**
     This feature of the collector, used by the ip driver for one of its provisioning methods, is deprecated.
 
