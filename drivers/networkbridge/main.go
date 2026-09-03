@@ -107,6 +107,17 @@ func (t *T) CNIConfigData() (interface{}, error) {
 	return m, nil
 }
 
+// AllocatableRange returns the whole subnet of the network.
+//
+// A bridge network is node local and its addresses are not routable: the
+// bridge is per node, nothing carries the subnet between nodes, and the same
+// address on two nodes never meets. So every node draws from all of it, and
+// the slicing a routed_bridge needs would only make the range smaller for no
+// gain.
+func (t *T) AllocatableRange(_ string) (*net.IPNet, error) {
+	return t.IPNet()
+}
+
 func (t *T) bridgeIP() (net.IP, error) {
 	subnetStr := t.Network()
 	if subnetStr == "" {
