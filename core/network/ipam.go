@@ -2,6 +2,7 @@ package network
 
 import (
 	"encoding/json"
+	"fmt"
 	"net"
 	"os"
 	"path/filepath"
@@ -9,12 +10,59 @@ import (
 	"github.com/opensvc/om3/v3/core/instance"
 	"github.com/opensvc/om3/v3/core/ipam"
 	"github.com/opensvc/om3/v3/core/naming"
+	"github.com/opensvc/om3/v3/core/object"
 	"github.com/opensvc/om3/v3/util/hostname"
 )
 
 // ipAddrInfoKey is the resource status info an ip resource publishes its
 // address under.
 const ipAddrInfoKey = "ipaddr"
+
+// NewAllocator returns the allocator of a network on a node, or nil when the
+// network is one om allocates no address in.
+func NewAllocator(nw Networker, nodename string) (*ipam.T, error) {
+	i, ok := nw.(IPAMer)
+	if !ok {
+		return nil, nil
+	}
+	rng, err := i.AllocatableRange(nodename)
+	if err != nil {
+		return nil, fmt.Errorf("network %s: %w", nw.Name(), err)
+	}
+	if rng == nil {
+		return nil, nil
+	}
+	return &ipam.T{
+		Name:    nw.Name(),
+		Range:   rng,
+		Gateway: ipam.Gateway(rng),
+		Dir:     ipam.StoreDir(nw.Name()),
+		// The record of the host-local plugin is read while it still hands
+		// out addresses of this network, and never written: an address it
+		// gave has no reservation of om's until a setup adopts it.
+		PeerDirs: []string{filepath.Join(cniCacheDir, nw.Name())},
+	}, nil
+}
+
+// Lookup returns the network of a name, or nil when no network has it.
+func Lookup(name string) (Networker, []string, error) {
+	node, err := object.NewNode(object.WithVolatile(true))
+	if err != nil {
+		return nil, nil, err
+	}
+	names := make([]string, 0)
+	for _, nw := range Networks(node) {
+		if nw.Name() == name {
+			return nw, nil, nil
+		}
+		names = append(names, nw.Name())
+	}
+	return nil, names, nil
+}
+
+// cniCacheDir is where the host-local plugin records the addresses it hands
+// out.
+const cniCacheDir = "/var/lib/cni/networks"
 
 // setupIPAM records the addresses the resources of this node already hold, so
 // the allocator hands out the addresses that are free rather than the ones it
@@ -41,23 +89,13 @@ func setupIPAM(nws []Networker) error {
 	}
 	nodename := hostname.Hostname()
 	for _, nw := range nws {
-		i, ok := nw.(IPAMer)
-		if !ok {
-			continue
-		}
-		rng, err := i.AllocatableRange(nodename)
+		a, err := NewAllocator(nw, nodename)
 		if err != nil {
 			nw.Log().Warnf("ipam: %s", err)
 			continue
 		}
-		if rng == nil {
+		if a == nil {
 			continue
-		}
-		a := &ipam.T{
-			Name:    nw.Name(),
-			Range:   rng,
-			Gateway: ipam.Gateway(rng),
-			Dir:     ipam.StoreDir(nw.Name()),
 		}
 		adopted, err := a.Adopt(reservations)
 		if err != nil {

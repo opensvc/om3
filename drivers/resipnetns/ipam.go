@@ -5,21 +5,12 @@ package resipnetns
 import (
 	"fmt"
 	"net"
-	"path/filepath"
 	"strings"
 
 	"github.com/opensvc/om3/v3/core/ipam"
 	"github.com/opensvc/om3/v3/core/network"
-	"github.com/opensvc/om3/v3/core/object"
-	"github.com/opensvc/om3/v3/core/rawconfig"
 	"github.com/opensvc/om3/v3/util/hostname"
 )
-
-// cniCacheDir is where the host-local plugin records the addresses it hands
-// out. It is read and never written: while ip.cni is served by that plugin,
-// an address it gave has no reservation of om's, and would be handed out
-// twice.
-const cniCacheDir = "/var/lib/cni/networks"
 
 // resolveNetwork returns the om network the network keyword names.
 //
@@ -40,17 +31,13 @@ func (t *T) resolveNetwork() (network.Networker, error) {
 	if t.Network == "" {
 		return nil, nil
 	}
-	node, err := object.NewNode(object.WithVolatile(true))
+	nw, names, err := network.Lookup(t.Network)
 	if err != nil {
 		return nil, err
 	}
-	names := make([]string, 0)
-	for _, nw := range network.Networks(node) {
-		if nw.Name() == t.Network {
-			t._network = nw
-			return nw, nil
-		}
-		names = append(names, nw.Name())
+	if nw != nil {
+		t._network = nw
+		return nw, nil
 	}
 	if isAddr(t.Network) {
 		t.Log().Warnf("the network keyword holds the address %s, which is obsolete and ignored: the route del_net_route removes is derived from the address and the netmask. The keyword names the network the address is drawn from now", t.Network)
@@ -84,21 +71,7 @@ func (t *T) ipam() (*ipam.T, error) {
 	if nw == nil {
 		return nil, nil
 	}
-	i, ok := nw.(network.IPAMer)
-	if !ok {
-		return nil, fmt.Errorf("network %s allocates no address", nw.Name())
-	}
-	rng, err := i.AllocatableRange(hostname.Hostname())
-	if err != nil {
-		return nil, fmt.Errorf("network %s: %w", nw.Name(), err)
-	}
-	return &ipam.T{
-		Name:     nw.Name(),
-		Range:    rng,
-		Gateway:  ipam.Gateway(rng),
-		Dir:      filepath.Join(rawconfig.Paths.Var, "ipam", nw.Name()),
-		PeerDirs: []string{filepath.Join(cniCacheDir, nw.Name())},
-	}, nil
+	return network.NewAllocator(nw, hostname.Hostname())
 }
 
 // ipamKey names the reservation of this resource. An instance holds as many ip

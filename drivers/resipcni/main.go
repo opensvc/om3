@@ -403,7 +403,10 @@ func (t *T) Stop(ctx context.Context) error {
 	if err := t.delObjectNetNS(); err != nil {
 		return err
 	}
-	return nil
+	// The reservation is released last: an address still configured in a
+	// namespace this stop failed to clean is an address om must not hand to
+	// another resource.
+	return t.freeIP()
 }
 
 func (t *T) Status(ctx context.Context) status.T {
@@ -601,8 +604,13 @@ func (t *T) stop(ctx context.Context) error {
 		command.WithBufferedStderr(),
 	)
 
+	reserved, err := t.allocatedIP()
+	if err != nil {
+		return err
+	}
+
 	// {"name": "noop-test", "cniVersion": "0.3.1", ...}
-	stdinData, err := t.netConfBytes()
+	stdinData, err := t.netConfBytesFor(reserved)
 	if err != nil {
 		return err
 	}
@@ -667,8 +675,13 @@ func (t *T) start(ctx context.Context) error {
 		fmt.Sprintf("CNI_PATH=%s", filepath.Dir(plugin)),
 	}
 
+	ip, err := t.allocateIP()
+	if err != nil {
+		return err
+	}
+
 	// {"name": "noop-test", "cniVersion": "0.3.1", ...}
-	stdinData, err := t.netConfBytes()
+	stdinData, err := t.netConfBytesFor(ip)
 	if err != nil {
 		return err
 	}
