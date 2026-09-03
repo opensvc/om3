@@ -302,7 +302,13 @@ func (t *T) Setup() error {
 		return fmt.Errorf("link up: %w", err)
 	}
 	if localIP, err = t.getLocalIP(); err != nil {
-		return fmt.Errorf("get local ip: %w", err)
+		// Say what the failure costs. The setup stops here, past the bridge
+		// and before the peers, so the network is left half made: the bridge
+		// is up with its gateway address, no tunnel or route reaches a peer,
+		// and setupNetwork returns before writing the cni configuration. An
+		// object using this network does not start on this node.
+		t.Log().Errorf("no %s address for this node, so this network is left with its bridge up, no tunnel or route to the peer nodes, and no cni configuration written: an object using it will not start on this node. Set the addr keyword scoped to this node, or give the node an address of that family", t.getAF())
+		return fmt.Errorf("get local %s address of this node: %w", t.getAF(), err)
 	}
 	nodes, err := t.Nodes()
 	if err != nil {
