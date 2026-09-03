@@ -5,7 +5,7 @@ package network
 import (
 	"fmt"
 	"net"
-	"reflect"
+	"strings"
 
 	"github.com/google/nftables"
 	"github.com/rs/zerolog"
@@ -60,13 +60,10 @@ var (
 	// compatibility layer owns. A setup deletes them, so a node upgrading stops
 	// hiding those tables from iptables. The chain holding the jumps comes
 	// first: nft refuses to delete a chain another one still jumps to.
-	legacyFWChains = []struct {
-		Table string
-		Chain string
-	}{
-		{"nat", fwChainPostrouting},
-		{"nat", fwChainMasq},
-		{"filter", fwChainForward},
+	legacyFWChains = []legacyChain{
+		{Table: "nat", Chain: fwChainPostrouting},
+		{Table: "nat", Chain: fwChainMasq},
+		{Table: "filter", Chain: fwChainForward},
 	}
 )
 
@@ -145,31 +142,6 @@ func (t *nftHandle) GetTable(family nftables.TableFamily, tableName string) (*nf
 	return nil, nil
 }
 
-func (t *nftHandle) AddTable(family nftables.TableFamily, tableName string) (*nftables.Table, error) {
-	table, err := t.GetTable(family, tableName)
-	if err != nil {
-		return nil, err
-	}
-	if table != nil {
-		return table, nil
-	}
-	if err := t.Run([]string{"nft", "add", "table", fmtFamily(family), tableName}); err != nil {
-		return nil, err
-	}
-	// The lookup above filled the cache from a ruleset without this table, so
-	// read it again rather than answer nil for a table that now exists. The
-	// two tables om used to write to were always there, so this never ran.
-	t.invalidate()
-	table, err = t.GetTable(family, tableName)
-	if err != nil {
-		return nil, err
-	}
-	if table == nil {
-		return nil, fmt.Errorf("table %s %s is absent right after its creation", fmtFamily(family), tableName)
-	}
-	return table, nil
-}
-
 func (t *nftHandle) GetChain(family nftables.TableFamily, tableName, chainName string) (*nftables.Chain, error) {
 	chains, err := t.Chains()
 	if err != nil {
@@ -188,163 +160,6 @@ func (t *nftHandle) GetChain(family nftables.TableFamily, tableName, chainName s
 		return chain, nil
 	}
 	return nil, nil
-}
-
-func (t *nftHandle) AddForwardChain(table *nftables.Table, chainName string) (*nftables.Chain, error) {
-	chain := &nftables.Chain{
-		Name:     chainName,
-		Table:    table,
-		Hooknum:  nftables.ChainHookForward,
-		Priority: nftables.ChainPriorityFilter,
-		Type:     nftables.ChainTypeFilter,
-	}
-	return t.addChain(chain)
-}
-
-func (t *nftHandle) AddPostRoutingChain(table *nftables.Table, chainName string) (*nftables.Chain, error) {
-	chain := &nftables.Chain{
-		Name:     chainName,
-		Table:    table,
-		Hooknum:  nftables.ChainHookPostrouting,
-		Priority: nftables.ChainPriorityNATSource,
-		Type:     nftables.ChainTypeNAT,
-	}
-	return t.addChain(chain)
-}
-
-func (t *nftHandle) AddChain(table *nftables.Table, chainName string) (*nftables.Chain, error) {
-	chain := &nftables.Chain{
-		Name:  chainName,
-		Table: table,
-	}
-	return t.addRegularChain(chain)
-}
-
-func fmtRegularChain(chain *nftables.Chain) []string {
-	l := []string{"nft", "add", "chain", fmtFamily(chain.Table.Family), chain.Table.Name, chain.Name}
-	return l
-}
-
-func fmtChain(chain *nftables.Chain) []string {
-	l := []string{"nft", "add", "chain", fmtFamily(chain.Table.Family), chain.Table.Name, chain.Name}
-
-	s := "{ type " + string(chain.Type)
-	switch chain.Hooknum {
-	case nftables.ChainHookPrerouting:
-		s += " hook prerouting"
-	case nftables.ChainHookInput:
-		s += " hook input"
-	case nftables.ChainHookForward:
-		s += " hook forward"
-	case nftables.ChainHookOutput:
-		s += " hook output"
-	case nftables.ChainHookPostrouting:
-		s += " hook postrouting"
-	}
-
-	// Priority is a *ChainPriority: formatting the pointer wrote the address
-	// of the constant into the rule, and the chain landed on a priority no
-	// caller asked for. "priority 4219880" instead of the srcnat 100 put om's
-	// masquerade behind every other postrouting chain.
-	if chain.Priority != nil {
-		s += fmt.Sprintf(" priority %d", *chain.Priority)
-	}
-
-	if chain.Policy != nil {
-		switch *chain.Policy {
-		case nftables.ChainPolicyAccept:
-			s += " policy accept"
-		case nftables.ChainPolicyDrop:
-			s += " policy drop"
-		}
-	}
-	s += "; }"
-	return append(l, s)
-}
-
-func (t *nftHandle) addRegularChain(chain *nftables.Chain) (*nftables.Chain, error) {
-	cachedChain, err := t.GetChain(chain.Table.Family, chain.Table.Name, chain.Name)
-	if err != nil {
-		return nil, err
-	}
-	if cachedChain != nil {
-		return cachedChain, nil
-	}
-	l := fmtRegularChain(chain)
-	if err := t.Run(l); err != nil {
-		return nil, err
-	}
-	t.chains = append(t.chains, chain)
-	return chain, nil
-}
-
-func (t *nftHandle) addChain(chain *nftables.Chain) (*nftables.Chain, error) {
-	cachedChain, err := t.GetChain(chain.Table.Family, chain.Table.Name, chain.Name)
-	if err != nil {
-		return nil, err
-	}
-	if cachedChain != nil {
-		return cachedChain, nil
-	}
-	l := fmtChain(chain)
-	if err := t.Run(l); err != nil {
-		return nil, err
-	}
-	t.chains = append(t.chains, chain)
-	return chain, nil
-}
-
-func debugRules() error {
-	h := newNFTHandle()
-	family := nftables.TableFamilyIPv4
-	table, err := h.AddTable(family, fwTableName)
-	if err != nil {
-		return err
-	}
-	chain, err := h.AddChain(table, "osvc-networks")
-	if err != nil {
-		return err
-	}
-	rules, err := h.Conn().GetRule(table, chain)
-	if err != nil {
-		return err
-	}
-	for _, rule := range rules {
-		_ = rule
-		fmt.Printf("%+v\n", rule)
-		for _, e := range rule.Exprs {
-			fmt.Printf(" %s %+v\n", reflect.TypeOf(e), e)
-		}
-	}
-	return nil
-}
-
-func setupFW(n logger, nws []Networker) error {
-	h := newNFTHandle()
-	h.SetLogger(n.Log())
-	if err := h.FlushChains(); err != nil {
-		return err
-	}
-	for _, other := range nws {
-		cidr := other.Network()
-		if err := h.AddRuleDestinationReturn(cidr); err != nil {
-			return err
-		}
-		if i, ok := other.(backendDevNamer); ok {
-			dev := i.BackendDevName()
-			if dev != "" {
-				if err := h.AddRuleSourceJump(cidr); err != nil {
-					return err
-				}
-				if err := h.AddRuleForwardAccept(cidr, dev); err != nil {
-					return err
-				}
-			}
-		}
-	}
-	h.AddRuleDestinationReturn("224.0.0.0/8")
-	h.AddRuleMasq()
-	return nil
 }
 
 func fmtFamily(family nftables.TableFamily) string {
@@ -374,172 +189,180 @@ func ipFamily(ip net.IP) nftables.TableFamily {
 	}
 }
 
-// FlushChains drops what a setup is about to write again.
+// fwNetwork is what the ruleset needs to know about a network: the addresses
+// it holds, and the device its backend traffic goes through when it has one.
+type fwNetwork struct {
+	CIDR string
+	Dev  string
+}
+
+// legacyChain names a chain om left in a table it no longer writes to.
+type legacyChain struct {
+	Family string
+	Table  string
+	Chain  string
+}
+
+// multicastCIDR is returned from the masquerade chain rather than translated.
+// There is no ipv6 counterpart because there never was one.
+const multicastCIDR = "224.0.0.0/8"
+
+// fwNetworks returns what the ruleset is rendered from.
+func fwNetworks(nws []Networker) []fwNetwork {
+	l := make([]fwNetwork, 0, len(nws))
+	for _, nw := range nws {
+		n := fwNetwork{CIDR: nw.Network()}
+		if i, ok := nw.(backendDevNamer); ok {
+			n.Dev = i.BackendDevName()
+		}
+		l = append(l, n)
+	}
+	return l
+}
+
+// fwRuleset renders the nft document a setup applies.
 //
-// om's own table is deleted rather than flushed: a chain keeps the hook and the
-// priority it was created with, so flushing one an older om created would leave
-// it registered where that om put it. The table holds nothing but om's rules,
-// and the setup adds them all back.
-func (t *nftHandle) FlushChains() error {
+// The whole document is one transaction. The table is deleted and defined
+// again in full, so the rules are never half there: the kernel swaps the table
+// in one step, and a rule nft refuses leaves the ruleset as it was rather than
+// partly rebuilt. Adding a rule at a time left the masquerade and the forward
+// accepts absent for as long as the setup ran, a quarter of a second of new
+// connections leaving a container unmasqueraded.
+//
+// The "table" line before the "delete" is what makes the delete safe to write
+// unconditionally: it creates the table when it is absent, and says nothing
+// when it is not.
+func fwRuleset(networks []fwNetwork, legacy []legacyChain) (string, error) {
+	var sb strings.Builder
+	for _, chain := range legacy {
+		fmt.Fprintf(&sb, "flush chain %s %s %s\n", chain.Family, chain.Table, chain.Chain)
+	}
+	for _, chain := range legacy {
+		fmt.Fprintf(&sb, "delete chain %s %s %s\n", chain.Family, chain.Table, chain.Chain)
+	}
 	for _, family := range fwFamilies {
-		if err := t.deleteTable(family, fwTableName); err != nil {
-			return err
-		}
-		if err := t.deleteLegacyChains(family); err != nil {
-			return err
-		}
-	}
-	return nil
-}
-
-// deleteTable removes a table and everything in it, when it exists.
-func (t *nftHandle) deleteTable(family nftables.TableFamily, tableName string) error {
-	table, err := t.GetTable(family, tableName)
-	if err != nil {
-		return err
-	}
-	if table == nil {
-		return nil
-	}
-	l := []string{"nft", "delete", "table", fmtFamily(family), tableName}
-	if err := t.Run(l); err != nil {
-		return err
-	}
-	t.invalidate()
-	return nil
-}
-
-// deleteLegacyChains removes the chains om used to add to the nat and filter
-// tables, so a node that ran an older om stops hiding them from iptables.
-//
-// Every chain is flushed before any is deleted: nft refuses to delete a chain a
-// rule still jumps to, and the rules doing the jumping live in a chain of this
-// same list.
-func (t *nftHandle) deleteLegacyChains(family nftables.TableFamily) error {
-	found := make([]int, 0, len(legacyFWChains))
-	for i, data := range legacyFWChains {
-		chain, err := t.GetChain(family, data.Table, data.Chain)
+		body, err := fwTable(family, networks)
 		if err != nil {
-			return err
+			return "", err
 		}
-		if chain == nil {
+		if body == "" {
 			continue
 		}
-		l := []string{"nft", "flush", "chain", fmtFamily(family), data.Table, data.Chain}
-		if err := t.Run(l); err != nil {
-			return err
-		}
-		found = append(found, i)
+		name := fmtFamily(family)
+		fmt.Fprintf(&sb, "table %s %s { }\n", name, fwTableName)
+		fmt.Fprintf(&sb, "delete table %s %s\n", name, fwTableName)
+		sb.WriteString(body)
 	}
-	for _, i := range found {
-		data := legacyFWChains[i]
-		l := []string{"nft", "delete", "chain", fmtFamily(family), data.Table, data.Chain}
-		if err := t.Run(l); err != nil {
-			return err
-		}
-	}
-	if len(found) > 0 {
-		t.invalidate()
-	}
-	return nil
+	return sb.String(), nil
 }
 
-func (t *nftHandle) AddRuleMasq() error {
+// fwTable renders the table of one address family, or an empty string when no
+// network of that family is configured.
+func fwTable(family nftables.TableFamily, networks []fwNetwork) (string, error) {
+	var returns, jumps, devs []string
+	name := fmtFamily(family)
+	for _, nw := range networks {
+		ip, ipnet, err := net.ParseCIDR(nw.CIDR)
+		if err != nil {
+			return "", fmt.Errorf("network %s: %w", nw.CIDR, err)
+		}
+		if ipFamily(ip) != family {
+			continue
+		}
+		returns = append(returns, fmt.Sprintf("\t\t%s daddr %s counter return\n", name, ipnet))
+		if nw.Dev == "" {
+			continue
+		}
+		jumps = append(jumps, fmt.Sprintf("\t\t%s saddr %s counter jump %s\n", name, ipnet, fwChainMasq))
+		devs = append(devs, nw.Dev)
+	}
+	if len(returns) == 0 {
+		return "", nil
+	}
+	if family == nftables.TableFamilyIPv4 {
+		returns = append(returns, fmt.Sprintf("\t\tip daddr %s counter return\n", multicastCIDR))
+	}
+
+	var sb strings.Builder
+	fmt.Fprintf(&sb, "table %s %s {\n", name, fwTableName)
+
+	fmt.Fprintf(&sb, "\tchain %s {\n", fwChainMasq)
+	for _, rule := range returns {
+		sb.WriteString(rule)
+	}
+	sb.WriteString("\t\tmasquerade\n\t}\n")
+
+	fmt.Fprintf(&sb, "\tchain %s {\n", fwChainPostrouting)
+	sb.WriteString("\t\ttype nat hook postrouting priority srcnat; policy accept;\n")
+	for _, rule := range jumps {
+		sb.WriteString(rule)
+	}
+	sb.WriteString("\t}\n")
+
+	fmt.Fprintf(&sb, "\tchain %s {\n", fwChainForward)
+	sb.WriteString("\t\ttype filter hook forward priority filter; policy accept;\n")
+	for _, dev := range devs {
+		fmt.Fprintf(&sb, "\t\tiif \"%s\" counter accept\n", dev)
+		fmt.Fprintf(&sb, "\t\toif \"%s\" counter accept\n", dev)
+	}
+	sb.WriteString("\t}\n}\n")
+
+	return sb.String(), nil
+}
+
+// legacyChains returns the chains om left in the tables it no longer writes
+// to, so the document deletes the ones this node still has.
+//
+// They cannot be deleted unconditionally: nft aborts a transaction on a delete
+// of an absent chain, and not half applying is the point of the transaction.
+func (t *nftHandle) legacyChains() ([]legacyChain, error) {
+	l := make([]legacyChain, 0)
 	for _, family := range fwFamilies {
-		table, _ := t.GetTable(family, fwTableName)
-		if table != nil {
-			if err := t.addRuleMasq(table); err != nil {
-				return err
+		for _, data := range legacyFWChains {
+			chain, err := t.GetChain(family, data.Table, data.Chain)
+			if err != nil {
+				return nil, err
 			}
+			if chain == nil {
+				continue
+			}
+			l = append(l, legacyChain{Family: fmtFamily(family), Table: data.Table, Chain: data.Chain})
 		}
 	}
-	return nil
+	return l, nil
 }
 
-func (t *nftHandle) addRuleMasq(table *nftables.Table) error {
-	chain, err := t.AddChain(table, fwChainMasq)
-	if err != nil {
-		return err
+// apply hands the document to nft, which reads a ruleset from stdin and
+// applies it as one transaction.
+func (t *nftHandle) apply(ruleset string) error {
+	if ruleset == "" {
+		return nil
 	}
-	l := []string{"nft", "add", "rule", fmtFamily(table.Family), table.Name, chain.Name, "masquerade"}
-	if err := t.Run(l); err != nil {
-		return err
+	cmd := command.New(
+		command.WithName("nft"),
+		command.WithVarArgs("-f", "-"),
+		command.WithLogger(t.log),
+		command.WithCommandLogLevel(zerolog.InfoLevel),
+		command.WithStdoutLogLevel(zerolog.InfoLevel),
+		command.WithStderrLogLevel(zerolog.ErrorLevel),
+	)
+	cmd.Cmd().Stdin = strings.NewReader(ruleset)
+	if t.log != nil {
+		t.log.Attr("ruleset", ruleset).Infof("apply the nft ruleset of the om networks")
 	}
-	return nil
+	return cmd.Run()
 }
 
-func (t *nftHandle) AddRuleDestinationReturn(cidr string) error {
-	ip, ipnet, err := net.ParseCIDR(cidr)
+func setupFW(n logger, nws []Networker) error {
+	h := newNFTHandle()
+	h.SetLogger(n.Log())
+	legacy, err := h.legacyChains()
 	if err != nil {
 		return err
 	}
-	family := ipFamily(ip)
-	table, err := t.AddTable(family, fwTableName)
+	ruleset, err := fwRuleset(fwNetworks(nws), legacy)
 	if err != nil {
 		return err
 	}
-	chain, err := t.AddChain(table, fwChainMasq)
-	if err != nil {
-		return err
-	}
-	l := []string{"nft", "insert", "rule", fmtFamily(family), table.Name, chain.Name}
-	if ip.To4() == nil {
-		l = append(l, "ip6")
-	} else {
-		l = append(l, "ip")
-	}
-	l = append(l, "daddr", ipnet.String(), "counter", "return")
-	return t.Run(l)
-}
-
-func (t *nftHandle) AddRuleSourceJump(cidr string) error {
-	ip, ipnet, err := net.ParseCIDR(cidr)
-	if err != nil {
-		return err
-	}
-	family := ipFamily(ip)
-	table, err := t.AddTable(family, fwTableName)
-	if err != nil {
-		return err
-	}
-	chain, err := t.AddPostRoutingChain(table, fwChainPostrouting)
-	if err != nil {
-		return err
-	}
-	l := []string{"nft", "add", "rule", fmtFamily(family), table.Name, chain.Name}
-	if ip.To4() == nil {
-		l = append(l, "ip6")
-	} else {
-		l = append(l, "ip")
-	}
-	l = append(l, "saddr", ipnet.String(), "counter", "jump", "osvc-masq")
-	return t.Run(l)
-}
-
-func (t *nftHandle) AddRuleForwardAccept(cidr, dev string) error {
-	ip, _, err := net.ParseCIDR(cidr)
-	if err != nil {
-		return err
-	}
-	family := ipFamily(ip)
-	table, err := t.AddTable(family, fwTableName)
-	if err != nil {
-		return err
-	}
-	chain, err := t.AddForwardChain(table, fwChainForward)
-	if err != nil {
-		return err
-	}
-
-	l := []string{"nft", "add", "rule", fmtFamily(family), table.Name, chain.Name, "iif", dev, "counter", "accept"}
-	if err := t.Run(l); err != nil {
-		return err
-	}
-
-	l = []string{"nft", "add", "rule", fmtFamily(family), table.Name, chain.Name, "oif", dev, "counter", "accept"}
-	if err := t.Run(l); err != nil {
-		return err
-	}
-
-	return nil
+	return h.apply(ruleset)
 }
