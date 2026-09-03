@@ -3,8 +3,10 @@ package rescontainerpodman
 import (
 	"context"
 	"os/exec"
+	"path/filepath"
 	"strings"
 
+	"github.com/opensvc/om3/v3/drivers/rescontainer"
 	"github.com/opensvc/om3/v3/util/args"
 )
 
@@ -36,12 +38,55 @@ func (ea *ExecutorArg) RunArgsBase(ctx context.Context) (*args.T, error) {
 	}
 	if a.HasOptionAndMatchingValue("--net", "(^none$|^container:.*$)") ||
 		a.HasOptionAndMatchingValue("--network", "(^none$|^container:.*$)") {
+		// podman refuses the dns options in these two network modes:
+		//
+		//   conflicting options: dns and the network mode: none
+		//   conflicting options: dns and the network mode: container
+		//
+		// and writes no /etc/resolv.conf of its own for them either, so
+		// dropping the options left the container of an object using the
+		// pause container model with no resolver at all: it could not resolve
+		// a name of its own cluster. Hand it the file the options would have
+		// produced instead.
 		a.DropOptionAndAnyValue("--dns")
 		a.DropOptionAndAnyValue("--dns-opt")
 		a.DropOptionAndAnyValue("--dns-option")
 		a.DropOptionAndAnyValue("--dns-search")
+		if mount, err := ea.resolvConfMount(); err != nil {
+			return nil, err
+		} else if mount != "" {
+			a.DropOptionAndExactValue("-v", mount)
+			a.DropOptionAndExactValue("--volume", mount)
+			a.Append("-v", mount)
+		}
 	}
 	return a, nil
+}
+
+// resolvConfMount writes the resolver configuration of the container and
+// returns the option mounting it, or an empty string when there is nothing to
+// say to the container.
+//
+// The file is written on every start, and a container reads it for as long as
+// it runs: a container adapts to a cluster layout change by being restarted.
+func (ea *ExecutorArg) resolvConfMount() (string, error) {
+	resolvConf := rescontainer.ResolvConf{
+		Nameservers: ea.BT.DNS,
+		Searches:    rescontainer.SearchDomains(ea.BT.ObjectDomain, ea.BT.DNSSearch),
+		Options:     rescontainer.ResolvConfOptions,
+	}
+	if resolvConf.IsZero() {
+		return "", nil
+	}
+	if n := len(resolvConf.Nameservers); n > rescontainer.MaxNameservers {
+		ea.BT.Log().Warnf("cluster.dns names %d nameservers, a resolver reads the first %d: %s is not written to the container resolv.conf",
+			n, rescontainer.MaxNameservers, strings.Join(resolvConf.Nameservers[rescontainer.MaxNameservers:], ", "))
+	}
+	path, err := rescontainer.WriteResolvConf(filepath.Join(ea.BT.VarDir(), "resolv.conf"), resolvConf)
+	if err != nil {
+		return "", err
+	}
+	return path + ":/etc/resolv.conf:ro", nil
 }
 
 func (ea *ExecutorArg) WaitRemoved(ctx context.Context) error {
