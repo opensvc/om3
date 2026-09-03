@@ -84,8 +84,9 @@ func setupIPAM(nws []Networker) error {
 	if err != nil {
 		return err
 	}
-	if len(reservations) == 0 {
-		return nil
+	installed, err := installedPaths()
+	if err != nil {
+		return err
 	}
 	nodename := hostname.Hostname()
 	for _, nw := range nws {
@@ -103,6 +104,21 @@ func setupIPAM(nws []Networker) error {
 		}
 		if adopted > 0 {
 			nw.Log().Infof("ipam: adopted %d address(es) already held in this network", adopted)
+		}
+		reaped, err := a.Reap(func(key string) bool {
+			p, ok := ipam.PathOfKey(key)
+			if !ok {
+				// A key of a shape this om does not write is not one it may
+				// decide is gone.
+				return true
+			}
+			return installed[p.String()]
+		})
+		if err != nil {
+			return err
+		}
+		if reaped > 0 {
+			nw.Log().Infof("ipam: released %d address(es) held for an object that no longer exists", reaped)
 		}
 		drained, left, err := a.DrainPeers()
 		if err != nil {
@@ -162,4 +178,17 @@ func loadInstanceStatus(p naming.Path) (instance.Status, error) {
 	}
 	err = json.Unmarshal(b, &data)
 	return data, err
+}
+
+// installedPaths returns the objects configured on this node, by path.
+func installedPaths() (map[string]bool, error) {
+	paths, err := naming.InstalledPaths()
+	if err != nil {
+		return nil, err
+	}
+	m := make(map[string]bool, len(paths))
+	for _, p := range paths {
+		m[p.String()] = true
+	}
+	return m, nil
 }

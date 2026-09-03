@@ -151,8 +151,18 @@ func (t *T) Start(ctx context.Context) error {
 	} else if t._ipaddrAge > 0 {
 		t.Log().Warnf("ip %s lookup issue, cache valid (%s old)", t.Name, duration.FmtShortDuration(t._ipaddrAge))
 	}
-	if _, err := t.allocateIP(); err != nil {
+	allocated, err := t.allocateIP()
+	if err != nil {
 		return err
+	}
+	if allocated != nil {
+		// A start that fails past this point rolls back, and the address goes
+		// with it. Without this an object whose start failed holds an address
+		// while it is down, and deleting it without a stop leaves a
+		// reservation nothing will ever release.
+		actionrollback.Register(ctx, func(ctx context.Context) error {
+			return t.freeIP()
+		})
 	}
 	if err := t.startMode(ctx); err != nil {
 		return err

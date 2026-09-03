@@ -281,6 +281,56 @@ func (t *T) DrainPeers() (int, int, error) {
 	return drained, left, nil
 }
 
+// Reap releases the reservations held for keys that no longer exist.
+//
+// A resource releases its address when it stops, and a start that fails rolls
+// the allocation back, so a reservation outliving its holder takes a crash at
+// the wrong moment. It outlives it for good though: the key names an object
+// that is gone, so nothing will ever come to release it, and the address is
+// lost until someone reads the store and works out why.
+//
+// A key is kept unless it is known not to exist. Anything else would race a
+// resource that has just reserved an address and not yet finished starting.
+func (t *T) Reap(exists func(key string) bool) (int, error) {
+	entries, err := os.ReadDir(t.Dir)
+	if os.IsNotExist(err) {
+		return 0, nil
+	} else if err != nil {
+		return 0, err
+	}
+	n := 0
+	for _, entry := range entries {
+		if net.ParseIP(entry.Name()) == nil {
+			continue
+		}
+		key, err := t.holder(entry.Name())
+		if err != nil {
+			return n, err
+		}
+		if key == "" || exists(key) {
+			continue
+		}
+		if err := os.Remove(filepath.Join(t.Dir, entry.Name())); err != nil && !os.IsNotExist(err) {
+			return n, err
+		}
+		n++
+	}
+	return n, nil
+}
+
+// PathOfKey returns the object a key names, and whether it names one.
+func PathOfKey(key string) (naming.Path, bool) {
+	s, _, found := strings.Cut(key, "!")
+	if !found {
+		return naming.Path{}, false
+	}
+	p, err := naming.ParsePath(s)
+	if err != nil {
+		return naming.Path{}, false
+	}
+	return p, true
+}
+
 // taken returns the addresses no allocation may draw: the ones reserved here,
 // the ones reserved by an allocator sharing the range, and the ones the
 // cluster reports in use.

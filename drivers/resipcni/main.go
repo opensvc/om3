@@ -572,6 +572,15 @@ func (t *T) start(ctx context.Context) error {
 	if err != nil {
 		return err
 	}
+	if ip != nil {
+		// A start that fails past this point rolls back, and the address goes
+		// with it. Without this an object whose start failed holds an address
+		// while it is down, and deleting it without a stop leaves a
+		// reservation nothing will ever release.
+		actionrollback.Register(ctx, func(ctx context.Context) error {
+			return t.freeIP()
+		})
+	}
 
 	// {"name": "noop-test", "cniVersion": "0.3.1", ...}
 	stdinData, err := t.netConfBytesFor(ip)

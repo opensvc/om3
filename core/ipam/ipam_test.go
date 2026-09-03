@@ -5,6 +5,7 @@ import (
 	"net"
 	"os"
 	"path/filepath"
+	"sync"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -382,4 +383,107 @@ func TestDrainPeersKeepsAnUnaccountedAddressExcluded(t *testing.T) {
 	ip, err := ipam.Allocate("late")
 	require.NoError(t, err)
 	assert.Equal(t, "10.100.0.6", ip.String(), "the addresses left in the record are still excluded")
+}
+
+// TestAllocateIsSafeUnderContention pins that the exclusive create is the
+// whole of the locking. The range is small enough that the keys collide on
+// their first candidate, so the walk and the reservation race for real.
+func TestAllocateIsSafeUnderContention(t *testing.T) {
+	// A /27 holds 32 addresses, 29 of them allocatable.
+	ipam := newT(t, "10.100.0.0/27")
+
+	const workers = 29
+	var (
+		wg   sync.WaitGroup
+		mu   sync.Mutex
+		held = make(map[string]string, workers)
+		errs []error
+	)
+	for i := range workers {
+		wg.Add(1)
+		go func(i int) {
+			defer wg.Done()
+			key := fmt.Sprintf("root/svc/obj%d!ip#0", i)
+			ip, err := ipam.Allocate(key)
+			mu.Lock()
+			defer mu.Unlock()
+			if err != nil {
+				errs = append(errs, err)
+				return
+			}
+			if other, ok := held[ip.String()]; ok {
+				errs = append(errs, fmt.Errorf("%s given to %s and to %s", ip, other, key))
+				return
+			}
+			held[ip.String()] = key
+		}(i)
+	}
+	wg.Wait()
+
+	assert.Empty(t, errs)
+	assert.Len(t, held, workers, "every allocatable address of the range, each to one key")
+}
+
+// TestReapReleasesWhatNoObjectHolds pins the safety net for a reservation that
+// outlived its holder: a crash between the reservation and the start leaves an
+// address held for an object that is then deleted, and nothing would ever come
+// to release it.
+func TestReapReleasesWhatNoObjectHolds(t *testing.T) {
+	ipam := newT(t, "10.100.0.0/24")
+	p, err := naming.ParsePath("root/svc/alive")
+	require.NoError(t, err)
+	gone, err := naming.ParsePath("root/svc/gone")
+	require.NoError(t, err)
+
+	aliveIP, err := ipam.Allocate(Key(p, "ip#0"))
+	require.NoError(t, err)
+	goneIP, err := ipam.Allocate(Key(gone, "ip#0"))
+	require.NoError(t, err)
+
+	n, err := ipam.Reap(func(key string) bool {
+		path, ok := PathOfKey(key)
+		require.True(t, ok)
+		return path.String() == "alive"
+	})
+	require.NoError(t, err)
+	assert.Equal(t, 1, n)
+
+	held, err := ipam.Allocated(Key(p, "ip#0"))
+	require.NoError(t, err)
+	assert.Equal(t, aliveIP.String(), held.String(), "the object that exists keeps its address")
+
+	released, err := ipam.Allocated(Key(gone, "ip#0"))
+	require.NoError(t, err)
+	assert.Nil(t, released, "the object that is gone holds nothing")
+	assert.NoFileExists(t, filepath.Join(ipam.Dir, goneIP.String()))
+}
+
+// TestReapKeepsWhatItCannotJudge pins that a reap only releases what it knows
+// to be gone. Anything else would race a resource that has just reserved an
+// address and not yet finished starting.
+func TestReapKeepsWhatItCannotJudge(t *testing.T) {
+	ipam := newT(t, "10.100.0.0/24")
+	ip, err := ipam.Allocate("a key of another shape")
+	require.NoError(t, err)
+
+	n, err := ipam.Reap(func(key string) bool {
+		_, ok := PathOfKey(key)
+		return !ok
+	})
+	require.NoError(t, err)
+	assert.Equal(t, 0, n)
+	assert.FileExists(t, filepath.Join(ipam.Dir, ip.String()))
+}
+
+func TestPathOfKey(t *testing.T) {
+	p, ok := PathOfKey("root/svc/pod1!ip#0")
+	require.True(t, ok)
+	assert.Equal(t, "pod1", p.String())
+
+	p, ok = PathOfKey("test/vol/data1!ip#2")
+	require.True(t, ok)
+	assert.Equal(t, "test/vol/data1", p.String())
+
+	_, ok = PathOfKey("no separator")
+	assert.False(t, ok)
 }
