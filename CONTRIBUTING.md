@@ -58,3 +58,25 @@ Give the new name to the command, and build the old one from it with `Use`
 overridden, the aliases cleared and `Hidden: true`. It stays out of the help
 and out of the completion, and the scripts that type it keep working.
 
+# Rendering
+
+## Do not use color.Set
+
+`color.Set` is the imperative form of the fatih/color api: it writes the escape
+sequence to the package output, which is the process stdout, as a side effect,
+and returns the color to render with. A function composing a string therefore
+leaves a bare, never reset sequence on the terminal ahead of whatever it
+returns, and the first line rendered afterwards inherits it. That is how a
+section holding a comment came out italic in `om <obj> config show`.
+
+Use `color.New`. It builds the same color and writes nothing, and its `Fprint`,
+`Sprint` and `SprintFunc` open and close the sequence around the text they
+render.
+
+## Paint where the output is
+
+An escape sequence belongs to the code writing to the terminal, not to the type
+carrying the value. A daemon type is published, read back by api clients and by
+the tui, which paints cells of its own: it hands the state over, and the
+renderer draws the icon standing for it.
+
