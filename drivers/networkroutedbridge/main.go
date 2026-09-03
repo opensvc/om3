@@ -276,6 +276,15 @@ func (t *T) checkMaxIpsPerNode(network *net.IPNet, maskPerNode int, nodes []stri
 	return nil
 }
 
+// AllocatableRange returns the subnet this node was assigned in the network.
+//
+// A routed_bridge slices its network, one subnet per node, and routes between
+// them, so a node draws from its own slice and two nodes never draw the same
+// address.
+func (t *T) AllocatableRange(nodename string) (*net.IPNet, error) {
+	return t.NodeSubnet(nodename)
+}
+
 func (t *T) Setup() error {
 	var (
 		localIP net.IP

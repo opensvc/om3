@@ -114,6 +114,15 @@ type (
 	Setuper interface {
 		Setup() error
 	}
+	// IPAMer is implemented by the network drivers whose addresses om
+	// allocates. A driver that does not implement it has om allocate nothing
+	// in it, which is what the lo network wants.
+	IPAMer interface {
+		// AllocatableRange returns the addresses a node draws from in this
+		// network. The gateway of that range is its first address plus one,
+		// which is how both drivers derive the address of their bridge.
+		AllocatableRange(nodename string) (*net.IPNet, error)
+	}
 	CNIer interface {
 		CNIConfigData() (interface{}, error)
 	}
