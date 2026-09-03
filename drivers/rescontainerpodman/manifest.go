@@ -38,9 +38,6 @@ func (t *T) DriverID() driver.ID {
 // Manifest exposes to the core the input expected by the driver.
 func (t *T) Manifest() *manifest.T {
 	m := t.BT.ManifestWithID(DrvID)
-	m.Add(
-		manifest.ContextCNIConfig,
-	)
 	m.AddKeywords(kws...)
 	return m
 }
