@@ -89,8 +89,8 @@ table ip osvc {
 	}
 	chain osvc-forward {
 		type filter hook forward priority filter; policy accept;
-		iif "obr_backend3" counter accept
-		oif "obr_backend3" counter accept
+		iifname "obr_backend3" counter accept
+		oifname "obr_backend3" counter accept
 	}
 }
 table ip6 osvc { }
@@ -106,8 +106,8 @@ table ip6 osvc {
 	}
 	chain osvc-forward {
 		type filter hook forward priority filter; policy accept;
-		iif "obr_backend1" counter accept
-		oif "obr_backend1" counter accept
+		iifname "obr_backend1" counter accept
+		oifname "obr_backend1" counter accept
 	}
 }
 `, got)
@@ -146,6 +146,10 @@ func TestFWRulesetRefusesABadCIDR(t *testing.T) {
 
 // TestFWRulesetIsAcceptedByNft parses the rendered document with the nft
 // binary, which reports what it would refuse without applying anything.
+//
+// The devices named here do not exist on the machine running this, and must
+// not need to: a rule naming an interface by index is refused when that
+// interface is absent, which is why the devices are matched by name.
 func TestFWRulesetIsAcceptedByNft(t *testing.T) {
 	if _, err := exec.LookPath("nft"); err != nil {
 		t.Skip("nft is not installed")
@@ -159,6 +163,35 @@ func TestFWRulesetIsAcceptedByNft(t *testing.T) {
 
 	cmd := exec.Command("nft", "--check", "-f", "-")
 	cmd.Stdin = strings.NewReader(ruleset)
+	b, err := cmd.CombinedOutput()
+	require.NoErrorf(t, err, "nft refused the ruleset: %s", b)
+}
+
+// TestFWRulesetSkipsADeviceNamedPastTheKernelLimit pins that one network
+// named too long does not cost the node its whole firewall. The rules are one
+// transaction, so a rule nft refuses is a ruleset nft refuses, and a device
+// whose name cannot exist would have no rule matching it anyway.
+func TestFWRulesetSkipsADeviceNamedPastTheKernelLimit(t *testing.T) {
+	got, err := fwRuleset([]fwNetwork{
+		{CIDR: "10.100.0.0/22", Dev: "obr_backendlong1"},
+		{CIDR: "10.22.0.0/16", Dev: "obr_default"},
+	}, nil)
+	require.NoError(t, err)
+
+	// A device that cannot exist is treated as no device at all, which is
+	// how a public network is already left alone: no forward accept and no
+	// masquerade jump. The network is still returned from the masquerade of
+	// the others, which needs no device.
+	assert.NotContains(t, got, "obr_backendlong1")
+	assert.Contains(t, got, `iifname "obr_default"`)
+	assert.Contains(t, got, "ip daddr 10.100.0.0/22 counter return")
+	assert.NotContains(t, got, "ip saddr 10.100.0.0/22 counter jump osvc-masq")
+
+	if _, err := exec.LookPath("nft"); err != nil {
+		t.Skip("nft is not installed")
+	}
+	cmd := exec.Command("nft", "--check", "-f", "-")
+	cmd.Stdin = strings.NewReader(got)
 	b, err := cmd.CombinedOutput()
 	require.NoErrorf(t, err, "nft refused the ruleset: %s", b)
 }

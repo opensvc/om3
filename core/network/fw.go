@@ -192,13 +192,36 @@ type legacyChain struct {
 // There is no ipv6 counterpart because there never was one.
 const multicastCIDR = "224.0.0.0/8"
 
+// maxDevNameLen is the size of a device name the kernel accepts, the
+// terminating nul included, which nft refuses to write a rule past.
+const maxDevNameLen = 16
+
+// isDevNameValid reports whether a rule may name a device.
+//
+// A network with no backend device is masqueraded by nobody, which is how a
+// public network is left alone. A device named past what the kernel accepts
+// cannot exist, so it is treated the same rather than rendered into a rule nft
+// would refuse, and the ruleset being one transaction, refuse the rest with
+// it.
+func isDevNameValid(dev string) bool {
+	return dev != "" && len(dev) < maxDevNameLen
+}
+
 // fwNetworks returns what the ruleset is rendered from.
+//
+// A device whose name is longer than the kernel accepts is left out. Such a
+// device cannot exist, so no rule of it would ever match, and one rule nft
+// refuses is now the whole ruleset refused: a single network named too long
+// would leave the node with no firewall at all.
 func fwNetworks(nws []Networker) []fwNetwork {
 	l := make([]fwNetwork, 0, len(nws))
 	for _, nw := range nws {
 		n := fwNetwork{CIDR: nw.Network()}
 		if i, ok := nw.(backendDevNamer); ok {
 			n.Dev = i.BackendDevName()
+			if n.Dev != "" && !isDevNameValid(n.Dev) {
+				nw.Log().Warnf("device %s is named past the %d characters the kernel accepts, so it cannot exist and this network is left out of the firewall rules", n.Dev, maxDevNameLen-1)
+			}
 		}
 		l = append(l, n)
 	}
@@ -243,6 +266,13 @@ func fwRuleset(networks []fwNetwork, legacy []legacyChain) (string, error) {
 
 // fwTable renders the table of one address family, or an empty string when no
 // network of that family is configured.
+//
+// The devices are matched by name rather than by index. An index is resolved
+// when the rule is loaded, so a bridge that does not exist yet makes nft
+// refuse the rule, and the whole ruleset with it now that it is one
+// transaction: a single network whose setup failed would leave the node with
+// no firewall at all. An index also goes stale when a bridge is recreated,
+// where a name does not.
 func fwTable(family nftables.TableFamily, networks []fwNetwork) (string, error) {
 	var returns, jumps, devs []string
 	name := fmtFamily(family)
@@ -255,7 +285,7 @@ func fwTable(family nftables.TableFamily, networks []fwNetwork) (string, error) 
 			continue
 		}
 		returns = append(returns, fmt.Sprintf("\t\t%s daddr %s counter return\n", name, ipnet))
-		if nw.Dev == "" {
+		if !isDevNameValid(nw.Dev) {
 			continue
 		}
 		jumps = append(jumps, fmt.Sprintf("\t\t%s saddr %s counter jump %s\n", name, ipnet, fwChainMasq))
@@ -287,8 +317,8 @@ func fwTable(family nftables.TableFamily, networks []fwNetwork) (string, error) 
 	fmt.Fprintf(&sb, "\tchain %s {\n", fwChainForward)
 	sb.WriteString("\t\ttype filter hook forward priority filter; policy accept;\n")
 	for _, dev := range devs {
-		fmt.Fprintf(&sb, "\t\tiif \"%s\" counter accept\n", dev)
-		fmt.Fprintf(&sb, "\t\toif \"%s\" counter accept\n", dev)
+		fmt.Fprintf(&sb, "\t\tiifname \"%s\" counter accept\n", dev)
+		fmt.Fprintf(&sb, "\t\toifname \"%s\" counter accept\n", dev)
 	}
 	sb.WriteString("\t}\n}\n")
 
