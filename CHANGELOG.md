@@ -509,7 +509,6 @@ OpenSVC v3 is a major evolution, rebuilt in Go for performance, reliability, and
 ### Driver: ip
 
 * **Removed keywords:**
-    * `dns_name_suffix`
     * `provisioner`
     * `dns_update`
    
@@ -519,6 +518,28 @@ OpenSVC v3 is a major evolution, rebuilt in Go for performance, reliability, and
 * **Changed default:**
     The `alias` keyword default value is now `true`, activating the ip stacking behaviour.
     Setting `dev=eth0:0` still forces the address labelling mode.
+
+* **Changed default DNS search list:**
+    The fqdn of the object is no longer the first domain a container searches a
+    shortname in. The default list is now the domain of the object and each of
+    its parents: `<namespace>.<kind>.<clustername> <kind>.<clustername>
+    <clustername>`.
+
+    In v2 the fqdn was first, which let a container reach a container of the
+    same object by its hostname alone. The record is still published as
+    `<hostname>.<objectfqdn>`, so a configuration relying on the shortname must
+    now name that fqdn in the `dns_search` keyword of the container.
+
+    Containers of an instance are expected to share a netns and to reach each
+    other over 127.0.0.1, which needs no name. One ip resource carries one
+    hostname, the one of the container its `netns` keyword points at, so a
+    shared netns has one name for the whole instance rather than one per
+    container.
+
+    The `dns_name_suffix` keyword of the ip drivers is kept, and is how an
+    object with more than one address names them apart: the suffix is appended
+    to the hostname the record is published under, so a second address of the
+    same container answers to `<hostname><suffix>.<objectfqdn>`.
 
 * **Collector DNS zone:**
     This feature of the collector, used by the ip driver for one of its provisioning methods, is deprecated.
@@ -740,6 +761,18 @@ Where the password is the value of the `þassword` key in `system/sec/relay-v3`.
 ### Network
 
 * Flush iptables rules created by om2. om3 now configures the firewall using nft only.
+
+* The nft rules moved to the `osvc` table, one per address family. They used to
+  go in `nat` and `filter`, where the base chain om adds sits on a hook and a
+  priority the standard chain of those tables already uses, which makes them
+  unrepresentable to the iptables compatibility layer: `iptables -t nat -S`
+  answered ``table `nat' is incompatible, use 'nft' tool``, and every firewall
+  driver reaching the ruleset through iptables went blind on them. netavark is
+  one of those, so no podman container of a podman-built network could start on
+  a node `om net setup` had run on.
+
+  A setup deletes the chains left in `nat` and `filter` by an earlier om, so a
+  node converts itself the first time it runs one.
 
 * Change `ips_per_node` to `mask_per_node`. The former was inadequate for large subnets (ipv6). For example, `ips_per_node=18446744073709551616` is easier expressed as `mask_per_node=64`. Backward compatibility is maintained for this release.
 
