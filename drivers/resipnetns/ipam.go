@@ -154,8 +154,17 @@ func (t *T) Configure() error {
 		t.Dev = t.networkDev()
 	}
 	i, err := t.ipam()
-	if err != nil || i == nil || i.Range == nil {
+	if err != nil {
 		return err
+	}
+	if i == nil || i.Range == nil {
+		// A network om draws no address from, the lo network among them, has
+		// nothing this resource can be built out of. Saying so here beats the
+		// device lookup failing later on an empty name.
+		if t.Dev == "" && t.Name == "" {
+			return fmt.Errorf("network %s provides neither a device nor an address to draw from: name a dev and a name, or name a network om allocates in", nw.Name())
+		}
+		return nil
 	}
 	if t.Netmask == "" {
 		ones, _ := i.Range.Mask.Size()
