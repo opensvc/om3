@@ -33,7 +33,15 @@ type (
 
 		// for tests
 		api        apiProvider
+		authInfoer GetAuthInfoer
 		noneTarget string
+	}
+
+	// GetAuthInfoer resolves the api credentials named by the secret keyword.
+	// The resfssgcp_nfs driver has the same seam, for the same reason: a test
+	// needs the real api without a datastore behind it.
+	GetAuthInfoer interface {
+		GetAuthInfo(string) (*sgcp.AuthInfo, error)
 	}
 
 	mgr struct {
@@ -100,6 +108,7 @@ func (t *T) Configure() error {
 	if t.Endpoint == "" {
 		return errors.New("endpoint is required")
 	}
+	cfg = cfg.WithDNSBaseURL(t.Endpoint)
 
 	// zoneid is mandatory
 	if t.ZoneID == "" {
@@ -132,7 +141,10 @@ func (t *T) configureMgr(cfg *sgcp.Config) error {
 		return fmt.Errorf("failed to create http client: %w", err)
 	}
 
-	authInfo, err := sgcphelper.AuthInfoFromPath(t.Secret)
+	if t.authInfoer == nil {
+		t.authInfoer = &sgcphelper.GetAuthInfoFromDatastorePather{}
+	}
+	authInfo, err := t.authInfoer.GetAuthInfo(t.Secret)
 	if err != nil {
 		return fmt.Errorf("get auth info: %w", err)
 	}

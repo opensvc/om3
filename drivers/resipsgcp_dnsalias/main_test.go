@@ -3,8 +3,12 @@ package resipsgcp_dnsalias
 import (
 	"context"
 	"fmt"
+	"net/http"
+	"net/http/httptest"
 	"os"
 	"path/filepath"
+	"strings"
+	"sync"
 	"testing"
 	"time"
 
@@ -14,6 +18,7 @@ import (
 	"github.com/opensvc/om3/v3/core/env"
 	"github.com/opensvc/om3/v3/core/resource"
 	"github.com/opensvc/om3/v3/core/status"
+	"github.com/opensvc/om3/v3/drivers/sgcpauthtesthelper"
 	"github.com/opensvc/om3/v3/util/sgcpdnstesthelper"
 	"github.com/opensvc/om3/v3/util/testsgcphelper"
 
@@ -43,6 +48,74 @@ func newDBAndDrv(t *testing.T, s string, entries []sgcpdnstesthelper.DBEntry) (*
 	db.Setup(entries)
 	drv.api = sgcpdnstesthelper.NewApi(db)
 	return db, drv
+}
+
+// TestConfigureEndpoint verifies the endpoint keyword is the api the driver
+// talks to. It used to be validated, stored and never applied, every request
+// going to the base url of the configuration instead.
+func TestConfigureEndpoint(t *testing.T) {
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+
+	var mu sync.Mutex
+	var seen []string
+
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		mu.Lock()
+		seen = append(seen, r.URL.Path)
+		mu.Unlock()
+		w.Header().Set("Content-Type", "application/json")
+		switch {
+		case r.URL.Path == "/auth/access_token":
+			fmt.Fprint(w, `{"access_token": "a-token"}`)
+		case strings.HasPrefix(r.URL.Path, "/dns/zone/"):
+			fmt.Fprint(w, `{"cnameRecords": [{"id": "uuid1", "name": "name1", "target": "target1", "zoneId": "z1"}]}`)
+		default:
+			w.WriteHeader(http.StatusNotFound)
+		}
+	}))
+	defer srv.Close()
+
+	// The agent root goes to a tempdir, then the configuration is replaced by
+	// one whose dns base url is a port nothing listens on: reaching the alias
+	// is only possible through the endpoint keyword.
+	root := filepath.Dir(testsgcphelper.InstallConfig(t))
+	cfgFile := filepath.Join(root, "endpoint.yaml")
+	require.NoError(t, os.WriteFile(cfgFile, []byte(`
+auth:
+  base_url: "`+srv.URL+`/auth"
+  default_secret: "the-secret"
+  scopes:
+    dns_read: ["dns:read"]
+    dns_write: ["dns:write"]
+  timeout: 5
+  ttl_seconds: 60
+dns:
+  base_url: "http://127.0.0.1:1/dns"
+  none_target: "none.xxx"
+  path:
+    cname: "/cname"
+    zone: "/zone"
+cache:
+  ttl_seconds: 0
+`), 0644))
+	sgcp.SetConfigForTest(cfgFile)
+	defer sgcp.SetConfigForTest("")
+
+	drv := New().(*T)
+	require.NoError(t, drv.SetRID("rid1"))
+	drv.authInfoer = sgcpauthtesthelper.NewMockGetAuthInfoProvider("id1")
+	drv.Name = "name1"
+	drv.Target = "target1"
+	drv.ZoneID = "z1"
+	drv.Endpoint = srv.URL + "/dns"
+	require.NoError(t, drv.Configure())
+
+	assert.Equal(t, status.Up, drv.Status(ctx), "the alias was not read through the endpoint")
+
+	mu.Lock()
+	defer mu.Unlock()
+	assert.Containsf(t, seen, "/dns/zone/z1/cname", "the endpoint keyword was not used: %v", seen)
 }
 
 // TestConfigureCacheTTL verifies the alias cache ages as the configuration
