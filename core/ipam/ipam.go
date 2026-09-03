@@ -225,22 +225,74 @@ func (t *T) holder(addr string) (string, error) {
 	return strings.TrimSpace(string(b)), nil
 }
 
+// recorded returns the addresses a store holds. A store holds files that are
+// not addresses, the bookkeeping of whoever writes it, and those are not ours
+// to read or to remove.
+func recorded(dir string) (map[string]bool, error) {
+	m := make(map[string]bool)
+	entries, err := os.ReadDir(dir)
+	if os.IsNotExist(err) {
+		return m, nil
+	} else if err != nil {
+		return nil, err
+	}
+	for _, entry := range entries {
+		if ip := net.ParseIP(entry.Name()); ip != nil {
+			m[ip.String()] = true
+		}
+	}
+	return m, nil
+}
+
+// DrainPeers removes, from the stores of the allocators sharing this range,
+// the record of every address this one now holds.
+//
+// A store is read to know what an allocator om is replacing handed out. Once
+// om reserves an address, that record says nothing om does not know, and
+// leaving it makes the address unusable for as long as the file lasts: the
+// allocator that wrote it does not run any more, so nothing else will ever
+// remove it.
+//
+// Only the addresses om holds are removed. An address in the store that om
+// accounts for in no way is left, and stays excluded, because the reason it is
+// there may be a resource whose status this node has not read.
+func (t *T) DrainPeers() (int, int, error) {
+	held, err := recorded(t.Dir)
+	if err != nil {
+		return 0, 0, err
+	}
+	drained, left := 0, 0
+	for _, dir := range t.PeerDirs {
+		peer, err := recorded(dir)
+		if err != nil {
+			return drained, left, err
+		}
+		for addr := range peer {
+			if !held[addr] {
+				left++
+				continue
+			}
+			if err := os.Remove(filepath.Join(dir, addr)); err != nil && !os.IsNotExist(err) {
+				return drained, left, err
+			}
+			drained++
+		}
+	}
+	return drained, left, nil
+}
+
 // taken returns the addresses no allocation may draw: the ones reserved here,
 // the ones reserved by an allocator sharing the range, and the ones the
 // cluster reports in use.
 func (t *T) taken() (map[string]bool, error) {
 	m := make(map[string]bool)
 	for _, dir := range append([]string{t.Dir}, t.PeerDirs...) {
-		entries, err := os.ReadDir(dir)
-		if os.IsNotExist(err) {
-			continue
-		} else if err != nil {
+		found, err := recorded(dir)
+		if err != nil {
 			return nil, err
 		}
-		for _, entry := range entries {
-			if ip := net.ParseIP(entry.Name()); ip != nil {
-				m[ip.String()] = true
-			}
+		for addr := range found {
+			m[addr] = true
 		}
 	}
 	if t.InUse != nil {

@@ -104,6 +104,16 @@ func setupIPAM(nws []Networker) error {
 		if adopted > 0 {
 			nw.Log().Infof("ipam: adopted %d address(es) already held in this network", adopted)
 		}
+		drained, left, err := a.DrainPeers()
+		if err != nil {
+			return err
+		}
+		if drained > 0 {
+			nw.Log().Infof("ipam: dropped %d address(es) from the record of the plugin that used to allocate them", drained)
+		}
+		if left > 0 {
+			nw.Log().Warnf("ipam: the record of the plugin that used to allocate in this network still holds %d address(es) om accounts for in no way, and they stay excluded. Remove them from %s once nothing uses them", left, filepath.Join(cniCacheDir, nw.Name()))
+		}
 	}
 	return nil
 }

@@ -330,3 +330,56 @@ func TestAdoptSkipsWhatIsNotThisNodeRange(t *testing.T) {
 		assert.Empty(t, entries, "nothing of another range is recorded")
 	}
 }
+
+// TestDrainPeersRemovesWhatThisAllocatorHolds pins the tidying of the store an
+// allocator om replaced was writing. An address om reserves is one that record
+// says nothing about, and the allocator that wrote it no longer runs, so
+// nothing else would ever remove it.
+func TestDrainPeersRemovesWhatThisAllocatorHolds(t *testing.T) {
+	ipam := newT(t, "10.100.0.0/24")
+	peer := t.TempDir()
+	ipam.PeerDirs = []string{peer}
+
+	for _, addr := range []string{"10.100.0.2", "10.100.0.22", "10.100.0.24"} {
+		require.NoError(t, os.WriteFile(filepath.Join(peer, addr), []byte("2083975\neth0\n"), 0644))
+	}
+	// The bookkeeping of whoever wrote the store is not ours to remove.
+	require.NoError(t, os.WriteFile(filepath.Join(peer, "last_reserved_ip.0"), []byte("10.100.0.24\n"), 0644))
+	require.NoError(t, os.WriteFile(filepath.Join(peer, "lock"), nil, 0644))
+
+	_, err := ipam.Adopt([]Reservation{
+		{IP: net.ParseIP("10.100.0.2"), Key: "a"},
+		{IP: net.ParseIP("10.100.0.22"), Key: "b"},
+	})
+	require.NoError(t, err)
+
+	drained, left, err := ipam.DrainPeers()
+	require.NoError(t, err)
+	assert.Equal(t, 2, drained, "the addresses om now holds")
+	assert.Equal(t, 1, left, "the address om accounts for in no way")
+
+	for _, addr := range []string{"10.100.0.2", "10.100.0.22"} {
+		assert.NoFileExistsf(t, filepath.Join(peer, addr), "%s is om's now", addr)
+	}
+	assert.FileExists(t, filepath.Join(peer, "10.100.0.24"), "an unaccounted address is left alone")
+	assert.FileExists(t, filepath.Join(peer, "last_reserved_ip.0"), "not an address, not ours")
+	assert.FileExists(t, filepath.Join(peer, "lock"), "not an address, not ours")
+}
+
+// TestDrainPeersKeepsAnUnaccountedAddressExcluded pins that what is left
+// behind still blocks an allocation, since the reason it is there may be a
+// resource whose status this node has not read.
+func TestDrainPeersKeepsAnUnaccountedAddressExcluded(t *testing.T) {
+	ipam := newT(t, "10.100.0.0/29")
+	peer := t.TempDir()
+	ipam.PeerDirs = []string{peer}
+	for _, addr := range []string{"10.100.0.2", "10.100.0.3", "10.100.0.4", "10.100.0.5"} {
+		require.NoError(t, os.WriteFile(filepath.Join(peer, addr), []byte("2083975\n"), 0644))
+	}
+	_, _, err := ipam.DrainPeers()
+	require.NoError(t, err)
+
+	ip, err := ipam.Allocate("late")
+	require.NoError(t, err)
+	assert.Equal(t, "10.100.0.6", ip.String(), "the addresses left in the record are still excluded")
+}
