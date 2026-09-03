@@ -53,6 +53,13 @@ func (t *nftHandle) Run(argv []string) error {
 	return cmd.Run()
 }
 
+// invalidate drops the cached tables and chains, so a lookup made after a
+// change to the ruleset reads it again instead of answering from before.
+func (t *nftHandle) invalidate() {
+	t.tables = nil
+	t.chains = nil
+}
+
 func (t *nftHandle) Tables() ([]*nftables.Table, error) {
 	if t.tables != nil {
 		return t.tables, nil
@@ -102,18 +109,20 @@ func (t *nftHandle) AddTable(family nftables.TableFamily, tableName string) (*nf
 	if table != nil {
 		return table, nil
 	}
-	table = &nftables.Table{
-		Family: family,
-		Name:   tableName,
-	}
 	if err := t.Run([]string{"nft", "add", "table", fmtFamily(family), tableName}); err != nil {
 		return nil, err
 	}
+	// The lookup above filled the cache from a ruleset without this table, so
+	// read it again rather than answer nil for a table that now exists. The
+	// two tables om writes to are always there, so this never ran.
+	t.invalidate()
 	table, err = t.GetTable(family, tableName)
 	if err != nil {
 		return nil, err
 	}
-	t.tables = append(t.tables, table)
+	if table == nil {
+		return nil, fmt.Errorf("table %s %s is absent right after its creation", fmtFamily(family), tableName)
+	}
 	return table, nil
 }
 
@@ -189,7 +198,13 @@ func fmtChain(chain *nftables.Chain) []string {
 		s += " hook postrouting"
 	}
 
-	s += fmt.Sprintf(" priority %d", chain.Priority)
+	// Priority is a *ChainPriority: formatting the pointer wrote the address
+	// of the constant into the rule, and the chain landed on a priority no
+	// caller asked for. "priority 4219880" instead of the srcnat 100 put a
+	// masquerade behind every other postrouting chain.
+	if chain.Priority != nil {
+		s += fmt.Sprintf(" priority %d", *chain.Priority)
+	}
 
 	if chain.Policy != nil {
 		switch *chain.Policy {
