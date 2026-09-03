@@ -128,13 +128,13 @@ func ColorizeINI(b []byte) []byte {
 
 		// Section header
 		if sectionRE.MatchString(line) {
-			color.Set(color.FgHiYellow, color.Bold).Fprintln(out, line)
+			color.New(color.FgHiYellow, color.Bold).Fprintln(out, line)
 			continue
 		}
 
 		// Comment
 		if commentRE.MatchString(line) {
-			color.Set(color.FgHiBlack, color.Italic).Fprintln(out, line)
+			color.New(color.FgHiBlack, color.Italic).Fprintln(out, line)
 			continue
 		}
 
@@ -150,13 +150,13 @@ func ColorizeINI(b []byte) []byte {
 
 				// Colorize key
 				key, scope, scopeFound := strings.Cut(key, "@")
-				color.Set(color.FgCyan).Fprint(out, key)
+				color.New(color.FgCyan).Fprint(out, key)
 				if scopeFound {
-					color.Set(color.FgHiMagenta).Fprint(out, "@"+scope)
+					color.New(color.FgHiMagenta).Fprint(out, "@"+scope)
 				}
 
 				// Colorize delimiter
-				color.Set(color.FgHiBlack).Fprint(out, delim)
+				color.New(color.FgHiBlack).Fprint(out, delim)
 
 				// Highlight references in the value
 				referenceMatches := referenceRE.FindAllStringIndex(value, -1)
@@ -168,7 +168,7 @@ func ColorizeINI(b []byte) []byte {
 
 						// Write reference part in green + bold
 						referenceText := value[match[0]:match[1]]
-						color.Set(color.FgGreen, color.Bold).Fprint(out, referenceText)
+						color.New(color.FgGreen, color.Bold).Fprint(out, referenceText)
 						lastPos = match[1]
 					}
 					// Write remaining part after last reference
@@ -179,7 +179,7 @@ func ColorizeINI(b []byte) []byte {
 				}
 
 				if inlineComment != "" {
-					color.Set(color.FgHiBlack, color.Italic).Fprint(out, inlineComment)
+					color.New(color.FgHiBlack, color.Italic).Fprint(out, inlineComment)
 				}
 
 				out.WriteString("\n")
@@ -204,7 +204,7 @@ func ColorizeINI(b []byte) []byte {
 
 				// Write reference part in green + bold
 				referenceText := line[match[0]:match[1]]
-				color.Set(color.FgGreen, color.Bold).Fprint(out, referenceText)
+				color.New(color.FgGreen, color.Bold).Fprint(out, referenceText)
 				lastPos = match[1]
 			}
 			// Write remaining part after last reference
