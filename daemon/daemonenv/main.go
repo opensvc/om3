@@ -30,6 +30,15 @@ const (
 // ListenerNames are the listeners an api action may be addressed to.
 var ListenerNames = []string{ListenerNameUX, ListenerNameInet}
 
+// LifecycleListenerNames are the listeners a start, stop or restart may be
+// addressed to.
+//
+// The unix socket listener is not one of them: it lives as long as the daemon
+// does, and the request asking for its restart travels through it. It used to
+// accept the three actions, log that it ignored them, and answer the caller
+// that they were queued.
+var LifecycleListenerNames = []string{ListenerNameInet}
+
 var (
 	HTTPPort = 1215
 

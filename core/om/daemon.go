@@ -47,6 +47,7 @@ func init() {
 	)
 
 	cmdDaemonHeartbeat.AddCommand(
+		commoncmd.NewCmdDaemonHeartbeatList(hostname.Hostname()),
 		commoncmd.NewCmdDaemonHeartbeatStatus(hostname.Hostname()),
 		commoncmd.NewCmdDaemonHeartbeatRestart(),
 		commoncmd.NewCmdDaemonHeartbeatStart(),
@@ -63,6 +64,7 @@ func init() {
 	)
 
 	cmdDaemonRelay.AddCommand(
+		commoncmd.NewCmdDaemonRelayList(),
 		commoncmd.NewCmdDaemonRelayStatus(),
 	)
 }

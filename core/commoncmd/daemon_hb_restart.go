@@ -12,18 +12,29 @@ import (
 type (
 	CmdDaemonHeartbeatRestart struct {
 		CmdDaemonSubAction
-		Name string
+		Names []string
 	}
 )
 
 func NewCmdDaemonHeartbeatRestart() *cobra.Command {
 	options := CmdDaemonHeartbeatRestart{}
 	cmd := &cobra.Command{
-		Use:   "restart NAME",
-		Short: "restart a daemon heartbeat rx or tx",
-		Args:  cobra.ExactArgs(1),
+		Use:   "restart NAME...",
+		Short: "restart daemon heartbeat rx or tx streams",
+		Long: ForProgram("Stop then start the named directions of the configured heartbeats.\n\n" +
+			HeartbeatStreamNameHelp),
+		Example: ForProgram(`  # restart the receiver of hb#1 on the local node
+  om daemon hb restart 1.rx
+
+  # restart both streams of hb#1
+  om daemon hb restart 1
+
+  # restart both streams of hb#1 and hb#2 on every node
+  om daemon hb restart 1 2 --node '*'`),
+		Args:              cobra.MinimumNArgs(1),
+		ValidArgsFunction: validHeartbeatStreamNames,
 		RunE: func(cmd *cobra.Command, args []string) error {
-			options.Name = args[0]
+			options.Names = args
 			return options.Run()
 		},
 	}
@@ -33,8 +44,9 @@ func NewCmdDaemonHeartbeatRestart() *cobra.Command {
 }
 
 func (t *CmdDaemonHeartbeatRestart) Run() error {
-	fn := func(ctx context.Context, c *client.T, nodename string) (response *http.Response, err error) {
-		return c.PostDaemonHeartbeatRestart(ctx, nodename, t.Name)
-	}
-	return t.CmdDaemonSubAction.Run(fn)
+	return t.CmdDaemonSubAction.RunForEach(t.Names, func(name string) apiFuncWithNode {
+		return func(ctx context.Context, c *client.T, nodename string) (response *http.Response, err error) {
+			return c.PostDaemonHeartbeatRestart(ctx, nodename, name)
+		}
+	})
 }

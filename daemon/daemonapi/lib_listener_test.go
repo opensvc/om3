@@ -35,3 +35,28 @@ func TestListenerNameRefusesWhatNoListenerAnswersTo(t *testing.T) {
 		assert.Contains(t, err.Error(), daemonenv.ListenerNameInet, "the error must name the listeners that exist")
 	}
 }
+
+// TestLifecycleListenerNameRefusesTheOneWithNoLifecycle pins that the
+// three actions refuse the unix socket listener rather than publishing a
+// message it receives, ignores, and leaves the caller told was queued.
+func TestLifecycleListenerNameRefusesTheOneWithNoLifecycle(t *testing.T) {
+	for _, action := range []string{"start", "stop", "restart"} {
+		got, err := lifecycleListenerName(api.InPathListenerName(daemonenv.ListenerNameInet), action)
+		require.NoErrorf(t, err, "%s must be addressable for a %s", daemonenv.ListenerNameInet, action)
+		assert.Equal(t, daemonenv.ListenerNameInet, got)
+
+		_, err = lifecycleListenerName(api.InPathListenerName(daemonenv.ListenerNameUX), action)
+		require.Errorf(t, err, "%s must refuse a %s", daemonenv.ListenerNameUX, action)
+		assert.Contains(t, err.Error(), "lives as long as the daemon", "the error must say why")
+		assert.Contains(t, err.Error(), daemonenv.ListenerNameInet, "the error must name the listener that answers")
+	}
+}
+
+// TestLifecycleListenerNameStillRefusesAnUnknownName keeps the name check
+// in front of the lifecycle check: an unknown name is not a listener with
+// no lifecycle, it is no listener at all.
+func TestLifecycleListenerNameStillRefusesAnUnknownName(t *testing.T) {
+	_, err := lifecycleListenerName(api.InPathListenerName("nope"), "restart")
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "unknown listener")
+}

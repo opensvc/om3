@@ -2,7 +2,6 @@ package commoncmd
 
 import (
 	"context"
-	"fmt"
 	"net/http"
 
 	"github.com/spf13/cobra"
@@ -21,8 +20,15 @@ type (
 func NewCmdDaemonListenerStart() *cobra.Command {
 	options := CmdDaemonListenerStart{}
 	cmd := &cobra.Command{
-		Use:               "start NAME",
-		Short:             fmt.Sprintf("start a daemon a listener"),
+		Use:   "start NAME",
+		Short: "start a daemon listener",
+		Long: ForProgram("Start one of the listeners the daemon serves the api with.\n\n" +
+			ListenerNameHelp),
+		Example: ForProgram(`  # start the tcp listener on the local node
+  om daemon listener start api.inet
+
+  # start it on every node
+  om daemon listener start api.inet --node '*'`),
 		Args:              cobra.ExactArgs(1),
 		ValidArgsFunction: validListenerNames,
 		RunE: func(cmd *cobra.Command, args []string) error {

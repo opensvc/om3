@@ -203,6 +203,7 @@ func init() {
 		newCmdNodeValidateConfig(),
 	)
 	cmdNodeRelay.AddCommand(
+		newCmdNodeRelayList(),
 		newCmdNodeRelayStatus(),
 	)
 	cmdNodeSchedule.AddCommand(

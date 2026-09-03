@@ -2,10 +2,10 @@ package commoncmd
 
 import (
 	"encoding/json"
-	"fmt"
 	"sort"
 	"strings"
 
+	"github.com/fatih/color"
 	"github.com/spf13/cobra"
 
 	"github.com/opensvc/om3/v3/core/client"
@@ -17,7 +17,7 @@ import (
 )
 
 type (
-	CmdDaemonHeartbeatStatus struct {
+	CmdDaemonHeartbeatList struct {
 		Color        string
 		Output       string
 		NodeSelector string
@@ -26,13 +26,57 @@ type (
 	}
 )
 
-func NewCmdDaemonHeartbeatStatus(defaultNodeSelectorFilter string) *cobra.Command {
-	options := CmdDaemonHeartbeatStatus{
+// heartbeatStreamRow is a row of the heartbeat listing.
+//
+// The state and the beating flag travel from the node as values, and the
+// icons standing for them are drawn here, where the output is. The daemon
+// type carrying the values holds no escape sequence: it is published, and
+// the tui reads the same values to paint cells of its own.
+type heartbeatStreamRow struct {
+	daemonsubsystem.HeartbeatStreamPeerStatusTableEntry
+}
+
+type heartbeatStreamRows []heartbeatStreamRow
+
+// Unstructured returns the row the tab renderer reads: what the entry
+// carries, plus the two icon columns the default output names.
+func (t heartbeatStreamRow) Unstructured() map[string]any {
+	m := t.HeartbeatStreamPeerStatusTableEntry.Unstructured()
+	m["state_icon"] = heartbeatStateIcon(t.State)
+	m["beating_icon"] = heartbeatBeatingIcon(t.IsSingleNode || t.IsBeating)
+	return m
+}
+
+// heartbeatStateIcon draws the run state of a stream.
+func heartbeatStateIcon(state string) string {
+	switch state {
+	case "running":
+		return color.New(color.FgGreen).Sprint("O")
+	case "stopped", "failed":
+		return color.New(color.FgRed).Sprint("X")
+	case "warning":
+		return color.New(color.FgYellow).Sprint("!")
+	default:
+		return color.New(color.FgHiBlack).Sprint("?")
+	}
+}
+
+// heartbeatBeatingIcon draws whether a stream is beating.
+func heartbeatBeatingIcon(beating bool) string {
+	if beating {
+		return color.New(color.FgGreen).Sprint("O")
+	}
+	return color.New(color.FgRed).Sprint("X")
+}
+
+func NewCmdDaemonHeartbeatList(defaultNodeSelectorFilter string) *cobra.Command {
+	options := CmdDaemonHeartbeatList{
 		NodeSelector: defaultNodeSelectorFilter,
 	}
 	cmd := &cobra.Command{
-		Use:   "status",
-		Short: fmt.Sprintf("daemon heartbeat status"),
+		Use:     "list",
+		Short:   "list the heartbeat streams and their state",
+		Aliases: []string{"ls"},
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return options.Run()
 		},
@@ -46,7 +90,7 @@ func NewCmdDaemonHeartbeatStatus(defaultNodeSelectorFilter string) *cobra.Comman
 	return cmd
 }
 
-func (t *CmdDaemonHeartbeatStatus) Run() error {
+func (t *CmdDaemonHeartbeatList) Run() error {
 	cli, err := client.New()
 	if err != nil {
 		return err
@@ -79,7 +123,7 @@ func (t *CmdDaemonHeartbeatStatus) Run() error {
 
 	isSingleNode := len(data.Cluster.Node) == 1
 
-	table := make(daemonsubsystem.HeartbeatStreamPeerStatusTable, 0)
+	table := make(heartbeatStreamRows, 0)
 	for nodename, nodeData := range data.Cluster.Node {
 		if nodeMap != nil {
 			if _, ok := nodeMap[nodename]; !ok {
@@ -103,7 +147,7 @@ func (t *CmdDaemonHeartbeatStatus) Run() error {
 					}
 				}
 			}
-			table = append(table, e)
+			table = append(table, heartbeatStreamRow{e})
 		}
 	}
 
@@ -127,4 +171,15 @@ func (t *CmdDaemonHeartbeatStatus) Run() error {
 	}.Print()
 
 	return nil
+}
+
+// NewCmdDaemonHeartbeatStatus is the name the list command answered to
+// before the listings were named after what they render: a row per stream.
+// It is kept for the readers whose fingers and scripts type it.
+func NewCmdDaemonHeartbeatStatus(defaultNodeSelectorFilter string) *cobra.Command {
+	cmd := NewCmdDaemonHeartbeatList(defaultNodeSelectorFilter)
+	cmd.Use = "status"
+	cmd.Aliases = nil
+	cmd.Hidden = true
+	return cmd
 }

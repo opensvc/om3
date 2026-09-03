@@ -14,11 +14,11 @@ func (a *DaemonAPI) PostDaemonListenerRestart(ctx echo.Context, nodename api.InP
 		return err
 	}
 	nodename = a.parseNodename(nodename)
-	localName, err := listenerName(name)
+	localName, err := lifecycleListenerName(name, "restart")
 	if err != nil {
 		return JSONProblemf(ctx, http.StatusBadRequest, "Invalid parameter", "%s", err)
 	}
-	return a.postDaemonSubAction(ctx, nodename, "restart", localName, func(c *client.T) (*http.Response, error) {
+	return a.postDaemonSubAction(ctx, nodename, "restart", []string{localName}, func(c *client.T) (*http.Response, error) {
 		return c.PostDaemonListenerRestart(ctx.Request().Context(), nodename, name)
 	})
 }

@@ -13,13 +13,13 @@ import (
 )
 
 type (
-	CmdNodeRelayStatus struct {
+	CmdNodeRelayList struct {
 		OptsGlobal
 		Relays string
 	}
 )
 
-func (t *CmdNodeRelayStatus) Run() error {
+func (t *CmdNodeRelayList) Run() error {
 	cli, err := client.New()
 	if err != nil {
 		return err

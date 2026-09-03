@@ -2,8 +2,6 @@ package daemonsubsystem
 
 import (
 	"time"
-
-	"github.com/fatih/color"
 )
 
 type (
@@ -81,6 +79,12 @@ type (
 	}
 )
 
+// Unstructured returns the entry as the tab renderer reads it, which is
+// values and the words standing for them.
+//
+// The icons a listing draws the state and the beating flag as are not here:
+// they are escape sequences, and this type is published by the daemon and
+// read by the tui, which paints its own cells from these values.
 func (t HeartbeatStreamPeerStatusTableEntry) Unstructured() map[string]any {
 	stateText := t.Status.State
 	if stateText == "" {
@@ -95,25 +99,6 @@ func (t HeartbeatStreamPeerStatusTableEntry) Unstructured() map[string]any {
 		} else {
 			beatingText = "stale"
 		}
-	}
-
-	var stateIcon string
-	switch t.Status.State {
-	case "running":
-		stateIcon = color.New(color.FgGreen).Sprint("O")
-	case "stopped", "failed":
-		stateIcon = color.New(color.FgRed).Sprint("X")
-	case "warning":
-		stateIcon = color.New(color.FgYellow).Sprint("!")
-	default:
-		stateIcon = color.New(color.FgHiBlack).Sprint("?")
-	}
-
-	var beatingIcon string
-	if t.IsSingleNode || t.IsBeating {
-		beatingIcon = color.New(color.FgGreen).Sprint("O")
-	} else {
-		beatingIcon = color.New(color.FgRed).Sprint("X")
 	}
 
 	peer := t.Peer
@@ -132,7 +117,6 @@ func (t HeartbeatStreamPeerStatusTableEntry) Unstructured() map[string]any {
 		"alerts":        t.Alerts,
 		"id":            t.Status.ID,
 		"state":         stateText,
-		"state_icon":    stateIcon,
 		"state_text":    stateText,
 		"configured_at": t.Status.ConfiguredAt,
 		"updated_at":    t.Status.UpdatedAt,
@@ -145,7 +129,6 @@ func (t HeartbeatStreamPeerStatusTableEntry) Unstructured() map[string]any {
 		"last_beating_at": t.LastBeatingAt,
 		"is_beating":      t.IsBeating,
 		"beating":         beatingText,
-		"beating_icon":    beatingIcon,
 	}
 }
 

@@ -2,7 +2,6 @@ package commoncmd
 
 import (
 	"context"
-	"fmt"
 	"net/http"
 
 	"github.com/spf13/cobra"
@@ -21,8 +20,15 @@ type (
 func NewCmdDaemonListenerStop() *cobra.Command {
 	options := CmdDaemonListenerStop{}
 	cmd := &cobra.Command{
-		Use:               "stop NAME",
-		Short:             fmt.Sprintf("stop a daemon listener"),
+		Use:   "stop NAME",
+		Short: "stop a daemon listener",
+		Long: ForProgram("Stop one of the listeners the daemon serves the api with.\n\n" +
+			ListenerNameHelp),
+		Example: ForProgram(`  # stop the tcp listener on the local node
+  om daemon listener stop api.inet
+
+  # stop it on every node
+  om daemon listener stop api.inet --node '*'`),
 		Args:              cobra.ExactArgs(1),
 		ValidArgsFunction: validListenerNames,
 		RunE: func(cmd *cobra.Command, args []string) error {

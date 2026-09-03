@@ -33,6 +33,17 @@ type (
 // answers are a problem document or a small json object.
 const maxSubActionBodySize = 1 << 20
 
+// RunForEach runs the action once per name, so a command taking several
+// names attempts them all rather than stopping on the first that fails,
+// and reports every failure.
+func (t *CmdDaemonSubAction) RunForEach(names []string, fn func(name string) apiFuncWithNode) error {
+	var errs error
+	for _, name := range names {
+		errs = errors.Join(errs, t.Run(fn(name)))
+	}
+	return errs
+}
+
 // Run daemon sub-component action
 func (t *CmdDaemonSubAction) Run(fn apiFuncWithNode) error {
 	if t.NodeSelector == "" {

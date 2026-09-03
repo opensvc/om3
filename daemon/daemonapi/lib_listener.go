@@ -22,3 +22,22 @@ func listenerName(name api.InPathListenerName) (string, error) {
 	}
 	return s, nil
 }
+
+// lifecycleListenerName returns the name of the listener a start, stop or
+// restart addresses.
+//
+// The unix socket listener answers to none of the three: it lives as long as
+// the daemon does, and the request asking for its restart travels through it.
+// It used to be handed the message, log that it ignored it, and leave the
+// caller told the action was queued.
+func lifecycleListenerName(name api.InPathListenerName, action string) (string, error) {
+	s, err := listenerName(name)
+	if err != nil {
+		return "", err
+	}
+	if !slices.Contains(daemonenv.LifecycleListenerNames, s) {
+		return "", fmt.Errorf("%s has no %s of its own: it lives as long as the daemon does, expected one of %s",
+			s, action, strings.Join(daemonenv.LifecycleListenerNames, ", "))
+	}
+	return s, nil
+}

@@ -2,7 +2,6 @@ package commoncmd
 
 import (
 	"context"
-	"fmt"
 	"net/http"
 
 	"github.com/spf13/cobra"
@@ -13,18 +12,32 @@ import (
 type (
 	CmdDaemonHeartbeatStart struct {
 		CmdDaemonSubAction
-		Name string
+		Names []string
 	}
 )
 
 func NewCmdDaemonHeartbeatStart() *cobra.Command {
 	options := CmdDaemonHeartbeatStart{}
 	cmd := &cobra.Command{
-		Use:   "start NAME",
-		Short: fmt.Sprintf("start a daemon heartbeat rx or tx"),
-		Args:  cobra.ExactArgs(1),
+		Use:   "start NAME...",
+		Short: "start daemon heartbeat rx or tx streams",
+		Long: ForProgram("Start the named directions of the configured heartbeats.\n\n" +
+			HeartbeatStreamNameHelp),
+		Example: ForProgram(`  # start the receiver of hb#1 on the local node
+  om daemon hb start 1.rx
+
+  # start both streams of hb#1
+  om daemon hb start 1
+
+  # start the sender of hb#1 and the receiver of hb#2 on every node
+  om daemon hb start 1.tx 2.rx --node '*'
+
+  # the id "om daemon hb ls" shows is accepted as it reads
+  om daemon hb start hb#1.rx`),
+		Args:              cobra.MinimumNArgs(1),
+		ValidArgsFunction: validHeartbeatStreamNames,
 		RunE: func(cmd *cobra.Command, args []string) error {
-			options.Name = args[0]
+			options.Names = args
 			return options.Run()
 		},
 	}
@@ -34,8 +47,9 @@ func NewCmdDaemonHeartbeatStart() *cobra.Command {
 }
 
 func (t *CmdDaemonHeartbeatStart) Run() error {
-	fn := func(ctx context.Context, c *client.T, nodename string) (response *http.Response, err error) {
-		return c.PostDaemonHeartbeatStart(ctx, nodename, t.Name)
-	}
-	return t.CmdDaemonSubAction.Run(fn)
+	return t.CmdDaemonSubAction.RunForEach(t.Names, func(name string) apiFuncWithNode {
+		return func(ctx context.Context, c *client.T, nodename string) (response *http.Response, err error) {
+			return c.PostDaemonHeartbeatStart(ctx, nodename, name)
+		}
+	})
 }

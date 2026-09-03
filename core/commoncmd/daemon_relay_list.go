@@ -13,17 +13,18 @@ import (
 )
 
 type (
-	CmdDaemonRelayStatus struct {
+	CmdDaemonRelayList struct {
 		Color  string
 		Output string
 	}
 )
 
-func NewCmdDaemonRelayStatus() *cobra.Command {
-	var options CmdDaemonRelayStatus
+func NewCmdDaemonRelayList() *cobra.Command {
+	var options CmdDaemonRelayList
 	cmd := &cobra.Command{
-		Use:   "status",
-		Short: "show the local daemon relay clients and last data update time",
+		Use:     "list",
+		Short:   "list the local daemon relay clients and their last data update time",
+		Aliases: []string{"ls"},
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return options.Run()
 		},
@@ -34,7 +35,7 @@ func NewCmdDaemonRelayStatus() *cobra.Command {
 	return cmd
 }
 
-func (t *CmdDaemonRelayStatus) Run() error {
+func (t *CmdDaemonRelayList) Run() error {
 	cli, err := client.New()
 	if err != nil {
 		return err
@@ -63,4 +64,15 @@ func (t *CmdDaemonRelayStatus) Run() error {
 		Colorize:      rawconfig.Colorize,
 	}.Print()
 	return nil
+}
+
+// NewCmdDaemonRelayStatus is the name the list command answered to before
+// the listings were named after what they render: a row per relay client.
+// It is kept for the readers whose fingers and scripts type it.
+func NewCmdDaemonRelayStatus() *cobra.Command {
+	cmd := NewCmdDaemonRelayList()
+	cmd.Use = "status"
+	cmd.Aliases = nil
+	cmd.Hidden = true
+	return cmd
 }
