@@ -46,14 +46,13 @@ var (
 			Attr:      "Timeout",
 			Option:    "timeout",
 			Converter: "duration",
-			Default:   "300s", // TODO: move to config
 			Scopable:  true,
 			Text:      keywords.NewText(fs, "text/kw/timeout"),
 		},
 		{
 			Attr:      "Failover",
 			Option:    "failover",
-			Converter: "boolean",
+			Converter: "bool",
 			Default:   "true",
 			Scopable:  true,
 			Text:      keywords.NewText(fs, "text/kw/failover"),

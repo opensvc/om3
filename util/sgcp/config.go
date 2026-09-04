@@ -28,6 +28,9 @@ type (
 			Client string `yaml:"client"`
 			CG     string `yaml:"cg"`
 		} `yaml:"path"`
+		CG struct {
+			Timeout int `yaml:"timeout"`
+		} `yaml:"cg"`
 	}
 
 	// DNSConfig contains DNS-related API configuration
@@ -49,10 +52,10 @@ type (
 		Timeout       int                 `yaml:"timeout"`
 	}
 
-	// CacheConfig contains caching configuration
+	// CacheConfig contains caching configuration. A zero ttl_seconds
+	// disables the caching.
 	CacheConfig struct {
-		TTLSeconds int  `yaml:"ttl_seconds"`
-		Enabled    bool `yaml:"enabled"`
+		TTLSeconds int `yaml:"ttl_seconds"`
 	}
 )
 

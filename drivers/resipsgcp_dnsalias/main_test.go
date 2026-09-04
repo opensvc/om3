@@ -3,14 +3,22 @@ package resipsgcp_dnsalias
 import (
 	"context"
 	"fmt"
+	"net/http"
+	"net/http/httptest"
+	"os"
+	"path/filepath"
+	"strings"
+	"sync"
 	"testing"
 	"time"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
+	"github.com/opensvc/om3/v3/core/env"
 	"github.com/opensvc/om3/v3/core/resource"
 	"github.com/opensvc/om3/v3/core/status"
+	"github.com/opensvc/om3/v3/drivers/sgcpauthtesthelper"
 	"github.com/opensvc/om3/v3/util/sgcpdnstesthelper"
 	"github.com/opensvc/om3/v3/util/testsgcphelper"
 
@@ -40,6 +48,267 @@ func newDBAndDrv(t *testing.T, s string, entries []sgcpdnstesthelper.DBEntry) (*
 	db.Setup(entries)
 	drv.api = sgcpdnstesthelper.NewApi(db)
 	return db, drv
+}
+
+// TestConfigureEndpoint verifies the endpoint keyword is the api the driver
+// talks to. It used to be validated, stored and never applied, every request
+// going to the base url of the configuration instead.
+func TestConfigureEndpoint(t *testing.T) {
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+
+	var mu sync.Mutex
+	var seen []string
+
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		mu.Lock()
+		seen = append(seen, r.URL.Path)
+		mu.Unlock()
+		w.Header().Set("Content-Type", "application/json")
+		switch {
+		case r.URL.Path == "/auth/access_token":
+			fmt.Fprint(w, `{"access_token": "a-token"}`)
+		case strings.HasPrefix(r.URL.Path, "/dns/zone/"):
+			fmt.Fprint(w, `{"cnameRecords": [{"id": "uuid1", "name": "name1", "target": "target1", "zoneId": "z1"}]}`)
+		default:
+			w.WriteHeader(http.StatusNotFound)
+		}
+	}))
+	defer srv.Close()
+
+	// The agent root goes to a tempdir, then the configuration is replaced by
+	// one whose dns base url is a port nothing listens on: reaching the alias
+	// is only possible through the endpoint keyword.
+	root := filepath.Dir(testsgcphelper.InstallConfig(t))
+	cfgFile := filepath.Join(root, "endpoint.yaml")
+	require.NoError(t, os.WriteFile(cfgFile, []byte(`
+auth:
+  base_url: "`+srv.URL+`/auth"
+  default_secret: "the-secret"
+  scopes:
+    dns_read: ["dns:read"]
+    dns_write: ["dns:write"]
+  timeout: 5
+  ttl_seconds: 60
+dns:
+  base_url: "http://127.0.0.1:1/dns"
+  none_target: "none.xxx"
+  path:
+    cname: "/cname"
+    zone: "/zone"
+cache:
+  ttl_seconds: 0
+`), 0644))
+	sgcp.SetConfigForTest(cfgFile)
+	defer sgcp.SetConfigForTest("")
+
+	drv := New().(*T)
+	require.NoError(t, drv.SetRID("rid1"))
+	drv.authInfoer = sgcpauthtesthelper.NewMockGetAuthInfoProvider("id1")
+	drv.Name = "name1"
+	drv.Target = "target1"
+	drv.ZoneID = "z1"
+	drv.Endpoint = srv.URL + "/dns"
+	require.NoError(t, drv.Configure())
+
+	assert.Equal(t, status.Up, drv.Status(ctx), "the alias was not read through the endpoint")
+
+	mu.Lock()
+	defer mu.Unlock()
+	assert.Containsf(t, seen, "/dns/zone/z1/cname", "the endpoint keyword was not used: %v", seen)
+}
+
+// TestConfigureCacheTTL verifies the alias cache ages as the configuration
+// says, and not on a duration of the driver's own.
+func TestConfigureCacheTTL(t *testing.T) {
+	defer setup(t)()
+
+	_, drv := newDBAndDrv(t, "rid1", nil)
+	drv.Name = "name1"
+	drv.Target = "target1"
+	drv.ZoneID = "z1"
+	require.NoError(t, drv.Configure())
+
+	expected := time.Duration(sgcp.GetConfig().Cache.TTLSeconds) * time.Second
+	require.NotZerof(t, expected, "the test configuration has to set a cache ttl")
+	assert.Equal(t, expected, drv.mgr.CacheTTL)
+}
+
+// TestStatus_ReadsTheProviderOutsideTheScheduler verifies every origin but the
+// scheduler reads the api, the scheduler alone being served the cache.
+func TestStatus_ReadsTheProviderOutsideTheScheduler(t *testing.T) {
+	ctx, cancel := context.WithTimeout(context.Background(), time.Second)
+	defer cancel()
+
+	entries := []sgcpdnstesthelper.DBEntry{
+		{
+			Name: "name1", UUID: "uuid1", ZoneID: "z1",
+			AliasL: []sgcp.Alias{{UUID: "uuid1", Name: "name1", Target: "target1", ZoneID: "z1"}},
+		},
+	}
+	newDrv := func(t *testing.T) (*sgcpdnstesthelper.DB, *T) {
+		db, drv := newDBAndDrv(t, "rid1", entries)
+		drv.UUID = "uuid1"
+		drv.Name = "name1"
+		drv.Target = "target1"
+		drv.ZoneID = "z1"
+		require.NoError(t, drv.Configure())
+		require.NotZerof(t, drv.mgr.CacheTTL, "the test needs the cache enabled")
+		return db, drv
+	}
+
+	for _, origin := range []env.ActionOrigin{
+		env.ActionOriginUser,
+		env.ActionOriginDaemonMonitor,
+		env.ActionOriginDaemonAPI,
+	} {
+		t.Run(string(origin)+" reads the api every time", func(t *testing.T) {
+			defer setup(t)()
+			t.Setenv(env.ActionOriginVar, string(origin))
+			db, drv := newDrv(t)
+
+			for i := 0; i < 3; i++ {
+				assert.Equal(t, status.Up, drv.Status(ctx))
+			}
+			assert.Equal(t, 3, db.CallCounts().Search, "a status evaluation was served by the cache")
+		})
+	}
+
+	t.Run("the scheduler is served the cache", func(t *testing.T) {
+		defer setup(t)()
+		t.Setenv(env.ActionOriginVar, string(env.ActionOriginDaemonScheduler))
+		db, drv := newDrv(t)
+
+		for i := 0; i < 3; i++ {
+			assert.Equal(t, status.Up, drv.Status(ctx))
+		}
+		assert.Equal(t, 1, db.CallCounts().Search, "the cache did not serve the repeated evaluations")
+	})
+}
+
+// TestCacheInvalidation verifies a started alias is not read back from the
+// ageing cache the status evaluation filled before the change. The two drivers
+// stand for the two processes an om run uses: the one that starts the resource
+// and the one that evaluates its status afterwards.
+func TestCacheInvalidation(t *testing.T) {
+	defer setup(t)()
+	// The scheduler origin: every other status reads the provider instead
+	// of the cache, and would not show the staleness this test is about.
+	t.Setenv(env.ActionOriginVar, string(env.ActionOriginDaemonScheduler))
+
+	ctx, cancel := context.WithTimeout(context.Background(), time.Second)
+	defer cancel()
+
+	db := sgcpdnstesthelper.NewDB()
+	db.Setup([]sgcpdnstesthelper.DBEntry{
+		{
+			Name:   "name1",
+			UUID:   "uuid1",
+			ZoneID: "z1",
+			AliasL: []sgcp.Alias{
+				{UUID: "uuid1", Name: "name1", Target: "target1", FQDN: "name1.z1", ZoneID: "z1"},
+			},
+		},
+	})
+
+	// No uuid keyword: the alias is looked up by name, and the api completes
+	// its identity. The cache signature thus differs before and after a start.
+	newDrv := func(rid string) *T {
+		drv := New().(*T)
+		require.NoError(t, drv.SetRID(rid))
+		drv.api = sgcpdnstesthelper.NewApi(db)
+		drv.Name = "name1"
+		drv.Target = "target2"
+		drv.ZoneID = "z1"
+		require.NoError(t, drv.Configure())
+		require.NotZerof(t, drv.mgr.CacheTTL, "the test needs the cache enabled")
+		return drv
+	}
+
+	starter := newDrv("rid1")
+	t.Log("evaluate the status first, so the aliases are cached")
+	require.Equal(t, status.Down, starter.Status(ctx))
+
+	require.NoError(t, starter.Start(ctx))
+	alias, ok := db.Search("z1", "name1", "uuid1")
+	require.True(t, ok)
+	require.Equal(t, "target2", alias.Target, "the alias was not retargeted")
+
+	t.Log("another driver sees the change, not the entry cached before it")
+	assert.Equal(t, status.Up, newDrv("rid2").Status(ctx))
+}
+
+// TestDisabled verifies the actions honor the disabled flag of the sgcp
+// configuration, and that they report a flag they can not decide about
+// instead of taking it for a disable.
+func TestDisabled(t *testing.T) {
+	ctx, cancel := context.WithTimeout(context.Background(), time.Second)
+	defer cancel()
+
+	dbEntries := []sgcpdnstesthelper.DBEntry{
+		{
+			Name:   "name1",
+			UUID:   "uuid1",
+			ZoneID: "z1",
+			AliasL: []sgcp.Alias{
+				{UUID: "uuid1", Name: "name1", Target: "target1", ZoneID: "z1"},
+			},
+		},
+	}
+
+	newDrv := func(t *testing.T) (*sgcpdnstesthelper.DB, *T) {
+		db, drv := newDBAndDrv(t, "rid1", dbEntries)
+		drv.UUID = "uuid1"
+		drv.Name = "name1"
+		drv.Target = "target2"
+		drv.ZoneID = "z1"
+		require.NoError(t, drv.Configure())
+		drv.mgr.CacheTTL = 0
+		db.ResetCalls()
+		return db, drv
+	}
+
+	t.Run("the actions are skipped when the flag exists", func(t *testing.T) {
+		defer setup(t)()
+		require.NoError(t, os.WriteFile(sgcp.GetConfig().DisabledFlag, nil, 0644))
+		db, drv := newDrv(t)
+
+		require.NoError(t, drv.Start(ctx))
+		require.NoError(t, drv.Stop(ctx))
+		assert.Equal(t, status.NotApplicable, drv.Status(ctx))
+
+		call := db.CallCounts()
+		assert.Zerof(t, call.Update, "the api was called on a disabled node: %+v", call)
+		assert.Zerof(t, call.Delete, "the api was called on a disabled node: %+v", call)
+		assert.Zerof(t, call.Search, "the api was called on a disabled node: %+v", call)
+	})
+
+	t.Run("the actions run when the flag is absent", func(t *testing.T) {
+		defer setup(t)()
+		db, drv := newDrv(t)
+
+		require.NoError(t, drv.Start(ctx))
+		assert.NotZerof(t, db.CallCounts().Update, "the alias was not updated")
+	})
+
+	t.Run("an undecidable flag is reported", func(t *testing.T) {
+		defer setup(t)()
+		db, drv := newDrv(t)
+
+		// A regular file as the flag parent directory: stat then fails with
+		// something else than "does not exist", whatever the user running
+		// the test.
+		notADir := filepath.Join(t.TempDir(), "file")
+		require.NoError(t, os.WriteFile(notADir, nil, 0644))
+		cfgFile := filepath.Join(t.TempDir(), "sgcp.yaml")
+		require.NoError(t, os.WriteFile(cfgFile, []byte("disabled_flag: "+filepath.Join(notADir, "flag")+"\n"), 0644))
+		sgcp.SetConfigForTest(cfgFile)
+
+		require.Error(t, drv.Start(ctx))
+		require.Error(t, drv.Stop(ctx))
+		assert.Equal(t, status.NotApplicable, drv.Status(ctx))
+		assert.Zerof(t, db.CallCounts().Update, "the api was called with an undecidable flag")
+	})
 }
 
 func TestStatus(t *testing.T) {
@@ -249,6 +518,7 @@ func TestStatus(t *testing.T) {
 			drv.Target = tc.resTarget
 			drv.ZoneID = tc.resZoneID
 			require.NoError(t, drv.Configure())
+			drv.mgr.CacheTTL = 0
 
 			dStatus := drv.Status(ctx)
 			assert.Equalf(t, tc.expectedStatus, dStatus, "expected %s, got %s", tc.expectedStatus, dStatus)
@@ -300,6 +570,7 @@ func TestStart(t *testing.T) {
 		drv.Target = "foo-target"
 		drv.ZoneID = "z1"
 		require.NoError(t, drv.Configure())
+		drv.mgr.CacheTTL = 0
 
 		t.Log("verify alias doesn't exits")
 		alias, ok := db.Search("z1", "foo", "")
@@ -334,6 +605,7 @@ func TestStart(t *testing.T) {
 		drv.Target = "target1"
 		drv.ZoneID = "z1"
 		require.NoError(t, drv.Configure())
+		drv.mgr.CacheTTL = 0
 
 		t.Log("verify alias initially exits")
 		alias, ok := db.Search("z1", "name1", "uuid1")
@@ -362,6 +634,7 @@ func TestStart(t *testing.T) {
 		drv.Target = "newTarget2"
 		drv.ZoneID = "z1"
 		require.NoError(t, drv.Configure())
+		drv.mgr.CacheTTL = 0
 
 		t.Log("verify alias exits initially, with alternate target")
 		alias, ok := db.Search("z1", "name2", "uuid2")
@@ -452,6 +725,7 @@ func TestStop(t *testing.T) {
 		drv.Target = "target"
 		drv.ZoneID = "z1"
 		require.NoError(t, drv.Configure())
+		drv.mgr.CacheTTL = 0
 
 		t.Log("verify alias doesn't exits")
 		_, ok := db.Search(drv.ZoneID, drv.Name, drv.UUID)
@@ -477,6 +751,7 @@ func TestStop(t *testing.T) {
 		drv.Target = "target"
 		drv.ZoneID = "z1"
 		require.NoError(t, drv.Configure())
+		drv.mgr.CacheTTL = 0
 
 		t.Log("verify alias doesn't exits")
 		_, ok := db.Search(drv.ZoneID, drv.Name, drv.UUID)
@@ -500,6 +775,7 @@ func TestStop(t *testing.T) {
 		drv.Target = "target1"
 		drv.ZoneID = "z1"
 		require.NoError(t, drv.Configure())
+		drv.mgr.CacheTTL = 0
 
 		t.Log("verify initial exits")
 		alias, ok := db.Search(drv.ZoneID, drv.Name, drv.UUID)
@@ -531,6 +807,7 @@ func TestStop(t *testing.T) {
 		drv.Target = "none.xxx"
 		drv.ZoneID = "z1"
 		require.NoError(t, drv.Configure())
+		drv.mgr.CacheTTL = 0
 
 		t.Log("verify initial exits with target none")
 		alias, ok := db.Search(drv.ZoneID, drv.Name, drv.UUID)
@@ -561,6 +838,7 @@ func TestStop(t *testing.T) {
 		drv.Target = "target1"
 		drv.ZoneID = "z1"
 		require.NoError(t, drv.Configure())
+		drv.mgr.CacheTTL = 0
 
 		t.Log("verify initial exits")
 		initial, ok := db.Search(drv.ZoneID, drv.Name, drv.UUID)

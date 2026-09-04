@@ -26,7 +26,8 @@ var (
 )
 
 // HasDaemonOrigin returns true if the environment variable OSVC_ACTION_ORIGIN
-// is set to "daemon". The opensvc daemon sets this variable on every command
+// is set to one of the daemon origins: "daemon/monitor", "daemon/api" or
+// "daemon/scheduler". The opensvc daemon sets this variable on every command
 // it executes.
 func HasDaemonOrigin() bool {
 	switch Origin() {
@@ -38,11 +39,23 @@ func HasDaemonOrigin() bool {
 }
 
 // HasDaemonMonitorOrigin returns true if the environment variable OSVC_ACTION_ORIGIN
-// is set to "daemon/imon". The opensvc daemon sets this variable on every command
+// is set to "daemon/monitor". The opensvc daemon sets this variable on every command
 // it executes.
 func HasDaemonMonitorOrigin() bool {
 	switch Origin() {
 	case ActionOriginDaemonMonitor:
+		return true
+	default:
+		return false
+	}
+}
+
+// HasDaemonSchedulerOrigin returns true if the environment variable
+// OSVC_ACTION_ORIGIN is set to "daemon/scheduler", which the daemon sets on
+// the commands its scheduler runs.
+func HasDaemonSchedulerOrigin() bool {
+	switch Origin() {
+	case ActionOriginDaemonScheduler:
 		return true
 	default:
 		return false

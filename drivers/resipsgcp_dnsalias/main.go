@@ -7,6 +7,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/opensvc/om3/v3/core/rawconfig"
 	"github.com/opensvc/om3/v3/core/resource"
 	"github.com/opensvc/om3/v3/core/status"
 	"github.com/opensvc/om3/v3/drivers/sgcphelper"
@@ -32,13 +33,24 @@ type (
 
 		// for tests
 		api        apiProvider
+		authInfoer GetAuthInfoer
 		noneTarget string
 	}
 
+	// GetAuthInfoer resolves the api credentials named by the secret keyword.
+	// The resfssgcp_nfs driver has the same seam, for the same reason: a test
+	// needs the real api without a datastore behind it.
+	GetAuthInfoer interface {
+		GetAuthInfo(string) (*sgcp.AuthInfo, error)
+	}
+
 	mgr struct {
-		alias alias
-		api   apiProvider
-		log   *plog.Logger
+		alias    alias
+		api      apiProvider
+		log      *plog.Logger
+		CacheTTL time.Duration
+		Endpoint string
+		Secret   string
 	}
 
 	// alias decoupled from sgcp.Alias to allow for future changes
@@ -96,6 +108,7 @@ func (t *T) Configure() error {
 	if t.Endpoint == "" {
 		return errors.New("endpoint is required")
 	}
+	cfg = cfg.WithDNSBaseURL(t.Endpoint)
 
 	// zoneid is mandatory
 	if t.ZoneID == "" {
@@ -110,8 +123,11 @@ func (t *T) Configure() error {
 
 func (t *T) configureMgr(cfg *sgcp.Config) error {
 	mgr := &mgr{
-		alias: alias{UUID: t.UUID, Name: t.Name, Target: t.Target, ZoneID: t.ZoneID},
-		log:   t.Log(),
+		alias:    alias{UUID: t.UUID, Name: t.Name, Target: t.Target, ZoneID: t.ZoneID},
+		log:      t.Log(),
+		CacheTTL: time.Duration(cfg.Cache.TTLSeconds) * time.Second,
+		Endpoint: t.Endpoint,
+		Secret:   t.Secret,
 	}
 	if t.api != nil {
 		// allow custom api for tests
@@ -125,38 +141,65 @@ func (t *T) configureMgr(cfg *sgcp.Config) error {
 		return fmt.Errorf("failed to create http client: %w", err)
 	}
 
-	authInfo, err := sgcphelper.AuthInfoFromPath(t.Secret)
+	if t.authInfoer == nil {
+		t.authInfoer = &sgcphelper.GetAuthInfoFromDatastorePather{}
+	}
+	authInfo, err := t.authInfoer.GetAuthInfo(t.Secret)
 	if err != nil {
 		return fmt.Errorf("get auth info: %w", err)
 	}
 
 	tokenFactory := sgcp.NewTokenFactory(t.Log(), httpClient, &cfg.Auth, authInfo)
 
-	if t.api != nil {
-		mgr.api = t.api
-	} else {
-		mgr.api = sgcp.NewDNSAPI(cfg, httpClient, t.Log(), tokenFactory)
-	}
+	mgr.api = sgcp.NewDNSAPI(cfg, httpClient, t.Log(), tokenFactory)
 
 	t.mgr = mgr
 	return nil
 }
 
 func (t *T) Start(ctx context.Context) error {
-	// TODO: implement cache cleanup
+	if disabled, err := t.isDisabled(); err != nil {
+		return err
+	} else if disabled {
+		t.Log().Infof("skip start of alias %s: sgcp support disabled", t.Name)
+		return nil
+	}
 	return t.mgr.createOrUpdate(ctx, t.Target)
 }
 
 func (t *T) Stop(ctx context.Context) error {
-	// TODO: implement cache cleanup
+	if disabled, err := t.isDisabled(); err != nil {
+		return err
+	} else if disabled {
+		t.Log().Infof("skip stop of alias %s: sgcp support disabled", t.Name)
+		return nil
+	}
 	if t.UUID != "" {
 		return t.mgr.createOrUpdate(ctx, t.noneTarget)
 	}
 	return t.mgr.delete(ctx)
 }
 
+// isDisabled tells whether the operator has disabled the sgcp support. An
+// undecidable flag is an error the actions report, rather than a reason to
+// quietly skip the work they were asked to do.
+func (t *T) isDisabled() (bool, error) {
+	return sgcp.IsDisabled(rawconfig.NodeVarDir())
+}
+
 func (t *T) Status(ctx context.Context) status.T {
-	// TODO: implement cache cleanup if command is not called from the scheduler
+	if disabled, err := t.isDisabled(); err != nil {
+		t.StatusLog().Warn("%s", err)
+		return status.NotApplicable
+	} else if disabled {
+		t.StatusLog().Info("xaas status disabled")
+		return status.NotApplicable
+	}
+	if sgcphelper.NeedsCacheClear() {
+		if err := t.mgr.cacheClear(t.mgr.cacheSig()); err != nil {
+			t.Log().Debugf("cache clear error: %s", err)
+		}
+	}
 	aliases, err := t.mgr.getAliases(ctx)
 	if err != nil {
 		t.StatusLog().Error("get alias failed: %s", err)
