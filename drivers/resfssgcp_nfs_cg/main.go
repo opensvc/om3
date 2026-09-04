@@ -258,12 +258,12 @@ func (m *cgMgr) cacheSig(name string) string {
 type T struct {
 	resource.T
 
-	UUID     string        `json:"uuid"`
-	AZ       string        `json:"az,omitempty"`
-	Secret   string        `json:"secret,omitempty"`
-	Endpoint string        `json:"endpoint,omitempty"`
-	Timeout  time.Duration `json:"timeout"`
-	Failover bool          `json:"failover"`
+	UUID     string         `json:"uuid"`
+	AZ       string         `json:"az,omitempty"`
+	Secret   string         `json:"secret,omitempty"`
+	Endpoint string         `json:"endpoint,omitempty"`
+	Timeout  *time.Duration `json:"timeout"`
+	Failover bool           `json:"failover"`
 
 	lastWaitMsg time.Time
 	mgr         *cgMgr
@@ -299,6 +299,11 @@ func (t *T) Configure() error {
 		// now: without a local az, start would ask for a switchover to
 		// the "" availability zone.
 		return fmt.Errorf("az is required (neither defined into the az keyword nor by the node az label)")
+	}
+
+	if t.Timeout == nil {
+		timeout := time.Duration(cfg.Files.CG.Timeout) * time.Second
+		t.Timeout = &timeout
 	}
 	return t.configureMgr(cfg)
 }
@@ -462,7 +467,7 @@ func (t *T) waitStatus(ctx context.Context, expectedStates []string) error {
 		return false, nil
 	}
 	errMsg := fmt.Sprintf("timeout waiting for consistency group %s status in %v", t.UUID, expectedStates)
-	return t.waitForFn(ctx, fn, t.Timeout, retryWaitDelay, errMsg)
+	return t.waitForFn(ctx, fn, *t.Timeout, retryWaitDelay, errMsg)
 }
 
 func (t *T) waitStatusAndAZ(ctx context.Context, expectedStates []string, expectedAZ string) error {
@@ -498,7 +503,7 @@ func (t *T) waitStatusAndAZ(ctx context.Context, expectedStates []string, expect
 		return false, nil
 	}
 	errMsg := fmt.Sprintf("timeout waiting for consistency group %s status in %v and availability zone %s", t.UUID, expectedStates, expectedAZ)
-	return t.waitForFn(ctx, fn, t.Timeout, retryWaitDelay, errMsg)
+	return t.waitForFn(ctx, fn, *t.Timeout, retryWaitDelay, errMsg)
 }
 
 func (t *T) waitForFn(ctx context.Context, fn func() (bool, error), timeout, retryDelay time.Duration, errMsg string) error {
