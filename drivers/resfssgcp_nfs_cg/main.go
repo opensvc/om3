@@ -257,6 +257,7 @@ func (m *cgMgr) cacheSig(name string) string {
 
 type T struct {
 	resource.T
+	resource.Restart
 
 	UUID     string         `json:"uuid"`
 	AZ       string         `json:"az,omitempty"`
