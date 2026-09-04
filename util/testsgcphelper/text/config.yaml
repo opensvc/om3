@@ -8,6 +8,8 @@ files:
     fs: "/fs"
     client: "/client"
     cg: "/cg"
+  cg:
+    timeout: 300
 
 dns:
   base_url: "https://127.0.0.1:1215/dns"
