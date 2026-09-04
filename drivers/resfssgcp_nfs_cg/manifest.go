@@ -53,7 +53,7 @@ var (
 		{
 			Attr:      "Failover",
 			Option:    "failover",
-			Converter: "boolean",
+			Converter: "bool",
 			Default:   "true",
 			Scopable:  true,
 			Text:      keywords.NewText(fs, "text/kw/failover"),
