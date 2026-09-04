@@ -28,6 +28,9 @@ type (
 			Client string `yaml:"client"`
 			CG     string `yaml:"cg"`
 		} `yaml:"path"`
+		CG struct {
+			Timeout int `yaml:"timeout"`
+		} `yaml:"cg"`
 	}
 
 	// DNSConfig contains DNS-related API configuration
