@@ -46,7 +46,7 @@ clean:
 	rm -f $(OM) $(OX)
 
 compobj:
-	$(GOBUILD) -o $(COMPOBJ) ./util/compobj/
+	$(GOBUILD) -trimpath -o $(COMPOBJ) ./util/compobj/
 
 compobj-race:
 	$(GOBUILDRACE) -o $(COMPOBJ) ./util/compobj/
@@ -94,13 +94,13 @@ install:
 	$(PREFIX)/$(COMPOBJ) -i $(PREFIX)/$(COMPOBJ_D)
 
 om:
-	$(GOBUILD) -o $(OM) ./cmd/om/
+	$(GOBUILD) -trimpath -o $(OM) ./cmd/om/
 
 om-race:
 	$(GOBUILDRACE) -o $(OM) ./cmd/om/
 
 ox:
-	$(GOBUILD) -o $(OX) ./cmd/ox/
+	$(GOBUILD) -trimpath -o $(OX) ./cmd/ox/
 
 ox-race:
 	$(GOBUILDRACE) -o $(OX) ./cmd/ox/
