@@ -47,7 +47,6 @@ var (
 			Attr:      "Timeout",
 			Option:    "timeout",
 			Converter: converters.Duration,
-			Default:   "300s", // TODO: move to config
 			Scopable:  true,
 			Text:      keywords.NewText(fs, "text/kw/timeout"),
 		},

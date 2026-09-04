@@ -381,7 +381,7 @@ func newTestDriver(t *testing.T, id, az string, timeout time.Duration, failover 
 	drv := &T{
 		UUID:     id,
 		AZ:       az,
-		Timeout:  timeout,
+		Timeout:  &timeout,
 		Failover: failover,
 	}
 	drv.mgr = &cgMgr{
