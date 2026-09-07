@@ -5,6 +5,7 @@ import (
 
 	"github.com/opensvc/om3/v3/core/keywords"
 	"github.com/opensvc/om3/v3/core/naming"
+	"github.com/opensvc/om3/v3/util/converters"
 
 	"github.com/opensvc/om3/v3/core/driver"
 	"github.com/opensvc/om3/v3/core/manifest"
@@ -27,7 +28,7 @@ var (
 		&rescontainer.KWGuestOS,
 		{
 			Attr:       "Headless",
-			Converter:  "bool",
+			Converter:  converters.Bool,
 			Default:    "false",
 			Deprecated: "3.0",
 			Option:     "headless",

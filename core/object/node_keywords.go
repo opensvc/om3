@@ -8,6 +8,7 @@ import (
 	"github.com/opensvc/om3/v3/core/naming"
 	"github.com/opensvc/om3/v3/core/rawconfig"
 	"github.com/opensvc/om3/v3/daemon/daemonenv"
+	"github.com/opensvc/om3/v3/util/converters"
 	"github.com/opensvc/om3/v3/util/key"
 )
 
@@ -47,21 +48,21 @@ var (
 		Text:    keywords.NewText(fs, "text/kw/node/node.connect_to"),
 	}
 	kwNodeMemBytes = keywords.Keyword{
-		Converter: "size",
+		Converter: converters.Size,
 		Example:   "256mb",
 		Option:    "mem_bytes",
 		Section:   "node",
 		Text:      keywords.NewText(fs, "text/kw/node/node.mem_bytes"),
 	}
 	kwNodeMemBanks = keywords.Keyword{
-		Converter: "int",
+		Converter: converters.Int,
 		Example:   "4",
 		Option:    "mem_banks",
 		Section:   "node",
 		Text:      keywords.NewText(fs, "text/kw/node/node.mem_banks"),
 	}
 	kwNodeMemSlots = keywords.Keyword{
-		Converter: "int",
+		Converter: converters.Int,
 		Example:   "4",
 		Option:    "mem_slots",
 		Section:   "node",
@@ -98,21 +99,21 @@ var (
 		Text:    keywords.NewText(fs, "text/kw/node/node.cpu_freq"),
 	}
 	kwNodeCPUThreads = keywords.Keyword{
-		Converter: "int",
+		Converter: converters.Int,
 		Example:   "4",
 		Option:    "cpu_threads",
 		Section:   "node",
 		Text:      keywords.NewText(fs, "text/kw/node/node.cpu_threads"),
 	}
 	kwNodeCPUCores = keywords.Keyword{
-		Converter: "int",
+		Converter: converters.Int,
 		Example:   "2",
 		Option:    "cpu_cores",
 		Section:   "node",
 		Text:      keywords.NewText(fs, "text/kw/node/node.cpu_cores"),
 	}
 	kwNodeCPUDies = keywords.Keyword{
-		Converter: "int",
+		Converter: converters.Int,
 		Example:   "1",
 		Option:    "cpu_dies",
 		Section:   "node",
@@ -224,7 +225,7 @@ var (
 	}
 
 	kwNodeSecureFetch = keywords.Keyword{
-		Converter: "bool",
+		Converter: converters.Bool,
 		Default:   "true",
 		Option:    "secure_fetch",
 		Section:   "node",
@@ -232,7 +233,7 @@ var (
 	}
 	kwNodeMinAvailMemPct = keywords.Keyword{
 		Aliases:   []string{"min_avail_mem"},
-		Converter: "int",
+		Converter: converters.Int,
 		Default:   "2",
 		Option:    "min_avail_mem_pct",
 		Section:   "node",
@@ -240,7 +241,7 @@ var (
 	}
 	kwNodeMinAvailSwapPct = keywords.Keyword{
 		Aliases:   []string{"min_avail_swap"},
-		Converter: "int",
+		Converter: converters.Int,
 		Default:   "10",
 		Option:    "min_avail_swap_pct",
 		Section:   "node",
@@ -253,21 +254,21 @@ var (
 		Text:    keywords.NewText(fs, "text/kw/node/node.env"),
 	}
 	kwNodeConsoleMaxGreetTimeout = keywords.Keyword{
-		Converter: "duration",
+		Converter: converters.Duration,
 		Option:    "max_greet_timeout",
 		Section:   "console",
 		Default:   "20s",
 		Text:      keywords.NewText(fs, "text/kw/node/console.max_greet_timeout"),
 	}
 	kwNodeConsoleMaxSeats = keywords.Keyword{
-		Converter: "int",
+		Converter: converters.Int,
 		Option:    "max_seats",
 		Section:   "console",
 		Default:   "1",
 		Text:      keywords.NewText(fs, "text/kw/node/console.max_seats"),
 	}
 	kwNodeConsoleInsecure = keywords.Keyword{
-		Converter: "bool",
+		Converter: converters.Bool,
 		Option:    "insecure",
 		Section:   "console",
 		Text:      keywords.NewText(fs, "text/kw/node/console.insecure"),
@@ -278,21 +279,21 @@ var (
 		Text:    keywords.NewText(fs, "text/kw/node/console.server"),
 	}
 	kwNodeMaxParallel = keywords.Keyword{
-		Converter: "int",
+		Converter: converters.Int,
 		Default:   fmt.Sprintf("%d", DefaultNodeMaxParallel),
 		Option:    "max_parallel",
 		Section:   "node",
 		Text:      keywords.NewText(fs, "text/kw/node/node.max_parallel"),
 	}
 	kwNodeMaxKeySize = keywords.Keyword{
-		Converter: "size",
+		Converter: converters.Size,
 		Default:   "1mb",
 		Option:    "max_key_size",
 		Section:   "node",
 		Text:      keywords.NewText(fs, "text/kw/node/node.max_key_size"),
 	}
 	kwNodeAllowedNetworks = keywords.Keyword{
-		Converter: "list",
+		Converter: converters.List,
 		Default:   "10.0.0.0/8 172.16.0.0/24 192.168.0.0/16",
 		Option:    "allowed_networks",
 		Section:   "node",
@@ -401,7 +402,7 @@ var (
 		Option:    "collector_ping_interval",
 		Aliases:   []string{"db_min_ping_interval"},
 		Section:   "node",
-		Converter: "duration",
+		Converter: converters.Duration,
 		Default:   "60s",
 		Text:      keywords.NewText(fs, "text/kw/node/node.collector_ping_interval"),
 	}
@@ -410,19 +411,19 @@ var (
 		Option:    "collector_status_delay",
 		Aliases:   []string{"db_min_update_interval"},
 		Section:   "node",
-		Converter: "duration",
+		Converter: converters.Duration,
 		Default:   "10s",
 		Text:      keywords.NewText(fs, "text/kw/node/node.collector_status_delay"),
 	}
 	kwNodeCollectorTimeout = keywords.Keyword{
 		Option:    "collector_timeout",
 		Section:   "node",
-		Converter: "duration",
+		Converter: converters.Duration,
 		Default:   "5s",
 		Text:      keywords.NewText(fs, "text/kw/node/node.collector_timeout"),
 	}
 	kwNodeDBInsecure = keywords.Keyword{
-		Converter: "bool",
+		Converter: converters.Bool,
 		Option:    "dbinsecure",
 		Section:   "node",
 		Text:      keywords.NewText(fs, "text/kw/node/node.dbinsecure"),
@@ -435,7 +436,7 @@ var (
 		Text:        keywords.NewText(fs, "text/kw/node/node.dbcompliance"),
 	}
 	kwNodeDBLog = keywords.Keyword{
-		Converter: "bool",
+		Converter: converters.Bool,
 		Default:   "true",
 		Option:    "dblog",
 		Section:   "node",
@@ -474,20 +475,20 @@ var (
 	}
 	kwNodeMaintenanceGracePeriod = keywords.Keyword{
 		Default:   "60",
-		Converter: "duration",
+		Converter: converters.Duration,
 		Option:    "maintenance_grace_period",
 		Section:   "node",
 		Text:      keywords.NewText(fs, "text/kw/node/node.maintenance_grace_period"),
 	}
 	kwNodeRejoinGracePeriod = keywords.Keyword{
-		Converter: "duration",
+		Converter: converters.Duration,
 		Default:   "90s",
 		Option:    "rejoin_grace_period",
 		Section:   "node",
 		Text:      keywords.NewText(fs, "text/kw/node/node.rejoin_grace_period"),
 	}
 	kwNodeReadyPeriod = keywords.Keyword{
-		Converter: "duration",
+		Converter: converters.Duration,
 		Default:   "5s",
 		Option:    "ready_period",
 		Section:   "node",
@@ -506,7 +507,7 @@ var (
 		Text:    keywords.NewText(fs, "text/kw/node/compliance.schedule"),
 	}
 	kwNodeComplianceAutoUpdate = keywords.Keyword{
-		Converter: "bool",
+		Converter: converters.Bool,
 		Default:   "false",
 		Option:    "auto_update",
 		Section:   "compliance",
@@ -566,7 +567,7 @@ var (
 	}
 	kwNodeListenerPort = keywords.Keyword{
 		Aliases:   []string{"tls_port"},
-		Converter: "int",
+		Converter: converters.Int,
 		Default:   fmt.Sprintf("%d", daemonenv.HTTPPort),
 		Option:    "port",
 		Scopable:  true,
@@ -588,7 +589,7 @@ var (
 	}
 	kwNodeListenerRateLimiterRate = keywords.Keyword{
 		Default:   "20",
-		Converter: "int",
+		Converter: converters.Int,
 		Option:    "rate_limiter_rate",
 		Section:   "listener",
 		Scopable:  true,
@@ -596,7 +597,7 @@ var (
 	}
 	kwNodeListenerRateLimiterBurst = keywords.Keyword{
 		Default:   "100",
-		Converter: "int",
+		Converter: converters.Int,
 		Option:    "rate_limiter_burst",
 		Section:   "listener",
 		Scopable:  true,
@@ -604,7 +605,7 @@ var (
 	}
 	kwNodeListenerRateLimiterExpires = keywords.Keyword{
 		Default:   "60s",
-		Converter: "duration",
+		Converter: converters.Duration,
 		Option:    "rate_limiter_expires",
 		Section:   "listener",
 		Scopable:  true,
@@ -636,7 +637,7 @@ var (
 		Text:    keywords.NewText(fs, "text/kw/node/syslog.port"),
 	}
 	kwNodeClusterDNS = keywords.Keyword{
-		Converter: "list",
+		Converter: converters.List,
 		Option:    "dns",
 		Scopable:  true,
 		Section:   "cluster",
@@ -644,7 +645,7 @@ var (
 	}
 	kwNodeClusterCA = keywords.Keyword{
 		DefaultText: keywords.NewText(fs, "text/kw/node/cluster.ca.default"),
-		Converter:   "list",
+		Converter:   converters.List,
 		Option:      "ca",
 		Section:     "cluster",
 		Text:        keywords.NewText(fs, "text/kw/node/cluster.ca"),
@@ -677,26 +678,26 @@ var (
 		RedactSecret: true,
 	}
 	kwNodeClusterNodes = keywords.Keyword{
-		Converter: "list",
+		Converter: converters.List,
 		Option:    "nodes",
 		Section:   "cluster",
 		Text:      keywords.NewText(fs, "text/kw/node/cluster.nodes"),
 	}
 	kwNodeClusterDRPNodes = keywords.Keyword{
-		Converter: "list",
+		Converter: converters.List,
 		Option:    "drpnodes",
 		Section:   "cluster",
 		Text:      keywords.NewText(fs, "text/kw/node/cluster.drpnodes"),
 	}
 	kwNodeClusterEnvs = keywords.Keyword{
-		Converter: "list",
+		Converter: converters.List,
 		Option:    "envs",
 		Default:   "CERT DEV DRP FOR INT PRA PRD PRJ PPRD QUAL REC STG TMP TST UAT",
 		Section:   "cluster",
 		Text:      keywords.NewText(fs, "text/kw/node/cluster.envs"),
 	}
 	kwNodeClusterQuorum = keywords.Keyword{
-		Converter: "bool",
+		Converter: converters.Bool,
 		Default:   "false",
 		Option:    "quorum",
 		Section:   "cluster",
@@ -725,21 +726,21 @@ var (
 		Text:     keywords.NewText(fs, "text/kw/node/arbitrator.uri"),
 	}
 	kwNodeArbitratorInsecure = keywords.Keyword{
-		Converter: "bool",
+		Converter: converters.Bool,
 		Default:   "false",
 		Option:    "insecure",
 		Section:   "arbitrator",
 		Text:      keywords.NewText(fs, "text/kw/node/arbitrator.insecure"),
 	}
 	kwNodeArbitratorWeight = keywords.Keyword{
-		Converter: "int",
+		Converter: converters.Int,
 		Default:   "1",
 		Option:    "weight",
 		Section:   "arbitrator",
 		Text:      keywords.NewText(fs, "text/kw/node/arbitrator.weight"),
 	}
 	kwNodeStonithCommand = keywords.Keyword{
-		Converter: "shlex",
+		Converter: converters.Shlex,
 		Example:   "/bin/true",
 		Option:    "command",
 		Aliases:   []string{"cmd"},
@@ -774,7 +775,7 @@ var (
 		Types:       []string{"unicast"},
 	}
 	kwNodeHBUnicastPort = keywords.Keyword{
-		Converter: "int",
+		Converter: converters.Int,
 		Default:   "10000",
 		Option:    "port",
 		Scopable:  true,
@@ -783,7 +784,7 @@ var (
 		Types:     []string{"unicast"},
 	}
 	kwNodeHBTimeout = keywords.Keyword{
-		Converter: "duration",
+		Converter: converters.Duration,
 		Default:   "15s",
 		Option:    "timeout",
 		Scopable:  true,
@@ -791,7 +792,7 @@ var (
 		Text:      keywords.NewText(fs, "text/kw/node/hb.timeout"),
 	}
 	kwNodeHBInterval = keywords.Keyword{
-		Converter: "duration",
+		Converter: converters.Duration,
 		Default:   "5s",
 		Option:    "interval",
 		Scopable:  true,
@@ -816,7 +817,7 @@ var (
 		Types:       []string{"multicast"},
 	}
 	kwNodeHBMulticastPort = keywords.Keyword{
-		Converter: "int",
+		Converter: converters.Int,
 		Default:   "10000",
 		Option:    "port",
 		Scopable:  true,
@@ -825,7 +826,7 @@ var (
 		Types:     []string{"multicast"},
 	}
 	kwNodeHBUnicastNodes = keywords.Keyword{
-		Converter:   "list",
+		Converter:   converters.List,
 		DefaultText: keywords.NewText(fs, "text/kw/node/hb.unicast.nodes.default"),
 		Option:      "nodes",
 		Scopable:    true,
@@ -843,7 +844,7 @@ var (
 		Types:    []string{"disk"},
 	}
 	kwNodeHBDiskMaxSlots = keywords.Keyword{
-		Converter: "int",
+		Converter: converters.Int,
 		Example:   "1024",
 		Default:   "1024",
 		Option:    "max_slots",
@@ -852,7 +853,7 @@ var (
 		Types:     []string{"disk"},
 	}
 	kwNodeHBRelayInsecure = keywords.Keyword{
-		Converter: "bool",
+		Converter: converters.Bool,
 		Default:   "false",
 		Option:    "insecure",
 		Section:   "hb",
@@ -942,7 +943,7 @@ var (
 		Types:   []string{"hoc", "pure"},
 	}
 	kwNodePoolPureDeleteNow = keywords.Keyword{
-		Converter: "bool",
+		Converter: converters.Bool,
 		Default:   "true",
 		Option:    "delete_now",
 		Section:   "pool",
@@ -1000,7 +1001,7 @@ var (
 		Types:   []string{"symmetrix"},
 	}
 	kwNodePoolSymmetrixSRDF = keywords.Keyword{
-		Converter: "bool",
+		Converter: converters.Bool,
 		Default:   "false",
 		Option:    "srdf",
 		Section:   "pool",
@@ -1021,7 +1022,7 @@ var (
 		Types:    []string{"freenas", "dorado", "hoc", "pure", "truenas"},
 	}
 	kwNodePoolTruenasInsecureTPC = keywords.Keyword{
-		Converter: "bool",
+		Converter: converters.Bool,
 		Default:   "false",
 		Option:    "insecure_tpc",
 		Section:   "pool",
@@ -1038,14 +1039,14 @@ var (
 	}
 	kwNodePoolTruenasSparse = keywords.Keyword{
 		Default:   "false",
-		Converter: "bool",
+		Converter: converters.Bool,
 		Option:    "sparse",
 		Section:   "pool",
 		Text:      keywords.NewText(fs, "text/kw/node/pool.freenas.sparse"),
 		Types:     []string{"freenas", "truenas"},
 	}
 	kwNodePoolTruenasBlockSize = keywords.Keyword{
-		Converter: "size",
+		Converter: converters.Size,
 		Default:   "512",
 		Option:    "blocksize",
 		Section:   "pool",
@@ -1070,7 +1071,7 @@ var (
 	}
 	kwNodePoolDRBDMaxPeers = keywords.Keyword{
 		Attr:         "MaxPeers",
-		Converter:    "int",
+		Converter:    converters.Int,
 		DefaultText:  keywords.NewText(fs, "text/kw/node/pool.drbd.max_peers.default"),
 		Example:      "8",
 		Option:       "max_peers",
@@ -1134,7 +1135,7 @@ var (
 		Types:    []string{"virtual"},
 	}
 	kwNodePoolVirtualVolumeEnv = keywords.Keyword{
-		Converter: "list",
+		Converter: converters.List,
 		Example:   "container#1.name:container_name env.foo:foo",
 		Option:    "volume_env",
 		Section:   "pool",
@@ -1142,7 +1143,7 @@ var (
 		Types:     []string{"virtual"},
 	}
 	kwNodePoolVirtualOptionalVolumeEnv = keywords.Keyword{
-		Converter: "list",
+		Converter: converters.List,
 		Example:   "container#1.name:container_name env.foo:foo",
 		Option:    "optional_volume_env",
 		Section:   "pool",
@@ -1150,7 +1151,7 @@ var (
 		Types:     []string{"virtual"},
 	}
 	kwNodePoolVirtualCapabilities = keywords.Keyword{
-		Converter: "list",
+		Converter: converters.List,
 		Default:   "file roo rwo rox rwx",
 		Option:    "capabilities",
 		Section:   "pool",
@@ -1191,13 +1192,13 @@ var (
 		Text:    keywords.NewText(fs, "text/kw/node/pool.mkblk_opt"),
 	}
 	kwNodeHookEvents = keywords.Keyword{
-		Converter: "list",
+		Converter: converters.List,
 		Option:    "events",
 		Section:   "hook",
 		Text:      keywords.NewText(fs, "text/kw/node/hook.events"),
 	}
 	kwNodeHookCommand = keywords.Keyword{
-		Converter: "shlex",
+		Converter: converters.Shlex,
 		Option:    "command",
 		Section:   "hook",
 		Text:      keywords.NewText(fs, "text/kw/node/hook.command"),
@@ -1224,7 +1225,7 @@ var (
 		Types:    []string{"routed_bridge"},
 	}
 	kwNodeNetworkRoutedBridgeIPsPerNode = keywords.Keyword{
-		Converter:  "int",
+		Converter:  converters.Int,
 		Default:    "1024",
 		Deprecated: "3.0.0",
 		ReplacedBy: "mask_per_node",
@@ -1234,14 +1235,14 @@ var (
 		Types:      []string{"routed_bridge"},
 	}
 	kwNodeNetworkRoutedBridgeMaskPerNode = keywords.Keyword{
-		Converter: "int",
+		Converter: converters.Int,
 		Default:   "0",
 		Option:    "mask_per_node",
 		Section:   "network",
 		Text:      keywords.NewText(fs, "text/kw/node/network.routed_bridge.mask_per_node"),
 	}
 	kwNodeNetworkRoutedBridgeTables = keywords.Keyword{
-		Converter: "list",
+		Converter: converters.List,
 		Default:   "main",
 		Example:   "main custom1 custom2",
 		Option:    "tables",
@@ -1293,7 +1294,7 @@ var (
 		Types:   []string{"bridge", "routed_bridge"},
 	}
 	kwNodeNetworkPublic = keywords.Keyword{
-		Converter: "bool",
+		Converter: converters.Bool,
 		Option:    "public",
 		Section:   "network",
 		Text:      keywords.NewText(fs, "text/kw/node/network.public"),
@@ -1352,7 +1353,7 @@ var (
 		Text:       keywords.NewText(fs, "text/kw/node/array.type"),
 	}
 	kwNodePoolCompression = keywords.Keyword{
-		Converter: "bool",
+		Converter: converters.Bool,
 		Default:   "false",
 		Option:    "compression",
 		Section:   "pool",
@@ -1367,7 +1368,7 @@ var (
 		Types:   []string{"freenas", "truenas"},
 	}
 	kwNodePoolDedup = keywords.Keyword{
-		Converter: "bool",
+		Converter: converters.Bool,
 		Default:   "false",
 		Option:    "dedup",
 		Section:   "pool",
@@ -1405,7 +1406,7 @@ var (
 		Types:   []string{"hoc"},
 	}
 	kwNodeArrayHOCRetry = keywords.Keyword{
-		Converter: "int",
+		Converter: converters.Int,
 		Default:   "30",
 		Option:    "retry",
 		Section:   "array",
@@ -1413,7 +1414,7 @@ var (
 		Types:     []string{"hoc"},
 	}
 	kwNodeArrayHOCDelay = keywords.Keyword{
-		Converter: "duration",
+		Converter: converters.Duration,
 		Default:   "10s",
 		Option:    "delay",
 		Section:   "array",
@@ -1461,7 +1462,7 @@ var (
 		Types:    []string{"pure"},
 	}
 	kwNodeArrayInsecure = keywords.Keyword{
-		Converter: "bool",
+		Converter: converters.Bool,
 		Default:   "false",
 		Option:    "insecure",
 		Example:   "true",
@@ -1509,7 +1510,7 @@ var (
 		Types:   []string{"emcvnx", "symmetrix"},
 	}
 	kwNodeArrayTimeout = keywords.Keyword{
-		Converter: "duration",
+		Converter: converters.Duration,
 		Default:   "120s",
 		Example:   "10s",
 		Option:    "timeout",
@@ -1711,7 +1712,7 @@ var (
 		Types:    []string{"netapp", "ibmsvc", "vioserver"},
 	}
 	kwNodeArrayNexentaPort = keywords.Keyword{
-		Converter: "int",
+		Converter: converters.Int,
 		Default:   "2000",
 		Example:   "2000",
 		Option:    "port",

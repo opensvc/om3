@@ -2,6 +2,7 @@ package resapp
 
 import (
 	"github.com/opensvc/om3/v3/core/keywords"
+	"github.com/opensvc/om3/v3/util/converters"
 )
 
 var (
@@ -14,7 +15,7 @@ var (
 	}
 	BaseKeywordTimeout = keywords.Keyword{
 		Attr:      "Timeout",
-		Converter: "duration",
+		Converter: converters.Duration,
 		Example:   "180",
 		Option:    "timeout",
 		Scopable:  true,
@@ -22,7 +23,7 @@ var (
 	}
 	BaseKeywordStopTimeout = keywords.Keyword{
 		Attr:      "StopTimeout",
-		Converter: "duration",
+		Converter: converters.Duration,
 		Example:   "180",
 		Option:    "stop_timeout",
 		Scopable:  true,
@@ -30,7 +31,7 @@ var (
 	}
 	BaseKeywordSecretsEnv = keywords.Keyword{
 		Attr:      "SecretsEnv",
-		Converter: "shlex",
+		Converter: converters.Shlex,
 		Example:   "CRT=cert1/server.pem sec1/*",
 		Option:    "secrets_environment",
 		Scopable:  true,
@@ -38,7 +39,7 @@ var (
 	}
 	BaseKeywordConfigsEnv = keywords.Keyword{
 		Attr:      "ConfigsEnv",
-		Converter: "shlex",
+		Converter: converters.Shlex,
 		Example:   "PORT=http/port webapp/app1* {name}/* {name}-debug/settings",
 		Option:    "configs_environment",
 		Scopable:  true,
@@ -48,7 +49,7 @@ var (
 		Attr:      "Env",
 		Example:   "CRT=cert1/server.crt PEM=cert1/server.pem",
 		Option:    "environment",
-		Converter: "shlex",
+		Converter: converters.Shlex,
 		Scopable:  true,
 		Text:      keywords.NewText(fs, "text/kw/environment"),
 	}
@@ -63,7 +64,7 @@ var (
 	}
 	BaseKeywordUmask = keywords.Keyword{
 		Attr:      "Umask",
-		Converter: "umask",
+		Converter: converters.Umask,
 		Example:   "022",
 		Option:    "umask",
 		Scopable:  true,

@@ -8,6 +8,7 @@ import (
 	"github.com/opensvc/om3/v3/core/manifest"
 	"github.com/opensvc/om3/v3/core/naming"
 	"github.com/opensvc/om3/v3/drivers/ressync"
+	"github.com/opensvc/om3/v3/util/converters"
 )
 
 var (
@@ -19,7 +20,7 @@ var (
 	kws = []*keywords.Keyword{
 		{
 			Attr:      "Timeout",
-			Converter: "duration",
+			Converter: converters.Duration,
 			Example:   "5m",
 			Option:    "timeout",
 			Scopable:  true,
@@ -49,7 +50,7 @@ var (
 		},
 		{
 			Attr:      "Options",
-			Converter: "shlex",
+			Converter: converters.Shlex,
 			Example:   "--acls --xattrs --exclude foo/bar",
 			Option:    "options",
 			Scopable:  true,
@@ -57,14 +58,14 @@ var (
 		},
 		{
 			Attr:      "ResetOptions",
-			Converter: "bool",
+			Converter: converters.Bool,
 			Option:    "reset_options",
 			Text:      keywords.NewText(fs, "text/kw/reset_options"),
 		},
 		{
 			Attr:       "Target",
 			Candidates: []string{"nodes", "drpnodes", "local"},
-			Converter:  "list",
+			Converter:  converters.List,
 			Option:     "target",
 			//Required:   true,
 			Scopable: true,
@@ -72,7 +73,7 @@ var (
 		},
 		{
 			Attr:      "Snap",
-			Converter: "bool",
+			Converter: converters.Bool,
 			Option:    "snap",
 			Text:      keywords.NewText(fs, "text/kw/snap"),
 		},

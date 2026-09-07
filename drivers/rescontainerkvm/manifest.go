@@ -8,6 +8,7 @@ import (
 	"github.com/opensvc/om3/v3/core/manifest"
 	"github.com/opensvc/om3/v3/core/naming"
 	"github.com/opensvc/om3/v3/drivers/rescontainer"
+	"github.com/opensvc/om3/v3/util/converters"
 )
 
 var (
@@ -20,14 +21,14 @@ var (
 		{
 			Option:    "qga",
 			Attr:      "QGA",
-			Converter: "bool",
+			Converter: converters.Bool,
 			Text:      keywords.NewText(fs, "text/kw/qga"),
 			Scopable:  true,
 		},
 		{
 			Option:    "qga_operational_delay",
 			Attr:      "QGAOperationalDelay",
-			Converter: "duration",
+			Converter: converters.Duration,
 			Default:   "10s",
 			Text:      "Wait after we successfully tested a pwd in the container, so the os is sufficiently started to accept a encap start.",
 			Scopable:  true,
@@ -36,7 +37,7 @@ var (
 			Option:       "virtinst",
 			Attr:         "VirtInst",
 			Provisioning: true,
-			Converter:    "shlex",
+			Converter:    converters.Shlex,
 			Text:         keywords.NewText(fs, "text/kw/virtinst"),
 			Example:      "virt-install --name {fqdn} --memory 2048 --vcpus 2 --disk size=8 --cdrom /path/to/rhel9.iso --os-variant rhel9",
 		},

@@ -11,6 +11,7 @@ import (
 	"github.com/opensvc/om3/v3/core/manifest"
 	"github.com/opensvc/om3/v3/core/naming"
 	"github.com/opensvc/om3/v3/drivers/resip"
+	"github.com/opensvc/om3/v3/util/converters"
 	"github.com/opensvc/om3/v3/util/key"
 )
 
@@ -95,7 +96,7 @@ var (
 		},
 		{
 			Attr:      "DelNetRoute",
-			Converter: "bool",
+			Converter: converters.Bool,
 			Default:   "false",
 			Option:    "del_net_route",
 			Scopable:  true,
@@ -142,7 +143,7 @@ var (
 		},
 		{
 			Attr:      "CheckCarrier",
-			Converter: "bool",
+			Converter: converters.Bool,
 			Default:   "true",
 			Option:    "check_carrier",
 			Scopable:  true,
@@ -150,7 +151,7 @@ var (
 		},
 		{
 			Attr:      "Alias",
-			Converter: "bool",
+			Converter: converters.Bool,
 			Default:   "true",
 			Option:    "alias",
 			Scopable:  true,
@@ -158,7 +159,7 @@ var (
 		},
 		{
 			Attr:      "Expose",
-			Converter: "list",
+			Converter: converters.List,
 			Example:   "443/tcp:8443 53/udp",
 			Option:    "expose",
 			Scopable:  true,

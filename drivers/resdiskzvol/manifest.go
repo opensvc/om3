@@ -8,6 +8,7 @@ import (
 	"github.com/opensvc/om3/v3/core/manifest"
 	"github.com/opensvc/om3/v3/core/naming"
 	"github.com/opensvc/om3/v3/drivers/resdisk"
+	"github.com/opensvc/om3/v3/util/converters"
 )
 
 var (
@@ -27,7 +28,7 @@ var (
 		},
 		{
 			Attr:         "CreateOptions",
-			Converter:    "shlex",
+			Converter:    converters.Shlex,
 			Example:      "-o dedup=on",
 			Option:       "create_options",
 			Provisioning: true,
@@ -36,7 +37,7 @@ var (
 		},
 		{
 			Attr:         "Size",
-			Converter:    "size",
+			Converter:    converters.Size,
 			Example:      "10m",
 			Option:       "size",
 			Provisioning: true,
@@ -45,7 +46,7 @@ var (
 		},
 		{
 			Attr:         "BlockSize",
-			Converter:    "size",
+			Converter:    converters.Size,
 			Example:      "256k",
 			Option:       "blocksize",
 			Provisioning: true,

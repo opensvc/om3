@@ -7,12 +7,17 @@ import (
 	"github.com/opensvc/om3/v3/core/keywords"
 	"github.com/opensvc/om3/v3/core/naming"
 	"github.com/opensvc/om3/v3/daemon/api"
+	"github.com/opensvc/om3/v3/util/converters"
 )
 
 func KeywordStoreFromAPI(items api.KeywordDefinitionItems) (store keywords.Store) {
 	for _, item := range items {
+		// A peer daemon may run a different version, exposing a converter
+		// name this version does not know. Fall back to no conversion
+		// instead of failing.
+		converter, _ := converters.Get(item.Converter)
 		kw := &keywords.Keyword{
-			Converter:     item.Converter,
+			Converter:     converter,
 			Default:       item.Default,
 			DefaultOption: item.DefaultOption,
 			DefaultText:   item.DefaultText,

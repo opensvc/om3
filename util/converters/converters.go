@@ -37,39 +37,74 @@ type (
 	}
 )
 
+// The exported converters are the singletons the keyword definitions and
+// the callers must reference. Referencing them instead of their name makes
+// a typo a compilation error instead of a runtime panic.
 var (
-	DB map[string]Converter
+	String        Converter = TString{}
+	Int           Converter = TInt{}
+	Int64         Converter = TInt64{}
+	Float64       Converter = TFloat64{}
+	Bool          Converter = TBool{}
+	List          Converter = TList{}
+	ListLowercase Converter = TListLowercase{}
+	Set           Converter = TSet{}
+	Shlex         Converter = TShlex{}
+	Duration      Converter = TDuration{}
+	Umask         Converter = TUmask{}
+	Size          Converter = TSize{}
+	FileMode      Converter = TFileMode{}
+	Tristate      Converter = TTristate{}
+	User          Converter = TUser{}
+	Group         Converter = TGroup{}
 )
 
+// DB is the name-indexed registry of the known converters. It is used to
+// convert back the converter names received from a peer daemon, which may
+// run a different version, so a name may be unknown.
+var DB = map[string]Converter{}
+
 func init() {
-	DB = make(map[string]Converter)
-	DB[""] = TString{}
-	Register(TString{})
-	Register(TInt{})
-	Register(TInt64{})
-	Register(TFloat64{})
-	Register(TBool{})
-	Register(TList{})
-	Register(TListLowercase{})
-	Register(TSet{})
-	Register(TShlex{})
-	Register(TDuration{})
-	Register(TUmask{})
-	Register(TSize{})
-	Register(TFileMode{})
-	Register(TTristate{})
+	Register(String)
+	Register(Int)
+	Register(Int64)
+	Register(Float64)
+	Register(Bool)
+	Register(List)
+	Register(ListLowercase)
+	Register(Set)
+	Register(Shlex)
+	Register(Duration)
+	Register(Umask)
+	Register(Size)
+	Register(FileMode)
+	Register(Tristate)
 }
 
 func Register(c Converter) {
 	DB[c.String()] = c
 }
 
-func Lookup(s string) Converter {
-	c, ok := DB[s]
-	if !ok {
-		panic(fmt.Sprintf("converter '%s' is not registered", s))
+// Get returns the converter registered as s. An empty s means "no
+// conversion", and returns a nil Converter and true.
+//
+// Unlike a name lookup in a keyword definition, which is now a compile-time
+// check, s may come from a untrusted source like a peer daemon keyword
+// definition, so an unknown name must not panic.
+func Get(s string) (Converter, bool) {
+	if s == "" {
+		return nil, true
 	}
-	return c
+	c, ok := DB[s]
+	return c, ok
+}
+
+// Name returns the name c is registered as, and an empty string if c is nil.
+func Name(c Converter) string {
+	if c == nil {
+		return ""
+	}
+	return c.String()
 }
 
 func (t TTristate) Convert(s string) (any, error) {

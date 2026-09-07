@@ -8,6 +8,7 @@ import (
 	"github.com/opensvc/om3/v3/core/manifest"
 	"github.com/opensvc/om3/v3/core/naming"
 	"github.com/opensvc/om3/v3/drivers/ressync"
+	"github.com/opensvc/om3/v3/util/converters"
 )
 
 var (
@@ -34,7 +35,7 @@ var (
 		},
 		{
 			Attr:      "Devices",
-			Converter: "list",
+			Converter: converters.List,
 			Example:   "012a 012b",
 			Option:    "devs",
 			Scopable:  true,
@@ -42,7 +43,7 @@ var (
 		},
 		{
 			Attr:      "DevicesFrom",
-			Converter: "list",
+			Converter: converters.List,
 			Example:   "disk#0 disk#1",
 			Option:    "devs_from",
 			Scopable:  true,
@@ -50,7 +51,7 @@ var (
 		},
 		{
 			Attr:      "Secure",
-			Converter: "bool",
+			Converter: converters.Bool,
 			Option:    "secure",
 			Scopable:  true,
 			Text:      keywords.NewText(fs, "text/kw/secure"),

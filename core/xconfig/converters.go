@@ -21,9 +21,17 @@ type (
 	TPeersConverter struct{}
 )
 
+// NodesConverter and PeersConverter are the singletons the keyword
+// definitions must reference. They are hosted here instead of the converters
+// package because they depend on the node selector.
+var (
+	NodesConverter converters.Converter = TNodesConverter{}
+	PeersConverter converters.Converter = TPeersConverter{}
+)
+
 func init() {
-	converters.Register(TNodesConverter{})
-	converters.Register(TPeersConverter{})
+	converters.Register(NodesConverter)
+	converters.Register(PeersConverter)
 }
 
 func (t TNodesConverter) String() string {

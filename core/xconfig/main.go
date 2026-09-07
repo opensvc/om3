@@ -314,7 +314,7 @@ func (t *T) HasKeyMatchingOp(kop keyop.T) bool {
 		}
 		var converter converters.Converter
 		if kw != nil {
-			converter = converters.Lookup(kw.Converter)
+			converter = kw.Converter
 		}
 		if converter == nil {
 			iv := v
@@ -920,11 +920,10 @@ func (t *T) evalDescopeStringAs(k key.T, kw *keywords.Keyword, impersonate strin
 }
 
 func (t *T) convert(v string, kw *keywords.Keyword) (any, error) {
-	converter := converters.Lookup(kw.Converter)
-	if converter == nil {
+	if kw.Converter == nil {
 		return v, nil
 	}
-	return converter.Convert(v)
+	return kw.Converter.Convert(v)
 }
 
 func (t *T) mayDescope(k key.T, kw *keywords.Keyword, impersonate string) (string, error) {

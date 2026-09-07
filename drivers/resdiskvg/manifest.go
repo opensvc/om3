@@ -10,6 +10,7 @@ import (
 	"github.com/opensvc/om3/v3/core/manifest"
 	"github.com/opensvc/om3/v3/core/naming"
 	"github.com/opensvc/om3/v3/drivers/resdisk"
+	"github.com/opensvc/om3/v3/util/converters"
 )
 
 var (
@@ -31,7 +32,7 @@ var (
 		},
 		{
 			Attr:         "PVs",
-			Converter:    "list",
+			Converter:    converters.List,
 			Example:      "/dev/mapper/23 /dev/mapper/24",
 			Option:       "pvs",
 			Provisioning: true,
@@ -40,7 +41,7 @@ var (
 		},
 		{
 			Attr:         "Options",
-			Converter:    "shlex",
+			Converter:    converters.Shlex,
 			Example:      "--zero=y",
 			Option:       "options",
 			Provisioning: true,

@@ -8,6 +8,7 @@ import (
 	"github.com/opensvc/om3/v3/core/manifest"
 	"github.com/opensvc/om3/v3/core/naming"
 	"github.com/opensvc/om3/v3/drivers/resdisk"
+	"github.com/opensvc/om3/v3/util/converters"
 )
 
 //go:embed text
@@ -43,7 +44,7 @@ var kws = []*keywords.Keyword{
 	},
 	{
 		Attr:      "AutoTakeover",
-		Converter: "bool",
+		Converter: converters.Bool,
 		Option:    "auto_takeover",
 		Default:   "false",
 		Scopable:  true,
@@ -51,7 +52,7 @@ var kws = []*keywords.Keyword{
 	},
 	{
 		Attr:      "ForceSync",
-		Converter: "bool",
+		Converter: converters.Bool,
 		Option:    "force_sync",
 		Default:   "false",
 		Scopable:  false,
@@ -59,7 +60,7 @@ var kws = []*keywords.Keyword{
 	},
 	{
 		Attr:      "SwapRoles",
-		Converter: "bool",
+		Converter: converters.Bool,
 		Option:    "swap_roles",
 		Default:   "false",
 		Scopable:  true,
@@ -67,7 +68,7 @@ var kws = []*keywords.Keyword{
 	},
 	{
 		Attr:         "Timeout",
-		Converter:    "duration",
+		Converter:    converters.Duration,
 		Example:      "10s",
 		Option:       "timeout",
 		Default:      "10s",
@@ -77,7 +78,7 @@ var kws = []*keywords.Keyword{
 	},
 	{
 		Attr:         "StartTimeout",
-		Converter:    "duration",
+		Converter:    converters.Duration,
 		Example:      "5m",
 		Option:       "start_timeout",
 		Default:      "5m",
@@ -88,7 +89,7 @@ var kws = []*keywords.Keyword{
 	{
 		Aliases:       []string{"sync_max_delay"},
 		Attr:          "MaxDelay",
-		Converter:     "duration",
+		Converter:     converters.Duration,
 		DefaultOption: "sync_max_delay",
 		DefaultText:   "Two times the rcg sync period.",
 		Option:        "max_delay",
