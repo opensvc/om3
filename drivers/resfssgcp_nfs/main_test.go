@@ -303,7 +303,7 @@ func TestFileStatusCache(t *testing.T) {
 		drv.Permission = "read-write"
 		require.NoError(t, drv.Configure())
 
-		sig := drv.mgr.cacheSig("getFileInfo")
+		sig := drv.mgr.cacheSigGetFileInfo()
 		o := ageingcache.NewOutputter(func() ([]byte, error) { return []byte("null"), nil })
 		_, err := ageingcache.Output(o, sig, time.Hour)
 		require.NoError(t, err)

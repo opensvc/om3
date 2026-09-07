@@ -2,6 +2,7 @@ package resfssgcp_nfs
 
 import (
 	"context"
+	"crypto/sha256"
 	"encoding/json"
 	"fmt"
 	"net/http"
@@ -20,6 +21,9 @@ type (
 		permission string
 		protocol   string
 		nfsIgnored []string
+
+		endpoint string
+		secret   string
 
 		api         *sgcp.FilesAPI
 		cacheConfig *sgcp.CacheConfig
@@ -87,19 +91,29 @@ func (mgr *nfsClientMgr) startExclusive(ctx context.Context) error {
 	return err
 }
 
+// cacheSigGetFileInfo generates a cache signature specific to fetching file information.
+func (mgr *nfsClientMgr) cacheSigGetFileInfo() string {
+	return mgr.cacheSig(cacheKeyGetFileInfo)
+}
+
 func (mgr *nfsClientMgr) cacheSig(name string) string {
-	return fmt.Sprintf("%s:%s", name, mgr.uuid)
+	data := fmt.Sprintf("%s|%s|%s",
+		mgr.endpoint,
+		mgr.secret,
+		mgr.uuid,
+	)
+	hash := sha256.Sum256([]byte(data))
+	return fmt.Sprintf("sgcp-nfs-%s-%x", name, hash)
 }
 
 func (mgr *nfsClientMgr) cacheClear(name string) error {
-	cacheSig := mgr.cacheSig(name)
-	return ageingcache.Clear(cacheSig)
+	return ageingcache.Clear(mgr.cacheSigGetFileInfo())
 }
 
 func (mgr *nfsClientMgr) getFileInfo(ctx context.Context) (*FilesystemInfo, error) {
 	var fileInfo FilesystemInfo
 
-	cacheSig := mgr.cacheSig("getFileInfo")
+	cacheSig := mgr.cacheSigGetFileInfo()
 	ttl := time.Duration(mgr.cacheConfig.TTLSeconds) * time.Second
 	o := ageingcache.NewOutputter(mgr.getFileInfoFactory(ctx))
 	data, err := ageingcache.Output(o, cacheSig, ttl)

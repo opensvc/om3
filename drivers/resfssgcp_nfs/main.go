@@ -83,8 +83,14 @@ type (
 	}
 )
 
-// NfsClientIgnored is a list of NFS client hosts to ignore
-var NfsClientIgnored = []string{}
+var (
+	// NfsClientIgnored is a list of NFS client hosts to ignore
+	NfsClientIgnored = []string{}
+)
+
+const (
+	cacheKeyGetFileInfo = "getFileInfo"
+)
 
 // New creates a new SGCP NFS filesystem resource driver
 func New() resource.Driver {
@@ -162,6 +168,8 @@ func (t *T) configureMgr(cfg *sgcp.Config) error {
 		protocol:    t.Protocol,
 		log:         t.Log(),
 		nfsIgnored:  NfsClientIgnored,
+		endpoint:    t.Endpoint,
+		secret:      t.Secret,
 		api:         sgcp.NewFilesAPI(cfg, httpClient, t.Log(), tk),
 		cacheConfig: &cfg.Cache,
 	}
@@ -430,7 +438,7 @@ func (t *T) isClientIgnored(host string) bool {
 func (t *T) clearFileStatusCache() error {
 	var errs error
 	t.fileInfoCache = nil
-	for _, s := range []string{"getFileInfo"} {
+	for _, s := range []string{cacheKeyGetFileInfo} {
 		errs = errors.Join(errs, t.mgr.cacheClear(s))
 	}
 	return errs
