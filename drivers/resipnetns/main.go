@@ -16,6 +16,7 @@ import (
 	"github.com/opensvc/om3/v3/core/actionresdeps"
 	"github.com/opensvc/om3/v3/core/actionrollback"
 	"github.com/opensvc/om3/v3/core/naming"
+	"github.com/opensvc/om3/v3/core/network"
 	"github.com/opensvc/om3/v3/core/provisioned"
 	"github.com/opensvc/om3/v3/core/resource"
 	"github.com/opensvc/om3/v3/core/status"
@@ -64,10 +65,12 @@ type (
 		Expose        []string       `json:"expose"`
 
 		// cache
-		_ipaddr    net.IP
-		_ipaddrAge time.Duration
-		_ipmask    net.IPMask
-		_ipnet     *net.IPNet
+		_network         network.Networker
+		_networkResolved bool
+		_ipaddr          net.IP
+		_ipaddrAge       time.Duration
+		_ipmask          net.IPMask
+		_ipnet           *net.IPNet
 	}
 
 	Addrs []net.Addr
@@ -147,6 +150,19 @@ func (t *T) Start(ctx context.Context) error {
 		return fmt.Errorf("ip %s lookup issue, cache expired (%s old)", t.Name, duration.FmtShortDuration(t._ipaddrAge))
 	} else if t._ipaddrAge > 0 {
 		t.Log().Warnf("ip %s lookup issue, cache valid (%s old)", t.Name, duration.FmtShortDuration(t._ipaddrAge))
+	}
+	allocated, err := t.allocateIP()
+	if err != nil {
+		return err
+	}
+	if allocated != nil {
+		// A start that fails past this point rolls back, and the address goes
+		// with it. Without this an object whose start failed holds an address
+		// while it is down, and deleting it without a stop leaves a
+		// reservation nothing will ever release.
+		actionrollback.Register(ctx, func(ctx context.Context) error {
+			return t.freeIP()
+		})
 	}
 	if err := t.startMode(ctx); err != nil {
 		return err
@@ -255,16 +271,20 @@ func (t *T) startRoutesDel(ctx context.Context, netns ns.NetNS, guestDev string)
 	if !t.DelNetRoute {
 		return nil
 	}
-	if t.Network == "" {
-		return nil
-	}
 	if v, err := t.hasLinkIn(guestDev, netns.Path()); err != nil {
 		return err
 	} else if !v {
 		return nil
 	}
-	ones, _ := t.ipmask().Size()
-	dest := fmt.Sprintf("%s/%d", t.Network, ones)
+	// The route the kernel adds along with the address is the address
+	// masked, so that is the one to remove. The network keyword used to hold
+	// its base, which could name no other route: the length has always come
+	// from the netmask.
+	ipnet := t.ipnet()
+	if ipnet == nil {
+		return nil
+	}
+	dest := (&net.IPNet{IP: ipnet.IP.Mask(ipnet.Mask), Mask: ipnet.Mask}).String()
 	if err := t.routeDelDevIn(dest, guestDev, netns.Path()); err != nil {
 		return err
 	}
@@ -286,6 +306,16 @@ func (t *T) Stop(ctx context.Context) error {
 	} else if t._ipaddrAge > 0 {
 		t.Log().Warnf("ip %s lookup issue, cache valid (%s old)", t.Name, duration.FmtShortDuration(t._ipaddrAge))
 	}
+	if err := t.stopMode(ctx); err != nil {
+		return err
+	}
+	// The reservation is released last: an address still configured in a
+	// namespace this stop failed to clean is an address om must not hand to
+	// another resource.
+	return t.freeIP()
+}
+
+func (t *T) stopMode(ctx context.Context) error {
 	if t.Tags.Has(tagDedicated) {
 		return t.stopDedicated(ctx)
 	}
@@ -328,9 +358,16 @@ func (t *T) statusWithIPAddrCacheTrust(ctx context.Context) status.T {
 		err     error
 		carrier bool
 	)
+	// An empty name is how a resource says its address is the network's to
+	// choose. Saying nothing at all is the mistake: no address, and no
+	// network to draw one from. The network is the resolved one, so a
+	// keyword still holding the address of a network, which is obsolete and
+	// ignored, reads here as the absence it is.
 	if t.Name == "" {
-		t.StatusLog().Warn("name not set")
-		return status.NotApplicable
+		if nw, _ := t.resolveNetwork(); nw == nil {
+			t.StatusLog().Warn("no name, and no network to draw an address from")
+			return status.NotApplicable
+		}
 	}
 	if t.Dev == "" {
 		t.StatusLog().Warn("dev not set")
@@ -355,6 +392,12 @@ func (t *T) statusWithIPAddrCacheTrust(ctx context.Context) status.T {
 
 	ip := t.ipaddr()
 	if ip == nil {
+		if t.Name == "" {
+			// The allocation happens on start, so no address here means
+			// the resource has not been started rather than that a lookup
+			// failed.
+			return status.Down
+		}
 		t.StatusLog().Error("ip %s lookup issue, cache miss", t.Name)
 		return status.Undef
 	} else if t._ipaddrAge > maxIPAddrAge {
@@ -393,7 +436,15 @@ func (t *T) Label(_ context.Context) string {
 		dev = "@" + t.NSDev
 	}
 	ones, _ := t.ipmask().Size()
-	return fmt.Sprintf("%s/%d%s in %s", t.ipaddr(), ones, dev, t.NetNS)
+	s := fmt.Sprintf("%s/%d%s in %s", t.ipaddr(), ones, dev, t.NetNS)
+	// Name the network the address was drawn from, as the cni label does. The
+	// address alone does not say where it came from, and a reader comparing
+	// the instances of an object wants to see it. A keyword still holding the
+	// address of a network resolves to none, so it does not reach the label.
+	if nw, _ := t.resolveNetwork(); nw != nil {
+		s = nw.Name() + " " + s
+	}
+	return s
 }
 
 func (t *T) Provision(ctx context.Context) error {
@@ -461,6 +512,16 @@ func (t *T) ipaddr() net.IP {
 	if t._ipaddr != nil {
 		return t._ipaddr
 	}
+	if t.Name == "" {
+		// The address is drawn from a network, so it is the one the
+		// allocator holds. Reading it never takes one: only a start does.
+		ip, err := t.allocatedIP()
+		if err != nil {
+			t.StatusLog().Warn("%s", err)
+		}
+		t._ipaddr = ip
+		return t._ipaddr
+	}
 	ip, age, err := getaddr.Lookup(t.Name)
 	if getaddr.IsErrManyAddr(err) {
 		t.StatusLog().Warn("%s", err)
@@ -493,6 +554,10 @@ func (t *T) getIPMask() net.IPMask {
 	}
 	if m, err := parseDottedMask(t.Netmask); err == nil {
 		return m
+	}
+	// the mask of the range the address is drawn from
+	if i, err := t.ipam(); err == nil && i != nil && i.Range != nil {
+		return i.Range.Mask
 	}
 	// fallback to the mask of the first found ip on the intf
 	if m, err := t.defaultMask(); err == nil {

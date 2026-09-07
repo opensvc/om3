@@ -7,6 +7,7 @@ import (
 	"os"
 	"strings"
 
+	"github.com/opensvc/om3/v3/drivers/rescontainer"
 	"github.com/opensvc/om3/v3/util/args"
 	"github.com/opensvc/om3/v3/util/file"
 	"github.com/opensvc/om3/v3/util/plog"
@@ -291,25 +292,8 @@ func (ea *ExecutorArg) runArgsDNSSearch() []string {
 		return nil
 	}
 	var a []string
-	for _, s := range ea.BT.DNSSearch {
+	for _, s := range rescontainer.SearchDomains(ea.BT.ObjectDomain, ea.BT.DNSSearch) {
 		a = append(a, "--dns-search", s)
-	}
-
-	dom0 := ea.BT.ObjectDomain
-	if len(dom0) > 0 {
-		a = append(a, "--dns-search", dom0)
-		dom0S := strings.SplitN(dom0, ".", 2)
-		if len(dom0S) > 1 {
-			dom1 := dom0S[1]
-			if len(dom1) > 0 {
-				a = append(a, "--dns-search", dom1)
-				dom1S := strings.SplitN(dom1, ".", 2)
-				if len(dom1S) > 1 {
-					dom2 := dom1S[1]
-					a = append(a, "--dns-search", dom2)
-				}
-			}
-		}
 	}
 	return a
 }

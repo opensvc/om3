@@ -51,7 +51,6 @@ func (t *T) Manifest() *manifest.T {
 		manifest.ContextObjectID,
 		manifest.ContextObjectID,
 		manifest.ContextDNS,
-		manifest.ContextCNIConfig,
 	)
 	m.AddKeywords(restask.Keywords...)
 	m.AddKeywords(restaskocibase.Keywords...)

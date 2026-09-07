@@ -509,7 +509,6 @@ OpenSVC v3 is a major evolution, rebuilt in Go for performance, reliability, and
 ### Driver: ip
 
 * **Removed keywords:**
-    * `dns_name_suffix`
     * `provisioner`
     * `dns_update`
    
@@ -519,6 +518,63 @@ OpenSVC v3 is a major evolution, rebuilt in Go for performance, reliability, and
 * **Changed default:**
     The `alias` keyword default value is now `true`, activating the ip stacking behaviour.
     Setting `dev=eth0:0` still forces the address labelling mode.
+
+* **Changed default DNS search list:**
+    The fqdn of the object is no longer the first domain a container searches a
+    shortname in. The default list is now the domain of the object and each of
+    its parents: `<namespace>.<kind>.<clustername> <kind>.<clustername>
+    <clustername>`.
+
+    In v2 the fqdn was first, which let a container reach a container of the
+    same object by its hostname alone. The record is still published as
+    `<hostname>.<objectfqdn>`, so a configuration relying on the shortname must
+    now name that fqdn in the `dns_search` keyword of the container.
+
+    Containers of an instance are expected to share a netns and to reach each
+    other over 127.0.0.1, which needs no name. One ip resource carries one
+    hostname, the one of the container its `netns` keyword points at, so a
+    shared netns has one name for the whole instance rather than one per
+    container.
+
+    The `dns_name_suffix` keyword of the ip drivers is kept, and is how an
+    object with more than one address names them apart: the suffix is appended
+    to the hostname the record is published under, so a second address of the
+    same container answers to `<hostname><suffix>.<objectfqdn>`.
+
+* **Changed keyword, `ip.netns.network`:**
+    It names the om network the address is drawn from, as it does on `ip.cni`.
+    An object attaches to a cluster network with one line:
+
+    ```
+    [ip#0]
+    type = netns
+    netns = container#0
+    network = default
+    ```
+
+    The `dev`, `netmask` and `gateway` of the resource are read from that
+    network when the configuration does not set them, and an empty `name` has
+    the address allocated from it. An explicit value still wins, so a
+    configuration setting them keeps working unchanged. `dev` is no longer a
+    required keyword: a network names it.
+
+    The keyword used to hold the address of the network, in dotted notation,
+    which set the destination of the route `del_net_route` removes. That
+    destination is the connected route the kernel adds along with the address,
+    which is the address masked, and the keyword could name no other: the
+    prefix length has always come from `netmask`. It is derived now. A value
+    still in that form is reported as obsolete and ignored, and a value that is
+    neither an address nor the name of a network is refused, naming the
+    networks that exist.
+
+* **Address allocation:**
+    om allocates the addresses of its `bridge` and `routed_bridge` networks
+    itself, rather than leaving them to the `host-local` cni plugin. A resource
+    draws the same address every time it starts, from a hash of the object and
+    the rid, so an object is not renumbered by a restart and the name it is
+    published under keeps resolving to the same place. `host-local` allocates
+    the first free address instead, which moves as the neighbours of an object
+    come and go.
 
 * **Collector DNS zone:**
     This feature of the collector, used by the ip driver for one of its provisioning methods, is deprecated.
@@ -740,6 +796,18 @@ Where the password is the value of the `þassword` key in `system/sec/relay-v3`.
 ### Network
 
 * Flush iptables rules created by om2. om3 now configures the firewall using nft only.
+
+* The nft rules moved to the `osvc` table, one per address family. They used to
+  go in `nat` and `filter`, where the base chain om adds sits on a hook and a
+  priority the standard chain of those tables already uses, which makes them
+  unrepresentable to the iptables compatibility layer: `iptables -t nat -S`
+  answered ``table `nat' is incompatible, use 'nft' tool``, and every firewall
+  driver reaching the ruleset through iptables went blind on them. netavark is
+  one of those, so no podman container of a podman-built network could start on
+  a node `om net setup` had run on.
+
+  A setup deletes the chains left in `nat` and `filter` by an earlier om, so a
+  node converts itself the first time it runs one.
 
 * Change `ips_per_node` to `mask_per_node`. The former was inadequate for large subnets (ipv6). For example, `ips_per_node=18446744073709551616` is easier expressed as `mask_per_node=64`. Backward compatibility is maintained for this release.
 

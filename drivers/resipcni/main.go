@@ -6,14 +6,12 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
-	"errors"
 	"fmt"
 	"math"
 	"net"
 	"os"
 	"path/filepath"
 	"slices"
-	"strconv"
 	"strings"
 	"time"
 
@@ -67,11 +65,6 @@ const (
 	// network namespaces. Use the /run canonical path, not the /var/run
 	// compatibility symlink.
 	netnsRunDir = "/run/netns"
-)
-
-var (
-	ErrNoIPAddrAvail = errors.New("no ip address available")
-	ErrDupIPAlloc    = errors.New("duplicate ip allocation")
 )
 
 func New() resource.Driver {
@@ -206,42 +199,6 @@ func (t *T) hasNetNS() bool {
 	return true
 }
 
-func (t *T) purgeCNIVarWithNetNS(ns string) error {
-	pattern := fmt.Sprintf("/var/lib/cni/networks/%s/{*.*.*.*,*:*}", t.Network)
-	paths, err := filepath.Glob(pattern)
-	if err != nil {
-		return err
-	}
-	for _, p := range paths {
-		buff, err := os.ReadFile(p)
-		if err != nil {
-			return err
-		}
-		var (
-			line       string
-			wantRemove bool
-		)
-		if len(buff) != 0 {
-			line = strings.Fields(string(buff))[0]
-		}
-		if line == "" {
-			if file.ModTime(p).Add(5 * time.Second).Before(time.Now()) {
-				t.Log().Infof("remove empty %s (and more than 5s old)", p)
-				wantRemove = true
-			}
-		} else if line == ns {
-			t.Log().Infof("remove leftover %s", p)
-			wantRemove = true
-		}
-		if wantRemove {
-			if err := os.Remove(p); err != nil {
-				return err
-			}
-		}
-	}
-	return nil
-}
-
 func (t *T) addObjectNetNS() error {
 	if t.NetNS != "" {
 		// the container is expected to already have a netns. don't even care to log info.
@@ -251,9 +208,6 @@ func (t *T) addObjectNetNS() error {
 	if t.hasNetNS() {
 		t.Log().Infof("netns %s already added", nsPID)
 		return nil
-	}
-	if err := t.purgeCNIVarWithNetNS(nsPID); err != nil {
-		return err
 	}
 	cmd := command.New(
 		command.WithName("ip"),
@@ -285,63 +239,6 @@ func (t *T) delObjectNetNS() error {
 		command.WithCommandLogLevel(zerolog.InfoLevel),
 	)
 	return cmd.Run()
-}
-
-func (t *T) purgeCNIVarDir() error {
-	pattern := fmt.Sprintf("/var/lib/cni/networks/%s/{*.*.*.*,*:*}", t.Network)
-	paths, err := filepath.Glob(pattern)
-	if err != nil {
-		return err
-	}
-	for _, p := range paths {
-		if err := t.purgeCNIVarFile(p); err != nil {
-			return err
-		}
-	}
-	return nil
-}
-
-func (t *T) purgeCNIVarFile(p string) error {
-	buff, err := os.ReadFile(p)
-	if err != nil {
-		return err
-	}
-
-	line := strings.Fields(string(buff))[0]
-	_, err = strconv.Atoi(line)
-	if _, err := strconv.Atoi(line); err != nil {
-		runNetNSFile := filepath.Join(netnsRunDir, line)
-		if _, err := os.Stat(runNetNSFile); err == nil || !errors.Is(err, os.ErrNotExist) {
-			// the process is still alive, don't remove
-			return nil
-		}
-	} else {
-		pidFile := fmt.Sprintf("/proc/%s", line)
-		if _, err := os.Stat(pidFile); err == nil || !errors.Is(err, os.ErrNotExist) {
-			// the process is still alive, don't remove
-			return nil
-		}
-	}
-	if err = os.Remove(p); err == nil {
-		t.Log().Infof("removed %s: %s no longer exist", p, line)
-	} else if err != nil {
-		return err
-	}
-	return nil
-}
-
-func (t *T) purgeCNIVarFileWithIP(ip net.IP) error {
-	p := fmt.Sprintf("/var/lib/cni/networks/%s/%s", t.Network, ip)
-	err := os.Remove(p)
-	switch {
-	case err == nil:
-		t.Log().Infof("removed %s", p)
-		return nil
-	case errors.Is(err, os.ErrNotExist):
-		return nil
-	default:
-		return err
-	}
 }
 
 // StatusInfo implements resource.StatusInfoer
@@ -403,7 +300,10 @@ func (t *T) Stop(ctx context.Context) error {
 	if err := t.delObjectNetNS(); err != nil {
 		return err
 	}
-	return nil
+	// The reservation is released last: an address still configured in a
+	// namespace this stop failed to clean is an address om must not hand to
+	// another resource.
+	return t.freeIP()
 }
 
 func (t *T) Status(ctx context.Context) status.T {
@@ -560,7 +460,6 @@ func (t *T) stop(ctx context.Context) error {
 		// TODO: introduce t.StopTimeout and use context.WithTimeout ?
 		ctx = context.Background()
 	}
-	ip, _, _ := t.ipNet(ctx)
 	netConf, err := t.netConf()
 	if err != nil {
 		return err
@@ -601,8 +500,13 @@ func (t *T) stop(ctx context.Context) error {
 		command.WithBufferedStderr(),
 	)
 
+	reserved, err := t.allocatedIP()
+	if err != nil {
+		return err
+	}
+
 	// {"name": "noop-test", "cniVersion": "0.3.1", ...}
-	stdinData, err := t.netConfBytes()
+	stdinData, err := t.netConfBytesFor(reserved)
 	if err != nil {
 		return err
 	}
@@ -625,9 +529,6 @@ func (t *T) stop(ctx context.Context) error {
 		t.Log().Infof(string(errB))
 	}
 	if err != nil {
-		return err
-	}
-	if t.purgeCNIVarFileWithIP(ip); err != nil {
 		return err
 	}
 	return nil
@@ -667,8 +568,22 @@ func (t *T) start(ctx context.Context) error {
 		fmt.Sprintf("CNI_PATH=%s", filepath.Dir(plugin)),
 	}
 
+	ip, err := t.allocateIP()
+	if err != nil {
+		return err
+	}
+	if ip != nil {
+		// A start that fails past this point rolls back, and the address goes
+		// with it. Without this an object whose start failed holds an address
+		// while it is down, and deleting it without a stop leaves a
+		// reservation nothing will ever release.
+		actionrollback.Register(ctx, func(ctx context.Context) error {
+			return t.freeIP()
+		})
+	}
+
 	// {"name": "noop-test", "cniVersion": "0.3.1", ...}
-	stdinData, err := t.netConfBytes()
+	stdinData, err := t.netConfBytesFor(ip)
 	if err != nil {
 		return err
 	}
@@ -704,30 +619,14 @@ func (t *T) start(ctx context.Context) error {
 		if resp.Code == 0 {
 			return nil
 		}
-		if strings.Contains(resp.Msg, "no IP addresses available") {
-			return ErrNoIPAddrAvail
-		}
-		if strings.Contains(resp.Msg, "duplicate allocation") {
-			return ErrDupIPAlloc
-		}
 		return fmt.Errorf("cni error code %d msg %s: %w", resp.Code, resp.Msg, err)
 	}
 
-	err = run()
-	switch {
-	case err == nil:
-	case errors.Is(err, ErrNoIPAddrAvail), errors.Is(err, ErrDupIPAlloc):
-		t.Log().Infof("clean allocations and retry: %s", err)
-		t.purgeCNIVarDir()
-
-		// clean run leftovers (container veth name provided (eth12) already exists)
-		// use nil context, start context may be deadlined
-		t.stop(nil) // clean run leftovers (container veth name provided (eth12) already exists)
-		err = run()
-	default:
+	if err := run(); err != nil {
 		t.Log().Errorf("%s", err)
+		return err
 	}
-	return err
+	return nil
 }
 
 func getInterfaceAndAddr(ref *net.IPNet) (net.Interface, net.Addr, error) {

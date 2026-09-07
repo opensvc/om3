@@ -56,6 +56,9 @@ func Setup(n *object.Node, names ...string) error {
 		n.Log().Infof("network setup: commit config changes on %s", strings.Join(needCommit, ","))
 		cluster.Config().Set(kops...)
 	}
+	if err := setupIPAM(nws); err != nil {
+		errs = append(errs, err)
+	}
 	if err := setupFW(n, nws); err != nil {
 		errs = append(errs, err)
 	}

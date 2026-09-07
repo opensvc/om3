@@ -1,4 +1,13 @@
 The whitespace-separated list of DNS domains to search for shortname lookups.
 
-If empty or not set, the list will be `<name>.<namespace>.svc.<clustername>
- <namespace>.svc.<clustername> svc.<clustername>`.
+If empty or not set, the list is the domain of the object and each of the
+parents of that domain: `<namespace>.<kind>.<clustername>
+<kind>.<clustername> <clustername>`. A shortname is therefore looked up in
+the namespace of the object first, then in its kind, then in the cluster.
+
+The fqdn of the object is not in that list. The hostname of a container is
+published in the cluster zone as `<hostname>.<objectfqdn>`, so reaching a
+container of the same object by its hostname alone takes naming that fqdn
+here. Containers of an instance are expected to share a netns, which is the
+layout the ip drivers are written for, and to reach each other over
+127.0.0.1, which needs no name at all.

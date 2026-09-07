@@ -1,3 +1,14 @@
-The ip address network, in dotted notation.
+The name of the om network the address is drawn from.
 
-Used to set the network route if `del_net_route=true`.
+The `default` network exists on every node of a fresh installation, so an
+object needs nothing more than `network=default` to receive an address.
+
+Naming a network is enough: the `dev`, `netmask` and `gateway` of the resource
+are the network's to know, and are taken from it when the configuration does
+not set them. Leaving `name` empty has the address allocated from the network
+too, and the same resource keeps the same address across restarts.
+
+This keyword used to hold the address of the network, in dotted notation, to
+set the destination of the route removed by `del_net_route`. That destination
+is derived from the address and the netmask now. A value in that form is
+reported as obsolete and ignored.

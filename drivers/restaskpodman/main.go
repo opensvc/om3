@@ -17,8 +17,6 @@ type (
 	// T is the driver structure.
 	T struct {
 		restaskocibase.T
-
-		CNIConfig string
 	}
 )
 
@@ -84,7 +82,6 @@ func (t *T) GetContainerDetached() restaskocibase.ContainerTasker {
 			StartTimeout:              startTimeout,
 			LogOutputs:                t.LogOutputs,
 		},
-		CNIConfig: t.CNIConfig,
 	}
 	if err := ct.Configure(); err != nil {
 		t.Log().Errorf("unable to configure podman task container")
