@@ -20,7 +20,7 @@ func (m *mgr) createOrUpdate(ctx context.Context, target string) error {
 	// on the way when the create assigns the uuid the keyword did not carry,
 	// so the entry to drop afterwards is this one, not the one the alias
 	// computes once updated: nothing was ever cached under that one.
-	sig := m.cacheSig()
+	sig := m.cacheSigGetAliases()
 
 	aliases, err := m.getAliases(ctx)
 	if err != nil {
@@ -70,7 +70,7 @@ func (m *mgr) createOrUpdate(ctx context.Context, target string) error {
 }
 
 func (m *mgr) delete(ctx context.Context) error {
-	sig := m.cacheSig()
+	sig := m.cacheSigGetAliases()
 
 	aliases, err := m.getAliases(ctx)
 	if err != nil {
@@ -112,7 +112,7 @@ func (m *mgr) getAliases(ctx context.Context) ([]sgcp.Alias, error) {
 	}
 
 	o := ageingcache.NewOutputter(m.getAliasesFactory(ctx))
-	sig := m.cacheSig()
+	sig := m.cacheSigGetAliases()
 	data, err := ageingcache.Output(o, sig, m.CacheTTL)
 	if err != nil {
 		m.log.Debugf("getAliases cache miss: %s", err)
@@ -183,7 +183,15 @@ func (a *alias) Equal(b *alias) bool {
 		a.ZoneID == b.ZoneID
 }
 
-func (m *mgr) cacheSig() string {
+// cacheSigGetAliases generates the cache signature specific to retrieving
+// alias data based on predefined constants.
+func (m *mgr) cacheSigGetAliases() string {
+	return m.cacheSig("get-aliases")
+}
+
+// cacheSig generates a unique cache signature for by hashing a formatted
+// string combining endpoint, secret, and alias details.
+func (m *mgr) cacheSig(s string) string {
 	data := fmt.Sprintf("%s|%s|%s|%s|%s",
 		m.Endpoint,
 		m.Secret,
@@ -192,7 +200,7 @@ func (m *mgr) cacheSig() string {
 		m.alias.UUID,
 	)
 	hash := sha256.Sum256([]byte(data))
-	return fmt.Sprintf("dnsalias:%x", hash)
+	return fmt.Sprintf("sgcp-dnsalias-%s-%x", s, hash)
 }
 
 // cacheClear drops the cached aliases read under sig. The caller captures

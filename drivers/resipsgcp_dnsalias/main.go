@@ -196,7 +196,7 @@ func (t *T) Status(ctx context.Context) status.T {
 		return status.NotApplicable
 	}
 	if sgcphelper.NeedsCacheClear() {
-		if err := t.mgr.cacheClear(t.mgr.cacheSig()); err != nil {
+		if err := t.mgr.cacheClear(t.mgr.cacheSigGetAliases()); err != nil {
 			t.Log().Debugf("cache clear error: %s", err)
 		}
 	}
