@@ -186,7 +186,9 @@ func (a *alias) Equal(b *alias) bool {
 // cacheSigGetAliases generates the cache signature specific to retrieving
 // alias data based on predefined constants.
 func (m *mgr) cacheSigGetAliases() string {
-	return m.cacheSig("get-aliases")
+	sig := m.cacheSig("get-aliases")
+	m.log.Debugf("cacheSigGetAliases %s: %s", m.alias.Name, sig)
+	return sig
 }
 
 // cacheSig generates a unique cache signature for by hashing a formatted
@@ -210,5 +212,6 @@ func (m *mgr) cacheClear(sig string) error {
 	if m.CacheTTL <= 0 {
 		return nil
 	}
+	m.log.Debugf("clear alias cache")
 	return ageingcache.Clear(sig)
 }

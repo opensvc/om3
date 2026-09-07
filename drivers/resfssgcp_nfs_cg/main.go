@@ -186,6 +186,7 @@ func (m *cgMgr) getCgOutputter(ctx context.Context) func() ([]byte, error) {
 }
 
 func (m *cgMgr) cacheClearGetCg() error {
+	m.log.Debugf("clear consistency group %s cache", m.uuid)
 	return ageingcache.Clear(m.cacheSigGetCInfo())
 }
 
@@ -255,7 +256,9 @@ func (m *cgMgr) ResumeReplication(ctx context.Context) error {
 // cacheSigGetCInfo generates the cache signature specific to the consistency
 // group info operation.
 func (m *cgMgr) cacheSigGetCInfo() string {
-	return m.cacheSig("get-cg-info")
+	sig := m.cacheSig("get-cg-info")
+	m.log.Debugf("cacheSigGetCInfo %s: %s", m.uuid, sig)
+	return sig
 }
 
 // cacheSig generates a unique cache signature by hashing the endpoint, secret, and UUID values of the consistency group.

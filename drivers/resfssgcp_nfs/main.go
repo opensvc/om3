@@ -421,6 +421,7 @@ func (t *T) isClientIgnored(host string) bool {
 
 // clearFileStatusCache clears the filesystem info cache
 func (t *T) clearFileStatusCache() error {
+	t.Log().Debugf("clear get file info cache")
 	return ageingcache.Clear(t.mgr.cacheSigGetFileInfo())
 }
 

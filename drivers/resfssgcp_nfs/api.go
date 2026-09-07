@@ -93,7 +93,9 @@ func (mgr *nfsClientMgr) startExclusive(ctx context.Context) error {
 
 // cacheSigGetFileInfo generates a cache signature specific to fetching file information.
 func (mgr *nfsClientMgr) cacheSigGetFileInfo() string {
-	return mgr.cacheSig("get-file-info")
+	sig := mgr.cacheSig("get-file-info")
+	mgr.log.Debugf("cacheSigGetFileInfo %s: %s", mgr.uuid, sig)
+	return sig
 }
 
 func (mgr *nfsClientMgr) cacheSig(name string) string {
