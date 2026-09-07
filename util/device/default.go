@@ -37,6 +37,10 @@ func (t T) Model() (string, error) {
 	return "", ErrNotApplicable
 }
 
+func (t T) MultipathParent() (*T, error) {
+	return nil, ErrNotApplicable
+}
+
 func (t T) Remove(_ context.Context) error {
 	return ErrNotApplicable
 }
