@@ -30,6 +30,13 @@ func (a *Api) CheckStatusCode(method, url string, got int, wanted ...int) error 
 	return fmt.Errorf("unexpected status code for %s %s got %d wanted %v", method, url, got, wanted)
 }
 
+// do executes the request and reports the response status code and body.
+//
+// The status code is an answer, not a failure: a 404 saying the filesystem is
+// gone, or a 412 saying the consistency group is busy, is information the
+// callers act on. So err is reserved for what prevents an answer altogether
+// (token, request build, transport, body read), and each caller declares the
+// status codes it accepts, with CheckStatusCode.
 func (a *Api) do(ctx context.Context, method, url string, body io.Reader, scopes ...string) (statusCode int, b []byte, err error) {
 	var req *http.Request
 	var resp *http.Response
@@ -57,11 +64,13 @@ func (a *Api) do(ctx context.Context, method, url string, body io.Reader, scopes
 	defer func() { _ = resp.Body.Close() }()
 	a.log.Debugf("request: %s %s status code: %d", method, url, resp.StatusCode)
 
-	if resp.StatusCode >= 400 {
-		body, _ := io.ReadAll(resp.Body)
-		return resp.StatusCode, nil, fmt.Errorf("HTTP %d: %s", resp.StatusCode, string(body))
-	}
 	b, err = io.ReadAll(resp.Body)
+	if err != nil {
+		return resp.StatusCode, nil, fmt.Errorf("read %s %s response body: %w", method, url, err)
+	}
+	if resp.StatusCode >= 400 {
+		a.log.Debugf("request: %s %s status code: %d body: '%s'", method, url, resp.StatusCode, string(b))
+	}
 
-	return resp.StatusCode, b, err
+	return resp.StatusCode, b, nil
 }

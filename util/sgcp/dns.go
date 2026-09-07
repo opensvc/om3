@@ -64,7 +64,7 @@ func (a *DNSAPI) CreateAlias(ctx context.Context, zoneID, name, target string) (
 	if code, data, err := a.do(ctx, method, path, bytes.NewReader(b), a.GetScopes("dns_write")...); err != nil {
 		return nil, fmt.Errorf("%s %s: %w", method, path, err)
 	} else if err := a.CheckStatusCode(method, path, code, http.StatusCreated); err != nil {
-		return nil, err
+		return nil, fmt.Errorf("%w: '%s'", err, string(data))
 	} else if err := json.Unmarshal(data, &result); err != nil {
 		return nil, fmt.Errorf("%s %s unmarshal created alias: %w", method, path, err)
 	}
@@ -87,7 +87,7 @@ func (a *DNSAPI) UpdateAlias(ctx context.Context, zoneID, aliasUUID, name, targe
 	if code, data, err := a.do(ctx, method, path, bytes.NewReader(b), a.GetScopes("dns_write")...); err != nil {
 		return nil, err
 	} else if err := a.CheckStatusCode(method, path, code, http.StatusOK); err != nil {
-		return nil, err
+		return nil, fmt.Errorf("%w: '%s'", err, string(data))
 	} else if err := json.Unmarshal(data, &alias); err != nil {
 		return nil, fmt.Errorf("failed to unmarshal alias: %w", err)
 	}
@@ -100,10 +100,10 @@ func (a *DNSAPI) DeleteAlias(ctx context.Context, zoneID, aliasUUID string) erro
 	path := a.getAliasURL(zoneID, aliasUUID)
 
 	a.log.Infof("%s %s", method, path)
-	if code, _, err := a.do(ctx, method, path, nil, a.GetScopes("dns_write")...); err != nil {
+	if code, data, err := a.do(ctx, method, path, nil, a.GetScopes("dns_write")...); err != nil {
 		return err
 	} else if err := a.CheckStatusCode(method, path, code, http.StatusNoContent); err != nil {
-		return err
+		return fmt.Errorf("%w: '%s'", err, string(data))
 	}
 	return nil
 }
