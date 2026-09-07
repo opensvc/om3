@@ -2,6 +2,7 @@ package resfssgcp_nfs_cg
 
 import (
 	"context"
+	"crypto/sha256"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -23,8 +24,6 @@ import (
 
 const (
 	waitMsgInterval = 10 * time.Second
-
-	cacheKeyGetCgInfo = "getSGCPCGInfo"
 )
 
 var (
@@ -134,10 +133,12 @@ type (
 	}
 
 	cgMgr struct {
-		uuid  string
-		log   logger
-		api   cgAPI
-		cache sgcp.CacheConfig
+		uuid     string
+		log      logger
+		api      cgAPI
+		cache    sgcp.CacheConfig
+		endpoint string
+		secret   string
 	}
 )
 
@@ -156,7 +157,7 @@ func (m *cgMgr) GetCachedCg(ctx context.Context) (*CgInfo, error) {
 	m.log.Debugf("get consistency group %s info", m.uuid)
 	ts := time.Now()
 
-	sig := m.cacheSig(cacheKeyGetCgInfo)
+	sig := m.cacheSigGetCInfo()
 	ttl := time.Duration(m.cache.TTLSeconds) * time.Second
 	o := ageingcache.NewOutputter(m.getCgOutputter(ctx))
 	data, err := ageingcache.Output(o, sig, ttl)
@@ -185,7 +186,7 @@ func (m *cgMgr) getCgOutputter(ctx context.Context) func() ([]byte, error) {
 }
 
 func (m *cgMgr) cacheClearGetCg() error {
-	return ageingcache.Clear(m.cacheSig(cacheKeyGetCgInfo))
+	return ageingcache.Clear(m.cacheSigGetCInfo())
 }
 
 func (m *cgMgr) Switchover(ctx context.Context, targetAZ string) error {
@@ -251,8 +252,21 @@ func (m *cgMgr) ResumeReplication(ctx context.Context) error {
 	return nil
 }
 
-func (m *cgMgr) cacheSig(name string) string {
-	return fmt.Sprintf("%s:%s", name, m.uuid)
+// cacheSigGetCInfo generates the cache signature specific to the consistency
+// group info operation.
+func (m *cgMgr) cacheSigGetCInfo() string {
+	return m.cacheSig("get-cg-info")
+}
+
+// cacheSig generates a unique cache signature by hashing the endpoint, secret, and UUID values of the consistency group.
+func (m *cgMgr) cacheSig(s string) string {
+	data := fmt.Sprintf("%s|%s|%s",
+		m.endpoint,
+		m.secret,
+		m.uuid,
+	)
+	hash := sha256.Sum256([]byte(data))
+	return fmt.Sprintf("sgcp-nfs-cg-%s-%x", s, hash)
 }
 
 type T struct {
@@ -325,10 +339,12 @@ func (t *T) configureMgr(cfg *sgcp.Config) error {
 	}
 	tk := sgcp.NewTokenFactory(t.Log(), httpClient, &cfg.Auth, authInfo)
 	t.mgr = &cgMgr{
-		uuid:  t.UUID,
-		log:   t.Log(),
-		api:   sgcp.NewFilesAPI(cfg, httpClient, t.Log(), tk),
-		cache: cfg.Cache,
+		uuid:     t.UUID,
+		log:      t.Log(),
+		api:      sgcp.NewFilesAPI(cfg, httpClient, t.Log(), tk),
+		cache:    cfg.Cache,
+		endpoint: t.Endpoint,
+		secret:   t.Secret,
 	}
 	return nil
 }
