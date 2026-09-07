@@ -3,7 +3,6 @@ package resfssgcp_nfs
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"time"
 
@@ -13,6 +12,7 @@ import (
 	"github.com/opensvc/om3/v3/core/status"
 	"github.com/opensvc/om3/v3/drivers/resfshost"
 	"github.com/opensvc/om3/v3/drivers/sgcphelper"
+	"github.com/opensvc/om3/v3/util/ageingcache"
 	"github.com/opensvc/om3/v3/util/httpclientcache"
 	"github.com/opensvc/om3/v3/util/sgcp"
 )
@@ -62,10 +62,9 @@ type (
 		CheckRead    bool           `json:"check_read"`
 
 		// Internal state
-		resFs         fsDriver
-		fileInfoCache *FilesystemInfo
-		mgr           *nfsClientMgr
-		authInfoer    GetAuthInfoer
+		resFs      fsDriver
+		mgr        *nfsClientMgr
+		authInfoer GetAuthInfoer
 	}
 
 	GetAuthInfoer interface {
@@ -86,10 +85,6 @@ type (
 var (
 	// NfsClientIgnored is a list of NFS client hosts to ignore
 	NfsClientIgnored = []string{}
-)
-
-const (
-	cacheKeyGetFileInfo = "getFileInfo"
 )
 
 // New creates a new SGCP NFS filesystem resource driver
@@ -394,18 +389,7 @@ func (t *T) fileStatus(ctx context.Context) status.T {
 
 // getFileInfo retrieves filesystem information from the API
 func (t *T) getFileInfo(ctx context.Context) (*FilesystemInfo, error) {
-	// Use cached value if available
-	if t.fileInfoCache != nil {
-		return t.fileInfoCache, nil
-	}
-
-	fileInfo, err := t.mgr.getFileInfo(ctx)
-	if err == nil {
-		// Cache the result
-		t.fileInfoCache = fileInfo
-	}
-
-	return fileInfo, err
+	return t.mgr.getFileInfo(ctx)
 }
 
 // getNFSClients returns the NFS clients for the filesystem, filtered by ignored hosts
@@ -436,12 +420,7 @@ func (t *T) isClientIgnored(host string) bool {
 
 // clearFileStatusCache clears the filesystem info cache
 func (t *T) clearFileStatusCache() error {
-	var errs error
-	t.fileInfoCache = nil
-	for _, s := range []string{cacheKeyGetFileInfo} {
-		errs = errors.Join(errs, t.mgr.cacheClear(s))
-	}
-	return errs
+	return ageingcache.Clear(t.mgr.cacheSigGetFileInfo())
 }
 
 // String returns a string representation of an NfsClient
