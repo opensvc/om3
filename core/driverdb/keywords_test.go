@@ -1,12 +1,16 @@
 package driverdb_test
 
 import (
+	"os"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
 	"github.com/opensvc/om3/v3/core/driver"
+	"github.com/opensvc/om3/v3/core/env"
+	"github.com/opensvc/om3/v3/core/xconfig"
+	"github.com/opensvc/om3/v3/testhelper"
 
 	// Register all the resource drivers, so their manifest keywords are
 	// reachable from driver.List() and object.KeywordStoreWithDrivers().
@@ -60,6 +64,11 @@ func TestKeywordDefaultIsConvertible(t *testing.T) {
 				}
 				if hasReference(kw.Default) {
 					continue
+				}
+				if kw.Converter == xconfig.NodesConverter || kw.Converter == xconfig.PeersConverter {
+					envTest := testhelper.Setup(t)
+					envTest.InstallFile("../../testdata/nodes_info.json", "var/nodes_info.json")
+					require.NoError(t, os.Unsetenv(env.ContextVar))
 				}
 				_, err := kw.Converter.Convert(kw.Default)
 				assert.NoErrorf(t, err, "%s: default %q is not convertible by the %s converter",
