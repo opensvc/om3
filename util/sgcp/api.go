@@ -68,9 +68,6 @@ func (a *Api) do(ctx context.Context, method, url string, body io.Reader, scopes
 	if err != nil {
 		return resp.StatusCode, nil, fmt.Errorf("read %s %s response body: %w", method, url, err)
 	}
-	if resp.StatusCode >= 400 {
-		a.log.Debugf("request: %s %s status code: %d body: '%s'", method, url, resp.StatusCode, string(b))
-	}
 
 	return resp.StatusCode, b, nil
 }
