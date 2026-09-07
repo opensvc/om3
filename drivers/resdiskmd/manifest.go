@@ -10,6 +10,7 @@ import (
 	"github.com/opensvc/om3/v3/core/manifest"
 	"github.com/opensvc/om3/v3/core/naming"
 	"github.com/opensvc/om3/v3/drivers/resdisk"
+	"github.com/opensvc/om3/v3/util/converters"
 )
 
 var (
@@ -28,7 +29,7 @@ var (
 		},
 		{
 			Attr:         "Devs",
-			Converter:    "list",
+			Converter:    converters.List,
 			Example:      "/dev/mapper/23 /dev/mapper/24",
 			Option:       "devs",
 			Provisioning: true,
@@ -53,7 +54,7 @@ var (
 		},
 		{
 			Attr:         "Chunk",
-			Converter:    "size",
+			Converter:    converters.Size,
 			Example:      "128k",
 			Option:       "chunk",
 			Provisioning: true,
@@ -62,7 +63,7 @@ var (
 		},
 		{
 			Attr:         "Spares",
-			Converter:    "int",
+			Converter:    converters.Int,
 			Default:      "0",
 			Example:      "1",
 			Option:       "spares",

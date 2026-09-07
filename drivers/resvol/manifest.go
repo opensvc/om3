@@ -8,6 +8,8 @@ import (
 	"github.com/opensvc/om3/v3/core/keywords"
 	"github.com/opensvc/om3/v3/core/manifest"
 	"github.com/opensvc/om3/v3/core/naming"
+	"github.com/opensvc/om3/v3/core/xconfig"
+	"github.com/opensvc/om3/v3/util/converters"
 )
 
 var (
@@ -33,7 +35,7 @@ var (
 		},
 		{
 			Attr:         "Volatile",
-			Converter:    "bool",
+			Converter:    converters.Bool,
 			Default:      "false",
 			Option:       "volatile",
 			Provisioning: true,
@@ -51,7 +53,7 @@ var (
 		},
 		{
 			Attr:         "Size",
-			Converter:    "size",
+			Converter:    converters.Size,
 			Option:       "size",
 			Provisioning: true,
 			Scopable:     true,
@@ -66,7 +68,7 @@ var (
 		},
 		{
 			Attr:         "VolNodes",
-			Converter:    "nodes",
+			Converter:    xconfig.NodesConverter,
 			Default:      "{.nodes}",
 			Option:       "nodes",
 			Provisioning: true,
@@ -75,7 +77,7 @@ var (
 		},
 		{
 			Attr:         "Format",
-			Converter:    "bool",
+			Converter:    converters.Bool,
 			Default:      "true",
 			Option:       "format",
 			Provisioning: true,

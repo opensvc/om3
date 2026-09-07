@@ -7,6 +7,7 @@ import (
 	"github.com/opensvc/om3/v3/core/keywords"
 	"github.com/opensvc/om3/v3/core/manifest"
 	"github.com/opensvc/om3/v3/core/naming"
+	"github.com/opensvc/om3/v3/util/converters"
 )
 
 var (
@@ -45,7 +46,7 @@ var (
 		{
 			Attr:      "Timeout",
 			Option:    "timeout",
-			Converter: "duration",
+			Converter: converters.Duration,
 			Default:   "300s", // TODO: move to config
 			Scopable:  true,
 			Text:      keywords.NewText(fs, "text/kw/timeout"),
@@ -53,7 +54,7 @@ var (
 		{
 			Attr:      "Failover",
 			Option:    "failover",
-			Converter: "boolean",
+			Converter: converters.Bool,
 			Default:   "true",
 			Scopable:  true,
 			Text:      keywords.NewText(fs, "text/kw/failover"),

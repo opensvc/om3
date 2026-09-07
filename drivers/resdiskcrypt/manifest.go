@@ -10,6 +10,7 @@ import (
 	"github.com/opensvc/om3/v3/core/manifest"
 	"github.com/opensvc/om3/v3/core/naming"
 	"github.com/opensvc/om3/v3/drivers/resdisk"
+	"github.com/opensvc/om3/v3/util/converters"
 )
 
 var (
@@ -37,7 +38,7 @@ var (
 		},
 		{
 			Attr:         "ManagePassphrase",
-			Converter:    "bool",
+			Converter:    converters.Bool,
 			Default:      "true",
 			Option:       "manage_passphrase",
 			Provisioning: true,

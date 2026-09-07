@@ -4,6 +4,7 @@ import (
 	"embed"
 
 	"github.com/opensvc/om3/v3/core/keywords"
+	"github.com/opensvc/om3/v3/util/converters"
 )
 
 var (
@@ -12,7 +13,7 @@ var (
 
 	KeywordWaitDNS = keywords.Keyword{
 		Attr:      "WaitDNS",
-		Converter: "duration",
+		Converter: converters.Duration,
 		Default:   "0",
 		Example:   "10s",
 		Option:    "wait_dns",

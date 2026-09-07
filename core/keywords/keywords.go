@@ -15,6 +15,7 @@ import (
 	"github.com/opensvc/om3/v3/core/driver"
 	"github.com/opensvc/om3/v3/core/keyop"
 	"github.com/opensvc/om3/v3/core/naming"
+	"github.com/opensvc/om3/v3/util/converters"
 	"github.com/opensvc/om3/v3/util/key"
 )
 
@@ -31,8 +32,9 @@ type (
 		// Required means the keyword mean be set, and thus disregards the default value.
 		Required bool
 
-		// Converter is the name of a registered routine converting a string into the keyword expected type.
-		Converter string
+		// Converter is the routine converting the string value into the
+		// keyword expected type. A nil Converter means no conversion.
+		Converter converters.Converter
 
 		// Text is a text explaining the role of the keyword.
 		Text string
@@ -480,8 +482,8 @@ func (t *Keyword) Doc(w io.Writer, depth int) error {
 	if t.Default != "" {
 		fprintProp("default", t.Default)
 	}
-	if t.Converter != "" {
-		fprintProp("convert", t.Converter)
+	if t.Converter != nil {
+		fprintProp("convert", t.Converter.String())
 	}
 	fmt.Fprintln(w, "")
 

@@ -8,6 +8,7 @@ import (
 	"github.com/opensvc/om3/v3/core/keywords"
 	"github.com/opensvc/om3/v3/core/manifest"
 	"github.com/opensvc/om3/v3/core/naming"
+	"github.com/opensvc/om3/v3/util/converters"
 	"github.com/opensvc/om3/v3/util/filesystems"
 )
 
@@ -25,7 +26,7 @@ var (
 	}
 	KeywordMKFSOptions = keywords.Keyword{
 		Attr:         "MKFSOptions",
-		Converter:    "shlex",
+		Converter:    converters.Shlex,
 		Default:      "",
 		Option:       "mkfs_opt",
 		Provisioning: true,
@@ -34,7 +35,7 @@ var (
 	}
 	KeywordStatTimeout = keywords.Keyword{
 		Attr:      "StatTimeout",
-		Converter: "duration",
+		Converter: converters.Duration,
 		Default:   "5s",
 		Option:    "stat_timeout",
 		Scopable:  true,
@@ -56,7 +57,7 @@ var (
 	}
 	KeywordPromoteRW = keywords.Keyword{
 		Attr:      "PromoteRW",
-		Converter: "bool",
+		Converter: converters.Bool,
 		Option:    "promote_rw",
 		Text:      keywords.NewText(fs, "text/kw/promote_rw"),
 	}
@@ -68,7 +69,7 @@ var (
 	}
 	KeywordCheckReadDisabled = keywords.Keyword{
 		Attr:      "CheckRead",
-		Converter: "bool",
+		Converter: converters.Bool,
 		Option:    "check_read",
 		Default:   "false",
 		Scopable:  true,
@@ -77,7 +78,7 @@ var (
 
 	KeywordCheckReadEnabled = keywords.Keyword{
 		Attr:      "CheckRead",
-		Converter: "bool",
+		Converter: converters.Bool,
 		Option:    "check_read",
 		Scopable:  true,
 		Default:   "true",

@@ -8,6 +8,7 @@ import (
 	"github.com/opensvc/om3/v3/core/manifest"
 	"github.com/opensvc/om3/v3/core/naming"
 	"github.com/opensvc/om3/v3/drivers/ressync"
+	"github.com/opensvc/om3/v3/util/converters"
 )
 
 var (
@@ -35,7 +36,7 @@ var (
 		},
 		{
 			Attr:      "RDFG",
-			Converter: "int",
+			Converter: converters.Int,
 			Example:   "5",
 			Option:    "rdfg",
 			Scopable:  false,

@@ -24,6 +24,7 @@ import (
 	"github.com/opensvc/om3/v3/core/resource"
 	"github.com/opensvc/om3/v3/core/volsignal"
 	"github.com/opensvc/om3/v3/core/xconfig"
+	"github.com/opensvc/om3/v3/util/converters"
 	"github.com/opensvc/om3/v3/util/file"
 	"github.com/opensvc/om3/v3/util/key"
 	"github.com/opensvc/om3/v3/util/plog"
@@ -249,7 +250,7 @@ func Keywords(prefix string) []*keywords.Keyword {
 	return []*keywords.Keyword{
 		{
 			Attr:      prefix + "Install",
-			Converter: "shlex",
+			Converter: converters.Shlex,
 			Example: `
 		/etc/ mode 0750 user 1000 group 1000
 		/etc/ssl/ mode 0700 user 1000 group 1000
@@ -267,7 +268,7 @@ func Keywords(prefix string) []*keywords.Keyword {
 		},
 		{
 			Attr:      prefix + "Configs",
-			Converter: "shlex",
+			Converter: converters.Shlex,
 			Example:   "conf/mycnf:/etc/mysql/my.cnf:ro conf/sysctl:/etc/sysctl.d/01-db.conf",
 			Option:    "configs",
 			Scopable:  true,
@@ -275,7 +276,7 @@ func Keywords(prefix string) []*keywords.Keyword {
 		},
 		{
 			Attr:      prefix + "Secrets",
-			Converter: "shlex",
+			Converter: converters.Shlex,
 			Default:   "",
 			Example:   "cert/pem:server.pem cert/key:server.key",
 			Option:    "secrets",
@@ -285,7 +286,7 @@ func Keywords(prefix string) []*keywords.Keyword {
 		},
 		{
 			Attr:      prefix + "Directories",
-			Converter: "list",
+			Converter: converters.List,
 			Default:   "",
 			Example:   "a/b/c d /e",
 			Option:    "directories",
@@ -308,7 +309,7 @@ func Keywords(prefix string) []*keywords.Keyword {
 		},
 		{
 			Attr:        prefix + "Perm",
-			Converter:   "filemode",
+			Converter:   converters.FileMode,
 			DefaultText: keywords.NewText(fs, "text/kw/perm.default"),
 			Example:     "660",
 			Option:      "perm",
@@ -317,7 +318,7 @@ func Keywords(prefix string) []*keywords.Keyword {
 		},
 		{
 			Attr:        prefix + "DirPerm",
-			Converter:   "filemode",
+			Converter:   converters.FileMode,
 			DefaultText: keywords.NewText(fs, "text/kw/dirperm.default"),
 			Example:     "750",
 			Option:      "dirperm",

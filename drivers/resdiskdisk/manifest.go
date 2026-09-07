@@ -8,6 +8,7 @@ import (
 	"github.com/opensvc/om3/v3/core/manifest"
 	"github.com/opensvc/om3/v3/core/naming"
 	"github.com/opensvc/om3/v3/drivers/resdisk"
+	"github.com/opensvc/om3/v3/util/converters"
 )
 
 var (
@@ -26,7 +27,7 @@ var (
 		},
 		{
 			Attr:         "Size",
-			Converter:    "size",
+			Converter:    converters.Size,
 			Example:      "20g",
 			Option:       "size",
 			Provisioning: true,

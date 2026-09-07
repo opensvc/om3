@@ -9,6 +9,7 @@ import (
 	"github.com/opensvc/om3/v3/core/manifest"
 	"github.com/opensvc/om3/v3/core/naming"
 	"github.com/opensvc/om3/v3/drivers/resfshost"
+	"github.com/opensvc/om3/v3/util/converters"
 )
 
 var (
@@ -26,7 +27,7 @@ var (
 		&resfshost.KeywordZone,
 		{
 			Attr:         "Size",
-			Converter:    "size",
+			Converter:    converters.Size,
 			Option:       "size",
 			Provisioning: true,
 			Required:     false,

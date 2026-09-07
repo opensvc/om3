@@ -8,6 +8,7 @@ import (
 	"github.com/opensvc/om3/v3/core/manifest"
 	"github.com/opensvc/om3/v3/core/naming"
 	"github.com/opensvc/om3/v3/drivers/resapp"
+	"github.com/opensvc/om3/v3/util/converters"
 )
 
 var (
@@ -19,7 +20,7 @@ var (
 	kws = []*keywords.Keyword{
 		{
 			Attr:      "StartTimeout",
-			Converter: "duration",
+			Converter: converters.Duration,
 			Example:   "180",
 			Option:    "start_timeout",
 			Scopable:  true,

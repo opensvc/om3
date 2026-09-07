@@ -10,6 +10,7 @@ import (
 	"github.com/opensvc/om3/v3/core/manifest"
 	"github.com/opensvc/om3/v3/core/naming"
 	"github.com/opensvc/om3/v3/drivers/resdisk"
+	"github.com/opensvc/om3/v3/util/converters"
 )
 
 var (
@@ -45,7 +46,7 @@ var (
 		},
 		{
 			Attr:         "CreateOptions",
-			Converter:    "shlex",
+			Converter:    converters.Shlex,
 			Example:      "--contiguous y",
 			Option:       "create_options",
 			Provisioning: true,

@@ -11,8 +11,8 @@ type (
 )
 
 func init() {
-	Register(TUser{})
-	Register(TGroup{})
+	Register(User)
+	Register(Group)
 }
 
 func (t TUser) Convert(s string) (interface{}, error) {

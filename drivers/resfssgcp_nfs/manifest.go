@@ -9,6 +9,7 @@ import (
 	"github.com/opensvc/om3/v3/core/manifest"
 	"github.com/opensvc/om3/v3/core/naming"
 	"github.com/opensvc/om3/v3/drivers/resfshost"
+	"github.com/opensvc/om3/v3/util/converters"
 )
 
 const (
@@ -49,7 +50,7 @@ var (
 		{
 			Attr:      "Exclusive",
 			Option:    "exclusive",
-			Converter: "bool",
+			Converter: converters.Bool,
 			Default:   DefaultExclusive,
 			Scopable:  true,
 			Text:      keywords.NewText(fs, "text/kw/exclusive"),
@@ -76,7 +77,7 @@ var (
 		},
 		{
 			Attr:      "StartTimeout",
-			Converter: "duration",
+			Converter: converters.Duration,
 			Example:   "1m5s",
 			Option:    "start_timeout",
 			Scopable:  true,

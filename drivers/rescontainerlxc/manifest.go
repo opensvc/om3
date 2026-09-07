@@ -8,6 +8,7 @@ import (
 	"github.com/opensvc/om3/v3/core/manifest"
 	"github.com/opensvc/om3/v3/core/naming"
 	"github.com/opensvc/om3/v3/drivers/rescontainer"
+	"github.com/opensvc/om3/v3/util/converters"
 )
 
 var (
@@ -48,7 +49,7 @@ var (
 		},
 		{
 			Attr:         "TemplateOptions",
-			Converter:    "shlex",
+			Converter:    converters.Shlex,
 			Example:      "--release focal",
 			Option:       "template_options",
 			Provisioning: true,
@@ -56,7 +57,7 @@ var (
 		},
 		{
 			Attr:         "CreateSecretsEnvironment",
-			Converter:    "shlex",
+			Converter:    converters.Shlex,
 			Example:      "CRT=cert1/server.crt PEM=cert1/server.pem",
 			Option:       "create_secrets_environment",
 			Provisioning: true,
@@ -65,7 +66,7 @@ var (
 		},
 		{
 			Attr:         "CreateConfigsEnvironment",
-			Converter:    "shlex",
+			Converter:    converters.Shlex,
 			Example:      "CRT=cert1/server.crt PEM=cert1/server.pem",
 			Option:       "create_configs_environment",
 			Provisioning: true,
@@ -74,7 +75,7 @@ var (
 		},
 		{
 			Attr:         "CreateEnvironment",
-			Converter:    "shlex",
+			Converter:    converters.Shlex,
 			Example:      "FOO=bar BAR=baz",
 			Option:       "create_environment",
 			Provisioning: true,
@@ -83,7 +84,7 @@ var (
 		},
 		{
 			Attr:      "RCmd",
-			Converter: "shlex",
+			Converter: converters.Shlex,
 			Example:   "lxc-attach -e -n osvtavnprov01 -- ",
 			Option:    "rcmd",
 			Scopable:  true,

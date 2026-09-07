@@ -8,6 +8,7 @@ import (
 	"github.com/opensvc/om3/v3/core/manifest"
 	"github.com/opensvc/om3/v3/core/naming"
 	"github.com/opensvc/om3/v3/drivers/resdisk"
+	"github.com/opensvc/om3/v3/util/converters"
 )
 
 var (
@@ -19,7 +20,7 @@ var (
 	kws = []*keywords.Keyword{
 		{
 			Attr:      "Devices",
-			Converter: "list",
+			Converter: converters.List,
 			Example:   "/dev/mapper/svc.d0:/dev/oracle/redo001 /dev/mapper/svc.d1",
 			Option:    "devs",
 			Required:  true,
@@ -28,7 +29,7 @@ var (
 		},
 		{
 			Attr:      "CreateCharDevices",
-			Converter: "bool",
+			Converter: converters.Bool,
 			Default:   "true",
 			Example:   "false",
 			Option:    "create_char_devices",
@@ -37,7 +38,7 @@ var (
 		},
 		{
 			Attr:      "User",
-			Converter: "user",
+			Converter: converters.User,
 			Example:   "root",
 			Option:    "user",
 			Scopable:  true,
@@ -45,7 +46,7 @@ var (
 		},
 		{
 			Attr:      "Group",
-			Converter: "group",
+			Converter: converters.Group,
 			Example:   "sys",
 			Option:    "group",
 			Scopable:  true,
@@ -53,7 +54,7 @@ var (
 		},
 		{
 			Attr:      "Perm",
-			Converter: "filemode",
+			Converter: converters.FileMode,
 			Example:   "600",
 			Option:    "perm",
 			Scopable:  true,

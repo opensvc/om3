@@ -8,6 +8,7 @@ import (
 	"github.com/opensvc/om3/v3/core/manifest"
 	"github.com/opensvc/om3/v3/core/naming"
 	"github.com/opensvc/om3/v3/drivers/ressync"
+	"github.com/opensvc/om3/v3/util/converters"
 )
 
 var (
@@ -26,7 +27,7 @@ var (
 		},
 		{
 			Attr:      "Dataset",
-			Converter: "list",
+			Converter: converters.List,
 			Example:   "svc1fs/data svc1fs/log",
 			Option:    "dataset",
 			Required:  true,
@@ -35,7 +36,7 @@ var (
 		},
 		{
 			Attr:      "Keep",
-			Converter: "int",
+			Converter: converters.Int,
 			Default:   "3",
 			Example:   "3",
 			Option:    "keep",
@@ -44,7 +45,7 @@ var (
 		},
 		{
 			Attr:      "Recursive",
-			Converter: "bool",
+			Converter: converters.Bool,
 			Default:   "true",
 			Option:    "recursive",
 			Scopable:  true,

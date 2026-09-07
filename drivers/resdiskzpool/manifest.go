@@ -8,6 +8,7 @@ import (
 	"github.com/opensvc/om3/v3/core/manifest"
 	"github.com/opensvc/om3/v3/core/naming"
 	"github.com/opensvc/om3/v3/drivers/resdisk"
+	"github.com/opensvc/om3/v3/util/converters"
 )
 
 var (
@@ -28,7 +29,7 @@ var (
 		},
 		{
 			Attr:      "Multihost",
-			Converter: "tristate",
+			Converter: converters.Tristate,
 			Example:   "yes",
 			Option:    "multihost",
 			Scopable:  true,
@@ -36,7 +37,7 @@ var (
 		},
 		{
 			Attr:         "VDev",
-			Converter:    "list",
+			Converter:    converters.List,
 			Example:      "/dev/mapper/23 /dev/mapper/24",
 			Option:       "vdev",
 			Provisioning: true,
@@ -45,7 +46,7 @@ var (
 		},
 		{
 			Attr:         "CreateOptions",
-			Converter:    "shlex",
+			Converter:    converters.Shlex,
 			Example:      "-O dedup=on",
 			Option:       "create_options",
 			Provisioning: true,

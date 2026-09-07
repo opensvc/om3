@@ -8,6 +8,7 @@ import (
 	"github.com/opensvc/om3/v3/core/manifest"
 	"github.com/opensvc/om3/v3/core/naming"
 	"github.com/opensvc/om3/v3/drivers/resip"
+	"github.com/opensvc/om3/v3/util/converters"
 )
 
 var (
@@ -59,7 +60,7 @@ var (
 		},
 		{
 			Attr:      "CheckCarrier",
-			Converter: "bool",
+			Converter: converters.Bool,
 			Default:   "true",
 			Option:    "check_carrier",
 			Scopable:  true,
@@ -67,7 +68,7 @@ var (
 		},
 		{
 			Attr:      "Alias",
-			Converter: "bool",
+			Converter: converters.Bool,
 			Default:   "true",
 			Option:    "alias",
 			Scopable:  true,
@@ -75,7 +76,7 @@ var (
 		},
 		{
 			Attr:      "Expose",
-			Converter: "list",
+			Converter: converters.List,
 			Example:   "443/tcp:8443 53/udp",
 			Option:    "expose",
 			Scopable:  true,

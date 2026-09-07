@@ -10,6 +10,7 @@ import (
 	"github.com/opensvc/om3/v3/core/manifest"
 	"github.com/opensvc/om3/v3/core/naming"
 	"github.com/opensvc/om3/v3/drivers/resdisk"
+	"github.com/opensvc/om3/v3/util/converters"
 )
 
 var (
@@ -44,7 +45,7 @@ var (
 		},
 		{
 			Attr:         "Port",
-			Converter:    "int",
+			Converter:    converters.Int,
 			Example:      "1234",
 			Option:       "port",
 			Provisioning: true,
@@ -53,7 +54,7 @@ var (
 		},
 		{
 			Attr:         "MaxPeers",
-			Converter:    "int",
+			Converter:    converters.Int,
 			DefaultText:  keywords.NewText(fs, "text/kw/max_peers.default"),
 			Example:      "8",
 			Option:       "max_peers",

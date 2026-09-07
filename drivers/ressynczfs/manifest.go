@@ -8,6 +8,7 @@ import (
 	"github.com/opensvc/om3/v3/core/manifest"
 	"github.com/opensvc/om3/v3/core/naming"
 	"github.com/opensvc/om3/v3/drivers/ressync"
+	"github.com/opensvc/om3/v3/util/converters"
 )
 
 var (
@@ -19,7 +20,7 @@ var (
 	kws = []*keywords.Keyword{
 		{
 			Attr:      "Timeout",
-			Converter: "duration",
+			Converter: converters.Duration,
 			Example:   "5m",
 			Option:    "timeout",
 			Scopable:  true,
@@ -43,7 +44,7 @@ var (
 		},
 		{
 			Attr:      "Intermediary",
-			Converter: "bool",
+			Converter: converters.Bool,
 			Default:   "true",
 			Option:    "intermediary",
 			Scopable:  true,
@@ -52,14 +53,14 @@ var (
 		{
 			Attr:       "Target",
 			Candidates: []string{"nodes", "drpnodes", "local"},
-			Converter:  "list",
+			Converter:  converters.List,
 			Option:     "target",
 			Scopable:   true,
 			Text:       keywords.NewText(fs, "text/kw/target"),
 		},
 		{
 			Attr:      "Recursive",
-			Converter: "bool",
+			Converter: converters.Bool,
 			Default:   "true",
 			Option:    "recursive",
 			Scopable:  true,

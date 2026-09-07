@@ -7,6 +7,7 @@ import (
 	"github.com/opensvc/om3/v3/core/keywords"
 	"github.com/opensvc/om3/v3/core/manifest"
 	"github.com/opensvc/om3/v3/core/naming"
+	"github.com/opensvc/om3/v3/util/converters"
 )
 
 //go:embed text
@@ -18,7 +19,7 @@ var drvID = driver.NewID(driver.GroupDisk, "xp8")
 var Keywords = []*keywords.Keyword{
 	{
 		Attr:      "Instance",
-		Converter: "int",
+		Converter: converters.Int,
 		Example:   "0",
 		Option:    "instance",
 		Required:  true,
@@ -36,14 +37,14 @@ var Keywords = []*keywords.Keyword{
 	{
 		Attr:      "SplitStart",
 		Option:    "split_start",
-		Converter: "bool",
+		Converter: converters.Bool,
 		Default:   "false",
 		Scopable:  true,
 		Text:      keywords.NewText(fs, "text/kw/split_start"),
 	},
 	{
 		Attr:      "Timeout",
-		Converter: "duration",
+		Converter: converters.Duration,
 		Default:   "10s",
 		Option:    "timeout",
 		Scopable:  true,
@@ -51,7 +52,7 @@ var Keywords = []*keywords.Keyword{
 	},
 	{
 		Attr:      "StartTimeout",
-		Converter: "duration",
+		Converter: converters.Duration,
 		Default:   "5m",
 		Option:    "start_timeout",
 		Scopable:  true,

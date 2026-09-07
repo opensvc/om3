@@ -9,6 +9,7 @@ import (
 	"github.com/opensvc/om3/v3/core/naming"
 	"github.com/opensvc/om3/v3/core/xconfig"
 	"github.com/opensvc/om3/v3/daemon/api"
+	"github.com/opensvc/om3/v3/util/converters"
 	"github.com/opensvc/om3/v3/util/key"
 )
 
@@ -75,7 +76,7 @@ func ConvertKeywordStore(store keywords.Store) api.KeywordDefinitionItems {
 		item := api.KeywordDefinitionItem{
 			Option:        kw.Option,
 			Section:       kw.Section,
-			Converter:     kw.Converter,
+			Converter:     converters.Name(kw.Converter),
 			Default:       kw.Default,
 			DefaultOption: kw.DefaultOption,
 			DefaultText:   kw.DefaultText,
