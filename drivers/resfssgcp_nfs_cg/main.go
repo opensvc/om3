@@ -440,7 +440,8 @@ func (t *T) Status(ctx context.Context) status.T {
 	}
 	if sgcphelper.NeedsCacheClear() {
 		if err := t.mgr.cacheClearGetCg(); err != nil {
-			t.Log().Debugf("clear the consistency group cache: %s", err)
+			t.Log().Debugf("clear get cg cache failed: %s", err)
+			t.StatusLog().Warn("possible stale value: clear get cg cache failed")
 		}
 	}
 	cg, err := t.mgr.GetCachedCg(ctx)

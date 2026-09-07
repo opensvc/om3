@@ -236,7 +236,8 @@ func (t *T) Stop(ctx context.Context) error {
 func (t *T) Status(ctx context.Context) status.T {
 	if sgcphelper.NeedsCacheClear() {
 		if err := t.clearFileStatusCache(); err != nil {
-			t.Log().Debugf("clear file status cache: %s", err)
+			t.Log().Debugf("clear get file status cache failed: %s", err)
+			t.StatusLog().Warn("possible stale value: clear get file status cache failed")
 		}
 	}
 	fileStatus := t.fileStatus(ctx)

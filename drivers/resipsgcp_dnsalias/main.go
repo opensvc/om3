@@ -197,7 +197,8 @@ func (t *T) Status(ctx context.Context) status.T {
 	}
 	if sgcphelper.NeedsCacheClear() {
 		if err := t.mgr.cacheClear(t.mgr.cacheSigGetAliases()); err != nil {
-			t.Log().Debugf("cache clear error: %s", err)
+			t.Log().Debugf("clear get alias cache failed: %s", err)
+			t.StatusLog().Warn("possible stale value: clear get alias cache failed")
 		}
 	}
 	aliases, err := t.mgr.getAliases(ctx)
