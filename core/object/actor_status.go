@@ -186,6 +186,24 @@ func (t *actor) isEncapNodeMatchingResource(r resource.Driver) (bool, error) {
 }
 
 func (t *actor) resourceStatusEval(ctx context.Context, data *instance.Status, monitoredOnly bool) error {
+	// The resources are configured once here, and not again before each of
+	// them is evaluated.
+	//
+	// An action configures a resource again right before it acts, because a
+	// keyword of one resource can reference what another resource exposes
+	// once started, and that value only exists after the referenced resource
+	// has run. Evaluating the status changes no state, so nothing a keyword
+	// reads can move between here and the end of the pass, and configuring
+	// each resource a second time on its turn would evaluate every keyword of
+	// the object twice for one status.
+	//
+	// This also rebuilds the resources, which is what keeps the status
+	// refresh that closes an action from reading what the action saw: the
+	// drivers it evaluates are not the ones the action just used, so whatever
+	// they had cached while changing the state is gone. That separation is a
+	// policy, not an optimisation, and it is this call that holds it.
+	t.ConfigureResources()
+
 	if !monitoredOnly {
 		data.Resources = make(instance.ResourceStatuses)
 	}
