@@ -16,6 +16,7 @@ import (
 	"syscall"
 	"text/template"
 
+	"github.com/anmitsu/go-shlex"
 	"golang.org/x/sys/unix"
 
 	"github.com/opensvc/om3/v3/core/keywords"
@@ -1188,4 +1189,39 @@ func (t *DataRecv) installDirs() error {
 		}
 	}
 	return nil
+}
+
+// TextHasLocalSource reports whether an install text names a source the server
+// reads locally, as opposed to one it fetches over http.
+//
+// It lives here, next to the grammar it parses, so the rbac policy that refuses
+// a local source to a user holding no root grant does not have to reimplement
+// that grammar and drift from it.
+func TextHasLocalSource(s string) bool {
+	text, _ := shlex.Split(s, true)
+	for _, line := range Split(text) {
+		if lineHasLocalSource(line) {
+			return true
+		}
+	}
+	return false
+}
+
+// lineHasLocalSource reports whether one install line names a local source.
+func lineHasLocalSource(words []string) bool {
+	var word string
+	for {
+		word, words = Pop(words)
+		if word == "" {
+			break
+		}
+		switch word {
+		case "source":
+			word, words = Pop(words)
+			if !strings.HasPrefix(word, "http://") && !strings.HasPrefix(word, "https://") {
+				return true
+			}
+		}
+	}
+	return false
 }

@@ -71,7 +71,7 @@ func (t *CmdNodeConfigDoc) Run() error {
 	items := doc.ConvertKeywordStore(store)
 	output.Renderer{
 		HumanRenderer: func() string {
-			commoncmd.Doc(os.Stdout, items, path.Kind, t.Driver, t.Keyword, t.Depth)
+			commoncmd.NodeDoc(os.Stdout, items, path.Kind, t.Driver, t.Keyword, t.Depth)
 			return ""
 		},
 		Output:   t.Output,
