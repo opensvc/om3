@@ -138,12 +138,18 @@ func FmtFilename(contextName string) string {
 	return clientcontext.ConfigFolder + "token-" + contextName + ".json"
 }
 
+// ReconnectError says a cached token could not be used, and names the command
+// that renews it.
+//
+// That command is always ox, whichever program is reporting: only ox manages
+// the client contexts, so an om reading a context whose token expired is fixed
+// with ox too.
 func ReconnectError(srcErr error, contextName string) error {
 	fullPath, err2 := homedir.Expand(FmtFilename(contextName))
 	if err2 != nil {
 		return err2
 	}
-	return fmt.Errorf("%w at %s: use `om context login` to authenticate", srcErr, fullPath)
+	return fmt.Errorf("%w at %s: use `ox context login` to authenticate", srcErr, fullPath)
 }
 
 func ModTime(contextName string) (time.Time, error) {
