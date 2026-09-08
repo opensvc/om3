@@ -467,6 +467,45 @@ OpenSVC v3 is a major evolution, rebuilt in Go for performance, reliability, and
     Use double quotes instead of quotes, as the strings in the value part already use double quotes.
     Not mixing single and double quotes helps formatting the --filter for `om node events`.
 
+### Driver: container
+
+These changes apply to the `container.docker`, `container.podman` and
+`container.oci` drivers, and to the `task.docker` and `task.podman` drivers,
+which share the same executor.
+
+* **Changed behaviour, the resolver of a container:**
+    om writes the `/etc/resolv.conf` of the container and bind mounts it, in
+    every network mode, instead of asking the container engine for one.
+
+    The engine refuses the dns options in the network modes an object sharing
+    a namespace uses, `--net none` and `--net container:...`, and writes no
+    resolv.conf of its own for them, so a container of the pause model was
+    left with no resolver at all. A file works in every network mode, and is
+    the only way to reach a container that has no engine-managed network.
+
+    `--dns`, `--dns-opt`, `--dns-option` and `--dns-search` are dropped from
+    `run_args`: they would be a second resolver configuration, in a place that
+    no longer decides anything.
+
+* **New keyword, `dns`:**
+    The nameservers to write in the container resolv.conf after those of the
+    cluster, for a container that also has to resolve names the cluster
+    nameservers do not serve.
+
+    The order is not a preference: a resolver tries the nameservers in turn
+    and moves on only when one does not answer, and a name it is told does not
+    exist is an answer. A nameserver that does not serve the cluster zone,
+    asked first, would end the search for every object name.
+
+    A resolver reads the first 3 nameservers of the file, so a cluster already
+    naming 3 in `cluster.dns` leaves this keyword no room. The extra
+    nameservers past that count are not written, and the start logs which.
+
+* **Changed rbac, `dns` and `dns_search`:**
+    Both decide what the names in a container resolve to, now that om writes
+    the resolver rather than the engine, so both require the root grant to set
+    through the api.
+
 ### Driver: container.docker
 
     * `stop_timeout`

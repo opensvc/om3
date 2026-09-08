@@ -33,8 +33,7 @@ func TestExecutorArg_RunArgsBase(t *testing.T) {
 	}
 
 	ea := ExecutorArg{
-		BT:                     bt,
-		RunArgsDNSOptionOption: "--dns-option",
+		BT: bt,
 	}
 
 	if err := bt.Configure(); err != nil {

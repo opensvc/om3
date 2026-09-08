@@ -124,3 +124,26 @@ func TestWriteResolvConfRewritesInPlace(t *testing.T) {
 	require.NoError(t, err)
 	assert.Equal(t, "nameserver 10.29.0.99\n", string(b))
 }
+
+// TestNameserversPutTheClusterFirst pins the order the two sources are
+// written in. A resolver moves to the next nameserver only when one does not
+// answer, and NXDOMAIN is an answer: a nameserver that does not serve the
+// cluster zone, asked first, would end the search for every object name.
+func TestNameserversPutTheClusterFirst(t *testing.T) {
+	assert.Equal(t,
+		[]string{"10.29.0.11", "10.29.0.12", "9.9.9.9"},
+		Nameservers([]string{"10.29.0.11", "10.29.0.12"}, []string{"9.9.9.9"}))
+
+	assert.Equal(t, []string{"9.9.9.9"}, Nameservers(nil, []string{"9.9.9.9"}))
+	assert.Equal(t, []string{"10.29.0.11"}, Nameservers([]string{"10.29.0.11"}, nil))
+	assert.Empty(t, Nameservers(nil, nil))
+}
+
+// TestNameserversPastWhatAResolverReads pins that the extra nameservers of a
+// cluster already naming the maximum are written nowhere, which is what the
+// warning at start is for.
+func TestNameserversPastWhatAResolverReads(t *testing.T) {
+	all := Nameservers([]string{"10.29.0.11", "10.29.0.12", "10.29.0.13"}, []string{"9.9.9.9"})
+	assert.Len(t, all, 4)
+	assert.NotContains(t, ResolvConf{Nameservers: all}.String(), "9.9.9.9")
+}

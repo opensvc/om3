@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"os"
+	"path/filepath"
 	"strings"
 
 	"github.com/opensvc/om3/v3/drivers/rescontainer"
@@ -20,10 +21,6 @@ type (
 
 		// RunArgsCGroupParentDisable disable the "--cgroup-parent" RunArgs setting
 		RunArgsCGroupParentDisable bool
-
-		// RunArgsDNSOptionOption is the option name used during RunArgs
-		// to set container dns options (example "--dns-option").
-		RunArgsDNSOptionOption string
 
 		// runArgsEnvM is internal store for the environment variables that
 		// must be added to the exec.Cmd Env, during the Executor.Run() call.
@@ -166,9 +163,26 @@ func (ea *ExecutorArg) RunArgsBase(ctx context.Context) (*args.T, error) {
 		}
 	}
 
-	a.Append(ea.runArgsDNS()...)
-	a.Append(ea.runArgsDNSSearch()...)
-	a.Append(ea.runArgsDNSOption()...)
+	// om writes the resolver of the container rather than asking the engine
+	// to. The engine refuses the dns options in the network modes an object
+	// sharing a namespace uses, and writes no resolv.conf of its own for
+	// them, so a container of the pause model was left with no resolver at
+	// all. Writing the file works in every network mode, and is the only way
+	// to reach a container that has no engine-managed network.
+	//
+	// The options are therefore never passed, and one set in run_args is
+	// dropped: it would be a second resolver configuration, in a place that
+	// no longer decides anything.
+	for _, option := range []string{"--dns", "--dns-opt", "--dns-option", "--dns-search"} {
+		runArgs.DropOptionAndAnyValue(option)
+	}
+	if mount, err := ea.resolvConfMount(); err != nil {
+		return nil, err
+	} else if mount != "" {
+		runArgs.DropOptionAndExactValue("-v", mount)
+		runArgs.DropOptionAndExactValue("--volume", mount)
+		a.Append("-v", mount)
+	}
 	a.Append(ea.runArgsCGroupParent()...)
 	a.Append(ea.runArgsSysctl()...)
 
@@ -268,36 +282,6 @@ func (ea *ExecutorArg) runArgsSysctl() []string {
 	return a
 }
 
-func (ea *ExecutorArg) runArgsDNS() []string {
-	if !ea.needDNS() {
-		return nil
-	}
-	a := make([]string, 0, 2*len(ea.BT.DNS))
-	for _, s := range ea.BT.DNS {
-		a = append(a, "--dns", s)
-	}
-	return a
-}
-
-func (ea *ExecutorArg) runArgsDNSOption() []string {
-	if !ea.needDNS() {
-		return nil
-	}
-	option := ea.RunArgsDNSOptionOption
-	return []string{option, "ndots:2", option, "edns0", option, "use-vc"}
-}
-
-func (ea *ExecutorArg) runArgsDNSSearch() []string {
-	if !ea.needDNS() {
-		return nil
-	}
-	var a []string
-	for _, s := range rescontainer.SearchDomains(ea.BT.ObjectDomain, ea.BT.DNSSearch) {
-		a = append(a, "--dns-search", s)
-	}
-	return a
-}
-
 func (ea *ExecutorArg) runArgsEnv(ctx context.Context) ([]string, error) {
 	if l, m, err := ea.BT.GenEnv(ctx); err != nil {
 		return nil, err
@@ -341,15 +325,6 @@ func (ea *ExecutorArg) runArgsMounts(ctx context.Context) ([]string, error) {
 	return a, nil
 }
 
-func (ea *ExecutorArg) needDNS() bool {
-	switch ea.BT.NetNS {
-	case "", "none":
-		return true
-	default:
-		return false
-	}
-}
-
 func (ea *ExecutorArg) LogsArgs(follow bool, lines int) *args.T {
 	a := args.New()
 	a.Append("container", "logs")
@@ -366,4 +341,33 @@ func (ea *ExecutorArg) LogsArgs(follow bool, lines int) *args.T {
 	}
 
 	return a
+}
+
+// resolvConfMount writes the resolver of the container and returns the option
+// mounting it, or an empty string when there is nothing to say to it.
+//
+// The nameservers are the ones of the cluster, then the ones the dns keyword
+// adds. The search list is the domain of the object and each of its parents,
+// preceded by the domains the dns_search keyword adds.
+//
+// The file is written on every start, and a container reads it for as long as
+// it runs: a container adapts to a cluster layout change by being restarted.
+func (ea *ExecutorArg) resolvConfMount() (string, error) {
+	resolvConf := rescontainer.ResolvConf{
+		Nameservers: rescontainer.Nameservers(ea.BT.DNS, ea.BT.DNSExtra),
+		Searches:    rescontainer.SearchDomains(ea.BT.ObjectDomain, ea.BT.DNSSearch),
+		Options:     rescontainer.ResolvConfOptions,
+	}
+	if resolvConf.IsZero() {
+		return "", nil
+	}
+	if n := len(resolvConf.Nameservers); n > rescontainer.MaxNameservers {
+		ea.BT.Log().Warnf("%d nameservers are named, by cluster.dns and the dns keyword, and a resolver reads the first %d: %s is not written to the container resolv.conf",
+			n, rescontainer.MaxNameservers, strings.Join(resolvConf.Nameservers[rescontainer.MaxNameservers:], ", "))
+	}
+	path, err := rescontainer.WriteResolvConf(filepath.Join(ea.BT.VarDir(), "resolv.conf"), resolvConf)
+	if err != nil {
+		return "", err
+	}
+	return path + ":/etc/resolv.conf:ro", nil
 }

@@ -202,6 +202,10 @@ func keyopRbac(grants rbac.Grants, op keyop.T) error {
 			}
 		case "run_args":
 			return fmt.Errorf("denied: %s: requires the root grant", op)
+		case "dns", "dns_search":
+			// om writes the resolver of the container from these, so they
+			// decide what the names in it resolve to.
+			return fmt.Errorf("denied: %s: requires the root grant", op)
 		}
 	case "container":
 		switch option {
@@ -218,6 +222,10 @@ func keyopRbac(grants rbac.Grants, op keyop.T) error {
 				}
 			}
 		case "run_args":
+			return fmt.Errorf("denied: %s: requires the root grant", op)
+		case "dns", "dns_search":
+			// om writes the resolver of the container from these, so they
+			// decide what the names in it resolve to.
 			return fmt.Errorf("denied: %s: requires the root grant", op)
 		}
 	case "volume":
