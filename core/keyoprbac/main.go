@@ -11,6 +11,7 @@ package keyoprbac
 
 import (
 	"fmt"
+	"slices"
 	"strings"
 
 	"github.com/opensvc/om3/v3/core/datarecv"
@@ -35,6 +36,10 @@ type (
 
 		// Values, when not empty, is the values a user holding no grant may
 		// set anyway. Any other value needs the grant.
+		//
+		// A keyword converted to a list holds several values at once, so
+		// every value the keyword names must be in here, and a keyword
+		// naming none is not a keyword naming an allowed one.
 		Values []string
 
 		// Denies, when not nil, reports whether a value needs the grant. It
@@ -344,6 +349,21 @@ func hasHostPathMount(value string) bool {
 	return false
 }
 
+// allValuesAllowed reports whether every value a keyword names is one a user
+// holding no grant may set.
+func allValuesAllowed(value string, allowed []string) bool {
+	fields := strings.Fields(value)
+	if len(fields) == 0 {
+		return false
+	}
+	for _, field := range fields {
+		if !slices.Contains(allowed, field) {
+			return false
+		}
+	}
+	return true
+}
+
 // normalize returns the driver group and the keyword a section and an option
 // name.
 //
@@ -405,10 +425,8 @@ func Denied(grants rbac.Grants, section, option, value string, set Section) erro
 			return nil
 		}
 	case len(rule.Values) > 0:
-		for _, allowed := range rule.Values {
-			if value == allowed {
-				return nil
-			}
+		if allValuesAllowed(value, rule.Values) {
+			return nil
 		}
 	}
 	if grants.HasGrant(rule.Grant) {

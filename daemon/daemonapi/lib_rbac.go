@@ -10,6 +10,7 @@ import (
 	"github.com/opensvc/om3/v3/core/keyoprbac"
 	"github.com/opensvc/om3/v3/core/naming"
 	"github.com/opensvc/om3/v3/core/object"
+	"github.com/opensvc/om3/v3/core/xconfig"
 	"github.com/opensvc/om3/v3/daemon/rbac"
 	"github.com/opensvc/om3/v3/util/key"
 )
@@ -29,6 +30,11 @@ func configRbac(ctx echo.Context, p naming.Path, body []byte) error {
 	if grants.HasGrant(rbac.GrantRoot) {
 		return nil
 	}
+	return configRbacKeys(grants, cfg)
+}
+
+// configRbacKeys checks every keyword of a configuration against the policy.
+func configRbacKeys(grants rbac.Grants, cfg *xconfig.T) error {
 	// Iterate through all sections in the config
 	for _, section := range cfg.SectionStrings() {
 		// Get all keys in this section
@@ -44,7 +50,7 @@ func configRbac(ctx echo.Context, p naming.Path, body []byte) error {
 			kop := keyop.T{
 				Key:   k,
 				Op:    keyop.Set,
-				Value: fmt.Sprint(v),
+				Value: configValue(v),
 				Index: 0,
 			}
 			// Validate this key operation against RBAC rules
@@ -127,6 +133,23 @@ func keyopRbac(grants rbac.Grants, op keyop.T, set keyoprbac.Section) error {
 		return fmt.Errorf("denied: %s: %w", op, err)
 	}
 	return nil
+}
+
+// configValue renders an evaluated keyword value the way the configuration
+// spells it, which is what the policy reads.
+//
+// Evaluating a keyword returns it converted, and a converted list is a
+// []string that fmt prints inside brackets. Handing the policy "[_/etc:/etc]"
+// where the configuration says "_/etc:/etc" gives it a value that matches
+// neither a list of allowed values nor a shape it refuses, so a rule about
+// the value would let through exactly what it exists to stop.
+func configValue(v any) string {
+	switch value := v.(type) {
+	case []string:
+		return strings.Join(value, " ")
+	default:
+		return fmt.Sprint(v)
+	}
 }
 
 // sectionSetter answers whether an option is set in a section, from the keys
