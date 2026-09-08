@@ -758,6 +758,21 @@ func (t *App) isPathSelected(path string) bool {
 	return ok
 }
 
+// nodeByCol returns the node a column of the objects table is about, or an
+// empty string when the column is not one of a node.
+//
+// What ties a cell to a node is the position of its column, not the text of
+// the column header: that text is abbreviated to what tells the nodes apart,
+// so reading it back would name a node the cluster does not have.
+func (t *App) nodeByCol(col int) string {
+	i := col - t.firstInstanceCol
+	nodes := t.Current.Cluster.Config.Nodes
+	if i < 0 || i >= len(nodes) {
+		return ""
+	}
+	return nodes[i]
+}
+
 func (t *App) isNodeSelected(node string) bool {
 	_, ok := t.selectedNodes[node]
 	return ok
@@ -1018,7 +1033,7 @@ func (t *App) onRuneColumn(event *tcell.EventKey) {
 						case row == 0 && col == 1:
 							clusterAction(args[1:])
 						case row == 0 && col >= t.firstInstanceCol:
-							node := t.objects.GetCell(row, col).Text
+							node := t.nodeByCol(col)
 							selection := make(map[string]any)
 							selection[node] = nil
 							nodeAction(args[1:], selection)
@@ -1029,7 +1044,7 @@ func (t *App) onRuneColumn(event *tcell.EventKey) {
 							objectAction(args[1:], selection)
 						case row >= t.firstObjectRow && col >= t.firstInstanceCol:
 							path := t.objects.GetCell(row, 0).Text
-							node := t.objects.GetCell(0, col).Text
+							node := t.nodeByCol(col)
 							selection := make(map[[2]string]any)
 							selection[[2]string{path, node}] = nil
 							instanceAction(args[1:], selection)

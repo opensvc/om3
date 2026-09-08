@@ -47,7 +47,7 @@ func (t *App) initObjectsTable() {
 	selectedFunc := func(row, col int) {
 		cell := table.GetCell(row, col)
 		path := table.GetCell(row, 0).Text
-		node := table.GetCell(0, col).Text
+		node := t.nodeByCol(col)
 		var selected *bool
 		switch {
 		case row == 0 && col >= t.firstInstanceCol:
@@ -112,7 +112,7 @@ func (t *App) initObjectsTable() {
 			t.viewPath = p
 		}
 		if col >= t.firstInstanceCol {
-			t.viewNode = t.objects.GetCell(0, col).Text
+			t.viewNode = t.nodeByCol(col)
 		}
 		t.frame().position = Position{row: row, col: col}
 		handleCursorPosition(row, col)
@@ -146,7 +146,7 @@ func (t *App) initObjectsTable() {
 // listNodeIssues opens the configuration issues of the node of a column,
 // which is where the mark on its states line points.
 func (t *App) listNodeIssues(table *tview.Table, col int) {
-	nodename := table.GetCell(0, col).Text
+	nodename := t.nodeByCol(col)
 	if len(t.nodeIssues(nodename)) == 0 {
 		return
 	}
@@ -160,7 +160,7 @@ func (t *App) listHeartbeats(table *tview.Table, row, col int) {
 	}
 	var nodeFilter string
 	if col >= t.firstInstanceCol {
-		nodeFilter = table.GetCell(0, col).Text
+		nodeFilter = t.nodeByCol(col)
 	}
 	var hbDirection string
 	cellText := table.GetCell(row, 3).Text
@@ -184,8 +184,13 @@ func (t *App) updateObjects() {
 	}
 
 	nodesCells := func(row int, selectable bool) {
+		// A node column is as wide as its header, and the domain the nodes
+		// share says nothing the neighbouring columns do not say too. The
+		// node a column is about is read from its position, never from this
+		// text.
+		headers := naming.Abbrev(t.Current.Cluster.Config.Nodes)
 		for i, nodename := range t.Current.Cluster.Config.Nodes {
-			t.objects.SetCell(row, t.firstInstanceCol+i, t.cellNode(nodename, selectable))
+			t.objects.SetCell(row, t.firstInstanceCol+i, t.cellNode(nodename, headers[i], selectable))
 		}
 	}
 
@@ -387,8 +392,10 @@ func (t *App) cellInstanceStatus(path, node string) *tview.TableCell {
 	return cell
 }
 
-func (t *App) cellNode(node string, selectable bool) *tview.TableCell {
-	cell := tview.NewTableCell(node).SetAttributes(tcell.AttrBold).SetSelectable(selectable)
+// cellNode renders the header of a node column. The node is what the column
+// is about, the header is how the name is shown, which may be abbreviated.
+func (t *App) cellNode(node, header string, selectable bool) *tview.TableCell {
+	cell := tview.NewTableCell(header).SetAttributes(tcell.AttrBold).SetSelectable(selectable)
 	if selectable && t.isNodeSelected(node) {
 		cell.SetBackgroundColor(colorSelected)
 	}
