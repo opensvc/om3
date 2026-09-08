@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"github.com/opensvc/om3/v3/util/duration"
 	"net/http"
 	"time"
 
@@ -42,8 +43,10 @@ func NewCmdDaemonAuth() *cobra.Command {
 	}
 	flags := cmd.Flags()
 	FlagRoles(flags, &options.Roles)
-	flags.DurationVar(&options.AccessDuration, "duration", 60*time.Second, "access_token duration.")
-	flags.DurationVar(&options.RefreshDuration, "refresh-duration", 24*time.Hour, "refresh_token duration.")
+	options.AccessDuration = 60 * time.Second
+	flags.Var(duration.NewFlag(&options.AccessDuration), "duration", "access_token duration, for example 1h or 1d.")
+	options.RefreshDuration = 24 * time.Hour
+	flags.Var(duration.NewFlag(&options.RefreshDuration), "refresh-duration", "refresh_token duration, for example 1h or 1d.")
 	flags.StringVarP(&options.Out, "output", "o", "auto", "output format auto|json|jsonline|yaml|flat|tab=<header>:<jsonpath>,...|template=<go template>")
 	flags.StringVar(&options.Subject, "subject", "", "the subject of the token")
 	flags.StringVar(&options.Scope, "scope", "", "the scope of the token grant")
