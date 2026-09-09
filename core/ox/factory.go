@@ -10,6 +10,7 @@ import (
 	"github.com/opensvc/om3/v3/core/commoncmd"
 	commands "github.com/opensvc/om3/v3/core/oxcmd"
 	"github.com/opensvc/om3/v3/core/tui"
+	"github.com/opensvc/om3/v3/util/duration"
 )
 
 func newCmdArrayList() *cobra.Command {
@@ -4302,8 +4303,8 @@ func NewCmdContextAdd() *cobra.Command {
 	flags.StringVar(&options.User, "user", "", "User name")
 	flags.StringVar(&options.Cluster, "cluster", "", "Cluster name")
 	flags.StringVar(&options.Namespace, "namespace", "", "Namespace")
-	flags.DurationVar(&options.AccessTokenDuration, "access-token-duration", 0, "Access token duration")
-	flags.DurationVar(&options.RefreshTokenDuration, "refresh-token-duration", 0, "Refresh token duration")
+	flags.Var(duration.NewFlag(&options.AccessTokenDuration), "access-token-duration", "Access token duration, for example 1h or 1d")
+	flags.Var(duration.NewFlag(&options.RefreshTokenDuration), "refresh-token-duration", "Refresh token duration, for example 1h or 1d")
 
 	_ = cmd.MarkFlagRequired("name")
 	_ = cmd.MarkFlagRequired("user")
@@ -4328,8 +4329,8 @@ func NewCmdContextChange() *cobra.Command {
 	flags.StringVar(&options.User, "user", "", "User name")
 	flags.StringVar(&options.Cluster, "cluster", "", "Cluster name")
 	flags.StringVar(&options.Namespace, "namespace", "", "Namespace")
-	flags.DurationVar(&options.AccessTokenDuration, "access-token-duration", 0, "Access token duration")
-	flags.DurationVar(&options.RefreshTokenDuration, "refresh-token-duration", 0, "Refresh token duration")
+	flags.Var(duration.NewFlag(&options.AccessTokenDuration), "access-token-duration", "Access token duration, for example 1h or 1d")
+	flags.Var(duration.NewFlag(&options.RefreshTokenDuration), "refresh-token-duration", "Refresh token duration, for example 1h or 1d")
 
 	_ = cmd.MarkFlagRequired("name")
 	_ = cmd.MarkFlagRequired("user")
@@ -4536,8 +4537,8 @@ func NewCmdContextLogin() *cobra.Command {
 	}
 	flags := cmd.Flags()
 	flags.StringVar(&options.Context, "context", "", "The context to use to login")
-	flags.DurationVar(&options.RefreshDuration, "refresh-duration", 0, "refresh_token duration.")
-	flags.DurationVar(&options.AccessDuration, "duration", 0, "access_token duration.")
+	flags.Var(duration.NewFlag(&options.RefreshDuration), "refresh-duration", "refresh_token duration, for example 1h or 1d.")
+	flags.Var(duration.NewFlag(&options.AccessDuration), "duration", "access_token duration, for example 1h or 1d.")
 
 	return cmd
 }

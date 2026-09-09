@@ -53,6 +53,21 @@ func SearchDomains(objectDomain string, extra []string) []string {
 	return l
 }
 
+// Nameservers returns the nameservers of a container: the ones of the cluster,
+// then the extra ones its configuration adds.
+//
+// The order is not a preference, it is what makes both work. A resolver tries
+// the nameservers in order and moves to the next only when one does not
+// answer: a name it is told does not exist is an answer. So a nameserver that
+// does not serve the cluster zone, asked first, would answer NXDOMAIN for
+// every object of the cluster and the search would stop there.
+func Nameservers(cluster, extra []string) []string {
+	l := make([]string, 0, len(cluster)+len(extra))
+	l = append(l, cluster...)
+	l = append(l, extra...)
+	return l
+}
+
 // String returns the file content.
 func (t ResolvConf) String() string {
 	var sb strings.Builder

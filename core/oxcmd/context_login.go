@@ -42,6 +42,14 @@ func (t *CmdContextLogin) Run(cmd *cobra.Command) error {
 		t.Context = env.Context()
 	}
 
+	if t.Context == "" && !term.IsTerminal(int(os.Stdin.Fd())) {
+		// The context is chosen by reading a menu on the terminal, and the
+		// terminal is where the password would be typed. With the password
+		// arriving on the standard input instead, there is nobody to read the
+		// menu to.
+		return fmt.Errorf("no context to log into: name one with --context, or set OSVC_CONTEXT, when the password is not typed on a terminal")
+	}
+
 	if t.Context == "" {
 		fmt.Println("Known Contexts:")
 		i := 0
@@ -93,13 +101,10 @@ func (t *CmdContextLogin) Run(cmd *cobra.Command) error {
 		}
 	}
 
-	fmt.Printf("Password for %s: ", t.Context)
-	pwdBytes, err := term.ReadPassword(int(os.Stdin.Fd()))
+	password, err := readPassword(t.Context)
 	if err != nil {
 		return err
 	}
-	fmt.Println()
-	password := string(pwdBytes)
 	if password == "" {
 		return fmt.Errorf("empty password")
 	}
@@ -179,6 +184,30 @@ func (t *CmdContextLogin) Run(cmd *cobra.Command) error {
 
 	fmt.Printf("Login successful. Switch to this context with :\nexport OSVC_CONTEXT=%s\n", t.Context)
 	return nil
+}
+
+// readPassword returns the password to authenticate the context with.
+//
+// A terminal is prompted, with the typing hidden. A standard input that is not
+// a terminal is read as the password itself, one line, so a script can hand it
+// over without ever putting it on a command line, where the process table
+// would show it to every user of the machine, or in an environment variable,
+// where a child process would inherit it.
+func readPassword(contextName string) (string, error) {
+	if !term.IsTerminal(int(os.Stdin.Fd())) {
+		line, err := bufio.NewReader(os.Stdin).ReadString('\n')
+		if err != nil && err != io.EOF {
+			return "", err
+		}
+		return strings.TrimRight(line, "\r\n"), nil
+	}
+	fmt.Printf("Password for %s: ", contextName)
+	b, err := term.ReadPassword(int(os.Stdin.Fd()))
+	if err != nil {
+		return "", err
+	}
+	fmt.Println()
+	return string(b), nil
 }
 
 func chooseDuration(first *duration.Duration, second *duration.Duration) *duration.Duration {

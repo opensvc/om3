@@ -251,7 +251,7 @@ func (t *Manager) watchMounts() {
 					Source:     e.source,
 					Options:    e.options,
 				}
-				t.log.Infof("filesystem mounted: %s (type=%s, source=%s)", e.mountPoint, e.fsType, e.source)
+				t.log.Debugf("filesystem mounted: %s (type=%s, source=%s)", e.mountPoint, e.fsType, e.source)
 				t.publisher.Pub(msg, t.labelLocalhost)
 			case old.options != e.options:
 				msg := &msgbus.FSRemounted{
@@ -261,7 +261,7 @@ func (t *Manager) watchMounts() {
 					Source:     e.source,
 					Options:    e.options,
 				}
-				t.log.Infof("filesystem remounted: %s (type=%s, source=%s)", e.mountPoint, e.fsType, e.source)
+				t.log.Debugf("filesystem remounted: %s (type=%s, source=%s)", e.mountPoint, e.fsType, e.source)
 				t.publisher.Pub(msg, t.labelLocalhost)
 			}
 		}
@@ -276,7 +276,7 @@ func (t *Manager) watchMounts() {
 					Source:     e.source,
 					Options:    e.options,
 				}
-				t.log.Infof("filesystem unmounted: %s (type=%s, source=%s)", e.mountPoint, e.fsType, e.source)
+				t.log.Debugf("filesystem unmounted: %s (type=%s, source=%s)", e.mountPoint, e.fsType, e.source)
 				t.publisher.Pub(msg, t.labelLocalhost)
 			}
 		}

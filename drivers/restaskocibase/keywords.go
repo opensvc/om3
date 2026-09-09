@@ -28,6 +28,14 @@ var (
 			Text:     keywords.NewText(fs, "text/kw/hostname"),
 		},
 		{
+			Attr:      "DNSExtra",
+			Converter: converters.List,
+			Example:   "1.1.1.1 8.8.8.8",
+			Option:    "dns",
+			Scopable:  true,
+			Text:      keywords.NewText(fs, "text/kw/dns"),
+		},
+		{
 			Aliases:   []string{},
 			Attr:      "DNSSearch",
 			Converter: converters.List,

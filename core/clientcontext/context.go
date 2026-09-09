@@ -5,9 +5,6 @@ import (
 	"errors"
 	"fmt"
 	"os"
-	"strings"
-
-	"sigs.k8s.io/yaml"
 
 	"github.com/opensvc/om3/v3/core/env"
 	"github.com/opensvc/om3/v3/util/duration"
@@ -82,11 +79,17 @@ func IsSet() bool {
 
 func Load() (config, error) {
 	var errs error
-	var cfg config
+	cfg := config{
+		// A configuration nobody has written yet is an empty one, not a
+		// broken one: the first cluster, user or context has to be addable to
+		// it.
+		Clusters: make(map[string]Cluster),
+		Users:    make(map[string]User),
+		Contexts: make(map[string]Relation),
+	}
 	filenames := []string{
 		ConfigFilename,
 		ConfigFilename + ".json",
-		ConfigFilename + ".yaml",
 	}
 	for _, filename := range filenames {
 		filename, _ := homedir.Expand(filename)
@@ -98,66 +101,15 @@ func Load() (config, error) {
 }
 
 func loadFile(name string, cfg *config) error {
-	var (
-		tryJSON, tryYAML bool
-		this             config
-	)
+	var this config
 	b, err := os.ReadFile(name)
 	if errors.Is(err, os.ErrNotExist) {
 		return nil
 	} else if err != nil {
 		return err
 	}
-	decodeJSON := func() error {
-		if err := json.Unmarshal(b, &this); err != nil {
-			return fmt.Errorf("json: %w", err)
-		}
-		return nil
-	}
-	decodeYAML := func() error {
-		if err := yaml.Unmarshal(b, &this); err != nil {
-			return fmt.Errorf("yaml: %w", err)
-		}
-		return nil
-	}
-	decode := func() error {
-		var errs error
-		if strings.HasSuffix(name, ".json") {
-			tryJSON = true
-		} else if strings.HasSuffix(name, ".yaml") {
-			tryYAML = true
-		} else {
-			tryJSON = true
-			tryYAML = true
-		}
-
-		if tryJSON {
-			if err := decodeJSON(); err == nil {
-				return nil
-			} else {
-				errs = errors.Join(errs, err)
-			}
-		}
-		if tryYAML {
-			if err := decodeYAML(); err == nil {
-				return nil
-			} else {
-				errs = errors.Join(errs, err)
-			}
-		}
-		return fmt.Errorf("could not decode %s: %w", name, errs)
-	}
-	if err := decode(); err != nil {
-		return err
-	}
-	if cfg.Clusters == nil {
-		cfg.Clusters = make(map[string]Cluster)
-	}
-	if cfg.Users == nil {
-		cfg.Users = make(map[string]User)
-	}
-	if cfg.Contexts == nil {
-		cfg.Contexts = make(map[string]Relation)
+	if err := json.Unmarshal(b, &this); err != nil {
+		return fmt.Errorf("could not decode %s: %w", name, err)
 	}
 	for k, v := range this.Clusters {
 		cfg.Clusters[k] = v

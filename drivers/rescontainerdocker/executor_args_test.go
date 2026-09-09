@@ -78,7 +78,6 @@ func TestExecutorArg_RunArgsBase(t *testing.T) {
 			},
 			expected: []string{
 				"container", "run", "--name", "foo.id1",
-				"--dns-option", "ndots:2", "--dns-option", "edns0", "--dns-option", "use-vc",
 				"--net", "none",
 			},
 		},
@@ -92,7 +91,6 @@ func TestExecutorArg_RunArgsBase(t *testing.T) {
 			},
 			expected: []string{
 				"container", "run", "--name", "foo.id1",
-				"--dns-option", "ndots:2", "--dns-option", "edns0", "--dns-option", "use-vc",
 				"--net", "none",
 			},
 		},
@@ -120,7 +118,6 @@ func TestExecutorArg_RunArgsBase(t *testing.T) {
 				"container", "run", "--name", "foo.id1",
 				"--hostname", "node1",
 				"--privileged",
-				"--dns-option", "ndots:2", "--dns-option", "edns0", "--dns-option", "use-vc",
 				"--net", "netValue1",
 				"--detach",
 				"--newOpt1", "newOpt1Value",
@@ -148,7 +145,6 @@ func TestExecutorArg_RunArgsBase(t *testing.T) {
 				"container", "run", "--name", "foo.id1",
 				"--hostname", "node1",
 				"--privileged",
-				"--dns-option", "ndots:2", "--dns-option", "edns0", "--dns-option", "use-vc",
 				"--newOpt1", "newOpt1Value",
 				"newOpt2",
 				"--net", "none",

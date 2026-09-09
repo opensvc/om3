@@ -1,0 +1,10 @@
+The whitespace-separated list of nameservers to add to the resolver of the
+container, after the nameservers of the cluster.
+
+om writes the `/etc/resolv.conf` of the container itself and mounts it, so the
+`--dns` argument of the container engine is not used and one set in `run_args`
+is dropped.
+
+A resolver reads the first three nameservers of a file and ignores the rest, so
+a cluster already naming three leaves no room here, and the ones dropped are
+named in a warning at start.

@@ -4,13 +4,13 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/anmitsu/go-shlex"
 	"github.com/labstack/echo/v4"
 
-	"github.com/opensvc/om3/v3/core/datarecv"
 	"github.com/opensvc/om3/v3/core/keyop"
+	"github.com/opensvc/om3/v3/core/keyoprbac"
 	"github.com/opensvc/om3/v3/core/naming"
 	"github.com/opensvc/om3/v3/core/object"
+	"github.com/opensvc/om3/v3/core/xconfig"
 	"github.com/opensvc/om3/v3/daemon/rbac"
 	"github.com/opensvc/om3/v3/util/key"
 )
@@ -30,11 +30,16 @@ func configRbac(ctx echo.Context, p naming.Path, body []byte) error {
 	if grants.HasGrant(rbac.GrantRoot) {
 		return nil
 	}
+	return configRbacKeys(grants, cfg)
+}
 
+// configRbacKeys checks every keyword of a configuration against the policy.
+func configRbacKeys(grants rbac.Grants, cfg *xconfig.T) error {
 	// Iterate through all sections in the config
 	for _, section := range cfg.SectionStrings() {
 		// Get all keys in this section
 		keys := cfg.Keys(section)
+		set := sectionSetter(keys)
 		for _, option := range keys {
 			k := key.New(section, option)
 			// Create a key operation for this key
@@ -45,11 +50,11 @@ func configRbac(ctx echo.Context, p naming.Path, body []byte) error {
 			kop := keyop.T{
 				Key:   k,
 				Op:    keyop.Set,
-				Value: fmt.Sprint(v),
+				Value: configValue(v),
 				Index: 0,
 			}
 			// Validate this key operation against RBAC rules
-			if err := keyopRbac(grants, kop); err != nil {
+			if err := keyopRbac(grants, kop, set); err != nil {
 				return err
 			}
 		}
@@ -117,160 +122,54 @@ func assertRole(ctx echo.Context, roles ...rbac.Role) (bool, error) {
 	return true, nil
 }
 
-func lineHasLocalSource(words []string) bool {
-	var word string
-	for {
-		word, words = datarecv.Pop(words)
-		if word == "" {
-			break
-		}
-		switch word {
-		case "source":
-			word, words = datarecv.Pop(words)
-			if !strings.HasPrefix(word, "http://") && !strings.HasPrefix(word, "https://") {
-				return true
-			}
-		}
-	}
-	return false
-}
-
-func textHasLocalSource(s string) bool {
-	text, _ := shlex.Split(s, true)
-	for _, line := range datarecv.Split(text) {
-		if lineHasLocalSource(line) {
-			return true
-		}
-	}
-	return false
-}
-
-func isActionTrigger(s string) bool {
-	switch s {
-	case "blocking_post_provision":
-	case "blocking_post_run":
-	case "blocking_post_start":
-	case "blocking_post_stop":
-	case "blocking_post_unprovision":
-
-	case "blocking_pre_provision":
-	case "blocking_pre_run":
-	case "blocking_pre_start":
-	case "blocking_pre_stop":
-	case "blocking_pre_unprovision":
-
-	case "post_provision":
-	case "post_run":
-	case "post_start":
-	case "post_stop":
-	case "post_unprovision":
-
-	case "pre_provision":
-	case "pre_run":
-	case "pre_start":
-	case "pre_stop":
-	case "pre_unprovision":
-
-	default:
-		return false
-	}
-	return true
-}
-
-func keyopRbac(grants rbac.Grants, op keyop.T) error {
-	option := op.Key.Option
-
-	// Strip the scoping suffix
-	before, _, found := strings.Cut(option, "@")
-	if found {
-		option = before
-	}
-
-	if isActionTrigger(option) {
-		return fmt.Errorf("denied: %s: triggers requires the root grant", op)
-	}
-
-	drvGroup := strings.Split(op.Key.Section, "#")[0]
-	switch drvGroup {
-	case "task":
-		switch option {
-		case "type":
-			switch op.Value {
-			case "oci", "docker", "podman":
-			default:
-				return fmt.Errorf("denied: %s: type requires the root grant", op)
-			}
-		case "run_args":
-			return fmt.Errorf("denied: %s: requires the root grant", op)
-		}
-	case "container":
-		switch option {
-		case "type":
-			switch op.Value {
-			case "oci", "docker", "podman":
-			default:
-				return fmt.Errorf("denied: %s: type requires the root grant", op)
-			}
-		case "volume_mounts":
-			for _, e := range strings.Fields(op.Value) {
-				if strings.HasPrefix(e, "_") || strings.Contains(e, "/../") || strings.HasPrefix(e, "../") || strings.HasSuffix(e, "../") {
-					return fmt.Errorf("denied: %s: host path mounts in container require the root grant", op)
-				}
-			}
-		case "run_args":
-			return fmt.Errorf("denied: %s: requires the root grant", op)
-		}
-	case "volume":
-		switch option {
-		case "install":
-			if textHasLocalSource(op.Value) {
-				return fmt.Errorf("denied: %s: server-local source uri requires the root grant", op)
-			}
-		}
-	case "fs":
-		switch option {
-		case "type":
-			switch op.Value {
-			case "flag":
-			default:
-				return fmt.Errorf("denied: %s: type requires the root grant", op)
-			}
-		}
-	case "ip":
-		switch option {
-		case "type":
-			switch op.Value {
-			case "cni":
-			default:
-				return fmt.Errorf("denied: %s: type requires the root grant", op)
-			}
-		}
-	case "DEFAULT":
-		switch option {
-		case "priority":
-			// Priorities have cross-namespaces consequences, so require GrantRoot or a dedicated GrantPrioritizer
-			if !grants.HasGrant(rbac.GrantPrioritizer) {
-				return fmt.Errorf("denied: %s: requires the prioritizer grant", op)
-			}
-		case "monitor_action":
-			switch op.Value {
-			case "switch", "freezestop", "none":
-			default:
-				return fmt.Errorf("denied: %s: requires the root grant", op)
-			}
-		case "pre_monitor_action":
-			return fmt.Errorf("denied: %s: requires the root grant", op)
-
-		}
-	case "env", "labels":
-		// allowed
-	default:
-		return fmt.Errorf("denied: %s: this driver group requires the root grant", op)
+// keyopRbac refuses a keyword operation the grants of the user are not enough
+// for.
+//
+// What is refused, and why, is the policy in core/keyoprbac, which the keyword
+// documentation reads too. Here it is only turned into the error the api
+// returns, naming the operation it is about.
+func keyopRbac(grants rbac.Grants, op keyop.T, set keyoprbac.Section) error {
+	if err := keyoprbac.Denied(grants, op.Key.Section, op.Key.Option, op.Value, set); err != nil {
+		return fmt.Errorf("denied: %s: %w", op, err)
 	}
 	return nil
 }
 
-// hasRoleGuestOn checks if the given `grants` contains the roles `guest`, `operator` or `admin` for the specified `namespace`.
+// configValue renders an evaluated keyword value the way the configuration
+// spells it, which is what the policy reads.
+//
+// Evaluating a keyword returns it converted, and a converted list is a
+// []string that fmt prints inside brackets. Handing the policy "[_/etc:/etc]"
+// where the configuration says "_/etc:/etc" gives it a value that matches
+// neither a list of allowed values nor a shape it refuses, so a rule about
+// the value would let through exactly what it exists to stop.
+func configValue(v any) string {
+	switch value := v.(type) {
+	case []string:
+		return strings.Join(value, " ")
+	default:
+		return fmt.Sprint(v)
+	}
+}
+
+// sectionSetter answers whether an option is set in a section, from the keys
+// the section holds.
+//
+// A key scoped to a node is the same keyword as an unscoped one, and a config
+// naming an address only on a peer node names it here too: this reads the keys
+// as written rather than as evaluated for this node, so a scope is not a way
+// around a rule about the setup.
+func sectionSetter(keys []string) keyoprbac.Section {
+	set := make(map[string]bool, len(keys))
+	for _, option := range keys {
+		option, _, _ = strings.Cut(option, "@")
+		set[option] = true
+	}
+	return func(option string) bool {
+		return set[option]
+	}
+}
+
 func hasRoleGuestOn(grants rbac.Grants, namespace string) bool {
 	return grants.AssertRoleOn(namespace, rbac.RoleGuest, rbac.RoleOperator, rbac.RoleAdmin)
 }

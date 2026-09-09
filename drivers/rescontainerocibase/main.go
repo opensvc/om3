@@ -65,6 +65,7 @@ type (
 		User            string         `json:"user"`
 		Command         []string       `json:"command"`
 		DNS             []string       `json:"dns"`
+		DNSExtra        []string       `json:"dns_extra"`
 		DNSSearch       []string       `json:"dns_search"`
 		RunArgs         []string       `json:"run_args"`
 		Entrypoint      []string       `json:"entrypoint"`

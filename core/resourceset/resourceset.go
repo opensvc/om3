@@ -185,6 +185,14 @@ func (t T) registerResourcesetPG(pgMgr *pg.Mgr) {
 	}
 }
 
+// isStatusPass reports whether a pass only reads the state of the resources.
+//
+// Such a pass changes nothing, so the resources are configured once before it
+// starts rather than one at a time as it goes.
+func isStatusPass(desc string) bool {
+	return desc == "status"
+}
+
 func (t T) Do(ctx context.Context, l ResourceLister, barrier, desc string, fn DoFunc) (hasHitBarrier bool, err error) {
 	rsetResources := t.Resources()
 	resources := l.Resources().Intersection(rsetResources)
@@ -193,7 +201,7 @@ func (t T) Do(ctx context.Context, l ResourceLister, barrier, desc string, fn Do
 		resources.Reverse()
 	}
 	pgMgr := pg.FromContext(ctx)
-	if desc != "status" && actioncontext.Props(ctx).PG {
+	if !isStatusPass(desc) && actioncontext.Props(ctx).PG {
 		t.registerResourcesetPG(pgMgr)
 	}
 	if t.Parallel {
@@ -226,7 +234,10 @@ func (t T) doParallel(ctx context.Context, l ResourceLister, resources resource.
 	do := func(q chan<- result, r resource.Driver) {
 		var err error
 		c := make(chan error, 1)
-		if err = l.ReconfigureResource(r); err == nil {
+		if isStatusPass(desc) {
+			// Configured once before the pass started.
+			c <- fn(ctx, r)
+		} else if err = l.ReconfigureResource(r); err == nil {
 			c <- fn(ctx, r)
 		}
 		select {
@@ -313,8 +324,11 @@ func (t T) doSerial(ctx context.Context, l ResourceLister, resources resource.Dr
 		if rid == barrier {
 			hasHitBarrier = true
 		}
-		if err := l.ReconfigureResource(r); err != nil {
-			r.SetConfigurationError(err)
+		if !isStatusPass(desc) {
+			// A status pass configured its resources once before it started.
+			if err := l.ReconfigureResource(r); err != nil {
+				r.SetConfigurationError(err)
+			}
 		}
 		err := fn(ctx, r)
 		if err == nil {

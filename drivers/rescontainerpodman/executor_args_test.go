@@ -142,7 +142,7 @@ func TestExecutorArg_RunArgsBase(t *testing.T) {
 			hasNotOptions: []string{"--dns", "--dns-opt", "--dns-search"},
 		},
 
-		"has dns options when --net is not 'none' or 'container:...'": {
+		"no dns options when --net names a network": {
 			res: &T{
 				BT: rescontainerocibase.BT{
 					T: resource.T{ResourceID: &resourceid.T{
@@ -158,12 +158,12 @@ func TestExecutorArg_RunArgsBase(t *testing.T) {
 			expected: []string{
 				"container", "run", "--name", "foo.id1",
 				"--hostname", "node1",
-				"--dns-opt", "ndots:2", "--dns-opt", "edns0", "--dns-opt", "use-vc",
 				"--net", "netXX",
 			},
+			hasNotOptions: []string{"--dns", "--dns-opt", "--dns-search"},
 		},
 
-		"don't add --net and defines dns options when no netns and no '--net' run_args": {
+		"don't add --net when no netns and no '--net' run_args": {
 			res: &T{
 				BT: rescontainerocibase.BT{
 					T:    resource.T{ResourceID: &resourceid.T{Name: "id1"}},
@@ -172,9 +172,32 @@ func TestExecutorArg_RunArgsBase(t *testing.T) {
 			},
 			expected: []string{
 				"container", "run", "--name", "foo.id1",
-				"--dns-opt", "ndots:2", "--dns-opt", "edns0", "--dns-opt", "use-vc",
 			},
-			hasNotOptions: []string{"--net"},
+			hasNotOptions: []string{"--net", "--dns", "--dns-opt", "--dns-search"},
+		},
+
+		// om writes the resolver of the container, so a resolver configuration
+		// in run_args is a second one, in a place that no longer decides
+		// anything. It is dropped rather than passed on.
+		"drop the resolver options of run_args": {
+			res: &T{
+				BT: rescontainerocibase.BT{
+					T:    resource.T{ResourceID: &resourceid.T{Name: "id1"}},
+					Path: p,
+					RunArgs: []string{
+						"--dns", "8.8.4.4",
+						"--dns-opt", "ndots:5",
+						"--dns-option", "edns0",
+						"--dns-search", "other.example",
+						"--memory", "1g",
+					},
+				},
+			},
+			expected: []string{
+				"container", "run", "--name", "foo.id1",
+				"--memory", "1g",
+			},
+			hasNotOptions: []string{"--dns", "--dns-opt", "--dns-option", "--dns-search"},
 		},
 	}
 	for name, tc := range cases {

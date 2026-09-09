@@ -32,6 +32,14 @@ var (
 			Text:     keywords.NewText(fs, "text/kw/hostname"),
 		},
 		{
+			Option:    "dns",
+			Attr:      "DNSExtra",
+			Converter: converters.List,
+			Scopable:  true,
+			Example:   "1.1.1.1 8.8.8.8",
+			Text:      keywords.NewText(fs, "text/kw/dns"),
+		},
+		{
 			Option:    "dns_search",
 			Attr:      "DNSSearch",
 			Converter: converters.List,

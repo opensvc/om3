@@ -43,8 +43,6 @@ func (t *T) executorArg() *ExecutorArg {
 	return &ExecutorArg{
 		ExecutorArg: &rescontainerocibase.ExecutorArg{
 			BT: &t.BT,
-
-			RunArgsDNSOptionOption: "--dns-option",
 		},
 		exe: "docker",
 	}

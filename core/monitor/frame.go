@@ -8,6 +8,7 @@ import (
 	"github.com/fatih/color"
 
 	"github.com/opensvc/om3/v3/core/clusterdump"
+	"github.com/opensvc/om3/v3/core/naming"
 	"github.com/opensvc/om3/v3/util/tabwriter"
 )
 
@@ -93,6 +94,10 @@ type (
 			separator   string
 			columns     int
 			paths       []string
+
+			// nodeHeaders is the nodenames as the column headers show them,
+			// in the order of the cluster nodes.
+			nodeHeaders []string
 		}
 	}
 )
@@ -139,6 +144,9 @@ func (f *Frame) Render() string {
 
 func (f *Frame) scanData() {
 	f.info.nodeCount = len(f.Current.Cluster.Config.Nodes)
+	// A column is as wide as its header, and the domain the nodes share says
+	// nothing that the other columns do not say too.
+	f.info.nodeHeaders = naming.Abbrev(f.Current.Cluster.Config.Nodes)
 	f.info.columns = staticCols + f.info.nodeCount
 	f.info.empty = strings.Repeat("\t", f.info.columns)
 	f.info.emptyNodes = strings.Repeat("\t", f.info.nodeCount)
@@ -162,7 +170,7 @@ func (f *Frame) scanData() {
 
 func (f Frame) title(s string) string {
 	s += "\t\t\t"
-	for _, v := range f.Current.Cluster.Config.Nodes {
+	for _, v := range f.info.nodeHeaders {
 		s += "\t" + bold(v)
 	}
 	return s
