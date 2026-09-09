@@ -1478,13 +1478,25 @@ var (
 		Text:     keywords.NewText(fs, "text/kw/node/array.pure.issuer"),
 		Types:    []string{"pure"},
 	}
-	kwNodeArrayPureSecret = keywords.Keyword{
-		Example:  naming.NsSys + "/sec/array1",
-		Option:   "secret",
+	kwNodeArrayPurePrivateKey = keywords.Keyword{
+		Example:  "from " + naming.NsSys + "/sec/array1 key private_key",
+		Option:   "private_key",
 		Required: true,
 		Section:  "array",
-		Text:     keywords.NewText(fs, "text/kw/node/array.pure.secret"),
+		Text:     keywords.NewText(fs, "text/kw/node/array.pure.private_key"),
 		Types:    []string{"pure"},
+	}
+	// kwNodeArrayPureSecret named the secret holding the key, and had no way
+	// of naming the key inside it: it was read under the name "private_key"
+	// and no other. The keyword replacing it names both.
+	kwNodeArrayPureSecret = keywords.Keyword{
+		Deprecated: "3.0.0",
+		Example:    naming.NsSys + "/sec/array1",
+		Option:     "secret",
+		ReplacedBy: "private_key",
+		Section:    "array",
+		Text:       keywords.NewText(fs, "text/kw/node/array.pure.secret"),
+		Types:      []string{"pure"},
 	}
 	kwNodeArrayPureUsername = keywords.Keyword{
 		Example:  "opensvc",
@@ -1902,6 +1914,7 @@ var (
 		&kwNodeArrayInsecure,
 		&kwNodeArrayPureIssuer,
 		&kwNodeArrayPureSecret,
+		&kwNodeArrayPurePrivateKey,
 		&kwNodeArrayPureUsername,
 		&kwNodeArrayPasswordRequired,
 		&kwNodeArrayPasswordOptional,

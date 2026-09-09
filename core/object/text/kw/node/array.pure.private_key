@@ -1,0 +1,11 @@
+The private key the login jwt is signed with, expressed as a reference to a key
+of a secret of the ``system`` namespace.
+
+The long form names the key inside the secret::
+
+    private_key = from system/sec/array1 key private_key
+
+The short form names only the secret, and reads the key named ``private_key``
+in it::
+
+    private_key = system/sec/array1

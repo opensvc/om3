@@ -349,16 +349,31 @@ func (t Array) insecure() bool {
 	return t.Config().GetBool(t.Key("insecure"))
 }
 
+// privateKey returns the key the login token is signed with.
+//
+// The keyword naming it is "private_key", which names both the secret holding
+// the key and the key inside it: "private_key = from system/sec/array1 key
+// private_key". Naming only the secret reads the key called "private_key" in
+// it.
+//
+// The keyword it replaced, "secret", named the secret alone and could say
+// nothing about which key of it to read. It is read when "private_key" says
+// nothing, so a configuration written before the replacement keeps working.
 func (t *Array) privateKey() ([]byte, error) {
-	var km datarecv.KeyMeta
-	s, err := t.Config().GetStringStrict(t.Key("private_key"))
-	if err != nil {
-		return nil, err
+	var (
+		km  datarecv.KeyMeta
+		ref string
+	)
+	for _, option := range []string{"private_key", "secret"} {
+		if s, err := t.Config().GetStringStrict(t.Key(option)); err == nil && s != "" {
+			ref = s
+			break
+		}
 	}
-	// Parse key reference with backward compatibility
-	// New format: private_key = from system/sec/array1 key private_key
-	// Old format: private_key = system/sec/array1 (uses default key "private_key")
-	km, err = datarecv.ParseKeyMetaRelWithFallback(s, naming.NsSys, "private_key")
+	if ref == "" {
+		return nil, fmt.Errorf("%s: the private_key keyword must name the key the login token is signed with, as in \"from %s/sec/array1 key private_key\"", t.Name(), naming.NsSys)
+	}
+	km, err := datarecv.ParseKeyMetaRelWithFallback(ref, naming.NsSys, "private_key")
 	if err != nil {
 		return nil, err
 	}
