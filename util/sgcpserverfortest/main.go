@@ -10,13 +10,12 @@ import (
 	"os"
 	"slices"
 	"strings"
+	"sync"
 	"sync/atomic"
 
 	"gopkg.in/yaml.v3"
 
 	"github.com/google/uuid"
-
-	"github.com/opensvc/om3/v3/util/sgcpdnstesthelper"
 )
 
 type (
@@ -46,6 +45,23 @@ type (
 	}
 
 	Users map[string]User
+
+	Alias struct {
+		ID     string `json:"id"`
+		Name   string `json:"name"`
+		Target string `json:"target"`
+		FQDN   string `json:"fqdn"`
+		ZoneID string `json:"zoneId"`
+	}
+
+	CgInfo struct {
+		UUID             string         `json:"uuid"`
+		Name             string         `json:"name"`
+		AvailabilityZone string         `json:"availabilityZone"`
+		Status           string         `json:"status"`
+		GeoRedundancy    map[string]any `json:"georedundancy"`
+		Replication      map[string]any `json:"replication"`
+	}
 )
 
 var (
@@ -55,18 +71,42 @@ var (
 		"1ab7d139-dd35-4f9c-ad82-cd6a93675cfd": {
 			UUID:               "1ab7d139-dd35-4f9c-ad82-cd6a93675cfd",
 			ConsistencyGroupID: "12",
-			NFSClients:         nil,
+			NFSClients:         []NfsClient{},
 			Status:             "online",
 		},
 	}
 
 	createdTokenCount atomic.Int64
 
-	dnsDB  *sgcpdnstesthelper.DB
-	dnsApi *sgcpdnstesthelper.Api
+	aliasMu    sync.Mutex
+	aliasStore = map[string]Alias{}
+
+	cgStore = map[string]*CgInfo{
+		"1ab7d139-dd35-4f9c-ad82-cd6a93675cfd": {
+			UUID:             "1ab7d139-dd35-4f9c-ad82-cd6a93675cfd",
+			Name:             "test-cg",
+			AvailabilityZone: "az2",
+			Status:           "passive",
+			GeoRedundancy:    map[string]any{},
+			Replication:      map[string]any{},
+		},
+	}
+	cgMu sync.Mutex
+
+	permissiveAuth = false
 )
 
+func loggingMiddleware(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		slog.Info("HTTP request", "method", r.Method, "path", r.URL.Path, "query", r.URL.RawQuery)
+		next.ServeHTTP(w, r)
+	})
+}
+
 func assertAuth(desc string, w http.ResponseWriter, r *http.Request, scope ...string) bool {
+	if permissiveAuth {
+		return true
+	}
 	auth := r.Header.Get("Authorization")
 	for _, s := range scope {
 		if !strings.Contains(auth, s) {
@@ -164,7 +204,7 @@ func deleteFileClient(w http.ResponseWriter, r *http.Request) {
 	http.Error(w, fmt.Sprintf("no such fs %s", id), http.StatusNotFound)
 }
 
-// ========== DNS handlers (new API) ==========
+// ========== DNS handlers ==========
 func dnsListAliases(w http.ResponseWriter, r *http.Request) {
 	zoneID := r.PathValue("zoneID")
 	name := r.URL.Query().Get("name")
@@ -174,15 +214,25 @@ func dnsListAliases(w http.ResponseWriter, r *http.Request) {
 	if !assertAuth(ListDnsAliases, w, r, "account1:sgcp:dns:read") {
 		return
 	}
-	_, _, code, data, err := dnsApi.GetAliases(r.Context(), zoneID, name, id)
-	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-		return
+
+	aliasMu.Lock()
+	defer aliasMu.Unlock()
+	var out []Alias
+	for _, a := range aliasStore {
+		if a.ZoneID != zoneID {
+			continue
+		}
+		if name != "" && a.Name != name {
+			continue
+		}
+		if id != "" && a.ID != id {
+			continue
+		}
+		out = append(out, a)
 	}
-	w.WriteHeader(code)
-	if data != nil {
-		w.Write(data)
-	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusOK)
+	json.NewEncoder(w).Encode(map[string]any{"cnameRecords": out})
 }
 
 func dnsCreateAlias(w http.ResponseWriter, r *http.Request) {
@@ -197,16 +247,27 @@ func dnsCreateAlias(w http.ResponseWriter, r *http.Request) {
 		TTL    int    `json:"ttl"`
 	}
 	if err := json.NewDecoder(r.Body).Decode(&payload); err != nil {
+		slog.Info("POST /dns/zones/{zoneID}/cname-records invalid JSON", "err", err)
 		http.Error(w, fmt.Sprintf("invalid JSON: %s", err), http.StatusBadRequest)
 		return
 	}
-	alias, err := dnsApi.CreateAlias(r.Context(), zoneID, payload.Name, payload.Target)
-	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-		return
+	slog.Info("POST /dns/zones/{zoneID}/cname-records", "name", payload.Name, "target", payload.Target)
+
+	id := uuid.New().String()
+	a := Alias{
+		ID:     id,
+		Name:   payload.Name,
+		Target: payload.Target,
+		FQDN:   fmt.Sprintf("%s.%s", payload.Name, zoneID),
+		ZoneID: zoneID,
 	}
+	aliasMu.Lock()
+	aliasStore[id] = a
+	aliasMu.Unlock()
+
+	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusCreated)
-	json.NewEncoder(w).Encode(alias)
+	json.NewEncoder(w).Encode(a)
 }
 
 func dnsGetAlias(w http.ResponseWriter, r *http.Request) {
@@ -216,12 +277,14 @@ func dnsGetAlias(w http.ResponseWriter, r *http.Request) {
 	if !assertAuth(GetDnsAlias, w, r, "account1:sgcp:dns:read") {
 		return
 	}
-	// Use search by id
-	a, ok := dnsApi.DB.Search(zoneID, "", id)
-	if !ok {
+	aliasMu.Lock()
+	defer aliasMu.Unlock()
+	a, ok := aliasStore[id]
+	if !ok || a.ZoneID != zoneID {
 		w.WriteHeader(http.StatusNotFound)
 		return
 	}
+	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusOK)
 	json.NewEncoder(w).Encode(a)
 }
@@ -241,14 +304,20 @@ func dnsUpdateAlias(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, fmt.Sprintf("invalid JSON: %s", err), http.StatusBadRequest)
 		return
 	}
-	// name is ignored; the DB entry is found by id
-	updated, err := dnsApi.UpdateAlias(r.Context(), zoneID, id, "", payload.Target)
-	if err != nil {
-		http.Error(w, err.Error(), http.StatusNotFound)
+	aliasMu.Lock()
+	defer aliasMu.Unlock()
+	a, ok := aliasStore[id]
+	if !ok || a.ZoneID != zoneID {
+		w.WriteHeader(http.StatusNotFound)
 		return
 	}
+	if payload.Target != "" {
+		a.Target = payload.Target
+	}
+	aliasStore[id] = a
+	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusOK)
-	json.NewEncoder(w).Encode(updated)
+	json.NewEncoder(w).Encode(a)
 }
 
 func dnsDeleteAlias(w http.ResponseWriter, r *http.Request) {
@@ -258,36 +327,98 @@ func dnsDeleteAlias(w http.ResponseWriter, r *http.Request) {
 	if !assertAuth(DeleteDnsAlias, w, r, "account1:sgcp:dns:read", "account1:sgcp:dns:write") {
 		return
 	}
-	err := dnsApi.DeleteAlias(r.Context(), zoneID, id)
-	if err != nil {
-		http.Error(w, err.Error(), http.StatusNotFound)
+	aliasMu.Lock()
+	defer aliasMu.Unlock()
+	a, ok := aliasStore[id]
+	if !ok || a.ZoneID != zoneID {
+		w.WriteHeader(http.StatusNotFound)
 		return
 	}
+	delete(aliasStore, id)
 	w.WriteHeader(http.StatusNoContent)
 }
 
-// ========== CG handlers (stub) ==========
+// ========== CG handlers ==========
 func getCG(w http.ResponseWriter, r *http.Request) {
 	id := r.PathValue("id")
 	slog.Info(GetCG, "id", id)
 	if !assertAuth(GetCG, w, r, "account1:sgcp:files:read") {
 		return
 	}
-	// A group the driver can read: "ready" and "passive" are the states it
-	// settles in, "online" was none of them.
+	cgMu.Lock()
+	defer cgMu.Unlock()
+	cg, ok := cgStore[id]
+	if !ok {
+		w.WriteHeader(http.StatusNotFound)
+		return
+	}
 	w.Header().Set("Content-Type", "application/json")
 	setHeader(w, GetCG, http.StatusOK)
-	json.NewEncoder(w).Encode(map[string]any{
-		"uuid":             id,
-		"name":             "test-cg",
-		"availabilityZone": "region1-az1",
-		"status":           "ready",
-	})
+	json.NewEncoder(w).Encode(cg)
+}
+
+func patchCG(w http.ResponseWriter, r *http.Request) {
+	id := r.PathValue("id")
+	slog.Info(PatchCG, "id", id)
+	if !assertAuth(PatchCG, w, r, "account1:sgcp:files:read", "account1:sgcp:files:write") {
+		return
+	}
+	cgMu.Lock()
+	defer cgMu.Unlock()
+	cg, ok := cgStore[id]
+	if !ok {
+		w.WriteHeader(http.StatusNotFound)
+		return
+	}
+	var payload struct {
+		Operation           string         `json:"operation"`
+		OperationParameters map[string]any `json:"operationParameters"`
+	}
+	if err := json.NewDecoder(r.Body).Decode(&payload); err != nil {
+		http.Error(w, "invalid JSON", http.StatusBadRequest)
+		return
+	}
+	slog.Info("PATCH /file/cg/{id} operation", "operation", payload.Operation)
+	switch payload.Operation {
+	case "switchover":
+		if az, ok := payload.OperationParameters["availabilityZone"].(string); ok {
+			cg.AvailabilityZone = az
+		}
+		cg.Status = "ready"
+	case "failover":
+		if az, ok := payload.OperationParameters["availabilityZone"].(string); ok {
+			cg.AvailabilityZone = az
+		}
+		cg.Status = "ready"
+	case "resume-replication":
+		cg.Status = "ready"
+	default:
+		w.WriteHeader(http.StatusBadRequest)
+		return
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusAccepted)
+	json.NewEncoder(w).Encode(map[string]string{"status": "accepted"})
 }
 
 // ========== Auth ==========
 func postAuthToken(w http.ResponseWriter, r *http.Request) {
 	slog.Info(PostAuth)
+	if permissiveAuth {
+		requestedScopes := []string{
+			"account1:sgcp:files:read",
+			"account1:sgcp:files:write",
+			"account1:sgcp:dns:read",
+			"account1:sgcp:dns:write",
+		}
+		count := createdTokenCount.Add(1)
+		body := Token{AccessToken: fmt.Sprintf("%v", requestedScopes)}
+		setHeader(w, PostAuth, http.StatusOK)
+		slog.Info(PostAuth, "createdCount", count, "createdToken", requestedScopes)
+		json.NewEncoder(w).Encode(body)
+		return
+	}
+
 	auth := r.Header.Get("Authorization")
 	authB, err := base64.StdEncoding.DecodeString(strings.TrimPrefix(auth, "Basic "))
 	if err != nil {
@@ -347,7 +478,8 @@ var (
 	UpdateDnsAlias = "PATCH /dns/zones/{zoneID}/cname-records/{id}"
 	DeleteDnsAlias = "DELETE /dns/zones/{zoneID}/cname-records/{id}"
 
-	GetCG = "GET /file/cg/{id}"
+	GetCG   = "GET /file/cg/{id}"
+	PatchCG = "PATCH /file/cg/{id}"
 
 	PostAuth = "POST /auth/access_token"
 )
@@ -362,8 +494,6 @@ func loadUsers() (*Users, error) {
 	if err := yaml.Unmarshal(data, &u); err != nil {
 		return nil, fmt.Errorf("failed to parse config file %s: %w", configFile, err)
 	}
-	// The client secrets stay out of the output: this reads a file an
-	// operator may well have filled with the credentials of a real account.
 	for userID, user := range u {
 		slog.Info("loaded user", "userID", userID, "clientID", user.ClientID, "scopes", user.Scopes)
 	}
@@ -373,8 +503,11 @@ func loadUsers() (*Users, error) {
 func main() {
 	var err error
 	createdTokenCount.Store(0)
-	dnsDB = sgcpdnstesthelper.NewDB()
-	dnsApi = sgcpdnstesthelper.NewApi(dnsDB)
+
+	if os.Getenv("SGCP_TEST_AUTH_DISABLED") == "1" {
+		permissiveAuth = true
+		slog.Info("Permissive authentication enabled")
+	}
 
 	users, err = loadUsers()
 	if err != nil {
@@ -399,10 +532,19 @@ func main() {
 
 	// CG
 	mux.HandleFunc(GetCG, getCG)
+	mux.HandleFunc(PatchCG, patchCG)
 
 	// Auth
 	mux.HandleFunc(PostAuth, postAuthToken)
 
+	// Default
+	mux.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
+		slog.Info("Unmatched route", "method", r.Method, "path", r.URL.Path)
+		w.WriteHeader(http.StatusNotFound)
+	})
+
+	handler := loggingMiddleware(mux)
+
 	log.Println("Listening on :8000")
-	log.Fatal(http.ListenAndServe(":8000", mux))
+	log.Fatal(http.ListenAndServe(":8000", handler))
 }
