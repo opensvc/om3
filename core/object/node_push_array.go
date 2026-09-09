@@ -3,6 +3,7 @@ package object
 import (
 	"context"
 	"fmt"
+	"strings"
 
 	"github.com/ybbus/jsonrpc"
 
@@ -47,6 +48,12 @@ func (t Node) PushArrays(ctx context.Context, name string) ([]ArrayPush, error) 
 	if err != nil {
 		return nil, err
 	}
+	// The name is the section, with or without its "array#" prefix, because
+	// both spellings reach here: the scheduler names the section it read the
+	// schedule from, an operator usually names the array alone. Node.Array
+	// accepts both already.
+	name = strings.TrimPrefix(name, "array#")
+
 	l := make([]ArrayPush, 0)
 	var errs error
 	for _, item := range t.ListArrays() {
