@@ -2,6 +2,7 @@ package ox
 
 import (
 	"fmt"
+	"os"
 	"strings"
 
 	"github.com/spf13/cobra"
@@ -13,18 +14,23 @@ import (
 )
 
 var (
-	arrayName string
-	cmdArray  = &cobra.Command{
+	cmdArray = &cobra.Command{
 		GroupID: commoncmd.GroupIDSubsystems,
 		Use:     "array",
 		Short:   "manage storage arrays",
 		Long:    ` A array is backend storage provider for pools.`,
-		RunE: func(_ *cobra.Command, args []string) error {
-			return runArray(args)
+		RunE: func(cmd *cobra.Command, args []string) error {
+			return runArray(cmd, args)
 		},
-		FParseErrWhitelist: cobra.FParseErrWhitelist{
-			UnknownFlags: true,
-		},
+
+		// The words and options after "array" are the ones of the driver of
+		// the array they name, and which driver that is is only known once
+		// the array is. They are left untouched here and parsed once, by the
+		// command tree of that driver.
+		//
+		// A global option therefore goes before the "array" word, where the
+		// root command parses it.
+		DisableFlagParsing: true,
 	}
 )
 
@@ -38,16 +44,24 @@ func init() {
 	cmdArray.AddCommand(
 		newCmdArrayList(),
 	)
-	cmdArray.PersistentFlags().StringVar(&arrayName, "array", "", "the section name or index identifying the array")
 }
 
-func runArray(args []string) error {
-	o, err := object.NewCluster(object.WithVolatile(true))
+func runArray(cmd *cobra.Command, args []string) error {
+	arrayName, err := array.NameFromArgs(args)
 	if err != nil {
 		return err
 	}
+	if arrayName == "" {
+		// Nothing names the array whose driver would say what the other words
+		// mean, so there is nothing to hand them to.
+		return cmd.Help()
+	}
 	if !strings.HasPrefix(arrayName, "array#") {
 		arrayName = "array#" + arrayName
+	}
+	o, err := object.NewCluster(object.WithVolatile(true))
+	if err != nil {
+		return err
 	}
 	if !o.Config().HasSectionString(arrayName) {
 		return fmt.Errorf("no section found matching %s in the cluster config", arrayName)
@@ -62,5 +76,12 @@ func runArray(args []string) error {
 	}
 	drv.SetName(arrayName)
 	drv.SetConfig(o.Config())
+
+	if actioner, ok := drv.(array.Actioner); ok {
+		return array.RunActions(cmd.Context(), actioner.Actions(), args, os.Stdout)
+	}
+
+	// A driver that has not declared its actions yet still builds and parses
+	// a command tree of its own.
 	return drv.Run(args)
 }
