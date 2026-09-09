@@ -10,6 +10,7 @@ import (
 	"github.com/opensvc/om3/v3/core/driver"
 	"github.com/opensvc/om3/v3/core/rawconfig"
 	_ "github.com/opensvc/om3/v3/drivers/arrayfreenas"
+	_ "github.com/opensvc/om3/v3/drivers/arrayhds"
 	_ "github.com/opensvc/om3/v3/drivers/arrayhoc"
 	_ "github.com/opensvc/om3/v3/drivers/arraypure"
 	_ "github.com/opensvc/om3/v3/drivers/arraysymmetrix"
