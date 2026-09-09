@@ -80,3 +80,39 @@ carrying the value. A daemon type is published, read back by api clients and by
 the tui, which paints cells of its own: it hands the state over, and the
 renderer draws the icon standing for it.
 
+
+# Drivers
+
+## Name a package of shared driver code so it cannot be read as a driver
+
+Every package directly under `drivers/` is named after the driver it
+implements: `<group><name>`, as in `arrayhp3par` or `resipnetns`. A package
+holding code several drivers share is placed and named by how far it is
+shared:
+
+- Code common to every driver of one group is named after the group alone, as
+  `resip` is, which `resipcni`, `resiphost` and `resipnetns` all read. It stays
+  in `drivers/`.
+- A driver a family embeds is suffixed `base`, as `rescontainerocibase` is,
+  which the docker and podman container and task drivers embed. It stays in
+  `drivers/` too: it is a driver, and the drivers of its family are named after
+  it.
+- Code common to drivers of different groups goes in `drivers/shared/`, named
+  after what it talks to and nothing else: `drivers/shared/hp3par` serves an
+  array driver and a disk driver.
+
+The point of the subdirectory is that a reader scanning `drivers/` sees
+drivers. `drivers/hp3par` sitting between `arrayhp3par` and `resdiskhp3par`
+reads as a driver of a group nobody declared, and `drivers/hp3parhelper` only
+avoids that by spending a word of every call site on saying what the directory
+should have said. Under `drivers/shared/`, the package is free to be named
+`hp3par`, and `hp3par.ParseCSV` reads better than `hp3parhelper.ParseCSV` did.
+
+The split also says something a reader can rely on: `core/driverdb` blank
+imports every package of `drivers/` to register it, and never imports one from
+`drivers/shared/`, because nothing there registers a driver.
+
+## Name a package of test doubles after the package it fakes
+
+A package holding the fakes for `foo` is named `footest`, as the standard
+library names `httptest` and `iotest`. It sits next to `foo`.
