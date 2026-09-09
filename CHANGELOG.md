@@ -780,6 +780,29 @@ Where the password is the value of the `þassword` key in `system/sec/relay-v3`.
 
 * The `om node update ssh keys --node=...` command is deprecated in favor of `o[mx] cluster ssh trust` (configure the trust mesh on all cluster nodes) and `o[mx] node ssh trust` (trust the node's peers)
 
+* New `o[mx] cluster enroll --node <addr> --token-file <path>` command, moving a node from its cluster to another one
+  without a shell on that node.
+
+    The command is run against a node of the target cluster, and posts to the new `POST /cluster/enroll` endpoint. 
+    The token is an access token with the join role, created on the node to enroll: its `ca` claim is the trust anchor for that node certificate, and it authenticates the order the target cluster then posts back to it, which forks a `om cluster join` in the background. Only a token carrying the join role holds that claim, so a root token is not enough and no certificate chain is added to a root-only token.
+
+    The node to enroll must be a single node cluster. Enrolling a node that still has peers is refused with a 
+    409: nothing in the join flow tells them to drop it from their `cluster.nodes`, so they would keep it forever.
+
+    The `--join-addr` gives the location the enrolled node must use to reach the target cluster, for a node that cannot
+    resolve the target nodenames. It is refused when the cluster certificate is not valid for that host, so a mismatch
+    is reported by the command instead of failing later inside the join running on the enrolled node. It defaults to a 
+    name the certificate is valid for.
+
+    The command waits for the enrolled node heartbeat to beat in the target cluster, which is what proves the join
+    completed. Use `--wait=false` to return as soon as the node has accepted the order.
+    Beware, the node is drained: a single node cluster has nowhere to relocate its instances, so they are stopped, stay
+    down, and removed from config.
+
+* The `om cluster join` command accepts `--addr` to reach the `--node` at an explicit location, for a node that cannot
+   resolve the target nodename, and reads the token from the `OSVC_JOIN_TOKEN` environment variable when `--token` is
+   not set, so it never has to appear in the process table.
+
 ### Daemon
 
 * The daemon process name is changed from `/usr/bin/python3 -m opensvc.daemon` to `om daemon run`. Monitoring checks may need to adapt.
