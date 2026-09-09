@@ -13,6 +13,7 @@ import (
 	_ "github.com/opensvc/om3/v3/drivers/arrayhoc"
 	_ "github.com/opensvc/om3/v3/drivers/arraypure"
 	_ "github.com/opensvc/om3/v3/drivers/arraysymmetrix"
+	_ "github.com/opensvc/om3/v3/drivers/arrayxtremio"
 	_ "github.com/opensvc/om3/v3/drivers/pooldirectory"
 	_ "github.com/opensvc/om3/v3/drivers/poolfreenas"
 	_ "github.com/opensvc/om3/v3/drivers/poolhoc"
