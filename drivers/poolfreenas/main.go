@@ -198,7 +198,7 @@ func (t *T) CreateDisk(ctx context.Context, name string, size int64, nodenames [
 			Deduplication: t.dedup(),
 		},
 		InsecureTPC: t.insecureTPC(),
-		Mapping:     paths.Mapping(),
+		Mappings:    paths.MappingList(),
 		LunId:       nil,
 	}
 	drvDisk, err := a.AddDisk(ctx, opt)
