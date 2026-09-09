@@ -3,6 +3,7 @@ package arrayfreenas
 import (
 	"bytes"
 	"context"
+	"crypto/tls"
 	"encoding/base64"
 	"encoding/json"
 	"fmt"
@@ -1007,6 +1008,13 @@ func (t *Array) safeClient(u *url.URL) (*http.Client, error) {
 	c.Timeout = t.timeout()
 	if u.Scheme == "https" {
 		if transport, ok := c.Transport.(*http.Transport); ok {
+			// The transport of the ssrf-safe client carries no tls
+			// configuration: it sets a DialContext and nothing else. Writing
+			// InsecureSkipVerify through the nil one panicked, which is every
+			// call to an https array api.
+			if transport.TLSClientConfig == nil {
+				transport.TLSClientConfig = &tls.Config{}
+			}
 			transport.TLSClientConfig.InsecureSkipVerify = t.insecure()
 			c.Transport = transport
 		}
