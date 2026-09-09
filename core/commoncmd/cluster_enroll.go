@@ -192,7 +192,7 @@ func (t *CmdClusterEnroll) token() (string, error) {
 		if token := os.Getenv(env.JoinTokenVar); token != "" {
 			return token, nil
 		}
-		return "", fmt.Errorf("%w: token is empty: use env %, --token-file or --token", ErrFlagInvalid, env.JoinTokenVar)
+		return "", fmt.Errorf("%w: token is empty: use env %s, --token-file or --token", ErrFlagInvalid, env.JoinTokenVar)
 	}
 }
 
