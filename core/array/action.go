@@ -128,8 +128,21 @@ func (t Input) Changed(name string) bool {
 // and a word nobody declared is refused where it is typed rather than reaching
 // a driver that cannot make sense of it.
 func NewCommand(actions []Action, w io.Writer) (*cobra.Command, error) {
+	return NewCommandAs("array", actions, w)
+}
+
+// NewCommandAs is NewCommand, showing use as the words that reach these
+// actions.
+//
+// The tree of a driver is reached as "om array <name>", which is three words
+// and the name of nothing cobra knows. Use holds one word, because cobra reads
+// the name of the command from it and substitutes that name in the usage line;
+// the display name annotation is what it builds the path of this command and
+// of every command under it from, and it takes all three words.
+func NewCommandAs(use string, actions []Action, w io.Writer) (*cobra.Command, error) {
 	root := &cobra.Command{
 		Use:           "array",
+		Annotations:   map[string]string{cobra.CommandDisplayNameAnnotation: use},
 		Short:         "manage a storage array",
 		SilenceErrors: true,
 		SilenceUsage:  true,
@@ -169,7 +182,14 @@ func NewCommand(actions []Action, w io.Writer) (*cobra.Command, error) {
 // and it is also how something that is not a command line drives one: the
 // arguments are the ones given here, never those of the process.
 func RunActions(ctx context.Context, actions []Action, args []string, w io.Writer) error {
-	root, err := NewCommand(actions, w)
+	return RunActionsAs(ctx, "array", actions, args, w)
+}
+
+// RunActionsAs is RunActions, showing use as the words that reach these
+// actions. A caller reaching a driver through a command line of its own knows
+// them; the tree does not.
+func RunActionsAs(ctx context.Context, use string, actions []Action, args []string, w io.Writer) error {
+	root, err := NewCommandAs(use, actions, w)
 	if err != nil {
 		return err
 	}

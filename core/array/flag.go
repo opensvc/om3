@@ -4,6 +4,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"strings"
 
 	"github.com/spf13/pflag"
 
@@ -66,10 +67,13 @@ const (
 // The options an array driver is likely to need. A driver uses the ones that
 // apply to it, and declares its own for what is genuinely its own.
 var (
+	// FlagArray named the array before the argument did. It is registered on
+	// the command tree of every driver so a command line written for the older
+	// agent still parses, and its usage points at the form to write.
 	FlagArray = Flag{
 		Name:      "array",
 		Shorthand: "a",
-		Usage:     "the section name or index identifying the array",
+		Usage:     "the array to act on, deprecated by the NAME argument",
 		Kind:      String,
 	}
 	FlagBlocksize = Flag{
@@ -202,6 +206,19 @@ func (t Flag) defaultStringSlice() []string {
 		return l
 	}
 	return nil
+}
+
+// NameFromFirstArg returns the array named by the first word of a command
+// line, and the words that follow it.
+//
+// "om array <name> <action>" names the array where a reader expects to find
+// it, before the words saying what to do with it. A first word beginning with
+// a dash is an option and names no array, and neither does no word at all.
+func NameFromFirstArg(args []string) (string, []string) {
+	if len(args) == 0 || strings.HasPrefix(args[0], "-") {
+		return "", args
+	}
+	return args[0], args[1:]
 }
 
 // NameFromArgs returns the array named in a command line, and whether it names

@@ -205,3 +205,68 @@ func TestAskingForHelpStillNamesTheArray(t *testing.T) {
 	require.NoError(t, err)
 	assert.Equal(t, "", name)
 }
+
+// TestNameFromFirstArgReadsTheWordAndNotTheOption covers the extraction of the
+// array named where a reader expects it, before the words saying what to do
+// with it.
+func TestNameFromFirstArgReadsTheWordAndNotTheOption(t *testing.T) {
+	cases := []struct {
+		args     []string
+		name     string
+		expected []string
+	}{
+		{[]string{"freenas", "add", "disk"}, "freenas", []string{"add", "disk"}},
+		{[]string{"array#freenas", "add", "disk"}, "array#freenas", []string{"add", "disk"}},
+
+		// The array alone, which is how the actions of its driver are listed.
+		{[]string{"freenas"}, "freenas", []string{}},
+
+		// An option names no array, whether it is the one that used to name it
+		// or the help.
+		{[]string{"-a", "freenas", "add", "disk"}, "", []string{"-a", "freenas", "add", "disk"}},
+		{[]string{"--array=freenas"}, "", []string{"--array=freenas"}},
+		{[]string{"--help"}, "", []string{"--help"}},
+
+		// Nothing at all.
+		{[]string{}, "", []string{}},
+	}
+	for _, tc := range cases {
+		name, rest := NameFromFirstArg(tc.args)
+		require.Equalf(t, tc.name, name, "args %v", tc.args)
+		require.Equalf(t, tc.expected, rest, "args %v", tc.args)
+	}
+}
+
+// A help text of a driver has to print a command the reader can type back.
+// The tree is reached as "om array <name>", which is no command of its own, so
+// the words that reached it are handed in and cobra has to use them for this
+// command and for every command under it.
+func TestTheHelpNamesTheWordsThatReachTheDriver(t *testing.T) {
+	r := &recorder{}
+	root, err := NewCommandAs("om array freenas", []Action{r.action("add", "disk")}, &bytes.Buffer{})
+	require.NoError(t, err)
+
+	assert.Equal(t, "om array freenas", root.CommandPath())
+
+	// The words must appear once. Cobra substitutes the display name for the
+	// command name inside Use, so holding them in both repeats them: the
+	// usage line read "om array freenas array freenas".
+	assert.Equal(t, "om array freenas", strings.TrimSuffix(root.UseLine(), " [flags]"))
+
+	add := root.Commands()[0]
+	require.Equal(t, "add", add.Name())
+	disk := add.Commands()[0]
+	require.Equal(t, "disk", disk.Name())
+	assert.Equal(t, "om array freenas add disk", disk.CommandPath())
+	assert.Equal(t, "om array freenas add disk [flags]", disk.UseLine())
+}
+
+// A driver reached by something that is not a command line says the one word
+// it is, and nothing about a program or an array.
+func TestTheHelpOfABareTreeNamesTheArrayWord(t *testing.T) {
+	r := &recorder{}
+	root, err := NewCommand([]Action{r.action("add", "disk")}, &bytes.Buffer{})
+	require.NoError(t, err)
+	assert.Equal(t, "array", root.CommandPath())
+	assert.Equal(t, "array add disk", root.Commands()[0].Commands()[0].CommandPath())
+}

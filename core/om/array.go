@@ -16,9 +16,16 @@ import (
 var (
 	cmdArray = &cobra.Command{
 		GroupID: commoncmd.GroupIDSubsystems,
-		Use:     "array",
+		Use:     "array [NAME] [COMMAND]",
 		Short:   "manage storage arrays",
-		Long:    `A array is a backend storage provider for pools.`,
+		Long: `An array is a backend storage provider for pools.
+
+NAME is the array to act on, written as the section holding it with or without
+its "array#" prefix. COMMAND and the options after it are the ones the driver
+of that array answers to, so "om array <name>" alone lists them.`,
+		Example: `  om array freenas add disk --name d1 --size 1g
+  om array freenas
+  om array list`,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return runArray(cmd, args)
 		},
@@ -47,15 +54,32 @@ func init() {
 }
 
 func runArray(cmd *cobra.Command, args []string) error {
-	arrayName, err := array.NameFromArgs(args)
+	// The array is named as the first word, which is the form to write, or
+	// with the option the command was born with.
+	flagName, err := array.NameFromArgs(args)
 	if err != nil {
 		return err
 	}
-	if arrayName == "" {
+	argName, rest := array.NameFromFirstArg(args)
+
+	var arrayName string
+	switch {
+	case argName != "" && flagName != "":
+		// Naming it twice can only be a mistake, and picking one of the two
+		// would act on an array the operator did not read on the command line.
+		return fmt.Errorf("the array is named twice: as an argument and with --%s", array.FlagArray.Name)
+	case argName != "":
+		arrayName, args = argName, rest
+	case flagName != "":
+		arrayName = flagName
+	default:
 		// Nothing names the array whose driver would say what the other words
 		// mean, so there is nothing to hand them to.
 		return cmd.Help()
 	}
+	// The name as it was typed is the one a help text shows, so what it
+	// prints is a command the reader can type back.
+	typedName := arrayName
 	if !strings.HasPrefix(arrayName, "array#") {
 		arrayName = "array#" + arrayName
 	}
@@ -78,7 +102,10 @@ func runArray(cmd *cobra.Command, args []string) error {
 	drv.SetConfig(o.MergedConfig())
 
 	if actioner, ok := drv.(array.Actioner); ok {
-		return array.RunActions(cmd.Context(), actioner.Actions(), args, os.Stdout)
+		// The words that reached here are the words a help text has to show,
+		// so it names the array the actions are of.
+		use := cmd.CommandPath() + " " + typedName
+		return array.RunActionsAs(cmd.Context(), use, actioner.Actions(), args, os.Stdout)
 	}
 
 	// A driver that has not declared its actions yet still builds and parses
