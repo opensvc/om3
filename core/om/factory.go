@@ -1149,6 +1149,25 @@ func newCmdNodePushdisk() *cobra.Command {
 	return cmd
 }
 
+func newCmdNodePushArray() *cobra.Command {
+	var options commands.CmdNodePushArrays
+	cmd := &cobra.Command{
+		Use:     "array",
+		Short:   "push the storage array configurations to the collector",
+		Long:    "The arrays are the ones the node and cluster configuration name. Each is pushed with the collector method exported for its type.",
+		Aliases: []string{"arrays"},
+		RunE: func(cmd *cobra.Command, args []string) error {
+			return options.Run()
+		},
+	}
+	flags := cmd.Flags()
+	addFlagsGlobal(flags, &options.OptsGlobal)
+	flagLocal(flags, &options.Local)
+	flags.StringVar(&options.Array, "array", "", "the section name or index identifying the array, all of them when not set")
+	commoncmd.FlagIgnoreNoCollectorConfigured(flags, &options.IgnoreNoCollectorConfigured)
+	return cmd
+}
+
 func newCmdNodePushDisk() *cobra.Command {
 	var options commands.CmdNodePushDisks
 	cmd := &cobra.Command{

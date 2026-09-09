@@ -11,7 +11,7 @@ import (
 var (
 	cmdNode             = commoncmd.NewCmdNode()
 	cmdNodeCapabilities = commoncmd.NewCmdNodeCapabilities()
-	cmdNodeCollector = &cobra.Command{
+	cmdNodeCollector    = &cobra.Command{
 		GroupID: commoncmd.GroupIDSubsystems,
 		Use:     "collector",
 		Short:   "node collector data management commands",
@@ -23,15 +23,15 @@ var (
 		Short:   "collector tags management commands",
 	}
 	cmdNodeCompliance = commoncmd.NewCmdNodeCompliance()
-	cmdNodeConfig = &cobra.Command{
+	cmdNodeConfig     = &cobra.Command{
 		GroupID: commoncmd.GroupIDSubsystems,
 		Use:     "config",
 		Short:   "configuration commands",
 		Aliases: []string{"conf", "c", "cf", "cfg"},
 	}
-	cmdNodeSCSI    = commoncmd.NewCmdNodeSCSI()
-	cmdNodeRelay   = commoncmd.NewCmdNodeRelay()
-	cmdNodeScan = &cobra.Command{
+	cmdNodeSCSI  = commoncmd.NewCmdNodeSCSI()
+	cmdNodeRelay = commoncmd.NewCmdNodeRelay()
+	cmdNodeScan  = &cobra.Command{
 		Use:    "scan",
 		Hidden: true,
 	}
@@ -213,6 +213,7 @@ func init() {
 	)
 	cmdNodePush.AddCommand(
 		newCmdNodePushAsset(),
+		newCmdNodePushArray(),
 		newCmdNodePushDisk(),
 		newCmdNodePushPkg(),
 	)
