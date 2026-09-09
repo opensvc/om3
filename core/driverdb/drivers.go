@@ -12,6 +12,7 @@ import (
 	_ "github.com/opensvc/om3/v3/drivers/arrayfreenas"
 	_ "github.com/opensvc/om3/v3/drivers/arrayhds"
 	_ "github.com/opensvc/om3/v3/drivers/arrayhoc"
+	_ "github.com/opensvc/om3/v3/drivers/arrayhp3par"
 	_ "github.com/opensvc/om3/v3/drivers/arraypure"
 	_ "github.com/opensvc/om3/v3/drivers/arraysymmetrix"
 	_ "github.com/opensvc/om3/v3/drivers/arrayxtremio"

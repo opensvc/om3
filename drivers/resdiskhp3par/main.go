@@ -26,6 +26,7 @@ import (
 	"github.com/opensvc/om3/v3/core/resource"
 	"github.com/opensvc/om3/v3/core/status"
 	"github.com/opensvc/om3/v3/drivers/resdisk"
+	"github.com/opensvc/om3/v3/drivers/shared/hp3par"
 	"github.com/opensvc/om3/v3/util/ageingcache"
 	"github.com/opensvc/om3/v3/util/command"
 	"github.com/opensvc/om3/v3/util/device"
@@ -69,10 +70,6 @@ const (
 
 	// Volume last sync time (a valid date for async or "NA")
 	vvLastSyncTimeNA = "NA"
-
-	// Command method
-	methodSSH = "ssh"
-	methodCLI = "cli"
 
 	lockName = "hp3par"
 )
@@ -674,71 +671,52 @@ func (t *T) startTimeoutArg() string {
 	return "300"
 }
 
-func (t *T) buildSSHCommand(arrayName, cmd string) ([]string, error) {
-	// For SSH method: ssh -i <key> <username>@<manager>
-	keyFile, err := t.keyFile(arrayName)
-	if err != nil {
-		return nil, fmt.Errorf("failed to resolve keyfile: %w", err)
-	}
-	username, err := t.username(arrayName)
-	if err != nil {
-		return nil, fmt.Errorf("failed to resolve username: %w", err)
-	}
-	manager, err := t.manager(arrayName)
-	if err != nil {
-		return nil, fmt.Errorf("failed to resolve manager: %w", err)
-	}
-
-	args := []string{"ssh"}
-	if keyFile != "" {
-		args = append(args, "-i", keyFile)
-	}
-	if username != "" {
-		args = append(args, username+"@"+manager)
-	} else {
-		args = append(args, manager)
-	}
-	args = append(args, cmd)
-	return args, nil
-}
-
-func (t *T) buildCLICommand(arrayName, cmd string) ([]string, error) {
-	// For CLI method: <cli> -sys <manager> -pwf <pwf> <command>
-	cli, err := t.cli(arrayName)
-	if err != nil {
-		return nil, fmt.Errorf("failed to resolve cli: %w", err)
-	}
-	manager, err := t.manager(arrayName)
-	if err != nil {
-		return nil, fmt.Errorf("failed to resolve manager: %w", err)
-	}
-	pwf, err := t.pwf(arrayName)
-	if err != nil {
-		return nil, fmt.Errorf("failed to resolve pwf: %w", err)
-	}
-
-	args := []string{cli, "-sys", manager}
-	if pwf != "" {
-		args = append(args, "-pwf", pwf)
-	}
-	args = append(args, strings.Fields(cmd)...)
-	return args, nil
-}
-
+// buildCommand returns the command line reaching the array.
+//
+// The shapes live in drivers/hp3par, which the array driver builds its
+// commands with too: there is one way of reaching a 3par, and this is the one
+// that has been run against real hardware.
 func (t *T) buildCommand(arrayName, cmd string) ([]string, error) {
+	config, err := t.connectionConfig(arrayName)
+	if err != nil {
+		return nil, err
+	}
+	return config.Command(cmd)
+}
+
+// connectionConfig resolves what is needed to reach the array, materialising
+// the key and the password file when the configuration names them in a
+// datastore rather than on disk.
+func (t *T) connectionConfig(arrayName string) (hp3par.Config, error) {
+	var config hp3par.Config
 	method, err := t.method(arrayName)
 	if err != nil {
-		return nil, fmt.Errorf("failed to resolve method: %w", err)
+		return config, fmt.Errorf("failed to resolve method: %w", err)
 	}
+	manager, err := t.manager(arrayName)
+	if err != nil {
+		return config, fmt.Errorf("failed to resolve manager: %w", err)
+	}
+	config.Method = method
+	config.Manager = manager
 
 	switch method {
-	case methodSSH:
-		return t.buildSSHCommand(arrayName, cmd)
-	case methodCLI:
-		return t.buildCLICommand(arrayName, cmd)
-	default:
-		return nil, fmt.Errorf("%w: unknown method %s", ErrBuildCommand, method)
+	case hp3par.MethodSSH:
+		if config.KeyFile, err = t.keyFile(arrayName); err != nil {
+			return config, fmt.Errorf("failed to resolve keyfile: %w", err)
+		}
+		if config.Username, err = t.username(arrayName); err != nil {
+			return config, fmt.Errorf("failed to resolve username: %w", err)
+		}
+	case hp3par.MethodCLI:
+		if config.CLI, err = t.cli(arrayName); err != nil {
+			return config, fmt.Errorf("failed to resolve cli: %w", err)
+		}
+		if config.PWFile, err = t.pwf(arrayName); err != nil {
+			return config, fmt.Errorf("failed to resolve pwf: %w", err)
+		}
 	}
+	return config, nil
 }
 
 func (t *T) waitRCGStatusSync(ctx context.Context) error {
