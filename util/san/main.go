@@ -267,3 +267,47 @@ func (t Target) DeepCopy() Target {
 		Name: t.Name,
 	}
 }
+
+// ParseMappings reads the mappings of a command line, in the grammar the
+// collector and the v2 agent write them: one initiator and the targets to
+// reach it through, "<hba_id>:<tgt_id>[,<tgt_id>...]", the option repeated
+// once per initiator.
+//
+// ParseMapping reads a different grammar, where the comma separates whole
+// pairs. A value written for the collector and read that way loses every
+// target but the first, and takes the others for initiators with no target of
+// their own.
+func ParseMappings(l []string) (Paths, error) {
+	paths := make(Paths, 0)
+	for _, s := range l {
+		if s == "" {
+			continue
+		}
+		hba, targets, ok := strings.Cut(s, ":")
+		if !ok || hba == "" || targets == "" {
+			return paths, fmt.Errorf("san paths parser: %s is not a <hba_id>:<tgt_id>[,<tgt_id>...] mapping", s)
+		}
+		for _, target := range strings.Split(targets, ",") {
+			if target == "" {
+				return paths, fmt.Errorf("san paths parser: %s has an empty target", s)
+			}
+			paths = append(paths, newPath(hba, target))
+		}
+	}
+	return paths, nil
+}
+
+// newPath returns the path of an initiator to a target, of the transport their
+// names say they are of.
+func newPath(hba, target string) Path {
+	transport := func(name string) string {
+		if strings.HasPrefix(name, "iqn.") {
+			return ISCSI
+		}
+		return FC
+	}
+	return Path{
+		Initiator{Name: hba, Type: transport(hba)},
+		Target{Name: target, Type: transport(target)},
+	}
+}
