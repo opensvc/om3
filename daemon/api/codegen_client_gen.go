@@ -128,6 +128,11 @@ type ClientInterface interface {
 	// GetClusterConfigKeywords request
 	GetClusterConfigKeywords(ctx context.Context, params *GetClusterConfigKeywordsParams, reqEditors ...RequestEditorFn) (*http.Response, error)
 
+	// PostClusterEnrollWithBody request with any body
+	PostClusterEnrollWithBody(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	PostClusterEnroll(ctx context.Context, body PostClusterEnrollJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+
 	// PostClusterHeartbeatRotate request
 	PostClusterHeartbeatRotate(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error)
 
@@ -218,6 +223,11 @@ type ClientInterface interface {
 
 	// GetNodeConfigKeywords request
 	GetNodeConfigKeywords(ctx context.Context, nodename InPathNodeName, params *GetNodeConfigKeywordsParams, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// PostDaemonJoinWithBody request with any body
+	PostDaemonJoinWithBody(ctx context.Context, nodename InPathNodeName, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	PostDaemonJoin(ctx context.Context, nodename InPathNodeName, body PostDaemonJoinJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// PostDaemonRestart request
 	PostDaemonRestart(ctx context.Context, nodename InPathNodeName, reqEditors ...RequestEditorFn) (*http.Response, error)
@@ -715,6 +725,30 @@ func (c *Client) GetClusterConfigKeywords(ctx context.Context, params *GetCluste
 	return c.Client.Do(req)
 }
 
+func (c *Client) PostClusterEnrollWithBody(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewPostClusterEnrollRequestWithBody(c.Server, contentType, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+func (c *Client) PostClusterEnroll(ctx context.Context, body PostClusterEnrollJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewPostClusterEnrollRequest(c.Server, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
 func (c *Client) PostClusterHeartbeatRotate(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error) {
 	req, err := NewPostClusterHeartbeatRotateRequest(c.Server)
 	if err != nil {
@@ -1077,6 +1111,30 @@ func (c *Client) PutNodeConfigFileWithBody(ctx context.Context, nodename InPathN
 
 func (c *Client) GetNodeConfigKeywords(ctx context.Context, nodename InPathNodeName, params *GetNodeConfigKeywordsParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
 	req, err := NewGetNodeConfigKeywordsRequest(c.Server, nodename, params)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+func (c *Client) PostDaemonJoinWithBody(ctx context.Context, nodename InPathNodeName, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewPostDaemonJoinRequestWithBody(c.Server, nodename, contentType, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+func (c *Client) PostDaemonJoin(ctx context.Context, nodename InPathNodeName, body PostDaemonJoinJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewPostDaemonJoinRequest(c.Server, nodename, body)
 	if err != nil {
 		return nil, err
 	}
@@ -3138,6 +3196,46 @@ func NewGetClusterConfigKeywordsRequest(server string, params *GetClusterConfigK
 	return req, nil
 }
 
+// NewPostClusterEnrollRequest calls the generic PostClusterEnroll builder with application/json body
+func NewPostClusterEnrollRequest(server string, body PostClusterEnrollJSONRequestBody) (*http.Request, error) {
+	var bodyReader io.Reader
+	buf, err := json.Marshal(body)
+	if err != nil {
+		return nil, err
+	}
+	bodyReader = bytes.NewReader(buf)
+	return NewPostClusterEnrollRequestWithBody(server, "application/json", bodyReader)
+}
+
+// NewPostClusterEnrollRequestWithBody generates requests for PostClusterEnroll with any type of body
+func NewPostClusterEnrollRequestWithBody(server string, contentType string, body io.Reader) (*http.Request, error) {
+	var err error
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/api/cluster/enroll")
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodPost, queryURL.String(), body)
+	if err != nil {
+		return nil, err
+	}
+
+	req.Header.Add("Content-Type", contentType)
+
+	return req, nil
+}
+
 // NewPostClusterHeartbeatRotateRequest generates requests for PostClusterHeartbeatRotate
 func NewPostClusterHeartbeatRotateRequest(server string) (*http.Request, error) {
 	var err error
@@ -4789,6 +4887,53 @@ func NewGetNodeConfigKeywordsRequest(server string, nodename InPathNodeName, par
 	if err != nil {
 		return nil, err
 	}
+
+	return req, nil
+}
+
+// NewPostDaemonJoinRequest calls the generic PostDaemonJoin builder with application/json body
+func NewPostDaemonJoinRequest(server string, nodename InPathNodeName, body PostDaemonJoinJSONRequestBody) (*http.Request, error) {
+	var bodyReader io.Reader
+	buf, err := json.Marshal(body)
+	if err != nil {
+		return nil, err
+	}
+	bodyReader = bytes.NewReader(buf)
+	return NewPostDaemonJoinRequestWithBody(server, nodename, "application/json", bodyReader)
+}
+
+// NewPostDaemonJoinRequestWithBody generates requests for PostDaemonJoin with any type of body
+func NewPostDaemonJoinRequestWithBody(server string, nodename InPathNodeName, contentType string, body io.Reader) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "nodename", nodename, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/api/node/name/%s/daemon/action/join", pathParam0)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodPost, queryURL.String(), body)
+	if err != nil {
+		return nil, err
+	}
+
+	req.Header.Add("Content-Type", contentType)
 
 	return req, nil
 }
@@ -12897,6 +13042,11 @@ type ClientWithResponsesInterface interface {
 	// GetClusterConfigKeywordsWithResponse request
 	GetClusterConfigKeywordsWithResponse(ctx context.Context, params *GetClusterConfigKeywordsParams, reqEditors ...RequestEditorFn) (*GetClusterConfigKeywordsResponse, error)
 
+	// PostClusterEnrollWithBodyWithResponse request with any body
+	PostClusterEnrollWithBodyWithResponse(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*PostClusterEnrollResponse, error)
+
+	PostClusterEnrollWithResponse(ctx context.Context, body PostClusterEnrollJSONRequestBody, reqEditors ...RequestEditorFn) (*PostClusterEnrollResponse, error)
+
 	// PostClusterHeartbeatRotateWithResponse request
 	PostClusterHeartbeatRotateWithResponse(ctx context.Context, reqEditors ...RequestEditorFn) (*PostClusterHeartbeatRotateResponse, error)
 
@@ -12987,6 +13137,11 @@ type ClientWithResponsesInterface interface {
 
 	// GetNodeConfigKeywordsWithResponse request
 	GetNodeConfigKeywordsWithResponse(ctx context.Context, nodename InPathNodeName, params *GetNodeConfigKeywordsParams, reqEditors ...RequestEditorFn) (*GetNodeConfigKeywordsResponse, error)
+
+	// PostDaemonJoinWithBodyWithResponse request with any body
+	PostDaemonJoinWithBodyWithResponse(ctx context.Context, nodename InPathNodeName, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*PostDaemonJoinResponse, error)
+
+	PostDaemonJoinWithResponse(ctx context.Context, nodename InPathNodeName, body PostDaemonJoinJSONRequestBody, reqEditors ...RequestEditorFn) (*PostDaemonJoinResponse, error)
 
 	// PostDaemonRestartWithResponse request
 	PostDaemonRestartWithResponse(ctx context.Context, nodename InPathNodeName, reqEditors ...RequestEditorFn) (*PostDaemonRestartResponse, error)
@@ -13766,6 +13921,42 @@ func (r GetClusterConfigKeywordsResponse) StatusCode() int {
 
 // ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
 func (r GetClusterConfigKeywordsResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+type PostClusterEnrollResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	JSON200      *ClusterEnrollAccepted
+	JSON400      *N400
+	JSON401      *N401
+	JSON403      *N403
+	JSON409      *N409
+	JSON500      *N500
+	JSON502      *N502
+}
+
+// Status returns HTTPResponse.Status
+func (r PostClusterEnrollResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r PostClusterEnrollResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r PostClusterEnrollResponse) ContentType() string {
 	if r.HTTPResponse != nil {
 		return r.HTTPResponse.Header.Get("Content-Type")
 	}
@@ -14740,6 +14931,41 @@ func (r GetNodeConfigKeywordsResponse) StatusCode() int {
 
 // ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
 func (r GetNodeConfigKeywordsResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+type PostDaemonJoinResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	JSON200      *N200
+	JSON400      *N400
+	JSON401      *N401
+	JSON403      *N403
+	JSON409      *N409
+	JSON500      *N500
+}
+
+// Status returns HTTPResponse.Status
+func (r PostDaemonJoinResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r PostDaemonJoinResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r PostDaemonJoinResponse) ContentType() string {
 	if r.HTTPResponse != nil {
 		return r.HTTPResponse.Header.Get("Content-Type")
 	}
@@ -18580,6 +18806,23 @@ func (c *ClientWithResponses) GetClusterConfigKeywordsWithResponse(ctx context.C
 	return ParseGetClusterConfigKeywordsResponse(rsp)
 }
 
+// PostClusterEnrollWithBodyWithResponse request with arbitrary body returning *PostClusterEnrollResponse
+func (c *ClientWithResponses) PostClusterEnrollWithBodyWithResponse(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*PostClusterEnrollResponse, error) {
+	rsp, err := c.PostClusterEnrollWithBody(ctx, contentType, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParsePostClusterEnrollResponse(rsp)
+}
+
+func (c *ClientWithResponses) PostClusterEnrollWithResponse(ctx context.Context, body PostClusterEnrollJSONRequestBody, reqEditors ...RequestEditorFn) (*PostClusterEnrollResponse, error) {
+	rsp, err := c.PostClusterEnroll(ctx, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParsePostClusterEnrollResponse(rsp)
+}
+
 // PostClusterHeartbeatRotateWithResponse request returning *PostClusterHeartbeatRotateResponse
 func (c *ClientWithResponses) PostClusterHeartbeatRotateWithResponse(ctx context.Context, reqEditors ...RequestEditorFn) (*PostClusterHeartbeatRotateResponse, error) {
 	rsp, err := c.PostClusterHeartbeatRotate(ctx, reqEditors...)
@@ -18855,6 +19098,23 @@ func (c *ClientWithResponses) GetNodeConfigKeywordsWithResponse(ctx context.Cont
 		return nil, err
 	}
 	return ParseGetNodeConfigKeywordsResponse(rsp)
+}
+
+// PostDaemonJoinWithBodyWithResponse request with arbitrary body returning *PostDaemonJoinResponse
+func (c *ClientWithResponses) PostDaemonJoinWithBodyWithResponse(ctx context.Context, nodename InPathNodeName, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*PostDaemonJoinResponse, error) {
+	rsp, err := c.PostDaemonJoinWithBody(ctx, nodename, contentType, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParsePostDaemonJoinResponse(rsp)
+}
+
+func (c *ClientWithResponses) PostDaemonJoinWithResponse(ctx context.Context, nodename InPathNodeName, body PostDaemonJoinJSONRequestBody, reqEditors ...RequestEditorFn) (*PostDaemonJoinResponse, error) {
+	rsp, err := c.PostDaemonJoin(ctx, nodename, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParsePostDaemonJoinResponse(rsp)
 }
 
 // PostDaemonRestartWithResponse request returning *PostDaemonRestartResponse
@@ -20602,6 +20862,74 @@ func ParseGetClusterConfigKeywordsResponse(rsp *http.Response) (*GetClusterConfi
 	return response, nil
 }
 
+// ParsePostClusterEnrollResponse parses an HTTP response from a PostClusterEnrollWithResponse call
+func ParsePostClusterEnrollResponse(rsp *http.Response) (*PostClusterEnrollResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &PostClusterEnrollResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest ClusterEnrollAccepted
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
+		var dest N400
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON400 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest N401
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest N403
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON403 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 409:
+		var dest N409
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON409 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
+		var dest N500
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON500 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 502:
+		var dest N502
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON502 = &dest
+
+	}
+
+	return response, nil
+}
+
 // ParsePostClusterHeartbeatRotateResponse parses an HTTP response from a PostClusterHeartbeatRotateWithResponse call
 func ParsePostClusterHeartbeatRotateResponse(rsp *http.Response) (*PostClusterHeartbeatRotateResponse, error) {
 	bodyBytes, err := io.ReadAll(rsp.Body)
@@ -22071,6 +22399,67 @@ func ParseGetNodeConfigKeywordsResponse(rsp *http.Response) (*GetNodeConfigKeywo
 			return nil, err
 		}
 		response.JSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
+		var dest N500
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON500 = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParsePostDaemonJoinResponse parses an HTTP response from a PostDaemonJoinWithResponse call
+func ParsePostDaemonJoinResponse(rsp *http.Response) (*PostDaemonJoinResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &PostDaemonJoinResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest N200
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
+		var dest N400
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON400 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest N401
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest N403
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON403 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 409:
+		var dest N409
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON409 = &dest
 
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
 		var dest N500
