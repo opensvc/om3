@@ -1,38 +1,19 @@
 package commoncmd
 
 import (
-	"fmt"
-
 	"github.com/spf13/pflag"
+
+	"github.com/opensvc/om3/v3/util/flagvalue"
 )
 
-// rawStringSlice implements pflag.Value for []string without comma-splitting
-type rawStringSlice struct {
-	values *[]string
-}
-
-func (r *rawStringSlice) String() string {
-	if r.values == nil {
-		return "[]"
-	}
-	return fmt.Sprintf("%v", *r.values)
-}
-
-func (r *rawStringSlice) Set(val string) error {
-	*r.values = append(*r.values, val)
-	return nil
-}
-
-func (r *rawStringSlice) Type() string {
-	return "stringSlice"
-}
-
+// RawStringSliceVarP declares a repeatable option whose values are taken
+// whole. It lives in util/flagvalue, which the command sets that cannot import
+// this package reach too.
 func RawStringSliceVarP(flags *pflag.FlagSet, p *[]string, name, shorthand string, value []string, usage string) {
-	*p = value
-	flags.VarP(&rawStringSlice{values: p}, name, shorthand, usage)
+	flagvalue.RawStringSliceVarP(flags, p, name, shorthand, value, usage)
 }
 
+// RawStringSliceVar declares a repeatable option whose values are taken whole.
 func RawStringSliceVar(flags *pflag.FlagSet, p *[]string, name string, value []string, usage string) {
-	*p = value
-	flags.Var(&rawStringSlice{values: p}, name, usage)
+	flagvalue.RawStringSliceVar(flags, p, name, value, usage)
 }
