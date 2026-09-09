@@ -2,7 +2,6 @@ package array
 
 import (
 	"fmt"
-	"os"
 	"strings"
 
 	"github.com/opensvc/om3/v3/core/driver"
@@ -100,22 +99,6 @@ func (t Array) Key(s string) key.T {
 		panic("array has no name")
 	}
 	return key.T{Section: t.name, Option: s}
-}
-
-func SkipArgs() []string {
-	return skipArgs(os.Args)
-}
-
-func skipArgs(args []string) []string {
-	for i, s := range args {
-		switch {
-		case s == "--array":
-			return args[i+2:]
-		case strings.HasPrefix(s, "--array="):
-			return args[i+1:]
-		}
-	}
-	return []string{}
 }
 
 func ParseMappings(mappings []string) (Mappings, error) {
