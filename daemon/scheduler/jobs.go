@@ -88,7 +88,7 @@ func CmdArgs(e schedule.Entry) ([]string, error) {
 		tail = []string{"push", "asset"}
 	case "pusharray":
 		// The array is the section the schedule was read from.
-		tail = []string{"push", "array", "--array", e.RID()}
+		tail = []string{"push", "array", e.RID()}
 	case "pushdisks":
 		tail = []string{"push", "disk"}
 	case "pushpkg":

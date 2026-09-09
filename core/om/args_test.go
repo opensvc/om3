@@ -4,6 +4,7 @@ import (
 	"go/ast"
 	"go/parser"
 	"go/token"
+	"io"
 	"os"
 	"path/filepath"
 	"slices"
@@ -217,5 +218,27 @@ func TestPushArrayArgvNamesTheArray(t *testing.T) {
 		Config: schedule.Config{Action: "pusharray", Key: "array#baie1.schedule"},
 	})
 	require.NoError(t, err)
-	assert.Equal(t, []string{"node", "push", "array", "--array", "array#baie1"}, args)
+	assert.Equal(t, []string{"node", "push", "array", "array#baie1"}, args)
+}
+
+// The array is named as an argument, which is the documented form, and with
+// --array, which is the form the command was born with. Naming it twice is a
+// mistake rather than a precedence question.
+func TestNodePushArrayNamesTheArrayOnce(t *testing.T) {
+	cmd := newCmdNodePushArray()
+	cmd.SetOut(io.Discard)
+	cmd.SetErr(io.Discard)
+	cmd.SetArgs([]string{"freenas", "--array", "freenas"})
+	err := cmd.Execute()
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "named twice")
+}
+
+// One array or none: a second argument is a typo, not a second array, since
+// the command pushes every array when it is handed no name at all.
+func TestNodePushArrayTakesAtMostOneName(t *testing.T) {
+	cmd := newCmdNodePushArray()
+	assert.NoError(t, cmd.Args(cmd, []string{}))
+	assert.NoError(t, cmd.Args(cmd, []string{"freenas"}))
+	assert.Error(t, cmd.Args(cmd, []string{"freenas", "baie2"}))
 }

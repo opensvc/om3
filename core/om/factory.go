@@ -1152,18 +1152,40 @@ func newCmdNodePushdisk() *cobra.Command {
 func newCmdNodePushArray() *cobra.Command {
 	var options commands.CmdNodePushArrays
 	cmd := &cobra.Command{
-		Use:     "array",
-		Short:   "push the storage array configurations to the collector",
-		Long:    "The arrays are the ones the node and cluster configuration name. Each is pushed with the collector method exported for its type.",
+		Use:   "array [NAME]",
+		Short: "push the storage array configurations to the collector",
+		Long: `The arrays are the ones the node and cluster configuration name. Each is
+pushed with the collector method exported for its type.
+
+NAME is the array to push, written as the section holding it with or without
+its "array#" prefix. Every array is pushed when none is named.`,
+		Example: `  om node push array freenas
+  om node push array array#freenas
+  om node push array`,
 		Aliases: []string{"arrays"},
+		Args:    cobra.MaximumNArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
+			switch {
+			case len(args) == 0:
+			case options.Array != "":
+				// Naming the array twice can only be a mistake, and picking
+				// one of the two would push an array the operator did not
+				// read on the command line.
+				return fmt.Errorf("the array is named twice: as an argument and with --array")
+			default:
+				options.Array = args[0]
+			}
 			return options.Run()
 		},
 	}
 	flags := cmd.Flags()
 	addFlagsGlobal(flags, &options.OptsGlobal)
 	flagLocal(flags, &options.Local)
-	flags.StringVar(&options.Array, "array", "", "the section name or index identifying the array, all of them when not set")
+
+	// The array used to be named with this option and no other. The argument
+	// is the form to write and to document, and this one keeps a command line
+	// written for the older agent working.
+	flags.StringVar(&options.Array, "array", "", "the array to push, deprecated by the NAME argument")
 	commoncmd.FlagIgnoreNoCollectorConfigured(flags, &options.IgnoreNoCollectorConfigured)
 	return cmd
 }
