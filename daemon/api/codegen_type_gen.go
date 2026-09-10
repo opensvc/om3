@@ -2972,6 +2972,19 @@ type PostInstanceActionInfoParams struct {
 	SessionId *InQuerySessionID `form:"session_id,omitempty" json:"session_id,omitempty"`
 }
 
+// PostInstanceActionPGResetParams defines parameters for PostInstanceActionPGReset.
+type PostInstanceActionPGResetParams struct {
+	Slaves    *InQueryAllSlaves `form:"slaves,omitempty" json:"slaves,omitempty"`
+	Master    *InQueryMaster    `form:"master,omitempty" json:"master,omitempty"`
+	SessionId *InQuerySessionID `form:"session_id,omitempty" json:"session_id,omitempty"`
+
+	// Rid a resource selector expression
+	Rid    *InQueryRid    `form:"rid,omitempty" json:"rid,omitempty"`
+	Slave  *InQuerySlaves `form:"slave,omitempty" json:"slave,omitempty"`
+	Subset *InQuerySubset `form:"subset,omitempty" json:"subset,omitempty"`
+	Tag    *InQueryTag    `form:"tag,omitempty" json:"tag,omitempty"`
+}
+
 // PostInstanceActionPGUpdateParams defines parameters for PostInstanceActionPGUpdate.
 type PostInstanceActionPGUpdateParams struct {
 	Slaves    *InQueryAllSlaves `form:"slaves,omitempty" json:"slaves,omitempty"`
