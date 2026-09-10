@@ -17,9 +17,8 @@ import (
 	"github.com/opensvc/om3/v3/util/sizeconv"
 )
 
-// unifiedReset is a capping to put back where the kernel leaves it, and the
-// file to write it in.
-type unifiedReset struct {
+// unifiedWrite is a value to write in a file of the unified hierarchy.
+type unifiedWrite struct {
 	file  string
 	value string
 }
@@ -35,7 +34,7 @@ type unifiedReset struct {
 // hierarchy has no file for either: memory.swappiness and memory.oom_control
 // are of the v1 hierarchy, and setting those keywords already does nothing
 // here.
-var unifiedResets = map[string]unifiedReset{
+var unifiedResets = map[string]unifiedWrite{
 	"pg_cpu_quota":    {"cpu.max", "max 100000"},
 	"pg_cpu_shares":   {"cpu.weight", "100"},
 	"pg_cpus":         {"cpuset.cpus", ""},
@@ -45,19 +44,19 @@ var unifiedResets = map[string]unifiedReset{
 	"pg_blkio_weight": {"io.weight", "default 100"},
 }
 
-// applyUnifiedResets writes the uncapped value of each keyword the
-// configuration asked to reset.
+// applyUnifiedWrites writes what the cgroup manager cannot say.
 //
-// They are written here rather than handed to the cgroup manager because the
-// manager cannot say them: it skips an empty cpuset, which is what clearing
-// one is, and it writes a memory limit as a number, where lifting one is the
-// word "max".
-func applyUnifiedResets(id string, resets []unifiedReset) error {
+// It cannot say a reset: it skips an empty cpuset, which is what clearing one
+// is, and it writes a memory limit as a number, where lifting one is the word
+// "max". And it cannot say a block io weight: it writes io.bfq.weight, a file
+// only a kernel running the bfq scheduler has, where the v2 agent writes
+// io.weight, which the io controller always has.
+func applyUnifiedWrites(id string, writes []unifiedWrite) error {
 	var errs error
-	for _, reset := range resets {
-		path := filepath.Join(UnifiedPath(), id, reset.file)
-		if err := os.WriteFile(path, []byte(reset.value), 0644); err != nil {
-			errs = errors.Join(errs, fmt.Errorf("reset %s: %w", reset.file, err))
+	for _, write := range writes {
+		path := filepath.Join(UnifiedPath(), id, write.file)
+		if err := os.WriteFile(path, []byte(write.value), 0644); err != nil {
+			errs = errors.Join(errs, fmt.Errorf("write %s: %w", write.file, err))
 		}
 	}
 	return errs
@@ -74,9 +73,11 @@ func (c Config) ApplyProc(pid int) (created bool, errs error) {
 		Memory:  &specs.LinuxMemory{},
 		BlockIO: &specs.LinuxBlockIO{},
 	}
-	resets := make([]unifiedReset, 0)
+	writes := make([]unifiedWrite, 0)
+	var hasReset bool
 	reset := func(kw string) {
-		resets = append(resets, unifiedResets[kw])
+		hasReset = true
+		writes = append(writes, unifiedResets[kw])
 	}
 
 	if c.CPUShares == DefaultValue {
@@ -139,6 +140,17 @@ func (c Config) ApplyProc(pid int) (created bool, errs error) {
 			r.Memory.DisableOOMKiller = &disable
 		}
 	}
+	// The block io weight is written where the unified hierarchy keeps it,
+	// io.weight, and is left out of the resources handed to the manager: the
+	// manager writes io.bfq.weight, which a kernel not running the bfq
+	// scheduler does not have, and failing to write it fails the whole apply,
+	// so a weight took every other capping of the object down with it. The v2
+	// agent writes io.weight too, and the value as it is written, where the
+	// manager rescales a weight of 500 to 4950.
+	//
+	// blockIOWeight is kept for the v1 hierarchy, where blkio.weight is the
+	// file and the manager is right.
+	var blockIOWeight *uint16
 	if c.BlockIOWeight == DefaultValue {
 		reset("pg_blkio_weight")
 	} else if c.BlockIOWeight != "" {
@@ -146,14 +158,15 @@ func (c Config) ApplyProc(pid int) (created bool, errs error) {
 			errs = errors.Join(errs, fmt.Errorf("pg_blkio_weight: %w", err))
 		} else {
 			weight := uint16(n)
-			r.BlockIO.Weight = &weight
+			blockIOWeight = &weight
+			writes = append(writes, unifiedWrite{"io.weight", c.BlockIOWeight})
 		}
 	}
 
 	control, err := cgroupsv2.NewManager(UnifiedPath(), c.ID, cgroupsv2.ToResources(&r))
 	if err == nil {
-		if len(resets) > 0 {
-			errs = errors.Join(errs, applyUnifiedResets(c.ID, resets))
+		if len(writes) > 0 {
+			errs = errors.Join(errs, applyUnifiedWrites(c.ID, writes))
 		}
 		if pid == 0 {
 			// pass
@@ -161,10 +174,13 @@ func (c Config) ApplyProc(pid int) (created bool, errs error) {
 			errs = errors.Join(errs, fmt.Errorf("add pid to pg %s: %w", c.ID, err))
 		}
 	} else {
-		if len(resets) > 0 {
+		if hasReset {
 			// The v1 hierarchy names these files otherwise and holds other
 			// values in them, and none of that was read from a v1 node.
 			errs = errors.Join(errs, fmt.Errorf("a pg keyword set to %q needs the unified cgroup hierarchy", DefaultValue))
+		} else if blockIOWeight != nil {
+			// blkio.weight is the v1 file, and the manager writes it.
+			r.BlockIO.Weight = blockIOWeight
 		}
 		control, err := cgroups.New(cgroups.V1, cgroups.StaticPath(c.ID), &r)
 		if err != nil {

@@ -144,3 +144,27 @@ func TestUncappedAsksForEveryDefault(t *testing.T) {
 		assert.Equalf(t, DefaultValue, got, "%s", name)
 	}
 }
+
+// pg_blkio_weight writes io.weight, which the io controller always has, and
+// writes the weight as it is configured.
+//
+// It used to reach io.bfq.weight through the cgroup manager, a file only a
+// kernel running the bfq scheduler has. Failing to write it failed the whole
+// apply, so a weight took every other capping of the object down with it, and
+// where the file did exist the manager wrote 4950 for a configured 500.
+func TestApplyProcWritesTheBlockIOWeightWhereTheKernelKeepsIt(t *testing.T) {
+	if os.Geteuid() != 0 {
+		t.Skip("capping a cgroup needs root")
+	}
+	if _, err := os.Stat(filepath.Join(UnifiedPath(), "cgroup.procs")); err != nil {
+		t.Skip("no unified cgroup hierarchy")
+	}
+	id := "/omtest-pg-blkio.slice"
+	t.Cleanup(func() { os.Remove(filepath.Join(UnifiedPath(), id)) })
+
+	_, err := Config{ID: id, BlockIOWeight: "500", CPUQuota: "50%"}.ApplyProc(0)
+	require.NoError(t, err, "a weight must not fail the apply")
+
+	assert.Equal(t, "default 500", read(t, id, "io.weight"))
+	assert.Equal(t, "50000 100000", read(t, id, "cpu.max"), "the other cappings are applied too")
+}
