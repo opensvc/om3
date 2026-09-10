@@ -189,3 +189,44 @@ func TestApplyProcWritesTheCPUWeightAsConfigured(t *testing.T) {
 	require.NoError(t, err)
 	assert.Equal(t, "1024", read(t, id, "cpu.weight"))
 }
+
+// Every capping goes in the file the unified hierarchy keeps it in, with the
+// value the v2 agent writes there.
+//
+// The manager is handed no value at all now, only the controllers to delegate,
+// so this also pins that the delegation still happens: none of these files
+// exists in a cgroup its controllers were not delegated to.
+func TestApplyProcWritesEveryCappingWhereTheKernelKeepsIt(t *testing.T) {
+	if os.Geteuid() != 0 {
+		t.Skip("capping a cgroup needs root")
+	}
+	if _, err := os.Stat(filepath.Join(UnifiedPath(), "cgroup.procs")); err != nil {
+		t.Skip("no unified cgroup hierarchy")
+	}
+	id := "/omtest-pg-all.slice"
+	t.Cleanup(func() { os.Remove(filepath.Join(UnifiedPath(), id)) })
+
+	_, err := Config{
+		ID:            id,
+		CPUQuota:      "50%",
+		CPUShares:     "1024",
+		CPUs:          "0",
+		Mems:          "0",
+		MemLimit:      "64m",
+		VMemLimit:     "96m",
+		BlockIOWeight: "500",
+	}.ApplyProc(0)
+	require.NoError(t, err)
+
+	for file, expected := range map[string]string{
+		"cpu.max":         "50000 100000",
+		"cpu.weight":      "1024",
+		"cpuset.cpus":     "0",
+		"cpuset.mems":     "0",
+		"memory.max":      "67108864",
+		"memory.swap.max": "33554432",
+		"io.weight":       "default 500",
+	} {
+		assert.Equalf(t, expected, read(t, id, file), "%s", file)
+	}
+}

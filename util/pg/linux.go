@@ -63,56 +63,69 @@ func applyUnifiedWrites(id string, writes []unifiedWrite) error {
 }
 
 // ApplyProc creates the cgroup, set caps, and add the specified process
+//
+// On the unified hierarchy every value is written where the kernel keeps it,
+// and the manager is asked only to make the cgroup and to delegate the
+// controllers to it. It converts an oci runtime spec, whose weights are of the
+// v1 hierarchy, and rescales them: a cpu weight of 1024 reached the kernel as
+// 39, and a block io weight went to io.bfq.weight, a file only a kernel
+// running the bfq scheduler has. It also cannot say a reset: it skips an empty
+// cpuset, which is what clearing one is, and writes a memory limit as a
+// number, where lifting one is the word "max".
+//
+// The v1 hierarchy still goes through it, which is what it was written for.
 func (c Config) ApplyProc(pid int) (created bool, errs error) {
 	if c.ID == "" {
 		errs = fmt.Errorf("the pg config application requires a non empty pg id")
 		return
 	}
-	r := specs.LinuxResources{
-		CPU:     &specs.LinuxCPU{},
-		Memory:  &specs.LinuxMemory{},
-		BlockIO: &specs.LinuxBlockIO{},
-	}
+
 	writes := make([]unifiedWrite, 0)
 	var hasReset bool
 	reset := func(kw string) {
 		hasReset = true
 		writes = append(writes, unifiedResets[kw])
 	}
+	write := func(file, value string) {
+		writes = append(writes, unifiedWrite{file, value})
+	}
 
-	// The weight is written into cpu.weight as it is configured, which is
-	// what the v2 agent writes. The manager reads the value as v1 shares and
-	// rescales it into the v2 range, so a configured 1024 reached the kernel
-	// as 39: the same configuration arbitrated a contended cpu twenty six
-	// times weaker than under v2.
-	//
-	// cpuShares is kept for the v1 hierarchy, where cpu.shares is the file
-	// and the value is what the manager reads it as.
-	var cpuShares *uint64
+	// The oci spec is built as it was, for the v1 hierarchy alone.
+	r := specs.LinuxResources{
+		CPU:     &specs.LinuxCPU{},
+		Memory:  &specs.LinuxMemory{},
+		BlockIO: &specs.LinuxBlockIO{},
+	}
+
 	if c.CPUShares == DefaultValue {
 		reset("pg_cpu_shares")
 	} else if n, err := sizeconv.FromSize(c.CPUShares); err == nil {
 		shares := uint64(n)
-		cpuShares = &shares
-		writes = append(writes, unifiedWrite{"cpu.weight", strconv.FormatUint(shares, 10)})
+		r.CPU.Shares = &shares
+		write("cpu.weight", strconv.FormatUint(shares, 10))
 	}
 	if c.CPUs == DefaultValue {
 		reset("pg_cpus")
 	} else if c.CPUs != "" {
 		r.CPU.Cpus = c.CPUs
+		write("cpuset.cpus", c.CPUs)
 	}
 	if c.Mems == DefaultValue {
 		reset("pg_mems")
 	} else if c.Mems != "" {
 		r.CPU.Mems = c.Mems
+		write("cpuset.mems", c.Mems)
 	}
 	if c.CPUQuota == DefaultValue {
 		reset("pg_cpu_quota")
 	} else if c.CPUQuota != "" {
 		period := uint64(100000)
-		if quota, err := CPUQuota(c.CPUQuota).Convert(period); err == nil {
+		if quota, err := CPUQuota(c.CPUQuota).Convert(period); err != nil {
+			errs = errors.Join(errs, fmt.Errorf("pg_cpu_quota: %w", err))
+		} else {
 			r.CPU.Period = &period
 			r.CPU.Quota = &quota
+			write("cpu.max", fmt.Sprintf("%d %d", quota, period))
 		}
 	}
 	if c.MemLimit == DefaultValue {
@@ -125,16 +138,22 @@ func (c Config) ApplyProc(pid int) (created bool, errs error) {
 			errs = errors.Join(errs, fmt.Errorf("pg_mem_limit: %w", err))
 		} else {
 			r.Memory.Limit = &n
+			write("memory.max", strconv.FormatInt(n, 10))
 			if c.VMemLimit != "" {
-				if n, err := sizeconv.FromSize(c.VMemLimit); err != nil {
+				if v, err := sizeconv.FromSize(c.VMemLimit); err != nil {
 					errs = errors.Join(errs, fmt.Errorf("pg_vmem_limit: %w", err))
 				} else {
-					n -= *r.Memory.Limit
-					r.Memory.Swap = &n
+					swap := v - n
+					r.Memory.Swap = &swap
+					write("memory.swap.max", strconv.FormatInt(swap, 10))
 				}
 			}
 		}
 	}
+
+	// pg_mem_swappiness and pg_mem_oom_control reach the v1 hierarchy only:
+	// memory.swappiness and memory.oom_control are of that hierarchy, and the
+	// v2 agent writes neither on the unified one either.
 	if c.MemSwappiness != "" {
 		if n, err := strconv.ParseUint(c.MemSwappiness, 10, 64); err != nil {
 			errs = errors.Join(errs, fmt.Errorf("pg_mem_swapiness: %w", err))
@@ -150,17 +169,6 @@ func (c Config) ApplyProc(pid int) (created bool, errs error) {
 			r.Memory.DisableOOMKiller = &disable
 		}
 	}
-	// The block io weight is written where the unified hierarchy keeps it,
-	// io.weight, and is left out of the resources handed to the manager: the
-	// manager writes io.bfq.weight, which a kernel not running the bfq
-	// scheduler does not have, and failing to write it fails the whole apply,
-	// so a weight took every other capping of the object down with it. The v2
-	// agent writes io.weight too, and the value as it is written, where the
-	// manager rescales a weight of 500 to 4950.
-	//
-	// blockIOWeight is kept for the v1 hierarchy, where blkio.weight is the
-	// file and the manager is right.
-	var blockIOWeight *uint16
 	if c.BlockIOWeight == DefaultValue {
 		reset("pg_blkio_weight")
 	} else if c.BlockIOWeight != "" {
@@ -168,12 +176,12 @@ func (c Config) ApplyProc(pid int) (created bool, errs error) {
 			errs = errors.Join(errs, fmt.Errorf("pg_blkio_weight: %w", err))
 		} else {
 			weight := uint16(n)
-			blockIOWeight = &weight
-			writes = append(writes, unifiedWrite{"io.weight", c.BlockIOWeight})
+			r.BlockIO.Weight = &weight
+			write("io.weight", c.BlockIOWeight)
 		}
 	}
 
-	control, err := cgroupsv2.NewManager(UnifiedPath(), c.ID, cgroupsv2.ToResources(&r))
+	control, err := cgroupsv2.NewManager(UnifiedPath(), c.ID, delegatedControllers())
 	if err == nil {
 		if len(writes) > 0 {
 			errs = errors.Join(errs, applyUnifiedWrites(c.ID, writes))
@@ -188,15 +196,6 @@ func (c Config) ApplyProc(pid int) (created bool, errs error) {
 			// The v1 hierarchy names these files otherwise and holds other
 			// values in them, and none of that was read from a v1 node.
 			errs = errors.Join(errs, fmt.Errorf("a pg keyword set to %q needs the unified cgroup hierarchy", DefaultValue))
-		} else {
-			// cpu.shares and blkio.weight are the v1 files, and the manager
-			// writes them the way the v1 hierarchy holds them.
-			if cpuShares != nil {
-				r.CPU.Shares = cpuShares
-			}
-			if blockIOWeight != nil {
-				r.BlockIO.Weight = blockIOWeight
-			}
 		}
 		control, err := cgroups.New(cgroups.V1, cgroups.StaticPath(c.ID), &r)
 		if err != nil {
@@ -210,6 +209,21 @@ func (c Config) ApplyProc(pid int) (created bool, errs error) {
 		}
 	}
 	return
+}
+
+// delegatedControllers is what the manager is handed to make the cgroup with.
+//
+// It carries no value, every one of them being written afterwards, and names
+// the controllers by being made of them: the manager reads which to write in
+// cgroup.subtree_control of the ancestors from which of these is not nil, and
+// a cgroup whose controllers are not delegated to it has none of the files
+// the values go in.
+func delegatedControllers() *cgroupsv2.Resources {
+	return &cgroupsv2.Resources{
+		CPU:    &cgroupsv2.CPU{},
+		Memory: &cgroupsv2.Memory{},
+		IO:     &cgroupsv2.IO{},
+	}
 }
 
 func (c Config) Delete() (bool, error) {
