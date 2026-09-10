@@ -2388,7 +2388,10 @@ type SessionItem struct {
 	EndAt    *time.Time `json:"end_at,omitempty"`
 	Error    *string    `json:"error,omitempty"`
 
-	// Id The session id the submitter was handed.
+	// ExecId The exec this reports, which is what has one object, one outcome and one duration.
+	ExecId string `json:"exec_id"`
+
+	// Id The session id the submitter was handed. Several execs share it when one command reaches several objects of a node.
 	Id   string `json:"id"`
 	Node string `json:"node"`
 

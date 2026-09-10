@@ -1947,8 +1947,12 @@ paths:
     get:
       operationId: GetDaemonSession
       description: |
-        Get the state of one action, by the session id its submitter was
+        Get the state of an action, by the session id its submitter was
         handed.
+
+        Several are answered when the command reached several objects of this
+        node: one command is one exec per object, each with its own outcome
+        and its own duration, and they share the session id.
 
         A session the daemon ran and has since dropped is answered 410, which
         a poller must not read as the session never having existed.
@@ -1961,7 +1965,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/SessionItem'
+                $ref: '#/components/schemas/SessionList'
         401:
           $ref: '#/components/responses/401'
         403:
@@ -7644,11 +7648,14 @@ components:
 
     SessionItem:
       type: object
-      required: [id, node, origin, command, state, begin_at]
+      required: [id, exec_id, node, origin, command, state, begin_at]
       properties:
         id:
           type: string
-          description: The session id the submitter was handed.
+          description: The session id the submitter was handed. Several execs share it when one command reaches several objects of a node.
+        exec_id:
+          type: string
+          description: The exec this reports, which is what has one object, one outcome and one duration.
         orchestration_id:
           type: string
           description: The orchestration this session is a step of, when it is one.

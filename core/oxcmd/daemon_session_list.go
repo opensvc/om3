@@ -98,7 +98,8 @@ func (t *CmdDaemonSessionList) one(ctx context.Context, c *client.T, nodename st
 		}
 		switch resp.StatusCode() {
 		case http.StatusOK:
-			return []api.SessionItem{*resp.JSON200}, nil
+			// Several when the command reached several objects of the node.
+			return resp.JSON200.Items, nil
 		case http.StatusGone:
 			// This node has forgotten it, or never ran it. Another may hold
 			// it, and saying so here would make asking every node an error
@@ -149,6 +150,7 @@ type sessionView struct {
 	BeginAt         string `json:"begin_at"`
 	Duration        string `json:"duration,omitempty"`
 	Command         string `json:"command,omitempty"`
+	ExecID          string `json:"exec_id,omitempty"`
 	Error           string `json:"error,omitempty"`
 }
 
@@ -162,6 +164,7 @@ func toSessionViews(items []api.SessionItem) []sessionView {
 			BeginAt: i.BeginAt.Truncate(time.Second).Format(time.RFC3339),
 			Command: i.Command,
 			Origin:  i.Origin,
+			ExecID:  i.ExecId,
 		}
 		if i.OrchestrationId != nil {
 			v.OrchestrationID = *i.OrchestrationId

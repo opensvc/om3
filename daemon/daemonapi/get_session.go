@@ -51,20 +51,27 @@ func (a *DaemonAPI) GetDaemonSession(ctx echo.Context, nodename string, id strin
 			return c.GetDaemonSession(ctx.Request().Context(), nodename, id)
 		})
 	}
-	s, ok := session.GetSession(id)
-	if !ok {
+	l := session.GetSessions(id)
+	if len(l) == 0 {
 		// Gone and not NotFound: the daemon may well have run this session
 		// and dropped it since, and a client polling for the end of what it
 		// submitted must not read the answer as "never happened".
 		return JSONProblemf(ctx, http.StatusGone, "Session no longer known",
 			"session %s has been dropped, or never ran on this node", id)
 	}
-	return ctx.JSON(http.StatusOK, sessionItem(s))
+	// Several when the command reached several objects of this node, each of
+	// them an exec of its own under the one session id.
+	items := make([]api.SessionItem, 0, len(l))
+	for _, s := range l {
+		items = append(items, sessionItem(s))
+	}
+	return ctx.JSON(http.StatusOK, api.SessionList{Kind: api.SessionListKindSessionList, Items: items})
 }
 
 func sessionItem(s session.Session) api.SessionItem {
 	item := api.SessionItem{
 		Id:      s.ID,
+		ExecId:  s.ExecID,
 		Node:    s.Node,
 		Origin:  s.Origin,
 		Command: s.Command,

@@ -26,9 +26,15 @@ type (
 	// State is where a session got to.
 	State string
 
-	// Session is one action the daemon ran, or is running.
+	// Session is one exec the daemon ran, or is running.
+	//
+	// The exec is the unit, not the session: one command reaches several
+	// objects of a node under one session id, each of them its own exec with
+	// its own outcome and its own duration. So the exec id is what a record
+	// is keyed by, and the session id is what several of them share.
 	Session struct {
 		ID              string        `json:"id"`
+		ExecID          string        `json:"exec_id"`
 		OrchestrationID string        `json:"orchestration_id,omitempty"`
 		Node            string        `json:"node"`
 		Path            string        `json:"path,omitempty"`
@@ -99,9 +105,9 @@ var (
 	MaxAge = time.Hour
 )
 
-// AddSession records a session the daemon started.
+// AddSession records an exec the daemon started.
 func AddSession(s Session) {
-	if s.ID == "" {
+	if s.ExecID == "" {
 		return
 	}
 	mu.Lock()
@@ -110,25 +116,29 @@ func AddSession(s Session) {
 		s.BeginAt = time.Now()
 	}
 	s.State = StateRunning
-	sessions[s.ID] = &s
+	sessions[s.ExecID] = &s
 }
 
-// EndSession records how a session ended.
+// EndSession records how an exec ended.
 //
-// A session the daemon never saw start is recorded all the same: the end
+// It ends the exec and not the session: several execs share a session id, and
+// ending by that id would have the second of them overwrite the first, which
+// is how a command reaching two objects of a node reported one outcome.
+//
+// An exec the daemon never saw start is recorded all the same: the end
 // carries what is needed to answer, and losing it because a message was
-// missed would leave a client polling a session that is over.
-func EndSession(id string, state State, errS string, duration time.Duration) {
-	if id == "" {
+// missed would leave a client polling something that is over.
+func EndSession(execID, sessionID string, state State, errS string, duration time.Duration) {
+	if execID == "" {
 		return
 	}
 	mu.Lock()
 	defer mu.Unlock()
 	now := time.Now()
-	s, ok := sessions[id]
+	s, ok := sessions[execID]
 	if !ok {
-		s = &Session{ID: id, BeginAt: now.Add(-duration)}
-		sessions[id] = s
+		s = &Session{ID: sessionID, ExecID: execID, BeginAt: now.Add(-duration)}
+		sessions[execID] = s
 	}
 	s.State = state
 	s.Error = errS
@@ -266,15 +276,22 @@ func leave(id, node string) {
 	purgeOrchestrations()
 }
 
-// GetSession returns the session of an id, and whether it is still known.
-func GetSession(id string) (Session, bool) {
+// GetSessions returns the execs run under a session id, newest first.
+//
+// Several is the normal answer, not the exception: one command reaching two
+// objects of a node runs two execs under one session id, each with its own
+// outcome.
+func GetSessions(sessionID string) []Session {
 	mu.RLock()
 	defer mu.RUnlock()
-	s, ok := sessions[id]
-	if !ok {
-		return Session{}, false
+	l := make([]Session, 0, 1)
+	for _, s := range sessions {
+		if s.ID == sessionID {
+			l = append(l, *s)
+		}
 	}
-	return *s, true
+	sort.Slice(l, func(i, j int) bool { return l[i].BeginAt.After(l[j].BeginAt) })
+	return l
 }
 
 // GetOrchestration returns the orchestration of an id, and whether it is
@@ -382,7 +399,7 @@ func purgeSessions() {
 	}
 	sort.Slice(ended, func(i, j int) bool { return ended[i].EndAt.Before(*ended[j].EndAt) })
 	for _, s := range ended[:len(ended)-MaxEntries] {
-		delete(sessions, s.ID)
+		delete(sessions, s.ExecID)
 	}
 }
 

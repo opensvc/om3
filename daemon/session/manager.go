@@ -116,6 +116,7 @@ func (t *Manager) handle(i any) {
 		case *msgbus.Exec:
 			AddSession(Session{
 				ID:              IdString(m.SessionID),
+				ExecID:          IdString(m.ExecID),
 				OrchestrationID: IdString(m.OrchestrationID),
 				Node:            m.Node,
 				Path:            pathOf(m.Labels),
@@ -124,9 +125,9 @@ func (t *Manager) handle(i any) {
 				Command:         m.Command,
 			})
 		case *msgbus.ExecSuccess:
-			EndSession(IdString(m.SessionID), StateSucceeded, "", m.Duration)
+			EndSession(IdString(m.ExecID), IdString(m.SessionID), StateSucceeded, "", m.Duration)
 		case *msgbus.ExecFailed:
-			EndSession(IdString(m.SessionID), StateFailed, m.ErrS, m.Duration)
+			EndSession(IdString(m.ExecID), IdString(m.SessionID), StateFailed, m.ErrS, m.Duration)
 		case *msgbus.ObjectOrchestrationAccepted:
 			AddOrchestration(Orchestration{
 				ID:           m.ID,

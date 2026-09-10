@@ -16165,7 +16165,7 @@ func (r GetDaemonSessionsResponse) ContentType() string {
 type GetDaemonSessionResponse struct {
 	Body         []byte
 	HTTPResponse *http.Response
-	JSON200      *SessionItem
+	JSON200      *SessionList
 	JSON401      *N401
 	JSON403      *N403
 	JSON410      *N410
@@ -24263,7 +24263,7 @@ func ParseGetDaemonSessionResponse(rsp *http.Response) (*GetDaemonSessionRespons
 
 	switch {
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
-		var dest SessionItem
+		var dest SessionList
 		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
 			return nil, err
 		}
