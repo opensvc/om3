@@ -675,6 +675,10 @@ func (t *Manager) updateStats() {
 	}
 	node.StatsData.Set(t.localhost, stats.DeepCopy())
 	t.publisher.Pub(&msgbus.NodeStatsUpdated{Node: t.localhost, Value: *stats.DeepCopy()}, t.labelLocalhost)
+	t.updateIsOverloadedAndPublish(stats)
+}
+
+func (t *Manager) updateIsOverloadedAndPublish(stats node.Stats) {
 	if changed := t.updateIsOverloaded(stats); changed {
 		t.publishNodeStatus()
 	}
@@ -846,7 +850,7 @@ func (t *Manager) loadConfigAndPublish() error {
 	}
 
 	if stats := node.StatsData.GetByNode(t.localhost); stats != nil && stats.MemTotalMB != 0 {
-		t.updateIsOverloaded(*stats)
+		t.updateIsOverloadedAndPublish(*stats)
 	}
 
 	var labelsChanged, pathsChanged bool
