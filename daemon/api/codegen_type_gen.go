@@ -1402,6 +1402,8 @@ type Instance struct {
 
 // InstanceActionAccepted defines model for InstanceActionAccepted.
 type InstanceActionAccepted struct {
+	// ExecID The exec this node forked, naming this run alone, where the session is shared by every object and node the command reached.
+	ExecID    openapi_types.UUID `json:"exec_id"`
 	SessionID openapi_types.UUID `json:"session_id"`
 }
 
@@ -1584,6 +1586,8 @@ type Node struct {
 
 // NodeActionAccepted defines model for NodeActionAccepted.
 type NodeActionAccepted struct {
+	// ExecID The exec this node forked, naming this run alone, where the session is shared by every node the command reached.
+	ExecID    openapi_types.UUID `json:"exec_id"`
 	SessionID openapi_types.UUID `json:"session_id"`
 }
 
@@ -2670,6 +2674,9 @@ type InQuerySection = string
 // InQuerySelectorOptional defines model for inQuerySelectorOptional.
 type InQuerySelectorOptional = string
 
+// ExecID List the exec of this id, which names one run of one object on one node.
+type ExecID = string
+
 // InQuerySessionID defines model for inQuerySessionID.
 type InQuerySessionID = openapi_types.UUID
 
@@ -3022,6 +3029,7 @@ type GetDaemonProcessParams struct {
 type GetDaemonSessionsParams struct {
 	States          *States          `form:"state,omitempty" json:"state,omitempty"`
 	OrchestrationID *OrchestrationID `form:"orchestration_id,omitempty" json:"orchestration_id,omitempty"`
+	ExecID          *ExecID          `form:"exec_id,omitempty" json:"exec_id,omitempty"`
 
 	// Selector selector
 	Selector *InQuerySelectorOptional `form:"selector,omitempty" json:"selector,omitempty"`

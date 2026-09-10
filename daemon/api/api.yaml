@@ -1923,6 +1923,7 @@ paths:
         - $ref: '#/components/parameters/inPathNodeName'
         - $ref: '#/components/parameters/inQuerySessionState'
         - $ref: '#/components/parameters/inQuerySessionOrchestrationID'
+        - $ref: '#/components/parameters/inQuerySessionExecID'
         - $ref: '#/components/parameters/inQuerySelectorOptional'
       responses:
         200:
@@ -6214,11 +6215,17 @@ components:
     InstanceActionAccepted:
       type: object
       properties:
+        exec_id:
+          type: string
+          format: uuid
+          x-go-name: ExecID
+          description: The exec this node forked, naming this run alone, where the session is shared by every object and node the command reached.
         session_id:
           type: string
           format: uuid
           x-go-name: SessionID
       required:
+        - exec_id
         - session_id
 
     InstanceConfig:
@@ -6797,11 +6804,17 @@ components:
     NodeActionAccepted:
       type: object
       properties:
+        exec_id:
+          type: string
+          format: uuid
+          x-go-name: ExecID
+          description: The exec this node forked, naming this run alone, where the session is shared by every node the command reached.
         session_id:
           type: string
           format: uuid
           x-go-name: SessionID
       required:
+        - exec_id
         - session_id
 
     NodeConfig:
@@ -8992,6 +9005,14 @@ components:
       schema:
         type: string
         description: A session or orchestration id.
+
+    inQuerySessionExecID:
+      in: query
+      name: exec_id
+      x-go-name: ExecID
+      schema:
+        type: string
+        description: List the exec of this id, which names one run of one object on one node.
 
     inQuerySessionOrchestrationID:
       in: query

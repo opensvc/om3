@@ -1106,6 +1106,7 @@ submitted being interested in the ones that ended.`,
 	commoncmd.FlagNodeSelectorOrLocalnode(flags, &options.NodeSelector)
 	flags.StringSliceVar(&options.States, "state", nil, "list the sessions in these states, every state when not set")
 	flags.StringVar(&options.OrchestrationID, "orchestration-id", "", "list the sessions run under this orchestration")
+	flags.StringVar(&options.ExecID, "exec-id", "", "list the exec of this id, which names one run of one object on one node")
 	return cmd
 }
 

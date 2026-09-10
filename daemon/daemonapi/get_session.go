@@ -30,6 +30,9 @@ func (a *DaemonAPI) GetDaemonSessions(ctx echo.Context, nodename string, params 
 	if params.OrchestrationID != nil {
 		filter.OrchestrationID = *params.OrchestrationID
 	}
+	if params.ExecID != nil {
+		filter.ExecID = *params.ExecID
+	}
 	if params.Selector != nil {
 		filter.Path = *params.Selector
 	}

@@ -18,10 +18,15 @@ import (
 	"github.com/opensvc/om3/v3/util/xsession"
 )
 
-func (a *DaemonAPI) apiExec(ctx echo.Context, p naming.Path, requesterSid uuid.UUID, args []string, log *plog.Logger) (uuid.UUID, error) {
+// apiExec forks the command and returns the ids naming what it forked: the
+// session, which a command reaching several objects or several nodes shares
+// between all of them, and the exec, which is this one alone. A client is
+// handed both so it can ask after the whole of what it submitted, or after
+// the part that ran here.
+func (a *DaemonAPI) apiExec(ctx echo.Context, p naming.Path, requesterSid uuid.UUID, args []string, log *plog.Logger) (uuid.UUID, uuid.UUID, error) {
 	execname, err := os.Executable()
 	if err != nil {
-		return uuid.Nil, fmt.Errorf("can't detect om execname: %w", err)
+		return uuid.Nil, uuid.Nil, fmt.Errorf("can't detect om execname: %w", err)
 	}
 	sid := xsession.NewSid(requesterSid)
 	eid := xsession.NewEid()
@@ -54,7 +59,7 @@ func (a *DaemonAPI) apiExec(ctx echo.Context, p naming.Path, requesterSid uuid.U
 	startTime := time.Now()
 	if err = cmd.Start(); err != nil {
 		log.Errorf("exec StartProcess: %s", err)
-		return sid.UUID(), fmt.Errorf("instance action failed: %w", err)
+		return sid.UUID(), eid.UUID(), fmt.Errorf("instance action failed: %w", err)
 	}
 	pid := cmd.Cmd().Process.Pid
 	proc.Register(proc.T{
@@ -95,5 +100,5 @@ func (a *DaemonAPI) apiExec(ctx echo.Context, p naming.Path, requesterSid uuid.U
 			a.Bus.Pub(&msg, labels...)
 		}
 	}()
-	return sid.UUID(), nil
+	return sid.UUID(), eid.UUID(), nil
 }

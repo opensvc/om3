@@ -6122,6 +6122,18 @@ func NewGetDaemonSessionsRequest(server string, nodename InPathNodeName, params 
 
 		}
 
+		if params.ExecID != nil {
+
+			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "exec_id", *params.ExecID, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "string", Format: ""}); err != nil {
+				return nil, err
+			} else {
+				for _, qp := range strings.Split(queryFrag, "&") {
+					rawQueryFragments = append(rawQueryFragments, qp)
+				}
+			}
+
+		}
+
 		if params.Selector != nil {
 
 			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "selector", *params.Selector, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "string", Format: ""}); err != nil {

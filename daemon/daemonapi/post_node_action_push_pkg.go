@@ -30,9 +30,9 @@ func (a *DaemonAPI) localNodeActionPushPkg(ctx echo.Context, params api.PostNode
 	if params.SessionId != nil {
 		requesterSid = *params.SessionId
 	}
-	if sid, err := a.apiExec(ctx, naming.Path{}, requesterSid, args, log); err != nil {
+	if sid, eid, err := a.apiExec(ctx, naming.Path{}, requesterSid, args, log); err != nil {
 		return JSONProblemf(ctx, http.StatusInternalServerError, "", "%s", err)
 	} else {
-		return ctx.JSON(http.StatusOK, api.NodeActionAccepted{SessionID: sid})
+		return ctx.JSON(http.StatusOK, api.NodeActionAccepted{SessionID: sid, ExecID: eid})
 	}
 }

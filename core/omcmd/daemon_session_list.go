@@ -23,6 +23,7 @@ type (
 		NodeSelector    string
 		States          []string
 		OrchestrationID string
+		ExecID          string
 		ID              string
 	}
 )
@@ -117,6 +118,9 @@ func (t *CmdDaemonSessionList) one(ctx context.Context, c *client.T, nodename st
 	if t.OrchestrationID != "" {
 		params.OrchestrationID = &t.OrchestrationID
 	}
+	if t.ExecID != "" {
+		params.ExecID = &t.ExecID
+	}
 	resp, err := c.GetDaemonSessionsWithResponse(ctx, nodename, &params)
 	if err != nil {
 		return nil, fmt.Errorf("%s: %w", nodename, err)
@@ -129,7 +133,7 @@ func (t *CmdDaemonSessionList) one(ctx context.Context, c *client.T, nodename st
 
 func (t *CmdDaemonSessionList) render(items []api.SessionItem) {
 	output.Renderer{
-		DefaultOutput: "tab=NODE:node,STATE:state,ID:id,PATH:path,ORIGIN:origin,BEGIN_AT:begin_at,DURATION:duration,COMMAND:command",
+		DefaultOutput: "tab=NODE:node,STATE:state,ID:id,EXEC_ID:exec_id,PATH:path,ORIGIN:origin,BEGIN_AT:begin_at,DURATION:duration,COMMAND:command",
 		Output:        t.Output,
 		Color:         t.Color,
 		Data:          toSessionViews(items),

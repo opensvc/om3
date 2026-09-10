@@ -310,11 +310,15 @@ func GetOrchestration(id string) (Orchestration, bool) {
 type Filter struct {
 	States          []State
 	OrchestrationID string
+	ExecID          string
 	Path            string
 	Node            string
 }
 
 func (f Filter) match(s *Session) bool {
+	if f.ExecID != "" && s.ExecID != f.ExecID {
+		return false
+	}
 	if f.OrchestrationID != "" && s.OrchestrationID != f.OrchestrationID {
 		return false
 	}
