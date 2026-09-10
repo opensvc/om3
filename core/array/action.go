@@ -152,9 +152,30 @@ func NewCommandAs(use string, actions []Action, w io.Writer) (*cobra.Command, er
 		},
 	}
 
+	// This tree is a branch of om, not a program: "om completion" already
+	// writes the completion of the whole command line, and the one written
+	// here would be of a program named after an array. "om array <name>
+	// --help" says what the help command would say. Both entries only pad the
+	// list of what an array answers to, so neither is offered.
+	//
+	// The help command is replaced rather than removed, which is the only way
+	// cobra has of not adding its own. The replacement is named anything but
+	// "help", because the usage template lists a command of that name whether
+	// it is hidden or not.
+	root.CompletionOptions.DisableDefaultCmd = true
+	root.SetHelpCommand(&cobra.Command{Use: "no-help", Hidden: true})
+
 	// The array was named to choose this driver, and is named again here so
 	// the parser of this tree accepts it where the user typed it.
+	//
+	// It is hidden because offering it here can only mislead: whoever reads
+	// this help has already named the array, as the argument or with this
+	// very option, and naming it a second time is refused. It still parses,
+	// which is the whole reason it is registered.
 	if err := FlagArray.register(root.PersistentFlags()); err != nil {
+		return nil, err
+	}
+	if err := root.PersistentFlags().MarkHidden(FlagArray.Name); err != nil {
 		return nil, err
 	}
 

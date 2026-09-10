@@ -270,3 +270,60 @@ func TestTheHelpOfABareTreeNamesTheArrayWord(t *testing.T) {
 	assert.Equal(t, "array", root.CommandPath())
 	assert.Equal(t, "array add disk", root.Commands()[0].Commands()[0].CommandPath())
 }
+
+// The tree is a branch of om and not a program, so it offers neither the
+// completion command, which would write the completion of a program named
+// after an array, nor the help command, which says what --help says.
+//
+// Cobra adds them both when the tree runs, not when it is built, so the tree
+// has to run for this to mean anything.
+func TestTheTreeOffersNeitherHelpNorCompletion(t *testing.T) {
+	r := &recorder{}
+	root, err := NewCommand([]Action{r.action("add", "disk")}, &bytes.Buffer{})
+	require.NoError(t, err)
+
+	var out bytes.Buffer
+	root.SetOut(&out)
+	root.SetErr(&out)
+	root.SetArgs([]string{})
+	require.NoError(t, root.Execute())
+
+	for _, cmd := range root.Commands() {
+		if !cmd.IsAvailableCommand() {
+			continue
+		}
+		assert.NotEqual(t, "completion", cmd.Name())
+		assert.NotEqual(t, "help", cmd.Name())
+	}
+
+	// What it printed is the list an operator reads, and the two words must
+	// not be in it either: the usage template lists a command named "help"
+	// whether it is hidden or not.
+	commands := out.String()
+	if i := strings.Index(commands, "Flags:"); i > 0 {
+		commands = commands[:i]
+	}
+	assert.NotContains(t, commands, "completion")
+	assert.NotContains(t, commands, "help")
+	assert.Contains(t, commands, "add", "the actions of the driver are still listed")
+}
+
+// The option that used to name the array is registered on the tree so a
+// command line written before the argument existed still parses, and hidden
+// so it is not offered: whoever reads this help has already named the array,
+// and naming it a second time is refused.
+func TestTheOptionThatNamedTheArrayIsNotOffered(t *testing.T) {
+	r := &recorder{}
+	root, err := NewCommand([]Action{r.action("add", "disk")}, &bytes.Buffer{})
+	require.NoError(t, err)
+
+	f := root.PersistentFlags().Lookup(FlagArray.Name)
+	require.NotNil(t, f, "the option still has to parse")
+	assert.True(t, f.Hidden, "the option must not be offered")
+
+	// Hidden is not disabled: the tree still takes it where it is typed.
+	require.NoError(t, RunActions(context.Background(),
+		[]Action{r.action("add", "disk")},
+		[]string{"--" + FlagArray.Name, "arr1", "add", "disk"}, &bytes.Buffer{}))
+	assert.True(t, r.called)
+}
