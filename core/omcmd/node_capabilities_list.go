@@ -45,7 +45,7 @@ func (t *CmdNodeCapabilitiesList) remote() error {
 		return err
 	}
 	if t.NodeSelector == "" {
-		t.NodeSelector = "*"
+		t.NodeSelector = hostname.Hostname()
 	}
 	nodenames, err := nodeselector.New(t.NodeSelector, nodeselector.WithClient(c)).Expand()
 	if err != nil {
@@ -73,11 +73,13 @@ func (t *CmdNodeCapabilitiesList) remote() error {
 }
 
 func (t *CmdNodeCapabilitiesList) Run() error {
-	if t.NodeSelector == "" {
+	// The capabilities of this node are read from this node, which is what
+	// scanning them wrote, and needs no daemon to answer. Any other selector,
+	// this node among several included, is a question for the daemon.
+	if t.NodeSelector == hostname.Hostname() {
 		return t.local()
-	} else {
-		return t.remote()
 	}
+	return t.remote()
 }
 
 func (t *CmdNodeCapabilitiesList) local() error {

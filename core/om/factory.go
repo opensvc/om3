@@ -414,7 +414,7 @@ func newCmdNodeCapabilitiesList() *cobra.Command {
 	}
 	flags := cmd.Flags()
 	addFlagsGlobal(flags, &options.OptsGlobal)
-	commoncmd.FlagNodeSelector(flags, &options.NodeSelector)
+	commoncmd.FlagNodeSelectorOrLocalnode(flags, &options.NodeSelector)
 	return cmd
 }
 
@@ -1011,7 +1011,7 @@ func newCmdNodeLogs() *cobra.Command {
 	flags := cmd.Flags()
 	addFlagsGlobal(flags, &options.OptsGlobal)
 	commoncmd.FlagsLogs(flags, &options.OptsLogs)
-	commoncmd.FlagNodeSelector(flags, &options.NodeSelector)
+	commoncmd.FlagNodeSelectorOrLocalnode(flags, &options.NodeSelector)
 	flagLocal(flags, &options.Local)
 	return cmd
 }
