@@ -13,3 +13,7 @@ Accepted expressions:
 
 Unlike `pg_cpu_shares`, which only arbitrates when the node is cpu-bound, a
 quota caps the group whether or not the node is busy.
+
+Setting this keyword to `default` puts the capping back where a node that
+never capped anything leaves it. Removing the keyword does not: what was
+written stays written, whether om wrote it or something else did.

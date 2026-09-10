@@ -1,3 +1,7 @@
 Allow service process to bind only the specified memory nodes.
 
 Memory nodes are specified as list or range : `0,1,2` or `0-2`.
+
+Setting this keyword to `default` puts the capping back where a node that
+never capped anything leaves it. Removing the keyword does not: what was
+written stays written, whether om wrote it or something else did.

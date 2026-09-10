@@ -1,3 +1,7 @@
 Block IO relative weight. Value: between `10` and `1000`.
 
 The kernel default is `1000`.
+
+Setting this keyword to `default` puts the capping back where a node that
+never capped anything leaves it. Removing the keyword does not: what was
+written stays written, whether om wrote it or something else did.

@@ -38,6 +38,17 @@ type (
 	key      int
 )
 
+// DefaultValue is the pg_* keyword value asking for the capping it names to
+// be put back where a node that never capped anything leaves it.
+//
+// Removing a keyword leaves the capping alone, on purpose: what om wrote
+// stays, and so does what anything else wrote. That leaves no way of lifting
+// a cap, which this value is. It is a value and not a command because the
+// configuration is what every node of the cluster converges to: a node
+// provisioned tomorrow, or a peer taking the object over, has to arrive at
+// the same capping as the node the reset was asked on.
+const DefaultValue = "default"
+
 // WithLogger sets the logger for this Config and returns itself for chaining.
 func (c *Config) WithLogger(l *plog.Logger) *Config {
 	c.log = l
