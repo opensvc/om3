@@ -1081,6 +1081,62 @@ func newCmdObjectPrintResourceInfo(kind string) *cobra.Command {
 	return cmd
 }
 
+func newCmdDaemonSessionList() *cobra.Command {
+	var options commands.CmdDaemonSessionList
+	cmd := &cobra.Command{
+		Use:   "list [ID]",
+		Short: "list the actions the daemon ran, and is running",
+		Long: `Naming an ID reports that one action, and says so when the daemon no longer
+holds it, which is not the same answer as never having run it.
+
+Naming no state lists every state, a client waiting for the end of what it
+submitted being interested in the ones that ended.`,
+		Aliases: []string{"ls"},
+		Args:    cobra.MaximumNArgs(1),
+		RunE: func(cmd *cobra.Command, args []string) error {
+			if len(args) > 0 {
+				options.ID = args[0]
+			}
+			return options.Run()
+		},
+	}
+	commoncmd.CmdWithArg(cmd, `ID  The session id the submitter of the action was handed.`)
+	flags := cmd.Flags()
+	addFlagsGlobal(flags, &options.OptsGlobal)
+	commoncmd.FlagNodeSelectorOrLocalnode(flags, &options.NodeSelector)
+	flags.StringSliceVar(&options.States, "state", nil, "list the sessions in these states, every state when not set")
+	flags.StringVar(&options.OrchestrationID, "orchestration-id", "", "list the sessions run under this orchestration")
+	return cmd
+}
+
+func newCmdDaemonOrchestrationList() *cobra.Command {
+	var options commands.CmdDaemonOrchestrationList
+	cmd := &cobra.Command{
+		Use:   "list [ID]",
+		Short: "list the orchestrations the monitor accepted, and is running",
+		Long: `Naming an ID reports that one orchestration, and says so when the daemon no
+longer holds it, which is not the same answer as never having run it.
+
+Any node answers for any orchestration, so this needs no node to be named,
+which is what lets a client reaching the cluster through a floating address
+follow one.`,
+		Aliases: []string{"ls"},
+		Args:    cobra.MaximumNArgs(1),
+		RunE: func(cmd *cobra.Command, args []string) error {
+			if len(args) > 0 {
+				options.ID = args[0]
+			}
+			return options.Run()
+		},
+	}
+	commoncmd.CmdWithArg(cmd, `ID  The orchestration id the submitter of the action was handed.`)
+	flags := cmd.Flags()
+	addFlagsGlobal(flags, &options.OptsGlobal)
+	commoncmd.FlagNodeSelectorOrLocalnode(flags, &options.NodeSelector)
+	flags.StringSliceVar(&options.States, "state", nil, "list the orchestrations in these states, every state when not set")
+	return cmd
+}
+
 func newCmdNodeScheduleList() *cobra.Command {
 	var options commands.CmdNodeScheduleList
 	cmd := &cobra.Command{

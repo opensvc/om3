@@ -86,3 +86,25 @@ func NewCmdDaemonStop() *cobra.Command {
 		Short: "stop the daemon",
 	}
 }
+
+// NewCmdDaemonSession returns the command group of the actions the daemon
+// ran, which it remembers so a client that submitted one can ask how it
+// ended.
+func NewCmdDaemonSession() *cobra.Command {
+	return &cobra.Command{
+		GroupID: GroupIDSubsystems,
+		Use:     "session",
+		Short:   "action session commands",
+	}
+}
+
+// NewCmdDaemonOrchestration returns the command group of the orchestrations
+// the monitor accepted.
+func NewCmdDaemonOrchestration() *cobra.Command {
+	return &cobra.Command{
+		GroupID: GroupIDSubsystems,
+		Use:     "orchestration",
+		Short:   "orchestration commands",
+		Aliases: []string{"orch"},
+	}
+}
