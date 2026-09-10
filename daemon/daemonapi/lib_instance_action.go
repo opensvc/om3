@@ -36,7 +36,9 @@ func (a *DaemonAPI) apiExec(ctx echo.Context, p naming.Path, requesterSid uuid.U
 			"OSVC_REQUEST_ID="+fmt.Sprint(ctx.Get("uuid")),
 		),
 	)
-	labels := []pubsub.Label{labelOriginAPI}
+	// The node label is what a subscriber narrows on to hear only what this
+	// node runs, and every other publisher of these messages sets it.
+	labels := []pubsub.Label{labelOriginAPI, {"node", a.localhost}}
 	if !p.IsZero() {
 		labels = append(labels, pubsub.Label{"namespace", p.Namespace}, pubsub.Label{"path", p.String()})
 	}
