@@ -78,7 +78,10 @@ func (t *CmdNodeScheduleList) extractFromDaemon(c *client.T) (api.ScheduleItems,
 	var l api.ScheduleItems
 
 	if t.NodeSelector == "" {
-		t.NodeSelector = "*"
+		// om runs on a node, and the entries of that node are the ones an
+		// operator running it means. The others are a selector away. ox
+		// drives a cluster from outside it, so it lists them all.
+		t.NodeSelector = hostname.Hostname()
 	}
 	nodenames, err := nodeselector.New(t.NodeSelector, nodeselector.WithClient(c)).Expand()
 	if err != nil {

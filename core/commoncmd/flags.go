@@ -5,6 +5,7 @@ import (
 	_ "embed"
 	"encoding/json"
 	"fmt"
+	"github.com/opensvc/om3/v3/util/hostname"
 	"os"
 	"path/filepath"
 	"regexp"
@@ -271,8 +272,14 @@ func FlagNodeSelector(flags *pflag.FlagSet, p *string) {
 	flags.StringVar(p, "node", "", "submit the action to the selected nodes")
 }
 
-func FlagNodeSelectorOrLocalhost(flags *pflag.FlagSet, p *string) {
-	flags.StringVar(p, "node", "localhost", "submit the action to the selected nodes")
+// FlagNodeSelectorOrLocalnode declares the node selector of a command whose
+// subject is this node unless another is named.
+//
+// The default is the name of the node rather than the word "localhost", which
+// the selector has no meaning for: it would look for a node of that name and
+// find none.
+func FlagNodeSelectorOrLocalnode(flags *pflag.FlagSet, p *string) {
+	flags.StringVar(p, "node", hostname.Hostname(), "submit the action to the selected nodes")
 }
 
 func FlagNodeSelectorOrAll(flags *pflag.FlagSet, p *string) {

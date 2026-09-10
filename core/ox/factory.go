@@ -789,6 +789,7 @@ func newCmdNodeScheduleList() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:     "list",
 		Short:   "list the node scheduler entries",
+		Long:    `The entries listed are the ones of every node. Naming nodes lists theirs.`,
 		Aliases: []string{"ls"},
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return options.Run()
@@ -796,7 +797,7 @@ func newCmdNodeScheduleList() *cobra.Command {
 	}
 	flags := cmd.Flags()
 	addFlagsGlobal(flags, &options.OptsGlobal)
-	commoncmd.FlagNodeSelector(flags, &options.NodeSelector)
+	commoncmd.FlagNodeSelectorOrAll(flags, &options.NodeSelector)
 	return cmd
 }
 

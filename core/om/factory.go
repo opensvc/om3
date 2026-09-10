@@ -1084,8 +1084,10 @@ func newCmdObjectPrintResourceInfo(kind string) *cobra.Command {
 func newCmdNodeScheduleList() *cobra.Command {
 	var options commands.CmdNodeScheduleList
 	cmd := &cobra.Command{
-		Use:     "list",
-		Short:   "list the node scheduler entries",
+		Use:   "list",
+		Short: "list the node scheduler entries",
+		Long: `The entries listed are the ones of this node. Naming other nodes, or all of
+them with "*", lists theirs.`,
 		Aliases: []string{"ls"},
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return options.Run()
@@ -1093,7 +1095,7 @@ func newCmdNodeScheduleList() *cobra.Command {
 	}
 	flags := cmd.Flags()
 	addFlagsGlobal(flags, &options.OptsGlobal)
-	commoncmd.FlagNodeSelector(flags, &options.NodeSelector)
+	commoncmd.FlagNodeSelectorOrLocalnode(flags, &options.NodeSelector)
 	flagLocal(flags, &options.Local)
 	return cmd
 }
