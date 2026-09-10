@@ -87,7 +87,7 @@ func newCmdDaemonEvents() *cobra.Command {
 	commoncmd.FlagEventOutput(flags, &options.Output)
 	commoncmd.FlagEventTemplate(flags, &options.Template)
 	commoncmd.FlagEventWait(flags, &options.Wait)
-	commoncmd.FlagNodeSelector(flags, &options.NodeSelector)
+	commoncmd.FlagNodeSelectorOrLocalnode(flags, &options.NodeSelector)
 	commoncmd.FlagObjectSelector(flags, &options.ObjectSelector)
 	commoncmd.FlagEventLimit(flags, &options.Limit)
 	return cmd
@@ -102,7 +102,7 @@ func newCmdDaemonRestart() *cobra.Command {
 	flags := cmd.Flags()
 	addFlagsGlobal(flags, &options.OptsGlobal)
 	commoncmd.FlagCPUProfile(flags, &options.CPUProfile)
-	commoncmd.FlagNodeSelector(flags, &options.NodeSelector)
+	commoncmd.FlagNodeSelectorOrLocalnode(flags, &options.NodeSelector)
 	return cmd
 }
 
@@ -139,7 +139,7 @@ func newCmdDaemonShutdown() *cobra.Command {
 	flags := cmd.Flags()
 	addFlagsGlobal(flags, &options.OptsGlobal)
 	commoncmd.FlagDuration(flags, &options.Timeout)
-	commoncmd.FlagNodeSelector(flags, &options.NodeSelector)
+	commoncmd.FlagNodeSelectorOrLocalnode(flags, &options.NodeSelector)
 	return cmd
 }
 
@@ -163,7 +163,7 @@ func newCmdDaemonStop() *cobra.Command {
 	}
 	flags := cmd.Flags()
 	addFlagsGlobal(flags, &options.OptsGlobal)
-	commoncmd.FlagNodeSelector(flags, &options.NodeSelector)
+	commoncmd.FlagNodeSelectorOrLocalnode(flags, &options.NodeSelector)
 	return cmd
 }
 
@@ -398,7 +398,7 @@ func newCmdNodeAbort() *cobra.Command {
 	flags := cmd.Flags()
 	commoncmd.FlagsAsync(flags, &options.OptsAsync)
 	addFlagsGlobal(flags, &options.OptsGlobal)
-	commoncmd.FlagNodeSelector(flags, &options.NodeSelector)
+	commoncmd.FlagNodeSelectorOrLocalnode(flags, &options.NodeSelector)
 	return cmd
 }
 
@@ -844,7 +844,7 @@ func newCmdNodeDrain() *cobra.Command {
 	flags := cmd.Flags()
 	addFlagsGlobal(flags, &options.OptsGlobal)
 	commoncmd.FlagsAsync(flags, &options.OptsAsync)
-	commoncmd.FlagNodeSelector(flags, &options.NodeSelector)
+	commoncmd.FlagNodeSelectorOrLocalnode(flags, &options.NodeSelector)
 	return cmd
 }
 
@@ -1427,7 +1427,7 @@ func newCmdNodeSSHTrust() *cobra.Command {
 		},
 	}
 	flags := cmd.Flags()
-	commoncmd.FlagNodeSelector(flags, &options.NodeSelector)
+	commoncmd.FlagNodeSelectorOrLocalnode(flags, &options.NodeSelector)
 	addFlagsGlobal(flags, &options.OptsGlobal)
 	return cmd
 }
@@ -2758,7 +2758,7 @@ func newCmdObjectScheduleList(kind string) *cobra.Command {
 	}
 	flags := cmd.Flags()
 	addFlagsGlobal(flags, &options.OptsGlobal)
-	commoncmd.FlagNodeSelector(flags, &options.NodeSelector)
+	commoncmd.FlagNodeSelectorOrLocalnode(flags, &options.NodeSelector)
 	flagLocal(flags, &options.Local)
 	return cmd
 }
