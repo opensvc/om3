@@ -230,3 +230,23 @@ func TestApplyProcWritesEveryCappingWhereTheKernelKeepsIt(t *testing.T) {
 		assert.Equalf(t, expected, read(t, id, file), "%s", file)
 	}
 }
+
+// A keyword this node has no file for is not reported as applied, the line an
+// applied group logs naming what it capped.
+func TestAnIgnoredKeywordIsNotReportedAsApplied(t *testing.T) {
+	s := Config{
+		ID:            "/omtest.slice",
+		CPUQuota:      "50%",
+		MemSwappiness: "60",
+		MemOOMControl: "1",
+	}.String()
+
+	assert.Contains(t, s, "cpu_quota=50%")
+	if isUnified() {
+		assert.NotContains(t, s, "mem_swappiness", "the unified hierarchy has no memory.swappiness")
+		assert.NotContains(t, s, "mem_oom_control", "the unified hierarchy has no memory.oom_control")
+	} else {
+		assert.Contains(t, s, "mem_swappiness=60")
+		assert.Contains(t, s, "mem_oom_control=1")
+	}
+}

@@ -245,6 +245,8 @@ func (c Config) Apply() error {
 	return err
 }
 
+// String is what an applied group logs, so it names the cappings that were
+// applied and not the ones this node has no file for.
 func (c Config) String() string {
 	buff := "pg " + c.ID
 	l := make([]string, 0)
@@ -260,7 +262,7 @@ func (c Config) String() string {
 	if c.CPUQuota != "" {
 		l = append(l, "cpu_quota="+c.CPUQuota)
 	}
-	if c.MemOOMControl != "" {
+	if c.MemOOMControl != "" && !isIgnored("pg_mem_oom_control") {
 		l = append(l, "mem_oom_control="+c.MemOOMControl)
 	}
 	if c.MemLimit != "" {
@@ -269,7 +271,7 @@ func (c Config) String() string {
 	if c.VMemLimit != "" {
 		l = append(l, "vmem_limit="+c.VMemLimit)
 	}
-	if c.MemSwappiness != "" {
+	if c.MemSwappiness != "" && !isIgnored("pg_mem_swappiness") {
 		l = append(l, "mem_swappiness="+c.MemSwappiness)
 	}
 	if c.BlockIOWeight != "" {

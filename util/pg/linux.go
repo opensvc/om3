@@ -74,12 +74,19 @@ func applyUnifiedWrites(id string, writes []unifiedWrite) error {
 // number, where lifting one is the word "max".
 //
 // The v1 hierarchy still goes through it, which is what it was written for.
+//
+// Which of the two a node holds is read from the mode of its cgroup mounts,
+// not from the unified manager failing. Falling back on a failure confused a
+// node having no unified hierarchy with a write that went wrong on one, and
+// the second sent the apply down a v1 path that could only fail differently:
+// that is how a missing io.bfq.weight was reported as a missing v1 mountpoint.
 func (c Config) ApplyProc(pid int) (created bool, errs error) {
 	if c.ID == "" {
 		errs = fmt.Errorf("the pg config application requires a non empty pg id")
 		return
 	}
 
+	unified := isUnified()
 	writes := make([]unifiedWrite, 0)
 	var hasReset bool
 	reset := func(kw string) {
@@ -153,7 +160,20 @@ func (c Config) ApplyProc(pid int) (created bool, errs error) {
 
 	// pg_mem_swappiness and pg_mem_oom_control reach the v1 hierarchy only:
 	// memory.swappiness and memory.oom_control are of that hierarchy, and the
-	// v2 agent writes neither on the unified one either.
+	// v2 agent writes neither on the unified one either. Setting one on a
+	// node holding the unified hierarchy caps nothing, so the group says so
+	// rather than letting the operator believe it capped something.
+	if unified && c.log != nil {
+		for kw, value := range map[string]string{
+			"pg_mem_swappiness":  c.MemSwappiness,
+			"pg_mem_oom_control": c.MemOOMControl,
+		} {
+			if value == "" {
+				continue
+			}
+			c.log.Warnf("%s is ignored: the unified cgroup hierarchy has no %s", kw, ignoredOnUnified[kw])
+		}
+	}
 	if c.MemSwappiness != "" {
 		if n, err := strconv.ParseUint(c.MemSwappiness, 10, 64); err != nil {
 			errs = errors.Join(errs, fmt.Errorf("pg_mem_swapiness: %w", err))
@@ -181,8 +201,12 @@ func (c Config) ApplyProc(pid int) (created bool, errs error) {
 		}
 	}
 
-	control, err := cgroupsv2.NewManager(UnifiedPath(), c.ID, delegatedControllers())
-	if err == nil {
+	if unified {
+		control, err := cgroupsv2.NewManager(UnifiedPath(), c.ID, delegatedControllers())
+		if err != nil {
+			errs = errors.Join(errs, fmt.Errorf("new pg %s: %w", c.ID, err))
+			return
+		}
 		if len(writes) > 0 {
 			errs = errors.Join(errs, applyUnifiedWrites(c.ID, writes))
 		}
@@ -191,24 +215,54 @@ func (c Config) ApplyProc(pid int) (created bool, errs error) {
 		} else if err := control.AddProc(uint64(pid)); err != nil {
 			errs = errors.Join(errs, fmt.Errorf("add pid to pg %s: %w", c.ID, err))
 		}
-	} else {
-		if hasReset {
-			// The v1 hierarchy names these files otherwise and holds other
-			// values in them, and none of that was read from a v1 node.
-			errs = errors.Join(errs, fmt.Errorf("a pg keyword set to %q needs the unified cgroup hierarchy", DefaultValue))
-		}
-		control, err := cgroups.New(cgroups.V1, cgroups.StaticPath(c.ID), &r)
-		if err != nil {
-			errs = errors.Join(errs, fmt.Errorf("new pg %s: %w", c.ID, err))
-		} else if pid == 0 {
-			created = true
-			// pass
-		} else if err := control.Add(cgroups.Process{Pid: pid}); err != nil {
-			created = true
-			errs = errors.Join(errs, fmt.Errorf("add pid to pg %s: %w", c.ID, err))
-		}
+		return
+	}
+
+	if hasReset {
+		// The v1 hierarchy names these files otherwise and holds other
+		// values in them, and none of that was read from a v1 node.
+		errs = errors.Join(errs, fmt.Errorf("a pg keyword set to %q needs the unified cgroup hierarchy", DefaultValue))
+	}
+	control, err := cgroups.New(cgroups.V1, cgroups.StaticPath(c.ID), &r)
+	if err != nil {
+		errs = errors.Join(errs, fmt.Errorf("new pg %s: %w", c.ID, err))
+	} else if pid == 0 {
+		created = true
+		// pass
+	} else if err := control.Add(cgroups.Process{Pid: pid}); err != nil {
+		created = true
+		errs = errors.Join(errs, fmt.Errorf("add pid to pg %s: %w", c.ID, err))
 	}
 	return
+}
+
+// ignoredOnUnified is the keyword whose capping the unified hierarchy has no
+// file for, and the file the v1 hierarchy keeps it in.
+//
+// The v2 agent writes neither on the unified hierarchy either.
+var ignoredOnUnified = map[string]string{
+	"pg_mem_swappiness":  "memory.swappiness",
+	"pg_mem_oom_control": "memory.oom_control",
+}
+
+// isIgnored reports whether a keyword caps nothing on this node.
+func isIgnored(kw string) bool {
+	if !isUnified() {
+		return false
+	}
+	_, ok := ignoredOnUnified[kw]
+	return ok
+}
+
+// isUnified reports whether the node holds the unified cgroup hierarchy and
+// nothing else.
+//
+// A hybrid node has both mounted, and its controllers are on the v1 one: the
+// unified hierarchy is there with no controller delegated to it, so a value
+// written under it would reach a file that does not exist. It is a v1 node as
+// far as capping goes.
+func isUnified() bool {
+	return cgroups.Mode() == cgroups.Unified
 }
 
 // delegatedControllers is what the manager is handed to make the cgroup with.
@@ -226,19 +280,12 @@ func delegatedControllers() *cgroupsv2.Resources {
 	}
 }
 
+// Delete removes the cgroup from the hierarchy the node holds.
 func (c Config) Delete() (bool, error) {
-	var changed bool
-	if ch, err := c.deleteV1(); err != nil {
-		return changed, err
-	} else {
-		changed = changed || ch
+	if isUnified() {
+		return c.deleteV2()
 	}
-	if ch, err := c.deleteV2(); err != nil {
-		return changed, err
-	} else {
-		changed = changed || ch
-	}
-	return changed, nil
+	return c.deleteV1()
 }
 
 func (c Config) deleteV2() (bool, error) {
