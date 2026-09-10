@@ -10,14 +10,14 @@ import (
 	"github.com/opensvc/om3/v3/daemon/session"
 )
 
-func (a *DaemonAPI) GetSessions(ctx echo.Context, nodename string, params api.GetSessionsParams) error {
+func (a *DaemonAPI) GetDaemonSessions(ctx echo.Context, nodename string, params api.GetDaemonSessionsParams) error {
 	if v, err := assertRoot(ctx); !v {
 		return err
 	}
 	nodename = a.parseNodename(nodename)
 	if a.localhost != nodename {
 		return a.proxy(ctx, nodename, func(c *client.T) (*http.Response, error) {
-			return c.GetSessions(ctx.Request().Context(), nodename, &params)
+			return c.GetDaemonSessions(ctx.Request().Context(), nodename, &params)
 		})
 	}
 
@@ -41,14 +41,14 @@ func (a *DaemonAPI) GetSessions(ctx echo.Context, nodename string, params api.Ge
 	return ctx.JSON(http.StatusOK, api.SessionList{Kind: api.SessionListKindSessionList, Items: items})
 }
 
-func (a *DaemonAPI) GetSession(ctx echo.Context, nodename string, id string) error {
+func (a *DaemonAPI) GetDaemonSession(ctx echo.Context, nodename string, id string) error {
 	if v, err := assertRoot(ctx); !v {
 		return err
 	}
 	nodename = a.parseNodename(nodename)
 	if a.localhost != nodename {
 		return a.proxy(ctx, nodename, func(c *client.T) (*http.Response, error) {
-			return c.GetSession(ctx.Request().Context(), nodename, id)
+			return c.GetDaemonSession(ctx.Request().Context(), nodename, id)
 		})
 	}
 	s, ok := session.GetSession(id)

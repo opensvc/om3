@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"net/http"
+	"time"
 
 	"github.com/opensvc/om3/v3/core/client"
 	"github.com/opensvc/om3/v3/core/output"
@@ -36,11 +37,11 @@ func (t *CmdDaemonOrchestrationList) Run() error {
 		return t.one(c, nodename)
 	}
 
-	params := api.GetOrchestrationsParams{}
+	params := api.GetDaemonOrchestrationsParams{}
 	if len(t.States) > 0 {
 		params.States = &t.States
 	}
-	resp, err := c.GetOrchestrationsWithResponse(context.Background(), nodename, &params)
+	resp, err := c.GetDaemonOrchestrationsWithResponse(context.Background(), nodename, &params)
 	if err != nil {
 		return err
 	}
@@ -55,7 +56,7 @@ func (t *CmdDaemonOrchestrationList) Run() error {
 // answer of its own: it is not the same as never having run it, and a client
 // polling for the end of an action must not read it as one.
 func (t *CmdDaemonOrchestrationList) one(c *client.T, nodename string) error {
-	resp, err := c.GetOrchestrationWithResponse(context.Background(), nodename, t.ID)
+	resp, err := c.GetDaemonOrchestrationWithResponse(context.Background(), nodename, t.ID)
 	if err != nil {
 		return err
 	}
@@ -72,10 +73,48 @@ func (t *CmdDaemonOrchestrationList) one(c *client.T, nodename string) error {
 
 func (t *CmdDaemonOrchestrationList) render(items []api.OrchestrationItem) {
 	output.Renderer{
-		DefaultOutput: "tab=STATE:state,ID:id,PATH:path,GLOBAL_EXPECT:global_expect,ACCEPTED_BY:node,BEGIN_AT:begin_at",
+		DefaultOutput: "tab=STATE:state,ID:id,PATH:path,GLOBAL_EXPECT:global_expect,ACCEPTED_BY:node,BEGIN_AT:begin_at,END_AT:end_at",
 		Output:        t.Output,
 		Color:         t.Color,
-		Data:          items,
+		Data:          toOrchestrationViews(items),
 		Colorize:      rawconfig.Colorize,
 	}.Print()
+}
+
+// orchestrationView is what the table shows, for the reason sessionView is.
+type orchestrationView struct {
+	State        string `json:"state"`
+	ID           string `json:"id"`
+	Path         string `json:"path,omitempty"`
+	GlobalExpect string `json:"global_expect,omitempty"`
+	AcceptedBy   string `json:"node,omitempty"`
+	BeginAt      string `json:"begin_at"`
+	EndAt        string `json:"end_at,omitempty"`
+	Error        string `json:"error,omitempty"`
+}
+
+func toOrchestrationViews(items []api.OrchestrationItem) []orchestrationView {
+	l := make([]orchestrationView, 0, len(items))
+	for _, i := range items {
+		v := orchestrationView{
+			State:      i.State,
+			ID:         i.Id,
+			AcceptedBy: i.Node,
+			BeginAt:    i.BeginAt.Truncate(time.Second).Format(time.RFC3339),
+		}
+		if i.Path != nil {
+			v.Path = *i.Path
+		}
+		if i.GlobalExpect != nil {
+			v.GlobalExpect = *i.GlobalExpect
+		}
+		if i.Error != nil {
+			v.Error = *i.Error
+		}
+		if i.EndAt != nil {
+			v.EndAt = i.EndAt.Truncate(time.Second).Format(time.RFC3339)
+		}
+		l = append(l, v)
+	}
+	return l
 }

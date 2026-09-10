@@ -10,14 +10,14 @@ import (
 	"github.com/opensvc/om3/v3/daemon/session"
 )
 
-func (a *DaemonAPI) GetOrchestrations(ctx echo.Context, nodename string, params api.GetOrchestrationsParams) error {
+func (a *DaemonAPI) GetDaemonOrchestrations(ctx echo.Context, nodename string, params api.GetDaemonOrchestrationsParams) error {
 	if v, err := assertRoot(ctx); !v {
 		return err
 	}
 	nodename = a.parseNodename(nodename)
 	if a.localhost != nodename {
 		return a.proxy(ctx, nodename, func(c *client.T) (*http.Response, error) {
-			return c.GetOrchestrations(ctx.Request().Context(), nodename, &params)
+			return c.GetDaemonOrchestrations(ctx.Request().Context(), nodename, &params)
 		})
 	}
 
@@ -38,14 +38,14 @@ func (a *DaemonAPI) GetOrchestrations(ctx echo.Context, nodename string, params 
 	return ctx.JSON(http.StatusOK, api.OrchestrationList{Kind: api.OrchestrationListKindOrchestrationList, Items: items})
 }
 
-func (a *DaemonAPI) GetOrchestration(ctx echo.Context, nodename string, id string) error {
+func (a *DaemonAPI) GetDaemonOrchestration(ctx echo.Context, nodename string, id string) error {
 	if v, err := assertRoot(ctx); !v {
 		return err
 	}
 	nodename = a.parseNodename(nodename)
 	if a.localhost != nodename {
 		return a.proxy(ctx, nodename, func(c *client.T) (*http.Response, error) {
-			return c.GetOrchestration(ctx.Request().Context(), nodename, id)
+			return c.GetDaemonOrchestration(ctx.Request().Context(), nodename, id)
 		})
 	}
 	o, ok := session.GetOrchestration(id)

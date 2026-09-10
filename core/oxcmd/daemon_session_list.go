@@ -4,11 +4,13 @@ import (
 	"context"
 	"fmt"
 	"net/http"
+	"time"
 
 	"github.com/opensvc/om3/v3/core/client"
 	"github.com/opensvc/om3/v3/core/output"
 	"github.com/opensvc/om3/v3/core/rawconfig"
 	"github.com/opensvc/om3/v3/daemon/api"
+	"github.com/opensvc/om3/v3/util/duration"
 	"github.com/opensvc/om3/v3/util/hostname"
 )
 
@@ -36,14 +38,14 @@ func (t *CmdDaemonSessionList) Run() error {
 		return t.one(c, nodename)
 	}
 
-	params := api.GetSessionsParams{}
+	params := api.GetDaemonSessionsParams{}
 	if len(t.States) > 0 {
 		params.States = &t.States
 	}
 	if t.OrchestrationID != "" {
 		params.OrchestrationID = &t.OrchestrationID
 	}
-	resp, err := c.GetSessionsWithResponse(context.Background(), nodename, &params)
+	resp, err := c.GetDaemonSessionsWithResponse(context.Background(), nodename, &params)
 	if err != nil {
 		return err
 	}
@@ -58,7 +60,7 @@ func (t *CmdDaemonSessionList) Run() error {
 // answer of its own: it is not the same as never having run it, and a client
 // polling for the end of an action must not read it as one.
 func (t *CmdDaemonSessionList) one(c *client.T, nodename string) error {
-	resp, err := c.GetSessionWithResponse(context.Background(), nodename, t.ID)
+	resp, err := c.GetDaemonSessionWithResponse(context.Background(), nodename, t.ID)
 	if err != nil {
 		return err
 	}
@@ -75,10 +77,56 @@ func (t *CmdDaemonSessionList) one(c *client.T, nodename string) error {
 
 func (t *CmdDaemonSessionList) render(items []api.SessionItem) {
 	output.Renderer{
-		DefaultOutput: "tab=NODE:node,STATE:state,ID:id,PATH:path,ORIGIN:origin,DURATION:duration,COMMAND:command",
+		DefaultOutput: "tab=NODE:node,STATE:state,ID:id,PATH:path,ORIGIN:origin,BEGIN_AT:begin_at,DURATION:duration,COMMAND:command",
 		Output:        t.Output,
 		Color:         t.Color,
-		Data:          items,
+		Data:          toSessionViews(items),
 		Colorize:      rawconfig.Colorize,
 	}.Print()
+}
+
+// sessionView is what the table shows: the api reports a duration in
+// nanoseconds and an instant to the nanosecond, which a machine wants and a
+// reader does not.
+type sessionView struct {
+	Node            string `json:"node"`
+	State           string `json:"state"`
+	ID              string `json:"id"`
+	OrchestrationID string `json:"orchestration_id,omitempty"`
+	Path            string `json:"path,omitempty"`
+	Origin          string `json:"origin,omitempty"`
+	BeginAt         string `json:"begin_at"`
+	Duration        string `json:"duration,omitempty"`
+	Command         string `json:"command,omitempty"`
+	Error           string `json:"error,omitempty"`
+}
+
+func toSessionViews(items []api.SessionItem) []sessionView {
+	l := make([]sessionView, 0, len(items))
+	for _, i := range items {
+		v := sessionView{
+			Node:    i.Node,
+			State:   i.State,
+			ID:      i.Id,
+			BeginAt: i.BeginAt.Truncate(time.Second).Format(time.RFC3339),
+			Command: i.Command,
+		}
+		if i.OrchestrationId != nil {
+			v.OrchestrationID = *i.OrchestrationId
+		}
+		if i.Path != nil {
+			v.Path = *i.Path
+		}
+		if i.Origin != "" {
+			v.Origin = i.Origin
+		}
+		if i.Error != nil {
+			v.Error = *i.Error
+		}
+		if i.Duration != nil {
+			v.Duration = duration.FmtShortDuration(time.Duration(*i.Duration))
+		}
+		l = append(l, v)
+	}
+	return l
 }

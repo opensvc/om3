@@ -1901,9 +1901,9 @@ paths:
       tags:
         - node / daemon
 
-  /api/node/name/{nodename}/session:
+  /api/node/name/{nodename}/daemon/session:
     get:
-      operationId: GetSessions
+      operationId: GetDaemonSessions
       description: |
         List the actions the daemon ran, and is running.
 
@@ -1943,9 +1943,9 @@ paths:
         - basicAuth: []
         - bearerAuth: []
 
-  /api/node/name/{nodename}/session/id/{id}:
+  /api/node/name/{nodename}/daemon/session/id/{id}:
     get:
-      operationId: GetSession
+      operationId: GetDaemonSession
       description: |
         Get the state of one action, by the session id its submitter was
         handed.
@@ -1976,9 +1976,9 @@ paths:
         - basicAuth: []
         - bearerAuth: []
 
-  /api/node/name/{nodename}/orchestration:
+  /api/node/name/{nodename}/daemon/orchestration:
     get:
-      operationId: GetOrchestrations
+      operationId: GetDaemonOrchestrations
       description: |
         List the orchestrations the monitor accepted, and is running.
       parameters:
@@ -2004,9 +2004,9 @@ paths:
         - basicAuth: []
         - bearerAuth: []
 
-  /api/node/name/{nodename}/orchestration/id/{id}:
+  /api/node/name/{nodename}/daemon/orchestration/id/{id}:
     get:
-      operationId: GetOrchestration
+      operationId: GetDaemonOrchestration
       description: |
         Get the state of one orchestration, by the id its submitter was
         handed.

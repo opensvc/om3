@@ -2986,6 +2986,14 @@ type GetDaemonEventsParams struct {
 	Selector *InQuerySelectorOptional `form:"selector,omitempty" json:"selector,omitempty"`
 }
 
+// GetDaemonOrchestrationsParams defines parameters for GetDaemonOrchestrations.
+type GetDaemonOrchestrationsParams struct {
+	States *States `form:"state,omitempty" json:"state,omitempty"`
+
+	// Selector selector
+	Selector *InQuerySelectorOptional `form:"selector,omitempty" json:"selector,omitempty"`
+}
+
 // DeleteDaemonProcessParams defines parameters for DeleteDaemonProcess.
 type DeleteDaemonProcessParams struct {
 	// Pid the pid of the process to kill.
@@ -3005,6 +3013,15 @@ type GetDaemonProcessParams struct {
 
 	// Rid a resource selector expression
 	Rid *InQueryRid `form:"rid,omitempty" json:"rid,omitempty"`
+}
+
+// GetDaemonSessionsParams defines parameters for GetDaemonSessions.
+type GetDaemonSessionsParams struct {
+	States          *States          `form:"state,omitempty" json:"state,omitempty"`
+	OrchestrationID *OrchestrationID `form:"orchestration_id,omitempty" json:"orchestration_id,omitempty"`
+
+	// Selector selector
+	Selector *InQuerySelectorOptional `form:"selector,omitempty" json:"selector,omitempty"`
 }
 
 // GetNodeDRBDConfigParams defines parameters for GetNodeDRBDConfig.
@@ -3347,23 +3364,6 @@ type GetNodeLogsParams struct {
 
 	// Paths list of object paths to send logs for
 	Paths *Paths `form:"paths,omitempty" json:"paths,omitempty"`
-}
-
-// GetOrchestrationsParams defines parameters for GetOrchestrations.
-type GetOrchestrationsParams struct {
-	States *States `form:"state,omitempty" json:"state,omitempty"`
-
-	// Selector selector
-	Selector *InQuerySelectorOptional `form:"selector,omitempty" json:"selector,omitempty"`
-}
-
-// GetSessionsParams defines parameters for GetSessions.
-type GetSessionsParams struct {
-	States          *States          `form:"state,omitempty" json:"state,omitempty"`
-	OrchestrationID *OrchestrationID `form:"orchestration_id,omitempty" json:"orchestration_id,omitempty"`
-
-	// Selector selector
-	Selector *InQuerySelectorOptional `form:"selector,omitempty" json:"selector,omitempty"`
 }
 
 // GetObjectsParams defines parameters for GetObjects.
