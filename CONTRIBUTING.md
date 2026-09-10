@@ -58,6 +58,37 @@ Give the new name to the command, and build the old one from it with `Use`
 overridden, the aliases cleared and `Hidden: true`. It stays out of the help
 and out of the completion, and the scripts that type it keep working.
 
+## ox asks the daemon, om reads the node
+
+`om` runs on a cluster node. It reads `node.conf` and `cluster.conf`, it
+registers the drivers, and it acts on what is in front of it.
+
+`ox` does not. It drives a cluster through the api of its daemon, from a host
+that may be a workstation with nothing of OpenSVC on it but the binary and a
+context. So an ox command must not suppose it runs on a node:
+
+- It must not open a configuration file, and must not reach for one through
+  `object.NewNode()`, `object.NewCluster()` or anything else that loads one.
+  On a workstation there is no file to open; on a node there is one, which is
+  worse, because the command then works where it is written and nowhere else.
+- It must not expect a driver to be registered. `core/driverdb` is linked by
+  om and not by ox, so `array.GetDriver()` and its like answer nothing in ox,
+  whatever the configuration says.
+- It gets what it needs from the api, and the om command it emulates is the
+  one that reads the files. `ox array list` calls `GET /array`, where `om
+  array list` parses the two configuration files.
+
+A command that can only be served by reading the node is not an ox command.
+There is no `ox array <name> <command>` for that reason: the driver of an
+array runs where it is invoked, reaches the array over its own management
+network, and reads its credentials from the configuration of a node. None of
+the three is true of the host ox runs on.
+
+Reaching for `core/object` in an ox command set is the sign to check. Its
+types and its pure functions are fine, `object.Digest` naming a shape and
+`object.PKCS` converting bytes; loading a configuration of the local host is
+not.
+
 # Rendering
 
 ## Do not use color.Set
