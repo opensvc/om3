@@ -78,12 +78,13 @@ func (t *Manager) crmAction(title string, cmdArgs ...string) error {
 	}
 	labels := []pubsub.Label{t.labelLocalhost, {"origin", "nmon"}}
 	t.publisher.Pub(&msgbus.Exec{
-		Command:   cmd.String(),
-		Node:      t.localhost,
-		Origin:    "nmon",
-		ExecID:    eid,
-		SessionID: sid,
-		Title:     title,
+		Command:         cmd.String(),
+		Node:            t.localhost,
+		Origin:          "nmon",
+		ExecID:          eid,
+		SessionID:       sid,
+		OrchestrationID: xsession.NewStrictOid(t.state.OrchestrationID),
+		Title:           title,
 	}, labels...)
 	startTime := time.Now()
 	if err := cmd.Start(); err != nil {
@@ -106,27 +107,29 @@ func (t *Manager) crmAction(title string, cmdArgs ...string) error {
 	if err != nil {
 		duration := time.Now().Sub(startTime)
 		t.publisher.Pub(&msgbus.ExecFailed{
-			Command:   cmd.String(),
-			Duration:  duration,
-			ErrS:      err.Error(),
-			Node:      t.localhost,
-			Origin:    "nmon",
-			ExecID:    eid,
-			SessionID: sid,
-			Title:     title,
+			Command:         cmd.String(),
+			Duration:        duration,
+			ErrS:            err.Error(),
+			Node:            t.localhost,
+			Origin:          "nmon",
+			ExecID:          eid,
+			SessionID:       sid,
+			OrchestrationID: xsession.NewStrictOid(t.state.OrchestrationID),
+			Title:           title,
 		}, labels...)
 		t.log.Errorf("failed %s: %s", cmd, err)
 		return err
 	}
 	duration := time.Now().Sub(startTime)
 	t.publisher.Pub(&msgbus.ExecSuccess{
-		Command:   cmd.String(),
-		Duration:  duration,
-		Node:      t.localhost,
-		Origin:    "nmon",
-		ExecID:    eid,
-		SessionID: sid,
-		Title:     title,
+		Command:         cmd.String(),
+		Duration:        duration,
+		Node:            t.localhost,
+		Origin:          "nmon",
+		ExecID:          eid,
+		SessionID:       sid,
+		OrchestrationID: xsession.NewStrictOid(t.state.OrchestrationID),
+		Title:           title,
 	}, labels...)
 	if title != "" {
 		t.log.Infof("<- exec %s %s", cmdPath, cmd)

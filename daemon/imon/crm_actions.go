@@ -218,6 +218,7 @@ func (t *Manager) crmDefaultAction(title string, cmdArgs ...string) error {
 	sid := xsession.NewSid()
 	eid := xsession.NewEid()
 	oid := xsession.NewOid(t.state.OrchestrationID)
+
 	cmd := command.New(
 		command.WithName(cmdPath),
 		command.WithArgs(cmdArgs),
@@ -236,12 +237,13 @@ func (t *Manager) crmDefaultAction(title string, cmdArgs ...string) error {
 		t.loggerWithState().Tracef("-> exec %s", append([]string{cmdPath}, cmdArgs...))
 	}
 	t.publisher.Pub(&msgbus.Exec{
-		Command:   cmd.String(),
-		Node:      t.localhost,
-		Origin:    "imon",
-		ExecID:    eid,
-		SessionID: sid,
-		Title:     title,
+		Command:         cmd.String(),
+		Node:            t.localhost,
+		Origin:          "imon",
+		ExecID:          eid,
+		SessionID:       sid,
+		OrchestrationID: xsession.NewStrictOid(t.state.OrchestrationID),
+		Title:           title,
 	}, labels...)
 	startTime := time.Now()
 	if err := cmd.Start(); err != nil {
@@ -265,27 +267,29 @@ func (t *Manager) crmDefaultAction(title string, cmdArgs ...string) error {
 	if err != nil {
 		duration := time.Now().Sub(startTime)
 		t.publisher.Pub(&msgbus.ExecFailed{
-			Command:   cmd.String(),
-			Duration:  duration,
-			ErrS:      err.Error(),
-			Node:      t.localhost,
-			Origin:    "imon",
-			ExecID:    eid,
-			SessionID: sid,
-			Title:     title,
+			Command:         cmd.String(),
+			Duration:        duration,
+			ErrS:            err.Error(),
+			Node:            t.localhost,
+			Origin:          "imon",
+			ExecID:          eid,
+			SessionID:       sid,
+			OrchestrationID: xsession.NewStrictOid(t.state.OrchestrationID),
+			Title:           title,
 		}, labels...)
 		t.loggerWithState().Errorf("<- exec %s: %s", append([]string{cmdPath}, cmdArgs...), err)
 		return err
 	}
 	duration := time.Now().Sub(startTime)
 	t.publisher.Pub(&msgbus.ExecSuccess{
-		Command:   cmd.String(),
-		Duration:  duration,
-		Node:      t.localhost,
-		Origin:    "imon",
-		ExecID:    eid,
-		SessionID: sid,
-		Title:     title,
+		Command:         cmd.String(),
+		Duration:        duration,
+		Node:            t.localhost,
+		Origin:          "imon",
+		ExecID:          eid,
+		SessionID:       sid,
+		OrchestrationID: xsession.NewStrictOid(t.state.OrchestrationID),
+		Title:           title,
 	}, labels...)
 	if title != "" {
 		t.loggerWithState().Infof("<- exec %s", append([]string{cmdPath}, cmdArgs...))

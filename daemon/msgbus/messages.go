@@ -271,8 +271,8 @@ var (
 
 		"ZoneRecordUpdated": func() any { return &ZoneRecordUpdated{} },
 
-		"NetLinkDown": func() any { return &NetLinkDown{} },
-		"NetLinkUp":   func() any { return &NetLinkUp{} },
+		"NetLinkDown":      func() any { return &NetLinkDown{} },
+		"NetLinkUp":        func() any { return &NetLinkUp{} },
 		"NetIPAddrAdded":   func() any { return &NetIPAddrAdded{} },
 		"NetIPAddrDeleted": func() any { return &NetIPAddrDeleted{} },
 
@@ -443,6 +443,9 @@ type (
 		Title     string      `json:"title" yaml:"title"`
 		SessionID xsession.Id `json:"session_id" yaml:"session_id"`
 		ExecID    xsession.Id `json:"exec_id" yaml:"exec_id"`
+		// OrchestrationID is set when the exec is a step of an
+		// orchestration, so the sessions of one can be found together.
+		OrchestrationID xsession.Id `json:"orchestration_id" yaml:"orchestration_id"`
 	}
 
 	// ExecFailed message describes failed exec call
@@ -458,6 +461,9 @@ type (
 		Title     string      `json:"title" yaml:"title"`
 		SessionID xsession.Id `json:"session_id" yaml:"session_id"`
 		ExecID    xsession.Id `json:"exec_id" yaml:"exec_id"`
+		// OrchestrationID is set when the exec is a step of an
+		// orchestration, so the sessions of one can be found together.
+		OrchestrationID xsession.Id `json:"orchestration_id" yaml:"orchestration_id"`
 	}
 
 	// ExecSuccess message describes successfully exec call
@@ -472,6 +478,9 @@ type (
 		Title     string      `json:"title" yaml:"title"`
 		SessionID xsession.Id `json:"session_id" yaml:"session_id"`
 		ExecID    xsession.Id `json:"exec_id" yaml:"exec_id"`
+		// OrchestrationID is set when the exec is a step of an
+		// orchestration, so the sessions of one can be found together.
+		OrchestrationID xsession.Id `json:"orchestration_id" yaml:"orchestration_id"`
 	}
 
 	Exit struct {

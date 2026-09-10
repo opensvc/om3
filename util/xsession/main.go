@@ -132,6 +132,20 @@ func NewOid(ids ...uuid.UUID) Id {
 	return i
 }
 
+// NewStrictOid creates an OrchestrationId carrying the id it is given, and
+// carrying none when that id is nil.
+//
+// NewOid answers a nil id with a fresh random one, which is what an exec
+// naming itself in its own logs wants, and the opposite of what a caller
+// reporting which orchestration something belongs to wants: it would report
+// belonging to an orchestration that never existed.
+func NewStrictOid(id uuid.UUID) Id {
+	return Id{
+		varName: "OSVC_ORCHESTRATION_ID",
+		id:      id,
+	}
+}
+
 // UUID returns the underlying uuid.UUID value.
 func (t *Id) UUID() uuid.UUID {
 	return t.id
