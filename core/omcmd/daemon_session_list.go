@@ -2,11 +2,14 @@ package omcmd
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"net/http"
+	"sync"
 	"time"
 
 	"github.com/opensvc/om3/v3/core/client"
+	"github.com/opensvc/om3/v3/core/nodeselector"
 	"github.com/opensvc/om3/v3/core/output"
 	"github.com/opensvc/om3/v3/core/rawconfig"
 	"github.com/opensvc/om3/v3/daemon/api"
@@ -29,13 +32,81 @@ func (t *CmdDaemonSessionList) Run() error {
 	if err != nil {
 		return err
 	}
-	nodename := t.NodeSelector
-	if nodename == "" {
-		nodename = hostname.Hostname()
+	if t.NodeSelector == "" {
+		t.NodeSelector = hostname.Hostname()
+	}
+	nodenames, err := nodeselector.New(t.NodeSelector, nodeselector.WithClient(c)).Expand()
+	if err != nil {
+		return err
+	}
+	if len(nodenames) == 0 {
+		return fmt.Errorf("no node matching %s", t.NodeSelector)
 	}
 
+	items, errs := t.gather(c, nodenames)
+
+	// An id one node no longer holds is not an error when another still
+	// does: an action submitted to several nodes is one session per node,
+	// and asking for it by id is asking every node that may have run it.
+	if t.ID != "" && len(items) == 0 {
+		if errs != nil {
+			return errs
+		}
+		return fmt.Errorf("session %s is no longer known on %s: it ended long enough ago to have been dropped, or never ran there",
+			t.ID, t.NodeSelector)
+	}
+	t.render(items)
+	return errs
+}
+
+// gather asks every node, and returns what they answered together with what
+// went wrong asking. A node that has forgotten the id is not one of the
+// things that went wrong.
+func (t *CmdDaemonSessionList) gather(c *client.T, nodenames []string) ([]api.SessionItem, error) {
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+
+	var (
+		mu    sync.Mutex
+		items []api.SessionItem
+		errs  error
+		wg    sync.WaitGroup
+	)
+	for _, nodename := range nodenames {
+		wg.Add(1)
+		go func(nodename string) {
+			defer wg.Done()
+			l, err := t.one(ctx, c, nodename)
+			mu.Lock()
+			defer mu.Unlock()
+			if err != nil {
+				errs = errors.Join(errs, err)
+				return
+			}
+			items = append(items, l...)
+		}(nodename)
+	}
+	wg.Wait()
+	return items, errs
+}
+
+func (t *CmdDaemonSessionList) one(ctx context.Context, c *client.T, nodename string) ([]api.SessionItem, error) {
 	if t.ID != "" {
-		return t.one(c, nodename)
+		resp, err := c.GetDaemonSessionWithResponse(ctx, nodename, t.ID)
+		if err != nil {
+			return nil, fmt.Errorf("%s: %w", nodename, err)
+		}
+		switch resp.StatusCode() {
+		case http.StatusOK:
+			return []api.SessionItem{*resp.JSON200}, nil
+		case http.StatusGone:
+			// This node has forgotten it, or never ran it. Another may hold
+			// it, and saying so here would make asking every node an error
+			// wherever one of them answers.
+			return nil, nil
+		default:
+			return nil, fmt.Errorf("%s: %s", nodename, resp.Status())
+		}
 	}
 
 	params := api.GetDaemonSessionsParams{}
@@ -45,34 +116,14 @@ func (t *CmdDaemonSessionList) Run() error {
 	if t.OrchestrationID != "" {
 		params.OrchestrationID = &t.OrchestrationID
 	}
-	resp, err := c.GetDaemonSessionsWithResponse(context.Background(), nodename, &params)
+	resp, err := c.GetDaemonSessionsWithResponse(ctx, nodename, &params)
 	if err != nil {
-		return err
+		return nil, fmt.Errorf("%s: %w", nodename, err)
 	}
 	if resp.StatusCode() != http.StatusOK {
-		return fmt.Errorf("%s: %s", nodename, resp.Status())
+		return nil, fmt.Errorf("%s: %s", nodename, resp.Status())
 	}
-	t.render(resp.JSON200.Items)
-	return nil
-}
-
-// one asks for a single session, where the daemon having forgotten it is an
-// answer of its own: it is not the same as never having run it, and a client
-// polling for the end of an action must not read it as one.
-func (t *CmdDaemonSessionList) one(c *client.T, nodename string) error {
-	resp, err := c.GetDaemonSessionWithResponse(context.Background(), nodename, t.ID)
-	if err != nil {
-		return err
-	}
-	switch resp.StatusCode() {
-	case http.StatusOK:
-		t.render([]api.SessionItem{*resp.JSON200})
-		return nil
-	case http.StatusGone:
-		return fmt.Errorf("%s: session %s is no longer known: it ended long enough ago to have been dropped, or never ran there", nodename, t.ID)
-	default:
-		return fmt.Errorf("%s: %s", nodename, resp.Status())
-	}
+	return resp.JSON200.Items, nil
 }
 
 func (t *CmdDaemonSessionList) render(items []api.SessionItem) {
@@ -110,15 +161,13 @@ func toSessionViews(items []api.SessionItem) []sessionView {
 			ID:      i.Id,
 			BeginAt: i.BeginAt.Truncate(time.Second).Format(time.RFC3339),
 			Command: i.Command,
+			Origin:  i.Origin,
 		}
 		if i.OrchestrationId != nil {
 			v.OrchestrationID = *i.OrchestrationId
 		}
 		if i.Path != nil {
 			v.Path = *i.Path
-		}
-		if i.Origin != "" {
-			v.Origin = i.Origin
 		}
 		if i.Error != nil {
 			v.Error = *i.Error
