@@ -2951,6 +2951,32 @@ func newCmdObjectInstancePGUpdate(kind string) *cobra.Command {
 	return cmd
 }
 
+func newCmdObjectInstancePGReset(kind string) *cobra.Command {
+	var options commands.CmdObjectInstancePGReset
+	cmd := &cobra.Command{
+		Use:   "reset",
+		Short: "lift the instance process group cappings",
+		Long: `Put the process group cappings of the instance back where a node that never
+capped anything leaves them, whatever the pg_* keywords say and whoever wrote
+the capping being lifted.
+
+This is the way out of a capping the configuration does not know about: one
+left by an older agent, by systemd, or by hand. A capping the configuration
+does name comes back at the next "pg update", and at the next start. Lifting
+one for good is a pg_* keyword set to "default".`,
+		RunE: func(cmd *cobra.Command, args []string) error {
+			return options.Run(kind)
+		},
+	}
+	flags := cmd.Flags()
+	addFlagsGlobal(flags, &options.OptsGlobal)
+	commoncmd.FlagsAsync(flags, &options.OptsAsync)
+	commoncmd.FlagsLock(flags, &options.OptsLock)
+	commoncmd.FlagsEncap(flags, &options.OptsEncap)
+	commoncmd.FlagsResourceSelector(cmd, &options.OptsResourceSelector)
+	return cmd
+}
+
 func newCmdObjectInstanceRestart(kind string) *cobra.Command {
 	var options commands.CmdObjectInstanceRestart
 	cmd := &cobra.Command{

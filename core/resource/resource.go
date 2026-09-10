@@ -70,6 +70,7 @@ type (
 
 		// common
 		ApplyPG(context.Context) error
+		ResetPG(context.Context) error
 		DriverID() driver.ID
 		GetObject() any
 		GetPG() *pg.Config
@@ -519,6 +520,25 @@ func (t *T) ApplyPG(ctx context.Context) error {
 	return nil
 }
 
+// ResetPG lifts the capping of the process group of this resource, and of the
+// groups above it the object owns.
+//
+// It registers the group the way applying does, and lifts what is not lifted
+// yet: the walk reaches every resource, and each call finds only its own group
+// left to do.
+func (t *T) ResetPG(ctx context.Context) error {
+	pgConfig := t.GetPG()
+	if pgConfig == nil {
+		return nil
+	}
+	mgr := pg.FromContext(ctx)
+	if mgr == nil {
+		return nil
+	}
+	mgr.Register(pgConfig)
+	return mgr.ResetConfigs()
+}
+
 // SetObject holds the useful interface of the parent object of the resource.
 func (t *T) SetObject(o any) {
 	if od, ok := o.(ObjectDriver); !ok {
@@ -879,6 +899,18 @@ func PGUpdate(ctx context.Context, r Driver) error {
 		return ErrDisabled
 	}
 	if err := r.ApplyPG(ctx); err != nil {
+		return err
+	}
+	return nil
+}
+
+// PGReset lifts the capping of the process group of a resource.
+func PGReset(ctx context.Context, r Driver) error {
+	defer EvalStatus(ctx, r)
+	if r.IsDisabled() || r.IsActionDisabled() {
+		return ErrDisabled
+	}
+	if err := r.ResetPG(ctx); err != nil {
 		return err
 	}
 	return nil

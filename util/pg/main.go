@@ -28,11 +28,13 @@ type (
 		MemSwappiness string
 		BlockIOWeight string
 		applied       bool
+		reset         bool
 		log           *plog.Logger
 	}
 	Mgr struct {
-		mu      sync.Mutex
-		configs map[string]*Config
+		mu        sync.Mutex
+		configs   map[string]*Config
+		resetRoot string
 	}
 	CPUQuota string
 	key      int
@@ -102,6 +104,61 @@ func (m *Mgr) ApplyConfigs() error {
 	return errs
 }
 
+// SetResetRoot says which of the registered groups an action may lift the
+// capping of: that one, and the ones under it.
+//
+// It is what keeps an object from uncapping what it does not own. The groups
+// registered by an action reach above the object, up to the slice of the
+// namespace and the slice holding every object of the node, because a child
+// cannot be capped before its parents exist. Those are the namespace's to
+// lift, not this object's.
+func (m *Mgr) SetResetRoot(id string) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	m.resetRoot = id
+}
+
+// ResetConfigs lifts the capping of the registered groups at and under the
+// reset root, base to leaf, each one once.
+//
+// The order matters the same way it does when capping: a parent has to be
+// uncapped before a child, or the child stays capped by what the parent still
+// holds. Sorting the ids gives that order, a parent being a prefix of its
+// children.
+//
+// It is called once per resource of the walk, as applying is, and lifts on
+// each call only what the calls before it did not: a resource registers its
+// group and the groups registered so far are already lifted.
+func (m *Mgr) ResetConfigs() error {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	if m.resetRoot == "" {
+		return nil
+	}
+	var errs error
+	ids := xmap.Keys(m.configs)
+	sort.Strings(ids)
+	for _, id := range ids {
+		if id != m.resetRoot && !strings.HasPrefix(id, m.resetRoot+"/") {
+			continue
+		}
+		c := m.configs[id]
+		if c.reset {
+			continue
+		}
+		uncapped := c.Uncapped()
+		if _, err := uncapped.ApplyProc(0); err != nil {
+			errs = errors.Join(errs, err)
+			continue
+		}
+		c.reset = true
+		if c.log != nil {
+			c.log.Infof("reset pg %s", id)
+		}
+	}
+	return errs
+}
+
 func (m *Mgr) Clean() {
 	m.mu.Lock()
 	defer m.mu.Unlock()
@@ -151,6 +208,24 @@ func (c *Config) ApplyOnce() (bool, error) {
 }
 
 // Clean removes the pg configuration if it was applied.
+// Uncapped returns the same group, with every capping the unified hierarchy
+// has a file for asked to go back where the kernel leaves it.
+//
+// It is what "pg reset" applies. The keywords a configuration carries are not
+// read: the point of the command is to lift cappings the configuration does
+// not know about, left by an older agent, by systemd, or by hand.
+func (c Config) Uncapped() Config {
+	c.CPUs = DefaultValue
+	c.Mems = DefaultValue
+	c.CPUShares = DefaultValue
+	c.CPUQuota = DefaultValue
+	c.MemLimit = DefaultValue
+	c.VMemLimit = DefaultValue
+	c.BlockIOWeight = DefaultValue
+	c.applied = false
+	return c
+}
+
 func (c *Config) Clean() (bool, error) {
 	if c == nil || !c.applied {
 		return false, nil
