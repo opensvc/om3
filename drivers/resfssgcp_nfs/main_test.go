@@ -8,6 +8,7 @@ import (
 	"net/http/httptest"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 	"time"
 
@@ -45,6 +46,117 @@ func Setup(t *testing.T) func() {
 	return func() {
 		sgcp.SetConfigForTest("")
 	}
+}
+
+// testFSConfigBlock is the files.fs section of the sgcp test configuration.
+// setupWithFSConfig substitutes it, so it must stay in sync with
+// util/testsgcphelper/text/config.yaml.
+const testFSConfigBlock = `  fs:
+    permission: "read-write"
+    protocol: "nfs4.1"
+    exclusive: false
+    ignored_clients: []
+`
+
+// setupWithFSConfig installs the sgcp test configuration with its files.fs
+// section replaced by fsYaml, so a test can exercise the fallback of the
+// driver keywords to the configuration file. It returns a cleanup function
+// resetting the configuration to a null state when invoked.
+func setupWithFSConfig(t *testing.T, fsYaml string) func() {
+	t.Helper()
+	cfgFile := testsgcphelper.InstallConfig(t)
+	b, err := os.ReadFile(cfgFile)
+	require.NoError(t, err)
+	require.Contains(t, string(b), testFSConfigBlock)
+	b = []byte(strings.Replace(string(b), testFSConfigBlock, fsYaml, 1))
+	require.NoError(t, os.WriteFile(cfgFile, b, 0644))
+	sgcp.SetConfigForTest(cfgFile)
+	require.NotNil(t, sgcp.GetConfig())
+
+	return func() {
+		sgcp.SetConfigForTest("")
+	}
+}
+
+// TestConfigureFallsBackToConfigFS tests that the keywords left unset take
+// their value from the files.fs section of the sgcp configuration file.
+func TestConfigureFallsBackToConfigFS(t *testing.T) {
+	defer setupWithFSConfig(t, `  fs:
+    permission: "read-only"
+    protocol: "nfs4.1"
+    exclusive: true
+    ignored_clients: ["ignored1", "ignored2"]
+`)()
+
+	drv := newDrvWithRid("test-rid")
+	drv.authInfoer = sgcpauthtesthelper.NewMockGetAuthInfoProvider("id1")
+	drv.UUID = "test-uuid"
+	drv.Host = "test-host"
+	require.NoError(t, drv.Configure())
+
+	assert.Equal(t, "read-only", drv.Permission)
+	assert.Equal(t, "nfs4.1", drv.Protocol)
+	assert.True(t, drv.exclusive)
+	assert.Equal(t, []string{"ignored1", "ignored2"}, drv.nfsIgnored)
+}
+
+// TestConfigureKeywordsWinOverConfigFS tests that the keywords explicitly set
+// are not overridden by the files.fs section of the sgcp configuration file.
+func TestConfigureKeywordsWinOverConfigFS(t *testing.T) {
+	defer setupWithFSConfig(t, `  fs:
+    permission: "read-only"
+    protocol: "nfs4.1"
+    exclusive: false
+    ignored_clients: []
+`)()
+
+	drv := newDrvWithRid("test-rid")
+	drv.authInfoer = sgcpauthtesthelper.NewMockGetAuthInfoProvider("id1")
+	drv.UUID = "test-uuid"
+	drv.Host = "test-host"
+	drv.Permission = "read-write"
+	drv.Exclusive = "true"
+	require.NoError(t, drv.Configure())
+
+	assert.Equal(t, "read-write", drv.Permission)
+	assert.True(t, drv.exclusive)
+}
+
+// TestConfigureExclusiveFalseWinsOverConfigFS tests that an explicit false
+// exclusive keyword opts out of a files.fs section set to true.
+func TestConfigureExclusiveFalseWinsOverConfigFS(t *testing.T) {
+	defer setupWithFSConfig(t, `  fs:
+    permission: "read-write"
+    protocol: "nfs4.1"
+    exclusive: true
+    ignored_clients: []
+`)()
+
+	drv := newDrvWithRid("test-rid")
+	drv.authInfoer = sgcpauthtesthelper.NewMockGetAuthInfoProvider("id1")
+	drv.UUID = "test-uuid"
+	drv.Host = "test-host"
+	drv.Exclusive = "false"
+	require.NoError(t, drv.Configure())
+
+	assert.False(t, drv.exclusive)
+}
+
+// TestConfigureWithoutConfigFS tests that a sgcp configuration file with no
+// files.fs section still yields the package defaults.
+func TestConfigureWithoutConfigFS(t *testing.T) {
+	defer setupWithFSConfig(t, "")()
+
+	drv := newDrvWithRid("test-rid")
+	drv.authInfoer = sgcpauthtesthelper.NewMockGetAuthInfoProvider("id1")
+	drv.UUID = "test-uuid"
+	drv.Host = "test-host"
+	require.NoError(t, drv.Configure())
+
+	assert.Equal(t, sgcp.FsDefaultPermission, drv.Permission)
+	assert.Equal(t, sgcp.FsDefaultProtocol, drv.Protocol)
+	assert.False(t, drv.exclusive)
+	assert.Empty(t, drv.nfsIgnored)
 }
 
 // TestDriverID tests that the driver has the correct ID
@@ -124,7 +236,7 @@ func TestIsClientIgnored(t *testing.T) {
 	assert.NoError(t, err)
 
 	// Add some ignored hosts
-	NfsClientIgnored = []string{"ignored1", "ignored2"}
+	drv.nfsIgnored = []string{"ignored1", "ignored2"}
 
 	assert.True(t, drv.isClientIgnored("ignored1"))
 	assert.True(t, drv.isClientIgnored("ignored2"))
@@ -156,7 +268,7 @@ func TestGetNFSClients(t *testing.T) {
 	require.NoError(t, drv.Configure())
 
 	// Set up ignored hosts
-	NfsClientIgnored = []string{"ignored-host"}
+	drv.nfsIgnored = []string{"ignored-host"}
 
 	fileInfo := &FilesystemInfo{
 		UUID: "fs-uuid",
@@ -400,7 +512,7 @@ func (t *T) fileStatusFromInfo(fileInfo *FilesystemInfo) status.T {
 	clients := t.getNFSClients(fileInfo)
 	n := len(clients)
 
-	if t.Exclusive {
+	if t.exclusive {
 		if n > 1 {
 			t.StatusLog().Warn("too many grants (%d)", n)
 		}

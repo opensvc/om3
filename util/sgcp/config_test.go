@@ -1,7 +1,10 @@
 package sgcp
 
 import (
+	"os"
+	"path/filepath"
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -64,6 +67,11 @@ func TestLoadConfig(t *testing.T) {
 	assert.Equal(t, "/fs", cfg.Files.Path.FS)
 	assert.Equal(t, "/client", cfg.Files.Path.Client)
 	assert.Equal(t, "/cg", cfg.Files.Path.CG)
+	assert.Equal(t, "read-write", cfg.Files.FS.Permission)
+	assert.Equal(t, "nfs4.1", cfg.Files.FS.Protocol)
+	assert.False(t, cfg.Files.FS.Exclusive)
+	assert.Equal(t, []string{}, cfg.Files.FS.IgnoredClients)
+	assert.Equal(t, 5*time.Minute, cfg.Files.CGTimeout())
 
 	// Test DNS configuration
 	assert.Equal(t, "https://127.0.0.1:1215/dns", cfg.DNS.BaseURL)
@@ -80,4 +88,40 @@ func TestLoadConfig(t *testing.T) {
 
 	// Test cache configuration
 	assert.Equal(t, 14400, cfg.Cache.TTLSeconds)
+}
+
+// TestLoadConfigSetsFSDefaults tests that a configuration file with no
+// files.fs section still yields the package defaults.
+func TestLoadConfigSetsFSDefaults(t *testing.T) {
+	cfgFile := filepath.Join(t.TempDir(), "sgcp.yaml")
+	require.NoError(t, os.WriteFile(cfgFile, []byte("files:\n  base_url: \"https://127.0.0.1:1215/file\"\n"), 0644))
+
+	cfg, err := loadConfig(cfgFile)
+	require.NoError(t, err)
+
+	assert.Equal(t, FsDefaultPermission, cfg.Files.FS.Permission)
+	assert.Equal(t, FsDefaultProtocol, cfg.Files.FS.Protocol)
+	assert.False(t, cfg.Files.FS.Exclusive)
+	assert.Equal(t, []string{}, cfg.Files.FS.IgnoredClients)
+	assert.Equal(t, CGDefaultTimeout, cfg.Files.CGTimeout())
+}
+
+// TestCGTimeout tests the parsing of the files.cg.timeout setting
+func TestCGTimeout(t *testing.T) {
+	cases := map[string]struct {
+		timeout  string
+		expected time.Duration
+	}{
+		"unset":       {"", CGDefaultTimeout},
+		"duration":    {"5m", 5 * time.Minute},
+		"bare number": {"300", 300 * time.Second},
+		"garbage":     {"not-a-duration", CGDefaultTimeout},
+	}
+	for name, c := range cases {
+		t.Run(name, func(t *testing.T) {
+			var files FilesConfig
+			files.CG.Timeout = c.timeout
+			assert.Equal(t, c.expected, files.CGTimeout())
+		})
+	}
 }

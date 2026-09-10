@@ -1,1 +1,2 @@
-The protocol used to access the filesystem.
+The protocol used to access the filesystem. Defaults to the files.fs.protocol
+value from the sgcp configuration file, which itself defaults to nfs4.1.

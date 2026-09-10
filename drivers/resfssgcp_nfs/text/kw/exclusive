@@ -1,1 +1,3 @@
 If exclusive, on start, drop all grants for other hosts on the filesystem.
+Defaults to the files.fs.exclusive value from the sgcp configuration file,
+which itself defaults to false.

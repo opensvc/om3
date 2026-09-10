@@ -320,7 +320,7 @@ func (t *T) Configure() error {
 	}
 
 	if t.Timeout == nil {
-		timeout := time.Duration(cfg.Files.CG.Timeout) * time.Second
+		timeout := cfg.Files.CGTimeout()
 		t.Timeout = &timeout
 	}
 	return t.configureMgr(cfg)

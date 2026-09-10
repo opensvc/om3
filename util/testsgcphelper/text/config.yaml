@@ -8,8 +8,13 @@ files:
     fs: "/fs"
     client: "/client"
     cg: "/cg"
+  fs:
+    permission: "read-write"
+    protocol: "nfs4.1"
+    exclusive: false
+    ignored_clients: []
   cg:
-    timeout: 300
+    timeout: 5m
 
 dns:
   base_url: "https://127.0.0.1:1215/dns"

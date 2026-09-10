@@ -4,6 +4,7 @@ package resfssgcp_nfs
 import (
 	"context"
 	"fmt"
+	"strconv"
 	"time"
 
 	"github.com/opensvc/om3/v3/core/datarecv"
@@ -45,7 +46,7 @@ type (
 		UUID       string `json:"uuid"`
 		Host       string `json:"host,omitempty"`
 		Permission string `json:"permission,omitempty"`
-		Exclusive  bool   `json:"exclusive,omitempty"`
+		Exclusive  string `json:"exclusive,omitempty"`
 		Protocol   string `json:"protocol,omitempty"`
 		Secret     string `json:"secret,omitempty"`
 		Endpoint   string `json:"endpoint,omitempty"`
@@ -65,6 +66,11 @@ type (
 		resFs      fsDriver
 		mgr        *nfsClientMgr
 		authInfoer GetAuthInfoer
+		nfsIgnored []string
+
+		// exclusive is the Exclusive tristate keyword resolved against the
+		// config file during Configure.
+		exclusive bool
 	}
 
 	GetAuthInfoer interface {
@@ -80,11 +86,6 @@ type (
 		Head() string
 		CanInstall(context.Context) (bool, error)
 	}
-)
-
-var (
-	// NfsClientIgnored is a list of NFS client hosts to ignore
-	NfsClientIgnored = []string{}
 )
 
 // New creates a new SGCP NFS filesystem resource driver
@@ -120,11 +121,32 @@ func (t *T) Configure() error {
 	}
 
 	if t.Permission == "" {
-		t.Permission = DefaultPermission
+		if cfg.Files.FS.Permission == "" {
+			return fmt.Errorf("permission is required (neither defined into permission keyword nor config file %s", sgcp.DefaultConfigPath)
+		}
+		t.Permission = cfg.Files.FS.Permission
 	}
+
 	if t.Protocol == "" {
-		t.Protocol = DefaultProtocol
+		if cfg.Files.FS.Protocol == "" {
+			return fmt.Errorf("protocol is required (neither defined into protocol keyword nor config file %s", sgcp.DefaultConfigPath)
+		}
+		t.Protocol = cfg.Files.FS.Protocol
 	}
+
+	// Exclusive is a tristate: an unset keyword falls back to the config
+	// file, an explicit false opts out of a config file set to true.
+	if t.Exclusive == "" {
+		t.exclusive = cfg.Files.FS.Exclusive
+	} else if v, err := strconv.ParseBool(t.Exclusive); err != nil {
+		return fmt.Errorf("exclusive: %w", err)
+	} else {
+		t.exclusive = v
+	}
+
+	// The ignored clients have no keyword: the config file is their only
+	// source.
+	t.nfsIgnored = append([]string{}, cfg.Files.FS.IgnoredClients...)
 
 	if err := t.configureMgr(cfg); err != nil {
 		return fmt.Errorf("configure mgr: %w", err)
@@ -162,7 +184,7 @@ func (t *T) configureMgr(cfg *sgcp.Config) error {
 		permission:  t.Permission,
 		protocol:    t.Protocol,
 		log:         t.Log(),
-		nfsIgnored:  NfsClientIgnored,
+		nfsIgnored:  t.nfsIgnored,
 		endpoint:    t.Endpoint,
 		secret:      t.Secret,
 		api:         sgcp.NewFilesAPI(cfg, httpClient, t.Log(), tk),
@@ -298,7 +320,7 @@ func (t *T) fileStart(ctx context.Context) error {
 	}
 
 	// Start the NFS client
-	return t.mgr.Start(ctx, t.Exclusive)
+	return t.mgr.Start(ctx, t.exclusive)
 }
 
 // fileStop handles the SGCP API part of stopping the filesystem
@@ -356,7 +378,7 @@ func (t *T) fileStatus(ctx context.Context) status.T {
 	clients := t.getNFSClients(fileInfo)
 	n := len(clients)
 
-	if t.Exclusive {
+	if t.exclusive {
 		if n > 1 {
 			t.StatusLog().Warn(fmt.Sprintf("too many grants (%d)", n))
 		}
@@ -411,7 +433,7 @@ func (t *T) getNFSClients(fileInfo *FilesystemInfo) []NfsClient {
 
 // isClientIgnored checks if a client host should be ignored
 func (t *T) isClientIgnored(host string) bool {
-	for _, ignored := range NfsClientIgnored {
+	for _, ignored := range t.nfsIgnored {
 		if host == ignored {
 			return true
 		}
