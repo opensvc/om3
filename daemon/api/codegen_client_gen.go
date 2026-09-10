@@ -404,11 +404,23 @@ type ClientInterface interface {
 	// GetNodeMetrics request
 	GetNodeMetrics(ctx context.Context, nodename InPathNodeName, reqEditors ...RequestEditorFn) (*http.Response, error)
 
+	// GetOrchestrations request
+	GetOrchestrations(ctx context.Context, nodename InPathNodeName, params *GetOrchestrationsParams, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// GetOrchestration request
+	GetOrchestration(ctx context.Context, nodename InPathNodeName, id InPathSessionID, reqEditors ...RequestEditorFn) (*http.Response, error)
+
 	// GetNodePing request
 	GetNodePing(ctx context.Context, nodename InPathNodeName, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// GetNodeSchedule request
 	GetNodeSchedule(ctx context.Context, nodename InPathNodeName, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// GetSessions request
+	GetSessions(ctx context.Context, nodename InPathNodeName, params *GetSessionsParams, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// GetSession request
+	GetSession(ctx context.Context, nodename InPathNodeName, id InPathSessionID, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// GetNodeSSHHostkeys request
 	GetNodeSSHHostkeys(ctx context.Context, nodename InPathNodeName, reqEditors ...RequestEditorFn) (*http.Response, error)
@@ -1856,6 +1868,30 @@ func (c *Client) GetNodeMetrics(ctx context.Context, nodename InPathNodeName, re
 	return c.Client.Do(req)
 }
 
+func (c *Client) GetOrchestrations(ctx context.Context, nodename InPathNodeName, params *GetOrchestrationsParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewGetOrchestrationsRequest(c.Server, nodename, params)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+func (c *Client) GetOrchestration(ctx context.Context, nodename InPathNodeName, id InPathSessionID, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewGetOrchestrationRequest(c.Server, nodename, id)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
 func (c *Client) GetNodePing(ctx context.Context, nodename InPathNodeName, reqEditors ...RequestEditorFn) (*http.Response, error) {
 	req, err := NewGetNodePingRequest(c.Server, nodename)
 	if err != nil {
@@ -1870,6 +1906,30 @@ func (c *Client) GetNodePing(ctx context.Context, nodename InPathNodeName, reqEd
 
 func (c *Client) GetNodeSchedule(ctx context.Context, nodename InPathNodeName, reqEditors ...RequestEditorFn) (*http.Response, error) {
 	req, err := NewGetNodeScheduleRequest(c.Server, nodename)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+func (c *Client) GetSessions(ctx context.Context, nodename InPathNodeName, params *GetSessionsParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewGetSessionsRequest(c.Server, nodename, params)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+func (c *Client) GetSession(ctx context.Context, nodename InPathNodeName, id InPathSessionID, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewGetSessionRequest(c.Server, nodename, id)
 	if err != nil {
 		return nil, err
 	}
@@ -10247,6 +10307,120 @@ func NewGetNodeMetricsRequest(server string, nodename InPathNodeName) (*http.Req
 	return req, nil
 }
 
+// NewGetOrchestrationsRequest generates requests for GetOrchestrations
+func NewGetOrchestrationsRequest(server string, nodename InPathNodeName, params *GetOrchestrationsParams) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "nodename", nodename, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/api/node/name/%s/orchestration", pathParam0)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	if params != nil {
+		// queryValues collects non-styled parameters (passthrough, JSON)
+		// that are safe to round-trip through url.Values.Encode().
+		queryValues := queryURL.Query()
+		// rawQueryFragments collects pre-encoded query fragments from
+		// styled parameters, preserving literal commas as delimiters
+		// per the OpenAPI spec (e.g. "color=blue,black,brown").
+		var rawQueryFragments []string
+
+		if params.States != nil {
+
+			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "state", *params.States, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "array", Format: ""}); err != nil {
+				return nil, err
+			} else {
+				for _, qp := range strings.Split(queryFrag, "&") {
+					rawQueryFragments = append(rawQueryFragments, qp)
+				}
+			}
+
+		}
+
+		if params.Selector != nil {
+
+			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "selector", *params.Selector, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "string", Format: ""}); err != nil {
+				return nil, err
+			} else {
+				for _, qp := range strings.Split(queryFrag, "&") {
+					rawQueryFragments = append(rawQueryFragments, qp)
+				}
+			}
+
+		}
+
+		if encoded := queryValues.Encode(); encoded != "" {
+			rawQueryFragments = append(rawQueryFragments, encoded)
+		}
+		queryURL.RawQuery = strings.Join(rawQueryFragments, "&")
+	}
+
+	req, err := http.NewRequest(http.MethodGet, queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
+// NewGetOrchestrationRequest generates requests for GetOrchestration
+func NewGetOrchestrationRequest(server string, nodename InPathNodeName, id InPathSessionID) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "nodename", nodename, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam1 string
+
+	pathParam1, err = runtime.StyleParamWithOptions("simple", false, "id", id, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/api/node/name/%s/orchestration/id/%s", pathParam0, pathParam1)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodGet, queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
 // NewGetNodePingRequest generates requests for GetNodePing
 func NewGetNodePingRequest(server string, nodename InPathNodeName) (*http.Request, error) {
 	var err error
@@ -10298,6 +10472,132 @@ func NewGetNodeScheduleRequest(server string, nodename InPathNodeName) (*http.Re
 	}
 
 	operationPath := fmt.Sprintf("/api/node/name/%s/schedule", pathParam0)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodGet, queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
+// NewGetSessionsRequest generates requests for GetSessions
+func NewGetSessionsRequest(server string, nodename InPathNodeName, params *GetSessionsParams) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "nodename", nodename, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/api/node/name/%s/session", pathParam0)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	if params != nil {
+		// queryValues collects non-styled parameters (passthrough, JSON)
+		// that are safe to round-trip through url.Values.Encode().
+		queryValues := queryURL.Query()
+		// rawQueryFragments collects pre-encoded query fragments from
+		// styled parameters, preserving literal commas as delimiters
+		// per the OpenAPI spec (e.g. "color=blue,black,brown").
+		var rawQueryFragments []string
+
+		if params.States != nil {
+
+			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "state", *params.States, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "array", Format: ""}); err != nil {
+				return nil, err
+			} else {
+				for _, qp := range strings.Split(queryFrag, "&") {
+					rawQueryFragments = append(rawQueryFragments, qp)
+				}
+			}
+
+		}
+
+		if params.OrchestrationID != nil {
+
+			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "orchestration_id", *params.OrchestrationID, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "string", Format: ""}); err != nil {
+				return nil, err
+			} else {
+				for _, qp := range strings.Split(queryFrag, "&") {
+					rawQueryFragments = append(rawQueryFragments, qp)
+				}
+			}
+
+		}
+
+		if params.Selector != nil {
+
+			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "selector", *params.Selector, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "string", Format: ""}); err != nil {
+				return nil, err
+			} else {
+				for _, qp := range strings.Split(queryFrag, "&") {
+					rawQueryFragments = append(rawQueryFragments, qp)
+				}
+			}
+
+		}
+
+		if encoded := queryValues.Encode(); encoded != "" {
+			rawQueryFragments = append(rawQueryFragments, encoded)
+		}
+		queryURL.RawQuery = strings.Join(rawQueryFragments, "&")
+	}
+
+	req, err := http.NewRequest(http.MethodGet, queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
+// NewGetSessionRequest generates requests for GetSession
+func NewGetSessionRequest(server string, nodename InPathNodeName, id InPathSessionID) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "nodename", nodename, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam1 string
+
+	pathParam1, err = runtime.StyleParamWithOptions("simple", false, "id", id, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/api/node/name/%s/session/id/%s", pathParam0, pathParam1)
 	if operationPath[0] == '/' {
 		operationPath = "." + operationPath
 	}
@@ -13487,11 +13787,23 @@ type ClientWithResponsesInterface interface {
 	// GetNodeMetricsWithResponse request
 	GetNodeMetricsWithResponse(ctx context.Context, nodename InPathNodeName, reqEditors ...RequestEditorFn) (*GetNodeMetricsResponse, error)
 
+	// GetOrchestrationsWithResponse request
+	GetOrchestrationsWithResponse(ctx context.Context, nodename InPathNodeName, params *GetOrchestrationsParams, reqEditors ...RequestEditorFn) (*GetOrchestrationsResponse, error)
+
+	// GetOrchestrationWithResponse request
+	GetOrchestrationWithResponse(ctx context.Context, nodename InPathNodeName, id InPathSessionID, reqEditors ...RequestEditorFn) (*GetOrchestrationResponse, error)
+
 	// GetNodePingWithResponse request
 	GetNodePingWithResponse(ctx context.Context, nodename InPathNodeName, reqEditors ...RequestEditorFn) (*GetNodePingResponse, error)
 
 	// GetNodeScheduleWithResponse request
 	GetNodeScheduleWithResponse(ctx context.Context, nodename InPathNodeName, reqEditors ...RequestEditorFn) (*GetNodeScheduleResponse, error)
+
+	// GetSessionsWithResponse request
+	GetSessionsWithResponse(ctx context.Context, nodename InPathNodeName, params *GetSessionsParams, reqEditors ...RequestEditorFn) (*GetSessionsResponse, error)
+
+	// GetSessionWithResponse request
+	GetSessionWithResponse(ctx context.Context, nodename InPathNodeName, id InPathSessionID, reqEditors ...RequestEditorFn) (*GetSessionResponse, error)
 
 	// GetNodeSSHHostkeysWithResponse request
 	GetNodeSSHHostkeysWithResponse(ctx context.Context, nodename InPathNodeName, reqEditors ...RequestEditorFn) (*GetNodeSSHHostkeysResponse, error)
@@ -17066,6 +17378,73 @@ func (r GetNodeMetricsResponse) ContentType() string {
 	return ""
 }
 
+type GetOrchestrationsResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	JSON200      *OrchestrationList
+	JSON401      *N401
+	JSON403      *N403
+	JSON500      *N500
+}
+
+// Status returns HTTPResponse.Status
+func (r GetOrchestrationsResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r GetOrchestrationsResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r GetOrchestrationsResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+type GetOrchestrationResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	JSON200      *OrchestrationItem
+	JSON401      *N401
+	JSON403      *N403
+	JSON410      *N410
+	JSON500      *N500
+}
+
+// Status returns HTTPResponse.Status
+func (r GetOrchestrationResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r GetOrchestrationResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r GetOrchestrationResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
 type GetNodePingResponse struct {
 	Body         []byte
 	HTTPResponse *http.Response
@@ -17127,6 +17506,73 @@ func (r GetNodeScheduleResponse) StatusCode() int {
 
 // ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
 func (r GetNodeScheduleResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+type GetSessionsResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	JSON200      *SessionList
+	JSON401      *N401
+	JSON403      *N403
+	JSON500      *N500
+}
+
+// Status returns HTTPResponse.Status
+func (r GetSessionsResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r GetSessionsResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r GetSessionsResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+type GetSessionResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	JSON200      *SessionItem
+	JSON401      *N401
+	JSON403      *N403
+	JSON410      *N410
+	JSON500      *N500
+}
+
+// Status returns HTTPResponse.Status
+func (r GetSessionResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r GetSessionResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r GetSessionResponse) ContentType() string {
 	if r.HTTPResponse != nil {
 		return r.HTTPResponse.Header.Get("Content-Type")
 	}
@@ -19852,6 +20298,24 @@ func (c *ClientWithResponses) GetNodeMetricsWithResponse(ctx context.Context, no
 	return ParseGetNodeMetricsResponse(rsp)
 }
 
+// GetOrchestrationsWithResponse request returning *GetOrchestrationsResponse
+func (c *ClientWithResponses) GetOrchestrationsWithResponse(ctx context.Context, nodename InPathNodeName, params *GetOrchestrationsParams, reqEditors ...RequestEditorFn) (*GetOrchestrationsResponse, error) {
+	rsp, err := c.GetOrchestrations(ctx, nodename, params, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseGetOrchestrationsResponse(rsp)
+}
+
+// GetOrchestrationWithResponse request returning *GetOrchestrationResponse
+func (c *ClientWithResponses) GetOrchestrationWithResponse(ctx context.Context, nodename InPathNodeName, id InPathSessionID, reqEditors ...RequestEditorFn) (*GetOrchestrationResponse, error) {
+	rsp, err := c.GetOrchestration(ctx, nodename, id, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseGetOrchestrationResponse(rsp)
+}
+
 // GetNodePingWithResponse request returning *GetNodePingResponse
 func (c *ClientWithResponses) GetNodePingWithResponse(ctx context.Context, nodename InPathNodeName, reqEditors ...RequestEditorFn) (*GetNodePingResponse, error) {
 	rsp, err := c.GetNodePing(ctx, nodename, reqEditors...)
@@ -19868,6 +20332,24 @@ func (c *ClientWithResponses) GetNodeScheduleWithResponse(ctx context.Context, n
 		return nil, err
 	}
 	return ParseGetNodeScheduleResponse(rsp)
+}
+
+// GetSessionsWithResponse request returning *GetSessionsResponse
+func (c *ClientWithResponses) GetSessionsWithResponse(ctx context.Context, nodename InPathNodeName, params *GetSessionsParams, reqEditors ...RequestEditorFn) (*GetSessionsResponse, error) {
+	rsp, err := c.GetSessions(ctx, nodename, params, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseGetSessionsResponse(rsp)
+}
+
+// GetSessionWithResponse request returning *GetSessionResponse
+func (c *ClientWithResponses) GetSessionWithResponse(ctx context.Context, nodename InPathNodeName, id InPathSessionID, reqEditors ...RequestEditorFn) (*GetSessionResponse, error) {
+	rsp, err := c.GetSession(ctx, nodename, id, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseGetSessionResponse(rsp)
 }
 
 // GetNodeSSHHostkeysWithResponse request returning *GetNodeSSHHostkeysResponse
@@ -25654,6 +26136,107 @@ func ParseGetNodeMetricsResponse(rsp *http.Response) (*GetNodeMetricsResponse, e
 	return response, nil
 }
 
+// ParseGetOrchestrationsResponse parses an HTTP response from a GetOrchestrationsWithResponse call
+func ParseGetOrchestrationsResponse(rsp *http.Response) (*GetOrchestrationsResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &GetOrchestrationsResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest OrchestrationList
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest N401
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest N403
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON403 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
+		var dest N500
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON500 = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseGetOrchestrationResponse parses an HTTP response from a GetOrchestrationWithResponse call
+func ParseGetOrchestrationResponse(rsp *http.Response) (*GetOrchestrationResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &GetOrchestrationResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest OrchestrationItem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest N401
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest N403
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON403 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 410:
+		var dest N410
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON410 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
+		var dest N500
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON500 = &dest
+
+	}
+
+	return response, nil
+}
+
 // ParseGetNodePingResponse parses an HTTP response from a GetNodePingWithResponse call
 func ParseGetNodePingResponse(rsp *http.Response) (*GetNodePingResponse, error) {
 	bodyBytes, err := io.ReadAll(rsp.Body)
@@ -25742,6 +26325,107 @@ func ParseGetNodeScheduleResponse(rsp *http.Response) (*GetNodeScheduleResponse,
 			return nil, err
 		}
 		response.JSON403 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
+		var dest N500
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON500 = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseGetSessionsResponse parses an HTTP response from a GetSessionsWithResponse call
+func ParseGetSessionsResponse(rsp *http.Response) (*GetSessionsResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &GetSessionsResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest SessionList
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest N401
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest N403
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON403 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
+		var dest N500
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON500 = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseGetSessionResponse parses an HTTP response from a GetSessionWithResponse call
+func ParseGetSessionResponse(rsp *http.Response) (*GetSessionResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &GetSessionResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest SessionItem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest N401
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest N403
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON403 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 410:
+		var dest N410
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON410 = &dest
 
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
 		var dest N500

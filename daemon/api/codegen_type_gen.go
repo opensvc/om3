@@ -468,6 +468,21 @@ func (e Orchestrate) Valid() bool {
 	}
 }
 
+// Defines values for OrchestrationListKind.
+const (
+	OrchestrationListKindOrchestrationList OrchestrationListKind = "OrchestrationList"
+)
+
+// Valid indicates whether the value is a known member of the OrchestrationListKind enum.
+func (e OrchestrationListKind) Valid() bool {
+	switch e {
+	case OrchestrationListKindOrchestrationList:
+		return true
+	default:
+		return false
+	}
+}
+
 // Defines values for PackageItemKind.
 const (
 	PackageItemKindPackageItem PackageItemKind = "PackageItem"
@@ -834,6 +849,21 @@ const (
 func (e ScheduleListKind) Valid() bool {
 	switch e {
 	case ScheduleListKindScheduleList:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for SessionListKind.
+const (
+	SessionListKindSessionList SessionListKind = "SessionList"
+)
+
+// Valid indicates whether the value is a known member of the SessionListKind enum.
+func (e SessionListKind) Valid() bool {
+	switch e {
+	case SessionListKindSessionList:
 		return true
 	default:
 		return false
@@ -1841,6 +1871,29 @@ type ObjectVolConfig struct {
 // Orchestrate defines model for Orchestrate.
 type Orchestrate string
 
+// OrchestrationItem defines model for OrchestrationItem.
+type OrchestrationItem struct {
+	BeginAt      time.Time  `json:"begin_at"`
+	EndAt        *time.Time `json:"end_at,omitempty"`
+	Error        *string    `json:"error,omitempty"`
+	GlobalExpect *string    `json:"global_expect,omitempty"`
+	Id           string     `json:"id"`
+	Node         string     `json:"node"`
+	Path         *string    `json:"path,omitempty"`
+
+	// State One of running, succeeded, aborted, refused.
+	State string `json:"state"`
+}
+
+// OrchestrationList defines model for OrchestrationList.
+type OrchestrationList struct {
+	Items []OrchestrationItem   `json:"items"`
+	Kind  OrchestrationListKind `json:"kind"`
+}
+
+// OrchestrationListKind defines model for OrchestrationList.Kind.
+type OrchestrationListKind string
+
 // OrchestrationQueued defines model for OrchestrationQueued.
 type OrchestrationQueued struct {
 	OrchestrationID openapi_types.UUID `json:"orchestration_id"`
@@ -2325,6 +2378,43 @@ type ScheduleListKind string
 // Scope defines model for Scope.
 type Scope = []string
 
+// SessionItem defines model for SessionItem.
+type SessionItem struct {
+	BeginAt time.Time `json:"begin_at"`
+	Command string    `json:"command"`
+
+	// Duration Nanoseconds the session ran for.
+	Duration *int64     `json:"duration,omitempty"`
+	EndAt    *time.Time `json:"end_at,omitempty"`
+	Error    *string    `json:"error,omitempty"`
+
+	// Id The session id the submitter was handed.
+	Id   string `json:"id"`
+	Node string `json:"node"`
+
+	// OrchestrationId The orchestration this session is a step of, when it is one.
+	OrchestrationId *string `json:"orchestration_id,omitempty"`
+
+	// Origin What submitted the action. Example, api, imon, nmon, scheduler.
+	Origin string `json:"origin"`
+
+	// Path The object the session acts on. Absent for a node action.
+	Path *string `json:"path,omitempty"`
+
+	// State One of running, succeeded, failed.
+	State string  `json:"state"`
+	Title *string `json:"title,omitempty"`
+}
+
+// SessionList defines model for SessionList.
+type SessionList struct {
+	Items []SessionItem   `json:"items"`
+	Kind  SessionListKind `json:"kind"`
+}
+
+// SessionListKind defines model for SessionList.Kind.
+type SessionListKind string
+
 // Status Represents a resource, instance or object status, e.g., 'up', 'down', 'warn', ....
 type Status string
 
@@ -2481,6 +2571,9 @@ type InPathNamespace = string
 // the node that received the request.
 type InPathNodeName = string
 
+// InPathSessionID A session or orchestration id.
+type InPathSessionID = string
+
 // InQueryAllSlaves Act on all encap instances, and don't act on the host instance if not asked for explicitely.
 type InQueryAllSlaves = bool
 
@@ -2577,6 +2670,12 @@ type InQuerySelectorOptional = string
 // InQuerySessionID defines model for inQuerySessionID.
 type InQuerySessionID = openapi_types.UUID
 
+// OrchestrationID List the sessions run under this orchestration.
+type OrchestrationID = string
+
+// States defines model for inQuerySessionState.
+type States = []string
+
 // InQuerySets defines model for inQuerySets.
 type InQuerySets = []string
 
@@ -2621,6 +2720,9 @@ type N408 = Problem
 
 // N409 defines model for 409.
 type N409 = Problem
+
+// N410 defines model for 410.
+type N410 = Problem
 
 // N413 defines model for 413.
 type N413 = Problem
@@ -3245,6 +3347,23 @@ type GetNodeLogsParams struct {
 
 	// Paths list of object paths to send logs for
 	Paths *Paths `form:"paths,omitempty" json:"paths,omitempty"`
+}
+
+// GetOrchestrationsParams defines parameters for GetOrchestrations.
+type GetOrchestrationsParams struct {
+	States *States `form:"state,omitempty" json:"state,omitempty"`
+
+	// Selector selector
+	Selector *InQuerySelectorOptional `form:"selector,omitempty" json:"selector,omitempty"`
+}
+
+// GetSessionsParams defines parameters for GetSessions.
+type GetSessionsParams struct {
+	States          *States          `form:"state,omitempty" json:"state,omitempty"`
+	OrchestrationID *OrchestrationID `form:"orchestration_id,omitempty" json:"orchestration_id,omitempty"`
+
+	// Selector selector
+	Selector *InQuerySelectorOptional `form:"selector,omitempty" json:"selector,omitempty"`
 }
 
 // GetObjectsParams defines parameters for GetObjects.
