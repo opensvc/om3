@@ -18,11 +18,7 @@ var (
 		GroupID: commoncmd.GroupIDSubsystems,
 		Use:     "array [NAME] [COMMAND]",
 		Short:   "manage storage arrays",
-		Long: `An array is a backend storage provider for pools.
-
-NAME is the array to act on, written as the section holding it with or without
-its "array#" prefix. COMMAND and the options after it are the ones the driver
-of that array answers to, so "om array <name>" alone lists them.`,
+		Long:    `An array is a backend storage provider for pools.`,
 		Example: `  om array freenas add disk --name d1 --size 1g
   om array freenas
   om array list`,
@@ -42,6 +38,8 @@ of that array answers to, so "om array <name>" alone lists them.`,
 )
 
 func init() {
+	commoncmd.CmdWithArg(cmdArray, `NAME     The array to act on, named by its section with or without the "array#" prefix.`)
+	commoncmd.CmdWithArg(cmdArray, `COMMAND  A command of the driver of that array. "om array NAME" lists them.`)
 	root.AddCommand(
 		cmdArray,
 	)

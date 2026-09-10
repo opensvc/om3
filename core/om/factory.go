@@ -1155,10 +1155,7 @@ func newCmdNodePushArray() *cobra.Command {
 		Use:   "array [NAME]",
 		Short: "push the storage array configurations to the collector",
 		Long: `The arrays are the ones the node and cluster configuration name. Each is
-pushed with the collector method exported for its type.
-
-NAME is the array to push, written as the section holding it with or without
-its "array#" prefix. Every array is pushed when none is named.`,
+pushed with the collector method exported for its type.`,
 		Example: `  om node push array freenas
   om node push array array#freenas
   om node push array`,
@@ -1178,14 +1175,18 @@ its "array#" prefix. Every array is pushed when none is named.`,
 			return options.Run()
 		},
 	}
+	commoncmd.CmdWithArg(cmd, `NAME  The array to push, named by its section with or without the "array#" prefix. Every array when not set.`)
 	flags := cmd.Flags()
 	addFlagsGlobal(flags, &options.OptsGlobal)
 	flagLocal(flags, &options.Local)
 
 	// The array used to be named with this option and no other. The argument
 	// is the form to write and to document, and this one keeps a command line
-	// written for the older agent working.
+	// written for the older agent working. It is hidden for the same reason
+	// the array command sets hide theirs: it names what the argument names,
+	// and naming the array twice is refused.
 	flags.StringVar(&options.Array, "array", "", "the array to push, deprecated by the NAME argument")
+	flags.MarkHidden("array")
 	commoncmd.FlagIgnoreNoCollectorConfigured(flags, &options.IgnoreNoCollectorConfigured)
 	return cmd
 }
