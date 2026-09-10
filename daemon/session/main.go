@@ -218,8 +218,11 @@ func join(id, path, node, globalExpect string, updatedAt time.Time) {
 			beginAt = time.Now()
 		}
 		orchestrations[id] = &Orchestration{
-			ID:           id,
-			Node:         node,
+			ID: id,
+			// Node is the node that accepted the orchestration, which only
+			// the acceptance says. A monitor naming the id says the node is
+			// in the orchestration, not that it accepted it, and every node
+			// of the object names it.
 			Path:         path,
 			GlobalExpect: globalExpect,
 			State:        StateRunning,

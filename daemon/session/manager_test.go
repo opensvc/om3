@@ -192,3 +192,29 @@ func TestTheMonitorsDoNotOverwriteAKnownOutcome(t *testing.T) {
 	o, _ := GetOrchestration(id.String())
 	assert.Equal(t, StateAborted, o.State, "aborted, not succeeded")
 }
+
+// The node of an orchestration is the one that accepted it, which only the
+// acceptance says. Every node of the object names the id in its monitor, so
+// naming one from a monitor would make the field mean whichever node this
+// daemon happened to hear from first.
+func TestOnlyTheAcceptanceNamesTheAcceptingNode(t *testing.T) {
+	reset()
+	m := &Manager{}
+	id := uuid.New()
+
+	m.handle(&msgbus.InstanceMonitorUpdated{
+		Path:  naming.Path{Name: "s1", Kind: naming.KindSvc},
+		Node:  "n2",
+		Value: instance.Monitor{OrchestrationID: id},
+	})
+	o, _ := GetOrchestration(id.String())
+	assert.Equal(t, "", o.Node, "a monitor says the node is in it, not that it accepted it")
+
+	m.handle(&msgbus.ObjectOrchestrationAccepted{
+		ID:   id.String(),
+		Node: "n1",
+		Path: naming.Path{Name: "s1", Kind: naming.KindSvc},
+	})
+	o, _ = GetOrchestration(id.String())
+	assert.Equal(t, "n1", o.Node)
+}
