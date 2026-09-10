@@ -80,11 +80,21 @@ func (c Config) ApplyProc(pid int) (created bool, errs error) {
 		writes = append(writes, unifiedResets[kw])
 	}
 
+	// The weight is written into cpu.weight as it is configured, which is
+	// what the v2 agent writes. The manager reads the value as v1 shares and
+	// rescales it into the v2 range, so a configured 1024 reached the kernel
+	// as 39: the same configuration arbitrated a contended cpu twenty six
+	// times weaker than under v2.
+	//
+	// cpuShares is kept for the v1 hierarchy, where cpu.shares is the file
+	// and the value is what the manager reads it as.
+	var cpuShares *uint64
 	if c.CPUShares == DefaultValue {
 		reset("pg_cpu_shares")
 	} else if n, err := sizeconv.FromSize(c.CPUShares); err == nil {
 		shares := uint64(n)
-		r.CPU.Shares = &shares
+		cpuShares = &shares
+		writes = append(writes, unifiedWrite{"cpu.weight", strconv.FormatUint(shares, 10)})
 	}
 	if c.CPUs == DefaultValue {
 		reset("pg_cpus")
@@ -178,9 +188,15 @@ func (c Config) ApplyProc(pid int) (created bool, errs error) {
 			// The v1 hierarchy names these files otherwise and holds other
 			// values in them, and none of that was read from a v1 node.
 			errs = errors.Join(errs, fmt.Errorf("a pg keyword set to %q needs the unified cgroup hierarchy", DefaultValue))
-		} else if blockIOWeight != nil {
-			// blkio.weight is the v1 file, and the manager writes it.
-			r.BlockIO.Weight = blockIOWeight
+		} else {
+			// cpu.shares and blkio.weight are the v1 files, and the manager
+			// writes them the way the v1 hierarchy holds them.
+			if cpuShares != nil {
+				r.CPU.Shares = cpuShares
+			}
+			if blockIOWeight != nil {
+				r.BlockIO.Weight = blockIOWeight
+			}
 		}
 		control, err := cgroups.New(cgroups.V1, cgroups.StaticPath(c.ID), &r)
 		if err != nil {

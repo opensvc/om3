@@ -168,3 +168,24 @@ func TestApplyProcWritesTheBlockIOWeightWhereTheKernelKeepsIt(t *testing.T) {
 	assert.Equal(t, "default 500", read(t, id, "io.weight"))
 	assert.Equal(t, "50000 100000", read(t, id, "cpu.max"), "the other cappings are applied too")
 }
+
+// pg_cpu_shares writes the weight into cpu.weight as it is configured, which
+// is what the v2 agent writes.
+//
+// It used to reach cpu.weight through the cgroup manager, which reads the
+// value as v1 cpu.shares and rescales it into the v2 range: a configured 1024
+// arrived as 39.
+func TestApplyProcWritesTheCPUWeightAsConfigured(t *testing.T) {
+	if os.Geteuid() != 0 {
+		t.Skip("capping a cgroup needs root")
+	}
+	if _, err := os.Stat(filepath.Join(UnifiedPath(), "cgroup.procs")); err != nil {
+		t.Skip("no unified cgroup hierarchy")
+	}
+	id := "/omtest-pg-shares.slice"
+	t.Cleanup(func() { os.Remove(filepath.Join(UnifiedPath(), id)) })
+
+	_, err := Config{ID: id, CPUShares: "1024"}.ApplyProc(0)
+	require.NoError(t, err)
+	assert.Equal(t, "1024", read(t, id, "cpu.weight"))
+}
