@@ -44,9 +44,6 @@ func (t *CmdNodeCapabilitiesList) remote() error {
 	if err != nil {
 		return err
 	}
-	if t.NodeSelector == "" {
-		t.NodeSelector = hostname.Hostname()
-	}
 	nodenames, err := nodeselector.New(t.NodeSelector, nodeselector.WithClient(c)).Expand()
 	if err != nil {
 		return err
@@ -73,13 +70,22 @@ func (t *CmdNodeCapabilitiesList) remote() error {
 }
 
 func (t *CmdNodeCapabilitiesList) Run() error {
-	// The capabilities of this node are read from this node, which is what
-	// scanning them wrote, and needs no daemon to answer. Any other selector,
-	// this node among several included, is a question for the daemon.
-	if t.NodeSelector == hostname.Hostname() {
+	if t.isThisNodeOnly() {
 		return t.local()
 	}
 	return t.remote()
+}
+
+// isThisNodeOnly reports whether the selector asks for this node and nothing
+// else.
+//
+// The capabilities of a node are read from the node that scanned them, so
+// that question is answered from the file here and the daemon is never asked.
+// An empty selector is the same question: it is what a caller building this
+// command otherwise than from a command line leaves behind, where the option
+// carries the name of this node.
+func (t *CmdNodeCapabilitiesList) isThisNodeOnly() bool {
+	return t.NodeSelector == "" || t.NodeSelector == hostname.Hostname()
 }
 
 func (t *CmdNodeCapabilitiesList) local() error {
