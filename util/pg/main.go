@@ -195,13 +195,18 @@ func (c Config) String() string {
 	return buff + ": " + strings.Join(l, " ")
 }
 
-// Convert converts, for a 100us period and 4 cpu threads,
-// * 100%@all => 100000 100000
-// * 50% => 50000 100000
-// * 10%@2 => 5000 100000
+// Convert returns the cpu.max quota of a pg_cpu_quota expression, for the
+// period it is given.
+//
+// The percentage is of the cpus the expression names, one when it names none,
+// so for a 100000 period on a node having 4 cpu threads:
+//
+//	100%@all => 400000, the four of them
+//	50%      => 50000, half of one
+//	10%@2    => 20000, a tenth of two
 func (t CPUQuota) Convert(period uint64) (int64, error) {
 	maxCpus := runtime.NumCPU()
-	invalidFmtError := "invalid cpu quota format: %s (accepted expressions: 1000, 50%%@all, 10%%@2)"
+	invalidFmtError := "invalid cpu quota format: %s (accepted expressions: 50%%, 50%%@all, 10%%@2)"
 	parsePct := func(s string) (int, error) {
 		if strings.HasSuffix(s, "%") {
 			s = strings.TrimRight(s, "%")
@@ -242,5 +247,9 @@ func (t CPUQuota) Convert(period uint64) (int64, error) {
 	if pct, err = parsePct(l[0]); err != nil {
 		return 0, fmt.Errorf(invalidFmtError+":%w", t, err)
 	}
-	return int64(pct) * int64(period) * int64(cpus) / int64(maxCpus) / 100, nil
+	// The percentage is of the cpus named, and of those alone. Dividing by
+	// the cpus the node has as well gave every group a quota that was the
+	// documented one divided by the thread count of the node: a "50%" asking
+	// for half a cpu got an eighth of one on an 8 thread node.
+	return int64(pct) * int64(period) * int64(cpus) / 100, nil
 }
