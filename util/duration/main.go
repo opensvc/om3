@@ -72,8 +72,17 @@ func (d Duration) Positive() bool {
 }
 
 func FmtShortDuration(d time.Duration) string {
-	if d == 0 {
+	if d <= 0 {
 		return "0s"
+	}
+
+	// Below a second no unit below matches, and the loop picking the largest
+	// unit that fits would leave the day: a duration of 300ms rendered "0d".
+	if d < time.Second {
+		if ms := d / time.Millisecond; ms > 0 {
+			return strconv.Itoa(int(ms)) + "ms"
+		}
+		return strconv.Itoa(int(d/time.Microsecond)) + "us"
 	}
 
 	day := 24 * time.Hour
