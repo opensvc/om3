@@ -6,8 +6,8 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-// TestAbbrev is the table of the v2 abbrev() test, so the port renders a
-// cluster the way v2 does.
+// TestAbbrev is the table of the v2 abbrev() test. The shapes v2 covers are
+// all shared-tail ones, and they render the same here.
 func TestAbbrev(t *testing.T) {
 	cases := []struct {
 		names    []string
@@ -41,11 +41,17 @@ func TestAbbrevKeepsWhatTellsNamesApart(t *testing.T) {
 		[]string{"node1.paris..", "node1.lyon.."},
 		Abbrev([]string{"node1.paris.example.com", "node1.lyon.example.com"}))
 
-	// Names differing at their last label share nothing to drop, and are
-	// returned untouched rather than marked.
+	// A label the names share in the middle goes the way one at the end
+	// does. v2 returns these untouched, having no shared tail to look at.
 	assert.Equal(t,
-		[]string{"n1.example.com", "n2.example.org"},
+		[]string{"n1..com", "n2..org"},
 		Abbrev([]string{"n1.example.com", "n2.example.org"}))
+
+	// Names sharing nothing past their first label are returned untouched:
+	// nothing was dropped, so nothing says it was.
+	assert.Equal(t,
+		[]string{"n1.example.com", "n2.other.org"},
+		Abbrev([]string{"n1.example.com", "n2.other.org"}))
 
 	// A lone name has no second domain to be told apart from, so all of its
 	// domain goes.
@@ -53,6 +59,44 @@ func TestAbbrevKeepsWhatTellsNamesApart(t *testing.T) {
 
 	// A cluster of short names is left alone.
 	assert.Equal(t, []string{"dev1n1", "dev2n1"}, Abbrev([]string{"dev1n1", "dev2n1"}))
+}
+
+// TestAbbrevTrimsSharedLabelsInTheMiddle is the shape that motivated looking
+// past the shared tail: a cloud name carrying the region between two domains
+// the whole fleet shares.
+func TestAbbrevTrimsSharedLabelsInTheMiddle(t *testing.T) {
+	assert.Equal(t,
+		[]string{"ip-xxx-xxx-xxx..eu-fr-paris..", "ip-yyy-yyy-zzz..eu-fr-north.."},
+		Abbrev([]string{
+			"ip-xxx-xxx-xxx.commondomain1.eu-fr-paris.commondomain2.etc",
+			"ip-yyy-yyy-zzz.commondomain1.eu-fr-north.commondomain2.etc",
+		}))
+}
+
+// TestAbbrevMarksEachRunOnce pins that a run of dropped labels is one marker:
+// the marker says a name was cut here, and a column header is not the place to
+// count how many labels that was.
+func TestAbbrevMarksEachRunOnce(t *testing.T) {
+	assert.Equal(t,
+		[]string{"n1..a..", "n2..b.."},
+		Abbrev([]string{"n1.x.y.a.p.q.r", "n2.x.y.b.p.q.r"}))
+}
+
+// TestAbbrevKeepsTheFirstLabel pins that the node's own name survives even
+// when every node shares it: a column headed "..paris.." names nothing.
+func TestAbbrevKeepsTheFirstLabel(t *testing.T) {
+	assert.Equal(t,
+		[]string{"web.paris..", "web.lyon.."},
+		Abbrev([]string{"web.paris.example.com", "web.lyon.example.com"}))
+}
+
+// TestAbbrevIgnoresBareHostnames pins that a name with no domain does not get
+// a say in what the others share: beside n2, the domain of n1 is still the
+// only domain there is, and all of it goes.
+func TestAbbrevIgnoresBareHostnames(t *testing.T) {
+	assert.Equal(t,
+		[]string{"n1..", "n2", "n3.."},
+		Abbrev([]string{"n1.prod.example.com", "n2", "n3.prod.example.com"}))
 }
 
 // TestAbbrevDoesNotChangeTheCount pins that a renderer may zip the result with
