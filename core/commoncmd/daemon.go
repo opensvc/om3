@@ -87,6 +87,17 @@ func NewCmdDaemonStop() *cobra.Command {
 	}
 }
 
+// NewCmdDaemonSession returns the command group of the commands submitted to
+// the daemon, which it remembers so a client that submitted one can ask how it
+// ended.
+func NewCmdDaemonSession() *cobra.Command {
+	return &cobra.Command{
+		GroupID: GroupIDSubsystems,
+		Use:     "session",
+		Short:   "submitted command commands",
+	}
+}
+
 // NewCmdDaemonExec returns the command group of the runs the daemon made,
 // one per object per node, which is the scale the outcome is at.
 func NewCmdDaemonExec() *cobra.Command {
