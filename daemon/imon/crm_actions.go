@@ -5,6 +5,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/google/uuid"
 	"github.com/opensvc/om3/v3/daemon/proc"
 
 	"github.com/opensvc/om3/v3/core/env"
@@ -157,12 +158,12 @@ func (t *Manager) crmResourceIngest(rids []string) error {
 
 func (t *Manager) crmResourceStartStandby(rids []string) error {
 	s := strings.Join(rids, ",")
-	return t.crmAction("start", t.path.String(), "instance", "startstandby", "--rid", s)
+	return t.crmMaintenanceAction("start", t.path.String(), "instance", "startstandby", "--rid", s)
 }
 
 func (t *Manager) crmResourceStart(rids []string) error {
 	s := strings.Join(rids, ",")
-	return t.crmAction("start", t.path.String(), "instance", "start", "--rid", s)
+	return t.crmMaintenanceAction("start", t.path.String(), "instance", "start", "--rid", s)
 }
 
 func (t *Manager) crmShutdown() error {
@@ -207,17 +208,36 @@ func (t *Manager) crmUnprovisionLeader() error {
 	return t.crmAction("unprovision leader", t.path.String(), "instance", "unprovision", "--leader")
 }
 
+// crmAction forks a crm command as a step of the orchestration the monitor is
+// running, when it is running one.
 func (t *Manager) crmAction(title string, cmdArgs ...string) error {
 	if testCRMAction != nil {
 		return testCRMAction(title, cmdArgs...)
 	}
-	return t.crmDefaultAction(title, cmdArgs...)
+	return t.crmDefaultAction(t.state.OrchestrationID, title, cmdArgs...)
 }
 
-func (t *Manager) crmDefaultAction(title string, cmdArgs ...string) error {
+// crmMaintenanceAction forks a crm command the monitor decided on by itself,
+// which is a step of no orchestration even while one is running.
+//
+// Restarting a resource is the monitor holding the local expect it was already
+// given, not a target state anyone asked for: there is no requester, no id
+// handed out and no end to converge on. The monitor can only restart while the
+// instance is idle or has failed to start or stop, and an orchestration is in
+// flight on every node of the object throughout - including the nodes it asks
+// nothing of - so reading the id off the state would tag a restart with an
+// orchestration it had no part in.
+func (t *Manager) crmMaintenanceAction(title string, cmdArgs ...string) error {
+	if testCRMAction != nil {
+		return testCRMAction(title, cmdArgs...)
+	}
+	return t.crmDefaultAction(uuid.Nil, title, cmdArgs...)
+}
+
+func (t *Manager) crmDefaultAction(orchestration uuid.UUID, title string, cmdArgs ...string) error {
 	sessionID := xsession.NewSessionID()
 	execID := xsession.NewExecID()
-	orchestrationID := xsession.NewOrchestrationID(t.state.OrchestrationID)
+	orchestrationID := xsession.NewOrchestrationID(orchestration)
 
 	cmdEnv := []string{
 		env.ActionOriginDaemonMonitor.Var(),
