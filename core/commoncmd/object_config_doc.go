@@ -39,6 +39,7 @@ func NewCmdObjectConfigDoc(kind string) *cobra.Command {
 	FlagObjectSelector(flags, &options.ObjectSelector)
 	FlagColor(flags, &options.Color)
 	FlagOutput(flags, &options.Output)
+	FlagSort(flags, &options.Sort)
 	FlagKeyword(flags, &options.Keyword)
 	FlagDriver(flags, &options.Driver)
 	FlagDepth(flags, &options.Depth)

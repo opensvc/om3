@@ -37,6 +37,7 @@ func NewCmdNodeConfigDoc() *cobra.Command {
 	flags := cmd.Flags()
 	commoncmd.FlagColor(flags, &options.Color)
 	commoncmd.FlagOutput(flags, &options.Output)
+	commoncmd.FlagSort(flags, &options.Sort)
 	commoncmd.FlagKeyword(flags, &options.Keyword)
 	commoncmd.FlagDriver(flags, &options.Driver)
 	commoncmd.FlagDepth(flags, &options.Depth)

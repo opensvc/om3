@@ -28,6 +28,7 @@ func NewCmdClusterUnfreeze() *cobra.Command {
 	FlagsAsync(flags, &options.OptsAsync)
 	FlagColor(flags, &options.Color)
 	FlagOutput(flags, &options.Output)
+	FlagSort(flags, &options.Sort)
 	return cmd
 }
 
