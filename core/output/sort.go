@@ -21,14 +21,19 @@ type sortKey struct {
 	self bool
 }
 
-// parseSort reads a comma separated sort expression, each term naming a field
-// the way a tab column names one, optionally prefixed with "-" to reverse it.
+// parseSort reads a comma separated sort expression, each term naming either a
+// column of the listing, by the header the table shows it under, or the field
+// a tab expression would select, optionally prefixed with "-" to reverse it.
 //
+//	--sort=-STARTED_AT,PATH
 //	--sort=-started_at,path
+//
+// The column comes first, because that is the name a reader has seen. The
+// field remains, because a listing can carry more than it shows.
 //
 // The "-" has to be written with "--sort=" rather than "--sort ", or the
 // shell's flag parser reads it as the next option.
-func parseSort(s string) ([]sortKey, error) {
+func parseSort(s string, columns map[string]string) ([]sortKey, error) {
 	keys := make([]sortKey, 0)
 	for _, term := range strings.Split(s, ",") {
 		term = strings.TrimSpace(term)
@@ -46,6 +51,9 @@ func parseSort(s string) ([]sortKey, error) {
 			continue
 		}
 		key.expr = term
+		if expr, ok := columns[strings.ToUpper(term)]; ok {
+			term = expr
+		}
 		if term == "." {
 			key.self = true
 			keys = append(keys, key)
@@ -149,16 +157,23 @@ func valueOf(key sortKey, item any) (sortValue, bool) {
 //
 // It is done before the format is chosen, so that a machine reading the json
 // and a person reading the table are given the same order.
-func sortData(data any, s string) error {
+func sortData(data any, s string, columns map[string]string) error {
 	if s == "" || data == nil {
 		return nil
 	}
-	keys, err := parseSort(s)
+	keys, err := parseSort(s, columns)
 	if err != nil {
 		return err
 	}
 	if len(keys) == 0 {
 		return nil
+	}
+	// A listing that wraps its items is unwrapped the way the table renderer
+	// unwraps it, or a sort would quietly do nothing to the listings that
+	// need it most. The slice a wrapper hands back shares its backing array,
+	// so ordering it orders what the wrapper holds.
+	if i, ok := data.(getItemser); ok {
+		data = i.GetItems()
 	}
 	v := reflect.ValueOf(data)
 	if v.Kind() == reflect.Pointer {
@@ -189,8 +204,13 @@ func sortData(data any, s string) error {
 	for j, ok := range known {
 		if !ok {
 			// Not one item of the listing has this field. Ordering on it
-			// would do nothing at all, and a misspelled field that quietly
-			// does nothing is worse than one that says so.
+			// would do nothing at all, and a misspelled name that quietly
+			// does nothing is worse than one that says so. The columns are
+			// named, because they are what the reader has in front of them.
+			if l := headers(columns); len(l) > 0 {
+				return fmt.Errorf("sort %s: the listing has no such column or field. Columns: %s",
+					keys[j].expr, strings.Join(l, ", "))
+			}
 			return fmt.Errorf("sort %s: the listing has no such field", keys[j].expr)
 		}
 	}
@@ -225,4 +245,40 @@ func sortData(data any, s string) error {
 	}
 	reflect.Copy(v, sorted)
 	return nil
+}
+
+// tabColumns maps the header of each column of a tab expression to what it
+// selects, so a sort can name a column the way the table shows it.
+//
+// The listing's own columns are read even when the format asked for is json:
+// the fields are the same, and a reader who has seen the table knows them by
+// their headers whichever format they then ask for.
+func tabColumns(outputs ...string) map[string]string {
+	columns := make(map[string]string)
+	for _, output := range outputs {
+		if !strings.HasPrefix(output, "tab=") {
+			continue
+		}
+		for _, option := range strings.Split(output[len("tab="):], ",") {
+			header, expr, ok := strings.Cut(option, ":")
+			if !ok || header == "" || expr == "" {
+				continue
+			}
+			if _, done := columns[strings.ToUpper(header)]; !done {
+				columns[strings.ToUpper(header)] = expr
+			}
+		}
+	}
+	return columns
+}
+
+// headers lists the column names a sort can name, for an error to say what it
+// could have been.
+func headers(columns map[string]string) []string {
+	l := make([]string, 0, len(columns))
+	for header := range columns {
+		l = append(l, header)
+	}
+	sort.Strings(l)
+	return l
 }

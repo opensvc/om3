@@ -633,12 +633,13 @@ func FlagColor(flags *pflag.FlagSet, p *string) {
 // FlagSort declares the option that orders a listing, overriding the order the
 // command comes in by default.
 //
-// A term prefixed with "-" reverses that term, and a whole expression
-// prefixed with "+" extends the command's default rather than replacing it. A
-// leading "-" has to be written as --sort=-field, or the flag parser reads it
-// as the next option.
+// A term names a column, by the header the table shows it under, or the field
+// a tab expression would select. A term prefixed with "-" reverses that term,
+// and a whole expression prefixed with "+" extends the command's default
+// rather than replacing it. A leading "-" has to be written as --sort=-NAME,
+// or the flag parser reads it as the next option.
 func FlagSort(flags *pflag.FlagSet, p *string) {
-	flags.StringVar(p, "sort", "", "order the listing on these fields, lowest first, a field prefixed with - reversing it, a leading + extending the default and . naming the value itself (ex: --sort=-started_at,path)")
+	flags.StringVar(p, "sort", "", "order the listing on these columns, lowest first, a name prefixed with - reversing it, a leading + extending the default and . naming the value itself (ex: --sort=-TYPE,RID)")
 }
 
 func FlagOutput(flags *pflag.FlagSet, p *string) {

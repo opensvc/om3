@@ -91,16 +91,17 @@ func (t Renderer) Sprint() (string, error) {
 			t.Sort = t.DefaultSort + "," + t.Sort[1:]
 		}
 	}
-	// Before the format is chosen, so that the json and the table come in the
-	// same order.
-	if err := sortData(t.Data, t.Sort); err != nil {
-		return "", err
-	}
 	if i := strings.Index(t.Output, "="); i > 0 {
 		options = t.Output[i+1:]
 		format = t.Output[:i]
 	} else {
 		format = t.Output
+	}
+	// Before the format is chosen, so that the json and the table come in the
+	// same order. The columns are read first all the same, so that a sort can
+	// name one: a reader sees TYPE, not data.status.type.
+	if err := sortData(t.Data, t.Sort, tabColumns(t.Output, t.DefaultOutput)); err != nil {
+		return "", err
 	}
 	formatID := toID[format]
 
