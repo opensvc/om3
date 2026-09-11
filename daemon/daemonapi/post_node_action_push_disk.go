@@ -26,14 +26,14 @@ func (a *DaemonAPI) PostNodeActionPushDisk(ctx echo.Context, nodename string, pa
 
 func (a *DaemonAPI) localNodeActionPushDisk(ctx echo.Context, params api.PostNodeActionPushDiskParams) error {
 	log := LogHandler(ctx, "PostNodeActionPushDisk")
-	var requesterSID uuid.UUID
+	var requesterSessionID uuid.UUID
 	args := []string{"node", "push", "disk"}
-	if params.SessionId != nil {
-		requesterSID = *params.SessionId
+	if params.SessionID != nil {
+		requesterSessionID = *params.SessionID
 	}
-	if sid, eid, err := a.apiExec(ctx, naming.Path{}, requesterSID, args, log); err != nil {
+	if sessionID, execID, err := a.apiExec(ctx, naming.Path{}, requesterSessionID, args, log); err != nil {
 		return JSONProblemf(ctx, http.StatusInternalServerError, "", "%s", err)
 	} else {
-		return ctx.JSON(http.StatusOK, api.NodeActionAccepted{SessionID: sid, ExecID: eid})
+		return ctx.JSON(http.StatusOK, api.NodeActionAccepted{SessionID: sessionID, ExecID: execID})
 	}
 }

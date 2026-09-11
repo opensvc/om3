@@ -33,7 +33,7 @@ type (
 	// its own outcome and its own duration. So the exec id is what a record
 	// is keyed by, and the session id is what several of them share.
 	Session struct {
-		ID              string        `json:"id"`
+		SessionID       string        `json:"session_id"`
 		ExecID          string        `json:"exec_id"`
 		OrchestrationID string        `json:"orchestration_id,omitempty"`
 		Node            string        `json:"node"`
@@ -51,14 +51,14 @@ type (
 	// Orchestration is one orchestration the daemon accepted, and the
 	// sessions it ran under it.
 	Orchestration struct {
-		ID           string     `json:"id"`
-		Node         string     `json:"node"`
-		Path         string     `json:"path,omitempty"`
-		GlobalExpect string     `json:"global_expect,omitempty"`
-		State        State      `json:"state"`
-		Error        string     `json:"error,omitempty"`
-		BeginAt      time.Time  `json:"begin_at"`
-		EndAt        *time.Time `json:"end_at,omitempty"`
+		OrchestrationID string     `json:"orchestration_id"`
+		Node            string     `json:"node"`
+		Path            string     `json:"path,omitempty"`
+		GlobalExpect    string     `json:"global_expect,omitempty"`
+		State           State      `json:"state"`
+		Error           string     `json:"error,omitempty"`
+		BeginAt         time.Time  `json:"begin_at"`
+		EndAt           *time.Time `json:"end_at,omitempty"`
 	}
 )
 
@@ -137,7 +137,7 @@ func EndSession(execID, sessionID string, state State, errS string, duration tim
 	now := time.Now()
 	s, ok := sessions[execID]
 	if !ok {
-		s = &Session{ID: sessionID, ExecID: execID, BeginAt: now.Add(-duration)}
+		s = &Session{SessionID: sessionID, ExecID: execID, BeginAt: now.Add(-duration)}
 		sessions[execID] = s
 	}
 	s.State = state
@@ -149,7 +149,7 @@ func EndSession(execID, sessionID string, state State, errS string, duration tim
 
 // AddOrchestration records an orchestration the monitor accepted.
 func AddOrchestration(o Orchestration) {
-	if o.ID == "" {
+	if o.OrchestrationID == "" {
 		return
 	}
 	mu.Lock()
@@ -158,7 +158,7 @@ func AddOrchestration(o Orchestration) {
 		o.BeginAt = time.Now()
 	}
 	o.State = StateRunning
-	orchestrations[o.ID] = &o
+	orchestrations[o.OrchestrationID] = &o
 }
 
 // EndOrchestration records how an orchestration ended.
@@ -171,7 +171,7 @@ func EndOrchestration(id string, state State, errS string) {
 	now := time.Now()
 	o, ok := orchestrations[id]
 	if !ok {
-		o = &Orchestration{ID: id, BeginAt: now}
+		o = &Orchestration{OrchestrationID: id, BeginAt: now}
 		orchestrations[id] = o
 	}
 	o.State = state
@@ -228,7 +228,7 @@ func join(id, path, node, globalExpect string, updatedAt time.Time) {
 			beginAt = time.Now()
 		}
 		orchestrations[id] = &Orchestration{
-			ID: id,
+			OrchestrationID: id,
 			// Node is the node that accepted the orchestration, which only
 			// the acceptance says. A monitor naming the id says the node is
 			// in the orchestration, not that it accepted it, and every node
@@ -286,7 +286,7 @@ func GetSessions(sessionID string) []Session {
 	defer mu.RUnlock()
 	l := make([]Session, 0, 1)
 	for _, s := range sessions {
-		if s.ID == sessionID {
+		if s.SessionID == sessionID {
 			l = append(l, *s)
 		}
 	}
@@ -428,8 +428,8 @@ func purgeOrchestrations() {
 	}
 	sort.Slice(ended, func(i, j int) bool { return ended[i].EndAt.Before(*ended[j].EndAt) })
 	for _, o := range ended[:len(ended)-MaxEntries] {
-		delete(orchestrations, o.ID)
-		forget(o.ID)
+		delete(orchestrations, o.OrchestrationID)
+		forget(o.OrchestrationID)
 	}
 }
 
@@ -437,8 +437,8 @@ func purgeOrchestrations() {
 // The caller holds the lock.
 func forget(id string) {
 	delete(participants, id)
-	for key, oid := range monitorOrchestration {
-		if oid == id {
+	for key, orchestrationID := range monitorOrchestration {
+		if orchestrationID == id {
 			delete(monitorOrchestration, key)
 		}
 	}
@@ -462,9 +462,9 @@ func reset() {
 	monitorOrchestration = make(map[string]string)
 }
 
-// IdString renders an id, empty when it carries none, so a session that
+// IDString renders an id, empty when it carries none, so a session that
 // belongs to no orchestration does not report belonging to the nil one.
-func IdString(id xsession.Id) string {
+func IDString(id xsession.ID) string {
 	if id.IsZero() {
 		return ""
 	}

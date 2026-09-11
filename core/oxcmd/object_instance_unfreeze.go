@@ -39,8 +39,8 @@ func (t *CmdObjectInstanceUnfreeze) Run(kind string) error {
 			}
 			params := api.PostInstanceActionUnfreezeParams{}
 			{
-				sid := xsession.Sid().UUID()
-				params.SessionId = &sid
+				sessionID := xsession.SessionID().UUID()
+				params.SessionID = &sessionID
 			}
 			if t.OptsEncap.Master {
 				params.Master = &t.OptsEncap.Master

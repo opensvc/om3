@@ -15,9 +15,9 @@ import (
 	"github.com/opensvc/om3/v3/util/xsession"
 )
 
-func sid(u uuid.UUID) xsession.Id { return xsession.NewSid(u) }
-func oid(u uuid.UUID) xsession.Id { return xsession.NewOid(u) }
-func eid(u uuid.UUID) xsession.Id { return xsession.NewEid(u) }
+func newSessionID(u uuid.UUID) xsession.ID       { return xsession.NewSessionID(u) }
+func newOrchestrationID(u uuid.UUID) xsession.ID { return xsession.NewOrchestrationID(u) }
+func newExecID(u uuid.UUID) xsession.ID          { return xsession.NewExecID(u) }
 
 // An exec and its outcome make one session, and the object it acts on is read
 // from the label the message carries it in.
@@ -31,8 +31,8 @@ func TestAnExecAndItsOutcomeMakeOneSession(t *testing.T) {
 		Command:   "om test/svc/s1 instance start",
 		Node:      "n1",
 		Origin:    "api",
-		SessionID: sid(id),
-		ExecID:    eid(id),
+		SessionID: newSessionID(id),
+		ExecID:    newExecID(id),
 	})
 	s, ok := firstSession(id.String())
 	require.True(t, ok)
@@ -40,7 +40,7 @@ func TestAnExecAndItsOutcomeMakeOneSession(t *testing.T) {
 	assert.Equal(t, "test/svc/s1", s.Path, "the path comes from the label")
 	assert.Equal(t, "api", s.Origin)
 
-	m.handle(&msgbus.ExecSuccess{SessionID: sid(id), ExecID: eid(id), Duration: 2 * time.Second})
+	m.handle(&msgbus.ExecSuccess{SessionID: newSessionID(id), ExecID: newExecID(id), Duration: 2 * time.Second})
 	s, _ = firstSession(id.String())
 	assert.Equal(t, StateSucceeded, s.State)
 	assert.Equal(t, 2*time.Second, s.Duration)
@@ -51,8 +51,8 @@ func TestAFailedExecKeepsWhatFailed(t *testing.T) {
 	m := &Manager{}
 	id := uuid.New()
 
-	m.handle(&msgbus.Exec{SessionID: sid(id), ExecID: eid(id)})
-	m.handle(&msgbus.ExecFailed{SessionID: sid(id), ExecID: eid(id), ErrS: "exit code 1", Duration: time.Second})
+	m.handle(&msgbus.Exec{SessionID: newSessionID(id), ExecID: newExecID(id)})
+	m.handle(&msgbus.ExecFailed{SessionID: newSessionID(id), ExecID: newExecID(id), ErrS: "exit code 1", Duration: time.Second})
 
 	s, _ := firstSession(id.String())
 	assert.Equal(t, StateFailed, s.State)
@@ -72,9 +72,9 @@ func TestASessionOfAnOrchestrationIsFoundByIt(t *testing.T) {
 		Node: "n1",
 		Path: naming.Path{Name: "s1", Kind: naming.KindSvc},
 	})
-	m.handle(&msgbus.Exec{SessionID: sid(first), ExecID: eid(first), OrchestrationID: oid(orchestrationID)})
-	m.handle(&msgbus.Exec{SessionID: sid(second), ExecID: eid(second), OrchestrationID: oid(orchestrationID)})
-	m.handle(&msgbus.Exec{SessionID: sid(uuid.New())})
+	m.handle(&msgbus.Exec{SessionID: newSessionID(first), ExecID: newExecID(first), OrchestrationID: newOrchestrationID(orchestrationID)})
+	m.handle(&msgbus.Exec{SessionID: newSessionID(second), ExecID: newExecID(second), OrchestrationID: newOrchestrationID(orchestrationID)})
+	m.handle(&msgbus.Exec{SessionID: newSessionID(uuid.New())})
 
 	l := ListSessions(Filter{OrchestrationID: orchestrationID.String()})
 	assert.Len(t, l, 2, "the sessions of the orchestration, and no other")
@@ -96,7 +96,7 @@ func TestAnExecOutsideAnOrchestrationClaimsNone(t *testing.T) {
 	m := &Manager{}
 	id := uuid.New()
 
-	m.handle(&msgbus.Exec{SessionID: sid(id), ExecID: eid(id)})
+	m.handle(&msgbus.Exec{SessionID: newSessionID(id), ExecID: newExecID(id)})
 
 	s, _ := firstSession(id.String())
 	assert.Equal(t, "", s.OrchestrationID)
@@ -129,12 +129,12 @@ func TestAnOrchestrationIsKnownFromTheMonitorsAlone(t *testing.T) {
 	id := uuid.New()
 	at := time.Now().Add(-time.Minute)
 
-	mon := func(node string, oid uuid.UUID) *msgbus.InstanceMonitorUpdated {
+	mon := func(node string, orchestrationID uuid.UUID) *msgbus.InstanceMonitorUpdated {
 		return &msgbus.InstanceMonitorUpdated{
 			Path: naming.Path{Name: "s1", Kind: naming.KindSvc},
 			Node: node,
 			Value: instance.Monitor{
-				OrchestrationID:       oid,
+				OrchestrationID:       orchestrationID,
 				GlobalExpect:          instance.MonitorGlobalExpectStarted,
 				GlobalExpectUpdatedAt: at,
 			},
@@ -180,11 +180,11 @@ func TestTheMonitorsDoNotOverwriteAKnownOutcome(t *testing.T) {
 	reset()
 	m := &Manager{}
 	id := uuid.New()
-	mon := func(oid uuid.UUID) *msgbus.InstanceMonitorUpdated {
+	mon := func(orchestrationID uuid.UUID) *msgbus.InstanceMonitorUpdated {
 		return &msgbus.InstanceMonitorUpdated{
 			Path:  naming.Path{Name: "s1", Kind: naming.KindSvc},
 			Node:  "n1",
-			Value: instance.Monitor{OrchestrationID: oid},
+			Value: instance.Monitor{OrchestrationID: orchestrationID},
 		}
 	}
 	m.handle(mon(id))

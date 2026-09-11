@@ -77,7 +77,7 @@ func (t *actor) setenv(action string, leader bool) {
 	os.Setenv("OPENSVC_SVCNAME", t.path.Name)
 	os.Setenv("OPENSVC_NAMESPACE", t.path.Namespace)
 	os.Setenv("OPENSVC_ACTION", action)
-	os.Setenv("OPENSVC_SID", xsession.Sid().String())
+	os.Setenv("OPENSVC_SESSION_ID", xsession.SessionID().String())
 	if leader {
 		os.Setenv("OPENSVC_LEADER", "1")
 	} else {
@@ -202,7 +202,7 @@ func (t *actor) announceProgress(ctx context.Context, progress string) error {
 	p := t.Path()
 	resp, err := c.PostInstanceProgressWithResponse(ctx, p.Namespace, p.Kind, p.Name, api.PostInstanceProgress{
 		State:     progress,
-		SessionID: xsession.Sid().UUID(),
+		SessionID: xsession.SessionID().UUID(),
 		IsPartial: &isPartial,
 	})
 	switch {
@@ -416,7 +416,7 @@ func (t *actor) action(ctx context.Context, fn resourceset.DoFunc) error {
 		Attr("action", action.Name).
 		Attr("origin", env.Origin()).
 		Attr("crm", "true")
-	logger.Infof(">>> do %s %s (origin %s, sid %s)", action.Name, os.Args, env.Origin(), xsession.Sid())
+	logger.Infof(">>> do %s %s (origin %s, session_id %s)", action.Name, os.Args, env.Origin(), xsession.SessionID())
 	beginTime := time.Now()
 	ctx, stop := statusbus.WithContext(ctx, t.path)
 	defer stop()
@@ -509,10 +509,10 @@ func (t *actor) action(ctx context.Context, fn resourceset.DoFunc) error {
 
 		args := append([]string{encapContainer.GetOsvcRootPath(), t.path.String()}, "config", "mtime")
 		envs := []string{
-			xsession.Sid().Var(),
+			xsession.SessionID().Var(),
 			env.Origin().Var(),
 		}
-		if v := xsession.Oid().Var(); v != "" {
+		if v := xsession.OrchestrationID().Var(); v != "" {
 			envs = append(envs, v)
 		}
 		cmd, err := encapContainer.EncapCmd(ctx, args, envs, nil)

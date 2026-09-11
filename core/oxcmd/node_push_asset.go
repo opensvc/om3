@@ -37,8 +37,8 @@ func (t *CmdNodePushAsset) Run() error {
 			}
 			params := api.PostNodeActionPushAssetParams{}
 			{
-				sid := xsession.Sid().UUID()
-				params.SessionId = &sid
+				sessionID := xsession.SessionID().UUID()
+				params.SessionID = &sessionID
 			}
 			response, err := c.PostNodeActionPushAssetWithResponse(ctx, nodename, &params)
 			if err != nil {

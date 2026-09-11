@@ -62,8 +62,8 @@ func (t *CmdObjectInstancePGReset) Run(kind string) error {
 				params.Slave = &t.OptsEncap.Slaves
 			}
 			{
-				sid := xsession.Sid().UUID()
-				params.SessionId = &sid
+				sessionID := xsession.SessionID().UUID()
+				params.SessionID = &sessionID
 			}
 			response, err := c.PostInstanceActionPGResetWithResponse(ctx, nodename, p.Namespace, p.Kind, p.Name, &params)
 			if err != nil {

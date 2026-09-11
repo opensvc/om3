@@ -26,19 +26,19 @@ func (a *DaemonAPI) PostInstanceActionStatus(ctx echo.Context, nodename, namespa
 
 func (a *DaemonAPI) postLocalInstanceActionStatus(ctx echo.Context, namespace string, kind naming.Kind, name string, params api.PostInstanceActionStatusParams) error {
 	log := LogHandler(ctx, "PostInstanceActionStatus")
-	var requesterSid uuid.UUID
+	var requesterSessionID uuid.UUID
 	p, err := naming.NewPath(namespace, kind, name)
 	if err != nil {
 		return JSONProblemf(ctx, http.StatusBadRequest, "Invalid parameters", "%s", err)
 	}
 	log = naming.LogWithPath(log, p)
 	args := []string{p.String(), "instance", "status", "-r"}
-	if params.SessionId != nil {
-		requesterSid = *params.SessionId
+	if params.SessionID != nil {
+		requesterSessionID = *params.SessionID
 	}
-	if sid, eid, err := a.apiExec(ctx, p, requesterSid, args, log); err != nil {
+	if sessionID, execID, err := a.apiExec(ctx, p, requesterSessionID, args, log); err != nil {
 		return JSONProblemf(ctx, http.StatusInternalServerError, "", "%s", err)
 	} else {
-		return ctx.JSON(http.StatusOK, api.InstanceActionAccepted{SessionID: sid, ExecID: eid})
+		return ctx.JSON(http.StatusOK, api.InstanceActionAccepted{SessionID: sessionID, ExecID: execID})
 	}
 }

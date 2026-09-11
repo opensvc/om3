@@ -36,7 +36,7 @@ func (t *Manager) convergeGlobalExpectFromRemote() {
 		if strVal == "" {
 			strVal = "unset"
 		}
-		t.log.Infof("fetch global expect from node %s -> %s orchestration id %s updated at %s",
+		t.log.Infof("fetch global expect from node %s -> %s orchestration_id %s updated at %s",
 			mostRecentNode, strVal, t.state.OrchestrationID, mostRecentUpdated)
 		if t.state.OrchestrationIsDone {
 			t.state.OrchestrationIsDone = false

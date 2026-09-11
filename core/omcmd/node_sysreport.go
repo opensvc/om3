@@ -38,8 +38,8 @@ func (t *CmdNodeSysreport) Run() error {
 				params.Force = &v
 			}
 			{
-				sid := xsession.Sid().UUID()
-				params.SessionId = &sid
+				sessionID := xsession.SessionID().UUID()
+				params.SessionID = &sessionID
 			}
 			response, err := c.PostNodeActionSysreportWithResponse(ctx, nodename, &params)
 			if err != nil {

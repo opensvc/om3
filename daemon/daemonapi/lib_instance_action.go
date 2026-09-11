@@ -23,21 +23,21 @@ import (
 // between all of them, and the exec, which is this one alone. A client is
 // handed both so it can ask after the whole of what it submitted, or after
 // the part that ran here.
-func (a *DaemonAPI) apiExec(ctx echo.Context, p naming.Path, requesterSid uuid.UUID, args []string, log *plog.Logger) (uuid.UUID, uuid.UUID, error) {
+func (a *DaemonAPI) apiExec(ctx echo.Context, p naming.Path, requesterSessionID uuid.UUID, args []string, log *plog.Logger) (uuid.UUID, uuid.UUID, error) {
 	execname, err := os.Executable()
 	if err != nil {
 		return uuid.Nil, uuid.Nil, fmt.Errorf("can't detect om execname: %w", err)
 	}
-	sid := xsession.NewSid(requesterSid)
-	eid := xsession.NewEid()
+	sessionID := xsession.NewSessionID(requesterSessionID)
+	execID := xsession.NewExecID()
 	cmd := command.New(
 		command.WithName(execname),
 		command.WithArgs(args),
 		command.WithLogger(log),
 		command.WithVarEnv(
 			env.ActionOriginDaemonAPI.Var(),
-			sid.Var(),
-			eid.Var(),
+			sessionID.Var(),
+			execID.Var(),
 			"OSVC_REQUEST_ID="+fmt.Sprint(ctx.Get("uuid")),
 		),
 	)
@@ -52,21 +52,21 @@ func (a *DaemonAPI) apiExec(ctx echo.Context, p naming.Path, requesterSid uuid.U
 		Command:   cmd.String(),
 		Node:      a.localhost,
 		Origin:    "api",
-		SessionID: sid,
-		ExecID:    eid,
+		SessionID: sessionID,
+		ExecID:    execID,
 	}
 	a.Bus.Pub(&msg, labels...)
 	startTime := time.Now()
 	if err = cmd.Start(); err != nil {
 		log.Errorf("exec StartProcess: %s", err)
-		return sid.UUID(), eid.UUID(), fmt.Errorf("instance action failed: %w", err)
+		return sessionID.UUID(), execID.UUID(), fmt.Errorf("instance action failed: %w", err)
 	}
 	pid := cmd.Cmd().Process.Pid
 	proc.Register(proc.T{
 		Pid:       pid,
 		Node:      a.localhost,
 		Object:    p.String(),
-		Sid:       sid.String(),
+		SessionID: sessionID.String(),
 		StartedAt: startTime,
 		Elapsed:   "",
 		Sub:       "api",
@@ -83,8 +83,8 @@ func (a *DaemonAPI) apiExec(ctx echo.Context, p naming.Path, requesterSid uuid.U
 				Duration:  duration,
 				Node:      a.localhost,
 				Origin:    "api",
-				SessionID: sid,
-				ExecID:    eid,
+				SessionID: sessionID,
+				ExecID:    execID,
 				ErrS:      err.Error(),
 			}
 			a.Bus.Pub(&msg, labels...)
@@ -94,11 +94,11 @@ func (a *DaemonAPI) apiExec(ctx echo.Context, p naming.Path, requesterSid uuid.U
 				Duration:  duration,
 				Node:      a.localhost,
 				Origin:    "api",
-				SessionID: sid,
-				ExecID:    eid,
+				SessionID: sessionID,
+				ExecID:    execID,
 			}
 			a.Bus.Pub(&msg, labels...)
 		}
 	}()
-	return sid.UUID(), eid.UUID(), nil
+	return sessionID.UUID(), execID.UUID(), nil
 }

@@ -1387,7 +1387,7 @@ func (t *T) SetLoggerForTest(l *plog.Logger) {
 func (t *T) RunningFromLock(intent string) (RunningInfoList, error) {
 	var l RunningInfoList
 	p := filepath.Join(t.VarDir(), intent)
-	lock := flock.New(p, xsession.Sid().String(), fcntllock.New)
+	lock := flock.New(p, xsession.SessionID().String(), fcntllock.New)
 	meta, err := lock.Probe()
 	if err != nil {
 		return l, nil
@@ -1411,7 +1411,7 @@ func (t *T) Lock(disable bool, timeout time.Duration, intent string) (func(), er
 		return func() {}, nil
 	}
 	p := filepath.Join(t.VarDir(), intent)
-	lock := flock.New(p, xsession.Sid().String(), fcntllock.New)
+	lock := flock.New(p, xsession.SessionID().String(), fcntllock.New)
 	err := lock.Lock(timeout, intent)
 	if err != nil {
 		return nil, err

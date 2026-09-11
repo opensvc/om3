@@ -94,8 +94,8 @@ func (t *core) init(referrer xconfig.Referrer, path naming.Path, opts ...funcopt
 		return err
 	}
 	t.log = naming.LogWithPath(plog.NewDefaultLogger(), t.path).WithPrefix(fmt.Sprintf("instance: %s: ", t.path))
-	if v := xsession.Oid().String(); v != "" {
-		t.log = t.log.Attr("ORCHESTRATION_ID", v)
+	if o := xsession.OrchestrationID(); !o.IsZero() {
+		t.log = t.log.Attr("orchestration_id", o.String())
 	}
 	if err := t.loadConfig(referrer); err != nil {
 		return err

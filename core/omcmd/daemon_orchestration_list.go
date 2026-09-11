@@ -22,7 +22,6 @@ type (
 		NodeSelector    string
 		States          []string
 		OrchestrationID string
-		ID              string
 	}
 )
 
@@ -46,12 +45,12 @@ func (t *CmdDaemonOrchestrationList) Run() error {
 
 	// Every node of the object answers for an orchestration, so one that
 	// has forgotten it is only an answer when they all have.
-	if t.ID != "" && len(items) == 0 {
+	if t.OrchestrationID != "" && len(items) == 0 {
 		if errs != nil {
 			return errs
 		}
 		return fmt.Errorf("orchestration %s is no longer known on %s: it ended long enough ago to have been dropped, or never ran there",
-			t.ID, t.NodeSelector)
+			t.OrchestrationID, t.NodeSelector)
 	}
 	t.render(items)
 	return errs
@@ -67,14 +66,14 @@ func (t *CmdDaemonOrchestrationList) merge(items []api.OrchestrationItem, errs e
 	byID := make(map[string]api.OrchestrationItem, len(items))
 	order := make([]string, 0, len(items))
 	for _, i := range items {
-		kept, ok := byID[i.Id]
+		kept, ok := byID[i.OrchestrationID]
 		if !ok {
-			byID[i.Id] = i
-			order = append(order, i.Id)
+			byID[i.OrchestrationID] = i
+			order = append(order, i.OrchestrationID)
 			continue
 		}
 		if kept.Node == "" && i.Node != "" {
-			byID[i.Id] = i
+			byID[i.OrchestrationID] = i
 		}
 	}
 	l := make([]api.OrchestrationItem, 0, len(order))
@@ -116,8 +115,8 @@ func (t *CmdDaemonOrchestrationList) gather(c *client.T, nodenames []string) ([]
 }
 
 func (t *CmdDaemonOrchestrationList) one(ctx context.Context, c *client.T, nodename string) ([]api.OrchestrationItem, error) {
-	if t.ID != "" {
-		resp, err := c.GetDaemonOrchestrationWithResponse(ctx, nodename, t.ID)
+	if t.OrchestrationID != "" {
+		resp, err := c.GetDaemonOrchestrationWithResponse(ctx, nodename, t.OrchestrationID)
 		if err != nil {
 			return nil, fmt.Errorf("%s: %w", nodename, err)
 		}
@@ -150,7 +149,7 @@ func (t *CmdDaemonOrchestrationList) one(ctx context.Context, c *client.T, noden
 
 func (t *CmdDaemonOrchestrationList) render(items []api.OrchestrationItem) {
 	output.Renderer{
-		DefaultOutput: "tab=STATE:state,ID:id,PATH:path,GLOBAL_EXPECT:global_expect,ACCEPTED_BY:node,BEGIN_AT:begin_at,END_AT:end_at",
+		DefaultOutput: "tab=STATE:state,ORCHESTRATION_ID:orchestration_id,PATH:path,GLOBAL_EXPECT:global_expect,ACCEPTED_BY:node,BEGIN_AT:begin_at,END_AT:end_at",
 		Output:        t.Output,
 		Color:         t.Color,
 		Data:          toOrchestrationViews(items),
@@ -160,24 +159,24 @@ func (t *CmdDaemonOrchestrationList) render(items []api.OrchestrationItem) {
 
 // orchestrationView is what the table shows, for the reason sessionView is.
 type orchestrationView struct {
-	State        string `json:"state"`
-	ID           string `json:"id"`
-	Path         string `json:"path,omitempty"`
-	GlobalExpect string `json:"global_expect,omitempty"`
-	AcceptedBy   string `json:"node,omitempty"`
-	BeginAt      string `json:"begin_at"`
-	EndAt        string `json:"end_at,omitempty"`
-	Error        string `json:"error,omitempty"`
+	State           string `json:"state"`
+	OrchestrationID string `json:"orchestration_id"`
+	Path            string `json:"path,omitempty"`
+	GlobalExpect    string `json:"global_expect,omitempty"`
+	AcceptedBy      string `json:"node,omitempty"`
+	BeginAt         string `json:"begin_at"`
+	EndAt           string `json:"end_at,omitempty"`
+	Error           string `json:"error,omitempty"`
 }
 
 func toOrchestrationViews(items []api.OrchestrationItem) []orchestrationView {
 	l := make([]orchestrationView, 0, len(items))
 	for _, i := range items {
 		v := orchestrationView{
-			State:      i.State,
-			ID:         i.Id,
-			AcceptedBy: i.Node,
-			BeginAt:    i.BeginAt.Truncate(time.Second).Format(time.RFC3339),
+			State:           i.State,
+			OrchestrationID: i.OrchestrationID,
+			AcceptedBy:      i.Node,
+			BeginAt:         i.BeginAt.Truncate(time.Second).Format(time.RFC3339),
 		}
 		if i.Path != nil {
 			v.Path = *i.Path

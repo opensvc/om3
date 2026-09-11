@@ -68,7 +68,7 @@ func New(opts ...funcopt.O) *T {
 	t := &T{}
 	_ = funcopt.Apply(t, opts...)
 	if t.NodeSelector != "" && t.DefaultOutput == "" {
-		t.DefaultOutput = "tab=OBJECT:path,NODE:nodename,SID:data.session_id"
+		t.DefaultOutput = "tab=OBJECT:path,NODE:nodename,SESSION_ID:data.session_id,EXEC_ID:data.exec_id"
 	}
 	return t
 }
@@ -376,7 +376,7 @@ func (t T) DoLocal() error {
 	}
 
 	if t.Digest && isatty.IsTerminal(os.Stdin.Fd()) && (zerolog.GlobalLevel() != zerolog.DebugLevel) {
-		fmt.Printf("sid=%s\n", xsession.Sid())
+		fmt.Printf("session_id=%s\n", xsession.SessionID())
 	}
 	var errs error
 	results := make([]actionrouter.Result, 0)
@@ -671,7 +671,7 @@ func (t T) DoRemote() error {
 	resultQ := make(chan actionrouter.Result)
 	done := 0
 	todo := 0
-	requesterSid := xsession.Sid().UUID()
+	requesterSessionID := xsession.SessionID().UUID()
 
 	var (
 		cancel context.CancelFunc
@@ -730,7 +730,7 @@ func (t T) DoRemote() error {
 				return err
 			}
 			if t.Wait {
-				t.waitRequesterSessionEnd(ctx, c, requesterSid, n, p, waitC)
+				t.waitRequesterSessionEnd(ctx, c, requesterSessionID, n, p, waitC)
 			}
 			t.instanceDo(ctx, resultQ, n, p, func(ctx context.Context, n string, p naming.Path) (any, error) {
 				return t.RemoteFunc(ctx, p, n)
@@ -1054,7 +1054,7 @@ func (t T) waitExpectation(ctx context.Context, c *client.T, idC <-chan uuid.UUI
 	}()
 }
 
-func (t T) waitRequesterSessionEnd(ctx context.Context, c *client.T, requesterSid uuid.UUID, n string, p naming.Path, errC chan<- error) {
+func (t T) waitRequesterSessionEnd(ctx context.Context, c *client.T, requesterSessionID uuid.UUID, n string, p naming.Path, errC chan<- error) {
 	var (
 		filters []string
 		msg     pubsub.Messager
@@ -1064,8 +1064,8 @@ func (t T) waitRequesterSessionEnd(ctx context.Context, c *client.T, requesterSi
 	)
 	filters = []string{
 		fmt.Sprintf("ObjectStatusDeleted,path=%s", p),
-		fmt.Sprintf("ExecFailed,path=%s,.session_id=\"%s\"", p, requesterSid),
-		fmt.Sprintf("ExecSuccess,path=%s,.session_id=\"%s\"", p, requesterSid),
+		fmt.Sprintf("ExecFailed,path=%s,.session_id=\"%s\"", p, requesterSessionID),
+		fmt.Sprintf("ExecSuccess,path=%s,.session_id=\"%s\"", p, requesterSessionID),
 	}
 	getEvents := c.NewGetEvents().SetFilters(filters).SetNodename(n)
 	if t.WaitDuration > 0 {

@@ -108,8 +108,8 @@ func CmdArgs(e schedule.Entry) ([]string, error) {
 
 func (o *T) action(e schedule.Entry) error {
 	logger := o.jobLogger(e)
-	eid := xsession.NewEid()
-	sid := xsession.NewSid()
+	execID := xsession.NewExecID()
+	sessionID := xsession.NewSessionID()
 	labels := []pubsub.Label{{"node", o.localhost}, {"origin", "scheduler"}}
 	if !e.Path.IsZero() {
 		labels = append(labels, pubsub.Label{"namespace", e.Path.Namespace}, pubsub.Label{"path", e.Path.String()})
@@ -123,9 +123,9 @@ func (o *T) action(e schedule.Entry) error {
 	cmdEnv = append(
 		cmdEnv,
 		env.ActionOriginDaemonScheduler.Var(),
-		xsession.Sid().ParentVar(),
-		eid.Var(),
-		sid.Var(),
+		xsession.SessionID().ParentVar(),
+		execID.Var(),
+		sessionID.Var(),
 	)
 
 	// Unless the daemon runs with --debug or --trace, we don't want to
@@ -147,8 +147,8 @@ func (o *T) action(e schedule.Entry) error {
 		Command:   cmd.String(),
 		Node:      o.localhost,
 		Origin:    "scheduler",
-		ExecID:    eid,
-		SessionID: sid,
+		ExecID:    execID,
+		SessionID: sessionID,
 	}, labels...)
 	startTime := time.Now()
 	if err := cmd.Start(); err != nil {
@@ -160,7 +160,7 @@ func (o *T) action(e schedule.Entry) error {
 		Pid:          pid,
 		Node:         o.localhost,
 		Object:       e.Path.String(),
-		Sid:          sid.String(),
+		SessionID:    sessionID.String(),
 		StartedAt:    startTime,
 		Elapsed:      "",
 		GlobalExpect: "-",
@@ -178,8 +178,8 @@ func (o *T) action(e schedule.Entry) error {
 			ErrS:      err.Error(),
 			Node:      o.localhost,
 			Origin:    "scheduler",
-			ExecID:    eid,
-			SessionID: sid,
+			ExecID:    execID,
+			SessionID: sessionID,
 		}, labels...)
 		logger.Errorf("%s: %s", cmd, err)
 		return err
@@ -190,8 +190,8 @@ func (o *T) action(e schedule.Entry) error {
 		Duration:  duration,
 		Node:      o.localhost,
 		Origin:    "scheduler",
-		ExecID:    eid,
-		SessionID: sid,
+		ExecID:    execID,
+		SessionID: sessionID,
 	}, labels...)
 	logger.Debugf("<- exec %s", cmd)
 	return nil

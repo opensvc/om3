@@ -79,7 +79,7 @@ func TestAppStart(t *testing.T) {
 		assert.NoErrorf(t, err, "Start() should not err")
 		require.True(t, file.Exists(fpath), "%s should exist after start", fpath)
 		// TODO: need dedicated test with log action (no more explicit object log)
-		//events, err := streamlog.GetEventsFromFile(p.LogFile(), map[string]interface{}{"sid": xsession.ID.String()})
+		//events, err := streamlog.GetEventsFromFile(p.LogFile(), map[string]interface{}{"session_id": xsession.ID.String()})
 		//assert.NoError(t, err)
 		//assert.Truef(t, events.MatchString("cmd", ".*touch.*"), "logs should contain a cmd~/touch/ event")
 	})

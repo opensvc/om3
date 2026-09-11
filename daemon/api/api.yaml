@@ -1944,7 +1944,7 @@ paths:
         - basicAuth: []
         - bearerAuth: []
 
-  /api/node/name/{nodename}/daemon/session/id/{id}:
+  /api/node/name/{nodename}/daemon/session/id/{session_id}:
     get:
       operationId: GetDaemonSession
       description: |
@@ -2009,7 +2009,7 @@ paths:
         - basicAuth: []
         - bearerAuth: []
 
-  /api/node/name/{nodename}/daemon/orchestration/id/{id}:
+  /api/node/name/{nodename}/daemon/orchestration/id/{orchestration_id}:
     get:
       operationId: GetDaemonOrchestration
       description: |
@@ -2034,7 +2034,7 @@ paths:
         one.
       parameters:
         - $ref: '#/components/parameters/inPathNodeName'
-        - $ref: '#/components/parameters/inPathSessionID'
+        - $ref: '#/components/parameters/inPathOrchestrationID'
       responses:
         200:
           description: OK
@@ -7626,7 +7626,7 @@ components:
         - started_at
         - elapsed
         - sub
-        - sid
+        - session_id
         - global_expect
         - cmd
         - rid
@@ -7645,8 +7645,10 @@ components:
           format: duration
         sub:
           type: string
-        sid:
+        session_id:
           type: string
+          x-go-name: SessionID
+          description: The session id of the command the process runs.
         global_expect:
           type: string
         cmd:
@@ -7661,16 +7663,19 @@ components:
 
     SessionItem:
       type: object
-      required: [id, exec_id, node, origin, command, state, begin_at]
+      required: [session_id, exec_id, node, origin, command, state, begin_at]
       properties:
-        id:
+        session_id:
           type: string
+          x-go-name: SessionID
           description: The session id the submitter was handed. Several execs share it when one command reaches several objects of a node.
         exec_id:
           type: string
+          x-go-name: ExecID
           description: The exec this reports, which is what has one object, one outcome and one duration.
         orchestration_id:
           type: string
+          x-go-name: OrchestrationID
           description: The orchestration this session is a step of, when it is one.
         node:
           type: string
@@ -7714,10 +7719,12 @@ components:
 
     OrchestrationItem:
       type: object
-      required: [id, node, state, begin_at]
+      required: [orchestration_id, node, state, begin_at]
       properties:
-        id:
+        orchestration_id:
           type: string
+          x-go-name: OrchestrationID
+          description: The orchestration id the submitter of the action was handed.
         node:
           type: string
         path:
@@ -9000,11 +9007,19 @@ components:
 
     inPathSessionID:
       in: path
-      name: id
+      name: session_id
       required: true
       schema:
         type: string
-        description: A session or orchestration id.
+        description: A session id.
+
+    inPathOrchestrationID:
+      in: path
+      name: orchestration_id
+      required: true
+      schema:
+        type: string
+        description: An orchestration id.
 
     inQuerySessionExecID:
       in: query
@@ -9037,6 +9052,7 @@ components:
     inQuerySessionID:
       in: query
       name: session_id
+      x-go-name: SessionID
       schema:
         type: string
         format: uuid

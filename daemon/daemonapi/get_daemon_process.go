@@ -62,7 +62,7 @@ func procToProcessItem(elements []proc.T) api.ProcessItems {
 			Pid:          item.Pid,
 			Node:         item.Node,
 			Object:       item.Object,
-			Sid:          item.Sid,
+			SessionID:    item.SessionID,
 			StartedAt:    item.StartedAt,
 			Elapsed:      item.Elapsed,
 			GlobalExpect: item.GlobalExpect,

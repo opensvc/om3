@@ -1,11 +1,15 @@
-// xsession is a package managing the ExecId and SessionId lifecycles.
+// xsession is a package managing the ExecID, SessionID and OrchestrationID
+// lifecycles.
 //
-// ExecId identifies every om process spawned.
+// ExecID identifies every om process spawned.
 //
-// SessionId identifies the command execution and all crm commands
+// SessionID identifies the command execution and all crm commands
 // forked from this execution.
 //
-// 1/ Who allocates a SessionId ?
+// OrchestrationID identifies the target state the daemons cooperate to
+// reach, when the execution is a step of one.
+//
+// 1/ Who allocates a SessionID ?
 //
 //    OR user
 //    OR daemon scheduler
@@ -13,12 +17,12 @@
 //    OR daemon api (if no session_id query parameter)
 //    OR crm (if no OSVC_SESSION_ID env variable)
 //
-// 2/ How a SessionId is propagated ?
+// 2/ How a SessionID is propagated ?
 //
 //    OR query params: session_id
 //    OR environement: OSVC_SESSION_ID
 //
-// 3/ When the SessionId is propagated:
+// 3/ When the SessionID is propagated:
 //
 //    - When the crm execs the crm
 //      => export OSVC_SESSION_ID=xxx
@@ -31,7 +35,7 @@
 //      - trigger pre/post (can exec crm)
 //
 //    - When the daemon decides of a crm exec
-//      => New SessionId created by the daemon
+//      => New SessionID created by the daemon
 //      => export OSVC_SESSION_ID=xxx
 //
 //      Use-cases:
@@ -40,7 +44,7 @@
 //      - nmon (drain)
 //
 //    - When the daemon is asked to exec the crm
-//      => New SessionId created by the requester, passed by the `session_id` query parameter.
+//      => New SessionID created by the requester, passed by the `session_id` query parameter.
 //      => If not, created by the api handler.
 //
 //      Use-cases:
@@ -57,7 +61,7 @@ import (
 	"github.com/google/uuid"
 )
 
-type Id struct {
+type ID struct {
 	id            uuid.UUID
 	varName       string
 	parentVarName string
@@ -65,16 +69,16 @@ type Id struct {
 
 var (
 	//
-	// sid is an uuid identifying the command execution and all crm commands
-	// forked from this execution.
+	// sessionID is an uuid identifying the command execution and all crm
+	// commands forked from this execution.
 	//
 	// This uuid is embedded in the logs so it's easy to retrieve
 	// the logs of an execution.
 	//
-	// Asynchronous commands posted on the API return a Id,
+	// Asynchronous commands posted on the API return a ID,
 	// so logs can be streamed for this execution after posting.
 	//
-	// The opensvc daemon forges an Id and exports it in
+	// The opensvc daemon forges an ID and exports it in
 	// the CRM commands it executes as a OSVC_SESSION_ID environment
 	// variable.
 	//
@@ -83,14 +87,14 @@ var (
 	// their out, err, ret from the session cache identified by
 	// the spawner ID.
 	//
-	sid Id
-	eid Id
-	oid Id
+	sessionID       ID
+	execID          ID
+	orchestrationID ID
 )
 
-// NewEid creates a new ExecId. If no uuid is given, assign a random one.
-func NewEid(ids ...uuid.UUID) Id {
-	i := Id{
+// NewExecID creates a new exec id. If no uuid is given, assign a random one.
+func NewExecID(ids ...uuid.UUID) ID {
+	i := ID{
 		varName:       "OSVC_EXEC_ID",
 		parentVarName: "OSVC_PARENT_EXEC_ID",
 	}
@@ -103,9 +107,9 @@ func NewEid(ids ...uuid.UUID) Id {
 	return i
 }
 
-// NewSid creates a new SessionId. If no uuid is given, assign a random one.
-func NewSid(ids ...uuid.UUID) Id {
-	i := Id{
+// NewSessionID creates a new session id. If no uuid is given, assign a random one.
+func NewSessionID(ids ...uuid.UUID) ID {
+	i := ID{
 		varName:       "OSVC_SESSION_ID",
 		parentVarName: "OSVC_PARENT_SESSION_ID",
 	}
@@ -118,67 +122,54 @@ func NewSid(ids ...uuid.UUID) Id {
 	return i
 }
 
-// NewOid creates a new OrchestrationId. If no uuid is given, assign a random one.
-func NewOid(ids ...uuid.UUID) Id {
-	i := Id{
-		varName: "OSVC_ORCHESTRATION_ID",
-	}
-	for _, id := range ids {
-		i.id = id
-	}
-	if i.id == uuid.Nil {
-		i.id = uuid.New()
-	}
-	return i
-}
-
-// NewStrictOid creates an OrchestrationId carrying the id it is given, and
-// carrying none when that id is nil.
+// NewOrchestrationID creates an orchestration id carrying the id it is given,
+// and carrying none when that id is nil.
 //
-// NewOid answers a nil id with a fresh random one, which is what an exec
-// naming itself in its own logs wants, and the opposite of what a caller
-// reporting which orchestration something belongs to wants: it would report
-// belonging to an orchestration that never existed.
-func NewStrictOid(id uuid.UUID) Id {
-	return Id{
+// Unlike NewSessionID and NewExecID, a nil id is not answered with a fresh
+// random one: an exec naming itself in its own logs wants an id whatever
+// happens, where a caller reporting which orchestration something belongs to
+// wants the truth, and a random one would report belonging to an
+// orchestration that never existed.
+func NewOrchestrationID(id uuid.UUID) ID {
+	return ID{
 		varName: "OSVC_ORCHESTRATION_ID",
 		id:      id,
 	}
 }
 
 // UUID returns the underlying uuid.UUID value.
-func (t *Id) UUID() uuid.UUID {
+func (t *ID) UUID() uuid.UUID {
 	return t.id
 }
 
-func (t *Id) SetUUID(id uuid.UUID) {
+func (t *ID) SetUUID(id uuid.UUID) {
 	t.id = id
 }
 
-func (t *Id) Zero() {
+func (t *ID) Zero() {
 	t.id = uuid.Nil
 }
 
-func (t *Id) IsZero() bool {
+func (t *ID) IsZero() bool {
 	return t.id == uuid.Nil
 }
 
-// String returns the string representation of the SessionId.
-func (t *Id) String() string {
+// String returns the string representation of the id.
+func (t *ID) String() string {
 	return t.id.String()
 }
 
 // MarshalJSON implements json.Marshaler interface.
-// It marshals the SessionId as a JSON string representation of the UUID.
+// It marshals the id as a JSON string representation of the UUID.
 // This method is also used by sigs.k8s.io/yaml for YAML marshaling.
-func (t Id) MarshalJSON() ([]byte, error) {
+func (t ID) MarshalJSON() ([]byte, error) {
 	return json.Marshal(t.id.String())
 }
 
 // UnmarshalJSON implements json.Unmarshaler interface.
-// It unmarshals a JSON string into a SessionId.
+// It unmarshals a JSON string into an id.
 // This method is also used by sigs.k8s.io/yaml for YAML unmarshaling.
-func (t *Id) UnmarshalJSON(b []byte) error {
+func (t *ID) UnmarshalJSON(b []byte) error {
 	var s string
 	if err := json.Unmarshal(b, &s); err != nil {
 		return err
@@ -191,7 +182,7 @@ func (t *Id) UnmarshalJSON(b []byte) error {
 	return nil
 }
 
-func (t *Id) setenvArg(s string) string {
+func (t *ID) setenvArg(s string) string {
 	var buff strings.Builder
 	buff.WriteString(s)
 	buff.WriteString("=")
@@ -199,18 +190,29 @@ func (t *Id) setenvArg(s string) string {
 	return buff.String()
 }
 
-// Var returns the session id as a OSVC_SESSION_ID=<sid> environment variable setter string.
-func (t *Id) Var() string {
+// Var returns the id as a OSVC_SESSION_ID=<session id> environment variable
+// setter string, and the empty string when there is no id to set, so a caller
+// exporting an orchestration id it may not have can hand what it gets to the
+// environment without naming an orchestration that never existed.
+func (t *ID) Var() string {
+	if t.IsZero() {
+		return ""
+	}
 	return t.setenvArg(t.varName)
 }
 
-// ParentVar returns the session id as a OSVC_PARENT_SESSION_ID=<sid> environment variable setter string.
+// ParentVar returns the id as a OSVC_PARENT_SESSION_ID=<session id>
+// environment variable setter string, and the empty string when there is no
+// id to set.
 // Used by the daemon to provide its session id to the executed crm commands.
-func (t *Id) ParentVar() string {
+func (t *ID) ParentVar() string {
+	if t.IsZero() {
+		return ""
+	}
 	return t.setenvArg(t.parentVarName)
 }
 
-func (t *Id) Load() {
+func (t *ID) Load() {
 	s := os.Getenv(t.varName)
 	if u, err := uuid.Parse(s); err == nil {
 		t.id = u
@@ -219,34 +221,39 @@ func (t *Id) Load() {
 
 // initID wraps init so it can be tested.
 func initID() {
-	eid = NewEid()
-	eid.Load()
-	oid = NewOid()
-	oid.Load()
-	sid = NewSid()
-	sid.Load()
+	execID = NewExecID()
+	execID.Load()
+
+	// The orchestration id is loaded, never minted: a command is a step of an
+	// orchestration only when the daemon that forked it said so.
+	orchestrationID = NewOrchestrationID(uuid.Nil)
+	orchestrationID.Load()
+
+	sessionID = NewSessionID()
+	sessionID.Load()
 }
 
 func init() {
 	initID()
 }
 
-// Eid returns the Exec ID
-func Eid() *Id {
-	return &eid
+// ExecID returns the exec id of this process.
+func ExecID() *ID {
+	return &execID
 }
 
-// Sid returns the Session ID
-func Sid() *Id {
-	return &sid
+// SessionID returns the session id of this process.
+func SessionID() *ID {
+	return &sessionID
 }
 
-// Oid returns the Orchestration ID
-func Oid() *Id {
-	return &oid
+// OrchestrationID returns the orchestration id this process is a step of, and
+// a zero id when it is a step of none.
+func OrchestrationID() *ID {
+	return &orchestrationID
 }
 
-// ResetSid is for go test
-func ResetSid(id Id) {
-	sid = id
+// ResetSessionID is for go test
+func ResetSessionID(id ID) {
+	sessionID = id
 }

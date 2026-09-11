@@ -35,14 +35,14 @@ func (t *CmdNodeDequeue) Remote() error {
 	ctx := context.Background()
 	for _, nodename := range nodenames {
 		go func(nodename string) {
-			sid := xsession.Sid().UUID()
-			params := api.PostPeerActionDequeueParams{SessionId: &sid}
+			sessionID := xsession.SessionID().UUID()
+			params := api.PostPeerActionDequeueParams{SessionID: &sessionID}
 			if resp, err := c.PostPeerActionDequeueWithResponse(ctx, nodename, &params); err != nil {
 				errC <- err
 			} else {
 				switch resp.StatusCode() {
 				case http.StatusOK:
-					fmt.Printf("node %s: action started with SID=%s\n", nodename, (*resp.JSON200).SessionID)
+					fmt.Printf("node %s: action started with session_id=%s\n", nodename, (*resp.JSON200).SessionID)
 				case 401:
 					errC <- fmt.Errorf("%s: %s", nodename, *resp.JSON401)
 				case 403:

@@ -27,7 +27,7 @@ func (a *DaemonAPI) PostInstanceActionPRStop(ctx echo.Context, nodename, namespa
 
 func (a *DaemonAPI) postLocalInstanceActionPRStop(ctx echo.Context, namespace string, kind naming.Kind, name string, params api.PostInstanceActionPRStopParams) error {
 	log := LogHandler(ctx, "PostInstanceActionPRStop")
-	var requesterSid uuid.UUID
+	var requesterSessionID uuid.UUID
 	p, err := naming.NewPath(namespace, kind, name)
 	if err != nil {
 		return JSONProblemf(ctx, http.StatusBadRequest, "Invalid parameters", "%s", err)
@@ -61,12 +61,12 @@ func (a *DaemonAPI) postLocalInstanceActionPRStop(ctx echo.Context, namespace st
 	if params.Master != nil && *params.Master {
 		args = append(args, "--master")
 	}
-	if params.SessionId != nil {
-		requesterSid = *params.SessionId
+	if params.SessionID != nil {
+		requesterSessionID = *params.SessionID
 	}
-	if sid, eid, err := a.apiExec(ctx, p, requesterSid, args, log); err != nil {
+	if sessionID, execID, err := a.apiExec(ctx, p, requesterSessionID, args, log); err != nil {
 		return JSONProblemf(ctx, http.StatusInternalServerError, "", "%s", err)
 	} else {
-		return ctx.JSON(http.StatusOK, api.InstanceActionAccepted{SessionID: sid, ExecID: eid})
+		return ctx.JSON(http.StatusOK, api.InstanceActionAccepted{SessionID: sessionID, ExecID: execID})
 	}
 }

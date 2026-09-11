@@ -15,7 +15,7 @@ type (
 		Pid          int
 		Node         string
 		Object       string
-		Sid          string
+		SessionID    string
 		StartedAt    time.Time
 		Elapsed      string
 		GlobalExpect string

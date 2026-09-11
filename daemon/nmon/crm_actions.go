@@ -45,17 +45,21 @@ func (t *Manager) crmUnfreeze() error {
 func (t *Manager) crmAction(title string, cmdArgs ...string) error {
 	var cmdEnv []string
 
-	sid := xsession.NewSid()
-	eid := xsession.NewEid()
-	oid := xsession.NewOid(t.state.OrchestrationID)
+	sessionID := xsession.NewSessionID()
+	execID := xsession.NewExecID()
+	orchestrationID := xsession.NewOrchestrationID(t.state.OrchestrationID)
 
 	cmdEnv = append(
 		cmdEnv,
 		env.ActionOriginDaemonMonitor.Var(),
-		eid.Var(),
-		oid.Var(),
-		sid.Var(),
+		execID.Var(),
+		sessionID.Var(),
 	)
+	if v := orchestrationID.Var(); v != "" {
+		// Only when this exec is a step of an orchestration. Naming one it is
+		// not a step of would put an id in its logs that matches nothing.
+		cmdEnv = append(cmdEnv, v)
+	}
 
 	// for tests
 	if os.Getenv("OSVC_ROOT_PATH") != "" {
@@ -81,9 +85,9 @@ func (t *Manager) crmAction(title string, cmdArgs ...string) error {
 		Command:         cmd.String(),
 		Node:            t.localhost,
 		Origin:          "nmon",
-		ExecID:          eid,
-		SessionID:       sid,
-		OrchestrationID: xsession.NewStrictOid(t.state.OrchestrationID),
+		ExecID:          execID,
+		SessionID:       sessionID,
+		OrchestrationID: orchestrationID,
 		Title:           title,
 	}, labels...)
 	startTime := time.Now()
@@ -95,7 +99,7 @@ func (t *Manager) crmAction(title string, cmdArgs ...string) error {
 	proc.Register(proc.T{
 		Pid:          pid,
 		Node:         t.localhost,
-		Sid:          sid.String(),
+		SessionID:    sessionID.String(),
 		StartedAt:    startTime,
 		Elapsed:      "",
 		GlobalExpect: t.state.GlobalExpect.String(),
@@ -112,9 +116,9 @@ func (t *Manager) crmAction(title string, cmdArgs ...string) error {
 			ErrS:            err.Error(),
 			Node:            t.localhost,
 			Origin:          "nmon",
-			ExecID:          eid,
-			SessionID:       sid,
-			OrchestrationID: xsession.NewStrictOid(t.state.OrchestrationID),
+			ExecID:          execID,
+			SessionID:       sessionID,
+			OrchestrationID: orchestrationID,
 			Title:           title,
 		}, labels...)
 		t.log.Errorf("failed %s: %s", cmd, err)
@@ -126,9 +130,9 @@ func (t *Manager) crmAction(title string, cmdArgs ...string) error {
 		Duration:        duration,
 		Node:            t.localhost,
 		Origin:          "nmon",
-		ExecID:          eid,
-		SessionID:       sid,
-		OrchestrationID: xsession.NewStrictOid(t.state.OrchestrationID),
+		ExecID:          execID,
+		SessionID:       sessionID,
+		OrchestrationID: orchestrationID,
 		Title:           title,
 	}, labels...)
 	if title != "" {

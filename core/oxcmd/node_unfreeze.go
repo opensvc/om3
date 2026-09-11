@@ -48,8 +48,8 @@ func (t *CmdNodeUnfreeze) doRemote() error {
 			defer func() { doneC <- nodename }()
 			params := api.PostPeerActionUnfreezeParams{}
 			{
-				sid := xsession.Sid().UUID()
-				params.SessionId = &sid
+				sessionID := xsession.SessionID().UUID()
+				params.SessionID = &sessionID
 			}
 			if resp, err := c.PostPeerActionUnfreezeWithResponse(ctx, nodename, &params); err != nil {
 				errC <- err

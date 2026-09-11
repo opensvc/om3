@@ -26,14 +26,14 @@ func (a *DaemonAPI) PostPeerActionFreeze(ctx echo.Context, nodename string, para
 
 func (a *DaemonAPI) localNodeActionFreeze(ctx echo.Context, params api.PostPeerActionFreezeParams) error {
 	log := LogHandler(ctx, "PostPeerActionFreeze")
-	var requesterSid uuid.UUID
+	var requesterSessionID uuid.UUID
 	args := []string{"node", "freeze"}
-	if params.SessionId != nil {
-		requesterSid = *params.SessionId
+	if params.SessionID != nil {
+		requesterSessionID = *params.SessionID
 	}
-	if sid, eid, err := a.apiExec(ctx, naming.Path{}, requesterSid, args, log); err != nil {
+	if sessionID, execID, err := a.apiExec(ctx, naming.Path{}, requesterSessionID, args, log); err != nil {
 		return JSONProblemf(ctx, http.StatusInternalServerError, "", "%s", err)
 	} else {
-		return ctx.JSON(http.StatusOK, api.NodeActionAccepted{SessionID: sid, ExecID: eid})
+		return ctx.JSON(http.StatusOK, api.NodeActionAccepted{SessionID: sessionID, ExecID: execID})
 	}
 }

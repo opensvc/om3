@@ -46,12 +46,12 @@ func PurgeCache() error {
 }
 
 func outputLockP(name string) fcache.Locker {
-	sid := xsession.Sid().String()
-	path := filepath.Join(rawconfig.Paths.Lock, sid+"-out-"+name)
-	return flock.New(path, sid, fcntllock.New)
+	sessionID := xsession.SessionID().String()
+	path := filepath.Join(rawconfig.Paths.Lock, sessionID+"-out-"+name)
+	return flock.New(path, sessionID, fcntllock.New)
 }
 
 func cacheDir() string {
-	sid := xsession.Sid().String()
-	return filepath.Join(rawconfig.Paths.Cache, sid)
+	sessionID := xsession.SessionID().String()
+	return filepath.Join(rawconfig.Paths.Cache, sessionID)
 }

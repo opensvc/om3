@@ -109,15 +109,15 @@ func (t *Manager) handle(i any) {
 			NoteMonitor(
 				m.Path.String(),
 				m.Node,
-				IdString(xsession.NewStrictOid(m.Value.OrchestrationID)),
+				IDString(xsession.NewOrchestrationID(m.Value.OrchestrationID)),
 				m.Value.GlobalExpect.String(),
 				m.Value.GlobalExpectUpdatedAt,
 			)
 		case *msgbus.Exec:
 			AddSession(Session{
-				ID:              IdString(m.SessionID),
-				ExecID:          IdString(m.ExecID),
-				OrchestrationID: IdString(m.OrchestrationID),
+				SessionID:       IDString(m.SessionID),
+				ExecID:          IDString(m.ExecID),
+				OrchestrationID: IDString(m.OrchestrationID),
 				Node:            m.Node,
 				Path:            pathOf(m.Labels),
 				Origin:          m.Origin,
@@ -125,15 +125,15 @@ func (t *Manager) handle(i any) {
 				Command:         m.Command,
 			})
 		case *msgbus.ExecSuccess:
-			EndSession(IdString(m.ExecID), IdString(m.SessionID), StateSucceeded, "", m.Duration)
+			EndSession(IDString(m.ExecID), IDString(m.SessionID), StateSucceeded, "", m.Duration)
 		case *msgbus.ExecFailed:
-			EndSession(IdString(m.ExecID), IdString(m.SessionID), StateFailed, m.ErrS, m.Duration)
+			EndSession(IDString(m.ExecID), IDString(m.SessionID), StateFailed, m.ErrS, m.Duration)
 		case *msgbus.ObjectOrchestrationAccepted:
 			AddOrchestration(Orchestration{
-				ID:           m.ID,
-				Node:         m.Node,
-				Path:         m.Path.String(),
-				GlobalExpect: m.GlobalExpect.String(),
+				OrchestrationID: m.ID,
+				Node:            m.Node,
+				Path:            m.Path.String(),
+				GlobalExpect:    m.GlobalExpect.String(),
 			})
 		case *msgbus.ObjectOrchestrationEnd:
 			state := StateSucceeded
@@ -143,9 +143,9 @@ func (t *Manager) handle(i any) {
 			EndOrchestration(m.ID, state, "")
 		case *msgbus.ObjectOrchestrationRefused:
 			AddOrchestration(Orchestration{
-				ID:   m.ID,
-				Node: m.Node,
-				Path: m.Path.String(),
+				OrchestrationID: m.ID,
+				Node:            m.Node,
+				Path:            m.Path.String(),
 			})
 			EndOrchestration(m.ID, StateRefused, m.Reason)
 		}

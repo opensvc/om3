@@ -441,11 +441,11 @@ type (
 		// Origin describes the exec caller: example: imon, nmon, scheduler...
 		Origin    string      `json:"origin" yaml:"origin"`
 		Title     string      `json:"title" yaml:"title"`
-		SessionID xsession.Id `json:"session_id" yaml:"session_id"`
-		ExecID    xsession.Id `json:"exec_id" yaml:"exec_id"`
+		SessionID xsession.ID `json:"session_id" yaml:"session_id"`
+		ExecID    xsession.ID `json:"exec_id" yaml:"exec_id"`
 		// OrchestrationID is set when the exec is a step of an
 		// orchestration, so the sessions of one can be found together.
-		OrchestrationID xsession.Id `json:"orchestration_id" yaml:"orchestration_id"`
+		OrchestrationID xsession.ID `json:"orchestration_id" yaml:"orchestration_id"`
 	}
 
 	// ExecFailed message describes failed exec call
@@ -459,11 +459,11 @@ type (
 		// Origin describes the exec caller: example: imon, nmon, scheduler...
 		Origin    string      `json:"origin" yaml:"origin"`
 		Title     string      `json:"title" yaml:"title"`
-		SessionID xsession.Id `json:"session_id" yaml:"session_id"`
-		ExecID    xsession.Id `json:"exec_id" yaml:"exec_id"`
+		SessionID xsession.ID `json:"session_id" yaml:"session_id"`
+		ExecID    xsession.ID `json:"exec_id" yaml:"exec_id"`
 		// OrchestrationID is set when the exec is a step of an
 		// orchestration, so the sessions of one can be found together.
-		OrchestrationID xsession.Id `json:"orchestration_id" yaml:"orchestration_id"`
+		OrchestrationID xsession.ID `json:"orchestration_id" yaml:"orchestration_id"`
 	}
 
 	// ExecSuccess message describes successfully exec call
@@ -476,11 +476,11 @@ type (
 		// Origin describes the exec caller: example: imon, nmon, scheduler...
 		Origin    string      `json:"origin" yaml:"origin"`
 		Title     string      `json:"title" yaml:"title"`
-		SessionID xsession.Id `json:"session_id" yaml:"session_id"`
-		ExecID    xsession.Id `json:"exec_id" yaml:"exec_id"`
+		SessionID xsession.ID `json:"session_id" yaml:"session_id"`
+		ExecID    xsession.ID `json:"exec_id" yaml:"exec_id"`
 		// OrchestrationID is set when the exec is a step of an
 		// orchestration, so the sessions of one can be found together.
-		OrchestrationID xsession.Id `json:"orchestration_id" yaml:"orchestration_id"`
+		OrchestrationID xsession.ID `json:"orchestration_id" yaml:"orchestration_id"`
 	}
 
 	Exit struct {
@@ -919,7 +919,7 @@ type (
 		Path       naming.Path           `json:"path" yaml:"path"`
 		Node       string                `json:"node" yaml:"node"`
 		State      instance.MonitorState `json:"instance_monitor_state" yaml:"instance_monitor_state"`
-		SessionID  xsession.Id           `json:"session_id" yaml:"session_id"`
+		SessionID  xsession.ID           `json:"session_id" yaml:"session_id"`
 		IsPartial  bool                  `json:"is_partial" yaml:"is_partial"`
 	}
 

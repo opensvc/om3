@@ -89,8 +89,8 @@ func (t *CmdObjectInstanceShutdown) Run(kind string) error {
 				params.To = &t.OptTo.To
 			}
 			{
-				sid := xsession.Sid().UUID()
-				params.SessionId = &sid
+				sessionID := xsession.SessionID().UUID()
+				params.SessionID = &sessionID
 			}
 			response, err := c.PostInstanceActionShutdownWithResponse(ctx, nodename, p.Namespace, p.Kind, p.Name, &params)
 			if err != nil {

@@ -45,8 +45,8 @@ func (t *CmdNodeSCSIScan) Run() error {
 				Lun:    &t.LUN,
 			}
 			{
-				sid := xsession.Sid().UUID()
-				params.SessionId = &sid
+				sessionID := xsession.SessionID().UUID()
+				params.SessionID = &sessionID
 			}
 			response, err := c.PostNodeActionSCSIScanWithResponse(ctx, nodename, &params)
 			if err != nil {

@@ -1084,10 +1084,10 @@ func newCmdObjectPrintResourceInfo(kind string) *cobra.Command {
 func newCmdDaemonSessionList() *cobra.Command {
 	var options commands.CmdDaemonSessionList
 	cmd := &cobra.Command{
-		Use:   "list [ID]",
+		Use:   "list [SESSION_ID]",
 		Short: "list the actions the daemon ran, and is running",
-		Long: `Naming an ID reports that one action, and says so when the daemon no longer
-holds it, which is not the same answer as never having run it.
+		Long: `Naming a session id reports that one action, and says so when the daemon no
+longer holds it, which is not the same answer as never having run it.
 
 Naming no state lists every state, a client waiting for the end of what it
 submitted being interested in the ones that ended.`,
@@ -1095,12 +1095,12 @@ submitted being interested in the ones that ended.`,
 		Args:    cobra.MaximumNArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			if len(args) > 0 {
-				options.ID = args[0]
+				options.SessionID = args[0]
 			}
 			return options.Run()
 		},
 	}
-	commoncmd.CmdWithArg(cmd, `ID  The session id the submitter of the action was handed.`)
+	commoncmd.CmdWithArg(cmd, `SESSION_ID  The session id the submitter of the action was handed.`)
 	flags := cmd.Flags()
 	addFlagsGlobal(flags, &options.OptsGlobal)
 	commoncmd.FlagNodeSelectorOrLocalnode(flags, &options.NodeSelector)
@@ -1113,10 +1113,11 @@ submitted being interested in the ones that ended.`,
 func newCmdDaemonOrchestrationList() *cobra.Command {
 	var options commands.CmdDaemonOrchestrationList
 	cmd := &cobra.Command{
-		Use:   "list [ID]",
+		Use:   "list [ORCHESTRATION_ID]",
 		Short: "list the orchestrations the monitor accepted, and is running",
-		Long: `Naming an ID reports that one orchestration, and says so when the daemon no
-longer holds it, which is not the same answer as never having run it.
+		Long: `Naming an orchestration id reports that one orchestration, and says so when
+the daemon no longer holds it, which is not the same answer as never having
+run it.
 
 Any node answers for any orchestration, so this needs no node to be named,
 which is what lets a client reaching the cluster through a floating address
@@ -1125,12 +1126,12 @@ follow one.`,
 		Args:    cobra.MaximumNArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			if len(args) > 0 {
-				options.ID = args[0]
+				options.OrchestrationID = args[0]
 			}
 			return options.Run()
 		},
 	}
-	commoncmd.CmdWithArg(cmd, `ID  The orchestration id the submitter of the action was handed.`)
+	commoncmd.CmdWithArg(cmd, `ORCHESTRATION_ID  The orchestration id the submitter of the action was handed.`)
 	flags := cmd.Flags()
 	addFlagsGlobal(flags, &options.OptsGlobal)
 	commoncmd.FlagNodeSelectorOrLocalnode(flags, &options.NodeSelector)

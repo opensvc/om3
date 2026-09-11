@@ -10,7 +10,7 @@ import (
 
 func TestASessionIsRunningUntilItsEndIsSeen(t *testing.T) {
 	reset()
-	AddSession(Session{ID: "s1", ExecID: "e-s1", Node: "n1", Origin: "api", Command: "om foo start"})
+	AddSession(Session{SessionID: "s1", ExecID: "e-s1", Node: "n1", Origin: "api", Command: "om foo start"})
 
 	s, ok := firstSession("s1")
 	require.True(t, ok)
@@ -28,7 +28,7 @@ func TestASessionIsRunningUntilItsEndIsSeen(t *testing.T) {
 // A failure carries what failed, which is the reason to ask at all.
 func TestAFailedSessionKeepsItsError(t *testing.T) {
 	reset()
-	AddSession(Session{ID: "s1", ExecID: "e-s1"})
+	AddSession(Session{SessionID: "s1", ExecID: "e-s1"})
 	EndSession("e-s1", "s1", StateFailed, "start failed: no such device", time.Second)
 
 	s, _ := firstSession("s1")
@@ -52,10 +52,10 @@ func TestAnEndWithoutAStartIsRecorded(t *testing.T) {
 // that has ended.
 func TestListingNarrowsOnTheStateAndListsAllByDefault(t *testing.T) {
 	reset()
-	AddSession(Session{ID: "running", ExecID: "e-running"})
-	AddSession(Session{ID: "ok", ExecID: "e-ok"})
+	AddSession(Session{SessionID: "running", ExecID: "e-running"})
+	AddSession(Session{SessionID: "ok", ExecID: "e-ok"})
 	EndSession("e-ok", "ok", StateSucceeded, "", time.Second)
-	AddSession(Session{ID: "ko", ExecID: "e-ko"})
+	AddSession(Session{SessionID: "ko", ExecID: "e-ko"})
 	EndSession("e-ko", "ko", StateFailed, "boom", time.Second)
 
 	assert.Len(t, ListSessions(Filter{}), 3, "every state when none is named")
@@ -68,10 +68,10 @@ func TestListingNarrowsOnTheStateAndListsAllByDefault(t *testing.T) {
 // client that submitted an orchestrated action has an id for.
 func TestTheSessionsOfAnOrchestrationAreFoundByItsID(t *testing.T) {
 	reset()
-	AddSession(Session{ID: "s1", ExecID: "e-s1", OrchestrationID: "o1"})
-	AddSession(Session{ID: "s2", ExecID: "e-s2", OrchestrationID: "o1"})
-	AddSession(Session{ID: "s3", ExecID: "e-s3", OrchestrationID: "o2"})
-	AddSession(Session{ID: "s4", ExecID: "e-s4"})
+	AddSession(Session{SessionID: "s1", ExecID: "e-s1", OrchestrationID: "o1"})
+	AddSession(Session{SessionID: "s2", ExecID: "e-s2", OrchestrationID: "o1"})
+	AddSession(Session{SessionID: "s3", ExecID: "e-s3", OrchestrationID: "o2"})
+	AddSession(Session{SessionID: "s4", ExecID: "e-s4"})
 
 	l := ListSessions(Filter{OrchestrationID: "o1"})
 	assert.Len(t, l, 2)
@@ -85,9 +85,9 @@ func TestTheSessionsOfAnOrchestrationAreFoundByItsID(t *testing.T) {
 // answer a client is waiting for.
 func TestWhatEndedLongAgoIsDroppedAndWhatRunsIsKept(t *testing.T) {
 	reset()
-	AddSession(Session{ID: "old", ExecID: "e-old"})
+	AddSession(Session{SessionID: "old", ExecID: "e-old"})
 	EndSession("e-old", "old", StateSucceeded, "", time.Second)
-	AddSession(Session{ID: "running", ExecID: "e-running"})
+	AddSession(Session{SessionID: "running", ExecID: "e-running"})
 
 	// Age it past the retention.
 	mu.Lock()
@@ -110,7 +110,7 @@ func TestOnlyTheNewestEndedSessionsAreKept(t *testing.T) {
 	defer func() { MaxEntries = saved }()
 
 	for _, id := range []string{"1", "2", "3", "4", "5"} {
-		AddSession(Session{ID: id, ExecID: "e-" + id})
+		AddSession(Session{SessionID: id, ExecID: "e-" + id})
 		EndSession("e-"+id, id, StateSucceeded, "", time.Second)
 	}
 
@@ -123,7 +123,7 @@ func TestOnlyTheNewestEndedSessionsAreKept(t *testing.T) {
 
 func TestAnOrchestrationEndsAbortedOrRefused(t *testing.T) {
 	reset()
-	AddOrchestration(Orchestration{ID: "o1", Path: "svc1", GlobalExpect: "started"})
+	AddOrchestration(Orchestration{OrchestrationID: "o1", Path: "svc1", GlobalExpect: "started"})
 	o, ok := GetOrchestration("o1")
 	require.True(t, ok)
 	assert.Equal(t, StateRunning, o.State)
@@ -132,7 +132,7 @@ func TestAnOrchestrationEndsAbortedOrRefused(t *testing.T) {
 	o, _ = GetOrchestration("o1")
 	assert.Equal(t, StateAborted, o.State)
 
-	AddOrchestration(Orchestration{ID: "o2"})
+	AddOrchestration(Orchestration{OrchestrationID: "o2"})
 	EndOrchestration("o2", StateRefused, "node is frozen")
 	o, _ = GetOrchestration("o2")
 	assert.Equal(t, StateRefused, o.State)
@@ -165,8 +165,8 @@ func firstSession(id string) (Session, bool) {
 // the two and hid the other.
 func TestTwoExecsOfOneSessionAreBothKept(t *testing.T) {
 	reset()
-	AddSession(Session{ID: "s1", ExecID: "e1", Path: "pod3"})
-	AddSession(Session{ID: "s1", ExecID: "e2", Path: "pod6"})
+	AddSession(Session{SessionID: "s1", ExecID: "e1", Path: "pod3"})
+	AddSession(Session{SessionID: "s1", ExecID: "e2", Path: "pod6"})
 	EndSession("e1", "s1", StateSucceeded, "", time.Second)
 	EndSession("e2", "s1", StateFailed, "boom", 2*time.Second)
 

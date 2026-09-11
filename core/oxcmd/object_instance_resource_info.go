@@ -60,8 +60,8 @@ func (t *CmdObjectInstanceResourceInfo) refresh(kind string) error {
 			}
 			params := api.PostInstanceActionInfoParams{}
 			{
-				sid := xsession.Sid().UUID()
-				params.SessionId = &sid
+				sessionID := xsession.SessionID().UUID()
+				params.SessionID = &sessionID
 			}
 			if t.RID != "" {
 				rid := t.RID

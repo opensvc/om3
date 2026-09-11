@@ -24,7 +24,7 @@ type (
 		States          []string
 		OrchestrationID string
 		ExecID          string
-		ID              string
+		SessionID       string
 	}
 )
 
@@ -49,12 +49,12 @@ func (t *CmdDaemonSessionList) Run() error {
 	// An id one node no longer holds is not an error when another still
 	// does: an action submitted to several nodes is one session per node,
 	// and asking for it by id is asking every node that may have run it.
-	if t.ID != "" && len(items) == 0 {
+	if t.SessionID != "" && len(items) == 0 {
 		if errs != nil {
 			return errs
 		}
 		return fmt.Errorf("session %s is no longer known on %s: it ended long enough ago to have been dropped, or never ran there",
-			t.ID, t.NodeSelector)
+			t.SessionID, t.NodeSelector)
 	}
 	t.render(items)
 	return errs
@@ -92,8 +92,8 @@ func (t *CmdDaemonSessionList) gather(c *client.T, nodenames []string) ([]api.Se
 }
 
 func (t *CmdDaemonSessionList) one(ctx context.Context, c *client.T, nodename string) ([]api.SessionItem, error) {
-	if t.ID != "" {
-		resp, err := c.GetDaemonSessionWithResponse(ctx, nodename, t.ID)
+	if t.SessionID != "" {
+		resp, err := c.GetDaemonSessionWithResponse(ctx, nodename, t.SessionID)
 		if err != nil {
 			return nil, fmt.Errorf("%s: %w", nodename, err)
 		}
@@ -133,7 +133,7 @@ func (t *CmdDaemonSessionList) one(ctx context.Context, c *client.T, nodename st
 
 func (t *CmdDaemonSessionList) render(items []api.SessionItem) {
 	output.Renderer{
-		DefaultOutput: "tab=NODE:node,STATE:state,ID:id,EXEC_ID:exec_id,PATH:path,ORIGIN:origin,BEGIN_AT:begin_at,DURATION:duration,COMMAND:command",
+		DefaultOutput: "tab=NODE:node,STATE:state,SESSION_ID:session_id,EXEC_ID:exec_id,PATH:path,ORIGIN:origin,BEGIN_AT:begin_at,DURATION:duration,COMMAND:command",
 		Output:        t.Output,
 		Color:         t.Color,
 		Data:          toSessionViews(items),
@@ -147,7 +147,7 @@ func (t *CmdDaemonSessionList) render(items []api.SessionItem) {
 type sessionView struct {
 	Node            string `json:"node"`
 	State           string `json:"state"`
-	ID              string `json:"id"`
+	SessionID       string `json:"session_id"`
 	OrchestrationID string `json:"orchestration_id,omitempty"`
 	Path            string `json:"path,omitempty"`
 	Origin          string `json:"origin,omitempty"`
@@ -162,16 +162,16 @@ func toSessionViews(items []api.SessionItem) []sessionView {
 	l := make([]sessionView, 0, len(items))
 	for _, i := range items {
 		v := sessionView{
-			Node:    i.Node,
-			State:   i.State,
-			ID:      i.Id,
-			BeginAt: i.BeginAt.Truncate(time.Second).Format(time.RFC3339),
-			Command: i.Command,
-			Origin:  i.Origin,
-			ExecID:  i.ExecId,
+			Node:      i.Node,
+			State:     i.State,
+			SessionID: i.SessionID,
+			BeginAt:   i.BeginAt.Truncate(time.Second).Format(time.RFC3339),
+			Command:   i.Command,
+			Origin:    i.Origin,
+			ExecID:    i.ExecID,
 		}
-		if i.OrchestrationId != nil {
-			v.OrchestrationID = *i.OrchestrationId
+		if i.OrchestrationID != nil {
+			v.OrchestrationID = *i.OrchestrationID
 		}
 		if i.Path != nil {
 			v.Path = *i.Path

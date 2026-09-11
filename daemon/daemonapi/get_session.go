@@ -44,23 +44,23 @@ func (a *DaemonAPI) GetDaemonSessions(ctx echo.Context, nodename string, params 
 	return ctx.JSON(http.StatusOK, api.SessionList{Kind: api.SessionListKindSessionList, Items: items})
 }
 
-func (a *DaemonAPI) GetDaemonSession(ctx echo.Context, nodename string, id string) error {
+func (a *DaemonAPI) GetDaemonSession(ctx echo.Context, nodename string, sessionID string) error {
 	if v, err := assertRoot(ctx); !v {
 		return err
 	}
 	nodename = a.parseNodename(nodename)
 	if a.localhost != nodename {
 		return a.proxy(ctx, nodename, func(c *client.T) (*http.Response, error) {
-			return c.GetDaemonSession(ctx.Request().Context(), nodename, id)
+			return c.GetDaemonSession(ctx.Request().Context(), nodename, sessionID)
 		})
 	}
-	l := session.GetSessions(id)
+	l := session.GetSessions(sessionID)
 	if len(l) == 0 {
 		// Gone and not NotFound: the daemon may well have run this session
 		// and dropped it since, and a client polling for the end of what it
 		// submitted must not read the answer as "never happened".
 		return JSONProblemf(ctx, http.StatusGone, "Session no longer known",
-			"session %s has been dropped, or never ran on this node", id)
+			"session %s has been dropped, or never ran on this node", sessionID)
 	}
 	// Several when the command reached several objects of this node, each of
 	// them an exec of its own under the one session id.
@@ -73,16 +73,16 @@ func (a *DaemonAPI) GetDaemonSession(ctx echo.Context, nodename string, id strin
 
 func sessionItem(s session.Session) api.SessionItem {
 	item := api.SessionItem{
-		Id:      s.ID,
-		ExecId:  s.ExecID,
-		Node:    s.Node,
-		Origin:  s.Origin,
-		Command: s.Command,
-		State:   string(s.State),
-		BeginAt: s.BeginAt,
+		SessionID: s.SessionID,
+		ExecID:    s.ExecID,
+		Node:      s.Node,
+		Origin:    s.Origin,
+		Command:   s.Command,
+		State:     string(s.State),
+		BeginAt:   s.BeginAt,
 	}
 	if s.OrchestrationID != "" {
-		item.OrchestrationId = &s.OrchestrationID
+		item.OrchestrationID = &s.OrchestrationID
 	}
 	if s.Path != "" {
 		item.Path = &s.Path
