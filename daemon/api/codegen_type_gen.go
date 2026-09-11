@@ -2643,9 +2643,6 @@ type OrchestrationID = openapi_types.UUID
 // Origins defines model for inQueryOrigin.
 type Origins = []string
 
-// Pids defines model for inQueryPid.
-type Pids = []int
-
 // InQueryPoolName defines model for inQueryPoolName.
 type InQueryPoolName = string
 
@@ -2988,9 +2985,6 @@ type GetDaemonEventsParams struct {
 
 // DeleteDaemonExecsParams defines parameters for DeleteDaemonExecs.
 type DeleteDaemonExecsParams struct {
-	// Pids Signal the exec running under this pid. Repeatable.
-	Pids *Pids `form:"pid,omitempty" json:"pid,omitempty"`
-
 	// Signal The signal to send, as a name (TERM, SIGTERM) or a number (15). Defaults to SIGKILL.
 	Signal *InQuerySignal `form:"signal,omitempty" json:"signal,omitempty"`
 

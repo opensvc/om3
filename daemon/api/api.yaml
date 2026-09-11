@@ -1967,21 +1967,21 @@ paths:
         have exited and been recycled by then, and killing the exec rather
         than the number is what makes that impossible.
 
-        At least one of pid, exec_id, session_id, orchestration_id, rid,
-        origin or the object selector must narrow the selection. Signaling
-        every exec of a node is not something a caller does by omission.
+        There is no pid filter. GetDaemonExecs reports the pid of every
+        running exec, and killing a pid is what the system's own kill is for.
+        What this offers is the naming only the daemon can do.
+
+        At least one of exec_id, session_id, orchestration_id, rid, origin or
+        the object selector must narrow the selection. Signaling every exec of
+        a node is not something a caller does by omission.
 
         Only a running exec has a process. One that has ended selects nothing
         and is not an error: it is the outcome asked for.
-
-        Only the processes the daemon started are signaled. A pid it did not
-        start is refused.
 
         Answers the execs it signaled. With dry_run, answers the execs it
         would have signaled and sends no signal.
       parameters:
         - $ref: '#/components/parameters/inPathNodeName'
-        - $ref: '#/components/parameters/inQueryPid'
         - $ref: '#/components/parameters/inQuerySignal'
         - $ref: '#/components/parameters/inQueryDryRun'
         - $ref: '#/components/parameters/inQuerySessionID'
@@ -9005,16 +9005,6 @@ components:
           type: string
           description: A state to list. Every state when not set.
           example: running
-
-    inQueryPid:
-      in: query
-      name: pid
-      x-go-name: Pids
-      description: Signal the exec running under this pid. Repeatable.
-      schema:
-        type: array
-        items:
-          type: integer
 
     inQuerySignal:
       in: query

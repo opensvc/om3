@@ -4,7 +4,6 @@ import (
 	"errors"
 	"fmt"
 	"net/http"
-	"slices"
 	"strconv"
 	"strings"
 	"syscall"
@@ -32,17 +31,11 @@ func (a *DaemonAPI) DeleteDaemonExecs(ctx echo.Context, nodename string, params 
 }
 
 func (a *DaemonAPI) deleteLocalDaemonExecs(ctx echo.Context, params api.DeleteDaemonExecsParams) error {
-	var pids []int
-	if params.Pids != nil {
-		pids = *params.Pids
-	}
-
 	// Signaling every exec of a node is not something a caller does by
 	// omission. The state is not a narrowing for this purpose: only a running
 	// exec has a process, so asking for the running ones is asking for all of
 	// them.
-	narrowed := len(pids) > 0 ||
-		params.ExecID != nil ||
+	narrowed := params.ExecID != nil ||
 		params.SessionID != nil ||
 		params.OrchestrationID != nil ||
 		(params.Origins != nil && len(*params.Origins) > 0) ||
@@ -50,7 +43,7 @@ func (a *DaemonAPI) deleteLocalDaemonExecs(ctx echo.Context, params api.DeleteDa
 		(params.Selector != nil && *params.Selector != "")
 	if !narrowed {
 		return JSONProblemf(ctx, http.StatusBadRequest, "Invalid parameters",
-			"name what to signal: one of pid, exec_id, session_id, orchestration_id, rid, origin or selector")
+			"name what to signal: one of exec_id, session_id, orchestration_id, rid, origin or selector")
 	}
 
 	sig := syscall.SIGKILL
@@ -58,12 +51,6 @@ func (a *DaemonAPI) deleteLocalDaemonExecs(ctx echo.Context, params api.DeleteDa
 		var err error
 		if sig, err = parseSignal(*params.Signal); err != nil {
 			return JSONProblemf(ctx, http.StatusBadRequest, "Invalid parameter", "%s", err)
-		}
-	}
-
-	for _, pid := range pids {
-		if pid <= 0 {
-			return JSONProblemf(ctx, http.StatusBadRequest, "Invalid parameter", "invalid pid %d", pid)
 		}
 	}
 
@@ -88,39 +75,19 @@ func (a *DaemonAPI) deleteLocalDaemonExecs(ctx echo.Context, params api.DeleteDa
 		filter.Path = *params.Selector
 	}
 
-	// The pid is resolved to its exec here, under the daemon's own lock, and
+	// The exec is resolved to its pid here, under the daemon's own lock, and
 	// never the other way round. A pid a client read from an earlier listing
 	// may have exited and been recycled since, and the exec it now names is
 	// not the one the client meant.
 	byExecID := proc.PidByExecID()
 	selected := make([]session.Exec, 0)
 	for _, e := range session.ListExecs(filter) {
-		pid, ok := byExecID[e.ExecID]
-		if !ok {
+		if _, ok := byExecID[e.ExecID]; !ok {
 			// Running as far as the store knows, but the daemon has no
 			// process for it. Nothing to signal.
 			continue
 		}
-		if len(pids) > 0 && !slices.Contains(pids, pid) {
-			continue
-		}
 		selected = append(selected, e)
-	}
-
-	if len(pids) > 0 {
-		// A pid the daemon did not start is refused, and so is one it started
-		// whose exec the other filters excluded: the caller named something
-		// this did not signal, and must hear so rather than assume it did.
-		signalled := make(map[int]bool, len(selected))
-		for _, e := range selected {
-			signalled[byExecID[e.ExecID]] = true
-		}
-		for _, pid := range pids {
-			if !signalled[pid] {
-				return JSONProblemf(ctx, http.StatusBadRequest, "Not a running daemon exec",
-					"pid %d is not the process of a running exec this filter selects", pid)
-			}
-		}
 	}
 
 	dryRun := params.DryRun != nil && *params.DryRun

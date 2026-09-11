@@ -1,7 +1,6 @@
 package proc
 
 import (
-	"sort"
 	"sync"
 )
 
@@ -42,30 +41,6 @@ func Unregister(pid int) {
 	mu.Lock()
 	defer mu.Unlock()
 	delete(byPID, pid)
-}
-
-func Get(pid int) (T, bool) {
-	mu.RLock()
-	defer mu.RUnlock()
-	t, ok := byPID[pid]
-	return t, ok
-}
-
-// List returns every process the daemon started and has not reaped, by
-// ascending pid. Narrowing is the exec store's job: it knows what each of
-// these is running.
-func List() []T {
-	mu.RLock()
-	out := make([]T, 0, len(byPID))
-	for _, t := range byPID {
-		out = append(out, t)
-	}
-	mu.RUnlock()
-
-	sort.Slice(out, func(i, j int) bool {
-		return out[i].Pid < out[j].Pid
-	})
-	return out
 }
 
 // PidByExecID indexes the live processes by the exec each one is running, so

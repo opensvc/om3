@@ -5402,18 +5402,6 @@ func NewDeleteDaemonExecsRequest(server string, nodename InPathNodeName, params 
 		// per the OpenAPI spec (e.g. "color=blue,black,brown").
 		var rawQueryFragments []string
 
-		if params.Pids != nil {
-
-			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "pid", *params.Pids, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "array", Format: ""}); err != nil {
-				return nil, err
-			} else {
-				for _, qp := range strings.Split(queryFrag, "&") {
-					rawQueryFragments = append(rawQueryFragments, qp)
-				}
-			}
-
-		}
-
 		if params.Signal != nil {
 
 			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "signal", *params.Signal, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "string", Format: ""}); err != nil {
