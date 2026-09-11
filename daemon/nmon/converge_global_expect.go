@@ -30,11 +30,18 @@ func (t *Manager) convergeGlobalExpectFromRemote() {
 		t.change = true
 		t.state.GlobalExpect = t.nodeMonitor[mostRecentNode].GlobalExpect
 		t.state.GlobalExpectUpdatedAt = t.nodeMonitor[mostRecentNode].GlobalExpectUpdatedAt
+		// The orchestration comes with the global expect it belongs to. Only
+		// the node the requester reached adopts the id from the request; every
+		// other node takes it from here, and without it the execs they fork
+		// would be steps of an orchestration they could not name.
+		t.state.OrchestrationID = t.nodeMonitor[mostRecentNode].OrchestrationID
 		strVal := t.nodeMonitor[mostRecentNode].GlobalExpect.String()
 		if strVal == "" {
 			strVal = "unset"
 		}
-		t.log.Infof("fetch global expect from node %s -> %s updated at %s", mostRecentNode, strVal, mostRecentUpdated)
+		t.log.Infof("fetch global expect from node %s -> %s orchestration_id %s updated at %s",
+			mostRecentNode, strVal, t.state.OrchestrationID, mostRecentUpdated)
+		t.logSetOrchestrationID(t.state.OrchestrationID)
 
 		if t.isStateFailed() {
 			t.log.Tracef("reset failed state")

@@ -73,6 +73,7 @@ Receive only events matching the filtering expression formatted as:
      NodeStatsUpdated
      NodeStatusUpdated
      NodeStatusArbitratorsUpdated, NodeStatusGenUpdates,
+     NodeOrchestrationAccepted, NodeOrchestrationEnd, NodeOrchestrationRefused
      SetNodeMonitor
      
 ### Object

@@ -1936,10 +1936,12 @@ type Orchestrate string
 
 // OrchestrationItem defines model for OrchestrationItem.
 type OrchestrationItem struct {
-	EndedAt      *time.Time `json:"ended_at,omitempty"`
-	Error        *string    `json:"error,omitempty"`
-	GlobalExpect *string    `json:"global_expect,omitempty"`
-	Node         string     `json:"node"`
+	EndedAt *time.Time `json:"ended_at,omitempty"`
+	Error   *string    `json:"error,omitempty"`
+
+	// Expect The state the orchestration is for. An object is asked by a global expect; a node by a global one to freeze and a local one to drain.
+	Expect *string `json:"expect,omitempty"`
+	Node   string  `json:"node"`
 
 	// OrchestrationID The orchestration id the submitter of the action was handed.
 	OrchestrationID string `json:"orchestration_id"`

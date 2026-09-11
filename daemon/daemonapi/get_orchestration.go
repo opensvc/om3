@@ -70,8 +70,8 @@ func orchestrationItem(o session.Orchestration) api.OrchestrationItem {
 	if o.Path != "" {
 		item.Path = &o.Path
 	}
-	if o.GlobalExpect != "" {
-		item.GlobalExpect = &o.GlobalExpect
+	if o.Expect != "" {
+		item.Expect = &o.Expect
 	}
 	if o.Error != "" {
 		item.Error = &o.Error

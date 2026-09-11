@@ -254,7 +254,15 @@ func (t *Manager) onSetNodeMonitor(c *msgbus.SetNodeMonitor) {
 		v.Close()
 	}
 
+	if err != nil && c.Value.GlobalExpect != nil {
+		t.publishOrchestrationRefused(c.Value.CandidateOrchestrationID, c.Value.GlobalExpect, err.Error())
+	}
+
 	if t.change {
+		// The id the requester was handed names this orchestration from here
+		// on: on the node monitor the daemons replicate, on the execs this
+		// forks, and in the logs.
+		t.adoptOrchestration(c.Value.CandidateOrchestrationID)
 		t.updateIfChange()
 		t.orchestrate()
 	}
