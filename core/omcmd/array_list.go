@@ -22,17 +22,16 @@ func (t *CmdArrayList) Run() error {
 
 	cols := "NAME:name,TYPE:type"
 
-	render := func(items []object.ArrayItem) {
-		output.Renderer{
+	render := func(items []object.ArrayItem) error {
+		return output.Renderer{
 			DefaultOutput: "tab=" + cols,
 			Output:        t.Output,
+			Sort:          t.Sort,
 			Color:         t.Color,
 			Data:          items,
 			Colorize:      rawconfig.Colorize,
 		}.Print()
 	}
 
-	render(arrays)
-
-	return err
+	return render(arrays)
 }

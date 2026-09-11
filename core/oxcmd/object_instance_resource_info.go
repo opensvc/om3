@@ -47,6 +47,7 @@ func (t *CmdObjectInstanceResourceInfo) refresh(kind string) error {
 	return objectaction.New(
 		objectaction.WithObjectSelector(mergedSelector),
 		objectaction.WithOutput(t.Output),
+		objectaction.WithSort(t.Sort),
 		objectaction.WithColor(t.Color),
 		objectaction.WithIgnoreNotFound(t.IgnoreNotFound),
 		objectaction.WithAsyncTime(t.Time),
@@ -60,8 +61,8 @@ func (t *CmdObjectInstanceResourceInfo) refresh(kind string) error {
 			}
 			params := api.PostInstanceActionInfoParams{}
 			{
-				sid := xsession.Sid().UUID()
-				params.SessionId = &sid
+				sessionID := xsession.SessionID().UUID()
+				params.SessionID = &sessionID
 			}
 			if t.RID != "" {
 				rid := t.RID
@@ -177,12 +178,13 @@ func (t *CmdObjectInstanceResourceInfo) list(kind string) error {
 
 out:
 
-	output.Renderer{
+	errs = errors.Join(errs, output.Renderer{
 		DefaultOutput: "tab=OBJECT:object,NODE:node,RID:rid,KEY:key,VALUE:value",
 		Output:        t.Output,
+		Sort:          t.Sort,
 		Color:         t.Color,
 		Data:          api.ResourceInfoList{Items: l, Kind: "ResourceInfoList"},
 		Colorize:      rawconfig.Colorize,
-	}.Print()
+	}.Print())
 	return errs
 }

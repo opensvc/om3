@@ -96,13 +96,14 @@ func (t *CmdNodeSystemUser) Run() error {
 out:
 
 	defaultOutput := "tab=NODE:meta.node,ID:data.id,NAME:data.name"
-	output.Renderer{
+	errs = errors.Join(errs, output.Renderer{
 		DefaultOutput: defaultOutput,
 		Output:        t.Output,
+		Sort:          t.Sort,
 		Color:         t.Color,
 		Data:          api.UserList{Items: l, Kind: "UserList"},
 		Colorize:      rawconfig.Colorize,
-	}.Print()
+	}.Print())
 
 	return errs
 }

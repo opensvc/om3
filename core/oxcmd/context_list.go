@@ -56,16 +56,16 @@ func (t *CmdContextList) Run() error {
 		return cmp.Compare(a.Name, b.Name)
 	})
 
-	render := func(items []clientcontext.TokenInfo) {
-		output.Renderer{
+	render := func(items []clientcontext.TokenInfo) error {
+		return output.Renderer{
 			DefaultOutput: "tab=" + cols,
 			Output:        t.Output,
+			Sort:          t.Sort,
 			Color:         t.Color,
 			Data:          items,
 			Colorize:      rawconfig.Colorize,
 		}.Print()
 	}
 
-	render(lines)
-	return nil
+	return render(lines)
 }

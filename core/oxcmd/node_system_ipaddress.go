@@ -96,13 +96,14 @@ func (t *CmdNodeSystemIPAddress) Run() error {
 out:
 
 	defaultOutput := "tab=NODE:meta.node,MAC:data.mac,ADDRESS:data.address,FLAG_DEPRECATED:data.FlagDeprecated,INTF:data.intf,MASK:data.mask,TYPE:data.type"
-	output.Renderer{
+	errs = errors.Join(errs, output.Renderer{
 		DefaultOutput: defaultOutput,
 		Output:        t.Output,
+		Sort:          t.Sort,
 		Color:         t.Color,
 		Data:          api.IPAddressList{Items: l, Kind: "IPAddressList"},
 		Colorize:      rawconfig.Colorize,
-	}.Print()
+	}.Print())
 
 	return errs
 }

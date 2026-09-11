@@ -39,8 +39,8 @@ func (t *CmdNodeFreeze) doRemote() error {
 		go func(nodename string) {
 			params := api.PostPeerActionFreezeParams{}
 			{
-				sid := xsession.Sid().UUID()
-				params.SessionId = &sid
+				sessionID := xsession.SessionID().UUID()
+				params.SessionID = &sessionID
 			}
 			if resp, err := c.PostPeerActionFreezeWithResponse(ctx, nodename, &params); err != nil {
 				errC <- err

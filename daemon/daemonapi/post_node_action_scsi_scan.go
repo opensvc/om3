@@ -26,7 +26,7 @@ func (a *DaemonAPI) PostNodeActionSCSIScan(ctx echo.Context, nodename string, pa
 
 func (a *DaemonAPI) localNodeActionSCSIScan(ctx echo.Context, params api.PostNodeActionSCSIScanParams) error {
 	log := LogHandler(ctx, "PostNodeActionSCSIScan")
-	var requesterSid uuid.UUID
+	var requesterSessionID uuid.UUID
 	args := []string{"node", "scsi", "scan"}
 
 	if params.Hba != nil {
@@ -39,12 +39,12 @@ func (a *DaemonAPI) localNodeActionSCSIScan(ctx echo.Context, params api.PostNod
 		args = append(args, "--lun", *params.Lun)
 	}
 
-	if params.SessionId != nil {
-		requesterSid = *params.SessionId
+	if params.SessionID != nil {
+		requesterSessionID = *params.SessionID
 	}
-	if sid, err := a.apiExec(ctx, naming.Path{}, requesterSid, args, log); err != nil {
+	if sessionID, execID, err := a.apiExec(ctx, naming.Path{}, requesterSessionID, args, log); err != nil {
 		return JSONProblemf(ctx, http.StatusInternalServerError, "", "%s", err)
 	} else {
-		return ctx.JSON(http.StatusOK, api.NodeActionAccepted{SessionID: sid})
+		return ctx.JSON(http.StatusOK, api.NodeActionAccepted{SessionID: sessionID, ExecID: execID})
 	}
 }

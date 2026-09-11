@@ -47,6 +47,7 @@ import (
 	"github.com/opensvc/om3/v3/daemon/pgmetrics"
 	"github.com/opensvc/om3/v3/daemon/runner"
 	"github.com/opensvc/om3/v3/daemon/scheduler"
+	"github.com/opensvc/om3/v3/daemon/session"
 	"github.com/opensvc/om3/v3/util/converters"
 	"github.com/opensvc/om3/v3/util/hostname"
 	"github.com/opensvc/om3/v3/util/plog"
@@ -259,6 +260,7 @@ func (t *T) Start(ctx context.Context) error {
 			WithImonStarter(imonFactory),
 		collector.New(t.ctx, qsHuge),
 		scheduler.New(qsHuge),
+		session.NewManager(qsMedium),
 		runner.NewDefault(qsSmall),
 	} {
 		if err := t.startComponent(t.ctx, s); err != nil {

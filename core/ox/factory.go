@@ -318,7 +318,7 @@ func newCmdNodeCapabilitiesList() *cobra.Command {
 	}
 	flags := cmd.Flags()
 	addFlagsGlobal(flags, &options.OptsGlobal)
-	commoncmd.FlagNodeSelector(flags, &options.NodeSelector)
+	commoncmd.FlagNodeSelectorOrAll(flags, &options.NodeSelector)
 	return cmd
 }
 
@@ -765,7 +765,7 @@ func newCmdNodeDrivers() *cobra.Command {
 	}
 	flags := cmd.Flags()
 	addFlagsGlobal(flags, &options.OptsGlobal)
-	commoncmd.FlagNodeSelector(flags, &options.NodeSelector)
+	commoncmd.FlagNodeSelectorOrAll(flags, &options.NodeSelector)
 	return cmd
 }
 
@@ -780,7 +780,36 @@ func newCmdNodePing() *cobra.Command {
 	}
 	flags := cmd.Flags()
 	addFlagsGlobal(flags, &options.OptsGlobal)
-	commoncmd.FlagNodeSelector(flags, &options.NodeSelector)
+	commoncmd.FlagNodeSelectorOrAll(flags, &options.NodeSelector)
+	return cmd
+}
+
+func newCmdDaemonOrchestrationList() *cobra.Command {
+	var options commands.CmdDaemonOrchestrationList
+	cmd := &cobra.Command{
+		Use:   "list [ORCHESTRATION_ID]",
+		Short: "list the orchestrations the monitor accepted, and is running",
+		Long: `Naming an orchestration id reports that one orchestration, and says so when
+the daemon no longer holds it, which is not the same answer as never having
+run it.
+
+Any node answers for any orchestration, so this needs no node to be named,
+which is what lets a client reaching the cluster through a floating address
+follow one.`,
+		Aliases: []string{"ls"},
+		Args:    cobra.MaximumNArgs(1),
+		RunE: func(cmd *cobra.Command, args []string) error {
+			if len(args) > 0 {
+				options.OrchestrationID = args[0]
+			}
+			return options.Run()
+		},
+	}
+	commoncmd.CmdWithArg(cmd, `ORCHESTRATION_ID  The orchestration id the submitter of the action was handed.`)
+	flags := cmd.Flags()
+	addFlagsGlobal(flags, &options.OptsGlobal)
+	commoncmd.FlagNodeSelectorOrLocalnode(flags, &options.NodeSelector)
+	flags.StringSliceVar(&options.States, "state", nil, "list the orchestrations in these states, every state when not set")
 	return cmd
 }
 
@@ -789,6 +818,7 @@ func newCmdNodeScheduleList() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:     "list",
 		Short:   "list the node scheduler entries",
+		Long:    `The entries listed are the ones of every node. Naming nodes lists theirs.`,
 		Aliases: []string{"ls"},
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return options.Run()
@@ -796,7 +826,7 @@ func newCmdNodeScheduleList() *cobra.Command {
 	}
 	flags := cmd.Flags()
 	addFlagsGlobal(flags, &options.OptsGlobal)
-	commoncmd.FlagNodeSelector(flags, &options.NodeSelector)
+	commoncmd.FlagNodeSelectorOrAll(flags, &options.NodeSelector)
 	return cmd
 }
 
@@ -820,7 +850,7 @@ func newCmdNodeSystemDisk() *cobra.Command {
 	}
 	flags := cmd.Flags()
 	addFlagsGlobal(flags, &options.OptsGlobal)
-	commoncmd.FlagNodeSelector(flags, &options.NodeSelector)
+	commoncmd.FlagNodeSelectorOrAll(flags, &options.NodeSelector)
 	return cmd
 }
 
@@ -835,7 +865,7 @@ func newCmdNodeSystemGroup() *cobra.Command {
 	}
 	flags := cmd.Flags()
 	addFlagsGlobal(flags, &options.OptsGlobal)
-	commoncmd.FlagNodeSelector(flags, &options.NodeSelector)
+	commoncmd.FlagNodeSelectorOrAll(flags, &options.NodeSelector)
 	return cmd
 }
 
@@ -851,7 +881,7 @@ func newCmdNodeSystemHardware() *cobra.Command {
 	}
 	flags := cmd.Flags()
 	addFlagsGlobal(flags, &options.OptsGlobal)
-	commoncmd.FlagNodeSelector(flags, &options.NodeSelector)
+	commoncmd.FlagNodeSelectorOrAll(flags, &options.NodeSelector)
 	return cmd
 }
 
@@ -867,7 +897,7 @@ func newCmdNodeSystemIPAddress() *cobra.Command {
 	}
 	flags := cmd.Flags()
 	addFlagsGlobal(flags, &options.OptsGlobal)
-	commoncmd.FlagNodeSelector(flags, &options.NodeSelector)
+	commoncmd.FlagNodeSelectorOrAll(flags, &options.NodeSelector)
 	return cmd
 }
 
@@ -883,7 +913,7 @@ func newCmdNodeSystemPackage() *cobra.Command {
 	}
 	flags := cmd.Flags()
 	addFlagsGlobal(flags, &options.OptsGlobal)
-	commoncmd.FlagNodeSelector(flags, &options.NodeSelector)
+	commoncmd.FlagNodeSelectorOrAll(flags, &options.NodeSelector)
 	return cmd
 }
 
@@ -899,7 +929,7 @@ func newCmdNodeSystemProperty() *cobra.Command {
 	}
 	flags := cmd.Flags()
 	addFlagsGlobal(flags, &options.OptsGlobal)
-	commoncmd.FlagNodeSelector(flags, &options.NodeSelector)
+	commoncmd.FlagNodeSelectorOrAll(flags, &options.NodeSelector)
 	return cmd
 }
 
@@ -923,7 +953,7 @@ func newCmdNodeSystemSANPathInitiator() *cobra.Command {
 	}
 	flags := cmd.Flags()
 	addFlagsGlobal(flags, &options.OptsGlobal)
-	commoncmd.FlagNodeSelector(flags, &options.NodeSelector)
+	commoncmd.FlagNodeSelectorOrAll(flags, &options.NodeSelector)
 	return cmd
 }
 
@@ -939,7 +969,7 @@ func newCmdNodeSystemSANPath() *cobra.Command {
 	}
 	flags := cmd.Flags()
 	addFlagsGlobal(flags, &options.OptsGlobal)
-	commoncmd.FlagNodeSelector(flags, &options.NodeSelector)
+	commoncmd.FlagNodeSelectorOrAll(flags, &options.NodeSelector)
 	return cmd
 }
 
@@ -955,7 +985,7 @@ func newCmdNodeSystemUser() *cobra.Command {
 	}
 	flags := cmd.Flags()
 	addFlagsGlobal(flags, &options.OptsGlobal)
-	commoncmd.FlagNodeSelector(flags, &options.NodeSelector)
+	commoncmd.FlagNodeSelectorOrAll(flags, &options.NodeSelector)
 	return cmd
 }
 
@@ -992,7 +1022,7 @@ func newCmdNodeConfigEval() *cobra.Command {
 	commoncmd.FlagsLock(flags, &options.OptsLock)
 	commoncmd.FlagImpersonate(flags, &options.Impersonate)
 	commoncmd.FlagKeywords(flags, &options.Keywords)
-	commoncmd.FlagNodeSelector(flags, &options.NodeSelector)
+	commoncmd.FlagNodeSelectorOrAll(flags, &options.NodeSelector)
 	return cmd
 }
 
@@ -1011,7 +1041,7 @@ func newCmdNodeConfigGet() *cobra.Command {
 	commoncmd.FlagEval(flags, &options.Eval)
 	commoncmd.FlagImpersonate(flags, &options.Impersonate)
 	commoncmd.FlagKeywords(flags, &options.Keywords)
-	commoncmd.FlagNodeSelector(flags, &options.NodeSelector)
+	commoncmd.FlagNodeSelectorOrAll(flags, &options.NodeSelector)
 	return cmd
 }
 
@@ -1112,7 +1142,7 @@ func newCmdNodeLogs() *cobra.Command {
 	flags := cmd.Flags()
 	addFlagsGlobal(flags, &options.OptsGlobal)
 	commoncmd.FlagsLogs(flags, &options.OptsLogs)
-	commoncmd.FlagNodeSelector(flags, &options.NodeSelector)
+	commoncmd.FlagNodeSelectorOrAll(flags, &options.NodeSelector)
 	return cmd
 }
 
@@ -3322,6 +3352,32 @@ func newCmdObjectInstanceUnprovision(kind string) *cobra.Command {
 	return cmd
 }
 
+func newCmdObjectInstancePGReset(kind string) *cobra.Command {
+	var options commands.CmdObjectInstancePGReset
+	cmd := &cobra.Command{
+		Use:   "reset",
+		Short: "lift the instance process group cappings",
+		Long: `Put the process group cappings of the instance back where a node that never
+capped anything leaves them, whatever the pg_* keywords say and whoever wrote
+the capping being lifted.
+
+This is the way out of a capping the configuration does not know about: one
+left by an older agent, by systemd, or by hand. A capping the configuration
+does name comes back at the next "pg update", and at the next start. Lifting
+one for good is a pg_* keyword set to "default".`,
+		RunE: func(cmd *cobra.Command, args []string) error {
+			return options.Run(kind)
+		},
+	}
+	flags := cmd.Flags()
+	addFlagsGlobal(flags, &options.OptsGlobal)
+	commoncmd.FlagsAsync(flags, &options.OptsAsync)
+	commoncmd.FlagsEncap(flags, &options.OptsEncap)
+	commoncmd.FlagsLock(flags, &options.OptsLock)
+	commoncmd.FlagsResourceSelector(cmd, &options.OptsResourceSelector)
+	commoncmd.FlagNodeSelector(flags, &options.NodeSelector)
+	return cmd
+}
 func newCmdObjectInstancePGUpdate(kind string) *cobra.Command {
 	var options commands.CmdObjectInstancePGUpdate
 	cmd := &cobra.Command{
@@ -3701,6 +3757,7 @@ func newCmdObjectStart(kind string) *cobra.Command {
 	commoncmd.FlagsAsync(flags, &options.OptsAsync)
 	commoncmd.FlagColor(flags, &options.OptsGlobal.Color)
 	commoncmd.FlagOutput(flags, &options.OptsGlobal.Output)
+	commoncmd.FlagSort(flags, &options.OptsGlobal.Sort)
 	commoncmd.FlagObjectSelector(flags, &options.OptsGlobal.ObjectSelector)
 	commoncmd.FlagIgnoreNotFound(flags, &options.IgnoreNotFound)
 	return cmd
@@ -3743,6 +3800,7 @@ func newCmdObjectStop(kind string) *cobra.Command {
 	flags := cmd.Flags()
 	commoncmd.FlagColor(flags, &options.OptsGlobal.Color)
 	commoncmd.FlagOutput(flags, &options.OptsGlobal.Output)
+	commoncmd.FlagSort(flags, &options.OptsGlobal.Sort)
 	commoncmd.FlagObjectSelector(flags, &options.OptsGlobal.ObjectSelector)
 	commoncmd.FlagIgnoreNotFound(flags, &options.IgnoreNotFound)
 	commoncmd.FlagsAsync(flags, &options.OptsAsync)
@@ -3841,6 +3899,7 @@ func newCmdPoolList() *cobra.Command {
 	flags := cmd.Flags()
 	commoncmd.FlagColor(flags, &options.Color)
 	commoncmd.FlagOutput(flags, &options.Output)
+	commoncmd.FlagSort(flags, &options.Sort)
 	commoncmd.FlagPoolName(flags, &options.Name)
 	commoncmd.FlagNodeSelector(flags, &options.NodeSelector)
 	return cmd
@@ -4522,6 +4581,7 @@ func NewCmdContextList() *cobra.Command {
 	flags := cmd.Flags()
 	commoncmd.FlagColor(flags, &options.Color)
 	commoncmd.FlagOutput(flags, &options.Output)
+	commoncmd.FlagSort(flags, &options.Sort)
 
 	return cmd
 }

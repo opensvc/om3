@@ -26,6 +26,7 @@ func (t *CmdNodePushPkg) Run() error {
 		nodeaction.WithLocal(t.Local),
 		nodeaction.WithRemoteNodes(t.NodeSelector),
 		nodeaction.WithFormat(t.Output),
+		nodeaction.WithSort(t.Sort),
 		nodeaction.WithColor(t.Color),
 		nodeaction.WithLocalFunc(func() (interface{}, error) {
 			n, err := object.NewNode()
@@ -73,8 +74,8 @@ func (t *CmdNodePushPkg) Run() error {
 
 			params := api.PostNodeActionPushPkgParams{}
 			{
-				sid := xsession.Sid().UUID()
-				params.SessionId = &sid
+				sessionID := xsession.SessionID().UUID()
+				params.SessionID = &sessionID
 			}
 			response, err := c.PostNodeActionPushPkgWithResponse(ctx, nodename, &params)
 			if err != nil {

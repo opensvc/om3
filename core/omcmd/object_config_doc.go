@@ -38,6 +38,7 @@ func NewCmdObjectConfigDoc(kind string) *cobra.Command {
 	commoncmd.FlagObjectSelector(flags, &options.ObjectSelector)
 	commoncmd.FlagColor(flags, &options.Color)
 	commoncmd.FlagOutput(flags, &options.Output)
+	commoncmd.FlagSort(flags, &options.Sort)
 	commoncmd.FlagKeyword(flags, &options.Keyword)
 	commoncmd.FlagDriver(flags, &options.Driver)
 	commoncmd.FlagDepth(flags, &options.Depth)
@@ -74,15 +75,15 @@ func (t *CmdObjectConfigDoc) Run(kind string) error {
 		return err
 	}
 	items := doc.ConvertKeywordStore(store)
-	output.Renderer{
+	return output.Renderer{
 		HumanRenderer: func() string {
 			commoncmd.Doc(os.Stdout, items, path.Kind, t.Driver, t.Keyword, t.Depth)
 			return ""
 		},
 		Output:   t.Output,
+		Sort:     t.Sort,
 		Color:    t.Color,
 		Data:     items,
 		Colorize: rawconfig.Colorize,
 	}.Print()
-	return nil
 }

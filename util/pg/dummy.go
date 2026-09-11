@@ -10,3 +10,8 @@ func (c Config) ApplyProc(pid int) (bool, error) {
 func (c Config) Delete() (bool, error) {
 	return false, nil
 }
+
+// isIgnored reports whether a keyword caps nothing on this node.
+func isIgnored(_ string) bool {
+	return false
+}

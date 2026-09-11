@@ -22,6 +22,7 @@ func (t *CmdObjectCollectorTagDetach) Run(kind string) error {
 	return objectaction.New(
 		objectaction.WithObjectSelector(mergedSelector),
 		objectaction.WithOutput(t.Output),
+		objectaction.WithSort(t.Sort),
 		objectaction.WithColor(t.Color),
 		objectaction.WithIgnoreNotFound(t.IgnoreNotFound),
 		objectaction.WithLocalFunc(func(ctx context.Context, p naming.Path) (interface{}, error) {

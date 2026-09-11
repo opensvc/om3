@@ -47,6 +47,7 @@ func (t *CmdNodeAbort) doRemote() error {
 				nodeaction.WithAsyncWait(t.Wait),
 				nodeaction.WithAsyncWaitNode(nodename),
 				nodeaction.WithFormat(t.Output),
+				nodeaction.WithSort(t.Sort),
 				nodeaction.WithColor(t.Color),
 				nodeaction.WithAsyncFunc(func(ctx context.Context) error {
 					if resp, err := c.PostPeerActionAbortWithResponse(ctx, nodename); err != nil {

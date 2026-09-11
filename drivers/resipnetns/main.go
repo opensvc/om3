@@ -354,10 +354,7 @@ func (t *T) Status(ctx context.Context) status.T {
 }
 
 func (t *T) statusWithIPAddrCacheTrust(ctx context.Context) status.T {
-	var (
-		err     error
-		carrier bool
-	)
+	var err error
 	// An empty name is how a resource says its address is the network's to
 	// choose. Saying nothing at all is the mistake: no address, and no
 	// network to draw one from. The network is the resolved one, so a
@@ -383,13 +380,6 @@ func (t *T) statusWithIPAddrCacheTrust(ctx context.Context) status.T {
 			return status.Down
 		}
 	}
-	if t.CheckCarrier {
-		if carrier, err = t.hasCarrier(); err == nil && carrier == false {
-			t.StatusLog().Error("interface %s no-carrier.", t.Dev)
-			return status.Down
-		}
-	}
-
 	ip := t.ipaddr()
 	if ip == nil {
 		if t.Name == "" {
@@ -424,6 +414,19 @@ func (t *T) statusWithIPAddrCacheTrust(ctx context.Context) status.T {
 	}
 	if guestDev == "" {
 		return status.Down
+	}
+
+	// The carrier is consulted last, and only for a resource that is
+	// otherwise up, which is what v2 does: a stopped resource is stopped, and
+	// whether the host device has a carrier says nothing about that. Reading
+	// it first turned every stopped instance into a fault, because the device
+	// a netns address is bridged onto carries nothing until the container
+	// that is its only port exists.
+	if t.CheckCarrier && !t.devIsBridge() {
+		if carrier, err := t.hasCarrier(); err == nil && !carrier {
+			t.StatusLog().Error("interface %s no-carrier.", t.Dev)
+			return status.Down
+		}
 	}
 	return status.Up
 }
@@ -480,6 +483,27 @@ func (t *T) Abort(ctx context.Context) bool {
 
 func (t *T) hasCarrier() (bool, error) {
 	return netif.HasCarrier(t.Dev)
+}
+
+// devIsBridge reports whether the address is added to a bridge, in which case
+// the carrier is not this resource's to read.
+//
+// A bridge carries only what its ports carry, and the port this resource puts
+// there is the container's veth, which exists only while the object runs. So
+// a backend bridge reports no-carrier exactly when nothing is using it on this
+// node, and the check turns the object being stopped into a fault. Worse, it
+// passes as soon as any unrelated object starts on the same network: the
+// reading answers a question about the neighbours, never about this address.
+//
+// The device is asked rather than the mode keyword, because a bridge reaches
+// this resource two ways - named by dev, or drawn from the network the address
+// comes from - and only one of them is spelled "bridge" in the configuration.
+func (t *T) devIsBridge() bool {
+	v, err := netif.IsBridge(t.Dev)
+	if err != nil {
+		return false
+	}
+	return v
 }
 
 func (t *T) abortPing() bool {

@@ -3,3 +3,7 @@ The kernel default value is used, which usually is 1024 shares.
 In a cpu-bound situation, this setting ensures the service does not use more
 than its share of cpu resource. The actual percentile depends on shares
 allowed to other services.
+
+Setting this keyword to `default` puts the capping back where a node that
+never capped anything leaves it. Removing the keyword does not: what was
+written stays written, whether om wrote it or something else did.

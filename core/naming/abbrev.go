@@ -2,103 +2,127 @@ package naming
 
 import "strings"
 
-// abbrevMaxLabels is how many labels deep the common suffix is looked for.
-// A name is not expected to be deeper, and the search has to stop somewhere.
-const abbrevMaxLabels = 10
-
-// Abbrev shortens fully qualified names to the part that tells them apart,
+// Abbrev shortens fully qualified names to the labels that tell them apart,
 // for the column headers of a listing whose width the names would otherwise
 // decide.
 //
-// The domain the names share carries no information once they are shown side
-// by side: in a cluster of node1.prod.example.com and node2.prod.example.com,
-// only the first label differs, and the rest costs eighteen columns per node
-// to say the same thing twice. What is dropped is replaced by a trailing "..",
-// so a shortened name is never mistaken for a name that is short.
+// A label every name carries the same value at carries no information once
+// the names are shown side by side, wherever in the name it sits. In a cluster
+// of node1.prod.example.com and node2.prod.example.com only the first label
+// differs, and the rest costs eighteen columns per node to say the same thing
+// three times. Dropped labels are replaced by "..", so a shortened name is
+// never mistaken for a name that is short, and so the reader can see that
+// something stood where the marker is:
 //
-// The domain the names do not share is kept, because that is the part telling
-// them apart: node1.paris.example.com and node1.lyon.example.com abbreviate to
+//	ip-xxx-xxx-xxx.commondomain1.eu-fr-paris.commondomain2.etc
+//	ip-yyy-yyy-zzz.commondomain1.eu-fr-north.commondomain2.etc
+//
+// abbreviates to
+//
+//	ip-xxx-xxx-xxx..eu-fr-paris..
+//	ip-yyy-yyy-zzz..eu-fr-north..
+//
+// A run of dropped labels is one marker, not one per label: the marker says
+// that a name was cut here, and how many labels were cut is not something a
+// column header is the place to count.
+//
+// The labels the names do not share are kept, because they are what tells them
+// apart: node1.paris.example.com and node1.lyon.example.com abbreviate to
 // node1.paris.. and node1.lyon.., not to two identical node1.. columns.
 //
-// A name with no domain is left alone, and so are names that already differ at
-// their last label, which have no shared suffix to drop.
+// The first label is kept even when every name shares it, because it is the
+// name of the node, and a column headed "..paris.." names nothing an operator
+// can act on.
 //
-// This is the abbrev() of OpenSVC v2, ported so the two agents render a
-// cluster the same way.
+// Names are compared right to left, which is how a domain name is anchored: a
+// position then means the same thing in every name, whatever their depths. A
+// name with no domain has nothing to drop, and does not get a say in what the
+// others share.
+//
+// This generalises the abbrev() of OpenSVC v2, which dropped only the shared
+// tail. v2 returns a.example.com and b.example.org untouched, having no shared
+// tail to drop; this returns a..com and b..org, the shared label in the middle
+// being no more informative for sitting there.
 func Abbrev(names []string) []string {
-	if len(names) < 1 {
+	if len(names) == 0 {
 		return names
 	}
 
-	// A name is compared from its last label inward, so it is held reversed:
-	// the domain the names may share is then a common prefix.
 	paths := make([][]string, len(names))
+	depth := 0
 	for i, name := range names {
 		paths[i] = reversedLabels(name)
+		if len(paths[i]) > depth {
+			depth = len(paths[i])
+		}
 	}
 
-	// Only a name holding a domain has anything to drop.
-	trimable := make([][]string, 0, len(paths))
+	// Only a name holding a domain has anything to drop, and only such a name
+	// can say whether a label is shared: a bare hostname beside a qualified
+	// one must not make the qualified one's domain look unshared.
+	qualified := make([][]string, 0, len(paths))
 	for _, path := range paths {
 		if len(path) > 1 {
-			trimable = append(trimable, path)
+			qualified = append(qualified, path)
 		}
-	}
-	if len(trimable) <= 1 {
-		// There is no second domain to compare against, so nothing in a
-		// domain can be telling names apart, and all of it goes.
-		l := make([]string, len(paths))
-		for i, path := range paths {
-			if len(path) > 1 {
-				l[i] = path[len(path)-1] + ".."
-			} else {
-				l[i] = path[0]
-			}
-		}
-		return l
 	}
 
-	// The first label the names disagree on ends the domain they share.
-	depth := 0
-	for i := 0; i < abbrevMaxLabels; i++ {
-		depth = i
-		labels := make(map[string]bool, len(trimable))
-		short := false
-		for _, path := range trimable {
-			if i >= len(path) {
-				short = true
-				break
-			}
-			labels[path[i]] = true
-		}
-		if short || len(labels) > 1 {
-			break
-		}
-	}
-	if depth == 0 {
-		// The names differ at their last label already, so every label of
-		// every name is telling them apart.
-		return names
-	}
-	return abbreviated(paths, depth)
-}
-
-// abbreviated renders reversed label lists, keeping the labels above depth and
-// marking what was dropped, and leaving a name with no domain untouched.
-func abbreviated(paths [][]string, depth int) []string {
+	shared := sharedLabels(qualified, depth)
 	l := make([]string, len(paths))
 	for i, path := range paths {
-		if len(path) < 2 {
-			l[i] = path[0]
-			continue
-		}
-		kept := make([]string, 0, len(path))
-		for j := len(path) - 1; j >= depth; j-- {
-			kept = append(kept, path[j])
-		}
-		l[i] = strings.Join(kept, ".") + ".."
+		l[i] = abbreviated(path, shared)
 	}
 	return l
+}
+
+// sharedLabels reports, for each position, whether every name carries the same
+// label there. A name too short to reach a position shares nothing there.
+func sharedLabels(paths [][]string, depth int) []bool {
+	shared := make([]bool, depth)
+	if len(paths) == 0 {
+		return shared
+	}
+	for i := 0; i < depth; i++ {
+		same := i < len(paths[0])
+		for _, path := range paths[1:] {
+			if i >= len(path) || path[i] != paths[0][i] {
+				same = false
+				break
+			}
+		}
+		shared[i] = same
+	}
+	return shared
+}
+
+// abbreviated renders one reversed label list, keeping the labels the names do
+// not share and collapsing each run of the ones they do into a single marker.
+func abbreviated(path []string, shared []bool) string {
+	var (
+		b         strings.Builder
+		inRun     bool
+		afterName bool
+	)
+	for i := len(path) - 1; i >= 0; i-- {
+		keep := i == len(path)-1 || i >= len(shared) || !shared[i]
+		if keep {
+			if afterName {
+				// Two kept labels in a row are still separated by a dot. A
+				// marker separates by itself.
+				b.WriteString(".")
+			}
+			b.WriteString(path[i])
+			afterName = true
+			inRun = false
+			continue
+		}
+		if !inRun {
+			b.WriteString("..")
+			afterName = false
+			inRun = true
+		}
+	}
+	return b.String()
 }
 
 // reversedLabels splits a name on its dots, last label first.

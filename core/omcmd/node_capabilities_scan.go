@@ -21,6 +21,7 @@ type (
 func (t *CmdNodeCapabilitiesScan) Run() error {
 	return nodeaction.New(
 		nodeaction.WithFormat(t.Output),
+		nodeaction.WithSort(t.Sort),
 		nodeaction.WithColor(t.Color),
 		nodeaction.WithLocalFunc(func() (interface{}, error) {
 			n, err := object.NewNode()
@@ -37,8 +38,8 @@ func (t *CmdNodeCapabilitiesScan) Run() error {
 			}
 			params := api.PostNodeActionScanCapabilitiesParams{}
 			{
-				sid := xsession.Sid().UUID()
-				params.SessionId = &sid
+				sessionID := xsession.SessionID().UUID()
+				params.SessionID = &sessionID
 			}
 			response, err := c.PostNodeActionScanCapabilitiesWithResponse(ctx, nodename, &params)
 			if err != nil {

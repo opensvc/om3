@@ -96,13 +96,14 @@ func (t *CmdNodeDrivers) Run() error {
 out:
 
 	defaultOutput := "tab=NODE:meta.node,NAME:data.name"
-	output.Renderer{
+	errs = errors.Join(errs, output.Renderer{
 		DefaultOutput: defaultOutput,
 		Output:        t.Output,
+		Sort:          t.Sort,
 		Color:         t.Color,
 		Data:          api.DriverList{Items: l, Kind: "DriverList"},
 		Colorize:      rawconfig.Colorize,
-	}.Print()
+	}.Print())
 
 	return errs
 }

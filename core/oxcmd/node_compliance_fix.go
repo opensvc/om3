@@ -19,6 +19,7 @@ func (t *CmdNodeComplianceFix) Run() error {
 	return nodeaction.New(
 		nodeaction.WithRemoteNodes(t.NodeSelector),
 		nodeaction.WithFormat(t.Output),
+		nodeaction.WithSort(t.Sort),
 		nodeaction.WithColor(t.Color),
 	).Do()
 }

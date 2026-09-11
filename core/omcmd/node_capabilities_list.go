@@ -44,9 +44,6 @@ func (t *CmdNodeCapabilitiesList) remote() error {
 	if err != nil {
 		return err
 	}
-	if t.NodeSelector == "" {
-		t.NodeSelector = "*"
-	}
 	nodenames, err := nodeselector.New(t.NodeSelector, nodeselector.WithClient(c)).Expand()
 	if err != nil {
 		return err
@@ -62,22 +59,34 @@ func (t *CmdNodeCapabilitiesList) remote() error {
 		}
 
 	}
-	output.Renderer{
+	errs = errors.Join(errs, output.Renderer{
 		DefaultOutput: "tab=NODE:meta.node,NAME:data.name",
 		Output:        t.Output,
+		Sort:          t.Sort,
 		Color:         t.Color,
 		Data:          data,
 		Colorize:      rawconfig.Colorize,
-	}.Print()
+	}.Print())
 	return errs
 }
 
 func (t *CmdNodeCapabilitiesList) Run() error {
-	if t.NodeSelector == "" {
+	if t.isThisNodeOnly() {
 		return t.local()
-	} else {
-		return t.remote()
 	}
+	return t.remote()
+}
+
+// isThisNodeOnly reports whether the selector asks for this node and nothing
+// else.
+//
+// The capabilities of a node are read from the node that scanned them, so
+// that question is answered from the file here and the daemon is never asked.
+// An empty selector is the same question: it is what a caller building this
+// command otherwise than from a command line leaves behind, where the option
+// carries the name of this node.
+func (t *CmdNodeCapabilitiesList) isThisNodeOnly() bool {
+	return t.NodeSelector == "" || t.NodeSelector == hostname.Hostname()
 }
 
 func (t *CmdNodeCapabilitiesList) local() error {
@@ -105,12 +114,12 @@ func (t *CmdNodeCapabilitiesList) local() error {
 		}
 		data.Items = append(data.Items, item)
 	}
-	output.Renderer{
+	return output.Renderer{
 		DefaultOutput: "tab=data.name",
 		Output:        t.Output,
+		Sort:          t.Sort,
 		Color:         t.Color,
 		Data:          data,
 		Colorize:      rawconfig.Colorize,
 	}.Print()
-	return nil
 }

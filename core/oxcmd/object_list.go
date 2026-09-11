@@ -42,9 +42,10 @@ func (t *CmdObjectList) Run(kind string) error {
 			}
 			return fmt.Errorf("%s: %w", mergedSelector, xerrors.ObjectNotFound)
 		}
-		output.Renderer{
+		return output.Renderer{
 			DefaultOutput: "tab=OBJECT:meta.object,AVAIL:data.avail,OVERALL:data.overall",
 			Output:        t.Output,
+			Sort:          t.Sort,
 			Color:         t.Color,
 			Data:          resp.JSON200,
 			Colorize:      rawconfig.Colorize,
@@ -60,5 +61,4 @@ func (t *CmdObjectList) Run(kind string) error {
 	default:
 		return fmt.Errorf("unexpected status code: %d", resp.StatusCode())
 	}
-	return nil
 }

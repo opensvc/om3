@@ -53,14 +53,14 @@ func (t *CmdNetworkList) Run() error {
 			}
 			lines[i] = u
 		}
-		output.Renderer{
+		return output.Renderer{
 			DefaultOutput: "tab=" + cols,
 			Output:        t.Output,
+			Sort:          t.Sort,
 			Color:         t.Color,
 			Data:          lines,
 			Colorize:      rawconfig.Colorize,
 		}.Print()
-		return nil
 	case 401:
 		pb = *resp.JSON401
 	case 403:

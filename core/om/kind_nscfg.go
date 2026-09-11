@@ -58,9 +58,11 @@ func init() {
 	)
 
 	cmdObjectInstancePG.AddCommand(
+		newCmdObjectInstancePGReset(kind),
 		newCmdObjectInstancePGUpdate(kind),
 	)
 	cmdObjectPG.AddCommand(
+		newCmdObjectInstancePGReset(kind),
 		newCmdObjectInstancePGUpdate(kind),
 	)
 }

@@ -96,13 +96,14 @@ func (t *CmdNodeSystemInitiator) Run() error {
 out:
 
 	defaultOutput := "tab=NODE:meta.node,NAME:data.name,TYPE:data.type"
-	output.Renderer{
+	errs = errors.Join(errs, output.Renderer{
 		DefaultOutput: defaultOutput,
 		Output:        t.Output,
+		Sort:          t.Sort,
 		Color:         t.Color,
 		Data:          api.SANPathInitiatorList{Items: l, Kind: "SANPathInitiatorList"},
 		Colorize:      rawconfig.Colorize,
-	}.Print()
+	}.Print())
 
 	return errs
 }

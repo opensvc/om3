@@ -26,14 +26,14 @@ func (a *DaemonAPI) PostNodeActionPushAsset(ctx echo.Context, nodename string, p
 
 func (a *DaemonAPI) localNodeActionPushAsset(ctx echo.Context, params api.PostNodeActionPushAssetParams) error {
 	log := LogHandler(ctx, "PostNodeActionPushAsset")
-	var requesterSid uuid.UUID
+	var requesterSessionID uuid.UUID
 	args := []string{"node", "push", "asset"}
-	if params.SessionId != nil {
-		requesterSid = *params.SessionId
+	if params.SessionID != nil {
+		requesterSessionID = *params.SessionID
 	}
-	if sid, err := a.apiExec(ctx, naming.Path{}, requesterSid, args, log); err != nil {
+	if sessionID, execID, err := a.apiExec(ctx, naming.Path{}, requesterSessionID, args, log); err != nil {
 		return JSONProblemf(ctx, http.StatusInternalServerError, "", "%s", err)
 	} else {
-		return ctx.JSON(http.StatusOK, api.NodeActionAccepted{SessionID: sid})
+		return ctx.JSON(http.StatusOK, api.NodeActionAccepted{SessionID: sessionID, ExecID: execID})
 	}
 }

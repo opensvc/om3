@@ -92,6 +92,10 @@ type (
 		//
 		Output string
 
+		// Sort orders the result table, which an action reaching several
+		// objects or several nodes answers a row per run of.
+		Sort string
+
 		// DefaultOutput defines a default output to use when Output is
 		// not specified.
 		DefaultOutput string

@@ -32,8 +32,9 @@ func (t *CmdNodeList) Run() error {
 	if err != nil {
 		return err
 	}
-	output.Renderer{
+	return output.Renderer{
 		Output: t.Output,
+		Sort:   t.Sort,
 		Color:  t.Color,
 		Data:   nodes,
 		HumanRenderer: func() string {
@@ -45,5 +46,4 @@ func (t *CmdNodeList) Run() error {
 		},
 		Colorize: rawconfig.Colorize,
 	}.Print()
-	return nil
 }

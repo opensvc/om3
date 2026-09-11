@@ -48,7 +48,7 @@ func New(opts ...funcopt.O) *T {
 	t := &T{}
 	_ = funcopt.Apply(t, opts...)
 	if t.NodeSelector != "" && t.DefaultOutput == "" {
-		t.DefaultOutput = "tab=NODE:nodename,SID:data.session_id"
+		t.DefaultOutput = "tab=NODE:nodename,SESSION_ID:data.session_id,EXEC_ID:data.exec_id"
 	}
 	return t
 }
@@ -162,6 +162,18 @@ func WithFormat(s string) funcopt.O {
 	})
 }
 
+// WithSort sets the order of the result table.
+//
+// An action reaching several nodes answers a row per run, and they arrive in
+// whatever order the nodes answered in.
+func WithSort(s string) funcopt.O {
+	return funcopt.F(func(i any) error {
+		t := i.(*T)
+		t.Sort = s
+		return nil
+	})
+}
+
 // WithColor activates the colorization of outputs
 // auto => yes if os.Stdout is a tty
 // yes
@@ -225,14 +237,14 @@ func (t T) DoLocal() error {
 	if result.Error != nil {
 		return result.Error
 	}
-	output.Renderer{
+	return output.Renderer{
 		Output:        t.Output,
+		Sort:          t.Sort,
 		Color:         t.Color,
 		Data:          []actionrouter.Result{result},
 		Colorize:      rawconfig.Colorize,
 		HumanRenderer: func() string { return human(result) },
 	}.Print()
-	return nil
 }
 
 // DoAsync uses the agent API to submit a target state to reach via an
@@ -386,7 +398,7 @@ func (t T) DoRemote() error {
 	count := len(nodenames)
 	done := 0
 	todo := 0
-	requesterSid := xsession.Sid().UUID()
+	requesterSessionID := xsession.SessionID().UUID()
 
 	var (
 		cancel context.CancelFunc
@@ -410,7 +422,7 @@ func (t T) DoRemote() error {
 
 	for _, nodename := range nodenames {
 		if t.Wait {
-			t.waitRequesterSessionEnd(ctx, c, nodename, requesterSid, waitC)
+			t.waitRequesterSessionEnd(ctx, c, nodename, requesterSessionID, waitC)
 		}
 		if t.RemoteFunc == nil {
 			return fmt.Errorf("RemoteFunc is nil")
@@ -439,13 +451,14 @@ func (t T) DoRemote() error {
 			break
 		}
 	}
-	output.Renderer{
+	errs = errors.Join(errs, output.Renderer{
 		DefaultOutput: t.DefaultOutput,
 		Output:        t.Output,
+		Sort:          t.Sort,
 		Color:         t.Color,
 		Data:          results,
 		Colorize:      rawconfig.Colorize,
-	}.Print()
+	}.Print())
 	if t.Wait && todo > 0 {
 		for i := 0; i < todo; i++ {
 			select {
@@ -462,7 +475,7 @@ func (t T) DoRemote() error {
 	return errs
 }
 
-func (t T) waitRequesterSessionEnd(ctx context.Context, c *client.T, nodename string, requesterSid uuid.UUID, errC chan<- error) {
+func (t T) waitRequesterSessionEnd(ctx context.Context, c *client.T, nodename string, requesterSessionID uuid.UUID, errC chan<- error) {
 	var (
 		filters []string
 		msg     pubsub.Messager
@@ -472,8 +485,8 @@ func (t T) waitRequesterSessionEnd(ctx context.Context, c *client.T, nodename st
 	)
 	filters = []string{
 		fmt.Sprintf("NodeMonitorDeleted"),
-		fmt.Sprintf("ExecFailed,.session_id=%s", requesterSid),
-		fmt.Sprintf("ExecSuccess,.session_id=%s", requesterSid),
+		fmt.Sprintf("ExecFailed,.session_id=%s", requesterSessionID),
+		fmt.Sprintf("ExecSuccess,.session_id=%s", requesterSessionID),
 	}
 	getEvents := c.NewGetEvents().SetFilters(filters)
 	if t.WaitDuration > 0 {

@@ -44,11 +44,11 @@ func (t *CmdNodeList) Run() error {
 		return fmt.Errorf("unexpected statuscode: %s", resp.Status())
 	}
 
-	output.Renderer{
+	return output.Renderer{
 		DefaultOutput: "tab=NAME:meta.node,AGENT:data.status.agent,STATE:data.monitor.state",
 		Output:        t.Output,
+		Sort:          t.Sort,
 		Color:         t.Color,
 		Data:          *resp.JSON200,
 	}.Print()
-	return nil
 }

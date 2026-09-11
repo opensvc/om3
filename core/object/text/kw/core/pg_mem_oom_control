@@ -8,3 +8,7 @@ processes of the group.
 
 The OOM killer is enabled by default in every cgroup using the memory
 controller.
+
+This keyword caps nothing on a node holding the unified cgroup hierarchy,
+which has no `memory.oom_control`: that file is of the v1 hierarchy. Setting
+it there is warned about, and ignored.

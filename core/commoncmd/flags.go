@@ -5,6 +5,7 @@ import (
 	_ "embed"
 	"encoding/json"
 	"fmt"
+	"github.com/opensvc/om3/v3/util/hostname"
 	"os"
 	"path/filepath"
 	"regexp"
@@ -23,6 +24,7 @@ import (
 func AddFlagsNodeGlobal(flagSet *pflag.FlagSet, p *OptsNodeGlobal) {
 	flagSet.StringVar(&p.Color, "color", "auto", "output colorization yes|no|auto")
 	flagSet.StringVarP(&p.Output, "output", "o", "auto", "output format auto|json|jsonline|yaml|flat|tab=<header>:<jsonpath>,...|template=<go template>")
+	FlagSort(flagSet, &p.Sort)
 	FlagNodeSelector(flagSet, &p.NodeSelector)
 }
 
@@ -271,12 +273,25 @@ func FlagNodeSelector(flags *pflag.FlagSet, p *string) {
 	flags.StringVar(p, "node", "", "submit the action to the selected nodes")
 }
 
-func FlagNodeSelectorOrLocalhost(flags *pflag.FlagSet, p *string) {
-	flags.StringVar(p, "node", "localhost", "submit the action to the selected nodes")
+// FlagNodeSelectorOrLocalnode declares the node selector of a command whose
+// subject is this node unless another is named.
+//
+// The default is the name of the node rather than the word "localhost", which
+// the selector has no meaning for: it would look for a node of that name and
+// find none.
+func FlagNodeSelectorOrLocalnode(flags *pflag.FlagSet, p *string) {
+	flags.StringVar(p, "node", hostname.Hostname(), "submit the action to the selected nodes")
 }
 
 func FlagNodeSelectorOrAll(flags *pflag.FlagSet, p *string) {
 	flags.StringVar(p, "node", "*", "submit the action to the selected nodes")
+}
+
+// FlagNodeSelectorWithDefault declares the node selector of a command that om
+// and ox default differently: om answers for the node it runs on, ox has no
+// node of its own to prefer.
+func FlagNodeSelectorWithDefault(flags *pflag.FlagSet, p *string, def string) {
+	flags.StringVar(p, "node", def, "submit the action to the selected nodes")
 }
 
 func FlagNoLock(flags *pflag.FlagSet, p *bool) {
@@ -613,6 +628,18 @@ func FlagWatch(flags *pflag.FlagSet, p *bool) {
 
 func FlagColor(flags *pflag.FlagSet, p *string) {
 	flags.StringVar(p, "color", "auto", "output colorization yes|no|auto")
+}
+
+// FlagSort declares the option that orders a listing, overriding the order the
+// command comes in by default.
+//
+// A term names a column, by the header the table shows it under, or the field
+// a tab expression would select. A term prefixed with "-" reverses that term,
+// and a whole expression prefixed with "+" extends the command's default
+// rather than replacing it. A leading "-" has to be written as --sort=-NAME,
+// or the flag parser reads it as the next option.
+func FlagSort(flags *pflag.FlagSet, p *string) {
+	flags.StringVar(p, "sort", "", "order the listing on these columns, lowest first, a name prefixed with - reversing it, a leading + extending the default and . naming the value itself (ex: --sort=-TYPE,RID)")
 }
 
 func FlagOutput(flags *pflag.FlagSet, p *string) {

@@ -95,15 +95,14 @@ func (t *CmdObjectConfigGet) Run(kind string) error {
 		}
 	}
 
-	output.Renderer{
+	return output.Renderer{
 		DefaultOutput: defaultOutput,
 		Output:        t.Output,
+		Sort:          t.Sort,
 		Color:         t.Color,
 		Data:          api.KeywordList{Items: l, Kind: "KeywordList"},
 		Colorize:      rawconfig.Colorize,
 	}.Print()
-
-	return nil
 }
 
 func (t *CmdObjectConfigGet) doObjectAction(mergedSelector string) error {
@@ -113,6 +112,7 @@ func (t *CmdObjectConfigGet) doObjectAction(mergedSelector string) error {
 		objectaction.WithColor(t.Color),
 		objectaction.WithIgnoreNotFound(t.IgnoreNotFound),
 		objectaction.WithOutput(t.Output),
+		objectaction.WithSort(t.Sort),
 		objectaction.WithObjectSelector(mergedSelector),
 		objectaction.WithLocalFunc(func(ctx context.Context, p naming.Path) (interface{}, error) {
 			c, err := object.NewConfigurer(p)

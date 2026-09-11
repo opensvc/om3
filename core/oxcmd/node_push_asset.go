@@ -29,6 +29,7 @@ func (t *CmdNodePushAsset) Run() error {
 	err := nodeaction.New(
 		nodeaction.WithRemoteNodes(t.NodeSelector),
 		nodeaction.WithFormat(t.Output),
+		nodeaction.WithSort(t.Sort),
 		nodeaction.WithColor(t.Color),
 		nodeaction.WithRemoteFunc(func(ctx context.Context, nodename string) (interface{}, error) {
 			c, err := client.New()
@@ -37,8 +38,8 @@ func (t *CmdNodePushAsset) Run() error {
 			}
 			params := api.PostNodeActionPushAssetParams{}
 			{
-				sid := xsession.Sid().UUID()
-				params.SessionId = &sid
+				sessionID := xsession.SessionID().UUID()
+				params.SessionID = &sessionID
 			}
 			response, err := c.PostNodeActionPushAssetWithResponse(ctx, nodename, &params)
 			if err != nil {
@@ -69,6 +70,7 @@ func (t *CmdNodePushAsset) doDryRun() error {
 	return nodeaction.New(
 		nodeaction.WithRemoteNodes(t.NodeSelector),
 		nodeaction.WithFormat(t.Output),
+		nodeaction.WithSort(t.Sort),
 		nodeaction.WithColor(t.Color),
 		nodeaction.WithRemoteFunc(func(ctx context.Context, nodename string) (interface{}, error) {
 			c, err := client.New()

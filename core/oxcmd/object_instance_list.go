@@ -43,14 +43,14 @@ func (t *CmdObjectInstanceList) Run(kind string) error {
 			}
 			return fmt.Errorf("%s: %w", mergedSelector, xerrors.InstanceNotFound)
 		}
-		output.Renderer{
+		return output.Renderer{
 			DefaultOutput: "tab=OBJECT:meta.object,NODE:meta.node,AVAIL:data.status.avail",
 			Output:        t.Output,
+			Sort:          t.Sort,
 			Color:         t.Color,
 			Data:          resp.JSON200,
 			Colorize:      rawconfig.Colorize,
 		}.Print()
-		return nil
 	case 400:
 		pb = resp.JSON400
 	case 401:

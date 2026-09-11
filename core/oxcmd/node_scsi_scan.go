@@ -23,6 +23,7 @@ type (
 func (t *CmdNodeSCSIScan) Run() error {
 	return nodeaction.New(
 		nodeaction.WithFormat(t.Output),
+		nodeaction.WithSort(t.Sort),
 		nodeaction.WithColor(t.Color),
 		nodeaction.WithRemoteNodes(t.NodeSelector),
 		nodeaction.WithRemoteFunc(func(ctx context.Context, nodename string) (interface{}, error) {
@@ -36,8 +37,8 @@ func (t *CmdNodeSCSIScan) Run() error {
 				Lun:    &t.LUN,
 			}
 			{
-				sid := xsession.Sid().UUID()
-				params.SessionId = &sid
+				sessionID := xsession.SessionID().UUID()
+				params.SessionID = &sessionID
 			}
 			response, err := c.PostNodeActionSCSIScanWithResponse(ctx, nodename, &params)
 			if err != nil {

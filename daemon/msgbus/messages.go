@@ -271,8 +271,8 @@ var (
 
 		"ZoneRecordUpdated": func() any { return &ZoneRecordUpdated{} },
 
-		"NetLinkDown": func() any { return &NetLinkDown{} },
-		"NetLinkUp":   func() any { return &NetLinkUp{} },
+		"NetLinkDown":      func() any { return &NetLinkDown{} },
+		"NetLinkUp":        func() any { return &NetLinkUp{} },
 		"NetIPAddrAdded":   func() any { return &NetIPAddrAdded{} },
 		"NetIPAddrDeleted": func() any { return &NetIPAddrDeleted{} },
 
@@ -439,10 +439,20 @@ type (
 		// Node is the nodename that will call exec
 		Node string `json:"node" yaml:"node"`
 		// Origin describes the exec caller: example: imon, nmon, scheduler...
-		Origin    string      `json:"origin" yaml:"origin"`
+		Origin string `json:"origin" yaml:"origin"`
+		// RID is the resource the exec is of, when it is of one.
+		RID string `json:"rid" yaml:"rid"`
+		// StartedAt is when the publisher started the process, measured by
+		// the publisher. A subscriber stamping its own arrival time instead
+		// would be recording when the bus delivered the news, which is not
+		// when the exec began and does not agree with its duration.
+		StartedAt time.Time   `json:"started_at" yaml:"started_at"`
 		Title     string      `json:"title" yaml:"title"`
-		SessionID xsession.Id `json:"session_id" yaml:"session_id"`
-		ExecID    xsession.Id `json:"exec_id" yaml:"exec_id"`
+		SessionID xsession.ID `json:"session_id" yaml:"session_id"`
+		ExecID    xsession.ID `json:"exec_id" yaml:"exec_id"`
+		// OrchestrationID is set when the exec is a step of an
+		// orchestration, so the execs of one can be found together.
+		OrchestrationID xsession.ID `json:"orchestration_id" yaml:"orchestration_id"`
 	}
 
 	// ExecFailed message describes failed exec call
@@ -451,13 +461,19 @@ type (
 		Command    string        `json:"command" yaml:"command"`
 		Duration   time.Duration `json:"duration" yaml:"duration"`
 		ErrS       string        `json:"error" yaml:"error"`
+		// ExitCode is what the process exited with, 128 + the signal number
+		// when a signal ended it, and -1 when it never ran at all.
+		ExitCode int `json:"exit_code" yaml:"exit_code"`
 		// Node is the nodename that called exec
 		Node string `json:"node" yaml:"node"`
 		// Origin describes the exec caller: example: imon, nmon, scheduler...
 		Origin    string      `json:"origin" yaml:"origin"`
 		Title     string      `json:"title" yaml:"title"`
-		SessionID xsession.Id `json:"session_id" yaml:"session_id"`
-		ExecID    xsession.Id `json:"exec_id" yaml:"exec_id"`
+		SessionID xsession.ID `json:"session_id" yaml:"session_id"`
+		ExecID    xsession.ID `json:"exec_id" yaml:"exec_id"`
+		// OrchestrationID is set when the exec is a step of an
+		// orchestration, so the sessions of one can be found together.
+		OrchestrationID xsession.ID `json:"orchestration_id" yaml:"orchestration_id"`
 	}
 
 	// ExecSuccess message describes successfully exec call
@@ -465,13 +481,19 @@ type (
 		pubsub.Msg `yaml:",inline"`
 		Command    string        `json:"command" yaml:"command"`
 		Duration   time.Duration `json:"duration" yaml:"duration"`
+		// ExitCode is what the process exited with. Usually zero, but a
+		// command given WithIgnoredExitCodes succeeds with others.
+		ExitCode int `json:"exit_code" yaml:"exit_code"`
 		// Node is the nodename that called exec
 		Node string `json:"node" yaml:"node"`
 		// Origin describes the exec caller: example: imon, nmon, scheduler...
 		Origin    string      `json:"origin" yaml:"origin"`
 		Title     string      `json:"title" yaml:"title"`
-		SessionID xsession.Id `json:"session_id" yaml:"session_id"`
-		ExecID    xsession.Id `json:"exec_id" yaml:"exec_id"`
+		SessionID xsession.ID `json:"session_id" yaml:"session_id"`
+		ExecID    xsession.ID `json:"exec_id" yaml:"exec_id"`
+		// OrchestrationID is set when the exec is a step of an
+		// orchestration, so the sessions of one can be found together.
+		OrchestrationID xsession.ID `json:"orchestration_id" yaml:"orchestration_id"`
 	}
 
 	Exit struct {
@@ -910,7 +932,7 @@ type (
 		Path       naming.Path           `json:"path" yaml:"path"`
 		Node       string                `json:"node" yaml:"node"`
 		State      instance.MonitorState `json:"instance_monitor_state" yaml:"instance_monitor_state"`
-		SessionID  xsession.Id           `json:"session_id" yaml:"session_id"`
+		SessionID  xsession.ID           `json:"session_id" yaml:"session_id"`
 		IsPartial  bool                  `json:"is_partial" yaml:"is_partial"`
 	}
 
