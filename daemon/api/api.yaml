@@ -432,6 +432,76 @@ paths:
       tags:
         - cluster
 
+  /api/cluster/enroll:
+    post:
+      description: |
+        Enroll a foreign node into the cluster of the requested api node.
+
+        The requester must be granted the 'root' role.
+
+        The candidate node must be a single node cluster: enrolling a node
+        that is still a member of a multi node cluster is refused with a 409,
+        because its peers would keep it in their cluster.nodes forever.
+
+        The 'token' parameter is an access token with the 'join' role, created
+        on the candidate node. It is used to authenticate on the candidate node
+        api, and its 'ca' claim is used to trust the candidate node certificate.
+        Only a token carrying the 'join' role holds that claim.
+
+        On success, the api node creates a 'join' role token for itself and
+        posts it to the candidate node, which forks a 'om cluster join' in the
+        background.
+
+        The order carries the location the candidate node must use to reach us,
+        from the 'join_addr' parameter or from a name our certificate is valid
+        for, so the candidate does not have to resolve our nodename.
+
+        The processing is asynchronous. The HTTP response is sent when the
+        candidate node has accepted the join order.
+
+        To follow the processing, use the following event filters on the api
+        node,
+        - JoinSuccess,added_node=<node> (the candidate node has been added to cluster nodes)
+        - JoinIgnored,candidate_node=<node> (the candidate node was already a cluster node)
+        - JoinError,candidate_node=<node> (an error occur during update cluster node list)
+        - NodeAlive,.node=<node> (the candidate node heartbeat is beating: it has fully joined)
+
+        Beware, the candidate node is drained before it leaves its cluster.
+        As a single node cluster has nowhere to relocate its instances, they
+        are stopped, stay down, and removed from config.
+      operationId: PostClusterEnroll
+      requestBody:
+        description: the candidate node location and credentials
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ClusterEnrollBody'
+      responses:
+        200:
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ClusterEnrollAccepted'
+        400:
+          $ref: '#/components/responses/400'
+        401:
+          $ref: '#/components/responses/401'
+        403:
+          $ref: '#/components/responses/403'
+        409:
+          $ref: '#/components/responses/409'
+        500:
+          $ref: '#/components/responses/500'
+        502:
+          $ref: '#/components/responses/502'
+      security:
+        - basicAuth: [ ]
+        - bearerAuth: [ ]
+      tags:
+        - cluster
+
   /api/cluster/hb/rotate:
     post:
       description: |
@@ -1308,6 +1378,62 @@ paths:
         - bearerAuth: [ ]
       tags:
         - node
+
+  /api/node/name/{nodename}/daemon/action/join:
+    post:
+      description: |
+        For internal use only.
+
+        Order the daemon on this node to join the cluster of the node given in
+        the body, and fork the join in the background.
+
+        The requester must be granted the 'root' or 'join' roles.
+
+        This node must be a single node cluster: joining from a multi node
+        cluster is refused with a 409, because the peers would keep this node
+        in their cluster.nodes forever.
+
+        The 'token' parameter is an access token with the 'join' role, created
+        on the target cluster node. Its 'ca' claim is used to trust the target
+        node certificate.
+
+        The node is drained, its daemon is stopped, its configuration is moved
+        to a backup directory, and the target cluster configuration is
+        installed before the daemon is restarted. The instances are stopped by
+        the drain and stay down until the node is up in the target cluster.
+
+        The processing is asynchronous. The HTTP response is sent when the
+        background join has been forked. Follow it with the event filters
+        documented in POST /api/cluster/enroll, on the target cluster node.
+      operationId: PostDaemonJoin
+      parameters:
+        - $ref: '#/components/parameters/inPathNodeName'
+      requestBody:
+        description: the target cluster node location and credentials
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/DaemonJoinBody'
+      responses:
+        200:
+          $ref: '#/components/responses/200'
+        400:
+          $ref: '#/components/responses/400'
+        401:
+          $ref: '#/components/responses/401'
+        403:
+          $ref: '#/components/responses/403'
+        409:
+          $ref: '#/components/responses/409'
+        500:
+          $ref: '#/components/responses/500'
+      security:
+        - basicAuth: [ ]
+        - bearerAuth: [ ]
+      tags:
+        - node / daemon
+      x-internal: true
 
   /api/node/name/{nodename}/daemon/action/restart:
     post:
@@ -5055,6 +5181,56 @@ components:
     ClusterConfig:
       type: object
 
+    ClusterEnrollAccepted:
+      type: object
+      required:
+        - node
+      properties:
+        node:
+          type: string
+          description: |
+            The nodename of the enrolled node, as read from its own
+            configuration. Use it to build the event filters following the
+            join progress.
+          example: node3
+
+    ClusterEnrollBody:
+      type: object
+      required:
+        - node
+        - token
+      properties:
+        node:
+          type: string
+          description: |
+            The location of the node to enroll, in the
+            [<scheme>://]<addr>[:<port>] format. The scheme defaults to https
+            and the port to the daemon listener port.
+          example: node3.example.com:1215
+          minLength: 2
+        token:
+          type: string
+          description: |
+            An access token with the 'join' role, created on the node to
+            enroll. Its 'ca' claim is used to trust the enrolled node
+            certificate.
+        join_addr:
+          type: string
+          description: |
+            The location the enrolled node must use to reach this cluster, in
+            the [<scheme>://]<addr>[:<port>] format. It is refused when the
+            certificate of this cluster is not valid for its host, because the
+            enrolled node would fail to verify us. Defaults to a name the
+            certificate is valid for.
+          example: node1.example.com:1215
+        timeout:
+          type: string
+          description: |
+            The lifetime of the 'join' role token handed to the enrolled node.
+            It must outlive the node drain.
+          default: 1h
+          example: 1h
+
     ClusterNode:
       type: object
 
@@ -5324,6 +5500,36 @@ components:
           type: string
           description: heartbeat stream type (unicast, multicast, ...)
           example: unicast
+
+    DaemonJoinBody:
+      type: object
+      required:
+        - node
+        - token
+      properties:
+        node:
+          type: string
+          description: the nodename of the target cluster node to join
+          example: node1
+          minLength: 2
+        addr:
+          type: string
+          description: |
+            The location of the target cluster node, in the
+            [<scheme>://]<addr>[:<port>] format. Defaults to the 'node'
+            value. Set it when this node can not resolve the target nodename.
+          example: node1.example.com:1215
+        token:
+          type: string
+          description: |
+            An access token with the 'join' role, created on the target
+            cluster node. Its 'ca' claim is used to trust the target node
+            certificate.
+        timeout:
+          type: string
+          description: the maximum duration to wait for the join to complete
+          default: 1h
+          example: 1h
 
     DaemonListener:
       description: |
@@ -8699,6 +8905,13 @@ components:
 
     '500':
       description: Internal Server Error
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/Problem"
+
+    '502':
+      description: Bad Gateway
       content:
         application/json:
           schema:

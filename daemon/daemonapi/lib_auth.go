@@ -110,6 +110,12 @@ func (a *DaemonAPI) xClaimForGrants(grants []string) (map[string]interface{}, er
 		"iss": a.localhost,
 	}
 	for _, g := range grants {
+		// The join grant needs the ca claim to bootstrap the TLS trust with
+		// our listener. The 'enroll' flow needs it in both directions: the token
+		// a candidate node creates lets us verify its certificate, and the one
+		// we create here lets that node verify ours.
+		// The claim carries the certificate chain, which is public material:
+		// no private key is exposed.
 		if g == grantJoin {
 			var b []byte
 			filename := daemonenv.CertChainFile()
@@ -118,6 +124,7 @@ func (a *DaemonAPI) xClaimForGrants(grants []string) (map[string]interface{}, er
 				return xc, err
 			}
 			xc["ca"] = string(b)
+			break
 		}
 	}
 	if len(grants) > 0 {

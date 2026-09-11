@@ -30,6 +30,7 @@ func init() {
 		cmdObjectSSH,
 		cmdObjectValidate,
 		commoncmd.NewCmdClusterAbort(),
+		commoncmd.NewCmdClusterEnroll(),
 		commoncmd.NewCmdClusterFreeze(),
 		commoncmd.NewCmdClusterLogs(),
 		commoncmd.NewCmdClusterThaw(),

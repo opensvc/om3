@@ -13,6 +13,7 @@ import (
 
 	"github.com/opensvc/om3/v3/core/client"
 	"github.com/opensvc/om3/v3/core/commoncmd"
+	"github.com/opensvc/om3/v3/core/env"
 	"github.com/opensvc/om3/v3/core/event"
 	"github.com/opensvc/om3/v3/core/naming"
 	"github.com/opensvc/om3/v3/core/object"
@@ -31,7 +32,12 @@ type (
 		Node  string
 		Token string
 
-		// Timeout is the maximum duration for leave
+		// Addr is the location of the Node api, in the
+		// [<scheme>://]<addr>[:<port>] format. When empty, Node is used.
+		// Set it when this node cannot resolve Node.
+		Addr string
+
+		// Timeout is the maximum duration for join
 		Timeout time.Duration
 	}
 )
@@ -69,6 +75,9 @@ func (t *CmdClusterJoin) run() error {
 	}(certFile)
 
 	url := daemonenv.HTTPNodeURL(t.Node)
+	if t.Addr != "" {
+		url = t.Addr
+	}
 	cli, err = client.New(
 		client.WithURL(url),
 		client.WithRootCa(certFile),
@@ -138,7 +147,12 @@ func (t *CmdClusterJoin) checkParams() error {
 		return fmt.Errorf("%w: node is empty", commoncmd.ErrFlagInvalid)
 	}
 	if t.Token == "" {
-		return fmt.Errorf("%w: token is empty", commoncmd.ErrFlagInvalid)
+		// A token on the command line is readable by any user through the
+		// process table, so the daemon hands it over the environment instead.
+		t.Token = os.Getenv(env.JoinTokenVar)
+	}
+	if t.Token == "" {
+		return fmt.Errorf("%w: token is empty: use env %s or --token", commoncmd.ErrFlagInvalid, env.JoinTokenVar)
 	}
 	return nil
 }

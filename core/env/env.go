@@ -23,6 +23,12 @@ var (
 	ContextVar   = "OSVC_CONTEXT"
 
 	NoLogFileVar = "OSVC_NO_LOG_FILE"
+
+	// JoinTokenVar is the environment variable the "cluster join" command
+	// reads the join token from when --token is not set. The daemon uses it
+	// to hand a token to the join it forks, so the token never appears in the
+	// process command line, which any user can read.
+	JoinTokenVar = "OSVC_JOIN_TOKEN"
 )
 
 // HasDaemonOrigin returns true if the environment variable OSVC_ACTION_ORIGIN

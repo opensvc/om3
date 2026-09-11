@@ -10,6 +10,7 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/opensvc/om3/v3/core/commoncmd"
+	"github.com/opensvc/om3/v3/core/env"
 	commands "github.com/opensvc/om3/v3/core/omcmd"
 	"github.com/opensvc/om3/v3/util/hostname"
 )
@@ -43,11 +44,12 @@ func newCmdClusterJoin() *cobra.Command {
 	if err := cmd.MarkFlagRequired("node"); err != nil {
 		panic(err)
 	}
+	flags.StringVar(&options.Addr, "addr", "", "the location of the --node api, in the [<scheme>://]<addr>[:<port>]"+
+		" format (default: the --node value). Set it when this node can not resolve the --node name")
 	flags.StringVar(&options.Token, "token", "", "auth token with 'join' role"+
-		" (created from 'om daemon auth --role join')")
-	if err := cmd.MarkFlagRequired("token"); err != nil {
-		panic(err)
-	}
+		" (created from 'om daemon auth --role join')."+
+		" Prefer the "+env.JoinTokenVar+" environment variable: a token on the command line is"+
+		" readable by any user through the process table")
 	flags.DurationVar(&options.Timeout, "timeout", 5*time.Second, "maximum duration to wait for local node added to cluster")
 	return cmd
 }
