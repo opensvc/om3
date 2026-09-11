@@ -7656,10 +7656,6 @@ components:
         ended_at:
           type: string
           format: date-time
-        duration:
-          type: integer
-          format: int64
-          description: Nanoseconds the exec ran for.
         pid:
           type: integer
           description: The pid of the process running this exec. Absent once it has ended, and absent on a running exec whose process the daemon has lost track of.

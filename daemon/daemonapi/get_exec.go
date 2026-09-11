@@ -111,10 +111,6 @@ func execItem(e session.Exec, pids map[string]int) api.ExecItem {
 	if e.EndedAt != nil {
 		item.EndedAt = e.EndedAt
 	}
-	if e.Duration > 0 {
-		d := int64(e.Duration)
-		item.Duration = &d
-	}
 	if pid, ok := pids[e.ExecID]; ok {
 		item.Pid = &pid
 	}

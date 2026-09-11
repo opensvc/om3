@@ -20,6 +20,25 @@ func newSessionID(u uuid.UUID) xsession.ID       { return xsession.NewSessionID(
 func newOrchestrationID(u uuid.UUID) xsession.ID { return xsession.NewOrchestrationID(u) }
 func newExecID(u uuid.UUID) xsession.ID          { return xsession.NewExecID(u) }
 
+// The start instant is the publisher's, not the instant the bus was heard:
+// the exec store must not put the delivery latency between the two ends.
+func TestTheStartInstantComesFromTheMessage(t *testing.T) {
+	reset()
+	m := &Manager{}
+	id := uuid.New()
+	startedAt := time.Now().Add(-time.Hour)
+
+	m.handle(&msgbus.Exec{SessionID: newSessionID(id), ExecID: newExecID(id), StartedAt: startedAt})
+	s, ok := firstExecOfSession(id.String())
+	require.True(t, ok)
+	assert.Equal(t, startedAt, s.StartedAt, "an hour ago, not now")
+
+	m.handle(&msgbus.ExecSuccess{SessionID: newSessionID(id), ExecID: newExecID(id), Duration: time.Minute})
+	s, _ = firstExecOfSession(id.String())
+	require.NotNil(t, s.EndedAt)
+	assert.Equal(t, startedAt.Add(time.Minute), *s.EndedAt)
+}
+
 // An exec and its outcome make one session, and the object it acts on is read
 // from the label the message carries it in.
 func TestAnExecAndItsOutcomeMakeOneSession(t *testing.T) {
@@ -44,7 +63,8 @@ func TestAnExecAndItsOutcomeMakeOneSession(t *testing.T) {
 	m.handle(&msgbus.ExecSuccess{SessionID: newSessionID(id), ExecID: newExecID(id), Duration: 2 * time.Second})
 	s, _ = firstExecOfSession(id.String())
 	assert.Equal(t, StateSucceeded, s.State)
-	assert.Equal(t, 2*time.Second, s.Duration)
+	require.NotNil(t, s.EndedAt)
+	assert.Equal(t, 2*time.Second, s.EndedAt.Sub(s.StartedAt))
 }
 
 func TestAFailedExecKeepsWhatFailed(t *testing.T) {

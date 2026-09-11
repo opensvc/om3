@@ -10,7 +10,6 @@ import (
 	"github.com/opensvc/om3/v3/core/output"
 	"github.com/opensvc/om3/v3/core/rawconfig"
 	"github.com/opensvc/om3/v3/daemon/api"
-	"github.com/opensvc/om3/v3/util/duration"
 )
 
 type (
@@ -41,6 +40,7 @@ type (
 		Objects         int    `json:"objects"`
 		Origin          string `json:"origin"`
 		StartedAt       string `json:"started_at"`
+		EndedAt         string `json:"ended_at,omitempty"`
 		Duration        string `json:"duration,omitempty"`
 		Command         string `json:"command,omitempty"`
 	}
@@ -140,9 +140,10 @@ func ToSessionViews(items []api.ExecItem) []SessionView {
 		// Wall time of the whole command, not the sum of its parts: the execs
 		// run at the same time, and what the submitter waited is the span.
 		if v.Running == 0 && a.ended {
-			v.Duration = duration.FmtShortDuration(a.end.Sub(a.begin))
+			v.EndedAt = a.end.Truncate(time.Second).Format(time.RFC3339)
+			v.Duration = RenderDuration(a.begin, &a.end, now)
 		} else {
-			v.Duration = duration.FmtShortDuration(now.Sub(a.begin))
+			v.Duration = RenderDuration(a.begin, nil, now)
 		}
 		v.Command = a.command
 		if a.varies {

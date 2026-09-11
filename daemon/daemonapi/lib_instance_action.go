@@ -48,15 +48,16 @@ func (a *DaemonAPI) apiExec(ctx echo.Context, p naming.Path, requesterSessionID 
 		labels = append(labels, pubsub.Label{"namespace", p.Namespace}, pubsub.Label{"path", p.String()})
 	}
 	log.Infof("-> exec %s", cmd)
+	startTime := time.Now()
 	msg := msgbus.Exec{
 		Command:   cmd.String(),
 		Node:      a.localhost,
 		Origin:    "api",
 		SessionID: sessionID,
 		ExecID:    execID,
+		StartedAt: startTime,
 	}
 	a.Bus.Pub(&msg, labels...)
-	startTime := time.Now()
 	if err = cmd.Start(); err != nil {
 		// The start of this exec was announced, so its end has to be too, or
 		// it stays running in the exec store for as long as the store keeps

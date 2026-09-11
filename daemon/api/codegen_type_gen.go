@@ -1277,12 +1277,9 @@ type EventList = openapi_types.File
 
 // ExecItem defines model for ExecItem.
 type ExecItem struct {
-	Command string `json:"command"`
-
-	// Duration Nanoseconds the exec ran for.
-	Duration *int64     `json:"duration,omitempty"`
-	EndedAt  *time.Time `json:"ended_at,omitempty"`
-	Error    *string    `json:"error,omitempty"`
+	Command string     `json:"command"`
+	EndedAt *time.Time `json:"ended_at,omitempty"`
+	Error   *string    `json:"error,omitempty"`
 
 	// ExecID The exec this reports, which is what has one object, one outcome, one duration and one exit code.
 	ExecID string `json:"exec_id"`

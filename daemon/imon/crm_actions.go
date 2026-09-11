@@ -242,6 +242,7 @@ func (t *Manager) crmDefaultAction(title string, cmdArgs ...string) error {
 	} else {
 		t.loggerWithState().Tracef("-> exec %s", append([]string{cmdPath}, cmdArgs...))
 	}
+	startTime := time.Now()
 	t.publisher.Pub(&msgbus.Exec{
 		Command:         cmd.String(),
 		Node:            t.localhost,
@@ -249,9 +250,9 @@ func (t *Manager) crmDefaultAction(title string, cmdArgs ...string) error {
 		ExecID:          execID,
 		SessionID:       sessionID,
 		OrchestrationID: orchestrationID,
+		StartedAt:       startTime,
 		Title:           title,
 	}, labels...)
-	startTime := time.Now()
 	if err := cmd.Start(); err != nil {
 		// The start of this exec was announced, so its end has to be too, or
 		// it stays running in the exec store for as long as the store keeps

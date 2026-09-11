@@ -35,21 +35,20 @@ type (
 	// its own outcome and its own duration. So the exec id is what a record
 	// is keyed by, and the session id is what several of them share.
 	Exec struct {
-		SessionID       string        `json:"session_id"`
-		ExecID          string        `json:"exec_id"`
-		OrchestrationID string        `json:"orchestration_id,omitempty"`
-		Node            string        `json:"node"`
-		Path            string        `json:"path,omitempty"`
-		Origin          string        `json:"origin"`
-		RID             string        `json:"rid,omitempty"`
-		Title           string        `json:"title,omitempty"`
-		Command         string        `json:"command"`
-		State           State         `json:"state"`
-		Error           string        `json:"error,omitempty"`
-		ExitCode        *int          `json:"exit_code,omitempty"`
-		StartedAt       time.Time     `json:"started_at"`
-		EndedAt         *time.Time    `json:"ended_at,omitempty"`
-		Duration        time.Duration `json:"duration,omitempty"`
+		SessionID       string     `json:"session_id"`
+		ExecID          string     `json:"exec_id"`
+		OrchestrationID string     `json:"orchestration_id,omitempty"`
+		Node            string     `json:"node"`
+		Path            string     `json:"path,omitempty"`
+		Origin          string     `json:"origin"`
+		RID             string     `json:"rid,omitempty"`
+		Title           string     `json:"title,omitempty"`
+		Command         string     `json:"command"`
+		State           State      `json:"state"`
+		Error           string     `json:"error,omitempty"`
+		ExitCode        *int       `json:"exit_code,omitempty"`
+		StartedAt       time.Time  `json:"started_at"`
+		EndedAt         *time.Time `json:"ended_at,omitempty"`
 	}
 
 	// Orchestration is one orchestration the daemon accepted, and the
@@ -147,8 +146,12 @@ func EndExec(execID, sessionID string, state State, errS string, exitCode int, d
 	s.State = state
 	s.Error = errS
 	s.ExitCode = &exitCode
-	s.Duration = duration
-	s.EndedAt = &now
+	// The end is the start plus what the publisher measured, not the instant
+	// this was told about it. Stamping arrival time would put the bus latency
+	// between the two ends, so that ended_at - started_at disagreed with the
+	// duration by an amount nothing bounds.
+	endedAt := s.StartedAt.Add(duration)
+	s.EndedAt = &endedAt
 	purgeExecs()
 }
 

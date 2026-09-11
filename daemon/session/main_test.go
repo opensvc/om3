@@ -21,8 +21,9 @@ func TestASessionIsRunningUntilItsEndIsSeen(t *testing.T) {
 	s, ok = firstExecOfSession("s1")
 	require.True(t, ok)
 	assert.Equal(t, StateSucceeded, s.State)
-	assert.Equal(t, 3*time.Second, s.Duration)
 	require.NotNil(t, s.EndedAt)
+	assert.Equal(t, 3*time.Second, s.EndedAt.Sub(s.StartedAt),
+		"the end is the start plus what was measured, so the two ends and the duration cannot disagree")
 }
 
 // A failure carries what failed, which is the reason to ask at all.
@@ -212,5 +213,5 @@ func TestTwoExecsOfOneSessionAreBothKept(t *testing.T) {
 	assert.Equal(t, StateSucceeded, byPath["pod3"].State)
 	assert.Equal(t, StateFailed, byPath["pod6"].State, "the outcome of one is not the outcome of the other")
 	assert.Equal(t, "boom", byPath["pod6"].Error)
-	assert.Equal(t, 2*time.Second, byPath["pod6"].Duration)
+	assert.Equal(t, 2*time.Second, byPath["pod6"].EndedAt.Sub(byPath["pod6"].StartedAt))
 }

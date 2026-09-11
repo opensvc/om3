@@ -135,6 +135,7 @@ func (t *Manager) handle(i any) {
 				Path:            pathOf(m.Labels),
 				Origin:          m.Origin,
 				RID:             m.RID,
+				StartedAt:       m.StartedAt,
 				Title:           m.Title,
 				Command:         m.Command,
 			})

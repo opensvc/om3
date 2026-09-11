@@ -441,7 +441,12 @@ type (
 		// Origin describes the exec caller: example: imon, nmon, scheduler...
 		Origin string `json:"origin" yaml:"origin"`
 		// RID is the resource the exec is of, when it is of one.
-		RID       string      `json:"rid" yaml:"rid"`
+		RID string `json:"rid" yaml:"rid"`
+		// StartedAt is when the publisher started the process, measured by
+		// the publisher. A subscriber stamping its own arrival time instead
+		// would be recording when the bus delivered the news, which is not
+		// when the exec began and does not agree with its duration.
+		StartedAt time.Time   `json:"started_at" yaml:"started_at"`
 		Title     string      `json:"title" yaml:"title"`
 		SessionID xsession.ID `json:"session_id" yaml:"session_id"`
 		ExecID    xsession.ID `json:"exec_id" yaml:"exec_id"`

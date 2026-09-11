@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"github.com/opensvc/om3/v3/core/client"
+	"github.com/opensvc/om3/v3/core/commoncmd"
 	"github.com/opensvc/om3/v3/core/nodeselector"
 	"github.com/opensvc/om3/v3/core/output"
 	"github.com/opensvc/om3/v3/core/rawconfig"
@@ -170,7 +171,7 @@ func (t *CmdDaemonOrchestrationList) one(ctx context.Context, c *client.T, noden
 
 func (t *CmdDaemonOrchestrationList) render(items []api.OrchestrationItem) {
 	output.Renderer{
-		DefaultOutput: "tab=STATE:state,ORCHESTRATION_ID:orchestration_id,PATH:path,GLOBAL_EXPECT:global_expect,ACCEPTED_BY:node,STARTED_AT:started_at,ENDED_AT:ended_at",
+		DefaultOutput: "tab=STATE:state,ORCHESTRATION_ID:orchestration_id,PATH:path,GLOBAL_EXPECT:global_expect,ACCEPTED_BY:node,STARTED_AT:started_at,DURATION:duration",
 		Output:        t.Output,
 		Color:         t.Color,
 		Data:          toOrchestrationViews(items),
@@ -187,10 +188,12 @@ type orchestrationView struct {
 	AcceptedBy      string `json:"node,omitempty"`
 	StartedAt       string `json:"started_at"`
 	EndedAt         string `json:"ended_at,omitempty"`
+	Duration        string `json:"duration,omitempty"`
 	Error           string `json:"error,omitempty"`
 }
 
 func toOrchestrationViews(items []api.OrchestrationItem) []orchestrationView {
+	now := time.Now()
 	l := make([]orchestrationView, 0, len(items))
 	for _, i := range items {
 		v := orchestrationView{
@@ -211,6 +214,7 @@ func toOrchestrationViews(items []api.OrchestrationItem) []orchestrationView {
 		if i.EndedAt != nil {
 			v.EndedAt = i.EndedAt.Truncate(time.Second).Format(time.RFC3339)
 		}
+		v.Duration = commoncmd.RenderDuration(i.StartedAt, i.EndedAt, now)
 		l = append(l, v)
 	}
 	return l

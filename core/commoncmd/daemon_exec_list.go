@@ -236,10 +236,29 @@ type ExecView struct {
 	RID             string `json:"rid,omitempty"`
 	Pid             *int   `json:"pid,omitempty"`
 	StartedAt       string `json:"started_at"`
+	EndedAt         string `json:"ended_at,omitempty"`
 	Duration        string `json:"duration,omitempty"`
 	ExitCode        *int   `json:"exit_code,omitempty"`
 	Command         string `json:"command,omitempty"`
 	Error           string `json:"error,omitempty"`
+}
+
+// RenderDuration is how long a span lasted, or how long it has lasted so far
+// when it has not ended.
+//
+// The records carry the two ends and not the length: two numbers that answer
+// the same question can disagree, and these two did. The length is derived
+// here, where it is wanted, and derived the same way for an exec, a session
+// and an orchestration.
+//
+// A running span is measured against the reader's clock, where its start came
+// from the node that ran it, so a clock skew can make it negative.
+// FmtShortDuration answers "0s" for that rather than a negative age.
+func RenderDuration(startedAt time.Time, endedAt *time.Time, now time.Time) string {
+	if endedAt != nil {
+		return duration.FmtShortDuration(endedAt.Sub(startedAt))
+	}
+	return duration.FmtShortDuration(now.Sub(startedAt))
 }
 
 func ToExecViews(items []api.ExecItem) []ExecView {
@@ -269,14 +288,10 @@ func ToExecViews(items []api.ExecItem) []ExecView {
 		if i.Error != nil {
 			v.Error = *i.Error
 		}
-		switch {
-		case i.Duration != nil:
-			v.Duration = duration.FmtShortDuration(time.Duration(*i.Duration))
-		default:
-			// Still running: how long it has been is the same question its
-			// duration answers once it ends, so it is the same column.
-			v.Duration = duration.FmtShortDuration(now.Sub(i.StartedAt))
+		if i.EndedAt != nil {
+			v.EndedAt = i.EndedAt.Truncate(time.Second).Format(time.RFC3339)
 		}
+		v.Duration = RenderDuration(i.StartedAt, i.EndedAt, now)
 		l = append(l, v)
 	}
 	return l

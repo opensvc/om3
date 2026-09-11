@@ -143,6 +143,7 @@ func (o *T) action(e schedule.Entry) error {
 		command.WithEnv(cmdEnv),
 	)
 	logger.Debugf("-> exec %s", cmd)
+	startTime := time.Now()
 	o.publisher.Pub(&msgbus.Exec{
 		Command:   cmd.String(),
 		Node:      o.localhost,
@@ -150,8 +151,8 @@ func (o *T) action(e schedule.Entry) error {
 		RID:       e.RID(),
 		ExecID:    execID,
 		SessionID: sessionID,
+		StartedAt: startTime,
 	}, labels...)
-	startTime := time.Now()
 	if err := cmd.Start(); err != nil {
 		// The start of this exec was announced, so its end has to be too, or
 		// it stays running in the exec store for as long as the store keeps
