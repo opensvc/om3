@@ -99,6 +99,7 @@ out:
 	output.Renderer{
 		DefaultOutput: defaultOutput,
 		Output:        t.Output,
+		Sort:          t.Sort,
 		Color:         t.Color,
 		Data:          api.PackageList{Items: l, Kind: "PackageList"},
 		Colorize:      rawconfig.Colorize,

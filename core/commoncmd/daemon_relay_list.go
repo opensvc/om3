@@ -16,6 +16,7 @@ type (
 	CmdDaemonRelayList struct {
 		Color  string
 		Output string
+		Sort   string
 	}
 )
 
@@ -32,6 +33,7 @@ func NewCmdDaemonRelayList() *cobra.Command {
 	flags := cmd.Flags()
 	FlagColor(flags, &options.Color)
 	FlagOutput(flags, &options.Output)
+	FlagSort(flags, &options.Sort)
 	return cmd
 }
 
@@ -59,6 +61,7 @@ func (t *CmdDaemonRelayList) Run() error {
 	output.Renderer{
 		DefaultOutput: "tab=RELAY:relay,USERNAME:username,CLUSTER_ID:cluster_id,CLUSTER_NAME:cluster_name,NODENAME:nodename,NODE_ADDR:node_addr,UPDATED_AT:updated_at,MSG_LEN:msg_len",
 		Output:        t.Output,
+		Sort:          t.Sort,
 		Color:         t.Color,
 		Data:          *resp.JSON200,
 		Colorize:      rawconfig.Colorize,

@@ -77,6 +77,7 @@ func (t *CmdObjectInstanceDeviceList) Run(kind string) error {
 	output.Renderer{
 		DefaultOutput: "tab=OBJECT:path,RESOURCE:rid,DRIVER_GROUP:driver.group,DRIVER_NAME:driver.name,ROLE:role,DEVICE:device",
 		Output:        t.Output,
+		Sort:          t.Sort,
 		Color:         t.Color,
 		Data:          data,
 		Colorize:      rawconfig.Colorize,

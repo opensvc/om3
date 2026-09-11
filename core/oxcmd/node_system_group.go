@@ -99,6 +99,7 @@ out:
 	output.Renderer{
 		DefaultOutput: defaultOutput,
 		Output:        t.Output,
+		Sort:          t.Sort,
 		Color:         t.Color,
 		Data:          api.GroupList{Items: l, Kind: "GroupList"},
 		Colorize:      rawconfig.Colorize,

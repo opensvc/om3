@@ -47,6 +47,7 @@ func (t *CmdNodeList) Run() error {
 	output.Renderer{
 		DefaultOutput: "tab=NAME:meta.node,AGENT:data.status.agent,STATE:data.monitor.state",
 		Output:        t.Output,
+		Sort:          t.Sort,
 		Color:         t.Color,
 		Data:          *resp.JSON200,
 	}.Print()

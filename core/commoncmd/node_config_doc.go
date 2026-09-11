@@ -18,6 +18,7 @@ type (
 	CmdNodeConfigDoc struct {
 		Color   string
 		Output  string
+		Sort    string
 		Keyword string
 		Driver  string
 		Depth   int
@@ -36,6 +37,7 @@ func NewCmdNodeConfigDoc() *cobra.Command {
 	flags := cmd.Flags()
 	FlagColor(flags, &options.Color)
 	FlagOutput(flags, &options.Output)
+	FlagSort(flags, &options.Sort)
 	FlagKeyword(flags, &options.Keyword)
 	FlagDriver(flags, &options.Driver)
 	FlagDepth(flags, &options.Depth)
@@ -85,6 +87,7 @@ func (t *CmdNodeConfigDoc) Run() error {
 			return ""
 		},
 		Output:   t.Output,
+		Sort:     t.Sort,
 		Color:    t.Color,
 		Data:     items,
 		Colorize: rawconfig.Colorize,

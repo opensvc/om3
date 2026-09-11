@@ -36,6 +36,7 @@ func (t *CmdNetworkList) Run() error {
 		output.Renderer{
 			DefaultOutput: "tab=NAME:name,TYPE:type,NETWORK:network,SIZE:size,USED:used,FREE:free",
 			Output:        t.Output,
+			Sort:          t.Sort,
 			Color:         t.Color,
 			Data:          resp.JSON200,
 			Colorize:      rawconfig.Colorize,

@@ -34,6 +34,7 @@ func (t *CmdObjectInstancePRStart) Run(kind string) error {
 		objectaction.WithTag(t.Tag),
 		objectaction.WithSubset(t.Subset),
 		objectaction.WithOutput(t.Output),
+		objectaction.WithSort(t.Sort),
 		objectaction.WithColor(t.Color),
 		objectaction.WithIgnoreNotFound(t.IgnoreNotFound),
 		objectaction.WithAsyncTime(t.Time),

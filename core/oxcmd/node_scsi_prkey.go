@@ -48,6 +48,7 @@ func (t *CmdNodePRKey) Run() error {
 	output.Renderer{
 		DefaultOutput: "tab=NAME:meta.node,PRKEY:data.config.prkey",
 		Output:        t.Output,
+		Sort:          t.Sort,
 		Color:         t.Color,
 		Data:          *resp.JSON200,
 	}.Print()

@@ -99,6 +99,7 @@ out:
 	output.Renderer{
 		DefaultOutput: defaultOutput,
 		Output:        t.Output,
+		Sort:          t.Sort,
 		Color:         t.Color,
 		Data:          api.DiskList{Items: l, Kind: "DiskList"},
 		Colorize:      rawconfig.Colorize,

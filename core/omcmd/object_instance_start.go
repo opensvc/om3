@@ -39,6 +39,7 @@ func (t *CmdObjectInstanceStart) Run(kind string) error {
 		objectaction.WithAllSlaves(t.AllSlaves),
 		objectaction.WithMaster(t.Master),
 		objectaction.WithOutput(t.Output),
+		objectaction.WithSort(t.Sort),
 		objectaction.WithColor(t.Color),
 		objectaction.WithIgnoreNotFound(t.IgnoreNotFound),
 		objectaction.WithAsyncTime(t.Time),

@@ -53,6 +53,7 @@ func (t *CmdObjectKeyList) Run(kind string) error {
 	output.Renderer{
 		DefaultOutput: "tab=OBJECT:object,NODE:node,NAME:name,SIZE:size",
 		Output:        t.Output,
+		Sort:          t.Sort,
 		Color:         t.Color,
 		Data:          result,
 		Colorize:      rawconfig.Colorize,

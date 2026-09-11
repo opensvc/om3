@@ -36,6 +36,7 @@ func (t *CmdNetworkIPList) Run() error {
 		output.Renderer{
 			DefaultOutput: "tab=OBJECT:path,NODE:node,RID:rid,IP:ip,NET_NAME:network.name,NET_TYPE:network.type",
 			Output:        t.Output,
+			Sort:          t.Sort,
 			Color:         t.Color,
 			Data:          resp.JSON200,
 			Colorize:      rawconfig.Colorize,

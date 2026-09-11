@@ -128,6 +128,7 @@ func (t *CmdObjectInstanceStatus) Run(kind string) error {
 	}
 	renderer := output.Renderer{
 		Output: t.Output,
+		Sort:   t.Sort,
 		Color:  t.Color,
 		Data:   data,
 		HumanRenderer: func() string {

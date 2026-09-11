@@ -10,6 +10,7 @@ type CmdClusterFreeze struct {
 	OptsAsync
 	Color  string
 	Output string
+	Sort   string
 }
 
 func NewCmdClusterFreeze() *cobra.Command {
@@ -36,6 +37,7 @@ func (t *CmdClusterFreeze) Run() error {
 		nodeaction.WithAsyncWait(t.Wait),
 		nodeaction.WithAsyncWatch(t.Watch),
 		nodeaction.WithFormat(t.Output),
+		nodeaction.WithSort(t.Sort),
 		nodeaction.WithColor(t.Color),
 		nodeaction.WithLocal(false),
 	).Do()

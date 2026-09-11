@@ -35,7 +35,7 @@ func (t *CmdNodeLogs) Remote() error {
 	if len(nodes) == 0 {
 		return fmt.Errorf("no nodes to fetch logs from")
 	}
-	
+
 	// Create readers for all nodes
 	streams := make([]logreader.NodeStream, 0, len(nodes))
 	for i, node := range nodes {
@@ -55,19 +55,19 @@ func (t *CmdNodeLogs) Remote() error {
 			Index:  i,
 		})
 	}
-	
+
 	if len(streams) == 0 {
 		return fmt.Errorf("no valid log streams to read from")
 	}
-	
+
 	// Use the logreader utility to collect, sort, and display logs
 	// Pass os.Stdout as the writer (the actual output destination)
 	logreader.CollectAndSortWithFormat(
 		streams,
-		os.Stdout,  // output writer
-		t.Output,   // format (e.g., "", "json")
+		os.Stdout, // output writer
+		t.Output,  // format (e.g., "", "json")
 		t.Follow,  // follow mode
 	)
-	
+
 	return nil
 }

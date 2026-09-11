@@ -24,6 +24,7 @@ import (
 func AddFlagsNodeGlobal(flagSet *pflag.FlagSet, p *OptsNodeGlobal) {
 	flagSet.StringVar(&p.Color, "color", "auto", "output colorization yes|no|auto")
 	flagSet.StringVarP(&p.Output, "output", "o", "auto", "output format auto|json|jsonline|yaml|flat|tab=<header>:<jsonpath>,...|template=<go template>")
+	FlagSort(flagSet, &p.Sort)
 	FlagNodeSelector(flagSet, &p.NodeSelector)
 }
 
@@ -637,7 +638,7 @@ func FlagColor(flags *pflag.FlagSet, p *string) {
 // leading "-" has to be written as --sort=-field, or the flag parser reads it
 // as the next option.
 func FlagSort(flags *pflag.FlagSet, p *string) {
-	flags.StringVar(p, "sort", "", "order the listing on these fields, lowest first, a field prefixed with - reversing it and a leading + extending the default (ex: --sort=-started_at,path)")
+	flags.StringVar(p, "sort", "", "order the listing on these fields, lowest first, a field prefixed with - reversing it, a leading + extending the default and . naming the value itself (ex: --sort=-started_at,path)")
 }
 
 func FlagOutput(flags *pflag.FlagSet, p *string) {

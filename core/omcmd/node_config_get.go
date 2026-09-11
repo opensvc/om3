@@ -99,6 +99,7 @@ func (t *CmdNodeConfigGet) Run() error {
 	output.Renderer{
 		DefaultOutput: defaultOutput,
 		Output:        t.Output,
+		Sort:          t.Sort,
 		Color:         t.Color,
 		Data:          api.KeywordList{Items: l, Kind: "KeywordList"},
 		Colorize:      rawconfig.Colorize,
@@ -111,6 +112,7 @@ func (t *CmdNodeConfigGet) doNodeAction() error {
 	return nodeaction.New(
 		nodeaction.WithLocal(t.Local),
 		nodeaction.WithFormat(t.Output),
+		nodeaction.WithSort(t.Sort),
 		nodeaction.WithColor(t.Color),
 		nodeaction.WithLocalFunc(func() (interface{}, error) {
 			n, err := object.NewNode()

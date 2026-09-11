@@ -35,6 +35,7 @@ func (t *CmdPoolVolumeList) Run() error {
 		output.Renderer{
 			DefaultOutput: "tab=POOL:pool,PATH:path,SIZE:size,CHILDREN:children[*],IS_ORPHAN:is_orphan",
 			Output:        t.Output,
+			Sort:          t.Sort,
 			Color:         t.Color,
 			Data:          resp.JSON200,
 			Colorize:      rawconfig.Colorize,

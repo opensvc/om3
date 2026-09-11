@@ -99,6 +99,7 @@ out:
 	output.Renderer{
 		DefaultOutput: defaultOutput,
 		Output:        t.Output,
+		Sort:          t.Sort,
 		Color:         t.Color,
 		Data:          api.IPAddressList{Items: l, Kind: "IPAddressList"},
 		Colorize:      rawconfig.Colorize,

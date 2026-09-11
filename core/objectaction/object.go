@@ -238,6 +238,18 @@ func WithOutput(s string) funcopt.O {
 	})
 }
 
+// WithSort sets the order of the result table.
+//
+// An action reaching several objects or several nodes answers a row per run,
+// and they arrive in whatever order the nodes answered in.
+func WithSort(s string) funcopt.O {
+	return funcopt.F(func(i any) error {
+		t := i.(*T)
+		t.Sort = s
+		return nil
+	})
+}
+
 func WithDefaultOutput(s string) funcopt.O {
 	return funcopt.F(func(i any) error {
 		t := i.(*T)
@@ -417,6 +429,7 @@ func (t T) DoLocal() error {
 	output.Renderer{
 		DefaultOutput: t.DefaultOutput,
 		Output:        t.Output,
+		Sort:          t.Sort,
 		Color:         t.Color,
 		Data:          results,
 		HumanRenderer: func() string { return rsHumanRender(results) },
@@ -609,6 +622,7 @@ func (t T) DoAsync() error {
 	output.Renderer{
 		DefaultOutput: "tab=OBJECT:path,ORCHESTRATION_ID:orchestration_id,STATUS:status",
 		Output:        t.Output,
+		Sort:          t.Sort,
 		Color:         t.Color,
 		Data:          rs,
 		Colorize:      rawconfig.Colorize,
@@ -760,6 +774,7 @@ func (t T) DoRemote() error {
 	output.Renderer{
 		DefaultOutput: t.DefaultOutput,
 		Output:        t.Output,
+		Sort:          t.Sort,
 		Color:         t.Color,
 		Data:          results,
 		HumanRenderer: func() string { return rsHumanRender(results) },

@@ -162,6 +162,18 @@ func WithFormat(s string) funcopt.O {
 	})
 }
 
+// WithSort sets the order of the result table.
+//
+// An action reaching several nodes answers a row per run, and they arrive in
+// whatever order the nodes answered in.
+func WithSort(s string) funcopt.O {
+	return funcopt.F(func(i any) error {
+		t := i.(*T)
+		t.Sort = s
+		return nil
+	})
+}
+
 // WithColor activates the colorization of outputs
 // auto => yes if os.Stdout is a tty
 // yes
@@ -227,6 +239,7 @@ func (t T) DoLocal() error {
 	}
 	output.Renderer{
 		Output:        t.Output,
+		Sort:          t.Sort,
 		Color:         t.Color,
 		Data:          []actionrouter.Result{result},
 		Colorize:      rawconfig.Colorize,
@@ -442,6 +455,7 @@ func (t T) DoRemote() error {
 	output.Renderer{
 		DefaultOutput: t.DefaultOutput,
 		Output:        t.Output,
+		Sort:          t.Sort,
 		Color:         t.Color,
 		Data:          results,
 		Colorize:      rawconfig.Colorize,

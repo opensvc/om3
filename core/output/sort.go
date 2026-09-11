@@ -15,6 +15,10 @@ type sortKey struct {
 	path *jsonpath.JSONPath
 	expr string
 	desc bool
+
+	// self is the term ".", which names the item itself rather than a field
+	// of it, for a listing whose items are bare values.
+	self bool
 }
 
 // parseSort reads a comma separated sort expression, each term naming a field
@@ -42,6 +46,11 @@ func parseSort(s string) ([]sortKey, error) {
 			continue
 		}
 		key.expr = term
+		if term == "." {
+			key.self = true
+			keys = append(keys, key)
+			continue
+		}
 		expr, err := RelaxedJSONPathExpression(term)
 		if err != nil {
 			return nil, fmt.Errorf("sort %s: %w", term, err)
@@ -87,36 +96,48 @@ func (a sortValue) compare(b sortValue) int {
 // An instant is compared as an instant and not as the string it is rendered
 // as: two nodes of one cluster can report the same moment with different utc
 // offsets, and the text of those does not order the way the moments do.
-func valueOf(key sortKey, item any) sortValue {
-	results, err := key.path.FindResults(item)
-	if err != nil || len(results) == 0 || len(results[0]) == 0 {
-		return sortValue{absent: true}
+func valueOf(key sortKey, item any) (sortValue, bool) {
+	var v reflect.Value
+	if key.self {
+		v = reflect.ValueOf(item)
+	} else {
+		results, err := key.path.FindResults(item)
+		if err != nil {
+			// The item has no such field. Told apart from a field it has and
+			// has nothing in, which is absent rather than unknown.
+			return sortValue{absent: true}, false
+		}
+		if len(results) == 0 || len(results[0]) == 0 {
+			return sortValue{absent: true}, true
+		}
+		v = results[0][0]
 	}
-	v, ok := indirect(results[0][0])
+	iv, ok := indirect(v)
 	if !ok {
-		return sortValue{absent: true}
+		return sortValue{absent: true}, true
 	}
+	v = iv
 	switch i := v.Interface().(type) {
 	case time.Time:
-		return sortValue{isNum: true, number: float64(i.UnixNano())}
+		return sortValue{isNum: true, number: float64(i.UnixNano())}, true
 	case time.Duration:
-		return sortValue{isNum: true, number: float64(i)}
+		return sortValue{isNum: true, number: float64(i)}, true
 	}
 	switch v.Kind() {
 	case reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64:
-		return sortValue{isNum: true, number: float64(v.Int())}
+		return sortValue{isNum: true, number: float64(v.Int())}, true
 	case reflect.Uint, reflect.Uint8, reflect.Uint16, reflect.Uint32, reflect.Uint64:
-		return sortValue{isNum: true, number: float64(v.Uint())}
+		return sortValue{isNum: true, number: float64(v.Uint())}, true
 	case reflect.Float32, reflect.Float64:
-		return sortValue{isNum: true, number: v.Float()}
+		return sortValue{isNum: true, number: v.Float()}, true
 	case reflect.Bool:
 		n := 0.0
 		if v.Bool() {
 			n = 1
 		}
-		return sortValue{isNum: true, number: n}
+		return sortValue{isNum: true, number: n}, true
 	}
-	return sortValue{text: fmt.Sprintf("%v", v.Interface())}
+	return sortValue{text: fmt.Sprintf("%v", v.Interface())}, true
 }
 
 // sortData orders the items of a listing in place.
@@ -155,11 +176,22 @@ func sortData(data any, s string) error {
 	// The values are read once per item rather than on every comparison: a
 	// jsonpath lookup is reflection, and a sort asks O(n log n) times.
 	values := make([][]sortValue, n)
+	known := make([]bool, len(keys))
 	for i := 0; i < n; i++ {
 		item := row(v.Index(i).Interface())
 		values[i] = make([]sortValue, len(keys))
 		for j, key := range keys {
-			values[i][j] = valueOf(key, item)
+			value, ok := valueOf(key, item)
+			values[i][j] = value
+			known[j] = known[j] || ok
+		}
+	}
+	for j, ok := range known {
+		if !ok {
+			// Not one item of the listing has this field. Ordering on it
+			// would do nothing at all, and a misspelled field that quietly
+			// does nothing is worse than one that says so.
+			return fmt.Errorf("sort %s: the listing has no such field", keys[j].expr)
 		}
 	}
 	order := make([]int, n)

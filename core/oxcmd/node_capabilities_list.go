@@ -91,6 +91,7 @@ out:
 	output.Renderer{
 		DefaultOutput: "tab=NODE:meta.node,NAME:data.name",
 		Output:        t.Output,
+		Sort:          t.Sort,
 		Color:         t.Color,
 		Data:          api.CapabilityList{Items: l, Kind: "CapabiliyList"},
 		Colorize:      rawconfig.Colorize,

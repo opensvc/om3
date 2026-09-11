@@ -48,6 +48,7 @@ func (t *CmdObjectResourceList) Run(kind string) error {
 		output.Renderer{
 			DefaultOutput: "tab=OBJECT:meta.object,NODE:meta.node,RID:meta.rid,ENCAP_NODE:meta.encap_node,TYPE:data.status.type,STATUS:data.status.status,IS_MONITORED:data.config.is_monitored,IS_DISABLED:data.config.is_disabled,IS_STANDBY:data.config.is_standby,RESTART:data.config.restart,RESTART_REMAINING:data.monitor.restart.remaining",
 			Output:        t.Output,
+			Sort:          t.Sort,
 			Color:         t.Color,
 			Data:          resp.JSON200,
 			Colorize:      rawconfig.Colorize,

@@ -389,6 +389,7 @@ func (t *CmdDaemonEvents) doEvent(e event.Event) {
 		}
 		output.Renderer{
 			Output:   t.Output,
+			Sort:     t.Sort,
 			Color:    t.Color,
 			Data:     ce,
 			Colorize: rawconfig.Colorize,

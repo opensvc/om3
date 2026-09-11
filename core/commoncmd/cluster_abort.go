@@ -9,6 +9,7 @@ import (
 type CmdClusterAbort struct {
 	Color  string
 	Output string
+	Sort   string
 	OptsAsync
 }
 
@@ -34,6 +35,7 @@ func (t *CmdClusterAbort) Run() error {
 		nodeaction.WithAsyncTarget("aborted"),
 		nodeaction.WithAsyncWatch(t.Watch),
 		nodeaction.WithFormat(t.Output),
+		nodeaction.WithSort(t.Sort),
 		nodeaction.WithColor(t.Color),
 	).Do()
 }

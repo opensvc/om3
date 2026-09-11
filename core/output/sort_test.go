@@ -89,6 +89,31 @@ func TestSortDataRejectsAnUnparsableTerm(t *testing.T) {
 	assert.Error(t, sortData(items, "{.a"))
 }
 
+// A misspelled field that quietly does nothing is worse than one that says so.
+func TestSortDataRejectsAFieldNoItemHas(t *testing.T) {
+	items := []sortItem{{Name: "b"}, {Name: "a"}}
+	err := sortData(items, "nmae")
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "no such field")
+	assert.Equal(t, []string{"b", "a"}, names(items), "and orders nothing")
+}
+
+// A field every item has and none has anything in is absent, not unknown: an
+// exec that has not ended has an ended_at, and it is empty.
+func TestSortDataAcceptsAFieldEveryItemLeavesEmpty(t *testing.T) {
+	items := []sortItem{{Name: "b"}, {Name: "a"}}
+	assert.NoError(t, sortData(items, "ended_at"))
+}
+
+// "." names the item itself, for a listing whose items are bare values.
+func TestSortDataOrdersBareValuesOnThemselves(t *testing.T) {
+	items := []string{"c", "a", "b"}
+	require.NoError(t, sortData(items, "."))
+	assert.Equal(t, []string{"a", "b", "c"}, items)
+	require.NoError(t, sortData(items, "-."))
+	assert.Equal(t, []string{"c", "b", "a"}, items)
+}
+
 func TestSortDataLeavesWhatItCannotOrder(t *testing.T) {
 	items := []sortItem{{Name: "b"}, {Name: "a"}}
 	require.NoError(t, sortData(items, ""))

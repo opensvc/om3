@@ -41,6 +41,7 @@ func (t *CmdNodeRelayList) Run() error {
 	output.Renderer{
 		DefaultOutput: "tab=RELAY:relay,USERNAME:username,CLUSTER_ID:cluster_id,CLUSTER_NAME:cluster_name,NODENAME:nodename,NODE_ADDR:node_addr,UPDATED_AT:updated_at,MSG_LEN:msg_len",
 		Output:        t.Output,
+		Sort:          t.Sort,
 		Color:         t.Color,
 		Data:          *resp.JSON200,
 		Colorize:      rawconfig.Colorize,

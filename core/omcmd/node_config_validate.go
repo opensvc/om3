@@ -37,6 +37,7 @@ func (t *CmdNodeConfigValidate) Run() error {
 	err := nodeaction.New(
 		nodeaction.WithRemoteNodes(t.NodeSelector),
 		nodeaction.WithFormat(t.Output),
+		nodeaction.WithSort(t.Sort),
 		nodeaction.WithColor(t.Color),
 		nodeaction.WithLocalFunc(func() (interface{}, error) {
 			n, err := object.NewNode()
@@ -62,6 +63,7 @@ func (t *CmdNodeConfigValidate) Run() error {
 	output.Renderer{
 		DefaultOutput: "tab=LEVEL:icon,DRIVER:driver,KEY:key,KIND:kind,COMMENT:comment",
 		Output:        t.Output,
+		Sort:          t.Sort,
 		Color:         t.Color,
 		Data:          alerts,
 		Colorize:      rawconfig.Colorize,

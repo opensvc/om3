@@ -20,6 +20,7 @@ type (
 func (t *CmdNodeCapabilitiesScan) Run() error {
 	return nodeaction.New(
 		nodeaction.WithFormat(t.Output),
+		nodeaction.WithSort(t.Sort),
 		nodeaction.WithColor(t.Color),
 		nodeaction.WithRemoteNodes(t.NodeSelector),
 		nodeaction.WithRemoteFunc(func(ctx context.Context, nodename string) (interface{}, error) {

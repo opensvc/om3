@@ -47,6 +47,7 @@ func (t *CmdObjectInstanceProvision) Run(kind string) error {
 		objectaction.WithMaster(t.Master),
 		objectaction.WithLocal(t.Local),
 		objectaction.WithOutput(t.Output),
+		objectaction.WithSort(t.Sort),
 		objectaction.WithColor(t.Color),
 		objectaction.WithIgnoreNotFound(t.IgnoreNotFound),
 		objectaction.WithAsyncTime(t.Time),

@@ -34,6 +34,7 @@ func (t *CmdObjectPurge) Run(kind string) error {
 		objectaction.WithSubset(t.Subset),
 		objectaction.WithLocal(t.Local),
 		objectaction.WithOutput(t.Output),
+		objectaction.WithSort(t.Sort),
 		objectaction.WithColor(t.Color),
 		objectaction.WithIgnoreNotFound(t.IgnoreNotFound),
 		objectaction.WithRemoteNodes(t.NodeSelector),

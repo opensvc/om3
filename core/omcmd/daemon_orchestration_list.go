@@ -22,7 +22,6 @@ type (
 	CmdDaemonOrchestrationList struct {
 		OptsGlobal
 		NodeSelector    string
-		Sort            string
 		States          []string
 		OrchestrationID string
 	}

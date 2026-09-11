@@ -34,6 +34,7 @@ func (t *CmdNodeList) Run() error {
 	}
 	output.Renderer{
 		Output: t.Output,
+		Sort:   t.Sort,
 		Color:  t.Color,
 		Data:   nodes,
 		HumanRenderer: func() string {

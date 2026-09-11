@@ -16,6 +16,7 @@ type (
 func (t *CmdNodePRKey) Run() error {
 	if err := nodeaction.New(
 		nodeaction.WithFormat(t.Output),
+		nodeaction.WithSort(t.Sort),
 		nodeaction.WithColor(t.Color),
 		nodeaction.WithRemoteNodes(t.NodeSelector),
 		nodeaction.WithLocalFunc(func() (any, error) {

@@ -98,6 +98,7 @@ func (t *CmdObjectConfigDoc) Run(kind string) error {
 			return ""
 		},
 		Output:   t.Output,
+		Sort:     t.Sort,
 		Color:    t.Color,
 		Data:     items,
 		Colorize: rawconfig.Colorize,

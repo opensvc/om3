@@ -28,6 +28,7 @@ type (
 	CmdDaemonKill struct {
 		NodeSelector    string
 		Output          string
+		Sort            string
 		Color           string
 		Signal          string
 		DryRun          bool
@@ -83,6 +84,7 @@ Example:
 	flags := cmd.Flags()
 	FlagNodeSelector(flags, &options.NodeSelector)
 	FlagOutput(flags, &options.Output)
+	FlagSort(flags, &options.Sort)
 	FlagColor(flags, &options.Color)
 	FlagObjectSelector(flags, &options.Selector)
 	FlagRID(flags, &options.RID)
@@ -182,6 +184,7 @@ func (t *CmdDaemonKill) Run() error {
 	output.Renderer{
 		DefaultOutput: execPsColumns,
 		Output:        t.Output,
+		Sort:          t.Sort,
 		Color:         t.Color,
 		Data:          ToExecViews(items),
 		Colorize:      rawconfig.Colorize,

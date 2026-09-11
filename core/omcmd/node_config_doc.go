@@ -18,6 +18,7 @@ type (
 	CmdNodeConfigDoc struct {
 		Color   string
 		Output  string
+		Sort    string
 		Keyword string
 		Driver  string
 		Depth   int
@@ -75,6 +76,7 @@ func (t *CmdNodeConfigDoc) Run() error {
 			return ""
 		},
 		Output:   t.Output,
+		Sort:     t.Sort,
 		Color:    t.Color,
 		Data:     items,
 		Colorize: rawconfig.Colorize,

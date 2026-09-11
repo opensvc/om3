@@ -74,6 +74,7 @@ func (t *CmdPoolList) Run() error {
 		output.Renderer{
 			DefaultOutput: "tab=" + cols,
 			Output:        t.Output,
+			Sort:          t.Sort,
 			Color:         t.Color,
 			Data:          lines,
 			Colorize:      rawconfig.Colorize,

@@ -24,6 +24,7 @@ type (
 func (t *CmdNodeSCSIScan) Run() error {
 	return nodeaction.New(
 		nodeaction.WithFormat(t.Output),
+		nodeaction.WithSort(t.Sort),
 		nodeaction.WithColor(t.Color),
 		nodeaction.WithRemoteNodes(t.NodeSelector),
 		nodeaction.WithLocalFunc(func() (interface{}, error) {

@@ -861,6 +861,7 @@ func newCmdNodeDrivers() *cobra.Command {
 	flags := cmd.Flags()
 	commoncmd.FlagColor(flags, &options.Color)
 	commoncmd.FlagOutput(flags, &options.Output)
+	commoncmd.FlagSort(flags, &options.Sort)
 	return cmd
 }
 
@@ -1105,7 +1106,6 @@ follow one.`,
 	commoncmd.CmdWithArg(cmd, `ORCHESTRATION_ID  The orchestration id the submitter of the action was handed.`)
 	flags := cmd.Flags()
 	addFlagsGlobal(flags, &options.OptsGlobal)
-	commoncmd.FlagSort(flags, &options.Sort)
 	commoncmd.FlagNodeSelectorOrLocalnode(flags, &options.NodeSelector)
 	flags.StringSliceVar(&options.States, "state", nil, "list the orchestrations in these states, every state when not set")
 	return cmd
@@ -3754,6 +3754,7 @@ func newCmdPoolList() *cobra.Command {
 	flags := cmd.Flags()
 	commoncmd.FlagColor(flags, &options.Color)
 	commoncmd.FlagOutput(flags, &options.Output)
+	commoncmd.FlagSort(flags, &options.Sort)
 	commoncmd.FlagPoolName(flags, &options.Name)
 	commoncmd.FlagNodeSelector(flags, &options.NodeSelector)
 	return cmd

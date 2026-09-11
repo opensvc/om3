@@ -46,6 +46,7 @@ func (t *CmdObjectInstanceList) Run(kind string) error {
 		output.Renderer{
 			DefaultOutput: "tab=OBJECT:meta.object,NODE:meta.node,AVAIL:data.status.avail",
 			Output:        t.Output,
+			Sort:          t.Sort,
 			Color:         t.Color,
 			Data:          resp.JSON200,
 			Colorize:      rawconfig.Colorize,

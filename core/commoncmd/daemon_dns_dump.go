@@ -18,6 +18,7 @@ type (
 	CmdDaemonDNSDump struct {
 		Color        string
 		Output       string
+		Sort         string
 		NodeSelector string
 	}
 )
@@ -34,6 +35,7 @@ func NewCmdDaemonDNSDump() *cobra.Command {
 	flags := cmd.Flags()
 	FlagColor(flags, &options.Color)
 	FlagOutput(flags, &options.Output)
+	FlagSort(flags, &options.Sort)
 	FlagNodeSelector(flags, &options.NodeSelector)
 	return cmd
 }
@@ -60,6 +62,7 @@ func (t *CmdDaemonDNSDump) Run() error {
 	}
 	renderer := output.Renderer{
 		Output:   t.Output,
+		Sort:     t.Sort,
 		Color:    t.Color,
 		Data:     parsed,
 		Colorize: rawconfig.Colorize,

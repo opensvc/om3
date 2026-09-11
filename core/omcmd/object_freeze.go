@@ -28,6 +28,7 @@ func (t *CmdObjectFreeze) Run(kind string) error {
 		objectaction.WithLocal(t.Local),
 		objectaction.WithObjectSelector(mergedSelector),
 		objectaction.WithOutput(t.Output),
+		objectaction.WithSort(t.Sort),
 		objectaction.WithColor(t.Color),
 		objectaction.WithIgnoreNotFound(t.IgnoreNotFound),
 		objectaction.WithAsyncTarget("frozen"),

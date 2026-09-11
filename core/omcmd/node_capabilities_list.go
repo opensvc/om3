@@ -62,6 +62,7 @@ func (t *CmdNodeCapabilitiesList) remote() error {
 	output.Renderer{
 		DefaultOutput: "tab=NODE:meta.node,NAME:data.name",
 		Output:        t.Output,
+		Sort:          t.Sort,
 		Color:         t.Color,
 		Data:          data,
 		Colorize:      rawconfig.Colorize,
@@ -116,6 +117,7 @@ func (t *CmdNodeCapabilitiesList) local() error {
 	output.Renderer{
 		DefaultOutput: "tab=data.name",
 		Output:        t.Output,
+		Sort:          t.Sort,
 		Color:         t.Color,
 		Data:          data,
 		Colorize:      rawconfig.Colorize,

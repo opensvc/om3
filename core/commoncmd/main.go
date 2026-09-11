@@ -29,6 +29,7 @@ type (
 	OptsGlobal struct {
 		Color          string
 		Output         string
+		Sort           string
 		ObjectSelector string
 		IgnoreNotFound bool
 	}
@@ -36,6 +37,7 @@ type (
 	OptsNodeGlobal struct {
 		Color          string
 		Output         string
+		Sort           string
 		NodeSelector   string
 		IgnoreNotFound bool
 	}
