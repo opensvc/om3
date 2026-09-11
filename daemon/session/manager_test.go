@@ -149,7 +149,7 @@ func TestAnOrchestrationIsKnownFromTheMonitorsAlone(t *testing.T) {
 	require.True(t, ok, "no node accepted it here, and it is known all the same")
 	assert.Equal(t, StateRunning, o.State)
 	assert.Equal(t, "s1", o.Path)
-	assert.Equal(t, at, o.BeginAt, "the start is the one every node agrees on")
+	assert.Equal(t, at, o.StartedAt, "the start is the one every node agrees on")
 
 	// One node reaching it is not the end of it.
 	m.handle(mon("n1", uuid.Nil))
@@ -160,7 +160,7 @@ func TestAnOrchestrationIsKnownFromTheMonitorsAlone(t *testing.T) {
 	m.handle(mon("n2", uuid.Nil))
 	o, _ = GetOrchestration(id.String())
 	assert.Equal(t, StateSucceeded, o.State)
-	require.NotNil(t, o.EndAt)
+	require.NotNil(t, o.EndedAt)
 }
 
 // A monitor naming no orchestration must not invent one.

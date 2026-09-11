@@ -15,14 +15,14 @@ func TestASessionIsRunningUntilItsEndIsSeen(t *testing.T) {
 	s, ok := firstExecOfSession("s1")
 	require.True(t, ok)
 	assert.Equal(t, StateRunning, s.State)
-	assert.Nil(t, s.EndAt)
+	assert.Nil(t, s.EndedAt)
 
 	EndExec("e-s1", "s1", StateSucceeded, "", 0, 3*time.Second)
 	s, ok = firstExecOfSession("s1")
 	require.True(t, ok)
 	assert.Equal(t, StateSucceeded, s.State)
 	assert.Equal(t, 3*time.Second, s.Duration)
-	require.NotNil(t, s.EndAt)
+	require.NotNil(t, s.EndedAt)
 }
 
 // A failure carries what failed, which is the reason to ask at all.
@@ -122,7 +122,7 @@ func TestWhatEndedLongAgoIsDroppedAndWhatRunsIsKept(t *testing.T) {
 	// Age it past the retention.
 	mu.Lock()
 	past := time.Now().Add(-2 * MaxAge)
-	execs["e-old"].EndAt = &past
+	execs["e-old"].EndedAt = &past
 	mu.Unlock()
 
 	Purge()

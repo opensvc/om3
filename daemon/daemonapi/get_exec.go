@@ -90,7 +90,7 @@ func execItem(e session.Exec, pids map[string]int) api.ExecItem {
 		Origin:    e.Origin,
 		Command:   e.Command,
 		State:     string(e.State),
-		BeginAt:   e.BeginAt,
+		StartedAt: e.StartedAt,
 		ExitCode:  e.ExitCode,
 	}
 	if e.OrchestrationID != "" {
@@ -108,8 +108,8 @@ func execItem(e session.Exec, pids map[string]int) api.ExecItem {
 	if e.Error != "" {
 		item.Error = &e.Error
 	}
-	if e.EndAt != nil {
-		item.EndAt = e.EndAt
+	if e.EndedAt != nil {
+		item.EndedAt = e.EndedAt
 	}
 	if e.Duration > 0 {
 		d := int64(e.Duration)

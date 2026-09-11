@@ -7616,7 +7616,7 @@ components:
 
     ExecItem:
       type: object
-      required: [session_id, exec_id, node, origin, command, state, begin_at]
+      required: [session_id, exec_id, node, origin, command, state, started_at]
       properties:
         session_id:
           type: string
@@ -7650,10 +7650,10 @@ components:
         exit_code:
           type: integer
           description: What the process exited with, 128 + the signal number when a signal ended it, as the shell reports it. Absent while it runs. -1 when the process never ran at all.
-        begin_at:
+        started_at:
           type: string
           format: date-time
-        end_at:
+        ended_at:
           type: string
           format: date-time
         duration:
@@ -7682,7 +7682,7 @@ components:
 
     OrchestrationItem:
       type: object
-      required: [orchestration_id, node, state, begin_at]
+      required: [orchestration_id, node, state, started_at]
       properties:
         orchestration_id:
           type: string
@@ -7700,10 +7700,10 @@ components:
           description: One of running, succeeded, aborted, refused.
         error:
           type: string
-        begin_at:
+        started_at:
           type: string
           format: date-time
-        end_at:
+        ended_at:
           type: string
           format: date-time
 

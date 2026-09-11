@@ -1277,12 +1277,11 @@ type EventList = openapi_types.File
 
 // ExecItem defines model for ExecItem.
 type ExecItem struct {
-	BeginAt time.Time `json:"begin_at"`
-	Command string    `json:"command"`
+	Command string `json:"command"`
 
 	// Duration Nanoseconds the exec ran for.
 	Duration *int64     `json:"duration,omitempty"`
-	EndAt    *time.Time `json:"end_at,omitempty"`
+	EndedAt  *time.Time `json:"ended_at,omitempty"`
 	Error    *string    `json:"error,omitempty"`
 
 	// ExecID The exec this reports, which is what has one object, one outcome, one duration and one exit code.
@@ -1308,7 +1307,8 @@ type ExecItem struct {
 	RID *string `json:"rid,omitempty"`
 
 	// SessionID The session id the submitter was handed. Several execs share it when one command reaches several objects of a node.
-	SessionID string `json:"session_id"`
+	SessionID string    `json:"session_id"`
+	StartedAt time.Time `json:"started_at"`
 
 	// State One of running, succeeded, failed.
 	State string  `json:"state"`
@@ -1911,8 +1911,7 @@ type Orchestrate string
 
 // OrchestrationItem defines model for OrchestrationItem.
 type OrchestrationItem struct {
-	BeginAt      time.Time  `json:"begin_at"`
-	EndAt        *time.Time `json:"end_at,omitempty"`
+	EndedAt      *time.Time `json:"ended_at,omitempty"`
 	Error        *string    `json:"error,omitempty"`
 	GlobalExpect *string    `json:"global_expect,omitempty"`
 	Node         string     `json:"node"`
@@ -1921,7 +1920,8 @@ type OrchestrationItem struct {
 	OrchestrationID string `json:"orchestration_id"`
 
 	// Path The object the orchestration is of. Absent when it is of the node.
-	Path *string `json:"path,omitempty"`
+	Path      *string   `json:"path,omitempty"`
+	StartedAt time.Time `json:"started_at"`
 
 	// State One of running, succeeded, aborted, refused.
 	State string `json:"state"`

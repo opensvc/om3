@@ -47,7 +47,7 @@ type (
 )
 
 const (
-	execListColumns = "tab=NODE:node,STATE:state,EXEC_ID:exec_id,SESSION_ID:session_id,PATH:path,ORIGIN:origin,BEGIN_AT:begin_at,DURATION:duration,COMMAND:command"
+	execListColumns = "tab=NODE:node,STATE:state,EXEC_ID:exec_id,SESSION_ID:session_id,PATH:path,ORIGIN:origin,STARTED_AT:started_at,DURATION:duration,COMMAND:command"
 	execPsColumns   = "tab=PID:pid,NODE:node,EXEC_ID:exec_id,PATH:path,RID:rid,ORIGIN:origin,DURATION:duration,COMMAND:command"
 )
 
@@ -235,7 +235,7 @@ type ExecView struct {
 	Origin          string `json:"origin"`
 	RID             string `json:"rid,omitempty"`
 	Pid             *int   `json:"pid,omitempty"`
-	BeginAt         string `json:"begin_at"`
+	StartedAt       string `json:"started_at"`
 	Duration        string `json:"duration,omitempty"`
 	ExitCode        *int   `json:"exit_code,omitempty"`
 	Command         string `json:"command,omitempty"`
@@ -253,7 +253,7 @@ func ToExecViews(items []api.ExecItem) []ExecView {
 			SessionID: i.SessionID,
 			Origin:    i.Origin,
 			Pid:       i.Pid,
-			BeginAt:   i.BeginAt.Truncate(time.Second).Format(time.RFC3339),
+			StartedAt: i.StartedAt.Truncate(time.Second).Format(time.RFC3339),
 			ExitCode:  i.ExitCode,
 			Command:   i.Command,
 		}
@@ -275,7 +275,7 @@ func ToExecViews(items []api.ExecItem) []ExecView {
 		default:
 			// Still running: how long it has been is the same question its
 			// duration answers once it ends, so it is the same column.
-			v.Duration = duration.FmtShortDuration(now.Sub(i.BeginAt))
+			v.Duration = duration.FmtShortDuration(now.Sub(i.StartedAt))
 		}
 		l = append(l, v)
 	}

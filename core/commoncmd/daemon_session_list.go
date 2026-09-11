@@ -30,7 +30,7 @@ type (
 
 	// SessionView is one session, folded from its execs.
 	SessionView struct {
-		beginAt         time.Time
+		startedAt       time.Time
 		SessionID       string `json:"session_id"`
 		State           string `json:"state"`
 		OrchestrationID string `json:"orchestration_id,omitempty"`
@@ -40,13 +40,13 @@ type (
 		Nodes           int    `json:"nodes"`
 		Objects         int    `json:"objects"`
 		Origin          string `json:"origin"`
-		BeginAt         string `json:"begin_at"`
+		StartedAt       string `json:"started_at"`
 		Duration        string `json:"duration,omitempty"`
 		Command         string `json:"command,omitempty"`
 	}
 )
 
-const sessionListColumns = "tab=SESSION_ID:session_id,STATE:state,EXECS:execs,FAILED:failed,NODES:nodes,OBJECTS:objects,ORIGIN:origin,BEGIN_AT:begin_at,DURATION:duration,COMMAND:command"
+const sessionListColumns = "tab=SESSION_ID:session_id,STATE:state,EXECS:execs,FAILED:failed,NODES:nodes,OBJECTS:objects,ORIGIN:origin,STARTED_AT:started_at,DURATION:duration,COMMAND:command"
 
 func (t *CmdDaemonSessionList) Run() error {
 	items, err := t.Gather()
@@ -81,7 +81,7 @@ func ToSessionViews(items []api.ExecItem) []SessionView {
 		if !ok {
 			a = &acc{
 				v:       SessionView{SessionID: i.SessionID, Origin: i.Origin},
-				begin:   i.BeginAt,
+				begin:   i.StartedAt,
 				nodes:   make(map[string]bool),
 				objects: make(map[string]bool),
 				command: i.Command,
@@ -106,13 +106,13 @@ func ToSessionViews(items []api.ExecItem) []SessionView {
 		if i.Command != a.command {
 			a.varies = true
 		}
-		if i.BeginAt.Before(a.begin) {
-			a.begin = i.BeginAt
+		if i.StartedAt.Before(a.begin) {
+			a.begin = i.StartedAt
 		}
-		if i.EndAt != nil {
+		if i.EndedAt != nil {
 			a.ended = true
-			if i.EndAt.After(a.end) {
-				a.end = *i.EndAt
+			if i.EndedAt.After(a.end) {
+				a.end = *i.EndedAt
 			}
 		}
 	}
@@ -135,8 +135,8 @@ func ToSessionViews(items []api.ExecItem) []SessionView {
 		default:
 			v.State = "succeeded"
 		}
-		v.beginAt = a.begin
-		v.BeginAt = a.begin.Truncate(time.Second).Format(time.RFC3339)
+		v.startedAt = a.begin
+		v.StartedAt = a.begin.Truncate(time.Second).Format(time.RFC3339)
 		// Wall time of the whole command, not the sum of its parts: the execs
 		// run at the same time, and what the submitter waited is the span.
 		if v.Running == 0 && a.ended {
@@ -153,7 +153,7 @@ func ToSessionViews(items []api.ExecItem) []SessionView {
 		}
 		l = append(l, v)
 	}
-	sort.Slice(l, func(i, j int) bool { return l[i].beginAt.After(l[j].beginAt) })
+	sort.Slice(l, func(i, j int) bool { return l[i].startedAt.After(l[j].startedAt) })
 	return l
 }
 

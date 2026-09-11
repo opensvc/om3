@@ -47,8 +47,8 @@ type (
 		State           State         `json:"state"`
 		Error           string        `json:"error,omitempty"`
 		ExitCode        *int          `json:"exit_code,omitempty"`
-		BeginAt         time.Time     `json:"begin_at"`
-		EndAt           *time.Time    `json:"end_at,omitempty"`
+		StartedAt       time.Time     `json:"started_at"`
+		EndedAt         *time.Time    `json:"ended_at,omitempty"`
 		Duration        time.Duration `json:"duration,omitempty"`
 	}
 
@@ -61,8 +61,8 @@ type (
 		GlobalExpect    string     `json:"global_expect,omitempty"`
 		State           State      `json:"state"`
 		Error           string     `json:"error,omitempty"`
-		BeginAt         time.Time  `json:"begin_at"`
-		EndAt           *time.Time `json:"end_at,omitempty"`
+		StartedAt       time.Time  `json:"started_at"`
+		EndedAt         *time.Time `json:"ended_at,omitempty"`
 	}
 )
 
@@ -116,8 +116,8 @@ func AddExec(s Exec) {
 	}
 	mu.Lock()
 	defer mu.Unlock()
-	if s.BeginAt.IsZero() {
-		s.BeginAt = time.Now()
+	if s.StartedAt.IsZero() {
+		s.StartedAt = time.Now()
 	}
 	s.State = StateRunning
 	execs[s.ExecID] = &s
@@ -141,14 +141,14 @@ func EndExec(execID, sessionID string, state State, errS string, exitCode int, d
 	now := time.Now()
 	s, ok := execs[execID]
 	if !ok {
-		s = &Exec{SessionID: sessionID, ExecID: execID, BeginAt: now.Add(-duration)}
+		s = &Exec{SessionID: sessionID, ExecID: execID, StartedAt: now.Add(-duration)}
 		execs[execID] = s
 	}
 	s.State = state
 	s.Error = errS
 	s.ExitCode = &exitCode
 	s.Duration = duration
-	s.EndAt = &now
+	s.EndedAt = &now
 	purgeExecs()
 }
 
@@ -159,8 +159,8 @@ func AddOrchestration(o Orchestration) {
 	}
 	mu.Lock()
 	defer mu.Unlock()
-	if o.BeginAt.IsZero() {
-		o.BeginAt = time.Now()
+	if o.StartedAt.IsZero() {
+		o.StartedAt = time.Now()
 	}
 	o.State = StateRunning
 	orchestrations[o.OrchestrationID] = &o
@@ -176,12 +176,12 @@ func EndOrchestration(id string, state State, errS string) {
 	now := time.Now()
 	o, ok := orchestrations[id]
 	if !ok {
-		o = &Orchestration{OrchestrationID: id, BeginAt: now}
+		o = &Orchestration{OrchestrationID: id, StartedAt: now}
 		orchestrations[id] = o
 	}
 	o.State = state
 	o.Error = errS
-	o.EndAt = &now
+	o.EndedAt = &now
 	purgeOrchestrations()
 }
 
@@ -228,9 +228,9 @@ func join(id, path, node, globalExpect string, updatedAt time.Time) {
 
 	o, ok := orchestrations[id]
 	if !ok {
-		beginAt := updatedAt
-		if beginAt.IsZero() {
-			beginAt = time.Now()
+		startedAt := updatedAt
+		if startedAt.IsZero() {
+			startedAt = time.Now()
 		}
 		orchestrations[id] = &Orchestration{
 			OrchestrationID: id,
@@ -241,7 +241,7 @@ func join(id, path, node, globalExpect string, updatedAt time.Time) {
 			Path:         path,
 			GlobalExpect: globalExpect,
 			State:        StateRunning,
-			BeginAt:      beginAt,
+			StartedAt:    startedAt,
 		}
 		return
 	}
@@ -269,7 +269,7 @@ func leave(id, node string) {
 	if !ok {
 		return
 	}
-	if o.EndAt != nil {
+	if o.EndedAt != nil {
 		// Ended already, and by something that knows how it ended: an
 		// orchestration that was aborted or refused says so, where the
 		// monitors falling silent only says it is over.
@@ -277,7 +277,7 @@ func leave(id, node string) {
 	}
 	now := time.Now()
 	o.State = StateSucceeded
-	o.EndAt = &now
+	o.EndedAt = &now
 	purgeOrchestrations()
 }
 
@@ -359,7 +359,7 @@ func ListExecs(f Filter) []Exec {
 			l = append(l, *s)
 		}
 	}
-	sort.Slice(l, func(i, j int) bool { return l[i].BeginAt.After(l[j].BeginAt) })
+	sort.Slice(l, func(i, j int) bool { return l[i].StartedAt.After(l[j].StartedAt) })
 	return l
 }
 
@@ -389,7 +389,7 @@ func ListOrchestrations(f Filter) []Orchestration {
 		}
 		l = append(l, *o)
 	}
-	sort.Slice(l, func(i, j int) bool { return l[i].BeginAt.After(l[j].BeginAt) })
+	sort.Slice(l, func(i, j int) bool { return l[i].StartedAt.After(l[j].StartedAt) })
 	return l
 }
 
@@ -399,10 +399,10 @@ func purgeExecs() {
 	deadline := time.Now().Add(-MaxAge)
 	ended := make([]*Exec, 0, len(execs))
 	for id, s := range execs {
-		if s.EndAt == nil {
+		if s.EndedAt == nil {
 			continue
 		}
-		if s.EndAt.Before(deadline) {
+		if s.EndedAt.Before(deadline) {
 			delete(execs, id)
 			continue
 		}
@@ -411,7 +411,7 @@ func purgeExecs() {
 	if len(ended) <= MaxEntries {
 		return
 	}
-	sort.Slice(ended, func(i, j int) bool { return ended[i].EndAt.Before(*ended[j].EndAt) })
+	sort.Slice(ended, func(i, j int) bool { return ended[i].EndedAt.Before(*ended[j].EndedAt) })
 	for _, s := range ended[:len(ended)-MaxEntries] {
 		delete(execs, s.ExecID)
 	}
@@ -423,10 +423,10 @@ func purgeOrchestrations() {
 	deadline := time.Now().Add(-MaxAge)
 	ended := make([]*Orchestration, 0, len(orchestrations))
 	for id, o := range orchestrations {
-		if o.EndAt == nil {
+		if o.EndedAt == nil {
 			continue
 		}
-		if o.EndAt.Before(deadline) {
+		if o.EndedAt.Before(deadline) {
 			delete(orchestrations, id)
 			forget(id)
 			continue
@@ -436,7 +436,7 @@ func purgeOrchestrations() {
 	if len(ended) <= MaxEntries {
 		return
 	}
-	sort.Slice(ended, func(i, j int) bool { return ended[i].EndAt.Before(*ended[j].EndAt) })
+	sort.Slice(ended, func(i, j int) bool { return ended[i].EndedAt.Before(*ended[j].EndedAt) })
 	for _, o := range ended[:len(ended)-MaxEntries] {
 		delete(orchestrations, o.OrchestrationID)
 		forget(o.OrchestrationID)

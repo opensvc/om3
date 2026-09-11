@@ -65,7 +65,7 @@ func orchestrationItem(o session.Orchestration) api.OrchestrationItem {
 		OrchestrationID: o.OrchestrationID,
 		Node:            o.Node,
 		State:           string(o.State),
-		BeginAt:         o.BeginAt,
+		StartedAt:       o.StartedAt,
 	}
 	if o.Path != "" {
 		item.Path = &o.Path
@@ -76,8 +76,8 @@ func orchestrationItem(o session.Orchestration) api.OrchestrationItem {
 	if o.Error != "" {
 		item.Error = &o.Error
 	}
-	if o.EndAt != nil {
-		item.EndAt = o.EndAt
+	if o.EndedAt != nil {
+		item.EndedAt = o.EndedAt
 	}
 	return item
 }

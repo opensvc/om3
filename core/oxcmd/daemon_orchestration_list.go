@@ -170,7 +170,7 @@ func (t *CmdDaemonOrchestrationList) one(ctx context.Context, c *client.T, noden
 
 func (t *CmdDaemonOrchestrationList) render(items []api.OrchestrationItem) {
 	output.Renderer{
-		DefaultOutput: "tab=STATE:state,ORCHESTRATION_ID:orchestration_id,PATH:path,GLOBAL_EXPECT:global_expect,ACCEPTED_BY:node,BEGIN_AT:begin_at,END_AT:end_at",
+		DefaultOutput: "tab=STATE:state,ORCHESTRATION_ID:orchestration_id,PATH:path,GLOBAL_EXPECT:global_expect,ACCEPTED_BY:node,STARTED_AT:started_at,ENDED_AT:ended_at",
 		Output:        t.Output,
 		Color:         t.Color,
 		Data:          toOrchestrationViews(items),
@@ -185,8 +185,8 @@ type orchestrationView struct {
 	Path            string `json:"path,omitempty"`
 	GlobalExpect    string `json:"global_expect,omitempty"`
 	AcceptedBy      string `json:"node,omitempty"`
-	BeginAt         string `json:"begin_at"`
-	EndAt           string `json:"end_at,omitempty"`
+	StartedAt       string `json:"started_at"`
+	EndedAt         string `json:"ended_at,omitempty"`
 	Error           string `json:"error,omitempty"`
 }
 
@@ -197,7 +197,7 @@ func toOrchestrationViews(items []api.OrchestrationItem) []orchestrationView {
 			State:           i.State,
 			OrchestrationID: i.OrchestrationID,
 			AcceptedBy:      i.Node,
-			BeginAt:         i.BeginAt.Truncate(time.Second).Format(time.RFC3339),
+			StartedAt:       i.StartedAt.Truncate(time.Second).Format(time.RFC3339),
 		}
 		if i.Path != nil {
 			v.Path = *i.Path
@@ -208,8 +208,8 @@ func toOrchestrationViews(items []api.OrchestrationItem) []orchestrationView {
 		if i.Error != nil {
 			v.Error = *i.Error
 		}
-		if i.EndAt != nil {
-			v.EndAt = i.EndAt.Truncate(time.Second).Format(time.RFC3339)
+		if i.EndedAt != nil {
+			v.EndedAt = i.EndedAt.Truncate(time.Second).Format(time.RFC3339)
 		}
 		l = append(l, v)
 	}
