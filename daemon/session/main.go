@@ -15,10 +15,12 @@
 package session
 
 import (
+	"slices"
 	"sort"
 	"sync"
 	"time"
 
+	"github.com/opensvc/om3/v3/core/resourceid"
 	"github.com/opensvc/om3/v3/util/xsession"
 )
 
@@ -26,30 +28,32 @@ type (
 	// State is where a session got to.
 	State string
 
-	// Session is one exec the daemon ran, or is running.
+	// Exec is one command the daemon ran, or is running.
 	//
 	// The exec is the unit, not the session: one command reaches several
 	// objects of a node under one session id, each of them its own exec with
 	// its own outcome and its own duration. So the exec id is what a record
 	// is keyed by, and the session id is what several of them share.
-	Session struct {
+	Exec struct {
 		SessionID       string        `json:"session_id"`
 		ExecID          string        `json:"exec_id"`
 		OrchestrationID string        `json:"orchestration_id,omitempty"`
 		Node            string        `json:"node"`
 		Path            string        `json:"path,omitempty"`
 		Origin          string        `json:"origin"`
+		RID             string        `json:"rid,omitempty"`
 		Title           string        `json:"title,omitempty"`
 		Command         string        `json:"command"`
 		State           State         `json:"state"`
 		Error           string        `json:"error,omitempty"`
+		ExitCode        *int          `json:"exit_code,omitempty"`
 		BeginAt         time.Time     `json:"begin_at"`
 		EndAt           *time.Time    `json:"end_at,omitempty"`
 		Duration        time.Duration `json:"duration,omitempty"`
 	}
 
 	// Orchestration is one orchestration the daemon accepted, and the
-	// sessions it ran under it.
+	// execs it ran under it.
 	Orchestration struct {
 		OrchestrationID string     `json:"orchestration_id"`
 		Node            string     `json:"node"`
@@ -83,7 +87,7 @@ const (
 var (
 	mu sync.RWMutex
 
-	sessions       = make(map[string]*Session)
+	execs          = make(map[string]*Exec)
 	orchestrations = make(map[string]*Orchestration)
 
 	// participants is, per orchestration, the nodes whose instance monitor
@@ -105,8 +109,8 @@ var (
 	MaxAge = time.Hour
 )
 
-// AddSession records an exec the daemon started.
-func AddSession(s Session) {
+// AddExec records an exec the daemon started.
+func AddExec(s Exec) {
 	if s.ExecID == "" {
 		return
 	}
@@ -116,10 +120,10 @@ func AddSession(s Session) {
 		s.BeginAt = time.Now()
 	}
 	s.State = StateRunning
-	sessions[s.ExecID] = &s
+	execs[s.ExecID] = &s
 }
 
-// EndSession records how an exec ended.
+// EndExec records how an exec ended.
 //
 // It ends the exec and not the session: several execs share a session id, and
 // ending by that id would have the second of them overwrite the first, which
@@ -128,23 +132,24 @@ func AddSession(s Session) {
 // An exec the daemon never saw start is recorded all the same: the end
 // carries what is needed to answer, and losing it because a message was
 // missed would leave a client polling something that is over.
-func EndSession(execID, sessionID string, state State, errS string, duration time.Duration) {
+func EndExec(execID, sessionID string, state State, errS string, exitCode int, duration time.Duration) {
 	if execID == "" {
 		return
 	}
 	mu.Lock()
 	defer mu.Unlock()
 	now := time.Now()
-	s, ok := sessions[execID]
+	s, ok := execs[execID]
 	if !ok {
-		s = &Session{SessionID: sessionID, ExecID: execID, BeginAt: now.Add(-duration)}
-		sessions[execID] = s
+		s = &Exec{SessionID: sessionID, ExecID: execID, BeginAt: now.Add(-duration)}
+		execs[execID] = s
 	}
 	s.State = state
 	s.Error = errS
+	s.ExitCode = &exitCode
 	s.Duration = duration
 	s.EndAt = &now
-	purgeSessions()
+	purgeExecs()
 }
 
 // AddOrchestration records an orchestration the monitor accepted.
@@ -276,22 +281,15 @@ func leave(id, node string) {
 	purgeOrchestrations()
 }
 
-// GetSessions returns the execs run under a session id, newest first.
-//
-// Several is the normal answer, not the exception: one command reaching two
-// objects of a node runs two execs under one session id, each with its own
-// outcome.
-func GetSessions(sessionID string) []Session {
+// GetExec returns the exec of an id, and whether it is still known.
+func GetExec(execID string) (Exec, bool) {
 	mu.RLock()
 	defer mu.RUnlock()
-	l := make([]Session, 0, 1)
-	for _, s := range sessions {
-		if s.SessionID == sessionID {
-			l = append(l, *s)
-		}
+	s, ok := execs[execID]
+	if !ok {
+		return Exec{}, false
 	}
-	sort.Slice(l, func(i, j int) bool { return l[i].BeginAt.After(l[j].BeginAt) })
-	return l
+	return *s, true
 }
 
 // GetOrchestration returns the orchestration of an id, and whether it is
@@ -309,14 +307,20 @@ func GetOrchestration(id string) (Orchestration, bool) {
 // Filter is what a listing is narrowed by. A zero value narrows nothing.
 type Filter struct {
 	States          []State
+	Origins         []string
+	SessionID       string
 	OrchestrationID string
 	ExecID          string
 	Path            string
 	Node            string
+	RID             string
 }
 
-func (f Filter) match(s *Session) bool {
+func (f Filter) match(s *Exec) bool {
 	if f.ExecID != "" && s.ExecID != f.ExecID {
+		return false
+	}
+	if f.SessionID != "" && s.SessionID != f.SessionID {
 		return false
 	}
 	if f.OrchestrationID != "" && s.OrchestrationID != f.OrchestrationID {
@@ -326,6 +330,12 @@ func (f Filter) match(s *Session) bool {
 		return false
 	}
 	if f.Node != "" && s.Node != f.Node {
+		return false
+	}
+	if f.RID != "" && !resourceid.Match(s.RID, f.RID) {
+		return false
+	}
+	if len(f.Origins) > 0 && !slices.Contains(f.Origins, s.Origin) {
 		return false
 	}
 	if len(f.States) == 0 {
@@ -339,12 +349,12 @@ func (f Filter) match(s *Session) bool {
 	return false
 }
 
-// ListSessions returns the sessions a filter matches, newest first.
-func ListSessions(f Filter) []Session {
+// ListExecs returns the execs a filter matches, newest first.
+func ListExecs(f Filter) []Exec {
 	mu.RLock()
 	defer mu.RUnlock()
-	l := make([]Session, 0, len(sessions))
-	for _, s := range sessions {
+	l := make([]Exec, 0, len(execs))
+	for _, s := range execs {
 		if f.match(s) {
 			l = append(l, *s)
 		}
@@ -383,17 +393,17 @@ func ListOrchestrations(f Filter) []Orchestration {
 	return l
 }
 
-// purgeSessions drops the ended sessions that are too old or too many.
+// purgeExecs drops the ended execs that are too old or too many.
 // The caller holds the lock.
-func purgeSessions() {
+func purgeExecs() {
 	deadline := time.Now().Add(-MaxAge)
-	ended := make([]*Session, 0, len(sessions))
-	for id, s := range sessions {
+	ended := make([]*Exec, 0, len(execs))
+	for id, s := range execs {
 		if s.EndAt == nil {
 			continue
 		}
 		if s.EndAt.Before(deadline) {
-			delete(sessions, id)
+			delete(execs, id)
 			continue
 		}
 		ended = append(ended, s)
@@ -403,7 +413,7 @@ func purgeSessions() {
 	}
 	sort.Slice(ended, func(i, j int) bool { return ended[i].EndAt.Before(*ended[j].EndAt) })
 	for _, s := range ended[:len(ended)-MaxEntries] {
-		delete(sessions, s.ExecID)
+		delete(execs, s.ExecID)
 	}
 }
 
@@ -448,7 +458,7 @@ func forget(id string) {
 func Purge() {
 	mu.Lock()
 	defer mu.Unlock()
-	purgeSessions()
+	purgeExecs()
 	purgeOrchestrations()
 }
 
@@ -456,7 +466,7 @@ func Purge() {
 func reset() {
 	mu.Lock()
 	defer mu.Unlock()
-	sessions = make(map[string]*Session)
+	execs = make(map[string]*Exec)
 	orchestrations = make(map[string]*Orchestration)
 	participants = make(map[string]map[string]bool)
 	monitorOrchestration = make(map[string]string)

@@ -286,6 +286,13 @@ func FlagNodeSelectorOrAll(flags *pflag.FlagSet, p *string) {
 	flags.StringVar(p, "node", "*", "submit the action to the selected nodes")
 }
 
+// FlagNodeSelectorWithDefault declares the node selector of a command that om
+// and ox default differently: om answers for the node it runs on, ox has no
+// node of its own to prefer.
+func FlagNodeSelectorWithDefault(flags *pflag.FlagSet, p *string, def string) {
+	flags.StringVar(p, "node", def, "submit the action to the selected nodes")
+}
+
 func FlagNoLock(flags *pflag.FlagSet, p *bool) {
 	flags.BoolVar(p, "no-lock", false, "don't acquire the action lock (dangerous)")
 }

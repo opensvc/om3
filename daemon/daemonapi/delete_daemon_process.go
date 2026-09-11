@@ -88,7 +88,7 @@ func parseSignal(s string) (syscall.Signal, error) {
 }
 
 func localDaemonProcessPIDSet() map[int]struct{} {
-	items := proc.List([]string{}, nil, "")
+	items := proc.List()
 	out := make(map[int]struct{}, len(items))
 	for _, item := range items {
 		out[item.Pid] = struct{}{}

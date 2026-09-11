@@ -183,6 +183,21 @@ func (e DriverListKind) Valid() bool {
 	}
 }
 
+// Defines values for ExecListKind.
+const (
+	ExecListKindExecList ExecListKind = "ExecList"
+)
+
+// Valid indicates whether the value is a known member of the ExecListKind enum.
+func (e ExecListKind) Valid() bool {
+	switch e {
+	case ExecListKindExecList:
+		return true
+	default:
+		return false
+	}
+}
+
 // Defines values for GroupItemKind.
 const (
 	GroupItemKindGroupItem GroupItemKind = "GroupItem"
@@ -624,21 +639,6 @@ func (e PoolVolumeListKind) Valid() bool {
 	}
 }
 
-// Defines values for ProcessListKind.
-const (
-	ProcessListKindProcessList ProcessListKind = "ProcessList"
-)
-
-// Valid indicates whether the value is a known member of the ProcessListKind enum.
-func (e ProcessListKind) Valid() bool {
-	switch e {
-	case ProcessListKindProcessList:
-		return true
-	default:
-		return false
-	}
-}
-
 // Defines values for PropertyListKind.
 const (
 	PropertyListKindPropertyList PropertyListKind = "PropertyList"
@@ -849,21 +849,6 @@ const (
 func (e ScheduleListKind) Valid() bool {
 	switch e {
 	case ScheduleListKindScheduleList:
-		return true
-	default:
-		return false
-	}
-}
-
-// Defines values for SessionListKind.
-const (
-	SessionListKindSessionList SessionListKind = "SessionList"
-)
-
-// Valid indicates whether the value is a known member of the SessionListKind enum.
-func (e SessionListKind) Valid() bool {
-	switch e {
-	case SessionListKindSessionList:
 		return true
 	default:
 		return false
@@ -1289,6 +1274,55 @@ type DriverListKind string
 
 // EventList responseEventList is a list of sse
 type EventList = openapi_types.File
+
+// ExecItem defines model for ExecItem.
+type ExecItem struct {
+	BeginAt time.Time `json:"begin_at"`
+	Command string    `json:"command"`
+
+	// Duration Nanoseconds the exec ran for.
+	Duration *int64     `json:"duration,omitempty"`
+	EndAt    *time.Time `json:"end_at,omitempty"`
+	Error    *string    `json:"error,omitempty"`
+
+	// ExecID The exec this reports, which is what has one object, one outcome, one duration and one exit code.
+	ExecID string `json:"exec_id"`
+
+	// ExitCode What the process exited with. Absent while it runs. -1 when it exited with no status, killed by a signal or never started.
+	ExitCode *int   `json:"exit_code,omitempty"`
+	Node     string `json:"node"`
+
+	// OrchestrationID The orchestration this exec is a step of, when it is one.
+	OrchestrationID *string `json:"orchestration_id,omitempty"`
+
+	// Origin What submitted the action. Example, api, imon, nmon, scheduler.
+	Origin string `json:"origin"`
+
+	// Path The object the exec acts on. Absent for a node action.
+	Path *string `json:"path,omitempty"`
+
+	// Pid The pid of the process running this exec. Absent once it has ended, and absent on a running exec whose process the daemon has lost track of.
+	Pid *int `json:"pid,omitempty"`
+
+	// RID The resource the exec is of, when it is of one. Set by the scheduler.
+	RID *string `json:"rid,omitempty"`
+
+	// SessionID The session id the submitter was handed. Several execs share it when one command reaches several objects of a node.
+	SessionID string `json:"session_id"`
+
+	// State One of running, succeeded, failed.
+	State string  `json:"state"`
+	Title *string `json:"title,omitempty"`
+}
+
+// ExecList defines model for ExecList.
+type ExecList struct {
+	Items []ExecItem   `json:"items"`
+	Kind  ExecListKind `json:"kind"`
+}
+
+// ExecListKind defines model for ExecList.Kind.
+type ExecListKind string
 
 // FlexConfig defines model for FlexConfig.
 type FlexConfig struct {
@@ -2061,34 +2095,6 @@ type Problem struct {
 	Title string `json:"title"`
 }
 
-// ProcessItem defines model for ProcessItem.
-type ProcessItem struct {
-	Cmd          string `json:"cmd"`
-	Elapsed      string `json:"elapsed"`
-	GlobalExpect string `json:"global_expect"`
-	Node         string `json:"node"`
-	Object       string `json:"object"`
-	Pid          int    `json:"pid"`
-	Rid          string `json:"rid"`
-
-	// SessionID The session id of the command the process runs.
-	SessionID string    `json:"session_id"`
-	StartedAt time.Time `json:"started_at"`
-	Sub       string    `json:"sub"`
-}
-
-// ProcessItems defines model for ProcessItems.
-type ProcessItems = []ProcessItem
-
-// ProcessList defines model for ProcessList.
-type ProcessList struct {
-	Items ProcessItems    `json:"items"`
-	Kind  ProcessListKind `json:"kind"`
-}
-
-// ProcessListKind defines model for ProcessList.Kind.
-type ProcessListKind string
-
 // Property defines model for Property.
 type Property struct {
 	Error  string      `json:"error"`
@@ -2388,46 +2394,6 @@ type ScheduleListKind string
 // Scope defines model for Scope.
 type Scope = []string
 
-// SessionItem defines model for SessionItem.
-type SessionItem struct {
-	BeginAt time.Time `json:"begin_at"`
-	Command string    `json:"command"`
-
-	// Duration Nanoseconds the session ran for.
-	Duration *int64     `json:"duration,omitempty"`
-	EndAt    *time.Time `json:"end_at,omitempty"`
-	Error    *string    `json:"error,omitempty"`
-
-	// ExecID The exec this reports, which is what has one object, one outcome and one duration.
-	ExecID string `json:"exec_id"`
-	Node   string `json:"node"`
-
-	// OrchestrationID The orchestration this session is a step of, when it is one.
-	OrchestrationID *string `json:"orchestration_id,omitempty"`
-
-	// Origin What submitted the action. Example, api, imon, nmon, scheduler.
-	Origin string `json:"origin"`
-
-	// Path The object the session acts on. Absent for a node action.
-	Path *string `json:"path,omitempty"`
-
-	// SessionID The session id the submitter was handed. Several execs share it when one command reaches several objects of a node.
-	SessionID string `json:"session_id"`
-
-	// State One of running, succeeded, failed.
-	State string  `json:"state"`
-	Title *string `json:"title,omitempty"`
-}
-
-// SessionList defines model for SessionList.
-type SessionList struct {
-	Items []SessionItem   `json:"items"`
-	Kind  SessionListKind `json:"kind"`
-}
-
-// SessionListKind defines model for SessionList.Kind.
-type SessionListKind string
-
 // Status Represents a resource, instance or object status, e.g., 'up', 'down', 'warn', ....
 type Status string
 
@@ -2546,6 +2512,9 @@ type RidOptional = string
 // Roles defines model for Roles.
 type Roles = []Role
 
+// InPathExecID An exec id.
+type InPathExecID = openapi_types.UUID
+
 // InPathHeartbeatName Heartbeat name.
 //
 // A stream action (start, stop, restart) takes a stream: the index of a
@@ -2587,9 +2556,6 @@ type InPathNodeName = string
 // InPathOrchestrationID An orchestration id.
 type InPathOrchestrationID = string
 
-// InPathSessionID A session id.
-type InPathSessionID = string
-
 // InQueryAllSlaves Act on all encap instances, and don't act on the host instance if not asked for explicitely.
 type InQueryAllSlaves = bool
 
@@ -2616,6 +2582,12 @@ type InQueryEnvs = []string
 
 // InQueryEvaluate Dereference, scope and convert the keyword raw value.
 type InQueryEvaluate = bool
+
+// ExecID List the exec of this id, which names one run of one object on one node.
+type ExecID = openapi_types.UUID
+
+// States defines model for inQueryExecState.
+type States = []string
 
 // InQueryForce defines model for inQueryForce.
 type InQueryForce = bool
@@ -2662,8 +2634,17 @@ type InQueryNodeSelector = string
 // InQueryOption defines model for inQueryOption.
 type InQueryOption = string
 
+// OrchestrationID List what was run under this orchestration.
+type OrchestrationID = openapi_types.UUID
+
+// Origins defines model for inQueryOrigin.
+type Origins = []string
+
 // InQueryPoolName defines model for inQueryPoolName.
 type InQueryPoolName = string
+
+// RID defines model for inQueryRIDOptional.
+type RID = string
 
 // InQueryResourceFileName defines model for inQueryResourceFileName.
 type InQueryResourceFileName = string
@@ -2683,17 +2664,8 @@ type InQuerySection = string
 // InQuerySelectorOptional defines model for inQuerySelectorOptional.
 type InQuerySelectorOptional = string
 
-// ExecID List the exec of this id, which names one run of one object on one node.
-type ExecID = string
-
 // SessionID defines model for inQuerySessionID.
 type SessionID = openapi_types.UUID
-
-// OrchestrationID List the sessions run under this orchestration.
-type OrchestrationID = string
-
-// States defines model for inQuerySessionState.
-type States = []string
 
 // InQuerySets defines model for inQuerySets.
 type InQuerySets = []string
@@ -3005,6 +2977,21 @@ type GetDaemonEventsParams struct {
 	Selector *InQuerySelectorOptional `form:"selector,omitempty" json:"selector,omitempty"`
 }
 
+// GetDaemonExecsParams defines parameters for GetDaemonExecs.
+type GetDaemonExecsParams struct {
+	States          *States          `form:"state,omitempty" json:"state,omitempty"`
+	SessionID       *SessionID       `form:"session_id,omitempty" json:"session_id,omitempty"`
+	OrchestrationID *OrchestrationID `form:"orchestration_id,omitempty" json:"orchestration_id,omitempty"`
+	ExecID          *ExecID          `form:"exec_id,omitempty" json:"exec_id,omitempty"`
+	Origins         *Origins         `form:"origin,omitempty" json:"origin,omitempty"`
+
+	// RID a resource selector expression
+	RID *RID `form:"rid,omitempty" json:"rid,omitempty"`
+
+	// Selector selector
+	Selector *InQuerySelectorOptional `form:"selector,omitempty" json:"selector,omitempty"`
+}
+
 // GetDaemonOrchestrationsParams defines parameters for GetDaemonOrchestrations.
 type GetDaemonOrchestrationsParams struct {
 	States *States `form:"state,omitempty" json:"state,omitempty"`
@@ -3020,28 +3007,6 @@ type DeleteDaemonProcessParams struct {
 
 	// Signal the signal to send, as a name (TERM, SIGTERM) or a number (15). Defaults to SIGKILL.
 	Signal *string `form:"signal,omitempty" json:"signal,omitempty"`
-}
-
-// GetDaemonProcessParams defines parameters for GetDaemonProcess.
-type GetDaemonProcessParams struct {
-	// Sub the names of the subsystems to filter the processes
-	Sub *string `form:"sub,omitempty" json:"sub,omitempty"`
-
-	// Selector selector
-	Selector *InQuerySelectorOptional `form:"selector,omitempty" json:"selector,omitempty"`
-
-	// Rid a resource selector expression
-	Rid *InQueryRid `form:"rid,omitempty" json:"rid,omitempty"`
-}
-
-// GetDaemonSessionsParams defines parameters for GetDaemonSessions.
-type GetDaemonSessionsParams struct {
-	States          *States          `form:"state,omitempty" json:"state,omitempty"`
-	OrchestrationID *OrchestrationID `form:"orchestration_id,omitempty" json:"orchestration_id,omitempty"`
-	ExecID          *ExecID          `form:"exec_id,omitempty" json:"exec_id,omitempty"`
-
-	// Selector selector
-	Selector *InQuerySelectorOptional `form:"selector,omitempty" json:"selector,omitempty"`
 }
 
 // GetNodeDRBDConfigParams defines parameters for GetNodeDRBDConfig.

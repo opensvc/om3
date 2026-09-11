@@ -1,35 +1,29 @@
 package commoncmd
 
 import (
-	"context"
-	"fmt"
-	"net/http"
-	"sync"
-
 	"github.com/spf13/cobra"
-
-	"github.com/opensvc/om3/v3/core/client"
-	"github.com/opensvc/om3/v3/core/output"
-	"github.com/opensvc/om3/v3/core/rawconfig"
-	"github.com/opensvc/om3/v3/daemon/api"
+	"github.com/spf13/pflag"
 )
 
-type (
-	CmdDaemonPs struct {
-		CmdDaemonSubAction
-		Output     string
-		Color      string
-		Subsystems string
-		Selector   string
-		Rid        string
-	}
-)
-
+// NewCmdDaemonPs returns the listing of what the daemon is running now.
+//
+// It is CmdDaemonExecList with the running state preselected and the pid
+// leading the table. What is running and what has run are the same records at
+// different ages, so there is one implementation and this is a preset of it,
+// rather than a second command that can drift from the first.
 func NewCmdDaemonPs() *cobra.Command {
-	options := CmdDaemonPs{}
+	options := CmdDaemonExecList{
+		States:  []string{"running"},
+		Columns: execPsColumns,
+	}
 	cmd := &cobra.Command{
 		Use:   "ps",
-		Short: "list running daemon processes",
+		Short: "list what the daemon is running now",
+		Long: `List the commands the daemon has started and not yet reaped, with the pid of
+each, which is what "om daemon kill" signals.
+
+This is "om daemon exec list --state running" under another name. Drop the
+state to see what has run as well.`,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return options.Run()
 		},
@@ -39,60 +33,16 @@ func NewCmdDaemonPs() *cobra.Command {
 	FlagOutput(flags, &options.Output)
 	FlagColor(flags, &options.Color)
 	FlagObjectSelector(flags, &options.Selector)
-	FlagRID(flags, &options.Rid)
-	flags.StringVar(&options.Subsystems, "sub", "", "the name of the subsystem to filter on (scheduler, api, imon or nmon)")
+	FlagRID(flags, &options.RID)
+	FlagDaemonExecFilters(flags, &options)
 	return cmd
 }
 
-func (t *CmdDaemonPs) Run() error {
-	var (
-		mu    sync.Mutex
-		items api.ProcessItems
-	)
-	cols := "PID:pid,SESSION_ID:session_id,NODE:node,OBJECT:object,ELAPSED:elapsed,SUB:sub,GLOBAL_EXCEPT:global_except,CMD:cmd"
-
-	fn := func(ctx context.Context, c *client.T, nodename string) (response *http.Response, err error) {
-
-		params := &api.GetDaemonProcessParams{
-			Sub:      &t.Subsystems,
-			Rid:      &t.Rid,
-			Selector: &t.Selector,
-		}
-
-		resp, err := c.GetDaemonProcessWithResponse(ctx, nodename, params)
-		if err != nil {
-			return nil, err
-		}
-		switch resp.StatusCode() {
-		case http.StatusOK:
-			mu.Lock()
-			items = append(items, resp.JSON200.Items...)
-			mu.Unlock()
-		case http.StatusForbidden:
-			return nil, fmt.Errorf("%s", resp.JSON403)
-		case http.StatusInternalServerError:
-			return nil, fmt.Errorf("%s", resp.JSON500)
-		default:
-			return nil, fmt.Errorf("unexpected status code: %d", resp.StatusCode())
-		}
-
-		return resp.HTTPResponse, nil
-	}
-
-	if err := t.CmdDaemonSubAction.Run(fn); err != nil {
-		return err
-	}
-
-	render := func(items api.ProcessItems) {
-		output.Renderer{
-			DefaultOutput: "tab=" + cols,
-			Output:        t.Output,
-			Color:         t.Color,
-			Data:          items,
-			Colorize:      rawconfig.Colorize,
-		}.Print()
-	}
-
-	render(items)
-	return nil
+// FlagDaemonExecFilters declares the options that narrow a listing of execs,
+// on the listing and on every preset of it, so the same question is asked the
+// same way wherever it is asked.
+func FlagDaemonExecFilters(flags *pflag.FlagSet, options *CmdDaemonExecList) {
+	flags.StringSliceVar(&options.Origins, "origin", nil, "list the execs this submitted, every submitter when not set (api, imon, nmon, scheduler)")
+	flags.StringVar(&options.SessionID, "session-id", "", "list the execs of this session, which is the whole of one submitted command")
+	flags.StringVar(&options.OrchestrationID, "orchestration-id", "", "list the execs run under this orchestration")
 }

@@ -92,20 +92,26 @@ func (t *Manager) crmAction(title string, cmdArgs ...string) error {
 	}, labels...)
 	startTime := time.Now()
 	if err := cmd.Start(); err != nil {
+		// The start of this exec was announced, so its end has to be too, or
+		// it stays running in the exec store for as long as the store keeps
+		// it. There is no exit status to report: it never ran.
+		t.publisher.Pub(&msgbus.ExecFailed{
+			Command:         cmd.String(),
+			Duration:        time.Now().Sub(startTime),
+			ErrS:            err.Error(),
+			ExitCode:        -1,
+			Node:            t.localhost,
+			Origin:          "nmon",
+			ExecID:          execID,
+			SessionID:       sessionID,
+			OrchestrationID: orchestrationID,
+			Title:           title,
+		}, labels...)
 		t.log.Errorf("exec StartProcess: %s", err)
 		return err
 	}
 	pid := cmd.Cmd().Process.Pid
-	proc.Register(proc.T{
-		Pid:          pid,
-		Node:         t.localhost,
-		SessionID:    sessionID.String(),
-		StartedAt:    startTime,
-		Elapsed:      "",
-		GlobalExpect: t.state.GlobalExpect.String(),
-		Sub:          "nmon",
-		Cmd:          cmd.String(),
-	})
+	proc.Register(proc.T{Pid: pid, ExecID: execID.String()})
 	err := cmd.Wait()
 	proc.Unregister(pid)
 	if err != nil {
@@ -114,6 +120,7 @@ func (t *Manager) crmAction(title string, cmdArgs ...string) error {
 			Command:         cmd.String(),
 			Duration:        duration,
 			ErrS:            err.Error(),
+			ExitCode:        cmd.ExitCode(),
 			Node:            t.localhost,
 			Origin:          "nmon",
 			ExecID:          execID,
@@ -128,6 +135,7 @@ func (t *Manager) crmAction(title string, cmdArgs ...string) error {
 	t.publisher.Pub(&msgbus.ExecSuccess{
 		Command:         cmd.String(),
 		Duration:        duration,
+		ExitCode:        cmd.ExitCode(),
 		Node:            t.localhost,
 		Origin:          "nmon",
 		ExecID:          execID,

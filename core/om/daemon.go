@@ -11,7 +11,7 @@ func init() {
 	cmdDaemonHeartbeat := commoncmd.NewCmdDaemonHeartbeat()
 	cmdDaemonListener := commoncmd.NewCmdDaemonListener()
 	cmdDaemonRelay := commoncmd.NewCmdDaemonRelay()
-	cmdDaemonSession := commoncmd.NewCmdDaemonSession()
+	cmdDaemonExec := commoncmd.NewCmdDaemonExec()
 	cmdDaemonOrchestration := commoncmd.NewCmdDaemonOrchestration()
 
 	root.AddCommand(
@@ -42,12 +42,12 @@ func init() {
 		commoncmd.NewCmdDaemonStatus(),
 		commoncmd.NewCmdDaemonPs(),
 		commoncmd.NewCmdDaemonKill(),
-		cmdDaemonSession,
+		cmdDaemonExec,
 		cmdDaemonOrchestration,
 	)
 
-	cmdDaemonSession.AddCommand(
-		newCmdDaemonSessionList(),
+	cmdDaemonExec.AddCommand(
+		commoncmd.NewCmdDaemonExecList(hostname.Hostname()),
 	)
 	cmdDaemonOrchestration.AddCommand(
 		newCmdDaemonOrchestrationList(),

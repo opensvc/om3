@@ -35,14 +35,14 @@ func TestAnExecAndItsOutcomeMakeOneSession(t *testing.T) {
 		SessionID: newSessionID(id),
 		ExecID:    newExecID(id),
 	})
-	s, ok := firstSession(id.String())
+	s, ok := firstExecOfSession(id.String())
 	require.True(t, ok)
 	assert.Equal(t, StateRunning, s.State)
 	assert.Equal(t, "test/svc/s1", s.Path, "the path comes from the label")
 	assert.Equal(t, "api", s.Origin)
 
 	m.handle(&msgbus.ExecSuccess{SessionID: newSessionID(id), ExecID: newExecID(id), Duration: 2 * time.Second})
-	s, _ = firstSession(id.String())
+	s, _ = firstExecOfSession(id.String())
 	assert.Equal(t, StateSucceeded, s.State)
 	assert.Equal(t, 2*time.Second, s.Duration)
 }
@@ -55,7 +55,7 @@ func TestAFailedExecKeepsWhatFailed(t *testing.T) {
 	m.handle(&msgbus.Exec{SessionID: newSessionID(id), ExecID: newExecID(id)})
 	m.handle(&msgbus.ExecFailed{SessionID: newSessionID(id), ExecID: newExecID(id), ErrS: "exit code 1", Duration: time.Second})
 
-	s, _ := firstSession(id.String())
+	s, _ := firstExecOfSession(id.String())
 	assert.Equal(t, StateFailed, s.State)
 	assert.Equal(t, "exit code 1", s.Error)
 }
@@ -77,7 +77,7 @@ func TestASessionOfAnOrchestrationIsFoundByIt(t *testing.T) {
 	m.handle(&msgbus.Exec{SessionID: newSessionID(second), ExecID: newExecID(second), OrchestrationID: newOrchestrationID(orchestrationID)})
 	m.handle(&msgbus.Exec{SessionID: newSessionID(uuid.New())})
 
-	l := ListSessions(Filter{OrchestrationID: orchestrationID.String()})
+	l := ListExecs(Filter{OrchestrationID: orchestrationID.String()})
 	assert.Len(t, l, 2, "the sessions of the orchestration, and no other")
 
 	o, ok := GetOrchestration(orchestrationID.String())
@@ -99,9 +99,9 @@ func TestAnExecOutsideAnOrchestrationClaimsNone(t *testing.T) {
 
 	m.handle(&msgbus.Exec{SessionID: newSessionID(id), ExecID: newExecID(id)})
 
-	s, _ := firstSession(id.String())
+	s, _ := firstExecOfSession(id.String())
 	assert.Equal(t, "", s.OrchestrationID)
-	assert.Len(t, ListSessions(Filter{OrchestrationID: uuid.New().String()}), 0)
+	assert.Len(t, ListExecs(Filter{OrchestrationID: uuid.New().String()}), 0)
 }
 
 func TestAnAbortedAndARefusedOrchestration(t *testing.T) {

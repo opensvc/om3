@@ -1901,29 +1901,42 @@ paths:
       tags:
         - node / daemon
 
-  /api/node/name/{nodename}/daemon/session:
+  /api/node/name/{nodename}/daemon/exec:
     get:
-      operationId: GetDaemonSessions
+      operationId: GetDaemonExecs
       description: |
-        List the actions the daemon ran, and is running.
+        List the commands the daemon ran, and is running.
+
+        An exec is one run of one object on one node, which is the scale at
+        which there is a single outcome, a single duration and a single exit
+        code. A command reaching several objects of this node is several
+        execs sharing one session id.
 
         Every state is listed when none is named, because a client polling
-        for the end of what it submitted is waiting for a session that has
+        for the end of what it submitted is waiting for an exec that has
         ended.
 
-        What is listed is bounded: a session that ended long ago is dropped.
-        GetSession says so for a single id, where an empty list here cannot.
+        What is listed is bounded: an exec that ended long ago is dropped.
+        GetDaemonExec says so for a single id, where an empty list here
+        cannot.
 
-        The sessions listed are the ones this node ran. An orchestration runs
-        sessions on every node it touches, a switch running a stop on one node
+        A running exec also carries the pid and the resource id of the
+        process running it, so this answers both what is running now and what
+        has run, in one shape.
+
+        The execs listed are the ones this node ran. An orchestration runs
+        execs on every node it touches, a switch running a stop on one node
         and a start on another under one orchestration id, so the whole of one
-        is the union over the nodes. GetOrchestration answers for it on any of
-        them, and needs no such union.
+        is the union over the nodes. GetDaemonOrchestration answers for it on
+        any of them, and needs no such union.
       parameters:
         - $ref: '#/components/parameters/inPathNodeName'
-        - $ref: '#/components/parameters/inQuerySessionState'
-        - $ref: '#/components/parameters/inQuerySessionOrchestrationID'
-        - $ref: '#/components/parameters/inQuerySessionExecID'
+        - $ref: '#/components/parameters/inQueryExecState'
+        - $ref: '#/components/parameters/inQuerySessionID'
+        - $ref: '#/components/parameters/inQueryOrchestrationID'
+        - $ref: '#/components/parameters/inQueryExecID'
+        - $ref: '#/components/parameters/inQueryOrigin'
+        - $ref: '#/components/parameters/inQueryRIDOptional'
         - $ref: '#/components/parameters/inQuerySelectorOptional'
       responses:
         200:
@@ -1931,7 +1944,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/SessionList'
+                $ref: '#/components/schemas/ExecList'
         401:
           $ref: '#/components/responses/401'
         403:
@@ -1944,29 +1957,25 @@ paths:
         - basicAuth: []
         - bearerAuth: []
 
-  /api/node/name/{nodename}/daemon/session/id/{session_id}:
+  /api/node/name/{nodename}/daemon/exec/id/{exec_id}:
     get:
-      operationId: GetDaemonSession
+      operationId: GetDaemonExec
       description: |
-        Get the state of an action, by the session id its submitter was
-        handed.
+        Get how one run of one object on one node went, by the exec id its
+        submitter was handed.
 
-        Several are answered when the command reached several objects of this
-        node: one command is one exec per object, each with its own outcome
-        and its own duration, and they share the session id.
-
-        A session the daemon ran and has since dropped is answered 410, which
-        a poller must not read as the session never having existed.
+        An exec the daemon ran and has since dropped is answered 410, which a
+        poller must not read as the exec never having existed.
       parameters:
         - $ref: '#/components/parameters/inPathNodeName'
-        - $ref: '#/components/parameters/inPathSessionID'
+        - $ref: '#/components/parameters/inPathExecID'
       responses:
         200:
           description: OK
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/SessionList'
+                $ref: '#/components/schemas/ExecItem'
         401:
           $ref: '#/components/responses/401'
         403:
@@ -1988,7 +1997,7 @@ paths:
         List the orchestrations the monitor accepted, and is running.
       parameters:
         - $ref: '#/components/parameters/inPathNodeName'
-        - $ref: '#/components/parameters/inQuerySessionState'
+        - $ref: '#/components/parameters/inQueryExecState'
         - $ref: '#/components/parameters/inQuerySelectorOptional'
       responses:
         200:
@@ -2057,42 +2066,13 @@ paths:
         - bearerAuth: []
 
   /api/node/name/{nodename}/daemon/process:
-    get:
-      operationId: GetDaemonProcess
-      description: |
-        Get the daemon process information.
-      parameters:
-        - $ref: '#/components/parameters/inPathNodeName'
-        - in: query
-          name: sub
-          description: the names of the subsystems to filter the processes
-          schema:
-            type: string
-            example: scheduler
-        - $ref: '#/components/parameters/inQuerySelectorOptional'
-        - $ref: '#/components/parameters/inQueryRid'
-      responses:
-        200:
-          description: OK
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ProcessList'
-        403:
-          $ref: '#/components/responses/403'
-        500:
-          $ref: '#/components/responses/500'
-      tags:
-        - node / daemon
-      security:
-        - basicAuth: []
-        - bearerAuth: []
     delete:
       operationId: DeleteDaemonProcess
       description: |
         Signal the daemon process.
 
-        Only the processes listed by GetDaemonProcess can be signaled.
+        Only the processes of the execs listed by GetDaemonExecs can be
+        signaled.
       parameters:
         - $ref: '#/components/parameters/inPathNodeName'
         - in: query
@@ -7617,51 +7597,7 @@ components:
         - status
         - title
 
-    ProcessItem:
-      type: object
-      required:
-        - node
-        - pid
-        - object
-        - started_at
-        - elapsed
-        - sub
-        - session_id
-        - global_expect
-        - cmd
-        - rid
-      properties:
-        node:
-          type: string
-        pid:
-          type: integer
-        object:
-          type: string
-        started_at:
-          type: string
-          format: date-time
-        elapsed:
-          type: string
-          format: duration
-        sub:
-          type: string
-        session_id:
-          type: string
-          x-go-name: SessionID
-          description: The session id of the command the process runs.
-        global_expect:
-          type: string
-        cmd:
-          type: string
-        rid:
-          type: string
-
-    ProcessItems:
-      type: array
-      items:
-        $ref: '#/components/schemas/ProcessItem'
-
-    SessionItem:
+    ExecItem:
       type: object
       required: [session_id, exec_id, node, origin, command, state, begin_at]
       properties:
@@ -7672,16 +7608,16 @@ components:
         exec_id:
           type: string
           x-go-name: ExecID
-          description: The exec this reports, which is what has one object, one outcome and one duration.
+          description: The exec this reports, which is what has one object, one outcome, one duration and one exit code.
         orchestration_id:
           type: string
           x-go-name: OrchestrationID
-          description: The orchestration this session is a step of, when it is one.
+          description: The orchestration this exec is a step of, when it is one.
         node:
           type: string
         path:
           type: string
-          description: The object the session acts on. Absent for a node action.
+          description: The object the exec acts on. Absent for a node action.
         origin:
           type: string
           description: What submitted the action. Example, api, imon, nmon, scheduler.
@@ -7694,6 +7630,9 @@ components:
           description: One of running, succeeded, failed.
         error:
           type: string
+        exit_code:
+          type: integer
+          description: What the process exited with. Absent while it runs. -1 when it exited with no status, killed by a signal or never started.
         begin_at:
           type: string
           format: date-time
@@ -7703,19 +7642,26 @@ components:
         duration:
           type: integer
           format: int64
-          description: Nanoseconds the session ran for.
+          description: Nanoseconds the exec ran for.
+        pid:
+          type: integer
+          description: The pid of the process running this exec. Absent once it has ended, and absent on a running exec whose process the daemon has lost track of.
+        rid:
+          type: string
+          x-go-name: RID
+          description: The resource the exec is of, when it is of one. Set by the scheduler.
 
-    SessionList:
+    ExecList:
       type: object
       required: [kind, items]
       properties:
         kind:
           type: string
-          enum: [SessionList]
+          enum: [ExecList]
         items:
           type: array
           items:
-            $ref: '#/components/schemas/SessionItem'
+            $ref: '#/components/schemas/ExecItem'
 
     OrchestrationItem:
       type: object
@@ -7755,16 +7701,6 @@ components:
           type: array
           items:
             $ref: '#/components/schemas/OrchestrationItem'
-
-    ProcessList:
-      type: object
-      required: [kind, items]
-      properties:
-        kind:
-          type: string
-          enum: [ProcessList]
-        items:
-          $ref: '#/components/schemas/ProcessItems'
 
     Property:
       type: object
@@ -9006,13 +8942,14 @@ components:
       schema:
         type: string
 
-    inPathSessionID:
+    inPathExecID:
       in: path
-      name: session_id
+      name: exec_id
       required: true
       schema:
         type: string
-        description: A session id.
+        format: uuid
+        description: An exec id.
 
     inPathOrchestrationID:
       in: path
@@ -9022,24 +8959,26 @@ components:
         type: string
         description: An orchestration id.
 
-    inQuerySessionExecID:
+    inQueryExecID:
       in: query
       name: exec_id
       x-go-name: ExecID
       schema:
         type: string
+        format: uuid
         description: List the exec of this id, which names one run of one object on one node.
 
-    inQuerySessionOrchestrationID:
+    inQueryOrchestrationID:
       in: query
       name: orchestration_id
       x-go-name: OrchestrationID
       schema:
         type: string
-        description: List the sessions run under this orchestration.
+        format: uuid
+        description: List what was run under this orchestration.
         example: 3fc0f1e6-1d0f-4a2e-9a0e-9a6c1b8f0a11
 
-    inQuerySessionState:
+    inQueryExecState:
       in: query
       name: state
       x-go-name: States
@@ -9049,6 +8988,25 @@ components:
           type: string
           description: A state to list. Every state when not set.
           example: running
+
+    inQueryOrigin:
+      in: query
+      name: origin
+      x-go-name: Origins
+      schema:
+        type: array
+        items:
+          type: string
+          description: A submitter to list the execs of. Every one when not set.
+          example: scheduler
+
+    inQueryRIDOptional:
+      in: query
+      name: rid
+      x-go-name: RID
+      description: a resource selector expression
+      schema:
+        type: string
 
     inQuerySessionID:
       in: query

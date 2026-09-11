@@ -247,6 +247,12 @@ type ClientInterface interface {
 	// GetDaemonEvents request
 	GetDaemonEvents(ctx context.Context, nodename InPathNodeName, params *GetDaemonEventsParams, reqEditors ...RequestEditorFn) (*http.Response, error)
 
+	// GetDaemonExecs request
+	GetDaemonExecs(ctx context.Context, nodename InPathNodeName, params *GetDaemonExecsParams, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// GetDaemonExec request
+	GetDaemonExec(ctx context.Context, nodename InPathNodeName, execId InPathExecID, reqEditors ...RequestEditorFn) (*http.Response, error)
+
 	// PostDaemonHeartbeatRestart request
 	PostDaemonHeartbeatRestart(ctx context.Context, nodename InPathNodeName, name InPathHeartbeatName, reqEditors ...RequestEditorFn) (*http.Response, error)
 
@@ -287,15 +293,6 @@ type ClientInterface interface {
 
 	// DeleteDaemonProcess request
 	DeleteDaemonProcess(ctx context.Context, nodename InPathNodeName, params *DeleteDaemonProcessParams, reqEditors ...RequestEditorFn) (*http.Response, error)
-
-	// GetDaemonProcess request
-	GetDaemonProcess(ctx context.Context, nodename InPathNodeName, params *GetDaemonProcessParams, reqEditors ...RequestEditorFn) (*http.Response, error)
-
-	// GetDaemonSessions request
-	GetDaemonSessions(ctx context.Context, nodename InPathNodeName, params *GetDaemonSessionsParams, reqEditors ...RequestEditorFn) (*http.Response, error)
-
-	// GetDaemonSession request
-	GetDaemonSession(ctx context.Context, nodename InPathNodeName, sessionId InPathSessionID, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// GetNodeDRBDAllocation request
 	GetNodeDRBDAllocation(ctx context.Context, nodename InPathNodeName, reqEditors ...RequestEditorFn) (*http.Response, error)
@@ -1232,6 +1229,30 @@ func (c *Client) GetDaemonEvents(ctx context.Context, nodename InPathNodeName, p
 	return c.Client.Do(req)
 }
 
+func (c *Client) GetDaemonExecs(ctx context.Context, nodename InPathNodeName, params *GetDaemonExecsParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewGetDaemonExecsRequest(c.Server, nodename, params)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+func (c *Client) GetDaemonExec(ctx context.Context, nodename InPathNodeName, execId InPathExecID, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewGetDaemonExecRequest(c.Server, nodename, execId)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
 func (c *Client) PostDaemonHeartbeatRestart(ctx context.Context, nodename InPathNodeName, name InPathHeartbeatName, reqEditors ...RequestEditorFn) (*http.Response, error) {
 	req, err := NewPostDaemonHeartbeatRestartRequest(c.Server, nodename, name)
 	if err != nil {
@@ -1390,42 +1411,6 @@ func (c *Client) GetDaemonOrchestration(ctx context.Context, nodename InPathNode
 
 func (c *Client) DeleteDaemonProcess(ctx context.Context, nodename InPathNodeName, params *DeleteDaemonProcessParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
 	req, err := NewDeleteDaemonProcessRequest(c.Server, nodename, params)
-	if err != nil {
-		return nil, err
-	}
-	req = req.WithContext(ctx)
-	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
-		return nil, err
-	}
-	return c.Client.Do(req)
-}
-
-func (c *Client) GetDaemonProcess(ctx context.Context, nodename InPathNodeName, params *GetDaemonProcessParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
-	req, err := NewGetDaemonProcessRequest(c.Server, nodename, params)
-	if err != nil {
-		return nil, err
-	}
-	req = req.WithContext(ctx)
-	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
-		return nil, err
-	}
-	return c.Client.Do(req)
-}
-
-func (c *Client) GetDaemonSessions(ctx context.Context, nodename InPathNodeName, params *GetDaemonSessionsParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
-	req, err := NewGetDaemonSessionsRequest(c.Server, nodename, params)
-	if err != nil {
-		return nil, err
-	}
-	req = req.WithContext(ctx)
-	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
-		return nil, err
-	}
-	return c.Client.Do(req)
-}
-
-func (c *Client) GetDaemonSession(ctx context.Context, nodename InPathNodeName, sessionId InPathSessionID, reqEditors ...RequestEditorFn) (*http.Response, error) {
-	req, err := NewGetDaemonSessionRequest(c.Server, nodename, sessionId)
 	if err != nil {
 		return nil, err
 	}
@@ -5382,6 +5367,180 @@ func NewGetDaemonEventsRequest(server string, nodename InPathNodeName, params *G
 	return req, nil
 }
 
+// NewGetDaemonExecsRequest generates requests for GetDaemonExecs
+func NewGetDaemonExecsRequest(server string, nodename InPathNodeName, params *GetDaemonExecsParams) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "nodename", nodename, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/api/node/name/%s/daemon/exec", pathParam0)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	if params != nil {
+		// queryValues collects non-styled parameters (passthrough, JSON)
+		// that are safe to round-trip through url.Values.Encode().
+		queryValues := queryURL.Query()
+		// rawQueryFragments collects pre-encoded query fragments from
+		// styled parameters, preserving literal commas as delimiters
+		// per the OpenAPI spec (e.g. "color=blue,black,brown").
+		var rawQueryFragments []string
+
+		if params.States != nil {
+
+			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "state", *params.States, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "array", Format: ""}); err != nil {
+				return nil, err
+			} else {
+				for _, qp := range strings.Split(queryFrag, "&") {
+					rawQueryFragments = append(rawQueryFragments, qp)
+				}
+			}
+
+		}
+
+		if params.SessionID != nil {
+
+			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "session_id", *params.SessionID, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "string", Format: "uuid"}); err != nil {
+				return nil, err
+			} else {
+				for _, qp := range strings.Split(queryFrag, "&") {
+					rawQueryFragments = append(rawQueryFragments, qp)
+				}
+			}
+
+		}
+
+		if params.OrchestrationID != nil {
+
+			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "orchestration_id", *params.OrchestrationID, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "string", Format: "uuid"}); err != nil {
+				return nil, err
+			} else {
+				for _, qp := range strings.Split(queryFrag, "&") {
+					rawQueryFragments = append(rawQueryFragments, qp)
+				}
+			}
+
+		}
+
+		if params.ExecID != nil {
+
+			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "exec_id", *params.ExecID, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "string", Format: "uuid"}); err != nil {
+				return nil, err
+			} else {
+				for _, qp := range strings.Split(queryFrag, "&") {
+					rawQueryFragments = append(rawQueryFragments, qp)
+				}
+			}
+
+		}
+
+		if params.Origins != nil {
+
+			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "origin", *params.Origins, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "array", Format: ""}); err != nil {
+				return nil, err
+			} else {
+				for _, qp := range strings.Split(queryFrag, "&") {
+					rawQueryFragments = append(rawQueryFragments, qp)
+				}
+			}
+
+		}
+
+		if params.RID != nil {
+
+			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "rid", *params.RID, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "string", Format: ""}); err != nil {
+				return nil, err
+			} else {
+				for _, qp := range strings.Split(queryFrag, "&") {
+					rawQueryFragments = append(rawQueryFragments, qp)
+				}
+			}
+
+		}
+
+		if params.Selector != nil {
+
+			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "selector", *params.Selector, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "string", Format: ""}); err != nil {
+				return nil, err
+			} else {
+				for _, qp := range strings.Split(queryFrag, "&") {
+					rawQueryFragments = append(rawQueryFragments, qp)
+				}
+			}
+
+		}
+
+		if encoded := queryValues.Encode(); encoded != "" {
+			rawQueryFragments = append(rawQueryFragments, encoded)
+		}
+		queryURL.RawQuery = strings.Join(rawQueryFragments, "&")
+	}
+
+	req, err := http.NewRequest(http.MethodGet, queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
+// NewGetDaemonExecRequest generates requests for GetDaemonExec
+func NewGetDaemonExecRequest(server string, nodename InPathNodeName, execId InPathExecID) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "nodename", nodename, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam1 string
+
+	pathParam1, err = runtime.StyleParamWithOptions("simple", false, "exec_id", execId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: "uuid"})
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/api/node/name/%s/daemon/exec/id/%s", pathParam0, pathParam1)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodGet, queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
 // NewPostDaemonHeartbeatRestartRequest generates requests for PostDaemonHeartbeatRestart
 func NewPostDaemonHeartbeatRestartRequest(server string, nodename InPathNodeName, name InPathHeartbeatName) (*http.Request, error) {
 	var err error
@@ -5971,229 +6130,6 @@ func NewDeleteDaemonProcessRequest(server string, nodename InPathNodeName, param
 	}
 
 	req, err := http.NewRequest(http.MethodDelete, queryURL.String(), nil)
-	if err != nil {
-		return nil, err
-	}
-
-	return req, nil
-}
-
-// NewGetDaemonProcessRequest generates requests for GetDaemonProcess
-func NewGetDaemonProcessRequest(server string, nodename InPathNodeName, params *GetDaemonProcessParams) (*http.Request, error) {
-	var err error
-
-	var pathParam0 string
-
-	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "nodename", nodename, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
-	if err != nil {
-		return nil, err
-	}
-
-	serverURL, err := url.Parse(server)
-	if err != nil {
-		return nil, err
-	}
-
-	operationPath := fmt.Sprintf("/api/node/name/%s/daemon/process", pathParam0)
-	if operationPath[0] == '/' {
-		operationPath = "." + operationPath
-	}
-
-	queryURL, err := serverURL.Parse(operationPath)
-	if err != nil {
-		return nil, err
-	}
-
-	if params != nil {
-		// queryValues collects non-styled parameters (passthrough, JSON)
-		// that are safe to round-trip through url.Values.Encode().
-		queryValues := queryURL.Query()
-		// rawQueryFragments collects pre-encoded query fragments from
-		// styled parameters, preserving literal commas as delimiters
-		// per the OpenAPI spec (e.g. "color=blue,black,brown").
-		var rawQueryFragments []string
-
-		if params.Sub != nil {
-
-			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "sub", *params.Sub, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "string", Format: ""}); err != nil {
-				return nil, err
-			} else {
-				for _, qp := range strings.Split(queryFrag, "&") {
-					rawQueryFragments = append(rawQueryFragments, qp)
-				}
-			}
-
-		}
-
-		if params.Selector != nil {
-
-			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "selector", *params.Selector, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "string", Format: ""}); err != nil {
-				return nil, err
-			} else {
-				for _, qp := range strings.Split(queryFrag, "&") {
-					rawQueryFragments = append(rawQueryFragments, qp)
-				}
-			}
-
-		}
-
-		if params.Rid != nil {
-
-			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "rid", *params.Rid, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "string", Format: ""}); err != nil {
-				return nil, err
-			} else {
-				for _, qp := range strings.Split(queryFrag, "&") {
-					rawQueryFragments = append(rawQueryFragments, qp)
-				}
-			}
-
-		}
-
-		if encoded := queryValues.Encode(); encoded != "" {
-			rawQueryFragments = append(rawQueryFragments, encoded)
-		}
-		queryURL.RawQuery = strings.Join(rawQueryFragments, "&")
-	}
-
-	req, err := http.NewRequest(http.MethodGet, queryURL.String(), nil)
-	if err != nil {
-		return nil, err
-	}
-
-	return req, nil
-}
-
-// NewGetDaemonSessionsRequest generates requests for GetDaemonSessions
-func NewGetDaemonSessionsRequest(server string, nodename InPathNodeName, params *GetDaemonSessionsParams) (*http.Request, error) {
-	var err error
-
-	var pathParam0 string
-
-	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "nodename", nodename, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
-	if err != nil {
-		return nil, err
-	}
-
-	serverURL, err := url.Parse(server)
-	if err != nil {
-		return nil, err
-	}
-
-	operationPath := fmt.Sprintf("/api/node/name/%s/daemon/session", pathParam0)
-	if operationPath[0] == '/' {
-		operationPath = "." + operationPath
-	}
-
-	queryURL, err := serverURL.Parse(operationPath)
-	if err != nil {
-		return nil, err
-	}
-
-	if params != nil {
-		// queryValues collects non-styled parameters (passthrough, JSON)
-		// that are safe to round-trip through url.Values.Encode().
-		queryValues := queryURL.Query()
-		// rawQueryFragments collects pre-encoded query fragments from
-		// styled parameters, preserving literal commas as delimiters
-		// per the OpenAPI spec (e.g. "color=blue,black,brown").
-		var rawQueryFragments []string
-
-		if params.States != nil {
-
-			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "state", *params.States, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "array", Format: ""}); err != nil {
-				return nil, err
-			} else {
-				for _, qp := range strings.Split(queryFrag, "&") {
-					rawQueryFragments = append(rawQueryFragments, qp)
-				}
-			}
-
-		}
-
-		if params.OrchestrationID != nil {
-
-			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "orchestration_id", *params.OrchestrationID, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "string", Format: ""}); err != nil {
-				return nil, err
-			} else {
-				for _, qp := range strings.Split(queryFrag, "&") {
-					rawQueryFragments = append(rawQueryFragments, qp)
-				}
-			}
-
-		}
-
-		if params.ExecID != nil {
-
-			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "exec_id", *params.ExecID, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "string", Format: ""}); err != nil {
-				return nil, err
-			} else {
-				for _, qp := range strings.Split(queryFrag, "&") {
-					rawQueryFragments = append(rawQueryFragments, qp)
-				}
-			}
-
-		}
-
-		if params.Selector != nil {
-
-			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "selector", *params.Selector, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "string", Format: ""}); err != nil {
-				return nil, err
-			} else {
-				for _, qp := range strings.Split(queryFrag, "&") {
-					rawQueryFragments = append(rawQueryFragments, qp)
-				}
-			}
-
-		}
-
-		if encoded := queryValues.Encode(); encoded != "" {
-			rawQueryFragments = append(rawQueryFragments, encoded)
-		}
-		queryURL.RawQuery = strings.Join(rawQueryFragments, "&")
-	}
-
-	req, err := http.NewRequest(http.MethodGet, queryURL.String(), nil)
-	if err != nil {
-		return nil, err
-	}
-
-	return req, nil
-}
-
-// NewGetDaemonSessionRequest generates requests for GetDaemonSession
-func NewGetDaemonSessionRequest(server string, nodename InPathNodeName, sessionId InPathSessionID) (*http.Request, error) {
-	var err error
-
-	var pathParam0 string
-
-	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "nodename", nodename, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
-	if err != nil {
-		return nil, err
-	}
-
-	var pathParam1 string
-
-	pathParam1, err = runtime.StyleParamWithOptions("simple", false, "session_id", sessionId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
-	if err != nil {
-		return nil, err
-	}
-
-	serverURL, err := url.Parse(server)
-	if err != nil {
-		return nil, err
-	}
-
-	operationPath := fmt.Sprintf("/api/node/name/%s/daemon/session/id/%s", pathParam0, pathParam1)
-	if operationPath[0] == '/' {
-		operationPath = "." + operationPath
-	}
-
-	queryURL, err := serverURL.Parse(operationPath)
-	if err != nil {
-		return nil, err
-	}
-
-	req, err := http.NewRequest(http.MethodGet, queryURL.String(), nil)
 	if err != nil {
 		return nil, err
 	}
@@ -13642,6 +13578,12 @@ type ClientWithResponsesInterface interface {
 	// GetDaemonEventsWithResponse request
 	GetDaemonEventsWithResponse(ctx context.Context, nodename InPathNodeName, params *GetDaemonEventsParams, reqEditors ...RequestEditorFn) (*GetDaemonEventsResponse, error)
 
+	// GetDaemonExecsWithResponse request
+	GetDaemonExecsWithResponse(ctx context.Context, nodename InPathNodeName, params *GetDaemonExecsParams, reqEditors ...RequestEditorFn) (*GetDaemonExecsResponse, error)
+
+	// GetDaemonExecWithResponse request
+	GetDaemonExecWithResponse(ctx context.Context, nodename InPathNodeName, execId InPathExecID, reqEditors ...RequestEditorFn) (*GetDaemonExecResponse, error)
+
 	// PostDaemonHeartbeatRestartWithResponse request
 	PostDaemonHeartbeatRestartWithResponse(ctx context.Context, nodename InPathNodeName, name InPathHeartbeatName, reqEditors ...RequestEditorFn) (*PostDaemonHeartbeatRestartResponse, error)
 
@@ -13682,15 +13624,6 @@ type ClientWithResponsesInterface interface {
 
 	// DeleteDaemonProcessWithResponse request
 	DeleteDaemonProcessWithResponse(ctx context.Context, nodename InPathNodeName, params *DeleteDaemonProcessParams, reqEditors ...RequestEditorFn) (*DeleteDaemonProcessResponse, error)
-
-	// GetDaemonProcessWithResponse request
-	GetDaemonProcessWithResponse(ctx context.Context, nodename InPathNodeName, params *GetDaemonProcessParams, reqEditors ...RequestEditorFn) (*GetDaemonProcessResponse, error)
-
-	// GetDaemonSessionsWithResponse request
-	GetDaemonSessionsWithResponse(ctx context.Context, nodename InPathNodeName, params *GetDaemonSessionsParams, reqEditors ...RequestEditorFn) (*GetDaemonSessionsResponse, error)
-
-	// GetDaemonSessionWithResponse request
-	GetDaemonSessionWithResponse(ctx context.Context, nodename InPathNodeName, sessionId InPathSessionID, reqEditors ...RequestEditorFn) (*GetDaemonSessionResponse, error)
 
 	// GetNodeDRBDAllocationWithResponse request
 	GetNodeDRBDAllocationWithResponse(ctx context.Context, nodename InPathNodeName, reqEditors ...RequestEditorFn) (*GetNodeDRBDAllocationResponse, error)
@@ -15670,6 +15603,73 @@ func (r GetDaemonEventsResponse) ContentType() string {
 	return ""
 }
 
+type GetDaemonExecsResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	JSON200      *ExecList
+	JSON401      *N401
+	JSON403      *N403
+	JSON500      *N500
+}
+
+// Status returns HTTPResponse.Status
+func (r GetDaemonExecsResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r GetDaemonExecsResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r GetDaemonExecsResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+type GetDaemonExecResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	JSON200      *ExecItem
+	JSON401      *N401
+	JSON403      *N403
+	JSON410      *N410
+	JSON500      *N500
+}
+
+// Status returns HTTPResponse.Status
+func (r GetDaemonExecResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r GetDaemonExecResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r GetDaemonExecResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
 type PostDaemonHeartbeatRestartResponse struct {
 	Body         []byte
 	HTTPResponse *http.Response
@@ -16103,105 +16103,6 @@ func (r DeleteDaemonProcessResponse) StatusCode() int {
 
 // ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
 func (r DeleteDaemonProcessResponse) ContentType() string {
-	if r.HTTPResponse != nil {
-		return r.HTTPResponse.Header.Get("Content-Type")
-	}
-	return ""
-}
-
-type GetDaemonProcessResponse struct {
-	Body         []byte
-	HTTPResponse *http.Response
-	JSON200      *ProcessList
-	JSON403      *N403
-	JSON500      *N500
-}
-
-// Status returns HTTPResponse.Status
-func (r GetDaemonProcessResponse) Status() string {
-	if r.HTTPResponse != nil {
-		return r.HTTPResponse.Status
-	}
-	return http.StatusText(0)
-}
-
-// StatusCode returns HTTPResponse.StatusCode
-func (r GetDaemonProcessResponse) StatusCode() int {
-	if r.HTTPResponse != nil {
-		return r.HTTPResponse.StatusCode
-	}
-	return 0
-}
-
-// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
-func (r GetDaemonProcessResponse) ContentType() string {
-	if r.HTTPResponse != nil {
-		return r.HTTPResponse.Header.Get("Content-Type")
-	}
-	return ""
-}
-
-type GetDaemonSessionsResponse struct {
-	Body         []byte
-	HTTPResponse *http.Response
-	JSON200      *SessionList
-	JSON401      *N401
-	JSON403      *N403
-	JSON500      *N500
-}
-
-// Status returns HTTPResponse.Status
-func (r GetDaemonSessionsResponse) Status() string {
-	if r.HTTPResponse != nil {
-		return r.HTTPResponse.Status
-	}
-	return http.StatusText(0)
-}
-
-// StatusCode returns HTTPResponse.StatusCode
-func (r GetDaemonSessionsResponse) StatusCode() int {
-	if r.HTTPResponse != nil {
-		return r.HTTPResponse.StatusCode
-	}
-	return 0
-}
-
-// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
-func (r GetDaemonSessionsResponse) ContentType() string {
-	if r.HTTPResponse != nil {
-		return r.HTTPResponse.Header.Get("Content-Type")
-	}
-	return ""
-}
-
-type GetDaemonSessionResponse struct {
-	Body         []byte
-	HTTPResponse *http.Response
-	JSON200      *SessionList
-	JSON401      *N401
-	JSON403      *N403
-	JSON410      *N410
-	JSON500      *N500
-}
-
-// Status returns HTTPResponse.Status
-func (r GetDaemonSessionResponse) Status() string {
-	if r.HTTPResponse != nil {
-		return r.HTTPResponse.Status
-	}
-	return http.StatusText(0)
-}
-
-// StatusCode returns HTTPResponse.StatusCode
-func (r GetDaemonSessionResponse) StatusCode() int {
-	if r.HTTPResponse != nil {
-		return r.HTTPResponse.StatusCode
-	}
-	return 0
-}
-
-// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
-func (r GetDaemonSessionResponse) ContentType() string {
 	if r.HTTPResponse != nil {
 		return r.HTTPResponse.Header.Get("Content-Type")
 	}
@@ -19835,6 +19736,24 @@ func (c *ClientWithResponses) GetDaemonEventsWithResponse(ctx context.Context, n
 	return ParseGetDaemonEventsResponse(rsp)
 }
 
+// GetDaemonExecsWithResponse request returning *GetDaemonExecsResponse
+func (c *ClientWithResponses) GetDaemonExecsWithResponse(ctx context.Context, nodename InPathNodeName, params *GetDaemonExecsParams, reqEditors ...RequestEditorFn) (*GetDaemonExecsResponse, error) {
+	rsp, err := c.GetDaemonExecs(ctx, nodename, params, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseGetDaemonExecsResponse(rsp)
+}
+
+// GetDaemonExecWithResponse request returning *GetDaemonExecResponse
+func (c *ClientWithResponses) GetDaemonExecWithResponse(ctx context.Context, nodename InPathNodeName, execId InPathExecID, reqEditors ...RequestEditorFn) (*GetDaemonExecResponse, error) {
+	rsp, err := c.GetDaemonExec(ctx, nodename, execId, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseGetDaemonExecResponse(rsp)
+}
+
 // PostDaemonHeartbeatRestartWithResponse request returning *PostDaemonHeartbeatRestartResponse
 func (c *ClientWithResponses) PostDaemonHeartbeatRestartWithResponse(ctx context.Context, nodename InPathNodeName, name InPathHeartbeatName, reqEditors ...RequestEditorFn) (*PostDaemonHeartbeatRestartResponse, error) {
 	rsp, err := c.PostDaemonHeartbeatRestart(ctx, nodename, name, reqEditors...)
@@ -19958,33 +19877,6 @@ func (c *ClientWithResponses) DeleteDaemonProcessWithResponse(ctx context.Contex
 		return nil, err
 	}
 	return ParseDeleteDaemonProcessResponse(rsp)
-}
-
-// GetDaemonProcessWithResponse request returning *GetDaemonProcessResponse
-func (c *ClientWithResponses) GetDaemonProcessWithResponse(ctx context.Context, nodename InPathNodeName, params *GetDaemonProcessParams, reqEditors ...RequestEditorFn) (*GetDaemonProcessResponse, error) {
-	rsp, err := c.GetDaemonProcess(ctx, nodename, params, reqEditors...)
-	if err != nil {
-		return nil, err
-	}
-	return ParseGetDaemonProcessResponse(rsp)
-}
-
-// GetDaemonSessionsWithResponse request returning *GetDaemonSessionsResponse
-func (c *ClientWithResponses) GetDaemonSessionsWithResponse(ctx context.Context, nodename InPathNodeName, params *GetDaemonSessionsParams, reqEditors ...RequestEditorFn) (*GetDaemonSessionsResponse, error) {
-	rsp, err := c.GetDaemonSessions(ctx, nodename, params, reqEditors...)
-	if err != nil {
-		return nil, err
-	}
-	return ParseGetDaemonSessionsResponse(rsp)
-}
-
-// GetDaemonSessionWithResponse request returning *GetDaemonSessionResponse
-func (c *ClientWithResponses) GetDaemonSessionWithResponse(ctx context.Context, nodename InPathNodeName, sessionId InPathSessionID, reqEditors ...RequestEditorFn) (*GetDaemonSessionResponse, error) {
-	rsp, err := c.GetDaemonSession(ctx, nodename, sessionId, reqEditors...)
-	if err != nil {
-		return nil, err
-	}
-	return ParseGetDaemonSessionResponse(rsp)
 }
 
 // GetNodeDRBDAllocationWithResponse request returning *GetNodeDRBDAllocationResponse
@@ -23492,6 +23384,107 @@ func ParseGetDaemonEventsResponse(rsp *http.Response) (*GetDaemonEventsResponse,
 	return response, nil
 }
 
+// ParseGetDaemonExecsResponse parses an HTTP response from a GetDaemonExecsWithResponse call
+func ParseGetDaemonExecsResponse(rsp *http.Response) (*GetDaemonExecsResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &GetDaemonExecsResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest ExecList
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest N401
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest N403
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON403 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
+		var dest N500
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON500 = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseGetDaemonExecResponse parses an HTTP response from a GetDaemonExecWithResponse call
+func ParseGetDaemonExecResponse(rsp *http.Response) (*GetDaemonExecResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &GetDaemonExecResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest ExecItem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest N401
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest N403
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON403 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 410:
+		var dest N410
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON410 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
+		var dest N500
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON500 = &dest
+
+	}
+
+	return response, nil
+}
+
 // ParsePostDaemonHeartbeatRestartResponse parses an HTTP response from a PostDaemonHeartbeatRestartWithResponse call
 func ParsePostDaemonHeartbeatRestartResponse(rsp *http.Response) (*PostDaemonHeartbeatRestartResponse, error) {
 	bodyBytes, err := io.ReadAll(rsp.Body)
@@ -24160,147 +24153,6 @@ func ParseDeleteDaemonProcessResponse(rsp *http.Response) (*DeleteDaemonProcessR
 			return nil, err
 		}
 		response.JSON409 = &dest
-
-	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
-		var dest N500
-		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
-			return nil, err
-		}
-		response.JSON500 = &dest
-
-	}
-
-	return response, nil
-}
-
-// ParseGetDaemonProcessResponse parses an HTTP response from a GetDaemonProcessWithResponse call
-func ParseGetDaemonProcessResponse(rsp *http.Response) (*GetDaemonProcessResponse, error) {
-	bodyBytes, err := io.ReadAll(rsp.Body)
-	defer func() { _ = rsp.Body.Close() }()
-	if err != nil {
-		return nil, err
-	}
-
-	response := &GetDaemonProcessResponse{
-		Body:         bodyBytes,
-		HTTPResponse: rsp,
-	}
-
-	switch {
-	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
-		var dest ProcessList
-		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
-			return nil, err
-		}
-		response.JSON200 = &dest
-
-	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
-		var dest N403
-		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
-			return nil, err
-		}
-		response.JSON403 = &dest
-
-	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
-		var dest N500
-		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
-			return nil, err
-		}
-		response.JSON500 = &dest
-
-	}
-
-	return response, nil
-}
-
-// ParseGetDaemonSessionsResponse parses an HTTP response from a GetDaemonSessionsWithResponse call
-func ParseGetDaemonSessionsResponse(rsp *http.Response) (*GetDaemonSessionsResponse, error) {
-	bodyBytes, err := io.ReadAll(rsp.Body)
-	defer func() { _ = rsp.Body.Close() }()
-	if err != nil {
-		return nil, err
-	}
-
-	response := &GetDaemonSessionsResponse{
-		Body:         bodyBytes,
-		HTTPResponse: rsp,
-	}
-
-	switch {
-	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
-		var dest SessionList
-		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
-			return nil, err
-		}
-		response.JSON200 = &dest
-
-	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
-		var dest N401
-		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
-			return nil, err
-		}
-		response.JSON401 = &dest
-
-	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
-		var dest N403
-		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
-			return nil, err
-		}
-		response.JSON403 = &dest
-
-	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
-		var dest N500
-		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
-			return nil, err
-		}
-		response.JSON500 = &dest
-
-	}
-
-	return response, nil
-}
-
-// ParseGetDaemonSessionResponse parses an HTTP response from a GetDaemonSessionWithResponse call
-func ParseGetDaemonSessionResponse(rsp *http.Response) (*GetDaemonSessionResponse, error) {
-	bodyBytes, err := io.ReadAll(rsp.Body)
-	defer func() { _ = rsp.Body.Close() }()
-	if err != nil {
-		return nil, err
-	}
-
-	response := &GetDaemonSessionResponse{
-		Body:         bodyBytes,
-		HTTPResponse: rsp,
-	}
-
-	switch {
-	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
-		var dest SessionList
-		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
-			return nil, err
-		}
-		response.JSON200 = &dest
-
-	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
-		var dest N401
-		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
-			return nil, err
-		}
-		response.JSON401 = &dest
-
-	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
-		var dest N403
-		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
-			return nil, err
-		}
-		response.JSON403 = &dest
-
-	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 410:
-		var dest N410
-		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
-			return nil, err
-		}
-		response.JSON410 = &dest
 
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
 		var dest N500

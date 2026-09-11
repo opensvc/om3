@@ -147,27 +147,30 @@ func (o *T) action(e schedule.Entry) error {
 		Command:   cmd.String(),
 		Node:      o.localhost,
 		Origin:    "scheduler",
+		RID:       e.RID(),
 		ExecID:    execID,
 		SessionID: sessionID,
 	}, labels...)
 	startTime := time.Now()
 	if err := cmd.Start(); err != nil {
+		// The start of this exec was announced, so its end has to be too, or
+		// it stays running in the exec store for as long as the store keeps
+		// it. There is no exit status to report: it never ran.
+		o.publisher.Pub(&msgbus.ExecFailed{
+			Command:   cmd.String(),
+			Duration:  time.Now().Sub(startTime),
+			ErrS:      err.Error(),
+			ExitCode:  -1,
+			Node:      o.localhost,
+			Origin:    "scheduler",
+			ExecID:    execID,
+			SessionID: sessionID,
+		}, labels...)
 		o.log.Errorf("exec StartProcess: %s", err)
 		return err
 	}
 	pid := cmd.Cmd().Process.Pid
-	proc.Register(proc.T{
-		Pid:          pid,
-		Node:         o.localhost,
-		Object:       e.Path.String(),
-		SessionID:    sessionID.String(),
-		StartedAt:    startTime,
-		Elapsed:      "",
-		GlobalExpect: "-",
-		Sub:          "scheduler",
-		Cmd:          cmd.String(),
-		Rid:          e.RID(),
-	})
+	proc.Register(proc.T{Pid: pid, ExecID: execID.String()})
 	err = cmd.Wait()
 	proc.Unregister(pid)
 	if err != nil {
@@ -176,6 +179,7 @@ func (o *T) action(e schedule.Entry) error {
 			Command:   cmd.String(),
 			Duration:  duration,
 			ErrS:      err.Error(),
+			ExitCode:  cmd.ExitCode(),
 			Node:      o.localhost,
 			Origin:    "scheduler",
 			ExecID:    execID,
@@ -188,6 +192,7 @@ func (o *T) action(e schedule.Entry) error {
 	o.publisher.Pub(&msgbus.ExecSuccess{
 		Command:   cmd.String(),
 		Duration:  duration,
+		ExitCode:  cmd.ExitCode(),
 		Node:      o.localhost,
 		Origin:    "scheduler",
 		ExecID:    execID,

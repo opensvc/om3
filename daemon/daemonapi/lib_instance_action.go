@@ -58,20 +58,24 @@ func (a *DaemonAPI) apiExec(ctx echo.Context, p naming.Path, requesterSessionID 
 	a.Bus.Pub(&msg, labels...)
 	startTime := time.Now()
 	if err = cmd.Start(); err != nil {
+		// The start of this exec was announced, so its end has to be too, or
+		// it stays running in the exec store for as long as the store keeps
+		// it. There is no exit status to report: it never ran.
+		a.Bus.Pub(&msgbus.ExecFailed{
+			Command:   cmd.String(),
+			Duration:  time.Now().Sub(startTime),
+			ErrS:      err.Error(),
+			ExitCode:  -1,
+			Node:      a.localhost,
+			Origin:    "api",
+			SessionID: sessionID,
+			ExecID:    execID,
+		}, labels...)
 		log.Errorf("exec StartProcess: %s", err)
 		return sessionID.UUID(), execID.UUID(), fmt.Errorf("instance action failed: %w", err)
 	}
 	pid := cmd.Cmd().Process.Pid
-	proc.Register(proc.T{
-		Pid:       pid,
-		Node:      a.localhost,
-		Object:    p.String(),
-		SessionID: sessionID.String(),
-		StartedAt: startTime,
-		Elapsed:   "",
-		Sub:       "api",
-		Cmd:       cmd.String(),
-	})
+	proc.Register(proc.T{Pid: pid, ExecID: execID.String()})
 	go func() {
 		err := cmd.Wait()
 		proc.Unregister(pid)
@@ -86,12 +90,14 @@ func (a *DaemonAPI) apiExec(ctx echo.Context, p naming.Path, requesterSessionID 
 				SessionID: sessionID,
 				ExecID:    execID,
 				ErrS:      err.Error(),
+				ExitCode:  cmd.ExitCode(),
 			}
 			a.Bus.Pub(&msg, labels...)
 		} else {
 			msg := msgbus.ExecSuccess{
 				Command:   cmd.String(),
 				Duration:  duration,
+				ExitCode:  cmd.ExitCode(),
 				Node:      a.localhost,
 				Origin:    "api",
 				SessionID: sessionID,

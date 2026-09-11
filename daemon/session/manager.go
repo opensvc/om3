@@ -127,20 +127,21 @@ func (t *Manager) handle(i any) {
 				m.Value.GlobalExpectUpdatedAt,
 			)
 		case *msgbus.Exec:
-			AddSession(Session{
+			AddExec(Exec{
 				SessionID:       IDString(m.SessionID),
 				ExecID:          IDString(m.ExecID),
 				OrchestrationID: IDString(m.OrchestrationID),
 				Node:            m.Node,
 				Path:            pathOf(m.Labels),
 				Origin:          m.Origin,
+				RID:             m.RID,
 				Title:           m.Title,
 				Command:         m.Command,
 			})
 		case *msgbus.ExecSuccess:
-			EndSession(IDString(m.ExecID), IDString(m.SessionID), StateSucceeded, "", m.Duration)
+			EndExec(IDString(m.ExecID), IDString(m.SessionID), StateSucceeded, "", m.ExitCode, m.Duration)
 		case *msgbus.ExecFailed:
-			EndSession(IDString(m.ExecID), IDString(m.SessionID), StateFailed, m.ErrS, m.Duration)
+			EndExec(IDString(m.ExecID), IDString(m.SessionID), StateFailed, m.ErrS, m.ExitCode, m.Duration)
 		case *msgbus.ObjectOrchestrationAccepted:
 			AddOrchestration(Orchestration{
 				OrchestrationID: m.ID,

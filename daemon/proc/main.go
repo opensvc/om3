@@ -1,27 +1,26 @@
 package proc
 
 import (
-	"slices"
 	"sort"
 	"sync"
-	"time"
-
-	"github.com/opensvc/om3/v3/core/naming"
-	"github.com/opensvc/om3/v3/core/resourceid"
 )
 
 type (
+	// T is a process the daemon started and has not reaped.
+	//
+	// It holds the process facts and nothing else. What the process is
+	// running - the object, the command, the origin, the resource, when it
+	// began - is what the exec store remembers, under the same exec id, for
+	// as long after it ends as the store keeps it. This is only how to find
+	// it and how to signal it.
 	T struct {
-		Pid          int
-		Node         string
-		Object       string
-		SessionID    string
-		StartedAt    time.Time
-		Elapsed      string
-		GlobalExpect string
-		Sub          string
-		Cmd          string
-		Rid          string
+		Pid int
+
+		// ExecID names the run this process is, which is what joins it to
+		// what the exec store remembers of the same run. A session id would
+		// not: one command reaching several objects of a node is several
+		// processes sharing one session id.
+		ExecID string
 	}
 )
 
@@ -33,9 +32,6 @@ var (
 func Register(t T) {
 	if t.Pid <= 0 {
 		return
-	}
-	if t.StartedAt.IsZero() {
-		t.StartedAt = time.Now()
 	}
 	mu.Lock()
 	defer mu.Unlock()
@@ -50,42 +46,18 @@ func Unregister(pid int) {
 
 func Get(pid int) (T, bool) {
 	mu.RLock()
+	defer mu.RUnlock()
 	t, ok := byPID[pid]
-	mu.RUnlock()
-	if !ok {
-		return T{}, false
-	}
-	if !t.StartedAt.IsZero() {
-		d := time.Since(t.StartedAt)
-		if d < 0 {
-			d = 0
-		}
-		t.Elapsed = d.String()
-	}
-	return t, true
+	return t, ok
 }
 
-func List(subFilters []string, paths naming.Paths, rid string) []T {
+// List returns every process the daemon started and has not reaped, by
+// ascending pid. Narrowing is the exec store's job: it knows what each of
+// these is running.
+func List() []T {
 	mu.RLock()
 	out := make([]T, 0, len(byPID))
-	pathsList := paths.StrSlice()
 	for _, t := range byPID {
-		if len(subFilters) != 0 && !slices.Contains(subFilters, t.Sub) {
-			continue
-		}
-		if rid != "" && !resourceid.Match(t.Rid, rid) {
-			continue
-		}
-		if len(pathsList) > 0 && !slices.Contains(pathsList, t.Object) {
-			continue
-		}
-		if !t.StartedAt.IsZero() {
-			d := time.Since(t.StartedAt)
-			if d < 0 {
-				d = 0
-			}
-			t.Elapsed = d.String()
-		}
 		out = append(out, t)
 	}
 	mu.RUnlock()
@@ -93,5 +65,20 @@ func List(subFilters []string, paths naming.Paths, rid string) []T {
 	sort.Slice(out, func(i, j int) bool {
 		return out[i].Pid < out[j].Pid
 	})
+	return out
+}
+
+// PidByExecID indexes the live processes by the exec each one is running, so
+// a listing of execs can say which of them still has a process and what its
+// pid is.
+func PidByExecID() map[string]int {
+	mu.RLock()
+	defer mu.RUnlock()
+	out := make(map[string]int, len(byPID))
+	for pid, t := range byPID {
+		if t.ExecID != "" {
+			out[t.ExecID] = pid
+		}
+	}
 	return out
 }
