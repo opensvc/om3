@@ -1956,6 +1956,62 @@ paths:
       security:
         - basicAuth: []
         - bearerAuth: []
+    delete:
+      operationId: DeleteDaemonExecs
+      description: |
+        Signal the processes of the running execs a filter selects.
+
+        The execs are named the way GetDaemonExecs names them, so what was
+        listed is what is signaled. An exec id resolves to its pid here, under
+        the daemon's own lock: a pid handed back by an earlier listing may
+        have exited and been recycled by then, and killing the exec rather
+        than the number is what makes that impossible.
+
+        At least one of pid, exec_id, session_id, orchestration_id, rid,
+        origin or the object selector must narrow the selection. Signaling
+        every exec of a node is not something a caller does by omission.
+
+        Only a running exec has a process. One that has ended selects nothing
+        and is not an error: it is the outcome asked for.
+
+        Only the processes the daemon started are signaled. A pid it did not
+        start is refused.
+
+        Answers the execs it signaled. With dry_run, answers the execs it
+        would have signaled and sends no signal.
+      parameters:
+        - $ref: '#/components/parameters/inPathNodeName'
+        - $ref: '#/components/parameters/inQueryPid'
+        - $ref: '#/components/parameters/inQuerySignal'
+        - $ref: '#/components/parameters/inQueryDryRun'
+        - $ref: '#/components/parameters/inQuerySessionID'
+        - $ref: '#/components/parameters/inQueryOrchestrationID'
+        - $ref: '#/components/parameters/inQueryExecID'
+        - $ref: '#/components/parameters/inQueryOrigin'
+        - $ref: '#/components/parameters/inQueryRIDOptional'
+        - $ref: '#/components/parameters/inQuerySelectorOptional'
+      responses:
+        200:
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ExecList'
+        400:
+          $ref: '#/components/responses/400'
+        401:
+          $ref: '#/components/responses/401'
+        403:
+          $ref: '#/components/responses/403'
+        410:
+          $ref: '#/components/responses/410'
+        500:
+          $ref: '#/components/responses/500'
+      tags:
+        - node / daemon
+      security:
+        - basicAuth: []
+        - bearerAuth: []
 
   /api/node/name/{nodename}/daemon/exec/id/{exec_id}:
     get:
@@ -2065,45 +2121,6 @@ paths:
         - basicAuth: []
         - bearerAuth: []
 
-  /api/node/name/{nodename}/daemon/process:
-    delete:
-      operationId: DeleteDaemonProcess
-      description: |
-        Signal the daemon process.
-
-        Only the processes of the execs listed by GetDaemonExecs can be
-        signaled.
-      parameters:
-        - $ref: '#/components/parameters/inPathNodeName'
-        - in: query
-          name: pid
-          description: the pid of the process to kill.
-          schema:
-            type: array
-            items:
-              type: integer
-        - in: query
-          name: signal
-          description: the signal to send, as a name (TERM, SIGTERM) or a number (15). Defaults to SIGKILL.
-          schema:
-            type: string
-            example: TERM
-      responses:
-        204:
-          $ref: '#/components/responses/204'
-        400:
-          $ref: '#/components/responses/400'
-        403:
-          $ref: '#/components/responses/403'
-        409:
-          $ref: '#/components/responses/409'
-        500:
-          $ref: '#/components/responses/500'
-      tags:
-        - node / daemon
-      security:
-        - basicAuth: []
-        - bearerAuth: []
 
   /api/node/name/{nodename}/drbd/allocation:
     get:
@@ -7632,7 +7649,7 @@ components:
           type: string
         exit_code:
           type: integer
-          description: What the process exited with. Absent while it runs. -1 when it exited with no status, killed by a signal or never started.
+          description: What the process exited with, 128 + the signal number when a signal ended it, as the shell reports it. Absent while it runs. -1 when the process never ran at all.
         begin_at:
           type: string
           format: date-time
@@ -8988,6 +9005,31 @@ components:
           type: string
           description: A state to list. Every state when not set.
           example: running
+
+    inQueryPid:
+      in: query
+      name: pid
+      x-go-name: Pids
+      description: Signal the exec running under this pid. Repeatable.
+      schema:
+        type: array
+        items:
+          type: integer
+
+    inQuerySignal:
+      in: query
+      name: signal
+      description: The signal to send, as a name (TERM, SIGTERM) or a number (15). Defaults to SIGKILL.
+      schema:
+        type: string
+        example: TERM
+
+    inQueryDryRun:
+      in: query
+      name: dry_run
+      description: Answer what would be signaled, and signal nothing.
+      schema:
+        type: boolean
 
     inQueryOrigin:
       in: query

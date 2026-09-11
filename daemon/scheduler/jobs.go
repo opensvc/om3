@@ -179,7 +179,7 @@ func (o *T) action(e schedule.Entry) error {
 			Command:   cmd.String(),
 			Duration:  duration,
 			ErrS:      err.Error(),
-			ExitCode:  cmd.ExitCode(),
+			ExitCode:  cmd.NormalizedExitCode(),
 			Node:      o.localhost,
 			Origin:    "scheduler",
 			ExecID:    execID,
@@ -192,7 +192,7 @@ func (o *T) action(e schedule.Entry) error {
 	o.publisher.Pub(&msgbus.ExecSuccess{
 		Command:   cmd.String(),
 		Duration:  duration,
-		ExitCode:  cmd.ExitCode(),
+		ExitCode:  cmd.NormalizedExitCode(),
 		Node:      o.localhost,
 		Origin:    "scheduler",
 		ExecID:    execID,

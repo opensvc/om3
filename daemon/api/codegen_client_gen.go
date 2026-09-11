@@ -247,6 +247,9 @@ type ClientInterface interface {
 	// GetDaemonEvents request
 	GetDaemonEvents(ctx context.Context, nodename InPathNodeName, params *GetDaemonEventsParams, reqEditors ...RequestEditorFn) (*http.Response, error)
 
+	// DeleteDaemonExecs request
+	DeleteDaemonExecs(ctx context.Context, nodename InPathNodeName, params *DeleteDaemonExecsParams, reqEditors ...RequestEditorFn) (*http.Response, error)
+
 	// GetDaemonExecs request
 	GetDaemonExecs(ctx context.Context, nodename InPathNodeName, params *GetDaemonExecsParams, reqEditors ...RequestEditorFn) (*http.Response, error)
 
@@ -290,9 +293,6 @@ type ClientInterface interface {
 
 	// GetDaemonOrchestration request
 	GetDaemonOrchestration(ctx context.Context, nodename InPathNodeName, orchestrationId InPathOrchestrationID, reqEditors ...RequestEditorFn) (*http.Response, error)
-
-	// DeleteDaemonProcess request
-	DeleteDaemonProcess(ctx context.Context, nodename InPathNodeName, params *DeleteDaemonProcessParams, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// GetNodeDRBDAllocation request
 	GetNodeDRBDAllocation(ctx context.Context, nodename InPathNodeName, reqEditors ...RequestEditorFn) (*http.Response, error)
@@ -1229,6 +1229,18 @@ func (c *Client) GetDaemonEvents(ctx context.Context, nodename InPathNodeName, p
 	return c.Client.Do(req)
 }
 
+func (c *Client) DeleteDaemonExecs(ctx context.Context, nodename InPathNodeName, params *DeleteDaemonExecsParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewDeleteDaemonExecsRequest(c.Server, nodename, params)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
 func (c *Client) GetDaemonExecs(ctx context.Context, nodename InPathNodeName, params *GetDaemonExecsParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
 	req, err := NewGetDaemonExecsRequest(c.Server, nodename, params)
 	if err != nil {
@@ -1399,18 +1411,6 @@ func (c *Client) GetDaemonOrchestrations(ctx context.Context, nodename InPathNod
 
 func (c *Client) GetDaemonOrchestration(ctx context.Context, nodename InPathNodeName, orchestrationId InPathOrchestrationID, reqEditors ...RequestEditorFn) (*http.Response, error) {
 	req, err := NewGetDaemonOrchestrationRequest(c.Server, nodename, orchestrationId)
-	if err != nil {
-		return nil, err
-	}
-	req = req.WithContext(ctx)
-	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
-		return nil, err
-	}
-	return c.Client.Do(req)
-}
-
-func (c *Client) DeleteDaemonProcess(ctx context.Context, nodename InPathNodeName, params *DeleteDaemonProcessParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
-	req, err := NewDeleteDaemonProcessRequest(c.Server, nodename, params)
 	if err != nil {
 		return nil, err
 	}
@@ -5367,6 +5367,163 @@ func NewGetDaemonEventsRequest(server string, nodename InPathNodeName, params *G
 	return req, nil
 }
 
+// NewDeleteDaemonExecsRequest generates requests for DeleteDaemonExecs
+func NewDeleteDaemonExecsRequest(server string, nodename InPathNodeName, params *DeleteDaemonExecsParams) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "nodename", nodename, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/api/node/name/%s/daemon/exec", pathParam0)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	if params != nil {
+		// queryValues collects non-styled parameters (passthrough, JSON)
+		// that are safe to round-trip through url.Values.Encode().
+		queryValues := queryURL.Query()
+		// rawQueryFragments collects pre-encoded query fragments from
+		// styled parameters, preserving literal commas as delimiters
+		// per the OpenAPI spec (e.g. "color=blue,black,brown").
+		var rawQueryFragments []string
+
+		if params.Pids != nil {
+
+			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "pid", *params.Pids, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "array", Format: ""}); err != nil {
+				return nil, err
+			} else {
+				for _, qp := range strings.Split(queryFrag, "&") {
+					rawQueryFragments = append(rawQueryFragments, qp)
+				}
+			}
+
+		}
+
+		if params.Signal != nil {
+
+			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "signal", *params.Signal, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "string", Format: ""}); err != nil {
+				return nil, err
+			} else {
+				for _, qp := range strings.Split(queryFrag, "&") {
+					rawQueryFragments = append(rawQueryFragments, qp)
+				}
+			}
+
+		}
+
+		if params.DryRun != nil {
+
+			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "dry_run", *params.DryRun, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "boolean", Format: ""}); err != nil {
+				return nil, err
+			} else {
+				for _, qp := range strings.Split(queryFrag, "&") {
+					rawQueryFragments = append(rawQueryFragments, qp)
+				}
+			}
+
+		}
+
+		if params.SessionID != nil {
+
+			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "session_id", *params.SessionID, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "string", Format: "uuid"}); err != nil {
+				return nil, err
+			} else {
+				for _, qp := range strings.Split(queryFrag, "&") {
+					rawQueryFragments = append(rawQueryFragments, qp)
+				}
+			}
+
+		}
+
+		if params.OrchestrationID != nil {
+
+			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "orchestration_id", *params.OrchestrationID, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "string", Format: "uuid"}); err != nil {
+				return nil, err
+			} else {
+				for _, qp := range strings.Split(queryFrag, "&") {
+					rawQueryFragments = append(rawQueryFragments, qp)
+				}
+			}
+
+		}
+
+		if params.ExecID != nil {
+
+			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "exec_id", *params.ExecID, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "string", Format: "uuid"}); err != nil {
+				return nil, err
+			} else {
+				for _, qp := range strings.Split(queryFrag, "&") {
+					rawQueryFragments = append(rawQueryFragments, qp)
+				}
+			}
+
+		}
+
+		if params.Origins != nil {
+
+			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "origin", *params.Origins, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "array", Format: ""}); err != nil {
+				return nil, err
+			} else {
+				for _, qp := range strings.Split(queryFrag, "&") {
+					rawQueryFragments = append(rawQueryFragments, qp)
+				}
+			}
+
+		}
+
+		if params.RID != nil {
+
+			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "rid", *params.RID, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "string", Format: ""}); err != nil {
+				return nil, err
+			} else {
+				for _, qp := range strings.Split(queryFrag, "&") {
+					rawQueryFragments = append(rawQueryFragments, qp)
+				}
+			}
+
+		}
+
+		if params.Selector != nil {
+
+			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "selector", *params.Selector, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "string", Format: ""}); err != nil {
+				return nil, err
+			} else {
+				for _, qp := range strings.Split(queryFrag, "&") {
+					rawQueryFragments = append(rawQueryFragments, qp)
+				}
+			}
+
+		}
+
+		if encoded := queryValues.Encode(); encoded != "" {
+			rawQueryFragments = append(rawQueryFragments, encoded)
+		}
+		queryURL.RawQuery = strings.Join(rawQueryFragments, "&")
+	}
+
+	req, err := http.NewRequest(http.MethodDelete, queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
 // NewGetDaemonExecsRequest generates requests for GetDaemonExecs
 func NewGetDaemonExecsRequest(server string, nodename InPathNodeName, params *GetDaemonExecsParams) (*http.Request, error) {
 	var err error
@@ -6057,79 +6214,6 @@ func NewGetDaemonOrchestrationRequest(server string, nodename InPathNodeName, or
 	}
 
 	req, err := http.NewRequest(http.MethodGet, queryURL.String(), nil)
-	if err != nil {
-		return nil, err
-	}
-
-	return req, nil
-}
-
-// NewDeleteDaemonProcessRequest generates requests for DeleteDaemonProcess
-func NewDeleteDaemonProcessRequest(server string, nodename InPathNodeName, params *DeleteDaemonProcessParams) (*http.Request, error) {
-	var err error
-
-	var pathParam0 string
-
-	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "nodename", nodename, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
-	if err != nil {
-		return nil, err
-	}
-
-	serverURL, err := url.Parse(server)
-	if err != nil {
-		return nil, err
-	}
-
-	operationPath := fmt.Sprintf("/api/node/name/%s/daemon/process", pathParam0)
-	if operationPath[0] == '/' {
-		operationPath = "." + operationPath
-	}
-
-	queryURL, err := serverURL.Parse(operationPath)
-	if err != nil {
-		return nil, err
-	}
-
-	if params != nil {
-		// queryValues collects non-styled parameters (passthrough, JSON)
-		// that are safe to round-trip through url.Values.Encode().
-		queryValues := queryURL.Query()
-		// rawQueryFragments collects pre-encoded query fragments from
-		// styled parameters, preserving literal commas as delimiters
-		// per the OpenAPI spec (e.g. "color=blue,black,brown").
-		var rawQueryFragments []string
-
-		if params.Pid != nil {
-
-			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "pid", *params.Pid, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "array", Format: ""}); err != nil {
-				return nil, err
-			} else {
-				for _, qp := range strings.Split(queryFrag, "&") {
-					rawQueryFragments = append(rawQueryFragments, qp)
-				}
-			}
-
-		}
-
-		if params.Signal != nil {
-
-			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "signal", *params.Signal, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "string", Format: ""}); err != nil {
-				return nil, err
-			} else {
-				for _, qp := range strings.Split(queryFrag, "&") {
-					rawQueryFragments = append(rawQueryFragments, qp)
-				}
-			}
-
-		}
-
-		if encoded := queryValues.Encode(); encoded != "" {
-			rawQueryFragments = append(rawQueryFragments, encoded)
-		}
-		queryURL.RawQuery = strings.Join(rawQueryFragments, "&")
-	}
-
-	req, err := http.NewRequest(http.MethodDelete, queryURL.String(), nil)
 	if err != nil {
 		return nil, err
 	}
@@ -13578,6 +13662,9 @@ type ClientWithResponsesInterface interface {
 	// GetDaemonEventsWithResponse request
 	GetDaemonEventsWithResponse(ctx context.Context, nodename InPathNodeName, params *GetDaemonEventsParams, reqEditors ...RequestEditorFn) (*GetDaemonEventsResponse, error)
 
+	// DeleteDaemonExecsWithResponse request
+	DeleteDaemonExecsWithResponse(ctx context.Context, nodename InPathNodeName, params *DeleteDaemonExecsParams, reqEditors ...RequestEditorFn) (*DeleteDaemonExecsResponse, error)
+
 	// GetDaemonExecsWithResponse request
 	GetDaemonExecsWithResponse(ctx context.Context, nodename InPathNodeName, params *GetDaemonExecsParams, reqEditors ...RequestEditorFn) (*GetDaemonExecsResponse, error)
 
@@ -13621,9 +13708,6 @@ type ClientWithResponsesInterface interface {
 
 	// GetDaemonOrchestrationWithResponse request
 	GetDaemonOrchestrationWithResponse(ctx context.Context, nodename InPathNodeName, orchestrationId InPathOrchestrationID, reqEditors ...RequestEditorFn) (*GetDaemonOrchestrationResponse, error)
-
-	// DeleteDaemonProcessWithResponse request
-	DeleteDaemonProcessWithResponse(ctx context.Context, nodename InPathNodeName, params *DeleteDaemonProcessParams, reqEditors ...RequestEditorFn) (*DeleteDaemonProcessResponse, error)
 
 	// GetNodeDRBDAllocationWithResponse request
 	GetNodeDRBDAllocationWithResponse(ctx context.Context, nodename InPathNodeName, reqEditors ...RequestEditorFn) (*GetNodeDRBDAllocationResponse, error)
@@ -15603,6 +15687,41 @@ func (r GetDaemonEventsResponse) ContentType() string {
 	return ""
 }
 
+type DeleteDaemonExecsResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	JSON200      *ExecList
+	JSON400      *N400
+	JSON401      *N401
+	JSON403      *N403
+	JSON410      *N410
+	JSON500      *N500
+}
+
+// Status returns HTTPResponse.Status
+func (r DeleteDaemonExecsResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r DeleteDaemonExecsResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r DeleteDaemonExecsResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
 type GetDaemonExecsResponse struct {
 	Body         []byte
 	HTTPResponse *http.Response
@@ -16070,39 +16189,6 @@ func (r GetDaemonOrchestrationResponse) StatusCode() int {
 
 // ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
 func (r GetDaemonOrchestrationResponse) ContentType() string {
-	if r.HTTPResponse != nil {
-		return r.HTTPResponse.Header.Get("Content-Type")
-	}
-	return ""
-}
-
-type DeleteDaemonProcessResponse struct {
-	Body         []byte
-	HTTPResponse *http.Response
-	JSON400      *N400
-	JSON403      *N403
-	JSON409      *N409
-	JSON500      *N500
-}
-
-// Status returns HTTPResponse.Status
-func (r DeleteDaemonProcessResponse) Status() string {
-	if r.HTTPResponse != nil {
-		return r.HTTPResponse.Status
-	}
-	return http.StatusText(0)
-}
-
-// StatusCode returns HTTPResponse.StatusCode
-func (r DeleteDaemonProcessResponse) StatusCode() int {
-	if r.HTTPResponse != nil {
-		return r.HTTPResponse.StatusCode
-	}
-	return 0
-}
-
-// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
-func (r DeleteDaemonProcessResponse) ContentType() string {
 	if r.HTTPResponse != nil {
 		return r.HTTPResponse.Header.Get("Content-Type")
 	}
@@ -19736,6 +19822,15 @@ func (c *ClientWithResponses) GetDaemonEventsWithResponse(ctx context.Context, n
 	return ParseGetDaemonEventsResponse(rsp)
 }
 
+// DeleteDaemonExecsWithResponse request returning *DeleteDaemonExecsResponse
+func (c *ClientWithResponses) DeleteDaemonExecsWithResponse(ctx context.Context, nodename InPathNodeName, params *DeleteDaemonExecsParams, reqEditors ...RequestEditorFn) (*DeleteDaemonExecsResponse, error) {
+	rsp, err := c.DeleteDaemonExecs(ctx, nodename, params, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseDeleteDaemonExecsResponse(rsp)
+}
+
 // GetDaemonExecsWithResponse request returning *GetDaemonExecsResponse
 func (c *ClientWithResponses) GetDaemonExecsWithResponse(ctx context.Context, nodename InPathNodeName, params *GetDaemonExecsParams, reqEditors ...RequestEditorFn) (*GetDaemonExecsResponse, error) {
 	rsp, err := c.GetDaemonExecs(ctx, nodename, params, reqEditors...)
@@ -19868,15 +19963,6 @@ func (c *ClientWithResponses) GetDaemonOrchestrationWithResponse(ctx context.Con
 		return nil, err
 	}
 	return ParseGetDaemonOrchestrationResponse(rsp)
-}
-
-// DeleteDaemonProcessWithResponse request returning *DeleteDaemonProcessResponse
-func (c *ClientWithResponses) DeleteDaemonProcessWithResponse(ctx context.Context, nodename InPathNodeName, params *DeleteDaemonProcessParams, reqEditors ...RequestEditorFn) (*DeleteDaemonProcessResponse, error) {
-	rsp, err := c.DeleteDaemonProcess(ctx, nodename, params, reqEditors...)
-	if err != nil {
-		return nil, err
-	}
-	return ParseDeleteDaemonProcessResponse(rsp)
 }
 
 // GetNodeDRBDAllocationWithResponse request returning *GetNodeDRBDAllocationResponse
@@ -23384,6 +23470,67 @@ func ParseGetDaemonEventsResponse(rsp *http.Response) (*GetDaemonEventsResponse,
 	return response, nil
 }
 
+// ParseDeleteDaemonExecsResponse parses an HTTP response from a DeleteDaemonExecsWithResponse call
+func ParseDeleteDaemonExecsResponse(rsp *http.Response) (*DeleteDaemonExecsResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &DeleteDaemonExecsResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest ExecList
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
+		var dest N400
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON400 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest N401
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest N403
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON403 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 410:
+		var dest N410
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON410 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
+		var dest N500
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON500 = &dest
+
+	}
+
+	return response, nil
+}
+
 // ParseGetDaemonExecsResponse parses an HTTP response from a GetDaemonExecsWithResponse call
 func ParseGetDaemonExecsResponse(rsp *http.Response) (*GetDaemonExecsResponse, error) {
 	bodyBytes, err := io.ReadAll(rsp.Body)
@@ -24106,53 +24253,6 @@ func ParseGetDaemonOrchestrationResponse(rsp *http.Response) (*GetDaemonOrchestr
 			return nil, err
 		}
 		response.JSON410 = &dest
-
-	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
-		var dest N500
-		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
-			return nil, err
-		}
-		response.JSON500 = &dest
-
-	}
-
-	return response, nil
-}
-
-// ParseDeleteDaemonProcessResponse parses an HTTP response from a DeleteDaemonProcessWithResponse call
-func ParseDeleteDaemonProcessResponse(rsp *http.Response) (*DeleteDaemonProcessResponse, error) {
-	bodyBytes, err := io.ReadAll(rsp.Body)
-	defer func() { _ = rsp.Body.Close() }()
-	if err != nil {
-		return nil, err
-	}
-
-	response := &DeleteDaemonProcessResponse{
-		Body:         bodyBytes,
-		HTTPResponse: rsp,
-	}
-
-	switch {
-	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
-		var dest N400
-		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
-			return nil, err
-		}
-		response.JSON400 = &dest
-
-	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
-		var dest N403
-		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
-			return nil, err
-		}
-		response.JSON403 = &dest
-
-	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 409:
-		var dest N409
-		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
-			return nil, err
-		}
-		response.JSON409 = &dest
 
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
 		var dest N500

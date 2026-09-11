@@ -456,8 +456,8 @@ type (
 		Command    string        `json:"command" yaml:"command"`
 		Duration   time.Duration `json:"duration" yaml:"duration"`
 		ErrS       string        `json:"error" yaml:"error"`
-		// ExitCode is what the process exited with, and -1 when it exited
-		// with no status: killed by a signal, or never started at all.
+		// ExitCode is what the process exited with, 128 + the signal number
+		// when a signal ended it, and -1 when it never ran at all.
 		ExitCode int `json:"exit_code" yaml:"exit_code"`
 		// Node is the nodename that called exec
 		Node string `json:"node" yaml:"node"`

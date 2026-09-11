@@ -53,10 +53,17 @@ func TestOnlyAnEndedExecHasAnExitCode(t *testing.T) {
 
 	reset()
 	AddExec(Exec{SessionID: "s2", ExecID: "e-s2"})
-	EndExec("e-s2", "s2", StateFailed, "signal: killed", -1, time.Second)
+	EndExec("e-s2", "s2", StateFailed, "signal: terminated", 143, time.Second)
 	s, _ = firstExecOfSession("s2")
 	require.NotNil(t, s.ExitCode)
-	assert.Equal(t, -1, *s.ExitCode, "no exit status is -1, not zero")
+	assert.Equal(t, 143, *s.ExitCode, "a signal is 128 + its number, as the shell reports it")
+
+	reset()
+	AddExec(Exec{SessionID: "s3", ExecID: "e-s3"})
+	EndExec("e-s3", "s3", StateFailed, "fork: no such file", -1, time.Second)
+	s, _ = firstExecOfSession("s3")
+	require.NotNil(t, s.ExitCode)
+	assert.Equal(t, -1, *s.ExitCode, "a process that never ran has no exit status")
 }
 
 // The end of a session whose start was missed is recorded all the same:

@@ -90,14 +90,14 @@ func (a *DaemonAPI) apiExec(ctx echo.Context, p naming.Path, requesterSessionID 
 				SessionID: sessionID,
 				ExecID:    execID,
 				ErrS:      err.Error(),
-				ExitCode:  cmd.ExitCode(),
+				ExitCode:  cmd.NormalizedExitCode(),
 			}
 			a.Bus.Pub(&msg, labels...)
 		} else {
 			msg := msgbus.ExecSuccess{
 				Command:   cmd.String(),
 				Duration:  duration,
-				ExitCode:  cmd.ExitCode(),
+				ExitCode:  cmd.NormalizedExitCode(),
 				Node:      a.localhost,
 				Origin:    "api",
 				SessionID: sessionID,

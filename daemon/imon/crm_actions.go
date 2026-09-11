@@ -281,7 +281,7 @@ func (t *Manager) crmDefaultAction(title string, cmdArgs ...string) error {
 			Command:         cmd.String(),
 			Duration:        duration,
 			ErrS:            err.Error(),
-			ExitCode:        cmd.ExitCode(),
+			ExitCode:        cmd.NormalizedExitCode(),
 			Node:            t.localhost,
 			Origin:          "imon",
 			ExecID:          execID,
@@ -296,7 +296,7 @@ func (t *Manager) crmDefaultAction(title string, cmdArgs ...string) error {
 	t.publisher.Pub(&msgbus.ExecSuccess{
 		Command:         cmd.String(),
 		Duration:        duration,
-		ExitCode:        cmd.ExitCode(),
+		ExitCode:        cmd.NormalizedExitCode(),
 		Node:            t.localhost,
 		Origin:          "imon",
 		ExecID:          execID,

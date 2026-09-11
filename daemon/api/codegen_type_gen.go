@@ -1288,7 +1288,7 @@ type ExecItem struct {
 	// ExecID The exec this reports, which is what has one object, one outcome, one duration and one exit code.
 	ExecID string `json:"exec_id"`
 
-	// ExitCode What the process exited with. Absent while it runs. -1 when it exited with no status, killed by a signal or never started.
+	// ExitCode What the process exited with, 128 + the signal number when a signal ended it, as the shell reports it. Absent while it runs. -1 when the process never ran at all.
 	ExitCode *int   `json:"exit_code,omitempty"`
 	Node     string `json:"node"`
 
@@ -2577,6 +2577,9 @@ type InQueryDisableRollback = bool
 // InQueryDriver defines model for inQueryDriver.
 type InQueryDriver = string
 
+// InQueryDryRun defines model for inQueryDryRun.
+type InQueryDryRun = bool
+
 // InQueryEnvs defines model for inQueryEnvs.
 type InQueryEnvs = []string
 
@@ -2640,6 +2643,9 @@ type OrchestrationID = openapi_types.UUID
 // Origins defines model for inQueryOrigin.
 type Origins = []string
 
+// Pids defines model for inQueryPid.
+type Pids = []int
+
 // InQueryPoolName defines model for inQueryPoolName.
 type InQueryPoolName = string
 
@@ -2669,6 +2675,9 @@ type SessionID = openapi_types.UUID
 
 // InQuerySets defines model for inQuerySets.
 type InQuerySets = []string
+
+// InQuerySignal defines model for inQuerySignal.
+type InQuerySignal = string
 
 // InQuerySlaves defines model for inQuerySlaves.
 type InQuerySlaves = []string
@@ -2977,6 +2986,28 @@ type GetDaemonEventsParams struct {
 	Selector *InQuerySelectorOptional `form:"selector,omitempty" json:"selector,omitempty"`
 }
 
+// DeleteDaemonExecsParams defines parameters for DeleteDaemonExecs.
+type DeleteDaemonExecsParams struct {
+	// Pids Signal the exec running under this pid. Repeatable.
+	Pids *Pids `form:"pid,omitempty" json:"pid,omitempty"`
+
+	// Signal The signal to send, as a name (TERM, SIGTERM) or a number (15). Defaults to SIGKILL.
+	Signal *InQuerySignal `form:"signal,omitempty" json:"signal,omitempty"`
+
+	// DryRun Answer what would be signaled, and signal nothing.
+	DryRun          *InQueryDryRun   `form:"dry_run,omitempty" json:"dry_run,omitempty"`
+	SessionID       *SessionID       `form:"session_id,omitempty" json:"session_id,omitempty"`
+	OrchestrationID *OrchestrationID `form:"orchestration_id,omitempty" json:"orchestration_id,omitempty"`
+	ExecID          *ExecID          `form:"exec_id,omitempty" json:"exec_id,omitempty"`
+	Origins         *Origins         `form:"origin,omitempty" json:"origin,omitempty"`
+
+	// RID a resource selector expression
+	RID *RID `form:"rid,omitempty" json:"rid,omitempty"`
+
+	// Selector selector
+	Selector *InQuerySelectorOptional `form:"selector,omitempty" json:"selector,omitempty"`
+}
+
 // GetDaemonExecsParams defines parameters for GetDaemonExecs.
 type GetDaemonExecsParams struct {
 	States          *States          `form:"state,omitempty" json:"state,omitempty"`
@@ -2998,15 +3029,6 @@ type GetDaemonOrchestrationsParams struct {
 
 	// Selector selector
 	Selector *InQuerySelectorOptional `form:"selector,omitempty" json:"selector,omitempty"`
-}
-
-// DeleteDaemonProcessParams defines parameters for DeleteDaemonProcess.
-type DeleteDaemonProcessParams struct {
-	// Pid the pid of the process to kill.
-	Pid *[]int `form:"pid,omitempty" json:"pid,omitempty"`
-
-	// Signal the signal to send, as a name (TERM, SIGTERM) or a number (15). Defaults to SIGKILL.
-	Signal *string `form:"signal,omitempty" json:"signal,omitempty"`
 }
 
 // GetNodeDRBDConfigParams defines parameters for GetNodeDRBDConfig.
