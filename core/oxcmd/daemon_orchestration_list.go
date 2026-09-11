@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"net/http"
+	"slices"
 	"sync"
 	"time"
 
@@ -52,8 +53,28 @@ func (t *CmdDaemonOrchestrationList) Run() error {
 		return fmt.Errorf("orchestration %s is no longer known on %s: it ended long enough ago to have been dropped, or never ran there",
 			t.OrchestrationID, t.NodeSelector)
 	}
-	t.render(items)
+	t.render(t.filter(items))
 	return errs
+}
+
+// filter narrows what the nodes answered the way the daemon would have.
+//
+// Naming an orchestration id asks the by-id endpoint, which answers for the
+// id and knows nothing of the options that narrow a listing. Applying them
+// here is what makes them mean the same thing with an id as without one.
+// Whether the daemon still holds the id has already been answered by then, so
+// an empty result at this point is the options, not forgetting.
+func (t *CmdDaemonOrchestrationList) filter(items []api.OrchestrationItem) []api.OrchestrationItem {
+	if len(t.States) == 0 {
+		return items
+	}
+	l := make([]api.OrchestrationItem, 0, len(items))
+	for _, i := range items {
+		if slices.Contains(t.States, i.State) {
+			l = append(l, i)
+		}
+	}
+	return l
 }
 
 // merge folds the answers of the nodes into one entry per orchestration.

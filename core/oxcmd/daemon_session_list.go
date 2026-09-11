@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"net/http"
+	"slices"
 	"sync"
 	"time"
 
@@ -56,7 +57,7 @@ func (t *CmdDaemonSessionList) Run() error {
 		return fmt.Errorf("session %s is no longer known on %s: it ended long enough ago to have been dropped, or never ran there",
 			t.SessionID, t.NodeSelector)
 	}
-	t.render(items)
+	t.render(t.filter(items))
 	return errs
 }
 
@@ -89,6 +90,30 @@ func (t *CmdDaemonSessionList) gather(c *client.T, nodenames []string) ([]api.Se
 	}
 	wg.Wait()
 	return items, errs
+}
+
+// filter narrows what the nodes answered the way the daemon would have.
+//
+// Naming a session id asks the by-id endpoint, which answers for the id and
+// knows nothing of the options that narrow a listing. Applying them here is
+// what makes them mean the same thing with an id as without one. Whether the
+// daemon still holds the id has already been answered by then, so an empty
+// result at this point is the options, not forgetting.
+func (t *CmdDaemonSessionList) filter(items []api.SessionItem) []api.SessionItem {
+	l := make([]api.SessionItem, 0, len(items))
+	for _, i := range items {
+		if t.ExecID != "" && i.ExecID != t.ExecID {
+			continue
+		}
+		if t.OrchestrationID != "" && (i.OrchestrationID == nil || *i.OrchestrationID != t.OrchestrationID) {
+			continue
+		}
+		if len(t.States) > 0 && !slices.Contains(t.States, i.State) {
+			continue
+		}
+		l = append(l, i)
+	}
+	return l
 }
 
 func (t *CmdDaemonSessionList) one(ctx context.Context, c *client.T, nodename string) ([]api.SessionItem, error) {
