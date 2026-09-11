@@ -50,7 +50,7 @@ func (t *CmdObjectKeyList) Run(kind string) error {
 			result.Items = append(result.Items, moreKeys...)
 		}
 	}
-	output.Renderer{
+	return output.Renderer{
 		DefaultOutput: "tab=OBJECT:object,NODE:node,NAME:name,SIZE:size",
 		Output:        t.Output,
 		Sort:          t.Sort,
@@ -58,7 +58,6 @@ func (t *CmdObjectKeyList) Run(kind string) error {
 		Data:          result,
 		Colorize:      rawconfig.Colorize,
 	}.Print()
-	return nil
 }
 
 func (t *CmdObjectKeyList) RunForPath(ctx context.Context, c *client.T, path naming.Path) (api.DataKeyListItems, error) {

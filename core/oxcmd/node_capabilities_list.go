@@ -88,14 +88,14 @@ func (t *CmdNodeCapabilitiesList) Run() error {
 
 out:
 
-	output.Renderer{
+	errs = errors.Join(errs, output.Renderer{
 		DefaultOutput: "tab=NODE:meta.node,NAME:data.name",
 		Output:        t.Output,
 		Sort:          t.Sort,
 		Color:         t.Color,
 		Data:          api.CapabilityList{Items: l, Kind: "CapabiliyList"},
 		Colorize:      rawconfig.Colorize,
-	}.Print()
+	}.Print())
 
 	return errs
 }

@@ -65,7 +65,7 @@ func (t *CmdDaemonExecList) Run() error {
 	// A node that could not be reached is reported, but what the others
 	// answered is still shown: a listing of most of the cluster beats none of
 	// it.
-	t.render(items)
+	err = errors.Join(err, t.render(items))
 	return err
 }
 
@@ -217,12 +217,12 @@ func (t *CmdDaemonExecList) filter(items []api.ExecItem) []api.ExecItem {
 	return l
 }
 
-func (t *CmdDaemonExecList) render(items []api.ExecItem) {
+func (t *CmdDaemonExecList) render(items []api.ExecItem) error {
 	columns := t.Columns
 	if columns == "" {
 		columns = execListColumns
 	}
-	output.Renderer{
+	return output.Renderer{
 		DefaultOutput: columns,
 		Output:        t.Output,
 		DefaultSort:   execListSort,

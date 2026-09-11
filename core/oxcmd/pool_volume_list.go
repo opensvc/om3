@@ -32,7 +32,7 @@ func (t *CmdPoolVolumeList) Run() error {
 	}
 	switch resp.StatusCode() {
 	case 200:
-		output.Renderer{
+		return output.Renderer{
 			DefaultOutput: "tab=POOL:pool,PATH:path,SIZE:size,CHILDREN:children[*],IS_ORPHAN:is_orphan",
 			Output:        t.Output,
 			Sort:          t.Sort,
@@ -40,7 +40,6 @@ func (t *CmdPoolVolumeList) Run() error {
 			Data:          resp.JSON200,
 			Colorize:      rawconfig.Colorize,
 		}.Print()
-		return nil
 	case 401:
 		return fmt.Errorf("%s", resp.JSON401)
 	case 403:

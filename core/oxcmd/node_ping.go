@@ -104,14 +104,14 @@ func (t *CmdNodePing) Run() error {
 out:
 
 	defaultOutput := "tab=NODE:meta.node,PING:data.ping,DETAIL:data.detail"
-	output.Renderer{
+	errs = errors.Join(errs, output.Renderer{
 		DefaultOutput: defaultOutput,
 		Output:        t.Output,
 		Sort:          t.Sort,
 		Color:         t.Color,
 		Data:          data,
 		Colorize:      rawconfig.Colorize,
-	}.Print()
+	}.Print())
 
 	return errs
 }

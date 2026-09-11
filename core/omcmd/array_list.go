@@ -22,8 +22,8 @@ func (t *CmdArrayList) Run() error {
 
 	cols := "NAME:name,TYPE:type"
 
-	render := func(items []object.ArrayItem) {
-		output.Renderer{
+	render := func(items []object.ArrayItem) error {
+		return output.Renderer{
 			DefaultOutput: "tab=" + cols,
 			Output:        t.Output,
 			Sort:          t.Sort,
@@ -33,7 +33,5 @@ func (t *CmdArrayList) Run() error {
 		}.Print()
 	}
 
-	render(arrays)
-
-	return err
+	return render(arrays)
 }

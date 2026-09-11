@@ -60,7 +60,7 @@ func (t *CmdNodeConfigValidate) Run() error {
 	wg.Wait()
 	done <- true
 
-	output.Renderer{
+	return output.Renderer{
 		DefaultOutput: "tab=LEVEL:icon,DRIVER:driver,KEY:key,KIND:kind,COMMENT:comment",
 		Output:        t.Output,
 		Sort:          t.Sort,
@@ -68,5 +68,4 @@ func (t *CmdNodeConfigValidate) Run() error {
 		Data:          alerts,
 		Colorize:      rawconfig.Colorize,
 	}.Print()
-	return nil
 }

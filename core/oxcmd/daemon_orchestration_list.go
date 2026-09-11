@@ -173,8 +173,8 @@ func (t *CmdDaemonOrchestrationList) one(ctx context.Context, c *client.T, noden
 	return resp.JSON200.Items, nil
 }
 
-func (t *CmdDaemonOrchestrationList) render(items []api.OrchestrationItem) {
-	output.Renderer{
+func (t *CmdDaemonOrchestrationList) render(items []api.OrchestrationItem) error {
+	return output.Renderer{
 		DefaultSort:   orchestrationListSort,
 		Sort:          t.Sort,
 		DefaultOutput: "tab=STATE:state,ORCHESTRATION_ID:orchestration_id,PATH:path,GLOBAL_EXPECT:global_expect,ACCEPTED_BY:node,STARTED_AT:started_at,DURATION:duration",

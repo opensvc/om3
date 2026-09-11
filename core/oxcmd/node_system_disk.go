@@ -96,14 +96,14 @@ func (t *CmdNodeSystemDisk) Run() error {
 out:
 
 	defaultOutput := "tab=NODE:meta.node,ID:data.ID,DEVPATH:data.devpath,SIZE:data.size,VENDOR:data.vendor,MODEL:data.model,TYPE:data.type"
-	output.Renderer{
+	errs = errors.Join(errs, output.Renderer{
 		DefaultOutput: defaultOutput,
 		Output:        t.Output,
 		Sort:          t.Sort,
 		Color:         t.Color,
 		Data:          api.DiskList{Items: l, Kind: "DiskList"},
 		Colorize:      rawconfig.Colorize,
-	}.Print()
+	}.Print())
 
 	return errs
 }

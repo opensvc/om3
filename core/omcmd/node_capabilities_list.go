@@ -59,14 +59,14 @@ func (t *CmdNodeCapabilitiesList) remote() error {
 		}
 
 	}
-	output.Renderer{
+	errs = errors.Join(errs, output.Renderer{
 		DefaultOutput: "tab=NODE:meta.node,NAME:data.name",
 		Output:        t.Output,
 		Sort:          t.Sort,
 		Color:         t.Color,
 		Data:          data,
 		Colorize:      rawconfig.Colorize,
-	}.Print()
+	}.Print())
 	return errs
 }
 
@@ -114,7 +114,7 @@ func (t *CmdNodeCapabilitiesList) local() error {
 		}
 		data.Items = append(data.Items, item)
 	}
-	output.Renderer{
+	return output.Renderer{
 		DefaultOutput: "tab=data.name",
 		Output:        t.Output,
 		Sort:          t.Sort,
@@ -122,5 +122,4 @@ func (t *CmdNodeCapabilitiesList) local() error {
 		Data:          data,
 		Colorize:      rawconfig.Colorize,
 	}.Print()
-	return nil
 }

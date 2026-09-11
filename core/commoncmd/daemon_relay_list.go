@@ -58,7 +58,7 @@ func (t *CmdDaemonRelayList) Run() error {
 	default:
 		return fmt.Errorf("unexpected get relay message status code %s", resp.Status())
 	}
-	output.Renderer{
+	return output.Renderer{
 		DefaultOutput: "tab=RELAY:relay,USERNAME:username,CLUSTER_ID:cluster_id,CLUSTER_NAME:cluster_name,NODENAME:nodename,NODE_ADDR:node_addr,UPDATED_AT:updated_at,MSG_LEN:msg_len",
 		Output:        t.Output,
 		Sort:          t.Sort,
@@ -66,7 +66,6 @@ func (t *CmdDaemonRelayList) Run() error {
 		Data:          *resp.JSON200,
 		Colorize:      rawconfig.Colorize,
 	}.Print()
-	return nil
 }
 
 // NewCmdDaemonRelayStatus is the name the list command answered to before

@@ -50,7 +50,7 @@ func (t *CmdObjectResourceList) Run(kind string) error {
 	var pb *api.Problem
 	switch resp.StatusCode() {
 	case 200:
-		output.Renderer{
+		return output.Renderer{
 			DefaultOutput: "tab=OBJECT:meta.object,NODE:meta.node,RID:meta.rid,ENCAP_NODE:meta.encap_node,TYPE:data.status.type,STATUS:data.status.status,IS_MONITORED:data.config.is_monitored,IS_DISABLED:data.config.is_disabled,IS_STANDBY:data.config.is_standby,RESTART:data.config.restart,RESTART_REMAINING:data.monitor.restart.remaining",
 			Output:        t.Output,
 			Sort:          t.Sort,
@@ -58,7 +58,6 @@ func (t *CmdObjectResourceList) Run(kind string) error {
 			Data:          resp.JSON200,
 			Colorize:      rawconfig.Colorize,
 		}.Print()
-		return nil
 	case 400:
 		pb = resp.JSON400
 	case 401:

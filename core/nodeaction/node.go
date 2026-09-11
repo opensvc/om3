@@ -237,7 +237,7 @@ func (t T) DoLocal() error {
 	if result.Error != nil {
 		return result.Error
 	}
-	output.Renderer{
+	return output.Renderer{
 		Output:        t.Output,
 		Sort:          t.Sort,
 		Color:         t.Color,
@@ -245,7 +245,6 @@ func (t T) DoLocal() error {
 		Colorize:      rawconfig.Colorize,
 		HumanRenderer: func() string { return human(result) },
 	}.Print()
-	return nil
 }
 
 // DoAsync uses the agent API to submit a target state to reach via an
@@ -452,14 +451,14 @@ func (t T) DoRemote() error {
 			break
 		}
 	}
-	output.Renderer{
+	errs = errors.Join(errs, output.Renderer{
 		DefaultOutput: t.DefaultOutput,
 		Output:        t.Output,
 		Sort:          t.Sort,
 		Color:         t.Color,
 		Data:          results,
 		Colorize:      rawconfig.Colorize,
-	}.Print()
+	}.Print())
 	if t.Wait && todo > 0 {
 		for i := 0; i < todo; i++ {
 			select {

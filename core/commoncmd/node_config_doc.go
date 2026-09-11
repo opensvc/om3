@@ -81,7 +81,7 @@ func (t *CmdNodeConfigDoc) Run() error {
 		return fmt.Errorf("unexpected response: %s", response.Status())
 	}
 
-	output.Renderer{
+	return output.Renderer{
 		HumanRenderer: func() string {
 			Doc(os.Stdout, items, "node", t.Driver, t.Keyword, t.Depth)
 			return ""
@@ -92,5 +92,4 @@ func (t *CmdNodeConfigDoc) Run() error {
 		Data:     items,
 		Colorize: rawconfig.Colorize,
 	}.Print()
-	return nil
 }

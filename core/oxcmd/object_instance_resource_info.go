@@ -178,13 +178,13 @@ func (t *CmdObjectInstanceResourceInfo) list(kind string) error {
 
 out:
 
-	output.Renderer{
+	errs = errors.Join(errs, output.Renderer{
 		DefaultOutput: "tab=OBJECT:object,NODE:node,RID:rid,KEY:key,VALUE:value",
 		Output:        t.Output,
 		Sort:          t.Sort,
 		Color:         t.Color,
 		Data:          api.ResourceInfoList{Items: l, Kind: "ResourceInfoList"},
 		Colorize:      rawconfig.Colorize,
-	}.Print()
+	}.Print())
 	return errs
 }

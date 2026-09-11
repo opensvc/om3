@@ -45,13 +45,15 @@ func (t *CmdNodePRKey) Run() error {
 		return fmt.Errorf("unexpected statuscode: %s", resp.Status())
 	}
 
-	output.Renderer{
+	if err := (output.Renderer{
 		DefaultOutput: "tab=NAME:meta.node,PRKEY:data.config.prkey",
 		Output:        t.Output,
 		Sort:          t.Sort,
 		Color:         t.Color,
 		Data:          *resp.JSON200,
-	}.Print()
+	}).Print(); err != nil {
+		return err
+	}
 	// The keys are on stdout by now. Whether each is its node's alone
 	// is the other half of the answer, and the exit code carries it.
 	return commoncmd.CheckPRKeyUniqueness()

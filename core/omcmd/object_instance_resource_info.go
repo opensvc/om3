@@ -140,7 +140,7 @@ func (t *CmdObjectInstanceResourceInfo) Run(kind string) error {
 	if err != nil {
 		return err
 	}
-	output.Renderer{
+	return output.Renderer{
 		DefaultOutput: "tab=OBJECT:object,NODE:node,RID:rid,KEY:key,VALUE:value",
 		Output:        t.Output,
 		Sort:          t.Sort,
@@ -148,5 +148,4 @@ func (t *CmdObjectInstanceResourceInfo) Run(kind string) error {
 		Data:          data,
 		Colorize:      rawconfig.Colorize,
 	}.Print()
-	return nil
 }

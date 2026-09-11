@@ -1,6 +1,7 @@
 package commoncmd
 
 import (
+	"errors"
 	"fmt"
 	"time"
 
@@ -54,7 +55,7 @@ func (t *CmdDaemonSessionList) Run() error {
 	items, err := t.Gather()
 	// A node that could not be reached is reported, but the fold of what the
 	// others answered is still shown, with the counts it is a fold of.
-	output.Renderer{
+	err = errors.Join(err, output.Renderer{
 		DefaultOutput: sessionListColumns,
 		Output:        t.Output,
 		DefaultSort:   sessionListSort,
@@ -62,7 +63,7 @@ func (t *CmdDaemonSessionList) Run() error {
 		Color:         t.Color,
 		Data:          ToSessionViews(items),
 		Colorize:      rawconfig.Colorize,
-	}.Print()
+	}.Print())
 	return err
 }
 

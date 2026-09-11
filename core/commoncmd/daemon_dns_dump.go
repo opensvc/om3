@@ -67,6 +67,5 @@ func (t *CmdDaemonDNSDump) Run() error {
 		Data:     parsed,
 		Colorize: rawconfig.Colorize,
 	}
-	renderer.Print()
-	return nil
+	return renderer.Print()
 }

@@ -154,6 +154,5 @@ func (t *CmdObjectInstanceStatus) Run(kind string) error {
 		}
 	}
 	renderer.Data = l
-	renderer.Print()
-	return nil
+	return renderer.Print()
 }

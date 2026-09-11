@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
-	"os"
 	"reflect"
 	"regexp"
 	"strings"
@@ -413,10 +412,18 @@ func (t Renderer) renderTab(options string) (string, error) {
 // supported format (json, flat, human, ...).
 //
 // The human format needs a RenderFunc to be passed.
-func (t Renderer) Print() {
-	if s, err := t.Sprint(); err != nil {
-		fmt.Fprintln(os.Stderr, err)
-	} else {
-		fmt.Print(s)
+// Print writes the rendered data to stdout, and returns what stopped it from
+// rendering.
+//
+// The error is returned rather than written to stderr, so that a command whose
+// output could not be rendered fails instead of succeeding silently. A
+// misspelled column or sort field used to print a line to stderr and exit 0,
+// which a script reading the empty stdout had no way to notice.
+func (t Renderer) Print() error {
+	s, err := t.Sprint()
+	if err != nil {
+		return err
 	}
+	fmt.Print(s)
+	return nil
 }

@@ -181,14 +181,14 @@ func (t *CmdDaemonKill) Run() error {
 
 	// What was signaled is reported even when a node could not be reached:
 	// the signals that were sent were sent.
-	output.Renderer{
+	errs = errors.Join(errs, output.Renderer{
 		DefaultOutput: execPsColumns,
 		Output:        t.Output,
 		Sort:          t.Sort,
 		Color:         t.Color,
 		Data:          ToExecViews(items),
 		Colorize:      rawconfig.Colorize,
-	}.Print()
+	}.Print())
 	return errs
 }
 

@@ -88,7 +88,7 @@ func (t *CmdObjectConfigGet) Run(kind string) error {
 		}
 	}
 
-	output.Renderer{
+	return output.Renderer{
 		DefaultOutput: defaultOutput,
 		Output:        t.Output,
 		Sort:          t.Sort,
@@ -96,6 +96,4 @@ func (t *CmdObjectConfigGet) Run(kind string) error {
 		Data:          api.KeywordList{Items: l, Kind: "KeywordList"},
 		Colorize:      rawconfig.Colorize,
 	}.Print()
-
-	return nil
 }

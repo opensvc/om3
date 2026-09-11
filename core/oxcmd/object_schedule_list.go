@@ -96,13 +96,13 @@ func (t *CmdObjectScheduleList) Run(kind string) error {
 
 out:
 
-	output.Renderer{
+	errs = errors.Join(errs, output.Renderer{
 		DefaultOutput: "tab=OBJECT:meta.object,NODE:meta.node,ACTION:data.action,KEY:data.key,LAST_RUN_AT:data.last_run_at,NEXT_RUN_AT:data.next_run_at,SCHEDULE:data.schedule",
 		Output:        t.Output,
 		Sort:          t.Sort,
 		Color:         t.Color,
 		Data:          api.ScheduleList{Items: l, Kind: "ScheduleList"},
 		Colorize:      rawconfig.Colorize,
-	}.Print()
+	}.Print())
 	return errs
 }

@@ -70,7 +70,7 @@ func (t *CmdNodeConfigDoc) Run() error {
 		return err
 	}
 	items := doc.ConvertKeywordStore(store)
-	output.Renderer{
+	return output.Renderer{
 		HumanRenderer: func() string {
 			commoncmd.NodeDoc(os.Stdout, items, path.Kind, t.Driver, t.Keyword, t.Depth)
 			return ""
@@ -81,5 +81,4 @@ func (t *CmdNodeConfigDoc) Run() error {
 		Data:     items,
 		Colorize: rawconfig.Colorize,
 	}.Print()
-	return nil
 }

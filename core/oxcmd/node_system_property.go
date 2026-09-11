@@ -96,14 +96,14 @@ func (t *CmdNodeSystemProperty) Run() error {
 out:
 
 	defaultOutput := "tab=NODE:meta.node,NAME:data.name,VALUE:data.value,SOURCE:data.source,ERROR:data.error"
-	output.Renderer{
+	errs = errors.Join(errs, output.Renderer{
 		DefaultOutput: defaultOutput,
 		Output:        t.Output,
 		Sort:          t.Sort,
 		Color:         t.Color,
 		Data:          api.PropertyList{Items: l, Kind: "PropertyList"},
 		Colorize:      rawconfig.Colorize,
-	}.Print()
+	}.Print())
 
 	return errs
 }

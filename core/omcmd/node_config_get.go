@@ -96,7 +96,7 @@ func (t *CmdNodeConfigGet) Run() error {
 		}
 	}
 
-	output.Renderer{
+	return output.Renderer{
 		DefaultOutput: defaultOutput,
 		Output:        t.Output,
 		Sort:          t.Sort,
@@ -104,8 +104,6 @@ func (t *CmdNodeConfigGet) Run() error {
 		Data:          api.KeywordList{Items: l, Kind: "KeywordList"},
 		Colorize:      rawconfig.Colorize,
 	}.Print()
-
-	return nil
 }
 
 func (t *CmdNodeConfigGet) doNodeAction() error {

@@ -92,7 +92,7 @@ func (t *CmdObjectConfigDoc) Run(kind string) error {
 	default:
 		return fmt.Errorf("unexpected response: %s", response.Status())
 	}
-	output.Renderer{
+	return output.Renderer{
 		HumanRenderer: func() string {
 			Doc(os.Stdout, items, path.Kind, t.Driver, t.Keyword, t.Depth)
 			return ""
@@ -103,5 +103,4 @@ func (t *CmdObjectConfigDoc) Run(kind string) error {
 		Data:     items,
 		Colorize: rawconfig.Colorize,
 	}.Print()
-	return nil
 }

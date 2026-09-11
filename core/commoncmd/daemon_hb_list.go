@@ -164,7 +164,7 @@ func (t *CmdDaemonHeartbeatList) Run() error {
 		}
 		return table[i].Peer < table[j].Peer
 	})
-	output.Renderer{
+	return output.Renderer{
 		DefaultOutput: "tab=RUNNING:.state_icon,BEATING:.beating_icon,ID:.id,NODE:.node,PEER:.peer,TYPE:.type,DESC:.desc,CHANGED_AT:.changed_at",
 		Output:        t.Output,
 		Sort:          t.Sort,
@@ -172,8 +172,6 @@ func (t *CmdDaemonHeartbeatList) Run() error {
 		Data:          table,
 		Colorize:      rawconfig.Colorize,
 	}.Print()
-
-	return nil
 }
 
 // NewCmdDaemonHeartbeatStatus is the name the list command answered to

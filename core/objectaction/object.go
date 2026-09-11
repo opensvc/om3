@@ -426,7 +426,7 @@ func (t T) DoLocal() error {
 			break
 		}
 	}
-	output.Renderer{
+	errs = errors.Join(errs, output.Renderer{
 		DefaultOutput: t.DefaultOutput,
 		Output:        t.Output,
 		Sort:          t.Sort,
@@ -434,7 +434,7 @@ func (t T) DoLocal() error {
 		Data:          results,
 		HumanRenderer: func() string { return rsHumanRender(results) },
 		Colorize:      rawconfig.Colorize,
-	}.Print()
+	}.Print())
 	return errs
 }
 
@@ -619,14 +619,14 @@ func (t T) DoAsync() error {
 		}
 		rs = append(rs, r)
 	}
-	output.Renderer{
+	errs = errors.Join(errs, output.Renderer{
 		DefaultOutput: "tab=OBJECT:path,ORCHESTRATION_ID:orchestration_id,STATUS:status",
 		Output:        t.Output,
 		Sort:          t.Sort,
 		Color:         t.Color,
 		Data:          rs,
 		Colorize:      rawconfig.Colorize,
-	}.Print()
+	}.Print())
 	if t.Wait && toWait > 0 {
 		for i := 0; i < toWait; i++ {
 			select {
@@ -771,7 +771,7 @@ func (t T) DoRemote() error {
 			break
 		}
 	}
-	output.Renderer{
+	errs = errors.Join(errs, output.Renderer{
 		DefaultOutput: t.DefaultOutput,
 		Output:        t.Output,
 		Sort:          t.Sort,
@@ -779,7 +779,7 @@ func (t T) DoRemote() error {
 		Data:          results,
 		HumanRenderer: func() string { return rsHumanRender(results) },
 		Colorize:      rawconfig.Colorize,
-	}.Print()
+	}.Print())
 	if t.Wait && todo > 0 {
 		for i := 0; i < todo; i++ {
 			select {
