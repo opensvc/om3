@@ -6,6 +6,7 @@ func (t *Manager) orchestrateAborted() {
 	t.log.Infof("abort orchestration: unset global expect")
 	t.change = true
 	t.state.GlobalExpect = node.MonitorGlobalExpectNone
+	t.endOrchestration()
 
 	// drained is abortable
 	switch t.state.LocalExpect {

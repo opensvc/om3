@@ -5,6 +5,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/opensvc/om3/v3/core/node"
 	"github.com/opensvc/om3/v3/daemon/msgbus"
 	"github.com/opensvc/om3/v3/util/hostname"
 	"github.com/opensvc/om3/v3/util/plog"
@@ -72,6 +73,9 @@ func (t *Manager) startSubscriptions() *pubsub.Subscription {
 	// peer is the point.
 	sub.AddFilter(&msgbus.InstanceMonitorUpdated{})
 	sub.AddFilter(&msgbus.NodeMonitorUpdated{})
+	sub.AddFilter(&msgbus.NodeOrchestrationAccepted{}, label)
+	sub.AddFilter(&msgbus.NodeOrchestrationEnd{}, label)
+	sub.AddFilter(&msgbus.NodeOrchestrationRefused{}, label)
 	sub.AddFilter(&msgbus.ObjectOrchestrationAccepted{}, label)
 	sub.AddFilter(&msgbus.ObjectOrchestrationEnd{}, label)
 	sub.AddFilter(&msgbus.ObjectOrchestrationRefused{}, label)
@@ -123,7 +127,7 @@ func (t *Manager) handle(i any) {
 				"",
 				m.Node,
 				IDString(xsession.NewOrchestrationID(m.Value.OrchestrationID)),
-				m.Value.GlobalExpect.String(),
+				nodeExpect(m.Value),
 				m.Value.GlobalExpectUpdatedAt,
 			)
 		case *msgbus.Exec:
@@ -143,12 +147,32 @@ func (t *Manager) handle(i any) {
 			EndExec(IDString(m.ExecID), IDString(m.SessionID), StateSucceeded, "", m.ExitCode, m.Duration)
 		case *msgbus.ExecFailed:
 			EndExec(IDString(m.ExecID), IDString(m.SessionID), StateFailed, m.ErrS, m.ExitCode, m.Duration)
+		case *msgbus.NodeOrchestrationAccepted:
+			// No path: an orchestration of the nodes is not of an object, and
+			// the empty path is what says so.
+			AddOrchestration(Orchestration{
+				OrchestrationID: m.ID,
+				Node:            m.Node,
+				Expect:          m.Expect,
+			})
+		case *msgbus.NodeOrchestrationEnd:
+			state := StateSucceeded
+			if m.Aborted {
+				state = StateAborted
+			}
+			EndOrchestration(m.ID, state, "")
+		case *msgbus.NodeOrchestrationRefused:
+			AddOrchestration(Orchestration{
+				OrchestrationID: m.ID,
+				Node:            m.Node,
+			})
+			EndOrchestration(m.ID, StateRefused, m.Reason)
 		case *msgbus.ObjectOrchestrationAccepted:
 			AddOrchestration(Orchestration{
 				OrchestrationID: m.ID,
 				Node:            m.Node,
 				Path:            m.Path.String(),
-				GlobalExpect:    m.GlobalExpect.String(),
+				Expect:          m.GlobalExpect.String(),
 			})
 		case *msgbus.ObjectOrchestrationEnd:
 			state := StateSucceeded
@@ -171,4 +195,17 @@ func (t *Manager) handle(i any) {
 // label rather than a field.
 func pathOf(labels pubsub.Labels) string {
 	return labels["path"]
+}
+
+// nodeExpect is the state a node orchestration is for. A node is asked to
+// freeze by a global expect and to drain by a local one, so reading only the
+// global one reports a drain as targeting "none".
+func nodeExpect(m node.Monitor) string {
+	if m.GlobalExpect != node.MonitorGlobalExpectNone && m.GlobalExpect != node.MonitorGlobalExpectInit {
+		return m.GlobalExpect.String()
+	}
+	if m.LocalExpect != node.MonitorLocalExpectNone && m.LocalExpect != node.MonitorLocalExpectInit {
+		return m.LocalExpect.String()
+	}
+	return ""
 }

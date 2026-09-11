@@ -177,7 +177,7 @@ func (t *CmdDaemonOrchestrationList) render(items []api.OrchestrationItem) error
 	return output.Renderer{
 		DefaultSort:   orchestrationListSort,
 		Sort:          t.Sort,
-		DefaultOutput: "tab=STATE:state,ORCHESTRATION_ID:orchestration_id,PATH:path,GLOBAL_EXPECT:global_expect,ACCEPTED_BY:node,STARTED_AT:started_at,DURATION:duration",
+		DefaultOutput: "tab=STATE:state,ORCHESTRATION_ID:orchestration_id,PATH:path,EXPECT:expect,ACCEPTED_BY:node,STARTED_AT:started_at,DURATION:duration",
 		Output:        t.Output,
 		Color:         t.Color,
 		Data:          toOrchestrationViews(items),
@@ -190,7 +190,7 @@ type orchestrationView struct {
 	State           string     `json:"state"`
 	OrchestrationID string     `json:"orchestration_id"`
 	Path            string     `json:"path,omitempty"`
-	GlobalExpect    string     `json:"global_expect,omitempty"`
+	Expect          string     `json:"expect,omitempty"`
 	AcceptedBy      string     `json:"node,omitempty"`
 	StartedAt       time.Time  `json:"started_at"`
 	EndedAt         *time.Time `json:"ended_at,omitempty"`
@@ -211,8 +211,8 @@ func toOrchestrationViews(items []api.OrchestrationItem) []orchestrationView {
 		if i.Path != nil {
 			v.Path = *i.Path
 		}
-		if i.GlobalExpect != nil {
-			v.GlobalExpect = *i.GlobalExpect
+		if i.Expect != nil {
+			v.Expect = *i.Expect
 		}
 		if i.Error != nil {
 			v.Error = *i.Error

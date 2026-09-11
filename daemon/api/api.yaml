@@ -7856,8 +7856,9 @@ components:
         path:
           type: string
           description: The object the orchestration is of. Absent when it is of the node.
-        global_expect:
+        expect:
           type: string
+          description: The state the orchestration is for. An object is asked by a global expect; a node by a global one to freeze and a local one to drain.
         state:
           type: string
           description: One of running, succeeded, aborted, refused.
