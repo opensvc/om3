@@ -4,8 +4,10 @@ import (
 	"go/ast"
 	"go/parser"
 	"go/token"
+	"io"
 	"os"
 	"path/filepath"
+	"slices"
 	"strconv"
 	"strings"
 	"testing"
@@ -15,8 +17,11 @@ import (
 
 	"github.com/opensvc/om3/v3/core/commoncmd"
 	"github.com/opensvc/om3/v3/core/naming"
+	"github.com/opensvc/om3/v3/core/object"
 	"github.com/opensvc/om3/v3/core/schedule"
 	"github.com/opensvc/om3/v3/daemon/scheduler"
+	"github.com/opensvc/om3/v3/testhelper"
+	"github.com/opensvc/om3/v3/util/hostname"
 )
 
 // requireResolves fails when args name no runnable command of the om tree.
@@ -147,4 +152,93 @@ func daemonAPIExecArgs(t *testing.T) [][]string {
 		})
 	}
 	return out
+}
+
+// The node configuration generates schedule entries of its own, one per array,
+// switch and backup section. Their actions are in no list this file can
+// iterate, which is how "push"+type entries went unrunnable unnoticed: the
+// scheduler had no case for them, so every due run failed with "unknown
+// scheduler action".
+//
+// So the entries are generated here, from a configuration holding one section
+// of each kind, and every action they carry has to be one the scheduler knows:
+// either an argv resolving in the om tree, or a declared placeholder.
+func TestNodeConfigSchedulesRunnableActions(t *testing.T) {
+	env := testhelper.Setup(t)
+
+	// The sections go in cluster.conf, which is where an array is declared:
+	// it is a resource of the cluster, reachable from every node, not of one
+	// node. Only the merged configuration holds both files.
+	require.NoError(t, os.WriteFile(
+		filepath.Join(env.Root, "etc", "cluster.conf"),
+		[]byte(`[cluster]
+name = clu1
+nodes = `+hostname.Hostname()+`
+
+[array#baie1]
+type = pure
+schedule = @1440
+
+[switch#sw1]
+type = brocade
+schedule = @1440
+
+[backup#bck1]
+type = nsr
+schedule = @1440
+`), 0644))
+
+	n, err := object.NewNode()
+	require.NoError(t, err)
+
+	seen := make(map[string]bool)
+	for _, e := range n.Schedules() {
+		seen[e.Action] = true
+		args, err := scheduler.CmdArgs(e)
+		if slices.Contains(scheduler.PlaceholderActions, e.Action) {
+			assert.Errorf(t, err, "%s is a placeholder: it must not resolve to an argv", e.Action)
+			continue
+		}
+		require.NoErrorf(t, err, "%s scheduled by %s", e.Action, e.Key)
+		requireResolves(t, args)
+	}
+
+	// The sections above are there to be scheduled: a change silently dropping
+	// one would leave this test asserting nothing.
+	for _, action := range []string{"pusharray", "pushswitch", "pushbackup"} {
+		assert.Truef(t, seen[action], "no schedule entry for %s", action)
+	}
+}
+
+// The array a "pusharray" entry pushes is the section its schedule was read
+// from, and the argv has to name it: without it every array section would push
+// every array, once per section.
+func TestPushArrayArgvNamesTheArray(t *testing.T) {
+	args, err := scheduler.CmdArgs(schedule.Entry{
+		Config: schedule.Config{Action: "pusharray", Key: "array#baie1.schedule"},
+	})
+	require.NoError(t, err)
+	assert.Equal(t, []string{"node", "push", "array", "array#baie1"}, args)
+}
+
+// The array is named as an argument, which is the documented form, and with
+// --array, which is the form the command was born with. Naming it twice is a
+// mistake rather than a precedence question.
+func TestNodePushArrayNamesTheArrayOnce(t *testing.T) {
+	cmd := newCmdNodePushArray()
+	cmd.SetOut(io.Discard)
+	cmd.SetErr(io.Discard)
+	cmd.SetArgs([]string{"freenas", "--array", "freenas"})
+	err := cmd.Execute()
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "named twice")
+}
+
+// One array or none: a second argument is a typo, not a second array, since
+// the command pushes every array when it is handed no name at all.
+func TestNodePushArrayTakesAtMostOneName(t *testing.T) {
+	cmd := newCmdNodePushArray()
+	assert.NoError(t, cmd.Args(cmd, []string{}))
+	assert.NoError(t, cmd.Args(cmd, []string{"freenas"}))
+	assert.Error(t, cmd.Args(cmd, []string{"freenas", "baie2"}))
 }

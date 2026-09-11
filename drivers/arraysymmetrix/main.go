@@ -716,56 +716,11 @@ func (t *Array) Log() *plog.Logger {
 	return t.log
 }
 
+// Run builds the command tree of this array and runs the arguments through
+// it. What the tree holds is declared in Actions.
 func (t *Array) Run(args []string) error {
-	parent := newParent()
-	parent.AddCommand(newCreatePairCmd(t))
-	parent.AddCommand(newDeletePairCmd(t))
-
-	// skip past the --array <array> arguments
-	parent.SetArgs(array.SkipArgs())
-
-	setCmd := newSetCmd()
-	setCmd.AddCommand(newSetSRDFModeCmd(t))
-	parent.AddCommand(setCmd)
-
-	addCmd := newAddCmd()
-	addCmd.AddCommand(newAddDiskCmd(t))
-	addCmd.AddCommand(newAddThinDevCmd(t))
-	parent.AddCommand(addCmd)
-
-	renameCmd := newRenameCmd()
-	renameCmd.AddCommand(newRenameDiskCmd(t))
-	parent.AddCommand(renameCmd)
-
-	resizeCmd := newResizeCmd()
-	resizeCmd.AddCommand(newResizeDiskCmd(t))
-	parent.AddCommand(resizeCmd)
-
-	delCmd := newDelCmd()
-	delCmd.AddCommand(newDelDiskCmd(t))
-	delCmd.AddCommand(newDelThinDevCmd(t))
-	parent.AddCommand(delCmd)
-
-	getCmd := newGetCmd()
-	getCmd.AddCommand(newGetDirectorsCmd(t))
-	getCmd.AddCommand(newGetPoolsCmd(t))
-	getCmd.AddCommand(newGetSRPsCmd(t))
-	getCmd.AddCommand(newGetStorageGroupsCmd(t))
-	getCmd.AddCommand(newGetThinDevsCmd(t))
-	getCmd.AddCommand(newGetViewsCmd(t))
-	parent.AddCommand(getCmd)
-
-	mapCmd := newMapCmd()
-	mapCmd.AddCommand(newMapDiskCmd(t))
-	parent.AddCommand(mapCmd)
-
-	unmapCmd := newUnmapCmd()
-	unmapCmd.AddCommand(newUnmapDiskCmd(t))
-	parent.AddCommand(unmapCmd)
-
-	return parent.Execute()
+	return array.RunActions(context.Background(), t.Actions(), args, os.Stdout)
 }
-
 func (t *Array) symcliVersion(ctx context.Context) (int, int, error) {
 	cmd := exec.CommandContext(ctx, t.symcli())
 	b, err := cmd.Output()
@@ -2606,7 +2561,7 @@ func (t *Array) mapDisk(ctx context.Context, opt OptMapDisk) error {
 }
 
 func (t *Array) getMappings(ctx context.Context, sid, devId string) (array.Mappings, error) {
-	sgs, err := t.getDevSGs(ctx, sid, dev)
+	sgs, err := t.getDevSGs(ctx, sid, devId)
 	if err != nil {
 		return nil, err
 	}
@@ -2713,7 +2668,7 @@ func (t *Array) unmap(ctx context.Context, sid, devId string) error {
 		return err
 	}
 	for _, sg := range sgs {
-		if err := t.removeThinDevFromSG(ctx, sid, dev, sg.GroupInfo.GroupName); err != nil {
+		if err := t.removeThinDevFromSG(ctx, sid, devId, sg.GroupInfo.GroupName); err != nil {
 			return err
 		}
 	}

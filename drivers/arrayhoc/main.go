@@ -15,8 +15,6 @@ import (
 	"strings"
 	"time"
 
-	"github.com/spf13/cobra"
-
 	"github.com/opensvc/om3/v3/core/array"
 	"github.com/opensvc/om3/v3/core/datarecv"
 	"github.com/opensvc/om3/v3/core/driver"
@@ -371,443 +369,10 @@ func New() *Array {
 	return t
 }
 
+// Run builds the command tree of this array and runs the arguments through
+// it. What the tree holds is declared in Actions.
 func (t *Array) Run(args []string) error {
-	newParent := func() *cobra.Command {
-		cmd := &cobra.Command{
-			Use:           "array",
-			Short:         "Manage a hocstorage storage array",
-			SilenceUsage:  true,
-			SilenceErrors: true,
-		}
-		return cmd
-	}
-
-	newMapCmd := func() *cobra.Command {
-		cmd := &cobra.Command{
-			Use:   "map",
-			Short: "map commands",
-		}
-		return cmd
-	}
-	newUnmapCmd := func() *cobra.Command {
-		cmd := &cobra.Command{
-			Use:   "unmap",
-			Short: "unmap commands",
-		}
-		return cmd
-	}
-	newAddCmd := func() *cobra.Command {
-		cmd := &cobra.Command{
-			Use:   "add",
-			Short: "add commands",
-		}
-		return cmd
-	}
-	newDelCmd := func() *cobra.Command {
-		cmd := &cobra.Command{
-			Use:   "del",
-			Short: "del commands",
-		}
-		return cmd
-	}
-	newResizeCmd := func() *cobra.Command {
-		cmd := &cobra.Command{
-			Use:   "resize",
-			Short: "resize commands",
-		}
-		return cmd
-	}
-
-	newResizeDiskCmd := func() *cobra.Command {
-		cmd := &cobra.Command{
-			Use:   "disk",
-			Short: "resize a volume",
-			RunE: func(cmd *cobra.Command, _ []string) error {
-				ctx := cmd.Context()
-				opt := OptResizeDisk{
-					Volume: OptVolume{
-						ID:     volumeId,
-						Name:   name,
-						Serial: serial,
-					},
-					Size: size,
-				}
-				if data, err := t.ResizeDisk(ctx, opt); err != nil {
-					return err
-				} else {
-					return dump(data)
-				}
-			},
-		}
-		useFlagVolumeID(cmd)
-		useFlagName(cmd)
-		useFlagSerial(cmd)
-		useFlagSize(cmd)
-		return cmd
-	}
-	newUnmapDiskCmd := func() *cobra.Command {
-		cmd := &cobra.Command{
-			Use:   "disk",
-			Short: "unmap a volume",
-			RunE: func(cmd *cobra.Command, _ []string) error {
-				ctx := cmd.Context()
-				opt := OptUnmapDisk{
-					Volume: OptVolume{
-						ID:     volumeId,
-						Name:   name,
-						Serial: serial,
-					},
-					Mapping: OptMapping{
-						Mappings:       mappings,
-						HostGroupNames: hostGroups,
-					},
-				}
-				if data, err := t.UnmapDisk(ctx, opt); err != nil {
-					return err
-				} else {
-					return dump(data)
-				}
-			},
-		}
-		useFlagVolumeID(cmd)
-		useFlagName(cmd)
-		useFlagMapping(cmd)
-		useFlagHostGroup(cmd)
-		useFlagSerial(cmd)
-		return cmd
-	}
-	newMapDiskCmd := func() *cobra.Command {
-		cmd := &cobra.Command{
-			Use:   "disk",
-			Short: "map a volume",
-			RunE: func(cmd *cobra.Command, _ []string) error {
-				ctx := cmd.Context()
-				opt := OptMapDisk{
-					Volume: OptVolume{
-						ID:     volumeId,
-						Name:   name,
-						Serial: serial,
-					},
-					Mapping: OptMapping{
-						Mappings:          mappings,
-						HostGroupNames:    hostGroups,
-						LUN:               lun,
-						VolumeIdRangeFrom: volumeIdRangeFrom,
-						VolumeIdRangeTo:   volumeIdRangeTo,
-					},
-				}
-				if data, err := t.MapDisk(ctx, opt); err != nil {
-					return err
-				} else {
-					return dump(data)
-				}
-			},
-		}
-		useFlagVolumeID(cmd)
-		useFlagName(cmd)
-		useFlagMapping(cmd)
-		useFlagLUN(cmd)
-		useFlagHostGroup(cmd)
-		useFlagSerial(cmd)
-		useFlagVolumeIdRangeFrom(cmd)
-		useFlagVolumeIdRangeTo(cmd)
-		return cmd
-	}
-	newDelDiskCmd := func() *cobra.Command {
-		cmd := &cobra.Command{
-			Use:   "disk",
-			Short: "unmap a volume and delete",
-			RunE: func(cmd *cobra.Command, _ []string) error {
-				ctx := cmd.Context()
-				opt := OptDelDisk{
-					Volume: OptVolume{
-						ID:     volumeId,
-						Name:   name,
-						Serial: serial,
-					},
-				}
-				if data, err := t.DelDisk(ctx, opt); err != nil {
-					return err
-				} else {
-					return dump(data)
-				}
-			},
-		}
-		useFlagName(cmd)
-		useFlagVolumeID(cmd)
-		useFlagSerial(cmd)
-		return cmd
-	}
-	newAddDiskCmd := func() *cobra.Command {
-		cmd := &cobra.Command{
-			Use:   "disk",
-			Short: "add a volume and map",
-			RunE: func(cmd *cobra.Command, _ []string) error {
-				ctx := cmd.Context()
-				opt := OptAddDisk{
-					Volume: OptAddVolume{
-						Name:                    name,
-						Size:                    size,
-						PoolId:                  poolId,
-						Compression:             compression,
-						Deduplication:           deduplication,
-						VirtualStorageMachineId: virtualStorageMachineId,
-					},
-					Mapping: OptMapping{
-						Mappings:          mappings,
-						LUN:               lun,
-						HostGroupNames:    hostGroups,
-						VolumeIdRangeFrom: volumeIdRangeFrom,
-						VolumeIdRangeTo:   volumeIdRangeTo,
-					},
-				}
-				if data, err := t.AddDisk(ctx, opt); err != nil {
-					return err
-				} else {
-					return dump(data)
-				}
-			},
-		}
-		useFlagName(cmd)
-		useFlagSize(cmd)
-		useFlagPoolID(cmd)
-		useFlagMapping(cmd)
-		useFlagLUN(cmd)
-		useFlagHostGroup(cmd)
-		useFlagCompression(cmd)
-		useFlagDeduplication(cmd)
-		useFlagVolumeIdRangeFrom(cmd)
-		useFlagVolumeIdRangeTo(cmd)
-		useFlagVirtualStorageMachineId(cmd)
-		return cmd
-	}
-	newGetCmd := func() *cobra.Command {
-		cmd := &cobra.Command{
-			Use:   "get",
-			Short: "get commands",
-		}
-		return cmd
-	}
-	newGetServersCmd := func() *cobra.Command {
-		cmd := &cobra.Command{
-			Use:   "servers",
-			Short: "get servers",
-			RunE: func(cmd *cobra.Command, _ []string) error {
-				ctx := cmd.Context()
-				opt := OptGetItems{
-					Filter: filter,
-				}
-				data, err := t.GetServers(ctx, opt)
-				if err != nil {
-					return err
-				}
-				return dump(data)
-			},
-		}
-		useFlagFilter(cmd)
-		return cmd
-	}
-	newGetVolumesCmd := func() *cobra.Command {
-		cmd := &cobra.Command{
-			Use:   "volumes",
-			Short: "get volumes",
-			RunE: func(cmd *cobra.Command, _ []string) error {
-				ctx := cmd.Context()
-				opt := OptGetItems{
-					Volume: OptVolume{
-						ID:     volumeId,
-						Name:   name,
-						Serial: serial,
-					},
-					Filter: filter,
-				}
-				data, err := t.GetVolumes(ctx, opt)
-				if err != nil {
-					return err
-				}
-				return dump(data)
-			},
-		}
-		useFlagVolumeID(cmd)
-		useFlagName(cmd)
-		useFlagSerial(cmd)
-		useFlagFilter(cmd)
-		return cmd
-	}
-	newGetHostGroupsCmd := func() *cobra.Command {
-		cmd := &cobra.Command{
-			Use:   "host-groups",
-			Short: "get host groups",
-			RunE: func(cmd *cobra.Command, _ []string) error {
-				ctx := cmd.Context()
-				opt := OptGetItems{Filter: filter}
-				data, err := t.GetHostGroups(ctx, opt)
-				if err != nil {
-					return err
-				}
-				return dump(data)
-			},
-		}
-		useFlagFilter(cmd)
-		return cmd
-	}
-	newGetStoragePortsCmd := func() *cobra.Command {
-		cmd := &cobra.Command{
-			Use:   "storage-ports",
-			Short: "get storage ports",
-			RunE: func(cmd *cobra.Command, _ []string) error {
-				ctx := cmd.Context()
-				opt := OptGetItems{Filter: filter}
-				data, err := t.GetStoragePorts(ctx, opt)
-				if err != nil {
-					return err
-				}
-				return dump(data)
-			},
-		}
-		useFlagFilter(cmd)
-		return cmd
-	}
-	newGetStoragePoolsCmd := func() *cobra.Command {
-		cmd := &cobra.Command{
-			Use:   "storage-pools",
-			Short: "get storage pools",
-			RunE: func(cmd *cobra.Command, _ []string) error {
-				ctx := cmd.Context()
-				opt := OptGetItems{Filter: filter}
-				data, err := t.GetStoragePools(ctx, opt)
-				if err != nil {
-					return err
-				}
-				return dump(data)
-			},
-		}
-		useFlagFilter(cmd)
-		return cmd
-	}
-	newGetDisksCmd := func() *cobra.Command {
-		cmd := &cobra.Command{
-			Use:   "disks",
-			Short: "get disks",
-			RunE: func(cmd *cobra.Command, _ []string) error {
-				ctx := cmd.Context()
-				opt := OptGetItems{Filter: filter}
-				data, err := t.GetDisks(ctx, opt)
-				if err != nil {
-					return err
-				}
-				return dump(data)
-			},
-		}
-		useFlagFilter(cmd)
-		return cmd
-	}
-	newGetStorageSystemCmd := func() *cobra.Command {
-		cmd := &cobra.Command{
-			Use:   "storage-system",
-			Short: "get storage system",
-			RunE: func(cmd *cobra.Command, _ []string) error {
-				ctx := cmd.Context()
-				data, err := t.GetStorageSystem(ctx)
-				if err != nil {
-					return err
-				}
-				return dump(data)
-			},
-		}
-		return cmd
-	}
-	newGetStorageSystemsCmd := func() *cobra.Command {
-		cmd := &cobra.Command{
-			Use:   "storage-systems",
-			Short: "get storage systems",
-			RunE: func(cmd *cobra.Command, _ []string) error {
-				ctx := cmd.Context()
-				opt := OptGetItems{Filter: filter}
-				data, err := t.GetStorageSystems(ctx, opt)
-				if err != nil {
-					return err
-				}
-				return dump(data)
-			},
-		}
-		useFlagFilter(cmd)
-		return cmd
-	}
-	newGetJobsCmd := func() *cobra.Command {
-		cmd := &cobra.Command{
-			Use:   "jobs",
-			Short: "get jobs",
-			RunE: func(cmd *cobra.Command, _ []string) error {
-				ctx := cmd.Context()
-				opt := OptGetItems{Filter: filter}
-				data, err := t.GetJobs(ctx, opt)
-				if err != nil {
-					return err
-				}
-				return dump(data)
-			},
-		}
-		useFlagFilter(cmd)
-		return cmd
-	}
-	newGetSystemTasksCmd := func() *cobra.Command {
-		cmd := &cobra.Command{
-			Use:   "system-tasks",
-			Short: "get system tasks",
-			RunE: func(cmd *cobra.Command, _ []string) error {
-				opt := OptGetItems{Filter: filter}
-				ctx := cmd.Context()
-				data, err := t.GetSystemTasks(ctx, opt)
-				if err != nil {
-					return err
-				}
-				return dump(data)
-			},
-		}
-		useFlagFilter(cmd)
-		return cmd
-	}
-
-	parent := newParent()
-
-	// skip past the --array <array> arguments
-	parent.SetArgs(array.SkipArgs())
-
-	addCmd := newAddCmd()
-	addCmd.AddCommand(newAddDiskCmd())
-	parent.AddCommand(addCmd)
-
-	resizeCmd := newResizeCmd()
-	resizeCmd.AddCommand(newResizeDiskCmd())
-	parent.AddCommand(resizeCmd)
-
-	delCmd := newDelCmd()
-	delCmd.AddCommand(newDelDiskCmd())
-	parent.AddCommand(delCmd)
-
-	getCmd := newGetCmd()
-	getCmd.AddCommand(newGetSystemTasksCmd())
-	getCmd.AddCommand(newGetJobsCmd())
-	getCmd.AddCommand(newGetHostGroupsCmd())
-	getCmd.AddCommand(newGetStoragePortsCmd())
-	getCmd.AddCommand(newGetStoragePoolsCmd())
-	getCmd.AddCommand(newGetDisksCmd())
-	getCmd.AddCommand(newGetStorageSystemCmd())
-	getCmd.AddCommand(newGetStorageSystemsCmd())
-	getCmd.AddCommand(newGetServersCmd())
-	getCmd.AddCommand(newGetVolumesCmd())
-	parent.AddCommand(getCmd)
-
-	mapCmd := newMapCmd()
-	mapCmd.AddCommand(newMapDiskCmd())
-	parent.AddCommand(mapCmd)
-
-	unmapCmd := newUnmapCmd()
-	unmapCmd.AddCommand(newUnmapDiskCmd())
-	parent.AddCommand(unmapCmd)
-
-	return parent.Execute()
+	return array.RunActions(context.Background(), t.Actions(), args, os.Stdout)
 }
 
 func (t Array) wwidPrefix() string {
@@ -1106,6 +671,29 @@ func (t *Array) AddDisk(ctx context.Context, opt OptAddDisk) (array.Disk, error)
 	return disk, nil
 }
 
+// addVolumeData returns the body of the volume creation request.
+//
+// An option nobody set adds nothing to the body: the array is asked for the
+// volume v2 asks for, and the options this driver has beyond v2 are silent
+// until they are used.
+func addVolumeData(opt OptAddVolume, sizeBytes int64) map[string]string {
+	data := map[string]string{
+		"poolId":          opt.PoolId,
+		"capacityInBytes": fmt.Sprint(sizeBytes),
+		"label":           opt.Name,
+	}
+	if opt.VirtualStorageMachineId != "" {
+		data["virtualStorageMachineId"] = opt.VirtualStorageMachineId
+	}
+	switch {
+	case opt.Deduplication && opt.Compression:
+		data["dkcDataSavingType"] = "DEDUPLICATION_AND_COMPRESSION"
+	case opt.Compression:
+		data["dkcDataSavingType"] = "COMPRESSION"
+	}
+	return data
+}
+
 func (t *Array) addVolume(ctx context.Context, opt OptAddVolume) (hocVolume, error) {
 	if opt.Name == "" {
 		return hocVolume{}, fmt.Errorf("--name is required")
@@ -1120,22 +708,7 @@ func (t *Array) addVolume(ctx context.Context, opt OptAddVolume) (hocVolume, err
 	params := map[string]string{
 		"names": opt.Name,
 	}
-	data := map[string]string{
-		"poolId":          opt.PoolId,
-		"capacityInBytes": fmt.Sprint(sizeBytes),
-		"label":           opt.Name,
-	}
-
-	if opt.VirtualStorageMachineId != "" {
-		data["virtualStorageMachineId"] = opt.VirtualStorageMachineId
-	}
-
-	switch {
-	case opt.Deduplication && opt.Compression:
-		data["dkcDataSavingType"] = "DEDUPLICATION_AND_COMPRESSION"
-	case opt.Compression:
-		data["dkcDataSavingType"] = "COMPRESSION"
-	}
+	data := addVolumeData(opt, sizeBytes)
 
 	path := fmt.Sprintf("/storage-systems/%s/volumes", t.storageSystemId())
 	req, err := t.newRequest(ctx, http.MethodPost, path, params, data)
@@ -1405,7 +978,7 @@ func (t *Array) getVolume(ctx context.Context, opt OptVolume) (hocVolume, error)
 		}
 		return volume, nil
 	}
-	return volume, fmt.Errorf("no volume found matching %s", filter)
+	return volume, fmt.Errorf("no volume found matching %s", queryOpt.Filter)
 }
 
 func (t *Array) DelDisk(ctx context.Context, opt OptDelDisk) (array.Disk, error) {

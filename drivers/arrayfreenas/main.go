@@ -3,6 +3,7 @@ package arrayfreenas
 import (
 	"bytes"
 	"context"
+	"crypto/tls"
 	"encoding/base64"
 	"encoding/json"
 	"fmt"
@@ -10,15 +11,12 @@ import (
 	"net/http"
 	"net/url"
 	"os"
-	"strconv"
 	"strings"
 	"time"
 
 	"github.com/pkg/errors"
-	"github.com/spf13/cobra"
 
 	"github.com/opensvc/om3/v3/core/array"
-	"github.com/opensvc/om3/v3/core/commoncmd"
 	"github.com/opensvc/om3/v3/core/datarecv"
 	"github.com/opensvc/om3/v3/core/driver"
 	"github.com/opensvc/om3/v3/core/naming"
@@ -40,14 +38,14 @@ type (
 	}
 
 	UnmapDiskOptions struct {
-		Name    string
-		Mapping string
+		Name     string
+		Mappings []string
 	}
 
 	MapDiskOptions struct {
-		Name    string
-		Mapping string
-		LunId   *int
+		Name     string
+		Mappings []string
+		LunId    *int
 	}
 
 	DelISCSIExtentOptions struct {
@@ -58,7 +56,7 @@ type (
 	AddDiskOptions struct {
 		AddZvolOptions
 		InsecureTPC bool
-		Mapping     string
+		Mappings    []string
 		LunId       *int
 	}
 
@@ -123,747 +121,11 @@ func New() *Array {
 	return t
 }
 
+// Run builds the command tree of this array and runs the arguments through
+// it. What the tree holds is declared in Actions.
 func (t *Array) Run(args []string) error {
-	var (
-		auth          string
-		authGroupId   int
-		authMethod    string
-		authNetworks  []string
-		id            int
-		blocksize     string
-		compression   string
-		comment       string
-		dedup         string
-		disk          string
-		initiatorName string
-		initiatorId   int
-		initiators    []string
-		insecureTPC   bool
-		listen        []string
-		lunId         int
-		mapping       string
-		name          string
-		portalId      int
-		size          string
-		sparse        bool
-		target        string
-		volume        string
-	)
-	newParent := func() *cobra.Command {
-		cmd := &cobra.Command{
-			SilenceErrors: true,
-			SilenceUsage:  true,
-			Use:           "array",
-			Short:         "Manage a truenas storage array",
-		}
-		return cmd
-	}
-
-	newMapCmd := func() *cobra.Command {
-		cmd := &cobra.Command{
-			Use:   "map",
-			Short: "map commands",
-		}
-		return cmd
-	}
-	newMapISCSICmd := func() *cobra.Command {
-		cmd := &cobra.Command{
-			Use:   "iscsi",
-			Short: "map iscsi commands",
-		}
-		return cmd
-	}
-	newUnmapCmd := func() *cobra.Command {
-		cmd := &cobra.Command{
-			Use:   "unmap",
-			Short: "unmap commands",
-		}
-		return cmd
-	}
-	newUnmapISCSICmd := func() *cobra.Command {
-		cmd := &cobra.Command{
-			Use:   "iscsi",
-			Short: "unmap iscsi commands",
-		}
-		return cmd
-	}
-	newAddCmd := func() *cobra.Command {
-		cmd := &cobra.Command{
-			Use:   "add",
-			Short: "add commands",
-		}
-		return cmd
-	}
-	newDelCmd := func() *cobra.Command {
-		cmd := &cobra.Command{
-			Use:   "del",
-			Short: "del commands",
-		}
-		return cmd
-	}
-
-	newUnmapISCSIZvolCmd := func() *cobra.Command {
-		cmd := &cobra.Command{
-			Use:   "zvol",
-			Short: "unmap a zvol-type dataset",
-			RunE: func(cmd *cobra.Command, _ []string) error {
-				opt := UnmapDiskOptions{
-					Name:    name,
-					Mapping: mapping,
-				}
-				if data, err := t.UnmapDisk(cmd.Context(), opt); err != nil {
-					return err
-				} else {
-					return dump(data)
-				}
-			},
-		}
-		cmd.Flags().StringVar(&name, "name", "", "")
-		cmd.Flags().StringVar(&mapping, "mappings", "", "")
-		cmd.Flags().StringVar(&mapping, "mapping", "", "")
-		cmd.PersistentFlags().MarkHidden("mappings")
-		return cmd
-	}
-	newMapISCSIZvolCmd := func() *cobra.Command {
-		cmd := &cobra.Command{
-			Use:    "zvol",
-			Hidden: true,
-			Short:  "map a zvol-type dataset",
-			RunE: func(cmd *cobra.Command, _ []string) error {
-				ctx := cmd.Context()
-				opt := MapDiskOptions{
-					Name:    name,
-					Mapping: mapping,
-				}
-				if lunId >= 0 {
-					opt.LunId = &lunId
-				}
-				if data, err := t.MapDisk(ctx, opt); err != nil {
-					return err
-				} else {
-					return dump(data)
-				}
-			},
-		}
-		cmd.Flags().StringVar(&name, "name", "", "")
-		cmd.Flags().StringVar(&mapping, "mappings", "", "")
-		cmd.Flags().StringVar(&mapping, "mapping", "", "")
-		cmd.Flags().IntVar(&lunId, "lun", -1, "")
-		cmd.PersistentFlags().MarkHidden("mappings")
-		return cmd
-	}
-	newMapDiskCmd := func() *cobra.Command {
-		cmd := &cobra.Command{
-			Use:   "disk",
-			Short: "map a zvol-type dataset",
-			RunE: func(cmd *cobra.Command, _ []string) error {
-				ctx := cmd.Context()
-				opt := MapDiskOptions{
-					Name:    name,
-					Mapping: mapping,
-				}
-				if lunId >= 0 {
-					opt.LunId = &lunId
-				}
-				if data, err := t.MapDisk(ctx, opt); err != nil {
-					return err
-				} else {
-					return dump(data)
-				}
-			},
-		}
-		cmd.Flags().StringVar(&name, "name", "", "")
-		cmd.Flags().StringVar(&mapping, "mapping", "", "")
-		cmd.Flags().StringVar(&mapping, "mappings", "", "")
-		cmd.Flags().IntVar(&lunId, "lun", -1, "")
-		cmd.PersistentFlags().MarkHidden("mappings")
-		return cmd
-	}
-	newDelDiskCmd := func() *cobra.Command {
-		cmd := &cobra.Command{
-			Use:   "disk",
-			Short: "unmap a zvol-type dataset and delete",
-			RunE: func(cmd *cobra.Command, _ []string) error {
-				ctx := cmd.Context()
-				if data, err := t.DelDisk(ctx, name); err != nil {
-					return err
-				} else {
-					return dump(data)
-				}
-			},
-		}
-		cmd.Flags().StringVar(&name, "name", "", "")
-		return cmd
-	}
-	newAddDiskCmd := func() *cobra.Command {
-		cmd := &cobra.Command{
-			Use:   "disk",
-			Short: "add a zvol-type dataset and map",
-			RunE: func(cmd *cobra.Command, _ []string) error {
-				ctx := cmd.Context()
-				opt := AddDiskOptions{
-					AddZvolOptions: AddZvolOptions{
-						Name:          name,
-						Size:          size,
-						Blocksize:     blocksize,
-						Sparse:        sparse,
-						Deduplication: dedup,
-						Compression:   compression,
-					},
-					InsecureTPC: insecureTPC,
-					Mapping:     mapping,
-				}
-				if lunId >= 0 {
-					opt.LunId = &lunId
-				}
-				if data, err := t.AddDisk(ctx, opt); err != nil {
-					return err
-				} else {
-					return dump(data)
-				}
-			},
-		}
-		cmd.Flags().StringVar(&name, "name", "", "")
-		cmd.Flags().StringVar(&size, "size", "", "")
-		cmd.Flags().StringVar(&blocksize, "blocksize", "512", "")
-		cmd.Flags().BoolVar(&sparse, "sparse", true, "")
-		cmd.Flags().BoolVar(&insecureTPC, "insecure-tpc", false, "")
-		cmd.Flags().StringVar(&mapping, "mapping", "", "")
-		cmd.Flags().StringVar(&dedup, "dedup", "off", "")
-		cmd.Flags().StringVar(&compression, "compression", "inherit", "")
-		cmd.Flags().IntVar(&lunId, "lun", -1, "")
-		return cmd
-	}
-	newAddISCSIZvolCmd := func() *cobra.Command {
-		cmd := &cobra.Command{
-			Use:    "zvol",
-			Short:  "add a zvol-type dataset",
-			Hidden: true,
-			RunE: func(cmd *cobra.Command, _ []string) error {
-				opt := AddDiskOptions{
-					AddZvolOptions: AddZvolOptions{
-						Name:          volume + "/" + name,
-						Size:          size,
-						Blocksize:     blocksize,
-						Sparse:        sparse,
-						Deduplication: dedup,
-						Compression:   compression,
-					},
-					InsecureTPC: insecureTPC,
-					Mapping:     mapping,
-				}
-				if lunId >= 0 {
-					opt.LunId = &lunId
-				}
-				if data, err := t.AddDisk(cmd.Context(), opt); err != nil {
-					return err
-				} else {
-					return dump(data)
-				}
-			},
-		}
-		cmd.Flags().StringVar(&volume, "volume", "", "")
-		cmd.Flags().StringVar(&name, "name", "", "")
-		cmd.Flags().StringVar(&blocksize, "blocksize", "512", "")
-		cmd.Flags().StringVar(&size, "size", "", "")
-		cmd.Flags().BoolVar(&sparse, "sparse", true, "")
-		cmd.Flags().StringVar(&dedup, "dedup", "off", "")
-		cmd.Flags().StringVar(&compression, "compression", "inherit", "")
-		cmd.Flags().StringVar(&mapping, "mapping", "", "")
-		cmd.Flags().IntVar(&lunId, "lun", -1, "")
-		return cmd
-	}
-	newAddZvolCmd := func() *cobra.Command {
-		cmd := &cobra.Command{
-			Use:   "zvol",
-			Short: "add a zvol-type dataset",
-			RunE: func(cmd *cobra.Command, _ []string) error {
-				opt := AddZvolOptions{
-					Name:          name,
-					Size:          size,
-					Blocksize:     blocksize,
-					Sparse:        sparse,
-					Deduplication: dedup,
-					Compression:   compression,
-				}
-				if data, err := t.AddZvol(cmd.Context(), opt); err != nil {
-					return err
-				} else {
-					return dump(data)
-				}
-			},
-		}
-		cmd.Flags().StringVar(&name, "name", "", "")
-		cmd.Flags().StringVar(&blocksize, "blocksize", "512", "")
-		cmd.Flags().StringVar(&size, "size", "", "")
-		cmd.Flags().BoolVar(&sparse, "sparse", true, "")
-		cmd.Flags().StringVar(&dedup, "dedup", "off", "")
-		cmd.Flags().StringVar(&compression, "compression", "inherit", "")
-		return cmd
-	}
-	newDelZvolCmd := func() *cobra.Command {
-		cmd := &cobra.Command{
-			Use:   "zvol",
-			Short: "del a zvol-type dataset",
-			RunE: func(cmd *cobra.Command, _ []string) error {
-				if data, err := t.DeleteDataset(cmd.Context(), name); err != nil {
-					return err
-				} else {
-					return dump(data)
-				}
-			},
-		}
-		cmd.Flags().StringVar(&name, "name", "", "")
-		return cmd
-	}
-	newGetCmd := func() *cobra.Command {
-		cmd := &cobra.Command{
-			Use:   "get",
-			Short: "get commands",
-		}
-		return cmd
-	}
-	newGetPoolsCmd := func() *cobra.Command {
-		cmd := &cobra.Command{
-			Use:   "pools",
-			Short: "get pools",
-			RunE: func(cmd *cobra.Command, _ []string) error {
-				return t.dumpPools(cmd.Context())
-			},
-		}
-		return cmd
-	}
-	newGetDatasetsCmd := func() *cobra.Command {
-		cmd := &cobra.Command{
-			Use:   "datasets",
-			Short: "get datasets",
-			RunE: func(cmd *cobra.Command, _ []string) error {
-				return t.dumpDatasets(cmd.Context())
-			},
-		}
-		return cmd
-	}
-	newGetDiskCmd := func() *cobra.Command {
-		cmd := &cobra.Command{
-			Use:   "disk",
-			Short: "get dataset, extent and targetextents",
-			RunE: func(cmd *cobra.Command, _ []string) error {
-				return t.dumpDisk(cmd.Context(), name)
-			},
-		}
-		cmd.Flags().StringVar(&name, "name", "", "")
-		return cmd
-	}
-	newGetDatasetCmd := func() *cobra.Command {
-		cmd := &cobra.Command{
-			Use:   "dataset",
-			Short: "get dataset",
-			RunE: func(cmd *cobra.Command, _ []string) error {
-				return t.dumpDataset(cmd.Context(), name)
-			},
-		}
-		cmd.Flags().StringVar(&name, "name", "", "")
-		return cmd
-	}
-	newGetSystemInfoCmd := func() *cobra.Command {
-		cmd := &cobra.Command{
-			Use:   "system",
-			Short: "get system information",
-			RunE: func(cmd *cobra.Command, _ []string) error {
-				return t.dumpSystemInfo(cmd.Context())
-			},
-		}
-		return cmd
-	}
-	newAddISCSICmd := func() *cobra.Command {
-		cmd := &cobra.Command{
-			Use:   "iscsi",
-			Short: "iscsi subsystem",
-		}
-		return cmd
-	}
-	newDelISCSICmd := func() *cobra.Command {
-		cmd := &cobra.Command{
-			Use:   "iscsi",
-			Short: "iscsi subsystem",
-		}
-		return cmd
-	}
-	newAddISCSIPortalCmd := func() *cobra.Command {
-		cmd := &cobra.Command{
-			Use:   "portal",
-			Short: "create a iscsi portal",
-			RunE: func(cmd *cobra.Command, _ []string) error {
-				listenParam := make([]ISCSIPortalListenIp, 0)
-				for _, server := range listen {
-					l := strings.SplitN(server, ":", 2)
-					if len(l) != 2 {
-						return fmt.Errorf("bad listen format: %s", server)
-					}
-					port, err := strconv.Atoi(l[1])
-					if err != nil {
-						return fmt.Errorf("bad listen port format: %s", server)
-					}
-					listenParam = append(listenParam, ISCSIPortalListenIp{
-						Ip:   l[0],
-						Port: port,
-					})
-				}
-
-				params := CreateISCSIPortalParams{
-					Comment:             comment,
-					DiscoveryAuthMethod: authMethod,
-					Listen:              listenParam,
-				}
-
-				if authGroupId >= 0 {
-					params.DiscoveryAuthGroup = authGroupId
-				}
-				if data, err := t.addISCSIPortal(cmd.Context(), params); err != nil {
-					return err
-				} else {
-					return dump(data)
-				}
-			},
-		}
-		cmd.Flags().StringVar(&comment, "comment", "", "")
-		cmd.Flags().IntVar(&authGroupId, "auth-group-id", -1, "")
-		cmd.Flags().StringVar(&authMethod, "auth-method", "", "")
-		cmd.Flags().StringSliceVar(&listen, "listen", []string{"0.0.0.0:3261"}, "")
-		return cmd
-	}
-	newAddISCSITargetCmd := func() *cobra.Command {
-		cmd := &cobra.Command{
-			Use:   "target",
-			Short: "create a iscsi target",
-			RunE: func(cmd *cobra.Command, _ []string) error {
-				params := CreateISCSITargetParams{
-					Name: name,
-				}
-				if data, err := t.addISCSITarget(cmd.Context(), params); err != nil {
-					return err
-				} else {
-					return dump(data)
-				}
-			},
-		}
-		cmd.Flags().StringVar(&name, "name", "", "")
-		return cmd
-	}
-	newAddISCSITargetGroupCmd := func() *cobra.Command {
-		cmd := &cobra.Command{
-			Use:   "targetgroup",
-			Short: "create a iscsi targetgroup",
-			RunE: func(cmd *cobra.Command, _ []string) error {
-				params := AddISCSITargetGroupOptions{
-					AuthMethod:    authMethod,
-					Auth:          auth,
-					PortalId:      portalId,
-					Target:        target,
-					InitiatorName: initiatorName,
-					InitiatorId:   initiatorId,
-				}
-				if data, err := t.addISCSITargetGroup(cmd.Context(), params); err != nil {
-					return err
-				} else {
-					return dump(data)
-				}
-			},
-		}
-		cmd.Flags().IntVar(&portalId, "portal-id", 1, "")
-		cmd.Flags().StringVar(&target, "target", "", "")
-		cmd.Flags().StringVar(&auth, "auth", "", "")
-		cmd.Flags().StringVar(&authMethod, "auth-method", "NONE", "")
-		cmd.Flags().StringVar(&initiatorName, "initiatorgroup", "", "")
-		cmd.Flags().StringVar(&initiatorName, "initiator", "", "")
-		cmd.Flags().IntVar(&initiatorId, "initiator-id", -1, "")
-		cmd.PersistentFlags().MarkHidden("initiatorgroup")
-		return cmd
-	}
-	newDelISCSITargetCmd := func() *cobra.Command {
-		cmd := &cobra.Command{
-			Use:   "target",
-			Short: "delete a iscsi target",
-			RunE: func(cmd *cobra.Command, _ []string) error {
-				if data, err := t.delISCSITarget(cmd.Context(), id); err != nil {
-					return err
-				} else {
-					return dump(data)
-				}
-			},
-		}
-		cmd.Flags().IntVar(&id, "id", -1, "")
-		return cmd
-	}
-	newDelISCSIInitiatorCmd := func() *cobra.Command {
-		cmd := &cobra.Command{
-			Use:   "initiator",
-			Short: "delete a iscsi initiator",
-			RunE: func(cmd *cobra.Command, _ []string) error {
-				if data, err := t.delISCSIInitiator(cmd.Context(), id); err != nil {
-					return err
-				} else {
-					return dump(data)
-				}
-			},
-		}
-		cmd.Flags().IntVar(&id, "id", -1, "")
-		return cmd
-	}
-	newAddISCSIInitiatorCmd := func() *cobra.Command {
-		cmd := &cobra.Command{
-			Use:   "initiator",
-			Short: "create a iscsi initiator",
-			RunE: func(cmd *cobra.Command, _ []string) error {
-				params := CreateISCSIInitiatorParams{
-					Initiators:  initiators,
-					AuthNetwork: authNetworks,
-					Comment:     comment,
-				}
-				if data, err := t.addISCSIInitiator(cmd.Context(), params); err != nil {
-					return err
-				} else {
-					return dump(data)
-				}
-			},
-		}
-		commoncmd.RawStringSliceVar(cmd.Flags(), &initiators, "initiator", []string{}, "")
-		commoncmd.RawStringSliceVar(cmd.Flags(), &authNetworks, "auth-network", []string{}, "")
-		cmd.Flags().StringVar(&name, "comment", "", "")
-		return cmd
-	}
-	newAddISCSIExtentCmd := func() *cobra.Command {
-		cmd := &cobra.Command{
-			Use:   "extent",
-			Short: "create a iscsi extent",
-			RunE: func(cmd *cobra.Command, _ []string) error {
-				opt := AddISCSIExtentOptions{
-					Name:        name,
-					Disk:        disk,
-					Blocksize:   blocksize,
-					InsecureTPC: insecureTPC,
-				}
-				if data, err := t.AddISCSIExtent(cmd.Context(), opt); err != nil {
-					return err
-				} else {
-					return dump(data)
-				}
-			},
-		}
-		cmd.Flags().StringVar(&name, "name", "", "")
-		cmd.Flags().StringVar(&disk, "disk", "", "")
-		cmd.Flags().StringVar(&blocksize, "blocksize", "512", "")
-		cmd.Flags().BoolVar(&insecureTPC, "insecure-tpc", false, "")
-		return cmd
-	}
-	newDelISCSIExtentCmd := func() *cobra.Command {
-		cmd := &cobra.Command{
-			Use:   "extent",
-			Short: "delete a iscsi extent",
-			RunE: func(cmd *cobra.Command, _ []string) error {
-				opt := DelISCSIExtentOptions{
-					Id:   id,
-					Name: name,
-				}
-				if data, err := t.DelISCSIExtent(cmd.Context(), opt); err != nil {
-					return err
-				} else {
-					return dump(data)
-				}
-			},
-		}
-		cmd.Flags().IntVar(&id, "id", -1, "")
-		cmd.Flags().StringVar(&name, "name", "", "")
-		return cmd
-	}
-	newGetISCSICmd := func() *cobra.Command {
-		cmd := &cobra.Command{
-			Use:   "iscsi",
-			Short: "iscsi subsystem",
-		}
-		return cmd
-	}
-	newGetISCSIPortalsCmd := func() *cobra.Command {
-		cmd := &cobra.Command{
-			Use:   "portals",
-			Short: "get iscsi portals",
-			RunE: func(cmd *cobra.Command, _ []string) error {
-				return t.dumpISCSIPortals(cmd.Context())
-			},
-		}
-		return cmd
-	}
-	newGetISCSITargetsCmd := func() *cobra.Command {
-		cmd := &cobra.Command{
-			Use:   "targets",
-			Short: "get iscsi targets",
-			RunE: func(cmd *cobra.Command, _ []string) error {
-				return t.dumpISCSITargets(cmd.Context())
-			},
-		}
-		return cmd
-	}
-	newGetISCSITargetExtentsCmd := func() *cobra.Command {
-		cmd := &cobra.Command{
-			Use:   "targetextents",
-			Short: "get iscsi targetextents",
-			RunE: func(cmd *cobra.Command, _ []string) error {
-				return t.dumpISCSITargetExtents(cmd.Context())
-			},
-		}
-		return cmd
-	}
-	newGetISCSIExtentCmd := func() *cobra.Command {
-		cmd := &cobra.Command{
-			Use:   "extent",
-			Short: "get iscsi extent",
-			RunE: func(cmd *cobra.Command, _ []string) error {
-				return t.dumpISCSIExtent(cmd.Context(), name)
-			},
-		}
-		cmd.Flags().StringVar(&name, "name", "", "")
-		return cmd
-	}
-	newGetISCSIExtentsCmd := func() *cobra.Command {
-		cmd := &cobra.Command{
-			Use:   "extents",
-			Short: "get iscsi extents",
-			RunE: func(cmd *cobra.Command, _ []string) error {
-				return t.dumpISCSIExtents(cmd.Context())
-			},
-		}
-		return cmd
-	}
-	newGetISCSIInitiatorsCmd := func() *cobra.Command {
-		cmd := &cobra.Command{
-			Use:   "initiators",
-			Short: "get iscsi initiators",
-			RunE: func(cmd *cobra.Command, _ []string) error {
-				return t.dumpISCSIInitiators(cmd.Context())
-			},
-		}
-		return cmd
-	}
-	newUpdateCmd := func() *cobra.Command {
-		cmd := &cobra.Command{
-			Use:   "update",
-			Short: "update commands",
-		}
-		return cmd
-	}
-	newUpdateZvolCmd := func() *cobra.Command {
-		cmd := &cobra.Command{
-			Use:   "dataset",
-			Short: "update a dataset",
-			RunE: func(cmd *cobra.Command, _ []string) error {
-				params := UpdateDatasetParams{}
-				var (
-					initialSize int64
-					sign        string
-				)
-				if strings.HasPrefix(size, "+") || strings.HasPrefix(size, "-") {
-					sign = string(size[0])
-					size = size[1:]
-					if ds, err := t.GetDataset(cmd.Context(), name); err != nil {
-						return err
-					} else if i, err := sizeconv.FromSize(ds.Volsize.Rawvalue); err != nil {
-						return err
-					} else {
-						initialSize = i
-					}
-				}
-				if i, err := sizeconv.FromSize(size); err != nil {
-					return err
-				} else {
-					switch sign {
-					case "+":
-						initialSize += i
-					case "-":
-						initialSize -= i
-					}
-					params.Volsize = &initialSize
-				}
-				if data, err := t.UpdateDataset(cmd.Context(), name, params); err != nil {
-					return err
-				} else {
-					return dump(data)
-				}
-			},
-		}
-		cmd.Flags().StringVar(&name, "name", "", "")
-		cmd.Flags().StringVar(&size, "size", "", "")
-		return cmd
-	}
-
-	parent := newParent()
-
-	// skip past the --array <array> arguments
-	parent.SetArgs(array.SkipArgs())
-
-	addCmd := newAddCmd()
-	addCmd.AddCommand(newAddDiskCmd())
-	addCmd.AddCommand(newAddZvolCmd())
-	parent.AddCommand(addCmd)
-
-	delCmd := newDelCmd()
-	delCmd.AddCommand(newDelDiskCmd())
-	delCmd.AddCommand(newDelZvolCmd())
-	parent.AddCommand(delCmd)
-
-	getCmd := newGetCmd()
-	getCmd.AddCommand(newGetPoolsCmd())
-	getCmd.AddCommand(newGetDatasetsCmd())
-	getCmd.AddCommand(newGetDatasetCmd())
-	getCmd.AddCommand(newGetDiskCmd())
-	getCmd.AddCommand(newGetSystemInfoCmd())
-	parent.AddCommand(getCmd)
-
-	addISCSICmd := newAddISCSICmd()
-	addISCSICmd.AddCommand(newAddISCSIExtentCmd())
-	addISCSICmd.AddCommand(newAddISCSIInitiatorCmd())
-	addISCSICmd.AddCommand(newAddISCSIPortalCmd())
-	addISCSICmd.AddCommand(newAddISCSITargetCmd())
-	addISCSICmd.AddCommand(newAddISCSITargetGroupCmd())
-	addISCSICmd.AddCommand(newAddISCSIZvolCmd())
-	addCmd.AddCommand(addISCSICmd)
-
-	delISCSICmd := newDelISCSICmd()
-	delISCSICmd.AddCommand(newDelISCSIExtentCmd())
-	delISCSICmd.AddCommand(newDelISCSIInitiatorCmd())
-	delISCSICmd.AddCommand(newDelISCSITargetCmd())
-	delCmd.AddCommand(delISCSICmd)
-
-	getISCSICmd := newGetISCSICmd()
-	getISCSICmd.AddCommand(newGetISCSIPortalsCmd())
-	getISCSICmd.AddCommand(newGetISCSITargetsCmd())
-	getISCSICmd.AddCommand(newGetISCSITargetExtentsCmd())
-	getISCSICmd.AddCommand(newGetISCSIExtentCmd())
-	getISCSICmd.AddCommand(newGetISCSIExtentsCmd())
-	getISCSICmd.AddCommand(newGetISCSIInitiatorsCmd())
-	getCmd.AddCommand(getISCSICmd)
-
-	mapCmd := newMapCmd()
-	mapCmd.AddCommand(newMapDiskCmd())
-	parent.AddCommand(mapCmd)
-
-	mapISCSICmd := newMapISCSICmd()
-	mapISCSICmd.AddCommand(newMapISCSIZvolCmd())
-	mapCmd.AddCommand(mapISCSICmd)
-
-	unmapCmd := newUnmapCmd()
-	parent.AddCommand(unmapCmd)
-
-	unmapISCSICmd := newUnmapISCSICmd()
-	unmapISCSICmd.AddCommand(newUnmapISCSIZvolCmd())
-	unmapCmd.AddCommand(unmapISCSICmd)
-
-	updateCmd := newUpdateCmd()
-	updateCmd.AddCommand(newUpdateZvolCmd())
-	parent.AddCommand(updateCmd)
-
-	return parent.Execute()
+	return array.RunActions(context.Background(), t.Actions(), args, os.Stdout)
 }
-
 func (t Array) DelZvol(ctx context.Context, name string) (*Dataset, error) {
 	dataset, err := t.GetDataset(ctx, name)
 	if err != nil {
@@ -1003,9 +265,9 @@ func (t Array) AddDisk(ctx context.Context, opt AddDiskOptions) (*Disk, error) {
 
 	// targetExtent
 	targetExtent, err := t.MapDisk(ctx, MapDiskOptions{
-		Name:    opt.Name,
-		Mapping: opt.Mapping,
-		LunId:   opt.LunId,
+		Name:     opt.Name,
+		Mappings: opt.Mappings,
+		LunId:    opt.LunId,
 	})
 	if err != nil {
 		return nil, err
@@ -1415,7 +677,7 @@ func (t Array) GetDataset(ctx context.Context, name string) (*Dataset, error) {
 
 func (t Array) UnmapDisk(ctx context.Context, opt UnmapDiskOptions) (ISCSITargetExtents, error) {
 	deletedTargetExtents := make(ISCSITargetExtents, 0)
-	paths, err := san.ParseMapping(opt.Mapping)
+	paths, err := san.ParseMappings(opt.Mappings)
 	if err != nil {
 		return deletedTargetExtents, err
 	} else if len(paths) == 0 {
@@ -1460,7 +722,7 @@ func (t Array) UnmapDisk(ctx context.Context, opt UnmapDiskOptions) (ISCSITarget
 
 func (t Array) MapDisk(ctx context.Context, opt MapDiskOptions) (ISCSITargetExtents, error) {
 	missingTargetExtents := make(ISCSITargetExtents, 0)
-	paths, err := san.ParseMapping(opt.Mapping)
+	paths, err := san.ParseMappings(opt.Mappings)
 	if err != nil {
 		return missingTargetExtents, err
 	} else if len(paths) == 0 {
@@ -1746,6 +1008,13 @@ func (t *Array) safeClient(u *url.URL) (*http.Client, error) {
 	c.Timeout = t.timeout()
 	if u.Scheme == "https" {
 		if transport, ok := c.Transport.(*http.Transport); ok {
+			// The transport of the ssrf-safe client carries no tls
+			// configuration: it sets a DialContext and nothing else. Writing
+			// InsecureSkipVerify through the nil one panicked, which is every
+			// call to an https array api.
+			if transport.TLSClientConfig == nil {
+				transport.TLSClientConfig = &tls.Config{}
+			}
 			transport.TLSClientConfig.InsecureSkipVerify = t.insecure()
 			c.Transport = transport
 		}

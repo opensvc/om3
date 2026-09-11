@@ -1,30 +1,28 @@
 package ox
 
 import (
-	"fmt"
-	"strings"
-
 	"github.com/spf13/cobra"
 
-	"github.com/opensvc/om3/v3/core/array"
 	"github.com/opensvc/om3/v3/core/commoncmd"
-	"github.com/opensvc/om3/v3/core/object"
-	"github.com/opensvc/om3/v3/util/key"
 )
 
+// cmdArray holds the array commands ox can serve.
+//
+// ox drives a cluster through the api of its daemon, from a host that is not
+// necessarily one of its nodes. Acting on an array is neither: the driver runs
+// where it is invoked, reaching the array over its own management network, and
+// it reads the credentials from the configuration of a node. So there is no
+// "ox array <name> <command>": the words after the array would name actions of
+// a driver ox cannot run, of an array declared in a configuration ox must not
+// read. "om array <name> <command>" is where those live.
+//
+// What is left is what the daemon can answer, which is the listing.
 var (
-	arrayName string
-	cmdArray  = &cobra.Command{
+	cmdArray = &cobra.Command{
 		GroupID: commoncmd.GroupIDSubsystems,
 		Use:     "array",
 		Short:   "manage storage arrays",
-		Long:    ` A array is backend storage provider for pools.`,
-		RunE: func(_ *cobra.Command, args []string) error {
-			return runArray(args)
-		},
-		FParseErrWhitelist: cobra.FParseErrWhitelist{
-			UnknownFlags: true,
-		},
+		Long:    `An array is a backend storage provider for pools.`,
 	}
 )
 
@@ -38,29 +36,4 @@ func init() {
 	cmdArray.AddCommand(
 		newCmdArrayList(),
 	)
-	cmdArray.PersistentFlags().StringVar(&arrayName, "array", "", "the section name or index identifying the array")
-}
-
-func runArray(args []string) error {
-	o, err := object.NewCluster(object.WithVolatile(true))
-	if err != nil {
-		return err
-	}
-	if !strings.HasPrefix(arrayName, "array#") {
-		arrayName = "array#" + arrayName
-	}
-	if !o.Config().HasSectionString(arrayName) {
-		return fmt.Errorf("no section found matching %s in the cluster config", arrayName)
-	}
-	arrayType, err := o.Config().GetStringStrict(key.T{Section: arrayName, Option: "type"})
-	if err != nil {
-		return err
-	}
-	drv := array.GetDriver(arrayType)
-	if drv == nil {
-		return fmt.Errorf("no array driver found matching type %s", arrayType)
-	}
-	drv.SetName(arrayName)
-	drv.SetConfig(o.Config())
-	return drv.Run(args)
 }

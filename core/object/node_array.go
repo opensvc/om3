@@ -12,8 +12,22 @@ type ArrayItem struct {
 	Type string `json:"type"`
 }
 
+// Array returns the driver of the array named in the node or cluster
+// configuration, or nil when no section names it or no driver serves its type.
+//
+// The name is the one of the section, and the driver is chosen by the type
+// that section declares: the two are not the same, and looking a driver up by
+// the name of the array only ever worked for an array named after its own
+// type.
 func (t *Node) Array(name string) array.Driver {
-	p := array.GetDriver(name)
+	if !strings.HasPrefix(name, "array#") {
+		name = "array#" + name
+	}
+	arrayType := t.MergedConfig().Get(key.New(name, "type"))
+	if arrayType == "" {
+		return nil
+	}
+	p := array.GetDriver(arrayType)
 	if p == nil {
 		return nil
 	}
