@@ -71,6 +71,7 @@ func (t *Manager) startSubscriptions() *pubsub.Subscription {
 	// subscribed without the node label for that reason: the monitor of a
 	// peer is the point.
 	sub.AddFilter(&msgbus.InstanceMonitorUpdated{})
+	sub.AddFilter(&msgbus.NodeMonitorUpdated{})
 	sub.AddFilter(&msgbus.ObjectOrchestrationAccepted{}, label)
 	sub.AddFilter(&msgbus.ObjectOrchestrationEnd{}, label)
 	sub.AddFilter(&msgbus.ObjectOrchestrationRefused{}, label)
@@ -108,6 +109,18 @@ func (t *Manager) handle(i any) {
 		case *msgbus.InstanceMonitorUpdated:
 			NoteMonitor(
 				m.Path.String(),
+				m.Node,
+				IDString(xsession.NewOrchestrationID(m.Value.OrchestrationID)),
+				m.Value.GlobalExpect.String(),
+				m.Value.GlobalExpectUpdatedAt,
+			)
+		case *msgbus.NodeMonitorUpdated:
+			// A node orchestration is the same thing of a node rather than of
+			// an object, and its monitor reaches every node the same way. It
+			// is recorded with no object, which is what says it is of the
+			// node.
+			NoteMonitor(
+				"",
 				m.Node,
 				IDString(xsession.NewOrchestrationID(m.Value.OrchestrationID)),
 				m.Value.GlobalExpect.String(),

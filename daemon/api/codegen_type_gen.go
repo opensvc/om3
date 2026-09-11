@@ -1884,8 +1884,10 @@ type OrchestrationItem struct {
 	Node         string     `json:"node"`
 
 	// OrchestrationID The orchestration id the submitter of the action was handed.
-	OrchestrationID string  `json:"orchestration_id"`
-	Path            *string `json:"path,omitempty"`
+	OrchestrationID string `json:"orchestration_id"`
+
+	// Path The object the orchestration is of. Absent when it is of the node.
+	Path *string `json:"path,omitempty"`
 
 	// State One of running, succeeded, aborted, refused.
 	State string `json:"state"`

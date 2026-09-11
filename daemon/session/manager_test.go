@@ -10,6 +10,7 @@ import (
 
 	"github.com/opensvc/om3/v3/core/instance"
 	"github.com/opensvc/om3/v3/core/naming"
+	node2 "github.com/opensvc/om3/v3/core/node"
 	"github.com/opensvc/om3/v3/daemon/msgbus"
 	"github.com/opensvc/om3/v3/util/pubsub"
 	"github.com/opensvc/om3/v3/util/xsession"
@@ -219,4 +220,34 @@ func TestOnlyTheAcceptanceNamesTheAcceptingNode(t *testing.T) {
 	})
 	o, _ = GetOrchestration(id.String())
 	assert.Equal(t, "n1", o.Node)
+}
+
+// A node orchestration is the same thing of a node rather than of an object.
+// Its monitor reaches every node the same way, so every node answers for it,
+// and it is recorded with no object, which is what says it is of the node.
+func TestANodeOrchestrationIsKnownFromTheNodeMonitors(t *testing.T) {
+	reset()
+	m := &Manager{}
+	id := uuid.New()
+
+	mon := func(node string, orchestrationID uuid.UUID) *msgbus.NodeMonitorUpdated {
+		return &msgbus.NodeMonitorUpdated{
+			Node:  node,
+			Value: node2.Monitor{OrchestrationID: orchestrationID, GlobalExpect: node2.MonitorGlobalExpectFrozen},
+		}
+	}
+	m.handle(mon("n1", id))
+	m.handle(mon("n2", id))
+
+	o, ok := GetOrchestration(id.String())
+	require.True(t, ok)
+	assert.Equal(t, StateRunning, o.State)
+	assert.Equal(t, "", o.Path, "no object: it is of the node")
+
+	m.handle(mon("n1", uuid.Nil))
+	o, _ = GetOrchestration(id.String())
+	assert.Equal(t, StateRunning, o.State, "a node still carries it")
+	m.handle(mon("n2", uuid.Nil))
+	o, _ = GetOrchestration(id.String())
+	assert.Equal(t, StateSucceeded, o.State)
 }
