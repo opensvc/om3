@@ -31,6 +31,7 @@ state to see what has run as well.`,
 	flags := cmd.Flags()
 	FlagNodeSelector(flags, &options.NodeSelector)
 	FlagOutput(flags, &options.Output)
+	FlagSort(flags, &options.Sort)
 	FlagColor(flags, &options.Color)
 	FlagObjectSelector(flags, &options.Selector)
 	FlagRID(flags, &options.RID)

@@ -43,10 +43,19 @@ type (
 		// Columns is the table this renders. "om daemon ps" leads with the
 		// pid, the listing leads with the outcome.
 		Columns string
+
+		// Sort overrides the order the listing comes in.
+		Sort string
 	}
 )
 
 const (
+	// execListSort is newest first, then the execs of one command together,
+	// then the objects of one node in a stable order. The union of what
+	// several nodes answered arrives in whatever order they answered in, so
+	// without this the rows are ordered by nothing at all.
+	execListSort = "-started_at,session_id,node,path"
+
 	execListColumns = "tab=NODE:node,STATE:state,EXEC_ID:exec_id,SESSION_ID:session_id,PATH:path,ORIGIN:origin,STARTED_AT:started_at,DURATION:duration,COMMAND:command"
 	execPsColumns   = "tab=PID:pid,NODE:node,EXEC_ID:exec_id,PATH:path,RID:rid,ORIGIN:origin,DURATION:duration,COMMAND:command"
 )
@@ -216,6 +225,8 @@ func (t *CmdDaemonExecList) render(items []api.ExecItem) {
 	output.Renderer{
 		DefaultOutput: columns,
 		Output:        t.Output,
+		DefaultSort:   execListSort,
+		Sort:          t.Sort,
 		Color:         t.Color,
 		Data:          ToExecViews(items),
 		Colorize:      rawconfig.Colorize,
@@ -226,21 +237,24 @@ func (t *CmdDaemonExecList) render(items []api.ExecItem) {
 // and an instant to the nanosecond, which a machine wants and a reader does
 // not.
 type ExecView struct {
-	Node            string `json:"node"`
-	State           string `json:"state"`
-	ExecID          string `json:"exec_id"`
-	SessionID       string `json:"session_id"`
-	OrchestrationID string `json:"orchestration_id,omitempty"`
-	Path            string `json:"path,omitempty"`
-	Origin          string `json:"origin"`
-	RID             string `json:"rid,omitempty"`
-	Pid             *int   `json:"pid,omitempty"`
-	StartedAt       string `json:"started_at"`
-	EndedAt         string `json:"ended_at,omitempty"`
-	Duration        string `json:"duration,omitempty"`
-	ExitCode        *int   `json:"exit_code,omitempty"`
-	Command         string `json:"command,omitempty"`
-	Error           string `json:"error,omitempty"`
+	Node            string     `json:"node"`
+	State           string     `json:"state"`
+	ExecID          string     `json:"exec_id"`
+	SessionID       string     `json:"session_id"`
+	OrchestrationID string     `json:"orchestration_id,omitempty"`
+	Path            string     `json:"path,omitempty"`
+	Origin          string     `json:"origin"`
+	RID             string     `json:"rid,omitempty"`
+	Pid             *int       `json:"pid,omitempty"`
+	StartedAt       time.Time  `json:"started_at"`
+	EndedAt         *time.Time `json:"ended_at,omitempty"`
+	// Duration is rendered, not carried: the two ends are the data. So
+	// --sort=duration orders the text of it, where --sort=started_at and
+	// --sort=ended_at order the moments they name.
+	Duration string `json:"duration,omitempty"`
+	ExitCode *int   `json:"exit_code,omitempty"`
+	Command  string `json:"command,omitempty"`
+	Error    string `json:"error,omitempty"`
 }
 
 // RenderDuration is how long a span lasted, or how long it has lasted so far
@@ -272,7 +286,7 @@ func ToExecViews(items []api.ExecItem) []ExecView {
 			SessionID: i.SessionID,
 			Origin:    i.Origin,
 			Pid:       i.Pid,
-			StartedAt: i.StartedAt.Truncate(time.Second).Format(time.RFC3339),
+			StartedAt: i.StartedAt.Truncate(time.Second),
 			ExitCode:  i.ExitCode,
 			Command:   i.Command,
 		}
@@ -289,7 +303,8 @@ func ToExecViews(items []api.ExecItem) []ExecView {
 			v.Error = *i.Error
 		}
 		if i.EndedAt != nil {
-			v.EndedAt = i.EndedAt.Truncate(time.Second).Format(time.RFC3339)
+			endedAt := i.EndedAt.Truncate(time.Second)
+			v.EndedAt = &endedAt
 		}
 		v.Duration = RenderDuration(i.StartedAt, i.EndedAt, now)
 		l = append(l, v)
@@ -329,6 +344,7 @@ running for months does not carry every command it ever ran.`,
 	flags := cmd.Flags()
 	FlagNodeSelectorWithDefault(flags, &options.NodeSelector, defaultNodeSelector)
 	FlagOutput(flags, &options.Output)
+	FlagSort(flags, &options.Sort)
 	FlagColor(flags, &options.Color)
 	FlagObjectSelector(flags, &options.Selector)
 	FlagRID(flags, &options.RID)

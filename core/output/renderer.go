@@ -30,6 +30,15 @@ type (
 	Renderer struct {
 		DefaultOutput string
 		Output        string
+
+		// DefaultSort is the order a listing comes in when the caller asks
+		// for none, as a comma separated list of the fields to order on, each
+		// optionally prefixed with "-" to reverse it. Sort overrides it, and
+		// a Sort beginning with "+" extends it, the way Output and
+		// DefaultOutput already work.
+		DefaultSort string
+		Sort        string
+
 		Color         string
 		Data          any
 		HumanRenderer RenderFunc
@@ -74,6 +83,19 @@ func (t Renderer) Sprint() (string, error) {
 		if strings.HasPrefix(t.Output, "+") {
 			t.Output = t.DefaultOutput + "," + t.Output[1:]
 		}
+	}
+	if t.DefaultSort != "" {
+		switch {
+		case t.Sort == "":
+			t.Sort = t.DefaultSort
+		case strings.HasPrefix(t.Sort, "+"):
+			t.Sort = t.DefaultSort + "," + t.Sort[1:]
+		}
+	}
+	// Before the format is chosen, so that the json and the table come in the
+	// same order.
+	if err := sortData(t.Data, t.Sort); err != nil {
+		return "", err
 	}
 	if i := strings.Index(t.Output, "="); i > 0 {
 		options = t.Output[i+1:]

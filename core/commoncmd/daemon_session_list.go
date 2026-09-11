@@ -2,7 +2,6 @@ package commoncmd
 
 import (
 	"fmt"
-	"sort"
 	"time"
 
 	"github.com/spf13/cobra"
@@ -29,22 +28,25 @@ type (
 
 	// SessionView is one session, folded from its execs.
 	SessionView struct {
-		startedAt       time.Time
-		SessionID       string `json:"session_id"`
-		State           string `json:"state"`
-		OrchestrationID string `json:"orchestration_id,omitempty"`
-		Execs           int    `json:"execs"`
-		Running         int    `json:"running"`
-		Failed          int    `json:"failed"`
-		Nodes           int    `json:"nodes"`
-		Objects         int    `json:"objects"`
-		Origin          string `json:"origin"`
-		StartedAt       string `json:"started_at"`
-		EndedAt         string `json:"ended_at,omitempty"`
-		Duration        string `json:"duration,omitempty"`
-		Command         string `json:"command,omitempty"`
+		SessionID       string     `json:"session_id"`
+		State           string     `json:"state"`
+		OrchestrationID string     `json:"orchestration_id,omitempty"`
+		Execs           int        `json:"execs"`
+		Running         int        `json:"running"`
+		Failed          int        `json:"failed"`
+		Nodes           int        `json:"nodes"`
+		Objects         int        `json:"objects"`
+		Origin          string     `json:"origin"`
+		StartedAt       time.Time  `json:"started_at"`
+		EndedAt         *time.Time `json:"ended_at,omitempty"`
+		Duration        string     `json:"duration,omitempty"`
+		Command         string     `json:"command,omitempty"`
 	}
 )
+
+// sessionListSort is newest first, which is the order a submitter asking
+// after what they just ran wants.
+const sessionListSort = "-started_at,session_id"
 
 const sessionListColumns = "tab=SESSION_ID:session_id,STATE:state,EXECS:execs,FAILED:failed,NODES:nodes,OBJECTS:objects,ORIGIN:origin,STARTED_AT:started_at,DURATION:duration,COMMAND:command"
 
@@ -55,6 +57,8 @@ func (t *CmdDaemonSessionList) Run() error {
 	output.Renderer{
 		DefaultOutput: sessionListColumns,
 		Output:        t.Output,
+		DefaultSort:   sessionListSort,
+		Sort:          t.Sort,
 		Color:         t.Color,
 		Data:          ToSessionViews(items),
 		Colorize:      rawconfig.Colorize,
@@ -135,12 +139,12 @@ func ToSessionViews(items []api.ExecItem) []SessionView {
 		default:
 			v.State = "succeeded"
 		}
-		v.startedAt = a.begin
-		v.StartedAt = a.begin.Truncate(time.Second).Format(time.RFC3339)
+		v.StartedAt = a.begin.Truncate(time.Second)
 		// Wall time of the whole command, not the sum of its parts: the execs
 		// run at the same time, and what the submitter waited is the span.
 		if v.Running == 0 && a.ended {
-			v.EndedAt = a.end.Truncate(time.Second).Format(time.RFC3339)
+			endedAt := a.end.Truncate(time.Second)
+			v.EndedAt = &endedAt
 			v.Duration = RenderDuration(a.begin, &a.end, now)
 		} else {
 			v.Duration = RenderDuration(a.begin, nil, now)
@@ -154,7 +158,8 @@ func ToSessionViews(items []api.ExecItem) []SessionView {
 		}
 		l = append(l, v)
 	}
-	sort.Slice(l, func(i, j int) bool { return l[i].startedAt.After(l[j].startedAt) })
+	// The order is the renderer's: it is the one the --sort option overrides,
+	// and doing it twice would let the two disagree.
 	return l
 }
 
@@ -190,6 +195,7 @@ count of a part of one is not the count of the session.`,
 	flags := cmd.Flags()
 	FlagNodeSelectorWithDefault(flags, &options.NodeSelector, "*")
 	FlagOutput(flags, &options.Output)
+	FlagSort(flags, &options.Sort)
 	FlagColor(flags, &options.Color)
 	FlagObjectSelector(flags, &options.Selector)
 	flags.StringSliceVar(&options.Origins, "origin", nil, "list the sessions this submitted, every submitter when not set (api, imon, nmon, scheduler)")

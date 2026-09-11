@@ -629,6 +629,17 @@ func FlagColor(flags *pflag.FlagSet, p *string) {
 	flags.StringVar(p, "color", "auto", "output colorization yes|no|auto")
 }
 
+// FlagSort declares the option that orders a listing, overriding the order the
+// command comes in by default.
+//
+// A term prefixed with "-" reverses that term, and a whole expression
+// prefixed with "+" extends the command's default rather than replacing it. A
+// leading "-" has to be written as --sort=-field, or the flag parser reads it
+// as the next option.
+func FlagSort(flags *pflag.FlagSet, p *string) {
+	flags.StringVar(p, "sort", "", "order the listing on these fields, lowest first, a field prefixed with - reversing it and a leading + extending the default (ex: --sort=-started_at,path)")
+}
+
 func FlagOutput(flags *pflag.FlagSet, p *string) {
 	flags.StringVarP(p, "output", "o", "auto", "output format auto|json|jsonline|yaml|flat|tab=<header>:<jsonpath>,...|template=<go template>")
 	flags.StringVar(p, "format", "auto", "output format auto|json|jsonline|yaml|flat|tab=<header>:<jsonpath>,...|template=<go template>")

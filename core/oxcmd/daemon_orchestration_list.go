@@ -22,6 +22,7 @@ type (
 	CmdDaemonOrchestrationList struct {
 		OptsGlobal
 		NodeSelector    string
+		Sort            string
 		States          []string
 		OrchestrationID string
 	}
@@ -57,6 +58,10 @@ func (t *CmdDaemonOrchestrationList) Run() error {
 	t.render(t.filter(items))
 	return errs
 }
+
+// orchestrationListSort is newest first, as the exec and session listings
+// are: the one asked about is the one that just ran.
+const orchestrationListSort = "-started_at,orchestration_id"
 
 // filter narrows what the nodes answered the way the daemon would have.
 //
@@ -171,6 +176,8 @@ func (t *CmdDaemonOrchestrationList) one(ctx context.Context, c *client.T, noden
 
 func (t *CmdDaemonOrchestrationList) render(items []api.OrchestrationItem) {
 	output.Renderer{
+		DefaultSort:   orchestrationListSort,
+		Sort:          t.Sort,
 		DefaultOutput: "tab=STATE:state,ORCHESTRATION_ID:orchestration_id,PATH:path,GLOBAL_EXPECT:global_expect,ACCEPTED_BY:node,STARTED_AT:started_at,DURATION:duration",
 		Output:        t.Output,
 		Color:         t.Color,
@@ -181,15 +188,15 @@ func (t *CmdDaemonOrchestrationList) render(items []api.OrchestrationItem) {
 
 // orchestrationView is what the table shows, for the reason sessionView is.
 type orchestrationView struct {
-	State           string `json:"state"`
-	OrchestrationID string `json:"orchestration_id"`
-	Path            string `json:"path,omitempty"`
-	GlobalExpect    string `json:"global_expect,omitempty"`
-	AcceptedBy      string `json:"node,omitempty"`
-	StartedAt       string `json:"started_at"`
-	EndedAt         string `json:"ended_at,omitempty"`
-	Duration        string `json:"duration,omitempty"`
-	Error           string `json:"error,omitempty"`
+	State           string     `json:"state"`
+	OrchestrationID string     `json:"orchestration_id"`
+	Path            string     `json:"path,omitempty"`
+	GlobalExpect    string     `json:"global_expect,omitempty"`
+	AcceptedBy      string     `json:"node,omitempty"`
+	StartedAt       time.Time  `json:"started_at"`
+	EndedAt         *time.Time `json:"ended_at,omitempty"`
+	Duration        string     `json:"duration,omitempty"`
+	Error           string     `json:"error,omitempty"`
 }
 
 func toOrchestrationViews(items []api.OrchestrationItem) []orchestrationView {
@@ -200,7 +207,7 @@ func toOrchestrationViews(items []api.OrchestrationItem) []orchestrationView {
 			State:           i.State,
 			OrchestrationID: i.OrchestrationID,
 			AcceptedBy:      i.Node,
-			StartedAt:       i.StartedAt.Truncate(time.Second).Format(time.RFC3339),
+			StartedAt:       i.StartedAt.Truncate(time.Second),
 		}
 		if i.Path != nil {
 			v.Path = *i.Path
@@ -212,7 +219,8 @@ func toOrchestrationViews(items []api.OrchestrationItem) []orchestrationView {
 			v.Error = *i.Error
 		}
 		if i.EndedAt != nil {
-			v.EndedAt = i.EndedAt.Truncate(time.Second).Format(time.RFC3339)
+			endedAt := i.EndedAt.Truncate(time.Second)
+			v.EndedAt = &endedAt
 		}
 		v.Duration = commoncmd.RenderDuration(i.StartedAt, i.EndedAt, now)
 		l = append(l, v)
