@@ -3,9 +3,14 @@ package resfssgcp_nfs
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"net/http"
 	"net/http/httptest"
+	"os"
+	"path/filepath"
+	"strings"
 	"testing"
+	"time"
 
 	"github.com/opensvc/om3/v3/drivers/sgcpauthtesthelper"
 	"github.com/opensvc/om3/v3/util/testsgcphelper"
@@ -14,8 +19,11 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/opensvc/om3/v3/core/driver"
+	"github.com/opensvc/om3/v3/core/env"
+	"github.com/opensvc/om3/v3/core/rawconfig"
 	"github.com/opensvc/om3/v3/core/resource"
 	"github.com/opensvc/om3/v3/core/status"
+	"github.com/opensvc/om3/v3/util/ageingcache"
 	"github.com/opensvc/om3/v3/util/sgcp"
 )
 
@@ -38,6 +46,117 @@ func Setup(t *testing.T) func() {
 	return func() {
 		sgcp.SetConfigForTest("")
 	}
+}
+
+// testFSConfigBlock is the files.fs section of the sgcp test configuration.
+// setupWithFSConfig substitutes it, so it must stay in sync with
+// util/testsgcphelper/text/config.yaml.
+const testFSConfigBlock = `  fs:
+    permission: "read-write"
+    protocol: "nfs4.1"
+    exclusive: false
+    ignored_clients: []
+`
+
+// setupWithFSConfig installs the sgcp test configuration with its files.fs
+// section replaced by fsYaml, so a test can exercise the fallback of the
+// driver keywords to the configuration file. It returns a cleanup function
+// resetting the configuration to a null state when invoked.
+func setupWithFSConfig(t *testing.T, fsYaml string) func() {
+	t.Helper()
+	cfgFile := testsgcphelper.InstallConfig(t)
+	b, err := os.ReadFile(cfgFile)
+	require.NoError(t, err)
+	require.Contains(t, string(b), testFSConfigBlock)
+	b = []byte(strings.Replace(string(b), testFSConfigBlock, fsYaml, 1))
+	require.NoError(t, os.WriteFile(cfgFile, b, 0644))
+	sgcp.SetConfigForTest(cfgFile)
+	require.NotNil(t, sgcp.GetConfig())
+
+	return func() {
+		sgcp.SetConfigForTest("")
+	}
+}
+
+// TestConfigureFallsBackToConfigFS tests that the keywords left unset take
+// their value from the files.fs section of the sgcp configuration file.
+func TestConfigureFallsBackToConfigFS(t *testing.T) {
+	defer setupWithFSConfig(t, `  fs:
+    permission: "read-only"
+    protocol: "nfs4.1"
+    exclusive: true
+    ignored_clients: ["ignored1", "ignored2"]
+`)()
+
+	drv := newDrvWithRid("test-rid")
+	drv.authInfoer = sgcpauthtesthelper.NewMockGetAuthInfoProvider("id1")
+	drv.UUID = "test-uuid"
+	drv.Host = "test-host"
+	require.NoError(t, drv.Configure())
+
+	assert.Equal(t, "read-only", drv.Permission)
+	assert.Equal(t, "nfs4.1", drv.Protocol)
+	assert.True(t, drv.exclusive)
+	assert.Equal(t, []string{"ignored1", "ignored2"}, drv.nfsIgnored)
+}
+
+// TestConfigureKeywordsWinOverConfigFS tests that the keywords explicitly set
+// are not overridden by the files.fs section of the sgcp configuration file.
+func TestConfigureKeywordsWinOverConfigFS(t *testing.T) {
+	defer setupWithFSConfig(t, `  fs:
+    permission: "read-only"
+    protocol: "nfs4.1"
+    exclusive: false
+    ignored_clients: []
+`)()
+
+	drv := newDrvWithRid("test-rid")
+	drv.authInfoer = sgcpauthtesthelper.NewMockGetAuthInfoProvider("id1")
+	drv.UUID = "test-uuid"
+	drv.Host = "test-host"
+	drv.Permission = "read-write"
+	drv.Exclusive = "true"
+	require.NoError(t, drv.Configure())
+
+	assert.Equal(t, "read-write", drv.Permission)
+	assert.True(t, drv.exclusive)
+}
+
+// TestConfigureExclusiveFalseWinsOverConfigFS tests that an explicit false
+// exclusive keyword opts out of a files.fs section set to true.
+func TestConfigureExclusiveFalseWinsOverConfigFS(t *testing.T) {
+	defer setupWithFSConfig(t, `  fs:
+    permission: "read-write"
+    protocol: "nfs4.1"
+    exclusive: true
+    ignored_clients: []
+`)()
+
+	drv := newDrvWithRid("test-rid")
+	drv.authInfoer = sgcpauthtesthelper.NewMockGetAuthInfoProvider("id1")
+	drv.UUID = "test-uuid"
+	drv.Host = "test-host"
+	drv.Exclusive = "false"
+	require.NoError(t, drv.Configure())
+
+	assert.False(t, drv.exclusive)
+}
+
+// TestConfigureWithoutConfigFS tests that a sgcp configuration file with no
+// files.fs section still yields the package defaults.
+func TestConfigureWithoutConfigFS(t *testing.T) {
+	defer setupWithFSConfig(t, "")()
+
+	drv := newDrvWithRid("test-rid")
+	drv.authInfoer = sgcpauthtesthelper.NewMockGetAuthInfoProvider("id1")
+	drv.UUID = "test-uuid"
+	drv.Host = "test-host"
+	require.NoError(t, drv.Configure())
+
+	assert.Equal(t, sgcp.FsDefaultPermission, drv.Permission)
+	assert.Equal(t, sgcp.FsDefaultProtocol, drv.Protocol)
+	assert.False(t, drv.exclusive)
+	assert.Empty(t, drv.nfsIgnored)
 }
 
 // TestDriverID tests that the driver has the correct ID
@@ -117,7 +236,7 @@ func TestIsClientIgnored(t *testing.T) {
 	assert.NoError(t, err)
 
 	// Add some ignored hosts
-	NfsClientIgnored = []string{"ignored1", "ignored2"}
+	drv.nfsIgnored = []string{"ignored1", "ignored2"}
 
 	assert.True(t, drv.isClientIgnored("ignored1"))
 	assert.True(t, drv.isClientIgnored("ignored2"))
@@ -149,7 +268,7 @@ func TestGetNFSClients(t *testing.T) {
 	require.NoError(t, drv.Configure())
 
 	// Set up ignored hosts
-	NfsClientIgnored = []string{"ignored-host"}
+	drv.nfsIgnored = []string{"ignored-host"}
 
 	fileInfo := &FilesystemInfo{
 		UUID: "fs-uuid",
@@ -174,6 +293,161 @@ func TestGetNFSClients(t *testing.T) {
 }
 
 // TestFileStatusWithNoClients tests status when no clients are available
+// sgcpServer runs an sgcp api the driver can talk to, and points the
+// configuration at it. The handler answers the token request; everything else
+// is up to the test.
+func sgcpServer(t *testing.T, handler http.HandlerFunc) *httptest.Server {
+	t.Helper()
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		if r.URL.Path == "/auth/access_token" {
+			fmt.Fprint(w, `{"access_token": "a-token"}`)
+			return
+		}
+		handler(w, r)
+	}))
+	t.Cleanup(srv.Close)
+
+	root := filepath.Dir(testsgcphelper.InstallConfig(t))
+	cfgFile := filepath.Join(root, "server.yaml")
+	require.NoError(t, os.WriteFile(cfgFile, []byte(`
+auth:
+  base_url: "`+srv.URL+`/auth"
+  default_secret: "the-secret"
+  scopes:
+    files_read: ["files:read"]
+    files_write: ["files:write"]
+  timeout: 5
+  ttl_seconds: 60
+files:
+  base_url: "`+srv.URL+`/file"
+  path:
+    fs: "/fs"
+    client: "/client"
+    cg: "/cg"
+cache:
+  ttl_seconds: 0
+`), 0644))
+	sgcp.SetConfigForTest(cfgFile)
+	t.Cleanup(func() { sgcp.SetConfigForTest("") })
+	return srv
+}
+
+func sgcpDriver(t *testing.T) *T {
+	t.Helper()
+	drv := newDrvWithRid("test-rid")
+	drv.authInfoer = sgcpauthtesthelper.NewMockGetAuthInfoProvider("id1")
+	drv.UUID = "fs-uuid"
+	drv.Host = "test-host"
+	drv.Permission = "read-write"
+	require.NoError(t, drv.Configure())
+	return drv
+}
+
+// TestFilesystemNotFound verifies a filesystem the provider does not have is
+// an absence the driver converges on, not an error. The api reports every
+// status over 400 as an error, which used to leave the not-found branch and
+// every "fileInfo == nil" guard behind it unreachable.
+func TestFilesystemNotFound(t *testing.T) {
+	sgcpServer(t, func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusNotFound)
+		fmt.Fprint(w, `{"message": "no such filesystem"}`)
+	})
+	drv := sgcpDriver(t)
+	ctx := context.Background()
+
+	fileInfo, err := drv.mgr.getFileInfo(ctx)
+	require.NoError(t, err, "an absent filesystem is reported as a failure")
+	assert.Nil(t, fileInfo, "an absent filesystem is reported as a filesystem")
+
+	assert.Equal(t, status.Down, drv.fileStatus(ctx))
+	assert.NoError(t, drv.fileStop(ctx), "the stop of an absent filesystem does not converge")
+}
+
+// TestDeleteNFSClientPreconditionFailed verifies the provider refusing to drop
+// a client while the consistency group is busy reaches the operator as the
+// message written for it.
+func TestDeleteNFSClientPreconditionFailed(t *testing.T) {
+	sgcpServer(t, func(w http.ResponseWriter, r *http.Request) {
+		switch {
+		case r.Method == http.MethodDelete:
+			w.WriteHeader(http.StatusPreconditionFailed)
+			fmt.Fprint(w, `{"message": "consistency group busy"}`)
+		default:
+			fmt.Fprint(w, `{"uuid": "fs-uuid", "status": "online", "nfsClients": [
+				{"uuid": "client-uuid", "host": "test-host", "permission": "read-write", "protocol": "nfs4.1"}]}`)
+		}
+	})
+	drv := sgcpDriver(t)
+	ctx := context.Background()
+
+	require.Equal(t, status.Up, drv.fileStatus(ctx), "the test needs a granted client to drop")
+
+	err := drv.fileStop(ctx)
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "consistency group is not in ready")
+}
+
+// TestFileStatusCache verifies the cached filesystem info the scheduler fills
+// is not served to anyone else asking for a status.
+func TestFileStatusCache(t *testing.T) {
+	cachedFiles := func(t *testing.T) []string {
+		t.Helper()
+		entries, err := os.ReadDir(filepath.Join(rawconfig.Paths.Cache, "ageing"))
+		if err != nil {
+			return nil
+		}
+		l := make([]string, 0, len(entries))
+		for _, e := range entries {
+			l = append(l, e.Name())
+		}
+		return l
+	}
+
+	// fill the cache the way a status evaluation does, then ask for a status
+	// and see what became of the entry.
+	fill := func(t *testing.T) *T {
+		t.Helper()
+		drv := newDrvWithRid("test-rid")
+		drv.authInfoer = sgcpauthtesthelper.NewMockGetAuthInfoProvider("id1")
+		drv.UUID = "test-uuid"
+		drv.Host = "test-host"
+		drv.Permission = "read-write"
+		require.NoError(t, drv.Configure())
+
+		sig := drv.mgr.cacheSigGetFileInfo()
+		o := ageingcache.NewOutputter(func() ([]byte, error) { return []byte("null"), nil })
+		_, err := ageingcache.Output(o, sig, time.Hour)
+		require.NoError(t, err)
+		require.NotEmpty(t, cachedFiles(t), "the cache was not filled")
+		return drv
+	}
+
+	for _, origin := range []env.ActionOrigin{
+		env.ActionOriginUser,
+		env.ActionOriginDaemonMonitor,
+		env.ActionOriginDaemonAPI,
+	} {
+		t.Run(string(origin)+" drops it", func(t *testing.T) {
+			defer Setup(t)()
+			t.Setenv(env.ActionOriginVar, string(origin))
+			drv := fill(t)
+
+			drv.Status(context.Background())
+			assert.Empty(t, cachedFiles(t), "the status evaluation was served the cache")
+		})
+	}
+
+	t.Run("the scheduler keeps it", func(t *testing.T) {
+		defer Setup(t)()
+		t.Setenv(env.ActionOriginVar, string(env.ActionOriginDaemonScheduler))
+		drv := fill(t)
+
+		drv.Status(context.Background())
+		assert.NotEmpty(t, cachedFiles(t), "the scheduler evaluation dropped the cache")
+	})
+}
+
 func TestFileStatusWithNoClients(t *testing.T) {
 	// Create a test server
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -238,7 +512,7 @@ func (t *T) fileStatusFromInfo(fileInfo *FilesystemInfo) status.T {
 	clients := t.getNFSClients(fileInfo)
 	n := len(clients)
 
-	if t.Exclusive {
+	if t.exclusive {
 		if n > 1 {
 			t.StatusLog().Warn("too many grants (%d)", n)
 		}

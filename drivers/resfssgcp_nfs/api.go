@@ -2,10 +2,10 @@ package resfssgcp_nfs
 
 import (
 	"context"
+	"crypto/sha256"
 	"encoding/json"
 	"fmt"
 	"net/http"
-	"slices"
 	"time"
 
 	"github.com/opensvc/om3/v3/util/ageingcache"
@@ -21,6 +21,9 @@ type (
 		permission string
 		protocol   string
 		nfsIgnored []string
+
+		endpoint string
+		secret   string
 
 		api         *sgcp.FilesAPI
 		cacheConfig *sgcp.CacheConfig
@@ -88,25 +91,40 @@ func (mgr *nfsClientMgr) startExclusive(ctx context.Context) error {
 	return err
 }
 
-func (mgr *nfsClientMgr) cacheSig(name string) string {
-	return fmt.Sprintf("%s:%s", name, mgr.uuid)
+// cacheSigGetFileInfo generates a cache signature specific to fetching file information.
+func (mgr *nfsClientMgr) cacheSigGetFileInfo() string {
+	sig := mgr.cacheSig("get-file-info")
+	mgr.log.Debugf("cacheSigGetFileInfo %s: %s", mgr.uuid, sig)
+	return sig
 }
 
-func (mgr *nfsClientMgr) cacheClear(name string) error {
-	cacheSig := mgr.cacheSig(name)
-	return ageingcache.Clear(cacheSig)
+func (mgr *nfsClientMgr) cacheSig(name string) string {
+	data := fmt.Sprintf("%s|%s|%s",
+		mgr.endpoint,
+		mgr.secret,
+		mgr.uuid,
+	)
+	hash := sha256.Sum256([]byte(data))
+	return fmt.Sprintf("sgcp-nfs-%s-%x", name, hash)
 }
 
 func (mgr *nfsClientMgr) getFileInfo(ctx context.Context) (*FilesystemInfo, error) {
 	var fileInfo FilesystemInfo
 
-	cacheSig := mgr.cacheSig("getFileInfo")
+	cacheSig := mgr.cacheSigGetFileInfo()
 	ttl := time.Duration(mgr.cacheConfig.TTLSeconds) * time.Second
 	o := ageingcache.NewOutputter(mgr.getFileInfoFactory(ctx))
 	data, err := ageingcache.Output(o, cacheSig, ttl)
 	if err != nil {
 		mgr.log.Debugf("getFileInfo failed on missing cache sig %s.out, ttl: %s: %s", cacheSig, ttl, err)
 		return nil, fmt.Errorf("getFileInfo failed: %w", err)
+	}
+
+	// The factory records an absent filesystem as a null document, the only
+	// way for it to travel through the cache. Hand it back as no filesystem
+	// at all, which is what every caller tests for.
+	if len(data) == 0 || string(data) == "null" {
+		return nil, nil
 	}
 
 	if err := json.Unmarshal(data, &fileInfo); err != nil {
@@ -123,16 +141,14 @@ func (mgr *nfsClientMgr) getFileInfoFactory(ctx context.Context) func() ([]byte,
 			return nil, err
 		}
 
-		if err := mgr.api.CheckStatusCode(method, url, statusCode, http.StatusNotFound, http.StatusOK); err != nil {
+		if err := mgr.api.CheckStatusCode(method, url, statusCode, http.StatusOK, http.StatusNotFound); err != nil {
 			return nil, err
 		}
-		switch statusCode {
-		case http.StatusOK:
-		case http.StatusNotFound:
-			return nil, nil
-		default:
-			// paranoid, should never happen
-			return nil, fmt.Errorf("%s %s got unexpected status code %d", method, url, statusCode)
+		// A filesystem that is not there is an answer, not a failure. Cache
+		// it as a null document, so the absence ages like a presence would.
+		if statusCode == http.StatusNotFound {
+			mgr.log.Debugf("%s %s: no such filesystem", method, url)
+			return []byte("null"), nil
 		}
 		return data, nil
 	}
@@ -223,31 +239,21 @@ func (mgr *nfsClientMgr) deleteNFSClient(ctx context.Context, client NfsClient) 
 
 	mgr.log.Infof("drop permission %s for host %s on filesystem %s%s ...", client.Permission, client.Host, mgr.uuid, cgMsg)
 	method, url, statusCode, _, err := mgr.api.DeleteNFSClients(ctx, mgr.uuid, client.UUID)
+
+	// The provider refusing the drop while the consistency group is busy is a
+	// state to report, not a transport failure.
+	if statusCode == http.StatusPreconditionFailed {
+		return fmt.Errorf("consistency group is not in ready (status_code %d)", statusCode)
+	}
 	if err != nil {
 		return err
 	}
-	if err := mgr.api.CheckStatusCode(method, url, statusCode, http.StatusNoContent, http.StatusPreconditionFailed); err != nil {
+	if err := mgr.api.CheckStatusCode(method, url, statusCode, http.StatusNoContent); err != nil {
 		return err
-	}
-	switch statusCode {
-	case http.StatusNoContent:
-	case http.StatusPreconditionFailed:
-		return fmt.Errorf("consistency group is not in ready (status_code %d)", statusCode)
-	default:
-		// paranoid, should never happen
-		return fmt.Errorf("unexpected status code %d", statusCode)
 	}
 
 	mgr.log.Infof("deleted %s on filesystem %s", client, mgr.uuid)
 	return nil
-}
-
-func (mgr *nfsClientMgr) checkStatusCode(method, url string, got int, wanted ...int) error {
-	mgr.log.Debugf("%s %s status code: %d", method, url, got)
-	if slices.Contains(wanted, got) {
-		return nil
-	}
-	return fmt.Errorf("unexpected status code for %s %s got %d wanted %v", method, url, got, wanted)
 }
 
 // isClientIgnored checks if a client host should be ignored

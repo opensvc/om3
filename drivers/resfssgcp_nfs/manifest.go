@@ -12,12 +12,6 @@ import (
 	"github.com/opensvc/om3/v3/util/converters"
 )
 
-const (
-	DefaultPermission = "read-write"
-	DefaultProtocol   = "nfs4.1"
-	DefaultExclusive  = "false"
-)
-
 var (
 	//go:embed text
 	fs embed.FS
@@ -43,15 +37,13 @@ var (
 			Attr:       "Permission",
 			Option:     "permission",
 			Candidates: []string{"read-only", "read-write"},
-			Default:    DefaultPermission,
 			Scopable:   true,
 			Text:       keywords.NewText(fs, "text/kw/permission"),
 		},
 		{
 			Attr:      "Exclusive",
 			Option:    "exclusive",
-			Converter: converters.Bool,
-			Default:   DefaultExclusive,
+			Converter: converters.Tristate,
 			Scopable:  true,
 			Text:      keywords.NewText(fs, "text/kw/exclusive"),
 		},
@@ -59,7 +51,6 @@ var (
 			Attr:       "Protocol",
 			Option:     "protocol",
 			Candidates: []string{"nfs4.1"},
-			Default:    DefaultProtocol, // TODO: move to config
 			Scopable:   true,
 			Text:       keywords.NewText(fs, "text/kw/protocol"),
 		},

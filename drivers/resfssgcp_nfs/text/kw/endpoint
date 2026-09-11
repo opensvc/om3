@@ -1,1 +1,2 @@
-The api url to use for filesystem management.
+The api url to use for filesystem management. Defaults to the files.base_url
+value from the sgcp configuration file.

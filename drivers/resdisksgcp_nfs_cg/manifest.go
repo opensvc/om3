@@ -14,7 +14,7 @@ var (
 	//go:embed text
 	fs embed.FS
 
-	drvID = driver.NewID(driver.GroupFS, "sgcp_nfs_cg")
+	drvID = driver.NewID(driver.GroupDisk, "sgcp_nfs_cg")
 
 	kws = []*keywords.Keyword{
 		{
@@ -47,7 +47,6 @@ var (
 			Attr:      "Timeout",
 			Option:    "timeout",
 			Converter: converters.Duration,
-			Default:   "300s", // TODO: move to config
 			Scopable:  true,
 			Text:      keywords.NewText(fs, "text/kw/timeout"),
 		},

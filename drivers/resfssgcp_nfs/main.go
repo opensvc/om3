@@ -3,8 +3,8 @@ package resfssgcp_nfs
 
 import (
 	"context"
-	"errors"
 	"fmt"
+	"strconv"
 	"time"
 
 	"github.com/opensvc/om3/v3/core/datarecv"
@@ -13,6 +13,7 @@ import (
 	"github.com/opensvc/om3/v3/core/status"
 	"github.com/opensvc/om3/v3/drivers/resfshost"
 	"github.com/opensvc/om3/v3/drivers/sgcphelper"
+	"github.com/opensvc/om3/v3/util/ageingcache"
 	"github.com/opensvc/om3/v3/util/httpclientcache"
 	"github.com/opensvc/om3/v3/util/sgcp"
 )
@@ -45,7 +46,7 @@ type (
 		UUID       string `json:"uuid"`
 		Host       string `json:"host,omitempty"`
 		Permission string `json:"permission,omitempty"`
-		Exclusive  bool   `json:"exclusive,omitempty"`
+		Exclusive  string `json:"exclusive,omitempty"`
 		Protocol   string `json:"protocol,omitempty"`
 		Secret     string `json:"secret,omitempty"`
 		Endpoint   string `json:"endpoint,omitempty"`
@@ -62,10 +63,14 @@ type (
 		CheckRead    bool           `json:"check_read"`
 
 		// Internal state
-		resFs         fsDriver
-		fileInfoCache *FilesystemInfo
-		mgr           *nfsClientMgr
-		authInfoer    GetAuthInfoer
+		resFs      fsDriver
+		mgr        *nfsClientMgr
+		authInfoer GetAuthInfoer
+		nfsIgnored []string
+
+		// exclusive is the Exclusive tristate keyword resolved against the
+		// config file during Configure.
+		exclusive bool
 	}
 
 	GetAuthInfoer interface {
@@ -82,9 +87,6 @@ type (
 		CanInstall(context.Context) (bool, error)
 	}
 )
-
-// NfsClientIgnored is a list of NFS client hosts to ignore
-var NfsClientIgnored = []string{}
 
 // New creates a new SGCP NFS filesystem resource driver
 func New() resource.Driver {
@@ -119,11 +121,32 @@ func (t *T) Configure() error {
 	}
 
 	if t.Permission == "" {
-		t.Permission = DefaultPermission
+		if cfg.Files.FS.Permission == "" {
+			return fmt.Errorf("permission is required (neither defined into permission keyword nor config file %s", sgcp.DefaultConfigPath)
+		}
+		t.Permission = cfg.Files.FS.Permission
 	}
+
 	if t.Protocol == "" {
-		t.Protocol = DefaultProtocol
+		if cfg.Files.FS.Protocol == "" {
+			return fmt.Errorf("protocol is required (neither defined into protocol keyword nor config file %s", sgcp.DefaultConfigPath)
+		}
+		t.Protocol = cfg.Files.FS.Protocol
 	}
+
+	// Exclusive is a tristate: an unset keyword falls back to the config
+	// file, an explicit false opts out of a config file set to true.
+	if t.Exclusive == "" {
+		t.exclusive = cfg.Files.FS.Exclusive
+	} else if v, err := strconv.ParseBool(t.Exclusive); err != nil {
+		return fmt.Errorf("exclusive: %w", err)
+	} else {
+		t.exclusive = v
+	}
+
+	// The ignored clients have no keyword: the config file is their only
+	// source.
+	t.nfsIgnored = append([]string{}, cfg.Files.FS.IgnoredClients...)
 
 	if err := t.configureMgr(cfg); err != nil {
 		return fmt.Errorf("configure mgr: %w", err)
@@ -161,7 +184,9 @@ func (t *T) configureMgr(cfg *sgcp.Config) error {
 		permission:  t.Permission,
 		protocol:    t.Protocol,
 		log:         t.Log(),
-		nfsIgnored:  NfsClientIgnored,
+		nfsIgnored:  t.nfsIgnored,
+		endpoint:    t.Endpoint,
+		secret:      t.Secret,
 		api:         sgcp.NewFilesAPI(cfg, httpClient, t.Log(), tk),
 		cacheConfig: &cfg.Cache,
 	}
@@ -231,6 +256,12 @@ func (t *T) Stop(ctx context.Context) error {
 
 // Status returns the combined status of the file and fs
 func (t *T) Status(ctx context.Context) status.T {
+	if sgcphelper.NeedsCacheClear() {
+		if err := t.clearFileStatusCache(); err != nil {
+			t.Log().Debugf("clear get file status cache failed: %s", err)
+			t.StatusLog().Warn("possible stale value: clear get file status cache failed")
+		}
+	}
 	fileStatus := t.fileStatus(ctx)
 
 	// Get underlying filesystem status
@@ -266,7 +297,11 @@ func (t *T) fileStart(ctx context.Context) error {
 	defer func() {
 		_ = t.clearFileStatusCache()
 	}()
-	if sgcp.IsDisabled(rawconfig.NodeVarDir()) {
+	disabled, err := sgcp.IsDisabled(rawconfig.NodeVarDir())
+	if err != nil {
+		return err
+	}
+	if disabled {
 		t.Log().Infof("skipping file start %s: SGCP API disabled", t.UUID)
 		return nil
 	}
@@ -285,7 +320,7 @@ func (t *T) fileStart(ctx context.Context) error {
 	}
 
 	// Start the NFS client
-	return t.mgr.Start(ctx, t.Exclusive)
+	return t.mgr.Start(ctx, t.exclusive)
 }
 
 // fileStop handles the SGCP API part of stopping the filesystem
@@ -293,7 +328,11 @@ func (t *T) fileStop(ctx context.Context) error {
 	defer func() {
 		_ = t.clearFileStatusCache()
 	}()
-	if sgcp.IsDisabled(rawconfig.NodeVarDir()) {
+	disabled, err := sgcp.IsDisabled(rawconfig.NodeVarDir())
+	if err != nil {
+		return err
+	}
+	if disabled {
 		t.Log().Infof("skipping file stop %s: SGCP API disabled", t.UUID)
 		return nil
 	}
@@ -316,7 +355,10 @@ func (t *T) fileStop(ctx context.Context) error {
 // fileStatus returns the status of the filesystem from the SGCP API
 func (t *T) fileStatus(ctx context.Context) status.T {
 	// Check if XaaS status is disabled
-	if sgcp.IsDisabled(rawconfig.NodeVarDir()) {
+	if disabled, err := sgcp.IsDisabled(rawconfig.NodeVarDir()); err != nil {
+		t.StatusLog().Warn("%s", err)
+		return status.NotApplicable
+	} else if disabled {
 		t.Log().Debugf("skipping file status %s: SGCP API disabled", t.UUID)
 		return status.NotApplicable
 	}
@@ -336,7 +378,7 @@ func (t *T) fileStatus(ctx context.Context) status.T {
 	clients := t.getNFSClients(fileInfo)
 	n := len(clients)
 
-	if t.Exclusive {
+	if t.exclusive {
 		if n > 1 {
 			t.StatusLog().Warn(fmt.Sprintf("too many grants (%d)", n))
 		}
@@ -370,18 +412,7 @@ func (t *T) fileStatus(ctx context.Context) status.T {
 
 // getFileInfo retrieves filesystem information from the API
 func (t *T) getFileInfo(ctx context.Context) (*FilesystemInfo, error) {
-	// Use cached value if available
-	if t.fileInfoCache != nil {
-		return t.fileInfoCache, nil
-	}
-
-	fileInfo, err := t.mgr.getFileInfo(ctx)
-	if err == nil {
-		// Cache the result
-		t.fileInfoCache = fileInfo
-	}
-
-	return fileInfo, err
+	return t.mgr.getFileInfo(ctx)
 }
 
 // getNFSClients returns the NFS clients for the filesystem, filtered by ignored hosts
@@ -402,7 +433,7 @@ func (t *T) getNFSClients(fileInfo *FilesystemInfo) []NfsClient {
 
 // isClientIgnored checks if a client host should be ignored
 func (t *T) isClientIgnored(host string) bool {
-	for _, ignored := range NfsClientIgnored {
+	for _, ignored := range t.nfsIgnored {
 		if host == ignored {
 			return true
 		}
@@ -412,12 +443,8 @@ func (t *T) isClientIgnored(host string) bool {
 
 // clearFileStatusCache clears the filesystem info cache
 func (t *T) clearFileStatusCache() error {
-	var errs error
-	t.fileInfoCache = nil
-	for _, s := range []string{"getFileInfo"} {
-		errs = errors.Join(errs, t.mgr.cacheClear(s))
-	}
-	return errs
+	t.Log().Debugf("clear get file info cache")
+	return ageingcache.Clear(t.mgr.cacheSigGetFileInfo())
 }
 
 // String returns a string representation of an NfsClient

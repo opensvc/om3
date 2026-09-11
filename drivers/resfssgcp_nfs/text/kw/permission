@@ -1,1 +1,3 @@
-The access permission on the filesystem granted to the host.
+The access permission on the filesystem granted to the host. Defaults to the
+files.fs.permission value from the sgcp configuration file, which itself
+defaults to read-write.
