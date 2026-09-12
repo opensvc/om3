@@ -172,10 +172,33 @@ func (t *Manager) onInstanceStatusUpdated(c *msgbus.InstanceStatusUpdated) {
 			}
 		}
 	}
+	// isInstanceServing says whether this instance is one a client should be
+	// sent to. It is asked of a standby address only, for the reason below.
+	//
+	// Frozen does not enter into it: a frozen object stays fully usable by
+	// its clients, and freezing does not change the availability this reads.
+	isInstanceServing := c.Value.Avail.Is(status.Up, status.Warn, status.StandbyUpWithUp)
+
 	for rid, rstat := range c.Value.Resources {
-		if !rstat.Status.Is(status.Up) {
-			continue
-		}
+		// answersForObject says whether this address is one the object's own
+		// name resolves to.
+		//
+		// A resource that is down serves no address, which is what keeps the
+		// scoped address of a stopped instance out of the zone.
+		//
+		// An address kept plumbed on every node cannot say which node serves
+		// it: a standby resource is up everywhere by design, so a failover
+		// object whose ipaddr is scoped exposes a different address on each
+		// node and all of them look alike. There the instance says which one
+		// answers for the object.
+		//
+		// A resource that is not standby is asked nothing more. It is up only
+		// where the instance runs, and it stays up when another resource of
+		// the same instance dies: a failed database must not make the address
+		// unresolvable, or the outage reads as a name resolution problem.
+		answersForObject := rstat.Status.Is(status.Up, status.StandbyUp, status.Warn) &&
+			(!rstat.IsStandby || isInstanceServing)
+
 		i, ok := rstat.Info[ipAddrInfoKey]
 		if !ok {
 			continue
@@ -215,41 +238,49 @@ func (t *Manager) onInstanceStatusUpdated(c *msgbus.InstanceStatusUpdated) {
 		}
 		resName, resNameOnNode := getResNames()
 
-		// Add a direct record (node agnostic)
-		stage(Record{
-			Name:     name,
-			DomainID: -1,
-			Type:     aType,
-			TTL:      60,
-			Content:  ipAddr,
-		})
-		if resName != "" {
+		// The node agnostic names answer for the object, so they answer with
+		// the addresses serving it and no others.
+		if answersForObject {
+			// Add a direct record (node agnostic)
 			stage(Record{
-				Name:     resName,
+				Name:     name,
 				DomainID: -1,
 				Type:     aType,
 				TTL:      60,
 				Content:  ipAddr,
 			})
-			// Add a reverse record (node agnostic)
-			stage(Record{
-				Name:     reverseAddr(ip),
-				DomainID: -1,
-				Type:     ptrType,
-				TTL:      60,
-				Content:  resName,
-			})
-		} else {
-			// Add a reverse record (node agnostic)
-			stage(Record{
-				Name:     reverseAddr(ip),
-				DomainID: -1,
-				Type:     ptrType,
-				TTL:      60,
-				Content:  name,
-			})
+			if resName != "" {
+				stage(Record{
+					Name:     resName,
+					DomainID: -1,
+					Type:     aType,
+					TTL:      60,
+					Content:  ipAddr,
+				})
+				// Add a reverse record (node agnostic)
+				stage(Record{
+					Name:     reverseAddr(ip),
+					DomainID: -1,
+					Type:     ptrType,
+					TTL:      60,
+					Content:  resName,
+				})
+			} else {
+				// Add a reverse record (node agnostic)
+				stage(Record{
+					Name:     reverseAddr(ip),
+					DomainID: -1,
+					Type:     ptrType,
+					TTL:      60,
+					Content:  name,
+				})
+			}
 		}
 
+		// The node affine names answer for the instance on one node, which is
+		// the address that node would serve. They are published whatever the
+		// instance is doing, as they were before the availability was read
+		// here at all.
 		// Add a direct record (node affine)
 		stage(Record{
 			Name:     nameOnNode,
