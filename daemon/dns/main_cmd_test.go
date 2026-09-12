@@ -1,11 +1,20 @@
 package dns
 
 import (
+	"sort"
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/require"
 
 	"github.com/opensvc/om3/v3/core/cluster"
+	"github.com/opensvc/om3/v3/core/instance"
+	"github.com/opensvc/om3/v3/core/naming"
+	"github.com/opensvc/om3/v3/core/resource"
+	"github.com/opensvc/om3/v3/core/status"
+	"github.com/opensvc/om3/v3/daemon/msgbus"
+	"github.com/opensvc/om3/v3/util/plog"
+	"github.com/opensvc/om3/v3/util/pubsub"
 )
 
 // nameIndexFromScratch builds the name index the way a full rebuild would,
@@ -124,4 +133,154 @@ func TestNameIndexIsMaintainedIncrementally(t *testing.T) {
 			require.Contains(t, []string{"cluster1.", "ns1.cluster1."}, name, "only cluster records must be left")
 		}
 	})
+}
+
+type nopPublisher struct{}
+
+func (nopPublisher) Pub(_ pubsub.Messager, _ ...pubsub.Label) {}
+
+// dnsManager is a manager with just enough in it to stage the records of an
+// instance status.
+func dnsManager() *Manager {
+	return &Manager{
+		state:         make(map[stateKey]map[recordKey]Record),
+		nameIndex:     make(map[string][]Record),
+		publisher:     nopPublisher{},
+		log:           plog.NewDefaultLogger(),
+		clusterConfig: cluster.Config{Name: "cluster1"},
+	}
+}
+
+// scopedStandbyIP is the shape that showed the resource status cannot decide:
+// a failover object whose ipaddr is scoped, carried by a standby resource, so
+// every node reports a different address and every one of them is "stdby up".
+func scopedStandbyIP(avail status.T, addr string) *msgbus.InstanceStatusUpdated {
+	return &msgbus.InstanceStatusUpdated{
+		Path: naming.Path{Name: "svc11", Namespace: "root", Kind: naming.KindSvc},
+		Value: instance.Status{
+			Avail: avail,
+			Resources: instance.ResourceStatuses{
+				"ip#0": resource.Status{
+					Status:    status.StandbyUp,
+					IsStandby: true,
+					Info:      map[string]any{ipAddrInfoKey: addr},
+				},
+			},
+		},
+	}
+}
+
+// aRecords is the recordset a name answers with, which for an object name is
+// one address per serving instance.
+func aRecords(m *Manager, name string) []string {
+	contents := make([]string, 0)
+	for _, record := range m.nameIndex[name] {
+		if record.Type == "A" {
+			contents = append(contents, record.Content)
+		}
+	}
+	sort.Strings(contents)
+	return contents
+}
+
+// The name of the object answers with the addresses of the instances serving
+// it. A failover has one, whichever node it is on.
+func TestOnlyAServingInstanceAnswersForTheObject(t *testing.T) {
+	m := dnsManager()
+
+	up := scopedStandbyIP(status.Up, "10.29.0.11")
+	up.Node = "node1"
+	m.onInstanceStatusUpdated(up)
+
+	down := scopedStandbyIP(status.Down, "10.29.0.13")
+	down.Node = "node3"
+	m.onInstanceStatusUpdated(down)
+
+	require.Equal(t, []string{"10.29.0.11"}, aRecords(m, "svc11.root.svc.cluster1."),
+		"the object resolves to the address of the instance serving it, and to no other")
+	require.Equal(t, []string{"10.29.0.11"}, aRecords(m, "svc11.root.svc.node1.node.cluster1."))
+	require.Equal(t, []string{"10.29.0.13"}, aRecords(m, "svc11.root.svc.node3.node.cluster1."),
+		"the node affine name answers for the instance on that node, serving or not")
+	requireIndexInSync(t, m)
+}
+
+// A flex object is allowed several instances up at once, and the recordset of
+// its name is all of their addresses.
+func TestAFlexObjectAnswersWithEveryServingInstance(t *testing.T) {
+	m := dnsManager()
+	for node, addr := range map[string]string{"node1": "10.29.0.11", "node2": "10.29.0.12"} {
+		c := scopedStandbyIP(status.Up, addr)
+		c.Node = node
+		m.onInstanceStatusUpdated(c)
+	}
+	require.Equal(t, []string{"10.29.0.11", "10.29.0.12"}, aRecords(m, "svc11.root.svc.cluster1."))
+}
+
+// A frozen object stays fully usable by its clients, so its address keeps
+// resolving. Freezing does not change the availability, which is what this
+// reads.
+func TestAFrozenInstanceKeepsAnsweringForTheObject(t *testing.T) {
+	m := dnsManager()
+	c := scopedStandbyIP(status.Up, "10.29.0.11")
+	c.Node = "node1"
+	c.Value.FrozenAt = time.Now()
+	m.onInstanceStatusUpdated(c)
+
+	require.Equal(t, []string{"10.29.0.11"}, aRecords(m, "svc11.root.svc.cluster1."))
+}
+
+// An instance whose warning does not stop it serving still answers.
+func TestAWarnInstanceAnswersForTheObject(t *testing.T) {
+	m := dnsManager()
+	c := scopedStandbyIP(status.Warn, "10.29.0.11")
+	c.Node = "node1"
+	m.onInstanceStatusUpdated(c)
+
+	require.Equal(t, []string{"10.29.0.11"}, aRecords(m, "svc11.root.svc.cluster1."))
+}
+
+// An instance running one address and three containers keeps its address
+// resolvable when one of the containers dies. The address is the ip
+// resource's, and a failed database is no reason to make the object
+// unreachable by name: the outage would read as a name resolution problem.
+func TestADeadResourceDoesNotUnpublishTheAddress(t *testing.T) {
+	for _, avail := range []status.T{status.Warn, status.Down} {
+		t.Run(avail.String(), func(t *testing.T) {
+			m := dnsManager()
+			m.onInstanceStatusUpdated(&msgbus.InstanceStatusUpdated{
+				Path: naming.Path{Name: "pod1", Namespace: "root", Kind: naming.KindSvc},
+				Node: "node1",
+				Value: instance.Status{
+					Avail: avail,
+					Resources: instance.ResourceStatuses{
+						"ip#0":        resource.Status{Status: status.Up, Info: map[string]any{ipAddrInfoKey: "10.100.0.240"}},
+						"container#0": resource.Status{Status: status.Up},
+						"container#1": resource.Status{Status: status.Up},
+						"container#2": resource.Status{Status: status.Down},
+					},
+				},
+			})
+			require.Equal(t, []string{"10.100.0.240"}, aRecords(m, "pod1.root.svc.cluster1."),
+				"the ip is up, so the object answers with it whatever died beside it")
+		})
+	}
+}
+
+// A resource that is down serves no address, which is what keeps the scoped
+// address of a stopped instance out of the zone.
+func TestADownResourceAnswersForNothing(t *testing.T) {
+	m := dnsManager()
+	m.onInstanceStatusUpdated(&msgbus.InstanceStatusUpdated{
+		Path: naming.Path{Name: "svc1", Namespace: "root", Kind: naming.KindSvc},
+		Node: "node1",
+		Value: instance.Status{
+			Avail: status.Down,
+			Resources: instance.ResourceStatuses{
+				"ip#0": resource.Status{Status: status.Down, Info: map[string]any{ipAddrInfoKey: "128.0.0.10"}},
+			},
+		},
+	})
+	require.Empty(t, aRecords(m, "svc1.root.svc.cluster1."))
+	require.Equal(t, []string{"128.0.0.10"}, aRecords(m, "svc1.root.svc.node1.node.cluster1."),
+		"the node affine name still answers for the instance on that node")
 }
