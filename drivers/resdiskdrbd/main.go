@@ -1032,7 +1032,21 @@ func (t *T) Provisioned(ctx context.Context) (provisioned.T, error) {
 	if !t.isConfigured() {
 		return provisioned.False, nil
 	}
-	// TODO: allow Provisioned(ctx context.Context) ?
+	// A resource holding a disk state has metadata, and asking drbdadm to
+	// dump it would answer wrongly: dump-md cannot open the backing device of
+	// a live resource, and says "No valid meta data found" on its way out,
+	// exiting 0. Reading that as unprovisioned hides the resource from
+	// anything looking up which resource exposes a device, for as long as it
+	// is in use.
+	if states, err := t.drbd(ctx).DiskStates(ctx); err == nil {
+		for _, state := range states {
+			switch state {
+			case "", "Diskless", "Unconfigured", "DUnknown":
+			default:
+				return provisioned.True, nil
+			}
+		}
+	}
 	hasMD, err := t.drbd(ctx).HasMD(ctx)
 	if err != nil {
 		t.Log().Tracef("drbd res is not configured")
