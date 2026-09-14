@@ -5,9 +5,11 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/opensvc/om3/v3/core/keyop"
 	"github.com/opensvc/om3/v3/core/naming"
 	"github.com/opensvc/om3/v3/core/resource"
 	"github.com/opensvc/om3/v3/core/resourceselector"
+	"github.com/opensvc/om3/v3/util/key"
 	"github.com/opensvc/om3/v3/util/sizeconv"
 )
 
@@ -33,6 +35,10 @@ type (
 		// r is the resource the step changes. A rid alone does not name it,
 		// because the chain can cross into another object.
 		r resource.Driver
+
+		// owner is the object holding the configuration the size was asked
+		// for in.
+		owner *actor
 	}
 
 	// ResizePlan is what a resize would do, in the order it would do it.
@@ -61,6 +67,11 @@ type (
 	resizeLink struct {
 		path naming.Path
 		r    resource.Driver
+
+		// owner is the object the resource belongs to, so the size a link
+		// reaches can be written back where it was asked for, even when the
+		// chain has crossed into another object.
+		owner *actor
 	}
 )
 
@@ -119,7 +130,7 @@ func (t ResizePlan) HasWork() bool {
 // seen holds the links already walked, keyed by object and rid, so a chain
 // that loops back into itself is refused rather than walked forever.
 func (t *actor) resizeChain(ctx context.Context, r resource.Driver, seen map[string]bool) ([]resizeLink, error) {
-	chain := []resizeLink{{path: t.path, r: r}}
+	chain := []resizeLink{{path: t.path, r: r, owner: t}}
 	if seen[resizeLinkKey(t.path, r.RID())] {
 		return nil, fmt.Errorf("%s %s is reached twice: a resize of a chain that loops is not supported", t.path, r.RID())
 	}
@@ -149,7 +160,7 @@ func (t *actor) resizeChain(ctx context.Context, r resource.Driver, seen map[str
 			if next := t.resizeProvider(ctx, namer.ResizeRestsOn(ctx)); next != nil {
 				if !seen[resizeLinkKey(t.path, next.RID())] {
 					seen[resizeLinkKey(t.path, next.RID())] = true
-					chain = append(chain, resizeLink{path: t.path, r: next})
+					chain = append(chain, resizeLink{path: t.path, r: next, owner: t})
 					continue
 				}
 			}
@@ -180,7 +191,7 @@ func (t *actor) resizeChain(ctx context.Context, r resource.Driver, seen map[str
 			return chain, nil
 		}
 		seen[resizeLinkKey(t.path, next.RID())] = true
-		chain = append(chain, resizeLink{path: t.path, r: next})
+		chain = append(chain, resizeLink{path: t.path, r: next, owner: t})
 	}
 }
 
@@ -407,6 +418,7 @@ func buildResizePlan(ctx context.Context, chain []resizeLink, change sizeconv.Ch
 			From:   linkFrom,
 			To:     to,
 			r:      link.r,
+			owner:  link.owner,
 		}
 
 		// A link below only has to be large enough. One that already is is
@@ -469,8 +481,64 @@ func (t *actor) applyResizePlan(ctx context.Context, plan ResizePlan, what strin
 		if err := resizer.Resize(ctx, step.To); err != nil {
 			return fmt.Errorf("%s: %w", name, err)
 		}
+		if err := step.recordSize(); err != nil {
+			return fmt.Errorf("%s: %w", name, err)
+		}
 	}
 	return nil
+}
+
+// recordSize writes the size a link reached back to the keyword that asked for
+// it, so the configuration keeps describing the object.
+//
+// Without it a chain rebuilt by an unprovision and a provision comes back at
+// the size it was first given, silently undoing every resize since, and every
+// report reading the configuration is wrong.
+//
+// Two values are left alone, because both say more than a number does:
+//
+//   - a policy, like the "100%FREE" a logical volume takes to mean all the
+//     space its group has. A resize satisfies it rather than contradicting it,
+//     and replacing it with a number is the instruction lost.
+//   - a reference, like the "{DEFAULT.size}" a pool-served volume takes to
+//     mean the size the volume was claimed with. The value belongs to the
+//     keyword pointed at, and that is what an orchestrated resize writes.
+//
+// A keyword that names no size is left alone too: this keeps a configuration
+// accurate, it does not start recording in one that said nothing.
+func (t ResizeStep) recordSize() error {
+	if t.owner == nil {
+		return nil
+	}
+	k := key.T{Section: t.RID, Option: "size"}
+	if !t.owner.config.HasKey(k) {
+		return nil
+	}
+	was := t.owner.config.Get(k)
+	if !isRecordableSize(was) {
+		return nil
+	}
+	op := keyop.T{
+		Key:   k,
+		Op:    keyop.Set,
+		Value: sizeconv.ExactBSizeCompact(float64(t.To)),
+	}
+	if op.Value == was {
+		return nil
+	}
+	t.owner.log.Infof("record %s %s -> %s", k, was, op.Value)
+	return t.owner.config.Set(op)
+}
+
+// isRecordableSize says whether a configured size may be replaced by the size
+// a resize reached.
+//
+// A policy like "100%FREE" and a reference like "{DEFAULT.size}" both say more
+// than a number does, and a resize does not contradict either: it satisfies
+// the policy, and the reference keeps pointing at the keyword that owns the
+// value. Writing a number over them is the instruction lost.
+func isRecordableSize(was string) bool {
+	return was != "" && !strings.ContainsAny(was, "%{")
 }
 
 // resizeRefusal says why a chain cannot be resized. A link that is not the one

@@ -177,3 +177,21 @@ func TestAResizeToNothingIsRefused(t *testing.T) {
 	_, err = buildResizePlan(context.Background(), links(chain...), change, naming.Path{}, ResizeOptions{})
 	assert.ErrorContains(t, err, "leaves nothing")
 }
+
+// A resize keeps the configuration describing the object, so the size it
+// reached is written back to the keyword that asked for it. Two values say
+// more than a number does and are left alone.
+func TestWhichConfiguredSizesAResizeMayRewrite(t *testing.T) {
+	cases := map[string]bool{
+		"5g":             true,
+		"5368709120":     true,
+		"100%FREE":       false, // a policy the resize satisfies
+		"10%":            false,
+		"{DEFAULT.size}": false, // a reference to the keyword that owns it
+		"{size}":         false,
+		"":               false, // nothing was recorded, so nothing to keep accurate
+	}
+	for was, want := range cases {
+		assert.Equalf(t, want, isRecordableSize(was), "isRecordableSize(%q)", was)
+	}
+}
