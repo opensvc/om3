@@ -134,6 +134,14 @@ func (t *T) CanInstall(ctx context.Context) (bool, error) {
 	return true, nil
 }
 
+// SizeInfoKey implements resource.SizeInfoKeyer.
+//
+// The size this driver reports is the filesystem holding the directory, not
+// the directory, so the resource info says so rather than calling it "size".
+func (t *T) SizeInfoKey() string {
+	return "holder_size"
+}
+
 // CurrentSize implements resource.Sizer.
 //
 // A directory has no size of its own: what it may hold is what the filesystem

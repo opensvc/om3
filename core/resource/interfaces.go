@@ -176,6 +176,14 @@ type (
 		CurrentSize(ctx context.Context) (int64, error)
 	}
 
+	// SizeInfoKeyer is implemented by a Sizer whose size is not its own, to
+	// name the key it is reported under in the resource info. A fs.directory
+	// reports the size of the filesystem holding it, and calling that "size"
+	// next to "driver fs.directory" reads as the size of the directory.
+	SizeInfoKeyer interface {
+		SizeInfoKey() string
+	}
+
 	// Resizer is implemented by a resource driver that can change its size.
 	//
 	// ResizePlan is asked first, of every link of the chain, and changes
