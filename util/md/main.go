@@ -20,6 +20,7 @@ import (
 	"github.com/opensvc/om3/v3/util/funcopt"
 	"github.com/opensvc/om3/v3/util/plog"
 	"github.com/opensvc/om3/v3/util/sessioncache"
+	"github.com/opensvc/om3/v3/util/sizeconv"
 )
 
 type (
@@ -548,4 +549,96 @@ func (t T) devsFromBlkidOutput(s string) []string {
 		}
 	}
 	return l
+}
+
+type (
+	// Sizes are what an array hands out, and what it uses on each of the
+	// members it hands it out from.
+	Sizes struct {
+		// Level is the raid level, to say which array cannot do what.
+		Level string
+
+		// Array is what the array device holds.
+		Array int64
+
+		// UsedDev is what the array uses on each member device. The array
+		// size divided by it is the number of members the size is made of:
+		// one for a raid1, n-1 for a raid5, n-2 for a raid6, n/copies for a
+		// raid10. Measuring it is how the rule of every level and every
+		// raid10 layout is had without enumerating them.
+		UsedDev int64
+
+		// Chunk is the stripe unit, which a member size has to be a whole
+		// number of on a striped level.
+		Chunk int64
+	}
+)
+
+// Sizes reads what the array hands out and what it uses on each member.
+func (t T) Sizes(ctx context.Context) (Sizes, error) {
+	var sizes Sizes
+	buff, err := t.detail(ctx)
+	if err != nil {
+		return sizes, err
+	}
+	for _, line := range strings.Split(buff, "\n") {
+		name, value, ok := strings.Cut(line, ":")
+		if !ok {
+			continue
+		}
+		value = strings.TrimSpace(value)
+		switch strings.TrimSpace(name) {
+		case "Raid Level":
+			sizes.Level = value
+		case "Array Size":
+			sizes.Array, err = kiloBytesField(value)
+		case "Used Dev Size":
+			sizes.UsedDev, err = kiloBytesField(value)
+		case "Chunk Size":
+			sizes.Chunk, err = sizeconv.FromSize(value)
+		default:
+			continue
+		}
+		if err != nil {
+			return sizes, fmt.Errorf("%s: parse %s: %w", t, name, err)
+		}
+	}
+	return sizes, nil
+}
+
+// kiloBytesField reads a "407552 (398.00 MiB 417.33 MB)" detail value, whose
+// first field counts kibibytes.
+func kiloBytesField(s string) (int64, error) {
+	s, _, _ = strings.Cut(s, " ")
+	if s == "" || s == "unknown" {
+		return 0, nil
+	}
+	n, err := strconv.ParseInt(s, 10, 64)
+	if err != nil {
+		return 0, err
+	}
+	return n * 1024, nil
+}
+
+// SetSize sets the bytes the array uses on each of its member devices, which
+// is how it is grown onto members that have grown.
+//
+// It does not reshape: the members and the level stay as they are.
+func (t T) SetSize(ctx context.Context, perDev int64) error {
+	cmd := command.New(
+		command.WithContext(ctx),
+		command.WithName(mdadm),
+		command.WithVarArgs("--grow", t.devpathFromName(), fmt.Sprintf("--size=%dK", perDev/1024)),
+		command.WithLogger(t.log),
+		command.WithCommandLogLevel(zerolog.InfoLevel),
+		command.WithStdoutLogLevel(zerolog.InfoLevel),
+		command.WithStderrLogLevel(zerolog.ErrorLevel),
+	)
+	if err := cmd.Run(); err != nil {
+		return err
+	}
+	if cmd.ExitCode() != 0 {
+		return fmt.Errorf("%s error %d", cmd, cmd.ExitCode())
+	}
+	return nil
 }
