@@ -266,6 +266,9 @@ func NewCmdObjectGroupResize(kind, group string) *cobra.Command {
 SIZE is the size to reach, as "11g", "11GB" or "12Gi", or the amount to add or
 remove, as "+1g" or "-1g".
 
+A negative amount reads as an option to the command line parser, so write a
+shrink as --size=-1g, or put the amount after a -- separator.
+
 Every link of the chain is asked before any of it is changed, so a chain
 holding one link that cannot do it is refused whole rather than left half
 resized. A link is asked for the size it needs from the link below it, which

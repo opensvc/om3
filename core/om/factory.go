@@ -3030,6 +3030,48 @@ one for good is a pg_* keyword set to "default".`,
 	return cmd
 }
 
+func newCmdObjectInstanceResize(kind string) *cobra.Command {
+	var options commands.CmdObjectInstanceResize
+	cmd := &cobra.Command{
+		Use:   "resize SIZE",
+		Short: "change the size of the volume head, and of what it rests on",
+		Long: `Change the size of the resource the volume exposes to its consumers, and of
+every resource it rests on.
+
+The resized resource is the one the volume exposes: the filesystem mounted on
+the volume head, or, when the volume has no filesystem, the device it exposes.
+Use "om <path> fs resize" or "om <path> disk resize" to name another resource
+of the volume.
+
+SIZE is the size to reach, as "11g", "11GB" or "12Gi", or the amount to add or
+remove, as "+1g" or "-1g".
+
+A negative amount reads as an option to the command line parser, so write a
+shrink as --size=-1g, or put the amount after a -- separator.
+
+A chain grows from the bottom up, so the space exists before anything is
+stretched onto it, and shrinks from the top down, so a filesystem gives the
+space back before the device under it is taken away.
+
+Use --dry-run to see the plan without applying it.`,
+		Args: cobra.RangeArgs(0, 1),
+		RunE: func(cmd *cobra.Command, args []string) error {
+			// The size is the argument when it was not given as an option,
+			// so both "resize +1g" and "resize --size +1g" read.
+			if options.Size == "" && len(args) > 0 {
+				options.Size = args[0]
+			}
+			return options.Run(kind)
+		},
+	}
+	commoncmd.CmdWithArg(cmd, "SIZE  The size to reach, or the amount to add or remove.")
+	flags := cmd.Flags()
+	addFlagsGlobal(flags, &options.OptsGlobal)
+	flags.StringVar(&options.Size, "size", "", "the size to reach, or the amount to add or remove (ex: 11g, +1g)")
+	flags.BoolVar(&options.DryRun, "dry-run", false, "report the plan, and change nothing")
+	return cmd
+}
+
 func newCmdObjectInstanceRestart(kind string) *cobra.Command {
 	var options commands.CmdObjectInstanceRestart
 	cmd := &cobra.Command{
