@@ -23,6 +23,8 @@ import (
 	"github.com/opensvc/om3/v3/util/device"
 	"github.com/opensvc/om3/v3/util/hostname"
 	"github.com/opensvc/om3/v3/util/key"
+	"github.com/opensvc/om3/v3/util/md"
+	"github.com/opensvc/om3/v3/util/sizeconv"
 	"github.com/opensvc/om3/v3/util/udevadm"
 )
 
@@ -58,6 +60,10 @@ type (
 	}
 	MDDriverUnprovisioner interface {
 		Wipe(ctx context.Context) error
+	}
+	MDDriverResizer interface {
+		Sizes(ctx context.Context) (md.Sizes, error)
+		SetSize(ctx context.Context, perDev int64) error
 	}
 )
 
@@ -283,6 +289,73 @@ func (t *T) UnprovisionAsLeader(ctx context.Context) error {
 func (t *T) Provisioned(ctx context.Context) (provisioned.T, error) {
 	v, err := t.exists(ctx)
 	return provisioned.FromBool(v), err
+}
+
+// CurrentSize implements resource.Sizer.
+func (t *T) CurrentSize(ctx context.Context) (int64, error) {
+	devs := t.ExposedDevices(ctx)
+	if len(devs) == 0 {
+		return 0, fmt.Errorf("md %s exposes no device, so its size cannot be read", t.GetName())
+	}
+	return devs[0].Size()
+}
+
+// ResizePlan implements resource.Resizer.
+//
+// An array hands out what its data members hold together, and how many of them
+// that is depends on the level: one for a raid1, all of them for a raid0 or a
+// linear, n-1 for a raid5, n-2 for a raid6, n divided by the copies for a
+// raid10. Rather than enumerate the levels and the raid10 layouts, the array
+// is asked what it already does: its size divided by what it uses on each
+// member is exactly the number of members its size is made of.
+//
+// A member size is a whole number of chunks on a striped level, so it is
+// rounded up to one, never down: the link above asked for a size it needs.
+func (t *T) ResizePlan(ctx context.Context, to int64) (int64, error) {
+	i, ok := t.md().(MDDriverResizer)
+	if !ok {
+		return 0, fmt.Errorf("this md driver cannot resize")
+	}
+	sizes, err := i.Sizes(ctx)
+	if err != nil {
+		return 0, err
+	}
+	if sizes.UsedDev <= 0 {
+		// A raid0 and a linear hand out everything their members hold, with
+		// no data size of their own on each. mdadm answers "Cannot set device
+		// size in this type of array": they grow by taking another member,
+		// which is a reshape and not this.
+		return 0, fmt.Errorf("a %s array uses no size of its own on each member, so it cannot be grown onto members that grew. This level grows by taking another member, which is a reshape", sizes.Level)
+	}
+	if sizes.Array <= 0 {
+		return 0, fmt.Errorf("md %s does not report what it holds, so what to ask of its members cannot be worked out", t.GetName())
+	}
+	dataDevs := sizes.Array / sizes.UsedDev
+	if dataDevs < 1 {
+		dataDevs = 1
+	}
+	perDev := (to + dataDevs - 1) / dataDevs
+	if sizes.Chunk > 0 {
+		perDev = sizeconv.RoundUp(perDev, sizes.Chunk)
+	}
+	// mdadm counts a member size in kibibytes.
+	return sizeconv.RoundUp(perDev, 1024), nil
+}
+
+// Resize implements resource.Resizer.
+//
+// It grows the array onto members that have grown already, and does not
+// reshape: the members and the level stay as they are.
+func (t *T) Resize(ctx context.Context, to int64) error {
+	perDev, err := t.ResizePlan(ctx, to)
+	if err != nil {
+		return err
+	}
+	i, ok := t.md().(MDDriverResizer)
+	if !ok {
+		return fmt.Errorf("this md driver cannot resize")
+	}
+	return i.SetSize(ctx, perDev)
 }
 
 func (t *T) ExposedDevices(ctx context.Context) device.L {
