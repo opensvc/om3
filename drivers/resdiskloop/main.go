@@ -287,6 +287,72 @@ func (t *T) unprovision(ctx context.Context) error {
 	return os.RemoveAll(t.File)
 }
 
+// CurrentSize implements resource.Sizer.
+//
+// The size is read from the loop device when the file is set up, because that
+// is what the resources above rest on: a file grown without a capacity refresh
+// is larger than the device still exposing the size it was set up with.
+func (t *T) CurrentSize(ctx context.Context) (int64, error) {
+	if dev := t.exposedDevice(ctx, t.loop()); dev != nil {
+		return dev.Size()
+	}
+	stat, err := t.fileExists()
+	if err != nil {
+		return 0, err
+	}
+	return stat.Size(), nil
+}
+
+// ResizePlan implements resource.Resizer.
+//
+// A loop device rests on a file of a filesystem the object does not own, so
+// there is no link below to ask for anything. What that filesystem cannot take
+// is refused here, while the chain is still being planned, rather than by a
+// write failing long after the resize was reported done.
+func (t *T) ResizePlan(ctx context.Context, to int64) (int64, error) {
+	from, err := t.CurrentSize(ctx)
+	if err != nil {
+		return 0, err
+	}
+	if to <= from {
+		return to, nil
+	}
+	need := to - from
+	entries, err := df.ContainingMountUsage(ctx, filepath.Dir(t.File))
+	if err != nil {
+		return 0, err
+	}
+	if len(entries) == 0 {
+		return 0, fmt.Errorf("%s is not on a mounted filesystem", t.File)
+	}
+	if entries[0].Free < need {
+		return 0, fmt.Errorf("growing to %s needs %s more on %s, which has %s free",
+			sizeconv.BSizeCompact(float64(to)),
+			sizeconv.BSizeCompact(float64(need)),
+			entries[0].MountPoint,
+			sizeconv.BSizeCompact(float64(entries[0].Free)))
+	}
+	return to, nil
+}
+
+// Resize implements resource.Resizer.
+func (t *T) Resize(ctx context.Context, to int64) error {
+	// The loop device exposes whole sectors, so a file that is not a round
+	// number of them exposes less than it holds. Round up, never down: the
+	// link above asked for a size it needs.
+	to = sizeconv.RoundUp(to, 512)
+	t.Log().Infof("resize file %s to %d", t.File, to)
+	if err := os.Truncate(t.File, to); err != nil {
+		return err
+	}
+	dev := t.exposedDevice(ctx, t.loop())
+	if dev == nil {
+		// Not set up: the device takes the size of the file when it is.
+		return nil
+	}
+	return t.loop().SetCapacity(ctx, dev.Path())
+}
+
 func (t *T) exposedDevice(ctx context.Context, lo *loop.T) *device.T {
 	i, err := lo.FileGet(ctx, t.File)
 	if err != nil {

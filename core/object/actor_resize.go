@@ -25,6 +25,11 @@ type (
 		To      int64  `json:"to"`
 		Comment string `json:"comment,omitempty"`
 
+		// Skip says the link already holds what the link above it needs, so
+		// there is nothing to do to it. It is listed so a plan shows the
+		// whole chain.
+		Skip bool `json:"skip,omitempty"`
+
 		// r is the resource the step changes. A rid alone does not name it,
 		// because the chain can cross into another object.
 		r resource.Driver
@@ -70,12 +75,26 @@ func (t ResizePlan) String() string {
 	if t.IsShrink {
 		direction = "shrink"
 	}
+	if !t.HasWork() {
+		return "nothing to do: every link already holds the size asked of it"
+	}
 	lines := make([]string, 0, len(t.Steps)+1)
 	lines = append(lines, fmt.Sprintf("%s, in this order:", direction))
 	for _, step := range t.Steps {
 		lines = append(lines, "  "+step.String())
 	}
 	return strings.Join(lines, "\n")
+}
+
+// HasWork says the plan changes something. A plan of links that all hold
+// enough already changes nothing.
+func (t ResizePlan) HasWork() bool {
+	for _, step := range t.Steps {
+		if !step.Skip {
+			return true
+		}
+	}
+	return false
 }
 
 // resizeChain returns the resources a resize of r has to change, from r down
@@ -115,6 +134,18 @@ func (t *actor) resizeChain(ctx context.Context, r resource.Driver, seen map[str
 			return append(chain[:len(chain)-1], sub...), nil
 		}
 
+		// A link that rests on something no device leads to names it, and
+		// the resource answering to that name is the next link.
+		if namer, ok := last.(resource.ResizeRestsOn); ok {
+			if next := t.resizeProvider(ctx, namer.ResizeRestsOn(ctx)); next != nil {
+				if !seen[resizeLinkKey(t.path, next.RID())] {
+					seen[resizeLinkKey(t.path, next.RID())] = true
+					chain = append(chain, resizeLink{path: t.path, r: next})
+					continue
+				}
+			}
+		}
+
 		sub, ok := last.(resource.SubDeviceser)
 		if !ok {
 			return chain, nil
@@ -142,6 +173,24 @@ func (t *actor) resizeChain(ctx context.Context, r resource.Driver, seen map[str
 		seen[resizeLinkKey(t.path, next.RID())] = true
 		chain = append(chain, resizeLink{path: t.path, r: next})
 	}
+}
+
+// resizeProvider returns the resource of the object answering to a name, and
+// nil when the name is empty or nothing answers to it.
+func (t *actor) resizeProvider(ctx context.Context, name string) resource.Driver {
+	if name == "" {
+		return nil
+	}
+	for _, r := range t.Resources() {
+		provider, ok := r.(resource.ResizeProvides)
+		if !ok {
+			continue
+		}
+		if provider.ResizeProvides(ctx) == name {
+			return r
+		}
+	}
+	return nil
 }
 
 // resizeChainOf returns the chain a resize of rid walks.
@@ -277,7 +326,17 @@ func buildResizePlan(ctx context.Context, chain []resizeLink, change sizeconv.Ch
 			To:     to,
 			r:      link.r,
 		}
-		if needBelow != to {
+
+		// A link below only has to be large enough. One that already is is
+		// left alone: shrinking it back would be work nobody asked for, and
+		// it would put a shrink in the middle of a grow, which has no safe
+		// order. This is also what heals a chain left uneven by a resize
+		// that failed part way.
+		if (!plan.IsShrink && linkFrom >= to) || (plan.IsShrink && linkFrom <= to) {
+			step.Skip = true
+			step.To = linkFrom
+			step.Comment = "already holds what the link above needs"
+		} else if needBelow != to {
 			step.Comment = fmt.Sprintf("asks %s of the link below", sizeconv.BSizeCompact(float64(needBelow)))
 		}
 		plan.Steps = append(plan.Steps, step)
@@ -300,7 +359,14 @@ func (t *actor) Resize(ctx context.Context, rid string, change sizeconv.Change) 
 	if err != nil {
 		return err
 	}
+	if !plan.HasWork() {
+		t.log.Infof("resize %s: every link already holds the size asked of it", rid)
+		return nil
+	}
 	for _, step := range plan.Steps {
+		if step.Skip {
+			continue
+		}
 		resizer, ok := step.r.(resource.Resizer)
 		if !ok {
 			// The plan said otherwise a moment ago.

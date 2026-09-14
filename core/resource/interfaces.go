@@ -187,6 +187,23 @@ type (
 		ResizeTarget(ctx context.Context) (naming.Path, error)
 	}
 
+	// ResizeRestsOn is implemented by a resource that rests on another
+	// resource of the same object that no device leads to. A logical volume
+	// rests on its volume group, but a volume group exposes logical volumes
+	// rather than itself, so nothing in the device topology connects the two.
+	//
+	// It answers the name the resource below answers to, like "vg/data", or
+	// "" when there is nothing to name.
+	ResizeRestsOn interface {
+		ResizeRestsOn(ctx context.Context) string
+	}
+
+	// ResizeProvides is implemented by a resource others rest on by name
+	// rather than through a device. A volume group answers "vg/<its name>".
+	ResizeProvides interface {
+		ResizeProvides(ctx context.Context) string
+	}
+
 	// SizeInfoKeyer is implemented by a Sizer whose size is not its own, to
 	// name the key it is reported under in the resource info. A fs.directory
 	// reports the size of the filesystem holding it, and calling that "size"
