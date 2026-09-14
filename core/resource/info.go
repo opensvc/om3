@@ -75,6 +75,21 @@ func GetInfo(ctx context.Context, r Driver) (Info, error) {
 			InfoKey{"restart_delay", fmt.Sprint(restart.Delay)},
 		)
 	}
+	if i, ok := r.(Sizer); ok {
+		// A size that cannot be read right now is not an error worth failing
+		// the whole listing for: a filesystem that is not mounted has no size
+		// to report, and the rest of the resource info is still worth having.
+		// The key is then absent, which is the honest answer.
+		key := "size"
+		if i, ok := r.(SizeInfoKeyer); ok {
+			key = i.SizeInfoKey()
+		}
+		if size, err := i.CurrentSize(ctx); err != nil {
+			r.Log().Debugf("%s: %s", key, err)
+		} else {
+			info.Keys = append(info.Keys, InfoKey{key, fmt.Sprint(size)})
+		}
+	}
 	i, ok := r.(infoer)
 	if !ok {
 		return info, nil
