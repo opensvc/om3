@@ -30,8 +30,12 @@ func configUpdate(ctx echo.Context, log *plog.Logger, p naming.Path, deletes []s
 		log.Tracef("configuration validation for object %s: %s", p, err)
 		return false, fmt.Errorf("configuration validation for object %s: %w", p, err)
 	} else if alerts.HasError() {
-		log.Tracef("configuration validation has errors for object %s", p)
-		return false, fmt.Errorf("configuration validation has errors for object %s", p)
+		// Say which keywords are wrong. The caller cannot see the
+		// configuration this validated, so naming the object alone leaves
+		// them nothing to act on.
+		errs := alerts.Errors().StringWithoutMeta()
+		log.Tracef("configuration validation has errors for object %s:\n%s", p, errs)
+		return false, fmt.Errorf("configuration validation has errors for object %s:\n%s", p, errs)
 	}
 	changed := oc.Config().Changed()
 	if err := oc.Config().CommitInvalid(); err != nil {
