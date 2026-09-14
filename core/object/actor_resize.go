@@ -9,6 +9,7 @@ import (
 	"github.com/opensvc/om3/v3/core/naming"
 	"github.com/opensvc/om3/v3/core/resource"
 	"github.com/opensvc/om3/v3/core/resourceselector"
+	"github.com/opensvc/om3/v3/util/hostname"
 	"github.com/opensvc/om3/v3/util/key"
 	"github.com/opensvc/om3/v3/util/sizeconv"
 )
@@ -60,6 +61,12 @@ type (
 		// every node to a size wants: a node already holding more than that
 		// has nothing to do, and saying so is not the same as failing.
 		GrowOnly bool
+
+		// Force allows a resize that would grow one replica of a replicated
+		// object on its own. The orchestration passes it for the phase that
+		// runs once every node has grown what is under the replicated
+		// resource.
+		Force bool
 	}
 
 	// resizeLink is one resource of a resize chain, with the object it
@@ -258,6 +265,39 @@ func (t *actor) ResizeBelowReplicated(ctx context.Context, to int64, opts Resize
 	return t.applyResizePlan(ctx, plan, "below the replicated link")
 }
 
+// refuseLoneReplicaResize stops a resize that would grow one replica of a
+// replicated object.
+//
+// A replicated resource offers only what its smallest replica holds, so
+// growing the chain under it on one node alone strands the space: the object
+// gains nothing, the nodes stop matching, and the size written back records
+// one no peer has. Growing every node is what an orchestrated resize is for,
+// and it is two phases rather than one because of this.
+//
+// The phase that grows the links under the replicated resource says so, and
+// is how a node left behind is caught up, so it is not stopped here.
+func refuseLoneReplicaResize(chain []resizeLink, opts ResizeOptions) error {
+	if opts.Force {
+		return nil
+	}
+	for _, link := range chain {
+		i, ok := link.r.(resource.ResizeIsReplicated)
+		if !ok || !i.ResizeIsReplicated() {
+			continue
+		}
+		peers, err := link.owner.Peers()
+		if err != nil {
+			return err
+		}
+		if len(peers) < 2 {
+			return nil
+		}
+		return fmt.Errorf("%s replicates %s to %d nodes, and this grows only %s: a replicated resource offers what its smallest replica holds, so the space would be stranded. Use \"om %s resize\" to grow every node, or --force to grow this one anyway",
+			link.r.RID(), link.path, len(peers), hostname.Hostname(), link.path)
+	}
+	return nil
+}
+
 // resizeProvider returns the resource of the object answering to a name, and
 // nil when the name is empty or nothing answers to it.
 func (t *actor) resizeProvider(ctx context.Context, name string) resource.Driver {
@@ -339,6 +379,9 @@ func (t *actor) ResizePlan(ctx context.Context, rid string, change sizeconv.Chan
 	}
 	chain, err := t.resizeChain(ctx, selected[0], map[string]bool{})
 	if err != nil {
+		return plan, err
+	}
+	if err := refuseLoneReplicaResize(chain, opts); err != nil {
 		return plan, err
 	}
 	plan, err = buildResizePlan(ctx, chain, change, t.path, opts)
