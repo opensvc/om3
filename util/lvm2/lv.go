@@ -7,6 +7,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"strconv"
 	"strings"
 
 	"github.com/rs/zerolog"
@@ -139,7 +140,10 @@ func (t *LV) Show(ctx context.Context) (*LVInfo, error) {
 	cmd := command.New(
 		command.WithContext(ctx),
 		command.WithName("lvs"),
-		command.WithVarArgs("--reportformat", "json", fqn),
+		// --units b --nosuffix because the default display rounds, and
+		// prefixes a "<" when it rounded up: a 5364514816 bytes volume
+		// reports "<5.00g", which is neither parsable nor its size.
+		command.WithVarArgs("--reportformat", "json", "--units", "b", "--nosuffix", fqn),
 		command.WithLogger(t.Log()),
 		command.WithCommandLogLevel(zerolog.TraceLevel),
 		command.WithStdoutLogLevel(zerolog.TraceLevel),
@@ -312,8 +316,11 @@ func (t *LV) Size(ctx context.Context) (int64, error) {
 	if info == nil {
 		return 0, fmt.Errorf("%w: %s", ErrExist, t.FQN())
 	}
-	// lvs reports a size like "10.00g", which is what sizeconv reads.
-	return sizeconv.FromSize(strings.TrimSuffix(info.LVSize, "B"))
+	size, err := strconv.ParseInt(info.LVSize, 10, 64)
+	if err != nil {
+		return 0, fmt.Errorf("%s: parse lv_size %s: %w", t.FQN(), info.LVSize, err)
+	}
+	return size, nil
 }
 
 // Resize sets the size of the logical volume, in bytes.
