@@ -312,6 +312,59 @@ func (t *T) Info(ctx context.Context) (resource.InfoKeys, error) {
 	return m, nil
 }
 
+// CurrentSize implements resource.Sizer.
+func (t *T) CurrentSize(ctx context.Context) (int64, error) {
+	info, err := t.deviceInfo(ctx)
+	if err != nil {
+		return 0, err
+	}
+	if info == nil {
+		return 0, fmt.Errorf("%s does not exist, so its size cannot be read", t.spec())
+	}
+	return info.Size, nil
+}
+
+// ResizePlan implements resource.Resizer.
+//
+// An image takes its space from the rados pool holding it, which hands out
+// what it has: there is nothing below to ask a size of.
+func (t *T) ResizePlan(ctx context.Context, to int64) (int64, error) {
+	return to, nil
+}
+
+// Resize implements resource.Resizer.
+func (t *T) Resize(ctx context.Context, to int64) error {
+	from, err := t.CurrentSize(ctx)
+	if err != nil {
+		return err
+	}
+	args, err := t.rbdArgs()
+	if err != nil {
+		return err
+	}
+	args = append(args, "resize", "--size", fmt.Sprintf("%dB", to), t.Name)
+	if to < from {
+		// rbd makes shrinking say so, because what is beyond the new size is
+		// dropped.
+		args = append(args, "--allow-shrink")
+	}
+	cmd := command.New(
+		command.WithContext(ctx),
+		command.WithTimeout(DefaultCommandTimeout),
+		command.WithName("rbd"),
+		command.WithArgs(args),
+		command.WithLogger(t.Log()),
+		command.WithCommandLogLevel(zerolog.InfoLevel),
+		command.WithStdoutLogLevel(zerolog.InfoLevel),
+		command.WithStderrLogLevel(zerolog.ErrorLevel),
+	)
+	if err := cmd.Run(); err != nil {
+		return fmt.Errorf("resize: %v", err)
+	}
+	udevadm.Settle()
+	return nil
+}
+
 func (t *T) deviceInfo(ctx context.Context) (*RBDInfo, error) {
 	args, err := t.rbdArgs()
 	if err != nil {
