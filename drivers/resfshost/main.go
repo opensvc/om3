@@ -618,14 +618,26 @@ func (t *T) CanInstall(ctx context.Context) (bool, error) {
 
 // CurrentSize implements resource.Sizer.
 //
-// It is the size of the filesystem, which is what a df reports and what a
-// relative resize resolves against.
+// A filesystem is the size of the device under it, which is how OpenSVC has
+// always counted one. What it can hand out is less, because it keeps metadata
+// and a log for itself, but the device is what it was given and what growing
+// it fills.
 //
-// The mount is checked first. statfs answers for whichever filesystem holds
-// the path, so an unmounted resource would be reported as the size of the
-// filesystem its mount point sits in - a stopped 10m tmpfs read as the 37g
-// root filesystem, and a "+1g" then computed against that.
+// Counting the usable bytes instead would leave a filesystem permanently short
+// of a size it has already reached: a 5.49gi device carries an xfs that reports
+// 5.43gi, so every resize would find work to do and grow a filesystem that is
+// already as large as it can be.
+//
+// A filesystem holding its own size has no device to measure. statfs answers
+// for whichever filesystem holds the path, so the mount is checked first: an
+// unmounted resource would otherwise be reported as the size of the filesystem
+// its mount point sits in, a stopped 10m tmpfs read as the 37g root filesystem,
+// and a "+1g" then computed against that.
 func (t *T) CurrentSize(ctx context.Context) (int64, error) {
+	if _, ok := t.fs().(filesystems.SelfSizer); !ok {
+		dev := t.device(ctx)
+		return dev.Size()
+	}
 	mnt := t.mountPoint()
 	mounts, err := findmnt.List(ctx, "", mnt)
 	if err != nil {
