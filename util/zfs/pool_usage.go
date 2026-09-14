@@ -73,3 +73,27 @@ func (t *Pool) Usage(ctx context.Context, fopts ...funcopt.O) (PoolUsage, error)
 	}
 	return parsePoolUsage(b)
 }
+
+// ExpandDevice makes the pool take the space a device of it has gained.
+//
+// A pool is not given a size: it is what its vdevs hold, less what zfs keeps
+// for its labels and its reserve. So growing one is telling it to look at a
+// device again, the way a filesystem is told to take up the device under it.
+func (t *Pool) ExpandDevice(ctx context.Context, devpath string) error {
+	cmd := command.New(
+		command.WithContext(ctx),
+		command.WithName("zpool"),
+		command.WithVarArgs("online", "-e", t.Name, devpath),
+		command.WithLogger(t.Log),
+		command.WithCommandLogLevel(zerolog.InfoLevel),
+		command.WithStdoutLogLevel(zerolog.InfoLevel),
+		command.WithStderrLogLevel(zerolog.ErrorLevel),
+	)
+	if err := cmd.Run(); err != nil {
+		return err
+	}
+	if cmd.ExitCode() != 0 {
+		return fmt.Errorf("%s error %d", cmd, cmd.ExitCode())
+	}
+	return nil
+}
