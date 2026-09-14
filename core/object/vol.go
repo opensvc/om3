@@ -2,11 +2,13 @@ package object
 
 import (
 	"context"
+	"fmt"
 	"sort"
 
 	"github.com/opensvc/om3/v3/core/driver"
 	"github.com/opensvc/om3/v3/core/keywords"
 	"github.com/opensvc/om3/v3/core/naming"
+	"github.com/opensvc/om3/v3/core/resource"
 	"github.com/opensvc/om3/v3/core/status"
 	"github.com/opensvc/om3/v3/core/volaccess"
 	"github.com/opensvc/om3/v3/util/device"
@@ -31,6 +33,7 @@ type (
 	Vol interface {
 		Actor
 		Head() string
+		HeadRID(context.Context) (string, error)
 		ExposedDevice(context.Context) *device.T
 		ExposedDevices(context.Context) device.L
 		SubDevice(context.Context) *device.T
@@ -179,11 +182,24 @@ func (t *vol) SubDevice(ctx context.Context) *device.T {
 }
 
 func (t *vol) ExposedDevice(ctx context.Context) *device.T {
+	_, devs := t.exposedDeviceResource(ctx)
+	if len(devs) == 0 {
+		return nil
+	}
+	return &devs[0]
+}
+
+// exposedDeviceResource returns the resource the volume exposes a device
+// through, and the devices that resource exposes.
+//
+// The deepest rid wins, so the resource nearest the consumer is the one
+// named.
+func (t *vol) exposedDeviceResource(ctx context.Context) (resource.Driver, device.L) {
 	type devicer interface {
 		ExposedDevices(context.Context) device.L
 	}
 	rids := make([]string, 0)
-	candidates := make(map[string]devicer)
+	candidates := make(map[string]resource.Driver)
 	l := t.ResourcesByDrivergroups([]driver.Group{
 		driver.GroupDisk,
 		driver.GroupVolume,
@@ -193,23 +209,55 @@ func (t *vol) ExposedDevice(ctx context.Context) *device.T {
 			continue
 		}
 		var i interface{} = r
-		o, ok := i.(devicer)
-		if !ok {
+		if _, ok := i.(devicer); !ok {
 			continue
 		}
 		rid := r.RID()
-		candidates[rid] = o
+		candidates[rid] = r
 		rids = append(rids, rid)
 	}
 	sort.Sort(sort.Reverse(sort.StringSlice(rids)))
 	for _, rid := range rids {
-		devs := candidates[rid].ExposedDevices(ctx)
+		r := candidates[rid]
+		var i interface{} = r
+		devs := i.(devicer).ExposedDevices(ctx)
 		if len(devs) == 0 {
 			continue
 		}
-		return &devs[0]
+		return r, devs
 	}
-	return nil
+	return nil, nil
+}
+
+// HeadRID returns the rid of the resource a volume exposes to its consumers.
+//
+// A volume exists to expose one thing: the filesystem mounted on Head(), or,
+// when the volume has no filesystem, the device it exposes. An action asked of
+// the volume itself, like a resize, is an action on that resource.
+func (t *vol) HeadRID(ctx context.Context) (string, error) {
+	type header interface {
+		Head() string
+	}
+	if head := t.Head(); head != "" {
+		l := t.ResourcesByDrivergroups([]driver.Group{
+			driver.GroupFS,
+			driver.GroupVolume,
+		})
+		for _, r := range l {
+			var i interface{} = r
+			o, ok := i.(header)
+			if !ok {
+				continue
+			}
+			if o.Head() == head {
+				return r.RID(), nil
+			}
+		}
+	}
+	if r, _ := t.exposedDeviceResource(ctx); r != nil {
+		return r.RID(), nil
+	}
+	return "", fmt.Errorf("%s exposes neither a head mount point nor a device", t.path)
 }
 
 func (t *vol) HoldersExcept(ctx context.Context, exceptPath naming.Path) (naming.Paths, error) {

@@ -12,15 +12,14 @@ import (
 )
 
 type (
-	CmdObjectResourceResize struct {
+	CmdObjectInstanceResize struct {
 		OptsGlobal
-		RID    string
 		Size   string
 		DryRun bool
 	}
 )
 
-func (t *CmdObjectResourceResize) Run(kind string) error {
+func (t *CmdObjectInstanceResize) Run(kind string) error {
 	if t.Size == "" {
 		return fmt.Errorf("a size is required, as an argument or with --size")
 	}
@@ -42,8 +41,9 @@ func (t *CmdObjectResourceResize) Run(kind string) error {
 	return t.one(paths[0], change)
 }
 
-func (t *CmdObjectResourceResize) one(p naming.Path, change sizeconv.Change) error {
+func (t *CmdObjectInstanceResize) one(p naming.Path, change sizeconv.Change) error {
 	type resizer interface {
+		HeadRID(context.Context) (string, error)
 		ResizePlan(context.Context, string, sizeconv.Change) (object.ResizePlan, error)
 		Resize(context.Context, string, sizeconv.Change) error
 	}
@@ -53,10 +53,14 @@ func (t *CmdObjectResourceResize) one(p naming.Path, change sizeconv.Change) err
 	}
 	i, ok := o.(resizer)
 	if !ok {
-		return fmt.Errorf("%s: a %s has no resource to resize", p, p.Kind)
+		return fmt.Errorf("%s: a %s has no head resource to resize", p, p.Kind)
 	}
 	ctx := context.Background()
-	plan, err := i.ResizePlan(ctx, t.RID, change)
+	rid, err := i.HeadRID(ctx)
+	if err != nil {
+		return err
+	}
+	plan, err := i.ResizePlan(ctx, rid, change)
 	if err != nil {
 		return err
 	}
@@ -64,5 +68,5 @@ func (t *CmdObjectResourceResize) one(p naming.Path, change sizeconv.Change) err
 		fmt.Println(plan.String())
 		return nil
 	}
-	return i.Resize(ctx, t.RID, change)
+	return i.Resize(ctx, rid, change)
 }
