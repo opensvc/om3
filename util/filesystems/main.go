@@ -75,6 +75,14 @@ type (
 		CanShrink(ctx context.Context, dev, mountPoint string) error
 		Shrink(ctx context.Context, dev, mountPoint string, size int64) error
 	}
+
+	// SelfSizer is implemented by a filesystem that holds its own size rather
+	// than taking the size of a device under it. A tmpfs is told how large to
+	// be, and has nothing below it to enlarge first, so it is resized in one
+	// step and in either direction.
+	SelfSizer interface {
+		SetSize(ctx context.Context, mountPoint string, size int64) error
+	}
 )
 
 var (
@@ -85,7 +93,7 @@ var (
 )
 
 func init() {
-	registerFS(&T{fsType: "tmpfs", isVirtual: true})
+	registerFS(NewTMPFS())
 	registerFS(&T{fsType: "rpc_pipefs", isVirtual: true, isReadOnly: true})
 	registerFS(&T{fsType: "none", isFileBacked: true})
 	registerFS(&T{fsType: "bind", isFileBacked: true})

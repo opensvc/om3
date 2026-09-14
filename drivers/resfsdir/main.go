@@ -11,6 +11,7 @@ import (
 	"github.com/opensvc/om3/v3/core/provisioned"
 	"github.com/opensvc/om3/v3/core/resource"
 	"github.com/opensvc/om3/v3/core/status"
+	"github.com/opensvc/om3/v3/util/df"
 	"github.com/opensvc/om3/v3/util/file"
 )
 
@@ -131,4 +132,36 @@ func (t *T) Head() string {
 
 func (t *T) CanInstall(ctx context.Context) (bool, error) {
 	return true, nil
+}
+
+// CurrentSize implements resource.Sizer.
+//
+// A directory has no size of its own: what it may hold is what the filesystem
+// holding it has. That is what a directory pool reports as the usage of the
+// volumes it serves, and it is reported here for the same reason.
+func (t *T) CurrentSize(ctx context.Context) (int64, error) {
+	entries, err := df.ContainingMountUsage(ctx, t.Path)
+	if err != nil {
+		return 0, err
+	}
+	if len(entries) == 0 {
+		return 0, fmt.Errorf("no filesystem holds %s", t.Path)
+	}
+	return entries[0].Total, nil
+}
+
+// ResizePlan implements resource.Resizer, and always refuses.
+//
+// It is implemented to refuse rather than left out, so the refusal says why: a
+// directory takes the size of the filesystem holding it, and resizing that
+// filesystem is asked of the resource that owns it, not of this one.
+func (t *T) ResizePlan(ctx context.Context, to int64) (int64, error) {
+	return 0, fmt.Errorf("a directory takes the size of the filesystem holding it, and cannot be given one of its own")
+}
+
+// Resize implements resource.Resizer, and always refuses. Nothing reaches it:
+// ResizePlan has refused already.
+func (t *T) Resize(ctx context.Context, to int64) error {
+	_, err := t.ResizePlan(ctx, to)
+	return err
 }
