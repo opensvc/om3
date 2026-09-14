@@ -333,7 +333,7 @@ func (t *LV) Resize(ctx context.Context, size int64) error {
 	cmd := command.New(
 		command.WithContext(ctx),
 		command.WithName("lvresize"),
-		command.WithVarArgs("--size", fmt.Sprintf("%db", size), "--force", fqn),
+		command.WithVarArgs("--size", fmt.Sprintf("%db", sizeconv.RoundUp(size, 512)), "--force", fqn),
 		command.WithLogger(t.Log()),
 		command.WithCommandLogLevel(zerolog.InfoLevel),
 		command.WithStdoutLogLevel(zerolog.InfoLevel),
