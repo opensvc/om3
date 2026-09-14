@@ -619,13 +619,24 @@ func (t *T) CanInstall(ctx context.Context) (bool, error) {
 // CurrentSize implements resource.Sizer.
 //
 // It is the size of the filesystem, which is what a df reports and what a
-// relative resize resolves against. It is read from the mount point, so an
-// unmounted filesystem cannot answer: what the device under it holds is not
-// what the filesystem was formatted to.
+// relative resize resolves against.
+//
+// The mount is checked first. statfs answers for whichever filesystem holds
+// the path, so an unmounted resource would be reported as the size of the
+// filesystem its mount point sits in - a stopped 10m tmpfs read as the 37g
+// root filesystem, and a "+1g" then computed against that.
 func (t *T) CurrentSize(ctx context.Context) (int64, error) {
+	mnt := t.mountPoint()
+	mounts, err := findmnt.List(ctx, "", mnt)
+	if err != nil {
+		return 0, err
+	}
+	if len(mounts) == 0 {
+		return 0, fmt.Errorf("%s is not mounted on %s, so its size cannot be read", t.Device, mnt)
+	}
 	var st unix.Statfs_t
-	if err := unix.Statfs(t.mountPoint(), &st); err != nil {
-		return 0, fmt.Errorf("statfs %s: %w", t.mountPoint(), err)
+	if err := unix.Statfs(mnt, &st); err != nil {
+		return 0, fmt.Errorf("statfs %s: %w", mnt, err)
 	}
 	return int64(st.Blocks) * int64(st.Bsize), nil
 }
@@ -641,6 +652,11 @@ func (t *T) ResizePlan(ctx context.Context, to int64) (int64, error) {
 	from, err := t.CurrentSize(ctx)
 	if err != nil {
 		return 0, err
+	}
+	if _, ok := fs.(filesystems.SelfSizer); ok {
+		// A filesystem holding its own size asks nothing of anything below
+		// it, and there is nothing below it to ask.
+		return to, nil
 	}
 	if to >= from {
 		if _, ok := fs.(filesystems.Grower); !ok {
@@ -661,6 +677,9 @@ func (t *T) ResizePlan(ctx context.Context, to int64) (int64, error) {
 // Resize implements resource.Resizer.
 func (t *T) Resize(ctx context.Context, to int64) error {
 	fs := t.fs()
+	if selfSizer, ok := fs.(filesystems.SelfSizer); ok {
+		return selfSizer.SetSize(ctx, t.mountPoint(), to)
+	}
 	from, err := t.CurrentSize(ctx)
 	if err != nil {
 		return err
