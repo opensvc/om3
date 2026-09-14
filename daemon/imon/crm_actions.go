@@ -166,6 +166,18 @@ func (t *Manager) crmResourceStart(rids []string) error {
 	return t.crmMaintenanceAction("start", t.path.String(), "instance", "start", "--rid", s)
 }
 
+// crmResize grows the whole chain of the resource the object exposes, to the
+// size the object is configured to hold.
+func (t *Manager) crmResize() error {
+	return t.crmAction("resize", t.path.String(), "instance", "resize", "--grow-only")
+}
+
+// crmResizeBelowReplicated grows the links under the replicated one, so the
+// replicated link can be grown once every node has done this.
+func (t *Manager) crmResizeBelowReplicated() error {
+	return t.crmAction("resize below the replicated link", t.path.String(), "instance", "resize", "--below-replicated", "--grow-only")
+}
+
 func (t *Manager) crmShutdown() error {
 	return t.crmAction("shutdown", t.path.String(), "instance", "shutdown")
 }

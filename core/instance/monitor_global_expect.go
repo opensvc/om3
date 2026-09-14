@@ -10,6 +10,7 @@ const (
 	MonitorGlobalExpectPlacedAt
 	MonitorGlobalExpectProvisioned
 	MonitorGlobalExpectPurged
+	MonitorGlobalExpectResized
 	MonitorGlobalExpectRestarted
 	MonitorGlobalExpectStarted
 	MonitorGlobalExpectStopped
@@ -39,6 +40,7 @@ func init() {
 		{MonitorGlobalExpectPlacedAt, "placed@"},
 		{MonitorGlobalExpectProvisioned, "provisioned"},
 		{MonitorGlobalExpectPurged, "purged"},
+		{MonitorGlobalExpectResized, "resized"},
 		{MonitorGlobalExpectRestarted, "restarted"},
 		{MonitorGlobalExpectStarted, "started"},
 		{MonitorGlobalExpectStopped, "stopped"},

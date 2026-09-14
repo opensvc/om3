@@ -414,6 +414,9 @@ type ServerInterface interface {
 	// (POST /api/object/path/{namespace}/{kind}/{name}/action/purge)
 	PostObjectActionPurge(ctx echo.Context, namespace InPathNamespace, kind InPathKind, name InPathName) error
 
+	// (POST /api/object/path/{namespace}/{kind}/{name}/action/resize)
+	PostObjectActionResize(ctx echo.Context, namespace InPathNamespace, kind InPathKind, name InPathName) error
+
 	// (POST /api/object/path/{namespace}/{kind}/{name}/action/restart)
 	PostObjectActionRestart(ctx echo.Context, namespace InPathNamespace, kind InPathKind, name InPathName) error
 
@@ -5783,6 +5786,42 @@ func (w *ServerInterfaceWrapper) PostObjectActionPurge(ctx echo.Context) error {
 	return err
 }
 
+// PostObjectActionResize converts echo context to params.
+func (w *ServerInterfaceWrapper) PostObjectActionResize(ctx echo.Context) error {
+	var err error
+	// ------------- Path parameter "namespace" -------------
+	var namespace InPathNamespace
+
+	err = runtime.BindStyledParameterWithOptions("simple", "namespace", ctx.Param("namespace"), &namespace, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: ""})
+	if err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter namespace: %s", err))
+	}
+
+	// ------------- Path parameter "kind" -------------
+	var kind InPathKind
+
+	err = runtime.BindStyledParameterWithOptions("simple", "kind", ctx.Param("kind"), &kind, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: ""})
+	if err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter kind: %s", err))
+	}
+
+	// ------------- Path parameter "name" -------------
+	var name InPathName
+
+	err = runtime.BindStyledParameterWithOptions("simple", "name", ctx.Param("name"), &name, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: ""})
+	if err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter name: %s", err))
+	}
+
+	ctx.Set(string(BasicAuthScopes), []string{})
+
+	ctx.Set(string(BearerAuthScopes), []string{})
+
+	// Invoke the callback with all the unmarshaled arguments
+	err = w.Handler.PostObjectActionResize(ctx, namespace, kind, name)
+	return err
+}
+
 // PostObjectActionRestart converts echo context to params.
 func (w *ServerInterfaceWrapper) PostObjectActionRestart(ctx echo.Context) error {
 	var err error
@@ -7023,6 +7062,7 @@ func RegisterHandlersWithOptions(router EchoRouter, si ServerInterface, options 
 	router.POST(options.BaseURL+"/api/object/path/:namespace/:kind/:name/action/giveback", wrapper.PostObjectActionGiveback, options.OperationMiddlewares["PostObjectActionGiveback"]...)
 	router.POST(options.BaseURL+"/api/object/path/:namespace/:kind/:name/action/provision", wrapper.PostObjectActionProvision, options.OperationMiddlewares["PostObjectActionProvision"]...)
 	router.POST(options.BaseURL+"/api/object/path/:namespace/:kind/:name/action/purge", wrapper.PostObjectActionPurge, options.OperationMiddlewares["PostObjectActionPurge"]...)
+	router.POST(options.BaseURL+"/api/object/path/:namespace/:kind/:name/action/resize", wrapper.PostObjectActionResize, options.OperationMiddlewares["PostObjectActionResize"]...)
 	router.POST(options.BaseURL+"/api/object/path/:namespace/:kind/:name/action/restart", wrapper.PostObjectActionRestart, options.OperationMiddlewares["PostObjectActionRestart"]...)
 	router.POST(options.BaseURL+"/api/object/path/:namespace/:kind/:name/action/start", wrapper.PostObjectActionStart, options.OperationMiddlewares["PostObjectActionStart"]...)
 	router.POST(options.BaseURL+"/api/object/path/:namespace/:kind/:name/action/stop", wrapper.PostObjectActionStop, options.OperationMiddlewares["PostObjectActionStop"]...)
@@ -7425,29 +7465,29 @@ var swaggerSpec = []string{
 	"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",
-	"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",
+	"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",
 }
 
 // decodeSpec returns the embedded OpenAPI spec as raw JSON bytes,

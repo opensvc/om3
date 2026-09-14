@@ -41,6 +41,10 @@ const (
 	MonitorStateDeleteFailure
 	MonitorStateDeleteSuccess
 
+	MonitorStateResizeProgress
+	MonitorStateResizeFailure
+	MonitorStateResizeSuccess
+
 	// wait states
 	MonitorStateWaitChildren
 	MonitorStateWaitParents
@@ -64,6 +68,7 @@ var (
 		MonitorStateDeleteFailure,
 		MonitorStateFreezeFailure,
 		MonitorStateProvisionFailure,
+		MonitorStateResizeFailure,
 		MonitorStateShutdownFailure,
 		MonitorStateStartFailure,
 		MonitorStateStopFailure,
@@ -119,6 +124,10 @@ func init() {
 		{MonitorStateDeleteProgress, "deleting"},
 		{MonitorStateDeleteFailure, "delete failed"},
 		{MonitorStateDeleteSuccess, "deleted"},
+
+		{MonitorStateResizeProgress, "resizing"},
+		{MonitorStateResizeFailure, "resize failed"},
+		{MonitorStateResizeSuccess, "resized"},
 
 		// wait states
 		{MonitorStateWaitChildren, "wait children"},
