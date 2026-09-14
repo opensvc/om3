@@ -44,8 +44,8 @@ func (t *CmdObjectResourceResize) Run(kind string) error {
 
 func (t *CmdObjectResourceResize) one(p naming.Path, change sizeconv.Change) error {
 	type resizer interface {
-		ResizePlan(context.Context, string, sizeconv.Change) (object.ResizePlan, error)
-		Resize(context.Context, string, sizeconv.Change) error
+		ResizePlan(context.Context, string, sizeconv.Change, object.ResizeOptions) (object.ResizePlan, error)
+		Resize(context.Context, string, sizeconv.Change, object.ResizeOptions) error
 	}
 	o, err := object.New(p)
 	if err != nil {
@@ -56,7 +56,7 @@ func (t *CmdObjectResourceResize) one(p naming.Path, change sizeconv.Change) err
 		return fmt.Errorf("%s: a %s has no resource to resize", p, p.Kind)
 	}
 	ctx := context.Background()
-	plan, err := i.ResizePlan(ctx, t.RID, change)
+	plan, err := i.ResizePlan(ctx, t.RID, change, object.ResizeOptions{})
 	if err != nil {
 		return err
 	}
@@ -64,5 +64,5 @@ func (t *CmdObjectResourceResize) one(p naming.Path, change sizeconv.Change) err
 		fmt.Println(plan.String())
 		return nil
 	}
-	return i.Resize(ctx, t.RID, change)
+	return i.Resize(ctx, t.RID, change, object.ResizeOptions{})
 }

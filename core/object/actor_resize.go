@@ -47,6 +47,15 @@ type (
 		IsShrink bool `json:"is_shrink"`
 	}
 
+	// ResizeOptions tunes a resize.
+	ResizeOptions struct {
+		// GrowOnly makes a resize that would shrink do nothing, instead of
+		// doing it or refusing it. It is what an orchestration converging
+		// every node to a size wants: a node already holding more than that
+		// has nothing to do, and saying so is not the same as failing.
+		GrowOnly bool
+	}
+
 	// resizeLink is one resource of a resize chain, with the object it
 	// belongs to, because a chain can cross into another object.
 	resizeLink struct {
@@ -175,6 +184,69 @@ func (t *actor) resizeChain(ctx context.Context, r resource.Driver, seen map[str
 	}
 }
 
+// replicatedResizeResource returns the resource of the object whose size is
+// replicated to peers, and nil when the object has none.
+func (t *actor) replicatedResizeResource(ctx context.Context) resource.Driver {
+	for _, r := range t.Resources() {
+		if i, ok := r.(resource.ResizeIsReplicated); ok && i.ResizeIsReplicated() {
+			return r
+		}
+	}
+	return nil
+}
+
+// ResizePlanBelowReplicated works out what growing the links under the
+// replicated one to the given size would do, and changes nothing.
+//
+// This is the first of the two phases a replicated object resizes in. Every
+// node runs it, including the one holding the object up, and only then does
+// that node resize the replicated link and what rests on it: a drbd resource
+// offers what its smallest replica holds.
+//
+// The chain is walked from the replicated link rather than from the head,
+// because a node that does not hold the object up cannot read the head: its
+// filesystem is not mounted there. The replicated link is asked for the size
+// the object is asked to be, which is what the head asks of it when the head
+// is a filesystem taking the whole device.
+//
+// The plan lists the replicated link, so the whole chain is visible, but
+// marks it as nothing to do here.
+func (t *actor) ResizePlanBelowReplicated(ctx context.Context, to int64, opts ResizeOptions) (ResizePlan, error) {
+	var plan ResizePlan
+	r := t.replicatedResizeResource(ctx)
+	if r == nil {
+		return plan, nil
+	}
+	chain, err := t.resizeChain(ctx, r, map[string]bool{})
+	if err != nil {
+		return plan, err
+	}
+	plan, err = buildResizePlan(ctx, chain, sizeconv.Change{Value: to}, t.path, opts)
+	if err != nil {
+		return plan, err
+	}
+	for i := range plan.Steps {
+		if plan.Steps[i].RID != r.RID() {
+			continue
+		}
+		plan.Steps[i].Skip = true
+		plan.Steps[i].To = plan.Steps[i].From
+		plan.Steps[i].Comment = "resized once every node has grown what is under it"
+	}
+	t.localizeResizePlan(&plan)
+	return plan, nil
+}
+
+// ResizeBelowReplicated grows the links under the replicated one to the given
+// size, and leaves the replicated link alone.
+func (t *actor) ResizeBelowReplicated(ctx context.Context, to int64, opts ResizeOptions) error {
+	plan, err := t.ResizePlanBelowReplicated(ctx, to, opts)
+	if err != nil {
+		return err
+	}
+	return t.applyResizePlan(ctx, plan, "below the replicated link")
+}
+
 // resizeProvider returns the resource of the object answering to a name, and
 // nil when the name is empty or nothing answers to it.
 func (t *actor) resizeProvider(ctx context.Context, name string) resource.Driver {
@@ -236,7 +308,7 @@ func resizeLinkKey(p naming.Path, rid string) string {
 // refused whole. A link answers the size it needs from the link below, which
 // is not always the size it was asked for: a raid6 md holding n devices needs
 // to(n-2) from each.
-func (t *actor) ResizePlan(ctx context.Context, rid string, change sizeconv.Change) (ResizePlan, error) {
+func (t *actor) ResizePlan(ctx context.Context, rid string, change sizeconv.Change, opts ResizeOptions) (ResizePlan, error) {
 	var plan ResizePlan
 
 	// The rid is a selector, and a resize is of one resource: which of
@@ -258,19 +330,24 @@ func (t *actor) ResizePlan(ctx context.Context, rid string, change sizeconv.Chan
 	if err != nil {
 		return plan, err
 	}
-	plan, err = buildResizePlan(ctx, chain, change, t.path)
+	plan, err = buildResizePlan(ctx, chain, change, t.path, opts)
 	if err != nil {
 		return plan, err
 	}
 
-	// The object the resize was asked of goes without saying. What is named
-	// is what the chain crossed into.
+	t.localizeResizePlan(&plan)
+	return plan, nil
+}
+
+// localizeResizePlan drops the object name from the steps of the object the
+// resize was asked of: that one goes without saying. What stays named is what
+// the chain crossed into.
+func (t *actor) localizeResizePlan(plan *ResizePlan) {
 	for i := range plan.Steps {
 		if plan.Steps[i].Path == t.path.String() {
 			plan.Steps[i].Path = ""
 		}
 	}
-	return plan, nil
 }
 
 // buildResizePlan works out what resizing a chain would do, and changes
@@ -278,7 +355,7 @@ func (t *actor) ResizePlan(ctx context.Context, rid string, change sizeconv.Chan
 // deepest one it rests on.
 // home is the object the resize was asked of, so a link of another object is
 // named with it.
-func buildResizePlan(ctx context.Context, chain []resizeLink, change sizeconv.Change, home naming.Path) (ResizePlan, error) {
+func buildResizePlan(ctx context.Context, chain []resizeLink, change sizeconv.Change, home naming.Path, opts ResizeOptions) (ResizePlan, error) {
 	var plan ResizePlan
 	if len(chain) == 0 {
 		return plan, fmt.Errorf("nothing to resize")
@@ -300,6 +377,11 @@ func buildResizePlan(ctx context.Context, chain []resizeLink, change sizeconv.Ch
 		return plan, fmt.Errorf("%s: %s of %s leaves nothing", resizeLinkName(head, home), change, sizeconv.BSizeCompact(float64(from)))
 	}
 	plan.IsShrink = to < from
+	if plan.IsShrink && opts.GrowOnly {
+		// Already larger than asked for. Saying there is nothing to do is
+		// the answer here, not shrinking it back and not refusing.
+		return plan, nil
+	}
 
 	for _, link := range chain {
 		sizer, ok := link.r.(resource.Sizer)
@@ -354,13 +436,18 @@ func buildResizePlan(ctx context.Context, chain []resizeLink, change sizeconv.Ch
 }
 
 // Resize changes the size of rid and of everything it rests on.
-func (t *actor) Resize(ctx context.Context, rid string, change sizeconv.Change) error {
-	plan, err := t.ResizePlan(ctx, rid, change)
+func (t *actor) Resize(ctx context.Context, rid string, change sizeconv.Change, opts ResizeOptions) error {
+	plan, err := t.ResizePlan(ctx, rid, change, opts)
 	if err != nil {
 		return err
 	}
+	return t.applyResizePlan(ctx, plan, rid)
+}
+
+// applyResizePlan changes what the plan says to change, in the order it says.
+func (t *actor) applyResizePlan(ctx context.Context, plan ResizePlan, what string) error {
 	if !plan.HasWork() {
-		t.log.Infof("resize %s: every link already holds the size asked of it", rid)
+		t.log.Infof("resize %s: every link already holds the size asked of it", what)
 		return nil
 	}
 	for _, step := range plan.Steps {

@@ -34,6 +34,7 @@ type (
 		Actor
 		Head() string
 		HeadRID(context.Context) (string, error)
+		ConfiguredSize() (int64, error)
 		ExposedDevice(context.Context) *device.T
 		ExposedDevices(context.Context) device.L
 		SubDevice(context.Context) *device.T
@@ -227,6 +228,19 @@ func (t *vol) exposedDeviceResource(ctx context.Context) (resource.Driver, devic
 		return r, devs
 	}
 	return nil, nil
+}
+
+// ConfiguredSize is the size the volume is asked to be.
+//
+// It is what was claimed of the pool when the volume was created, and what a
+// resize writes back, so it is the size the volume is meant to hold rather
+// than a record of what it held once.
+func (t *vol) ConfiguredSize() (int64, error) {
+	size := t.config.GetSize(key.T{Section: "DEFAULT", Option: "size"})
+	if size == nil {
+		return 0, fmt.Errorf("%s has no size", t.path)
+	}
+	return *size, nil
 }
 
 // HeadRID returns the rid of the resource a volume exposes to its consumers.
