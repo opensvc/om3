@@ -1,0 +1,7 @@
+The project id the quota is set on.
+
+A project id is a number the filesystem stamps on the directory and everything
+under it. It is a namespace shared by every user of that filesystem, so it
+defaults to a value derived from the directory path, which is stable and
+distinct for distinct directories. Set it explicitly when that value is
+already taken by something else.
