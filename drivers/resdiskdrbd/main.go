@@ -1045,6 +1045,14 @@ func (t *T) Provisioned(ctx context.Context) (provisioned.T, error) {
 	return provisioned.True, nil
 }
 
+// ResizeIsReplicated implements resource.ResizeIsReplicated.
+//
+// A drbd resource offers what its smallest replica holds, so it can only be
+// grown once every node has grown the device behind it.
+func (t *T) ResizeIsReplicated() bool {
+	return true
+}
+
 // CurrentSize implements resource.Sizer.
 //
 // It is the size of the replicated device, which is less than the device
@@ -1059,38 +1067,24 @@ func (t *T) CurrentSize(ctx context.Context) (int64, error) {
 
 // ResizePlan implements resource.Resizer.
 //
-// What drbd asks of the device below is the size wanted plus its metadata.
-// That is measured rather than computed, because how much a drbd version
-// keeps depends on the number of peers it was given room for. It is scaled
-// with the device because most of it is the dirty bitmap, one bit per 4k, so
-// a device twice the size needs about twice the metadata.
+// What drbd asks of the device below is the size wanted plus room for its
+// metadata: a dirty bitmap holding one bit per 4k of data for each peer it was
+// given room for, and a superblock and an activity log on top of that.
+//
+// It is computed from the size asked for rather than measured as the gap
+// between the device below and the replicated device. That gap is not the
+// metadata while a resize is in flight: every node grows the device below
+// first, and only then is the replicated device grown to match, so measuring
+// then reads the growth itself as metadata and asks for it a second time.
+// Asking for a little too much costs nothing. Asking for too little leaves the
+// filesystem above short of what it was promised.
 func (t *T) ResizePlan(ctx context.Context, to int64) (int64, error) {
 	if _, ok := t.drbd(ctx).(DRBDDriverResizer); !ok {
 		return 0, fmt.Errorf("this drbd driver cannot resize")
 	}
-	from, err := t.CurrentSize(ctx)
-	if err != nil {
-		return 0, err
-	}
-	subs := t.SubDevices(ctx)
-	if len(subs) != 1 {
-		return 0, fmt.Errorf("drbd resource %s rests on %d devices: which of them to resize is not something this can decide",
-			t.Res, len(subs))
-	}
-	below, err := subs[0].Size()
-	if err != nil {
-		return 0, err
-	}
-	overhead := below - from
-	if overhead < 0 {
-		overhead = 0
-	}
-	if from > 0 {
-		// Round up, so the metadata that grows with the device is covered.
-		overhead = (overhead*to + from - 1) / from
-	}
+	metadata := 4*1024*1024 + int64(t.maxPeers())*to/32768
 	// A block device holds whole sectors, so that is what it asks for.
-	return sizeconv.RoundUp(to+overhead, 512), nil
+	return sizeconv.RoundUp(to+metadata, 512), nil
 }
 
 // Resize implements resource.Resizer.
