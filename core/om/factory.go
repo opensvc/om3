@@ -3038,6 +3038,8 @@ func newCmdObjectInstanceResize(kind string) *cobra.Command {
 		Long: `Change the size of the resource the volume exposes to its consumers, and of
 every resource it rests on.
 
+With no SIZE, the volume is resized to the size it is configured to be.
+
 The resized resource is the one the volume exposes: the filesystem mounted on
 the volume head, or, when the volume has no filesystem, the device it exposes.
 Use "om <path> fs resize" or "om <path> disk resize" to name another resource
@@ -3064,11 +3066,13 @@ Use --dry-run to see the plan without applying it.`,
 			return options.Run(kind)
 		},
 	}
-	commoncmd.CmdWithArg(cmd, "SIZE  The size to reach, or the amount to add or remove.")
+	commoncmd.CmdWithArg(cmd, "SIZE  The size to reach, or the amount to add or remove. Defaults to the configured size.")
 	flags := cmd.Flags()
 	addFlagsGlobal(flags, &options.OptsGlobal)
 	flags.StringVar(&options.Size, "size", "", "the size to reach, or the amount to add or remove (ex: 11g, +1g)")
 	flags.BoolVar(&options.DryRun, "dry-run", false, "report the plan, and change nothing")
+	flags.BoolVar(&options.BelowReplicated, "below-replicated", false, "grow only the links under the replicated one, so it can be grown once every node is ready")
+	flags.BoolVar(&options.GrowOnly, "grow-only", false, "do nothing, instead of refusing, when the size asked for is already held")
 	return cmd
 }
 

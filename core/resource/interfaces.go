@@ -204,6 +204,18 @@ type (
 		ResizeProvides(ctx context.Context) string
 	}
 
+	// ResizeIsReplicated is implemented by a resource whose size is shared
+	// with peer nodes, so it can only be resized once every node has grown
+	// what is under it: a drbd resource offers what its smallest replica
+	// holds.
+	//
+	// A resize chain is walked in two phases because of it. Every node first
+	// grows the links below the replicated one, and only then does the node
+	// holding the object up resize the replicated link and what rests on it.
+	ResizeIsReplicated interface {
+		ResizeIsReplicated() bool
+	}
+
 	// SizeInfoKeyer is implemented by a Sizer whose size is not its own, to
 	// name the key it is reported under in the resource info. A fs.directory
 	// reports the size of the filesystem holding it, and calling that "size"

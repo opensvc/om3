@@ -82,7 +82,7 @@ func plan(t *testing.T, chain []resource.Driver, size string) ResizePlan {
 	t.Helper()
 	change, err := sizeconv.ParseChange(size)
 	require.NoError(t, err)
-	p, err := buildResizePlan(context.Background(), links(chain...), change, naming.Path{})
+	p, err := buildResizePlan(context.Background(), links(chain...), change, naming.Path{}, ResizeOptions{})
 	require.NoError(t, err)
 	return p
 }
@@ -147,7 +147,7 @@ func TestAChainWithALinkThatCannotResizeIsRefused(t *testing.T) {
 	}
 	change, err := sizeconv.ParseChange("+1g")
 	require.NoError(t, err)
-	_, err = buildResizePlan(context.Background(), links(chain...), change, naming.Path{})
+	_, err = buildResizePlan(context.Background(), links(chain...), change, naming.Path{}, ResizeOptions{})
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "disk#vg")
 	assert.Contains(t, err.Error(), "cannot resize")
@@ -163,7 +163,7 @@ func TestAShrinkIsRefusedBeforeAnythingMoves(t *testing.T) {
 	}
 	change, err := sizeconv.ParseChange("-1g")
 	require.NoError(t, err)
-	_, err = buildResizePlan(context.Background(), links(chain...), change, naming.Path{})
+	_, err = buildResizePlan(context.Background(), links(chain...), change, naming.Path{}, ResizeOptions{})
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "fs#1")
 	assert.Contains(t, err.Error(), "cannot shrink")
@@ -174,6 +174,6 @@ func TestAResizeToNothingIsRefused(t *testing.T) {
 	chain := []resource.Driver{&fakeLink{rid: "fs#1", has: 10 * g}}
 	change, err := sizeconv.ParseChange("-10g")
 	require.NoError(t, err)
-	_, err = buildResizePlan(context.Background(), links(chain...), change, naming.Path{})
+	_, err = buildResizePlan(context.Background(), links(chain...), change, naming.Path{}, ResizeOptions{})
 	assert.ErrorContains(t, err, "leaves nothing")
 }
