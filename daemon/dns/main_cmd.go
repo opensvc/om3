@@ -5,6 +5,7 @@ import (
 	"net"
 	"time"
 
+	"github.com/opensvc/om3/v3/core/instance"
 	"github.com/opensvc/om3/v3/core/naming"
 	"github.com/opensvc/om3/v3/core/resource"
 	"github.com/opensvc/om3/v3/core/resourceid"
@@ -113,9 +114,108 @@ func (t *Manager) onInstanceStatusDeleted(c *msgbus.InstanceStatusDeleted) {
 		}
 		t.setStateRecords(key, nil)
 	}
+	// The instance that left may have been the one holding an address the
+	// others share, or the one making an address differ. Either way what the
+	// object answers is the peers' to decide again.
+	t.restageInstances(c.Path, c.Node, nil)
 }
 
 func (t *Manager) onInstanceStatusUpdated(c *msgbus.InstanceStatusUpdated) {
+	t.stageInstance(c.Path, c.Node, c.Value, t.objectAddrs(c.Path, c.Node, &c.Value))
+	t.restageInstances(c.Path, c.Node, &c.Value)
+}
+
+// restageInstances stages every instance of the object but the one named,
+// which the caller has staged already.
+//
+// Whether an address answers for the object is decided across the instances,
+// so an instance changing can change what another instance publishes: an
+// address is only the object's own while every instance reports the same one.
+func (t *Manager) restageInstances(p naming.Path, node string, value *instance.Status) {
+	addrs := t.objectAddrs(p, node, value)
+	for peer, st := range instance.StatusData.GetByPath(p) {
+		if peer == node || st == nil {
+			continue
+		}
+		t.stageInstance(p, peer, *st, addrs)
+	}
+}
+
+// objectAddr is what the instances of an object report for one resource.
+type objectAddr struct {
+	// addr is the address every instance reports, and "" when they do not all
+	// report the same one.
+	addr string
+
+	// owner is the node staging the record of a shared address, so the zone
+	// holds it once and not once per instance.
+	owner string
+}
+
+// objectAddrs reports, per resource, whether every instance of the object
+// names the same address.
+//
+// An address that is the same everywhere is the object's own: there is no
+// question of which instance it belongs to, so the object answers with it
+// whatever the instances are doing. A scoped address differs per instance and
+// only the instances serving the object may answer with theirs.
+//
+// The value of the node that is being handled is passed in rather than read
+// from the cache, which may not hold it yet.
+func (t *Manager) objectAddrs(p naming.Path, node string, value *instance.Status) map[string]objectAddr {
+	byRID := make(map[string]map[string]string)
+	note := func(nodename string, st instance.Status) {
+		for rid, rstat := range st.Resources {
+			i, ok := rstat.Info[ipAddrInfoKey]
+			if !ok {
+				continue
+			}
+			addr, ok := i.(string)
+			if !ok || addr == "" {
+				continue
+			}
+			if byRID[rid] == nil {
+				byRID[rid] = make(map[string]string)
+			}
+			byRID[rid][nodename] = addr
+		}
+	}
+	for peer, st := range instance.StatusData.GetByPath(p) {
+		if peer == node || st == nil {
+			continue
+		}
+		note(peer, *st)
+	}
+	if value != nil {
+		note(node, *value)
+	}
+
+	addrs := make(map[string]objectAddr, len(byRID))
+	for rid, byNode := range byRID {
+		var (
+			addr  string
+			owner string
+		)
+		for nodename, a := range byNode {
+			if addr == "" {
+				addr, owner = a, nodename
+				continue
+			}
+			if a != addr {
+				addr, owner = "", ""
+				break
+			}
+			if nodename < owner {
+				owner = nodename
+			}
+		}
+		addrs[rid] = objectAddr{addr: addr, owner: owner}
+	}
+	return addrs
+}
+
+func (t *Manager) stageInstance(path naming.Path, node string, value instance.Status, objectAddrs map[string]objectAddr) {
+	c := &msgbus.InstanceStatusUpdated{Path: path, Node: node, Value: value}
 	key := t.stateKey(c.Path, c.Node)
 	name := naming.NewFQDN(c.Path, t.clusterConfig.Name).String() + "."
 	nameOnNode := fmt.Sprintf("%s.%s.%s.%s.node.%s.", c.Path.Name, c.Path.Namespace, c.Path.Kind, c.Node, t.clusterConfig.Name)
@@ -198,6 +298,16 @@ func (t *Manager) onInstanceStatusUpdated(c *msgbus.InstanceStatusUpdated) {
 		// unresolvable, or the outage reads as a name resolution problem.
 		answersForObject := rstat.Status.Is(status.Up, status.StandbyUp, status.Warn) &&
 			(!rstat.IsStandby || isInstanceServing)
+
+		// An address every instance names is the object's own. There is no
+		// question of which instance it belongs to, so the object answers
+		// with it whatever the instances are doing - a stopped object keeps
+		// resolving, and a client is told the connection is refused rather
+		// than that the name does not exist. One instance stages it, so the
+		// zone holds the address once and not once per instance.
+		if shared, ok := objectAddrs[rid]; ok && shared.addr != "" {
+			answersForObject = shared.owner == node
+		}
 
 		i, ok := rstat.Info[ipAddrInfoKey]
 		if !ok {
