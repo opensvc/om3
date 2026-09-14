@@ -3,6 +3,7 @@ package resdiskzvol
 import (
 	"context"
 	"fmt"
+	"strconv"
 
 	"github.com/opensvc/om3/v3/core/actionrollback"
 	"github.com/opensvc/om3/v3/core/provisioned"
@@ -11,6 +12,7 @@ import (
 	"github.com/opensvc/om3/v3/drivers/resdisk"
 	"github.com/opensvc/om3/v3/util/device"
 	"github.com/opensvc/om3/v3/util/funcopt"
+	"github.com/opensvc/om3/v3/util/sizeconv"
 	"github.com/opensvc/om3/v3/util/zfs"
 )
 
@@ -180,6 +182,44 @@ func (t *T) Provisioned(ctx context.Context) (provisioned.T, error) {
 	} else {
 		return provisioned.FromBool(v), nil
 	}
+}
+
+// CurrentSize implements resource.Sizer.
+func (t *T) CurrentSize(ctx context.Context) (int64, error) {
+	s, err := t.zvol().GetProperty("volsize")
+	if err != nil {
+		return 0, err
+	}
+	size, err := strconv.ParseInt(s, 10, 64)
+	if err != nil {
+		return 0, fmt.Errorf("%s: parse volsize %s: %w", t.Name, s, err)
+	}
+	return size, nil
+}
+
+// ResizePlan implements resource.Resizer.
+//
+// A volume takes its space from the pool holding it, which hands out what it
+// has: there is nothing below to ask a size of.
+func (t *T) ResizePlan(ctx context.Context, to int64) (int64, error) {
+	return to, nil
+}
+
+// Resize implements resource.Resizer.
+//
+// A volume holds a whole number of blocks, so it is asked for the next one up
+// rather than a size zfs would refuse. The link above asked for a size it
+// needs, so round up and never down.
+func (t *T) Resize(ctx context.Context, to int64) error {
+	vol := t.zvol()
+	if s, err := vol.GetProperty("volblocksize"); err != nil {
+		return err
+	} else if block, err := strconv.ParseInt(s, 10, 64); err != nil {
+		return fmt.Errorf("%s: parse volblocksize %s: %w", t.Name, s, err)
+	} else {
+		to = sizeconv.RoundUp(to, block)
+	}
+	return vol.SetProperty("volsize", fmt.Sprintf("%d", to))
 }
 
 func (t *T) ExposedDevices(ctx context.Context) device.L {
