@@ -64,6 +64,7 @@ type (
 	MDDriverResizer interface {
 		Sizes(ctx context.Context) (md.Sizes, error)
 		SetSize(ctx context.Context, perDev int64) error
+		DevOverhead(ctx context.Context, devpath string) (int64, error)
 	}
 )
 
@@ -338,8 +339,20 @@ func (t *T) ResizePlan(ctx context.Context, to int64) (int64, error) {
 	if sizes.Chunk > 0 {
 		perDev = sizeconv.RoundUp(perDev, sizes.Chunk)
 	}
+
+	// A member holds what the array hands out from it plus what the array
+	// keeps on it for itself.
+	devs := t.SubDevices(ctx)
+	if len(devs) == 0 {
+		return 0, fmt.Errorf("md %s rests on no device this object knows", t.GetName())
+	}
+	overhead, err := i.DevOverhead(ctx, devs[0].Path())
+	if err != nil {
+		return 0, err
+	}
+
 	// mdadm counts a member size in kibibytes.
-	return sizeconv.RoundUp(perDev, 1024), nil
+	return sizeconv.RoundUp(perDev+overhead, 1024), nil
 }
 
 // Resize implements resource.Resizer.
@@ -347,15 +360,25 @@ func (t *T) ResizePlan(ctx context.Context, to int64) (int64, error) {
 // It grows the array onto members that have grown already, and does not
 // reshape: the members and the level stay as they are.
 func (t *T) Resize(ctx context.Context, to int64) error {
-	perDev, err := t.ResizePlan(ctx, to)
+	// The plan answers what a member must hold, which is the data size plus
+	// what the array keeps on it. mdadm is told the data size.
+	needBelow, err := t.ResizePlan(ctx, to)
 	if err != nil {
 		return err
+	}
+	devs := t.SubDevices(ctx)
+	if len(devs) == 0 {
+		return fmt.Errorf("md %s rests on no device this object knows", t.GetName())
 	}
 	i, ok := t.md().(MDDriverResizer)
 	if !ok {
 		return fmt.Errorf("this md driver cannot resize")
 	}
-	return i.SetSize(ctx, perDev)
+	overhead, err := i.DevOverhead(ctx, devs[0].Path())
+	if err != nil {
+		return err
+	}
+	return i.SetSize(ctx, needBelow-overhead)
 }
 
 func (t *T) ExposedDevices(ctx context.Context) device.L {

@@ -642,3 +642,40 @@ func (t T) SetSize(ctx context.Context, perDev int64) error {
 	}
 	return nil
 }
+
+// DevOverhead is what the array keeps on a member before the data it hands
+// out: its superblock, and the room left for a bitmap to grow into.
+//
+// It is read from the metadata written when the array was made, so it does not
+// change when a member grows. The gap between what a member holds and what the
+// array uses on it would: a member grown ahead of the array reads as all
+// overhead, and asking for it again compounds every pass.
+func (t T) DevOverhead(ctx context.Context, devpath string) (int64, error) {
+	cmd := command.New(
+		command.WithContext(ctx),
+		command.WithName(mdadm),
+		command.WithVarArgs("--examine", devpath),
+		command.WithLogger(t.log),
+		command.WithCommandLogLevel(zerolog.TraceLevel),
+		command.WithStdoutLogLevel(zerolog.TraceLevel),
+		command.WithStderrLogLevel(zerolog.TraceLevel),
+		command.WithBufferedStdout(),
+	)
+	b, err := cmd.Output()
+	if err != nil {
+		return 0, err
+	}
+	for _, line := range strings.Split(string(b), "\n") {
+		name, value, ok := strings.Cut(line, ":")
+		if !ok || strings.TrimSpace(name) != "Data Offset" {
+			continue
+		}
+		field, _, _ := strings.Cut(strings.TrimSpace(value), " ")
+		sectors, err := strconv.ParseInt(field, 10, 64)
+		if err != nil {
+			return 0, fmt.Errorf("%s: parse data offset %s: %w", devpath, field, err)
+		}
+		return sectors * 512, nil
+	}
+	return 0, fmt.Errorf("%s reports no data offset", devpath)
+}
