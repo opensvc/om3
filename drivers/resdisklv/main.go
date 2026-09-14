@@ -183,6 +183,14 @@ func (t *T) exposedDevice() device.T {
 	return device.New(fmt.Sprintf("/dev/%s", t.fqn()), device.WithLogger(t.Log()))
 }
 
+// ResizeRestsOn implements resource.ResizeRestsOn.
+//
+// A logical volume takes its space from its volume group, which no device
+// leads to: what a volume group exposes is the logical volumes themselves.
+func (t *T) ResizeRestsOn(_ context.Context) string {
+	return "vg/" + t.VGName
+}
+
 func (t *T) ClaimedDevices(ctx context.Context) device.L {
 	return t.ExposedDevices(ctx)
 }

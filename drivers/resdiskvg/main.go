@@ -15,6 +15,7 @@ import (
 	"github.com/opensvc/om3/v3/drivers/resdisk"
 	"github.com/opensvc/om3/v3/util/device"
 	"github.com/opensvc/om3/v3/util/lvm2"
+	"github.com/opensvc/om3/v3/util/sizeconv"
 	"github.com/opensvc/om3/v3/util/udevadm"
 )
 
@@ -43,6 +44,11 @@ type (
 		Tags(context.Context) ([]string, error)
 		GetLVSummary(context.Context) (lvm2.LVSummary, error)
 		NeedActivate(lvm2.LVSummary) bool
+	}
+	VGDriverResizer interface {
+		Size(context.Context) (int64, error)
+		ExtentSize(context.Context) (int64, error)
+		ResizePV(context.Context, string, int64) error
 	}
 	VGDriverProvisioner interface {
 		Create(context.Context, string, []string, []string) error
@@ -97,6 +103,105 @@ func (t *T) Start(ctx context.Context) error {
 		return t.vg().Deactivate(ctx)
 	})
 	return nil
+}
+
+// resizer returns the volume group driver when it can report and change a
+// size, and says which driver cannot when it does not.
+func (t *T) resizer() (VGDriverResizer, error) {
+	vg := t.vg()
+	i, ok := vg.(VGDriverResizer)
+	if !ok {
+		return nil, fmt.Errorf("%s volume groups cannot be resized", vg.DriverName())
+	}
+	return i, nil
+}
+
+// CurrentSize implements resource.Sizer.
+func (t *T) CurrentSize(ctx context.Context) (int64, error) {
+	vg, err := t.resizer()
+	if err != nil {
+		return 0, err
+	}
+	return vg.Size(ctx)
+}
+
+// ResizePlan implements resource.Resizer.
+//
+// A volume group offers its logical volumes less than its physical volumes
+// hold, by the metadata lvm keeps and by what does not fill a whole extent.
+// What it asks of the device below is the size wanted plus what it is short
+// today, which over-asks by at most one extent and never under-asks.
+func (t *T) ResizePlan(ctx context.Context, to int64) (int64, error) {
+	vg, err := t.resizer()
+	if err != nil {
+		return 0, err
+	}
+	pvs, err := t.vg().PVs(ctx)
+	if err != nil {
+		return 0, err
+	}
+	if len(pvs) != 1 {
+		return 0, fmt.Errorf("volume group %s has %d physical volumes: which of them to resize is not something this can decide",
+			t.VGName, len(pvs))
+	}
+	pvSize, err := pvs[0].Size()
+	if err != nil {
+		return 0, err
+	}
+	vgSize, err := vg.Size(ctx)
+	if err != nil {
+		return 0, err
+	}
+	overhead := pvSize - vgSize
+	if overhead < 0 {
+		overhead = 0
+	}
+
+	// A volume group hands out whole extents, so a logical volume asking for
+	// a size that is not one gets the next one up. Ask for that here, or the
+	// group ends up one extent short of what the volume above it needs.
+	extent, err := vg.ExtentSize(ctx)
+	if err != nil {
+		return 0, err
+	}
+	to = sizeconv.RoundUp(to, extent)
+
+	// A block device holds whole sectors, so that is what it asks for.
+	return sizeconv.RoundUp(to+overhead, 512), nil
+}
+
+// Resize implements resource.Resizer.
+//
+// Growing takes the whole device, which the plan made sure is large enough.
+// Shrinking sets the physical volume size explicitly, which lvm refuses if
+// extents beyond it are in use.
+func (t *T) Resize(ctx context.Context, to int64) error {
+	vg, err := t.resizer()
+	if err != nil {
+		return err
+	}
+	pvs, err := t.vg().PVs(ctx)
+	if err != nil {
+		return err
+	}
+	if len(pvs) != 1 {
+		return fmt.Errorf("volume group %s has %d physical volumes: which of them to resize is not something this can decide",
+			t.VGName, len(pvs))
+	}
+	from, err := vg.Size(ctx)
+	if err != nil {
+		return err
+	}
+	size := int64(0)
+	if to < from {
+		// Give space back: the physical volume keeps what the group needs
+		// plus what lvm keeps for itself, which is the same arithmetic the
+		// plan did.
+		if size, err = t.ResizePlan(ctx, to); err != nil {
+			return err
+		}
+	}
+	return vg.ResizePV(ctx, pvs[0].Path(), size)
 }
 
 func (t *T) Info(ctx context.Context) (resource.InfoKeys, error) {
@@ -230,6 +335,12 @@ func (t *T) ExposedDevices(ctx context.Context) device.L {
 	} else {
 		return device.L{}
 	}
+}
+
+// ResizeProvides implements resource.ResizeProvides, so the logical volumes
+// of this group find it: no device leads from one to the other.
+func (t *T) ResizeProvides(_ context.Context) string {
+	return "vg/" + t.VGName
 }
 
 func (t *T) ClaimedDevices(ctx context.Context) device.L {

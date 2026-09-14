@@ -35,6 +35,7 @@ import (
 	"github.com/opensvc/om3/v3/util/file"
 	"github.com/opensvc/om3/v3/util/hostname"
 	"github.com/opensvc/om3/v3/util/key"
+	"github.com/opensvc/om3/v3/util/sizeconv"
 )
 
 type (
@@ -75,6 +76,9 @@ type (
 		WaitConnectingOrConnected(ctx context.Context, nodeID string) (string, error)
 		StartConnections(context.Context, ...string) error
 		Show(ctx context.Context) (drbd.DrbdShow, error)
+	}
+	DRBDDriverResizer interface {
+		Resize(context.Context) error
 	}
 
 	// ResTemplateData represents template data for a resource configuration, it is exported (public)
@@ -1039,6 +1043,66 @@ func (t *T) Provisioned(ctx context.Context) (provisioned.T, error) {
 		return provisioned.False, nil
 	}
 	return provisioned.True, nil
+}
+
+// CurrentSize implements resource.Sizer.
+//
+// It is the size of the replicated device, which is less than the device
+// behind it: drbd keeps its metadata there.
+func (t *T) CurrentSize(ctx context.Context) (int64, error) {
+	devs := t.ExposedDevices(ctx)
+	if len(devs) == 0 {
+		return 0, fmt.Errorf("drbd resource %s exposes no device, so its size cannot be read", t.Res)
+	}
+	return devs[0].Size()
+}
+
+// ResizePlan implements resource.Resizer.
+//
+// What drbd asks of the device below is the size wanted plus its metadata.
+// That is measured rather than computed, because how much a drbd version
+// keeps depends on the number of peers it was given room for. It is scaled
+// with the device because most of it is the dirty bitmap, one bit per 4k, so
+// a device twice the size needs about twice the metadata.
+func (t *T) ResizePlan(ctx context.Context, to int64) (int64, error) {
+	if _, ok := t.drbd(ctx).(DRBDDriverResizer); !ok {
+		return 0, fmt.Errorf("this drbd driver cannot resize")
+	}
+	from, err := t.CurrentSize(ctx)
+	if err != nil {
+		return 0, err
+	}
+	subs := t.SubDevices(ctx)
+	if len(subs) != 1 {
+		return 0, fmt.Errorf("drbd resource %s rests on %d devices: which of them to resize is not something this can decide",
+			t.Res, len(subs))
+	}
+	below, err := subs[0].Size()
+	if err != nil {
+		return 0, err
+	}
+	overhead := below - from
+	if overhead < 0 {
+		overhead = 0
+	}
+	if from > 0 {
+		// Round up, so the metadata that grows with the device is covered.
+		overhead = (overhead*to + from - 1) / from
+	}
+	// A block device holds whole sectors, so that is what it asks for.
+	return sizeconv.RoundUp(to+overhead, 512), nil
+}
+
+// Resize implements resource.Resizer.
+//
+// The device behind drbd has to have been grown on every node first: a replica
+// can only offer what the smallest of them holds.
+func (t *T) Resize(ctx context.Context, _ int64) error {
+	dev, ok := t.drbd(ctx).(DRBDDriverResizer)
+	if !ok {
+		return fmt.Errorf("this drbd driver cannot resize")
+	}
+	return dev.Resize(ctx)
 }
 
 func (t *T) ExposedDevices(ctx context.Context) device.L {
