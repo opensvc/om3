@@ -62,3 +62,18 @@ func (t Change) String() string {
 	}
 	return "+" + BSizeCompact(float64(t.Value))
 }
+
+// RoundUp returns n rounded up to the next multiple of to.
+//
+// Sizes are handed from one link of a resize chain to the next, and what one
+// link computes is not always a size the next one accepts: lvresize refuses a
+// size that is not a whole number of sectors.
+func RoundUp(n, to int64) int64 {
+	if to <= 0 {
+		return n
+	}
+	if mod := n % to; mod != 0 {
+		n += to - mod
+	}
+	return n
+}

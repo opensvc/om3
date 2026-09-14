@@ -354,6 +354,25 @@ func (t *T) Adjust(ctx context.Context) error {
 	return retry(cmd)
 }
 
+// Resize makes the drbd resource use the current size of the device behind
+// it, on every node holding a replica.
+//
+// The backing device has to have been grown on every node first: drbd can only
+// offer what the smallest replica holds.
+func (t *T) Resize(ctx context.Context) error {
+	args := []string{"resize", t.res}
+	cmd := command.New(
+		command.WithName(drbdadm),
+		command.WithArgs(args),
+		command.WithLogger(t.log),
+		command.WithCommandLogLevel(zerolog.InfoLevel),
+		command.WithStdoutLogLevel(zerolog.InfoLevel),
+		command.WithStderrLogLevel(zerolog.ErrorLevel),
+		command.WithContext(ctx),
+	)
+	return retry(cmd)
+}
+
 func (t *T) Connect(ctx context.Context, nodeID string) error {
 	f := func(ctx context.Context) error {
 		return t.connect(ctx, nodeID)

@@ -5,6 +5,8 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"io"
+	"os"
 	"slices"
 	"syscall"
 
@@ -43,6 +45,19 @@ func WithLogger(log *plog.Logger) funcopt.O {
 
 func (t T) String() string {
 	return t.path
+}
+
+// Size is the bytes the device holds.
+//
+// Seeking to the end of a block device answers its capacity, which saves an
+// ioctl constant and works the same on a regular file.
+func (t T) Size() (int64, error) {
+	f, err := os.Open(t.path)
+	if err != nil {
+		return 0, err
+	}
+	defer func() { _ = f.Close() }()
+	return f.Seek(0, io.SeekEnd)
 }
 
 func (t T) Path() string {
