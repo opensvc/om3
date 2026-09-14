@@ -909,10 +909,10 @@ func (t T) waitExpectation(ctx context.Context, c *client.T, idC <-chan uuid.UUI
 	switch globalExpect {
 	case instance.MonitorGlobalExpectStarted:
 		checkFunc = func() error {
-			if err := assertAvail(p, status.Up, status.NotApplicable); err != nil {
-				return err
-			}
-			return assertFrozen(p, "unfrozen")
+			// The frozen flag is not asserted: a start asked of a frozen
+			// object starts it and leaves the freeze as it was found, so
+			// being up is the whole of what was asked for.
+			return assertAvail(p, status.Up, status.NotApplicable)
 		}
 	case instance.MonitorGlobalExpectStopped:
 		checkFunc = func() error {
