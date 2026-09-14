@@ -169,7 +169,9 @@ func (t *Manager) crmResourceStart(rids []string) error {
 // crmResize grows the whole chain of the resource the object exposes, to the
 // size the object is configured to hold.
 func (t *Manager) crmResize() error {
-	return t.crmAction("resize", t.path.String(), "instance", "resize", "--grow-only")
+	// --force because every node has grown what is under the replicated
+	// resource by now: that is what wait non-leader waited for.
+	return t.crmAction("resize", t.path.String(), "instance", "resize", "--grow-only", "--force")
 }
 
 // crmResizeBelowReplicated grows the links under the replicated one, so the

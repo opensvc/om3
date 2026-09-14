@@ -18,6 +18,7 @@ type (
 		DryRun          bool
 		BelowReplicated bool
 		GrowOnly        bool
+		Force           bool
 	}
 
 	instanceResizer interface {
@@ -55,7 +56,7 @@ func (t *CmdObjectInstanceResize) one(p naming.Path) error {
 		return fmt.Errorf("%s: a %s has no head resource to resize", p, p.Kind)
 	}
 	ctx := context.Background()
-	opts := object.ResizeOptions{GrowOnly: t.GrowOnly}
+	opts := object.ResizeOptions{GrowOnly: t.GrowOnly, Force: t.Force}
 
 	// No size asked for means the size the volume is configured to be, which
 	// is the size a resize orchestration is converging every node to.
