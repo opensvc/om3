@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/opensvc/om3/v3/core/naming"
 	"github.com/opensvc/om3/v3/core/resource"
 	"github.com/opensvc/om3/v3/core/resourceselector"
 	"github.com/opensvc/om3/v3/util/sizeconv"
@@ -14,11 +15,19 @@ type (
 	// ResizeStep is one link of the chain a resize walks, and the size that
 	// link is asked to reach.
 	ResizeStep struct {
+		// Path names the object the resource belongs to, and is empty for
+		// the object the resize was asked of. A chain can cross into another
+		// object: a volume resource stands for the head of its volume.
+		Path    string `json:"path,omitempty"`
 		RID     string `json:"rid"`
 		Driver  string `json:"driver"`
 		From    int64  `json:"from"`
 		To      int64  `json:"to"`
 		Comment string `json:"comment,omitempty"`
+
+		// r is the resource the step changes. A rid alone does not name it,
+		// because the chain can cross into another object.
+		r resource.Driver
 	}
 
 	// ResizePlan is what a resize would do, in the order it would do it.
@@ -32,11 +41,22 @@ type (
 		// direction that destroys data when it is applied in the wrong order.
 		IsShrink bool `json:"is_shrink"`
 	}
+
+	// resizeLink is one resource of a resize chain, with the object it
+	// belongs to, because a chain can cross into another object.
+	resizeLink struct {
+		path naming.Path
+		r    resource.Driver
+	}
 )
 
 func (t ResizeStep) String() string {
-	s := fmt.Sprintf("%-16s %-18s %10s -> %-10s",
-		t.RID, t.Driver,
+	rid := t.RID
+	if t.Path != "" {
+		rid += " (" + t.Path + ")"
+	}
+	s := fmt.Sprintf("%-30s %-18s %10s -> %-10s",
+		rid, t.Driver,
 		sizeconv.BSizeCompact(float64(t.From)),
 		sizeconv.BSizeCompact(float64(t.To)))
 	if t.Comment != "" {
@@ -58,17 +78,44 @@ func (t ResizePlan) String() string {
 	return strings.Join(lines, "\n")
 }
 
-// resizeChain returns the resources a resize of rid has to change, from the
-// named one down to the deepest one it rests on.
+// resizeChain returns the resources a resize of r has to change, from r down
+// to the deepest one it rests on.
 //
 // A link is found by asking the resource what devices it sits on, and the
 // object which resource exposes each of them. The walk stops where no resource
 // of the object exposes the device: below that the object owns nothing.
-func (t *actor) resizeChain(ctx context.Context, r resource.Driver) ([]resource.Driver, error) {
-	chain := []resource.Driver{r}
-	seen := map[string]bool{r.RID(): true}
+//
+// A link that stands for a resource of another object continues the walk
+// there, from that object's head.
+//
+// seen holds the links already walked, keyed by object and rid, so a chain
+// that loops back into itself is refused rather than walked forever.
+func (t *actor) resizeChain(ctx context.Context, r resource.Driver, seen map[string]bool) ([]resizeLink, error) {
+	chain := []resizeLink{{path: t.path, r: r}}
+	if seen[resizeLinkKey(t.path, r.RID())] {
+		return nil, fmt.Errorf("%s %s is reached twice: a resize of a chain that loops is not supported", t.path, r.RID())
+	}
+	seen[resizeLinkKey(t.path, r.RID())] = true
 	for {
-		sub, ok := chain[len(chain)-1].(resource.SubDeviceser)
+		last := chain[len(chain)-1].r
+
+		// A resource that stands for a resource of another object, like a
+		// volume resource standing for the head of its volume, holds no size
+		// of its own. The chain continues in that object, and this link drops
+		// out of it: there is nothing here to change.
+		if target, ok := last.(resource.ResizeTargeter); ok {
+			p, err := target.ResizeTarget(ctx)
+			if err != nil {
+				return nil, fmt.Errorf("%s: %w", last.RID(), err)
+			}
+			sub, err := headResizeChain(ctx, p, seen)
+			if err != nil {
+				return nil, fmt.Errorf("%s: %w", last.RID(), err)
+			}
+			return append(chain[:len(chain)-1], sub...), nil
+		}
+
+		sub, ok := last.(resource.SubDeviceser)
 		if !ok {
 			return chain, nil
 		}
@@ -78,23 +125,59 @@ func (t *actor) resizeChain(ctx context.Context, r resource.Driver) ([]resource.
 			if err != nil {
 				return nil, err
 			}
-			if below == nil || seen[below.RID()] {
+			if below == nil || seen[resizeLinkKey(t.path, below.RID())] {
 				continue
 			}
 			if next != nil && next.RID() != below.RID() {
 				// Several resources of the object below this one. Which of
 				// them a size belongs to is not something this can decide.
 				return nil, fmt.Errorf("%s rests on %s and %s: a resize of a chain that forks is not supported",
-					chain[len(chain)-1].RID(), next.RID(), below.RID())
+					last.RID(), next.RID(), below.RID())
 			}
 			next = below
 		}
 		if next == nil {
 			return chain, nil
 		}
-		seen[next.RID()] = true
-		chain = append(chain, next)
+		seen[resizeLinkKey(t.path, next.RID())] = true
+		chain = append(chain, resizeLink{path: t.path, r: next})
 	}
+}
+
+// resizeChainOf returns the chain a resize of rid walks.
+func (t *actor) resizeChainOf(ctx context.Context, rid string, seen map[string]bool) ([]resizeLink, error) {
+	t.ConfigureResources()
+	r := t.ResourceByID(rid)
+	if r == nil {
+		return nil, fmt.Errorf("%s has no %s resource", t.path, rid)
+	}
+	return t.resizeChain(ctx, r, seen)
+}
+
+// headResizeChain returns the chain a resize asked of an object itself walks,
+// starting at the resource that object exposes to its consumers.
+func headResizeChain(ctx context.Context, p naming.Path, seen map[string]bool) ([]resizeLink, error) {
+	type headResizer interface {
+		HeadRID(context.Context) (string, error)
+		resizeChainOf(ctx context.Context, rid string, seen map[string]bool) ([]resizeLink, error)
+	}
+	o, err := New(p)
+	if err != nil {
+		return nil, err
+	}
+	i, ok := o.(headResizer)
+	if !ok {
+		return nil, fmt.Errorf("%s exposes no resource to resize", p)
+	}
+	rid, err := i.HeadRID(ctx)
+	if err != nil {
+		return nil, err
+	}
+	return i.resizeChainOf(ctx, rid, seen)
+}
+
+func resizeLinkKey(p naming.Path, rid string) string {
+	return p.String() + " " + rid
 }
 
 // ResizePlan works out what resizing rid to the given size would do, and
@@ -122,63 +205,77 @@ func (t *actor) ResizePlan(ctx context.Context, rid string, change sizeconv.Chan
 		return plan, fmt.Errorf("%s selects %s: a resize is asked of one resource",
 			rid, strings.Join(rids, ", "))
 	}
-	r := selected[0]
-	chain, err := t.resizeChain(ctx, r)
+	chain, err := t.resizeChain(ctx, selected[0], map[string]bool{})
 	if err != nil {
 		return plan, err
 	}
-	return BuildResizePlan(ctx, chain, change)
+	plan, err = buildResizePlan(ctx, chain, change, t.path)
+	if err != nil {
+		return plan, err
+	}
+
+	// The object the resize was asked of goes without saying. What is named
+	// is what the chain crossed into.
+	for i := range plan.Steps {
+		if plan.Steps[i].Path == t.path.String() {
+			plan.Steps[i].Path = ""
+		}
+	}
+	return plan, nil
 }
 
-// BuildResizePlan works out what resizing a chain would do, and changes
+// buildResizePlan works out what resizing a chain would do, and changes
 // nothing. The chain runs from the resource the size was asked of down to the
 // deepest one it rests on.
-func BuildResizePlan(ctx context.Context, chain []resource.Driver, change sizeconv.Change) (ResizePlan, error) {
+// home is the object the resize was asked of, so a link of another object is
+// named with it.
+func buildResizePlan(ctx context.Context, chain []resizeLink, change sizeconv.Change, home naming.Path) (ResizePlan, error) {
 	var plan ResizePlan
 	if len(chain) == 0 {
 		return plan, fmt.Errorf("nothing to resize")
 	}
+	head := chain[0]
 
 	// The size asked for is of the resource named, so the direction is read
 	// from that one. The links below follow it.
-	head, ok := chain[0].(resource.Sizer)
+	sizer, ok := head.r.(resource.Sizer)
 	if !ok {
-		return plan, fmt.Errorf("%s: driver %s does not report a size", chain[0].RID(), driverOf(chain[0]))
+		return plan, resizeRefusal(head, head, home, "reports no size")
 	}
-	from, err := head.CurrentSize(ctx)
+	from, err := sizer.CurrentSize(ctx)
 	if err != nil {
-		return plan, fmt.Errorf("%s: size: %w", chain[0].RID(), err)
+		return plan, fmt.Errorf("%s: size: %w", resizeLinkName(head, home), err)
 	}
 	to := change.Resolve(from)
 	if to <= 0 {
-		return plan, fmt.Errorf("%s: %s of %s leaves nothing", chain[0].RID(), change, sizeconv.BSizeCompact(float64(from)))
+		return plan, fmt.Errorf("%s: %s of %s leaves nothing", resizeLinkName(head, home), change, sizeconv.BSizeCompact(float64(from)))
 	}
 	plan.IsShrink = to < from
 
 	for _, link := range chain {
-		sizer, ok := link.(resource.Sizer)
+		sizer, ok := link.r.(resource.Sizer)
 		if !ok {
-			return plan, fmt.Errorf("%s: driver %s does not report a size, so the chain cannot be resized",
-				link.RID(), driverOf(link))
+			return plan, resizeRefusal(link, head, home, "reports no size")
 		}
-		resizer, ok := link.(resource.Resizer)
+		resizer, ok := link.r.(resource.Resizer)
 		if !ok {
-			return plan, fmt.Errorf("%s: driver %s cannot be resized, so the chain cannot be",
-				link.RID(), driverOf(link))
+			return plan, resizeRefusal(link, head, home, "cannot resize")
 		}
 		linkFrom, err := sizer.CurrentSize(ctx)
 		if err != nil {
-			return plan, fmt.Errorf("%s: size: %w", link.RID(), err)
+			return plan, fmt.Errorf("%s: size: %w", resizeLinkName(link, home), err)
 		}
 		needBelow, err := resizer.ResizePlan(ctx, to)
 		if err != nil {
-			return plan, fmt.Errorf("%s: %w", link.RID(), err)
+			return plan, fmt.Errorf("%s: %w", resizeLinkName(link, home), err)
 		}
 		step := ResizeStep{
-			RID:    link.RID(),
-			Driver: driverOf(link),
+			Path:   link.path.String(),
+			RID:    link.r.RID(),
+			Driver: driverOf(link.r),
 			From:   linkFrom,
 			To:     to,
+			r:      link.r,
 		}
 		if needBelow != to {
 			step.Comment = fmt.Sprintf("asks %s of the link below", sizeconv.BSizeCompact(float64(needBelow)))
@@ -204,20 +301,43 @@ func (t *actor) Resize(ctx context.Context, rid string, change sizeconv.Change) 
 		return err
 	}
 	for _, step := range plan.Steps {
-		r := t.ResourceByID(step.RID)
-		resizer, ok := r.(resource.Resizer)
+		resizer, ok := step.r.(resource.Resizer)
 		if !ok {
 			// The plan said otherwise a moment ago.
 			return fmt.Errorf("%s: cannot be resized", step.RID)
 		}
-		t.log.Infof("resize %s from %s to %s", step.RID,
+		name := step.RID
+		if step.Path != "" {
+			name += " (" + step.Path + ")"
+		}
+		t.log.Infof("resize %s from %s to %s", name,
 			sizeconv.BSizeCompact(float64(step.From)),
 			sizeconv.BSizeCompact(float64(step.To)))
 		if err := resizer.Resize(ctx, step.To); err != nil {
-			return fmt.Errorf("%s: %w", step.RID, err)
+			return fmt.Errorf("%s: %w", name, err)
 		}
 	}
 	return nil
+}
+
+// resizeRefusal says why a chain cannot be resized. A link that is not the one
+// the size was asked of is reported as what holds that one up, so the answer
+// is about what the user asked for and not only about where the walk stopped.
+func resizeRefusal(link, head resizeLink, home naming.Path, what string) error {
+	if link.path == head.path && link.r.RID() == head.r.RID() {
+		return fmt.Errorf("%s: its %s driver %s", resizeLinkName(link, home), driverOf(link.r), what)
+	}
+	return fmt.Errorf("%s rests on %s, whose %s driver %s",
+		resizeLinkName(head, home), resizeLinkName(link, home), driverOf(link.r), what)
+}
+
+// resizeLinkName names a link, saying which object it belongs to when it is
+// not the object the resize was asked of.
+func resizeLinkName(link resizeLink, home naming.Path) string {
+	if link.path == home {
+		return link.r.RID()
+	}
+	return link.path.String() + " " + link.r.RID()
 }
 
 // driverOf names the driver of a resource, for an error to say which driver

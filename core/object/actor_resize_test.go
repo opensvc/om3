@@ -9,6 +9,7 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/opensvc/om3/v3/core/manifest"
+	"github.com/opensvc/om3/v3/core/naming"
 	"github.com/opensvc/om3/v3/core/resource"
 	"github.com/opensvc/om3/v3/util/sizeconv"
 )
@@ -59,6 +60,16 @@ func (t *sizerOnly) RID() string                                  { return t.rid
 func (t *sizerOnly) CurrentSize(_ context.Context) (int64, error) { return t.has, nil }
 func (t *sizerOnly) Manifest() *manifest.T                        { return nil }
 
+// links wraps fake resources into a chain of one object, which is what a
+// chain that does not cross into another object is.
+func links(l ...resource.Driver) []resizeLink {
+	chain := make([]resizeLink, len(l))
+	for i, r := range l {
+		chain[i] = resizeLink{r: r}
+	}
+	return chain
+}
+
 func rids(plan ResizePlan) []string {
 	l := make([]string, len(plan.Steps))
 	for i, step := range plan.Steps {
@@ -71,7 +82,7 @@ func plan(t *testing.T, chain []resource.Driver, size string) ResizePlan {
 	t.Helper()
 	change, err := sizeconv.ParseChange(size)
 	require.NoError(t, err)
-	p, err := BuildResizePlan(context.Background(), chain, change)
+	p, err := buildResizePlan(context.Background(), links(chain...), change, naming.Path{})
 	require.NoError(t, err)
 	return p
 }
@@ -126,7 +137,8 @@ func TestALinkTranslatesTheSizeItAsksBelow(t *testing.T) {
 }
 
 // A chain holding one link that cannot be resized is refused whole, and the
-// error names the link, so nothing is left half resized.
+// error names both the link that cannot and the resource the size was asked
+// of, so nothing is left half resized and the answer is about what was asked.
 func TestAChainWithALinkThatCannotResizeIsRefused(t *testing.T) {
 	chain := []resource.Driver{
 		&fakeLink{rid: "fs#1", has: 10 * g},
@@ -135,10 +147,11 @@ func TestAChainWithALinkThatCannotResizeIsRefused(t *testing.T) {
 	}
 	change, err := sizeconv.ParseChange("+1g")
 	require.NoError(t, err)
-	_, err = BuildResizePlan(context.Background(), chain, change)
+	_, err = buildResizePlan(context.Background(), links(chain...), change, naming.Path{})
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "disk#vg")
-	assert.Contains(t, err.Error(), "cannot be resized")
+	assert.Contains(t, err.Error(), "cannot resize")
+	assert.Contains(t, err.Error(), "fs#1")
 }
 
 // A filesystem that cannot shrink says so while planning, before the device
@@ -150,7 +163,7 @@ func TestAShrinkIsRefusedBeforeAnythingMoves(t *testing.T) {
 	}
 	change, err := sizeconv.ParseChange("-1g")
 	require.NoError(t, err)
-	_, err = BuildResizePlan(context.Background(), chain, change)
+	_, err = buildResizePlan(context.Background(), links(chain...), change, naming.Path{})
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "fs#1")
 	assert.Contains(t, err.Error(), "cannot shrink")
@@ -161,6 +174,6 @@ func TestAResizeToNothingIsRefused(t *testing.T) {
 	chain := []resource.Driver{&fakeLink{rid: "fs#1", has: 10 * g}}
 	change, err := sizeconv.ParseChange("-10g")
 	require.NoError(t, err)
-	_, err = BuildResizePlan(context.Background(), chain, change)
+	_, err = buildResizePlan(context.Background(), links(chain...), change, naming.Path{})
 	assert.ErrorContains(t, err, "leaves nothing")
 }
