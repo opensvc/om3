@@ -618,26 +618,27 @@ func (t *T) CanInstall(ctx context.Context) (bool, error) {
 
 // CurrentSize implements resource.Sizer.
 //
-// A filesystem is the size of the device under it, which is how OpenSVC has
-// always counted one. What it can hand out is less, because it keeps metadata
-// and a log for itself, but the device is what it was given and what growing
-// it fills.
+// It is what the filesystem hands out, which is less than the device under it
+// holds: it keeps metadata and a log for itself.
 //
-// Counting the usable bytes instead would leave a filesystem permanently short
-// of a size it has already reached: a 5.49gi device carries an xfs that reports
-// 5.43gi, so every resize would find work to do and grow a filesystem that is
-// already as large as it can be.
-//
-// A filesystem holding its own size has no device to measure. statfs answers
-// for whichever filesystem holds the path, so the mount is checked first: an
-// unmounted resource would otherwise be reported as the size of the filesystem
-// its mount point sits in, a stopped 10m tmpfs read as the 37g root filesystem,
-// and a "+1g" then computed against that.
+// Reporting the device instead would read better on a converged chain, where
+// a 5.49gi device carrying an xfs that hands out 5.43gi looks like 60mi still
+// to grow. It is not worth it: the size would then equal the target the
+// moment the device grew, and the step that grows the filesystem onto it
+// would be skipped as already done. A filesystem short of its device is the
+// case this has to be able to see.
 func (t *T) CurrentSize(ctx context.Context) (int64, error) {
-	if _, ok := t.fs().(filesystems.SelfSizer); !ok {
-		dev := t.device(ctx)
-		return dev.Size()
-	}
+	return t.usableSize(ctx)
+}
+
+// usableSize is what the filesystem hands out, which is less than the device
+// holds: it keeps metadata and a log for itself.
+//
+// It is what says whether the filesystem has yet been grown onto its device,
+// which the device size cannot: a chain grows from the bottom up, so by the
+// time the filesystem is asked to grow, the device under it already holds the
+// new size.
+func (t *T) usableSize(ctx context.Context) (int64, error) {
 	mnt := t.mountPoint()
 	mounts, err := findmnt.List(ctx, "", mnt)
 	if err != nil {
@@ -692,7 +693,9 @@ func (t *T) Resize(ctx context.Context, to int64) error {
 	if selfSizer, ok := fs.(filesystems.SelfSizer); ok {
 		return selfSizer.SetSize(ctx, t.mountPoint(), to)
 	}
-	from, err := t.CurrentSize(ctx)
+	// What the filesystem holds now, not what the device holds: the device
+	// has already been grown by the time this runs.
+	from, err := t.usableSize(ctx)
 	if err != nil {
 		return err
 	}
