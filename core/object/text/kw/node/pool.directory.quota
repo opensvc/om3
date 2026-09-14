@@ -1,0 +1,10 @@
+Bound each volume this pool serves to the size it was asked for, with a
+project quota on the filesystem holding the pool.
+
+A directory has no size of its own, so without this a volume served by a
+directory pool is given the whole filesystem and the size asked of the pool is
+recorded but not enforced.
+
+The pool path has to be on an xfs filesystem mounted with the prjquota option.
+A volume provision refuses rather than set a limit that would silently do
+nothing.

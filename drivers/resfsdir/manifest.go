@@ -8,6 +8,7 @@ import (
 	"github.com/opensvc/om3/v3/core/keywords"
 	"github.com/opensvc/om3/v3/core/manifest"
 	"github.com/opensvc/om3/v3/core/naming"
+	"github.com/opensvc/om3/v3/util/converters"
 )
 
 var (
@@ -23,6 +24,26 @@ var (
 			Required: true,
 			Scopable: true,
 			Text:     keywords.NewText(fs, "text/kw/path"),
+		},
+		{
+			Attr:      "Size",
+			Converter: converters.Size,
+			// InheritLeaf, because a vol declares in its DEFAULT section the
+			// size it was claimed from its pool. Inheriting that here would
+			// give every directory of every volume a quota nobody asked for,
+			// and fail on a filesystem that cannot hold one.
+			Inherit:  keywords.InheritLeaf,
+			Option:   "size",
+			Scopable: true,
+			Text:     keywords.NewText(fs, "text/kw/size"),
+		},
+		{
+			Attr:      "ProjectID",
+			Converter: converters.Int,
+			Inherit:   keywords.InheritLeaf,
+			Option:    "project_id",
+			Scopable:  true,
+			Text:      keywords.NewText(fs, "text/kw/project_id"),
 		},
 		/*
 			{

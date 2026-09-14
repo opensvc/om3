@@ -72,11 +72,28 @@ func (t *T) loopFile(name string) string {
 }
 
 func (t *T) Translate(name string, size int64, shared bool) ([]string, error) {
-	return []string{
+	l := []string{
 		"fs#0.type=flag",
 		"fs#1.type=directory",
 		"fs#1.path=" + filepath.Join(t.path(), name),
-	}, nil
+	}
+
+	// A directory has no size of its own. Without a quota the volume is given
+	// the whole filesystem, and the size asked of the pool is recorded but
+	// not enforced, which is what this pool has always done. Asking for the
+	// quota is what makes the size real.
+	if t.quota() {
+		// A reference rather than the value, so the volume holds the size it
+		// is asked for in one place: an orchestrated resize writes it there.
+		l = append(l, "fs#1.size={size}")
+	}
+	return l, nil
+}
+
+// quota says the pool bounds the volumes it serves to the size they were
+// asked for.
+func (t T) quota() bool {
+	return t.GetBool("quota")
 }
 
 func (t *T) BlkTranslate(name string, size int64, shared bool) ([]string, error) {
