@@ -418,6 +418,59 @@ func (t *T) ExposedDevices(ctx context.Context) device.L {
 	}
 }
 
+// CurrentSize implements resource.Sizer.
+//
+// It is what the pool holds, which is less than its vdevs do: zfs keeps room
+// for its labels and its reserve.
+func (t *T) CurrentSize(ctx context.Context) (int64, error) {
+	usage, err := t.pool().Usage(ctx)
+	if err != nil {
+		return 0, err
+	}
+	return usage.Size, nil
+}
+
+// ResizePlan implements resource.Resizer.
+//
+// The device below is asked for the size wanted, and the pool ends up a little
+// under it, because zfs keeps room for its labels and its reserve. That is the
+// same bargain a filesystem makes with the device under it.
+//
+// What zfs keeps is not added to the request, even though it is a fixed
+// fraction of the pool, near a twenty fifth of it: a 300mi device carried a
+// 288mi pool and a 600mi device carries a 576mi one.
+//
+// Adding it would mean measuring the gap between the device and the pool, and
+// that gap is the growth itself once the device has grown and the pool has
+// not, which every pass would then ask for again. It is the trap a drbd
+// resource, an md member and a luks header all set, and the pool is the one
+// place where there is no fixed property to read instead. So the request is
+// passed down as it came, and the pool lands a little under it.
+func (t *T) ResizePlan(ctx context.Context, to int64) (int64, error) {
+	if len(t.SubDevices(ctx)) == 0 {
+		return 0, fmt.Errorf("zpool %s rests on no device this object knows", t.Name)
+	}
+	return to, nil
+}
+
+// Resize implements resource.Resizer.
+//
+// A pool is not given a size: it is what its vdevs hold. Growing one is
+// telling it to look again at devices that have grown.
+func (t *T) Resize(ctx context.Context, to int64) error {
+	devs := t.SubDevices(ctx)
+	if len(devs) == 0 {
+		return fmt.Errorf("zpool %s rests on no device this object knows", t.Name)
+	}
+	pool := t.pool()
+	for _, dev := range devs {
+		if err := pool.ExpandDevice(ctx, dev.Path()); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
 func (t *T) SubDevices(ctx context.Context) device.L {
 	if l, errUpd := t.updateSubDevsFile(ctx); errUpd == nil && l != nil {
 		return t.toDevices(l)
