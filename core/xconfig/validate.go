@@ -231,6 +231,18 @@ func (t Alerts) StringWithoutMeta() string {
 	return strings.Join(l, "\n")
 }
 
+// Errors are the alerts that make a configuration invalid, as opposed to the
+// warnings that only have something to say about it.
+func (t Alerts) Errors() Alerts {
+	l := make(Alerts, 0, len(t))
+	for _, alert := range t {
+		if alert.Level == alertLevelError {
+			l = append(l, alert)
+		}
+	}
+	return l
+}
+
 func (t Alerts) HasError() bool {
 	return t.has(alertLevelError)
 }

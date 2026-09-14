@@ -1456,7 +1456,10 @@ func (t *T) rawCommit(configData rawconfig.T, configPath string, validate bool) 
 		if alerts, err := t.Validate(); err != nil {
 			return fmt.Errorf("abort config commit: %w", err)
 		} else if alerts.HasError() {
-			return fmt.Errorf("abort config commit: validation errors")
+			// Say which keywords are wrong. The caller is often a driver
+			// committing a configuration it generated itself, and "validation
+			// errors" leaves nobody able to tell what it got wrong.
+			return fmt.Errorf("abort config commit:\n%s", alerts.Errors().StringWithoutMeta())
 		}
 	}
 	if t.Referrer != nil && !t.Referrer.IsVolatile() {
