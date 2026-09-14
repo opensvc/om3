@@ -472,6 +472,12 @@ func doPostObjectAction(ctx context.Context, c *client.T, target instance.Monito
 			return nil, err
 		}
 		return handleStatusCode(resp.StatusCode(), resp.Body, resp.JSON400, resp.JSON401, resp.JSON403, resp.JSON404, resp.JSON408, resp.JSON409, resp.JSON500)
+	case instance.MonitorGlobalExpectResized:
+		resp, err := c.PostObjectActionResizeWithResponse(ctx, p.Namespace, p.Kind, p.Name)
+		if err != nil {
+			return nil, err
+		}
+		return handleStatusCode(resp.StatusCode(), resp.Body, resp.JSON400, resp.JSON401, resp.JSON403, resp.JSON404, resp.JSON408, resp.JSON409, resp.JSON500)
 	case instance.MonitorGlobalExpectRestarted:
 		params := api.PostObjectActionRestart{}
 		if options, ok := targetOptions.(instance.MonitorGlobalExpectOptionsRestarted); !ok {

@@ -4397,6 +4397,40 @@ paths:
         500:
           $ref: '#/components/responses/500'
 
+  /api/object/path/{namespace}/{kind}/{name}/action/resize:
+    post:
+      operationId: PostObjectActionResize
+      tags:
+        - object / svc
+      security:
+        - basicAuth: []
+        - bearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/inPathNamespace'
+        - $ref: '#/components/parameters/inPathKind'
+        - $ref: '#/components/parameters/inPathName'
+      responses:
+        200:
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/OrchestrationQueued'
+        400:
+          $ref: '#/components/responses/400'
+        401:
+          $ref: '#/components/responses/401'
+        403:
+          $ref: '#/components/responses/403'
+        404:
+          $ref: '#/components/responses/404'
+        408:
+          $ref: '#/components/responses/408'
+        409:
+          $ref: '#/components/responses/409'
+        500:
+          $ref: '#/components/responses/500'
+
   /api/object/path/{namespace}/{kind}/{name}/action/restart:
     post:
       operationId: PostObjectActionRestart
