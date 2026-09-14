@@ -3,6 +3,7 @@ package object
 import (
 	"context"
 	"fmt"
+	"sort"
 	"strings"
 
 	"github.com/opensvc/om3/v3/core/keyop"
@@ -68,6 +69,11 @@ type (
 		// resource.
 		Force bool
 	}
+
+	// resizeLevel is the resources a chain rests on at one depth, all asked
+	// for the same size. An array is the reason there can be several: it
+	// rests on each of its members, and asks the same of each.
+	resizeLevel []resizeLink
 
 	// resizeLink is one resource of a resize chain, with the object it
 	// belongs to, because a chain can cross into another object.
@@ -136,70 +142,83 @@ func (t ResizePlan) HasWork() bool {
 //
 // seen holds the links already walked, keyed by object and rid, so a chain
 // that loops back into itself is refused rather than walked forever.
-func (t *actor) resizeChain(ctx context.Context, r resource.Driver, seen map[string]bool) ([]resizeLink, error) {
-	chain := []resizeLink{{path: t.path, r: r, owner: t}}
+func (t *actor) resizeChain(ctx context.Context, r resource.Driver, seen map[string]bool) ([]resizeLevel, error) {
+	first := resizeLink{path: t.path, r: r, owner: t}
 	if seen[resizeLinkKey(t.path, r.RID())] {
 		return nil, fmt.Errorf("%s %s is reached twice: a resize of a chain that loops is not supported", t.path, r.RID())
 	}
 	seen[resizeLinkKey(t.path, r.RID())] = true
+	levels := []resizeLevel{{first}}
 	for {
-		last := chain[len(chain)-1].r
+		last := levels[len(levels)-1]
 
 		// A resource that stands for a resource of another object, like a
 		// volume resource standing for the head of its volume, holds no size
 		// of its own. The chain continues in that object, and this link drops
 		// out of it: there is nothing here to change.
-		if target, ok := last.(resource.ResizeTargeter); ok {
-			p, err := target.ResizeTarget(ctx)
-			if err != nil {
-				return nil, fmt.Errorf("%s: %w", last.RID(), err)
-			}
-			sub, err := headResizeChain(ctx, p, seen)
-			if err != nil {
-				return nil, fmt.Errorf("%s: %w", last.RID(), err)
-			}
-			return append(chain[:len(chain)-1], sub...), nil
-		}
-
-		// A link that rests on something no device leads to names it, and
-		// the resource answering to that name is the next link.
-		if namer, ok := last.(resource.ResizeRestsOn); ok {
-			if next := t.resizeProvider(ctx, namer.ResizeRestsOn(ctx)); next != nil {
-				if !seen[resizeLinkKey(t.path, next.RID())] {
-					seen[resizeLinkKey(t.path, next.RID())] = true
-					chain = append(chain, resizeLink{path: t.path, r: next, owner: t})
-					continue
+		if len(last) == 1 {
+			if target, ok := last[0].r.(resource.ResizeTargeter); ok {
+				p, err := target.ResizeTarget(ctx)
+				if err != nil {
+					return nil, fmt.Errorf("%s: %w", last[0].r.RID(), err)
 				}
+				sub, err := headResizeChain(ctx, p, seen)
+				if err != nil {
+					return nil, fmt.Errorf("%s: %w", last[0].r.RID(), err)
+				}
+				return append(levels[:len(levels)-1], sub...), nil
 			}
 		}
 
-		sub, ok := last.(resource.SubDeviceser)
-		if !ok {
-			return chain, nil
+		next, err := t.resizeLevelBelow(ctx, last, seen)
+		if err != nil {
+			return nil, err
 		}
-		var next resource.Driver
+		if len(next) == 0 {
+			return levels, nil
+		}
+		levels = append(levels, next)
+	}
+}
+
+// resizeLevelBelow returns the resources a level rests on, which is every
+// resource any of its links rests on.
+func (t *actor) resizeLevelBelow(ctx context.Context, level resizeLevel, seen map[string]bool) (resizeLevel, error) {
+	var next resizeLevel
+	add := func(r resource.Driver) {
+		key := resizeLinkKey(t.path, r.RID())
+		if seen[key] {
+			return
+		}
+		seen[key] = true
+		next = append(next, resizeLink{path: t.path, r: r, owner: t})
+	}
+	for _, link := range level {
+		// A link that rests on something no device leads to names it, and
+		// the resource answering to that name is below it.
+		if namer, ok := link.r.(resource.ResizeRestsOn); ok {
+			if below := t.resizeProvider(ctx, namer.ResizeRestsOn(ctx)); below != nil {
+				add(below)
+				continue
+			}
+		}
+		sub, ok := link.r.(resource.SubDeviceser)
+		if !ok {
+			continue
+		}
 		for _, dev := range sub.SubDevices(ctx) {
 			below, err := t.ResourceHandlingDevice(ctx, dev)
 			if err != nil {
 				return nil, err
 			}
-			if below == nil || seen[resizeLinkKey(t.path, below.RID())] {
+			if below == nil {
 				continue
 			}
-			if next != nil && next.RID() != below.RID() {
-				// Several resources of the object below this one. Which of
-				// them a size belongs to is not something this can decide.
-				return nil, fmt.Errorf("%s rests on %s and %s: a resize of a chain that forks is not supported",
-					last.RID(), next.RID(), below.RID())
-			}
-			next = below
+			add(below)
 		}
-		if next == nil {
-			return chain, nil
-		}
-		seen[resizeLinkKey(t.path, next.RID())] = true
-		chain = append(chain, resizeLink{path: t.path, r: next, owner: t})
 	}
+	sort.Slice(next, func(i, j int) bool { return next[i].r.RID() < next[j].r.RID() })
+	return next, nil
 }
 
 // replicatedResizeResource returns the resource of the object whose size is
@@ -276,24 +295,26 @@ func (t *actor) ResizeBelowReplicated(ctx context.Context, to int64, opts Resize
 //
 // The phase that grows the links under the replicated resource says so, and
 // is how a node left behind is caught up, so it is not stopped here.
-func refuseLoneReplicaResize(chain []resizeLink, opts ResizeOptions) error {
+func refuseLoneReplicaResize(chain []resizeLevel, opts ResizeOptions) error {
 	if opts.Force {
 		return nil
 	}
-	for _, link := range chain {
-		i, ok := link.r.(resource.ResizeIsReplicated)
-		if !ok || !i.ResizeIsReplicated() {
-			continue
+	for _, level := range chain {
+		for _, link := range level {
+			i, ok := link.r.(resource.ResizeIsReplicated)
+			if !ok || !i.ResizeIsReplicated() {
+				continue
+			}
+			peers, err := link.owner.Peers()
+			if err != nil {
+				return err
+			}
+			if len(peers) < 2 {
+				return nil
+			}
+			return fmt.Errorf("%s replicates %s to %d nodes, and this grows only %s: a replicated resource offers what its smallest replica holds, so the space would be stranded. Use \"om %s resize\" to grow every node, or --force to grow this one anyway",
+				link.r.RID(), link.path, len(peers), hostname.Hostname(), link.path)
 		}
-		peers, err := link.owner.Peers()
-		if err != nil {
-			return err
-		}
-		if len(peers) < 2 {
-			return nil
-		}
-		return fmt.Errorf("%s replicates %s to %d nodes, and this grows only %s: a replicated resource offers what its smallest replica holds, so the space would be stranded. Use \"om %s resize\" to grow every node, or --force to grow this one anyway",
-			link.r.RID(), link.path, len(peers), hostname.Hostname(), link.path)
 	}
 	return nil
 }
@@ -317,7 +338,7 @@ func (t *actor) resizeProvider(ctx context.Context, name string) resource.Driver
 }
 
 // resizeChainOf returns the chain a resize of rid walks.
-func (t *actor) resizeChainOf(ctx context.Context, rid string, seen map[string]bool) ([]resizeLink, error) {
+func (t *actor) resizeChainOf(ctx context.Context, rid string, seen map[string]bool) ([]resizeLevel, error) {
 	t.ConfigureResources()
 	r := t.ResourceByID(rid)
 	if r == nil {
@@ -328,10 +349,10 @@ func (t *actor) resizeChainOf(ctx context.Context, rid string, seen map[string]b
 
 // headResizeChain returns the chain a resize asked of an object itself walks,
 // starting at the resource that object exposes to its consumers.
-func headResizeChain(ctx context.Context, p naming.Path, seen map[string]bool) ([]resizeLink, error) {
+func headResizeChain(ctx context.Context, p naming.Path, seen map[string]bool) ([]resizeLevel, error) {
 	type headResizer interface {
 		HeadRID(context.Context) (string, error)
-		resizeChainOf(ctx context.Context, rid string, seen map[string]bool) ([]resizeLink, error)
+		resizeChainOf(ctx context.Context, rid string, seen map[string]bool) ([]resizeLevel, error)
 	}
 	o, err := New(p)
 	if err != nil {
@@ -409,15 +430,15 @@ func (t *actor) localizeResizePlan(plan *ResizePlan) {
 // deepest one it rests on.
 // home is the object the resize was asked of, so a link of another object is
 // named with it.
-func buildResizePlan(ctx context.Context, chain []resizeLink, change sizeconv.Change, home naming.Path, opts ResizeOptions) (ResizePlan, error) {
+func buildResizePlan(ctx context.Context, chain []resizeLevel, change sizeconv.Change, home naming.Path, opts ResizeOptions) (ResizePlan, error) {
 	var plan ResizePlan
-	if len(chain) == 0 {
+	if len(chain) == 0 || len(chain[0]) == 0 {
 		return plan, fmt.Errorf("nothing to resize")
 	}
-	head := chain[0]
+	head := chain[0][0]
 
 	// The size asked for is of the resource named, so the direction is read
-	// from that one. The links below follow it.
+	// from that one. The levels below follow it.
 	sizer, ok := head.r.(resource.Sizer)
 	if !ok {
 		return plan, resizeRefusal(head, head, home, "reports no size")
@@ -437,46 +458,57 @@ func buildResizePlan(ctx context.Context, chain []resizeLink, change sizeconv.Ch
 		return plan, nil
 	}
 
-	for _, link := range chain {
-		sizer, ok := link.r.(resource.Sizer)
-		if !ok {
-			return plan, resizeRefusal(link, head, home, "reports no size")
-		}
-		resizer, ok := link.r.(resource.Resizer)
-		if !ok {
-			return plan, resizeRefusal(link, head, home, "cannot resize")
-		}
-		linkFrom, err := sizer.CurrentSize(ctx)
-		if err != nil {
-			return plan, fmt.Errorf("%s: size: %w", resizeLinkName(link, home), err)
-		}
-		needBelow, err := resizer.ResizePlan(ctx, to)
-		if err != nil {
-			return plan, fmt.Errorf("%s: %w", resizeLinkName(link, home), err)
-		}
-		step := ResizeStep{
-			Path:   link.path.String(),
-			RID:    link.r.RID(),
-			Driver: driverOf(link.r),
-			From:   linkFrom,
-			To:     to,
-			r:      link.r,
-			owner:  link.owner,
-		}
+	levelSteps := make([][]ResizeStep, 0, len(chain))
+	for _, level := range chain {
+		// Every resource of a level is asked for the same size, and the
+		// level below has to satisfy the most demanding of them.
+		var needBelow int64
+		var steps []ResizeStep
+		for _, link := range level {
+			sizer, ok := link.r.(resource.Sizer)
+			if !ok {
+				return plan, resizeRefusal(link, head, home, "reports no size")
+			}
+			resizer, ok := link.r.(resource.Resizer)
+			if !ok {
+				return plan, resizeRefusal(link, head, home, "cannot resize")
+			}
+			linkFrom, err := sizer.CurrentSize(ctx)
+			if err != nil {
+				return plan, fmt.Errorf("%s: size: %w", resizeLinkName(link, home), err)
+			}
+			linkNeedBelow, err := resizer.ResizePlan(ctx, to)
+			if err != nil {
+				return plan, fmt.Errorf("%s: %w", resizeLinkName(link, home), err)
+			}
+			if linkNeedBelow > needBelow {
+				needBelow = linkNeedBelow
+			}
+			step := ResizeStep{
+				Path:   link.path.String(),
+				RID:    link.r.RID(),
+				Driver: driverOf(link.r),
+				From:   linkFrom,
+				To:     to,
+				r:      link.r,
+				owner:  link.owner,
+			}
 
-		// A link below only has to be large enough. One that already is is
-		// left alone: shrinking it back would be work nobody asked for, and
-		// it would put a shrink in the middle of a grow, which has no safe
-		// order. This is also what heals a chain left uneven by a resize
-		// that failed part way.
-		if (!plan.IsShrink && linkFrom >= to) || (plan.IsShrink && linkFrom <= to) {
-			step.Skip = true
-			step.To = linkFrom
-			step.Comment = "already holds what the link above needs"
-		} else if needBelow != to {
-			step.Comment = fmt.Sprintf("asks %s of the link below", sizeconv.BSizeCompact(float64(needBelow)))
+			// A link below only has to be large enough. One that already is
+			// is left alone: shrinking it back would be work nobody asked
+			// for, and it would put a shrink in the middle of a grow, which
+			// has no safe order. This is also what heals a chain left uneven
+			// by a resize that failed part way.
+			if (!plan.IsShrink && linkFrom >= to) || (plan.IsShrink && linkFrom <= to) {
+				step.Skip = true
+				step.To = linkFrom
+				step.Comment = "already holds what the link above needs"
+			} else if linkNeedBelow != to {
+				step.Comment = fmt.Sprintf("asks %s of the link below", sizeconv.BSizeCompact(float64(linkNeedBelow)))
+			}
+			steps = append(steps, step)
 		}
-		plan.Steps = append(plan.Steps, step)
+		levelSteps = append(levelSteps, steps)
 		to = needBelow
 	}
 
@@ -484,8 +516,15 @@ func buildResizePlan(ctx context.Context, chain []resizeLink, change sizeconv.Ch
 	// anything is stretched onto it. It shrinks from the top down: a
 	// filesystem has to give the space back before the device under it is
 	// taken away, or what is still mounted is larger than what holds it.
+	//
+	// The levels are what reverses, not the steps: the resources of one level
+	// rest on nothing of each other, so their order among themselves is the
+	// order they were found in either way.
 	if !plan.IsShrink {
-		reverse(plan.Steps)
+		reverse(levelSteps)
+	}
+	for _, steps := range levelSteps {
+		plan.Steps = append(plan.Steps, steps...)
 	}
 	return plan, nil
 }
@@ -631,7 +670,7 @@ func driverOf(r resource.Driver) string {
 	return m.DriverID.String()
 }
 
-func reverse(l []ResizeStep) {
+func reverse[T any](l []T) {
 	for i, j := 0, len(l)-1; i < j; i, j = i+1, j-1 {
 		l[i], l[j] = l[j], l[i]
 	}

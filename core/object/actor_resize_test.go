@@ -60,14 +60,25 @@ func (t *sizerOnly) RID() string                                  { return t.rid
 func (t *sizerOnly) CurrentSize(_ context.Context) (int64, error) { return t.has, nil }
 func (t *sizerOnly) Manifest() *manifest.T                        { return nil }
 
-// links wraps fake resources into a chain of one object, which is what a
-// chain that does not cross into another object is.
-func links(l ...resource.Driver) []resizeLink {
-	chain := make([]resizeLink, len(l))
+// links wraps fake resources into a chain of one object, one resource per
+// level, which is what a chain that neither crosses into another object nor
+// fans out is.
+func links(l ...resource.Driver) []resizeLevel {
+	chain := make([]resizeLevel, len(l))
 	for i, r := range l {
-		chain[i] = resizeLink{r: r}
+		chain[i] = resizeLevel{{r: r}}
 	}
 	return chain
+}
+
+// fanOut is a level resting on several resources at once, the way an array
+// rests on each of its members.
+func fanOut(head resource.Driver, members ...resource.Driver) []resizeLevel {
+	level := make(resizeLevel, len(members))
+	for i, r := range members {
+		level[i] = resizeLink{r: r}
+	}
+	return []resizeLevel{{{r: head}}, level}
 }
 
 func rids(plan ResizePlan) []string {
@@ -193,5 +204,60 @@ func TestWhichConfiguredSizesAResizeMayRewrite(t *testing.T) {
 	}
 	for was, want := range cases {
 		assert.Equalf(t, want, isRecordableSize(was), "isRecordableSize(%q)", was)
+	}
+}
+
+// An array rests on each of its members at once. They are all asked for the
+// same size, and all grown before the array that rests on them.
+func TestAFanOutGrowsEveryMemberBeforeWhatRestsOnThem(t *testing.T) {
+	// a raid6 of 4: the array hands out what 2 of them hold together
+	chain := fanOut(
+		&fakeLink{rid: "disk#5", has: 20 * g, divideBy: 2},
+		&fakeLink{rid: "disk#1", has: 10 * g},
+		&fakeLink{rid: "disk#2", has: 10 * g},
+		&fakeLink{rid: "disk#3", has: 10 * g},
+		&fakeLink{rid: "disk#4", has: 10 * g},
+	)
+	change, err := sizeconv.ParseChange("+4g")
+	require.NoError(t, err)
+	p, err := buildResizePlan(context.Background(), chain, change, naming.Path{}, ResizeOptions{})
+	require.NoError(t, err)
+	assert.False(t, p.IsShrink)
+
+	// every member first, the array last
+	assert.Equal(t, []string{"disk#1", "disk#2", "disk#3", "disk#4", "disk#5"}, rids(p))
+
+	// each member is asked for half of what the array was asked for
+	for _, step := range p.Steps {
+		if step.RID == "disk#5" {
+			assert.Equal(t, int64(24*g), step.To)
+		} else {
+			assert.Equalf(t, int64(12*g), step.To, "%s", step.RID)
+		}
+	}
+}
+
+// A level is asked for what its most demanding parent needs, so no member is
+// left short.
+func TestAFanOutAsksForTheMostDemandingNeed(t *testing.T) {
+	chain := []resizeLevel{
+		{{r: &fakeLink{rid: "fs#1", has: 10 * g}}},
+		{
+			{r: &fakeLink{rid: "disk#1", has: 10 * g, divideBy: 2}},
+			{r: &fakeLink{rid: "disk#2", has: 10 * g}},
+		},
+		{{r: &fakeLink{rid: "disk#9", has: 10 * g}}},
+	}
+	change, err := sizeconv.ParseChange("+2g")
+	require.NoError(t, err)
+	p, err := buildResizePlan(context.Background(), chain, change, naming.Path{}, ResizeOptions{})
+	require.NoError(t, err)
+
+	// disk#1 asks 6g of the level below, disk#2 asks 12g: the deepest level
+	// is asked for 12g, the larger of the two.
+	for _, step := range p.Steps {
+		if step.RID == "disk#9" {
+			assert.Equal(t, int64(12*g), step.To)
+		}
 	}
 }
