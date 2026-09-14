@@ -13,9 +13,9 @@ import (
 
 	"github.com/opensvc/om3/v3/util/command"
 	"github.com/opensvc/om3/v3/util/device"
-	"github.com/opensvc/om3/v3/util/sessioncache"
 	"github.com/opensvc/om3/v3/util/file"
 	"github.com/opensvc/om3/v3/util/funcopt"
+	"github.com/opensvc/om3/v3/util/sessioncache"
 	"github.com/opensvc/om3/v3/util/sizeconv"
 )
 
@@ -297,6 +297,44 @@ func (t *LV) Remove(ctx context.Context, args []string) error {
 		command.WithStderrLogLevel(zerolog.ErrorLevel),
 	)
 	cmd.Run()
+	if cmd.ExitCode() != 0 {
+		return fmt.Errorf("%s error %d", cmd, cmd.ExitCode())
+	}
+	return nil
+}
+
+// Size is the bytes the logical volume holds.
+func (t *LV) Size(ctx context.Context) (int64, error) {
+	info, err := t.Show(ctx)
+	if err != nil {
+		return 0, err
+	}
+	if info == nil {
+		return 0, fmt.Errorf("%w: %s", ErrExist, t.FQN())
+	}
+	// lvs reports a size like "10.00g", which is what sizeconv reads.
+	return sizeconv.FromSize(strings.TrimSuffix(info.LVSize, "B"))
+}
+
+// Resize sets the size of the logical volume, in bytes.
+//
+// The filesystem on it is not touched. Which of the things stacked on a volume
+// to resize, and in which order, is the caller's to decide, where
+// lvresize --resizefs would decide it here.
+func (t *LV) Resize(ctx context.Context, size int64) error {
+	fqn := t.FQN()
+	cmd := command.New(
+		command.WithContext(ctx),
+		command.WithName("lvresize"),
+		command.WithVarArgs("--size", fmt.Sprintf("%db", size), "--force", fqn),
+		command.WithLogger(t.Log()),
+		command.WithCommandLogLevel(zerolog.InfoLevel),
+		command.WithStdoutLogLevel(zerolog.InfoLevel),
+		command.WithStderrLogLevel(zerolog.ErrorLevel),
+	)
+	cmd.Run()
+	sessioncache.Clear("vgs")
+	sessioncache.Clear("vgs-devices")
 	if cmd.ExitCode() != 0 {
 		return fmt.Errorf("%s error %d", cmd, cmd.ExitCode())
 	}

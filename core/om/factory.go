@@ -2170,6 +2170,7 @@ func newCmdObjectFS(kind string) *cobra.Command {
 		newCmdObjectGroupProvision(kind, "fs"),
 		newCmdObjectGroupPRStart(kind, "fs"),
 		newCmdObjectGroupPRStop(kind, "fs"),
+		newCmdObjectGroupResize(kind, "fs"),
 		newCmdObjectGroupRestart(kind, "fs"),
 		newCmdObjectGroupShutdown(kind, "fs"),
 		newCmdObjectGroupStart(kind, "fs"),
@@ -2188,6 +2189,7 @@ func newCmdObjectVolume(kind string) *cobra.Command {
 		newCmdObjectGroupProvision(kind, "volume"),
 		newCmdObjectGroupPRStart(kind, "volume"),
 		newCmdObjectGroupPRStop(kind, "volume"),
+		newCmdObjectGroupResize(kind, "volume"),
 		newCmdObjectGroupRestart(kind, "volume"),
 		newCmdObjectGroupShutdown(kind, "volume"),
 		newCmdObjectGroupStart(kind, "volume"),
@@ -2210,6 +2212,7 @@ func newCmdObjectDisk(kind string) *cobra.Command {
 		newCmdObjectGroupStart(kind, "disk"),
 		newCmdObjectGroupStartStandby(kind, "disk"),
 		newCmdObjectGroupStop(kind, "disk"),
+		newCmdObjectGroupResize(kind, "disk"),
 		newCmdObjectGroupRestart(kind, "disk"),
 		newCmdObjectGroupUnprovision(kind, "disk"),
 		newCmdObjectGroupFull(kind, "disk"),
@@ -2322,6 +2325,27 @@ func newCmdObjectGroupStart(kind, group string) *cobra.Command {
 	commoncmd.FlagNodeSelector(flags, &options.NodeSelector)
 	cmd.MarkFlagsMutuallyExclusive("no-lock", "node")
 	cmd.MarkFlagsMutuallyExclusive("waitlock", "node")
+	return cmd
+}
+
+func newCmdObjectGroupResize(kind, group string) *cobra.Command {
+	var options commands.CmdObjectResourceResize
+	cmd := commoncmd.NewCmdObjectGroupResize(kind, group)
+	cmd.Args = cobra.RangeArgs(1, 2)
+	cmd.RunE = func(cmd *cobra.Command, args []string) error {
+		// The size is the last argument when it was not given as an option,
+		// so both "resize data +1g" and "resize data --size +1g" read.
+		if options.Size == "" {
+			options.Size = args[len(args)-1]
+			args = args[:len(args)-1]
+		}
+		commoncmd.SetRIDFromArgs(&options.RID, args, group, group)
+		return options.Run(kind)
+	}
+	flags := cmd.Flags()
+	addFlagsGlobal(flags, &options.OptsGlobal)
+	flags.StringVar(&options.Size, "size", "", "the size to reach, or the amount to add or remove (ex: 11g, +1g)")
+	flags.BoolVar(&options.DryRun, "dry-run", false, "report the plan, and change nothing")
 	return cmd
 }
 
