@@ -2,13 +2,13 @@ package zfs
 
 import (
 	"os/exec"
+	"strconv"
 	"strings"
 
 	"golang.org/x/crypto/ssh"
 
 	"github.com/opensvc/om3/v3/util/args"
 	"github.com/opensvc/om3/v3/util/funcopt"
-	"github.com/opensvc/om3/v3/util/sizeconv"
 )
 
 type (
@@ -107,19 +107,19 @@ func fsCreateOptsToArgs(t fsCreateOpts) []string {
 	a.Append("create", "-p")
 	if t.RefQuota != nil {
 		a.DropOptionAndMatchingValue("-o", "^refquota=.*")
-		a.Append("-o", "refquota="+sizeconv.ExactBSizeCompact(float64(*t.RefQuota)))
+		a.Append("-o", "refquota="+strconv.FormatInt(*t.RefQuota, 10))
 	}
 	if t.Quota != nil {
 		a.DropOptionAndMatchingValue("-o", "^quota=.*")
-		a.Append("-o", "quota="+sizeconv.ExactBSizeCompact(float64(*t.Quota)))
+		a.Append("-o", "quota="+strconv.FormatInt(*t.Quota, 10))
 	}
 	if t.RefReservation != nil {
 		a.DropOptionAndMatchingValue("-o", "^refreservation=.*")
-		a.Append("-o", "refreservation="+sizeconv.ExactBSizeCompact(float64(*t.RefReservation)))
+		a.Append("-o", "refreservation="+strconv.FormatInt(*t.RefReservation, 10))
 	}
 	if t.Reservation != nil {
 		a.DropOptionAndMatchingValue("-o", "^reservation=.*")
-		a.Append("-o", "reservation="+sizeconv.ExactBSizeCompact(float64(*t.Reservation)))
+		a.Append("-o", "reservation="+strconv.FormatInt(*t.Reservation, 10))
 	}
 	if t.Args != nil {
 		a.Append(t.Args...)
