@@ -38,20 +38,38 @@ func (t *Manager) orchestrateStarted() {
 	}
 }
 
-// startedFromIdle handle global expect started orchestration from idle
+// startedFromIdle handles a started orchestration from idle.
 //
-// frozen => try startedFromFrozen
-// else   => try startedFromUnfrozen
+// A frozen instance is not started by the daemon on its own: freezing is how
+// an operator says the daemon may not act by itself, and nobody asked for
+// this one.
+//
+// A frozen instance is started when a user asked for it, and the freeze is
+// left as it was found: the request was to start the object, not to thaw it.
+// This used to unfreeze first, which is neither honouring the request nor
+// refusing it, and silently discarded what the operator had set.
 func (t *Manager) startedFromIdle() {
-	if t.instStatus[t.localhost].IsFrozen() {
-		if t.state.GlobalExpect == instance.MonitorGlobalExpectNone {
-			return
-		}
-		t.doUnfreeze()
+	if t.state.GlobalExpect == instance.MonitorGlobalExpectNone && t.instStatus[t.localhost].IsFrozen() {
 		return
-	} else {
-		t.startedFromUnfrozen()
 	}
+	t.startedFromUnfrozen()
+}
+
+// isStartLeader says the local instance is the one to start.
+//
+// A start the daemon decided on by itself asks the HA leader rule, which
+// passes over the frozen instances: freezing is how an operator says the
+// daemon may not act by itself.
+//
+// A start a user asked for asks the same rule without the frozen exclusion,
+// so a frozen instance is started without its freeze being touched. The rest
+// of the rule is kept, because being unprovisioned, unrankable or start
+// failed says the instance cannot start whoever is asking.
+func (t *Manager) isStartLeader() bool {
+	if t.state.GlobalExpect == instance.MonitorGlobalExpectStarted {
+		return t.isStartCandidateLeader(false)
+	}
+	return t.state.IsHALeader
 }
 
 // startedFromUnfrozen
@@ -64,7 +82,7 @@ func (t *Manager) startedFromUnfrozen() {
 	if t.startedClearIfReached() {
 		return
 	}
-	if !t.state.IsHALeader {
+	if !t.isStartLeader() {
 		return
 	}
 	if t.hasOtherNodeActing() {
@@ -115,7 +133,7 @@ func (t *Manager) cancelReadyState() bool {
 	if t.startedClearIfReached() {
 		return true
 	}
-	if !t.state.IsHALeader {
+	if !t.isStartLeader() {
 		t.loggerWithState().Infof("leadership lost, clear the ready state")
 		t.transitionTo(instance.MonitorStateIdle)
 		t.clearPending()
