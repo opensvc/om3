@@ -206,11 +206,13 @@ func (t *T) quota(ctx context.Context) (*xfsquota.T, uint32, error) {
 // applyQuota stamps the directory with its project and, the first time,
 // bounds what it may hold. A directory with no size of its own is left alone.
 //
-// The limit is only set when the project has none, so that a later resize
-// sticks. The size keyword is the size the directory is made with, the way a
-// loop file or a logical volume is made with one: changing it afterwards is
-// asked for with a resize, not by restarting. Status says so when the two
-// have drifted apart.
+// The limit is only set when the project has none. The size keyword is the
+// size the directory is made with, the way a loop file or a logical volume is
+// made with one: changing it afterwards is asked for with a resize, which
+// writes the new size back to the keyword.
+//
+// So the two agree unless somebody set the quota behind om3's back, which is
+// what status reports rather than silently undoing.
 func (t *T) applyQuota(ctx context.Context) error {
 	if !t.isQuotaBacked() {
 		return nil
@@ -231,8 +233,9 @@ func (t *T) applyQuota(ctx context.Context) error {
 }
 
 // quotaStatus says when what the directory may hold is not what it was
-// configured to hold, which a resize does on purpose and a hand-edited
-// configuration does by accident.
+// configured to hold. A resize keeps the two in step, so a difference is
+// somebody having set the quota or edited the configuration behind om3's
+// back, and saying so is more use than hiding it.
 func (t *T) quotaStatus(ctx context.Context) {
 	if !t.isQuotaBacked() {
 		return

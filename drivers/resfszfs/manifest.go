@@ -26,8 +26,12 @@ var (
 		&resfshost.KeywordMKFSOptions,
 		&resfshost.KeywordZone,
 		{
-			Attr:         "Size",
-			Converter:    converters.Size,
+			Attr:      "Size",
+			Converter: converters.Size,
+			// InheritLeaf, because a vol names in its DEFAULT section the size it
+			// was claimed with from its pool. Inheriting that here would give a
+			// size to every resource that does not name one of its own.
+			Inherit:      keywords.InheritLeaf,
 			Option:       "size",
 			Provisioning: true,
 			Required:     false,
