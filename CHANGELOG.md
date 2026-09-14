@@ -758,6 +758,16 @@ Where the password is the value of the `þassword` key in `system/sec/relay-v3`.
 
 ### Orchestration
 
+* A start asked of a frozen object no longer unfreezes it.
+
+    In v2 and in earlier v3, `om <path> start` on a frozen instance removed the freeze and then started. The object ended up started and unfrozen, so a freeze an operator had set was discarded to serve the request.
+
+    It now starts the instance and leaves the freeze as it was found. Freezing means the daemon may not act by itself, which it still does not: a frozen instance is never started by the HA orchestration, and a frozen node is passed over when choosing where to start. What changes is only the start a user asked for, which is honoured rather than used as a reason to thaw.
+
+    Watch out for the pairing with stop, which freezes: `om <path> stop` followed by `om <path> start` now leaves the object **up and frozen**, where it used to end up up and unfrozen. A frozen object is not restarted elsewhere by the daemon if it fails, so add an `om <path> unfreeze` wherever a stop and start round trip was relied on to put an object back under orchestration.
+
+    Scripts that relied on `start` to clear a freeze must now ask for it: `om <path> unfreeze && om <path> start`. Note also that `om <path> start --wait` no longer waits for the object to be unfrozen, only for it to be up.
+
 * Flex
   * A `flex_target` value under `flex_min` is forced to `flex_min`. A warning is logged.
   * A `flex_target` value above `flex_max` is forced to `flex_max`. A warning is logged.
