@@ -85,7 +85,9 @@ func (t *T) Translate(name string, size int64, shared bool) ([]string, error) {
 	if t.quota() {
 		// A reference rather than the value, so the volume holds the size it
 		// is asked for in one place: an orchestrated resize writes it there.
-		l = append(l, "fs#1.size={size}")
+		// The section has to be named, or the reference resolves to this very
+		// keyword and recurses.
+		l = append(l, "fs#1.size={DEFAULT.size}")
 	}
 	return l, nil
 }
