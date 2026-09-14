@@ -42,7 +42,23 @@ type (
 	}
 
 	Expectation any
+
+	// asyncResult is the answer to an orchestration request, in the shape an
+	// object orchestration request answers with.
+	asyncResult struct {
+		OrchestrationID uuid.UUID `json:"orchestration_id,omitempty"`
+		Status          string    `json:"status,omitempty"`
+	}
+
+	asyncResults []asyncResult
 )
+
+func (t asyncResult) Unstructured() map[string]any {
+	return map[string]any{
+		"orchestration_id": t.OrchestrationID.String(),
+		"status":           t.Status,
+	}
+}
 
 func New(opts ...funcopt.O) *T {
 	t := &T{}
@@ -256,6 +272,8 @@ func (t T) DoAsync() error {
 		expectation any
 		waitC       = make(chan error)
 		b           []byte
+
+		orchestrationQueued api.OrchestrationQueued
 	)
 	c, err := client.New(client.WithTimeout(0))
 	if err != nil {
@@ -359,14 +377,29 @@ func (t T) DoAsync() error {
 			return fmt.Errorf("unexpected target: %s", t.Target)
 		}
 
-		if err == nil {
-			var orchestrationQueued api.OrchestrationQueued
-			if err := json.Unmarshal(b, &orchestrationQueued); err == nil {
-				fmt.Println(orchestrationQueued.OrchestrationID)
-			} else {
-				fmt.Fprintln(os.Stderr, err)
-			}
+		// The same answer an object orchestration request gives: the id under
+		// a header saying what it is, and whether the request was taken. A
+		// bare id on stdout said neither, and skipped the renderer, so the
+		// --output the command advertises did nothing.
+		var result asyncResult
+		if err != nil {
+			result.Status = err.Error()
+			err = errors.New("orchestration rejected")
+		} else if e := json.Unmarshal(b, &orchestrationQueued); e != nil {
+			result.Status = e.Error()
+			err = errors.New("orchestration rejected")
+		} else {
+			result.OrchestrationID = orchestrationQueued.OrchestrationID
+			result.Status = "accepted"
 		}
+		err = errors.Join(err, output.Renderer{
+			DefaultOutput: "tab=ORCHESTRATION_ID:orchestration_id,STATUS:status",
+			Output:        t.Output,
+			Sort:          t.Sort,
+			Color:         t.Color,
+			Data:          asyncResults{result},
+			Colorize:      rawconfig.Colorize,
+		}.Print())
 	}
 
 	if t.Wait {
