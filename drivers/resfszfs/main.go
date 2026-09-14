@@ -301,6 +301,85 @@ func (t *T) createMountPoint(ctx context.Context) error {
 	return nil
 }
 
+// CurrentSize implements resource.Sizer.
+//
+// A dataset is bounded by its refquota, which is what it may hold of its own
+// and what df reports for it. One with none takes what the pool has, and has
+// no size to report.
+func (t *T) CurrentSize(ctx context.Context) (int64, error) {
+	size, err := t.datasetProperty("refquota")
+	if err != nil {
+		return 0, err
+	}
+	if size == 0 {
+		return 0, fmt.Errorf("%s has no refquota, so it takes what the pool has and has no size of its own", t.Device)
+	}
+	return size, nil
+}
+
+// ResizePlan implements resource.Resizer.
+//
+// A dataset takes its space from the pool holding it, which hands out what it
+// has, so there is nothing below to ask a size of. A refquota under what the
+// dataset already holds is refused here: lowering it does not fail, it
+// silently breaks the next write.
+func (t *T) ResizePlan(ctx context.Context, to int64) (int64, error) {
+	if _, err := t.CurrentSize(ctx); err != nil {
+		return 0, err
+	}
+	used, err := t.datasetProperty("referenced")
+	if err != nil {
+		return 0, err
+	}
+	if to < used {
+		return 0, fmt.Errorf("%s already holds %s: a refquota under that does not fail, it breaks the next write",
+			t.Device, sizeconv.BSizeCompact(float64(used)))
+	}
+	return to, nil
+}
+
+// Resize implements resource.Resizer.
+//
+// A refreservation that was guaranteeing the whole refquota is moved with it.
+// Leaving it behind would let a dataset be given a size the pool has not
+// promised it, which is the guarantee the reservation was set for.
+func (t *T) Resize(ctx context.Context, to int64) error {
+	fs := t.fs()
+	was, err := t.datasetProperty("refquota")
+	if err != nil {
+		return err
+	}
+	reserved, err := t.datasetProperty("refreservation")
+	if err != nil {
+		return err
+	}
+	if err := fs.SetProperty("refquota", fmt.Sprintf("%d", to)); err != nil {
+		return err
+	}
+	if reserved > 0 && reserved == was {
+		return fs.SetProperty("refreservation", fmt.Sprintf("%d", to))
+	}
+	return nil
+}
+
+// datasetProperty reads a byte-valued property, where zfs answers "none" or
+// "-" for one that is not set.
+func (t *T) datasetProperty(prop string) (int64, error) {
+	s, err := t.fs().GetProperty(prop)
+	if err != nil {
+		return 0, err
+	}
+	switch s {
+	case "", "none", "-", "0":
+		return 0, nil
+	}
+	size, err := strconv.ParseInt(s, 10, 64)
+	if err != nil {
+		return 0, fmt.Errorf("%s: parse %s %s: %w", t.Device, prop, s, err)
+	}
+	return size, nil
+}
+
 func (t *T) fs() *zfs.Filesystem {
 	return &zfs.Filesystem{
 		Log:  t.Log().Attr("device", t.Device).WithPrefix(t.Log().Prefix() + t.Device + ": "),
