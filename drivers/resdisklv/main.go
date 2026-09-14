@@ -32,6 +32,13 @@ type (
 		Devices(context.Context) (device.L, error)
 		DriverName() string
 	}
+	// LVDriverResizer is implemented by the lv implementations that can
+	// report and change their size. A resource whose implementation does not
+	// is refused when a resize is planned, not when it is applied.
+	LVDriverResizer interface {
+		Size(context.Context) (int64, error)
+		Resize(context.Context, int64) error
+	}
 	LVDriverProvisioner interface {
 		Create(context.Context, string, []string) error
 	}
@@ -195,4 +202,41 @@ func (t *T) SubDevices(ctx context.Context) device.L {
 
 func (t *T) Boot(ctx context.Context) error {
 	return t.Stop(ctx)
+}
+
+func (t *T) resizer() (LVDriverResizer, error) {
+	lv, ok := t.lv().(LVDriverResizer)
+	if !ok {
+		return nil, fmt.Errorf("the %s implementation cannot be resized", t.lv().DriverName())
+	}
+	return lv, nil
+}
+
+// CurrentSize implements resource.Sizer.
+func (t *T) CurrentSize(ctx context.Context) (int64, error) {
+	lv, err := t.resizer()
+	if err != nil {
+		return 0, err
+	}
+	return lv.Size(ctx)
+}
+
+// ResizePlan implements resource.Resizer.
+//
+// A logical volume holds what it is given, so it asks the volume group below
+// it for the same size.
+func (t *T) ResizePlan(ctx context.Context, to int64) (int64, error) {
+	if _, err := t.resizer(); err != nil {
+		return 0, err
+	}
+	return to, nil
+}
+
+// Resize implements resource.Resizer.
+func (t *T) Resize(ctx context.Context, to int64) error {
+	lv, err := t.resizer()
+	if err != nil {
+		return err
+	}
+	return lv.Resize(ctx, to)
 }

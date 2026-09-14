@@ -64,3 +64,21 @@ func (t XFS) IsCapable() bool {
 	}
 	return true
 }
+
+// Grow takes the filesystem up to the size of the device it sits on.
+// xfs_growfs works on the mount point, and only while it is mounted.
+func (t XFS) Grow(ctx context.Context, dev, mountPoint string) error {
+	if mountPoint == "" {
+		return fmt.Errorf("xfs grows only while it is mounted")
+	}
+	cmd := command.New(
+		command.WithName("xfs_growfs"),
+		command.WithVarArgs(mountPoint),
+		command.WithContext(ctx),
+		command.WithLogger(t.Log()),
+		command.WithCommandLogLevel(zerolog.InfoLevel),
+		command.WithStdoutLogLevel(zerolog.InfoLevel),
+		command.WithStderrLogLevel(zerolog.ErrorLevel),
+	)
+	return cmd.Run()
+}

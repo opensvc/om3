@@ -60,6 +60,21 @@ type (
 	MKFSer interface {
 		MKFS(context.Context, string, []string) error
 	}
+
+	// Grower is implemented by a filesystem that can be made larger in place,
+	// to fill the device it sits on. The device is enlarged first, so the
+	// filesystem is only ever asked to take up what is already there.
+	Grower interface {
+		Grow(ctx context.Context, dev, mountPoint string) error
+	}
+
+	// Shrinker is implemented by a filesystem that can be made smaller in
+	// place. Most cannot: xfs never shrinks, and ext only shrinks while it is
+	// unmounted, so a driver asks CanShrink before anything below it moves.
+	Shrinker interface {
+		CanShrink(ctx context.Context, dev, mountPoint string) error
+		Shrink(ctx context.Context, dev, mountPoint string, size int64) error
+	}
 )
 
 var (

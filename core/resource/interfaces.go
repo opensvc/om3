@@ -165,6 +165,34 @@ type (
 		SubDevices(context.Context) device.L
 	}
 
+	// Sizer is implemented by a resource driver that knows how much space it
+	// holds. It is what a relative resize resolves against, and what decides
+	// whether a resize grows or shrinks.
+	//
+	// It is not called Size because a driver whose size is configurable holds
+	// that keyword in a Size field, and the two are not the same thing: one
+	// is what was asked for, this is what is there.
+	Sizer interface {
+		CurrentSize(ctx context.Context) (int64, error)
+	}
+
+	// Resizer is implemented by a resource driver that can change its size.
+	//
+	// ResizePlan is asked first, of every link of the chain, and changes
+	// nothing. It answers the size this resource needs from the resources
+	// below it, which is not always the size it was asked for: a raid6 md
+	// holding n devices needs to(n-2) from each of them. It errors to refuse,
+	// naming what it cannot do, so that a chain is refused whole rather than
+	// left half resized - an xfs filesystem cannot shrink at all, and finding
+	// that out after the device under it has shrunk is data loss.
+	//
+	// Resize is asked second, of the same links, once every one of them has
+	// agreed.
+	Resizer interface {
+		ResizePlan(ctx context.Context, to int64) (needBelow int64, err error)
+		Resize(ctx context.Context, to int64) error
+	}
+
 	Commander interface {
 		CombinedOutput() ([]byte, error)
 		Run() error

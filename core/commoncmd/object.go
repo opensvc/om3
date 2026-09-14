@@ -255,6 +255,33 @@ func NewCmdObjectGroupStart(kind, group string) *cobra.Command {
 	return cmd
 }
 
+// NewCmdObjectGroupResize returns the command that changes the size of a
+// resource and of everything it rests on.
+func NewCmdObjectGroupResize(kind, group string) *cobra.Command {
+	cmd := &cobra.Command{
+		Use:   "resize [PATTERN] SIZE",
+		Short: "change the size of a resource and of what it rests on",
+		Long: `Change the size of a resource, and of every resource it rests on.
+
+SIZE is the size to reach, as "11g", "11GB" or "12Gi", or the amount to add or
+remove, as "+1g" or "-1g".
+
+Every link of the chain is asked before any of it is changed, so a chain
+holding one link that cannot do it is refused whole rather than left half
+resized. A link is asked for the size it needs from the link below it, which
+is not always the size it was asked for.
+
+A chain grows from the bottom up, so the space exists before anything is
+stretched onto it, and shrinks from the top down, so a filesystem gives the
+space back before the device under it is taken away.
+
+Use --dry-run to see the plan without applying it.`,
+	}
+	CmdWithArg(cmd, "PATTERN  A fnmatch resource index filter.")
+	CmdWithArg(cmd, "SIZE     The size to reach, or the amount to add or remove.")
+	return cmd
+}
+
 func NewCmdObjectGroupStop(kind, group string) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "stop [PATTERN]...",

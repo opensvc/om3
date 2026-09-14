@@ -615,3 +615,68 @@ func (t *T) CanInstall(ctx context.Context) (bool, error) {
 	}
 	return true, nil
 }
+
+// CurrentSize implements resource.Sizer.
+//
+// It is the size of the filesystem, which is what a df reports and what a
+// relative resize resolves against. It is read from the mount point, so an
+// unmounted filesystem cannot answer: what the device under it holds is not
+// what the filesystem was formatted to.
+func (t *T) CurrentSize(ctx context.Context) (int64, error) {
+	var st unix.Statfs_t
+	if err := unix.Statfs(t.mountPoint(), &st); err != nil {
+		return 0, fmt.Errorf("statfs %s: %w", t.mountPoint(), err)
+	}
+	return int64(st.Blocks) * int64(st.Bsize), nil
+}
+
+// ResizePlan implements resource.Resizer.
+//
+// A filesystem takes up the device it sits on, so it asks the link below for
+// the size it was asked for. It refuses here rather than in Resize: a
+// filesystem that cannot shrink must say so before the device under it is
+// taken away.
+func (t *T) ResizePlan(ctx context.Context, to int64) (int64, error) {
+	fs := t.fs()
+	from, err := t.CurrentSize(ctx)
+	if err != nil {
+		return 0, err
+	}
+	if to >= from {
+		if _, ok := fs.(filesystems.Grower); !ok {
+			return 0, fmt.Errorf("a %s filesystem cannot grow", fs.Type())
+		}
+		return to, nil
+	}
+	shrinker, ok := fs.(filesystems.Shrinker)
+	if !ok {
+		return 0, fmt.Errorf("a %s filesystem cannot shrink", fs.Type())
+	}
+	if err := shrinker.CanShrink(ctx, t.devpath(ctx), t.mountPoint()); err != nil {
+		return 0, err
+	}
+	return to, nil
+}
+
+// Resize implements resource.Resizer.
+func (t *T) Resize(ctx context.Context, to int64) error {
+	fs := t.fs()
+	from, err := t.CurrentSize(ctx)
+	if err != nil {
+		return err
+	}
+	if to >= from {
+		grower, ok := fs.(filesystems.Grower)
+		if !ok {
+			return fmt.Errorf("a %s filesystem cannot grow", fs.Type())
+		}
+		// The device below has been enlarged already, so the filesystem is
+		// asked to take up what is there rather than a size of its own.
+		return grower.Grow(ctx, t.devpath(ctx), t.mountPoint())
+	}
+	shrinker, ok := fs.(filesystems.Shrinker)
+	if !ok {
+		return fmt.Errorf("a %s filesystem cannot shrink", fs.Type())
+	}
+	return shrinker.Shrink(ctx, t.devpath(ctx), t.mountPoint(), to)
+}
