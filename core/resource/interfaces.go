@@ -176,6 +176,17 @@ type (
 		CurrentSize(ctx context.Context) (int64, error)
 	}
 
+	// ResizeTargeter is implemented by a resource that holds no size of its
+	// own, but stands for a resource of another object that does: a volume
+	// resource stands for the head of the volume it points at.
+	//
+	// A resize chain reaching such a resource continues in the named object,
+	// from that object's head, and the resource itself drops out of the
+	// chain: there is nothing in it to change.
+	ResizeTargeter interface {
+		ResizeTarget(ctx context.Context) (naming.Path, error)
+	}
+
 	// SizeInfoKeyer is implemented by a Sizer whose size is not its own, to
 	// name the key it is reported under in the resource info. A fs.directory
 	// reports the size of the filesystem holding it, and calling that "size"

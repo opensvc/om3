@@ -546,6 +546,18 @@ func (t *T) Provisioned(ctx context.Context) (provisioned.T, error) {
 	return provisioned.FromBool(exists), nil
 }
 
+// ResizeTarget implements resource.ResizeTargeter.
+//
+// A volume resource holds no size of its own: it stands for the head of the
+// volume it points at, which is where a resize asked of it belongs.
+func (t *T) ResizeTarget(ctx context.Context) (naming.Path, error) {
+	volume, err := t.Volume()
+	if err != nil {
+		return naming.Path{}, err
+	}
+	return volume.Path(), nil
+}
+
 func (t *T) Head() string {
 	volume, err := t.Volume()
 	if err != nil {
