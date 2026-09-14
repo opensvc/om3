@@ -524,7 +524,7 @@ func (t *actor) applyResizePlan(ctx context.Context, plan ResizePlan, what strin
 		if err := resizer.Resize(ctx, step.To); err != nil {
 			return fmt.Errorf("%s: %w", name, err)
 		}
-		if err := step.recordSize(); err != nil {
+		if err := step.recordSize(ctx); err != nil {
 			return fmt.Errorf("%s: %w", name, err)
 		}
 	}
@@ -549,7 +549,7 @@ func (t *actor) applyResizePlan(ctx context.Context, plan ResizePlan, what strin
 //
 // A keyword that names no size is left alone too: this keeps a configuration
 // accurate, it does not start recording in one that said nothing.
-func (t ResizeStep) recordSize() error {
+func (t ResizeStep) recordSize(ctx context.Context) error {
 	if t.owner == nil {
 		return nil
 	}
@@ -561,10 +561,26 @@ func (t ResizeStep) recordSize() error {
 	if !isRecordableSize(was) {
 		return nil
 	}
+
+	// The size reached, not the size asked for. A driver rounds to what it
+	// hands out: a zvol to its block size, a logical volume to its extents.
+	// Recording the request would put a size in the configuration that the
+	// resource does not have.
+	sizer, ok := t.r.(resource.Sizer)
+	if !ok {
+		return nil
+	}
+	reached, err := sizer.CurrentSize(ctx)
+	if err != nil {
+		// The resize itself worked. Not being able to read back what it
+		// reached is worth saying, and not worth failing for.
+		t.owner.log.Infof("%s: size reached cannot be read back, so it is not recorded: %s", t.RID, err)
+		return nil
+	}
 	op := keyop.T{
 		Key:   k,
 		Op:    keyop.Set,
-		Value: sizeconv.ExactBSizeCompact(float64(t.To)),
+		Value: sizeconv.ExactBSizeCompact(float64(reached)),
 	}
 	if op.Value == was {
 		return nil
