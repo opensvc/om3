@@ -109,7 +109,37 @@ func (t *T) Unprovision(ctx context.Context) error {
 }
 
 func (t *T) Provisioned(ctx context.Context) (provisioned.T, error) {
-	return provisioned.NotApplicable, nil
+	v, err := file.ExistsAndDir(t.Head())
+	return provisioned.FromBool(v), err
+}
+
+// UnprovisionAsLeader removes the directory, which is what provisioning it
+// made. The provision keyword set to false is how an owner keeps a directory
+// that om3 is only to create and never to remove.
+//
+// A quota-backed directory has its project limit dropped with it, or the
+// filesystem keeps a limit on a project nothing is stamped with any more.
+func (t *T) UnprovisionAsLeader(ctx context.Context) error {
+	p := t.Head()
+	if v, err := file.ExistsAndDir(p); err != nil {
+		return err
+	} else if !v {
+		return nil
+	}
+	if file.IsProtected(p) {
+		return fmt.Errorf("cowardly refuse to remove %s", p)
+	}
+	if t.isQuotaBacked() {
+		if q, id, err := t.quota(ctx); err != nil {
+			// The filesystem may not be able to hold a quota any more, which
+			// is not a reason to keep the directory.
+			t.Log().Infof("quota: %s", err)
+		} else if err := q.SetHardLimit(ctx, id, 0); err != nil {
+			return err
+		}
+	}
+	t.Log().Infof("remove directory %s", p)
+	return os.RemoveAll(p)
 }
 
 func (t *T) create(ctx context.Context) error {
