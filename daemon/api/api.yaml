@@ -390,7 +390,16 @@ paths:
               format: binary
       responses:
         204:
-          $ref: '#/components/responses/204'
+          description: No Content
+          headers:
+            OM-Last-Modified:
+              description: |
+                The timestamp the written configuration now carries. Pass it as
+                the config_updated_at parameter of an action to make that action
+                refuse to run on the configuration this one replaces.
+              type: string
+              format: date-time
+              pattern: '^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(\.\d{1,9})?Z?$'
         400:
           $ref: '#/components/responses/400'
         401:
