@@ -331,6 +331,28 @@ func PathOfKey(key string) (naming.Path, bool) {
 	return p, true
 }
 
+// Reservations returns the addresses this allocator holds, with the key each
+// is held for.
+//
+// It reads the store rather than the cluster status, so an address shows up
+// the moment it is reserved, before the object holding it has published a
+// status saying so.
+func (t *T) Reservations() ([]Reservation, error) {
+	addrs, err := recorded(t.Dir)
+	if err != nil {
+		return nil, err
+	}
+	l := make([]Reservation, 0, len(addrs))
+	for addr := range addrs {
+		key, err := t.holder(addr)
+		if err != nil {
+			return nil, err
+		}
+		l = append(l, Reservation{IP: net.ParseIP(addr), Key: key})
+	}
+	return l, nil
+}
+
 // taken returns the addresses no allocation may draw: the ones reserved here,
 // the ones reserved by an allocator sharing the range, and the ones the
 // cluster reports in use.

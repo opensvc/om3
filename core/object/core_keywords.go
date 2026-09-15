@@ -545,7 +545,7 @@ var keywordStore = keywords.Store{
 		Text:     keywords.NewText(fs, "text/kw/core/ca.usr"),
 	},
 	{
-		Candidates: []string{"pool"},
+		Candidates: []string{"network", "pool"},
 		Example:    "pool",
 		Kind:       naming.NewKinds(naming.KindNscfg),
 		Option:     "type",
@@ -571,6 +571,16 @@ var keywordStore = keywords.Store{
 		Section:   "claim",
 		Text:      keywords.NewText(fs, "text/kw/core/claim.limit.pool"),
 		Types:     []string{"pool"},
+	},
+	{
+		Converter: converters.Int,
+		Example:   "10",
+		Kind:      naming.NewKinds(naming.KindNscfg),
+		Option:    "limit",
+		Scopable:  true,
+		Section:   "claim",
+		Text:      keywords.NewText(fs, "text/kw/core/claim.limit.network"),
+		Types:     []string{"network"},
 	},
 	{
 		Aliases:  []string{kwoption.ScheduleInfoAlias},

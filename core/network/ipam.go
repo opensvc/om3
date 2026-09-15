@@ -1,6 +1,7 @@
 package network
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"net"
@@ -191,4 +192,29 @@ func installedPaths() (map[string]bool, error) {
 		m[p.String()] = true
 	}
 	return m, nil
+}
+
+// AllocateFor reserves an address for a resource, refusing when the namespace
+// has already taken all it claimed of the network.
+//
+// The claim is checked only when the reservation is a new one. An allocator is
+// idempotent for a key, and it is asked again on every start, so a resource
+// that already holds its address is not taking one more: refusing it there
+// would stop an object the cluster let take the address in the first place,
+// and a namespace that reached its limit could no longer restart what it runs.
+func AllocateFor(ctx context.Context, i *ipam.T, p naming.Path, rid string) (net.IP, error) {
+	key := ipam.Key(p, rid)
+	held, err := i.Allocated(key)
+	if err != nil {
+		return nil, err
+	}
+	if held != nil {
+		return held, nil
+	}
+	if ok, why, err := ClaimFits(ctx, i, p.Namespace); err != nil {
+		return nil, fmt.Errorf("network %s claim check: %w", i.Name, err)
+	} else if !ok {
+		return nil, fmt.Errorf("network %s: %s", i.Name, why)
+	}
+	return i.Allocate(key)
 }

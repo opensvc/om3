@@ -3,60 +3,26 @@ package pool
 import (
 	"context"
 	"fmt"
-	"strings"
 
+	"github.com/opensvc/om3/v3/core/claim"
 	"github.com/opensvc/om3/v3/core/client"
 	"github.com/opensvc/om3/v3/core/naming"
-	"github.com/opensvc/om3/v3/core/xconfig"
 	"github.com/opensvc/om3/v3/daemon/api"
-	"github.com/opensvc/om3/v3/util/file"
-	"github.com/opensvc/om3/v3/util/key"
 	"github.com/opensvc/om3/v3/util/sizeconv"
 )
 
 // ClaimLimit is the most a namespace may claim of a pool, and whether it is
 // capped on it at all.
-//
-// It is read from the namespace configuration on this node, and never over the
-// api: allocating a volume is a common thing to do and most namespaces claim
-// nothing, so it must not wait on a daemon to find that out.
-//
-// A namespace whose configuration this node does not hold is read as claiming
-// nothing, so a cap is enforced by the nodes holding the namespace
-// configuration.
 func ClaimLimit(namespace, poolName string) (int64, bool, error) {
-	p := naming.Path{Namespace: namespace, Kind: naming.KindNscfg, Name: "namespace"}
-	configFile := p.ConfigFile()
-	if !file.Exists(configFile) {
-		return 0, false, nil
-	}
-	cfg, err := xconfig.NewObject(configFile, configFile)
-	if err != nil {
+	limit, capped, err := claim.Limit(namespace, "pool", poolName)
+	if err != nil || !capped {
 		return 0, false, err
 	}
-	for _, section := range cfg.SectionStrings() {
-		if !strings.HasPrefix(section, "claim#") {
-			continue
-		}
-		if cfg.Get(key.New(section, "type")) != "pool" {
-			continue
-		}
-		if cfg.Get(key.New(section, "name")) != poolName {
-			continue
-		}
-		limit := cfg.Get(key.New(section, "limit"))
-		if limit == "" {
-			// A claim naming no limit says the namespace uses the pool, not
-			// that it is capped on it.
-			return 0, false, nil
-		}
-		size, err := sizeconv.FromSize(limit)
-		if err != nil {
-			return 0, false, fmt.Errorf("%s %s: %w", namespace, section, err)
-		}
-		return size, true, nil
+	size, err := sizeconv.FromSize(limit)
+	if err != nil {
+		return 0, false, fmt.Errorf("%s claim on the %s pool: %w", namespace, poolName, err)
 	}
-	return 0, false, nil
+	return size, true, nil
 }
 
 // ClaimHeld is what a namespace already claims of a pool, counting the size

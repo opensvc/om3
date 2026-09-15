@@ -1,14 +1,14 @@
-// Package claimpool is a namespace's claim on the space of a pool.
+// Package claimnetwork is a namespace's claim on the addresses of a network.
 //
 // A namespace consumes things the cluster owns and its peers share. A claim
 // says which resource, and how much of it the namespace may take, and each
 // kind of resource is a driver of the claim group so a namespace says it the
 // same way whatever it claims.
 //
-// The driver holds no behaviour. Counting what a namespace already holds of a
-// pool, and refusing a claim that does not fit, is done in core/pool, beside
-// the lookup that hands the pools out.
-package claimpool
+// The driver holds no behaviour. Counting the addresses a namespace already
+// holds, and refusing an allocation that would take it past its claim, is done
+// in core/network, beside the allocator itself.
+package claimnetwork
 
 import (
 	"github.com/opensvc/om3/v3/core/driver"
@@ -19,7 +19,7 @@ type (
 )
 
 var (
-	drvID = driver.NewID(driver.GroupClaim, "pool")
+	drvID = driver.NewID(driver.GroupClaim, "network")
 )
 
 func init() {
