@@ -363,6 +363,18 @@ func InstanceStatusUpdatedWaiter(ctx context.Context, paths naming.Paths) (func(
 	return func() { wg.Wait() }, nil
 }
 
+// SetKeywordsFromArgs adds the keywords named as positional arguments to the
+// ones the --kw flag named.
+//
+// Naming a keyword is what these commands are for, so it is the argument, and
+// --kw is kept for the scripts written before it was.
+func SetKeywordsFromArgs(keywords *[]string, args []string) {
+	if keywords == nil {
+		panic("SetKeywordsFromArgs call with a nil keywords pointer")
+	}
+	*keywords = append(*keywords, args...)
+}
+
 func SetRIDFromArgs(rid *string, args []string, group, defaultRID string) {
 	if rid == nil {
 		panic("SetRIDFromArgs call with a nil rid pointer")
