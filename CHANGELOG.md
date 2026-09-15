@@ -54,6 +54,12 @@ OpenSVC v3 is a major evolution, rebuilt in Go for performance, reliability, and
 
 * **Enhanced secret management**: New commands like `om <kvstore> key rename` for better key management in secret stores.
 
+* **Act on the configuration you just wrote**: A configuration write answers with the timestamp the configuration now carries, in the `OM-Last-Modified` header of the `POST` and `PUT` on `/object/path/{namespace}/{kind}/{name}/config/file`, and every instance action accepts that timestamp as the `config_updated_at` parameter.
+
+    An instance whose configuration is older than the one named answers `409 Conflict`, saying which configuration it holds, rather than running the action on the configuration the write was replacing. A write is acknowledged by the node that received it and reaches the peer nodes a moment later, so a client that writes a configuration and immediately acts on the instances would otherwise race that propagation, silently, on every node but one.
+
+    The parameter is optional: an action asking for no configuration in particular runs on whatever the node holds, as before.
+
 ### Security
 
 * **SSRF protection for HTTP fetches**: 

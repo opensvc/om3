@@ -45,6 +45,9 @@ func (a *DaemonAPI) postLocalInstanceActionSyncIngest(ctx echo.Context, namespac
 		return JSONProblemf(ctx, http.StatusBadRequest, "Invalid parameters", "%s", err)
 	}
 	log = naming.LogWithPath(log, p)
+	if v, err := assertConfigUpdatedAt(ctx, p, params.ConfigUpdatedAt); !v {
+		return err
+	}
 	// "instance ingest", not "sync ingest": the ingest action is not the sole
 	// business of the sync resources, and no rid means every rid.
 	args := []string{p.String(), "instance", "ingest"}
