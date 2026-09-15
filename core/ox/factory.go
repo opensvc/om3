@@ -3670,13 +3670,15 @@ func newCmdObjectResourceList(kind string) *cobra.Command {
 func newCmdObjectInstanceRun(kind string) *cobra.Command {
 	var options commands.CmdObjectInstanceRun
 	cmd := &cobra.Command{
-		Use:   "run",
+		Use:   "run [PATTERN]...",
 		Short: "execute instance tasks",
 		Long:  "The svc and vol objects can define task resources. Tasks are usually run on a schedule, but this command can trigger a run now.",
 		RunE: func(cmd *cobra.Command, args []string) error {
+			commoncmd.SetRIDFromArgs(&options.RID, args, "task", "")
 			return options.Run(kind)
 		},
 	}
+	commoncmd.CmdWithArg(cmd, "PATTERN  A fnmatch task resource index filter. Every task when none is given.")
 	flags := cmd.Flags()
 	addFlagsGlobal(flags, &options.OptsGlobal)
 	commoncmd.FlagsAsync(flags, &options.OptsAsync)
