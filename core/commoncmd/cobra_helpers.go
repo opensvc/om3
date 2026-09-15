@@ -112,3 +112,20 @@ Use "{{.CommandPath}} [command] --help" for more information about a command.{{e
 func SetCustomUsageTemplate(cmd *cobra.Command) {
 	cmd.SetUsageTemplate(usageTemplate)
 }
+
+// CmdOrchestrated marks a command as asking the daemon for an orchestration.
+//
+// It sorts the command into the orchestrated section of the help, and refuses
+// arguments. An orchestration is asked of the objects the selector names and
+// of nothing else, so an argument is a mistake, and cobra would otherwise
+// accept it and drop it: "om <sel> start foo" would start <sel> and say
+// nothing about foo.
+//
+// A command declaring what its arguments are keeps them, so that the few
+// orchestrations taking one, like resize, say so themselves.
+func CmdOrchestrated(cmd *cobra.Command) {
+	cmd.GroupID = GroupIDOrchestrated
+	if cmd.Args == nil {
+		cmd.Args = cobra.NoArgs
+	}
+}
