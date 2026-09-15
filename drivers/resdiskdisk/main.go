@@ -134,6 +134,7 @@ func (t *T) pooler(ctx context.Context) (pool.ArrayPooler, error) {
 		return nil, err
 	}
 	l := pool.NewLookup(node)
+	l.Namespace = t.Path.Namespace
 	l.Name = t.Pool
 	p, err := l.Do(ctx)
 	if err != nil {
