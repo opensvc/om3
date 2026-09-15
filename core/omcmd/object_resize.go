@@ -10,6 +10,7 @@ import (
 	"github.com/opensvc/om3/v3/core/object"
 	"github.com/opensvc/om3/v3/core/objectaction"
 	"github.com/opensvc/om3/v3/core/objectselector"
+	"github.com/opensvc/om3/v3/core/pool"
 	"github.com/opensvc/om3/v3/daemon/api"
 	"github.com/opensvc/om3/v3/util/sizeconv"
 )
@@ -46,6 +47,13 @@ func (t *CmdObjectResize) Run(kind string) error {
 
 	to, err := t.target(p, change)
 	if err != nil {
+		return err
+	}
+
+	// Growing is claiming more of the pool, so it is checked the way an
+	// allocation is. What the volume already holds is counted in, so only
+	// what it asks for on top has to fit.
+	if err := t.claimFits(p, to); err != nil {
 		return err
 	}
 
@@ -90,6 +98,42 @@ func (t *CmdObjectResize) target(p naming.Path, change sizeconv.Change) (int64, 
 			p, sizeconv.BSizeCompact(float64(from)), p)
 	}
 	return to, nil
+}
+
+// claimFits refuses a grow the namespace has no room for in the pool serving
+// the volume. A volume served by no pool is claimed from nothing and capped by
+// nothing.
+func (t *CmdObjectResize) claimFits(p naming.Path, to int64) error {
+	type poolNamer interface {
+		PoolName() (string, error)
+	}
+	o, err := object.New(p, object.WithVolatile(true))
+	if err != nil {
+		return err
+	}
+	i, ok := o.(poolNamer)
+	if !ok {
+		return nil
+	}
+	poolName, err := i.PoolName()
+	if err != nil || poolName == "" {
+		return nil
+	}
+	from, err := t.configuredSize(p)
+	if err != nil {
+		return err
+	}
+	if to <= from {
+		return nil
+	}
+	ok, why, err := pool.ClaimFits(context.Background(), p.Namespace, poolName, to-from)
+	if err != nil {
+		return err
+	}
+	if !ok {
+		return fmt.Errorf("%s is served by the %s pool, and %s", p, poolName, why)
+	}
+	return nil
 }
 
 func (t *CmdObjectResize) configuredSize(p naming.Path) (int64, error) {

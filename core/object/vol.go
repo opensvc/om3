@@ -35,6 +35,7 @@ type (
 		Head() string
 		HeadRID(context.Context) (string, error)
 		ConfiguredSize() (int64, error)
+		PoolName() (string, error)
 		ExposedDevice(context.Context) *device.T
 		ExposedDevices(context.Context) device.L
 		SubDevice(context.Context) *device.T
@@ -228,6 +229,12 @@ func (t *vol) exposedDeviceResource(ctx context.Context) (resource.Driver, devic
 		return r, devs
 	}
 	return nil, nil
+}
+
+// PoolName is the pool the volume was claimed from, and "" for a volume
+// claimed from no pool.
+func (t *vol) PoolName() (string, error) {
+	return t.config.GetString(key.T{Section: "DEFAULT", Option: "pool"}), nil
 }
 
 // ConfiguredSize is the size the volume is asked to be.

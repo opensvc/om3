@@ -17,15 +17,16 @@ type (
 		Pools() []Pooler
 	}
 	Lookup struct {
-		Name     string
-		Type     string
-		Access   volaccess.T
-		Size     int64
-		Format   bool
-		Shared   bool
-		Usage    bool
-		Volatile bool
-		Nodes    []string
+		Name      string
+		Type      string
+		Access    volaccess.T
+		Size      int64
+		Namespace string
+		Format    bool
+		Shared    bool
+		Usage     bool
+		Volatile  bool
+		Nodes     []string
 
 		manager manager
 	}
@@ -125,6 +126,13 @@ func (t Lookup) Do(ctx context.Context) (Pooler, error) {
 					p.Name(), sizeconv.BSize(float64(usage.Free)), sizeconv.BSize(float64(t.Size))))
 				continue
 			}
+		}
+		if ok, why, err := ClaimFits(ctx, t.Namespace, p.Name(), t.Size); err != nil {
+			cause = append(cause, fmt.Sprintf("[%s] claim check: %s", p.Name(), err))
+			continue
+		} else if !ok {
+			cause = append(cause, fmt.Sprintf("[%s] %s", p.Name(), why))
+			continue
 		}
 		l = l.Add(ctx, p, t.Usage)
 		m[p.Name()] = p

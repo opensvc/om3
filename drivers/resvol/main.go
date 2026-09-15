@@ -403,6 +403,7 @@ func (t *T) poolLookup(withUsage bool) (*pool.Lookup, error) {
 		return nil, err
 	}
 	l := pool.NewLookup(node)
+	l.Namespace = t.Path.Namespace
 	l.Name = t.Pool
 	l.Type = t.PoolType
 	if t.Size == nil {
