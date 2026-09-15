@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
-	"os"
 	"reflect"
 	"regexp"
 	"strings"
@@ -30,6 +29,15 @@ type (
 	Renderer struct {
 		DefaultOutput string
 		Output        string
+
+		// DefaultSort is the order a listing comes in when the caller asks
+		// for none, as a comma separated list of the fields to order on, each
+		// optionally prefixed with "-" to reverse it. Sort overrides it, and
+		// a Sort beginning with "+" extends it, the way Output and
+		// DefaultOutput already work.
+		DefaultSort string
+		Sort        string
+
 		Color         string
 		Data          any
 		HumanRenderer RenderFunc
@@ -75,11 +83,25 @@ func (t Renderer) Sprint() (string, error) {
 			t.Output = t.DefaultOutput + "," + t.Output[1:]
 		}
 	}
+	if t.DefaultSort != "" {
+		switch {
+		case t.Sort == "":
+			t.Sort = t.DefaultSort
+		case strings.HasPrefix(t.Sort, "+"):
+			t.Sort = t.DefaultSort + "," + t.Sort[1:]
+		}
+	}
 	if i := strings.Index(t.Output, "="); i > 0 {
 		options = t.Output[i+1:]
 		format = t.Output[:i]
 	} else {
 		format = t.Output
+	}
+	// Before the format is chosen, so that the json and the table come in the
+	// same order. The columns are read first all the same, so that a sort can
+	// name one: a reader sees TYPE, not data.status.type.
+	if err := sortData(t.Data, t.Sort, tabColumns(t.Output, t.DefaultOutput)); err != nil {
+		return "", err
 	}
 	formatID := toID[format]
 
@@ -391,10 +413,18 @@ func (t Renderer) renderTab(options string) (string, error) {
 // supported format (json, flat, human, ...).
 //
 // The human format needs a RenderFunc to be passed.
-func (t Renderer) Print() {
-	if s, err := t.Sprint(); err != nil {
-		fmt.Fprintln(os.Stderr, err)
-	} else {
-		fmt.Print(s)
+// Print writes the rendered data to stdout, and returns what stopped it from
+// rendering.
+//
+// The error is returned rather than written to stderr, so that a command whose
+// output could not be rendered fails instead of succeeding silently. A
+// misspelled column or sort field used to print a line to stderr and exit 0,
+// which a script reading the empty stdout had no way to notice.
+func (t Renderer) Print() error {
+	s, err := t.Sprint()
+	if err != nil {
+		return err
 	}
+	fmt.Print(s)
+	return nil
 }

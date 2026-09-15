@@ -96,13 +96,14 @@ func (t *CmdNodeSystemPackage) Run() error {
 out:
 
 	defaultOutput := "tab=NODE:meta.node,NAME:data.name,VERSION:data.version,ARCH:data.arch,TYPE:data.type,INSTALLED_AT:data.InstalledAt,SIG:data.sig"
-	output.Renderer{
+	errs = errors.Join(errs, output.Renderer{
 		DefaultOutput: defaultOutput,
 		Output:        t.Output,
+		Sort:          t.Sort,
 		Color:         t.Color,
 		Data:          api.PackageList{Items: l, Kind: "PackageList"},
 		Colorize:      rawconfig.Colorize,
-	}.Print()
+	}.Print())
 
 	return errs
 }

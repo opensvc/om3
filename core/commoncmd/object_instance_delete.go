@@ -17,8 +17,8 @@ func ObjectInstanceDeleteRemoteFunc(ctx context.Context, p naming.Path, nodename
 	}
 	params := api.PostInstanceActionDeleteParams{}
 	{
-		sid := xsession.Sid().UUID()
-		params.SessionId = &sid
+		sessionID := xsession.SessionID().UUID()
+		params.SessionID = &sessionID
 	}
 	response, err := c.PostInstanceActionDeleteWithResponse(ctx, nodename, p.Namespace, p.Kind, p.Name, &params)
 	if err != nil {

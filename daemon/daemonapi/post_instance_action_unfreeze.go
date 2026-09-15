@@ -27,7 +27,7 @@ func (a *DaemonAPI) PostInstanceActionUnfreeze(ctx echo.Context, nodename, names
 
 func (a *DaemonAPI) postLocalInstanceActionUnfreeze(ctx echo.Context, namespace string, kind naming.Kind, name string, params api.PostInstanceActionUnfreezeParams) error {
 	log := LogHandler(ctx, "PostInstanceActionUnfreeze")
-	var requesterSid uuid.UUID
+	var requesterSessionID uuid.UUID
 	p, err := naming.NewPath(namespace, kind, name)
 	if err != nil {
 		return JSONProblemf(ctx, http.StatusBadRequest, "Invalid parameters", "%s", err)
@@ -43,12 +43,12 @@ func (a *DaemonAPI) postLocalInstanceActionUnfreeze(ctx echo.Context, namespace 
 	if params.Master != nil && *params.Master {
 		args = append(args, "--master")
 	}
-	if params.SessionId != nil {
-		requesterSid = *params.SessionId
+	if params.SessionID != nil {
+		requesterSessionID = *params.SessionID
 	}
-	if sid, err := a.apiExec(ctx, p, requesterSid, args, log); err != nil {
+	if sessionID, execID, err := a.apiExec(ctx, p, requesterSessionID, args, log); err != nil {
 		return JSONProblemf(ctx, http.StatusInternalServerError, "", "%s", err)
 	} else {
-		return ctx.JSON(http.StatusOK, api.InstanceActionAccepted{SessionID: sid})
+		return ctx.JSON(http.StatusOK, api.InstanceActionAccepted{SessionID: sessionID, ExecID: execID})
 	}
 }

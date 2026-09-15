@@ -12,8 +12,8 @@ import (
 
 // Func call f() inside lock protection
 func Func(lockPath string, timeout time.Duration, intent string, f func() error) error {
-	sid := xsession.Sid().String()
-	lock := flock.New(lockPath, sid, fcntllock.New)
+	sessionID := xsession.SessionID().String()
+	lock := flock.New(lockPath, sessionID, fcntllock.New)
 	log.Debug().Msgf("Locking %s: %s", intent, lockPath)
 	err := lock.Lock(timeout, intent)
 	if err != nil {
@@ -28,8 +28,8 @@ func Func(lockPath string, timeout time.Duration, intent string, f func() error)
 
 // Lock tries lock and returns release function to release lock
 func Lock(lockPath string, timeout time.Duration, intent string) (func(), error) {
-	sid := xsession.Sid().String()
-	lock := flock.New(lockPath, sid, fcntllock.New)
+	sessionID := xsession.SessionID().String()
+	lock := flock.New(lockPath, sessionID, fcntllock.New)
 	log.Debug().Msgf("Locking %s: %s", intent, lockPath)
 	err := lock.Lock(timeout, intent)
 	if err != nil {

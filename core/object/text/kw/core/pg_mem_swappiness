@@ -1,1 +1,5 @@
 Set a swappiness percentile value for the process group.
+
+This keyword caps nothing on a node holding the unified cgroup hierarchy,
+which has no `memory.swappiness`: that file is of the v1 hierarchy. Setting
+it there is warned about, and ignored.

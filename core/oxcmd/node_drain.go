@@ -51,6 +51,7 @@ func (t *CmdNodeDrain) doRemote() error {
 				nodeaction.WithAsyncWait(t.Wait),
 				nodeaction.WithAsyncWaitNode(nodename),
 				nodeaction.WithFormat(t.Output),
+				nodeaction.WithSort(t.Sort),
 				nodeaction.WithColor(t.Color),
 				nodeaction.WithAsyncFunc(func(ctx context.Context) error {
 					if resp, err := c.PostPeerActionDrainWithResponse(ctx, nodename); err != nil {

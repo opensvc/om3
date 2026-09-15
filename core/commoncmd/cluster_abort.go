@@ -9,6 +9,7 @@ import (
 type CmdClusterAbort struct {
 	Color  string
 	Output string
+	Sort   string
 	OptsAsync
 }
 
@@ -25,6 +26,7 @@ func NewCmdClusterAbort() *cobra.Command {
 	flags := cmd.Flags()
 	FlagColor(flags, &options.Color)
 	FlagOutput(flags, &options.Output)
+	FlagSort(flags, &options.Sort)
 	FlagsAsync(flags, &options.OptsAsync)
 	return cmd
 }
@@ -34,6 +36,7 @@ func (t *CmdClusterAbort) Run() error {
 		nodeaction.WithAsyncTarget("aborted"),
 		nodeaction.WithAsyncWatch(t.Watch),
 		nodeaction.WithFormat(t.Output),
+		nodeaction.WithSort(t.Sort),
 		nodeaction.WithColor(t.Color),
 	).Do()
 }

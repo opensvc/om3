@@ -11,6 +11,10 @@ func HasCarrier(_ string) (bool, error) {
 	return false, fmt.Errorf("netif.HasCarrier() not implemented")
 }
 
+func IsBridge(_ string) (bool, error) {
+	return false, fmt.Errorf("netif.IsBridge() not implemented")
+}
+
 func AddAddr(_ string, _ *net.IPNet) error {
 	return fmt.Errorf("netif.AddAddr() not implemented")
 }

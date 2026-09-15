@@ -16,6 +16,7 @@ type (
 func (t *CmdNodeCollectorTagAttach) Run() error {
 	return nodeaction.New(
 		nodeaction.WithFormat(t.Output),
+		nodeaction.WithSort(t.Sort),
 		nodeaction.WithColor(t.Color),
 		nodeaction.WithRemoteNodes(t.NodeSelector),
 	).Do()

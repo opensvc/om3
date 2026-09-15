@@ -108,8 +108,8 @@ func CmdArgs(e schedule.Entry) ([]string, error) {
 
 func (o *T) action(e schedule.Entry) error {
 	logger := o.jobLogger(e)
-	eid := xsession.NewEid()
-	sid := xsession.NewSid()
+	execID := xsession.NewExecID()
+	sessionID := xsession.NewSessionID()
 	labels := []pubsub.Label{{"node", o.localhost}, {"origin", "scheduler"}}
 	if !e.Path.IsZero() {
 		labels = append(labels, pubsub.Label{"namespace", e.Path.Namespace}, pubsub.Label{"path", e.Path.String()})
@@ -123,9 +123,9 @@ func (o *T) action(e schedule.Entry) error {
 	cmdEnv = append(
 		cmdEnv,
 		env.ActionOriginDaemonScheduler.Var(),
-		xsession.Sid().ParentVar(),
-		eid.Var(),
-		sid.Var(),
+		xsession.SessionID().ParentVar(),
+		execID.Var(),
+		sessionID.Var(),
 	)
 
 	// Unless the daemon runs with --debug or --trace, we don't want to
@@ -143,31 +143,35 @@ func (o *T) action(e schedule.Entry) error {
 		command.WithEnv(cmdEnv),
 	)
 	logger.Debugf("-> exec %s", cmd)
+	startTime := time.Now()
 	o.publisher.Pub(&msgbus.Exec{
 		Command:   cmd.String(),
 		Node:      o.localhost,
 		Origin:    "scheduler",
-		ExecID:    eid,
-		SessionID: sid,
+		RID:       e.RID(),
+		ExecID:    execID,
+		SessionID: sessionID,
+		StartedAt: startTime,
 	}, labels...)
-	startTime := time.Now()
 	if err := cmd.Start(); err != nil {
+		// The start of this exec was announced, so its end has to be too, or
+		// it stays running in the exec store for as long as the store keeps
+		// it. There is no exit status to report: it never ran.
+		o.publisher.Pub(&msgbus.ExecFailed{
+			Command:   cmd.String(),
+			Duration:  time.Now().Sub(startTime),
+			ErrS:      err.Error(),
+			ExitCode:  -1,
+			Node:      o.localhost,
+			Origin:    "scheduler",
+			ExecID:    execID,
+			SessionID: sessionID,
+		}, labels...)
 		o.log.Errorf("exec StartProcess: %s", err)
 		return err
 	}
 	pid := cmd.Cmd().Process.Pid
-	proc.Register(proc.T{
-		Pid:          pid,
-		Node:         o.localhost,
-		Object:       e.Path.String(),
-		Sid:          sid.String(),
-		StartedAt:    startTime,
-		Elapsed:      "",
-		GlobalExpect: "-",
-		Sub:          "scheduler",
-		Cmd:          cmd.String(),
-		Rid:          e.RID(),
-	})
+	proc.Register(proc.T{Pid: pid, ExecID: execID.String()})
 	err = cmd.Wait()
 	proc.Unregister(pid)
 	if err != nil {
@@ -176,10 +180,11 @@ func (o *T) action(e schedule.Entry) error {
 			Command:   cmd.String(),
 			Duration:  duration,
 			ErrS:      err.Error(),
+			ExitCode:  cmd.NormalizedExitCode(),
 			Node:      o.localhost,
 			Origin:    "scheduler",
-			ExecID:    eid,
-			SessionID: sid,
+			ExecID:    execID,
+			SessionID: sessionID,
 		}, labels...)
 		logger.Errorf("%s: %s", cmd, err)
 		return err
@@ -188,10 +193,11 @@ func (o *T) action(e schedule.Entry) error {
 	o.publisher.Pub(&msgbus.ExecSuccess{
 		Command:   cmd.String(),
 		Duration:  duration,
+		ExitCode:  cmd.NormalizedExitCode(),
 		Node:      o.localhost,
 		Origin:    "scheduler",
-		ExecID:    eid,
-		SessionID: sid,
+		ExecID:    execID,
+		SessionID: sessionID,
 	}, labels...)
 	logger.Debugf("<- exec %s", cmd)
 	return nil

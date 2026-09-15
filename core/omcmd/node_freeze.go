@@ -44,15 +44,15 @@ func (t *CmdNodeFreeze) doRemote() error {
 		go func(nodename string) {
 			params := api.PostPeerActionFreezeParams{}
 			{
-				sid := xsession.Sid().UUID()
-				params.SessionId = &sid
+				sessionID := xsession.SessionID().UUID()
+				params.SessionID = &sessionID
 			}
 			if resp, err := c.PostPeerActionFreezeWithResponse(ctx, nodename, &params); err != nil {
 				errC <- err
 			} else {
 				switch resp.StatusCode() {
 				case http.StatusOK:
-					fmt.Printf("node %s: action started with SID=%s\n", nodename, (*resp.JSON200).SessionID)
+					fmt.Printf("node %s: action started with session_id=%s\n", nodename, (*resp.JSON200).SessionID)
 				case 401:
 					errC <- fmt.Errorf("%s: %s", nodename, *resp.JSON401)
 				case 403:

@@ -26,14 +26,14 @@ func (a *DaemonAPI) PostNodeActionScanCapabilities(ctx echo.Context, nodename st
 
 func (a *DaemonAPI) localNodeActionScanCapabilities(ctx echo.Context, params api.PostNodeActionScanCapabilitiesParams) error {
 	log := LogHandler(ctx, "PostNodeActionScanCapabilities")
-	var requesterSid uuid.UUID
+	var requesterSessionID uuid.UUID
 	args := []string{"node", "scan", "capabilities"}
-	if params.SessionId != nil {
-		requesterSid = *params.SessionId
+	if params.SessionID != nil {
+		requesterSessionID = *params.SessionID
 	}
-	if sid, err := a.apiExec(ctx, naming.Path{}, requesterSid, args, log); err != nil {
+	if sessionID, execID, err := a.apiExec(ctx, naming.Path{}, requesterSessionID, args, log); err != nil {
 		return JSONProblemf(ctx, http.StatusInternalServerError, "", "%s", err)
 	} else {
-		return ctx.JSON(http.StatusOK, api.NodeActionAccepted{SessionID: sid})
+		return ctx.JSON(http.StatusOK, api.NodeActionAccepted{SessionID: sessionID, ExecID: execID})
 	}
 }

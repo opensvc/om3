@@ -31,3 +31,23 @@ func TestFmtShortDuration(t *testing.T) {
 		})
 	}
 }
+
+// A duration shorter than a second matches none of the units the largest-unit
+// loop walks, which left it on the first: 300ms rendered "0d".
+func TestFmtShortDurationUnderASecond(t *testing.T) {
+	for _, tc := range []struct {
+		d        time.Duration
+		expected string
+	}{
+		{0, "0s"},
+		{-time.Second, "0s"},
+		{300 * time.Millisecond, "300ms"},
+		{999 * time.Millisecond, "999ms"},
+		{812 * time.Microsecond, "812us"},
+		{time.Second, "1s"},
+		{90 * time.Second, "1m30s"},
+		{25 * time.Hour, "1d1h"},
+	} {
+		assert.Equalf(t, tc.expected, FmtShortDuration(tc.d), "%s", tc.d)
+	}
+}

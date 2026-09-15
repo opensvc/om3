@@ -39,7 +39,7 @@ func (a *DaemonAPI) PostInstanceProgress(ctx echo.Context, namespace string, kin
 	if payload.IsPartial != nil {
 		isPartial = *payload.IsPartial
 	}
-	a.Bus.Pub(&msgbus.ProgressInstanceMonitor{Path: p, Node: a.localhost, SessionID: xsession.NewSid(payload.SessionID), State: state, IsPartial: isPartial},
+	a.Bus.Pub(&msgbus.ProgressInstanceMonitor{Path: p, Node: a.localhost, SessionID: xsession.NewSessionID(payload.SessionID), State: state, IsPartial: isPartial},
 		pubsub.Label{"namespace", p.Namespace},
 		pubsub.Label{"path", p.String()},
 		a.LabelLocalhost,

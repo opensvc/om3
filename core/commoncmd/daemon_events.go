@@ -387,12 +387,17 @@ func (t *CmdDaemonEvents) doEvent(e event.Event) {
 		if t.Output == output.JSON.String() {
 			t.Output = output.JSONLine.String()
 		}
-		output.Renderer{
+		// An event stream prints one event at a time, so there is no listing
+		// to order and no return to carry a failure: this reports it the way
+		// the template branch above reports its own, and keeps streaming.
+		if err := (output.Renderer{
 			Output:   t.Output,
 			Color:    t.Color,
 			Data:     ce,
 			Colorize: rawconfig.Colorize,
 			Stream:   true,
-		}.Print()
+		}).Print(); err != nil {
+			_, _ = fmt.Fprintf(os.Stderr, "render event: %s\n", err)
+		}
 	}
 }

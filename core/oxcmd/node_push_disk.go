@@ -27,6 +27,7 @@ func (t *CmdNodePushDisks) Run() error {
 	err := nodeaction.New(
 		nodeaction.WithRemoteNodes(t.NodeSelector),
 		nodeaction.WithFormat(t.Output),
+		nodeaction.WithSort(t.Sort),
 		nodeaction.WithColor(t.Color),
 		nodeaction.WithRemoteFunc(func(ctx context.Context, nodename string) (interface{}, error) {
 			c, err := client.New()
@@ -35,8 +36,8 @@ func (t *CmdNodePushDisks) Run() error {
 			}
 			params := api.PostNodeActionPushDiskParams{}
 			{
-				sid := xsession.Sid().UUID()
-				params.SessionId = &sid
+				sessionID := xsession.SessionID().UUID()
+				params.SessionID = &sessionID
 			}
 			response, err := c.PostNodeActionPushDiskWithResponse(ctx, nodename, &params)
 			if err != nil {
@@ -67,6 +68,7 @@ func (t *CmdNodePushDisks) doDryRun() error {
 	return nodeaction.New(
 		nodeaction.WithRemoteNodes(t.NodeSelector),
 		nodeaction.WithFormat(t.Output),
+		nodeaction.WithSort(t.Sort),
 		nodeaction.WithColor(t.Color),
 		nodeaction.WithRemoteFunc(func(ctx context.Context, nodename string) (interface{}, error) {
 			c, err := client.New()

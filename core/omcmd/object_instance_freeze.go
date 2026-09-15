@@ -27,6 +27,7 @@ func (t *CmdObjectInstanceFreeze) Run(kind string) error {
 	return objectaction.New(
 		objectaction.WithObjectSelector(mergedSelector),
 		objectaction.WithOutput(t.Output),
+		objectaction.WithSort(t.Sort),
 		objectaction.WithColor(t.Color),
 		objectaction.WithIgnoreNotFound(t.IgnoreNotFound),
 		objectaction.WithAsyncTime(t.Time),
@@ -52,8 +53,8 @@ func (t *CmdObjectInstanceFreeze) Run(kind string) error {
 				params.Slave = &t.OptsEncap.Slaves
 			}
 			{
-				sid := xsession.Sid().UUID()
-				params.SessionId = &sid
+				sessionID := xsession.SessionID().UUID()
+				params.SessionID = &sessionID
 			}
 			response, err := c.PostInstanceActionFreezeWithResponse(ctx, nodename, p.Namespace, p.Kind, p.Name, &params)
 			if err != nil {

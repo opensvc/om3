@@ -10,6 +10,7 @@ type CmdClusterUnfreeze struct {
 	OptsAsync
 	Color  string
 	Output string
+	Sort   string
 }
 
 func NewCmdClusterUnfreeze() *cobra.Command {
@@ -27,6 +28,7 @@ func NewCmdClusterUnfreeze() *cobra.Command {
 	FlagsAsync(flags, &options.OptsAsync)
 	FlagColor(flags, &options.Color)
 	FlagOutput(flags, &options.Output)
+	FlagSort(flags, &options.Sort)
 	return cmd
 }
 
@@ -37,6 +39,7 @@ func (t *CmdClusterUnfreeze) Run() error {
 		nodeaction.WithAsyncWait(t.Wait),
 		nodeaction.WithAsyncWatch(t.Watch),
 		nodeaction.WithFormat(t.Output),
+		nodeaction.WithSort(t.Sort),
 		nodeaction.WithColor(t.Color),
 		nodeaction.WithLocal(false),
 	).Do()

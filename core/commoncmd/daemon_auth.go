@@ -4,9 +4,10 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"github.com/opensvc/om3/v3/util/duration"
 	"net/http"
 	"time"
+
+	"github.com/opensvc/om3/v3/util/duration"
 
 	"github.com/spf13/cobra"
 
@@ -85,11 +86,10 @@ func (t *CmdDaemonAuth) Run() error {
 	} else if resp.StatusCode() != http.StatusOK {
 		return fmt.Errorf("%w: %w: got %d wanted %d", ErrCmdDaemonAuth, ErrClientStatusCode, resp.StatusCode(), http.StatusOK)
 	}
-	output.Renderer{
+	return output.Renderer{
 		DefaultOutput: "tab=:access_token",
 		Output:        t.Out,
 		Data:          *resp.JSON200,
 		Colorize:      rawconfig.Colorize,
 	}.Print()
-	return nil
 }

@@ -73,12 +73,12 @@ func (t *CmdObjectConfigValidate) Run(kind string) error {
 	wg.Wait()
 	done <- true
 
-	output.Renderer{
+	return output.Renderer{
 		DefaultOutput: "tab=LEVEL:icon,PATH:path,DRIVER:driver,KEY:key,KIND:kind,COMMENT:comment",
 		Output:        t.Output,
+		Sort:          t.Sort,
 		Color:         t.Color,
 		Data:          alerts,
 		Colorize:      rawconfig.Colorize,
 	}.Print()
-	return nil
 }

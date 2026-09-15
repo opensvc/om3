@@ -46,16 +46,16 @@ func (t *CmdArrayList) Run() error {
 		return fmt.Errorf("unexpected status code: %d", resp.StatusCode())
 	}
 
-	render := func(items api.ArrayItems) {
-		output.Renderer{
+	render := func(items api.ArrayItems) error {
+		return output.Renderer{
 			DefaultOutput: "tab=" + cols,
 			Output:        t.Output,
+			Sort:          t.Sort,
 			Color:         t.Color,
 			Data:          items,
 			Colorize:      rawconfig.Colorize,
 		}.Print()
 	}
 
-	render(arr.Items)
-	return nil
+	return render(arr.Items)
 }

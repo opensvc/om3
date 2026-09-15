@@ -28,6 +28,7 @@ func (t *CmdObjectUnfreeze) Run(kind string) error {
 		objectaction.WithLocal(t.Local),
 		objectaction.WithObjectSelector(mergedSelector),
 		objectaction.WithOutput(t.Output),
+		objectaction.WithSort(t.Sort),
 		objectaction.WithColor(t.Color),
 		objectaction.WithIgnoreNotFound(t.IgnoreNotFound),
 		objectaction.WithAsyncTarget("unfrozen"),
@@ -42,8 +43,8 @@ func (t *CmdObjectUnfreeze) Run(kind string) error {
 			}
 			params := api.PostInstanceActionUnfreezeParams{}
 			{
-				sid := xsession.Sid().UUID()
-				params.SessionId = &sid
+				sessionID := xsession.SessionID().UUID()
+				params.SessionID = &sessionID
 			}
 			response, err := c.PostInstanceActionUnfreezeWithResponse(ctx, nodename, p.Namespace, p.Kind, p.Name, &params)
 			if err != nil {

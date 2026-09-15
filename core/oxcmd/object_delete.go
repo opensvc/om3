@@ -27,6 +27,7 @@ func (t *CmdObjectDelete) Run(kind string) error {
 		objectaction.WithColor(t.Color),
 		objectaction.WithIgnoreNotFound(t.IgnoreNotFound),
 		objectaction.WithOutput(t.Output),
+		objectaction.WithSort(t.Sort),
 		objectaction.WithObjectSelector(mergedSelector),
 		objectaction.WithAsyncTarget("deleted"),
 		objectaction.WithAsyncTime(t.Time),
@@ -40,8 +41,8 @@ func (t *CmdObjectDelete) Run(kind string) error {
 			}
 			params := api.PostInstanceActionDeleteParams{}
 			{
-				sid := xsession.Sid().UUID()
-				params.SessionId = &sid
+				sessionID := xsession.SessionID().UUID()
+				params.SessionID = &sessionID
 			}
 			response, err := c.PostInstanceActionDeleteWithResponse(ctx, nodename, p.Namespace, p.Kind, p.Name, &params)
 			if err != nil {

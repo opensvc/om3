@@ -33,14 +33,14 @@ func (t *CmdNetworkList) Run() error {
 	var pb api.Problem
 	switch resp.StatusCode() {
 	case 200:
-		output.Renderer{
+		return output.Renderer{
 			DefaultOutput: "tab=NAME:name,TYPE:type,NETWORK:network,SIZE:size,USED:used,FREE:free",
 			Output:        t.Output,
+			Sort:          t.Sort,
 			Color:         t.Color,
 			Data:          resp.JSON200,
 			Colorize:      rawconfig.Colorize,
 		}.Print()
-		return nil
 	case 401:
 		pb = *resp.JSON401
 	case 403:

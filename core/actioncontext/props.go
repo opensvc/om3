@@ -131,6 +131,11 @@ var (
 		MustLock: true,
 		PG:       true,
 	}
+	PGReset = Properties{
+		Name:     "pg_reset",
+		MustLock: true,
+		PG:       true,
+	}
 	Start = Properties{
 		Name:            "start",
 		Target:          "started",

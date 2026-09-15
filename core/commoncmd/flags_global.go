@@ -9,6 +9,7 @@ import (
 func AddFlagsGlobal(flags *pflag.FlagSet, p *OptsGlobal) {
 	FlagColor(flags, &p.Color)
 	FlagOutput(flags, &p.Output)
+	FlagSort(flags, &p.Sort)
 	FlagObjectSelector(flags, &p.ObjectSelector)
 	FlagIgnoreNotFound(flags, &p.IgnoreNotFound)
 }

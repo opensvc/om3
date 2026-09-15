@@ -120,8 +120,8 @@ func configureLogger() error {
 	log.Logger = log.Logger.With().
 		Str("node", hostname.Hostname()).
 		Str("version", version.Version()).
-		Stringer("sid", xsession.Sid()).
-		Stringer("eid", xsession.Eid()).
+		Stringer("session_id", xsession.SessionID()).
+		Stringer("exec_id", xsession.ExecID()).
 		Logger()
 	if requestID := os.Getenv("OSVC_REQUEST_ID"); requestID != "" {
 		log.Logger = log.Logger.With().Str("request_id", requestID).Logger()

@@ -42,6 +42,7 @@ func (t *CmdObjectProvision) Run(kind string) error {
 		objectaction.WithMaster(t.Master),
 		objectaction.WithLocal(t.Local),
 		objectaction.WithOutput(t.Output),
+		objectaction.WithSort(t.Sort),
 		objectaction.WithColor(t.Color),
 		objectaction.WithIgnoreNotFound(t.IgnoreNotFound),
 		objectaction.WithAsyncTarget("provisioned"),
@@ -93,8 +94,8 @@ func (t *CmdObjectProvision) Run(kind string) error {
 				params.To = &t.OptTo.To
 			}
 			{
-				sid := xsession.Sid().UUID()
-				params.SessionId = &sid
+				sessionID := xsession.SessionID().UUID()
+				params.SessionID = &sessionID
 			}
 			response, err := c.PostInstanceActionProvisionWithResponse(ctx, nodename, p.Namespace, p.Kind, p.Name, &params)
 			if err != nil {

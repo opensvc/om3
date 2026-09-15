@@ -42,7 +42,7 @@ type (
 		// OrchestrationIsDone set.
 		OrchestrationIsDone bool `json:"orchestration_is_done"`
 
-		SessionID               xsession.Id      `json:"session_id"`
+		SessionID               xsession.ID      `json:"session_id"`
 		State                   MonitorState     `json:"state"`
 		StateUpdatedAt          time.Time        `json:"state_updated_at"`
 		MonitorActionExecutedAt time.Time        `json:"monitor_action_executed_at"`

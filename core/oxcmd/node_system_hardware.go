@@ -96,13 +96,14 @@ func (t *CmdNodeSystemHardware) Run() error {
 out:
 
 	defaultOutput := "tab=NODE:meta.node,PATH:data.path,DESCRIPTION:data.description,CLASS:data.class,DRIVER:data.driver,TYPE:data.type"
-	output.Renderer{
+	errs = errors.Join(errs, output.Renderer{
 		DefaultOutput: defaultOutput,
 		Output:        t.Output,
+		Sort:          t.Sort,
 		Color:         t.Color,
 		Data:          api.HardwareList{Items: l, Kind: "HardwareList"},
 		Colorize:      rawconfig.Colorize,
-	}.Print()
+	}.Print())
 
 	return errs
 }

@@ -247,6 +247,15 @@ type ClientInterface interface {
 	// GetDaemonEvents request
 	GetDaemonEvents(ctx context.Context, nodename InPathNodeName, params *GetDaemonEventsParams, reqEditors ...RequestEditorFn) (*http.Response, error)
 
+	// DeleteDaemonExecs request
+	DeleteDaemonExecs(ctx context.Context, nodename InPathNodeName, params *DeleteDaemonExecsParams, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// GetDaemonExecs request
+	GetDaemonExecs(ctx context.Context, nodename InPathNodeName, params *GetDaemonExecsParams, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// GetDaemonExec request
+	GetDaemonExec(ctx context.Context, nodename InPathNodeName, execId InPathExecID, reqEditors ...RequestEditorFn) (*http.Response, error)
+
 	// PostDaemonHeartbeatRestart request
 	PostDaemonHeartbeatRestart(ctx context.Context, nodename InPathNodeName, name InPathHeartbeatName, reqEditors ...RequestEditorFn) (*http.Response, error)
 
@@ -279,11 +288,11 @@ type ClientInterface interface {
 
 	PostDaemonLogControl(ctx context.Context, nodename InPathNodeName, body PostDaemonLogControlJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
 
-	// DeleteDaemonProcess request
-	DeleteDaemonProcess(ctx context.Context, nodename InPathNodeName, params *DeleteDaemonProcessParams, reqEditors ...RequestEditorFn) (*http.Response, error)
+	// GetDaemonOrchestrations request
+	GetDaemonOrchestrations(ctx context.Context, nodename InPathNodeName, params *GetDaemonOrchestrationsParams, reqEditors ...RequestEditorFn) (*http.Response, error)
 
-	// GetDaemonProcess request
-	GetDaemonProcess(ctx context.Context, nodename InPathNodeName, params *GetDaemonProcessParams, reqEditors ...RequestEditorFn) (*http.Response, error)
+	// GetDaemonOrchestration request
+	GetDaemonOrchestration(ctx context.Context, nodename InPathNodeName, orchestrationId InPathOrchestrationID, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// GetNodeDRBDAllocation request
 	GetNodeDRBDAllocation(ctx context.Context, nodename InPathNodeName, reqEditors ...RequestEditorFn) (*http.Response, error)
@@ -322,6 +331,9 @@ type ClientInterface interface {
 
 	// PostInstanceActionInfo request
 	PostInstanceActionInfo(ctx context.Context, nodename InPathNodeName, namespace InPathNamespace, kind InPathKind, name InPathName, params *PostInstanceActionInfoParams, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// PostInstanceActionPGReset request
+	PostInstanceActionPGReset(ctx context.Context, nodename InPathNodeName, namespace InPathNamespace, kind InPathKind, name InPathName, params *PostInstanceActionPGResetParams, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// PostInstanceActionPGUpdate request
 	PostInstanceActionPGUpdate(ctx context.Context, nodename InPathNodeName, namespace InPathNamespace, kind InPathKind, name InPathName, params *PostInstanceActionPGUpdateParams, reqEditors ...RequestEditorFn) (*http.Response, error)
@@ -1217,6 +1229,42 @@ func (c *Client) GetDaemonEvents(ctx context.Context, nodename InPathNodeName, p
 	return c.Client.Do(req)
 }
 
+func (c *Client) DeleteDaemonExecs(ctx context.Context, nodename InPathNodeName, params *DeleteDaemonExecsParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewDeleteDaemonExecsRequest(c.Server, nodename, params)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+func (c *Client) GetDaemonExecs(ctx context.Context, nodename InPathNodeName, params *GetDaemonExecsParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewGetDaemonExecsRequest(c.Server, nodename, params)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+func (c *Client) GetDaemonExec(ctx context.Context, nodename InPathNodeName, execId InPathExecID, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewGetDaemonExecRequest(c.Server, nodename, execId)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
 func (c *Client) PostDaemonHeartbeatRestart(ctx context.Context, nodename InPathNodeName, name InPathHeartbeatName, reqEditors ...RequestEditorFn) (*http.Response, error) {
 	req, err := NewPostDaemonHeartbeatRestartRequest(c.Server, nodename, name)
 	if err != nil {
@@ -1349,8 +1397,8 @@ func (c *Client) PostDaemonLogControl(ctx context.Context, nodename InPathNodeNa
 	return c.Client.Do(req)
 }
 
-func (c *Client) DeleteDaemonProcess(ctx context.Context, nodename InPathNodeName, params *DeleteDaemonProcessParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
-	req, err := NewDeleteDaemonProcessRequest(c.Server, nodename, params)
+func (c *Client) GetDaemonOrchestrations(ctx context.Context, nodename InPathNodeName, params *GetDaemonOrchestrationsParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewGetDaemonOrchestrationsRequest(c.Server, nodename, params)
 	if err != nil {
 		return nil, err
 	}
@@ -1361,8 +1409,8 @@ func (c *Client) DeleteDaemonProcess(ctx context.Context, nodename InPathNodeNam
 	return c.Client.Do(req)
 }
 
-func (c *Client) GetDaemonProcess(ctx context.Context, nodename InPathNodeName, params *GetDaemonProcessParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
-	req, err := NewGetDaemonProcessRequest(c.Server, nodename, params)
+func (c *Client) GetDaemonOrchestration(ctx context.Context, nodename InPathNodeName, orchestrationId InPathOrchestrationID, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewGetDaemonOrchestrationRequest(c.Server, nodename, orchestrationId)
 	if err != nil {
 		return nil, err
 	}
@@ -1519,6 +1567,18 @@ func (c *Client) PostInstanceActionFreeze(ctx context.Context, nodename InPathNo
 
 func (c *Client) PostInstanceActionInfo(ctx context.Context, nodename InPathNodeName, namespace InPathNamespace, kind InPathKind, name InPathName, params *PostInstanceActionInfoParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
 	req, err := NewPostInstanceActionInfoRequest(c.Server, nodename, namespace, kind, name, params)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+func (c *Client) PostInstanceActionPGReset(ctx context.Context, nodename InPathNodeName, namespace InPathNamespace, kind InPathKind, name InPathName, params *PostInstanceActionPGResetParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewPostInstanceActionPGResetRequest(c.Server, nodename, namespace, kind, name, params)
 	if err != nil {
 		return nil, err
 	}
@@ -3909,9 +3969,9 @@ func NewPostPeerActionDequeueRequest(server string, nodename InPathNodeName, par
 		// per the OpenAPI spec (e.g. "color=blue,black,brown").
 		var rawQueryFragments []string
 
-		if params.SessionId != nil {
+		if params.SessionID != nil {
 
-			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "session_id", *params.SessionId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "string", Format: "uuid"}); err != nil {
+			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "session_id", *params.SessionID, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "string", Format: "uuid"}); err != nil {
 				return nil, err
 			} else {
 				for _, qp := range strings.Split(queryFrag, "&") {
@@ -4004,9 +4064,9 @@ func NewPostPeerActionFreezeRequest(server string, nodename InPathNodeName, para
 		// per the OpenAPI spec (e.g. "color=blue,black,brown").
 		var rawQueryFragments []string
 
-		if params.SessionId != nil {
+		if params.SessionID != nil {
 
-			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "session_id", *params.SessionId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "string", Format: "uuid"}); err != nil {
+			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "session_id", *params.SessionID, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "string", Format: "uuid"}); err != nil {
 				return nil, err
 			} else {
 				for _, qp := range strings.Split(queryFrag, "&") {
@@ -4065,9 +4125,9 @@ func NewPostNodeActionPushAssetRequest(server string, nodename InPathNodeName, p
 		// per the OpenAPI spec (e.g. "color=blue,black,brown").
 		var rawQueryFragments []string
 
-		if params.SessionId != nil {
+		if params.SessionID != nil {
 
-			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "session_id", *params.SessionId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "string", Format: "uuid"}); err != nil {
+			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "session_id", *params.SessionID, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "string", Format: "uuid"}); err != nil {
 				return nil, err
 			} else {
 				for _, qp := range strings.Split(queryFrag, "&") {
@@ -4126,9 +4186,9 @@ func NewPostNodeActionPushDiskRequest(server string, nodename InPathNodeName, pa
 		// per the OpenAPI spec (e.g. "color=blue,black,brown").
 		var rawQueryFragments []string
 
-		if params.SessionId != nil {
+		if params.SessionID != nil {
 
-			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "session_id", *params.SessionId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "string", Format: "uuid"}); err != nil {
+			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "session_id", *params.SessionID, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "string", Format: "uuid"}); err != nil {
 				return nil, err
 			} else {
 				for _, qp := range strings.Split(queryFrag, "&") {
@@ -4187,9 +4247,9 @@ func NewPostNodeActionPushPkgRequest(server string, nodename InPathNodeName, par
 		// per the OpenAPI spec (e.g. "color=blue,black,brown").
 		var rawQueryFragments []string
 
-		if params.SessionId != nil {
+		if params.SessionID != nil {
 
-			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "session_id", *params.SessionId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "string", Format: "uuid"}); err != nil {
+			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "session_id", *params.SessionID, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "string", Format: "uuid"}); err != nil {
 				return nil, err
 			} else {
 				for _, qp := range strings.Split(queryFrag, "&") {
@@ -4248,9 +4308,9 @@ func NewPostNodeActionScanCapabilitiesRequest(server string, nodename InPathNode
 		// per the OpenAPI spec (e.g. "color=blue,black,brown").
 		var rawQueryFragments []string
 
-		if params.SessionId != nil {
+		if params.SessionID != nil {
 
-			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "session_id", *params.SessionId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "string", Format: "uuid"}); err != nil {
+			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "session_id", *params.SessionID, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "string", Format: "uuid"}); err != nil {
 				return nil, err
 			} else {
 				for _, qp := range strings.Split(queryFrag, "&") {
@@ -4309,9 +4369,9 @@ func NewPostNodeActionSCSIScanRequest(server string, nodename InPathNodeName, pa
 		// per the OpenAPI spec (e.g. "color=blue,black,brown").
 		var rawQueryFragments []string
 
-		if params.SessionId != nil {
+		if params.SessionID != nil {
 
-			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "session_id", *params.SessionId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "string", Format: "uuid"}); err != nil {
+			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "session_id", *params.SessionID, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "string", Format: "uuid"}); err != nil {
 				return nil, err
 			} else {
 				for _, qp := range strings.Split(queryFrag, "&") {
@@ -4418,9 +4478,9 @@ func NewPostNodeActionSysreportRequest(server string, nodename InPathNodeName, p
 
 		}
 
-		if params.SessionId != nil {
+		if params.SessionID != nil {
 
-			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "session_id", *params.SessionId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "string", Format: "uuid"}); err != nil {
+			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "session_id", *params.SessionID, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "string", Format: "uuid"}); err != nil {
 				return nil, err
 			} else {
 				for _, qp := range strings.Split(queryFrag, "&") {
@@ -4479,9 +4539,9 @@ func NewPostPeerActionUnfreezeRequest(server string, nodename InPathNodeName, pa
 		// per the OpenAPI spec (e.g. "color=blue,black,brown").
 		var rawQueryFragments []string
 
-		if params.SessionId != nil {
+		if params.SessionID != nil {
 
-			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "session_id", *params.SessionId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "string", Format: "uuid"}); err != nil {
+			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "session_id", *params.SessionID, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "string", Format: "uuid"}); err != nil {
 				return nil, err
 			} else {
 				for _, qp := range strings.Split(queryFrag, "&") {
@@ -5307,6 +5367,325 @@ func NewGetDaemonEventsRequest(server string, nodename InPathNodeName, params *G
 	return req, nil
 }
 
+// NewDeleteDaemonExecsRequest generates requests for DeleteDaemonExecs
+func NewDeleteDaemonExecsRequest(server string, nodename InPathNodeName, params *DeleteDaemonExecsParams) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "nodename", nodename, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/api/node/name/%s/daemon/exec", pathParam0)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	if params != nil {
+		// queryValues collects non-styled parameters (passthrough, JSON)
+		// that are safe to round-trip through url.Values.Encode().
+		queryValues := queryURL.Query()
+		// rawQueryFragments collects pre-encoded query fragments from
+		// styled parameters, preserving literal commas as delimiters
+		// per the OpenAPI spec (e.g. "color=blue,black,brown").
+		var rawQueryFragments []string
+
+		if params.Signal != nil {
+
+			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "signal", *params.Signal, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "string", Format: ""}); err != nil {
+				return nil, err
+			} else {
+				for _, qp := range strings.Split(queryFrag, "&") {
+					rawQueryFragments = append(rawQueryFragments, qp)
+				}
+			}
+
+		}
+
+		if params.DryRun != nil {
+
+			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "dry_run", *params.DryRun, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "boolean", Format: ""}); err != nil {
+				return nil, err
+			} else {
+				for _, qp := range strings.Split(queryFrag, "&") {
+					rawQueryFragments = append(rawQueryFragments, qp)
+				}
+			}
+
+		}
+
+		if params.SessionID != nil {
+
+			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "session_id", *params.SessionID, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "string", Format: "uuid"}); err != nil {
+				return nil, err
+			} else {
+				for _, qp := range strings.Split(queryFrag, "&") {
+					rawQueryFragments = append(rawQueryFragments, qp)
+				}
+			}
+
+		}
+
+		if params.OrchestrationID != nil {
+
+			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "orchestration_id", *params.OrchestrationID, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "string", Format: "uuid"}); err != nil {
+				return nil, err
+			} else {
+				for _, qp := range strings.Split(queryFrag, "&") {
+					rawQueryFragments = append(rawQueryFragments, qp)
+				}
+			}
+
+		}
+
+		if params.ExecID != nil {
+
+			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "exec_id", *params.ExecID, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "string", Format: "uuid"}); err != nil {
+				return nil, err
+			} else {
+				for _, qp := range strings.Split(queryFrag, "&") {
+					rawQueryFragments = append(rawQueryFragments, qp)
+				}
+			}
+
+		}
+
+		if params.Origins != nil {
+
+			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "origin", *params.Origins, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "array", Format: ""}); err != nil {
+				return nil, err
+			} else {
+				for _, qp := range strings.Split(queryFrag, "&") {
+					rawQueryFragments = append(rawQueryFragments, qp)
+				}
+			}
+
+		}
+
+		if params.RID != nil {
+
+			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "rid", *params.RID, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "string", Format: ""}); err != nil {
+				return nil, err
+			} else {
+				for _, qp := range strings.Split(queryFrag, "&") {
+					rawQueryFragments = append(rawQueryFragments, qp)
+				}
+			}
+
+		}
+
+		if params.Selector != nil {
+
+			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "selector", *params.Selector, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "string", Format: ""}); err != nil {
+				return nil, err
+			} else {
+				for _, qp := range strings.Split(queryFrag, "&") {
+					rawQueryFragments = append(rawQueryFragments, qp)
+				}
+			}
+
+		}
+
+		if encoded := queryValues.Encode(); encoded != "" {
+			rawQueryFragments = append(rawQueryFragments, encoded)
+		}
+		queryURL.RawQuery = strings.Join(rawQueryFragments, "&")
+	}
+
+	req, err := http.NewRequest(http.MethodDelete, queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
+// NewGetDaemonExecsRequest generates requests for GetDaemonExecs
+func NewGetDaemonExecsRequest(server string, nodename InPathNodeName, params *GetDaemonExecsParams) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "nodename", nodename, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/api/node/name/%s/daemon/exec", pathParam0)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	if params != nil {
+		// queryValues collects non-styled parameters (passthrough, JSON)
+		// that are safe to round-trip through url.Values.Encode().
+		queryValues := queryURL.Query()
+		// rawQueryFragments collects pre-encoded query fragments from
+		// styled parameters, preserving literal commas as delimiters
+		// per the OpenAPI spec (e.g. "color=blue,black,brown").
+		var rawQueryFragments []string
+
+		if params.States != nil {
+
+			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "state", *params.States, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "array", Format: ""}); err != nil {
+				return nil, err
+			} else {
+				for _, qp := range strings.Split(queryFrag, "&") {
+					rawQueryFragments = append(rawQueryFragments, qp)
+				}
+			}
+
+		}
+
+		if params.SessionID != nil {
+
+			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "session_id", *params.SessionID, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "string", Format: "uuid"}); err != nil {
+				return nil, err
+			} else {
+				for _, qp := range strings.Split(queryFrag, "&") {
+					rawQueryFragments = append(rawQueryFragments, qp)
+				}
+			}
+
+		}
+
+		if params.OrchestrationID != nil {
+
+			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "orchestration_id", *params.OrchestrationID, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "string", Format: "uuid"}); err != nil {
+				return nil, err
+			} else {
+				for _, qp := range strings.Split(queryFrag, "&") {
+					rawQueryFragments = append(rawQueryFragments, qp)
+				}
+			}
+
+		}
+
+		if params.ExecID != nil {
+
+			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "exec_id", *params.ExecID, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "string", Format: "uuid"}); err != nil {
+				return nil, err
+			} else {
+				for _, qp := range strings.Split(queryFrag, "&") {
+					rawQueryFragments = append(rawQueryFragments, qp)
+				}
+			}
+
+		}
+
+		if params.Origins != nil {
+
+			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "origin", *params.Origins, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "array", Format: ""}); err != nil {
+				return nil, err
+			} else {
+				for _, qp := range strings.Split(queryFrag, "&") {
+					rawQueryFragments = append(rawQueryFragments, qp)
+				}
+			}
+
+		}
+
+		if params.RID != nil {
+
+			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "rid", *params.RID, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "string", Format: ""}); err != nil {
+				return nil, err
+			} else {
+				for _, qp := range strings.Split(queryFrag, "&") {
+					rawQueryFragments = append(rawQueryFragments, qp)
+				}
+			}
+
+		}
+
+		if params.Selector != nil {
+
+			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "selector", *params.Selector, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "string", Format: ""}); err != nil {
+				return nil, err
+			} else {
+				for _, qp := range strings.Split(queryFrag, "&") {
+					rawQueryFragments = append(rawQueryFragments, qp)
+				}
+			}
+
+		}
+
+		if encoded := queryValues.Encode(); encoded != "" {
+			rawQueryFragments = append(rawQueryFragments, encoded)
+		}
+		queryURL.RawQuery = strings.Join(rawQueryFragments, "&")
+	}
+
+	req, err := http.NewRequest(http.MethodGet, queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
+// NewGetDaemonExecRequest generates requests for GetDaemonExec
+func NewGetDaemonExecRequest(server string, nodename InPathNodeName, execId InPathExecID) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "nodename", nodename, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam1 string
+
+	pathParam1, err = runtime.StyleParamWithOptions("simple", false, "exec_id", execId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: "uuid"})
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/api/node/name/%s/daemon/exec/id/%s", pathParam0, pathParam1)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodGet, queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
 // NewPostDaemonHeartbeatRestartRequest generates requests for PostDaemonHeartbeatRestart
 func NewPostDaemonHeartbeatRestartRequest(server string, nodename InPathNodeName, name InPathHeartbeatName) (*http.Request, error) {
 	var err error
@@ -5716,8 +6095,8 @@ func NewPostDaemonLogControlRequestWithBody(server string, nodename InPathNodeNa
 	return req, nil
 }
 
-// NewDeleteDaemonProcessRequest generates requests for DeleteDaemonProcess
-func NewDeleteDaemonProcessRequest(server string, nodename InPathNodeName, params *DeleteDaemonProcessParams) (*http.Request, error) {
+// NewGetDaemonOrchestrationsRequest generates requests for GetDaemonOrchestrations
+func NewGetDaemonOrchestrationsRequest(server string, nodename InPathNodeName, params *GetDaemonOrchestrationsParams) (*http.Request, error) {
 	var err error
 
 	var pathParam0 string
@@ -5732,7 +6111,7 @@ func NewDeleteDaemonProcessRequest(server string, nodename InPathNodeName, param
 		return nil, err
 	}
 
-	operationPath := fmt.Sprintf("/api/node/name/%s/daemon/process", pathParam0)
+	operationPath := fmt.Sprintf("/api/node/name/%s/daemon/orchestration", pathParam0)
 	if operationPath[0] == '/' {
 		operationPath = "." + operationPath
 	}
@@ -5751,82 +6130,9 @@ func NewDeleteDaemonProcessRequest(server string, nodename InPathNodeName, param
 		// per the OpenAPI spec (e.g. "color=blue,black,brown").
 		var rawQueryFragments []string
 
-		if params.Pid != nil {
+		if params.States != nil {
 
-			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "pid", *params.Pid, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "array", Format: ""}); err != nil {
-				return nil, err
-			} else {
-				for _, qp := range strings.Split(queryFrag, "&") {
-					rawQueryFragments = append(rawQueryFragments, qp)
-				}
-			}
-
-		}
-
-		if params.Signal != nil {
-
-			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "signal", *params.Signal, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "string", Format: ""}); err != nil {
-				return nil, err
-			} else {
-				for _, qp := range strings.Split(queryFrag, "&") {
-					rawQueryFragments = append(rawQueryFragments, qp)
-				}
-			}
-
-		}
-
-		if encoded := queryValues.Encode(); encoded != "" {
-			rawQueryFragments = append(rawQueryFragments, encoded)
-		}
-		queryURL.RawQuery = strings.Join(rawQueryFragments, "&")
-	}
-
-	req, err := http.NewRequest(http.MethodDelete, queryURL.String(), nil)
-	if err != nil {
-		return nil, err
-	}
-
-	return req, nil
-}
-
-// NewGetDaemonProcessRequest generates requests for GetDaemonProcess
-func NewGetDaemonProcessRequest(server string, nodename InPathNodeName, params *GetDaemonProcessParams) (*http.Request, error) {
-	var err error
-
-	var pathParam0 string
-
-	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "nodename", nodename, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
-	if err != nil {
-		return nil, err
-	}
-
-	serverURL, err := url.Parse(server)
-	if err != nil {
-		return nil, err
-	}
-
-	operationPath := fmt.Sprintf("/api/node/name/%s/daemon/process", pathParam0)
-	if operationPath[0] == '/' {
-		operationPath = "." + operationPath
-	}
-
-	queryURL, err := serverURL.Parse(operationPath)
-	if err != nil {
-		return nil, err
-	}
-
-	if params != nil {
-		// queryValues collects non-styled parameters (passthrough, JSON)
-		// that are safe to round-trip through url.Values.Encode().
-		queryValues := queryURL.Query()
-		// rawQueryFragments collects pre-encoded query fragments from
-		// styled parameters, preserving literal commas as delimiters
-		// per the OpenAPI spec (e.g. "color=blue,black,brown").
-		var rawQueryFragments []string
-
-		if params.Sub != nil {
-
-			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "sub", *params.Sub, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "string", Format: ""}); err != nil {
+			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "state", *params.States, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "array", Format: ""}); err != nil {
 				return nil, err
 			} else {
 				for _, qp := range strings.Split(queryFrag, "&") {
@@ -5848,22 +6154,51 @@ func NewGetDaemonProcessRequest(server string, nodename InPathNodeName, params *
 
 		}
 
-		if params.Rid != nil {
-
-			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "rid", *params.Rid, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "string", Format: ""}); err != nil {
-				return nil, err
-			} else {
-				for _, qp := range strings.Split(queryFrag, "&") {
-					rawQueryFragments = append(rawQueryFragments, qp)
-				}
-			}
-
-		}
-
 		if encoded := queryValues.Encode(); encoded != "" {
 			rawQueryFragments = append(rawQueryFragments, encoded)
 		}
 		queryURL.RawQuery = strings.Join(rawQueryFragments, "&")
+	}
+
+	req, err := http.NewRequest(http.MethodGet, queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
+// NewGetDaemonOrchestrationRequest generates requests for GetDaemonOrchestration
+func NewGetDaemonOrchestrationRequest(server string, nodename InPathNodeName, orchestrationId InPathOrchestrationID) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "nodename", nodename, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam1 string
+
+	pathParam1, err = runtime.StyleParamWithOptions("simple", false, "orchestration_id", orchestrationId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/api/node/name/%s/daemon/orchestration/id/%s", pathParam0, pathParam1)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
 	}
 
 	req, err := http.NewRequest(http.MethodGet, queryURL.String(), nil)
@@ -6387,9 +6722,9 @@ func NewPostInstanceActionBootRequest(server string, nodename InPathNodeName, na
 
 		}
 
-		if params.SessionId != nil {
+		if params.SessionID != nil {
 
-			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "session_id", *params.SessionId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "string", Format: "uuid"}); err != nil {
+			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "session_id", *params.SessionID, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "string", Format: "uuid"}); err != nil {
 				return nil, err
 			} else {
 				for _, qp := range strings.Split(queryFrag, "&") {
@@ -6529,9 +6864,9 @@ func NewPostInstanceActionDeleteRequest(server string, nodename InPathNodeName, 
 		// per the OpenAPI spec (e.g. "color=blue,black,brown").
 		var rawQueryFragments []string
 
-		if params.SessionId != nil {
+		if params.SessionID != nil {
 
-			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "session_id", *params.SessionId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "string", Format: "uuid"}); err != nil {
+			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "session_id", *params.SessionID, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "string", Format: "uuid"}); err != nil {
 				return nil, err
 			} else {
 				for _, qp := range strings.Split(queryFrag, "&") {
@@ -6647,9 +6982,9 @@ func NewPostInstanceActionFreezeRequest(server string, nodename InPathNodeName, 
 
 		}
 
-		if params.SessionId != nil {
+		if params.SessionID != nil {
 
-			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "session_id", *params.SessionId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "string", Format: "uuid"}); err != nil {
+			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "session_id", *params.SessionID, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "string", Format: "uuid"}); err != nil {
 				return nil, err
 			} else {
 				for _, qp := range strings.Split(queryFrag, "&") {
@@ -6741,9 +7076,163 @@ func NewPostInstanceActionInfoRequest(server string, nodename InPathNodeName, na
 
 		}
 
-		if params.SessionId != nil {
+		if params.SessionID != nil {
 
-			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "session_id", *params.SessionId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "string", Format: "uuid"}); err != nil {
+			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "session_id", *params.SessionID, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "string", Format: "uuid"}); err != nil {
+				return nil, err
+			} else {
+				for _, qp := range strings.Split(queryFrag, "&") {
+					rawQueryFragments = append(rawQueryFragments, qp)
+				}
+			}
+
+		}
+
+		if encoded := queryValues.Encode(); encoded != "" {
+			rawQueryFragments = append(rawQueryFragments, encoded)
+		}
+		queryURL.RawQuery = strings.Join(rawQueryFragments, "&")
+	}
+
+	req, err := http.NewRequest(http.MethodPost, queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
+// NewPostInstanceActionPGResetRequest generates requests for PostInstanceActionPGReset
+func NewPostInstanceActionPGResetRequest(server string, nodename InPathNodeName, namespace InPathNamespace, kind InPathKind, name InPathName, params *PostInstanceActionPGResetParams) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "nodename", nodename, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam1 string
+
+	pathParam1, err = runtime.StyleParamWithOptions("simple", false, "namespace", namespace, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam2 string
+
+	pathParam2, err = runtime.StyleParamWithOptions("simple", false, "kind", kind, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam3 string
+
+	pathParam3, err = runtime.StyleParamWithOptions("simple", false, "name", name, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/api/node/name/%s/instance/path/%s/%s/%s/action/pg/reset", pathParam0, pathParam1, pathParam2, pathParam3)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	if params != nil {
+		// queryValues collects non-styled parameters (passthrough, JSON)
+		// that are safe to round-trip through url.Values.Encode().
+		queryValues := queryURL.Query()
+		// rawQueryFragments collects pre-encoded query fragments from
+		// styled parameters, preserving literal commas as delimiters
+		// per the OpenAPI spec (e.g. "color=blue,black,brown").
+		var rawQueryFragments []string
+
+		if params.Slaves != nil {
+
+			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "slaves", *params.Slaves, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "boolean", Format: ""}); err != nil {
+				return nil, err
+			} else {
+				for _, qp := range strings.Split(queryFrag, "&") {
+					rawQueryFragments = append(rawQueryFragments, qp)
+				}
+			}
+
+		}
+
+		if params.Master != nil {
+
+			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "master", *params.Master, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "boolean", Format: ""}); err != nil {
+				return nil, err
+			} else {
+				for _, qp := range strings.Split(queryFrag, "&") {
+					rawQueryFragments = append(rawQueryFragments, qp)
+				}
+			}
+
+		}
+
+		if params.SessionID != nil {
+
+			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "session_id", *params.SessionID, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "string", Format: "uuid"}); err != nil {
+				return nil, err
+			} else {
+				for _, qp := range strings.Split(queryFrag, "&") {
+					rawQueryFragments = append(rawQueryFragments, qp)
+				}
+			}
+
+		}
+
+		if params.Rid != nil {
+
+			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "rid", *params.Rid, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "string", Format: ""}); err != nil {
+				return nil, err
+			} else {
+				for _, qp := range strings.Split(queryFrag, "&") {
+					rawQueryFragments = append(rawQueryFragments, qp)
+				}
+			}
+
+		}
+
+		if params.Slave != nil {
+
+			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "slave", *params.Slave, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "array", Format: ""}); err != nil {
+				return nil, err
+			} else {
+				for _, qp := range strings.Split(queryFrag, "&") {
+					rawQueryFragments = append(rawQueryFragments, qp)
+				}
+			}
+
+		}
+
+		if params.Subset != nil {
+
+			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "subset", *params.Subset, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "string", Format: ""}); err != nil {
+				return nil, err
+			} else {
+				for _, qp := range strings.Split(queryFrag, "&") {
+					rawQueryFragments = append(rawQueryFragments, qp)
+				}
+			}
+
+		}
+
+		if params.Tag != nil {
+
+			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "tag", *params.Tag, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "string", Format: ""}); err != nil {
 				return nil, err
 			} else {
 				for _, qp := range strings.Split(queryFrag, "&") {
@@ -6847,9 +7336,9 @@ func NewPostInstanceActionPGUpdateRequest(server string, nodename InPathNodeName
 
 		}
 
-		if params.SessionId != nil {
+		if params.SessionID != nil {
 
-			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "session_id", *params.SessionId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "string", Format: "uuid"}); err != nil {
+			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "session_id", *params.SessionID, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "string", Format: "uuid"}); err != nil {
 				return nil, err
 			} else {
 				for _, qp := range strings.Split(queryFrag, "&") {
@@ -7037,9 +7526,9 @@ func NewPostInstanceActionProvisionRequest(server string, nodename InPathNodeNam
 
 		}
 
-		if params.SessionId != nil {
+		if params.SessionID != nil {
 
-			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "session_id", *params.SessionId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "string", Format: "uuid"}); err != nil {
+			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "session_id", *params.SessionID, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "string", Format: "uuid"}); err != nil {
 				return nil, err
 			} else {
 				for _, qp := range strings.Split(queryFrag, "&") {
@@ -7239,9 +7728,9 @@ func NewPostInstanceActionPRStartRequest(server string, nodename InPathNodeName,
 
 		}
 
-		if params.SessionId != nil {
+		if params.SessionID != nil {
 
-			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "session_id", *params.SessionId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "string", Format: "uuid"}); err != nil {
+			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "session_id", *params.SessionID, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "string", Format: "uuid"}); err != nil {
 				return nil, err
 			} else {
 				for _, qp := range strings.Split(queryFrag, "&") {
@@ -7429,9 +7918,9 @@ func NewPostInstanceActionPRStopRequest(server string, nodename InPathNodeName, 
 
 		}
 
-		if params.SessionId != nil {
+		if params.SessionID != nil {
 
-			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "session_id", *params.SessionId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "string", Format: "uuid"}); err != nil {
+			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "session_id", *params.SessionID, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "string", Format: "uuid"}); err != nil {
 				return nil, err
 			} else {
 				for _, qp := range strings.Split(queryFrag, "&") {
@@ -7619,9 +8108,9 @@ func NewPostInstanceActionRestartRequest(server string, nodename InPathNodeName,
 
 		}
 
-		if params.SessionId != nil {
+		if params.SessionID != nil {
 
-			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "session_id", *params.SessionId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "string", Format: "uuid"}); err != nil {
+			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "session_id", *params.SessionID, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "string", Format: "uuid"}); err != nil {
 				return nil, err
 			} else {
 				for _, qp := range strings.Split(queryFrag, "&") {
@@ -7821,9 +8310,9 @@ func NewPostInstanceActionRunRequest(server string, nodename InPathNodeName, nam
 
 		}
 
-		if params.SessionId != nil {
+		if params.SessionID != nil {
 
-			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "session_id", *params.SessionId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "string", Format: "uuid"}); err != nil {
+			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "session_id", *params.SessionID, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "string", Format: "uuid"}); err != nil {
 				return nil, err
 			} else {
 				for _, qp := range strings.Split(queryFrag, "&") {
@@ -8011,9 +8500,9 @@ func NewPostInstanceActionShutdownRequest(server string, nodename InPathNodeName
 
 		}
 
-		if params.SessionId != nil {
+		if params.SessionID != nil {
 
-			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "session_id", *params.SessionId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "string", Format: "uuid"}); err != nil {
+			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "session_id", *params.SessionID, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "string", Format: "uuid"}); err != nil {
 				return nil, err
 			} else {
 				for _, qp := range strings.Split(queryFrag, "&") {
@@ -8201,9 +8690,9 @@ func NewPostInstanceActionStartRequest(server string, nodename InPathNodeName, n
 
 		}
 
-		if params.SessionId != nil {
+		if params.SessionID != nil {
 
-			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "session_id", *params.SessionId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "string", Format: "uuid"}); err != nil {
+			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "session_id", *params.SessionID, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "string", Format: "uuid"}); err != nil {
 				return nil, err
 			} else {
 				for _, qp := range strings.Split(queryFrag, "&") {
@@ -8391,9 +8880,9 @@ func NewPostInstanceActionStartStandbyRequest(server string, nodename InPathNode
 
 		}
 
-		if params.SessionId != nil {
+		if params.SessionID != nil {
 
-			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "session_id", *params.SessionId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "string", Format: "uuid"}); err != nil {
+			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "session_id", *params.SessionID, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "string", Format: "uuid"}); err != nil {
 				return nil, err
 			} else {
 				for _, qp := range strings.Split(queryFrag, "&") {
@@ -8533,9 +9022,9 @@ func NewPostInstanceActionStatusRequest(server string, nodename InPathNodeName, 
 		// per the OpenAPI spec (e.g. "color=blue,black,brown").
 		var rawQueryFragments []string
 
-		if params.SessionId != nil {
+		if params.SessionID != nil {
 
-			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "session_id", *params.SessionId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "string", Format: "uuid"}); err != nil {
+			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "session_id", *params.SessionID, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "string", Format: "uuid"}); err != nil {
 				return nil, err
 			} else {
 				for _, qp := range strings.Split(queryFrag, "&") {
@@ -8663,9 +9152,9 @@ func NewPostInstanceActionStopRequest(server string, nodename InPathNodeName, na
 
 		}
 
-		if params.SessionId != nil {
+		if params.SessionID != nil {
 
-			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "session_id", *params.SessionId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "string", Format: "uuid"}); err != nil {
+			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "session_id", *params.SessionID, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "string", Format: "uuid"}); err != nil {
 				return nil, err
 			} else {
 				for _, qp := range strings.Split(queryFrag, "&") {
@@ -8805,9 +9294,9 @@ func NewPostInstanceActionSyncIngestRequest(server string, nodename InPathNodeNa
 		// per the OpenAPI spec (e.g. "color=blue,black,brown").
 		var rawQueryFragments []string
 
-		if params.SessionId != nil {
+		if params.SessionID != nil {
 
-			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "session_id", *params.SessionId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "string", Format: "uuid"}); err != nil {
+			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "session_id", *params.SessionID, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "string", Format: "uuid"}); err != nil {
 				return nil, err
 			} else {
 				for _, qp := range strings.Split(queryFrag, "&") {
@@ -8959,9 +9448,9 @@ func NewPostInstanceActionUnfreezeRequest(server string, nodename InPathNodeName
 
 		}
 
-		if params.SessionId != nil {
+		if params.SessionID != nil {
 
-			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "session_id", *params.SessionId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "string", Format: "uuid"}); err != nil {
+			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "session_id", *params.SessionID, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "string", Format: "uuid"}); err != nil {
 				return nil, err
 			} else {
 				for _, qp := range strings.Split(queryFrag, "&") {
@@ -9089,9 +9578,9 @@ func NewPostInstanceActionUnprovisionRequest(server string, nodename InPathNodeN
 
 		}
 
-		if params.SessionId != nil {
+		if params.SessionID != nil {
 
-			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "session_id", *params.SessionId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "string", Format: "uuid"}); err != nil {
+			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "session_id", *params.SessionID, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "string", Format: "uuid"}); err != nil {
 				return nil, err
 			} else {
 				for _, qp := range strings.Split(queryFrag, "&") {
@@ -13161,6 +13650,15 @@ type ClientWithResponsesInterface interface {
 	// GetDaemonEventsWithResponse request
 	GetDaemonEventsWithResponse(ctx context.Context, nodename InPathNodeName, params *GetDaemonEventsParams, reqEditors ...RequestEditorFn) (*GetDaemonEventsResponse, error)
 
+	// DeleteDaemonExecsWithResponse request
+	DeleteDaemonExecsWithResponse(ctx context.Context, nodename InPathNodeName, params *DeleteDaemonExecsParams, reqEditors ...RequestEditorFn) (*DeleteDaemonExecsResponse, error)
+
+	// GetDaemonExecsWithResponse request
+	GetDaemonExecsWithResponse(ctx context.Context, nodename InPathNodeName, params *GetDaemonExecsParams, reqEditors ...RequestEditorFn) (*GetDaemonExecsResponse, error)
+
+	// GetDaemonExecWithResponse request
+	GetDaemonExecWithResponse(ctx context.Context, nodename InPathNodeName, execId InPathExecID, reqEditors ...RequestEditorFn) (*GetDaemonExecResponse, error)
+
 	// PostDaemonHeartbeatRestartWithResponse request
 	PostDaemonHeartbeatRestartWithResponse(ctx context.Context, nodename InPathNodeName, name InPathHeartbeatName, reqEditors ...RequestEditorFn) (*PostDaemonHeartbeatRestartResponse, error)
 
@@ -13193,11 +13691,11 @@ type ClientWithResponsesInterface interface {
 
 	PostDaemonLogControlWithResponse(ctx context.Context, nodename InPathNodeName, body PostDaemonLogControlJSONRequestBody, reqEditors ...RequestEditorFn) (*PostDaemonLogControlResponse, error)
 
-	// DeleteDaemonProcessWithResponse request
-	DeleteDaemonProcessWithResponse(ctx context.Context, nodename InPathNodeName, params *DeleteDaemonProcessParams, reqEditors ...RequestEditorFn) (*DeleteDaemonProcessResponse, error)
+	// GetDaemonOrchestrationsWithResponse request
+	GetDaemonOrchestrationsWithResponse(ctx context.Context, nodename InPathNodeName, params *GetDaemonOrchestrationsParams, reqEditors ...RequestEditorFn) (*GetDaemonOrchestrationsResponse, error)
 
-	// GetDaemonProcessWithResponse request
-	GetDaemonProcessWithResponse(ctx context.Context, nodename InPathNodeName, params *GetDaemonProcessParams, reqEditors ...RequestEditorFn) (*GetDaemonProcessResponse, error)
+	// GetDaemonOrchestrationWithResponse request
+	GetDaemonOrchestrationWithResponse(ctx context.Context, nodename InPathNodeName, orchestrationId InPathOrchestrationID, reqEditors ...RequestEditorFn) (*GetDaemonOrchestrationResponse, error)
 
 	// GetNodeDRBDAllocationWithResponse request
 	GetNodeDRBDAllocationWithResponse(ctx context.Context, nodename InPathNodeName, reqEditors ...RequestEditorFn) (*GetNodeDRBDAllocationResponse, error)
@@ -13236,6 +13734,9 @@ type ClientWithResponsesInterface interface {
 
 	// PostInstanceActionInfoWithResponse request
 	PostInstanceActionInfoWithResponse(ctx context.Context, nodename InPathNodeName, namespace InPathNamespace, kind InPathKind, name InPathName, params *PostInstanceActionInfoParams, reqEditors ...RequestEditorFn) (*PostInstanceActionInfoResponse, error)
+
+	// PostInstanceActionPGResetWithResponse request
+	PostInstanceActionPGResetWithResponse(ctx context.Context, nodename InPathNodeName, namespace InPathNamespace, kind InPathKind, name InPathName, params *PostInstanceActionPGResetParams, reqEditors ...RequestEditorFn) (*PostInstanceActionPGResetResponse, error)
 
 	// PostInstanceActionPGUpdateWithResponse request
 	PostInstanceActionPGUpdateWithResponse(ctx context.Context, nodename InPathNodeName, namespace InPathNamespace, kind InPathKind, name InPathName, params *PostInstanceActionPGUpdateParams, reqEditors ...RequestEditorFn) (*PostInstanceActionPGUpdateResponse, error)
@@ -15174,6 +15675,108 @@ func (r GetDaemonEventsResponse) ContentType() string {
 	return ""
 }
 
+type DeleteDaemonExecsResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	JSON200      *ExecList
+	JSON400      *N400
+	JSON401      *N401
+	JSON403      *N403
+	JSON410      *N410
+	JSON500      *N500
+}
+
+// Status returns HTTPResponse.Status
+func (r DeleteDaemonExecsResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r DeleteDaemonExecsResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r DeleteDaemonExecsResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+type GetDaemonExecsResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	JSON200      *ExecList
+	JSON401      *N401
+	JSON403      *N403
+	JSON500      *N500
+}
+
+// Status returns HTTPResponse.Status
+func (r GetDaemonExecsResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r GetDaemonExecsResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r GetDaemonExecsResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+type GetDaemonExecResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	JSON200      *ExecItem
+	JSON401      *N401
+	JSON403      *N403
+	JSON410      *N410
+	JSON500      *N500
+}
+
+// Status returns HTTPResponse.Status
+func (r GetDaemonExecResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r GetDaemonExecResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r GetDaemonExecResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
 type PostDaemonHeartbeatRestartResponse struct {
 	Body         []byte
 	HTTPResponse *http.Response
@@ -15513,17 +16116,17 @@ func (r PostDaemonLogControlResponse) ContentType() string {
 	return ""
 }
 
-type DeleteDaemonProcessResponse struct {
+type GetDaemonOrchestrationsResponse struct {
 	Body         []byte
 	HTTPResponse *http.Response
-	JSON400      *N400
+	JSON200      *OrchestrationList
+	JSON401      *N401
 	JSON403      *N403
-	JSON409      *N409
 	JSON500      *N500
 }
 
 // Status returns HTTPResponse.Status
-func (r DeleteDaemonProcessResponse) Status() string {
+func (r GetDaemonOrchestrationsResponse) Status() string {
 	if r.HTTPResponse != nil {
 		return r.HTTPResponse.Status
 	}
@@ -15531,7 +16134,7 @@ func (r DeleteDaemonProcessResponse) Status() string {
 }
 
 // StatusCode returns HTTPResponse.StatusCode
-func (r DeleteDaemonProcessResponse) StatusCode() int {
+func (r GetDaemonOrchestrationsResponse) StatusCode() int {
 	if r.HTTPResponse != nil {
 		return r.HTTPResponse.StatusCode
 	}
@@ -15539,23 +16142,25 @@ func (r DeleteDaemonProcessResponse) StatusCode() int {
 }
 
 // ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
-func (r DeleteDaemonProcessResponse) ContentType() string {
+func (r GetDaemonOrchestrationsResponse) ContentType() string {
 	if r.HTTPResponse != nil {
 		return r.HTTPResponse.Header.Get("Content-Type")
 	}
 	return ""
 }
 
-type GetDaemonProcessResponse struct {
+type GetDaemonOrchestrationResponse struct {
 	Body         []byte
 	HTTPResponse *http.Response
-	JSON200      *ProcessList
+	JSON200      *OrchestrationItem
+	JSON401      *N401
 	JSON403      *N403
+	JSON410      *N410
 	JSON500      *N500
 }
 
 // Status returns HTTPResponse.Status
-func (r GetDaemonProcessResponse) Status() string {
+func (r GetDaemonOrchestrationResponse) Status() string {
 	if r.HTTPResponse != nil {
 		return r.HTTPResponse.Status
 	}
@@ -15563,7 +16168,7 @@ func (r GetDaemonProcessResponse) Status() string {
 }
 
 // StatusCode returns HTTPResponse.StatusCode
-func (r GetDaemonProcessResponse) StatusCode() int {
+func (r GetDaemonOrchestrationResponse) StatusCode() int {
 	if r.HTTPResponse != nil {
 		return r.HTTPResponse.StatusCode
 	}
@@ -15571,7 +16176,7 @@ func (r GetDaemonProcessResponse) StatusCode() int {
 }
 
 // ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
-func (r GetDaemonProcessResponse) ContentType() string {
+func (r GetDaemonOrchestrationResponse) ContentType() string {
 	if r.HTTPResponse != nil {
 		return r.HTTPResponse.Header.Get("Content-Type")
 	}
@@ -15976,6 +16581,40 @@ func (r PostInstanceActionInfoResponse) StatusCode() int {
 
 // ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
 func (r PostInstanceActionInfoResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+type PostInstanceActionPGResetResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	JSON200      *InstanceActionAccepted
+	JSON400      *N400
+	JSON401      *N401
+	JSON403      *N403
+	JSON500      *N500
+}
+
+// Status returns HTTPResponse.Status
+func (r PostInstanceActionPGResetResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r PostInstanceActionPGResetResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r PostInstanceActionPGResetResponse) ContentType() string {
 	if r.HTTPResponse != nil {
 		return r.HTTPResponse.Header.Get("Content-Type")
 	}
@@ -19171,6 +19810,33 @@ func (c *ClientWithResponses) GetDaemonEventsWithResponse(ctx context.Context, n
 	return ParseGetDaemonEventsResponse(rsp)
 }
 
+// DeleteDaemonExecsWithResponse request returning *DeleteDaemonExecsResponse
+func (c *ClientWithResponses) DeleteDaemonExecsWithResponse(ctx context.Context, nodename InPathNodeName, params *DeleteDaemonExecsParams, reqEditors ...RequestEditorFn) (*DeleteDaemonExecsResponse, error) {
+	rsp, err := c.DeleteDaemonExecs(ctx, nodename, params, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseDeleteDaemonExecsResponse(rsp)
+}
+
+// GetDaemonExecsWithResponse request returning *GetDaemonExecsResponse
+func (c *ClientWithResponses) GetDaemonExecsWithResponse(ctx context.Context, nodename InPathNodeName, params *GetDaemonExecsParams, reqEditors ...RequestEditorFn) (*GetDaemonExecsResponse, error) {
+	rsp, err := c.GetDaemonExecs(ctx, nodename, params, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseGetDaemonExecsResponse(rsp)
+}
+
+// GetDaemonExecWithResponse request returning *GetDaemonExecResponse
+func (c *ClientWithResponses) GetDaemonExecWithResponse(ctx context.Context, nodename InPathNodeName, execId InPathExecID, reqEditors ...RequestEditorFn) (*GetDaemonExecResponse, error) {
+	rsp, err := c.GetDaemonExec(ctx, nodename, execId, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseGetDaemonExecResponse(rsp)
+}
+
 // PostDaemonHeartbeatRestartWithResponse request returning *PostDaemonHeartbeatRestartResponse
 func (c *ClientWithResponses) PostDaemonHeartbeatRestartWithResponse(ctx context.Context, nodename InPathNodeName, name InPathHeartbeatName, reqEditors ...RequestEditorFn) (*PostDaemonHeartbeatRestartResponse, error) {
 	rsp, err := c.PostDaemonHeartbeatRestart(ctx, nodename, name, reqEditors...)
@@ -19269,22 +19935,22 @@ func (c *ClientWithResponses) PostDaemonLogControlWithResponse(ctx context.Conte
 	return ParsePostDaemonLogControlResponse(rsp)
 }
 
-// DeleteDaemonProcessWithResponse request returning *DeleteDaemonProcessResponse
-func (c *ClientWithResponses) DeleteDaemonProcessWithResponse(ctx context.Context, nodename InPathNodeName, params *DeleteDaemonProcessParams, reqEditors ...RequestEditorFn) (*DeleteDaemonProcessResponse, error) {
-	rsp, err := c.DeleteDaemonProcess(ctx, nodename, params, reqEditors...)
+// GetDaemonOrchestrationsWithResponse request returning *GetDaemonOrchestrationsResponse
+func (c *ClientWithResponses) GetDaemonOrchestrationsWithResponse(ctx context.Context, nodename InPathNodeName, params *GetDaemonOrchestrationsParams, reqEditors ...RequestEditorFn) (*GetDaemonOrchestrationsResponse, error) {
+	rsp, err := c.GetDaemonOrchestrations(ctx, nodename, params, reqEditors...)
 	if err != nil {
 		return nil, err
 	}
-	return ParseDeleteDaemonProcessResponse(rsp)
+	return ParseGetDaemonOrchestrationsResponse(rsp)
 }
 
-// GetDaemonProcessWithResponse request returning *GetDaemonProcessResponse
-func (c *ClientWithResponses) GetDaemonProcessWithResponse(ctx context.Context, nodename InPathNodeName, params *GetDaemonProcessParams, reqEditors ...RequestEditorFn) (*GetDaemonProcessResponse, error) {
-	rsp, err := c.GetDaemonProcess(ctx, nodename, params, reqEditors...)
+// GetDaemonOrchestrationWithResponse request returning *GetDaemonOrchestrationResponse
+func (c *ClientWithResponses) GetDaemonOrchestrationWithResponse(ctx context.Context, nodename InPathNodeName, orchestrationId InPathOrchestrationID, reqEditors ...RequestEditorFn) (*GetDaemonOrchestrationResponse, error) {
+	rsp, err := c.GetDaemonOrchestration(ctx, nodename, orchestrationId, reqEditors...)
 	if err != nil {
 		return nil, err
 	}
-	return ParseGetDaemonProcessResponse(rsp)
+	return ParseGetDaemonOrchestrationResponse(rsp)
 }
 
 // GetNodeDRBDAllocationWithResponse request returning *GetNodeDRBDAllocationResponse
@@ -19401,6 +20067,15 @@ func (c *ClientWithResponses) PostInstanceActionInfoWithResponse(ctx context.Con
 		return nil, err
 	}
 	return ParsePostInstanceActionInfoResponse(rsp)
+}
+
+// PostInstanceActionPGResetWithResponse request returning *PostInstanceActionPGResetResponse
+func (c *ClientWithResponses) PostInstanceActionPGResetWithResponse(ctx context.Context, nodename InPathNodeName, namespace InPathNamespace, kind InPathKind, name InPathName, params *PostInstanceActionPGResetParams, reqEditors ...RequestEditorFn) (*PostInstanceActionPGResetResponse, error) {
+	rsp, err := c.PostInstanceActionPGReset(ctx, nodename, namespace, kind, name, params, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParsePostInstanceActionPGResetResponse(rsp)
 }
 
 // PostInstanceActionPGUpdateWithResponse request returning *PostInstanceActionPGUpdateResponse
@@ -22783,6 +23458,168 @@ func ParseGetDaemonEventsResponse(rsp *http.Response) (*GetDaemonEventsResponse,
 	return response, nil
 }
 
+// ParseDeleteDaemonExecsResponse parses an HTTP response from a DeleteDaemonExecsWithResponse call
+func ParseDeleteDaemonExecsResponse(rsp *http.Response) (*DeleteDaemonExecsResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &DeleteDaemonExecsResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest ExecList
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
+		var dest N400
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON400 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest N401
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest N403
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON403 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 410:
+		var dest N410
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON410 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
+		var dest N500
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON500 = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseGetDaemonExecsResponse parses an HTTP response from a GetDaemonExecsWithResponse call
+func ParseGetDaemonExecsResponse(rsp *http.Response) (*GetDaemonExecsResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &GetDaemonExecsResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest ExecList
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest N401
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest N403
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON403 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
+		var dest N500
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON500 = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseGetDaemonExecResponse parses an HTTP response from a GetDaemonExecWithResponse call
+func ParseGetDaemonExecResponse(rsp *http.Response) (*GetDaemonExecResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &GetDaemonExecResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest ExecItem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest N401
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest N403
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON403 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 410:
+		var dest N410
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON410 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
+		var dest N500
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON500 = &dest
+
+	}
+
+	return response, nil
+}
+
 // ParsePostDaemonHeartbeatRestartResponse parses an HTTP response from a PostDaemonHeartbeatRestartWithResponse call
 func ParsePostDaemonHeartbeatRestartResponse(rsp *http.Response) (*PostDaemonHeartbeatRestartResponse, error) {
 	bodyBytes, err := io.ReadAll(rsp.Body)
@@ -23316,26 +24153,33 @@ func ParsePostDaemonLogControlResponse(rsp *http.Response) (*PostDaemonLogContro
 	return response, nil
 }
 
-// ParseDeleteDaemonProcessResponse parses an HTTP response from a DeleteDaemonProcessWithResponse call
-func ParseDeleteDaemonProcessResponse(rsp *http.Response) (*DeleteDaemonProcessResponse, error) {
+// ParseGetDaemonOrchestrationsResponse parses an HTTP response from a GetDaemonOrchestrationsWithResponse call
+func ParseGetDaemonOrchestrationsResponse(rsp *http.Response) (*GetDaemonOrchestrationsResponse, error) {
 	bodyBytes, err := io.ReadAll(rsp.Body)
 	defer func() { _ = rsp.Body.Close() }()
 	if err != nil {
 		return nil, err
 	}
 
-	response := &DeleteDaemonProcessResponse{
+	response := &GetDaemonOrchestrationsResponse{
 		Body:         bodyBytes,
 		HTTPResponse: rsp,
 	}
 
 	switch {
-	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
-		var dest N400
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest OrchestrationList
 		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
 			return nil, err
 		}
-		response.JSON400 = &dest
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest N401
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON401 = &dest
 
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
 		var dest N403
@@ -23343,13 +24187,6 @@ func ParseDeleteDaemonProcessResponse(rsp *http.Response) (*DeleteDaemonProcessR
 			return nil, err
 		}
 		response.JSON403 = &dest
-
-	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 409:
-		var dest N409
-		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
-			return nil, err
-		}
-		response.JSON409 = &dest
 
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
 		var dest N500
@@ -23363,26 +24200,33 @@ func ParseDeleteDaemonProcessResponse(rsp *http.Response) (*DeleteDaemonProcessR
 	return response, nil
 }
 
-// ParseGetDaemonProcessResponse parses an HTTP response from a GetDaemonProcessWithResponse call
-func ParseGetDaemonProcessResponse(rsp *http.Response) (*GetDaemonProcessResponse, error) {
+// ParseGetDaemonOrchestrationResponse parses an HTTP response from a GetDaemonOrchestrationWithResponse call
+func ParseGetDaemonOrchestrationResponse(rsp *http.Response) (*GetDaemonOrchestrationResponse, error) {
 	bodyBytes, err := io.ReadAll(rsp.Body)
 	defer func() { _ = rsp.Body.Close() }()
 	if err != nil {
 		return nil, err
 	}
 
-	response := &GetDaemonProcessResponse{
+	response := &GetDaemonOrchestrationResponse{
 		Body:         bodyBytes,
 		HTTPResponse: rsp,
 	}
 
 	switch {
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
-		var dest ProcessList
+		var dest OrchestrationItem
 		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
 			return nil, err
 		}
 		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest N401
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON401 = &dest
 
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
 		var dest N403
@@ -23390,6 +24234,13 @@ func ParseGetDaemonProcessResponse(rsp *http.Response) (*GetDaemonProcessRespons
 			return nil, err
 		}
 		response.JSON403 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 410:
+		var dest N410
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON410 = &dest
 
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
 		var dest N500
@@ -23996,6 +24847,60 @@ func ParsePostInstanceActionInfoResponse(rsp *http.Response) (*PostInstanceActio
 			return nil, err
 		}
 		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest N401
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest N403
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON403 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
+		var dest N500
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON500 = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParsePostInstanceActionPGResetResponse parses an HTTP response from a PostInstanceActionPGResetWithResponse call
+func ParsePostInstanceActionPGResetResponse(rsp *http.Response) (*PostInstanceActionPGResetResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &PostInstanceActionPGResetResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest InstanceActionAccepted
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
+		var dest N400
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON400 = &dest
 
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
 		var dest N401

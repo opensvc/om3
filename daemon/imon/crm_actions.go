@@ -215,19 +215,26 @@ func (t *Manager) crmAction(title string, cmdArgs ...string) error {
 }
 
 func (t *Manager) crmDefaultAction(title string, cmdArgs ...string) error {
-	sid := xsession.NewSid()
-	eid := xsession.NewEid()
-	oid := xsession.NewOid(t.state.OrchestrationID)
+	sessionID := xsession.NewSessionID()
+	execID := xsession.NewExecID()
+	orchestrationID := xsession.NewOrchestrationID(t.state.OrchestrationID)
+
+	cmdEnv := []string{
+		env.ActionOriginDaemonMonitor.Var(),
+		execID.Var(),
+		sessionID.Var(),
+	}
+	if v := orchestrationID.Var(); v != "" {
+		// Only when this exec is a step of an orchestration. Naming one it is
+		// not a step of would put an id in its logs that matches nothing.
+		cmdEnv = append(cmdEnv, v)
+	}
+
 	cmd := command.New(
 		command.WithName(cmdPath),
 		command.WithArgs(cmdArgs),
 		command.WithLogger(t.log),
-		command.WithVarEnv(
-			env.ActionOriginDaemonMonitor.Var(),
-			eid.Var(),
-			oid.Var(),
-			sid.Var(),
-		),
+		command.WithVarEnv(cmdEnv...),
 	)
 	labels := append(t.pubLabels, pubsub.Label{"origin", "imon"})
 	if title != "" {
@@ -235,57 +242,68 @@ func (t *Manager) crmDefaultAction(title string, cmdArgs ...string) error {
 	} else {
 		t.loggerWithState().Tracef("-> exec %s", append([]string{cmdPath}, cmdArgs...))
 	}
-	t.publisher.Pub(&msgbus.Exec{
-		Command:   cmd.String(),
-		Node:      t.localhost,
-		Origin:    "imon",
-		ExecID:    eid,
-		SessionID: sid,
-		Title:     title,
-	}, labels...)
 	startTime := time.Now()
+	t.publisher.Pub(&msgbus.Exec{
+		Command:         cmd.String(),
+		Node:            t.localhost,
+		Origin:          "imon",
+		ExecID:          execID,
+		SessionID:       sessionID,
+		OrchestrationID: orchestrationID,
+		StartedAt:       startTime,
+		Title:           title,
+	}, labels...)
 	if err := cmd.Start(); err != nil {
+		// The start of this exec was announced, so its end has to be too, or
+		// it stays running in the exec store for as long as the store keeps
+		// it. There is no exit status to report: it never ran.
+		t.publisher.Pub(&msgbus.ExecFailed{
+			Command:         cmd.String(),
+			Duration:        time.Now().Sub(startTime),
+			ErrS:            err.Error(),
+			ExitCode:        -1,
+			Node:            t.localhost,
+			Origin:          "imon",
+			ExecID:          execID,
+			SessionID:       sessionID,
+			OrchestrationID: orchestrationID,
+			Title:           title,
+		}, labels...)
 		t.loggerWithState().Errorf("exec StartProcess: %s", err)
 		return err
 	}
 	pid := cmd.Cmd().Process.Pid
-	proc.Register(proc.T{
-		Pid:          pid,
-		Node:         t.localhost,
-		Object:       t.path.String(),
-		Sid:          sid.String(),
-		StartedAt:    startTime,
-		Elapsed:      "",
-		GlobalExpect: t.state.GlobalExpect.String(),
-		Sub:          "imon",
-		Cmd:          cmd.String(),
-	})
+	proc.Register(proc.T{Pid: pid, ExecID: execID.String()})
 	err := cmd.Wait()
 	proc.Unregister(pid)
 	if err != nil {
 		duration := time.Now().Sub(startTime)
 		t.publisher.Pub(&msgbus.ExecFailed{
-			Command:   cmd.String(),
-			Duration:  duration,
-			ErrS:      err.Error(),
-			Node:      t.localhost,
-			Origin:    "imon",
-			ExecID:    eid,
-			SessionID: sid,
-			Title:     title,
+			Command:         cmd.String(),
+			Duration:        duration,
+			ErrS:            err.Error(),
+			ExitCode:        cmd.NormalizedExitCode(),
+			Node:            t.localhost,
+			Origin:          "imon",
+			ExecID:          execID,
+			SessionID:       sessionID,
+			OrchestrationID: orchestrationID,
+			Title:           title,
 		}, labels...)
 		t.loggerWithState().Errorf("<- exec %s: %s", append([]string{cmdPath}, cmdArgs...), err)
 		return err
 	}
 	duration := time.Now().Sub(startTime)
 	t.publisher.Pub(&msgbus.ExecSuccess{
-		Command:   cmd.String(),
-		Duration:  duration,
-		Node:      t.localhost,
-		Origin:    "imon",
-		ExecID:    eid,
-		SessionID: sid,
-		Title:     title,
+		Command:         cmd.String(),
+		Duration:        duration,
+		ExitCode:        cmd.NormalizedExitCode(),
+		Node:            t.localhost,
+		Origin:          "imon",
+		ExecID:          execID,
+		SessionID:       sessionID,
+		OrchestrationID: orchestrationID,
+		Title:           title,
 	}, labels...)
 	if title != "" {
 		t.loggerWithState().Infof("<- exec %s", append([]string{cmdPath}, cmdArgs...))

@@ -45,6 +45,16 @@ func (t *nscfg) PGUpdate(ctx context.Context) error {
 	return t.lockedPGUpdate(ctx)
 }
 
+func (t *nscfg) PGReset(ctx context.Context) error {
+	ctx = actioncontext.WithProps(ctx, actioncontext.PGReset)
+	unlock, err := t.lockAction(ctx)
+	if err != nil {
+		return err
+	}
+	defer unlock()
+	return t.lockedPGReset(ctx)
+}
+
 func (t *nscfg) PGConfig() *pg.Config {
 	// For nscfg, we want to control the namespace cgroup, not the object cgroup
 	data := t.pgAnonConfig("")
@@ -66,4 +76,10 @@ func (t *nscfg) PGConfig() *pg.Config {
 func (t *nscfg) lockedPGUpdate(ctx context.Context) error {
 	// For nscfg, we control the namespace cgroup, not the object cgroup
 	return t.PGConfig().Apply()
+}
+
+func (t *nscfg) lockedPGReset(ctx context.Context) error {
+	// For nscfg, we control the namespace cgroup, not the object cgroup
+	uncapped := t.PGConfig().Uncapped()
+	return uncapped.Apply()
 }

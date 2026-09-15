@@ -66,22 +66,22 @@ func (t *CmdPoolList) Run() error {
 		return fmt.Errorf("unexpected status code: %d", resp.StatusCode())
 	}
 
-	render := func(items api.PoolItems) {
+	render := func(items api.PoolItems) error {
 		lines := make([]PoolLine, len(items))
 		for i, item := range items {
 			lines[i] = NewPoolLine(item)
 		}
-		output.Renderer{
+		return output.Renderer{
 			DefaultOutput: "tab=" + cols,
 			Output:        t.Output,
+			Sort:          t.Sort,
 			Color:         t.Color,
 			Data:          lines,
 			Colorize:      rawconfig.Colorize,
 		}.Print()
 	}
 
-	render(l)
-	return nil
+	return render(l)
 }
 
 // NewPoolLine returns the pool as a listing shows it.

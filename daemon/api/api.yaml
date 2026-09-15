@@ -1901,28 +1901,52 @@ paths:
       tags:
         - node / daemon
 
-  /api/node/name/{nodename}/daemon/process:
+  /api/node/name/{nodename}/daemon/exec:
     get:
-      operationId: GetDaemonProcess
+      operationId: GetDaemonExecs
       description: |
-        Get the daemon process information.
+        List the commands the daemon ran, and is running.
+
+        An exec is one run of one object on one node, which is the scale at
+        which there is a single outcome, a single duration and a single exit
+        code. A command reaching several objects of this node is several
+        execs sharing one session id.
+
+        Every state is listed when none is named, because a client polling
+        for the end of what it submitted is waiting for an exec that has
+        ended.
+
+        What is listed is bounded: an exec that ended long ago is dropped.
+        GetDaemonExec says so for a single id, where an empty list here
+        cannot.
+
+        A running exec also carries the pid and the resource id of the
+        process running it, so this answers both what is running now and what
+        has run, in one shape.
+
+        The execs listed are the ones this node ran. An orchestration runs
+        execs on every node it touches, a switch running a stop on one node
+        and a start on another under one orchestration id, so the whole of one
+        is the union over the nodes. GetDaemonOrchestration answers for it on
+        any of them, and needs no such union.
       parameters:
         - $ref: '#/components/parameters/inPathNodeName'
-        - in: query
-          name: sub
-          description: the names of the subsystems to filter the processes
-          schema:
-            type: string
-            example: scheduler
+        - $ref: '#/components/parameters/inQueryExecState'
+        - $ref: '#/components/parameters/inQuerySessionID'
+        - $ref: '#/components/parameters/inQueryOrchestrationID'
+        - $ref: '#/components/parameters/inQueryExecID'
+        - $ref: '#/components/parameters/inQueryOrigin'
+        - $ref: '#/components/parameters/inQueryRIDOptional'
         - $ref: '#/components/parameters/inQuerySelectorOptional'
-        - $ref: '#/components/parameters/inQueryRid'
       responses:
         200:
           description: OK
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/ProcessList'
+                $ref: '#/components/schemas/ExecList'
+        401:
+          $ref: '#/components/responses/401'
         403:
           $ref: '#/components/responses/403'
         500:
@@ -1933,35 +1957,54 @@ paths:
         - basicAuth: []
         - bearerAuth: []
     delete:
-      operationId: DeleteDaemonProcess
+      operationId: DeleteDaemonExecs
       description: |
-        Signal the daemon process.
+        Signal the processes of the running execs a filter selects.
 
-        Only the processes listed by GetDaemonProcess can be signaled.
+        The execs are named the way GetDaemonExecs names them, so what was
+        listed is what is signaled. An exec id resolves to its pid here, under
+        the daemon's own lock: a pid handed back by an earlier listing may
+        have exited and been recycled by then, and killing the exec rather
+        than the number is what makes that impossible.
+
+        There is no pid filter. GetDaemonExecs reports the pid of every
+        running exec, and killing a pid is what the system's own kill is for.
+        What this offers is the naming only the daemon can do.
+
+        At least one of exec_id, session_id, orchestration_id, rid, origin or
+        the object selector must narrow the selection. Signaling every exec of
+        a node is not something a caller does by omission.
+
+        Only a running exec has a process. One that has ended selects nothing
+        and is not an error: it is the outcome asked for.
+
+        Answers the execs it signaled. With dry_run, answers the execs it
+        would have signaled and sends no signal.
       parameters:
         - $ref: '#/components/parameters/inPathNodeName'
-        - in: query
-          name: pid
-          description: the pid of the process to kill.
-          schema:
-            type: array
-            items:
-              type: integer
-        - in: query
-          name: signal
-          description: the signal to send, as a name (TERM, SIGTERM) or a number (15). Defaults to SIGKILL.
-          schema:
-            type: string
-            example: TERM
+        - $ref: '#/components/parameters/inQuerySignal'
+        - $ref: '#/components/parameters/inQueryDryRun'
+        - $ref: '#/components/parameters/inQuerySessionID'
+        - $ref: '#/components/parameters/inQueryOrchestrationID'
+        - $ref: '#/components/parameters/inQueryExecID'
+        - $ref: '#/components/parameters/inQueryOrigin'
+        - $ref: '#/components/parameters/inQueryRIDOptional'
+        - $ref: '#/components/parameters/inQuerySelectorOptional'
       responses:
-        204:
-          $ref: '#/components/responses/204'
+        200:
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ExecList'
         400:
           $ref: '#/components/responses/400'
+        401:
+          $ref: '#/components/responses/401'
         403:
           $ref: '#/components/responses/403'
-        409:
-          $ref: '#/components/responses/409'
+        410:
+          $ref: '#/components/responses/410'
         500:
           $ref: '#/components/responses/500'
       tags:
@@ -1969,6 +2012,115 @@ paths:
       security:
         - basicAuth: []
         - bearerAuth: []
+
+  /api/node/name/{nodename}/daemon/exec/id/{exec_id}:
+    get:
+      operationId: GetDaemonExec
+      description: |
+        Get how one run of one object on one node went, by the exec id its
+        submitter was handed.
+
+        An exec the daemon ran and has since dropped is answered 410, which a
+        poller must not read as the exec never having existed.
+      parameters:
+        - $ref: '#/components/parameters/inPathNodeName'
+        - $ref: '#/components/parameters/inPathExecID'
+      responses:
+        200:
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ExecItem'
+        401:
+          $ref: '#/components/responses/401'
+        403:
+          $ref: '#/components/responses/403'
+        410:
+          $ref: '#/components/responses/410'
+        500:
+          $ref: '#/components/responses/500'
+      tags:
+        - node / daemon
+      security:
+        - basicAuth: []
+        - bearerAuth: []
+
+  /api/node/name/{nodename}/daemon/orchestration:
+    get:
+      operationId: GetDaemonOrchestrations
+      description: |
+        List the orchestrations the monitor accepted, and is running.
+      parameters:
+        - $ref: '#/components/parameters/inPathNodeName'
+        - $ref: '#/components/parameters/inQueryExecState'
+        - $ref: '#/components/parameters/inQuerySelectorOptional'
+      responses:
+        200:
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/OrchestrationList'
+        401:
+          $ref: '#/components/responses/401'
+        403:
+          $ref: '#/components/responses/403'
+        500:
+          $ref: '#/components/responses/500'
+      tags:
+        - node / daemon
+      security:
+        - basicAuth: []
+        - bearerAuth: []
+
+  /api/node/name/{nodename}/daemon/orchestration/id/{orchestration_id}:
+    get:
+      operationId: GetDaemonOrchestration
+      description: |
+        Get the state of one orchestration, by the id its submitter was
+        handed.
+
+        An orchestration the monitor ran and has since dropped is answered
+        410. The sessions it ran under it are listed by GetSessions filtered
+        on its id, which is unambiguous only because this says whether the
+        orchestration itself is still known.
+
+        Every node of the object answers, whether or not it accepted the
+        orchestration: the instance monitors carrying its id reach every node,
+        so each one knows the orchestration is running and when the last node
+        reaching it ended it. A client that reached the cluster through a
+        floating address, and cannot know which node accepted, gets the same
+        answer wherever the address takes it.
+
+        How it ended is known where the outcome was published. A node that
+        only saw the monitors reports it succeeded, which is what the monitors
+        falling silent means; the node that accepted it reports an abort as
+        one.
+      parameters:
+        - $ref: '#/components/parameters/inPathNodeName'
+        - $ref: '#/components/parameters/inPathOrchestrationID'
+      responses:
+        200:
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/OrchestrationItem'
+        401:
+          $ref: '#/components/responses/401'
+        403:
+          $ref: '#/components/responses/403'
+        410:
+          $ref: '#/components/responses/410'
+        500:
+          $ref: '#/components/responses/500'
+      tags:
+        - node / daemon
+      security:
+        - basicAuth: []
+        - bearerAuth: []
+
 
   /api/node/name/{nodename}/drbd/allocation:
     get:
@@ -2764,6 +2916,45 @@ paths:
         - basicAuth: []
         - bearerAuth: []
       tags:
+        - node / instance / svc
+        - node / instance / vol
+
+  /api/node/name/{nodename}/instance/path/{namespace}/{kind}/{name}/action/pg/reset:
+    post:
+      description: Lift the process group cappings of the object instance.
+      operationId: PostInstanceActionPGReset
+      parameters:
+        - $ref: '#/components/parameters/inPathNodeName'
+        - $ref: '#/components/parameters/inPathNamespace'
+        - $ref: '#/components/parameters/inPathKind'
+        - $ref: '#/components/parameters/inPathName'
+        - $ref: '#/components/parameters/inQueryAllSlaves'
+        - $ref: '#/components/parameters/inQueryMaster'
+        - $ref: '#/components/parameters/inQuerySessionID'
+        - $ref: '#/components/parameters/inQueryRid'
+        - $ref: '#/components/parameters/inQuerySlaves'
+        - $ref: '#/components/parameters/inQuerySubset'
+        - $ref: '#/components/parameters/inQueryTag'
+      responses:
+        200:
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/InstanceActionAccepted'
+          description: OK
+        400:
+          $ref: '#/components/responses/400'
+        401:
+          $ref: '#/components/responses/401'
+        403:
+          $ref: '#/components/responses/403'
+        500:
+          $ref: '#/components/responses/500'
+      security:
+        - basicAuth: []
+        - bearerAuth: []
+      tags:
+        - node / instance / nscfg
         - node / instance / svc
         - node / instance / vol
 
@@ -6021,11 +6212,17 @@ components:
     InstanceActionAccepted:
       type: object
       properties:
+        exec_id:
+          type: string
+          format: uuid
+          x-go-name: ExecID
+          description: The exec this node forked, naming this run alone, where the session is shared by every object and node the command reached.
         session_id:
           type: string
           format: uuid
           x-go-name: SessionID
       required:
+        - exec_id
         - session_id
 
     InstanceConfig:
@@ -6604,11 +6801,17 @@ components:
     NodeActionAccepted:
       type: object
       properties:
+        exec_id:
+          type: string
+          format: uuid
+          x-go-name: ExecID
+          description: The exec this node forked, naming this run alone, where the session is shared by every node the command reached.
         session_id:
           type: string
           format: uuid
           x-go-name: SessionID
       required:
+        - exec_id
         - session_id
 
     NodeConfig:
@@ -7411,57 +7614,106 @@ components:
         - status
         - title
 
-    ProcessItem:
+    ExecItem:
       type: object
-      required:
-        - node
-        - pid
-        - object
-        - started_at
-        - elapsed
-        - sub
-        - sid
-        - global_expect
-        - cmd
-        - rid
+      required: [session_id, exec_id, node, origin, command, state, started_at]
       properties:
+        session_id:
+          type: string
+          x-go-name: SessionID
+          description: The session id the submitter was handed. Several execs share it when one command reaches several objects of a node.
+        exec_id:
+          type: string
+          x-go-name: ExecID
+          description: The exec this reports, which is what has one object, one outcome, one duration and one exit code.
+        orchestration_id:
+          type: string
+          x-go-name: OrchestrationID
+          description: The orchestration this exec is a step of, when it is one.
         node:
           type: string
-        pid:
-          type: integer
-        object:
+        path:
           type: string
+          description: The object the exec acts on. Absent for a node action.
+        origin:
+          type: string
+          description: What submitted the action. Example, api, imon, nmon, scheduler.
+        title:
+          type: string
+        command:
+          type: string
+        state:
+          type: string
+          description: One of running, succeeded, failed.
+        error:
+          type: string
+        exit_code:
+          type: integer
+          description: What the process exited with, 128 + the signal number when a signal ended it, as the shell reports it. Absent while it runs. -1 when the process never ran at all.
         started_at:
           type: string
           format: date-time
-        elapsed:
+        ended_at:
           type: string
-          format: duration
-        sub:
-          type: string
-        sid:
-          type: string
-        global_expect:
-          type: string
-        cmd:
-          type: string
+          format: date-time
+        pid:
+          type: integer
+          description: The pid of the process running this exec. Absent once it has ended, and absent on a running exec whose process the daemon has lost track of.
         rid:
           type: string
+          x-go-name: RID
+          description: The resource the exec is of, when it is of one. Set by the scheduler.
 
-    ProcessItems:
-      type: array
-      items:
-        $ref: '#/components/schemas/ProcessItem'
-
-    ProcessList:
+    ExecList:
       type: object
       required: [kind, items]
       properties:
         kind:
           type: string
-          enum: [ProcessList]
+          enum: [ExecList]
         items:
-          $ref: '#/components/schemas/ProcessItems'
+          type: array
+          items:
+            $ref: '#/components/schemas/ExecItem'
+
+    OrchestrationItem:
+      type: object
+      required: [orchestration_id, node, state, started_at]
+      properties:
+        orchestration_id:
+          type: string
+          x-go-name: OrchestrationID
+          description: The orchestration id the submitter of the action was handed.
+        node:
+          type: string
+        path:
+          type: string
+          description: The object the orchestration is of. Absent when it is of the node.
+        global_expect:
+          type: string
+        state:
+          type: string
+          description: One of running, succeeded, aborted, refused.
+        error:
+          type: string
+        started_at:
+          type: string
+          format: date-time
+        ended_at:
+          type: string
+          format: date-time
+
+    OrchestrationList:
+      type: object
+      required: [kind, items]
+      properties:
+        kind:
+          type: string
+          enum: [OrchestrationList]
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/OrchestrationItem'
 
     Property:
       type: object
@@ -8703,9 +8955,91 @@ components:
       schema:
         type: string
 
+    inPathExecID:
+      in: path
+      name: exec_id
+      required: true
+      schema:
+        type: string
+        format: uuid
+        description: An exec id.
+
+    inPathOrchestrationID:
+      in: path
+      name: orchestration_id
+      required: true
+      schema:
+        type: string
+        description: An orchestration id.
+
+    inQueryExecID:
+      in: query
+      name: exec_id
+      x-go-name: ExecID
+      schema:
+        type: string
+        format: uuid
+        description: List the exec of this id, which names one run of one object on one node.
+
+    inQueryOrchestrationID:
+      in: query
+      name: orchestration_id
+      x-go-name: OrchestrationID
+      schema:
+        type: string
+        format: uuid
+        description: List what was run under this orchestration.
+        example: 3fc0f1e6-1d0f-4a2e-9a0e-9a6c1b8f0a11
+
+    inQueryExecState:
+      in: query
+      name: state
+      x-go-name: States
+      schema:
+        type: array
+        items:
+          type: string
+          description: A state to list. Every state when not set.
+          example: running
+
+    inQuerySignal:
+      in: query
+      name: signal
+      description: The signal to send, as a name (TERM, SIGTERM) or a number (15). Defaults to SIGKILL.
+      schema:
+        type: string
+        example: TERM
+
+    inQueryDryRun:
+      in: query
+      name: dry_run
+      description: Answer what would be signaled, and signal nothing.
+      schema:
+        type: boolean
+
+    inQueryOrigin:
+      in: query
+      name: origin
+      x-go-name: Origins
+      schema:
+        type: array
+        items:
+          type: string
+          description: A submitter to list the execs of. Every one when not set.
+          example: scheduler
+
+    inQueryRIDOptional:
+      in: query
+      name: rid
+      x-go-name: RID
+      description: a resource selector expression
+      schema:
+        type: string
+
     inQuerySessionID:
       in: query
       name: session_id
+      x-go-name: SessionID
       schema:
         type: string
         format: uuid
@@ -8891,6 +9225,13 @@ components:
 
     '409':
       description: Conflict
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/Problem"
+
+    '410':
+      description: Gone
       content:
         application/json:
           schema:

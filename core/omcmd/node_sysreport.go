@@ -26,6 +26,7 @@ func (t *CmdNodeSysreport) Run() error {
 		nodeaction.WithLocal(t.Local),
 		nodeaction.WithRemoteNodes(t.NodeSelector),
 		nodeaction.WithFormat(t.Output),
+		nodeaction.WithSort(t.Sort),
 		nodeaction.WithColor(t.Color),
 		nodeaction.WithRemoteFunc(func(ctx context.Context, nodename string) (interface{}, error) {
 			c, err := client.New()
@@ -38,8 +39,8 @@ func (t *CmdNodeSysreport) Run() error {
 				params.Force = &v
 			}
 			{
-				sid := xsession.Sid().UUID()
-				params.SessionId = &sid
+				sessionID := xsession.SessionID().UUID()
+				params.SessionID = &sessionID
 			}
 			response, err := c.PostNodeActionSysreportWithResponse(ctx, nodename, &params)
 			if err != nil {

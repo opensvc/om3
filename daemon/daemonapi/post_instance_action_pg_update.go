@@ -27,7 +27,7 @@ func (a *DaemonAPI) PostInstanceActionPGUpdate(ctx echo.Context, nodename, names
 
 func (a *DaemonAPI) postLocalInstanceActionPGUpdate(ctx echo.Context, namespace string, kind naming.Kind, name string, params api.PostInstanceActionPGUpdateParams) error {
 	log := LogHandler(ctx, "PostInstanceActionPGUpdate")
-	var requesterSid uuid.UUID
+	var requesterSessionID uuid.UUID
 	p, err := naming.NewPath(namespace, kind, name)
 	if err != nil {
 		return JSONProblemf(ctx, http.StatusBadRequest, "Invalid parameters", "%s", err)
@@ -40,8 +40,8 @@ func (a *DaemonAPI) postLocalInstanceActionPGUpdate(ctx echo.Context, namespace 
 	if params.Master != nil && *params.Master {
 		args = append(args, "--master")
 	}
-	if params.SessionId != nil {
-		requesterSid = *params.SessionId
+	if params.SessionID != nil {
+		requesterSessionID = *params.SessionID
 	}
 	if params.Rid != nil && *params.Rid != "" {
 		args = append(args, "--rid", *params.Rid)
@@ -58,9 +58,9 @@ func (a *DaemonAPI) postLocalInstanceActionPGUpdate(ctx echo.Context, namespace 
 	if params.Tag != nil && *params.Tag != "" {
 		args = append(args, "--tag", *params.Tag)
 	}
-	if sid, err := a.apiExec(ctx, p, requesterSid, args, log); err != nil {
+	if sessionID, execID, err := a.apiExec(ctx, p, requesterSessionID, args, log); err != nil {
 		return JSONProblemf(ctx, http.StatusInternalServerError, "", "%s", err)
 	} else {
-		return ctx.JSON(http.StatusOK, api.InstanceActionAccepted{SessionID: sid})
+		return ctx.JSON(http.StatusOK, api.InstanceActionAccepted{SessionID: sessionID, ExecID: execID})
 	}
 }

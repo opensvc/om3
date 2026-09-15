@@ -6,6 +6,7 @@ import (
 
 	"github.com/opensvc/om3/v3/core/commoncmd"
 	"github.com/opensvc/om3/v3/core/streamlog"
+	"github.com/opensvc/om3/v3/util/hostname"
 	"github.com/opensvc/om3/v3/util/render"
 )
 
@@ -21,7 +22,7 @@ type (
 func (t *CmdNodeLogs) Run() error {
 	render.SetColor(t.Color)
 	if t.NodeSelector == "" {
-		t.NodeSelector = "*"
+		t.NodeSelector = hostname.Hostname()
 	}
 	if t.Local {
 		return t.local()

@@ -20,6 +20,7 @@ type (
 	CmdDaemonHeartbeatList struct {
 		Color        string
 		Output       string
+		Sort         string
 		NodeSelector string
 		PeerSelector string
 		Name         string
@@ -83,6 +84,7 @@ func NewCmdDaemonHeartbeatList(defaultNodeSelectorFilter string) *cobra.Command 
 	}
 	flags := cmd.Flags()
 	FlagOutput(flags, &options.Output)
+	FlagSort(flags, &options.Sort)
 	FlagColor(flags, &options.Color)
 	FlagNodeSelectorFilter(flags, &options.NodeSelector)
 	FlagPeerSelectorFilter(flags, &options.PeerSelector)
@@ -162,15 +164,14 @@ func (t *CmdDaemonHeartbeatList) Run() error {
 		}
 		return table[i].Peer < table[j].Peer
 	})
-	output.Renderer{
+	return output.Renderer{
 		DefaultOutput: "tab=RUNNING:.state_icon,BEATING:.beating_icon,ID:.id,NODE:.node,PEER:.peer,TYPE:.type,DESC:.desc,CHANGED_AT:.changed_at",
 		Output:        t.Output,
+		Sort:          t.Sort,
 		Color:         t.Color,
 		Data:          table,
 		Colorize:      rawconfig.Colorize,
 	}.Print()
-
-	return nil
 }
 
 // NewCmdDaemonHeartbeatStatus is the name the list command answered to

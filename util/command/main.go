@@ -279,6 +279,34 @@ func (t *T) ExitCode() int {
 	return t.cmd.ProcessState.ExitCode()
 }
 
+// NormalizedExitCode returns the process exit status, and 128 + the signal
+// number when the process was terminated by one, which is the shell
+// convention and the value this package's own error and log entries already
+// carry.
+//
+// ExitCode returns the raw os/exec value, which is -1 for a signaled process
+// and says nothing about which signal. A caller comparing against a command's
+// documented codes wants that one. A caller reporting the outcome to a person
+// wants this one, and wants it to agree with the error text beside it.
+//
+// It is -1 when the process never ran, which is the one case no exit status
+// exists for.
+func (t *T) NormalizedExitCode() int {
+	ps := t.cmd.ProcessState
+	if ps == nil {
+		return -1
+	}
+	if ws, ok := ps.Sys().(syscall.WaitStatus); ok {
+		if ws.Signaled() {
+			return 128 + int(ws.Signal())
+		}
+		if ws.Exited() {
+			return ws.ExitStatus()
+		}
+	}
+	return ps.ExitCode()
+}
+
 func (t *T) Wait() error {
 	if t.waited {
 		return ErrAlreadyWaited

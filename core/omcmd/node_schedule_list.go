@@ -78,7 +78,10 @@ func (t *CmdNodeScheduleList) extractFromDaemon(c *client.T) (api.ScheduleItems,
 	var l api.ScheduleItems
 
 	if t.NodeSelector == "" {
-		t.NodeSelector = "*"
+		// om runs on a node, and the entries of that node are the ones an
+		// operator running it means. The others are a selector away. ox
+		// drives a cluster from outside it, so it lists them all.
+		t.NodeSelector = hostname.Hostname()
 	}
 	nodenames, err := nodeselector.New(t.NodeSelector, nodeselector.WithClient(c)).Expand()
 	if err != nil {
@@ -162,12 +165,13 @@ func (t *CmdNodeScheduleList) Run() error {
 
 	data, err := t.extract(c)
 
-	output.Renderer{
+	err = errors.Join(err, output.Renderer{
 		DefaultOutput: "tab=NODE:meta.node,ACTION:data.action,KEY:data.key,LAST_RUN_AT:data.last_run_at,NEXT_RUN_AT:data.next_run_at,SCHEDULE:data.schedule",
 		Output:        t.Output,
+		Sort:          t.Sort,
 		Color:         t.Color,
 		Data:          data,
 		Colorize:      rawconfig.Colorize,
-	}.Print()
+	}.Print())
 	return err
 }

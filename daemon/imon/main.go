@@ -61,6 +61,11 @@ type (
 		databus *daemondata.T
 		log     *plog.Logger
 
+		// logBase is log without an orchestration_id attribute, so entering
+		// and leaving an orchestration swaps the attribute instead of
+		// appending another one. zerolog contexts only grow.
+		logBase *plog.Logger
+
 		pendingCtx    context.Context
 		pendingCancel context.CancelFunc
 
@@ -278,7 +283,7 @@ func start(parent context.Context, qs pubsub.QueueSizer, p naming.Path, nodes []
 		needStatusQ: make(chan priority.T, 1),
 	}
 
-	t.log = naming.LogWithPath(plog.NewDefaultLogger(), t.path).
+	t.logBase = naming.LogWithPath(plog.NewDefaultLogger(), t.path).
 		Attr("pkg", "daemon/imon").
 		WithPrefix(fmt.Sprintf("daemon: imon: %s: ", t.path.String()))
 	t.logSetOrchestrationID(uuid.Nil)
@@ -294,8 +299,16 @@ func start(parent context.Context, qs pubsub.QueueSizer, p naming.Path, nodes []
 	return nil
 }
 
+// logSetOrchestrationID names in the logs the orchestration this instance
+// monitor is running, and names none when it is running none: an id of
+// zeroes would match nothing a client can ask for, and every entry of every
+// idle monitor would carry it.
 func (t *Manager) logSetOrchestrationID(i uuid.UUID) {
-	t.log = t.log.Attr("orchestration_id", i.String())
+	if i == uuid.Nil {
+		t.log = t.logBase
+		return
+	}
+	t.log = t.logBase.Attr("orchestration_id", i.String())
 }
 
 func (t *Manager) startSubscriptions(qs pubsub.QueueSizer) {

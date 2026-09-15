@@ -87,7 +87,7 @@ func newCmdDaemonEvents() *cobra.Command {
 	commoncmd.FlagEventOutput(flags, &options.Output)
 	commoncmd.FlagEventTemplate(flags, &options.Template)
 	commoncmd.FlagEventWait(flags, &options.Wait)
-	commoncmd.FlagNodeSelector(flags, &options.NodeSelector)
+	commoncmd.FlagNodeSelectorOrLocalnode(flags, &options.NodeSelector)
 	commoncmd.FlagObjectSelector(flags, &options.ObjectSelector)
 	commoncmd.FlagEventLimit(flags, &options.Limit)
 	return cmd
@@ -102,7 +102,7 @@ func newCmdDaemonRestart() *cobra.Command {
 	flags := cmd.Flags()
 	addFlagsGlobal(flags, &options.OptsGlobal)
 	commoncmd.FlagCPUProfile(flags, &options.CPUProfile)
-	commoncmd.FlagNodeSelector(flags, &options.NodeSelector)
+	commoncmd.FlagNodeSelectorOrLocalnode(flags, &options.NodeSelector)
 	return cmd
 }
 
@@ -139,7 +139,7 @@ func newCmdDaemonShutdown() *cobra.Command {
 	flags := cmd.Flags()
 	addFlagsGlobal(flags, &options.OptsGlobal)
 	commoncmd.FlagDuration(flags, &options.Timeout)
-	commoncmd.FlagNodeSelector(flags, &options.NodeSelector)
+	commoncmd.FlagNodeSelectorOrLocalnode(flags, &options.NodeSelector)
 	return cmd
 }
 
@@ -163,7 +163,7 @@ func newCmdDaemonStop() *cobra.Command {
 	}
 	flags := cmd.Flags()
 	addFlagsGlobal(flags, &options.OptsGlobal)
-	commoncmd.FlagNodeSelector(flags, &options.NodeSelector)
+	commoncmd.FlagNodeSelectorOrLocalnode(flags, &options.NodeSelector)
 	return cmd
 }
 
@@ -398,7 +398,7 @@ func newCmdNodeAbort() *cobra.Command {
 	flags := cmd.Flags()
 	commoncmd.FlagsAsync(flags, &options.OptsAsync)
 	addFlagsGlobal(flags, &options.OptsGlobal)
-	commoncmd.FlagNodeSelector(flags, &options.NodeSelector)
+	commoncmd.FlagNodeSelectorOrLocalnode(flags, &options.NodeSelector)
 	return cmd
 }
 
@@ -414,7 +414,7 @@ func newCmdNodeCapabilitiesList() *cobra.Command {
 	}
 	flags := cmd.Flags()
 	addFlagsGlobal(flags, &options.OptsGlobal)
-	commoncmd.FlagNodeSelector(flags, &options.NodeSelector)
+	commoncmd.FlagNodeSelectorOrLocalnode(flags, &options.NodeSelector)
 	return cmd
 }
 
@@ -844,7 +844,7 @@ func newCmdNodeDrain() *cobra.Command {
 	flags := cmd.Flags()
 	addFlagsGlobal(flags, &options.OptsGlobal)
 	commoncmd.FlagsAsync(flags, &options.OptsAsync)
-	commoncmd.FlagNodeSelector(flags, &options.NodeSelector)
+	commoncmd.FlagNodeSelectorOrLocalnode(flags, &options.NodeSelector)
 	return cmd
 }
 
@@ -861,6 +861,7 @@ func newCmdNodeDrivers() *cobra.Command {
 	flags := cmd.Flags()
 	commoncmd.FlagColor(flags, &options.Color)
 	commoncmd.FlagOutput(flags, &options.Output)
+	commoncmd.FlagSort(flags, &options.Sort)
 	return cmd
 }
 
@@ -1011,7 +1012,7 @@ func newCmdNodeLogs() *cobra.Command {
 	flags := cmd.Flags()
 	addFlagsGlobal(flags, &options.OptsGlobal)
 	commoncmd.FlagsLogs(flags, &options.OptsLogs)
-	commoncmd.FlagNodeSelector(flags, &options.NodeSelector)
+	commoncmd.FlagNodeSelectorOrLocalnode(flags, &options.NodeSelector)
 	flagLocal(flags, &options.Local)
 	return cmd
 }
@@ -1081,11 +1082,42 @@ func newCmdObjectPrintResourceInfo(kind string) *cobra.Command {
 	return cmd
 }
 
+func newCmdDaemonOrchestrationList() *cobra.Command {
+	var options commands.CmdDaemonOrchestrationList
+	cmd := &cobra.Command{
+		Use:   "list [ORCHESTRATION_ID]",
+		Short: "list the orchestrations the monitor accepted, and is running",
+		Long: `Naming an orchestration id reports that one orchestration, and says so when
+the daemon no longer holds it, which is not the same answer as never having
+run it.
+
+Any node answers for any orchestration, so this needs no node to be named,
+which is what lets a client reaching the cluster through a floating address
+follow one.`,
+		Aliases: []string{"ls"},
+		Args:    cobra.MaximumNArgs(1),
+		RunE: func(cmd *cobra.Command, args []string) error {
+			if len(args) > 0 {
+				options.OrchestrationID = args[0]
+			}
+			return options.Run()
+		},
+	}
+	commoncmd.CmdWithArg(cmd, `ORCHESTRATION_ID  The orchestration id the submitter of the action was handed.`)
+	flags := cmd.Flags()
+	addFlagsGlobal(flags, &options.OptsGlobal)
+	commoncmd.FlagNodeSelectorOrLocalnode(flags, &options.NodeSelector)
+	flags.StringSliceVar(&options.States, "state", nil, "list the orchestrations in these states, every state when not set")
+	return cmd
+}
+
 func newCmdNodeScheduleList() *cobra.Command {
 	var options commands.CmdNodeScheduleList
 	cmd := &cobra.Command{
-		Use:     "list",
-		Short:   "list the node scheduler entries",
+		Use:   "list",
+		Short: "list the node scheduler entries",
+		Long: `The entries listed are the ones of this node. Naming other nodes, or all of
+them with "*", lists theirs.`,
 		Aliases: []string{"ls"},
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return options.Run()
@@ -1093,7 +1125,7 @@ func newCmdNodeScheduleList() *cobra.Command {
 	}
 	flags := cmd.Flags()
 	addFlagsGlobal(flags, &options.OptsGlobal)
-	commoncmd.FlagNodeSelector(flags, &options.NodeSelector)
+	commoncmd.FlagNodeSelectorOrLocalnode(flags, &options.NodeSelector)
 	flagLocal(flags, &options.Local)
 	return cmd
 }
@@ -1425,7 +1457,7 @@ func newCmdNodeSSHTrust() *cobra.Command {
 		},
 	}
 	flags := cmd.Flags()
-	commoncmd.FlagNodeSelector(flags, &options.NodeSelector)
+	commoncmd.FlagNodeSelectorOrLocalnode(flags, &options.NodeSelector)
 	addFlagsGlobal(flags, &options.OptsGlobal)
 	return cmd
 }
@@ -2756,7 +2788,7 @@ func newCmdObjectScheduleList(kind string) *cobra.Command {
 	}
 	flags := cmd.Flags()
 	addFlagsGlobal(flags, &options.OptsGlobal)
-	commoncmd.FlagNodeSelector(flags, &options.NodeSelector)
+	commoncmd.FlagNodeSelectorOrLocalnode(flags, &options.NodeSelector)
 	flagLocal(flags, &options.Local)
 	return cmd
 }
@@ -2936,6 +2968,32 @@ func newCmdObjectInstancePGUpdate(kind string) *cobra.Command {
 		Use:   "update",
 		Short: "update instance process group settings",
 		Long:  "Update the process group settings (pg_* keywords) for the instance resources.\n\nThis is usually done automatically on start, but can be run manually after changing pg_* keyword values.",
+		RunE: func(cmd *cobra.Command, args []string) error {
+			return options.Run(kind)
+		},
+	}
+	flags := cmd.Flags()
+	addFlagsGlobal(flags, &options.OptsGlobal)
+	commoncmd.FlagsAsync(flags, &options.OptsAsync)
+	commoncmd.FlagsLock(flags, &options.OptsLock)
+	commoncmd.FlagsEncap(flags, &options.OptsEncap)
+	commoncmd.FlagsResourceSelector(cmd, &options.OptsResourceSelector)
+	return cmd
+}
+
+func newCmdObjectInstancePGReset(kind string) *cobra.Command {
+	var options commands.CmdObjectInstancePGReset
+	cmd := &cobra.Command{
+		Use:   "reset",
+		Short: "lift the instance process group cappings",
+		Long: `Put the process group cappings of the instance back where a node that never
+capped anything leaves them, whatever the pg_* keywords say and whoever wrote
+the capping being lifted.
+
+This is the way out of a capping the configuration does not know about: one
+left by an older agent, by systemd, or by hand. A capping the configuration
+does name comes back at the next "pg update", and at the next start. Lifting
+one for good is a pg_* keyword set to "default".`,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return options.Run(kind)
 		},
@@ -3696,6 +3754,7 @@ func newCmdPoolList() *cobra.Command {
 	flags := cmd.Flags()
 	commoncmd.FlagColor(flags, &options.Color)
 	commoncmd.FlagOutput(flags, &options.Output)
+	commoncmd.FlagSort(flags, &options.Sort)
 	commoncmd.FlagPoolName(flags, &options.Name)
 	commoncmd.FlagNodeSelector(flags, &options.NodeSelector)
 	return cmd

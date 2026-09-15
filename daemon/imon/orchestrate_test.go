@@ -761,7 +761,7 @@ func crmBuilder(t *testing.T, setup *daemontesthelper.D, p naming.Path, sideEffe
 		}
 
 		for _, e := range se.events {
-			t.Logf("--- crmAction %s %v publish sid effect %s %v", title, cmdArgs, reflect.TypeOf(e), e)
+			t.Logf("--- crmAction %s %v publish session_id effect %s %v", title, cmdArgs, reflect.TypeOf(e), e)
 			pub.Pub(e,
 				pubsub.Label{"namespace", p.Namespace},
 				pubsub.Label{"path", p.String()},

@@ -26,6 +26,7 @@ func (t *CmdObjectInstanceUnfreeze) Run(kind string) error {
 	return objectaction.New(
 		objectaction.WithObjectSelector(mergedSelector),
 		objectaction.WithOutput(t.Output),
+		objectaction.WithSort(t.Sort),
 		objectaction.WithColor(t.Color),
 		objectaction.WithIgnoreNotFound(t.IgnoreNotFound),
 		objectaction.WithAsyncTime(t.Time),
@@ -39,8 +40,8 @@ func (t *CmdObjectInstanceUnfreeze) Run(kind string) error {
 			}
 			params := api.PostInstanceActionUnfreezeParams{}
 			{
-				sid := xsession.Sid().UUID()
-				params.SessionId = &sid
+				sessionID := xsession.SessionID().UUID()
+				params.SessionID = &sessionID
 			}
 			if t.OptsEncap.Master {
 				params.Master = &t.OptsEncap.Master

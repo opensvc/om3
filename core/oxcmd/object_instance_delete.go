@@ -19,6 +19,7 @@ func (t *CmdObjectInstanceDelete) Run(kind string) error {
 		objectaction.WithColor(t.Color),
 		objectaction.WithIgnoreNotFound(t.IgnoreNotFound),
 		objectaction.WithOutput(t.Output),
+		objectaction.WithSort(t.Sort),
 		objectaction.WithObjectSelector(mergedSelector),
 		objectaction.WithAsyncTime(t.Time),
 		objectaction.WithAsyncWait(t.Wait),

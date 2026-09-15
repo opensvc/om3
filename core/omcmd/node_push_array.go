@@ -21,6 +21,7 @@ func (t *CmdNodePushArrays) Run() error {
 	err := nodeaction.New(
 		nodeaction.WithLocal(true),
 		nodeaction.WithFormat(t.Output),
+		nodeaction.WithSort(t.Sort),
 		nodeaction.WithColor(t.Color),
 		nodeaction.WithLocalFunc(func() (interface{}, error) {
 			n, err := object.NewNode()

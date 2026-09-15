@@ -96,13 +96,14 @@ func (t *CmdNodeSystemGroup) Run() error {
 out:
 
 	defaultOutput := "tab=NODE:meta.node,ID:data.id,NAME:data.name"
-	output.Renderer{
+	errs = errors.Join(errs, output.Renderer{
 		DefaultOutput: defaultOutput,
 		Output:        t.Output,
+		Sort:          t.Sort,
 		Color:         t.Color,
 		Data:          api.GroupList{Items: l, Kind: "GroupList"},
 		Colorize:      rawconfig.Colorize,
-	}.Print()
+	}.Print())
 
 	return errs
 }
