@@ -1056,12 +1056,14 @@ func newCmdNodeSCSIPRKey() *cobra.Command {
 func newCmdNodeConfigShow() *cobra.Command {
 	var options commands.CmdNodeConfigShow
 	cmd := &cobra.Command{
-		Use:   "show",
+		Use:   "show [SECTION]...",
 		Short: "show the node configuration",
 		RunE: func(cmd *cobra.Command, args []string) error {
+			commoncmd.SetSectionsFromArgs(&options.Sections, args)
 			return options.Run()
 		},
 	}
+	commoncmd.CmdWithArg(cmd, "SECTION  A configuration section, as DEFAULT or <driver group>#<index>. Every section when none is named.")
 	flags := cmd.Flags()
 	commoncmd.FlagNodeSelector(flags, &options.NodeSelector)
 	commoncmd.FlagSections(flags, &options.Sections)
@@ -2781,12 +2783,14 @@ func newCmdObjectList(kind string) *cobra.Command {
 func newCmdObjectConfigShow(kind string) *cobra.Command {
 	var options commands.CmdObjectConfigShow
 	cmd := &cobra.Command{
-		Use:   "show",
+		Use:   "show [SECTION]...",
 		Short: "show the object configuration",
 		RunE: func(cmd *cobra.Command, args []string) error {
+			commoncmd.SetSectionsFromArgs(&options.Sections, args)
 			return options.Run(kind)
 		},
 	}
+	commoncmd.CmdWithArg(cmd, "SECTION  A configuration section, as DEFAULT or <driver group>#<index>. Every section when none is named.")
 	flags := cmd.Flags()
 	commoncmd.FlagObjectSelector(flags, &options.ObjectSelector)
 	commoncmd.FlagSections(flags, &options.Sections)

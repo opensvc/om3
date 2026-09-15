@@ -375,6 +375,18 @@ func SetKeywordsFromArgs(keywords *[]string, args []string) {
 	*keywords = append(*keywords, args...)
 }
 
+// SetSectionsFromArgs adds the sections named as positional arguments to the
+// ones the --section flag named.
+//
+// Naming a section is how this command is narrowed, so it is the argument, and
+// --section is kept for the scripts written before it was.
+func SetSectionsFromArgs(sections *[]string, args []string) {
+	if sections == nil {
+		panic("SetSectionsFromArgs call with a nil sections pointer")
+	}
+	*sections = append(*sections, args...)
+}
+
 func SetRIDFromArgs(rid *string, args []string, group, defaultRID string) {
 	if rid == nil {
 		panic("SetRIDFromArgs call with a nil rid pointer")
