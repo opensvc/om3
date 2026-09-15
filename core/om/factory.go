@@ -923,13 +923,15 @@ func newCmdNodeEditConfig() *cobra.Command {
 func newCmdNodeConfigEval() *cobra.Command {
 	var options commands.CmdNodeConfigGet
 	cmd := &cobra.Command{
-		Use:   "eval",
+		Use:   "eval [KEYWORD]...",
 		Short: "evaluate a configuration key value",
 		RunE: func(cmd *cobra.Command, args []string) error {
+			commoncmd.SetKeywordsFromArgs(&options.Keywords, args)
 			options.Eval = true
 			return options.Run()
 		},
 	}
+	commoncmd.CmdWithArg(cmd, "KEYWORD  A configuration keyword, as [<section>.]<option>. Every keyword when none is named.")
 	flags := cmd.Flags()
 	addFlagsGlobal(flags, &options.OptsGlobal)
 	commoncmd.FlagsLock(flags, &options.OptsLock)
@@ -981,12 +983,14 @@ func newCmdNodeFreeze() *cobra.Command {
 func newCmdNodeConfigGet() *cobra.Command {
 	var options commands.CmdNodeConfigGet
 	cmd := &cobra.Command{
-		Use:   "get",
+		Use:   "get [KEYWORD]...",
 		Short: "get a configuration key value",
 		RunE: func(cmd *cobra.Command, args []string) error {
+			commoncmd.SetKeywordsFromArgs(&options.Keywords, args)
 			return options.Run()
 		},
 	}
+	commoncmd.CmdWithArg(cmd, "KEYWORD  A configuration keyword, as [<section>.]<option>. Every keyword when none is named.")
 	flags := cmd.Flags()
 	addFlagsGlobal(flags, &options.OptsGlobal)
 	commoncmd.FlagsLock(flags, &options.OptsLock)
@@ -2667,13 +2671,15 @@ func newCmdObjectGroupSplit(kind, group string) *cobra.Command {
 func newCmdObjectConfigEval(kind string) *cobra.Command {
 	var options commands.CmdObjectConfigGet
 	cmd := &cobra.Command{
-		Use:   "eval",
+		Use:   "eval [KEYWORD]...",
 		Short: "evaluate a configuration key value",
 		RunE: func(cmd *cobra.Command, args []string) error {
+			commoncmd.SetKeywordsFromArgs(&options.Keywords, args)
 			options.Eval = true
 			return options.Run(kind)
 		},
 	}
+	commoncmd.CmdWithArg(cmd, "KEYWORD  A configuration keyword, as [<section>.]<option>. Every keyword when none is named.")
 	flags := cmd.Flags()
 	addFlagsGlobal(flags, &options.OptsGlobal)
 	commoncmd.FlagKeywords(flags, &options.Keywords)
@@ -2703,12 +2709,14 @@ func newCmdObjectFreeze(kind string) *cobra.Command {
 func newCmdObjectConfigGet(kind string) *cobra.Command {
 	var options commands.CmdObjectConfigGet
 	cmd := &cobra.Command{
-		Use:   "get",
+		Use:   "get [KEYWORD]...",
 		Short: "get a configuration key value",
 		RunE: func(cmd *cobra.Command, args []string) error {
+			commoncmd.SetKeywordsFromArgs(&options.Keywords, args)
 			return options.Run(kind)
 		},
 	}
+	commoncmd.CmdWithArg(cmd, "KEYWORD  A configuration keyword, as [<section>.]<option>. Every keyword when none is named.")
 	flags := cmd.Flags()
 	addFlagsGlobal(flags, &options.OptsGlobal)
 	commoncmd.FlagEval(flags, &options.Eval)
