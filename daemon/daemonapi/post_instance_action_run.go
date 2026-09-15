@@ -33,6 +33,9 @@ func (a *DaemonAPI) postLocalInstanceActionRun(ctx echo.Context, namespace strin
 		return JSONProblemf(ctx, http.StatusBadRequest, "Invalid parameters", "%s", err)
 	}
 	log = naming.LogWithPath(log, p)
+	if v, err := assertConfigUpdatedAt(ctx, p, params.ConfigUpdatedAt); !v {
+		return err
+	}
 	args := []string{p.String(), "instance", "run"}
 	if params.Force != nil && *params.Force {
 		args = append(args, "--force")

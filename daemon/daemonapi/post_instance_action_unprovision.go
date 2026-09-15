@@ -33,6 +33,9 @@ func (a *DaemonAPI) postLocalInstanceActionUnprovision(ctx echo.Context, namespa
 		return JSONProblemf(ctx, http.StatusBadRequest, "Invalid parameters", "%s", err)
 	}
 	log = naming.LogWithPath(log, p)
+	if v, err := assertConfigUpdatedAt(ctx, p, params.ConfigUpdatedAt); !v {
+		return err
+	}
 	args := []string{p.String(), "instance", "unprovision"}
 	if params.Leader != nil && *params.Leader {
 		args = append(args, "--leader")
