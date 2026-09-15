@@ -3116,14 +3116,34 @@ func newCmdObjectInstanceRestart(kind string) *cobra.Command {
 }
 
 func newCmdObjectInstanceRun(kind string) *cobra.Command {
+	return newCmdRun(kind, true)
+}
+
+// newCmdRun builds the run command, with or without the task arguments.
+//
+// The deprecated "om <sel> run" spelling takes its tasks from --rid only.
+// Taking them as arguments there would silently change what a command like
+// "om <sel> run 2*" does, and that spelling is the one the old scripts hold.
+// Without the arguments it refuses them instead, which is the answer an
+// operator can act on.
+func newCmdRun(kind string, withArgs bool) *cobra.Command {
 	var options commands.CmdObjectInstanceRun
 	cmd := &cobra.Command{
 		Use:   "run",
 		Short: "execute instance tasks",
 		Long:  "The svc and vol objects can define task resources. Tasks are usually run on a schedule, but this command can trigger a run now.",
 		RunE: func(cmd *cobra.Command, args []string) error {
+			if withArgs {
+				commoncmd.SetRIDFromArgs(&options.RID, args, "task", "")
+			}
 			return options.Run(kind)
 		},
+	}
+	if withArgs {
+		cmd.Use = "run [PATTERN]..."
+		commoncmd.CmdWithArg(cmd, "PATTERN  A fnmatch task resource index filter. Every task when none is given.")
+	} else {
+		cmd.Args = cobra.NoArgs
 	}
 	flags := cmd.Flags()
 	addFlagsGlobal(flags, &options.OptsGlobal)
@@ -4232,7 +4252,7 @@ func newCmdObjectPKCS(kind string) *cobra.Command {
 }
 
 func newCmdObjectRun(kind string) *cobra.Command {
-	cmd := newCmdObjectInstanceRun(kind)
+	cmd := newCmdRun(kind, false)
 	cmd.Hidden = true
 	return cmd
 }
