@@ -3,6 +3,7 @@
 package resipcni
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"net"
@@ -62,7 +63,7 @@ func (t *T) ipamKey() string {
 
 // allocateIP reserves the address of this resource, and returns the one it
 // already holds when it holds one.
-func (t *T) allocateIP() (net.IP, error) {
+func (t *T) allocateIP(ctx context.Context) (net.IP, error) {
 	i, err := t.ipam()
 	if err != nil {
 		return nil, err
@@ -70,7 +71,7 @@ func (t *T) allocateIP() (net.IP, error) {
 	if i == nil {
 		return nil, nil
 	}
-	ip, err := i.Allocate(t.ipamKey())
+	ip, err := network.AllocateFor(ctx, i, t.Path, t.RID())
 	if err != nil {
 		return nil, err
 	}

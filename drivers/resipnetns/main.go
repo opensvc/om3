@@ -151,7 +151,7 @@ func (t *T) Start(ctx context.Context) error {
 	} else if t._ipaddrAge > 0 {
 		t.Log().Warnf("ip %s lookup issue, cache valid (%s old)", t.Name, duration.FmtShortDuration(t._ipaddrAge))
 	}
-	allocated, err := t.allocateIP()
+	allocated, err := t.allocateIP(ctx)
 	if err != nil {
 		return err
 	}

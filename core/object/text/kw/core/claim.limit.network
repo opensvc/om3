@@ -1,0 +1,14 @@
+The most addresses of this network the objects of this namespace may hold,
+cluster-wide.
+
+An allocation taking the namespace over it is refused, so one namespace cannot
+drain a network the others are meant to share. Leave it unset for a namespace
+that is not capped on this network.
+
+Addresses are counted, not reservations: a failover object holds the same
+address on every node it is configured on, and that is one address taken from
+the network, while the instances of a flex each hold one of their own.
+
+The limit is checked when an address is allocated, not when one already held
+is asked for again, so a namespace that reached its limit still restarts what
+it already runs.

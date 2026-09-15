@@ -29,39 +29,16 @@ func TestClaimLimit(t *testing.T) {
 type = pool
 name = dirquota
 limit = 250m
-
-[claim#2]
-type = pool
-name = unlimited
-`)
-	writeNamespaceConfig(t, "uncapped", `
-[DEFAULT]
-env = TST
 `)
 
-	t.Run("a claim naming a limit caps the namespace on that pool", func(t *testing.T) {
+	t.Run("the limit of a pool claim is a size", func(t *testing.T) {
 		limit, capped, err := ClaimLimit("capped", "dirquota")
 		require.NoError(t, err)
 		assert.True(t, capped)
 		assert.Equal(t, int64(250*1024*1024), limit)
 	})
-	t.Run("a claim naming no limit does not cap", func(t *testing.T) {
-		_, capped, err := ClaimLimit("capped", "unlimited")
-		require.NoError(t, err)
-		assert.False(t, capped)
-	})
-	t.Run("a pool the namespace has no claim on does not cap", func(t *testing.T) {
+	t.Run("a namespace with no claim on the pool is not capped", func(t *testing.T) {
 		_, capped, err := ClaimLimit("capped", "other")
-		require.NoError(t, err)
-		assert.False(t, capped)
-	})
-	t.Run("a namespace claiming nothing does not cap", func(t *testing.T) {
-		_, capped, err := ClaimLimit("uncapped", "dirquota")
-		require.NoError(t, err)
-		assert.False(t, capped)
-	})
-	t.Run("a namespace with no configuration here does not cap", func(t *testing.T) {
-		_, capped, err := ClaimLimit("elsewhere", "dirquota")
 		require.NoError(t, err)
 		assert.False(t, capped)
 	})

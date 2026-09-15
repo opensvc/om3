@@ -83,6 +83,24 @@ OpenSVC v3 is a major evolution, rebuilt in Go for performance, reliability, and
 
 * **New install keyword**: For fs and volume resources, the new `install` keyword enables deployment of complex file trees on start, with support for sec keys, cfg keys, local files or remote URIs, file/directory nesting, and user/group/permission setup.
 
+* **Namespace claims on cluster resources**: A namespace can be capped on what it takes of a resource its peers share, declared in its configuration as a `claim` section:
+
+    ```
+    [claim#1]
+    type = pool
+    name = tank
+    limit = 250m
+
+    [claim#2]
+    type = network
+    name = backend2
+    limit = 10
+    ```
+
+    A pool claim counts the size each volume of the namespace was created or resized with, and an allocation or a resize taking the namespace over its limit is refused. A network claim counts the addresses the namespace holds cluster-wide, and an allocation taking it over its limit is refused, while an address already held is never re-claimed, so an object at the limit still restarts.
+
+    A namespace declaring no claim on a resource is not capped on it, and the limit is read from the namespace configuration on the node doing the allocation, so the common case asks nothing of the daemon.
+
 ## Breaking Changes
 
 ### Cluster and Node Configuration
