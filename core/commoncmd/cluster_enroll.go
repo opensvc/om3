@@ -76,7 +76,7 @@ func NewCmdClusterEnroll() *cobra.Command {
 		" Defaults to a name that certificate is valid for")
 	flags.DurationVar(&options.Timeout, "timeout", time.Hour, "maximum duration to wait for the enrolled node to join."+
 		" It is also the lifetime of the join token, so it must outlive the node drain")
-	flags.BoolVar(&options.Wait, "wait", true, "wait for the enrolled node heartbeat to beat in this cluster")
+	flags.BoolVar(&options.Wait, "wait", false, "wait for the enrolled node heartbeat to beat in this cluster")
 	return cmd
 }
 

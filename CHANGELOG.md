@@ -794,8 +794,8 @@ Where the password is the value of the `þassword` key in `system/sec/relay-v3`.
     is reported by the command instead of failing later inside the join running on the enrolled node. It defaults to a 
     name the certificate is valid for.
 
-    The command waits for the enrolled node heartbeat to beat in the target cluster, which is what proves the join
-    completed. Use `--wait=false` to return as soon as the node has accepted the order.
+    Use `--wait` to block until the enrolled node heartbeat beats in the target cluster, which is what proves the
+    join completed. Without it, the command returns as soon as the node has accepted the order.
     Beware, the node is drained: a single node cluster has nowhere to relocate its instances, so they are stopped, stay
     down, and removed from config.
 
