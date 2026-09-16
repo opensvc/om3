@@ -3,9 +3,11 @@ package omcmd
 import (
 	"context"
 	"fmt"
+	"time"
 
 	"github.com/opensvc/om3/v3/core/client"
 	"github.com/opensvc/om3/v3/core/commoncmd"
+	"github.com/opensvc/om3/v3/core/instance"
 	"github.com/opensvc/om3/v3/core/naming"
 	"github.com/opensvc/om3/v3/core/object"
 	"github.com/opensvc/om3/v3/core/objectaction"
@@ -60,12 +62,16 @@ func (t *CmdObjectResize) Run(kind string) error {
 	// The size the object is configured to hold is what every node converges
 	// to, so it is written before the orchestration is asked for. Writing it
 	// is also what keeps a listing like "om pool volume ls" honest.
-	if err := t.setConfiguredSize(c, p, to); err != nil {
+	configUpdatedAt, err := t.setConfiguredSize(c, p, to)
+	if err != nil {
 		return err
 	}
 
 	return objectaction.New(
 		objectaction.WithObjectSelector(mergedSelector),
+		objectaction.WithAsyncTargetOptions(instance.MonitorGlobalExpectOptionsResized{
+			ConfigUpdatedAt: configUpdatedAt,
+		}),
 		objectaction.WithOutput(t.Output),
 		objectaction.WithColor(t.Color),
 		objectaction.WithAsyncTarget("resized"),
@@ -151,15 +157,27 @@ func (t *CmdObjectResize) configuredSize(p naming.Path) (int64, error) {
 	return i.ConfiguredSize()
 }
 
-func (t *CmdObjectResize) setConfiguredSize(c *client.T, p naming.Path, to int64) error {
+// setConfiguredSize writes the size every node converges to, and returns the
+// timestamp the configuration now carries.
+//
+// That timestamp is what the orchestration is asked for: the write reaches the
+// peer nodes a moment after it is acknowledged here, and a node reading the
+// configuration before it lands would grow to the size this one replaces.
+func (t *CmdObjectResize) setConfiguredSize(c *client.T, p naming.Path, to int64) (time.Time, error) {
+	var updatedAt time.Time
 	set := []string{fmt.Sprintf("size=%d", to)}
 	params := api.PatchObjectConfigParams{Set: &set}
 	resp, err := c.PatchObjectConfigWithResponse(context.Background(), p.Namespace, p.Kind, p.Name, &params)
 	if err != nil {
-		return err
+		return updatedAt, err
 	}
 	if resp.StatusCode() != 200 {
-		return fmt.Errorf("%s: set size: unexpected status code %d", p, resp.StatusCode())
+		return updatedAt, fmt.Errorf("%s: set size: unexpected status code %d", p, resp.StatusCode())
 	}
-	return nil
+	if s := resp.HTTPResponse.Header.Get(api.HeaderLastModified); s != "" {
+		if v, err := time.Parse(time.RFC3339Nano, s); err == nil {
+			updatedAt = v
+		}
+	}
+	return updatedAt, nil
 }

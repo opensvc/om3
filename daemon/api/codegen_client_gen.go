@@ -511,7 +511,7 @@ type ClientInterface interface {
 	PostObjectActionPurge(ctx context.Context, namespace InPathNamespace, kind InPathKind, name InPathName, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// PostObjectActionResize request
-	PostObjectActionResize(ctx context.Context, namespace InPathNamespace, kind InPathKind, name InPathName, reqEditors ...RequestEditorFn) (*http.Response, error)
+	PostObjectActionResize(ctx context.Context, namespace InPathNamespace, kind InPathKind, name InPathName, params *PostObjectActionResizeParams, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// PostObjectActionRestartWithBody request with any body
 	PostObjectActionRestartWithBody(ctx context.Context, namespace InPathNamespace, kind InPathKind, name InPathName, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
@@ -2322,8 +2322,8 @@ func (c *Client) PostObjectActionPurge(ctx context.Context, namespace InPathName
 	return c.Client.Do(req)
 }
 
-func (c *Client) PostObjectActionResize(ctx context.Context, namespace InPathNamespace, kind InPathKind, name InPathName, reqEditors ...RequestEditorFn) (*http.Response, error) {
-	req, err := NewPostObjectActionResizeRequest(c.Server, namespace, kind, name)
+func (c *Client) PostObjectActionResize(ctx context.Context, namespace InPathNamespace, kind InPathKind, name InPathName, params *PostObjectActionResizeParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewPostObjectActionResizeRequest(c.Server, namespace, kind, name, params)
 	if err != nil {
 		return nil, err
 	}
@@ -12708,7 +12708,7 @@ func NewPostObjectActionPurgeRequest(server string, namespace InPathNamespace, k
 }
 
 // NewPostObjectActionResizeRequest generates requests for PostObjectActionResize
-func NewPostObjectActionResizeRequest(server string, namespace InPathNamespace, kind InPathKind, name InPathName) (*http.Request, error) {
+func NewPostObjectActionResizeRequest(server string, namespace InPathNamespace, kind InPathKind, name InPathName, params *PostObjectActionResizeParams) (*http.Request, error) {
 	var err error
 
 	var pathParam0 string
@@ -12745,6 +12745,33 @@ func NewPostObjectActionResizeRequest(server string, namespace InPathNamespace, 
 	queryURL, err := serverURL.Parse(operationPath)
 	if err != nil {
 		return nil, err
+	}
+
+	if params != nil {
+		// queryValues collects non-styled parameters (passthrough, JSON)
+		// that are safe to round-trip through url.Values.Encode().
+		queryValues := queryURL.Query()
+		// rawQueryFragments collects pre-encoded query fragments from
+		// styled parameters, preserving literal commas as delimiters
+		// per the OpenAPI spec (e.g. "color=blue,black,brown").
+		var rawQueryFragments []string
+
+		if params.ConfigUpdatedAt != nil {
+
+			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "config_updated_at", *params.ConfigUpdatedAt, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "string", Format: "date-time"}); err != nil {
+				return nil, err
+			} else {
+				for _, qp := range strings.Split(queryFrag, "&") {
+					rawQueryFragments = append(rawQueryFragments, qp)
+				}
+			}
+
+		}
+
+		if encoded := queryValues.Encode(); encoded != "" {
+			rawQueryFragments = append(rawQueryFragments, encoded)
+		}
+		queryURL.RawQuery = strings.Join(rawQueryFragments, "&")
 	}
 
 	req, err := http.NewRequest(http.MethodPost, queryURL.String(), nil)
@@ -15002,7 +15029,7 @@ type ClientWithResponsesInterface interface {
 	PostObjectActionPurgeWithResponse(ctx context.Context, namespace InPathNamespace, kind InPathKind, name InPathName, reqEditors ...RequestEditorFn) (*PostObjectActionPurgeResponse, error)
 
 	// PostObjectActionResizeWithResponse request
-	PostObjectActionResizeWithResponse(ctx context.Context, namespace InPathNamespace, kind InPathKind, name InPathName, reqEditors ...RequestEditorFn) (*PostObjectActionResizeResponse, error)
+	PostObjectActionResizeWithResponse(ctx context.Context, namespace InPathNamespace, kind InPathKind, name InPathName, params *PostObjectActionResizeParams, reqEditors ...RequestEditorFn) (*PostObjectActionResizeResponse, error)
 
 	// PostObjectActionRestartWithBodyWithResponse request with any body
 	PostObjectActionRestartWithBodyWithResponse(ctx context.Context, namespace InPathNamespace, kind InPathKind, name InPathName, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*PostObjectActionRestartResponse, error)
@@ -21988,8 +22015,8 @@ func (c *ClientWithResponses) PostObjectActionPurgeWithResponse(ctx context.Cont
 }
 
 // PostObjectActionResizeWithResponse request returning *PostObjectActionResizeResponse
-func (c *ClientWithResponses) PostObjectActionResizeWithResponse(ctx context.Context, namespace InPathNamespace, kind InPathKind, name InPathName, reqEditors ...RequestEditorFn) (*PostObjectActionResizeResponse, error) {
-	rsp, err := c.PostObjectActionResize(ctx, namespace, kind, name, reqEditors...)
+func (c *ClientWithResponses) PostObjectActionResizeWithResponse(ctx context.Context, namespace InPathNamespace, kind InPathKind, name InPathName, params *PostObjectActionResizeParams, reqEditors ...RequestEditorFn) (*PostObjectActionResizeResponse, error) {
+	rsp, err := c.PostObjectActionResize(ctx, namespace, kind, name, params, reqEditors...)
 	if err != nil {
 		return nil, err
 	}

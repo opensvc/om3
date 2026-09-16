@@ -4633,6 +4633,7 @@ paths:
         - $ref: '#/components/parameters/inPathNamespace'
         - $ref: '#/components/parameters/inPathKind'
         - $ref: '#/components/parameters/inPathName'
+        - $ref: '#/components/parameters/inQueryConfigUpdatedAt'
       responses:
         200:
           description: OK

@@ -4,6 +4,7 @@ import (
 	"github.com/opensvc/om3/v3/core/instance"
 	"github.com/opensvc/om3/v3/core/provisioned"
 	"github.com/opensvc/om3/v3/core/status"
+	"github.com/opensvc/om3/v3/util/file"
 )
 
 // orchestrateResized grows every instance of the object to the size its
@@ -30,6 +31,11 @@ func (t *Manager) orchestrateResized() {
 }
 
 func (t *Manager) resizedFromIdle() {
+	if !t.hasResizeConfig() {
+		// Waiting, not failing: the configuration is on its way, and the
+		// orchestration is re-evaluated as the node monitor changes.
+		return
+	}
 	if t.instStatus[t.localhost].Provisioned.IsOneOf(provisioned.False) {
 		// There is nothing here to grow. Saying so lets the node holding the
 		// object up stop waiting for this one.
@@ -104,6 +110,30 @@ func (t *Manager) resizedEnd(msg string, succeed bool) {
 // mounted.
 func (t *Manager) isResizeLeader() bool {
 	return t.instStatus[t.localhost].Avail.Is(status.Up)
+}
+
+// hasResizeConfig says whether this node holds the configuration the resize
+// was asked for.
+//
+// The size to grow to is read from the local configuration, and a
+// configuration write is acknowledged by the node that received it a moment
+// before it reaches the others. Without this, a node told to resize before the
+// write lands grows to the size it was asked to replace, and says it is done.
+//
+// The file is read rather than the configuration the daemon caches, because
+// the file is what the resize is about to read, and the cache trails it by the
+// time it takes to notice the change.
+func (t *Manager) hasResizeConfig() bool {
+	options, ok := t.state.GlobalExpectOptions.(instance.MonitorGlobalExpectOptionsResized)
+	if !ok || options.ConfigUpdatedAt.IsZero() {
+		return true
+	}
+	mtime := file.ModTime(t.path.ConfigFile())
+	if mtime.IsZero() || mtime.Before(options.ConfigUpdatedAt) {
+		t.log.Infof("resize: wait for the configuration of %s to land here", options.ConfigUpdatedAt)
+		return false
+	}
+	return true
 }
 
 // hasAnyInstanceUp says whether a node holds the object up, which is the node
