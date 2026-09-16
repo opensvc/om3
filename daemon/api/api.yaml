@@ -502,6 +502,73 @@ paths:
       tags:
         - cluster
 
+  /api/cluster/evict:
+    post:
+      description: |
+        Evict a node from the cluster of the requested api node.
+
+        The requester must be granted the 'root' role.
+
+        The node to evict must be drained: it must be frozen and carry no
+        running instance. A node that is not drained is refused with a 409,
+        because evicting it would leave its instances running on a node the
+        cluster no longer knows about.
+
+        The node to evict can not be the api node: it would have to order
+        itself to leave, and would then have no peer left to be removed by.
+        Post this request to one of its peers instead.
+
+        The optional 'credential' parameter is the <username>:<password> of a
+        user to create on the evicted node, once it is alone in its own
+        cluster. Without it, that node keeps no credential the operator can
+        reach its api with.
+
+        The api node orders the node to evict to leave, by posting
+        POST /api/node/name/{nodename}/daemon/action/leave on it. That node
+        forks a 'om cluster leave' in the background, which asks a peer to
+        drop it from the cluster nodes, then restarts its daemon alone.
+
+        The processing is asynchronous. The HTTP response is sent when the
+        node to evict has accepted the leave order.
+
+        To follow the processing, use the following event filters on the api
+        node,
+        - LeaveSuccess,removed_node=<node> (the node has been removed from cluster nodes)
+        - LeaveIgnored,candidate_node=<node> (the node was not a cluster node)
+        - LeaveError,candidate_node=<node> (an error occur during update cluster node list)
+
+        Beware, LeaveSuccess only says the cluster dropped the node. The
+        daemon restart and the user creation happen afterwards, on a node this
+        cluster no longer observes.
+      operationId: PostClusterEvict
+      requestBody:
+        description: the node to evict, and the credential to create on it
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ClusterEvictBody'
+      responses:
+        200:
+          $ref: '#/components/responses/200'
+        400:
+          $ref: '#/components/responses/400'
+        401:
+          $ref: '#/components/responses/401'
+        403:
+          $ref: '#/components/responses/403'
+        409:
+          $ref: '#/components/responses/409'
+        500:
+          $ref: '#/components/responses/500'
+        502:
+          $ref: '#/components/responses/502'
+      security:
+        - basicAuth: [ ]
+        - bearerAuth: [ ]
+      tags:
+        - cluster
+
   /api/cluster/hb/rotate:
     post:
       description: |
@@ -1415,6 +1482,62 @@ paths:
           application/json:
             schema:
               $ref: '#/components/schemas/DaemonJoinBody'
+      responses:
+        200:
+          $ref: '#/components/responses/200'
+        400:
+          $ref: '#/components/responses/400'
+        401:
+          $ref: '#/components/responses/401'
+        403:
+          $ref: '#/components/responses/403'
+        409:
+          $ref: '#/components/responses/409'
+        500:
+          $ref: '#/components/responses/500'
+      security:
+        - basicAuth: [ ]
+        - bearerAuth: [ ]
+      tags:
+        - node / daemon
+      x-internal: true
+
+  /api/node/name/{nodename}/daemon/action/leave:
+    post:
+      description: |
+        For internal use only.
+
+        Order the daemon on this node to leave its cluster, and fork the leave
+        in the background.
+
+        The requester must be granted the 'root' or 'leave' roles.
+
+        This node must be a member of a multi node cluster: a node that is
+        already alone has no peer to be removed by, and leaving is refused
+        with a 409.
+
+        The node asks a peer to drop it from the cluster nodes, stops its
+        daemon, moves its configuration to a backup directory, and restarts
+        alone in a new single node cluster.
+
+        The optional 'credential' parameter is the <username>:<password> of a
+        user to create once the daemon is back up. The new cluster has its own
+        secret, so no credential of the cluster left works on it: without this
+        parameter, the node keeps none the operator can reach its api with.
+
+        The processing is asynchronous. The HTTP response is sent when the
+        background leave has been forked. Follow it with the event filters
+        documented in POST /api/cluster/evict, on a node of the cluster left.
+      operationId: PostDaemonLeave
+      parameters:
+        - $ref: '#/components/parameters/inPathNodeName'
+      requestBody:
+        description: the credential to create on the leaving node
+        required: false
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/DaemonLeaveBody'
       responses:
         200:
           $ref: '#/components/responses/200'
@@ -5422,6 +5545,33 @@ components:
           default: 1h
           example: 1h
 
+    ClusterEvictBody:
+      type: object
+      required:
+        - nodename
+      properties:
+        nodename:
+          type: string
+          description: |
+            The name of the cluster node to remove from the cluster nodes. It
+            must be drained, and it can not be the api node.
+          example: node3
+          minLength: 2
+        credential:
+          type: string
+          description: |
+            The <username>:<password> of a user to create on the evicted node,
+            once it is alone in its own cluster. Both halves must be set. The
+            user is created in the 'system' namespace with the 'root' grant.
+            Without this parameter, no user is created.
+          example: root:secret
+        timeout:
+          type: string
+          description: |
+            The maximum duration of the leave the evicted node forks.
+          default: 1h
+          example: 1h
+
     ClusterNode:
       type: object
 
@@ -5719,6 +5869,23 @@ components:
         timeout:
           type: string
           description: the maximum duration to wait for the join to complete
+          default: 1h
+          example: 1h
+
+    DaemonLeaveBody:
+      type: object
+      properties:
+        credential:
+          type: string
+          description: |
+            The <username>:<password> of a user to create once the daemon has
+            restarted alone. Both halves must be set. The user is created in
+            the 'system' namespace with the 'root' grant. Without this
+            parameter, no user is created.
+          example: root:secret
+        timeout:
+          type: string
+          description: the maximum duration of the forked leave
           default: 1h
           example: 1h
 
