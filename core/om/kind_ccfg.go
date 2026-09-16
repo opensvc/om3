@@ -34,6 +34,7 @@ func init() {
 		cmdObjectValidate,
 		newCmdClusterJoin(),
 		commoncmd.NewCmdClusterEnroll(),
+		commoncmd.NewCmdClusterEvict(),
 		newCmdClusterLeave(),
 		commoncmd.NewCmdClusterAbort(),
 		commoncmd.NewCmdClusterFreeze(),

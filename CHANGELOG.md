@@ -799,6 +799,27 @@ Where the password is the value of the `þassword` key in `system/sec/relay-v3`.
     Beware, the node is drained: a single node cluster has nowhere to relocate its instances, so they are stopped, stay
     down, and removed from config.
 
+* New `o[mx] cluster evict --node <node>` command, removing a node from the cluster without a shell on that node.
+
+    The command is run against a node that stays, and posts to the new `POST /cluster/evict` endpoint. That node
+    orders the node to evict to leave, through the new `POST /node/name/{nodename}/daemon/action/leave` endpoint,
+    which forks a `om cluster leave` in the background.
+
+    The node to evict must be drained, and is refused with a 409 when it is not: nothing in the leave flow stops what
+    it still runs, so its instances would stay up on a node the cluster no longer knows about, free to start a second
+    time elsewhere. Drain it first with `om node drain --node <node> --wait`.
+
+    Evicting the node the command is posted to is refused: it would have to order itself to leave, and a leave needs a
+    peer to be removed by. Post to one of its peers instead.
+
+    The `--credential` names a file holding the `<username>:<password>` of a user to create on the evicted node once
+    it is alone. That node ends up with a cluster secret of its own, so no user, token or certificate of the cluster
+    it left reaches its api anymore: without this, the api is only reachable from a root shell on that node, through
+    the unix socket. The user is created in the `system` namespace, with the `root` grant.
+
+    Use `--wait` to block until the cluster nodes are updated. Beware, that only says the cluster dropped the node:
+    the daemon restart and the user creation happen afterwards, on a node this cluster no longer observes.
+
 * The `om cluster leave` command accepts `--credential <path>`, naming a file holding the `<username>:<password>` of a
    user to create once the daemon has restarted alone, for the reason `o[mx] cluster evict` does. The
    `OSVC_CREDENTIAL` environment variable is read when the option is not set. Without either, no user is created and
