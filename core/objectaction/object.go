@@ -10,6 +10,7 @@ import (
 	"os"
 	"reflect"
 	"slices"
+	"strings"
 	"time"
 
 	"github.com/google/uuid"
@@ -901,6 +902,12 @@ func (t T) waitExpectation(ctx context.Context, c *client.T, idC <-chan uuid.UUI
 		// This function is used after orchestration completes successfully to
 		// validate expectations.
 		checkFunc func() error
+
+		// resizeFailedNodes are the nodes whose instance ended this
+		// orchestration in the resize failed state. The end event says the
+		// orchestration is over, not whether it did what was asked, so the
+		// instance states are what a resize is judged on.
+		resizeFailedNodes []string
 	)
 
 	logger := naming.LogWithPath(plog.NewDefaultLogger(), p)
@@ -948,6 +955,13 @@ func (t T) waitExpectation(ctx context.Context, c *client.T, idC <-chan uuid.UUI
 				return err
 			}
 			return assertFrozen(p, "unfrozen")
+		}
+	case instance.MonitorGlobalExpectResized:
+		checkFunc = func() error {
+			if len(resizeFailedNodes) > 0 {
+				return fmt.Errorf("the resize failed on %s", strings.Join(resizeFailedNodes, ", "))
+			}
+			return nil
 		}
 	case instance.MonitorGlobalExpectRestarted:
 		checkFunc = func() error {
@@ -1031,6 +1045,11 @@ func (t T) waitExpectation(ctx context.Context, c *client.T, idC <-chan uuid.UUI
 			}
 			switch m := msg.(type) {
 			case *msgbus.InstanceMonitorUpdated:
+				if m.Value.OrchestrationID == orchestrationID &&
+					m.Value.State.IsOneOf(instance.MonitorStateResizeFailure) &&
+					!slices.Contains(resizeFailedNodes, m.Node) {
+					resizeFailedNodes = append(resizeFailedNodes, m.Node)
+				}
 				if m.Value.OrchestrationID == orchestrationID && m.Value.GlobalExpectUpdatedAt.After(orchestrationGlobalExpectUpdatedAt) {
 					orchestrationGlobalExpectUpdatedAt = m.Value.GlobalExpectUpdatedAt
 				} else if m.Value.GlobalExpectUpdatedAt.After(orchestrationGlobalExpectUpdatedAt) {
