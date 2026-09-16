@@ -389,8 +389,14 @@ func (t *actor) action(ctx context.Context, fn resourceset.DoFunc) error {
 		t.log.Tracef("action barrier: %s", barrier)
 	}
 
-	if len(resources) == 0 && !resourceSelector.IsZero() {
-		return fmt.Errorf("resource does not exist")
+	// A selector naming a resource the object does not have asked for something
+	// it cannot do. A selector filtering on a driver group or a pattern did
+	// not: an object with no resource of that group has nothing to do, which
+	// is not an error. So "om <obj> instance start --rid ip#12" is refused
+	// where "om <obj> sync resync", which filters on the sync group, is a
+	// no-op.
+	if missing := resourceSelector.MissingRIDs(); len(missing) > 0 {
+		return fmt.Errorf("resource does not exist: %s", strings.Join(missing, ", "))
 	}
 
 	for _, r := range resources {
