@@ -487,6 +487,9 @@ var (
 func loadUsers() (*Users, error) {
 	var u Users
 	configFile := "users.yaml"
+	if s := os.Getenv("SGCP_USER_DB"); s != "" {
+		configFile = s
+	}
 	data, err := os.ReadFile(configFile)
 	if err != nil {
 		return nil, fmt.Errorf("failed to read config file %s: %w", configFile, err)
@@ -543,8 +546,13 @@ func main() {
 		w.WriteHeader(http.StatusNotFound)
 	})
 
+	port := "8000"
+	if s := os.Getenv("SGCP_PORT"); s != "" {
+		port = s
+	}
+
 	handler := loggingMiddleware(mux)
 
-	log.Println("Listening on :8000")
-	log.Fatal(http.ListenAndServe(":8000", handler))
+	log.Println("Listening on " + port)
+	log.Fatal(http.ListenAndServe(":"+port, handler))
 }
