@@ -108,6 +108,18 @@ func FlagCPUProfile(flags *pflag.FlagSet, p *string) {
 	flags.StringVar(p, "cpuprofile", "", "dump a cpu pprof in this file on exit")
 }
 
+// FlagCredential registers the only way a credential reaches a command,
+// besides the OSVC_CREDENTIAL environment variable. It names a file rather
+// than carrying the value: a command line is readable by any user through the
+// process table, and stays in the shell history.
+func FlagCredential(flags *pflag.FlagSet, p *string) {
+	flags.StringVar(p, "credential", "", "the path of a file holding the <username>:<password> of a user"+
+		" to create on the node once it is alone in its own cluster."+
+		" The user is created in the 'system' namespace, with the 'root' grant."+
+		" Defaults to the "+env.CredentialVar+" environment variable."+
+		" Without either, no user is created")
+}
+
 // FlagToken registers the only way a join token reaches a command, besides
 // the OSVC_JOIN_TOKEN environment variable. It names a file rather than
 // carrying the value, for the reason FlagCredential does.

@@ -8,13 +8,22 @@ import (
 	"os"
 	"time"
 
+	"github.com/google/uuid"
+
 	"github.com/opensvc/om3/v3/core/client"
+	"github.com/opensvc/om3/v3/core/commoncmd"
+	"github.com/opensvc/om3/v3/core/credential"
+	"github.com/opensvc/om3/v3/core/env"
 	"github.com/opensvc/om3/v3/core/event"
+	"github.com/opensvc/om3/v3/core/keyop"
+	"github.com/opensvc/om3/v3/core/naming"
 	"github.com/opensvc/om3/v3/core/object"
 	"github.com/opensvc/om3/v3/daemon/api"
 	"github.com/opensvc/om3/v3/daemon/daemonenv"
 	"github.com/opensvc/om3/v3/daemon/msgbus"
+	"github.com/opensvc/om3/v3/daemon/rbac"
 	"github.com/opensvc/om3/v3/util/hostname"
+	"github.com/opensvc/om3/v3/util/key"
 )
 
 type (
@@ -26,6 +35,12 @@ type (
 
 		// APINode is a cluster node where the leave request will be posted
 		APINode string
+
+		// CredentialFile is the path of a file holding the
+		// <username>:<password> of the user to create once the daemon has
+		// restarted alone. When empty, the OSVC_CREDENTIAL environment
+		// variable is used. Without either, no user is created.
+		CredentialFile string
 
 		peerClient *client.T
 		localhost  string
@@ -54,6 +69,16 @@ func (t *CmdClusterLeave) run() (err error) {
 		deadLine time.Time
 	)
 	t.localhost = hostname.Hostname()
+
+	// Resolve the credential before draining anything. Once the leave is
+	// under way this node is no longer reachable with the credentials of the
+	// cluster it leaves, so a credential refused at that point would leave it
+	// with none at all.
+	username, password, err := t.credential()
+	if err != nil {
+		return err
+	}
+
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
@@ -137,7 +162,102 @@ func (t *CmdClusterLeave) run() (err error) {
 	if err := (&CmdDaemonStart{}).Run(); err != nil {
 		return err
 	}
+
+	if username != "" {
+		if err := t.createUser(ctx, username, password); err != nil {
+			return fmt.Errorf("create user %s: %w", username, err)
+		}
+	}
 	return nil
+}
+
+// credential returns the username and password of the user to create once we
+// are alone, and two empty strings when no credential was given.
+func (t *CmdClusterLeave) credential() (string, string, error) {
+	s, err := commoncmd.SecretFromFileOrEnv(t.CredentialFile, env.CredentialVar)
+	if err != nil {
+		return "", "", fmt.Errorf("%w: --credential: %w", commoncmd.ErrFlagInvalid, err)
+	}
+	if s == "" {
+		return "", "", nil
+	}
+	username, password, err := credential.Parse(s)
+	if err != nil {
+		return "", "", fmt.Errorf("%w: %w", commoncmd.ErrFlagInvalid, err)
+	}
+	return username, password, nil
+}
+
+// createUser creates the usr object the operator reaches our api with, now
+// that we are a cluster of our own.
+//
+// The cluster we left holds no authority here anymore: our new cluster has its
+// own name and secret, so none of its users, tokens or certificates work on
+// us. Without this object, the api is only reachable through the unix socket,
+// from a root shell on this node.
+func (t *CmdClusterLeave) createUser(ctx context.Context, username, password string) error {
+	// The daemon has just been started, so the configuration it bootstraps is
+	// due immediately. Bound the wait on its own, so that a leave run without
+	// --timeout does not hang here forever.
+	ctx, cancel := context.WithTimeout(ctx, time.Minute)
+	defer cancel()
+
+	if err := t.waitClusterConfig(ctx); err != nil {
+		return err
+	}
+	p := naming.Path{Name: username, Namespace: naming.NsSys, Kind: naming.KindUsr}
+	_, _ = fmt.Fprintf(os.Stdout, "Create %s\n", p)
+
+	usr, err := object.NewUsr(p)
+	if err != nil {
+		return err
+	}
+	ops := []keyop.T{
+		{Key: key.Parse("id"), Op: keyop.Set, Value: uuid.New().String()},
+		{Key: key.Parse("grant"), Op: keyop.Set, Value: string(rbac.GrantRoot)},
+	}
+	if err := usr.Config().Set(ops...); err != nil {
+		return err
+	}
+	// ChangeOrAdd, not Add: a password left over from a previous leave with
+	// the same username must be the one the operator was just handed.
+	if err := usr.TransactionChangeOrAddKey("password", []byte(password)); err != nil {
+		return err
+	}
+	return usr.Config().Commit()
+}
+
+// waitClusterConfig reloads the cluster configuration the restarted daemon
+// bootstrapped, and waits for it to carry the name and secret the usr object
+// is encrypted with.
+//
+// The configuration this process read at startup was the one of the cluster we
+// left, and the directory holding it has been moved aside since. Encrypting
+// the password with that stale secret would produce a value the daemon can not
+// decode.
+func (t *CmdClusterLeave) waitClusterConfig(ctx context.Context) error {
+	const interval = 500 * time.Millisecond
+	ticker := time.NewTicker(interval)
+	defer ticker.Stop()
+	var lastErr error
+	for {
+		cfg, err := object.SetClusterConfig()
+		switch {
+		case err != nil:
+			lastErr = err
+		case cfg.Name == "":
+			lastErr = fmt.Errorf("cluster name is empty")
+		case cfg.Secret() == "":
+			lastErr = fmt.Errorf("cluster secret is empty")
+		default:
+			return nil
+		}
+		select {
+		case <-ctx.Done():
+			return fmt.Errorf("wait for the new cluster config: %w: %w", ctx.Err(), lastErr)
+		case <-ticker.C:
+		}
+	}
 }
 
 func (t *CmdClusterLeave) setEvReader(ctx context.Context, duration time.Duration) (err error) {

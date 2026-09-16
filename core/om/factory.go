@@ -55,13 +55,16 @@ func newCmdClusterLeave() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "leave",
 		Short: "remove this node from a cluster",
-		Long:  "Inform peer nodes we leave the cluster. Make sure the leaving node is no longer in the objects nodes list.",
+		Long: "Inform peer nodes we leave the cluster. Make sure the leaving node is no longer in the objects nodes list.\n" +
+			"Once alone, this node has a cluster secret of its own, so no user, token or certificate of the cluster" +
+			" it left can reach its api anymore. Use '--credential' to have a user created to reach it with.",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return options.Run()
 		},
 	}
 	flags := cmd.Flags()
 	flags.DurationVar(&options.Timeout, "timeout", 0, "maximum duration to wait for local node removed from cluster")
+	commoncmd.FlagCredential(flags, &options.CredentialFile)
 	return cmd
 }
 

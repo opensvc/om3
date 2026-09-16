@@ -799,6 +799,11 @@ Where the password is the value of the `þassword` key in `system/sec/relay-v3`.
     Beware, the node is drained: a single node cluster has nowhere to relocate its instances, so they are stopped, stay
     down, and removed from config.
 
+* The `om cluster leave` command accepts `--credential <path>`, naming a file holding the `<username>:<password>` of a
+   user to create once the daemon has restarted alone, for the reason `o[mx] cluster evict` does. The
+   `OSVC_CREDENTIAL` environment variable is read when the option is not set. Without either, no user is created and
+   the node api stays reachable from a root shell only.
+
 * The `om cluster join` command accepts `--addr` to reach the `--node` at an explicit location, for a node that cannot
    resolve the target nodename. Its `--token` names a file holding the token, and the `OSVC_JOIN_TOKEN` environment
    variable is read when the option is not set, so the token never appears in the process table.
