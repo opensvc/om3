@@ -597,6 +597,16 @@ func (t ResizeStep) recordSize(ctx context.Context) error {
 		return nil
 	}
 	was := t.owner.config.Get(k)
+
+	// A reference says the value lives in another keyword, so that is the one
+	// to record in. A pool-served volume points the size of its resources at
+	// DEFAULT.size, which is also the size the pool counts the volume as
+	// claiming, so leaving it alone lets a resize grow the storage without the
+	// cluster ever hearing that the claim grew with it.
+	if ref, ok := referencedKey(was); ok {
+		k = ref
+		was = t.owner.config.Get(k)
+	}
 	if !isRecordableSize(was) {
 		return nil
 	}
@@ -626,6 +636,27 @@ func (t ResizeStep) recordSize(ctx context.Context) error {
 	}
 	t.owner.log.Infof("record %s %s -> %s", k, was, op.Value)
 	return t.owner.config.Set(op)
+}
+
+// referencedKey returns the keyword a value refers to, when the value is
+// nothing but a reference to one.
+//
+// Only a plain "{section.option}" counts. A value mixing a reference with
+// anything else says more than where its value lives, and is left alone for
+// the same reason a policy is.
+func referencedKey(s string) (key.T, bool) {
+	if !strings.HasPrefix(s, "{") || !strings.HasSuffix(s, "}") {
+		return key.T{}, false
+	}
+	inner := s[1 : len(s)-1]
+	if strings.ContainsAny(inner, "{}") {
+		return key.T{}, false
+	}
+	section, option, found := strings.Cut(inner, ".")
+	if !found || section == "" || option == "" {
+		return key.T{}, false
+	}
+	return key.T{Section: section, Option: option}, true
 }
 
 // isRecordableSize says whether a configured size may be replaced by the size

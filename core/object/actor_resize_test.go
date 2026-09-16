@@ -11,6 +11,7 @@ import (
 	"github.com/opensvc/om3/v3/core/manifest"
 	"github.com/opensvc/om3/v3/core/naming"
 	"github.com/opensvc/om3/v3/core/resource"
+	"github.com/opensvc/om3/v3/util/key"
 	"github.com/opensvc/om3/v3/util/sizeconv"
 )
 
@@ -259,5 +260,33 @@ func TestAFanOutAsksForTheMostDemandingNeed(t *testing.T) {
 		if step.RID == "disk#9" {
 			assert.Equal(t, int64(12*g), step.To)
 		}
+	}
+}
+
+func TestWhichValuesNameTheKeywordHoldingTheirSize(t *testing.T) {
+	for s, expected := range map[string]*key.T{
+		// a value that is nothing but a reference names where its value lives
+		"{DEFAULT.size}": {Section: "DEFAULT", Option: "size"},
+		"{disk#1.size}":  {Section: "disk#1", Option: "size"},
+		// everything else says more than that, and is left alone
+		"":                  nil,
+		"1g":                nil,
+		"100%FREE":          nil,
+		"{DEFAULT.size}+1g": nil,
+		"x{DEFAULT.size}":   nil,
+		"{{DEFAULT.size}}":  nil,
+		"{nodename}":        nil,
+		"{DEFAULT.}":        nil,
+		"{.size}":           nil,
+	} {
+		t.Run(s, func(t *testing.T) {
+			k, ok := referencedKey(s)
+			if expected == nil {
+				assert.False(t, ok)
+				return
+			}
+			assert.True(t, ok)
+			assert.Equal(t, *expected, k)
+		})
 	}
 }
