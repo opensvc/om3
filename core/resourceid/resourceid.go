@@ -105,3 +105,26 @@ func (t T) Match(s string) bool {
 	return fnmatch.Match(s, t.Name, 0)
 
 }
+
+// IsExact reports whether an expression element names one resource, rather
+// than filtering on a set of them.
+//
+// A driver group like "sync" and a pattern like "fs#d*" are filters: they say
+// which of the resources an object has to act on, and an object having none is
+// an object with nothing to do. A literal resource id like "fs#1" is a
+// selection: it names a resource, and an object not having it was asked for
+// something it cannot do.
+//
+// The rules follow Match: an element parsing as a driver group with no index
+// filters on that group, and every other element is matched with fnmatch, so
+// it selects only when it holds no wildcard.
+func IsExact(s string) bool {
+	rid, err := Parse(s)
+	if err != nil {
+		return false
+	}
+	if rid.DriverGroup().IsValid() && rid.Index() == "" {
+		return false
+	}
+	return !strings.ContainsAny(s, "*?[")
+}

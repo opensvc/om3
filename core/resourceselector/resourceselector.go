@@ -8,6 +8,7 @@ import (
 	"github.com/opensvc/om3/v3/core/actionresdeps"
 	"github.com/opensvc/om3/v3/core/ordering"
 	"github.com/opensvc/om3/v3/core/resource"
+	"github.com/opensvc/om3/v3/core/resourceid"
 	"github.com/opensvc/om3/v3/util/funcopt"
 )
 
@@ -155,6 +156,31 @@ func (t T) Resources() resource.Drivers {
 		fl.Sort()
 	}
 	return fl
+}
+
+// MissingRIDs returns the resource ids the selector names and the object does
+// not have.
+//
+// Only the elements naming one resource are reported. An element filtering on
+// a driver group or matching a pattern selects whatever the object happens to
+// have, so it is satisfied by nothing as much as by everything, while an
+// element naming a resource is asking for that resource.
+func (t T) MissingRIDs() []string {
+	if t.rid == "" {
+		return nil
+	}
+	l := t.lister.Resources()
+	missing := make([]string, 0)
+	for _, e := range strings.FieldsFunc(t.rid, func(c rune) bool { return c == ',' }) {
+		if !resourceid.IsExact(e) {
+			continue
+		}
+		if l.HasRID(e) {
+			continue
+		}
+		missing = append(missing, e)
+	}
+	return missing
 }
 
 func (t T) IsZero() bool {
