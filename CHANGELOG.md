@@ -780,7 +780,7 @@ Where the password is the value of the `þassword` key in `system/sec/relay-v3`.
 
 * The `om node update ssh keys --node=...` command is deprecated in favor of `o[mx] cluster ssh trust` (configure the trust mesh on all cluster nodes) and `o[mx] node ssh trust` (trust the node's peers)
 
-* New `o[mx] cluster enroll --node <addr> --token-file <path>` command, moving a node from its cluster to another one
+* New `o[mx] cluster enroll --node <addr> --token <path>` command, moving a node from its cluster to another one
   without a shell on that node.
 
     The command is run against a node of the target cluster, and posts to the new `POST /cluster/enroll` endpoint. 
@@ -800,8 +800,8 @@ Where the password is the value of the `þassword` key in `system/sec/relay-v3`.
     down, and removed from config.
 
 * The `om cluster join` command accepts `--addr` to reach the `--node` at an explicit location, for a node that cannot
-   resolve the target nodename, and reads the token from the `OSVC_JOIN_TOKEN` environment variable when `--token` is
-   not set, so it never has to appear in the process table.
+   resolve the target nodename. Its `--token` names a file holding the token, and the `OSVC_JOIN_TOKEN` environment
+   variable is read when the option is not set, so the token never appears in the process table.
 
 ### Daemon
 

@@ -29,8 +29,16 @@ type (
 	CmdClusterJoin struct {
 		CmdDaemonCommon
 
-		Node  string
-		Token string
+		Node string
+
+		// TokenFile is the path of a file holding an access token with the
+		// join role, created on the node to join. When empty, the
+		// OSVC_JOIN_TOKEN environment variable is used.
+		TokenFile string
+
+		// token is the join token, resolved from TokenFile or from the
+		// environment by checkParams.
+		token string
 
 		// Addr is the location of the Node api, in the
 		// [<scheme>://]<addr>[:<port>] format. When empty, Node is used.
@@ -81,7 +89,7 @@ func (t *CmdClusterJoin) run() error {
 	cli, err = client.New(
 		client.WithURL(url),
 		client.WithRootCa(certFile),
-		client.WithBearer(t.Token),
+		client.WithBearer(t.token),
 	)
 	if err != nil {
 		return err
@@ -146,14 +154,17 @@ func (t *CmdClusterJoin) checkParams() error {
 	if t.Node == "" {
 		return fmt.Errorf("%w: node is empty", commoncmd.ErrFlagInvalid)
 	}
-	if t.Token == "" {
-		// A token on the command line is readable by any user through the
-		// process table, so the daemon hands it over the environment instead.
-		t.Token = os.Getenv(env.JoinTokenVar)
+	// A token on the command line is readable by any user through the process
+	// table, so --token names a file, and the daemon hands the token to the
+	// join it forks over the environment.
+	token, err := commoncmd.SecretFromFileOrEnv(t.TokenFile, env.JoinTokenVar)
+	if err != nil {
+		return fmt.Errorf("%w: --token: %w", commoncmd.ErrFlagInvalid, err)
 	}
-	if t.Token == "" {
-		return fmt.Errorf("%w: token is empty: use env %s or --token", commoncmd.ErrFlagInvalid, env.JoinTokenVar)
+	if token == "" {
+		return fmt.Errorf("%w: token is empty: use --token or env %s", commoncmd.ErrFlagInvalid, env.JoinTokenVar)
 	}
+	t.token = token
 	return nil
 }
 
@@ -177,7 +188,7 @@ func (t *CmdClusterJoin) extractCaClaim() (ca []byte, err error) {
 	// 4. The server checks for RoleJoin grant (daemon/daemonapi/post_cluster_join.go) before processing the join request
 	// 5. No privileged operations occur until server-side signature validation succeeds
 	// The CA extraction is safe because authentication happens server-side, not client-side.
-	token, _, err = parser.ParseUnverified(t.Token, &joinClaim{})
+	token, _, err = parser.ParseUnverified(t.token, &joinClaim{})
 	if err != nil {
 		return
 	}

@@ -10,7 +10,6 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/opensvc/om3/v3/core/commoncmd"
-	"github.com/opensvc/om3/v3/core/env"
 	commands "github.com/opensvc/om3/v3/core/omcmd"
 	"github.com/opensvc/om3/v3/util/hostname"
 )
@@ -32,7 +31,7 @@ func newCmdClusterJoin() *cobra.Command {
 		Use:   "join",
 		Short: "add this node to a cluster",
 		Long: "Join the cluster of the node specified by '--node <node>'.\n" +
-			"The remote node expects the joiner to provide a join token using '--token <base64>'.\n" +
+			"The remote node expects the joiner to provide a join token, named by '--token <path>'.\n" +
 			"The join token can be created on the remote node by the 'daemon auth token --role join' command or by getting /auth/token with a user having the joiner or root role.",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return options.Run()
@@ -46,10 +45,7 @@ func newCmdClusterJoin() *cobra.Command {
 	}
 	flags.StringVar(&options.Addr, "addr", "", "the location of the --node api, in the [<scheme>://]<addr>[:<port>]"+
 		" format (default: the --node value). Set it when this node can not resolve the --node name")
-	flags.StringVar(&options.Token, "token", "", "auth token with 'join' role"+
-		" (created from 'om daemon auth --role join')."+
-		" Prefer the "+env.JoinTokenVar+" environment variable: a token on the command line is"+
-		" readable by any user through the process table")
+	commoncmd.FlagToken(flags, &options.TokenFile)
 	flags.DurationVar(&options.Timeout, "timeout", 5*time.Second, "maximum duration to wait for local node added to cluster")
 	return cmd
 }
