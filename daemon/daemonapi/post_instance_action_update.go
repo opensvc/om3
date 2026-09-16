@@ -2,6 +2,7 @@ package daemonapi
 
 import (
 	"net/http"
+	"strings"
 
 	"github.com/google/uuid"
 	"github.com/labstack/echo/v4"
@@ -11,21 +12,21 @@ import (
 	"github.com/opensvc/om3/v3/daemon/api"
 )
 
-func (a *DaemonAPI) PostInstanceActionSyncSplit(ctx echo.Context, nodename, namespace string, kind naming.Kind, name string, params api.PostInstanceActionSyncSplitParams) error {
+func (a *DaemonAPI) PostInstanceActionUpdate(ctx echo.Context, nodename, namespace string, kind naming.Kind, name string, params api.PostInstanceActionUpdateParams) error {
 	if v, err := assertOperator(ctx, namespace); !v {
 		return err
 	}
 	nodename = a.parseNodename(nodename)
 	if a.localhost == nodename {
-		return a.postLocalInstanceActionSyncSplit(ctx, namespace, kind, name, params)
+		return a.postLocalInstanceActionUpdate(ctx, namespace, kind, name, params)
 	}
 	return a.proxy(ctx, nodename, func(c *client.T) (*http.Response, error) {
-		return c.PostInstanceActionSyncSplit(ctx.Request().Context(), nodename, namespace, kind, name, &params)
+		return c.PostInstanceActionUpdate(ctx.Request().Context(), nodename, namespace, kind, name, &params)
 	})
 }
 
-func (a *DaemonAPI) postLocalInstanceActionSyncSplit(ctx echo.Context, namespace string, kind naming.Kind, name string, params api.PostInstanceActionSyncSplitParams) error {
-	log := LogHandler(ctx, "PostInstanceActionSyncSplit")
+func (a *DaemonAPI) postLocalInstanceActionUpdate(ctx echo.Context, namespace string, kind naming.Kind, name string, params api.PostInstanceActionUpdateParams) error {
+	log := LogHandler(ctx, "PostInstanceActionUpdate")
 	var requesterSessionID uuid.UUID
 	p, err := naming.NewPath(namespace, kind, name)
 	if err != nil {
@@ -35,7 +36,7 @@ func (a *DaemonAPI) postLocalInstanceActionSyncSplit(ctx echo.Context, namespace
 	if v, err := assertConfigUpdatedAt(ctx, p, params.ConfigUpdatedAt); !v {
 		return err
 	}
-	args := []string{p.String(), "instance", "split"}
+	args := []string{p.String(), "instance", "update"}
 	if params.Rid != nil && *params.Rid != "" {
 		args = append(args, "--rid", *params.Rid)
 	}
@@ -47,6 +48,9 @@ func (a *DaemonAPI) postLocalInstanceActionSyncSplit(ctx echo.Context, namespace
 	}
 	if params.Force != nil && *params.Force {
 		args = append(args, "--force")
+	}
+	if params.SyncTarget != nil && len(*params.SyncTarget) > 0 {
+		args = append(args, "--target", strings.Join(*params.SyncTarget, ","))
 	}
 	if params.SessionID != nil {
 		requesterSessionID = *params.SessionID

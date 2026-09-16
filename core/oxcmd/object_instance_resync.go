@@ -43,7 +43,7 @@ func (t *CmdObjectInstanceResync) Run(kind string) error {
 			if err != nil {
 				return nil, err
 			}
-			params := api.PostInstanceActionSyncResyncParams{}
+			params := api.PostInstanceActionResyncParams{}
 			if t.OptsResourceSelector.RID != "" {
 				params.Rid = &t.OptsResourceSelector.RID
 			}
@@ -60,7 +60,7 @@ func (t *CmdObjectInstanceResync) Run(kind string) error {
 				sessionID := xsession.SessionID().UUID()
 				params.SessionID = &sessionID
 			}
-			response, err := c.PostInstanceActionSyncResyncWithResponse(ctx, nodename, p.Namespace, p.Kind, p.Name, &params)
+			response, err := c.PostInstanceActionResyncWithResponse(ctx, nodename, p.Namespace, p.Kind, p.Name, &params)
 			if err != nil {
 				return nil, err
 			}

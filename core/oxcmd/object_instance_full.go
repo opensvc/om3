@@ -44,7 +44,7 @@ func (t *CmdObjectInstanceFull) Run(kind string) error {
 			if err != nil {
 				return nil, err
 			}
-			params := api.PostInstanceActionSyncFullParams{}
+			params := api.PostInstanceActionFullParams{}
 			if t.OptsResourceSelector.RID != "" {
 				params.Rid = &t.OptsResourceSelector.RID
 			}
@@ -64,7 +64,7 @@ func (t *CmdObjectInstanceFull) Run(kind string) error {
 				sessionID := xsession.SessionID().UUID()
 				params.SessionID = &sessionID
 			}
-			response, err := c.PostInstanceActionSyncFullWithResponse(ctx, nodename, p.Namespace, p.Kind, p.Name, &params)
+			response, err := c.PostInstanceActionFullWithResponse(ctx, nodename, p.Namespace, p.Kind, p.Name, &params)
 			if err != nil {
 				return nil, err
 			}

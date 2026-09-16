@@ -3160,11 +3160,63 @@ type PostInstanceActionFreezeParams struct {
 	ConfigUpdatedAt *ConfigUpdatedAt `form:"config_updated_at,omitempty" json:"config_updated_at,omitempty"`
 }
 
+// PostInstanceActionFullParams defines parameters for PostInstanceActionFull.
+type PostInstanceActionFullParams struct {
+	SessionID *SessionID `form:"session_id,omitempty" json:"session_id,omitempty"`
+
+	// Rid a resource selector expression
+	Rid    *InQueryRid    `form:"rid,omitempty" json:"rid,omitempty"`
+	Subset *InQuerySubset `form:"subset,omitempty" json:"subset,omitempty"`
+	Tag    *InQueryTag    `form:"tag,omitempty" json:"tag,omitempty"`
+
+	// ConfigUpdatedAt Refuse the action unless the instance configuration on the node running
+	// it is at least as recent as this timestamp, answering 409 Conflict when
+	// it is older.
+	//
+	// A configuration write answers with the timestamp it produced, in the
+	// OM-Last-Modified header, and a write reaches the peer nodes a moment
+	// after it is acknowledged. Passing that timestamp back here is how a
+	// client that wrote a configuration and then acts on it makes sure every
+	// instance acts on what it wrote, rather than on what it is replacing.
+	//
+	// Optional. Without it the action runs on whatever configuration the node
+	// holds.
+	ConfigUpdatedAt *ConfigUpdatedAt `form:"config_updated_at,omitempty" json:"config_updated_at,omitempty"`
+	Force           *InQueryForce    `form:"force,omitempty" json:"force,omitempty"`
+
+	// SyncTarget The peers to sync to, as node or drpnode names.
+	SyncTarget *SyncTarget `form:"target,omitempty" json:"target,omitempty"`
+}
+
 // PostInstanceActionInfoParams defines parameters for PostInstanceActionInfo.
 type PostInstanceActionInfoParams struct {
 	// Rid a resource selector expression
 	Rid       *InQueryRid `form:"rid,omitempty" json:"rid,omitempty"`
 	SessionID *SessionID  `form:"session_id,omitempty" json:"session_id,omitempty"`
+
+	// ConfigUpdatedAt Refuse the action unless the instance configuration on the node running
+	// it is at least as recent as this timestamp, answering 409 Conflict when
+	// it is older.
+	//
+	// A configuration write answers with the timestamp it produced, in the
+	// OM-Last-Modified header, and a write reaches the peer nodes a moment
+	// after it is acknowledged. Passing that timestamp back here is how a
+	// client that wrote a configuration and then acts on it makes sure every
+	// instance acts on what it wrote, rather than on what it is replacing.
+	//
+	// Optional. Without it the action runs on whatever configuration the node
+	// holds.
+	ConfigUpdatedAt *ConfigUpdatedAt `form:"config_updated_at,omitempty" json:"config_updated_at,omitempty"`
+}
+
+// PostInstanceActionIngestParams defines parameters for PostInstanceActionIngest.
+type PostInstanceActionIngestParams struct {
+	SessionID *SessionID `form:"session_id,omitempty" json:"session_id,omitempty"`
+
+	// Rid a resource selector expression
+	Rid    *InQueryRid    `form:"rid,omitempty" json:"rid,omitempty"`
+	Subset *InQuerySubset `form:"subset,omitempty" json:"subset,omitempty"`
+	Tag    *InQueryTag    `form:"tag,omitempty" json:"tag,omitempty"`
 
 	// ConfigUpdatedAt Refuse the action unless the instance configuration on the node running
 	// it is at least as recent as this timestamp, answering 409 Conflict when
@@ -3357,6 +3409,31 @@ type PostInstanceActionRestartParams struct {
 	ConfigUpdatedAt *ConfigUpdatedAt `form:"config_updated_at,omitempty" json:"config_updated_at,omitempty"`
 }
 
+// PostInstanceActionResyncParams defines parameters for PostInstanceActionResync.
+type PostInstanceActionResyncParams struct {
+	SessionID *SessionID `form:"session_id,omitempty" json:"session_id,omitempty"`
+
+	// Rid a resource selector expression
+	Rid    *InQueryRid    `form:"rid,omitempty" json:"rid,omitempty"`
+	Subset *InQuerySubset `form:"subset,omitempty" json:"subset,omitempty"`
+	Tag    *InQueryTag    `form:"tag,omitempty" json:"tag,omitempty"`
+
+	// ConfigUpdatedAt Refuse the action unless the instance configuration on the node running
+	// it is at least as recent as this timestamp, answering 409 Conflict when
+	// it is older.
+	//
+	// A configuration write answers with the timestamp it produced, in the
+	// OM-Last-Modified header, and a write reaches the peer nodes a moment
+	// after it is acknowledged. Passing that timestamp back here is how a
+	// client that wrote a configuration and then acts on it makes sure every
+	// instance acts on what it wrote, rather than on what it is replacing.
+	//
+	// Optional. Without it the action runs on whatever configuration the node
+	// holds.
+	ConfigUpdatedAt *ConfigUpdatedAt `form:"config_updated_at,omitempty" json:"config_updated_at,omitempty"`
+	Force           *InQueryForce    `form:"force,omitempty" json:"force,omitempty"`
+}
+
 // PostInstanceActionRunParams defines parameters for PostInstanceActionRun.
 type PostInstanceActionRunParams struct {
 	Slaves    *InQueryAllSlaves `form:"slaves,omitempty" json:"slaves,omitempty"`
@@ -3416,6 +3493,31 @@ type PostInstanceActionShutdownParams struct {
 	// Optional. Without it the action runs on whatever configuration the node
 	// holds.
 	ConfigUpdatedAt *ConfigUpdatedAt `form:"config_updated_at,omitempty" json:"config_updated_at,omitempty"`
+}
+
+// PostInstanceActionSplitParams defines parameters for PostInstanceActionSplit.
+type PostInstanceActionSplitParams struct {
+	SessionID *SessionID `form:"session_id,omitempty" json:"session_id,omitempty"`
+
+	// Rid a resource selector expression
+	Rid    *InQueryRid    `form:"rid,omitempty" json:"rid,omitempty"`
+	Subset *InQuerySubset `form:"subset,omitempty" json:"subset,omitempty"`
+	Tag    *InQueryTag    `form:"tag,omitempty" json:"tag,omitempty"`
+
+	// ConfigUpdatedAt Refuse the action unless the instance configuration on the node running
+	// it is at least as recent as this timestamp, answering 409 Conflict when
+	// it is older.
+	//
+	// A configuration write answers with the timestamp it produced, in the
+	// OM-Last-Modified header, and a write reaches the peer nodes a moment
+	// after it is acknowledged. Passing that timestamp back here is how a
+	// client that wrote a configuration and then acts on it makes sure every
+	// instance acts on what it wrote, rather than on what it is replacing.
+	//
+	// Optional. Without it the action runs on whatever configuration the node
+	// holds.
+	ConfigUpdatedAt *ConfigUpdatedAt `form:"config_updated_at,omitempty" json:"config_updated_at,omitempty"`
+	Force           *InQueryForce    `form:"force,omitempty" json:"force,omitempty"`
 }
 
 // PostInstanceActionStartParams defines parameters for PostInstanceActionStart.
@@ -3527,136 +3629,6 @@ type PostInstanceActionStopParams struct {
 	ConfigUpdatedAt *ConfigUpdatedAt `form:"config_updated_at,omitempty" json:"config_updated_at,omitempty"`
 }
 
-// PostInstanceActionSyncFullParams defines parameters for PostInstanceActionSyncFull.
-type PostInstanceActionSyncFullParams struct {
-	SessionID *SessionID `form:"session_id,omitempty" json:"session_id,omitempty"`
-
-	// Rid a resource selector expression
-	Rid    *InQueryRid    `form:"rid,omitempty" json:"rid,omitempty"`
-	Subset *InQuerySubset `form:"subset,omitempty" json:"subset,omitempty"`
-	Tag    *InQueryTag    `form:"tag,omitempty" json:"tag,omitempty"`
-
-	// ConfigUpdatedAt Refuse the action unless the instance configuration on the node running
-	// it is at least as recent as this timestamp, answering 409 Conflict when
-	// it is older.
-	//
-	// A configuration write answers with the timestamp it produced, in the
-	// OM-Last-Modified header, and a write reaches the peer nodes a moment
-	// after it is acknowledged. Passing that timestamp back here is how a
-	// client that wrote a configuration and then acts on it makes sure every
-	// instance acts on what it wrote, rather than on what it is replacing.
-	//
-	// Optional. Without it the action runs on whatever configuration the node
-	// holds.
-	ConfigUpdatedAt *ConfigUpdatedAt `form:"config_updated_at,omitempty" json:"config_updated_at,omitempty"`
-	Force           *InQueryForce    `form:"force,omitempty" json:"force,omitempty"`
-
-	// SyncTarget The peers to sync to, as node or drpnode names.
-	SyncTarget *SyncTarget `form:"target,omitempty" json:"target,omitempty"`
-}
-
-// PostInstanceActionSyncIngestParams defines parameters for PostInstanceActionSyncIngest.
-type PostInstanceActionSyncIngestParams struct {
-	SessionID *SessionID `form:"session_id,omitempty" json:"session_id,omitempty"`
-
-	// Rid a resource selector expression
-	Rid    *InQueryRid    `form:"rid,omitempty" json:"rid,omitempty"`
-	Subset *InQuerySubset `form:"subset,omitempty" json:"subset,omitempty"`
-	Tag    *InQueryTag    `form:"tag,omitempty" json:"tag,omitempty"`
-
-	// ConfigUpdatedAt Refuse the action unless the instance configuration on the node running
-	// it is at least as recent as this timestamp, answering 409 Conflict when
-	// it is older.
-	//
-	// A configuration write answers with the timestamp it produced, in the
-	// OM-Last-Modified header, and a write reaches the peer nodes a moment
-	// after it is acknowledged. Passing that timestamp back here is how a
-	// client that wrote a configuration and then acts on it makes sure every
-	// instance acts on what it wrote, rather than on what it is replacing.
-	//
-	// Optional. Without it the action runs on whatever configuration the node
-	// holds.
-	ConfigUpdatedAt *ConfigUpdatedAt `form:"config_updated_at,omitempty" json:"config_updated_at,omitempty"`
-}
-
-// PostInstanceActionSyncResyncParams defines parameters for PostInstanceActionSyncResync.
-type PostInstanceActionSyncResyncParams struct {
-	SessionID *SessionID `form:"session_id,omitempty" json:"session_id,omitempty"`
-
-	// Rid a resource selector expression
-	Rid    *InQueryRid    `form:"rid,omitempty" json:"rid,omitempty"`
-	Subset *InQuerySubset `form:"subset,omitempty" json:"subset,omitempty"`
-	Tag    *InQueryTag    `form:"tag,omitempty" json:"tag,omitempty"`
-
-	// ConfigUpdatedAt Refuse the action unless the instance configuration on the node running
-	// it is at least as recent as this timestamp, answering 409 Conflict when
-	// it is older.
-	//
-	// A configuration write answers with the timestamp it produced, in the
-	// OM-Last-Modified header, and a write reaches the peer nodes a moment
-	// after it is acknowledged. Passing that timestamp back here is how a
-	// client that wrote a configuration and then acts on it makes sure every
-	// instance acts on what it wrote, rather than on what it is replacing.
-	//
-	// Optional. Without it the action runs on whatever configuration the node
-	// holds.
-	ConfigUpdatedAt *ConfigUpdatedAt `form:"config_updated_at,omitempty" json:"config_updated_at,omitempty"`
-	Force           *InQueryForce    `form:"force,omitempty" json:"force,omitempty"`
-}
-
-// PostInstanceActionSyncSplitParams defines parameters for PostInstanceActionSyncSplit.
-type PostInstanceActionSyncSplitParams struct {
-	SessionID *SessionID `form:"session_id,omitempty" json:"session_id,omitempty"`
-
-	// Rid a resource selector expression
-	Rid    *InQueryRid    `form:"rid,omitempty" json:"rid,omitempty"`
-	Subset *InQuerySubset `form:"subset,omitempty" json:"subset,omitempty"`
-	Tag    *InQueryTag    `form:"tag,omitempty" json:"tag,omitempty"`
-
-	// ConfigUpdatedAt Refuse the action unless the instance configuration on the node running
-	// it is at least as recent as this timestamp, answering 409 Conflict when
-	// it is older.
-	//
-	// A configuration write answers with the timestamp it produced, in the
-	// OM-Last-Modified header, and a write reaches the peer nodes a moment
-	// after it is acknowledged. Passing that timestamp back here is how a
-	// client that wrote a configuration and then acts on it makes sure every
-	// instance acts on what it wrote, rather than on what it is replacing.
-	//
-	// Optional. Without it the action runs on whatever configuration the node
-	// holds.
-	ConfigUpdatedAt *ConfigUpdatedAt `form:"config_updated_at,omitempty" json:"config_updated_at,omitempty"`
-	Force           *InQueryForce    `form:"force,omitempty" json:"force,omitempty"`
-}
-
-// PostInstanceActionSyncUpdateParams defines parameters for PostInstanceActionSyncUpdate.
-type PostInstanceActionSyncUpdateParams struct {
-	SessionID *SessionID `form:"session_id,omitempty" json:"session_id,omitempty"`
-
-	// Rid a resource selector expression
-	Rid    *InQueryRid    `form:"rid,omitempty" json:"rid,omitempty"`
-	Subset *InQuerySubset `form:"subset,omitempty" json:"subset,omitempty"`
-	Tag    *InQueryTag    `form:"tag,omitempty" json:"tag,omitempty"`
-
-	// ConfigUpdatedAt Refuse the action unless the instance configuration on the node running
-	// it is at least as recent as this timestamp, answering 409 Conflict when
-	// it is older.
-	//
-	// A configuration write answers with the timestamp it produced, in the
-	// OM-Last-Modified header, and a write reaches the peer nodes a moment
-	// after it is acknowledged. Passing that timestamp back here is how a
-	// client that wrote a configuration and then acts on it makes sure every
-	// instance acts on what it wrote, rather than on what it is replacing.
-	//
-	// Optional. Without it the action runs on whatever configuration the node
-	// holds.
-	ConfigUpdatedAt *ConfigUpdatedAt `form:"config_updated_at,omitempty" json:"config_updated_at,omitempty"`
-	Force           *InQueryForce    `form:"force,omitempty" json:"force,omitempty"`
-
-	// SyncTarget The peers to sync to, as node or drpnode names.
-	SyncTarget *SyncTarget `form:"target,omitempty" json:"target,omitempty"`
-}
-
 // PostInstanceActionUnfreezeParams defines parameters for PostInstanceActionUnfreeze.
 type PostInstanceActionUnfreezeParams struct {
 	Slaves    *InQueryAllSlaves `form:"slaves,omitempty" json:"slaves,omitempty"`
@@ -3708,6 +3680,34 @@ type PostInstanceActionUnprovisionParams struct {
 	// Optional. Without it the action runs on whatever configuration the node
 	// holds.
 	ConfigUpdatedAt *ConfigUpdatedAt `form:"config_updated_at,omitempty" json:"config_updated_at,omitempty"`
+}
+
+// PostInstanceActionUpdateParams defines parameters for PostInstanceActionUpdate.
+type PostInstanceActionUpdateParams struct {
+	SessionID *SessionID `form:"session_id,omitempty" json:"session_id,omitempty"`
+
+	// Rid a resource selector expression
+	Rid    *InQueryRid    `form:"rid,omitempty" json:"rid,omitempty"`
+	Subset *InQuerySubset `form:"subset,omitempty" json:"subset,omitempty"`
+	Tag    *InQueryTag    `form:"tag,omitempty" json:"tag,omitempty"`
+
+	// ConfigUpdatedAt Refuse the action unless the instance configuration on the node running
+	// it is at least as recent as this timestamp, answering 409 Conflict when
+	// it is older.
+	//
+	// A configuration write answers with the timestamp it produced, in the
+	// OM-Last-Modified header, and a write reaches the peer nodes a moment
+	// after it is acknowledged. Passing that timestamp back here is how a
+	// client that wrote a configuration and then acts on it makes sure every
+	// instance acts on what it wrote, rather than on what it is replacing.
+	//
+	// Optional. Without it the action runs on whatever configuration the node
+	// holds.
+	ConfigUpdatedAt *ConfigUpdatedAt `form:"config_updated_at,omitempty" json:"config_updated_at,omitempty"`
+	Force           *InQueryForce    `form:"force,omitempty" json:"force,omitempty"`
+
+	// SyncTarget The peers to sync to, as node or drpnode names.
+	SyncTarget *SyncTarget `form:"target,omitempty" json:"target,omitempty"`
 }
 
 // PostInstanceResourceConsoleParams defines parameters for PostInstanceResourceConsole.

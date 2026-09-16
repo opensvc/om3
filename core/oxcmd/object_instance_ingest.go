@@ -42,7 +42,7 @@ func (t *CmdObjectInstanceIngest) Run(kind string) error {
 			if err != nil {
 				return nil, err
 			}
-			params := api.PostInstanceActionSyncIngestParams{}
+			params := api.PostInstanceActionIngestParams{}
 			if t.OptsResourceSelector.RID != "" {
 				params.Rid = &t.OptsResourceSelector.RID
 			}
@@ -56,7 +56,7 @@ func (t *CmdObjectInstanceIngest) Run(kind string) error {
 				sessionID := xsession.SessionID().UUID()
 				params.SessionID = &sessionID
 			}
-			response, err := c.PostInstanceActionSyncIngestWithResponse(ctx, nodename, p.Namespace, p.Kind, p.Name, &params)
+			response, err := c.PostInstanceActionIngestWithResponse(ctx, nodename, p.Namespace, p.Kind, p.Name, &params)
 			if err != nil {
 				return nil, err
 			}
