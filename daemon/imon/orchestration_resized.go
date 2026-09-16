@@ -37,6 +37,16 @@ func (t *Manager) resizedFromIdle() {
 		t.transitionTo(instance.MonitorStateResizeSuccess)
 		return
 	}
+	if !t.hasAnyInstanceUp() {
+		// The head resource grows on the node holding the object up, and no
+		// node holds it up. Every node would grow what is under the
+		// replicated link and stop there, which for an object having no
+		// replicated link is nothing at all, and the orchestration would
+		// report a size the object does not hold.
+		t.log.Infof("resize: no instance is up, so nothing can grow the head resource")
+		t.transitionTo(instance.MonitorStateResizeFailure)
+		return
+	}
 	if t.isResizeLeader() {
 		// The leader grows what is under the replicated link like every other
 		// node, then waits for them before growing the rest.
@@ -94,6 +104,18 @@ func (t *Manager) resizedEnd(msg string, succeed bool) {
 // mounted.
 func (t *Manager) isResizeLeader() bool {
 	return t.instStatus[t.localhost].Avail.Is(status.Up)
+}
+
+// hasAnyInstanceUp says whether a node holds the object up, which is the node
+// the second phase runs on. Without one the first phase is all that would run,
+// and the head resource, which is what the size was asked of, stays as it is.
+func (t *Manager) hasAnyInstanceUp() bool {
+	for _, instStatus := range t.instStatus {
+		if instStatus.Avail.Is(status.Up) {
+			return true
+		}
+	}
+	return false
 }
 
 func (t *Manager) hasAllPeersResized() bool {
