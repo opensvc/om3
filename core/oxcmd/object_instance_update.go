@@ -44,7 +44,7 @@ func (t *CmdObjectInstanceUpdate) Run(kind string) error {
 			if err != nil {
 				return nil, err
 			}
-			params := api.PostInstanceActionSyncUpdateParams{}
+			params := api.PostInstanceActionUpdateParams{}
 			if t.OptsResourceSelector.RID != "" {
 				params.Rid = &t.OptsResourceSelector.RID
 			}
@@ -64,7 +64,7 @@ func (t *CmdObjectInstanceUpdate) Run(kind string) error {
 				sessionID := xsession.SessionID().UUID()
 				params.SessionID = &sessionID
 			}
-			response, err := c.PostInstanceActionSyncUpdateWithResponse(ctx, nodename, p.Namespace, p.Kind, p.Name, &params)
+			response, err := c.PostInstanceActionUpdateWithResponse(ctx, nodename, p.Namespace, p.Kind, p.Name, &params)
 			if err != nil {
 				return nil, err
 			}

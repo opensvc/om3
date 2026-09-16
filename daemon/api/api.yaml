@@ -3177,10 +3177,10 @@ paths:
         - node / instance / svc
         - node / instance / vol
 
-  /api/node/name/{nodename}/instance/path/{namespace}/{kind}/{name}/action/sync/ingest:
+  /api/node/name/{nodename}/instance/path/{namespace}/{kind}/{name}/action/ingest:
     post:
       description: Ingest resource var files received by the active instance sync update action.
-      operationId: PostInstanceActionSyncIngest
+      operationId: PostInstanceActionIngest
       parameters:
         - $ref: '#/components/parameters/inPathNodeName'
         - $ref: '#/components/parameters/inPathNamespace'
@@ -3215,10 +3215,10 @@ paths:
         - node / instance / svc
         - node / instance / vol
 
-  /api/node/name/{nodename}/instance/path/{namespace}/{kind}/{name}/action/sync/full:
+  /api/node/name/{nodename}/instance/path/{namespace}/{kind}/{name}/action/full:
     post:
       description: Copy the whole local dataset of the object instance to its peers.
-      operationId: PostInstanceActionSyncFull
+      operationId: PostInstanceActionFull
       parameters:
         - $ref: '#/components/parameters/inPathNodeName'
         - $ref: '#/components/parameters/inPathNamespace'
@@ -3255,10 +3255,10 @@ paths:
         - node / instance / svc
         - node / instance / vol
 
-  /api/node/name/{nodename}/instance/path/{namespace}/{kind}/{name}/action/sync/resync:
+  /api/node/name/{nodename}/instance/path/{namespace}/{kind}/{name}/action/resync:
     post:
       description: Restore optimal synchronization of the object instance.
-      operationId: PostInstanceActionSyncResync
+      operationId: PostInstanceActionResync
       parameters:
         - $ref: '#/components/parameters/inPathNodeName'
         - $ref: '#/components/parameters/inPathNamespace'
@@ -3294,10 +3294,10 @@ paths:
         - node / instance / svc
         - node / instance / vol
 
-  /api/node/name/{nodename}/instance/path/{namespace}/{kind}/{name}/action/sync/split:
+  /api/node/name/{nodename}/instance/path/{namespace}/{kind}/{name}/action/split:
     post:
       description: Split the replication of the object instance.
-      operationId: PostInstanceActionSyncSplit
+      operationId: PostInstanceActionSplit
       parameters:
         - $ref: '#/components/parameters/inPathNodeName'
         - $ref: '#/components/parameters/inPathNamespace'
@@ -3333,10 +3333,10 @@ paths:
         - node / instance / svc
         - node / instance / vol
 
-  /api/node/name/{nodename}/instance/path/{namespace}/{kind}/{name}/action/sync/update:
+  /api/node/name/{nodename}/instance/path/{namespace}/{kind}/{name}/action/update:
     post:
       description: Copy the local dataset changes of the object instance to its peers.
-      operationId: PostInstanceActionSyncUpdate
+      operationId: PostInstanceActionUpdate
       parameters:
         - $ref: '#/components/parameters/inPathNodeName'
         - $ref: '#/components/parameters/inPathNamespace'

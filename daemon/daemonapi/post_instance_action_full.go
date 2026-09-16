@@ -12,21 +12,21 @@ import (
 	"github.com/opensvc/om3/v3/daemon/api"
 )
 
-func (a *DaemonAPI) PostInstanceActionSyncUpdate(ctx echo.Context, nodename, namespace string, kind naming.Kind, name string, params api.PostInstanceActionSyncUpdateParams) error {
+func (a *DaemonAPI) PostInstanceActionFull(ctx echo.Context, nodename, namespace string, kind naming.Kind, name string, params api.PostInstanceActionFullParams) error {
 	if v, err := assertOperator(ctx, namespace); !v {
 		return err
 	}
 	nodename = a.parseNodename(nodename)
 	if a.localhost == nodename {
-		return a.postLocalInstanceActionSyncUpdate(ctx, namespace, kind, name, params)
+		return a.postLocalInstanceActionFull(ctx, namespace, kind, name, params)
 	}
 	return a.proxy(ctx, nodename, func(c *client.T) (*http.Response, error) {
-		return c.PostInstanceActionSyncUpdate(ctx.Request().Context(), nodename, namespace, kind, name, &params)
+		return c.PostInstanceActionFull(ctx.Request().Context(), nodename, namespace, kind, name, &params)
 	})
 }
 
-func (a *DaemonAPI) postLocalInstanceActionSyncUpdate(ctx echo.Context, namespace string, kind naming.Kind, name string, params api.PostInstanceActionSyncUpdateParams) error {
-	log := LogHandler(ctx, "PostInstanceActionSyncUpdate")
+func (a *DaemonAPI) postLocalInstanceActionFull(ctx echo.Context, namespace string, kind naming.Kind, name string, params api.PostInstanceActionFullParams) error {
+	log := LogHandler(ctx, "PostInstanceActionFull")
 	var requesterSessionID uuid.UUID
 	p, err := naming.NewPath(namespace, kind, name)
 	if err != nil {
@@ -36,7 +36,7 @@ func (a *DaemonAPI) postLocalInstanceActionSyncUpdate(ctx echo.Context, namespac
 	if v, err := assertConfigUpdatedAt(ctx, p, params.ConfigUpdatedAt); !v {
 		return err
 	}
-	args := []string{p.String(), "instance", "update"}
+	args := []string{p.String(), "instance", "full"}
 	if params.Rid != nil && *params.Rid != "" {
 		args = append(args, "--rid", *params.Rid)
 	}

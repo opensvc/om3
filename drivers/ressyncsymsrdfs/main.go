@@ -615,11 +615,11 @@ func (t *T) postIngest(ctx context.Context) error {
 		}
 		rid := t.RID()
 		sessionID := xsession.SessionID().UUID()
-		params := api.PostInstanceActionSyncIngestParams{
+		params := api.PostInstanceActionIngestParams{
 			Rid:       &rid,
 			SessionID: &sessionID,
 		}
-		resp, err := c.PostInstanceActionSyncIngestWithResponse(ctx, nodename, t.Path.Namespace, t.Path.Kind, t.Path.Name, &params)
+		resp, err := c.PostInstanceActionIngestWithResponse(ctx, nodename, t.Path.Namespace, t.Path.Kind, t.Path.Name, &params)
 		if err != nil {
 			errs = errors.Join(errs, fmt.Errorf("%s: %w", nodename, err))
 			continue

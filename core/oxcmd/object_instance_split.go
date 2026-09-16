@@ -43,7 +43,7 @@ func (t *CmdObjectInstanceSplit) Run(kind string) error {
 			if err != nil {
 				return nil, err
 			}
-			params := api.PostInstanceActionSyncSplitParams{}
+			params := api.PostInstanceActionSplitParams{}
 			if t.OptsResourceSelector.RID != "" {
 				params.Rid = &t.OptsResourceSelector.RID
 			}
@@ -60,7 +60,7 @@ func (t *CmdObjectInstanceSplit) Run(kind string) error {
 				sessionID := xsession.SessionID().UUID()
 				params.SessionID = &sessionID
 			}
-			response, err := c.PostInstanceActionSyncSplitWithResponse(ctx, nodename, p.Namespace, p.Kind, p.Name, &params)
+			response, err := c.PostInstanceActionSplitWithResponse(ctx, nodename, p.Namespace, p.Kind, p.Name, &params)
 			if err != nil {
 				return nil, err
 			}
