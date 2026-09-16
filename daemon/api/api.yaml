@@ -3215,6 +3215,164 @@ paths:
         - node / instance / svc
         - node / instance / vol
 
+  /api/node/name/{nodename}/instance/path/{namespace}/{kind}/{name}/action/sync/full:
+    post:
+      description: Copy the whole local dataset of the object instance to its peers.
+      operationId: PostInstanceActionSyncFull
+      parameters:
+        - $ref: '#/components/parameters/inPathNodeName'
+        - $ref: '#/components/parameters/inPathNamespace'
+        - $ref: '#/components/parameters/inPathKind'
+        - $ref: '#/components/parameters/inPathName'
+        - $ref: '#/components/parameters/inQuerySessionID'
+        - $ref: '#/components/parameters/inQueryRid'
+        - $ref: '#/components/parameters/inQuerySubset'
+        - $ref: '#/components/parameters/inQueryTag'
+        - $ref: '#/components/parameters/inQueryConfigUpdatedAt'
+        - $ref: '#/components/parameters/inQueryForce'
+        - $ref: '#/components/parameters/inQuerySyncTarget'
+      responses:
+        200:
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/InstanceActionAccepted'
+          description: OK
+        400:
+          $ref: '#/components/responses/400'
+        401:
+          $ref: '#/components/responses/401'
+        403:
+          $ref: '#/components/responses/403'
+        409:
+          $ref: '#/components/responses/409'
+        500:
+          $ref: '#/components/responses/500'
+      security:
+        - basicAuth: []
+        - bearerAuth: []
+      tags:
+        - node / instance / svc
+        - node / instance / vol
+
+  /api/node/name/{nodename}/instance/path/{namespace}/{kind}/{name}/action/sync/resync:
+    post:
+      description: Restore optimal synchronization of the object instance.
+      operationId: PostInstanceActionSyncResync
+      parameters:
+        - $ref: '#/components/parameters/inPathNodeName'
+        - $ref: '#/components/parameters/inPathNamespace'
+        - $ref: '#/components/parameters/inPathKind'
+        - $ref: '#/components/parameters/inPathName'
+        - $ref: '#/components/parameters/inQuerySessionID'
+        - $ref: '#/components/parameters/inQueryRid'
+        - $ref: '#/components/parameters/inQuerySubset'
+        - $ref: '#/components/parameters/inQueryTag'
+        - $ref: '#/components/parameters/inQueryConfigUpdatedAt'
+        - $ref: '#/components/parameters/inQueryForce'
+      responses:
+        200:
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/InstanceActionAccepted'
+          description: OK
+        400:
+          $ref: '#/components/responses/400'
+        401:
+          $ref: '#/components/responses/401'
+        403:
+          $ref: '#/components/responses/403'
+        409:
+          $ref: '#/components/responses/409'
+        500:
+          $ref: '#/components/responses/500'
+      security:
+        - basicAuth: []
+        - bearerAuth: []
+      tags:
+        - node / instance / svc
+        - node / instance / vol
+
+  /api/node/name/{nodename}/instance/path/{namespace}/{kind}/{name}/action/sync/split:
+    post:
+      description: Split the replication of the object instance.
+      operationId: PostInstanceActionSyncSplit
+      parameters:
+        - $ref: '#/components/parameters/inPathNodeName'
+        - $ref: '#/components/parameters/inPathNamespace'
+        - $ref: '#/components/parameters/inPathKind'
+        - $ref: '#/components/parameters/inPathName'
+        - $ref: '#/components/parameters/inQuerySessionID'
+        - $ref: '#/components/parameters/inQueryRid'
+        - $ref: '#/components/parameters/inQuerySubset'
+        - $ref: '#/components/parameters/inQueryTag'
+        - $ref: '#/components/parameters/inQueryConfigUpdatedAt'
+        - $ref: '#/components/parameters/inQueryForce'
+      responses:
+        200:
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/InstanceActionAccepted'
+          description: OK
+        400:
+          $ref: '#/components/responses/400'
+        401:
+          $ref: '#/components/responses/401'
+        403:
+          $ref: '#/components/responses/403'
+        409:
+          $ref: '#/components/responses/409'
+        500:
+          $ref: '#/components/responses/500'
+      security:
+        - basicAuth: []
+        - bearerAuth: []
+      tags:
+        - node / instance / svc
+        - node / instance / vol
+
+  /api/node/name/{nodename}/instance/path/{namespace}/{kind}/{name}/action/sync/update:
+    post:
+      description: Copy the local dataset changes of the object instance to its peers.
+      operationId: PostInstanceActionSyncUpdate
+      parameters:
+        - $ref: '#/components/parameters/inPathNodeName'
+        - $ref: '#/components/parameters/inPathNamespace'
+        - $ref: '#/components/parameters/inPathKind'
+        - $ref: '#/components/parameters/inPathName'
+        - $ref: '#/components/parameters/inQuerySessionID'
+        - $ref: '#/components/parameters/inQueryRid'
+        - $ref: '#/components/parameters/inQuerySubset'
+        - $ref: '#/components/parameters/inQueryTag'
+        - $ref: '#/components/parameters/inQueryConfigUpdatedAt'
+        - $ref: '#/components/parameters/inQueryForce'
+        - $ref: '#/components/parameters/inQuerySyncTarget'
+      responses:
+        200:
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/InstanceActionAccepted'
+          description: OK
+        400:
+          $ref: '#/components/responses/400'
+        401:
+          $ref: '#/components/responses/401'
+        403:
+          $ref: '#/components/responses/403'
+        409:
+          $ref: '#/components/responses/409'
+        500:
+          $ref: '#/components/responses/500'
+      security:
+        - basicAuth: []
+        - bearerAuth: []
+      tags:
+        - node / instance / svc
+        - node / instance / vol
+
   /api/node/name/{nodename}/instance/path/{namespace}/{kind}/{name}/action/unfreeze:
     post:
       description: Unfreeze the object instance.
@@ -9423,6 +9581,16 @@ components:
           type: string
           description: A keyword operation expressed as <kw>[<index>]<op><value>, with op like = += -=.
           example: env.eat=fruits
+
+    inQuerySyncTarget:
+      in: query
+      name: target
+      x-go-name: SyncTarget
+      description: The peers to sync to, as node or drpnode names.
+      schema:
+        type: array
+        items:
+          type: string
 
     inQuerySlaves:
       in: query

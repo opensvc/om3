@@ -67,6 +67,8 @@ func (t *CmdObjectInstanceIngest) Run(kind string) error {
 				return nil, fmt.Errorf("%s: node %s: %s", p, nodename, *response.JSON401)
 			case response.JSON403 != nil:
 				return nil, fmt.Errorf("%s: node %s: %s", p, nodename, *response.JSON403)
+			case response.JSON409 != nil:
+				return nil, fmt.Errorf("%s: node %s: %s", p, nodename, *response.JSON409)
 			case response.JSON500 != nil:
 				return nil, fmt.Errorf("%s: node %s: %s", p, nodename, *response.JSON500)
 			default:

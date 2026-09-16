@@ -2763,6 +2763,7 @@ func newCmdObjectGroupUpdate(kind, group string) *cobra.Command {
 	commoncmd.FlagsLock(flags, &options.OptsLock)
 	commoncmd.FlagForce(flags, &options.Force)
 	commoncmd.FlagTarget(flags, &options.Target)
+	commoncmd.FlagNodeSelector(flags, &options.NodeSelector)
 	return cmd
 }
 
@@ -2784,6 +2785,7 @@ func newCmdObjectGroupFull(kind, group string) *cobra.Command {
 	commoncmd.FlagsLock(flags, &options.OptsLock)
 	commoncmd.FlagForce(flags, &options.Force)
 	commoncmd.FlagTarget(flags, &options.Target)
+	commoncmd.FlagNodeSelector(flags, &options.NodeSelector)
 	return cmd
 }
 
@@ -2803,6 +2805,7 @@ func newCmdObjectGroupIngest(kind, group string) *cobra.Command {
 	addFlagsGlobal(flags, &options.OptsGlobal)
 	commoncmd.FlagsAsync(flags, &options.OptsAsync)
 	commoncmd.FlagsLock(flags, &options.OptsLock)
+	commoncmd.FlagNodeSelector(flags, &options.NodeSelector)
 	return cmd
 }
 
@@ -2823,6 +2826,7 @@ func newCmdObjectGroupResync(kind, group string) *cobra.Command {
 	commoncmd.FlagsAsync(flags, &options.OptsAsync)
 	commoncmd.FlagsLock(flags, &options.OptsLock)
 	commoncmd.FlagForce(flags, &options.Force)
+	commoncmd.FlagNodeSelector(flags, &options.NodeSelector)
 	return cmd
 }
 
@@ -2843,6 +2847,7 @@ func newCmdObjectGroupSplit(kind, group string) *cobra.Command {
 	commoncmd.FlagsAsync(flags, &options.OptsAsync)
 	commoncmd.FlagsLock(flags, &options.OptsLock)
 	commoncmd.FlagForce(flags, &options.Force)
+	commoncmd.FlagNodeSelector(flags, &options.NodeSelector)
 	return cmd
 }
 
@@ -3537,7 +3542,7 @@ func newCmdObjectRestart(kind string) *cobra.Command {
 func newCmdObjectInstanceIngest(kind string) *cobra.Command {
 	var options commands.CmdObjectInstanceIngest
 	cmd := &cobra.Command{
-		Use:     "Ingest",
+		Use:     "ingest",
 		Short:   "ingest files received from the active instance",
 		Long:    "Resource drivers can send files from the active instance to the stand-by instances via the update action.",
 		GroupID: commoncmd.GroupIDReplication,
@@ -3550,6 +3555,7 @@ func newCmdObjectInstanceIngest(kind string) *cobra.Command {
 	commoncmd.FlagsAsync(flags, &options.OptsAsync)
 	commoncmd.FlagsLock(flags, &options.OptsLock)
 	commoncmd.FlagsResourceSelector(cmd, &options.OptsResourceSelector)
+	commoncmd.FlagNodeSelector(flags, &options.NodeSelector)
 	return cmd
 }
 
@@ -3571,6 +3577,7 @@ func newCmdObjectInstanceFull(kind string) *cobra.Command {
 	commoncmd.FlagsResourceSelector(cmd, &options.OptsResourceSelector)
 	commoncmd.FlagForce(flags, &options.Force)
 	commoncmd.FlagTarget(flags, &options.Target)
+	commoncmd.FlagNodeSelector(flags, &options.NodeSelector)
 	return cmd
 }
 
@@ -3591,6 +3598,7 @@ func newCmdObjectInstanceResync(kind string) *cobra.Command {
 	commoncmd.FlagsLock(flags, &options.OptsLock)
 	commoncmd.FlagsResourceSelector(cmd, &options.OptsResourceSelector)
 	commoncmd.FlagForce(flags, &options.Force)
+	commoncmd.FlagNodeSelector(flags, &options.NodeSelector)
 	return cmd
 }
 
@@ -3611,6 +3619,7 @@ func newCmdObjectInstanceSplit(kind string) *cobra.Command {
 	commoncmd.FlagsLock(flags, &options.OptsLock)
 	commoncmd.FlagsResourceSelector(cmd, &options.OptsResourceSelector)
 	commoncmd.FlagForce(flags, &options.Force)
+	commoncmd.FlagNodeSelector(flags, &options.NodeSelector)
 	return cmd
 }
 
@@ -3632,6 +3641,7 @@ func newCmdObjectInstanceUpdate(kind string) *cobra.Command {
 	commoncmd.FlagsResourceSelector(cmd, &options.OptsResourceSelector)
 	commoncmd.FlagForce(flags, &options.Force)
 	commoncmd.FlagTarget(flags, &options.Target)
+	commoncmd.FlagNodeSelector(flags, &options.NodeSelector)
 	return cmd
 }
 
