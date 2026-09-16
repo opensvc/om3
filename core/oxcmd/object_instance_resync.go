@@ -6,17 +6,16 @@ import (
 )
 
 type (
-	CmdObjectInstanceSyncFull struct {
+	CmdObjectInstanceResync struct {
 		OptsGlobal
 		commoncmd.OptsAsync
 		commoncmd.OptsLock
 		commoncmd.OptsResourceSelector
-		Force  bool
-		Target []string
+		Force bool
 	}
 )
 
-func (t *CmdObjectInstanceSyncFull) Run(kind string) error {
+func (t *CmdObjectInstanceResync) Run(kind string) error {
 	mergedSelector := commoncmd.MergeSelector("", t.ObjectSelector, kind, "")
 	return objectaction.New(
 		objectaction.WithObjectSelector(mergedSelector),

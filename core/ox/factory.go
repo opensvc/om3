@@ -2746,7 +2746,7 @@ func newCmdObjectSync(kind string) *cobra.Command {
 }
 
 func newCmdObjectGroupUpdate(kind, group string) *cobra.Command {
-	var options commands.CmdObjectInstanceSyncUpdate
+	var options commands.CmdObjectInstanceUpdate
 	cmd := &cobra.Command{
 		Use:   "update [PATTERN]...",
 		Short: "synchronize the copy of the local dataset on peers",
@@ -2767,7 +2767,7 @@ func newCmdObjectGroupUpdate(kind, group string) *cobra.Command {
 }
 
 func newCmdObjectGroupFull(kind, group string) *cobra.Command {
-	var options commands.CmdObjectInstanceSyncFull
+	var options commands.CmdObjectInstanceFull
 	cmd := &cobra.Command{
 		Use:   "full [PATTERN]...",
 		Short: "full copy of the local dataset on peers",
@@ -2788,7 +2788,7 @@ func newCmdObjectGroupFull(kind, group string) *cobra.Command {
 }
 
 func newCmdObjectGroupIngest(kind, group string) *cobra.Command {
-	var options commands.CmdObjectInstanceSyncIngest
+	var options commands.CmdObjectInstanceIngest
 	cmd := &cobra.Command{
 		Use:   "ingest [PATTERN]...",
 		Short: "ingest files received from the active instance",
@@ -2807,7 +2807,7 @@ func newCmdObjectGroupIngest(kind, group string) *cobra.Command {
 }
 
 func newCmdObjectGroupResync(kind, group string) *cobra.Command {
-	var options commands.CmdObjectInstanceSyncResync
+	var options commands.CmdObjectInstanceResync
 	cmd := &cobra.Command{
 		Use:   "resync [PATTERN]...",
 		Short: "restore optimal synchronization",
@@ -2827,7 +2827,7 @@ func newCmdObjectGroupResync(kind, group string) *cobra.Command {
 }
 
 func newCmdObjectGroupSplit(kind, group string) *cobra.Command {
-	var options commands.CmdObjectInstanceSyncSplit
+	var options commands.CmdObjectInstanceSplit
 	cmd := &cobra.Command{
 		Use:   "split [PATTERN]...",
 		Short: "make both ends of a replicated pair read-write",
@@ -3535,7 +3535,7 @@ func newCmdObjectRestart(kind string) *cobra.Command {
 }
 
 func newCmdObjectInstanceIngest(kind string) *cobra.Command {
-	var options commands.CmdObjectInstanceSyncIngest
+	var options commands.CmdObjectInstanceIngest
 	cmd := &cobra.Command{
 		Use:     "Ingest",
 		Short:   "ingest files received from the active instance",
@@ -3554,7 +3554,7 @@ func newCmdObjectInstanceIngest(kind string) *cobra.Command {
 }
 
 func newCmdObjectInstanceFull(kind string) *cobra.Command {
-	var options commands.CmdObjectInstanceSyncFull
+	var options commands.CmdObjectInstanceFull
 	cmd := &cobra.Command{
 		Use:     "full",
 		Short:   "full copy of the local dataset on peers",
@@ -3575,7 +3575,7 @@ func newCmdObjectInstanceFull(kind string) *cobra.Command {
 }
 
 func newCmdObjectInstanceResync(kind string) *cobra.Command {
-	var options commands.CmdObjectInstanceSyncResync
+	var options commands.CmdObjectInstanceResync
 	cmd := &cobra.Command{
 		Use:     "resync",
 		Short:   "restore optimal synchronization",
@@ -3595,7 +3595,7 @@ func newCmdObjectInstanceResync(kind string) *cobra.Command {
 }
 
 func newCmdObjectInstanceSplit(kind string) *cobra.Command {
-	var options commands.CmdObjectInstanceSyncSplit
+	var options commands.CmdObjectInstanceSplit
 	cmd := &cobra.Command{
 		Use:     "split",
 		Short:   "make both ends of a replicated pair read-write",
@@ -3615,7 +3615,7 @@ func newCmdObjectInstanceSplit(kind string) *cobra.Command {
 }
 
 func newCmdObjectInstanceUpdate(kind string) *cobra.Command {
-	var options commands.CmdObjectInstanceSyncUpdate
+	var options commands.CmdObjectInstanceUpdate
 	cmd := &cobra.Command{
 		Use:     "update",
 		Short:   "synchronize the copy of the local dataset on peers",
