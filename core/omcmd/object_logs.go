@@ -39,12 +39,12 @@ func (t *CmdObjectLogs) local(selStr string) error {
 		return err
 	}
 	matches := parseFilters(&t.Filter)
-	last := len(paths) - 1
-	for i, path := range paths {
+	// No disjunction is written between the paths: journalctl already reads
+	// several matches on one field as alternatives, and a "+" there would
+	// start a new group, letting the paths after it escape the matches that
+	// came before, _COMM included.
+	for _, path := range paths {
 		matches = append(matches, "OBJ_PATH="+path.String())
-		if i > 0 && i < last {
-			matches = append(matches, "+")
-		}
 	}
 	stream := streamlog.NewStream()
 	streamConfig := streamlog.StreamConfig{
