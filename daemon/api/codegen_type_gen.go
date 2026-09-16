@@ -3800,6 +3800,23 @@ type PostSvcEnableParams struct {
 	Tag    *InQueryTag    `form:"tag,omitempty" json:"tag,omitempty"`
 }
 
+// PostObjectActionResizeParams defines parameters for PostObjectActionResize.
+type PostObjectActionResizeParams struct {
+	// ConfigUpdatedAt Refuse the action unless the instance configuration on the node running
+	// it is at least as recent as this timestamp, answering 409 Conflict when
+	// it is older.
+	//
+	// A configuration write answers with the timestamp it produced, in the
+	// OM-Last-Modified header, and a write reaches the peer nodes a moment
+	// after it is acknowledged. Passing that timestamp back here is how a
+	// client that wrote a configuration and then acts on it makes sure every
+	// instance acts on what it wrote, rather than on what it is replacing.
+	//
+	// Optional. Without it the action runs on whatever configuration the node
+	// holds.
+	ConfigUpdatedAt *ConfigUpdatedAt `form:"config_updated_at,omitempty" json:"config_updated_at,omitempty"`
+}
+
 // GetObjectConfigParams defines parameters for GetObjectConfig.
 type GetObjectConfigParams struct {
 	Evaluate    *InQueryEvaluate    `form:"evaluate,omitempty" json:"evaluate,omitempty"`

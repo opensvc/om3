@@ -2,6 +2,7 @@ package daemonapi
 
 import (
 	"net/http"
+	"time"
 
 	"github.com/labstack/echo/v4"
 
@@ -9,6 +10,7 @@ import (
 	"github.com/opensvc/om3/v3/core/keyop"
 	"github.com/opensvc/om3/v3/core/naming"
 	"github.com/opensvc/om3/v3/daemon/api"
+	"github.com/opensvc/om3/v3/util/file"
 	"github.com/opensvc/om3/v3/util/key"
 )
 
@@ -55,6 +57,12 @@ func (a *DaemonAPI) PatchObjectConfig(ctx echo.Context, namespace string, kind n
 		changed, err := configUpdate(ctx, log, p, deletes, unsets, sets)
 		if err != nil {
 			return JSONProblemf(ctx, http.StatusInternalServerError, "Update config", "%s", err)
+		}
+		// Answer with the timestamp the configuration now carries, as a
+		// configuration file write does, so the caller can require it of what
+		// it goes on to ask of the instances.
+		if mtime := file.ModTime(p.ConfigFile()); !mtime.IsZero() {
+			ctx.Response().Header().Add(api.HeaderLastModified, mtime.Format(time.RFC3339Nano))
 		}
 		return ctx.JSON(http.StatusOK, api.Committed{IsChanged: changed})
 	}

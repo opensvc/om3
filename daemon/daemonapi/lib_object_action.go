@@ -17,7 +17,7 @@ import (
 	"github.com/opensvc/om3/v3/util/pubsub"
 )
 
-func (a *DaemonAPI) postObjectAction(eCtx echo.Context, namespace string, kind naming.Kind, name string, globalExpect instance.MonitorGlobalExpect, fn func(c *client.T) (*http.Response, error)) error {
+func (a *DaemonAPI) postObjectAction(eCtx echo.Context, namespace string, kind naming.Kind, name string, globalExpect instance.MonitorGlobalExpect, fn func(c *client.T) (*http.Response, error), options ...any) error {
 	p, err := naming.NewPath(namespace, kind, name)
 	if err != nil {
 		return JSONProblem(eCtx, http.StatusBadRequest, "Invalid parameters", err.Error())
@@ -29,6 +29,9 @@ func (a *DaemonAPI) postObjectAction(eCtx echo.Context, namespace string, kind n
 		value := instance.MonitorUpdate{
 			GlobalExpect:             &globalExpect,
 			CandidateOrchestrationID: uuid.New(),
+		}
+		if len(options) > 0 {
+			value.GlobalExpectOptions = options[0]
 		}
 		msg, setImonErr := msgbus.NewSetInstanceMonitorWithErr(ctx, p, a.localhost, value)
 
