@@ -52,6 +52,12 @@ func (t T) String() string {
 // Seeking to the end of a block device answers its capacity, which saves an
 // ioctl constant and works the same on a regular file.
 func (t T) Size() (int64, error) {
+	// A block device says its size in sysfs, and says it whoever may open it.
+	// Seeking is the answer for a regular file, which has no sysfs entry, and
+	// on the platforms that have no sysfs at all.
+	if size, err := t.sysfsSize(); err == nil {
+		return size, nil
+	}
 	f, err := os.Open(t.path)
 	if err != nil {
 		return 0, err

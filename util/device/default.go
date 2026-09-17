@@ -5,6 +5,7 @@ package device
 import (
 	"context"
 	"errors"
+	"fmt"
 )
 
 var ErrNotApplicable = errors.New("not applicable")
@@ -72,4 +73,9 @@ func (t T) WWID() (string, error) {
 
 func (t T) PromoteRW(_ context.Context) error {
 	return nil
+}
+
+// sysfsSize has nothing to read outside linux.
+func (t T) sysfsSize() (int64, error) {
+	return 0, fmt.Errorf("no sysfs on this platform")
 }
