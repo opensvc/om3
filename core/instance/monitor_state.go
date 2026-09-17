@@ -45,6 +45,13 @@ const (
 	MonitorStateResizeFailure
 	MonitorStateResizeSuccess
 
+	// MonitorStateResizeStage0 and its siblings are the states an instance
+	// takes between the stages of a resize. A chain is grown in at most
+	// MaxResizeStages stages, so they are named rather than counted.
+	MonitorStateResizeStage0
+	MonitorStateResizeStage1
+	MonitorStateResizeStage2
+
 	// wait states
 	MonitorStateWaitChildren
 	MonitorStateWaitParents
@@ -128,6 +135,9 @@ func init() {
 		{MonitorStateResizeProgress, "resizing"},
 		{MonitorStateResizeFailure, "resize failed"},
 		{MonitorStateResizeSuccess, "resized"},
+		{MonitorStateResizeStage0, "resized:0"},
+		{MonitorStateResizeStage1, "resized:1"},
+		{MonitorStateResizeStage2, "resized:2"},
 
 		// wait states
 		{MonitorStateWaitChildren, "wait children"},
@@ -148,5 +158,40 @@ func init() {
 	for _, stateString := range stateStrings {
 		MonitorStateToString[stateString.state] = stateString.str
 		StringToMonitorState[stateString.str] = stateString.state
+	}
+}
+
+// MaxResizeStages is how many stages a resize orchestration grows a chain in.
+// A chain crossing more replicated resources than that is grown by hand, one
+// stage at a time.
+const MaxResizeStages = 3
+
+// ResizeStage is the stage an instance finished, and whether it is between
+// stages at all.
+func (t MonitorState) ResizeStage() (int, bool) {
+	switch t {
+	case MonitorStateResizeStage0:
+		return 0, true
+	case MonitorStateResizeStage1:
+		return 1, true
+	case MonitorStateResizeStage2:
+		return 2, true
+	default:
+		return 0, false
+	}
+}
+
+// NewMonitorStateResizeStage is the state of an instance that finished a
+// stage of a resize, and whether there is one to name.
+func NewMonitorStateResizeStage(stage int) (MonitorState, bool) {
+	switch stage {
+	case 0:
+		return MonitorStateResizeStage0, true
+	case 1:
+		return MonitorStateResizeStage1, true
+	case 2:
+		return MonitorStateResizeStage2, true
+	default:
+		return MonitorStateInit, false
 	}
 }

@@ -1,7 +1,9 @@
 package imon
 
 import (
+	"fmt"
 	"os"
+	"strconv"
 	"strings"
 	"time"
 
@@ -166,18 +168,29 @@ func (t *Manager) crmResourceStart(rids []string) error {
 	return t.crmMaintenanceAction("start", t.path.String(), "instance", "start", "--rid", s)
 }
 
-// crmResize grows the whole chain of the resource the object exposes, to the
-// size the object is configured to hold.
-func (t *Manager) crmResize() error {
-	// --force because every node has grown what is under the replicated
-	// resource by now: that is what wait non-leader waited for.
-	return t.crmAction("resize", t.path.String(), "instance", "resize", "--grow-only", "--force")
+// crmError carries the exit code of an exec that failed, so a caller telling
+// two failures apart by their code can.
+type crmError struct {
+	exitCode int
+	err      error
 }
 
-// crmResizeBelowReplicated grows the links under the replicated one, so the
-// replicated link can be grown once every node has done this.
-func (t *Manager) crmResizeBelowReplicated() error {
-	return t.crmAction("resize below the replicated link", t.path.String(), "instance", "resize", "--below-replicated", "--grow-only")
+func (e crmError) Error() string { return e.err.Error() }
+func (e crmError) Unwrap() error { return e.err }
+func (e crmError) ExitCode() int { return e.exitCode }
+
+// crmResizeStage grows one stage of the chain.
+//
+// A node that does not hold the object up asks for the stages below the one
+// holding the head, and is told there is no stage of that number to run here
+// when it reaches it. That is how it learns it is done, the number of stages
+// being read from the chain and known only to the node walking it.
+func (t *Manager) crmResizeStage(stage int) error {
+	args := []string{t.path.String(), "instance", "resize", "--stage", strconv.Itoa(stage), "--grow-only"}
+	if !t.isResizeLeader() {
+		args = append(args, "--skip-head-stage")
+	}
+	return t.crmAction(fmt.Sprintf("resize stage %d", stage), args...)
 }
 
 func (t *Manager) crmShutdown() error {
@@ -325,7 +338,7 @@ func (t *Manager) crmDefaultAction(orchestration uuid.UUID, title string, cmdArg
 			Title:           title,
 		}, labels...)
 		t.loggerWithState().Errorf("<- exec %s: %s", append([]string{cmdPath}, cmdArgs...), err)
-		return err
+		return crmError{exitCode: cmd.NormalizedExitCode(), err: err}
 	}
 	duration := time.Now().Sub(startTime)
 	t.publisher.Pub(&msgbus.ExecSuccess{

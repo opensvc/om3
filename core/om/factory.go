@@ -3092,8 +3092,8 @@ Use --dry-run to see the plan without applying it.`,
 	flags.StringVar(&options.Size, "size", "", "the size to reach, or the amount to add or remove (ex: 11g, +1g)")
 	flags.BoolVar(&options.DryRun, "dry-run", false, "report the plan, and change nothing")
 	flags.IntVar(&options.Stage, "stage", -1, "grow only this stage of the chain, the others being grown on the nodes and in the order the plan says")
-	flags.BoolVar(&options.BelowReplicated, "below-replicated", false, "grow what every node grows before the barrier")
-	_ = flags.MarkHidden("below-replicated")
+	flags.BoolVar(&options.SkipHeadStage, "skip-head-stage", false, "leave the stage holding the head alone, it growing where the object is up")
+	_ = flags.MarkHidden("skip-head-stage")
 	flags.BoolVar(&options.GrowOnly, "grow-only", false, "do nothing, instead of refusing, when the size asked for is already held")
 	flags.BoolVar(&options.Force, "force", false, "grow one replica of a replicated object on its own, stranding the space until the others catch up")
 	return cmd

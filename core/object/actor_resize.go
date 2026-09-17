@@ -6,10 +6,12 @@ import (
 	"sort"
 	"strings"
 
+	"github.com/opensvc/om3/v3/core/instance"
 	"github.com/opensvc/om3/v3/core/keyop"
 	"github.com/opensvc/om3/v3/core/naming"
 	"github.com/opensvc/om3/v3/core/resource"
 	"github.com/opensvc/om3/v3/core/resourceselector"
+	"github.com/opensvc/om3/v3/core/xerrors"
 	"github.com/opensvc/om3/v3/util/hostname"
 	"github.com/opensvc/om3/v3/util/key"
 	"github.com/opensvc/om3/v3/util/sizeconv"
@@ -67,6 +69,12 @@ type (
 
 	// ResizeOptions tunes a resize.
 	ResizeOptions struct {
+		// SkipHeadStage leaves the last stage of the chain alone. It holds
+		// the head, which grows only where the object is up, so a node that
+		// does not hold it up asks for the stages below it and is told there
+		// is no stage of that number to run here when it reaches the last.
+		SkipHeadStage bool
+
 		// GrowOnly makes a resize that would shrink do nothing, instead of
 		// doing it or refusing it. It is what an orchestration converging
 		// every node to a size wants: a node already holding more than that
@@ -257,6 +265,24 @@ func (t *actor) resizeLevelBelow(ctx context.Context, level resizeLevel, seen ma
 
 // replicatedResizeResource returns the resource of the object whose size is
 // replicated to peers, and nil when the object has none.
+// replicatedResizeResourceCount counts the resources of the object whose size
+// is replicated to peers, which is how many stage boundaries a chain of them
+// has.
+//
+// It reads driver properties only, so it answers on a node that cannot touch
+// the devices, which is what a node asking whether a stage is its to run
+// needs. The count of the chain itself is the authority, and a chain crossing
+// into another object can hold a boundary this does not see.
+func (t *actor) replicatedResizeResourceCount() int {
+	n := 0
+	for _, r := range t.Resources() {
+		if i, ok := r.(resource.ResizeIsReplicated); ok && i.ResizeIsReplicated() {
+			n++
+		}
+	}
+	return n
+}
+
 func (t *actor) replicatedResizeResource(ctx context.Context) resource.Driver {
 	for _, r := range t.Resources() {
 		if i, ok := r.(resource.ResizeIsReplicated); ok && i.ResizeIsReplicated() {
@@ -284,6 +310,23 @@ func (t *actor) ResizePlanStage(ctx context.Context, rid string, to int64, stage
 	if stage < 0 {
 		return plan, fmt.Errorf("a stage is numbered from 0")
 	}
+	// Asked before anything is walked, because walking the chain from the head
+	// needs the head, and a node that does not hold the object up cannot read
+	// it. That node is exactly the one asking whether the stage is its to run.
+	stages := t.replicatedResizeResourceCount() + 1
+	if stages > instance.MaxResizeStages {
+		// The orchestration names the stage each node finished in its monitor
+		// state, and there are that many names. A chain crossing more is
+		// grown by hand, one --stage at a time.
+		return plan, fmt.Errorf("%s crosses %d replicated resources, so it grows in %d stages, and an orchestration grows a chain in at most %d", t.path, stages-1, stages, instance.MaxResizeStages)
+	}
+	if stage >= stages {
+		return plan, fmt.Errorf("%s grows in %d stage(s), numbered 0 to %d: %w", t.path, stages, stages-1, xerrors.ResizeNoSuchStage)
+	}
+	if opts.SkipHeadStage && stage == stages-1 {
+		return plan, fmt.Errorf("%s stage %d holds the head, which grows where the object is up: %w", t.path, stage, xerrors.ResizeNoSuchStage)
+	}
+
 	change := sizeconv.Change{Value: to}
 	r := t.replicatedResizeResource(ctx)
 	switch {
@@ -307,9 +350,14 @@ func (t *actor) ResizePlanStage(ctx context.Context, rid string, to int64, stage
 	}
 	if stage >= plan.Stages {
 		if plan.Stages == 1 {
-			return plan, fmt.Errorf("%s grows in a single stage, numbered 0", t.path)
+			return plan, fmt.Errorf("%s grows in a single stage, numbered 0: %w", t.path, xerrors.ResizeNoSuchStage)
 		}
-		return plan, fmt.Errorf("%s grows in %d stages, numbered 0 to %d", t.path, plan.Stages, plan.Stages-1)
+		return plan, fmt.Errorf("%s grows in %d stages, numbered 0 to %d: %w", t.path, plan.Stages, plan.Stages-1, xerrors.ResizeNoSuchStage)
+	}
+	if opts.SkipHeadStage && stage == plan.Stages-1 {
+		// The last stage holds the head, and a head grows where the object is
+		// up. A node that does not hold it up has nothing left to do.
+		return plan, fmt.Errorf("%s stage %d holds the head, which grows where the object is up: %w", t.path, stage, xerrors.ResizeNoSuchStage)
 	}
 	for i := range plan.Steps {
 		if plan.Steps[i].Stage == stage {
@@ -331,32 +379,6 @@ func (t *actor) ResizeStage(ctx context.Context, rid string, to int64, stage int
 		return err
 	}
 	return t.applyResizePlan(ctx, plan, fmt.Sprintf("stage %d", stage))
-}
-
-// ResizePlanBelowReplicated is stage 0 of a chain grown in more than one
-// stage, and nothing at all of a chain grown in one.
-//
-// It is what the resize orchestration runs on every node before the barrier.
-// A chain of a single stage has nothing to grow before that barrier: the
-// whole of it is grown on the node holding the object up, so a node running
-// this finds nothing to do rather than growing a head it may not hold.
-//
-// It goes away when the orchestration asks for a stage by number.
-func (t *actor) ResizePlanBelowReplicated(ctx context.Context, to int64, opts ResizeOptions) (ResizePlan, error) {
-	if t.replicatedResizeResource(ctx) == nil {
-		return ResizePlan{}, nil
-	}
-	return t.ResizePlanStage(ctx, "", to, 0, opts)
-}
-
-// ResizeBelowReplicated grows stage 0 of a chain grown in more than one
-// stage, and nothing at all of a chain grown in one.
-func (t *actor) ResizeBelowReplicated(ctx context.Context, to int64, opts ResizeOptions) error {
-	plan, err := t.ResizePlanBelowReplicated(ctx, to, opts)
-	if err != nil {
-		return err
-	}
-	return t.applyResizePlan(ctx, plan, "stage 0")
 }
 
 // refuseLoneReplicaResize stops a resize that would run every stage of a
