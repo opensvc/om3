@@ -1,9 +1,13 @@
 package imon
 
 import (
+	"errors"
+
 	"github.com/opensvc/om3/v3/core/instance"
 	"github.com/opensvc/om3/v3/core/provisioned"
 	"github.com/opensvc/om3/v3/core/status"
+	"github.com/opensvc/om3/v3/core/xerrors"
+	"github.com/opensvc/om3/v3/daemon/runner"
 	"github.com/opensvc/om3/v3/util/file"
 )
 
@@ -18,11 +22,13 @@ import (
 // A failed resize is final on the instance it failed on. Nothing is retried,
 // so the order between the nodes is waited for rather than hoped for.
 func (t *Manager) orchestrateResized() {
+	if stage, ok := t.state.State.ResizeStage(); ok {
+		t.resizedFromStage(stage)
+		return
+	}
 	switch t.state.State {
 	case instance.MonitorStateIdle:
 		t.resizedFromIdle()
-	case instance.MonitorStateWaitNonLeader:
-		t.resizedFromWaitNonLeader()
 	case instance.MonitorStateResizeSuccess:
 		t.resizedEnd("the instance holds the size asked for", true)
 	case instance.MonitorStateResizeFailure:
@@ -37,53 +43,84 @@ func (t *Manager) resizedFromIdle() {
 		return
 	}
 	if t.instStatus[t.localhost].Provisioned.IsOneOf(provisioned.False) {
-		// There is nothing here to grow. Saying so lets the node holding the
-		// object up stop waiting for this one.
+		// There is nothing here to grow. Saying so lets the nodes still
+		// growing stop waiting for this one.
 		t.log.Infof("resize: the instance is not provisioned, nothing to grow here")
 		t.transitionTo(instance.MonitorStateResizeSuccess)
 		return
 	}
 	if !t.hasAnyInstanceUp() {
-		// The head resource grows on the node holding the object up, and no
-		// node holds it up. Every node would grow what is under the
-		// replicated link and stop there, which for an object having no
-		// replicated link is nothing at all, and the orchestration would
-		// report a size the object does not hold.
+		// The head grows on the node holding the object up, and no node holds
+		// it up. The stages below it would run and the head would stay as it
+		// is, and the orchestration would report a size the object does not
+		// hold.
 		t.log.Infof("resize: no instance is up, so nothing can grow the head resource")
 		t.transitionTo(instance.MonitorStateResizeFailure)
 		return
 	}
-	if t.isResizeLeader() {
-		// The leader grows what is under the replicated link like every other
-		// node, then waits for them before growing the rest.
-		t.queueAction(t.crmResizeBelowReplicated,
-			instance.MonitorStateResizeProgress,
-			instance.MonitorStateWaitNonLeader,
-			instance.MonitorStateResizeFailure)
-		return
-	}
-	t.queueAction(t.crmResizeBelowReplicated,
-		instance.MonitorStateResizeProgress,
-		instance.MonitorStateResizeSuccess,
-		instance.MonitorStateResizeFailure)
+	t.queueResizeStage(0)
 }
 
-func (t *Manager) resizedFromWaitNonLeader() {
+// resizedFromStage moves on from a stage this node has finished.
+//
+// The next stage is asked for only once every node has finished this one: a
+// replicated resource offers what its smallest replica holds, so growing it
+// before its peers have grown what is under it would be refused.
+func (t *Manager) resizedFromStage(stage int) {
 	if t.hasAnyPeerResizeFailed() {
-		// Growing the replicated link now would ask it for more than the
+		// Growing further would ask a replicated link for more than its
 		// smallest replica holds, and be refused. Stop here instead, so what
 		// failed is what is reported.
-		t.log.Infof("resize: a peer instance resize failed, the replicated resource cannot grow")
+		t.log.Infof("resize: a peer instance resize failed, the chain cannot grow further")
 		t.transitionTo(instance.MonitorStateResizeFailure)
 		return
 	}
-	if !t.hasAllPeersResized() {
+	if !t.hasAllPeersReachedStage(stage) {
 		return
 	}
-	t.queueAction(t.crmResize,
-		instance.MonitorStateResizeProgress,
-		instance.MonitorStateResizeSuccess,
-		instance.MonitorStateResizeFailure)
+	t.queueResizeStage(stage + 1)
+}
+
+// queueResizeStage grows one stage, and reads from what it answers whether
+// another follows.
+//
+// The stages are read from the chain, so only the node walking it knows how
+// many there are. A node asking for one past the last is told there is no
+// stage of that number to run here, which is how it learns it is done.
+func (t *Manager) queueResizeStage(stage int) {
+	staged, ok := instance.NewMonitorStateResizeStage(stage)
+	if !ok {
+		// The chain is grown in more stages than there are names for the
+		// state of a node between them. The resize refuses it too, saying so,
+		// but this one is reached first when a stage fails to end.
+		t.log.Infof("resize: stage %d is past the %d an orchestration grows a chain in", stage, instance.MaxResizeStages)
+		t.transitionTo(instance.MonitorStateResizeFailure)
+		return
+	}
+	_ = runner.Run(t.instConfig.Priority, func() error {
+		t.transitionTo(instance.MonitorStateResizeProgress)
+		next := staged
+		err := t.crmResizeStage(stage)
+		switch {
+		case err == nil:
+		case isResizeNoSuchStage(err):
+			next = instance.MonitorStateResizeSuccess
+		default:
+			next = instance.MonitorStateResizeFailure
+		}
+		go t.orchestrateAfterAction(instance.MonitorStateResizeProgress, next)
+		return nil
+	})
+}
+
+// isResizeNoSuchStage says whether a stage failed because there is no such
+// stage to run here, which is the answer that ends the walk.
+func isResizeNoSuchStage(err error) bool {
+	type exitCoder interface {
+		ExitCode() int
+	}
+	var e exitCoder
+	return errors.As(err, &e) && e.ExitCode() == xerrors.ExitCodeResizeNoSuchStage
 }
 
 // resizedEnd ends the orchestration on this instance, leaving the state to
@@ -148,11 +185,23 @@ func (t *Manager) hasAnyInstanceUp() bool {
 	return false
 }
 
-func (t *Manager) hasAllPeersResized() bool {
-	for _, instMon := range t.instMonitor {
-		if !instMon.State.IsOneOf(instance.MonitorStateResizeSuccess) {
-			return false
+// hasAllPeersReachedStage says whether every peer has finished the stage this
+// node just finished, or has nothing left to do at all.
+//
+// A peer that is done is a peer that will not grow anything more, so it holds
+// nobody up: a node not holding the object up finishes at the stage below the
+// one holding the head, and a node with nothing provisioned finishes at once.
+func (t *Manager) hasAllPeersReachedStage(stage int) bool {
+	for nodename, instMon := range t.instMonitor {
+		if peerStage, ok := instMon.State.ResizeStage(); ok {
+			if peerStage >= stage {
+				continue
+			}
+		} else if instMon.State.IsOneOf(instance.MonitorStateResizeSuccess) {
+			continue
 		}
+		t.log.Tracef("resize: wait for %s to finish stage %d", nodename, stage)
+		return false
 	}
 	return true
 }

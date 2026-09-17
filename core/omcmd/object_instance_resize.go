@@ -14,15 +14,12 @@ import (
 type (
 	CmdObjectInstanceResize struct {
 		OptsGlobal
-		Size     string
-		DryRun   bool
-		Stage    int
-		GrowOnly bool
-		// BelowReplicated is the resize orchestration asking for what every
-		// node grows before the barrier. It goes away when the orchestration
-		// asks for a stage by number.
-		BelowReplicated bool
-		Force           bool
+		Size          string
+		DryRun        bool
+		Stage         int
+		GrowOnly      bool
+		SkipHeadStage bool
+		Force         bool
 	}
 
 	instanceResizer interface {
@@ -32,8 +29,6 @@ type (
 		Resize(context.Context, string, sizeconv.Change, object.ResizeOptions) error
 		ResizePlanStage(context.Context, string, int64, int, object.ResizeOptions) (object.ResizePlan, error)
 		ResizeStage(context.Context, string, int64, int, object.ResizeOptions) error
-		ResizePlanBelowReplicated(context.Context, int64, object.ResizeOptions) (object.ResizePlan, error)
-		ResizeBelowReplicated(context.Context, int64, object.ResizeOptions) error
 	}
 )
 
@@ -62,7 +57,7 @@ func (t *CmdObjectInstanceResize) one(p naming.Path) error {
 		return fmt.Errorf("%s: a %s has no head resource to resize", p, p.Kind)
 	}
 	ctx := context.Background()
-	opts := object.ResizeOptions{GrowOnly: t.GrowOnly, Force: t.Force}
+	opts := object.ResizeOptions{GrowOnly: t.GrowOnly, Force: t.Force, SkipHeadStage: t.SkipHeadStage}
 
 	// No size asked for means the size the volume is configured to be, which
 	// is the size a resize orchestration is converging every node to.
@@ -75,23 +70,6 @@ func (t *CmdObjectInstanceResize) one(p naming.Path) error {
 		change.Value = to
 	} else if change, err = sizeconv.ParseChange(t.Size); err != nil {
 		return err
-	}
-
-	if t.BelowReplicated {
-		// The resize orchestration asking for what every node grows before
-		// the barrier. It does not name the head, because a node that does
-		// not hold the object up cannot read it.
-		if change.IsRelative {
-			return fmt.Errorf("--below-replicated needs a size to reach, not an amount to add or remove")
-		}
-		plan, err := i.ResizePlanBelowReplicated(ctx, change.Value, opts)
-		if err != nil {
-			return err
-		}
-		if t.DryRun {
-			return printResizePlan(plan, t.Output, t.Sort, t.Color)
-		}
-		return i.ResizeBelowReplicated(ctx, change.Value, opts)
 	}
 
 	rid, err := i.HeadRID(ctx)
