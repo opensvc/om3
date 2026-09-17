@@ -19,7 +19,11 @@ import (
 func (a *DaemonAPI) PatchObjectConfig(ctx echo.Context, namespace string, kind naming.Kind, name string, params api.PatchObjectConfigParams) error {
 	log := LogHandler(ctx, "patchObjectConfig")
 
-	if v, err := assertAdmin(ctx, namespace); !v {
+	if kind == naming.KindNscfg {
+		if v, err := assertNamespaceConfigWriter(ctx); !v {
+			return err
+		}
+	} else if v, err := assertAdmin(ctx, namespace); !v {
 		return err
 	}
 

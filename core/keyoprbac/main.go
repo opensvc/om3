@@ -110,6 +110,16 @@ var containerTypes = []string{"oci", "docker", "podman"}
 // what the object takes from the node.
 var rootRule = Rule{Grant: rbac.GrantRoot, Reason: reasonRoot}
 
+// squatterRule is the rule of the keywords that set what a namespace may take
+// of the resources the cluster shares.
+//
+// They are not the namespace administrator's to set: a limit is what weighs
+// one namespace against the others, so it is given from outside the namespace,
+// like the priority that decides which objects a node sheds first.
+var squatterRule = Rule{Grant: rbac.GrantSquatter, Reason: reasonSquatter}
+
+const reasonSquatter = "requires the squatter grant"
+
 // rules is the policy, by driver group then by keyword.
 //
 // A driver group absent from here needs the root grant whatever the keyword: a
@@ -212,25 +222,47 @@ var rules = map[string]Group{
 		},
 	},
 
-	"DEFAULT": {Rules: map[string]Rule{
-		"priority": {
-			// A priority decides which objects a node sheds first, so it
-			// weighs objects of a namespace against objects of another.
-			Grant:  rbac.GrantPrioritizer,
-			Reason: "requires the prioritizer grant",
+	"DEFAULT": {
+		KindRules: map[naming.Kind]map[string]Rule{
+			// A pg keyword of a namespace caps the slice every object of that
+			// namespace runs under, so it rations the node between namespaces.
+			// The same keyword on a service caps that service alone, and is
+			// the object administrator's to set.
+			naming.KindNscfg: {
+				"pg_cpus":            squatterRule,
+				"pg_mems":            squatterRule,
+				"pg_cpu_shares":      squatterRule,
+				"pg_cpu_quota":       squatterRule,
+				"pg_mem_oom_control": squatterRule,
+				"pg_mem_limit":       squatterRule,
+				"pg_vmem_limit":      squatterRule,
+				"pg_mem_swappiness":  squatterRule,
+				"pg_blkio_weight":    squatterRule,
+			},
 		},
-		"monitor_action": {
-			Grant:  rbac.GrantRoot,
-			Reason: reasonRoot,
-			// These three act on the object. The others act on the node, up
-			// to rebooting it.
-			Values: []string{"switch", "freezestop", "none"},
-		},
-		"pre_monitor_action": {
-			Grant:  rbac.GrantRoot,
-			Reason: reasonRoot,
-		},
-	}},
+		Rules: map[string]Rule{
+			"priority": {
+				// A priority decides which objects a node sheds first, so it
+				// weighs objects of a namespace against objects of another.
+				Grant:  rbac.GrantPrioritizer,
+				Reason: "requires the prioritizer grant",
+			},
+			"monitor_action": {
+				Grant:  rbac.GrantRoot,
+				Reason: reasonRoot,
+				// These three act on the object. The others act on the node, up
+				// to rebooting it.
+				Values: []string{"switch", "freezestop", "none"},
+			},
+			"pre_monitor_action": {
+				Grant:  rbac.GrantRoot,
+				Reason: reasonRoot,
+			},
+		}},
+
+	// A claim says how much of a pool, or how many addresses of a network,
+	// the objects of a namespace may take.
+	"claim": {Default: &squatterRule},
 
 	// These two sections hold values the object reads, and nothing om acts
 	// on, so no keyword of theirs needs a grant.

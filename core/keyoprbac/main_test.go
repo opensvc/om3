@@ -253,3 +253,38 @@ func TestCommonKeywordsSurviveAGroupDefault(t *testing.T) {
 	// A trigger is a common keyword too, and stays refused everywhere.
 	assert.Error(t, Denied(noGrant, naming.KindSvc, "ip#1", "pre_start", "/bin/true", section("network")))
 }
+
+// The limits on what a namespace takes of the cluster are given from outside
+// it: administering a namespace is not rationing the cluster between them.
+func TestSettingTheLimitsOfANamespaceNeedsTheSquatterGrant(t *testing.T) {
+	squatter := rbac.Grants{rbac.GrantSquatter}
+	admin := rbac.Grants{rbac.NewGrant(rbac.RoleAdmin, "test")}
+
+	for _, tc := range []struct{ section, option string }{
+		{"claim#1", "type"},
+		{"claim#1", "name"},
+		{"claim#1", "limit"},
+		{"DEFAULT", "pg_cpus"},
+		{"DEFAULT", "pg_cpu_quota"},
+		{"DEFAULT", "pg_mem_limit"},
+	} {
+		name := tc.section + "." + tc.option
+		assert.NoErrorf(t, Denied(squatter, naming.KindNscfg, tc.section, tc.option, "x", none),
+			"%s: a squatter sets the limits", name)
+		assert.EqualErrorf(t, Denied(admin, naming.KindNscfg, tc.section, tc.option, "x", none),
+			reasonSquatter, "%s: an admin of the namespace does not", name)
+		assert.EqualErrorf(t, Denied(noGrant, naming.KindNscfg, tc.section, tc.option, "x", none),
+			reasonSquatter, "%s: no grant sets nothing", name)
+	}
+}
+
+// The same pg keyword on an object caps that object alone, and stays the
+// object administrator's to set.
+func TestThePgKeywordsOfAnObjectAreNotRationed(t *testing.T) {
+	for _, option := range []string{"pg_cpus", "pg_cpu_quota", "pg_mem_limit"} {
+		for _, kind := range []naming.Kind{naming.KindSvc, naming.KindVol} {
+			assert.NoErrorf(t, Denied(noGrant, kind, "DEFAULT", option, "x", none),
+				"%s DEFAULT.%s", kind, option)
+		}
+	}
+}
