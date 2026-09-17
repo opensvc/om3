@@ -347,3 +347,57 @@ func TestANodeDrainIsReportedAsWhatItIsFor(t *testing.T) {
 	require.True(t, ok)
 	assert.Equal(t, "drained", o.Expect)
 }
+
+// A delete or a purge takes the object away, so the monitors that named the
+// orchestration are deleted rather than reporting back at rest. Without the
+// deletion being read as the node leaving, the orchestration is left running
+// for good on every node but the one that accepted it, which hears the end
+// from its own object monitor.
+func TestAnOrchestrationEndsWhenTheObjectItDeletedIsGone(t *testing.T) {
+	reset()
+	m := &Manager{}
+	id := uuid.New()
+	p := naming.Path{Name: "s1", Kind: naming.KindSvc}
+
+	mon := func(node string) *msgbus.InstanceMonitorUpdated {
+		return &msgbus.InstanceMonitorUpdated{
+			Path:  p,
+			Node:  node,
+			Value: instance.Monitor{OrchestrationID: id, GlobalExpect: instance.MonitorGlobalExpectDeleted},
+		}
+	}
+	m.handle(mon("n1"))
+	m.handle(mon("n2"))
+
+	o, ok := GetOrchestration(id.String())
+	require.True(t, ok)
+	assert.Equal(t, StateRunning, o.State)
+
+	m.handle(&msgbus.InstanceMonitorDeleted{Path: p, Node: "n1"})
+	o, _ = GetOrchestration(id.String())
+	assert.Equal(t, StateRunning, o.State, "a node still carries it")
+
+	m.handle(&msgbus.InstanceMonitorDeleted{Path: p, Node: "n2"})
+	o, _ = GetOrchestration(id.String())
+	assert.Equal(t, StateSucceeded, o.State)
+}
+
+// A node monitor goes away when the node leaves the cluster, and a node that
+// left is out of the orchestration it was running.
+func TestANodeOrchestrationEndsWhenTheNodesRunningItAreGone(t *testing.T) {
+	reset()
+	m := &Manager{}
+	id := uuid.New()
+
+	m.handle(&msgbus.NodeMonitorUpdated{
+		Node:  "n1",
+		Value: node2.Monitor{OrchestrationID: id, GlobalExpect: node2.MonitorGlobalExpectFrozen},
+	})
+	o, ok := GetOrchestration(id.String())
+	require.True(t, ok)
+	assert.Equal(t, StateRunning, o.State)
+
+	m.handle(&msgbus.NodeMonitorDeleted{Node: "n1"})
+	o, _ = GetOrchestration(id.String())
+	assert.Equal(t, StateSucceeded, o.State)
+}
