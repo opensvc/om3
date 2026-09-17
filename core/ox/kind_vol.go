@@ -60,6 +60,7 @@ func init() {
 		newCmdObjectProvision(kind),
 		newCmdObjectPRStart(kind),
 		newCmdObjectPRStop(kind),
+		newCmdObjectResize(kind),
 		newCmdObjectRestart(kind),
 		newCmdObjectStart(kind),
 		newCmdObjectStop(kind),

@@ -2083,6 +2083,12 @@ type PostNodeDRBDConfigRequest struct {
 	Data         []byte             `json:"data"`
 }
 
+// PostObjectActionResize defines model for PostObjectActionResize.
+type PostObjectActionResize struct {
+	// Size The size the object is to hold, as "11g", "11GB" or "12Gi", or the amount to add, as "+1g". The size is written to the object configuration, which is what every node converges to, before the orchestration is queued. Omit it to converge to the size already configured, which is how a resize that stopped part way is finished.
+	Size *string `json:"size,omitempty"`
+}
+
 // PostObjectActionRestart defines model for PostObjectActionRestart.
 type PostObjectActionRestart struct {
 	Force *bool `json:"force,omitempty"`
@@ -3951,6 +3957,9 @@ type PostDaemonLogControlJSONRequestBody = LogControlBody
 
 // PostNodeDRBDConfigJSONRequestBody defines body for PostNodeDRBDConfig for application/json ContentType.
 type PostNodeDRBDConfigJSONRequestBody = PostNodeDRBDConfigRequest
+
+// PostObjectActionResizeJSONRequestBody defines body for PostObjectActionResize for application/json ContentType.
+type PostObjectActionResizeJSONRequestBody = PostObjectActionResize
 
 // PostObjectActionRestartJSONRequestBody defines body for PostObjectActionRestart for application/json ContentType.
 type PostObjectActionRestartJSONRequestBody = PostObjectActionRestart
