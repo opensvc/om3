@@ -73,6 +73,12 @@ func (t *Manager) startSubscriptions() *pubsub.Subscription {
 	// peer is the point.
 	sub.AddFilter(&msgbus.InstanceMonitorUpdated{})
 	sub.AddFilter(&msgbus.NodeMonitorUpdated{})
+	// A monitor that goes away is a node leaving the orchestration it was
+	// running, and is the only word of it a delete or a purge gives: the
+	// object is gone, so no monitor of it ever comes back to say it is at
+	// rest.
+	sub.AddFilter(&msgbus.InstanceMonitorDeleted{})
+	sub.AddFilter(&msgbus.NodeMonitorDeleted{})
 	sub.AddFilter(&msgbus.NodeOrchestrationAccepted{}, label)
 	sub.AddFilter(&msgbus.NodeOrchestrationEnd{}, label)
 	sub.AddFilter(&msgbus.NodeOrchestrationRefused{}, label)
@@ -130,6 +136,13 @@ func (t *Manager) handle(i any) {
 				nodeExpect(m.Value),
 				m.Value.GlobalExpectUpdatedAt,
 			)
+		case *msgbus.InstanceMonitorDeleted:
+			// The orchestration that deleted the object took the monitors
+			// naming it with it. Nothing else says this node is out of it,
+			// and an orchestration nobody is in any more is over.
+			NoteMonitor(m.Path.String(), m.Node, "", "", time.Time{})
+		case *msgbus.NodeMonitorDeleted:
+			NoteMonitor("", m.Node, "", "", time.Time{})
 		case *msgbus.Exec:
 			AddExec(Exec{
 				SessionID:       IDString(m.SessionID),
