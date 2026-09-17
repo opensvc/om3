@@ -34,6 +34,10 @@ type (
 		// whole chain.
 		Skip bool `json:"skip,omitempty"`
 
+		// Stage is the step of the chain this link is grown in. A chain
+		// crossing no replicated resource has one stage, numbered 0.
+		Stage int `json:"stage"`
+
 		// r is the resource the step changes. A rid alone does not name it,
 		// because the chain can cross into another object.
 		r resource.Driver
@@ -53,6 +57,12 @@ type (
 		// IsShrink says the chain is being made smaller, which is the
 		// direction that destroys data when it is applied in the wrong order.
 		IsShrink bool `json:"is_shrink"`
+
+		// Stages is how many stages the chain is grown in, which is one more
+		// than the number of replicated resources it crosses. Every node has
+		// to finish a stage before any node starts the next one: a replicated
+		// resource offers only what its smallest replica holds.
+		Stages int `json:"stages"`
 	}
 
 	// ResizeOptions tunes a resize.
@@ -108,15 +118,39 @@ func (t ResizePlan) String() string {
 	if t.IsShrink {
 		direction = "shrink"
 	}
+	if len(t.Steps) == 0 {
+		return "nothing to do: the chain has no link to change"
+	}
 	if !t.HasWork() {
 		return "nothing to do: every link already holds the size asked of it"
 	}
-	lines := make([]string, 0, len(t.Steps)+1)
+	lines := make([]string, 0, len(t.Steps)+t.Stages+1)
 	lines = append(lines, fmt.Sprintf("%s, in this order:", direction))
+	indent := "  "
+	if t.Stages > 1 {
+		indent = "    "
+	}
+	stage := -1
 	for _, step := range t.Steps {
-		lines = append(lines, "  "+step.String())
+		if t.Stages > 1 && step.Stage != stage {
+			stage = step.Stage
+			lines = append(lines, "  "+stageTitle(stage, t.IsShrink))
+		}
+		lines = append(lines, indent+step.String())
 	}
 	return strings.Join(lines, "\n")
+}
+
+// stageTitle names a stage and says what separates it from the one before,
+// which is what an operator has to know before running one by hand.
+func stageTitle(stage int, isShrink bool) string {
+	if stage == 0 && !isShrink {
+		return "stage 0, on every node:"
+	}
+	if isShrink {
+		return fmt.Sprintf("stage %d, once every node has finished the stage above:", stage)
+	}
+	return fmt.Sprintf("stage %d, once every node has finished stage %d:", stage, stage-1)
 }
 
 // HasWork says the plan changes something. A plan of links that all hold
@@ -232,91 +266,116 @@ func (t *actor) replicatedResizeResource(ctx context.Context) resource.Driver {
 	return nil
 }
 
-// ResizePlanBelowReplicated works out what growing the links under the
-// replicated one to the given size would do, and changes nothing.
+// ResizePlanStage works out what growing one stage of the chain to the given
+// size would do, and changes nothing.
 //
-// This is the first of the two phases a replicated object resizes in. Every
-// node runs it, including the one holding the object up, and only then does
-// that node resize the replicated link and what rests on it: a drbd resource
-// offers what its smallest replica holds.
+// Stage 0 is walked from the first replicated link rather than from the head,
+// because the node running it may not hold the object up, and a node that
+// does not cannot read the head: its filesystem is not mounted there. The
+// replicated link is asked for the size the object is asked to be, which is
+// what the head asks of it when the head is a filesystem taking the whole
+// device. Every later stage rests on the head being readable, and runs where
+// it is.
 //
-// The chain is walked from the replicated link rather than from the head,
-// because a node that does not hold the object up cannot read the head: its
-// filesystem is not mounted there. The replicated link is asked for the size
-// the object is asked to be, which is what the head asks of it when the head
-// is a filesystem taking the whole device.
-//
-// The plan lists the replicated link, so the whole chain is visible, but
-// marks it as nothing to do here.
-func (t *actor) ResizePlanBelowReplicated(ctx context.Context, to int64, opts ResizeOptions) (ResizePlan, error) {
+// The links of the other stages are listed, so a plan shows the whole chain,
+// and marked as nothing to do here.
+func (t *actor) ResizePlanStage(ctx context.Context, rid string, to int64, stage int, opts ResizeOptions) (ResizePlan, error) {
 	var plan ResizePlan
+	if stage < 0 {
+		return plan, fmt.Errorf("a stage is numbered from 0")
+	}
+	change := sizeconv.Change{Value: to}
 	r := t.replicatedResizeResource(ctx)
-	if r == nil {
-		return plan, nil
+	switch {
+	case stage > 0 || r == nil:
+		// Every stage but the first is of the chain under the head, and so is
+		// a chain crossing nothing replicated, which is the single stage 0.
+		var err error
+		plan, err = t.ResizePlan(ctx, rid, change, opts)
+		if err != nil {
+			return plan, err
+		}
+	default:
+		chain, err := t.resizeChain(ctx, r, map[string]bool{})
+		if err != nil {
+			return plan, err
+		}
+		plan, err = buildResizePlan(ctx, chain, change, t.path, opts)
+		if err != nil {
+			return plan, err
+		}
 	}
-	chain, err := t.resizeChain(ctx, r, map[string]bool{})
-	if err != nil {
-		return plan, err
-	}
-	plan, err = buildResizePlan(ctx, chain, sizeconv.Change{Value: to}, t.path, opts)
-	if err != nil {
-		return plan, err
+	if stage >= plan.Stages {
+		if plan.Stages == 1 {
+			return plan, fmt.Errorf("%s grows in a single stage, numbered 0", t.path)
+		}
+		return plan, fmt.Errorf("%s grows in %d stages, numbered 0 to %d", t.path, plan.Stages, plan.Stages-1)
 	}
 	for i := range plan.Steps {
-		if plan.Steps[i].RID != r.RID() {
+		if plan.Steps[i].Stage == stage {
 			continue
 		}
 		plan.Steps[i].Skip = true
 		plan.Steps[i].To = plan.Steps[i].From
-		plan.Steps[i].Comment = "resized once every node has grown what is under it"
+		plan.Steps[i].Comment = fmt.Sprintf("grown in stage %d", plan.Steps[i].Stage)
 	}
 	t.localizeResizePlan(&plan)
 	return plan, nil
 }
 
-// ResizeBelowReplicated grows the links under the replicated one to the given
-// size, and leaves the replicated link alone.
+// ResizeStage grows one stage of the chain to the given size, and leaves the
+// other stages alone.
+func (t *actor) ResizeStage(ctx context.Context, rid string, to int64, stage int, opts ResizeOptions) error {
+	plan, err := t.ResizePlanStage(ctx, rid, to, stage, opts)
+	if err != nil {
+		return err
+	}
+	return t.applyResizePlan(ctx, plan, fmt.Sprintf("stage %d", stage))
+}
+
+// ResizePlanBelowReplicated is stage 0 of a chain grown in more than one
+// stage, and nothing at all of a chain grown in one.
+//
+// It is what the resize orchestration runs on every node before the barrier.
+// A chain of a single stage has nothing to grow before that barrier: the
+// whole of it is grown on the node holding the object up, so a node running
+// this finds nothing to do rather than growing a head it may not hold.
+//
+// It goes away when the orchestration asks for a stage by number.
+func (t *actor) ResizePlanBelowReplicated(ctx context.Context, to int64, opts ResizeOptions) (ResizePlan, error) {
+	if t.replicatedResizeResource(ctx) == nil {
+		return ResizePlan{}, nil
+	}
+	return t.ResizePlanStage(ctx, "", to, 0, opts)
+}
+
+// ResizeBelowReplicated grows stage 0 of a chain grown in more than one
+// stage, and nothing at all of a chain grown in one.
 func (t *actor) ResizeBelowReplicated(ctx context.Context, to int64, opts ResizeOptions) error {
 	plan, err := t.ResizePlanBelowReplicated(ctx, to, opts)
 	if err != nil {
 		return err
 	}
-	return t.applyResizePlan(ctx, plan, "below the replicated link")
+	return t.applyResizePlan(ctx, plan, "stage 0")
 }
 
-// refuseLoneReplicaResize stops a resize that would grow one replica of a
-// replicated object.
+// refuseLoneReplicaResize stops a resize that would run every stage of a
+// chain on one node.
 //
-// A replicated resource offers only what its smallest replica holds, so
-// growing the chain under it on one node alone strands the space: the object
-// gains nothing, the nodes stop matching, and the size written back records
-// one no peer has. Growing every node is what an orchestrated resize is for,
-// and it is two phases rather than one because of this.
+// A chain grows in as many stages as the replicated resources it crosses,
+// plus one, and every node has to finish a stage before any node starts the
+// next: a replicated resource offers only what its smallest replica holds.
+// Running them all here strands the space: the object gains nothing, the
+// nodes stop matching, and the size written back records one no peer has.
 //
-// The phase that grows the links under the replicated resource says so, and
-// is how a node left behind is caught up, so it is not stopped here.
-func refuseLoneReplicaResize(chain []resizeLevel, opts ResizeOptions) error {
-	if opts.Force {
+// Running one stage is not stopped. That is what an orchestrated resize does
+// on each node, and what --stage does by hand.
+func refuseLoneReplicaResize(plan ResizePlan, home naming.Path, opts ResizeOptions) error {
+	if opts.Force || plan.Stages < 2 {
 		return nil
 	}
-	for _, level := range chain {
-		for _, link := range level {
-			i, ok := link.r.(resource.ResizeIsReplicated)
-			if !ok || !i.ResizeIsReplicated() {
-				continue
-			}
-			peers, err := link.owner.Peers()
-			if err != nil {
-				return err
-			}
-			if len(peers) < 2 {
-				return nil
-			}
-			return fmt.Errorf("%s replicates %s to %d nodes, and this grows only %s: a replicated resource offers what its smallest replica holds, so the space would be stranded. Use \"om %s resize\" to grow every node, or --force to grow this one anyway",
-				link.r.RID(), link.path, len(peers), hostname.Hostname(), link.path)
-		}
-	}
-	return nil
+	return fmt.Errorf("%s grows in %d stages, and this would run them all on %s: a replicated resource offers what its smallest replica holds, so the space would be stranded. Use \"om %s resize\" to grow every node, --stage to run one stage here, or --force to run them all anyway",
+		home, plan.Stages, hostname.Hostname(), home)
 }
 
 // resizeProvider returns the resource of the object answering to a name, and
@@ -402,9 +461,6 @@ func (t *actor) ResizePlan(ctx context.Context, rid string, change sizeconv.Chan
 	if err != nil {
 		return plan, err
 	}
-	if err := refuseLoneReplicaResize(chain, opts); err != nil {
-		return plan, err
-	}
 	plan, err = buildResizePlan(ctx, chain, change, t.path, opts)
 	if err != nil {
 		return plan, err
@@ -423,6 +479,44 @@ func (t *actor) localizeResizePlan(plan *ResizePlan) {
 			plan.Steps[i].Path = ""
 		}
 	}
+}
+
+// resizeStages says which stage each level of a chain is grown in.
+//
+// A replicated link is a boundary. Everything under it has to be grown on
+// every node before it can be grown itself, because a replicated resource
+// offers only what its smallest replica holds. So the levels below the first
+// boundary are stage 0, that boundary and the levels above it up to the next
+// one are stage 1, and so on. A chain crossing no replicated resource has the
+// single stage 0.
+//
+// The stage belongs to the level rather than to the link, because a barrier
+// synchronises the whole chain: a link sharing a level with a replicated one
+// is grown after the same barrier anyway, and waiting a stage longer than it
+// strictly has to costs nothing.
+//
+// The returned slice is indexed like the chain, so index 0 is the head.
+func resizeStages(chain []resizeLevel) []int {
+	stages := make([]int, len(chain))
+	stage := 0
+	for i := len(chain) - 1; i >= 0; i-- {
+		if levelIsReplicated(chain[i]) {
+			stage++
+		}
+		stages[i] = stage
+	}
+	return stages
+}
+
+// levelIsReplicated says whether any link of a level replicates its size to
+// peers, which makes the level a stage boundary.
+func levelIsReplicated(level resizeLevel) bool {
+	for _, link := range level {
+		if i, ok := link.r.(resource.ResizeIsReplicated); ok && i.ResizeIsReplicated() {
+			return true
+		}
+	}
+	return false
 }
 
 // buildResizePlan works out what resizing a chain would do, and changes
@@ -458,8 +552,12 @@ func buildResizePlan(ctx context.Context, chain []resizeLevel, change sizeconv.C
 		return plan, nil
 	}
 
+	stages := resizeStages(chain)
+	// The chain is indexed from the head, which is in the last stage.
+	plan.Stages = stages[0] + 1
+
 	levelSteps := make([][]ResizeStep, 0, len(chain))
-	for _, level := range chain {
+	for levelIndex, level := range chain {
 		// Every resource of a level is asked for the same size, and the
 		// level below has to satisfy the most demanding of them.
 		var needBelow int64
@@ -490,6 +588,7 @@ func buildResizePlan(ctx context.Context, chain []resizeLevel, change sizeconv.C
 				Driver: driverOf(link.r),
 				From:   linkFrom,
 				To:     to,
+				Stage:  stages[levelIndex],
 				r:      link.r,
 				owner:  link.owner,
 			}
@@ -533,6 +632,9 @@ func buildResizePlan(ctx context.Context, chain []resizeLevel, change sizeconv.C
 func (t *actor) Resize(ctx context.Context, rid string, change sizeconv.Change, opts ResizeOptions) error {
 	plan, err := t.ResizePlan(ctx, rid, change, opts)
 	if err != nil {
+		return err
+	}
+	if err := refuseLoneReplicaResize(plan, t.path, opts); err != nil {
 		return err
 	}
 	return t.applyResizePlan(ctx, plan, rid)
