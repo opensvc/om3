@@ -263,11 +263,11 @@ func NewCmdObjectGroupResize(kind, group string) *cobra.Command {
 		Short: "change the size of a resource and of what it rests on",
 		Long: `Change the size of a resource, and of every resource it rests on.
 
-SIZE is the size to reach, as "11g", "11GB" or "12Gi", or the amount to add or
-remove, as "+1g" or "-1g".
+SIZE is the size to reach, as "11g", "11GB" or "12Gi", or the amount to add,
+as "+1g".
 
-A negative amount reads as an option to the command line parser, so write a
-shrink as --size=-1g, or put the amount after a -- separator.
+A resize only grows. Asking for a size the chain already holds is nothing to
+do, which is what lets a resize that stopped part way be asked again.
 
 Every link of the chain is asked before any of it is changed, so a chain
 holding one link that cannot do it is refused whole rather than left half
@@ -275,8 +275,7 @@ resized. A link is asked for the size it needs from the link below it, which
 is not always the size it was asked for.
 
 A chain grows from the bottom up, so the space exists before anything is
-stretched onto it, and shrinks from the top down, so a filesystem gives the
-space back before the device under it is taken away.
+stretched onto it.
 
 Use --dry-run to see the plan without applying it.`,
 	}

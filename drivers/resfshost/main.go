@@ -695,18 +695,12 @@ func (t *T) ResizePlan(ctx context.Context, to int64) (int64, error) {
 		// it, and there is nothing below it to ask.
 		return to, nil
 	}
-	if to >= from {
-		if _, ok := fs.(filesystems.Grower); !ok {
-			return 0, fmt.Errorf("a %s filesystem cannot grow", fs.Type())
-		}
-		return to, nil
+	if to < from {
+		// A resize only grows, and the plan says so before reaching here.
+		return from, nil
 	}
-	shrinker, ok := fs.(filesystems.Shrinker)
-	if !ok {
-		return 0, fmt.Errorf("a %s filesystem cannot shrink", fs.Type())
-	}
-	if err := shrinker.CanShrink(ctx, t.devpath(ctx), t.mountPoint()); err != nil {
-		return 0, err
+	if _, ok := fs.(filesystems.Grower); !ok {
+		return 0, fmt.Errorf("a %s filesystem cannot grow", fs.Type())
 	}
 	return to, nil
 }
@@ -717,24 +711,11 @@ func (t *T) Resize(ctx context.Context, to int64) error {
 	if selfSizer, ok := fs.(filesystems.SelfSizer); ok {
 		return selfSizer.SetSize(ctx, t.mountPoint(), to)
 	}
-	// What the filesystem holds now, not what the device holds: the device
-	// has already been grown by the time this runs.
-	from, err := t.usableSize(ctx)
-	if err != nil {
-		return err
-	}
-	if to >= from {
-		grower, ok := fs.(filesystems.Grower)
-		if !ok {
-			return fmt.Errorf("a %s filesystem cannot grow", fs.Type())
-		}
-		// The device below has been enlarged already, so the filesystem is
-		// asked to take up what is there rather than a size of its own.
-		return grower.Grow(ctx, t.devpath(ctx), t.mountPoint())
-	}
-	shrinker, ok := fs.(filesystems.Shrinker)
+	grower, ok := fs.(filesystems.Grower)
 	if !ok {
-		return fmt.Errorf("a %s filesystem cannot shrink", fs.Type())
+		return fmt.Errorf("a %s filesystem cannot grow", fs.Type())
 	}
-	return shrinker.Shrink(ctx, t.devpath(ctx), t.mountPoint(), to)
+	// The device below has been enlarged already, so the filesystem is asked
+	// to take up what is there rather than a size of its own.
+	return grower.Grow(ctx, t.devpath(ctx), t.mountPoint())
 }

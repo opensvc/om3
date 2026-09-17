@@ -3065,15 +3065,14 @@ the volume head, or, when the volume has no filesystem, the device it exposes.
 Use "om <path> fs resize" or "om <path> disk resize" to name another resource
 of the volume.
 
-SIZE is the size to reach, as "11g", "11GB" or "12Gi", or the amount to add or
-remove, as "+1g" or "-1g".
+SIZE is the size to reach, as "11g", "11GB" or "12Gi", or the amount to add,
+as "+1g".
 
-A negative amount reads as an option to the command line parser, so write a
-shrink as --size=-1g, or put the amount after a -- separator.
+A resize only grows. Asking for a size the chain already holds is nothing to
+do, which is what lets a resize that stopped part way be asked again.
 
 A chain grows from the bottom up, so the space exists before anything is
-stretched onto it, and shrinks from the top down, so a filesystem gives the
-space back before the device under it is taken away.
+stretched onto it.
 
 Use --dry-run to see the plan without applying it.`,
 		Args: cobra.RangeArgs(0, 1),
@@ -3094,7 +3093,6 @@ Use --dry-run to see the plan without applying it.`,
 	flags.IntVar(&options.Stage, "stage", -1, "grow only this stage of the chain, the others being grown on the nodes and in the order the plan says")
 	flags.BoolVar(&options.SkipHeadStage, "skip-head-stage", false, "leave the stage holding the head alone, it growing where the object is up")
 	_ = flags.MarkHidden("skip-head-stage")
-	flags.BoolVar(&options.GrowOnly, "grow-only", false, "do nothing, instead of refusing, when the size asked for is already held")
 	flags.BoolVar(&options.Force, "force", false, "grow one replica of a replicated object on its own, stranding the space until the others catch up")
 	return cmd
 }
@@ -3407,11 +3405,11 @@ its smallest replica holds: every node first grows the links under the
 replicated one, and only then does the node holding the volume up grow the
 replicated link and the filesystem resting on it.
 
-A resize that fails is final on the instance it failed on. Nothing is retried.
+A resize that fails is final on the instance it failed on. Nothing is retried,
+and asking again is how it is finished: the size already configured is the
+target, and every link that holds it is left alone.
 
-Only a grow is orchestrated. A shrink runs through the chain in the reverse
-order and is not safe to retry, so it is asked of one instance at a time with
-"om <path> instance resize".`,
+A resize only grows.`,
 		Args: cobra.RangeArgs(0, 1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			if options.Size == "" && len(args) > 0 {

@@ -68,14 +68,6 @@ type (
 		Grow(ctx context.Context, dev, mountPoint string) error
 	}
 
-	// Shrinker is implemented by a filesystem that can be made smaller in
-	// place. Most cannot: xfs never shrinks, and ext only shrinks while it is
-	// unmounted, so a driver asks CanShrink before anything below it moves.
-	Shrinker interface {
-		CanShrink(ctx context.Context, dev, mountPoint string) error
-		Shrink(ctx context.Context, dev, mountPoint string, size int64) error
-	}
-
 	// SelfSizer is implemented by a filesystem that holds its own size rather
 	// than taking the size of a device under it. A tmpfs is told how large to
 	// be, and has nothing below it to enlarge first, so it is resized in one

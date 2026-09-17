@@ -186,7 +186,7 @@ func (e crmError) ExitCode() int { return e.exitCode }
 // when it reaches it. That is how it learns it is done, the number of stages
 // being read from the chain and known only to the node walking it.
 func (t *Manager) crmResizeStage(stage int) error {
-	args := []string{t.path.String(), "instance", "resize", "--stage", strconv.Itoa(stage), "--grow-only"}
+	args := []string{t.path.String(), "instance", "resize", "--stage", strconv.Itoa(stage)}
 	if !t.isResizeLeader() {
 		args = append(args, "--skip-head-stage")
 	}

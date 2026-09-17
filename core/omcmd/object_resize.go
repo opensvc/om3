@@ -93,11 +93,11 @@ func (t *CmdObjectResize) Run(kind string) error {
 	).Do()
 }
 
-// target is the size to reach, and refuses a shrink.
+// target is the size to reach.
 //
-// A shrink is left out of the orchestration deliberately: it is not safe to
-// retry, and its order through the chain is the reverse of a grow, so it is
-// asked of one instance at a time instead.
+// A resize only grows, and the size already configured is the target, so
+// asking for it again finishes a resize that stopped part way and asking for
+// less is refused.
 func (t *CmdObjectResize) target(p naming.Path, change sizeconv.Change) (int64, error) {
 	from, err := t.configuredSize(p)
 	switch {
@@ -117,8 +117,8 @@ func (t *CmdObjectResize) target(p naming.Path, change sizeconv.Change) (int64, 
 	}
 	to := change.Resolve(from)
 	if to < from {
-		return 0, fmt.Errorf("%s is configured to hold %s: an orchestrated resize only grows. Use \"om %s instance resize\" on each node to shrink",
-			p, sizeconv.BSizeCompact(float64(from)), p)
+		return 0, fmt.Errorf("%s is configured to hold %s, and a resize only grows",
+			p, sizeconv.BSizeCompact(float64(from)))
 	}
 	// to == from is not refused: the configuration is the target, and asking
 	// for it again finishes a resize that stopped part way. Every link that
