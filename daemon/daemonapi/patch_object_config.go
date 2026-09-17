@@ -1,6 +1,7 @@
 package daemonapi
 
 import (
+	"errors"
 	"fmt"
 	"net/http"
 	"time"
@@ -65,7 +66,9 @@ func (a *DaemonAPI) PatchObjectConfig(ctx echo.Context, namespace string, kind n
 
 	if _, ok := instanceConfigData[a.localhost]; ok {
 		changed, err := configUpdate(ctx, log, p, deletes, unsets, sets)
-		if err != nil {
+		if errors.Is(err, ErrDenied) {
+			return JSONProblemf(ctx, http.StatusForbidden, "Forbidden", "%s", err)
+		} else if err != nil {
 			return JSONProblemf(ctx, http.StatusInternalServerError, "Update config", "%s", err)
 		}
 		// Answer with the timestamp the configuration now carries, as a
