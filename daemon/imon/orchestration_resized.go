@@ -1,8 +1,6 @@
 package imon
 
 import (
-	"errors"
-
 	"github.com/opensvc/om3/v3/core/instance"
 	"github.com/opensvc/om3/v3/core/provisioned"
 	"github.com/opensvc/om3/v3/core/status"
@@ -100,27 +98,18 @@ func (t *Manager) queueResizeStage(stage int) {
 	_ = runner.Run(t.instConfig.Priority, func() error {
 		t.transitionTo(instance.MonitorStateResizeProgress)
 		next := staged
-		err := t.crmResizeStage(stage)
+		exitCode, err := t.crmResizeStage(stage)
 		switch {
-		case err == nil:
-		case isResizeNoSuchStage(err):
-			next = instance.MonitorStateResizeSuccess
-		default:
+		case err != nil:
 			next = instance.MonitorStateResizeFailure
+		case exitCode == xerrors.ExitCodeResizeNoSuchStage:
+			// There is no stage of that number to run here, which is the
+			// answer that ends the walk.
+			next = instance.MonitorStateResizeSuccess
 		}
 		go t.orchestrateAfterAction(instance.MonitorStateResizeProgress, next)
 		return nil
 	})
-}
-
-// isResizeNoSuchStage says whether a stage failed because there is no such
-// stage to run here, which is the answer that ends the walk.
-func isResizeNoSuchStage(err error) bool {
-	type exitCoder interface {
-		ExitCode() int
-	}
-	var e exitCoder
-	return errors.As(err, &e) && e.ExitCode() == xerrors.ExitCodeResizeNoSuchStage
 }
 
 // resizedEnd ends the orchestration on this instance, leaving the state to
