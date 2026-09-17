@@ -14,10 +14,14 @@ import (
 type (
 	CmdObjectInstanceResize struct {
 		OptsGlobal
-		Size            string
-		DryRun          bool
+		Size     string
+		DryRun   bool
+		Stage    int
+		GrowOnly bool
+		// BelowReplicated is the resize orchestration asking for what every
+		// node grows before the barrier. It goes away when the orchestration
+		// asks for a stage by number.
 		BelowReplicated bool
-		GrowOnly        bool
 		Force           bool
 	}
 
@@ -26,6 +30,8 @@ type (
 		HeadRID(context.Context) (string, error)
 		ResizePlan(context.Context, string, sizeconv.Change, object.ResizeOptions) (object.ResizePlan, error)
 		Resize(context.Context, string, sizeconv.Change, object.ResizeOptions) error
+		ResizePlanStage(context.Context, string, int64, int, object.ResizeOptions) (object.ResizePlan, error)
+		ResizeStage(context.Context, string, int64, int, object.ResizeOptions) error
 		ResizePlanBelowReplicated(context.Context, int64, object.ResizeOptions) (object.ResizePlan, error)
 		ResizeBelowReplicated(context.Context, int64, object.ResizeOptions) error
 	}
@@ -72,9 +78,10 @@ func (t *CmdObjectInstanceResize) one(p naming.Path) error {
 	}
 
 	if t.BelowReplicated {
+		// The resize orchestration asking for what every node grows before
+		// the barrier. It does not name the head, because a node that does
+		// not hold the object up cannot read it.
 		if change.IsRelative {
-			// Resolving one needs the head, and a node that does not hold the
-			// object up cannot read it: that is why this phase exists.
 			return fmt.Errorf("--below-replicated needs a size to reach, not an amount to add or remove")
 		}
 		plan, err := i.ResizePlanBelowReplicated(ctx, change.Value, opts)
@@ -82,8 +89,7 @@ func (t *CmdObjectInstanceResize) one(p naming.Path) error {
 			return err
 		}
 		if t.DryRun {
-			fmt.Println(plan.String())
-			return nil
+			return printResizePlan(plan, t.Output, t.Sort, t.Color)
 		}
 		return i.ResizeBelowReplicated(ctx, change.Value, opts)
 	}
@@ -92,13 +98,28 @@ func (t *CmdObjectInstanceResize) one(p naming.Path) error {
 	if err != nil {
 		return err
 	}
+
+	if t.Stage >= 0 {
+		if change.IsRelative {
+			// Resolving one needs the head, and a node running an early stage
+			// may not hold the object up, so it cannot read it.
+			return fmt.Errorf("--stage needs a size to reach, not an amount to add or remove")
+		}
+		plan, err := i.ResizePlanStage(ctx, rid, change.Value, t.Stage, opts)
+		if err != nil {
+			return err
+		}
+		if t.DryRun {
+			return printResizePlan(plan, t.Output, t.Sort, t.Color)
+		}
+		return i.ResizeStage(ctx, rid, change.Value, t.Stage, opts)
+	}
 	plan, err := i.ResizePlan(ctx, rid, change, opts)
 	if err != nil {
 		return err
 	}
 	if t.DryRun {
-		fmt.Println(plan.String())
-		return nil
+		return printResizePlan(plan, t.Output, t.Sort, t.Color)
 	}
 	return i.Resize(ctx, rid, change, opts)
 }

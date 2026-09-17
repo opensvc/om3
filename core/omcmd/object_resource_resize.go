@@ -62,8 +62,7 @@ func (t *CmdObjectResourceResize) one(p naming.Path, change sizeconv.Change) err
 		return err
 	}
 	if t.DryRun {
-		fmt.Println(plan.String())
-		return nil
+		return printResizePlan(plan, t.Output, t.Sort, t.Color)
 	}
 	return i.Resize(ctx, t.RID, change, object.ResizeOptions{Force: t.Force})
 }
