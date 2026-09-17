@@ -290,3 +290,48 @@ func TestWhichValuesNameTheKeywordHoldingTheirSize(t *testing.T) {
 		})
 	}
 }
+
+// spanningLink is a filesystem: it is grown onto the device under it rather
+// than to a size of its own, and it reports that device as its size.
+type spanningLink struct {
+	fakeLink
+}
+
+func (t *spanningLink) ResizeSpansBelow() bool { return true }
+
+func TestAFilesystemIsGrownWheneverSomethingBelowIt(t *testing.T) {
+	// The device under it already holds the size asked for, because a chain
+	// grows from the bottom up, so comparing sizes says there is nothing to
+	// do of a filesystem that has not been grown at all.
+	head := &spanningLink{fakeLink{rid: "fs#1", has: 10 * 1024 * 1024}}
+	below := &fakeLink{rid: "disk#1", has: 5 * 1024 * 1024}
+	p := plan(t, []resource.Driver{head, below}, "10m")
+
+	require.Equal(t, []string{"disk#1", "fs#1"}, rids(p))
+	assert.False(t, p.Steps[0].Skip, "the device grows")
+	assert.False(t, p.Steps[1].Skip, "the filesystem is grown onto it")
+}
+
+func TestAFilesystemIsGrownOntoADeviceGrownByHand(t *testing.T) {
+	// Nothing below has anything to do, and the filesystem reports the device
+	// it is counted as, so no size says it is short of it. Asking it to take
+	// up its device is what repairs that, and changes nothing when it already
+	// does.
+	head := &spanningLink{fakeLink{rid: "fs#1", has: 10 * 1024 * 1024}}
+	below := &fakeLink{rid: "disk#1", has: 10 * 1024 * 1024}
+	p := plan(t, []resource.Driver{head, below}, "10m")
+
+	require.Equal(t, []string{"disk#1", "fs#1"}, rids(p))
+	assert.True(t, p.Steps[0].Skip, "the device holds what is asked of it")
+	assert.False(t, p.Steps[1].Skip, "the filesystem is asked to span it")
+}
+
+func TestALinkThatDoesNotSpanBelowIsStillSkipped(t *testing.T) {
+	head := &fakeLink{rid: "disk#2", has: 10 * 1024 * 1024}
+	below := &fakeLink{rid: "disk#1", has: 10 * 1024 * 1024}
+	p := plan(t, []resource.Driver{head, below}, "10m")
+
+	assert.True(t, p.Steps[0].Skip)
+	assert.True(t, p.Steps[1].Skip)
+	assert.False(t, p.HasWork())
+}
