@@ -37,6 +37,10 @@ func configUpdate(ctx echo.Context, log *plog.Logger, p naming.Path, deletes []s
 		log.Tracef("configuration validation has errors for object %s:\n%s", p, errs)
 		return false, fmt.Errorf("configuration validation has errors for object %s:\n%s", p, errs)
 	}
+	if err := refuseClaimOverrun(ctx.Request().Context(), p, oc.Config()); err != nil {
+		log.Tracef("claim check for object %s: %s", p, err)
+		return false, err
+	}
 	changed := oc.Config().Changed()
 	if err := oc.Config().CommitInvalid(); err != nil {
 		log.Errorf("configuration commit is invalid for object %s: %s", p, err)

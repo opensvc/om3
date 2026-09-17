@@ -15,7 +15,6 @@ import (
 	"github.com/opensvc/om3/v3/core/keyop"
 	"github.com/opensvc/om3/v3/core/naming"
 	"github.com/opensvc/om3/v3/core/object"
-	"github.com/opensvc/om3/v3/core/pool"
 	"github.com/opensvc/om3/v3/daemon/api"
 	"github.com/opensvc/om3/v3/daemon/msgbus"
 	"github.com/opensvc/om3/v3/util/file"
@@ -28,11 +27,12 @@ import (
 // The size asked for is written to the object configuration, which is the size
 // every node converges to, and only then is the orchestration queued. Both
 // happen here rather than in the client: the configuration is on the cluster
-// nodes, and the claim the namespace has on the pool is the cluster's to
-// enforce, so a client is not the one to decide the grow fits.
+// nodes, and writing it is what takes the namespace's claim on the pool, which
+// is the cluster's to ration.
 //
 // A request naming no size asks for the size already configured, which is how
-// a resize that stopped part way is finished.
+// a resize that stopped part way is finished. It writes nothing, so it takes
+// no more of the pool than the configuration already promised.
 func (a *DaemonAPI) PostObjectActionResize(eCtx echo.Context, namespace string, kind naming.Kind, name string, params api.PostObjectActionResizeParams) error {
 	if v, err := assertAdmin(eCtx, namespace); !v {
 		return err
@@ -101,15 +101,12 @@ func writeResizeTarget(eCtx echo.Context, p naming.Path, size string) (time.Time
 	if err != nil {
 		return updatedAt, code, err
 	}
-	if code, err := resizeClaimFits(eCtx.Request().Context(), p, to); err != nil {
-		return updatedAt, code, err
-	}
 	sets := keyop.ParseOps([]string{fmt.Sprintf("size=%d", to)})
 	if err := refuseSizeWhileResizing(p, sets); err != nil {
 		return updatedAt, http.StatusConflict, err
 	}
 	log := naming.LogWithPath(LogHandler(eCtx, "postObjectActionResize"), p)
-	if _, err := configUpdate(eCtx, log, p, nil, nil, sets); errors.Is(err, ErrDenied) {
+	if _, err := configUpdate(eCtx, log, p, nil, nil, sets); errors.Is(err, ErrDenied) || errors.Is(err, ErrClaimOverrun) {
 		return updatedAt, http.StatusForbidden, err
 	} else if err != nil {
 		return updatedAt, http.StatusInternalServerError, err
@@ -145,43 +142,6 @@ func resizeTarget(p naming.Path, change sizeconv.Change) (int64, int, error) {
 	// holds it already is skipped, so an object that reached it has nothing
 	// to do.
 	return to, http.StatusOK, nil
-}
-
-// resizeClaimFits refuses a grow the namespace has no room for in the pool
-// serving the object. An object served by no pool is claimed from nothing and
-// capped by nothing.
-//
-// Growing is claiming more of the pool, so it is checked the way an allocation
-// is. What the object already holds is counted in, so only what it asks for on
-// top has to fit.
-func resizeClaimFits(ctx context.Context, p naming.Path, to int64) (int, error) {
-	type poolNamer interface {
-		PoolName() (string, error)
-	}
-	o, err := object.New(p, object.WithVolatile(true))
-	if err != nil {
-		return http.StatusInternalServerError, err
-	}
-	i, ok := o.(poolNamer)
-	if !ok {
-		return http.StatusOK, nil
-	}
-	poolName, err := i.PoolName()
-	if err != nil || poolName == "" {
-		return http.StatusOK, nil
-	}
-	from, err := configuredSize(p)
-	if err != nil || to <= from {
-		return http.StatusOK, nil
-	}
-	ok, why, err := pool.ClaimFits(ctx, p.Namespace, poolName, to-from)
-	if err != nil {
-		return http.StatusInternalServerError, err
-	}
-	if !ok {
-		return http.StatusForbidden, fmt.Errorf("%s is served by the %s pool, and %s", p, poolName, why)
-	}
-	return http.StatusOK, nil
 }
 
 // configuredSize is the size the object is asked to be.
