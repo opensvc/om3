@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/opensvc/om3/v3/core/datarecv"
+	"github.com/opensvc/om3/v3/core/provisioned"
 	"github.com/opensvc/om3/v3/core/rawconfig"
 	"github.com/opensvc/om3/v3/core/resource"
 	"github.com/opensvc/om3/v3/core/status"
@@ -91,6 +92,11 @@ type (
 // New creates a new SGCP NFS filesystem resource driver
 func New() resource.Driver {
 	return &T{}
+}
+
+// Provisioned returns NotApplicable: this driver has nothing to provision.
+func (t *T) Provisioned(ctx context.Context) (provisioned.T, error) {
+	return provisioned.NotApplicable, nil
 }
 
 // Configure sets up the resource
