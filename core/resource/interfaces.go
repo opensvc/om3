@@ -167,7 +167,7 @@ type (
 
 	// Sizer is implemented by a resource driver that knows how much space it
 	// holds. It is what a relative resize resolves against, and what decides
-	// whether a resize grows or shrinks.
+	// how much a resize has to grow it.
 	//
 	// It is not called Size because a driver whose size is configurable holds
 	// that keyword in a Size field, and the two are not the same thing: one
@@ -244,7 +244,8 @@ type (
 	// below it, which is not always the size it was asked for: a raid6 md
 	// holding n devices needs to(n-2) from each of them. It errors to refuse,
 	// naming what it cannot do, so that a chain is refused whole rather than
-	// left half resized - an xfs filesystem cannot shrink at all, and finding
+	// left half resized - an xfs filesystem cannot grow beyond its device,
+	// and finding
 	// that out after the device under it has shrunk is data loss.
 	//
 	// Resize is asked second, of the same links, once every one of them has

@@ -2,7 +2,6 @@ package object
 
 import (
 	"context"
-	"fmt"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -28,9 +27,6 @@ type fakeLink struct {
 	// byte it is asked for: a raid6 of n devices asks each of them for
 	// to/(n-2), which is needBelow = n-2.
 	divideBy int64
-
-	// refuseShrink is the xfs case: it can grow and never shrink.
-	refuseShrink bool
 }
 
 func (t *fakeLink) RID() string           { return t.rid }
@@ -39,9 +35,6 @@ func (t *fakeLink) Manifest() *manifest.T { return nil }
 func (t *fakeLink) CurrentSize(_ context.Context) (int64, error) { return t.has, nil }
 
 func (t *fakeLink) ResizePlan(_ context.Context, to int64) (int64, error) {
-	if t.refuseShrink && to < t.has {
-		return 0, fmt.Errorf("a %s cannot shrink", t.rid)
-	}
 	if t.divideBy > 1 {
 		return to / t.divideBy, nil
 	}
@@ -107,24 +100,22 @@ func TestAGrowIsAppliedFromTheBottomUp(t *testing.T) {
 		&fakeLink{rid: "disk#1", has: 10 * g},
 	}
 	p := plan(t, chain, "+1g")
-	assert.False(t, p.IsShrink)
 	assert.Equal(t, []string{"disk#1", "fs#1"}, rids(p))
 	for _, step := range p.Steps {
 		assert.Equal(t, int64(11*g), step.To)
 	}
 }
 
-// A chain shrinks from the top down: a filesystem gives the space back before
-// the device under it is taken away, or what is mounted is larger than what
-// holds it.
-func TestAShrinkIsAppliedFromTheTopDown(t *testing.T) {
+// A resize only grows, so asking for less is nothing to do rather than a
+// chain unwound from the top down.
+func TestAskingForLessIsNothingToDo(t *testing.T) {
 	chain := []resource.Driver{
 		&fakeLink{rid: "fs#1", has: 10 * g},
 		&fakeLink{rid: "disk#1", has: 10 * g},
 	}
 	p := plan(t, chain, "-1g")
-	assert.True(t, p.IsShrink)
-	assert.Equal(t, []string{"fs#1", "disk#1"}, rids(p))
+	assert.Empty(t, p.Steps)
+	assert.False(t, p.HasWork())
 }
 
 // A link asks the link below for the size it needs, which is not always the
@@ -164,21 +155,6 @@ func TestAChainWithALinkThatCannotResizeIsRefused(t *testing.T) {
 	assert.Contains(t, err.Error(), "disk#vg")
 	assert.Contains(t, err.Error(), "cannot resize")
 	assert.Contains(t, err.Error(), "fs#1")
-}
-
-// A filesystem that cannot shrink says so while planning, before the device
-// under it has moved. Finding it out afterwards is data loss.
-func TestAShrinkIsRefusedBeforeAnythingMoves(t *testing.T) {
-	chain := []resource.Driver{
-		&fakeLink{rid: "fs#1", has: 10 * g, refuseShrink: true},
-		&fakeLink{rid: "disk#1", has: 10 * g},
-	}
-	change, err := sizeconv.ParseChange("-1g")
-	require.NoError(t, err)
-	_, err = buildResizePlan(context.Background(), links(chain...), change, naming.Path{}, ResizeOptions{})
-	require.Error(t, err)
-	assert.Contains(t, err.Error(), "fs#1")
-	assert.Contains(t, err.Error(), "cannot shrink")
 }
 
 // A size that leaves nothing is refused rather than applied.
@@ -223,7 +199,6 @@ func TestAFanOutGrowsEveryMemberBeforeWhatRestsOnThem(t *testing.T) {
 	require.NoError(t, err)
 	p, err := buildResizePlan(context.Background(), chain, change, naming.Path{}, ResizeOptions{})
 	require.NoError(t, err)
-	assert.False(t, p.IsShrink)
 
 	// every member first, the array last
 	assert.Equal(t, []string{"disk#1", "disk#2", "disk#3", "disk#4", "disk#5"}, rids(p))

@@ -51,14 +51,10 @@ type (
 
 	// ResizePlan is what a resize would do, in the order it would do it.
 	ResizePlan struct {
-		// Steps are ordered as they would be applied: a grow works up from
-		// the device to the filesystem, a shrink works down from the
-		// filesystem to the device.
+		// Steps are ordered as they would be applied, which is up from the
+		// device to the filesystem: the space has to exist before anything
+		// is stretched onto it.
 		Steps []ResizeStep `json:"steps"`
-
-		// IsShrink says the chain is being made smaller, which is the
-		// direction that destroys data when it is applied in the wrong order.
-		IsShrink bool `json:"is_shrink"`
 
 		// Stages is how many stages the chain is grown in, which is one more
 		// than the number of replicated resources it crosses. Every node has
@@ -74,12 +70,6 @@ type (
 		// does not hold it up asks for the stages below it and is told there
 		// is no stage of that number to run here when it reaches the last.
 		SkipHeadStage bool
-
-		// GrowOnly makes a resize that would shrink do nothing, instead of
-		// doing it or refusing it. It is what an orchestration converging
-		// every node to a size wants: a node already holding more than that
-		// has nothing to do, and saying so is not the same as failing.
-		GrowOnly bool
 
 		// Force allows a resize that would grow one replica of a replicated
 		// object on its own. The orchestration passes it for the phase that
@@ -122,10 +112,6 @@ func (t ResizeStep) String() string {
 }
 
 func (t ResizePlan) String() string {
-	direction := "grow"
-	if t.IsShrink {
-		direction = "shrink"
-	}
 	if len(t.Steps) == 0 {
 		return "nothing to do: the chain has no link to change"
 	}
@@ -133,7 +119,7 @@ func (t ResizePlan) String() string {
 		return "nothing to do: every link already holds the size asked of it"
 	}
 	lines := make([]string, 0, len(t.Steps)+t.Stages+1)
-	lines = append(lines, fmt.Sprintf("%s, in this order:", direction))
+	lines = append(lines, "grow, in this order:")
 	indent := "  "
 	if t.Stages > 1 {
 		indent = "    "
@@ -142,7 +128,7 @@ func (t ResizePlan) String() string {
 	for _, step := range t.Steps {
 		if t.Stages > 1 && step.Stage != stage {
 			stage = step.Stage
-			lines = append(lines, "  "+stageTitle(stage, t.IsShrink))
+			lines = append(lines, "  "+stageTitle(stage))
 		}
 		lines = append(lines, indent+step.String())
 	}
@@ -151,12 +137,9 @@ func (t ResizePlan) String() string {
 
 // stageTitle names a stage and says what separates it from the one before,
 // which is what an operator has to know before running one by hand.
-func stageTitle(stage int, isShrink bool) string {
-	if stage == 0 && !isShrink {
+func stageTitle(stage int) string {
+	if stage == 0 {
 		return "stage 0, on every node:"
-	}
-	if isShrink {
-		return fmt.Sprintf("stage %d, once every node has finished the stage above:", stage)
 	}
 	return fmt.Sprintf("stage %d, once every node has finished stage %d:", stage, stage-1)
 }
@@ -567,10 +550,15 @@ func buildResizePlan(ctx context.Context, chain []resizeLevel, change sizeconv.C
 	if to <= 0 {
 		return plan, fmt.Errorf("%s: %s of %s leaves nothing", resizeLinkName(head, home), change, sizeconv.BSizeCompact(float64(from)))
 	}
-	plan.IsShrink = to < from
-	if plan.IsShrink && opts.GrowOnly {
-		// Already larger than asked for. Saying there is nothing to do is
-		// the answer here, not shrinking it back and not refusing.
+	if to < from {
+		// A resize only grows. Asking for less is nothing to do rather than
+		// an error, which is what makes asking twice harmless: the layers
+		// below round up, so a chain that reached its size holds more than
+		// was asked of it.
+		//
+		// Asking for exactly what is held is not nothing: a chain left uneven
+		// by a resize that stopped part way holds its size at the head and
+		// not below, and asking again is how it is finished.
 		return plan, nil
 	}
 
@@ -616,11 +604,10 @@ func buildResizePlan(ctx context.Context, chain []resizeLevel, change sizeconv.C
 			}
 
 			// A link below only has to be large enough. One that already is
-			// is left alone: shrinking it back would be work nobody asked
-			// for, and it would put a shrink in the middle of a grow, which
-			// has no safe order. This is also what heals a chain left uneven
-			// by a resize that failed part way.
-			if (!plan.IsShrink && linkFrom >= to) || (plan.IsShrink && linkFrom <= to) {
+			// is left alone: taking the space back is work nobody asked for.
+			// This is also what heals a chain left uneven by a resize that
+			// failed part way.
+			if linkFrom >= to {
 				step.Skip = true
 				step.To = linkFrom
 				step.Comment = "already holds what the link above needs"
@@ -634,16 +621,12 @@ func buildResizePlan(ctx context.Context, chain []resizeLevel, change sizeconv.C
 	}
 
 	// A chain grows from the bottom up: the space has to exist before
-	// anything is stretched onto it. It shrinks from the top down: a
-	// filesystem has to give the space back before the device under it is
-	// taken away, or what is still mounted is larger than what holds it.
+	// anything is stretched onto it.
 	//
 	// The levels are what reverses, not the steps: the resources of one level
 	// rest on nothing of each other, so their order among themselves is the
 	// order they were found in either way.
-	if !plan.IsShrink {
-		reverse(levelSteps)
-	}
+	reverse(levelSteps)
 	for _, steps := range levelSteps {
 		plan.Steps = append(plan.Steps, steps...)
 	}
@@ -660,12 +643,6 @@ func buildResizePlan(ctx context.Context, chain []resizeLevel, change sizeconv.C
 // of a filesystem that has not been grown at all. What says otherwise is that
 // something below it grew.
 func unskipSpansBelow(plan *ResizePlan) {
-	if plan.IsShrink {
-		// A shrink runs from the top down, so a filesystem gives its space
-		// back before the device under it is taken away. It is asked for a
-		// size then, and comparing sizes answers.
-		return
-	}
 	grown := false
 	for i := range plan.Steps {
 		if !plan.Steps[i].Skip {

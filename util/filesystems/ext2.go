@@ -36,11 +36,3 @@ func (t Ext2) MKFS(ctx context.Context, s string, args []string) error {
 func (t Ext2) Grow(ctx context.Context, dev, mountPoint string) error {
 	return extGrow(ctx, t.Log(), dev, mountPoint)
 }
-
-func (t Ext2) CanShrink(ctx context.Context, dev, mountPoint string) error {
-	return extCanShrink(ctx, dev, mountPoint)
-}
-
-func (t Ext2) Shrink(ctx context.Context, dev, mountPoint string, size int64) error {
-	return extShrink(ctx, t.Log(), dev, mountPoint, size)
-}
