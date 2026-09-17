@@ -26,12 +26,15 @@ type (
 )
 
 func (t *CmdObjectResize) Run(kind string) error {
-	if t.Size == "" {
-		return fmt.Errorf("a size is required, as an argument or with --size")
-	}
-	change, err := sizeconv.ParseChange(t.Size)
-	if err != nil {
-		return err
+	// No size asked for is the size the object is configured to hold, which
+	// is what every node converges to. Asking for it again is how a resize
+	// that stopped part way is finished.
+	var change sizeconv.Change
+	var err error
+	if t.Size != "" {
+		if change, err = sizeconv.ParseChange(t.Size); err != nil {
+			return err
+		}
 	}
 	mergedSelector := commoncmd.MergeSelector("", t.ObjectSelector, kind, "")
 	c, err := client.New()
@@ -56,6 +59,13 @@ func (t *CmdObjectResize) Run(kind string) error {
 	// allocation is. What the volume already holds is counted in, so only
 	// what it asks for on top has to fit.
 	if err := t.claimFits(p, to); err != nil {
+		return err
+	}
+
+	// The size is written before the orchestration is asked for, so a resize
+	// already running would take this one as its target and reach a size
+	// nobody asked it for, while this one is refused for being second.
+	if err := t.refuseWhileResizing(c, p); err != nil {
 		return err
 	}
 
@@ -93,16 +103,27 @@ func (t *CmdObjectResize) target(p naming.Path, change sizeconv.Change) (int64, 
 	switch {
 	case err != nil && change.IsRelative:
 		return 0, fmt.Errorf("%s: an amount to add or remove is resolved against the configured size: %w", p, err)
+	case err != nil && change.Value == 0:
+		return 0, fmt.Errorf("%s: a size is required, as an argument or with --size: %w", p, err)
 	case err != nil:
 		// Nothing to resolve against and nothing to compare to. The daemons
 		// still refuse what they cannot do.
 		return change.Value, nil
 	}
+	if change.Value == 0 && !change.IsRelative {
+		// Converge to the size already configured, which is how a resize that
+		// stopped part way is finished.
+		return from, nil
+	}
 	to := change.Resolve(from)
-	if to <= from {
+	if to < from {
 		return 0, fmt.Errorf("%s is configured to hold %s: an orchestrated resize only grows. Use \"om %s instance resize\" on each node to shrink",
 			p, sizeconv.BSizeCompact(float64(from)), p)
 	}
+	// to == from is not refused: the configuration is the target, and asking
+	// for it again finishes a resize that stopped part way. Every link that
+	// holds it already is skipped, so an object that reached it has nothing
+	// to do.
 	return to, nil
 }
 
@@ -180,4 +201,30 @@ func (t *CmdObjectResize) setConfiguredSize(c *client.T, p naming.Path, to int64
 		}
 	}
 	return updatedAt, nil
+}
+
+// refuseWhileResizing stops a resize asked of an object already resizing.
+//
+// The configured size is the target every node reads, and it is written
+// before the orchestration is asked for. A resize running at that moment
+// reads the new target as its own, so it grows to a size its own request
+// never named, and this one is then refused for finding an orchestration in
+// progress. The write is what has to be refused, not the request after it.
+func (t *CmdObjectResize) refuseWhileResizing(c *client.T, p naming.Path) error {
+	params := api.GetInstancesParams{}
+	selector := p.String()
+	params.Path = &selector
+	resp, err := c.GetInstancesWithResponse(context.Background(), &params)
+	if err != nil || resp.JSON200 == nil {
+		// The daemon is what runs an orchestration. Where none answers, none
+		// is running.
+		return nil
+	}
+	for _, item := range resp.JSON200.Items {
+		if item.Data.Monitor.GlobalExpect == instance.MonitorGlobalExpectResized {
+			return fmt.Errorf("%s is already resizing, asked of %s: wait for it to end, or abort it with \"om %s abort\"",
+				p, item.Meta.Node, p)
+		}
+	}
+	return nil
 }
