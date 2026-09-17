@@ -95,6 +95,15 @@ func (a *DaemonAPI) PatchObjectConfig(ctx echo.Context, namespace string, kind n
 			return JSONProblemf(ctx, http.StatusInternalServerError, "Request peer", "%s: %s", nodename, err)
 		} else {
 			log.Tracef("request proxy to %s for %s status: %s", nodename, p, resp.Status())
+			// The peer is where the write landed, so the timestamp the
+			// configuration now carries is in its answer and nowhere else.
+			// Dropping it here leaves a caller that reached the cluster
+			// through a node not holding the object with nothing to name what
+			// it just wrote, and so nothing to require of the actions it goes
+			// on to ask of the instances.
+			if v := resp.HTTPResponse.Header.Get(api.HeaderLastModified); v != "" {
+				ctx.Response().Header().Add(api.HeaderLastModified, v)
+			}
 			if len(resp.Body) > 0 {
 				return ctx.JSONBlob(resp.StatusCode(), resp.Body)
 			} else {
