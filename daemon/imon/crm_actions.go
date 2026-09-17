@@ -15,9 +15,11 @@ import (
 	"github.com/opensvc/om3/v3/core/priority"
 	"github.com/opensvc/om3/v3/core/provisioned"
 	"github.com/opensvc/om3/v3/core/status"
+	"github.com/opensvc/om3/v3/core/xerrors"
 	"github.com/opensvc/om3/v3/daemon/msgbus"
 	"github.com/opensvc/om3/v3/daemon/runner"
 	"github.com/opensvc/om3/v3/util/command"
+	"github.com/opensvc/om3/v3/util/funcopt"
 	"github.com/opensvc/om3/v3/util/pubsub"
 	"github.com/opensvc/om3/v3/util/xsession"
 )
@@ -168,29 +170,27 @@ func (t *Manager) crmResourceStart(rids []string) error {
 	return t.crmMaintenanceAction("start", t.path.String(), "instance", "start", "--rid", s)
 }
 
-// crmError carries the exit code of an exec that failed, so a caller telling
-// two failures apart by their code can.
-type crmError struct {
-	exitCode int
-	err      error
-}
-
-func (e crmError) Error() string { return e.err.Error() }
-func (e crmError) Unwrap() error { return e.err }
-func (e crmError) ExitCode() int { return e.exitCode }
-
-// crmResizeStage grows one stage of the chain.
+// crmResizeStage grows one stage of the chain, and answers the exit code it
+// grew it with.
 //
 // A node that does not hold the object up asks for the stages below the one
 // holding the head, and is told there is no stage of that number to run here
 // when it reaches it. That is how it learns it is done, the number of stages
 // being read from the chain and known only to the node walking it.
-func (t *Manager) crmResizeStage(stage int) error {
+//
+// That answer is asked for, so it is not a failure: the exec is not reported
+// failed, and the exit code is not logged as an error. It comes back as the
+// exit code instead, which is what tells it from a stage that grew.
+func (t *Manager) crmResizeStage(stage int) (int, error) {
+	title := fmt.Sprintf("resize stage %d", stage)
 	args := []string{t.path.String(), "instance", "resize", "--stage", strconv.Itoa(stage)}
 	if !t.isResizeLeader() {
 		args = append(args, "--skip-head-stage")
 	}
-	return t.crmAction(fmt.Sprintf("resize stage %d", stage), args...)
+	if testCRMAction != nil {
+		return 0, testCRMAction(title, args...)
+	}
+	return t.crmDefaultAction(t.state.OrchestrationID, title, []int{xerrors.ExitCodeResizeNoSuchStage}, args...)
 }
 
 func (t *Manager) crmShutdown() error {
@@ -241,7 +241,8 @@ func (t *Manager) crmAction(title string, cmdArgs ...string) error {
 	if testCRMAction != nil {
 		return testCRMAction(title, cmdArgs...)
 	}
-	return t.crmDefaultAction(t.state.OrchestrationID, title, cmdArgs...)
+	_, err := t.crmDefaultAction(t.state.OrchestrationID, title, nil, cmdArgs...)
+	return err
 }
 
 // crmMaintenanceAction forks a crm command the monitor decided on by itself,
@@ -258,10 +259,16 @@ func (t *Manager) crmMaintenanceAction(title string, cmdArgs ...string) error {
 	if testCRMAction != nil {
 		return testCRMAction(title, cmdArgs...)
 	}
-	return t.crmDefaultAction(uuid.Nil, title, cmdArgs...)
+	_, err := t.crmDefaultAction(uuid.Nil, title, nil, cmdArgs...)
+	return err
 }
 
-func (t *Manager) crmDefaultAction(orchestration uuid.UUID, title string, cmdArgs ...string) error {
+// crmDefaultAction forks a crm command and answers the exit code it ended on.
+//
+// expectExitCodes are the non-zero exit codes the caller asked the command a
+// question it answers with. They end the exec the way a zero does: reported
+// succeeded, logged as an ordinary end, and answered as the code they are.
+func (t *Manager) crmDefaultAction(orchestration uuid.UUID, title string, expectExitCodes []int, cmdArgs ...string) (int, error) {
 	sessionID := xsession.NewSessionID()
 	execID := xsession.NewExecID()
 	orchestrationID := xsession.NewOrchestrationID(orchestration)
@@ -277,12 +284,16 @@ func (t *Manager) crmDefaultAction(orchestration uuid.UUID, title string, cmdArg
 		cmdEnv = append(cmdEnv, v)
 	}
 
-	cmd := command.New(
+	cmdOptions := []funcopt.O{
 		command.WithName(cmdPath),
 		command.WithArgs(cmdArgs),
 		command.WithLogger(t.log),
 		command.WithVarEnv(cmdEnv...),
-	)
+	}
+	if len(expectExitCodes) > 0 {
+		cmdOptions = append(cmdOptions, command.WithIgnoredExitCodes(append([]int{0}, expectExitCodes...)...))
+	}
+	cmd := command.New(cmdOptions...)
 	labels := append(t.pubLabels, pubsub.Label{"origin", "imon"})
 	if title != "" {
 		t.loggerWithState().Infof("-> exec %s", append([]string{cmdPath}, cmdArgs...))
@@ -317,7 +328,7 @@ func (t *Manager) crmDefaultAction(orchestration uuid.UUID, title string, cmdArg
 			Title:           title,
 		}, labels...)
 		t.loggerWithState().Errorf("exec StartProcess: %s", err)
-		return err
+		return -1, err
 	}
 	pid := cmd.Cmd().Process.Pid
 	proc.Register(proc.T{Pid: pid, ExecID: execID.String()})
@@ -338,7 +349,7 @@ func (t *Manager) crmDefaultAction(orchestration uuid.UUID, title string, cmdArg
 			Title:           title,
 		}, labels...)
 		t.loggerWithState().Errorf("<- exec %s: %s", append([]string{cmdPath}, cmdArgs...), err)
-		return crmError{exitCode: cmd.NormalizedExitCode(), err: err}
+		return cmd.NormalizedExitCode(), err
 	}
 	duration := time.Now().Sub(startTime)
 	t.publisher.Pub(&msgbus.ExecSuccess{
@@ -357,5 +368,5 @@ func (t *Manager) crmDefaultAction(orchestration uuid.UUID, title string, cmdArg
 	} else {
 		t.loggerWithState().Tracef("<- exec %s", append([]string{cmdPath}, cmdArgs...))
 	}
-	return nil
+	return cmd.NormalizedExitCode(), nil
 }
