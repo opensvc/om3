@@ -18,6 +18,7 @@ import (
 	"github.com/rs/zerolog"
 
 	"github.com/opensvc/om3/v3/core/client"
+	"github.com/opensvc/om3/v3/core/provisioned"
 	"github.com/opensvc/om3/v3/core/resource"
 	"github.com/opensvc/om3/v3/core/status"
 	"github.com/opensvc/om3/v3/daemon/api"
@@ -311,6 +312,11 @@ func (t XRDFQueryDG) PairState() string {
 
 func New() resource.Driver {
 	return &T{}
+}
+
+// Provisioned returns NotApplicable: this driver has nothing to provision.
+func (t *T) Provisioned(ctx context.Context) (provisioned.T, error) {
+	return provisioned.NotApplicable, nil
 }
 
 func (t *T) listPD(ctx context.Context) ([]string, error) {
