@@ -179,12 +179,17 @@ var keywordStore = keywords.Store{
 	// They cap the slice every object of the namespace runs under, so they
 	// ration the node between namespaces, and the policy asks for the
 	// squatter grant to set them.
+	//
+	// They name DEFAULT, where the object ones name no section at all: a
+	// resource of an object carries its own cgroup settings, and a namespace
+	// has no resources to carry any.
 	{
 		Attr:     "PG.Cpus",
 		Depends:  keyop.ParseList("create_pg=true"),
 		Example:  "0-2",
 		Inherit:  keywords.InheritLeaf,
 		Kind:     naming.NewKinds(naming.KindNscfg),
+		Section:  "DEFAULT",
 		Option:   "pg_cpus",
 		Scopable: true,
 		Text:     keywords.NewText(fs, "text/kw/core/pg_cpus.nscfg"),
@@ -194,6 +199,7 @@ var keywordStore = keywords.Store{
 		Example:  "0-2",
 		Inherit:  keywords.InheritLeaf,
 		Kind:     naming.NewKinds(naming.KindNscfg),
+		Section:  "DEFAULT",
 		Option:   "pg_mems",
 		Scopable: true,
 		Text:     keywords.NewText(fs, "text/kw/core/pg_mems.nscfg"),
@@ -204,6 +210,7 @@ var keywordStore = keywords.Store{
 		Example:   "512",
 		Inherit:   keywords.InheritLeaf,
 		Kind:      naming.NewKinds(naming.KindNscfg),
+		Section:   "DEFAULT",
 		Option:    "pg_cpu_shares",
 		Scopable:  true,
 		Text:      keywords.NewText(fs, "text/kw/core/pg_cpu_shares.nscfg"),
@@ -213,6 +220,7 @@ var keywordStore = keywords.Store{
 		Example:  "50%@all",
 		Inherit:  keywords.InheritLeaf,
 		Kind:     naming.NewKinds(naming.KindNscfg),
+		Section:  "DEFAULT",
 		Option:   "pg_cpu_quota",
 		Scopable: true,
 		Text:     keywords.NewText(fs, "text/kw/core/pg_cpu_quota.nscfg"),
@@ -222,6 +230,7 @@ var keywordStore = keywords.Store{
 		Example:  "1",
 		Inherit:  keywords.InheritLeaf,
 		Kind:     naming.NewKinds(naming.KindNscfg),
+		Section:  "DEFAULT",
 		Option:   "pg_mem_oom_control",
 		Scopable: true,
 		Text:     keywords.NewText(fs, "text/kw/core/pg_mem_oom_control.nscfg"),
@@ -232,6 +241,7 @@ var keywordStore = keywords.Store{
 		Example:   "512m",
 		Inherit:   keywords.InheritLeaf,
 		Kind:      naming.NewKinds(naming.KindNscfg),
+		Section:   "DEFAULT",
 		Option:    "pg_mem_limit",
 		Scopable:  true,
 		Text:      keywords.NewText(fs, "text/kw/core/pg_mem_limit.nscfg"),
@@ -242,6 +252,7 @@ var keywordStore = keywords.Store{
 		Example:   "1g",
 		Inherit:   keywords.InheritLeaf,
 		Kind:      naming.NewKinds(naming.KindNscfg),
+		Section:   "DEFAULT",
 		Option:    "pg_vmem_limit",
 		Scopable:  true,
 		Text:      keywords.NewText(fs, "text/kw/core/pg_vmem_limit.nscfg"),
@@ -251,6 +262,7 @@ var keywordStore = keywords.Store{
 		Example:  "40",
 		Inherit:  keywords.InheritLeaf,
 		Kind:     naming.NewKinds(naming.KindNscfg),
+		Section:  "DEFAULT",
 		Option:   "pg_mem_swappiness",
 		Scopable: true,
 		Text:     keywords.NewText(fs, "text/kw/core/pg_mem_swappiness.nscfg"),
@@ -260,6 +272,7 @@ var keywordStore = keywords.Store{
 		Example:  "50",
 		Inherit:  keywords.InheritLeaf,
 		Kind:     naming.NewKinds(naming.KindNscfg),
+		Section:  "DEFAULT",
 		Option:   "pg_blkio_weight",
 		Scopable: true,
 		Text:     keywords.NewText(fs, "text/kw/core/pg_blkio_weight.nscfg"),
