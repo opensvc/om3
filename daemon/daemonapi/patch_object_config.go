@@ -70,7 +70,7 @@ func (a *DaemonAPI) PatchObjectConfig(ctx echo.Context, namespace string, kind n
 
 	if _, ok := instanceConfigData[a.localhost]; ok {
 		changed, err := configUpdate(ctx, log, p, deletes, unsets, sets)
-		if errors.Is(err, ErrDenied) {
+		if errors.Is(err, ErrDenied) || errors.Is(err, ErrClaimOverrun) {
 			return JSONProblemf(ctx, http.StatusForbidden, "Forbidden", "%s", err)
 		} else if err != nil {
 			return JSONProblemf(ctx, http.StatusInternalServerError, "Update config", "%s", err)
