@@ -1,0 +1,6 @@
+Whether the Out-Of-Memory killer is triggered when the objects of this
+namespace, taken together, reach their memory limit.
+
+Setting this keyword to `default` puts the capping back where a node that
+never capped anything leaves it. Removing the keyword does not: what was
+written stays written, whether om wrote it or something else did.

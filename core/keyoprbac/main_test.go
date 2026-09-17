@@ -6,6 +6,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
+	"github.com/opensvc/om3/v3/core/naming"
 	"github.com/opensvc/om3/v3/daemon/rbac"
 )
 
@@ -32,28 +33,28 @@ func TestDeniedByDriverGroup(t *testing.T) {
 	// refused until a rule allows it, rather than allowed until someone
 	// remembers to refuse it.
 	for _, section := range []string{"disk#1", "sync#1", "app#1", "share#1", "expose#1", "certificate#1"} {
-		require.Errorf(t, Denied(noGrant, section, "type", "whatever", none), "section %s", section)
-		require.Errorf(t, Denied(noGrant, section, "a_keyword_of_a_driver_added_later", "x", none), "section %s", section)
+		require.Errorf(t, Denied(noGrant, naming.KindSvc, section, "type", "whatever", none), "section %s", section)
+		require.Errorf(t, Denied(noGrant, naming.KindSvc, section, "a_keyword_of_a_driver_added_later", "x", none), "section %s", section)
 	}
-	assert.EqualError(t, Denied(noGrant, "disk#1", "name", "x", none), "this driver group requires the root grant")
+	assert.EqualError(t, Denied(noGrant, naming.KindSvc, "disk#1", "name", "x", none), "this driver group requires the root grant")
 }
 
 func TestAllowedInAGroupWithNoRuleForTheKeyword(t *testing.T) {
 	// A group the policy admits is writable except for the keywords it names.
 	for _, section := range []string{"container#1", "task#1", "volume#1", "fs#1", "DEFAULT", "env", "labels"} {
-		require.NoErrorf(t, Denied(noGrant, section, "a_keyword_with_no_rule", "x", none), "section %s", section)
+		require.NoErrorf(t, Denied(noGrant, naming.KindSvc, section, "a_keyword_with_no_rule", "x", none), "section %s", section)
 	}
 }
 
 func TestDeniedKeywords(t *testing.T) {
 	for _, section := range []string{"container#1", "task#1"} {
 		for _, option := range []string{"run_args", "dns", "dns_search"} {
-			err := Denied(noGrant, section, option, "x", none)
+			err := Denied(noGrant, naming.KindSvc, section, option, "x", none)
 			require.Errorf(t, err, "%s.%s", section, option)
 			assert.EqualError(t, err, "requires the root grant")
 		}
 	}
-	assert.EqualError(t, Denied(noGrant, "DEFAULT", "pre_monitor_action", "/bin/true", none), "requires the root grant")
+	assert.EqualError(t, Denied(noGrant, naming.KindSvc, "DEFAULT", "pre_monitor_action", "/bin/true", none), "requires the root grant")
 }
 
 func TestDeniedByValue(t *testing.T) {
@@ -88,7 +89,7 @@ func TestDeniedByValue(t *testing.T) {
 		{"volume#1", "install", "/etc/nginx.conf source /etc/shadow", true},
 	}
 	for _, tc := range cases {
-		err := Denied(noGrant, tc.section, tc.option, tc.value, none)
+		err := Denied(noGrant, naming.KindSvc, tc.section, tc.option, tc.value, none)
 		if tc.denied {
 			require.Errorf(t, err, "%s.%s=%s must be denied", tc.section, tc.option, tc.value)
 		} else {
@@ -103,7 +104,7 @@ func TestDeniedTriggersOnEveryGroup(t *testing.T) {
 	// admits.
 	for _, section := range []string{"container#1", "task#1", "fs#1", "ip#1", "volume#1", "DEFAULT", "disk#1"} {
 		for _, option := range []string{"pre_start", "post_stop", "blocking_pre_run", "pre_unprovision"} {
-			err := Denied(noGrant, section, option, "/bin/rm -rf /", none)
+			err := Denied(noGrant, naming.KindSvc, section, option, "/bin/rm -rf /", none)
 			require.Errorf(t, err, "%s.%s", section, option)
 			assert.EqualErrorf(t, err, "triggers require the root grant", "%s.%s", section, option)
 		}
@@ -113,103 +114,103 @@ func TestDeniedTriggersOnEveryGroup(t *testing.T) {
 func TestDeniedIgnoresTheIndexAndTheScope(t *testing.T) {
 	// The resource index and the scoping suffix do not change what a keyword
 	// is, so neither is a way around a rule.
-	assert.Error(t, Denied(noGrant, "container#12", "run_args", "x", none))
-	assert.Error(t, Denied(noGrant, "container#a-name", "run_args", "x", none))
-	assert.Error(t, Denied(noGrant, "container#1", "run_args@node1", "x", none))
-	assert.Error(t, Denied(noGrant, "container#1", "dns@fr-par", "x", none))
-	assert.Error(t, Denied(noGrant, "container#1", "type@node1", "kvm", none))
-	assert.NoError(t, Denied(noGrant, "container#1", "type@node1", "docker", none))
+	assert.Error(t, Denied(noGrant, naming.KindSvc, "container#12", "run_args", "x", none))
+	assert.Error(t, Denied(noGrant, naming.KindSvc, "container#a-name", "run_args", "x", none))
+	assert.Error(t, Denied(noGrant, naming.KindSvc, "container#1", "run_args@node1", "x", none))
+	assert.Error(t, Denied(noGrant, naming.KindSvc, "container#1", "dns@fr-par", "x", none))
+	assert.Error(t, Denied(noGrant, naming.KindSvc, "container#1", "type@node1", "kvm", none))
+	assert.NoError(t, Denied(noGrant, naming.KindSvc, "container#1", "type@node1", "docker", none))
 }
 
 func TestDeniedHonorsTheGrantTheRuleNames(t *testing.T) {
 	// A priority weighs the objects of one namespace against those of
 	// another, so it takes a grant of its own rather than root.
-	err := Denied(noGrant, "DEFAULT", "priority", "10", none)
+	err := Denied(noGrant, naming.KindSvc, "DEFAULT", "priority", "10", none)
 	require.Error(t, err)
 	assert.EqualError(t, err, "requires the prioritizer grant")
 
-	assert.NoError(t, Denied(rbac.Grants{rbac.GrantPrioritizer}, "DEFAULT", "priority", "10", none))
-	assert.Error(t, Denied(rbac.Grants{rbac.GrantPrioritizer}, "container#1", "run_args", "x", none),
+	assert.NoError(t, Denied(rbac.Grants{rbac.GrantPrioritizer}, naming.KindSvc, "DEFAULT", "priority", "10", none))
+	assert.Error(t, Denied(rbac.Grants{rbac.GrantPrioritizer}, naming.KindSvc, "container#1", "run_args", "x", none),
 		"the prioritizer grant must not open the keywords asking for root")
 
 	// The api lets a root user through before asking, but the rule says the
 	// same thing on its own.
-	assert.NoError(t, Denied(rbac.Grants{rbac.GrantRoot}, "container#1", "run_args", "x", none))
+	assert.NoError(t, Denied(rbac.Grants{rbac.GrantRoot}, naming.KindSvc, "container#1", "run_args", "x", none))
 }
 
 func TestDocSaysWhatTheRuleEnforces(t *testing.T) {
-	assert.Equal(t, "Requires the root grant.", Doc("container", "run_args"))
-	assert.Equal(t, "Requires the root grant.", Doc("container#1", "dns"))
-	assert.Equal(t, "Requires the root grant, except for the values oci, docker, podman.", Doc("container", "type"))
-	assert.Equal(t, "Requires the root grant, except for the values flag.", Doc("fs", "type"))
-	assert.Equal(t, "Requires the root grant, except for a cni address, and for a netns address om draws from a cluster network.", Doc("ip", "type"))
-	assert.Equal(t, "Requires the root grant.", Doc("ip", "name"))
-	assert.Equal(t, "", Doc("ip", "network"))
-	assert.Equal(t, "Host path mounts in container require the root grant.", Doc("container", "volume_mounts"))
-	assert.Equal(t, "A server-local source uri requires the root grant.", Doc("volume", "install"))
-	assert.Equal(t, "Requires the prioritizer grant.", Doc("DEFAULT", "priority"))
-	assert.Equal(t, "Triggers require the root grant.", Doc("container", "pre_start"))
-	assert.Equal(t, "This driver group requires the root grant.", Doc("disk", "name"))
+	assert.Equal(t, "Requires the root grant.", Doc(naming.KindSvc, "container", "run_args"))
+	assert.Equal(t, "Requires the root grant.", Doc(naming.KindSvc, "container#1", "dns"))
+	assert.Equal(t, "Requires the root grant, except for the values oci, docker, podman.", Doc(naming.KindSvc, "container", "type"))
+	assert.Equal(t, "Requires the root grant, except for the values flag.", Doc(naming.KindSvc, "fs", "type"))
+	assert.Equal(t, "Requires the root grant, except for a cni address, and for a netns address om draws from a cluster network.", Doc(naming.KindSvc, "ip", "type"))
+	assert.Equal(t, "Requires the root grant.", Doc(naming.KindSvc, "ip", "name"))
+	assert.Equal(t, "", Doc(naming.KindSvc, "ip", "network"))
+	assert.Equal(t, "Host path mounts in container require the root grant.", Doc(naming.KindSvc, "container", "volume_mounts"))
+	assert.Equal(t, "A server-local source uri requires the root grant.", Doc(naming.KindSvc, "volume", "install"))
+	assert.Equal(t, "Requires the prioritizer grant.", Doc(naming.KindSvc, "DEFAULT", "priority"))
+	assert.Equal(t, "Triggers require the root grant.", Doc(naming.KindSvc, "container", "pre_start"))
+	assert.Equal(t, "This driver group requires the root grant.", Doc(naming.KindSvc, "disk", "name"))
 
 	// A keyword any user may set says nothing, rather than saying it needs
 	// nothing on every keyword of every driver.
-	assert.Equal(t, "", Doc("container", "image"))
-	assert.Equal(t, "", Doc("env", "anything"))
+	assert.Equal(t, "", Doc(naming.KindSvc, "container", "image"))
+	assert.Equal(t, "", Doc(naming.KindSvc, "env", "anything"))
 }
 
 func TestIPDrawnFromAClusterNetwork(t *testing.T) {
 	// A cni address is the network's to choose, and the driver has no keyword
 	// naming one.
-	assert.NoError(t, Denied(noGrant, "ip#1", "type", "cni", section("network", "netns")))
+	assert.NoError(t, Denied(noGrant, naming.KindSvc, "ip#1", "type", "cni", section("network", "netns")))
 
 	// A netns address is om's to choose when the resource names a network to
 	// draw from and no address of its own.
-	assert.NoError(t, Denied(noGrant, "ip#1", "type", "netns", section("network", "netns")))
-	assert.NoError(t, Denied(noGrant, "ip#1", "type", "netns", section("network")))
+	assert.NoError(t, Denied(noGrant, naming.KindSvc, "ip#1", "type", "netns", section("network", "netns")))
+	assert.NoError(t, Denied(noGrant, naming.KindSvc, "ip#1", "type", "netns", section("network")))
 
 	// Naming the address is what a user holding no root grant may not do,
 	// whether instead of a network or alongside one.
-	assert.Error(t, Denied(noGrant, "ip#1", "type", "netns", section("name")))
-	assert.Error(t, Denied(noGrant, "ip#1", "type", "netns", section("network", "name")))
-	assert.Error(t, Denied(noGrant, "ip#1", "type", "netns", none),
+	assert.Error(t, Denied(noGrant, naming.KindSvc, "ip#1", "type", "netns", section("name")))
+	assert.Error(t, Denied(noGrant, naming.KindSvc, "ip#1", "type", "netns", section("network", "name")))
+	assert.Error(t, Denied(noGrant, naming.KindSvc, "ip#1", "type", "netns", none),
 		"a netns resource drawing from no network has an address of its own")
 
 	// A scope is not a way around it: the section is read as written, so a
 	// name set for a peer node counts here.
-	assert.Error(t, Denied(noGrant, "ip#1", "type", "netns", section("network", "name")))
+	assert.Error(t, Denied(noGrant, naming.KindSvc, "ip#1", "type", "netns", section("network", "name")))
 
 	// Every other ip type addresses a node interface.
 	for _, typ := range []string{"host", "route", "sgcp_dnsalias", "amazon", ""} {
-		assert.Errorf(t, Denied(noGrant, "ip#1", "type", typ, section("network")), "type %s", typ)
+		assert.Errorf(t, Denied(noGrant, naming.KindSvc, "ip#1", "type", typ, section("network")), "type %s", typ)
 	}
 
 	// The keywords naming an address, or the link that carries it, are the
 	// node administrator's whatever the type.
 	for _, option := range []string{"name", "dev", "gateway", "netmask", "macaddr", "mode", "alias", "vlan_tag", "vlan_mode", "del_net_route", "check_carrier"} {
-		assert.Errorf(t, Denied(noGrant, "ip#1", option, "x", section("network")), "option %s", option)
+		assert.Errorf(t, Denied(noGrant, naming.KindSvc, "ip#1", option, "x", section("network")), "option %s", option)
 	}
 
 	// An ip keyword added to a driver later is refused until the policy has
 	// weighed it, as a whole group is.
-	assert.Error(t, Denied(noGrant, "ip#1", "an_ip_keyword_added_later", "x", section("network")))
+	assert.Error(t, Denied(noGrant, naming.KindSvc, "ip#1", "an_ip_keyword_added_later", "x", section("network")))
 
 	// What the object does with the address it was given stays open, which is
 	// every keyword an ip.cni resource needs.
 	for _, option := range []string{"network", "netns", "nsdev", "expose", "dns_name_suffix"} {
-		assert.NoErrorf(t, Denied(noGrant, "ip#1", option, "x", none), "option %s", option)
+		assert.NoErrorf(t, Denied(noGrant, naming.KindSvc, "ip#1", option, "x", none), "option %s", option)
 	}
 }
 
 func TestDeniedWithoutASectionRefuses(t *testing.T) {
 	// A rule about the setup cannot be answered without the section, and a
 	// check that could not run is not a check that passed.
-	assert.Error(t, Denied(noGrant, "ip#1", "type", "netns", nil))
-	assert.Error(t, Denied(noGrant, "ip#1", "type", "cni", nil))
-	assert.Error(t, Denied(noGrant, "container#1", "volume_mounts", "/vol/a:/a", nil))
+	assert.Error(t, Denied(noGrant, naming.KindSvc, "ip#1", "type", "netns", nil))
+	assert.Error(t, Denied(noGrant, naming.KindSvc, "ip#1", "type", "cni", nil))
+	assert.Error(t, Denied(noGrant, naming.KindSvc, "container#1", "volume_mounts", "/vol/a:/a", nil))
 
 	// A rule that reads only the keyword still answers.
-	assert.NoError(t, Denied(noGrant, "container#1", "image", "nginx", nil))
-	assert.Error(t, Denied(noGrant, "container#1", "run_args", "x", nil))
+	assert.NoError(t, Denied(noGrant, naming.KindSvc, "container#1", "image", "nginx", nil))
+	assert.Error(t, Denied(noGrant, naming.KindSvc, "container#1", "run_args", "x", nil))
 }
 
 // TestEveryRuleIsDocumented keeps the table honest: a rule with no reason
@@ -230,11 +231,11 @@ func TestEveryRuleIsDocumented(t *testing.T) {
 			if rule.Grant == "" {
 				// A zero rule is a keyword the group opens on purpose.
 				assert.Emptyf(t, rule.Reason, "%s is open but gives a reason", name)
-				assert.Emptyf(t, Doc(group, option), "%s is open but documents a grant", name)
+				assert.Emptyf(t, Doc(naming.KindSvc, group, option), "%s is open but documents a grant", name)
 				continue
 			}
 			check(name, rule)
-			assert.NotEmptyf(t, Doc(group, option), "%s documents nothing", name)
+			assert.NotEmptyf(t, Doc(naming.KindSvc, group, option), "%s documents nothing", name)
 		}
 	}
 }
@@ -245,10 +246,10 @@ func TestEveryRuleIsDocumented(t *testing.T) {
 // or put it in a subset.
 func TestCommonKeywordsSurviveAGroupDefault(t *testing.T) {
 	for _, option := range []string{"optional", "disable", "monitor", "standby", "shared", "tags", "subset", "restart", "restart_delay", "provision", "start_requires"} {
-		assert.NoErrorf(t, Denied(noGrant, "ip#1", option, "true", section("network")), "option %s", option)
-		assert.Emptyf(t, Doc("ip", option), "option %s", option)
+		assert.NoErrorf(t, Denied(noGrant, naming.KindSvc, "ip#1", option, "true", section("network")), "option %s", option)
+		assert.Emptyf(t, Doc(naming.KindSvc, "ip", option), "option %s", option)
 	}
 
 	// A trigger is a common keyword too, and stays refused everywhere.
-	assert.Error(t, Denied(noGrant, "ip#1", "pre_start", "/bin/true", section("network")))
+	assert.Error(t, Denied(noGrant, naming.KindSvc, "ip#1", "pre_start", "/bin/true", section("network")))
 }

@@ -26,7 +26,7 @@ func rbacOf(t *testing.T, config string) error {
 	require.NoError(t, err)
 	o, err := object.New(p, object.WithConfigData([]byte(config)), object.WithVolatile(true))
 	require.NoError(t, err)
-	return configRbacKeys(rbac.Grants{}, o.(object.Configurer).Config())
+	return configRbacKeys(rbac.Grants{}, p.Kind, o.(object.Configurer).Config())
 }
 
 // TestConfigRbacReadsTheValueTheConfigurationSpells is the regression test of a
