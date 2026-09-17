@@ -1,6 +1,7 @@
 package daemonapi
 
 import (
+	"fmt"
 	"net/http"
 	"time"
 
@@ -51,6 +52,15 @@ func (a *DaemonAPI) PatchObjectConfig(ctx echo.Context, namespace string, kind n
 	}
 	log = naming.LogWithPath(log, p)
 
+	// The size an object is configured to hold is the target a running resize
+	// reads on every node, so changing it while one runs makes that resize
+	// grow to a size its own request never named. The daemon is where the
+	// write and the orchestration meet, so it is where this is caught: the
+	// client cannot, its view of a monitor trailing the request that set it.
+	if err := refuseSizeWhileResizing(p, sets); err != nil {
+		return JSONProblemf(ctx, http.StatusConflict, "Resize in progress", "%s", err)
+	}
+
 	instanceConfigData := instance.ConfigData.GetByPath(p)
 
 	if _, ok := instanceConfigData[a.localhost]; ok {
@@ -88,4 +98,25 @@ func (a *DaemonAPI) PatchObjectConfig(ctx echo.Context, namespace string, kind n
 
 	log.Tracef("can't patch: object not found %s", p)
 	return JSONProblemf(ctx, http.StatusNotFound, "Not found", "object not found: %s", p)
+}
+
+// refuseSizeWhileResizing stops a write of the configured size of an object a
+// resize orchestration is running on.
+func refuseSizeWhileResizing(p naming.Path, sets keyop.L) error {
+	setsSize := false
+	for _, op := range sets {
+		if op.Key.Option == "size" && (op.Key.Section == "" || op.Key.Section == "DEFAULT") {
+			setsSize = true
+			break
+		}
+	}
+	if !setsSize {
+		return nil
+	}
+	for nodename, instMon := range instance.MonitorData.GetByPath(p) {
+		if instMon.GlobalExpect == instance.MonitorGlobalExpectResized {
+			return fmt.Errorf("%s is already resizing, asked of %s: wait for it to end, or abort it with \"om %s abort\"", p, nodename, p)
+		}
+	}
+	return nil
 }
