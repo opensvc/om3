@@ -23,6 +23,8 @@ import (
 	"github.com/opensvc/om3/v3/core/xerrors"
 	"github.com/opensvc/om3/v3/util/file"
 	"github.com/opensvc/om3/v3/util/hostname"
+	"github.com/opensvc/om3/v3/util/key"
+	"github.com/opensvc/om3/v3/util/sizeconv"
 	"github.com/opensvc/om3/v3/util/xsession"
 )
 
@@ -255,6 +257,12 @@ func (t *actor) resourceStatusEval(ctx context.Context, data *instance.Status, m
 			resourceStatus = resource.GetStatus(ctx, r)
 		}
 
+		if msg := t.resizeShortfall(ctx, r); msg != "" {
+			log := resource.NewStatusLog(resourceStatus.Log...)
+			log.Warn("%s", msg)
+			resourceStatus.Log = log.Entries()
+		}
+
 		// If the resource is up but the provisioned flag is unset, set
 		// the provisioned flag.
 		if resourceStatus.IsProvisioned.State == provisioned.False {
@@ -444,4 +452,46 @@ func (t *actor) resourceStatusEvalEncap(ctx context.Context, encapContainer reso
 		Status:   encapInstanceStates.Status,
 	}
 	return &encapInstanceStatus, nil
+}
+
+// resizeShortfall says a resource holds less than the size it is configured
+// to hold, and nothing when it holds it or when the question does not apply.
+//
+// The configured size is the target every node converges to, so a resource
+// short of it is a resize that stopped part way, which no other reading says:
+// a link whose own stage succeeded recorded the size it reached, so its
+// keyword and its size agree, and only the target it was growing towards
+// disagrees.
+//
+// A size that cannot be read says nothing. A stopped resource has no size to
+// compare, and failing to read one is not a reason to warn about it.
+func (t *actor) resizeShortfall(ctx context.Context, r resource.Driver) string {
+	sizer, ok := r.(resource.Sizer)
+	if !ok {
+		return ""
+	}
+	// The size a resource is configured to hold is its own keyword when it
+	// has one, and the size of the object otherwise. A pool serves a volume
+	// with resources whose sizes it decides, and the size the volume was
+	// claimed with is the target the whole chain converges to.
+	k := key.T{Section: r.RID(), Option: "size"}
+	if t.config.Get(k) == "" {
+		// The keyword is declared by the driver whether or not the
+		// configuration sets it, so what is set is read rather than what it
+		// converts to: an unset size converts to zero, not to nothing.
+		k = key.T{Section: "DEFAULT", Option: "size"}
+	}
+	configured := t.config.GetSize(k)
+	if configured == nil || *configured <= 0 {
+		return ""
+	}
+	current, err := sizer.CurrentSize(ctx)
+	if err != nil || current <= 0 {
+		return ""
+	}
+	if current >= *configured {
+		return ""
+	}
+	return fmt.Sprintf("holds %s of the %s it is configured to hold, so a resize has not finished",
+		sizeconv.BSizeCompact(float64(current)), sizeconv.BSizeCompact(float64(*configured)))
 }
