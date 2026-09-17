@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"reflect"
 	"regexp"
 	"slices"
 	"strconv"
@@ -379,7 +380,7 @@ func (t *T) GetStringStrictAs(k key.T, impersonate string) (string, error) {
 	if v, err := t.EvalAs(k, impersonate); err != nil {
 		return "", err
 	} else {
-		return v.(string), nil
+		return EvaluatedString(v), nil
 	}
 }
 
@@ -387,8 +388,40 @@ func (t *T) GetStringStrict(k key.T) (string, error) {
 	if v, err := t.Eval(k); err != nil {
 		return "", err
 	} else {
-		return v.(string), nil
+		return EvaluatedString(v), nil
 	}
+}
+
+// EvaluatedString renders an evaluated keyword value the way the
+// configuration spells it.
+//
+// Evaluating a keyword returns what its converter makes of it, and that is
+// not always a string: a size is an *int64, a duration a *time.Duration, a
+// list a []string. Asking for such a keyword as a string used to assert it
+// was one, so declaring a converter on a keyword any of the many GetString
+// callers happens to read took the process down with it.
+//
+// A list joins on spaces, which is how a configuration writes one: fmt prints
+// it inside brackets, and a value spelled "[a b]" matches neither a list of
+// allowed values nor a shape a rule refuses. A pointer is followed, fmt
+// printing the address rather than what a converter put behind it.
+func EvaluatedString(v any) string {
+	switch o := v.(type) {
+	case nil:
+		return ""
+	case string:
+		return o
+	case []string:
+		return strings.Join(o, " ")
+	}
+	rv := reflect.ValueOf(v)
+	if rv.Kind() == reflect.Pointer {
+		if rv.IsNil() {
+			return ""
+		}
+		return fmt.Sprint(rv.Elem().Interface())
+	}
+	return fmt.Sprint(v)
 }
 
 func (t *T) GetStrings(k key.T) []string {

@@ -50,7 +50,7 @@ func configRbacKeys(grants rbac.Grants, cfg *xconfig.T) error {
 			kop := keyop.T{
 				Key:   k,
 				Op:    keyop.Set,
-				Value: configValue(v),
+				Value: xconfig.EvaluatedString(v),
 				Index: 0,
 			}
 			// Validate this key operation against RBAC rules
@@ -133,23 +133,6 @@ func keyopRbac(grants rbac.Grants, op keyop.T, set keyoprbac.Section) error {
 		return fmt.Errorf("denied: %s: %w", op, err)
 	}
 	return nil
-}
-
-// configValue renders an evaluated keyword value the way the configuration
-// spells it, which is what the policy reads.
-//
-// Evaluating a keyword returns it converted, and a converted list is a
-// []string that fmt prints inside brackets. Handing the policy "[_/etc:/etc]"
-// where the configuration says "_/etc:/etc" gives it a value that matches
-// neither a list of allowed values nor a shape it refuses, so a rule about
-// the value would let through exactly what it exists to stop.
-func configValue(v any) string {
-	switch value := v.(type) {
-	case []string:
-		return strings.Join(value, " ")
-	default:
-		return fmt.Sprint(v)
-	}
 }
 
 // sectionSetter answers whether an option is set in a section, from the keys
