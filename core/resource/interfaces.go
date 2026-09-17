@@ -216,6 +216,19 @@ type (
 		ResizeIsReplicated() bool
 	}
 
+	// ResizeSpansBelow is implemented by a resource grown onto what is under
+	// it rather than to a size of its own. A filesystem is: it is told to
+	// take up the device it sits on, and the size it reports is that device.
+	//
+	// Such a resource cannot be told by its size whether it still has to
+	// grow. A chain grows from the bottom up, so the device under it already
+	// holds the new size by the time it is asked, and comparing the two says
+	// there is nothing to do when the filesystem has not been grown at all.
+	// So it is grown whenever something below it was.
+	ResizeSpansBelow interface {
+		ResizeSpansBelow() bool
+	}
+
 	// SizeInfoKeyer is implemented by a Sizer whose size is not its own, to
 	// name the key it is reported under in the resource info. A fs.directory
 	// reports the size of the filesystem holding it, and calling that "size"

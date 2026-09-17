@@ -628,7 +628,31 @@ func (t *T) CanInstall(ctx context.Context) (bool, error) {
 // would be skipped as already done. A filesystem short of its device is the
 // case this has to be able to see.
 func (t *T) CurrentSize(ctx context.Context) (int64, error) {
-	return t.usableSize(ctx)
+	if _, ok := t.fs().(filesystems.SelfSizer); ok {
+		// A filesystem holding its own size, a tmpfs, has no device to
+		// measure, and what it hands out is what it was given.
+		return t.usableSize(ctx)
+	}
+	dev := t.devpath(ctx)
+	if dev == "" {
+		return t.usableSize(ctx)
+	}
+	// The mount is checked first. A filesystem is the size of the device it
+	// was given, but an unmounted resource is not holding that device, and
+	// saying it is would resolve a relative resize against a size nothing
+	// here has.
+	if _, err := t.usableSize(ctx); err != nil {
+		return 0, err
+	}
+	return device.New(dev).Size()
+}
+
+// ResizeSpansBelow implements resource.ResizeSpansBelow. A filesystem is
+// grown onto the device under it, not to a size of its own: Grow is told the
+// device and the mount point, and nothing else.
+func (t *T) ResizeSpansBelow() bool {
+	_, ok := t.fs().(filesystems.SelfSizer)
+	return !ok
 }
 
 // usableSize is what the filesystem hands out, which is less than the device

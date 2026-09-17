@@ -647,7 +647,47 @@ func buildResizePlan(ctx context.Context, chain []resizeLevel, change sizeconv.C
 	for _, steps := range levelSteps {
 		plan.Steps = append(plan.Steps, steps...)
 	}
+	unskipSpansBelow(&plan)
 	return plan, nil
+}
+
+// unskipSpansBelow puts back the steps that were skipped for holding the size
+// asked of them, but are grown onto what is below them rather than to a size.
+//
+// A filesystem is the size of its device, and a chain grows from the bottom
+// up, so by the time the filesystem is reached the device already holds the
+// new size and the two are equal. Comparing them says there is nothing to do,
+// of a filesystem that has not been grown at all. What says otherwise is that
+// something below it grew.
+func unskipSpansBelow(plan *ResizePlan) {
+	if plan.IsShrink {
+		// A shrink runs from the top down, so a filesystem gives its space
+		// back before the device under it is taken away. It is asked for a
+		// size then, and comparing sizes answers.
+		return
+	}
+	grown := false
+	for i := range plan.Steps {
+		if !plan.Steps[i].Skip {
+			grown = true
+			continue
+		}
+		spanner, ok := plan.Steps[i].r.(resource.ResizeSpansBelow)
+		if !ok || !spanner.ResizeSpansBelow() {
+			continue
+		}
+		// The last step of a grow is the resource the resize was asked of.
+		// Asking it to take up its device is what repairs a device grown by
+		// hand and left with a filesystem short of it, which no size here can
+		// report: the filesystem is counted as the device either way. Growing
+		// one that already spans its device changes nothing.
+		if !grown && i != len(plan.Steps)-1 {
+			continue
+		}
+		plan.Steps[i].Skip = false
+		plan.Steps[i].To = plan.Steps[i].From
+		plan.Steps[i].Comment = "grown onto what is below it"
+	}
 }
 
 // Resize changes the size of rid and of everything it rests on.
