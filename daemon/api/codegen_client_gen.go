@@ -133,6 +133,11 @@ type ClientInterface interface {
 
 	PostClusterEnroll(ctx context.Context, body PostClusterEnrollJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
 
+	// PostClusterEvictWithBody request with any body
+	PostClusterEvictWithBody(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	PostClusterEvict(ctx context.Context, body PostClusterEvictJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+
 	// PostClusterHeartbeatRotate request
 	PostClusterHeartbeatRotate(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error)
 
@@ -228,6 +233,11 @@ type ClientInterface interface {
 	PostDaemonJoinWithBody(ctx context.Context, nodename InPathNodeName, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	PostDaemonJoin(ctx context.Context, nodename InPathNodeName, body PostDaemonJoinJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// PostDaemonLeaveWithBody request with any body
+	PostDaemonLeaveWithBody(ctx context.Context, nodename InPathNodeName, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	PostDaemonLeave(ctx context.Context, nodename InPathNodeName, body PostDaemonLeaveJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// PostDaemonRestart request
 	PostDaemonRestart(ctx context.Context, nodename InPathNodeName, reqEditors ...RequestEditorFn) (*http.Response, error)
@@ -761,6 +771,30 @@ func (c *Client) PostClusterEnroll(ctx context.Context, body PostClusterEnrollJS
 	return c.Client.Do(req)
 }
 
+func (c *Client) PostClusterEvictWithBody(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewPostClusterEvictRequestWithBody(c.Server, contentType, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+func (c *Client) PostClusterEvict(ctx context.Context, body PostClusterEvictJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewPostClusterEvictRequest(c.Server, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
 func (c *Client) PostClusterHeartbeatRotate(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error) {
 	req, err := NewPostClusterHeartbeatRotateRequest(c.Server)
 	if err != nil {
@@ -1147,6 +1181,30 @@ func (c *Client) PostDaemonJoinWithBody(ctx context.Context, nodename InPathNode
 
 func (c *Client) PostDaemonJoin(ctx context.Context, nodename InPathNodeName, body PostDaemonJoinJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
 	req, err := NewPostDaemonJoinRequest(c.Server, nodename, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+func (c *Client) PostDaemonLeaveWithBody(ctx context.Context, nodename InPathNodeName, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewPostDaemonLeaveRequestWithBody(c.Server, nodename, contentType, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+func (c *Client) PostDaemonLeave(ctx context.Context, nodename InPathNodeName, body PostDaemonLeaveJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewPostDaemonLeaveRequest(c.Server, nodename, body)
 	if err != nil {
 		return nil, err
 	}
@@ -3296,6 +3354,46 @@ func NewPostClusterEnrollRequestWithBody(server string, contentType string, body
 	return req, nil
 }
 
+// NewPostClusterEvictRequest calls the generic PostClusterEvict builder with application/json body
+func NewPostClusterEvictRequest(server string, body PostClusterEvictJSONRequestBody) (*http.Request, error) {
+	var bodyReader io.Reader
+	buf, err := json.Marshal(body)
+	if err != nil {
+		return nil, err
+	}
+	bodyReader = bytes.NewReader(buf)
+	return NewPostClusterEvictRequestWithBody(server, "application/json", bodyReader)
+}
+
+// NewPostClusterEvictRequestWithBody generates requests for PostClusterEvict with any type of body
+func NewPostClusterEvictRequestWithBody(server string, contentType string, body io.Reader) (*http.Request, error) {
+	var err error
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/api/cluster/evict")
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodPost, queryURL.String(), body)
+	if err != nil {
+		return nil, err
+	}
+
+	req.Header.Add("Content-Type", contentType)
+
+	return req, nil
+}
+
 // NewPostClusterHeartbeatRotateRequest generates requests for PostClusterHeartbeatRotate
 func NewPostClusterHeartbeatRotateRequest(server string) (*http.Request, error) {
 	var err error
@@ -4979,6 +5077,53 @@ func NewPostDaemonJoinRequestWithBody(server string, nodename InPathNodeName, co
 	}
 
 	operationPath := fmt.Sprintf("/api/node/name/%s/daemon/action/join", pathParam0)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodPost, queryURL.String(), body)
+	if err != nil {
+		return nil, err
+	}
+
+	req.Header.Add("Content-Type", contentType)
+
+	return req, nil
+}
+
+// NewPostDaemonLeaveRequest calls the generic PostDaemonLeave builder with application/json body
+func NewPostDaemonLeaveRequest(server string, nodename InPathNodeName, body PostDaemonLeaveJSONRequestBody) (*http.Request, error) {
+	var bodyReader io.Reader
+	buf, err := json.Marshal(body)
+	if err != nil {
+		return nil, err
+	}
+	bodyReader = bytes.NewReader(buf)
+	return NewPostDaemonLeaveRequestWithBody(server, nodename, "application/json", bodyReader)
+}
+
+// NewPostDaemonLeaveRequestWithBody generates requests for PostDaemonLeave with any type of body
+func NewPostDaemonLeaveRequestWithBody(server string, nodename InPathNodeName, contentType string, body io.Reader) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "nodename", nodename, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/api/node/name/%s/daemon/action/leave", pathParam0)
 	if operationPath[0] == '/' {
 		operationPath = "." + operationPath
 	}
@@ -13536,6 +13681,11 @@ type ClientWithResponsesInterface interface {
 
 	PostClusterEnrollWithResponse(ctx context.Context, body PostClusterEnrollJSONRequestBody, reqEditors ...RequestEditorFn) (*PostClusterEnrollResponse, error)
 
+	// PostClusterEvictWithBodyWithResponse request with any body
+	PostClusterEvictWithBodyWithResponse(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*PostClusterEvictResponse, error)
+
+	PostClusterEvictWithResponse(ctx context.Context, body PostClusterEvictJSONRequestBody, reqEditors ...RequestEditorFn) (*PostClusterEvictResponse, error)
+
 	// PostClusterHeartbeatRotateWithResponse request
 	PostClusterHeartbeatRotateWithResponse(ctx context.Context, reqEditors ...RequestEditorFn) (*PostClusterHeartbeatRotateResponse, error)
 
@@ -13631,6 +13781,11 @@ type ClientWithResponsesInterface interface {
 	PostDaemonJoinWithBodyWithResponse(ctx context.Context, nodename InPathNodeName, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*PostDaemonJoinResponse, error)
 
 	PostDaemonJoinWithResponse(ctx context.Context, nodename InPathNodeName, body PostDaemonJoinJSONRequestBody, reqEditors ...RequestEditorFn) (*PostDaemonJoinResponse, error)
+
+	// PostDaemonLeaveWithBodyWithResponse request with any body
+	PostDaemonLeaveWithBodyWithResponse(ctx context.Context, nodename InPathNodeName, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*PostDaemonLeaveResponse, error)
+
+	PostDaemonLeaveWithResponse(ctx context.Context, nodename InPathNodeName, body PostDaemonLeaveJSONRequestBody, reqEditors ...RequestEditorFn) (*PostDaemonLeaveResponse, error)
 
 	// PostDaemonRestartWithResponse request
 	PostDaemonRestartWithResponse(ctx context.Context, nodename InPathNodeName, reqEditors ...RequestEditorFn) (*PostDaemonRestartResponse, error)
@@ -14458,6 +14613,42 @@ func (r PostClusterEnrollResponse) StatusCode() int {
 
 // ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
 func (r PostClusterEnrollResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+type PostClusterEvictResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	JSON200      *N200
+	JSON400      *N400
+	JSON401      *N401
+	JSON403      *N403
+	JSON409      *N409
+	JSON500      *N500
+	JSON502      *N502
+}
+
+// Status returns HTTPResponse.Status
+func (r PostClusterEvictResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r PostClusterEvictResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r PostClusterEvictResponse) ContentType() string {
 	if r.HTTPResponse != nil {
 		return r.HTTPResponse.Header.Get("Content-Type")
 	}
@@ -15467,6 +15658,41 @@ func (r PostDaemonJoinResponse) StatusCode() int {
 
 // ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
 func (r PostDaemonJoinResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+type PostDaemonLeaveResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	JSON200      *N200
+	JSON400      *N400
+	JSON401      *N401
+	JSON403      *N403
+	JSON409      *N409
+	JSON500      *N500
+}
+
+// Status returns HTTPResponse.Status
+func (r PostDaemonLeaveResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r PostDaemonLeaveResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r PostDaemonLeaveResponse) ContentType() string {
 	if r.HTTPResponse != nil {
 		return r.HTTPResponse.Header.Get("Content-Type")
 	}
@@ -19462,6 +19688,23 @@ func (c *ClientWithResponses) PostClusterEnrollWithResponse(ctx context.Context,
 	return ParsePostClusterEnrollResponse(rsp)
 }
 
+// PostClusterEvictWithBodyWithResponse request with arbitrary body returning *PostClusterEvictResponse
+func (c *ClientWithResponses) PostClusterEvictWithBodyWithResponse(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*PostClusterEvictResponse, error) {
+	rsp, err := c.PostClusterEvictWithBody(ctx, contentType, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParsePostClusterEvictResponse(rsp)
+}
+
+func (c *ClientWithResponses) PostClusterEvictWithResponse(ctx context.Context, body PostClusterEvictJSONRequestBody, reqEditors ...RequestEditorFn) (*PostClusterEvictResponse, error) {
+	rsp, err := c.PostClusterEvict(ctx, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParsePostClusterEvictResponse(rsp)
+}
+
 // PostClusterHeartbeatRotateWithResponse request returning *PostClusterHeartbeatRotateResponse
 func (c *ClientWithResponses) PostClusterHeartbeatRotateWithResponse(ctx context.Context, reqEditors ...RequestEditorFn) (*PostClusterHeartbeatRotateResponse, error) {
 	rsp, err := c.PostClusterHeartbeatRotate(ctx, reqEditors...)
@@ -19754,6 +19997,23 @@ func (c *ClientWithResponses) PostDaemonJoinWithResponse(ctx context.Context, no
 		return nil, err
 	}
 	return ParsePostDaemonJoinResponse(rsp)
+}
+
+// PostDaemonLeaveWithBodyWithResponse request with arbitrary body returning *PostDaemonLeaveResponse
+func (c *ClientWithResponses) PostDaemonLeaveWithBodyWithResponse(ctx context.Context, nodename InPathNodeName, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*PostDaemonLeaveResponse, error) {
+	rsp, err := c.PostDaemonLeaveWithBody(ctx, nodename, contentType, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParsePostDaemonLeaveResponse(rsp)
+}
+
+func (c *ClientWithResponses) PostDaemonLeaveWithResponse(ctx context.Context, nodename InPathNodeName, body PostDaemonLeaveJSONRequestBody, reqEditors ...RequestEditorFn) (*PostDaemonLeaveResponse, error) {
+	rsp, err := c.PostDaemonLeave(ctx, nodename, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParsePostDaemonLeaveResponse(rsp)
 }
 
 // PostDaemonRestartWithResponse request returning *PostDaemonRestartResponse
@@ -21605,6 +21865,74 @@ func ParsePostClusterEnrollResponse(rsp *http.Response) (*PostClusterEnrollRespo
 	return response, nil
 }
 
+// ParsePostClusterEvictResponse parses an HTTP response from a PostClusterEvictWithResponse call
+func ParsePostClusterEvictResponse(rsp *http.Response) (*PostClusterEvictResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &PostClusterEvictResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest N200
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
+		var dest N400
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON400 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest N401
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest N403
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON403 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 409:
+		var dest N409
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON409 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
+		var dest N500
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON500 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 502:
+		var dest N502
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON502 = &dest
+
+	}
+
+	return response, nil
+}
+
 // ParsePostClusterHeartbeatRotateResponse parses an HTTP response from a PostClusterHeartbeatRotateWithResponse call
 func ParsePostClusterHeartbeatRotateResponse(rsp *http.Response) (*PostClusterHeartbeatRotateResponse, error) {
 	bodyBytes, err := io.ReadAll(rsp.Body)
@@ -23096,6 +23424,67 @@ func ParsePostDaemonJoinResponse(rsp *http.Response) (*PostDaemonJoinResponse, e
 	}
 
 	response := &PostDaemonJoinResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest N200
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
+		var dest N400
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON400 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest N401
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest N403
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON403 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 409:
+		var dest N409
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON409 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
+		var dest N500
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON500 = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParsePostDaemonLeaveResponse parses an HTTP response from a PostDaemonLeaveWithResponse call
+func ParsePostDaemonLeaveResponse(rsp *http.Response) (*PostDaemonLeaveResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &PostDaemonLeaveResponse{
 		Body:         bodyBytes,
 		HTTPResponse: rsp,
 	}

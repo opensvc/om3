@@ -1080,6 +1080,22 @@ type ClusterEnrollBody struct {
 	Token string `json:"token"`
 }
 
+// ClusterEvictBody defines model for ClusterEvictBody.
+type ClusterEvictBody struct {
+	// Credential The <username>:<password> of a user to create on the evicted node,
+	// once it is alone in its own cluster. Both halves must be set. The
+	// user is created in the 'system' namespace with the 'root' grant.
+	// Without this parameter, no user is created.
+	Credential *string `json:"credential,omitempty"`
+
+	// Nodename The name of the cluster node to remove from the cluster nodes. It
+	// must be drained, and it can not be the api node.
+	Nodename string `json:"nodename"`
+
+	// Timeout The maximum duration of the leave the evicted node forks.
+	Timeout *string `json:"timeout,omitempty"`
+}
+
 // ClusterStatus defines model for ClusterStatus.
 type ClusterStatus = map[string]interface{}
 
@@ -1144,6 +1160,18 @@ type DaemonJoinBody struct {
 	// cluster node. Its 'ca' claim is used to trust the target node
 	// certificate.
 	Token string `json:"token"`
+}
+
+// DaemonLeaveBody defines model for DaemonLeaveBody.
+type DaemonLeaveBody struct {
+	// Credential The <username>:<password> of a user to create once the daemon has
+	// restarted alone. Both halves must be set. The user is created in
+	// the 'system' namespace with the 'root' grant. Without this
+	// parameter, no user is created.
+	Credential *string `json:"credential,omitempty"`
+
+	// Timeout the maximum duration of the forked leave
+	Timeout *string `json:"timeout,omitempty"`
 }
 
 // DaemonListener defines model for DaemonListener.
@@ -3506,6 +3534,9 @@ type GetResourcesParams struct {
 // PostClusterEnrollJSONRequestBody defines body for PostClusterEnroll for application/json ContentType.
 type PostClusterEnrollJSONRequestBody = ClusterEnrollBody
 
+// PostClusterEvictJSONRequestBody defines body for PostClusterEvict for application/json ContentType.
+type PostClusterEvictJSONRequestBody = ClusterEvictBody
+
 // PostInstanceProgressJSONRequestBody defines body for PostInstanceProgress for application/json ContentType.
 type PostInstanceProgressJSONRequestBody = PostInstanceProgress
 
@@ -3514,6 +3545,9 @@ type PostInstanceStatusJSONRequestBody = InstanceStatus
 
 // PostDaemonJoinJSONRequestBody defines body for PostDaemonJoin for application/json ContentType.
 type PostDaemonJoinJSONRequestBody = DaemonJoinBody
+
+// PostDaemonLeaveJSONRequestBody defines body for PostDaemonLeave for application/json ContentType.
+type PostDaemonLeaveJSONRequestBody = DaemonLeaveBody
 
 // PostDaemonLogControlJSONRequestBody defines body for PostDaemonLogControl for application/json ContentType.
 type PostDaemonLogControlJSONRequestBody = LogControlBody

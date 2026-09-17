@@ -24,11 +24,9 @@ type (
 		// [<scheme>://]<addr>[:<port>] format.
 		Node string
 
-		// Token is an access token with the join role, created on the node to
-		// enroll.
-		Token string
-
-		// TokenFile is the path of a file holding the Token.
+		// TokenFile is the path of a file holding an access token with the
+		// join role, created on the node to enroll. When empty, the
+		// OSVC_JOIN_TOKEN environment variable is used.
 		TokenFile string
 
 		// JoinAddr is the location the enrolled node must use to reach the
@@ -56,9 +54,9 @@ func NewCmdClusterEnroll() *cobra.Command {
 		Long: "Order a node to leave its cluster and join the cluster of the api node.\n" +
 			"The node to enroll must be a single node cluster: a node that still has peers is refused," +
 			" because nothing tells them to drop it from their cluster.nodes.\n" +
-			"The '--token' is an access token with the join role, created on the node to enroll by the" +
-			" 'om daemon auth --role join' command. Its 'ca' claim is used to trust that node certificate," +
-			" and only a token carrying that role holds the claim.\n" +
+			"The '--token' names a file holding an access token with the join role, created on the node to" +
+			" enroll by the 'om daemon auth --role join' command. Its 'ca' claim is used to trust that node" +
+			" certificate, and only a token carrying that role holds the claim.\n" +
 			"The node is drained before it leaves its cluster. As a single node cluster has nowhere to" +
 			" relocate its instances, they are stopped, stay down, and removed from config.",
 		RunE: func(cmd *cobra.Command, args []string) error {
@@ -70,11 +68,7 @@ func NewCmdClusterEnroll() *cobra.Command {
 	if err := cmd.MarkFlagRequired("node"); err != nil {
 		panic(err)
 	}
-	flags.StringVar(&options.Token, "token", "", "auth token with the 'join' role, created on the node to enroll"+
-		" (from 'om daemon auth --role join')."+
-		" Prefer --token-file: a token on the command line is readable by any user through the process"+
-		" table, and is kept in the shell history")
-	flags.StringVar(&options.TokenFile, "token-file", "", "the path of a file holding the --token value")
+	FlagToken(flags, &options.TokenFile)
 	flags.StringVar(&options.JoinAddr, "join-addr", "", "the location the enrolled node must use to reach this cluster,"+
 		" in the [<scheme>://]<addr>[:<port>] format."+
 		" It is refused when the cluster certificate is not valid for its host, because the enrolled node"+
@@ -82,7 +76,7 @@ func NewCmdClusterEnroll() *cobra.Command {
 		" Defaults to a name that certificate is valid for")
 	flags.DurationVar(&options.Timeout, "timeout", time.Hour, "maximum duration to wait for the enrolled node to join."+
 		" It is also the lifetime of the join token, so it must outlive the node drain")
-	flags.BoolVar(&options.Wait, "wait", true, "wait for the enrolled node heartbeat to beat in this cluster")
+	flags.BoolVar(&options.Wait, "wait", false, "wait for the enrolled node heartbeat to beat in this cluster")
 	return cmd
 }
 
@@ -169,31 +163,16 @@ func (t *CmdClusterEnroll) run() error {
 	return t.waitResult(ctx, evReader, node)
 }
 
-// token returns the token from --token, or from the --token-file content.
+// token returns the token named by --token, or the one the environment holds.
 func (t *CmdClusterEnroll) token() (string, error) {
-	switch {
-	case t.Token != "" && t.TokenFile != "":
-		return "", fmt.Errorf("%w: --token and --token-file are mutually exclusive", ErrFlagInvalid)
-	case t.TokenFile != "":
-		b, err := os.ReadFile(t.TokenFile)
-		if err != nil {
-			return "", fmt.Errorf("%w: --token-file: %w", ErrFlagInvalid, err)
-		}
-		token := strings.TrimSpace(string(b))
-		if token == "" {
-			return "", fmt.Errorf("%w: --token-file %s is empty", ErrFlagInvalid, t.TokenFile)
-		}
-		return token, nil
-	case t.Token != "":
-		return t.Token, nil
-	default:
-		// The daemon hands the join token it forks over the environment for
-		// the same reason: keep it out of the process table.
-		if token := os.Getenv(env.JoinTokenVar); token != "" {
-			return token, nil
-		}
-		return "", fmt.Errorf("%w: token is empty: use env %s, --token-file or --token", ErrFlagInvalid, env.JoinTokenVar)
+	token, err := SecretFromFileOrEnv(t.TokenFile, env.JoinTokenVar)
+	if err != nil {
+		return "", fmt.Errorf("%w: --token: %w", ErrFlagInvalid, err)
 	}
+	if token == "" {
+		return "", fmt.Errorf("%w: token is empty: use --token or env %s", ErrFlagInvalid, env.JoinTokenVar)
+	}
+	return token, nil
 }
 
 // waitResult reports the join progress of the node until its heartbeat beats.

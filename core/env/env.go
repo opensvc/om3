@@ -29,6 +29,13 @@ var (
 	// to hand a token to the join it forks, so the token never appears in the
 	// process command line, which any user can read.
 	JoinTokenVar = "OSVC_JOIN_TOKEN"
+
+	// CredentialVar is the environment variable the "cluster leave" command
+	// reads the <username>:<password> of the user to create on the leaving
+	// node from. The daemon uses it to hand a credential to the leave it
+	// forks. There is no flag carrying the value itself, for the same reason
+	// the join token has none: the process command line is world readable.
+	CredentialVar = "OSVC_CREDENTIAL"
 )
 
 // HasDaemonOrigin returns true if the environment variable OSVC_ACTION_ORIGIN
