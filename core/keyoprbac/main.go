@@ -15,6 +15,7 @@ import (
 	"strings"
 
 	"github.com/opensvc/om3/v3/core/datarecv"
+	"github.com/opensvc/om3/v3/core/naming"
 	"github.com/opensvc/om3/v3/daemon/rbac"
 )
 
@@ -54,6 +55,14 @@ type (
 
 	// Group is the policy of one driver group.
 	Group struct {
+		// KindRules is what the policy says about the keywords of one object
+		// kind, for a keyword one kind gives a reach another does not. A pg
+		// limit set on a namespace caps every object of that namespace, where
+		// the same keyword on a service caps that service alone.
+		//
+		// A kind naming a keyword here answers for it, whatever Rules says.
+		KindRules map[naming.Kind]map[string]Rule
+
 		// Rules is what the policy says about the keywords it names. A zero
 		// Rule is a keyword any user may set, which is how a group whose
 		// Default asks for a grant opens a few of its keywords.
@@ -382,7 +391,7 @@ func normalize(section, option string) (string, string) {
 // rule, which needs the root grant: the answer is never "no rule" because the
 // table forgot a group. Neither is it "no rule" for a keyword of a group whose
 // Default asks for a grant.
-func Lookup(section, option string) (Rule, bool) {
+func Lookup(kind naming.Kind, section, option string) (Rule, bool) {
 	group, option := normalize(section, option)
 	if triggers[option] {
 		return Rule{Grant: rbac.GrantRoot, Reason: reasonTrigger}, true
@@ -390,6 +399,11 @@ func Lookup(section, option string) (Rule, bool) {
 	groupPolicy, ok := rules[group]
 	if !ok {
 		return Rule{Grant: rbac.GrantRoot, Reason: reasonGroup}, true
+	}
+	if kindRules, ok := groupPolicy.KindRules[kind]; ok {
+		if rule, ok := kindRules[option]; ok {
+			return rule, rule.Grant != ""
+		}
 	}
 	rule, ok := groupPolicy.Rules[option]
 	if ok {
@@ -414,8 +428,8 @@ func Lookup(section, option string) (Rule, bool) {
 // The set callback answers what else the section holds, for the rules that are
 // about the setup rather than the keyword. A rule needing it and given none
 // refuses: a check that could not run is not a check that passed.
-func Denied(grants rbac.Grants, section, option, value string, set Section) error {
-	rule, ok := Lookup(section, option)
+func Denied(grants rbac.Grants, kind naming.Kind, section, option, value string, set Section) error {
+	rule, ok := Lookup(kind, section, option)
 	if !ok {
 		return nil
 	}
@@ -438,8 +452,8 @@ func Denied(grants rbac.Grants, section, option, value string, set Section) erro
 // Doc returns the sentence the documentation of a keyword shows about the
 // grant needed to set it through the api, or an empty string when any user may
 // set it.
-func Doc(section, option string) string {
-	rule, ok := Lookup(section, option)
+func Doc(kind naming.Kind, section, option string) string {
+	rule, ok := Lookup(kind, section, option)
 	if !ok {
 		return ""
 	}

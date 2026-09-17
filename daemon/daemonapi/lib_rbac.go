@@ -31,11 +31,11 @@ func configRbac(ctx echo.Context, p naming.Path, body []byte) error {
 	if grants.HasGrant(rbac.GrantRoot) {
 		return nil
 	}
-	return configRbacKeys(grants, cfg)
+	return configRbacKeys(grants, p.Kind, cfg)
 }
 
 // configRbacKeys checks every keyword of a configuration against the policy.
-func configRbacKeys(grants rbac.Grants, cfg *xconfig.T) error {
+func configRbacKeys(grants rbac.Grants, kind naming.Kind, cfg *xconfig.T) error {
 	// Iterate through all sections in the config
 	for _, section := range cfg.SectionStrings() {
 		// Get all keys in this section
@@ -55,7 +55,7 @@ func configRbacKeys(grants rbac.Grants, cfg *xconfig.T) error {
 				Index: 0,
 			}
 			// Validate this key operation against RBAC rules
-			if err := keyopRbac(grants, kop, set); err != nil {
+			if err := keyopRbac(grants, kind, kop, set); err != nil {
 				return err
 			}
 		}
@@ -97,6 +97,18 @@ func assertAdmin(ctx echo.Context, namespace string) (bool, error) {
 	)
 }
 
+// assertNamespaceConfigWriter asserts the authenticated user may write the
+// configuration of a namespace, which is also what creating one is.
+//
+// A namespace configuration says what the objects of the namespace may take of
+// the resources the cluster shares. That is not the namespace administrator's
+// to write, whatever admin of it they hold: a limit is what weighs one
+// namespace against the others, so it is given from outside, by the squatter
+// rationing the cluster between them.
+func assertNamespaceConfigWriter(ctx echo.Context) (bool, error) {
+	return assertGrant(ctx, rbac.GrantSquatter, rbac.GrantRoot)
+}
+
 // assertRoot asserts that the authenticated user has is granted the "root" role.
 func assertRoot(ctx echo.Context) (bool, error) {
 	return assertGrant(ctx, rbac.GrantRoot)
@@ -134,8 +146,8 @@ var ErrDenied = errors.New("denied")
 // What is refused, and why, is the policy in core/keyoprbac, which the keyword
 // documentation reads too. Here it is only turned into the error the api
 // returns, naming the operation it is about.
-func keyopRbac(grants rbac.Grants, op keyop.T, set keyoprbac.Section) error {
-	if err := keyoprbac.Denied(grants, op.Key.Section, op.Key.Option, op.Value, set); err != nil {
+func keyopRbac(grants rbac.Grants, kind naming.Kind, op keyop.T, set keyoprbac.Section) error {
+	if err := keyoprbac.Denied(grants, kind, op.Key.Section, op.Key.Option, op.Value, set); err != nil {
 		return fmt.Errorf("%w: %s: %w", ErrDenied, op, err)
 	}
 	return nil

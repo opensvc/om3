@@ -253,7 +253,7 @@ func (t Store) Lookup(k key.T, kind naming.Kind, sectionType string) *Keyword {
 // driver imports this package, and the policy reads the install grammar of
 // core/datarecv, which imports this package back. The caller of Doc, which
 // sits above both, passes keyoprbac.Doc.
-type RBACDoc func(section, option string) string
+type RBACDoc func(kind naming.Kind, section, option string) string
 
 func (t Store) Doc(w io.Writer, kind naming.Kind, driver, asked string, depth int, rbacDoc RBACDoc) error {
 	depth += 1
@@ -262,11 +262,11 @@ func (t Store) Doc(w io.Writer, kind naming.Kind, driver, asked string, depth in
 		case 0:
 			return fmt.Errorf("keyword '%s' not found", asked)
 		case 1:
-			return t[0].Doc(w, depth, docSection(driver, asked, t[0]), rbacDoc)
+			return t[0].Doc(w, depth, kind, docSection(driver, asked, t[0]), rbacDoc)
 		default:
 			sort.Sort(t)
 			for _, kw := range t {
-				if err := kw.Doc(w, depth, docSection(driver, asked, kw), rbacDoc); err != nil {
+				if err := kw.Doc(w, depth, kind, docSection(driver, asked, kw), rbacDoc); err != nil {
 					return err
 				}
 			}
@@ -380,7 +380,7 @@ func driverDoc(w io.Writer, m map[string]*Keyword, index Index, kind naming.Kind
 
 	for _, opt := range optL {
 		kw := m[opt]
-		kw.Doc(w, depth, section, rbacDoc)
+		kw.Doc(w, depth, kind, section, rbacDoc)
 		fmt.Fprintln(w, "")
 	}
 	return nil
@@ -479,7 +479,7 @@ func docSection(driver, asked string, kw *Keyword) string {
 	return ""
 }
 
-func (t *Keyword) Doc(w io.Writer, depth int, section string, rbacDoc RBACDoc) error {
+func (t *Keyword) Doc(w io.Writer, depth int, kind naming.Kind, section string, rbacDoc RBACDoc) error {
 	fprintProp := func(a, b string) {
 		fmt.Fprintf(w, "\t%-12s %s\n", a+":", b)
 	}
@@ -517,7 +517,7 @@ func (t *Keyword) Doc(w io.Writer, depth int, section string, rbacDoc RBACDoc) e
 		fprintProp("convert", t.Converter.String())
 	}
 	if rbacDoc != nil {
-		if s := rbacDoc(section, t.Option); s != "" {
+		if s := rbacDoc(kind, section, t.Option); s != "" {
 			fprintProp("rbac", s)
 		}
 	}

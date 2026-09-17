@@ -1,0 +1,11 @@
+Allow the processes of every object of this namespace to bind only the
+specified cpus.
+
+Cpus are specified as list or range : `0,1,2` or `0-2`.
+
+The objects of the namespace run under a slice of their own, and this caps
+that slice: an object capping itself can only take less than this, never more.
+
+Setting this keyword to `default` puts the capping back where a node that
+never capped anything leaves it. Removing the keyword does not: what was
+written stays written, whether om wrote it or something else did.
