@@ -255,18 +255,18 @@ func (t Store) Lookup(k key.T, kind naming.Kind, sectionType string) *Keyword {
 // sits above both, passes keyoprbac.Doc.
 type RBACDoc func(section, option string) string
 
-func (t Store) Doc(w io.Writer, kind naming.Kind, driver, kw string, depth int, rbacDoc RBACDoc) error {
+func (t Store) Doc(w io.Writer, kind naming.Kind, driver, asked string, depth int, rbacDoc RBACDoc) error {
 	depth += 1
-	if kw != "" {
+	if asked != "" {
 		switch len(t) {
 		case 0:
-			return fmt.Errorf("keyword '%s' not found", kw)
+			return fmt.Errorf("keyword '%s' not found", asked)
 		case 1:
-			return t[0].Doc(w, depth, docSection(driver, t[0]), rbacDoc)
+			return t[0].Doc(w, depth, docSection(driver, asked, t[0]), rbacDoc)
 		default:
 			sort.Sort(t)
 			for _, kw := range t {
-				if err := kw.Doc(w, depth, docSection(driver, kw), rbacDoc); err != nil {
+				if err := kw.Doc(w, depth, docSection(driver, asked, kw), rbacDoc); err != nil {
 					return err
 				}
 			}
@@ -462,11 +462,21 @@ func (t *Keyword) DefaultKey() key.T {
 // rbac policy is written by. A keyword looked up by name alone is documented
 // with the group of the driver asked for, or with its own section when the
 // keyword is not a driver's.
-func docSection(driver string, kw *Keyword) string {
+func docSection(driver, asked string, kw *Keyword) string {
 	if driver != "" {
 		return ParseIndex(driver)[0]
 	}
-	return kw.Section
+	if kw.Section != "" {
+		return kw.Section
+	}
+	// A driver keyword names no section: it lives in any rid of its driver
+	// group, and which one is not the keyword's to know. The keyword asked
+	// about names one when it is asked about as "volume#1.pool", which is how
+	// the documentation is usually read.
+	if section, _, found := strings.Cut(asked, "."); found {
+		return section
+	}
+	return ""
 }
 
 func (t *Keyword) Doc(w io.Writer, depth int, section string, rbacDoc RBACDoc) error {

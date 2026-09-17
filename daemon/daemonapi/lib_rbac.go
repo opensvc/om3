@@ -1,6 +1,7 @@
 package daemonapi
 
 import (
+	"errors"
 	"fmt"
 	"strings"
 
@@ -122,6 +123,11 @@ func assertRole(ctx echo.Context, roles ...rbac.Role) (bool, error) {
 	return true, nil
 }
 
+// ErrDenied heads every refusal the keyword policy makes, so a caller deep
+// enough to have lost sight of why an update failed can still answer with the
+// forbidden it is rather than an internal error.
+var ErrDenied = errors.New("denied")
+
 // keyopRbac refuses a keyword operation the grants of the user are not enough
 // for.
 //
@@ -130,7 +136,7 @@ func assertRole(ctx echo.Context, roles ...rbac.Role) (bool, error) {
 // returns, naming the operation it is about.
 func keyopRbac(grants rbac.Grants, op keyop.T, set keyoprbac.Section) error {
 	if err := keyoprbac.Denied(grants, op.Key.Section, op.Key.Option, op.Value, set); err != nil {
-		return fmt.Errorf("denied: %s: %w", op, err)
+		return fmt.Errorf("%w: %s: %w", ErrDenied, op, err)
 	}
 	return nil
 }
