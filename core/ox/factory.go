@@ -3523,6 +3523,44 @@ func newCmdObjectPurge(kind string) *cobra.Command {
 	return cmd
 }
 
+func newCmdObjectResize(kind string) *cobra.Command {
+	var options commands.CmdObjectResize
+	cmd := &cobra.Command{
+		Use:   "resize SIZE",
+		Short: "grow the volume on every node holding an instance",
+		Long: `Grow the volume on every node holding an instance, to SIZE.
+
+SIZE is written to the volume configuration, which is the size every node
+converges to, and is what a listing like "ox pool volume ls" reports. It can
+be a size to reach, as "11g", "11GB" or "12Gi", or an amount to add, as "+1g".
+
+The work runs in two phases, because a replicated resource offers only what
+its smallest replica holds: every node first grows the links under the
+replicated one, and only then does the node holding the volume up grow the
+replicated link and the filesystem resting on it.
+
+A resize that fails is final on the instance it failed on. Nothing is retried,
+and asking again is how it is finished: the size already configured is the
+target, and every link that holds it is left alone.
+
+A resize only grows.`,
+		Args: cobra.RangeArgs(0, 1),
+		RunE: func(cmd *cobra.Command, args []string) error {
+			if options.Size == "" && len(args) > 0 {
+				options.Size = args[0]
+			}
+			return options.Run(kind)
+		},
+	}
+	commoncmd.CmdOrchestrated(cmd)
+	commoncmd.CmdWithArg(cmd, "SIZE  The size to reach, or the amount to add.")
+	flags := cmd.Flags()
+	addFlagsGlobal(flags, &options.OptsGlobal)
+	commoncmd.FlagsAsync(flags, &options.OptsAsync)
+	flags.StringVar(&options.Size, "size", "", "the size to reach, or the amount to add (ex: 11g, +1g)")
+	return cmd
+}
+
 func newCmdObjectRestart(kind string) *cobra.Command {
 	var options commands.CmdObjectRestart
 	cmd := &cobra.Command{

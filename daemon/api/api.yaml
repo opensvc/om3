@@ -4634,6 +4634,12 @@ paths:
         - $ref: '#/components/parameters/inPathKind'
         - $ref: '#/components/parameters/inPathName'
         - $ref: '#/components/parameters/inQueryConfigUpdatedAt'
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PostObjectActionResize'
       responses:
         200:
           description: OK
@@ -7989,6 +7995,20 @@ components:
         data:
           type: string
           format: byte
+
+    PostObjectActionResize:
+      type: object
+      properties:
+        size:
+          type: string
+          description: >
+            The size the object is to hold, as "11g", "11GB" or "12Gi", or the
+            amount to add, as "+1g". The size is written to the object
+            configuration, which is what every node converges to, before the
+            orchestration is queued. Omit it to converge to the size already
+            configured, which is how a resize that stopped part way is
+            finished.
+          example: +1g
 
     PostObjectActionRestart:
       type: object

@@ -474,11 +474,15 @@ func doPostObjectAction(ctx context.Context, c *client.T, target instance.Monito
 		}
 		return handleStatusCode(resp.StatusCode(), resp.Body, resp.JSON400, resp.JSON401, resp.JSON403, resp.JSON404, resp.JSON408, resp.JSON409, resp.JSON500)
 	case instance.MonitorGlobalExpectResized:
+		// The size is the daemon's to write, and the configuration it wrote
+		// is the one it queues the orchestration for, so nothing here names
+		// a configuration for the orchestration to wait on.
 		params := api.PostObjectActionResizeParams{}
-		if options, ok := targetOptions.(instance.MonitorGlobalExpectOptionsResized); ok && !options.ConfigUpdatedAt.IsZero() {
-			params.ConfigUpdatedAt = &options.ConfigUpdatedAt
+		body := api.PostObjectActionResize{}
+		if options, ok := targetOptions.(api.PostObjectActionResize); ok {
+			body = options
 		}
-		resp, err := c.PostObjectActionResizeWithResponse(ctx, p.Namespace, p.Kind, p.Name, &params)
+		resp, err := c.PostObjectActionResizeWithResponse(ctx, p.Namespace, p.Kind, p.Name, &params, body)
 		if err != nil {
 			return nil, err
 		}

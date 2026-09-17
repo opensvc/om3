@@ -1,4 +1,4 @@
-package omcmd
+package oxcmd
 
 import (
 	"github.com/opensvc/om3/v3/core/commoncmd"
