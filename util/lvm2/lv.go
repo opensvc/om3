@@ -253,9 +253,20 @@ func (t *LV) Devices(ctx context.Context) (device.L, error) {
 	return l, nil
 }
 
-func (t *LV) Create(ctx context.Context, size int64, args []string) error {
-	// lvcreate does not default to bytes, so the unit is spelled out.
-	args = append(args, "-L", fmt.Sprintf("%dB", size))
+// Create makes the logical volume, of the size given as the configuration
+// spells it.
+//
+// A share of the volume group is what lvm2 computes, from an extent count, so
+// it is handed over as written. Everything else is a count of bytes, and the
+// unit is spelled out because lvcreate does not default to bytes.
+func (t *LV) Create(ctx context.Context, size string, args []string) error {
+	if strings.Contains(size, "%") {
+		args = append(args, "-l", size)
+	} else if i, err := sizeconv.FromSize(size); err == nil {
+		args = append(args, "-L", fmt.Sprintf("%dB", i))
+	} else {
+		args = append(args, "-L", size)
+	}
 	cmd := command.New(
 		command.WithContext(ctx),
 		command.WithName("lvcreate"),

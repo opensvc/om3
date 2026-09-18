@@ -90,6 +90,16 @@ type (
 		// RedactSecret means the keyword value will be hidden on config show with the flag --redact-secrets.
 		RedactSecret bool
 
+		// Arithmetic means an expression written "$(...)" in this keyword's
+		// value is computed.
+		//
+		// It is implied by a converter that makes a number, which is most of
+		// the keywords a sum makes sense in. It is declared where the keyword
+		// holds a number but converts to none, because it also accepts a form
+		// no number can express: the size of a logical volume, which lvm2
+		// also takes as a share of the volume group it is carved from.
+		Arithmetic bool
+
 		// Recorded means the value names a thing that now exists, and was
 		// written into the configuration when that thing was made: the id an
 		// object was created with, the uuid an md array was created with and
@@ -513,6 +523,11 @@ func (t *Keyword) Doc(w io.Writer, depth int, kind naming.Kind, section string, 
 	}
 	if t.RedactSecret {
 		fprintProp("secret", "true")
+	}
+	if t.Arithmetic && t.Converter == nil {
+		// Said only where it is not already implied by the converter, which
+		// would otherwise print it on most of the keywords there are.
+		fprintProp("arithmetic", "an expression written $(...) is computed")
 	}
 	if t.Recorded {
 		// Said as what it means for the reader of a configuration holding

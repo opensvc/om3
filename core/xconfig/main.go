@@ -997,8 +997,14 @@ func evalArithmetic(v string, kw *keywords.Keyword) (string, error) {
 	if !strings.Contains(v, arithmetic.Open) {
 		return v, nil
 	}
-	switch kw.Converter {
-	case converters.Size, converters.Int, converters.Int64, converters.Float64:
+	switch {
+	case kw.Arithmetic:
+		// Said by a keyword that holds a number and converts to none.
+	case kw.Converter == converters.Size,
+		kw.Converter == converters.Int,
+		kw.Converter == converters.Int64,
+		kw.Converter == converters.Float64:
+		// A keyword converted to a number holds one.
 	default:
 		return v, nil
 	}
