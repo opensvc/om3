@@ -41,7 +41,7 @@ func TestDeniedByDriverGroup(t *testing.T) {
 
 func TestAllowedInAGroupWithNoRuleForTheKeyword(t *testing.T) {
 	// A group the policy admits is writable except for the keywords it names.
-	for _, section := range []string{"container#1", "task#1", "volume#1", "fs#1", "DEFAULT", "env", "labels"} {
+	for _, section := range []string{"container#1", "task#1", "volume#1", "DEFAULT", "env", "labels"} {
 		require.NoErrorf(t, Denied(noGrant, naming.KindSvc, section, "a_keyword_with_no_rule", "x", none), "section %s", section)
 	}
 }

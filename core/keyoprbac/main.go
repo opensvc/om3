@@ -224,10 +224,15 @@ var rules = map[string]Group{
 		},
 	},
 
-	// The filesystems of a volume are the storage it exposes, and are read
-	// the same way: what a service mounts is the object administrator's, and
-	// what a volume is made of is not.
+	// A filesystem is a device of the node, mounted somewhere on it, made with
+	// the options the node's tools take. None of that is the object's to
+	// decide, so the group is root by default and opens only the one type
+	// that touches nothing outside the object.
+	//
+	// The filesystems of a volume are read more strictly still: what a service
+	// mounts it was given, and what a volume is made of is the storage itself.
 	"fs": {
+		Default:      &rootRule,
 		KindDefaults: map[naming.Kind]*Rule{naming.KindVol: &volResourceRule},
 		KindRules: map[naming.Kind]map[string]Rule{
 			naming.KindVol: {"type": volResourceRule},
