@@ -90,6 +90,21 @@ func WithCommandLogLevel(l zerolog.Level) funcopt.O {
 	})
 }
 
+// WithWaitDelay bounds how long a command is given, after it has exited, for
+// the output it wrote to reach this process.
+//
+// Zero waits for the output pipes to reach EOF however long that takes, which
+// is never when the command left something behind holding them open. The
+// default is DefaultWaitDelay, and a command whose output is worth waiting
+// longer for can say so.
+func WithWaitDelay(d time.Duration) funcopt.O {
+	return funcopt.F(func(i interface{}) error {
+		t := i.(*T)
+		t.waitDelay = d
+		return nil
+	})
+}
+
 // WithIgnoredExitCodes set alternate list of successful exit codes.
 //
 //	exit codes are checked during Wait().
