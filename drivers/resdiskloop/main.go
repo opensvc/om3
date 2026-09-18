@@ -300,6 +300,11 @@ func (t *T) CurrentSize(ctx context.Context) (int64, error) {
 	if err != nil {
 		return 0, err
 	}
+	if stat == nil {
+		// No device set up and no file, which is a resource nothing has been
+		// provisioned for. Saying so beats answering a size it does not hold.
+		return 0, fmt.Errorf("%s does not exist yet, so its size cannot be read", t.File)
+	}
 	return stat.Size(), nil
 }
 
