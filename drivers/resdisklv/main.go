@@ -20,7 +20,7 @@ type (
 		resdisk.T
 		LVName        string   `json:"name"`
 		VGName        string   `json:"vg"`
-		Size          string   `json:"size"`
+		Size          *int64   `json:"size"`
 		CreateOptions []string `json:"create_options"`
 	}
 	LVDriver interface {
@@ -40,7 +40,7 @@ type (
 		Resize(context.Context, int64) error
 	}
 	LVDriverProvisioner interface {
-		Create(context.Context, string, []string) error
+		Create(context.Context, int64, []string) error
 	}
 	LVDriverUnprovisioner interface {
 		Remove(context.Context, []string) error
@@ -139,7 +139,10 @@ func (t *T) ProvisionAsLeader(ctx context.Context) error {
 		t.Log().Infof("%s is already provisioned", lv.FQN())
 		return nil
 	}
-	if lvi.Create(ctx, t.Size, t.CreateOptions); err != nil {
+	if t.Size == nil {
+		return fmt.Errorf("a logical volume is created with a size, and none is configured")
+	}
+	if err := lvi.Create(ctx, *t.Size, t.CreateOptions); err != nil {
 		return err
 	}
 	actionrollback.Register(ctx, func(ctx context.Context) error {
