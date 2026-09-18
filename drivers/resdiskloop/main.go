@@ -263,7 +263,12 @@ func (t *T) provision(ctx context.Context) error {
 			t.Log().Infof("unlink file %s", t.File)
 			return os.Remove(t.File)
 		})
-		offset := (size / 512 * 512) - 1
+		// Round up, never down, for the reason the resize rounds up: the
+		// size asked for is a size something needs. Rounding down left a
+		// file short of what it was configured to hold, which reads as a
+		// resize that stopped part way and is one an immediate resize would
+		// finish.
+		offset := sizeconv.RoundUp(size, 512) - 1
 		t.Log().Infof("seek/write file, offset %d", offset)
 		if _, err = f.Seek(offset, 0); err != nil {
 			return err
