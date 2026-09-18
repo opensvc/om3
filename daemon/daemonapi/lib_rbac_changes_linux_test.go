@@ -193,3 +193,94 @@ pre_start = {env.cmd}
 	assert.Error(t, write(t, config("/bin/true"), config("/bin/evil")),
 		"the trigger runs something else on the peer, and nothing changed here")
 }
+
+// A section that writes no type runs the driver its group falls back to. The
+// policy is asked about keywords, and there is no keyword here to ask about,
+// so the fallback is checked as though it had been written.
+func TestAWriteAnswersForTheDriverASectionDoesNotName(t *testing.T) {
+	create := func(config string) error {
+		return configRbacChanges(admin, naming.KindSvc, nil, configOf(t, config))
+	}
+
+	// A task falls back to the host driver, which runs its command on the
+	// node. Writing that type is refused, so leaving it out cannot be the way
+	// to get it.
+	assert.Error(t, create(`
+nodes = *
+
+[task#1]
+command = /bin/evil
+schedule = @1
+`), "the task runs its command on the node, and never says so")
+
+	assert.Error(t, create(`
+nodes = *
+
+[ip#1]
+network = default
+`), "an ip falls back to the host driver too")
+
+	// A container falls back to oci, which is a type the policy opens, so
+	// leaving it out is as writable as writing it.
+	assert.NoError(t, create(`
+nodes = *
+
+[container#0]
+image = busybox
+`))
+
+	assert.NoError(t, create(`
+nodes = *
+
+[task#1]
+type = oci
+image = busybox
+command = /bin/true
+schedule = @1
+`))
+
+	// A section with no driver at all has no fallback to answer for.
+	assert.NoError(t, create(`
+nodes = *
+
+[env]
+a = 1
+
+[labels]
+b = 2
+`))
+
+	// The write that stops a section naming its type is what makes it run the
+	// fallback, so that write answers for it.
+	const oci = `
+nodes = *
+
+[task#1]
+type = oci
+image = busybox
+command = /bin/true
+schedule = @1
+`
+	assert.Error(t, write(t, oci, `
+nodes = *
+
+[task#1]
+image = busybox
+command = /bin/true
+schedule = @1
+`), "the task dropped its type and runs on the node now")
+
+	// A section that named no type before and names none now runs what it
+	// always ran, so an edit elsewhere in it does not answer for the driver.
+	assert.NoError(t, write(t, `
+nodes = *
+
+[container#0]
+image = a
+`, `
+nodes = *
+
+[container#0]
+image = b
+`))
+}
