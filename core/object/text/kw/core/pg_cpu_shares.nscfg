@@ -1,0 +1,9 @@
+The weight the namespace carries when the node is cpu-bound, against the other
+namespaces and the objects outside them.
+
+It arbitrates rather than caps: a namespace holding a small share still takes
+every idle cpu it asks for.
+
+Setting this keyword to `default` puts the capping back where a node that
+never capped anything leaves it. Removing the keyword does not: what was
+written stays written, whether om wrote it or something else did.

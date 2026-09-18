@@ -40,6 +40,7 @@ func (t *Manager) unfrozenClearIfReached() bool {
 		t.change = true
 		t.state.GlobalExpect = node.MonitorGlobalExpectNone
 		t.clearPending()
+		t.endOrchestration()
 		return true
 	}
 	return false

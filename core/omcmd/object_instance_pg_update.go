@@ -2,13 +2,17 @@ package omcmd
 
 import (
 	"context"
+	"fmt"
 
 	"github.com/opensvc/om3/v3/core/actioncontext"
+	"github.com/opensvc/om3/v3/core/client"
 	"github.com/opensvc/om3/v3/core/commoncmd"
 	"github.com/opensvc/om3/v3/core/naming"
 	"github.com/opensvc/om3/v3/core/object"
 	"github.com/opensvc/om3/v3/core/objectaction"
 	"github.com/opensvc/om3/v3/core/xerrors"
+	"github.com/opensvc/om3/v3/daemon/api"
+	"github.com/opensvc/om3/v3/util/xsession"
 )
 
 type (
@@ -18,6 +22,7 @@ type (
 		commoncmd.OptsEncap
 		commoncmd.OptsLock
 		commoncmd.OptsResourceSelector
+		NodeSelector string
 	}
 )
 
@@ -38,6 +43,54 @@ func (t *CmdObjectInstancePGUpdate) Run(kind string) error {
 		objectaction.WithSlaves(t.Slaves),
 		objectaction.WithAllSlaves(t.AllSlaves),
 		objectaction.WithMaster(t.Master),
+		objectaction.WithRemoteNodes(t.NodeSelector),
+		objectaction.WithRemoteFunc(func(ctx context.Context, p naming.Path, nodename string) (interface{}, error) {
+			c, err := client.New()
+			if err != nil {
+				return nil, err
+			}
+			params := api.PostInstanceActionPGUpdateParams{}
+			if t.OptsResourceSelector.RID != "" {
+				params.Rid = &t.OptsResourceSelector.RID
+			}
+			if t.OptsResourceSelector.Subset != "" {
+				params.Subset = &t.OptsResourceSelector.Subset
+			}
+			if t.OptsResourceSelector.Tag != "" {
+				params.Tag = &t.OptsResourceSelector.Tag
+			}
+			if t.OptsEncap.Master {
+				params.Master = &t.OptsEncap.Master
+			}
+			if t.OptsEncap.AllSlaves {
+				params.Slaves = &t.OptsEncap.AllSlaves
+			}
+			if len(t.OptsEncap.Slaves) > 0 {
+				params.Slave = &t.OptsEncap.Slaves
+			}
+			{
+				sessionID := xsession.SessionID().UUID()
+				params.SessionID = &sessionID
+			}
+			response, err := c.PostInstanceActionPGUpdateWithResponse(ctx, nodename, p.Namespace, p.Kind, p.Name, &params)
+			if err != nil {
+				return nil, err
+			}
+			switch {
+			case response.JSON200 != nil:
+				return *response.JSON200, nil
+			case response.JSON401 != nil:
+				return nil, fmt.Errorf("%s: node %s: %s", p, nodename, *response.JSON401)
+			case response.JSON403 != nil:
+				return nil, fmt.Errorf("%s: node %s: %s", p, nodename, *response.JSON403)
+			case response.JSON409 != nil:
+				return nil, fmt.Errorf("%s: node %s: %s", p, nodename, *response.JSON409)
+			case response.JSON500 != nil:
+				return nil, fmt.Errorf("%s: node %s: %s", p, nodename, *response.JSON500)
+			default:
+				return nil, fmt.Errorf("%s: node %s: unexpected response: %s", p, nodename, response.Status())
+			}
+		}),
 		objectaction.WithLocalFunc(func(ctx context.Context, p naming.Path) (interface{}, error) {
 			type pgUpdater interface {
 				PGUpdate(context.Context) error

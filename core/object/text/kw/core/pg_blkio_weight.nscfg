@@ -1,0 +1,8 @@
+The weight the namespace carries when the node is disk-bound, against the
+other namespaces and the objects outside them.
+
+Values are in the range 10-1000.
+
+Setting this keyword to `default` puts the capping back where a node that
+never capped anything leaves it. Removing the keyword does not: what was
+written stays written, whether om wrote it or something else did.

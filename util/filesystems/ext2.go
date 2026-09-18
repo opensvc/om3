@@ -32,3 +32,7 @@ func (t Ext2) IsFormated(ctx context.Context, s string) (bool, error) {
 func (t Ext2) MKFS(ctx context.Context, s string, args []string) error {
 	return xMKFS(ctx, "mkfs.ext2", s, args, t.log)
 }
+
+func (t Ext2) Grow(ctx context.Context, dev, mountPoint string) error {
+	return extGrow(ctx, t.Log(), dev, mountPoint)
+}

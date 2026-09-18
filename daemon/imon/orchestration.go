@@ -98,6 +98,8 @@ func (t *Manager) orchestrate() {
 		t.orchestratePlacedAt()
 	case instance.MonitorGlobalExpectPurged:
 		t.orchestratePurged()
+	case instance.MonitorGlobalExpectResized:
+		t.orchestrateResized()
 	case instance.MonitorGlobalExpectRestarted:
 		t.orchestrateRestarted()
 	case instance.MonitorGlobalExpectStarted:
@@ -178,6 +180,7 @@ func (t *Manager) endOrchestration() {
 
 	defer t.publishOrchestrationEnded()
 
+	t.clearStateSpokenToPeers()
 	t.state.GlobalExpect = instance.MonitorGlobalExpectNone
 	t.state.GlobalExpectOptions = nil
 	t.state.OrchestrationIsDone = false
@@ -185,6 +188,21 @@ func (t *Manager) endOrchestration() {
 	t.clearPending()
 	t.updateIfChange()
 	t.logSetOrchestrationID(uuid.Nil)
+}
+
+// clearStateSpokenToPeers puts the instance back to idle when the state it
+// ends on was there to be read by the peers rather than by an operator.
+//
+// A resize walks a chain in stages, and a node that has finished says so in
+// its state, because a peer only grows a replicated link once every node has
+// grown what is under it. Every node is done by the time this runs, so there
+// is nobody left to tell, and an instance holding the size it was asked for
+// is not something to keep reporting: the size is in the status. A failure
+// stays, as the state of every failed action does.
+func (t *Manager) clearStateSpokenToPeers() {
+	if t.state.State == instance.MonitorStateResizeSuccess {
+		t.state.State = instance.MonitorStateIdle
+	}
 }
 
 // doneAndIdle marks the orchestration as done on the local instance and

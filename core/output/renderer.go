@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"reflect"
 	"regexp"
+	"strconv"
 	"strings"
 	"time"
 
@@ -392,6 +393,14 @@ func (t Renderer) renderTab(options string) (string, error) {
 					switch i := v.Interface().(type) {
 					case time.Time:
 						valueStrings = append(valueStrings, i.Format(time.RFC3339))
+					case float64:
+						// A whole number decoded from json arrives as a
+						// float64, and %v renders one in exponent form past
+						// six digits: a 209715200 bytes size read as
+						// 2.097152e+08, and a 500ms delay as 5e+08. Print the
+						// digits, which is what was sent and what a reader or
+						// a script can use.
+						valueStrings = append(valueStrings, strconv.FormatFloat(i, 'f', -1, 64))
 					default:
 						valueStrings = append(valueStrings, fmt.Sprintf("%v", i))
 					}

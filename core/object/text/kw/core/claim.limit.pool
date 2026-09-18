@@ -1,0 +1,11 @@
+The most the objects of this namespace may claim from this pool, counting the
+size each of their volumes was created or resized with.
+
+A claim taking the namespace over it is refused, so one namespace cannot take
+a pool the others are meant to share. Leave it unset for a namespace that is
+not capped on this pool.
+
+This counts what was asked for, not what is written: a pool hands out what it
+promised, and that promise is what is being rationed. So a namespace can be at
+its limit on a pool that is nearly empty, and a pool can be full while every
+namespace is under its limit.

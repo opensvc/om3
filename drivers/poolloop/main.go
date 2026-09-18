@@ -9,7 +9,6 @@ import (
 	"github.com/opensvc/om3/v3/core/driver"
 	"github.com/opensvc/om3/v3/core/pool"
 	"github.com/opensvc/om3/v3/util/df"
-	"github.com/opensvc/om3/v3/util/sizeconv"
 )
 
 type (
@@ -98,7 +97,7 @@ func (t *T) BlkTranslate(name string, size int64, shared bool) ([]string, error)
 	data := []string{
 		"disk#0.type=loop",
 		"disk#0.name=" + name,
-		"disk#0.size=" + sizeconv.ExactBSizeCompact(float64(size)),
+		"disk#0.size={DEFAULT.size}",
 		"disk#0.file=" + p,
 	}
 	return data, nil

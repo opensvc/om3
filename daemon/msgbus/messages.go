@@ -233,6 +233,9 @@ var (
 
 		"ObjectDeleted": func() any { return &ObjectDeleted{} },
 
+		"NodeOrchestrationAccepted":   func() any { return &NodeOrchestrationAccepted{} },
+		"NodeOrchestrationEnd":        func() any { return &NodeOrchestrationEnd{} },
+		"NodeOrchestrationRefused":    func() any { return &NodeOrchestrationRefused{} },
 		"ObjectOrchestrationAccepted": func() any { return &ObjectOrchestrationAccepted{} },
 
 		"ObjectOrchestrationEnd": func() any { return &ObjectOrchestrationEnd{} },
@@ -880,6 +883,41 @@ type (
 		Node       string      `json:"node" yaml:"node"`
 	}
 
+	// NodeOrchestrationAccepted says the node monitor took an orchestration
+	// on, and under which id. It is the node's version of
+	// ObjectOrchestrationAccepted, and carries a node where that carries a
+	// path: a target state asked of the nodes is an orchestration of the same
+	// kind, run by nmon rather than imon.
+	NodeOrchestrationAccepted struct {
+		pubsub.Msg `yaml:",inline"`
+		ID         string `json:"id" yaml:"id"`
+		Node       string `json:"node" yaml:"node"`
+		// Expect is the state the orchestration is for. A node is asked to
+		// freeze by a global expect and to drain by a local one, so this is
+		// whichever of the two the request set.
+		Expect                string                   `json:"expect" yaml:"expect"`
+		GlobalExpect          node.MonitorGlobalExpect `json:"global_expect" yaml:"global_expect"`
+		GlobalExpectUpdatedAt time.Time                `json:"global_expect_updated_at" yaml:"global_expect_updated_at"`
+	}
+
+	NodeOrchestrationEnd struct {
+		pubsub.Msg            `yaml:",inline"`
+		ID                    string                   `json:"id" yaml:"id"`
+		Node                  string                   `json:"node" yaml:"node"`
+		Expect                string                   `json:"expect" yaml:"expect"`
+		GlobalExpect          node.MonitorGlobalExpect `json:"global_expect" yaml:"global_expect"`
+		GlobalExpectUpdatedAt time.Time                `json:"global_expect_updated_at" yaml:"global_expect_updated_at"`
+		Aborted               bool                     `json:"aborted" yaml:"aborted"`
+	}
+
+	NodeOrchestrationRefused struct {
+		pubsub.Msg   `yaml:",inline"`
+		ID           string                    `json:"id" yaml:"id"`
+		Node         string                    `json:"node" yaml:"node"`
+		Reason       string                    `json:"reason" yaml:"reason"`
+		GlobalExpect *node.MonitorGlobalExpect `json:"global_expect" yaml:"global_expect"`
+	}
+
 	ObjectOrchestrationAccepted struct {
 		pubsub.Msg            `yaml:",inline"`
 		ID                    string                       `json:"id" yaml:"id"`
@@ -1508,6 +1546,18 @@ func (e *ObjectCreated) Kind() string {
 
 func (e *ObjectDeleted) Kind() string {
 	return "ObjectDeleted"
+}
+
+func (e *NodeOrchestrationAccepted) Kind() string {
+	return "NodeOrchestrationAccepted"
+}
+
+func (e *NodeOrchestrationEnd) Kind() string {
+	return "NodeOrchestrationEnd"
+}
+
+func (e *NodeOrchestrationRefused) Kind() string {
+	return "NodeOrchestrationRefused"
 }
 
 func (e *ObjectOrchestrationAccepted) Kind() string {

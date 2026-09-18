@@ -26,9 +26,13 @@ var (
 			Text:     keywords.NewText(fs, "text/kw/disk_id"),
 		},
 		{
-			Attr:         "Size",
-			Converter:    converters.Size,
-			Example:      "20g",
+			Attr:      "Size",
+			Converter: converters.Size,
+			Example:   "20g",
+			// InheritLeaf, because a vol names in its DEFAULT section the size it
+			// was claimed with from its pool. Inheriting that here would give a
+			// size to every resource that does not name one of its own.
+			Inherit:      keywords.InheritLeaf,
 			Option:       "size",
 			Provisioning: true,
 			Scopable:     true,

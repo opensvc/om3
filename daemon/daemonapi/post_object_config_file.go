@@ -13,7 +13,13 @@ import (
 func (a *DaemonAPI) PostObjectConfigFile(ctx echo.Context, namespace string, kind naming.Kind, name string) error {
 	log := LogHandler(ctx, "PostObjectConfigFile")
 
-	if v, err := assertAdmin(ctx, namespace); !v {
+	// A namespace configuration is the namespace itself, so creating one is
+	// creating the namespace, whatever admin of it anyone holds.
+	if kind == naming.KindNscfg {
+		if v, err := assertNamespaceConfigWriter(ctx); !v {
+			return err
+		}
+	} else if v, err := assertAdmin(ctx, namespace); !v {
 		return err
 	}
 	p, err := naming.NewPath(namespace, kind, name)

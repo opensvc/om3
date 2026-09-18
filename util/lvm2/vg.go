@@ -16,10 +16,10 @@ import (
 
 	"github.com/opensvc/om3/v3/util/command"
 	"github.com/opensvc/om3/v3/util/device"
-	"github.com/opensvc/om3/v3/util/sessioncache"
 	"github.com/opensvc/om3/v3/util/file"
 	"github.com/opensvc/om3/v3/util/funcopt"
 	"github.com/opensvc/om3/v3/util/hostname"
+	"github.com/opensvc/om3/v3/util/sessioncache"
 	"github.com/opensvc/om3/v3/util/sizeconv"
 )
 
@@ -258,7 +258,9 @@ func (t *VG) Show(ctx context.Context, fields string) (*VGInfo, error) {
 	cmd := command.New(
 		command.WithContext(ctx),
 		command.WithName("vgs"),
-		command.WithVarArgs("--reportformat", "json", "-o", fields, t.VGName),
+		// --units b --nosuffix because the default display rounds, and
+		// prefixes a "<" when it rounded up.
+		command.WithVarArgs("--reportformat", "json", "--units", "b", "--nosuffix", "-o", fields, t.VGName),
 		command.WithLogger(t.Log()),
 		command.WithCommandLogLevel(zerolog.TraceLevel),
 		command.WithStdoutLogLevel(zerolog.TraceLevel),
@@ -278,6 +280,82 @@ func (t *VG) Show(ctx context.Context, fields string) (*VGInfo, error) {
 		return &data.Report[0].VG[0], nil
 	}
 	return nil, fmt.Errorf("%w: %s", ErrExist, t.VGName)
+}
+
+// Size is the bytes the volume group offers to its logical volumes. It is
+// less than what its physical volumes hold, by the metadata lvm keeps and by
+// what does not fill a whole extent.
+func (t *VG) Size(ctx context.Context) (int64, error) {
+	info, err := t.Show(ctx, "vg_size")
+	if err != nil {
+		return 0, err
+	}
+	return info.Size()
+}
+
+// Free is the bytes of the group nothing has taken yet, rounded down to a
+// whole number of extents.
+//
+// Rounded down, where every other size om asks for is rounded up: this is
+// what is there, not what is wanted, and a caller asking for all of it must
+// ask for a size that fits. lvcreate rounds a size up to the next extent, so
+// a byte count that is not a whole number of them is one extent more than the
+// group has.
+func (t *VG) Free(ctx context.Context) (int64, error) {
+	info, err := t.Show(ctx, "vg_free,vg_extent_size")
+	if err != nil {
+		return 0, err
+	}
+	free, err := info.Free()
+	if err != nil {
+		return 0, err
+	}
+	extent, err := sizeconv.FromSize(strings.TrimLeft(info.VGExtSize, "<>+"))
+	if err != nil || extent <= 0 {
+		return free, nil
+	}
+	return free / extent * extent, nil
+}
+
+// ExtentSize is the bytes of the unit a volume group hands out. A logical
+// volume is a whole number of them, so a group asked for a size that is not
+// has to round up or the volume does not fit.
+func (t *VG) ExtentSize(ctx context.Context) (int64, error) {
+	info, err := t.Show(ctx, "vg_extent_size")
+	if err != nil {
+		return 0, err
+	}
+	return sizeconv.FromSize(strings.TrimLeft(info.VGExtSize, "<>+"))
+}
+
+// ResizePV makes the volume group use the current size of one of its physical
+// volumes.
+//
+// A size of 0 takes the whole device, which is what a group growing onto a
+// device that just grew wants. A size is set explicitly to give space back,
+// which lvm refuses if extents beyond it are in use.
+func (t *VG) ResizePV(ctx context.Context, pv string, size int64) error {
+	args := make([]string, 0)
+	if size > 0 {
+		args = append(args, "--setphysicalvolumesize", fmt.Sprintf("%db", sizeconv.RoundUp(size, 512)))
+	}
+	args = append(args, pv)
+	cmd := command.New(
+		command.WithContext(ctx),
+		command.WithName("pvresize"),
+		command.WithVarArgs(args...),
+		command.WithLogger(t.Log()),
+		command.WithCommandLogLevel(zerolog.InfoLevel),
+		command.WithStdoutLogLevel(zerolog.InfoLevel),
+		command.WithStderrLogLevel(zerolog.ErrorLevel),
+	)
+	if err := cmd.Run(); err != nil {
+		return err
+	}
+	if cmd.ExitCode() != 0 {
+		return fmt.Errorf("%s error %d", cmd, cmd.ExitCode())
+	}
+	return nil
 }
 
 func (t *VG) Attrs(ctx context.Context) (VGAttrs, error) {

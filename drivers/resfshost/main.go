@@ -615,3 +615,107 @@ func (t *T) CanInstall(ctx context.Context) (bool, error) {
 	}
 	return true, nil
 }
+
+// CurrentSize implements resource.Sizer.
+//
+// It is what the filesystem hands out, which is less than the device under it
+// holds: it keeps metadata and a log for itself.
+//
+// Reporting the device instead would read better on a converged chain, where
+// a 5.49gi device carrying an xfs that hands out 5.43gi looks like 60mi still
+// to grow. It is not worth it: the size would then equal the target the
+// moment the device grew, and the step that grows the filesystem onto it
+// would be skipped as already done. A filesystem short of its device is the
+// case this has to be able to see.
+func (t *T) CurrentSize(ctx context.Context) (int64, error) {
+	if _, ok := t.fs().(filesystems.SelfSizer); ok {
+		// A filesystem holding its own size, a tmpfs, has no device to
+		// measure, and what it hands out is what it was given.
+		return t.usableSize(ctx)
+	}
+	dev := t.devpath(ctx)
+	if dev == "" {
+		return t.usableSize(ctx)
+	}
+	// The mount is checked first. A filesystem is the size of the device it
+	// was given, but an unmounted resource is not holding that device, and
+	// saying it is would resolve a relative resize against a size nothing
+	// here has.
+	if _, err := t.usableSize(ctx); err != nil {
+		return 0, err
+	}
+	return device.New(dev).Size()
+}
+
+// ResizeSpansBelow implements resource.ResizeSpansBelow. A filesystem is
+// grown onto the device under it, not to a size of its own: Grow is told the
+// device and the mount point, and nothing else.
+func (t *T) ResizeSpansBelow() bool {
+	_, ok := t.fs().(filesystems.SelfSizer)
+	return !ok
+}
+
+// usableSize is what the filesystem hands out, which is less than the device
+// holds: it keeps metadata and a log for itself.
+//
+// It is what says whether the filesystem has yet been grown onto its device,
+// which the device size cannot: a chain grows from the bottom up, so by the
+// time the filesystem is asked to grow, the device under it already holds the
+// new size.
+func (t *T) usableSize(ctx context.Context) (int64, error) {
+	mnt := t.mountPoint()
+	mounts, err := findmnt.List(ctx, "", mnt)
+	if err != nil {
+		return 0, err
+	}
+	if len(mounts) == 0 {
+		return 0, fmt.Errorf("%s is not mounted on %s, so its size cannot be read", t.Device, mnt)
+	}
+	var st unix.Statfs_t
+	if err := unix.Statfs(mnt, &st); err != nil {
+		return 0, fmt.Errorf("statfs %s: %w", mnt, err)
+	}
+	return int64(st.Blocks) * int64(st.Bsize), nil
+}
+
+// ResizePlan implements resource.Resizer.
+//
+// A filesystem takes up the device it sits on, so it asks the link below for
+// the size it was asked for. It refuses here rather than in Resize: a
+// filesystem that cannot shrink must say so before the device under it is
+// taken away.
+func (t *T) ResizePlan(ctx context.Context, to int64) (int64, error) {
+	fs := t.fs()
+	from, err := t.CurrentSize(ctx)
+	if err != nil {
+		return 0, err
+	}
+	if _, ok := fs.(filesystems.SelfSizer); ok {
+		// A filesystem holding its own size asks nothing of anything below
+		// it, and there is nothing below it to ask.
+		return to, nil
+	}
+	if to < from {
+		// A resize only grows, and the plan says so before reaching here.
+		return from, nil
+	}
+	if _, ok := fs.(filesystems.Grower); !ok {
+		return 0, fmt.Errorf("a %s filesystem cannot grow", fs.Type())
+	}
+	return to, nil
+}
+
+// Resize implements resource.Resizer.
+func (t *T) Resize(ctx context.Context, to int64) error {
+	fs := t.fs()
+	if selfSizer, ok := fs.(filesystems.SelfSizer); ok {
+		return selfSizer.SetSize(ctx, t.mountPoint(), to)
+	}
+	grower, ok := fs.(filesystems.Grower)
+	if !ok {
+		return fmt.Errorf("a %s filesystem cannot grow", fs.Type())
+	}
+	// The device below has been enlarged already, so the filesystem is asked
+	// to take up what is there rather than a size of its own.
+	return grower.Grow(ctx, t.devpath(ctx), t.mountPoint())
+}

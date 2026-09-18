@@ -32,6 +32,9 @@ func (a *DaemonAPI) postLocalInstanceActionDelete(ctx echo.Context, namespace st
 		return JSONProblemf(ctx, http.StatusBadRequest, "Invalid parameters", "%s", err)
 	}
 	log = naming.LogWithPath(log, p)
+	if v, err := assertConfigUpdatedAt(ctx, p, params.ConfigUpdatedAt); !v {
+		return err
+	}
 	args := []string{p.String(), "instance", "delete"}
 	if params.SessionID != nil {
 		requesterSessionID = *params.SessionID

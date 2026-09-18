@@ -154,7 +154,7 @@ func TestOnlyTheNewestEndedSessionsAreKept(t *testing.T) {
 
 func TestAnOrchestrationEndsAbortedOrRefused(t *testing.T) {
 	reset()
-	AddOrchestration(Orchestration{OrchestrationID: "o1", Path: "svc1", GlobalExpect: "started"})
+	AddOrchestration(Orchestration{OrchestrationID: "o1", Path: "svc1", Expect: "started"})
 	o, ok := GetOrchestration("o1")
 	require.True(t, ok)
 	assert.Equal(t, StateRunning, o.State)

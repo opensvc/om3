@@ -300,7 +300,12 @@ func (t TSize) convert(s string) (*int64, error) {
 		return nil, err
 	}
 	if strings.Contains(s, "%") {
-		return nil, err
+		// A share of something is not a count of bytes, and the something is
+		// not in reach here. Answering no size would lose the value: a
+		// keyword set to "50%" would read as a keyword nobody set, and the
+		// configuration would provision with no size rather than be told it
+		// asked for one this cannot give.
+		return nil, fmt.Errorf("%s is a share, not a size", s)
 	}
 	last := s[len(s)-1]
 	switch strings.ToLower(string(last)) {

@@ -52,11 +52,11 @@ func TestIPCNIKeepsEveryKeywordItHad(t *testing.T) {
 			continue
 		}
 		if triggers[option] {
-			assert.Errorf(t, Denied(noGrant, "ip#1", option, "x", section("network")),
+			assert.Errorf(t, Denied(noGrant, naming.KindSvc, "ip#1", option, "x", section("network")),
 				"trigger %s must stay refused", option)
 			continue
 		}
-		assert.NoErrorf(t, Denied(noGrant, "ip#1", option, "x", section("network")),
+		assert.NoErrorf(t, Denied(noGrant, naming.KindSvc, "ip#1", option, "x", section("network")),
 			"ip.cni keyword %s was writable before the ip group had a default", option)
 	}
 }
@@ -76,7 +76,7 @@ func TestIPNetnsAddressKeywordsAreRefused(t *testing.T) {
 			continue
 		}
 		seen[option] = true
-		assert.Errorf(t, Denied(noGrant, "ip#1", option, "x", section("network")),
+		assert.Errorf(t, Denied(noGrant, naming.KindSvc, "ip#1", option, "x", section("network")),
 			"ip.netns keyword %s decides an address or a link of the node", option)
 	}
 	for option := range refused {

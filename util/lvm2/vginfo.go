@@ -12,6 +12,7 @@ type (
 		VGAttr    string `json:"vg_attr"`
 		VGSize    string `json:"vg_size"`
 		VGFree    string `json:"vg_free"`
+		VGExtSize string `json:"vg_extent_size"`
 		VGTags    string `json:"vg_tags"`
 		SnapCount string `json:"snap_count"`
 		PVCount   string `json:"pv_count"`

@@ -8,6 +8,7 @@ import (
 	"io"
 	"math/rand"
 	"path/filepath"
+	"strconv"
 	"strings"
 
 	"github.com/opensvc/om3/v3/core/actioncontext"
@@ -21,6 +22,7 @@ import (
 	"github.com/opensvc/om3/v3/util/command"
 	"github.com/opensvc/om3/v3/util/device"
 	"github.com/opensvc/om3/v3/util/file"
+	"github.com/opensvc/om3/v3/util/sizeconv"
 	"github.com/opensvc/om3/v3/util/udevadm"
 
 	"github.com/rs/zerolog"
@@ -453,6 +455,113 @@ func (t *T) exposedDevice() *device.T {
 	}
 	dev := device.New(devpath, device.WithLogger(t.Log()))
 	return &dev
+}
+
+// CurrentSize implements resource.Sizer.
+//
+// It is what the mapped device hands out, which is less than the device under
+// it holds: the header sits at the front of it.
+func (t *T) CurrentSize(ctx context.Context) (int64, error) {
+	dev := t.exposedDevice()
+	if dev == nil {
+		return 0, fmt.Errorf("%s is not open, so its size cannot be read", t.getName())
+	}
+	return dev.Size()
+}
+
+// ResizePlan implements resource.Resizer.
+//
+// What it asks of the device below is the size wanted plus the header in
+// front of it. The header offset is written when the volume is formatted and
+// does not move, so it is read rather than measured as the gap between the
+// two: that gap is the growth itself while a resize is in flight, and asking
+// for it again compounds every pass.
+func (t *T) ResizePlan(ctx context.Context, to int64) (int64, error) {
+	offset, err := t.headerOffset(ctx)
+	if err != nil {
+		return 0, err
+	}
+	return sizeconv.RoundUp(to+offset, 512), nil
+}
+
+// Resize implements resource.Resizer.
+//
+// The passphrase is handed over the same way opening it does: a luks2 volume
+// derives its key again to resize, and asks for it on the terminal otherwise.
+func (t *T) Resize(ctx context.Context, to int64) error {
+	name := t.getName()
+	if name == "" {
+		return fmt.Errorf("abort resize: no name")
+	}
+	b, err := t.passphraseStrict()
+	if err != nil {
+		return err
+	}
+	cmd := command.New(
+		command.WithContext(ctx),
+		command.WithName(cryptsetup),
+		command.WithVarArgs("resize", "--size", fmt.Sprintf("%d", to/512), "--key-file", "-", name),
+		command.WithLogger(t.Log()),
+		command.WithCommandLogLevel(zerolog.InfoLevel),
+		command.WithStdoutLogLevel(zerolog.InfoLevel),
+		command.WithStderrLogLevel(zerolog.ErrorLevel),
+	)
+	stdin, err := cmd.Cmd().StdinPipe()
+	if err != nil {
+		return err
+	}
+	defer stdin.Close()
+	if err := cmd.Start(); err != nil {
+		return err
+	}
+	if _, err := io.WriteString(stdin, string(b)); err != nil {
+		return err
+	} else {
+		stdin.Close()
+	}
+	if err := cmd.Wait(); err != nil {
+		return err
+	}
+	if cmd.ExitCode() != 0 {
+		return fmt.Errorf("%s error %d", cmd, cmd.ExitCode())
+	}
+	return nil
+}
+
+// headerOffset is where the data begins on the device below, which is what
+// the header takes from it.
+func (t *T) headerOffset(ctx context.Context) (int64, error) {
+	name := t.getName()
+	if name == "" {
+		return 0, fmt.Errorf("abort status: no name")
+	}
+	cmd := command.New(
+		command.WithContext(ctx),
+		command.WithName(cryptsetup),
+		command.WithVarArgs("status", name),
+		command.WithLogger(t.Log()),
+		command.WithCommandLogLevel(zerolog.TraceLevel),
+		command.WithStdoutLogLevel(zerolog.TraceLevel),
+		command.WithStderrLogLevel(zerolog.TraceLevel),
+		command.WithBufferedStdout(),
+	)
+	b, err := cmd.Output()
+	if err != nil {
+		return 0, err
+	}
+	for _, line := range strings.Split(string(b), "\n") {
+		key, value, ok := strings.Cut(line, ":")
+		if !ok || strings.TrimSpace(key) != "offset" {
+			continue
+		}
+		field, _, _ := strings.Cut(strings.TrimSpace(value), " ")
+		sectors, err := strconv.ParseInt(field, 10, 64)
+		if err != nil {
+			return 0, fmt.Errorf("%s: parse offset %s: %w", name, field, err)
+		}
+		return sectors * 512, nil
+	}
+	return 0, fmt.Errorf("%s reports no offset", name)
 }
 
 func (t *T) ExposedDevices(ctx context.Context) device.L {

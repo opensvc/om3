@@ -1,0 +1,2 @@
+The name of the cluster resource this claim is against, as the cluster names
+it: a pool name for a pool claim, a network name for a network claim.

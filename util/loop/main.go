@@ -157,6 +157,27 @@ func (t T) lockedAdd(ctx context.Context, filePath string) error {
 	return nil
 }
 
+// SetCapacity makes the loop device pick up the current size of the file
+// behind it. Growing or truncating the file alone leaves the device exposing
+// the capacity it was set up with.
+func (t T) SetCapacity(ctx context.Context, devPath string) error {
+	cmd := command.New(
+		command.WithContext(ctx),
+		command.WithName(losetup),
+		command.WithVarArgs("-c", devPath),
+		command.WithLogger(t.log),
+		command.WithCommandLogLevel(zerolog.InfoLevel),
+		command.WithStdoutLogLevel(zerolog.InfoLevel),
+		command.WithStderrLogLevel(zerolog.ErrorLevel),
+	)
+	cmd.Run()
+	sessioncache.Clear("losetup")
+	if cmd.ExitCode() != 0 {
+		return fmt.Errorf("%s error %d", cmd, cmd.ExitCode())
+	}
+	return nil
+}
+
 func (t T) Delete(ctx context.Context, devPath string) error {
 	cmd := command.New(
 		command.WithContext(ctx),

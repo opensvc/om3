@@ -1,0 +1,9 @@
+The size the directory may hold.
+
+A directory has no size of its own, so this is enforced with a project quota
+on the filesystem holding it. That filesystem has to be xfs, mounted with the
+prjquota option: a provision refuses rather than set a limit that would
+silently do nothing.
+
+Leave it unset for a plain directory, which takes the size of the filesystem
+holding it.

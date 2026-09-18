@@ -90,6 +90,15 @@ type (
 		rejoinTicker *time.Ticker
 		startedAt    time.Time
 
+		// logBase is log without an orchestration_id attribute, so entering
+		// and leaving an orchestration swaps the attribute instead of
+		// appending another one. zerolog contexts only grow.
+		logBase *plog.Logger
+
+		// orchestrationPending is the NodeOrchestrationEnd of the
+		// orchestration being run, held until it ends.
+		orchestrationPending *msgbus.NodeOrchestrationEnd
+
 		pendingCtx    context.Context
 		pendingCancel context.CancelFunc
 
@@ -184,7 +193,7 @@ func NewManager(drainDuration time.Duration, subQS pubsub.QueueSizer) *Manager {
 		},
 		cmdC:        make(chan any),
 		poolC:       make(chan any, 1),
-		log:         plog.NewDefaultLogger().Attr("pkg", "daemon/nmon").WithPrefix("daemon: nmon: "),
+		logBase:     plog.NewDefaultLogger().Attr("pkg", "daemon/nmon").WithPrefix("daemon: nmon: "),
 		localhost:   localhost,
 		change:      true,
 		nodeMonitor: make(map[string]node.Monitor),
@@ -202,6 +211,7 @@ func NewManager(drainDuration time.Duration, subQS pubsub.QueueSizer) *Manager {
 
 		hbSecretChecksumByNodename: make(map[string]string),
 	}
+	m.logSetOrchestrationID(uuid.Nil)
 	if bt, err := btime.GetBootTime(); err != nil {
 		m.log.Warnf("get boot time: %s", err)
 	} else {

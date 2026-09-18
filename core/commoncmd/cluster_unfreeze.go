@@ -16,14 +16,14 @@ type CmdClusterUnfreeze struct {
 func NewCmdClusterUnfreeze() *cobra.Command {
 	var options CmdClusterUnfreeze
 	cmd := &cobra.Command{
-		GroupID: GroupIDOrchestrated,
-		Use:     "unfreeze",
-		Hidden:  false,
-		Short:   "unblock ha automatic and split action start on all nodes",
+		Use:    "unfreeze",
+		Hidden: false,
+		Short:  "unblock ha automatic and split action start on all nodes",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return options.Run()
 		},
 	}
+	CmdOrchestrated(cmd)
 	flags := cmd.Flags()
 	FlagsAsync(flags, &options.OptsAsync)
 	FlagColor(flags, &options.Color)

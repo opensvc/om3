@@ -2,11 +2,13 @@ package object
 
 import (
 	"context"
+	"fmt"
 	"sort"
 
 	"github.com/opensvc/om3/v3/core/driver"
 	"github.com/opensvc/om3/v3/core/keywords"
 	"github.com/opensvc/om3/v3/core/naming"
+	"github.com/opensvc/om3/v3/core/resource"
 	"github.com/opensvc/om3/v3/core/status"
 	"github.com/opensvc/om3/v3/core/volaccess"
 	"github.com/opensvc/om3/v3/util/device"
@@ -31,6 +33,9 @@ type (
 	Vol interface {
 		Actor
 		Head() string
+		HeadRID(context.Context) (string, error)
+		ConfiguredSize() (int64, error)
+		PoolName() (string, error)
 		ExposedDevice(context.Context) *device.T
 		ExposedDevices(context.Context) device.L
 		SubDevice(context.Context) *device.T
@@ -179,37 +184,124 @@ func (t *vol) SubDevice(ctx context.Context) *device.T {
 }
 
 func (t *vol) ExposedDevice(ctx context.Context) *device.T {
+	_, devs := t.exposedDeviceResource(ctx)
+	if len(devs) == 0 {
+		return nil
+	}
+	return &devs[0]
+}
+
+// exposedDeviceResource returns the resource the volume exposes a device
+// through, and the devices that resource exposes.
+//
+// A configuration naming devices_from has said which resource that is, and it
+// is the same answer the consumers of the volume are given, so it is not
+// guessed at here. A volume that names none is read by the deepest rid, so
+// the resource nearest the consumer is the one named.
+func (t *vol) exposedDeviceResource(ctx context.Context) (resource.Driver, device.L) {
 	type devicer interface {
 		ExposedDevices(context.Context) device.L
 	}
+	if configured := t.config.GetStrings(key.Parse("devices_from")); len(configured) > 0 {
+		t.ConfigureResources()
+		for _, rid := range configured {
+			r := t.ResourceByID(rid)
+			if r == nil {
+				continue
+			}
+			d, ok := r.(devicer)
+			if !ok {
+				continue
+			}
+			if devs := d.ExposedDevices(ctx); len(devs) > 0 {
+				return r, devs
+			}
+		}
+		// The configuration named the resources to expose, so falling back to
+		// another would answer with something it said not to.
+		return nil, nil
+	}
+	// The disks of the volume, and only those. A volume resource of a volume
+	// is storage this volume consumes, not storage it exposes, so naming one
+	// here would answer with somebody else's device.
 	rids := make([]string, 0)
-	candidates := make(map[string]devicer)
+	candidates := make(map[string]resource.Driver)
 	l := t.ResourcesByDrivergroups([]driver.Group{
 		driver.GroupDisk,
-		driver.GroupVolume,
 	})
 	for _, r := range l {
 		if r.DriverID().Name == "scsireserv" {
 			continue
 		}
 		var i interface{} = r
-		o, ok := i.(devicer)
-		if !ok {
+		if _, ok := i.(devicer); !ok {
 			continue
 		}
 		rid := r.RID()
-		candidates[rid] = o
+		candidates[rid] = r
 		rids = append(rids, rid)
 	}
 	sort.Sort(sort.Reverse(sort.StringSlice(rids)))
 	for _, rid := range rids {
-		devs := candidates[rid].ExposedDevices(ctx)
+		r := candidates[rid]
+		var i interface{} = r
+		devs := i.(devicer).ExposedDevices(ctx)
 		if len(devs) == 0 {
 			continue
 		}
-		return &devs[0]
+		return r, devs
 	}
-	return nil
+	return nil, nil
+}
+
+// PoolName is the pool the volume was claimed from, and "" for a volume
+// claimed from no pool.
+func (t *vol) PoolName() (string, error) {
+	return t.config.GetString(key.T{Section: "DEFAULT", Option: "pool"}), nil
+}
+
+// ConfiguredSize is the size the volume is asked to be.
+//
+// It is what was claimed of the pool when the volume was created, and what a
+// resize writes back, so it is the size the volume is meant to hold rather
+// than a record of what it held once.
+func (t *vol) ConfiguredSize() (int64, error) {
+	size := t.config.GetSize(key.T{Section: "DEFAULT", Option: "size"})
+	if size == nil {
+		return 0, fmt.Errorf("%s has no size", t.path)
+	}
+	return *size, nil
+}
+
+// HeadRID returns the rid of the resource a volume exposes to its consumers.
+//
+// A volume exists to expose one thing: the filesystem mounted on Head(), or,
+// when the volume has no filesystem, the device it exposes. An action asked of
+// the volume itself, like a resize, is an action on that resource.
+func (t *vol) HeadRID(ctx context.Context) (string, error) {
+	type header interface {
+		Head() string
+	}
+	if head := t.Head(); head != "" {
+		l := t.ResourcesByDrivergroups([]driver.Group{
+			driver.GroupFS,
+			driver.GroupVolume,
+		})
+		for _, r := range l {
+			var i interface{} = r
+			o, ok := i.(header)
+			if !ok {
+				continue
+			}
+			if o.Head() == head {
+				return r.RID(), nil
+			}
+		}
+	}
+	if r, _ := t.exposedDeviceResource(ctx); r != nil {
+		return r.RID(), nil
+	}
+	return "", fmt.Errorf("%s exposes neither a head mount point nor a device", t.path)
 }
 
 func (t *vol) HoldersExcept(ctx context.Context, exceptPath naming.Path) (naming.Paths, error) {

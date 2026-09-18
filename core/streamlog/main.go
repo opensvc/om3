@@ -185,7 +185,10 @@ func (stream *Stream) Start(streamConfig StreamConfig) error {
 	args = append(args, "-o", "json", "_COMM="+comm)
 	args = append(args, streamConfig.Matches...)
 	args = append(args, "-n", fmt.Sprint(streamConfig.Lines))
-	if streamConfig.Grep != nil {
+	// An empty pattern is no pattern. Passing --grep with one asks journalctl
+	// to filter on nothing, and asks it for an option the journalctl of an
+	// older distribution does not have, which fails the whole read.
+	if streamConfig.Grep != nil && *streamConfig.Grep != "" {
 		args = append(args, "--grep", *streamConfig.Grep)
 	}
 	if streamConfig.Follow {
@@ -200,6 +203,11 @@ func (stream *Stream) Start(streamConfig StreamConfig) error {
 			} else {
 				stream.q <- event
 			}
+		}),
+		// journalctl says why it read nothing on its stderr, and a read that
+		// fails is otherwise indistinguishable from an object with no log.
+		command.WithOnStderrLine(func(line string) {
+			stream.errs <- fmt.Errorf("journalctl: %s", line)
 		}),
 	)
 	if err := stream.cmd.Start(); err != nil {

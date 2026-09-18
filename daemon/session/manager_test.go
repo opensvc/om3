@@ -271,3 +271,133 @@ func TestANodeOrchestrationIsKnownFromTheNodeMonitors(t *testing.T) {
 	o, _ = GetOrchestration(id.String())
 	assert.Equal(t, StateSucceeded, o.State)
 }
+
+// A target state asked of the nodes is an orchestration of the same kind as
+// one asked of an object, run by nmon rather than imon. It is recorded with no
+// object, which is what says it is of the node.
+func TestANodeOrchestrationIsAcceptedAndEnded(t *testing.T) {
+	reset()
+	m := &Manager{}
+	id := uuid.New()
+
+	m.handle(&msgbus.NodeOrchestrationAccepted{
+		Node:   "n1",
+		ID:     id.String(),
+		Expect: "frozen",
+	})
+	o, ok := GetOrchestration(id.String())
+	require.True(t, ok)
+	assert.Equal(t, StateRunning, o.State)
+	assert.Equal(t, "n1", o.Node, "the node that accepted it")
+	assert.Equal(t, "", o.Path, "no object: it is of the node")
+	assert.Equal(t, "frozen", o.Expect)
+
+	m.handle(&msgbus.NodeOrchestrationEnd{Node: "n1", ID: id.String()})
+	o, _ = GetOrchestration(id.String())
+	assert.Equal(t, StateSucceeded, o.State)
+}
+
+// An orchestration a newer one displaced ended all the same, and aborted is
+// how it ended.
+func TestADisplacedNodeOrchestrationEndsAborted(t *testing.T) {
+	reset()
+	m := &Manager{}
+	id := uuid.New()
+
+	m.handle(&msgbus.NodeOrchestrationAccepted{Node: "n1", ID: id.String()})
+	m.handle(&msgbus.NodeOrchestrationEnd{Node: "n1", ID: id.String(), Aborted: true})
+	o, _ := GetOrchestration(id.String())
+	assert.Equal(t, StateAborted, o.State)
+}
+
+// A global expect the monitor would not take on is answered, so a client
+// polling the id it was handed is not left waiting for an orchestration that
+// never started.
+func TestARefusedNodeOrchestrationSaysWhy(t *testing.T) {
+	reset()
+	m := &Manager{}
+	id := uuid.New()
+
+	m.handle(&msgbus.NodeOrchestrationRefused{
+		Node:   "n1",
+		ID:     id.String(),
+		Reason: "node n2 state is freezing",
+	})
+	o, ok := GetOrchestration(id.String())
+	require.True(t, ok)
+	assert.Equal(t, StateRefused, o.State)
+	assert.Equal(t, "node n2 state is freezing", o.Error)
+}
+
+// A node is asked to freeze by a global expect and to drain by a local one, so
+// reading only the global one reported a drain as targeting "none".
+func TestANodeDrainIsReportedAsWhatItIsFor(t *testing.T) {
+	reset()
+	m := &Manager{}
+	id := uuid.New()
+
+	m.handle(&msgbus.NodeMonitorUpdated{
+		Node: "n1",
+		Value: node2.Monitor{
+			OrchestrationID: id,
+			LocalExpect:     node2.MonitorLocalExpectDrained,
+		},
+	})
+	o, ok := GetOrchestration(id.String())
+	require.True(t, ok)
+	assert.Equal(t, "drained", o.Expect)
+}
+
+// A delete or a purge takes the object away, so the monitors that named the
+// orchestration are deleted rather than reporting back at rest. Without the
+// deletion being read as the node leaving, the orchestration is left running
+// for good on every node but the one that accepted it, which hears the end
+// from its own object monitor.
+func TestAnOrchestrationEndsWhenTheObjectItDeletedIsGone(t *testing.T) {
+	reset()
+	m := &Manager{}
+	id := uuid.New()
+	p := naming.Path{Name: "s1", Kind: naming.KindSvc}
+
+	mon := func(node string) *msgbus.InstanceMonitorUpdated {
+		return &msgbus.InstanceMonitorUpdated{
+			Path:  p,
+			Node:  node,
+			Value: instance.Monitor{OrchestrationID: id, GlobalExpect: instance.MonitorGlobalExpectDeleted},
+		}
+	}
+	m.handle(mon("n1"))
+	m.handle(mon("n2"))
+
+	o, ok := GetOrchestration(id.String())
+	require.True(t, ok)
+	assert.Equal(t, StateRunning, o.State)
+
+	m.handle(&msgbus.InstanceMonitorDeleted{Path: p, Node: "n1"})
+	o, _ = GetOrchestration(id.String())
+	assert.Equal(t, StateRunning, o.State, "a node still carries it")
+
+	m.handle(&msgbus.InstanceMonitorDeleted{Path: p, Node: "n2"})
+	o, _ = GetOrchestration(id.String())
+	assert.Equal(t, StateSucceeded, o.State)
+}
+
+// A node monitor goes away when the node leaves the cluster, and a node that
+// left is out of the orchestration it was running.
+func TestANodeOrchestrationEndsWhenTheNodesRunningItAreGone(t *testing.T) {
+	reset()
+	m := &Manager{}
+	id := uuid.New()
+
+	m.handle(&msgbus.NodeMonitorUpdated{
+		Node:  "n1",
+		Value: node2.Monitor{OrchestrationID: id, GlobalExpect: node2.MonitorGlobalExpectFrozen},
+	})
+	o, ok := GetOrchestration(id.String())
+	require.True(t, ok)
+	assert.Equal(t, StateRunning, o.State)
+
+	m.handle(&msgbus.NodeMonitorDeleted{Node: "n1"})
+	o, _ = GetOrchestration(id.String())
+	assert.Equal(t, StateSucceeded, o.State)
+}

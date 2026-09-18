@@ -18,15 +18,15 @@ import (
 	_ "github.com/opensvc/om3/v3/core/driverdb"
 )
 
-// rbacOf runs the policy over a whole configuration, the way the api does on
-// every write, and returns the first refusal.
+// rbacOf runs the policy over a whole configuration, the way the api does when
+// the object is being created, and returns the first refusal.
 func rbacOf(t *testing.T, config string) error {
 	t.Helper()
 	p, err := naming.ParsePath("test/svc/foo")
 	require.NoError(t, err)
 	o, err := object.New(p, object.WithConfigData([]byte(config)), object.WithVolatile(true))
 	require.NoError(t, err)
-	return configRbacKeys(rbac.Grants{}, o.(object.Configurer).Config())
+	return configRbacChanges(rbac.Grants{}, p.Kind, nil, o.(object.Configurer).Config())
 }
 
 // TestConfigRbacReadsTheValueTheConfigurationSpells is the regression test of a

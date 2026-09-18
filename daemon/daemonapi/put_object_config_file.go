@@ -11,7 +11,11 @@ import (
 )
 
 func (a *DaemonAPI) PutObjectConfigFile(ctx echo.Context, namespace string, kind naming.Kind, name string) error {
-	if v, err := assertAdmin(ctx, namespace); !v {
+	if kind == naming.KindNscfg {
+		if v, err := assertNamespaceConfigWriter(ctx); !v {
+			return err
+		}
+	} else if v, err := assertAdmin(ctx, namespace); !v {
 		return err
 	}
 	p, err := naming.NewPath(namespace, kind, name)

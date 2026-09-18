@@ -33,6 +33,9 @@ func (a *DaemonAPI) postLocalInstanceActionBoot(ctx echo.Context, namespace stri
 		return JSONProblemf(ctx, http.StatusBadRequest, "Invalid parameters", "%s", err)
 	}
 	log = naming.LogWithPath(log, p)
+	if v, err := assertConfigUpdatedAt(ctx, p, params.ConfigUpdatedAt); !v {
+		return err
+	}
 	args := []string{p.String(), "instance", "boot"}
 	if params.To != nil && *params.To != "" {
 		args = append(args, "--to", *params.To)

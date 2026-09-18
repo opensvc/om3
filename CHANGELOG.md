@@ -54,6 +54,12 @@ OpenSVC v3 is a major evolution, rebuilt in Go for performance, reliability, and
 
 * **Enhanced secret management**: New commands like `om <kvstore> key rename` for better key management in secret stores.
 
+* **Act on the configuration you just wrote**: A configuration write answers with the timestamp the configuration now carries, in the `OM-Last-Modified` header of the `POST` and `PUT` on `/object/path/{namespace}/{kind}/{name}/config/file`, and every instance action accepts that timestamp as the `config_updated_at` parameter.
+
+    An instance whose configuration is older than the one named answers `409 Conflict`, saying which configuration it holds, rather than running the action on the configuration the write was replacing. A write is acknowledged by the node that received it and reaches the peer nodes a moment later, so a client that writes a configuration and immediately acts on the instances would otherwise race that propagation, silently, on every node but one.
+
+    The parameter is optional: an action asking for no configuration in particular runs on whatever the node holds, as before.
+
 ### Security
 
 * **SSRF protection for HTTP fetches**: 
@@ -82,6 +88,24 @@ OpenSVC v3 is a major evolution, rebuilt in Go for performance, reliability, and
 * **Network event handling**: New daemon network monitor (`netmon`) relays netlink events to pubsub, enabling faster response to network changes.
 
 * **New install keyword**: For fs and volume resources, the new `install` keyword enables deployment of complex file trees on start, with support for sec keys, cfg keys, local files or remote URIs, file/directory nesting, and user/group/permission setup.
+
+* **Namespace claims on cluster resources**: A namespace can be capped on what it takes of a resource its peers share, declared in its configuration as a `claim` section:
+
+    ```
+    [claim#1]
+    type = pool
+    name = tank
+    limit = 250m
+
+    [claim#2]
+    type = network
+    name = backend2
+    limit = 10
+    ```
+
+    A pool claim counts the size each volume of the namespace was created or resized with, and an allocation or a resize taking the namespace over its limit is refused. A network claim counts the addresses the namespace holds cluster-wide, and an allocation taking it over its limit is refused, while an address already held is never re-claimed, so an object at the limit still restarts.
+
+    A namespace declaring no claim on a resource is not capped on it, and the limit is read from the namespace configuration on the node doing the allocation, so the common case asks nothing of the daemon.
 
 ## Breaking Changes
 
@@ -163,10 +187,6 @@ OpenSVC v3 is a major evolution, rebuilt in Go for performance, reliability, and
     * `dequeue_actions.schedule`
 
 ### Object Configuration
-
-* **References**
-
-    * Drop support for arithmetic expressions in references
 
 * **Keywords renamed** (with backward compatibility)
 
@@ -757,6 +777,16 @@ Where the password is the value of the `þassword` key in `system/sec/relay-v3`.
 * The `secret` keyword is now ignored.
 
 ### Orchestration
+
+* A start asked of a frozen object no longer unfreezes it.
+
+    In v2 and in earlier v3, `om <path> start` on a frozen instance removed the freeze and then started. The object ended up started and unfrozen, so a freeze an operator had set was discarded to serve the request.
+
+    It now starts the instance and leaves the freeze as it was found. Freezing means the daemon may not act by itself, which it still does not: a frozen instance is never started by the HA orchestration, and a frozen node is passed over when choosing where to start. What changes is only the start a user asked for, which is honoured rather than used as a reason to thaw.
+
+    Watch out for the pairing with stop, which freezes: `om <path> stop` followed by `om <path> start` now leaves the object **up and frozen**, where it used to end up up and unfrozen. A frozen object is not restarted elsewhere by the daemon if it fails, so add an `om <path> unfreeze` wherever a stop and start round trip was relied on to put an object back under orchestration.
+
+    Scripts that relied on `start` to clear a freeze must now ask for it: `om <path> unfreeze && om <path> start`. Note also that `om <path> start --wait` no longer waits for the object to be unfrozen, only for it to be up.
 
 * Flex
   * A `flex_target` value under `flex_min` is forced to `flex_min`. A warning is logged.

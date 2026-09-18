@@ -7,7 +7,6 @@ import (
 
 	"github.com/opensvc/om3/v3/core/driver"
 	"github.com/opensvc/om3/v3/core/pool"
-	"github.com/opensvc/om3/v3/util/sizeconv"
 	"github.com/opensvc/om3/v3/util/zfs"
 )
 
@@ -84,7 +83,7 @@ func (t *T) Translate(name string, size int64, shared bool) ([]string, error) {
 		"fs#0.type=zfs",
 		"fs#0.dev=" + poolName + "/" + name,
 		"fs#0.mnt=" + mnt,
-		"fs#0.size=" + sizeconv.ExactBSizeCompact(float64(size)),
+		"fs#0.size={DEFAULT.size}",
 	}
 	if mkfsOpt := t.GetString("mkfs_opt"); mkfsOpt != "" {
 		data = append(data, "fs#0.mkfs_opt="+mkfsOpt)
@@ -100,7 +99,7 @@ func (t *T) BlkTranslate(name string, size int64, shared bool) ([]string, error)
 	data := []string{
 		"disk#0.type=zvol",
 		"disk#0.dev=" + poolName + "/" + name,
-		"disk#0.size=" + sizeconv.ExactBSizeCompact(float64(size)),
+		"disk#0.size={DEFAULT.size}",
 	}
 	if mkblkOpt := t.GetString("create_options"); mkblkOpt != "" {
 		data = append(data, "disk#0.create_options="+mkblkOpt)

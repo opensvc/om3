@@ -142,7 +142,7 @@ func FlagCreateNamespace(flags *pflag.FlagSet, p *string) {
 }
 
 func FlagCreateRestore(flags *pflag.FlagSet, p *bool) {
-	flags.BoolVar(p, "restore", false, "keep the object id defined in the source config")
+	flags.BoolVar(p, "restore", false, "keep what the source configuration recorded of itself: the id it was created with, and the identifiers of the things it holds")
 }
 
 func FlagCron(flags *pflag.FlagSet, p *bool) {
