@@ -470,23 +470,25 @@ func (t *actor) resizeShortfall(ctx context.Context, r resource.Driver) string {
 	if !ok {
 		return ""
 	}
-	// The size a resource is configured to hold is its own keyword when it
-	// has one, and the size of the object otherwise. A pool serves a volume
-	// with resources whose sizes it decides, and the size the volume was
-	// claimed with is the target the whole chain converges to.
+	current, err := sizer.CurrentSize(ctx)
+	if err != nil || current <= 0 {
+		return ""
+	}
+
+	// The keyword is declared by the driver whether or not the configuration
+	// sets it, so what is set is read rather than what it converts to: an
+	// unset size converts to zero, not to nothing.
 	k := key.T{Section: r.RID(), Option: "size"}
 	if t.config.Get(k) == "" {
-		// The keyword is declared by the driver whether or not the
-		// configuration sets it, so what is set is read rather than what it
-		// converts to: an unset size converts to zero, not to nothing.
-		k = key.T{Section: "DEFAULT", Option: "size"}
+		// The size of the object is not this resource's target. It is what
+		// the volume was claimed for from its pool, which the pool hands to
+		// the bottom of the chain, and every link above keeps a cut of it
+		// for its own metadata. Comparing a link to it warns for ever about
+		// a shortfall the layout has by construction.
+		return t.resizeSpanShortfall(ctx, r, current)
 	}
 	configured := t.config.GetSize(k)
 	if configured == nil || *configured <= 0 {
-		return ""
-	}
-	current, err := sizer.CurrentSize(ctx)
-	if err != nil || current <= 0 {
 		return ""
 	}
 	if current >= *configured {
@@ -508,6 +510,53 @@ func (t *actor) resizeShortfall(ctx context.Context, r resource.Driver) string {
 		return fmt.Sprintf("holds %s of the %s it is configured to hold, and cannot grow to it: %s", held, target, err)
 	}
 	return fmt.Sprintf("holds %s of the %s it is configured to hold, so a resize has not finished", held, target)
+}
+
+// resizeSpanShortfall says a resource has not taken all of what is under it.
+//
+// A resource with no size keyword of its own has no target written anywhere,
+// so what says it is behind is the device under it holding more than it asks
+// of it. A chain grows from the bottom up, and one that stopped part way is
+// exactly that: space made below that nothing above has taken.
+//
+// Only a resource grown onto what is under it can be read this way. A logical
+// volume takes a part of its volume group and leaves the rest, so holding
+// less than what is under it says nothing about it.
+//
+// What the resource asks of the device below is its own plan for the size it
+// already holds. That is what makes the reading exact where a subtraction
+// would not be: the cut a link keeps for itself is the link's to compute, and
+// a link that over-asks, as the drbd metadata does by design, reads as having
+// taken everything rather than as being short of it.
+func (t *actor) resizeSpanShortfall(ctx context.Context, r resource.Driver, current int64) string {
+	spanner, ok := r.(resource.ResizeSpansBelow)
+	if !ok || !spanner.ResizeSpansBelow() {
+		return ""
+	}
+	resizer, ok := r.(resource.Resizer)
+	if !ok {
+		return ""
+	}
+	subDeviceser, ok := r.(resource.SubDeviceser)
+	if !ok {
+		return ""
+	}
+	devs := subDeviceser.SubDevices(ctx)
+	if len(devs) != 1 {
+		// Which of several devices a resource has not taken is not something
+		// this can decide, and a resize refuses such a chain anyway.
+		return ""
+	}
+	below, err := devs[0].Size()
+	if err != nil || below <= 0 {
+		return ""
+	}
+	need, err := resizer.ResizePlan(ctx, current)
+	if err != nil || need >= below {
+		return ""
+	}
+	held, has := resizeSizePair(current, below)
+	return fmt.Sprintf("holds %s while the %s under it holds %s, so a resize has not finished", held, devs[0].Path(), has)
 }
 
 // resizeSizePair renders two sizes so that the difference between them shows.

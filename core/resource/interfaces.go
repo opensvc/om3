@@ -220,6 +220,11 @@ type (
 	// it rather than to a size of its own. A filesystem is: it is told to
 	// take up the device it sits on, and the size it reports is that device.
 	//
+	// A volume group and a drbd resource are grown the same way, keeping a
+	// cut of the device for their own metadata. What they report is the
+	// device less that cut, which their own plan computes: a link that has
+	// taken what is under it asks of it what it holds.
+	//
 	// Such a resource cannot be told by its size whether it still has to
 	// grow. A chain grows from the bottom up, so the device under it already
 	// holds the new size by the time it is asked, and comparing the two says
