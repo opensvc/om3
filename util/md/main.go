@@ -659,7 +659,16 @@ func (t T) SetSize(ctx context.Context, perDev int64) error {
 		command.WithLogger(t.log),
 		command.WithCommandLogLevel(zerolog.InfoLevel),
 		command.WithStdoutLogLevel(zerolog.InfoLevel),
-		command.WithStderrLogLevel(zerolog.ErrorLevel),
+		// mdadm says what it did on stderr, so a grow that worked was
+		// reported as an error:
+		//
+		//	ERR disk#1: stderr: mdadm: component size of
+		//	    /dev/md/system.v1.disk.1 has been set to 104448K
+		//
+		// The exit code is what says whether it worked, and it is read below.
+		// A grow that failed is the error this returns, logged by whoever
+		// asked for it.
+		command.WithStderrLogLevel(zerolog.InfoLevel),
 	)
 	if err := cmd.Run(); err != nil {
 		return err
