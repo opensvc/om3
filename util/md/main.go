@@ -552,11 +552,17 @@ func (t T) devsFromBlkidOutput(s string) []string {
 }
 
 type (
-	// Sizes are what an array hands out, and what it uses on each of the
-	// members it hands it out from.
+	// Sizes are what an array hands out, what it uses on each of the members
+	// it hands it out from, and what it is doing while it does.
 	Sizes struct {
 		// Level is the raid level, to say which array cannot do what.
 		Level string
+
+		// State is what mdadm reports the array is: "clean", "active", and
+		// what it is missing or busy with when it is either of those and
+		// something else. An array is grown once it is whole, so this is what
+		// says whether it is.
+		State string
 
 		// Array is what the array device holds.
 		Array int64
@@ -590,6 +596,8 @@ func (t T) Sizes(ctx context.Context) (Sizes, error) {
 		switch strings.TrimSpace(name) {
 		case "Raid Level":
 			sizes.Level = value
+		case "State":
+			sizes.State = value
 		case "Array Size":
 			sizes.Array, err = kiloBytesField(value)
 		case "Used Dev Size":
@@ -604,6 +612,25 @@ func (t T) Sizes(ctx context.Context) (Sizes, error) {
 		}
 	}
 	return sizes, nil
+}
+
+// IsWhole says the array holds every member it is made of and is doing
+// nothing to the space it already has.
+//
+// mdadm grows a degraded array without a word, and the space that adds is as
+// unprotected as the array it is added to: a raid5 missing a member grows onto
+// members that have no parity for the new space and no member to rebuild it
+// from. An array rebuilding, resyncing or reshaping is busy with what it
+// holds, and is not asked for more while it is.
+func (t Sizes) IsWhole() bool {
+	for _, word := range strings.Split(t.State, ",") {
+		switch strings.TrimSpace(word) {
+		case "clean", "active", "":
+		default:
+			return false
+		}
+	}
+	return true
 }
 
 // kiloBytesField reads a "407552 (398.00 MiB 417.33 MB)" detail value, whose
