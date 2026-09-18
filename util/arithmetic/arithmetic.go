@@ -8,8 +8,15 @@
 //
 // The references are resolved before this is asked anything, so what it reads
 // is arithmetic over numbers. A number is written the way every other size in
-// a configuration is written, so "10g" and "10GB" are sizes here too, and a
-// number followed by a percent sign is the share it reads as.
+// a configuration is written, so "10g" and "10GB" are sizes here too.
+//
+// The operators are "+", "-", "*", "/", "//" and "%". The last two are the
+// integer division and the remainder of it, so "5//2" is 2 and "5%2" is 1.
+//
+// A percent sign is also how a share is written, "50%" being a half, and the
+// two are told apart by what follows the sign: a number opens the right side
+// of a remainder, and anything else ends a share. So "50% * 10g" is half of
+// ten gibibytes, and "50 % 2" is what is left of fifty when divided by two.
 package arithmetic
 
 import (
@@ -136,7 +143,7 @@ func (p *parser) expr() (float64, error) {
 	}
 }
 
-// term is a product of factors.
+// term is a product of factors, or what a division of them leaves.
 func (p *parser) term() (float64, error) {
 	v, err := p.factor()
 	if err != nil {
@@ -153,6 +160,12 @@ func (p *parser) term() (float64, error) {
 			v *= r
 		case '/':
 			p.pos++
+			// A second slash makes it the integer division, which is what
+			// the division of two counts of something usually means.
+			whole := p.pos < len(p.s) && p.s[p.pos] == '/'
+			if whole {
+				p.pos++
+			}
 			r, err := p.factor()
 			if err != nil {
 				return 0, err
@@ -161,6 +174,19 @@ func (p *parser) term() (float64, error) {
 				return 0, fmt.Errorf("%s: division by zero", p.s)
 			}
 			v /= r
+			if whole {
+				v = math.Floor(v)
+			}
+		case '%':
+			p.pos++
+			r, err := p.factor()
+			if err != nil {
+				return 0, err
+			}
+			if r == 0 {
+				return 0, fmt.Errorf("%s: division by zero", p.s)
+			}
+			v = math.Mod(v, r)
 		default:
 			return v, nil
 		}
@@ -210,7 +236,7 @@ func (p *parser) number() (float64, error) {
 	for p.pos < len(p.s) {
 		c := p.s[p.pos]
 		isPart := c >= '0' && c <= '9' ||
-			c == '.' || c == ',' || c == '%' ||
+			c == '.' || c == ',' ||
 			c >= 'a' && c <= 'z' || c >= 'A' && c <= 'Z'
 		if !isPart {
 			break
@@ -221,10 +247,11 @@ func (p *parser) number() (float64, error) {
 	if token == "" {
 		return 0, fmt.Errorf("%s: %q is not a number", p.s, p.s[start:])
 	}
-	if share, ok := strings.CutSuffix(token, "%"); ok {
-		v, err := strconv.ParseFloat(strings.ReplaceAll(share, ",", "."), 64)
+	if p.isShareSign() {
+		p.pos++
+		v, err := strconv.ParseFloat(strings.ReplaceAll(token, ",", "."), 64)
 		if err != nil {
-			return 0, fmt.Errorf("%s: %q is not a share", p.s, token)
+			return 0, fmt.Errorf("%s: %q is not a share", p.s, token+"%")
 		}
 		return v / 100, nil
 	}
@@ -233,4 +260,28 @@ func (p *parser) number() (float64, error) {
 		return 0, fmt.Errorf("%s: %q is not a number", p.s, token)
 	}
 	return float64(v), nil
+}
+
+// isShareSign says the percent sign the number just read is followed by ends a
+// share rather than opening the right side of a remainder.
+//
+// The two are told apart by what comes after the sign: a remainder is taken of
+// something, so a number follows it, where a share is followed by an operator,
+// a closing parenthesis, or nothing at all.
+func (p *parser) isShareSign() bool {
+	p.skipSpace()
+	if p.pos >= len(p.s) || p.s[p.pos] != '%' {
+		return false
+	}
+	for i := p.pos + 1; i < len(p.s); i++ {
+		switch c := p.s[i]; {
+		case c == ' ' || c == '\t':
+			continue
+		case c >= '0' && c <= '9', c == '.', c == '(':
+			return false
+		default:
+			return true
+		}
+	}
+	return true
 }
