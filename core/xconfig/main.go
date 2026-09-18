@@ -23,6 +23,7 @@ import (
 	"github.com/opensvc/om3/v3/core/keywords"
 	"github.com/opensvc/om3/v3/core/naming"
 	"github.com/opensvc/om3/v3/core/rawconfig"
+	"github.com/opensvc/om3/v3/util/arithmetic"
 	"github.com/opensvc/om3/v3/util/converters"
 	"github.com/opensvc/om3/v3/util/file"
 	"github.com/opensvc/om3/v3/util/hostname"
@@ -949,59 +950,141 @@ func getKeyword(k key.T, sectionType string, referrer Referrer) (*keywords.Keywo
 }
 
 func (t *T) evalStringAs(k key.T, kw *keywords.Keyword, impersonate string, count bool, trace *dereferenceTrace) (string, error) {
+	v, postponed, err := t.evalReferencesAs(k, kw, impersonate, count, trace)
+	if err != nil {
+		return v, err
+	}
+	if postponed {
+		// Something the value names is not built yet, so the arithmetic over
+		// it is not computed yet either. The value is answered as it was
+		// before there was any arithmetic: the reference standing in for
+		// itself, which is what lets a configuration validate before anything
+		// is provisioned.
+		return v, nil
+	}
+	return evalArithmetic(v, kw)
+}
+
+// evalArithmetic computes the arithmetic a keyword holds, for the keywords a
+// number is asked of.
+//
+// It is not computed everywhere, because "$(...)" is also how a shell
+// substitutes a command, and om keywords hold shell commands: a trigger, the
+// start of an app, the command of a task. A keyword converted to a number is
+// none of those, and is the only place a sum means anything.
+func evalArithmetic(v string, kw *keywords.Keyword) (string, error) {
+	if !strings.Contains(v, arithmetic.Open) {
+		return v, nil
+	}
+	switch kw.Converter {
+	case converters.Size, converters.Int, converters.Int64, converters.Float64:
+	default:
+		return v, nil
+	}
+	s, err := arithmetic.Eval(v)
+	if err != nil {
+		return "", fmt.Errorf("%s: %w", key.New(kw.Section, kw.Option), err)
+	}
+	return s, nil
+}
+
+func (t *T) evalReferencesAs(k key.T, kw *keywords.Keyword, impersonate string, count bool, trace *dereferenceTrace) (string, bool, error) {
 	var (
-		v   string
-		err error
+		v         string
+		postponed bool
+		err       error
 	)
 	switch kw.Inherit {
 	case keywords.InheritLeaf2Head:
-		if v, err = t.evalDescopeStringAs(k, kw, impersonate, count, trace); err == nil {
-			return v, nil
+		if v, postponed, err = t.evalDescopeStringAs(k, kw, impersonate, count, trace); err == nil {
+			return v, postponed, nil
 		}
 		firstKey := kw.DefaultKey()
-		if v, err = t.evalDescopeStringAs(firstKey, kw, impersonate, count, trace); err == nil {
-			return v, nil
+		if v, postponed, err = t.evalDescopeStringAs(firstKey, kw, impersonate, count, trace); err == nil {
+			return v, postponed, nil
 		}
 	case keywords.InheritHead2Leaf:
 		firstKey := kw.DefaultKey()
-		if v, err = t.evalDescopeStringAs(firstKey, kw, impersonate, count, trace); err == nil {
-			return v, nil
+		if v, postponed, err = t.evalDescopeStringAs(firstKey, kw, impersonate, count, trace); err == nil {
+			return v, postponed, nil
 		}
-		if v, err = t.evalDescopeStringAs(k, kw, impersonate, count, trace); err == nil {
-			return v, nil
+		if v, postponed, err = t.evalDescopeStringAs(k, kw, impersonate, count, trace); err == nil {
+			return v, postponed, nil
 		}
 	case keywords.InheritLeaf:
-		if v, err = t.evalDescopeStringAs(k, kw, impersonate, count, trace); err == nil {
-			return v, nil
+		if v, postponed, err = t.evalDescopeStringAs(k, kw, impersonate, count, trace); err == nil {
+			return v, postponed, nil
 		}
 	case keywords.InheritHead:
 		firstKey := kw.DefaultKey()
-		if v, err = t.evalDescopeStringAs(firstKey, kw, impersonate, count, trace); err == nil {
-			return v, nil
+		if v, postponed, err = t.evalDescopeStringAs(firstKey, kw, impersonate, count, trace); err == nil {
+			return v, postponed, nil
 		}
 	default:
-		return "", fmt.Errorf("unsupported keyword inherit value: %s.%s: %d", kw.Section, kw.Option, kw.Inherit)
+		return "", false, fmt.Errorf("unsupported keyword inherit value: %s.%s: %d", kw.Section, kw.Option, kw.Inherit)
 	}
 	switch {
 	case errors.Is(err, ErrExist):
 		switch kw.Required {
 		case true:
-			return "", err
+			return "", false, err
 		case false:
-			return t.replaceReferences(kw.Default, k.Section, impersonate, count, trace)
+			v, err := t.replaceReferences(kw.Default, k.Section, impersonate, count, trace)
+			if isPostponedRef(err) {
+				return v, true, nil
+			}
+			return v, false, err
 		}
 	case err != nil:
-		return "", err
+		return "", false, err
 	}
-	return v, nil
+	return v, false, nil
 }
 
-func (t *T) evalDescopeStringAs(k key.T, kw *keywords.Keyword, impersonate string, count bool, trace *dereferenceTrace) (string, error) {
+// evalDescopeStringAs reads a keyword and resolves the references it holds.
+//
+// The bool answers whether a reference named something not built yet. Its own
+// text stands in for it, which is how a configuration validates before
+// anything is provisioned, and what tells a caller not to read the value as a
+// number: the number is not known until the thing exists.
+func (t *T) evalDescopeStringAs(k key.T, kw *keywords.Keyword, impersonate string, count bool, trace *dereferenceTrace) (string, bool, error) {
 	v, err := t.mayDescope(k, kw, impersonate)
 	if err != nil {
-		return "", err
+		return "", false, err
 	}
-	return t.replaceReferences(v, k.Section, impersonate, count, trace)
+	v, err = t.replaceReferences(v, k.Section, impersonate, count, trace)
+	if isPostponedRef(err) {
+		return v, true, nil
+	}
+	return v, false, err
+}
+
+// isPostponedRef says an error is only a reference to something not built
+// yet, and nothing else.
+func isPostponedRef(err error) bool {
+	if err == nil {
+		return false
+	}
+	var postponed ErrPostponedRef
+	if !errors.As(err, &postponed) {
+		return false
+	}
+	for _, e := range errorsOf(err) {
+		var p ErrPostponedRef
+		if !errors.As(e, &p) {
+			return false
+		}
+	}
+	return true
+}
+
+// errorsOf unwraps a joined error into the errors it was joined from, and
+// answers the error itself when it joins none.
+func errorsOf(err error) []error {
+	if joined, ok := err.(interface{ Unwrap() []error }); ok {
+		return joined.Unwrap()
+	}
+	return []error{err}
 }
 
 func (t *T) convert(v string, kw *keywords.Keyword) (any, error) {
@@ -1431,7 +1514,10 @@ func (t T) dereferenceWellKnown(ref string, section string, impersonate string, 
 			return v, nil
 		}
 		if _, ok := err.(ErrPostponedRef); ok {
-			return v, nil
+			// The value stands in for what is not built yet, as it always
+			// has. The error rides along so a caller reading the value as a
+			// number knows it is not one yet.
+			return v, err
 		}
 		if errors.Is(err, ErrUnknownReference) {
 			// let intra config dereference happen
