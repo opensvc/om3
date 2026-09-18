@@ -180,6 +180,14 @@ func (t *T) ResizePlan(ctx context.Context, to int64) (int64, error) {
 	return sizeconv.RoundUp(to+overhead, 512), nil
 }
 
+// ResizeSpansBelow implements resource.ResizeSpansBelow.
+//
+// A volume group takes up the physical volume it is created on, keeping a cut
+// of it for its own metadata and for what does not fill a whole extent.
+func (t *T) ResizeSpansBelow() bool {
+	return true
+}
+
 // Resize implements resource.Resizer.
 //
 // Growing takes the whole device, which the plan made sure is large enough.

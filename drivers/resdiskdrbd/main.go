@@ -1067,6 +1067,14 @@ func (t *T) ResizeIsReplicated() bool {
 	return true
 }
 
+// ResizeSpansBelow implements resource.ResizeSpansBelow.
+//
+// A drbd resource takes up the device it was given, keeping a cut of it for
+// its metadata: it is not told a size, it is told to look again.
+func (t *T) ResizeSpansBelow() bool {
+	return true
+}
+
 // CurrentSize implements resource.Sizer.
 //
 // It is the size of the replicated device, which is less than the device
