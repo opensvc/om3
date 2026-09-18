@@ -196,7 +196,10 @@ func (t *T) blkTranslateFile(name string, size int64, shared bool) (string, []st
 		"disk#3.type=lv",
 		"disk#3.name=lv",
 		"disk#3.vg=" + name,
-		"disk#3.size=100%FREE",
+		// What is left of the volume group, which om computes so it knows the
+		// number: a share lvm2 computes is one om never learns the result of,
+		// and one a resize cannot grow.
+		"disk#3.size=$(100% * {disk#2.free})",
 		"disk#3.standby=true",
 		"disk#4.type=drbd",
 		"disk#4.res=" + name,

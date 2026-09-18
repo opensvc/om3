@@ -47,6 +47,7 @@ type (
 	}
 	VGDriverResizer interface {
 		Size(context.Context) (int64, error)
+		Free(context.Context) (int64, error)
 		ExtentSize(context.Context) (int64, error)
 		ResizePV(context.Context, string, int64) error
 	}
@@ -123,6 +124,15 @@ func (t *T) CurrentSize(ctx context.Context) (int64, error) {
 		return 0, err
 	}
 	return vg.Size(ctx)
+}
+
+// CurrentFree implements resource.Freer.
+func (t *T) CurrentFree(ctx context.Context) (int64, error) {
+	vg, err := t.resizer()
+	if err != nil {
+		return 0, err
+	}
+	return vg.Free(ctx)
 }
 
 // ResizePlan implements resource.Resizer.

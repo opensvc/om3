@@ -116,3 +116,12 @@ func TestTheArithmeticOfAKeywordThatConvertsToNoNumber(t *testing.T) {
 	require.NoError(t, err)
 	assert.Equal(t, "100%FREE", v, "the share lvm2 computes is handed over as written")
 }
+
+// A resource that cannot say how much of it is unused does not answer for it.
+// A loop disk holds what it holds, with nothing left over, so the reference
+// stands unresolved and the keyword that had to be a number refuses it.
+func TestTheFreeOfAResourceThatCannotSayIt(t *testing.T) {
+	o, _ := withLoopFile(t, 1024, "\n[disk#1]\ntype = loop\nfile = /var/tmp/does-not-matter.img\nsize = {disk#0.free}\n")
+	_, err := o.Config().Eval(key.New("disk#1", "size"))
+	require.Error(t, err)
+}
