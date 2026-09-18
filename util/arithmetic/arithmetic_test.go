@@ -26,6 +26,17 @@ func TestEvalExpr(t *testing.T) {
 		{"10g / 2", 5368709120},
 		{"10g - 1g", 9663676416},
 
+		// The integer division, and what it leaves.
+		{"5 // 2", 2},
+		{"4 // 2", 2},
+		{"10g // 3", 3579139413},
+		{"4 % 2", 0},
+		{"5 % 2", 1},
+		{"4%2", 0},
+		{"5%2", 1},
+		{"10 % 4 + 1", 3},
+		{"2 * 5 // 3", 3},
+
 		// A share is a fraction, which is what makes it useful multiplied.
 		{"50% * 10g", 5368709120},
 		{"12.5% * 8g", 1073741824},
@@ -41,6 +52,18 @@ func TestEvalExpr(t *testing.T) {
 		// written with.
 		{"1ki", 1024},
 		{"1kb", 1000},
+
+		// A percent sign ends a share when an operator follows it, and takes
+		// a remainder when a number does. Which it is does not depend on the
+		// spaces around it.
+		{"50%", 1}, // a half, rounded, which is what a share on its own is worth
+		{"(50%) * 8", 4},
+		{"50% * 8", 4},
+		{"50%*8", 4},
+		{"9%4", 1},
+		{"9 % 4", 1},
+		{"9% * 4", 0},
+		{"9 % (2 + 2)", 1},
 	} {
 		t.Run(tc.expr, func(t *testing.T) {
 			v, err := EvalExpr(tc.expr)
@@ -61,6 +84,9 @@ func TestEvalExprRefusals(t *testing.T) {
 		"banana",
 		"1 + banana",
 		"100%FREE",
+		"1 % 0",
+		"1 // 0",
+		"5 // ",
 	} {
 		t.Run(expr, func(t *testing.T) {
 			_, err := EvalExpr(expr)
