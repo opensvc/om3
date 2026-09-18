@@ -7,6 +7,7 @@ import (
 	"path/filepath"
 	"regexp"
 	"slices"
+	"strconv"
 	"strings"
 
 	"github.com/google/uuid"
@@ -16,6 +17,7 @@ import (
 	"github.com/opensvc/om3/v3/core/placement"
 	"github.com/opensvc/om3/v3/core/priority"
 	"github.com/opensvc/om3/v3/core/rawconfig"
+	"github.com/opensvc/om3/v3/core/resource"
 	"github.com/opensvc/om3/v3/core/topology"
 	"github.com/opensvc/om3/v3/core/xconfig"
 	"github.com/opensvc/om3/v3/util/device"
@@ -254,6 +256,47 @@ func (t *core) dereferenceVolumeHead(ref string) (string, error) {
 	return o.Head(), nil
 }
 
+// dereferenceCapacity answers how big a resource is, in bytes.
+//
+// It is what a size written as a share of another size is resolved against:
+// half of a volume group is half of what the group holds, which only the
+// group can say. The capacity is not the size keyword of the resource, which
+// says what it was asked to be, but what it is now, so the share follows the
+// resource when the resource grows.
+func (t *core) dereferenceCapacity(ref string) (string, error) {
+	l := strings.SplitN(ref, ".", 2)
+	var i any = t.config.Referrer
+	actor, ok := i.(Actor)
+	if !ok {
+		return ref, fmt.Errorf("can't dereference capacity on a non-actor object: %s", ref)
+	}
+	if len(l) != 2 {
+		return ref, fmt.Errorf("misformatted capacity ref: %s", ref)
+	}
+	rid := l[0]
+	r := actor.ResourceByID(rid)
+	if r == nil {
+		if t.config.HasSectionString(rid) {
+			// The resource is configured and not built yet, so this is asked
+			// again once it is.
+			return ref, xconfig.NewErrPostponedRef(ref, rid)
+		}
+		return ref, fmt.Errorf("resource referenced by %s not found", ref)
+	}
+	o, ok := r.(resource.Sizer)
+	if !ok {
+		return ref, fmt.Errorf("resource referenced by %s cannot say how big it is", ref)
+	}
+	size, err := o.CurrentSize(context.Background())
+	if err != nil {
+		return ref, fmt.Errorf("%s: %w", ref, err)
+	}
+	if size < 0 {
+		return ref, fmt.Errorf("%s: has no size yet", ref)
+	}
+	return strconv.FormatInt(size, 10), nil
+}
+
 func (t *core) dereferenceExposedDevices(ref string) (string, error) {
 	l := strings.SplitN(ref, ".", 2)
 	var i any = t.config.Referrer
@@ -397,6 +440,8 @@ func (t *core) Dereference(ref string) (string, error) {
 		return ref, fmt.Errorf("todo")
 	case strings.Contains(ref, ".exposed_devs"):
 		return t.dereferenceExposedDevices(ref)
+	case strings.HasSuffix(ref, ".capacity"):
+		return t.dereferenceCapacity(ref)
 	case strings.HasPrefix(ref, "volume#") && strings.HasSuffix(ref, ".mnt"):
 		return t.dereferenceVolumeHead(ref)
 	}
