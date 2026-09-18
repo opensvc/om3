@@ -24,6 +24,7 @@ var (
 			Attr:     "UUID",
 			Example:  "dev1",
 			Option:   "uuid",
+			Recorded: true,
 			Scopable: true,
 			Text:     keywords.NewText(fs, "text/kw/uuid"),
 		},
