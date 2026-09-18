@@ -3,6 +3,7 @@ package daemonapi
 import (
 	"errors"
 	"fmt"
+	"sort"
 	"strings"
 
 	"github.com/labstack/echo/v4"
@@ -13,12 +14,22 @@ import (
 	"github.com/opensvc/om3/v3/core/object"
 	"github.com/opensvc/om3/v3/core/xconfig"
 	"github.com/opensvc/om3/v3/daemon/rbac"
+	"github.com/opensvc/om3/v3/util/file"
+	"github.com/opensvc/om3/v3/util/hostname"
 	"github.com/opensvc/om3/v3/util/key"
 )
 
-// configRbac validates all keys in a config object against RBAC rules.
-// It checks if the user has root grant, and if not, validates each key.
-// Returns an error if any key violates RBAC rules.
+// configRbac refuses a configuration write the grants do not allow.
+//
+// What the write changes is what has to be allowed, not what the
+// configuration ends up holding. A keyword already there was written by
+// whoever was allowed to write it, and asking for that grant again on every
+// write would make an object nobody but root can touch out of one that holds a
+// single root keyword: the object administrator could not so much as fix a
+// comment on a service that mounts a filesystem.
+//
+// An object being created has nothing to compare against, so every keyword of
+// it is a change, and every keyword answers for itself.
 func configRbac(ctx echo.Context, p naming.Path, body []byte) error {
 	o, err := object.New(p, object.WithConfigData(body), object.WithVolatile(true))
 	if err != nil {
@@ -31,20 +42,45 @@ func configRbac(ctx echo.Context, p naming.Path, body []byte) error {
 	if grants.HasGrant(rbac.GrantRoot) {
 		return nil
 	}
-	return configRbacKeys(grants, p.Kind, cfg)
+	return configRbacChanges(grants, p.Kind, currentConfig(p), cfg)
 }
 
-// configRbacKeys checks every keyword of a configuration against the policy.
-func configRbacKeys(grants rbac.Grants, kind naming.Kind, cfg *xconfig.T) error {
-	// Iterate through all sections in the config
-	for _, section := range cfg.SectionStrings() {
-		// Get all keys in this section
-		keys := cfg.Keys(section)
+// currentConfig is the configuration the object holds before the write, and
+// nil when it holds none.
+//
+// A configuration this cannot read is read as none, so the write answers for
+// every keyword it lands: a comparison that could not be made is not a
+// comparison that found nothing.
+func currentConfig(p naming.Path) *xconfig.T {
+	if !file.Exists(p.ConfigFile()) {
+		return nil
+	}
+	o, err := object.New(p, object.WithVolatile(true))
+	if err != nil {
+		return nil
+	}
+	configurer, ok := o.(object.Configurer)
+	if !ok {
+		return nil
+	}
+	return configurer.Config()
+}
+
+// configRbacChanges checks the keywords a write changes against the policy.
+func configRbacChanges(grants rbac.Grants, kind naming.Kind, from, to *xconfig.T) error {
+	scopes := rbacScopes(from, to)
+	for _, section := range to.SectionStrings() {
+		keys := to.Keys(section)
 		set := sectionSetter(keys)
 		for _, option := range keys {
 			k := key.New(section, option)
-			// Create a key operation for this key
-			v, err := cfg.Eval(k)
+			nodename, changed := keyChangedOn(from, to, k, scopes)
+			if !changed {
+				continue
+			}
+			// The value judged is the one the keyword takes where it
+			// changed, which is not always the one it takes here.
+			v, err := to.EvalAs(k, nodename)
 			if err != nil {
 				return err
 			}
@@ -54,13 +90,102 @@ func configRbacKeys(grants rbac.Grants, kind naming.Kind, cfg *xconfig.T) error 
 				Value: xconfig.EvaluatedString(v),
 				Index: 0,
 			}
-			// Validate this key operation against RBAC rules
-			if err := keyopRbac(grants, kind, kop, set); err != nil {
+			if err := keyopRbacOn(grants, kind, kop, set, nodename); err != nil {
+				return err
+			}
+		}
+	}
+	if from == nil {
+		return nil
+	}
+	// A keyword the write takes away is a change like the ones it makes. A
+	// user who may not set a keyword may not unset it either, and a section
+	// deleted is every keyword of it unset.
+	for _, section := range from.SectionStrings() {
+		keys := from.Keys(section)
+		set := sectionSetter(keys)
+		for _, option := range keys {
+			k := key.New(section, option)
+			if to.HasKey(k) {
+				continue
+			}
+			if err := keyUnsetRbac(grants, kind, k, evaluatedOrWritten(from, k), set); err != nil {
 				return err
 			}
 		}
 	}
 	return nil
+}
+
+// keyChangedOn says whether a write changes what a keyword means, and on
+// which node it changed it.
+//
+// The written value is not the whole of it. A keyword can hold a reference,
+// and moving what it refers to changes the keyword without touching it: a
+// root-only "pre_start = {env.cmd}" is rewritten by any write of env.cmd,
+// however many references deep it sits. So the values are compared as they
+// evaluate, which is what resolves those references.
+//
+// They are compared on every node the object runs on, before and after,
+// because a keyword can be written once per node: a reference that resolves
+// the same here can resolve to something else on a peer. A node the write
+// adds makes every keyword new there, which is the comparison finding nothing
+// to compare against.
+func keyChangedOn(from, to *xconfig.T, k key.T, scopes []string) (string, bool) {
+	localhost := hostname.Hostname()
+	if from == nil || !from.HasKey(k) {
+		return localhost, true
+	}
+	if from.Get(k) != to.Get(k) {
+		return localhost, true
+	}
+	// This node is asked first, so a keyword that changed everywhere is
+	// answered for plainly rather than named after a peer.
+	for _, nodename := range append([]string{localhost}, scopes...) {
+		a, errA := from.EvalAs(k, nodename)
+		b, errB := to.EvalAs(k, nodename)
+		if errA != nil || errB != nil {
+			// A value that cannot be read cannot be said to be unchanged.
+			return nodename, true
+		}
+		if xconfig.EvaluatedString(a) != xconfig.EvaluatedString(b) {
+			return nodename, true
+		}
+	}
+	return "", false
+}
+
+// rbacScopes is the nodes the keywords are compared on: the ones the object
+// runs on before the write and after it, and this one, which answers for a
+// configuration that names no node.
+func rbacScopes(cfgs ...*xconfig.T) []string {
+	k := key.New("DEFAULT", "nodes")
+	set := map[string]bool{hostname.Hostname(): true}
+	for _, cfg := range cfgs {
+		if cfg == nil {
+			continue
+		}
+		for _, nodename := range cfg.GetStrings(k) {
+			set[nodename] = true
+		}
+	}
+	l := make([]string, 0, len(set))
+	for nodename := range set {
+		l = append(l, nodename)
+	}
+	sort.Strings(l)
+	return l
+}
+
+// evaluatedOrWritten is a keyword value as it evaluates, or as it is written
+// when it no longer evaluates. A rule reading the value is then given the
+// reference itself, which no rule opens, rather than nothing at all.
+func evaluatedOrWritten(cfg *xconfig.T, k key.T) string {
+	v, err := cfg.Eval(k)
+	if err != nil {
+		return cfg.Get(k)
+	}
+	return xconfig.EvaluatedString(v)
 }
 
 // assertGuest asserts that the authenticated user has is either granted the "guest", "operator" or "admin" role on the namespace or is granted the "root" role.
@@ -146,9 +271,28 @@ var ErrDenied = errors.New("denied")
 // What is refused, and why, is the policy in core/keyoprbac, which the keyword
 // documentation reads too. Here it is only turned into the error the api
 // returns, naming the operation it is about.
-func keyopRbac(grants rbac.Grants, kind naming.Kind, op keyop.T, set keyoprbac.Section) error {
-	if err := keyoprbac.Denied(grants, kind, op.Key.Section, op.Key.Option, op.Value, set); err != nil {
+// keyopRbacOn refuses a write of a keyword, naming the node the keyword takes
+// that value on when it is not this one: a keyword written once per node is
+// refused for what it does where it changed, which the message has to say or
+// it names a value the configuration does not hold here.
+func keyopRbacOn(grants rbac.Grants, kind naming.Kind, op keyop.T, set keyoprbac.Section, nodename string) error {
+	err := keyoprbac.Denied(grants, kind, op.Key.Section, op.Key.Option, op.Value, set)
+	switch {
+	case err == nil:
+		return nil
+	case nodename == "" || nodename == hostname.Hostname():
 		return fmt.Errorf("%w: %s: %w", ErrDenied, op, err)
+	default:
+		return fmt.Errorf("%w: %s on %s: %w", ErrDenied, op, nodename, err)
+	}
+}
+
+// keyUnsetRbac refuses taking a keyword away, which is judged on the value it
+// is being taken away from: a user who may not set a keyword to a value may
+// not unset it from that value either.
+func keyUnsetRbac(grants rbac.Grants, kind naming.Kind, k key.T, value string, set keyoprbac.Section) error {
+	if err := keyoprbac.Denied(grants, kind, k.Section, k.Option, value, set); err != nil {
+		return fmt.Errorf("%w: unset %s: %w", ErrDenied, k, err)
 	}
 	return nil
 }
