@@ -8,6 +8,7 @@ import (
 
 	"github.com/labstack/echo/v4"
 
+	"github.com/opensvc/om3/v3/core/driver"
 	"github.com/opensvc/om3/v3/core/keyop"
 	"github.com/opensvc/om3/v3/core/keyoprbac"
 	"github.com/opensvc/om3/v3/core/naming"
@@ -94,6 +95,9 @@ func configRbacChanges(grants rbac.Grants, kind naming.Kind, from, to *xconfig.T
 				return err
 			}
 		}
+		if err := sectionDriverRbac(grants, kind, from, to, section, set); err != nil {
+			return err
+		}
 	}
 	if from == nil {
 		return nil
@@ -113,6 +117,43 @@ func configRbacChanges(grants rbac.Grants, kind naming.Kind, from, to *xconfig.T
 				return err
 			}
 		}
+	}
+	return nil
+}
+
+// sectionDriverRbac checks the driver a section runs when it names none.
+//
+// A rule about a driver type is asked about a keyword, and a section writing
+// no type gives it no keyword to ask about. It runs the driver its group falls
+// back to all the same: a task writing no type runs its command on the node
+// exactly as "type = host" does, and that is refused where the fallback is not
+// written only because nothing looked.
+//
+// So the fallback is checked as though it had been written. It is checked when
+// the section is new to the object, and when the write is what stopped the
+// section naming a type, which are the two ways a section comes to run a
+// driver it does not name.
+func sectionDriverRbac(grants rbac.Grants, kind naming.Kind, from, to *xconfig.T, section string, set keyoprbac.Section) error {
+	if set("type") {
+		// Written, so it was checked as the keyword it is, in whatever scope
+		// it was written.
+		return nil
+	}
+	group, _, _ := strings.Cut(section, "#")
+	name := driver.DefaultDriver[driver.NewGroup(group)]
+	if name == "" {
+		// A group with no fallback runs nothing it was not told to run.
+		return nil
+	}
+	if from != nil {
+		keys := from.Keys(section)
+		if len(keys) > 0 && !sectionSetter(keys)("type") {
+			// The section ran this driver before the write too.
+			return nil
+		}
+	}
+	if err := keyoprbac.Denied(grants, kind, section, "type", name, set); err != nil {
+		return fmt.Errorf("%w: %s runs the %s driver, which it does not name: %w", ErrDenied, section, name, err)
 	}
 	return nil
 }
