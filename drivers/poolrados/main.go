@@ -9,7 +9,6 @@ import (
 	"github.com/opensvc/om3/v3/core/pool"
 	"github.com/opensvc/om3/v3/drivers/resdiskrados"
 	"github.com/opensvc/om3/v3/util/command"
-	"github.com/opensvc/om3/v3/util/sizeconv"
 )
 
 type (
@@ -165,7 +164,7 @@ func (t *T) BlkTranslate(name string, size int64, shared bool) ([]string, error)
 	data := []string{
 		"disk#0.type=rados",
 		"disk#0.name=" + rbd.ImageSpec(),
-		"disk#0.size=" + sizeconv.ExactBSizeCompact(float64(size)),
+		"disk#0.size={DEFAULT.size}",
 	}
 	return data, nil
 }
