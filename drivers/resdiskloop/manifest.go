@@ -8,6 +8,7 @@ import (
 	"github.com/opensvc/om3/v3/core/manifest"
 	"github.com/opensvc/om3/v3/core/naming"
 	"github.com/opensvc/om3/v3/drivers/resdisk"
+	"github.com/opensvc/om3/v3/util/converters"
 )
 
 var (
@@ -25,8 +26,9 @@ var (
 		Text:     keywords.NewText(fs, "text/kw/file"),
 	}
 	kwSize = keywords.Keyword{
-		Attr:    "Size",
-		Example: "100m",
+		Attr:      "Size",
+		Converter: converters.Size,
+		Example:   "100m",
 		// InheritLeaf, because a vol names in its DEFAULT section the size it
 		// was claimed with from its pool. Inheriting that here would give a
 		// size to every resource that does not name one of its own.

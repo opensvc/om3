@@ -22,7 +22,7 @@ type (
 	T struct {
 		resdisk.T
 		File string `json:"file"`
-		Size string `json:"size"`
+		Size *int64 `json:"size"`
 	}
 )
 
@@ -238,13 +238,13 @@ func (t *T) provisionDir(ctx context.Context) error {
 
 func (t *T) provision(ctx context.Context) error {
 	var (
-		err  error
-		f    *os.File
-		size int64
+		err error
+		f   *os.File
 	)
-	if size, err = sizeconv.FromSize(t.Size); err != nil {
-		return err
+	if t.Size == nil {
+		return fmt.Errorf("a loop file is created with a size, and none is configured")
 	}
+	size := *t.Size
 	if err = t.provisionDir(ctx); err != nil {
 		return err
 	}
