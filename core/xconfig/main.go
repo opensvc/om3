@@ -432,8 +432,13 @@ func (t *T) GetStrings(k key.T) []string {
 func (t *T) GetStringsStrict(k key.T) ([]string, error) {
 	if v, err := t.Eval(k); err != nil {
 		return []string{}, err
+	} else if l, ok := v.([]string); ok {
+		return l, nil
 	} else {
-		return v.([]string), nil
+		// A keyword holding a list and declaring no converter evaluates to
+		// the string the configuration holds, which is the list as it is
+		// written.
+		return strings.Fields(EvaluatedString(v)), nil
 	}
 }
 
@@ -443,13 +448,26 @@ func (t *T) GetSet(k key.T) *set.Set {
 }
 
 func (t *T) GetSetStrict(k key.T) (*set.Set, error) {
-	if v, err := t.Eval(k); err != nil {
+	v, err := t.Eval(k)
+	if err != nil {
 		return set.New(), err
-	} else if v != nil {
-		return v.(*set.Set), nil
-	} else {
-		return set.New(), nil
 	}
+	switch i := v.(type) {
+	case nil:
+		return set.New(), nil
+	case *set.Set:
+		if i == nil {
+			return set.New(), nil
+		}
+		return i, nil
+	}
+	// A keyword holding a set and declaring no converter evaluates to the
+	// string the configuration holds.
+	s := set.New()
+	for _, element := range strings.Fields(EvaluatedString(v)) {
+		s.Insert(element)
+	}
+	return s, nil
 }
 
 func (t *T) GetBool(k key.T) bool {
@@ -511,8 +529,42 @@ func (t *T) GetSizeStrict(k key.T) (*int64, error) {
 		var i int64
 		return &i, err
 	} else {
-		return v.(*int64), nil
+		return evaluatedSize(v)
 	}
+}
+
+// evaluatedSize reads a size from an evaluated keyword value.
+//
+// A keyword declaring the size converter evaluates to the size itself. A
+// keyword spelling a size and declaring no converter evaluates to the string
+// the configuration holds, and the loop, lv and rados disks all spell their
+// size that way. Asserting the first shape took the process down on the
+// second, which is one driver keyword away from every caller.
+//
+// So the value is read the way the configuration spells it, which is what the
+// converter would have made of it had the keyword named one.
+func evaluatedSize(v any) (*int64, error) {
+	switch i := v.(type) {
+	case nil:
+		return nil, nil
+	case *int64:
+		return i, nil
+	case int64:
+		return &i, nil
+	}
+	s := EvaluatedString(v)
+	if s == "" {
+		return nil, nil
+	}
+	size, err := converters.Size.Convert(s)
+	if err != nil {
+		return nil, fmt.Errorf("%w: expected a size, got %v", ErrType, v)
+	}
+	i, ok := size.(*int64)
+	if !ok {
+		return nil, fmt.Errorf("%w: expected a size, got %v", ErrType, v)
+	}
+	return i, nil
 }
 
 // PrepareUnset unsets keywords from config without committing changes.
