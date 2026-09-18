@@ -79,6 +79,9 @@ func configRbacChanges(grants rbac.Grants, kind naming.Kind, from, to *xconfig.T
 			if !changed {
 				continue
 			}
+			if followsObjectSize(kind, from, to, k) {
+				continue
+			}
 			// The value judged is the one the keyword takes where it
 			// changed, which is not always the one it takes here.
 			v, err := to.EvalAs(k, nodename)
@@ -156,6 +159,28 @@ func sectionDriverRbac(grants rbac.Grants, kind naming.Kind, from, to *xconfig.T
 		return fmt.Errorf("%w: %s runs the %s driver, which it does not name: %w", ErrDenied, section, name, err)
 	}
 	return nil
+}
+
+// followsObjectSize says a keyword changed only because the size of the
+// volume it points at changed.
+//
+// A pool writes the size of the resource it serves as a reference to
+// DEFAULT.size, so that growing the volume grows the storage and the claim
+// the cluster rations it by, together and in step. Reading that as a write of
+// a volume resource would leave the administrator of the namespace unable to
+// grow the volume at all, which is the one thing a claim is for.
+//
+// It is the narrowest reading of that arrangement: the size option, the whole
+// value a reference to the size of the object, and the same before the write
+// and after it. A keyword pointed at another one is not opened by it
+// otherwise, so a root-only "pre_start = {env.cmd}" still answers for a write
+// of the env keyword it reads.
+func followsObjectSize(kind naming.Kind, from, to *xconfig.T, k key.T) bool {
+	const ref = "{DEFAULT.size}"
+	if kind != naming.KindVol || k.Option != "size" || k.Section == "DEFAULT" {
+		return false
+	}
+	return from != nil && from.Get(k) == ref && to.Get(k) == ref
 }
 
 // keyChangedOn says whether a write changes what a keyword means, and on

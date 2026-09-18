@@ -284,3 +284,64 @@ nodes = *
 image = b
 `))
 }
+
+// A pool ties the storage it serves to the claim the cluster rations it by,
+// writing the size of the resource as a reference to the size of the volume.
+// Growing the volume is the namespace administrator's to do, and the resource
+// size that follows it is not a write of theirs.
+func TestAVolumeSizeCarriesWhatPointsAtIt(t *testing.T) {
+	volOf := func(s string) *xconfig.T {
+		t.Helper()
+		p, err := naming.ParsePath("test/vol/foo")
+		require.NoError(t, err)
+		o, err := object.New(p, object.WithConfigData([]byte(s)), object.WithVolatile(true))
+		require.NoError(t, err)
+		return o.(object.Configurer).Config()
+	}
+	volWrite := func(from, to string) error {
+		t.Helper()
+		return configRbacChanges(admin, naming.KindVol, volOf(from), volOf(to))
+	}
+	const from = `
+nodes = *
+pool = loop1
+size = 1g
+
+[disk#0]
+type = loop
+file = /var/lib/opensvc/pool/loop1/foo.img
+size = {DEFAULT.size}
+`
+	assert.NoError(t, volWrite(from, `
+nodes = *
+pool = loop1
+size = 2g
+
+[disk#0]
+type = loop
+file = /var/lib/opensvc/pool/loop1/foo.img
+size = {DEFAULT.size}
+`), "the volume grows, and the size of the loop file follows it")
+
+	assert.Error(t, volWrite(from, `
+nodes = *
+pool = loop1
+size = 1g
+
+[disk#0]
+type = loop
+file = /var/lib/opensvc/pool/loop1/foo.img
+size = 2g
+`), "the size of the loop file written as a number is a write of the resource")
+
+	assert.Error(t, volWrite(from, `
+nodes = *
+pool = loop1
+size = 2g
+
+[disk#0]
+type = loop
+file = /var/lib/opensvc/pool/loop1/evil.img
+size = {DEFAULT.size}
+`), "the file the loop is backed by is not opened by the size pointing at it")
+}
