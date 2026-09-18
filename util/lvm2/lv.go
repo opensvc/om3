@@ -253,16 +253,9 @@ func (t *LV) Devices(ctx context.Context) (device.L, error) {
 	return l, nil
 }
 
-func (t *LV) Create(ctx context.Context, size string, args []string) error {
-	if strings.Contains(size, "%") {
-		args = append(args, "-l", size)
-	} else if i, err := sizeconv.FromSize(size); err == nil {
-		// default unit is not "B", explicitly tell
-		size = fmt.Sprintf("%dB", i)
-		args = append(args, "-L", size)
-	} else {
-		args = append(args, "-L", size)
-	}
+func (t *LV) Create(ctx context.Context, size int64, args []string) error {
+	// lvcreate does not default to bytes, so the unit is spelled out.
+	args = append(args, "-L", fmt.Sprintf("%dB", size))
 	cmd := command.New(
 		command.WithContext(ctx),
 		command.WithName("lvcreate"),

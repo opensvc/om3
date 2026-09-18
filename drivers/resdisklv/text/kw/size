@@ -1,2 +1,7 @@
-The size of the logical volume to provision. A size expression or
-`<n>%{FREE|PVS|VG}`.
+The size of the logical volume to provision, as a size expression.
+
+A share of what the volume group holds is written as an arithmetic
+expression over the capacity of the volume group resource, which om
+computes, rather than as the `<n>%{FREE|PVS|VG}` lvm2 computes:
+
+	size = $(50% * {disk#vg.capacity})
