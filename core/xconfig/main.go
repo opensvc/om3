@@ -606,6 +606,27 @@ func (t *T) expandKeywords(ks ...key.T) (key.L, error) {
 }
 
 // Unset deletes keys and commits.
+// UnsetRecorded drops the keywords that name what this configuration was made
+// with, which a configuration copied to make another thing must not carry:
+// the id the object was created with, the uuid of an md array it holds.
+//
+// They are written again, for the copy, when the copy makes what they name.
+func (t *T) UnsetRecorded() {
+	if t.Referrer == nil {
+		return
+	}
+	for _, section := range t.SectionStrings() {
+		for _, option := range t.Keys(section) {
+			k := key.New(section, option)
+			kw := t.Referrer.KeywordLookup(k, t.SectionType(k))
+			if kw == nil || !kw.Recorded {
+				continue
+			}
+			t.Unset(k)
+		}
+	}
+}
+
 func (t *T) Unset(ks ...key.T) error {
 	if err := t.PrepareUnset(ks...); err != nil {
 		return err

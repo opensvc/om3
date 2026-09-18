@@ -7025,10 +7025,11 @@ components:
         recorded:
           type: boolean
           description: >
-            True when om writes the value into the configuration itself, and
-            the value names a thing that now exists: the id an object was
-            created with, the uuid an md array was created with. A
-            configuration copied to make another thing must not carry it.
+            True when the value names a thing that now exists, and was written
+            into the configuration when that thing was made: the id an object
+            was created with, the uuid an md array was created with. A
+            configuration copied to make another thing must not carry it, so
+            these are reset when an object is cloned.
         required:
           type: boolean
         minimal:

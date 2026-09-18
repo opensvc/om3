@@ -8,7 +8,6 @@ import (
 	"github.com/opensvc/om3/v3/core/naming"
 	"github.com/opensvc/om3/v3/core/object"
 	"github.com/opensvc/om3/v3/core/pool"
-	"github.com/opensvc/om3/v3/core/xconfig"
 	"github.com/opensvc/om3/v3/util/key"
 )
 
@@ -89,37 +88,11 @@ func (t *T) translate(name string, size int64, shared bool) ([]string, error) {
 	}
 	config := configurer.Config()
 	config.Unset(key.T{Section: "DEFAULT", Option: "disable"})
-	unsetRecorded(config)
+	// A copy is another volume, so what the template recorded of itself does
+	// not come with it: a copy keeping the array uuid assembles the
+	// template's array under its own name instead of making one.
+	config.UnsetRecorded()
 	return config.Ops(), nil
-}
-
-// unsetRecorded drops from the copy the keywords om wrote into the template
-// itself, which name what the template is rather than what it is made of.
-//
-// The id names the template object, and the uuid of an md names the array the
-// template holds. A copy keeping the uuid assembles that array under its own
-// name instead of making one of its own:
-//
-//	volume#1: provision: disk#1: provision:
-//	    mdadm --assemble /dev/md/pod1-vol-1.disk.1 -u 37a0a0a5:...
-//
-// A copy keeping the id is a second object answering to the first one's name.
-// Both are written again, for the copy, by whoever writes them: the id when
-// the object is created, the uuid when the array is.
-func unsetRecorded(config *xconfig.T) {
-	if config.Referrer == nil {
-		return
-	}
-	for _, section := range config.SectionStrings() {
-		for _, option := range config.Keys(section) {
-			k := key.New(section, option)
-			kw := config.Referrer.KeywordLookup(k, config.SectionType(k))
-			if kw == nil || !kw.Recorded {
-				continue
-			}
-			config.Unset(k)
-		}
-	}
 }
 
 func (t *T) Translate(name string, size int64, shared bool) ([]string, error) {

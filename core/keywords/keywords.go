@@ -90,15 +90,18 @@ type (
 		// RedactSecret means the keyword value will be hidden on config show with the flag --redact-secrets.
 		RedactSecret bool
 
-		// Recorded means om writes the value into the configuration itself,
-		// and that it names a thing that now exists: the id an object was
-		// created with, the uuid an md array was created with and is
-		// assembled by.
+		// Recorded means the value names a thing that now exists, and was
+		// written into the configuration when that thing was made: the id an
+		// object was created with, the uuid an md array was created with and
+		// is assembled by. om writes it where om makes the thing, and an
+		// administrator who makes it themselves writes it themselves.
 		//
 		// A configuration copied to make another thing must not carry it, or
-		// the copy names the original. A virtual pool copies a template
-		// volume, and a copy keeping the array uuid assembles the template's
-		// array under its own name instead of making one.
+		// the copy names the original. So these are reset when an object is
+		// cloned: by "om <path> create --config <source>" unless --restore is
+		// given, and by a virtual pool copying its template volume, where a
+		// copy keeping the array uuid assembles the template's array under
+		// its own name instead of making one.
 		Recorded bool
 	}
 
@@ -513,8 +516,9 @@ func (t *Keyword) Doc(w io.Writer, depth int, kind naming.Kind, section string, 
 	}
 	if t.Recorded {
 		// Said as what it means for the reader of a configuration holding
-		// one: they did not write it, and what it names already exists.
-		fprintProp("recorded", "written by om when what it names is made, not by a user")
+		// one: what it names already exists, and a copy of this object does
+		// not get it.
+		fprintProp("recorded", "written when what it names is made, and reset when the object is cloned")
 	}
 	if len(t.Candidates) > 0 {
 		fprintProp("candidates", strings.Join(t.Candidates, ", "))
