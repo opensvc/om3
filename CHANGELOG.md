@@ -865,9 +865,14 @@ Where the password is the value of the `þassword` key in `system/sec/relay-v3`.
 
 * New `OSVC_SGCP_CACHE` environment variable to override the sgcp api cache policy.
 
-    By default, only the status evaluations run by the daemon scheduler serve the api results from a local cache,
-    so the scheduler does not load the provider api. Every other action, an operator status first of all, reads
-    the api again. The variable overrides this default whatever the action origin:
+    By default, the api results are served from a local cache to:
+
+    * the status evaluations run by the daemon scheduler, so the scheduler does not load the provider api.
+    * the status evaluations run by an action with a resource selection not including the sgcp resource, like
+      `om foo app start`, as the action does not touch it. An action with `--to` is not a resource selection.
+
+    Every other action, an operator status or an action on the sgcp resource first of all, reads the api again.
+    The variable overrides this default whatever the action:
 
     * `1`: serve the cached values, e.g. for tests or repeated manual status checks.
     * `0`: never serve the cached values, the daemon scheduler included, e.g. to debug a stale status.

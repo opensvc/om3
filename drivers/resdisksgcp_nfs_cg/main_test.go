@@ -16,6 +16,7 @@ import (
 
 	"github.com/opensvc/om3/v3/core/actioncontext"
 	"github.com/opensvc/om3/v3/core/env"
+	"github.com/opensvc/om3/v3/core/resourceid"
 	"github.com/opensvc/om3/v3/core/status"
 	"github.com/opensvc/om3/v3/util/sgcp"
 	"github.com/opensvc/om3/v3/util/sgcpcgtesthelper"
@@ -376,6 +377,9 @@ func setupMockCG(t *testing.T, entries []sgcpcgtesthelper.CgEntry) (*sgcpcgtesth
 	return db, api
 }
 
+// testRID is the resource id of the driver newTestDriver returns.
+const testRID = "disk#1"
+
 func newTestDriver(t *testing.T, id, az string, timeout time.Duration, failover bool, api *sgcpcgtesthelper.API) *T {
 	t.Helper()
 	drv := &T{
@@ -384,6 +388,9 @@ func newTestDriver(t *testing.T, id, az string, timeout time.Duration, failover 
 		Timeout:  &timeout,
 		Failover: failover,
 	}
+	rid, err := resourceid.Parse(testRID)
+	require.NoError(t, err)
+	drv.ResourceID = rid
 	drv.mgr = &cgMgr{
 		uuid: id,
 		log:  drv.Log(),
@@ -882,6 +889,39 @@ func TestStatus_ReadsTheProviderOutsideTheScheduler(t *testing.T) {
 				assert.Equal(t, status.NotApplicable, drv.Status(ctx))
 			}
 			assert.Equal(t, 3, db.CallCounts().Get, "a status evaluation was served by the cache")
+		})
+	}
+}
+
+// TestStatus_ActionSelection covers the status evaluations an action with a
+// resource selection makes: the cache is served to the resources the action
+// does not touch, and the provider is read for the ones it does.
+func TestStatus_ActionSelection(t *testing.T) {
+	cases := []struct {
+		name      string
+		selection []string
+		wantGets  int
+	}{
+		{name: "not selected", selection: []string{"app#1"}, wantGets: 1},
+		{name: "selected", selection: []string{"app#1", testRID}, wantGets: 3},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			cleanup := setup(t)
+			defer cleanup()
+			t.Setenv(env.ActionOriginVar, string(env.ActionOriginUser))
+
+			id := uuid.New().String()
+			db, api := setupMockCG(t, []sgcpcgtesthelper.CgEntry{
+				{UUID: id, AvailabilityZone: region1AZ1, Status: "ready"},
+			})
+			drv := newTestDriver(t, id, region1AZ1, 5*time.Second, false, api)
+
+			ctx := actioncontext.WithSelectedRIDs(context.Background(), tc.selection)
+			for i := 0; i < 3; i++ {
+				assert.Equal(t, status.NotApplicable, drv.Status(ctx))
+			}
+			assert.Equal(t, tc.wantGets, db.CallCounts().Get)
 		})
 	}
 }

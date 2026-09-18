@@ -1,9 +1,11 @@
 package sgcphelper
 
 import (
+	"context"
 	"fmt"
 	"os"
 
+	"github.com/opensvc/om3/v3/core/actioncontext"
 	"github.com/opensvc/om3/v3/core/env"
 	"github.com/opensvc/om3/v3/core/naming"
 	"github.com/opensvc/om3/v3/core/object"
@@ -17,15 +19,22 @@ const (
 	CacheVar = "OSVC_SGCP_CACHE"
 )
 
-// UseCache tells whether a driver can serve what it cached instead of
-// reading the provider again. By default, only the daemon scheduler is
-// served the cache: its status evaluations run over and over on their own,
-// and the cache is what keeps them off the provider api. Everyone else, an
-// operator asking for a status first of all, is asking what the provider
-// says now.
+// UseCache tells whether the driver of the resource identified by rid can
+// serve what it cached instead of reading the provider again. By default,
+// the cache is served:
+//
+//   - to the daemon scheduler: its status evaluations run over and over on
+//     their own, and the cache is what keeps them off the provider api.
+//   - during an action with a resource selection not including this
+//     resource, like "om foo app start": the action does not touch this
+//     resource, so the status evaluations it runs before and after have no
+//     reason to load the provider api for it.
+//
+// Everyone else, an operator asking for a status or acting on this
+// resource first of all, is asking what the provider says now.
 //
 // OSVC_SGCP_CACHE overrides this default: "1" serves the cache to every
-// action origin, "0" serves it to none, the daemon scheduler included.
+// action, "0" serves it to none, the daemon scheduler included.
 // Either way, a cached value is only served while younger than the sgcp
 // cache.ttl_seconds, and a zero ttl disables the cache.
 //
@@ -34,18 +43,26 @@ const (
 // the setting is ignored.
 //
 // This lives here rather than in util/sgcp because it reads the action
-// origin, and a util package does not depend on core.
-func UseCache() (bool, error) {
+// origin and selection, and a util package does not depend on core.
+func UseCache(ctx context.Context, rid string) (bool, error) {
 	switch v := os.Getenv(CacheVar); v {
 	case "1":
 		return true, nil
 	case "0":
 		return false, nil
 	case "":
-		return env.HasDaemonSchedulerOrigin(), nil
+		return defaultUseCache(ctx, rid), nil
 	default:
-		return env.HasDaemonSchedulerOrigin(), fmt.Errorf("ignored %s=%q: expected 0 or 1", CacheVar, v)
+		return defaultUseCache(ctx, rid), fmt.Errorf("ignored %s=%q: expected 0 or 1", CacheVar, v)
 	}
+}
+
+func defaultUseCache(ctx context.Context, rid string) bool {
+	if env.HasDaemonSchedulerOrigin() {
+		return true
+	}
+	selected, known := actioncontext.IsResourceSelected(ctx, rid)
+	return known && !selected
 }
 
 type (

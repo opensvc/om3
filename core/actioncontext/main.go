@@ -27,6 +27,7 @@ const (
 	quietKey
 	ridKey
 	rollbackDisabledKey
+	selectedRIDsKey
 	slaveKey
 	slavesKey
 	subsetKey
@@ -154,6 +155,31 @@ func RID(ctx context.Context) string {
 		return i.(string)
 	}
 	return ""
+}
+
+// WithSelectedRIDs records the rids of the resources an action with a
+// resource selection works on, after the selection is expanded with the
+// resources it needs. Drivers read it with IsResourceSelected, for example
+// to spare a provider api call on a resource the action does not touch.
+func WithSelectedRIDs(ctx context.Context, rids []string) context.Context {
+	m := make(map[string]struct{}, len(rids))
+	for _, rid := range rids {
+		m[rid] = struct{}{}
+	}
+	return context.WithValue(ctx, selectedRIDsKey, m)
+}
+
+// IsResourceSelected tells whether the resource identified by rid is among
+// the ones recorded by WithSelectedRIDs. The known return value is false
+// when no selection is recorded, i.e. outside an action or during an action
+// on all the resources, so the caller can apply its default policy.
+func IsResourceSelected(ctx context.Context, rid string) (selected, known bool) {
+	m, ok := ctx.Value(selectedRIDsKey).(map[string]struct{})
+	if !ok {
+		return false, false
+	}
+	_, selected = m[rid]
+	return selected, true
 }
 
 func WithEnv(ctx context.Context, s []string) context.Context {

@@ -410,6 +410,18 @@ func (t *actor) action(ctx context.Context, fn resourceset.DoFunc) error {
 		resourceSelector.SelectRIDs(encaperRIDsAddedForSelectedEncapResources)
 	}
 
+	if !resourceSelector.IsZero() {
+		// Tell the drivers which resources the action works on, so the
+		// status evaluations it runs before and after can spare the
+		// provider api calls on the resources it does not touch.
+		selected := resourceSelector.Resources()
+		rids := make([]string, len(selected))
+		for i, r := range selected {
+			rids[i] = r.RID()
+		}
+		ctx = actioncontext.WithSelectedRIDs(ctx, rids)
+	}
+
 	logger := t.log.
 		Attr("argv", os.Args).
 		Attr("cwd", wd).
