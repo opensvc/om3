@@ -188,10 +188,6 @@ OpenSVC v3 is a major evolution, rebuilt in Go for performance, reliability, and
 
 ### Object Configuration
 
-* **References**
-
-    * Drop support for arithmetic expressions in references
-
 * **Keywords renamed** (with backward compatibility)
 
     * `resinfo_schedule` => `info_schedule`
