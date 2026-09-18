@@ -5,6 +5,7 @@ import (
 	"os"
 	"reflect"
 	"regexp"
+	"strconv"
 
 	"golang.org/x/term"
 
@@ -19,6 +20,7 @@ const (
 	contLastNode     = "  "
 	defaultSeparator = "  "
 	prefixLen        = 2
+	minWrapWidth     = 20
 
 	// using ascii
 	//
@@ -214,14 +216,30 @@ func (t *Tree) setTotalWidth() {
 		t.totalWidth = t.ForcedWidth
 		return
 	}
-	columns, _, err := term.GetSize(int(os.Stdout.Fd()))
-	if err != nil {
-		columns, _, err = term.GetSize(int(os.Stdin.Fd()))
-		if err != nil {
-			columns = 80
-		}
+	columns, ok := outputColumns()
+	if !ok {
+		// Not rendering to a terminal: don't wrap, so the output stays
+		// greppable and doesn't depend on an arbitrary width.
+		t.totalWidth = 0
+		return
 	}
 	t.totalWidth = columns - 4
+}
+
+// outputColumns returns the width of the terminal attached to stdout, or the
+// COLUMNS environment variable value (set by watch for example) when stdout
+// is not a terminal. ok is false when no width is available.
+func outputColumns() (int, bool) {
+	fd := int(os.Stdout.Fd())
+	if term.IsTerminal(fd) {
+		if c, _, err := term.GetSize(fd); err == nil && c > 0 {
+			return c, true
+		}
+	}
+	if c, err := strconv.Atoi(os.Getenv("COLUMNS")); err == nil && c > 0 {
+		return c, true
+	}
+	return 0, false
 }
 
 // Render returns the string representation of the tree.
@@ -263,8 +281,9 @@ func (t *Tree) adjustPads() {
 	for _, pad = range t.pads {
 		width += pad
 	}
-	oversize := width - t.totalWidth
-	if oversize <= 0 {
+	if t.totalWidth <= 0 {
+		return // no width constraint, unchanged pads
+	} else if width <= t.totalWidth {
 		return // no width pressure, unchanged pads
 	}
 	avgColumnWidth := t.totalWidth / t.columnCount
@@ -277,10 +296,18 @@ func (t *Tree) adjustPads() {
 			usableWidth -= pad
 		}
 	}
+	if oversizedColumnCount == 0 {
+		return
+	}
 	maxWidth := usableWidth / oversizedColumnCount
+	if maxWidth < minWrapWidth {
+		// Not enough room left by the tree prefix and the other columns.
+		// Overflow the terminal width instead of producing unusable pads.
+		maxWidth = minWrapWidth
+	}
 	for i, pad = range t.pads[1:] {
 		if pad > avgColumnWidth {
-			t.pads[i+1] = maxWidth
+			t.pads[i+1] = min(pad, maxWidth)
 		}
 	}
 }
@@ -454,6 +481,9 @@ func (c *Column) wrappedLines(text string, width int) []string {
 	lines := make([]string, 0)
 	if width == 0 {
 		return lines
+	}
+	if width < 0 {
+		return append(lines, text)
 	}
 	offset := 0
 	remain := realLen(text)
