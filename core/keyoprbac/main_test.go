@@ -226,6 +226,11 @@ func TestEveryRuleIsDocumented(t *testing.T) {
 		if groupPolicy.Default != nil {
 			check(group+" default", *groupPolicy.Default)
 		}
+		for kind, rule := range groupPolicy.KindDefaults {
+			name := group + " default on a " + kind.String()
+			check(name, *rule)
+			assert.NotEmptyf(t, Doc(kind, group, "a_keyword_with_no_rule"), "%s documents nothing", name)
+		}
 		for option, rule := range groupPolicy.Rules {
 			name := group + "." + option
 			if rule.Grant == "" {
@@ -286,5 +291,63 @@ func TestThePgKeywordsOfAnObjectAreNotRationed(t *testing.T) {
 			assert.NoErrorf(t, Denied(noGrant, kind, "DEFAULT", option, "x", none),
 				"%s DEFAULT.%s", kind, option)
 		}
+	}
+}
+
+// A volume is the storage itself, so its resources are not the namespace
+// administrator's to edit. The same driver groups on a service describe what
+// the service asks for and does with what it was given, which is theirs.
+func TestTheResourcesOfAVolumeNeedTheRootGrant(t *testing.T) {
+	admin := rbac.Grants{rbac.NewGrant(rbac.RoleAdmin, "test")}
+
+	// A volume served by a pool carries volume sections when the pool builds
+	// it out of other volumes, and filesystem sections for what it exposes.
+	// Neither was asked for by the namespace: both were written when the
+	// volume was served.
+	for _, option := range []string{"name", "pool", "size", "access", "configs", "secrets", "directories", "install", "mnt", "dev", "mkfs_opt", "a_keyword_of_a_driver_added_later"} {
+		for _, sec := range []string{"volume#1", "fs#1"} {
+			err := Denied(admin, naming.KindVol, sec, option, "x", none)
+			require.Errorf(t, err, "%s.%s", sec, option)
+			assert.EqualErrorf(t, err, "a resource of a volume requires the root grant", "%s.%s", sec, option)
+		}
+	}
+
+	// A flag is a file in the object var directory, and an open filesystem
+	// type on a service. On a volume it is part of the storage all the same.
+	assert.NoError(t, Denied(admin, naming.KindSvc, "fs#1", "type", "flag", none))
+	assert.Error(t, Denied(admin, naming.KindVol, "fs#1", "type", "flag", none))
+
+	// The same sections of a service are the consumer asking for storage and
+	// saying what it does with it, which is what an object administrator is
+	// for.
+	for _, option := range []string{"name", "pool", "size", "access", "configs", "secrets", "directories", "mnt", "mkfs_opt"} {
+		assert.NoErrorf(t, Denied(admin, naming.KindSvc, "volume#1", option, "x", none), "volume#1.%s", option)
+	}
+
+	// What a volume is was decided when it was served, so the keywords that
+	// say it are refused the same way its resources are.
+	for _, option := range []string{"pool", "nodes", "access", "children", "devices_from", "id", "orchestrate", "a_keyword_of_a_kind_added_later"} {
+		err := Denied(admin, naming.KindVol, "DEFAULT", option, "x", none)
+		require.Errorf(t, err, "DEFAULT.%s", option)
+		assert.EqualErrorf(t, err, "a volume keyword other than size requires the root grant", "DEFAULT.%s", option)
+	}
+
+	// The size is the exception, because the pool claim of the namespace is
+	// what rations it. The claim is enforced on the write, not here.
+	assert.NoError(t, Denied(admin, naming.KindVol, "DEFAULT", "size", "1g", none))
+
+	// The same keywords of a service say what the object administrator asked
+	// for, and stay theirs.
+	for _, option := range []string{"pool", "nodes", "access", "orchestrate"} {
+		assert.NoErrorf(t, Denied(admin, naming.KindSvc, "DEFAULT", option, "x", none), "DEFAULT.%s", option)
+	}
+
+	// The keywords every section carries survive the rule, as they do every
+	// other group default, in the resource sections and in DEFAULT.
+	for _, option := range []string{"optional", "disable", "monitor", "standby", "shared", "tags", "subset", "comment"} {
+		assert.NoErrorf(t, Denied(admin, naming.KindVol, "fs#1", option, "true", none), "fs#1.%s", option)
+	}
+	for _, option := range []string{"comment", "disable", "pg_cpu_shares"} {
+		assert.NoErrorf(t, Denied(admin, naming.KindVol, "DEFAULT", option, "x", none), "DEFAULT.%s", option)
 	}
 }

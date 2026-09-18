@@ -75,6 +75,16 @@ type (
 		// keyword added to one of its drivers later is refused until the
 		// policy has weighed it.
 		Default *Rule
+
+		// KindDefaults is Default for the kinds it names, for a group whose
+		// sections mean one thing on one kind and another on the next. A
+		// volume section of a service is the consumer asking a pool for
+		// storage; the same section of a volume is part of the storage.
+		//
+		// It answers for every keyword of the group on that kind except the
+		// ones KindRules or Rules name, and except the keywords every section
+		// carries, which no group takes away.
+		KindDefaults map[naming.Kind]*Rule
 	}
 
 	// Section answers whether an option is set in the section the keyword
@@ -109,6 +119,28 @@ var containerTypes = []string{"oci", "docker", "podman"}
 // rootRule is the group default of the driver groups whose keywords describe
 // what the object takes from the node.
 var rootRule = Rule{Grant: rbac.GrantRoot, Reason: reasonRoot}
+
+// volDefaultRule is the rule of what a volume is, as against what it holds.
+//
+// Which pool served the volume, which nodes it lives on, how it may be reached
+// and what consumes it were all decided when it was served. The size is the
+// exception: a namespace grows a volume within the claim it holds on the pool,
+// which is the claim's whole purpose.
+var volDefaultRule = Rule{Grant: rbac.GrantRoot, Reason: reasonVolDefault}
+
+const reasonVolDefault = "a volume keyword other than size requires the root grant"
+
+// volResourceRule is the rule of the resources of a volume.
+//
+// A volume is the storage itself, where a service is what consumes it. Its
+// resources are written when the volume is served and describe what the node
+// handed out: which device, which filesystem, which volume it rests on.
+// Changing one parts the object from the storage it was given, and asking for
+// different storage is a keyword of the service that consumes it, not of the
+// volume.
+var volResourceRule = Rule{Grant: rbac.GrantRoot, Reason: reasonVolResource}
+
+const reasonVolResource = "a resource of a volume requires the root grant"
 
 // squatterRule is the rule of the keywords that set what a namespace may take
 // of the resources the cluster shares.
@@ -173,22 +205,43 @@ var rules = map[string]Group{
 			Denies: valueOnly(hasHostPathMount),
 		},
 	}},
-	"volume": {Rules: map[string]Rule{
-		"install": {
-			Grant:  rbac.GrantRoot,
-			Reason: "a server-local source uri requires the root grant",
-			Denies: valueOnly(datarecv.TextHasLocalSource),
+	// A volume section of a service is the consumer asking a pool for storage,
+	// which is what an object administrator is for. The same section of a
+	// volume is not a request: it is part of the storage, written when the
+	// volume was served, and editing it parts the object from what it was
+	// given.
+	"volume": {
+		KindDefaults: map[naming.Kind]*Rule{naming.KindVol: &volResourceRule},
+		KindRules: map[naming.Kind]map[string]Rule{
+			naming.KindVol: {"install": volResourceRule},
 		},
-	}},
-	"fs": {Rules: map[string]Rule{
-		"type": {
-			Grant:  rbac.GrantRoot,
-			Reason: reasonRoot,
-			// A flag is a file in the object var directory. Every other fs
-			// type mounts something, which is the node's to decide.
-			Values: []string{"flag"},
+		Rules: map[string]Rule{
+			"install": {
+				Grant:  rbac.GrantRoot,
+				Reason: "a server-local source uri requires the root grant",
+				Denies: valueOnly(datarecv.TextHasLocalSource),
+			},
 		},
-	}},
+	},
+
+	// The filesystems of a volume are the storage it exposes, and are read
+	// the same way: what a service mounts is the object administrator's, and
+	// what a volume is made of is not.
+	"fs": {
+		KindDefaults: map[naming.Kind]*Rule{naming.KindVol: &volResourceRule},
+		KindRules: map[naming.Kind]map[string]Rule{
+			naming.KindVol: {"type": volResourceRule},
+		},
+		Rules: map[string]Rule{
+			"type": {
+				Grant:  rbac.GrantRoot,
+				Reason: reasonRoot,
+				// A flag is a file in the object var directory. Every other fs
+				// type mounts something, which is the node's to decide.
+				Values: []string{"flag"},
+			},
+		},
+	},
 
 	// An ip resource takes an address, and a link to carry it, from the node.
 	// Which address, and which link, are the node administrator's to decide,
@@ -239,7 +292,17 @@ var rules = map[string]Group{
 				"pg_mem_swappiness":  squatterRule,
 				"pg_blkio_weight":    squatterRule,
 			},
+
+			// The size a volume is asked to hold is what the pool claim of
+			// the namespace rations, so it is the one keyword of a volume an
+			// administrator of the namespace writes. The claim is what bounds
+			// it: a write taking the namespace over what it claimed of the
+			// pool is refused, whoever asks.
+			naming.KindVol: {
+				"size": {},
+			},
 		},
+		KindDefaults: map[naming.Kind]*Rule{naming.KindVol: &volDefaultRule},
 		Rules: map[string]Rule{
 			"priority": {
 				// A priority decides which objects a node sheds first, so it
@@ -444,6 +507,9 @@ func Lookup(kind naming.Kind, section, option string) (Rule, bool) {
 	}
 	if commonKeywords[option] {
 		return Rule{}, false
+	}
+	if rule, ok := groupPolicy.KindDefaults[kind]; ok {
+		return *rule, true
 	}
 	if groupPolicy.Default != nil {
 		return *groupPolicy.Default, true
