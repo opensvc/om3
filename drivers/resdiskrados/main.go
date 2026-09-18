@@ -19,7 +19,6 @@ import (
 	"github.com/opensvc/om3/v3/util/command"
 	"github.com/opensvc/om3/v3/util/device"
 	"github.com/opensvc/om3/v3/util/hostname"
-	"github.com/opensvc/om3/v3/util/sizeconv"
 	"github.com/opensvc/om3/v3/util/udevadm"
 )
 
@@ -29,7 +28,7 @@ type (
 		resource.SSH
 		Name       string `json:"name"`
 		ObjectFQDN string `json:"object_fqdn"`
-		Size       string `json:"size"`
+		Size       *int64 `json:"size"`
 		Access     string `json:"access"`
 		Keyring    string `json:"keyring"`
 		Config     string `json:"config"`
@@ -191,10 +190,10 @@ func (t *T) unmapDevice(ctx context.Context) error {
 }
 
 func (t *T) createDevice(ctx context.Context) error {
-	bytes, err := sizeconv.FromSize(t.Size)
-	if err != nil {
-		return err
+	if t.Size == nil {
+		return fmt.Errorf("a rados image is created with a size, and none is configured")
 	}
+	bytes := *t.Size
 	args, err := t.rbdArgs()
 	if err != nil {
 		return err
