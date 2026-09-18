@@ -92,3 +92,23 @@ func TestGetStringsAndGetSetOfAKeywordWithNoConverter(t *testing.T) {
 	assert.True(t, s.Has("/dev/a"))
 	assert.True(t, s.Has("/dev/b"))
 }
+
+// A share of something is not a count of bytes. Reading it as no size at all
+// lost it: a keyword set to "50%" read as a keyword nobody set, and the
+// object provisioned with no size rather than being told what it asked for
+// could not be given.
+func TestGetSizeOfAShare(t *testing.T) {
+	cfg, err := NewObject("", []byte("[quota]\nusage = 50%\n"))
+	require.NoError(t, err)
+	cfg.Referrer = &sizeReferrer{config: cfg}
+
+	_, err = cfg.GetSizeStrict(key.New("quota", "usage"))
+	assert.Error(t, err, "the keyword says something this cannot answer")
+
+	// A keyword that does not declare the converter is not read by it, so the
+	// "100%FREE" a logical volume is created with is untouched.
+	plain := newPlainConfig(t, "[disk#0]\nsize = 100%FREE\n")
+	s, err := plain.GetStringStrict(key.New("disk#0", "size"))
+	assert.NoError(t, err)
+	assert.Equal(t, "100%FREE", s)
+}
