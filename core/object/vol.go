@@ -194,11 +194,32 @@ func (t *vol) ExposedDevice(ctx context.Context) *device.T {
 // exposedDeviceResource returns the resource the volume exposes a device
 // through, and the devices that resource exposes.
 //
-// The deepest rid wins, so the resource nearest the consumer is the one
-// named.
+// A configuration naming devices_from has said which resource that is, and it
+// is the same answer the consumers of the volume are given, so it is not
+// guessed at here. A volume that names none is read by the deepest rid, so
+// the resource nearest the consumer is the one named.
 func (t *vol) exposedDeviceResource(ctx context.Context) (resource.Driver, device.L) {
 	type devicer interface {
 		ExposedDevices(context.Context) device.L
+	}
+	if configured := t.config.GetStrings(key.Parse("devices_from")); len(configured) > 0 {
+		t.ConfigureResources()
+		for _, rid := range configured {
+			r := t.ResourceByID(rid)
+			if r == nil {
+				continue
+			}
+			d, ok := r.(devicer)
+			if !ok {
+				continue
+			}
+			if devs := d.ExposedDevices(ctx); len(devs) > 0 {
+				return r, devs
+			}
+		}
+		// The configuration named the resources to expose, so falling back to
+		// another would answer with something it said not to.
+		return nil, nil
 	}
 	rids := make([]string, 0)
 	candidates := make(map[string]resource.Driver)
