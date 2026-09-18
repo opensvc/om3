@@ -321,6 +321,11 @@ func (t *T) ResizePlan(ctx context.Context, to int64) (int64, error) {
 	if err != nil {
 		return 0, err
 	}
+	if !sizes.IsWhole() {
+		// mdadm grows a degraded array without a word, and the space it adds
+		// is as unprotected as the array it is added to.
+		return 0, fmt.Errorf("md %s is %q, and an array is grown once it is whole: what a resize adds would be as unprotected, or as busy, as what it already holds", t.GetName(), sizes.State)
+	}
 	if sizes.UsedDev <= 0 {
 		// A raid0 and a linear hand out everything their members hold, with
 		// no data size of their own on each. mdadm answers "Cannot set device
