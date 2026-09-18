@@ -90,6 +90,17 @@ type (
 		// RedactSecret means the keyword value will be hidden on config show with the flag --redact-secrets.
 		RedactSecret bool
 
+		// DeprecatedValue is a regular expression matching the values om
+		// still accepts and no longer recommends, and DeprecatedValueText
+		// says what to write instead.
+		//
+		// The keyword itself is the one to use. It is one of the forms it
+		// takes that is on its way out: the size of a logical volume written
+		// as the share of its volume group lvm2 computes, which om never
+		// learns the result of.
+		DeprecatedValue     string
+		DeprecatedValueText string
+
 		// Arithmetic means an expression written "$(...)" in this keyword's
 		// value is computed.
 		//
