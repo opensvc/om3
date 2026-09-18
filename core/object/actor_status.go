@@ -492,6 +492,36 @@ func (t *actor) resizeShortfall(ctx context.Context, r resource.Driver) string {
 	if current >= *configured {
 		return ""
 	}
-	return fmt.Sprintf("holds %s of the %s it is configured to hold, so a resize has not finished",
-		sizeconv.BSizeCompact(float64(current)), sizeconv.BSizeCompact(float64(*configured)))
+	held, target := resizeSizePair(current, *configured)
+
+	// Whether a resize would make up the difference is the resource's to say,
+	// and it says it by refusing to plan one: a raid0 array holds what its
+	// members give it and grows by taking another member, so an array
+	// configured for more than its members hold is not a resize that stopped
+	// part way. It is a size it will never hold, which is worth saying once
+	// rather than reporting for ever as unfinished work.
+	resizer, ok := r.(resource.Resizer)
+	if !ok {
+		return fmt.Sprintf("holds %s of the %s it is configured to hold, and cannot be resized", held, target)
+	}
+	if _, err := resizer.ResizePlan(ctx, *configured); err != nil {
+		return fmt.Sprintf("holds %s of the %s it is configured to hold, and cannot grow to it: %s", held, target, err)
+	}
+	return fmt.Sprintf("holds %s of the %s it is configured to hold, so a resize has not finished", held, target)
+}
+
+// resizeSizePair renders two sizes so that the difference between them shows.
+//
+// The compact rendering is the readable one and is kept while the two differ
+// under it. A resource short by less than the rendering resolves prints as
+// holding what it is configured to hold, which reads as a warning about
+// nothing: the drbd of a volume keeps its metadata out of what it hands up,
+// and is short by that much for ever.
+func resizeSizePair(current, configured int64) (string, string) {
+	held := sizeconv.BSizeCompact(float64(current))
+	target := sizeconv.BSizeCompact(float64(configured))
+	if held != target {
+		return held, target
+	}
+	return fmt.Sprintf("%d bytes", current), fmt.Sprintf("%d bytes", configured)
 }

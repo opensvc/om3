@@ -310,3 +310,26 @@ func TestALinkThatDoesNotSpanBelowIsStillSkipped(t *testing.T) {
 	assert.True(t, p.Steps[1].Skip)
 	assert.False(t, p.HasWork())
 }
+
+// A resource short of its configured size by less than the compact rendering
+// resolves printed as holding what it is configured to hold, which reads as a
+// warning about nothing. The drbd of a volume keeps its metadata out of what
+// it hands up, and is short by that much for ever.
+func TestTheSizesAWarningCompares(t *testing.T) {
+	for _, tc := range []struct {
+		name                string
+		current, configured int64
+		held, target        string
+	}{
+		{"far apart", 96 * 1024 * 1024, 100 * 1024 * 1024, "96mi", "100mi"},
+		{"a drbd short by its metadata", 366907392, 367001600, "366907392 bytes", "367001600 bytes"},
+		{"a loop short by a sector", 34952192, 34952533, "34952192 bytes", "34952533 bytes"},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			held, target := resizeSizePair(tc.current, tc.configured)
+			assert.Equal(t, tc.held, held)
+			assert.Equal(t, tc.target, target)
+			assert.NotEqual(t, held, target, "a warning naming the same size twice explains nothing")
+		})
+	}
+}
