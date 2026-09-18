@@ -67,3 +67,24 @@ func TestValidateDeprecatedValue(t *testing.T) {
 		})
 	}
 }
+
+// A commit refuses the errors and keeps the warnings to itself, so what is
+// kept has to be readable on its own: the two are told apart the same way.
+func TestAlertsWarns(t *testing.T) {
+	alerts := Alerts{
+		{Key: key.New("fs#1", "vg"), Kind: alertKindUnknown, Level: alertLevelWarn},
+		{Key: key.New("fs#1", "type"), Kind: alertKindCandidates, Level: alertLevelError},
+		{Key: key.New("disk#1", "size"), Kind: alertKindDeprecatedValue, Level: alertLevelWarn},
+	}
+
+	warns := alerts.Warns()
+	require.Len(t, warns, 2)
+	assert.Equal(t, key.New("fs#1", "vg"), warns[0].Key)
+	assert.Equal(t, key.New("disk#1", "size"), warns[1].Key)
+
+	assert.Len(t, alerts.Errors(), 1, "and the errors are the rest")
+	assert.Equal(t, len(alerts), len(alerts.Warns())+len(alerts.Errors()),
+		"every alert is one or the other")
+
+	assert.Empty(t, Alerts{}.Warns())
+}
