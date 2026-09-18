@@ -1508,7 +1508,10 @@ type InstanceStatus = instance.Status
 
 // KeywordDefinitionItem defines model for KeywordDefinitionItem.
 type KeywordDefinitionItem struct {
-	Aliases       []string `json:"aliases"`
+	Aliases []string `json:"aliases"`
+
+	// Arithmetic True when an expression written $(...) in the keyword value is computed. Implied by a converter that makes a number, and declared where the keyword holds a number but converts to none.
+	Arithmetic    bool     `json:"arithmetic"`
 	Candidates    []string `json:"candidates"`
 	Converter     string   `json:"converter"`
 	Default       string   `json:"default"`

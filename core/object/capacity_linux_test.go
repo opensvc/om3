@@ -100,3 +100,19 @@ func TestTheArithmeticLeavesAShellCommandAlone(t *testing.T) {
 	require.NotNil(t, size)
 	assert.Equal(t, int64(1073741824), *size)
 }
+
+// A keyword can hold a number and convert to none, because it also accepts a
+// form no number can express. The size of a logical volume is one: lvm2 takes
+// a share of the volume group, which om hands over as written, so the keyword
+// says for itself that an expression in it is computed.
+func TestTheArithmeticOfAKeywordThatConvertsToNoNumber(t *testing.T) {
+	o, _ := withLoopFile(t, 1024, "\n[disk#1]\ntype = lv\nvg = vgtest\nname = lvtest\nsize = $(50% * 10g)\n\n[disk#2]\ntype = lv\nvg = vgtest\nname = lvshare\nsize = 100%FREE\n")
+
+	v, err := o.Config().Eval(key.New("disk#1", "size"))
+	require.NoError(t, err)
+	assert.Equal(t, "5368709120", v, "computed, and left a string for lvm2")
+
+	v, err = o.Config().Eval(key.New("disk#2", "size"))
+	require.NoError(t, err)
+	assert.Equal(t, "100%FREE", v, "the share lvm2 computes is handed over as written")
+}

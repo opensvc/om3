@@ -6969,6 +6969,7 @@ components:
         - replacedBy
         - redactSecret
         - recorded
+        - arithmetic
         - required
         - minimal
       properties:
@@ -7030,6 +7031,12 @@ components:
             was created with, the uuid an md array was created with. A
             configuration copied to make another thing must not carry it, so
             these are reset when an object is cloned.
+        arithmetic:
+          type: boolean
+          description: >
+            True when an expression written $(...) in the keyword value is
+            computed. Implied by a converter that makes a number, and declared
+            where the keyword holds a number but converts to none.
         required:
           type: boolean
         minimal:

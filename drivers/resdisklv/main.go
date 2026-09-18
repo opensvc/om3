@@ -5,6 +5,7 @@ package resdisklv
 import (
 	"context"
 	"fmt"
+	"strings"
 
 	"github.com/opensvc/om3/v3/core/actionrollback"
 	"github.com/opensvc/om3/v3/core/provisioned"
@@ -20,7 +21,7 @@ type (
 		resdisk.T
 		LVName        string   `json:"name"`
 		VGName        string   `json:"vg"`
-		Size          *int64   `json:"size"`
+		Size          string   `json:"size"`
 		CreateOptions []string `json:"create_options"`
 	}
 	LVDriver interface {
@@ -40,7 +41,7 @@ type (
 		Resize(context.Context, int64) error
 	}
 	LVDriverProvisioner interface {
-		Create(context.Context, int64, []string) error
+		Create(context.Context, string, []string) error
 	}
 	LVDriverUnprovisioner interface {
 		Remove(context.Context, []string) error
@@ -139,10 +140,10 @@ func (t *T) ProvisionAsLeader(ctx context.Context) error {
 		t.Log().Infof("%s is already provisioned", lv.FQN())
 		return nil
 	}
-	if t.Size == nil {
+	if t.Size == "" {
 		return fmt.Errorf("a logical volume is created with a size, and none is configured")
 	}
-	if err := lvi.Create(ctx, *t.Size, t.CreateOptions); err != nil {
+	if err := lvi.Create(ctx, t.Size, t.CreateOptions); err != nil {
 		return err
 	}
 	actionrollback.Register(ctx, func(ctx context.Context) error {
@@ -240,7 +241,28 @@ func (t *T) ResizePlan(ctx context.Context, to int64) (int64, error) {
 	if _, err := t.resizer(); err != nil {
 		return 0, err
 	}
+	if err := t.refuseShareSize(); err != nil {
+		return 0, err
+	}
 	return to, nil
+}
+
+// refuseShareSize stops a resize of a logical volume whose size is written as
+// a share of its volume group.
+//
+// lvm2 computes that share, once, when the volume is created, and om never
+// learns what it came out as. A resize writes the size it reached back into
+// the keyword it grew, and writing a count of bytes over "100%FREE" would
+// answer a question nobody asked: the configuration says take what is left,
+// and what is left is not that number.
+//
+// It is refused here, while the chain is still being planned, so nothing
+// below has been grown by the time the answer comes.
+func (t *T) refuseShareSize() error {
+	if !strings.Contains(t.Size, "%") {
+		return nil
+	}
+	return fmt.Errorf("its size is %s, a share of the volume group that lvm2 computes, which a resize cannot grow: write it as a size, or as an expression over the capacity of the volume group resource, like $(50%% * {disk#vg.capacity})", t.Size)
 }
 
 // Resize implements resource.Resizer.
