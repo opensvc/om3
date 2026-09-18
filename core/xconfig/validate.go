@@ -265,6 +265,18 @@ func (t Alerts) Errors() Alerts {
 	return l
 }
 
+// Warns are the alerts that only have something to say about a configuration,
+// as opposed to the errors that make it invalid.
+func (t Alerts) Warns() Alerts {
+	l := make(Alerts, 0, len(t))
+	for _, alert := range t {
+		if alert.Level == alertLevelWarn {
+			l = append(l, alert)
+		}
+	}
+	return l
+}
+
 func (t Alerts) HasError() bool {
 	return t.has(alertLevelError)
 }
