@@ -333,3 +333,48 @@ func TestTheSizesAWarningCompares(t *testing.T) {
 		})
 	}
 }
+
+// A chain crossing into several objects at once is one chain. An array over
+// two volumes rests on both, and what each volume exposes is grown at the same
+// depth as what the other does, so the levels of the two line up rather than
+// following one another.
+func TestMergeResizeLevels(t *testing.T) {
+	p1 := naming.Path{Name: "v1-vol-1", Kind: naming.KindVol}
+	p2 := naming.Path{Name: "v1-vol-2", Kind: naming.KindVol}
+	link := func(p naming.Path, rid string) resizeLink {
+		return resizeLink{path: p, r: &fakeLink{rid: rid}}
+	}
+	names := func(levels []resizeLevel) []string {
+		l := make([]string, 0, len(levels))
+		for _, level := range levels {
+			s := ""
+			for _, link := range level {
+				if s != "" {
+					s += " "
+				}
+				s += link.path.String() + ":" + link.r.RID()
+			}
+			l = append(l, s)
+		}
+		return l
+	}
+
+	a := []resizeLevel{{link(p1, "fs#1")}, {link(p1, "disk#0")}}
+	b := []resizeLevel{{link(p2, "fs#1")}, {link(p2, "disk#0")}}
+	assert.Equal(t, []string{
+		"vol/v1-vol-1:fs#1 vol/v1-vol-2:fs#1",
+		"vol/v1-vol-1:disk#0 vol/v1-vol-2:disk#0",
+	}, names(mergeResizeLevels(a, b)), "the same depth of each is one level")
+
+	// One chain deeper than the other keeps its depth: the shorter one ran
+	// out of links, not the longer one of levels.
+	c := []resizeLevel{{link(p2, "fs#1")}}
+	assert.Equal(t, []string{
+		"vol/v1-vol-1:fs#1 vol/v1-vol-2:fs#1",
+		"vol/v1-vol-1:disk#0",
+	}, names(mergeResizeLevels(a, c)))
+
+	// Merging onto nothing is the chain itself, which is what the first
+	// object entered merges onto.
+	assert.Equal(t, names(a), names(mergeResizeLevels(nil, a)))
+}

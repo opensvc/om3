@@ -173,7 +173,12 @@ func (t *actor) resizeChain(ctx context.Context, r resource.Driver, seen map[str
 		return nil, fmt.Errorf("%s %s is reached twice: a resize of a chain that loops is not supported", t.path, r.RID())
 	}
 	seen[resizeLinkKey(t.path, r.RID())] = true
-	levels := []resizeLevel{{first}}
+	return t.resizeChainFromLevel(ctx, resizeLevel{first}, seen)
+}
+
+// resizeChainFromLevel walks a chain down from a level already worked out.
+func (t *actor) resizeChainFromLevel(ctx context.Context, first resizeLevel, seen map[string]bool) ([]resizeLevel, error) {
+	levels := []resizeLevel{first}
 	for {
 		last := levels[len(levels)-1]
 
@@ -181,18 +186,24 @@ func (t *actor) resizeChain(ctx context.Context, r resource.Driver, seen map[str
 		// volume resource standing for the head of its volume, holds no size
 		// of its own. The chain continues in that object, and this link drops
 		// out of it: there is nothing here to change.
-		if len(last) == 1 {
-			if target, ok := last[0].r.(resource.ResizeTargeter); ok {
-				p, err := target.ResizeTarget(ctx)
+		stay, entered, err := t.resizeEnterTargets(ctx, last, seen)
+		if err != nil {
+			return nil, err
+		}
+		if len(entered) > 0 {
+			// The links that hold a size go on being walked here, and what
+			// they reach lines up with what the objects entered reach: a
+			// level is grown as one, whichever object each of its links is
+			// in.
+			merged := entered
+			if len(stay) > 0 {
+				stayed, err := t.resizeChainFromLevel(ctx, stay, seen)
 				if err != nil {
-					return nil, fmt.Errorf("%s: %w", last[0].r.RID(), err)
+					return nil, err
 				}
-				sub, err := headResizeChain(ctx, p, seen)
-				if err != nil {
-					return nil, fmt.Errorf("%s: %w", last[0].r.RID(), err)
-				}
-				return append(levels[:len(levels)-1], sub...), nil
+				merged = mergeResizeLevels(stayed, entered)
 			}
+			return append(levels[:len(levels)-1], merged...), nil
 		}
 
 		next, err := t.resizeLevelBelow(ctx, last, seen)
@@ -204,6 +215,65 @@ func (t *actor) resizeChain(ctx context.Context, r resource.Driver, seen map[str
 		}
 		levels = append(levels, next)
 	}
+}
+
+// resizeEnterTargets splits a level into the links that hold a size of their
+// own and the chains of the objects the others stand for.
+//
+// An array over two volumes rests on both, so a level holds as many of these
+// as the array has members, and each is a chain of its own object. They are
+// merged, because the members of an array are grown together and the levels of
+// their chains line up: what each volume exposes is grown at the same depth as
+// what the other does.
+func (t *actor) resizeEnterTargets(ctx context.Context, level resizeLevel, seen map[string]bool) (resizeLevel, []resizeLevel, error) {
+	var (
+		stay    resizeLevel
+		entered []resizeLevel
+	)
+	for _, link := range level {
+		target, ok := link.r.(resource.ResizeTargeter)
+		if !ok {
+			stay = append(stay, link)
+			continue
+		}
+		p, err := target.ResizeTarget(ctx)
+		if err != nil {
+			return nil, nil, fmt.Errorf("%s: %w", link.r.RID(), err)
+		}
+		sub, err := headResizeChain(ctx, p, seen)
+		if err != nil {
+			return nil, nil, fmt.Errorf("%s: %w", link.r.RID(), err)
+		}
+		entered = mergeResizeLevels(entered, sub)
+	}
+	return stay, entered, nil
+}
+
+// mergeResizeLevels lines two chains up depth by depth, so that what they hold
+// at the same depth is one level, grown together.
+func mergeResizeLevels(a, b []resizeLevel) []resizeLevel {
+	n := len(a)
+	if len(b) > n {
+		n = len(b)
+	}
+	merged := make([]resizeLevel, n)
+	for i := 0; i < n; i++ {
+		var level resizeLevel
+		if i < len(a) {
+			level = append(level, a[i]...)
+		}
+		if i < len(b) {
+			level = append(level, b[i]...)
+		}
+		sort.Slice(level, func(x, y int) bool {
+			if level[x].path.String() != level[y].path.String() {
+				return level[x].path.String() < level[y].path.String()
+			}
+			return level[x].r.RID() < level[y].r.RID()
+		})
+		merged[i] = level
+	}
+	return merged
 }
 
 // resizeLevelBelow returns the resources a level rests on, which is every
