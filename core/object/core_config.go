@@ -264,24 +264,9 @@ func (t *core) dereferenceVolumeHead(ref string) (string, error) {
 // says what it was asked to be, but what it is now, so the share follows the
 // resource when the resource grows.
 func (t *core) dereferenceCapacity(ref string) (string, error) {
-	l := strings.SplitN(ref, ".", 2)
-	var i any = t.config.Referrer
-	actor, ok := i.(Actor)
-	if !ok {
-		return ref, fmt.Errorf("can't dereference capacity on a non-actor object: %s", ref)
-	}
-	if len(l) != 2 {
-		return ref, fmt.Errorf("misformatted capacity ref: %s", ref)
-	}
-	rid := l[0]
-	r := actor.ResourceByID(rid)
-	if r == nil {
-		if t.config.HasSectionString(rid) {
-			// The resource is configured and not built yet, so this is asked
-			// again once it is.
-			return ref, xconfig.NewErrPostponedRef(ref, rid)
-		}
-		return ref, fmt.Errorf("resource referenced by %s not found", ref)
+	r, err := t.referencedResource(ref, "capacity")
+	if err != nil {
+		return ref, err
 	}
 	o, ok := r.(resource.Sizer)
 	if !ok {
@@ -295,6 +280,59 @@ func (t *core) dereferenceCapacity(ref string) (string, error) {
 		return ref, fmt.Errorf("%s: has no size yet", ref)
 	}
 	return strconv.FormatInt(size, 10), nil
+}
+
+// dereferenceFree answers how much of a resource nothing has taken yet, in
+// bytes.
+//
+// It is the other half of the capacity: a volume group says how big it is and
+// how much of it is unused, and a logical volume carved from it is sized from
+// the second. What lvm2 spells "100%FREE" is "$(100% * {disk#vg.free})" here,
+// with the difference that om knows the number it lands on, so what the volume
+// takes of the pool can be rationed and reported.
+func (t *core) dereferenceFree(ref string) (string, error) {
+	r, err := t.referencedResource(ref, "free")
+	if err != nil {
+		return ref, err
+	}
+	o, ok := r.(resource.Freer)
+	if !ok {
+		return ref, fmt.Errorf("resource referenced by %s cannot say how much of it is free", ref)
+	}
+	free, err := o.CurrentFree(context.Background())
+	if err != nil {
+		return ref, fmt.Errorf("%s: %w", ref, err)
+	}
+	if free < 0 {
+		return ref, fmt.Errorf("%s: has no free space to report", ref)
+	}
+	return strconv.FormatInt(free, 10), nil
+}
+
+// referencedResource is the resource a "<rid>.<what>" reference names.
+//
+// A resource configured and not built yet postpones the reference rather than
+// failing it, which is how a configuration naming one validates before
+// anything is provisioned.
+func (t *core) referencedResource(ref, what string) (resource.Driver, error) {
+	l := strings.SplitN(ref, ".", 2)
+	var i any = t.config.Referrer
+	actor, ok := i.(Actor)
+	if !ok {
+		return nil, fmt.Errorf("can't dereference %s on a non-actor object: %s", what, ref)
+	}
+	if len(l) != 2 {
+		return nil, fmt.Errorf("misformatted %s ref: %s", what, ref)
+	}
+	rid := l[0]
+	r := actor.ResourceByID(rid)
+	if r == nil {
+		if t.config.HasSectionString(rid) {
+			return nil, xconfig.NewErrPostponedRef(ref, rid)
+		}
+		return nil, fmt.Errorf("resource referenced by %s not found", ref)
+	}
+	return r, nil
 }
 
 func (t *core) dereferenceExposedDevices(ref string) (string, error) {
@@ -442,6 +480,8 @@ func (t *core) Dereference(ref string) (string, error) {
 		return t.dereferenceExposedDevices(ref)
 	case strings.HasSuffix(ref, ".capacity"):
 		return t.dereferenceCapacity(ref)
+	case strings.HasSuffix(ref, ".free"):
+		return t.dereferenceFree(ref)
 	case strings.HasPrefix(ref, "volume#") && strings.HasSuffix(ref, ".mnt"):
 		return t.dereferenceVolumeHead(ref)
 	}

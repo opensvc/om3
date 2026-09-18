@@ -293,6 +293,30 @@ func (t *VG) Size(ctx context.Context) (int64, error) {
 	return info.Size()
 }
 
+// Free is the bytes of the group nothing has taken yet, rounded down to a
+// whole number of extents.
+//
+// Rounded down, where every other size om asks for is rounded up: this is
+// what is there, not what is wanted, and a caller asking for all of it must
+// ask for a size that fits. lvcreate rounds a size up to the next extent, so
+// a byte count that is not a whole number of them is one extent more than the
+// group has.
+func (t *VG) Free(ctx context.Context) (int64, error) {
+	info, err := t.Show(ctx, "vg_free,vg_extent_size")
+	if err != nil {
+		return 0, err
+	}
+	free, err := info.Free()
+	if err != nil {
+		return 0, err
+	}
+	extent, err := sizeconv.FromSize(strings.TrimLeft(info.VGExtSize, "<>+"))
+	if err != nil || extent <= 0 {
+		return free, nil
+	}
+	return free / extent * extent, nil
+}
+
 // ExtentSize is the bytes of the unit a volume group hands out. A logical
 // volume is a whole number of them, so a group asked for a size that is not
 // has to round up or the volume does not fit.

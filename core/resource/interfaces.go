@@ -229,6 +229,16 @@ type (
 		ResizeSpansBelow() bool
 	}
 
+	// Freer is implemented by a resource that can say how much of what it
+	// holds nothing has taken yet, which is what "{<rid>.free}" answers.
+	//
+	// It is the other half of Sizer: a volume group says how big it is and
+	// how much of it is unused, and a logical volume carved from it is sized
+	// from the second.
+	Freer interface {
+		CurrentFree(ctx context.Context) (int64, error)
+	}
+
 	// SizeInfoKeyer is implemented by a Sizer whose size is not its own, to
 	// name the key it is reported under in the resource info. A fs.directory
 	// reports the size of the filesystem holding it, and calling that "size"
