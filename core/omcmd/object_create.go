@@ -260,6 +260,14 @@ func (t *CmdObjectCreate) fromData(p naming.Path, b []byte) error {
 
 	ops := keyop.ParseOps(t.Keywords)
 	if !t.Restore {
+		// A clone is another thing, so what the source recorded of itself
+		// does not come with it: the id it was created with, the uuid of an
+		// md array it holds. They are written again, for the clone, when the
+		// clone makes what they name.
+		oc.Config().UnsetRecorded()
+
+		// The id is given again rather than left to be, because an object
+		// has one from the moment it is created.
 		op := keyop.Parse("id=" + uuid.New().String())
 		if op == nil {
 			return fmt.Errorf("invalid id reset op")
