@@ -2,6 +2,7 @@ package sgcphelper
 
 import (
 	"fmt"
+	"os"
 
 	"github.com/opensvc/om3/v3/core/env"
 	"github.com/opensvc/om3/v3/core/naming"
@@ -9,16 +10,42 @@ import (
 	"github.com/opensvc/om3/v3/util/sgcp"
 )
 
-// NeedsCacheClear tells whether a driver has to drop what it cached and read
-// the provider again. Only the daemon scheduler is served the cache: its
-// status evaluations run over and over on their own, and the cache is what
-// keeps them off the provider api. Everyone else, an operator asking for a
-// status first of all, is asking what the provider says now.
+const (
+	// CacheVar is the environment variable that forces the sgcp drivers
+	// cache policy whatever the action origin: "1" serves the cached values,
+	// "0" never does. An unset variable leaves the default policy.
+	CacheVar = "OSVC_SGCP_CACHE"
+)
+
+// UseCache tells whether a driver can serve what it cached instead of
+// reading the provider again. By default, only the daemon scheduler is
+// served the cache: its status evaluations run over and over on their own,
+// and the cache is what keeps them off the provider api. Everyone else, an
+// operator asking for a status first of all, is asking what the provider
+// says now.
+//
+// OSVC_SGCP_CACHE overrides this default: "1" serves the cache to every
+// action origin, "0" serves it to none, the daemon scheduler included.
+// Either way, a cached value is only served while younger than the sgcp
+// cache.ttl_seconds, and a zero ttl disables the cache.
+//
+// Any other value of OSVC_SGCP_CACHE leaves the default policy, and is
+// reported by the returned error so the caller can tell the operator
+// the setting is ignored.
 //
 // This lives here rather than in util/sgcp because it reads the action
 // origin, and a util package does not depend on core.
-func NeedsCacheClear() bool {
-	return !env.HasDaemonSchedulerOrigin()
+func UseCache() (bool, error) {
+	switch v := os.Getenv(CacheVar); v {
+	case "1":
+		return true, nil
+	case "0":
+		return false, nil
+	case "":
+		return env.HasDaemonSchedulerOrigin(), nil
+	default:
+		return env.HasDaemonSchedulerOrigin(), fmt.Errorf("ignored %s=%q: expected 0 or 1", CacheVar, v)
+	}
 }
 
 type (
