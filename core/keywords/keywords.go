@@ -89,6 +89,17 @@ type (
 
 		// RedactSecret means the keyword value will be hidden on config show with the flag --redact-secrets.
 		RedactSecret bool
+
+		// Recorded means om writes the value into the configuration itself,
+		// and that it names a thing that now exists: the id an object was
+		// created with, the uuid an md array was created with and is
+		// assembled by.
+		//
+		// A configuration copied to make another thing must not carry it, or
+		// the copy names the original. A virtual pool copies a template
+		// volume, and a copy keeping the array uuid assembles the template's
+		// array under its own name instead of making one.
+		Recorded bool
 	}
 
 	Store   []*Keyword

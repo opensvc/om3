@@ -65,6 +65,7 @@ var keywordStore = keywords.Store{
 	{
 		DefaultText: keywords.NewText(fs, "text/kw/core/id.default"),
 		Option:      "id",
+		Recorded:    true,
 		Section:     "DEFAULT",
 		Scopable:    false,
 		Text:        keywords.NewText(fs, "text/kw/core/id"),
