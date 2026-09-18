@@ -1523,6 +1523,9 @@ type KeywordDefinitionItem struct {
 	Option        string   `json:"option"`
 	Provisioning  bool     `json:"provisioning"`
 
+	// Recorded True when om writes the value into the configuration itself, and the value names a thing that now exists: the id an object was created with, the uuid an md array was created with. A configuration copied to make another thing must not carry it.
+	Recorded bool `json:"recorded"`
+
 	// RedactSecret True when the keyword value is a secret, hidden by the config show --redact-secrets flag.
 	RedactSecret bool `json:"redactSecret"`
 
