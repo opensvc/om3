@@ -221,11 +221,13 @@ func (t *vol) exposedDeviceResource(ctx context.Context) (resource.Driver, devic
 		// another would answer with something it said not to.
 		return nil, nil
 	}
+	// The disks of the volume, and only those. A volume resource of a volume
+	// is storage this volume consumes, not storage it exposes, so naming one
+	// here would answer with somebody else's device.
 	rids := make([]string, 0)
 	candidates := make(map[string]resource.Driver)
 	l := t.ResourcesByDrivergroups([]driver.Group{
 		driver.GroupDisk,
-		driver.GroupVolume,
 	})
 	for _, r := range l {
 		if r.DriverID().Name == "scsireserv" {
