@@ -13,7 +13,6 @@ import (
 	"github.com/opensvc/om3/v3/core/rawconfig"
 	"github.com/opensvc/om3/v3/util/df"
 	"github.com/opensvc/om3/v3/util/lvm2"
-	"github.com/opensvc/om3/v3/util/sizeconv"
 	"github.com/opensvc/om3/v3/util/zfs"
 )
 
@@ -186,7 +185,7 @@ func (t *T) blkTranslateFile(name string, size int64, shared bool) (string, []st
 		"fs#0.type=flag",
 		"disk#1.type=loop",
 		"disk#1.name=" + name,
-		"disk#1.size=" + sizeconv.ExactBSizeCompact(float64(size)),
+		"disk#1.size={DEFAULT.size}",
 		"disk#1.file=" + p,
 		"disk#1.standby=true",
 		"disk#2.type=vg",
@@ -219,7 +218,7 @@ func (t *T) blkTranslateVG(name string, size int64, shared bool) (string, []stri
 		"disk#1.type=lv",
 		"disk#1.name=" + name,
 		"disk#1.vg=" + t.vg(),
-		"disk#1.size=" + sizeconv.ExactBSizeCompact(float64(size)),
+		"disk#1.size={DEFAULT.size}",
 		"disk#1.standby=true",
 		"disk#2.type=drbd",
 		"disk#2.res=" + name,
@@ -238,7 +237,7 @@ func (t *T) blkTranslateZpool(name string, size int64, shared bool) (string, []s
 		"fs#0.type=flag",
 		"disk#1.type=zvol",
 		"disk#1.name=" + t.zpool() + "/" + name,
-		"disk#1.size=" + sizeconv.ExactBSizeCompact(float64(size)),
+		"disk#1.size={DEFAULT.size}",
 		"disk#1.standby=true",
 		"disk#2.type=drbd",
 		"disk#2.res=" + name,
