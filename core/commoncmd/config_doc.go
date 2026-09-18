@@ -26,6 +26,7 @@ func KeywordStoreFromAPI(items api.KeywordDefinitionItems) (store keywords.Store
 			Deprecated:    item.Deprecated,
 			ReplacedBy:    item.ReplacedBy,
 			RedactSecret:  item.RedactSecret,
+			Recorded:      item.Recorded,
 			Example:       item.Example,
 			Inherit:       keywords.ParseInherit(item.Inherit),
 			Kind:          naming.ParseKinds(item.Kind...),

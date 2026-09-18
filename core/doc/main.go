@@ -85,6 +85,7 @@ func ConvertKeywordStore(store keywords.Store) api.KeywordDefinitionItems {
 			Deprecated:    kw.Deprecated,
 			ReplacedBy:    kw.ReplacedBy,
 			RedactSecret:  kw.RedactSecret,
+			Recorded:      kw.Recorded,
 			Provisioning:  kw.Provisioning,
 			Scopable:      kw.Scopable,
 			Minimal:       kw.Minimal,

@@ -511,6 +511,11 @@ func (t *Keyword) Doc(w io.Writer, depth int, kind naming.Kind, section string, 
 	if t.RedactSecret {
 		fprintProp("secret", "true")
 	}
+	if t.Recorded {
+		// Said as what it means for the reader of a configuration holding
+		// one: they did not write it, and what it names already exists.
+		fprintProp("recorded", "written by om when what it names is made, not by a user")
+	}
 	if len(t.Candidates) > 0 {
 		fprintProp("candidates", strings.Join(t.Candidates, ", "))
 	}
