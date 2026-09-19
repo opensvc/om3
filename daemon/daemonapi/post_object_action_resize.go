@@ -44,6 +44,15 @@ func (a *DaemonAPI) PostObjectActionResize(eCtx echo.Context, namespace string, 
 	if err != nil {
 		return JSONProblemf(eCtx, http.StatusBadRequest, "Invalid parameters", "%s", err)
 	}
+	if kind != naming.KindVol {
+		// A resize grows what an object is configured to hold, and a volume
+		// is the only object configured to hold anything: the size is a
+		// volume keyword, and the chain a resize walks starts at the
+		// resource the volume exposes. The commands offer the action on
+		// volumes alone, and this says the same to every other client rather
+		// than queueing an orchestration with nothing to do.
+		return JSONProblemf(eCtx, http.StatusBadRequest, "Resize", "a %s has no size to grow", kind)
+	}
 	if instMon := instance.MonitorData.GetByPathAndNode(p, a.localhost); instMon != nil {
 		var payload api.PostObjectActionResize
 		if err := eCtx.Bind(&payload); err != nil {
