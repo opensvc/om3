@@ -37,7 +37,9 @@ func (a *DaemonAPI) PostNetworkClaim(ctx echo.Context) error {
 	if v, err := assertAdmin(ctx, payload.Namespace); !v {
 		return err
 	}
-	if speaker := speakerNode(); speaker != "" && speaker != a.localhost {
+	speaker := speakerNode()
+	a.seedClaimGrants(ctx, speaker)
+	if speaker != "" && speaker != a.localhost {
 		return a.proxy(ctx, speaker, func(c *client.T) (*http.Response, error) {
 			return c.PostNetworkClaim(ctx.Request().Context(), payload)
 		})

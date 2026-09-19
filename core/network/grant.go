@@ -85,6 +85,35 @@ func (t *Grants) Fits(namespace, networkName, key string, limit, held int, seen 
 	return true, ""
 }
 
+// Seed records a grant this node did not answer.
+//
+// It is how a table lost is rebuilt. The grants of a node are in memory, so a
+// node that has just started, or has just become the one answering claims,
+// has none of them and answers from what the objects of the cluster have
+// published alone, which is the reading the grants exist to complete.
+//
+// What was granted and reserved is not lost, though: the node that reserved
+// it publishes it before the others hear of it. What was granted and never
+// reserved is lost, and expiring is what would have become of it anyway.
+func (t *Grants) Seed(namespace, networkName, key string, now time.Time) {
+	if key == "" {
+		return
+	}
+	t.mu.Lock()
+	defer t.mu.Unlock()
+
+	tableKey := namespace + "\x00" + networkName
+	grants, ok := t.m[tableKey]
+	if !ok {
+		grants = make(map[string]time.Time)
+		t.m[tableKey] = grants
+	}
+	if _, ok := grants[key]; ok {
+		return
+	}
+	grants[key] = now.Add(t.ttl)
+}
+
 // ExpiresAt is when a grant made now stops being counted.
 func (t *Grants) ExpiresAt(now time.Time) time.Time {
 	return now.Add(t.ttl)

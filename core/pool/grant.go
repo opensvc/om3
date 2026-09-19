@@ -131,6 +131,38 @@ func (t *Grants) Fits(namespace, poolName, path string, to, limit int64, held ma
 	return true, ""
 }
 
+// Seed records a grant this node did not answer.
+//
+// It is how a table lost is rebuilt. The grants of a node are in memory, so a
+// node that has just started, or has just become the one answering claims,
+// has none of them and answers from the configurations the cluster shares
+// alone, which is the reading the grants exist to complete.
+//
+// What was granted and written is not lost, though: it is on the node that
+// wrote it, whose own reading of it has no lag. What was granted and never
+// written is lost, and expiring is what would have become of it anyway.
+//
+// A grant already held for the object is left alone unless the seed is
+// larger, so rebuilding cannot lower what a namespace is counted as holding.
+func (t *Grants) Seed(namespace, poolName, path string, to int64, now time.Time) {
+	if path == "" || to <= 0 {
+		return
+	}
+	t.mu.Lock()
+	defer t.mu.Unlock()
+
+	key := namespace + "\x00" + poolName
+	grants, ok := t.m[key]
+	if !ok {
+		grants = make(map[string]Grant)
+		t.m[key] = grants
+	}
+	if g, ok := grants[path]; ok && g.To >= to {
+		return
+	}
+	grants[path] = Grant{To: to, ExpiresAt: now.Add(t.ttl)}
+}
+
 // ExpiresAt is when a grant made now stops being counted.
 func (t *Grants) ExpiresAt(now time.Time) time.Time {
 	return now.Add(t.ttl)

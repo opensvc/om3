@@ -116,3 +116,42 @@ func TestAClaimOfNothingIsNotGranted(t *testing.T) {
 	ok, _ = grants.Fits("ns", "p", "ns/vol/v2", 250*mi, 350*mi, held, now)
 	assert.True(t, ok, "and takes nothing from what is left")
 }
+
+// A node that has just taken the answering over has no grants of its own, and
+// what was granted and written is on the node that wrote it. Seeding is how
+// it is counted here before the configuration arrives.
+func TestASeededGrantIsWeighedLikeOneAnswered(t *testing.T) {
+	grants := NewGrants(30 * time.Second)
+	now := time.Now()
+	held := map[string]int64{"ns/vol/v1": 100 * mi, "ns/vol/v2": 100 * mi}
+
+	ok, _ := NewGrants(30*time.Second).Fits("ns", "p", "ns/vol/v3", 50*mi, 350*mi, held, now)
+	assert.True(t, ok, "without the grant, a third volume fits what the cluster has been seen to hold")
+
+	// The first volume was grown to 250mi on the node holding it, which this
+	// one has not seen.
+	grants.Seed("ns", "p", "ns/vol/v1", 250*mi, now)
+	ok, why := grants.Fits("ns", "p", "ns/vol/v3", 50*mi, 350*mi, held, now)
+	assert.False(t, ok, "with it, the namespace is already at its limit")
+	assert.Contains(t, why, "already claims 350mi")
+
+	// And it stops counting once the configuration says the same thing.
+	held["ns/vol/v1"] = 250 * mi
+	ok, _ = grants.Fits("ns", "p", "ns/vol/v3", 0, 350*mi, held, now)
+	assert.True(t, ok)
+	ok, _ = grants.Fits("ns", "p", "ns/vol/v3", 50*mi, 400*mi, held, now)
+	assert.True(t, ok, "counted once, not twice")
+}
+
+// Rebuilding cannot lower what a namespace is counted as holding.
+func TestASeedDoesNotLowerAGrant(t *testing.T) {
+	grants := NewGrants(30 * time.Second)
+	now := time.Now()
+	held := map[string]int64{}
+	ok, _ := grants.Fits("ns", "p", "ns/vol/v1", 300*mi, 350*mi, held, now)
+	assert.True(t, ok)
+
+	grants.Seed("ns", "p", "ns/vol/v1", 100*mi, now)
+	ok, _ = grants.Fits("ns", "p", "ns/vol/v2", 100*mi, 350*mi, held, now)
+	assert.False(t, ok, "the grant answered is what the volume was let take")
+}

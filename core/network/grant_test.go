@@ -94,3 +94,25 @@ func TestAGrantIsNotWeighedAgainstAnotherNamespaceOrNetwork(t *testing.T) {
 	ok, _ = grants.Fits("ns", "other", "ns/svc/s2!ip#1", 1, 0, map[string]bool{}, now)
 	assert.True(t, ok, "and another network is held addresses of separately")
 }
+
+// A node that has just taken the answering over has no grants of its own, and
+// an address granted and reserved is published by the node that reserved it
+// before the others hear of it. Seeding is how it is counted here meanwhile.
+func TestASeededGrantIsWeighedLikeOneAnswered(t *testing.T) {
+	grants := NewGrants(30 * time.Second)
+	now := time.Now()
+	seen := map[string]bool{"ns/svc/s1!ip#1": true}
+
+	ok, _ := NewGrants(30*time.Second).Fits("ns", "n", "ns/svc/s3!ip#1", 2, 1, seen, now)
+	assert.True(t, ok, "without the grant, a second address fits")
+
+	grants.Seed("ns", "n", "ns/svc/s2!ip#1", now)
+	ok, why := grants.Fits("ns", "n", "ns/svc/s3!ip#1", 2, 1, seen, now)
+	assert.False(t, ok, "with it, the namespace already holds both")
+	assert.Contains(t, why, "already holds 2")
+
+	// And it stops counting once the cluster reports the address.
+	seen["ns/svc/s2!ip#1"] = true
+	ok, _ = grants.Fits("ns", "n", "ns/svc/s3!ip#1", 3, 2, seen, now)
+	assert.True(t, ok, "counted once, not twice")
+}
