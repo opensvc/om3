@@ -7988,6 +7988,9 @@ components:
         - free
         - used
         - size
+        - logical_free
+        - logical_used
+        - logical_size
         - updated_at
       properties:
         name:
@@ -8007,14 +8010,37 @@ components:
           items:
             type: string
         free:
+          description: the bytes of storage behind the pool nothing has taken
           type: integer
           format: int64
         used:
+          description: the bytes of storage behind the pool something has taken
           type: integer
           format: int64
         shared:
+          description: |
+            whether every node sees the same storage, as the nodes of an array
+            pool do, so that what the cluster holds of it is what one node
+            reports and not the sum of what they all report
           type: boolean
         size:
+          description: the bytes of storage behind the pool
+          type: integer
+          format: int64
+        logical_free:
+          description: |
+            the bytes the pool can still hand out to volumes, which is the
+            currency a volume is asked for in and a claim is rationed in
+          type: integer
+          format: int64
+        logical_used:
+          description: the bytes the pool has handed out to volumes
+          type: integer
+          format: int64
+        logical_size:
+          description: |
+            the bytes the pool can hand out to volumes, counting a volume once
+            however many nodes hold a copy of it
           type: integer
           format: int64
         volume_count:

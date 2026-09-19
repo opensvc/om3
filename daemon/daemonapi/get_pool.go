@@ -67,8 +67,12 @@ func (a *DaemonAPI) getNodePools(ctx echo.Context, name *string, nodeMap nodesel
 			Capabilities: capabilities,
 			Free:         stat.Free,
 			Head:         stat.Head,
+			LogicalFree:  stat.LogicalFree,
+			LogicalSize:  stat.LogicalSize,
+			LogicalUsed:  stat.LogicalUsed,
 			Name:         e.Name,
 			Node:         e.Node,
+			Shared:       stat.Shared,
 			Size:         stat.Size,
 			Type:         stat.Type,
 			Used:         stat.Used,
@@ -102,16 +106,22 @@ func (a *DaemonAPI) getClusterPools(ctx echo.Context, name *string) api.PoolItem
 				Capabilities: capabilities,
 				Free:         stat.Free,
 				Head:         stat.Head,
+				LogicalFree:  stat.LogicalFree,
+				LogicalSize:  stat.LogicalSize,
+				LogicalUsed:  stat.LogicalUsed,
 				Name:         e.Name,
+				Shared:       stat.Shared,
 				Size:         stat.Size,
 				Type:         stat.Type,
 				Used:         stat.Used,
+				UpdatedAt:    stat.UpdatedAt,
 				VolumeCount:  len(getPoolVolumes(&e.Name)),
 			}
 		} else if !stat.Shared {
 			item.Free += stat.Free
 			item.Size += stat.Size
 			item.Used += stat.Used
+			leastRoom(&item, stat)
 			if item.UpdatedAt.Before(stat.UpdatedAt) {
 				item.UpdatedAt = stat.UpdatedAt
 			}
@@ -126,4 +136,30 @@ func (a *DaemonAPI) getClusterPools(ctx echo.Context, name *string) api.PoolItem
 		items = append(items, item)
 	}
 	return items
+}
+
+// leastRoom keeps the logical figures of the node with the least room left.
+//
+// The storage of a pool that is not shared adds up across the nodes, and what
+// it can hand out does not: a volume held on every node it spans needs its
+// size on each of them, so what the pool can still hand out is what the node
+// with the least room can take. Reporting the sum there would promise several
+// times over what is really free.
+//
+// The three figures are kept together, from the one node, so that they still
+// add up: a size, what has been handed out of it, and what is left.
+//
+// A node with nothing to say is not the node with the least room. Reading the
+// usage of a pool can fail, and a pool can have no size of its own, and
+// neither is a pool that can hand out nothing.
+func leastRoom(item *api.Pool, stat pool.Status) {
+	if stat.LogicalSize <= 0 {
+		return
+	}
+	if item.LogicalSize > 0 && item.LogicalFree <= stat.LogicalFree {
+		return
+	}
+	item.LogicalFree = stat.LogicalFree
+	item.LogicalSize = stat.LogicalSize
+	item.LogicalUsed = stat.LogicalUsed
 }

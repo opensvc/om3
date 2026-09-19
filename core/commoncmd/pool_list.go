@@ -16,10 +16,17 @@ type (
 		OptsGlobal
 		Name         string
 		NodeSelector string
+		Physical     bool
 	}
 
 	// PoolLine is a pool as a listing shows it: the pool the api sent,
 	// and the sizes in the units a reader reads.
+	//
+	// The sizes shown are what the pool can hand out to volumes, which is
+	// what a volume is asked for in and what a claim rations, and not what
+	// the storage behind it holds: a pool whose nodes each hold a copy of
+	// every volume hands out what one of them can take. The storage is what
+	// the physical listing shows.
 	//
 	// The embedded value is inlined, by the json encoder and by the
 	// jsonpath the tab expressions are written in alike, so a column
@@ -69,7 +76,7 @@ func (t *CmdPoolList) Run() error {
 	render := func(items api.PoolItems) error {
 		lines := make([]PoolLine, len(items))
 		for i, item := range items {
-			lines[i] = NewPoolLine(item)
+			lines[i] = NewPoolLine(item, t.Physical)
 		}
 		return output.Renderer{
 			DefaultOutput: "tab=" + cols,
@@ -84,12 +91,17 @@ func (t *CmdPoolList) Run() error {
 	return render(l)
 }
 
-// NewPoolLine returns the pool as a listing shows it.
-func NewPoolLine(item api.Pool) PoolLine {
+// NewPoolLine returns the pool as a listing shows it, in the sizes it hands
+// out or, when physical is set, in the storage behind them.
+func NewPoolLine(item api.Pool, physical bool) PoolLine {
+	size, used, free := item.LogicalSize, item.LogicalUsed, item.LogicalFree
+	if physical {
+		size, used, free = item.Size, item.Used, item.Free
+	}
 	return PoolLine{
 		Pool:    item,
-		BinSize: sizeconv.BSizeCompact(float64(item.Size)),
-		BinUsed: sizeconv.BSizeCompact(float64(item.Used)),
-		BinFree: sizeconv.BSizeCompact(float64(item.Free)),
+		BinSize: sizeconv.BSizeCompact(float64(size)),
+		BinUsed: sizeconv.BSizeCompact(float64(used)),
+		BinFree: sizeconv.BSizeCompact(float64(free)),
 	}
 }

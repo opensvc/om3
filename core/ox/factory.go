@@ -3950,9 +3950,17 @@ func newCmdObjectUnprovision(kind string) *cobra.Command {
 func newCmdPoolList() *cobra.Command {
 	var options commoncmd.CmdPoolList
 	cmd := &cobra.Command{
-		Use:     "list",
-		Short:   "list the storage pools",
-		Long:    "If --node is set each pool will show one line per node, with the free/used/size being the pool usage on the node. Else, free/used/size are total values.",
+		Use:   "list",
+		Short: "list the storage pools",
+		Long: `List the storage pools.
+
+The sizes shown are what a pool can still hand out to volumes, which is the
+size a volume is asked for, the size a claim on the pool rations, and what
+"om pool volume ls" reports. A pool whose nodes each hold a copy of every
+volume hands out what the node with the least room can take, not the sum of
+what its nodes hold. Use --physical for the storage behind the pool.
+
+With --node, each pool shows one line per node, and the sizes are that node's.`,
 		Aliases: []string{"ls"},
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return options.Run()
@@ -3963,6 +3971,7 @@ func newCmdPoolList() *cobra.Command {
 	commoncmd.FlagOutput(flags, &options.Output)
 	commoncmd.FlagSort(flags, &options.Sort)
 	commoncmd.FlagPoolName(flags, &options.Name)
+	commoncmd.FlagPoolPhysical(flags, &options.Physical)
 	commoncmd.FlagNodeSelector(flags, &options.NodeSelector)
 	return cmd
 }

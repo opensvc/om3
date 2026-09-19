@@ -324,6 +324,10 @@ func FlagPoolName(flags *pflag.FlagSet, p *string) {
 	flags.StringVar(p, "name", "", "filter on a pool name")
 }
 
+func FlagPoolPhysical(flags *pflag.FlagSet, p *bool) {
+	flags.BoolVar(p, "physical", false, "show the storage behind the pool instead of what it can hand out")
+}
+
 func FlagPoolStatusExtended(flags *pflag.FlagSet, p *bool) {
 	flags.BoolVarP(p, "extended", "x", false, "include pool volumes")
 }

@@ -29,6 +29,14 @@ type (
 		config Config
 	}
 
+	// Usage is what a pool holds, in the two currencies a pool is counted
+	// in.
+	//
+	// The physical figures are what the storage behind the pool really
+	// holds. The logical ones are what the pool can hand out as volume
+	// sizes, which is the currency a volume is asked for in, a claim is
+	// written in, and a limit rations. The two differ wherever a copy of a
+	// volume costs the storage something other than the size it hands out.
 	Usage struct {
 		Shared bool `json:"shared"`
 		// Free unit is Bytes
@@ -37,6 +45,12 @@ type (
 		Used int64 `json:"used"`
 		// Size unit is Bytes
 		Size int64 `json:"size"`
+		// LogicalFree unit is Bytes
+		LogicalFree int64 `json:"logical_free"`
+		// LogicalUsed unit is Bytes
+		LogicalUsed int64 `json:"logical_used"`
+		// LogicalSize unit is Bytes
+		LogicalSize int64 `json:"logical_size"`
 	}
 
 	Status struct {
@@ -94,6 +108,28 @@ type (
 		Config() Config
 		Separator() string
 	}
+	// CopyCoster is implemented by a pool whose storage holds a copy of a
+	// volume in something other than the size the volume hands out: an array
+	// that compresses holds less of it, one keeping a fixed overhead per
+	// volume holds more.
+	//
+	// Both directions are asked of the driver rather than derived from one
+	// another, because a relation is not always a ratio: an overhead per
+	// volume does not divide, and a driver that rounds does not invert.
+	//
+	// The replication is not this: a pool whose storage is not shared holds a
+	// copy of a volume on every node the volume has an instance on, which is
+	// counted where the nodes are known.
+	CopyCoster interface {
+		// CopySize is what one copy of a volume of this size costs the
+		// storage behind the pool.
+		CopySize(logical int64) int64
+
+		// LogicalSize is what the pool can hand out to volumes, holding this
+		// many bytes of storage.
+		LogicalSize(physical int64) int64
+	}
+
 	ArrayPooler interface {
 		Pooler
 		GetTargets(ctx context.Context) (san.Targets, error)
@@ -249,12 +285,37 @@ func GetStatus(ctx context.Context, t Pooler, withUsage bool) Status {
 		if usage, err := t.Usage(ctx); err != nil {
 			data.Errors = append(data.Errors, err.Error())
 		} else {
-			data.Usage.Free = usage.Free
-			data.Usage.Used = usage.Used
-			data.Usage.Size = usage.Size
+			data.Usage = usage
+			// What the storage holds is not what the pool can hand out, and
+			// the driver is the only one that knows the relation. It is
+			// computed here, where the driver is, because what reads a pool
+			// status afterwards has the numbers and not the pool.
+			data.Usage.LogicalFree = LogicalSize(t, usage.Free)
+			data.Usage.LogicalUsed = LogicalSize(t, usage.Used)
+			data.Usage.LogicalSize = LogicalSize(t, usage.Size)
 		}
 	}
 	return data
+}
+
+// CopySize is what one copy of a volume costs the storage behind a pool.
+//
+// It is the size the volume hands out, unless the driver says otherwise.
+func CopySize(p Pooler, logical int64) int64 {
+	if i, ok := p.(CopyCoster); ok {
+		return i.CopySize(logical)
+	}
+	return logical
+}
+
+// LogicalSize is what a pool holding this many bytes can hand out to volumes.
+//
+// It is the same number, unless the driver says otherwise.
+func LogicalSize(p Pooler, physical int64) int64 {
+	if i, ok := p.(CopyCoster); ok {
+		return i.LogicalSize(physical)
+	}
+	return physical
 }
 
 func pKey(p Pooler, s string) key.T {

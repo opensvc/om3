@@ -2044,16 +2044,37 @@ type PlacementState string
 type Pool struct {
 	Capabilities []string  `json:"capabilities"`
 	Errors       *[]string `json:"errors,omitempty"`
-	Free         int64     `json:"free"`
-	Head         string    `json:"head"`
-	Name         string    `json:"name"`
-	Node         string    `json:"node"`
-	Shared       bool      `json:"shared"`
-	Size         int64     `json:"size"`
-	Type         string    `json:"type"`
-	UpdatedAt    time.Time `json:"updated_at"`
-	Used         int64     `json:"used"`
-	VolumeCount  int       `json:"volume_count"`
+
+	// Free the bytes of storage behind the pool nothing has taken
+	Free int64  `json:"free"`
+	Head string `json:"head"`
+
+	// LogicalFree the bytes the pool can still hand out to volumes, which is the
+	// currency a volume is asked for in and a claim is rationed in
+	LogicalFree int64 `json:"logical_free"`
+
+	// LogicalSize the bytes the pool can hand out to volumes, counting a volume once
+	// however many nodes hold a copy of it
+	LogicalSize int64 `json:"logical_size"`
+
+	// LogicalUsed the bytes the pool has handed out to volumes
+	LogicalUsed int64  `json:"logical_used"`
+	Name        string `json:"name"`
+	Node        string `json:"node"`
+
+	// Shared whether every node sees the same storage, as the nodes of an array
+	// pool do, so that what the cluster holds of it is what one node
+	// reports and not the sum of what they all report
+	Shared bool `json:"shared"`
+
+	// Size the bytes of storage behind the pool
+	Size      int64     `json:"size"`
+	Type      string    `json:"type"`
+	UpdatedAt time.Time `json:"updated_at"`
+
+	// Used the bytes of storage behind the pool something has taken
+	Used        int64 `json:"used"`
+	VolumeCount int   `json:"volume_count"`
 }
 
 // PoolClaim defines model for PoolClaim.
