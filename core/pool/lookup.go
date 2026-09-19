@@ -22,11 +22,17 @@ type (
 		Access    volaccess.T
 		Size      int64
 		Namespace string
-		Format    bool
-		Shared    bool
-		Usage     bool
-		Volatile  bool
-		Nodes     []string
+
+		// Path is the volume the storage is looked up for, which the claim
+		// on the pool is granted to. It is empty where the lookup is not
+		// about a volume of its own, and the grant is then held until it
+		// expires rather than until the volume says it was claimed.
+		Path     string
+		Format   bool
+		Shared   bool
+		Usage    bool
+		Volatile bool
+		Nodes    []string
 
 		manager manager
 	}
@@ -127,7 +133,7 @@ func (t Lookup) Do(ctx context.Context) (Pooler, error) {
 				continue
 			}
 		}
-		if ok, why, err := ClaimFits(ctx, t.Namespace, p.Name(), t.Size); err != nil {
+		if ok, why, err := ClaimFits(ctx, t.Namespace, p.Name(), t.Path, t.Size); err != nil {
 			cause = append(cause, fmt.Sprintf("[%s] claim check: %s", p.Name(), err))
 			continue
 		} else if !ok {

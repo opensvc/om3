@@ -56,7 +56,7 @@ func TestClaimFitsUncappedNeedsNoDaemon(t *testing.T) {
 env = TST
 `)
 
-	ok, why, err := ClaimFits(context.Background(), "uncapped", "dirquota", 1024*1024*1024)
+	ok, why, err := ClaimFits(context.Background(), "uncapped", "dirquota", "uncapped/vol/v1", 1024*1024*1024)
 	require.NoError(t, err)
 	assert.True(t, ok)
 	assert.Equal(t, "", why)

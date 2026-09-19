@@ -2043,6 +2043,19 @@ type Pool struct {
 	VolumeCount  int       `json:"volume_count"`
 }
 
+// PoolClaim defines model for PoolClaim.
+type PoolClaim struct {
+	// ExpiresAt when a granted claim stops being counted, should the
+	// configuration it was granted for never be written
+	ExpiresAt *time.Time `json:"expires_at,omitempty"`
+
+	// Granted whether the namespace may take what it asked for
+	Granted bool `json:"granted"`
+
+	// Reason why the namespace may not take it
+	Reason *string `json:"reason,omitempty"`
+}
+
 // PoolItems defines model for PoolItems.
 type PoolItems = []Pool
 
@@ -2104,6 +2117,23 @@ type PostObjectActionRestart struct {
 type PostObjectActionSwitch struct {
 	Destination []string `json:"destination"`
 	Live        bool     `json:"live"`
+}
+
+// PostPoolClaim defines model for PostPoolClaim.
+type PostPoolClaim struct {
+	// Namespace the namespace taking of the pool
+	Namespace string `json:"namespace"`
+
+	// Path the object the claim is for, so that a claim answered yes stops
+	// being counted on its own once the configuration of the object
+	// says the same thing
+	Path *string `json:"path,omitempty"`
+
+	// Pool the name of the pool the namespace takes of
+	Pool string `json:"pool"`
+
+	// Size the size the object is to hold, not the increase
+	Size int64 `json:"size"`
 }
 
 // PostRelayMessage defines model for PostRelayMessage.
@@ -3975,6 +4005,9 @@ type PostObjectActionSwitchJSONRequestBody = PostObjectActionSwitch
 
 // PatchObjectDataJSONRequestBody defines body for PatchObjectData for application/json ContentType.
 type PatchObjectDataJSONRequestBody = PatchDataKeys
+
+// PostPoolClaimJSONRequestBody defines body for PostPoolClaim for application/json ContentType.
+type PostPoolClaimJSONRequestBody = PostPoolClaim
 
 // PostRelayMessageJSONRequestBody defines body for PostRelayMessage for application/json ContentType.
 type PostRelayMessageJSONRequestBody = PostRelayMessage

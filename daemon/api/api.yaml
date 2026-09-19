@@ -5490,6 +5490,36 @@ paths:
         500:
           $ref: '#/components/responses/500'
 
+  /api/pool/claim:
+    post:
+      operationId: PostPoolClaim
+      tags:
+        - pool
+      security:
+        - basicAuth: []
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PostPoolClaim'
+      responses:
+        200:
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PoolClaim'
+        400:
+          $ref: '#/components/responses/400'
+        401:
+          $ref: '#/components/responses/401'
+        403:
+          $ref: '#/components/responses/403'
+        500:
+          $ref: '#/components/responses/500'
+
   /api/pool/volume:
     get:
       operationId: GetPoolVolumes
@@ -7964,6 +7994,52 @@ components:
         size:
           type: integer
           format: int64
+
+    # ========================================================================
+    # pool claim schemas
+    # ========================================================================
+
+    PostPoolClaim:
+      type: object
+      required:
+        - namespace
+        - pool
+        - size
+      properties:
+        namespace:
+          description: the namespace taking of the pool
+          type: string
+        pool:
+          description: the name of the pool the namespace takes of
+          type: string
+        path:
+          description: |
+            the object the claim is for, so that a claim answered yes stops
+            being counted on its own once the configuration of the object
+            says the same thing
+          type: string
+        size:
+          description: the size the object is to hold, not the increase
+          type: integer
+          format: int64
+
+    PoolClaim:
+      type: object
+      required:
+        - granted
+      properties:
+        granted:
+          description: whether the namespace may take what it asked for
+          type: boolean
+        reason:
+          description: why the namespace may not take it
+          type: string
+        expires_at:
+          description: |
+            when a granted claim stops being counted, should the
+            configuration it was granted for never be written
+          type: string
+          format: date-time
 
     PoolVolumeItems:
       type: array

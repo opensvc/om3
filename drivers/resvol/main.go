@@ -436,6 +436,10 @@ func (t *T) configureVolume(ctx context.Context, v object.Vol, withUsage bool) e
 	if err != nil {
 		return err
 	}
+	// The volume is what claims the storage of the pool, so it is what the
+	// claim is granted to: the grant stops being counted on its own as soon
+	// as the configuration of the volume says the same size.
+	l.Path = v.Path().String()
 	logger := t.volumeLogger()
 	obj, err := object.New(t.Path, object.WithLogger(logger))
 	if err != nil {

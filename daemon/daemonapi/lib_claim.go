@@ -25,7 +25,9 @@ var ErrClaimOverrun = errors.New("claim overrun")
 // free to write the promise and then ask for it to be honoured.
 //
 // Only the increase has to fit. What the object is already configured to hold
-// is counted in what the namespace holds, so it is not claimed twice.
+// is counted in what the namespace holds, so it is not claimed twice: the
+// size the object is to hold is what is asked about, and the claim weighs it
+// against what the namespace holds of the pool elsewhere.
 func refuseClaimOverrun(ctx context.Context, p naming.Path, cfg *xconfig.T) error {
 	poolName := cfg.GetString(key.T{Section: "DEFAULT", Option: "pool"})
 	if poolName == "" {
@@ -45,7 +47,7 @@ func refuseClaimOverrun(ctx context.Context, p naming.Path, cfg *xconfig.T) erro
 	if *to <= from {
 		return nil
 	}
-	ok, why, err := pool.ClaimFits(ctx, p.Namespace, poolName, *to-from)
+	ok, why, err := pool.ClaimFits(ctx, p.Namespace, poolName, p.String(), *to)
 	if err != nil {
 		return err
 	}

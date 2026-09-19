@@ -590,6 +590,11 @@ type ClientInterface interface {
 	// GetPools request
 	GetPools(ctx context.Context, params *GetPoolsParams, reqEditors ...RequestEditorFn) (*http.Response, error)
 
+	// PostPoolClaimWithBody request with any body
+	PostPoolClaimWithBody(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	PostPoolClaim(ctx context.Context, body PostPoolClaimJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+
 	// GetPoolVolumes request
 	GetPoolVolumes(ctx context.Context, params *GetPoolVolumesParams, reqEditors ...RequestEditorFn) (*http.Response, error)
 
@@ -2650,6 +2655,30 @@ func (c *Client) GetSwagger(ctx context.Context, reqEditors ...RequestEditorFn) 
 
 func (c *Client) GetPools(ctx context.Context, params *GetPoolsParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
 	req, err := NewGetPoolsRequest(c.Server, params)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+func (c *Client) PostPoolClaimWithBody(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewPostPoolClaimRequestWithBody(c.Server, contentType, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+func (c *Client) PostPoolClaim(ctx context.Context, body PostPoolClaimJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewPostPoolClaimRequest(c.Server, body)
 	if err != nil {
 		return nil, err
 	}
@@ -14283,6 +14312,46 @@ func NewGetPoolsRequest(server string, params *GetPoolsParams) (*http.Request, e
 	return req, nil
 }
 
+// NewPostPoolClaimRequest calls the generic PostPoolClaim builder with application/json body
+func NewPostPoolClaimRequest(server string, body PostPoolClaimJSONRequestBody) (*http.Request, error) {
+	var bodyReader io.Reader
+	buf, err := json.Marshal(body)
+	if err != nil {
+		return nil, err
+	}
+	bodyReader = bytes.NewReader(buf)
+	return NewPostPoolClaimRequestWithBody(server, "application/json", bodyReader)
+}
+
+// NewPostPoolClaimRequestWithBody generates requests for PostPoolClaim with any type of body
+func NewPostPoolClaimRequestWithBody(server string, contentType string, body io.Reader) (*http.Request, error) {
+	var err error
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/api/pool/claim")
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodPost, queryURL.String(), body)
+	if err != nil {
+		return nil, err
+	}
+
+	req.Header.Add("Content-Type", contentType)
+
+	return req, nil
+}
+
 // NewGetPoolVolumesRequest generates requests for GetPoolVolumes
 func NewGetPoolVolumesRequest(server string, params *GetPoolVolumesParams) (*http.Request, error) {
 	var err error
@@ -15134,6 +15203,11 @@ type ClientWithResponsesInterface interface {
 
 	// GetPoolsWithResponse request
 	GetPoolsWithResponse(ctx context.Context, params *GetPoolsParams, reqEditors ...RequestEditorFn) (*GetPoolsResponse, error)
+
+	// PostPoolClaimWithBodyWithResponse request with any body
+	PostPoolClaimWithBodyWithResponse(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*PostPoolClaimResponse, error)
+
+	PostPoolClaimWithResponse(ctx context.Context, body PostPoolClaimJSONRequestBody, reqEditors ...RequestEditorFn) (*PostPoolClaimResponse, error)
 
 	// GetPoolVolumesWithResponse request
 	GetPoolVolumesWithResponse(ctx context.Context, params *GetPoolVolumesParams, reqEditors ...RequestEditorFn) (*GetPoolVolumesResponse, error)
@@ -20597,6 +20671,40 @@ func (r GetPoolsResponse) ContentType() string {
 	return ""
 }
 
+type PostPoolClaimResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	JSON200      *PoolClaim
+	JSON400      *N400
+	JSON401      *N401
+	JSON403      *N403
+	JSON500      *N500
+}
+
+// Status returns HTTPResponse.Status
+func (r PostPoolClaimResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r PostPoolClaimResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r PostPoolClaimResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
 type GetPoolVolumesResponse struct {
 	Body         []byte
 	HTTPResponse *http.Response
@@ -22289,6 +22397,23 @@ func (c *ClientWithResponses) GetPoolsWithResponse(ctx context.Context, params *
 		return nil, err
 	}
 	return ParseGetPoolsResponse(rsp)
+}
+
+// PostPoolClaimWithBodyWithResponse request with arbitrary body returning *PostPoolClaimResponse
+func (c *ClientWithResponses) PostPoolClaimWithBodyWithResponse(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*PostPoolClaimResponse, error) {
+	rsp, err := c.PostPoolClaimWithBody(ctx, contentType, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParsePostPoolClaimResponse(rsp)
+}
+
+func (c *ClientWithResponses) PostPoolClaimWithResponse(ctx context.Context, body PostPoolClaimJSONRequestBody, reqEditors ...RequestEditorFn) (*PostPoolClaimResponse, error) {
+	rsp, err := c.PostPoolClaim(ctx, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParsePostPoolClaimResponse(rsp)
 }
 
 // GetPoolVolumesWithResponse request returning *GetPoolVolumesResponse
@@ -31169,6 +31294,60 @@ func ParseGetPoolsResponse(rsp *http.Response) (*GetPoolsResponse, error) {
 			return nil, err
 		}
 		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest N401
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest N403
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON403 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
+		var dest N500
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON500 = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParsePostPoolClaimResponse parses an HTTP response from a PostPoolClaimWithResponse call
+func ParsePostPoolClaimResponse(rsp *http.Response) (*PostPoolClaimResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &PostPoolClaimResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest PoolClaim
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
+		var dest N400
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON400 = &dest
 
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
 		var dest N401
