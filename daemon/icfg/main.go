@@ -361,6 +361,14 @@ func (t *Manager) configFileCheck() error {
 		if szPtr := cf.GetSize(keySize); szPtr != nil {
 			cfg.Size = *szPtr
 		}
+		// What the volume takes of other pools is read from what it is made
+		// of, so it is answered by the object and not by a keyword. It is
+		// published with the configuration because that is where a claim
+		// reads what a namespace holds, and a claim is weighed before
+		// anything is provisioned.
+		if charger, ok := any(t.configure).(volPoolCharger); ok {
+			cfg.VolConfig.Charges = charger.PoolCharges()
+		}
 	}
 	if actor, ok := any(t.configure).(object.Actor); ok {
 		cfg.ActorConfig = &instance.ActorConfig{
@@ -590,4 +598,10 @@ func (t *Manager) delete() {
 
 func (t *Manager) done(parent context.Context, doneChan chan<- any) {
 	t.publisher.Pub(&msgbus.InstanceConfigManagerDone{Path: t.path, File: t.filename}, t.pubLabel...)
+}
+
+// volPoolCharger is implemented by a volume, and says what it takes of pools
+// other than the one that served it.
+type volPoolCharger interface {
+	PoolCharges() map[string]int64
 }

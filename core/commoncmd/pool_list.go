@@ -3,6 +3,8 @@ package commoncmd
 import (
 	"context"
 	"fmt"
+	"sort"
+	"strings"
 
 	"github.com/opensvc/om3/v3/core/client"
 	"github.com/opensvc/om3/v3/core/output"
@@ -104,4 +106,30 @@ func NewPoolLine(item api.Pool, physical bool) PoolLine {
 		BinUsed: sizeconv.BSizeCompact(float64(used)),
 		BinFree: sizeconv.BSizeCompact(float64(free)),
 	}
+}
+
+// PoolVolumeLine is a pool volume as a listing shows it: the volume the api
+// sent, and what it takes of other pools in the form a reader reads.
+type PoolVolumeLine struct {
+	api.PoolVolume
+	Charges string `json:"charges_text"`
+}
+
+// NewPoolVolumeLine returns the volume as a listing shows it.
+func NewPoolVolumeLine(item api.PoolVolume) PoolVolumeLine {
+	line := PoolVolumeLine{PoolVolume: item}
+	if item.Charges == nil {
+		return line
+	}
+	names := make([]string, 0, len(*item.Charges))
+	for name := range *item.Charges {
+		names = append(names, name)
+	}
+	sort.Strings(names)
+	l := make([]string, 0, len(names))
+	for _, name := range names {
+		l = append(l, fmt.Sprintf("%s:%s", name, sizeconv.BSizeCompact(float64((*item.Charges)[name]))))
+	}
+	line.Charges = strings.Join(l, " ")
+	return line
 }

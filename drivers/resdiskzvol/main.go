@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"strconv"
+	"strings"
 
 	"github.com/opensvc/om3/v3/core/actionrollback"
 	"github.com/opensvc/om3/v3/core/provisioned"
@@ -124,6 +125,19 @@ func (t *T) Status(ctx context.Context) status.T {
 
 // Label implements Label from resource.Driver interface,
 // it returns a formatted short description of the Resource
+// PoolCharge implements resource.PoolCharger. A zvol takes its size of the
+// zpool it is carved from, which is what its name begins with.
+func (t *T) PoolCharge() (string, int64) {
+	if t.Size == nil {
+		return "", 0
+	}
+	zpool, _, found := strings.Cut(t.Name, "/")
+	if !found {
+		return "", 0
+	}
+	return zpool, *t.Size
+}
+
 func (t *T) Label(_ context.Context) string {
 	return t.Name
 }

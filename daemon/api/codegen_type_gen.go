@@ -2104,11 +2104,17 @@ type PoolListKind string
 
 // PoolVolume defines model for PoolVolume.
 type PoolVolume struct {
-	Children []string `json:"children"`
-	IsOrphan bool     `json:"is_orphan"`
-	Path     string   `json:"path"`
-	Pool     string   `json:"pool"`
-	Size     int64    `json:"size"`
+	// Charges what the volume takes of pools other than the one that served it,
+	// by pool name, which a volume made of storage carved elsewhere does
+	// and nothing else says
+	Charges  *map[string]int64 `json:"charges,omitempty"`
+	Children []string          `json:"children"`
+	IsOrphan bool              `json:"is_orphan"`
+	Path     string            `json:"path"`
+	Pool     string            `json:"pool"`
+
+	// Size the size the volume was served with by its pool
+	Size int64 `json:"size"`
 }
 
 // PoolVolumeItems defines model for PoolVolumeItems.

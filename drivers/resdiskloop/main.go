@@ -137,6 +137,15 @@ func (t *T) Provisioned(ctx context.Context) (provisioned.T, error) {
 
 // Label implements Label from resource.Driver interface,
 // it returns a formatted short description of the Resource
+// PoolCharge implements resource.PoolCharger. A loop file takes its size of
+// the directory it is created in.
+func (t *T) PoolCharge() (string, int64) {
+	if t.Size == nil || t.File == "" {
+		return "", 0
+	}
+	return filepath.Dir(t.File), *t.Size
+}
+
 func (t *T) Label(_ context.Context) string {
 	return t.File
 }

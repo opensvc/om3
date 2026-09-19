@@ -13,6 +13,7 @@ import (
 	"github.com/opensvc/om3/v3/core/status"
 	"github.com/opensvc/om3/v3/drivers/resdisk"
 	"github.com/opensvc/om3/v3/util/device"
+	"github.com/opensvc/om3/v3/util/sizeconv"
 	"github.com/opensvc/om3/v3/util/udevadm"
 )
 
@@ -70,6 +71,19 @@ func (t *T) Start(ctx context.Context) error {
 		return t.lv().Deactivate(ctx)
 	})
 	return nil
+}
+
+// PoolCharge implements resource.PoolCharger. A logical volume takes its
+// size of the volume group it is carved from.
+//
+// A size that is a share of the group, "100%FREE" and the like, is not a
+// number the group can be rationed by, and is answered as none.
+func (t *T) PoolCharge() (string, int64) {
+	size, err := sizeconv.FromSize(t.Size)
+	if err != nil {
+		return "", 0
+	}
+	return t.VGName, size
 }
 
 func (t *T) Info(ctx context.Context) (resource.InfoKeys, error) {

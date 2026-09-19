@@ -35,8 +35,10 @@ func ClaimLimit(namespace, poolName string) (int64, bool, error) {
 // moment ago and not yet written has to be weighed against it, and weighing
 // the two means knowing which object each is about.
 func ClaimHeldByPath(ctx context.Context, c *client.T, namespace, poolName string) (map[string]int64, error) {
-	name := api.InQueryPoolName(poolName)
-	resp, err := c.GetPoolVolumesWithResponse(ctx, &api.GetPoolVolumesParams{Name: &name})
+	// Every volume is asked for, not the ones this pool served: a volume
+	// served by another pool can take storage of this one, and what it takes
+	// is counted where it is taken.
+	resp, err := c.GetPoolVolumesWithResponse(ctx, &api.GetPoolVolumesParams{})
 	if err != nil {
 		return nil, err
 	}
@@ -52,7 +54,15 @@ func ClaimHeldByPath(ctx context.Context, c *client.T, namespace, poolName strin
 		if p.Namespace != namespace {
 			continue
 		}
-		held[item.Path] = item.Size
+		if item.Pool == poolName {
+			held[item.Path] += item.Size
+		}
+		if item.Charges == nil {
+			continue
+		}
+		if size, ok := (*item.Charges)[poolName]; ok {
+			held[item.Path] += size
+		}
 	}
 	return held, nil
 }

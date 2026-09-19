@@ -234,6 +234,24 @@ type (
 		ResizeSpansBelow() bool
 	}
 
+	// PoolCharger is implemented by a resource taking its storage from
+	// something a pool owns: a logical volume from a volume group, a file
+	// from a directory.
+	//
+	// It says what it takes, and what it takes it from, named as a pool names
+	// what it is the head of. What owns that head, and whether anything does,
+	// is not the resource's to know.
+	//
+	// The size answered is the one the configuration asks for rather than the
+	// one the resource holds: what a volume costs a pool is weighed before
+	// anything is provisioned, and a resource that holds nothing yet still
+	// costs what it was asked to hold. A resource asking for no size, or for
+	// a share of what it rests on, answers zero: what it takes is not a
+	// number anything can be rationed by.
+	PoolCharger interface {
+		PoolCharge() (head string, size int64)
+	}
+
 	// Freer is implemented by a resource that can say how much of what it
 	// holds nothing has taken yet, which is what "{<rid>.free}" answers.
 	//

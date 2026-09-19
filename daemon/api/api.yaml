@@ -8091,8 +8091,18 @@ components:
         is_orphan:
           type: boolean
         size:
+          description: the size the volume was served with by its pool
           type: integer
           format: int64
+        charges:
+          description: |
+            what the volume takes of pools other than the one that served it,
+            by pool name, which a volume made of storage carved elsewhere does
+            and nothing else says
+          type: object
+          additionalProperties:
+            type: integer
+            format: int64
 
     # ========================================================================
     # pool claim schemas

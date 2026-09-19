@@ -60,6 +60,17 @@ type (
 	VolConfig struct {
 		Pool string `json:"pool"`
 		Size int64  `json:"size"`
+
+		// Charges is what the volume takes of pools other than the one that
+		// served it, by pool name.
+		//
+		// A volume is counted against the claim its namespace holds on the
+		// pool it was served by, which is what it was asked of that pool.
+		// A volume whose resources take their storage elsewhere costs those
+		// pools too, and nothing else says so: a volume served by a virtual
+		// pool is a copy of a template, and what that template builds is
+		// only known by reading what it built.
+		Charges map[string]int64 `json:"charges,omitempty"`
 	}
 
 	ResourceConfigs map[string]ResourceConfig
@@ -111,6 +122,7 @@ func (cfg *VolConfig) DeepCopy() *VolConfig {
 		return nil
 	}
 	newCfg := *cfg
+	newCfg.Charges = deepcopy.Any(cfg.Charges)
 	return &newCfg
 }
 
@@ -191,6 +203,9 @@ func (t Config) Unstructured() map[string]any {
 	if t.VolConfig != nil {
 		m["pool"] = t.VolConfig.Pool
 		m["size"] = t.VolConfig.Size
+		if len(t.VolConfig.Charges) > 0 {
+			m["charges"] = t.VolConfig.Charges
+		}
 	}
 	return m
 }

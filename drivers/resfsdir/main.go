@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"hash/fnv"
 	"os"
+	"path/filepath"
 
 	"github.com/opensvc/om3/v3/core/actionrollback"
 	"github.com/opensvc/om3/v3/core/datarecv"
@@ -83,6 +84,18 @@ func (t *T) Status(ctx context.Context) status.T {
 
 // Label implements Label from resource.Driver interface,
 // it returns a formatted short description of the Resource
+// PoolCharge implements resource.PoolCharger. A directory takes of the
+// directory it is made in, and takes the size it is bounded to.
+//
+// A directory with no size is bounded by nothing, and what it takes is not a
+// number anything can be rationed by.
+func (t *T) PoolCharge() (string, int64) {
+	if t.Size == nil || t.Path == "" {
+		return "", 0
+	}
+	return filepath.Dir(t.Path), *t.Size
+}
+
 func (t *T) Label(_ context.Context) string {
 	return t.Head()
 }

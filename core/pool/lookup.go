@@ -235,7 +235,11 @@ func (t Lookup) roomCause(ctx context.Context, p Pooler) string {
 	}
 	byNode, err := UsageByNode(ctx, p.Name())
 	if err != nil {
-		return fmt.Sprintf("[%s] no usage data: %s", p.Name(), err)
+		// No daemon to ask is no peer to ask about. What this node holds is
+		// what this node can say, and allocating with the daemon down is an
+		// administrator acting directly, which is how an unbrokered claim is
+		// read too.
+		return t.localRoomCause(ctx, p, need)
 	}
 	for _, nodename := range nodes {
 		usage, ok := byNode[nodename]
@@ -256,6 +260,23 @@ func (t Lookup) roomCause(ctx context.Context, p Pooler) string {
 			// asking all of them.
 			break
 		}
+	}
+	return ""
+}
+
+// localRoomCause says why this node has no room for the volume, and nothing
+// when it has.
+//
+// It is what a pool can be asked when there is no daemon to ask about the
+// peers: the pool of a node is read from the node itself.
+func (t Lookup) localRoomCause(ctx context.Context, p Pooler, need int64) string {
+	usage, err := p.Usage(ctx)
+	if err != nil {
+		return fmt.Sprintf("[%s] no usage data: %s", p.Name(), err)
+	}
+	if usage.Size > 0 && usage.Free < need {
+		return fmt.Sprintf("[%s] not enough free space: %s free, %s requested",
+			p.Name(), sizeconv.BSize(float64(usage.Free)), sizeconv.BSize(float64(need)))
 	}
 	return ""
 }

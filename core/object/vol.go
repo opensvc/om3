@@ -372,3 +372,54 @@ func (t *vol) Access() (volaccess.T, error) {
 		return volaccess.Parse(s)
 	}
 }
+
+// PoolCharges is what the volume takes of pools other than the one that
+// served it, by pool name.
+//
+// A volume is counted against the claim its namespace holds on the pool it
+// was served by, and that is what it was asked of that pool. It can take
+// storage elsewhere all the same: a volume served by a virtual pool is a copy
+// of a template, and a template is free to carve a logical volume out of a
+// group another pool is the head of. Nothing but reading what the volume is
+// made of says so.
+//
+// What the volume takes of its own pool is not answered, because it is
+// already counted: it is the size the volume was served with. Neither is what
+// a volume resource takes, because the volume it points at is a volume of its
+// own, counted in its own right.
+//
+// It is read from the configuration rather than from the storage, because a
+// claim is weighed before anything is provisioned.
+func (t *vol) PoolCharges() map[string]int64 {
+	own := t.config.GetString(key.T{Section: "DEFAULT", Option: "pool"})
+	node, err := NewNode(WithVolatile(true))
+	if err != nil {
+		return nil
+	}
+	byHead := make(map[string]string)
+	for _, p := range node.Pools() {
+		if head := p.Head(); head != "" {
+			byHead[head] = p.Name()
+		}
+	}
+	var charges map[string]int64
+	for _, r := range t.Resources() {
+		charger, ok := r.(resource.PoolCharger)
+		if !ok {
+			continue
+		}
+		head, size := charger.PoolCharge()
+		if head == "" || size <= 0 {
+			continue
+		}
+		name, ok := byHead[head]
+		if !ok || name == own {
+			continue
+		}
+		if charges == nil {
+			charges = make(map[string]int64)
+		}
+		charges[name] += size
+	}
+	return charges
+}
