@@ -10,6 +10,8 @@ import (
 	"github.com/opensvc/om3/v3/core/manifest"
 	"github.com/opensvc/om3/v3/core/naming"
 	"github.com/opensvc/om3/v3/core/resource"
+	"github.com/opensvc/om3/v3/core/xconfig"
+	"github.com/opensvc/om3/v3/util/funcopt"
 	"github.com/opensvc/om3/v3/util/key"
 	"github.com/opensvc/om3/v3/util/sizeconv"
 )
@@ -377,4 +379,99 @@ func TestMergeResizeLevels(t *testing.T) {
 	// Merging onto nothing is the chain itself, which is what the first
 	// object entered merges onto.
 	assert.Equal(t, names(a), names(mergeResizeLevels(nil, a)))
+}
+
+// recordOf builds a step recording the size a resource reached in the
+// configuration of an object.
+func recordOf(t *testing.T, kind naming.Kind, config, rid string, reached int64) *xconfig.T {
+	t.Helper()
+	p, err := naming.NewPath("test", kind, "obj")
+	require.NoError(t, err)
+	opts := []funcopt.O{WithConfigData([]byte(config)), WithVolatile(true)}
+	var a *actor
+	switch kind {
+	case naming.KindVol:
+		o, err := NewVol(p, opts...)
+		require.NoError(t, err)
+		a = &o.actor
+	default:
+		o, err := NewSvc(p, opts...)
+		require.NoError(t, err)
+		a = &o.actor
+	}
+	step := ResizeStep{
+		RID:   rid,
+		r:     &fakeLink{rid: rid, has: reached},
+		owner: a,
+	}
+	require.NoError(t, step.recordSize(context.Background()))
+	return a.config
+}
+
+// A pool sizes the volume it serves from the claim the namespace holds on it,
+// and the cluster counts that claim from the size of the object. A
+// configuration written before pools pointed the one at the other holds the
+// same number twice, and recording the resource alone would leave the cluster
+// counting a claim the storage has outgrown.
+func TestASizeRecordedCarriesTheClaimItWasSizedFrom(t *testing.T) {
+	const volConfig = `
+pool = p1
+size = 512mi
+
+[disk#1]
+type = loop
+size = 512mi
+
+[disk#3]
+type = lv
+size = 100mi
+`
+	cfg := recordOf(t, naming.KindVol, volConfig, "disk#1", 612*1024*1024)
+	assert.Equal(t, "612mi", cfg.Get(key.T{Section: "disk#1", Option: "size"}))
+	assert.Equal(t, "612mi", cfg.Get(key.T{Section: "DEFAULT", Option: "size"}),
+		"the claim the volume was sized from follows the storage")
+
+	cfg = recordOf(t, naming.KindVol, volConfig, "disk#3", 200*1024*1024)
+	assert.Equal(t, "200mi", cfg.Get(key.T{Section: "disk#3", Option: "size"}))
+	assert.Equal(t, "512mi", cfg.Get(key.T{Section: "DEFAULT", Option: "size"}),
+		"a resource sized from something else does not carry the claim")
+
+	// A volume served by no pool claims nothing of one.
+	cfg = recordOf(t, naming.KindVol, `
+size = 512mi
+
+[disk#1]
+type = loop
+size = 512mi
+`, "disk#1", 612*1024*1024)
+	assert.Equal(t, "612mi", cfg.Get(key.T{Section: "disk#1", Option: "size"}))
+	assert.Equal(t, "512mi", cfg.Get(key.T{Section: "DEFAULT", Option: "size"}))
+
+	// The size of a service is not a claim on a pool.
+	cfg = recordOf(t, naming.KindSvc, `
+pool = p1
+size = 512mi
+
+[disk#1]
+type = loop
+size = 512mi
+`, "disk#1", 612*1024*1024)
+	assert.Equal(t, "612mi", cfg.Get(key.T{Section: "disk#1", Option: "size"}))
+	assert.Equal(t, "512mi", cfg.Get(key.T{Section: "DEFAULT", Option: "size"}))
+}
+
+// A pool writing the size of its resource as a reference to the size of the
+// volume is recorded where the value lives, and once.
+func TestASizeRecordedThroughAReferenceLandsWhereItLives(t *testing.T) {
+	cfg := recordOf(t, naming.KindVol, `
+pool = p1
+size = 512mi
+
+[disk#1]
+type = loop
+size = {DEFAULT.size}
+`, "disk#1", 612*1024*1024)
+	assert.Equal(t, "{DEFAULT.size}", cfg.Get(key.T{Section: "disk#1", Option: "size"}),
+		"the reference is kept, so a clone still sizes itself from the volume")
+	assert.Equal(t, "612mi", cfg.Get(key.T{Section: "DEFAULT", Option: "size"}))
 }

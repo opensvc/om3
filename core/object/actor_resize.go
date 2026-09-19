@@ -799,6 +799,10 @@ func (t *actor) applyResizePlan(ctx context.Context, plan ResizePlan, what strin
 //
 // A keyword that names no size is left alone too: this keeps a configuration
 // accurate, it does not start recording in one that said nothing.
+//
+// One keyword is written alongside the resource rather than instead of it:
+// the size of a volume the resource was sized from, which is the claim the
+// cluster rations its namespace by. See claimSizeKey.
 func (t ResizeStep) recordSize(ctx context.Context) error {
 	if t.owner == nil {
 		return nil
@@ -808,6 +812,7 @@ func (t ResizeStep) recordSize(ctx context.Context) error {
 		return nil
 	}
 	was := t.owner.config.Get(k)
+	keys := []key.T{k}
 
 	// A reference says the value lives in another keyword, so that is the one
 	// to record in. A pool-served volume points the size of its resources at
@@ -815,8 +820,10 @@ func (t ResizeStep) recordSize(ctx context.Context) error {
 	// claiming, so leaving it alone lets a resize grow the storage without the
 	// cluster ever hearing that the claim grew with it.
 	if ref, ok := referencedKey(was); ok {
-		k = ref
-		was = t.owner.config.Get(k)
+		keys = []key.T{ref}
+		was = t.owner.config.Get(ref)
+	} else if claim, ok := t.claimSizeKey(k); ok {
+		keys = append(keys, claim)
 	}
 	if !isRecordableSize(was) {
 		return nil
@@ -837,16 +844,56 @@ func (t ResizeStep) recordSize(ctx context.Context) error {
 		t.owner.log.Infof("%s: size reached cannot be read back, so it is not recorded: %s", t.RID, err)
 		return nil
 	}
-	op := keyop.T{
-		Key:   k,
-		Op:    keyop.Set,
-		Value: sizeconv.ExactBSizeCompact(float64(reached)),
+	value := sizeconv.ExactBSizeCompact(float64(reached))
+	ops := make([]keyop.T, 0, len(keys))
+	for _, k := range keys {
+		was := t.owner.config.Get(k)
+		if value == was {
+			continue
+		}
+		t.owner.log.Infof("record %s %s -> %s", k, was, value)
+		ops = append(ops, keyop.T{Key: k, Op: keyop.Set, Value: value})
 	}
-	if op.Value == was {
+	if len(ops) == 0 {
 		return nil
 	}
-	t.owner.log.Infof("record %s %s -> %s", k, was, op.Value)
-	return t.owner.config.Set(op)
+	return t.owner.config.Set(ops...)
+}
+
+// claimSizeKey is the size of the object, when this resource is the one a
+// pool sized from the claim the namespace holds on it.
+//
+// A pool writes the size of the resource it serves as a reference to
+// DEFAULT.size, so that recording follows the reference and the storage and
+// the claim the cluster rations move together. A configuration written before
+// that holds the same number twice instead, and recording the resource alone
+// leaves the cluster counting a claim the storage has outgrown: a volume
+// grown from 512mi to 612mi still weighs 512mi on the claim of its namespace,
+// and on every capacity decision read from it.
+//
+// The two are recorded together only while they agree, which is how the pool
+// left them. A resource holding something else was sized from something else,
+// and the claim of the volume is not its to carry: the logical volume of a
+// drbd pool volume takes what its group has, and what the pool was asked for
+// is what the loop file below it holds.
+func (t ResizeStep) claimSizeKey(k key.T) (key.T, bool) {
+	claim := key.T{Section: "DEFAULT", Option: "size"}
+	if t.owner.path.Kind != naming.KindVol {
+		return claim, false
+	}
+	if t.owner.config.GetString(key.T{Section: "DEFAULT", Option: "pool"}) == "" {
+		// Served by no pool, so claimed from nothing.
+		return claim, false
+	}
+	if !isRecordableSize(t.owner.config.Get(claim)) {
+		return claim, false
+	}
+	resourceSize := t.owner.config.GetSize(k)
+	objectSize := t.owner.config.GetSize(claim)
+	if resourceSize == nil || objectSize == nil || *resourceSize != *objectSize {
+		return claim, false
+	}
+	return claim, true
 }
 
 // referencedKey returns the keyword a value refers to, when the value is
