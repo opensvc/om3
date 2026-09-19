@@ -723,6 +723,19 @@ func Setenv(r Driver) {
 	}
 }
 
+// IsSelected tells whether the resource r is among the resources the
+// running action recorded with actioncontext.WithSelectedRIDs, i.e. the ones
+// it works on or reads the state of. The known return value is false when no
+// selection is recorded for the object of r, so the caller can apply its
+// default policy.
+func IsSelected(ctx context.Context, r Driver) (selected, known bool) {
+	o, ok := r.GetObject().(interface{ Path() naming.Path })
+	if !ok {
+		return false, false
+	}
+	return actioncontext.IsResourceSelected(ctx, o.Path(), r.RID())
+}
+
 func StatusCheckRequires(ctx context.Context, action string, r Driver) error {
 	reqs := r.Requires(action)
 	sb := statusbus.FromContext(ctx)

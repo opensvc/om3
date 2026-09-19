@@ -15,9 +15,13 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/opensvc/om3/v3/core/actioncontext"
+	"github.com/opensvc/om3/v3/core/driver"
 	"github.com/opensvc/om3/v3/core/env"
+	"github.com/opensvc/om3/v3/core/naming"
+	"github.com/opensvc/om3/v3/core/resource"
 	"github.com/opensvc/om3/v3/core/resourceid"
 	"github.com/opensvc/om3/v3/core/status"
+	"github.com/opensvc/om3/v3/util/plog"
 	"github.com/opensvc/om3/v3/util/sgcp"
 	"github.com/opensvc/om3/v3/util/sgcpcgtesthelper"
 	"github.com/opensvc/om3/v3/util/testsgcphelper"
@@ -893,17 +897,36 @@ func TestStatus_ReadsTheProviderOutsideTheScheduler(t *testing.T) {
 	}
 }
 
+// testObject is the object of the driver newTestDriver returns, only
+// knowing its path.
+type testObject struct {
+	path naming.Path
+}
+
+func (t testObject) Path() naming.Path                                       { return t.path }
+func (t testObject) Log() *plog.Logger                                       { return plog.NewDefaultLogger() }
+func (t testObject) VarDir() string                                          { return "" }
+func (t testObject) ResourceByID(string) resource.Driver                     { return nil }
+func (t testObject) ResourcesByDrivergroups([]driver.Group) resource.Drivers { return nil }
+
 // TestStatus_ActionSelection covers the status evaluations an action with a
 // resource selection makes: the cache is served to the resources the action
-// does not touch, and the provider is read for the ones it does.
+// does not depend on, and the provider is read for the ones it does, and for
+// the resources of the objects it is not acting on.
 func TestStatus_ActionSelection(t *testing.T) {
+	var (
+		path      = naming.Path{Namespace: "test", Kind: naming.KindSvc, Name: "svc1"}
+		otherPath = naming.Path{Namespace: "test", Kind: naming.KindSvc, Name: "svc2"}
+	)
 	cases := []struct {
 		name      string
+		path      naming.Path
 		selection []string
 		wantGets  int
 	}{
-		{name: "not selected", selection: []string{"app#1"}, wantGets: 1},
-		{name: "selected", selection: []string{"app#1", testRID}, wantGets: 3},
+		{name: "not selected", path: path, selection: []string{"app#1"}, wantGets: 1},
+		{name: "selected", path: path, selection: []string{"app#1", testRID}, wantGets: 3},
+		{name: "other object not selected", path: otherPath, selection: []string{"app#1"}, wantGets: 3},
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
@@ -916,8 +939,9 @@ func TestStatus_ActionSelection(t *testing.T) {
 				{UUID: id, AvailabilityZone: region1AZ1, Status: "ready"},
 			})
 			drv := newTestDriver(t, id, region1AZ1, 5*time.Second, false, api)
+			drv.SetObject(testObject{path: path})
 
-			ctx := actioncontext.WithSelectedRIDs(context.Background(), tc.selection)
+			ctx := actioncontext.WithSelectedRIDs(context.Background(), tc.path, tc.selection)
 			for i := 0; i < 3; i++ {
 				assert.Equal(t, status.NotApplicable, drv.Status(ctx))
 			}

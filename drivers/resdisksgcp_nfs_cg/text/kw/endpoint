@@ -2,12 +2,12 @@ The fileaas api url.
 
 By default, the api results are served from a local cache to the status
 evaluations run by the daemon scheduler, and to the ones run by an action
-with a resource selection not including this resource, like
-`om <path> app start`. Every other action, an operator status or an action
-on this resource first of all, reads the api again. Set the OSVC_SGCP_CACHE
-environment variable to override this default whatever the action: `1`
-serves the cached values, `0` never does, the daemon scheduler included. Any
-other value is ignored, with a warning in the resource status.
+with a resource selection that neither includes nor requires this resource,
+like `om <path> app start`. Every other action, an operator status or an action
+on or requiring this resource first of all, reads the api again. Set the
+OSVC_SGCP_CACHE environment variable to override this default whatever the
+action: `1` serves the cached values, `0` never does, the daemon scheduler
+included. Any other value is ignored, with a warning in the resource status.
 
 A cached value is only served while younger than the cache.ttl_seconds
 value from the sgcp configuration file, and a zero ttl disables the cache.

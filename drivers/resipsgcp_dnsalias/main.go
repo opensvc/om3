@@ -201,7 +201,7 @@ func (t *T) Status(ctx context.Context) status.T {
 		t.StatusLog().Info("xaas status disabled")
 		return status.NotApplicable
 	}
-	useCache, err := sgcphelper.UseCache(ctx, t.RID())
+	useCache, err := sgcphelper.UseCache(ctx, t)
 	if err != nil {
 		t.StatusLog().Warn("%s", err)
 	}

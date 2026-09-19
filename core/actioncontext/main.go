@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/opensvc/om3/v3/core/actionrollback"
+	"github.com/opensvc/om3/v3/core/naming"
 	"github.com/opensvc/om3/v3/util/pg"
 )
 
@@ -157,28 +158,41 @@ func RID(ctx context.Context) string {
 	return ""
 }
 
+// selection is the value WithSelectedRIDs stores: the rids are only
+// meaningful for the resources of the object at path.
+type selection struct {
+	path naming.Path
+	rids map[string]struct{}
+}
+
 // WithSelectedRIDs records the rids of the resources an action with a
-// resource selection works on, after the selection is expanded with the
-// resources it needs. Drivers read it with IsResourceSelected, for example
-// to spare a provider api call on a resource the action does not touch.
-func WithSelectedRIDs(ctx context.Context, rids []string) context.Context {
+// resource selection works on or reads the state of, for the object at path.
+// Drivers read it with IsResourceSelected, for example to spare a provider
+// api call on a resource the action does not depend on.
+//
+// The path scopes the rids: an action can evaluate the status of another
+// object with the same context, like the start affinity checks do, and the
+// resources of that object must not be judged by this selection.
+func WithSelectedRIDs(ctx context.Context, path naming.Path, rids []string) context.Context {
 	m := make(map[string]struct{}, len(rids))
 	for _, rid := range rids {
 		m[rid] = struct{}{}
 	}
-	return context.WithValue(ctx, selectedRIDsKey, m)
+	return context.WithValue(ctx, selectedRIDsKey, selection{path: path, rids: m})
 }
 
-// IsResourceSelected tells whether the resource identified by rid is among
-// the ones recorded by WithSelectedRIDs. The known return value is false
-// when no selection is recorded, i.e. outside an action or during an action
-// on all the resources, so the caller can apply its default policy.
-func IsResourceSelected(ctx context.Context, rid string) (selected, known bool) {
-	m, ok := ctx.Value(selectedRIDsKey).(map[string]struct{})
-	if !ok {
+// IsResourceSelected tells whether the resource identified by rid, of the
+// object at path, is among the ones recorded by WithSelectedRIDs. The known
+// return value is false when no selection is recorded for this object, i.e.
+// outside an action, during an action on all the resources, or during the
+// status evaluation of another object, so the caller can apply its default
+// policy.
+func IsResourceSelected(ctx context.Context, path naming.Path, rid string) (selected, known bool) {
+	v, ok := ctx.Value(selectedRIDsKey).(selection)
+	if !ok || v.path != path {
 		return false, false
 	}
-	_, selected = m[rid]
+	_, selected = v.rids[rid]
 	return selected, true
 }
 

@@ -262,7 +262,7 @@ func (t *T) Stop(ctx context.Context) error {
 
 // Status returns the combined status of the file and fs
 func (t *T) Status(ctx context.Context) status.T {
-	useCache, err := sgcphelper.UseCache(ctx, t.RID())
+	useCache, err := sgcphelper.UseCache(ctx, t)
 	if err != nil {
 		t.StatusLog().Warn("%s", err)
 	}
