@@ -61,12 +61,6 @@ type (
 )
 
 type (
-	provisioner interface {
-		Provision(context.Context) error
-	}
-	unprovisioner interface {
-		Unprovision(context.Context) error
-	}
 	starter interface {
 		Start(context.Context) error
 	}
@@ -105,12 +99,6 @@ func (t *T) AddInterfacesKeywords(r any) *T {
 	if _, ok := r.(stopper); ok {
 		t.AddKeywords(stopperKeywords...)
 	}
-	if _, ok := r.(provisioner); ok {
-		t.AddKeywords(provisionerKeywords...)
-	}
-	if _, ok := r.(unprovisioner); ok {
-		t.AddKeywords(unprovisionerKeywords...)
-	}
 	if _, ok := r.(syncer); ok {
 		t.AddKeywords(syncerKeywords...)
 	}
@@ -130,6 +118,11 @@ func New(did driver.ID, r any) *T {
 		Kinds:    make(naming.Kinds),
 	}
 	t.AddKeywords(genericKeywords...)
+	// Every resource goes through the provision and unprovision actions,
+	// which honor their triggers and requirements, whether or not the
+	// driver implements a Provision or Unprovision method.
+	t.AddKeywords(provisionerKeywords...)
+	t.AddKeywords(unprovisionerKeywords...)
 	t.AddInterfacesKeywords(r)
 	return t
 }
