@@ -6,6 +6,7 @@ import (
 	"github.com/opensvc/om3/v3/core/driver"
 	"github.com/opensvc/om3/v3/core/manifest"
 	"github.com/opensvc/om3/v3/core/naming"
+	"github.com/opensvc/om3/v3/core/provisioned"
 	"github.com/opensvc/om3/v3/core/resource"
 	"github.com/opensvc/om3/v3/core/status"
 	"github.com/opensvc/om3/v3/core/topology"
@@ -31,6 +32,16 @@ func capabilitiesScanner(ctx context.Context) ([]string, error) {
 
 func init() {
 	capabilities.Register(capabilitiesScanner)
+}
+
+// DriverID returns the driver identifier.
+func (t *T) DriverID() driver.ID {
+	return DriverID
+}
+
+// Provisioned returns NotApplicable: this driver has nothing to provision.
+func (t *T) Provisioned(ctx context.Context) (provisioned.T, error) {
+	return provisioned.NotApplicable, nil
 }
 
 // Manifest exposes to the core the input expected by the driver.

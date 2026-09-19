@@ -13,7 +13,6 @@ import (
 	"github.com/vishvananda/netlink"
 
 	"github.com/opensvc/om3/v3/core/actionresdeps"
-	"github.com/opensvc/om3/v3/core/provisioned"
 	"github.com/opensvc/om3/v3/core/resource"
 	"github.com/opensvc/om3/v3/core/status"
 )
@@ -202,16 +201,4 @@ func (t *T) defaultDev() (netlink.Link, error) {
 		}
 	}
 	return nil, fmt.Errorf("could not find a netdev to reach the gateway %s", t.Gateway)
-}
-
-func (t *T) Provision(ctx context.Context) error {
-	return nil
-}
-
-func (t *T) Unprovision(ctx context.Context) error {
-	return nil
-}
-
-func (t *T) Provisioned(ctx context.Context) (provisioned.T, error) {
-	return provisioned.NotApplicable, nil
 }
