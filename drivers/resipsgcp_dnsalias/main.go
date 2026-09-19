@@ -201,7 +201,11 @@ func (t *T) Status(ctx context.Context) status.T {
 		t.StatusLog().Info("xaas status disabled")
 		return status.NotApplicable
 	}
-	if sgcphelper.NeedsCacheClear() {
+	useCache, err := sgcphelper.UseCache(ctx, t)
+	if err != nil {
+		t.StatusLog().Warn("%s", err)
+	}
+	if !useCache {
 		if err := t.mgr.cacheClear(t.mgr.cacheSigGetAliases()); err != nil {
 			t.Log().Debugf("clear get alias cache failed: %s", err)
 			t.StatusLog().Warn("possible stale value: clear get alias cache failed")

@@ -860,6 +860,34 @@ Where the password is the value of the `þassword` key in `system/sec/relay-v3`.
     om svc1 switch --live
     om svc1 takeover --live
 
+### Driver
+#### disk.sgcp_nfs_cg, fs.sgcp_nfs, ip.sgcp_dnsalias
+
+* New `OSVC_SGCP_CACHE` environment variable to override the sgcp api cache policy.
+
+    By default, the api results are served from a local cache to:
+
+    * the status evaluations run by the daemon scheduler, so the scheduler does not load the provider api.
+    * the status evaluations run by an action with a resource selection that neither includes the sgcp resource
+      nor requires it via a `<action>_requires` keyword of a selected resource, like `om foo app start`, as the
+      action does not depend on it. An action with `--to` is not a resource selection.
+
+    Every other action, an operator status, an action on or requiring the sgcp resource, or the status evaluation
+    of the sgcp resource object by an action on another object (e.g. the hard affinity checks of a start) first of
+    all, reads the api again.
+    The variable overrides this default whatever the action:
+
+    * `1`: serve the cached values, e.g. for tests or repeated manual status checks.
+    * `0`: never serve the cached values, the daemon scheduler included, e.g. to debug a stale status.
+
+    Any other value keeps the default policy, with a warning in the resource status.
+
+    A cached value is only served while younger than the `cache.ttl_seconds` value from the sgcp configuration
+    file, and a zero ttl disables the cache, whatever `OSVC_SGCP_CACHE` says.
+
+    Set it in `/etc/default/opensvc` or `/etc/sysconfig/opensvc` for the daemon, or in the environment of a single
+    command.
+
 ## Upgrade from b2.1
 
 ### Activation on boot

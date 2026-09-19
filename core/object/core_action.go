@@ -370,6 +370,22 @@ func instanceStatusIcon(avail, overall status.T) string {
 	return fmt.Sprintf("%s%s", a, b)
 }
 
+// actionSelectedRIDs returns the rids of the resources an action with a
+// resource selection depends on: the selected resources, and the resources
+// they require for this action via their <action>_requires keyword. The
+// state of the latter gates the action, so it must be as fresh as the state
+// of the resources the action works on.
+func actionSelectedRIDs(resources resource.Drivers, action string) []string {
+	rids := make([]string, 0, len(resources))
+	for _, r := range resources {
+		rids = append(rids, r.RID())
+		for rid := range r.Requires(action).Requirements() {
+			rids = append(rids, rid)
+		}
+	}
+	return rids
+}
+
 func (t *actor) action(ctx context.Context, fn resourceset.DoFunc) error {
 	if t.IsDisabled() {
 		return ErrDisabled
@@ -408,6 +424,13 @@ func (t *actor) action(ctx context.Context, fn resourceset.DoFunc) error {
 			}
 		}
 		resourceSelector.SelectRIDs(encaperRIDsAddedForSelectedEncapResources)
+	}
+
+	if !resourceSelector.IsZero() {
+		// Tell the drivers which resources the action depends on, so the
+		// status evaluations it runs before and after can spare the
+		// provider api calls on the other ones.
+		ctx = actioncontext.WithSelectedRIDs(ctx, t.path, actionSelectedRIDs(resourceSelector.Resources(), action.Name))
 	}
 
 	logger := t.log.
