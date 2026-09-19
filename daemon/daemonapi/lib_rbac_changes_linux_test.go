@@ -10,8 +10,10 @@ import (
 
 	"github.com/opensvc/om3/v3/core/naming"
 	"github.com/opensvc/om3/v3/core/object"
+	"github.com/opensvc/om3/v3/core/rawconfig"
 	"github.com/opensvc/om3/v3/core/xconfig"
 	"github.com/opensvc/om3/v3/daemon/rbac"
+	"github.com/opensvc/om3/v3/testhelper"
 	"github.com/opensvc/om3/v3/util/hostname"
 
 	// The policy is about driver keywords, which exist only once the drivers
@@ -24,6 +26,19 @@ import (
 // nothing else. It is who the policy is written against: root is let through
 // before the policy is asked.
 var admin = rbac.Grants{rbac.NewGrant(rbac.RoleAdmin, "test")}
+
+// knownNodes gives the test the nodes a cluster holds, which a "nodes = *"
+// needs to evaluate.
+//
+// A keyword nothing can evaluate is judged by what it is written as, so
+// without them these tests would answer for the machine they run on rather
+// than for the policy.
+func knownNodes(t *testing.T) {
+	t.Helper()
+	env := testhelper.Setup(t)
+	env.InstallFile("../../testdata/nodes_info.json", "var/nodes_info.json")
+	t.Cleanup(func() { rawconfig.Load(map[string]string{}) })
+}
 
 func configOf(t *testing.T, s string) *xconfig.T {
 	t.Helper()
@@ -44,6 +59,7 @@ func write(t *testing.T, from, to string) error {
 // A configuration a user may not have written is not one they may not change.
 // The keywords already there were let in by whoever wrote them.
 func TestAWriteAnswersForWhatItChanges(t *testing.T) {
+	knownNodes(t)
 	const root = `
 nodes = *
 
@@ -71,6 +87,7 @@ mnt = /srv/foo
 // A keyword taken away is a change like one made. A section deleted is every
 // keyword of it unset.
 func TestAWriteAnswersForWhatItTakesAway(t *testing.T) {
+	knownNodes(t)
 	const from = `
 nodes = *
 
@@ -115,6 +132,7 @@ mnt = /srv/foo
 // A keyword can hold a reference, so moving what it refers to rewrites it
 // without touching it. References are followed however deep they go.
 func TestAWriteAnswersForTheReferencesItMoves(t *testing.T) {
+	knownNodes(t)
 	const from = `
 nodes = *
 
@@ -162,6 +180,7 @@ pre_start = {env.cmd}
 // A keyword is written once per node, so a reference that resolves the same
 // here can resolve to something else on a peer.
 func TestAWriteAnswersForAReferenceItMovesOnAPeer(t *testing.T) {
+	knownNodes(t)
 	// A node the cluster does not hold is a node the object does not run on,
 	// and a keyword scoped to it is inert, so the peer has to be a real one.
 	scopes := rbacScopes(nil, configOf(t, "nodes = *\n"))
@@ -198,6 +217,7 @@ pre_start = {env.cmd}
 // policy is asked about keywords, and there is no keyword here to ask about,
 // so the fallback is checked as though it had been written.
 func TestAWriteAnswersForTheDriverASectionDoesNotName(t *testing.T) {
+	knownNodes(t)
 	create := func(config string) error {
 		return configRbacChanges(admin, naming.KindSvc, nil, configOf(t, config))
 	}
@@ -290,6 +310,7 @@ image = b
 // Growing the volume is the namespace administrator's to do, and the resource
 // size that follows it is not a write of theirs.
 func TestAVolumeSizeCarriesWhatPointsAtIt(t *testing.T) {
+	knownNodes(t)
 	volOf := func(s string) *xconfig.T {
 		t.Helper()
 		p, err := naming.ParsePath("test/vol/foo")
