@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"path/filepath"
+	"sort"
 	"strings"
 	"time"
 
@@ -145,6 +146,13 @@ type (
 	Volumer interface {
 		FQDN() string
 		Config() *xconfig.T
+	}
+
+	// chargeEstimator is implemented by a volume that can say what a
+	// configuration would make it take of pools other than the one serving
+	// it, before that configuration is written.
+	chargeEstimator interface {
+		PoolChargesOf(configData []byte) (map[string]int64, error)
 	}
 
 	Disk struct {
@@ -485,7 +493,7 @@ func DiskName(p Pooler, vol Volumer) string {
 	return vol.FQDN()
 }
 
-func ConfigureVolume(p Pooler, vol Volumer, size int64, format bool, acs volaccess.T, shared bool, nodes []string, env []string) error {
+func ConfigureVolume(ctx context.Context, p Pooler, vol Volumer, namespace string, size int64, format bool, acs volaccess.T, shared bool, nodes []string, env []string) error {
 	name := DiskName(p, vol)
 	kws, err := translate(p, name, size, format, shared)
 	if err != nil {
@@ -497,10 +505,89 @@ func ConfigureVolume(p Pooler, vol Volumer, size int64, format bool, acs volacce
 	kws = append(kws, nodeKeywords(nodes)...)
 	kws = append(kws, statusScheduleKeywords(p)...)
 	kws = append(kws, syncKeywords()...)
+	if err := refuseChargeOverrun(ctx, vol, namespace, kws); err != nil {
+		return err
+	}
 	if err := vol.Config().Set(keyop.ParseOps(kws)...); err != nil {
 		return err
 	}
 	return nil
+}
+
+// refuseChargeOverrun stops a volume the namespace has no room for in the
+// pools it will take storage of, beside the one serving it.
+//
+// The pool serving the volume is claimed of before the volume is looked up,
+// with the size it is asked for. A volume can be made of storage carved
+// elsewhere all the same, and what it takes there is only known by reading
+// what the pool is about to write: the volume does not exist yet, so nothing
+// else describes it.
+//
+// A volume that cannot say what it would take is let through. Weighing a
+// claim is worth doing where it can be done, and a claim nobody can weigh is
+// an allocation nothing is brokering, which is uncapped by design.
+func refuseChargeOverrun(ctx context.Context, vol Volumer, namespace string, kws []string) error {
+	estimator, ok := vol.(chargeEstimator)
+	if !ok {
+		return nil
+	}
+	charges, err := estimator.PoolChargesOf(configDataOf(kws))
+	if err != nil {
+		return nil
+	}
+	for poolName, size := range charges {
+		ok, why, err := ClaimFits(ctx, namespace, poolName, vol.FQDN(), size)
+		if err != nil {
+			return err
+		}
+		if !ok {
+			return fmt.Errorf("%s takes %s of the %s pool, and %s",
+				vol.FQDN(), sizeconv.BSizeCompact(float64(size)), poolName, why)
+		}
+	}
+	return nil
+}
+
+// configDataOf renders the keywords a pool writes as the configuration they
+// will become, so that what they describe can be read before it is written.
+func configDataOf(kws []string) []byte {
+	sections := make(map[string][]string)
+	order := make([]string, 0)
+	for _, kw := range kws {
+		op := keyop.Parse(kw)
+		if op == nil || op.Key.Option == "" {
+			continue
+		}
+		section := op.Key.Section
+		if section == "" {
+			section = "DEFAULT"
+		}
+		if _, ok := sections[section]; !ok {
+			order = append(order, section)
+		}
+		sections[section] = append(sections[section], fmt.Sprintf("%s = %s", op.Key.Option, op.Value))
+	}
+	sort.Slice(order, func(i, j int) bool {
+		// The default section first, so a reference to it reads as it will
+		// once written.
+		if order[i] == "DEFAULT" {
+			return true
+		}
+		if order[j] == "DEFAULT" {
+			return false
+		}
+		return order[i] < order[j]
+	})
+	var buff strings.Builder
+	for _, section := range order {
+		fmt.Fprintf(&buff, "[%s]\n", section)
+		for _, line := range sections[section] {
+			buff.WriteString(line)
+			buff.WriteString("\n")
+		}
+		buff.WriteString("\n")
+	}
+	return []byte(buff.String())
 }
 
 func translate(p Pooler, name string, size int64, format bool, shared bool) ([]string, error) {

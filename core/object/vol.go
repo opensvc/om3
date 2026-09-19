@@ -373,6 +373,21 @@ func (t *vol) Access() (volaccess.T, error) {
 	}
 }
 
+// PoolChargesOf is what a volume made of these keywords would take of pools
+// other than the one serving it.
+//
+// A pool weighs the claim of the namespace before it writes the volume, and
+// what the volume will take elsewhere is only known by reading what the
+// keywords describe. They are read as the configuration they will become,
+// which is the same reading PoolCharges does of a volume that exists.
+func (t *vol) PoolChargesOf(configData []byte) (map[string]int64, error) {
+	o, err := NewVol(t.path, WithConfigData(configData), WithVolatile(true))
+	if err != nil {
+		return nil, err
+	}
+	return o.PoolCharges(), nil
+}
+
 // PoolCharges is what the volume takes of pools other than the one that
 // served it, by pool name.
 //

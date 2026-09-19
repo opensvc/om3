@@ -61,3 +61,26 @@ env = TST
 	assert.True(t, ok)
 	assert.Equal(t, "", why)
 }
+
+// A pool weighs what a volume will take of other pools before it writes it,
+// and what it is about to write is the only thing describing the volume. It
+// is read as the configuration it will become.
+func TestConfigDataOfReadsAsTheConfigurationItWillBe(t *testing.T) {
+	got := string(configDataOf([]string{
+		"disk#1.type=lv",
+		"disk#1.vg=data",
+		"disk#1.size={DEFAULT.size}",
+		"size=512mi",
+		"pool=p1",
+	}))
+	assert.Equal(t, `[DEFAULT]
+size = 512mi
+pool = p1
+
+[disk#1]
+type = lv
+vg = data
+size = {DEFAULT.size}
+
+`, got, "the default section first, so a reference to it reads as it will once written")
+}

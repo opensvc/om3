@@ -208,7 +208,7 @@ func (t Lookup) ConfigureVolume(ctx context.Context, volume Volumer, obj interfa
 	if err != nil {
 		return err
 	}
-	return ConfigureVolume(p, volume, t.Size, t.Format, t.Access, t.Shared, t.Nodes, env)
+	return ConfigureVolume(ctx, p, volume, t.Namespace, t.Size, t.Format, t.Access, t.Shared, t.Nodes, env)
 }
 
 // roomCause says why a pool has no room for the volume, and nothing when it
