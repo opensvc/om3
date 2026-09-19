@@ -84,14 +84,10 @@ func configRbacChanges(grants rbac.Grants, kind naming.Kind, from, to *xconfig.T
 			}
 			// The value judged is the one the keyword takes where it
 			// changed, which is not always the one it takes here.
-			v, err := to.EvalAs(k, nodename)
-			if err != nil {
-				return err
-			}
 			kop := keyop.T{
 				Key:   k,
 				Op:    keyop.Set,
-				Value: xconfig.EvaluatedString(v),
+				Value: evaluatedOrWrittenAs(to, k, nodename),
 				Index: 0,
 			}
 			if err := keyopRbacOn(grants, kind, kop, set, nodename); err != nil {
@@ -247,7 +243,20 @@ func rbacScopes(cfgs ...*xconfig.T) []string {
 // when it no longer evaluates. A rule reading the value is then given the
 // reference itself, which no rule opens, rather than nothing at all.
 func evaluatedOrWritten(cfg *xconfig.T, k key.T) string {
-	v, err := cfg.Eval(k)
+	return evaluatedOrWrittenAs(cfg, k, hostname.Hostname())
+}
+
+// evaluatedOrWrittenAs is evaluatedOrWritten in the scope the keyword is
+// judged in.
+//
+// What a keyword evaluates to is not always readable: a node selector needs
+// the nodes the cluster knows, and a configuration written where they cannot
+// be read has keywords nothing can resolve. A write is not refused for it.
+// The value is read as it is written instead, which is what the policy is
+// given, and a rule looking for a value it names does not find it in a
+// reference.
+func evaluatedOrWrittenAs(cfg *xconfig.T, k key.T, nodename string) string {
+	v, err := cfg.EvalAs(k, nodename)
 	if err != nil {
 		return cfg.Get(k)
 	}
