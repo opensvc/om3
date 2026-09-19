@@ -32,7 +32,10 @@ import (
 //
 // A request naming no size asks for the size already configured, which is how
 // a resize that stopped part way is finished. It writes nothing, so it takes
-// no more of the pool than the configuration already promised.
+// no more of the pool than the configuration already promised, and it names
+// the configuration it read all the same: what it asks for is a size that
+// configuration holds, and a node holding an older one has a different
+// answer to give.
 func (a *DaemonAPI) PostObjectActionResize(eCtx echo.Context, namespace string, kind naming.Kind, name string, params api.PostObjectActionResizeParams) error {
 	if v, err := assertAdmin(eCtx, namespace); !v {
 		return err
@@ -62,6 +65,16 @@ func (a *DaemonAPI) PostObjectActionResize(eCtx echo.Context, namespace string, 
 				return JSONProblemf(eCtx, code, "Resize", "%s", err)
 			}
 			options.ConfigUpdatedAt = updatedAt
+		} else if options.ConfigUpdatedAt.IsZero() {
+			// A request naming no size asks for the size the configuration
+			// holds, which is the one read here, so this is the
+			// configuration the orchestration is for. Writing nothing is no
+			// reason to leave it unnamed: a node holding an older one would
+			// finish the resize to the size that one is replacing, and say
+			// it is done.
+			if mtime := file.ModTime(p.ConfigFile()); !mtime.IsZero() {
+				options.ConfigUpdatedAt = mtime
+			}
 		}
 
 		ctx, cancel := context.WithTimeout(eCtx.Request().Context(), 500*time.Millisecond)
