@@ -1602,6 +1602,19 @@ type Network struct {
 	Used    big.Int   `json:"used"`
 }
 
+// NetworkClaim defines model for NetworkClaim.
+type NetworkClaim struct {
+	// ExpiresAt when a granted claim stops being counted, should the address it
+	// was granted for never be reserved
+	ExpiresAt *time.Time `json:"expires_at,omitempty"`
+
+	// Granted whether the namespace may take one more address
+	Granted bool `json:"granted"`
+
+	// Reason why the namespace may not take it
+	Reason *string `json:"reason,omitempty"`
+}
+
 // NetworkIP defines model for NetworkIP.
 type NetworkIP struct {
 	IP      string           `json:"ip"`
@@ -2094,6 +2107,23 @@ type PostInstanceProgress struct {
 	IsPartial *bool              `json:"is_partial,omitempty"`
 	SessionID openapi_types.UUID `json:"session_id"`
 	State     string             `json:"state"`
+}
+
+// PostNetworkClaim defines model for PostNetworkClaim.
+type PostNetworkClaim struct {
+	// Namespace the namespace holding addresses of the network
+	Namespace string `json:"namespace"`
+
+	// Network the name of the network the address is drawn from
+	Network string `json:"network"`
+
+	// Path the object the address is reserved for
+	Path string `json:"path"`
+
+	// RID the resource of the object the address is reserved for, so that a
+	// claim answered yes stops being counted on its own once the cluster
+	// reports the address it was granted for
+	RID string `json:"rid"`
 }
 
 // PostNodeDRBDConfigRequest defines model for PostNodeDRBDConfigRequest.
@@ -3981,6 +4011,9 @@ type PostInstanceProgressJSONRequestBody = PostInstanceProgress
 
 // PostInstanceStatusJSONRequestBody defines body for PostInstanceStatus for application/json ContentType.
 type PostInstanceStatusJSONRequestBody = InstanceStatus
+
+// PostNetworkClaimJSONRequestBody defines body for PostNetworkClaim for application/json ContentType.
+type PostNetworkClaimJSONRequestBody = PostNetworkClaim
 
 // PostDaemonJoinJSONRequestBody defines body for PostDaemonJoin for application/json ContentType.
 type PostDaemonJoinJSONRequestBody = DaemonJoinBody

@@ -211,7 +211,7 @@ func AllocateFor(ctx context.Context, i *ipam.T, p naming.Path, rid string) (net
 	if held != nil {
 		return held, nil
 	}
-	if ok, why, err := ClaimFits(ctx, i, p.Namespace); err != nil {
+	if ok, why, err := ClaimFits(ctx, i.Name, p.Namespace, p, rid); err != nil {
 		return nil, fmt.Errorf("network %s claim check: %w", i.Name, err)
 	} else if !ok {
 		return nil, fmt.Errorf("network %s: %s", i.Name, why)

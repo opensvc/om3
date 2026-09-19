@@ -853,6 +853,36 @@ paths:
         500:
           $ref: '#/components/responses/500'
 
+  /api/network/claim:
+    post:
+      operationId: PostNetworkClaim
+      tags:
+        - network
+      security:
+        - basicAuth: []
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PostNetworkClaim'
+      responses:
+        200:
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/NetworkClaim'
+        400:
+          $ref: '#/components/responses/400'
+        401:
+          $ref: '#/components/responses/401'
+        403:
+          $ref: '#/components/responses/403'
+        500:
+          $ref: '#/components/responses/500'
+
   /api/network/ip:
     get:
       operationId: GetNetworkIP
@@ -7229,6 +7259,49 @@ components:
           x-go-name: RID
         network:
           $ref: '#/components/schemas/NetworkIPNetwork'
+
+    PostNetworkClaim:
+      type: object
+      required:
+        - namespace
+        - network
+        - path
+        - rid
+      properties:
+        namespace:
+          description: the namespace holding addresses of the network
+          type: string
+        network:
+          description: the name of the network the address is drawn from
+          type: string
+        path:
+          description: the object the address is reserved for
+          type: string
+        rid:
+          description: |
+            the resource of the object the address is reserved for, so that a
+            claim answered yes stops being counted on its own once the cluster
+            reports the address it was granted for
+          type: string
+          x-go-name: RID
+
+    NetworkClaim:
+      type: object
+      required:
+        - granted
+      properties:
+        granted:
+          description: whether the namespace may take one more address
+          type: boolean
+        reason:
+          description: why the namespace may not take it
+          type: string
+        expires_at:
+          description: |
+            when a granted claim stops being counted, should the address it
+            was granted for never be reserved
+          type: string
+          format: date-time
 
     NetworkIPItems:
       type: array

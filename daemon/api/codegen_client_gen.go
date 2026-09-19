@@ -166,6 +166,11 @@ type ClientInterface interface {
 	// GetNetworks request
 	GetNetworks(ctx context.Context, params *GetNetworksParams, reqEditors ...RequestEditorFn) (*http.Response, error)
 
+	// PostNetworkClaimWithBody request with any body
+	PostNetworkClaimWithBody(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	PostNetworkClaim(ctx context.Context, body PostNetworkClaimJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+
 	// GetNetworkIP request
 	GetNetworkIP(ctx context.Context, params *GetNetworkIPParams, reqEditors ...RequestEditorFn) (*http.Response, error)
 
@@ -927,6 +932,30 @@ func (c *Client) PostInstanceStatus(ctx context.Context, namespace InPathNamespa
 
 func (c *Client) GetNetworks(ctx context.Context, params *GetNetworksParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
 	req, err := NewGetNetworksRequest(c.Server, params)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+func (c *Client) PostNetworkClaimWithBody(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewPostNetworkClaimRequestWithBody(c.Server, contentType, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+func (c *Client) PostNetworkClaim(ctx context.Context, body PostNetworkClaimJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewPostNetworkClaimRequest(c.Server, body)
 	if err != nil {
 		return nil, err
 	}
@@ -3943,6 +3972,46 @@ func NewGetNetworksRequest(server string, params *GetNetworksParams) (*http.Requ
 	if err != nil {
 		return nil, err
 	}
+
+	return req, nil
+}
+
+// NewPostNetworkClaimRequest calls the generic PostNetworkClaim builder with application/json body
+func NewPostNetworkClaimRequest(server string, body PostNetworkClaimJSONRequestBody) (*http.Request, error) {
+	var bodyReader io.Reader
+	buf, err := json.Marshal(body)
+	if err != nil {
+		return nil, err
+	}
+	bodyReader = bytes.NewReader(buf)
+	return NewPostNetworkClaimRequestWithBody(server, "application/json", bodyReader)
+}
+
+// NewPostNetworkClaimRequestWithBody generates requests for PostNetworkClaim with any type of body
+func NewPostNetworkClaimRequestWithBody(server string, contentType string, body io.Reader) (*http.Request, error) {
+	var err error
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/api/network/claim")
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodPost, queryURL.String(), body)
+	if err != nil {
+		return nil, err
+	}
+
+	req.Header.Add("Content-Type", contentType)
 
 	return req, nil
 }
@@ -14780,6 +14849,11 @@ type ClientWithResponsesInterface interface {
 	// GetNetworksWithResponse request
 	GetNetworksWithResponse(ctx context.Context, params *GetNetworksParams, reqEditors ...RequestEditorFn) (*GetNetworksResponse, error)
 
+	// PostNetworkClaimWithBodyWithResponse request with any body
+	PostNetworkClaimWithBodyWithResponse(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*PostNetworkClaimResponse, error)
+
+	PostNetworkClaimWithResponse(ctx context.Context, body PostNetworkClaimJSONRequestBody, reqEditors ...RequestEditorFn) (*PostNetworkClaimResponse, error)
+
 	// GetNetworkIPWithResponse request
 	GetNetworkIPWithResponse(ctx context.Context, params *GetNetworkIPParams, reqEditors ...RequestEditorFn) (*GetNetworkIPResponse, error)
 
@@ -16001,6 +16075,40 @@ func (r GetNetworksResponse) StatusCode() int {
 
 // ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
 func (r GetNetworksResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+type PostNetworkClaimResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	JSON200      *NetworkClaim
+	JSON400      *N400
+	JSON401      *N401
+	JSON403      *N403
+	JSON500      *N500
+}
+
+// Status returns HTTPResponse.Status
+func (r PostNetworkClaimResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r PostNetworkClaimResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r PostNetworkClaimResponse) ContentType() string {
 	if r.HTTPResponse != nil {
 		return r.HTTPResponse.Header.Get("Content-Type")
 	}
@@ -21111,6 +21219,23 @@ func (c *ClientWithResponses) GetNetworksWithResponse(ctx context.Context, param
 	return ParseGetNetworksResponse(rsp)
 }
 
+// PostNetworkClaimWithBodyWithResponse request with arbitrary body returning *PostNetworkClaimResponse
+func (c *ClientWithResponses) PostNetworkClaimWithBodyWithResponse(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*PostNetworkClaimResponse, error) {
+	rsp, err := c.PostNetworkClaimWithBody(ctx, contentType, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParsePostNetworkClaimResponse(rsp)
+}
+
+func (c *ClientWithResponses) PostNetworkClaimWithResponse(ctx context.Context, body PostNetworkClaimJSONRequestBody, reqEditors ...RequestEditorFn) (*PostNetworkClaimResponse, error) {
+	rsp, err := c.PostNetworkClaim(ctx, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParsePostNetworkClaimResponse(rsp)
+}
+
 // GetNetworkIPWithResponse request returning *GetNetworkIPResponse
 func (c *ClientWithResponses) GetNetworkIPWithResponse(ctx context.Context, params *GetNetworkIPParams, reqEditors ...RequestEditorFn) (*GetNetworkIPResponse, error) {
 	rsp, err := c.GetNetworkIP(ctx, params, reqEditors...)
@@ -23670,6 +23795,60 @@ func ParseGetNetworksResponse(rsp *http.Response) (*GetNetworksResponse, error) 
 			return nil, err
 		}
 		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest N401
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest N403
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON403 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
+		var dest N500
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON500 = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParsePostNetworkClaimResponse parses an HTTP response from a PostNetworkClaimWithResponse call
+func ParsePostNetworkClaimResponse(rsp *http.Response) (*PostNetworkClaimResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &PostNetworkClaimResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest NetworkClaim
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
+		var dest N400
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON400 = &dest
 
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
 		var dest N401
