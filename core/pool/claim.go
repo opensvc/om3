@@ -106,3 +106,42 @@ func ClaimFits(ctx context.Context, namespace, poolName, path string, size int64
 	}
 	return false, why, nil
 }
+
+// UsageByNode is what each node holds of a pool, as the daemon knows it.
+//
+// The pool of a node is read from the node itself, and a node cannot read the
+// pool of a peer, so this is asked of the daemon: it is where every node
+// reports what its storage holds. A node reporting nothing is absent from the
+// answer rather than present with zeroes, because a pool with no room and a
+// pool nobody has heard from are not the same thing.
+func UsageByNode(ctx context.Context, poolName string) (map[string]Usage, error) {
+	c, err := client.New()
+	if err != nil {
+		return nil, err
+	}
+	name := api.InQueryPoolName(poolName)
+	selector := "*"
+	resp, err := c.GetPoolsWithResponse(ctx, &api.GetPoolsParams{Name: &name, Node: &selector})
+	if err != nil {
+		return nil, err
+	}
+	if resp.JSON200 == nil {
+		return nil, fmt.Errorf("read the %s pool usage: unexpected status code %d", poolName, resp.StatusCode())
+	}
+	m := make(map[string]Usage)
+	for _, item := range resp.JSON200.Items {
+		if item.Name != poolName {
+			continue
+		}
+		m[item.Node] = Usage{
+			Shared:      item.Shared,
+			Free:        item.Free,
+			Used:        item.Used,
+			Size:        item.Size,
+			LogicalFree: item.LogicalFree,
+			LogicalUsed: item.LogicalUsed,
+			LogicalSize: item.LogicalSize,
+		}
+	}
+	return m, nil
+}
