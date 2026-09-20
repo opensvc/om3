@@ -9,6 +9,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"slices"
 	"strings"
 	"syscall"
 	"time"
@@ -391,6 +392,43 @@ func (t *T) logErrorExitCode(exitCode int, err error) {
 	}
 }
 
+// serviceManagerEnv are the variables a service manager sets for the service
+// it starts, and for that service alone.
+//
+// systemd tells a service where to answer it (NOTIFY_SOCKET), which
+// descriptors it was handed (LISTEN_*) and which watchdog it has to feed
+// (WATCHDOG_*). A command the service runs is not that service, and is not
+// meant to read them: sd_notify has a flag to clear them for that reason, and
+// this daemon cannot use it because it goes on notifying for as long as it
+// runs.
+//
+// A container runtime finding NOTIFY_SOCKET waits for the container to report
+// itself ready, and a container that is not a service never does: the
+// container runs, "runc start" never returns, and the start that asked for it
+// waits until its own timeout ends it.
+var serviceManagerEnv = []string{
+	"NOTIFY_SOCKET",
+	"LISTEN_FDNAMES",
+	"LISTEN_FDS",
+	"LISTEN_PID",
+	"WATCHDOG_PID",
+	"WATCHDOG_USEC",
+}
+
+// withoutServiceManagerEnv is env without what a service manager addressed to
+// this process alone.
+func withoutServiceManagerEnv(env []string) []string {
+	l := make([]string, 0, len(env))
+	for _, s := range env {
+		name, _, _ := strings.Cut(s, "=")
+		if slices.Contains(serviceManagerEnv, name) {
+			continue
+		}
+		l = append(l, s)
+	}
+	return l
+}
+
 // Update t.cmd with options
 func (t *T) update() error {
 	cmd := t.cmd
@@ -404,6 +442,7 @@ func (t *T) update() error {
 	if len(t.env) > 0 {
 		cmd.Env = append(cmd.Env, t.env...)
 	}
+	cmd.Env = withoutServiceManagerEnv(cmd.Env)
 	if credential, err := credential(t.user, t.group); err != nil {
 		if t.log != nil {
 			t.log.Levelf(t.logLevel, "unable to set credential from user '%v', group '%v' for action '%v': %s", t.user, t.group, t.label, err)
