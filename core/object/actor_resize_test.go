@@ -7,9 +7,12 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
+	"github.com/opensvc/om3/v3/core/driver"
 	"github.com/opensvc/om3/v3/core/manifest"
 	"github.com/opensvc/om3/v3/core/naming"
+	"github.com/opensvc/om3/v3/core/provisioned"
 	"github.com/opensvc/om3/v3/core/resource"
+	"github.com/opensvc/om3/v3/core/status"
 	"github.com/opensvc/om3/v3/core/xconfig"
 	"github.com/opensvc/om3/v3/util/funcopt"
 	"github.com/opensvc/om3/v3/util/key"
@@ -31,8 +34,12 @@ type fakeLink struct {
 	divideBy int64
 }
 
-func (t *fakeLink) RID() string           { return t.rid }
-func (t *fakeLink) Manifest() *manifest.T { return nil }
+func (t *fakeLink) RID() string                                        { return t.rid }
+func (t *fakeLink) Manifest() *manifest.T                              { return nil }
+func (t *fakeLink) DriverID() driver.ID                                { return driver.NewID(driver.GroupDisk, "fake") }
+func (t *fakeLink) Label(context.Context) string                       { return t.rid }
+func (t *fakeLink) Status(context.Context) status.T                    { return status.Up }
+func (t *fakeLink) Provisioned(context.Context) (provisioned.T, error) { return provisioned.True, nil }
 
 func (t *fakeLink) CurrentSize(_ context.Context) (int64, error) { return t.has, nil }
 
@@ -52,7 +59,13 @@ type sizerOnly struct {
 	has int64
 }
 
-func (t *sizerOnly) RID() string                                  { return t.rid }
+func (t *sizerOnly) RID() string                     { return t.rid }
+func (t *sizerOnly) DriverID() driver.ID             { return driver.NewID(driver.GroupDisk, "sizer") }
+func (t *sizerOnly) Label(context.Context) string    { return t.rid }
+func (t *sizerOnly) Status(context.Context) status.T { return status.Up }
+func (t *sizerOnly) Provisioned(context.Context) (provisioned.T, error) {
+	return provisioned.True, nil
+}
 func (t *sizerOnly) CurrentSize(_ context.Context) (int64, error) { return t.has, nil }
 func (t *sizerOnly) Manifest() *manifest.T                        { return nil }
 
