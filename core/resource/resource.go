@@ -62,11 +62,20 @@ type (
 		Merge(StatusLogger)
 	}
 
+	// requirer is the part of a resource StatusCheckRequires needs.
+	requirer interface {
+		Requires(string) *resourcereqs.T
+		RID() string
+	}
+
+	// varDirer is the part of a resource the stopped flag file helpers need.
+	varDirer interface {
+		VarDir() string
+	}
+
 	// Driver exposes what can be done with a resource
 	Driver interface {
 		Provisioned(context.Context) (provisioned.T, error)
-		Provision(context.Context) error
-		Unprovision(context.Context) error
 
 		// common
 		ApplyPG(context.Context) error
@@ -123,7 +132,6 @@ type (
 
 	// T is the resource type, embedded in each drivers type
 	T struct {
-		Driver
 		ResourceID              *resourceid.T
 		Subset                  string
 		Disable                 bool
@@ -736,7 +744,7 @@ func IsSelected(ctx context.Context, r Driver) (selected, known bool) {
 	return actioncontext.IsResourceSelected(ctx, o.Path(), r.RID())
 }
 
-func StatusCheckRequires(ctx context.Context, action string, r Driver) error {
+func StatusCheckRequires(ctx context.Context, action string, r requirer) error {
 	reqs := r.Requires(action)
 	sb := statusbus.FromContext(ctx)
 	for rid, reqStates := range reqs.Requirements() {
@@ -1543,11 +1551,11 @@ func (t *RunningInfoList) LoadRunDir(rid string, runDir runfiles.Dir) error {
 	return errs
 }
 
-func stoppedFlag(r Driver) string {
+func stoppedFlag(r varDirer) string {
 	return filepath.Join(r.VarDir(), "stopped")
 }
 
-func IsStopped(r Driver) (bool, error) {
+func IsStopped(r varDirer) (bool, error) {
 	path := stoppedFlag(r)
 	_, err := os.Stat(path)
 	if err == nil {
