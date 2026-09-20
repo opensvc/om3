@@ -223,17 +223,22 @@ func (t Lookup) ConfigureVolume(ctx context.Context, volume Volumer, obj interfa
 // volume hands out, unless the pool holds it in something else.
 //
 // The figures come from the daemon, which is where the peers report theirs,
-// and are a few seconds old. A node that has reported nothing is a node whose
-// room nobody knows, and storage nobody can account for is refused rather
-// than taken: the volume would be provisioned there, and what it takes would
-// be found out afterwards.
+// and are a few seconds old. A node reporting the pools it has, this one
+// among them not, is a node the volume cannot be held on, and is refused: the
+// volume would be provisioned there, and what it takes would be found out
+// afterwards.
+//
+// A node that reports no pool at all is another matter. It has not reported
+// yet, which is what a node does for as long as it takes its daemon to read
+// its storage after starting, and holding that against the allocation would
+// make a cluster refuse to provision anything for a while after a restart.
 func (t Lookup) roomCause(ctx context.Context, p Pooler) string {
 	need := CopySize(p, t.Size)
 	nodes := t.Nodes
 	if len(nodes) == 0 {
 		nodes = []string{hostname.Hostname()}
 	}
-	byNode, err := UsageByNode(ctx, p.Name())
+	byNode, err := UsageByNode(ctx)
 	if err != nil {
 		// No daemon to ask is no peer to ask about. What this node holds is
 		// what this node can say, and allocating with the daemon down is an
@@ -242,9 +247,14 @@ func (t Lookup) roomCause(ctx context.Context, p Pooler) string {
 		return t.localRoomCause(ctx, p, need)
 	}
 	for _, nodename := range nodes {
-		usage, ok := byNode[nodename]
+		byPool, ok := byNode[nodename]
+		if !ok || len(byPool) == 0 {
+			// Nothing heard from that node yet.
+			continue
+		}
+		usage, ok := byPool[p.Name()]
 		if !ok {
-			return fmt.Sprintf("[%s] node %s reports no usage data", p.Name(), nodename)
+			return fmt.Sprintf("[%s] node %s has no such pool", p.Name(), nodename)
 		}
 		if usage.Size <= 0 {
 			// A pool with no size of its own, a virtual one, says nothing
