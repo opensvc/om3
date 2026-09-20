@@ -303,6 +303,30 @@ nodes = *
 [container#0]
 image = b
 `))
+
+	// A type is a keyword like any other and can be written for one node
+	// alone. The section then names what it runs there and names nothing on
+	// the others, where it runs the fallback: reading "a type is written" as
+	// "a type is written everywhere" made naming a container type on one node
+	// a way to run a command on every other.
+	scopes := rbacScopes(nil, configOf(t, "nodes = *\n"))
+	if len(scopes) < 2 {
+		t.Skip("needs a cluster with a peer")
+	}
+	assert.Error(t, write(t, `
+nodes = *
+
+[env]
+a = 1
+`, `
+nodes = *
+
+[task#1]
+type@`+scopes[0]+` = oci
+image = busybox
+command = /bin/true
+schedule = @1
+`), "the task runs the host driver on every node but one")
 }
 
 // A pool ties the storage it serves to the claim the cluster rations it by,

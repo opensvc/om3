@@ -94,7 +94,7 @@ func configRbacChanges(grants rbac.Grants, kind naming.Kind, from, to *xconfig.T
 				return err
 			}
 		}
-		if err := sectionDriverRbac(grants, kind, from, to, section, set); err != nil {
+		if err := sectionDriverRbac(grants, kind, from, to, section, set, scopes); err != nil {
 			return err
 		}
 	}
@@ -132,27 +132,33 @@ func configRbacChanges(grants rbac.Grants, kind naming.Kind, from, to *xconfig.T
 // the section is new to the object, and when the write is what stopped the
 // section naming a type, which are the two ways a section comes to run a
 // driver it does not name.
-func sectionDriverRbac(grants rbac.Grants, kind naming.Kind, from, to *xconfig.T, section string, set keyoprbac.Section) error {
-	if set("type") {
-		// Written, so it was checked as the keyword it is, in whatever scope
-		// it was written.
-		return nil
-	}
+//
+// It is asked node by node, because a type is a keyword like any other and can
+// be written for one node alone: a section naming a type on one node names
+// nothing on the others, and runs the fallback there. Reading "a type is
+// written" as "a type is written everywhere" turned the check into a way
+// around itself.
+func sectionDriverRbac(grants rbac.Grants, kind naming.Kind, from, to *xconfig.T, section string, set keyoprbac.Section, scopes []string) error {
 	group, _, _ := strings.Cut(section, "#")
 	name := driver.DefaultDriver[driver.NewGroup(group)]
 	if name == "" {
 		// A group with no fallback runs nothing it was not told to run.
 		return nil
 	}
-	if from != nil {
-		keys := from.Keys(section)
-		if len(keys) > 0 && !sectionSetter(keys)("type") {
-			// The section ran this driver before the write too.
-			return nil
+	k := key.New(section, "type")
+	for _, nodename := range scopes {
+		if to.GetStringAs(k, nodename) != "" {
+			// The section names what it runs there, and that keyword was
+			// checked as the keyword it is.
+			continue
 		}
-	}
-	if err := keyoprbac.Denied(grants, kind, section, "type", name, set); err != nil {
-		return fmt.Errorf("%w: %s runs the %s driver, which it does not name: %w", ErrDenied, section, name, err)
+		if from != nil && len(from.Keys(section)) > 0 && from.GetStringAs(k, nodename) == "" {
+			// The section ran this driver there before the write too.
+			continue
+		}
+		if err := keyoprbac.Denied(grants, kind, section, "type", name, set); err != nil {
+			return fmt.Errorf("%w: %s runs the %s driver on %s, which it does not name: %w", ErrDenied, section, name, nodename, err)
+		}
 	}
 	return nil
 }
