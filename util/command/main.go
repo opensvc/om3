@@ -167,7 +167,7 @@ func (t *T) Start() (err error) {
 		w := &lineWriter{
 			onLine: func(s string) {
 				if t.log != nil && t.stdoutLogLevel != zerolog.Disabled {
-					t.log.Attr("out", s).Attr("pid", t.pid).Levelf(t.stdoutLogLevel, "stdout: %s", s)
+					t.log.Attr("out", s).Attr("pid", t.startedPID()).Levelf(t.stdoutLogLevel, "stdout: %s", s)
 				}
 				if t.onStdoutLine != nil {
 					t.onStdoutLine(s)
@@ -185,7 +185,7 @@ func (t *T) Start() (err error) {
 		w := &lineWriter{
 			onLine: func(s string) {
 				if t.log != nil && t.stderrLogLevel != zerolog.Disabled {
-					t.log.Attr("err", s).Attr("pid", t.pid).Levelf(t.stderrLogLevel, "stderr: %s", s)
+					t.log.Attr("err", s).Attr("pid", t.startedPID()).Levelf(t.stderrLogLevel, "stderr: %s", s)
 				}
 				if t.onStderrLine != nil {
 					t.onStderrLine(s)
@@ -225,6 +225,20 @@ func (t *T) Start() (err error) {
 		t.pid = t.cmd.Process.Pid
 	}
 	return nil
+}
+
+// startedPID is the pid of the running command, for the goroutines copying
+// its output.
+//
+// They are started by exec.Cmd.Start, which sets Process before it starts
+// them, so what it holds is theirs to read. The pid field is not: it is
+// written by whoever called Start, after Start has returned and after the
+// command has begun writing.
+func (t *T) startedPID() int {
+	if t.cmd == nil || t.cmd.Process == nil {
+		return 0
+	}
+	return t.cmd.Process.Pid
 }
 
 func (t *T) Cmd() *exec.Cmd {
