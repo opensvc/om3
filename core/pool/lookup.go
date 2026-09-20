@@ -128,7 +128,9 @@ func (t Lookup) Do(ctx context.Context) (Pooler, error) {
 				continue
 			}
 		}
-		if ok, why, err := ClaimFits(ctx, t.Namespace, p.Name(), t.Path, t.Size); err != nil {
+		// Weighed, not taken: the claim of the pool this picks is taken when
+		// the volume is written to it.
+		if ok, why, err := ClaimProbe(ctx, t.Namespace, p.Name(), t.Path, t.Size); err != nil {
 			cause = append(cause, fmt.Sprintf("[%s] claim check: %s", p.Name(), err))
 			continue
 		} else if !ok {
@@ -208,7 +210,7 @@ func (t Lookup) ConfigureVolume(ctx context.Context, volume Volumer, obj interfa
 	if err != nil {
 		return err
 	}
-	return ConfigureVolume(ctx, p, volume, t.Namespace, t.Size, t.Format, t.Access, t.Shared, t.Nodes, env)
+	return ConfigureVolume(ctx, p, volume, t.Namespace, t.Path, t.Size, t.Format, t.Access, t.Shared, t.Nodes, env)
 }
 
 // roomCause says why a pool has no room for the volume, and nothing when it

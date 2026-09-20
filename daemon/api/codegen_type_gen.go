@@ -2189,6 +2189,11 @@ type PostPoolClaim struct {
 	// Pool the name of the pool the namespace takes of
 	Pool string `json:"pool"`
 
+	// Probe answer whether the namespace may take it, without counting it as
+	// taken: what a pool lookup asks of every pool it weighs, where only
+	// the pool it picks is claimed of
+	Probe *bool `json:"probe,omitempty"`
+
 	// Size the size the object is to hold, not the increase
 	Size int64 `json:"size"`
 }

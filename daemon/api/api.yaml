@@ -8131,6 +8131,12 @@ components:
           description: the size the object is to hold, not the increase
           type: integer
           format: int64
+        probe:
+          description: |
+            answer whether the namespace may take it, without counting it as
+            taken: what a pool lookup asks of every pool it weighs, where only
+            the pool it picks is claimed of
+          type: boolean
 
     PoolClaim:
       type: object

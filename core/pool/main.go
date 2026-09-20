@@ -493,7 +493,7 @@ func DiskName(p Pooler, vol Volumer) string {
 	return vol.FQDN()
 }
 
-func ConfigureVolume(ctx context.Context, p Pooler, vol Volumer, namespace string, size int64, format bool, acs volaccess.T, shared bool, nodes []string, env []string) error {
+func ConfigureVolume(ctx context.Context, p Pooler, vol Volumer, namespace, path string, size int64, format bool, acs volaccess.T, shared bool, nodes []string, env []string) error {
 	name := DiskName(p, vol)
 	kws, err := translate(p, name, size, format, shared)
 	if err != nil {
@@ -505,7 +505,16 @@ func ConfigureVolume(ctx context.Context, p Pooler, vol Volumer, namespace strin
 	kws = append(kws, nodeKeywords(nodes)...)
 	kws = append(kws, statusScheduleKeywords(p)...)
 	kws = append(kws, syncKeywords()...)
-	if err := refuseChargeOverrun(ctx, vol, namespace, kws); err != nil {
+	// The claim of the pool serving the volume is taken here, where the
+	// promise is written. A lookup weighs it on every pool it could have
+	// picked, and taking it there would ration the namespace on the pools it
+	// only compared.
+	if ok, why, err := ClaimFits(ctx, namespace, p.Name(), path, size); err != nil {
+		return err
+	} else if !ok {
+		return fmt.Errorf("%s is served by the %s pool, and %s", path, p.Name(), why)
+	}
+	if err := refuseChargeOverrun(ctx, vol, namespace, path, kws); err != nil {
 		return err
 	}
 	if err := vol.Config().Set(keyop.ParseOps(kws)...); err != nil {
@@ -526,7 +535,7 @@ func ConfigureVolume(ctx context.Context, p Pooler, vol Volumer, namespace strin
 // A volume that cannot say what it would take is let through. Weighing a
 // claim is worth doing where it can be done, and a claim nobody can weigh is
 // an allocation nothing is brokering, which is uncapped by design.
-func refuseChargeOverrun(ctx context.Context, vol Volumer, namespace string, kws []string) error {
+func refuseChargeOverrun(ctx context.Context, vol Volumer, namespace, path string, kws []string) error {
 	estimator, ok := vol.(chargeEstimator)
 	if !ok {
 		return nil
@@ -536,13 +545,13 @@ func refuseChargeOverrun(ctx context.Context, vol Volumer, namespace string, kws
 		return nil
 	}
 	for poolName, size := range charges {
-		ok, why, err := ClaimFits(ctx, namespace, poolName, vol.FQDN(), size)
+		ok, why, err := ClaimFits(ctx, namespace, poolName, path, size)
 		if err != nil {
 			return err
 		}
 		if !ok {
 			return fmt.Errorf("%s takes %s of the %s pool, and %s",
-				vol.FQDN(), sizeconv.BSizeCompact(float64(size)), poolName, why)
+				path, sizeconv.BSizeCompact(float64(size)), poolName, why)
 		}
 	}
 	return nil

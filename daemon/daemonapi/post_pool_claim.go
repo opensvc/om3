@@ -80,9 +80,18 @@ func (a *DaemonAPI) PostPoolClaim(ctx echo.Context) error {
 		return JSONProblemf(ctx, http.StatusInternalServerError, "Pool volumes", "%s", err)
 	}
 	now := time.Now()
-	granted, why := poolClaimGrants.Fits(payload.Namespace, payload.Pool, path, payload.Size, limit, held, now)
+	var granted bool
+	var why string
+	if payload.Probe != nil && *payload.Probe {
+		granted, why = poolClaimGrants.Probe(payload.Namespace, payload.Pool, path, payload.Size, limit, held, now)
+	} else {
+		granted, why = poolClaimGrants.Fits(payload.Namespace, payload.Pool, path, payload.Size, limit, held, now)
+	}
 	if !granted {
 		return ctx.JSON(http.StatusOK, api.PoolClaim{Granted: false, Reason: &why})
+	}
+	if payload.Probe != nil && *payload.Probe {
+		return ctx.JSON(http.StatusOK, api.PoolClaim{Granted: true})
 	}
 	expiresAt := poolClaimGrants.ExpiresAt(now)
 	return ctx.JSON(http.StatusOK, api.PoolClaim{Granted: true, ExpiresAt: &expiresAt})

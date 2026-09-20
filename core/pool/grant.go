@@ -68,6 +68,21 @@ func NewGrants(ttl time.Duration) *Grants {
 // a grant stops adding anything as soon as the configuration it was granted
 // for says the same thing.
 func (t *Grants) Fits(namespace, poolName, path string, to, limit int64, held map[string]int64, now time.Time) (bool, string) {
+	return t.fits(namespace, poolName, path, to, limit, held, now, true)
+}
+
+// Probe says whether the namespace may have an object hold to bytes of a
+// pool, and records nothing.
+//
+// It is what a pool lookup asks of every pool it weighs: a claim is taken
+// where a volume is written, and a pool the lookup only looked at is a pool
+// nothing was written to. Recording there would ration the namespace on every
+// pool it was compared against, for as long as a grant lasts.
+func (t *Grants) Probe(namespace, poolName, path string, to, limit int64, held map[string]int64, now time.Time) (bool, string) {
+	return t.fits(namespace, poolName, path, to, limit, held, now, false)
+}
+
+func (t *Grants) fits(namespace, poolName, path string, to, limit int64, held map[string]int64, now time.Time, record bool) (bool, string) {
 	t.mu.Lock()
 	defer t.mu.Unlock()
 
@@ -115,7 +130,7 @@ func (t *Grants) Fits(namespace, poolName, path string, to, limit int64, held ma
 			sizeconv.BSizeCompact(float64(total-to+current)),
 			sizeconv.BSizeCompact(float64(to-current)))
 	}
-	if to <= 0 {
+	if !record || to <= 0 {
 		// A lookup asking for nothing takes nothing, and a grant of nothing
 		// would only be something to forget later.
 		return true, ""

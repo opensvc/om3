@@ -89,7 +89,21 @@ func ClaimHeldByPath(ctx context.Context, c *client.T, namespace, poolName strin
 // there is nothing brokering. Allocating with the daemon down is an
 // administrator acting directly, which is uncapped by design, and stopping a
 // daemon is not something the capped user can do.
+// ClaimProbe is ClaimFits without taking the claim: it says whether the
+// namespace may have the object hold the size, and counts nothing as taken.
+//
+// A pool lookup weighs every pool it could serve the volume from and writes
+// to one of them. Taking the claim of each would ration the namespace on the
+// pools it was only compared against.
+func ClaimProbe(ctx context.Context, namespace, poolName, path string, size int64) (bool, string, error) {
+	return claimFits(ctx, namespace, poolName, path, size, true)
+}
+
 func ClaimFits(ctx context.Context, namespace, poolName, path string, size int64) (bool, string, error) {
+	return claimFits(ctx, namespace, poolName, path, size, false)
+}
+
+func claimFits(ctx context.Context, namespace, poolName, path string, size int64, probe bool) (bool, string, error) {
 	if _, capped, err := ClaimLimit(namespace, poolName); err != nil || !capped {
 		// The common case, and it asked nothing of the daemon.
 		return true, "", nil
@@ -102,6 +116,7 @@ func ClaimFits(ctx context.Context, namespace, poolName, path string, size int64
 		Namespace: namespace,
 		Path:      &path,
 		Pool:      poolName,
+		Probe:     &probe,
 		Size:      size,
 	})
 	if err != nil || resp.JSON200 == nil {
