@@ -770,6 +770,7 @@ func (t *BT) findAndStart(ctx context.Context) error {
 		id = i.ID()
 	}
 	errs := make(chan error, 1)
+	parent := ctx
 	go func() {
 		if t.StartTimeout != nil && *t.StartTimeout > 0 {
 			log.Infof("container start %s (%s) with timeout %s", name, id, t.StartTimeout)
@@ -791,7 +792,7 @@ func (t *BT) findAndStart(ctx context.Context) error {
 		}
 
 		if err := t.executer.Start(ctx); err != nil {
-			if timedOut(err) && t.StartTimeout != nil && *t.StartTimeout > 0 {
+			if timedOutOn(parent, err) && t.StartTimeout != nil && *t.StartTimeout > 0 {
 				err = fmt.Errorf("the container did not start within start_timeout (%s): %w", *t.StartTimeout, err)
 			}
 			errs <- err
@@ -853,14 +854,26 @@ func (t *BT) findAndStart(ctx context.Context) error {
 	}
 }
 
-// timedOut says whether an operation was ended by the deadline set on it.
+// timedOutOn says whether an operation was ended by the deadline set on it
+// here, rather than by one its caller set earlier.
 //
 // A deadline reads as "context deadline exceeded" wherever it surfaces, which
 // names neither the keyword that set it nor what it was set to, and leaves
 // the reader to guess: a container slow to start reads as an image slow to
-// pull, and the wrong keyword gets raised.
-func timedOut(err error) bool {
-	return errors.Is(err, context.DeadlineExceeded)
+// pull, and the wrong keyword gets raised. Naming the wrong one is the same
+// mistake, so the deadline of the caller is compared: an action bounded by a
+// timeout of its own ends the command too, and it is not this keyword that
+// did it.
+func timedOutOn(parent context.Context, err error) bool {
+	if !errors.Is(err, context.DeadlineExceeded) {
+		return false
+	}
+	deadline, ok := parent.Deadline()
+	if !ok {
+		// Nothing the caller set can have ended it.
+		return true
+	}
+	return deadline.After(time.Now())
 }
 
 func (t *BT) logMainAction(s string, err error) error {
@@ -876,6 +889,7 @@ func (t *BT) pull(ctx context.Context) error {
 	if t.executer == nil {
 		return fmt.Errorf("pull: undefined executer")
 	}
+	parent := ctx
 	if t.PullTimeout != nil && *t.PullTimeout > 0 {
 		var cancel context.CancelFunc
 		ctx, cancel = context.WithTimeout(ctx, *t.PullTimeout)
@@ -885,7 +899,7 @@ func (t *BT) pull(ctx context.Context) error {
 		}
 	}
 	if err := t.executer.Pull(ctx); err != nil {
-		if timedOut(err) && t.PullTimeout != nil && *t.PullTimeout > 0 {
+		if timedOutOn(parent, err) && t.PullTimeout != nil && *t.PullTimeout > 0 {
 			return fmt.Errorf("image %s was not pulled within pull_timeout (%s): %w", t.Image, *t.PullTimeout, err)
 		}
 		return fmt.Errorf("can't pull image %s: %s", t.Image, err)
@@ -914,6 +928,7 @@ func (t *BT) pullAndRun(ctx context.Context) error {
 		pulled = true
 	}
 	refreshCtx := ctx
+	parent := ctx
 
 	if t.StartTimeout != nil && *t.StartTimeout > 0 {
 		var cancel context.CancelFunc
@@ -929,7 +944,7 @@ func (t *BT) pullAndRun(ctx context.Context) error {
 	}()
 
 	err := t.executer.Run(ctx)
-	if timedOut(err) && t.StartTimeout != nil && *t.StartTimeout > 0 {
+	if timedOutOn(parent, err) && t.StartTimeout != nil && *t.StartTimeout > 0 {
 		// Saying where the pull stands is what stops a start that took too
 		// long from being read as a pull that took too long. They are two
 		// windows, and the pull has its own.

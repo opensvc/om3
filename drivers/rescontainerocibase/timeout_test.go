@@ -67,6 +67,17 @@ func TestATimedOutStartNamesTheTimeoutThatEndedIt(t *testing.T) {
 		assert.ErrorIs(t, err, context.DeadlineExceeded)
 	})
 
+	t.Run("a deadline the caller set is not this keyword", func(t *testing.T) {
+		bt := btWithTimeouts(t, time.Minute, time.Minute, true)
+		ctx, cancel := context.WithTimeout(context.Background(), 10*time.Millisecond)
+		defer cancel()
+		err := bt.pullAndRun(ctx)
+		require.Error(t, err)
+		assert.NotContains(t, err.Error(), "start_timeout",
+			"an action ended by a timeout of its own does not name a keyword of the resource")
+		assert.ErrorIs(t, err, context.DeadlineExceeded)
+	})
+
 	t.Run("the image was pulled first, under its own timeout", func(t *testing.T) {
 		bt := btWithTimeouts(t, 10*time.Millisecond, time.Minute, false)
 		err := bt.pullAndRun(context.Background())
