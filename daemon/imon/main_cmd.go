@@ -1296,7 +1296,7 @@ func (t *Manager) mergePeerStopped() {
 		done("global expect is %s", t.state.GlobalExpect)
 		return
 	}
-	if t.objStatus.Avail.Is(status.Up) {
+	if t.objectAvail().Is(status.Up) {
 		// the object is up, so it is wanted up, whatever a stop older than
 		// that asked of the peers
 		done("the object is up")

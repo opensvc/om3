@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"github.com/google/uuid"
 	"net/http"
 	"os"
 	"sync"
@@ -49,34 +50,35 @@ func (t *CmdNodeDrain) doRemote() error {
 				nodeaction.WithAsyncTarget("drained"),
 				nodeaction.WithAsyncTime(t.Time),
 				nodeaction.WithAsyncWait(t.Wait),
-				nodeaction.WithAsyncWaitNode(nodename),
 				nodeaction.WithFormat(t.Output),
 				nodeaction.WithSort(t.Sort),
 				nodeaction.WithColor(t.Color),
-				nodeaction.WithAsyncFunc(func(ctx context.Context) error {
+				nodeaction.WithAsyncFunc(func(ctx context.Context) (uuid.UUID, error) {
 					if resp, err := c.PostPeerActionDrainWithResponse(ctx, nodename); err != nil {
-						return err
+						return uuid.Nil, err
 					} else {
 						switch resp.StatusCode() {
 						case http.StatusOK:
-							fmt.Printf("%s: %s\n", nodename, *resp.JSON200)
+							// The orchestration id is what the action was
+							// accepted as, and what a wait waits for.
+							fmt.Printf("%s: %s\n", nodename, resp.JSON200.OrchestrationID)
+							return resp.JSON200.OrchestrationID, nil
 						case 400:
-							return fmt.Errorf("%s: %s", nodename, *resp.JSON400)
+							return uuid.Nil, fmt.Errorf("%s: %s", nodename, *resp.JSON400)
 						case 401:
-							return fmt.Errorf("%s: %s", nodename, *resp.JSON401)
+							return uuid.Nil, fmt.Errorf("%s: %s", nodename, *resp.JSON401)
 						case 403:
-							return fmt.Errorf("%s: %s", nodename, *resp.JSON403)
+							return uuid.Nil, fmt.Errorf("%s: %s", nodename, *resp.JSON403)
 						case 408:
-							return fmt.Errorf("%s: %s", nodename, *resp.JSON408)
+							return uuid.Nil, fmt.Errorf("%s: %s", nodename, *resp.JSON408)
 						case 409:
-							return fmt.Errorf("%s: %s", nodename, *resp.JSON409)
+							return uuid.Nil, fmt.Errorf("%s: %s", nodename, *resp.JSON409)
 						case 500:
-							return fmt.Errorf("%s: %s", nodename, *resp.JSON500)
+							return uuid.Nil, fmt.Errorf("%s: %s", nodename, *resp.JSON500)
 						default:
-							return fmt.Errorf("%s: unexpected status [%d]", nodename, resp.StatusCode())
+							return uuid.Nil, fmt.Errorf("%s: unexpected status [%d]", nodename, resp.StatusCode())
 						}
 					}
-					return nil
 				}),
 			).Do()
 			errC <- err

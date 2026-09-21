@@ -187,7 +187,7 @@ func (t *Manager) clearStoppedFlagWhenUp() {
 	switch {
 	case t.instStatus[t.localhost].Avail.Is(status.Up, status.StandbyUp):
 		t.log.Infof("clear the stopped flag: the instance is up")
-	case t.objStatus.Avail.Is(status.Up):
+	case t.objectAvail().Is(status.Up):
 		// The object is up, so it is wanted up, and this instance missed the
 		// request that said so: its node was down when the object was
 		// started, or it was started on one node alone. An instance left
@@ -222,4 +222,17 @@ func (t *Manager) clearStartFailed() {
 	}
 	t.log.Infof("clear instance start failed: the object is up")
 	t.transitionTo(instance.MonitorStateIdle)
+}
+
+// objectAvail is the avail of the object, and undef while the object status
+// is not built yet.
+//
+// The avail of an object lives behind a pointer the aggregation fills, so
+// reading it too early, or on an object that has no actor status at all, is a
+// crash rather than an answer.
+func (t *Manager) objectAvail() status.T {
+	if t.objStatus.ActorStatus == nil {
+		return status.Undef
+	}
+	return t.objStatus.Avail
 }
