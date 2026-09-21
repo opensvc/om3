@@ -1,7 +1,10 @@
 package driverdb_test
 
 import (
+	"fmt"
 	"os"
+	"reflect"
+	"strings"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -121,4 +124,57 @@ func hasReference(s string) bool {
 		}
 	}
 	return false
+}
+
+// TestKeywordAttrExistsOnDriver verifies the Attr of every manifest attribute
+// of every registered driver names a field the driver struct really has.
+//
+// A keyword is bound to its field by name, resolved by reflection when the
+// configuration is loaded, so a keyword naming a field no longer there, or
+// never added, is only found when a configuration sets it, or even later when
+// a driver shares its keywords with a driver of another group and only one of
+// the two carries the field. The error then surfaced ("Specified field is not
+// present in the struct") aborts every action on the resource, so this is
+// checked here, once, for every driver.
+func TestKeywordAttrExistsOnDriver(t *testing.T) {
+	for _, drvID := range driver.List() {
+		factory := resource.NewResourceFunc(drvID)
+		if factory == nil {
+			// node drivers have no factory, and thus no manifest
+			continue
+		}
+		t.Run(drvID.String(), func(t *testing.T) {
+			r := factory()
+			for _, a := range manifest.Get(r).Attrs {
+				name := a.Name()
+				if name == "" {
+					continue
+				}
+				assert.NoErrorf(t, hasAttr(r, name), "%s: attr %q", drvID, name)
+			}
+		})
+	}
+}
+
+// hasAttr resolves a dotted manifest attribute path against the type of a
+// resource, the way keywords.Keyword.SetValue resolves it against its value.
+func hasAttr(r any, path string) error {
+	t := reflect.TypeOf(r)
+	for _, name := range strings.Split(path, ".") {
+		for t.Kind() == reflect.Ptr {
+			t = t.Elem()
+		}
+		if t.Kind() != reflect.Struct {
+			return fmt.Errorf("%s is not a struct", t)
+		}
+		field, ok := t.FieldByName(name)
+		if !ok {
+			return fmt.Errorf("%s has no %s field", t, name)
+		}
+		if field.PkgPath != "" {
+			return fmt.Errorf("%s.%s is unexported", t, name)
+		}
+		t = field.Type
+	}
+	return nil
 }

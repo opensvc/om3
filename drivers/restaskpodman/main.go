@@ -59,6 +59,7 @@ func (t *T) GetContainerDetached() restaskocibase.ContainerTasker {
 			User:                      t.User,
 			Command:                   t.Command,
 			DNS:                       t.DNS,
+			DNSExtra:                  t.DNSExtra,
 			DNSSearch:                 t.DNSSearch,
 			RunArgs:                   t.RunArgs,
 			Entrypoint:                t.Entrypoint,
