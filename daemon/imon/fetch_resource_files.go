@@ -34,6 +34,11 @@ type (
 		// states stores the resource files we store to avoid uneeded refetch
 		states map[string]ridFile
 
+		// skipped stores the resource files this node has nowhere to write,
+		// so that the reason is said once and not on every status the peer
+		// refreshes.
+		skipped map[string]bool
+
 		// attention stores a pending InstanceStatusUpdated event received while the fetch
 		// manager was already processing an event. This serves as a flag to immediately
 		// retrigger a new fetch cycle upon completion of the current one.
@@ -47,7 +52,8 @@ type (
 
 func newFilesManager() *filesManager {
 	return &filesManager{
-		states: make(map[string]ridFile),
+		states:  make(map[string]ridFile),
+		skipped: make(map[string]bool),
 	}
 }
 
@@ -225,6 +231,11 @@ func (t *Manager) fetchResourceFiles(fetched ridFiles, localInstanceStatus insta
 			if peerFile.Checksum == localFile.Checksum {
 				continue
 			}
+			if dir, ok := fetchDir(peerFile.Name); !ok {
+				t.skipResourceFile(rid, peerFile.Name, dir)
+				continue
+			}
+			delete(t.files.skipped, peerFile.Name)
 			if err := t.fetchResourceFile(rid, peerFile, ev.Node); err != nil {
 				t.log.Warnf("%s: fetch %s: %s", rid, peerFile.Name, err)
 				continue
@@ -250,6 +261,39 @@ func (t *Manager) fetchResourceFiles(fetched ridFiles, localInstanceStatus insta
 		t.log.Tracef("no transfered resource file needs ingest")
 	}
 	t.cmdC <- done
+}
+
+// fetchDir is the directory a resource file is written in, and says whether
+// this node has it.
+//
+// A resource file lives where the resource that holds it lives: the
+// configuration of a container in the filesystem that carries the container.
+// A node that does not run the object does not hold that filesystem, so the
+// directory is not there, and there is nothing to fetch into.
+//
+// The directory is not made. It is a mount point of the object, or under one,
+// and a directory made here would be hidden under the filesystem the day the
+// object comes to this node, with the file nobody reads inside it.
+func fetchDir(name string) (string, bool) {
+	dir := filepath.Dir(name)
+	v, err := file.ExistsAndDir(dir)
+	if err != nil {
+		return dir, false
+	}
+	return dir, v
+}
+
+// skipResourceFile says once why a file the peer holds is not fetched.
+//
+// The status of the peer arrives every time the peer refreshes it, so saying
+// it every time says it every minute, for as long as the object runs there.
+// It is said again once the directory has been there and gone.
+func (t *Manager) skipResourceFile(rid, name, dir string) {
+	if t.files.skipped[name] {
+		return
+	}
+	t.files.skipped[name] = true
+	t.log.Infof("%s: file %s is not fetched: this node does not hold %s", rid, name, dir)
 }
 
 func (t *Manager) fetchResourceFile(rid string, peerFile resource.File, from string) error {
