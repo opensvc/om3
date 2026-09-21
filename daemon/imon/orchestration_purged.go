@@ -51,11 +51,18 @@ func (t *Manager) purgedFromIdle() {
 	return
 }
 
+// purgedFromDeleted ends the purge orchestration the way every other
+// orchestration ends it: by marking it done and letting endOrchestration()
+// clear the global expect and the orchestration id together, and announce
+// the end.
+//
+// Resetting the global expect here instead left the instance monitor with no
+// global expect but still holding the orchestration id, a pair that means
+// "an orchestration is running" everywhere it is read: the next submit was
+// refused as "already in progress", and the orchestration table never saw an
+// end for an orchestration it went on listing as running.
 func (t *Manager) purgedFromDeleted() {
-	t.change = true
-	t.state.GlobalExpect = instance.MonitorGlobalExpectNone
-	t.state.State = instance.MonitorStateIdle
-	t.updateIfChange()
+	t.doneAndIdle()
 }
 
 func (t *Manager) purgedFromUnprovisioned() {
