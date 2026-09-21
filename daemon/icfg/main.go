@@ -65,6 +65,12 @@ type (
 		// cancel is a cancel func for icfg, used to stop ifg if error occurs
 		cancel context.CancelFunc
 	}
+
+	// volPoolCharger is implemented by a volume, and says what it takes of pools
+	// other than the one that served it.
+	volPoolCharger interface {
+		PoolCharges() map[string]int64
+	}
 )
 
 var (
@@ -598,10 +604,4 @@ func (t *Manager) delete() {
 
 func (t *Manager) done(parent context.Context, doneChan chan<- any) {
 	t.publisher.Pub(&msgbus.InstanceConfigManagerDone{Path: t.path, File: t.filename}, t.pubLabel...)
-}
-
-// volPoolCharger is implemented by a volume, and says what it takes of pools
-// other than the one that served it.
-type volPoolCharger interface {
-	PoolCharges() map[string]int64
 }
