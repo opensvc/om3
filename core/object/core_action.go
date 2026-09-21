@@ -22,7 +22,6 @@ import (
 	"github.com/opensvc/om3/v3/core/actionrollback"
 	"github.com/opensvc/om3/v3/core/client"
 	"github.com/opensvc/om3/v3/core/env"
-	"github.com/opensvc/om3/v3/core/freeze"
 	"github.com/opensvc/om3/v3/core/naming"
 	"github.com/opensvc/om3/v3/core/resource"
 	"github.com/opensvc/om3/v3/core/resourceselector"
@@ -473,36 +472,53 @@ func (t *actor) action(ctx context.Context, fn resourceset.DoFunc) error {
 	ctxWithTimeout, cancelCtxWithTimeout := t.withActionTimeout(ctx)
 	defer cancelCtxWithTimeout()
 
-	freeze := func() error {
-		if !action.Freeze {
+	// setStopped raises or lowers the flag saying the instance was stopped on
+	// purpose, which is what tells the daemon whether it may start the
+	// instance back on its own.
+	//
+	// A stop used to freeze the instance for that, which said more than it
+	// meant: the frozen flag is how an operator says the daemon may not act
+	// here, and an orchestration writing it left the operator unable to tell
+	// their own decision from a side effect.
+	setStopped := func() error {
+		var (
+			verb string
+			fn   func() error
+		)
+		switch {
+		case action.MarksStopped:
+			verb, fn = "stopped", t.SetStopped
+		case action.ClearsStopped:
+			verb, fn = "wanted up", t.UnsetStopped
+		default:
 			return nil
 		}
 		if !resourceSelector.IsZero() {
-			t.log.Tracef("skip freeze: resource selection")
+			t.log.Tracef("skip flagging the instance %s: resource selection", verb)
 			return nil
 		}
-		if !t.orchestrateWantsFreeze() {
-			t.log.Tracef("skip freeze: orchestrate value")
+		if !t.daemonMayStartOnItsOwn() {
+			t.log.Tracef("skip flagging the instance %s: orchestrate value", verb)
 			return nil
 		}
 		if env.HasDaemonMonitorOrigin() {
-			t.log.Tracef("skip freeze: action has daemon origin")
+			t.log.Tracef("skip flagging the instance %s: action has daemon origin", verb)
 			return nil
 		}
 		if v, err := t.Config().IsInEncapNodes(hostname.Hostname()); err != nil {
 			return err
 		} else if v {
-			t.log.Tracef("skip freeze: encap node don't need to freeze as they don't orchestrate ha start")
+			t.log.Tracef("skip flagging the instance %s: an encap node does not orchestrate ha start", verb)
 			return nil
 		}
-		if err := freeze.Freeze(t.path.FrozenFile()); err != nil {
+		if err := fn(); err != nil {
 			return err
 		}
-		t.log.Infof("instance frozen")
+		t.log.Infof("instance %s", verb)
 		return nil
 	}
 
-	if err := freeze(); err != nil {
+	if err := setStopped(); err != nil {
 		_, _ = t.statusEval(ctxWithTimeout)
 		t.announceFailure(ctxWithTimeout)
 		return err
@@ -850,7 +866,10 @@ func (t *actor) postStartStopStatusEval(ctx context.Context) error {
 	return nil
 }
 
-func (t *actor) orchestrateWantsFreeze() bool {
+// daemonMayStartOnItsOwn says the daemon starts this object without being
+// asked to, which is what makes the stopped flag needed: without it, the next
+// ha decision would undo a stop the operator asked for.
+func (t *actor) daemonMayStartOnItsOwn() bool {
 	switch t.Orchestrate() {
 	case "ha", "start":
 		return true

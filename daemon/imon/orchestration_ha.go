@@ -9,6 +9,7 @@ import (
 func (t *Manager) orchestrateNone() {
 	t.clearStartFailed()
 	t.clearBootFailed()
+	t.clearStoppedFlagWhenUp()
 	if t.objStatus.ActorStatus != nil && t.objStatus.Orchestrate == "ha" {
 		t.orchestrateHAStart()
 		t.orchestrateHAStop()
@@ -102,6 +103,26 @@ func (t *Manager) clearBootFailed() {
 	t.log.Infof("clear instance %s: local instance avail is %s, object avail is %s",
 		t.state.State, t.instStatus[t.localhost].Avail, t.objStatus.Avail)
 	t.transitionTo(instance.MonitorStateIdle)
+}
+
+// clearStoppedFlagWhenUp lowers the stopped flag when the instance is up.
+//
+// Whoever started it wants it up, so the daemon may keep it up: this is what
+// re-arms an instance started outside of an orchestration, with
+// "om <path> start --local" on a node whose daemon is down, for example. It
+// mirrors the resource restart, which is re-armed when the resource is seen
+// up again.
+func (t *Manager) clearStoppedFlagWhenUp() {
+	if !t.isStopped() {
+		return
+	}
+	if !t.instStatus[t.localhost].Avail.Is(status.Up, status.StandbyUp) {
+		return
+	}
+	t.log.Infof("clear the stopped flag: the instance is up")
+	if err := t.unsetStopped(); err != nil {
+		t.log.Errorf("clear the stopped flag: %s", err)
+	}
 }
 
 func (t *Manager) clearStartFailed() {

@@ -143,6 +143,12 @@ func (t States) descString() string {
 			l = append(l, rawconfig.Colorize.Frozen("frozen"))
 		}
 
+		// Stopped on purpose, so the daemon does not start it back on its
+		// own. Without this an object stays down with nothing saying why.
+		if !t.Status.StoppedAt.IsZero() {
+			l = append(l, rawconfig.Colorize.Frozen("stopped"))
+		}
+
 		// Node frozen
 		if !t.Node.FrozenAt.IsZero() {
 			l = append(l, rawconfig.Colorize.Frozen("node-frozen"))

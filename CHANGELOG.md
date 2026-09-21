@@ -784,9 +784,19 @@ Where the password is the value of the `þassword` key in `system/sec/relay-v3`.
 
     It now starts the instance and leaves the freeze as it was found. Freezing means the daemon may not act by itself, which it still does not: a frozen instance is never started by the HA orchestration, and a frozen node is passed over when choosing where to start. What changes is only the start a user asked for, which is honoured rather than used as a reason to thaw.
 
-    Watch out for the pairing with stop, which freezes: `om <path> stop` followed by `om <path> start` now leaves the object **up and frozen**, where it used to end up up and unfrozen. A frozen object is not restarted elsewhere by the daemon if it fails, so add an `om <path> unfreeze` wherever a stop and start round trip was relied on to put an object back under orchestration.
-
     Scripts that relied on `start` to clear a freeze must now ask for it: `om <path> unfreeze && om <path> start`. Note also that `om <path> start --wait` no longer waits for the object to be unfrozen, only for it to be up.
+
+* Freezing and unfreezing are now purely operator decisions. No orchestration sets or clears the frozen flag.
+
+    A stop used to freeze every instance of the object, which is how it kept the HA orchestration from starting it back. Creating an object froze it, a configuration fetched from a peer arrived frozen, and a provision unfroze. An operator could no longer tell their own freeze from one of those, and, since a start no longer thaws, an object that had been stopped and started again ran on with its failover and its resource restart silently disabled.
+
+    All of them now use a flag of their own: the instance is flagged **stopped on purpose**, which the daemon reads as "do not start this on my own initiative", and nothing else. `om <path> print status` shows it as `stopped`, `om mon` as a `=`, and the instance status carries it as `stopped_at`. It is a flag file in the instance var directory, like the frozen flag, so it survives a daemon restart and a reboot.
+
+    The flag is raised by `om <path> stop`, by `om <path> instance stop`, and when an object is created or its configuration lands on a node that had no instance of it. It is lowered by a start, a restart, a switch or a provision the user asks for — on every instance of the object, so the ones that stay down are still failover candidates — and by the instance being seen up again.
+
+    What does not change: `monitor_action = freezestop` still freezes, which is its point, and a node shutdown still freezes the node.
+
+    On upgrade, instances frozen by an older version's stop or create stay frozen, and nothing lifts those freezes any more. Run `om <selector> print status` to find them, and `om <path> unfreeze` on the ones you did not freeze yourself.
 
 * Flex
   * A `flex_target` value under `flex_min` is forced to `flex_min`. A warning is logged.

@@ -12,7 +12,7 @@ import (
 
 	"github.com/opensvc/om3/v3/core/client"
 	"github.com/opensvc/om3/v3/core/commoncmd"
-	"github.com/opensvc/om3/v3/core/freeze"
+	"github.com/opensvc/om3/v3/core/flagfile"
 	"github.com/opensvc/om3/v3/core/keyop"
 	"github.com/opensvc/om3/v3/core/naming"
 	"github.com/opensvc/om3/v3/core/object"
@@ -288,11 +288,17 @@ func (t *CmdObjectCreate) fromData(p naming.Path, b []byte) error {
 	// cannot find what nothing made.
 	t.reportConfigWarnings(p, oc)
 
-	// Freeze if orchestrate==ha and freeze capable, so the daemon
-	// doesn't decide to start the instance too soon.
+	// Flag the instance stopped on purpose if the daemon would start it on
+	// its own, so it does not do so before the operator asked for anything.
+	//
+	// This used to freeze the instance, which said that the operator had
+	// asked the daemon to keep its hands off it, and outlived the reason for
+	// it: the freeze was never lifted, and the object went on running with
+	// its failover and its resource restart disabled.
 	orchestrate := oc.Config().GetString(key.Parse("orchestrate"))
-	if orchestrate == "ha" {
-		if err := freeze.Freeze(t.path.FrozenFile()); err != nil {
+	switch orchestrate {
+	case "ha", "start":
+		if err := flagfile.Set(t.path.StoppedFile()); err != nil {
 			return err
 		}
 	}

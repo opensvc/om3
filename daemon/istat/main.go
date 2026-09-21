@@ -37,7 +37,9 @@ type (
 		//      * local msgbus.InstanceConfigDeleted (delete)
 		//      * local msgbus.InstanceStatusPost (set value)
 		//      * local msgbus.InstanceFrozenFileUpdated (update value)
-		//      * local msgbus.InstanceFrozenFileUpdated (update value)
+		//      * local msgbus.InstanceFrozenFileRemoved (update value)
+		//      * local msgbus.InstanceStoppedFileUpdated (update value)
+		//      * local msgbus.InstanceStoppedFileRemoved (update value)
 		//
 		//   The value for localhost is the source of localhost publication of
 		//    msgbus.InstanceStatusUpdated.
@@ -87,6 +89,8 @@ func (t *T) Start(ctx context.Context) error {
 		sub.AddFilter(&msgbus.InstanceConfigDeleted{}, t.labelLocalhost)
 		sub.AddFilter(&msgbus.InstanceFrozenFileRemoved{}, t.labelLocalhost)
 		sub.AddFilter(&msgbus.InstanceFrozenFileUpdated{}, t.labelLocalhost)
+		sub.AddFilter(&msgbus.InstanceStoppedFileRemoved{}, t.labelLocalhost)
+		sub.AddFilter(&msgbus.InstanceStoppedFileUpdated{}, t.labelLocalhost)
 		sub.AddFilter(&msgbus.RunFileRemoved{}, t.labelLocalhost)
 		sub.AddFilter(&msgbus.RunFileUpdated{}, t.labelLocalhost)
 		sub.AddFilter(&msgbus.InstanceStatusPost{}, t.labelLocalhost)
@@ -129,6 +133,10 @@ func (t *T) worker() {
 				t.onInstanceFrozenFileRemoved(msg)
 			case *msgbus.InstanceFrozenFileUpdated:
 				t.onInstanceFrozenFileUpdated(msg)
+			case *msgbus.InstanceStoppedFileRemoved:
+				t.onInstanceStoppedFileRemoved(msg)
+			case *msgbus.InstanceStoppedFileUpdated:
+				t.onInstanceStoppedFileUpdated(msg)
 			case *msgbus.RunFileRemoved:
 				t.onRunFileDeleted(msg)
 			case *msgbus.RunFileUpdated:
@@ -312,4 +320,56 @@ func (t *T) onInstanceStatusPost(msg *msgbus.InstanceStatusPost) {
 		t.labelLocalhost,
 		pubsub.Label{"namespace", msg.Path.Namespace},
 		pubsub.Label{"path", s})
+}
+
+func (t *T) onInstanceStoppedFileUpdated(msg *msgbus.InstanceStoppedFileUpdated) {
+	s := msg.Path.String()
+
+	iStatus, ok := t.iStatusM[s]
+	if !ok {
+		// no instance status to update
+		return
+	}
+	if msg.At.Before(iStatus.StoppedAt) {
+		// skip event from past
+		return
+	}
+
+	iStatus.StoppedAt = msg.At
+	if msg.At.After(iStatus.UpdatedAt) {
+		iStatus.UpdatedAt = msg.At
+	}
+	naming.LogWithPath(t.log, msg.Path).Infof("%s: change stopped to true", s)
+	t.iStatusM[s] = iStatus
+	instance.StatusData.Set(msg.Path, t.localhost, iStatus.DeepCopy())
+	t.publisher.Pub(&msgbus.InstanceStatusUpdated{Path: msg.Path, Node: t.localhost, Value: *iStatus.DeepCopy()},
+		t.labelLocalhost,
+		pubsub.Label{"namespace", msg.Path.Namespace},
+		pubsub.Label{"path", s},
+	)
+}
+
+func (t *T) onInstanceStoppedFileRemoved(msg *msgbus.InstanceStoppedFileRemoved) {
+	s := msg.Path.String()
+	iStatus, ok := t.iStatusM[s]
+	if !ok {
+		// no instance status to update
+		return
+	}
+	if iStatus.StoppedAt.IsZero() {
+		// no change
+		return
+	}
+	iStatus.StoppedAt = time.Time{}
+	if iStatus.UpdatedAt.Before(msg.At) {
+		iStatus.UpdatedAt = msg.At
+	}
+	t.iStatusM[s] = iStatus
+	naming.LogWithPath(t.log, msg.Path).Infof("%s: change stopped to false", s)
+	instance.StatusData.Set(msg.Path, t.localhost, iStatus.DeepCopy())
+	t.publisher.Pub(&msgbus.InstanceStatusUpdated{Path: msg.Path, Node: t.localhost, Value: *iStatus.DeepCopy()},
+		t.labelLocalhost,
+		pubsub.Label{"namespace", msg.Path.Namespace},
+		pubsub.Label{"path", s},
+	)
 }

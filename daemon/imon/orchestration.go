@@ -77,6 +77,8 @@ func (t *Manager) orchestrate() {
 		return
 	}
 
+	t.clearStoppedFlagOnRequest()
+
 	t.orchestrateResourceRestart()
 	if t.isDone() {
 		t.log.Tracef("orchestrate return on isDone()")
@@ -280,4 +282,28 @@ func (t *Manager) orchestrationIsDoneOnPeers() bool {
 		t.waitConvergedOrchestrationMsg = make(map[string]string)
 	}
 	return true
+}
+
+// clearStoppedFlagOnRequest lowers the stopped flag when a user asked for the
+// object to be up.
+//
+// The flag is lowered on every instance in the scope, including the ones that
+// stay down, because the request is about the object: an instance left
+// flagged would not be a candidate the next time the object has to move.
+func (t *Manager) clearStoppedFlagOnRequest() {
+	switch t.state.GlobalExpect {
+	case instance.MonitorGlobalExpectStarted,
+		instance.MonitorGlobalExpectRestarted,
+		instance.MonitorGlobalExpectPlaced,
+		instance.MonitorGlobalExpectPlacedAt:
+	default:
+		return
+	}
+	if !t.isStopped() {
+		return
+	}
+	t.log.Infof("clear the stopped flag: the object is wanted up")
+	if err := t.unsetStopped(); err != nil {
+		t.log.Errorf("clear the stopped flag: %s", err)
+	}
 }

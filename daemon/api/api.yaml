@@ -7002,6 +7002,14 @@ components:
             $ref: '#/components/schemas/RunningInfo'
         scale:
           type: integer
+        stopped_at:
+          type: string
+          format: date-time
+          description: |
+            when the instance was stopped on purpose, and absent when it was
+            not. The daemon does not start an instance thus flagged on its
+            own: the operator asked for it to be down, and a start they ask
+            for clears the flag on every instance of the object.
         updated_at:
           type: string
           format: date-time

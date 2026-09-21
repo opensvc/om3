@@ -193,6 +193,31 @@ func Test_Orchestrate_HA_that_dont_call_start(t *testing.T) {
 		},
 
 		{
+			// a stop the operator asked for flags the instance stopped, and
+			// the daemon must not undo it: the flag is what a stop uses
+			// instead of freezing the instance.
+			name:    "if instance is flagged stopped then the daemon does not start it",
+			srcFile: "./testdata/orchestrate-ha.conf",
+			obj:     "obj",
+			sideEffects: map[string]sideEffect{
+				"status": {
+					iStatus: &instance.Status{Avail: status.Down, Overall: status.Down, Provisioned: provisioned.True, StoppedAt: time.Now()},
+					err:     nil,
+				},
+			},
+			nodeMonitorStates:    []node.MonitorState{node.MonitorStateIdle},
+			expectedState:        instance.MonitorStateIdle,
+			expectedGlobalExpect: instance.MonitorGlobalExpectNone,
+			expectedLocalExpect:  instance.MonitorLocalExpectNone,
+			expectedIsLeader:     true,
+			expectedIsHALeader:   false,
+			expectedCrm: [][]string{
+				{"obj", "instance", "status", "-r"},
+			},
+			expectedDeleteSuccess: true,
+		},
+
+		{
 			name:    "if node state is rejoin and not frozen then instance has local expect none and is not leader", // rejoin => no orchestration
 			srcFile: "./testdata/orchestrate-ha.conf",
 			obj:     "obj",
@@ -750,14 +775,15 @@ func crmBuilder(t *testing.T, setup *daemontesthelper.D, p naming.Path, sideEffe
 				Provisioned: se.iStatus.Provisioned,
 				Optional:    se.iStatus.Optional,
 				UpdatedAt:   time.Now(),
-				FrozenAt:    time.Time{},
+				FrozenAt:    se.iStatus.FrozenAt,
+				StoppedAt:   se.iStatus.StoppedAt,
 			}
 			pub.Pub(&msgbus.InstanceStatusPost{Path: p, Node: hostname.Hostname(), Value: v},
 				pubsub.Label{"namespace", p.Namespace},
 				pubsub.Label{"path", p.String()},
 				pubsub.Label{"node", hostname.Hostname()},
 			)
-			t.Logf("--- crmAction %s %v SetInstanceStatus %s avail:%s overall:%s provisioned:%s updated:%s frozen:%s", title, cmdArgs, p, v.Avail, v.Overall, v.Provisioned, v.UpdatedAt, v.FrozenAt)
+			t.Logf("--- crmAction %s %v SetInstanceStatus %s avail:%s overall:%s provisioned:%s updated:%s frozen:%s stopped:%s", title, cmdArgs, p, v.Avail, v.Overall, v.Provisioned, v.UpdatedAt, v.FrozenAt, v.StoppedAt)
 		}
 
 		for _, e := range se.events {

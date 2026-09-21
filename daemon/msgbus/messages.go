@@ -159,6 +159,10 @@ var (
 
 		"InstanceMonitorAction": func() any { return &InstanceMonitorAction{} },
 
+		"InstanceStoppedFileRemoved": func() any { return &InstanceStoppedFileRemoved{} },
+
+		"InstanceStoppedFileUpdated": func() any { return &InstanceStoppedFileUpdated{} },
+
 		"InstanceMonitorDeleted": func() any { return &InstanceMonitorDeleted{} },
 
 		"InstanceMonitorUpdated": func() any { return &InstanceMonitorUpdated{} },
@@ -611,6 +615,24 @@ type (
 		At         time.Time   `json:"at" yaml:"at"`
 	}
 
+	// InstanceStoppedFileUpdated is emitted by imon when the flag saying the
+	// instance was stopped on purpose is raised.
+	InstanceStoppedFileUpdated struct {
+		pubsub.Msg `yaml:",inline"`
+		Path       naming.Path `json:"path" yaml:"path"`
+		File       string      `json:"file" yaml:"file"`
+		At         time.Time   `json:"at" yaml:"at"`
+	}
+
+	// InstanceStoppedFileRemoved is emitted by imon when the flag saying the
+	// instance was stopped on purpose is lowered.
+	InstanceStoppedFileRemoved struct {
+		pubsub.Msg `yaml:",inline"`
+		Path       naming.Path `json:"path" yaml:"path"`
+		File       string      `json:"file" yaml:"file"`
+		At         time.Time   `json:"at" yaml:"at"`
+	}
+
 	InstanceMonitorAction struct {
 		pubsub.Msg `yaml:",inline"`
 		Path       naming.Path            `json:"path" yaml:"path"`
@@ -983,13 +1005,19 @@ type (
 
 	RemoteFileConfig struct {
 		pubsub.Msg `yaml:",inline"`
-		Path       naming.Path     `json:"path" yaml:"path"`
-		Node       string          `json:"node" yaml:"node"`
-		File       string          `json:"file" yaml:"file"`
-		Freeze     bool            `json:"freeze" yaml:"freeze"`
-		UpdatedAt  time.Time       `json:"updated_at" yaml:"updated_at"`
-		Ctx        context.Context `json:"-" yaml:"-"`
-		Err        chan error      `json:"-" yaml:"-"`
+		Path       naming.Path `json:"path" yaml:"path"`
+		Node       string      `json:"node" yaml:"node"`
+		File       string      `json:"file" yaml:"file"`
+
+		// MarkStopped asks that the instance the fetched configuration
+		// creates be flagged stopped on purpose, so the daemon does not
+		// start it as soon as the configuration lands, before the operator
+		// asked for anything.
+		MarkStopped bool `json:"mark_stopped" yaml:"mark_stopped"`
+
+		UpdatedAt time.Time       `json:"updated_at" yaml:"updated_at"`
+		Ctx       context.Context `json:"-" yaml:"-"`
+		Err       chan error      `json:"-" yaml:"-"`
 	}
 
 	// RunFileUpdated is emitted by the fs_watcher when it detects a
@@ -1340,6 +1368,14 @@ func (e *InstanceFrozenFileUpdated) Kind() string {
 
 func (e *InstanceMonitorAction) Kind() string {
 	return "InstanceMonitorAction"
+}
+
+func (e *InstanceStoppedFileRemoved) Kind() string {
+	return "InstanceStoppedFileRemoved"
+}
+
+func (e *InstanceStoppedFileUpdated) Kind() string {
+	return "InstanceStoppedFileUpdated"
 }
 
 func (e *InstanceMonitorDeleted) Kind() string {

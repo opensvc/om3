@@ -42,15 +42,23 @@ func (t *Manager) orchestrateStarted() {
 //
 // A frozen instance is not started by the daemon on its own: freezing is how
 // an operator says the daemon may not act by itself, and nobody asked for
-// this one.
+// this one. An instance a stop flagged stopped on purpose is not started
+// either, for the same reason: the operator asked for it to be down.
 //
-// A frozen instance is started when a user asked for it, and the freeze is
-// left as it was found: the request was to start the object, not to thaw it.
-// This used to unfreeze first, which is neither honouring the request nor
-// refusing it, and silently discarded what the operator had set.
+// Both are started when a user asks for it, and both flags are left as they
+// were found. The freeze used to be lifted first, which is neither honouring
+// the request nor refusing it, and silently discarded what the operator had
+// set. The stopped flag is not lifted here but where the request arrives, on
+// every instance of the object, so the instances that stay down are
+// candidates for a later failover.
 func (t *Manager) startedFromIdle() {
-	if t.state.GlobalExpect == instance.MonitorGlobalExpectNone && t.instStatus[t.localhost].IsFrozen() {
-		return
+	if t.state.GlobalExpect == instance.MonitorGlobalExpectNone {
+		if t.instStatus[t.localhost].IsFrozen() {
+			return
+		}
+		if t.isStopped() {
+			return
+		}
 	}
 	t.startedFromUnfrozen()
 }
