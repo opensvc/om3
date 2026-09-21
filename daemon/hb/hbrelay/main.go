@@ -130,12 +130,13 @@ func (t *cfg) startSubscription(ctx context.Context) *pubsub.Subscription {
 	return sub
 }
 
-func (t *cfg) onEvent(ev any) {
+func (t *cfg) onEvent(ev any, side string) {
+	auditName := strings.Replace(t.id, "hb#", "hb:", 1)
 	switch c := ev.(type) {
 	case *msgbus.AuditStart:
-		t.log.HandleAuditStart(c.Q, c.Subsystems, "hb", strings.Replace(t.id, "hb#", "hb:", 1))
+		t.log.HandleAuditStart(c.Q, c.Subsystems, "hb", auditName, strings.TrimSuffix(auditName, fmt.Sprintf(".%s", side)))
 	case *msgbus.AuditStop:
-		t.log.HandleAuditStop(c.Q, c.Subsystems, "hb", strings.Replace(t.id, "hb#", "hb:", 1))
+		t.log.HandleAuditStop(c.Q, c.Subsystems, "hb", auditName, strings.TrimSuffix(auditName, fmt.Sprintf(".%s", side)))
 	case *msgbus.InstanceConfigUpdated:
 		if err := t.refreshClient(); err != nil {
 			t.log.Warnf("refresh client on changed %s: %s", t.passwordFrom.Path, err)
@@ -144,7 +145,7 @@ func (t *cfg) onEvent(ev any) {
 	}
 }
 
-func (t *cfg) attachActiveAuditIfAny(ctx context.Context) {
+func (t *cfg) attachActiveAuditIfAny(ctx context.Context, side string) {
 	reg := daemonctx.AuditRegistry(ctx)
 	if reg == nil {
 		return
@@ -153,7 +154,8 @@ func (t *cfg) attachActiveAuditIfAny(ctx context.Context) {
 	if !ok {
 		return
 	}
-	t.log.HandleAuditStart(sess.Q, sess.Subsystems, "hb", strings.Replace(t.id, "hb#", "hb:", 1))
+	auditName := strings.Replace(t.id, "hb#", "hb:", 1)
+	t.log.HandleAuditStart(sess.Q, sess.Subsystems, "hb", auditName, strings.TrimSuffix(auditName, fmt.Sprintf(".%s", side)))
 }
 
 func (t *cfg) refreshClient() error {

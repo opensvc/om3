@@ -70,7 +70,8 @@ func (t *tx) Start(cmdC chan<- interface{}, msgC <-chan []byte) error {
 	ctx, cancel := context.WithCancel(t.ctx)
 	t.ctx = ctx
 	t.cancel = cancel
-	hbaudit.EnableAudit(ctx, t.id, t.log, "hb", strings.Replace(t.id, "hb#", "hb:", 1))
+	auditName := strings.Replace(t.id, "hb#", "hb:", 1)
+	hbaudit.EnableAudit(ctx, t.id, t.log, "hb", auditName, strings.TrimSuffix(auditName, ".tx"))
 	t.log.Infof("starting with storage area: metadata_size + (max_slots x slot_size): %d + (%d x %d)", metaSize(t.base.maxSlots), t.base.maxSlots, sign.SlotSize)
 	if t.base.maxSlots < len(t.nodes) {
 		cancel()

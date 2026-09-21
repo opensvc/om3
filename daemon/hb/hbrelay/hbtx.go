@@ -74,7 +74,7 @@ func (t *tx) Start(cmdC chan<- interface{}, msgC <-chan []byte) error {
 	errC := make(chan error)
 	t.Add(1)
 	go func() {
-		t.attachActiveAuditIfAny(ctx)
+		t.attachActiveAuditIfAny(ctx, "tx")
 		sub := t.startSubscription(ctx)
 		defer func() { _ = sub.Stop() }()
 		if err := t.refreshClient(); err != nil {
@@ -169,7 +169,7 @@ func (t *tx) postLoop(ctx context.Context, msgC <-chan []byte, subC <-chan any, 
 		case <-ticker.C:
 			send()
 		case ev := <-subC:
-			t.onEvent(ev)
+			t.onEvent(ev, "tx")
 		}
 	}
 }
