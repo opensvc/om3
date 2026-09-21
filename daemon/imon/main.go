@@ -180,6 +180,11 @@ type (
 		// i.e. this boolean shortcuts the t.mergePeerFrozen func.
 		isPeerFrozenMerged bool
 
+		// isPeerStoppedMerged remembers we already mirrored locally a peer
+		// instance stopped flag raised while this daemon was down, the way
+		// isPeerFrozenMerged does for the frozen flag.
+		isPeerStoppedMerged bool
+
 		// isBootStartPending says this daemon start follows a node boot, and
 		// that the start an orchestrate=start object is due has not been
 		// decided yet.

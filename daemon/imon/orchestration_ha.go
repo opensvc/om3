@@ -184,10 +184,19 @@ func (t *Manager) clearStoppedFlagWhenUp() {
 	if !t.isStopped() {
 		return
 	}
-	if !t.instStatus[t.localhost].Avail.Is(status.Up, status.StandbyUp) {
+	switch {
+	case t.instStatus[t.localhost].Avail.Is(status.Up, status.StandbyUp):
+		t.log.Infof("clear the stopped flag: the instance is up")
+	case t.objStatus.Avail.Is(status.Up):
+		// The object is up, so it is wanted up, and this instance missed the
+		// request that said so: its node was down when the object was
+		// started, or it was started on one node alone. An instance left
+		// flagged is not a candidate, and the object would have nowhere to
+		// go the day the one running it fails.
+		t.log.Infof("clear the stopped flag: the object is up")
+	default:
 		return
 	}
-	t.log.Infof("clear the stopped flag: the instance is up")
 	if err := t.unsetStopped(); err != nil {
 		t.log.Errorf("clear the stopped flag: %s", err)
 	}
