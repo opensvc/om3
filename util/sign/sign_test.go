@@ -1,6 +1,7 @@
 package sign
 
 import (
+	"fmt"
 	"os"
 	"path/filepath"
 	"testing"
@@ -61,12 +62,35 @@ func TestVerifyHeader(t *testing.T) {
 	corruptedChecksum := make([]byte, len(block))
 	copy(corruptedChecksum, block)
 	corruptedChecksum[HBCrcOffset] ^= 0xff
-	require.ErrorContains(t, VerifyHeader(corruptedChecksum), "checksum mismatch")
+	require.ErrorIs(t, VerifyHeader(corruptedChecksum), ErrChecksumMismatch)
 
 	corruptedMagic := make([]byte, len(block))
 	copy(corruptedMagic, block)
 	corruptedMagic[HBMagicOffset] ^= 0xff
-	require.ErrorContains(t, VerifyHeader(corruptedMagic), "wrong signature")
+	require.ErrorIs(t, VerifyHeader(corruptedMagic), ErrWrongSignature)
 
-	require.ErrorContains(t, VerifyHeader(block[:HBHeaderSize-1]), "too small")
+	require.EqualError(t, VerifyHeader(block[:HBHeaderSize-1]), fmt.Sprintf("%s: %d", ErrBlockTooSmall, HBHeaderSize-1))
+
+	// Legacy signature at offset 0
+	legacyBlock := make([]byte, len(block))
+	copy(legacyBlock[:len(HBDiskSignature)], HBDiskSignature)
+	require.ErrorIs(t, VerifyHeader(legacyBlock), ErrLegacySignature)
+}
+
+func TestLegacySignatureDisk(t *testing.T) {
+	tempDir := t.TempDir()
+	diskPath := filepath.Join(tempDir, "legacy_disk.img")
+
+	legacyBlock := make([]byte, PageSize)
+	copy(legacyBlock[:len(HBDiskSignature)], HBDiskSignature)
+	err := os.WriteFile(diskPath, legacyBlock, 0644)
+	require.NoError(t, err)
+
+	hasSig, err := EnsureSignature(diskPath)
+	require.NoError(t, err)
+	require.True(t, hasSig)
+
+	sig, err := getSignature(diskPath)
+	require.NoError(t, err)
+	require.Equal(t, []byte(HBDiskSignature), sig)
 }

@@ -193,6 +193,10 @@ func getSlotAlert(nodename string, slot int) daemonsubsystem.Alert {
 
 func (t *base) checkSignature() {
 	if err := t.device.ensureHBSignature(); err != nil {
+		if errors.Is(err, sign.ErrLegacySignature) {
+			t.invalidSig = false
+			return
+		}
 		t.log.Warnf("signature check failed: %s", err)
 		if !t.invalidSig {
 			t.log.Warnf("signature is now invalid")

@@ -3,6 +3,7 @@ package hbdisk
 import (
 	"bytes"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"os"
@@ -57,6 +58,12 @@ func (t *device) readSignature() (string, error) {
 	}
 	if _, err := t.file.Seek(0, io.SeekStart); err != nil {
 		return "", fmt.Errorf("seek: %w", err)
+	}
+	if string(block[sign.HBMagicOffset:sign.HBMagicOffset+len(sign.HBDiskSignature)]) == sign.HBDiskSignature {
+		return sign.HBDiskSignature, nil
+	}
+	if string(block[:len(sign.HBDiskSignature)]) == sign.HBDiskSignature {
+		return sign.HBDiskSignature, nil
 	}
 	return string(block[sign.HBMagicOffset : sign.HBMagicOffset+len(sign.HBDiskSignature)]), nil
 }
@@ -182,6 +189,9 @@ func (t *device) open() error {
 		return err
 	}
 	if err := t.ensureHBSignature(); err != nil {
+		if errors.Is(err, sign.ErrLegacySignature) {
+			return err
+		}
 		return fmt.Errorf("heartbeat disk signature verify: %w", err)
 	}
 	return nil

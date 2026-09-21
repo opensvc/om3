@@ -2,6 +2,7 @@ package sign
 
 import (
 	"encoding/binary"
+	"errors"
 	"fmt"
 	"hash/crc32"
 	"io"
@@ -28,6 +29,11 @@ var (
 	SlotSizeInt64 = int64(SlotSize)
 
 	CRC32CTable = crc32.MakeTable(crc32.Castagnoli)
+
+	ErrWrongSignature   = errors.New("wrong signature")
+	ErrLegacySignature  = errors.New("legacy signature format detected")
+	ErrChecksumMismatch = errors.New("checksum mismatch")
+	ErrBlockTooSmall    = errors.New("block size too small for heartbeat disk header")
 )
 
 const (
@@ -51,17 +57,20 @@ const (
 
 func VerifyHeader(block []byte) error {
 	if len(block) < HBHeaderSize {
-		return fmt.Errorf("block size %d is too small for heartbeat disk header", len(block))
+		return fmt.Errorf("%s: %d", ErrBlockTooSmall, len(block))
 	}
-	if string(block[HBMagicOffset:HBMagicOffset+len(HBDiskSignature)]) != HBDiskSignature {
-		return fmt.Errorf("wrong signature")
+	if string(block[HBMagicOffset:HBMagicOffset+len(HBDiskSignature)]) == HBDiskSignature {
+		checksum := crc32.Checksum(block[HBMagicOffset:HBHeaderSize], CRC32CTable)
+		expectedChecksum := binary.LittleEndian.Uint32(block[HBCrcOffset:])
+		if checksum != expectedChecksum {
+			return ErrChecksumMismatch
+		}
+		return nil
 	}
-	checksum := crc32.Checksum(block[HBMagicOffset:HBHeaderSize], CRC32CTable)
-	expectedChecksum := binary.LittleEndian.Uint32(block[HBCrcOffset:])
-	if checksum != expectedChecksum {
-		return fmt.Errorf("checksum mismatch: expected %d, got %d", expectedChecksum, checksum)
+	if string(block[:len(HBDiskSignature)]) == HBDiskSignature {
+		return ErrLegacySignature
 	}
-	return nil
+	return ErrWrongSignature
 }
 
 func CreateAndFillDisk(path string) error {
@@ -93,7 +102,7 @@ func CreateAndFillDisk(path string) error {
 
 	n, err := f.Write(block)
 	if err != nil {
-		return fmt.Errorf("write signature block: %w", err)
+		return fmt.Errorf("write signature block: %s", err)
 	}
 	if n != len(block) {
 		return io.ErrShortWrite
@@ -114,13 +123,13 @@ func RemoveHeaderFromDisk(path string) error {
 	defer f.Close()
 
 	if _, err := f.Seek(0, io.SeekStart); err != nil {
-		return fmt.Errorf("seek start: %w", err)
+		return fmt.Errorf("seek start: %s", err)
 	}
 
 	emptyBlock := directio.AlignedBlock(PageSize)
 
 	if _, err := f.Write(emptyBlock); err != nil {
-		return fmt.Errorf("write empty block: %w", err)
+		return fmt.Errorf("write empty block: %s", err)
 	}
 	return nil
 }
@@ -138,18 +147,26 @@ func getSignature(path string) ([]byte, error) {
 	defer f.Close()
 
 	if _, err := f.Seek(0, io.SeekStart); err != nil {
-		return nil, fmt.Errorf("seek start: %w", err)
+		return nil, fmt.Errorf("seek start: %s", err)
 	}
 
 	block := directio.AlignedBlock(PageSize)
 	if _, err := io.ReadFull(f, block); err != nil {
-		return nil, fmt.Errorf("read full: %w", err)
+		return nil, fmt.Errorf("read full: %s", err)
 	}
 
-	sig := make([]byte, len(HBDiskSignature))
-	copy(sig, block[HBMagicOffset:HBMagicOffset+len(HBDiskSignature)])
+	if string(block[HBMagicOffset:HBMagicOffset+len(HBDiskSignature)]) == HBDiskSignature {
+		sig := make([]byte, len(HBDiskSignature))
+		copy(sig, block[HBMagicOffset:HBMagicOffset+len(HBDiskSignature)])
+		return sig, nil
+	}
+	if string(block[:len(HBDiskSignature)]) == HBDiskSignature {
+		sig := make([]byte, len(HBDiskSignature))
+		copy(sig, block[:len(HBDiskSignature)])
+		return sig, nil
+	}
 
-	return sig, nil
+	return nil, ErrWrongSignature
 }
 
 func EnsureSignature(path string) (bool, error) {
@@ -165,15 +182,18 @@ func EnsureSignature(path string) (bool, error) {
 	defer f.Close()
 
 	if _, err := f.Seek(0, io.SeekStart); err != nil {
-		return false, fmt.Errorf("seek start: %w", err)
+		return false, fmt.Errorf("seek start: %s", err)
 	}
 
 	block := directio.AlignedBlock(PageSize)
 	if _, err := io.ReadFull(f, block); err != nil {
-		return false, fmt.Errorf("read full: %w", err)
+		return false, fmt.Errorf("read full: %s", err)
 	}
 
 	if err := VerifyHeader(block); err != nil {
+		if errors.Is(err, ErrLegacySignature) {
+			return true, nil
+		}
 		return false, nil
 	}
 	return true, nil

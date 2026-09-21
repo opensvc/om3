@@ -3,6 +3,7 @@ package hbdisk
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"sort"
 	"strings"
@@ -100,11 +101,15 @@ func (t *rx) Start(cmdC chan<- any, msgC chan<- *hbtype.Msg) error {
 		cancel()
 		return fmt.Errorf("can't start: not enough slots for %d nodes", nodeCount)
 	}
-	if err := t.base.device.open(); err != nil {
-		err := fmt.Errorf("device %s: %w", t.base.path, err)
-		t.log.Warnf("startup failed: %s", err)
-		cancel()
-		return err
+	if openErr := t.base.device.open(); openErr != nil {
+		if errors.Is(openErr, sign.ErrLegacySignature) {
+			t.log.Warnf("device %s: %s", t.base.path, openErr)
+		} else {
+			err := fmt.Errorf("device %s: %w", t.base.path, openErr)
+			t.log.Warnf("startup failed: %s", err)
+			cancel()
+			return err
+		}
 	}
 	if err := t.base.scanMetadata(append(t.nodes, t.base.localhost)...); err != nil {
 		cancel()
@@ -137,14 +142,14 @@ func (t *rx) Start(cmdC chan<- any, msgC chan<- *hbtype.Msg) error {
 		t.dedup = hbdedup.CacheFromContext(ctx)
 		ticker := time.NewTicker(t.interval)
 		defer ticker.Stop()
-		tickerChecSignature := time.NewTicker(120 * t.interval)
-		defer tickerChecSignature.Stop()
+		tickerCheckSignature := time.NewTicker(120 * t.interval)
+		defer tickerCheckSignature.Stop()
 		for {
 			select {
 			case <-ticker.C:
 				t.crypto = crypto.Load()
 				t.onTick()
-			case <-tickerChecSignature.C:
+			case <-tickerCheckSignature.C:
 				t.base.checkSignature()
 			case <-ctx.Done():
 				t.cancel()
@@ -183,7 +188,7 @@ func (t *rx) recv(nodename string) {
 		t.log.Tracef("node %s slot %d unchanged since last read", nodename, slot)
 		return
 	}
-	elapsed := time.Now().Sub(c.Updated)
+	elapsed := time.Since(c.Updated)
 	if elapsed > t.timeout {
 		t.log.Tracef("node %s slot %d has not been updated for %s", nodename, slot, elapsed)
 		return
