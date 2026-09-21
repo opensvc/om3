@@ -1597,6 +1597,41 @@ func newCmdObjectConfigUpdate(kind string) *cobra.Command {
 	return cmd
 }
 
+func newCmdObjectConfigMigrate(kind string) *cobra.Command {
+	var options commoncmd.CmdObjectConfigMigrate
+	cmd := &cobra.Command{
+		Use:   "migrate",
+		Short: "write the configuration in the shape om reads it in",
+		Long: `Write the configuration in the shape om reads it in.
+
+A configuration written for an older agent describes things this one no longer
+reads that way. What it asked for is still possible, in another shape, and
+this writes that shape: the configuration says the same thing afterwards, in
+words om reads. What changes is printed, and what no rule can write is printed
+with the reason.
+
+A filesystem that made the volume it mounts becomes a disk.lv resource and a
+filesystem resting on it. A size written as a share of a volume group becomes
+arithmetic on what om reports of that group, where the group is a resource of
+the object, and is kept as it is where it is not.
+
+The changes land as a configuration update, so they are weighed like any other
+write. The configuration as it was is kept under the backup directory of the
+node this runs on, and where it was kept is printed.`,
+		RunE: func(cmd *cobra.Command, args []string) error {
+			return options.Run(kind)
+		},
+	}
+	flags := cmd.Flags()
+	commoncmd.FlagColor(flags, &options.Color)
+	commoncmd.FlagOutput(flags, &options.Output)
+	commoncmd.FlagSort(flags, &options.Sort)
+	commoncmd.FlagObjectSelector(flags, &options.ObjectSelector)
+	commoncmd.FlagsLock(flags, &options.OptsLock)
+	commoncmd.FlagDryRun(flags, &options.DryRun)
+	return cmd
+}
+
 func newCmdObjectConfigValidate(kind string) *cobra.Command {
 	var options commands.CmdObjectConfigValidate
 	cmd := &cobra.Command{

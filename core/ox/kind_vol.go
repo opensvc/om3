@@ -88,6 +88,7 @@ func init() {
 		newCmdObjectConfigGet(kind),
 		newCmdObjectConfigShow(kind),
 		newCmdObjectConfigUpdate(kind),
+		newCmdObjectConfigMigrate(kind),
 		newCmdObjectConfigValidate(kind),
 	)
 	cmdObjectEdit.AddCommand(
