@@ -2834,6 +2834,9 @@ type InQueryTo = string
 // InQueryUnsets defines model for inQueryUnsets.
 type InQueryUnsets = []string
 
+// Wait defines model for inQueryWait.
+type Wait = string
+
 // N200 defines model for 200.
 type N200 = Problem
 
@@ -3152,6 +3155,31 @@ type GetDaemonExecsParams struct {
 
 	// Selector selector
 	Selector *InQuerySelectorOptional `form:"selector,omitempty" json:"selector,omitempty"`
+
+	// Wait How long to hold the request until what it asks about has ended.
+	//
+	// Without it the answer is what is known now. With it the request is
+	// held, and answered as soon as the thing ends, so a client waiting for
+	// the end of what it submitted neither polls nor holds an event stream
+	// open for it.
+	//
+	// A request held until the wait expires is answered 408, which says the
+	// thing is still running, and is not an error of the request.
+	Wait *Wait `form:"wait,omitempty" json:"wait,omitempty"`
+}
+
+// GetDaemonExecParams defines parameters for GetDaemonExec.
+type GetDaemonExecParams struct {
+	// Wait How long to hold the request until what it asks about has ended.
+	//
+	// Without it the answer is what is known now. With it the request is
+	// held, and answered as soon as the thing ends, so a client waiting for
+	// the end of what it submitted neither polls nor holds an event stream
+	// open for it.
+	//
+	// A request held until the wait expires is answered 408, which says the
+	// thing is still running, and is not an error of the request.
+	Wait *Wait `form:"wait,omitempty" json:"wait,omitempty"`
 }
 
 // GetDaemonOrchestrationsParams defines parameters for GetDaemonOrchestrations.
@@ -3160,6 +3188,20 @@ type GetDaemonOrchestrationsParams struct {
 
 	// Selector selector
 	Selector *InQuerySelectorOptional `form:"selector,omitempty" json:"selector,omitempty"`
+}
+
+// GetDaemonOrchestrationParams defines parameters for GetDaemonOrchestration.
+type GetDaemonOrchestrationParams struct {
+	// Wait How long to hold the request until what it asks about has ended.
+	//
+	// Without it the answer is what is known now. With it the request is
+	// held, and answered as soon as the thing ends, so a client waiting for
+	// the end of what it submitted neither polls nor holds an event stream
+	// open for it.
+	//
+	// A request held until the wait expires is answered 408, which says the
+	// thing is still running, and is not an error of the request.
+	Wait *Wait `form:"wait,omitempty" json:"wait,omitempty"`
 }
 
 // GetNodeDRBDConfigParams defines parameters for GetNodeDRBDConfig.

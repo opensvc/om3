@@ -798,6 +798,14 @@ Where the password is the value of the `þassword` key in `system/sec/relay-v3`.
 
     On upgrade, instances frozen by an older version's stop or create stay frozen, and nothing lifts those freezes any more. Run `om <selector> print status` to find them, and `om <path> unfreeze` on the ones you did not freeze yourself.
 
+* An orchestration says how it went, and is waited on by its id.
+
+    `ObjectOrchestrationEnd` and `NodeOrchestrationEnd` carry `failed` and `error`, and the orchestration table records them: an orchestration ends when every node is done with it, whether it did what was asked or gave up, so the end was not a verdict and every client had to read the states back and judge for itself. Any node answers, the one that accepted the orchestration from what it published and the others from the state each instance monitor drops the orchestration id with.
+
+    `om daemon orchestration wait <id>`, `om daemon session wait <id>` and `om daemon exec wait <id>` wait for one to end and report how it went, exiting non-zero when it failed. The daemon holds the request until then — the `wait` query parameter of `GetDaemonOrchestration`, `GetDaemonExec` and `GetDaemonExecs` — and answers 408 when the wait expires with the work still running. An orchestration is answered by any node, so a client that reached the cluster through a floating address follows one wherever the address now points.
+
+    `om <path> <action> --wait` now waits this way instead of watching the event stream for the event that ends the orchestration. An end event missed is missed for good, which is what made a slow or reconnecting client wait for something that had already happened; the orchestration outlives the request in the daemon, which answers late askers with the same verdict. The per-action assertions the wait used to make on the object status are gone with it: they were a second description of what the daemon already knows, and they went stale twice, waiting for a freeze a stop no longer sets and for a thaw a provision no longer does.
+
 * `orchestrate = start` starts the object when its node comes up.
 
     The value was documented but never implemented: the daemon only ever started an object on its own when `orchestrate = ha`, so an `orchestrate = start` object stayed down after a reboot, whatever it was running before.

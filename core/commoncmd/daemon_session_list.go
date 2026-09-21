@@ -67,6 +67,28 @@ func (t *CmdDaemonSessionList) Run() error {
 	return err
 }
 
+// RunWait waits for every exec of the session to end, reports the session,
+// and says whether any of its execs failed.
+func (t *CmdDaemonSessionList) RunWait() error {
+	if t.SessionID == "" {
+		return fmt.Errorf("a session id is required")
+	}
+	items, err := t.Gather()
+	err = errors.Join(err, output.Renderer{
+		DefaultOutput: sessionListColumns,
+		Output:        t.Output,
+		DefaultSort:   sessionListSort,
+		Sort:          t.Sort,
+		Color:         t.Color,
+		Data:          ToSessionViews(items),
+		Colorize:      rawconfig.Colorize,
+	}.Print())
+	if err != nil {
+		return err
+	}
+	return execsOutcome(items)
+}
+
 // ToSessionViews folds execs into the sessions they belong to, newest first.
 func ToSessionViews(items []api.ExecItem) []SessionView {
 	type acc struct {

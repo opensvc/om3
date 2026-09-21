@@ -2,8 +2,11 @@ package session
 
 import (
 	"context"
+	"fmt"
 	"sync"
 	"time"
+
+	"github.com/opensvc/om3/v3/core/instance"
 
 	"github.com/opensvc/om3/v3/core/node"
 	"github.com/opensvc/om3/v3/daemon/msgbus"
@@ -122,6 +125,7 @@ func (t *Manager) handle(i any) {
 				m.Node,
 				IDString(xsession.NewOrchestrationID(m.Value.OrchestrationID)),
 				m.Value.GlobalExpect.String(),
+				instanceFailure(m.Node, m.Value.State),
 				m.Value.GlobalExpectUpdatedAt,
 			)
 		case *msgbus.NodeMonitorUpdated:
@@ -134,15 +138,16 @@ func (t *Manager) handle(i any) {
 				m.Node,
 				IDString(xsession.NewOrchestrationID(m.Value.OrchestrationID)),
 				nodeExpect(m.Value),
+				nodeFailure(m.Node, m.Value.State),
 				m.Value.GlobalExpectUpdatedAt,
 			)
 		case *msgbus.InstanceMonitorDeleted:
 			// The orchestration that deleted the object took the monitors
 			// naming it with it. Nothing else says this node is out of it,
 			// and an orchestration nobody is in any more is over.
-			NoteMonitor(m.Path.String(), m.Node, "", "", time.Time{})
+			NoteMonitor(m.Path.String(), m.Node, "", "", "", time.Time{})
 		case *msgbus.NodeMonitorDeleted:
-			NoteMonitor("", m.Node, "", "", time.Time{})
+			NoteMonitor("", m.Node, "", "", "", time.Time{})
 		case *msgbus.Exec:
 			AddExec(Exec{
 				SessionID:       IDString(m.SessionID),
@@ -170,10 +175,13 @@ func (t *Manager) handle(i any) {
 			})
 		case *msgbus.NodeOrchestrationEnd:
 			state := StateSucceeded
-			if m.Aborted {
+			switch {
+			case m.Aborted:
 				state = StateAborted
+			case m.Failed:
+				state = StateFailed
 			}
-			EndOrchestration(m.ID, state, "")
+			EndOrchestration(m.ID, state, m.Error)
 		case *msgbus.NodeOrchestrationRefused:
 			AddOrchestration(Orchestration{
 				OrchestrationID: m.ID,
@@ -189,10 +197,13 @@ func (t *Manager) handle(i any) {
 			})
 		case *msgbus.ObjectOrchestrationEnd:
 			state := StateSucceeded
-			if m.Aborted {
+			switch {
+			case m.Aborted:
 				state = StateAborted
+			case m.Failed:
+				state = StateFailed
 			}
-			EndOrchestration(m.ID, state, "")
+			EndOrchestration(m.ID, state, m.Error)
 		case *msgbus.ObjectOrchestrationRefused:
 			AddOrchestration(Orchestration{
 				OrchestrationID: m.ID,
@@ -202,6 +213,28 @@ func (t *Manager) handle(i any) {
 			EndOrchestration(m.ID, StateRefused, m.Reason)
 		}
 	}
+}
+
+// instanceFailure names what an instance monitor ended on when it ended on a
+// failure, and nothing when it did not.
+//
+// The state a node drops an orchestration id with is how it went for that
+// node: an instance that reached what was asked is idle by then, and one that
+// gave up keeps the state it failed on. This is what lets a node that did not
+// accept the orchestration answer for its outcome.
+func instanceFailure(nodename string, state instance.MonitorState) string {
+	if !state.IsOneOf(instance.MonitorStatesFailure...) {
+		return ""
+	}
+	return fmt.Sprintf("%s on %s", state, nodename)
+}
+
+// nodeFailure is instanceFailure for a node orchestration.
+func nodeFailure(nodename string, state node.MonitorState) string {
+	if !state.IsOneOf(node.MonitorStatesFailure...) {
+		return ""
+	}
+	return fmt.Sprintf("%s on %s", state, nodename)
 }
 
 // pathOf returns the object an exec is of, which the message carries as a

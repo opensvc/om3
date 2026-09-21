@@ -15,6 +15,7 @@ import (
 	"github.com/opensvc/om3/v3/core/output"
 	"github.com/opensvc/om3/v3/core/rawconfig"
 	"github.com/opensvc/om3/v3/daemon/api"
+	"github.com/opensvc/om3/v3/daemon/session"
 	"github.com/opensvc/om3/v3/util/hostname"
 )
 
@@ -24,23 +25,63 @@ type (
 		NodeSelector    string
 		States          []string
 		OrchestrationID string
+
+		// Wait holds each request until the orchestration has ended, and is
+		// how "om daemon orchestration wait" waits: the daemon answers when
+		// the orchestration is over rather than when it is asked.
+		Wait time.Duration
 	}
 )
 
 func (t *CmdDaemonOrchestrationList) Run() error {
-	c, err := client.New()
+	items, err := t.run()
+	t.render(t.filter(items))
+	return err
+}
+
+// RunWait waits for the orchestration to end, reports it, and says whether it
+// did what it was for.
+//
+// The orchestration id is what the action the client submitted was answered
+// with, and every node answers for it, so this is how a client follows an
+// action it asked of a node it can no longer name, or that it never named.
+func (t *CmdDaemonOrchestrationList) RunWait() error {
+	if t.OrchestrationID == "" {
+		return fmt.Errorf("an orchestration id is required")
+	}
+	items, err := t.run()
+	t.render(items)
 	if err != nil {
 		return err
+	}
+	for _, item := range items {
+		switch item.State {
+		case string(session.StateSucceeded):
+			return nil
+		default:
+			if item.Error != nil && *item.Error != "" {
+				return fmt.Errorf("orchestration %s %s: %s", t.OrchestrationID, item.State, *item.Error)
+			}
+			return fmt.Errorf("orchestration %s %s", t.OrchestrationID, item.State)
+		}
+	}
+	return nil
+}
+
+func (t *CmdDaemonOrchestrationList) run() ([]api.OrchestrationItem, error) {
+	c, err := client.New()
+	if err != nil {
+		return nil, err
 	}
 	if t.NodeSelector == "" {
 		t.NodeSelector = hostname.Hostname()
 	}
 	nodenames, err := nodeselector.New(t.NodeSelector, nodeselector.WithClient(c)).Expand()
 	if err != nil {
-		return err
+		return nil, err
 	}
 	if len(nodenames) == 0 {
-		return fmt.Errorf("no node matching %s", t.NodeSelector)
+		return nil, fmt.Errorf("no node matching %s", t.NodeSelector)
 	}
 
 	items, errs := t.merge(t.gather(c, nodenames))
@@ -49,13 +90,12 @@ func (t *CmdDaemonOrchestrationList) Run() error {
 	// has forgotten it is only an answer when they all have.
 	if t.OrchestrationID != "" && len(items) == 0 {
 		if errs != nil {
-			return errs
+			return nil, errs
 		}
-		return fmt.Errorf("orchestration %s is no longer known on %s: it ended long enough ago to have been dropped, or never ran there",
+		return nil, fmt.Errorf("orchestration %s is no longer known on %s: it ended long enough ago to have been dropped, or never ran there",
 			t.OrchestrationID, t.NodeSelector)
 	}
-	t.render(t.filter(items))
-	return errs
+	return items, errs
 }
 
 // orchestrationListSort is newest first, as the exec and session listings
@@ -113,7 +153,13 @@ func (t *CmdDaemonOrchestrationList) merge(items []api.OrchestrationItem, errs e
 // went wrong asking. A node that has forgotten the id is not one of the
 // things that went wrong.
 func (t *CmdDaemonOrchestrationList) gather(c *client.T, nodenames []string) ([]api.OrchestrationItem, error) {
-	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	// The requests are held for as long as the wait asks, and the grace on
+	// top of it is for the round trip.
+	timeout := 5 * time.Second
+	if t.Wait > 0 {
+		timeout = t.Wait + 5*time.Second
+	}
+	ctx, cancel := context.WithTimeout(context.Background(), timeout)
 	defer cancel()
 
 	var (
@@ -142,13 +188,20 @@ func (t *CmdDaemonOrchestrationList) gather(c *client.T, nodenames []string) ([]
 
 func (t *CmdDaemonOrchestrationList) one(ctx context.Context, c *client.T, nodename string) ([]api.OrchestrationItem, error) {
 	if t.OrchestrationID != "" {
-		resp, err := c.GetDaemonOrchestrationWithResponse(ctx, nodename, t.OrchestrationID)
+		params := api.GetDaemonOrchestrationParams{}
+		if t.Wait > 0 {
+			wait := t.Wait.String()
+			params.Wait = &wait
+		}
+		resp, err := c.GetDaemonOrchestrationWithResponse(ctx, nodename, t.OrchestrationID, &params)
 		if err != nil {
 			return nil, fmt.Errorf("%s: %w", nodename, err)
 		}
 		switch resp.StatusCode() {
 		case http.StatusOK:
 			return []api.OrchestrationItem{*resp.JSON200}, nil
+		case http.StatusRequestTimeout:
+			return nil, fmt.Errorf("%s: orchestration %s is still running, the wait expired", nodename, t.OrchestrationID)
 		case http.StatusGone:
 			// This node has forgotten it, or never ran it. Another may hold
 			// it, and saying so here would make asking every node an error

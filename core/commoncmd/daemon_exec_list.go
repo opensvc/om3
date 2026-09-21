@@ -46,6 +46,12 @@ type (
 
 		// Sort overrides the order the listing comes in.
 		Sort string
+
+		// Wait holds each request until the execs it asks about have ended,
+		// and is how "om daemon exec|session wait" waits: the daemon answers
+		// when the work is over rather than when it is asked, so a caller
+		// neither polls nor keeps an event stream open for it.
+		Wait time.Duration
 	}
 )
 
@@ -91,7 +97,14 @@ func (t *CmdDaemonExecList) Gather() ([]api.ExecItem, error) {
 		return nil, fmt.Errorf("no node matching %s", t.NodeSelector)
 	}
 
-	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	// The requests are held for as long as the wait asks, and the grace on
+	// top of it is for the round trip: a client giving up before the daemon
+	// answers would report nothing where the daemon had the answer.
+	timeout := 5 * time.Second
+	if t.Wait > 0 {
+		timeout = t.Wait + 5*time.Second
+	}
+	ctx, cancel := context.WithTimeout(context.Background(), timeout)
 	defer cancel()
 
 	var (
@@ -138,7 +151,12 @@ func (t *CmdDaemonExecList) one(ctx context.Context, c *client.T, nodename strin
 		if err != nil {
 			return nil, fmt.Errorf("exec id %s: %w", t.ExecID, err)
 		}
-		resp, err := c.GetDaemonExecWithResponse(ctx, nodename, execID)
+		params := api.GetDaemonExecParams{}
+		if t.Wait > 0 {
+			wait := t.Wait.String()
+			params.Wait = &wait
+		}
+		resp, err := c.GetDaemonExecWithResponse(ctx, nodename, execID, &params)
 		if err != nil {
 			return nil, fmt.Errorf("%s: %w", nodename, err)
 		}
@@ -150,6 +168,8 @@ func (t *CmdDaemonExecList) one(ctx context.Context, c *client.T, nodename strin
 			// it, and saying so here would make asking every node an error
 			// wherever one of them answers.
 			return nil, nil
+		case http.StatusRequestTimeout:
+			return nil, fmt.Errorf("%s: exec %s is still running, the wait expired", nodename, t.ExecID)
 		default:
 			return nil, fmt.Errorf("%s: %s", nodename, resp.Status())
 		}
@@ -182,14 +202,25 @@ func (t *CmdDaemonExecList) one(ctx context.Context, c *client.T, nodename strin
 	if t.Selector != "" {
 		params.Selector = &t.Selector
 	}
+	if t.Wait > 0 {
+		wait := t.Wait.String()
+		params.Wait = &wait
+	}
 	resp, err := c.GetDaemonExecsWithResponse(ctx, nodename, &params)
 	if err != nil {
 		return nil, fmt.Errorf("%s: %w", nodename, err)
 	}
-	if resp.StatusCode() != http.StatusOK {
+	switch resp.StatusCode() {
+	case http.StatusOK:
+		return resp.JSON200.Items, nil
+	case http.StatusRequestTimeout:
+		// The wait expired on execs still running there. They are in the
+		// answer, so the caller sees what it waited for, and what is said
+		// about them is that they have not ended.
+		return nil, fmt.Errorf("%s: still running when the wait expired", nodename)
+	default:
 		return nil, fmt.Errorf("%s: %s", nodename, resp.Status())
 	}
-	return resp.JSON200.Items, nil
 }
 
 // filter narrows what a by-id answer returned the way the daemon would have.
@@ -351,4 +382,40 @@ running for months does not carry every command it ever ran.`,
 	FlagDaemonExecFilters(flags, &options)
 	flags.StringSliceVar(&options.States, "state", nil, "list the execs in these states, every state when not set (running, succeeded, failed)")
 	return cmd
+}
+
+// RunWait waits for the execs it selects to end, reports them, and says
+// whether any of them failed.
+//
+// An exec id is what one run of one object on one node is called, and the
+// node that ran it is the only one that knows how it went, so this asks the
+// nodes the selector names and folds what they answer.
+func (t *CmdDaemonExecList) RunWait() error {
+	if t.ExecID == "" && t.SessionID == "" {
+		return fmt.Errorf("an exec id or a session id is required")
+	}
+	items, err := t.Gather()
+	err = errors.Join(err, t.render(items))
+	if err != nil {
+		return err
+	}
+	return execsOutcome(items)
+}
+
+// execsOutcome is the outcome of a set of execs: the failures of the ones
+// that failed, and nothing when they all succeeded.
+func execsOutcome(items []api.ExecItem) error {
+	var errs error
+	for _, item := range items {
+		switch item.State {
+		case "succeeded", "running":
+		default:
+			what := fmt.Sprintf("%s %s on %s", item.Command, item.State, item.Node)
+			if item.Error != nil && *item.Error != "" {
+				what += ": " + *item.Error
+			}
+			errs = errors.Join(errs, fmt.Errorf("%s", what))
+		}
+	}
+	return errs
 }

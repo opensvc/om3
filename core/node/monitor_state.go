@@ -42,6 +42,15 @@ var (
 	// corresponding MonitorState constants.
 	MonitorStateValues map[string]MonitorState
 
+	// MonitorStatesFailure is the node monitor states an orchestration ends
+	// on when it gave up rather than reached what it was for.
+	MonitorStatesFailure = []MonitorState{
+		MonitorStateDrainFailure,
+		MonitorStateFreezeFailure,
+		MonitorStateShutdownFailure,
+		MonitorStateUnfreezeFailure,
+	}
+
 	// MonitorStateUnrankable is the node monitor states evicting a node from ranking algorithms
 	MonitorStateUnrankable = map[MonitorState]any{
 		MonitorStateInit:             nil,

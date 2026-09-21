@@ -784,6 +784,39 @@ func newCmdNodePing() *cobra.Command {
 	return cmd
 }
 
+func newCmdDaemonOrchestrationWait() *cobra.Command {
+	var options commands.CmdDaemonOrchestrationList
+	cmd := &cobra.Command{
+		Use:   "wait ORCHESTRATION_ID",
+		Short: "wait for the end of an orchestration",
+		Long: `The daemon holds the request until the orchestration ends, and answers how it
+went, so this neither polls nor keeps an event stream open.
+
+Any node answers for any orchestration, because the instance monitors carrying
+its id reach every node, so this needs no node to be named, and a client that
+reached the cluster through a floating address follows an orchestration the
+address has since moved away from.
+
+An orchestration that has already ended is answered at once: the daemon
+remembers it for a while, which is what lets a client that lost its
+connection, or that asks late, still be told how it went.`,
+		Args: cobra.ExactArgs(1),
+		RunE: func(cmd *cobra.Command, args []string) error {
+			options.OrchestrationID = args[0]
+			if options.Wait == 0 {
+				options.Wait = commoncmd.DefaultWait
+			}
+			return options.RunWait()
+		},
+	}
+	commoncmd.CmdWithArg(cmd, `ORCHESTRATION_ID  The orchestration id the submitter of the action was handed.`)
+	flags := cmd.Flags()
+	addFlagsGlobal(flags, &options.OptsGlobal)
+	commoncmd.FlagNodeSelector(flags, &options.NodeSelector)
+	flags.DurationVar(&options.Wait, "duration", 0, "give up waiting after this duration")
+	return cmd
+}
+
 func newCmdDaemonOrchestrationList() *cobra.Command {
 	var options commands.CmdDaemonOrchestrationList
 	cmd := &cobra.Command{

@@ -75,6 +75,7 @@ var (
 		MonitorStateDeleteFailure,
 		MonitorStateFreezeFailure,
 		MonitorStateProvisionFailure,
+		MonitorStatePurgeFailed,
 		MonitorStateResizeFailure,
 		MonitorStateShutdownFailure,
 		MonitorStateStartFailure,

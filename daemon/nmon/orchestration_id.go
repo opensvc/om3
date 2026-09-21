@@ -43,7 +43,16 @@ func (t *Manager) adoptOrchestration(candidate uuid.UUID) {
 
 // endOrchestration is called when the global expect this was running has been
 // reached, or given up on.
+//
+// Which of the two it was is said on the end, from the state the monitor ends
+// on: a client waiting on the id is asking how its request went, and an end
+// that says nothing about it would have every client read the state back and
+// judge for itself.
 func (t *Manager) endOrchestration() {
+	if t.orchestrationPending != nil && t.state.State.IsOneOf(node.MonitorStatesFailure...) {
+		t.orchestrationPending.Failed = true
+		t.orchestrationPending.Error = t.state.State.String()
+	}
 	defer t.publishOrchestrationEnded()
 	t.state.OrchestrationID = uuid.Nil
 	t.logSetOrchestrationID(uuid.Nil)

@@ -930,6 +930,14 @@ type (
 		GlobalExpect          node.MonitorGlobalExpect `json:"global_expect" yaml:"global_expect"`
 		GlobalExpectUpdatedAt time.Time                `json:"global_expect_updated_at" yaml:"global_expect_updated_at"`
 		Aborted               bool                     `json:"aborted" yaml:"aborted"`
+
+		// Failed says the orchestration gave up rather than reached what it
+		// was for, and Error says what it ended on. An orchestration ends
+		// either way, so the end is not the verdict by itself, and a client
+		// waiting on the id would otherwise have to read the states back and
+		// judge for itself.
+		Failed bool   `json:"failed" yaml:"failed"`
+		Error  string `json:"error,omitempty" yaml:"error,omitempty"`
 	}
 
 	NodeOrchestrationRefused struct {
@@ -957,6 +965,15 @@ type (
 		GlobalExpect          instance.MonitorGlobalExpect `json:"global_expect" yaml:"global_expect"`
 		GlobalExpectUpdatedAt time.Time                    `json:"global_expect_updated_at" yaml:"global_expect_updated_at"`
 		Aborted               bool                         `json:"aborted" yaml:"aborted"`
+
+		// Failed says the orchestration ended with instances that did not
+		// reach what it was for, and Error names them and the state they
+		// ended on. An orchestration ends when every node is done with it,
+		// whether it did what was asked or gave up, so the end is not the
+		// verdict by itself, and a client waiting on the id would otherwise
+		// have to read the instance states back and judge for itself.
+		Failed bool   `json:"failed" yaml:"failed"`
+		Error  string `json:"error,omitempty" yaml:"error,omitempty"`
 	}
 
 	ObjectOrchestrationRefused struct {

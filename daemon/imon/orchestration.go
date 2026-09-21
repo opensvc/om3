@@ -180,6 +180,7 @@ func (t *Manager) setWaitChildren() bool {
 func (t *Manager) endOrchestration() {
 	t.change = true
 
+	t.setOrchestrationVerdict()
 	defer t.publishOrchestrationEnded()
 
 	t.clearStateSpokenToPeers()
@@ -190,6 +191,35 @@ func (t *Manager) endOrchestration() {
 	t.clearPending()
 	t.updateIfChange()
 	t.logSetOrchestrationID(uuid.Nil)
+}
+
+// setOrchestrationVerdict says on the end of the orchestration whether it did
+// what it was for.
+//
+// An orchestration ends when every node is done with it, and a node is done
+// with it whether it reached what was asked or gave up on it. The states the
+// instances ended on are what tells the two apart, and the accepting node
+// holds them all, so the verdict is made here rather than left to every
+// client to make again from the states it can read.
+func (t *Manager) setOrchestrationVerdict() {
+	if t.orchestrationPending == nil {
+		return
+	}
+	failures := make([]string, 0)
+	for _, nodename := range t.scopeNodes {
+		instMon, ok := t.AllInstanceMonitors()[nodename]
+		if !ok {
+			continue
+		}
+		if instMon.State.IsOneOf(instance.MonitorStatesFailure...) {
+			failures = append(failures, fmt.Sprintf("%s on %s", instMon.State, nodename))
+		}
+	}
+	if len(failures) == 0 {
+		return
+	}
+	t.orchestrationPending.Failed = true
+	t.orchestrationPending.Error = strings.Join(failures, ", ")
 }
 
 // clearStateSpokenToPeers puts the instance back to idle when the state it

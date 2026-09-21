@@ -269,7 +269,7 @@ type ClientInterface interface {
 	GetDaemonExecs(ctx context.Context, nodename InPathNodeName, params *GetDaemonExecsParams, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// GetDaemonExec request
-	GetDaemonExec(ctx context.Context, nodename InPathNodeName, execId InPathExecID, reqEditors ...RequestEditorFn) (*http.Response, error)
+	GetDaemonExec(ctx context.Context, nodename InPathNodeName, execId InPathExecID, params *GetDaemonExecParams, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// PostDaemonHeartbeatRestart request
 	PostDaemonHeartbeatRestart(ctx context.Context, nodename InPathNodeName, name InPathHeartbeatName, reqEditors ...RequestEditorFn) (*http.Response, error)
@@ -307,7 +307,7 @@ type ClientInterface interface {
 	GetDaemonOrchestrations(ctx context.Context, nodename InPathNodeName, params *GetDaemonOrchestrationsParams, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// GetDaemonOrchestration request
-	GetDaemonOrchestration(ctx context.Context, nodename InPathNodeName, orchestrationId InPathOrchestrationID, reqEditors ...RequestEditorFn) (*http.Response, error)
+	GetDaemonOrchestration(ctx context.Context, nodename InPathNodeName, orchestrationId InPathOrchestrationID, params *GetDaemonOrchestrationParams, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// GetNodeDRBDAllocation request
 	GetNodeDRBDAllocation(ctx context.Context, nodename InPathNodeName, reqEditors ...RequestEditorFn) (*http.Response, error)
@@ -1362,8 +1362,8 @@ func (c *Client) GetDaemonExecs(ctx context.Context, nodename InPathNodeName, pa
 	return c.Client.Do(req)
 }
 
-func (c *Client) GetDaemonExec(ctx context.Context, nodename InPathNodeName, execId InPathExecID, reqEditors ...RequestEditorFn) (*http.Response, error) {
-	req, err := NewGetDaemonExecRequest(c.Server, nodename, execId)
+func (c *Client) GetDaemonExec(ctx context.Context, nodename InPathNodeName, execId InPathExecID, params *GetDaemonExecParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewGetDaemonExecRequest(c.Server, nodename, execId, params)
 	if err != nil {
 		return nil, err
 	}
@@ -1518,8 +1518,8 @@ func (c *Client) GetDaemonOrchestrations(ctx context.Context, nodename InPathNod
 	return c.Client.Do(req)
 }
 
-func (c *Client) GetDaemonOrchestration(ctx context.Context, nodename InPathNodeName, orchestrationId InPathOrchestrationID, reqEditors ...RequestEditorFn) (*http.Response, error) {
-	req, err := NewGetDaemonOrchestrationRequest(c.Server, nodename, orchestrationId)
+func (c *Client) GetDaemonOrchestration(ctx context.Context, nodename InPathNodeName, orchestrationId InPathOrchestrationID, params *GetDaemonOrchestrationParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewGetDaemonOrchestrationRequest(c.Server, nodename, orchestrationId, params)
 	if err != nil {
 		return nil, err
 	}
@@ -5963,6 +5963,18 @@ func NewGetDaemonExecsRequest(server string, nodename InPathNodeName, params *Ge
 
 		}
 
+		if params.Wait != nil {
+
+			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "wait", *params.Wait, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "string", Format: ""}); err != nil {
+				return nil, err
+			} else {
+				for _, qp := range strings.Split(queryFrag, "&") {
+					rawQueryFragments = append(rawQueryFragments, qp)
+				}
+			}
+
+		}
+
 		if encoded := queryValues.Encode(); encoded != "" {
 			rawQueryFragments = append(rawQueryFragments, encoded)
 		}
@@ -5978,7 +5990,7 @@ func NewGetDaemonExecsRequest(server string, nodename InPathNodeName, params *Ge
 }
 
 // NewGetDaemonExecRequest generates requests for GetDaemonExec
-func NewGetDaemonExecRequest(server string, nodename InPathNodeName, execId InPathExecID) (*http.Request, error) {
+func NewGetDaemonExecRequest(server string, nodename InPathNodeName, execId InPathExecID, params *GetDaemonExecParams) (*http.Request, error) {
 	var err error
 
 	var pathParam0 string
@@ -6008,6 +6020,33 @@ func NewGetDaemonExecRequest(server string, nodename InPathNodeName, execId InPa
 	queryURL, err := serverURL.Parse(operationPath)
 	if err != nil {
 		return nil, err
+	}
+
+	if params != nil {
+		// queryValues collects non-styled parameters (passthrough, JSON)
+		// that are safe to round-trip through url.Values.Encode().
+		queryValues := queryURL.Query()
+		// rawQueryFragments collects pre-encoded query fragments from
+		// styled parameters, preserving literal commas as delimiters
+		// per the OpenAPI spec (e.g. "color=blue,black,brown").
+		var rawQueryFragments []string
+
+		if params.Wait != nil {
+
+			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "wait", *params.Wait, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "string", Format: ""}); err != nil {
+				return nil, err
+			} else {
+				for _, qp := range strings.Split(queryFrag, "&") {
+					rawQueryFragments = append(rawQueryFragments, qp)
+				}
+			}
+
+		}
+
+		if encoded := queryValues.Encode(); encoded != "" {
+			rawQueryFragments = append(rawQueryFragments, encoded)
+		}
+		queryURL.RawQuery = strings.Join(rawQueryFragments, "&")
 	}
 
 	req, err := http.NewRequest(http.MethodGet, queryURL.String(), nil)
@@ -6501,7 +6540,7 @@ func NewGetDaemonOrchestrationsRequest(server string, nodename InPathNodeName, p
 }
 
 // NewGetDaemonOrchestrationRequest generates requests for GetDaemonOrchestration
-func NewGetDaemonOrchestrationRequest(server string, nodename InPathNodeName, orchestrationId InPathOrchestrationID) (*http.Request, error) {
+func NewGetDaemonOrchestrationRequest(server string, nodename InPathNodeName, orchestrationId InPathOrchestrationID, params *GetDaemonOrchestrationParams) (*http.Request, error) {
 	var err error
 
 	var pathParam0 string
@@ -6531,6 +6570,33 @@ func NewGetDaemonOrchestrationRequest(server string, nodename InPathNodeName, or
 	queryURL, err := serverURL.Parse(operationPath)
 	if err != nil {
 		return nil, err
+	}
+
+	if params != nil {
+		// queryValues collects non-styled parameters (passthrough, JSON)
+		// that are safe to round-trip through url.Values.Encode().
+		queryValues := queryURL.Query()
+		// rawQueryFragments collects pre-encoded query fragments from
+		// styled parameters, preserving literal commas as delimiters
+		// per the OpenAPI spec (e.g. "color=blue,black,brown").
+		var rawQueryFragments []string
+
+		if params.Wait != nil {
+
+			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "wait", *params.Wait, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "string", Format: ""}); err != nil {
+				return nil, err
+			} else {
+				for _, qp := range strings.Split(queryFrag, "&") {
+					rawQueryFragments = append(rawQueryFragments, qp)
+				}
+			}
+
+		}
+
+		if encoded := queryValues.Encode(); encoded != "" {
+			rawQueryFragments = append(rawQueryFragments, encoded)
+		}
+		queryURL.RawQuery = strings.Join(rawQueryFragments, "&")
 	}
 
 	req, err := http.NewRequest(http.MethodGet, queryURL.String(), nil)
@@ -14952,7 +15018,7 @@ type ClientWithResponsesInterface interface {
 	GetDaemonExecsWithResponse(ctx context.Context, nodename InPathNodeName, params *GetDaemonExecsParams, reqEditors ...RequestEditorFn) (*GetDaemonExecsResponse, error)
 
 	// GetDaemonExecWithResponse request
-	GetDaemonExecWithResponse(ctx context.Context, nodename InPathNodeName, execId InPathExecID, reqEditors ...RequestEditorFn) (*GetDaemonExecResponse, error)
+	GetDaemonExecWithResponse(ctx context.Context, nodename InPathNodeName, execId InPathExecID, params *GetDaemonExecParams, reqEditors ...RequestEditorFn) (*GetDaemonExecResponse, error)
 
 	// PostDaemonHeartbeatRestartWithResponse request
 	PostDaemonHeartbeatRestartWithResponse(ctx context.Context, nodename InPathNodeName, name InPathHeartbeatName, reqEditors ...RequestEditorFn) (*PostDaemonHeartbeatRestartResponse, error)
@@ -14990,7 +15056,7 @@ type ClientWithResponsesInterface interface {
 	GetDaemonOrchestrationsWithResponse(ctx context.Context, nodename InPathNodeName, params *GetDaemonOrchestrationsParams, reqEditors ...RequestEditorFn) (*GetDaemonOrchestrationsResponse, error)
 
 	// GetDaemonOrchestrationWithResponse request
-	GetDaemonOrchestrationWithResponse(ctx context.Context, nodename InPathNodeName, orchestrationId InPathOrchestrationID, reqEditors ...RequestEditorFn) (*GetDaemonOrchestrationResponse, error)
+	GetDaemonOrchestrationWithResponse(ctx context.Context, nodename InPathNodeName, orchestrationId InPathOrchestrationID, params *GetDaemonOrchestrationParams, reqEditors ...RequestEditorFn) (*GetDaemonOrchestrationResponse, error)
 
 	// GetNodeDRBDAllocationWithResponse request
 	GetNodeDRBDAllocationWithResponse(ctx context.Context, nodename InPathNodeName, reqEditors ...RequestEditorFn) (*GetNodeDRBDAllocationResponse, error)
@@ -17138,6 +17204,7 @@ type GetDaemonExecsResponse struct {
 	JSON200      *ExecList
 	JSON401      *N401
 	JSON403      *N403
+	JSON408      *N408
 	JSON500      *N500
 }
 
@@ -17171,6 +17238,7 @@ type GetDaemonExecResponse struct {
 	JSON200      *ExecItem
 	JSON401      *N401
 	JSON403      *N403
+	JSON408      *N408
 	JSON410      *N410
 	JSON500      *N500
 }
@@ -17577,6 +17645,7 @@ type GetDaemonOrchestrationResponse struct {
 	JSON200      *OrchestrationItem
 	JSON401      *N401
 	JSON403      *N403
+	JSON408      *N408
 	JSON410      *N410
 	JSON500      *N500
 }
@@ -21532,8 +21601,8 @@ func (c *ClientWithResponses) GetDaemonExecsWithResponse(ctx context.Context, no
 }
 
 // GetDaemonExecWithResponse request returning *GetDaemonExecResponse
-func (c *ClientWithResponses) GetDaemonExecWithResponse(ctx context.Context, nodename InPathNodeName, execId InPathExecID, reqEditors ...RequestEditorFn) (*GetDaemonExecResponse, error) {
-	rsp, err := c.GetDaemonExec(ctx, nodename, execId, reqEditors...)
+func (c *ClientWithResponses) GetDaemonExecWithResponse(ctx context.Context, nodename InPathNodeName, execId InPathExecID, params *GetDaemonExecParams, reqEditors ...RequestEditorFn) (*GetDaemonExecResponse, error) {
+	rsp, err := c.GetDaemonExec(ctx, nodename, execId, params, reqEditors...)
 	if err != nil {
 		return nil, err
 	}
@@ -21648,8 +21717,8 @@ func (c *ClientWithResponses) GetDaemonOrchestrationsWithResponse(ctx context.Co
 }
 
 // GetDaemonOrchestrationWithResponse request returning *GetDaemonOrchestrationResponse
-func (c *ClientWithResponses) GetDaemonOrchestrationWithResponse(ctx context.Context, nodename InPathNodeName, orchestrationId InPathOrchestrationID, reqEditors ...RequestEditorFn) (*GetDaemonOrchestrationResponse, error) {
-	rsp, err := c.GetDaemonOrchestration(ctx, nodename, orchestrationId, reqEditors...)
+func (c *ClientWithResponses) GetDaemonOrchestrationWithResponse(ctx context.Context, nodename InPathNodeName, orchestrationId InPathOrchestrationID, params *GetDaemonOrchestrationParams, reqEditors ...RequestEditorFn) (*GetDaemonOrchestrationResponse, error) {
+	rsp, err := c.GetDaemonOrchestration(ctx, nodename, orchestrationId, params, reqEditors...)
 	if err != nil {
 		return nil, err
 	}
@@ -25510,6 +25579,13 @@ func ParseGetDaemonExecsResponse(rsp *http.Response) (*GetDaemonExecsResponse, e
 		}
 		response.JSON403 = &dest
 
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 408:
+		var dest N408
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON408 = &dest
+
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
 		var dest N500
 		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
@@ -25556,6 +25632,13 @@ func ParseGetDaemonExecResponse(rsp *http.Response) (*GetDaemonExecResponse, err
 			return nil, err
 		}
 		response.JSON403 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 408:
+		var dest N408
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON408 = &dest
 
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 410:
 		var dest N410
@@ -26190,6 +26273,13 @@ func ParseGetDaemonOrchestrationResponse(rsp *http.Response) (*GetDaemonOrchestr
 			return nil, err
 		}
 		response.JSON403 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 408:
+		var dest N408
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON408 = &dest
 
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 410:
 		var dest N410
