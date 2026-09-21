@@ -73,11 +73,21 @@ func (t *Manager) startedFromIdle() {
 // so a frozen instance is started without its freeze being touched. The rest
 // of the rule is kept, because being unprovisioned, unrankable or start
 // failed says the instance cannot start whoever is asking.
+//
+// The start an orchestrate=start object is due when its node boots asks the
+// natural placement leader instead. The ha rule hands the object to a peer
+// when this node cannot take it, which is a failover, and the promise of
+// orchestrate=start is that the object is started where it belongs and moved
+// nowhere.
 func (t *Manager) isStartLeader() bool {
-	if t.state.GlobalExpect == instance.MonitorGlobalExpectStarted {
+	switch {
+	case t.state.GlobalExpect == instance.MonitorGlobalExpectStarted:
 		return t.isStartCandidateLeader(false)
+	case t.objStatus.Orchestrate == "start":
+		return t.state.IsLeader
+	default:
+		return t.state.IsHALeader
 	}
-	return t.state.IsHALeader
 }
 
 // startedFromUnfrozen

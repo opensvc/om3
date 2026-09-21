@@ -10,10 +10,78 @@ func (t *Manager) orchestrateNone() {
 	t.clearStartFailed()
 	t.clearBootFailed()
 	t.clearStoppedFlagWhenUp()
-	if t.objStatus.ActorStatus != nil && t.objStatus.Orchestrate == "ha" {
+	if t.objStatus.ActorStatus == nil {
+		return
+	}
+	switch t.objStatus.Orchestrate {
+	case "ha":
 		t.orchestrateHAStart()
 		t.orchestrateHAStop()
+	case "start":
+		t.orchestrateBootStart()
 	}
+}
+
+// orchestrateBootStart starts the object on the first daemon start that
+// follows a node boot, and only then.
+//
+// orchestrate=start says the daemon starts the object when its node comes up,
+// and never moves it afterwards. The start is due when the object is below
+// what it should be running: not up for a failover object, fewer up instances
+// than flex_target for a flex one. Who takes it is the natural placement
+// leader, and not the leader among the instances that could start now, which
+// is what the ha orchestration asks: passing the object to a peer because
+// this node cannot take it is a failover, which is the half of ha that
+// orchestrate=start does not want.
+//
+// The decision waits for a view of the object complete enough to know whether
+// it already runs elsewhere, and is taken once. Nothing left pending outlives
+// the boot: an object this node did not have to start when it came up is not
+// started here later.
+func (t *Manager) orchestrateBootStart() {
+	if !t.isBootStartPending {
+		return
+	}
+	if t.nodeStatus[t.localhost].IsFrozen() {
+		// The natural placement leader rule, unlike the ha leader rule, does
+		// not pass over the frozen nodes: it ranks where the object belongs,
+		// not who may start it. The node freeze is the operator saying the
+		// daemon may not act here, and it outlives the reboot.
+		t.closeBootStart("the node is frozen")
+		return
+	}
+	switch t.state.State {
+	case instance.MonitorStateIdle:
+		if v, reason := t.hasInstanceMonitorAndStatusOnPeers(); !v {
+			// the decision needs to know what the peers hold, or a node
+			// coming up first would start what another one already runs
+			t.log.Tracef("boot start: %s", reason)
+			return
+		}
+		t.orchestrateHAStart()
+		switch {
+		case t.state.State != instance.MonitorStateIdle:
+			// the start is on its way
+		case t.isStarted():
+			t.closeBootStart("the object is started")
+		default:
+			t.closeBootStart("nothing for this node to start")
+		}
+	case instance.MonitorStateReady, instance.MonitorStateStartProgress,
+		instance.MonitorStateStartSuccess, instance.MonitorStateStopSuccess:
+		// the start this boot called for is on its way, and the same
+		// orchestration sees it through
+		t.orchestrateHAStart()
+	case instance.MonitorStateStartFailure:
+		t.closeBootStart("the start failed")
+	default:
+		t.closeBootStart("the instance is %s", t.state.State)
+	}
+}
+
+func (t *Manager) closeBootStart(format string, a ...any) {
+	t.isBootStartPending = false
+	t.log.Infof("boot start decided: "+format, a...)
 }
 
 func (t *Manager) orchestrateHAStop() {

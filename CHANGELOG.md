@@ -798,6 +798,14 @@ Where the password is the value of the `þassword` key in `system/sec/relay-v3`.
 
     On upgrade, instances frozen by an older version's stop or create stay frozen, and nothing lifts those freezes any more. Run `om <selector> print status` to find them, and `om <path> unfreeze` on the ones you did not freeze yourself.
 
+* `orchestrate = start` starts the object when its node comes up.
+
+    The value was documented but never implemented: the daemon only ever started an object on its own when `orchestrate = ha`, so an `orchestrate = start` object stayed down after a reboot, whatever it was running before.
+
+    It now starts the object on the first daemon start that follows a node boot, and moves it nowhere afterwards. A failover object is started if it does not already run elsewhere and the local node is the natural placement leader. A flex object is started if fewer than `flex_target` instances are up and the local node is one of the `flex_target` first natural placement leaders. Outside of that boot, nothing: an instance that goes down is not restarted, and `flex_target` is not chased.
+
+    The natural placement leader is asked, and not the leader among the instances that could start now, which is what the ha orchestration asks: handing the object to a peer because this node cannot take it is a failover, which is the half of `ha` that `orchestrate = start` does not want. A frozen node, a frozen instance and an instance flagged stopped on purpose are all left alone, so a stop asked before a reboot outlives it.
+
 * Flex
   * A `flex_target` value under `flex_min` is forced to `flex_min`. A warning is logged.
   * A `flex_target` value above `flex_max` is forced to `flex_max`. A warning is logged.

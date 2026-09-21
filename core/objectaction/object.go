@@ -931,10 +931,10 @@ func (t T) waitExpectation(ctx context.Context, c *client.T, idC <-chan uuid.UUI
 		}
 	case instance.MonitorGlobalExpectStopped:
 		checkFunc = func() error {
-			if err := assertAvail(p, status.Down, status.StandbyDown, status.NotApplicable); err != nil {
-				return err
-			}
-			return assertFrozen(p, "frozen")
+			// The frozen flag is not asserted: a stop no longer freezes, it
+			// flags the instances stopped on purpose, so being down is the
+			// whole of what was asked for.
+			return assertAvail(p, status.Down, status.StandbyDown, status.NotApplicable)
 		}
 	case instance.MonitorGlobalExpectFrozen:
 		checkFunc = func() error {
@@ -956,13 +956,14 @@ func (t T) waitExpectation(ctx context.Context, c *client.T, idC <-chan uuid.UUI
 		}
 	case instance.MonitorGlobalExpectProvisioned:
 		checkFunc = func() error {
+			// The frozen flag is not asserted: a provision no longer thaws.
+			// It clears the flag saying the object was not to be started
+			// before it could run, which is not what an operator's freeze
+			// says.
 			if err := assertProvisioned(p, provisioned.True, provisioned.NotApplicable); err != nil {
 				return err
 			}
-			if err := assertAvail(p, status.Up, status.NotApplicable); err != nil {
-				return err
-			}
-			return assertFrozen(p, "unfrozen")
+			return assertAvail(p, status.Up, status.NotApplicable)
 		}
 	case instance.MonitorGlobalExpectResized:
 		checkFunc = func() error {
