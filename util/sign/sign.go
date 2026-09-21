@@ -12,7 +12,7 @@ import (
 )
 
 type (
-	header struct {
+	Header struct {
 		Signature [8]byte
 		Version   uint32
 		BlockSize uint32
@@ -26,6 +26,8 @@ var (
 	SlotSize = 1024 * 1024
 
 	SlotSizeInt64 = int64(SlotSize)
+
+	CRC32CTable = crc32.MakeTable(crc32.Castagnoli)
 )
 
 const (
@@ -38,18 +40,31 @@ const (
 	HBDiskSignature = "\x3d\xc1\x3c\x87\xc0\x5b\xe3\xb6"
 	HBDiskVersion   = 1
 
-	hbChecksumOffset = 0
-	hbMagicOffset    = hbChecksumOffset + 4
-	hbVersionOffset  = hbMagicOffset + len(HBDiskSignature)
-	hbPageSizeOffset = hbVersionOffset + 4
-	hbSlotSizeOffset = hbPageSizeOffset + 4
-	hbUUIDOffset     = hbSlotSizeOffset + 4
-	hbHeaderSize     = hbUUIDOffset + 16
+	HBCrcOffset      = 0
+	HBMagicOffset    = HBCrcOffset + 4
+	HBVersionOffset  = HBMagicOffset + len(HBDiskSignature)
+	HBPageSizeOffset = HBVersionOffset + 4
+	HBSlotSizeOffset = HBPageSizeOffset + 4
+	HBUUIDOffset     = HBSlotSizeOffset + 4
+	HBHeaderSize     = HBUUIDOffset + 16
 )
 
-func CreateAndFillDisk(path string) error {
-	var hbCRC32CTable = crc32.MakeTable(crc32.Castagnoli)
+func VerifyHeader(block []byte) error {
+	if len(block) < HBHeaderSize {
+		return fmt.Errorf("block size %d is too small for heartbeat disk header", len(block))
+	}
+	if string(block[HBMagicOffset:HBMagicOffset+len(HBDiskSignature)]) != HBDiskSignature {
+		return fmt.Errorf("wrong signature")
+	}
+	checksum := crc32.Checksum(block[HBMagicOffset:HBHeaderSize], CRC32CTable)
+	expectedChecksum := binary.LittleEndian.Uint32(block[HBCrcOffset:])
+	if checksum != expectedChecksum {
+		return fmt.Errorf("checksum mismatch: expected %d, got %d", expectedChecksum, checksum)
+	}
+	return nil
+}
 
+func CreateAndFillDisk(path string) error {
 	f, err := os.OpenFile(path, os.O_RDWR, 0644)
 	if err != nil {
 		return err
@@ -61,25 +76,24 @@ func CreateAndFillDisk(path string) error {
 	}
 
 	block := directio.AlignedBlock(PageSize)
-	if len(block) < hbHeaderSize {
-		return fmt.Errorf("block size %d is too small for osvcfs header", len(block))
+	if len(block) < HBHeaderSize {
+		return fmt.Errorf("block size %d is too small for heartbeat disk header", len(block))
 	}
 
-	copy(block[hbMagicOffset:], HBDiskSignature)
-	binary.LittleEndian.PutUint32(block[hbVersionOffset:], HBDiskVersion)
-	binary.LittleEndian.PutUint32(block[hbPageSizeOffset:], uint32(PageSize))
-	binary.LittleEndian.PutUint32(block[hbSlotSizeOffset:], uint32(SlotSize))
+	copy(block[HBMagicOffset:], HBDiskSignature)
+	binary.LittleEndian.PutUint32(block[HBVersionOffset:], HBDiskVersion)
+	binary.LittleEndian.PutUint32(block[HBPageSizeOffset:], uint32(PageSize))
+	binary.LittleEndian.PutUint32(block[HBSlotSizeOffset:], uint32(SlotSize))
 
 	u := uuid.New()
-	copy(block[hbUUIDOffset:], u[:])
+	copy(block[HBUUIDOffset:], u[:])
 
-	checksum := crc32.Checksum(block[hbMagicOffset:hbHeaderSize], hbCRC32CTable)
-
-	binary.LittleEndian.PutUint32(block[hbChecksumOffset:], checksum)
+	checksum := crc32.Checksum(block[HBMagicOffset:HBHeaderSize], CRC32CTable)
+	binary.LittleEndian.PutUint32(block[HBCrcOffset:], checksum)
 
 	n, err := f.Write(block)
 	if err != nil {
-		return fmt.Errorf("write signature block: %s", err)
+		return fmt.Errorf("write signature block: %w", err)
 	}
 	if n != len(block) {
 		return io.ErrShortWrite
@@ -133,15 +147,34 @@ func getSignature(path string) ([]byte, error) {
 	}
 
 	sig := make([]byte, len(HBDiskSignature))
-	copy(sig, block[hbMagicOffset:hbMagicOffset+len(HBDiskSignature)])
+	copy(sig, block[HBMagicOffset:HBMagicOffset+len(HBDiskSignature)])
 
 	return sig, nil
 }
 
 func EnsureSignature(path string) (bool, error) {
-	signature, err := getSignature(path)
+	_, err := os.Stat(path)
 	if err != nil {
 		return false, err
 	}
-	return string(signature) == string(HBDiskSignature), nil
+
+	f, err := os.OpenFile(path, os.O_RDONLY, 0644)
+	if err != nil {
+		return false, err
+	}
+	defer f.Close()
+
+	if _, err := f.Seek(0, io.SeekStart); err != nil {
+		return false, fmt.Errorf("seek start: %w", err)
+	}
+
+	block := directio.AlignedBlock(PageSize)
+	if _, err := io.ReadFull(f, block); err != nil {
+		return false, fmt.Errorf("read full: %w", err)
+	}
+
+	if err := VerifyHeader(block); err != nil {
+		return false, nil
+	}
+	return true, nil
 }
