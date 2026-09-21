@@ -625,23 +625,40 @@ func (t *Manager) onSetInstanceMonitor(c *msgbus.SetInstanceMonitor) {
 		v.Close()
 	}
 
-	if t.change {
-		if c.Value.CandidateOrchestrationID != uuid.Nil && t.state.OrchestrationID.String() != c.Value.CandidateOrchestrationID.String() {
-			t.logSetOrchestrationID(c.Value.CandidateOrchestrationID)
-			t.state.OrchestrationID = c.Value.CandidateOrchestrationID
-			t.savePendingOrchestration()
-			t.publishOrchestrationAccepted()
-			t.setNextPendingOrchestration()
-		}
-		t.onChange()
-	} else {
+	refuse := func(reason string) {
 		t.publisher.Pub(&msgbus.ObjectOrchestrationRefused{
 			Node:         t.localhost,
 			Path:         t.path,
 			ID:           c.Value.CandidateOrchestrationID.String(),
-			Reason:       fmt.Sprintf("set instance monitor request => no changes: %v", c.Value),
+			Reason:       reason,
 			GlobalExpect: c.Value.GlobalExpect,
 		}, t.pubLabels...)
+	}
+
+	switch {
+	case err != nil:
+		// The request was refused, so the id its requester was handed does
+		// not become the id of this monitor's orchestration.
+		//
+		// It used to, whenever anything had changed the monitor in the same
+		// pass, which is not the same thing as the request having been taken
+		// on. The monitor was then left naming an orchestration that never
+		// ran, with no global expect to reach and so nothing to end it, and
+		// every later request was refused as "already in progress" until an
+		// abort cleared it. A start asked right after a create, while the
+		// peer monitors were not known yet, did exactly this.
+		refuse(err.Error())
+	case !t.change:
+		refuse(fmt.Sprintf("set instance monitor request => no changes: %v", c.Value))
+	case c.Value.CandidateOrchestrationID != uuid.Nil && t.state.OrchestrationID != c.Value.CandidateOrchestrationID:
+		t.logSetOrchestrationID(c.Value.CandidateOrchestrationID)
+		t.state.OrchestrationID = c.Value.CandidateOrchestrationID
+		t.savePendingOrchestration()
+		t.publishOrchestrationAccepted()
+		t.setNextPendingOrchestration()
+	}
+	if t.change {
+		t.onChange()
 	}
 }
 
