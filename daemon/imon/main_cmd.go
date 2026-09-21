@@ -985,17 +985,35 @@ func (t *Manager) IsNodeMonitorStatusRankable(node string) (bool, bool) {
 }
 
 func (t *Manager) newIsHALeader() bool {
+	return t.isStartCandidateLeader(true)
+}
+
+// isStartCandidateLeader says the local instance is the one to start, among
+// the instances that could start at all.
+//
+// skipFrozen leaves out the frozen nodes and instances. That is the one rule
+// here about whether the daemon is allowed to act, rather than about whether
+// an instance could start: freezing is how an operator says the daemon may
+// not act by itself. Every other rule, being not applicable, unprovisioned,
+// unrankable or start failed, says the instance cannot start whoever is
+// asking, and holds for a start a user requested just as much.
+func (t *Manager) isStartCandidateLeader(skipFrozen bool) bool {
 	var candidates []string
 
 	for _, node := range t.scopeNodes {
 		if v, ok := t.IsInstanceStatusNotApplicable(node); !ok || v {
 			continue
 		}
-		if nodeStatus, ok := t.nodeStatus[node]; !ok || nodeStatus.IsFrozen() {
+		if _, ok := t.nodeStatus[node]; !ok {
 			continue
 		}
-		if instStatus, ok := t.instStatus[node]; !ok || instStatus.IsFrozen() {
+		if _, ok := t.instStatus[node]; !ok {
 			continue
+		}
+		if skipFrozen {
+			if t.nodeStatus[node].IsFrozen() || t.instStatus[node].IsFrozen() {
+				continue
+			}
 		}
 		if instStatus, ok := t.instStatus[node]; !ok || instStatus.Provisioned.IsOneOf(provisioned.Mixed, provisioned.False) {
 			continue

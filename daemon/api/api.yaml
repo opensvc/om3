@@ -390,7 +390,16 @@ paths:
               format: binary
       responses:
         204:
-          $ref: '#/components/responses/204'
+          description: No Content
+          headers:
+            OM-Last-Modified:
+              description: |
+                The timestamp the written configuration now carries. Pass it as
+                the config_updated_at parameter of an action to make that action
+                refuse to run on the configuration this one replaces.
+              type: string
+              format: date-time
+              pattern: '^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(\.\d{1,9})?Z?$'
         400:
           $ref: '#/components/responses/400'
         401:
@@ -837,6 +846,36 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/NetworkList'
+        401:
+          $ref: '#/components/responses/401'
+        403:
+          $ref: '#/components/responses/403'
+        500:
+          $ref: '#/components/responses/500'
+
+  /api/network/claim:
+    post:
+      operationId: PostNetworkClaim
+      tags:
+        - network
+      security:
+        - basicAuth: []
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PostNetworkClaim'
+      responses:
+        200:
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/NetworkClaim'
+        400:
+          $ref: '#/components/responses/400'
         401:
           $ref: '#/components/responses/401'
         403:
@@ -2508,6 +2547,7 @@ paths:
         - $ref: '#/components/parameters/inQuerySubset'
         - $ref: '#/components/parameters/inQueryTag'
         - $ref: '#/components/parameters/inQueryTo'
+        - $ref: '#/components/parameters/inQueryConfigUpdatedAt'
       responses:
         200:
           content:
@@ -2521,6 +2561,8 @@ paths:
           $ref: '#/components/responses/401'
         403:
           $ref: '#/components/responses/403'
+        409:
+          $ref: '#/components/responses/409'
         500:
           $ref: '#/components/responses/500'
       security:
@@ -2540,6 +2582,7 @@ paths:
         - $ref: '#/components/parameters/inPathKind'
         - $ref: '#/components/parameters/inPathName'
         - $ref: '#/components/parameters/inQuerySessionID'
+        - $ref: '#/components/parameters/inQueryConfigUpdatedAt'
       responses:
         200:
           content:
@@ -2553,6 +2596,8 @@ paths:
           $ref: '#/components/responses/401'
         403:
           $ref: '#/components/responses/403'
+        409:
+          $ref: '#/components/responses/409'
         500:
           $ref: '#/components/responses/500'
       security:
@@ -2579,6 +2624,7 @@ paths:
         - $ref: '#/components/parameters/inQueryMaster'
         - $ref: '#/components/parameters/inQuerySlaves'
         - $ref: '#/components/parameters/inQuerySessionID'
+        - $ref: '#/components/parameters/inQueryConfigUpdatedAt'
       responses:
         200:
           content:
@@ -2592,6 +2638,8 @@ paths:
           $ref: '#/components/responses/401'
         403:
           $ref: '#/components/responses/403'
+        409:
+          $ref: '#/components/responses/409'
         500:
           $ref: '#/components/responses/500'
       security:
@@ -2616,6 +2664,7 @@ paths:
         - $ref: '#/components/parameters/inPathName'
         - $ref: '#/components/parameters/inQueryRid'
         - $ref: '#/components/parameters/inQuerySessionID'
+        - $ref: '#/components/parameters/inQueryConfigUpdatedAt'
       responses:
         200:
           content:
@@ -2627,6 +2676,8 @@ paths:
           $ref: '#/components/responses/401'
         403:
           $ref: '#/components/responses/403'
+        409:
+          $ref: '#/components/responses/409'
         500:
           $ref: '#/components/responses/500'
       security:
@@ -2657,6 +2708,7 @@ paths:
         - $ref: '#/components/parameters/inQuerySubset'
         - $ref: '#/components/parameters/inQueryTag'
         - $ref: '#/components/parameters/inQueryTo'
+        - $ref: '#/components/parameters/inQueryConfigUpdatedAt'
       responses:
         200:
           content:
@@ -2670,6 +2722,8 @@ paths:
           $ref: '#/components/responses/401'
         403:
           $ref: '#/components/responses/403'
+        409:
+          $ref: '#/components/responses/409'
         500:
           $ref: '#/components/responses/500'
       tags:
@@ -2699,6 +2753,7 @@ paths:
         - $ref: '#/components/parameters/inQuerySubset'
         - $ref: '#/components/parameters/inQueryTag'
         - $ref: '#/components/parameters/inQueryTo'
+        - $ref: '#/components/parameters/inQueryConfigUpdatedAt'
       responses:
         200:
           content:
@@ -2712,6 +2767,8 @@ paths:
           $ref: '#/components/responses/401'
         403:
           $ref: '#/components/responses/403'
+        409:
+          $ref: '#/components/responses/409'
         500:
           $ref: '#/components/responses/500'
       security:
@@ -2741,6 +2798,7 @@ paths:
         - $ref: '#/components/parameters/inQuerySubset'
         - $ref: '#/components/parameters/inQueryTag'
         - $ref: '#/components/parameters/inQueryTo'
+        - $ref: '#/components/parameters/inQueryConfigUpdatedAt'
       responses:
         200:
           content:
@@ -2754,6 +2812,8 @@ paths:
           $ref: '#/components/responses/401'
         403:
           $ref: '#/components/responses/403'
+        409:
+          $ref: '#/components/responses/409'
         500:
           $ref: '#/components/responses/500'
       security:
@@ -2782,6 +2842,7 @@ paths:
         - $ref: '#/components/parameters/inQuerySubset'
         - $ref: '#/components/parameters/inQueryTag'
         - $ref: '#/components/parameters/inQueryTo'
+        - $ref: '#/components/parameters/inQueryConfigUpdatedAt'
       responses:
         200:
           content:
@@ -2795,6 +2856,8 @@ paths:
           $ref: '#/components/responses/401'
         403:
           $ref: '#/components/responses/403'
+        409:
+          $ref: '#/components/responses/409'
         500:
           $ref: '#/components/responses/500'
       security:
@@ -2825,6 +2888,7 @@ paths:
         - $ref: '#/components/parameters/inQueryTag'
         - $ref: '#/components/parameters/inQueryTo'
         - $ref: '#/components/parameters/inQueryEnvs'
+        - $ref: '#/components/parameters/inQueryConfigUpdatedAt'
       responses:
         200:
           content:
@@ -2838,6 +2902,8 @@ paths:
           $ref: '#/components/responses/401'
         403:
           $ref: '#/components/responses/403'
+        409:
+          $ref: '#/components/responses/409'
         500:
           $ref: '#/components/responses/500'
       security:
@@ -2865,6 +2931,7 @@ paths:
         - $ref: '#/components/parameters/inQuerySubset'
         - $ref: '#/components/parameters/inQueryTag'
         - $ref: '#/components/parameters/inQueryTo'
+        - $ref: '#/components/parameters/inQueryConfigUpdatedAt'
       responses:
         200:
           content:
@@ -2878,6 +2945,8 @@ paths:
           $ref: '#/components/responses/401'
         403:
           $ref: '#/components/responses/403'
+        409:
+          $ref: '#/components/responses/409'
         500:
           $ref: '#/components/responses/500'
       security:
@@ -2906,6 +2975,7 @@ paths:
         - $ref: '#/components/parameters/inQuerySubset'
         - $ref: '#/components/parameters/inQueryTag'
         - $ref: '#/components/parameters/inQueryTo'
+        - $ref: '#/components/parameters/inQueryConfigUpdatedAt'
       responses:
         200:
           content:
@@ -2919,6 +2989,8 @@ paths:
           $ref: '#/components/responses/401'
         403:
           $ref: '#/components/responses/403'
+        409:
+          $ref: '#/components/responses/409'
         500:
           $ref: '#/components/responses/500'
       security:
@@ -2947,6 +3019,7 @@ paths:
         - $ref: '#/components/parameters/inQuerySubset'
         - $ref: '#/components/parameters/inQueryTag'
         - $ref: '#/components/parameters/inQueryTo'
+        - $ref: '#/components/parameters/inQueryConfigUpdatedAt'
       responses:
         200:
           content:
@@ -2960,6 +3033,8 @@ paths:
           $ref: '#/components/responses/401'
         403:
           $ref: '#/components/responses/403'
+        409:
+          $ref: '#/components/responses/409'
         500:
           $ref: '#/components/responses/500'
       security:
@@ -2979,6 +3054,7 @@ paths:
         - $ref: '#/components/parameters/inPathKind'
         - $ref: '#/components/parameters/inPathName'
         - $ref: '#/components/parameters/inQuerySessionID'
+        - $ref: '#/components/parameters/inQueryConfigUpdatedAt'
       responses:
         200:
           content:
@@ -2992,6 +3068,8 @@ paths:
           $ref: '#/components/responses/401'
         403:
           $ref: '#/components/responses/403'
+        409:
+          $ref: '#/components/responses/409'
         500:
           $ref: '#/components/responses/500'
       security:
@@ -3020,6 +3098,7 @@ paths:
         - $ref: '#/components/parameters/inQuerySubset'
         - $ref: '#/components/parameters/inQueryTag'
         - $ref: '#/components/parameters/inQueryTo'
+        - $ref: '#/components/parameters/inQueryConfigUpdatedAt'
       responses:
         200:
           content:
@@ -3033,6 +3112,8 @@ paths:
           $ref: '#/components/responses/401'
         403:
           $ref: '#/components/responses/403'
+        409:
+          $ref: '#/components/responses/409'
         500:
           $ref: '#/components/responses/500'
       security:
@@ -3058,6 +3139,7 @@ paths:
         - $ref: '#/components/parameters/inQuerySlaves'
         - $ref: '#/components/parameters/inQuerySubset'
         - $ref: '#/components/parameters/inQueryTag'
+        - $ref: '#/components/parameters/inQueryConfigUpdatedAt'
       responses:
         200:
           content:
@@ -3071,6 +3153,8 @@ paths:
           $ref: '#/components/responses/401'
         403:
           $ref: '#/components/responses/403'
+        409:
+          $ref: '#/components/responses/409'
         500:
           $ref: '#/components/responses/500'
       security:
@@ -3097,6 +3181,7 @@ paths:
         - $ref: '#/components/parameters/inQuerySlaves'
         - $ref: '#/components/parameters/inQuerySubset'
         - $ref: '#/components/parameters/inQueryTag'
+        - $ref: '#/components/parameters/inQueryConfigUpdatedAt'
       responses:
         200:
           content:
@@ -3110,6 +3195,8 @@ paths:
           $ref: '#/components/responses/401'
         403:
           $ref: '#/components/responses/403'
+        409:
+          $ref: '#/components/responses/409'
         500:
           $ref: '#/components/responses/500'
       security:
@@ -3120,10 +3207,10 @@ paths:
         - node / instance / svc
         - node / instance / vol
 
-  /api/node/name/{nodename}/instance/path/{namespace}/{kind}/{name}/action/sync/ingest:
+  /api/node/name/{nodename}/instance/path/{namespace}/{kind}/{name}/action/ingest:
     post:
       description: Ingest resource var files received by the active instance sync update action.
-      operationId: PostInstanceActionSyncIngest
+      operationId: PostInstanceActionIngest
       parameters:
         - $ref: '#/components/parameters/inPathNodeName'
         - $ref: '#/components/parameters/inPathNamespace'
@@ -3133,6 +3220,7 @@ paths:
         - $ref: '#/components/parameters/inQueryRid'
         - $ref: '#/components/parameters/inQuerySubset'
         - $ref: '#/components/parameters/inQueryTag'
+        - $ref: '#/components/parameters/inQueryConfigUpdatedAt'
       responses:
         200:
           content:
@@ -3146,6 +3234,166 @@ paths:
           $ref: '#/components/responses/401'
         403:
           $ref: '#/components/responses/403'
+        409:
+          $ref: '#/components/responses/409'
+        500:
+          $ref: '#/components/responses/500'
+      security:
+        - basicAuth: []
+        - bearerAuth: []
+      tags:
+        - node / instance / svc
+        - node / instance / vol
+
+  /api/node/name/{nodename}/instance/path/{namespace}/{kind}/{name}/action/full:
+    post:
+      description: Copy the whole local dataset of the object instance to its peers.
+      operationId: PostInstanceActionFull
+      parameters:
+        - $ref: '#/components/parameters/inPathNodeName'
+        - $ref: '#/components/parameters/inPathNamespace'
+        - $ref: '#/components/parameters/inPathKind'
+        - $ref: '#/components/parameters/inPathName'
+        - $ref: '#/components/parameters/inQuerySessionID'
+        - $ref: '#/components/parameters/inQueryRid'
+        - $ref: '#/components/parameters/inQuerySubset'
+        - $ref: '#/components/parameters/inQueryTag'
+        - $ref: '#/components/parameters/inQueryConfigUpdatedAt'
+        - $ref: '#/components/parameters/inQueryForce'
+        - $ref: '#/components/parameters/inQuerySyncTarget'
+      responses:
+        200:
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/InstanceActionAccepted'
+          description: OK
+        400:
+          $ref: '#/components/responses/400'
+        401:
+          $ref: '#/components/responses/401'
+        403:
+          $ref: '#/components/responses/403'
+        409:
+          $ref: '#/components/responses/409'
+        500:
+          $ref: '#/components/responses/500'
+      security:
+        - basicAuth: []
+        - bearerAuth: []
+      tags:
+        - node / instance / svc
+        - node / instance / vol
+
+  /api/node/name/{nodename}/instance/path/{namespace}/{kind}/{name}/action/resync:
+    post:
+      description: Restore optimal synchronization of the object instance.
+      operationId: PostInstanceActionResync
+      parameters:
+        - $ref: '#/components/parameters/inPathNodeName'
+        - $ref: '#/components/parameters/inPathNamespace'
+        - $ref: '#/components/parameters/inPathKind'
+        - $ref: '#/components/parameters/inPathName'
+        - $ref: '#/components/parameters/inQuerySessionID'
+        - $ref: '#/components/parameters/inQueryRid'
+        - $ref: '#/components/parameters/inQuerySubset'
+        - $ref: '#/components/parameters/inQueryTag'
+        - $ref: '#/components/parameters/inQueryConfigUpdatedAt'
+        - $ref: '#/components/parameters/inQueryForce'
+      responses:
+        200:
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/InstanceActionAccepted'
+          description: OK
+        400:
+          $ref: '#/components/responses/400'
+        401:
+          $ref: '#/components/responses/401'
+        403:
+          $ref: '#/components/responses/403'
+        409:
+          $ref: '#/components/responses/409'
+        500:
+          $ref: '#/components/responses/500'
+      security:
+        - basicAuth: []
+        - bearerAuth: []
+      tags:
+        - node / instance / svc
+        - node / instance / vol
+
+  /api/node/name/{nodename}/instance/path/{namespace}/{kind}/{name}/action/split:
+    post:
+      description: Split the replication of the object instance.
+      operationId: PostInstanceActionSplit
+      parameters:
+        - $ref: '#/components/parameters/inPathNodeName'
+        - $ref: '#/components/parameters/inPathNamespace'
+        - $ref: '#/components/parameters/inPathKind'
+        - $ref: '#/components/parameters/inPathName'
+        - $ref: '#/components/parameters/inQuerySessionID'
+        - $ref: '#/components/parameters/inQueryRid'
+        - $ref: '#/components/parameters/inQuerySubset'
+        - $ref: '#/components/parameters/inQueryTag'
+        - $ref: '#/components/parameters/inQueryConfigUpdatedAt'
+        - $ref: '#/components/parameters/inQueryForce'
+      responses:
+        200:
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/InstanceActionAccepted'
+          description: OK
+        400:
+          $ref: '#/components/responses/400'
+        401:
+          $ref: '#/components/responses/401'
+        403:
+          $ref: '#/components/responses/403'
+        409:
+          $ref: '#/components/responses/409'
+        500:
+          $ref: '#/components/responses/500'
+      security:
+        - basicAuth: []
+        - bearerAuth: []
+      tags:
+        - node / instance / svc
+        - node / instance / vol
+
+  /api/node/name/{nodename}/instance/path/{namespace}/{kind}/{name}/action/update:
+    post:
+      description: Copy the local dataset changes of the object instance to its peers.
+      operationId: PostInstanceActionUpdate
+      parameters:
+        - $ref: '#/components/parameters/inPathNodeName'
+        - $ref: '#/components/parameters/inPathNamespace'
+        - $ref: '#/components/parameters/inPathKind'
+        - $ref: '#/components/parameters/inPathName'
+        - $ref: '#/components/parameters/inQuerySessionID'
+        - $ref: '#/components/parameters/inQueryRid'
+        - $ref: '#/components/parameters/inQuerySubset'
+        - $ref: '#/components/parameters/inQueryTag'
+        - $ref: '#/components/parameters/inQueryConfigUpdatedAt'
+        - $ref: '#/components/parameters/inQueryForce'
+        - $ref: '#/components/parameters/inQuerySyncTarget'
+      responses:
+        200:
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/InstanceActionAccepted'
+          description: OK
+        400:
+          $ref: '#/components/responses/400'
+        401:
+          $ref: '#/components/responses/401'
+        403:
+          $ref: '#/components/responses/403'
+        409:
+          $ref: '#/components/responses/409'
         500:
           $ref: '#/components/responses/500'
       security:
@@ -3168,6 +3416,7 @@ paths:
         - $ref: '#/components/parameters/inQueryMaster'
         - $ref: '#/components/parameters/inQuerySlaves'
         - $ref: '#/components/parameters/inQuerySessionID'
+        - $ref: '#/components/parameters/inQueryConfigUpdatedAt'
       responses:
         200:
           content:
@@ -3181,6 +3430,8 @@ paths:
           $ref: '#/components/responses/401'
         403:
           $ref: '#/components/responses/403'
+        409:
+          $ref: '#/components/responses/409'
         500:
           $ref: '#/components/responses/500'
       security:
@@ -3210,6 +3461,7 @@ paths:
         - $ref: '#/components/parameters/inQuerySubset'
         - $ref: '#/components/parameters/inQueryTag'
         - $ref: '#/components/parameters/inQueryTo'
+        - $ref: '#/components/parameters/inQueryConfigUpdatedAt'
       responses:
         200:
           content:
@@ -3223,6 +3475,8 @@ paths:
           $ref: '#/components/responses/401'
         403:
           $ref: '#/components/responses/403'
+        409:
+          $ref: '#/components/responses/409'
         500:
           $ref: '#/components/responses/500'
       security:
@@ -4397,6 +4651,47 @@ paths:
         500:
           $ref: '#/components/responses/500'
 
+  /api/object/path/{namespace}/{kind}/{name}/action/resize:
+    post:
+      operationId: PostObjectActionResize
+      tags:
+        - object / svc
+      security:
+        - basicAuth: []
+        - bearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/inPathNamespace'
+        - $ref: '#/components/parameters/inPathKind'
+        - $ref: '#/components/parameters/inPathName'
+        - $ref: '#/components/parameters/inQueryConfigUpdatedAt'
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PostObjectActionResize'
+      responses:
+        200:
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/OrchestrationQueued'
+        400:
+          $ref: '#/components/responses/400'
+        401:
+          $ref: '#/components/responses/401'
+        403:
+          $ref: '#/components/responses/403'
+        404:
+          $ref: '#/components/responses/404'
+        408:
+          $ref: '#/components/responses/408'
+        409:
+          $ref: '#/components/responses/409'
+        500:
+          $ref: '#/components/responses/500'
+
   /api/object/path/{namespace}/{kind}/{name}/action/restart:
     post:
       operationId: PostObjectActionRestart
@@ -4768,7 +5063,16 @@ paths:
               format: binary
       responses:
         204:
-          $ref: '#/components/responses/204'
+          description: No Content
+          headers:
+            OM-Last-Modified:
+              description: |
+                The timestamp the written configuration now carries. Pass it as
+                the config_updated_at parameter of an action to make that action
+                refuse to run on the configuration this one replaces.
+              type: string
+              format: date-time
+              pattern: '^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(\.\d{1,9})?Z?$'
         400:
           $ref: '#/components/responses/400'
         401:
@@ -4806,7 +5110,16 @@ paths:
               format: binary
       responses:
         204:
-          $ref: '#/components/responses/204'
+          description: No Content
+          headers:
+            OM-Last-Modified:
+              description: |
+                The timestamp the written configuration now carries. Pass it as
+                the config_updated_at parameter of an action to make that action
+                refuse to run on the configuration this one replaces.
+              type: string
+              format: date-time
+              pattern: '^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(\.\d{1,9})?Z?$'
         400:
           $ref: '#/components/responses/400'
         401:
@@ -5200,6 +5513,36 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/PoolList'
+        401:
+          $ref: '#/components/responses/401'
+        403:
+          $ref: '#/components/responses/403'
+        500:
+          $ref: '#/components/responses/500'
+
+  /api/pool/claim:
+    post:
+      operationId: PostPoolClaim
+      tags:
+        - pool
+      security:
+        - basicAuth: []
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PostPoolClaim'
+      responses:
+        200:
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PoolClaim'
+        400:
+          $ref: '#/components/responses/400'
         401:
           $ref: '#/components/responses/401'
         403:
@@ -6685,6 +7028,8 @@ components:
         - deprecated
         - replacedBy
         - redactSecret
+        - recorded
+        - arithmetic
         - required
         - minimal
       properties:
@@ -6738,6 +7083,20 @@ components:
         redactSecret:
           type: boolean
           description: True when the keyword value is a secret, hidden by the config show --redact-secrets flag.
+        recorded:
+          type: boolean
+          description: >
+            True when the value names a thing that now exists, and was written
+            into the configuration when that thing was made: the id an object
+            was created with, the uuid an md array was created with. A
+            configuration copied to make another thing must not carry it, so
+            these are reset when an object is cloned.
+        arithmetic:
+          type: boolean
+          description: >
+            True when an expression written $(...) in the keyword value is
+            computed. Implied by a converter that makes a number, and declared
+            where the keyword holds a number but converts to none.
         required:
           type: boolean
         minimal:
@@ -6900,6 +7259,49 @@ components:
           x-go-name: RID
         network:
           $ref: '#/components/schemas/NetworkIPNetwork'
+
+    PostNetworkClaim:
+      type: object
+      required:
+        - namespace
+        - network
+        - path
+        - rid
+      properties:
+        namespace:
+          description: the namespace holding addresses of the network
+          type: string
+        network:
+          description: the name of the network the address is drawn from
+          type: string
+        path:
+          description: the object the address is reserved for
+          type: string
+        rid:
+          description: |
+            the resource of the object the address is reserved for, so that a
+            claim answered yes stops being counted on its own once the cluster
+            reports the address it was granted for
+          type: string
+          x-go-name: RID
+
+    NetworkClaim:
+      type: object
+      required:
+        - granted
+      properties:
+        granted:
+          description: whether the namespace may take one more address
+          type: boolean
+        reason:
+          description: why the namespace may not take it
+          type: string
+        expires_at:
+          description: |
+            when a granted claim stops being counted, should the address it
+            was granted for never be reserved
+          type: string
+          format: date-time
 
     NetworkIPItems:
       type: array
@@ -7586,6 +7988,9 @@ components:
         - free
         - used
         - size
+        - logical_free
+        - logical_used
+        - logical_size
         - updated_at
       properties:
         name:
@@ -7605,14 +8010,37 @@ components:
           items:
             type: string
         free:
+          description: the bytes of storage behind the pool nothing has taken
           type: integer
           format: int64
         used:
+          description: the bytes of storage behind the pool something has taken
           type: integer
           format: int64
         shared:
+          description: |
+            whether every node sees the same storage, as the nodes of an array
+            pool do, so that what the cluster holds of it is what one node
+            reports and not the sum of what they all report
           type: boolean
         size:
+          description: the bytes of storage behind the pool
+          type: integer
+          format: int64
+        logical_free:
+          description: |
+            the bytes the pool can still hand out to volumes, which is the
+            currency a volume is asked for in and a claim is rationed in
+          type: integer
+          format: int64
+        logical_used:
+          description: the bytes the pool has handed out to volumes
+          type: integer
+          format: int64
+        logical_size:
+          description: |
+            the bytes the pool can hand out to volumes, counting a volume once
+            however many nodes hold a copy of it
           type: integer
           format: int64
         volume_count:
@@ -7663,8 +8091,70 @@ components:
         is_orphan:
           type: boolean
         size:
+          description: the size the volume was served with by its pool
           type: integer
           format: int64
+        charges:
+          description: |
+            what the volume takes of pools other than the one that served it,
+            by pool name, which a volume made of storage carved elsewhere does
+            and nothing else says
+          type: object
+          additionalProperties:
+            type: integer
+            format: int64
+
+    # ========================================================================
+    # pool claim schemas
+    # ========================================================================
+
+    PostPoolClaim:
+      type: object
+      required:
+        - namespace
+        - pool
+        - size
+      properties:
+        namespace:
+          description: the namespace taking of the pool
+          type: string
+        pool:
+          description: the name of the pool the namespace takes of
+          type: string
+        path:
+          description: |
+            the object the claim is for, so that a claim answered yes stops
+            being counted on its own once the configuration of the object
+            says the same thing
+          type: string
+        size:
+          description: the size the object is to hold, not the increase
+          type: integer
+          format: int64
+        probe:
+          description: |
+            answer whether the namespace may take it, without counting it as
+            taken: what a pool lookup asks of every pool it weighs, where only
+            the pool it picks is claimed of
+          type: boolean
+
+    PoolClaim:
+      type: object
+      required:
+        - granted
+      properties:
+        granted:
+          description: whether the namespace may take what it asked for
+          type: boolean
+        reason:
+          description: why the namespace may not take it
+          type: string
+        expires_at:
+          description: |
+            when a granted claim stops being counted, should the
+            configuration it was granted for never be written
+          type: string
+          format: date-time
 
     PoolVolumeItems:
       type: array
@@ -7712,6 +8202,20 @@ components:
         data:
           type: string
           format: byte
+
+    PostObjectActionResize:
+      type: object
+      properties:
+        size:
+          type: string
+          description: >
+            The size the object is to hold, as "11g", "11GB" or "12Gi", or the
+            amount to add, as "+1g". The size is written to the object
+            configuration, which is what every node converges to, before the
+            orchestration is queued. Omit it to converge to the size already
+            configured, which is how a resize that stopped part way is
+            finished.
+          example: +1g
 
     PostObjectActionRestart:
       type: object
@@ -7856,8 +8360,9 @@ components:
         path:
           type: string
           description: The object the orchestration is of. Absent when it is of the node.
-        global_expect:
+        expect:
           type: string
+          description: The state the orchestration is for. An object is asked by a global expect; a node by a global one to freeze and a local one to drain.
         state:
           type: string
           description: One of running, succeeded, aborted, refused.
@@ -9203,6 +9708,27 @@ components:
       schema:
         type: string
 
+    inQueryConfigUpdatedAt:
+      in: query
+      name: config_updated_at
+      x-go-name: ConfigUpdatedAt
+      description: |
+        Refuse the action unless the instance configuration on the node running
+        it is at least as recent as this timestamp, answering 409 Conflict when
+        it is older.
+
+        A configuration write answers with the timestamp it produced, in the
+        OM-Last-Modified header, and a write reaches the peer nodes a moment
+        after it is acknowledged. Passing that timestamp back here is how a
+        client that wrote a configuration and then acts on it makes sure every
+        instance acts on what it wrote, rather than on what it is replacing.
+
+        Optional. Without it the action runs on whatever configuration the node
+        holds.
+      schema:
+        type: string
+        format: date-time
+
     inQuerySessionID:
       in: query
       name: session_id
@@ -9283,6 +9809,16 @@ components:
           type: string
           description: A keyword operation expressed as <kw>[<index>]<op><value>, with op like = += -=.
           example: env.eat=fruits
+
+    inQuerySyncTarget:
+      in: query
+      name: target
+      x-go-name: SyncTarget
+      description: The peers to sync to, as node or drpnode names.
+      schema:
+        type: array
+        items:
+          type: string
 
     inQuerySlaves:
       in: query

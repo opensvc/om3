@@ -1,0 +1,20 @@
+The percentage of cpu time the processes of every object of this namespace may
+use, taken together.
+
+Accepted expressions:
+
+* `50%`
+  Half of one cpu.
+
+* `50%@all`
+  Half of every cpu the node has.
+
+* `10%@2`
+  A tenth of two cpus.
+
+Unlike `pg_cpu_shares`, which only arbitrates when the node is cpu-bound, a
+quota caps the namespace whether or not the node is busy.
+
+Setting this keyword to `default` puts the capping back where a node that
+never capped anything leaves it. Removing the keyword does not: what was
+written stays written, whether om wrote it or something else did.

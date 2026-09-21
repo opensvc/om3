@@ -2,7 +2,6 @@ package command
 
 import (
 	"bufio"
-	"bytes"
 	"context"
 	"errors"
 	"fmt"
@@ -10,8 +9,8 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"slices"
 	"strings"
-	"sync"
 	"syscall"
 	"time"
 
@@ -36,6 +35,7 @@ type (
 		cmd          *exec.Cmd
 		label        string
 		timeout      time.Duration
+		waitDelay    time.Duration
 		onStdoutLine func(string)
 		onStderrLine func(string)
 		okExitCodes  []int
@@ -54,7 +54,8 @@ type (
 		started       bool // Prevent relaunch
 		waited        bool // Prevent relaunch
 		promptReader  *bufio.Reader
-		wg            sync.WaitGroup
+		stdoutWriter  *lineWriter
+		stderrWriter  *lineWriter
 
 		ctx    context.Context
 		cancel context.CancelFunc
@@ -73,6 +74,15 @@ var (
 	ErrPromptAbort    = errors.New("command: aborted by prompt")
 )
 
+// DefaultWaitDelay is how long a command is given, after it has exited, for
+// the output it wrote to reach this process.
+//
+// It is the grace a well-behaved command never uses: what it wrote is already
+// in the pipe when it exits, and the pipe reaches EOF as soon as the last
+// holder of its write end is gone. The delay is for the command that hands a
+// write end to something that outlives it, where EOF never comes at all.
+const DefaultWaitDelay = 5 * time.Second
+
 func New(opts ...funcopt.O) *T {
 	t := &T{
 		stdoutLogLevel:  zerolog.Disabled,
@@ -80,6 +90,7 @@ func New(opts ...funcopt.O) *T {
 		logLevel:        zerolog.TraceLevel,
 		commandLogLevel: zerolog.TraceLevel,
 		okExitCodes:     []int{0},
+		waitDelay:       DefaultWaitDelay,
 	}
 	_ = funcopt.Apply(t, opts...)
 	if t.ctx == nil {
@@ -133,7 +144,6 @@ func (t *T) Stderr() []byte {
 // Start prepare command, then call underlying cmd.Start()
 // it takes care of preparing logging, timeout, stdout and stderr watchers
 func (t *T) Start() (err error) {
-	var readOut, readErr func()
 	if t.started {
 		return fmt.Errorf("%w", ErrAlreadyStarted)
 	}
@@ -154,95 +164,40 @@ func (t *T) Start() (err error) {
 		}
 	}()
 
-	parseLines := func(r io.Reader, onLine func(s string), b *[]byte) error {
-		reader := bufio.NewReader(r)
-
-		for {
-			// Read until newline or EOF
-			line, err := reader.ReadBytes('\n')
-			if len(line) > 0 {
-				if b != nil {
-					*b = append(*b, line...)
-				}
-				if onLine != nil {
-					onLine(string(bytes.TrimSuffix(line, []byte("\n"))))
-				}
-			}
-
-			if err != nil {
-				if errors.Is(err, io.EOF) {
-					return nil
-				}
-				return fmt.Errorf("read bytes: %v", err)
-			}
-		}
-	}
-
 	if t.stdoutLogLevel != zerolog.Disabled || t.bufferStdout || t.onStdoutLine != nil {
-		var r io.ReadCloser
-		if r, err = t.cmd.StdoutPipe(); err != nil {
-			if t.log != nil {
-				t.log.Attr("cmd", t.cmd.String()).Levelf(t.logLevel, "command.Start() -> StdoutPipe(): %s", err)
-			}
-			return fmt.Errorf("%w", err)
-		}
-		toCloseOnEarlyReturn = append(toCloseOnEarlyReturn, r)
-
-		onLine := func(s string) {
-			if t.log != nil && t.stdoutLogLevel != zerolog.Disabled {
-				t.log.Attr("out", s).Attr("pid", t.pid).Levelf(t.stdoutLogLevel, "stdout: %s", s)
-			}
-			if t.onStdoutLine != nil {
-				t.onStdoutLine(s)
-			}
-		}
-
-		t.wg.Add(1)
-		readOut = func() {
-			defer t.wg.Done()
-			if err := parseLines(r, onLine, &t.stdout); err != nil {
-				if t.log != nil {
-					t.log.Attr("cmd", t.cmd.String()).Levelf(t.logLevel, "command parse stdout lines: %s", err)
+		w := &lineWriter{
+			onLine: func(s string) {
+				if t.log != nil && t.stdoutLogLevel != zerolog.Disabled {
+					t.log.Attr("out", s).Attr("pid", t.startedPID()).Levelf(t.stdoutLogLevel, "stdout: %s", s)
 				}
-			}
-			// explicit close call for situation where t.cmd.Wait() is not called
-			_ = r.Close()
+				if t.onStdoutLine != nil {
+					t.onStdoutLine(s)
+				}
+			},
 		}
+		if t.bufferStdout {
+			w.collect = &t.stdout
+		}
+		t.stdoutWriter = w
+		t.cmd.Stdout = w
 	}
 
 	if t.stderrLogLevel != zerolog.Disabled || t.bufferStderr || t.onStderrLine != nil {
-		var r io.ReadCloser
-		if r, err = t.cmd.StderrPipe(); err != nil {
-			if t.log != nil {
-				t.log.Attr("cmd", t.cmd.String()).Levelf(t.logLevel, "command.Start() -> StderrPipe(): %s", err)
-			}
-			return fmt.Errorf("%w", err)
-		}
-		toCloseOnEarlyReturn = append(toCloseOnEarlyReturn, r)
-
-		onLine := func(s string) {
-			if t.log != nil && t.stderrLogLevel != zerolog.Disabled {
-				if t.log != nil {
-					t.log.Attr("err", s).Attr("pid", t.pid).Levelf(t.stderrLogLevel, "stderr: %s", s)
+		w := &lineWriter{
+			onLine: func(s string) {
+				if t.log != nil && t.stderrLogLevel != zerolog.Disabled {
+					t.log.Attr("err", s).Attr("pid", t.startedPID()).Levelf(t.stderrLogLevel, "stderr: %s", s)
 				}
-			}
-			if t.onStderrLine != nil {
-				t.onStderrLine(s)
-			}
-		}
-
-		t.wg.Add(1)
-		readErr = func() {
-			defer t.wg.Done()
-			if err := parseLines(r, onLine, &t.stderr); err != nil {
-				if t.log != nil {
-					t.log.Attr("cmd", t.cmd.String()).Levelf(t.logLevel, "command parse stderr lines: %s", err)
+				if t.onStderrLine != nil {
+					t.onStderrLine(s)
 				}
-			}
-
-			// explicit close call for situation where t.cmd.Wait() is not called
-			_ = r.Close()
+			},
 		}
+		if t.bufferStderr {
+			w.collect = &t.stderr
+		}
+		t.stderrWriter = w
+		t.cmd.Stderr = w
 	}
 
 	if t.log != nil {
@@ -252,6 +207,14 @@ func (t *T) Start() (err error) {
 			t.log.Attr("cmd", t.cmd.String()).Levelf(t.logLevel, "run %s", t.cmd)
 		}
 	}
+	// A command that leaves something behind holding its output pipes is a
+	// command this would otherwise wait on for ever: the pipes reach EOF when
+	// the last holder of their write end is gone, and a detaching command
+	// hands those to a process that outlives it. The delay bounds that wait,
+	// and starts counting only once the process has exited, so it costs a
+	// well-behaved command nothing.
+	t.cmd.WaitDelay = t.waitDelay
+
 	t.started = true
 	if err = t.cmd.Start(); err != nil {
 		if t.log != nil {
@@ -262,13 +225,21 @@ func (t *T) Start() (err error) {
 	if t.cmd.Process != nil {
 		t.pid = t.cmd.Process.Pid
 	}
-	if readOut != nil {
-		go readOut()
-	}
-	if readErr != nil {
-		go readErr()
-	}
 	return nil
+}
+
+// startedPID is the pid of the running command, for the goroutines copying
+// its output.
+//
+// They are started by exec.Cmd.Start, which sets Process before it starts
+// them, so what it holds is theirs to read. The pid field is not: it is
+// written by whoever called Start, after Start has returned and after the
+// command has begun writing.
+func (t *T) startedPID() int {
+	if t.cmd == nil || t.cmd.Process == nil {
+		return 0
+	}
+	return t.cmd.Process.Pid
 }
 
 func (t *T) Cmd() *exec.Cmd {
@@ -307,6 +278,16 @@ func (t *T) NormalizedExitCode() int {
 	return ps.ExitCode()
 }
 
+// flushWriters hands over what the command wrote after its last newline.
+func (t *T) flushWriters() {
+	if t.stdoutWriter != nil {
+		_ = t.stdoutWriter.Close()
+	}
+	if t.stderrWriter != nil {
+		_ = t.stderrWriter.Close()
+	}
+}
+
 func (t *T) Wait() error {
 	if t.waited {
 		return ErrAlreadyWaited
@@ -315,8 +296,28 @@ func (t *T) Wait() error {
 	if t.cancel != nil {
 		defer t.cancel()
 	}
-	t.wg.Wait()
+	// The process is waited on first, and the readers after it. Waiting for
+	// the readers first is waiting for EOF on pipes a detached grandchild
+	// holds open, which never comes, and leaves the exited child unreaped:
+	//
+	//	4458 ?  Sl  /usr/bin/om <path> instance provision --leader
+	//	4958 ?  Z    \_ [podman] <defunct>
+	//
+	// Wait closes the pipes when the delay expires, which is what lets the
+	// readers finish at all.
 	err := t.cmd.Wait()
+	t.flushWriters()
+	if errors.Is(err, exec.ErrWaitDelay) {
+		// The process exited, and exited well: the delay expired on the
+		// pipes alone. What the command was asked to do, it did, so it is
+		// not failed for what it left behind, but the leftovers are worth
+		// naming: they are why an orphan is holding a file descriptor.
+		if t.log != nil {
+			t.log.Attr("cmd", t.cmd.String()).Attr("pid", t.pid).Levelf(t.logLevel,
+				"exited, and something it left behind held its output open longer than %s", t.waitDelay)
+		}
+		err = nil
+	}
 	if t.ctx.Err() == context.DeadlineExceeded {
 		if t.log != nil {
 			t.log.Attr("cmd", t.cmd.String()).Levelf(t.logLevel, "wait exec: %s", err)
@@ -391,6 +392,43 @@ func (t *T) logErrorExitCode(exitCode int, err error) {
 	}
 }
 
+// serviceManagerEnv are the variables a service manager sets for the service
+// it starts, and for that service alone.
+//
+// systemd tells a service where to answer it (NOTIFY_SOCKET), which
+// descriptors it was handed (LISTEN_*) and which watchdog it has to feed
+// (WATCHDOG_*). A command the service runs is not that service, and is not
+// meant to read them: sd_notify has a flag to clear them for that reason, and
+// this daemon cannot use it because it goes on notifying for as long as it
+// runs.
+//
+// A container runtime finding NOTIFY_SOCKET waits for the container to report
+// itself ready, and a container that is not a service never does: the
+// container runs, "runc start" never returns, and the start that asked for it
+// waits until its own timeout ends it.
+var serviceManagerEnv = []string{
+	"NOTIFY_SOCKET",
+	"LISTEN_FDNAMES",
+	"LISTEN_FDS",
+	"LISTEN_PID",
+	"WATCHDOG_PID",
+	"WATCHDOG_USEC",
+}
+
+// withoutServiceManagerEnv is env without what a service manager addressed to
+// this process alone.
+func withoutServiceManagerEnv(env []string) []string {
+	l := make([]string, 0, len(env))
+	for _, s := range env {
+		name, _, _ := strings.Cut(s, "=")
+		if slices.Contains(serviceManagerEnv, name) {
+			continue
+		}
+		l = append(l, s)
+	}
+	return l
+}
+
 // Update t.cmd with options
 func (t *T) update() error {
 	cmd := t.cmd
@@ -404,6 +442,7 @@ func (t *T) update() error {
 	if len(t.env) > 0 {
 		cmd.Env = append(cmd.Env, t.env...)
 	}
+	cmd.Env = withoutServiceManagerEnv(cmd.Env)
 	if credential, err := credential(t.user, t.group); err != nil {
 		if t.log != nil {
 			t.log.Levelf(t.logLevel, "unable to set credential from user '%v', group '%v' for action '%v': %s", t.user, t.group, t.label, err)

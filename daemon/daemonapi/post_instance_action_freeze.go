@@ -33,6 +33,9 @@ func (a *DaemonAPI) postLocalInstanceActionFreeze(ctx echo.Context, namespace st
 		return JSONProblemf(ctx, http.StatusBadRequest, "Invalid parameters", "%s", err)
 	}
 	log = naming.LogWithPath(log, p)
+	if v, err := assertConfigUpdatedAt(ctx, p, params.ConfigUpdatedAt); !v {
+		return err
+	}
 	args := []string{p.String(), "instance", "freeze"}
 	if params.Slave != nil && len(*params.Slave) > 0 {
 		args = append(args, "--slave", strings.Join(*params.Slave, ","))

@@ -260,6 +260,14 @@ func (t *CmdObjectCreate) fromData(p naming.Path, b []byte) error {
 
 	ops := keyop.ParseOps(t.Keywords)
 	if !t.Restore {
+		// A clone is another thing, so what the source recorded of itself
+		// does not come with it: the id it was created with, the uuid of an
+		// md array it holds. They are written again, for the clone, when the
+		// clone makes what they name.
+		oc.Config().UnsetRecorded()
+
+		// The id is given again rather than left to be, because an object
+		// has one from the moment it is created.
 		op := keyop.Parse("id=" + uuid.New().String())
 		if op == nil {
 			return fmt.Errorf("invalid id reset op")
@@ -271,6 +279,15 @@ func (t *CmdObjectCreate) fromData(p naming.Path, b []byte) error {
 		return err
 	}
 
+	// A configuration is committed with what its validation had to say about
+	// it: the errors refuse the commit, and the warnings are kept to
+	// themselves. Creating an object is the moment they are worth reading. A
+	// whole configuration arrives at once, often written for another agent or
+	// another version, and what om no longer does with part of it is not
+	// something the writer should find out later, from a provision that
+	// cannot find what nothing made.
+	t.reportConfigWarnings(p, oc)
+
 	// Freeze if orchestrate==ha and freeze capable, so the daemon
 	// doesn't decide to start the instance too soon.
 	orchestrate := oc.Config().GetString(key.Parse("orchestrate"))
@@ -281,6 +298,23 @@ func (t *CmdObjectCreate) fromData(p naming.Path, b []byte) error {
 	}
 
 	return nil
+}
+
+// reportConfigWarnings says what the validation of a created configuration
+// found and did not refuse.
+//
+// It is written to stderr, because what a create writes to stdout is the
+// answer to the command, and a warning is not that.
+func (t *CmdObjectCreate) reportConfigWarnings(p naming.Path, oc object.Configurer) {
+	alerts, err := oc.Config().Validate()
+	if err != nil {
+		return
+	}
+	warns := alerts.Warns()
+	if len(warns) == 0 {
+		return
+	}
+	fmt.Fprintln(os.Stderr, warns.String())
 }
 
 func (t *CmdObjectCreate) localEmpty(p naming.Path) error {

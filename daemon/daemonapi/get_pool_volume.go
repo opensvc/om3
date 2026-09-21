@@ -52,13 +52,21 @@ func getPoolVolumes(name *string) api.PoolVolumeItems {
 		if instConfig.Value.VolConfig != nil {
 			size = instConfig.Value.VolConfig.Size
 		}
-		l = append(l, api.PoolVolume{
+		item := api.PoolVolume{
 			Path:     p,
 			Children: instConfig.Value.Children.Strings(),
 			IsOrphan: !poolOk,
 			Pool:     poolName,
 			Size:     size,
-		})
+		}
+		if instConfig.Value.VolConfig != nil && len(instConfig.Value.VolConfig.Charges) > 0 {
+			charges := make(map[string]int64, len(instConfig.Value.VolConfig.Charges))
+			for chargedPool, chargedSize := range instConfig.Value.VolConfig.Charges {
+				charges[chargedPool] = chargedSize
+			}
+			item.Charges = &charges
+		}
+		l = append(l, item)
 	}
 	return l
 }

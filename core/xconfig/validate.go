@@ -3,10 +3,12 @@ package xconfig
 import (
 	"encoding/json"
 	"fmt"
+	"regexp"
 	"slices"
 	"strings"
 
 	"github.com/opensvc/om3/v3/core/driver"
+	"github.com/opensvc/om3/v3/core/keywords"
 	"github.com/opensvc/om3/v3/core/naming"
 	"github.com/opensvc/om3/v3/core/resourceid"
 	"github.com/opensvc/om3/v3/util/capabilities"
@@ -38,6 +40,8 @@ const (
 	alertKindEval
 	alertKindCandidates
 	alertKindDeprecated
+	alertKindDeprecatedValue
+	alertKindMoved
 	alertKindCapabilities
 )
 
@@ -52,30 +56,36 @@ var (
 		alertLevelWarnStr:  alertLevelWarn,
 		alertLevelErrorStr: alertLevelError,
 	}
-	alertKindUnknownDriverStr = "unknown driver"
-	alertKindScopingStr       = "unscopable keyword"
-	alertKindUnknownStr       = "unknown keyword"
-	alertKindEvalStr          = "evaluation error"
-	alertKindCandidatesStr    = "unsupported value"
-	alertKindDeprecatedStr    = "deprecated keyword"
-	alertKindCapabilitiesStr  = "unusable driver on this node"
-	alertKindNames            = map[AlertKind]string{
-		alertKindScoping:       alertKindScopingStr,
-		alertKindUnknown:       alertKindUnknownStr,
-		alertKindUnknownDriver: alertKindUnknownDriverStr,
-		alertKindEval:          alertKindEvalStr,
-		alertKindCandidates:    alertKindCandidatesStr,
-		alertKindDeprecated:    alertKindDeprecatedStr,
-		alertKindCapabilities:  alertKindCapabilitiesStr,
+	alertKindUnknownDriverStr   = "unknown driver"
+	alertKindScopingStr         = "unscopable keyword"
+	alertKindUnknownStr         = "unknown keyword"
+	alertKindEvalStr            = "evaluation error"
+	alertKindCandidatesStr      = "unsupported value"
+	alertKindDeprecatedStr      = "deprecated keyword"
+	alertKindDeprecatedValueStr = "deprecated value"
+	alertKindMovedStr           = "moved keyword"
+	alertKindCapabilitiesStr    = "unusable driver on this node"
+	alertKindNames              = map[AlertKind]string{
+		alertKindScoping:         alertKindScopingStr,
+		alertKindUnknown:         alertKindUnknownStr,
+		alertKindUnknownDriver:   alertKindUnknownDriverStr,
+		alertKindEval:            alertKindEvalStr,
+		alertKindCandidates:      alertKindCandidatesStr,
+		alertKindDeprecated:      alertKindDeprecatedStr,
+		alertKindDeprecatedValue: alertKindDeprecatedValueStr,
+		alertKindMoved:           alertKindMovedStr,
+		alertKindCapabilities:    alertKindCapabilitiesStr,
 	}
 	alertKindFromNames = map[string]AlertKind{
-		alertKindScopingStr:       alertKindScoping,
-		alertKindUnknownStr:       alertKindUnknown,
-		alertKindUnknownDriverStr: alertKindUnknownDriver,
-		alertKindEvalStr:          alertKindEval,
-		alertKindCandidatesStr:    alertKindCandidates,
-		alertKindDeprecatedStr:    alertKindDeprecated,
-		alertKindCapabilitiesStr:  alertKindCapabilities,
+		alertKindScopingStr:         alertKindScoping,
+		alertKindUnknownStr:         alertKindUnknown,
+		alertKindUnknownDriverStr:   alertKindUnknownDriver,
+		alertKindEvalStr:            alertKindEval,
+		alertKindCandidatesStr:      alertKindCandidates,
+		alertKindDeprecatedStr:      alertKindDeprecated,
+		alertKindDeprecatedValueStr: alertKindDeprecatedValue,
+		alertKindMovedStr:           alertKindMoved,
+		alertKindCapabilitiesStr:    alertKindCapabilities,
 	}
 )
 
@@ -126,6 +136,50 @@ func (t T) NewAlertEval(k key.T, did driver.ID, comment string) Alert {
 		Path:    t.Path,
 		Kind:    alertKindEval,
 		Level:   alertLevelError,
+		Key:     k,
+		Driver:  did,
+		Comment: comment,
+	}
+}
+
+// NewAlertDeprecatedValue says a keyword holds a value om still accepts and no
+// longer recommends, and what to write instead.
+//
+// It is not the keyword that is deprecated, which is what the alert beside it
+// says: the keyword is the one to use, and one of the forms it takes is on its
+// way out.
+func (t T) NewAlertDeprecatedValue(k key.T, did driver.ID, comment string) Alert {
+	return Alert{
+		Path:    t.Path,
+		Kind:    alertKindDeprecatedValue,
+		Level:   alertLevelWarn,
+		Key:     k,
+		Driver:  did,
+		Comment: comment,
+	}
+}
+
+// newAlertGone is what to say of a keyword the driver does not declare: where
+// what it asked for is written now, when om knows, and that nothing knows it
+// otherwise.
+func (t T) newAlertGone(k key.T, did driver.ID, err error) Alert {
+	if text, ok := keywords.Moved(did, k.BaseOption()); ok {
+		return t.NewAlertMoved(k, did, text)
+	}
+	return t.NewAlertUnknown(k, did, err.Error())
+}
+
+// NewAlertMoved says a keyword is one a driver no longer reads, and what to
+// write for om to do again what it did.
+//
+// It is not an unknown keyword, which is what the alert beside it says of a
+// keyword nothing has ever heard of: this one was read once, and what it
+// asked for is written elsewhere now.
+func (t T) NewAlertMoved(k key.T, did driver.ID, comment string) Alert {
+	return Alert{
+		Path:    t.Path,
+		Kind:    alertKindMoved,
+		Level:   alertLevelWarn,
 		Key:     k,
 		Driver:  did,
 		Comment: comment,
@@ -231,6 +285,30 @@ func (t Alerts) StringWithoutMeta() string {
 	return strings.Join(l, "\n")
 }
 
+// Errors are the alerts that make a configuration invalid, as opposed to the
+// warnings that only have something to say about it.
+func (t Alerts) Errors() Alerts {
+	l := make(Alerts, 0, len(t))
+	for _, alert := range t {
+		if alert.Level == alertLevelError {
+			l = append(l, alert)
+		}
+	}
+	return l
+}
+
+// Warns are the alerts that only have something to say about a configuration,
+// as opposed to the errors that make it invalid.
+func (t Alerts) Warns() Alerts {
+	l := make(Alerts, 0, len(t))
+	for _, alert := range t {
+		if alert.Level == alertLevelWarn {
+			l = append(l, alert)
+		}
+	}
+	return l
+}
+
 func (t Alerts) HasError() bool {
 	return t.has(alertLevelError)
 }
@@ -294,11 +372,11 @@ func (t T) Validate() (Alerts, error) {
 					var err1 error
 					kw, err1 = getKeyword(relaxedKey, sectionType, t.Referrer)
 					if err1 != nil {
-						alerts = append(alerts, t.NewAlertUnknown(k, did, err.Error()))
+						alerts = append(alerts, t.newAlertGone(k, did, err))
 						continue
 					}
 				} else {
-					alerts = append(alerts, t.NewAlertUnknown(k, did, err.Error()))
+					alerts = append(alerts, t.newAlertGone(k, did, err))
 					continue
 				}
 			}
@@ -312,6 +390,11 @@ func (t T) Validate() (Alerts, error) {
 			}
 			if kw.Deprecated != "" {
 				alerts = append(alerts, t.NewAlertDeprecated(k, did, kw.Deprecated, kw.ReplacedBy))
+			}
+			if kw.DeprecatedValue != "" && v != "" {
+				if ok, err := regexp.MatchString(kw.DeprecatedValue, v); err == nil && ok {
+					alerts = append(alerts, t.NewAlertDeprecatedValue(k, did, kw.DeprecatedValueText))
+				}
 			}
 			if len(kw.Candidates) > 0 {
 				switch kw.Converter {

@@ -8,6 +8,7 @@ import (
 
 	"github.com/opensvc/om3/v3/core/volaccess"
 	"github.com/opensvc/om3/v3/core/xconfig"
+	"github.com/opensvc/om3/v3/util/hostname"
 	"github.com/opensvc/om3/v3/util/key"
 	"github.com/opensvc/om3/v3/util/sizeconv"
 )
@@ -17,10 +18,17 @@ type (
 		Pools() []Pooler
 	}
 	Lookup struct {
-		Name     string
-		Type     string
-		Access   volaccess.T
-		Size     int64
+		Name      string
+		Type      string
+		Access    volaccess.T
+		Size      int64
+		Namespace string
+
+		// Path is the volume the storage is looked up for, which the claim
+		// on the pool is granted to. It is empty where the lookup is not
+		// about a volume of its own, and the grant is then held until it
+		// expires rather than until the volume says it was claimed.
+		Path     string
 		Format   bool
 		Shared   bool
 		Usage    bool
@@ -115,16 +123,19 @@ func (t Lookup) Do(ctx context.Context) (Pooler, error) {
 			continue
 		}
 		if t.Usage == true {
-			usage, err := p.Usage(ctx)
-			if err != nil {
-				cause = append(cause, fmt.Sprintf("[%s] no usage data: %s", p.Name(), err))
+			if why := t.roomCause(ctx, p); why != "" {
+				cause = append(cause, why)
 				continue
 			}
-			if usage.Size > 0 && (usage.Free < t.Size) {
-				cause = append(cause, fmt.Sprintf("[%s] not enough free space: %s free, %s requested",
-					p.Name(), sizeconv.BSize(float64(usage.Free)), sizeconv.BSize(float64(t.Size))))
-				continue
-			}
+		}
+		// Weighed, not taken: the claim of the pool this picks is taken when
+		// the volume is written to it.
+		if ok, why, err := ClaimProbe(ctx, t.Namespace, p.Name(), t.Path, t.Size); err != nil {
+			cause = append(cause, fmt.Sprintf("[%s] claim check: %s", p.Name(), err))
+			continue
+		} else if !ok {
+			cause = append(cause, fmt.Sprintf("[%s] %s", p.Name(), why))
+			continue
 		}
 		l = l.Add(ctx, p, t.Usage)
 		m[p.Name()] = p
@@ -199,5 +210,85 @@ func (t Lookup) ConfigureVolume(ctx context.Context, volume Volumer, obj interfa
 	if err != nil {
 		return err
 	}
-	return ConfigureVolume(p, volume, t.Size, t.Format, t.Access, t.Shared, t.Nodes, env)
+	return ConfigureVolume(ctx, p, volume, t.Namespace, t.Path, t.Size, t.Format, t.Access, t.Shared, t.Nodes, env)
+}
+
+// roomCause says why a pool has no room for the volume, and nothing when it
+// has.
+//
+// A volume takes its size on every node it has an instance on: the storage
+// behind a pool that is not shared holds a copy of it per node, and that copy
+// is what has to fit. So every one of those nodes is asked, not this one
+// alone, or a volume is let in here and fails to provision on a peer.
+//
+// What a copy costs the storage is the driver's to say. It is the size the
+// volume hands out, unless the pool holds it in something else.
+//
+// The figures come from the daemon, which is where the peers report theirs,
+// and are a few seconds old. A node reporting the pools it has, this one
+// among them not, is a node the volume cannot be held on, and is refused: the
+// volume would be provisioned there, and what it takes would be found out
+// afterwards.
+//
+// A node that reports no pool at all is another matter. It has not reported
+// yet, which is what a node does for as long as it takes its daemon to read
+// its storage after starting, and holding that against the allocation would
+// make a cluster refuse to provision anything for a while after a restart.
+func (t Lookup) roomCause(ctx context.Context, p Pooler) string {
+	need := CopySize(p, t.Size)
+	nodes := t.Nodes
+	if len(nodes) == 0 {
+		nodes = []string{hostname.Hostname()}
+	}
+	byNode, err := UsageByNode(ctx)
+	if err != nil {
+		// No daemon to ask is no peer to ask about. What this node holds is
+		// what this node can say, and allocating with the daemon down is an
+		// administrator acting directly, which is how an unbrokered claim is
+		// read too.
+		return t.localRoomCause(ctx, p, need)
+	}
+	for _, nodename := range nodes {
+		byPool, ok := byNode[nodename]
+		if !ok || len(byPool) == 0 {
+			// Nothing heard from that node yet.
+			continue
+		}
+		usage, ok := byPool[p.Name()]
+		if !ok {
+			return fmt.Sprintf("[%s] node %s has no such pool", p.Name(), nodename)
+		}
+		if usage.Size <= 0 {
+			// A pool with no size of its own, a virtual one, says nothing
+			// about room. What its volumes take is taken of other pools.
+			continue
+		}
+		if usage.Free < need {
+			return fmt.Sprintf("[%s] not enough free space on %s: %s free, %s requested",
+				p.Name(), nodename, sizeconv.BSize(float64(usage.Free)), sizeconv.BSize(float64(need)))
+		}
+		if usage.Shared {
+			// One storage, seen from every node. Asking one of them is
+			// asking all of them.
+			break
+		}
+	}
+	return ""
+}
+
+// localRoomCause says why this node has no room for the volume, and nothing
+// when it has.
+//
+// It is what a pool can be asked when there is no daemon to ask about the
+// peers: the pool of a node is read from the node itself.
+func (t Lookup) localRoomCause(ctx context.Context, p Pooler, need int64) string {
+	usage, err := p.Usage(ctx)
+	if err != nil {
+		return fmt.Sprintf("[%s] no usage data: %s", p.Name(), err)
+	}
+	if usage.Size > 0 && usage.Free < need {
+		return fmt.Sprintf("[%s] not enough free space: %s free, %s requested",
+			p.Name(), sizeconv.BSize(float64(usage.Free)), sizeconv.BSize(float64(need)))
+	}
+	return ""
 }

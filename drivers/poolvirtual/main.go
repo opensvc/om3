@@ -6,8 +6,8 @@ import (
 
 	"github.com/opensvc/om3/v3/core/driver"
 	"github.com/opensvc/om3/v3/core/naming"
+	"github.com/opensvc/om3/v3/core/object"
 	"github.com/opensvc/om3/v3/core/pool"
-	"github.com/opensvc/om3/v3/core/xconfig"
 	"github.com/opensvc/om3/v3/util/key"
 )
 
@@ -78,12 +78,20 @@ func (t *T) translate(name string, size int64, shared bool) ([]string, error) {
 	if template.Kind != naming.KindVol {
 		return nil, fmt.Errorf("template object %s is not a vol", template)
 	}
-	cf := template.ConfigFile()
-	config, err := xconfig.NewObject("", cf)
+	o, err := object.New(template, object.WithVolatile(true))
 	if err != nil {
 		return nil, err
 	}
+	configurer, ok := o.(object.Configurer)
+	if !ok {
+		return nil, fmt.Errorf("template object %s has no configuration", template)
+	}
+	config := configurer.Config()
 	config.Unset(key.T{Section: "DEFAULT", Option: "disable"})
+	// A copy is another volume, so what the template recorded of itself does
+	// not come with it: a copy keeping the array uuid assembles the
+	// template's array under its own name instead of making one.
+	config.UnsetRecorded()
 	return config.Ops(), nil
 }
 

@@ -65,6 +65,7 @@ func init() {
 		newCmdObjectProvision(kind),
 		newCmdObjectPRStart(kind),
 		newCmdObjectPRStop(kind),
+		newCmdObjectResize(kind),
 		newCmdObjectRestart(kind),
 		newCmdObjectRun(kind),
 		newCmdObjectShutdown(kind),
@@ -97,6 +98,7 @@ func init() {
 		newCmdObjectConfigMtime(kind),
 		newCmdObjectConfigShow(kind),
 		newCmdObjectConfigUpdate(kind),
+		newCmdObjectConfigMigrate(kind),
 		newCmdObjectConfigValidate(kind),
 	)
 	cmdObjectEdit.AddCommand(
@@ -113,6 +115,7 @@ func init() {
 		newCmdObjectInstancePRStart(kind),
 		newCmdObjectInstancePRStop(kind),
 		newCmdObjectInstanceProvision(kind),
+		newCmdObjectInstanceResize(kind),
 		newCmdObjectInstanceRestart(kind),
 		newCmdObjectInstanceRun(kind),
 		newCmdObjectInstanceShutdown(kind),

@@ -71,3 +71,18 @@ func xMKFS(ctx context.Context, x string, s string, xargs []string, log *plog.Lo
 	)
 	return cmd.Run()
 }
+
+// Grow takes the filesystem up to the size of the device it sits on. resize2fs
+// does that online.
+func extGrow(ctx context.Context, log *plog.Logger, dev, _ string) error {
+	cmd := command.New(
+		command.WithName("resize2fs"),
+		command.WithVarArgs(dev),
+		command.WithContext(ctx),
+		command.WithLogger(log),
+		command.WithCommandLogLevel(zerolog.InfoLevel),
+		command.WithStdoutLogLevel(zerolog.InfoLevel),
+		command.WithStderrLogLevel(zerolog.ErrorLevel),
+	)
+	return cmd.Run()
+}

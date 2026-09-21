@@ -447,27 +447,47 @@ func (d *data) pubMsgFromNodeInstanceDiffForNode(peer string, current *remoteInf
 	}
 }
 
+// pubMsgFromNodePoolDiffForNode publishes what changed in the pools of a peer
+// since the previous time its data was read.
+//
+// The pools it reports are walked, not the pools it reported before, or a
+// pool would have to be seen twice to be known once: nothing is known of a
+// peer the first time its data is read, and a peer whose daemon has just
+// started reports its pools for the first time. Until the read after that,
+// the node was one this one knew no pool of, which reads as a node with no
+// room rather than as a node nobody has heard from yet.
+//
+// The pools it reported before are walked too, for the ones it no longer
+// reports.
 func (d *data) pubMsgFromNodePoolDiffForNode(peer string, current *remoteInfo) {
+	if current == nil {
+		return
+	}
 	previous, ok := d.previousRemoteInfo[peer]
 	if !ok {
 		previous = remoteInfo{
 			poolStatusUpdated: make(map[string]time.Time),
 		}
 	}
-	for poolName, prevPoolStatusUpdated := range previous.poolStatusUpdated {
-		poolStatus, ok := d.clusterData.Cluster.Node[peer].Pool[poolName]
-		if !ok {
-			pool.StatusData.Unset(poolName, peer)
-			d.publisher.Pub(&msgbus.NodePoolStatusDeleted{Name: poolName, Node: peer},
-				pubsub.Label{"node", peer},
-				labelFromPeer,
-			)
-		} else if poolStatus.UpdatedAt.After(prevPoolStatusUpdated) {
-			pool.StatusData.Set(poolName, peer, poolStatus.DeepCopy())
-			d.publisher.Pub(&msgbus.NodePoolStatusUpdated{Name: poolName, Node: peer, Value: *poolStatus.DeepCopy()},
-				pubsub.Label{"node", peer},
-				labelFromPeer,
-			)
+	pools := d.clusterData.Cluster.Node[peer].Pool
+	for poolName, poolStatus := range pools {
+		if prevPoolStatusUpdated, ok := previous.poolStatusUpdated[poolName]; ok && !poolStatus.UpdatedAt.After(prevPoolStatusUpdated) {
+			continue
 		}
+		pool.StatusData.Set(poolName, peer, poolStatus.DeepCopy())
+		d.publisher.Pub(&msgbus.NodePoolStatusUpdated{Name: poolName, Node: peer, Value: *poolStatus.DeepCopy()},
+			pubsub.Label{"node", peer},
+			labelFromPeer,
+		)
+	}
+	for poolName := range previous.poolStatusUpdated {
+		if _, ok := pools[poolName]; ok {
+			continue
+		}
+		pool.StatusData.Unset(poolName, peer)
+		d.publisher.Pub(&msgbus.NodePoolStatusDeleted{Name: poolName, Node: peer},
+			pubsub.Label{"node", peer},
+			labelFromPeer,
+		)
 	}
 }

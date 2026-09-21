@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"regexp"
+	"sort"
 	"strings"
 	"unicode"
 
@@ -251,6 +252,13 @@ func (t T) KnownNodes() ([]string, error) {
 	}
 }
 
+// KnownRemoteNodes is the nodes the daemon knows, in a stable order.
+//
+// They are read from a map, so the order they come out in is the map's, which
+// is a different one every time. Two evaluations of the same "nodes = *" then
+// differ by their order alone, and whoever compares them, as the policy
+// deciding whether a write changed a keyword does, reads a change where the
+// value is the same.
 func (t T) KnownRemoteNodes() ([]string, error) {
 	var l []string
 	nodesInfo, err := t.getNodesInfo()
@@ -260,6 +268,7 @@ func (t T) KnownRemoteNodes() ([]string, error) {
 	for node := range nodesInfo {
 		l = append(l, node)
 	}
+	sort.Strings(l)
 	return l, nil
 }
 

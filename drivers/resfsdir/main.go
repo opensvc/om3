@@ -4,14 +4,20 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"hash/fnv"
 	"os"
+	"path/filepath"
 
 	"github.com/opensvc/om3/v3/core/actionrollback"
 	"github.com/opensvc/om3/v3/core/datarecv"
 	"github.com/opensvc/om3/v3/core/provisioned"
 	"github.com/opensvc/om3/v3/core/resource"
 	"github.com/opensvc/om3/v3/core/status"
+	"github.com/opensvc/om3/v3/util/df"
 	"github.com/opensvc/om3/v3/util/file"
+	"github.com/opensvc/om3/v3/util/findmnt"
+	"github.com/opensvc/om3/v3/util/sizeconv"
+	"github.com/opensvc/om3/v3/util/xfsquota"
 )
 
 const (
@@ -23,7 +29,9 @@ type (
 		resource.T
 		resource.Restart
 		datarecv.DataRecv
-		Path string `json:"path"`
+		Path      string `json:"path"`
+		Size      *int64 `json:"size"`
+		ProjectID int    `json:"project_id"`
 		//Zone string `json:"zone"`
 	}
 )
@@ -41,6 +49,9 @@ func (t *T) Configure() error {
 
 func (t *T) Start(ctx context.Context) error {
 	if err := t.create(ctx); err != nil {
+		return err
+	}
+	if err := t.applyQuota(ctx); err != nil {
 		return err
 	}
 	if err := t.DataRecv.Do(ctx); err != nil {
@@ -67,11 +78,24 @@ func (t *T) Status(ctx context.Context) status.T {
 		return status.Down
 	}
 	t.DataRecv.Status()
+	t.quotaStatus(ctx)
 	return status.NotApplicable
 }
 
 // Label implements Label from resource.Driver interface,
 // it returns a formatted short description of the Resource
+// PoolCharge implements resource.PoolCharger. A directory takes of the
+// directory it is made in, and takes the size it is bounded to.
+//
+// A directory with no size is bounded by nothing, and what it takes is not a
+// number anything can be rationed by.
+func (t *T) PoolCharge() (string, int64) {
+	if t.Size == nil || t.Path == "" {
+		return "", 0
+	}
+	return filepath.Dir(t.Path), *t.Size
+}
+
 func (t *T) Label(_ context.Context) string {
 	return t.Head()
 }
@@ -98,7 +122,37 @@ func (t *T) Unprovision(ctx context.Context) error {
 }
 
 func (t *T) Provisioned(ctx context.Context) (provisioned.T, error) {
-	return provisioned.NotApplicable, nil
+	v, err := file.ExistsAndDir(t.Head())
+	return provisioned.FromBool(v), err
+}
+
+// UnprovisionAsLeader removes the directory, which is what provisioning it
+// made. The provision keyword set to false is how an owner keeps a directory
+// that om3 is only to create and never to remove.
+//
+// A quota-backed directory has its project limit dropped with it, or the
+// filesystem keeps a limit on a project nothing is stamped with any more.
+func (t *T) UnprovisionAsLeader(ctx context.Context) error {
+	p := t.Head()
+	if v, err := file.ExistsAndDir(p); err != nil {
+		return err
+	} else if !v {
+		return nil
+	}
+	if file.IsProtected(p) {
+		return fmt.Errorf("cowardly refuse to remove %s", p)
+	}
+	if t.isQuotaBacked() {
+		if q, id, err := t.quota(ctx); err != nil {
+			// The filesystem may not be able to hold a quota any more, which
+			// is not a reason to keep the directory.
+			t.Log().Infof("quota: %s", err)
+		} else if err := q.SetHardLimit(ctx, id, 0); err != nil {
+			return err
+		}
+	}
+	t.Log().Infof("remove directory %s", p)
+	return os.RemoveAll(p)
 }
 
 func (t *T) create(ctx context.Context) error {
@@ -131,4 +185,197 @@ func (t *T) Head() string {
 
 func (t *T) CanInstall(ctx context.Context) (bool, error) {
 	return true, nil
+}
+
+// isQuotaBacked says the directory was given a size of its own, which only a
+// project quota on the filesystem holding it can enforce.
+func (t *T) isQuotaBacked() bool {
+	return t.Size != nil
+}
+
+// projectID is the project the directory tree is stamped with.
+//
+// A project id is a namespace shared by everything using that filesystem, so
+// it defaults to a value derived from the directory path: stable across
+// restarts, and distinct for distinct directories. The keyword is the way out
+// when the derived value is already taken by something else.
+func (t *T) projectID() uint32 {
+	if t.ProjectID > 0 {
+		return uint32(t.ProjectID)
+	}
+	h := fnv.New32a()
+	_, _ = h.Write([]byte(t.Path))
+	id := h.Sum32() & 0x7fffffff
+	if id == 0 {
+		// Project 0 is "no project", so never hand it out.
+		id = 1
+	}
+	return id
+}
+
+// holderMount is the filesystem holding the directory.
+func (t *T) holderMount(ctx context.Context) (findmnt.MountInfo, error) {
+	entries, err := df.ContainingMountUsage(ctx, t.Path)
+	if err != nil {
+		return findmnt.MountInfo{}, err
+	}
+	if len(entries) == 0 {
+		return findmnt.MountInfo{}, fmt.Errorf("no filesystem holds %s", t.Path)
+	}
+	mounts, err := findmnt.List(ctx, "", entries[0].MountPoint)
+	if err != nil {
+		return findmnt.MountInfo{}, err
+	}
+	if len(mounts) == 0 {
+		return findmnt.MountInfo{}, fmt.Errorf("%s holds %s but reports nothing about itself", entries[0].MountPoint, t.Path)
+	}
+	return mounts[0], nil
+}
+
+// quota is the project quota handle for the filesystem holding the directory,
+// and says why not when the directory cannot be given a size of its own.
+func (t *T) quota(ctx context.Context) (*xfsquota.T, uint32, error) {
+	mnt, err := t.holderMount(ctx)
+	if err != nil {
+		return nil, 0, err
+	}
+	if !xfsquota.CanHoldProjectQuota(mnt) {
+		return nil, 0, fmt.Errorf("%s is held by %s, a %s filesystem mounted %s: giving a directory a size of its own needs xfs mounted with the prjquota option",
+			t.Path, mnt.Target, mnt.FsType, mnt.Options)
+	}
+	return xfsquota.New(mnt.Target, xfsquota.WithLogger(t.Log())), t.projectID(), nil
+}
+
+// applyQuota stamps the directory with its project and, the first time,
+// bounds what it may hold. A directory with no size of its own is left alone.
+//
+// The limit is only set when the project has none. The size keyword is the
+// size the directory is made with, the way a loop file or a logical volume is
+// made with one: changing it afterwards is asked for with a resize, which
+// writes the new size back to the keyword.
+//
+// So the two agree unless somebody set the quota behind om3's back, which is
+// what status reports rather than silently undoing.
+func (t *T) applyQuota(ctx context.Context) error {
+	if !t.isQuotaBacked() {
+		return nil
+	}
+	q, id, err := t.quota(ctx)
+	if err != nil {
+		return err
+	}
+	if err := q.SetProject(ctx, t.Path, id); err != nil {
+		return err
+	}
+	if _, hard, err := q.Get(ctx, id); err != nil {
+		return err
+	} else if hard > 0 {
+		return nil
+	}
+	return q.SetHardLimit(ctx, id, *t.Size)
+}
+
+// quotaStatus says when what the directory may hold is not what it was
+// configured to hold. A resize keeps the two in step, so a difference is
+// somebody having set the quota or edited the configuration behind om3's
+// back, and saying so is more use than hiding it.
+func (t *T) quotaStatus(ctx context.Context) {
+	if !t.isQuotaBacked() {
+		return
+	}
+	q, id, err := t.quota(ctx)
+	if err != nil {
+		t.StatusLog().Warn("%s", err)
+		return
+	}
+	_, hard, err := q.Get(ctx, id)
+	if err != nil {
+		t.StatusLog().Warn("quota: %s", err)
+		return
+	}
+	if hard == 0 {
+		t.StatusLog().Warn("no quota is set, so the size is not enforced")
+		return
+	}
+	if hard != *t.Size {
+		t.StatusLog().Info("holds up to %s, configured for %s",
+			sizeconv.BSizeCompact(float64(hard)), sizeconv.BSizeCompact(float64(*t.Size)))
+	}
+}
+
+// SizeInfoKey implements resource.SizeInfoKeyer.
+//
+// A directory given a size of its own reports it as a size. One without takes
+// the size of the filesystem holding it, and calling that "size" next to
+// "driver fs.directory" reads as the size of the directory.
+func (t *T) SizeInfoKey() string {
+	if t.isQuotaBacked() {
+		return "size"
+	}
+	return "holder_size"
+}
+
+// CurrentSize implements resource.Sizer.
+//
+// A directory given a size of its own reports what its project quota lets it
+// hold. One without has no size of its own: what it may hold is what the
+// filesystem holding it has, which is what a directory pool reports as the
+// usage of the volumes it serves.
+func (t *T) CurrentSize(ctx context.Context) (int64, error) {
+	if t.isQuotaBacked() {
+		q, id, err := t.quota(ctx)
+		if err != nil {
+			return 0, err
+		}
+		_, hard, err := q.Get(ctx, id)
+		if err != nil {
+			return 0, err
+		}
+		if hard == 0 {
+			return 0, fmt.Errorf("%s has no quota set yet, so its size cannot be read", t.Path)
+		}
+		return hard, nil
+	}
+	entries, err := df.ContainingMountUsage(ctx, t.Path)
+	if err != nil {
+		return 0, err
+	}
+	if len(entries) == 0 {
+		return 0, fmt.Errorf("no filesystem holds %s", t.Path)
+	}
+	return entries[0].Total, nil
+}
+
+// ResizePlan implements resource.Resizer.
+//
+// A quota is a limit, not an allocation, so there is nothing below to ask
+// anything of. It is also why a shrink is checked here: lowering a limit under
+// what the tree already holds does not fail, it silently breaks the next
+// write, so it is refused while the chain is still being planned.
+func (t *T) ResizePlan(ctx context.Context, to int64) (int64, error) {
+	if !t.isQuotaBacked() {
+		return 0, fmt.Errorf("a directory takes the size of the filesystem holding it, and cannot be given one of its own. Set its size keyword to bound it with a project quota")
+	}
+	q, id, err := t.quota(ctx)
+	if err != nil {
+		return 0, err
+	}
+	used, _, err := q.Get(ctx, id)
+	if err != nil {
+		return 0, err
+	}
+	if to < used {
+		return 0, fmt.Errorf("%s already holds %s: a quota under that does not fail, it breaks the next write",
+			t.Path, sizeconv.BSizeCompact(float64(used)))
+	}
+	return to, nil
+}
+
+// Resize implements resource.Resizer.
+func (t *T) Resize(ctx context.Context, to int64) error {
+	q, id, err := t.quota(ctx)
+	if err != nil {
+		return err
+	}
+	return q.SetHardLimit(ctx, id, to)
 }

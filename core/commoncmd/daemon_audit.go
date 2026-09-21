@@ -74,8 +74,14 @@ func (t *CmdDaemonAudit) Run() error {
 
 		params := &api.PostDaemonAuditParams{
 			Level:   &level,
-			Sub:     &t.Subsystems,
 			Preempt: &t.Preempt,
+		}
+
+		// Naming no subsystem audits them all, and the daemon reads that from
+		// the absence of the parameter. Sending it empty would ask for the
+		// subsystem named by the empty string, which is none of them.
+		if len(t.Subsystems) > 0 {
+			params.Sub = &t.Subsystems
 		}
 
 		if t.Output != "json" {

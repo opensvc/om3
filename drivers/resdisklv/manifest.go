@@ -37,8 +37,19 @@ var (
 			Text:     keywords.NewText(fs, "text/kw/vg"),
 		},
 		{
-			Attr:         "Size",
-			Example:      "10m",
+			Attr:       "Size",
+			Arithmetic: true,
+			// lvm2 resolves its share once, when the volume is created, and
+			// om never learns what it came out as: the volume cannot be
+			// grown, and what it took of the pool cannot be rationed or
+			// reported. The same share om computes can be.
+			DeprecatedValue:     `(?i)[0-9]+%(free|pvs|vg)\b`,
+			DeprecatedValueText: "a share lvm2 computes, which a resize cannot grow: write the size as a size, or as an expression over the free space of the volume group resource, like $(100% * {disk#vg.free})",
+			Example:             "10m",
+			// InheritLeaf, because a vol names in its DEFAULT section the size it
+			// was claimed with from its pool. Inheriting that here would give a
+			// size to every resource that does not name one of its own.
+			Inherit:      keywords.InheritLeaf,
 			Option:       "size",
 			Provisioning: true,
 			Scopable:     true,

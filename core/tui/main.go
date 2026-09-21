@@ -841,6 +841,8 @@ func (t *App) onRuneColumn(event *tcell.EventKey) {
 			t.confirmAction(func() {
 				t.actionDelete(paths)
 			}, confLostMessage)
+		case "resize":
+			t.actionResize(paths, args[1:])
 		case "restart":
 			t.confirmAction(func() {
 				t.actionRestart(paths)
@@ -1768,6 +1770,56 @@ func (t *App) actionSwitch(paths map[string]any, args []string) {
 	}
 }
 
+// actionResize grows the selected volumes.
+//
+// The size is optional. Naming none asks for the size the volume is already
+// configured to hold, which is how a resize that stopped part way is
+// finished.
+//
+// A resize is refused for reasons the user has to read: a size that only
+// shrinks, a namespace over what it may claim of the pool, a resize already
+// running. So this one says what came back, where an action nothing can
+// refuse for a reason of its own does not.
+func (t *App) actionResize(paths map[string]any, args []string) {
+	ctx := context.Background()
+	body := api.PostObjectActionResize{}
+	if len(args) > 0 {
+		size := args[0]
+		body.Size = &size
+	}
+	params := api.PostObjectActionResizeParams{}
+	for path := range paths {
+		p, err := naming.ParsePath(path)
+		if err != nil {
+			continue
+		}
+		resp, err := t.client.PostObjectActionResizeWithResponse(ctx, p.Namespace, p.Kind, p.Name, &params, body)
+		if err != nil {
+			t.errorf("%s: %s", path, err)
+			continue
+		}
+		switch {
+		case resp.JSON200 != nil:
+		case resp.JSON400 != nil:
+			t.errorf("%s: %s", path, *resp.JSON400)
+		case resp.JSON401 != nil:
+			t.errorf("%s: %s", path, *resp.JSON401)
+		case resp.JSON403 != nil:
+			t.errorf("%s: %s", path, *resp.JSON403)
+		case resp.JSON404 != nil:
+			t.errorf("%s: %s", path, *resp.JSON404)
+		case resp.JSON408 != nil:
+			t.errorf("%s: %s", path, *resp.JSON408)
+		case resp.JSON409 != nil:
+			t.errorf("%s: %s", path, *resp.JSON409)
+		case resp.JSON500 != nil:
+			t.errorf("%s: %s", path, *resp.JSON500)
+		default:
+			t.errorf("%s: unexpected response: %s", path, resp.Status())
+		}
+	}
+}
+
 func (t *App) actionGiveback(paths map[string]any) {
 	ctx := context.Background()
 	for path, _ := range paths {
@@ -1828,8 +1880,8 @@ func (t *App) onRuneH(event *tcell.EventKey) {
        freeze, unfreeze
 
      object actions:
-       abort, delete, freeze, giveback, provision, purge, start, stop, switch,
-       unfreeze, unprovision, restart  
+       abort, delete, freeze, giveback, provision, purge, resize [<size>],
+       start, stop, switch, unfreeze, unprovision, restart  
 
      instance actions:
        clear, delete, freeze, provision, refresh, start, stop, switch,

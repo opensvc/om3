@@ -20,6 +20,7 @@ var (
 		"giveback":  nil,
 		"provision": nil,
 		"purge":     nil,
+		"resize":    nil,
 		"restart":   nil,
 		"start":     nil,
 		"stop":      nil,

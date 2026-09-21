@@ -32,6 +32,9 @@ func (a *DaemonAPI) postLocalInstanceActionInfo(ctx echo.Context, namespace stri
 		return JSONProblemf(ctx, http.StatusBadRequest, "Invalid parameters", "%s", err)
 	}
 	log = naming.LogWithPath(log, p)
+	if v, err := assertConfigUpdatedAt(ctx, p, params.ConfigUpdatedAt); !v {
+		return err
+	}
 	args := []string{p.String(), "instance", "info", "--refresh"}
 	if params.Rid != nil && *params.Rid != "" {
 		// the info command takes the resource selector as a positional arg,

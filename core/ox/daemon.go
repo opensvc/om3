@@ -43,12 +43,15 @@ func init() {
 
 	cmdDaemonSession.AddCommand(
 		commoncmd.NewCmdDaemonSessionList(),
+		commoncmd.NewCmdDaemonSessionLogs(),
 	)
 	cmdDaemonExec.AddCommand(
 		commoncmd.NewCmdDaemonExecList("*"),
+		commoncmd.NewCmdDaemonExecLogs(),
 	)
 	cmdDaemonOrchestration.AddCommand(
 		newCmdDaemonOrchestrationList(),
+		commoncmd.NewCmdDaemonOrchestrationLogs(),
 	)
 
 	cmdDaemonDNS.AddCommand(

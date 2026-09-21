@@ -2,11 +2,13 @@ package object
 
 import (
 	"context"
+	"fmt"
 	"sort"
 
 	"github.com/opensvc/om3/v3/core/driver"
 	"github.com/opensvc/om3/v3/core/keywords"
 	"github.com/opensvc/om3/v3/core/naming"
+	"github.com/opensvc/om3/v3/core/resource"
 	"github.com/opensvc/om3/v3/core/status"
 	"github.com/opensvc/om3/v3/core/volaccess"
 	"github.com/opensvc/om3/v3/util/device"
@@ -31,6 +33,9 @@ type (
 	Vol interface {
 		Actor
 		Head() string
+		HeadRID(context.Context) (string, error)
+		ConfiguredSize() (int64, error)
+		PoolName() (string, error)
 		ExposedDevice(context.Context) *device.T
 		ExposedDevices(context.Context) device.L
 		SubDevice(context.Context) *device.T
@@ -179,37 +184,124 @@ func (t *vol) SubDevice(ctx context.Context) *device.T {
 }
 
 func (t *vol) ExposedDevice(ctx context.Context) *device.T {
+	_, devs := t.exposedDeviceResource(ctx)
+	if len(devs) == 0 {
+		return nil
+	}
+	return &devs[0]
+}
+
+// exposedDeviceResource returns the resource the volume exposes a device
+// through, and the devices that resource exposes.
+//
+// A configuration naming devices_from has said which resource that is, and it
+// is the same answer the consumers of the volume are given, so it is not
+// guessed at here. A volume that names none is read by the deepest rid, so
+// the resource nearest the consumer is the one named.
+func (t *vol) exposedDeviceResource(ctx context.Context) (resource.Driver, device.L) {
 	type devicer interface {
 		ExposedDevices(context.Context) device.L
 	}
+	if configured := t.config.GetStrings(key.Parse("devices_from")); len(configured) > 0 {
+		t.ConfigureResources()
+		for _, rid := range configured {
+			r := t.ResourceByID(rid)
+			if r == nil {
+				continue
+			}
+			d, ok := r.(devicer)
+			if !ok {
+				continue
+			}
+			if devs := d.ExposedDevices(ctx); len(devs) > 0 {
+				return r, devs
+			}
+		}
+		// The configuration named the resources to expose, so falling back to
+		// another would answer with something it said not to.
+		return nil, nil
+	}
+	// The disks of the volume, and only those. A volume resource of a volume
+	// is storage this volume consumes, not storage it exposes, so naming one
+	// here would answer with somebody else's device.
 	rids := make([]string, 0)
-	candidates := make(map[string]devicer)
+	candidates := make(map[string]resource.Driver)
 	l := t.ResourcesByDrivergroups([]driver.Group{
 		driver.GroupDisk,
-		driver.GroupVolume,
 	})
 	for _, r := range l {
 		if r.DriverID().Name == "scsireserv" {
 			continue
 		}
 		var i interface{} = r
-		o, ok := i.(devicer)
-		if !ok {
+		if _, ok := i.(devicer); !ok {
 			continue
 		}
 		rid := r.RID()
-		candidates[rid] = o
+		candidates[rid] = r
 		rids = append(rids, rid)
 	}
 	sort.Sort(sort.Reverse(sort.StringSlice(rids)))
 	for _, rid := range rids {
-		devs := candidates[rid].ExposedDevices(ctx)
+		r := candidates[rid]
+		var i interface{} = r
+		devs := i.(devicer).ExposedDevices(ctx)
 		if len(devs) == 0 {
 			continue
 		}
-		return &devs[0]
+		return r, devs
 	}
-	return nil
+	return nil, nil
+}
+
+// PoolName is the pool the volume was claimed from, and "" for a volume
+// claimed from no pool.
+func (t *vol) PoolName() (string, error) {
+	return t.config.GetString(key.T{Section: "DEFAULT", Option: "pool"}), nil
+}
+
+// ConfiguredSize is the size the volume is asked to be.
+//
+// It is what was claimed of the pool when the volume was created, and what a
+// resize writes back, so it is the size the volume is meant to hold rather
+// than a record of what it held once.
+func (t *vol) ConfiguredSize() (int64, error) {
+	size := t.config.GetSize(key.T{Section: "DEFAULT", Option: "size"})
+	if size == nil {
+		return 0, fmt.Errorf("%s has no size", t.path)
+	}
+	return *size, nil
+}
+
+// HeadRID returns the rid of the resource a volume exposes to its consumers.
+//
+// A volume exists to expose one thing: the filesystem mounted on Head(), or,
+// when the volume has no filesystem, the device it exposes. An action asked of
+// the volume itself, like a resize, is an action on that resource.
+func (t *vol) HeadRID(ctx context.Context) (string, error) {
+	type header interface {
+		Head() string
+	}
+	if head := t.Head(); head != "" {
+		l := t.ResourcesByDrivergroups([]driver.Group{
+			driver.GroupFS,
+			driver.GroupVolume,
+		})
+		for _, r := range l {
+			var i interface{} = r
+			o, ok := i.(header)
+			if !ok {
+				continue
+			}
+			if o.Head() == head {
+				return r.RID(), nil
+			}
+		}
+	}
+	if r, _ := t.exposedDeviceResource(ctx); r != nil {
+		return r.RID(), nil
+	}
+	return "", fmt.Errorf("%s exposes neither a head mount point nor a device", t.path)
 }
 
 func (t *vol) HoldersExcept(ctx context.Context, exceptPath naming.Path) (naming.Paths, error) {
@@ -279,4 +371,70 @@ func (t *vol) Access() (volaccess.T, error) {
 	} else {
 		return volaccess.Parse(s)
 	}
+}
+
+// PoolChargesOf is what a volume made of these keywords would take of pools
+// other than the one serving it.
+//
+// A pool weighs the claim of the namespace before it writes the volume, and
+// what the volume will take elsewhere is only known by reading what the
+// keywords describe. They are read as the configuration they will become,
+// which is the same reading PoolCharges does of a volume that exists.
+func (t *vol) PoolChargesOf(configData []byte) (map[string]int64, error) {
+	o, err := NewVol(t.path, WithConfigData(configData), WithVolatile(true))
+	if err != nil {
+		return nil, err
+	}
+	return o.PoolCharges(), nil
+}
+
+// PoolCharges is what the volume takes of pools other than the one that
+// served it, by pool name.
+//
+// A volume is counted against the claim its namespace holds on the pool it
+// was served by, and that is what it was asked of that pool. It can take
+// storage elsewhere all the same: a volume served by a virtual pool is a copy
+// of a template, and a template is free to carve a logical volume out of a
+// group another pool is the head of. Nothing but reading what the volume is
+// made of says so.
+//
+// What the volume takes of its own pool is not answered, because it is
+// already counted: it is the size the volume was served with. Neither is what
+// a volume resource takes, because the volume it points at is a volume of its
+// own, counted in its own right.
+//
+// It is read from the configuration rather than from the storage, because a
+// claim is weighed before anything is provisioned.
+func (t *vol) PoolCharges() map[string]int64 {
+	own := t.config.GetString(key.T{Section: "DEFAULT", Option: "pool"})
+	node, err := NewNode(WithVolatile(true))
+	if err != nil {
+		return nil
+	}
+	byHead := make(map[string]string)
+	for _, p := range node.Pools() {
+		if head := p.Head(); head != "" {
+			byHead[head] = p.Name()
+		}
+	}
+	var charges map[string]int64
+	for _, r := range t.Resources() {
+		charger, ok := r.(resource.PoolCharger)
+		if !ok {
+			continue
+		}
+		head, size := charger.PoolCharge()
+		if head == "" || size <= 0 {
+			continue
+		}
+		name, ok := byHead[head]
+		if !ok || name == own {
+			continue
+		}
+		if charges == nil {
+			charges = make(map[string]int64)
+		}
+		charges[name] += size
+	}
+	return charges
 }

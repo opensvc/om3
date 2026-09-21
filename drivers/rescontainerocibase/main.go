@@ -770,6 +770,7 @@ func (t *BT) findAndStart(ctx context.Context) error {
 		id = i.ID()
 	}
 	errs := make(chan error, 1)
+	parent := ctx
 	go func() {
 		if t.StartTimeout != nil && *t.StartTimeout > 0 {
 			log.Infof("container start %s (%s) with timeout %s", name, id, t.StartTimeout)
@@ -791,6 +792,9 @@ func (t *BT) findAndStart(ctx context.Context) error {
 		}
 
 		if err := t.executer.Start(ctx); err != nil {
+			if timedOutOn(parent, err) && t.StartTimeout != nil && *t.StartTimeout > 0 {
+				err = fmt.Errorf("the container did not start within start_timeout (%s): %w", *t.StartTimeout, err)
+			}
 			errs <- err
 			defer inspectRefresh()
 			return
@@ -844,10 +848,32 @@ func (t *BT) findAndStart(ctx context.Context) error {
 		}
 		return nil
 	case <-timerC:
-		err := fmt.Errorf("container start %s (%s): timeout", name, id)
+		err := fmt.Errorf("container start %s (%s): did not finish within start_timeout (%s)", name, id, *t.StartTimeout)
 		log.Errorf("%s", err)
 		return err
 	}
+}
+
+// timedOutOn says whether an operation was ended by the deadline set on it
+// here, rather than by one its caller set earlier.
+//
+// A deadline reads as "context deadline exceeded" wherever it surfaces, which
+// names neither the keyword that set it nor what it was set to, and leaves
+// the reader to guess: a container slow to start reads as an image slow to
+// pull, and the wrong keyword gets raised. Naming the wrong one is the same
+// mistake, so the deadline of the caller is compared: an action bounded by a
+// timeout of its own ends the command too, and it is not this keyword that
+// did it.
+func timedOutOn(parent context.Context, err error) bool {
+	if !errors.Is(err, context.DeadlineExceeded) {
+		return false
+	}
+	deadline, ok := parent.Deadline()
+	if !ok {
+		// Nothing the caller set can have ended it.
+		return true
+	}
+	return deadline.After(time.Now())
 }
 
 func (t *BT) logMainAction(s string, err error) error {
@@ -863,6 +889,7 @@ func (t *BT) pull(ctx context.Context) error {
 	if t.executer == nil {
 		return fmt.Errorf("pull: undefined executer")
 	}
+	parent := ctx
 	if t.PullTimeout != nil && *t.PullTimeout > 0 {
 		var cancel context.CancelFunc
 		ctx, cancel = context.WithTimeout(ctx, *t.PullTimeout)
@@ -872,6 +899,9 @@ func (t *BT) pull(ctx context.Context) error {
 		}
 	}
 	if err := t.executer.Pull(ctx); err != nil {
+		if timedOutOn(parent, err) && t.PullTimeout != nil && *t.PullTimeout > 0 {
+			return fmt.Errorf("image %s was not pulled within pull_timeout (%s): %w", t.Image, *t.PullTimeout, err)
+		}
 		return fmt.Errorf("can't pull image %s: %s", t.Image, err)
 	}
 	return nil
@@ -882,19 +912,23 @@ func (t *BT) pullAndRun(ctx context.Context) error {
 	if t.executer == nil {
 		return fmt.Errorf("pullAndRun: undefined executer")
 	}
+	var pulled bool
 	if t.IsAlwaysImagePullPolicy() {
 		log.Tracef("container start: with image policy: always")
 		if err := t.pull(ctx); err != nil {
 			return err
 		}
+		pulled = true
 	} else if hasImage, _, err := t.executer.HasImage(ctx); err != nil {
 		return fmt.Errorf("unable to detect if image %s exists locally: %s", t.Image, err)
 	} else if !hasImage {
 		if err := t.pull(ctx); err != nil {
 			return err
 		}
+		pulled = true
 	}
 	refreshCtx := ctx
+	parent := ctx
 
 	if t.StartTimeout != nil && *t.StartTimeout > 0 {
 		var cancel context.CancelFunc
@@ -909,7 +943,17 @@ func (t *BT) pullAndRun(ctx context.Context) error {
 		_, _ = t.executer.InspectRefresh(refreshCtx)
 	}()
 
-	return t.executer.Run(ctx)
+	err := t.executer.Run(ctx)
+	if timedOutOn(parent, err) && t.StartTimeout != nil && *t.StartTimeout > 0 {
+		// Saying where the pull stands is what stops a start that took too
+		// long from being read as a pull that took too long. They are two
+		// windows, and the pull has its own.
+		if pulled {
+			return fmt.Errorf("the container did not start within start_timeout (%s), which the pull of %s ran before, under pull_timeout: %w", *t.StartTimeout, t.Image, err)
+		}
+		return fmt.Errorf("the container did not start within start_timeout (%s), with %s already local, so nothing was pulled in that time: %w", *t.StartTimeout, t.Image, err)
+	}
+	return err
 }
 
 func (t *BT) statusInspectNS(ctx context.Context, attr, current, target string) {

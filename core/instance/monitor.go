@@ -87,6 +87,12 @@ type (
 		Force bool `json:"force"`
 	}
 
+	// MonitorGlobalExpectOptionsResized carries the configuration a resize is
+	// for, so a node does not grow to the size it held before the request.
+	MonitorGlobalExpectOptionsResized struct {
+		ConfigUpdatedAt time.Time `json:"config_updated_at"`
+	}
+
 	MonitorGlobalExpectOptionsPlacedAt struct {
 		Destination []string `json:"destination"`
 		Live        bool     `json:"live"`

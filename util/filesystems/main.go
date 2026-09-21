@@ -60,6 +60,21 @@ type (
 	MKFSer interface {
 		MKFS(context.Context, string, []string) error
 	}
+
+	// Grower is implemented by a filesystem that can be made larger in place,
+	// to fill the device it sits on. The device is enlarged first, so the
+	// filesystem is only ever asked to take up what is already there.
+	Grower interface {
+		Grow(ctx context.Context, dev, mountPoint string) error
+	}
+
+	// SelfSizer is implemented by a filesystem that holds its own size rather
+	// than taking the size of a device under it. A tmpfs is told how large to
+	// be, and has nothing below it to enlarge first, so it is resized in one
+	// step and in either direction.
+	SelfSizer interface {
+		SetSize(ctx context.Context, mountPoint string, size int64) error
+	}
 )
 
 var (
@@ -70,7 +85,7 @@ var (
 )
 
 func init() {
-	registerFS(&T{fsType: "tmpfs", isVirtual: true})
+	registerFS(NewTMPFS())
 	registerFS(&T{fsType: "rpc_pipefs", isVirtual: true, isReadOnly: true})
 	registerFS(&T{fsType: "none", isFileBacked: true})
 	registerFS(&T{fsType: "bind", isFileBacked: true})

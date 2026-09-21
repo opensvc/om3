@@ -1126,6 +1126,14 @@ var (
 		Text:    keywords.NewText(fs, "text/kw/node/pool.directory.path"),
 		Types:   []string{"directory"},
 	}
+	kwNodePoolDirectoryQuota = keywords.Keyword{
+		Converter: converters.Bool,
+		Default:   "false",
+		Option:    "quota",
+		Section:   "pool",
+		Text:      keywords.NewText(fs, "text/kw/node/pool.directory.quota"),
+		Types:     []string{"directory"},
+	}
 	kwNodePoolVirtualTemplate = keywords.Keyword{
 		Example:  "templates/vol/mpool-over-loop",
 		Option:   "template",
@@ -1866,6 +1874,7 @@ var (
 		&kwNodePoolZpoolPath,
 		&kwNodePoolSharePath,
 		&kwNodePoolDirectoryPath,
+		&kwNodePoolDirectoryQuota,
 		&kwNodePoolVirtualTemplate,
 		&kwNodePoolVirtualVolumeEnv,
 		&kwNodePoolVirtualOptionalVolumeEnv,

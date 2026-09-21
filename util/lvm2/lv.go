@@ -7,15 +7,16 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"strconv"
 	"strings"
 
 	"github.com/rs/zerolog"
 
 	"github.com/opensvc/om3/v3/util/command"
 	"github.com/opensvc/om3/v3/util/device"
-	"github.com/opensvc/om3/v3/util/sessioncache"
 	"github.com/opensvc/om3/v3/util/file"
 	"github.com/opensvc/om3/v3/util/funcopt"
+	"github.com/opensvc/om3/v3/util/sessioncache"
 	"github.com/opensvc/om3/v3/util/sizeconv"
 )
 
@@ -139,7 +140,10 @@ func (t *LV) Show(ctx context.Context) (*LVInfo, error) {
 	cmd := command.New(
 		command.WithContext(ctx),
 		command.WithName("lvs"),
-		command.WithVarArgs("--reportformat", "json", fqn),
+		// --units b --nosuffix because the default display rounds, and
+		// prefixes a "<" when it rounded up: a 5364514816 bytes volume
+		// reports "<5.00g", which is neither parsable nor its size.
+		command.WithVarArgs("--reportformat", "json", "--units", "b", "--nosuffix", fqn),
 		command.WithLogger(t.Log()),
 		command.WithCommandLogLevel(zerolog.TraceLevel),
 		command.WithStdoutLogLevel(zerolog.TraceLevel),
@@ -249,13 +253,17 @@ func (t *LV) Devices(ctx context.Context) (device.L, error) {
 	return l, nil
 }
 
+// Create makes the logical volume, of the size given as the configuration
+// spells it.
+//
+// A share of the volume group is what lvm2 computes, from an extent count, so
+// it is handed over as written. Everything else is a count of bytes, and the
+// unit is spelled out because lvcreate does not default to bytes.
 func (t *LV) Create(ctx context.Context, size string, args []string) error {
 	if strings.Contains(size, "%") {
 		args = append(args, "-l", size)
 	} else if i, err := sizeconv.FromSize(size); err == nil {
-		// default unit is not "B", explicitly tell
-		size = fmt.Sprintf("%dB", i)
-		args = append(args, "-L", size)
+		args = append(args, "-L", fmt.Sprintf("%dB", i))
 	} else {
 		args = append(args, "-L", size)
 	}
@@ -297,6 +305,47 @@ func (t *LV) Remove(ctx context.Context, args []string) error {
 		command.WithStderrLogLevel(zerolog.ErrorLevel),
 	)
 	cmd.Run()
+	if cmd.ExitCode() != 0 {
+		return fmt.Errorf("%s error %d", cmd, cmd.ExitCode())
+	}
+	return nil
+}
+
+// Size is the bytes the logical volume holds.
+func (t *LV) Size(ctx context.Context) (int64, error) {
+	info, err := t.Show(ctx)
+	if err != nil {
+		return 0, err
+	}
+	if info == nil {
+		return 0, fmt.Errorf("%w: %s", ErrExist, t.FQN())
+	}
+	size, err := strconv.ParseInt(info.LVSize, 10, 64)
+	if err != nil {
+		return 0, fmt.Errorf("%s: parse lv_size %s: %w", t.FQN(), info.LVSize, err)
+	}
+	return size, nil
+}
+
+// Resize sets the size of the logical volume, in bytes.
+//
+// The filesystem on it is not touched. Which of the things stacked on a volume
+// to resize, and in which order, is the caller's to decide, where
+// lvresize --resizefs would decide it here.
+func (t *LV) Resize(ctx context.Context, size int64) error {
+	fqn := t.FQN()
+	cmd := command.New(
+		command.WithContext(ctx),
+		command.WithName("lvresize"),
+		command.WithVarArgs("--size", fmt.Sprintf("%db", sizeconv.RoundUp(size, 512)), "--force", fqn),
+		command.WithLogger(t.Log()),
+		command.WithCommandLogLevel(zerolog.InfoLevel),
+		command.WithStdoutLogLevel(zerolog.InfoLevel),
+		command.WithStderrLogLevel(zerolog.ErrorLevel),
+	)
+	cmd.Run()
+	sessioncache.Clear("vgs")
+	sessioncache.Clear("vgs-devices")
 	if cmd.ExitCode() != 0 {
 		return fmt.Errorf("%s error %d", cmd, cmd.ExitCode())
 	}

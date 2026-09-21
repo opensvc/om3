@@ -133,5 +133,26 @@
         }
       }
     ]
+  },
+  "pool": {
+    "pool1": {
+      "type": "directory",
+      "head": "/var/lib/opensvc/pool/directory",
+      "capabilities": [
+        "blk",
+        "file",
+        "rwo"
+      ],
+      "errors": [],
+      "shared": false,
+      "size": 1000,
+      "used": 400,
+      "free": 600,
+      "logical_size": 1000,
+      "logical_used": 400,
+      "logical_free": 600,
+      "volume_count": 0,
+      "updated_at": "2026-09-20T10:00:00.000000000+02:00"
+    }
   }
 }

@@ -82,7 +82,12 @@ func (t *actor) Schedules() schedule.Table {
 		table = table.Add(e)
 	}
 	if len(listResources(t)) > 0 {
-		e := t.newScheduleEntry("info", kwoption.ScheduleInfo, "", "info", true, false)
+		// This job runs "instance info --refresh", which only refreshes the
+		// local cache and publishes that it did. Feeding the collector is the
+		// collector speaker's job, on its own schedule, so this one does not
+		// require a joinable collector: the key-values are what "instance
+		// info" reads, collector or not.
+		e := t.newScheduleEntry("info", kwoption.ScheduleInfo, "", "info", false, false)
 		table = table.Add(e)
 	}
 	return table

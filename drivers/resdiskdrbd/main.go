@@ -35,6 +35,7 @@ import (
 	"github.com/opensvc/om3/v3/util/file"
 	"github.com/opensvc/om3/v3/util/hostname"
 	"github.com/opensvc/om3/v3/util/key"
+	"github.com/opensvc/om3/v3/util/sizeconv"
 )
 
 type (
@@ -75,6 +76,9 @@ type (
 		WaitConnectingOrConnected(ctx context.Context, nodeID string) (string, error)
 		StartConnections(context.Context, ...string) error
 		Show(ctx context.Context) (drbd.DrbdShow, error)
+	}
+	DRBDDriverResizer interface {
+		Resize(context.Context) error
 	}
 
 	// ResTemplateData represents template data for a resource configuration, it is exported (public)
@@ -1028,7 +1032,21 @@ func (t *T) Provisioned(ctx context.Context) (provisioned.T, error) {
 	if !t.isConfigured() {
 		return provisioned.False, nil
 	}
-	// TODO: allow Provisioned(ctx context.Context) ?
+	// A resource holding a disk state has metadata, and asking drbdadm to
+	// dump it would answer wrongly: dump-md cannot open the backing device of
+	// a live resource, and says "No valid meta data found" on its way out,
+	// exiting 0. Reading that as unprovisioned hides the resource from
+	// anything looking up which resource exposes a device, for as long as it
+	// is in use.
+	if states, err := t.drbd(ctx).DiskStates(ctx); err == nil {
+		for _, state := range states {
+			switch state {
+			case "", "Diskless", "Unconfigured", "DUnknown":
+			default:
+				return provisioned.True, nil
+			}
+		}
+	}
 	hasMD, err := t.drbd(ctx).HasMD(ctx)
 	if err != nil {
 		t.Log().Tracef("drbd res is not configured")
@@ -1039,6 +1057,68 @@ func (t *T) Provisioned(ctx context.Context) (provisioned.T, error) {
 		return provisioned.False, nil
 	}
 	return provisioned.True, nil
+}
+
+// ResizeIsReplicated implements resource.ResizeIsReplicated.
+//
+// A drbd resource offers what its smallest replica holds, so it can only be
+// grown once every node has grown the device behind it.
+func (t *T) ResizeIsReplicated() bool {
+	return true
+}
+
+// ResizeSpansBelow implements resource.ResizeSpansBelow.
+//
+// A drbd resource takes up the device it was given, keeping a cut of it for
+// its metadata: it is not told a size, it is told to look again.
+func (t *T) ResizeSpansBelow() bool {
+	return true
+}
+
+// CurrentSize implements resource.Sizer.
+//
+// It is the size of the replicated device, which is less than the device
+// behind it: drbd keeps its metadata there.
+func (t *T) CurrentSize(ctx context.Context) (int64, error) {
+	devs := t.ExposedDevices(ctx)
+	if len(devs) == 0 {
+		return 0, fmt.Errorf("drbd resource %s exposes no device, so its size cannot be read", t.Res)
+	}
+	return devs[0].Size()
+}
+
+// ResizePlan implements resource.Resizer.
+//
+// What drbd asks of the device below is the size wanted plus room for its
+// metadata: a dirty bitmap holding one bit per 4k of data for each peer it was
+// given room for, and a superblock and an activity log on top of that.
+//
+// It is computed from the size asked for rather than measured as the gap
+// between the device below and the replicated device. That gap is not the
+// metadata while a resize is in flight: every node grows the device below
+// first, and only then is the replicated device grown to match, so measuring
+// then reads the growth itself as metadata and asks for it a second time.
+// Asking for a little too much costs nothing. Asking for too little leaves the
+// filesystem above short of what it was promised.
+func (t *T) ResizePlan(ctx context.Context, to int64) (int64, error) {
+	if _, ok := t.drbd(ctx).(DRBDDriverResizer); !ok {
+		return 0, fmt.Errorf("this drbd driver cannot resize")
+	}
+	metadata := 4*1024*1024 + int64(t.maxPeers())*to/32768
+	// A block device holds whole sectors, so that is what it asks for.
+	return sizeconv.RoundUp(to+metadata, 512), nil
+}
+
+// Resize implements resource.Resizer.
+//
+// The device behind drbd has to have been grown on every node first: a replica
+// can only offer what the smallest of them holds.
+func (t *T) Resize(ctx context.Context, _ int64) error {
+	dev, ok := t.drbd(ctx).(DRBDDriverResizer)
+	if !ok {
+		return fmt.Errorf("this drbd driver cannot resize")
+	}
+	return dev.Resize(ctx)
 }
 
 func (t *T) ExposedDevices(ctx context.Context) device.L {

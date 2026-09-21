@@ -165,7 +165,9 @@ func (a *DaemonAPI) getLocalNodeLogs(ctx echo.Context, params api.GetNodeLogsPar
 			if err == nil {
 				return nil
 			}
-			log.Tracef("stream.Error: %s", err)
+			// Not a trace: a log read that fails answers the client with an
+			// empty stream, so the daemon log is the only place saying why.
+			log.Errorf("stream.Error: %s", err)
 		}
 	}
 }
@@ -201,13 +203,16 @@ func parseLogFilter(s string) (string, string, error) {
 	}
 }
 
+// filtersFromPaths returns the journalctl matches selecting the logs of the
+// objects.
+//
+// No disjunction is written between them: journalctl already reads several
+// matches on one field as alternatives, and a "+" there would start a new
+// group, letting the paths after it escape the matches that came before,
+// _COMM included.
 func filtersFromPaths(paths naming.Paths) (filters []string) {
-	last := len(paths) - 1
-	for i, path := range paths {
+	for _, path := range paths {
 		filters = append(filters, "OBJ_PATH="+path.String())
-		if i > 0 && i < last {
-			filters = append(filters, "+")
-		}
 	}
 	return
 }

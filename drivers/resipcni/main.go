@@ -574,7 +574,7 @@ func (t *T) start(ctx context.Context) error {
 		fmt.Sprintf("CNI_PATH=%s", filepath.Dir(plugin)),
 	}
 
-	ip, err := t.allocateIP()
+	ip, err := t.allocateIP(ctx)
 	if err != nil {
 		return err
 	}

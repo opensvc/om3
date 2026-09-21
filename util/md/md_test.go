@@ -89,3 +89,29 @@ func TestMD(t *testing.T) {
 		})
 	}
 }
+
+// An array is grown once it is whole. mdadm grows a degraded one without a
+// word, and the space that adds is as unprotected as the array it is added
+// to: a raid5 missing a member grows onto members that have no parity for the
+// new space and no member to rebuild it from.
+func TestSizesIsWhole(t *testing.T) {
+	for _, tc := range []struct {
+		state string
+		whole bool
+	}{
+		{"clean", true},
+		{"active", true},
+		{"", true},
+		{"clean, degraded", false},
+		{"active, degraded", false},
+		{"clean, degraded, recovering", false},
+		{"active, resyncing", false},
+		{"clean, reshaping", false},
+		{"clean, FAILED", false},
+		{"clean, checking", false},
+	} {
+		t.Run(tc.state, func(t *testing.T) {
+			assert.Equal(t, tc.whole, Sizes{State: tc.state}.IsWhole())
+		})
+	}
+}

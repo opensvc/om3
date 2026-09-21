@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"reflect"
 	"regexp"
 	"slices"
 	"strconv"
@@ -22,6 +23,7 @@ import (
 	"github.com/opensvc/om3/v3/core/keywords"
 	"github.com/opensvc/om3/v3/core/naming"
 	"github.com/opensvc/om3/v3/core/rawconfig"
+	"github.com/opensvc/om3/v3/util/arithmetic"
 	"github.com/opensvc/om3/v3/util/converters"
 	"github.com/opensvc/om3/v3/util/file"
 	"github.com/opensvc/om3/v3/util/hostname"
@@ -379,7 +381,7 @@ func (t *T) GetStringStrictAs(k key.T, impersonate string) (string, error) {
 	if v, err := t.EvalAs(k, impersonate); err != nil {
 		return "", err
 	} else {
-		return v.(string), nil
+		return EvaluatedString(v), nil
 	}
 }
 
@@ -387,8 +389,40 @@ func (t *T) GetStringStrict(k key.T) (string, error) {
 	if v, err := t.Eval(k); err != nil {
 		return "", err
 	} else {
-		return v.(string), nil
+		return EvaluatedString(v), nil
 	}
+}
+
+// EvaluatedString renders an evaluated keyword value the way the
+// configuration spells it.
+//
+// Evaluating a keyword returns what its converter makes of it, and that is
+// not always a string: a size is an *int64, a duration a *time.Duration, a
+// list a []string. Asking for such a keyword as a string used to assert it
+// was one, so declaring a converter on a keyword any of the many GetString
+// callers happens to read took the process down with it.
+//
+// A list joins on spaces, which is how a configuration writes one: fmt prints
+// it inside brackets, and a value spelled "[a b]" matches neither a list of
+// allowed values nor a shape a rule refuses. A pointer is followed, fmt
+// printing the address rather than what a converter put behind it.
+func EvaluatedString(v any) string {
+	switch o := v.(type) {
+	case nil:
+		return ""
+	case string:
+		return o
+	case []string:
+		return strings.Join(o, " ")
+	}
+	rv := reflect.ValueOf(v)
+	if rv.Kind() == reflect.Pointer {
+		if rv.IsNil() {
+			return ""
+		}
+		return fmt.Sprint(rv.Elem().Interface())
+	}
+	return fmt.Sprint(v)
 }
 
 func (t *T) GetStrings(k key.T) []string {
@@ -399,8 +433,13 @@ func (t *T) GetStrings(k key.T) []string {
 func (t *T) GetStringsStrict(k key.T) ([]string, error) {
 	if v, err := t.Eval(k); err != nil {
 		return []string{}, err
+	} else if l, ok := v.([]string); ok {
+		return l, nil
 	} else {
-		return v.([]string), nil
+		// A keyword holding a list and declaring no converter evaluates to
+		// the string the configuration holds, which is the list as it is
+		// written.
+		return strings.Fields(EvaluatedString(v)), nil
 	}
 }
 
@@ -410,13 +449,26 @@ func (t *T) GetSet(k key.T) *set.Set {
 }
 
 func (t *T) GetSetStrict(k key.T) (*set.Set, error) {
-	if v, err := t.Eval(k); err != nil {
+	v, err := t.Eval(k)
+	if err != nil {
 		return set.New(), err
-	} else if v != nil {
-		return v.(*set.Set), nil
-	} else {
-		return set.New(), nil
 	}
+	switch i := v.(type) {
+	case nil:
+		return set.New(), nil
+	case *set.Set:
+		if i == nil {
+			return set.New(), nil
+		}
+		return i, nil
+	}
+	// A keyword holding a set and declaring no converter evaluates to the
+	// string the configuration holds.
+	s := set.New()
+	for _, element := range strings.Fields(EvaluatedString(v)) {
+		s.Insert(element)
+	}
+	return s, nil
 }
 
 func (t *T) GetBool(k key.T) bool {
@@ -478,8 +530,42 @@ func (t *T) GetSizeStrict(k key.T) (*int64, error) {
 		var i int64
 		return &i, err
 	} else {
-		return v.(*int64), nil
+		return evaluatedSize(v)
 	}
+}
+
+// evaluatedSize reads a size from an evaluated keyword value.
+//
+// A keyword declaring the size converter evaluates to the size itself. A
+// keyword spelling a size and declaring no converter evaluates to the string
+// the configuration holds, and the loop, lv and rados disks all spell their
+// size that way. Asserting the first shape took the process down on the
+// second, which is one driver keyword away from every caller.
+//
+// So the value is read the way the configuration spells it, which is what the
+// converter would have made of it had the keyword named one.
+func evaluatedSize(v any) (*int64, error) {
+	switch i := v.(type) {
+	case nil:
+		return nil, nil
+	case *int64:
+		return i, nil
+	case int64:
+		return &i, nil
+	}
+	s := EvaluatedString(v)
+	if s == "" {
+		return nil, nil
+	}
+	size, err := converters.Size.Convert(s)
+	if err != nil {
+		return nil, fmt.Errorf("%w: expected a size, got %v", ErrType, v)
+	}
+	i, ok := size.(*int64)
+	if !ok {
+		return nil, fmt.Errorf("%w: expected a size, got %v", ErrType, v)
+	}
+	return i, nil
 }
 
 // PrepareUnset unsets keywords from config without committing changes.
@@ -520,6 +606,27 @@ func (t *T) expandKeywords(ks ...key.T) (key.L, error) {
 }
 
 // Unset deletes keys and commits.
+// UnsetRecorded drops the keywords that name what this configuration was made
+// with, which a configuration copied to make another thing must not carry:
+// the id the object was created with, the uuid of an md array it holds.
+//
+// They are written again, for the copy, when the copy makes what they name.
+func (t *T) UnsetRecorded() {
+	if t.Referrer == nil {
+		return
+	}
+	for _, section := range t.SectionStrings() {
+		for _, option := range t.Keys(section) {
+			k := key.New(section, option)
+			kw := t.Referrer.KeywordLookup(k, t.SectionType(k))
+			if kw == nil || !kw.Recorded {
+				continue
+			}
+			t.Unset(k)
+		}
+	}
+}
+
 func (t *T) Unset(ks ...key.T) error {
 	if err := t.PrepareUnset(ks...); err != nil {
 		return err
@@ -864,59 +971,147 @@ func getKeyword(k key.T, sectionType string, referrer Referrer) (*keywords.Keywo
 }
 
 func (t *T) evalStringAs(k key.T, kw *keywords.Keyword, impersonate string, count bool, trace *dereferenceTrace) (string, error) {
+	v, postponed, err := t.evalReferencesAs(k, kw, impersonate, count, trace)
+	if err != nil {
+		return v, err
+	}
+	if postponed {
+		// Something the value names is not built yet, so the arithmetic over
+		// it is not computed yet either. The value is answered as it was
+		// before there was any arithmetic: the reference standing in for
+		// itself, which is what lets a configuration validate before anything
+		// is provisioned.
+		return v, nil
+	}
+	return evalArithmetic(v, kw)
+}
+
+// evalArithmetic computes the arithmetic a keyword holds, for the keywords a
+// number is asked of.
+//
+// It is not computed everywhere, because "$(...)" is also how a shell
+// substitutes a command, and om keywords hold shell commands: a trigger, the
+// start of an app, the command of a task. A keyword converted to a number is
+// none of those, and is the only place a sum means anything.
+func evalArithmetic(v string, kw *keywords.Keyword) (string, error) {
+	if !strings.Contains(v, arithmetic.Open) {
+		return v, nil
+	}
+	switch {
+	case kw.Arithmetic:
+		// Said by a keyword that holds a number and converts to none.
+	case kw.Converter == converters.Size,
+		kw.Converter == converters.Int,
+		kw.Converter == converters.Int64,
+		kw.Converter == converters.Float64:
+		// A keyword converted to a number holds one.
+	default:
+		return v, nil
+	}
+	s, err := arithmetic.Eval(v)
+	if err != nil {
+		return "", fmt.Errorf("%s: %w", key.New(kw.Section, kw.Option), err)
+	}
+	return s, nil
+}
+
+func (t *T) evalReferencesAs(k key.T, kw *keywords.Keyword, impersonate string, count bool, trace *dereferenceTrace) (string, bool, error) {
 	var (
-		v   string
-		err error
+		v         string
+		postponed bool
+		err       error
 	)
 	switch kw.Inherit {
 	case keywords.InheritLeaf2Head:
-		if v, err = t.evalDescopeStringAs(k, kw, impersonate, count, trace); err == nil {
-			return v, nil
+		if v, postponed, err = t.evalDescopeStringAs(k, kw, impersonate, count, trace); err == nil {
+			return v, postponed, nil
 		}
 		firstKey := kw.DefaultKey()
-		if v, err = t.evalDescopeStringAs(firstKey, kw, impersonate, count, trace); err == nil {
-			return v, nil
+		if v, postponed, err = t.evalDescopeStringAs(firstKey, kw, impersonate, count, trace); err == nil {
+			return v, postponed, nil
 		}
 	case keywords.InheritHead2Leaf:
 		firstKey := kw.DefaultKey()
-		if v, err = t.evalDescopeStringAs(firstKey, kw, impersonate, count, trace); err == nil {
-			return v, nil
+		if v, postponed, err = t.evalDescopeStringAs(firstKey, kw, impersonate, count, trace); err == nil {
+			return v, postponed, nil
 		}
-		if v, err = t.evalDescopeStringAs(k, kw, impersonate, count, trace); err == nil {
-			return v, nil
+		if v, postponed, err = t.evalDescopeStringAs(k, kw, impersonate, count, trace); err == nil {
+			return v, postponed, nil
 		}
 	case keywords.InheritLeaf:
-		if v, err = t.evalDescopeStringAs(k, kw, impersonate, count, trace); err == nil {
-			return v, nil
+		if v, postponed, err = t.evalDescopeStringAs(k, kw, impersonate, count, trace); err == nil {
+			return v, postponed, nil
 		}
 	case keywords.InheritHead:
 		firstKey := kw.DefaultKey()
-		if v, err = t.evalDescopeStringAs(firstKey, kw, impersonate, count, trace); err == nil {
-			return v, nil
+		if v, postponed, err = t.evalDescopeStringAs(firstKey, kw, impersonate, count, trace); err == nil {
+			return v, postponed, nil
 		}
 	default:
-		return "", fmt.Errorf("unsupported keyword inherit value: %s.%s: %d", kw.Section, kw.Option, kw.Inherit)
+		return "", false, fmt.Errorf("unsupported keyword inherit value: %s.%s: %d", kw.Section, kw.Option, kw.Inherit)
 	}
 	switch {
 	case errors.Is(err, ErrExist):
 		switch kw.Required {
 		case true:
-			return "", err
+			return "", false, err
 		case false:
-			return t.replaceReferences(kw.Default, k.Section, impersonate, count, trace)
+			v, err := t.replaceReferences(kw.Default, k.Section, impersonate, count, trace)
+			if isPostponedRef(err) {
+				return v, true, nil
+			}
+			return v, false, err
 		}
 	case err != nil:
-		return "", err
+		return "", false, err
 	}
-	return v, nil
+	return v, false, nil
 }
 
-func (t *T) evalDescopeStringAs(k key.T, kw *keywords.Keyword, impersonate string, count bool, trace *dereferenceTrace) (string, error) {
+// evalDescopeStringAs reads a keyword and resolves the references it holds.
+//
+// The bool answers whether a reference named something not built yet. Its own
+// text stands in for it, which is how a configuration validates before
+// anything is provisioned, and what tells a caller not to read the value as a
+// number: the number is not known until the thing exists.
+func (t *T) evalDescopeStringAs(k key.T, kw *keywords.Keyword, impersonate string, count bool, trace *dereferenceTrace) (string, bool, error) {
 	v, err := t.mayDescope(k, kw, impersonate)
 	if err != nil {
-		return "", err
+		return "", false, err
 	}
-	return t.replaceReferences(v, k.Section, impersonate, count, trace)
+	v, err = t.replaceReferences(v, k.Section, impersonate, count, trace)
+	if isPostponedRef(err) {
+		return v, true, nil
+	}
+	return v, false, err
+}
+
+// isPostponedRef says an error is only a reference to something not built
+// yet, and nothing else.
+func isPostponedRef(err error) bool {
+	if err == nil {
+		return false
+	}
+	var postponed ErrPostponedRef
+	if !errors.As(err, &postponed) {
+		return false
+	}
+	for _, e := range errorsOf(err) {
+		var p ErrPostponedRef
+		if !errors.As(e, &p) {
+			return false
+		}
+	}
+	return true
+}
+
+// errorsOf unwraps a joined error into the errors it was joined from, and
+// answers the error itself when it joins none.
+func errorsOf(err error) []error {
+	if joined, ok := err.(interface{ Unwrap() []error }); ok {
+		return joined.Unwrap()
+	}
+	return []error{err}
 }
 
 func (t *T) convert(v string, kw *keywords.Keyword) (any, error) {
@@ -1346,7 +1541,10 @@ func (t T) dereferenceWellKnown(ref string, section string, impersonate string, 
 			return v, nil
 		}
 		if _, ok := err.(ErrPostponedRef); ok {
-			return v, nil
+			// The value stands in for what is not built yet, as it always
+			// has. The error rides along so a caller reading the value as a
+			// number knows it is not one yet.
+			return v, err
 		}
 		if errors.Is(err, ErrUnknownReference) {
 			// let intra config dereference happen
@@ -1456,7 +1654,10 @@ func (t *T) rawCommit(configData rawconfig.T, configPath string, validate bool) 
 		if alerts, err := t.Validate(); err != nil {
 			return fmt.Errorf("abort config commit: %w", err)
 		} else if alerts.HasError() {
-			return fmt.Errorf("abort config commit: validation errors")
+			// Say which keywords are wrong. The caller is often a driver
+			// committing a configuration it generated itself, and "validation
+			// errors" leaves nobody able to tell what it got wrong.
+			return fmt.Errorf("abort config commit:\n%s", alerts.Errors().StringWithoutMeta())
 		}
 	}
 	if t.Referrer != nil && !t.Referrer.IsVolatile() {

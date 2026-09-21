@@ -20,6 +20,7 @@ import (
 	"github.com/opensvc/om3/v3/util/funcopt"
 	"github.com/opensvc/om3/v3/util/plog"
 	"github.com/opensvc/om3/v3/util/sessioncache"
+	"github.com/opensvc/om3/v3/util/sizeconv"
 )
 
 type (
@@ -548,4 +549,169 @@ func (t T) devsFromBlkidOutput(s string) []string {
 		}
 	}
 	return l
+}
+
+type (
+	// Sizes are what an array hands out, what it uses on each of the members
+	// it hands it out from, and what it is doing while it does.
+	Sizes struct {
+		// Level is the raid level, to say which array cannot do what.
+		Level string
+
+		// State is what mdadm reports the array is: "clean", "active", and
+		// what it is missing or busy with when it is either of those and
+		// something else. An array is grown once it is whole, so this is what
+		// says whether it is.
+		State string
+
+		// Array is what the array device holds.
+		Array int64
+
+		// UsedDev is what the array uses on each member device. The array
+		// size divided by it is the number of members the size is made of:
+		// one for a raid1, n-1 for a raid5, n-2 for a raid6, n/copies for a
+		// raid10. Measuring it is how the rule of every level and every
+		// raid10 layout is had without enumerating them.
+		UsedDev int64
+
+		// Chunk is the stripe unit, which a member size has to be a whole
+		// number of on a striped level.
+		Chunk int64
+	}
+)
+
+// Sizes reads what the array hands out and what it uses on each member.
+func (t T) Sizes(ctx context.Context) (Sizes, error) {
+	var sizes Sizes
+	buff, err := t.detail(ctx)
+	if err != nil {
+		return sizes, err
+	}
+	for _, line := range strings.Split(buff, "\n") {
+		name, value, ok := strings.Cut(line, ":")
+		if !ok {
+			continue
+		}
+		value = strings.TrimSpace(value)
+		switch strings.TrimSpace(name) {
+		case "Raid Level":
+			sizes.Level = value
+		case "State":
+			sizes.State = value
+		case "Array Size":
+			sizes.Array, err = kiloBytesField(value)
+		case "Used Dev Size":
+			sizes.UsedDev, err = kiloBytesField(value)
+		case "Chunk Size":
+			sizes.Chunk, err = sizeconv.FromSize(value)
+		default:
+			continue
+		}
+		if err != nil {
+			return sizes, fmt.Errorf("%s: parse %s: %w", t, name, err)
+		}
+	}
+	return sizes, nil
+}
+
+// IsWhole says the array holds every member it is made of and is doing
+// nothing to the space it already has.
+//
+// mdadm grows a degraded array without a word, and the space that adds is as
+// unprotected as the array it is added to: a raid5 missing a member grows onto
+// members that have no parity for the new space and no member to rebuild it
+// from. An array rebuilding, resyncing or reshaping is busy with what it
+// holds, and is not asked for more while it is.
+func (t Sizes) IsWhole() bool {
+	for _, word := range strings.Split(t.State, ",") {
+		switch strings.TrimSpace(word) {
+		case "clean", "active", "":
+		default:
+			return false
+		}
+	}
+	return true
+}
+
+// kiloBytesField reads a "407552 (398.00 MiB 417.33 MB)" detail value, whose
+// first field counts kibibytes.
+func kiloBytesField(s string) (int64, error) {
+	s, _, _ = strings.Cut(s, " ")
+	if s == "" || s == "unknown" {
+		return 0, nil
+	}
+	n, err := strconv.ParseInt(s, 10, 64)
+	if err != nil {
+		return 0, err
+	}
+	return n * 1024, nil
+}
+
+// SetSize sets the bytes the array uses on each of its member devices, which
+// is how it is grown onto members that have grown.
+//
+// It does not reshape: the members and the level stay as they are.
+func (t T) SetSize(ctx context.Context, perDev int64) error {
+	cmd := command.New(
+		command.WithContext(ctx),
+		command.WithName(mdadm),
+		command.WithVarArgs("--grow", t.devpathFromName(), fmt.Sprintf("--size=%dK", perDev/1024)),
+		command.WithLogger(t.log),
+		command.WithCommandLogLevel(zerolog.InfoLevel),
+		command.WithStdoutLogLevel(zerolog.InfoLevel),
+		// mdadm says what it did on stderr, so a grow that worked was
+		// reported as an error:
+		//
+		//	ERR disk#1: stderr: mdadm: component size of
+		//	    /dev/md/system.v1.disk.1 has been set to 104448K
+		//
+		// The exit code is what says whether it worked, and it is read below.
+		// A grow that failed is the error this returns, logged by whoever
+		// asked for it.
+		command.WithStderrLogLevel(zerolog.InfoLevel),
+	)
+	if err := cmd.Run(); err != nil {
+		return err
+	}
+	if cmd.ExitCode() != 0 {
+		return fmt.Errorf("%s error %d", cmd, cmd.ExitCode())
+	}
+	return nil
+}
+
+// DevOverhead is what the array keeps on a member before the data it hands
+// out: its superblock, and the room left for a bitmap to grow into.
+//
+// It is read from the metadata written when the array was made, so it does not
+// change when a member grows. The gap between what a member holds and what the
+// array uses on it would: a member grown ahead of the array reads as all
+// overhead, and asking for it again compounds every pass.
+func (t T) DevOverhead(ctx context.Context, devpath string) (int64, error) {
+	cmd := command.New(
+		command.WithContext(ctx),
+		command.WithName(mdadm),
+		command.WithVarArgs("--examine", devpath),
+		command.WithLogger(t.log),
+		command.WithCommandLogLevel(zerolog.TraceLevel),
+		command.WithStdoutLogLevel(zerolog.TraceLevel),
+		command.WithStderrLogLevel(zerolog.TraceLevel),
+		command.WithBufferedStdout(),
+	)
+	b, err := cmd.Output()
+	if err != nil {
+		return 0, err
+	}
+	for _, line := range strings.Split(string(b), "\n") {
+		name, value, ok := strings.Cut(line, ":")
+		if !ok || strings.TrimSpace(name) != "Data Offset" {
+			continue
+		}
+		field, _, _ := strings.Cut(strings.TrimSpace(value), " ")
+		sectors, err := strconv.ParseInt(field, 10, 64)
+		if err != nil {
+			return 0, fmt.Errorf("%s: parse data offset %s: %w", devpath, field, err)
+		}
+		return sectors * 512, nil
+	}
+	return 0, fmt.Errorf("%s reports no data offset", devpath)
 }

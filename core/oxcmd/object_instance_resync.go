@@ -13,16 +13,17 @@ import (
 )
 
 type (
-	CmdObjectInstanceSyncIngest struct {
+	CmdObjectInstanceResync struct {
 		OptsGlobal
 		commoncmd.OptsAsync
 		commoncmd.OptsLock
 		commoncmd.OptsResourceSelector
 		NodeSelector string
+		Force        bool
 	}
 )
 
-func (t *CmdObjectInstanceSyncIngest) Run(kind string) error {
+func (t *CmdObjectInstanceResync) Run(kind string) error {
 	mergedSelector := commoncmd.MergeSelector("", t.ObjectSelector, kind, "")
 	return objectaction.New(
 		objectaction.WithObjectSelector(mergedSelector),
@@ -42,7 +43,7 @@ func (t *CmdObjectInstanceSyncIngest) Run(kind string) error {
 			if err != nil {
 				return nil, err
 			}
-			params := api.PostInstanceActionSyncIngestParams{}
+			params := api.PostInstanceActionResyncParams{}
 			if t.OptsResourceSelector.RID != "" {
 				params.Rid = &t.OptsResourceSelector.RID
 			}
@@ -52,11 +53,14 @@ func (t *CmdObjectInstanceSyncIngest) Run(kind string) error {
 			if t.OptsResourceSelector.Tag != "" {
 				params.Tag = &t.OptsResourceSelector.Tag
 			}
+			if t.Force {
+				params.Force = &t.Force
+			}
 			{
 				sessionID := xsession.SessionID().UUID()
 				params.SessionID = &sessionID
 			}
-			response, err := c.PostInstanceActionSyncIngestWithResponse(ctx, nodename, p.Namespace, p.Kind, p.Name, &params)
+			response, err := c.PostInstanceActionResyncWithResponse(ctx, nodename, p.Namespace, p.Kind, p.Name, &params)
 			if err != nil {
 				return nil, err
 			}
@@ -67,6 +71,8 @@ func (t *CmdObjectInstanceSyncIngest) Run(kind string) error {
 				return nil, fmt.Errorf("%s: node %s: %s", p, nodename, *response.JSON401)
 			case response.JSON403 != nil:
 				return nil, fmt.Errorf("%s: node %s: %s", p, nodename, *response.JSON403)
+			case response.JSON409 != nil:
+				return nil, fmt.Errorf("%s: node %s: %s", p, nodename, *response.JSON409)
 			case response.JSON500 != nil:
 				return nil, fmt.Errorf("%s: node %s: %s", p, nodename, *response.JSON500)
 			default:

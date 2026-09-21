@@ -18,6 +18,7 @@ import (
 	"github.com/opensvc/om3/v3/core/node"
 	"github.com/opensvc/om3/v3/core/object"
 	"github.com/opensvc/om3/v3/core/om"
+	"github.com/opensvc/om3/v3/core/pool"
 	"github.com/opensvc/om3/v3/core/status"
 	"github.com/opensvc/om3/v3/daemon/ccfg"
 	"github.com/opensvc/om3/v3/daemon/daemonctx"
@@ -190,6 +191,16 @@ func TestDaemonData(t *testing.T) {
 			require.Equal(t, full.Instance["foo"].Status.UpdatedAt, nodeRemote.Instance["foo"].Status.UpdatedAt, "instance status updated mismatch")
 			t.Log("check remote node instance monitor")
 			require.Equal(t, instance.MonitorStateStartProgress, nodeRemote.Instance["foo"].Monitor.State, "instance monitor state mismatch")
+			t.Log("check remote node pools")
+			// A peer reports the pools it has the first time its data is
+			// read, and that is when they have to be taken: taking them at
+			// the read after it leaves the peer a node this one knows no
+			// pool of, which reads as a node with no room rather than as a
+			// node nobody has heard from yet.
+			pools := pool.StatusData.GetByNode(remoteHost)
+			require.Lenf(t, pools, 1, "the pools of %s are not known of: %v", remoteHost, pools)
+			require.Equal(t, "pool1", pools[0].Name)
+			require.Equal(t, int64(600), pools[0].Value.Free)
 			t.Log("check remote node stats monitor")
 			require.Equal(t, 0.4, nodeRemote.Stats.Load15M)
 			require.Equal(t, uint64(16012), nodeRemote.Stats.MemTotalMB)

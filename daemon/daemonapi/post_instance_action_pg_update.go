@@ -33,6 +33,9 @@ func (a *DaemonAPI) postLocalInstanceActionPGUpdate(ctx echo.Context, namespace 
 		return JSONProblemf(ctx, http.StatusBadRequest, "Invalid parameters", "%s", err)
 	}
 	log = naming.LogWithPath(log, p)
+	if v, err := assertConfigUpdatedAt(ctx, p, params.ConfigUpdatedAt); !v {
+		return err
+	}
 	args := []string{p.String(), "instance", "pg", "update"}
 	if params.Slaves != nil && *params.Slaves {
 		args = append(args, "--slaves")

@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"strconv"
 	"strings"
 	"time"
 
@@ -506,4 +507,29 @@ func (t T) PromoteRW(ctx context.Context) error {
 		}
 	}
 	return nil
+}
+
+// sysfsSize is the bytes a block device holds, read from sysfs.
+//
+// It is read rather than measured by opening the device, because a device can
+// hold a size it does not let anyone open: a drbd device is refused to
+// everything but its primary node, and a resize has to read the size of a
+// replicated device on every node, primary or not.
+//
+// The file holds a count of 512 byte sectors, whatever the logical block size
+// of the device.
+func (t T) sysfsSize() (int64, error) {
+	p, err := t.sysfsFile()
+	if err != nil {
+		return 0, err
+	}
+	b, err := os.ReadFile(filepath.Join(p, "size"))
+	if err != nil {
+		return 0, err
+	}
+	sectors, err := strconv.ParseInt(strings.TrimSpace(string(b)), 10, 64)
+	if err != nil {
+		return 0, err
+	}
+	return sectors * 512, nil
 }

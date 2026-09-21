@@ -8,7 +8,6 @@ import (
 	"github.com/opensvc/om3/v3/core/driver"
 	"github.com/opensvc/om3/v3/core/pool"
 	"github.com/opensvc/om3/v3/util/lvm2"
-	"github.com/opensvc/om3/v3/util/sizeconv"
 )
 
 type (
@@ -106,7 +105,7 @@ func (t *T) BlkTranslate(name string, size int64, shared bool) ([]string, error)
 		"disk#0.type=lv",
 		"disk#0.name=" + name,
 		"disk#0.vg=" + t.VGName(),
-		"disk#0.size=" + sizeconv.ExactBSizeCompact(float64(size)),
+		"disk#0.size={DEFAULT.size}",
 	}
 	if opts := t.MkblkOptions(); opts != "" {
 		data = append(data, "disk#0.create_options="+opts)

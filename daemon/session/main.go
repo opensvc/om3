@@ -54,14 +54,17 @@ type (
 	// Orchestration is one orchestration the daemon accepted, and the
 	// execs it ran under it.
 	Orchestration struct {
-		OrchestrationID string     `json:"orchestration_id"`
-		Node            string     `json:"node"`
-		Path            string     `json:"path,omitempty"`
-		GlobalExpect    string     `json:"global_expect,omitempty"`
-		State           State      `json:"state"`
-		Error           string     `json:"error,omitempty"`
-		StartedAt       time.Time  `json:"started_at"`
-		EndedAt         *time.Time `json:"ended_at,omitempty"`
+		OrchestrationID string `json:"orchestration_id"`
+		Node            string `json:"node"`
+		Path            string `json:"path,omitempty"`
+		// Expect is the state the orchestration is for. An object is asked
+		// by a global expect; a node by a global one to freeze and a local
+		// one to drain.
+		Expect    string     `json:"expect,omitempty"`
+		State     State      `json:"state"`
+		Error     string     `json:"error,omitempty"`
+		StartedAt time.Time  `json:"started_at"`
+		EndedAt   *time.Time `json:"ended_at,omitempty"`
 	}
 )
 
@@ -201,7 +204,7 @@ func EndOrchestration(id string, state State, errS string) {
 // id is empty when the monitor names no orchestration, which is how the end
 // of one is seen: the id is unset on a node when the orchestration is reached
 // there, so the last node to drop it ends it.
-func NoteMonitor(path, node, id, globalExpect string, updatedAt time.Time) {
+func NoteMonitor(path, node, id, expect string, updatedAt time.Time) {
 	mu.Lock()
 	defer mu.Unlock()
 
@@ -218,12 +221,12 @@ func NoteMonitor(path, node, id, globalExpect string, updatedAt time.Time) {
 		return
 	}
 	monitorOrchestration[key] = id
-	join(id, path, node, globalExpect, updatedAt)
+	join(id, path, node, expect, updatedAt)
 }
 
 // join adds a node to an orchestration, and records the orchestration when it
 // is the first node to name it. The caller holds the lock.
-func join(id, path, node, globalExpect string, updatedAt time.Time) {
+func join(id, path, node, expect string, updatedAt time.Time) {
 	if participants[id] == nil {
 		participants[id] = make(map[string]bool)
 	}
@@ -241,17 +244,17 @@ func join(id, path, node, globalExpect string, updatedAt time.Time) {
 			// the acceptance says. A monitor naming the id says the node is
 			// in the orchestration, not that it accepted it, and every node
 			// of the object names it.
-			Path:         path,
-			GlobalExpect: globalExpect,
-			State:        StateRunning,
-			StartedAt:    startedAt,
+			Path:      path,
+			Expect:    expect,
+			State:     StateRunning,
+			StartedAt: startedAt,
 		}
 		return
 	}
-	// The global expect of an orchestration is what it is for, and a node
+	// What an orchestration is for is the same on every node, so a node
 	// joining late is as good a source for it as the first one.
-	if o.GlobalExpect == "" {
-		o.GlobalExpect = globalExpect
+	if o.Expect == "" {
+		o.Expect = expect
 	}
 	if o.Path == "" {
 		o.Path = path

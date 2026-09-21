@@ -1,7 +1,10 @@
 package nmon
 
 import (
+	"fmt"
 	"testing"
+
+	"github.com/google/uuid"
 
 	"github.com/opensvc/om3/v3/core/node"
 	"github.com/opensvc/om3/v3/daemon/msgbus"
@@ -78,5 +81,93 @@ func TestUpdateIsOverloadedAndPublish(t *testing.T) {
 	})
 	if len(publisher.messages) != publishedCount {
 		t.Fatal("unchanged overload status was published again")
+	}
+}
+
+// newTestManager is a manager with just enough in it to drive the
+// orchestration lifecycle: the state, the logger it swaps, and somewhere to
+// record what it publishes.
+func newTestManager(publisher *recordingPublisher) *Manager {
+	m := &Manager{
+		localhost: "node1",
+		logBase:   plog.NewDefaultLogger(),
+		publisher: publisher,
+		state:     node.Monitor{State: node.MonitorStateIdle},
+	}
+	m.logSetOrchestrationID(uuid.Nil)
+	return m
+}
+
+func kinds(messages []pubsub.Messager) []string {
+	l := make([]string, len(messages))
+	for i, m := range messages {
+		if k, ok := m.(interface{ Kind() string }); ok {
+			l[i] = k.Kind()
+		} else {
+			l[i] = fmt.Sprintf("%T", m)
+		}
+	}
+	return l
+}
+
+// A drain is asked for with a local expect, not a global one, so it ends in
+// orchestrateDrained rather than where a freeze ends. It has to end all the
+// same: an orchestration adopted and never ended stays running in the store
+// for as long as the store keeps it, and stamps every later log entry of an
+// idle monitor with its id.
+func TestADrainEndsItsOrchestration(t *testing.T) {
+	for _, tc := range []struct {
+		name  string
+		state node.MonitorState
+	}{
+		{"drained", node.MonitorStateDrainSuccess},
+		{"failed to drain", node.MonitorStateDrainFailure},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			publisher := &recordingPublisher{}
+			m := newTestManager(publisher)
+			id := uuid.New()
+
+			m.state.LocalExpect = node.MonitorLocalExpectDrained
+			m.adoptOrchestration(id)
+			if m.state.OrchestrationID != id {
+				t.Fatalf("the orchestration was not adopted: %s", m.state.OrchestrationID)
+			}
+
+			m.state.State = tc.state
+			m.orchestrateDrained()
+
+			if m.state.OrchestrationID != uuid.Nil {
+				t.Errorf("the orchestration was not ended: %s", m.state.OrchestrationID)
+			}
+			if m.state.LocalExpect != node.MonitorLocalExpectNone {
+				t.Errorf("the local expect was not cleared: %s", m.state.LocalExpect)
+			}
+			want := []string{"NodeOrchestrationAccepted", "NodeOrchestrationEnd"}
+			got := kinds(publisher.messages)
+			if len(got) != len(want) || got[0] != want[0] || got[1] != want[1] {
+				t.Errorf("published %v, want %v", got, want)
+			}
+		})
+	}
+}
+
+// The id a second request is handed displaces the first, which ended all the
+// same, and aborted is how it ended.
+func TestANewOrchestrationAbortsTheOneItDisplaces(t *testing.T) {
+	publisher := &recordingPublisher{}
+	m := newTestManager(publisher)
+
+	m.adoptOrchestration(uuid.New())
+	m.adoptOrchestration(uuid.New())
+
+	want := []string{"NodeOrchestrationAccepted", "NodeOrchestrationEnd", "NodeOrchestrationAccepted"}
+	got := kinds(publisher.messages)
+	if len(got) != len(want) {
+		t.Fatalf("published %v, want %v", got, want)
+	}
+	end, ok := publisher.messages[1].(*msgbus.NodeOrchestrationEnd)
+	if !ok || !end.Aborted {
+		t.Errorf("the displaced orchestration did not end aborted: %#v", publisher.messages[1])
 	}
 }

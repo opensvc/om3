@@ -1,2 +1,12 @@
-The size of the logical volume to provision. A size expression or
-`<n>%{FREE|PVS|VG}`.
+The size of the logical volume to provision, as a size expression, or as the
+`<n>%{FREE|PVS|VG}` share of the volume group lvm2 computes.
+
+A share is handed to lvcreate as written, and lvm2 resolves it once, when the
+volume is created. om never learns what it came out as, so a volume sized that
+way cannot be grown by a resize, which refuses it rather than writing a size
+over the share.
+
+A share om computes is written as an arithmetic expression over the capacity
+of the volume group resource, and can be grown:
+
+	size = $(50% * {disk#vg.capacity})
