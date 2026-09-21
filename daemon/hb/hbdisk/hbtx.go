@@ -2,6 +2,7 @@ package hbdisk
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"math/rand"
 	"strings"
@@ -70,17 +71,22 @@ func (t *tx) Start(cmdC chan<- interface{}, msgC <-chan []byte) error {
 	ctx, cancel := context.WithCancel(t.ctx)
 	t.ctx = ctx
 	t.cancel = cancel
-	hbaudit.EnableAudit(ctx, t.id, t.log, "hb", strings.Replace(t.id, "hb#", "hb:", 1))
+	auditName := strings.Replace(t.id, "hb#", "hb:", 1)
+	hbaudit.EnableAudit(ctx, t.id, t.log, "hb", auditName, strings.TrimSuffix(auditName, ".tx"))
 	t.log.Infof("starting with storage area: metadata_size + (max_slots x slot_size): %d + (%d x %d)", metaSize(t.base.maxSlots), t.base.maxSlots, sign.SlotSize)
 	if t.base.maxSlots < len(t.nodes) {
 		cancel()
 		return fmt.Errorf("startup failed: not enough slots for %d nodes", len(t.nodes))
 	}
-	if err := t.base.device.open(); err != nil {
-		err := fmt.Errorf("device %s: %w", t.base.path, err)
-		t.log.Warnf("startup failed: %s", err)
-		cancel()
-		return err
+	if openErr := t.base.device.open(); openErr != nil {
+		if errors.Is(openErr, sign.ErrLegacySignature) {
+			t.log.Warnf("device %s: %s", t.base.path, openErr)
+		} else {
+			err := fmt.Errorf("device %s: %w", t.base.path, openErr)
+			t.log.Warnf("startup failed: %s", err)
+			cancel()
+			return err
+		}
 	}
 
 	if err := t.base.scanMetadata(t.base.localhost); err != nil {

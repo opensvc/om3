@@ -279,7 +279,9 @@ func (t *tx) Start(cmdC chan<- interface{}, msgC <-chan []byte) error {
 	t.cancel = cancel
 	t.cmdC = cmdC
 	t.Add(1)
-	hbaudit.EnableAudit(ctx, t.id, t.log, "hb", strings.Replace(t.id, "hb#", "hb:", 1))
+
+	auditName := strings.Replace(t.id, "hb#", "hb:", 1)
+	hbaudit.EnableAudit(ctx, t.id, t.log, "hb", auditName, strings.TrimSuffix(auditName, ".tx"))
 
 	// One worker per peer node, created before the sender can reach them,
 	// so the map is never written again.

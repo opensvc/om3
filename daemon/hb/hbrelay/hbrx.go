@@ -94,7 +94,7 @@ func (t *rx) Start(cmdC chan<- any, msgC chan<- *hbtype.Msg) error {
 	errC := make(chan error)
 	t.Add(1)
 	go func() {
-		t.attachActiveAuditIfAny(ctx)
+		t.attachActiveAuditIfAny(ctx, "rx")
 		sub := t.startSubscription(ctx)
 		defer func() {
 			ticker.Stop()
@@ -124,7 +124,7 @@ func (t *rx) Start(cmdC chan<- any, msgC chan<- *hbtype.Msg) error {
 				t.crypto = crypto.Load()
 				t.onTick()
 			case ev := <-sub.C:
-				t.onEvent(ev)
+				t.onEvent(ev, "rx")
 			}
 		}
 	}()
