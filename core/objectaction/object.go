@@ -31,18 +31,12 @@ import (
 	"github.com/opensvc/om3/v3/core/xerrors"
 	"github.com/opensvc/om3/v3/daemon/api"
 	"github.com/opensvc/om3/v3/daemon/msgbus"
-	"github.com/opensvc/om3/v3/daemon/session"
 	"github.com/opensvc/om3/v3/util/funcopt"
 	"github.com/opensvc/om3/v3/util/hostname"
 	"github.com/opensvc/om3/v3/util/pubsub"
 	"github.com/opensvc/om3/v3/util/render/tree"
 	"github.com/opensvc/om3/v3/util/xsession"
 )
-
-// maxOrchestrationWait is how long an unbounded wait holds. It is what the
-// daemon caps a held request at, so a wait with no duration asked for waits
-// as long as one can be held, and asks again if it has to.
-const maxOrchestrationWait = time.Hour
 
 type (
 	// T has the same attributes as Action, but the interface
@@ -593,7 +587,11 @@ func (t T) DoAsync() error {
 		var (
 			err error
 			b   []byte
-			idC = make(chan uuid.UUID)
+			// Buffered, because the waiter gives up when the wait deadline
+			// expires: an unbuffered send of the id, from a submission that
+			// took the whole of that deadline, would then block for ever and
+			// the command would never return.
+			idC = make(chan uuid.UUID, 1)
 		)
 		if t.Wait {
 			t.waitExpectation(ctx, c, idC, target, p, waitC, t.TargetOptions)
@@ -920,53 +918,7 @@ func (t T) waitExpectation(ctx context.Context, c *client.T, idC <-chan uuid.UUI
 			return
 		}
 
-		// The daemon is asked to hold the request for what is left of the
-		// wait, less a moment for the round trip, so the answer is the
-		// daemon saying the orchestration is still running rather than the
-		// client giving up on an answer that was on its way.
-		wait := maxOrchestrationWait
-		if deadline, ok := ctx.Deadline(); ok {
-			remaining := time.Until(deadline)
-			// A fifth of what is left, and a second at most, is kept for the
-			// round trip, so the daemon answers that the orchestration is
-			// still running rather than the client giving up on an answer
-			// that was on its way.
-			grace := time.Second
-			if fifth := remaining / 5; fifth < grace {
-				grace = fifth
-			}
-			if w := remaining - grace; w > 0 {
-				wait = w
-			}
-		}
-		waitS := wait.String()
-		params := api.GetDaemonOrchestrationParams{Wait: &waitS}
-		resp, e := c.GetDaemonOrchestrationWithResponse(ctx, api.AliasLocalhost, orchestrationID.String(), &params)
-		if e != nil {
-			err = e
-			return
-		}
-		switch resp.StatusCode() {
-		case http.StatusOK:
-		case http.StatusRequestTimeout:
-			err = fmt.Errorf("orchestration %s has not ended after %s", orchestrationID, wait)
-			return
-		case http.StatusGone:
-			err = fmt.Errorf("the daemon no longer knows orchestration %s", orchestrationID)
-			return
-		default:
-			err = fmt.Errorf("orchestration %s: %s", orchestrationID, resp.Status())
-			return
-		}
-		item := *resp.JSON200
-		if item.State == string(session.StateSucceeded) {
-			return
-		}
-		if item.Error != nil && *item.Error != "" {
-			err = fmt.Errorf("orchestration %s: %s", item.State, *item.Error)
-		} else {
-			err = fmt.Errorf("orchestration %s", item.State)
-		}
+		err = actionrouter.WaitOrchestration(ctx, c, orchestrationID)
 	}()
 }
 

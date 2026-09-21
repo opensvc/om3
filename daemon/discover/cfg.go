@@ -443,7 +443,7 @@ func (t *Manager) onRemoteConfigUpdated(p naming.Path, node string, remoteInstan
 		}
 	}
 	var needStoppedFlag bool
-	if !p.Exists() && remoteInstanceConfig.ActorConfig != nil && remoteInstanceConfig.ActorConfig.Orchestrate == "ha" && len(remoteInstanceConfig.Scope) > 1 {
+	if !p.Exists() && remoteInstanceConfig.ActorConfig != nil && daemonStartsOnItsOwn(remoteInstanceConfig.ActorConfig.Orchestrate) && len(remoteInstanceConfig.Scope) > 1 {
 		needStoppedFlag = true
 	}
 	log.Infof("cfg: fetch config from %s@%s", pathS, node)
@@ -612,7 +612,7 @@ func (t *Manager) onInstanceConfigForFromPeer(c *msgbus.InstanceConfigFor) {
 		return
 	}
 	var needStoppedFlag bool
-	if c.Orchestrate == "ha" && len(c.Scope) > 1 {
+	if daemonStartsOnItsOwn(c.Orchestrate) && len(c.Scope) > 1 {
 		needStoppedFlag = true
 	}
 	log.Infof("cfg: fetch config %s from foreign config file on %s", c.Path, c.Node)
@@ -814,4 +814,21 @@ func inList(s string, l []string) bool {
 		}
 	}
 	return false
+}
+
+// daemonStartsOnItsOwn says the daemon starts an object with this orchestrate
+// value without being asked, which is what makes the stopped flag needed on a
+// configuration landing where no instance was.
+//
+// The ha value starts it on the next decision, the start value on the next
+// boot. Only ha was named here, where the object creation names both, so the
+// flag the creation of an orchestrate=start object raises was not raised on
+// the nodes its configuration reached.
+func daemonStartsOnItsOwn(orchestrate string) bool {
+	switch orchestrate {
+	case "ha", "start":
+		return true
+	default:
+		return false
+	}
 }

@@ -69,10 +69,12 @@ func (a *DaemonAPI) GetDaemonExecs(ctx echo.Context, nodename string, params api
 		items = append(items, execItem(e, pids))
 	}
 	if running {
-		// The wait expired on execs that are still running. They are answered
-		// all the same, so the caller sees what it is waiting for, and the
-		// status says the wait is what ended, not them.
-		return ctx.JSON(http.StatusRequestTimeout, api.ExecList{Kind: api.ExecListKindExecList, Items: items})
+		// The wait expired on execs that are still running, which is what
+		// this status says. It carries a problem and not the listing: 408 is
+		// declared as a problem, so a generated client has nowhere to put a
+		// listing sent under it, and would drop it.
+		return JSONProblemf(ctx, http.StatusRequestTimeout, "Execs are still running",
+			"%d exec(s) have not ended before the wait expired", len(items))
 	}
 	return ctx.JSON(http.StatusOK, api.ExecList{Kind: api.ExecListKindExecList, Items: items})
 }

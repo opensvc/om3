@@ -24,17 +24,11 @@ import (
 	"github.com/opensvc/om3/v3/core/rawconfig"
 	"github.com/opensvc/om3/v3/daemon/api"
 	"github.com/opensvc/om3/v3/daemon/msgbus"
-	"github.com/opensvc/om3/v3/daemon/session"
 	"github.com/opensvc/om3/v3/util/funcopt"
 	"github.com/opensvc/om3/v3/util/hostname"
 	"github.com/opensvc/om3/v3/util/pubsub"
 	"github.com/opensvc/om3/v3/util/xsession"
 )
-
-// maxOrchestrationWait is how long an unbounded wait holds. It is what the
-// daemon caps a held request at, so a wait with no duration asked for waits
-// as long as one can be held.
-const maxOrchestrationWait = time.Hour
 
 type (
 	// T has is an actionrouter.T with a node func
@@ -386,7 +380,7 @@ func (t T) DoAsync() error {
 	}
 
 	if t.Wait && err == nil {
-		return t.waitOrchestration(ctx, c, orchestrationID)
+		return actionrouter.WaitOrchestration(ctx, c, orchestrationID)
 	}
 
 	return err
@@ -550,65 +544,6 @@ func (t T) waitRequesterSessionEnd(ctx context.Context, c *client.T, nodename st
 
 func (t T) Do() error {
 	return actionrouter.Do(t)
-}
-
-// waitOrchestration waits for the orchestration the action was accepted as,
-// and says how it went.
-//
-// It asks the daemon rather than watching the node monitors go by. The
-// orchestration outlives the request in the daemon, which answers the moment
-// it ends and goes on answering afterwards, so a client that asks late, or
-// that lost its connection and asks again, is still told how its request
-// went. A monitor update missed is missed for good, and a drain that reached
-// its state between two reads was one this waited for until its deadline.
-//
-// Any node answers for any orchestration, node monitors reaching every node
-// the way instance monitors do, so the node the action was submitted to is
-// the one asked.
-func (t T) waitOrchestration(ctx context.Context, c *client.T, orchestrationID uuid.UUID) error {
-	if orchestrationID == uuid.Nil {
-		// The action was refused, and the refusal is the answer. There is no
-		// orchestration to wait for.
-		return nil
-	}
-	wait := maxOrchestrationWait
-	if deadline, ok := ctx.Deadline(); ok {
-		remaining := time.Until(deadline)
-		// A fifth of what is left, and a second at most, is kept for the
-		// round trip, so the daemon answers that the orchestration is still
-		// running rather than the client giving up on an answer that was on
-		// its way.
-		grace := time.Second
-		if fifth := remaining / 5; fifth < grace {
-			grace = fifth
-		}
-		if w := remaining - grace; w > 0 {
-			wait = w
-		}
-	}
-	waitS := wait.String()
-	params := api.GetDaemonOrchestrationParams{Wait: &waitS}
-	resp, err := c.GetDaemonOrchestrationWithResponse(ctx, api.AliasLocalhost, orchestrationID.String(), &params)
-	if err != nil {
-		return err
-	}
-	switch resp.StatusCode() {
-	case http.StatusOK:
-	case http.StatusRequestTimeout:
-		return fmt.Errorf("orchestration %s has not ended after %s", orchestrationID, wait)
-	case http.StatusGone:
-		return fmt.Errorf("the daemon no longer knows orchestration %s", orchestrationID)
-	default:
-		return fmt.Errorf("orchestration %s: %s", orchestrationID, resp.Status())
-	}
-	item := *resp.JSON200
-	if item.State == string(session.StateSucceeded) {
-		return nil
-	}
-	if item.Error != nil && *item.Error != "" {
-		return fmt.Errorf("orchestration %s: %s", item.State, *item.Error)
-	}
-	return fmt.Errorf("orchestration %s", item.State)
 }
 
 func (t T) nodeDo(ctx context.Context, resultQ chan actionrouter.Result, nodename string, fn func(context.Context, string) (any, error)) {

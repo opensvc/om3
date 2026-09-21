@@ -73,20 +73,33 @@ func (t *CmdDaemonSessionList) RunWait() error {
 	if t.SessionID == "" {
 		return fmt.Errorf("a session id is required")
 	}
-	items, err := t.Gather()
-	err = errors.Join(err, output.Renderer{
-		DefaultOutput: sessionListColumns,
-		Output:        t.Output,
-		DefaultSort:   sessionListSort,
-		Sort:          t.Sort,
-		Color:         t.Color,
-		Data:          ToSessionViews(items),
-		Colorize:      rawconfig.Colorize,
-	}.Print())
-	if err != nil {
-		return err
+	until := time.Time{}
+	if !t.Unbounded {
+		until = time.Now().Add(t.Wait)
 	}
-	return execsOutcome(items)
+	if t.Wait > DefaultWait {
+		t.Wait = DefaultWait
+	}
+	for {
+		items, err := t.Gather()
+		if IsStillRunning(err) && t.keepWaiting(until) {
+			// The hold expired, not the wait: ask again.
+			continue
+		}
+		err = errors.Join(err, output.Renderer{
+			DefaultOutput: sessionListColumns,
+			Output:        t.Output,
+			DefaultSort:   sessionListSort,
+			Sort:          t.Sort,
+			Color:         t.Color,
+			Data:          ToSessionViews(items),
+			Colorize:      rawconfig.Colorize,
+		}.Print())
+		if err != nil {
+			return err
+		}
+		return execsOutcome(items)
+	}
 }
 
 // ToSessionViews folds execs into the sessions they belong to, newest first.

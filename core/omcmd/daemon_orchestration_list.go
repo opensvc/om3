@@ -30,6 +30,11 @@ type (
 		// how "om daemon orchestration wait" waits: the daemon answers when
 		// the orchestration is over rather than when it is asked.
 		Wait time.Duration
+
+		// Unbounded says the caller named no duration and waits for as long
+		// as it takes. The daemon holds one request for an hour at most, so
+		// that wait is the request asked again until the orchestration ends.
+		Unbounded bool
 	}
 )
 
@@ -49,7 +54,7 @@ func (t *CmdDaemonOrchestrationList) RunWait() error {
 	if t.OrchestrationID == "" {
 		return fmt.Errorf("an orchestration id is required")
 	}
-	items, err := t.run()
+	items, err := t.runWaiting()
 	t.render(items)
 	if err != nil {
 		return err
@@ -66,6 +71,43 @@ func (t *CmdDaemonOrchestrationList) RunWait() error {
 		}
 	}
 	return nil
+}
+
+// runWaiting asks, and asks again for as long as the caller is prepared to
+// wait: the daemon holds one request for an hour at most, and a wait with no
+// duration is that hour asked again until the orchestration ends.
+func (t *CmdDaemonOrchestrationList) runWaiting() ([]api.OrchestrationItem, error) {
+	until := time.Time{}
+	if !t.Unbounded {
+		until = time.Now().Add(t.Wait)
+	}
+	if t.Wait > commoncmd.DefaultWait {
+		t.Wait = commoncmd.DefaultWait
+	}
+	for {
+		items, err := t.run()
+		if commoncmd.IsStillRunning(err) && t.keepWaiting(until) {
+			// The hold expired, not the wait: ask again.
+			continue
+		}
+		return items, err
+	}
+}
+
+// keepWaiting says the wait is not over, and narrows the next request to what
+// is left of it.
+func (t *CmdDaemonOrchestrationList) keepWaiting(until time.Time) bool {
+	if t.Unbounded {
+		return true
+	}
+	remaining := time.Until(until)
+	if remaining <= 100*time.Millisecond {
+		return false
+	}
+	if remaining < t.Wait {
+		t.Wait = remaining
+	}
+	return true
 }
 
 func (t *CmdDaemonOrchestrationList) run() ([]api.OrchestrationItem, error) {
@@ -201,7 +243,7 @@ func (t *CmdDaemonOrchestrationList) one(ctx context.Context, c *client.T, noden
 		case http.StatusOK:
 			return []api.OrchestrationItem{*resp.JSON200}, nil
 		case http.StatusRequestTimeout:
-			return nil, fmt.Errorf("%s: orchestration %s is still running, the wait expired", nodename, t.OrchestrationID)
+			return nil, fmt.Errorf("%s: orchestration %s is %w", nodename, t.OrchestrationID, commoncmd.ErrStillRunning)
 		case http.StatusGone:
 			// This node has forgotten it, or never ran it. Another may hold
 			// it, and saying so here would make asking every node an error

@@ -52,6 +52,11 @@ type (
 		// when the work is over rather than when it is asked, so a caller
 		// neither polls nor keeps an event stream open for it.
 		Wait time.Duration
+
+		// Unbounded says the caller named no duration and waits for as long
+		// as it takes. The daemon holds one request for an hour at most, so
+		// that wait is the request asked again until the work ends.
+		Unbounded bool
 	}
 )
 
@@ -169,7 +174,7 @@ func (t *CmdDaemonExecList) one(ctx context.Context, c *client.T, nodename strin
 			// wherever one of them answers.
 			return nil, nil
 		case http.StatusRequestTimeout:
-			return nil, fmt.Errorf("%s: exec %s is still running, the wait expired", nodename, t.ExecID)
+			return nil, fmt.Errorf("%s: exec %s is %w", nodename, t.ExecID, ErrStillRunning)
 		default:
 			return nil, fmt.Errorf("%s: %s", nodename, resp.Status())
 		}
@@ -214,10 +219,7 @@ func (t *CmdDaemonExecList) one(ctx context.Context, c *client.T, nodename strin
 	case http.StatusOK:
 		return resp.JSON200.Items, nil
 	case http.StatusRequestTimeout:
-		// The wait expired on execs still running there. They are in the
-		// answer, so the caller sees what it waited for, and what is said
-		// about them is that they have not ended.
-		return nil, fmt.Errorf("%s: still running when the wait expired", nodename)
+		return nil, fmt.Errorf("%s: %w", nodename, ErrStillRunning)
 	default:
 		return nil, fmt.Errorf("%s: %s", nodename, resp.Status())
 	}
@@ -394,12 +396,42 @@ func (t *CmdDaemonExecList) RunWait() error {
 	if t.ExecID == "" && t.SessionID == "" {
 		return fmt.Errorf("an exec id or a session id is required")
 	}
-	items, err := t.Gather()
-	err = errors.Join(err, t.render(items))
-	if err != nil {
-		return err
+	until := time.Time{}
+	if !t.Unbounded {
+		until = time.Now().Add(t.Wait)
 	}
-	return execsOutcome(items)
+	if t.Wait > DefaultWait {
+		t.Wait = DefaultWait
+	}
+	for {
+		items, err := t.Gather()
+		if IsStillRunning(err) && t.keepWaiting(until) {
+			// The hold expired, not the wait: ask again.
+			continue
+		}
+		err = errors.Join(err, t.render(items))
+		if err != nil {
+			return err
+		}
+		return execsOutcome(items)
+	}
+}
+
+// keepWaiting says the wait is not over, and narrows the next request to what
+// is left of it. The daemon holds one request for at most DefaultWait, so a
+// longer wait is that request asked again.
+func (t *CmdDaemonExecList) keepWaiting(until time.Time) bool {
+	if t.Unbounded {
+		return true
+	}
+	remaining := time.Until(until)
+	if remaining <= 100*time.Millisecond {
+		return false
+	}
+	if remaining < t.Wait {
+		t.Wait = remaining
+	}
+	return true
 }
 
 // execsOutcome is the outcome of a set of execs: the failures of the ones

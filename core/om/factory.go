@@ -1106,8 +1106,8 @@ connection, or that asks late, still be told how it went.`,
 		Args: cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			options.OrchestrationID = args[0]
-			if options.Wait == 0 {
-				options.Wait = commoncmd.DefaultWait
+			if err := commoncmd.SetWait(cmd, &options.Wait, &options.Unbounded); err != nil {
+				return err
 			}
 			return options.RunWait()
 		},
