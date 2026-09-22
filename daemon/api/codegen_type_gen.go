@@ -1533,12 +1533,15 @@ type KeywordDefinitionItem struct {
 	RedactSecret bool `json:"redactSecret"`
 
 	// ReplacedBy The name of the keyword to use instead of this deprecated one.
-	ReplacedBy string   `json:"replacedBy"`
-	Required   bool     `json:"required"`
-	Scopable   bool     `json:"scopable"`
-	Section    string   `json:"section"`
-	Text       string   `json:"text"`
-	Types      []string `json:"types"`
+	ReplacedBy string `json:"replacedBy"`
+	Required   bool   `json:"required"`
+	Scopable   bool   `json:"scopable"`
+	Section    string `json:"section"`
+
+	// Since The release the keyword appeared in, empty when it predates the field. What a release has is what its own documentation lists; this answers "since when" for the keywords added from here on.
+	Since string   `json:"since"`
+	Text  string   `json:"text"`
+	Types []string `json:"types"`
 }
 
 // KeywordDefinitionItems defines model for KeywordDefinitionItems.
