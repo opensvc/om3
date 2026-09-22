@@ -3,6 +3,7 @@ package doc
 import (
 	"errors"
 	"fmt"
+	"sort"
 	"strings"
 
 	"github.com/opensvc/om3/v3/core/keywords"
@@ -82,6 +83,7 @@ func ConvertKeywordStore(store keywords.Store) api.KeywordDefinitionItems {
 			DefaultText:   kw.DefaultText,
 			Text:          kw.Text,
 			Example:       kw.Example,
+			Since:         kw.Since,
 			Deprecated:    kw.Deprecated,
 			ReplacedBy:    kw.ReplacedBy,
 			RedactSecret:  kw.RedactSecret,
@@ -101,16 +103,15 @@ func ConvertKeywordStore(store keywords.Store) api.KeywordDefinitionItems {
 			item.Depends = append(item.Depends, d.String())
 		}
 
-		for _, k := range kw.Kind {
-			switch v := k.(type) {
-			case string:
-				item.Kind = append(item.Kind, v)
-			case fmt.Stringer:
-				item.Kind = append(item.Kind, v.String())
-			default:
-				item.Kind = append(item.Kind, fmt.Sprintf("%v", v))
-			}
+		// The kinds a keyword is limited to are held as a set, whose values
+		// are nil and whose keys are the kinds: reading the values, as this
+		// did, documented every such keyword as scoped to "<nil>". The keys
+		// are sorted, a set having no order of its own and this being
+		// compared from one release to the next.
+		for kind := range kw.Kind {
+			item.Kind = append(item.Kind, kind.String())
 		}
+		sort.Strings(item.Kind)
 
 		l = append(l, item)
 	}

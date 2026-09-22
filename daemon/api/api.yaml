@@ -7044,6 +7044,7 @@ components:
         - types
         - aliases
         - inherit
+        - since
         - deprecated
         - replacedBy
         - redactSecret
@@ -7094,6 +7095,12 @@ components:
             type: string
         inherit:
           type: string
+        since:
+          type: string
+          description: >
+            The release the keyword appeared in, empty when it predates the
+            field. What a release has is what its own documentation lists;
+            this answers "since when" for the keywords added from here on.
         deprecated:
           type: string
         replacedBy:

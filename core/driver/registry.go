@@ -3,6 +3,7 @@ package driver
 import (
 	"fmt"
 	"plugin"
+	"sort"
 )
 
 type (
@@ -47,6 +48,12 @@ func GetStrict(id ID) (Driver, bool) {
 	return drv, ok
 }
 
+// List returns the registered driver ids, in a stable order.
+//
+// The registry is a map, and what is generated from this list is compared
+// from one agent version to the next: the keyword documentation of a release
+// is diffed against the previous one, which a listing that comes out in a
+// different order every run makes impossible.
 func List() IDs {
 	l := make(IDs, len(All))
 	i := 0
@@ -54,6 +61,7 @@ func List() IDs {
 		l[i] = did
 		i = i + 1
 	}
+	sort.Sort(l)
 	return l
 }
 

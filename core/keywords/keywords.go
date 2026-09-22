@@ -77,6 +77,17 @@ type (
 		// is used (Leaf).
 		Inherit Inherit
 
+		// Since is the release the keyword appeared in. It is read by an
+		// operator asking whether the agent they run has it, and by the
+		// documentation, which says it next to the keyword.
+		//
+		// It is not filled for the keywords that predate it: what a release
+		// has is what its own documentation lists, and when a keyword
+		// appeared is answered for the ones added from here on. A keyword
+		// that is gone is answered by the documentation of the releases that
+		// had it, which no field of a later binary could.
+		Since string
+
 		// Deprecated is the release where the keyword has been deprecated. Users can
 		// expect the keyword to be unsupported in the next release.
 		Deprecated string
@@ -521,6 +532,9 @@ func (t *Keyword) Doc(w io.Writer, depth int, kind naming.Kind, section string, 
 	fmt.Fprintf(w, "%s Keyword `%s`\n\n", strings.Repeat("#", depth+1), t.Option)
 	fprintProp("required", fmt.Sprint(t.Required))
 	fprintProp("scopable", fmt.Sprint(t.Scopable))
+	if t.Since != "" {
+		fprintProp("since", t.Since)
+	}
 	if t.Deprecated != "" {
 		// The same phrasing as the config validate alert.
 		s := "since " + t.Deprecated

@@ -1,0 +1,70 @@
+name: Release Keywords Upload
+
+# The keyword reference of a release is generated here, by the binary of that
+# release, and published with it.
+#
+# The book reads it from the release rather than running an agent of its own:
+# a binary built without "make version" names a version it is not, and a book
+# generated from it documents a release that never existed.
+
+on:
+  release:
+    types: [created]
+
+jobs:
+  upload-keywords:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write # to upload the keyword reference to the release
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v7.0.1
+        with:
+          fetch-depth: 0
+          fetch-tags: true
+          persist-credentials: false
+
+      - name: Set up Go
+        uses: actions/setup-go@v7.0.0
+        with:
+          go-version-file: 'go.mod'
+          cache-dependency-path: go.sum
+
+      - name: Set opensvc version file
+        run: git describe --tags --abbrev > ./util/version/text/VERSION
+
+      - name: Go build om
+        run: go build -v -o ./bin/om ./cmd/om
+
+      - name: Show om version
+        run: ./bin/om --version
+
+      - name: Generate the keyword reference
+        run: |
+          set -e
+          version=$(./bin/om --version | awk '{print $NF}')
+          if [ "$version" != "${{ github.ref_name }}" ]; then
+            # The binary names what it was built from. A mismatch with the tag
+            # being released means the reference would document something else.
+            echo "om reports $version, released tag is ${{ github.ref_name }}" >&2
+            exit 1
+          fi
+          dir="keywords-$version"
+          mkdir -p "$dir"
+          echo "$version" >"$dir/version"
+          for kind in node cluster svc vol sec cfg usr; do
+            ./bin/om "$kind" config doc >"$dir/$kind.md"
+            ./bin/om "$kind" config doc -o json >"$dir/$kind.json"
+          done
+          tar czf "$dir.tar.gz" "$dir"
+          sha256sum "$dir.tar.gz" >"$dir.tar.gz.sha256"
+          ls -l "$dir.tar.gz"
+
+      - name: Upload the keyword reference to the release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh release upload "${{ github.ref_name }}" \
+            "keywords-${{ github.ref_name }}.tar.gz" \
+            "keywords-${{ github.ref_name }}.tar.gz.sha256"

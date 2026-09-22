@@ -2,6 +2,7 @@ package placement
 
 import (
 	"fmt"
+	"sort"
 
 	"github.com/opensvc/om3/v3/util/xmap"
 )
@@ -137,6 +138,13 @@ func (t *Policy) UnmarshalText(b []byte) error {
 	}
 }
 
+// PolicyNames returns the placement policy names, in a stable order.
+//
+// They are the candidates of the placement keyword, and its documentation is
+// diffed from one agent version to the next: candidates coming out of a map
+// in a different order every run would show as a change in every diff.
 func PolicyNames() []string {
-	return xmap.Keys(policyToID)
+	l := xmap.Keys(policyToID)
+	sort.Strings(l)
+	return l
 }

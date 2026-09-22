@@ -2,6 +2,7 @@ package manifest
 
 import (
 	"context"
+	"sort"
 	"sync"
 
 	"github.com/opensvc/om3/v3/core/driver"
@@ -142,6 +143,12 @@ func (t *T) AddKeywords(attrs ...*keywords.Keyword) *T {
 	return t
 }
 
+// Keywords returns the keywords of the manifest, in a stable order.
+//
+// The attributes are held in a map, and what is generated from this list is
+// compared from one agent version to the next: the keyword documentation of a
+// release is diffed against the previous one, which a listing that comes out
+// in a different order every run makes impossible.
 func (t *T) Keywords() []*keywords.Keyword {
 	n := 0
 	for _, attr := range t.Attrs {
@@ -157,6 +164,12 @@ func (t *T) Keywords() []*keywords.Keyword {
 			n++
 		}
 	}
+	sort.Slice(l, func(i, j int) bool {
+		if l[i].Section != l[j].Section {
+			return l[i].Section < l[j].Section
+		}
+		return l[i].Option < l[j].Option
+	})
 	return l
 }
 
