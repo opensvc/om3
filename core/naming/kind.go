@@ -1,6 +1,7 @@
 package naming
 
 import (
+	"sort"
 	"strings"
 )
 
@@ -156,6 +157,8 @@ func (t Kinds) Or(kinds ...Kind) Kinds {
 	return t
 }
 
+// String renders the set, in a stable order. A set has no order of its own,
+// and this is read by a human and compared from one release to the next.
 func (t Kinds) String() string {
 	l := make([]string, len(t))
 	i := 0
@@ -163,5 +166,6 @@ func (t Kinds) String() string {
 		l[i] = key.String()
 		i++
 	}
+	sort.Strings(l)
 	return strings.Join(l, "|")
 }
