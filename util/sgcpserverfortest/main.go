@@ -533,6 +533,13 @@ func main() {
 	mux.HandleFunc(UpdateDnsAlias, dnsUpdateAlias)
 	mux.HandleFunc(DeleteDnsAlias, dnsDeleteAlias)
 
+	// Short DNS routes used by the sgcp_dnsalias driver.
+	mux.HandleFunc("GET /dns/zones/{zoneID}", dnsListAliases)
+	mux.HandleFunc("POST /dns/zones/{zoneID}", dnsCreateAlias)
+	mux.HandleFunc("GET /dns/zones/{zoneID}/{id}", dnsGetAlias)
+	mux.HandleFunc("PATCH /dns/zones/{zoneID}/{id}", dnsUpdateAlias)
+	mux.HandleFunc("DELETE /dns/zones/{zoneID}/{id}", dnsDeleteAlias)
+
 	// CG
 	mux.HandleFunc(GetCG, getCG)
 	mux.HandleFunc(PatchCG, patchCG)
