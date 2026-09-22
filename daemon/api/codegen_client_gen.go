@@ -120,7 +120,7 @@ type ClientInterface interface {
 	PatchClusterConfig(ctx context.Context, params *PatchClusterConfigParams, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// GetClusterConfigFile request
-	GetClusterConfigFile(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error)
+	GetClusterConfigFile(ctx context.Context, params *GetClusterConfigFileParams, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// PutClusterConfigFileWithBody request with any body
 	PutClusterConfigFileWithBody(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
@@ -738,8 +738,8 @@ func (c *Client) PatchClusterConfig(ctx context.Context, params *PatchClusterCon
 	return c.Client.Do(req)
 }
 
-func (c *Client) GetClusterConfigFile(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error) {
-	req, err := NewGetClusterConfigFileRequest(c.Server)
+func (c *Client) GetClusterConfigFile(ctx context.Context, params *GetClusterConfigFileParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewGetClusterConfigFileRequest(c.Server, params)
 	if err != nil {
 		return nil, err
 	}
@@ -3328,7 +3328,7 @@ func NewPatchClusterConfigRequest(server string, params *PatchClusterConfigParam
 }
 
 // NewGetClusterConfigFileRequest generates requests for GetClusterConfigFile
-func NewGetClusterConfigFileRequest(server string) (*http.Request, error) {
+func NewGetClusterConfigFileRequest(server string, params *GetClusterConfigFileParams) (*http.Request, error) {
 	var err error
 
 	serverURL, err := url.Parse(server)
@@ -3344,6 +3344,33 @@ func NewGetClusterConfigFileRequest(server string) (*http.Request, error) {
 	queryURL, err := serverURL.Parse(operationPath)
 	if err != nil {
 		return nil, err
+	}
+
+	if params != nil {
+		// queryValues collects non-styled parameters (passthrough, JSON)
+		// that are safe to round-trip through url.Values.Encode().
+		queryValues := queryURL.Query()
+		// rawQueryFragments collects pre-encoded query fragments from
+		// styled parameters, preserving literal commas as delimiters
+		// per the OpenAPI spec (e.g. "color=blue,black,brown").
+		var rawQueryFragments []string
+
+		if params.RedactSecrets != nil {
+
+			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "redact-secrets", *params.RedactSecrets, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "boolean", Format: ""}); err != nil {
+				return nil, err
+			} else {
+				for _, qp := range strings.Split(queryFrag, "&") {
+					rawQueryFragments = append(rawQueryFragments, qp)
+				}
+			}
+
+		}
+
+		if encoded := queryValues.Encode(); encoded != "" {
+			rawQueryFragments = append(rawQueryFragments, encoded)
+		}
+		queryURL.RawQuery = strings.Join(rawQueryFragments, "&")
 	}
 
 	req, err := http.NewRequest(http.MethodGet, queryURL.String(), nil)
@@ -14869,7 +14896,7 @@ type ClientWithResponsesInterface interface {
 	PatchClusterConfigWithResponse(ctx context.Context, params *PatchClusterConfigParams, reqEditors ...RequestEditorFn) (*PatchClusterConfigResponse, error)
 
 	// GetClusterConfigFileWithResponse request
-	GetClusterConfigFileWithResponse(ctx context.Context, reqEditors ...RequestEditorFn) (*GetClusterConfigFileResponse, error)
+	GetClusterConfigFileWithResponse(ctx context.Context, params *GetClusterConfigFileParams, reqEditors ...RequestEditorFn) (*GetClusterConfigFileResponse, error)
 
 	// PutClusterConfigFileWithBodyWithResponse request with any body
 	PutClusterConfigFileWithBodyWithResponse(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*PutClusterConfigFileResponse, error)
@@ -21140,8 +21167,8 @@ func (c *ClientWithResponses) PatchClusterConfigWithResponse(ctx context.Context
 }
 
 // GetClusterConfigFileWithResponse request returning *GetClusterConfigFileResponse
-func (c *ClientWithResponses) GetClusterConfigFileWithResponse(ctx context.Context, reqEditors ...RequestEditorFn) (*GetClusterConfigFileResponse, error) {
-	rsp, err := c.GetClusterConfigFile(ctx, reqEditors...)
+func (c *ClientWithResponses) GetClusterConfigFileWithResponse(ctx context.Context, params *GetClusterConfigFileParams, reqEditors ...RequestEditorFn) (*GetClusterConfigFileResponse, error) {
+	rsp, err := c.GetClusterConfigFile(ctx, params, reqEditors...)
 	if err != nil {
 		return nil, err
 	}
