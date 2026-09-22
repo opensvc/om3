@@ -8,7 +8,9 @@ import (
 
 func (t *actor) stopForRestart(ctx context.Context) error {
 	ac := actioncontext.Stop
-	ac.Freeze = false
+	// the stop half of a restart is not a stop the operator wants to stick:
+	// the start that follows is the point.
+	ac.MarksStopped = false
 	ctx = actioncontext.WithProps(ctx, ac)
 	return t.stopWithContext(ctx)
 }

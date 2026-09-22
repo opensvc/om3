@@ -784,9 +784,39 @@ Where the password is the value of the `þassword` key in `system/sec/relay-v3`.
 
     It now starts the instance and leaves the freeze as it was found. Freezing means the daemon may not act by itself, which it still does not: a frozen instance is never started by the HA orchestration, and a frozen node is passed over when choosing where to start. What changes is only the start a user asked for, which is honoured rather than used as a reason to thaw.
 
-    Watch out for the pairing with stop, which freezes: `om <path> stop` followed by `om <path> start` now leaves the object **up and frozen**, where it used to end up up and unfrozen. A frozen object is not restarted elsewhere by the daemon if it fails, so add an `om <path> unfreeze` wherever a stop and start round trip was relied on to put an object back under orchestration.
-
     Scripts that relied on `start` to clear a freeze must now ask for it: `om <path> unfreeze && om <path> start`. Note also that `om <path> start --wait` no longer waits for the object to be unfrozen, only for it to be up.
+
+* Freezing and unfreezing are now purely operator decisions. No orchestration sets or clears the frozen flag.
+
+    A stop used to freeze every instance of the object, which is how it kept the HA orchestration from starting it back. Creating an object froze it, a configuration fetched from a peer arrived frozen, and a provision unfroze. An operator could no longer tell their own freeze from one of those, and, since a start no longer thaws, an object that had been stopped and started again ran on with its failover and its resource restart silently disabled.
+
+    All of them now use a flag of their own: the instance is flagged **stopped on purpose**, which the daemon reads as "do not start this on my own initiative", and nothing else. `om <path> print status` shows it as `stopped`, `om mon` as a `=`, and the instance status carries it as `stopped_at`. It is a flag file in the instance var directory, like the frozen flag, so it survives a daemon restart and a reboot.
+
+    The flag is raised by `om <path> stop`, by `om <path> instance stop`, and when an object is created or its configuration lands on a node that had no instance of it. It is lowered by a start, a restart, a switch or a provision the user asks for — on every instance of the object, so the ones that stay down are still failover candidates — and by the instance being seen up again.
+
+    What does not change: `monitor_action = freezestop` still freezes, which is its point, and a node shutdown still freezes the node.
+
+    On upgrade, instances frozen by an older version's stop or create stay frozen, and nothing lifts those freezes any more. Run `om <selector> print status` to find them, and `om <path> unfreeze` on the ones you did not freeze yourself.
+
+* An orchestration says how it went, and is waited on by its id.
+
+    `ObjectOrchestrationEnd` and `NodeOrchestrationEnd` carry `failed` and `error`, and the orchestration table records them: an orchestration ends when every node is done with it, whether it did what was asked or gave up, so the end was not a verdict and every client had to read the states back and judge for itself. Any node answers, the one that accepted the orchestration from what it published and the others from the state each instance monitor drops the orchestration id with.
+
+    A request the monitor refuses no longer takes the id its requester was handed. Whether the id was taken on used to be decided by whether anything had changed the monitor in the same pass, which is not the same thing: a start asked right after a create, refused because the peer monitors were not known yet, left the monitor naming an orchestration that never ran, with no global expect to reach and so nothing to end it, and every later request on that object was refused as "already in progress" until an `om <path> abort` cleared it.
+
+    A node request that changes nothing, which is what an abort with nothing to abort is, is now refused with its reason rather than accepted silently: the id its requester was handed named an orchestration nobody would ever hear of, and a client waiting on it waited for the whole of its patience. The object monitor already answered this way.
+
+    `om daemon orchestration wait <id>`, `om daemon session wait <id>` and `om daemon exec wait <id>` wait for one to end and report how it went, exiting non-zero when it failed. The daemon holds the request until then — the `wait` query parameter of `GetDaemonOrchestration`, `GetDaemonExec` and `GetDaemonExecs` — and answers 408 when the wait expires with the work still running. One request is held for an hour at most, and a longer wait is that request asked again: what is waited for outlives it, so asking again resumes the wait rather than restarting it. A wait command asked for a duration that is not positive is refused. An orchestration is answered by any node, so a client that reached the cluster through a floating address follows one wherever the address now points.
+
+    `om <path> <action> --wait` and the node actions that wait (`om cluster freeze|unfreeze --wait`, `om node drain|abort --wait`) now wait this way instead of watching the event stream, the object actions for the event that ends the orchestration and the node ones for a node monitor state to go by. An end event missed is missed for good, which is what made a slow or reconnecting client wait for something that had already happened; the orchestration outlives the request in the daemon, which answers late askers with the same verdict. The per-action assertions the wait used to make on the object status are gone with it: they were a second description of what the daemon already knows, and they went stale twice, waiting for a freeze a stop no longer sets and for a thaw a provision no longer does.
+
+* `orchestrate = start` starts the object when its node comes up.
+
+    The value was documented but never implemented: the daemon only ever started an object on its own when `orchestrate = ha`, so an `orchestrate = start` object stayed down after a reboot, whatever it was running before.
+
+    It now starts the object on the first daemon start that follows a node boot, and moves it nowhere afterwards. A failover object is started if it does not already run elsewhere and the local node is the natural placement leader. A flex object is started if fewer than `flex_target` instances are up and the local node is one of the `flex_target` first natural placement leaders. Outside of that boot, nothing: an instance that goes down is not restarted, and `flex_target` is not chased.
+
+    The natural placement leader is asked, and not the leader among the instances that could start now, which is what the ha orchestration asks: handing the object to a peer because this node cannot take it is a failover, which is the half of `ha` that `orchestrate = start` does not want. A frozen node, a frozen instance and an instance flagged stopped on purpose are all left alone, so a stop asked before a reboot outlives it.
 
 * Flex
   * A `flex_target` value under `flex_min` is forced to `flex_min`. A warning is logged.

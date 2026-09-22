@@ -1,6 +1,7 @@
 package session
 
 import (
+	"context"
 	"testing"
 	"time"
 
@@ -214,4 +215,107 @@ func TestTwoExecsOfOneSessionAreBothKept(t *testing.T) {
 	assert.Equal(t, StateFailed, byPath["pod6"].State, "the outcome of one is not the outcome of the other")
 	assert.Equal(t, "boom", byPath["pod6"].Error)
 	assert.Equal(t, 2*time.Second, byPath["pod6"].EndedAt.Sub(byPath["pod6"].StartedAt))
+}
+
+// An orchestration is over when the last node drops its id, and how it went
+// is the state the nodes dropped it with: this is what a node that never
+// accepted the orchestration reads, and it must reach the same verdict as the
+// one that did.
+func TestAnOrchestrationEndsOnWhatItsParticipantsLeftItOn(t *testing.T) {
+	reset()
+	NoteMonitor("obj", "n1", "o1", "started", "", time.Now())
+	NoteMonitor("obj", "n2", "o1", "started", "", time.Now())
+
+	o, ok := GetOrchestration("o1")
+	require.True(t, ok)
+	assert.Equal(t, StateRunning, o.State)
+
+	// n2 gives up on a start, n1 is done with nothing to say
+	NoteMonitor("obj", "n2", "", "", "start failed on n2", time.Time{})
+	o, _ = GetOrchestration("o1")
+	assert.Equal(t, StateRunning, o.State, "a node leaving is not the end while another is still in it")
+
+	NoteMonitor("obj", "n1", "", "", "", time.Time{})
+	o, ok = GetOrchestration("o1")
+	require.True(t, ok)
+	assert.Equal(t, StateFailed, o.State)
+	assert.Equal(t, "start failed on n2", o.Error)
+	require.NotNil(t, o.EndedAt)
+}
+
+func TestAnOrchestrationNobodyFailedSucceeds(t *testing.T) {
+	reset()
+	NoteMonitor("obj", "n1", "o1", "started", "", time.Now())
+	NoteMonitor("obj", "n1", "", "", "", time.Time{})
+
+	o, ok := GetOrchestration("o1")
+	require.True(t, ok)
+	assert.Equal(t, StateSucceeded, o.State)
+	assert.Equal(t, "", o.Error)
+}
+
+// A waiter is answered when the thing ends, and afterwards: what it waits for
+// outlives the request, which is the whole reason to wait on the id rather
+// than on the event ending it.
+func TestWaitingOnAnOrchestrationIsAnsweredWhenItEnds(t *testing.T) {
+	reset()
+	AddOrchestration(Orchestration{OrchestrationID: "o1", Node: "n1", Path: "obj"})
+
+	go func() {
+		time.Sleep(50 * time.Millisecond)
+		EndOrchestration("o1", StateFailed, "start failed on n1")
+	}()
+
+	ctx, cancel := context.WithTimeout(context.Background(), time.Second)
+	defer cancel()
+	o, ok := WaitOrchestration(ctx, "o1")
+	require.True(t, ok)
+	require.NotNil(t, o.EndedAt)
+	assert.Equal(t, StateFailed, o.State)
+	assert.Equal(t, "start failed on n1", o.Error)
+
+	// asked again, after the end, the answer is the same one
+	o, ok = WaitOrchestration(ctx, "o1")
+	require.True(t, ok)
+	assert.Equal(t, StateFailed, o.State)
+}
+
+func TestWaitingGivesUpWithItsContextAndSaysWhatItKnows(t *testing.T) {
+	reset()
+	AddOrchestration(Orchestration{OrchestrationID: "o1", Node: "n1", Path: "obj"})
+
+	ctx, cancel := context.WithTimeout(context.Background(), 20*time.Millisecond)
+	defer cancel()
+	o, ok := WaitOrchestration(ctx, "o1")
+	require.True(t, ok, "the orchestration is known, it has not ended")
+	assert.Nil(t, o.EndedAt)
+
+	o, ok = WaitOrchestration(ctx, "o2")
+	assert.False(t, ok, "an orchestration this node never heard of is unknown, which is not the same answer")
+	assert.Equal(t, Orchestration{}, o)
+}
+
+// Waiting for a session is waiting for the execs it is made of, and a node
+// that ran none of them says so at once rather than holding the request.
+func TestWaitingOnExecsIsAnsweredWhenTheLastOneEnds(t *testing.T) {
+	reset()
+	AddExec(Exec{SessionID: "s1", ExecID: "e1", Node: "n1"})
+	AddExec(Exec{SessionID: "s1", ExecID: "e2", Node: "n1"})
+
+	go func() {
+		time.Sleep(20 * time.Millisecond)
+		EndExec("e1", "s1", StateSucceeded, "", 0, time.Millisecond)
+		time.Sleep(20 * time.Millisecond)
+		EndExec("e2", "s1", StateFailed, "boom", 1, time.Millisecond)
+	}()
+
+	ctx, cancel := context.WithTimeout(context.Background(), time.Second)
+	defer cancel()
+	l, running := WaitExecs(ctx, Filter{SessionID: "s1"})
+	assert.False(t, running)
+	assert.Len(t, l, 2)
+
+	l, running = WaitExecs(ctx, Filter{SessionID: "s2"})
+	assert.False(t, running, "a node that ran nothing for the session is not made to wait")
+	assert.Len(t, l, 0)
 }

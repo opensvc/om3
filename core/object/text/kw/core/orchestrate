@@ -8,12 +8,18 @@ Orchestrate defines how the daemon will manage the service.
   for flex services.
 
 * `start`
-  Services with `topology=failover` won't failover automatically only if the
-  target instance is the natural placement leader. Which means the service is
-  started when its primary node reboots, if it does not run elsewhere already.
+  The daemon starts the service on the first daemon start following a node
+  boot, and moves it nowhere afterwards.
 
-  The daemon does not try to reach the `flex_target` number of `up` instances
-  for flex services.
+  A `topology=failover` service is started if it does not run elsewhere
+  already and the local node is the natural placement leader. A
+  `topology=flex` service is started if fewer than `flex_target` instances
+  are `up` and the local node is one of the `flex_target` first natural
+  placement leaders.
+
+  Outside of that boot, the daemon does nothing to keep the service `up`: it
+  does not failover a service whose instance goes down, and does not try to
+  reach the `flex_target` number of `up` instances.
 
 * `ha`
   Services with `topology=failover` failover automatically.

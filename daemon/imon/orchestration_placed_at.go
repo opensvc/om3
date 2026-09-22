@@ -9,10 +9,8 @@ import (
 
 func (t *Manager) orchestrateFailoverPlacedStart() {
 	switch t.state.State {
-	case instance.MonitorStateIdle:
-		t.placedUnfreeze()
-	case instance.MonitorStateUnfreezeSuccess:
-		t.orchestrateFailoverPlacedStartFromUnfreezeSuccess()
+	case instance.MonitorStateIdle, instance.MonitorStateUnfreezeSuccess:
+		t.orchestrateFailoverPlacedStartFromIdle()
 	case instance.MonitorStateStartSuccess:
 		t.orchestrateFailoverPlacedStartFromStarted()
 	case instance.MonitorStateStopSuccess:
@@ -41,10 +39,8 @@ func (t *Manager) orchestratePlacedAtSetWaitParents() bool {
 
 func (t *Manager) orchestrateFlexPlacedStart() {
 	switch t.state.State {
-	case instance.MonitorStateIdle:
-		t.placedUnfreeze()
-	case instance.MonitorStateUnfreezeSuccess:
-		t.orchestrateFlexPlacedStartFromUnfrozen()
+	case instance.MonitorStateIdle, instance.MonitorStateUnfreezeSuccess:
+		t.orchestrateFlexPlacedStartFromIdle()
 	case instance.MonitorStateStartSuccess:
 		t.orchestrateFlexPlacedStartFromStarted()
 	case instance.MonitorStateStopSuccess:
@@ -64,14 +60,12 @@ func (t *Manager) orchestrateFlexPlacedStart() {
 
 func (t *Manager) orchestrateFailoverPlacedStop() {
 	switch t.state.State {
-	case instance.MonitorStateIdle:
-		t.placedUnfreeze()
-	case instance.MonitorStateUnfreezeSuccess:
+	case instance.MonitorStateIdle, instance.MonitorStateUnfreezeSuccess:
 		t.placedStop()
 	case instance.MonitorStateStopFailure:
 		t.orchestratePlacedStopFromStopFailure()
 	case instance.MonitorStateStopSuccess:
-		t.clearStopped()
+		t.donePlacedStop()
 	case instance.MonitorStateReady:
 		t.transitionTo(instance.MonitorStateIdle)
 	case instance.MonitorStateStartFailure:
@@ -89,14 +83,12 @@ func (t *Manager) orchestrateFailoverPlacedStop() {
 
 func (t *Manager) orchestrateFlexPlacedStop() {
 	switch t.state.State {
-	case instance.MonitorStateIdle:
-		t.placedUnfreeze()
-	case instance.MonitorStateUnfreezeSuccess:
+	case instance.MonitorStateIdle, instance.MonitorStateUnfreezeSuccess:
 		t.placedStop()
 	case instance.MonitorStateStopFailure:
 		t.orchestratePlacedStopFromStopFailure()
 	case instance.MonitorStateStopSuccess:
-		t.clearStopped()
+		t.donePlacedStop()
 	case instance.MonitorStateReady:
 		t.transitionTo(instance.MonitorStateIdle)
 	case instance.MonitorStateStartFailure:
@@ -138,14 +130,6 @@ func (t *Manager) orchestratePlacedAt() {
 		t.orchestratePlacedStart()
 	} else {
 		t.orchestratePlacedStop()
-	}
-}
-
-func (t *Manager) placedUnfreeze() {
-	if t.instStatus[t.localhost].IsUnfrozen() {
-		t.transitionTo(instance.MonitorStateUnfreezeSuccess)
-	} else {
-		t.doUnfreeze()
 	}
 }
 
@@ -232,12 +216,22 @@ func (t *Manager) orchestratePlacedStopFromStopFailure() {
 	}
 }
 
-func (t *Manager) clearStopped() {
+// donePlacedStop ends the stop half of a placed orchestration. It says
+// nothing about the flag a stop the operator asked for raises: a placed
+// object is still wanted up, just somewhere else.
+func (t *Manager) donePlacedStop() {
 	t.doneAndIdle()
 	t.clearPending()
 }
 
-func (t *Manager) orchestrateFailoverPlacedStartFromUnfreezeSuccess() {
+// orchestrateFailoverPlacedStartFromIdle starts the local instance of a
+// failover object a user asked to be placed here.
+//
+// A frozen instance takes part in it like any other, and the freeze is left
+// as it was found: the request was to place the object, not to thaw it. This
+// used to unfreeze first, which is neither honouring the request nor refusing
+// it, and silently discarded what the operator had set.
+func (t *Manager) orchestrateFailoverPlacedStartFromIdle() {
 	instStatus := t.instStatus[t.localhost]
 	switch instStatus.Avail {
 	case status.Up:
@@ -270,7 +264,10 @@ func (t *Manager) orchestrateFailoverPlacedStartFromStarted() {
 	t.startedClearIfReached()
 }
 
-func (t *Manager) orchestrateFlexPlacedStartFromUnfrozen() {
+// orchestrateFlexPlacedStartFromIdle starts the local instance of a flex
+// object a user asked to be placed here, leaving the frozen flag as it was
+// found.
+func (t *Manager) orchestrateFlexPlacedStartFromIdle() {
 	t.placedStart()
 }
 

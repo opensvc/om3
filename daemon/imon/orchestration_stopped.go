@@ -12,15 +12,25 @@ var (
 )
 
 func (t *Manager) orchestrateStopped() {
-	t.freezeStop()
+	t.stopOnPurpose()
 }
 
-func (t *Manager) freezeStop() {
+// stopOnPurpose stops the instance and remembers the operator asked for it,
+// so the daemon does not start it back on its own.
+//
+// This used to freeze the instance to get the same result, which said more
+// than it meant: the frozen flag is how an operator says the daemon may not
+// act here, and an orchestration writing it left the operator unable to tell
+// their own decision from a side effect of a stop. The stopped flag says only
+// what the stop meant, and every start the user asks for clears it.
+func (t *Manager) stopOnPurpose() {
 	switch t.state.State {
 	case instance.MonitorStateIdle:
-		t.doFreezeStop()
+		t.doStopOnPurpose()
 	case instance.MonitorStateFreezeSuccess:
-		t.doStop()
+		// a freeze the operator asked for, or a monitor action, left this
+		// state behind: the stop still has to happen.
+		t.doStopOnPurpose()
 	case instance.MonitorStateReady:
 		t.stoppedFromReady()
 	case instance.MonitorStateFreezeProgress:
@@ -37,7 +47,7 @@ func (t *Manager) freezeStop() {
 	case instance.MonitorStateWaitChildren:
 		t.setWaitChildren()
 	default:
-		t.log.Errorf("don't know how to freeze and stop from %s", t.state.State)
+		t.log.Errorf("don't know how to stop from %s", t.state.State)
 	}
 }
 
@@ -67,10 +77,11 @@ func (t *Manager) stop() {
 	}
 }
 
-// doFreeze handle global expect stopped orchestration from idle
+// doFreezeStop freezes the instance, then stops it.
 //
-// local unfrozen => freezing to reach frozen
-// else           => stopping
+// This is the monitor_action = freezestop behaviour, where the freeze is the
+// point: the operator configured a stop that must not be undone by the daemon
+// until they have looked at what failed. No other orchestration freezes.
 func (t *Manager) doFreezeStop() {
 	if t.instStatus[t.localhost].IsUnfrozen() {
 		t.doTransitionAction(t.freeze, instance.MonitorStateFreezeProgress, instance.MonitorStateFreezeSuccess, instance.MonitorStateFreezeFailure)
@@ -80,11 +91,20 @@ func (t *Manager) doFreezeStop() {
 	}
 }
 
-func (t *Manager) doFreeze() {
-	if t.instStatus[t.localhost].IsUnfrozen() {
-		t.doTransitionAction(t.freeze, instance.MonitorStateFreezeProgress, instance.MonitorStateFreezeSuccess, instance.MonitorStateFreezeFailure)
-		return
+// doStopOnPurpose raises the flag saying the instance is stopped on purpose,
+// then stops it.
+//
+// The flag is raised before the stop, so that no ha decision taken between
+// the stop and the end of the orchestration starts the instance back, and
+// even when the instance is already down: a stop asked of an instance that
+// is not running is still a decision to keep it that way.
+func (t *Manager) doStopOnPurpose() {
+	if !t.isStopped() {
+		if err := t.setStopped(); err != nil {
+			return
+		}
 	}
+	t.doStop()
 }
 
 func (t *Manager) doStop() {

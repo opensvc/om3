@@ -54,6 +54,16 @@ func (t MonitorState) IsDoing() bool {
 	return strings.HasSuffix(t.String(), "ing")
 }
 
+// IsOneOf says the state is one of those listed.
+func (t MonitorState) IsOneOf(states ...MonitorState) bool {
+	for _, s := range states {
+		if s == t {
+			return true
+		}
+	}
+	return false
+}
+
 func (t MonitorState) IsRankable() bool {
 	_, ok := MonitorStateUnrankable[t]
 	return !ok

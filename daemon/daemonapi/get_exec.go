@@ -48,26 +48,66 @@ func (a *DaemonAPI) GetDaemonExecs(ctx echo.Context, nodename string, params api
 		filter.Path = *params.Selector
 	}
 
-	l := session.ListExecs(filter)
+	waitCtx, cancel, waiting, err := waitContext(ctx, params.Wait)
+	if err != nil {
+		return JSONProblemf(ctx, http.StatusBadRequest, "Invalid parameters", "%s", err)
+	}
+	defer cancel()
+
+	var (
+		l       []session.Exec
+		running bool
+	)
+	if waiting {
+		l, running = session.WaitExecs(waitCtx, filter)
+	} else {
+		l = session.ListExecs(filter)
+	}
 	pids := proc.PidByExecID()
 	items := make([]api.ExecItem, 0, len(l))
 	for _, e := range l {
 		items = append(items, execItem(e, pids))
 	}
+	if running {
+		// The wait expired on execs that are still running, which is what
+		// this status says. It carries a problem and not the listing: 408 is
+		// declared as a problem, so a generated client has nowhere to put a
+		// listing sent under it, and would drop it.
+		return JSONProblemf(ctx, http.StatusRequestTimeout, "Execs are still running",
+			"%d exec(s) have not ended before the wait expired", len(items))
+	}
 	return ctx.JSON(http.StatusOK, api.ExecList{Kind: api.ExecListKindExecList, Items: items})
 }
 
-func (a *DaemonAPI) GetDaemonExec(ctx echo.Context, nodename string, execID uuid.UUID) error {
+func (a *DaemonAPI) GetDaemonExec(ctx echo.Context, nodename string, execID uuid.UUID, params api.GetDaemonExecParams) error {
 	if v, err := assertRoot(ctx); !v {
 		return err
 	}
 	nodename = a.parseNodename(nodename)
 	if a.localhost != nodename {
 		return a.proxy(ctx, nodename, func(c *client.T) (*http.Response, error) {
-			return c.GetDaemonExec(ctx.Request().Context(), nodename, execID)
+			return c.GetDaemonExec(ctx.Request().Context(), nodename, execID, &params)
 		})
 	}
-	e, ok := session.GetExec(execID.String())
+	waitCtx, cancel, waiting, err := waitContext(ctx, params.Wait)
+	if err != nil {
+		return JSONProblemf(ctx, http.StatusBadRequest, "Invalid parameters", "%s", err)
+	}
+	defer cancel()
+
+	var (
+		e  session.Exec
+		ok bool
+	)
+	if waiting {
+		e, ok = session.WaitExec(waitCtx, execID.String())
+	} else {
+		e, ok = session.GetExec(execID.String())
+	}
+	if waiting && ok && e.EndedAt == nil {
+		return JSONProblemf(ctx, http.StatusRequestTimeout, "Exec is still running",
+			"exec %s has not ended before the wait expired", execID)
+	}
 	if !ok {
 		// Gone and not NotFound: the daemon may well have run this exec and
 		// dropped it since, and a client polling for the end of what it

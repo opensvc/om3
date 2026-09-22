@@ -13,7 +13,7 @@ import (
 	"github.com/opensvc/om3/v3/core/client"
 	"github.com/opensvc/om3/v3/core/cluster"
 	"github.com/opensvc/om3/v3/core/driver"
-	"github.com/opensvc/om3/v3/core/freeze"
+	"github.com/opensvc/om3/v3/core/flagfile"
 	"github.com/opensvc/om3/v3/core/instance"
 	"github.com/opensvc/om3/v3/core/naming"
 	"github.com/opensvc/om3/v3/core/object"
@@ -442,12 +442,12 @@ func (t *Manager) onRemoteConfigUpdated(p naming.Path, node string, remoteInstan
 			return
 		}
 	}
-	var needFreeze bool
-	if !p.Exists() && remoteInstanceConfig.ActorConfig != nil && remoteInstanceConfig.ActorConfig.Orchestrate == "ha" && len(remoteInstanceConfig.Scope) > 1 {
-		needFreeze = true
+	var needStoppedFlag bool
+	if !p.Exists() && remoteInstanceConfig.ActorConfig != nil && daemonStartsOnItsOwn(remoteInstanceConfig.ActorConfig.Orchestrate) && len(remoteInstanceConfig.Scope) > 1 {
+		needStoppedFlag = true
 	}
 	log.Infof("cfg: fetch config from %s@%s", pathS, node)
-	t.fetchConfigFromRemote(p, node, remoteInstanceConfig.UpdatedAt, needFreeze, remoteInstanceConfig.Scope)
+	t.fetchConfigFromRemote(p, node, remoteInstanceConfig.UpdatedAt, needStoppedFlag, remoteInstanceConfig.Scope)
 }
 
 // removeConfigFileAndDisableRecover is called to remove config file on localhost
@@ -611,12 +611,12 @@ func (t *Manager) onInstanceConfigForFromPeer(c *msgbus.InstanceConfigFor) {
 		// let running fetcher does its job
 		return
 	}
-	var needFreeze bool
-	if c.Orchestrate == "ha" && len(c.Scope) > 1 {
-		needFreeze = true
+	var needStoppedFlag bool
+	if daemonStartsOnItsOwn(c.Orchestrate) && len(c.Scope) > 1 {
+		needStoppedFlag = true
 	}
 	log.Infof("cfg: fetch config %s from foreign config file on %s", c.Path, c.Node)
-	t.fetchConfigFromRemote(c.Path, c.Node, c.UpdatedAt, needFreeze, c.Scope)
+	t.fetchConfigFromRemote(c.Path, c.Node, c.UpdatedAt, needStoppedFlag, c.Scope)
 }
 
 func (t *Manager) abortRetainForeignConfig(p naming.Path) {
@@ -630,20 +630,25 @@ func (t *Manager) abortRetainForeignConfig(p naming.Path) {
 func (t *Manager) onRemoteConfigFetched(c *msgbus.RemoteFileConfig) {
 	log := t.objectLogger(c.Path)
 
-	handleFreeze := func(confFile string) error {
-		if !c.Freeze {
-			// The fetcher didn't ask for freeze
+	// handleStoppedFlag flags the instance the fetched configuration creates
+	// as stopped on purpose, so the daemon does not start it as soon as the
+	// configuration lands. This used to freeze the instance, which said that
+	// the operator had asked the daemon to keep its hands off the node, and
+	// stayed on long after the reason for it had passed.
+	handleStoppedFlag := func(confFile string) error {
+		if !c.MarkStopped {
+			// The fetcher didn't ask for it
 			return nil
 		}
 		if instance.ConfigData.GetByPathAndNode(c.Path, t.localhost) != nil {
-			// We already have a local instance, never freeze on fetch
+			// We already have a local instance, never flag on fetch
 			return nil
 		}
-		if err := freeze.Freeze(c.Path.FrozenFile()); err != nil {
-			t.log.Errorf("cfg: can't freeze instance before installing %s config fetched from node %s: %s", c.Path, c.Node, err)
+		if err := flagfile.Set(c.Path.StoppedFile()); err != nil {
+			t.log.Errorf("cfg: can't flag instance stopped before installing %s config fetched from node %s: %s", c.Path, c.Node, err)
 			return err
 		}
-		log.Infof("cfg: freeze instance before installing %s config fetched from node %s", c.Path, c.Node)
+		log.Infof("cfg: flag instance stopped before installing %s config fetched from node %s", c.Path, c.Node)
 		return nil
 	}
 
@@ -653,7 +658,7 @@ func (t *Manager) onRemoteConfigFetched(c *msgbus.RemoteFileConfig) {
 		c.Err <- nil
 	default:
 		confFile := c.Path.ConfigFile()
-		if err := handleFreeze(confFile); err != nil {
+		if err := handleStoppedFlag(confFile); err != nil {
 			c.Err <- err
 			return
 		}
@@ -690,7 +695,7 @@ func (t *Manager) cancelFetcher(s string) {
 	}
 }
 
-func (t *Manager) fetchConfigFromRemote(p naming.Path, peer string, updatedAt time.Time, needFreeze bool, scope []string) {
+func (t *Manager) fetchConfigFromRemote(p naming.Path, peer string, updatedAt time.Time, needStoppedFlag bool, scope []string) {
 	if peer == "" {
 		t.objectLogger(p).Errorf("cfg: fetch config %s from node ''", p)
 		return
@@ -715,10 +720,10 @@ func (t *Manager) fetchConfigFromRemote(p naming.Path, peer string, updatedAt ti
 		t.objectLogger(p).Errorf("cfg: can't create newDaemonClient to fetch %s from node %s: %s", p, peer, err)
 		return
 	}
-	go fetch(ctx, cli, p, peer, t.cfgCmdC, needFreeze, scope)
+	go fetch(ctx, cli, p, peer, t.cfgCmdC, needStoppedFlag, scope)
 }
 
-func fetch(ctx context.Context, cli *client.T, p naming.Path, peer string, cmdC chan<- any, needFreeze bool, scope []string) {
+func fetch(ctx context.Context, cli *client.T, p naming.Path, peer string, cmdC chan<- any, needStoppedFlag bool, scope []string) {
 	id := p.String() + "@" + peer
 	log := naming.LogWithPath(plog.NewDefaultLogger(), p).
 		Attr("pkg", "daemon/discover").
@@ -778,13 +783,13 @@ func fetch(ctx context.Context, cli *client.T, p naming.Path, peer string, cmdC 
 	default:
 		err := make(chan error)
 		cmdC <- &msgbus.RemoteFileConfig{
-			Path:      p,
-			Node:      peer,
-			File:      tmpFilename,
-			Freeze:    needFreeze,
-			UpdatedAt: updated,
-			Ctx:       ctx,
-			Err:       err,
+			Path:        p,
+			Node:        peer,
+			File:        tmpFilename,
+			MarkStopped: needStoppedFlag,
+			UpdatedAt:   updated,
+			Ctx:         ctx,
+			Err:         err,
 		}
 		<-err
 	}
@@ -809,4 +814,21 @@ func inList(s string, l []string) bool {
 		}
 	}
 	return false
+}
+
+// daemonStartsOnItsOwn says the daemon starts an object with this orchestrate
+// value without being asked, which is what makes the stopped flag needed on a
+// configuration landing where no instance was.
+//
+// The ha value starts it on the next decision, the start value on the next
+// boot. Only ha was named here, where the object creation names both, so the
+// flag the creation of an orchestrate=start object raises was not raised on
+// the nodes its configuration reached.
+func daemonStartsOnItsOwn(orchestrate string) bool {
+	switch orchestrate {
+	case "ha", "start":
+		return true
+	default:
+		return false
+	}
 }

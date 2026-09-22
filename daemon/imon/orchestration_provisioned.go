@@ -85,8 +85,19 @@ func (t *Manager) provisionedFromWaitLeader() {
 
 func (t *Manager) provisionedClearIfReached() bool {
 	reached := func(msg string, succeed bool) bool {
-		if succeed && t.instStatus[t.localhost].IsFrozen() {
-			t.doUnfreeze()
+		if succeed && t.isStopped() {
+			// The object was flagged stopped when it was created, so the
+			// daemon would not start it before it could run. It can now, and
+			// the operator asking for a provision is asking for that.
+			//
+			// This used to unfreeze instead, on the freeze the creation had
+			// set. Neither the freeze nor the unfreeze were the operator's,
+			// and the pair of them left an object running with its failover
+			// disabled whenever the second one did not happen.
+			t.log.Infof("clear the stopped flag: the instance is provisioned")
+			if err := t.unsetStopped(); err != nil {
+				t.log.Errorf("clear the stopped flag: %s", err)
+			}
 		}
 		if succeed {
 			t.log.Infof("provisioned orchestration reached: %s", msg)

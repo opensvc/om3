@@ -44,13 +44,16 @@ func init() {
 	cmdDaemonSession.AddCommand(
 		commoncmd.NewCmdDaemonSessionList(),
 		commoncmd.NewCmdDaemonSessionLogs(),
+		commoncmd.NewCmdDaemonSessionWait(),
 	)
 	cmdDaemonExec.AddCommand(
 		commoncmd.NewCmdDaemonExecList("*"),
 		commoncmd.NewCmdDaemonExecLogs(),
+		commoncmd.NewCmdDaemonExecWait("*"),
 	)
 	cmdDaemonOrchestration.AddCommand(
 		newCmdDaemonOrchestrationList(),
+		newCmdDaemonOrchestrationWait(),
 		commoncmd.NewCmdDaemonOrchestrationLogs(),
 	)
 

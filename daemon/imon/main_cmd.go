@@ -257,6 +257,7 @@ func (t *Manager) onMyInstanceStatusUpdated(srcNode string, srcCmd *msgbus.Insta
 	}
 	t.instStatus[srcCmd.Node] = srcCmd.Value
 	t.mergePeerFrozen()
+	t.mergePeerStopped()
 	t.clearStonith(srcCmd.Node, srcCmd.Value.Avail)
 	t.handleResourceFiles(srcCmd)
 }
@@ -554,7 +555,7 @@ func (t *Manager) onSetInstanceMonitor(c *msgbus.SetInstanceMonitor) {
 		case instance.MonitorGlobalExpectStarted:
 			if v, reason := t.isStartable(); !v {
 				err := fmt.Errorf("%s", reason)
-				t.log.Infof("set instance monitor %s", t.path, err)
+				t.log.Infof("set instance monitor: refuse to start %s: %s", t.path, err)
 				globalExpectRefused()
 				return err
 			}
@@ -624,23 +625,40 @@ func (t *Manager) onSetInstanceMonitor(c *msgbus.SetInstanceMonitor) {
 		v.Close()
 	}
 
-	if t.change {
-		if c.Value.CandidateOrchestrationID != uuid.Nil && t.state.OrchestrationID.String() != c.Value.CandidateOrchestrationID.String() {
-			t.logSetOrchestrationID(c.Value.CandidateOrchestrationID)
-			t.state.OrchestrationID = c.Value.CandidateOrchestrationID
-			t.savePendingOrchestration()
-			t.publishOrchestrationAccepted()
-			t.setNextPendingOrchestration()
-		}
-		t.onChange()
-	} else {
+	refuse := func(reason string) {
 		t.publisher.Pub(&msgbus.ObjectOrchestrationRefused{
 			Node:         t.localhost,
 			Path:         t.path,
 			ID:           c.Value.CandidateOrchestrationID.String(),
-			Reason:       fmt.Sprintf("set instance monitor request => no changes: %v", c.Value),
+			Reason:       reason,
 			GlobalExpect: c.Value.GlobalExpect,
 		}, t.pubLabels...)
+	}
+
+	switch {
+	case err != nil:
+		// The request was refused, so the id its requester was handed does
+		// not become the id of this monitor's orchestration.
+		//
+		// It used to, whenever anything had changed the monitor in the same
+		// pass, which is not the same thing as the request having been taken
+		// on. The monitor was then left naming an orchestration that never
+		// ran, with no global expect to reach and so nothing to end it, and
+		// every later request was refused as "already in progress" until an
+		// abort cleared it. A start asked right after a create, while the
+		// peer monitors were not known yet, did exactly this.
+		refuse(err.Error())
+	case !t.change:
+		refuse(fmt.Sprintf("set instance monitor request => no changes: %v", c.Value))
+	case c.Value.CandidateOrchestrationID != uuid.Nil && t.state.OrchestrationID != c.Value.CandidateOrchestrationID:
+		t.logSetOrchestrationID(c.Value.CandidateOrchestrationID)
+		t.state.OrchestrationID = c.Value.CandidateOrchestrationID
+		t.savePendingOrchestration()
+		t.publishOrchestrationAccepted()
+		t.setNextPendingOrchestration()
+	}
+	if t.change {
+		t.onChange()
 	}
 }
 
@@ -991,13 +1009,14 @@ func (t *Manager) newIsHALeader() bool {
 // isStartCandidateLeader says the local instance is the one to start, among
 // the instances that could start at all.
 //
-// skipFrozen leaves out the frozen nodes and instances. That is the one rule
-// here about whether the daemon is allowed to act, rather than about whether
-// an instance could start: freezing is how an operator says the daemon may
-// not act by itself. Every other rule, being not applicable, unprovisioned,
-// unrankable or start failed, says the instance cannot start whoever is
-// asking, and holds for a start a user requested just as much.
-func (t *Manager) isStartCandidateLeader(skipFrozen bool) bool {
+// isDaemonDecision leaves out the instances the daemon may not start on its
+// own: the frozen ones, where an operator said the daemon may not act, and
+// the ones a stop flagged stopped on purpose. Those are the rules about
+// whether the daemon is allowed to act. Every other rule, being not
+// applicable, unprovisioned, unrankable or start failed, says the instance
+// cannot start whoever is asking, and holds for a start a user requested just
+// as much.
+func (t *Manager) isStartCandidateLeader(isDaemonDecision bool) bool {
 	var candidates []string
 
 	for _, node := range t.scopeNodes {
@@ -1010,8 +1029,11 @@ func (t *Manager) isStartCandidateLeader(skipFrozen bool) bool {
 		if _, ok := t.instStatus[node]; !ok {
 			continue
 		}
-		if skipFrozen {
+		if isDaemonDecision {
 			if t.nodeStatus[node].IsFrozen() || t.instStatus[node].IsFrozen() {
+				continue
+			}
+			if t.instStatus[node].IsStopped() {
 				continue
 			}
 		}
@@ -1249,8 +1271,97 @@ func (t *Manager) mergePeerFrozen() {
 	}
 }
 
+// mergePeerStopped raises the stopped flag on the local instance when a peer
+// instance was flagged while this daemon was down.
+//
+// A stop flags every instance of the object, and the instances of a node that
+// is not there to hear it are left unflagged. Without this, a node coming
+// back would be the one place the stop did not reach, and its daemon would
+// start what the operator asked to be down: on a boot for an orchestrate=start
+// object, on the next ha decision for an orchestrate=ha one. It is the same
+// reason the frozen flag is merged, for the flag that took its place in the
+// stop.
+func (t *Manager) mergePeerStopped() {
+	if t.isPeerStoppedMerged {
+		return
+	}
+	done := func(format string, a ...any) {
+		t.isPeerStoppedMerged = true
+		t.log.Tracef("skip merge peer stopped: "+format, a...)
+	}
+	if t.instConfig.ActorConfig == nil {
+		done("object is not an actor")
+		return
+	}
+	switch t.instConfig.ActorConfig.Orchestrate {
+	case "ha", "start":
+	default:
+		done("the daemon does not start this object on its own")
+		return
+	}
+	if len(t.scopeNodes) < 2 {
+		done("single node object does not need merge")
+		return
+	}
+	switch t.state.GlobalExpect {
+	case instance.MonitorGlobalExpectStarted,
+		instance.MonitorGlobalExpectRestarted,
+		instance.MonitorGlobalExpectPlaced,
+		instance.MonitorGlobalExpectPlacedAt:
+		// the object is wanted up: a stop older than this request is not a
+		// reason to flag anything
+		done("global expect is %s", t.state.GlobalExpect)
+		return
+	}
+	if t.objectAvail().Is(status.Up) {
+		// the object is up, so it is wanted up, whatever a stop older than
+		// that asked of the peers
+		done("the object is up")
+		return
+	}
+	rejoinedAt := t.nodeStatus[t.localhost].RejoinedAt
+	if rejoinedAt.IsZero() {
+		// we will merge in the NodeRejoin event handler
+		t.log.Tracef("not rejoined yet, defer merge peer stopped")
+		return
+	}
+	if _, ok := t.instStatus[t.localhost]; !ok {
+		t.log.Tracef("local instance status is not evaluated yet, defer merge peer stopped")
+		return
+	}
+	if t.isStopped() {
+		done("local instance is already flagged stopped")
+		return
+	}
+	leftAt := t.nodeStatus[t.localhost].LeftAt
+	for peer, peerStatus := range t.instStatus {
+		if peer == t.localhost {
+			continue
+		}
+		if peerStatus.StoppedAt.After(leftAt) && peerStatus.StoppedAt.Before(rejoinedAt) {
+			t.isPeerStoppedMerged = true
+			msg := fmt.Sprintf("flag %s instance stopped because peer %s instance was stopped while this daemon was down", t.path, peer)
+			if err := t.setStopped(); err != nil {
+				t.log.Errorf("%s: %s", msg, err)
+			} else {
+				t.log.Infof(msg)
+			}
+			return
+		}
+	}
+	if len(t.instStatus) == len(t.scopeNodes) {
+		done("no peer instance was stopped while this daemon was down")
+		return
+	}
+	if time.Now().After(rejoinedAt.Add(2 * time.Minute)) {
+		done("peer instances status still missing 2 minutes after rejoin")
+		return
+	}
+}
+
 func (t *Manager) onNodeRejoin(c *msgbus.NodeRejoin) {
 	t.mergePeerFrozen()
+	t.mergePeerStopped()
 }
 
 func (t *Manager) setNextPendingOrchestration() {

@@ -15,8 +15,10 @@
 package session
 
 import (
+	"context"
 	"slices"
 	"sort"
+	"strings"
 	"sync"
 	"time"
 
@@ -101,6 +103,23 @@ var (
 	// naming one.
 	monitorOrchestration = make(map[string]string)
 
+	// failures is, per orchestration, what its participants left it on when
+	// they left it on a failure.
+	//
+	// The node that accepted an orchestration publishes how it ended, and is
+	// the only one to hear its own publication. Every other node has the
+	// monitors, and the state a node drops the orchestration id with is what
+	// they say: an instance that gave up keeps the state it failed on, so a
+	// node that never accepted anything answers for the outcome too.
+	failures = make(map[string][]string)
+
+	// endedC is closed and replaced whenever something ends, waking the
+	// waiters, which then look at what they are waiting for. One channel for
+	// all of them costs a wake-up per end rather than a registry keyed by id,
+	// and the ends of a cluster are rare enough for that to be the cheaper
+	// of the two.
+	endedC = make(chan struct{})
+
 	// MaxEntries is how many ended entries of each kind are kept. A running
 	// one is never dropped for the count: what is running is bounded by what
 	// the node can run at once, and dropping it would lose the answer a
@@ -110,6 +129,93 @@ var (
 	// MaxAge is how long an ended entry is kept.
 	MaxAge = time.Hour
 )
+
+// notifyEnded wakes the waiters. The caller holds the write lock.
+func notifyEnded() {
+	close(endedC)
+	endedC = make(chan struct{})
+}
+
+// ended returns the channel closed by the next end.
+//
+// A waiter takes it before reading what it waits for, so an end landing
+// between the read and the wait closes a channel it already holds, rather
+// than one it has not taken yet.
+func ended() <-chan struct{} {
+	mu.RLock()
+	defer mu.RUnlock()
+	return endedC
+}
+
+// WaitOrchestration waits for the orchestration of an id to end.
+//
+// It returns the orchestration and whether it is known, so a caller can tell
+// an orchestration still running when it gave up waiting from one this node
+// never heard of or has forgotten.
+func WaitOrchestration(ctx context.Context, id string) (Orchestration, bool) {
+	for {
+		c := ended()
+		o, ok := GetOrchestration(id)
+		if ok && o.EndedAt != nil {
+			return o, true
+		}
+		select {
+		case <-ctx.Done():
+			return GetOrchestration(id)
+		case <-c:
+		}
+	}
+}
+
+// WaitExec waits for the exec of an id to end, and returns it and whether it
+// is known.
+func WaitExec(ctx context.Context, id string) (Exec, bool) {
+	for {
+		c := ended()
+		e, ok := GetExec(id)
+		if ok && e.EndedAt != nil {
+			return e, true
+		}
+		select {
+		case <-ctx.Done():
+			return GetExec(id)
+		case <-c:
+		}
+	}
+}
+
+// WaitExecs waits for the execs a filter selects to be done, and returns
+// them, with whether any was still running when it gave up.
+//
+// A session is not a record of its own: it is the id several execs share, one
+// per object the submitted command reached on this node, so waiting for a
+// session is waiting for this filter to select nothing running. A node that
+// ran nothing for the filter answers at once with nothing, rather than
+// holding the request: what the filter names may have run entirely
+// elsewhere, and only the client gathering the nodes can tell.
+func WaitExecs(ctx context.Context, f Filter) ([]Exec, bool) {
+	isRunning := func(l []Exec) bool {
+		for _, e := range l {
+			if e.EndedAt == nil {
+				return true
+			}
+		}
+		return false
+	}
+	for {
+		c := ended()
+		l := ListExecs(f)
+		if !isRunning(l) {
+			return l, false
+		}
+		select {
+		case <-ctx.Done():
+			l := ListExecs(f)
+			return l, isRunning(l)
+		case <-c:
+		}
+	}
+}
 
 // AddExec records an exec the daemon started.
 func AddExec(s Exec) {
@@ -155,6 +261,7 @@ func EndExec(execID, sessionID string, state State, errS string, exitCode int, d
 	// duration by an amount nothing bounds.
 	endedAt := s.StartedAt.Add(duration)
 	s.EndedAt = &endedAt
+	notifyEnded()
 	purgeExecs()
 }
 
@@ -188,6 +295,8 @@ func EndOrchestration(id string, state State, errS string) {
 	o.State = state
 	o.Error = errS
 	o.EndedAt = &now
+	delete(failures, id)
+	notifyEnded()
 	purgeOrchestrations()
 }
 
@@ -204,7 +313,7 @@ func EndOrchestration(id string, state State, errS string) {
 // id is empty when the monitor names no orchestration, which is how the end
 // of one is seen: the id is unset on a node when the orchestration is reached
 // there, so the last node to drop it ends it.
-func NoteMonitor(path, node, id, expect string, updatedAt time.Time) {
+func NoteMonitor(path, node, id, expect, failure string, updatedAt time.Time) {
 	mu.Lock()
 	defer mu.Unlock()
 
@@ -214,7 +323,7 @@ func NoteMonitor(path, node, id, expect string, updatedAt time.Time) {
 		return
 	}
 	if previous != "" {
-		leave(previous, node)
+		leave(previous, node, failure)
 	}
 	if id == "" {
 		delete(monitorOrchestration, key)
@@ -263,7 +372,10 @@ func join(id, path, node, expect string, updatedAt time.Time) {
 
 // leave drops a node from an orchestration, and ends the orchestration when
 // it was the last. The caller holds the lock.
-func leave(id, node string) {
+func leave(id, node, failure string) {
+	if failure != "" {
+		failures[id] = append(failures[id], failure)
+	}
 	if participants[id] != nil {
 		delete(participants[id], node)
 		if len(participants[id]) > 0 {
@@ -282,8 +394,15 @@ func leave(id, node string) {
 		return
 	}
 	now := time.Now()
-	o.State = StateSucceeded
+	if l := failures[id]; len(l) > 0 {
+		o.State = StateFailed
+		o.Error = strings.Join(l, ", ")
+	} else {
+		o.State = StateSucceeded
+	}
 	o.EndedAt = &now
+	delete(failures, id)
+	notifyEnded()
 	purgeOrchestrations()
 }
 
@@ -476,6 +595,7 @@ func reset() {
 	orchestrations = make(map[string]*Orchestration)
 	participants = make(map[string]map[string]bool)
 	monitorOrchestration = make(map[string]string)
+	failures = make(map[string][]string)
 }
 
 // IDString renders an id, empty when it carries none, so a session that

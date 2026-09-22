@@ -25,7 +25,15 @@ type (
 		Provisioned   provisioned.T            `json:"provisioned"`
 		Resources     ResourceStatuses         `json:"resources,omitempty"`
 		Running       resource.RunningInfoList `json:"running,omitempty"`
-		UpdatedAt     time.Time                `json:"updated_at"`
+
+		// StoppedAt is when the instance was stopped on purpose, and zero
+		// when it was not. It says the daemon must not start the instance
+		// back on its own, and is cleared when the object is wanted up
+		// again. It is what a stop uses instead of freezing, so the frozen
+		// flag keeps saying what the operator decided, and only that.
+		StoppedAt time.Time `json:"stopped_at,omitempty"`
+
+		UpdatedAt time.Time `json:"updated_at"`
 	}
 
 	EncapStatus struct {
@@ -82,6 +90,12 @@ func (t Status) IsFrozen() bool {
 
 func (t Status) IsUnfrozen() bool {
 	return t.FrozenAt.IsZero()
+}
+
+// IsStopped says the instance was stopped on purpose, so the daemon must not
+// start it back on its own.
+func (t Status) IsStopped() bool {
+	return !t.StoppedAt.IsZero()
 }
 
 func (t EncapStatus) DeepCopy() *EncapStatus {
@@ -212,6 +226,9 @@ func (t Status) Unstructured() map[string]any {
 	}
 	if !t.FrozenAt.IsZero() {
 		m["frozen_at"] = t.FrozenAt
+	}
+	if !t.StoppedAt.IsZero() {
+		m["stopped_at"] = t.StoppedAt
 	}
 	return m
 }

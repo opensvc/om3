@@ -2100,6 +2100,7 @@ paths:
         - $ref: '#/components/parameters/inQueryOrigin'
         - $ref: '#/components/parameters/inQueryRIDOptional'
         - $ref: '#/components/parameters/inQuerySelectorOptional'
+        - $ref: '#/components/parameters/inQueryWait'
       responses:
         200:
           description: OK
@@ -2111,6 +2112,8 @@ paths:
           $ref: '#/components/responses/401'
         403:
           $ref: '#/components/responses/403'
+        408:
+          $ref: '#/components/responses/408'
         500:
           $ref: '#/components/responses/500'
       tags:
@@ -2187,6 +2190,7 @@ paths:
       parameters:
         - $ref: '#/components/parameters/inPathNodeName'
         - $ref: '#/components/parameters/inPathExecID'
+        - $ref: '#/components/parameters/inQueryWait'
       responses:
         200:
           description: OK
@@ -2198,6 +2202,8 @@ paths:
           $ref: '#/components/responses/401'
         403:
           $ref: '#/components/responses/403'
+        408:
+          $ref: '#/components/responses/408'
         410:
           $ref: '#/components/responses/410'
         500:
@@ -2255,13 +2261,16 @@ paths:
         floating address, and cannot know which node accepted, gets the same
         answer wherever the address takes it.
 
-        How it ended is known where the outcome was published. A node that
-        only saw the monitors reports it succeeded, which is what the monitors
-        falling silent means; the node that accepted it reports an abort as
-        one.
+        How it ended is answered everywhere. The node that accepted it
+        publishes the outcome; every other node reads the same thing from the
+        state each instance monitor drops the id with, an instance that gave
+        up keeping the state it failed on. An abort is known only to the node
+        that accepted it, an aborted orchestration having nothing to show in
+        the monitors of the others.
       parameters:
         - $ref: '#/components/parameters/inPathNodeName'
         - $ref: '#/components/parameters/inPathOrchestrationID'
+        - $ref: '#/components/parameters/inQueryWait'
       responses:
         200:
           description: OK
@@ -2273,6 +2282,8 @@ paths:
           $ref: '#/components/responses/401'
         403:
           $ref: '#/components/responses/403'
+        408:
+          $ref: '#/components/responses/408'
         410:
           $ref: '#/components/responses/410'
         500:
@@ -7002,6 +7013,14 @@ components:
             $ref: '#/components/schemas/RunningInfo'
         scale:
           type: integer
+        stopped_at:
+          type: string
+          format: date-time
+          description: |
+            when the instance was stopped on purpose, and absent when it was
+            not. The daemon does not start an instance thus flagged on its
+            own: the operator asked for it to be down, and a start they ask
+            for clears the flag on every instance of the object.
         updated_at:
           type: string
           format: date-time
@@ -9736,6 +9755,24 @@ components:
       schema:
         type: string
         format: uuid
+
+    inQueryWait:
+      in: query
+      name: wait
+      x-go-name: Wait
+      description: |
+        How long to hold the request until what it asks about has ended.
+
+        Without it the answer is what is known now. With it the request is
+        held, and answered as soon as the thing ends, so a client waiting for
+        the end of what it submitted neither polls nor holds an event stream
+        open for it.
+
+        A request held until the wait expires is answered 408, which says the
+        thing is still running, and is not an error of the request.
+      schema:
+        type: string
+        example: 5m
 
     inQueryHBA:
       in: query

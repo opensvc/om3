@@ -193,6 +193,31 @@ func Test_Orchestrate_HA_that_dont_call_start(t *testing.T) {
 		},
 
 		{
+			// a stop the operator asked for flags the instance stopped, and
+			// the daemon must not undo it: the flag is what a stop uses
+			// instead of freezing the instance.
+			name:    "if instance is flagged stopped then the daemon does not start it",
+			srcFile: "./testdata/orchestrate-ha.conf",
+			obj:     "obj",
+			sideEffects: map[string]sideEffect{
+				"status": {
+					iStatus: &instance.Status{Avail: status.Down, Overall: status.Down, Provisioned: provisioned.True, StoppedAt: time.Now()},
+					err:     nil,
+				},
+			},
+			nodeMonitorStates:    []node.MonitorState{node.MonitorStateIdle},
+			expectedState:        instance.MonitorStateIdle,
+			expectedGlobalExpect: instance.MonitorGlobalExpectNone,
+			expectedLocalExpect:  instance.MonitorLocalExpectNone,
+			expectedIsLeader:     true,
+			expectedIsHALeader:   false,
+			expectedCrm: [][]string{
+				{"obj", "instance", "status", "-r"},
+			},
+			expectedDeleteSuccess: true,
+		},
+
+		{
 			name:    "if node state is rejoin and not frozen then instance has local expect none and is not leader", // rejoin => no orchestration
 			srcFile: "./testdata/orchestrate-ha.conf",
 			obj:     "obj",
@@ -462,6 +487,151 @@ func Test_Orchestrate_HA_that_calls_start(t *testing.T) {
 	for _, c := range cases {
 		if c.expectedDeleteSuccess {
 			t.Run(c.name+" with delete failed", func(t *testing.T) {
+				orchestrateTestFunc(t, c)
+			})
+
+			// always add extra run with failed delete when expectedDeleteSuccess is set
+			c.expectedDeleteFailed = true
+			c.expectedDeleteSuccess = false
+			t.Run(c.name+" with delete failed", func(t *testing.T) {
+				orchestrateTestFunc(t, c)
+			})
+		} else {
+			t.Run(c.name, func(t *testing.T) {
+				orchestrateTestFunc(t, c)
+			})
+		}
+	}
+}
+
+func Test_Orchestrate_Start(t *testing.T) {
+	cases := []tCase{
+		{
+			// orchestrate=start starts the object when its node comes up,
+			// which is the daemon start that follows a node boot.
+			name:       "if instance last boot is not current node boot then instance is started",
+			srcFile:    "./testdata/orchestrate-start.conf",
+			obj:        "obj",
+			bootID:     "bootID2",
+			lastBootID: "bootID1",
+			sideEffects: map[string]sideEffect{
+				"boot": {
+					iStatus: &instance.Status{Avail: status.Down, Overall: status.Down, Provisioned: provisioned.True},
+					err:     nil,
+				},
+				"status": {
+					iStatus: &instance.Status{Avail: status.Down, Overall: status.Down, Provisioned: provisioned.True},
+					err:     nil,
+				},
+				"start": {
+					iStatus: &instance.Status{Avail: status.Up, Overall: status.Up, Provisioned: provisioned.True},
+					err:     nil,
+				},
+			},
+			nodeMonitorStates:    []node.MonitorState{node.MonitorStateIdle},
+			expectedState:        instance.MonitorStateIdle,
+			expectedGlobalExpect: instance.MonitorGlobalExpectNone,
+			expectedLocalExpect:  instance.MonitorLocalExpectStarted,
+			expectedIsLeader:     true,
+			expectedIsHALeader:   true,
+			expectedCrm: [][]string{
+				{"obj", "instance", "status", "-r"},
+				{"obj", "instance", "boot"},
+				{"obj", "instance", "start"},
+			},
+			expectedDeleteSuccess: true,
+		},
+
+		{
+			// no boot, so nothing is due: orchestrate=start starts the object
+			// when its node comes up, and never afterwards.
+			name:    "if instance avail is down without a node boot then instance is not started",
+			srcFile: "./testdata/orchestrate-start.conf",
+			obj:     "obj",
+			sideEffects: map[string]sideEffect{
+				"status": {
+					iStatus: &instance.Status{Avail: status.Down, Overall: status.Down, Provisioned: provisioned.True},
+					err:     nil,
+				},
+			},
+			nodeMonitorStates:    []node.MonitorState{node.MonitorStateIdle},
+			expectedState:        instance.MonitorStateIdle,
+			expectedGlobalExpect: instance.MonitorGlobalExpectNone,
+			expectedLocalExpect:  instance.MonitorLocalExpectNone,
+			expectedIsLeader:     true,
+			expectedIsHALeader:   true,
+			expectedCrm: [][]string{
+				{"obj", "instance", "status", "-r"},
+			},
+			expectedDeleteSuccess: true,
+		},
+
+		{
+			// a node freeze outlives the reboot too, and the natural
+			// placement leader rule does not pass over frozen nodes by
+			// itself
+			name:       "if node is frozen then the node boot does not start it",
+			srcFile:    "./testdata/orchestrate-start.conf",
+			obj:        "obj",
+			bootID:     "bootID2",
+			lastBootID: "bootID1",
+			nodeFrozen: true,
+			sideEffects: map[string]sideEffect{
+				"boot": {
+					iStatus: &instance.Status{Avail: status.Down, Overall: status.Down, Provisioned: provisioned.True},
+					err:     nil,
+				},
+				"status": {
+					iStatus: &instance.Status{Avail: status.Down, Overall: status.Down, Provisioned: provisioned.True},
+					err:     nil,
+				},
+			},
+			nodeMonitorStates:    []node.MonitorState{node.MonitorStateIdle},
+			expectedState:        instance.MonitorStateIdle,
+			expectedGlobalExpect: instance.MonitorGlobalExpectNone,
+			expectedLocalExpect:  instance.MonitorLocalExpectNone,
+			expectedIsLeader:     true,
+			expectedIsHALeader:   false,
+			expectedCrm: [][]string{
+				{"obj", "instance", "status", "-r"},
+				{"obj", "instance", "boot"},
+			},
+			expectedDeleteSuccess: true,
+		},
+
+		{
+			// a stop the operator asked for before the reboot outlives it
+			name:       "if instance is flagged stopped then the node boot does not start it",
+			srcFile:    "./testdata/orchestrate-start.conf",
+			obj:        "obj",
+			bootID:     "bootID2",
+			lastBootID: "bootID1",
+			sideEffects: map[string]sideEffect{
+				"boot": {
+					iStatus: &instance.Status{Avail: status.Down, Overall: status.Down, Provisioned: provisioned.True, StoppedAt: time.Now()},
+					err:     nil,
+				},
+				"status": {
+					iStatus: &instance.Status{Avail: status.Down, Overall: status.Down, Provisioned: provisioned.True, StoppedAt: time.Now()},
+					err:     nil,
+				},
+			},
+			nodeMonitorStates:    []node.MonitorState{node.MonitorStateIdle},
+			expectedState:        instance.MonitorStateIdle,
+			expectedGlobalExpect: instance.MonitorGlobalExpectNone,
+			expectedLocalExpect:  instance.MonitorLocalExpectNone,
+			expectedIsLeader:     true,
+			expectedIsHALeader:   false,
+			expectedCrm: [][]string{
+				{"obj", "instance", "status", "-r"},
+				{"obj", "instance", "boot"},
+			},
+			expectedDeleteSuccess: true,
+		},
+	}
+	for _, c := range cases {
+		if c.expectedDeleteSuccess {
+			t.Run(c.name+" with delete success", func(t *testing.T) {
 				orchestrateTestFunc(t, c)
 			})
 
@@ -750,14 +920,15 @@ func crmBuilder(t *testing.T, setup *daemontesthelper.D, p naming.Path, sideEffe
 				Provisioned: se.iStatus.Provisioned,
 				Optional:    se.iStatus.Optional,
 				UpdatedAt:   time.Now(),
-				FrozenAt:    time.Time{},
+				FrozenAt:    se.iStatus.FrozenAt,
+				StoppedAt:   se.iStatus.StoppedAt,
 			}
 			pub.Pub(&msgbus.InstanceStatusPost{Path: p, Node: hostname.Hostname(), Value: v},
 				pubsub.Label{"namespace", p.Namespace},
 				pubsub.Label{"path", p.String()},
 				pubsub.Label{"node", hostname.Hostname()},
 			)
-			t.Logf("--- crmAction %s %v SetInstanceStatus %s avail:%s overall:%s provisioned:%s updated:%s frozen:%s", title, cmdArgs, p, v.Avail, v.Overall, v.Provisioned, v.UpdatedAt, v.FrozenAt)
+			t.Logf("--- crmAction %s %v SetInstanceStatus %s avail:%s overall:%s provisioned:%s updated:%s frozen:%s stopped:%s", title, cmdArgs, p, v.Avail, v.Overall, v.Provisioned, v.UpdatedAt, v.FrozenAt, v.StoppedAt)
 		}
 
 		for _, e := range se.events {

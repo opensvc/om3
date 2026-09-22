@@ -38,6 +38,7 @@ func (f Frame) StrObjectInstance(path string, node string, scope []string) strin
 		s += sObjectInstanceDRP(instanceConfig)
 		s += sObjectInstanceHALeader(instanceMonitor)
 		s += sObjectInstanceFrozen(instanceStatus)
+		s += sObjectInstanceStopped(instanceStatus)
 		s += sObjectInstanceUnprovisioned(instanceStatus)
 		s += sObjectInstanceMonitorState(instanceMonitor)
 		s += sObjectInstanceMonitorGlobalExpect(instanceMonitor)
@@ -116,6 +117,15 @@ func sObjectInstanceHALeader(instanceMonitor instance.Monitor) string {
 func sObjectInstanceFrozen(instance instance.Status) string {
 	if !instance.FrozenAt.IsZero() {
 		return iconFrozen
+	}
+	return ""
+}
+
+// sObjectInstanceStopped marks an instance stopped on purpose, which the
+// daemon will not start back on its own until the object is wanted up again.
+func sObjectInstanceStopped(instance instance.Status) string {
+	if !instance.StoppedAt.IsZero() {
+		return iconStopped
 	}
 	return ""
 }

@@ -38,17 +38,35 @@ func (a *DaemonAPI) GetDaemonOrchestrations(ctx echo.Context, nodename string, p
 	return ctx.JSON(http.StatusOK, api.OrchestrationList{Kind: api.OrchestrationListKindOrchestrationList, Items: items})
 }
 
-func (a *DaemonAPI) GetDaemonOrchestration(ctx echo.Context, nodename string, orchestrationID string) error {
+func (a *DaemonAPI) GetDaemonOrchestration(ctx echo.Context, nodename string, orchestrationID string, params api.GetDaemonOrchestrationParams) error {
 	if v, err := assertRoot(ctx); !v {
 		return err
 	}
 	nodename = a.parseNodename(nodename)
 	if a.localhost != nodename {
 		return a.proxy(ctx, nodename, func(c *client.T) (*http.Response, error) {
-			return c.GetDaemonOrchestration(ctx.Request().Context(), nodename, orchestrationID)
+			return c.GetDaemonOrchestration(ctx.Request().Context(), nodename, orchestrationID, &params)
 		})
 	}
-	o, ok := session.GetOrchestration(orchestrationID)
+	waitCtx, cancel, waiting, err := waitContext(ctx, params.Wait)
+	if err != nil {
+		return JSONProblemf(ctx, http.StatusBadRequest, "Invalid parameters", "%s", err)
+	}
+	defer cancel()
+
+	var (
+		o  session.Orchestration
+		ok bool
+	)
+	if waiting {
+		o, ok = session.WaitOrchestration(waitCtx, orchestrationID)
+	} else {
+		o, ok = session.GetOrchestration(orchestrationID)
+	}
+	if waiting && ok && o.EndedAt == nil {
+		return JSONProblemf(ctx, http.StatusRequestTimeout, "Orchestration is still running",
+			"orchestration %s has not ended before the wait expired", orchestrationID)
+	}
 	if !ok {
 		// Gone and not NotFound, for the reason GetSession is: the sessions
 		// of an orchestration are asked for by filtering on its id, and an

@@ -143,6 +143,12 @@ func (t States) descString() string {
 			l = append(l, rawconfig.Colorize.Frozen("frozen"))
 		}
 
+		// Stopped on purpose, so the daemon does not start it back on its
+		// own. Without this an object stays down with nothing saying why.
+		if !t.Status.StoppedAt.IsZero() {
+			l = append(l, rawconfig.Colorize.Frozen("stopped"))
+		}
+
 		// Node frozen
 		if !t.Node.FrozenAt.IsZero() {
 			l = append(l, rawconfig.Colorize.Frozen("node-frozen"))
@@ -180,12 +186,15 @@ func (t States) descString() string {
 			l = append(l, rawconfig.Colorize.Primary(t.Monitor.State.String()))
 		}
 
-		// Monitor global expect
+		// Monitor global expect, prefixed with the ">" that om mon uses, so
+		// the state an orchestration is heading for is not read as a state
+		// the instance is in. A stop on its way and an instance flagged
+		// stopped on purpose both print the word "stopped" otherwise.
 		switch t.Monitor.GlobalExpect {
 		case MonitorGlobalExpectNone:
 		case MonitorGlobalExpectInit:
 		default:
-			l = append(l, t.Monitor.GlobalExpect.String())
+			l = append(l, ">"+t.Monitor.GlobalExpect.String())
 		}
 
 		// Monitor local expect

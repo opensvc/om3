@@ -436,6 +436,14 @@ func (t *dataStore) postInstall(k string) error {
 		}
 		var onChange func(context.Context) error
 		for _, r := range resourcesByDrivergroups(o, []driver.Group{driver.GroupVolume, driver.GroupFS}) {
+			// A resource that failed to configure has none of the state its
+			// methods read, so it is skipped here as it is everywhere else a
+			// resource is acted upon. Its configuration error is what its
+			// status reports.
+			if err := r.GetConfigurationError(); err != nil {
+				t.log.Tracef("skip %s of %s: configuration error: %s", r.RID(), p, err)
+				continue
+			}
 			receiverResource, ok := any(r).(receiver)
 			if !ok {
 				continue

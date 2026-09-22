@@ -472,6 +472,16 @@ func (t Path) FrozenFile() string {
 	return filepath.Join(t.VarDir(), "frozen")
 }
 
+// StoppedFile returns the path of the flag file saying the instance was
+// stopped on purpose, so the daemon does not start it back on its own.
+//
+// This is a flag file, and not a monitor state, because the decision has to
+// survive a daemon restart and a reboot: a node that comes back up must not
+// start what an operator asked to be down.
+func (t Path) StoppedFile() string {
+	return filepath.Join(t.VarDir(), "stopped")
+}
+
 // Initd returns a path-private directory that can contain app scripts.
 func (t Path) Initd() string {
 	p := t.ConfigFile()
