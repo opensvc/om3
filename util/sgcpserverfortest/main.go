@@ -70,7 +70,7 @@ var (
 	files = map[string]FilesystemInfo{
 		"1ab7d139-dd35-4f9c-ad82-cd6a93675cfd": {
 			UUID:               "1ab7d139-dd35-4f9c-ad82-cd6a93675cfd",
-			ConsistencyGroupID: "12",
+			ConsistencyGroupID: "f0510aae-ac42-4a0e-b460-c6076598b40d",
 			NFSClients:         []NfsClient{},
 			Status:             "online",
 		},
@@ -82,8 +82,8 @@ var (
 	aliasStore = map[string]Alias{}
 
 	cgStore = map[string]*CgInfo{
-		"1ab7d139-dd35-4f9c-ad82-cd6a93675cfd": {
-			UUID:             "1ab7d139-dd35-4f9c-ad82-cd6a93675cfd",
+		"f0510aae-ac42-4a0e-b460-c6076598b40d": {
+			UUID:             "f0510aae-ac42-4a0e-b460-c6076598b40d",
 			Name:             "test-cg",
 			AvailabilityZone: "az2",
 			Status:           "passive",
