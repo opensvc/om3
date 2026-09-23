@@ -459,8 +459,10 @@ func postAuthToken(w http.ResponseWriter, r *http.Request) {
 }
 
 func (u Users) ScopesForAuth(clientID, clientSecret string) ([]string, bool) {
-	if user, ok := u[clientID]; ok && user.ClientSecret == clientSecret {
-		return user.Scopes, true
+	for _, user := range u {
+		if user.ClientID == clientID && user.ClientSecret == clientSecret {
+			return user.Scopes, true
+		}
 	}
 	return nil, false
 }
