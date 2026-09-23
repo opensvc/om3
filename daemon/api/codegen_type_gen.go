@@ -2625,6 +2625,9 @@ type PathOptional = string
 // Paths defines model for Paths.
 type Paths = []string
 
+// RedactSecrets defines model for RedactSecrets.
+type RedactSecrets = bool
+
 // ClusterID defines model for RelayClusterID.
 type ClusterID = string
 
@@ -2935,6 +2938,12 @@ type PatchClusterConfigParams struct {
 	Set    *InQuerySets    `form:"set,omitempty" json:"set,omitempty"`
 }
 
+// GetClusterConfigFileParams defines parameters for GetClusterConfigFile.
+type GetClusterConfigFileParams struct {
+	// RedactSecrets if true, redact secrets in the configuration file
+	RedactSecrets *RedactSecrets `form:"redact-secrets,omitempty" json:"redact-secrets,omitempty"`
+}
+
 // GetClusterConfigKeywordsParams defines parameters for GetClusterConfigKeywords.
 type GetClusterConfigKeywordsParams struct {
 	// Driver show only keywords of this driver
@@ -3066,8 +3075,8 @@ type PatchNodeConfigParams struct {
 
 // GetNodeConfigFileParams defines parameters for GetNodeConfigFile.
 type GetNodeConfigFileParams struct {
-	// RedactSecrets if true, redact secrets in the cluster configuration file
-	RedactSecrets *bool `form:"redact-secrets,omitempty" json:"redact-secrets,omitempty"`
+	// RedactSecrets if true, redact secrets in the configuration file
+	RedactSecrets *RedactSecrets `form:"redact-secrets,omitempty" json:"redact-secrets,omitempty"`
 }
 
 // GetNodeConfigKeywordsParams defines parameters for GetNodeConfigKeywords.
@@ -3982,8 +3991,8 @@ type PatchObjectConfigParams struct {
 
 // GetObjectConfigFileParams defines parameters for GetObjectConfigFile.
 type GetObjectConfigFileParams struct {
-	// RedactSecrets if true, redact secrets in the cluster configuration file
-	RedactSecrets *bool `form:"redact-secrets,omitempty" json:"redact-secrets,omitempty"`
+	// RedactSecrets if true, redact secrets in the configuration file
+	RedactSecrets *RedactSecrets `form:"redact-secrets,omitempty" json:"redact-secrets,omitempty"`
 }
 
 // GetObjectConfigKeywordsParams defines parameters for GetObjectConfigKeywords.

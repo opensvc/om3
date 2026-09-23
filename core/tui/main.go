@@ -2285,7 +2285,7 @@ func (t *App) updateClusterConfigView() {
 		return
 	}
 	t.lastUpdatedAt = time.Now()
-	resp, err := t.client.GetClusterConfigFileWithResponse(context.Background())
+	resp, err := t.client.GetClusterConfigFileWithResponse(context.Background(), nil)
 	if err != nil {
 		return
 	}
