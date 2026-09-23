@@ -178,3 +178,33 @@ func hasAttr(r any, path string) error {
 	}
 	return nil
 }
+
+// TestKeywordWithATypeNamesASection verifies no keyword names a driver type
+// without naming the section it belongs to.
+//
+// A keyword with no section belongs to every section there is, which is what
+// a keyword like "comment" wants. Pairing that with a type says the keyword
+// belongs to one driver of every section, and the documentation then invents
+// that driver in each of them: one keyword missing its section put an
+// "arbitrator.drbd", an "array.drbd" and twenty more into the node reference,
+// each advertising a configlet nothing accepts.
+func TestKeywordWithATypeNamesASection(t *testing.T) {
+	for name, store := range allKeywordStores(t) {
+		if strings.HasPrefix(name, "driver ") {
+			// The keywords of a driver manifest name no section: the section
+			// is the driver group, and is given to them where the manifest is
+			// folded into the store of a kind.
+			continue
+		}
+		t.Run(name, func(t *testing.T) {
+			require.NotEmpty(t, store)
+			for _, kw := range store {
+				if len(kw.Types) == 0 || kw.Section != "" {
+					continue
+				}
+				t.Errorf("%s: names the type %s and no section, so it is documented as a driver of every section",
+					kwID(kw), strings.Join(kw.Types, ", "))
+			}
+		})
+	}
+}

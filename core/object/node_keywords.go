@@ -1076,6 +1076,7 @@ var (
 		Example:      "8",
 		Option:       "max_peers",
 		Provisioning: true,
+		Section:      "pool",
 		Text:         keywords.NewText(fs, "text/kw/node/pool.drbd.max_peers"),
 		Types:        []string{"drbd"},
 	}
