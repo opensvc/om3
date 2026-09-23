@@ -536,12 +536,30 @@ func FlagTime(flags *pflag.FlagSet, p *time.Duration) {
 	flags.DurationVar(p, "time", 5*time.Minute, "stop waiting for the object to reach the target state after a duration")
 }
 
-func FlagCollectorUser(flags *pflag.FlagSet, p *string) {
-	flags.StringVar(p, "user", "", "authenticate with the collector using this user")
+// FlagCollectorCredential registers the only way a collector credential
+// reaches a command, besides the OSVC_COLLECTOR_CREDENTIAL environment
+// variable. It names a file rather than carrying the value, for the reason
+// FlagCredential does.
+func FlagCollectorCredential(flags *pflag.FlagSet, p *string) {
+	flags.StringVar(p, "credential", "", "the path of a file holding the <username>:<password> of a collector user"+
+		" able to register a node."+
+		" Defaults to the "+env.CollectorCredentialVar+" environment variable")
 }
 
+// FlagCollectorUser registers the deprecated --user option, kept for the
+// commands that were typed against the previous release. It is hidden:
+// --credential is the documented way in, because it names a file instead of
+// carrying the password on a command line.
+func FlagCollectorUser(flags *pflag.FlagSet, p *string) {
+	flags.StringVar(p, "user", "", "authenticate with the collector using this user")
+	flags.MarkHidden("user")
+}
+
+// FlagCollectorPassword registers the deprecated --password option, hidden
+// for the reason FlagCollectorUser is.
 func FlagCollectorPassword(flags *pflag.FlagSet, p *string) {
 	flags.StringVar(p, "password", "", "authenticate with the collector using this password")
+	flags.MarkHidden("password")
 }
 
 func FlagCollectorApp(flags *pflag.FlagSet, p *string) {

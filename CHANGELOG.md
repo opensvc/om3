@@ -273,6 +273,19 @@ OpenSVC v3 is a major evolution, rebuilt in Go for performance, reliability, and
     1/ it is documented the exitcode is the instance status so we can not be ambiguous.
     2/ it is optimized for efficiency as the daemon executes this frequently to refresh instances status data.
 
+* `om node register` deprecates `--user` and `--password`. The collector credentials now reach the command as
+  `--credential`, naming a file holding the `<username>:<password>` of a collector user, and the
+  `OSVC_COLLECTOR_CREDENTIAL` environment variable is read when the option is not set. A password passed as a flag
+  value is readable by any user through the process table, and stays in the shell history.
+
+    The two options are still accepted, so the commands written against the previous release keep working, but they
+    are hidden from the help. A `--credential` wins over them.
+
+    ```
+    om node register --user me --password s3cret   # deprecated, still accepted
+    om node register --credential /etc/opensvc/collector.cred
+    ```
+
 * `--format` is no longer supported with `print status`. The `om svc1 print config --format json | om svc2 create`
   pattern can be replaced by `om svc1 config show | om svc2 create --config=-`
 
@@ -884,6 +897,20 @@ Where the password is the value of the `þassword` key in `system/sec/relay-v3`.
    user to create once the daemon has restarted alone, for the reason `o[mx] cluster evict` does. The
    `OSVC_CREDENTIAL` environment variable is read when the option is not set. Without either, no user is created and
    the node api stays reachable from a root shell only.
+
+* New `o[mx] cluster register` command, registering every cluster node on the collector in one call.
+
+    The collector mints a registration id for a nodename, so a node cannot register on behalf of another: the command
+    posts to the new `POST /node/name/{nodename}/action/register` endpoint of each node, and each node registers
+    itself and stores its own id in its `node.uuid` keyword. A node already registered is registered again, with a
+    new id.
+
+    The `--credential` names a file holding the `<username>:<password>` of a collector user, and the
+    `OSVC_COLLECTOR_CREDENTIAL` environment variable is read when the option is not set, so the password never
+    appears in the process table. Without either, each node registers with the id it already holds, as
+    `om node register` without a user does. Use `--app` to name the app to register the nodes in.
+
+    Beware, the credential is forwarded to every cluster node, which is what lets each one register itself.
 
 * The `om cluster join` command accepts `--addr` to reach the `--node` at an explicit location, for a node that cannot
    resolve the target nodename. Its `--token` names a file holding the token, and the `OSVC_JOIN_TOKEN` environment

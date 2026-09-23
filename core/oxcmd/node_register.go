@@ -7,10 +7,11 @@ import (
 type (
 	CmdNodeRegister struct {
 		OptsGlobal
-		User         string
-		Password     string
-		App          string
-		NodeSelector string
+		CredentialFile string
+		User           string
+		Password       string
+		App            string
+		NodeSelector   string
 	}
 )
 
