@@ -2,7 +2,7 @@ openapi: 3.0.0
 
 info:
   title: opensvc agent api
-  version: 4.3.0
+  version: 4.4.0
 
 paths:
   /api/array:
@@ -664,6 +664,55 @@ paths:
       tags:
         - cluster
       x-internal: true
+
+  /api/cluster/register:
+    post:
+      description: |
+        Register every node of the cluster of the requested api node on the
+        collector.
+
+        The requester must be granted the 'root' role.
+
+        The api node forks a 'om cluster register' in the background, which
+        posts POST /api/node/name/{nodename}/action/register on every cluster
+        node. Each node registers itself and stores its own registration id in
+        its node.uuid keyword: the collector mints an id for a nodename, so a
+        node cannot register on behalf of another.
+
+        The optional 'credential' parameter is the <username>:<password> of a
+        collector user able to register a node. It is handed to the forked
+        command through its environment, never on its command line, and it is
+        forwarded from there to every cluster node. Without it, each node
+        registers with the id it already holds.
+
+        The processing is asynchronous. The HTTP response is sent when the
+        command has been forked, not when the nodes are registered. A node
+        that fails to register does not stop the ones after it, so the outcome
+        is per node: read it in the forked command log.
+      operationId: PostClusterRegister
+      requestBody:
+        description: the collector credential, and the app to register the nodes in
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ClusterRegisterBody'
+      responses:
+        200:
+          $ref: '#/components/responses/200'
+        400:
+          $ref: '#/components/responses/400'
+        401:
+          $ref: '#/components/responses/401'
+        403:
+          $ref: '#/components/responses/403'
+        500:
+          $ref: '#/components/responses/500'
+      security:
+        - basicAuth: [ ]
+        - bearerAuth: [ ]
+      tags:
+        - cluster
 
   /api/cluster/leave:
     post:
@@ -5934,6 +5983,23 @@ components:
             It must outlive the node drain.
           default: 1h
           example: 1h
+
+    ClusterRegisterBody:
+      type: object
+      properties:
+        credential:
+          type: string
+          description: |
+            The <username>:<password> of a collector user able to register a
+            node. Both halves must be set. Without this parameter, each node
+            registers with the registration id it already holds.
+          example: collectoruser:secret
+        app:
+          type: string
+          description: |
+            Register the nodes in this app. Without it, the node app keyword
+            is used, or the collector picks an app owned by the user.
+          example: MyApp
 
     ClusterEvictBody:
       type: object

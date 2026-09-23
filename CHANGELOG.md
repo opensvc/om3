@@ -912,6 +912,11 @@ Where the password is the value of the `þassword` key in `system/sec/relay-v3`.
 
     Beware, the credential is forwarded to every cluster node, which is what lets each one register itself.
 
+* New `POST /cluster/register` endpoint, registering every node of the cluster of the requested api node on the
+    collector. It forks a `om cluster register` in the background, so the HTTP response is sent when the command has
+    been forked, not when the nodes are registered. Its optional `credential` parameter is handed to that command
+    through its environment, never on its command line.
+
 * The `om cluster join` command accepts `--addr` to reach the `--node` at an explicit location, for a node that cannot
    resolve the target nodename. Its `--token` names a file holding the token, and the `OSVC_JOIN_TOKEN` environment
    variable is read when the option is not set, so the token never appears in the process table.

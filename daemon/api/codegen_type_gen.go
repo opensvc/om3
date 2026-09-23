@@ -1096,6 +1096,18 @@ type ClusterEvictBody struct {
 	Timeout *string `json:"timeout,omitempty"`
 }
 
+// ClusterRegisterBody defines model for ClusterRegisterBody.
+type ClusterRegisterBody struct {
+	// App Register the nodes in this app. Without it, the node app keyword
+	// is used, or the collector picks an app owned by the user.
+	App *string `json:"app,omitempty"`
+
+	// Credential The <username>:<password> of a collector user able to register a
+	// node. Both halves must be set. Without this parameter, each node
+	// registers with the registration id it already holds.
+	Credential *string `json:"credential,omitempty"`
+}
+
 // ClusterStatus defines model for ClusterStatus.
 type ClusterStatus = map[string]interface{}
 
@@ -4103,6 +4115,9 @@ type PostClusterEnrollJSONRequestBody = ClusterEnrollBody
 
 // PostClusterEvictJSONRequestBody defines body for PostClusterEvict for application/json ContentType.
 type PostClusterEvictJSONRequestBody = ClusterEvictBody
+
+// PostClusterRegisterJSONRequestBody defines body for PostClusterRegister for application/json ContentType.
+type PostClusterRegisterJSONRequestBody = ClusterRegisterBody
 
 // PostInstanceProgressJSONRequestBody defines body for PostInstanceProgress for application/json ContentType.
 type PostInstanceProgressJSONRequestBody = PostInstanceProgress
