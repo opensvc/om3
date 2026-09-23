@@ -10,6 +10,7 @@ import (
 	"github.com/opensvc/om3/v3/core/instance"
 	"github.com/opensvc/om3/v3/core/provisioned"
 	"github.com/opensvc/om3/v3/core/status"
+	"github.com/opensvc/om3/v3/core/topology"
 )
 
 // newProvisionedTestManager returns a manager with a provisioned
@@ -64,6 +65,28 @@ func TestAProvisionedOrchestrationEndsOnAStartFailureWithIdlePeers(t *testing.T)
 
 	require.True(t, m.provisionedClearIfReached(), "the orchestration must end")
 	require.True(t, m.state.OrchestrationIsDone, "the orchestration must be marked done")
+}
+
+// A start action can fail and leave the instance up anyway, a timeout on an
+// object whose resources did come up being the plain case. The orchestration
+// asked for a started instance and has one, so it succeeds and clears the
+// start failure, rather than reporting a failure for an object that is
+// running. This is what the started orchestration does in
+// startedFromStartFailed.
+func TestAProvisionedOrchestrationSucceedsOnAStartFailureOfAnUpInstance(t *testing.T) {
+	m := newProvisionedTestManager(instance.MonitorStateStartFailure)
+	m.instStatus[m.localhost] = instance.Status{
+		Avail:       status.Up,
+		Provisioned: provisioned.NotApplicable,
+	}
+	m.objStatus.Avail = status.Up
+	m.objStatus.Topology = topology.Failover
+	m.state.IsLeader = true
+
+	require.True(t, m.provisionedClearIfReached(), "the orchestration must end")
+	require.True(t, m.state.OrchestrationIsDone, "the orchestration must be marked done")
+	require.Equal(t, instance.MonitorStateIdle, m.state.State,
+		"the start failure must be cleared: the instance is up")
 }
 
 // A provision failure ends it as it always did.

@@ -127,7 +127,16 @@ func (t *Manager) provisionedClearIfReached() bool {
 	}
 
 	// failures
-	if t.isAllState(provisionedFailureStates...) {
+	//
+	// A start action can fail and leave the instance started anyway, a
+	// timeout on an object whose resources did come up being the plain case.
+	// The orchestration asked for a started instance and has one, so the
+	// success conditions below have precedence, as they did before a start
+	// failure ended this orchestration. The started orchestration draws the
+	// same line in startedFromStartFailed.
+	if t.state.State.IsOneOf(instance.MonitorStateStartFailure) && t.isLocalStarted() {
+		t.log.Infof("instance is started, whatever its start reported")
+	} else if t.isAllState(provisionedFailureStates...) {
 		return reached("all instances failed to provision or start", false)
 	} else if t.hasLeaderProvisionedFailed() {
 		return reached("leader instance failed to provision or start", false)
