@@ -70,7 +70,7 @@ var (
 	files = map[string]FilesystemInfo{
 		"1ab7d139-dd35-4f9c-ad82-cd6a93675cfd": {
 			UUID:               "1ab7d139-dd35-4f9c-ad82-cd6a93675cfd",
-			ConsistencyGroupID: "12",
+			ConsistencyGroupID: "f0510aae-ac42-4a0e-b460-c6076598b40d",
 			NFSClients:         []NfsClient{},
 			Status:             "online",
 		},
@@ -82,8 +82,8 @@ var (
 	aliasStore = map[string]Alias{}
 
 	cgStore = map[string]*CgInfo{
-		"1ab7d139-dd35-4f9c-ad82-cd6a93675cfd": {
-			UUID:             "1ab7d139-dd35-4f9c-ad82-cd6a93675cfd",
+		"f0510aae-ac42-4a0e-b460-c6076598b40d": {
+			UUID:             "f0510aae-ac42-4a0e-b460-c6076598b40d",
 			Name:             "test-cg",
 			AvailabilityZone: "az2",
 			Status:           "passive",
@@ -412,7 +412,7 @@ func postAuthToken(w http.ResponseWriter, r *http.Request) {
 			"account1:sgcp:dns:write",
 		}
 		count := createdTokenCount.Add(1)
-		body := Token{AccessToken: fmt.Sprintf("%v", requestedScopes)}
+		body := Token{AccessToken: strings.Join(requestedScopes, " ")}
 		setHeader(w, PostAuth, http.StatusOK)
 		slog.Info(PostAuth, "createdCount", count, "createdToken", requestedScopes)
 		json.NewEncoder(w).Encode(body)
@@ -452,15 +452,17 @@ func postAuthToken(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 	count := createdTokenCount.Add(1)
-	body := Token{AccessToken: fmt.Sprintf("%v", requestedScopes)}
+	body := Token{AccessToken: strings.Join(requestedScopes, " ")}
 	setHeader(w, PostAuth, http.StatusOK)
 	slog.Info(PostAuth, "createdCount", count, "client_id", clientID, "createdToken", requestedScopes)
 	json.NewEncoder(w).Encode(body)
 }
 
 func (u Users) ScopesForAuth(clientID, clientSecret string) ([]string, bool) {
-	if user, ok := u[clientID]; ok && user.ClientSecret == clientSecret {
-		return user.Scopes, true
+	for _, user := range u {
+		if user.ClientID == clientID && user.ClientSecret == clientSecret {
+			return user.Scopes, true
+		}
 	}
 	return nil, false
 }
