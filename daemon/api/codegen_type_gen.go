@@ -2156,6 +2156,18 @@ type PostNetworkClaim struct {
 	RID string `json:"rid"`
 }
 
+// PostNodeActionRegisterRequest defines model for PostNodeActionRegisterRequest.
+type PostNodeActionRegisterRequest struct {
+	// App register the node in this app. Without it, the node app keyword is used, or the collector picks an app owned by the user.
+	App *string `json:"app,omitempty"`
+
+	// Password the collector user password
+	Password *string `json:"password,omitempty"`
+
+	// User the collector user to authenticate as. Without it, the node registers with the id it already holds.
+	User *string `json:"user,omitempty"`
+}
+
 // PostNodeDRBDConfigRequest defines model for PostNodeDRBDConfigRequest.
 type PostNodeDRBDConfigRequest struct {
 	AllocationID openapi_types.UUID `json:"allocation_id"`
@@ -4100,6 +4112,9 @@ type PostInstanceStatusJSONRequestBody = InstanceStatus
 
 // PostNetworkClaimJSONRequestBody defines body for PostNetworkClaim for application/json ContentType.
 type PostNetworkClaimJSONRequestBody = PostNetworkClaim
+
+// PostNodeActionRegisterJSONRequestBody defines body for PostNodeActionRegister for application/json ContentType.
+type PostNodeActionRegisterJSONRequestBody = PostNodeActionRegisterRequest
 
 // PostDaemonJoinJSONRequestBody defines body for PostDaemonJoin for application/json ContentType.
 type PostDaemonJoinJSONRequestBody = DaemonJoinBody

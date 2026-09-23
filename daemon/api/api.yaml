@@ -2,7 +2,7 @@ openapi: 3.0.0
 
 info:
   title: opensvc agent api
-  version: 4.2.0
+  version: 4.3.0
 
 paths:
   /api/array:
@@ -1176,6 +1176,52 @@ paths:
               schema:
                 $ref: '#/components/schemas/NodeActionAccepted'
           description: OK
+        401:
+          $ref: '#/components/responses/401'
+        403:
+          $ref: '#/components/responses/403'
+        500:
+          $ref: '#/components/responses/500'
+
+  /api/node/name/{nodename}/action/register:
+    post:
+      operationId: PostNodeActionRegister
+      tags:
+        - node
+      security:
+        - basicAuth: []
+        - bearerAuth: []
+      description: |
+        Obtain a registration id from the collector, store it in the node
+        configuration node.uuid keyword, and send the initial asset, package
+        and disk discovery.
+
+        The requester must be granted the 'root' role.
+
+        The user and password are the collector credentials, and they are
+        forwarded to the node named in the path, which registers itself: the
+        collector mints a registration id for a nodename, so a node cannot
+        register on behalf of another.
+
+        Without a user, the node registers with the id it already holds, as
+        'om node register' does.
+
+        The registration id is not returned: it is the credential the node
+        authenticates with on the collector from then on.
+      parameters:
+        - $ref: '#/components/parameters/inPathNodeName'
+      requestBody:
+        description: the collector credentials and the app to register the node in
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PostNodeActionRegisterRequest'
+      responses:
+        204:
+          $ref: '#/components/responses/204'
+        400:
+          $ref: '#/components/responses/400'
         401:
           $ref: '#/components/responses/401'
         403:
@@ -8204,6 +8250,19 @@ components:
           type: string
         is_partial:
           type: boolean
+
+    PostNodeActionRegisterRequest:
+      type: object
+      properties:
+        user:
+          type: string
+          description: the collector user to authenticate as. Without it, the node registers with the id it already holds.
+        password:
+          type: string
+          description: the collector user password
+        app:
+          type: string
+          description: register the node in this app. Without it, the node app keyword is used, or the collector picks an app owned by the user.
 
     PostNodeDRBDConfigRequest:
       type: object
