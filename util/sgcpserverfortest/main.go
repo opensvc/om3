@@ -412,7 +412,7 @@ func postAuthToken(w http.ResponseWriter, r *http.Request) {
 			"account1:sgcp:dns:write",
 		}
 		count := createdTokenCount.Add(1)
-		body := Token{AccessToken: fmt.Sprintf("%v", requestedScopes)}
+		body := Token{AccessToken: strings.Join(requestedScopes, " ")}
 		setHeader(w, PostAuth, http.StatusOK)
 		slog.Info(PostAuth, "createdCount", count, "createdToken", requestedScopes)
 		json.NewEncoder(w).Encode(body)
@@ -452,7 +452,7 @@ func postAuthToken(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 	count := createdTokenCount.Add(1)
-	body := Token{AccessToken: fmt.Sprintf("%v", requestedScopes)}
+	body := Token{AccessToken: strings.Join(requestedScopes, " ")}
 	setHeader(w, PostAuth, http.StatusOK)
 	slog.Info(PostAuth, "createdCount", count, "client_id", clientID, "createdToken", requestedScopes)
 	json.NewEncoder(w).Encode(body)
