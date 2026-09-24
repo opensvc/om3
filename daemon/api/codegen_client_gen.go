@@ -210,9 +210,9 @@ type ClientInterface interface {
 	PostNodeActionPushPkg(ctx context.Context, nodename InPathNodeName, params *PostNodeActionPushPkgParams, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// PostNodeActionRegisterWithBody request with any body
-	PostNodeActionRegisterWithBody(ctx context.Context, nodename InPathNodeName, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+	PostNodeActionRegisterWithBody(ctx context.Context, nodename InPathNodeName, params *PostNodeActionRegisterParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
 
-	PostNodeActionRegister(ctx context.Context, nodename InPathNodeName, body PostNodeActionRegisterJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+	PostNodeActionRegister(ctx context.Context, nodename InPathNodeName, params *PostNodeActionRegisterParams, body PostNodeActionRegisterJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// PostNodeActionScanCapabilities request
 	PostNodeActionScanCapabilities(ctx context.Context, nodename InPathNodeName, params *PostNodeActionScanCapabilitiesParams, reqEditors ...RequestEditorFn) (*http.Response, error)
@@ -1132,8 +1132,8 @@ func (c *Client) PostNodeActionPushPkg(ctx context.Context, nodename InPathNodeN
 	return c.Client.Do(req)
 }
 
-func (c *Client) PostNodeActionRegisterWithBody(ctx context.Context, nodename InPathNodeName, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
-	req, err := NewPostNodeActionRegisterRequestWithBody(c.Server, nodename, contentType, body)
+func (c *Client) PostNodeActionRegisterWithBody(ctx context.Context, nodename InPathNodeName, params *PostNodeActionRegisterParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewPostNodeActionRegisterRequestWithBody(c.Server, nodename, params, contentType, body)
 	if err != nil {
 		return nil, err
 	}
@@ -1144,8 +1144,8 @@ func (c *Client) PostNodeActionRegisterWithBody(ctx context.Context, nodename In
 	return c.Client.Do(req)
 }
 
-func (c *Client) PostNodeActionRegister(ctx context.Context, nodename InPathNodeName, body PostNodeActionRegisterJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
-	req, err := NewPostNodeActionRegisterRequest(c.Server, nodename, body)
+func (c *Client) PostNodeActionRegister(ctx context.Context, nodename InPathNodeName, params *PostNodeActionRegisterParams, body PostNodeActionRegisterJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewPostNodeActionRegisterRequest(c.Server, nodename, params, body)
 	if err != nil {
 		return nil, err
 	}
@@ -4684,18 +4684,18 @@ func NewPostNodeActionPushPkgRequest(server string, nodename InPathNodeName, par
 }
 
 // NewPostNodeActionRegisterRequest calls the generic PostNodeActionRegister builder with application/json body
-func NewPostNodeActionRegisterRequest(server string, nodename InPathNodeName, body PostNodeActionRegisterJSONRequestBody) (*http.Request, error) {
+func NewPostNodeActionRegisterRequest(server string, nodename InPathNodeName, params *PostNodeActionRegisterParams, body PostNodeActionRegisterJSONRequestBody) (*http.Request, error) {
 	var bodyReader io.Reader
 	buf, err := json.Marshal(body)
 	if err != nil {
 		return nil, err
 	}
 	bodyReader = bytes.NewReader(buf)
-	return NewPostNodeActionRegisterRequestWithBody(server, nodename, "application/json", bodyReader)
+	return NewPostNodeActionRegisterRequestWithBody(server, nodename, params, "application/json", bodyReader)
 }
 
 // NewPostNodeActionRegisterRequestWithBody generates requests for PostNodeActionRegister with any type of body
-func NewPostNodeActionRegisterRequestWithBody(server string, nodename InPathNodeName, contentType string, body io.Reader) (*http.Request, error) {
+func NewPostNodeActionRegisterRequestWithBody(server string, nodename InPathNodeName, params *PostNodeActionRegisterParams, contentType string, body io.Reader) (*http.Request, error) {
 	var err error
 
 	var pathParam0 string
@@ -4718,6 +4718,33 @@ func NewPostNodeActionRegisterRequestWithBody(server string, nodename InPathNode
 	queryURL, err := serverURL.Parse(operationPath)
 	if err != nil {
 		return nil, err
+	}
+
+	if params != nil {
+		// queryValues collects non-styled parameters (passthrough, JSON)
+		// that are safe to round-trip through url.Values.Encode().
+		queryValues := queryURL.Query()
+		// rawQueryFragments collects pre-encoded query fragments from
+		// styled parameters, preserving literal commas as delimiters
+		// per the OpenAPI spec (e.g. "color=blue,black,brown").
+		var rawQueryFragments []string
+
+		if params.SessionID != nil {
+
+			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "session_id", *params.SessionID, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "string", Format: "uuid"}); err != nil {
+				return nil, err
+			} else {
+				for _, qp := range strings.Split(queryFrag, "&") {
+					rawQueryFragments = append(rawQueryFragments, qp)
+				}
+			}
+
+		}
+
+		if encoded := queryValues.Encode(); encoded != "" {
+			rawQueryFragments = append(rawQueryFragments, encoded)
+		}
+		queryURL.RawQuery = strings.Join(rawQueryFragments, "&")
 	}
 
 	req, err := http.NewRequest(http.MethodPost, queryURL.String(), body)
@@ -15131,9 +15158,9 @@ type ClientWithResponsesInterface interface {
 	PostNodeActionPushPkgWithResponse(ctx context.Context, nodename InPathNodeName, params *PostNodeActionPushPkgParams, reqEditors ...RequestEditorFn) (*PostNodeActionPushPkgResponse, error)
 
 	// PostNodeActionRegisterWithBodyWithResponse request with any body
-	PostNodeActionRegisterWithBodyWithResponse(ctx context.Context, nodename InPathNodeName, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*PostNodeActionRegisterResponse, error)
+	PostNodeActionRegisterWithBodyWithResponse(ctx context.Context, nodename InPathNodeName, params *PostNodeActionRegisterParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*PostNodeActionRegisterResponse, error)
 
-	PostNodeActionRegisterWithResponse(ctx context.Context, nodename InPathNodeName, body PostNodeActionRegisterJSONRequestBody, reqEditors ...RequestEditorFn) (*PostNodeActionRegisterResponse, error)
+	PostNodeActionRegisterWithResponse(ctx context.Context, nodename InPathNodeName, params *PostNodeActionRegisterParams, body PostNodeActionRegisterJSONRequestBody, reqEditors ...RequestEditorFn) (*PostNodeActionRegisterResponse, error)
 
 	// PostNodeActionScanCapabilitiesWithResponse request
 	PostNodeActionScanCapabilitiesWithResponse(ctx context.Context, nodename InPathNodeName, params *PostNodeActionScanCapabilitiesParams, reqEditors ...RequestEditorFn) (*PostNodeActionScanCapabilitiesResponse, error)
@@ -16773,6 +16800,7 @@ func (r PostNodeActionPushPkgResponse) ContentType() string {
 type PostNodeActionRegisterResponse struct {
 	Body         []byte
 	HTTPResponse *http.Response
+	JSON200      *NodeActionAccepted
 	JSON400      *N400
 	JSON401      *N401
 	JSON403      *N403
@@ -21671,16 +21699,16 @@ func (c *ClientWithResponses) PostNodeActionPushPkgWithResponse(ctx context.Cont
 }
 
 // PostNodeActionRegisterWithBodyWithResponse request with arbitrary body returning *PostNodeActionRegisterResponse
-func (c *ClientWithResponses) PostNodeActionRegisterWithBodyWithResponse(ctx context.Context, nodename InPathNodeName, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*PostNodeActionRegisterResponse, error) {
-	rsp, err := c.PostNodeActionRegisterWithBody(ctx, nodename, contentType, body, reqEditors...)
+func (c *ClientWithResponses) PostNodeActionRegisterWithBodyWithResponse(ctx context.Context, nodename InPathNodeName, params *PostNodeActionRegisterParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*PostNodeActionRegisterResponse, error) {
+	rsp, err := c.PostNodeActionRegisterWithBody(ctx, nodename, params, contentType, body, reqEditors...)
 	if err != nil {
 		return nil, err
 	}
 	return ParsePostNodeActionRegisterResponse(rsp)
 }
 
-func (c *ClientWithResponses) PostNodeActionRegisterWithResponse(ctx context.Context, nodename InPathNodeName, body PostNodeActionRegisterJSONRequestBody, reqEditors ...RequestEditorFn) (*PostNodeActionRegisterResponse, error) {
-	rsp, err := c.PostNodeActionRegister(ctx, nodename, body, reqEditors...)
+func (c *ClientWithResponses) PostNodeActionRegisterWithResponse(ctx context.Context, nodename InPathNodeName, params *PostNodeActionRegisterParams, body PostNodeActionRegisterJSONRequestBody, reqEditors ...RequestEditorFn) (*PostNodeActionRegisterResponse, error) {
+	rsp, err := c.PostNodeActionRegister(ctx, nodename, params, body, reqEditors...)
 	if err != nil {
 		return nil, err
 	}
@@ -24883,6 +24911,13 @@ func ParsePostNodeActionRegisterResponse(rsp *http.Response) (*PostNodeActionReg
 	}
 
 	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest NodeActionAccepted
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
 		var dest N400
 		if err := json.Unmarshal(bodyBytes, &dest); err != nil {

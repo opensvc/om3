@@ -10,6 +10,7 @@ import (
 	"github.com/opensvc/om3/v3/core/client"
 	"github.com/opensvc/om3/v3/core/nodeselector"
 	"github.com/opensvc/om3/v3/daemon/api"
+	"github.com/opensvc/om3/v3/util/xsession"
 )
 
 type (
@@ -57,6 +58,11 @@ func (t *CmdClusterRegister) Run() error {
 	}
 	ctx := context.Background()
 
+	params := api.PostNodeActionRegisterParams{}
+	{
+		sessionID := xsession.SessionID().UUID()
+		params.SessionID = &sessionID
+	}
 	body := api.PostNodeActionRegisterRequest{}
 	if user != "" {
 		body.User = &user
@@ -66,20 +72,24 @@ func (t *CmdClusterRegister) Run() error {
 		body.App = &t.App
 	}
 
-	// The nodes are registered one after the other, and a node that fails
-	// does not stop the ones after it: an operator asking for the cluster is
-	// asking for every node, and the ones that worked are registered for
-	// good.
+	// The nodes are asked one after the other, and a node that refuses does
+	// not stop the ones after it: an operator asking for the cluster is
+	// asking for every node.
+	//
+	// Each node registers in the background, so what is reported here is the
+	// order being taken, not the registration being done. The outcome of a
+	// registration is in the log of the node that ran it, and in the
+	// ExecSuccess and ExecFailed events carrying the exec id.
 	var errs error
 	for _, node := range nodes {
-		resp, err := c.PostNodeActionRegisterWithResponse(ctx, node, body)
+		resp, err := c.PostNodeActionRegisterWithResponse(ctx, node, &params, body)
 		if err != nil {
 			errs = errors.Join(errs, fmt.Errorf("%s: %w", node, err))
 			continue
 		}
 		switch resp.StatusCode() {
-		case 204:
-			fmt.Printf("%s registered\n", node)
+		case 200:
+			fmt.Printf("%s registering, exec %s\n", node, resp.JSON200.ExecID)
 		case 400:
 			errs = errors.Join(errs, fmt.Errorf("%s: %s: %s", node, resp.JSON400.Title, resp.JSON400.Detail))
 		case 401:

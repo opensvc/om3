@@ -23,7 +23,12 @@ import (
 // between all of them, and the exec, which is this one alone. A client is
 // handed both so it can ask after the whole of what it submitted, or after
 // the part that ran here.
-func (a *DaemonAPI) apiExec(ctx echo.Context, p naming.Path, requesterSessionID uuid.UUID, args []string, log *plog.Logger) (uuid.UUID, uuid.UUID, error) {
+//
+// The varEnv are added to the environment of the forked command. They are
+// how a secret reaches it: /proc/<pid>/cmdline is world readable, and the
+// command string is published on the bus and kept in the exec store, so an
+// argument is no place for one.
+func (a *DaemonAPI) apiExec(ctx echo.Context, p naming.Path, requesterSessionID uuid.UUID, args []string, log *plog.Logger, varEnv ...string) (uuid.UUID, uuid.UUID, error) {
 	execname, err := os.Executable()
 	if err != nil {
 		return uuid.Nil, uuid.Nil, fmt.Errorf("can't detect om execname: %w", err)
@@ -34,12 +39,15 @@ func (a *DaemonAPI) apiExec(ctx echo.Context, p naming.Path, requesterSessionID 
 		command.WithName(execname),
 		command.WithArgs(args),
 		command.WithLogger(log),
-		command.WithVarEnv(
-			env.ActionOriginDaemonAPI.Var(),
-			sessionID.Var(),
-			execID.Var(),
-			"OSVC_REQUEST_ID="+fmt.Sprint(ctx.Get("uuid")),
-		),
+		command.WithVarEnv(append(
+			[]string{
+				env.ActionOriginDaemonAPI.Var(),
+				sessionID.Var(),
+				execID.Var(),
+				"OSVC_REQUEST_ID=" + fmt.Sprint(ctx.Get("uuid")),
+			},
+			varEnv...,
+		)...),
 	)
 	// The node label is what a subscriber narrows on to hear only what this
 	// node runs, and every other publisher of these messages sets it.

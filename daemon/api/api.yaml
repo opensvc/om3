@@ -2,7 +2,7 @@ openapi: 3.0.0
 
 info:
   title: opensvc agent api
-  version: 4.4.0
+  version: 4.5.0
 
 paths:
   /api/array:
@@ -1250,15 +1250,24 @@ paths:
         The user and password are the collector credentials, and they are
         forwarded to the node named in the path, which registers itself: the
         collector mints a registration id for a nodename, so a node cannot
-        register on behalf of another.
+        register on behalf of another. A password without a user, or a user
+        without a password, is refused with a 400.
 
         Without a user, the node registers with the id it already holds, as
         'om node register' does.
+
+        The processing is asynchronous: the node forks a 'om node register',
+        and the HTTP response is sent when it has been forked, not when the
+        node is registered. The registration sends the initial inventories,
+        which takes longer than a request should be held open for. Follow it
+        with the ExecSuccess and ExecFailed events carrying the answered
+        exec id.
 
         The registration id is not returned: it is the credential the node
         authenticates with on the collector from then on.
       parameters:
         - $ref: '#/components/parameters/inPathNodeName'
+        - $ref: '#/components/parameters/inQuerySessionID'
       requestBody:
         description: the collector credentials and the app to register the node in
         required: true
@@ -1267,8 +1276,12 @@ paths:
             schema:
               $ref: '#/components/schemas/PostNodeActionRegisterRequest'
       responses:
-        204:
-          $ref: '#/components/responses/204'
+        200:
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/NodeActionAccepted'
+          description: OK
         400:
           $ref: '#/components/responses/400'
         401:

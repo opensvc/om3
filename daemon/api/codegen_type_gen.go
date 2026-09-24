@@ -3053,6 +3053,11 @@ type PostNodeActionPushPkgParams struct {
 	SessionID *SessionID `form:"session_id,omitempty" json:"session_id,omitempty"`
 }
 
+// PostNodeActionRegisterParams defines parameters for PostNodeActionRegister.
+type PostNodeActionRegisterParams struct {
+	SessionID *SessionID `form:"session_id,omitempty" json:"session_id,omitempty"`
+}
+
 // PostNodeActionScanCapabilitiesParams defines parameters for PostNodeActionScanCapabilities.
 type PostNodeActionScanCapabilitiesParams struct {
 	SessionID *SessionID `form:"session_id,omitempty" json:"session_id,omitempty"`

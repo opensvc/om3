@@ -905,12 +905,19 @@ Where the password is the value of the `þassword` key in `system/sec/relay-v3`.
     itself and stores its own id in its `node.uuid` keyword. A node already registered is registered again, with a
     new id.
 
+    Each node registers in the background, so the command reports the order being taken, not the registration being
+    done: a registration sends the initial asset, package and disk inventories, which takes longer than a request
+    should be held open for. Follow it with the `ExecSuccess` and `ExecFailed` events carrying the answered exec id.
+
     The `--credential` names a file holding the `<username>:<password>` of a collector user, and the
     `OSVC_COLLECTOR_CREDENTIAL` environment variable is read when the option is not set, so the password never
     appears in the process table. Without either, each node registers with the id it already holds, as
     `om node register` without a user does. Use `--app` to name the app to register the nodes in.
 
     Beware, the credential is forwarded to every cluster node, which is what lets each one register itself.
+
+* `o[mx] node register --node <selector>` registers the selected nodes, through the new register endpoint. The
+    option was already offered, but no command behind it: it failed with `RemoteFunc is nil`.
 
 * New `POST /cluster/register` endpoint, registering every node of the cluster of the requested api node on the
     collector. It forks a `om cluster register` in the background, so the HTTP response is sent when the command has
