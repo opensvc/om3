@@ -27,9 +27,36 @@ type (
 		VMemLimit     string
 		MemSwappiness string
 		BlockIOWeight string
-		applied       bool
-		reset         bool
-		log           *plog.Logger
+
+		// Delegation, when set, places the group under a subtree of the
+		// hierarchy delegated to an unprivileged user, rather than at the
+		// root. The ID stays the one the configuration gives: it is what
+		// orders the groups and what a reset is scoped by, and it is the
+		// same group of the same object wherever it lives.
+		Delegation *Delegation
+
+		applied bool
+		reset   bool
+		log     *plog.Logger
+	}
+
+	// Delegation is a subtree of the unified hierarchy delegated to an
+	// unprivileged user, the way systemd delegates user@<uid>.service to
+	// the systemd instance of that user.
+	//
+	// A group made under it is owned by that user, so an engine running as
+	// them can create its own groups inside it: that is what lets a rootless
+	// container be placed in the group om caps. The cappings themselves are
+	// written by om, in files the user is not given, so they hold against
+	// the user as they hold against the container.
+	Delegation struct {
+		// Root is the delegated subtree, relative to the unified mount,
+		// as /user.slice/user-1001.slice/user@1001.service.
+		Root string
+
+		// UID and GID own the groups made under Root.
+		UID int
+		GID int
 	}
 	Mgr struct {
 		mu        sync.Mutex
@@ -73,18 +100,60 @@ func FromContext(ctx context.Context) *Mgr {
 	return v.(*Mgr)
 }
 
+// Path is where the group lives in the unified hierarchy: its ID, under the
+// delegated subtree when there is one.
+func (c Config) Path() string {
+	if c.Delegation == nil {
+		return c.ID
+	}
+	return c.Delegation.Root + c.ID
+}
+
+// Delegated returns the same group, placed under a delegated subtree.
+func (c Config) Delegated(d Delegation) *Config {
+	c.Delegation = &d
+	c.applied = false
+	c.reset = false
+	return &c
+}
+
+// Register adds a group to those an action applies, keyed by where it lives:
+// the same group delegated to a user is another group of the hierarchy, and
+// is made and capped on its own.
 func (m *Mgr) Register(c *Config) {
 	if c == nil {
 		return
 	}
 	m.mu.Lock()
 	defer m.mu.Unlock()
-	if _, ok := m.configs[c.ID]; ok {
+	if _, ok := m.configs[c.Path()]; ok {
 		// Don't reset the "applied" bool if the config is registered again.
 		// We don't need to handle in-run config changes.
 		return
 	}
-	m.configs[c.ID] = c
+	m.configs[c.Path()] = c
+}
+
+// Ancestors returns the registered groups id is nested in, parents first.
+//
+// It is what a group moved under a delegated subtree carries along: the
+// cappings of the namespace and the object are written on their groups, and
+// a group placed elsewhere is only capped by them if they are made above it
+// there too.
+func (m *Mgr) Ancestors(id string) []*Config {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	l := make([]*Config, 0)
+	for _, c := range m.configs {
+		if c.Delegation != nil {
+			continue
+		}
+		if c.ID != id && strings.HasPrefix(id, c.ID+"/") {
+			l = append(l, c)
+		}
+	}
+	sort.Slice(l, func(i, j int) bool { return l[i].ID < l[j].ID })
+	return l
 }
 
 // ApplyConfigs applies all registered pg configs in order (base to leaf).
@@ -136,13 +205,13 @@ func (m *Mgr) ResetConfigs() error {
 		return nil
 	}
 	var errs error
-	ids := xmap.Keys(m.configs)
-	sort.Strings(ids)
-	for _, id := range ids {
-		if id != m.resetRoot && !strings.HasPrefix(id, m.resetRoot+"/") {
+	paths := xmap.Keys(m.configs)
+	sort.Strings(paths)
+	for _, path := range paths {
+		c := m.configs[path]
+		if c.ID != m.resetRoot && !strings.HasPrefix(c.ID, m.resetRoot+"/") {
 			continue
 		}
-		c := m.configs[id]
 		if c.reset {
 			continue
 		}
@@ -153,7 +222,7 @@ func (m *Mgr) ResetConfigs() error {
 		}
 		c.reset = true
 		if c.log != nil {
-			c.log.Infof("reset pg %s", id)
+			c.log.Infof("reset pg %s", path)
 		}
 	}
 	return errs
@@ -233,7 +302,7 @@ func (c *Config) Clean() (bool, error) {
 	c.applied = false
 	changed, err := c.Delete()
 	if changed && c.log != nil {
-		c.log.Debugf("remove pg %s", c.ID)
+		c.log.Debugf("remove pg %s", c.Path())
 	}
 	return changed, err
 }
@@ -248,7 +317,7 @@ func (c Config) Apply() error {
 // String is what an applied group logs, so it names the cappings that were
 // applied and not the ones this node has no file for.
 func (c Config) String() string {
-	buff := "pg " + c.ID
+	buff := "pg " + c.Path()
 	l := make([]string, 0)
 	if c.CPUs != "" {
 		l = append(l, "cpus="+c.CPUs)

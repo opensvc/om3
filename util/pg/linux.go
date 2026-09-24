@@ -7,7 +7,9 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"slices"
 	"strconv"
+	"strings"
 
 	"github.com/containerd/cgroups"
 	cgroupsv2 "github.com/containerd/cgroups/v2"
@@ -201,6 +203,27 @@ func (c Config) ApplyProc(pid int) (created bool, errs error) {
 		}
 	}
 
+	if c.Delegation != nil {
+		if !unified {
+			errs = errors.Join(errs, fmt.Errorf("pg %s: a group delegated to a user needs the unified cgroup hierarchy", c.ID))
+			return
+		}
+		var err error
+		created, err = c.makeDelegated()
+		if err != nil {
+			errs = errors.Join(errs, err)
+			return
+		}
+		errs = errors.Join(errs, c.applyDelegatedWrites(writes))
+		if pid != 0 {
+			procs := filepath.Join(UnifiedPath(), c.Path(), "cgroup.procs")
+			if err := os.WriteFile(procs, []byte(strconv.Itoa(pid)), 0644); err != nil {
+				errs = errors.Join(errs, fmt.Errorf("add pid to pg %s: %w", c.Path(), err))
+			}
+		}
+		return
+	}
+
 	if unified {
 		control, err := cgroupsv2.NewManager(UnifiedPath(), c.ID, delegatedControllers())
 		if err != nil {
@@ -280,6 +303,127 @@ func delegatedControllers() *cgroupsv2.Resources {
 	}
 }
 
+// delegationFiles are the files of a group its owner has to be given for the
+// group to be delegated to them: they create groups in it, move processes
+// between them, and enable controllers for them. The files holding the
+// cappings are not among them, so the owner cannot lift what is written there.
+var delegationFiles = []string{"cgroup.procs", "cgroup.subtree_control", "cgroup.threads"}
+
+// delegatedControllerNames are the controllers a group delegated to a user is
+// made with, when the subtree offers them: the ones the pg keywords write to.
+var delegatedControllerNames = []string{"cpu", "cpuset", "io", "memory"}
+
+// makeDelegated makes the group under its delegated subtree, and every group
+// between the two, owned by the user the subtree is delegated to.
+//
+// The subtree itself must exist: it is the systemd instance of the user that
+// makes it, and its absence says that instance is not running, which no group
+// om could make would fix.
+//
+// Each group is given the controllers of the list its parent offers. A
+// controller the subtree was not delegated, like io and cpuset under a default
+// user@.service, cannot be given, and what is capped through it is reported
+// when its file is found missing.
+func (c Config) makeDelegated() (created bool, err error) {
+	d := c.Delegation
+	root := filepath.Join(UnifiedPath(), d.Root)
+	if _, err := os.Stat(root); err != nil {
+		return false, fmt.Errorf("pg %s: the delegated cgroup %s does not exist: the systemd instance of uid %d is not running", c.ID, d.Root, d.UID)
+	}
+	parent := root
+	for _, name := range strings.Split(strings.Trim(c.ID, "/"), "/") {
+		if name == "" {
+			continue
+		}
+		if err := enableControllers(parent); err != nil {
+			return created, fmt.Errorf("pg %s: %w", c.ID, err)
+		}
+		dir := filepath.Join(parent, name)
+		if err := os.Mkdir(dir, 0755); err == nil {
+			created = true
+		} else if !errors.Is(err, os.ErrExist) {
+			return created, fmt.Errorf("pg %s: %w", c.ID, err)
+		}
+		if err := chownDelegated(dir, d.UID, d.GID); err != nil {
+			return created, fmt.Errorf("pg %s: %w", c.ID, err)
+		}
+		parent = dir
+	}
+	// The leaf is given its controllers too: the engine makes the group of
+	// the container under it, and that group has the files of none of them
+	// otherwise.
+	if err := enableControllers(parent); err != nil {
+		return created, fmt.Errorf("pg %s: %w", c.ID, err)
+	}
+	return created, nil
+}
+
+// enableControllers gives the children of a group the controllers of the list
+// the group has.
+func enableControllers(dir string) error {
+	b, err := os.ReadFile(filepath.Join(dir, "cgroup.controllers"))
+	if err != nil {
+		return err
+	}
+	available := strings.Fields(string(b))
+	b, err = os.ReadFile(filepath.Join(dir, "cgroup.subtree_control"))
+	if err != nil {
+		return err
+	}
+	enabled := strings.Fields(string(b))
+	l := make([]string, 0)
+	for _, name := range delegatedControllerNames {
+		if slices.Contains(available, name) && !slices.Contains(enabled, name) {
+			l = append(l, "+"+name)
+		}
+	}
+	if len(l) == 0 {
+		return nil
+	}
+	path := filepath.Join(dir, "cgroup.subtree_control")
+	if err := os.WriteFile(path, []byte(strings.Join(l, " ")), 0644); err != nil {
+		return fmt.Errorf("enable %s in %s: %w", strings.Join(l, " "), dir, err)
+	}
+	return nil
+}
+
+// chownDelegated gives a group, and the files delegating it, to its owner.
+func chownDelegated(dir string, uid, gid int) error {
+	if err := os.Chown(dir, uid, gid); err != nil {
+		return err
+	}
+	for _, name := range delegationFiles {
+		if err := os.Chown(filepath.Join(dir, name), uid, gid); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+// applyDelegatedWrites writes the cappings of a delegated group.
+//
+// A capping whose file the group does not have is one its controller was not
+// delegated for, and it is said so rather than failed on: the other cappings
+// hold, and the operator learns which one cannot, and why.
+func (c Config) applyDelegatedWrites(writes []unifiedWrite) error {
+	var errs error
+	dir := filepath.Join(UnifiedPath(), c.Path())
+	for _, write := range writes {
+		path := filepath.Join(dir, write.file)
+		if _, err := os.Stat(path); errors.Is(err, os.ErrNotExist) {
+			controller, _, _ := strings.Cut(write.file, ".")
+			if c.log != nil {
+				c.log.Warnf("pg %s: %s is not capped: the %s controller is not delegated to %s", c.Path(), write.file, controller, c.Delegation.Root)
+			}
+			continue
+		}
+		if err := os.WriteFile(path, []byte(write.value), 0644); err != nil {
+			errs = errors.Join(errs, fmt.Errorf("write %s: %w", write.file, err))
+		}
+	}
+	return errs
+}
+
 // Delete removes the cgroup from the hierarchy the node holds.
 func (c Config) Delete() (bool, error) {
 	if isUnified() {
@@ -289,7 +433,7 @@ func (c Config) Delete() (bool, error) {
 }
 
 func (c Config) deleteV2() (bool, error) {
-	control, err := cgroupsv2.LoadManager(UnifiedPath(), c.ID)
+	control, err := cgroupsv2.LoadManager(UnifiedPath(), c.Path())
 	if err != nil {
 		// doesn't verify path existence
 		return false, nil
