@@ -84,14 +84,14 @@ size = 60%FREE
 type = xfs
 dev = /dev/testvg/logs
 mnt = /srv/logs
+vg = testvg
 size = 100%VG
 `
 	m := migrationOf(t, config)
 	assert.Equal(t, "$(60% * {disk#1.free})", must(t, m, "disk#2.size"))
 	assert.Equal(t, "$(100% * {disk#1.capacity})", must(t, m, "disk#3.size"),
 		"a share of the whole group is a share of what it holds")
-	assert.Equal(t, "testvg", must(t, m, "disk#3.vg"),
-		"the group is read from the device path where no keyword names it")
+	assert.Equal(t, "testvg", must(t, m, "disk#3.vg"))
 	assert.Empty(t, m.Notes[0:0])
 }
 
@@ -104,6 +104,7 @@ func TestAShareOfAGroupOmDoesNotHoldIsKept(t *testing.T) {
 type = ext4
 dev = /dev/testvg/data
 mnt = /srv/data
+vg = testvg
 size = 60%FREE
 `)
 	assert.Equal(t, "60%FREE", must(t, m, "disk#2.size"))
@@ -127,19 +128,36 @@ size@node2 = 20g
 	assert.True(t, unset(m, "fs#2.size@node2"))
 }
 
-// A configuration keeps what nothing can migrate for it, and hears why.
+// A configuration keeps what nothing can migrate for it, and hears why: a
+// volume group named for one node only says nothing about the others.
 func TestWhatCannotBeMigratedIsSaidAndLeftAlone(t *testing.T) {
 	m := migrationOf(t, `
 [fs#2]
 type = ext4
 dev = /dev/mapper/mpatha
 mnt = /srv/data
+vg@node1 = testvg
 size = 20g
 `)
 	assert.Empty(t, m.Sets)
 	assert.Empty(t, m.Unsets)
 	require.Len(t, m.Refusals, 1)
 	assert.Contains(t, m.Refusals[0], "neither fs#2.vg nor fs#2.dev says which volume group")
+}
+
+// A size with no volume group to carve it from made no volume in om2, which
+// only made one when a volume group was named.
+func TestASizeWithNoVolumeGroupMadeNoVolume(t *testing.T) {
+	m := migrationOf(t, `
+[fs#2]
+type = ext4
+dev = /dev/testvg/data
+mnt = /srv/data
+size = 20g
+`)
+	assert.Empty(t, m.Sets)
+	assert.Empty(t, m.Unsets)
+	assert.Empty(t, m.Refusals)
 }
 
 // A filesystem that never made a volume has nothing to migrate.

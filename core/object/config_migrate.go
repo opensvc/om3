@@ -69,7 +69,7 @@ func migrateFilesystemVolumes(cfg *xconfig.T, m *Migration) {
 			continue
 		}
 		moved := movedKeys(cfg, section)
-		if len(moved) == 0 {
+		if !madeItsVolume(moved) {
 			continue
 		}
 		vg := cfg.Get(key.T{Section: section, Option: "vg"})
@@ -163,6 +163,26 @@ func vgRID(cfg *xconfig.T, vg string) string {
 		}
 	}
 	return ""
+}
+
+// madeItsVolume reports whether the keywords of a filesystem say om2 made the
+// volume it mounts: a volume group to carve it from, and a size to carve.
+//
+// It is the condition om2 made a volume on, a volume group being named, and
+// the size is what it carved. A size alone is not the om2 one: it is the size
+// a tmpfs or a quota-capped directory may hold, which their om3 drivers read
+// as their own.
+func madeItsVolume(moved []string) bool {
+	var hasSize, hasVG bool
+	for _, option := range moved {
+		switch base, _ := cutScope(option); base {
+		case "size":
+			hasSize = true
+		case "vg":
+			hasVG = true
+		}
+	}
+	return hasSize && hasVG
 }
 
 // movedKeys is the keywords of a section that the filesystem driver no longer
