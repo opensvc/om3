@@ -22,6 +22,12 @@ type (
 		// RunArgsCGroupParentDisable disable the "--cgroup-parent" RunArgs setting
 		RunArgsCGroupParentDisable bool
 
+		// ResolvConfDir, when set, returns the directory the resolver of the
+		// container is written in, in place of the var dir of the resource.
+		// An engine run as a user mounts the file as that user, and the var
+		// dir is one only root can enter.
+		ResolvConfDir func() (string, error)
+
 		// runArgsEnvM is internal store for the environment variables that
 		// must be added to the exec.Cmd Env, during the Executor.Run() call.
 		// It is returned by ExecutorArg.RunCmdEnv() calls.
@@ -370,7 +376,15 @@ func (ea *ExecutorArg) resolvConfMount() (string, error) {
 		ea.BT.Log().Warnf("%d nameservers are named, by cluster.dns and the dns keyword, and a resolver reads the first %d: %s is not written to the container resolv.conf",
 			n, rescontainer.MaxNameservers, strings.Join(resolvConf.Nameservers[rescontainer.MaxNameservers:], ", "))
 	}
-	path, err := rescontainer.WriteResolvConf(filepath.Join(ea.BT.VarDir(), "resolv.conf"), resolvConf)
+	dir := ea.BT.VarDir()
+	if ea.ResolvConfDir != nil {
+		if d, err := ea.ResolvConfDir(); err != nil {
+			return "", err
+		} else {
+			dir = d
+		}
+	}
+	path, err := rescontainer.WriteResolvConf(filepath.Join(dir, "resolv.conf"), resolvConf)
 	if err != nil {
 		return "", err
 	}

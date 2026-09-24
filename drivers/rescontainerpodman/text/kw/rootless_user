@@ -1,0 +1,26 @@
+The unprivileged user podman runs the container as, making it a rootless
+container. Every podman command of the container runs as that user, so the
+container, its image and its store are the user's, and its processes are
+mapped to the subordinate ids of the user.
+
+The node must be set up for it, and the container refuses to start until it
+is, naming what is missing:
+
+* the systemd instance of the user must run without a login session, which
+  `loginctl enable-linger <user>` makes it do,
+
+* the user must have subordinate ids in `/etc/subuid` and `/etc/subgid`.
+
+The pg_* keywords cap the container in the subtree of the cgroup hierarchy
+systemd delegates to the user, where podman places it. A capping whose
+controller that subtree is not delegated, like pg_cpus and pg_blkio_weight
+under a default `user@.service`, is reported as not applied.
+
+The resolver of the container is written under the runtime directory of the
+user, which podman can read, rather than in the var dir of the resource.
+
+A rootless container cannot be privileged, and its volume mounts must be
+readable by the user or its subordinate ids: see the userns keyword for
+mapping the user into the container.
+
+Empty, the default, runs the container as root.

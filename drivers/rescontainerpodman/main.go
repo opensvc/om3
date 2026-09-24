@@ -8,12 +8,20 @@ import (
 type (
 	T struct {
 		rescontainerocibase.BT
+
+		// RootlessUser, when set, is the unprivileged user podman runs the
+		// container as, in their own store and their own user namespace.
+		RootlessUser string `json:"rootless_user"`
+
+		// RootlessGroup overrides the primary group of RootlessUser.
+		RootlessGroup string `json:"rootless_group"`
 	}
 
 	ExecutorArg struct {
 		*rescontainerocibase.ExecutorArg
 		exe      string
 		baseArgs []string
+		t        *T
 	}
 )
 
@@ -42,7 +50,7 @@ func (t *T) configure(ea *ExecutorArg) {
 func (t *T) executorArg() *ExecutorArg {
 	var baseArgs []string
 
-	return &ExecutorArg{
+	ea := &ExecutorArg{
 		ExecutorArg: &rescontainerocibase.ExecutorArg{
 			BT: &t.BT,
 		},
@@ -50,5 +58,30 @@ func (t *T) executorArg() *ExecutorArg {
 		exe: "podman",
 
 		baseArgs: baseArgs,
+
+		t: t,
 	}
+	if t.RootlessUser != "" {
+		ea.ExecutorArg.ResolvConfDir = func() (string, error) {
+			u, err := t.rootlessUser()
+			if err != nil {
+				return "", err
+			}
+			return t.resolvConfDir(u)
+		}
+	}
+	return ea
+}
+
+// Credential implements rescontainerocibase.ExecutorCredentialer: the podman
+// commands of a rootless container run as its user.
+func (ea *ExecutorArg) Credential() (*rescontainerocibase.Credential, error) {
+	if ea.t == nil {
+		return nil, nil
+	}
+	u, err := ea.t.rootlessUser()
+	if err != nil || u == nil {
+		return nil, err
+	}
+	return u.credential(), nil
 }

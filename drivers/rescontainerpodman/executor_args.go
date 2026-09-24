@@ -58,6 +58,11 @@ func (ea *ExecutorArg) wait(ctx context.Context, a ...string) error {
 	} else {
 		cmd = exec.Command(ea.exe, a...)
 	}
+	cred, err := ea.Credential()
+	if err != nil {
+		return err
+	}
+	cred.Demote(cmd)
 	ea.BT.Log().Infof("%s %s", ea.exe, strings.Join(a, " "))
 	if err := cmd.Run(); err != nil {
 		ea.BT.Log().Tracef("%s %s: %s", ea.exe, strings.Join(a, " "), err)
