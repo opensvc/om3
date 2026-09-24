@@ -61,3 +61,15 @@ func TestExecutorArg_RunArgsBase(t *testing.T) {
 
 	require.ElementsMatchf(t, expected, base.Get(), "want: %s\ngot:  %s", expected, base.Get())
 }
+
+// Podman stops reading options at the first argument that is not one, so the
+// name of the container comes last or the options read as more names.
+func TestLogsArgsPutTheContainerNameLast(t *testing.T) {
+	ea := &ExecutorArg{BT: &BT{Name: "c1"}}
+	require.Equal(t,
+		[]string{"container", "logs", "--follow", "--tail", "3", "c1"},
+		ea.LogsArgs(true, 3).Get())
+	require.Equal(t,
+		[]string{"container", "logs", "c1"},
+		ea.LogsArgs(false, 0).Get())
+}

@@ -325,10 +325,14 @@ func (ea *ExecutorArg) runArgsMounts(ctx context.Context) ([]string, error) {
 	return a, nil
 }
 
+// LogsArgs returns the arguments of the engine command printing the logs of
+// the container.
+//
+// The options come before the name: podman stops reading options at the
+// first argument, and reads the ones after it as more container names.
 func (ea *ExecutorArg) LogsArgs(follow bool, lines int) *args.T {
 	a := args.New()
 	a.Append("container", "logs")
-	a.Append(ea.BT.ContainerName())
 
 	// Add follow flag if requested
 	if follow {
@@ -340,6 +344,7 @@ func (ea *ExecutorArg) LogsArgs(follow bool, lines int) *args.T {
 		a.Append("--tail", fmt.Sprintf("%d", lines))
 	}
 
+	a.Append(ea.BT.ContainerName())
 	return a
 }
 
