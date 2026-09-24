@@ -5080,7 +5080,20 @@ paths:
       security:
         - basicAuth: []
         - bearerAuth: []
-      description: Delete sections, unset and set keywords in the object configuration file.
+      description: |
+        Delete sections, unset and set keywords in the object configuration file.
+
+        With wait, the answer is held until the configuration written has
+        reached every live node of the object, which is when an action asked
+        of any of them runs on it. A node is live while the heartbeats of the
+        cluster reach it: a node that is down fetches the configuration when
+        it comes back, and is not waited for.
+
+        A wait that expires is answered 408, naming the nodes the
+        configuration has not reached. The configuration is written all the
+        same, and the answer carries the OM-Last-Modified timestamp an action
+        can require with its config_updated_at parameter. A 408 is not to be
+        answered by writing again: a += operation would apply twice.
       parameters:
         - $ref: '#/components/parameters/inPathNamespace'
         - $ref: '#/components/parameters/inPathKind'
@@ -5088,6 +5101,7 @@ paths:
         - $ref: '#/components/parameters/inQueryDeletes'
         - $ref: '#/components/parameters/inQueryUnsets'
         - $ref: '#/components/parameters/inQuerySets'
+        - $ref: '#/components/parameters/inQueryWait'
       responses:
         200:
           description: OK
@@ -5103,6 +5117,8 @@ paths:
           $ref: '#/components/responses/403'
         404:
           $ref: '#/components/responses/404'
+        408:
+          $ref: '#/components/responses/408'
         500:
           $ref: '#/components/responses/500'
 

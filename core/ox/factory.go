@@ -1628,6 +1628,8 @@ func newCmdObjectConfigUpdate(kind string) *cobra.Command {
 	commoncmd.FlagUpdateDelete(flags, &options.Delete)
 	commoncmd.FlagUpdateSet(flags, &options.Set)
 	commoncmd.FlagUpdateUnset(flags, &options.Unset)
+	commoncmd.FlagConfigWait(flags, &options.Wait)
+	commoncmd.FlagTime(flags, &options.Time)
 	return cmd
 }
 

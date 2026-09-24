@@ -13670,6 +13670,18 @@ func NewPatchObjectConfigRequest(server string, namespace InPathNamespace, kind 
 
 		}
 
+		if params.Wait != nil {
+
+			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "wait", *params.Wait, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "string", Format: ""}); err != nil {
+				return nil, err
+			} else {
+				for _, qp := range strings.Split(queryFrag, "&") {
+					rawQueryFragments = append(rawQueryFragments, qp)
+				}
+			}
+
+		}
+
 		if encoded := queryValues.Encode(); encoded != "" {
 			rawQueryFragments = append(rawQueryFragments, encoded)
 		}
@@ -20586,6 +20598,7 @@ type PatchObjectConfigResponse struct {
 	JSON401      *N401
 	JSON403      *N403
 	JSON404      *N404
+	JSON408      *N408
 	JSON500      *N500
 }
 
@@ -31172,6 +31185,13 @@ func ParsePatchObjectConfigResponse(rsp *http.Response) (*PatchObjectConfigRespo
 			return nil, err
 		}
 		response.JSON404 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 408:
+		var dest N408
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON408 = &dest
 
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
 		var dest N500
