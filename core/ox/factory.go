@@ -1309,6 +1309,7 @@ func newCmdNodeRegister() *cobra.Command {
 	}
 	flags := cmd.Flags()
 	addFlagsGlobal(flags, &options.OptsGlobal)
+	commoncmd.FlagCollectorCredential(flags, &options.CredentialFile)
 	commoncmd.FlagCollectorUser(flags, &options.User)
 	commoncmd.FlagCollectorPassword(flags, &options.Password)
 	commoncmd.FlagCollectorApp(flags, &options.App)

@@ -4,6 +4,9 @@ import (
 	"fmt"
 	"os"
 	"strings"
+
+	"github.com/opensvc/om3/v3/core/credential"
+	"github.com/opensvc/om3/v3/core/env"
 )
 
 // SecretFromFileOrEnv returns the secret held by the file at filename, or the
@@ -31,4 +34,27 @@ func SecretFromFileOrEnv(filename, envVar string) (string, error) {
 		return "", fmt.Errorf("file %s is empty", filename)
 	}
 	return s, nil
+}
+
+// CollectorCredential returns the collector user and password held by the
+// file at filename, or by the OSVC_COLLECTOR_CREDENTIAL environment variable
+// when filename is empty, and two empty strings when neither is set: a node
+// then registers with the id it already holds.
+//
+// It is parsed where the command is typed rather than where the registration
+// happens, so that a malformed credential is reported once, before any node
+// is asked to register.
+func CollectorCredential(filename string) (user, password string, err error) {
+	s, err := SecretFromFileOrEnv(filename, env.CollectorCredentialVar)
+	if err != nil {
+		return "", "", fmt.Errorf("%w: --credential: %w", ErrFlagInvalid, err)
+	}
+	if s == "" {
+		return "", "", nil
+	}
+	user, password, err = credential.Parse(s)
+	if err != nil {
+		return "", "", fmt.Errorf("%w: --credential: %w", ErrFlagInvalid, err)
+	}
+	return user, password, nil
 }

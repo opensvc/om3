@@ -1096,6 +1096,18 @@ type ClusterEvictBody struct {
 	Timeout *string `json:"timeout,omitempty"`
 }
 
+// ClusterRegisterBody defines model for ClusterRegisterBody.
+type ClusterRegisterBody struct {
+	// App Register the nodes in this app. Without it, the node app keyword
+	// is used, or the collector picks an app owned by the user.
+	App *string `json:"app,omitempty"`
+
+	// Credential The <username>:<password> of a collector user able to register a
+	// node. Both halves must be set. Without this parameter, each node
+	// registers with the registration id it already holds.
+	Credential *string `json:"credential,omitempty"`
+}
+
 // ClusterStatus defines model for ClusterStatus.
 type ClusterStatus = map[string]interface{}
 
@@ -2156,6 +2168,18 @@ type PostNetworkClaim struct {
 	RID string `json:"rid"`
 }
 
+// PostNodeActionRegisterRequest defines model for PostNodeActionRegisterRequest.
+type PostNodeActionRegisterRequest struct {
+	// App register the node in this app. Without it, the node app keyword is used, or the collector picks an app owned by the user.
+	App *string `json:"app,omitempty"`
+
+	// Password the collector user password
+	Password *string `json:"password,omitempty"`
+
+	// User the collector user to authenticate as. Without it, the node registers with the id it already holds.
+	User *string `json:"user,omitempty"`
+}
+
 // PostNodeDRBDConfigRequest defines model for PostNodeDRBDConfigRequest.
 type PostNodeDRBDConfigRequest struct {
 	AllocationID openapi_types.UUID `json:"allocation_id"`
@@ -3026,6 +3050,11 @@ type PostNodeActionPushDiskParams struct {
 
 // PostNodeActionPushPkgParams defines parameters for PostNodeActionPushPkg.
 type PostNodeActionPushPkgParams struct {
+	SessionID *SessionID `form:"session_id,omitempty" json:"session_id,omitempty"`
+}
+
+// PostNodeActionRegisterParams defines parameters for PostNodeActionRegister.
+type PostNodeActionRegisterParams struct {
 	SessionID *SessionID `form:"session_id,omitempty" json:"session_id,omitempty"`
 }
 
@@ -4092,6 +4121,9 @@ type PostClusterEnrollJSONRequestBody = ClusterEnrollBody
 // PostClusterEvictJSONRequestBody defines body for PostClusterEvict for application/json ContentType.
 type PostClusterEvictJSONRequestBody = ClusterEvictBody
 
+// PostClusterRegisterJSONRequestBody defines body for PostClusterRegister for application/json ContentType.
+type PostClusterRegisterJSONRequestBody = ClusterRegisterBody
+
 // PostInstanceProgressJSONRequestBody defines body for PostInstanceProgress for application/json ContentType.
 type PostInstanceProgressJSONRequestBody = PostInstanceProgress
 
@@ -4100,6 +4132,9 @@ type PostInstanceStatusJSONRequestBody = InstanceStatus
 
 // PostNetworkClaimJSONRequestBody defines body for PostNetworkClaim for application/json ContentType.
 type PostNetworkClaimJSONRequestBody = PostNetworkClaim
+
+// PostNodeActionRegisterJSONRequestBody defines body for PostNodeActionRegister for application/json ContentType.
+type PostNodeActionRegisterJSONRequestBody = PostNodeActionRegisterRequest
 
 // PostDaemonJoinJSONRequestBody defines body for PostDaemonJoin for application/json ContentType.
 type PostDaemonJoinJSONRequestBody = DaemonJoinBody

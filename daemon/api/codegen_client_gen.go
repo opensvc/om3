@@ -147,6 +147,11 @@ type ClientInterface interface {
 	// PostClusterLeave request
 	PostClusterLeave(ctx context.Context, params *PostClusterLeaveParams, reqEditors ...RequestEditorFn) (*http.Response, error)
 
+	// PostClusterRegisterWithBody request with any body
+	PostClusterRegisterWithBody(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	PostClusterRegister(ctx context.Context, body PostClusterRegisterJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+
 	// GetClusterStatus request
 	GetClusterStatus(ctx context.Context, params *GetClusterStatusParams, reqEditors ...RequestEditorFn) (*http.Response, error)
 
@@ -203,6 +208,11 @@ type ClientInterface interface {
 
 	// PostNodeActionPushPkg request
 	PostNodeActionPushPkg(ctx context.Context, nodename InPathNodeName, params *PostNodeActionPushPkgParams, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// PostNodeActionRegisterWithBody request with any body
+	PostNodeActionRegisterWithBody(ctx context.Context, nodename InPathNodeName, params *PostNodeActionRegisterParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	PostNodeActionRegister(ctx context.Context, nodename InPathNodeName, params *PostNodeActionRegisterParams, body PostNodeActionRegisterJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// PostNodeActionScanCapabilities request
 	PostNodeActionScanCapabilities(ctx context.Context, nodename InPathNodeName, params *PostNodeActionScanCapabilitiesParams, reqEditors ...RequestEditorFn) (*http.Response, error)
@@ -858,6 +868,30 @@ func (c *Client) PostClusterLeave(ctx context.Context, params *PostClusterLeaveP
 	return c.Client.Do(req)
 }
 
+func (c *Client) PostClusterRegisterWithBody(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewPostClusterRegisterRequestWithBody(c.Server, contentType, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+func (c *Client) PostClusterRegister(ctx context.Context, body PostClusterRegisterJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewPostClusterRegisterRequest(c.Server, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
 func (c *Client) GetClusterStatus(ctx context.Context, params *GetClusterStatusParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
 	req, err := NewGetClusterStatusRequest(c.Server, params)
 	if err != nil {
@@ -1088,6 +1122,30 @@ func (c *Client) PostNodeActionPushDisk(ctx context.Context, nodename InPathNode
 
 func (c *Client) PostNodeActionPushPkg(ctx context.Context, nodename InPathNodeName, params *PostNodeActionPushPkgParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
 	req, err := NewPostNodeActionPushPkgRequest(c.Server, nodename, params)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+func (c *Client) PostNodeActionRegisterWithBody(ctx context.Context, nodename InPathNodeName, params *PostNodeActionRegisterParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewPostNodeActionRegisterRequestWithBody(c.Server, nodename, params, contentType, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+func (c *Client) PostNodeActionRegister(ctx context.Context, nodename InPathNodeName, params *PostNodeActionRegisterParams, body PostNodeActionRegisterJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewPostNodeActionRegisterRequest(c.Server, nodename, params, body)
 	if err != nil {
 		return nil, err
 	}
@@ -3695,6 +3753,46 @@ func NewPostClusterLeaveRequest(server string, params *PostClusterLeaveParams) (
 	return req, nil
 }
 
+// NewPostClusterRegisterRequest calls the generic PostClusterRegister builder with application/json body
+func NewPostClusterRegisterRequest(server string, body PostClusterRegisterJSONRequestBody) (*http.Request, error) {
+	var bodyReader io.Reader
+	buf, err := json.Marshal(body)
+	if err != nil {
+		return nil, err
+	}
+	bodyReader = bytes.NewReader(buf)
+	return NewPostClusterRegisterRequestWithBody(server, "application/json", bodyReader)
+}
+
+// NewPostClusterRegisterRequestWithBody generates requests for PostClusterRegister with any type of body
+func NewPostClusterRegisterRequestWithBody(server string, contentType string, body io.Reader) (*http.Request, error) {
+	var err error
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/api/cluster/register")
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodPost, queryURL.String(), body)
+	if err != nil {
+		return nil, err
+	}
+
+	req.Header.Add("Content-Type", contentType)
+
+	return req, nil
+}
+
 // NewGetClusterStatusRequest generates requests for GetClusterStatus
 func NewGetClusterStatusRequest(server string, params *GetClusterStatusParams) (*http.Request, error) {
 	var err error
@@ -4581,6 +4679,80 @@ func NewPostNodeActionPushPkgRequest(server string, nodename InPathNodeName, par
 	if err != nil {
 		return nil, err
 	}
+
+	return req, nil
+}
+
+// NewPostNodeActionRegisterRequest calls the generic PostNodeActionRegister builder with application/json body
+func NewPostNodeActionRegisterRequest(server string, nodename InPathNodeName, params *PostNodeActionRegisterParams, body PostNodeActionRegisterJSONRequestBody) (*http.Request, error) {
+	var bodyReader io.Reader
+	buf, err := json.Marshal(body)
+	if err != nil {
+		return nil, err
+	}
+	bodyReader = bytes.NewReader(buf)
+	return NewPostNodeActionRegisterRequestWithBody(server, nodename, params, "application/json", bodyReader)
+}
+
+// NewPostNodeActionRegisterRequestWithBody generates requests for PostNodeActionRegister with any type of body
+func NewPostNodeActionRegisterRequestWithBody(server string, nodename InPathNodeName, params *PostNodeActionRegisterParams, contentType string, body io.Reader) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "nodename", nodename, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/api/node/name/%s/action/register", pathParam0)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	if params != nil {
+		// queryValues collects non-styled parameters (passthrough, JSON)
+		// that are safe to round-trip through url.Values.Encode().
+		queryValues := queryURL.Query()
+		// rawQueryFragments collects pre-encoded query fragments from
+		// styled parameters, preserving literal commas as delimiters
+		// per the OpenAPI spec (e.g. "color=blue,black,brown").
+		var rawQueryFragments []string
+
+		if params.SessionID != nil {
+
+			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "session_id", *params.SessionID, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "string", Format: "uuid"}); err != nil {
+				return nil, err
+			} else {
+				for _, qp := range strings.Split(queryFrag, "&") {
+					rawQueryFragments = append(rawQueryFragments, qp)
+				}
+			}
+
+		}
+
+		if encoded := queryValues.Encode(); encoded != "" {
+			rawQueryFragments = append(rawQueryFragments, encoded)
+		}
+		queryURL.RawQuery = strings.Join(rawQueryFragments, "&")
+	}
+
+	req, err := http.NewRequest(http.MethodPost, queryURL.String(), body)
+	if err != nil {
+		return nil, err
+	}
+
+	req.Header.Add("Content-Type", contentType)
 
 	return req, nil
 }
@@ -14923,6 +15095,11 @@ type ClientWithResponsesInterface interface {
 	// PostClusterLeaveWithResponse request
 	PostClusterLeaveWithResponse(ctx context.Context, params *PostClusterLeaveParams, reqEditors ...RequestEditorFn) (*PostClusterLeaveResponse, error)
 
+	// PostClusterRegisterWithBodyWithResponse request with any body
+	PostClusterRegisterWithBodyWithResponse(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*PostClusterRegisterResponse, error)
+
+	PostClusterRegisterWithResponse(ctx context.Context, body PostClusterRegisterJSONRequestBody, reqEditors ...RequestEditorFn) (*PostClusterRegisterResponse, error)
+
 	// GetClusterStatusWithResponse request
 	GetClusterStatusWithResponse(ctx context.Context, params *GetClusterStatusParams, reqEditors ...RequestEditorFn) (*GetClusterStatusResponse, error)
 
@@ -14979,6 +15156,11 @@ type ClientWithResponsesInterface interface {
 
 	// PostNodeActionPushPkgWithResponse request
 	PostNodeActionPushPkgWithResponse(ctx context.Context, nodename InPathNodeName, params *PostNodeActionPushPkgParams, reqEditors ...RequestEditorFn) (*PostNodeActionPushPkgResponse, error)
+
+	// PostNodeActionRegisterWithBodyWithResponse request with any body
+	PostNodeActionRegisterWithBodyWithResponse(ctx context.Context, nodename InPathNodeName, params *PostNodeActionRegisterParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*PostNodeActionRegisterResponse, error)
+
+	PostNodeActionRegisterWithResponse(ctx context.Context, nodename InPathNodeName, params *PostNodeActionRegisterParams, body PostNodeActionRegisterJSONRequestBody, reqEditors ...RequestEditorFn) (*PostNodeActionRegisterResponse, error)
 
 	// PostNodeActionScanCapabilitiesWithResponse request
 	PostNodeActionScanCapabilitiesWithResponse(ctx context.Context, nodename InPathNodeName, params *PostNodeActionScanCapabilitiesParams, reqEditors ...RequestEditorFn) (*PostNodeActionScanCapabilitiesResponse, error)
@@ -16008,6 +16190,40 @@ func (r PostClusterLeaveResponse) ContentType() string {
 	return ""
 }
 
+type PostClusterRegisterResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	JSON200      *N200
+	JSON400      *N400
+	JSON401      *N401
+	JSON403      *N403
+	JSON500      *N500
+}
+
+// Status returns HTTPResponse.Status
+func (r PostClusterRegisterResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r PostClusterRegisterResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r PostClusterRegisterResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
 type GetClusterStatusResponse struct {
 	Body         []byte
 	HTTPResponse *http.Response
@@ -16575,6 +16791,40 @@ func (r PostNodeActionPushPkgResponse) StatusCode() int {
 
 // ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
 func (r PostNodeActionPushPkgResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+type PostNodeActionRegisterResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	JSON200      *NodeActionAccepted
+	JSON400      *N400
+	JSON401      *N401
+	JSON403      *N403
+	JSON500      *N500
+}
+
+// Status returns HTTPResponse.Status
+func (r PostNodeActionRegisterResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r PostNodeActionRegisterResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r PostNodeActionRegisterResponse) ContentType() string {
 	if r.HTTPResponse != nil {
 		return r.HTTPResponse.Header.Get("Content-Type")
 	}
@@ -21254,6 +21504,23 @@ func (c *ClientWithResponses) PostClusterLeaveWithResponse(ctx context.Context, 
 	return ParsePostClusterLeaveResponse(rsp)
 }
 
+// PostClusterRegisterWithBodyWithResponse request with arbitrary body returning *PostClusterRegisterResponse
+func (c *ClientWithResponses) PostClusterRegisterWithBodyWithResponse(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*PostClusterRegisterResponse, error) {
+	rsp, err := c.PostClusterRegisterWithBody(ctx, contentType, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParsePostClusterRegisterResponse(rsp)
+}
+
+func (c *ClientWithResponses) PostClusterRegisterWithResponse(ctx context.Context, body PostClusterRegisterJSONRequestBody, reqEditors ...RequestEditorFn) (*PostClusterRegisterResponse, error) {
+	rsp, err := c.PostClusterRegister(ctx, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParsePostClusterRegisterResponse(rsp)
+}
+
 // GetClusterStatusWithResponse request returning *GetClusterStatusResponse
 func (c *ClientWithResponses) GetClusterStatusWithResponse(ctx context.Context, params *GetClusterStatusParams, reqEditors ...RequestEditorFn) (*GetClusterStatusResponse, error) {
 	rsp, err := c.GetClusterStatus(ctx, params, reqEditors...)
@@ -21429,6 +21696,23 @@ func (c *ClientWithResponses) PostNodeActionPushPkgWithResponse(ctx context.Cont
 		return nil, err
 	}
 	return ParsePostNodeActionPushPkgResponse(rsp)
+}
+
+// PostNodeActionRegisterWithBodyWithResponse request with arbitrary body returning *PostNodeActionRegisterResponse
+func (c *ClientWithResponses) PostNodeActionRegisterWithBodyWithResponse(ctx context.Context, nodename InPathNodeName, params *PostNodeActionRegisterParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*PostNodeActionRegisterResponse, error) {
+	rsp, err := c.PostNodeActionRegisterWithBody(ctx, nodename, params, contentType, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParsePostNodeActionRegisterResponse(rsp)
+}
+
+func (c *ClientWithResponses) PostNodeActionRegisterWithResponse(ctx context.Context, nodename InPathNodeName, params *PostNodeActionRegisterParams, body PostNodeActionRegisterJSONRequestBody, reqEditors ...RequestEditorFn) (*PostNodeActionRegisterResponse, error) {
+	rsp, err := c.PostNodeActionRegister(ctx, nodename, params, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParsePostNodeActionRegisterResponse(rsp)
 }
 
 // PostNodeActionScanCapabilitiesWithResponse request returning *PostNodeActionScanCapabilitiesResponse
@@ -23676,6 +23960,60 @@ func ParsePostClusterLeaveResponse(rsp *http.Response) (*PostClusterLeaveRespons
 	return response, nil
 }
 
+// ParsePostClusterRegisterResponse parses an HTTP response from a PostClusterRegisterWithResponse call
+func ParsePostClusterRegisterResponse(rsp *http.Response) (*PostClusterRegisterResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &PostClusterRegisterResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest N200
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
+		var dest N400
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON400 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest N401
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest N403
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON403 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
+		var dest N500
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON500 = &dest
+
+	}
+
+	return response, nil
+}
+
 // ParseGetClusterStatusResponse parses an HTTP response from a GetClusterStatusWithResponse call
 func ParseGetClusterStatusResponse(rsp *http.Response) (*GetClusterStatusResponse, error) {
 	bodyBytes, err := io.ReadAll(rsp.Body)
@@ -24532,6 +24870,60 @@ func ParsePostNodeActionPushPkgResponse(rsp *http.Response) (*PostNodeActionPush
 			return nil, err
 		}
 		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest N401
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest N403
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON403 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
+		var dest N500
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON500 = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParsePostNodeActionRegisterResponse parses an HTTP response from a PostNodeActionRegisterWithResponse call
+func ParsePostNodeActionRegisterResponse(rsp *http.Response) (*PostNodeActionRegisterResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &PostNodeActionRegisterResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest NodeActionAccepted
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
+		var dest N400
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON400 = &dest
 
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
 		var dest N401

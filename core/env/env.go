@@ -36,6 +36,13 @@ var (
 	// forks. There is no flag carrying the value itself, for the same reason
 	// the join token has none: the process command line is world readable.
 	CredentialVar = "OSVC_CREDENTIAL"
+
+	// CollectorCredentialVar is the environment variable the collector
+	// registration commands read the <username>:<password> of the collector
+	// user from when --credential is not set. It is separate from
+	// CredentialVar because it names a user of the collector, not of the
+	// cluster, and an operator can hold one without the other.
+	CollectorCredentialVar = "OSVC_COLLECTOR_CREDENTIAL"
 )
 
 // HasDaemonOrigin returns true if the environment variable OSVC_ACTION_ORIGIN

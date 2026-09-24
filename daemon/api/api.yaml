@@ -2,7 +2,7 @@ openapi: 3.0.0
 
 info:
   title: opensvc agent api
-  version: 4.2.0
+  version: 4.5.0
 
 paths:
   /api/array:
@@ -665,6 +665,55 @@ paths:
         - cluster
       x-internal: true
 
+  /api/cluster/register:
+    post:
+      description: |
+        Register every node of the cluster of the requested api node on the
+        collector.
+
+        The requester must be granted the 'root' role.
+
+        The api node forks a 'om cluster register' in the background, which
+        posts POST /api/node/name/{nodename}/action/register on every cluster
+        node. Each node registers itself and stores its own registration id in
+        its node.uuid keyword: the collector mints an id for a nodename, so a
+        node cannot register on behalf of another.
+
+        The optional 'credential' parameter is the <username>:<password> of a
+        collector user able to register a node. It is handed to the forked
+        command through its environment, never on its command line, and it is
+        forwarded from there to every cluster node. Without it, each node
+        registers with the id it already holds.
+
+        The processing is asynchronous. The HTTP response is sent when the
+        command has been forked, not when the nodes are registered. A node
+        that fails to register does not stop the ones after it, so the outcome
+        is per node: read it in the forked command log.
+      operationId: PostClusterRegister
+      requestBody:
+        description: the collector credential, and the app to register the nodes in
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ClusterRegisterBody'
+      responses:
+        200:
+          $ref: '#/components/responses/200'
+        400:
+          $ref: '#/components/responses/400'
+        401:
+          $ref: '#/components/responses/401'
+        403:
+          $ref: '#/components/responses/403'
+        500:
+          $ref: '#/components/responses/500'
+      security:
+        - basicAuth: [ ]
+        - bearerAuth: [ ]
+      tags:
+        - cluster
+
   /api/cluster/leave:
     post:
       description: |
@@ -1176,6 +1225,65 @@ paths:
               schema:
                 $ref: '#/components/schemas/NodeActionAccepted'
           description: OK
+        401:
+          $ref: '#/components/responses/401'
+        403:
+          $ref: '#/components/responses/403'
+        500:
+          $ref: '#/components/responses/500'
+
+  /api/node/name/{nodename}/action/register:
+    post:
+      operationId: PostNodeActionRegister
+      tags:
+        - node
+      security:
+        - basicAuth: []
+        - bearerAuth: []
+      description: |
+        Obtain a registration id from the collector, store it in the node
+        configuration node.uuid keyword, and send the initial asset, package
+        and disk discovery.
+
+        The requester must be granted the 'root' role.
+
+        The user and password are the collector credentials, and they are
+        forwarded to the node named in the path, which registers itself: the
+        collector mints a registration id for a nodename, so a node cannot
+        register on behalf of another. A password without a user, or a user
+        without a password, is refused with a 400.
+
+        Without a user, the node registers with the id it already holds, as
+        'om node register' does.
+
+        The processing is asynchronous: the node forks a 'om node register',
+        and the HTTP response is sent when it has been forked, not when the
+        node is registered. The registration sends the initial inventories,
+        which takes longer than a request should be held open for. Follow it
+        with the ExecSuccess and ExecFailed events carrying the answered
+        exec id.
+
+        The registration id is not returned: it is the credential the node
+        authenticates with on the collector from then on.
+      parameters:
+        - $ref: '#/components/parameters/inPathNodeName'
+        - $ref: '#/components/parameters/inQuerySessionID'
+      requestBody:
+        description: the collector credentials and the app to register the node in
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PostNodeActionRegisterRequest'
+      responses:
+        200:
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/NodeActionAccepted'
+          description: OK
+        400:
+          $ref: '#/components/responses/400'
         401:
           $ref: '#/components/responses/401'
         403:
@@ -5889,6 +5997,23 @@ components:
           default: 1h
           example: 1h
 
+    ClusterRegisterBody:
+      type: object
+      properties:
+        credential:
+          type: string
+          description: |
+            The <username>:<password> of a collector user able to register a
+            node. Both halves must be set. Without this parameter, each node
+            registers with the registration id it already holds.
+          example: collectoruser:secret
+        app:
+          type: string
+          description: |
+            Register the nodes in this app. Without it, the node app keyword
+            is used, or the collector picks an app owned by the user.
+          example: MyApp
+
     ClusterEvictBody:
       type: object
       required:
@@ -8204,6 +8329,19 @@ components:
           type: string
         is_partial:
           type: boolean
+
+    PostNodeActionRegisterRequest:
+      type: object
+      properties:
+        user:
+          type: string
+          description: the collector user to authenticate as. Without it, the node registers with the id it already holds.
+        password:
+          type: string
+          description: the collector user password
+        app:
+          type: string
+          description: register the node in this app. Without it, the node app keyword is used, or the collector picks an app owned by the user.
 
     PostNodeDRBDConfigRequest:
       type: object
