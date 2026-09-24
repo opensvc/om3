@@ -265,16 +265,28 @@ func (t *T) Start(ctx context.Context) error {
 // Status warns about what the node lacks for the container to run rootless:
 // it is what an operator reading why the container is down needs to see.
 func (t *T) Status(ctx context.Context) status.T {
-	if u, err := t.rootlessUser(); err != nil {
+	for _, err := range t.RootlessIssues() {
 		t.StatusLog().Warn("%s", err)
-	} else if u != nil {
-		if err := u.check(); err != nil {
-			for _, e := range flatten(err) {
-				t.StatusLog().Warn("%s", e)
-			}
-		}
 	}
 	return t.BT.Status(ctx)
+}
+
+// RootlessIssues returns what keeps the container from running rootless on
+// this node, one error per issue, none for a container run by root.
+//
+// It is exported for the podman task, which runs its command in a container
+// of this driver and says the same in its own status.
+func (t *T) RootlessIssues() []error {
+	u, err := t.rootlessUser()
+	if err != nil {
+		return []error{err}
+	} else if u == nil {
+		return nil
+	}
+	if err := u.check(); err != nil {
+		return flatten(err)
+	}
+	return nil
 }
 
 // flatten returns the errors an errors.Join made, one per line of the status.
