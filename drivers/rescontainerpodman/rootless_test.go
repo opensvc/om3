@@ -7,6 +7,8 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+
+	"github.com/opensvc/om3/v3/drivers/rescontainerocibase"
 )
 
 // The subordinate id files are read the way shadow-utils reads them: a range
@@ -126,4 +128,58 @@ func TestExecutorArgCredentialFollowsRootlessUser(t *testing.T) {
 		assert.Equal(t, uint32(65534), c.UID)
 	}
 	assert.NotNil(t, d.executorArg().ExecutorArg.ResolvConfDir, "a rootless one writes it where its user can read it")
+}
+
+// The ids of a rootless container run as the subordinate ids of its user,
+// from its uid 1, one range after the other, and its root as the user. It is
+// the mapping podman makes by default, which newuidmap reads from the same
+// file, so a file an install chowns to the answer is owned by the id asked
+// for, inside the container.
+func TestHostIDFollowsTheSubordinateRanges(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "subuid")
+	require.NoError(t, os.WriteFile(path, []byte("alice:165536:100\nbob:300000:65536\nalice:500000:50\n"), 0644))
+
+	for _, tc := range []struct {
+		id       uint32
+		expected uint32
+		says     string
+	}{
+		{0, 1001, "the root of the container is the user"},
+		{1, 165536, "uid 1 is the first subordinate id"},
+		{100, 165635, "the last id of the first range"},
+		{101, 500000, "the first id of the second range of alice, not of bob's"},
+		{150, 500049, "the last id of the second range"},
+	} {
+		got, err := hostID(tc.id, 1001, path, "alice", 1001)
+		require.NoErrorf(t, err, "id %d", tc.id)
+		assert.Equalf(t, tc.expected, got, "id %d: %s", tc.id, tc.says)
+	}
+
+	_, err := hostID(151, 1001, path, "alice", 1001)
+	require.Error(t, err, "past every range the id is not mapped")
+	assert.Contains(t, err.Error(), "alice has 150 subordinate ids")
+}
+
+// A rootful container runs its ids as themselves, so the same reference
+// answers the same id whether the container runs rootless or not.
+func TestARootfulContainerMapsItsIDsToThemselves(t *testing.T) {
+	d := &T{}
+	uid, err := d.HostUID(101)
+	require.NoError(t, err)
+	assert.Equal(t, uint32(101), uid)
+	gid, err := d.HostGID(0)
+	require.NoError(t, err)
+	assert.Equal(t, uint32(0), gid)
+}
+
+// A userns keyword asks podman for a mapping it makes when the container
+// starts: an id computed before that would be a guess, so it is refused.
+func TestAMappingAskedOfPodmanIsNotGuessed(t *testing.T) {
+	for _, userns := range []string{"keep-id", "auto", "container#0"} {
+		_, err := (&T{BT: rescontainerocibase.BT{UserNS: userns}}).HostUID(101)
+		require.Errorf(t, err, "userns=%s", userns)
+		assert.Contains(t, err.Error(), "userns="+userns)
+	}
+	_, err := (&T{BT: rescontainerocibase.BT{UserNS: "host"}}).HostUID(101)
+	assert.NoError(t, err, "the host userns is no mapping")
 }

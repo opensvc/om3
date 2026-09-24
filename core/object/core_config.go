@@ -256,6 +256,52 @@ func (t *core) dereferenceVolumeHead(ref string) (string, error) {
 	return o.Head(), nil
 }
 
+// regexpHostIDRef matches the references to a host id of a resource:
+// {container#1.uid}, {container#1.gid.101}. The first part has to be a
+// resource id, so a key like {env.uid} is left to the configuration.
+var regexpHostIDRef = regexp.MustCompile(`^([a-z]+#[^.]+)\.(uid|gid)(?:\.([0-9]+))?$`)
+
+// dereferenceHostID answers which host id an id of a resource runs as.
+//
+// A rootless container runs its root as its user and its other ids as the
+// subordinate ids of that user, so a file its uid 101 has to own is owned,
+// on the host, by an id only the container can say: the first subordinate id
+// of the user plus 100, on this node, whose /etc/subuid may say otherwise
+// than another's. A rootful container runs its ids as themselves, so the
+// same reference answers the same id, and a configuration naming its owners
+// by reference holds whether the container runs rootless or not.
+//
+// No id is the root of the resource, which is the user of a rootless
+// container.
+func (t *core) dereferenceHostID(ref string) (string, error) {
+	m := regexpHostIDRef.FindStringSubmatch(ref)
+	r, err := t.referencedResource(ref, m[2])
+	if err != nil {
+		return ref, err
+	}
+	o, ok := r.(resource.IDMapper)
+	if !ok {
+		return ref, fmt.Errorf("resource referenced by %s cannot say which host ids its ids run as", ref)
+	}
+	var id uint64
+	if m[3] != "" {
+		if id, err = strconv.ParseUint(m[3], 10, 32); err != nil {
+			return ref, fmt.Errorf("%s: %w", ref, err)
+		}
+	}
+	var hostID uint32
+	switch m[2] {
+	case "uid":
+		hostID, err = o.HostUID(uint32(id))
+	default:
+		hostID, err = o.HostGID(uint32(id))
+	}
+	if err != nil {
+		return ref, fmt.Errorf("%s: %w", ref, err)
+	}
+	return strconv.FormatUint(uint64(hostID), 10), nil
+}
+
 // dereferenceCapacity answers how big a resource is, in bytes.
 //
 // It is what a size written as a share of another size is resolved against:
@@ -478,6 +524,8 @@ func (t *core) Dereference(ref string) (string, error) {
 		return ref, fmt.Errorf("todo")
 	case strings.Contains(ref, ".exposed_devs"):
 		return t.dereferenceExposedDevices(ref)
+	case regexpHostIDRef.MatchString(ref):
+		return t.dereferenceHostID(ref)
 	case strings.HasSuffix(ref, ".capacity"):
 		return t.dereferenceCapacity(ref)
 	case strings.HasSuffix(ref, ".free"):

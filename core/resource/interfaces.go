@@ -262,6 +262,17 @@ type (
 		CurrentFree(ctx context.Context) (int64, error)
 	}
 
+	// IDMapper is implemented by a resource whose processes run with ids
+	// of their own, mapped to other ids of the host, as the processes of a
+	// rootless container are mapped to the subordinate ids of its user.
+	//
+	// It answers {<rid>.uid.<id>} and {<rid>.gid.<id>}: the host id a file
+	// has to be owned by for the id <id> of the resource to own it.
+	IDMapper interface {
+		HostUID(id uint32) (uint32, error)
+		HostGID(id uint32) (uint32, error)
+	}
+
 	// SizeInfoKeyer is implemented by a Sizer whose size is not its own, to
 	// name the key it is reported under in the resource info. A fs.directory
 	// reports the size of the filesystem holding it, and calling that "size"

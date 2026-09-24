@@ -23,4 +23,16 @@ A rootless container cannot be privileged, and its volume mounts must be
 readable by the user or its subordinate ids: see the userns keyword for
 mapping the user into the container.
 
+The ids of the container run as other ids of the host: its root as the user,
+and its ids from 1 as the subordinate ids of the user. A file the container
+reads as one of its ids is owned, on the host, by the id the reference
+`{<rid>.uid.<id>}` or `{<rid>.gid.<id>}` answers, `{<rid>.uid}` being its root.
+They answer the same ids for a rootful container, which runs its ids as
+themselves, so an install naming its owners by reference holds either way:
+
+    install = /etc/nginx/conf.d/ from ./cfg/web user {container#1.uid.101} group {container#1.gid.101}
+
+A container given a userns mapping answers no id: podman makes that mapping
+when the container starts.
+
 Empty, the default, runs the container as root.

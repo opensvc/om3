@@ -29,6 +29,8 @@ type (
 	}
 )
 
+var _ resource.IDMapper = (*T)(nil)
+
 func New() resource.Driver {
 	t := &T{}
 	t.SetContainerGetter(t)
@@ -124,4 +126,16 @@ func (t *T) Status(ctx context.Context) status.T {
 		t.StatusLog().Warn("%s", err)
 	}
 	return t.T.Status(ctx)
+}
+
+// HostUID implements resource.IDMapper: the host uid the uid id of the task
+// container runs as.
+func (t *T) HostUID(id uint32) (uint32, error) {
+	return t.container().HostUID(id)
+}
+
+// HostGID implements resource.IDMapper: the host gid the gid id of the task
+// container runs as.
+func (t *T) HostGID(id uint32) (uint32, error) {
+	return t.container().HostGID(id)
 }

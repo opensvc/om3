@@ -11,11 +11,14 @@ import (
 	"strings"
 
 	"github.com/opensvc/om3/v3/core/rawconfig"
+	"github.com/opensvc/om3/v3/core/resource"
 	"github.com/opensvc/om3/v3/core/status"
 	"github.com/opensvc/om3/v3/drivers/rescontainerocibase"
 	"github.com/opensvc/om3/v3/util/pg"
 	"github.com/opensvc/om3/v3/util/usergroup"
 )
+
+var _ resource.IDMapper = (*T)(nil)
 
 // rootlessUser is the unprivileged user a rootless container is run by.
 type rootlessUser struct {
@@ -102,14 +105,29 @@ func (u rootlessUser) check() error {
 // hasSubordinateIDs reports whether path grants the user a range of
 // subordinate ids, by name or by uid, as shadow-utils reads it.
 func hasSubordinateIDs(path, name string, uid uint32) (bool, error) {
+	ranges, err := subordinateRanges(path, name, uid)
+	return len(ranges) > 0, err
+}
+
+// idRange is a range of subordinate ids: count ids from start.
+type idRange struct {
+	start uint64
+	count uint64
+}
+
+// subordinateRanges returns the ranges of subordinate ids path grants the
+// user, by name or by uid, in the order of the file, which is the order
+// podman hands them to newuidmap and newgidmap in.
+func subordinateRanges(path, name string, uid uint32) ([]idRange, error) {
 	f, err := os.Open(path)
 	if errors.Is(err, os.ErrNotExist) {
-		return false, nil
+		return nil, nil
 	} else if err != nil {
-		return false, err
+		return nil, err
 	}
 	defer func() { _ = f.Close() }()
 	id := strconv.FormatUint(uint64(uid), 10)
+	ranges := make([]idRange, 0)
 	scanner := bufio.NewScanner(f)
 	for scanner.Scan() {
 		l := strings.Split(strings.TrimSpace(scanner.Text()), ":")
@@ -119,11 +137,86 @@ func hasSubordinateIDs(path, name string, uid uint32) (bool, error) {
 		if l[0] != name && l[0] != id {
 			continue
 		}
-		if count, err := strconv.ParseUint(l[2], 10, 32); err == nil && count > 0 {
-			return true, nil
+		start, err := strconv.ParseUint(l[1], 10, 32)
+		if err != nil {
+			continue
 		}
+		count, err := strconv.ParseUint(l[2], 10, 32)
+		if err != nil || count == 0 {
+			continue
+		}
+		ranges = append(ranges, idRange{start: start, count: count})
 	}
-	return false, scanner.Err()
+	return ranges, scanner.Err()
+}
+
+// hostID returns the host id the id of a rootless container runs as, in the
+// mapping podman makes by default: the root of the container is the user,
+// and the ids from 1 are the subordinate ids of the user, one range after the
+// other.
+func hostID(id uint32, owner uint32, path, name string, uid uint32) (uint32, error) {
+	if id == 0 {
+		return owner, nil
+	}
+	ranges, err := subordinateRanges(path, name, uid)
+	if err != nil {
+		return 0, err
+	}
+	offset := uint64(id) - 1
+	var total uint64
+	for _, r := range ranges {
+		if offset < r.count {
+			return uint32(r.start + offset), nil
+		}
+		offset -= r.count
+		total += r.count
+	}
+	return 0, fmt.Errorf("id %d is not mapped: %s has %d subordinate ids in %s, mapped to the ids 1 to %d of the container", id, name, total, path, total)
+}
+
+// HostUID implements resource.IDMapper: the host uid the uid id of the
+// container runs as.
+func (t *T) HostUID(id uint32) (uint32, error) {
+	u, err := t.hostIDUser()
+	if err != nil {
+		return 0, err
+	} else if u == nil {
+		return id, nil
+	}
+	return hostID(id, u.UID, subuidFile, u.Name, u.UID)
+}
+
+// HostGID implements resource.IDMapper: the host gid the gid id of the
+// container runs as. The root group of the container is the group podman
+// runs as, which rootless_group sets.
+func (t *T) HostGID(id uint32) (uint32, error) {
+	u, err := t.hostIDUser()
+	if err != nil {
+		return 0, err
+	} else if u == nil {
+		return id, nil
+	}
+	return hostID(id, u.GID, subgidFile, u.Name, u.UID)
+}
+
+// hostIDUser returns the user whose mapping the container runs in, nil for a
+// container running its ids as themselves.
+//
+// Only the mappings om knows are answered: the one podman makes by default,
+// and none. A userns keyword asks podman for another, which podman makes when
+// the container starts, and an id computed here would be a guess an install
+// could chown files by.
+func (t *T) hostIDUser() (*rootlessUser, error) {
+	u, err := t.rootlessUser()
+	if err != nil {
+		return nil, err
+	}
+	switch t.UserNS {
+	case "", "host":
+	default:
+		return nil, fmt.Errorf("the host ids of a container run with userns=%s are not known before it runs", t.UserNS)
+	}
+	return u, nil
 }
 
 // credential is who the podman commands run as, and the environment they
