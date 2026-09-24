@@ -111,10 +111,33 @@ func (t T) Changed() bool {
 // Keys returns the key names available in a section
 func (t *T) Keys(section string) []string {
 	data := make([]string, 0)
-	for _, s := range t.file.Section(section).Keys() {
-		data = append(data, s.Name())
+	s, err := t.file.GetSection(section)
+	if err != nil {
+		return data
+	}
+	for _, k := range s.Keys() {
+		data = append(data, k.Name())
 	}
 	return data
+}
+
+// lookupKey returns the key of the file, nil when it does not exist.
+//
+// A read never changes the file. The ini file makes a section, and a key, on
+// the first access to one it does not have, and the next commit writes what
+// was made: every object whose resources read a node keyword, as the default
+// of prkey does, had an empty [node] section written in its configuration by
+// the first unrelated write, a resize recording the size it reached.
+func (t *T) lookupKey(k key.T) *ini.Key {
+	s, err := t.file.GetSection(k.Section)
+	if err != nil {
+		return nil
+	}
+	fk, err := s.GetKey(k.Option)
+	if err != nil {
+		return nil
+	}
+	return fk
 }
 
 func (t *T) RegisterPostCommit(fn func() error) {
@@ -346,23 +369,25 @@ func (t *T) HasKey(k key.T) bool {
 	if t == nil {
 		return false
 	}
-	return t.file.Section(k.Section).HasKey(k.Option)
+	s, err := t.file.GetSection(k.Section)
+	if err != nil {
+		return false
+	}
+	return s.HasKey(k.Option)
 }
 
 func (t *T) Get(k key.T) string {
-	if section := t.file.Section(k.Section); section == nil {
-		return ""
-	} else if fk := section.Key(k.Option); fk == nil {
-		return ""
-	} else {
+	if fk := t.lookupKey(k); fk != nil {
 		return fk.Value()
 	}
+	return ""
 }
 
 func (t *T) GetStrict(k key.T) (string, error) {
-	section := t.file.Section(k.Section)
-	if section.HasKey(k.Option) {
-		return section.Key(k.Option).Value(), nil
+	if t.HasKey(k) {
+		if fk := t.lookupKey(k); fk != nil {
+			return fk.Value(), nil
+		}
 	}
 	return "", fmt.Errorf("%w: key '%s' not found (unscopable kw)", ErrExist, k)
 }
@@ -575,7 +600,7 @@ func (t *T) PrepareUnset(ks ...key.T) error {
 		return err
 	}
 	for _, k := range ks {
-		if !t.file.Section(k.Section).HasKey(k.Option) {
+		if !t.HasKey(k) {
 			continue
 		}
 		t.file.Section(k.Section).DeleteKey(k.Option)
@@ -1426,7 +1451,13 @@ func (t T) dereferenceNodeKey(ref string, impersonate string, count bool) (strin
 	}
 
 	nodeKey := key.Parse(nodeRef)
-	sectionType := t.SectionType(nodeKey)
+	// The type of the section is read in the configuration of the node,
+	// where the key is: reading it in the configuration of the object
+	// answered the type of a section the object does not have.
+	var sectionType string
+	if t.NodeReferrer != nil {
+		sectionType = t.NodeReferrer.Config().SectionType(nodeKey)
+	}
 	kw, err := getKeyword(nodeKey, sectionType, t.NodeReferrer)
 	if err != nil {
 		return ref, err
