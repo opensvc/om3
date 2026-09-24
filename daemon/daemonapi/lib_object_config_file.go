@@ -33,6 +33,7 @@ func (a *DaemonAPI) writeObjectConfigFile(ctx echo.Context, p naming.Path, body 
 	if err := configurer.Config().RecommitInvalid(); err != nil {
 		return JSONProblemf(ctx, http.StatusInternalServerError, "Commit", "%s", err)
 	}
+	a.announceConfigFileWritten(p)
 	// Answer with the timestamp the configuration now carries, so the caller
 	// can require it of the actions it goes on to ask of the instances. This
 	// write lands on the peer nodes a moment after it is acknowledged here,

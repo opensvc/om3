@@ -90,6 +90,9 @@ func (a *DaemonAPI) PatchObjectConfig(ctx echo.Context, namespace string, kind n
 		} else if err != nil {
 			return JSONProblemf(ctx, http.StatusInternalServerError, "Update config", "%s", err)
 		}
+		if changed {
+			a.announceConfigFileWritten(p)
+		}
 		// Answer with the timestamp the configuration now carries, as a
 		// configuration file write does, so the caller can require it of what
 		// it goes on to ask of the instances.

@@ -674,6 +674,14 @@ func (t *Manager) onRemoteConfigFetched(c *msgbus.RemoteFileConfig) {
 				return
 			}
 			log.Infof("cfg: install %s config fetched from node %s", c.Path, c.Node)
+			// Said now rather than by the filesystem watcher, which
+			// debounces the events of a file for 200ms: the node that wrote
+			// the configuration waits for this one to report it installed.
+			// The watcher still speaks, and finds the file already read.
+			t.publisher.Pub(&msgbus.ConfigFileUpdated{Path: c.Path, File: confFile},
+				pubsub.Label{"namespace", c.Path.Namespace},
+				pubsub.Label{"path", c.Path.String()},
+			)
 		}
 		c.Err <- nil
 	}
