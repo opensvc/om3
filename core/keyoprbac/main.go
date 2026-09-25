@@ -218,8 +218,23 @@ var rules = map[string]Group{
 		Rules: map[string]Rule{
 			"install": {
 				Grant:  rbac.GrantRoot,
-				Reason: "a server-local source uri requires the root grant",
-				Denies: valueOnly(datarecv.TextHasLocalSource),
+				Reason: "a server-local source uri, or a setuid or setgid mode, requires the root grant",
+				Denies: valueOnly(func(s string) bool {
+					return datarecv.TextHasLocalSource(s) || datarecv.TextHasSpecialMode(s)
+				}),
+			},
+			// A file installed setuid or setgid runs as its owner for
+			// whoever executes it, and its owner can be any account of the
+			// node: that is the node's to allow.
+			"perm": {
+				Grant:  rbac.GrantRoot,
+				Reason: "a setuid or setgid mode requires the root grant",
+				Denies: valueOnly(datarecv.ModeHasSpecialBits),
+			},
+			"dirperm": {
+				Grant:  rbac.GrantRoot,
+				Reason: "a setuid or setgid mode requires the root grant",
+				Denies: valueOnly(datarecv.ModeHasSpecialBits),
 			},
 		},
 	},

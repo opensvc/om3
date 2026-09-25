@@ -1210,6 +1210,57 @@ func (t *DataRecv) installDirs() error {
 	return nil
 }
 
+// specialBits are the mode bits that make a file run as its owner or its
+// group, rather than as whoever runs it.
+const specialBits = 0o6000
+
+// ModeHasSpecialBits reports whether a perm or dirperm value asks for the
+// setuid or the setgid bit.
+//
+// A file installed in a volume with one of them, owned by an account of the
+// node, runs as that account for whoever executes it: on the node, where the
+// volume is mounted, or in a container mounting the volume.
+func ModeHasSpecialBits(s string) bool {
+	mode, err := converters.FileMode.Convert(s)
+	if err != nil {
+		return false
+	}
+	m, ok := mode.(*os.FileMode)
+	if !ok || m == nil {
+		return false
+	}
+	return *m&(os.ModeSetuid|os.ModeSetgid) != 0
+}
+
+// TextHasSpecialMode reports whether an install text asks for the setuid or
+// the setgid bit on one of the files or directories it installs.
+//
+// Such a mode is not applied today: the mode word is read as permission bits
+// alone. It is refused anyway, so a mode that would be applied once the
+// grammar honours the bits is not one a user holding no root grant has
+// already written.
+func TextHasSpecialMode(s string) bool {
+	text, _ := shlex.Split(s, true)
+	for _, line := range Split(text) {
+		var word string
+		words := line
+		for {
+			word, words = Pop(words)
+			if word == "" {
+				break
+			}
+			if word != "mode" && word != "perm" {
+				continue
+			}
+			word, words = Pop(words)
+			if mode, err := strconv.ParseUint(word, 8, 32); err == nil && mode&specialBits != 0 {
+				return true
+			}
+		}
+	}
+	return false
+}
+
 // TextHasLocalSource reports whether an install text names a source the server
 // reads locally, as opposed to one it fetches over http.
 //
