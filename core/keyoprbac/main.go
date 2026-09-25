@@ -314,6 +314,11 @@ var rules = map[string]Group{
 				"pg_mem_swappiness":  squatterRule,
 				"pg_blkio_weight":    squatterRule,
 				"pg_pids_max":        squatterRule,
+				// The accounts a namespace runs rootless containers as
+				// reach everything else those accounts own on the node,
+				// so which ones are the namespace's is not its to say.
+				"rootless_users":  squatterRule,
+				"rootless_groups": squatterRule,
 			},
 
 			// The size a volume is asked to hold is what the pool claim of

@@ -338,6 +338,22 @@ var keywordStore = keywords.Store{
 		Text:     keywords.NewText(fs, "text/kw/core/pg_pids_max.nscfg"),
 	},
 	{
+		Converter: converters.List,
+		Example:   "web-ns1",
+		Kind:      naming.NewKinds(naming.KindNscfg),
+		Section:   "DEFAULT",
+		Option:    "rootless_users",
+		Text:      keywords.NewText(fs, "text/kw/core/rootless_users.nscfg"),
+	},
+	{
+		Converter: converters.List,
+		Example:   "web-ns1",
+		Kind:      naming.NewKinds(naming.KindNscfg),
+		Section:   "DEFAULT",
+		Option:    "rootless_groups",
+		Text:      keywords.NewText(fs, "text/kw/core/rootless_groups.nscfg"),
+	},
+	{
 		Converter: converters.Duration,
 		Kind:      naming.NewKinds(naming.KindSvc, naming.KindVol),
 		Option:    "stat_timeout",

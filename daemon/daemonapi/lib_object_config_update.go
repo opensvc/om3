@@ -46,5 +46,6 @@ func configUpdate(ctx echo.Context, log *plog.Logger, p naming.Path, deletes []s
 		log.Errorf("configuration commit is invalid for object %s: %s", p, err)
 		return false, fmt.Errorf("configuration commit is invalid for object %s: %w", p, err)
 	}
+	warnSharedRootlessAccounts(ctx, p)
 	return changed, nil
 }

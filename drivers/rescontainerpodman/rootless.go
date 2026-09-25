@@ -13,6 +13,7 @@ import (
 	"github.com/opensvc/om3/v3/core/naming"
 	"github.com/opensvc/om3/v3/core/rawconfig"
 	"github.com/opensvc/om3/v3/core/resource"
+	"github.com/opensvc/om3/v3/core/rootless"
 	"github.com/opensvc/om3/v3/core/status"
 	"github.com/opensvc/om3/v3/drivers/rescontainer"
 	"github.com/opensvc/om3/v3/drivers/rescontainerocibase"
@@ -433,10 +434,40 @@ func (t *T) RootlessIssues() []error {
 	} else if u == nil {
 		return nil
 	}
+	l := make([]error, 0)
 	if err := u.check(); err != nil {
-		return flatten(err)
+		l = append(l, flatten(err)...)
 	}
-	return nil
+	return append(l, t.namespaceIssues()...)
+}
+
+// namespaceIssues says what the namespace of the container has against the
+// account it runs as: that it does not allow it, or that other namespaces
+// run containers as it too.
+//
+// They are warnings, not refusals. Root is not bound by the accounts a
+// namespace lists, and a configuration does not say who wrote it: a container
+// running as an account its namespace does not allow is one root set up, or
+// one the squatter stopped allowing after it was written. The write of a user
+// holding no root grant is where the account is refused.
+//
+// The root namespace is root's, and lists nothing.
+func (t *T) namespaceIssues() []error {
+	if t.Path.Namespace == naming.NsRoot {
+		return nil
+	}
+	allowed, err := rootless.Load(t.Path.Namespace)
+	if err != nil {
+		return []error{err}
+	}
+	l := make([]error, 0)
+	if err := allowed.Check(t.RootlessUser, t.RootlessGroup); err != nil {
+		l = append(l, err)
+	}
+	if shared, err := allowed.SharedWith(); err == nil && len(shared) > 0 {
+		l = append(l, fmt.Errorf("the accounts of the %s namespace are shared, so each namespace reaches the containers of the other: %s", t.Path.Namespace, rootless.DescribeShared(shared)))
+	}
+	return l
 }
 
 // flatten returns the errors an errors.Join made, one per line of the status.

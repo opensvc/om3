@@ -1,0 +1,8 @@
+The unix groups, other than the primary groups of the accounts rootless_users
+lists, the objects of this namespace may run rootless containers as, by name
+or by gid.
+
+A rootless container runs as the group its rootless_group keyword names, or
+the primary group of its account. The group reaches every file of the node it
+owns, so a group like docker or disk would reach the node itself: only the
+squatter lists them. The root group is never allowed, whatever it says.
