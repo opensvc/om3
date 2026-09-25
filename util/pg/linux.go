@@ -215,6 +215,7 @@ func (c Config) ApplyProc(pid int) (created bool, errs error) {
 			return
 		}
 		errs = errors.Join(errs, c.applyDelegatedWrites(writes))
+		errs = errors.Join(errs, c.setSystemdProperties())
 		if pid != 0 {
 			procs := filepath.Join(UnifiedPath(), c.Path(), "cgroup.procs")
 			if err := os.WriteFile(procs, []byte(strconv.Itoa(pid)), 0644); err != nil {
@@ -233,6 +234,7 @@ func (c Config) ApplyProc(pid int) (created bool, errs error) {
 		if len(writes) > 0 {
 			errs = errors.Join(errs, applyUnifiedWrites(c.ID, writes))
 		}
+		errs = errors.Join(errs, c.setSystemdProperties())
 		if pid == 0 {
 			// pass
 		} else if err := control.AddProc(uint64(pid)); err != nil {
