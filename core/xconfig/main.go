@@ -939,6 +939,11 @@ func (t *T) EvalNoConv(k key.T) (string, error) {
 	return t.evalAsNoConv(k, "", newDereferenceTrace())
 }
 
+// EvalNoConvAs is EvalNoConv as the node given evaluates it.
+func (t *T) EvalNoConvAs(k key.T, impersonate string) (string, error) {
+	return t.evalAsNoConv(k, impersonate, newDereferenceTrace())
+}
+
 func (t *T) evalAsCount(k key.T, impersonate string, trace *dereferenceTrace) (string, error) {
 	kw, err := t.getKeyword(k)
 	if err != nil {

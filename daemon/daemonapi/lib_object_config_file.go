@@ -26,7 +26,7 @@ func (a *DaemonAPI) writeObjectConfigFile(ctx echo.Context, p naming.Path, body 
 	if alerts.HasError() {
 		return JSONProblemf(ctx, http.StatusBadRequest, "Validate config", "%s", err)
 	}
-	if err := refuseClaimOverrun(ctx.Request().Context(), p, configurer.Config()); err != nil {
+	if err := refuseClaimOverrun(ctx.Request().Context(), p, o, configurer.Config()); err != nil {
 		return JSONProblemf(ctx, http.StatusForbidden, "Forbidden", "%s", err)
 	}
 	// Use the non-validating commit func as we already validate to emit an explicit error

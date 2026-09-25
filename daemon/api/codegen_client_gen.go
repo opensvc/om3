@@ -155,6 +155,11 @@ type ClientInterface interface {
 	// GetClusterStatus request
 	GetClusterStatus(ctx context.Context, params *GetClusterStatusParams, reqEditors ...RequestEditorFn) (*http.Response, error)
 
+	// PostComputeClaimWithBody request with any body
+	PostComputeClaimWithBody(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	PostComputeClaim(ctx context.Context, body PostComputeClaimJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+
 	// GetInstances request
 	GetInstances(ctx context.Context, params *GetInstancesParams, reqEditors ...RequestEditorFn) (*http.Response, error)
 
@@ -894,6 +899,30 @@ func (c *Client) PostClusterRegister(ctx context.Context, body PostClusterRegist
 
 func (c *Client) GetClusterStatus(ctx context.Context, params *GetClusterStatusParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
 	req, err := NewGetClusterStatusRequest(c.Server, params)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+func (c *Client) PostComputeClaimWithBody(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewPostComputeClaimRequestWithBody(c.Server, contentType, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+func (c *Client) PostComputeClaim(ctx context.Context, body PostComputeClaimJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewPostComputeClaimRequest(c.Server, body)
 	if err != nil {
 		return nil, err
 	}
@@ -3855,6 +3884,46 @@ func NewGetClusterStatusRequest(server string, params *GetClusterStatusParams) (
 	if err != nil {
 		return nil, err
 	}
+
+	return req, nil
+}
+
+// NewPostComputeClaimRequest calls the generic PostComputeClaim builder with application/json body
+func NewPostComputeClaimRequest(server string, body PostComputeClaimJSONRequestBody) (*http.Request, error) {
+	var bodyReader io.Reader
+	buf, err := json.Marshal(body)
+	if err != nil {
+		return nil, err
+	}
+	bodyReader = bytes.NewReader(buf)
+	return NewPostComputeClaimRequestWithBody(server, "application/json", bodyReader)
+}
+
+// NewPostComputeClaimRequestWithBody generates requests for PostComputeClaim with any type of body
+func NewPostComputeClaimRequestWithBody(server string, contentType string, body io.Reader) (*http.Request, error) {
+	var err error
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/api/compute/claim")
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodPost, queryURL.String(), body)
+	if err != nil {
+		return nil, err
+	}
+
+	req.Header.Add("Content-Type", contentType)
 
 	return req, nil
 }
@@ -15115,6 +15184,11 @@ type ClientWithResponsesInterface interface {
 	// GetClusterStatusWithResponse request
 	GetClusterStatusWithResponse(ctx context.Context, params *GetClusterStatusParams, reqEditors ...RequestEditorFn) (*GetClusterStatusResponse, error)
 
+	// PostComputeClaimWithBodyWithResponse request with any body
+	PostComputeClaimWithBodyWithResponse(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*PostComputeClaimResponse, error)
+
+	PostComputeClaimWithResponse(ctx context.Context, body PostComputeClaimJSONRequestBody, reqEditors ...RequestEditorFn) (*PostComputeClaimResponse, error)
+
 	// GetInstancesWithResponse request
 	GetInstancesWithResponse(ctx context.Context, params *GetInstancesParams, reqEditors ...RequestEditorFn) (*GetInstancesResponse, error)
 
@@ -16263,6 +16337,40 @@ func (r GetClusterStatusResponse) StatusCode() int {
 
 // ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
 func (r GetClusterStatusResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+type PostComputeClaimResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	JSON200      *ComputeClaim
+	JSON400      *N400
+	JSON401      *N401
+	JSON403      *N403
+	JSON500      *N500
+}
+
+// Status returns HTTPResponse.Status
+func (r PostComputeClaimResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r PostComputeClaimResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r PostComputeClaimResponse) ContentType() string {
 	if r.HTTPResponse != nil {
 		return r.HTTPResponse.Header.Get("Content-Type")
 	}
@@ -21543,6 +21651,23 @@ func (c *ClientWithResponses) GetClusterStatusWithResponse(ctx context.Context, 
 	return ParseGetClusterStatusResponse(rsp)
 }
 
+// PostComputeClaimWithBodyWithResponse request with arbitrary body returning *PostComputeClaimResponse
+func (c *ClientWithResponses) PostComputeClaimWithBodyWithResponse(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*PostComputeClaimResponse, error) {
+	rsp, err := c.PostComputeClaimWithBody(ctx, contentType, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParsePostComputeClaimResponse(rsp)
+}
+
+func (c *ClientWithResponses) PostComputeClaimWithResponse(ctx context.Context, body PostComputeClaimJSONRequestBody, reqEditors ...RequestEditorFn) (*PostComputeClaimResponse, error) {
+	rsp, err := c.PostComputeClaim(ctx, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParsePostComputeClaimResponse(rsp)
+}
+
 // GetInstancesWithResponse request returning *GetInstancesResponse
 func (c *ClientWithResponses) GetInstancesWithResponse(ctx context.Context, params *GetInstancesParams, reqEditors ...RequestEditorFn) (*GetInstancesResponse, error) {
 	rsp, err := c.GetInstances(ctx, params, reqEditors...)
@@ -24047,6 +24172,60 @@ func ParseGetClusterStatusResponse(rsp *http.Response) (*GetClusterStatusRespons
 			return nil, err
 		}
 		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest N401
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest N403
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON403 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
+		var dest N500
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON500 = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParsePostComputeClaimResponse parses an HTTP response from a PostComputeClaimWithResponse call
+func ParsePostComputeClaimResponse(rsp *http.Response) (*PostComputeClaimResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &PostComputeClaimResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest ComputeClaim
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
+		var dest N400
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON400 = &dest
 
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
 		var dest N401

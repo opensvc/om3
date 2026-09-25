@@ -404,6 +404,13 @@ func (t *Manager) configFileCheck() error {
 				Target: flexTarget,
 			}
 		}
+		if claimer, ok := any(t.configure).(object.ComputeClaimer); ok {
+			if claims, err := claimer.ComputeClaims(); err != nil {
+				t.log.Warnf("compute claims: %s", err)
+			} else {
+				cfg.ActorConfig.Claims = claims
+			}
+		}
 		for _, e := range actor.Schedules() {
 			cfg.ActorConfig.Schedules = append(cfg.ActorConfig.Schedules, e.Config)
 		}

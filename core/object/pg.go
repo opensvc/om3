@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/opensvc/om3/v3/core/claim"
 	"github.com/opensvc/om3/v3/core/naming"
 	"github.com/opensvc/om3/v3/util/key"
 	"github.com/opensvc/om3/v3/util/pg"
@@ -66,6 +67,7 @@ func (t *core) pgAnonConfig(section string) *pg.Config {
 
 func (t *core) pgConfig(section string) *pg.Config {
 	data := t.pgAnonConfig(section)
+	t.pgDefaultCaps(section, data)
 	subsetName := func(s string) string {
 		if s == "" {
 			return ""
@@ -131,4 +133,30 @@ func (t *core) PGClean(ctx context.Context) {
 		return
 	}
 	mgr.Clean()
+}
+
+// pgDefaultCaps gives a container the caps its namespace claims by default,
+// on the types where nothing caps it.
+//
+// A namespace claiming the cpu or the memory counts what its objects are
+// capped to, and a container capped by nothing would count as taking without
+// bound. The default is what the claim counts it for, and what it runs with.
+func (t *core) pgDefaultCaps(section string, data *pg.Config) {
+	if section == "" || strings.HasPrefix(section, "subset#") {
+		return
+	}
+	if data.CPUQuota == "" {
+		if s, ok, err := t.defaultCapAs(section, claim.TypeCPU, ""); err != nil {
+			t.log.Warnf("%s: %s", section, err)
+		} else if ok {
+			data.CPUQuota = s
+		}
+	}
+	if data.MemLimit == "" {
+		if s, ok, err := t.defaultCapAs(section, claim.TypeMemory, ""); err != nil {
+			t.log.Warnf("%s: %s", section, err)
+		} else if ok {
+			data.MemLimit = s
+		}
+	}
 }

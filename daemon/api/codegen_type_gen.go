@@ -1116,6 +1116,19 @@ type Committed struct {
 	IsChanged bool `json:"is_changed"`
 }
 
+// ComputeClaim defines model for ComputeClaim.
+type ComputeClaim struct {
+	// ExpiresAt when a granted claim stops being counted, should the
+	// configuration it was granted for never be written
+	ExpiresAt *time.Time `json:"expires_at,omitempty"`
+
+	// Granted whether the namespace may take what it asked for
+	Granted bool `json:"granted"`
+
+	// Reason why the namespace may not take it
+	Reason *string `json:"reason,omitempty"`
+}
+
 // DNSRecord defines model for DNSRecord.
 type DNSRecord struct {
 	Class string `json:"class"`
@@ -2143,6 +2156,22 @@ type PoolVolumeList struct {
 
 // PoolVolumeListKind defines model for PoolVolumeList.Kind.
 type PoolVolumeListKind string
+
+// PostComputeClaim defines model for PostComputeClaim.
+type PostComputeClaim struct {
+	// Claims what the object is to claim of each compute type, not the
+	// increase: thousandths of a cpu for cpu, bytes for memory, and -1
+	// for a type its processes are not capped on
+	Claims map[string]int64 `json:"claims"`
+
+	// Namespace the namespace the object claims of
+	Namespace string `json:"namespace"`
+
+	// Path the object the claim is for, so that a claim answered yes stops
+	// being counted on its own once the configuration of the object
+	// says the same thing
+	Path string `json:"path"`
+}
 
 // PostInstanceProgress defines model for PostInstanceProgress.
 type PostInstanceProgress struct {
@@ -4134,6 +4163,9 @@ type PostClusterEvictJSONRequestBody = ClusterEvictBody
 
 // PostClusterRegisterJSONRequestBody defines body for PostClusterRegister for application/json ContentType.
 type PostClusterRegisterJSONRequestBody = ClusterRegisterBody
+
+// PostComputeClaimJSONRequestBody defines body for PostComputeClaim for application/json ContentType.
+type PostComputeClaimJSONRequestBody = PostComputeClaim
 
 // PostInstanceProgressJSONRequestBody defines body for PostInstanceProgress for application/json ContentType.
 type PostInstanceProgressJSONRequestBody = PostInstanceProgress

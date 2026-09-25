@@ -16,6 +16,11 @@ func (a *DaemonAPI) PostInstanceActionStart(ctx echo.Context, nodename, namespac
 	if v, err := assertOperator(ctx, namespace); !v {
 		return err
 	}
+	if p, err := naming.NewPath(namespace, kind, name); err == nil {
+		if v, err := refuseStartOverClaim(ctx, p, nodename); !v {
+			return err
+		}
+	}
 	if a.localhost == nodename {
 		return a.postLocalInstanceActionStart(ctx, namespace, kind, name, params)
 	}
