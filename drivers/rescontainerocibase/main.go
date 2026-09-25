@@ -14,6 +14,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"os"
 	"os/exec"
 	"path/filepath"
 	"slices"
@@ -36,6 +37,7 @@ import (
 	"github.com/opensvc/om3/v3/core/status"
 	"github.com/opensvc/om3/v3/core/vpath"
 	"github.com/opensvc/om3/v3/util/args"
+	"github.com/opensvc/om3/v3/util/confined"
 	"github.com/opensvc/om3/v3/util/envprovider"
 	"github.com/opensvc/om3/v3/util/file"
 	"github.com/opensvc/om3/v3/util/pg"
@@ -452,6 +454,8 @@ func (t *BT) Mounts(ctx context.Context) ([]BindMount, error) {
 			// pass
 		} else if srcRealpath, vol, err := vpath.HostPathAndVol(ctx, source, t.Path.Namespace); err != nil {
 			return mounts, err
+		} else if srcRealpath, err = volumeMountSource(vol.Head(), srcRealpath); err != nil {
+			return mounts, fmt.Errorf("invalid volumes_mount entry: %s: %w", s, err)
 		} else if file.IsProtected(srcRealpath) {
 			return mounts, fmt.Errorf("invalid volumes_mount entry: %s: expanded to the protected path %s", s, srcRealpath)
 		} else {
@@ -467,6 +471,50 @@ func (t *BT) Mounts(ctx context.Context) ([]BindMount, error) {
 		mounts = append(mounts, BindMount{Source: source, Target: target, Option: opt})
 	}
 	return mounts, nil
+}
+
+// volumeMountSource returns the path of the node a volume mount source leads
+// to, refusing one leading out of the head of the volume.
+//
+// The containers mounting a volume write in it, so a link one of them plants
+// where a source is named, or on the way to it, is a path the engine follows
+// when it mounts the source: a link to / mounted the whole node in the next
+// container started. The source is resolved here, refused unless it stays in
+// the head, and handed to the engine resolved, so the engine has no link left
+// to follow. A link swapped in between this and the mount of the engine is
+// still followed: only a mount through a file descriptor closes that, which
+// the engines do not offer.
+//
+// A source missing is made in the head, as a directory, without following a
+// link out of it.
+func volumeMountSource(head, source string) (string, error) {
+	if head == "" {
+		return "", fmt.Errorf("the volume has no head")
+	}
+	tree, err := confined.Open(head)
+	if err != nil {
+		return "", err
+	}
+	defer func() { _ = tree.Close() }()
+	if _, err := tree.Stat(source); errors.Is(err, os.ErrNotExist) {
+		if err := tree.MkdirAll(source, os.ModePerm); err != nil {
+			return "", fmt.Errorf("create the mount source %s: %w", source, err)
+		}
+	} else if err != nil {
+		return "", fmt.Errorf("mount source %s: %w", source, err)
+	}
+	realHead, err := filepath.EvalSymlinks(head)
+	if err != nil {
+		return "", err
+	}
+	realSource, err := filepath.EvalSymlinks(source)
+	if err != nil {
+		return "", err
+	}
+	if realSource != realHead && !strings.HasPrefix(realSource, realHead+string(filepath.Separator)) {
+		return "", fmt.Errorf("the mount source %s leads to %s, out of the volume head %s", source, realSource, head)
+	}
+	return realSource, nil
 }
 
 // NeedPreStartRemove return true when container has Remove or not Detach.
