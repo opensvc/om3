@@ -19,9 +19,14 @@ import (
 func TestAConfigFileWrittenIsAnnouncedToItsInstanceConfigManager(t *testing.T) {
 	bus := pubsub.NewBus(t.Name())
 	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
 	bus.Start(ctx)
-	defer bus.Stop()
+	// The bus is stopped by its context, and waited for, rather than with
+	// Stop: Stop drains it in a goroutine that outlives the test, and logs
+	// while the next test sets the logger up, which is a data race.
+	defer func() {
+		cancel()
+		bus.Wait()
+	}()
 
 	p := naming.Path{Namespace: "ns1", Kind: naming.KindSvc, Name: "written"}
 	sub := bus.Sub(t.Name())
