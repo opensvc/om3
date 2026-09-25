@@ -2,9 +2,13 @@ package resfshost
 
 import (
 	"os"
+	"strings"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
+
+	"github.com/opensvc/om3/v3/util/converters"
 )
 
 func ptrSize(n int64) *int64 { return &n }
@@ -40,6 +44,18 @@ func TestOctalModeKeepsTheSpecialBits(t *testing.T) {
 }
 
 // The size and mode keywords are the tmpfs driver's alone.
+// The mode keyword reaches the mount options as it was written, the setgid
+// bit included: the converter read a leading 2 as setuid, which mounted a
+// tmpfs meant 2775 as 4775.
+func TestTheModeKeywordReachesTheMountOptionsAsWritten(t *testing.T) {
+	for _, s := range []string{"0700", "1777", "2775", "4755"} {
+		v, err := converters.FileMode.Convert(s)
+		require.NoError(t, err)
+		r := &T{Type: "tmpfs", Mode: v.(*os.FileMode)}
+		assert.Equal(t, "mode="+strings.TrimPrefix(s, "0"), r.mountOptions(), s)
+	}
+}
+
 func TestOnlyTheTmpfsDriverHasSizeAndMode(t *testing.T) {
 	has := func(fsType, option string) bool {
 		for _, kw := range (&T{Type: fsType}).Manifest().Keywords() {

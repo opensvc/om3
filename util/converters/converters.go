@@ -326,46 +326,31 @@ func (t TFileMode) Convert(s string) (any, error) {
 	return t.convert(s)
 }
 
+// convert reads a unix mode in octal, 3 or 4 digits long, as chmod does: the
+// leading digit of a 4 digit mode is the setuid bit (4), the setgid bit (2)
+// and the sticky bit (1), which os.FileMode keeps as flags of their own.
 func (t TFileMode) convert(s string) (*os.FileMode, error) {
-	var c int
 	if s == "" {
 		return nil, nil
 	}
 	switch len(s) {
-	case 4:
-		var err error
-		if c, err = strconv.Atoi(string(s[0])); err != nil {
-			return nil, fmt.Errorf("invalid X... digit in %s: must be integer", s)
-		}
-		s = s[1:]
-	case 3:
-		c = 0
+	case 3, 4:
 	default:
 		return nil, fmt.Errorf("invalid unix mode %s: must be 3 or 4 digit long", s)
 	}
-	i, err := strconv.ParseInt(s, 8, 32)
+	i, err := strconv.ParseUint(s, 8, 32)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("invalid unix mode %s: %w", s, err)
 	}
-	mode := os.FileMode(i)
-	switch c {
-	case 0:
-	case 1:
-		mode = mode | os.ModeSticky
-	case 2:
-		mode = mode | os.ModeSetuid
-	case 3:
-		mode = mode | os.ModeSetuid | os.ModeSticky
-	case 4:
-		mode = mode | os.ModeSetgid
-	case 5:
-		mode = mode | os.ModeSetgid | os.ModeSticky
-	case 6:
-		mode = mode | os.ModeSetgid | os.ModeSticky
-	case 7:
-		mode = mode | os.ModeSetuid | os.ModeSetgid | os.ModeSticky
-	default:
-		return nil, fmt.Errorf("invalid X... digit in %s: must be 0-7", s)
+	mode := os.FileMode(i).Perm()
+	if i&04000 != 0 {
+		mode |= os.ModeSetuid
+	}
+	if i&02000 != 0 {
+		mode |= os.ModeSetgid
+	}
+	if i&01000 != 0 {
+		mode |= os.ModeSticky
 	}
 	return &mode, nil
 }
