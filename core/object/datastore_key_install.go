@@ -17,6 +17,7 @@ import (
 	"github.com/opensvc/om3/v3/core/driver"
 	"github.com/opensvc/om3/v3/core/naming"
 	"github.com/opensvc/om3/v3/core/volsignal"
+	"github.com/opensvc/om3/v3/util/confined"
 	"github.com/opensvc/om3/v3/util/file"
 	"github.com/opensvc/om3/v3/util/plog"
 )
@@ -41,6 +42,10 @@ type (
 		IsTemplate    bool
 		AccessControl KVInstallAccessControl
 		Signals       *volsignal.T
+
+		// fs is where the install writes: the tree of ToHead, which the
+		// install cannot leave, or the node for an install naming no head.
+		fs confined.FS
 	}
 	KVInstallAccessControl struct {
 		User  string
@@ -145,6 +150,7 @@ func (t *dataStore) _install(k string, dst string) error {
 	for _, vk := range keys {
 		opt := KVInstall{
 			ToPath: dst,
+			fs:     confined.Host(),
 		}
 		if _, err := t.installKey(vk, opt); err != nil {
 			return err
@@ -184,20 +190,20 @@ func (t *dataStore) installFileKey(vk vKey, opt KVInstall) (bool, error) {
 	if err != nil {
 		return false, err
 	}
-	if v, err := file.ExistsAndDir(opt.ToPath); err != nil {
-		opt.ToLog.Errorf("install key %s directory at location %s: %s", vk.Key, opt.ToPath, err)
-	} else if v {
+	if info, err := opt.fs.Lstat(opt.ToPath); err == nil && info.IsDir() {
 		opt.ToLog.Infof("remove key %s directory at location %s", vk.Key, opt.ToPath)
-		if err := os.RemoveAll(opt.ToPath); err != nil {
+		if err := opt.fs.RemoveAll(opt.ToPath); err != nil {
 			return false, err
 		}
 	}
 	vdir := filepath.Dir(opt.ToPath)
-	info, err := os.Stat(vdir)
+	// The parent is read without following a link: a link there is replaced
+	// by the directory it stands for, not written through.
+	info, err := opt.fs.Lstat(vdir)
 	switch {
 	case os.IsNotExist(err):
 		opt.ToLog.Infof("create directory %s to host key %s", vdir, vk.Key)
-		if err := t.makedir(vdir, opt.AccessControl, opt.ToLog); err != nil {
+		if err := t.makedir(vdir, opt.AccessControl, opt.fs, opt.ToLog); err != nil {
 			return false, err
 		}
 	case file.IsNotDir(err):
@@ -205,7 +211,10 @@ func (t *dataStore) installFileKey(vk vKey, opt KVInstall) (bool, error) {
 		return false, err
 	case info.Mode().IsRegular() || info.Mode()&os.ModeSymlink != 0:
 		opt.ToLog.Infof("remove key %s file at parent location %s", vk.Key, vdir)
-		if err := os.Remove(vdir); err != nil {
+		if err := opt.fs.Remove(vdir); err != nil {
+			return false, err
+		}
+		if err := t.makedir(vdir, opt.AccessControl, opt.fs, opt.ToLog); err != nil {
 			return false, err
 		}
 	}
@@ -218,7 +227,7 @@ func (t *dataStore) installDirKey(vk vKey, opt KVInstall) (bool, error) {
 		dirname := filepath.Base(vk.Key)
 		opt.ToPath = filepath.Join(opt.ToPath, dirname) + "/"
 	}
-	if err := t.makedir(opt.ToPath, opt.AccessControl, opt.ToLog); err != nil {
+	if err := t.makedir(opt.ToPath, opt.AccessControl, opt.fs, opt.ToLog); err != nil {
 		return false, err
 	}
 	changed := false
@@ -232,7 +241,7 @@ func (t *dataStore) installDirKey(vk vKey, opt KVInstall) (bool, error) {
 	return changed, nil
 }
 
-func (t *dataStore) chmod(p string, perm os.FileMode, info os.FileInfo, log *plog.Logger) error {
+func (t *dataStore) chmod(p string, perm os.FileMode, info os.FileInfo, fs confined.FS, log *plog.Logger) error {
 	if info != nil {
 		if perm == info.Mode().Perm() {
 			return nil
@@ -241,10 +250,11 @@ func (t *dataStore) chmod(p string, perm os.FileMode, info os.FileInfo, log *plo
 	} else {
 		log.Tracef("set %s permissions to %s", p, perm)
 	}
-	return os.Chmod(p, perm)
+	return fs.Chmod(p, perm)
 }
 
-func (t *dataStore) chown(p string, usr, grp string, info os.FileInfo, log *plog.Logger) error {
+// chown changes the owner of p, never of what a link at p leads to.
+func (t *dataStore) chown(p string, usr, grp string, info os.FileInfo, fs confined.FS, log *plog.Logger) error {
 	var uid, gid int
 	if usr != "" {
 		if i, err := strconv.Atoi(usr); err == nil {
@@ -280,64 +290,69 @@ func (t *dataStore) chown(p string, usr, grp string, info os.FileInfo, log *plog
 			}
 			if uid != currentUID || gid != currentGID {
 				log.Infof("change %s owner from %d:%d to %d:%d", p, currentUID, currentGID, uid, gid)
-				return os.Chown(p, uid, gid)
+				return fs.Lchown(p, uid, gid)
 			} else {
 				return nil
 			}
 		}
 	} else if uid > 0 || gid > 0 {
 		log.Tracef("set %s owner to %d:%d", p, uid, gid)
-		return os.Chown(p, uid, gid)
+		return fs.Lchown(p, uid, gid)
 	}
 	return nil
 }
 
 // writeKey reads the r Reader and writes the byte stream to the file at dst.
 // This function return false if the dst content didn't change.
+//
+// A link at dst is removed and the file written in its place: an install
+// writes a file, and following the link would write where the link says,
+// which whoever writes in the tree decides.
 func (t *dataStore) writeKey(vk vKey, b []byte, opt KVInstall) (bool, error) {
 	dst := opt.ToPath
 	perm := opt.AccessControl.Perm
 	usr := opt.AccessControl.User
 	grp := opt.AccessControl.Group
 	mtime := t.configModTime()
-	info, err := os.Stat(dst)
+	info, err := opt.fs.Lstat(dst)
+	if err == nil && info.Mode()&os.ModeSymlink != 0 {
+		opt.ToLog.Infof("remove the link at %s to install key %s", dst, vk.Key)
+		if err := opt.fs.Remove(dst); err != nil {
+			return false, err
+		}
+		info, err = opt.fs.Lstat(dst)
+	}
 
 	if errors.Is(err, os.ErrNotExist) {
 		opt.ToLog.Infof("install key %s from %s to %s with owner %s:%s perm %v", vk.Key, t.path, dst, usr, grp, perm)
-		if err := os.WriteFile(dst, b, perm); err != nil {
+		if err := opt.fs.WriteFile(dst, b, perm); err != nil {
 			return true, err
 		}
-		if err := t.chown(dst, usr, grp, nil, opt.ToLog); err != nil {
+		if err := t.chown(dst, usr, grp, nil, opt.fs, opt.ToLog); err != nil {
 			return true, err
 		}
-		return true, os.Chtimes(dst, mtime, mtime)
+		return true, opt.fs.Chtimes(dst, mtime, mtime)
 	} else if err != nil {
 		return false, err
 	}
-	if err := t.chmod(dst, perm, info, opt.ToLog); err != nil {
+	if err := t.chmod(dst, perm, info, opt.fs, opt.ToLog); err != nil {
 		return false, err
 	}
-	if err := t.chown(dst, usr, grp, info, opt.ToLog); err != nil {
+	if err := t.chown(dst, usr, grp, info, opt.fs, opt.ToLog); err != nil {
 		return false, err
 	}
-	if mtime == file.ModTime(dst) {
+	if mtime == info.ModTime() {
 		return false, nil
 	}
-	targetMD5 := md5.New()
-	if _, err := targetMD5.Write(b); err != nil {
-		return false, err
-	}
-	targetMD5Sum := targetMD5.Sum(nil)
-	currentMD5Sum, err := file.MD5(dst)
-
+	current, err := opt.fs.ReadFile(dst)
 	if err != nil {
 		return false, err
 	}
-	if string(currentMD5Sum) == string(targetMD5Sum) {
+	if md5.Sum(current) == md5.Sum(b) {
 		opt.ToLog.Tracef("%s from key %s already installed and same md5: set access and modification times to %s", dst, vk.Key, mtime)
-		return false, os.Chtimes(dst, mtime, mtime)
+		return false, opt.fs.Chtimes(dst, mtime, mtime)
 	}
-	if err := os.WriteFile(dst, b, info.Mode()); err != nil {
+	if err := opt.fs.WriteFile(dst, b, info.Mode()); err != nil {
 		return true, err
 	}
 	opt.ToLog.Infof("reinstall key %s from %s to %s with owner %s:%s perm %v", vk.Key, t.path, dst, usr, grp, perm)
@@ -348,22 +363,22 @@ func (t *dataStore) InstallKey(keyName string) error {
 	return t.postInstall(keyName)
 }
 
-func (t *dataStore) makedir(path string, opt KVInstallAccessControl, log *plog.Logger) error {
-	info, err := os.Stat(path)
+func (t *dataStore) makedir(path string, opt KVInstallAccessControl, fs confined.FS, log *plog.Logger) error {
+	info, err := fs.Stat(path)
 	if err == nil {
-		if err := t.chmod(path, opt.DirPerm, info, log); err != nil {
+		if err := t.chmod(path, opt.DirPerm, info, fs, log); err != nil {
 			return err
 		}
-		if err := t.chown(path, opt.DirUser, opt.DirGroup, info, log); err != nil {
+		if err := t.chown(path, opt.DirUser, opt.DirGroup, info, fs, log); err != nil {
 			return err
 		}
 		return nil
 	} else {
 		log.Infof("install dir %s with owner %s:%s perm %v", path, opt.MakedirUser, opt.MakedirGroup, opt.MakedirPerm)
-		if err := os.MkdirAll(path, opt.MakedirPerm); err != nil {
+		if err := fs.MkdirAll(path, opt.MakedirPerm); err != nil {
 			return err
 		}
-		if err := t.chown(path, opt.MakedirUser, opt.MakedirGroup, nil, log); err != nil {
+		if err := t.chown(path, opt.MakedirUser, opt.MakedirGroup, nil, fs, log); err != nil {
 			return err
 		}
 	}
@@ -376,7 +391,7 @@ func (t *dataStore) makedirs(opt KVInstall) error {
 	}
 	relPath := strings.TrimPrefix(opt.ToPath, opt.ToHead)
 	for _, dir := range pathChain(relPath) {
-		if err := t.makedir(filepath.Join(opt.ToHead, dir), opt.AccessControl, opt.ToLog); err != nil {
+		if err := t.makedir(filepath.Join(opt.ToHead, dir), opt.AccessControl, opt.fs, opt.ToLog); err != nil {
 			return err
 		}
 	}
@@ -388,6 +403,20 @@ func (t *dataStore) InstallKeyTo(opt KVInstall) error {
 		opt.ToLog = t.log
 	}
 	opt.ToLog.Tracef("install key %s to %s", opt.FromPattern, opt.ToPath)
+	// An install into a head, the one of a volume, stays in it: the head is
+	// written by the containers mounting the volume too, and a link they
+	// plant there must not lead a write of the agent out of it. An install
+	// naming no head writes where only the agent writes.
+	if opt.ToHead != "" {
+		tree, err := confined.Open(opt.ToHead)
+		if err != nil {
+			return fmt.Errorf("install key %s: %w", opt.FromPattern, err)
+		}
+		defer func() { _ = tree.Close() }()
+		opt.fs = tree
+	} else {
+		opt.fs = confined.Host()
+	}
 	keys, err := t.resolveKey(opt.FromPattern)
 	if err != nil {
 		return fmt.Errorf("resolve %s key %s: %w", t.path, opt.FromPattern, err)
