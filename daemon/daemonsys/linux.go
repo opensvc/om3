@@ -53,12 +53,12 @@ func (t *T) Close() error {
 // Defined verify if opensvc systemd unit exists and returns true and job type
 // when unit is loaded
 func (t *T) Defined(ctx context.Context) (loaded bool, err error) {
-	units, err := t.conn.ListUnitsByNamesContext(ctx, []string{UnitName})
+	units, err := t.conn.ListUnitsContext(ctx)
 	if err != nil {
 		return false, err
 	}
 	for _, v := range units {
-		if v.LoadState == "loaded" {
+		if v.Name == UnitName && v.LoadState == "loaded" {
 			return true, nil
 		}
 	}
