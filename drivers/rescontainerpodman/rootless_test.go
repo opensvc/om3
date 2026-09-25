@@ -1,6 +1,7 @@
 package rescontainerpodman
 
 import (
+	"context"
 	"os"
 	"path/filepath"
 	"testing"
@@ -8,7 +9,9 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
+	"github.com/opensvc/om3/v3/core/naming"
 	"github.com/opensvc/om3/v3/drivers/rescontainerocibase"
+	"github.com/opensvc/om3/v3/util/pg"
 )
 
 // The subordinate id files are read the way shadow-utils reads them: a range
@@ -182,4 +185,46 @@ func TestAMappingAskedOfPodmanIsNotGuessed(t *testing.T) {
 	}
 	_, err := (&T{BT: rescontainerocibase.BT{UserNS: "host"}}).HostUID(101)
 	assert.NoError(t, err, "the host userns is no mapping")
+}
+
+// Only the groups of the object are copied in the tree of the user: the
+// namespace and node ones would give each user tree the whole budget again.
+func TestTheUserTreeHoldsTheObjectGroupsOnly(t *testing.T) {
+	u := rootlessUser{Name: "alice", UID: 1001, GID: 1001}
+	for _, tc := range []struct {
+		namespace string
+		ancestors []string
+		container string
+		want      []string
+	}{
+		{
+			namespace: "root",
+			ancestors: []string{"/opensvc.slice", "/opensvc.slice/opensvc-svc.pod.slice"},
+			container: "/opensvc.slice/opensvc-svc.pod.slice/opensvc-svc.pod-container.1.slice",
+			want:      []string{"/opensvc.slice/opensvc-svc.pod.slice", "/opensvc.slice/opensvc-svc.pod.slice/opensvc-svc.pod-container.1.slice"},
+		},
+		{
+			namespace: "test",
+			ancestors: []string{"/opensvc.slice", "/opensvc.slice/opensvc-test.slice", "/opensvc.slice/opensvc-test.slice/opensvc-test-svc.pod.slice"},
+			container: "/opensvc.slice/opensvc-test.slice/opensvc-test-svc.pod.slice/opensvc-test-svc.pod-container.1.slice",
+			want:      []string{"/opensvc.slice/opensvc-test.slice/opensvc-test-svc.pod.slice", "/opensvc.slice/opensvc-test.slice/opensvc-test-svc.pod.slice/opensvc-test-svc.pod-container.1.slice"},
+		},
+	} {
+		t.Run(tc.namespace, func(t *testing.T) {
+			d := &T{}
+			d.Path = naming.Path{Namespace: tc.namespace, Kind: naming.KindSvc, Name: "pod"}
+			mgr := pg.FromContext(pg.NewContext(context.Background()))
+			for _, id := range tc.ancestors {
+				mgr.Register(&pg.Config{ID: id, CPUs: "0-1"})
+			}
+			d.registerDelegatedPG(mgr, &pg.Config{ID: tc.container}, &u)
+			got := make([]string, 0)
+			for _, c := range mgr.Configs() {
+				if c.Delegation != nil {
+					got = append(got, c.ID)
+				}
+			}
+			assert.ElementsMatch(t, tc.want, got)
+		})
+	}
 }

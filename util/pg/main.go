@@ -134,6 +134,18 @@ func (m *Mgr) Register(c *Config) {
 	m.configs[c.Path()] = c
 }
 
+// Configs returns the registered groups, sorted by where they live.
+func (m *Mgr) Configs() []*Config {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	l := make([]*Config, 0, len(m.configs))
+	for _, c := range m.configs {
+		l = append(l, c)
+	}
+	sort.Slice(l, func(i, j int) bool { return l[i].Path() < l[j].Path() })
+	return l
+}
+
 // Ancestors returns the registered groups id is nested in, parents first.
 //
 // It is what a group moved under a delegated subtree carries along: the

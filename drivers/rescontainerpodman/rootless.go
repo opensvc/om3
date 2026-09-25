@@ -10,6 +10,7 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/opensvc/om3/v3/core/naming"
 	"github.com/opensvc/om3/v3/core/rawconfig"
 	"github.com/opensvc/om3/v3/core/resource"
 	"github.com/opensvc/om3/v3/core/status"
@@ -334,12 +335,34 @@ func (t *T) ResetPG(ctx context.Context) error {
 	return mgr.ResetConfigs()
 }
 
+// registerDelegatedPG makes the groups of the container in the tree of the
+// user, nested in copies of the groups of its object and subset.
+//
+// The groups of the namespace and the node are not copied: a copy in each
+// user tree would give each tree the whole budget again, which caps nothing
+// the namespace consumes. The namespace consumption is accounted for by its
+// claims instead, which count the caps of its objects wherever they run.
 func (t *T) registerDelegatedPG(mgr *pg.Mgr, cfg *pg.Config, u *rootlessUser) {
 	d := u.delegation()
 	for _, c := range mgr.Ancestors(cfg.ID) {
+		if !t.isObjectGroup(c.ID) {
+			continue
+		}
 		mgr.Register(c.Delegated(d))
 	}
 	mgr.Register(cfg.Delegated(d).WithLogger(t.Log()))
+}
+
+// isObjectGroup is true for a group of the object of the container or nested
+// in it, and false for the groups of its namespace and of the node, which the
+// object groups are nested in: /opensvc.slice for the node and the root
+// namespace, /opensvc.slice/opensvc-<namespace>.slice for another namespace.
+func (t *T) isObjectGroup(id string) bool {
+	depth := strings.Count(strings.TrimSuffix(id, "/"), "/")
+	if t.Path.Namespace == naming.NsRoot {
+		return depth > 1
+	}
+	return depth > 2
 }
 
 // Start refuses to run a rootless container on a node that lacks what podman
