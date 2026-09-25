@@ -297,3 +297,16 @@ func TestTheResolverReplacesALinkOfTheUser(t *testing.T) {
 	require.NoError(t, err)
 	assert.True(t, info.Mode().IsRegular())
 }
+
+// A container run as the root group is not rootless, whoever configured it.
+func TestARootlessContainerRefusesTheRootGroup(t *testing.T) {
+	d := &T{RootlessUser: "nobody", RootlessGroup: "0"}
+	_, err := d.rootlessUser()
+	assert.ErrorContains(t, err, "root group")
+	d = &T{RootlessUser: "nobody", RootlessGroup: "root"}
+	_, err = d.rootlessUser()
+	assert.ErrorContains(t, err, "root group")
+	d = &T{RootlessUser: "nobody"}
+	_, err = d.rootlessUser()
+	assert.NoError(t, err, "nobody's primary group is nogroup")
+}

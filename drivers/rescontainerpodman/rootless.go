@@ -71,6 +71,11 @@ func (t *T) rootlessUser() (*rootlessUser, error) {
 			gid = uint64(g)
 		}
 	}
+	if gid == 0 {
+		// The root group reaches every file of the node it owns: a container
+		// run as it is not rootless, whoever configured it.
+		return nil, fmt.Errorf("rootless_user %s runs as the root group: a rootless container is run by an unprivileged group, set rootless_group", t.RootlessUser)
+	}
 	return &rootlessUser{
 		Name: u.Username,
 		UID:  uint32(uid),

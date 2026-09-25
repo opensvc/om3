@@ -85,6 +85,9 @@ func (a Allowed) Check(userName, groupName string) error {
 		// object, and need not have its accounts. What it can judge is the
 		// name: an account the namespace lists by that name is the one the
 		// squatter allowed, and the nodes running the container resolve it.
+		if isRootGroup(groupName) {
+			return fmt.Errorf("rootless_group %s is the root group", groupName)
+		}
 		if slices.Contains(a.Users, userName) && (groupName == "" || slices.Contains(a.Groups, groupName)) {
 			return nil
 		}
@@ -216,6 +219,21 @@ func namespaces() ([]string, error) {
 	}
 	sort.Strings(names)
 	return names, nil
+}
+
+// isRootGroup reports whether a group names the root group, by gid, by the
+// name root, or by a name this node resolves to gid 0. A node that does not
+// resolve the name cannot say more, and the node running the container refuses
+// the root group when it does.
+func isRootGroup(s string) bool {
+	switch s {
+	case "0", "root":
+		return true
+	}
+	if g, err := lookupGroup(s); err == nil && g.Gid == "0" {
+		return true
+	}
+	return false
 }
 
 func lookupUser(s string) (*user.User, error) {

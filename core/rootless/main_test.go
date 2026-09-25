@@ -92,3 +92,13 @@ func TestAnAccountAllowedInTwoNamespacesIsShared(t *testing.T) {
 	assert.Equal(t, map[string][]string{"65534": {"other"}}, shared)
 	assert.Contains(t, DescribeShared(shared), "nobody is also allowed in other")
 }
+
+// The name a node cannot resolve is judged by name, but never as the root
+// group: a node resolving it runs the container as gid 0 otherwise.
+func TestTheNameFallbackNeverAllowsTheRootGroup(t *testing.T) {
+	testhelper.Setup(t)
+	namespace(t, "ci", "omtest-no-such-account", "root 0")
+	a := load(t, "ci")
+	assert.Error(t, a.Check("omtest-no-such-account", "root"))
+	assert.Error(t, a.Check("omtest-no-such-account", "0"))
+}
