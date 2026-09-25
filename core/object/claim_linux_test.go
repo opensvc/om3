@@ -166,3 +166,28 @@ image = nginx
 `)
 	assert.Equal(t, int64(3000), m[claim.TypeCPU], "the object cap bounds what nothing else caps")
 }
+
+// @all is the cpus of whichever node the instance runs on, which differ from
+// one node to the next: a claim cannot count it, so it bounds nothing.
+func TestACapOfAllTheCPUsIsNotCounted(t *testing.T) {
+	m := computeClaims(t, "ci", nsClaims, `[DEFAULT]
+nodes = n1 n2
+
+[container#1]
+type = podman
+image = nginx
+pg_cpu_quota = 100%@all
+`)
+	assert.Equal(t, claim.Unbounded, m[claim.TypeCPU])
+
+	m = computeClaims(t, "ci", nsClaims, `[DEFAULT]
+nodes = n1 n2
+pg_cpu_quota = 100%@all
+
+[container#1]
+type = podman
+image = nginx
+pg_cpu_quota = 50%
+`)
+	assert.Equal(t, int64(500), m[claim.TypeCPU], "a counted cap under it still bounds the object")
+}

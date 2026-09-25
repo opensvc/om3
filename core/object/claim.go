@@ -2,7 +2,6 @@ package object
 
 import (
 	"fmt"
-	"runtime"
 	"slices"
 	"strconv"
 	"strings"
@@ -58,7 +57,14 @@ func (t *core) capAs(section, claimType, nodename string) (int64, bool, error) {
 	if err != nil || s == "" {
 		return 0, false, nil
 	}
-	v, err := claim.Parse(claimType, s, runtime.NumCPU())
+	if claimType == claim.TypeCPU && strings.HasSuffix(s, "@all") {
+		// @all is the cpus of the node the instance runs on, which this node
+		// does not know, and which differ from one node to the next: the
+		// cap is not a quantity a claim can count, so it bounds nothing
+		// here. A cap written with a count of cpus is one.
+		return claim.Unbounded, true, nil
+	}
+	v, err := claim.Parse(claimType, s, 0)
 	if err != nil {
 		return 0, false, fmt.Errorf("%s.%s: %w", section, capOptions[claimType], err)
 	}
@@ -118,7 +124,7 @@ func (t *core) resourceCapAs(rid, claimType, nodename string) (int64, error) {
 	if err != nil || !ok {
 		return claim.Unbounded, err
 	}
-	v, err := claim.Parse(claimType, s, runtime.NumCPU())
+	v, err := claim.Parse(claimType, s, 0)
 	if err != nil {
 		return 0, fmt.Errorf("%s claim default of the %s namespace: %w", claimType, t.path.Namespace, err)
 	}

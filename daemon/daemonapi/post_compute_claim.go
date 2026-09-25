@@ -5,6 +5,7 @@ import (
 	"net/http"
 	"sort"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/labstack/echo/v4"
@@ -53,11 +54,17 @@ func (a *DaemonAPI) PostComputeClaim(ctx echo.Context) error {
 		return err
 	}
 	speaker := speakerNode()
+	a.seedClaimGrants(ctx, speaker)
 	if speaker != "" && speaker != a.localhost {
 		return a.proxy(ctx, speaker, func(c *client.T) (*http.Response, error) {
 			return c.PostComputeClaim(ctx.Request().Context(), payload)
 		})
 	}
+	// The claims of an object are weighed on every type before any is
+	// recorded, so the weighing and the recording are one step: two claims
+	// weighed at once would both find the room one of them takes.
+	computeClaimMu.Lock()
+	defer computeClaimMu.Unlock()
 	type asked struct {
 		claimType string
 		to, limit int64
@@ -101,11 +108,20 @@ func (a *DaemonAPI) PostComputeClaim(ctx echo.Context) error {
 		return ctx.JSON(http.StatusOK, api.ComputeClaim{Granted: true})
 	}
 	for _, e := range l {
-		computeClaimGrants[e.claimType].Fits(payload.Namespace, e.claimType, payload.Path, e.to, e.limit, e.held, now)
+		if granted, why := computeClaimGrants[e.claimType].Fits(payload.Namespace, e.claimType, payload.Path, e.to, e.limit, e.held, now); !granted {
+			// Weighed a moment ago under the same lock, so this is not
+			// expected, and not ignored either.
+			why = e.claimType + ": " + why
+			return ctx.JSON(http.StatusOK, api.ComputeClaim{Granted: false, Reason: &why})
+		}
 	}
 	expiresAt := computeClaimGrants[l[0].claimType].ExpiresAt(now)
 	return ctx.JSON(http.StatusOK, api.ComputeClaim{Granted: true, ExpiresAt: &expiresAt})
 }
+
+// computeClaimMu makes the weighing and the recording of a compute claim one
+// step.
+var computeClaimMu sync.Mutex
 
 // computeClaimHeldByPath is what each object of a namespace claims of a
 // compute type, by path, and the objects claiming it without bound.
