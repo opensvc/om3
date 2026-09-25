@@ -55,3 +55,13 @@ func TestSystemdPropertiesSayNothingOfAnUncappedGroup(t *testing.T) {
 	require.NoError(t, err)
 	assert.Empty(t, props)
 }
+
+func TestSystemdPropertiesSayTheSoftLimits(t *testing.T) {
+	props, err := Config{ID: "/omtest.slice", MemHigh: "48m", PidsMax: "64", CPUBurst: "20%"}.systemdProperties()
+	require.NoError(t, err)
+	assert.Equal(t, []string{"MemoryHigh=50331648", "TasksMax=64"}, props, "systemd has no property for the burst")
+
+	props, err = Config{ID: "/omtest.slice", MemHigh: DefaultValue, PidsMax: DefaultValue}.systemdProperties()
+	require.NoError(t, err)
+	assert.Equal(t, []string{"MemoryHigh=infinity", "TasksMax=infinity"}, props)
+}

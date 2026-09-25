@@ -106,6 +106,27 @@ func (c Config) systemdProperties() ([]string, error) {
 			l = append(l, "MemorySwapMax="+strconv.FormatInt(v-n, 10))
 		}
 	}
+	switch c.MemHigh {
+	case "":
+	case DefaultValue:
+		l = append(l, "MemoryHigh=infinity")
+	default:
+		n, err := sizeconv.FromSize(c.MemHigh)
+		if err != nil {
+			return nil, fmt.Errorf("pg_mem_high: %w", err)
+		}
+		l = append(l, "MemoryHigh="+strconv.FormatInt(n, 10))
+	}
+	switch c.PidsMax {
+	case "":
+	case DefaultValue:
+		l = append(l, "TasksMax=infinity")
+	default:
+		l = append(l, "TasksMax="+c.PidsMax)
+	}
+	// pg_cpu_burst has no property: systemd does not manage cpu.max.burst,
+	// so it neither sets it nor puts it back. The file is written at every
+	// apply, which is before each container starts in the group.
 	switch c.BlockIOWeight {
 	case "":
 	case DefaultValue:

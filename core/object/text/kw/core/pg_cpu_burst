@@ -1,0 +1,16 @@
+The cpu time the processes of the group may bank while under their
+`pg_cpu_quota`, and spend above it in a short spike, in the notation of
+`pg_cpu_quota`: `20%` lets the group run a fifth of a cpu above its quota
+during a period, out of what it left unused before.
+
+It serves a latency-sensitive service capped tightly: a request arriving
+after an idle spell is served at the speed of the burst, rather than
+throttled for the rest of the period. Over a longer time the group still
+uses no more than its quota.
+
+It needs `pg_cpu_quota`, and cannot exceed it: the kernel refuses a burst
+larger than the quota. Only the unified cgroup hierarchy has it.
+
+Setting this keyword to `default` puts the capping back where a node that
+never capped anything leaves it. Removing the keyword does not: what was
+written stays written, whether om wrote it or something else did.

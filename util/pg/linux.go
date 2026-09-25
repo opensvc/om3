@@ -38,6 +38,9 @@ type unifiedWrite struct {
 // here.
 var unifiedResets = map[string]unifiedWrite{
 	"pg_cpu_quota":    {"cpu.max", "max 100000"},
+	"pg_cpu_burst":    {"cpu.max.burst", "0"},
+	"pg_mem_high":     {"memory.high", "max"},
+	"pg_pids_max":     {"pids.max", "max"},
 	"pg_cpu_shares":   {"cpu.weight", "100"},
 	"pg_cpus":         {"cpuset.cpus", ""},
 	"pg_mems":         {"cpuset.mems", ""},
@@ -105,6 +108,7 @@ func (c Config) ApplyProc(pid int) (created bool, errs error) {
 		Memory:  &specs.LinuxMemory{},
 		BlockIO: &specs.LinuxBlockIO{},
 	}
+	period := uint64(100000)
 
 	if c.CPUShares == DefaultValue {
 		reset("pg_cpu_shares")
@@ -128,13 +132,23 @@ func (c Config) ApplyProc(pid int) (created bool, errs error) {
 	if c.CPUQuota == DefaultValue {
 		reset("pg_cpu_quota")
 	} else if c.CPUQuota != "" {
-		period := uint64(100000)
 		if quota, err := CPUQuota(c.CPUQuota).Convert(period); err != nil {
 			errs = errors.Join(errs, fmt.Errorf("pg_cpu_quota: %w", err))
 		} else {
 			r.CPU.Period = &period
 			r.CPU.Quota = &quota
 			write("cpu.max", fmt.Sprintf("%d %d", quota, period))
+		}
+	}
+	// The burst is written after the quota: the kernel refuses a burst
+	// larger than the quota, so raising both in the other order fails.
+	if c.CPUBurst == DefaultValue {
+		reset("pg_cpu_burst")
+	} else if c.CPUBurst != "" && unified {
+		if burst, err := CPUQuota(c.CPUBurst).Convert(period); err != nil {
+			errs = errors.Join(errs, fmt.Errorf("pg_cpu_burst: %w", err))
+		} else {
+			write("cpu.max.burst", strconv.FormatInt(burst, 10))
 		}
 	}
 	if c.MemLimit == DefaultValue {
@@ -160,6 +174,26 @@ func (c Config) ApplyProc(pid int) (created bool, errs error) {
 		}
 	}
 
+	if c.MemHigh == DefaultValue {
+		reset("pg_mem_high")
+	} else if c.MemHigh != "" && unified {
+		if n, err := sizeconv.FromSize(c.MemHigh); err != nil {
+			errs = errors.Join(errs, fmt.Errorf("pg_mem_high: %w", err))
+		} else {
+			write("memory.high", strconv.FormatInt(n, 10))
+		}
+	}
+	if c.PidsMax == DefaultValue {
+		reset("pg_pids_max")
+	} else if c.PidsMax != "" {
+		if n, err := strconv.ParseInt(c.PidsMax, 10, 64); err != nil || n < 1 {
+			errs = errors.Join(errs, fmt.Errorf("pg_pids_max: %s is not a count of processes", c.PidsMax))
+		} else {
+			r.Pids = &specs.LinuxPids{Limit: n}
+			write("pids.max", c.PidsMax)
+		}
+	}
+
 	// pg_mem_swappiness and pg_mem_oom_control reach the v1 hierarchy only:
 	// memory.swappiness and memory.oom_control are of that hierarchy, and the
 	// v2 agent writes neither on the unified one either. Setting one on a
@@ -174,6 +208,19 @@ func (c Config) ApplyProc(pid int) (created bool, errs error) {
 				continue
 			}
 			c.log.Warnf("%s is ignored: the unified cgroup hierarchy has no %s", kw, ignoredOnUnified[kw])
+		}
+	}
+	// pg_mem_high and pg_cpu_burst are the other way around: memory.high
+	// and cpu.max.burst are of the unified hierarchy only.
+	if !unified && c.log != nil {
+		for kw, value := range map[string]string{
+			"pg_mem_high":  c.MemHigh,
+			"pg_cpu_burst": c.CPUBurst,
+		} {
+			if value == "" || value == DefaultValue {
+				continue
+			}
+			c.log.Warnf("%s is ignored: the v1 cgroup hierarchy has no %s", kw, ignoredOnV1[kw])
 		}
 	}
 	if c.MemSwappiness != "" {
@@ -270,10 +317,18 @@ var ignoredOnUnified = map[string]string{
 	"pg_mem_oom_control": "memory.oom_control",
 }
 
+// ignoredOnV1 is the keyword whose capping the v1 hierarchy has no file for,
+// and the file the unified hierarchy keeps it in.
+var ignoredOnV1 = map[string]string{
+	"pg_mem_high":  "memory.high",
+	"pg_cpu_burst": "cpu.max.burst",
+}
+
 // isIgnored reports whether a keyword caps nothing on this node.
 func isIgnored(kw string) bool {
 	if !isUnified() {
-		return false
+		_, ok := ignoredOnV1[kw]
+		return ok
 	}
 	_, ok := ignoredOnUnified[kw]
 	return ok
@@ -302,6 +357,7 @@ func delegatedControllers() *cgroupsv2.Resources {
 		CPU:    &cgroupsv2.CPU{},
 		Memory: &cgroupsv2.Memory{},
 		IO:     &cgroupsv2.IO{},
+		Pids:   &cgroupsv2.Pids{},
 	}
 }
 
@@ -313,7 +369,7 @@ var delegationFiles = []string{"cgroup.procs", "cgroup.subtree_control", "cgroup
 
 // delegatedControllerNames are the controllers a group delegated to a user is
 // made with, when the subtree offers them: the ones the pg keywords write to.
-var delegatedControllerNames = []string{"cpu", "cpuset", "io", "memory"}
+var delegatedControllerNames = []string{"cpu", "cpuset", "io", "memory", "pids"}
 
 // makeDelegated makes the group under its delegated subtree, and every group
 // between the two, owned by the user the subtree is delegated to.

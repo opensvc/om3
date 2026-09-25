@@ -291,11 +291,14 @@ var rules = map[string]Group{
 				"pg_mems":            squatterRule,
 				"pg_cpu_shares":      squatterRule,
 				"pg_cpu_quota":       squatterRule,
+				"pg_cpu_burst":       squatterRule,
 				"pg_mem_oom_control": squatterRule,
 				"pg_mem_limit":       squatterRule,
+				"pg_mem_high":        squatterRule,
 				"pg_vmem_limit":      squatterRule,
 				"pg_mem_swappiness":  squatterRule,
 				"pg_blkio_weight":    squatterRule,
+				"pg_pids_max":        squatterRule,
 			},
 
 			// The size a volume is asked to hold is what the pool claim of
@@ -357,16 +360,23 @@ var commonKeywords = map[string]bool{
 	"no_preempt_abort": true,
 	"optional":         true,
 
-	// The process group limits cap what the object may take of the node, so
-	// setting one takes nothing from anybody.
+	// The process group limits cap what the object may take of the node.
+	// Lowering one takes nothing from anybody. Raising pg_cpu_quota or
+	// pg_mem_limit does take from the namespace when it claims the cpu or
+	// the memory, and that is not refused here: the claim check weighs every
+	// configuration write, and refuses the one taking the namespace over
+	// what it claimed, which a grant could not say.
 	"pg_blkio_weight":      true,
+	"pg_cpu_burst":         true,
 	"pg_cpu_quota":         true,
 	"pg_cpu_shares":        true,
 	"pg_cpus":              true,
+	"pg_mem_high":          true,
 	"pg_mem_limit":         true,
 	"pg_mem_oom_control":   true,
 	"pg_mem_swappiness":    true,
 	"pg_mems":              true,
+	"pg_pids_max":          true,
 	"pg_vmem_limit":        true,
 	"prkey":                true,
 	"provision":            true,

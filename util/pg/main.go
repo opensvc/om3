@@ -22,8 +22,11 @@ type (
 		Mems          string
 		CPUShares     string
 		CPUQuota      string
+		CPUBurst      string
 		MemOOMControl string
 		MemLimit      string
+		MemHigh       string
+		PidsMax       string
 		VMemLimit     string
 		MemSwappiness string
 		BlockIOWeight string
@@ -300,8 +303,11 @@ func (c Config) Uncapped() Config {
 	c.Mems = DefaultValue
 	c.CPUShares = DefaultValue
 	c.CPUQuota = DefaultValue
+	c.CPUBurst = DefaultValue
 	c.MemLimit = DefaultValue
+	c.MemHigh = DefaultValue
 	c.VMemLimit = DefaultValue
+	c.PidsMax = DefaultValue
 	c.BlockIOWeight = DefaultValue
 	c.applied = false
 	return c
@@ -343,14 +349,23 @@ func (c Config) String() string {
 	if c.CPUQuota != "" {
 		l = append(l, "cpu_quota="+c.CPUQuota)
 	}
+	if c.CPUBurst != "" && !isIgnored("pg_cpu_burst") {
+		l = append(l, "cpu_burst="+c.CPUBurst)
+	}
 	if c.MemOOMControl != "" && !isIgnored("pg_mem_oom_control") {
 		l = append(l, "mem_oom_control="+c.MemOOMControl)
 	}
 	if c.MemLimit != "" {
 		l = append(l, "mem_limit="+c.MemLimit)
 	}
+	if c.MemHigh != "" && !isIgnored("pg_mem_high") {
+		l = append(l, "mem_high="+c.MemHigh)
+	}
 	if c.VMemLimit != "" {
 		l = append(l, "vmem_limit="+c.VMemLimit)
+	}
+	if c.PidsMax != "" {
+		l = append(l, "pids_max="+c.PidsMax)
 	}
 	if c.MemSwappiness != "" && !isIgnored("pg_mem_swappiness") {
 		l = append(l, "mem_swappiness="+c.MemSwappiness)
