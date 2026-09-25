@@ -4,12 +4,14 @@ import (
 	"context"
 	"os"
 	"path/filepath"
+	"syscall"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
 	"github.com/opensvc/om3/v3/core/naming"
+	"github.com/opensvc/om3/v3/drivers/rescontainer"
 	"github.com/opensvc/om3/v3/drivers/rescontainerocibase"
 	"github.com/opensvc/om3/v3/util/pg"
 )
@@ -122,7 +124,7 @@ func TestExecutorArgCredentialFollowsRootlessUser(t *testing.T) {
 	c, err := d.executorArg().Credential()
 	require.NoError(t, err)
 	assert.Nil(t, c)
-	assert.Nil(t, d.executorArg().ExecutorArg.ResolvConfDir, "a rootful container writes its resolver in its var dir")
+	assert.Nil(t, d.executorArg().ExecutorArg.WriteResolvConf, "a rootful container writes its resolver in its var dir")
 
 	d = &T{RootlessUser: "nobody"}
 	c, err = d.executorArg().Credential()
@@ -130,7 +132,7 @@ func TestExecutorArgCredentialFollowsRootlessUser(t *testing.T) {
 	if assert.NotNil(t, c) {
 		assert.Equal(t, uint32(65534), c.UID)
 	}
-	assert.NotNil(t, d.executorArg().ExecutorArg.ResolvConfDir, "a rootless one writes it where its user can read it")
+	assert.NotNil(t, d.executorArg().ExecutorArg.WriteResolvConf, "a rootless one writes it where its user can read it")
 }
 
 // The ids of a rootless container run as the subordinate ids of its user,
@@ -227,4 +229,71 @@ func TestTheUserTreeHoldsTheObjectGroupsOnly(t *testing.T) {
 			assert.ElementsMatch(t, tc.want, got)
 		})
 	}
+}
+
+// resolvConfTest makes the runtime directory of a user, lets plant put links
+// in it, writes the resolver of a container there, and returns the directory
+// a planted link could lead to.
+func resolvConfTest(t *testing.T, plant func(runtimeDir, outside string)) (string, string, error) {
+	t.Helper()
+	if os.Geteuid() != 0 {
+		t.Skip("chown needs root")
+	}
+	defer func(s string) { runtimeDirRoot = s }(runtimeDirRoot)
+	base := t.TempDir()
+	runtimeDirRoot = filepath.Join(base, "run", "user")
+	runtimeDir := filepath.Join(runtimeDirRoot, "1001")
+	require.NoError(t, os.MkdirAll(runtimeDir, 0700))
+	outside := filepath.Join(base, "etc")
+	require.NoError(t, os.Mkdir(outside, 0755))
+	plant(runtimeDir, outside)
+
+	u := rootlessUser{Name: "alice", UID: 1001, GID: 1001}
+	path, err := writeResolvConf(&u, filepath.Join("web", "container#1"), rescontainer.ResolvConf{Nameservers: []string{"10.0.0.1"}})
+	return path, outside, err
+}
+
+func TestTheResolverIsWrittenInTheRuntimeDirectory(t *testing.T) {
+	path, _, err := resolvConfTest(t, func(string, string) {})
+	require.NoError(t, err)
+	b, err := os.ReadFile(path)
+	require.NoError(t, err)
+	assert.Contains(t, string(b), "nameserver 10.0.0.1")
+	info, err := os.Stat(filepath.Dir(path))
+	require.NoError(t, err)
+	assert.Equal(t, uint32(1001), info.Sys().(*syscall.Stat_t).Uid, "the directories are the user's")
+}
+
+// A link the user plants on the way must not have the agent chown a
+// directory of the node to them.
+func TestTheResolverDirectoryDoesNotFollowALinkOfTheUser(t *testing.T) {
+	_, outside, err := resolvConfTest(t, func(runtimeDir, outside string) {
+		require.NoError(t, os.Symlink(outside, filepath.Join(runtimeDir, "opensvc")))
+	})
+	assert.Error(t, err)
+	info, err := os.Stat(outside)
+	require.NoError(t, err)
+	assert.Equal(t, uint32(0), info.Sys().(*syscall.Stat_t).Uid, "the directory the link led to is not chowned")
+	entries, _ := os.ReadDir(outside)
+	assert.Empty(t, entries, "nothing is made in it")
+}
+
+// A link the user plants in place of the file is replaced, not written
+// through.
+func TestTheResolverReplacesALinkOfTheUser(t *testing.T) {
+	var target string
+	path, _, err := resolvConfTest(t, func(runtimeDir, outside string) {
+		target = filepath.Join(outside, "shadow")
+		require.NoError(t, os.WriteFile(target, []byte("orig"), 0600))
+		dir := filepath.Join(runtimeDir, "opensvc", "web", "container#1")
+		require.NoError(t, os.MkdirAll(dir, 0755))
+		require.NoError(t, os.Symlink(target, filepath.Join(dir, "resolv.conf")))
+	})
+	require.NoError(t, err)
+	b, err := os.ReadFile(target)
+	require.NoError(t, err)
+	assert.Equal(t, "orig", string(b))
+	info, err := os.Lstat(path)
+	require.NoError(t, err)
+	assert.True(t, info.Mode().IsRegular())
 }

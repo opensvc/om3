@@ -14,7 +14,9 @@ import (
 	"github.com/opensvc/om3/v3/core/rawconfig"
 	"github.com/opensvc/om3/v3/core/resource"
 	"github.com/opensvc/om3/v3/core/status"
+	"github.com/opensvc/om3/v3/drivers/rescontainer"
 	"github.com/opensvc/om3/v3/drivers/rescontainerocibase"
+	"github.com/opensvc/om3/v3/util/confined"
 	"github.com/opensvc/om3/v3/util/pg"
 	"github.com/opensvc/om3/v3/util/usergroup"
 )
@@ -256,30 +258,62 @@ func (u rootlessUser) delegation() pg.Delegation {
 	}
 }
 
-// resolvConfDir makes the directory the resolver of the container is written
-// in, under the runtime directory of the user.
+// resolvConfRel is where the resolver of the container is written, relative
+// to the opensvc directory of the runtime directory of its user: the var dir
+// of the resource, relative to the var dir of the agent.
+func (t *T) resolvConfRel() string {
+	rel, err := filepath.Rel(rawconfig.Paths.Var, t.VarDir())
+	if err != nil || strings.HasPrefix(rel, "..") {
+		rel = filepath.Join(t.Path.String(), t.RID())
+	}
+	return rel
+}
+
+// writeResolvConf writes the resolver of a container under the runtime
+// directory of the user, at rel, and returns the path of the file.
 //
 // The var dir of the resource is under one only root can enter, and podman
 // mounts the file as the user. The runtime directory is the user's, is
 // emptied when their systemd instance stops, and the file is written again on
 // every start, which is when it is read.
-func (t *T) resolvConfDir(u *rootlessUser) (string, error) {
-	rel, err := filepath.Rel(rawconfig.Paths.Var, t.VarDir())
-	if err != nil || strings.HasPrefix(rel, "..") {
-		rel = filepath.Join(t.Path.String(), t.RID())
+//
+// The agent writes there as root, in a directory the user writes in too, so
+// it does not follow a link the user planted there: a link to /etc in place
+// of a directory on the way would have the agent chown /etc to the user, and
+// a link in place of the file would have it write a file of the node. The
+// writes run through a tree confined to the runtime directory, the owner is
+// changed with lchown, and a link in place of the file is replaced.
+func writeResolvConf(u *rootlessUser, rel string, resolvConf rescontainer.ResolvConf) (string, error) {
+	tree, err := confined.Open(u.runtimeDir())
+	if err != nil {
+		return "", fmt.Errorf("resolv.conf dir: %w", err)
 	}
-	base := u.runtimeDir()
-	dir := base
+	defer func() { _ = tree.Close() }()
+	dir := tree.Dir()
 	for _, name := range append([]string{"opensvc"}, strings.Split(rel, string(filepath.Separator))...) {
 		dir = filepath.Join(dir, name)
-		if err := os.Mkdir(dir, 0755); err != nil && !errors.Is(err, os.ErrExist) {
+		if err := tree.Mkdir(dir, 0755); err != nil && !errors.Is(err, os.ErrExist) {
 			return "", fmt.Errorf("resolv.conf dir: %w", err)
 		}
-		if err := os.Chown(dir, int(u.UID), int(u.GID)); err != nil {
+		if info, err := tree.Lstat(dir); err != nil {
+			return "", fmt.Errorf("resolv.conf dir: %w", err)
+		} else if !info.IsDir() {
+			return "", fmt.Errorf("resolv.conf dir: %s is not a directory", dir)
+		}
+		if err := tree.Lchown(dir, int(u.UID), int(u.GID)); err != nil {
 			return "", fmt.Errorf("resolv.conf dir: %w", err)
 		}
 	}
-	return dir, nil
+	path := filepath.Join(dir, "resolv.conf")
+	if info, err := tree.Lstat(path); err == nil && !info.Mode().IsRegular() {
+		if err := tree.RemoveAll(path); err != nil {
+			return "", fmt.Errorf("resolv.conf: %w", err)
+		}
+	}
+	if err := tree.WriteFile(path, []byte(resolvConf.String()), 0644); err != nil {
+		return "", fmt.Errorf("resolv.conf: %w", err)
+	}
+	return path, nil
 }
 
 // ApplyPG caps the container where podman places it.

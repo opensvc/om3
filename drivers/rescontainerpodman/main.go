@@ -2,6 +2,7 @@ package rescontainerpodman
 
 import (
 	"github.com/opensvc/om3/v3/core/resource"
+	"github.com/opensvc/om3/v3/drivers/rescontainer"
 	"github.com/opensvc/om3/v3/drivers/rescontainerocibase"
 )
 
@@ -62,12 +63,12 @@ func (t *T) executorArg() *ExecutorArg {
 		t: t,
 	}
 	if t.RootlessUser != "" {
-		ea.ExecutorArg.ResolvConfDir = func() (string, error) {
+		ea.ExecutorArg.WriteResolvConf = func(resolvConf rescontainer.ResolvConf) (string, error) {
 			u, err := t.rootlessUser()
 			if err != nil {
 				return "", err
 			}
-			return t.resolvConfDir(u)
+			return writeResolvConf(u, t.resolvConfRel(), resolvConf)
 		}
 	}
 	return ea
