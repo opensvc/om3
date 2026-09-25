@@ -33,22 +33,22 @@ func rbacOf(t *testing.T, config string) error {
 // keyword converted to a list.
 //
 // Evaluating such a keyword returns a []string, which prints inside brackets.
-// The policy was handed "[_/etc:/etc:ro]" where the configuration says
-// "_/etc:/etc:ro", so the mount did not begin with the underscore that marks a
-// host path, and a rule meant to refuse exactly this let it through.
+// The policy was handed "[/etc:/etc:ro]" where the configuration says
+// "/etc:/etc:ro", so the mount did not begin with the slash that marks a host
+// path, and a rule meant to refuse exactly this let it through.
 func TestConfigRbacReadsTheValueTheConfigurationSpells(t *testing.T) {
 	assert.Error(t, rbacOf(t, `
 [container#0]
 type = docker
 image = busybox
-volume_mounts = _/etc:/etc:ro
+volume_mounts = /etc:/etc:ro
 `), "a single host path mount is the whole value, so it was the whole bracketed string")
 
 	assert.Error(t, rbacOf(t, `
 [container#0]
 type = docker
 image = busybox
-volume_mounts = _/etc:/etc:ro /vol/a:/a
+volume_mounts = /etc:/etc:ro a:/a
 `))
 
 	assert.Error(t, rbacOf(t, `
@@ -62,7 +62,7 @@ install = /etc/passwd source /etc/shadow
 [container#0]
 type = docker
 image = busybox
-volume_mounts = /vol/data:/data:rw /vol/etc:/etc:ro
+volume_mounts = data:/data:rw data/etc:/etc:ro
 `))
 
 	assert.NoError(t, rbacOf(t, `
@@ -88,7 +88,7 @@ func TestConfigRbacAllowsEveryValueOfAList(t *testing.T) {
 func TestConfigRbacResolvesReferences(t *testing.T) {
 	assert.Error(t, rbacOf(t, `
 [env]
-mounts = _/etc:/etc:ro
+mounts = /etc:/etc:ro
 [container#0]
 type = docker
 image = busybox

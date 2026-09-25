@@ -474,9 +474,13 @@ func deniesIPType(value string, section Section) bool {
 // hasHostPathMount reports whether a volume_mounts value mounts a path of the
 // node rather than a volume of the object, either by naming it outright or by
 // climbing out of the volume with a relative path.
+//
+// A source naming a path of the node begins with a slash, as the keyword
+// documents it and as the driver reads it; a source naming a volume begins
+// with the volume name.
 func hasHostPathMount(value string) bool {
 	for _, e := range strings.Fields(value) {
-		if strings.HasPrefix(e, "_") || strings.Contains(e, "/../") || strings.HasPrefix(e, "../") || strings.HasSuffix(e, "../") {
+		if strings.HasPrefix(e, "/") || strings.Contains(e, "/../") || strings.HasPrefix(e, "../") || strings.HasSuffix(e, "../") {
 			return true
 		}
 	}

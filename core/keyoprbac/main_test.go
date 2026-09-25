@@ -80,10 +80,12 @@ func TestDeniedByValue(t *testing.T) {
 		{"DEFAULT", "monitor_action", "reboot", true},
 		{"DEFAULT", "monitor_action", "crash", true},
 
-		{"container#1", "volume_mounts", "/vol/data:/data:rw", false},
-		{"container#1", "volume_mounts", "_/etc:/etc:ro", true},
-		{"container#1", "volume_mounts", "/vol/a:/a ../../etc:/etc", true},
-		{"container#1", "volume_mounts", "/vol/a/../../etc:/etc", true},
+		{"container#1", "volume_mounts", "data:/data:rw", false},
+		{"container#1", "volume_mounts", "data/html:/usr/share/nginx/html:ro", false},
+		{"container#1", "volume_mounts", "/etc:/etc:ro", true},
+		{"container#1", "volume_mounts", "/srv/data:/data:rw", true},
+		{"container#1", "volume_mounts", "a:/a ../../etc:/etc", true},
+		{"container#1", "volume_mounts", "a/../../etc:/etc", true},
 
 		{"volume#1", "install", "/etc/nginx.conf from https://example.com/c source https://example.com/c", false},
 		{"volume#1", "install", "/etc/nginx.conf source /etc/shadow", true},
@@ -217,7 +219,7 @@ func TestDeniedWithoutASectionRefuses(t *testing.T) {
 	// check that could not run is not a check that passed.
 	assert.Error(t, Denied(noGrant, naming.KindSvc, "ip#1", "type", "netns", nil))
 	assert.Error(t, Denied(noGrant, naming.KindSvc, "ip#1", "type", "cni", nil))
-	assert.Error(t, Denied(noGrant, naming.KindSvc, "container#1", "volume_mounts", "/vol/a:/a", nil))
+	assert.Error(t, Denied(noGrant, naming.KindSvc, "container#1", "volume_mounts", "a:/a", nil))
 
 	// A rule that reads only the keyword still answers.
 	assert.NoError(t, Denied(noGrant, naming.KindSvc, "container#1", "image", "nginx", nil))
