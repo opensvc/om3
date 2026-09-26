@@ -524,6 +524,11 @@ type ClientInterface interface {
 	// PostObjectActionGiveback request
 	PostObjectActionGiveback(ctx context.Context, namespace InPathNamespace, kind InPathKind, name InPathName, reqEditors ...RequestEditorFn) (*http.Response, error)
 
+	// PostObjectActionPGSetWithBody request with any body
+	PostObjectActionPGSetWithBody(ctx context.Context, namespace InPathNamespace, kind InPathKind, name InPathName, params *PostObjectActionPGSetParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	PostObjectActionPGSet(ctx context.Context, namespace InPathNamespace, kind InPathKind, name InPathName, params *PostObjectActionPGSetParams, body PostObjectActionPGSetJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+
 	// PostObjectActionProvision request
 	PostObjectActionProvision(ctx context.Context, namespace InPathNamespace, kind InPathKind, name InPathName, reqEditors ...RequestEditorFn) (*http.Response, error)
 
@@ -2411,6 +2416,30 @@ func (c *Client) PostObjectActionFreeze(ctx context.Context, namespace InPathNam
 
 func (c *Client) PostObjectActionGiveback(ctx context.Context, namespace InPathNamespace, kind InPathKind, name InPathName, reqEditors ...RequestEditorFn) (*http.Response, error) {
 	req, err := NewPostObjectActionGivebackRequest(c.Server, namespace, kind, name)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+func (c *Client) PostObjectActionPGSetWithBody(ctx context.Context, namespace InPathNamespace, kind InPathKind, name InPathName, params *PostObjectActionPGSetParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewPostObjectActionPGSetRequestWithBody(c.Server, namespace, kind, name, params, contentType, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+func (c *Client) PostObjectActionPGSet(ctx context.Context, namespace InPathNamespace, kind InPathKind, name InPathName, params *PostObjectActionPGSetParams, body PostObjectActionPGSetJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewPostObjectActionPGSetRequest(c.Server, namespace, kind, name, params, body)
 	if err != nil {
 		return nil, err
 	}
@@ -13057,6 +13086,94 @@ func NewPostObjectActionGivebackRequest(server string, namespace InPathNamespace
 	return req, nil
 }
 
+// NewPostObjectActionPGSetRequest calls the generic PostObjectActionPGSet builder with application/json body
+func NewPostObjectActionPGSetRequest(server string, namespace InPathNamespace, kind InPathKind, name InPathName, params *PostObjectActionPGSetParams, body PostObjectActionPGSetJSONRequestBody) (*http.Request, error) {
+	var bodyReader io.Reader
+	buf, err := json.Marshal(body)
+	if err != nil {
+		return nil, err
+	}
+	bodyReader = bytes.NewReader(buf)
+	return NewPostObjectActionPGSetRequestWithBody(server, namespace, kind, name, params, "application/json", bodyReader)
+}
+
+// NewPostObjectActionPGSetRequestWithBody generates requests for PostObjectActionPGSet with any type of body
+func NewPostObjectActionPGSetRequestWithBody(server string, namespace InPathNamespace, kind InPathKind, name InPathName, params *PostObjectActionPGSetParams, contentType string, body io.Reader) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "namespace", namespace, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam1 string
+
+	pathParam1, err = runtime.StyleParamWithOptions("simple", false, "kind", kind, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam2 string
+
+	pathParam2, err = runtime.StyleParamWithOptions("simple", false, "name", name, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/api/object/path/%s/%s/%s/action/pg/set", pathParam0, pathParam1, pathParam2)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	if params != nil {
+		// queryValues collects non-styled parameters (passthrough, JSON)
+		// that are safe to round-trip through url.Values.Encode().
+		queryValues := queryURL.Query()
+		// rawQueryFragments collects pre-encoded query fragments from
+		// styled parameters, preserving literal commas as delimiters
+		// per the OpenAPI spec (e.g. "color=blue,black,brown").
+		var rawQueryFragments []string
+
+		if params.Wait != nil {
+
+			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "wait", *params.Wait, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "string", Format: ""}); err != nil {
+				return nil, err
+			} else {
+				for _, qp := range strings.Split(queryFrag, "&") {
+					rawQueryFragments = append(rawQueryFragments, qp)
+				}
+			}
+
+		}
+
+		if encoded := queryValues.Encode(); encoded != "" {
+			rawQueryFragments = append(rawQueryFragments, encoded)
+		}
+		queryURL.RawQuery = strings.Join(rawQueryFragments, "&")
+	}
+
+	req, err := http.NewRequest(http.MethodPost, queryURL.String(), body)
+	if err != nil {
+		return nil, err
+	}
+
+	req.Header.Add("Content-Type", contentType)
+
+	return req, nil
+}
+
 // NewPostObjectActionProvisionRequest generates requests for PostObjectActionProvision
 func NewPostObjectActionProvisionRequest(server string, namespace InPathNamespace, kind InPathKind, name InPathName) (*http.Request, error) {
 	var err error
@@ -15552,6 +15669,11 @@ type ClientWithResponsesInterface interface {
 
 	// PostObjectActionGivebackWithResponse request
 	PostObjectActionGivebackWithResponse(ctx context.Context, namespace InPathNamespace, kind InPathKind, name InPathName, reqEditors ...RequestEditorFn) (*PostObjectActionGivebackResponse, error)
+
+	// PostObjectActionPGSetWithBodyWithResponse request with any body
+	PostObjectActionPGSetWithBodyWithResponse(ctx context.Context, namespace InPathNamespace, kind InPathKind, name InPathName, params *PostObjectActionPGSetParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*PostObjectActionPGSetResponse, error)
+
+	PostObjectActionPGSetWithResponse(ctx context.Context, namespace InPathNamespace, kind InPathKind, name InPathName, params *PostObjectActionPGSetParams, body PostObjectActionPGSetJSONRequestBody, reqEditors ...RequestEditorFn) (*PostObjectActionPGSetResponse, error)
 
 	// PostObjectActionProvisionWithResponse request
 	PostObjectActionProvisionWithResponse(ctx context.Context, namespace InPathNamespace, kind InPathKind, name InPathName, reqEditors ...RequestEditorFn) (*PostObjectActionProvisionResponse, error)
@@ -20331,6 +20453,42 @@ func (r PostObjectActionGivebackResponse) ContentType() string {
 	return ""
 }
 
+type PostObjectActionPGSetResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	JSON200      *PGSet
+	JSON400      *N400
+	JSON401      *N401
+	JSON403      *N403
+	JSON404      *N404
+	JSON408      *N408
+	JSON500      *N500
+}
+
+// Status returns HTTPResponse.Status
+func (r PostObjectActionPGSetResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r PostObjectActionPGSetResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r PostObjectActionPGSetResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
 type PostObjectActionProvisionResponse struct {
 	Body         []byte
 	HTTPResponse *http.Response
@@ -22774,6 +22932,23 @@ func (c *ClientWithResponses) PostObjectActionGivebackWithResponse(ctx context.C
 		return nil, err
 	}
 	return ParsePostObjectActionGivebackResponse(rsp)
+}
+
+// PostObjectActionPGSetWithBodyWithResponse request with arbitrary body returning *PostObjectActionPGSetResponse
+func (c *ClientWithResponses) PostObjectActionPGSetWithBodyWithResponse(ctx context.Context, namespace InPathNamespace, kind InPathKind, name InPathName, params *PostObjectActionPGSetParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*PostObjectActionPGSetResponse, error) {
+	rsp, err := c.PostObjectActionPGSetWithBody(ctx, namespace, kind, name, params, contentType, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParsePostObjectActionPGSetResponse(rsp)
+}
+
+func (c *ClientWithResponses) PostObjectActionPGSetWithResponse(ctx context.Context, namespace InPathNamespace, kind InPathKind, name InPathName, params *PostObjectActionPGSetParams, body PostObjectActionPGSetJSONRequestBody, reqEditors ...RequestEditorFn) (*PostObjectActionPGSetResponse, error) {
+	rsp, err := c.PostObjectActionPGSet(ctx, namespace, kind, name, params, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParsePostObjectActionPGSetResponse(rsp)
 }
 
 // PostObjectActionProvisionWithResponse request returning *PostObjectActionProvisionResponse
@@ -30574,6 +30749,74 @@ func ParsePostObjectActionGivebackResponse(rsp *http.Response) (*PostObjectActio
 			return nil, err
 		}
 		response.JSON409 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
+		var dest N500
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON500 = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParsePostObjectActionPGSetResponse parses an HTTP response from a PostObjectActionPGSetWithResponse call
+func ParsePostObjectActionPGSetResponse(rsp *http.Response) (*PostObjectActionPGSetResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &PostObjectActionPGSetResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest PGSet
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
+		var dest N400
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON400 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest N401
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest N403
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON403 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest N404
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON404 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 408:
+		var dest N408
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON408 = &dest
 
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
 		var dest N500

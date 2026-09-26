@@ -4722,6 +4722,56 @@ paths:
         500:
           $ref: '#/components/responses/500'
 
+  /api/object/path/{namespace}/{kind}/{name}/action/pg/set:
+    post:
+      operationId: PostObjectActionPGSet
+      summary: Set the cgroup caps of an object and apply them to its running instances
+      description: |
+        Writes the pg_* keywords named in the body, as a configuration update
+        would, weighed by the same rbac policy and claim checks. It then waits
+        for the new configuration to reach every live node of the object, and
+        asks each node running an instance to apply it, without a restart:
+        the caps are the ones the configuration holds from then on, so a
+        start, a failover or a reboot applies them too.
+
+        A node not running an instance is skipped: its instance applies the
+        caps when it starts.
+      tags:
+        - object / svc
+      security:
+        - basicAuth: []
+        - bearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/inPathNamespace'
+        - $ref: '#/components/parameters/inPathKind'
+        - $ref: '#/components/parameters/inPathName'
+        - $ref: '#/components/parameters/inQueryWait'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PostObjectActionPGSet'
+      responses:
+        200:
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PGSet'
+        400:
+          $ref: '#/components/responses/400'
+        401:
+          $ref: '#/components/responses/401'
+        403:
+          $ref: '#/components/responses/403'
+        404:
+          $ref: '#/components/responses/404'
+        408:
+          $ref: '#/components/responses/408'
+        500:
+          $ref: '#/components/responses/500'
+
   /api/object/path/{namespace}/{kind}/{name}/action/provision:
     post:
       operationId: PostObjectActionProvision
@@ -8475,6 +8525,91 @@ components:
       properties:
         force:
           type: boolean
+
+    PostObjectActionPGSet:
+      type: object
+      required:
+        - caps
+      properties:
+        caps:
+          description: |
+            the caps to set, by section: DEFAULT for the object, subset#<name>
+            for a subset, and the resource id for a resource. A value of
+            "default" lifts the cap.
+          type: object
+          additionalProperties:
+            $ref: '#/components/schemas/PGCaps'
+
+    PGCaps:
+      description: the pg_* keywords of a section, named without their pg_ prefix
+      type: object
+      properties:
+        cpus:
+          type: string
+        mems:
+          type: string
+        cpu_shares:
+          type: string
+        cpu_quota:
+          type: string
+        cpu_burst:
+          type: string
+        mem_limit:
+          type: string
+        mem_high:
+          type: string
+        vmem_limit:
+          type: string
+        pids_max:
+          type: string
+        blkio_weight:
+          type: string
+
+    PGSet:
+      type: object
+      required:
+        - is_changed
+        - instances
+      properties:
+        is_changed:
+          description: whether the configuration changed
+          type: boolean
+        config_updated_at:
+          description: the timestamp of the configuration holding the caps
+          type: string
+          format: date-time
+        instances:
+          type: array
+          items:
+            $ref: '#/components/schemas/PGSetInstance'
+
+    PGSetInstance:
+      type: object
+      required:
+        - node
+        - state
+      properties:
+        node:
+          type: string
+        state:
+          description: |
+            accepted: the node applies the caps, in the exec named;
+            skipped: the instance is not running there, and applies them when
+            it starts; failed: the node was asked and refused, for the reason
+            given
+          type: string
+          enum:
+            - accepted
+            - skipped
+            - failed
+        session_id:
+          type: string
+          format: uuid
+        exec_id:
+          type: string
+          format: uuid
+        reason:
+          type: string
 
     PostObjectActionSwitch:
       type: object

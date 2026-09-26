@@ -145,6 +145,7 @@ func init() {
 	)
 	cmdObjectInstancePG.AddCommand(
 		newCmdObjectInstancePGReset(kind),
+		commoncmd.NewCmdObjectPGSet(kind),
 		newCmdObjectInstancePGUpdate(kind),
 	)
 	cmdObjectSchedule.AddCommand(
