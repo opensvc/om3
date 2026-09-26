@@ -96,6 +96,17 @@ func (t *Tree) rel(name string) (string, error) {
 	return rel, nil
 }
 
+// Open opens a file or a directory of the tree for reading. The file it
+// returns is the one the path led to when it was opened, whatever the path
+// leads to afterwards: a link swapped in later changes nothing of it.
+func (t *Tree) Open(name string) (*os.File, error) {
+	rel, err := t.rel(name)
+	if err != nil {
+		return nil, err
+	}
+	return t.root.Open(rel)
+}
+
 func (t *Tree) Stat(name string) (fs.FileInfo, error) {
 	rel, err := t.rel(name)
 	if err != nil {

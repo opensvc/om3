@@ -13,6 +13,7 @@ type (
 		Image                 string
 		InspectDataConfig     InspectDataConfig     `json:"Config"`
 		InspectDataHostConfig InspectDataHostConfig `json:"HostConfig"`
+		InspectDataMounts     []InspectDataMount    `json:"Mounts"`
 		NetworkSettings       struct {
 			SandboxKey string
 		}
@@ -39,6 +40,12 @@ type (
 		UTSMode        string
 	}
 
+	InspectDataMount struct {
+		Type        string
+		Source      string
+		Destination string
+	}
+
 	InspectDataState struct {
 		ExitCode int
 		Pid      int
@@ -59,6 +66,20 @@ func (i *InspectData) Defined() bool {
 		return true
 	}
 	return false
+}
+
+// BindSources returns the host paths the container bind mounts.
+func (i *InspectData) BindSources() []string {
+	if i == nil {
+		return nil
+	}
+	l := make([]string, 0, len(i.InspectDataMounts))
+	for _, m := range i.InspectDataMounts {
+		if m.Type == "bind" {
+			l = append(l, m.Source)
+		}
+	}
+	return l
 }
 
 func (i *InspectData) HostConfig() *InspectDataHostConfig {
