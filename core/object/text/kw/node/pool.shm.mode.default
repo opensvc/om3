@@ -1,0 +1,1 @@
+`700`, unless mnt_opt names a mode: the volumes are for the objects using them, and the root of a tmpfs is everyone's to write in otherwise.

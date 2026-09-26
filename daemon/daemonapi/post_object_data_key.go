@@ -62,6 +62,7 @@ func (a *DaemonAPI) PostObjectDataKey(ctx echo.Context, namespace string, kind n
 		case err != nil:
 			return JSONProblemf(ctx, http.StatusInternalServerError, "AddKey", "%s: %s", params.Name, err)
 		default:
+			a.announceConfigFileWritten(p)
 			return ctx.NoContent(http.StatusNoContent)
 		}
 	}

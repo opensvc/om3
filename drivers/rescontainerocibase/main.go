@@ -37,7 +37,6 @@ import (
 	"github.com/opensvc/om3/v3/core/vpath"
 	"github.com/opensvc/om3/v3/util/args"
 	"github.com/opensvc/om3/v3/util/envprovider"
-	"github.com/opensvc/om3/v3/util/file"
 	"github.com/opensvc/om3/v3/util/pg"
 	"github.com/opensvc/om3/v3/util/plog"
 	"github.com/opensvc/om3/v3/util/stringslice"
@@ -214,6 +213,7 @@ type (
 	// Inspecter defines interfaces functions that a container inspector must
 	// provide.
 	Inspecter interface {
+		BindSources() []string
 		Config() *InspectDataConfig
 		Defined() bool
 		ID() string
@@ -426,47 +426,100 @@ func (t *BT) LinkNames() []string {
 
 func (t *BT) Mounts(ctx context.Context) ([]BindMount, error) {
 	mounts := make([]BindMount, 0)
-	for _, s := range t.VolumeMounts {
-		var source, target, opt string
-		l := strings.Split(s, ":")
-		n := len(l)
-		switch n {
-		case 2:
-			source = l[0]
-			target = l[1]
-			opt = "rw"
-		case 3:
-			source = l[0]
-			target = l[1]
-			opt = l[2]
-		default:
-			return mounts, fmt.Errorf("invalid volumes_mount entry: %s: 1-2 column-characters allowed", s)
-		}
-		if len(source) == 0 {
-			return mounts, fmt.Errorf("invalid volumes_mount entry: %s: empty source", s)
-		}
-		if len(target) == 0 {
-			return mounts, fmt.Errorf("invalid volumes_mount entry: %s: empty target", s)
-		}
-		if strings.HasPrefix(source, "/") {
-			// pass
-		} else if srcRealpath, vol, err := vpath.HostPathAndVol(ctx, source, t.Path.Namespace); err != nil {
+	for i, s := range t.VolumeMounts {
+		source, target, opt, err := parseVolumeMount(s)
+		if err != nil {
 			return mounts, err
-		} else if file.IsProtected(srcRealpath) {
-			return mounts, fmt.Errorf("invalid volumes_mount entry: %s: expanded to the protected path %s", s, srcRealpath)
-		} else {
-			source = srcRealpath
-
+		}
+		if !strings.HasPrefix(source, "/") {
+			// A volume source is mounted through its staging mount, which
+			// the start made: see stageVolumeMounts.
+			_, vol, err := volumeHostPath(t, source)
+			if err != nil {
+				return mounts, err
+			}
 			if newOpt, err := mangleVolMountOptions(opt, vol); err != nil {
 				return mounts, fmt.Errorf("can't prepare volume options for volume mount '%s': %w", s, err)
 			} else {
 				opt = newOpt
 			}
+			source = t.stagingPath(i)
 		}
-
 		mounts = append(mounts, BindMount{Source: source, Target: target, Option: opt})
 	}
 	return mounts, nil
+}
+
+// mountsStaged reports whether an existing container mounts every volume
+// source of its volume_mounts through its staging mount.
+func (t *BT) mountsStaged(inspect Inspecter) bool {
+	sources := inspect.BindSources()
+	for i, s := range t.VolumeMounts {
+		source, _, _, err := parseVolumeMount(s)
+		if err != nil || strings.HasPrefix(source, "/") {
+			continue
+		}
+		if !slices.Contains(sources, t.stagingPath(i)) {
+			return false
+		}
+	}
+	return true
+}
+
+// warnMountsByPath says, in the status, that the container mounts its volume
+// sources by their path in the volume, as an agent without staging mounts
+// made it: a link planted in the volume leads the engine out of it when it
+// mounts them again.
+func (t *BT) warnMountsByPath(inspect Inspecter) {
+	var fix string
+	if t.Remove {
+		fix = "restart it to mount them through staging mounts"
+	} else {
+		fix = fmt.Sprintf("the container is kept, and will not start again: unprovision it with 'om %s instance unprovision --rid %s', which loses what it wrote outside its volumes, and start it again", t.Path, t.RID())
+	}
+	state := "stopped"
+	if inspect.Running() {
+		state = "running"
+	}
+	t.StatusLog().Warn("the %s container mounts its volume sources by their path in the volume, where a link planted in the volume leads the engine out of it: %s", state, fix)
+}
+
+// unstageAfterStop removes the staging mounts of a container that no longer
+// runs. A container still running keeps them, for an engine restarting it.
+func (t *BT) unstageAfterStop(ctx context.Context) {
+	if inspect, err := t.executer.InspectRefresh(ctx); err == nil && inspect != nil && inspect.Running() {
+		return
+	}
+	if err := t.unstageVolumeMounts(); err != nil {
+		t.Log().Warnf("remove the staging mounts: %s", err)
+	}
+}
+
+// parseVolumeMount splits a volume_mounts entry into its source, its target
+// and its options.
+func parseVolumeMount(s string) (source, target, opt string, err error) {
+	l := strings.Split(s, ":")
+	switch len(l) {
+	case 2:
+		source, target, opt = l[0], l[1], "rw"
+	case 3:
+		source, target, opt = l[0], l[1], l[2]
+	default:
+		return "", "", "", fmt.Errorf("invalid volumes_mount entry: %s: 1-2 column-characters allowed", s)
+	}
+	if len(source) == 0 {
+		return "", "", "", fmt.Errorf("invalid volumes_mount entry: %s: empty source", s)
+	}
+	if len(target) == 0 {
+		return "", "", "", fmt.Errorf("invalid volumes_mount entry: %s: empty target", s)
+	}
+	return source, target, opt, nil
+}
+
+// volumeHostPath is the path of the node a volume source names, under the
+// head of its volume, and the volume.
+func volumeHostPath(t *BT, source string) (string, object.Vol, error) {
+	return vpath.HostPathAndVol(context.Background(), source, t.Path.Namespace)
 }
 
 // NeedPreStartRemove return true when container has Remove or not Detach.
@@ -556,6 +609,9 @@ func (t *BT) Start(ctx context.Context) error {
 	}
 
 	callAndRegisterRollbackOnSuccess := func(ctx context.Context, f func(context.Context) error) error {
+		if err := t.stageVolumeMounts(); err != nil {
+			return logError(err)
+		}
 		if err := f(ctx); err != nil {
 			return logError(err)
 		} else if t.Detach {
@@ -585,6 +641,13 @@ func (t *BT) Start(ctx context.Context) error {
 				return logError(err)
 			}
 			return callAndRegisterRollbackOnSuccess(ctx, t.pullAndRun)
+		} else if !t.mountsStaged(inspect) {
+			// A container an agent without staging mounts made mounts its
+			// volume sources by their path in the volume, which the engine
+			// would walk again, following the links planted there since.
+			// Removing it loses what it wrote in its own filesystem, which
+			// is the operator's to decide.
+			return logError(fmt.Errorf("the kept container %s mounts its volume sources by their path in the volume, where a link planted in the volume leads the engine out of it: remove it with 'om %s instance unprovision --rid %s', which loses what it wrote outside its volumes, and start again", name, t.Path, t.RID()))
 		} else if inspectStatus == "initialized" {
 			log.Infof("container inspectStatus %s, try fix with stop first", inspectStatus)
 			if err := t.executer.Stop(ctx); err != nil {
@@ -624,6 +687,9 @@ func (t *BT) Stop(ctx context.Context) error {
 	if err != nil {
 		return t.logMainAction("stop", fmt.Errorf("can't refresh inspect: %s", err))
 	}
+	// The staging mounts go with the container. A container an agent
+	// without staging mounts started has none, and is stopped all the same.
+	defer t.unstageAfterStop(ctx)
 	if inspect == nil {
 		log.Infof("already stopped")
 		return nil
@@ -713,6 +779,9 @@ func (t *BT) Status(ctx context.Context) status.T {
 			t.warnAttrDiff("tty", fmt.Sprint(inspectConfig.Tty), fmt.Sprint(t.TTY))
 		}
 	}
+	if !t.mountsStaged(inspect) {
+		t.warnMountsByPath(inspect)
+	}
 	if inspectHostConfig := inspect.HostConfig(); inspectHostConfig != nil {
 		if inspectHostConfig.Privileged != t.Privileged {
 			t.warnAttrDiff("privileged", fmt.Sprint(inspectHostConfig.Privileged), fmt.Sprint(t.Privileged))
@@ -741,6 +810,34 @@ func (t *BT) Status(ctx context.Context) status.T {
 
 func (t *BT) Unprovision(_ context.Context) error {
 	return nil
+}
+
+// UnprovisionStop implements resource.UnprovisionStoper: an unprovision
+// stops the container, and removes it when it is kept after a stop.
+//
+// A container is made again by the next start, from the configuration, so a
+// kept one holds nothing an unprovision has to keep but what the container
+// wrote outside its volumes, which unprovisioning is the asking to lose. A
+// resource whose unprovision is disabled keeps it.
+func (t *BT) UnprovisionStop(ctx context.Context, _ bool) error {
+	if err := t.Stop(ctx); err != nil {
+		return err
+	}
+	if t.IsUnprovisionDisabled() || t.executer == nil {
+		return nil
+	}
+	inspect, err := t.executer.InspectRefresh(ctx)
+	if err != nil {
+		return fmt.Errorf("inspect: %w", err)
+	}
+	if inspect == nil || !inspect.Defined() {
+		return nil
+	}
+	t.Log().Infof("remove the kept container %s", t.ContainerName())
+	if err := t.executer.Remove(ctx); err != nil {
+		return err
+	}
+	return t.unstageVolumeMounts()
 }
 
 func (t *BT) WithExecuter(c Executer) *BT {

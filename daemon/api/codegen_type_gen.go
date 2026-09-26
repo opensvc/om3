@@ -498,6 +498,27 @@ func (e OrchestrationListKind) Valid() bool {
 	}
 }
 
+// Defines values for PGSetInstanceState.
+const (
+	Accepted PGSetInstanceState = "accepted"
+	Failed   PGSetInstanceState = "failed"
+	Skipped  PGSetInstanceState = "skipped"
+)
+
+// Valid indicates whether the value is a known member of the PGSetInstanceState enum.
+func (e PGSetInstanceState) Valid() bool {
+	switch e {
+	case Accepted:
+		return true
+	case Failed:
+		return true
+	case Skipped:
+		return true
+	default:
+		return false
+	}
+}
+
 // Defines values for PackageItemKind.
 const (
 	PackageItemKindPackageItem PackageItemKind = "PackageItem"
@@ -1114,6 +1135,19 @@ type ClusterStatus = map[string]interface{}
 // Committed defines model for Committed.
 type Committed struct {
 	IsChanged bool `json:"is_changed"`
+}
+
+// ComputeClaim defines model for ComputeClaim.
+type ComputeClaim struct {
+	// ExpiresAt when a granted claim stops being counted, should the
+	// configuration it was granted for never be written
+	ExpiresAt *time.Time `json:"expires_at,omitempty"`
+
+	// Granted whether the namespace may take what it asked for
+	Granted bool `json:"granted"`
+
+	// Reason why the namespace may not take it
+	Reason *string `json:"reason,omitempty"`
 }
 
 // DNSRecord defines model for DNSRecord.
@@ -2002,6 +2036,50 @@ type OrchestrationQueued struct {
 	OrchestrationID openapi_types.UUID `json:"orchestration_id"`
 }
 
+// PGCaps the pg_* keywords of a section, named without their pg_ prefix
+type PGCaps struct {
+	BlkioWeight *string `json:"blkio_weight,omitempty"`
+	CpuBurst    *string `json:"cpu_burst,omitempty"`
+	CpuQuota    *string `json:"cpu_quota,omitempty"`
+	CpuShares   *string `json:"cpu_shares,omitempty"`
+	Cpus        *string `json:"cpus,omitempty"`
+	MemHigh     *string `json:"mem_high,omitempty"`
+	MemLimit    *string `json:"mem_limit,omitempty"`
+	Mems        *string `json:"mems,omitempty"`
+	PidsMax     *string `json:"pids_max,omitempty"`
+	VmemLimit   *string `json:"vmem_limit,omitempty"`
+}
+
+// PGSet defines model for PGSet.
+type PGSet struct {
+	// ConfigUpdatedAt the timestamp of the configuration holding the caps
+	ConfigUpdatedAt *time.Time      `json:"config_updated_at,omitempty"`
+	Instances       []PGSetInstance `json:"instances"`
+
+	// IsChanged whether the configuration changed
+	IsChanged bool `json:"is_changed"`
+}
+
+// PGSetInstance defines model for PGSetInstance.
+type PGSetInstance struct {
+	ExecId    *openapi_types.UUID `json:"exec_id,omitempty"`
+	Node      string              `json:"node"`
+	Reason    *string             `json:"reason,omitempty"`
+	SessionId *openapi_types.UUID `json:"session_id,omitempty"`
+
+	// State accepted: the node applies the caps, in the exec named;
+	// skipped: the instance is not running there, and applies them when
+	// it starts; failed: the node was asked and refused, for the reason
+	// given
+	State PGSetInstanceState `json:"state"`
+}
+
+// PGSetInstanceState accepted: the node applies the caps, in the exec named;
+// skipped: the instance is not running there, and applies them when
+// it starts; failed: the node was asked and refused, for the reason
+// given
+type PGSetInstanceState string
+
 // Package defines model for Package.
 type Package struct {
 	Arch        string    `json:"arch"`
@@ -2144,6 +2222,22 @@ type PoolVolumeList struct {
 // PoolVolumeListKind defines model for PoolVolumeList.Kind.
 type PoolVolumeListKind string
 
+// PostComputeClaim defines model for PostComputeClaim.
+type PostComputeClaim struct {
+	// Claims what the object is to claim of each compute type, not the
+	// increase: thousandths of a cpu for cpu, bytes for memory, and -1
+	// for a type its processes are not capped on
+	Claims map[string]int64 `json:"claims"`
+
+	// Namespace the namespace the object claims of
+	Namespace string `json:"namespace"`
+
+	// Path the object the claim is for, so that a claim answered yes stops
+	// being counted on its own once the configuration of the object
+	// says the same thing
+	Path string `json:"path"`
+}
+
 // PostInstanceProgress defines model for PostInstanceProgress.
 type PostInstanceProgress struct {
 	IsPartial *bool              `json:"is_partial,omitempty"`
@@ -2184,6 +2278,14 @@ type PostNodeActionRegisterRequest struct {
 type PostNodeDRBDConfigRequest struct {
 	AllocationID openapi_types.UUID `json:"allocation_id"`
 	Data         []byte             `json:"data"`
+}
+
+// PostObjectActionPGSet defines model for PostObjectActionPGSet.
+type PostObjectActionPGSet struct {
+	// Caps the caps to set, by section: DEFAULT for the object, subset#<name>
+	// for a subset, and the resource id for a resource. A value of
+	// "default" lifts the cap.
+	Caps map[string]PGCaps `json:"caps"`
 }
 
 // PostObjectActionResize defines model for PostObjectActionResize.
@@ -3987,6 +4089,20 @@ type PostSvcEnableParams struct {
 	Tag    *InQueryTag    `form:"tag,omitempty" json:"tag,omitempty"`
 }
 
+// PostObjectActionPGSetParams defines parameters for PostObjectActionPGSet.
+type PostObjectActionPGSetParams struct {
+	// Wait How long to hold the request until what it asks about has ended.
+	//
+	// Without it the answer is what is known now. With it the request is
+	// held, and answered as soon as the thing ends, so a client waiting for
+	// the end of what it submitted neither polls nor holds an event stream
+	// open for it.
+	//
+	// A request held until the wait expires is answered 408, which says the
+	// thing is still running, and is not an error of the request.
+	Wait *Wait `form:"wait,omitempty" json:"wait,omitempty"`
+}
+
 // PostObjectActionResizeParams defines parameters for PostObjectActionResize.
 type PostObjectActionResizeParams struct {
 	// ConfigUpdatedAt Refuse the action unless the instance configuration on the node running
@@ -4016,6 +4132,17 @@ type PatchObjectConfigParams struct {
 	Delete *InQueryDeletes `form:"delete,omitempty" json:"delete,omitempty"`
 	Unset  *InQueryUnsets  `form:"unset,omitempty" json:"unset,omitempty"`
 	Set    *InQuerySets    `form:"set,omitempty" json:"set,omitempty"`
+
+	// Wait How long to hold the request until what it asks about has ended.
+	//
+	// Without it the answer is what is known now. With it the request is
+	// held, and answered as soon as the thing ends, so a client waiting for
+	// the end of what it submitted neither polls nor holds an event stream
+	// open for it.
+	//
+	// A request held until the wait expires is answered 408, which says the
+	// thing is still running, and is not an error of the request.
+	Wait *Wait `form:"wait,omitempty" json:"wait,omitempty"`
 }
 
 // GetObjectConfigFileParams defines parameters for GetObjectConfigFile.
@@ -4124,6 +4251,9 @@ type PostClusterEvictJSONRequestBody = ClusterEvictBody
 // PostClusterRegisterJSONRequestBody defines body for PostClusterRegister for application/json ContentType.
 type PostClusterRegisterJSONRequestBody = ClusterRegisterBody
 
+// PostComputeClaimJSONRequestBody defines body for PostComputeClaim for application/json ContentType.
+type PostComputeClaimJSONRequestBody = PostComputeClaim
+
 // PostInstanceProgressJSONRequestBody defines body for PostInstanceProgress for application/json ContentType.
 type PostInstanceProgressJSONRequestBody = PostInstanceProgress
 
@@ -4147,6 +4277,9 @@ type PostDaemonLogControlJSONRequestBody = LogControlBody
 
 // PostNodeDRBDConfigJSONRequestBody defines body for PostNodeDRBDConfig for application/json ContentType.
 type PostNodeDRBDConfigJSONRequestBody = PostNodeDRBDConfigRequest
+
+// PostObjectActionPGSetJSONRequestBody defines body for PostObjectActionPGSet for application/json ContentType.
+type PostObjectActionPGSetJSONRequestBody = PostObjectActionPGSet
 
 // PostObjectActionResizeJSONRequestBody defines body for PostObjectActionResize for application/json ContentType.
 type PostObjectActionResizeJSONRequestBody = PostObjectActionResize

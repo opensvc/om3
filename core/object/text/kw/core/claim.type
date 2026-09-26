@@ -1,1 +1,3 @@
-The kind of cluster resource this claim is against.
+The kind of cluster resource this claim is against: the space of a pool, the
+addresses of a network, or the cpu and memory the objects of the namespace
+are capped to.

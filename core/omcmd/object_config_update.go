@@ -3,9 +3,9 @@ package omcmd
 import (
 	"context"
 	"fmt"
+	"time"
 
 	"github.com/opensvc/om3/v3/core/actioncontext"
-	"github.com/opensvc/om3/v3/core/client"
 	"github.com/opensvc/om3/v3/core/commoncmd"
 	"github.com/opensvc/om3/v3/core/keyop"
 	"github.com/opensvc/om3/v3/core/naming"
@@ -24,6 +24,8 @@ type (
 		Delete []string
 		Set    []string
 		Unset  []string
+		Wait   bool
+		Time   time.Duration
 	}
 )
 
@@ -34,12 +36,16 @@ func (t *CmdObjectConfigUpdate) Run(kind string) error {
 	}
 	mergedSelector := commoncmd.MergeSelector("", t.ObjectSelector, kind, "")
 	if t.Local {
+		if t.Wait {
+			return fmt.Errorf("--wait needs the daemon, which is what propagates a configuration, and --local writes without it")
+		}
 		return t.doObjectAction(mergedSelector)
 	}
-	c, err := client.New()
+	c, ctx, cancel, err := commoncmd.ConfigWaitClient(t.Wait, t.Time)
 	if err != nil {
 		return err
 	}
+	defer cancel()
 	sel := objectselector.New(mergedSelector, objectselector.WithClient(c))
 	paths, err := sel.MustExpand()
 	if err != nil {
@@ -52,32 +58,21 @@ func (t *CmdObjectConfigUpdate) Run(kind string) error {
 		params.Set = &t.Set
 		params.Unset = &t.Unset
 		params.Delete = &t.Delete
-		response, err := c.PatchObjectConfigWithResponse(context.Background(), p.Namespace, p.Kind, p.Name, &params)
+		if t.Wait {
+			wait := t.Time.String()
+			params.Wait = &wait
+		}
+		changed, err := commoncmd.PatchObjectConfig(ctx, c, p, params)
 		if err != nil {
 			return err
 		}
-		switch response.StatusCode() {
-		case 200:
-			if !noPrefix {
-				prefix = p.String() + ": "
-			}
-			if response.JSON200.IsChanged {
-				fmt.Printf("%scommitted\n", prefix)
-			} else {
-				fmt.Printf("%sunchanged\n", prefix)
-			}
-		case 400:
-			return fmt.Errorf("%s: %s", p, *response.JSON400)
-		case 401:
-			return fmt.Errorf("%s: %s", p, *response.JSON401)
-		case 403:
-			return fmt.Errorf("%s: %s", p, *response.JSON403)
-		case 404:
-			return fmt.Errorf("%s: %s", p, *response.JSON404)
-		case 500:
-			return fmt.Errorf("%s: %s", p, *response.JSON500)
-		default:
-			return fmt.Errorf("%s: unexpected response: %s", p, response.Status())
+		if !noPrefix {
+			prefix = p.String() + ": "
+		}
+		if changed {
+			fmt.Printf("%scommitted\n", prefix)
+		} else {
+			fmt.Printf("%sunchanged\n", prefix)
 		}
 	}
 	return nil

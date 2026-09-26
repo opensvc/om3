@@ -1628,6 +1628,8 @@ func newCmdObjectConfigUpdate(kind string) *cobra.Command {
 	commoncmd.FlagUpdateDelete(flags, &options.Delete)
 	commoncmd.FlagUpdateSet(flags, &options.Set)
 	commoncmd.FlagUpdateUnset(flags, &options.Unset)
+	commoncmd.FlagConfigWait(flags, &options.Wait)
+	commoncmd.FlagTime(flags, &options.Time)
 	return cmd
 }
 
@@ -2023,6 +2025,7 @@ func newCmdObjectDisk(kind string) *cobra.Command {
 func newCmdObjectResource(kind string) *cobra.Command {
 	cmd := commoncmd.NewCmdObjectResource(kind)
 	cmd.AddCommand(
+		commoncmd.NewCmdObjectGroupPG(kind, ""),
 		newCmdObjectGroupList(kind, ""),
 		newCmdObjectGroupInfo(kind, ""),
 		newCmdObjectGroupProvision(kind, ""),
@@ -2634,6 +2637,7 @@ func newCmdObjectShareStartStandby(kind string) *cobra.Command {
 func newCmdObjectApp(kind string) *cobra.Command {
 	cmd := commoncmd.NewCmdObjectApp(kind)
 	cmd.AddCommand(
+		commoncmd.NewCmdObjectGroupPG(kind, "app"),
 		newCmdObjectGroupList(kind, "app"),
 		newCmdObjectGroupInfo(kind, "app"),
 		newCmdObjectAppRestart(kind),
@@ -2773,6 +2777,7 @@ func newCmdObjectAppStartStandby(kind string) *cobra.Command {
 func newCmdObjectTask(kind string) *cobra.Command {
 	cmd := commoncmd.NewCmdObjectTask(kind)
 	cmd.AddCommand(
+		commoncmd.NewCmdObjectGroupPG(kind, "task"),
 		newCmdObjectGroupList(kind, "task"),
 		newCmdObjectGroupInfo(kind, "task"),
 		newCmdObjectGroupRun(kind, "task"),
@@ -3041,6 +3046,7 @@ func newCmdObjectGroupList(kind, group string) *cobra.Command {
 func newCmdObjectContainer(kind string) *cobra.Command {
 	cmd := commoncmd.NewCmdObjectContainer(kind)
 	cmd.AddCommand(
+		commoncmd.NewCmdObjectGroupPG(kind, "container"),
 		newCmdObjectGroupList(kind, "container"),
 		newCmdObjectGroupInfo(kind, "container"),
 		newCmdObjectContainerEnter(kind),

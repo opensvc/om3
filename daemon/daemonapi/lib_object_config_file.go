@@ -26,13 +26,15 @@ func (a *DaemonAPI) writeObjectConfigFile(ctx echo.Context, p naming.Path, body 
 	if alerts.HasError() {
 		return JSONProblemf(ctx, http.StatusBadRequest, "Validate config", "%s", err)
 	}
-	if err := refuseClaimOverrun(ctx.Request().Context(), p, configurer.Config()); err != nil {
+	if err := refuseClaimOverrun(ctx.Request().Context(), p, o, configurer.Config()); err != nil {
 		return JSONProblemf(ctx, http.StatusForbidden, "Forbidden", "%s", err)
 	}
 	// Use the non-validating commit func as we already validate to emit an explicit error
 	if err := configurer.Config().RecommitInvalid(); err != nil {
 		return JSONProblemf(ctx, http.StatusInternalServerError, "Commit", "%s", err)
 	}
+	a.announceConfigFileWritten(p)
+	warnSharedRootlessAccounts(ctx, p)
 	// Answer with the timestamp the configuration now carries, so the caller
 	// can require it of the actions it goes on to ask of the instances. This
 	// write lands on the peer nodes a moment after it is acknowledged here,

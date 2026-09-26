@@ -1,6 +1,7 @@
 package converters
 
 import (
+	"os"
 	"testing"
 	"time"
 
@@ -161,4 +162,30 @@ func TestBooleanConvert(t *testing.T) {
 			})
 		}
 	})
+}
+
+// The leading digit of a mode is read as chmod reads it, and as v2 did.
+func TestFileModeConvertReadsTheSpecialBitsAsChmod(t *testing.T) {
+	for s, want := range map[string]os.FileMode{
+		"644":  0o644,
+		"0644": 0o644,
+		"1777": os.ModeSticky | 0o777,
+		"2775": os.ModeSetgid | 0o775,
+		"4755": os.ModeSetuid | 0o755,
+		"6755": os.ModeSetuid | os.ModeSetgid | 0o755,
+		"7777": os.ModeSetuid | os.ModeSetgid | os.ModeSticky | 0o777,
+	} {
+		v, err := FileMode.Convert(s)
+		require.NoError(t, err, s)
+		assert.Equal(t, want, *v.(*os.FileMode), s)
+	}
+	for _, s := range []string{"", "8", "12345", "0x44", "abc"} {
+		v, err := FileMode.Convert(s)
+		if s == "" {
+			assert.NoError(t, err)
+			assert.Nil(t, v.(*os.FileMode))
+			continue
+		}
+		assert.Error(t, err, s)
+	}
 }

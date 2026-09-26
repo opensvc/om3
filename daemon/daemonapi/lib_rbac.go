@@ -13,6 +13,7 @@ import (
 	"github.com/opensvc/om3/v3/core/keyoprbac"
 	"github.com/opensvc/om3/v3/core/naming"
 	"github.com/opensvc/om3/v3/core/object"
+	"github.com/opensvc/om3/v3/core/rootless"
 	"github.com/opensvc/om3/v3/core/xconfig"
 	"github.com/opensvc/om3/v3/daemon/rbac"
 	"github.com/opensvc/om3/v3/util/file"
@@ -43,7 +44,60 @@ func configRbac(ctx echo.Context, p naming.Path, body []byte) error {
 	if grants.HasGrant(rbac.GrantRoot) {
 		return nil
 	}
-	return configRbacChanges(grants, p.Kind, currentConfig(p), cfg)
+	from := currentConfig(p)
+	if err := configRbacChanges(grants, p.Kind, from, cfg); err != nil {
+		return err
+	}
+	return rootlessRbac(p, from, cfg)
+}
+
+// rootlessRbac refuses a write having a container run as an account its
+// namespace does not allow.
+//
+// The account a rootless container runs as reaches everything else it owns
+// on the node, so the namespace configuration lists the ones a namespace may
+// use, and a user holding no root grant may not name another. Root is not
+// bound by the list.
+//
+// The account is judged as the keywords evaluate, on every node of the
+// object, the way the other keywords are: rootless_user can be a reference,
+// or be written for one node alone. Only what the write changes is judged, so
+// an object whose account the squatter stopped allowing can still be edited,
+// and is said to be running as a disallowed account by its status instead.
+func rootlessRbac(p naming.Path, from, to *xconfig.T) error {
+	var allowed *rootless.Allowed
+	scopes := rbacScopes(from, to)
+	for _, section := range to.SectionStrings() {
+		group, _, _ := strings.Cut(section, "#")
+		if group != "container" && group != "task" {
+			continue
+		}
+		ku := key.New(section, "rootless_user")
+		kg := key.New(section, "rootless_group")
+		for _, nodename := range scopes {
+			u := evaluatedOrWrittenAs(to, ku, nodename)
+			g := evaluatedOrWrittenAs(to, kg, nodename)
+			if u == "" {
+				continue
+			}
+			if from != nil && len(from.Keys(section)) > 0 &&
+				evaluatedOrWrittenAs(from, ku, nodename) == u &&
+				evaluatedOrWrittenAs(from, kg, nodename) == g {
+				continue
+			}
+			if allowed == nil {
+				a, err := rootless.Load(p.Namespace)
+				if err != nil {
+					return fmt.Errorf("read the rootless accounts of the %s namespace: %w", p.Namespace, err)
+				}
+				allowed = &a
+			}
+			if err := allowed.Check(u, g); err != nil {
+				return fmt.Errorf("%w: %s runs as %s on %s: %w", ErrDenied, section, u, nodename, err)
+			}
+		}
+	}
+	return nil
 }
 
 // currentConfig is the configuration the object holds before the write, and

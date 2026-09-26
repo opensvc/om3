@@ -1113,6 +1113,16 @@ var (
 		Text:    keywords.NewText(fs, "text/kw/node/pool.drbd.path"),
 		Types:   []string{"drbd"},
 	}
+	kwNodePoolShmMode = keywords.Keyword{
+		Converter:   converters.FileMode,
+		DefaultText: keywords.NewText(fs, "text/kw/node/pool.shm.mode.default"),
+		Example:     "750",
+		Option:      "mode",
+		Section:     "pool",
+		Since:       "v3.0.0-rc42",
+		Text:        keywords.NewText(fs, "text/kw/node/pool.shm.mode"),
+		Types:       []string{"shm"},
+	}
 	kwNodePoolSharePath = keywords.Keyword{
 		Default: "{var}/pool/share",
 		Option:  "path",
@@ -1845,6 +1855,7 @@ var (
 		&kwNodePoolType,
 		&kwNodePoolSchedule,
 		&kwNodePoolMntOpt,
+		&kwNodePoolShmMode,
 		&kwNodePoolArray,
 		&kwNodePoolRadosRBDPool,
 		&kwNodePoolRadosRBDNamespace,

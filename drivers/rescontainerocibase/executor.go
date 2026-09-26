@@ -51,7 +51,10 @@ func (e *Executor) EncapCmd(ctx context.Context, args []string, env []string, st
 		interactive = true
 	}
 	args = e.args.ExecCmdArgs(args, env, interactive)
-	cmd := exec.CommandContext(ctx, e.bin, args...)
+	cmd, err := e.command(ctx, args...)
+	if err != nil {
+		return nil, err
+	}
 	if stdin != nil {
 		cmd.Stdin = stdin
 	} else {
@@ -146,17 +149,17 @@ func pidEnv(pid int) ([]string, error) {
 }
 
 func (e *Executor) HasImage(ctx context.Context) (bool, string, error) {
-	var cmd *exec.Cmd
 	a := e.getArgs(e.args.HasImageArgs().Get()...)
 	if ctx != nil {
 		select {
 		case <-ctx.Done():
 			return false, "", ctx.Err()
 		default:
-			cmd = exec.CommandContext(ctx, e.bin, a...)
 		}
-	} else {
-		cmd = exec.Command(e.bin, a...)
+	}
+	cmd, err := e.command(ctx, a...)
+	if err != nil {
+		return false, "", err
 	}
 	e.log().Tracef("call %s %s", e.bin, a)
 	if b, err := cmd.Output(); err != nil {
@@ -180,7 +183,6 @@ func (e *Executor) Inspect(ctx context.Context) (Inspecter, error) {
 // InspectRefresh creates new Inspecter (from inspect command line). It updates
 // e Inspecter cache that may be used Inspect(ctx).
 func (e *Executor) InspectRefresh(ctx context.Context) (Inspecter, error) {
-	var cmd *exec.Cmd
 	a := e.getArgs(e.args.InspectArgs().Get()...)
 	if ctx != nil {
 		select {
@@ -188,10 +190,11 @@ func (e *Executor) InspectRefresh(ctx context.Context) (Inspecter, error) {
 			e.log().Errorf("inspect context done: %s", ctx.Err())
 			return nil, ctx.Err()
 		default:
-			cmd = exec.CommandContext(ctx, e.bin, a...)
 		}
-	} else {
-		cmd = exec.Command(e.bin, a...)
+	}
+	cmd, err := e.command(ctx, a...)
+	if err != nil {
+		return nil, err
 	}
 	e.mutex.Lock()
 	defer e.mutex.Unlock()
@@ -317,13 +320,29 @@ func (e *Executor) doExecRunLog(ctx context.Context, logOutput bool, environ map
 		)
 	}
 
-	if len(environ) > 0 {
+	cred, err := e.credential()
+	if err != nil {
+		return err
+	}
+	if len(environ) > 0 || cred != nil {
 		envL := os.Environ()
 		for k, v := range environ {
 			e.log().Tracef("exec with env %s=xxx", k)
 			envL = append(envL, fmt.Sprintf("%s=%s", k, v))
 		}
+		if cred != nil {
+			envL = append(envL, cred.Env...)
+		}
 		opts = append(opts, command.WithEnv(envL))
+	}
+	if cred != nil {
+		opts = append(opts,
+			command.WithUser(fmt.Sprint(cred.UID)),
+			command.WithGroup(fmt.Sprint(cred.GID)),
+		)
+		if cred.Home != "" {
+			opts = append(opts, command.WithCWD(cred.Home))
+		}
 	}
 
 	if ctx != nil {
@@ -378,7 +397,10 @@ func (e *Executor) doExecRunLogs(ctx context.Context, a ...string) (<-chan []byt
 	cmdArgs := e.getArgs(a...)
 
 	// Create a command
-	cmd := exec.CommandContext(ctx, e.bin, cmdArgs...)
+	cmd, err := e.command(ctx, cmdArgs...)
+	if err != nil {
+		return nil, err
+	}
 
 	stdout, err := cmd.StdoutPipe()
 	if err != nil {

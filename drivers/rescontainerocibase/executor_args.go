@@ -22,6 +22,12 @@ type (
 		// RunArgsCGroupParentDisable disable the "--cgroup-parent" RunArgs setting
 		RunArgsCGroupParentDisable bool
 
+		// WriteResolvConf, when set, writes the resolver of the container
+		// and returns the path of the file, in place of writing it in the var
+		// dir of the resource. An engine run as a user mounts the file as
+		// that user, and the var dir is one only root can enter.
+		WriteResolvConf func(rescontainer.ResolvConf) (string, error)
+
 		// runArgsEnvM is internal store for the environment variables that
 		// must be added to the exec.Cmd Env, during the Executor.Run() call.
 		// It is returned by ExecutorArg.RunCmdEnv() calls.
@@ -325,10 +331,14 @@ func (ea *ExecutorArg) runArgsMounts(ctx context.Context) ([]string, error) {
 	return a, nil
 }
 
+// LogsArgs returns the arguments of the engine command printing the logs of
+// the container.
+//
+// The options come before the name: podman stops reading options at the
+// first argument, and reads the ones after it as more container names.
 func (ea *ExecutorArg) LogsArgs(follow bool, lines int) *args.T {
 	a := args.New()
 	a.Append("container", "logs")
-	a.Append(ea.BT.ContainerName())
 
 	// Add follow flag if requested
 	if follow {
@@ -340,6 +350,7 @@ func (ea *ExecutorArg) LogsArgs(follow bool, lines int) *args.T {
 		a.Append("--tail", fmt.Sprintf("%d", lines))
 	}
 
+	a.Append(ea.BT.ContainerName())
 	return a
 }
 
@@ -365,7 +376,15 @@ func (ea *ExecutorArg) resolvConfMount() (string, error) {
 		ea.BT.Log().Warnf("%d nameservers are named, by cluster.dns and the dns keyword, and a resolver reads the first %d: %s is not written to the container resolv.conf",
 			n, rescontainer.MaxNameservers, strings.Join(resolvConf.Nameservers[rescontainer.MaxNameservers:], ", "))
 	}
-	path, err := rescontainer.WriteResolvConf(filepath.Join(ea.BT.VarDir(), "resolv.conf"), resolvConf)
+	var (
+		path string
+		err  error
+	)
+	if ea.WriteResolvConf != nil {
+		path, err = ea.WriteResolvConf(resolvConf)
+	} else {
+		path, err = rescontainer.WriteResolvConf(filepath.Join(ea.BT.VarDir(), "resolv.conf"), resolvConf)
+	}
 	if err != nil {
 		return "", err
 	}

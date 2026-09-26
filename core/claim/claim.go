@@ -14,6 +14,18 @@
 //	name = backend2
 //	limit = 10
 //
+//	[claim#3]
+//	type = cpu
+//	limit = 800%
+//	default = 50%
+//
+//	[claim#4]
+//	type = memory
+//	limit = 16g
+//	default = 512m
+//
+// A cpu or memory claim names nothing: there is one compute of the cluster,
+// and the claim is on the caps the objects of the namespace run with.
 // The limit is expressed in the unit of the resource, so reading it is left to
 // the package that hands that resource out. What is common is where the claim
 // is declared and how it is found, which is this package.
@@ -40,6 +52,21 @@ import (
 // A namespace whose configuration this node does not hold is read as claiming
 // nothing.
 func Limit(namespace, claimType, name string) (string, bool, error) {
+	return lookup(namespace, claimType, name, "limit")
+}
+
+// Default is the cap a namespace gives the containers of its objects that say
+// none, on a compute claim, and whether it gives one at all.
+//
+// A claim on the cpu or the memory counts the caps of the objects, and a
+// container capped by nothing counts as taking without bound, which no claim
+// admits. The default is what lets a container that says nothing about its
+// caps run in a claimed namespace.
+func Default(namespace, claimType string) (string, bool, error) {
+	return lookup(namespace, claimType, "", "default")
+}
+
+func lookup(namespace, claimType, name, option string) (string, bool, error) {
 	p := naming.Path{Namespace: namespace, Kind: naming.KindNscfg, Name: "namespace"}
 	configFile := p.ConfigFile()
 	if !file.Exists(configFile) {
@@ -61,13 +88,13 @@ func Limit(namespace, claimType, name string) (string, bool, error) {
 		if cfg.Get(key.New(section, "name")) != name {
 			continue
 		}
-		limit := cfg.Get(key.New(section, "limit"))
-		if limit == "" {
+		value := cfg.Get(key.New(section, option))
+		if value == "" {
 			// A claim naming no limit says the namespace uses the resource,
 			// not that it is capped on it.
 			return "", false, nil
 		}
-		return limit, true, nil
+		return value, true, nil
 	}
 	return "", false, nil
 }

@@ -80,13 +80,26 @@ func TestDeniedByValue(t *testing.T) {
 		{"DEFAULT", "monitor_action", "reboot", true},
 		{"DEFAULT", "monitor_action", "crash", true},
 
-		{"container#1", "volume_mounts", "/vol/data:/data:rw", false},
-		{"container#1", "volume_mounts", "_/etc:/etc:ro", true},
-		{"container#1", "volume_mounts", "/vol/a:/a ../../etc:/etc", true},
-		{"container#1", "volume_mounts", "/vol/a/../../etc:/etc", true},
+		{"container#1", "volume_mounts", "data:/data:rw", false},
+		{"container#1", "volume_mounts", "data/html:/usr/share/nginx/html:ro", false},
+		{"container#1", "volume_mounts", "/etc:/etc:ro", true},
+		{"container#1", "volume_mounts", "/srv/data:/data:rw", true},
+		{"container#1", "volume_mounts", "a:/a ../../etc:/etc", true},
+		{"container#1", "volume_mounts", "a/../../etc:/etc", true},
 
 		{"volume#1", "install", "/etc/nginx.conf from https://example.com/c source https://example.com/c", false},
 		{"volume#1", "install", "/etc/nginx.conf source /etc/shadow", true},
+		{"volume#1", "install", "/bin/sh from ./cfg/c key sh mode 4755 user 0", true},
+		{"volume#1", "install", "/srv/ mode 2775", true},
+		{"volume#1", "install", "/srv/ mode 1777", false},
+		{"volume#1", "install", "/etc/nginx.conf from ./cfg/c mode 0640 user 101", false},
+		{"volume#1", "perm", "0644", false},
+		{"volume#1", "perm", "644", false},
+		{"volume#1", "perm", "1777", false},
+		{"volume#1", "perm", "2755", true},
+		{"volume#1", "perm", "4755", true},
+		{"volume#1", "dirperm", "6755", true},
+		{"volume#1", "dirperm", "0755", false},
 	}
 	for _, tc := range cases {
 		err := Denied(noGrant, naming.KindSvc, tc.section, tc.option, tc.value, none)
@@ -147,7 +160,7 @@ func TestDocSaysWhatTheRuleEnforces(t *testing.T) {
 	assert.Equal(t, "Requires the root grant.", Doc(naming.KindSvc, "ip", "name"))
 	assert.Equal(t, "", Doc(naming.KindSvc, "ip", "network"))
 	assert.Equal(t, "Host path mounts in container require the root grant.", Doc(naming.KindSvc, "container", "volume_mounts"))
-	assert.Equal(t, "A server-local source uri requires the root grant.", Doc(naming.KindSvc, "volume", "install"))
+	assert.Equal(t, "A server-local source uri, or a setuid or setgid mode, requires the root grant.", Doc(naming.KindSvc, "volume", "install"))
 	assert.Equal(t, "Requires the prioritizer grant.", Doc(naming.KindSvc, "DEFAULT", "priority"))
 	assert.Equal(t, "Triggers require the root grant.", Doc(naming.KindSvc, "container", "pre_start"))
 	assert.Equal(t, "This driver group requires the root grant.", Doc(naming.KindSvc, "disk", "name"))
@@ -206,7 +219,7 @@ func TestDeniedWithoutASectionRefuses(t *testing.T) {
 	// check that could not run is not a check that passed.
 	assert.Error(t, Denied(noGrant, naming.KindSvc, "ip#1", "type", "netns", nil))
 	assert.Error(t, Denied(noGrant, naming.KindSvc, "ip#1", "type", "cni", nil))
-	assert.Error(t, Denied(noGrant, naming.KindSvc, "container#1", "volume_mounts", "/vol/a:/a", nil))
+	assert.Error(t, Denied(noGrant, naming.KindSvc, "container#1", "volume_mounts", "a:/a", nil))
 
 	// A rule that reads only the keyword still answers.
 	assert.NoError(t, Denied(noGrant, naming.KindSvc, "container#1", "image", "nginx", nil))

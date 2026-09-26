@@ -25,6 +25,7 @@ import (
 	"github.com/opensvc/om3/v3/core/resource"
 	"github.com/opensvc/om3/v3/core/volsignal"
 	"github.com/opensvc/om3/v3/core/xconfig"
+	"github.com/opensvc/om3/v3/util/confined"
 	"github.com/opensvc/om3/v3/util/converters"
 	"github.com/opensvc/om3/v3/util/file"
 	"github.com/opensvc/om3/v3/util/key"
@@ -1031,11 +1032,11 @@ func (t *DataRecv) InstallDataByKind(kind naming.Kind) (bool, error) {
 	return changed, nil
 }
 
-func (t *DataRecv) chmod(p string, mode *os.FileMode) error {
+func (t *DataRecv) chmod(fs confined.FS, p string, mode *os.FileMode) error {
 	if mode == nil {
 		return nil
 	}
-	return os.Chmod(p, *mode)
+	return fs.Chmod(p, *mode)
 }
 
 func (t *DataRecv) uid(s string) (int, error) {
@@ -1064,7 +1065,8 @@ func (t *DataRecv) gid(s string) (int, error) {
 	return 0, fmt.Errorf("group %s is not numeric and not resolved", s)
 }
 
-func (t *DataRecv) chown(p string, usr, grp string, info os.FileInfo) error {
+// chown changes the owner of p, never of what a link at p leads to.
+func (t *DataRecv) chown(fs confined.FS, p string, usr, grp string, info os.FileInfo) error {
 	uid, err := t.uid(usr)
 	if err != nil {
 		return err
@@ -1080,14 +1082,14 @@ func (t *DataRecv) chown(p string, usr, grp string, info os.FileInfo) error {
 
 			if uid != currentUID || gid != currentGID {
 				t.to.Log().Infof("change %s owner from %d:%d to %d:%d", p, currentUID, currentGID, uid, gid)
-				return os.Chown(p, uid, gid)
+				return fs.Lchown(p, uid, gid)
 			} else {
 				return nil
 			}
 		}
 	}
 
-	return os.Chown(p, uid, gid)
+	return fs.Lchown(p, uid, gid)
 }
 
 func (t *DataRecv) statusDir(path string, head string, perm os.FileMode, user, group string) {
@@ -1104,7 +1106,12 @@ func (t *DataRecv) statusDir(path string, head string, perm os.FileMode, user, g
 		return
 	}
 
-	info, err := os.Stat(p)
+	tree, err := confined.Open(head)
+	if err != nil {
+		return
+	}
+	defer func() { _ = tree.Close() }()
+	info, err := tree.Lstat(p)
 	switch {
 	case os.IsNotExist(err):
 		t.to.StatusLog().Warn("%s does not exist", p)
@@ -1140,19 +1147,31 @@ func (t *DataRecv) installRootDir(path string, head string, user, group string) 
 	return nil
 }
 
+// installDir makes a directory of the head, and gives it its owner and
+// permissions.
+//
+// It stays in the head: the containers mounting the volume write there too,
+// and a link they plant must not lead a mkdir, a chmod or a chown of the
+// agent onto a directory of the node. A link where the directory goes is not
+// a directory, and is refused as one.
 func (t *DataRecv) installDir(path string, head string, perm os.FileMode, user, group string) error {
 	if head == "" {
 		return fmt.Errorf("refuse to install dir %s in /", path)
 	}
+	tree, err := confined.Open(head)
+	if err != nil {
+		return err
+	}
+	defer func() { _ = tree.Close() }()
 	p := filepath.Join(head, path)
-	info, err := os.Stat(p)
+	info, err := tree.Lstat(p)
 	switch {
 	case os.IsNotExist(err):
 		t.to.Log().Infof("install directory %s with owner %s:%s and perm %s", p, user, group, perm)
-		if err := os.MkdirAll(p, perm); err != nil {
+		if err := tree.MkdirAll(p, perm); err != nil {
 			return err
 		}
-		if err := t.chown(p, user, group, nil); err != nil {
+		if err := t.chown(tree, p, user, group, nil); err != nil {
 			return err
 		}
 	case err != nil:
@@ -1163,11 +1182,11 @@ func (t *DataRecv) installDir(path string, head string, perm os.FileMode, user, 
 		}
 		if info.Mode().Perm() != perm {
 			t.to.Log().Infof("change directory %s permissions from %s to %s", p, info.Mode().Perm(), perm)
-			if err := t.chmod(p, &perm); err != nil {
+			if err := t.chmod(tree, p, &perm); err != nil {
 				return err
 			}
 		}
-		if err := t.chown(p, user, group, info); err != nil {
+		if err := t.chown(tree, p, user, group, info); err != nil {
 			return err
 		}
 	}
@@ -1189,6 +1208,57 @@ func (t *DataRecv) installDirs() error {
 		}
 	}
 	return nil
+}
+
+// specialBits are the mode bits that make a file run as its owner or its
+// group, rather than as whoever runs it.
+const specialBits = 0o6000
+
+// ModeHasSpecialBits reports whether a perm or dirperm value asks for the
+// setuid or the setgid bit.
+//
+// A file installed in a volume with one of them, owned by an account of the
+// node, runs as that account for whoever executes it: on the node, where the
+// volume is mounted, or in a container mounting the volume.
+func ModeHasSpecialBits(s string) bool {
+	mode, err := converters.FileMode.Convert(s)
+	if err != nil {
+		return false
+	}
+	m, ok := mode.(*os.FileMode)
+	if !ok || m == nil {
+		return false
+	}
+	return *m&(os.ModeSetuid|os.ModeSetgid) != 0
+}
+
+// TextHasSpecialMode reports whether an install text asks for the setuid or
+// the setgid bit on one of the files or directories it installs.
+//
+// Such a mode is not applied today: the mode word is read as permission bits
+// alone. It is refused anyway, so a mode that would be applied once the
+// grammar honours the bits is not one a user holding no root grant has
+// already written.
+func TextHasSpecialMode(s string) bool {
+	text, _ := shlex.Split(s, true)
+	for _, line := range Split(text) {
+		var word string
+		words := line
+		for {
+			word, words = Pop(words)
+			if word == "" {
+				break
+			}
+			if word != "mode" && word != "perm" {
+				continue
+			}
+			word, words = Pop(words)
+			if mode, err := strconv.ParseUint(word, 8, 32); err == nil && mode&specialBits != 0 {
+				return true
+			}
+		}
+	}
+	return false
 }
 
 // TextHasLocalSource reports whether an install text names a source the server

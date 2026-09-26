@@ -1,0 +1,4 @@
+The group podman runs a rootless container as, in place of the primary group
+of rootless_user.
+
+It has no effect without rootless_user.

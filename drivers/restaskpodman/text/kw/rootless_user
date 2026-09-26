@@ -1,0 +1,38 @@
+The unprivileged user podman runs the task container as, making it a rootless
+container. Every podman command of the container runs as that user, so the
+container, its image and its store are the user's, and its processes are
+mapped to the subordinate ids of the user.
+
+The node must be set up for it, and the container refuses to start until it
+is, naming what is missing:
+
+* the systemd instance of the user must run without a login session, which
+  `loginctl enable-linger <user>` makes it do,
+
+* the user must have subordinate ids in `/etc/subuid` and `/etc/subgid`.
+
+The pg_* keywords cap the container in the subtree of the cgroup hierarchy
+systemd delegates to the user, where podman places it. A capping whose
+controller that subtree is not delegated, like pg_cpus and pg_blkio_weight
+under a default `user@.service`, is reported as not applied.
+
+The resolver of the container is written under the runtime directory of the
+user, which podman can read, rather than in the var dir of the resource.
+
+A rootless container cannot be privileged, and its volume mounts must be
+readable by the user or its subordinate ids: see the userns keyword for
+mapping the user into the container.
+
+The ids of the container run as other ids of the host: its root as the user,
+and its ids from 1 as the subordinate ids of the user. A file the container
+reads as one of its ids is owned, on the host, by the id the reference
+`{<rid>.uid.<id>}` or `{<rid>.gid.<id>}` answers, `{<rid>.uid}` being its root.
+They answer the same ids for a rootful container, which runs its ids as
+themselves, so an install naming its owners by reference holds either way:
+
+    install = /etc/nginx/conf.d/ from ./cfg/web user {container#1.uid.101} group {container#1.gid.101}
+
+A container given a userns mapping answers no id: podman makes that mapping
+when the container starts.
+
+Empty, the default, runs the container as root.

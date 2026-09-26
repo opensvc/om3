@@ -7,6 +7,7 @@ import (
 
 	"github.com/labstack/echo/v4"
 
+	"github.com/opensvc/om3/v3/core/claim"
 	"github.com/opensvc/om3/v3/core/client"
 	"github.com/opensvc/om3/v3/core/clusternode"
 	"github.com/opensvc/om3/v3/core/ipam"
@@ -54,7 +55,7 @@ func (a *DaemonAPI) seedClaimGrants(ctx echo.Context, speaker string) {
 	}
 	log := LogHandler(ctx, "seedClaimGrants")
 	now := time.Now()
-	pools, networks := 0, 0
+	pools, networks, computes := 0, 0, 0
 	asked := 0
 	local := make(map[string]int64)
 	localCharges := make(map[string]map[string]int64)
@@ -94,9 +95,15 @@ func (a *DaemonAPI) seedClaimGrants(ctx echo.Context, speaker string) {
 			log.Tracef("claims: ask %s what addresses it holds: %s", nodename, err)
 			continue
 		}
+		computeCount, err := a.seedComputeGrants(ctx, c, nodename, now)
+		if err != nil {
+			log.Tracef("claims: ask %s what compute its objects claim: %s", nodename, err)
+			continue
+		}
 		asked++
 		pools += poolCount
 		networks += networkCount
+		computes += computeCount
 	}
 	if asked < peers {
 		// A rebuild that did not reach every peer is not one: what it missed
@@ -109,7 +116,7 @@ func (a *DaemonAPI) seedClaimGrants(ctx echo.Context, speaker string) {
 	// Said whatever it found, because it is said once for as long as this
 	// node answers the claims of the cluster, and what it found is how far
 	// behind its reading was when it took them over.
-	log.Infof("claims: %d volume and %d address grants rebuilt from the peers", pools, networks)
+	log.Infof("claims: %d volume, %d address and %d compute grants rebuilt from the peers", pools, networks, computes)
 }
 
 // seedPoolGrants records what a peer holds of a pool that this node has not
@@ -143,6 +150,49 @@ func (a *DaemonAPI) seedPoolGrants(ctx echo.Context, c *client.T, local map[stri
 				continue
 			}
 			poolClaimGrants.Seed(p.Namespace, chargedPool, item.Path, chargedSize, now)
+		}
+	}
+	return n, nil
+}
+
+// seedComputeGrants records what the objects of a peer claim of the compute
+// that this node has not seen yet, and answers how many.
+//
+// A peer is asked about its own instances only: what it publishes of its own
+// objects has no lag there, and what it knows of the others is the reading
+// this node has too.
+func (a *DaemonAPI) seedComputeGrants(ctx echo.Context, c *client.T, nodename string, now time.Time) (int, error) {
+	resp, err := c.GetInstancesWithResponse(ctx.Request().Context(), &api.GetInstancesParams{Node: &nodename})
+	if err != nil {
+		return 0, err
+	}
+	if resp.JSON200 == nil {
+		return 0, fmt.Errorf("unexpected status code %d", resp.StatusCode())
+	}
+	var n int
+	for _, item := range resp.JSON200.Items {
+		if item.Meta.Node != nodename {
+			continue
+		}
+		cfg := item.Data.Config
+		if cfg == nil || cfg.ActorConfig == nil || len(cfg.Claims) == 0 {
+			continue
+		}
+		p, err := naming.ParsePath(item.Meta.Object)
+		if err != nil {
+			continue
+		}
+		local := configuredComputeClaims(p)
+		for claimType, v := range cfg.Claims {
+			if v == claim.Unbounded || v <= local[claimType] {
+				continue
+			}
+			grants, ok := computeClaimGrants[claimType]
+			if !ok {
+				continue
+			}
+			grants.Seed(p.Namespace, claimType, p.String(), v, now)
+			n++
 		}
 	}
 	return n, nil
