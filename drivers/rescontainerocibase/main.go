@@ -812,6 +812,33 @@ func (t *BT) Unprovision(_ context.Context) error {
 	return nil
 }
 
+// UnprovisionStop implements resource.UnprovisionStoper: an unprovision
+// stops the container, and removes it when it is kept after a stop.
+//
+// A container is made again by the next start, from the configuration, so a
+// kept one holds nothing an unprovision has to keep but what the container
+// wrote outside its volumes, which unprovisioning is the asking to lose. A
+// resource whose unprovision is disabled keeps it.
+func (t *BT) UnprovisionStop(ctx context.Context, _ bool) error {
+	if err := t.Stop(ctx); err != nil {
+		return err
+	}
+	if t.IsUnprovisionDisabled() || t.executer == nil {
+		return nil
+	}
+	inspect, err := t.executer.InspectRefresh(ctx)
+	if err != nil {
+		return fmt.Errorf("inspect: %w", err)
+	}
+	if inspect == nil || !inspect.Defined() {
+		return nil
+	}
+	t.Log().Infof("remove the kept container %s", t.ContainerName())
+	if err := t.executer.Remove(ctx); err != nil {
+		return err
+	}
+	return t.unstageVolumeMounts()
+}
 
 func (t *BT) WithExecuter(c Executer) *BT {
 	t.executer = c
