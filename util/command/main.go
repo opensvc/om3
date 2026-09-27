@@ -36,6 +36,7 @@ type (
 		label        string
 		timeout      time.Duration
 		waitDelay    time.Duration
+		processGroup bool
 		onStdoutLine func(string)
 		onStderrLine func(string)
 		okExitCodes  []int
@@ -214,6 +215,22 @@ func (t *T) Start() (err error) {
 	// and starts counting only once the process has exited, so it costs a
 	// well-behaved command nothing.
 	t.cmd.WaitDelay = t.waitDelay
+	if t.processGroup {
+		// The command runs in a process group of its own, and a cancel
+		// kills the group rather than the command alone: a shell script
+		// timing out leaves none of the commands it started running, and
+		// holding the output the wait is on.
+		if t.cmd.SysProcAttr == nil {
+			t.cmd.SysProcAttr = &syscall.SysProcAttr{}
+		}
+		t.cmd.SysProcAttr.Setpgid = true
+		t.cmd.Cancel = func() error {
+			if t.cmd.Process == nil {
+				return nil
+			}
+			return syscall.Kill(-t.cmd.Process.Pid, syscall.SIGKILL)
+		}
+	}
 
 	t.started = true
 	if err = t.cmd.Start(); err != nil {

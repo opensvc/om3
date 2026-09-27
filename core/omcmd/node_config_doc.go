@@ -7,11 +7,11 @@ import (
 
 	"github.com/opensvc/om3/v3/core/commoncmd"
 	"github.com/opensvc/om3/v3/core/doc"
-	"github.com/opensvc/om3/v3/core/keywords"
 	"github.com/opensvc/om3/v3/core/naming"
 	"github.com/opensvc/om3/v3/core/object"
 	"github.com/opensvc/om3/v3/core/output"
 	"github.com/opensvc/om3/v3/core/rawconfig"
+	"github.com/opensvc/om3/v3/daemon/api"
 )
 
 type (
@@ -46,31 +46,31 @@ func NewCmdNodeConfigDoc() *cobra.Command {
 
 func (t *CmdNodeConfigDoc) Run() error {
 	var path naming.Path
-	var driver, section, option *string
+	var driver *string
 	if t.Driver != "" {
 		driver = &t.Driver
 	}
-	if t.Keyword != "" {
-		index := keywords.ParseIndex(t.Keyword)
-		section = &index[0]
-		option = &index[1]
-	}
 	store := object.NodeKeywordStore
-	store, err := doc.FilterKeywordStore(store, driver, section, option, path, func() (doc.ConfigProvider, error) {
-		var (
-			i   any
-			err error
-		)
-		i, err = object.NewNode(object.WithVolatile(true))
+	items, err := doc.FindKeywords(t.Keyword, driver != nil, func(section, option *string) (api.KeywordDefinitionItems, error) {
+		store, err := doc.FilterKeywordStore(store, driver, section, option, path, func() (doc.ConfigProvider, error) {
+			var (
+				i   any
+				err error
+			)
+			i, err = object.NewNode(object.WithVolatile(true))
+			if err != nil {
+				return nil, err
+			}
+			return i.(doc.ConfigProvider), nil
+		})
 		if err != nil {
 			return nil, err
 		}
-		return i.(doc.ConfigProvider), nil
+		return doc.ConvertKeywordStore(store), nil
 	})
 	if err != nil {
 		return err
 	}
-	items := doc.ConvertKeywordStore(store)
 	return output.Renderer{
 		HumanRenderer: func() string {
 			commoncmd.NodeDoc(os.Stdout, items, path.Kind, t.Driver, t.Keyword, t.Depth)

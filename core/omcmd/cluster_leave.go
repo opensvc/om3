@@ -43,6 +43,7 @@ type (
 		CredentialFile string
 
 		peerClient *client.T
+		peerToken  string
 		localhost  string
 		evReader   event.ReadCloser
 	}
@@ -119,6 +120,7 @@ func (t *CmdClusterLeave) run() (err error) {
 		}
 	}
 
+	t.peerToken = tk
 	t.peerClient, err = client.New(
 		client.WithURL(daemonenv.HTTPNodeURL(t.APINode)),
 		client.WithBearer(tk),
@@ -267,7 +269,18 @@ func (t *CmdClusterLeave) setEvReader(ctx context.Context, duration time.Duratio
 		"LeaveIgnored,candidate_node=" + t.localhost,
 	}
 
-	getEvents := t.peerClient.NewGetEvents().
+	// The stream has a client of its own, with no timeout: a client timeout
+	// bounds the whole answer, the body read included, and would cut the
+	// stream after it. The context bounds it instead.
+	streamClient, err := client.New(
+		client.WithURL(daemonenv.HTTPNodeURL(t.APINode)),
+		client.WithBearer(t.peerToken),
+		client.WithTimeout(0),
+	)
+	if err != nil {
+		return err
+	}
+	getEvents := streamClient.NewGetEvents().
 		SetRelatives(false).
 		SetFilters(filters)
 

@@ -1,0 +1,7 @@
+The permissions of the root of the tmpfs, in octal, as `700` or `1777`.
+
+A tmpfs hides the directory it is mounted on, so the permissions of that
+directory, which the perm keyword sets, are not the ones its users see: these
+are.
+
+It overrides a `mode=` option of mnt_opt, which is then ignored.

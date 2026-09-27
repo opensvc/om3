@@ -116,7 +116,19 @@ func (t *CmdClusterJoin) run() error {
 	ctx, cancel := context.WithTimeout(context.Background(), t.Timeout)
 	defer cancel()
 
-	evReader, err := cli.NewGetEvents().
+	// The stream has a client of its own, with no timeout: a client timeout
+	// bounds the whole answer, the body read included, and would cut the
+	// stream after it. The context bounds it instead.
+	streamClient, err := client.New(
+		client.WithURL(url),
+		client.WithRootCa(certFile),
+		client.WithBearer(t.token),
+		client.WithTimeout(0),
+	)
+	if err != nil {
+		return err
+	}
+	evReader, err := streamClient.NewGetEvents().
 		SetRelatives(false).
 		SetFilters(filters).
 		SetDuration(t.Timeout).

@@ -49,6 +49,7 @@ func init() {
 		newCmdObjectSync(kind),
 		cmdObjectValidate,
 		newCmdObjectVolume(kind),
+		commoncmd.NewCmdObjectCap(kind),
 		newCmdObjectAbort(kind),
 		commoncmd.NewCmdObjectClear(kind),
 		newCmdObjectCreate(kind),

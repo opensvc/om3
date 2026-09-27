@@ -1,4 +1,4 @@
-Allow service process to bind only the specified memory nodes.
+The memory nodes the processes of the group may allocate from.
 
 Memory nodes are specified as list or range : `0,1,2` or `0-2`.
 

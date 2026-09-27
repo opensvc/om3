@@ -16,6 +16,8 @@ import (
 	_ "github.com/opensvc/om3/v3/drivers/arraypure"
 	_ "github.com/opensvc/om3/v3/drivers/arraysymmetrix"
 	_ "github.com/opensvc/om3/v3/drivers/arrayxtremio"
+	_ "github.com/opensvc/om3/v3/drivers/claimcpu"
+	_ "github.com/opensvc/om3/v3/drivers/claimmemory"
 	_ "github.com/opensvc/om3/v3/drivers/claimnetwork"
 	_ "github.com/opensvc/om3/v3/drivers/claimpool"
 	_ "github.com/opensvc/om3/v3/drivers/pooldirectory"

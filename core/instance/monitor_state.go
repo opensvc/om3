@@ -52,6 +52,10 @@ const (
 	MonitorStateResizeStage1
 	MonitorStateResizeStage2
 
+	MonitorStateCapProgress
+	MonitorStateCapFailure
+	MonitorStateCapSuccess
+
 	// wait states
 	MonitorStateWaitChildren
 	MonitorStateWaitParents
@@ -72,6 +76,7 @@ var (
 	StringToMonitorState map[string]MonitorState
 
 	MonitorStatesFailure = []MonitorState{
+		MonitorStateCapFailure,
 		MonitorStateDeleteFailure,
 		MonitorStateFreezeFailure,
 		MonitorStateProvisionFailure,
@@ -139,6 +144,9 @@ func init() {
 		{MonitorStateResizeStage0, "resized:0"},
 		{MonitorStateResizeStage1, "resized:1"},
 		{MonitorStateResizeStage2, "resized:2"},
+		{MonitorStateCapProgress, "capping"},
+		{MonitorStateCapFailure, "cap failed"},
+		{MonitorStateCapSuccess, "capped"},
 
 		// wait states
 		{MonitorStateWaitChildren, "wait children"},

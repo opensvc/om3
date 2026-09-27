@@ -8,9 +8,10 @@ import (
 
 	"github.com/opensvc/om3/v3/core/instance"
 	"github.com/opensvc/om3/v3/core/naming"
+	"github.com/opensvc/om3/v3/daemon/api"
 )
 
-func (a *DaemonAPI) PostObjectConfigFile(ctx echo.Context, namespace string, kind naming.Kind, name string) error {
+func (a *DaemonAPI) PostObjectConfigFile(ctx echo.Context, namespace string, kind naming.Kind, name string, params api.PostObjectConfigFileParams) error {
 	log := LogHandler(ctx, "PostObjectConfigFile")
 
 	// A namespace configuration is the namespace itself, so creating one is
@@ -30,6 +31,13 @@ func (a *DaemonAPI) PostObjectConfigFile(ctx echo.Context, namespace string, kin
 		return JSONProblemf(ctx, http.StatusConflict, "Conflict", "Use the PUT method instead of POST to update the object config")
 	}
 
+	// Read before anything is checked against it: the write lands only
+	// over this file.
+	base, err := readConfigBase(p)
+	if err != nil {
+		return JSONProblemf(ctx, http.StatusInternalServerError, "Read config", "%s", err)
+	}
+
 	// Read and parse the config body to validate RBAC rules
 	body, err := io.ReadAll(ctx.Request().Body)
 	if err != nil {
@@ -44,5 +52,5 @@ func (a *DaemonAPI) PostObjectConfigFile(ctx echo.Context, namespace string, kin
 
 	log.Tracef("%s: rbac passed", p)
 
-	return a.writeObjectConfigFile(ctx, p, body)
+	return a.writeObjectConfigFile(ctx, p, body, base, params.Wait)
 }

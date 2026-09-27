@@ -94,12 +94,19 @@ func (t *CmdClusterEvict) run() error {
 	// before we get the response.
 	var evReader event.ReadCloser
 	if t.Wait {
+		// The stream has a client of its own, with no timeout: a client
+		// timeout bounds the whole answer, the body read included, and
+		// would cut the stream after it. The context bounds it instead.
+		streamClient, err := client.New(client.WithTimeout(0))
+		if err != nil {
+			return err
+		}
 		filters := []string{
 			"LeaveSuccess,removed_node=" + t.Node,
 			"LeaveError,candidate_node=" + t.Node,
 			"LeaveIgnored,candidate_node=" + t.Node,
 		}
-		evReader, err = c.NewGetEvents().
+		evReader, err = streamClient.NewGetEvents().
 			SetRelatives(false).
 			SetFilters(filters).
 			SetDuration(t.Timeout).

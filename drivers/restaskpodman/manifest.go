@@ -30,6 +30,22 @@ var (
 			Example:  "container#0",
 			Text:     keywords.NewText(fs, "text/kw/userns"),
 		},
+		{
+			Option:   "rootless_user",
+			Attr:     "RootlessUser",
+			Scopable: true,
+			Example:  "opensvc",
+			Since:    "v3.0.0-rc42",
+			Text:     keywords.NewText(fs, "text/kw/rootless_user"),
+		},
+		{
+			Option:   "rootless_group",
+			Attr:     "RootlessGroup",
+			Scopable: true,
+			Example:  "opensvc",
+			Since:    "v3.0.0-rc42",
+			Text:     keywords.NewText(fs, "text/kw/rootless_group"),
+		},
 	}
 )
 

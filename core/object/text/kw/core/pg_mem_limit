@@ -1,4 +1,4 @@
-Ensures the service does not use more than specified memory (in bytes).
+The memory the processes of the group may use, in bytes.
 
 The Out-Of-Memory killer is triggered in case of tresspassing.
 

@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/opensvc/om3/v3/core/client"
 	"github.com/opensvc/om3/v3/core/commoncmd"
 	"github.com/opensvc/om3/v3/core/naming"
 	"github.com/opensvc/om3/v3/core/objectselector"
@@ -20,6 +19,8 @@ type (
 		Delete []string
 		Set    []string
 		Unset  []string
+		Wait   bool
+		Time   time.Duration
 	}
 )
 
@@ -29,19 +30,22 @@ func (t *CmdObjectConfigUpdate) Run(kind string) error {
 		return nil
 	}
 	mergedSelector := commoncmd.MergeSelector("", t.ObjectSelector, kind, "")
-	c, err := client.New()
+	c, ctx, cancel, err := commoncmd.ConfigWaitClient(t.Wait, t.Time)
 	if err != nil {
 		return err
 	}
+	defer cancel()
 	sel := objectselector.New(mergedSelector, objectselector.WithClient(c))
 	paths, err := sel.MustExpand()
 	if err != nil {
 		return err
 	}
 
-	ctx := context.Background()
-	ctx, cancel := context.WithTimeout(ctx, time.Second*5)
-	defer cancel()
+	if !t.Wait {
+		var cancelUpdate context.CancelFunc
+		ctx, cancelUpdate = context.WithTimeout(ctx, time.Second*5)
+		defer cancelUpdate()
+	}
 
 	errC := make(chan error)
 	doneC := make(chan string)
@@ -57,31 +61,22 @@ func (t *CmdObjectConfigUpdate) Run(kind string) error {
 			params.Set = &t.Set
 			params.Unset = &t.Unset
 			params.Delete = &t.Delete
-			response, err := c.PatchObjectConfigWithResponse(ctx, p.Namespace, p.Kind, p.Name, &params)
+			if t.Wait {
+				wait := t.Time.String()
+				params.Wait = &wait
+			}
+			changed, err := commoncmd.PatchObjectConfig(ctx, c, p, params)
 			if err != nil {
 				errC <- err
 				return
 			}
-			switch response.StatusCode() {
-			case 200:
-				if !noPrefix {
-					prefix = path.String() + ": "
-				}
-				if response.JSON200.IsChanged {
-					fmt.Printf("%scommitted\n", prefix)
-				} else {
-					fmt.Printf("%sunchanged\n", prefix)
-				}
-			case 400:
-				errC <- fmt.Errorf("%s: %s", p, *response.JSON400)
-			case 401:
-				errC <- fmt.Errorf("%s: %s", p, *response.JSON401)
-			case 403:
-				errC <- fmt.Errorf("%s: %s", p, *response.JSON403)
-			case 500:
-				errC <- fmt.Errorf("%s: %s", p, *response.JSON500)
-			default:
-				errC <- fmt.Errorf("%s: unexpected response: %s", p, response.Status())
+			if !noPrefix {
+				prefix = p.String() + ": "
+			}
+			if changed {
+				fmt.Printf("%scommitted\n", prefix)
+			} else {
+				fmt.Printf("%sunchanged\n", prefix)
 			}
 		}(path)
 	}

@@ -1,0 +1,11 @@
+The most cpu the objects of this namespace may be capped to, cluster-wide, in
+the pg_cpu_quota notation: 800% or 100%@8 is eight cpus.
+
+An object claims what its processes are capped to, on every instance it may
+run at once: one for a failover object, its flex_target for a flex one, plus
+the standby resources of the other instances. A configuration write taking
+the namespace over the limit is refused, and so is a process capped by
+nothing, which takes what it finds: give the containers a default with the
+default keyword of this claim.
+
+The cpus of a node are not a quantity of the cluster, so @all is refused.

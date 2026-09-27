@@ -13,9 +13,13 @@ func (a *DaemonAPI) PutClusterConfigFile(ctx echo.Context) error {
 	if v, err := assertRoot(ctx); !v {
 		return err
 	}
+	base, err := readConfigBase(naming.Cluster)
+	if err != nil {
+		return JSONProblemf(ctx, http.StatusInternalServerError, "Read config", "%s", err)
+	}
 	body, err := io.ReadAll(ctx.Request().Body)
 	if err != nil {
 		return JSONProblemf(ctx, http.StatusInternalServerError, "Read body", "%s", err)
 	}
-	return a.writeObjectConfigFile(ctx, naming.Cluster, body)
+	return a.writeObjectConfigFile(ctx, naming.Cluster, body, base, nil)
 }

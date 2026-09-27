@@ -1,0 +1,5 @@
+The permissions of the root of the volumes the pool makes, in octal, as `700`
+or `1777`.
+
+A volume is written with it as the mode keyword of its tmpfs, where it stays
+when the pool is changed afterwards.

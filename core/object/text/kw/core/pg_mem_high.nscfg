@@ -1,0 +1,11 @@
+The memory the processes of every object of this namespace, taken together,
+may use before the kernel slows them down, reclaiming their memory and
+throttling their allocations, in bytes.
+
+Unlike `pg_mem_limit`, reaching it does not wake the Out-Of-Memory killer: a
+namespace above it keeps running, slower, while the kernel reclaims. Only the
+unified cgroup hierarchy has it.
+
+Setting this keyword to `default` puts the capping back where a node that
+never capped anything leaves it. Removing the keyword does not: what was
+written stays written, whether om wrote it or something else did.

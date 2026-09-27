@@ -44,6 +44,9 @@ type (
 		// m is the grants of a namespace on a pool, by the object they were
 		// granted for.
 		m map[string]map[string]Grant
+
+		// format says a quantity in the words of its unit, for a refusal.
+		format func(int64) string
 	}
 )
 
@@ -52,7 +55,17 @@ func NewGrants(ttl time.Duration) *Grants {
 	return &Grants{
 		ttl: ttl,
 		m:   make(map[string]map[string]Grant),
+		format: func(v int64) string {
+			return sizeconv.BSizeCompact(float64(v))
+		},
 	}
+}
+
+// WithFormat has the refusals say the quantities with the function given,
+// for a table rationing something other than bytes.
+func (t *Grants) WithFormat(format func(int64) string) *Grants {
+	t.format = format
+	return t
 }
 
 // Fits says whether the namespace may have an object hold to bytes of a pool,
@@ -126,9 +139,9 @@ func (t *Grants) fits(namespace, poolName, path string, to, limit int64, held ma
 		current := held[path]
 		return false, fmt.Sprintf("the %s namespace may claim %s of it and already claims %s, so it cannot claim %s more",
 			namespace,
-			sizeconv.BSizeCompact(float64(limit)),
-			sizeconv.BSizeCompact(float64(total-to+current)),
-			sizeconv.BSizeCompact(float64(to-current)))
+			t.format(limit),
+			t.format(total-to+current),
+			t.format(to-current))
 	}
 	if !record || to <= 0 {
 		// A lookup asking for nothing takes nothing, and a grant of nothing

@@ -22,14 +22,44 @@ type (
 		Mems          string
 		CPUShares     string
 		CPUQuota      string
+		CPUBurst      string
 		MemOOMControl string
 		MemLimit      string
+		MemHigh       string
+		PidsMax       string
 		VMemLimit     string
 		MemSwappiness string
 		BlockIOWeight string
-		applied       bool
-		reset         bool
-		log           *plog.Logger
+
+		// Delegation, when set, places the group under a subtree of the
+		// hierarchy delegated to an unprivileged user, rather than at the
+		// root. The ID stays the one the configuration gives: it is what
+		// orders the groups and what a reset is scoped by, and it is the
+		// same group of the same object wherever it lives.
+		Delegation *Delegation
+
+		applied bool
+		reset   bool
+		log     *plog.Logger
+	}
+
+	// Delegation is a subtree of the unified hierarchy delegated to an
+	// unprivileged user, the way systemd delegates user@<uid>.service to
+	// the systemd instance of that user.
+	//
+	// A group made under it is owned by that user, so an engine running as
+	// them can create its own groups inside it: that is what lets a rootless
+	// container be placed in the group om caps. The cappings themselves are
+	// written by om, in files the user is not given, so they hold against
+	// the user as they hold against the container.
+	Delegation struct {
+		// Root is the delegated subtree, relative to the unified mount,
+		// as /user.slice/user-1001.slice/user@1001.service.
+		Root string
+
+		// UID and GID own the groups made under Root.
+		UID int
+		GID int
 	}
 	Mgr struct {
 		mu        sync.Mutex
@@ -73,18 +103,72 @@ func FromContext(ctx context.Context) *Mgr {
 	return v.(*Mgr)
 }
 
+// Path is where the group lives in the unified hierarchy: its ID, under the
+// delegated subtree when there is one.
+func (c Config) Path() string {
+	if c.Delegation == nil {
+		return c.ID
+	}
+	return c.Delegation.Root + c.ID
+}
+
+// Delegated returns the same group, placed under a delegated subtree.
+func (c Config) Delegated(d Delegation) *Config {
+	c.Delegation = &d
+	c.applied = false
+	c.reset = false
+	return &c
+}
+
+// Register adds a group to those an action applies, keyed by where it lives:
+// the same group delegated to a user is another group of the hierarchy, and
+// is made and capped on its own.
 func (m *Mgr) Register(c *Config) {
 	if c == nil {
 		return
 	}
 	m.mu.Lock()
 	defer m.mu.Unlock()
-	if _, ok := m.configs[c.ID]; ok {
+	if _, ok := m.configs[c.Path()]; ok {
 		// Don't reset the "applied" bool if the config is registered again.
 		// We don't need to handle in-run config changes.
 		return
 	}
-	m.configs[c.ID] = c
+	m.configs[c.Path()] = c
+}
+
+// Configs returns the registered groups, sorted by where they live.
+func (m *Mgr) Configs() []*Config {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	l := make([]*Config, 0, len(m.configs))
+	for _, c := range m.configs {
+		l = append(l, c)
+	}
+	sort.Slice(l, func(i, j int) bool { return l[i].Path() < l[j].Path() })
+	return l
+}
+
+// Ancestors returns the registered groups id is nested in, parents first.
+//
+// It is what a group moved under a delegated subtree carries along: the
+// cappings of the namespace and the object are written on their groups, and
+// a group placed elsewhere is only capped by them if they are made above it
+// there too.
+func (m *Mgr) Ancestors(id string) []*Config {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	l := make([]*Config, 0)
+	for _, c := range m.configs {
+		if c.Delegation != nil {
+			continue
+		}
+		if c.ID != id && strings.HasPrefix(id, c.ID+"/") {
+			l = append(l, c)
+		}
+	}
+	sort.Slice(l, func(i, j int) bool { return l[i].ID < l[j].ID })
+	return l
 }
 
 // ApplyConfigs applies all registered pg configs in order (base to leaf).
@@ -136,13 +220,13 @@ func (m *Mgr) ResetConfigs() error {
 		return nil
 	}
 	var errs error
-	ids := xmap.Keys(m.configs)
-	sort.Strings(ids)
-	for _, id := range ids {
-		if id != m.resetRoot && !strings.HasPrefix(id, m.resetRoot+"/") {
+	paths := xmap.Keys(m.configs)
+	sort.Strings(paths)
+	for _, path := range paths {
+		c := m.configs[path]
+		if c.ID != m.resetRoot && !strings.HasPrefix(c.ID, m.resetRoot+"/") {
 			continue
 		}
-		c := m.configs[id]
 		if c.reset {
 			continue
 		}
@@ -153,7 +237,7 @@ func (m *Mgr) ResetConfigs() error {
 		}
 		c.reset = true
 		if c.log != nil {
-			c.log.Infof("reset pg %s", id)
+			c.log.Infof("reset pg %s", path)
 		}
 	}
 	return errs
@@ -219,8 +303,11 @@ func (c Config) Uncapped() Config {
 	c.Mems = DefaultValue
 	c.CPUShares = DefaultValue
 	c.CPUQuota = DefaultValue
+	c.CPUBurst = DefaultValue
 	c.MemLimit = DefaultValue
+	c.MemHigh = DefaultValue
 	c.VMemLimit = DefaultValue
+	c.PidsMax = DefaultValue
 	c.BlockIOWeight = DefaultValue
 	c.applied = false
 	return c
@@ -233,7 +320,7 @@ func (c *Config) Clean() (bool, error) {
 	c.applied = false
 	changed, err := c.Delete()
 	if changed && c.log != nil {
-		c.log.Debugf("remove pg %s", c.ID)
+		c.log.Debugf("remove pg %s", c.Path())
 	}
 	return changed, err
 }
@@ -248,7 +335,7 @@ func (c Config) Apply() error {
 // String is what an applied group logs, so it names the cappings that were
 // applied and not the ones this node has no file for.
 func (c Config) String() string {
-	buff := "pg " + c.ID
+	buff := "pg " + c.Path()
 	l := make([]string, 0)
 	if c.CPUs != "" {
 		l = append(l, "cpus="+c.CPUs)
@@ -262,14 +349,23 @@ func (c Config) String() string {
 	if c.CPUQuota != "" {
 		l = append(l, "cpu_quota="+c.CPUQuota)
 	}
+	if c.CPUBurst != "" && !isIgnored("pg_cpu_burst") {
+		l = append(l, "cpu_burst="+c.CPUBurst)
+	}
 	if c.MemOOMControl != "" && !isIgnored("pg_mem_oom_control") {
 		l = append(l, "mem_oom_control="+c.MemOOMControl)
 	}
 	if c.MemLimit != "" {
 		l = append(l, "mem_limit="+c.MemLimit)
 	}
+	if c.MemHigh != "" && !isIgnored("pg_mem_high") {
+		l = append(l, "mem_high="+c.MemHigh)
+	}
 	if c.VMemLimit != "" {
 		l = append(l, "vmem_limit="+c.VMemLimit)
+	}
+	if c.PidsMax != "" {
+		l = append(l, "pids_max="+c.PidsMax)
 	}
 	if c.MemSwappiness != "" && !isIgnored("pg_mem_swappiness") {
 		l = append(l, "mem_swappiness="+c.MemSwappiness)
@@ -293,51 +389,43 @@ func (c Config) String() string {
 //	50%      => 50000, half of one
 //	10%@2    => 20000, a tenth of two
 func (t CPUQuota) Convert(period uint64) (int64, error) {
+	pct, cpus, err := t.parse()
+	if err != nil {
+		return 0, err
+	}
 	maxCpus := runtime.NumCPU()
-	invalidFmtError := "invalid cpu quota format: %s (accepted expressions: 50%%, 50%%@all, 10%%@2)"
-	parsePct := func(s string) (int, error) {
-		if strings.HasSuffix(s, "%") {
-			s = strings.TrimRight(s, "%")
-		}
-		return strconv.Atoi(s)
-	}
-	parseCpus := func(s string) (int, error) {
-		if (s == "all") || (s == "") {
-			return maxCpus, nil
-		} else if cpus, err := strconv.Atoi(s); err != nil {
-			return 0, fmt.Errorf(invalidFmtError+":%w", t, err)
-		} else if cpus > maxCpus {
-			return maxCpus, nil
-		} else {
-			return cpus, nil
-		}
-	}
-
-	l := strings.Split(string(t), "@")
-	var cpusString string
-
-	switch len(l) {
-	case 1:
-		cpusString = "1"
-	case 2:
-		cpusString = l[1]
-	default:
-		return 0, fmt.Errorf(invalidFmtError, t)
-	}
-
-	var (
-		cpus, pct int
-		err       error
-	)
-	if cpus, err = parseCpus(cpusString); err != nil {
-		return 0, fmt.Errorf(invalidFmtError+":%w", t, err)
-	}
-	if pct, err = parsePct(l[0]); err != nil {
-		return 0, fmt.Errorf(invalidFmtError+":%w", t, err)
+	if cpus == 0 || cpus > maxCpus {
+		cpus = maxCpus
 	}
 	// The percentage is of the cpus named, and of those alone. Dividing by
 	// the cpus the node has as well gave every group a quota that was the
 	// documented one divided by the thread count of the node: a "50%" asking
 	// for half a cpu got an eighth of one on an 8 thread node.
 	return int64(pct) * int64(period) * int64(cpus) / 100, nil
+}
+
+// parse returns the percentage of a pg_cpu_quota expression, and the count
+// of cpus it is of, 0 for all of them.
+//
+// It needs no node to say whether an expression is one, so the validation of
+// a configuration refuses what the apply would.
+func (t CPUQuota) parse() (pct, cpus int, err error) {
+	invalid := func(format string, a ...any) error {
+		return fmt.Errorf("invalid cpu quota %q: %s (accepted expressions: 50%%, 50%%@all, 10%%@2)", string(t), fmt.Sprintf(format, a...))
+	}
+	pctString, cpusString, found := strings.Cut(string(t), "@")
+	switch {
+	case !found:
+		cpus = 1
+	case cpusString == "all", cpusString == "":
+		cpus = 0
+	default:
+		if cpus, err = strconv.Atoi(cpusString); err != nil || cpus < 1 {
+			return 0, 0, invalid("%s is not a count of cpus", cpusString)
+		}
+	}
+	if pct, err = strconv.Atoi(strings.TrimSuffix(pctString, "%")); err != nil || pct < 0 {
+		return 0, 0, invalid("%s is not a percentage", pctString)
+	}
+	return pct, cpus, nil
 }

@@ -93,6 +93,13 @@ type (
 		ConfigUpdatedAt time.Time `json:"config_updated_at"`
 	}
 
+	// MonitorGlobalExpectOptionsCapped carries the configuration a cap
+	// orchestration applies, so a node does not apply the caps it held
+	// before the request.
+	MonitorGlobalExpectOptionsCapped struct {
+		ConfigUpdatedAt time.Time `json:"config_updated_at"`
+	}
+
 	MonitorGlobalExpectOptionsPlacedAt struct {
 		Destination []string `json:"destination"`
 		Live        bool     `json:"live"`
@@ -137,19 +144,43 @@ func (t *Monitor) UnmarshalJSON(b []byte) error {
 	if err := json.Unmarshal(b, &mon); err != nil {
 		return err
 	}
+	// The options are decoded into the type of their global expect, which
+	// is what the orchestrations read them as: a peer adopting the global
+	// expect of another node adopts its options from here.
+	var err error
 	switch mon.GlobalExpect {
 	case MonitorGlobalExpectPlacedAt:
-		var options MonitorGlobalExpectOptionsPlacedAt
-		if b, err := json.Marshal(mon.GlobalExpectOptions); err != nil {
-			return err
-		} else if err := json.Unmarshal(b, &options); err != nil {
-			return err
-		} else {
-			mon.GlobalExpectOptions = options
-		}
+		mon.GlobalExpectOptions, err = decodeGlobalExpectOptions[MonitorGlobalExpectOptionsPlacedAt](mon.GlobalExpectOptions)
+	case MonitorGlobalExpectResized:
+		mon.GlobalExpectOptions, err = decodeGlobalExpectOptions[MonitorGlobalExpectOptionsResized](mon.GlobalExpectOptions)
+	case MonitorGlobalExpectCapped:
+		mon.GlobalExpectOptions, err = decodeGlobalExpectOptions[MonitorGlobalExpectOptionsCapped](mon.GlobalExpectOptions)
+	}
+	if err != nil {
+		return err
 	}
 	*t = Monitor(mon)
 	return nil
+}
+
+// decodeGlobalExpectOptions reads options decoded as a generic value into
+// the type T, and leaves an absent value absent.
+func decodeGlobalExpectOptions[T any](v any) (any, error) {
+	if v == nil {
+		return nil, nil
+	}
+	if typed, ok := v.(T); ok {
+		return typed, nil
+	}
+	b, err := json.Marshal(v)
+	if err != nil {
+		return nil, err
+	}
+	var options T
+	if err := json.Unmarshal(b, &options); err != nil {
+		return nil, err
+	}
+	return options, nil
 }
 
 func (t *MonitorState) UnmarshalText(b []byte) error {
@@ -277,6 +308,10 @@ func (mon Monitor) DeepCopy() *Monitor {
 			// TODO Don't ignore following error
 			_ = json.Unmarshal(b, &placedAt)
 			v.GlobalExpectOptions = placedAt
+		case MonitorGlobalExpectResized, MonitorGlobalExpectCapped:
+			// Values holding no reference: a copy of the value is a deep
+			// copy, and keeps the type the orchestrations read them as.
+			v.GlobalExpectOptions = mon.GlobalExpectOptions
 		// TODO add other cases for globalExpect values that requires GlobalExpectOptions
 		default:
 			b, _ := json.Marshal(mon.GlobalExpectOptions)

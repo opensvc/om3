@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"path/filepath"
 	"regexp"
+	"strconv"
 	"strings"
 
 	"github.com/opensvc/om3/v3/core/driver"
@@ -11,6 +12,7 @@ import (
 	"github.com/opensvc/om3/v3/core/resourceid"
 	"github.com/opensvc/om3/v3/core/xconfig"
 	"github.com/opensvc/om3/v3/util/key"
+	"github.com/opensvc/om3/v3/util/sizeconv"
 )
 
 type (
@@ -51,7 +53,131 @@ var shareRegexp = regexp.MustCompile(`^([0-9]+)%(FREE|VG|PVS)$`)
 func MigrateConfig(cfg *xconfig.T) Migration {
 	var m Migration
 	migrateFilesystemVolumes(cfg, &m)
+	migrateTmpfsMountOptions(cfg, &m)
 	return m
+}
+
+// tmpfsSizeRegexp matches the size option of a tmpfs mount, as the kernel
+// parses it: a number of bytes, or of kibi, mebi, gibi, tebi, pebi or exbi
+// bytes. A share of the memory, "50%", is a size too, and one om cannot say.
+var tmpfsSizeRegexp = regexp.MustCompile(`^([0-9]+)([kKmMgGtTpPeE]?)$`)
+
+// tmpfsModeRegexp matches the mode option of a tmpfs mount, in octal.
+var tmpfsModeRegexp = regexp.MustCompile(`^[0-7]{3,4}$`)
+
+// migrateTmpfsMountOptions moves the size and the mode of a tmpfs from its
+// mount options to its size and mode keywords.
+//
+// The size of a tmpfs is what a resize grows, and a resize records the size
+// it reached in the size keyword of the resource. Written in mnt_opt, the size
+// stayed the one the tmpfs was made with, and the next mount undid the
+// resize.
+//
+// The tmpfs of a volume, which a shm pool made, is sized by reference to
+// DEFAULT.size, the size the volume is claimed with, as the pool makes it
+// now: a resize of the volume records there. Where the two said different
+// sizes, the volume is mounted at DEFAULT.size from then on, which is what a
+// resize asked for and a remount did not keep.
+func migrateTmpfsMountOptions(cfg *xconfig.T, m *Migration) {
+	isVolume := cfg.HasKey(key.T{Section: "DEFAULT", Option: "size"})
+	for _, section := range cfg.SectionStrings() {
+		rid, err := resourceid.Parse(section)
+		if err != nil || rid.DriverGroup() != driver.GroupFS {
+			continue
+		}
+		if cfg.Get(key.T{Section: section, Option: "type"}) != "tmpfs" {
+			continue
+		}
+		for _, option := range cfg.Keys(section) {
+			base, scope := cutScope(option)
+			if base != "mnt_opt" {
+				continue
+			}
+			migrateTmpfsMountOption(cfg, m, section, scope, isVolume)
+		}
+	}
+}
+
+func migrateTmpfsMountOption(cfg *xconfig.T, m *Migration, section, scope string, isVolume bool) {
+	scoped := func(option string) string {
+		if scope == "" {
+			return option
+		}
+		return option + "@" + scope
+	}
+	mntOptKey := key.T{Section: section, Option: scoped("mnt_opt")}
+	kept := make([]string, 0)
+	var changed bool
+	for _, opt := range strings.Split(cfg.Get(mntOptKey), ",") {
+		name, value, _ := strings.Cut(opt, "=")
+		switch name {
+		case "size":
+			sizeKey := key.T{Section: section, Option: scoped("size")}
+			if cfg.HasKey(sizeKey) {
+				m.Notes = append(m.Notes, fmt.Sprintf("%s: %s is dropped from %s: the size keyword sets the size, and the mount ignored it", section, opt, mntOptKey))
+				changed = true
+				continue
+			}
+			bytes, ok := tmpfsSize(value)
+			if !ok {
+				m.Refusals = append(m.Refusals, fmt.Sprintf("%s: %s is kept in %s: om cannot say how big a share of the memory is, so it cannot record a resize in it", section, opt, mntOptKey))
+				kept = append(kept, opt)
+				continue
+			}
+			sized := sizeconv.ExactBSizeCompact(float64(bytes))
+			if isVolume {
+				m.Sets = append(m.Sets, set(section, scoped("size"), "{DEFAULT.size}"))
+				if claimed, err := sizeconv.FromSize(cfg.Get(key.T{Section: "DEFAULT", Option: "size"})); err == nil && claimed != bytes {
+					m.Notes = append(m.Notes, fmt.Sprintf("%s was mounted at %s, and the volume is configured at %s: it is mounted at %s from now on", section, sized, sizeconv.ExactBSizeCompact(float64(claimed)), sizeconv.ExactBSizeCompact(float64(claimed))))
+				}
+			} else {
+				m.Sets = append(m.Sets, set(section, scoped("size"), sized))
+			}
+			m.Notes = append(m.Notes, fmt.Sprintf("%s: %s of %s is the size keyword now, which a resize records in", section, opt, mntOptKey))
+			changed = true
+		case "mode":
+			modeKey := key.T{Section: section, Option: scoped("mode")}
+			if cfg.HasKey(modeKey) {
+				m.Notes = append(m.Notes, fmt.Sprintf("%s: %s is dropped from %s: the mode keyword sets the mode, and the mount ignored it", section, opt, mntOptKey))
+				changed = true
+				continue
+			}
+			if !tmpfsModeRegexp.MatchString(value) {
+				m.Refusals = append(m.Refusals, fmt.Sprintf("%s: %s is kept in %s: it is not a mode in octal", section, opt, mntOptKey))
+				kept = append(kept, opt)
+				continue
+			}
+			m.Sets = append(m.Sets, set(section, scoped("mode"), value))
+			m.Notes = append(m.Notes, fmt.Sprintf("%s: %s of %s is the mode keyword now", section, opt, mntOptKey))
+			changed = true
+		case "":
+		default:
+			kept = append(kept, opt)
+		}
+	}
+	if !changed {
+		return
+	}
+	if len(kept) == 0 {
+		m.Unsets = append(m.Unsets, mntOptKey)
+	} else {
+		m.Sets = append(m.Sets, set(section, mntOptKey.Option, strings.Join(kept, ",")))
+	}
+}
+
+// tmpfsSize is the size in bytes of the size option of a tmpfs mount, false
+// for a share of the memory.
+func tmpfsSize(s string) (int64, bool) {
+	match := tmpfsSizeRegexp.FindStringSubmatch(s)
+	if match == nil {
+		return 0, false
+	}
+	n, err := strconv.ParseInt(match[1], 10, 64)
+	if err != nil {
+		return 0, false
+	}
+	shift := map[string]uint{"": 0, "k": 10, "m": 20, "g": 30, "t": 40, "p": 50, "e": 60}[strings.ToLower(match[2])]
+	return n << shift, true
 }
 
 // migrateFilesystemVolumes rewrites a filesystem that made the volume it
@@ -69,7 +195,7 @@ func migrateFilesystemVolumes(cfg *xconfig.T, m *Migration) {
 			continue
 		}
 		moved := movedKeys(cfg, section)
-		if len(moved) == 0 {
+		if !madeItsVolume(moved) {
 			continue
 		}
 		vg := cfg.Get(key.T{Section: section, Option: "vg"})
@@ -163,6 +289,26 @@ func vgRID(cfg *xconfig.T, vg string) string {
 		}
 	}
 	return ""
+}
+
+// madeItsVolume reports whether the keywords of a filesystem say om2 made the
+// volume it mounts: a volume group to carve it from, and a size to carve.
+//
+// It is the condition om2 made a volume on, a volume group being named, and
+// the size is what it carved. A size alone is not the om2 one: it is the size
+// a tmpfs or a quota-capped directory may hold, which their om3 drivers read
+// as their own.
+func madeItsVolume(moved []string) bool {
+	var hasSize, hasVG bool
+	for _, option := range moved {
+		switch base, _ := cutScope(option); base {
+		case "size":
+			hasSize = true
+		case "vg":
+			hasVG = true
+		}
+	}
+	return hasSize && hasVG
 }
 
 // movedKeys is the keywords of a section that the filesystem driver no longer

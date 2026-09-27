@@ -1,0 +1,16 @@
+The unix accounts the objects of this namespace may run rootless containers
+as, by name or by uid.
+
+A rootless container runs as the account its rootless_user keyword names. The
+account owns the container, its images and its files, and whoever runs a
+container as it reaches everything else it owns on the node, the rootless
+containers of other objects included. So the accounts are listed here, where
+only the squatter writes, and a namespace administrator setting rootless_user
+to an account not listed is refused. The primary group of a listed account is
+allowed too.
+
+An account allowed in two namespaces lets each reach the containers of the
+other. It is allowed, and warned about.
+
+Root is not bound by the list, and the root account is never allowed, whatever
+it says. Empty, the default, allows no account.

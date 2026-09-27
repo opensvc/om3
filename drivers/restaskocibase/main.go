@@ -74,6 +74,10 @@ type (
 		GetContainerDetached() ContainerTasker
 	}
 
+	pgApplier interface {
+		ApplyPG(context.Context) error
+	}
+
 	ContainerTasker interface {
 		Start(context.Context) error
 		Stop(context.Context) error
@@ -112,6 +116,18 @@ func (t *T) lockedRun(ctx context.Context) (err error) {
 
 	if container == nil {
 		return fmt.Errorf("unable to get task container")
+	}
+
+	// A run is not a start, so the action applies no group before it, and
+	// the engine placed the container in a group made for it, uncapped: the
+	// pg keywords of a task capped nothing. The driver applies them, and
+	// through the driver rather than this base, which a podman task
+	// overrides to place a rootless container's groups where podman puts
+	// it.
+	if i, ok := t.containerDetachedGetter.(pgApplier); ok {
+		if err := i.ApplyPG(ctx); err != nil {
+			return fmt.Errorf("apply pg: %w", err)
+		}
 	}
 
 	startErr := container.Start(ctx)

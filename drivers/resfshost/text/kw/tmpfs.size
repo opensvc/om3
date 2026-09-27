@@ -1,0 +1,8 @@
+The size of the tmpfs, which is how much of the memory of the node it may
+hold.
+
+It is set at every mount, and a resize grows the mounted tmpfs and records
+the size it reached here. A volume of a shm pool points it at `{DEFAULT.size}`,
+the size the volume was claimed with, so a resize of the volume records there.
+
+It overrides a `size=` option of mnt_opt, which is then ignored.

@@ -1,8 +1,9 @@
-The kernel default value is used, which usually is 1024 shares.
+The share of cpu the group gets when the node is cpu-bound.
 
-In a cpu-bound situation, this setting ensures the service does not use more
-than its share of cpu resource. The actual percentile depends on shares
-allowed to other services.
+The share is relative to the other groups.
+
+The actual percentile depends on the shares allowed to the other services.
+Unset, the kernel default is used, which usually is 1024 shares.
 
 Setting this keyword to `default` puts the capping back where a node that
 never capped anything leaves it. Removing the keyword does not: what was

@@ -56,6 +56,7 @@ func init() {
 		cmdObjectSet,
 		cmdObjectSchedule,
 		cmdObjectValidate,
+		commoncmd.NewCmdObjectCap(kind),
 		newCmdObjectAbort(kind),
 		commoncmd.NewCmdObjectClear(kind),
 		newCmdObjectCreate(kind),

@@ -9,6 +9,7 @@ import (
 	"os/user"
 	"path"
 	"path/filepath"
+	"strconv"
 	"strings"
 	"syscall"
 	"time"
@@ -50,6 +51,11 @@ type (
 		NoPreemptAbort  bool           `json:"no_preempt_abort"`
 		PromoteRW       bool           `json:"promote_rw"`
 		CheckRead       bool           `json:"check_read"`
+
+		// Size and Mode are the size and the permissions of a tmpfs, the
+		// filesystems holding them rather than a device.
+		Size *int64       `json:"size"`
+		Mode *os.FileMode `json:"mode"`
 	}
 
 	IsFormateder interface {
@@ -120,6 +126,9 @@ func (t *T) Stop(ctx context.Context) error {
 }
 
 func (t *T) Status(ctx context.Context) status.T {
+	for _, s := range t.overriddenMountOptions() {
+		t.StatusLog().Warn("mnt_opt %s", s)
+	}
 	if t.Device == "" {
 		t.StatusLog().Info("dev is not defined")
 		return status.NotApplicable
@@ -210,9 +219,71 @@ func (t *T) testFile() string {
 	return filepath.Join(t.mountPoint(), ".opensvc")
 }
 
+// mountOptions returns the options the filesystem is mounted with.
+//
+// The size and the mode of a tmpfs are options of its mount, and keywords of
+// its resource: the size keyword is what a resize records the size it reached
+// in, and a mount option is not. An option the keyword sets is dropped from
+// mnt_opt, which would otherwise be read after it and win.
 func (t *T) mountOptions() string {
-	// in can we need to mangle options
-	return t.MountOptions
+	if !t.isTmpfs() || (t.Size == nil && t.Mode == nil) {
+		return t.MountOptions
+	}
+	l := make([]string, 0)
+	for _, option := range strings.Split(t.MountOptions, ",") {
+		switch {
+		case option == "":
+		case t.Size != nil && strings.HasPrefix(option, "size="):
+		case t.Mode != nil && strings.HasPrefix(option, "mode="):
+		default:
+			l = append(l, option)
+		}
+	}
+	if t.Size != nil {
+		l = append(l, fmt.Sprintf("size=%d", *t.Size))
+	}
+	if t.Mode != nil {
+		l = append(l, "mode="+octalMode(*t.Mode))
+	}
+	return strings.Join(l, ",")
+}
+
+// overriddenMountOptions returns the options of mnt_opt a keyword sets
+// instead, which a mount ignores.
+func (t *T) overriddenMountOptions() []string {
+	if !t.isTmpfs() {
+		return nil
+	}
+	l := make([]string, 0)
+	for _, option := range strings.Split(t.MountOptions, ",") {
+		switch {
+		case t.Size != nil && strings.HasPrefix(option, "size="):
+			l = append(l, option+" is ignored: the size keyword sets the size")
+		case t.Mode != nil && strings.HasPrefix(option, "mode="):
+			l = append(l, option+" is ignored: the mode keyword sets the mode")
+		}
+	}
+	return l
+}
+
+func (t *T) isTmpfs() bool {
+	return t.Type == "tmpfs"
+}
+
+// octalMode formats a mode the way a mount option takes it, the special bits
+// included: 1777 is a sticky directory everyone may write in.
+func octalMode(m os.FileMode) string {
+	n := uint32(m.Perm())
+	if m&os.ModeSetuid != 0 {
+		n |= 04000
+	}
+	if m&os.ModeSetgid != 0 {
+		n |= 02000
+	}
+	if m&os.ModeSticky != 0 {
+		n |= 01000
+	}
+	return strconv.FormatUint(uint64(n), 8)
 }
 
 func (t *T) mountPoint() string {

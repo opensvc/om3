@@ -51,7 +51,7 @@ func APIKeywordItemsToRaw(items api.KeywordItems) rawconfig.T {
 var (
 	sectionRE  = regexp.MustCompile(`^\s*\[.*\]\s*$`)
 	commentRE  = regexp.MustCompile(`^\s*[#;]`)
-	keyValueRE = regexp.MustCompile(`^(\s*[^=\s#;]+)(\s*=\s*)([^#;]*)(.*)$`)
+	keyValueRE = regexp.MustCompile(`^(\s*[^=\s#;]+)(\s*=\s*)(.*)$`)
 )
 
 func sectionName(s string) string {
@@ -99,6 +99,24 @@ func Sections(b []byte, sections []string) []byte {
 	return out.Bytes()
 }
 
+// cutInlineComment splits a value from the inline comment ending its line,
+// where the configuration parser does: at a '#' preceded by a space, or else
+// at a ';' preceded by a space.
+//
+// A '#' or ';' with no space before it is part of the value. Resource ids
+// have one, and a value referring to a resource, as {container#1.uid}, was
+// rendered as a comment from the '#' on, and its references were not found.
+func cutInlineComment(s string) (value, comment string) {
+	i := strings.Index(s, " #")
+	if i == -1 {
+		i = strings.Index(s, " ;")
+	}
+	if i == -1 {
+		return s, ""
+	}
+	return s[:i], s[i:]
+}
+
 func ColorizeINI(b []byte) []byte {
 	if color.NoColor {
 		return b
@@ -142,11 +160,10 @@ func ColorizeINI(b []byte) []byte {
 		if strings.Contains(line, "=") && !strings.HasPrefix(line, " ") && !strings.HasPrefix(line, "\t") {
 			// Use regex to preserve spacing around equals sign
 			matches := keyValueRE.FindStringSubmatch(line)
-			if len(matches) == 5 {
+			if len(matches) == 4 {
 				key := matches[1]
 				delim := matches[2]
-				value := matches[3]
-				inlineComment := matches[4]
+				value, inlineComment := cutInlineComment(matches[3])
 
 				// Colorize key
 				key, scope, scopeFound := strings.Cut(key, "@")

@@ -66,6 +66,7 @@ func init() {
 		cmdObjectSchedule,
 		newCmdObjectSync(kind),
 		cmdObjectValidate,
+		commoncmd.NewCmdObjectCap(kind),
 		newCmdObjectAbort(kind),
 		commoncmd.NewCmdObjectClear(kind),
 		newCmdObjectCreate(kind),

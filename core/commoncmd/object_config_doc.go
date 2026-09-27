@@ -8,7 +8,7 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/opensvc/om3/v3/core/client"
-	"github.com/opensvc/om3/v3/core/keywords"
+	"github.com/opensvc/om3/v3/core/doc"
 	"github.com/opensvc/om3/v3/core/naming"
 	"github.com/opensvc/om3/v3/core/output"
 	"github.com/opensvc/om3/v3/core/rawconfig"
@@ -56,43 +56,41 @@ func (t *CmdObjectConfigDoc) Run(kind string) error {
 		return err
 	}
 
-	items := make(api.KeywordDefinitionItems, 0)
-	index := keywords.ParseIndex(t.Keyword)
-	params := api.GetObjectConfigKeywordsParams{}
-
-	if index[0] != "" {
-		params.Section = &index[0]
-	}
-	if index[1] != "" {
-		params.Option = &index[1]
-	}
-	if t.Driver != "" {
-		params.Driver = &t.Driver
-	}
-
-	response, err := c.GetObjectConfigKeywordsWithResponse(
-		context.Background(),
-		api.InPathNamespace(path.Namespace),
-		api.InPathKind(path.Kind),
-		api.InPathName(path.Name),
-		&params,
-	)
+	items, err := doc.FindKeywords(t.Keyword, t.Driver != "", func(section, option *string) (api.KeywordDefinitionItems, error) {
+		params := api.GetObjectConfigKeywordsParams{
+			Section: section,
+			Option:  option,
+		}
+		if t.Driver != "" {
+			params.Driver = &t.Driver
+		}
+		response, err := c.GetObjectConfigKeywordsWithResponse(
+			context.Background(),
+			api.InPathNamespace(path.Namespace),
+			api.InPathKind(path.Kind),
+			api.InPathName(path.Name),
+			&params,
+		)
+		if err != nil {
+			return nil, err
+		}
+		switch {
+		case response.JSON200 != nil:
+			return response.JSON200.Items, nil
+		case response.JSON400 != nil:
+			return nil, fmt.Errorf("%s", *response.JSON400)
+		case response.JSON401 != nil:
+			return nil, fmt.Errorf("%s", *response.JSON401)
+		case response.JSON500 != nil:
+			return nil, fmt.Errorf("%s", *response.JSON500)
+		default:
+			return nil, fmt.Errorf("unexpected response: %s", response.Status())
+		}
+	})
 	if err != nil {
 		return err
 	}
 
-	switch {
-	case response.JSON200 != nil:
-		items = append(items, response.JSON200.Items...)
-	case response.JSON400 != nil:
-		return fmt.Errorf("%s", *response.JSON400)
-	case response.JSON401 != nil:
-		return fmt.Errorf("%s", *response.JSON401)
-	case response.JSON500 != nil:
-		return fmt.Errorf("%s", *response.JSON500)
-	default:
-		return fmt.Errorf("unexpected response: %s", response.Status())
-	}
 	return output.Renderer{
 		HumanRenderer: func() string {
 			Doc(os.Stdout, items, path.Kind, t.Driver, t.Keyword, t.Depth)

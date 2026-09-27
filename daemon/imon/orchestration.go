@@ -86,6 +86,8 @@ func (t *Manager) orchestrate() {
 	}
 
 	switch t.state.GlobalExpect {
+	case instance.MonitorGlobalExpectCapped:
+		t.orchestrateCapped()
 	case instance.MonitorGlobalExpectDeleted:
 		t.orchestrateDeleted()
 	case instance.MonitorGlobalExpectNone:

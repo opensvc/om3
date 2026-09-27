@@ -19,6 +19,7 @@ import (
 	"github.com/opensvc/om3/v3/core/object"
 	"github.com/opensvc/om3/v3/core/rawconfig"
 	"github.com/opensvc/om3/v3/core/resourceid"
+	"github.com/opensvc/om3/v3/core/xconfig"
 	"github.com/opensvc/om3/v3/daemon/daemonauth"
 	"github.com/opensvc/om3/v3/daemon/daemonenv"
 	"github.com/opensvc/om3/v3/daemon/daemonsubsystem"
@@ -662,18 +663,23 @@ func (t *Manager) onRemoteConfigFetched(c *msgbus.RemoteFileConfig) {
 			c.Err <- err
 			return
 		}
-		if err := os.Rename(c.File, confFile); err != nil {
+		// Installed under the lock every writer of the file takes, so a
+		// local write checked against the file this replaces does not land
+		// over it, and the file is synced to stable storage, so a reboot
+		// does not find it absent or empty.
+		if err := xconfig.InstallFile(c.File, confFile); err != nil {
 			log.Errorf("cfg: can't install %s config fetched from node %s to %s: %s", c.Path, c.Node, confFile, err)
 			c.Err <- err
 		} else {
-			// Prevents from absent or empty config on reboot before the config file is
-			// synched to stable storage.
-			if err := file.Sync(confFile); err != nil {
-				log.Errorf("cfg: can't install %s config fetched from node %s to %s sync: %s", c.Path, c.Node, confFile, err)
-				c.Err <- err
-				return
-			}
 			log.Infof("cfg: install %s config fetched from node %s", c.Path, c.Node)
+			// Said now rather than by the filesystem watcher, which
+			// debounces the events of a file for 200ms: the node that wrote
+			// the configuration waits for this one to report it installed.
+			// The watcher still speaks, and finds the file already read.
+			t.publisher.Pub(&msgbus.ConfigFileUpdated{Path: c.Path, File: confFile},
+				pubsub.Label{"namespace", c.Path.Namespace},
+				pubsub.Label{"path", c.Path.String()},
+			)
 		}
 		c.Err <- nil
 	}

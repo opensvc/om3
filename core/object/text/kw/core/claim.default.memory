@@ -1,0 +1,8 @@
+The pg_mem_limit given to a container of this namespace that neither it, its
+subset nor its object caps.
+
+A claim counts what the containers are capped to, and one capped by nothing
+cannot be counted: the default is what it is counted for and runs with. It
+applies to the container resources and to the podman, docker and oci tasks.
+The processes of the app resources are not given it: they are the object's
+to cap.

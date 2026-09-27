@@ -65,6 +65,7 @@ func (a *DaemonAPI) PutObjectDataKey(ctx echo.Context, namespace string, kind na
 		case err != nil:
 			return JSONProblemf(ctx, http.StatusInternalServerError, "ChangeKey", "%s: %s", params.Name, err)
 		default:
+			a.announceConfigFileWritten(p)
 			return ctx.NoContent(http.StatusNoContent)
 		}
 	}

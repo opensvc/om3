@@ -42,6 +42,17 @@ func WithContext(ctx context.Context) funcopt.O {
 	})
 }
 
+// WithProcessGroup runs the command in a process group of its own, which a
+// cancel of its context kills as a whole: the processes the command started
+// die with it, rather than outliving it holding its output.
+func WithProcessGroup() funcopt.O {
+	return funcopt.F(func(i interface{}) error {
+		t := i.(*T)
+		t.processGroup = true
+		return nil
+	})
+}
+
 // WithVarArgs sets the process args[1:] from a variadic string slice
 func WithVarArgs(args ...string) funcopt.O {
 	return funcopt.F(func(i interface{}) error {

@@ -84,14 +84,14 @@ size = 60%FREE
 type = xfs
 dev = /dev/testvg/logs
 mnt = /srv/logs
+vg = testvg
 size = 100%VG
 `
 	m := migrationOf(t, config)
 	assert.Equal(t, "$(60% * {disk#1.free})", must(t, m, "disk#2.size"))
 	assert.Equal(t, "$(100% * {disk#1.capacity})", must(t, m, "disk#3.size"),
 		"a share of the whole group is a share of what it holds")
-	assert.Equal(t, "testvg", must(t, m, "disk#3.vg"),
-		"the group is read from the device path where no keyword names it")
+	assert.Equal(t, "testvg", must(t, m, "disk#3.vg"))
 	assert.Empty(t, m.Notes[0:0])
 }
 
@@ -104,6 +104,7 @@ func TestAShareOfAGroupOmDoesNotHoldIsKept(t *testing.T) {
 type = ext4
 dev = /dev/testvg/data
 mnt = /srv/data
+vg = testvg
 size = 60%FREE
 `)
 	assert.Equal(t, "60%FREE", must(t, m, "disk#2.size"))
@@ -127,19 +128,36 @@ size@node2 = 20g
 	assert.True(t, unset(m, "fs#2.size@node2"))
 }
 
-// A configuration keeps what nothing can migrate for it, and hears why.
+// A configuration keeps what nothing can migrate for it, and hears why: a
+// volume group named for one node only says nothing about the others.
 func TestWhatCannotBeMigratedIsSaidAndLeftAlone(t *testing.T) {
 	m := migrationOf(t, `
 [fs#2]
 type = ext4
 dev = /dev/mapper/mpatha
 mnt = /srv/data
+vg@node1 = testvg
 size = 20g
 `)
 	assert.Empty(t, m.Sets)
 	assert.Empty(t, m.Unsets)
 	require.Len(t, m.Refusals, 1)
 	assert.Contains(t, m.Refusals[0], "neither fs#2.vg nor fs#2.dev says which volume group")
+}
+
+// A size with no volume group to carve it from made no volume in om2, which
+// only made one when a volume group was named.
+func TestASizeWithNoVolumeGroupMadeNoVolume(t *testing.T) {
+	m := migrationOf(t, `
+[fs#2]
+type = ext4
+dev = /dev/testvg/data
+mnt = /srv/data
+size = 20g
+`)
+	assert.Empty(t, m.Sets)
+	assert.Empty(t, m.Unsets)
+	assert.Empty(t, m.Refusals)
 }
 
 // A filesystem that never made a volume has nothing to migrate.
@@ -181,4 +199,97 @@ func must(t *testing.T, m Migration, k string) string {
 	v, ok := setOf(m, k)
 	require.Truef(t, ok, "%s is not set", k)
 	return v
+}
+
+// The size of a tmpfs a shm pool made moves from its mount options to its size
+// keyword, pointed at the size the volume is claimed with, as the pool makes
+// it now, and the mode to its mode keyword. Nothing else is left in the mount
+// options, which go.
+func TestTheTmpfsOfAVolumeIsSizedByItsClaim(t *testing.T) {
+	m := migrationOf(t, `
+[DEFAULT]
+size = 1mi
+
+[fs#0]
+type = tmpfs
+dev = none
+mnt = /srv/v1
+mnt_opt = mode=700,size=1m
+`)
+	assert.Equal(t, "{DEFAULT.size}", must(t, m, "fs#0.size"))
+	assert.Equal(t, "700", must(t, m, "fs#0.mode"))
+	assert.True(t, unset(m, "fs#0.mnt_opt"), "nothing is left in the mount options")
+	assert.Empty(t, m.Refusals)
+}
+
+// A volume whose tmpfs was mounted at another size than it is claimed with is
+// mounted at the claimed size from then on, which is what a resize asked for
+// and a remount did not keep. The migration says so.
+func TestATmpfsMountedShortOfItsClaimSaysItWillGrow(t *testing.T) {
+	m := migrationOf(t, `
+[DEFAULT]
+size = 2097152
+
+[fs#0]
+type = tmpfs
+dev = none
+mnt = /srv/v1
+mnt_opt = size=1m,mode=711
+`)
+	assert.Equal(t, "{DEFAULT.size}", must(t, m, "fs#0.size"))
+	assert.Equal(t, "711", must(t, m, "fs#0.mode"))
+	assert.Contains(t, m.Notes, "fs#0 was mounted at 1mi, and the volume is configured at 2mi: it is mounted at 2mi from now on")
+}
+
+// The tmpfs of a service holds its own size, which moves to its keyword as a
+// number, and the options the migration does not own stay in mnt_opt.
+func TestTheTmpfsOfAServiceKeepsItsOwnSize(t *testing.T) {
+	m := migrationOf(t, `
+[fs#1]
+type = tmpfs
+dev = none
+mnt = /srv/scratch
+mnt_opt = noexec,size=512k,nosuid
+`)
+	assert.Equal(t, "512ki", must(t, m, "fs#1.size"))
+	assert.Equal(t, "noexec,nosuid", must(t, m, "fs#1.mnt_opt"))
+	_, ok := setOf(m, "fs#1.mode")
+	assert.False(t, ok, "no mode was said, so none is written")
+}
+
+// A share of the memory is a size om cannot count, so it stays where it is,
+// and the migration says why. A mount option a keyword already overrides is
+// dropped: the mount ignored it.
+func TestATmpfsSizeOmCannotCountIsKept(t *testing.T) {
+	m := migrationOf(t, `
+[fs#1]
+type = tmpfs
+dev = none
+mnt = /srv/scratch
+mnt_opt = size=50%,mode=700
+mode = 750
+`)
+	_, ok := setOf(m, "fs#1.size")
+	assert.False(t, ok)
+	assert.Equal(t, "size=50%", must(t, m, "fs#1.mnt_opt"))
+	assert.Len(t, m.Refusals, 1)
+	assert.Contains(t, m.Refusals[0], "size=50% is kept")
+	_, ok = setOf(m, "fs#1.mode")
+	assert.False(t, ok, "the mode keyword is there already")
+}
+
+// A mount option scoped to a node moves to the keyword scoped to that node.
+func TestAScopedTmpfsSizeMovesToTheScopedKeyword(t *testing.T) {
+	m := migrationOf(t, `
+[fs#1]
+type = tmpfs
+dev = none
+mnt = /srv/scratch
+mnt_opt = size=1g
+mnt_opt@n2 = size=2g
+`)
+	assert.Equal(t, "1gi", must(t, m, "fs#1.size"))
+	assert.Equal(t, "2gi", must(t, m, "fs#1.size@n2"))
+	assert.True(t, unset(m, "fs#1.mnt_opt"))
+	assert.True(t, unset(m, "fs#1.mnt_opt@n2"))
 }

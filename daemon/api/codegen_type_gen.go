@@ -1116,6 +1116,19 @@ type Committed struct {
 	IsChanged bool `json:"is_changed"`
 }
 
+// ComputeClaim defines model for ComputeClaim.
+type ComputeClaim struct {
+	// ExpiresAt when a granted claim stops being counted, should the
+	// configuration it was granted for never be written
+	ExpiresAt *time.Time `json:"expires_at,omitempty"`
+
+	// Granted whether the namespace may take what it asked for
+	Granted bool `json:"granted"`
+
+	// Reason why the namespace may not take it
+	Reason *string `json:"reason,omitempty"`
+}
+
 // DNSRecord defines model for DNSRecord.
 type DNSRecord struct {
 	Class string `json:"class"`
@@ -2143,6 +2156,22 @@ type PoolVolumeList struct {
 
 // PoolVolumeListKind defines model for PoolVolumeList.Kind.
 type PoolVolumeListKind string
+
+// PostComputeClaim defines model for PostComputeClaim.
+type PostComputeClaim struct {
+	// Claims what the object is to claim of each compute type, not the
+	// increase: thousandths of a cpu for cpu, bytes for memory, and -1
+	// for a type its processes are not capped on
+	Claims map[string]int64 `json:"claims"`
+
+	// Namespace the namespace the object claims of
+	Namespace string `json:"namespace"`
+
+	// Path the object the claim is for, so that a claim answered yes stops
+	// being counted on its own once the configuration of the object
+	// says the same thing
+	Path string `json:"path"`
+}
 
 // PostInstanceProgress defines model for PostInstanceProgress.
 type PostInstanceProgress struct {
@@ -3987,6 +4016,25 @@ type PostSvcEnableParams struct {
 	Tag    *InQueryTag    `form:"tag,omitempty" json:"tag,omitempty"`
 }
 
+// PostObjectActionCapParams defines parameters for PostObjectActionCap.
+type PostObjectActionCapParams struct {
+	Set *InQuerySets `form:"set,omitempty" json:"set,omitempty"`
+
+	// ConfigUpdatedAt Refuse the action unless the instance configuration on the node running
+	// it is at least as recent as this timestamp, answering 409 Conflict when
+	// it is older.
+	//
+	// A configuration write answers with the timestamp it produced, in the
+	// OM-Last-Modified header, and a write reaches the peer nodes a moment
+	// after it is acknowledged. Passing that timestamp back here is how a
+	// client that wrote a configuration and then acts on it makes sure every
+	// instance acts on what it wrote, rather than on what it is replacing.
+	//
+	// Optional. Without it the action runs on whatever configuration the node
+	// holds.
+	ConfigUpdatedAt *ConfigUpdatedAt `form:"config_updated_at,omitempty" json:"config_updated_at,omitempty"`
+}
+
 // PostObjectActionResizeParams defines parameters for PostObjectActionResize.
 type PostObjectActionResizeParams struct {
 	// ConfigUpdatedAt Refuse the action unless the instance configuration on the node running
@@ -4016,12 +4064,51 @@ type PatchObjectConfigParams struct {
 	Delete *InQueryDeletes `form:"delete,omitempty" json:"delete,omitempty"`
 	Unset  *InQueryUnsets  `form:"unset,omitempty" json:"unset,omitempty"`
 	Set    *InQuerySets    `form:"set,omitempty" json:"set,omitempty"`
+
+	// Wait How long to hold the request until what it asks about has ended.
+	//
+	// Without it the answer is what is known now. With it the request is
+	// held, and answered as soon as the thing ends, so a client waiting for
+	// the end of what it submitted neither polls nor holds an event stream
+	// open for it.
+	//
+	// A request held until the wait expires is answered 408, which says the
+	// thing is still running, and is not an error of the request.
+	Wait *Wait `form:"wait,omitempty" json:"wait,omitempty"`
 }
 
 // GetObjectConfigFileParams defines parameters for GetObjectConfigFile.
 type GetObjectConfigFileParams struct {
 	// RedactSecrets if true, redact secrets in the configuration file
 	RedactSecrets *RedactSecrets `form:"redact-secrets,omitempty" json:"redact-secrets,omitempty"`
+}
+
+// PostObjectConfigFileParams defines parameters for PostObjectConfigFile.
+type PostObjectConfigFileParams struct {
+	// Wait How long to hold the request until what it asks about has ended.
+	//
+	// Without it the answer is what is known now. With it the request is
+	// held, and answered as soon as the thing ends, so a client waiting for
+	// the end of what it submitted neither polls nor holds an event stream
+	// open for it.
+	//
+	// A request held until the wait expires is answered 408, which says the
+	// thing is still running, and is not an error of the request.
+	Wait *Wait `form:"wait,omitempty" json:"wait,omitempty"`
+}
+
+// PutObjectConfigFileParams defines parameters for PutObjectConfigFile.
+type PutObjectConfigFileParams struct {
+	// Wait How long to hold the request until what it asks about has ended.
+	//
+	// Without it the answer is what is known now. With it the request is
+	// held, and answered as soon as the thing ends, so a client waiting for
+	// the end of what it submitted neither polls nor holds an event stream
+	// open for it.
+	//
+	// A request held until the wait expires is answered 408, which says the
+	// thing is still running, and is not an error of the request.
+	Wait *Wait `form:"wait,omitempty" json:"wait,omitempty"`
 }
 
 // GetObjectConfigKeywordsParams defines parameters for GetObjectConfigKeywords.
@@ -4123,6 +4210,9 @@ type PostClusterEvictJSONRequestBody = ClusterEvictBody
 
 // PostClusterRegisterJSONRequestBody defines body for PostClusterRegister for application/json ContentType.
 type PostClusterRegisterJSONRequestBody = ClusterRegisterBody
+
+// PostComputeClaimJSONRequestBody defines body for PostComputeClaim for application/json ContentType.
+type PostComputeClaimJSONRequestBody = PostComputeClaim
 
 // PostInstanceProgressJSONRequestBody defines body for PostInstanceProgress for application/json ContentType.
 type PostInstanceProgressJSONRequestBody = PostInstanceProgress

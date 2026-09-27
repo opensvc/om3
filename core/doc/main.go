@@ -43,6 +43,9 @@ func FilterKeywordStore(store keywords.Store, driver, section, option *string, p
 			return store.ByOption(*section), nil
 		}
 		return store.ByOption(*option), nil
+	case driver == nil && section == nil && option != nil:
+		// An option named with no section is the option in any section.
+		store = store.WithOption(*option)
 	case driver == nil && section != nil && option == nil:
 		o, err := getConfigProvider()
 		if err != nil {
@@ -69,6 +72,60 @@ func FilterKeywordStore(store keywords.Store, driver, section, option *string, p
 		}
 	}
 	return store, nil
+}
+
+// KeywordQuery is a lookup of the keyword documentation, by section and
+// option, either nil for any.
+type KeywordQuery struct {
+	Section *string
+	Option  *string
+}
+
+// KeywordQueries returns the lookups a --kw value is tried as, in order, until
+// one finds keywords.
+//
+// The value is [<section>.]<option>. A bare word is first an option, in any
+// section, as the flag says, and then a section, listing its keywords. With
+// a driver, a bare word is only an option: the driver names the section.
+func KeywordQueries(s string, withDriver bool) []KeywordQuery {
+	if s == "" {
+		return []KeywordQuery{{}}
+	}
+	index := keywords.ParseIndex(s)
+	if index[1] != "" {
+		return []KeywordQuery{{Section: &index[0], Option: &index[1]}}
+	}
+	word := index[0]
+	if withDriver {
+		return []KeywordQuery{{Option: &word}}
+	}
+	return []KeywordQuery{{Option: &word}, {Section: &word}}
+}
+
+// FindKeywords returns the documentation of the keywords a --kw value names,
+// from the first of its lookups finding some.
+//
+// A value naming no keyword is an error, rather than an empty documentation:
+// nothing printed reads as a keyword with no text. A lookup failing is a
+// lookup finding nothing, as a bare word that is not a section fails as a
+// section, unless it is the only one.
+func FindKeywords(kw string, withDriver bool, get func(section, option *string) (api.KeywordDefinitionItems, error)) (api.KeywordDefinitionItems, error) {
+	queries := KeywordQueries(kw, withDriver)
+	var errs error
+	for _, q := range queries {
+		items, err := get(q.Section, q.Option)
+		if err != nil {
+			errs = errors.Join(errs, err)
+			continue
+		}
+		if len(items) > 0 || kw == "" {
+			return items, nil
+		}
+	}
+	if len(queries) == 1 && errs != nil {
+		return nil, errs
+	}
+	return nil, fmt.Errorf("keyword %s not found", kw)
 }
 
 func ConvertKeywordStore(store keywords.Store) api.KeywordDefinitionItems {

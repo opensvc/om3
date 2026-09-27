@@ -628,7 +628,13 @@ func (t *T) trigger(ctx context.Context, s string) error {
 	if len(cmdArgs) == 0 {
 		return nil
 	}
+	// The trigger runs within the timeout of the action it is a trigger of,
+	// and the commands it starts die with it: a trigger that hangs ends the
+	// action at its timeout, rather than holding it, and the orchestration
+	// waiting on it, for ever.
 	cmd := command.New(
+		command.WithContext(ctx),
+		command.WithProcessGroup(),
 		command.WithName(cmdArgs[0]),
 		command.WithVarArgs(cmdArgs[1:]...),
 		command.WithLogger(t.log),
@@ -962,7 +968,7 @@ func Start(ctx context.Context, r Driver) error {
 		return fmt.Errorf("pre start trigger: %w", err)
 	}
 	if err := r.Trigger(ctx, trigger.NoBlock, trigger.Pre, trigger.Start); err != nil {
-		r.Log().Warnf("trigger: %s (exitcode %s)", err, exitCode(err))
+		r.Log().Warnf("trigger: %s (exitcode %d)", err, exitCode(err))
 	}
 	if err := SCSIPersistentReservationStart(ctx, r); err != nil {
 		return err
@@ -974,7 +980,7 @@ func Start(ctx context.Context, r Driver) error {
 		return fmt.Errorf("post start trigger: %w", err)
 	}
 	if err := r.Trigger(ctx, trigger.NoBlock, trigger.Post, trigger.Start); err != nil {
-		r.Log().Warnf("trigger: %s (exitcode %s)", err, exitCode(err))
+		r.Log().Warnf("trigger: %s (exitcode %d)", err, exitCode(err))
 	}
 	return nil
 }
@@ -1150,7 +1156,7 @@ func shutdown(ctx context.Context, r Driver) error {
 		return fmt.Errorf("trigger: %w", err)
 	}
 	if err := r.Trigger(ctx, trigger.NoBlock, trigger.Post, trigger.Shutdown); err != nil {
-		r.Log().Warnf("trigger: %s (exitcode %s)", err, exitCode(err))
+		r.Log().Warnf("trigger: %s (exitcode %d)", err, exitCode(err))
 	}
 	return nil
 }

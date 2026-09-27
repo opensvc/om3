@@ -54,3 +54,20 @@ func TestColorizeINISectionHeaderCarriesNoCommentAttribute(t *testing.T) {
 		assert.NotContainsf(t, string(first), italic, "the first line of %q must not be italic", src)
 	}
 }
+
+// A '#' is a comment only where the parser reads one, after a space: the one
+// of a resource id is part of the value, and a reference holding it is drawn
+// as a reference, each one on its own.
+func TestColorizeINIDrawsTheReferencesOfAResourceID(t *testing.T) {
+	const (
+		reference = "\x1b[32;1m"
+		comment   = "\x1b[90;3m"
+	)
+	rendered, _ := colorized(t, "[volume#1]\ninstall = /a from ./cfg/web user {container#1.uid.101} group {container#1.gid.101}\n")
+	assert.Contains(t, rendered, reference+"{container#1.uid.101}\x1b[0m")
+	assert.Contains(t, rendered, reference+"{container#1.gid.101}\x1b[0m")
+	assert.NotContains(t, rendered, comment, "nothing of the line is a comment")
+
+	rendered, _ = colorized(t, "[fs#1]\ntype = flag # why\n")
+	assert.Contains(t, rendered, comment+" # why\x1b[0m", "a '#' after a space is still a comment")
+}

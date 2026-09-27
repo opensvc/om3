@@ -110,6 +110,7 @@ func (a *DaemonAPI) PatchObjectData(ctx echo.Context, namespace string, kind nam
 		if err := ks.Config().CommitInvalid(); err != nil {
 			return JSONProblemf(ctx, http.StatusInternalServerError, "Commit", "%s", err)
 		}
+		a.announceConfigFileWritten(p)
 		return ctx.NoContent(http.StatusNoContent)
 	}
 
