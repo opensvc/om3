@@ -463,6 +463,28 @@ OpenSVC v3 is a major evolution, rebuilt in Go for performance, reliability, and
 	standby up:   S => o
     ```
  
+### API access to secrets
+
+* **The cluster configuration is read by root only:**
+    `GET /api/cluster/config`, and the configuration file of the cluster through
+    `/api/object/path/root/ccfg/cluster/config/file` and
+    `/api/node/name/{nodename}/instance/path/root/ccfg/cluster/config/file`,
+    now need the `root` grant, or the `join` grant of a joining node. They
+    were open to a guest of the `root` namespace, and the cluster configuration
+    holds `cluster.secret`, the key every sec and usr value is encrypted with.
+
+* **Secrets are redacted for the readers not allowed to see them:**
+    The configuration of an object read by a user who is neither an
+    administrator of its namespace nor root, through the keyword or the file
+    endpoints, shows `********` in place of the values of the keywords
+    declared secret and of the keys of a sec or usr object, raw and evaluated.
+    The `redact-secrets` parameter still redacts for any reader.
+
+* **The keys of a usr object are read by root only:**
+    `GET /api/object/path/system/usr/{name}/data/key` needed the guest role,
+    and answered the password and the certificate private key of the user,
+    which authenticate as that user.
+
 ### Core
 
 * **Object Names policy change:**

@@ -13,7 +13,12 @@ import (
 )
 
 func (a *DaemonAPI) GetInstanceConfigFile(ctx echo.Context, nodename, namespace string, kind naming.Kind, name string) error {
-	if v, err := assertGuest(ctx, namespace); !v {
+	objPath, err := naming.NewPath(namespace, kind, name)
+	if err != nil {
+		return JSONProblemf(ctx, http.StatusBadRequest, "Invalid parameter", "invalid path: %s", err)
+	}
+	redact, ok, err := configReadAccess(ctx, objPath)
+	if !ok {
 		return err
 	}
 	nodename = a.parseNodename(nodename)
@@ -21,12 +26,6 @@ func (a *DaemonAPI) GetInstanceConfigFile(ctx echo.Context, nodename, namespace 
 		logName := "GetInstanceConfigFile"
 		log := LogHandler(ctx, logName)
 		log.Tracef("%s: starting", logName)
-
-		objPath, err := naming.NewPath(namespace, kind, name)
-		if err != nil {
-			log.Warnf("%s: %s", logName, err)
-			return JSONProblemf(ctx, http.StatusBadRequest, "Invalid parameter", "invalid path: %s", err)
-		}
 		log = naming.LogWithPath(log, objPath)
 
 		filename := objPath.ConfigFile()
@@ -34,7 +33,7 @@ func (a *DaemonAPI) GetInstanceConfigFile(ctx echo.Context, nodename, namespace 
 		if !mtime.IsZero() {
 			ctx.Response().Header().Add(api.HeaderLastModified, mtime.Format(time.RFC3339Nano))
 			log.Infof("serve config file %s to %s", objPath, userFromContext(ctx).Username)
-			return ctx.File(filename)
+			return serveConfigFile(ctx, objPath, filename, redact)
 		}
 		return JSONProblemf(ctx, http.StatusNotFound, "Not found", "Config file not found for %s@%s", objPath, a.localhost)
 	}
