@@ -66,7 +66,14 @@ func (t *CmdObjectCreate) Run(kind string) error {
 	if t.Wait || t.Provision {
 		ctx, cancel := context.WithTimeout(context.Background(), t.Time)
 		defer cancel()
-		if err := commoncmd.WaitAllInstanceMonitor(ctx, t.client, t.path, 0, errC); err != nil {
+		// The stream has a client of its own, with no timeout: a client
+		// timeout bounds the whole answer, the body read included, and
+		// would cut the stream after it. The context bounds it instead.
+		streamClient, err := client.New(client.WithTimeout(0))
+		if err != nil {
+			return err
+		}
+		if err := commoncmd.WaitAllInstanceMonitor(ctx, streamClient, t.path, 0, errC); err != nil {
 			// Wait until all instance monitors are registered before continuing, otherwise the next orchestration
 			// step may return early due to missing cluster monitors.
 			return err
