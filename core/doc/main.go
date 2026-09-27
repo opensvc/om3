@@ -3,6 +3,7 @@ package doc
 import (
 	"errors"
 	"fmt"
+	"slices"
 	"sort"
 	"strings"
 
@@ -153,6 +154,8 @@ func ConvertKeywordStore(store keywords.Store) api.KeywordDefinitionItems {
 			Inherit:       kw.Inherit.String(),
 			Aliases:       append([]string{}, kw.Aliases...),
 			Candidates:    append([]string{}, kw.Candidates...),
+			Depends:       make([]string, 0, len(kw.Depends)),
+			Kind:          make([]string, 0, len(kw.Kind)),
 			Types:         append([]string{}, kw.Types...),
 		}
 
@@ -169,8 +172,23 @@ func ConvertKeywordStore(store keywords.Store) api.KeywordDefinitionItems {
 			item.Kind = append(item.Kind, kind.String())
 		}
 		sort.Strings(item.Kind)
+		sort.Strings(item.Types)
 
 		l = append(l, item)
 	}
+	sort.Slice(l, func(i, j int) bool {
+		left := l[i]
+		right := l[j]
+		if left.Section != right.Section {
+			return left.Section < right.Section
+		}
+		if left.Option != right.Option {
+			return left.Option < right.Option
+		}
+		if n := slices.Compare(left.Types, right.Types); n != 0 {
+			return n < 0
+		}
+		return slices.Compare(left.Kind, right.Kind) < 0
+	})
 	return l
 }

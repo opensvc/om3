@@ -20,6 +20,9 @@ type (
 )
 
 func (a *DaemonAPI) GetObjectConfigKeywords(ctx echo.Context, namespace string, kind naming.Kind, name string, params api.GetObjectConfigKeywordsParams) error {
+	if ok, err := assertGuest(ctx, namespace); !ok {
+		return err
+	}
 	var (
 		err    error
 		status int
