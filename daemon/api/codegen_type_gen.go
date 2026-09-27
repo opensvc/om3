@@ -4151,6 +4151,34 @@ type GetObjectConfigFileParams struct {
 	RedactSecrets *RedactSecrets `form:"redact-secrets,omitempty" json:"redact-secrets,omitempty"`
 }
 
+// PostObjectConfigFileParams defines parameters for PostObjectConfigFile.
+type PostObjectConfigFileParams struct {
+	// Wait How long to hold the request until what it asks about has ended.
+	//
+	// Without it the answer is what is known now. With it the request is
+	// held, and answered as soon as the thing ends, so a client waiting for
+	// the end of what it submitted neither polls nor holds an event stream
+	// open for it.
+	//
+	// A request held until the wait expires is answered 408, which says the
+	// thing is still running, and is not an error of the request.
+	Wait *Wait `form:"wait,omitempty" json:"wait,omitempty"`
+}
+
+// PutObjectConfigFileParams defines parameters for PutObjectConfigFile.
+type PutObjectConfigFileParams struct {
+	// Wait How long to hold the request until what it asks about has ended.
+	//
+	// Without it the answer is what is known now. With it the request is
+	// held, and answered as soon as the thing ends, so a client waiting for
+	// the end of what it submitted neither polls nor holds an event stream
+	// open for it.
+	//
+	// A request held until the wait expires is answered 408, which says the
+	// thing is still running, and is not an error of the request.
+	Wait *Wait `form:"wait,omitempty" json:"wait,omitempty"`
+}
+
 // GetObjectConfigKeywordsParams defines parameters for GetObjectConfigKeywords.
 type GetObjectConfigKeywordsParams struct {
 	// Driver show only keywords of this driver

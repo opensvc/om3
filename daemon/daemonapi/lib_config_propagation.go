@@ -40,10 +40,16 @@ func (a *DaemonAPI) subscribeConfigPropagation(name string, p naming.Path) *pubs
 // so it answers as the last node lands rather than at the next poll: at a
 // quarter of a second a landing takes, a poll would be most of the wait.
 func (a *DaemonAPI) waitConfigPropagated(ctx context.Context, sub *pubsub.Subscription, p naming.Path, at time.Time) []string {
+	return a.waitConfigPropagatedTo(ctx, sub, func() []string { return a.configLaggards(p, at) })
+}
+
+// waitConfigPropagatedTo waits until laggards names no node, and returns the
+// nodes it still names when the context ends.
+func (a *DaemonAPI) waitConfigPropagatedTo(ctx context.Context, sub *pubsub.Subscription, laggards func() []string) []string {
 	ticker := time.NewTicker(configPropagationSafetyTick)
 	defer ticker.Stop()
 	for {
-		lagging := a.configLaggards(p, at)
+		lagging := laggards()
 		if len(lagging) == 0 {
 			return nil
 		}
@@ -70,6 +76,25 @@ func (a *DaemonAPI) waitConfigPropagated(ctx context.Context, sub *pubsub.Subscr
 // A node is live while this daemon holds its data, which it drops when all
 // the heartbeats of the node went stale: a node that is down fetches the
 // configuration when it comes back, and is not waited for.
+// configLaggardsIn is configLaggards over the scope of the configuration a
+// write gave, which the node that wrote it need not be part of: a whole
+// configuration file is written by the node the request reached, and a node
+// out of the scope holds no instance configuration to read the scope from.
+func (a *DaemonAPI) configLaggardsIn(p naming.Path, at time.Time, scope []string) []string {
+	configs := instance.ConfigData.GetByPath(p)
+	l := make([]string, 0)
+	for _, nodename := range scope {
+		if nodename != a.localhost && node.MonitorData.GetByNode(nodename) == nil {
+			continue
+		}
+		if cfg, ok := configs[nodename]; !ok || cfg.UpdatedAt.Before(at) {
+			l = append(l, nodename)
+		}
+	}
+	sort.Strings(l)
+	return l
+}
+
 func (a *DaemonAPI) configLaggards(p naming.Path, at time.Time) []string {
 	configs := instance.ConfigData.GetByPath(p)
 	local, ok := configs[a.localhost]

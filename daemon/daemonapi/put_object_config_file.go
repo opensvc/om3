@@ -8,9 +8,10 @@ import (
 
 	"github.com/opensvc/om3/v3/core/instance"
 	"github.com/opensvc/om3/v3/core/naming"
+	"github.com/opensvc/om3/v3/daemon/api"
 )
 
-func (a *DaemonAPI) PutObjectConfigFile(ctx echo.Context, namespace string, kind naming.Kind, name string) error {
+func (a *DaemonAPI) PutObjectConfigFile(ctx echo.Context, namespace string, kind naming.Kind, name string, params api.PutObjectConfigFileParams) error {
 	if kind == naming.KindNscfg {
 		if v, err := assertNamespaceConfigWriter(ctx); !v {
 			return err
@@ -37,5 +38,5 @@ func (a *DaemonAPI) PutObjectConfigFile(ctx echo.Context, namespace string, kind
 		return JSONProblemf(ctx, http.StatusForbidden, "Forbidden", "Config validation: %s", err)
 	}
 
-	return a.writeObjectConfigFile(ctx, p, body)
+	return a.writeObjectConfigFile(ctx, p, body, params.Wait)
 }

@@ -572,10 +572,10 @@ type ClientInterface interface {
 	GetObjectConfigFile(ctx context.Context, namespace InPathNamespace, kind InPathKind, name InPathName, params *GetObjectConfigFileParams, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// PostObjectConfigFileWithBody request with any body
-	PostObjectConfigFileWithBody(ctx context.Context, namespace InPathNamespace, kind InPathKind, name InPathName, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+	PostObjectConfigFileWithBody(ctx context.Context, namespace InPathNamespace, kind InPathKind, name InPathName, params *PostObjectConfigFileParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// PutObjectConfigFileWithBody request with any body
-	PutObjectConfigFileWithBody(ctx context.Context, namespace InPathNamespace, kind InPathKind, name InPathName, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+	PutObjectConfigFileWithBody(ctx context.Context, namespace InPathNamespace, kind InPathKind, name InPathName, params *PutObjectConfigFileParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// GetObjectConfigKeywords request
 	GetObjectConfigKeywords(ctx context.Context, namespace InPathNamespace, kind InPathKind, name InPathName, params *GetObjectConfigKeywordsParams, reqEditors ...RequestEditorFn) (*http.Response, error)
@@ -2630,8 +2630,8 @@ func (c *Client) GetObjectConfigFile(ctx context.Context, namespace InPathNamesp
 	return c.Client.Do(req)
 }
 
-func (c *Client) PostObjectConfigFileWithBody(ctx context.Context, namespace InPathNamespace, kind InPathKind, name InPathName, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
-	req, err := NewPostObjectConfigFileRequestWithBody(c.Server, namespace, kind, name, contentType, body)
+func (c *Client) PostObjectConfigFileWithBody(ctx context.Context, namespace InPathNamespace, kind InPathKind, name InPathName, params *PostObjectConfigFileParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewPostObjectConfigFileRequestWithBody(c.Server, namespace, kind, name, params, contentType, body)
 	if err != nil {
 		return nil, err
 	}
@@ -2642,8 +2642,8 @@ func (c *Client) PostObjectConfigFileWithBody(ctx context.Context, namespace InP
 	return c.Client.Do(req)
 }
 
-func (c *Client) PutObjectConfigFileWithBody(ctx context.Context, namespace InPathNamespace, kind InPathKind, name InPathName, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
-	req, err := NewPutObjectConfigFileRequestWithBody(c.Server, namespace, kind, name, contentType, body)
+func (c *Client) PutObjectConfigFileWithBody(ctx context.Context, namespace InPathNamespace, kind InPathKind, name InPathName, params *PutObjectConfigFileParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewPutObjectConfigFileRequestWithBody(c.Server, namespace, kind, name, params, contentType, body)
 	if err != nil {
 		return nil, err
 	}
@@ -13958,7 +13958,7 @@ func NewGetObjectConfigFileRequest(server string, namespace InPathNamespace, kin
 }
 
 // NewPostObjectConfigFileRequestWithBody generates requests for PostObjectConfigFile with any type of body
-func NewPostObjectConfigFileRequestWithBody(server string, namespace InPathNamespace, kind InPathKind, name InPathName, contentType string, body io.Reader) (*http.Request, error) {
+func NewPostObjectConfigFileRequestWithBody(server string, namespace InPathNamespace, kind InPathKind, name InPathName, params *PostObjectConfigFileParams, contentType string, body io.Reader) (*http.Request, error) {
 	var err error
 
 	var pathParam0 string
@@ -13995,6 +13995,33 @@ func NewPostObjectConfigFileRequestWithBody(server string, namespace InPathNames
 	queryURL, err := serverURL.Parse(operationPath)
 	if err != nil {
 		return nil, err
+	}
+
+	if params != nil {
+		// queryValues collects non-styled parameters (passthrough, JSON)
+		// that are safe to round-trip through url.Values.Encode().
+		queryValues := queryURL.Query()
+		// rawQueryFragments collects pre-encoded query fragments from
+		// styled parameters, preserving literal commas as delimiters
+		// per the OpenAPI spec (e.g. "color=blue,black,brown").
+		var rawQueryFragments []string
+
+		if params.Wait != nil {
+
+			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "wait", *params.Wait, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "string", Format: ""}); err != nil {
+				return nil, err
+			} else {
+				for _, qp := range strings.Split(queryFrag, "&") {
+					rawQueryFragments = append(rawQueryFragments, qp)
+				}
+			}
+
+		}
+
+		if encoded := queryValues.Encode(); encoded != "" {
+			rawQueryFragments = append(rawQueryFragments, encoded)
+		}
+		queryURL.RawQuery = strings.Join(rawQueryFragments, "&")
 	}
 
 	req, err := http.NewRequest(http.MethodPost, queryURL.String(), body)
@@ -14008,7 +14035,7 @@ func NewPostObjectConfigFileRequestWithBody(server string, namespace InPathNames
 }
 
 // NewPutObjectConfigFileRequestWithBody generates requests for PutObjectConfigFile with any type of body
-func NewPutObjectConfigFileRequestWithBody(server string, namespace InPathNamespace, kind InPathKind, name InPathName, contentType string, body io.Reader) (*http.Request, error) {
+func NewPutObjectConfigFileRequestWithBody(server string, namespace InPathNamespace, kind InPathKind, name InPathName, params *PutObjectConfigFileParams, contentType string, body io.Reader) (*http.Request, error) {
 	var err error
 
 	var pathParam0 string
@@ -14045,6 +14072,33 @@ func NewPutObjectConfigFileRequestWithBody(server string, namespace InPathNamesp
 	queryURL, err := serverURL.Parse(operationPath)
 	if err != nil {
 		return nil, err
+	}
+
+	if params != nil {
+		// queryValues collects non-styled parameters (passthrough, JSON)
+		// that are safe to round-trip through url.Values.Encode().
+		queryValues := queryURL.Query()
+		// rawQueryFragments collects pre-encoded query fragments from
+		// styled parameters, preserving literal commas as delimiters
+		// per the OpenAPI spec (e.g. "color=blue,black,brown").
+		var rawQueryFragments []string
+
+		if params.Wait != nil {
+
+			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "wait", *params.Wait, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "string", Format: ""}); err != nil {
+				return nil, err
+			} else {
+				for _, qp := range strings.Split(queryFrag, "&") {
+					rawQueryFragments = append(rawQueryFragments, qp)
+				}
+			}
+
+		}
+
+		if encoded := queryValues.Encode(); encoded != "" {
+			rawQueryFragments = append(rawQueryFragments, encoded)
+		}
+		queryURL.RawQuery = strings.Join(rawQueryFragments, "&")
 	}
 
 	req, err := http.NewRequest(http.MethodPut, queryURL.String(), body)
@@ -15718,10 +15772,10 @@ type ClientWithResponsesInterface interface {
 	GetObjectConfigFileWithResponse(ctx context.Context, namespace InPathNamespace, kind InPathKind, name InPathName, params *GetObjectConfigFileParams, reqEditors ...RequestEditorFn) (*GetObjectConfigFileResponse, error)
 
 	// PostObjectConfigFileWithBodyWithResponse request with any body
-	PostObjectConfigFileWithBodyWithResponse(ctx context.Context, namespace InPathNamespace, kind InPathKind, name InPathName, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*PostObjectConfigFileResponse, error)
+	PostObjectConfigFileWithBodyWithResponse(ctx context.Context, namespace InPathNamespace, kind InPathKind, name InPathName, params *PostObjectConfigFileParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*PostObjectConfigFileResponse, error)
 
 	// PutObjectConfigFileWithBodyWithResponse request with any body
-	PutObjectConfigFileWithBodyWithResponse(ctx context.Context, namespace InPathNamespace, kind InPathKind, name InPathName, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*PutObjectConfigFileResponse, error)
+	PutObjectConfigFileWithBodyWithResponse(ctx context.Context, namespace InPathNamespace, kind InPathKind, name InPathName, params *PutObjectConfigFileParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*PutObjectConfigFileResponse, error)
 
 	// GetObjectConfigKeywordsWithResponse request
 	GetObjectConfigKeywordsWithResponse(ctx context.Context, namespace InPathNamespace, kind InPathKind, name InPathName, params *GetObjectConfigKeywordsParams, reqEditors ...RequestEditorFn) (*GetObjectConfigKeywordsResponse, error)
@@ -20932,6 +20986,7 @@ type PostObjectConfigFileResponse struct {
 	JSON401      *N401
 	JSON403      *N403
 	JSON404      *N404
+	JSON408      *N408
 	JSON409      *N409
 	JSON500      *N500
 }
@@ -20967,6 +21022,7 @@ type PutObjectConfigFileResponse struct {
 	JSON401      *N401
 	JSON403      *N403
 	JSON404      *N404
+	JSON408      *N408
 	JSON409      *N409
 	JSON500      *N500
 }
@@ -23084,8 +23140,8 @@ func (c *ClientWithResponses) GetObjectConfigFileWithResponse(ctx context.Contex
 }
 
 // PostObjectConfigFileWithBodyWithResponse request with arbitrary body returning *PostObjectConfigFileResponse
-func (c *ClientWithResponses) PostObjectConfigFileWithBodyWithResponse(ctx context.Context, namespace InPathNamespace, kind InPathKind, name InPathName, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*PostObjectConfigFileResponse, error) {
-	rsp, err := c.PostObjectConfigFileWithBody(ctx, namespace, kind, name, contentType, body, reqEditors...)
+func (c *ClientWithResponses) PostObjectConfigFileWithBodyWithResponse(ctx context.Context, namespace InPathNamespace, kind InPathKind, name InPathName, params *PostObjectConfigFileParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*PostObjectConfigFileResponse, error) {
+	rsp, err := c.PostObjectConfigFileWithBody(ctx, namespace, kind, name, params, contentType, body, reqEditors...)
 	if err != nil {
 		return nil, err
 	}
@@ -23093,8 +23149,8 @@ func (c *ClientWithResponses) PostObjectConfigFileWithBodyWithResponse(ctx conte
 }
 
 // PutObjectConfigFileWithBodyWithResponse request with arbitrary body returning *PutObjectConfigFileResponse
-func (c *ClientWithResponses) PutObjectConfigFileWithBodyWithResponse(ctx context.Context, namespace InPathNamespace, kind InPathKind, name InPathName, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*PutObjectConfigFileResponse, error) {
-	rsp, err := c.PutObjectConfigFileWithBody(ctx, namespace, kind, name, contentType, body, reqEditors...)
+func (c *ClientWithResponses) PutObjectConfigFileWithBodyWithResponse(ctx context.Context, namespace InPathNamespace, kind InPathKind, name InPathName, params *PutObjectConfigFileParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*PutObjectConfigFileResponse, error) {
+	rsp, err := c.PutObjectConfigFileWithBody(ctx, namespace, kind, name, params, contentType, body, reqEditors...)
 	if err != nil {
 		return nil, err
 	}
@@ -31716,6 +31772,13 @@ func ParsePostObjectConfigFileResponse(rsp *http.Response) (*PostObjectConfigFil
 		}
 		response.JSON404 = &dest
 
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 408:
+		var dest N408
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON408 = &dest
+
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 409:
 		var dest N409
 		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
@@ -31776,6 +31839,13 @@ func ParsePutObjectConfigFileResponse(rsp *http.Response) (*PutObjectConfigFileR
 			return nil, err
 		}
 		response.JSON404 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 408:
+		var dest N408
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON408 = &dest
 
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 409:
 		var dest N409

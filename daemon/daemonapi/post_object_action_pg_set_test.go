@@ -9,7 +9,6 @@ import (
 	"github.com/opensvc/om3/v3/daemon/api"
 )
 
-
 func TestAPGSetIsTheKeywordsOfItsSections(t *testing.T) {
 	l, err := pgSetOps(map[string]api.PGCaps{
 		"container#1": {CpuQuota: ptr("80%"), MemLimit: ptr("512m")},

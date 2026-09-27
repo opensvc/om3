@@ -8,9 +8,10 @@ import (
 
 	"github.com/opensvc/om3/v3/core/instance"
 	"github.com/opensvc/om3/v3/core/naming"
+	"github.com/opensvc/om3/v3/daemon/api"
 )
 
-func (a *DaemonAPI) PostObjectConfigFile(ctx echo.Context, namespace string, kind naming.Kind, name string) error {
+func (a *DaemonAPI) PostObjectConfigFile(ctx echo.Context, namespace string, kind naming.Kind, name string, params api.PostObjectConfigFileParams) error {
 	log := LogHandler(ctx, "PostObjectConfigFile")
 
 	// A namespace configuration is the namespace itself, so creating one is
@@ -44,5 +45,5 @@ func (a *DaemonAPI) PostObjectConfigFile(ctx echo.Context, namespace string, kin
 
 	log.Tracef("%s: rbac passed", p)
 
-	return a.writeObjectConfigFile(ctx, p, body)
+	return a.writeObjectConfigFile(ctx, p, body, params.Wait)
 }

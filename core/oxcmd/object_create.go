@@ -192,7 +192,7 @@ func (t *CmdObjectCreate) fromData(p naming.Path, b []byte) error {
 	if err != nil {
 		return err
 	}
-	resp, err := t.client.PostObjectConfigFileWithBodyWithResponse(context.Background(), p.Namespace, p.Kind, p.Name, "application/octet-stream", bytes.NewBuffer(b))
+	resp, err := t.client.PostObjectConfigFileWithBodyWithResponse(context.Background(), p.Namespace, p.Kind, p.Name, nil, "application/octet-stream", bytes.NewBuffer(b))
 	if err != nil {
 		return err
 	}

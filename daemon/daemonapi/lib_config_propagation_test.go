@@ -72,6 +72,30 @@ func TestConfigLaggardsSkipsANodeThatIsNotAlive(t *testing.T) {
 	assert.Empty(t, a.configLaggards(p, written))
 }
 
+// A whole configuration file is written by the node the request reached,
+// which need not be in the scope written: the nodes waited for are the live
+// nodes of that scope, the writer only when it is one of them.
+func TestConfigLaggardsInTheScopeWritten(t *testing.T) {
+	p := naming.Path{Kind: naming.KindSvc, Name: "propagated"}
+	a := &DaemonAPI{localhost: "n1"}
+	written := time.Now()
+
+	propagationFixture(t, p, []string{"n1", "n2", "n3"})
+	assert.Equal(t, []string{"n2", "n3"}, a.configLaggardsIn(p, written, []string{"n2", "n3"}),
+		"the writer, out of the scope, holds no instance configuration and is not waited for")
+
+	setConfig(p, "n2", written, "n2", "n3")
+	setConfig(p, "n3", written, "n2", "n3")
+	assert.Empty(t, a.configLaggardsIn(p, written, []string{"n2", "n3"}))
+
+	assert.Equal(t, []string{"n1"}, a.configLaggardsIn(p, written, []string{"n1", "n2", "n3"}),
+		"the writer in the scope is waited for like any node")
+	node.MonitorData.Unset("n3")
+	setConfig(p, "n3", written.Add(-time.Minute), "n2")
+	setConfig(p, "n1", written, "n1", "n2", "n3")
+	assert.Empty(t, a.configLaggardsIn(p, written, []string{"n1", "n2", "n3"}), "a node not alive is not waited for")
+}
+
 // A wait that expires answers the nodes it has not reached.
 func TestWaitConfigPropagatedAnswersWhoLags(t *testing.T) {
 	p := naming.Path{Kind: naming.KindSvc, Name: "propagated"}

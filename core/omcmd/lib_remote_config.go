@@ -90,7 +90,7 @@ func putConfig(p naming.Path, fName string, c *client.T) (err error) {
 		return err
 	}
 	defer file.Close()
-	resp, err := c.PutObjectConfigFileWithBody(context.Background(), p.Namespace, p.Kind, p.Name, "application/octet-stream", file)
+	resp, err := c.PutObjectConfigFileWithBody(context.Background(), p.Namespace, p.Kind, p.Name, nil, "application/octet-stream", file)
 	if err != nil {
 		return err
 	}
