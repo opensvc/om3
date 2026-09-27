@@ -130,6 +130,8 @@ func writeResizeTarget(eCtx echo.Context, p naming.Path, size string) (time.Time
 	log := naming.LogWithPath(LogHandler(eCtx, "postObjectActionResize"), p)
 	if _, err := configUpdate(eCtx, log, p, nil, nil, sets); errors.Is(err, ErrDenied) || errors.Is(err, ErrClaimOverrun) {
 		return updatedAt, http.StatusForbidden, err
+	} else if errors.Is(err, ErrInvalidConfig) {
+		return updatedAt, http.StatusBadRequest, err
 	} else if err != nil {
 		return updatedAt, http.StatusInternalServerError, err
 	}

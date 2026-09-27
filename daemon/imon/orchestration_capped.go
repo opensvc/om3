@@ -11,7 +11,7 @@ import (
 // every running instance of the object.
 //
 // The caps are the pg_* keywords of the configuration, which the request
-// wrote before the orchestration was queued: every node waits for that
+// writes once the orchestration is queued: every node waits for that
 // configuration to land, and then applies it where the instance runs. An
 // instance not running has nothing to apply the caps to, and applies them
 // when it starts.

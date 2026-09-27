@@ -26,11 +26,13 @@ import (
 // them to its running instances.
 //
 // The caps are written as the pg_* keywords of the configuration, through the
-// write of a configuration update, so the rbac policy, the validation and the
+// checks of a configuration update, so the rbac policy, the validation and the
 // claim checks weigh them, and the caps hold through a start, a failover and
-// a reboot. The orchestration queued then applies the configuration written
-// on every node running an instance, and names it, so a node holding an older
-// one waits for it rather than applying the caps it replaces.
+// a reboot. The orchestration is queued between the checks and the write, so
+// a cap the orchestration refuses is not written. It applies the
+// configuration written on every node running an instance, and names it, so
+// a node holding an older one waits for it rather than applying the caps it
+// replaces.
 //
 // A request naming no cap applies the ones the configuration holds, which is
 // how caps lifted or changed by hand are put back.
@@ -68,26 +70,41 @@ func (a *DaemonAPI) PostObjectActionCap(eCtx echo.Context, namespace string, kin
 	if params.ConfigUpdatedAt != nil {
 		options.ConfigUpdatedAt = *params.ConfigUpdatedAt
 	}
+	var pending *pendingConfigUpdate
 	if len(ops) > 0 {
 		log := naming.LogWithPath(LogHandler(eCtx, "postObjectActionCap"), p)
-		if _, err := configUpdate(eCtx, log, p, nil, nil, ops); errors.Is(err, ErrDenied) || errors.Is(err, ErrClaimOverrun) {
+		u, err := prepareConfigUpdate(eCtx, log, p, nil, nil, ops)
+		switch {
+		case errors.Is(err, ErrDenied) || errors.Is(err, ErrClaimOverrun):
 			return JSONProblemf(eCtx, http.StatusForbidden, "Forbidden", "%s", err)
-		} else if err != nil {
+		case errors.Is(err, ErrInvalidConfig):
+			return JSONProblemf(eCtx, http.StatusBadRequest, "Cap", "%s", err)
+		case err != nil:
 			return JSONProblemf(eCtx, http.StatusInternalServerError, "Cap", "%s", err)
 		}
-		a.announceConfigFileWritten(p)
 		options.ConfigUpdatedAt = time.Time{}
+		if u.changed {
+			pending = u
+		}
 	}
-	if options.ConfigUpdatedAt.IsZero() {
-		// The caps applied are the ones this configuration holds, written
-		// here or read here, so this is the configuration the
-		// orchestration is for.
+	switch {
+	case pending != nil:
+		// The caps are written once the orchestration is queued, and not
+		// before, so a cap refused, as one is while another orchestration
+		// is in progress, is not written either: written, it would be
+		// applied by the next orchestration, which did not ask for it.
+		//
+		// The orchestration is for a configuration as recent as this
+		// moment, which is the one about to be written. The margin is the
+		// clock a file is stamped with, which lags the one read here by up
+		// to a kernel tick.
+		options.ConfigUpdatedAt = time.Now().Add(-capClockMargin)
+	case options.ConfigUpdatedAt.IsZero():
+		// The caps applied are the ones this configuration holds, read
+		// here, so this is the configuration the orchestration is for.
 		if mtime := file.ModTime(p.ConfigFile()); !mtime.IsZero() {
 			options.ConfigUpdatedAt = mtime
 		}
-	}
-	if !options.ConfigUpdatedAt.IsZero() {
-		eCtx.Response().Header().Add(api.HeaderLastModified, options.ConfigUpdatedAt.Format(time.RFC3339Nano))
 	}
 
 	ctx, cancel := context.WithTimeout(eCtx.Request().Context(), 500*time.Millisecond)
@@ -100,7 +117,42 @@ func (a *DaemonAPI) PostObjectActionCap(eCtx echo.Context, namespace string, kin
 	}
 	msg, setInstanceMonitorErr := msgbus.NewSetInstanceMonitorWithErr(ctx, p, a.localhost, value)
 	a.Bus.Pub(msg, pubsub.Label{"namespace", p.Namespace}, pubsub.Label{"path", p.String()}, labelOriginAPI)
-	return JSONFromSetInstanceMonitorError(eCtx, &value, setInstanceMonitorErr.Receive())
+	if err := setInstanceMonitorErr.Receive(); err != nil {
+		return JSONFromSetInstanceMonitorError(eCtx, &value, err)
+	}
+	if pending != nil {
+		if _, err := pending.commit(); err != nil {
+			// The orchestration waits for a configuration that is not
+			// coming, and would wait for good.
+			a.abortObjectOrchestration(eCtx.Request().Context(), p)
+			return JSONProblemf(eCtx, http.StatusInternalServerError, "Cap", "%s", err)
+		}
+		a.announceConfigFileWritten(p)
+	}
+	if mtime := file.ModTime(p.ConfigFile()); !mtime.IsZero() {
+		eCtx.Response().Header().Add(api.HeaderLastModified, mtime.Format(time.RFC3339Nano))
+	}
+	return JSONFromSetInstanceMonitorError(eCtx, &value, nil)
+}
+
+// capClockMargin is how far before the request a configuration written for
+// it may be stamped: the kernel stamps a file with a clock updated once a
+// tick, 10ms at the slowest tick rate.
+const capClockMargin = 20 * time.Millisecond
+
+// abortObjectOrchestration aborts the orchestration of an object the local
+// node queued, as "om <path> abort" does.
+func (a *DaemonAPI) abortObjectOrchestration(ctx context.Context, p naming.Path) {
+	ctx, cancel := context.WithTimeout(ctx, 500*time.Millisecond)
+	defer cancel()
+	globalExpect := instance.MonitorGlobalExpectAborted
+	value := instance.MonitorUpdate{
+		GlobalExpect:             &globalExpect,
+		CandidateOrchestrationID: uuid.New(),
+	}
+	msg, setInstanceMonitorErr := msgbus.NewSetInstanceMonitorWithErr(ctx, p, a.localhost, value)
+	a.Bus.Pub(msg, pubsub.Label{"namespace", p.Namespace}, pubsub.Label{"path", p.String()}, labelOriginAPI)
+	_ = setInstanceMonitorErr.Receive()
 }
 
 // capOps reads the set operations of a cap, refusing what is not one.
