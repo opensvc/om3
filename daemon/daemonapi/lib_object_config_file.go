@@ -1,6 +1,7 @@
 package daemonapi
 
 import (
+	"errors"
 	"fmt"
 	"io"
 	"net/http"
@@ -25,7 +26,10 @@ import (
 // The file is written by the node the request reached, which need not be one
 // of the nodes of the object, so the nodes waited for are the ones of the
 // configuration written.
-func (a *DaemonAPI) writeObjectConfigFile(ctx echo.Context, p naming.Path, body []byte, wait *api.Wait) error {
+//
+// The file is written only over the base the request was checked against,
+// and the write is refused as a conflict if another landed since.
+func (a *DaemonAPI) writeObjectConfigFile(ctx echo.Context, p naming.Path, body []byte, base configBase, wait *api.Wait) error {
 	waitCtx, cancel, waiting, err := waitContext(ctx, wait)
 	if err != nil {
 		return JSONProblemf(ctx, http.StatusBadRequest, "Invalid parameters", "%s", err)
@@ -56,7 +60,9 @@ func (a *DaemonAPI) writeObjectConfigFile(ctx echo.Context, p naming.Path, body 
 		defer func() { _ = sub.Stop() }()
 	}
 	// Use the non-validating commit func as we already validate to emit an explicit error
-	if err := configurer.Config().RecommitInvalid(); err != nil {
+	if err := base.commit(configurer.Config().RecommitInvalid); errors.Is(err, ErrConfigChanged) {
+		return JSONProblemf(ctx, http.StatusConflict, "Commit", "%s", err)
+	} else if err != nil {
 		return JSONProblemf(ctx, http.StatusInternalServerError, "Commit", "%s", err)
 	}
 	a.announceConfigFileWritten(p)

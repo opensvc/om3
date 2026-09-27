@@ -69,6 +69,8 @@ func PatchObjectConfig(ctx context.Context, c *client.T, p naming.Path, params a
 		return false, fmt.Errorf("%s: %s", p, *resp.JSON404)
 	case http.StatusRequestTimeout:
 		return false, fmt.Errorf("%s: %s", p, resp.JSON408.Detail)
+	case http.StatusConflict:
+		return false, fmt.Errorf("%s: %s", p, *resp.JSON409)
 	case http.StatusInternalServerError:
 		return false, fmt.Errorf("%s: %s", p, *resp.JSON500)
 	default:

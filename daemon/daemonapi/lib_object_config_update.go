@@ -40,6 +40,7 @@ type pendingConfigUpdate struct {
 	log     *plog.Logger
 	p       naming.Path
 	oc      object.Configurer
+	base    configBase
 	changed bool
 }
 
@@ -47,6 +48,10 @@ type pendingConfigUpdate struct {
 // the rbac policy, the validation and the claims, without writing it, so a
 // caller can do what the write depends on between the checks and the write.
 func prepareConfigUpdate(ctx echo.Context, log *plog.Logger, p naming.Path, deletes []string, unsets []key.T, sets []keyop.T) (*pendingConfigUpdate, error) {
+	base, err := readConfigBase(p)
+	if err != nil {
+		return nil, fmt.Errorf("read the configuration of %s: %w", p, err)
+	}
 	oc, err := object.NewConfigurer(p)
 	if err != nil {
 		return nil, fmt.Errorf("new configurer %s: %w", p, err)
@@ -81,13 +86,24 @@ func prepareConfigUpdate(ctx echo.Context, log *plog.Logger, p naming.Path, dele
 		log:     log,
 		p:       p,
 		oc:      oc,
+		base:    base,
 		changed: oc.Config().Changed(),
 	}, nil
 }
 
 // commit writes the update, and says whether it changed the configuration.
+//
+// It writes only over the configuration it was checked against, and refuses
+// with ErrConfigChanged if another write landed since. An update changing
+// nothing writes nothing, and replaces no other write.
 func (u *pendingConfigUpdate) commit() (bool, error) {
-	if err := u.oc.Config().CommitInvalid(); err != nil {
+	if !u.changed {
+		return false, nil
+	}
+	err := u.base.commit(u.oc.Config().CommitInvalid)
+	if errors.Is(err, ErrConfigChanged) {
+		return false, err
+	} else if err != nil {
 		u.log.Errorf("configuration commit is invalid for object %s: %s", u.p, err)
 		return false, fmt.Errorf("configuration commit is invalid for object %s: %w", u.p, err)
 	}

@@ -132,6 +132,8 @@ func writeResizeTarget(eCtx echo.Context, p naming.Path, size string) (time.Time
 		return updatedAt, http.StatusForbidden, err
 	} else if errors.Is(err, ErrInvalidConfig) {
 		return updatedAt, http.StatusBadRequest, err
+	} else if errors.Is(err, ErrConfigChanged) {
+		return updatedAt, http.StatusConflict, err
 	} else if err != nil {
 		return updatedAt, http.StatusInternalServerError, err
 	}

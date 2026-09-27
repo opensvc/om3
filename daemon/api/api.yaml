@@ -5176,6 +5176,11 @@ paths:
         same, and the answer carries the OM-Last-Modified timestamp an action
         can require with its config_updated_at parameter. A 408 is not to be
         answered by writing again: a += operation would apply twice.
+
+        The update is checked against the configuration read when the
+        request arrives, and written only over it: a configuration another
+        write changed meanwhile is answered 409, and nothing is written.
+        Ask again, to be checked against the configuration as it now is.
       parameters:
         - $ref: '#/components/parameters/inPathNamespace'
         - $ref: '#/components/parameters/inPathKind'
@@ -5201,6 +5206,8 @@ paths:
           $ref: '#/components/responses/404'
         408:
           $ref: '#/components/responses/408'
+        409:
+          $ref: '#/components/responses/409'
         500:
           $ref: '#/components/responses/500'
 

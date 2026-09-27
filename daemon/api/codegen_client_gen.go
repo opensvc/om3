@@ -20903,6 +20903,7 @@ type PatchObjectConfigResponse struct {
 	JSON403      *N403
 	JSON404      *N404
 	JSON408      *N408
+	JSON409      *N409
 	JSON500      *N500
 }
 
@@ -31653,6 +31654,13 @@ func ParsePatchObjectConfigResponse(rsp *http.Response) (*PatchObjectConfigRespo
 			return nil, err
 		}
 		response.JSON408 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 409:
+		var dest N409
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON409 = &dest
 
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
 		var dest N500

@@ -27,6 +27,13 @@ func (a *DaemonAPI) PutObjectConfigFile(ctx echo.Context, namespace string, kind
 		return JSONProblemf(ctx, http.StatusNotFound, "Not found", "Use the POST method instead of PUT to create the object")
 	}
 
+	// Read before anything is checked against it: the write lands only
+	// over this file.
+	base, err := readConfigBase(p)
+	if err != nil {
+		return JSONProblemf(ctx, http.StatusInternalServerError, "Read config", "%s", err)
+	}
+
 	// Read and parse the config body to validate RBAC rules
 	body, err := io.ReadAll(ctx.Request().Body)
 	if err != nil {
@@ -38,5 +45,5 @@ func (a *DaemonAPI) PutObjectConfigFile(ctx echo.Context, namespace string, kind
 		return JSONProblemf(ctx, http.StatusForbidden, "Forbidden", "Config validation: %s", err)
 	}
 
-	return a.writeObjectConfigFile(ctx, p, body, params.Wait)
+	return a.writeObjectConfigFile(ctx, p, body, base, params.Wait)
 }

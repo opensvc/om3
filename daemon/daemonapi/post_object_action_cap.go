@@ -125,6 +125,9 @@ func (a *DaemonAPI) PostObjectActionCap(eCtx echo.Context, namespace string, kin
 			// The orchestration waits for a configuration that is not
 			// coming, and would wait for good.
 			a.abortObjectOrchestration(eCtx.Request().Context(), p)
+			if errors.Is(err, ErrConfigChanged) {
+				return JSONProblemf(eCtx, http.StatusConflict, "Cap", "%s", err)
+			}
 			return JSONProblemf(eCtx, http.StatusInternalServerError, "Cap", "%s", err)
 		}
 		a.announceConfigFileWritten(p)
