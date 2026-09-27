@@ -43,6 +43,9 @@ type (
 		file           *ini.File
 		postCommit     func() error
 		changed        bool
+
+		// base, when set, is the file the next write must land over.
+		base *Base
 	}
 
 	// Referrer is the interface implemented by node and object to
@@ -843,12 +846,11 @@ func (t *T) writeReferrerConfigData() error {
 		}
 	}
 	tmp.Close()
-	if err := os.Rename(tmp.Name(), t.ConfigFilePath); err != nil {
+	defer os.Remove(tmp.Name())
+	if err := install(tmp.Name(), t.ConfigFilePath, t.base); err != nil {
 		return err
 	}
-	if err := file.Sync(t.ConfigFilePath); err != nil {
-		return err
-	}
+	t.base = nil
 	return nil
 }
 
@@ -878,12 +880,12 @@ func (t *T) write() (err error) {
 	if err = f.Close(); err != nil {
 		return err
 	}
-	if err := os.Rename(fName, t.ConfigFilePath); err != nil {
+	// The base holds for this write alone: a write refused keeps it, so
+	// asking the same write again is refused again.
+	if err := install(fName, t.ConfigFilePath, t.base); err != nil {
 		return err
 	}
-	if err := file.Sync(t.ConfigFilePath); err != nil {
-		return err
-	}
+	t.base = nil
 	t.changed = false
 	return nil
 }

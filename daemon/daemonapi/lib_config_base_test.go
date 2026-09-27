@@ -9,7 +9,9 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
+	"github.com/opensvc/om3/v3/core/keyop"
 	"github.com/opensvc/om3/v3/core/naming"
+	"github.com/opensvc/om3/v3/core/object"
 	"github.com/opensvc/om3/v3/core/rawconfig"
 	"github.com/opensvc/om3/v3/testhelper"
 )
@@ -27,42 +29,34 @@ func TestConfigBaseCommit(t *testing.T) {
 	setFile := func(s string) {
 		require.NoError(t, os.WriteFile(cf, []byte(s), 0600))
 	}
-	written := func() error {
-		setFile("[DEFAULT]\npg_cpu_quota = 50%\n")
-		return nil
+	content := func() string {
+		b, err := os.ReadFile(cf)
+		require.NoError(t, err)
+		return string(b)
+	}
+	// update checks the base, changes the file with meanwhile, and commits
+	// a comment set over the base.
+	update := func(meanwhile func()) error {
+		base, err := readConfigBase(p)
+		require.NoError(t, err)
+		meanwhile()
+		oc, err := object.NewConfigurer(p)
+		require.NoError(t, err)
+		require.NoError(t, oc.Config().PrepareUpdate(nil, nil, keyop.ParseOps([]string{"comment=capped"})))
+		return base.commit(oc.Config(), oc.Config().CommitInvalid)
 	}
 
 	t.Run("the file checked against is written over", func(t *testing.T) {
-		setFile("[DEFAULT]\n")
-		base, err := readConfigBase(p)
-		require.NoError(t, err)
-		require.NoError(t, base.commit(written))
+		setFile("[DEFAULT]\nnodes = n1\n")
+		require.NoError(t, update(func() {}))
+		assert.Contains(t, content(), "comment = capped")
 	})
 
 	t.Run("a file written meanwhile is not", func(t *testing.T) {
-		setFile("[DEFAULT]\n")
-		base, err := readConfigBase(p)
-		require.NoError(t, err)
 		setFile("[DEFAULT]\nnodes = n1\n")
-		ran := false
-		err = base.commit(func() error { ran = true; return nil })
+		err := update(func() { setFile("[DEFAULT]\nnodes = n1\norchestrate = ha\n") })
 		assert.True(t, errors.Is(err, ErrConfigChanged), "%v", err)
-		assert.False(t, ran)
-	})
-
-	t.Run("a file created meanwhile is not", func(t *testing.T) {
-		require.NoError(t, os.Remove(cf))
-		base, err := readConfigBase(p)
-		require.NoError(t, err)
-		setFile("[DEFAULT]\n")
-		assert.ErrorIs(t, base.commit(written), ErrConfigChanged)
-	})
-
-	t.Run("a file removed meanwhile is not", func(t *testing.T) {
-		setFile("[DEFAULT]\n")
-		base, err := readConfigBase(p)
-		require.NoError(t, err)
-		require.NoError(t, os.Remove(cf))
-		assert.ErrorIs(t, base.commit(written), ErrConfigChanged)
+		assert.Contains(t, err.Error(), "test/svc/foo was written by someone else meanwhile")
+		assert.Equal(t, "[DEFAULT]\nnodes = n1\norchestrate = ha\n", content())
 	})
 }

@@ -100,7 +100,7 @@ func (u *pendingConfigUpdate) commit() (bool, error) {
 	if !u.changed {
 		return false, nil
 	}
-	err := u.base.commit(u.oc.Config().CommitInvalid)
+	err := u.base.commit(u.oc.Config(), u.oc.Config().CommitInvalid)
 	if errors.Is(err, ErrConfigChanged) {
 		return false, err
 	} else if err != nil {

@@ -60,7 +60,7 @@ func (a *DaemonAPI) writeObjectConfigFile(ctx echo.Context, p naming.Path, body 
 		defer func() { _ = sub.Stop() }()
 	}
 	// Use the non-validating commit func as we already validate to emit an explicit error
-	if err := base.commit(configurer.Config().RecommitInvalid); errors.Is(err, ErrConfigChanged) {
+	if err := base.commit(configurer.Config(), configurer.Config().RecommitInvalid); errors.Is(err, ErrConfigChanged) {
 		return JSONProblemf(ctx, http.StatusConflict, "Commit", "%s", err)
 	} else if err != nil {
 		return JSONProblemf(ctx, http.StatusInternalServerError, "Commit", "%s", err)
