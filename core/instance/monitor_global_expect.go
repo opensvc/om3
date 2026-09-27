@@ -16,6 +16,7 @@ const (
 	MonitorGlobalExpectStopped
 	MonitorGlobalExpectUnfrozen
 	MonitorGlobalExpectUnprovisioned
+	MonitorGlobalExpectCapped
 )
 
 var (
@@ -32,6 +33,7 @@ func init() {
 		str    string
 	}{
 		{MonitorGlobalExpectAborted, "aborted"},
+		{MonitorGlobalExpectCapped, "capped"},
 		{MonitorGlobalExpectDeleted, "deleted"},
 		{MonitorGlobalExpectInit, "init"},
 		{MonitorGlobalExpectFrozen, "frozen"},

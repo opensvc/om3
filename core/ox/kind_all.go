@@ -62,6 +62,7 @@ func init() {
 		newCmdDataStoreInstall(kind),
 		newCmdDataStoreRemove(kind),
 		newCmdObjectKey(kind),
+		commoncmd.NewCmdObjectCap(kind),
 		newCmdObjectAbort(kind),
 		commoncmd.NewCmdObjectClear(kind),
 		newCmdObjectCreate(kind),
@@ -125,7 +126,6 @@ func init() {
 	)
 	cmdObjectInstancePG.AddCommand(
 		newCmdObjectInstancePGReset(kind),
-		commoncmd.NewCmdObjectPGSet(kind),
 		newCmdObjectInstancePGUpdate(kind),
 	)
 	cmdObjectConfig.AddCommand(

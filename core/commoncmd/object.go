@@ -42,7 +42,6 @@ func NewCmdObjectContainer(kind string) *cobra.Command {
 	}
 	cmd.AddGroup(
 		NewGroupQuery(),
-		NewGroupSubsystems(),
 	)
 	return cmd
 }
@@ -120,7 +119,6 @@ func NewCmdObjectApp(kind string) *cobra.Command {
 	}
 	cmd.AddGroup(
 		NewGroupQuery(),
-		NewGroupSubsystems(),
 	)
 	return cmd
 }
@@ -147,7 +145,6 @@ func NewCmdObjectTask(kind string) *cobra.Command {
 	}
 	cmd.AddGroup(
 		NewGroupQuery(),
-		NewGroupSubsystems(),
 	)
 	return cmd
 }

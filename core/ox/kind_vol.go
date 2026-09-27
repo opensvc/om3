@@ -44,6 +44,7 @@ func init() {
 		cmdObjectSet,
 		cmdObjectSchedule,
 		cmdObjectValidate,
+		commoncmd.NewCmdObjectCap(kind),
 		newCmdObjectAbort(kind),
 		commoncmd.NewCmdObjectClear(kind),
 		newCmdObjectCreate(kind),
@@ -132,7 +133,6 @@ func init() {
 	)
 	cmdObjectInstancePG.AddCommand(
 		newCmdObjectInstancePGReset(kind),
-		commoncmd.NewCmdObjectPGSet(kind),
 		newCmdObjectInstancePGUpdate(kind),
 	)
 	cmdObjectSchedule.AddCommand(

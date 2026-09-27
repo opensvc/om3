@@ -1,4 +1,6 @@
-The cpu time the processes of the group may bank while under their
+The cpu time the group banks under its quota, and spends above it.
+
+It is the time the processes of the group may bank while under their
 `pg_cpu_quota`, and spend above it in a short spike, in the notation of
 `pg_cpu_quota`: `20%` lets the group run a fifth of a cpu above its quota
 during a period, out of what it left unused before.

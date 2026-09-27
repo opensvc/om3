@@ -87,3 +87,24 @@ func Test_Monitor_DeepCopy(t *testing.T) {
 
 	require.True(t, mon2.Resources["a"].Restart.LastAt.After(mon1.Resources["a"].Restart.LastAt))
 }
+
+// The options of a resize and of a cap are read as their type on every node,
+// the peers included, which receive them encoded.
+func TestGlobalExpectOptionsKeepTheirTypeThroughEncodingAndCopy(t *testing.T) {
+	at := time.Date(2026, 9, 27, 10, 0, 0, 0, time.UTC)
+	for _, tc := range []struct {
+		expect  MonitorGlobalExpect
+		options any
+	}{
+		{MonitorGlobalExpectResized, MonitorGlobalExpectOptionsResized{ConfigUpdatedAt: at}},
+		{MonitorGlobalExpectCapped, MonitorGlobalExpectOptionsCapped{ConfigUpdatedAt: at}},
+	} {
+		mon := Monitor{GlobalExpect: tc.expect, GlobalExpectOptions: tc.options}
+		b, err := json.Marshal(mon)
+		require.NoError(t, err)
+		var decoded Monitor
+		require.NoError(t, json.Unmarshal(b, &decoded))
+		require.Equal(t, tc.options, decoded.GlobalExpectOptions, "decoded")
+		require.Equal(t, tc.options, decoded.DeepCopy().GlobalExpectOptions, "copied")
+	}
+}

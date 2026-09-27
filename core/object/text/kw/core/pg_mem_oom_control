@@ -1,4 +1,6 @@
-A flag (0 or 1) that enables or disables the Out of Memory killer for the
+Whether the Out of Memory killer runs for the group: 0 enables it.
+
+It is a flag (0 or 1) enabling or disabling the Out of Memory killer for the
 processes of the group.
 
 * If enabled (0), tasks that attempt to consume more memory than they are

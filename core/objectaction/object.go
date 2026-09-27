@@ -467,6 +467,18 @@ func doPostObjectAction(ctx context.Context, c *client.T, target instance.Monito
 			return nil, err
 		}
 		return handleStatusCode(resp.StatusCode(), resp.Body, resp.JSON400, resp.JSON401, resp.JSON403, resp.JSON404, resp.JSON408, resp.JSON409, resp.JSON500)
+	case instance.MonitorGlobalExpectCapped:
+		// The caps are the daemon's to write, and the configuration it wrote
+		// is the one it queues the orchestration for.
+		params := api.PostObjectActionCapParams{}
+		if options, ok := targetOptions.(api.PostObjectActionCapParams); ok {
+			params = options
+		}
+		resp, err := c.PostObjectActionCapWithResponse(ctx, p.Namespace, p.Kind, p.Name, &params)
+		if err != nil {
+			return nil, err
+		}
+		return handleStatusCode(resp.StatusCode(), resp.Body, resp.JSON400, resp.JSON401, resp.JSON403, resp.JSON404, resp.JSON408, resp.JSON409, resp.JSON500)
 	case instance.MonitorGlobalExpectResized:
 		// The size is the daemon's to write, and the configuration it wrote
 		// is the one it queues the orchestration for, so nothing here names

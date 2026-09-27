@@ -127,6 +127,12 @@ func (t *Manager) queueUnfreeze() error {
 	})
 }
 
+// crmPGUpdate applies the process group caps of the configuration to the
+// local instance.
+func (t *Manager) crmPGUpdate() error {
+	return t.crmAction("pg update", t.path.String(), "instance", "pg", "update")
+}
+
 func (t *Manager) crmBoot() error {
 	return t.crmAction("boot", t.path.String(), "instance", "boot")
 }

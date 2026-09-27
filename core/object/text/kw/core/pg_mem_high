@@ -1,5 +1,7 @@
-The memory the processes of the group may use before the kernel slows them
-down, reclaiming their memory and throttling their allocations, in bytes.
+The memory past which the kernel throttles the group, in bytes.
+
+Past it, the kernel slows the processes of the group down, reclaiming their
+memory and throttling their allocations.
 
 Unlike `pg_mem_limit`, reaching it does not wake the Out-Of-Memory killer: a
 group above it keeps running, slower, while the kernel reclaims. Set below

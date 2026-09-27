@@ -1,4 +1,4 @@
-Allow service process to bind only the specified cpus.
+The cpus the processes of the group may run on.
 
 Cpus are specified as list or range : `0,1,2` or `0-2`.
 
