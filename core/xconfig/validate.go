@@ -354,7 +354,7 @@ func (t T) Validate() (Alerts, error) {
 				}
 			}
 		}
-		for option := range s.KeysHash() {
+		for option, raw := range s.KeysHash() {
 			k, err := key.ParseStrict(section + "." + option)
 			if err != nil {
 				alerts = append(alerts, t.NewAlertUnknown(k, did, err.Error()))
@@ -388,6 +388,11 @@ func (t T) Validate() (Alerts, error) {
 				alerts = append(alerts, t.NewAlertEval(k, did, fmt.Sprint(err)))
 				continue
 			}
+			if kw.Validate != nil {
+				if err := t.validateLine(k, kw, raw); err != nil {
+					alerts = append(alerts, t.NewAlertCandidates(k, did, err.Error()))
+				}
+			}
 			if kw.Deprecated != "" {
 				alerts = append(alerts, t.NewAlertDeprecated(k, did, kw.Deprecated, kw.ReplacedBy))
 			}
@@ -413,6 +418,38 @@ func (t T) Validate() (Alerts, error) {
 		}
 	}
 	return alerts, nil
+}
+
+// validateLine says whether the value a line of the configuration holds is
+// one its keyword takes.
+//
+// It is the value of the line that is checked, and not the one the key
+// evaluates to: a scoped line is the value of the nodes it names, which the
+// local node may not be, and a line the local node does not see is still
+// what those nodes will use. It is evaluated as the node the scope names, if
+// it names one, so the references it holds are the ones that node resolves.
+// A value naming something not built yet is not the value it will be, so it
+// is checked when it is.
+func (t *T) validateLine(k key.T, kw *keywords.Keyword, raw string) error {
+	var impersonate string
+	switch scope := k.Scope(); scope {
+	case "", "nodes", "drpnodes", "encapnodes":
+	default:
+		impersonate = scope
+	}
+	v, err := t.replaceReferences(raw, k.Section, impersonate, false, newDereferenceTrace())
+	if isPostponedRef(err) {
+		return nil
+	} else if err != nil {
+		return err
+	}
+	if v, err = evalArithmetic(v, kw); err != nil {
+		return err
+	}
+	if v == "" {
+		return nil
+	}
+	return kw.Validate(v)
 }
 
 func ValidateFile(p string, ref Referrer) (Alerts, error) {

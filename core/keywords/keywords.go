@@ -36,6 +36,13 @@ type (
 		// keyword expected type. A nil Converter means no conversion.
 		Converter converters.Converter
 
+		// Validate, when set, says whether a value is one the keyword
+		// takes, for the values no Converter or Candidates tell apart: a
+		// value refused is an error of the configuration validation, so it
+		// is refused when written rather than when used. It is given the
+		// value evaluated, and never an empty one.
+		Validate func(value string) error
+
 		// Text is a text explaining the role of the keyword.
 		Text string
 

@@ -18,6 +18,7 @@ import (
 	"github.com/opensvc/om3/v3/core/xconfig"
 	"github.com/opensvc/om3/v3/util/converters"
 	"github.com/opensvc/om3/v3/util/key"
+	"github.com/opensvc/om3/v3/util/pg"
 )
 
 //go:embed text
@@ -100,6 +101,7 @@ var keywordStore = keywords.Store{
 		Option:   "pg_cpus",
 		Scopable: true,
 		Text:     keywords.NewText(fs, "text/kw/core/pg_cpus"),
+		Validate: pg.ValidCPUs,
 	},
 	{
 		Attr:     "PG.Mems",
@@ -109,6 +111,7 @@ var keywordStore = keywords.Store{
 		Option:   "pg_mems",
 		Scopable: true,
 		Text:     keywords.NewText(fs, "text/kw/core/pg_mems"),
+		Validate: pg.ValidCPUs,
 	},
 	{
 		Attr:      "PG.CpuShares",
@@ -119,6 +122,7 @@ var keywordStore = keywords.Store{
 		Option:    "pg_cpu_shares",
 		Scopable:  true,
 		Text:      keywords.NewText(fs, "text/kw/core/pg_cpu_shares"),
+		Validate:  pg.ValidSize,
 	},
 	{
 		Attr:     "PG.CpuQuota",
@@ -128,6 +132,7 @@ var keywordStore = keywords.Store{
 		Option:   "pg_cpu_quota",
 		Scopable: true,
 		Text:     keywords.NewText(fs, "text/kw/core/pg_cpu_quota"),
+		Validate: pg.ValidCPUQuota,
 	},
 	{
 		Attr:     "PG.MemOOMControl",
@@ -137,6 +142,7 @@ var keywordStore = keywords.Store{
 		Option:   "pg_mem_oom_control",
 		Scopable: true,
 		Text:     keywords.NewText(fs, "text/kw/core/pg_mem_oom_control"),
+		Validate: pg.ValidMemOOMControl,
 	},
 	{
 		Attr:      "PG.MemLimit",
@@ -147,6 +153,7 @@ var keywordStore = keywords.Store{
 		Option:    "pg_mem_limit",
 		Scopable:  true,
 		Text:      keywords.NewText(fs, "text/kw/core/pg_mem_limit"),
+		Validate:  pg.ValidSize,
 	},
 	{
 		Attr:      "PG.VMemLimit",
@@ -157,6 +164,7 @@ var keywordStore = keywords.Store{
 		Option:    "pg_vmem_limit",
 		Scopable:  true,
 		Text:      keywords.NewText(fs, "text/kw/core/pg_vmem_limit"),
+		Validate:  pg.ValidSize,
 	},
 	{
 		Attr:     "PG.MemSwappiness",
@@ -166,6 +174,7 @@ var keywordStore = keywords.Store{
 		Option:   "pg_mem_swappiness",
 		Scopable: true,
 		Text:     keywords.NewText(fs, "text/kw/core/pg_mem_swappiness"),
+		Validate: pg.ValidMemSwappiness,
 	},
 	{
 		Attr:     "PG.BlkioWeight",
@@ -175,6 +184,7 @@ var keywordStore = keywords.Store{
 		Option:   "pg_blkio_weight",
 		Scopable: true,
 		Text:     keywords.NewText(fs, "text/kw/core/pg_blkio_weight"),
+		Validate: pg.ValidBlkioWeight,
 	},
 	{
 		Attr:     "PG.CPUBurst",
@@ -184,6 +194,7 @@ var keywordStore = keywords.Store{
 		Option:   "pg_cpu_burst",
 		Scopable: true,
 		Text:     keywords.NewText(fs, "text/kw/core/pg_cpu_burst"),
+		Validate: pg.ValidCPUQuota,
 	},
 	{
 		Attr:      "PG.MemHigh",
@@ -194,6 +205,7 @@ var keywordStore = keywords.Store{
 		Option:    "pg_mem_high",
 		Scopable:  true,
 		Text:      keywords.NewText(fs, "text/kw/core/pg_mem_high"),
+		Validate:  pg.ValidSize,
 	},
 	{
 		Attr:     "PG.PidsMax",
@@ -203,6 +215,7 @@ var keywordStore = keywords.Store{
 		Option:   "pg_pids_max",
 		Scopable: true,
 		Text:     keywords.NewText(fs, "text/kw/core/pg_pids_max"),
+		Validate: pg.ValidPidsMax,
 	},
 	// The pg keywords of a namespace are not the pg keywords of an object.
 	// They cap the slice every object of the namespace runs under, so they
@@ -222,6 +235,7 @@ var keywordStore = keywords.Store{
 		Option:   "pg_cpus",
 		Scopable: true,
 		Text:     keywords.NewText(fs, "text/kw/core/pg_cpus.nscfg"),
+		Validate: pg.ValidCPUs,
 	},
 	{
 		Attr:     "PG.Mems",
@@ -232,6 +246,7 @@ var keywordStore = keywords.Store{
 		Option:   "pg_mems",
 		Scopable: true,
 		Text:     keywords.NewText(fs, "text/kw/core/pg_mems.nscfg"),
+		Validate: pg.ValidCPUs,
 	},
 	{
 		Attr:      "PG.CpuShares",
@@ -243,6 +258,7 @@ var keywordStore = keywords.Store{
 		Option:    "pg_cpu_shares",
 		Scopable:  true,
 		Text:      keywords.NewText(fs, "text/kw/core/pg_cpu_shares.nscfg"),
+		Validate:  pg.ValidSize,
 	},
 	{
 		Attr:     "PG.CpuQuota",
@@ -253,6 +269,7 @@ var keywordStore = keywords.Store{
 		Option:   "pg_cpu_quota",
 		Scopable: true,
 		Text:     keywords.NewText(fs, "text/kw/core/pg_cpu_quota.nscfg"),
+		Validate: pg.ValidCPUQuota,
 	},
 	{
 		Attr:     "PG.MemOOMControl",
@@ -263,6 +280,7 @@ var keywordStore = keywords.Store{
 		Option:   "pg_mem_oom_control",
 		Scopable: true,
 		Text:     keywords.NewText(fs, "text/kw/core/pg_mem_oom_control.nscfg"),
+		Validate: pg.ValidMemOOMControl,
 	},
 	{
 		Attr:      "PG.MemLimit",
@@ -274,6 +292,7 @@ var keywordStore = keywords.Store{
 		Option:    "pg_mem_limit",
 		Scopable:  true,
 		Text:      keywords.NewText(fs, "text/kw/core/pg_mem_limit.nscfg"),
+		Validate:  pg.ValidSize,
 	},
 	{
 		Attr:      "PG.VMemLimit",
@@ -285,6 +304,7 @@ var keywordStore = keywords.Store{
 		Option:    "pg_vmem_limit",
 		Scopable:  true,
 		Text:      keywords.NewText(fs, "text/kw/core/pg_vmem_limit.nscfg"),
+		Validate:  pg.ValidSize,
 	},
 	{
 		Attr:     "PG.MemSwappiness",
@@ -295,6 +315,7 @@ var keywordStore = keywords.Store{
 		Option:   "pg_mem_swappiness",
 		Scopable: true,
 		Text:     keywords.NewText(fs, "text/kw/core/pg_mem_swappiness.nscfg"),
+		Validate: pg.ValidMemSwappiness,
 	},
 	{
 		Attr:     "PG.BlkioWeight",
@@ -305,6 +326,7 @@ var keywordStore = keywords.Store{
 		Option:   "pg_blkio_weight",
 		Scopable: true,
 		Text:     keywords.NewText(fs, "text/kw/core/pg_blkio_weight.nscfg"),
+		Validate: pg.ValidBlkioWeight,
 	},
 	{
 		Attr:     "PG.CPUBurst",
@@ -315,6 +337,7 @@ var keywordStore = keywords.Store{
 		Option:   "pg_cpu_burst",
 		Scopable: true,
 		Text:     keywords.NewText(fs, "text/kw/core/pg_cpu_burst.nscfg"),
+		Validate: pg.ValidCPUQuota,
 	},
 	{
 		Attr:      "PG.MemHigh",
@@ -326,6 +349,7 @@ var keywordStore = keywords.Store{
 		Option:    "pg_mem_high",
 		Scopable:  true,
 		Text:      keywords.NewText(fs, "text/kw/core/pg_mem_high.nscfg"),
+		Validate:  pg.ValidSize,
 	},
 	{
 		Attr:     "PG.PidsMax",
@@ -336,6 +360,7 @@ var keywordStore = keywords.Store{
 		Option:   "pg_pids_max",
 		Scopable: true,
 		Text:     keywords.NewText(fs, "text/kw/core/pg_pids_max.nscfg"),
+		Validate: pg.ValidPidsMax,
 	},
 	{
 		Converter: converters.List,

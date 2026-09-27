@@ -389,51 +389,43 @@ func (c Config) String() string {
 //	50%      => 50000, half of one
 //	10%@2    => 20000, a tenth of two
 func (t CPUQuota) Convert(period uint64) (int64, error) {
+	pct, cpus, err := t.parse()
+	if err != nil {
+		return 0, err
+	}
 	maxCpus := runtime.NumCPU()
-	invalidFmtError := "invalid cpu quota format: %s (accepted expressions: 50%%, 50%%@all, 10%%@2)"
-	parsePct := func(s string) (int, error) {
-		if strings.HasSuffix(s, "%") {
-			s = strings.TrimRight(s, "%")
-		}
-		return strconv.Atoi(s)
-	}
-	parseCpus := func(s string) (int, error) {
-		if (s == "all") || (s == "") {
-			return maxCpus, nil
-		} else if cpus, err := strconv.Atoi(s); err != nil {
-			return 0, fmt.Errorf(invalidFmtError+":%w", t, err)
-		} else if cpus > maxCpus {
-			return maxCpus, nil
-		} else {
-			return cpus, nil
-		}
-	}
-
-	l := strings.Split(string(t), "@")
-	var cpusString string
-
-	switch len(l) {
-	case 1:
-		cpusString = "1"
-	case 2:
-		cpusString = l[1]
-	default:
-		return 0, fmt.Errorf(invalidFmtError, t)
-	}
-
-	var (
-		cpus, pct int
-		err       error
-	)
-	if cpus, err = parseCpus(cpusString); err != nil {
-		return 0, fmt.Errorf(invalidFmtError+":%w", t, err)
-	}
-	if pct, err = parsePct(l[0]); err != nil {
-		return 0, fmt.Errorf(invalidFmtError+":%w", t, err)
+	if cpus == 0 || cpus > maxCpus {
+		cpus = maxCpus
 	}
 	// The percentage is of the cpus named, and of those alone. Dividing by
 	// the cpus the node has as well gave every group a quota that was the
 	// documented one divided by the thread count of the node: a "50%" asking
 	// for half a cpu got an eighth of one on an 8 thread node.
 	return int64(pct) * int64(period) * int64(cpus) / 100, nil
+}
+
+// parse returns the percentage of a pg_cpu_quota expression, and the count
+// of cpus it is of, 0 for all of them.
+//
+// It needs no node to say whether an expression is one, so the validation of
+// a configuration refuses what the apply would.
+func (t CPUQuota) parse() (pct, cpus int, err error) {
+	invalid := func(format string, a ...any) error {
+		return fmt.Errorf("invalid cpu quota %q: %s (accepted expressions: 50%%, 50%%@all, 10%%@2)", string(t), fmt.Sprintf(format, a...))
+	}
+	pctString, cpusString, found := strings.Cut(string(t), "@")
+	switch {
+	case !found:
+		cpus = 1
+	case cpusString == "all", cpusString == "":
+		cpus = 0
+	default:
+		if cpus, err = strconv.Atoi(cpusString); err != nil || cpus < 1 {
+			return 0, 0, invalid("%s is not a count of cpus", cpusString)
+		}
+	}
+	if pct, err = strconv.Atoi(strings.TrimSuffix(pctString, "%")); err != nil || pct < 0 {
+		return 0, 0, invalid("%s is not a percentage", pctString)
+	}
+	return pct, cpus, nil
 }
