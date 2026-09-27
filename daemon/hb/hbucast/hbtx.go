@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 	"net"
-	"slices"
 	"strings"
 	"sync"
 	"time"
@@ -28,7 +27,7 @@ type (
 		intf        string
 		interval    time.Duration
 		timeout     time.Duration
-		localIPs    []net.IP
+		localIP     net.IP
 		lastNodeErr sync.Map
 
 		name   string
@@ -49,11 +48,10 @@ type (
 type sendRequest struct {
 	data []byte
 
-	// localIPs are the addresses the worker picks the source address it
-	// dials from among. They are carried by the request because t.localIPs
-	// is refreshed by the Start goroutine, which is the only one allowed to
-	// read or write it.
-	localIPs []net.IP
+	// localIP is the source address the worker must dial from. It is
+	// carried by the request because t.localIP is refreshed by the Start
+	// goroutine, which is the only one allowed to read or write it.
+	localIP net.IP
 }
 
 // sendWorker serializes the sends to one peer node
@@ -129,11 +127,11 @@ func (t *tx) Ctx() context.Context {
 }
 
 func (t *tx) streamPeerDesc(addr string) string {
-	if t.addr != "" {
+	if len(t.localIP) > 0 {
 		if t.intf != "" {
-			return fmt.Sprintf("%s@%s → %s", t.addr, t.intf, addr)
+			return fmt.Sprintf("%s@%s → %s", t.localIP, t.intf, addr)
 		} else {
-			return fmt.Sprintf("%s → %s", t.addr, addr)
+			return fmt.Sprintf("%s → %s", t.localIP, addr)
 		}
 	} else {
 		if t.intf != "" {
@@ -146,7 +144,7 @@ func (t *tx) streamPeerDesc(addr string) string {
 
 // sendToNode queues a send request for a specific node
 //
-// Must be called from the Start goroutine: it reads t.localIPs.
+// Must be called from the Start goroutine: it reads t.localIP.
 func (t *tx) sendToNode(node string, b []byte) {
 	w, ok := t.sendWorkers[node]
 	if !ok {
@@ -157,7 +155,7 @@ func (t *tx) sendToNode(node string, b []byte) {
 
 	// Try to send without blocking first (non-blocking send)
 	select {
-	case w.queue <- sendRequest{data: b, localIPs: t.localIPs}:
+	case w.queue <- sendRequest{data: b, localIP: t.localIP}:
 		// Successfully queued
 	default:
 		// Queue is full, drop the message to avoid blocking
@@ -177,10 +175,9 @@ func (t *tx) startSendWorker(node, addr string, w *sendWorker) {
 		// The worker connection is closed on every exit path, and by Stop
 		// when it has to interrupt a send.
 		defer w.closeConn()
-		// connLocalIPs are the local addresses the connection source was
-		// picked among, to detect a local ip change while it is
-		// established
-		var connLocalIPs []net.IP
+		// connLocalIP is the source address the connection is bound to, to
+		// detect a local ip change while it is established
+		var connLocalIP net.IP
 
 		for {
 			select {
@@ -195,17 +192,25 @@ func (t *tx) startSendWorker(node, addr string, w *sendWorker) {
 
 				conn := w.getConn()
 
-				if conn != nil && !slices.EqualFunc(connLocalIPs, req.localIPs, net.IP.Equal) {
-					// The local ips changed since we dialed: the
+				if conn != nil && !connLocalIP.Equal(req.localIP) {
+					// The local ip changed since we dialed: the
 					// connection is bound to an address the node may
-					// not own anymore, redial from the new ones.
-					t.log.Infof("local ips changed from %s to %s, reconnect to %s", connLocalIPs, req.localIPs, addr)
+					// not own anymore, redial from the new one.
+					t.log.Infof("local ip changed from %s to %s, reconnect to %s", connLocalIP, req.localIP, addr)
 					w.closeConn()
 					conn = nil
 				}
 
 				if conn == nil {
-					routes := t.routes(addr, req.localIPs)
+					// Create new connection with context-aware dialer
+					localAddr := net.TCPAddr{
+						IP:   req.localIP,
+						Port: 0,
+					}
+					dialer := &net.Dialer{
+						Timeout:   t.timeout,
+						LocalAddr: &localAddr,
+					}
 					// Use a separate context for dial that respects t.ctx.
 					// Cancel as soon as the dial returns: cancelling after a
 					// successful dial doesn't affect the connection, and this
@@ -213,14 +218,14 @@ func (t *tx) startSendWorker(node, addr string, w *sendWorker) {
 					// deferred cancel would pile up on its stack, one per
 					// reconnect.
 					dialCtx, dialCancel := context.WithTimeout(t.ctx, t.timeout)
-					newConn, err := dialRoutes(dialCtx, routes)
+					newConn, err := dialer.DialContext(dialCtx, "tcp", addr)
 					dialCancel()
 					if err != nil {
 						t.handleSendError(node, err)
 						continue
 					}
 					conn = newConn
-					connLocalIPs = req.localIPs
+					connLocalIP = req.localIP
 					w.setConn(conn)
 				}
 
@@ -308,20 +313,20 @@ func (t *tx) Start(cmdC chan<- interface{}, msgC <-chan []byte) error {
 		localIPTicker := time.NewTicker(30 * time.Second)
 		defer localIPTicker.Stop()
 
-		updateLocalIPs := func() {
-			if localIPs, err := t.defaultLocalIPs(); err != nil {
+		updateLocalIP := func() {
+			if localIP, err := t.defaultLocalIP(); err != nil {
 				t.log.Errorf("%s", err)
-			} else if !slices.EqualFunc(t.localIPs, localIPs, net.IP.Equal) {
-				t.log.Infof("set local ips to %s", localIPs)
-				t.localIPs = localIPs
+			} else if !t.localIP.Equal(localIP) {
+				t.log.Infof("set local ip to %s", localIP)
+				t.localIP = localIP
 			}
 		}
 
-		if localIPs, err := t.defaultLocalIPs(); err != nil {
+		if localIP, err := t.defaultLocalIP(); err != nil {
 			t.log.Errorf("%s", err)
-		} else if len(localIPs) > 0 {
-			t.log.Infof("set local ips to %s", localIPs)
-			t.localIPs = localIPs
+		} else if localIP != nil {
+			t.log.Infof("set local ip to %s", localIP)
+			t.localIP = localIP
 		} else {
 			t.log.Infof("undetermined local ip")
 		}
@@ -338,7 +343,7 @@ func (t *tx) Start(cmdC chan<- interface{}, msgC <-chan []byte) error {
 			case <-sendTicker.C:
 				reason = "send msg (interval)"
 			case <-localIPTicker.C:
-				updateLocalIPs()
+				updateLocalIP()
 			}
 			if len(b) == 0 {
 				continue
@@ -360,157 +365,20 @@ func (t *tx) Start(cmdC chan<- interface{}, msgC <-chan []byte) error {
 	return nil
 }
 
-// defaultLocalIPs returns the addresses of the local nodename, among which
-// the source address of a connection to a peer is picked, so rx on peer
-// nodes see messages coming from an address they know the node by.
-//
-// The address configured for the heartbeat is the only one when set. The
-// others are the ones the nodename resolves to, but a link-local, loopback or
-// unspecified one: a peer knows the node by none of these, and a link-local
-// one can't even be bound without its zone. A nodename the hosts file does
-// not name resolves, through the myhostname nss module, to every address of
-// the node, link-local ones first.
-func (t *tx) defaultLocalIPs() ([]net.IP, error) {
+// defaultLocalIP returns the ip address of the local nodename, so rx on peer
+// nodes see messages coming from a known cluster member.
+func (t *tx) defaultLocalIP() (net.IP, error) {
 	if t.addr != "" {
-		return []net.IP{net.ParseIP(t.addr)}, nil
+		return net.ParseIP(t.addr), nil
 	}
 	addrs, err := net.DefaultResolver.LookupIPAddr(t.ctx, hostname.Hostname())
 	if err != nil {
-		return nil, fmt.Errorf("lookup sender addr: %s: %s", hostname.Hostname(), err)
+		return nil, fmt.Errorf("lookup sender addr: %s: %s", t.addr, err)
 	}
-	l := make([]net.IP, 0, len(addrs))
-	for _, addr := range addrs {
-		if usableIP(addr.IP) {
-			l = append(l, addr.IP)
-		}
+	if len(addrs) == 0 {
+		return nil, fmt.Errorf("lookup sender addr: %s: no address found ", t.addr)
 	}
-	if len(l) == 0 {
-		return nil, fmt.Errorf("lookup sender addr: %s: no usable address found", hostname.Hostname())
-	}
-	return l, nil
-}
-
-// usableIP says whether ip can be the address of one node for another.
-func usableIP(ip net.IP) bool {
-	return ip != nil && !ip.IsLoopback() && !ip.IsLinkLocalUnicast() && !ip.IsUnspecified()
-}
-
-// dialRoute is an address to dial a peer at, and the source address to dial
-// it from, nil to leave it to the kernel.
-type dialRoute struct {
-	addr   string
-	source net.IP
-}
-
-// dialRoutes dials the routes in turn, and returns the first connection
-// made, or the error of the last route tried. They share the deadline of
-// ctx, as the addresses of a name do when the dialer tries them.
-func dialRoutes(ctx context.Context, routes []dialRoute) (net.Conn, error) {
-	var err error
-	for _, r := range routes {
-		dialer := &net.Dialer{}
-		if r.source != nil {
-			dialer.LocalAddr = &net.TCPAddr{IP: r.source}
-		}
-		var conn net.Conn
-		if conn, err = dialer.DialContext(ctx, "tcp", r.addr); err == nil {
-			return conn, nil
-		}
-		if ctx.Err() != nil {
-			break
-		}
-	}
-	return nil, err
-}
-
-// routes returns the routes to the peer at addr, in the order to try them.
-//
-// The address configured for the heartbeat is the source of the only route.
-// Otherwise the peer is resolved, and each of its addresses is dialed from a
-// local address: first the ones a local address shares a subnet with, from
-// that address, which is the one the kernel routes the peer through and the
-// one the peers know the node by on that network, then the others, from a
-// local address of their family, or from where the kernel routes them when
-// none has it. A peer that can't be resolved is dialed as named.
-func (t *tx) routes(addr string, localIPs []net.IP) []dialRoute {
-	if t.addr != "" {
-		return []dialRoute{{addr: addr, source: net.ParseIP(t.addr)}}
-	}
-	named := []dialRoute{{addr: addr}}
-	host, port, err := net.SplitHostPort(addr)
-	if err != nil {
-		return named
-	}
-	peerAddrs, err := net.DefaultResolver.LookupIPAddr(t.ctx, host)
-	if err != nil {
-		return named
-	}
-	peerIPs := make([]net.IP, len(peerAddrs))
-	for i, a := range peerAddrs {
-		peerIPs[i] = a.IP
-	}
-	nets, _ := localNets()
-	l := pickRoutes(peerIPs, localIPs, nets, port)
-	if len(l) == 0 {
-		return named
-	}
-	return l
-}
-
-// localNets returns the networks of the addresses of the node interfaces.
-func localNets() ([]*net.IPNet, error) {
-	addrs, err := net.InterfaceAddrs()
-	if err != nil {
-		return nil, err
-	}
-	nets := make([]*net.IPNet, 0, len(addrs))
-	for _, addr := range addrs {
-		if ipNet, ok := addr.(*net.IPNet); ok {
-			nets = append(nets, ipNet)
-		}
-	}
-	return nets, nil
-}
-
-// pickRoutes returns the routes to the usable peer addresses, as routes
-// orders them.
-func pickRoutes(peerIPs, localIPs []net.IP, nets []*net.IPNet, port string) []dialRoute {
-	sameFamily := func(a, b net.IP) bool {
-		return (a.To4() == nil) == (b.To4() == nil)
-	}
-	sameSubnet := func(local, peer net.IP) bool {
-		for _, n := range nets {
-			if n.IP.Equal(local) && n.Contains(peer) {
-				return true
-			}
-		}
-		return false
-	}
-	var subnet, others []dialRoute
-	for _, peer := range peerIPs {
-		if !usableIP(peer) {
-			continue
-		}
-		r := dialRoute{addr: net.JoinHostPort(peer.String(), port)}
-		for _, local := range localIPs {
-			if sameFamily(local, peer) && sameSubnet(local, peer) {
-				r.source = local
-				break
-			}
-		}
-		if r.source != nil {
-			subnet = append(subnet, r)
-			continue
-		}
-		for _, local := range localIPs {
-			if sameFamily(local, peer) {
-				r.source = local
-				break
-			}
-		}
-		others = append(others, r)
-	}
-	return append(subnet, others...)
+	return addrs[0].IP, nil
 }
 
 // handleSendError handles send errors with deduplication logging
