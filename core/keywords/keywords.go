@@ -259,6 +259,16 @@ func (t Store) ByOption(option string) Store {
 	return Store{}
 }
 
+// WithOption returns the keywords of the option, in every section.
+func (t Store) WithOption(option string) (store Store) {
+	for _, kw := range t {
+		if kw.Option == option {
+			store = append(store, kw)
+		}
+	}
+	return store
+}
+
 func (t Store) WithKind(kind naming.Kind) (store Store) {
 	for _, kw := range t {
 		if kw.Kind.Has(kind) {
@@ -576,7 +586,11 @@ func (t *Keyword) Doc(w io.Writer, depth int, kind naming.Kind, section string, 
 	if t.Converter != nil {
 		fprintProp("convert", t.Converter.String())
 	}
-	if rbacDoc != nil {
+	// The grant a keyword needs depends on the section it is set in, so a
+	// keyword documented for no section in particular, as a driver keyword
+	// asked about by its bare name, carries no rbac line rather than the
+	// one of a section it is not in.
+	if rbacDoc != nil && section != "" {
 		if s := rbacDoc(kind, section, t.Option); s != "" {
 			fprintProp("rbac", s)
 		}
