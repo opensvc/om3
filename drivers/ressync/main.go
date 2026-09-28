@@ -172,7 +172,7 @@ func (t *T) WritePeerLastSync(ctx context.Context, peer string, peers []string) 
 			if err := send(filename, nodename); err != nil {
 				errs = errors.Join(errs, fmt.Errorf("failed to send state file %s to node %s: %w", filename, nodename, err))
 			}
-			t.Log().Infof("state file %s sent to node %s", filename, nodename)
+			t.Log().Debugf("state file %s sent to node %s", filename, nodename)
 		}
 	}
 
