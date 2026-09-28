@@ -69,7 +69,7 @@ func (t *T) Configure(ctx context.Context) {
 	if minTimeout := 4*interval + 1*time.Second; timeout < minTimeout {
 		oldTimeout := timeout
 		timeout = minTimeout
-		log.Warnf("reajust timeout: %s => %s (<interval>*4+1s)", oldTimeout, timeout)
+		log.Warnf("readjust timeout: %s => %s (<interval>*4+1s)", oldTimeout, timeout)
 	}
 	relay := t.GetString("relay")
 	if relay == "" {
@@ -188,7 +188,7 @@ func (t *cfg) refreshClient() error {
 		t.cli = cli
 		return nil
 	}
-	t.log.Infof("password unhanged for %s", t.passwordFrom.Path)
+	t.log.Debugf("password unchanged for %s", t.passwordFrom.Path)
 	return nil
 }
 

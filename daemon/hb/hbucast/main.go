@@ -60,7 +60,7 @@ func (t *T) Configure(ctx context.Context) {
 	if timeout < 2*interval+1*time.Second {
 		oldTimeout := timeout
 		timeout = interval*2 + 1*time.Second
-		log.Warnf("reajust timeout: %s => %s (<interval>*2+1s)", oldTimeout, timeout)
+		log.Warnf("readjust timeout: %s => %s (<interval>*2+1s)", oldTimeout, timeout)
 	}
 	addr := t.GetString("addr")
 	portI := t.GetInt("port")
