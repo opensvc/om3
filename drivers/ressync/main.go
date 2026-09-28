@@ -75,6 +75,15 @@ func (t *T) GetMaxDelay(lastSync time.Time) time.Duration {
 	return scheduleMaxDelay(t.Schedule, lastSync)
 }
 
+// MaxDelayOrigin says where GetMaxDelay takes its value from, for the
+// messages to say why a copy is stale.
+func (t *T) MaxDelayOrigin() string {
+	if t.MaxDelay != nil {
+		return "max_delay"
+	}
+	return fmt.Sprintf("schedule %s, half a period after the sync due", t.Schedule)
+}
+
 // scheduleMaxDelay is how long after lastSync a copy synced on schedule s is
 // stale: once the first run due after lastSync is late by half a period of
 // the schedule. The run takes time, and the scheduler does not start it on
@@ -116,7 +125,7 @@ func (t *T) StatusLastSync(nodenames []string) status.T {
 			}
 			age := time.Since(tm)
 			if age > maxDelay {
-				t.StatusLog().Warn("%s last sync is too old, at %s (>%s ago)", nodename, tm, maxDelay)
+				t.StatusLog().Warn("%s last sync is too old, at %s, more than %s ago (%s)", nodename, tm, maxDelay, t.MaxDelayOrigin())
 				state.Add(status.Warn)
 			} else {
 				state.Add(status.Up)
@@ -340,4 +349,15 @@ func (t *T) IsInstanceSufficientlyStarted(ctx context.Context) (bool, string) {
 		return true, ""
 	}
 	return ok, reason
+}
+
+// DatasetReplicator is a sync resource replicating zfs datasets to its peers,
+// as sync.zfs does. It tells the snapshot resources of the object which of
+// their datasets reach the peers, and how fresh the replicas are expected to
+// be.
+type DatasetReplicator interface {
+	RID() string
+	ReplicatesDataset(dataset string) bool
+	GetMaxDelay(lastSync time.Time) time.Duration
+	MaxDelayOrigin() string
 }

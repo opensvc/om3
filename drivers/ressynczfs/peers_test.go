@@ -354,6 +354,17 @@ func TestNewSnapNameIsUniqueWithinASecond(t *testing.T) {
 	require.Equal(t, "pool/fs@sync.1.20260928T120000.001000Z", a)
 }
 
+func TestReplicatesDataset(t *testing.T) {
+	d := &T{Src: "tank/src", Dst: "tank/dst", Recursive: true}
+	require.True(t, d.ReplicatesDataset("tank/src"))
+	require.True(t, d.ReplicatesDataset("tank/dst"), "the received copy")
+	require.True(t, d.ReplicatesDataset("tank/src/child"), "a descendant when recursive")
+	require.False(t, d.ReplicatesDataset("tank/srcx"), "a sibling with the same prefix")
+	require.False(t, d.ReplicatesDataset("tank/other"))
+	d.Recursive = false
+	require.False(t, d.ReplicatesDataset("tank/src/child"))
+}
+
 func TestReceiveCmd(t *testing.T) {
 	d := &T{}
 	require.Equal(t, []string{"/usr/sbin/zfs", "receive", "-u", "-dF", "tank"}, d.receiveCmd(nil, true, "tank"), "a peer leaves its copy unmounted")

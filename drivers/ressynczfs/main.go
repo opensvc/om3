@@ -714,3 +714,17 @@ func (t *T) getTargetNodenames(isSourceNode bool) []string {
 		return []string{hostname.Hostname()}
 	}
 }
+
+// ReplicatesDataset implements ressync.DatasetReplicator: dataset is the one
+// sent, or received, or one of their descendants when recursive.
+func (t *T) ReplicatesDataset(dataset string) bool {
+	for _, root := range []string{t.Src, t.Dst} {
+		if dataset == root {
+			return true
+		}
+		if t.Recursive && strings.HasPrefix(dataset, root+"/") {
+			return true
+		}
+	}
+	return false
+}
