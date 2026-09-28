@@ -151,9 +151,16 @@ func (t *T) Start(ctx context.Context) error {
 	} else if t._ipaddrAge > 0 {
 		t.Log().Warnf("ip %s lookup issue, cache valid (%s old)", t.Name, duration.FmtShortDuration(t._ipaddrAge))
 	}
-	allocated, err := t.allocateIP(ctx)
-	if err != nil {
-		return err
+	// An address is drawn from the network only when the configuration names
+	// none: a resource setting its name uses that address, and a reservation
+	// taken all the same would be an address nobody uses, counted against the
+	// network claim of the namespace.
+	var allocated net.IP
+	if t.Name == "" {
+		var err error
+		if allocated, err = t.allocateIP(ctx); err != nil {
+			return err
+		}
 	}
 	if allocated != nil {
 		// A start that fails past this point rolls back, and the address goes
@@ -311,7 +318,9 @@ func (t *T) Stop(ctx context.Context) error {
 	}
 	// The reservation is released last: an address still configured in a
 	// namespace this stop failed to clean is an address om must not hand to
-	// another resource.
+	// another resource. It is released whether or not the configuration
+	// names the address, so the reservation an earlier start took by
+	// mistake, when a named address still drew one, goes too.
 	return t.freeIP()
 }
 
