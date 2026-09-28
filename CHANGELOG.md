@@ -742,6 +742,14 @@ which share the same executor.
 * **Changed Keyword:**
   * `max_delay` (a.k.a. `sync_max_delay`) default unit is changed from minutes to seconds, so all duration keywords use the same default unit. Set a explicit unit before migration.
 
+* **A sync is sent from the node whose reference resources are up:**
+    As in v2, the resources an object holds its data on or is reached by,
+    every resource but the app, sync and task ones, must be up in aggregate on
+    the node sending, and an object with none of them is not synced. `--force`
+    sends from a node where they are warn. A standby node no longer sends its
+    copy over the one of the active node when the object has no such
+    resource.
+
 ### Driver: sync.zfs
 
 * **Each peer is synced from its own base snapshot:**

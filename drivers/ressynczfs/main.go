@@ -98,8 +98,8 @@ func (t *T) lockedSync(ctx context.Context, mode modeT, target []string) (err er
 		return fmt.Errorf("this flex instance is not primary. only %s can sync", t.Nodes[0])
 	}
 
-	if v, rids := t.IsInstanceSufficientlyStarted(ctx); !v {
-		return fmt.Errorf("the instance is not sufficiently started (%s). refuse to sync to protect the data of the started remote instance", strings.Join(rids, ","))
+	if v, reason := t.IsInstanceSufficientlyStarted(ctx); !v {
+		return fmt.Errorf("the instance is not sufficiently started (%s). refuse to sync to protect the data of the started remote instance", reason)
 	}
 
 	nodenames, err := t.SelectPeernames(target, t.Target, t.Nodes, t.DRPNodes)
