@@ -90,7 +90,9 @@ func (t *T) removeSnap(dataset string) error {
 			t.Log().Tracef("keep snap %s %d/%d", candidate.Name, kept, t.Keep)
 			continue
 		}
-		if err := candidate.Destroy(); err != nil {
+		// The snapshot was taken in the descendant datasets too when
+		// recursive, and goes from them too.
+		if err := candidate.Destroy(zfs.FilesystemDestroyWithRemoveSnapshots(t.Recursive)); err != nil {
 			return err
 		}
 	}
