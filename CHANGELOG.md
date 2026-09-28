@@ -223,10 +223,10 @@ OpenSVC v3 is a major evolution, rebuilt in Go for performance, reliability, and
 	   Replaced by `disk#foo.type=drbd`
        
 	* `vdisk`
-	   Replaced by `disk#foo.type=vdisk`
+	   Dropped, and so is the `disk.vdisk` driver: see Drivers removed.
        
 	* `vmdg`
-	   Replaced by `disk#foo.type=vmdg`
+	   Dropped, and so is the `disk.ldom` driver it named: see Drivers removed.
        
 	* `pool`
 	   Replaced by `disk#foo.type=zpool`
@@ -250,10 +250,10 @@ OpenSVC v3 is a major evolution, rebuilt in Go for performance, reliability, and
 	   Replaced by `disk#foo.type=raw`
        
 	* `vxdg`
-	   Replaced by `disk#foo.type=vxdg`
+	   Dropped, and so is the `disk.vxdg` driver: see Drivers removed.
        
 	* `vxvol`
-	   Replaced by `disk#foo.type=vxvol`
+	   Dropped, and so is the `disk.vxvol` driver: see Drivers removed.
 
     For example, a `[md#1]` section needs reformatting as:
     ```
@@ -530,6 +530,26 @@ OpenSVC v3 is a major evolution, rebuilt in Go for performance, reliability, and
     
     Use double quotes instead of quotes, as the strings in the value part already use double quotes.
     Not mixing single and double quotes helps formatting the --filter for `om node events`.
+
+### Drivers removed
+
+These drivers of v2.1 have no v3 counterpart:
+
+* app: `winservice`
+* container: `amazon`, `esx`, `hpvm`, `jail`, `ldom`, `lxd`, `openstack`, `ovm`, `srp`, `vcloud`, `vz`, `xen`, `zone`
+* disk: `advfs`, `amazon`, `gandi`, `gce`, `hpvm`, `ldom`, `pool`, `vdisk`, `veritas`, `vxdg`, `vxvol`
+* fs: `docker`
+* ip: `amazon`, `crossbow`, `gce`, `rule`
+* sync: `btrfs`, `btrfssnap`, `dds`, `docker`, `evasnap`, `hp3par`, `hp3parsnap`, `ibmdssnap`, `necismsnap`, `netapp`, `nexenta`, `oci`, `radosclone`, `radossnap`, `s3`, `symclone`, `symsnap`
+* the `certificate`, `expose`, `hashpolicy`, `route` and `vhost` sections, which
+  described the routes of an object to the envoy ingress gateway of v2.
+
+A section of one of them in an upgraded configuration is not a resource: the
+object runs without it, and no action touches it. The configuration validation
+warns about it, and the instance status lists it as an optional resource with
+the warning `the <driver> driver is not supported by this agent`, which makes
+the overall status of the instance warn. The availability status is not
+changed, so no monitor action is triggered by a resource that never runs.
 
 ### Driver: container
 

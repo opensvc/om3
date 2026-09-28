@@ -36,6 +36,12 @@ type (
 		resources          resource.Drivers
 		_resources         resource.Drivers
 		actionResourceDeps *actionresdeps.Store
+
+		// unsupported holds the resource sections of a driver this agent
+		// does not have, by rid, with the driver they name. They are not
+		// configured, so no action touches them, and the status reports
+		// them.
+		unsupported map[string]string
 	}
 
 	// freezer is implemented by object kinds supporting freeze and unfreeze.
@@ -296,6 +302,7 @@ func (t *actor) ConfigureResources() {
 	begin := time.Now()
 	postponed := make(map[string][]resource.Driver)
 	t._resources = make(resource.Drivers, 0)
+	unsupported := make(map[string]string)
 	isEncapNode, err := t.config.IsInEncapNodes(hostname.Hostname())
 	if err != nil {
 		t.log.Errorf("configure resources: IsInEncapNodes: %s", err)
@@ -306,20 +313,6 @@ func (t *actor) ConfigureResources() {
 		if err != nil {
 			continue
 		}
-		driverGroup := rid.DriverGroup()
-		if driverGroup == driver.GroupUnknown {
-			t.log.Tracef("unknown driver group in rid %s", k)
-			continue
-		}
-		typeKey := key.New(k, "type")
-		driverName := t.config.GetString(typeKey)
-		driverID := driver.NewID(driverGroup, driverName)
-		factory := resource.NewResourceFunc(driverID)
-		if factory == nil {
-			t.log.Tracef("unknown driver %s", driverID)
-			continue
-		}
-		r := factory()
 		isEncapResource := func() bool {
 			encap := t.config.GetBool(key.New(k, "encap"))
 			if encap {
@@ -334,6 +327,24 @@ func (t *actor) ConfigureResources() {
 		if isEncapNode && !isEncapResource() {
 			continue
 		}
+		driverGroup := rid.DriverGroup()
+		typeKey := key.New(k, "type")
+		driverName := t.config.GetString(typeKey)
+		if driverGroup == driver.GroupUnknown {
+			// A subset section configures the resources of a subset,
+			// and is no resource.
+			if name, _, _ := strings.Cut(k, "#"); name != "subset" {
+				unsupported[k] = unsupportedDriverName(name, driverName)
+			}
+			continue
+		}
+		driverID := driver.NewID(driverGroup, driverName)
+		factory := resource.NewResourceFunc(driverID)
+		if factory == nil {
+			unsupported[k] = driverID.String()
+			continue
+		}
+		r := factory()
 		rBegin := time.Now()
 		if err := t.configureResource(r, k); err != nil {
 			switch o := err.(type) {
@@ -370,6 +381,7 @@ func (t *actor) ConfigureResources() {
 	}
 	t.resources = t._resources
 	t._resources = nil
+	t.unsupported = unsupported
 	dur := time.Now().Sub(begin)
 	t.log.Tracef("%d resources configured in %s", len(t.resources), dur)
 	return
@@ -653,4 +665,13 @@ func (t *actor) ResourceHandlingFile(ctx context.Context, filename string) (reso
 		}
 	}
 	return longestHeadDriver, nil
+}
+
+// unsupportedDriverName names the driver of a section whose driver group this
+// agent does not have.
+func unsupportedDriverName(group, name string) string {
+	if name == "" {
+		return group
+	}
+	return group + "." + name
 }
