@@ -14,6 +14,7 @@ import (
 	"github.com/opensvc/om3/v3/core/naming"
 	"github.com/opensvc/om3/v3/core/object"
 	"github.com/opensvc/om3/v3/core/rawconfig"
+	"github.com/opensvc/om3/v3/core/status"
 	"github.com/opensvc/om3/v3/drivers/resapp"
 	"github.com/opensvc/om3/v3/testhelper"
 	"github.com/opensvc/om3/v3/util/executable"
@@ -72,6 +73,21 @@ func TestStart(t *testing.T) {
 		assert.Nil(t, app.Start(ctx), startReturnMsg)
 		time.Sleep(20 * time.Millisecond) // give time for file start cmd does its job
 		assert.True(t, file.Exists(filename), "missing start cmd !")
+	})
+
+	t.Run("status is up as soon as start returns", func(t *testing.T) {
+		_, cleanup := prepareConfig(t)
+		defer cleanup()
+
+		app := WithLoggerAndPgApp(T{T: resapp.T{StartCmd: "sleep 10"}})
+		for i := 0; i < 10; i++ {
+			ctx, cancel := getActionContext()
+			assert.Nil(t, app.Start(ctx), startReturnMsg)
+			assert.Equal(t, status.Up, app.Status(ctx), "status after start, iteration %d", i)
+			assert.Nil(t, app.Stop(ctx), "Stop(...) returned value")
+			assert.Equal(t, status.Down, app.Status(ctx), "status after stop, iteration %d", i)
+			cancel()
+		}
 	})
 
 	t.Run("does not execute start command if status is already up", func(t *testing.T) {
