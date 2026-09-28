@@ -163,9 +163,11 @@ func (t *cfg) refreshClient() error {
 		t.log.Warnf("decode password key %s from %s: %s", t.passwordFrom.Key, t.passwordFrom.Path, err)
 		t.cli = nil
 		return nil
-	} else if string(b) != t.password {
+	} else if string(b) != t.password || t.cli == nil {
+		// A client dropped on a decode error or an empty password is
+		// built again when the password is back, even unchanged.
 		newPassword := string(b)
-		if t.password != "" {
+		if t.password != "" && newPassword != t.password {
 			t.log.Infof("password changed for %s key %s", t.passwordFrom.Path, t.passwordFrom.Key)
 		}
 		if newPassword == "" {
