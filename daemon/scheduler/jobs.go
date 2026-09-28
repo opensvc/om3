@@ -50,7 +50,7 @@ var (
 		"resource_monitor",
 		"run",
 		"status",
-		"sync_update",
+		"update",
 	}
 )
 
@@ -82,7 +82,7 @@ func CmdArgs(e schedule.Entry) ([]string, error) {
 		tail = []string{"instance", "info", "--refresh"}
 	case "run":
 		tail = []string{"instance", "run", "--rid", e.RID()}
-	case "sync_update":
+	case "update":
 		tail = []string{"instance", "update", "--rid", e.RID()}
 	case "pushasset":
 		tail = []string{"push", "asset"}

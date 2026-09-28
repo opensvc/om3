@@ -378,6 +378,10 @@ var rules = map[string]Group{
 // The triggers are common keywords too, and are refused above: they run a
 // command of the user's choosing, which is the one thing in this set that is
 // not about the object alone.
+//
+// A rule is looked up by the name written, so the aliases of a keyword are
+// listed with it: sync_requires, sync_update_requires, sync_nodes_requires
+// and sync_drp_requires are update_requires.
 var commonKeywords = map[string]bool{
 	"comment":          true,
 	"disable":          true,
@@ -417,10 +421,14 @@ var commonKeywords = map[string]bool{
 	"stat_timeout":         true,
 	"stop_requires":        true,
 	"subset":               true,
+	"sync_drp_requires":    true,
+	"sync_nodes_requires":  true,
 	"sync_requires":        true,
+	"sync_update_requires": true,
 	"tags":                 true,
 	"unprovision":          true,
 	"unprovision_requires": true,
+	"update_requires":      true,
 }
 
 // triggers is the keywords that run a command of the user's choosing, in the

@@ -291,11 +291,15 @@ var (
 		Text:     keywords.NewText(fs, "text/kw/subset"),
 	}
 
-	KWSyncRequires = keywords.Keyword{
-		Attr:    "SyncRequires",
+	// KWUpdateRequires gates the update and full actions. It is named
+	// after the update, the action a sync is scheduled for. The aliases
+	// are its v3 name before, and the v2 names of the actions it gates.
+	KWUpdateRequires = keywords.Keyword{
+		Aliases: []string{"sync_requires", "sync_update_requires", "sync_nodes_requires", "sync_drp_requires"},
+		Attr:    "UpdateRequires",
 		Example: "ip#0 fs#0(down,stdby down)",
-		Option:  "sync_requires",
-		Text:    keywords.NewText(fs, "text/kw/sync_requires"),
+		Option:  "update_requires",
+		Text:    keywords.NewText(fs, "text/kw/update_requires"),
 	}
 
 	KWTags = keywords.Keyword{
@@ -357,7 +361,7 @@ var (
 
 	syncerKeywords = []*keywords.Keyword{
 		&KWOptional,
-		&KWSyncRequires,
+		&KWUpdateRequires,
 	}
 
 	runnerKeywords = []*keywords.Keyword{

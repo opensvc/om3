@@ -754,6 +754,20 @@ which share the same executor.
     Unset, a copy is stale once the first scheduled sync due after the last
     one is half a schedule period late, instead of the fixed 27 hours of v2.
 
+* **The `update` and `full` actions are gated by `update_requires`:**
+    v2 had a `<action>_requires` keyword per sync action. The one of the
+    update, `sync_update_requires`, is renamed `update_requires`, and gates
+    the `full` action too: a full copy is allowed where an update is.
+    `sync_update_requires`, `sync_nodes_requires` and `sync_drp_requires` are
+    read as aliases, the actions they gated being `update` now. A scheduled
+    update is not scheduled while `update_requires` is not met.
+
+* **The `sync_update` and `sync_full` actions are named `update` and `full`:**
+    As `om <path> instance update` and `om <path> instance full` name them.
+    The logs, the scheduled job list and the `OPENSVC_ACTION` environment
+    variable of the triggers read `update` and `full`. Triggers testing
+    `OPENSVC_ACTION` for `sync_update` or `sync_full` need updating.
+
 ### Driver: sync.zfs
 
 * **Each peer is synced from its own base snapshot:**

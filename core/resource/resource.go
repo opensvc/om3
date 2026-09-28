@@ -165,7 +165,7 @@ type (
 		StopRequires            string
 		ProvisionRequires       string
 		UnprovisionRequires     string
-		SyncRequires            string
+		UpdateRequires          string
 		RunRequires             string
 		EnableProvision         bool
 		EnableUnprovision       bool
@@ -720,8 +720,8 @@ func (t *T) Requires(action string) *resourcereqs.T {
 		reqs = t.UnprovisionRequires
 	case "run":
 		reqs = t.RunRequires
-	case "sync", "sync_update", "sync_full":
-		reqs = t.SyncRequires
+	case "update", "full":
+		reqs = t.UpdateRequires
 	}
 	return resourcereqs.New(reqs)
 }

@@ -202,11 +202,11 @@ func (t *T) getRunning(cmdArgs []string) (proc.L, error) {
 
 func (t *T) ScheduleOptions() resource.ScheduleOptions {
 	return resource.ScheduleOptions{
-		Action:                   "sync_update",
+		Action:                   "update",
 		Option:                   "schedule",
 		Base:                     "",
 		RequireReplicationSource: true,
-		Require:                  t.SyncRequires,
+		Require:                  t.UpdateRequires,
 	}
 }
 

@@ -179,11 +179,11 @@ func (t *T) Label(_ context.Context) string {
 
 func (t *T) ScheduleOptions() resource.ScheduleOptions {
 	return resource.ScheduleOptions{
-		Action:                   "sync_update",
+		Action:                   "update",
 		Option:                   "schedule",
 		Base:                     "",
 		RequireReplicationSource: true,
-		Require:                  t.SyncRequires,
+		Require:                  t.UpdateRequires,
 	}
 }
 
