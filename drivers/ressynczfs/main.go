@@ -617,6 +617,7 @@ func (t *T) ScheduleOptions() resource.ScheduleOptions {
 		Option:                   "schedule",
 		Base:                     "",
 		RequireReplicationSource: true,
+		Require:                  t.SyncRequires,
 	}
 }
 

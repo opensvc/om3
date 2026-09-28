@@ -720,7 +720,7 @@ func (t *T) Requires(action string) *resourcereqs.T {
 		reqs = t.UnprovisionRequires
 	case "run":
 		reqs = t.RunRequires
-	case "sync":
+	case "sync", "sync_update", "sync_full":
 		reqs = t.SyncRequires
 	}
 	return resourcereqs.New(reqs)
@@ -1038,6 +1038,9 @@ func Full(ctx context.Context, r Driver) error {
 		return ErrDisabled
 	}
 	Setenv(r)
+	if err := checkRequires(ctx, r); err != nil {
+		return fmt.Errorf("sync requires: %w", err)
+	}
 	if err := s.Full(ctx); err != nil {
 		return err
 	}
@@ -1056,6 +1059,9 @@ func Update(ctx context.Context, r Driver) error {
 		return ErrDisabled
 	}
 	Setenv(r)
+	if err := checkRequires(ctx, r); err != nil {
+		return fmt.Errorf("sync requires: %w", err)
+	}
 	if err := s.Update(ctx); err != nil {
 		return err
 	}

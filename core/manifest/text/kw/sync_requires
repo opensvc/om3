@@ -1,5 +1,6 @@
-A whitespace-separated list of conditions to meet to accept a 'sync update'
-action.
+A whitespace-separated list of conditions to meet to accept a 'sync update' or
+a 'sync full' action. A scheduled 'sync update' is not scheduled while they are
+not met.
 
 A condition is expressed as `<rid>(<state>,...)`.
 
