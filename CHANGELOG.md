@@ -590,6 +590,13 @@ which share the same executor.
     the resolver rather than the engine, so both require the root grant to set
     through the api.
 
+* **Changed rbac, what of the node a container reaches:**
+    As in v2, a user holding no root grant may not set, on a container or a
+    task, `privileged` to a true value, `netns` to `host`, `devices`, or a
+    `volume_mounts` source that is a path of the node, nor `netns` to `host`
+    on an ip resource. Tasks were not held to the host path mounts rule
+    before.
+
 ### Driver: container.docker
 
     * `stop_timeout`
