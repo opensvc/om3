@@ -2,6 +2,7 @@ package ressyncrsync
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"path/filepath"
 	"sort"
@@ -114,6 +115,9 @@ func (t *T) lockedSync(ctx context.Context, mode modeT, target []string) (err er
 		t.Log().Infof("no peer to sync")
 		return nil
 	}
+	// A failure to write the last sync records of a peer is reported once
+	// the data is sent to the other peers too: the data reached that peer.
+	var lastSyncErrs error
 	for _, nodename := range nodenames {
 		if err := t.isSendAllowedToPeerEnv(nodename); err != nil {
 			if isCron {
@@ -124,13 +128,13 @@ func (t *T) lockedSync(ctx context.Context, mode modeT, target []string) (err er
 			continue
 		}
 		if err := t.peerSync(ctx, mode, nodename); err != nil {
-			return err
+			return errors.Join(err, lastSyncErrs)
 		}
 		if err := t.WritePeerLastSync(ctx, nodename, nodenames); err != nil {
-			return err
+			lastSyncErrs = errors.Join(lastSyncErrs, fmt.Errorf("%s: write last sync: %w", nodename, err))
 		}
 	}
-	return nil
+	return lastSyncErrs
 }
 
 func (t *T) Kill(ctx context.Context) error {

@@ -139,6 +139,11 @@ func (t *T) lockedSync(ctx context.Context, mode modeT, target []string) (err er
 		}
 	}
 
+	// The last sync records are written after the snapshots of a peer are
+	// rotated: a failure to write one is reported once the local snapshots
+	// are rotated too, or the next incremental send would start from a
+	// snapshot the peer no longer holds under that name.
+	var lastSyncErrs error
 	nodenames := t.GetTargetPeernames(target, t.Nodes, t.DRPNodes)
 	for _, nodename := range nodenames {
 		if err := t.isSendAllowedToPeerEnv(nodename); err != nil {
@@ -156,13 +161,13 @@ func (t *T) lockedSync(ctx context.Context, mode modeT, target []string) (err er
 			return err
 		}
 		if err := t.WritePeerLastSync(ctx, nodename, nodenames); err != nil {
-			return err
+			lastSyncErrs = errors.Join(lastSyncErrs, fmt.Errorf("%s: write last sync: %w", nodename, err))
 		}
 	}
 	if err := t.rotateSnaps(t.srcSnapTosend, t.srcSnapSent); err != nil {
-		return err
+		return errors.Join(err, lastSyncErrs)
 	}
-	return nil
+	return lastSyncErrs
 }
 
 func (t *T) sendIncrementalLocal(ctx context.Context, nodename string) error {
