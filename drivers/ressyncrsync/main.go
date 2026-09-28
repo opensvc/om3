@@ -65,10 +65,6 @@ func New() resource.Driver {
 	return &T{}
 }
 
-func (t *T) Running() (resource.RunningInfoList, error) {
-	return t.RunningFromLock(lockName)
-}
-
 func (t *T) Full(ctx context.Context) error {
 	disable := actioncontext.IsLockDisabled(ctx)
 	timeout := actioncontext.LockTimeout(ctx)
@@ -112,6 +108,11 @@ func (t *T) lockedSync(ctx context.Context, mode modeT, target []string) (err er
 		t.Log().Infof("no peer to sync")
 		return nil
 	}
+	done, err := t.StartRun()
+	if err != nil {
+		return err
+	}
+	defer done()
 	// The peers are synced at once, each on its own: one failing, or slow,
 	// does not hold the others back, and all the failures are reported.
 	var (

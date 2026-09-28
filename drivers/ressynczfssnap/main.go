@@ -32,7 +32,6 @@ const (
 	modeFull modeT = iota
 	modeIncr
 
-	lockName             = "sync"
 	timeFormatInSnapName = "2006-01-02.15:04:05"
 )
 
@@ -48,15 +47,16 @@ func (t *T) SortKey() string {
 	return "+" + t.ResourceID.Name
 }
 
-func (t *T) Running() (resource.RunningInfoList, error) {
-	return t.RunningFromLock(lockName)
-}
-
 func (t *T) Update(ctx context.Context) error {
 	if v, reason := t.IsInstanceSufficientlyStarted(ctx); !v {
 		t.Log().Tracef("the instance is not sufficiently started (%s). refuse to create snapshots", reason)
 		return nil
 	}
+	done, err := t.StartRun()
+	if err != nil {
+		return err
+	}
+	defer done()
 	for _, dataset := range t.Dataset {
 		if err := t.createSnap(dataset); err != nil {
 			return err
