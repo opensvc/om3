@@ -623,7 +623,7 @@ func FlagTag(flags *pflag.FlagSet, p *string) {
 }
 
 func FlagTarget(flags *pflag.FlagSet, p *[]string) {
-	flags.StringSliceVar(p, "target", []string{}, "the peers to sync to (ex: nodes or drpnodes)")
+	flags.StringSliceVar(p, "target", []string{}, "the peers to sync to: nodes, drpnodes, local or a node selector expression (ex: nodes or n2,n3)")
 }
 
 func FlagUpdateDelete(flags *pflag.FlagSet, p *[]string) {

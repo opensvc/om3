@@ -9,12 +9,14 @@ import (
 	"os"
 	"path/filepath"
 	"slices"
+	"strings"
 	"time"
 
 	"github.com/opensvc/om3/v3/core/client"
 	"github.com/opensvc/om3/v3/core/driver"
 	"github.com/opensvc/om3/v3/core/keywords"
 	"github.com/opensvc/om3/v3/core/naming"
+	"github.com/opensvc/om3/v3/core/nodeselector"
 	"github.com/opensvc/om3/v3/core/resource"
 	"github.com/opensvc/om3/v3/core/status"
 	"github.com/opensvc/om3/v3/core/statusbus"
@@ -192,6 +194,58 @@ func (t *T) readLastSync(nodename string) (time.Time, error) {
 
 func (t *T) lastSyncFile(nodename string) string {
 	return filepath.Join(t.VarDir(), "last_sync_"+nodename)
+}
+
+// expandNodeSelector is the nodes a node selector expression selects.
+var expandNodeSelector = func(s string) ([]string, error) {
+	return nodeselector.New(s).Expand()
+}
+
+// SelectPeernames is the peers a run asked to sync to target reaches, among
+// the peers of configured, the target of the configuration. An empty target
+// asks all of them. A target is "nodes", "drpnodes", "local", or a node
+// selector expression, so a peer that needs syncing on its own is named.
+func (t *T) SelectPeernames(target, configured, nodes, drpNodes []string) ([]string, error) {
+	peers := t.GetTargetPeernames(configured, nodes, drpNodes)
+	if len(target) == 0 {
+		return peers, nil
+	}
+	selected := make([]string, 0, len(peers))
+	add := func(nodename string) bool {
+		if !slices.Contains(peers, nodename) {
+			return false
+		}
+		if !slices.Contains(selected, nodename) {
+			selected = append(selected, nodename)
+		}
+		return true
+	}
+	for _, v := range target {
+		switch v {
+		case "nodes", "drpnodes", "local":
+			for _, nodename := range t.GetTargetPeernames([]string{v}, nodes, drpNodes) {
+				add(nodename)
+			}
+			continue
+		}
+		if add(v) {
+			continue
+		}
+		matched, err := expandNodeSelector(v)
+		if err != nil {
+			return nil, fmt.Errorf("target %s: %w", v, err)
+		}
+		found := false
+		for _, nodename := range matched {
+			if add(nodename) {
+				found = true
+			}
+		}
+		if !found {
+			return nil, fmt.Errorf("target %s selects no peer this resource syncs to (%s)", v, strings.Join(peers, " "))
+		}
+	}
+	return selected, nil
 }
 
 func (t *T) GetTargetPeernames(target, nodes, drpNodes []string) []string {

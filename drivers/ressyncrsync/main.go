@@ -95,10 +95,6 @@ func (t *T) Update(ctx context.Context) error {
 }
 
 func (t *T) lockedSync(ctx context.Context, mode modeT, target []string) (err error) {
-	if len(target) == 0 {
-		target = t.Target
-	}
-
 	isCron := actioncontext.IsCron(ctx)
 
 	if t.isFlexAndNotPrimary() {
@@ -110,7 +106,10 @@ func (t *T) lockedSync(ctx context.Context, mode modeT, target []string) (err er
 		t.Log().Errorf("The instance is not sufficiently started (%s). Refuse to sync to protect the data of the started remote instance", strings.Join(rids, ","))
 		return fmt.Errorf("the instance is not sufficiently started (%s). refuse to sync to protect the data of the started remote instance", strings.Join(rids, ","))
 	}
-	nodenames := t.GetTargetPeernames(target, t.Nodes, t.DRPNodes)
+	nodenames, err := t.SelectPeernames(target, t.Target, t.Nodes, t.DRPNodes)
+	if err != nil {
+		return err
+	}
 	if len(nodenames) == 0 {
 		t.Log().Infof("no peer to sync")
 		return nil
