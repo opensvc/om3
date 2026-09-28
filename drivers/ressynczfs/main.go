@@ -515,8 +515,18 @@ func (t *T) receiveDst() (discardFirst bool, dst string) {
 	}
 }
 
+// receiveCmd is the zfs receive command of a peer, or of the local node when
+// inherit is set.
+//
+// A peer receives with -u: its copy is left unmounted, as the fs resource of
+// the object mounts it on the node the object starts on. Mounted by the
+// receive, the copy on a passive node would have that fs resource read up
+// there, and the node taken for the one the data is replicated from.
 func (t *T) receiveCmd(inherit []string, discardFirst bool, dst string) []string {
 	cmd := []string{"/usr/sbin/zfs", "receive"}
+	if inherit == nil {
+		cmd = append(cmd, "-u")
+	}
 	for _, prop := range inherit {
 		cmd = append(cmd, "-x", prop)
 	}

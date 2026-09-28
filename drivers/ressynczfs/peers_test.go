@@ -353,3 +353,9 @@ func TestNewSnapNameIsUniqueWithinASecond(t *testing.T) {
 	require.NotEqual(t, a, b)
 	require.Equal(t, "pool/fs@sync.1.20260928T120000.001000Z", a)
 }
+
+func TestReceiveCmd(t *testing.T) {
+	d := &T{}
+	require.Equal(t, []string{"/usr/sbin/zfs", "receive", "-u", "-dF", "tank"}, d.receiveCmd(nil, true, "tank"), "a peer leaves its copy unmounted")
+	require.Equal(t, []string{"/usr/sbin/zfs", "receive", "-x", "mountpoint", "-dF", "tank"}, d.receiveCmd([]string{"mountpoint"}, true, "tank"))
+}
