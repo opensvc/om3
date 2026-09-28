@@ -750,6 +750,10 @@ which share the same executor.
     copy over the one of the active node when the object has no such
     resource.
 
+* **`max_delay` defaults to the schedule:**
+    Unset, a copy is stale once the first scheduled sync due after the last
+    one is half a schedule period late, instead of the fixed 27 hours of v2.
+
 ### Driver: sync.zfs
 
 * **Each peer is synced from its own base snapshot:**

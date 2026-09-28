@@ -25,7 +25,6 @@ import (
 	"github.com/opensvc/om3/v3/util/command"
 	"github.com/opensvc/om3/v3/util/hostname"
 	"github.com/opensvc/om3/v3/util/proc"
-	"github.com/opensvc/om3/v3/util/schedule"
 )
 
 // T is the driver structure.
@@ -40,7 +39,6 @@ type (
 		User           string
 		Options        []string
 		Target         []string
-		Schedule       string
 		ResetOptions   bool
 		Snap           bool
 		Snooze         *time.Duration
@@ -137,26 +135,6 @@ func (t *T) lockedSync(ctx context.Context, mode modeT, target []string) (err er
 
 func (t *T) Kill(ctx context.Context) error {
 	return nil
-}
-
-// maxDelay return the configured max_delay if set.
-// If not set, return the duration from now to the end of the
-// next schedule period.
-func (t *T) maxDelay(lastSync time.Time) *time.Duration {
-	if t.MaxDelay != nil {
-		return t.MaxDelay
-	}
-	sched := schedule.New(t.Schedule)
-	begin, duration, err := sched.Next(schedule.NextWithLast(lastSync))
-	if err != nil {
-		return nil
-	}
-	end := begin.Add(duration)
-	maxDelay := end.Sub(time.Now())
-	if maxDelay < 0 {
-		maxDelay = 0
-	}
-	return &maxDelay
 }
 
 func (t *T) Status(ctx context.Context) status.T {

@@ -20,7 +20,6 @@ type (
 	T struct {
 		ressync.T
 		Dataset   []string
-		Schedule  string
 		Recursive bool
 		Keep      int
 		Name      string

@@ -34,7 +34,6 @@ type (
 		Src          string
 		Dst          string
 		Target       []string
-		Schedule     string
 		Intermediary bool
 		Recursive    bool
 		Nodes        []string

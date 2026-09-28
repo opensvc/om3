@@ -64,24 +64,33 @@ var (
 	}
 )
 
-// GetMaxDelay return the configured max_delay if set.
-// If not set, return the duration from now to the end of the
-// next schedule period.
+// GetMaxDelay is how long after lastSync the copy is stale: max_delay when
+// set, or else derived from the schedule, 0 meaning neither is.
 func (t *T) GetMaxDelay(lastSync time.Time) time.Duration {
 	if t.MaxDelay != nil {
 		return *t.MaxDelay
 	}
-	sched := schedule.New(t.Schedule)
-	begin, duration, err := sched.Next(schedule.NextWithLast(lastSync))
-	if err != nil {
+	return scheduleMaxDelay(t.Schedule, lastSync)
+}
+
+// scheduleMaxDelay is how long after lastSync a copy synced on schedule s is
+// stale: once the first run due after lastSync is late by half a period of
+// the schedule. The run takes time, and the scheduler does not start it on
+// the dot, so being due is not being late.
+func scheduleMaxDelay(s string, lastSync time.Time) time.Duration {
+	if s == "" {
 		return 0
 	}
-	end := begin.Add(duration)
-	maxDelay := end.Sub(time.Now())
-	if maxDelay < 0 {
+	sched := schedule.New(s)
+	due, _, err := sched.Next(schedule.NextWithLast(lastSync), schedule.NextWithTime(lastSync))
+	if err != nil || due.IsZero() {
 		return 0
 	}
-	return maxDelay
+	after, _, err := sched.Next(schedule.NextWithLast(due), schedule.NextWithTime(due.Add(time.Second)))
+	if err != nil || !after.After(due) {
+		return due.Sub(lastSync)
+	}
+	return due.Sub(lastSync) + after.Sub(due)/2
 }
 
 func (t *T) StatusLastSync(nodenames []string) status.T {
