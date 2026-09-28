@@ -735,9 +735,35 @@ which share the same executor.
 
 * **`sync full` and `sync update`:**
     Now both accept a `--target nodes|drpnodes|node_selector_expr` flag.
+    The peers selected are the ones the `target` keyword of the resource
+    reaches, and a node selector expression selecting none of them is an
+    error.
 
 * **Changed Keyword:**
   * `max_delay` (a.k.a. `sync_max_delay`) default unit is changed from minutes to seconds, so all duration keywords use the same default unit. Set a explicit unit before migration.
+
+### Driver: sync.zfs
+
+* **Each peer is synced from its own base snapshot:**
+    The source no longer rotates the `<rid>.sent` and `<rid>.tosend` snapshots
+    shared by all the peers. Each run takes a `<rid>.<YYYYmmddTHHMMSSZ>`
+    snapshot, for example `sync.1.20260928T154211Z`, and sends each peer the
+    changes since the newest snapshot the peer holds in common with the
+    source, found by guid. A peer that missed runs catches up at the next
+    one, and a peer failing no longer stops the others. The snapshots of an
+    upgraded agent are used as the base of its peers, then destroyed once no
+    peer needs them. Scripts reading the old snapshot names need updating.
+
+* **New keywords `max_lag_age` and `max_lag_size`:**
+    The source keeps the base snapshot of a lagging peer. Once the peer lags
+    for longer than `max_lag_age` (default `24h`), or the snapshots kept for
+    it hold more than `max_lag_size` (a size, or a percentage of the free
+    space of the pool, default `20%`), the source destroys its base and stops
+    sending to it. The resource status then warns with the command that syncs
+    it again, `om <path> instance full --rid <rid> --target <peer>`. A peer
+    holding snapshots with none in common with the source is also left
+    alone rather than overwritten. A peer holding no snapshot of the
+    resource is still sent a full copy without asking.
 
 ### Driver: app
 
