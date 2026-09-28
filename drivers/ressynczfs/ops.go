@@ -8,6 +8,8 @@ import (
 	"strconv"
 	"strings"
 
+	"golang.org/x/crypto/ssh"
+
 	"github.com/opensvc/om3/v3/util/hostname"
 	"github.com/opensvc/om3/v3/util/zfs"
 )
@@ -27,13 +29,15 @@ func (o *execOps) run(nodename string, args ...string) (out []byte, notFound boo
 		cmd.Stderr = &stderr
 		err = cmd.Run()
 	} else {
-		client, err := o.t.NewSSHClient(nodename)
-		if err != nil {
+		// err is the one returned: the session run error must not be
+		// assigned to an err of this block.
+		var client *ssh.Client
+		if client, err = o.t.NewSSHClient(nodename); err != nil {
 			return nil, false, err
 		}
 		defer client.Close()
-		session, err := client.NewSession()
-		if err != nil {
+		var session *ssh.Session
+		if session, err = client.NewSession(); err != nil {
 			return nil, false, err
 		}
 		defer session.Close()
