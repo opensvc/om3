@@ -45,6 +45,10 @@ func (a *DaemonAPI) GetObjectSchedule(ctx echo.Context, namespace string, kind n
 			return JSONProblemf(ctx, http.StatusInternalServerError, "Request peer", "%s: %s", nodename, err)
 		}
 		if resp.StatusCode != http.StatusOK {
+			if resp.StatusCode == http.StatusNotFound {
+				resp.Body.Close()
+				continue
+			}
 			defer resp.Body.Close()
 			return ctx.Stream(resp.StatusCode, resp.Header.Get("Content-Type"), resp.Body)
 		}
