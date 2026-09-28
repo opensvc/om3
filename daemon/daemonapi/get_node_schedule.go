@@ -30,26 +30,12 @@ func (a *DaemonAPI) getLocalSchedule(ctx echo.Context) error {
 		return JSONProblemf(ctx, http.StatusNotFound, "No schedule table cached", "")
 	}
 	resp := api.ScheduleList{
-		Kind: "ScheduleList",
+		Kind:  "ScheduleList",
+		Items: make(api.ScheduleItems, 0, len(*table)),
 	}
 	for _, e := range *table {
-		item := api.ScheduleItem{
-			Kind: "ScheduleItem",
-			Meta: api.InstanceMeta{
-				Node:   e.Node,
-				Object: e.Path.String(),
-			},
-			Data: api.Schedule{
-				Action:             e.Action,
-				Key:                e.Key,
-				LastRunAt:          e.LastRunAt,
-				NextRunAt:          e.NextRunAt,
-				RequireCollector:   e.RequireCollector,
-				RequireProvisioned: e.RequireProvisioned,
-				Schedule:           e.Schedule,
-			},
-		}
-		resp.Items = append(resp.Items, item)
+		resp.Items = append(resp.Items, scheduleItem(e))
 	}
+	sortScheduleItems(resp.Items)
 	return ctx.JSON(http.StatusOK, resp)
 }

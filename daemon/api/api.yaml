@@ -9288,11 +9288,13 @@ components:
         last_run_at:
           type: string
           format: date-time
+          nullable: true
         max_parallel:
           type: integer
         next_run_at:
           type: string
           format: date-time
+          nullable: true
         require:
           type: string
         require_collector:
@@ -9336,7 +9338,7 @@ components:
         kind:
           type: string
           enum:
-            - ResourceItem
+            - ScheduleItem
         meta:
           $ref: '#/components/schemas/InstanceMeta'
         data:
