@@ -128,7 +128,7 @@ func (t *T) WritePeerLastSync(ctx context.Context, peer string, peers []string) 
 		return err
 	}
 
-	c, err := client.New(client.WithURL(peer))
+	c, err := client.New()
 	if err != nil {
 		return err
 	}
