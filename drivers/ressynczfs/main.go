@@ -8,6 +8,7 @@ import (
 	"path/filepath"
 	"sort"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/google/uuid"
@@ -45,7 +46,8 @@ type (
 		MaxLagAge    *time.Duration
 		MaxLagSize   string
 
-		ops zfsOps
+		ops   zfsOps
+		conns sshClients
 	}
 
 	modeT uint
@@ -142,10 +144,15 @@ func (t *T) lockedSync(ctx context.Context, mode modeT, target []string) (err er
 	peers := t.GetTargetPeernames(t.Target, t.Nodes, t.DRPNodes)
 	t.seedLegacyStates(local, peers, states)
 
-	// A peer failing is reported once the others are synced: the peers do
-	// not depend on one another.
-	var errs error
-	for _, nodename := range nodenames {
+	// The peers are synced at once, each on its own: one failing, or slow,
+	// does not hold the others back, and all the failures are reported.
+	defer t.closeSSHClients()
+	var (
+		wg       sync.WaitGroup
+		peerErrs = make([]error, len(nodenames))
+		results  = make([]*peerState, len(nodenames))
+	)
+	for i, nodename := range nodenames {
 		if err := t.isSendAllowedToPeerEnv(nodename); err != nil {
 			if isCron {
 				t.Log().Tracef("%s", err)
@@ -155,16 +162,26 @@ func (t *T) lockedSync(ctx context.Context, mode modeT, target []string) (err er
 			continue
 		}
 		st := states[nodename]
-		err := t.syncPeer(ctx, mode, nodename, local, snap, &st, now)
-		states[nodename] = st
-		if err != nil {
-			errs = errors.Join(errs, err)
-			continue
-		}
-		if err := t.WritePeerLastSync(ctx, nodename, nodenames); err != nil {
-			errs = errors.Join(errs, fmt.Errorf("%s: write last sync: %w", nodename, err))
+		results[i] = &st
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			if err := t.syncPeer(ctx, mode, nodename, local, snap, &st, now); err != nil {
+				peerErrs[i] = err
+				return
+			}
+			if err := t.WritePeerLastSync(ctx, nodename); err != nil {
+				peerErrs[i] = fmt.Errorf("%s: write last sync: %w", nodename, err)
+			}
+		}()
+	}
+	wg.Wait()
+	for i, nodename := range nodenames {
+		if results[i] != nil {
+			states[nodename] = *results[i]
 		}
 	}
+	errs := errors.Join(peerErrs...)
 	if err := t.saveSyncState(syncState{LastSnapGUID: snap.GUID, Peers: states}); err != nil {
 		return errors.Join(errs, err)
 	}
@@ -249,12 +266,7 @@ func (t *T) sendIncrementalTo(ctx context.Context, nodename, base, snap string) 
 	args := t.sendIncrementalCmd(base, snap)
 	cmd := exec.CommandContext(ctx, args[0], args[1:]...)
 
-	client, err := t.NewSSHClient(nodename)
-	if err != nil {
-		return err
-	}
-	defer client.Close()
-	session, err := client.NewSession()
+	session, err := t.newSession(nodename)
 	if err != nil {
 		return err
 	}
@@ -311,7 +323,7 @@ func (t *T) sendIncrementalTo(ctx context.Context, nodename, base, snap string) 
 }
 
 func (t *T) sendInitial(ctx context.Context, nodename, snap string) error {
-	if err := t.zfs(t.Dst+"@%").Destroy(zfs.FilesystemDestroyWithRecurse(t.Recursive), zfs.FilesystemDestroyWithNode(nodename)); err != nil {
+	if err := t.destroySnapshot(nodename, t.Dst+"@%"); err != nil {
 		return err
 	}
 	if hostname.Hostname() == nodename {
@@ -398,12 +410,7 @@ func (t *T) sendInitialTo(ctx context.Context, nodename, snap string) error {
 	args := t.sendInitialCmd(snap)
 	cmd := exec.CommandContext(ctx, args[0], args[1:]...)
 
-	client, err := t.NewSSHClient(nodename)
-	if err != nil {
-		return err
-	}
-	defer client.Close()
-	session, err := client.NewSession()
+	session, err := t.newSession(nodename)
 	if err != nil {
 		return err
 	}

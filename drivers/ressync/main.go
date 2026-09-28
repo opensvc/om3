@@ -5,6 +5,7 @@ import (
 	"embed"
 	"errors"
 	"fmt"
+	"io"
 	"net/http"
 	"os"
 	"path/filepath"
@@ -125,20 +126,27 @@ func (t *T) StatusLastSync(nodenames []string) status.T {
 	return state
 }
 
-func (t *T) WritePeerLastSync(ctx context.Context, peer string, peers []string) error {
+// WritePeerLastSync records that peer was synced now, and sends it the
+// records it reads: its own last sync, which its status tells the freshness of
+// its copy from, the last sync of this node, and the last run of the schedule,
+// which keeps its scheduler from syncing again too soon if it becomes the
+// source.
+//
+// The records of the other peers are not sent: a node reads them only once it
+// is the source, and its first sync writes them.
+func (t *T) WritePeerLastSync(ctx context.Context, peer string) error {
 	head := t.GetObjectDriver().VarDir()
 	lastSyncFile := t.lastSyncFile(peer)
 	lastSyncFileSrc := t.lastSyncFile(hostname.Hostname())
 	schedTimestampFile := filepath.Join(head, "scheduler", "last_sync_update_"+t.RID())
 	now := time.Now()
-	if err := file.Touch(lastSyncFile, now); err != nil {
-		return err
+	for _, filename := range []string{lastSyncFile, lastSyncFileSrc, schedTimestampFile} {
+		if err := file.Touch(filename, now); err != nil {
+			return err
+		}
 	}
-	if err := file.Touch(lastSyncFileSrc, now); err != nil {
-		return err
-	}
-	if err := file.Touch(schedTimestampFile, now); err != nil {
-		return err
+	if peer == hostname.Hostname() {
+		return nil
 	}
 
 	c, err := client.New()
@@ -146,19 +154,20 @@ func (t *T) WritePeerLastSync(ctx context.Context, peer string, peers []string) 
 		return err
 	}
 
-	send := func(filename, nodename string) error {
+	send := func(filename string) error {
 		file, err := os.Open(filename)
 		if err != nil {
 			return err
 		}
 		defer file.Close()
-		response, err := c.PostInstanceStateFileWithBody(ctx, nodename, t.Path.Namespace, t.Path.Kind, t.Path.Name, "application/octet-stream", file, func(ctx context.Context, req *http.Request) error {
+		response, err := c.PostInstanceStateFileWithBody(ctx, peer, t.Path.Namespace, t.Path.Kind, t.Path.Name, "application/octet-stream", file, func(ctx context.Context, req *http.Request) error {
 			req.Header.Add(api.HeaderRelativePath, filename[len(head):])
 			return nil
 		})
 		if err != nil {
 			return err
 		}
+		defer drainClose(response.Body)
 		if response.StatusCode != http.StatusNoContent {
 			return fmt.Errorf("unexpected response: %s", response.Status)
 		}
@@ -166,17 +175,21 @@ func (t *T) WritePeerLastSync(ctx context.Context, peer string, peers []string) 
 	}
 
 	var errs error
-
-	for _, nodename := range peers {
-		for _, filename := range []string{lastSyncFile, lastSyncFileSrc, schedTimestampFile} {
-			if err := send(filename, nodename); err != nil {
-				errs = errors.Join(errs, fmt.Errorf("failed to send state file %s to node %s: %w", filename, nodename, err))
-			}
-			t.Log().Debugf("state file %s sent to node %s", filename, nodename)
+	for _, filename := range []string{lastSyncFile, lastSyncFileSrc, schedTimestampFile} {
+		if err := send(filename); err != nil {
+			errs = errors.Join(errs, fmt.Errorf("send state file %s to node %s: %w", filename, peer, err))
+			continue
 		}
+		t.Log().Debugf("state file %s sent to node %s", filename, peer)
 	}
-
 	return errs
+}
+
+// drainClose reads what is left of a response body before closing it, so the
+// connection is reused for the next request.
+func drainClose(rc io.ReadCloser) {
+	_, _ = io.Copy(io.Discard, rc)
+	_ = rc.Close()
 }
 
 func (t *T) WriteLastSync(nodename string) error {

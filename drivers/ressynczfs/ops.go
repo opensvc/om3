@@ -19,35 +19,28 @@ type execOps struct {
 	t *T
 }
 
-// run runs the zfs command args on nodename, returning its stdout. A
-// dataset that does not exist is reported as notFound.
-func (o *execOps) run(nodename string, args ...string) (out []byte, notFound bool, err error) {
+// zfsRun runs the zfs command args on nodename, over the connection of the
+// run to it, returning its stdout. A dataset that does not exist is reported as
+// notFound.
+func (t *T) zfsRun(nodename string, args ...string) (out []byte, notFound bool, err error) {
 	var stdout, stderr bytes.Buffer
+	cmd := exec.Command("/usr/sbin/zfs", args...)
 	if nodename == "" || nodename == hostname.Hostname() {
-		cmd := exec.Command("/usr/sbin/zfs", args...)
 		cmd.Stdout = &stdout
 		cmd.Stderr = &stderr
 		err = cmd.Run()
 	} else {
-		// err is the one returned: the session run error must not be
-		// assigned to an err of this block.
-		var client *ssh.Client
-		if client, err = o.t.NewSSHClient(nodename); err != nil {
-			return nil, false, err
-		}
-		defer client.Close()
 		var session *ssh.Session
-		if session, err = client.NewSession(); err != nil {
+		if session, err = t.newSession(nodename); err != nil {
 			return nil, false, err
 		}
 		defer session.Close()
 		session.Stdout = &stdout
 		session.Stderr = &stderr
-		cmd := exec.Command("/usr/sbin/zfs", args...)
 		err = session.Run(cmd.String())
 	}
 	if err != nil {
-		if strings.Contains(stderr.String(), "does not exist") {
+		if s := stderr.String(); strings.Contains(s, "does not exist") || strings.Contains(s, "could not find") {
 			return nil, true, nil
 		}
 		return nil, false, fmt.Errorf("zfs %s: %w: %s", strings.Join(args, " "), err, strings.TrimSpace(stderr.String()))
@@ -55,8 +48,26 @@ func (o *execOps) run(nodename string, args ...string) (out []byte, notFound boo
 	return stdout.Bytes(), false, nil
 }
 
+// destroySnapshot destroys the snapshot name on nodename, a snapshot that
+// does not exist being destroyed already.
+func (t *T) destroySnapshot(nodename, name string) error {
+	if nodename == "" || nodename == hostname.Hostname() {
+		return t.zfs(name).Destroy(zfs.FilesystemDestroyWithRecurse(t.Recursive))
+	}
+	args := []string{"destroy"}
+	if t.Recursive {
+		args = append(args, "-R")
+	}
+	args = append(args, name)
+	if _, _, err := t.zfsRun(nodename, args...); err != nil {
+		return err
+	}
+	t.Log().Infof("ssh %s /usr/sbin/zfs %s", nodename, strings.Join(args, " "))
+	return nil
+}
+
 func (o *execOps) listSnapshots(nodename, dataset string) ([]snapshot, error) {
-	b, notFound, err := o.run(nodename, "list", "-H", "-p", "-t", "snapshot", "-d", "1", "-o", "name,guid,createtxg", dataset)
+	b, notFound, err := o.t.zfsRun(nodename, "list", "-H", "-p", "-t", "snapshot", "-d", "1", "-o", "name,guid,createtxg", dataset)
 	if err != nil || notFound {
 		return nil, err
 	}
@@ -87,11 +98,7 @@ func (o *execOps) takeSnapshot(name string) error {
 }
 
 func (o *execOps) destroySnapshot(nodename, name string) error {
-	fs := o.t.zfs(name)
-	if nodename != "" && nodename != hostname.Hostname() {
-		return fs.Destroy(zfs.FilesystemDestroyWithRecurse(o.t.Recursive), zfs.FilesystemDestroyWithNode(nodename))
-	}
-	return fs.Destroy(zfs.FilesystemDestroyWithRecurse(o.t.Recursive))
+	return o.t.destroySnapshot(nodename, name)
 }
 
 func (o *execOps) reclaimable(dataset, first, last string) (int64, error) {
@@ -100,7 +107,7 @@ func (o *execOps) reclaimable(dataset, first, last string) (int64, error) {
 		args = append(args, "-r")
 	}
 	args = append(args, dataset+"@"+first+"%"+last)
-	b, _, err := o.run("", args...)
+	b, _, err := o.t.zfsRun("", args...)
 	if err != nil {
 		return 0, err
 	}

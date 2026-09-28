@@ -8,6 +8,7 @@ import (
 	"sort"
 	"strconv"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/google/uuid"
@@ -111,10 +112,13 @@ func (t *T) lockedSync(ctx context.Context, mode modeT, target []string) (err er
 		t.Log().Infof("no peer to sync")
 		return nil
 	}
-	// A failure to write the last sync records of a peer is reported once
-	// the data is sent to the other peers too: the data reached that peer.
-	var lastSyncErrs error
-	for _, nodename := range nodenames {
+	// The peers are synced at once, each on its own: one failing, or slow,
+	// does not hold the others back, and all the failures are reported.
+	var (
+		wg   sync.WaitGroup
+		errs = make([]error, len(nodenames))
+	)
+	for i, nodename := range nodenames {
 		if err := t.isSendAllowedToPeerEnv(nodename); err != nil {
 			if isCron {
 				t.Log().Tracef("%s", err)
@@ -123,14 +127,20 @@ func (t *T) lockedSync(ctx context.Context, mode modeT, target []string) (err er
 			}
 			continue
 		}
-		if err := t.peerSync(ctx, mode, nodename); err != nil {
-			return errors.Join(err, lastSyncErrs)
-		}
-		if err := t.WritePeerLastSync(ctx, nodename, nodenames); err != nil {
-			lastSyncErrs = errors.Join(lastSyncErrs, fmt.Errorf("%s: write last sync: %w", nodename, err))
-		}
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			if err := t.peerSync(ctx, mode, nodename); err != nil {
+				errs[i] = fmt.Errorf("%s: %w", nodename, err)
+				return
+			}
+			if err := t.WritePeerLastSync(ctx, nodename); err != nil {
+				errs[i] = fmt.Errorf("%s: write last sync: %w", nodename, err)
+			}
+		}()
 	}
-	return lastSyncErrs
+	wg.Wait()
+	return errors.Join(errs...)
 }
 
 func (t *T) Kill(ctx context.Context) error {
@@ -319,7 +329,7 @@ func (t *T) peerSync(ctx context.Context, mode modeT, nodename string) (err erro
 		Attr("duration", stats.Duration()).
 		Attr("sent_b", stats.SentBytes).
 		Attr("received_b", stats.ReceivedBytes).
-		Infof("sync stat")
+		Infof("sync stat: %s: sent %dB received %dB in %s (%.2fB/s)", nodename, stats.SentBytes, stats.ReceivedBytes, stats.Duration(), stats.SpeedBPS())
 
 	return nil
 }
