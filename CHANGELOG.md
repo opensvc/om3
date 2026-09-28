@@ -480,6 +480,15 @@ OpenSVC v3 is a major evolution, rebuilt in Go for performance, reliability, and
     declared secret and of the keys of a sec or usr object, raw and evaluated.
     The `redact-secrets` parameter still redacts for any reader.
 
+* **A user is given only the grants its writer holds:**
+    Writing the `grant` keyword of a usr object refuses the grants the writer
+    does not hold, as v2 did, and changing the `cn` a user authenticates by
+    with its certificate needs the `root` grant. Writing a key of a usr object,
+    its password or its certificate, needs holding every grant of that user,
+    which v2 did not ask. An administrator of the `system` namespace manages
+    the users up to its own grants, and can no longer make itself root by
+    creating a root user or resetting the password of one.
+
 * **The keys of a usr object are read by root only:**
     `GET /api/object/path/system/usr/{name}/data/key` needed the guest role,
     and answered the password and the certificate private key of the user,

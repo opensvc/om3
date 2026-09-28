@@ -429,3 +429,34 @@ func FilterGrantStrings(allowed []string, roles []Role, scope string) Grants {
 
 	return grants
 }
+
+// Covers says whether these grants hold g, so whoever holds them may give g
+// to another.
+//
+// Root holds every grant. A role granted with no scope holds that role on
+// every namespace, so it covers the role on any one. A role granted on a
+// namespace covers that role on that namespace only, and a cluster role, like
+// root or squatter, is covered by itself only.
+func (t Grants) Covers(g Grant) bool {
+	if t.HasRole(RoleRoot) {
+		return true
+	}
+	role, scope := SplitGrant(g)
+	if t.HasGrant(g) {
+		return true
+	}
+	if scope != "" && IsScopedRole(role) {
+		return t.HasGrant(NewGrant(role, ""))
+	}
+	return false
+}
+
+// Uncovered returns the grants of l these grants do not cover.
+func (t Grants) Uncovered(l ...Grant) (out Grants) {
+	for _, g := range l {
+		if !t.Covers(g) {
+			out = append(out, g)
+		}
+	}
+	return
+}

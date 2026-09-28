@@ -28,6 +28,9 @@ func (a *DaemonAPI) DeleteObjectDataKey(ctx echo.Context, namespace string, kind
 	instanceConfigData := instance.ConfigData.GetByPath(p)
 
 	if _, ok := instanceConfigData[a.localhost]; ok {
+		if v, err := assertUsrKeyWrite(ctx, p); !v {
+			return err
+		}
 		ks, err := object.NewDataStore(p)
 
 		switch {
