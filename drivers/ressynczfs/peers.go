@@ -163,22 +163,46 @@ func (t *T) peerStatesFile() string {
 	return filepath.Join(t.VarDir(), "peers.json")
 }
 
-func (t *T) loadPeerStates() (peerStates, error) {
-	m := make(peerStates)
-	b, err := os.ReadFile(t.peerStatesFile())
-	if errors.Is(err, os.ErrNotExist) {
-		return m, nil
-	} else if err != nil {
-		return nil, err
-	}
-	if err := json.Unmarshal(b, &m); err != nil {
-		return nil, fmt.Errorf("%s: %w", t.peerStatesFile(), err)
-	}
-	return m, nil
+// syncState is what the source remembers of its peers, in the var dir of the
+// resource.
+type syncState struct {
+	// LastSnapGUID is the guid of the snapshot the last run took. The
+	// peers are what this node knew as the source: when the newest
+	// snapshot it holds is another one, another node was the source since,
+	// and sent it this one, so what it knew of the peers is stale.
+	LastSnapGUID string     `json:"last_snap_guid,omitempty"`
+	Peers        peerStates `json:"peers,omitempty"`
 }
 
-func (t *T) savePeerStates(m peerStates) error {
-	b, err := json.MarshalIndent(m, "", "  ")
+func (t *T) loadSyncState() (syncState, error) {
+	var state syncState
+	b, err := os.ReadFile(t.peerStatesFile())
+	if errors.Is(err, os.ErrNotExist) {
+		return syncState{Peers: make(peerStates)}, nil
+	} else if err != nil {
+		return state, err
+	}
+	if err := json.Unmarshal(b, &state); err != nil {
+		return state, fmt.Errorf("%s: %w", t.peerStatesFile(), err)
+	}
+	if state.Peers == nil {
+		state.Peers = make(peerStates)
+	}
+	return state, nil
+}
+
+// validPeers is the peers of state, or none when they are stale: newest is
+// the newest snapshot of the resource this node holds before the run, nil
+// when it holds none.
+func (state syncState) validPeers(newest *snapshot) peerStates {
+	if newest == nil || newest.GUID != state.LastSnapGUID {
+		return make(peerStates)
+	}
+	return state.Peers
+}
+
+func (t *T) saveSyncState(state syncState) error {
+	b, err := json.MarshalIndent(state, "", "  ")
 	if err != nil {
 		return err
 	}

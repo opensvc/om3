@@ -336,3 +336,12 @@ func TestParseReclaim(t *testing.T) {
 	_, err = parseReclaim([]byte(strings.Repeat("x\n", 2)))
 	require.Error(t, err)
 }
+
+func TestSyncStateValidPeers(t *testing.T) {
+	stranded := peerStates{"n1": {StrandedAt: t0, StrandedReason: "no snapshot in common with the source"}}
+	state := syncState{LastSnapGUID: "g1", Peers: stranded}
+
+	require.Equal(t, stranded, state.validPeers(&snapshot{GUID: "g1"}), "this node was the source since")
+	require.Empty(t, state.validPeers(&snapshot{GUID: "g2"}), "another node sent the newest snapshot: stale")
+	require.Empty(t, state.validPeers(nil), "no snapshot left: stale")
+}

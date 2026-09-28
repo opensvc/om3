@@ -110,7 +110,7 @@ func (t *T) lockedSync(ctx context.Context, mode modeT, target []string) (err er
 		return nil
 	}
 
-	states, err := t.loadPeerStates()
+	state, err := t.loadSyncState()
 	if err != nil {
 		return err
 	}
@@ -128,6 +128,14 @@ func (t *T) lockedSync(ctx context.Context, mode modeT, target []string) (err er
 		return fmt.Errorf("%s is not the newest snapshot of %s", snapName, t.Src)
 	}
 	snap := local[len(local)-1]
+	var previous *snapshot
+	if len(local) > 1 {
+		previous = &local[len(local)-2]
+	}
+	states := state.validPeers(previous)
+	if len(state.Peers) > 0 && len(states) == 0 {
+		t.Log().Infof("another node was the source since the last run of this one: forget what it knew of the peers")
+	}
 
 	// The peers of the configuration, not only the ones of this run: the
 	// base of a peer not synced this run is kept too.
@@ -157,7 +165,7 @@ func (t *T) lockedSync(ctx context.Context, mode modeT, target []string) (err er
 			errs = errors.Join(errs, fmt.Errorf("%s: write last sync: %w", nodename, err))
 		}
 	}
-	if err := t.savePeerStates(states); err != nil {
+	if err := t.saveSyncState(syncState{LastSnapGUID: snap.GUID, Peers: states}); err != nil {
 		return errors.Join(errs, err)
 	}
 	if err := t.pruneLocal(local, peers, states); err != nil {
@@ -536,21 +544,34 @@ func (t *T) Status(ctx context.Context) status.T {
 // statusStranded warns about the peers the source can send no increment to
 // until an administrator asks a full copy for them.
 func (t *T) statusStranded(nodenames []string) status.T {
-	states, err := t.loadPeerStates()
+	state, err := t.loadSyncState()
 	if err != nil {
 		t.StatusLog().Error("%s", err)
 		return status.Undef
 	}
-	state := status.Undef
+	if len(state.Peers) == 0 {
+		return status.Undef
+	}
+	l, err := t.ops.listSnapshots(hostname.Hostname(), t.Src)
+	if err != nil {
+		t.StatusLog().Error("%s", err)
+		return status.Undef
+	}
+	var newest *snapshot
+	if local := t.ownSnapshots(l); len(local) > 0 {
+		newest = &local[len(local)-1]
+	}
+	states := state.validPeers(newest)
+	result := status.Undef
 	for _, nodename := range nodenames {
 		st, ok := states[nodename]
 		if !ok || st.StrandedAt.IsZero() {
 			continue
 		}
 		t.StatusLog().Warn("%s: not synced since %s: %s: run '%s'", nodename, st.StrandedAt.Format(time.RFC3339), st.StrandedReason, t.fullCommand(nodename))
-		state.Add(status.Warn)
+		result.Add(status.Warn)
 	}
-	return state
+	return result
 }
 
 func (t *T) running(ctx context.Context) bool {
