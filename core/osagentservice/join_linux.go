@@ -7,7 +7,8 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/containerd/cgroups"
+	"github.com/containerd/cgroups/v3"
+	"github.com/containerd/cgroups/v3/cgroup1"
 	"github.com/containerd/cgroups/v3/cgroup2"
 
 	"github.com/opensvc/om3/v3/daemon/daemonsys"
@@ -30,15 +31,15 @@ func Join() error {
 }
 
 func joinV1() error {
-	agentSlice := cgroups.Slice("system.slice", daemonsys.UnitName)
-	cg, err := cgroups.Load(cgroups.Systemd, agentSlice)
-	if errors.Is(err, cgroups.ErrCgroupDeleted) {
-		p, _ := agentSlice(cgroups.Pids)
+	agentSlice := cgroup1.Slice("system.slice", daemonsys.UnitName)
+	cg, err := cgroup1.Load(agentSlice, cgroup1.WithHierarchy(cgroup1.Systemd))
+	if errors.Is(err, cgroup1.ErrCgroupDeleted) {
+		p, _ := agentSlice(cgroup1.Pids)
 		return fmt.Errorf("%s: %w", p, os.ErrNotExist)
 	} else if err != nil {
 		return err
 	}
-	return cg.Add(cgroups.Process{Pid: os.Getpid()})
+	return cg.Add(cgroup1.Process{Pid: os.Getpid()})
 }
 
 func joinV2() error {
