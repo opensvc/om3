@@ -90,7 +90,8 @@ func (t MonitorState) MarshalText() ([]byte, error) {
 func (t *MonitorState) UnmarshalText(b []byte) error {
 	s := string(b)
 	if v, ok := MonitorStateValues[s]; !ok {
-		return fmt.Errorf("unexpected node.MonitorState value: %s", b)
+		*t = MonitorStateUnknown
+		return nil
 	} else {
 		*t = v
 		return nil
@@ -112,7 +113,8 @@ func (t MonitorLocalExpect) MarshalText() ([]byte, error) {
 func (t *MonitorLocalExpect) UnmarshalText(b []byte) error {
 	s := string(b)
 	if v, ok := MonitorLocalExpectValues[s]; !ok {
-		return fmt.Errorf("unexpected node.MonitorLocalExpect value: %s", b)
+		*t = MonitorLocalExpectUnknown
+		return nil
 	} else {
 		*t = v
 		return nil
@@ -134,7 +136,8 @@ func (t MonitorGlobalExpect) MarshalText() ([]byte, error) {
 func (t *MonitorGlobalExpect) UnmarshalText(b []byte) error {
 	s := string(b)
 	if v, ok := MonitorGlobalExpectValues[s]; !ok {
-		return fmt.Errorf("unexpected node.MonitorGlobalExpect value: %s", b)
+		*t = MonitorGlobalExpectUnknown
+		return nil
 	} else {
 		*t = v
 		return nil

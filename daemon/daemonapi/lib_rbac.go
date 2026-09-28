@@ -3,6 +3,8 @@ package daemonapi
 import (
 	"errors"
 	"fmt"
+	"net/http"
+	"slices"
 	"sort"
 	"strings"
 
@@ -48,7 +50,51 @@ func configRbac(ctx echo.Context, p naming.Path, body []byte) error {
 	if err := configRbacChanges(grants, p.Kind, from, cfg); err != nil {
 		return err
 	}
+	if err := usrRbac(grants, p, from, cfg); err != nil {
+		return err
+	}
 	return rootlessRbac(p, from, cfg)
+}
+
+// usrRbac refuses a write of a user giving it more than the writer holds.
+//
+// A user is its grants: whoever writes the grant keyword of a user, or the
+// certificate name it authenticates by, decides what that user may do. So the
+// grants a write adds must all be held by the writer, as v2 required, and the
+// cn of a user is changed by root alone. Without it, an administrator of the
+// system namespace, where the users live, made a user granted root, and was
+// root.
+//
+// The grants the user already holds are not asked for again: an
+// administrator can still edit, and take grants away from, a user they could
+// not have made.
+func usrRbac(grants rbac.Grants, p naming.Path, from, to *xconfig.T) error {
+	if p.Kind != naming.KindUsr {
+		return nil
+	}
+	grantKey := key.New("DEFAULT", "grant")
+	cnKey := key.New("DEFAULT", "cn")
+	var held []string
+	// The cn defaults to the name of the user, which is the certificate
+	// the user is issued anyway, so a new user may have that one.
+	heldCN := p.Name
+	if from != nil {
+		held = from.GetStrings(grantKey)
+		heldCN, _ = from.EvalNoConv(cnKey)
+	}
+	var added rbac.Grants
+	for _, s := range to.GetStrings(grantKey) {
+		if !slices.Contains(held, s) {
+			added = append(added, rbac.Grant(s))
+		}
+	}
+	if l := grants.Uncovered(added...); len(l) > 0 {
+		return fmt.Errorf("%w: %s: granting %s requires holding it", ErrDenied, p, l)
+	}
+	if cn, _ := to.EvalNoConv(cnKey); cn != heldCN {
+		return fmt.Errorf("%w: %s: setting the cn of a user requires the root grant", ErrDenied, p)
+	}
+	return nil
 }
 
 // rootlessRbac refuses a write having a container run as an account its
@@ -462,4 +508,38 @@ func hasRoleOperatorOn(grants rbac.Grants, namespace string) bool {
 // hasRoleAdminOn determines if the given grants contain the `RoleAdmin` for the specified `namespace`.
 func hasRoleAdminOn(grants rbac.Grants, namespace string) bool {
 	return grants.AssertRoleOn(namespace, rbac.RoleAdmin)
+}
+
+// assertUsrKeyWrite refuses a write of a key of a user whose grants the
+// writer does not all hold.
+//
+// The keys of a user are its credentials, its password and its certificate,
+// and whoever sets them authenticates as that user. So writing them is taking
+// the grants of the user, and needs holding them already: an administrator of
+// the system namespace can manage the users up to their own grants, and not a
+// user granted root. v2 let an administrator reset the password of any user,
+// which made the system namespace administrator root.
+//
+// It reads the user configuration of this node, so it is asked on the node
+// that writes the key.
+func assertUsrKeyWrite(ctx echo.Context, p naming.Path) (bool, error) {
+	if p.Kind != naming.KindUsr {
+		return true, nil
+	}
+	grants := grantsFromContext(ctx)
+	if grants.HasGrant(rbac.GrantRoot) {
+		return true, nil
+	}
+	cfg := currentConfig(p)
+	if cfg == nil {
+		return false, JSONProblemf(ctx, http.StatusNotFound, "Not found", "%s: no configuration on this node", p)
+	}
+	var held rbac.Grants
+	for _, s := range cfg.GetStrings(key.New("DEFAULT", "grant")) {
+		held = append(held, rbac.Grant(s))
+	}
+	if l := grants.Uncovered(held...); len(l) > 0 {
+		return false, JSONProblemf(ctx, http.StatusForbidden, "Forbidden", "%s: writing the keys of a user requires holding its grants, missing %s", p, l)
+	}
+	return true, nil
 }

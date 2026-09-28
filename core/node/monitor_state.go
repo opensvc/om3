@@ -31,6 +31,12 @@ const (
 	MonitorStateShutdownProgress
 	MonitorStateShutdownFailure
 	MonitorStateShutdownSuccess
+
+	// MonitorStateUnknown is what a value this agent does not know decodes to:
+	// a peer running a later version publishes values this one has no
+	// name for, and failing to decode them failed the whole heartbeat
+	// message the peer sent, which is how a peer is found dead.
+	MonitorStateUnknown
 )
 
 var (
@@ -60,6 +66,9 @@ var (
 		MonitorStateShutdownSuccess:  nil,
 		MonitorStateShutdownFailure:  nil,
 		MonitorStateShutdownProgress: nil,
+		// A node in a state this agent does not know is not one to place
+		// an instance on.
+		MonitorStateUnknown: nil,
 	}
 )
 
@@ -88,6 +97,7 @@ func init() {
 		{MonitorStateShutdownProgress, "shutting"},
 		{MonitorStateShutdownFailure, "shutdown failed"},
 		{MonitorStateShutdownSuccess, "shutdown"},
+		{MonitorStateUnknown, "unknown"},
 	}
 
 	// Populate the maps

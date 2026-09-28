@@ -11,8 +11,9 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/containerd/cgroups"
-	cgroupsv2 "github.com/containerd/cgroups/v2"
+	"github.com/containerd/cgroups/v3"
+	"github.com/containerd/cgroups/v3/cgroup1"
+	"github.com/containerd/cgroups/v3/cgroup2"
 	"github.com/opencontainers/runtime-spec/specs-go"
 
 	"github.com/opensvc/om3/v3/util/converters"
@@ -189,7 +190,7 @@ func (c Config) ApplyProc(pid int) (created bool, errs error) {
 		if n, err := strconv.ParseInt(c.PidsMax, 10, 64); err != nil || n < 1 {
 			errs = errors.Join(errs, fmt.Errorf("pg_pids_max: %s is not a count of processes", c.PidsMax))
 		} else {
-			r.Pids = &specs.LinuxPids{Limit: n}
+			r.Pids = &specs.LinuxPids{Limit: &n}
 			write("pids.max", c.PidsMax)
 		}
 	}
@@ -273,7 +274,7 @@ func (c Config) ApplyProc(pid int) (created bool, errs error) {
 	}
 
 	if unified {
-		control, err := cgroupsv2.NewManager(UnifiedPath(), c.ID, delegatedControllers())
+		control, err := cgroup2.NewManager(UnifiedPath(), c.ID, delegatedControllers())
 		if err != nil {
 			errs = errors.Join(errs, fmt.Errorf("new pg %s: %w", c.ID, err))
 			return
@@ -295,13 +296,13 @@ func (c Config) ApplyProc(pid int) (created bool, errs error) {
 		// values in them, and none of that was read from a v1 node.
 		errs = errors.Join(errs, fmt.Errorf("a pg keyword set to %q needs the unified cgroup hierarchy", DefaultValue))
 	}
-	control, err := cgroups.New(cgroups.V1, cgroups.StaticPath(c.ID), &r)
+	control, err := cgroup1.New(cgroup1.StaticPath(c.ID), &r)
 	if err != nil {
 		errs = errors.Join(errs, fmt.Errorf("new pg %s: %w", c.ID, err))
 	} else if pid == 0 {
 		created = true
 		// pass
-	} else if err := control.Add(cgroups.Process{Pid: pid}); err != nil {
+	} else if err := control.Add(cgroup1.Process{Pid: pid}); err != nil {
 		created = true
 		errs = errors.Join(errs, fmt.Errorf("add pid to pg %s: %w", c.ID, err))
 	}
@@ -352,12 +353,12 @@ func isUnified() bool {
 // cgroup.subtree_control of the ancestors from which of these is not nil, and
 // a cgroup whose controllers are not delegated to it has none of the files
 // the values go in.
-func delegatedControllers() *cgroupsv2.Resources {
-	return &cgroupsv2.Resources{
-		CPU:    &cgroupsv2.CPU{},
-		Memory: &cgroupsv2.Memory{},
-		IO:     &cgroupsv2.IO{},
-		Pids:   &cgroupsv2.Pids{},
+func delegatedControllers() *cgroup2.Resources {
+	return &cgroup2.Resources{
+		CPU:    &cgroup2.CPU{},
+		Memory: &cgroup2.Memory{},
+		IO:     &cgroup2.IO{},
+		Pids:   &cgroup2.Pids{},
 	}
 }
 
@@ -491,7 +492,7 @@ func (c Config) Delete() (bool, error) {
 }
 
 func (c Config) deleteV2() (bool, error) {
-	control, err := cgroupsv2.LoadManager(UnifiedPath(), c.Path())
+	control, err := cgroup2.Load(c.Path(), cgroup2.WithMountpoint(UnifiedPath()))
 	if err != nil {
 		// doesn't verify path existence
 		return false, nil
@@ -507,7 +508,7 @@ func (c Config) deleteV2() (bool, error) {
 }
 
 func (c Config) deleteV1() (bool, error) {
-	control, err := cgroups.Load(cgroups.V1, cgroups.StaticPath(c.ID))
+	control, err := cgroup1.Load(cgroup1.StaticPath(c.ID))
 	if err != nil {
 		return false, nil
 	}

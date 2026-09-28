@@ -8,6 +8,12 @@ const (
 	MonitorLocalExpectInit MonitorLocalExpect = iota
 	MonitorLocalExpectDrained
 	MonitorLocalExpectNone
+
+	// MonitorLocalExpectUnknown is what a value this agent does not know decodes to:
+	// a peer running a later version publishes values this one has no
+	// name for, and failing to decode them failed the whole heartbeat
+	// message the peer sent, which is how a peer is found dead.
+	MonitorLocalExpectUnknown
 )
 
 var (
@@ -26,6 +32,7 @@ func init() {
 		{MonitorLocalExpectInit, "init"},
 		{MonitorLocalExpectDrained, "drained"},
 		{MonitorLocalExpectNone, "none"},
+		{MonitorLocalExpectUnknown, "unknown"},
 	}
 
 	// Populate the maps

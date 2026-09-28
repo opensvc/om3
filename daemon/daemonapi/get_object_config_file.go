@@ -2,11 +2,9 @@ package daemonapi
 
 import (
 	"net/http"
-	"os"
 	"time"
 
 	"github.com/labstack/echo/v4"
-	"github.com/opensvc/om3/v3/core/object"
 
 	"github.com/opensvc/om3/v3/core/client"
 	"github.com/opensvc/om3/v3/core/instance"
@@ -16,10 +14,6 @@ import (
 )
 
 func (a *DaemonAPI) GetObjectConfigFile(ctx echo.Context, namespace string, kind naming.Kind, name string, params api.GetObjectConfigFileParams) error {
-	if v, err := assertGuest(ctx, namespace); !v {
-		return err
-	}
-
 	logName := "GetObjectConfigFile"
 	log := LogHandler(ctx, logName)
 	log.Tracef("%s: starting", logName)
@@ -28,6 +22,13 @@ func (a *DaemonAPI) GetObjectConfigFile(ctx echo.Context, namespace string, kind
 	if err != nil {
 		log.Warnf("%s: %s", logName, err)
 		return JSONProblemf(ctx, http.StatusBadRequest, "Invalid parameter", "invalid path: %s", err)
+	}
+	redact, ok, err := configReadAccess(ctx, objPath)
+	if !ok {
+		return err
+	}
+	if params.RedactSecrets != nil && *params.RedactSecrets {
+		redact = true
 	}
 	log = naming.LogWithPath(log, objPath)
 
@@ -42,22 +43,7 @@ func (a *DaemonAPI) GetObjectConfigFile(ctx echo.Context, namespace string, kind
 		ctx.Response().Header().Add(api.HeaderLastModified, mtime.Format(time.RFC3339Nano))
 		log.Infof("serve config file %s to %s", objPath, userFromContext(ctx).Username)
 
-		if params.RedactSecrets == nil || !*params.RedactSecrets {
-			return ctx.File(filename)
-		}
-
-		content, err := os.ReadFile(filename)
-		if err != nil {
-			log.Warnf("%s: failed to read config file %s: %s", logName, filename, err)
-			return JSONProblemf(ctx, http.StatusInternalServerError, "Internal server error", "Failed to read config file: %s", filename)
-		}
-
-		b, err := object.RedactSecrets(content, kind.String())
-		if err != nil {
-			log.Warnf("%s: %s: %s", logName, filename, err)
-			return JSONProblemf(ctx, http.StatusInternalServerError, "Internal server error", "Failed to redact config file: %s", filename)
-		}
-		return ctx.Blob(http.StatusOK, "application/octet-stream", b)
+		return serveConfigFile(ctx, objPath, filename, redact)
 	}
 	for nodename := range instance.ConfigData.GetByPath(objPath) {
 		return a.proxy(ctx, nodename, func(c *client.T) (*http.Response, error) {

@@ -32,6 +32,9 @@ func (a *DaemonAPI) PostObjectDataKey(ctx echo.Context, namespace string, kind n
 	instanceConfigData := instance.ConfigData.GetByPath(p)
 
 	if _, ok := instanceConfigData[a.localhost]; ok {
+		if v, err := assertUsrKeyWrite(ctx, p); !v {
+			return err
+		}
 		ks, err := object.NewDataStore(p)
 
 		switch {

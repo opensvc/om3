@@ -2,11 +2,14 @@ package proc
 
 import (
 	"bytes"
+	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
 	"strconv"
 	"strings"
+	"syscall"
+	"time"
 
 	"github.com/opensvc/om3/v3/util/stringslice"
 )
@@ -19,6 +22,22 @@ type (
 	L struct {
 		procs []T
 	}
+
+	procStat struct {
+		state       string
+		flags       uint64
+		numThreads  int
+		envEndIsSet bool
+	}
+)
+
+const (
+	// pfKThread is the PF_KTHREAD bit of the /proc/<pid>/stat flags field.
+	pfKThread = 0x00200000
+
+	environRetryDelay       = time.Millisecond
+	environRetryTimeout     = 100 * time.Millisecond
+	environGoneRetryTimeout = 5 * time.Millisecond
 )
 
 var (
@@ -130,8 +149,7 @@ func (t *T) Env() map[string]string {
 		return t.env
 	}
 	env := make(map[string]string)
-	p := t.Head() + "/environ"
-	l, err := parseFile(p)
+	l, err := t.readEnviron()
 	if err != nil {
 		return env
 	}
@@ -144,6 +162,119 @@ func (t *T) Env() map[string]string {
 	}
 	t.env = env
 	return env
+}
+
+// readEnviron returns the /proc/<pid>/environ entries.
+//
+// While a process execve's, its environ can't be read for up to a few
+// milliseconds:
+//
+//   - the open fails with ESRCH, and the /proc/<pid> lookup can fail, while
+//     the kernel makes the exec'ing thread the thread group leader, if the
+//     execve was called from another thread (as Go programs do).
+//   - the read is empty until the kernel has set the env bounds of the new
+//     program memory.
+//
+// The read is retried while the process is in one of these states, so a
+// process can still be recognized by its env while it exec's.
+//
+// Kernel threads, zombies and processes rewriting their env area to set
+// their title (nginx, redis, ...) also can't be read, but for good, so
+// their read is not retried with a delay.
+func (t T) readEnviron() ([]string, error) {
+	p := t.Head() + "/environ"
+	start := time.Now()
+	deadline := start.Add(environRetryTimeout)
+	goneDeadline := start.Add(environGoneRetryTimeout)
+	for {
+		l, err := parseFile(p)
+		if err == nil && !isEmpty(l) {
+			return l, nil
+		}
+		if err != nil && !errors.Is(err, syscall.ESRCH) {
+			return l, err
+		}
+		st, statErr := t.stat()
+		switch {
+		case errors.Is(statErr, syscall.ESRCH):
+			// the stat open also fails while the exec'ing thread
+			// becomes the thread group leader.
+		case statErr != nil:
+			// the process is gone, or the /proc/<pid> lookup fails
+			// while the exec'ing thread becomes the thread group
+			// leader. Retry for a shorter time, as a process reaped
+			// between the environ and the stat reads gets here too.
+			if time.Now().After(goneDeadline) {
+				return l, err
+			}
+		case !st.mayBeExecuting(err != nil):
+			if err == nil {
+				// env_end may have been set between the environ
+				// and the stat reads.
+				return parseFile(p)
+			}
+			return l, err
+		}
+		if time.Now().After(deadline) {
+			return l, err
+		}
+		time.Sleep(environRetryDelay)
+	}
+}
+
+func isEmpty(l []string) bool {
+	return len(l) == 0 || (len(l) == 1 && l[0] == "")
+}
+
+// stat returns the /proc/<pid>/stat fields telling if a process may be
+// exec'ing.
+func (t T) stat() (procStat, error) {
+	var st procStat
+	b, err := os.ReadFile(t.Head() + "/stat")
+	if err != nil {
+		return st, err
+	}
+	// the comm field is parenthesized and may contain spaces,
+	// so split the fields after its closing parenthesis.
+	i := bytes.LastIndexByte(b, ')')
+	if i < 0 {
+		return st, fmt.Errorf("%s/stat: no comm field end", t.Head())
+	}
+	// fields[0] is the field 3 of proc_pid_stat(5)
+	fields := strings.Fields(string(b[i+1:]))
+	if len(fields) < 49 {
+		return st, fmt.Errorf("%s/stat: %d fields, want at least 51", t.Head(), len(fields)+2)
+	}
+	st.state = fields[0]
+	if st.flags, err = strconv.ParseUint(fields[9-3], 10, 64); err != nil {
+		return st, err
+	}
+	if st.numThreads, err = strconv.Atoi(fields[20-3]); err != nil {
+		return st, err
+	}
+	st.envEndIsSet = fields[51-3] != "0"
+	return st, nil
+}
+
+// mayBeExecuting returns true if the process state is consistent with an
+// execve in progress, given its environ open failed with ESRCH (esrch
+// true) or read empty (esrch false).
+func (st procStat) mayBeExecuting(esrch bool) bool {
+	if st.flags&pfKThread != 0 {
+		return false
+	}
+	isZombie := st.state == "Z" || st.state == "X"
+	if esrch {
+		// the old leader of an exec'ing thread group shows as a zombie,
+		// but the exec'ing thread still counts in the group.
+		return !isZombie || st.numThreads > 1
+	}
+	if isZombie {
+		return false
+	}
+	// the kernel reads an empty environ until env_end is set, which is
+	// the last env bound the execve sets.
+	return !st.envEndIsSet
 }
 
 func (t L) String() string {

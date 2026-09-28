@@ -12,6 +12,7 @@ package keyoprbac
 import (
 	"fmt"
 	"slices"
+	"strconv"
 	"strings"
 
 	"github.com/opensvc/om3/v3/core/datarecv"
@@ -180,6 +181,12 @@ var rules = map[string]Group{
 			Grant:  rbac.GrantRoot,
 			Reason: reasonRoot,
 		},
+		// A task runs in a container like a container resource does, so it
+		// is held to the same rules.
+		"volume_mounts": hostPathMountRule,
+		"devices":       devicesRule,
+		"privileged":    privilegedRule,
+		"netns":         hostNetnsRule,
 	}},
 	"container": {Rules: map[string]Rule{
 		"type": {
@@ -199,11 +206,10 @@ var rules = map[string]Group{
 			Grant:  rbac.GrantRoot,
 			Reason: reasonRoot,
 		},
-		"volume_mounts": {
-			Grant:  rbac.GrantRoot,
-			Reason: "host path mounts in container require the root grant",
-			Denies: valueOnly(hasHostPathMount),
-		},
+		"volume_mounts": hostPathMountRule,
+		"devices":       devicesRule,
+		"privileged":    privilegedRule,
+		"netns":         hostNetnsRule,
 	}},
 	// A volume section of a service is the consumer asking a pool for storage,
 	// which is what an object administrator is for. The same section of a
@@ -285,7 +291,7 @@ var rules = map[string]Group{
 			// object: which of its containers holds the namespace, what the
 			// device is called in it, which ports it serves, and how the
 			// record is named.
-			"netns":           {},
+			"netns":           hostNetnsRule,
 			"nsdev":           {},
 			"expose":          {},
 			"dns_name_suffix": {},
@@ -443,6 +449,43 @@ var triggers = map[string]bool{
 	"pre_start":       true,
 	"pre_stop":        true,
 	"pre_unprovision": true,
+}
+
+// The rules of the container and task keywords that decide what of the node
+// the container reaches, as v2 had them.
+var (
+	hostPathMountRule = Rule{
+		Grant:  rbac.GrantRoot,
+		Reason: "host path mounts in container require the root grant",
+		Denies: valueOnly(hasHostPathMount),
+	}
+	devicesRule = Rule{
+		Grant:  rbac.GrantRoot,
+		Reason: "host devices in container require the root grant",
+		Denies: valueOnly(func(s string) bool { return strings.TrimSpace(s) != "" }),
+	}
+	privilegedRule = Rule{
+		Grant:  rbac.GrantRoot,
+		Reason: "a privileged container requires the root grant",
+		Denies: valueOnly(isTrue),
+	}
+	hostNetnsRule = Rule{
+		Grant:  rbac.GrantRoot,
+		Reason: "the host network namespace requires the root grant",
+		Denies: valueOnly(func(s string) bool { return strings.TrimSpace(s) == "host" }),
+	}
+)
+
+// isTrue reports whether a boolean keyword value is not a false one. A value
+// that does not parse is taken as true: what the driver makes of it is not
+// for the policy to guess.
+func isTrue(s string) bool {
+	s = strings.TrimSpace(s)
+	if s == "" {
+		return false
+	}
+	v, err := strconv.ParseBool(s)
+	return err != nil || v
 }
 
 // valueOnly adapts a check that only reads the value to the rule signature.

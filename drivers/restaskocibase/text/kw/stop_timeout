@@ -1,1 +1,4 @@
-Wait for `<duration>` before declaring the container action a failure.
+Wait for `<duration>` for the task container to exit on a stop before
+killing it.
+
+Unset, the container engine default applies.

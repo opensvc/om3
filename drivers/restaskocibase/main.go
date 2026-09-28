@@ -63,6 +63,8 @@ type (
 		IPCNS           string         `json:"ipcns"`
 		UTSNS           string         `json:"utsns"`
 		ReadOnly        string         `json:"read_only"`
+		Sysctl          []string       `json:"sysctl"`
+		StopTimeout     *time.Duration `json:"stop_timeout"`
 		RegistryCreds   string         `json:"registry_creds"`
 		PullTimeout     *time.Duration `json:"pull_timeout"`
 		Timeout         *time.Duration `json:"timeout"`

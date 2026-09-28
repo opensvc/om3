@@ -56,6 +56,9 @@ func (a *DaemonAPI) PatchObjectData(ctx echo.Context, namespace string, kind nam
 	}
 
 	if _, ok := instanceConfigData[a.localhost]; ok {
+		if v, err := assertUsrKeyWrite(ctx, p); !v {
+			return err
+		}
 		ks, err := object.NewDataStore(p)
 
 		switch {

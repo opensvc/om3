@@ -27,13 +27,22 @@ type (
 	// rx holds an hb unicast receiver
 	rx struct {
 		sync.WaitGroup
-		base     base
-		ctx      context.Context
-		id       string
-		nodes    []string
-		timeout  time.Duration
-		interval time.Duration
-		last     time.Time
+
+		// decodeErrors logs the peers whose messages decrypt and do not
+		// decode.
+		decodeErrors hbctrl.DecodeErrors
+		base         base
+		ctx          context.Context
+		id           string
+		nodes        []string
+		timeout      time.Duration
+		interval     time.Duration
+
+		// last is the update time of the slot of each peer as last read,
+		// written by the clock of that peer. A slot holding the same time
+		// again was not written since, whatever the clocks of the two
+		// nodes say.
+		last map[string]time.Time
 
 		name   string
 		log    *plog.Logger
@@ -184,13 +193,8 @@ func (t *rx) recv(nodename string) {
 		t.log.Tracef("node %s slot %d has never been updated", nodename, slot)
 		return
 	}
-	if !t.last.IsZero() && c.Updated == t.last {
-		t.log.Tracef("node %s slot %d unchanged since last read", nodename, slot)
-		return
-	}
-	elapsed := time.Since(c.Updated)
-	if elapsed > t.timeout {
-		t.log.Tracef("node %s slot %d has not been updated for %s", nodename, slot, elapsed)
+	if !t.isNewWrite(nodename, c.Updated) {
+		t.log.Tracef("node %s slot %d not written since last read, or too old on first read", nodename, slot)
 		return
 	}
 	key := hbdedup.NewKey(c.Msg)
@@ -208,7 +212,6 @@ func (t *rx) recv(nodename string) {
 			HbID:     t.id,
 			Success:  true,
 		}
-		t.last = c.Updated
 		return
 	}
 
@@ -224,20 +227,40 @@ func (t *rx) recv(nodename string) {
 		return
 	}
 
-	msg := hbtype.Msg{}
-	if err := json.Unmarshal(b, &msg); err != nil {
-		t.log.Warnf("node %s slot %d can't unmarshal msg: %s", nodename, slot, err)
-		return
-	}
-	t.log.Tracef("node %s slot %d ok", nodename, slot)
+	// The message decrypted, from the node owning the slot: the node is
+	// alive, whether or not this agent can read what it says.
 	t.cmdC <- hbctrl.CmdSetPeerSuccess{
-		Nodename: msg.Nodename,
+		Nodename: nodename,
 		HbID:     t.id,
 		Success:  true,
 	}
+	msg := hbtype.Msg{}
+	if err := json.Unmarshal(b, &msg); err != nil {
+		t.decodeErrors.Failed(t.log, nodename, err)
+		return
+	}
+	t.decodeErrors.Succeeded(t.log, nodename)
+	t.log.Tracef("node %s slot %d ok", nodename, slot)
 	t.msgC <- &msg
 	t.dedup.Delivered(key, msg.Nodename)
-	t.last = c.Updated
+}
+
+// isNewWrite says whether the slot of a peer was written since the last read,
+// and records the update time read.
+//
+// A peer is alive when it wrote its slot since the last read. The age of the
+// write, measured against the clock of this node, says nothing once there is
+// a last read to compare with: the peer stamps it with its own clock, and a
+// peer whose clock runs ahead would look alive for as long as it runs ahead,
+// dead or not. The first read has nothing to compare with, so a write too old
+// to be the one of a live peer is left for the next one.
+func (t *rx) isNewWrite(nodename string, updated time.Time) bool {
+	last, seen := t.last[nodename]
+	t.last[nodename] = updated
+	if seen {
+		return !updated.Equal(last)
+	}
+	return time.Since(updated) <= t.timeout
 }
 
 func (t *rx) rescanMetadata(reason string) {
@@ -291,6 +314,7 @@ func newRx(ctx context.Context, name string, nodes []string, dev string, timeout
 		timeout:  timeout,
 		interval: interval,
 		log:      log,
+		last:     make(map[string]time.Time),
 		base: base{
 			log: log,
 			device: device{

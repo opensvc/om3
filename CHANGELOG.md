@@ -223,10 +223,10 @@ OpenSVC v3 is a major evolution, rebuilt in Go for performance, reliability, and
 	   Replaced by `disk#foo.type=drbd`
        
 	* `vdisk`
-	   Replaced by `disk#foo.type=vdisk`
+	   Dropped, and so is the `disk.vdisk` driver: see Drivers removed.
        
 	* `vmdg`
-	   Replaced by `disk#foo.type=vmdg`
+	   Dropped, and so is the `disk.ldom` driver it named: see Drivers removed.
        
 	* `pool`
 	   Replaced by `disk#foo.type=zpool`
@@ -250,10 +250,10 @@ OpenSVC v3 is a major evolution, rebuilt in Go for performance, reliability, and
 	   Replaced by `disk#foo.type=raw`
        
 	* `vxdg`
-	   Replaced by `disk#foo.type=vxdg`
+	   Dropped, and so is the `disk.vxdg` driver: see Drivers removed.
        
 	* `vxvol`
-	   Replaced by `disk#foo.type=vxvol`
+	   Dropped, and so is the `disk.vxvol` driver: see Drivers removed.
 
     For example, a `[md#1]` section needs reformatting as:
     ```
@@ -463,6 +463,37 @@ OpenSVC v3 is a major evolution, rebuilt in Go for performance, reliability, and
 	standby up:   S => o
     ```
  
+### API access to secrets
+
+* **The cluster configuration is read by root only:**
+    `GET /api/cluster/config`, and the configuration file of the cluster through
+    `/api/object/path/root/ccfg/cluster/config/file` and
+    `/api/node/name/{nodename}/instance/path/root/ccfg/cluster/config/file`,
+    now need the `root` grant, or the `join` grant of a joining node. They
+    were open to a guest of the `root` namespace, and the cluster configuration
+    holds `cluster.secret`, the key every sec and usr value is encrypted with.
+
+* **Secrets are redacted for the readers not allowed to see them:**
+    The configuration of an object read by a user who is neither an
+    administrator of its namespace nor root, through the keyword or the file
+    endpoints, shows `********` in place of the values of the keywords
+    declared secret and of the keys of a sec or usr object, raw and evaluated.
+    The `redact-secrets` parameter still redacts for any reader.
+
+* **A user is given only the grants its writer holds:**
+    Writing the `grant` keyword of a usr object refuses the grants the writer
+    does not hold, as v2 did, and changing the `cn` a user authenticates by
+    with its certificate needs the `root` grant. Writing a key of a usr object,
+    its password or its certificate, needs holding every grant of that user,
+    which v2 did not ask. An administrator of the `system` namespace manages
+    the users up to its own grants, and can no longer make itself root by
+    creating a root user or resetting the password of one.
+
+* **The keys of a usr object are read by root only:**
+    `GET /api/object/path/system/usr/{name}/data/key` needed the guest role,
+    and answered the password and the certificate private key of the user,
+    which authenticate as that user.
+
 ### Core
 
 * **Object Names policy change:**
@@ -499,6 +530,26 @@ OpenSVC v3 is a major evolution, rebuilt in Go for performance, reliability, and
     
     Use double quotes instead of quotes, as the strings in the value part already use double quotes.
     Not mixing single and double quotes helps formatting the --filter for `om node events`.
+
+### Drivers removed
+
+These drivers of v2.1 have no v3 counterpart:
+
+* app: `winservice`
+* container: `amazon`, `esx`, `hpvm`, `jail`, `ldom`, `lxd`, `openstack`, `ovm`, `srp`, `vcloud`, `vz`, `xen`, `zone`
+* disk: `advfs`, `amazon`, `gandi`, `gce`, `hpvm`, `ldom`, `pool`, `vdisk`, `veritas`, `vxdg`, `vxvol`
+* fs: `docker`
+* ip: `amazon`, `crossbow`, `gce`, `rule`
+* sync: `btrfs`, `btrfssnap`, `dds`, `docker`, `evasnap`, `hp3par`, `hp3parsnap`, `ibmdssnap`, `necismsnap`, `netapp`, `nexenta`, `oci`, `radosclone`, `radossnap`, `s3`, `symclone`, `symsnap`
+* the `certificate`, `expose`, `hashpolicy`, `route` and `vhost` sections, which
+  described the routes of an object to the envoy ingress gateway of v2.
+
+A section of one of them in an upgraded configuration is not a resource: the
+object runs without it, and no action touches it. The configuration validation
+warns about it, and the instance status lists it as an optional resource with
+the warning `the <driver> driver is not supported by this agent`, which makes
+the overall status of the instance warn. The availability status is not
+changed, so no monitor action is triggered by a resource that never runs.
 
 ### Driver: container
 
@@ -538,6 +589,13 @@ which share the same executor.
     Both decide what the names in a container resolve to, now that om writes
     the resolver rather than the engine, so both require the root grant to set
     through the api.
+
+* **Changed rbac, what of the node a container reaches:**
+    As in v2, a user holding no root grant may not set, on a container or a
+    task, `privileged` to a true value, `netns` to `host`, `devices`, or a
+    `volume_mounts` source that is a path of the node, nor `netns` to `host`
+    on an ip resource. Tasks were not held to the host path mounts rule
+    before.
 
 ### Driver: container.docker
 
@@ -931,6 +989,24 @@ Where the password is the value of the `þassword` key in `system/sec/relay-v3`.
 ### Daemon
 
 * The daemon process name is changed from `/usr/bin/python3 -m opensvc.daemon` to `om daemon run`. Monitoring checks may need to adapt.
+
+* A node reads the heartbeat messages of a node running a later version.
+
+    A monitor state, an expected state, a status or a placement value a
+    node has no name for is read as `unknown`, or `undef`, instead of failing
+    the whole message, and a node whose message decrypts is counted alive
+    whether or not it decodes, with a warning saying its data is not applied.
+    A node used to find a peer running a later version dead as soon as the
+    peer published a value it did not know, and the split action or a
+    failover followed.
+
+    An orchestration a node does not know is left to the nodes that do: the
+    node does not adopt it, and reads as done to them.
+
+    This holds from this release on, for the upgrades to later ones. To
+    upgrade a cluster node by node, freeze it first (`om cluster freeze`),
+    upgrade every node, and thaw it (`om cluster unfreeze`) once all run the
+    same version.
 
 * Add a 60 seconds timeout to `pre_monitor_action`. The 2.1 daemon waits forever for this callout to terminate.
 

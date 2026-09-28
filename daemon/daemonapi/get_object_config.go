@@ -15,9 +15,6 @@ import (
 )
 
 func (a *DaemonAPI) GetObjectConfig(ctx echo.Context, namespace string, kind naming.Kind, name string, params api.GetObjectConfigParams) error {
-	if v, err := assertGuest(ctx, namespace); !v {
-		return err
-	}
 	log := LogHandler(ctx, "GetObjectConfig")
 	r := api.KeywordList{
 		Kind:  "KeywordList",
@@ -27,6 +24,10 @@ func (a *DaemonAPI) GetObjectConfig(ctx echo.Context, namespace string, kind nam
 	p, err := naming.NewPath(namespace, kind, name)
 	if err != nil {
 		return JSONProblemf(ctx, http.StatusBadRequest, "Invalid parameters", "%s", err)
+	}
+	redact, ok, err := configReadAccess(ctx, p)
+	if !ok {
+		return err
 	}
 	log = naming.LogWithPath(log, p)
 
@@ -76,6 +77,20 @@ func (a *DaemonAPI) GetObjectConfig(ctx echo.Context, namespace string, kind nam
 				item.Value = ""
 			} else {
 				item.Value = s
+			}
+
+			// A secret is not shown, raw or evaluated, to a reader not
+			// allowed to see it. The keyword is listed all the same, so
+			// the reader knows it is set.
+			if redact && object.IsSecretKey(kind, k, conf.GetString(key.New(k.Section, "type"))) {
+				item.Value = object.RedactedValue
+				if isEvaluated {
+					var v any = object.RedactedValue
+					item.Evaluated = &v
+					item.EvaluatedAs = evaluatedAs
+				}
+				r.Items = append(r.Items, item)
+				continue
 			}
 
 			if isEvaluated {

@@ -69,6 +69,12 @@ const (
 	MonitorStatePurgeFailed
 	MonitorStateReady
 	MonitorStateRestarted
+
+	// MonitorStateUnknown is what a value this agent does not know decodes to:
+	// a peer running a later version publishes values this one has no
+	// name for, and failing to decode them failed the whole heartbeat
+	// message the peer sent, which is how a peer is found dead.
+	MonitorStateUnknown
 )
 
 var (
@@ -161,6 +167,7 @@ func init() {
 		{MonitorStatePurgeFailed, "purge failed"},
 		{MonitorStateReady, "ready"},
 		{MonitorStateRestarted, "restarted"},
+		{MonitorStateUnknown, "unknown"},
 	}
 
 	// Populate the maps

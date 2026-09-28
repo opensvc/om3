@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"maps"
 	"os"
 	"strings"
 	"sync"
@@ -317,6 +318,12 @@ func (t *actor) resourceStatusEval(ctx context.Context, data *instance.Status, m
 		return nil
 	})
 	mu.Lock()
+	for rid, drv := range t.unsupportedResources() {
+		resourceStatus := unsupportedResourceStatus(drv)
+		data.Resources[rid] = resourceStatus
+		resourceID, _ := resourceid.Parse(rid)
+		doResourceStatus(resourceID.DriverGroup(), resourceStatus)
+	}
 	// No resource contributed to the aggregated status when the object has no
 	// resources at all, or when all its resources are excluded from the
 	// aggregation, like the task and sync ones for avail. Report not
@@ -575,4 +582,35 @@ func resizeSizePair(current, configured int64) (string, string) {
 		return held, target
 	}
 	return fmt.Sprintf("%d bytes", current), fmt.Sprintf("%d bytes", configured)
+}
+
+// unsupportedResources returns the resource sections of a driver this agent
+// does not have, with the driver they name.
+func (t *actor) unsupportedResources() map[string]string {
+	t.Lock()
+	defer t.Unlock()
+	return maps.Clone(t.unsupported)
+}
+
+// unsupportedResourceStatus is the status of a resource section of a driver
+// this agent does not have.
+//
+// The section is not configured, so no action touches it, and the object runs
+// without it. That is said in the status rather than in a trace log: a
+// configuration written for an agent that had the driver, a v2 one among
+// them, describes a resource the object no longer has. The resource is
+// optional, so the warning raises the overall status and leaves the
+// availability alone: an instance going warn over it could trigger its
+// monitor action, a node crash among them, for a resource that never ran.
+func unsupportedResourceStatus(drv string) resource.Status {
+	log := resource.NewStatusLog()
+	log.Warn("the %s driver is not supported by this agent: the resource is ignored", drv)
+	return resource.Status{
+		Label:         drv,
+		Type:          drv,
+		Status:        status.NotApplicable,
+		Log:           log.Entries(),
+		IsOptional:    true,
+		IsProvisioned: resource.ProvisionStatus{State: provisioned.NotApplicable},
+	}
 }

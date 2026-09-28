@@ -69,7 +69,7 @@ func (t *T) Configure(ctx context.Context) {
 	if minTimeout := 4*interval + 1*time.Second; timeout < minTimeout {
 		oldTimeout := timeout
 		timeout = minTimeout
-		log.Warnf("reajust timeout: %s => %s (<interval>*4+1s)", oldTimeout, timeout)
+		log.Warnf("readjust timeout: %s => %s (<interval>*4+1s)", oldTimeout, timeout)
 	}
 	relay := t.GetString("relay")
 	if relay == "" {
@@ -163,9 +163,11 @@ func (t *cfg) refreshClient() error {
 		t.log.Warnf("decode password key %s from %s: %s", t.passwordFrom.Key, t.passwordFrom.Path, err)
 		t.cli = nil
 		return nil
-	} else if string(b) != t.password {
+	} else if string(b) != t.password || t.cli == nil {
+		// A client dropped on a decode error or an empty password is
+		// built again when the password is back, even unchanged.
 		newPassword := string(b)
-		if t.password != "" {
+		if t.password != "" && newPassword != t.password {
 			t.log.Infof("password changed for %s key %s", t.passwordFrom.Path, t.passwordFrom.Key)
 		}
 		if newPassword == "" {
@@ -188,7 +190,7 @@ func (t *cfg) refreshClient() error {
 		t.cli = cli
 		return nil
 	}
-	t.log.Infof("password unhanged for %s", t.passwordFrom.Path)
+	t.log.Debugf("password unchanged for %s", t.passwordFrom.Path)
 	return nil
 }
 

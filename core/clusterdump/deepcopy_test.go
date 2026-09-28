@@ -23,16 +23,20 @@ import (
 // share nothing with the dataset it was copied from, which is the whole
 // reason the daemon takes a copy.
 
-// marshals reports whether v survives a json round trip. The enum types
-// in this tree reject out of range values on the way out, and some also
-// reject on the way back in, so both directions decide whether a filler
-// value is usable.
+// marshals reports whether v survives a json round trip as itself. The enum
+// types in this tree reject out of range values on the way out, and read a
+// value they do not know as an unknown one on the way back in, so a filler
+// value is usable only if it comes back as it went.
 func marshals(v reflect.Value) bool {
 	b, err := json.Marshal(v.Interface())
 	if err != nil {
 		return false
 	}
-	return json.Unmarshal(b, reflect.New(v.Type()).Interface()) == nil
+	back := reflect.New(v.Type())
+	if err := json.Unmarshal(b, back.Interface()); err != nil {
+		return false
+	}
+	return reflect.DeepEqual(back.Elem().Interface(), v.Interface())
 }
 
 // fill writes a distinct non-zero value into everything v reaches, so

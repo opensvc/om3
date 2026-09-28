@@ -16,11 +16,20 @@ import (
 func (a *DaemonAPI) GetObjectDataKey(ctx echo.Context, namespace string, kind naming.Kind, name string, params api.GetObjectDataKeyParams) error {
 	log := LogHandler(ctx, "GetObjectDataKey")
 
-	if kind == naming.KindSec {
+	// A cfg key is readable by the guests of its namespace, a sec key by its
+	// administrators. A usr key is the password or the certificate private
+	// key of a user, which authenticates as that user, whatever its grants:
+	// root alone reads it.
+	switch kind {
+	case naming.KindUsr:
+		if v, err := assertRoot(ctx); !v {
+			return err
+		}
+	case naming.KindSec:
 		if v, err := assertAdmin(ctx, namespace); !v {
 			return err
 		}
-	} else {
+	default:
 		if v, err := assertGuest(ctx, namespace); !v {
 			return err
 		}

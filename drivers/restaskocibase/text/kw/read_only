@@ -1,0 +1,4 @@
+Mount the root filesystem of the task container as read only.
+
+The task writes only in its volume mounts and its tmpfs, as a container
+declaring the same keyword does.

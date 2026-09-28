@@ -22,11 +22,20 @@ type (
 	rx struct {
 		sync.WaitGroup
 
+		// decodeErrors logs the peers whose messages decrypt and do not
+		// decode.
+		decodeErrors hbctrl.DecodeErrors
+
 		cfg
 
-		ctx    context.Context
-		nodes  []string
-		lastAt time.Time
+		ctx   context.Context
+		nodes []string
+
+		// lastAt is the time the relay stored the message of each peer,
+		// as last read, written by the clock of the relay. A message
+		// holding the same time again was not stored since, whatever the
+		// clocks of the relay and this node say.
+		lastAt map[string]time.Time
 
 		name   string
 		cmdC   chan<- any
@@ -170,13 +179,8 @@ func (t *rx) recv(nodename string) {
 		t.log.Tracef("recv: node %s data has never been updated", nodename)
 		return
 	}
-	if !t.lastAt.IsZero() && c.UpdatedAt == t.lastAt {
-		t.log.Tracef("recv: node %s data has not change since last read", nodename)
-		return
-	}
-	elapsed := time.Now().Sub(c.UpdatedAt)
-	if elapsed > t.timeout {
-		t.log.Tracef("recv: node %s data has not been updated for %s", nodename, elapsed)
+	if !t.isNewWrite(nodename, c.UpdatedAt) {
+		t.log.Tracef("recv: node %s data not stored since last read, or too old on first read", nodename)
 		return
 	}
 	frame := []byte(c.Msg)
@@ -194,7 +198,6 @@ func (t *rx) recv(nodename string) {
 			HbID:     t.id,
 			Success:  true,
 		}
-		t.lastAt = c.UpdatedAt
 		return
 	}
 
@@ -209,20 +212,22 @@ func (t *rx) recv(nodename string) {
 		return
 	}
 
-	msg := hbtype.Msg{}
-	if err := json.Unmarshal(b, &msg); err != nil {
-		t.log.Warnf("can't unmarshal msg from %s: %s", nodename, err)
-		return
-	}
-	t.log.Tracef("recv: node %s", nodename)
+	// The message decrypted, from the node that wrote it: the node is
+	// alive, whether or not this agent can read what it says.
 	t.cmdC <- hbctrl.CmdSetPeerSuccess{
-		Nodename: msg.Nodename,
+		Nodename: nodename,
 		HbID:     t.id,
 		Success:  true,
 	}
+	msg := hbtype.Msg{}
+	if err := json.Unmarshal(b, &msg); err != nil {
+		t.decodeErrors.Failed(t.log, nodename, err)
+		return
+	}
+	t.decodeErrors.Succeeded(t.log, nodename)
+	t.log.Tracef("recv: node %s", nodename)
 	t.msgC <- &msg
 	t.dedup.Delivered(key, msg.Nodename)
-	t.lastAt = c.UpdatedAt
 }
 
 func newRx(ctx context.Context, name string, nodes []string, cfg cfg) *rx {
@@ -235,10 +240,30 @@ func newRx(ctx context.Context, name string, nodes []string, cfg cfg) *rx {
 		WithPrefix("daemon: hb: relay: rx: " + name + ": ")
 
 	return &rx{
-		ctx:   ctx,
-		nodes: nodes,
-		cfg:   cfg,
+		ctx:    ctx,
+		nodes:  nodes,
+		cfg:    cfg,
+		lastAt: make(map[string]time.Time),
 	}
+}
+
+// isNewWrite says whether the relay stored a message of a peer since the last
+// read, and records the store time read.
+//
+// A peer is alive when the relay stored a message of it since the last read.
+// The age of the store, measured against the clock of this node, says nothing
+// once there is a last read to compare with: the relay stamps it with its own
+// clock, and a relay whose clock runs ahead would keep a dead peer looking
+// alive for as long as it runs ahead. The first read has nothing to compare
+// with, so a message too old to be the one of a live peer is left for the
+// next one.
+func (t *rx) isNewWrite(nodename string, storedAt time.Time) bool {
+	last, seen := t.lastAt[nodename]
+	t.lastAt[nodename] = storedAt
+	if seen {
+		return !storedAt.Equal(last)
+	}
+	return time.Since(storedAt) <= t.timeout
 }
 
 // logFailure reports a beat the relay did not answer. Only the first of
