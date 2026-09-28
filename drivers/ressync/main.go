@@ -138,7 +138,10 @@ func (t *T) WritePeerLastSync(ctx context.Context, peer string) error {
 	head := t.GetObjectDriver().VarDir()
 	lastSyncFile := t.lastSyncFile(peer)
 	lastSyncFileSrc := t.lastSyncFile(hostname.Hostname())
-	schedTimestampFile := filepath.Join(head, "scheduler", "last_sync_update_"+t.RID())
+	// The file the scheduler keeps the last run of the update schedule of
+	// the resource in, named as core/object names it for a resource
+	// schedule with no base.
+	schedTimestampFile := filepath.Join(head, "scheduler", "last_"+t.RID())
 	now := time.Now()
 	for _, filename := range []string{lastSyncFile, lastSyncFileSrc, schedTimestampFile} {
 		if err := file.Touch(filename, now); err != nil {
