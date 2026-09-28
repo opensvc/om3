@@ -36,6 +36,5 @@ func (a *DaemonAPI) getLocalSchedule(ctx echo.Context) error {
 	for _, e := range *table {
 		resp.Items = append(resp.Items, scheduleItem(e))
 	}
-	sortScheduleItems(resp.Items)
 	return ctx.JSON(http.StatusOK, resp)
 }

@@ -13,7 +13,6 @@ import (
 
 	"github.com/opensvc/om3/v3/core/naming"
 	"github.com/opensvc/om3/v3/core/schedule"
-	"github.com/opensvc/om3/v3/daemon/api"
 	"github.com/opensvc/om3/v3/daemon/rbac"
 )
 
@@ -58,26 +57,6 @@ func TestScheduleItemKeepsKnownDates(t *testing.T) {
 	assert.Equal(t, next, *item.Data.NextRunAt)
 }
 
-func TestSortScheduleItems(t *testing.T) {
-	items := api.ScheduleItems{
-		{Meta: api.InstanceMeta{Object: "ns1/svc/b", Node: "node1"}, Data: api.Schedule{Key: "b", Action: "run"}},
-		{Meta: api.InstanceMeta{Object: "ns1/svc/a", Node: "node2"}, Data: api.Schedule{Key: "a", Action: "run"}},
-		{Meta: api.InstanceMeta{Object: "ns1/svc/a", Node: "node1"}, Data: api.Schedule{Key: "b", Action: "run"}},
-		{Meta: api.InstanceMeta{Object: "ns1/svc/a", Node: "node1"}, Data: api.Schedule{Key: "a", Action: "status"}},
-		{Meta: api.InstanceMeta{Object: "ns1/svc/a", Node: "node1"}, Data: api.Schedule{Key: "a", Action: "run"}},
-	}
-
-	sortScheduleItems(items)
-
-	assert.Equal(t, []string{
-		"ns1/svc/a/node1/a/run",
-		"ns1/svc/a/node1/a/status",
-		"ns1/svc/a/node1/b/run",
-		"ns1/svc/a/node2/a/run",
-		"ns1/svc/b/node1/b/run",
-	}, scheduleItemOrder(items))
-}
-
 func TestGetObjectScheduleRejectsInvalidKind(t *testing.T) {
 	ctx, rec := newRootRequestContext()
 	err := (&DaemonAPI{}).GetObjectSchedule(ctx, "ns1", naming.Kind("invalid"), "app")
@@ -92,14 +71,6 @@ func TestGetObjectScheduleReturnsNotFoundForUnknownObject(t *testing.T) {
 
 	require.NoError(t, err)
 	assert.Equal(t, http.StatusNotFound, rec.Code)
-}
-
-func scheduleItemOrder(items api.ScheduleItems) []string {
-	l := make([]string, 0, len(items))
-	for _, item := range items {
-		l = append(l, item.Meta.Object+"/"+item.Meta.Node+"/"+item.Data.Key+"/"+item.Data.Action)
-	}
-	return l
 }
 
 func newRootRequestContext() (echo.Context, *httptest.ResponseRecorder) {

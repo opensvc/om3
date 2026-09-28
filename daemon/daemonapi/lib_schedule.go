@@ -1,7 +1,6 @@
 package daemonapi
 
 import (
-	"sort"
 	"time"
 
 	"github.com/opensvc/om3/v3/core/schedule"
@@ -34,23 +33,4 @@ func scheduleItem(e schedule.Entry) api.ScheduleItem {
 			Schedule:           e.Schedule,
 		},
 	}
-}
-
-func sortScheduleItems(items api.ScheduleItems) {
-	sort.Slice(items, func(i, j int) bool {
-		a, b := items[i], items[j]
-		if a.Meta.Object != b.Meta.Object {
-			return a.Meta.Object < b.Meta.Object
-		}
-		if a.Meta.Node != b.Meta.Node {
-			return a.Meta.Node < b.Meta.Node
-		}
-		if a.Data.Key != b.Data.Key {
-			return a.Data.Key < b.Data.Key
-		}
-		if a.Data.Action != b.Data.Action {
-			return a.Data.Action < b.Data.Action
-		}
-		return a.Data.Schedule < b.Data.Schedule
-	})
 }

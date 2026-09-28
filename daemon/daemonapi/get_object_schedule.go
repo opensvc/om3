@@ -3,7 +3,6 @@ package daemonapi
 import (
 	"encoding/json"
 	"net/http"
-	"sort"
 
 	"github.com/labstack/echo/v4"
 
@@ -25,14 +24,8 @@ func (a *DaemonAPI) GetObjectSchedule(ctx echo.Context, namespace string, kind n
 	if len(configs) == 0 {
 		return JSONProblemf(ctx, http.StatusNotFound, "Not found", "object not found: %s", path)
 	}
-	nodenames := make([]string, 0, len(configs))
-	for nodename := range configs {
-		nodenames = append(nodenames, nodename)
-	}
-	sort.Strings(nodenames)
-
 	items := make(api.ScheduleItems, 0)
-	for _, nodename := range nodenames {
+	for nodename := range configs {
 		if !clusternode.Has(nodename) {
 			return JSONProblemf(ctx, http.StatusBadRequest, "Invalid nodename", "field 'nodename' with value '%s' is not a cluster node", nodename)
 		}
@@ -61,7 +54,6 @@ func (a *DaemonAPI) GetObjectSchedule(ctx echo.Context, namespace string, kind n
 		}
 		items = append(items, more.Items...)
 	}
-	sortScheduleItems(items)
 	resp := api.ScheduleList{
 		Kind:  "ScheduleList",
 		Items: items,
