@@ -43,11 +43,17 @@ type (
 		databus   *daemondata.T
 		publisher pubsub.Publisher
 
-		jobs                Jobs
-		events              chan any
-		enabled             bool
-		provisioned         map[naming.Path]bool
-		failover            map[naming.Path]bool
+		jobs        Jobs
+		events      chan any
+		enabled     bool
+		provisioned map[naming.Path]bool
+		failover    map[naming.Path]bool
+
+		// notSource says why the local instance of an object is not
+		// the one its data is replicated from, "" when it is, for the
+		// jobs requiring the replication source. It is updated from
+		// the local InstanceStatusUpdated events.
+		notSource           map[naming.Path]string
 		schedules           Schedules
 		isCollectorJoinable bool
 
@@ -193,6 +199,7 @@ func New(subQS pubsub.QueueSizer, opts ...funcopt.O) *T {
 		schedules:         make(Schedules),
 		failover:          make(map[naming.Path]bool),
 		provisioned:       make(map[naming.Path]bool),
+		notSource:         make(map[naming.Path]string),
 		subQS:             subQS,
 		lastRunOnAllPeers: make(timeMap),
 		reqSatisfied:      make(errMap),
@@ -426,6 +433,12 @@ func (t *T) onJobAlarm(c eventJobAlarm) {
 			logger.Infof("abort (no longer provisioned)")
 			return
 		}
+		if e.RequireReplicationSource {
+			if reason := t.notSource[e.Path]; reason != "" {
+				logger.Infof("abort (no longer the replication source: %s)", reason)
+				return
+			}
+		}
 		if satisfied, ok := t.reqSatisfied.Get(e.Path, e.Key); ok {
 			if satisfied != nil {
 				logger.Infof("abort (requirements no longer met)")
@@ -650,6 +663,8 @@ func (t *T) onLocalInstanceStatusUpdated(c *msgbus.InstanceStatusUpdated) bool {
 
 	t.lastRunOnAllPeers.Set(c.Path, kwoption.ScheduleStatus, c.Value.UpdatedAt)
 
+	changed := t.updateNotSource(c.Path, c.Value)
+
 	checkReq := func(rid string, requiredStatusList status.L) error {
 		resourceStatus, ok := c.Value.Resources[rid]
 		if !ok {
@@ -660,8 +675,6 @@ func (t *T) onLocalInstanceStatusUpdated(c *msgbus.InstanceStatusUpdated) bool {
 		}
 		return nil
 	}
-
-	changed := false
 
 	for _, e := range schedules {
 		if e.Require == "" {
@@ -827,6 +840,7 @@ func (t *T) onObjectStatusDeleted(c *msgbus.ObjectStatusDeleted) {
 	t.reqSatisfied.UnsetPath(c.Path)
 	delete(t.provisioned, c.Path)
 	delete(t.failover, c.Path)
+	delete(t.notSource, c.Path)
 }
 
 func (t *T) onObjectStatusUpdated(c *msgbus.ObjectStatusUpdated) {
@@ -867,6 +881,18 @@ func (t *T) updateFailover(path naming.Path, state topology.T) bool {
 		return true
 	}
 	return false
+}
+
+// updateNotSource records whether the local instance of path is the one its
+// data is replicated from, and reports whether that changed.
+func (t *T) updateNotSource(path naming.Path, st instance.Status) bool {
+	isSource, reason := st.ReplicationSource()
+	if isSource {
+		reason = ""
+	}
+	was, ok := t.notSource[path]
+	t.notSource[path] = reason
+	return !ok || (was == "") != (reason == "")
 }
 
 func (t *T) updateProvisioned(path naming.Path, state provisioned.T) bool {
@@ -1113,6 +1139,25 @@ func (t *T) scheduleObject(path naming.Path) {
 			return
 		}
 
+		if e.RequireReplicationSource {
+			reason, ok := t.notSource[path]
+			switch {
+			case !ok:
+				reason = "replication source not yet evaluated"
+			case reason != "":
+				reason = "not the replication source: " + reason
+			}
+			if reason != "" {
+				if hasJob {
+					log.Infof("unschedule (%s)", reason)
+					t.jobs.Del(e)
+				} else {
+					skipped = reason
+				}
+				return
+			}
+			validated = append(validated, "replication source")
+		}
 		if e.RequireProvisioned {
 			if !hasProvisioned {
 				if hasJob {

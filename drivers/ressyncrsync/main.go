@@ -191,9 +191,10 @@ func (t *T) getRunning(cmdArgs []string) (proc.L, error) {
 
 func (t *T) ScheduleOptions() resource.ScheduleOptions {
 	return resource.ScheduleOptions{
-		Action: "sync_update",
-		Option: "schedule",
-		Base:   "",
+		Action:                   "sync_update",
+		Option:                   "schedule",
+		Base:                     "",
+		RequireReplicationSource: true,
 	}
 }
 

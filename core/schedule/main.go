@@ -24,6 +24,10 @@ type (
 		RequireProvisioned bool   `json:"require_provisioned"`
 		RunDir             string `json:"-"`
 
+		// RequireReplicationSource schedules the action on the node the
+		// data is replicated from only.
+		RequireReplicationSource bool `json:"require_replication_source,omitempty"`
+
 		// StatefileKey is used in the last run filename and last run success formatters.
 		// Defaults to Action if empty.
 		StatefileKey string `json:"-"`
@@ -115,8 +119,10 @@ func (t Table) DeepCopy() *Table {
 				RequireCollector:   x.RequireCollector,
 				RequireProvisioned: x.RequireProvisioned,
 				RunDir:             x.RunDir,
-				Schedule:           x.Schedule,
-				StatefileKey:       x.StatefileKey,
+
+				RequireReplicationSource: x.RequireReplicationSource,
+				Schedule:                 x.Schedule,
+				StatefileKey:             x.StatefileKey,
 			},
 			LastRunAt: x.LastRunAt,
 			NextRunAt: x.NextRunAt,

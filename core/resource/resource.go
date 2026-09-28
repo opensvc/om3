@@ -286,6 +286,11 @@ type (
 		RequireConfirmation bool
 		RunDir              string
 		Require             string
+
+		// RequireReplicationSource schedules the action on the node the
+		// data of the object is replicated from only, the one
+		// instance.Status.ReplicationSource says is.
+		RequireReplicationSource bool
 	}
 )
 

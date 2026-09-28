@@ -15,6 +15,7 @@ import (
 	"github.com/opensvc/om3/v3/core/actioncontext"
 	"github.com/opensvc/om3/v3/core/client"
 	"github.com/opensvc/om3/v3/core/driver"
+	"github.com/opensvc/om3/v3/core/instance"
 	"github.com/opensvc/om3/v3/core/keywords"
 	"github.com/opensvc/om3/v3/core/naming"
 	"github.com/opensvc/om3/v3/core/nodeselector"
@@ -294,19 +295,11 @@ func (t *T) GetTargetNodenames(target, nodes, drpNodes []string) []string {
 }
 
 // IsInstanceSufficientlyStarted reports whether this node holds the instance
-// the data is replicated from, and why not when it does not.
+// the data is replicated from, and why not when it does not. See
+// instance.IsReplicationSource for the rules.
 //
-// It is the instance whose reference resources are up: the resources holding
-// what the data lives on or is reached by, that is every resource but the
-// app, sync and task ones, and the disk.scsireserv and disk.drbd ones, which
-// are up on the passive nodes too. As v2 did, their aggregated availability
-// must be up, or not applicable with the overall status up.
-//
-// A node where they are not up is a passive one, which must not send: its
-// copy would replace the one of the active node. An object with no reference
-// resource at all gives no way to tell the active node from the others, so no
-// node sends. --force lets a node whose reference resources are neither down
-// nor not applicable send anyway, as for a warn status.
+// A node where its reference resources are not up is a passive one, which
+// must not send: its copy would replace the one of the active node.
 func (t *T) IsInstanceSufficientlyStarted(ctx context.Context) (bool, string) {
 	sb := statusbus.FromContext(ctx)
 	o := t.GetObjectDriver()
@@ -318,65 +311,17 @@ func (t *T) IsInstanceSufficientlyStarted(ctx context.Context) (bool, string) {
 		driver.GroupDisk,
 		driver.GroupContainer,
 	})
-	refs := make([]refStatus, 0, len(l))
+	refs := make([]instance.ReferenceStatus, 0, len(l))
 	for _, r := range l {
-		if r.ID().DriverGroup() == driver.GroupDisk {
-			switch r.DriverID().Name {
-			case "drbd", "scsireserv":
-				continue
-			}
-		}
-		if r.IsDisabled() {
+		if r.IsDisabled() || !instance.IsReferenceResource(r.ID().DriverGroup(), r.DriverID().Name) {
 			continue
 		}
-		refs = append(refs, refStatus{rid: r.RID(), status: sb.Get(r.RID()), optional: r.IsOptional()})
+		refs = append(refs, instance.ReferenceStatus{RID: r.RID(), Status: sb.Get(r.RID()), Optional: r.IsOptional()})
 	}
-	ok, reason, forced := isSource(refs, actioncontext.IsForce(ctx))
+	ok, reason, forced := instance.IsReplicationSource(refs, actioncontext.IsForce(ctx))
 	if forced {
 		t.Log().Infof("sync allowed by --force: %s", reason)
 		return true, ""
 	}
 	return ok, reason
-}
-
-type refStatus struct {
-	rid      string
-	status   status.T
-	optional bool
-}
-
-// isSource decides from the status of the reference resources whether this
-// node holds the active instance. forced says it does only because force is
-// set, reason saying why it would not otherwise.
-func isSource(refs []refStatus, force bool) (ok bool, reason string, forced bool) {
-	avail, overall := status.Undef, status.Undef
-	var notUp []string
-	for _, r := range refs {
-		overall.Add(r.status)
-		if !r.optional {
-			avail.Add(r.status)
-		}
-		if r.status != status.Up {
-			notUp = append(notUp, fmt.Sprintf("%s:%s", r.rid, r.status))
-		}
-	}
-	if avail == status.StandbyUpWithUp {
-		avail = status.Up
-	}
-	if overall == status.StandbyUpWithUp {
-		overall = status.Up
-	}
-	switch {
-	case avail == status.Up:
-		return true, "", false
-	case avail.Is(status.Undef, status.NotApplicable) && overall == status.Up:
-		return true, "", false
-	case overall == status.Undef:
-		return false, "no ip, volume, fs, share, disk or container resource tells the active instance", false
-	}
-	reason = fmt.Sprintf("reference resources %s/%s: %s", avail, overall, strings.Join(notUp, ","))
-	if force && !avail.Is(status.Down, status.NotApplicable, status.Undef) && !overall.Is(status.Down, status.NotApplicable, status.Undef) {
-		return true, reason, true
-	}
-	return false, reason, false
 }
