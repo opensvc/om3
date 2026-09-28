@@ -112,7 +112,7 @@ func (t *T) isLegacySnapshot(name string) bool {
 
 // newSnapName is the name of the snapshot a run taking it at now takes.
 func (t *T) newSnapName(now time.Time) string {
-	return t.Src + "@" + t.snapPrefix() + now.UTC().Format("20060102T150405Z")
+	return t.Src + "@" + t.snapPrefix() + now.UTC().Format("20060102T150405.000000Z")
 }
 
 func (t *T) ownSnapshots(l []snapshot) []snapshot {

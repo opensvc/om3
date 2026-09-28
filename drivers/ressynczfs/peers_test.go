@@ -176,7 +176,7 @@ func newTestT(t *testing.T) *T {
 var t0 = time.Date(2026, 9, 28, 12, 0, 0, 0, time.UTC)
 
 func snapAt(h int) string {
-	return "sync.1." + t0.Add(time.Duration(h)*time.Hour).Format("20060102T150405Z")
+	return "sync.1." + t0.Add(time.Duration(h)*time.Hour).Format("20060102T150405.000000Z")
 }
 
 func TestSyncPeers(t *testing.T) {
@@ -344,4 +344,12 @@ func TestSyncStateValidPeers(t *testing.T) {
 	require.Equal(t, stranded, state.validPeers(&snapshot{GUID: "g1"}), "this node was the source since")
 	require.Empty(t, state.validPeers(&snapshot{GUID: "g2"}), "another node sent the newest snapshot: stale")
 	require.Empty(t, state.validPeers(nil), "no snapshot left: stale")
+}
+
+func TestNewSnapNameIsUniqueWithinASecond(t *testing.T) {
+	d := newTestT(t)
+	a := d.newSnapName(t0.Add(time.Millisecond))
+	b := d.newSnapName(t0.Add(2 * time.Millisecond))
+	require.NotEqual(t, a, b)
+	require.Equal(t, "pool/fs@sync.1.20260928T120000.001000Z", a)
 }

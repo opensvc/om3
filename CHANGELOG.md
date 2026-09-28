@@ -758,8 +758,9 @@ which share the same executor.
 
 * **Each peer is synced from its own base snapshot:**
     The source no longer rotates the `<rid>.sent` and `<rid>.tosend` snapshots
-    shared by all the peers. Each run takes a `<rid>.<YYYYmmddTHHMMSSZ>`
-    snapshot, for example `sync.1.20260928T154211Z`, and sends each peer the
+    shared by all the peers. Each run takes a
+    `<rid>.<YYYYmmddTHHMMSS.ffffffZ>` snapshot, for example
+    `sync.1.20260928T154211.402318Z`, and sends each peer the
     changes since the newest snapshot the peer holds in common with the
     source, found by guid. A peer that missed runs catches up at the next
     one, and a peer failing no longer stops the others. The snapshots of an
