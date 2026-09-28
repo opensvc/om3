@@ -22,6 +22,10 @@ type (
 	rx struct {
 		sync.WaitGroup
 
+		// decodeErrors logs the peers whose messages decrypt and do not
+		// decode.
+		decodeErrors hbctrl.DecodeErrors
+
 		cfg
 
 		ctx    context.Context
@@ -209,17 +213,21 @@ func (t *rx) recv(nodename string) {
 		return
 	}
 
-	msg := hbtype.Msg{}
-	if err := json.Unmarshal(b, &msg); err != nil {
-		t.log.Warnf("can't unmarshal msg from %s: %s", nodename, err)
-		return
-	}
-	t.log.Tracef("recv: node %s", nodename)
+	// The message decrypted, from the node that wrote it: the node is
+	// alive, whether or not this agent can read what it says.
 	t.cmdC <- hbctrl.CmdSetPeerSuccess{
-		Nodename: msg.Nodename,
+		Nodename: nodename,
 		HbID:     t.id,
 		Success:  true,
 	}
+	msg := hbtype.Msg{}
+	if err := json.Unmarshal(b, &msg); err != nil {
+		t.decodeErrors.Failed(t.log, nodename, err)
+		t.lastAt = c.UpdatedAt
+		return
+	}
+	t.decodeErrors.Succeeded(t.log, nodename)
+	t.log.Tracef("recv: node %s", nodename)
 	t.msgC <- &msg
 	t.dedup.Delivered(key, msg.Nodename)
 	t.lastAt = c.UpdatedAt

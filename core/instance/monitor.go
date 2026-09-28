@@ -186,7 +186,8 @@ func decodeGlobalExpectOptions[T any](v any) (any, error) {
 func (t *MonitorState) UnmarshalText(b []byte) error {
 	s := string(b)
 	if v, ok := StringToMonitorState[s]; !ok {
-		return fmt.Errorf("unexpected MonitorState value: %s", s)
+		*t = MonitorStateUnknown
+		return nil
 	} else {
 		*t = v
 		return nil
@@ -208,7 +209,8 @@ func (t MonitorLocalExpect) MarshalText() ([]byte, error) {
 func (t *MonitorLocalExpect) UnmarshalText(b []byte) error {
 	s := string(b)
 	if v, ok := stringToMonitorLocalExpect[s]; !ok {
-		return fmt.Errorf("unexpected MonitorLocalExpect value: %s", s)
+		*t = MonitorLocalExpectUnknown
+		return nil
 	} else {
 		*t = v
 		return nil
@@ -230,7 +232,8 @@ func (t MonitorGlobalExpect) MarshalText() ([]byte, error) {
 func (t *MonitorGlobalExpect) UnmarshalText(b []byte) error {
 	s := string(b)
 	if v, ok := MonitorGlobalExpectValues[s]; !ok {
-		return fmt.Errorf("unexpected MonitorGlobalExpect value: %s", s)
+		*t = MonitorGlobalExpectUnknown
+		return nil
 	} else {
 		*t = v
 		return nil

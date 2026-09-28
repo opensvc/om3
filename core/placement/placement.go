@@ -98,7 +98,11 @@ func (t State) MarshalText() ([]byte, error) {
 func (t *State) UnmarshalText(b []byte) error {
 	s := string(b)
 	if v, ok := stateToID[s]; !ok {
-		return fmt.Errorf("unknown placement state '%s'", s)
+		// A peer running a later version may publish a value this agent
+		// has no name for: it is read as undef rather than failing the
+		// whole message it came in.
+		*t = Undef
+		return nil
 	} else {
 		*t = v
 		return nil
@@ -131,7 +135,11 @@ func (t Policy) MarshalText() ([]byte, error) {
 func (t *Policy) UnmarshalText(b []byte) error {
 	s := string(b)
 	if v, ok := policyToID[s]; !ok {
-		return fmt.Errorf("unknown placement policy '%s'", s)
+		// A peer running a later version may publish a value this agent
+		// has no name for: it is read as invalid, which places nothing, rather than failing the
+		// whole message it came in.
+		*t = Invalid
+		return nil
 	} else {
 		*t = v
 		return nil

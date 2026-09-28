@@ -16,6 +16,14 @@ func (t *Manager) convergeGlobalExpectFromRemote() {
 		if instMon.GlobalExpect == instance.MonitorGlobalExpectInit {
 			continue
 		}
+		// A global expect of a later version is one this agent can not
+		// orchestrate. Adopting it, it would never end its part of the
+		// orchestration, and the peers running it would wait for it for
+		// good. Left alone, this instance reads as done to them, so the
+		// orchestration runs on the nodes that know it.
+		if instMon.GlobalExpect == instance.MonitorGlobalExpectUnknown {
+			continue
+		}
 		nodeTime := instMon.GlobalExpectUpdatedAt
 		if mostRecentUpdated.Before(nodeTime) {
 			mostRecentNode = node

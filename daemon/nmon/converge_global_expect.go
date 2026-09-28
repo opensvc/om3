@@ -17,6 +17,11 @@ func (t *Manager) convergeGlobalExpectFromRemote() {
 		if data.GlobalExpect == node.MonitorGlobalExpectNone {
 			continue
 		}
+		// A global expect of a later version is one this agent can not
+		// orchestrate: adopting it, it would never end its part of it.
+		if data.GlobalExpect == node.MonitorGlobalExpectUnknown {
+			continue
+		}
 		nodeTime := data.GlobalExpectUpdatedAt
 		if mostRecentUpdated.Before(nodeTime) {
 			mostRecentNode = nodename

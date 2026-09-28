@@ -1,7 +1,6 @@
 package status
 
 import (
-	"fmt"
 	"strings"
 )
 
@@ -89,7 +88,11 @@ func (t T) MarshalText() ([]byte, error) {
 func (t *T) UnmarshalText(b []byte) error {
 	s := string(b)
 	if v, ok := toID[s]; !ok {
-		return fmt.Errorf("unknown state %s", s)
+		// A peer running a later version may publish a value this agent
+		// has no name for: it is read as undef rather than failing the
+		// whole message it came in.
+		*t = Undef
+		return nil
 	} else {
 		*t = v
 		return nil

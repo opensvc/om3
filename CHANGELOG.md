@@ -990,6 +990,24 @@ Where the password is the value of the `þassword` key in `system/sec/relay-v3`.
 
 * The daemon process name is changed from `/usr/bin/python3 -m opensvc.daemon` to `om daemon run`. Monitoring checks may need to adapt.
 
+* A node reads the heartbeat messages of a node running a later version.
+
+    A monitor state, an expected state, a status or a placement value a
+    node has no name for is read as `unknown`, or `undef`, instead of failing
+    the whole message, and a node whose message decrypts is counted alive
+    whether or not it decodes, with a warning saying its data is not applied.
+    A node used to find a peer running a later version dead as soon as the
+    peer published a value it did not know, and the split action or a
+    failover followed.
+
+    An orchestration a node does not know is left to the nodes that do: the
+    node does not adopt it, and reads as done to them.
+
+    This holds from this release on, for the upgrades to later ones. To
+    upgrade a cluster node by node, freeze it first (`om cluster freeze`),
+    upgrade every node, and thaw it (`om cluster unfreeze`) once all run the
+    same version.
+
 * Add a 60 seconds timeout to `pre_monitor_action`. The 2.1 daemon waits forever for this callout to terminate.
 
 * Earlier local object instance orchestration after node boot

@@ -7,6 +7,7 @@ import (
 	"errors"
 	"fmt"
 	"net"
+	"slices"
 	"strings"
 	"sync"
 	"time"
@@ -24,13 +25,17 @@ type (
 	// rx holds an hb unicast receiver
 	rx struct {
 		sync.WaitGroup
-		ctx      context.Context
-		id       string
-		nodes    []string
-		udpAddr  *net.UDPAddr
-		intf     *net.Interface
-		timeout  time.Duration
-		assembly map[string]msgMap
+
+		// decodeErrors logs the peers whose messages decrypt and do not
+		// decode.
+		decodeErrors hbctrl.DecodeErrors
+		ctx          context.Context
+		id           string
+		nodes        []string
+		udpAddr      *net.UDPAddr
+		intf         *net.Interface
+		timeout      time.Duration
+		assembly     map[string]msgMap
 
 		name   string
 		log    *plog.Logger
@@ -244,17 +249,12 @@ func (t *rx) recv(src *net.UDPAddr, n int, b []byte) {
 		return
 	}
 
-	b, err = t.crypto.Decrypt(encMsg)
+	b, nodename, err := t.crypto.DecryptWithNode(encMsg)
 	if err != nil {
 		t.log.Tracef("recv: decrypting msg from %s: %s: %s", s, hex.Dump(encMsg), err)
 		return
 	}
-	data := hbtype.Msg{}
-	if err := json.Unmarshal(b, &data); err != nil {
-		t.log.Warnf("can't unmarshal msg from %s: %s", s, err)
-		return
-	}
-	if data.Nodename == hostname.Hostname() {
+	if nodename == hostname.Hostname() {
 		// Our own multicast, coming back to us. The fragment header check
 		// above catches these first now; this stays as the backstop for
 		// what it cannot see, a datagram from a tx that has since
@@ -265,11 +265,23 @@ func (t *rx) recv(src *net.UDPAddr, n int, b []byte) {
 		t.log.Tracef("recv: drop msg from self")
 		return
 	}
+	if !slices.Contains(t.nodes, nodename) {
+		t.log.Tracef("recv: msg from %s encrypted by %s, which is not a peer of this heartbeat", s, nodename)
+		return
+	}
+	// The message decrypted, so the node that encrypted it is alive,
+	// whether or not this agent can read what it says.
 	t.cmdC <- hbctrl.CmdSetPeerSuccess{
-		Nodename: data.Nodename,
+		Nodename: nodename,
 		HbID:     t.id,
 		Success:  true,
 	}
+	data := hbtype.Msg{}
+	if err := json.Unmarshal(b, &data); err != nil {
+		t.decodeErrors.Failed(t.log, nodename, err)
+		return
+	}
+	t.decodeErrors.Succeeded(t.log, nodename)
 	t.msgC <- &data
 	t.dedup.Delivered(key, data.Nodename)
 }

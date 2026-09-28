@@ -27,6 +27,10 @@ type (
 	// rx holds a hb unicast receiver
 	rx struct {
 		sync.WaitGroup
+
+		// decodeErrors logs the peers whose messages decrypt and do not
+		// decode.
+		decodeErrors hbctrl.DecodeErrors
 		ctx     context.Context
 		id      string
 		nodes   map[string]string
@@ -382,24 +386,27 @@ func (t *rx) handleLoop(conn encryptconn.ConnNoder, peerAddr string) {
 		if len(b) >= (msgMaxSize - 10000) {
 			t.log.Warnf("read huge message from node %s:%s msg size: %d", nodename, peerAddr, len(b))
 		}
-		msg := hbtype.Msg{}
-		if err := json.Unmarshal(b, &msg); err != nil {
-			t.log.Warnf("unmarshal message failed from node %s:%s: %s", nodename, peerAddr, err)
+		if _, ok := t.nodes[nodename]; !ok {
+			t.log.Warnf("message from %s encrypted by %s, which is not a peer of this heartbeat", peerAddr, nodename)
 			return
 		}
-		t.log.Tracef("read %d bytes from node %s (kind=%s, msg #%d)", len(b), nodename, msg.Kind, msgCount)
 
-		cmdPeerSuccess := hbctrl.CmdSetPeerSuccess{
-			Nodename: msg.Nodename,
-			HbID:     t.id,
-			Success:  true,
-		}
+		// The message decrypted, so the node that encrypted it is alive,
+		// whether or not this agent can read what it says.
 		select {
 		case <-t.ctx.Done():
 			t.log.Tracef("context done, stopping after %d messages", msgCount)
 			return
-		case t.cmdC <- cmdPeerSuccess:
+		case t.cmdC <- hbctrl.CmdSetPeerSuccess{Nodename: nodename, HbID: t.id, Success: true}:
 		}
+
+		msg := hbtype.Msg{}
+		if err := json.Unmarshal(b, &msg); err != nil {
+			t.decodeErrors.Failed(t.log, nodename, err)
+			continue
+		}
+		t.decodeErrors.Succeeded(t.log, nodename)
+		t.log.Tracef("read %d bytes from node %s (kind=%s, msg #%d)", len(b), nodename, msg.Kind, msgCount)
 		select {
 		case <-t.ctx.Done():
 			t.log.Tracef("context done while sending msg, stopping after %d messages", msgCount)
