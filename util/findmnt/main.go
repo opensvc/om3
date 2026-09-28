@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"os"
 	"os/exec"
+	"path/filepath"
 	"regexp"
 	"slices"
 	"strings"
@@ -119,16 +120,7 @@ func List(ctx context.Context, dev string, mnt string) (mounts []MountInfo, err 
 		return
 	}
 
-	if dev != "" && dev != "none" {
-		var stat os.FileInfo
-		stat, err = os.Stat(dev)
-		if os.IsNotExist(err) {
-			devIsNfs = isNfsPath(dev)
-		} else {
-			devIsDir = stat.Mode().IsDir()
-			devIsRegular = stat.Mode().IsRegular()
-		}
-	}
+	devIsDir, devIsRegular, devIsNfs = devKind(dev)
 
 	args := findMntArgs(dev, mnt, devIsDir, devIsNfs)
 	if mounts, err = findMnt(ctx, args); err != nil {
@@ -157,6 +149,32 @@ func List(ctx context.Context, dev string, mnt string) (mounts []MountInfo, err 
 		}
 		mounts = filtered
 	}
+	return
+}
+
+// devKind says whether dev is a directory or a regular file, which are
+// mounted by a bind, or a nfs path.
+//
+// Only an absolute path is looked up on the filesystem: a relative one, as a
+// zfs dataset name or a tmpfs source, is no path at all, and looking it up
+// would find whatever the working directory holds under that name. From "/", a
+// zfs dataset tank/fs mounted on /tank/fs would be read as that directory, and
+// the dataset found not mounted.
+func devKind(dev string) (isDir, isRegular, isNfs bool) {
+	if dev == "" || dev == "none" {
+		return
+	}
+	if !filepath.IsAbs(dev) {
+		isNfs = isNfsPath(dev)
+		return
+	}
+	stat, err := os.Stat(dev)
+	if err != nil {
+		isNfs = isNfsPath(dev)
+		return
+	}
+	isDir = stat.Mode().IsDir()
+	isRegular = stat.Mode().IsRegular()
 	return
 }
 
