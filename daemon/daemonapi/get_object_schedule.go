@@ -18,31 +18,41 @@ func (a *DaemonAPI) GetObjectSchedule(ctx echo.Context, namespace string, kind n
 	}
 	path, err := naming.NewPath(namespace, kind, name)
 	if err != nil {
-		return JSONProblemf(ctx, http.StatusInternalServerError, "New path", "%s", err)
+		return JSONProblemf(ctx, http.StatusBadRequest, "Invalid parameter", "invalid path: %s", err)
+	}
+	configs := instance.ConfigData.GetByPath(path)
+	if len(configs) == 0 {
+		return JSONProblemf(ctx, http.StatusNotFound, "Not found", "object not found: %s", path)
 	}
 	items := make(api.ScheduleItems, 0)
-	for nodename := range instance.MonitorData.GetByPath(path) {
+	for nodename := range configs {
+		if !clusternode.Has(nodename) {
+			return JSONProblemf(ctx, http.StatusBadRequest, "Invalid nodename", "field 'nodename' with value '%s' is not a cluster node", nodename)
+		}
 		c, err := a.newProxyClient(ctx, nodename)
 		if err != nil {
 			return JSONProblemf(ctx, http.StatusInternalServerError, "New client", "%s: %s", nodename, err)
-		} else if !clusternode.Has(nodename) {
-			return JSONProblemf(ctx, http.StatusBadRequest, "Invalid nodename", "field 'nodename' with value '%s' is not a cluster node", nodename)
 		}
-		if resp, err := c.GetInstanceSchedule(ctx.Request().Context(), nodename, namespace, kind, name); err != nil {
+		resp, err := c.GetInstanceSchedule(ctx.Request().Context(), nodename, namespace, kind, name)
+		if err != nil {
 			return JSONProblemf(ctx, http.StatusInternalServerError, "Request peer", "%s: %s", nodename, err)
-		} else {
-			switch resp.StatusCode {
-			case http.StatusOK:
-				var more api.ScheduleList
-				dec := json.NewDecoder(resp.Body)
-				if err := dec.Decode(&more); err != nil {
-					return JSONProblemf(ctx, http.StatusInternalServerError, "Decode proxy response body", "%s: %s", nodename, err)
-				}
-				items = append(items, more.Items...)
-			default:
-				ctx.Stream(resp.StatusCode, resp.Header.Get("Content-Type"), resp.Body)
-			}
 		}
+		if resp.StatusCode != http.StatusOK {
+			if resp.StatusCode == http.StatusNotFound {
+				resp.Body.Close()
+				continue
+			}
+			defer resp.Body.Close()
+			return ctx.Stream(resp.StatusCode, resp.Header.Get("Content-Type"), resp.Body)
+		}
+		var more api.ScheduleList
+		if err := func() error {
+			defer resp.Body.Close()
+			return json.NewDecoder(resp.Body).Decode(&more)
+		}(); err != nil {
+			return JSONProblemf(ctx, http.StatusInternalServerError, "Decode proxy response body", "%s: %s", nodename, err)
+		}
+		items = append(items, more.Items...)
 	}
 	resp := api.ScheduleList{
 		Kind:  "ScheduleList",

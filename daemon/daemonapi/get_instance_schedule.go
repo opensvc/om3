@@ -27,7 +27,7 @@ func (a *DaemonAPI) GetInstanceSchedule(ctx echo.Context, nodename, namespace st
 func (a *DaemonAPI) getLocalInstanceSchedule(ctx echo.Context, namespace string, kind naming.Kind, name string) error {
 	path, err := naming.NewPath(namespace, kind, name)
 	if err != nil {
-		return JSONProblemf(ctx, http.StatusInternalServerError, "New path", "%s", err)
+		return JSONProblemf(ctx, http.StatusBadRequest, "Invalid parameter", "invalid path: %s", err)
 	}
 	if !path.Exists() {
 		return JSONProblemf(ctx, http.StatusNotFound, "No local instance", "")
@@ -37,29 +37,12 @@ func (a *DaemonAPI) getLocalInstanceSchedule(ctx echo.Context, namespace string,
 		return JSONProblemf(ctx, http.StatusNotFound, "No schedule table cached", "")
 	}
 	resp := api.ScheduleList{
-		Kind: "ScheduleList",
+		Kind:  "ScheduleList",
+		Items: make(api.ScheduleItems, 0, len(*table)),
 	}
 
 	for _, e := range *table {
-		item := api.ScheduleItem{
-			Kind: "ScheduleItem",
-			Meta: api.InstanceMeta{
-				Node:   e.Node,
-				Object: e.Path.String(),
-			},
-			Data: api.Schedule{
-				Action:             e.Action,
-				Key:                e.Key,
-				LastRunAt:          e.LastRunAt,
-				MaxParallel:        e.MaxParallel,
-				NextRunAt:          e.NextRunAt,
-				Require:            e.Require,
-				RequireCollector:   e.RequireCollector,
-				RequireProvisioned: e.RequireProvisioned,
-				Schedule:           e.Schedule,
-			},
-		}
-		resp.Items = append(resp.Items, item)
+		resp.Items = append(resp.Items, scheduleItem(e))
 	}
 	return ctx.JSON(http.StatusOK, resp)
 }

@@ -23,6 +23,13 @@ type (
 	}
 )
 
+func nullableScheduleTime(t time.Time) *time.Time {
+	if t.IsZero() {
+		return nil
+	}
+	return &t
+}
+
 func (t *CmdNodeScheduleList) extract(c *client.T) (api.ScheduleList, error) {
 	var data api.ScheduleList
 	data.Kind = "ScheduleList"
@@ -61,9 +68,9 @@ func (t *CmdNodeScheduleList) extractLocal() (api.ScheduleItems, error) {
 			Data: api.Schedule{
 				Action:             e.Action,
 				Key:                e.Key,
-				LastRunAt:          e.LastRunAt,
+				LastRunAt:          nullableScheduleTime(e.LastRunAt),
 				MaxParallel:        e.MaxParallel,
-				NextRunAt:          e.NextRunAt,
+				NextRunAt:          nullableScheduleTime(e.NextRunAt),
 				RequireCollector:   e.RequireCollector,
 				RequireProvisioned: e.RequireProvisioned,
 				Schedule:           e.Schedule,

@@ -827,13 +827,13 @@ func (e SANPathListKind) Valid() bool {
 
 // Defines values for ScheduleItemKind.
 const (
-	ScheduleItemKindResourceItem ScheduleItemKind = "ResourceItem"
+	ScheduleItemKindScheduleItem ScheduleItemKind = "ScheduleItem"
 )
 
 // Valid indicates whether the value is a known member of the ScheduleItemKind enum.
 func (e ScheduleItemKind) Valid() bool {
 	switch e {
-	case ScheduleItemKindResourceItem:
+	case ScheduleItemKindScheduleItem:
 		return true
 	default:
 		return false
@@ -2534,15 +2534,15 @@ type SANPathTarget struct {
 
 // Schedule defines model for Schedule.
 type Schedule struct {
-	Action             string    `json:"action"`
-	Key                string    `json:"key"`
-	LastRunAt          time.Time `json:"last_run_at"`
-	MaxParallel        int       `json:"max_parallel"`
-	NextRunAt          time.Time `json:"next_run_at"`
-	Require            string    `json:"require"`
-	RequireCollector   bool      `json:"require_collector"`
-	RequireProvisioned bool      `json:"require_provisioned"`
-	Schedule           string    `json:"schedule"`
+	Action             string     `json:"action"`
+	Key                string     `json:"key"`
+	LastRunAt          *time.Time `json:"last_run_at"`
+	MaxParallel        int        `json:"max_parallel"`
+	NextRunAt          *time.Time `json:"next_run_at"`
+	Require            string     `json:"require"`
+	RequireCollector   bool       `json:"require_collector"`
+	RequireProvisioned bool       `json:"require_provisioned"`
+	Schedule           string     `json:"schedule"`
 }
 
 // ScheduleConfig defines model for ScheduleConfig.
