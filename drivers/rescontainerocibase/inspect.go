@@ -22,6 +22,7 @@ type (
 
 	InspectDataConfig struct {
 		Entrypoint InspectDataConfigEntrypoint
+		Env        []string
 		Hostname   string
 		OpenStdin  bool
 		Tty        bool

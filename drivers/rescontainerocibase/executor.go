@@ -82,7 +82,7 @@ func (e *Executor) Enter(ctx context.Context) error {
 		return fmt.Errorf("the container is not running")
 	}
 	pid := inspect.PID()
-	env, err := pidEnv(pid)
+	env, err := enterEnv(inspect, pid)
 	if err != nil {
 		cancel()
 		return err
@@ -121,6 +121,18 @@ outerLoop:
 		return err
 	}
 	return nil
+}
+
+// enterEnv is the environment of a shell entering the container: the one the
+// container is configured with, as docker exec gives. The environment of the
+// main process is only read when the configuration has none: a process may
+// rewrite it, as redis-server writes its title over it, and a shell entered
+// with it may find no PATH.
+func enterEnv(inspect Inspecter, pid int) ([]string, error) {
+	if cfg := inspect.Config(); cfg != nil && len(cfg.Env) > 0 {
+		return cfg.Env, nil
+	}
+	return pidEnv(pid)
 }
 
 func pidEnv(pid int) ([]string, error) {
