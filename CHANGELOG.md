@@ -768,6 +768,14 @@ which share the same executor.
     variable of the triggers read `update` and `full`. Triggers testing
     `OPENSVC_ACTION` for `sync_update` or `sync_full` need updating.
 
+* **A stop or a switch waits for the syncs running on the instance:**
+    Stopped under a sync, the instance would hand the peers a copy the sync
+    was writing. An orchestrated stop or switch now waits, in the new `wait
+    syncs` monitor state, for the syncs running on the instance to end, for
+    `wait_syncs_timeout` at most, 10 minutes by default. Past it, the stop
+    fails and the instance keeps running, its monitoring on. No scheduled sync starts while an orchestration is in
+    progress on the object.
+
 ### Driver: sync.zfs
 
 * **Each peer is synced from its own base snapshot:**

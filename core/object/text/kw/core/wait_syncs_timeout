@@ -1,0 +1,6 @@
+How long a stop or a switch of the instance waits for the syncs running on it
+to end.
+
+Stopped under a sync, the instance would hand the peers a copy the sync was
+writing, so the stop waits for the syncs, in the `wait syncs` state. Past this
+duration, the stop fails, and the instance keeps running.

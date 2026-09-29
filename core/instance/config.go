@@ -58,6 +58,10 @@ type (
 
 		// IsDisabled is true when DEFAULT.disable is true
 		IsDisabled bool `json:"is_disabled"`
+
+		// WaitSyncsTimeout is how long a stop or a switch waits for the
+		// syncs running on the instance to end: DEFAULT.wait_syncs_timeout.
+		WaitSyncsTimeout time.Duration `json:"wait_syncs_timeout,omitempty"`
 	}
 
 	FlexConfig struct {

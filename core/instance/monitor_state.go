@@ -62,6 +62,7 @@ const (
 	MonitorStateWaitPriors
 	MonitorStateWaitLeader
 	MonitorStateWaitNonLeader
+	MonitorStateWaitSyncs
 
 	// Miscellaneous
 	MonitorStateRunning
@@ -160,6 +161,7 @@ func init() {
 		{MonitorStateWaitLeader, "wait leader"},
 		{MonitorStateWaitNonLeader, "wait non-leader"},
 		{MonitorStateWaitPriors, "wait priors"},
+		{MonitorStateWaitSyncs, "wait syncs"},
 
 		// Miscellaneous
 		{MonitorStateRunning, "running"},

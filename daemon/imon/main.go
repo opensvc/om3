@@ -103,6 +103,15 @@ type (
 		outdatedTimer       *time.Timer
 		outdatedRefreshedAt time.Time
 
+		// waitSyncsTimer fires when a stop has waited long enough for
+		// the syncs running, waiting since waitSyncsSince.
+		waitSyncsTimer *time.Timer
+		waitSyncsSince time.Time
+
+		// stopRefusedForSyncs says the last stop failure is a stop
+		// refused, the syncs running past the wait: nothing stopped.
+		stopRefusedForSyncs bool
+
 		// statusQueued is true when a background status is running
 		// TODO: need review
 		statusQueued atomic.Bool
@@ -418,6 +427,8 @@ func (t *Manager) worker(initialNodes []string) {
 	}
 	t.outdatedTimer = time.NewTimer(time.Hour)
 	t.outdatedTimer.Stop()
+	t.waitSyncsTimer = time.NewTimer(time.Hour)
+	t.waitSyncsTimer.Stop()
 
 	t.mergePeerFrozen()
 	t.initRelationAvailStatus()
@@ -526,6 +537,8 @@ func (t *Manager) worker(initialNodes []string) {
 			t.onDelayTimer()
 		case <-t.outdatedTimer.C:
 			t.onOutdatedTimer()
+		case <-t.waitSyncsTimer.C:
+			t.onWaitSyncsTimer()
 		}
 	}
 }

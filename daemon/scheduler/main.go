@@ -442,6 +442,14 @@ func (t *T) onJobAlarm(c eventJobAlarm) {
 				logger.Infof("abort (no longer the replication source: %s)", reason)
 				return
 			}
+			// A sync started while the object is being stopped or
+			// switched holds the object lock the stop needs, and may
+			// be sending when the peer takes over. The next period
+			// syncs, if this node is still the source.
+			if mon := instance.MonitorData.GetByPathAndNode(e.Path, t.localhost); mon != nil && mon.GlobalExpect != instance.MonitorGlobalExpectNone && mon.GlobalExpect != instance.MonitorGlobalExpectInit {
+				logger.Infof("skip (orchestration %s in progress)", mon.GlobalExpect)
+				return
+			}
 		}
 		if satisfied, ok := t.reqSatisfied.Get(e.Path, e.Key); ok {
 			if satisfied != nil {
