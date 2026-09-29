@@ -180,8 +180,23 @@ func (t *PersistentReservationHandle) DeviceStatus(dev device.T) status.T {
 		}
 	}
 
+	// The co-resource witnesses whether the instance holds the device: up,
+	// it does, and every path must be registered, down, it does not, and
+	// none may be. A co-resource n/a, like a disk that is there whatever the
+	// state of the instance, witnesses nothing, and the reservation does
+	// instead: held with our key, the instance holds the device. Not held,
+	// nothing tells whether the instance is started, so registrations
+	// missing, as on a node standing by, or left over, are not an issue to
+	// report.
+	holdsDevice := t.CoresourceStatus == status.Up
+	witnessed := true
+	if t.CoresourceStatus == status.NotApplicable && !t.CoresourceDisabled {
+		holdsDevice = s == status.Up
+		witnessed = holdsDevice
+	}
+
 	var expectedRegistrationCount int
-	if t.CoresourceStatus == status.Up || (t.CoresourceStatus == status.NotApplicable && !t.CoresourceDisabled) {
+	if holdsDevice {
 		expectedRegistrationCount, err = t.DeviceExpectedRegistrationCount(dev)
 		if err != nil {
 			t.StatusLogger.Error("%s expected registration count: %s", dev, err)
@@ -192,7 +207,9 @@ func (t *PersistentReservationHandle) DeviceStatus(dev device.T) status.T {
 	if registrations, err := t.persistentReservationDriver.ReadRegistrations(dev); err != nil {
 		t.StatusLogger.Error("%s read registrations: %s", dev, err)
 		s = status.Undef
-	} else if handledRegistrationCount := t.countHandledRegistrations(registrations); handledRegistrationCount == expectedRegistrationCount {
+	} else if handledRegistrationCount := t.countHandledRegistrations(registrations); !witnessed {
+		t.StatusLogger.Info("%s, %d registrations", reservationMsg, handledRegistrationCount)
+	} else if handledRegistrationCount == expectedRegistrationCount {
 		if expectedRegistrationCount == 0 {
 			if handledRegistrationCount == 0 {
 				t.StatusLogger.Info("%s, no registrations", reservationMsg)
