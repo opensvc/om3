@@ -177,7 +177,7 @@ var (
 		PG:              true,
 	}
 	SyncFull = Properties{
-		Name:     "sync_full",
+		Name:     "full",
 		MustLock: true,
 		PG:       true,
 	}
@@ -197,7 +197,7 @@ var (
 		PG:       true,
 	}
 	SyncUpdate = Properties{
-		Name:     "sync_update",
+		Name:     "update",
 		MustLock: true,
 		PG:       true,
 	}

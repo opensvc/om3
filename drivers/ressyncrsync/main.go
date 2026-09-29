@@ -2,11 +2,13 @@ package ressyncrsync
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"path/filepath"
 	"sort"
 	"strconv"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/google/uuid"
@@ -24,7 +26,6 @@ import (
 	"github.com/opensvc/om3/v3/util/command"
 	"github.com/opensvc/om3/v3/util/hostname"
 	"github.com/opensvc/om3/v3/util/proc"
-	"github.com/opensvc/om3/v3/util/schedule"
 )
 
 // T is the driver structure.
@@ -39,7 +40,6 @@ type (
 		User           string
 		Options        []string
 		Target         []string
-		Schedule       string
 		ResetOptions   bool
 		Snap           bool
 		Snooze         *time.Duration
@@ -63,10 +63,6 @@ const (
 
 func New() resource.Driver {
 	return &T{}
-}
-
-func (t *T) Running() (resource.RunningInfoList, error) {
-	return t.RunningFromLock(lockName)
 }
 
 func (t *T) Full(ctx context.Context) error {
@@ -94,10 +90,6 @@ func (t *T) Update(ctx context.Context) error {
 }
 
 func (t *T) lockedSync(ctx context.Context, mode modeT, target []string) (err error) {
-	if len(target) == 0 {
-		target = t.Target
-	}
-
 	isCron := actioncontext.IsCron(ctx)
 
 	if t.isFlexAndNotPrimary() {
@@ -105,16 +97,29 @@ func (t *T) lockedSync(ctx context.Context, mode modeT, target []string) (err er
 		return fmt.Errorf("this flex instance is not primary. only %s can sync", t.Nodes[0])
 	}
 
-	if v, rids := t.IsInstanceSufficientlyStarted(ctx); !v {
-		t.Log().Errorf("The instance is not sufficiently started (%s). Refuse to sync to protect the data of the started remote instance", strings.Join(rids, ","))
-		return fmt.Errorf("the instance is not sufficiently started (%s). refuse to sync to protect the data of the started remote instance", strings.Join(rids, ","))
+	if v, reason := t.IsInstanceSufficientlyStarted(ctx); !v {
+		return fmt.Errorf("the instance is not sufficiently started (%s). refuse to sync to protect the data of the started remote instance", reason)
 	}
-	nodenames := t.GetTargetPeernames(target, t.Nodes, t.DRPNodes)
+	nodenames, err := t.SelectPeernames(target, t.Target, t.Nodes, t.DRPNodes)
+	if err != nil {
+		return err
+	}
 	if len(nodenames) == 0 {
 		t.Log().Infof("no peer to sync")
 		return nil
 	}
-	for _, nodename := range nodenames {
+	done, err := t.StartRun()
+	if err != nil {
+		return err
+	}
+	defer done()
+	// The peers are synced at once, each on its own: one failing, or slow,
+	// does not hold the others back, and all the failures are reported.
+	var (
+		wg   sync.WaitGroup
+		errs = make([]error, len(nodenames))
+	)
+	for i, nodename := range nodenames {
 		if err := t.isSendAllowedToPeerEnv(nodename); err != nil {
 			if isCron {
 				t.Log().Tracef("%s", err)
@@ -123,38 +128,24 @@ func (t *T) lockedSync(ctx context.Context, mode modeT, target []string) (err er
 			}
 			continue
 		}
-		if err := t.peerSync(ctx, mode, nodename); err != nil {
-			return err
-		}
-		if err := t.WritePeerLastSync(ctx, nodename, nodenames); err != nil {
-			return err
-		}
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			if err := t.peerSync(ctx, mode, nodename); err != nil {
+				errs[i] = fmt.Errorf("%s: %w", nodename, err)
+				return
+			}
+			if err := t.WritePeerLastSync(ctx, nodename); err != nil {
+				errs[i] = fmt.Errorf("%s: write last sync: %w", nodename, err)
+			}
+		}()
 	}
-	return nil
+	wg.Wait()
+	return errors.Join(errs...)
 }
 
 func (t *T) Kill(ctx context.Context) error {
 	return nil
-}
-
-// maxDelay return the configured max_delay if set.
-// If not set, return the duration from now to the end of the
-// next schedule period.
-func (t *T) maxDelay(lastSync time.Time) *time.Duration {
-	if t.MaxDelay != nil {
-		return t.MaxDelay
-	}
-	sched := schedule.New(t.Schedule)
-	begin, duration, err := sched.Next(schedule.NextWithLast(lastSync))
-	if err != nil {
-		return nil
-	}
-	end := begin.Add(duration)
-	maxDelay := end.Sub(time.Now())
-	if maxDelay < 0 {
-		maxDelay = 0
-	}
-	return &maxDelay
 }
 
 func (t *T) Status(ctx context.Context) status.T {
@@ -211,9 +202,11 @@ func (t *T) getRunning(cmdArgs []string) (proc.L, error) {
 
 func (t *T) ScheduleOptions() resource.ScheduleOptions {
 	return resource.ScheduleOptions{
-		Action: "sync_update",
-		Option: "schedule",
-		Base:   "",
+		Action:                   "update",
+		Option:                   "schedule",
+		Base:                     "",
+		RequireReplicationSource: true,
+		Require:                  t.UpdateRequires,
 	}
 }
 
@@ -338,7 +331,7 @@ func (t *T) peerSync(ctx context.Context, mode modeT, nodename string) (err erro
 		Attr("duration", stats.Duration()).
 		Attr("sent_b", stats.SentBytes).
 		Attr("received_b", stats.ReceivedBytes).
-		Infof("sync stat")
+		Infof("sync stat: %s: sent %dB received %dB in %s (%.2fB/s)", nodename, stats.SentBytes, stats.ReceivedBytes, stats.Duration(), stats.SpeedBPS())
 
 	return nil
 }

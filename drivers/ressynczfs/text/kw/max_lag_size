@@ -1,0 +1,3 @@
+How much space the snapshots the source keeps for a lagging peer may hold before the source releases them.
+
+The value is a size, or a percentage of the space the pool would have free without these snapshots. Past this limit, the source destroys the base snapshot of the peer and stops sending to it. From then on the peer needs a full copy, asked with `om <path> instance full --rid <rid> --target <peer>`, and the resource status warns until then.

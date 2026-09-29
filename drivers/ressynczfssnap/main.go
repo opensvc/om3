@@ -8,6 +8,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/opensvc/om3/v3/core/driver"
 	"github.com/opensvc/om3/v3/core/provisioned"
 	"github.com/opensvc/om3/v3/core/resource"
 	"github.com/opensvc/om3/v3/core/status"
@@ -20,7 +21,6 @@ type (
 	T struct {
 		ressync.T
 		Dataset   []string
-		Schedule  string
 		Recursive bool
 		Keep      int
 		Name      string
@@ -33,7 +33,6 @@ const (
 	modeFull modeT = iota
 	modeIncr
 
-	lockName             = "sync"
 	timeFormatInSnapName = "2006-01-02.15:04:05"
 )
 
@@ -49,15 +48,16 @@ func (t *T) SortKey() string {
 	return "+" + t.ResourceID.Name
 }
 
-func (t *T) Running() (resource.RunningInfoList, error) {
-	return t.RunningFromLock(lockName)
-}
-
 func (t *T) Update(ctx context.Context) error {
-	if v, rids := t.IsInstanceSufficientlyStarted(ctx); !v {
-		t.Log().Tracef("the instance is not sufficiently started (%s). refuse to create snapshots", strings.Join(rids, ","))
+	if v, reason := t.IsInstanceSufficientlyStarted(ctx); !v {
+		t.Log().Tracef("the instance is not sufficiently started (%s). refuse to create snapshots", reason)
 		return nil
 	}
+	done, err := t.StartRun()
+	if err != nil {
+		return err
+	}
+	defer done()
 	for _, dataset := range t.Dataset {
 		if err := t.createSnap(dataset); err != nil {
 			return err
@@ -91,14 +91,23 @@ func (t *T) removeSnap(dataset string) error {
 			t.Log().Tracef("keep snap %s %d/%d", candidate.Name, kept, t.Keep)
 			continue
 		}
-		if err := candidate.Destroy(); err != nil {
+		// The snapshot was taken in the descendant datasets too when
+		// recursive, and goes from them too.
+		if err := candidate.Destroy(zfs.FilesystemDestroyWithRemoveSnapshots(t.Recursive)); err != nil {
 			return err
 		}
 	}
 	return nil
 }
 
-func (t *T) status(ctx context.Context, dataset string) status.T {
+func (t *T) status(ctx context.Context, dataset string, isSource bool, notSourceReason string) status.T {
+	var rep ressync.DatasetReplicator
+	if !isSource {
+		if rep = t.replicator(dataset); rep == nil {
+			t.StatusLog().Info("%s: no snapshot is taken here (%s), and none is replicated here", dataset, notSourceReason)
+			return status.NotApplicable
+		}
+	}
 	datasets, err := zfs.ListFilesystems(
 		zfs.ListWithNames(dataset),
 		zfs.ListWithOrderBy("creation"),
@@ -137,9 +146,20 @@ func (t *T) status(ctx context.Context, dataset string) status.T {
 			if maxDelay == 0 {
 				continue
 			}
+			origin := t.MaxDelayOrigin()
+			if rep != nil {
+				// A replication with no delay to keep says nothing
+				// of how old the replicas may be.
+				repDelay := rep.GetMaxDelay(createdAt)
+				if repDelay == 0 {
+					continue
+				}
+				maxDelay += repDelay
+				origin = fmt.Sprintf("%s; plus the replication by %s, %s", origin, rep.RID(), rep.MaxDelayOrigin())
+			}
 			age := time.Since(createdAt)
 			if age > maxDelay {
-				t.StatusLog().Warn("%s last snap is too old, created at %s (>%s ago)", t.Name, createdAt, maxDelay)
+				t.StatusLog().Warn("%s last snap is too old, created at %s, more than %s ago (%s)", t.Name, createdAt, maxDelay, origin)
 				issueCount++
 			}
 		}
@@ -157,13 +177,32 @@ func (t *T) status(ctx context.Context, dataset string) status.T {
 	return status.Up
 }
 
+// Status reports the snapshots of each dataset.
+//
+// On the node taking them, the newest is judged by the delay of this
+// resource. On another node, the snapshots are the ones a sync resource
+// replicated, and the newest is judged by the delay of this resource plus the
+// one of that replication: both on time, it is not older. A node taking no
+// snapshot and receiving none has none to judge.
 func (t *T) Status(ctx context.Context) status.T {
+	isSource, reason := t.IsInstanceSufficientlyStarted(ctx)
 	var aggSt status.T
 	for _, dataset := range t.Dataset {
-		st := t.status(ctx, dataset)
+		st := t.status(ctx, dataset, isSource, reason)
 		aggSt.Add(st)
 	}
 	return aggSt
+}
+
+// replicator is the sync resource of the object replicating dataset to the
+// peers, nil when none does.
+func (t *T) replicator(dataset string) ressync.DatasetReplicator {
+	for _, r := range t.GetObjectDriver().ResourcesByDrivergroups([]driver.Group{driver.GroupSync}) {
+		if rep, ok := r.(ressync.DatasetReplicator); ok && rep.ReplicatesDataset(dataset) {
+			return rep
+		}
+	}
+	return nil
 }
 
 // Label implements Label from resource.Driver interface,
@@ -178,9 +217,11 @@ func (t *T) Label(_ context.Context) string {
 
 func (t *T) ScheduleOptions() resource.ScheduleOptions {
 	return resource.ScheduleOptions{
-		Action: "sync_update",
-		Option: "schedule",
-		Base:   "",
+		Action:                   "update",
+		Option:                   "schedule",
+		Base:                     "",
+		RequireReplicationSource: true,
+		Require:                  t.UpdateRequires,
 	}
 }
 

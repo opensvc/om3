@@ -190,6 +190,27 @@ func (t *actor) isEncapNodeMatchingResource(r resource.Driver) (bool, error) {
 	return false, nil
 }
 
+// overallContribution is what the status of a resource of group adds to the
+// overall status of the instance.
+//
+// A sync resource says whether the data is replicated, not whether the
+// instance runs: a sync up is nothing to report, and a sync down is a
+// warning. Added as they are, a sync up on an instance down, as the one
+// receiving the replicas is, would aggregate as warn. v2 did the same.
+func overallContribution(group driver.Group, s status.T) status.T {
+	if group != driver.GroupSync {
+		return s
+	}
+	switch s {
+	case status.Up:
+		return status.NotApplicable
+	case status.Down:
+		return status.Warn
+	default:
+		return s
+	}
+}
+
 func (t *actor) resourceStatusEval(ctx context.Context, data *instance.Status, monitoredOnly bool) error {
 	// The resources are configured once here, and not again before each of
 	// them is evaluated.
@@ -213,7 +234,7 @@ func (t *actor) resourceStatusEval(ctx context.Context, data *instance.Status, m
 		data.Resources = make(instance.ResourceStatuses)
 	}
 	doResourceStatus := func(group driver.Group, resourceStatus resource.Status) {
-		data.Overall.Add(resourceStatus.Status)
+		data.Overall.Add(overallContribution(group, resourceStatus.Status))
 		if !resourceStatus.IsOptional {
 			switch group {
 			case driver.GroupSync:

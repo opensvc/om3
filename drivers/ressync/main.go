@@ -5,16 +5,21 @@ import (
 	"embed"
 	"errors"
 	"fmt"
+	"io"
 	"net/http"
 	"os"
 	"path/filepath"
 	"slices"
+	"strings"
 	"time"
 
+	"github.com/opensvc/om3/v3/core/actioncontext"
 	"github.com/opensvc/om3/v3/core/client"
 	"github.com/opensvc/om3/v3/core/driver"
+	"github.com/opensvc/om3/v3/core/instance"
 	"github.com/opensvc/om3/v3/core/keywords"
 	"github.com/opensvc/om3/v3/core/naming"
+	"github.com/opensvc/om3/v3/core/nodeselector"
 	"github.com/opensvc/om3/v3/core/resource"
 	"github.com/opensvc/om3/v3/core/status"
 	"github.com/opensvc/om3/v3/core/statusbus"
@@ -61,24 +66,42 @@ var (
 	}
 )
 
-// GetMaxDelay return the configured max_delay if set.
-// If not set, return the duration from now to the end of the
-// next schedule period.
+// GetMaxDelay is how long after lastSync the copy is stale: max_delay when
+// set, or else derived from the schedule, 0 meaning neither is.
 func (t *T) GetMaxDelay(lastSync time.Time) time.Duration {
 	if t.MaxDelay != nil {
 		return *t.MaxDelay
 	}
-	sched := schedule.New(t.Schedule)
-	begin, duration, err := sched.Next(schedule.NextWithLast(lastSync))
-	if err != nil {
+	return scheduleMaxDelay(t.Schedule, lastSync)
+}
+
+// MaxDelayOrigin says where GetMaxDelay takes its value from, for the
+// messages to say why a copy is stale.
+func (t *T) MaxDelayOrigin() string {
+	if t.MaxDelay != nil {
+		return "max_delay"
+	}
+	return fmt.Sprintf("schedule %s, half a period after the sync due", t.Schedule)
+}
+
+// scheduleMaxDelay is how long after lastSync a copy synced on schedule s is
+// stale: once the first run due after lastSync is late by half a period of
+// the schedule. The run takes time, and the scheduler does not start it on
+// the dot, so being due is not being late.
+func scheduleMaxDelay(s string, lastSync time.Time) time.Duration {
+	if s == "" {
 		return 0
 	}
-	end := begin.Add(duration)
-	maxDelay := end.Sub(time.Now())
-	if maxDelay < 0 {
+	sched := schedule.New(s)
+	due, _, err := sched.Next(schedule.NextWithLast(lastSync), schedule.NextWithTime(lastSync))
+	if err != nil || due.IsZero() {
 		return 0
 	}
-	return maxDelay
+	after, _, err := sched.Next(schedule.NextWithLast(due), schedule.NextWithTime(due.Add(time.Second)))
+	if err != nil || !after.After(due) {
+		return due.Sub(lastSync)
+	}
+	return due.Sub(lastSync) + after.Sub(due)/2
 }
 
 func (t *T) StatusLastSync(nodenames []string) status.T {
@@ -102,7 +125,7 @@ func (t *T) StatusLastSync(nodenames []string) status.T {
 			}
 			age := time.Since(tm)
 			if age > maxDelay {
-				t.StatusLog().Warn("%s last sync is too old, at %s (>%s ago)", nodename, tm, maxDelay)
+				t.StatusLog().Warn("%s last sync is too old, at %s, more than %s ago (%s)", nodename, tm, maxDelay, t.MaxDelayOrigin())
 				state.Add(status.Warn)
 			} else {
 				state.Add(status.Up)
@@ -112,20 +135,30 @@ func (t *T) StatusLastSync(nodenames []string) status.T {
 	return state
 }
 
-func (t *T) WritePeerLastSync(ctx context.Context, peer string, peers []string) error {
+// WritePeerLastSync records that peer was synced now, and sends it the
+// records it reads: its own last sync, which its status tells the freshness of
+// its copy from, the last sync of this node, and the last run of the schedule,
+// which keeps its scheduler from syncing again too soon if it becomes the
+// source.
+//
+// The records of the other peers are not sent: a node reads them only once it
+// is the source, and its first sync writes them.
+func (t *T) WritePeerLastSync(ctx context.Context, peer string) error {
 	head := t.GetObjectDriver().VarDir()
 	lastSyncFile := t.lastSyncFile(peer)
 	lastSyncFileSrc := t.lastSyncFile(hostname.Hostname())
-	schedTimestampFile := filepath.Join(head, "scheduler", "last_sync_update_"+t.RID())
+	// The file the scheduler keeps the last run of the update schedule of
+	// the resource in, named as core/object names it for a resource
+	// schedule with no base.
+	schedTimestampFile := filepath.Join(head, "scheduler", "last_"+t.RID())
 	now := time.Now()
-	if err := file.Touch(lastSyncFile, now); err != nil {
-		return err
+	for _, filename := range []string{lastSyncFile, lastSyncFileSrc, schedTimestampFile} {
+		if err := file.Touch(filename, now); err != nil {
+			return err
+		}
 	}
-	if err := file.Touch(lastSyncFileSrc, now); err != nil {
-		return err
-	}
-	if err := file.Touch(schedTimestampFile, now); err != nil {
-		return err
+	if peer == hostname.Hostname() {
+		return nil
 	}
 
 	c, err := client.New()
@@ -133,19 +166,20 @@ func (t *T) WritePeerLastSync(ctx context.Context, peer string, peers []string) 
 		return err
 	}
 
-	send := func(filename, nodename string) error {
+	send := func(filename string) error {
 		file, err := os.Open(filename)
 		if err != nil {
 			return err
 		}
 		defer file.Close()
-		response, err := c.PostInstanceStateFileWithBody(ctx, nodename, t.Path.Namespace, t.Path.Kind, t.Path.Name, "application/octet-stream", file, func(ctx context.Context, req *http.Request) error {
+		response, err := c.PostInstanceStateFileWithBody(ctx, peer, t.Path.Namespace, t.Path.Kind, t.Path.Name, "application/octet-stream", file, func(ctx context.Context, req *http.Request) error {
 			req.Header.Add(api.HeaderRelativePath, filename[len(head):])
 			return nil
 		})
 		if err != nil {
 			return err
 		}
+		defer drainClose(response.Body)
 		if response.StatusCode != http.StatusNoContent {
 			return fmt.Errorf("unexpected response: %s", response.Status)
 		}
@@ -153,17 +187,21 @@ func (t *T) WritePeerLastSync(ctx context.Context, peer string, peers []string) 
 	}
 
 	var errs error
-
-	for _, nodename := range peers {
-		for _, filename := range []string{lastSyncFile, lastSyncFileSrc, schedTimestampFile} {
-			if err := send(filename, nodename); err != nil {
-				errs = errors.Join(errs, fmt.Errorf("failed to send state file %s to node %s: %w", filename, nodename, err))
-			}
-			t.Log().Infof("state file %s sent to node %s", filename, nodename)
+	for _, filename := range []string{lastSyncFile, lastSyncFileSrc, schedTimestampFile} {
+		if err := send(filename); err != nil {
+			errs = errors.Join(errs, fmt.Errorf("send state file %s to node %s: %w", filename, peer, err))
+			continue
 		}
+		t.Log().Debugf("state file %s sent to node %s", filename, peer)
 	}
-
 	return errs
+}
+
+// drainClose reads what is left of a response body before closing it, so the
+// connection is reused for the next request.
+func drainClose(rc io.ReadCloser) {
+	_, _ = io.Copy(io.Discard, rc)
+	_ = rc.Close()
 }
 
 func (t *T) WriteLastSync(nodename string) error {
@@ -192,6 +230,58 @@ func (t *T) readLastSync(nodename string) (time.Time, error) {
 
 func (t *T) lastSyncFile(nodename string) string {
 	return filepath.Join(t.VarDir(), "last_sync_"+nodename)
+}
+
+// expandNodeSelector is the nodes a node selector expression selects.
+var expandNodeSelector = func(s string) ([]string, error) {
+	return nodeselector.New(s).Expand()
+}
+
+// SelectPeernames is the peers a run asked to sync to target reaches, among
+// the peers of configured, the target of the configuration. An empty target
+// asks all of them. A target is "nodes", "drpnodes", "local", or a node
+// selector expression, so a peer that needs syncing on its own is named.
+func (t *T) SelectPeernames(target, configured, nodes, drpNodes []string) ([]string, error) {
+	peers := t.GetTargetPeernames(configured, nodes, drpNodes)
+	if len(target) == 0 {
+		return peers, nil
+	}
+	selected := make([]string, 0, len(peers))
+	add := func(nodename string) bool {
+		if !slices.Contains(peers, nodename) {
+			return false
+		}
+		if !slices.Contains(selected, nodename) {
+			selected = append(selected, nodename)
+		}
+		return true
+	}
+	for _, v := range target {
+		switch v {
+		case "nodes", "drpnodes", "local":
+			for _, nodename := range t.GetTargetPeernames([]string{v}, nodes, drpNodes) {
+				add(nodename)
+			}
+			continue
+		}
+		if add(v) {
+			continue
+		}
+		matched, err := expandNodeSelector(v)
+		if err != nil {
+			return nil, fmt.Errorf("target %s: %w", v, err)
+		}
+		found := false
+		for _, nodename := range matched {
+			if add(nodename) {
+				found = true
+			}
+		}
+		if !found {
+			return nil, fmt.Errorf("target %s selects no peer this resource syncs to (%s)", v, strings.Join(peers, " "))
+		}
+	}
+	return selected, nil
 }
 
 func (t *T) GetTargetPeernames(target, nodes, drpNodes []string) []string {
@@ -229,43 +319,45 @@ func (t *T) GetTargetNodenames(target, nodes, drpNodes []string) []string {
 	return nodenames
 }
 
-func (t *T) IsInstanceSufficientlyStarted(ctx context.Context) (v bool, rids []string) {
+// IsInstanceSufficientlyStarted reports whether this node holds the instance
+// the data is replicated from, and why not when it does not. See
+// instance.IsReplicationSource for the rules.
+//
+// A node where its reference resources are not up is a passive one, which
+// must not send: its copy would replace the one of the active node.
+func (t *T) IsInstanceSufficientlyStarted(ctx context.Context) (bool, string) {
 	sb := statusbus.FromContext(ctx)
 	o := t.GetObjectDriver()
 	l := o.ResourcesByDrivergroups([]driver.Group{
 		driver.GroupIP,
+		driver.GroupVolume,
 		driver.GroupFS,
 		driver.GroupShare,
 		driver.GroupDisk,
 		driver.GroupContainer,
 	})
-	v = true
+	refs := make([]instance.ReferenceStatus, 0, len(l))
 	for _, r := range l {
-		switch r.ID().DriverGroup() {
-		case driver.GroupIP:
-		case driver.GroupFS:
-		case driver.GroupShare:
-		case driver.GroupDisk:
-			switch r.DriverID().Name {
-			case "drbd":
-				continue
-			case "scsireserv":
-				continue
-			}
-		case driver.GroupContainer:
-		default:
+		if r.IsDisabled() || !instance.IsReferenceResource(r.ID().DriverGroup(), r.DriverID().Name) {
 			continue
 		}
-		st := sb.Get(r.RID())
-		switch st {
-		case status.Up:
-		case status.StandbyUp:
-		case status.NotApplicable:
-		default:
-			// required resource is not up
-			rids = append(rids, fmt.Sprintf("%s:%s", r.RID(), st))
-			v = false
-		}
+		refs = append(refs, instance.ReferenceStatus{RID: r.RID(), Status: sb.Get(r.RID()), Optional: r.IsOptional()})
 	}
-	return
+	ok, reason, forced := instance.IsReplicationSource(refs, actioncontext.IsForce(ctx))
+	if forced {
+		t.Log().Infof("sync allowed by --force: %s", reason)
+		return true, ""
+	}
+	return ok, reason
+}
+
+// DatasetReplicator is a sync resource replicating zfs datasets to its peers,
+// as sync.zfs does. It tells the snapshot resources of the object which of
+// their datasets reach the peers, and how fresh the replicas are expected to
+// be.
+type DatasetReplicator interface {
+	RID() string
+	ReplicatesDataset(dataset string) bool
+	GetMaxDelay(lastSync time.Time) time.Duration
+	MaxDelayOrigin() string
 }

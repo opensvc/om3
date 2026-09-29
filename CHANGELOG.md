@@ -735,9 +735,62 @@ which share the same executor.
 
 * **`sync full` and `sync update`:**
     Now both accept a `--target nodes|drpnodes|node_selector_expr` flag.
+    The peers selected are the ones the `target` keyword of the resource
+    reaches, and a node selector expression selecting none of them is an
+    error.
 
 * **Changed Keyword:**
   * `max_delay` (a.k.a. `sync_max_delay`) default unit is changed from minutes to seconds, so all duration keywords use the same default unit. Set a explicit unit before migration.
+
+* **A sync is sent from the node whose reference resources are up:**
+    As in v2, the resources an object holds its data on or is reached by,
+    every resource but the app, sync and task ones, must be up in aggregate on
+    the node sending, and an object with none of them is not synced. `--force`
+    sends from a node where they are warn. A standby node no longer sends its
+    copy over the one of the active node when the object has no such
+    resource.
+
+* **`max_delay` defaults to the schedule:**
+    Unset, a copy is stale once the first scheduled sync due after the last
+    one is half a schedule period late, instead of the fixed 27 hours of v2.
+
+* **The `update` and `full` actions are gated by `update_requires`:**
+    v2 had a `<action>_requires` keyword per sync action. The one of the
+    update, `sync_update_requires`, is renamed `update_requires`, and gates
+    the `full` action too: a full copy is allowed where an update is.
+    `sync_update_requires`, `sync_nodes_requires` and `sync_drp_requires` are
+    read as aliases, the actions they gated being `update` now. A scheduled
+    update is not scheduled while `update_requires` is not met.
+
+* **The `sync_update` and `sync_full` actions are named `update` and `full`:**
+    As `om <path> instance update` and `om <path> instance full` name them.
+    The logs, the scheduled job list and the `OPENSVC_ACTION` environment
+    variable of the triggers read `update` and `full`. Triggers testing
+    `OPENSVC_ACTION` for `sync_update` or `sync_full` need updating.
+
+### Driver: sync.zfs
+
+* **Each peer is synced from its own base snapshot:**
+    The source no longer rotates the `<rid>.sent` and `<rid>.tosend` snapshots
+    shared by all the peers. Each run takes a
+    `<rid>.<YYYYmmddTHHMMSS.ffffffZ>` snapshot, for example
+    `sync.1.20260928T154211.402318Z`, and sends each peer the
+    changes since the newest snapshot the peer holds in common with the
+    source, found by guid. A peer that missed runs catches up at the next
+    one, and a peer failing no longer stops the others. The snapshots of an
+    upgraded agent are used as the base of its peers, then destroyed once no
+    peer needs them. Scripts reading the old snapshot names need updating.
+
+* **New keywords `max_lag_age` and `max_lag_size`:**
+    The source keeps the base snapshot of a lagging peer. Once the peer lags
+    for longer than `max_lag_age` (default `24h`), or the snapshots kept for
+    it hold more than `max_lag_size` (a size, or a percentage of the free
+    space of the pool, default `20%`), the source destroys its base and stops
+    sending to it. The resource status then warns with the command that syncs
+    it again, `om <path> instance full --rid <rid> --target <peer>`. A peer
+    holding snapshots with none in common with the source is also left
+    alone rather than overwritten. A peer holding no snapshot of the
+    resource is still sent a full copy without asking.
 
 ### Driver: app
 

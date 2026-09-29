@@ -8,6 +8,7 @@ import (
 	"path/filepath"
 	"sort"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/google/uuid"
@@ -34,7 +35,6 @@ type (
 		Src          string
 		Dst          string
 		Target       []string
-		Schedule     string
 		Intermediary bool
 		Recursive    bool
 		Nodes        []string
@@ -43,11 +43,11 @@ type (
 		Timeout      *time.Duration
 		Topology     topology.T
 		User         string
+		MaxLagAge    *time.Duration
+		MaxLagSize   string
 
-		srcSnapSent   string
-		srcSnapTosend string
-		dstSnapSent   string
-		dstSnapTosend string
+		ops   zfsOps
+		conns sshClients
 	}
 
 	modeT uint
@@ -62,10 +62,6 @@ const (
 
 func New() resource.Driver {
 	return &T{}
-}
-
-func (t *T) Running() (resource.RunningInfoList, error) {
-	return t.RunningFromLock(lockName)
 }
 
 func (t *T) Full(ctx context.Context) error {
@@ -93,54 +89,71 @@ func (t *T) Update(ctx context.Context) error {
 }
 
 func (t *T) lockedSync(ctx context.Context, mode modeT, target []string) (err error) {
-	if len(target) == 0 {
-		target = t.Target
-	}
-
 	isCron := actioncontext.IsCron(ctx)
 
 	if t.isFlexAndNotPrimary() {
 		return fmt.Errorf("this flex instance is not primary. only %s can sync", t.Nodes[0])
 	}
 
-	if v, rids := t.IsInstanceSufficientlyStarted(ctx); !v {
-		return fmt.Errorf("the instance is not sufficiently started (%s). refuse to sync to protect the data of the started remote instance", strings.Join(rids, ","))
+	if v, reason := t.IsInstanceSufficientlyStarted(ctx); !v {
+		return fmt.Errorf("the instance is not sufficiently started (%s). refuse to sync to protect the data of the started remote instance", reason)
 	}
 
-	hasSnapSent, err := t.snapshotExists(t.srcSnapSent)
-
+	nodenames, err := t.SelectPeernames(target, t.Target, t.Nodes, t.DRPNodes)
 	if err != nil {
 		return err
 	}
-
-	hasSnapTosend, err := t.snapshotExists(t.srcSnapTosend)
-
+	if len(nodenames) == 0 {
+		t.Log().Infof("no peer to sync")
+		return nil
+	}
+	done, err := t.StartRun()
 	if err != nil {
 		return err
 	}
+	defer done()
 
-	if mode != modeFull && !hasSnapSent {
-		t.Log().Infof("%s does not exist: can't send delta, send full", t.srcSnapSent)
-		mode = modeFull
+	state, err := t.loadSyncState()
+	if err != nil {
+		return err
 	}
-	if mode == modeFull {
-		if err := t.zfs(t.srcSnapSent).Destroy(zfs.FilesystemDestroyWithRecurse(t.Recursive)); err != nil {
-			return err
-		}
-		if err := t.zfs(t.srcSnapTosend).Destroy(zfs.FilesystemDestroyWithRecurse(t.Recursive)); err != nil {
-			return err
-		}
-		if err := t.zfs(t.srcSnapTosend).Snapshot(zfs.FilesystemSnapshotWithRecursive(t.Recursive)); err != nil {
-			return err
-		}
-	} else if !hasSnapTosend {
-		if err := t.zfs(t.srcSnapTosend).Snapshot(zfs.FilesystemSnapshotWithRecursive(t.Recursive)); err != nil {
-			return err
-		}
+	now := time.Now()
+	snapName := t.newSnapName(now)
+	if err := t.ops.takeSnapshot(snapName); err != nil {
+		return err
+	}
+	l, err := t.ops.listSnapshots(hostname.Hostname(), t.Src)
+	if err != nil {
+		return err
+	}
+	local := t.ownSnapshots(l)
+	if len(local) == 0 || local[len(local)-1].Name != snapName {
+		return fmt.Errorf("%s is not the newest snapshot of %s", snapName, t.Src)
+	}
+	snap := local[len(local)-1]
+	var previous *snapshot
+	if len(local) > 1 {
+		previous = &local[len(local)-2]
+	}
+	states := state.validPeers(previous)
+	if len(state.Peers) > 0 && len(states) == 0 {
+		t.Log().Infof("another node was the source since the last run of this one: forget what it knew of the peers")
 	}
 
-	nodenames := t.GetTargetPeernames(target, t.Nodes, t.DRPNodes)
-	for _, nodename := range nodenames {
+	// The peers of the configuration, not only the ones of this run: the
+	// base of a peer not synced this run is kept too.
+	peers := t.GetTargetPeernames(t.Target, t.Nodes, t.DRPNodes)
+	t.seedLegacyStates(local, peers, states)
+
+	// The peers are synced at once, each on its own: one failing, or slow,
+	// does not hold the others back, and all the failures are reported.
+	defer t.closeSSHClients()
+	var (
+		wg       sync.WaitGroup
+		peerErrs = make([]error, len(nodenames))
+		results  = make([]*peerState, len(nodenames))
+	)
+	for i, nodename := range nodenames {
 		if err := t.isSendAllowedToPeerEnv(nodename); err != nil {
 			if isCron {
 				t.Log().Tracef("%s", err)
@@ -149,27 +162,41 @@ func (t *T) lockedSync(ctx context.Context, mode modeT, target []string) (err er
 			}
 			continue
 		}
-		if err := t.peerSync(ctx, mode, nodename); err != nil {
-			return err
-		}
-		if err := t.rotatePeerSnaps(nodename, t.dstSnapTosend, t.dstSnapSent); err != nil {
-			return err
-		}
-		if err := t.WritePeerLastSync(ctx, nodename, nodenames); err != nil {
-			return err
+		st := states[nodename]
+		results[i] = &st
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			if err := t.syncPeer(ctx, mode, nodename, local, snap, &st, now); err != nil {
+				peerErrs[i] = err
+				return
+			}
+			if err := t.WritePeerLastSync(ctx, nodename); err != nil {
+				peerErrs[i] = fmt.Errorf("%s: write last sync: %w", nodename, err)
+			}
+		}()
+	}
+	wg.Wait()
+	for i, nodename := range nodenames {
+		if results[i] != nil {
+			states[nodename] = *results[i]
 		}
 	}
-	if err := t.rotateSnaps(t.srcSnapTosend, t.srcSnapSent); err != nil {
-		return err
+	errs := errors.Join(peerErrs...)
+	if err := t.saveSyncState(syncState{LastSnapGUID: snap.GUID, Peers: states}); err != nil {
+		return errors.Join(errs, err)
 	}
-	return nil
+	if err := t.pruneLocal(local, peers, states); err != nil {
+		errs = errors.Join(errs, fmt.Errorf("destroy snapshots no peer needs: %w", err))
+	}
+	return errs
 }
 
-func (t *T) sendIncrementalLocal(ctx context.Context, nodename string) error {
+func (t *T) sendIncrementalLocal(ctx context.Context, nodename, base, snap string) error {
 	nfoWriter := t.Log().Writer(zerolog.InfoLevel)
 	errWriter := t.Log().Writer(zerolog.ErrorLevel)
 
-	args := t.sendIncrementalCmd()
+	args := t.sendIncrementalCmd(base, snap)
 	cmd := exec.Command(args[0], args[1:]...)
 	stdoutPipe, err := cmd.StdoutPipe()
 	if err != nil {
@@ -225,30 +252,22 @@ func (t *T) sendIncrementalLocal(ctx context.Context, nodename string) error {
 	return nil
 }
 
-func (t *T) sendIncremental(ctx context.Context, nodename string) error {
-	if err := t.zfs(t.dstSnapTosend).Destroy(zfs.FilesystemDestroyWithRecurse(t.Recursive), zfs.FilesystemDestroyWithNode(nodename)); err != nil {
-		return err
-	}
+func (t *T) sendIncremental(ctx context.Context, nodename, base, snap string) error {
 	if hostname.Hostname() == nodename {
-		return t.sendIncrementalLocal(ctx, nodename)
+		return t.sendIncrementalLocal(ctx, nodename, base, snap)
 	} else {
-		return t.sendIncrementalTo(ctx, nodename)
+		return t.sendIncrementalTo(ctx, nodename, base, snap)
 	}
 }
 
-func (t *T) sendIncrementalTo(ctx context.Context, nodename string) error {
+func (t *T) sendIncrementalTo(ctx context.Context, nodename, base, snap string) error {
 	nfoWriter := t.Log().Writer(zerolog.InfoLevel)
 	errWriter := t.Log().Writer(zerolog.ErrorLevel)
 
-	args := t.sendIncrementalCmd()
+	args := t.sendIncrementalCmd(base, snap)
 	cmd := exec.CommandContext(ctx, args[0], args[1:]...)
 
-	client, err := t.NewSSHClient(nodename)
-	if err != nil {
-		return err
-	}
-	defer client.Close()
-	session, err := client.NewSession()
+	session, err := t.newSession(nodename)
 	if err != nil {
 		return err
 	}
@@ -304,22 +323,22 @@ func (t *T) sendIncrementalTo(ctx context.Context, nodename string) error {
 	return nil
 }
 
-func (t *T) sendInitial(ctx context.Context, nodename string) error {
-	if err := t.zfs(t.Dst+"@%").Destroy(zfs.FilesystemDestroyWithRecurse(t.Recursive), zfs.FilesystemDestroyWithNode(nodename)); err != nil {
+func (t *T) sendInitial(ctx context.Context, nodename, snap string) error {
+	if err := t.destroySnapshot(nodename, t.Dst+"@%"); err != nil {
 		return err
 	}
 	if hostname.Hostname() == nodename {
-		return t.sendInitialLocal(ctx, nodename)
+		return t.sendInitialLocal(ctx, nodename, snap)
 	} else {
-		return t.sendInitialTo(ctx, nodename)
+		return t.sendInitialTo(ctx, nodename, snap)
 	}
 }
 
-func (t *T) sendInitialLocal(ctx context.Context, nodename string) error {
+func (t *T) sendInitialLocal(ctx context.Context, nodename, snap string) error {
 	nfoWriter := t.Log().Writer(zerolog.InfoLevel)
 	errWriter := t.Log().Writer(zerolog.ErrorLevel)
 
-	args := t.sendInitialCmd()
+	args := t.sendInitialCmd(snap)
 	cmd := exec.CommandContext(ctx, args[0], args[1:]...)
 
 	stdoutPipe, err := cmd.StdoutPipe()
@@ -385,19 +404,14 @@ func (t *T) sendInitialLocal(ctx context.Context, nodename string) error {
 	return nil
 }
 
-func (t *T) sendInitialTo(ctx context.Context, nodename string) error {
+func (t *T) sendInitialTo(ctx context.Context, nodename, snap string) error {
 	nfoWriter := t.Log().Writer(zerolog.InfoLevel)
 	errWriter := t.Log().Writer(zerolog.ErrorLevel)
 
-	args := t.sendInitialCmd()
+	args := t.sendInitialCmd(snap)
 	cmd := exec.CommandContext(ctx, args[0], args[1:]...)
 
-	client, err := t.NewSSHClient(nodename)
-	if err != nil {
-		return err
-	}
-	defer client.Close()
-	session, err := client.NewSession()
+	session, err := t.newSession(nodename)
 	if err != nil {
 		return err
 	}
@@ -461,18 +475,18 @@ func (t *T) sendInitialTo(ctx context.Context, nodename string) error {
 	return nil
 }
 
-func (t *T) sendInitialCmd() []string {
+func (t *T) sendInitialCmd(snap string) []string {
 	cmd := []string{"/usr/sbin/zfs", "send"}
 	if t.Recursive {
 		cmd = append(cmd, "-R")
 	} else {
 		cmd = append(cmd, "-p")
 	}
-	cmd = append(cmd, t.srcSnapTosend)
+	cmd = append(cmd, snap)
 	return cmd
 }
 
-func (t *T) sendIncrementalCmd() []string {
+func (t *T) sendIncrementalCmd(base, snap string) []string {
 	cmd := []string{"/usr/sbin/zfs", "send"}
 	if t.Recursive {
 		cmd = append(cmd, "-R")
@@ -482,7 +496,7 @@ func (t *T) sendIncrementalCmd() []string {
 	} else {
 		cmd = append(cmd, "-i")
 	}
-	cmd = append(cmd, t.srcSnapSent, t.srcSnapTosend)
+	cmd = append(cmd, base, snap)
 	return cmd
 }
 
@@ -501,8 +515,18 @@ func (t *T) receiveDst() (discardFirst bool, dst string) {
 	}
 }
 
+// receiveCmd is the zfs receive command of a peer, or of the local node when
+// inherit is set.
+//
+// A peer receives with -u: its copy is left unmounted, as the fs resource of
+// the object mounts it on the node the object starts on. Mounted by the
+// receive, the copy on a passive node would have that fs resource read up
+// there, and the node taken for the one the data is replicated from.
 func (t *T) receiveCmd(inherit []string, discardFirst bool, dst string) []string {
 	cmd := []string{"/usr/sbin/zfs", "receive"}
+	if inherit == nil {
+		cmd = append(cmd, "-u")
+	}
 	for _, prop := range inherit {
 		cmd = append(cmd, "-x", prop)
 	}
@@ -528,7 +552,44 @@ func (t *T) Status(ctx context.Context) status.T {
 		isSourceNode = true
 	}
 	nodenames := t.getTargetNodenames(isSourceNode)
-	return t.StatusLastSync(nodenames)
+	state := t.StatusLastSync(nodenames)
+	if isSourceNode {
+		state.Add(t.statusStranded(nodenames))
+	}
+	return state
+}
+
+// statusStranded warns about the peers the source can send no increment to
+// until an administrator asks a full copy for them.
+func (t *T) statusStranded(nodenames []string) status.T {
+	state, err := t.loadSyncState()
+	if err != nil {
+		t.StatusLog().Error("%s", err)
+		return status.Undef
+	}
+	if len(state.Peers) == 0 {
+		return status.Undef
+	}
+	l, err := t.ops.listSnapshots(hostname.Hostname(), t.Src)
+	if err != nil {
+		t.StatusLog().Error("%s", err)
+		return status.Undef
+	}
+	var newest *snapshot
+	if local := t.ownSnapshots(l); len(local) > 0 {
+		newest = &local[len(local)-1]
+	}
+	states := state.validPeers(newest)
+	result := status.Undef
+	for _, nodename := range nodenames {
+		st, ok := states[nodename]
+		if !ok || st.StrandedAt.IsZero() {
+			continue
+		}
+		t.StatusLog().Warn("%s: not synced since %s: %s: run '%s'", nodename, st.StrandedAt.Format(time.RFC3339), st.StrandedReason, t.fullCommand(nodename))
+		result.Add(status.Warn)
+	}
+	return result
 }
 
 func (t *T) running(ctx context.Context) bool {
@@ -562,9 +623,11 @@ func (t *T) getRunning(cmdArgs []string) (proc.L, error) {
 
 func (t *T) ScheduleOptions() resource.ScheduleOptions {
 	return resource.ScheduleOptions{
-		Action: "sync_update",
-		Option: "schedule",
-		Base:   "",
+		Action:                   "update",
+		Option:                   "schedule",
+		Base:                     "",
+		RequireReplicationSource: true,
+		Require:                  t.UpdateRequires,
 	}
 }
 
@@ -573,115 +636,14 @@ func (t *T) Provisioned(ctx context.Context) (provisioned.T, error) {
 }
 
 func (t *T) Configure() error {
-	rid := strings.Replace(t.RID(), "#", ".", 1)
-	t.srcSnapSent = t.Src + "@" + rid + ".sent"
-	t.srcSnapTosend = t.Src + "@" + rid + ".tosend"
-	t.dstSnapSent = t.Dst + "@" + rid + ".sent"
-	t.dstSnapTosend = t.Dst + "@" + rid + ".tosend"
+	if t.ops == nil {
+		t.ops = &execOps{t: t}
+	}
 	return nil
 }
 
 func (t *T) zfs(name string) *zfs.Filesystem {
 	return &zfs.Filesystem{Name: name, Log: t.Log(), SSHKeyFile: t.GetSSHKeyFile()}
-}
-
-func (t *T) rotatePeerSnaps(nodename, src, dst string) error {
-	if err := t.zfs(dst).Destroy(zfs.FilesystemDestroyWithRecurse(t.Recursive), zfs.FilesystemDestroyWithNode(nodename)); err != nil {
-		return err
-	}
-	if err := t.zfs(src).Rename(dst, zfs.FilesystemRenameWithRecurse(t.Recursive), zfs.FilesystemRenameWithNode(nodename)); err != nil {
-		return err
-	}
-	return nil
-}
-
-func (t *T) rotateSnaps(src, dst string) error {
-	if err := t.zfs(dst).Destroy(zfs.FilesystemDestroyWithRecurse(t.Recursive)); err != nil {
-		return err
-	}
-	if err := t.zfs(src).Rename(dst, zfs.FilesystemRenameWithRecurse(t.Recursive)); err != nil {
-		return err
-	}
-	return nil
-}
-
-func (t *T) snapshotExists(name string) (bool, error) {
-	return t.zfs(name).SnapshotExists()
-}
-
-func (t *T) dstSnapshotExistsLocal(name, nodename string) (bool, error) {
-	var ee *exec.ExitError
-	cmd := exec.Command("/usr/sbin/zfs", "list", "-t", "snapshot", name)
-
-	if b, err := cmd.CombinedOutput(); err != nil {
-		if errors.As(err, &ee) {
-			ec := ee.ExitCode()
-			if ec == 0 {
-				return true, nil
-			}
-			if strings.Contains(string(b), "does not exist") {
-				return false, nil
-			}
-			t.Log().
-				Attr("exitcode", ec).
-				Attr("host", nodename).
-				Tracef("rexec '%s' on host %s exited with code %d", cmd, nodename, ec)
-			return false, err
-		} else {
-			return false, err
-		}
-	}
-	return true, nil
-}
-
-func (t *T) dstSnapshotExists(name, nodename string) (bool, error) {
-	if hostname.Hostname() == nodename {
-		return t.dstSnapshotExistsLocal(name, nodename)
-	}
-	client, err := t.NewSSHClient(nodename)
-	if err != nil {
-		return false, err
-	}
-	defer client.Close()
-	session, err := client.NewSession()
-	if err != nil {
-		return false, err
-	}
-	defer session.Close()
-
-	cmd := fmt.Sprintf("zfs list -t snapshot %s", name)
-
-	if b, err := session.CombinedOutput(cmd); err != nil {
-		ee := err.(*ssh.ExitError)
-		ec := ee.Waitmsg.ExitStatus()
-		if ec == 0 {
-			return true, nil
-		}
-		if strings.Contains(string(b), "does not exist") {
-			return false, nil
-		}
-		t.Log().
-			Attr("exitcode", ec).
-			Attr("host", nodename).
-			Tracef("rexec '%s' on host %s exited with code %d", cmd, nodename, ec)
-		return false, err
-	}
-	return true, nil
-}
-
-func (t *T) peerSync(ctx context.Context, mode modeT, nodename string) error {
-	err := func() error {
-		if mode == modeFull {
-			return t.sendInitial(ctx, nodename)
-		} else if v, err := t.dstSnapshotExists(t.dstSnapSent, nodename); err != nil {
-			return err
-		} else if v {
-			return t.sendIncremental(ctx, nodename)
-		} else {
-			return t.sendInitial(ctx, nodename)
-		}
-	}()
-	return err
 }
 
 func (t *T) user() string {
@@ -751,4 +713,18 @@ func (t *T) getTargetNodenames(isSourceNode bool) []string {
 		// if the instance is passive, check last sync timestamp for the local node (received from the source node)
 		return []string{hostname.Hostname()}
 	}
+}
+
+// ReplicatesDataset implements ressync.DatasetReplicator: dataset is the one
+// sent, or received, or one of their descendants when recursive.
+func (t *T) ReplicatesDataset(dataset string) bool {
+	for _, root := range []string{t.Src, t.Dst} {
+		if dataset == root {
+			return true
+		}
+		if t.Recursive && strings.HasPrefix(dataset, root+"/") {
+			return true
+		}
+	}
+	return false
 }

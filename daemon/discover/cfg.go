@@ -163,12 +163,20 @@ func (t *Manager) onInstanceStatusUpdated(c *msgbus.InstanceStatusUpdated) {
 		}
 		return true
 	}
+	// watch watches the run directory of a resource, making it when it is
+	// missing: the first run of the resource would make it otherwise, and
+	// that run would go unseen, the directory being watched only from the
+	// status update following it.
 	watch := func(runDir string) {
 		if _, ok := prevWatched[runDir]; ok {
 			watched[runDir] = nil
-		} else if err := t.fsWatcher.Add(runDir); errors.Is(err, os.ErrNotExist) {
-			t.log.Tracef("fs: skip dir watch %s: does not exist yet", runDir)
-		} else if err != nil {
+			return
+		}
+		if err := os.MkdirAll(runDir, 0755); err != nil {
+			t.log.Warnf("fs: failed to make the run dir %s: %s", runDir, err)
+			return
+		}
+		if err := t.fsWatcher.Add(runDir); err != nil {
 			t.log.Warnf("fs: failed to add dir watch %s: %s", runDir, err)
 		} else {
 			t.log.Infof("fs: add dir watch %s", runDir)

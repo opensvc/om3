@@ -1,0 +1,7 @@
+A whitespace-separated list of conditions to meet to accept an 'update' or a
+'full' action of a sync resource. A scheduled 'update' is not scheduled while
+they are not met.
+
+A condition is expressed as `<rid>(<state>,...)`.
+
+If states are omitted, `up,stdby up` is used as the default expected states.

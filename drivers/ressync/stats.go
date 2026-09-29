@@ -24,7 +24,7 @@ func (t *T) CopyWithStats(ctx context.Context, dst io.Writer, src io.Reader, sta
 			Attr("duration", stats.Duration()).
 			Attr("sent_b", stats.SentBytes).
 			Attr("received_b", stats.ReceivedBytes).
-			Infof("sync stat: copied %dB in %s (%.2fB/s)", stats.SentBytes, stats.Duration(), stats.SpeedBPS())
+			Infof("sync stat: %s: copied %dB in %s (%.2fB/s)", stats.Endpoint, stats.SentBytes, stats.Duration(), stats.SpeedBPS())
 	}()
 
 	n, err := io.Copy(dst, src)

@@ -165,7 +165,7 @@ type (
 		StopRequires            string
 		ProvisionRequires       string
 		UnprovisionRequires     string
-		SyncRequires            string
+		UpdateRequires          string
 		RunRequires             string
 		EnableProvision         bool
 		EnableUnprovision       bool
@@ -286,6 +286,11 @@ type (
 		RequireConfirmation bool
 		RunDir              string
 		Require             string
+
+		// RequireReplicationSource schedules the action on the node the
+		// data of the object is replicated from only, the one
+		// instance.Status.ReplicationSource says is.
+		RequireReplicationSource bool
 	}
 )
 
@@ -715,8 +720,8 @@ func (t *T) Requires(action string) *resourcereqs.T {
 		reqs = t.UnprovisionRequires
 	case "run":
 		reqs = t.RunRequires
-	case "sync":
-		reqs = t.SyncRequires
+	case "update", "full":
+		reqs = t.UpdateRequires
 	}
 	return resourcereqs.New(reqs)
 }
@@ -1033,6 +1038,9 @@ func Full(ctx context.Context, r Driver) error {
 		return ErrDisabled
 	}
 	Setenv(r)
+	if err := checkRequires(ctx, r); err != nil {
+		return fmt.Errorf("sync requires: %w", err)
+	}
 	if err := s.Full(ctx); err != nil {
 		return err
 	}
@@ -1051,6 +1059,9 @@ func Update(ctx context.Context, r Driver) error {
 		return ErrDisabled
 	}
 	Setenv(r)
+	if err := checkRequires(ctx, r); err != nil {
+		return fmt.Errorf("sync requires: %w", err)
+	}
 	if err := s.Update(ctx); err != nil {
 		return err
 	}

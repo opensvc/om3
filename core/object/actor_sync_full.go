@@ -13,7 +13,7 @@ func (t *actor) SyncFull(ctx context.Context) error {
 	if err := t.validateAction(); err != nil {
 		return err
 	}
-	t.setenv("sync_full", false)
+	t.setenv("full", false)
 	unlock, err := t.lockAction(ctx)
 	if err != nil {
 		return err

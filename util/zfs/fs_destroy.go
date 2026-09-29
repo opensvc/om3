@@ -28,14 +28,12 @@ func FilesystemDestroyWithNode(s string) funcopt.O {
 	})
 }
 
-// FilesystemDestroyWithRemoveSnapshots forces an unmount of any file systems using the
-// unmount -f command.  This option has no effect on non-file systems or
-// unmounted file systems.
-// TODO: fix above doc ?
+// FilesystemDestroyWithRemoveSnapshots, destroying a snapshot, destroys the
+// snapshots of the same name in the descendant datasets too (zfs destroy -r).
 func FilesystemDestroyWithRemoveSnapshots(v bool) funcopt.O {
 	return funcopt.F(func(i interface{}) error {
 		t := i.(*fsDestroyOpts)
-		t.RemoveSnapshots = true
+		t.RemoveSnapshots = v
 		return nil
 	})
 }
