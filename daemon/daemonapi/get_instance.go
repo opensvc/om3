@@ -60,15 +60,18 @@ func (a *DaemonAPI) GetInstances(ctx echo.Context, params api.GetInstancesParams
 
 func (a *DaemonAPI) GetInstance(ctx echo.Context, nodename string, namespace string, kind naming.Kind, name string) error {
 	log := LogHandler(ctx, "GetInstance")
+	if v, err := assertGuest(ctx, namespace); !v {
+		return err
+	}
 	nodename = a.parseNodename(nodename)
 	path, err := naming.NewPath(namespace, kind, name)
 	if err != nil {
 		log.Errorf("GetInstance: %s", err)
-		return JSONProblemf(ctx, http.StatusInternalServerError, "New path", "%s", err)
+		return JSONProblemf(ctx, http.StatusBadRequest, "Invalid parameter", "invalid path: %s", err)
 	}
 	config := instance.ConfigData.GetByPathAndNode(path, nodename)
 	if config == nil {
-		return ctx.NoContent(http.StatusNotFound)
+		return JSONProblemf(ctx, http.StatusNotFound, "Not found", "instance not found: %s@%s", path, nodename)
 	}
 	monitor := instance.MonitorData.GetByPathAndNode(path, nodename)
 	status := instance.StatusData.GetByPathAndNode(path, nodename)

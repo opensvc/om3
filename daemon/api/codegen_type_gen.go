@@ -2371,9 +2371,10 @@ type ResourceConfig = instance.ResourceConfig
 
 // ResourceFile defines model for ResourceFile.
 type ResourceFile struct {
-	Csum  string    `json:"csum"`
-	Mtime time.Time `json:"mtime"`
-	Name  string    `json:"name"`
+	Csum   string     `json:"csum"`
+	Ingest bool       `json:"ingest"`
+	Mtime  *time.Time `json:"mtime"`
+	Name   string     `json:"name"`
 }
 
 // ResourceFiles defines model for ResourceFiles.
@@ -2444,13 +2445,13 @@ type ResourceMonitor = instance.ResourceMonitor
 
 // ResourceMonitorRestart defines model for ResourceMonitorRestart.
 type ResourceMonitorRestart struct {
-	LastAt    time.Time `json:"last_at"`
-	Remaining int       `json:"remaining"`
+	LastAt    *time.Time `json:"last_at"`
+	Remaining *int       `json:"remaining,omitempty"`
 }
 
 // ResourceProvisionStatus defines model for ResourceProvisionStatus.
 type ResourceProvisionStatus struct {
-	Mtime time.Time `json:"mtime"`
+	Mtime *time.Time `json:"mtime"`
 
 	// State service, instance or resource provisioned state
 	State Provisioned `json:"state"`
@@ -2464,10 +2465,10 @@ type Role string
 
 // RunningInfo defines model for RunningInfo.
 type RunningInfo struct {
-	At        time.Time `json:"at"`
-	Pid       int       `json:"pid"`
-	Rid       string    `json:"rid"`
-	SessionId string    `json:"session_id"`
+	At        *time.Time `json:"at"`
+	Pid       int        `json:"pid"`
+	Rid       string     `json:"rid"`
+	SessionId string     `json:"session_id"`
 }
 
 // SANPath defines model for SANPath.
@@ -2588,7 +2589,7 @@ type Status string
 type SubsetConfig = instance.SubsetConfig
 
 // SubsetsConfig defines model for SubsetsConfig.
-type SubsetsConfig = []SubsetConfig
+type SubsetsConfig map[string]SubsetConfig
 
 // Topology object topology
 type Topology string
