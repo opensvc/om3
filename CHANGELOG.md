@@ -941,6 +941,12 @@ Where the password is the value of the `þassword` key in `system/sec/relay-v3`.
 
     On upgrade, instances frozen by an older version's stop or create stay frozen, and nothing lifts those freezes any more. Run `om <selector> print status` to find them, and `om <path> unfreeze` on the ones you did not freeze yourself.
 
+* A provision off the placement leader leaves the instance as it found it.
+
+    A provision without `--leader` and without `--disable-rollback` ends by stopping what it started, so the leader is the one to start the object. v2 rolled back the starts of the provision; earlier v3 stopped the whole selection, as a stop asked by the user would: the instance was flagged stopped on purpose, a resource provisioned with `--rid` was flagged stopped (`X`), and a resource provisioned with `--rid` on a running instance was stopped there.
+
+    The stop ending a provision is now a step of it, and flags nothing. It stops only the resources the provision found down, and nothing at all on an instance that was running before it, judged on the resources provisioned already, so a resource added to a running instance is provisioned and left started.
+
 * A node coming back from down adopts only a freeze of the cluster or of an object.
 
     In v2 and in earlier v3, a daemon joining the cluster froze the node when any peer node had been frozen while it was down, and froze an ha instance when any peer instance had. A node frozen alone for its maintenance froze its peers as they rebooted, and a freeze the daemon took on its own, at the end of a rejoin grace period, spread from node to node through their restarts. A daemon restart also published the node as frozen since its start until it had read its frozen flag, so the daemons restarting with it, as `om daemon restart --node='*'` does, froze on a freeze nobody asked for.

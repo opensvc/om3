@@ -1620,8 +1620,11 @@ func removeStopped(r Driver) error {
 }
 
 // createStoppedIfHasResourceSelector creates the flag file preventing resource restarts by the daemon
+//
+// A stop that is a step of another action, like the one ending a provision,
+// stops the resource without the user asking for it, and flags nothing.
 func createStoppedIfHasResourceSelector(ctx context.Context, r Driver) error {
-	if !actioncontext.HasResourceSelector(ctx) {
+	if !actioncontext.HasResourceSelector(ctx) || actioncontext.IsStep(ctx) {
 		return nil
 	}
 	perm := os.FileMode(0o644)

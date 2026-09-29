@@ -310,6 +310,13 @@ func Props(ctx context.Context) Properties {
 	return ctx.Value(propsKey).(Properties)
 }
 
+// IsStep tells whether the action of the context is a step of another
+// action, which flags nothing stopped on purpose.
+func IsStep(ctx context.Context) bool {
+	props, ok := ctx.Value(propsKey).(Properties)
+	return ok && props.StepOf != ""
+}
+
 func IsActionForSlave(ctx context.Context, nodename string) bool {
 	if AllSlaves(ctx) {
 		return true
