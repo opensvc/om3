@@ -22,6 +22,7 @@ const (
 	interruptSyncsKey
 	leaderKey
 	lockTimeoutKey
+	lockTimeoutSetKey
 	lockDisabledKey
 	masterKey
 	moveToKey
@@ -273,6 +274,20 @@ func Target(ctx context.Context) []string {
 func WithLockTimeout(ctx context.Context, d time.Duration) context.Context {
 	return context.WithValue(ctx, lockTimeoutKey, d)
 }
+
+// WithLockTimeoutSet says the lock timeout was given by the user, not
+// defaulted: an action that would wait longer by default keeps to it.
+func WithLockTimeoutSet(ctx context.Context, v bool) context.Context {
+	return context.WithValue(ctx, lockTimeoutSetKey, v)
+}
+
+func IsLockTimeoutSet(ctx context.Context) bool {
+	if i := ctx.Value(lockTimeoutSetKey); i != nil {
+		return i.(bool)
+	}
+	return false
+}
+
 func LockTimeout(ctx context.Context) time.Duration {
 	if i := ctx.Value(lockTimeoutKey); i != nil {
 		return i.(time.Duration)

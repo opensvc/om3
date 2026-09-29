@@ -44,6 +44,11 @@ type (
 	OptsLock struct {
 		Disable bool
 		Timeout time.Duration
+
+		// TimeoutSet says --waitlock was given, and Timeout is not its
+		// default: an action that would wait longer by default keeps to
+		// it.
+		TimeoutSet bool
 	}
 
 	// OptTo sets a barrier when iterating over a resource lister

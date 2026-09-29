@@ -778,7 +778,8 @@ which share the same executor.
     `--interrupt-syncs` on `stop`, `switch` and `instance stop`, or
     `interrupt_syncs` in the api, ends the syncs instead of waiting for them.
     A local `instance stop` finding a sync holding the object lock says so,
-    and waits for it `wait_syncs_timeout`, or the lock timeout if longer.
+    and waits for it `wait_syncs_timeout`, or the lock timeout if longer, or
+    the `--waitlock` given.
 
 * **A shutdown, as the one of a drained node, interrupts the syncs:**
     It does not wait for the syncs running on the instance, and does not leave

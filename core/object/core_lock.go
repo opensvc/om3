@@ -38,8 +38,9 @@ func (t *core) lockAction(ctx context.Context) (func(), error) {
 	syncHolder := t.syncHoldingLock(ctx, lock)
 	if syncHolder != nil {
 		// A stop waits for a sync as long as an orchestrated one
-		// does, not the time a lock is usually waited for.
-		if d := t.waitSyncsTimeout(); d > timeout {
+		// does, not the time a lock is usually waited for, unless the
+		// user said how long to wait.
+		if d := t.waitSyncsTimeout(); d > timeout && !actioncontext.IsLockTimeoutSet(ctx) {
 			timeout = d
 		}
 		t.log.Infof("wait for the %s of the syncs (pid %d, running for %s) to end, %s at most: --interrupt-syncs ends them instead",

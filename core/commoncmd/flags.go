@@ -68,7 +68,38 @@ func FlagsLogs(flags *pflag.FlagSet, p *OptsLogs) {
 
 func FlagsLock(flags *pflag.FlagSet, p *OptsLock) {
 	FlagNoLock(flags, &p.Disable)
-	FlagWaitLock(flags, &p.Timeout)
+	flagWaitLockOpts(flags, p)
+}
+
+// waitLockValue is the --waitlock value, recording it was set.
+type waitLockValue struct {
+	p *OptsLock
+}
+
+func (v waitLockValue) String() string {
+	if v.p == nil {
+		return ""
+	}
+	return v.p.Timeout.String()
+}
+
+func (v waitLockValue) Set(s string) error {
+	d, err := time.ParseDuration(s)
+	if err != nil {
+		return err
+	}
+	v.p.Timeout = d
+	v.p.TimeoutSet = true
+	return nil
+}
+
+func (v waitLockValue) Type() string {
+	return "duration"
+}
+
+func flagWaitLockOpts(flags *pflag.FlagSet, p *OptsLock) {
+	p.Timeout = 30 * time.Second
+	flags.Var(waitLockValue{p: p}, "waitlock", "lock acquire timeout")
 }
 
 func FlagsEncap(flags *pflag.FlagSet, p *OptsEncap) {
@@ -666,10 +697,6 @@ func FlagWait(flags *pflag.FlagSet, p *bool) {
 	flags.BoolVar(p, "wait", false, "wait for the object to reach the target state")
 }
 
-func FlagWaitLock(flags *pflag.FlagSet, p *time.Duration) {
-	flags.DurationVar(p, "waitlock", 30*time.Second, "lock acquire timeout")
-}
-
 func FlagWatch(flags *pflag.FlagSet, p *bool) {
 	flags.BoolVarP(p, "watch", "w", false, "watch the monitor changes")
 }
@@ -710,7 +737,8 @@ func HiddenFlagsEncap(flags *pflag.FlagSet, p *OptsEncap) {
 
 func HiddenFlagsLock(flags *pflag.FlagSet, p *OptsLock) {
 	HiddenFlagNoLock(flags, &p.Disable)
-	HiddenFlagWaitLock(flags, &p.Timeout)
+	flagWaitLockOpts(flags, p)
+	flags.MarkHidden("waitlock")
 }
 
 // HiddenFlagsResourceSelectorWithCompletion adds hidden resource selector flags to the given command
@@ -785,11 +813,6 @@ func HiddenFlagTo(flags *pflag.FlagSet, p *string) {
 func HiddenFlagTag(flags *pflag.FlagSet, p *string) {
 	FlagTag(flags, p)
 	flags.MarkHidden("tag")
-}
-
-func HiddenFlagWaitLock(flags *pflag.FlagSet, p *time.Duration) {
-	flags.DurationVar(p, "waitlock", 30*time.Second, "lock acquire timeout")
-	flags.MarkHidden("waitlock")
 }
 
 func HiddenFlagObjectSelector(flags *pflag.FlagSet, p *string) {
