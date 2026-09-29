@@ -75,6 +75,17 @@ func (a *DaemonAPI) GetInstance(ctx echo.Context, nodename string, namespace str
 	}
 	monitor := instance.MonitorData.GetByPathAndNode(path, nodename)
 	status := instance.StatusData.GetByPathAndNode(path, nodename)
-	item := newInstanceItemResponse(path, nodename, config, monitor, status)
+	item := api.InstanceItem{
+		Kind: "InstanceItem",
+		Meta: api.InstanceMeta{
+			Node:   nodename,
+			Object: path.String(),
+		},
+		Data: api.Instance{
+			Config:  config,
+			Monitor: monitor,
+			Status:  status,
+		},
+	}
 	return ctx.JSON(http.StatusOK, item)
 }

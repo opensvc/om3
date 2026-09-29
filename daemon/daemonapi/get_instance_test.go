@@ -67,7 +67,7 @@ func TestGetInstanceHTTPErrorContract(t *testing.T) {
 	})
 }
 
-func TestGetInstanceUsesNullForZeroDates(t *testing.T) {
+func TestGetInstancePreservesZeroDates(t *testing.T) {
 	path := naming.Path{Namespace: "lab", Kind: naming.KindSvc, Name: "app"}
 	known := time.Date(2026, time.September, 28, 18, 0, 0, 0, time.UTC)
 	instance.InitData()
@@ -143,23 +143,32 @@ func TestGetInstanceUsesNullForZeroDates(t *testing.T) {
 	require.NoError(t, json.Unmarshal(rec.Body.Bytes(), &response))
 
 	assert.Equal(t, "abc", response.Data.Config.Checksum)
-	assert.Nil(t, response.Data.Config.UpdatedAt)
 	assert.True(t, response.Data.Monitor.Preserved)
-	assert.Nil(t, response.Data.Monitor.GlobalExpectUpdatedAt)
-	assert.Nil(t, response.Data.Monitor.LocalExpectUpdatedAt)
-	assert.Nil(t, response.Data.Monitor.StateUpdatedAt)
-	assert.Nil(t, response.Data.Monitor.MonitorActionExecutedAt)
-	assert.Nil(t, response.Data.Monitor.UpdatedAt)
-	assert.Nil(t, response.Data.Monitor.Resources["app#worker"].Restart.LastAt)
-	assert.Nil(t, response.Data.Status.FrozenAt)
-	assert.Nil(t, response.Data.Status.LastStartedAt)
-	assert.Nil(t, response.Data.Status.StoppedAt)
+	require.Len(t, response.Data.Status.Resources["app#worker"].Files, 1)
+	require.Len(t, response.Data.Status.Running, 1)
+	for field, date := range map[string]*time.Time{
+		"config.updated_at":                  response.Data.Config.UpdatedAt,
+		"monitor.global_expect_updated_at":   response.Data.Monitor.GlobalExpectUpdatedAt,
+		"monitor.local_expect_updated_at":    response.Data.Monitor.LocalExpectUpdatedAt,
+		"monitor.state_updated_at":           response.Data.Monitor.StateUpdatedAt,
+		"monitor.monitor_action_executed_at": response.Data.Monitor.MonitorActionExecutedAt,
+		"monitor.updated_at":                 response.Data.Monitor.UpdatedAt,
+		"monitor.resources.restart.last_at":  response.Data.Monitor.Resources["app#worker"].Restart.LastAt,
+		"status.frozen_at":                   response.Data.Status.FrozenAt,
+		"status.last_started_at":             response.Data.Status.LastStartedAt,
+		"status.stopped_at":                  response.Data.Status.StoppedAt,
+		"status.encap.updated_at":            response.Data.Status.Encap["guest"].UpdatedAt,
+		"status.resources.provisioned.mtime": response.Data.Status.Resources["app#worker"].Provisioned.Mtime,
+		"status.resources.files.mtime":       response.Data.Status.Resources["app#worker"].Files[0].Mtime,
+		"status.running.at":                  response.Data.Status.Running[0].At,
+	} {
+		t.Run(field, func(t *testing.T) {
+			require.NotNil(t, date)
+			assert.True(t, date.IsZero())
+		})
+	}
 	require.NotNil(t, response.Data.Status.UpdatedAt)
 	assert.Equal(t, known, *response.Data.Status.UpdatedAt)
-	assert.Nil(t, response.Data.Status.Encap["guest"].UpdatedAt)
-	assert.Nil(t, response.Data.Status.Resources["app#worker"].Provisioned.Mtime)
-	assert.Nil(t, response.Data.Status.Resources["app#worker"].Files[0].Mtime)
-	assert.Nil(t, response.Data.Status.Running[0].At)
 	assert.Contains(t, rec.Body.String(), `"large":9007199254740993`)
 	assert.NotContains(t, rec.Body.String(), `"checksum"`)
 	assert.NotContains(t, rec.Body.String(), `"is_preserved"`)
