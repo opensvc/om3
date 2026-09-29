@@ -155,6 +155,8 @@ func (t *Monitor) UnmarshalJSON(b []byte) error {
 		mon.GlobalExpectOptions, err = decodeGlobalExpectOptions[MonitorGlobalExpectOptionsResized](mon.GlobalExpectOptions)
 	case MonitorGlobalExpectCapped:
 		mon.GlobalExpectOptions, err = decodeGlobalExpectOptions[MonitorGlobalExpectOptionsCapped](mon.GlobalExpectOptions)
+	case MonitorGlobalExpectRestarted:
+		mon.GlobalExpectOptions, err = decodeGlobalExpectOptions[MonitorGlobalExpectOptionsRestarted](mon.GlobalExpectOptions)
 	}
 	if err != nil {
 		return err
@@ -311,7 +313,7 @@ func (mon Monitor) DeepCopy() *Monitor {
 			// TODO Don't ignore following error
 			_ = json.Unmarshal(b, &placedAt)
 			v.GlobalExpectOptions = placedAt
-		case MonitorGlobalExpectResized, MonitorGlobalExpectCapped:
+		case MonitorGlobalExpectResized, MonitorGlobalExpectCapped, MonitorGlobalExpectRestarted:
 			// Values holding no reference: a copy of the value is a deep
 			// copy, and keeps the type the orchestrations read them as.
 			v.GlobalExpectOptions = mon.GlobalExpectOptions
