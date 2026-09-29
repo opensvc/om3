@@ -35,7 +35,8 @@ type (
 		// for none, as a comma separated list of the fields to order on, each
 		// optionally prefixed with "-" to reverse it. Sort overrides it, and
 		// a Sort beginning with "+" extends it, the way Output and
-		// DefaultOutput already work.
+		// DefaultOutput already work. Without either, a listing is ordered
+		// on its columns, left to right.
 		DefaultSort string
 		Sort        string
 
@@ -101,7 +102,18 @@ func (t Renderer) Sprint() (string, error) {
 	// Before the format is chosen, so that the json and the table come in the
 	// same order. The columns are read first all the same, so that a sort can
 	// name one: a reader sees TYPE, not data.status.type.
-	if err := sortData(t.Data, t.Sort, tabColumns(t.Output, t.DefaultOutput)); err != nil {
+	if t.Sort == "" {
+		// Neither the caller nor the command chose an order: the columns
+		// of the listing give it, left to right, so it is the same at each
+		// run.
+		spec := t.DefaultOutput
+		if strings.HasPrefix(t.Output, "tab=") {
+			spec = t.Output
+		}
+		if err := sortDataByColumns(t.Data, spec); err != nil {
+			return "", err
+		}
+	} else if err := sortData(t.Data, t.Sort, tabColumns(t.Output, t.DefaultOutput)); err != nil {
 		return "", err
 	}
 	formatID := toID[format]
