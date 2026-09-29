@@ -13,6 +13,11 @@ type (
 		// changeAt is the earliest time the status evaluated changes
 		// with no event to tell, as a copy aging past its delay.
 		changeAt time.Time
+
+		// rpoBreachAt is the earliest time a copy the resource keeps on
+		// this node breaches the recovery point objective of its
+		// contract, past or not.
+		rpoBreachAt time.Time
 	}
 
 	// Level can be "error", "warn", "info"
@@ -69,6 +74,22 @@ func (l *StatusLog) Entries() []StatusLogEntry {
 func (l *StatusLog) Reset() {
 	l.entries = l.entries[:0]
 	l.changeAt = time.Time{}
+	l.rpoBreachAt = time.Time{}
+}
+
+// RPOBreachesAt records that a copy the resource keeps on this node, as the
+// one a sync received, breaches its recovery point objective at tm: were the
+// node to take over from then on, more data would be lost than its contract
+// allows. The earliest time recorded is kept, past or not.
+func (l *StatusLog) RPOBreachesAt(tm time.Time) {
+	if l.rpoBreachAt.IsZero() || tm.Before(l.rpoBreachAt) {
+		l.rpoBreachAt = tm
+	}
+}
+
+// RPOBreachAt is the earliest time recorded by RPOBreachesAt, zero if none.
+func (l *StatusLog) RPOBreachAt() time.Time {
+	return l.rpoBreachAt
 }
 
 // ChangesAt records that the status evaluated changes at tm with no event to

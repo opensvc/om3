@@ -19,3 +19,13 @@ func TestStatusLogChangesAt(t *testing.T) {
 	l.Reset()
 	require.True(t, l.ChangeAt().IsZero())
 }
+
+func TestStatusLogRPOBreachesAt(t *testing.T) {
+	l := NewStatusLog()
+	past := time.Now().Add(-time.Hour)
+	l.RPOBreachesAt(time.Now().Add(time.Hour))
+	l.RPOBreachesAt(past)
+	require.Equal(t, past, l.RPOBreachAt(), "a breach in the past is kept: it is breached")
+	l.Reset()
+	require.True(t, l.RPOBreachAt().IsZero())
+}

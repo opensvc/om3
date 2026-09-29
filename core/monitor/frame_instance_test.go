@@ -2,6 +2,7 @@ package monitor
 
 import (
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/assert"
 
@@ -46,4 +47,16 @@ func TestObjectInstanceRunning(t *testing.T) {
 			assert.Equal(t, test.expected, sObjectInstanceRunning(test.status))
 		})
 	}
+}
+
+func TestObjectInstanceRPOBreached(t *testing.T) {
+	InitColor()
+	at := time.Date(2026, 9, 29, 12, 0, 0, 0, time.UTC)
+	defer func() { now = time.Now }()
+
+	now = func() time.Time { return at.Add(-time.Minute) }
+	assert.Equal(t, "", sObjectInstanceRPOBreached(instance.Status{RPOBreachedAt: at}), "not yet")
+	now = func() time.Time { return at.Add(time.Minute) }
+	assert.Equal(t, iconRPOBreached, sObjectInstanceRPOBreached(instance.Status{RPOBreachedAt: at}), "breached since, whatever the status evaluation time")
+	assert.Equal(t, "", sObjectInstanceRPOBreached(instance.Status{}), "no copy kept here")
 }

@@ -39,6 +39,13 @@ type (
 		// the status changes with no event to tell, for the daemon to
 		// evaluate it again then. Zero if it does not.
 		OutdatedAt time.Time `json:"outdated_at,omitzero"`
+
+		// RPOBreachedAt is the earliest RPOBreachedAt of the resources:
+		// past it, this node taking over would lose more data than one
+		// of the resources allows. Each resource has its own contract,
+		// so the instance breaches when any of them does. Zero when no
+		// resource keeps a copy here.
+		RPOBreachedAt time.Time `json:"rpo_breached_at,omitzero"`
 	}
 
 	EncapStatus struct {

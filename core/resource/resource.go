@@ -62,6 +62,8 @@ type (
 		Merge(StatusLogger)
 		ChangesAt(time.Time)
 		ChangeAt() time.Time
+		RPOBreachesAt(time.Time)
+		RPOBreachAt() time.Time
 	}
 
 	// requirer is the part of a resource StatusCheckRequires needs.
@@ -237,6 +239,13 @@ type (
 		// OutdatedAt is when this status changes with no event to tell,
 		// as a copy aging past its delay. Zero if it does not.
 		OutdatedAt time.Time `json:"outdated_at,omitzero"`
+
+		// RPOBreachedAt is when the copy this resource keeps on the node
+		// breaches, or breached, its recovery point objective: past it,
+		// the node taking over would lose more data than the contract of
+		// the resource allows. Zero where the resource keeps no copy, as
+		// on the node the data is replicated from.
+		RPOBreachedAt time.Time `json:"rpo_breached_at,omitzero"`
 
 		// Info is a list of key-value pairs providing interesting information to
 		// collect site-wide about this resource.
@@ -1370,6 +1379,8 @@ func GetStatus(ctx context.Context, r Driver) Status {
 		Info:       getStatusInfo(ctx, r),
 		Files:      getFiles(ctx, r),
 		Datastores: getDatastores(ctx, r),
+
+		RPOBreachedAt: r.StatusLog().RPOBreachAt(),
 
 		IsStopped:   r.IsStopped(),
 		IsMonitored: r.IsMonitored(),

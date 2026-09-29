@@ -35,6 +35,7 @@ func (f Frame) StrObjectInstance(path string, node string, scope []string) strin
 		s += sObjectInstanceAvail(avail, instanceStatus, instanceMonitor)
 		s += sObjectInstanceOverall(instanceStatus)
 		s += sObjectInstanceRunning(instanceStatus)
+		s += sObjectInstanceRPOBreached(instanceStatus)
 		s += sObjectInstanceDRP(instanceConfig)
 		s += sObjectInstanceHALeader(instanceMonitor)
 		s += sObjectInstanceFrozen(instanceStatus)
@@ -96,6 +97,18 @@ func sObjectInstanceRunning(instance instance.Status) string {
 		if len(encap.Running) > 0 {
 			return iconRunning
 		}
+	}
+	return ""
+}
+
+// sObjectInstanceRPOBreached marks the instances whose copy of the data is
+// older than a resource allows: this node taking over now would lose more
+// data than the contract of that resource, its max delay. The time comes from
+// the node, and is compared to now here, so the mark is right whenever the
+// status was last evaluated.
+func sObjectInstanceRPOBreached(instance instance.Status) string {
+	if tm := instance.RPOBreachedAt; !tm.IsZero() && now().After(tm) {
+		return iconRPOBreached
 	}
 	return ""
 }

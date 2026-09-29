@@ -3,6 +3,7 @@ package instance
 import (
 	"slices"
 	"strings"
+	"time"
 
 	"github.com/opensvc/om3/v3/core/colorstatus"
 	"github.com/opensvc/om3/v3/core/naming"
@@ -147,6 +148,12 @@ func (t States) descString() string {
 		// own. Without this an object stays down with nothing saying why.
 		if !t.Status.StoppedAt.IsZero() {
 			l = append(l, rawconfig.Colorize.Frozen("stopped"))
+		}
+
+		// Data older than a resource allows: taking over now would lose
+		// more than its contract, its max delay.
+		if tm := t.Status.RPOBreachedAt; !tm.IsZero() && time.Now().After(tm) {
+			l = append(l, rawconfig.Colorize.Error("rpo-breached"))
 		}
 
 		// Node frozen

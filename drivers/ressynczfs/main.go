@@ -552,7 +552,7 @@ func (t *T) Status(ctx context.Context) status.T {
 		isSourceNode = true
 	}
 	nodenames := t.getTargetNodenames(isSourceNode)
-	state := t.StatusLastSync(nodenames)
+	state := t.StatusLastSync(nodenames, !isSourceNode)
 	if isSourceNode {
 		state.Add(t.statusStranded(nodenames))
 	}

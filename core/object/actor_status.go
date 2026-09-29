@@ -237,6 +237,9 @@ func (t *actor) resourceStatusEval(ctx context.Context, data *instance.Status, m
 		if tm := resourceStatus.OutdatedAt; !tm.IsZero() && (data.OutdatedAt.IsZero() || tm.Before(data.OutdatedAt)) {
 			data.OutdatedAt = tm
 		}
+		if tm := resourceStatus.RPOBreachedAt; !tm.IsZero() && (data.RPOBreachedAt.IsZero() || tm.Before(data.RPOBreachedAt)) {
+			data.RPOBreachedAt = tm
+		}
 		data.Overall.Add(overallContribution(group, resourceStatus.Status))
 		if !resourceStatus.IsOptional {
 			switch group {
