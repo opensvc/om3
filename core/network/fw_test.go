@@ -84,11 +84,11 @@ table ip osvc {
 		masquerade
 	}
 	chain osvc-postrouting {
-		type nat hook postrouting priority srcnat; policy accept;
+		type nat hook postrouting priority 100; policy accept;
 		ip saddr 10.100.0.0/22 counter jump osvc-masq
 	}
 	chain osvc-forward {
-		type filter hook forward priority filter; policy accept;
+		type filter hook forward priority 0; policy accept;
 		iifname "obr_backend3" counter accept
 		oifname "obr_backend3" counter accept
 	}
@@ -101,11 +101,11 @@ table ip6 osvc {
 		masquerade
 	}
 	chain osvc-postrouting {
-		type nat hook postrouting priority srcnat; policy accept;
+		type nat hook postrouting priority 100; policy accept;
 		ip6 saddr fdfe::/112 counter jump osvc-masq
 	}
 	chain osvc-forward {
-		type filter hook forward priority filter; policy accept;
+		type filter hook forward priority 0; policy accept;
 		iifname "obr_backend1" counter accept
 		oifname "obr_backend1" counter accept
 	}
@@ -194,4 +194,15 @@ func TestFWRulesetSkipsADeviceNamedPastTheKernelLimit(t *testing.T) {
 	cmd.Stdin = strings.NewReader(got)
 	b, err := cmd.CombinedOutput()
 	require.NoErrorf(t, err, "nft refused the ruleset: %s", b)
+}
+
+// A failed apply says what nft refused: the line of its output that says an
+// error, else its first line.
+func TestNFTError(t *testing.T) {
+	assert.Equal(t, `internal:0:0-0: Error: Could not open file "-": No such file or directory`,
+		nftError([]byte("internal:0:0-0: Error: Could not open file \"-\": No such file or directory\n\n\n")))
+	assert.Equal(t, "/dev/stdin:11:52-57: Error: syntax error, unexpected string, expecting - or number",
+		nftError([]byte("/dev/stdin:11:52-57: Error: syntax error, unexpected string, expecting - or number\n\t\ttype nat hook postrouting priority srcnat; policy accept;\n\t\t                                                   ^^^^^^\n")))
+	assert.Equal(t, "something went wrong", nftError([]byte("\nsomething went wrong\nmore\n")))
+	assert.Equal(t, "", nftError(nil))
 }

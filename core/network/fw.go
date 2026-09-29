@@ -49,6 +49,18 @@ const (
 	fwChainForward     = "osvc-forward"
 )
 
+// The priorities of the base chains, written as the numbers the "srcnat" and
+// "filter" names stand for in the ip and ip6 families. The names are an alias
+// the nft command resolves while parsing, and the kernel stores the number,
+// which a recent nft lists back by its name: a chain loaded either way is the
+// same chain. nftables 0.8, the version el7 ships, knows no name, and refused
+// the whole ruleset. The values differ in the bridge family, where "srcnat"
+// is 300 and "filter" -200: they are not to be reused for a bridge table.
+const (
+	fwPrioritySrcNAT = 100
+	fwPriorityFilter = 0
+)
+
 var (
 	// fwFamilies are the address families om adds its rules for.
 	fwFamilies = []nftables.TableFamily{
@@ -308,14 +320,14 @@ func fwTable(family nftables.TableFamily, networks []fwNetwork) (string, error) 
 	sb.WriteString("\t\tmasquerade\n\t}\n")
 
 	fmt.Fprintf(&sb, "\tchain %s {\n", fwChainPostrouting)
-	sb.WriteString("\t\ttype nat hook postrouting priority srcnat; policy accept;\n")
+	fmt.Fprintf(&sb, "\t\ttype nat hook postrouting priority %d; policy accept;\n", fwPrioritySrcNAT)
 	for _, rule := range jumps {
 		sb.WriteString(rule)
 	}
 	sb.WriteString("\t}\n")
 
 	fmt.Fprintf(&sb, "\tchain %s {\n", fwChainForward)
-	sb.WriteString("\t\ttype filter hook forward priority filter; policy accept;\n")
+	fmt.Fprintf(&sb, "\t\ttype filter hook forward priority %d; policy accept;\n", fwPriorityFilter)
 	for _, dev := range devs {
 		fmt.Fprintf(&sb, "\t\tiifname \"%s\" counter accept\n", dev)
 		fmt.Fprintf(&sb, "\t\toifname \"%s\" counter accept\n", dev)
@@ -349,23 +361,53 @@ func (t *nftHandle) legacyChains() ([]legacyChain, error) {
 
 // apply hands the document to nft, which reads a ruleset from stdin and
 // applies it as one transaction.
+//
+// The ruleset is read from /dev/stdin rather than from "-", which nftables
+// 0.8, the version el7 ships, takes for a file name. The failure carries the
+// first error nft printed, which says what it refused.
 func (t *nftHandle) apply(ruleset string) error {
 	if ruleset == "" {
 		return nil
 	}
 	cmd := command.New(
 		command.WithName("nft"),
-		command.WithVarArgs("-f", "-"),
+		command.WithVarArgs("-f", "/dev/stdin"),
 		command.WithLogger(t.log),
 		command.WithCommandLogLevel(zerolog.InfoLevel),
 		command.WithStdoutLogLevel(zerolog.InfoLevel),
 		command.WithStderrLogLevel(zerolog.ErrorLevel),
+		command.WithBufferedStderr(),
 	)
 	cmd.Cmd().Stdin = strings.NewReader(ruleset)
 	if t.log != nil {
 		t.log.Attr("ruleset", ruleset).Infof("apply the nft ruleset of the om networks")
 	}
-	return cmd.Run()
+	if err := cmd.Run(); err != nil {
+		if msg := nftError(cmd.Stderr()); msg != "" {
+			return fmt.Errorf("%w: %s", err, msg)
+		}
+		return err
+	}
+	return nil
+}
+
+// nftError returns the first line of what nft printed on stderr that says an
+// error, or else its first line that says something.
+func nftError(stderr []byte) string {
+	var first string
+	for _, line := range strings.Split(string(stderr), "\n") {
+		line = strings.TrimSpace(line)
+		if line == "" {
+			continue
+		}
+		if strings.Contains(line, "Error:") {
+			return line
+		}
+		if first == "" {
+			first = line
+		}
+	}
+	return first
 }
 
 func setupFW(n logger, nws []Networker) error {
