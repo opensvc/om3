@@ -1,0 +1,6 @@
+The rule specification, as passed to the `ip rule` command run in the
+network namespace of the container. The same specification is used to add,
+delete and list the rule.
+
+A specification selecting an IPv6 source or destination is applied to the
+IPv6 rule table.

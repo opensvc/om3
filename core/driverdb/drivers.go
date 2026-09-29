@@ -47,6 +47,7 @@ import (
 	_ "github.com/opensvc/om3/v3/drivers/resfszfs"
 	_ "github.com/opensvc/om3/v3/drivers/resiphost"
 	_ "github.com/opensvc/om3/v3/drivers/resiproute"
+	_ "github.com/opensvc/om3/v3/drivers/resiprule"
 	_ "github.com/opensvc/om3/v3/drivers/resipsgcp_dnsalias"
 	_ "github.com/opensvc/om3/v3/drivers/ressharenfs"
 	_ "github.com/opensvc/om3/v3/drivers/ressyncrsync"
