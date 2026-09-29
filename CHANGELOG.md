@@ -120,6 +120,11 @@ OpenSVC v3 is a major evolution, rebuilt in Go for performance, reliability, and
 * **Time format change:**
     OpenSVC now uses RFC3339 time format for all internal and exposed data, replacing the Unix timestamps.
 
+* **Sysreport:**
+    `om node sysreport` reports to the oc3 feeder, `POST /api/node/sysreport`, and no longer to the jsonrpc `send_sysreport` method of the old collector: an om3 node is fed to oc3.
+    `om node sysreport --force` sends a full report, which the collector replaces what it holds of the node with, rather than a list of deletions computed from the jsonrpc `sysreport_lstree` of the old collector.
+    A report is a full one until the collector accepts one: the first report of a node after the upgrade sends every tracked file once, and a report the collector refused has the next one full, since the local cache records the files as reported when it collects them.
+
 * **SAN switches:**
     A switch is inventoried by `om node push switch [<name>]`, and on the `schedule` of its `switch#<name>` section, with the `pushswitch` scheduler action: the v2 `om node pushbrocade` command and the `[brocade] schedule` keyword are gone.
     The `telnet` method of a brocade switch is refused, as telnet sends the password in clear: set `method = ssh`, with a `key` or a `password` secret.
