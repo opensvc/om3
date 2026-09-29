@@ -34,6 +34,11 @@ type (
 		StoppedAt time.Time `json:"stopped_at,omitempty"`
 
 		UpdatedAt time.Time `json:"updated_at"`
+
+		// OutdatedAt is the earliest OutdatedAt of the resources: when
+		// the status changes with no event to tell, for the daemon to
+		// evaluate it again then. Zero if it does not.
+		OutdatedAt time.Time `json:"outdated_at,omitzero"`
 	}
 
 	EncapStatus struct {

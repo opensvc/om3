@@ -97,6 +97,12 @@ type (
 		localhost   string
 		change      bool
 
+		// outdatedTimer fires when the local instance status goes
+		// outdated with no event to tell, and outdatedRefreshedAt is
+		// when it last asked a refresh.
+		outdatedTimer       *time.Timer
+		outdatedRefreshedAt time.Time
+
 		// statusQueued is true when a background status is running
 		// TODO: need review
 		statusQueued atomic.Bool
@@ -345,6 +351,7 @@ func (t *Manager) startSubscriptions(qs pubsub.QueueSizer) {
 	sub.AddFilter(&msgbus.FSMounted{}, t.labelLocalhost)
 	sub.AddFilter(&msgbus.FSUmounted{}, t.labelLocalhost)
 	sub.AddFilter(&msgbus.FSRemounted{}, t.labelLocalhost)
+	sub.AddFilter(&msgbus.InstanceStateFileUpdated{}, t.labelPath, t.labelLocalhost)
 	sub.Start()
 	t.sub = sub
 }
@@ -409,6 +416,8 @@ func (t *Manager) worker(initialNodes []string) {
 	if !t.delayTimer.Stop() {
 		<-t.delayTimer.C
 	}
+	t.outdatedTimer = time.NewTimer(time.Hour)
+	t.outdatedTimer.Stop()
 
 	t.mergePeerFrozen()
 	t.initRelationAvailStatus()
@@ -497,6 +506,8 @@ func (t *Manager) worker(initialNodes []string) {
 				t.onFSUmounted(c)
 			case *msgbus.FSRemounted:
 				t.onFSRemounted(c)
+			case *msgbus.InstanceStateFileUpdated:
+				t.onInstanceStateFileUpdated(c)
 			}
 		case i := <-t.cmdC:
 			if t.ctx.Err() != nil {
@@ -513,6 +524,8 @@ func (t *Manager) worker(initialNodes []string) {
 			}
 		case <-t.delayTimer.C:
 			t.onDelayTimer()
+		case <-t.outdatedTimer.C:
+			t.onOutdatedTimer()
 		}
 	}
 }

@@ -262,6 +262,8 @@ var (
 
 		"RunFileUpdated": func() any { return &RunFileUpdated{} },
 
+		"InstanceStateFileUpdated": func() any { return &InstanceStateFileUpdated{} },
+
 		"SetInstanceMonitor": func() any { return &SetInstanceMonitor{} },
 
 		"SetInstanceMonitorRefused": func() any { return &SetInstanceMonitorRefused{} },
@@ -1047,6 +1049,17 @@ type (
 		At         time.Time   `json:"at" yaml:"at"`
 	}
 
+	// InstanceStateFileUpdated is emitted by the api when a peer wrote a
+	// state file of a local instance, as the source of a sync writes the
+	// last sync record of a peer it synced. The status of the instance
+	// read the file, and is outdated.
+	InstanceStateFileUpdated struct {
+		pubsub.Msg `yaml:",inline"`
+		Path       naming.Path `json:"path" yaml:"path"`
+		Node       string      `json:"node" yaml:"node"`
+		File       string      `json:"file" yaml:"file"`
+	}
+
 	// RunFileRemoved is emitted by the fs_watcher when it detects a
 	// resource run file is deleted in <var>.
 	RunFileRemoved struct {
@@ -1673,6 +1686,10 @@ func (e *RemoteFileConfig) Kind() string {
 
 func (e *RunFileRemoved) Kind() string {
 	return "RunFileRemoved"
+}
+
+func (e *InstanceStateFileUpdated) Kind() string {
+	return "InstanceStateFileUpdated"
 }
 
 func (e *RunFileUpdated) Kind() string {

@@ -15,6 +15,8 @@ import (
 	"github.com/opensvc/om3/v3/core/object"
 	"github.com/opensvc/om3/v3/core/resource"
 	"github.com/opensvc/om3/v3/daemon/api"
+	"github.com/opensvc/om3/v3/daemon/msgbus"
+	"github.com/opensvc/om3/v3/util/pubsub"
 )
 
 func (a *DaemonAPI) PostInstanceStateFile(ctx echo.Context, nodename, namespace string, kind naming.Kind, name string) error {
@@ -72,5 +74,10 @@ func (a *DaemonAPI) postLocalObjectStateFile(ctx echo.Context, namespace string,
 	if _, err := io.Copy(file, ctx.Request().Body); err != nil {
 		return JSONProblemf(ctx, http.StatusInternalServerError, "Copy body to state file", "%s", err)
 	}
+	a.Bus.Pub(&msgbus.InstanceStateFileUpdated{Path: p, Node: a.localhost, File: relPath},
+		a.LabelLocalhost,
+		pubsub.Label{"namespace", p.Namespace},
+		pubsub.Label{"path", p.String()},
+	)
 	return ctx.NoContent(http.StatusNoContent)
 }

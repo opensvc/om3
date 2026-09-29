@@ -123,6 +123,8 @@ func (t *T) StatusLastSync(nodenames []string) status.T {
 				t.StatusLog().Info("no schedule and no max delay")
 				continue
 			}
+			// The copy goes stale then, with no event to tell.
+			t.StatusLog().ChangesAt(tm.Add(maxDelay))
 			age := time.Since(tm)
 			if age > maxDelay {
 				t.StatusLog().Warn("%s last sync is too old, at %s, more than %s ago (%s)", nodename, tm, maxDelay, t.MaxDelayOrigin())

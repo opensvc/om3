@@ -234,6 +234,9 @@ func (t *actor) resourceStatusEval(ctx context.Context, data *instance.Status, m
 		data.Resources = make(instance.ResourceStatuses)
 	}
 	doResourceStatus := func(group driver.Group, resourceStatus resource.Status) {
+		if tm := resourceStatus.OutdatedAt; !tm.IsZero() && (data.OutdatedAt.IsZero() || tm.Before(data.OutdatedAt)) {
+			data.OutdatedAt = tm
+		}
 		data.Overall.Add(overallContribution(group, resourceStatus.Status))
 		if !resourceStatus.IsOptional {
 			switch group {

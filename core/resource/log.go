@@ -2,12 +2,17 @@ package resource
 
 import (
 	"fmt"
+	"time"
 )
 
 type (
 	// StatusLog holds the information, warning and alerts of a Resource
 	StatusLog struct {
 		entries []StatusLogEntry
+
+		// changeAt is the earliest time the status evaluated changes
+		// with no event to tell, as a copy aging past its delay.
+		changeAt time.Time
 	}
 
 	// Level can be "error", "warn", "info"
@@ -63,6 +68,25 @@ func (l *StatusLog) Entries() []StatusLogEntry {
 
 func (l *StatusLog) Reset() {
 	l.entries = l.entries[:0]
+	l.changeAt = time.Time{}
+}
+
+// ChangesAt records that the status evaluated changes at tm with no event to
+// tell, for the daemon to evaluate it again then. The earliest of the times
+// recorded is kept, and a time already past is ignored: the status evaluated
+// has seen it.
+func (l *StatusLog) ChangesAt(tm time.Time) {
+	if !tm.After(time.Now()) {
+		return
+	}
+	if l.changeAt.IsZero() || tm.Before(l.changeAt) {
+		l.changeAt = tm
+	}
+}
+
+// ChangeAt is the earliest time recorded by ChangesAt, zero if none.
+func (l *StatusLog) ChangeAt() time.Time {
+	return l.changeAt
 }
 
 // Error append an error message to the log

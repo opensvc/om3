@@ -60,6 +60,8 @@ type (
 		Reset()
 		Entries() []StatusLogEntry
 		Merge(StatusLogger)
+		ChangesAt(time.Time)
+		ChangeAt() time.Time
 	}
 
 	// requirer is the part of a resource StatusCheckRequires needs.
@@ -231,6 +233,10 @@ type (
 
 		// Subset is the name of the subset this resource is assigned to.
 		Subset string `json:"subset,omitempty"`
+
+		// OutdatedAt is when this status changes with no event to tell,
+		// as a copy aging past its delay. Zero if it does not.
+		OutdatedAt time.Time `json:"outdated_at,omitzero"`
 
 		// Info is a list of key-value pairs providing interesting information to
 		// collect site-wide about this resource.
@@ -1360,6 +1366,7 @@ func GetStatus(ctx context.Context, r Driver) Status {
 		Subset:     r.RSubset(),
 		Tags:       r.TagSet(),
 		Log:        r.StatusLog().Entries(),
+		OutdatedAt: r.StatusLog().ChangeAt(),
 		Info:       getStatusInfo(ctx, r),
 		Files:      getFiles(ctx, r),
 		Datastores: getDatastores(ctx, r),

@@ -245,6 +245,12 @@ func (t *Manager) onRelationInstanceStatusUpdated(c *msgbus.InstanceStatusUpdate
 }
 
 func (t *Manager) onMyInstanceStatusUpdated(srcNode string, srcCmd *msgbus.InstanceStatusUpdated) {
+	if srcCmd.Node == t.localhost {
+		// Armed from the status kept, which may be newer than the one
+		// of the event: the first refresh stores its status before its
+		// event is read.
+		defer func() { t.armOutdatedTimer(t.instStatus[t.localhost].OutdatedAt) }()
+	}
 	instStatus, ok := t.instStatus[srcCmd.Node]
 	switch {
 	case !ok:
