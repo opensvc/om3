@@ -3235,6 +3235,7 @@ paths:
         - $ref: '#/components/parameters/inPathName'
         - $ref: '#/components/parameters/inQueryAllSlaves'
         - $ref: '#/components/parameters/inQueryForce'
+        - $ref: '#/components/parameters/inQueryInterruptSyncs'
         - $ref: '#/components/parameters/inQueryMaster'
         - $ref: '#/components/parameters/inQueryMoveTo'
         - $ref: '#/components/parameters/inQuerySessionID'
@@ -4975,6 +4976,7 @@ paths:
         - $ref: '#/components/parameters/inPathNamespace'
         - $ref: '#/components/parameters/inPathKind'
         - $ref: '#/components/parameters/inPathName'
+        - $ref: '#/components/parameters/inQueryInterruptSyncs'
       responses:
         200:
           description: OK
@@ -7223,6 +7225,13 @@ components:
         frozen_at:
           type: string
           format: date-time
+        frozen_scope:
+          type: string
+          description: |
+            The scope of the freeze of a frozen instance: "object" when a
+            freeze of the object froze it, "instance" when it was frozen
+            alone. A node that missed a freeze of the object adopts it when
+            it comes back.
         last_started_at:
           type: string
           format: date-time
@@ -7929,6 +7938,12 @@ components:
         frozen_at:
           type: string
           format: date-time
+        frozen_scope:
+          type: string
+          description: |
+            The scope of the freeze of a frozen node: "cluster" when a freeze
+            of the cluster froze it, "node" when it was frozen alone. A node
+            that missed a freeze of the cluster adopts it when it comes back.
         gen:
           additionalProperties:
             type: integer
@@ -8556,6 +8571,11 @@ components:
             type: string
         live:
           type: boolean
+        interrupt_syncs:
+          description: |
+            End the syncs running on the instance stopped before stopping
+            it, instead of waiting for them to end.
+          type: boolean
 
     PostRelayMessage:
       type: object
@@ -9092,6 +9112,13 @@ components:
         - tags
         - type
       properties:
+        depends_on_peers:
+          type: boolean
+          description: |
+            the status reads a state the actions of the peer instances
+            change, like a scsi reservation or the roles of a replicated
+            device: the daemon evaluates it again when a peer instance
+            status changes
         disable:
           type: boolean
           description: hints the resource ignores all state transition actions
@@ -9846,6 +9873,15 @@ components:
     inQueryForce:
       in: query
       name: force
+      schema:
+        type: boolean
+
+    inQueryInterruptSyncs:
+      in: query
+      name: interrupt_syncs
+      description: |
+        End the syncs running on the instance before stopping it, instead of
+        waiting for them to end.
       schema:
         type: boolean
 

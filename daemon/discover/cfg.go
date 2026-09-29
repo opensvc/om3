@@ -20,6 +20,7 @@ import (
 	"github.com/opensvc/om3/v3/core/rawconfig"
 	"github.com/opensvc/om3/v3/core/resourceid"
 	"github.com/opensvc/om3/v3/core/xconfig"
+	"github.com/opensvc/om3/v3/daemon/configannounce"
 	"github.com/opensvc/om3/v3/daemon/daemonauth"
 	"github.com/opensvc/om3/v3/daemon/daemonenv"
 	"github.com/opensvc/om3/v3/daemon/daemonsubsystem"
@@ -542,7 +543,12 @@ func (t *Manager) onInstanceConfigFor(c *msgbus.InstanceConfigFor) {
 		}
 	}
 
-	if _, ok := t.cfgMTime[pathS]; ok {
+	// The running icfg must not recover the local file when it ends, as the
+	// file is foreign: ours, out of its scope, or a peer's not for us, that
+	// is removed. A peer's configuration for us is fetched, and a local
+	// file removed meanwhile is recovered from it: a stale flag would keep
+	// a later removal from being recovered.
+	if _, ok := t.cfgMTime[pathS]; ok && (c.Node == t.localhost || !inList(t.localhost, c.Scope)) {
 		t.disableRecover[c.Path] = c.UpdatedAt
 	}
 
@@ -683,11 +689,8 @@ func (t *Manager) onRemoteConfigFetched(c *msgbus.RemoteFileConfig) {
 			// Said now rather than by the filesystem watcher, which
 			// debounces the events of a file for 200ms: the node that wrote
 			// the configuration waits for this one to report it installed.
-			// The watcher still speaks, and finds the file already read.
-			t.publisher.Pub(&msgbus.ConfigFileUpdated{Path: c.Path, File: confFile},
-				pubsub.Label{"namespace", c.Path.Namespace},
-				pubsub.Label{"path", c.Path.String()},
-			)
+			// The watcher does not say it again: see configannounce.
+			configannounce.Written(t.publisher, c.Path)
 		}
 		c.Err <- nil
 	}

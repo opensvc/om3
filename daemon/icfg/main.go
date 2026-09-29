@@ -96,6 +96,7 @@ var (
 	keyPool             = key.New("DEFAULT", "pool")
 	keyPlacement        = key.New("DEFAULT", "placement")
 	keyPreMonitorAction = key.New("DEFAULT", "pre_monitor_action")
+	keyWaitSyncsTimeout = key.New("DEFAULT", "wait_syncs_timeout")
 	keyPriority         = key.New("DEFAULT", "priority")
 	keySize             = key.New("DEFAULT", "size")
 	keyTopology         = key.New("DEFAULT", "topology")
@@ -392,6 +393,9 @@ func (t *Manager) configFileCheck() error {
 			Subsets:          t.getSubsets(cf),
 			Topology:         t.getTopology(cf),
 			Stonith:          cf.GetBool(keyStonith),
+		}
+		if d := cf.GetDuration(keyWaitSyncsTimeout); d != nil {
+			cfg.ActorConfig.WaitSyncsTimeout = *d
 		}
 		if cfg.Topology == topology.Flex {
 			instanceCount := len(scope)

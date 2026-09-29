@@ -104,7 +104,14 @@ func scheduleMaxDelay(s string, lastSync time.Time) time.Duration {
 	return due.Sub(lastSync) + after.Sub(due)/2
 }
 
-func (t *T) StatusLastSync(nodenames []string) status.T {
+// neverSyncedRPOBreach is the RPO breach time of a copy never received: no
+// time the node took over from would lose less than everything.
+var neverSyncedRPOBreach = time.Unix(0, 0)
+
+// StatusLastSync judges the freshness of the copies of nodenames. receiving
+// says this node is one of them, a node the data is replicated to, whose copy
+// has a recovery point objective: its max delay.
+func (t *T) StatusLastSync(nodenames []string, receiving bool) status.T {
 	state := status.NotApplicable
 
 	if len(nodenames) == 0 {
@@ -117,11 +124,19 @@ func (t *T) StatusLastSync(nodenames []string) status.T {
 			t.StatusLog().Error("%s last sync: %s", nodename, err)
 		} else if tm.IsZero() {
 			t.StatusLog().Warn("%s never synced", nodename)
+			if receiving {
+				t.StatusLog().RPOBreachesAt(neverSyncedRPOBreach)
+			}
 		} else {
 			maxDelay := t.GetMaxDelay(tm)
 			if maxDelay == 0 {
 				t.StatusLog().Info("no schedule and no max delay")
 				continue
+			}
+			// The copy goes stale then, with no event to tell.
+			t.StatusLog().ChangesAt(tm.Add(maxDelay))
+			if receiving {
+				t.StatusLog().RPOBreachesAt(tm.Add(maxDelay))
 			}
 			age := time.Since(tm)
 			if age > maxDelay {

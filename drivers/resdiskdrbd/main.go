@@ -1308,3 +1308,10 @@ func (t Path) Resync(ctx context.Context) error {
 	return t.drbd().Resync()
 }
 */
+
+// StatusDependsOnPeers says the status of a drbd resource reads the disk
+// states of its peers, which change when a peer instance takes its drbd
+// resource down or up, as a shutdown and a start of the standby resources do.
+func (t *T) StatusDependsOnPeers() bool {
+	return true
+}

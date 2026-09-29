@@ -37,6 +37,7 @@ import (
 	"github.com/prometheus/procfs"
 
 	"github.com/opensvc/om3/v3/core/cluster"
+	"github.com/opensvc/om3/v3/core/freeze"
 	"github.com/opensvc/om3/v3/core/hbsecret"
 	"github.com/opensvc/om3/v3/core/naming"
 	"github.com/opensvc/om3/v3/core/node"
@@ -198,10 +199,8 @@ func NewManager(drainDuration time.Duration, subQS pubsub.QueueSizer) *Manager {
 		change:      true,
 		nodeMonitor: make(map[string]node.Monitor),
 		nodeStatus: node.Status{
-			Agent:    version.Version(),
-			FrozenAt: time.Now(), // ensure initial frozen
+			Agent: version.Version(),
 		},
-		frozen:    true, // ensure initial frozen
 		livePeers: map[string]bool{localhost: true},
 
 		cacheNodesInfo: nodesinfo.M{localhost: {}},
@@ -226,6 +225,16 @@ func (t *Manager) Start(parent context.Context) error {
 	t.ctx, t.cancel = context.WithCancel(parent)
 	t.databus = daemondata.FromContext(t.ctx)
 	t.publisher = pubsub.PubFromContext(t.ctx)
+
+	// The frozen state is read from the flag file now, rather than waiting
+	// for discover to scan it, so the node is not seen unfrozen meanwhile.
+	// It is not assumed frozen since now either: the peers take a node
+	// frozen after they went down for a freeze they missed, and freeze
+	// themselves when they rejoin, so every daemon restart froze the nodes
+	// restarting with it.
+	t.nodeStatus.FrozenAt = file.ModTime(nodeFrozenFile())
+	t.nodeStatus.FrozenScope = nodeFrozenScope()
+	t.frozen = !t.nodeStatus.FrozenAt.IsZero()
 
 	// trigger an initial pool status eval
 	t.poolC <- nil
@@ -548,13 +557,23 @@ func (t *Manager) onLastShutdownFileTouchTicker() {
 	t.touchLastShutdown()
 }
 
+// nodeFrozenFile is the flag file of the node frozen state.
+func nodeFrozenFile() string {
+	return filepath.Join(rawconfig.Paths.Var, "node", "frozen")
+}
+
+// nodeFrozenScope is the scope of the freeze of the node, empty when it is
+// not frozen.
+func nodeFrozenScope() freeze.Scope {
+	return freeze.ScopeOf(nodeFrozenFile(), freeze.ScopeCluster, freeze.ScopeNode)
+}
+
 func (t *Manager) nodeFreeze() (bool, error) {
-	nodeFrozenFile := filepath.Join(rawconfig.Paths.Var, "node", "frozen")
-	frozenAt := file.ModTime(nodeFrozenFile)
+	frozenAt := file.ModTime(nodeFrozenFile())
 	if !frozenAt.IsZero() {
 		return false, nil
 	}
-	f, err := os.OpenFile(nodeFrozenFile, os.O_RDONLY|os.O_CREATE, 0666)
+	f, err := os.OpenFile(nodeFrozenFile(), os.O_RDONLY|os.O_CREATE, 0666)
 	if err != nil {
 		return false, err
 	}

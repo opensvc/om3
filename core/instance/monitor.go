@@ -87,6 +87,13 @@ type (
 		Force bool `json:"force"`
 	}
 
+	// MonitorGlobalExpectOptionsStopped carries how a stop treats the syncs
+	// running on the instance: it waits for them to end, or it interrupts
+	// them when InterruptSyncs is set.
+	MonitorGlobalExpectOptionsStopped struct {
+		InterruptSyncs bool `json:"interrupt_syncs,omitempty"`
+	}
+
 	// MonitorGlobalExpectOptionsResized carries the configuration a resize is
 	// for, so a node does not grow to the size it held before the request.
 	MonitorGlobalExpectOptionsResized struct {
@@ -103,6 +110,10 @@ type (
 	MonitorGlobalExpectOptionsPlacedAt struct {
 		Destination []string `json:"destination"`
 		Live        bool     `json:"live"`
+
+		// InterruptSyncs has the instance stopped interrupt the syncs
+		// running on it, instead of waiting for them to end.
+		InterruptSyncs bool `json:"interrupt_syncs,omitempty"`
 	}
 )
 
@@ -155,6 +166,10 @@ func (t *Monitor) UnmarshalJSON(b []byte) error {
 		mon.GlobalExpectOptions, err = decodeGlobalExpectOptions[MonitorGlobalExpectOptionsResized](mon.GlobalExpectOptions)
 	case MonitorGlobalExpectCapped:
 		mon.GlobalExpectOptions, err = decodeGlobalExpectOptions[MonitorGlobalExpectOptionsCapped](mon.GlobalExpectOptions)
+	case MonitorGlobalExpectRestarted:
+		mon.GlobalExpectOptions, err = decodeGlobalExpectOptions[MonitorGlobalExpectOptionsRestarted](mon.GlobalExpectOptions)
+	case MonitorGlobalExpectStopped:
+		mon.GlobalExpectOptions, err = decodeGlobalExpectOptions[MonitorGlobalExpectOptionsStopped](mon.GlobalExpectOptions)
 	}
 	if err != nil {
 		return err
@@ -311,7 +326,7 @@ func (mon Monitor) DeepCopy() *Monitor {
 			// TODO Don't ignore following error
 			_ = json.Unmarshal(b, &placedAt)
 			v.GlobalExpectOptions = placedAt
-		case MonitorGlobalExpectResized, MonitorGlobalExpectCapped:
+		case MonitorGlobalExpectResized, MonitorGlobalExpectCapped, MonitorGlobalExpectRestarted, MonitorGlobalExpectStopped:
 			// Values holding no reference: a copy of the value is a deep
 			// copy, and keeps the type the orchestrations read them as.
 			v.GlobalExpectOptions = mon.GlobalExpectOptions

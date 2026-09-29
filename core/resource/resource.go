@@ -60,6 +60,10 @@ type (
 		Reset()
 		Entries() []StatusLogEntry
 		Merge(StatusLogger)
+		ChangesAt(time.Time)
+		ChangeAt() time.Time
+		RPOBreachesAt(time.Time)
+		RPOBreachAt() time.Time
 	}
 
 	// requirer is the part of a resource StatusCheckRequires needs.
@@ -180,6 +184,15 @@ type (
 
 	// devReservabler is an interface implemented by resource drivers that want the core resource
 	// to handle SCSI persistent reservation on a list of devices.
+	// PeerDependentStatuser is implemented by the drivers whose status
+	// reads a state the actions of the peer instances change, like the roles
+	// of a replicated device, which a peer swaps when it starts. The daemon
+	// evaluates such a status again when a peer instance changes, as nothing
+	// local tells it the state moved.
+	PeerDependentStatuser interface {
+		StatusDependsOnPeers() bool
+	}
+
 	devReservabler interface {
 		// ReservableDevices must be implement by every driver that wants SCSI PR.
 		ReservableDevices(context.Context) device.L
@@ -231,6 +244,22 @@ type (
 
 		// Subset is the name of the subset this resource is assigned to.
 		Subset string `json:"subset,omitempty"`
+
+		// OutdatedAt is when this status changes with no event to tell,
+		// as a copy aging past its delay. Zero if it does not.
+		OutdatedAt time.Time `json:"outdated_at,omitzero"`
+
+		// RPOBreachedAt is when the copy this resource keeps on the node
+		// breaches, or breached, its recovery point objective: past it,
+		// the node taking over would lose more data than the contract of
+		// the resource allows. Zero where the resource keeps no copy, as
+		// on the node the data is replicated from.
+		RPOBreachedAt time.Time `json:"rpo_breached_at,omitzero"`
+
+		// DependsOnPeers says the status reads a state the actions of the
+		// peer instances change, so the daemon evaluates it again when a
+		// peer instance status changes.
+		DependsOnPeers bool `json:"depends_on_peers,omitempty"`
 
 		// Info is a list of key-value pairs providing interesting information to
 		// collect site-wide about this resource.
@@ -1348,6 +1377,24 @@ func SCSIPersistentReservationStatus(ctx context.Context, r Driver, coresourceSt
 	}
 }
 
+// StatusDependsOnPeers tells whether the status of r reads a state the
+// actions of the peer instances change, for the daemon to evaluate it again
+// when a peer instance changes.
+//
+// A resource with a SCSI persistent reservation does, whatever its driver:
+// a peer starting or stopping takes or drops the reservation its status
+// reports the holder of.
+func StatusDependsOnPeers(r Driver) bool {
+	var i any = r
+	if o, ok := i.(devReservabler); ok && o.IsSCSIPersistentReservationEnabled() {
+		return true
+	}
+	if o, ok := i.(PeerDependentStatuser); ok {
+		return o.StatusDependsOnPeers()
+	}
+	return false
+}
+
 // GetStatus returns the resource Status for embedding into the instance.Status.
 func GetStatus(ctx context.Context, r Driver) Status {
 	// EvalStatus must be called before formatResourceLabel (it uses context,
@@ -1360,9 +1407,14 @@ func GetStatus(ctx context.Context, r Driver) Status {
 		Subset:     r.RSubset(),
 		Tags:       r.TagSet(),
 		Log:        r.StatusLog().Entries(),
+		OutdatedAt: r.StatusLog().ChangeAt(),
 		Info:       getStatusInfo(ctx, r),
 		Files:      getFiles(ctx, r),
 		Datastores: getDatastores(ctx, r),
+
+		RPOBreachedAt: r.StatusLog().RPOBreachAt(),
+
+		DependsOnPeers: StatusDependsOnPeers(r),
 
 		IsStopped:   r.IsStopped(),
 		IsMonitored: r.IsMonitored(),
@@ -1602,8 +1654,11 @@ func removeStopped(r Driver) error {
 }
 
 // createStoppedIfHasResourceSelector creates the flag file preventing resource restarts by the daemon
+//
+// A stop that is a step of another action, like the one ending a provision,
+// stops the resource without the user asking for it, and flags nothing.
 func createStoppedIfHasResourceSelector(ctx context.Context, r Driver) error {
-	if !actioncontext.HasResourceSelector(ctx) {
+	if !actioncontext.HasResourceSelector(ctx) || actioncontext.IsStep(ctx) {
 		return nil
 	}
 	perm := os.FileMode(0o644)

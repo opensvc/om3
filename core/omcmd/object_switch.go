@@ -12,8 +12,9 @@ type (
 	CmdObjectSwitch struct {
 		OptsGlobal
 		commoncmd.OptsAsync
-		To   string
-		Live bool
+		To             string
+		Live           bool
+		InterruptSyncs bool
 	}
 )
 
@@ -21,7 +22,8 @@ func (t *CmdObjectSwitch) Run(kind string) error {
 	mergedSelector := commoncmd.MergeSelector("", t.ObjectSelector, kind, "")
 	target := instance.MonitorGlobalExpectPlacedAt.String()
 	options := instance.MonitorGlobalExpectOptionsPlacedAt{
-		Live: t.Live,
+		Live:           t.Live,
+		InterruptSyncs: t.InterruptSyncs,
 	}
 	if t.To != "" {
 		options.Destination = strings.Split(t.To, ",")

@@ -344,3 +344,50 @@ func (t *L) FilterByEnv(key string, value string) L {
 	}
 	return l
 }
+
+// PPID is the id of the parent process, read from /proc/<pid>/stat.
+func (t T) PPID() (int, error) {
+	b, err := os.ReadFile(t.Head() + "/stat")
+	if err != nil {
+		return 0, err
+	}
+	// the comm field is parenthesized and may contain spaces, so the
+	// fields are split after its closing parenthesis: the state, then the
+	// parent process id.
+	i := bytes.LastIndexByte(b, ')')
+	if i < 0 {
+		return 0, fmt.Errorf("%s/stat: no comm field end", t.Head())
+	}
+	fields := strings.Fields(string(b[i+1:]))
+	if len(fields) < 2 {
+		return 0, fmt.Errorf("%s/stat: no ppid field", t.Head())
+	}
+	return strconv.Atoi(fields[1])
+}
+
+// Tree is pid and the ids of all its descendants, parents first, from one
+// scan of /proc.
+func Tree(pid int) []int {
+	children := make(map[int][]int)
+	matches, _ := filepath.Glob("/proc/[0-9]*/stat")
+	for _, p := range matches {
+		child, err := strconv.Atoi(filepath.Base(filepath.Dir(p)))
+		if err != nil {
+			continue
+		}
+		ppid, err := New(child).PPID()
+		if err != nil {
+			continue
+		}
+		children[ppid] = append(children[ppid], child)
+	}
+	l := []int{}
+	queue := []int{pid}
+	for len(queue) > 0 {
+		p := queue[0]
+		queue = queue[1:]
+		l = append(l, p)
+		queue = append(queue, children[p]...)
+	}
+	return l
+}

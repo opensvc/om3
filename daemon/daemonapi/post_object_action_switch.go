@@ -38,8 +38,9 @@ func (a *DaemonAPI) PostObjectActionSwitch(eCtx echo.Context, namespace string, 
 		value := instance.MonitorUpdate{
 			GlobalExpect: &globalExpect,
 			GlobalExpectOptions: instance.MonitorGlobalExpectOptionsPlacedAt{
-				Destination: payload.Destination,
-				Live:        payload.Live,
+				Destination:    payload.Destination,
+				Live:           payload.Live,
+				InterruptSyncs: payload.InterruptSyncs != nil && *payload.InterruptSyncs,
 			},
 			CandidateOrchestrationID: uuid.New(),
 		}

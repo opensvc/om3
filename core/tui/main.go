@@ -1671,7 +1671,7 @@ func (t *App) actionStop(paths map[string]any) {
 		if err != nil {
 			continue
 		}
-		_, _ = t.client.PostObjectActionStopWithResponse(ctx, p.Namespace, p.Kind, p.Name)
+		_, _ = t.client.PostObjectActionStopWithResponse(ctx, p.Namespace, p.Kind, p.Name, nil)
 	}
 }
 

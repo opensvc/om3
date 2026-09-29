@@ -157,6 +157,8 @@ func (t *T) status(ctx context.Context, dataset string, isSource bool, notSource
 				maxDelay += repDelay
 				origin = fmt.Sprintf("%s; plus the replication by %s, %s", origin, rep.RID(), rep.MaxDelayOrigin())
 			}
+			// The snapshot goes stale then, with no event to tell.
+			t.StatusLog().ChangesAt(createdAt.Add(maxDelay))
 			age := time.Since(createdAt)
 			if age > maxDelay {
 				t.StatusLog().Warn("%s last snap is too old, created at %s, more than %s ago (%s)", t.Name, createdAt, maxDelay, origin)

@@ -19,8 +19,10 @@ const (
 	cronKey
 	envKey
 	forceKey
+	interruptSyncsKey
 	leaderKey
 	lockTimeoutKey
+	lockTimeoutSetKey
 	lockDisabledKey
 	masterKey
 	moveToKey
@@ -123,6 +125,19 @@ func WithForce(ctx context.Context, v bool) context.Context {
 }
 func IsForce(ctx context.Context) bool {
 	if i := ctx.Value(forceKey); i != nil {
+		return i.(bool)
+	}
+	return false
+}
+
+// WithInterruptSyncs has a stop end the syncs running on the instance before
+// stopping it, instead of waiting for the object lock they hold.
+func WithInterruptSyncs(ctx context.Context, v bool) context.Context {
+	return context.WithValue(ctx, interruptSyncsKey, v)
+}
+
+func IsInterruptSyncs(ctx context.Context) bool {
+	if i := ctx.Value(interruptSyncsKey); i != nil {
 		return i.(bool)
 	}
 	return false
@@ -259,6 +274,20 @@ func Target(ctx context.Context) []string {
 func WithLockTimeout(ctx context.Context, d time.Duration) context.Context {
 	return context.WithValue(ctx, lockTimeoutKey, d)
 }
+
+// WithLockTimeoutSet says the lock timeout was given by the user, not
+// defaulted: an action that would wait longer by default keeps to it.
+func WithLockTimeoutSet(ctx context.Context, v bool) context.Context {
+	return context.WithValue(ctx, lockTimeoutSetKey, v)
+}
+
+func IsLockTimeoutSet(ctx context.Context) bool {
+	if i := ctx.Value(lockTimeoutSetKey); i != nil {
+		return i.(bool)
+	}
+	return false
+}
+
 func LockTimeout(ctx context.Context) time.Duration {
 	if i := ctx.Value(lockTimeoutKey); i != nil {
 		return i.(time.Duration)
@@ -279,6 +308,13 @@ func WithProps(ctx context.Context, props Properties) context.Context {
 
 func Props(ctx context.Context) Properties {
 	return ctx.Value(propsKey).(Properties)
+}
+
+// IsStep tells whether the action of the context is a step of another
+// action, which flags nothing stopped on purpose.
+func IsStep(ctx context.Context) bool {
+	props, ok := ctx.Value(propsKey).(Properties)
+	return ok && props.StepOf != ""
 }
 
 func IsActionForSlave(ctx context.Context, nodename string) bool {

@@ -4,6 +4,7 @@ import (
 	"sort"
 	"time"
 
+	"github.com/opensvc/om3/v3/core/freeze"
 	"github.com/opensvc/om3/v3/core/provisioned"
 	"github.com/opensvc/om3/v3/core/rawconfig"
 	"github.com/opensvc/om3/v3/core/resource"
@@ -33,7 +34,24 @@ type (
 		// flag keeps saying what the operator decided, and only that.
 		StoppedAt time.Time `json:"stopped_at,omitempty"`
 
+		// FrozenScope is "object" when the instance was frozen by a freeze
+		// of the object, "instance" when it was frozen alone, and empty
+		// when it is not frozen.
+		FrozenScope freeze.Scope `json:"frozen_scope,omitempty"`
+
 		UpdatedAt time.Time `json:"updated_at"`
+
+		// OutdatedAt is the earliest OutdatedAt of the resources: when
+		// the status changes with no event to tell, for the daemon to
+		// evaluate it again then. Zero if it does not.
+		OutdatedAt time.Time `json:"outdated_at,omitzero"`
+
+		// RPOBreachedAt is the earliest RPOBreachedAt of the resources:
+		// past it, this node taking over would lose more data than one
+		// of the resources allows. Each resource has its own contract,
+		// so the instance breaches when any of them does. Zero when no
+		// resource keeps a copy here.
+		RPOBreachedAt time.Time `json:"rpo_breached_at,omitzero"`
 	}
 
 	EncapStatus struct {
@@ -226,6 +244,9 @@ func (t Status) Unstructured() map[string]any {
 	}
 	if !t.FrozenAt.IsZero() {
 		m["frozen_at"] = t.FrozenAt
+	}
+	if t.FrozenScope != "" {
+		m["frozen_scope"] = t.FrozenScope
 	}
 	if !t.StoppedAt.IsZero() {
 		m["stopped_at"] = t.StoppedAt

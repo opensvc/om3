@@ -117,6 +117,7 @@ func (t *actor) lockedMonitorStatusEval(ctx context.Context, data instance.Statu
 	t.setLastStartedAt(&data)
 	data.UpdatedAt = time.Now()
 	data.FrozenAt = t.Frozen()
+	data.FrozenScope = t.FrozenScope()
 	data.StoppedAt = t.StoppedAt()
 
 	// reset fields that t.resourceStatusEval() will re-evaluate
@@ -143,6 +144,7 @@ func (t *actor) lockedStatusEval(ctx context.Context) (instance.Status, error) {
 	t.setLastStartedAt(&data)
 	data.UpdatedAt = time.Now()
 	data.FrozenAt = t.Frozen()
+	data.FrozenScope = t.FrozenScope()
 	data.StoppedAt = t.StoppedAt()
 	if err := t.resourceStatusEval(ctx, &data, false); err != nil {
 		return data, fmt.Errorf("resource status eval: %w", err)
@@ -234,6 +236,12 @@ func (t *actor) resourceStatusEval(ctx context.Context, data *instance.Status, m
 		data.Resources = make(instance.ResourceStatuses)
 	}
 	doResourceStatus := func(group driver.Group, resourceStatus resource.Status) {
+		if tm := resourceStatus.OutdatedAt; !tm.IsZero() && (data.OutdatedAt.IsZero() || tm.Before(data.OutdatedAt)) {
+			data.OutdatedAt = tm
+		}
+		if tm := resourceStatus.RPOBreachedAt; !tm.IsZero() && (data.RPOBreachedAt.IsZero() || tm.Before(data.RPOBreachedAt)) {
+			data.RPOBreachedAt = tm
+		}
 		data.Overall.Add(overallContribution(group, resourceStatus.Status))
 		if !resourceStatus.IsOptional {
 			switch group {

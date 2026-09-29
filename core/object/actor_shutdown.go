@@ -15,6 +15,9 @@ func (t *actor) Shutdown(ctx context.Context) error {
 		return err
 	}
 	t.setenv("shutdown", false)
+	// A shutdown, as the one of a drained node, does not wait for the
+	// syncs running, nor leaves them sending while a peer takes over.
+	t.interruptSyncs()
 	unlock, err := t.lockAction(ctx)
 	if err != nil {
 		return err

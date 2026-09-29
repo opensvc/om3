@@ -171,6 +171,7 @@ func (t *T) onInstanceFrozenFileRemoved(msg *msgbus.InstanceFrozenFileRemoved) {
 		return
 	}
 	iStatus.FrozenAt = time.Time{}
+	iStatus.FrozenScope = ""
 	if iStatus.UpdatedAt.Before(msg.At) {
 		iStatus.UpdatedAt = msg.At
 	}
@@ -276,6 +277,7 @@ func (t *T) onInstanceFrozenFileUpdated(msg *msgbus.InstanceFrozenFileUpdated) {
 	}
 
 	iStatus.FrozenAt = msg.At
+	iStatus.FrozenScope = msg.Scope
 	if msg.At.After(iStatus.UpdatedAt) {
 		iStatus.UpdatedAt = msg.At
 	}

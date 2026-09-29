@@ -1124,3 +1124,10 @@ func (t *T) dgRDFFilename() string {
 func (t *T) dgWWNMapFilename() string {
 	return filepath.Join(t.VarDir(), "wwn_map")
 }
+
+// StatusDependsOnPeers says the status of a srdf resource reads the pair state
+// and the R1/R2 personality of the device group, which a peer instance swaps
+// when it fails the object over.
+func (t *T) StatusDependsOnPeers() bool {
+	return true
+}

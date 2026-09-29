@@ -2,7 +2,6 @@ package commoncmd
 
 import (
 	"encoding/json"
-	"sort"
 	"strings"
 
 	"github.com/fatih/color"
@@ -153,19 +152,9 @@ func (t *CmdDaemonHeartbeatList) Run() error {
 		}
 	}
 
-	sort.Slice(table, func(i, j int) bool {
-		if table[i].Node != table[j].Node {
-			return table[i].Node < table[j].Node
-		}
-		idi := strings.TrimPrefix(table[i].ID, "hb#")
-		idj := strings.TrimPrefix(table[j].ID, "hb#")
-		if idi != idj {
-			return idi < idj
-		}
-		return table[i].Peer < table[j].Peer
-	})
 	return output.Renderer{
 		DefaultOutput: "tab=RUNNING:.state_icon,BEATING:.beating_icon,ID:.id,NODE:.node,PEER:.peer,TYPE:.type,DESC:.desc,CHANGED_AT:.changed_at",
+		DefaultSort:   "NODE,ID,PEER",
 		Output:        t.Output,
 		Sort:          t.Sort,
 		Color:         t.Color,

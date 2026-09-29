@@ -158,7 +158,7 @@ func (t *T) Status(ctx context.Context) status.T {
 		isSourceNode = true
 	}
 	nodenames := t.getTargetNodenames(isSourceNode)
-	return t.StatusLastSync(nodenames)
+	return t.StatusLastSync(nodenames, !isSourceNode)
 }
 
 func (t *T) getTargetNodenames(isSourceNode bool) []string {

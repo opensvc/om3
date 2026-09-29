@@ -768,6 +768,25 @@ which share the same executor.
     variable of the triggers read `update` and `full`. Triggers testing
     `OPENSVC_ACTION` for `sync_update` or `sync_full` need updating.
 
+* **A stop or a switch waits for the syncs running on the instance:**
+    Stopped under a sync, the instance would hand the peers a copy the sync
+    was writing. An orchestrated stop or switch now waits, in the new `wait
+    syncs` monitor state, for the syncs running on the instance to end, for
+    `wait_syncs_timeout` at most, 10 minutes by default. Past it, the stop
+    fails and the instance keeps running, its monitoring on. No scheduled
+    sync starts while an orchestration is in progress on the object.
+    `--interrupt-syncs` on `stop`, `switch` and `instance stop`, or
+    `interrupt_syncs` in the api, ends the syncs instead of waiting for them.
+    A local `instance stop` finding a sync holding the object lock says so,
+    and waits for it `wait_syncs_timeout`, or the lock timeout if longer, or
+    the `--waitlock` given.
+
+* **A shutdown, as the one of a drained node, interrupts the syncs:**
+    It does not wait for the syncs running on the instance, and does not leave
+    them sending to a peer that takes over: it ends them, the processes they
+    started included, before stopping the resources. No scheduled sync starts
+    on a node being drained.
+
 ### Driver: sync.zfs
 
 * **Each peer is synced from its own base snapshot:**
@@ -921,6 +940,20 @@ Where the password is the value of the `þassword` key in `system/sec/relay-v3`.
     What does not change: `monitor_action = freezestop` still freezes, which is its point, and a node shutdown still freezes the node.
 
     On upgrade, instances frozen by an older version's stop or create stay frozen, and nothing lifts those freezes any more. Run `om <selector> print status` to find them, and `om <path> unfreeze` on the ones you did not freeze yourself.
+
+* A provision off the placement leader leaves the instance as it found it.
+
+    A provision without `--leader` and without `--disable-rollback` ends by stopping what it started, so the leader is the one to start the object. v2 rolled back the starts of the provision; earlier v3 stopped the whole selection, as a stop asked by the user would: the instance was flagged stopped on purpose, a resource provisioned with `--rid` was flagged stopped (`X`), and a resource provisioned with `--rid` on a running instance was stopped there.
+
+    The stop ending a provision is now a step of it, and flags nothing. It stops only the resources the provision found down, and nothing at all on an instance that was running before it, judged on the resources provisioned already, so a resource added to a running instance is provisioned and left started.
+
+* A node coming back from down adopts only a freeze of the cluster or of an object.
+
+    In v2 and in earlier v3, a daemon joining the cluster froze the node when any peer node had been frozen while it was down, and froze an ha instance when any peer instance had. A node frozen alone for its maintenance froze its peers as they rebooted, and a freeze the daemon took on its own, at the end of a rejoin grace period, spread from node to node through their restarts. A daemon restart also published the node as frozen since its start until it had read its frozen flag, so the daemons restarting with it, as `om daemon restart --node='*'` does, froze on a freeze nobody asked for.
+
+    A node now adopts a freeze of the whole cluster, `om cluster freeze`, and an instance a freeze of the whole object, `om <path> freeze`, that a peer took while the node was down. A node or an instance frozen alone, with `om node freeze` or `om <path> instance freeze`, by a drain, at boot, or by the daemon on its own, stays the only one frozen, and so does a freeze adopted. The node and instance statuses say which a freeze is in `frozen_scope`: `cluster` or `node`, `object` or `instance`.
+
+    On upgrade, the flags of the freezes taken before say nothing of their scope, and read as freezes of the node or the instance alone: a node down across the upgrade does not adopt them.
 
 * An orchestration says how it went, and is waited on by its id.
 

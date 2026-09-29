@@ -15,6 +15,12 @@ func (t *actor) Frozen() time.Time {
 	return freeze.Frozen(t.path.FrozenFile())
 }
 
+// FrozenScope returns the scope of the freeze of the instance, empty when it
+// is not frozen.
+func (t *actor) FrozenScope() freeze.Scope {
+	return freeze.ScopeOf(t.path.FrozenFile(), freeze.ScopeObject, freeze.ScopeInstance)
+}
+
 // Freeze creates a persistent flag file that prevents orchestration
 // of the object instance.
 func (t *actor) Freeze(ctx context.Context) error {

@@ -46,6 +46,10 @@ func (t *Manager) stopOnPurpose() {
 		t.stoppedFromFailed()
 	case instance.MonitorStateWaitChildren:
 		t.setWaitChildren()
+	case instance.MonitorStateWaitSyncs:
+		if !t.setWaitSyncs() {
+			t.doStopOnPurpose()
+		}
 	default:
 		t.log.Errorf("don't know how to stop from %s", t.state.State)
 	}
@@ -72,6 +76,10 @@ func (t *Manager) stop() {
 		// avoid a retry-loop
 	case instance.MonitorStateStartFailure:
 		t.stoppedFromFailed()
+	case instance.MonitorStateWaitSyncs:
+		if !t.setWaitSyncs() {
+			t.doStop()
+		}
 	default:
 		t.log.Errorf("don't know how to stop from %s", t.state.State)
 	}
@@ -112,6 +120,9 @@ func (t *Manager) doStop() {
 		return
 	}
 	if t.setWaitChildren() {
+		return
+	}
+	if t.setWaitSyncs() {
 		return
 	}
 	t.createPendingWithDuration(stopDuration)

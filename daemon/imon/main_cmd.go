@@ -13,6 +13,7 @@ import (
 
 	"github.com/google/uuid"
 
+	"github.com/opensvc/om3/v3/core/freeze"
 	"github.com/opensvc/om3/v3/core/instance"
 	"github.com/opensvc/om3/v3/core/naming"
 	"github.com/opensvc/om3/v3/core/nodeselector"
@@ -245,6 +246,12 @@ func (t *Manager) onRelationInstanceStatusUpdated(c *msgbus.InstanceStatusUpdate
 }
 
 func (t *Manager) onMyInstanceStatusUpdated(srcNode string, srcCmd *msgbus.InstanceStatusUpdated) {
+	if srcCmd.Node == t.localhost {
+		// Armed from the status kept, which may be newer than the one
+		// of the event: the first refresh stores its status before its
+		// event is read.
+		defer func() { t.armOutdatedTimer(t.instStatus[t.localhost].OutdatedAt) }()
+	}
 	instStatus, ok := t.instStatus[srcCmd.Node]
 	switch {
 	case !ok:
@@ -256,6 +263,9 @@ func (t *Manager) onMyInstanceStatusUpdated(srcNode string, srcCmd *msgbus.Insta
 		return
 	}
 	t.instStatus[srcCmd.Node] = srcCmd.Value
+	if ok && srcCmd.Node != t.localhost {
+		t.refreshOnPeerChange(srcCmd.Node, instStatus, srcCmd.Value)
+	}
 	t.mergePeerFrozen()
 	t.mergePeerStopped()
 	t.clearStonith(srcCmd.Node, srcCmd.Value.Avail)
@@ -1244,20 +1254,15 @@ func (t *Manager) mergePeerFrozen() {
 		return
 	}
 	leftAt := t.nodeStatus[t.localhost].LeftAt
-	for peer, peerStatus := range t.instStatus {
-		if peer == t.localhost {
-			continue
+	if peer, frozenAt, ok := objectFreezeMissed(t.instStatus, t.localhost, leftAt, rejoinedAt); ok {
+		msg := fmt.Sprintf("freeze %s instance because the object was frozen while this daemon was down (peer %s instance frozen at %s)", t.path, peer, frozenAt.Format(time.RFC3339))
+		t.isPeerFrozenMerged = true
+		if err := t.queueFreeze(); err != nil {
+			t.log.Errorf("%s: %s", msg, err)
+		} else {
+			t.log.Infof(msg)
 		}
-		if peerStatus.FrozenAt.After(leftAt) && peerStatus.FrozenAt.Before(rejoinedAt) {
-			msg := fmt.Sprintf("freeze %s instance because peer %s instance was frozen while this daemon was down", t.path, peer)
-			t.isPeerFrozenMerged = true
-			if err := t.queueFreeze(); err != nil {
-				t.log.Errorf("%s: %s", msg, err)
-			} else {
-				t.log.Infof(msg)
-			}
-			return
-		}
+		return
 	}
 	if len(t.instStatus) == len(t.scopeNodes) {
 		t.log.Tracef("no peer instances frozen while this daemon was down")
@@ -1269,6 +1274,27 @@ func (t *Manager) mergePeerFrozen() {
 		t.isPeerFrozenMerged = true
 		return
 	}
+}
+
+// objectFreezeMissed finds a peer instance frozen by a freeze of the object
+// while the local daemon was down, between leftAt and rejoinedAt, which the
+// local instance must adopt.
+//
+// Only a freeze of the object is adopted: a peer instance frozen alone, or by
+// an adoption of its own, stays the only one frozen.
+func objectFreezeMissed(instStatus map[string]instance.Status, localhost string, leftAt, rejoinedAt time.Time) (peer string, frozenAt time.Time, ok bool) {
+	for peer, peerStatus := range instStatus {
+		if peer == localhost {
+			continue
+		}
+		if peerStatus.FrozenScope != freeze.ScopeObject {
+			continue
+		}
+		if peerStatus.FrozenAt.After(leftAt) && peerStatus.FrozenAt.Before(rejoinedAt) {
+			return peer, peerStatus.FrozenAt, true
+		}
+	}
+	return "", time.Time{}, false
 }
 
 // mergePeerStopped raises the stopped flag on the local instance when a peer
@@ -1449,8 +1475,8 @@ func (t *Manager) checkResourceForIPMatch(ip string, linkName string, eventType 
 			}
 
 			if ipaddrStr == ip {
-				t.log.Infof("IP address %s on link %s, matching resource %s - triggering status refresh", ip, linkName, rid)
-				t.requestStatusRefresh(t.instConfig.Priority)
+				t.log.Infof("IP address %s on link %s, matching resource %s - schedule a status refresh", ip, linkName, rid)
+				t.scheduleEventRefresh(fmt.Sprintf("ip address %s %s", ip, eventType))
 				return
 			}
 		}
@@ -1513,8 +1539,8 @@ func (t *Manager) checkResourceForMountMatch(mountPoint string, fsType string, e
 			}
 
 			if mntStr == mountPoint {
-				t.log.Infof("filesystem %s event on mount point %s, matching resource %s - triggering status refresh", eventType, mountPoint, rid)
-				t.requestStatusRefresh(t.instConfig.Priority)
+				t.log.Infof("filesystem %s event on mount point %s, matching resource %s - schedule a status refresh", eventType, mountPoint, rid)
+				t.scheduleEventRefresh(fmt.Sprintf("mount point %s %s", mountPoint, eventType))
 				return
 			}
 		}
@@ -1563,6 +1589,32 @@ func (t *Manager) onFSRemounted(c *msgbus.FSRemounted) {
 		return
 	}
 	t.checkResourceForMountMatch(c.MountPoint, c.FSType, "remounted")
+}
+
+// onDrbdResourceUpdated is called when the state of a drbd resource changed
+// on the node, as a peer connected or a resync ended. It refreshes the
+// status when a resource of the instance holds that drbd resource.
+func (t *Manager) onDrbdResourceUpdated(c *msgbus.DrbdResourceUpdated) {
+	if c.Node != t.localhost {
+		return
+	}
+	if !t.canRefreshOnEvent() {
+		return
+	}
+	instStatus, ok := t.instStatus[t.localhost]
+	if !ok {
+		return
+	}
+	for rid, rstat := range instStatus.Resources {
+		if rstat.Type != "disk.drbd" {
+			continue
+		}
+		if res, ok := rstat.Info["res"].(string); ok && res == c.Res {
+			t.log.Infof("drbd resource %s changed, matching resource %s - schedule a status refresh", c.Res, rid)
+			t.scheduleEventRefresh("drbd resource " + c.Res + " changed")
+			return
+		}
+	}
 }
 
 func (t *Manager) canRefreshOnEvent() bool {

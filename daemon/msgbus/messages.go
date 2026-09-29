@@ -56,6 +56,7 @@ import (
 	"github.com/opensvc/om3/v3/core/cluster"
 	"github.com/opensvc/om3/v3/core/clusterdump"
 	"github.com/opensvc/om3/v3/core/event"
+	"github.com/opensvc/om3/v3/core/freeze"
 	"github.com/opensvc/om3/v3/core/hbsecret"
 	"github.com/opensvc/om3/v3/core/instance"
 	"github.com/opensvc/om3/v3/core/naming"
@@ -262,6 +263,8 @@ var (
 
 		"RunFileUpdated": func() any { return &RunFileUpdated{} },
 
+		"InstanceStateFileUpdated": func() any { return &InstanceStateFileUpdated{} },
+
 		"SetInstanceMonitor": func() any { return &SetInstanceMonitor{} },
 
 		"SetInstanceMonitorRefused": func() any { return &SetInstanceMonitorRefused{} },
@@ -286,6 +289,8 @@ var (
 		"FSMounted":   func() any { return &FSMounted{} },
 		"FSUmounted":  func() any { return &FSUmounted{} },
 		"FSRemounted": func() any { return &FSRemounted{} },
+
+		"DrbdResourceUpdated": func() any { return &DrbdResourceUpdated{} },
 	}
 )
 
@@ -605,6 +610,9 @@ type (
 		Path       naming.Path `json:"path" yaml:"path"`
 		File       string      `json:"file" yaml:"file"`
 		At         time.Time   `json:"at" yaml:"at"`
+
+		// Scope is the scope of the freeze the flag records.
+		Scope freeze.Scope `json:"scope,omitempty" yaml:"scope,omitempty"`
 	}
 
 	// InstanceFrozenFileRemoved is emitted by a fs watcher or iman when an instance frozen file is removed.
@@ -1047,6 +1055,17 @@ type (
 		At         time.Time   `json:"at" yaml:"at"`
 	}
 
+	// InstanceStateFileUpdated is emitted by the api when a peer wrote a
+	// state file of a local instance, as the source of a sync writes the
+	// last sync record of a peer it synced. The status of the instance
+	// read the file, and is outdated.
+	InstanceStateFileUpdated struct {
+		pubsub.Msg `yaml:",inline"`
+		Path       naming.Path `json:"path" yaml:"path"`
+		Node       string      `json:"node" yaml:"node"`
+		File       string      `json:"file" yaml:"file"`
+	}
+
 	// RunFileRemoved is emitted by the fs_watcher when it detects a
 	// resource run file is deleted in <var>.
 	RunFileRemoved struct {
@@ -1165,6 +1184,15 @@ type (
 		FSType     string `json:"fs_type" yaml:"fs_type"`
 		Source     string `json:"source" yaml:"source"`
 		Options    string `json:"options" yaml:"options"`
+	}
+
+	// DrbdResourceUpdated is published when the state of a drbd resource
+	// changed on the node: a role, a disk or peer disk state, a connection,
+	// a replication state, as a peer connects or a resync ends.
+	DrbdResourceUpdated struct {
+		pubsub.Msg `yaml:",inline"`
+		Node       string `json:"node" yaml:"node"`
+		Res        string `json:"res" yaml:"res"`
 	}
 )
 
@@ -1675,6 +1703,10 @@ func (e *RunFileRemoved) Kind() string {
 	return "RunFileRemoved"
 }
 
+func (e *InstanceStateFileUpdated) Kind() string {
+	return "InstanceStateFileUpdated"
+}
+
 func (e *RunFileUpdated) Kind() string {
 	return "RunFileUpdated"
 }
@@ -1767,6 +1799,14 @@ func (e *FSRemounted) Kind() string {
 
 func (e *FSRemounted) Key() string {
 	return fmt.Sprintf("FSRemounted,node=%s,mount_point=%s", e.Node, e.MountPoint)
+}
+
+func (e *DrbdResourceUpdated) Kind() string {
+	return "DrbdResourceUpdated"
+}
+
+func (e *DrbdResourceUpdated) Key() string {
+	return fmt.Sprintf("DrbdResourceUpdated,node=%s,res=%s", e.Node, e.Res)
 }
 
 func NewSetInstanceMonitorWithErr(ctx context.Context, p naming.Path, nodename string, value instance.MonitorUpdate) (*SetInstanceMonitor, errcontext.ErrReceiver) {

@@ -224,3 +224,62 @@ func TestSortDataRejectsAnUnknownColumnOfAWrappedListing(t *testing.T) {
 	w := sortWrapper{Items: []sortItem{{Name: "a"}, {Name: "b"}}}
 	assert.Error(t, sortData(w, "nmae", nil))
 }
+
+// A listing whose command chose no order, and whose caller asks for none, is
+// ordered on its columns, left to right, so it comes the same at each run,
+// whether it is read as a table or as json.
+func TestRendererOrdersOnTheColumnsByDefault(t *testing.T) {
+	for _, output := range []string{"json", "tab=NAME:name,RANK:rank"} {
+		items := []sortItem{
+			{Name: "b", Rank: 2},
+			{Name: "a", Rank: 3},
+			{Name: "b", Rank: 1},
+		}
+		r := Renderer{
+			DefaultOutput: "tab=NAME:name,RANK:rank",
+			Output:        output,
+			Data:          items,
+		}
+		_, err := r.Sprint()
+		require.NoError(t, err, output)
+		assert.Equal(t, []string{"a", "b", "b"}, names(items), output)
+		assert.Equal(t, []int{3, 1, 2}, []int{items[0].Rank, items[1].Rank, items[2].Rank}, output)
+	}
+}
+
+// The columns a default order can not read, or no item carries, are passed
+// over rather than refused: the caller did not name them.
+func TestRendererOrdersOnTheColumnsItCanRead(t *testing.T) {
+	items := []sortItem{
+		{Name: "b"},
+		{Name: "a"},
+	}
+	r := Renderer{
+		DefaultOutput: "tab=GHOST:ghost,BAD:{[,NAME:name",
+		Output:        "json",
+		Data:          items,
+	}
+	_, err := r.Sprint()
+	require.NoError(t, err)
+	assert.Equal(t, []string{"a", "b"}, names(items))
+}
+
+// The digit runs of a text compare as the numbers they write: disk#2 comes
+// before disk#10, and n2 before n10.
+func TestNaturalCompare(t *testing.T) {
+	for _, tc := range []struct {
+		a, b string
+		want int
+	}{
+		{"disk#2", "disk#10", -1},
+		{"n10", "n2", 1},
+		{"hb#1.rx", "hb#1.tx", -1},
+		{"a", "a", 0},
+		{"a", "ab", -1},
+		{"n02", "n2", -1},
+		{"n2a", "n2b", -1},
+		{"fs#1", "disk#1", 1},
+	} {
+		assert.Equal(t, tc.want, naturalCompare(tc.a, tc.b), "%s vs %s", tc.a, tc.b)
+	}
+}

@@ -76,6 +76,10 @@ func (t *Manager) orchestrateFailoverPlacedStop() {
 	case instance.MonitorStateStartProgress:
 	case instance.MonitorStateWaitChildren:
 		t.setWaitChildren()
+	case instance.MonitorStateWaitSyncs:
+		if !t.setWaitSyncs() {
+			t.placedStop()
+		}
 	default:
 		t.log.Errorf("don't know how to orchestrate placed stop from %s", t.state.State)
 	}
@@ -99,6 +103,10 @@ func (t *Manager) orchestrateFlexPlacedStop() {
 	case instance.MonitorStateStartProgress:
 	case instance.MonitorStateWaitChildren:
 		t.setWaitChildren()
+	case instance.MonitorStateWaitSyncs:
+		if !t.setWaitSyncs() {
+			t.placedStop()
+		}
 	default:
 		t.log.Errorf("don't know how to orchestrate placed stop from %s", t.state.State)
 	}
@@ -170,6 +178,9 @@ func (t *Manager) placedStop() {
 }
 
 func (t *Manager) doPlacedStop() {
+	if t.setWaitSyncs() {
+		return
+	}
 	t.createPendingWithDuration(stopDuration)
 	t.disableMonitor("orchestrate placed stopping")
 	dst, ok := t.getPlacedAtDestination()
@@ -211,6 +222,7 @@ func (t *Manager) orchestratePlacedStopFromStopFailure() {
 	default:
 		t.loggerWithState().Warnf("orchestration %s stop fails, set done: state is %s with avail %s",
 			t.state.GlobalExpect, t.state.State, instStatus.Avail)
+		t.resumeMonitorIfStopRefused()
 		t.done()
 		t.clearPending()
 	}

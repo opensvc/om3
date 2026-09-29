@@ -95,6 +95,10 @@ func (a *DaemonAPI) GetNodes(ctx echo.Context, params api.GetNodesParams) error 
 			for k, v := range status.Gen {
 				d.Data.Status.Gen[k] = v
 			}
+			if status.FrozenScope != "" {
+				scope := string(status.FrozenScope)
+				d.Data.Status.FrozenScope = &scope
+			}
 		}
 		if monitor != nil {
 			d.Data.Monitor = &api.NodeMonitor{

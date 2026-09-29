@@ -961,6 +961,17 @@ var keywordStore = keywords.Store{
 		Text:      keywords.NewText(fs, "text/kw/core/sync_timeout"),
 	},
 	{
+		Attr:      "WaitSyncsTimeout",
+		Converter: converters.Duration,
+		Default:   "10m",
+		Example:   "1h",
+		Kind:      naming.NewKinds(naming.KindSvc, naming.KindVol),
+		Option:    "wait_syncs_timeout",
+		Section:   "DEFAULT",
+		Scopable:  true,
+		Text:      keywords.NewText(fs, "text/kw/core/wait_syncs_timeout"),
+	},
+	{
 		Attr:       "Access",
 		Candidates: []string{"rwo", "roo", "rwx", "rox"},
 		Default:    "rwo",

@@ -547,7 +547,7 @@ type ClientInterface interface {
 	PostObjectActionStart(ctx context.Context, namespace InPathNamespace, kind InPathKind, name InPathName, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// PostObjectActionStop request
-	PostObjectActionStop(ctx context.Context, namespace InPathNamespace, kind InPathKind, name InPathName, reqEditors ...RequestEditorFn) (*http.Response, error)
+	PostObjectActionStop(ctx context.Context, namespace InPathNamespace, kind InPathKind, name InPathName, params *PostObjectActionStopParams, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// PostObjectActionSwitchWithBody request with any body
 	PostObjectActionSwitchWithBody(ctx context.Context, namespace InPathNamespace, kind InPathKind, name InPathName, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
@@ -2520,8 +2520,8 @@ func (c *Client) PostObjectActionStart(ctx context.Context, namespace InPathName
 	return c.Client.Do(req)
 }
 
-func (c *Client) PostObjectActionStop(ctx context.Context, namespace InPathNamespace, kind InPathKind, name InPathName, reqEditors ...RequestEditorFn) (*http.Response, error) {
-	req, err := NewPostObjectActionStopRequest(c.Server, namespace, kind, name)
+func (c *Client) PostObjectActionStop(ctx context.Context, namespace InPathNamespace, kind InPathKind, name InPathName, params *PostObjectActionStopParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewPostObjectActionStopRequest(c.Server, namespace, kind, name, params)
 	if err != nil {
 		return nil, err
 	}
@@ -10557,6 +10557,18 @@ func NewPostInstanceActionStopRequest(server string, nodename InPathNodeName, na
 
 		}
 
+		if params.InterruptSyncs != nil {
+
+			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "interrupt_syncs", *params.InterruptSyncs, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "boolean", Format: ""}); err != nil {
+				return nil, err
+			} else {
+				for _, qp := range strings.Split(queryFrag, "&") {
+					rawQueryFragments = append(rawQueryFragments, qp)
+				}
+			}
+
+		}
+
 		if params.Master != nil {
 
 			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "master", *params.Master, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "boolean", Format: ""}); err != nil {
@@ -13453,7 +13465,7 @@ func NewPostObjectActionStartRequest(server string, namespace InPathNamespace, k
 }
 
 // NewPostObjectActionStopRequest generates requests for PostObjectActionStop
-func NewPostObjectActionStopRequest(server string, namespace InPathNamespace, kind InPathKind, name InPathName) (*http.Request, error) {
+func NewPostObjectActionStopRequest(server string, namespace InPathNamespace, kind InPathKind, name InPathName, params *PostObjectActionStopParams) (*http.Request, error) {
 	var err error
 
 	var pathParam0 string
@@ -13490,6 +13502,33 @@ func NewPostObjectActionStopRequest(server string, namespace InPathNamespace, ki
 	queryURL, err := serverURL.Parse(operationPath)
 	if err != nil {
 		return nil, err
+	}
+
+	if params != nil {
+		// queryValues collects non-styled parameters (passthrough, JSON)
+		// that are safe to round-trip through url.Values.Encode().
+		queryValues := queryURL.Query()
+		// rawQueryFragments collects pre-encoded query fragments from
+		// styled parameters, preserving literal commas as delimiters
+		// per the OpenAPI spec (e.g. "color=blue,black,brown").
+		var rawQueryFragments []string
+
+		if params.InterruptSyncs != nil {
+
+			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "interrupt_syncs", *params.InterruptSyncs, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "boolean", Format: ""}); err != nil {
+				return nil, err
+			} else {
+				for _, qp := range strings.Split(queryFrag, "&") {
+					rawQueryFragments = append(rawQueryFragments, qp)
+				}
+			}
+
+		}
+
+		if encoded := queryValues.Encode(); encoded != "" {
+			rawQueryFragments = append(rawQueryFragments, encoded)
+		}
+		queryURL.RawQuery = strings.Join(rawQueryFragments, "&")
 	}
 
 	req, err := http.NewRequest(http.MethodPost, queryURL.String(), nil)
@@ -15732,7 +15771,7 @@ type ClientWithResponsesInterface interface {
 	PostObjectActionStartWithResponse(ctx context.Context, namespace InPathNamespace, kind InPathKind, name InPathName, reqEditors ...RequestEditorFn) (*PostObjectActionStartResponse, error)
 
 	// PostObjectActionStopWithResponse request
-	PostObjectActionStopWithResponse(ctx context.Context, namespace InPathNamespace, kind InPathKind, name InPathName, reqEditors ...RequestEditorFn) (*PostObjectActionStopResponse, error)
+	PostObjectActionStopWithResponse(ctx context.Context, namespace InPathNamespace, kind InPathKind, name InPathName, params *PostObjectActionStopParams, reqEditors ...RequestEditorFn) (*PostObjectActionStopResponse, error)
 
 	// PostObjectActionSwitchWithBodyWithResponse request with any body
 	PostObjectActionSwitchWithBodyWithResponse(ctx context.Context, namespace InPathNamespace, kind InPathKind, name InPathName, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*PostObjectActionSwitchResponse, error)
@@ -23047,8 +23086,8 @@ func (c *ClientWithResponses) PostObjectActionStartWithResponse(ctx context.Cont
 }
 
 // PostObjectActionStopWithResponse request returning *PostObjectActionStopResponse
-func (c *ClientWithResponses) PostObjectActionStopWithResponse(ctx context.Context, namespace InPathNamespace, kind InPathKind, name InPathName, reqEditors ...RequestEditorFn) (*PostObjectActionStopResponse, error) {
-	rsp, err := c.PostObjectActionStop(ctx, namespace, kind, name, reqEditors...)
+func (c *ClientWithResponses) PostObjectActionStopWithResponse(ctx context.Context, namespace InPathNamespace, kind InPathKind, name InPathName, params *PostObjectActionStopParams, reqEditors ...RequestEditorFn) (*PostObjectActionStopResponse, error) {
+	rsp, err := c.PostObjectActionStop(ctx, namespace, kind, name, params, reqEditors...)
 	if err != nil {
 		return nil, err
 	}

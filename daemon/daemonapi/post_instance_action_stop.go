@@ -50,6 +50,9 @@ func (a *DaemonAPI) postLocalInstanceActionStop(ctx echo.Context, namespace stri
 		return err
 	}
 	args := []string{p.String(), "instance", "stop"}
+	if params.InterruptSyncs != nil && *params.InterruptSyncs {
+		args = append(args, "--interrupt-syncs")
+	}
 	if params.Force != nil && *params.Force {
 		args = append(args, "--force")
 	}

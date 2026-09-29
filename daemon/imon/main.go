@@ -97,6 +97,28 @@ type (
 		localhost   string
 		change      bool
 
+		// outdatedTimer fires when the local instance status goes
+		// outdated with no event to tell, and outdatedRefreshedAt is
+		// when it last asked a refresh.
+		outdatedTimer       *time.Timer
+		outdatedRefreshedAt time.Time
+
+		// eventRefreshTimer fires the refresh of the local instance status
+		// the events it depends on asked for, and eventRefreshScheduled
+		// says it is armed. It is not the outdated timer, which every local
+		// status update arms again or stops, and would drop it.
+		eventRefreshTimer     *time.Timer
+		eventRefreshScheduled bool
+
+		// waitSyncsTimer fires when a stop has waited long enough for
+		// the syncs running, waiting since waitSyncsSince.
+		waitSyncsTimer *time.Timer
+		waitSyncsSince time.Time
+
+		// stopRefusedForSyncs says the last stop failure is a stop
+		// refused, the syncs running past the wait: nothing stopped.
+		stopRefusedForSyncs bool
+
 		// statusQueued is true when a background status is running
 		// TODO: need review
 		statusQueued atomic.Bool
@@ -345,6 +367,8 @@ func (t *Manager) startSubscriptions(qs pubsub.QueueSizer) {
 	sub.AddFilter(&msgbus.FSMounted{}, t.labelLocalhost)
 	sub.AddFilter(&msgbus.FSUmounted{}, t.labelLocalhost)
 	sub.AddFilter(&msgbus.FSRemounted{}, t.labelLocalhost)
+	sub.AddFilter(&msgbus.DrbdResourceUpdated{}, t.labelLocalhost)
+	sub.AddFilter(&msgbus.InstanceStateFileUpdated{}, t.labelPath, t.labelLocalhost)
 	sub.Start()
 	t.sub = sub
 }
@@ -409,6 +433,12 @@ func (t *Manager) worker(initialNodes []string) {
 	if !t.delayTimer.Stop() {
 		<-t.delayTimer.C
 	}
+	t.outdatedTimer = time.NewTimer(time.Hour)
+	t.outdatedTimer.Stop()
+	t.eventRefreshTimer = time.NewTimer(time.Hour)
+	t.eventRefreshTimer.Stop()
+	t.waitSyncsTimer = time.NewTimer(time.Hour)
+	t.waitSyncsTimer.Stop()
 
 	t.mergePeerFrozen()
 	t.initRelationAvailStatus()
@@ -491,12 +521,16 @@ func (t *Manager) worker(initialNodes []string) {
 				t.onNetIPAddrAdded(c)
 			case *msgbus.NetIPAddrDeleted:
 				t.onNetIPAddrDeleted(c)
+			case *msgbus.DrbdResourceUpdated:
+				t.onDrbdResourceUpdated(c)
 			case *msgbus.FSMounted:
 				t.onFSMounted(c)
 			case *msgbus.FSUmounted:
 				t.onFSUmounted(c)
 			case *msgbus.FSRemounted:
 				t.onFSRemounted(c)
+			case *msgbus.InstanceStateFileUpdated:
+				t.onInstanceStateFileUpdated(c)
 			}
 		case i := <-t.cmdC:
 			if t.ctx.Err() != nil {
@@ -513,6 +547,12 @@ func (t *Manager) worker(initialNodes []string) {
 			}
 		case <-t.delayTimer.C:
 			t.onDelayTimer()
+		case <-t.outdatedTimer.C:
+			t.onOutdatedTimer()
+		case <-t.eventRefreshTimer.C:
+			t.onEventRefreshTimer()
+		case <-t.waitSyncsTimer.C:
+			t.onWaitSyncsTimer()
 		}
 	}
 }

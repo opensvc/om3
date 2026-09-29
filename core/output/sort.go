@@ -96,7 +96,55 @@ func (a sortValue) compare(b sortValue) int {
 			return 0
 		}
 	}
-	return strings.Compare(a.text, b.text)
+	return naturalCompare(a.text, b.text)
+}
+
+// naturalCompare orders two texts the way a reader counts: the digit runs
+// compare as the numbers they write, so disk#2 comes before disk#10, and n2
+// before n10. The rest compares as text.
+func naturalCompare(a, b string) int {
+	for a != "" && b != "" {
+		da, db := isDigit(a[0]), isDigit(b[0])
+		switch {
+		case da && db:
+			na, ra := digitRun(a)
+			nb, rb := digitRun(b)
+			// The run without its leading zeros is the number: the longer
+			// one is the larger, and runs of one length compare as text.
+			ta, tb := strings.TrimLeft(na, "0"), strings.TrimLeft(nb, "0")
+			if len(ta) != len(tb) {
+				if len(ta) < len(tb) {
+					return -1
+				}
+				return 1
+			}
+			if c := strings.Compare(ta, tb); c != 0 {
+				return c
+			}
+			if c := strings.Compare(na, nb); c != 0 {
+				return c
+			}
+			a, b = ra, rb
+		case da != db, a[0] != b[0]:
+			return strings.Compare(a[:1], b[:1])
+		default:
+			a, b = a[1:], b[1:]
+		}
+	}
+	return strings.Compare(a, b)
+}
+
+func isDigit(c byte) bool {
+	return c >= '0' && c <= '9'
+}
+
+// digitRun splits s after its leading digits.
+func digitRun(s string) (string, string) {
+	i := 0
+	for i < len(s) && isDigit(s[i]) {
+		i++
+	}
+	return s[:i], s[i:]
 }
 
 // valueOf reduces what a jsonpath found on an item to something comparable.
@@ -165,6 +213,39 @@ func sortData(data any, s string, columns map[string]string) error {
 	if err != nil {
 		return err
 	}
+	return sortDataKeys(data, keys, columns, true)
+}
+
+// sortDataByColumns orders the items of a listing on its columns, left to
+// right, the order a listing comes in when neither the caller nor the
+// command chose one: without it, a listing assembled from maps and from the
+// answers of several nodes comes in a different order at each run.
+//
+// A column the sort can not read, or that no item carries, is passed over
+// rather than refused: the caller did not name it.
+func sortDataByColumns(data any, spec string) error {
+	if data == nil || !strings.HasPrefix(spec, "tab=") {
+		return nil
+	}
+	columns := tabColumns(spec)
+	keys := make([]sortKey, 0)
+	for _, option := range strings.Split(spec[len("tab="):], ",") {
+		header, expr, ok := strings.Cut(option, ":")
+		if !ok || header == "" || expr == "" {
+			continue
+		}
+		l, err := parseSort(header, columns)
+		if err != nil {
+			continue
+		}
+		keys = append(keys, l...)
+	}
+	return sortDataKeys(data, keys, columns, false)
+}
+
+// sortDataKeys orders the items of a listing on keys. Strict, a key no item
+// carries is an error, else it is passed over.
+func sortDataKeys(data any, keys []sortKey, columns map[string]string, strict bool) error {
 	if len(keys) == 0 {
 		return nil
 	}
@@ -199,6 +280,17 @@ func sortData(data any, s string, columns map[string]string) error {
 			value, ok := valueOf(key, item)
 			values[i][j] = value
 			known[j] = known[j] || ok
+		}
+	}
+	if !strict {
+		kept := keys[:0:0]
+		for j, key := range keys {
+			if known[j] {
+				kept = append(kept, key)
+			}
+		}
+		if len(kept) != len(keys) {
+			return sortDataKeys(data, kept, columns, true)
 		}
 	}
 	for j, ok := range known {

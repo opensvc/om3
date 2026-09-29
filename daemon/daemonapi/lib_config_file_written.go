@@ -2,8 +2,7 @@ package daemonapi
 
 import (
 	"github.com/opensvc/om3/v3/core/naming"
-	"github.com/opensvc/om3/v3/daemon/msgbus"
-	"github.com/opensvc/om3/v3/util/pubsub"
+	"github.com/opensvc/om3/v3/daemon/configannounce"
 )
 
 // announceConfigFileWritten says that this daemon wrote the configuration
@@ -16,11 +15,8 @@ import (
 // hear of a configuration when this node publishes it, which it only did
 // once the watcher had spoken.
 //
-// The watcher still speaks, 200ms later, and finds the file already read at
-// that modification time, which does nothing.
+// The watcher still sees the write, 200ms later, and does not announce it
+// again: see configannounce.
 func (a *DaemonAPI) announceConfigFileWritten(p naming.Path) {
-	a.Bus.Pub(&msgbus.ConfigFileUpdated{Path: p, File: p.ConfigFile()},
-		pubsub.Label{"namespace", p.Namespace},
-		pubsub.Label{"path", p.String()},
-	)
+	configannounce.Written(a.Bus, p)
 }
