@@ -14,6 +14,7 @@ import (
 
 	"github.com/opensvc/om3/v3/core/naming"
 	"github.com/opensvc/om3/v3/core/rawconfig"
+	"github.com/opensvc/om3/v3/daemon/configannounce"
 	"github.com/opensvc/om3/v3/daemon/msgbus"
 	"github.com/opensvc/om3/v3/util/file"
 	"github.com/opensvc/om3/v3/util/plog"
@@ -65,14 +66,39 @@ func dirRemoved(event fsnotify.Event) bool {
 }
 
 func (t *Manager) PubDebounce(key string, v pubsub.Messager, labels ...pubsub.Label) {
-	debouncer, ok := t.debouncers[key]
+	t.debounce(key, func() {
+		t.publisher.Pub(v, labels...)
+	})
+}
 
+// debounce calls fn once the events of key have settled for debounceDelay.
+func (t *Manager) debounce(key string, fn func()) {
+	debouncer, ok := t.debouncers[key]
 	if !ok {
 		debouncer = &Debouncer{}
 		t.debouncers[key] = debouncer
 	}
-	debouncer.Debounce(debounceDelay, func() {
-		t.publisher.Pub(v, labels...)
+	debouncer.Debounce(debounceDelay, fn)
+}
+
+// pubConfigFileUpdatedDebounce announces the write of the configuration file
+// at filename once its events settle, unless the daemon wrote it and
+// announced it already.
+func (t *Manager) pubConfigFileUpdatedDebounce(filename string, p naming.Path) {
+	t.debounce(filename, func() {
+		if configannounce.Consume(filename, file.ModTime(filename)) {
+			return
+		}
+		t.publisher.Pub(&msgbus.ConfigFileUpdated{Path: p, File: filename}, pubsub.Label{"namespace", p.Namespace}, pubsub.Label{"path", p.String()})
+	})
+}
+
+// pubConfigFileRemovedDebounce announces the removal of the configuration
+// file at filename once its events settle.
+func (t *Manager) pubConfigFileRemovedDebounce(filename string, p naming.Path) {
+	t.debounce(filename, func() {
+		configannounce.Forget(filename)
+		t.publisher.Pub(&msgbus.ConfigFileRemoved{Path: p, File: filename}, pubsub.Label{"namespace", p.Namespace}, pubsub.Label{"path", p.String()})
 	})
 }
 
@@ -134,7 +160,7 @@ func (t *Manager) fsWatcherStart() (func(), error) {
 						}
 					*/
 					log.Tracef("publish msgbus.ConfigFileUpdated config file %s", filename)
-					t.PubDebounce(filename, &msgbus.ConfigFileUpdated{Path: p, File: filename}, pubsub.Label{"namespace", p.Namespace}, pubsub.Label{"path", p.String()})
+					t.pubConfigFileUpdatedDebounce(filename, p)
 				}
 				return nil
 			},
@@ -237,11 +263,11 @@ func (t *Manager) fsWatcherStart() (func(), error) {
 					case event.Op&removeMask != 0:
 						if !file.Exists(filename) {
 							log.Tracef("detect removed file %s (%s)", filename, event.Op)
-							t.PubDebounce(filename, &msgbus.ConfigFileRemoved{Path: p, File: filename}, pubsub.Label{"namespace", p.Namespace}, pubsub.Label{"path", p.String()})
+							t.pubConfigFileRemovedDebounce(filename, p)
 						}
 					case event.Op&updateMask != 0:
 						log.Tracef("detect updated file %s (%s)", filename, event.Op)
-						t.PubDebounce(filename, &msgbus.ConfigFileUpdated{Path: p, File: filename}, pubsub.Label{"namespace", p.Namespace}, pubsub.Label{"path", p.String()})
+						t.pubConfigFileUpdatedDebounce(filename, p)
 					}
 				case dirCreated(event):
 					if event.Name == "." {
