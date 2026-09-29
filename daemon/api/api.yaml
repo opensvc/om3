@@ -9112,6 +9112,13 @@ components:
         - tags
         - type
       properties:
+        depends_on_peers:
+          type: boolean
+          description: |
+            the status reads a state the actions of the peer instances
+            change, like a scsi reservation or the roles of a replicated
+            device: the daemon evaluates it again when a peer instance
+            status changes
         disable:
           type: boolean
           description: hints the resource ignores all state transition actions

@@ -263,6 +263,9 @@ func (t *Manager) onMyInstanceStatusUpdated(srcNode string, srcCmd *msgbus.Insta
 		return
 	}
 	t.instStatus[srcCmd.Node] = srcCmd.Value
+	if ok && srcCmd.Node != t.localhost {
+		t.refreshOnPeerChange(srcCmd.Node, instStatus, srcCmd.Value)
+	}
 	t.mergePeerFrozen()
 	t.mergePeerStopped()
 	t.clearStonith(srcCmd.Node, srcCmd.Value.Avail)
