@@ -450,6 +450,14 @@ func (t *T) onJobAlarm(c eventJobAlarm) {
 				logger.Infof("skip (orchestration %s in progress)", mon.GlobalExpect)
 				return
 			}
+			// A node being drained shuts its instances down without
+			// waiting for the syncs, and interrupts the ones running: a
+			// sync started meanwhile would be sending while a peer
+			// takes over.
+			if mon := node.MonitorData.GetByNode(t.localhost); mon != nil && mon.LocalExpect == node.MonitorLocalExpectDrained {
+				logger.Infof("skip (node draining)")
+				return
+			}
 		}
 		if satisfied, ok := t.reqSatisfied.Get(e.Path, e.Key); ok {
 			if satisfied != nil {

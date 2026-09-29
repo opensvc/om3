@@ -773,8 +773,14 @@ which share the same executor.
     was writing. An orchestrated stop or switch now waits, in the new `wait
     syncs` monitor state, for the syncs running on the instance to end, for
     `wait_syncs_timeout` at most, 10 minutes by default. Past it, the stop
-    fails and the instance keeps running, its monitoring on. No scheduled sync starts while an orchestration is in
-    progress on the object.
+    fails and the instance keeps running, its monitoring on. No scheduled
+    sync starts while an orchestration is in progress on the object.
+
+* **A shutdown, as the one of a drained node, interrupts the syncs:**
+    It does not wait for the syncs running on the instance, and does not leave
+    them sending to a peer that takes over: it ends them, the processes they
+    started included, before stopping the resources. No scheduled sync starts
+    on a node being drained.
 
 ### Driver: sync.zfs
 

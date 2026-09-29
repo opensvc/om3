@@ -2,10 +2,14 @@ package proc
 
 import (
 	"os"
+	"os/exec"
 	"strings"
+	"syscall"
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestMayBeExecuting(t *testing.T) {
@@ -46,4 +50,26 @@ func TestMayBeExecuting(t *testing.T) {
 func TestEnv(t *testing.T) {
 	p := New(os.Getpid())
 	assert.Equal(t, os.Getenv("PATH"), p.Env()["PATH"])
+}
+
+func TestTree(t *testing.T) {
+	cmd := exec.Command("/bin/sh", "-c", "sleep 30 & sleep 30 & wait")
+	require.NoError(t, cmd.Start())
+	defer func() { _ = cmd.Process.Kill(); _ = cmd.Wait() }()
+	pid := cmd.Process.Pid
+	var tree []int
+	for i := 0; i < 50; i++ {
+		if tree = Tree(pid); len(tree) == 3 {
+			break
+		}
+		time.Sleep(20 * time.Millisecond)
+	}
+	require.Len(t, tree, 3, "the shell and its two sleeps")
+	require.Equal(t, pid, tree[0], "parents first")
+	for _, child := range tree[1:] {
+		ppid, err := New(child).PPID()
+		require.NoError(t, err)
+		require.Equal(t, pid, ppid)
+		_ = syscall.Kill(child, syscall.SIGKILL)
+	}
 }
