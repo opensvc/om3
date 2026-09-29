@@ -120,6 +120,12 @@ OpenSVC v3 is a major evolution, rebuilt in Go for performance, reliability, and
 * **Time format change:**
     OpenSVC now uses RFC3339 time format for all internal and exposed data, replacing the Unix timestamps.
 
+* **SAN switches:**
+    A switch is inventoried by `om node push switch [<name>]`, and on the `schedule` of its `switch#<name>` section, with the `pushswitch` scheduler action: the v2 `om node pushbrocade` command and the `[brocade] schedule` keyword are gone.
+    The `telnet` method of a brocade switch is refused, as telnet sends the password in clear: set `method = ssh`, with a `key` or a `password` secret.
+    The switch key is trusted on the first connection and recorded in the root known hosts, where v2 connected with `StrictHostKeyChecking=no`: a switch presenting another key later is refused.
+    The report goes to the oc3 switch feed, and to the old collector `update_brocade` rpc where oc3 does not serve it.
+
 * **`cluster.name` default value:**
     In v2.1, the default cluster name was `default`.
     In v3, if `cluster.name` is undefined at startup, it will be automatically replaced with a randomly generated human-readable value.

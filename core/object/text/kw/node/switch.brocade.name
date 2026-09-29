@@ -1,3 +1,4 @@
-The name connect to the switch (dns name or ip address).
+The name to connect to the switch with (dns name or ip address), and
+optionally the ssh port, as `sansw1.my.corp:2222`.
 
 If not set, fallback to the section name suffix.

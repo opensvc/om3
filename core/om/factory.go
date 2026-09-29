@@ -1263,6 +1263,35 @@ pushed with the collector method exported for its type.`,
 	return cmd
 }
 
+func newCmdNodePushSwitch() *cobra.Command {
+	var options commands.CmdNodePushSwitches
+	cmd := &cobra.Command{
+		Use:   "switch [NAME]",
+		Short: "push the SAN switch configurations to the collector",
+		Long: `The switches are the ones the node and cluster configuration name, in
+"switch#<name>" sections. Each is inventoried with the driver of its type, and
+its configuration reported to the collector, which indexes its ports, zones
+and aliases.`,
+		Example: `  om node push switch sansw1
+  om node push switch switch#sansw1
+  om node push switch`,
+		Aliases: []string{"switches"},
+		Args:    cobra.MaximumNArgs(1),
+		RunE: func(cmd *cobra.Command, args []string) error {
+			if len(args) > 0 {
+				options.Switch = args[0]
+			}
+			return options.Run()
+		},
+	}
+	commoncmd.CmdWithArg(cmd, `NAME  The switch to push, named by its section with or without the "switch#" prefix. Every switch when not set.`)
+	flags := cmd.Flags()
+	addFlagsGlobal(flags, &options.OptsGlobal)
+	flagLocal(flags, &options.Local)
+	commoncmd.FlagIgnoreNoCollectorConfigured(flags, &options.IgnoreNoCollectorConfigured)
+	return cmd
+}
+
 func newCmdNodePushDisk() *cobra.Command {
 	var options commands.CmdNodePushDisks
 	cmd := &cobra.Command{

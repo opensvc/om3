@@ -1,3 +1,4 @@
-Schedule parameter for the `pushswitch` node action.
+Schedule parameter for the `pushswitch` node action, which inventories the
+switch and reports its configuration to the collector.
 
 See `usr/share/doc/schedule` for the schedule syntax.

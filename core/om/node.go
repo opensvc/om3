@@ -216,6 +216,7 @@ func init() {
 		newCmdNodePushArray(),
 		newCmdNodePushDisk(),
 		newCmdNodePushPkg(),
+		newCmdNodePushSwitch(),
 	)
 	cmdNodeRelay.AddCommand(
 		newCmdNodeRelayList(),

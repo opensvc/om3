@@ -1,1 +1,5 @@
-The network switch driver name.
+The SAN switch driver name.
+
+A node with a `switch#<name>` section inventories the switch on the section
+`schedule`, or with `om node push switch`, and reports its configuration to
+the collector.
