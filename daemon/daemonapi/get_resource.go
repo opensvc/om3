@@ -39,8 +39,14 @@ func (a *DaemonAPI) GetResources(ctx echo.Context, params api.GetResourcesParams
 		if !meta.HasNode(config.Node) {
 			continue
 		}
+		// A configuration is known before the status and the monitor of its
+		// instance are, as right after the daemon starts: without a status,
+		// the instance has no resource to list yet.
 		monitor := instance.MonitorData.GetByPathAndNode(config.Path, config.Node)
 		status := instance.StatusData.GetByPathAndNode(config.Path, config.Node)
+		if status == nil {
+			continue
+		}
 		for rid, resourceConfig := range config.Value.Resources {
 			if id, err := resourceid.Parse(rid); err != nil {
 				continue
@@ -61,8 +67,10 @@ func (a *DaemonAPI) GetResources(ctx echo.Context, params api.GetResourcesParams
 					Config: &resourceConfig,
 				},
 			}
-			if e, ok := monitor.Resources[rid]; ok {
-				item.Data.Monitor = &e
+			if monitor != nil {
+				if e, ok := monitor.Resources[rid]; ok {
+					item.Data.Monitor = &e
+				}
 			}
 			if e, ok := status.Resources[rid]; ok {
 				item.Data.Status = &e
