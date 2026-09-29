@@ -860,7 +860,7 @@ func (t *App) onRuneColumn(event *tcell.EventKey) {
 		case "start":
 			t.actionResourceStart(keys, args[1:])
 		case "provision":
-			t.actionResourceProvision(keys)
+			t.actionResourceProvision(keys, args[1:])
 		case "unprovision":
 			t.confirmAction(func() {
 				t.actionResourceUnprovision(keys)
@@ -1417,6 +1417,9 @@ func (t *App) actionInstanceProvision(keys map[[2]string]any, args []string) {
 			case arg == "--disable-rollback":
 				v := true
 				params.DisableRollback = &v
+			case arg == "--state-only":
+				v := true
+				params.StateOnly = &v
 			default:
 				t.errorf("unsupported option: %s", arg)
 				return
@@ -1589,7 +1592,20 @@ func (t *App) actionResourceRun(keys map[[3]string]any) {
 	}
 }
 
-func (t *App) actionResourceProvision(keys map[[3]string]any) {
+// actionResourceProvision provisions the resources selected. With
+// --state-only, it only marks them provisioned, for resources a sysadmin
+// provisioned by hand.
+func (t *App) actionResourceProvision(keys map[[3]string]any, args []string) {
+	var stateOnly bool
+	for _, arg := range args {
+		switch arg {
+		case "--state-only":
+			stateOnly = true
+		default:
+			t.errorf("unsupported option: %s", arg)
+			return
+		}
+	}
 	ctx := context.Background()
 	for key, rids := range groupByInstance(keys) {
 		path := key[0]
@@ -1600,6 +1616,9 @@ func (t *App) actionResourceProvision(keys map[[3]string]any) {
 		}
 		rid := strings.Join(rids, ",")
 		params := api.PostInstanceActionProvisionParams{Rid: &rid}
+		if stateOnly {
+			params.StateOnly = &stateOnly
+		}
 		_, _ = t.client.PostInstanceActionProvisionWithResponse(ctx, node, p.Namespace, p.Kind, p.Name, &params)
 	}
 }

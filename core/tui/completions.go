@@ -37,6 +37,7 @@ var (
 		"provision": node{
 			"--disable-rollback": nil,
 			"--leader":           nil,
+			"--state-only":       nil,
 		},
 		"refresh": nil,
 		"restart": nil,
@@ -56,10 +57,12 @@ var (
 		},
 	}
 	nodeDoResource = node{
-		"disable":   nil,
-		"enable":    nil,
-		"provision": nil,
-		"run":       nil,
+		"disable": nil,
+		"enable":  nil,
+		"provision": node{
+			"--state-only": nil,
+		},
+		"run": nil,
 		"start": node{
 			"--force": nil,
 		},
