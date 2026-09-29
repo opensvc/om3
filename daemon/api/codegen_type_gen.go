@@ -1798,14 +1798,19 @@ type NodeMonitor struct {
 
 // NodeStatus defines model for NodeStatus.
 type NodeStatus struct {
-	Agent        string                      `json:"agent"`
-	API          string                      `json:"api"`
-	Arbitrators  map[string]ArbitratorStatus `json:"arbitrators"`
-	Compat       uint64                      `json:"compat"`
-	FrozenAt     time.Time                   `json:"frozen_at"`
-	Gen          map[string]uint64           `json:"gen"`
-	IsLeader     bool                        `json:"is_leader"`
-	IsOverloaded bool                        `json:"is_overloaded"`
+	Agent       string                      `json:"agent"`
+	API         string                      `json:"api"`
+	Arbitrators map[string]ArbitratorStatus `json:"arbitrators"`
+	Compat      uint64                      `json:"compat"`
+	FrozenAt    time.Time                   `json:"frozen_at"`
+
+	// FrozenScope The scope of the freeze of a frozen node: "cluster" when a freeze
+	// of the cluster froze it, "node" when it was frozen alone. A node
+	// that missed a freeze of the cluster adopts it when it comes back.
+	FrozenScope  *string           `json:"frozen_scope,omitempty"`
+	Gen          map[string]uint64 `json:"gen"`
+	IsLeader     bool              `json:"is_leader"`
+	IsOverloaded bool              `json:"is_overloaded"`
 }
 
 // NodesInfo defines model for NodesInfo.

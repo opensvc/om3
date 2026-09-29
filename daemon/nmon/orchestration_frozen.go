@@ -16,7 +16,7 @@ func (t *Manager) frozenFromIdle() {
 		return
 	}
 	t.log.Infof("run action freeze")
-	t.doTransitionAction(t.crmFreeze, node.MonitorStateFreezeProgress, node.MonitorStateFreezeSuccess, node.MonitorStateFreezeFailure)
+	t.doTransitionAction(t.crmFreezeCluster, node.MonitorStateFreezeProgress, node.MonitorStateFreezeSuccess, node.MonitorStateFreezeFailure)
 	return
 }
 
@@ -31,7 +31,7 @@ func (t *Manager) frozenFromFrozen() {
 
 func (t *Manager) frozenClearIfReached() bool {
 	if !t.nodeStatus.FrozenAt.IsZero() {
-		t.log.Infof("node is not frozen, unset global expect")
+		t.log.Infof("node is frozen, unset global expect")
 		t.change = true
 		t.state.GlobalExpect = node.MonitorGlobalExpectNone
 		t.clearPending()

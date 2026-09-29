@@ -7225,6 +7225,13 @@ components:
         frozen_at:
           type: string
           format: date-time
+        frozen_scope:
+          type: string
+          description: |
+            The scope of the freeze of a frozen instance: "object" when a
+            freeze of the object froze it, "instance" when it was frozen
+            alone. A node that missed a freeze of the object adopts it when
+            it comes back.
         last_started_at:
           type: string
           format: date-time
@@ -7931,6 +7938,12 @@ components:
         frozen_at:
           type: string
           format: date-time
+        frozen_scope:
+          type: string
+          description: |
+            The scope of the freeze of a frozen node: "cluster" when a freeze
+            of the cluster froze it, "node" when it was frozen alone. A node
+            that missed a freeze of the cluster adopts it when it comes back.
         gen:
           additionalProperties:
             type: integer

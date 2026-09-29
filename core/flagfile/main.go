@@ -19,6 +19,13 @@ import (
 // already raised leaves its time alone: the flag says when the decision was
 // made, and it was made the first time.
 func Set(p string) error {
+	return SetWith(p, nil)
+}
+
+// SetWith raises the flag like Set, with b as the content of the file, which
+// says more about the decision than its time. Setting a flag already raised
+// leaves its content alone too, as the decision it describes.
+func SetWith(p string, b []byte) error {
 	if file.Exists(p) {
 		return nil
 	}
@@ -33,7 +40,22 @@ func Set(p string) error {
 		return err
 	}
 	defer f.Close()
+	if len(b) > 0 {
+		if _, err := f.Write(b); err != nil {
+			return err
+		}
+	}
 	return f.Sync()
+}
+
+// Content returns the content the flag was raised with, empty when it was
+// raised with none or is not raised.
+func Content(p string) []byte {
+	b, err := os.ReadFile(p)
+	if err != nil {
+		return nil
+	}
+	return b
 }
 
 // Unset lowers the flag, and syncs the directory so the removal survives a

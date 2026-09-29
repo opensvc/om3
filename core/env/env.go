@@ -43,6 +43,12 @@ var (
 	// CredentialVar because it names a user of the collector, not of the
 	// cluster, and an operator can hold one without the other.
 	CollectorCredentialVar = "OSVC_COLLECTOR_CREDENTIAL"
+
+	// FreezeScopeVar is the environment variable the node monitor sets to
+	// "cluster" on the "node freeze" it forks for a freeze of the cluster,
+	// so the frozen flag records it, and the peers that missed the freeze
+	// adopt it when they come back.
+	FreezeScopeVar = "OSVC_FREEZE_SCOPE"
 )
 
 // HasDaemonOrigin returns true if the environment variable OSVC_ACTION_ORIGIN

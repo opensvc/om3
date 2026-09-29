@@ -7,6 +7,7 @@ import (
 
 	"github.com/opensvc/om3/v3/core/cluster"
 	"github.com/opensvc/om3/v3/core/clusterdump"
+	"github.com/opensvc/om3/v3/core/freeze"
 	"github.com/opensvc/om3/v3/core/instance"
 	"github.com/opensvc/om3/v3/core/node"
 	"github.com/opensvc/om3/v3/core/object"
@@ -104,6 +105,8 @@ func newNodeData(localNode string) node.Node {
 			Compat:   12,
 			FrozenAt: frozen,
 			Gen:      node.Gen{localNode: 1},
+
+			FrozenScope: freeze.ScopeOf(nodeFrozenFile, freeze.ScopeCluster, freeze.ScopeNode),
 		},
 		Os: node.Os{
 			Paths: san.Paths{},

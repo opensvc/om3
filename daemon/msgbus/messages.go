@@ -56,6 +56,7 @@ import (
 	"github.com/opensvc/om3/v3/core/cluster"
 	"github.com/opensvc/om3/v3/core/clusterdump"
 	"github.com/opensvc/om3/v3/core/event"
+	"github.com/opensvc/om3/v3/core/freeze"
 	"github.com/opensvc/om3/v3/core/hbsecret"
 	"github.com/opensvc/om3/v3/core/instance"
 	"github.com/opensvc/om3/v3/core/naming"
@@ -607,6 +608,9 @@ type (
 		Path       naming.Path `json:"path" yaml:"path"`
 		File       string      `json:"file" yaml:"file"`
 		At         time.Time   `json:"at" yaml:"at"`
+
+		// Scope is the scope of the freeze the flag records.
+		Scope freeze.Scope `json:"scope,omitempty" yaml:"scope,omitempty"`
 	}
 
 	// InstanceFrozenFileRemoved is emitted by a fs watcher or iman when an instance frozen file is removed.

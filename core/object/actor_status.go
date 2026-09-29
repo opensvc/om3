@@ -117,6 +117,7 @@ func (t *actor) lockedMonitorStatusEval(ctx context.Context, data instance.Statu
 	t.setLastStartedAt(&data)
 	data.UpdatedAt = time.Now()
 	data.FrozenAt = t.Frozen()
+	data.FrozenScope = t.FrozenScope()
 	data.StoppedAt = t.StoppedAt()
 
 	// reset fields that t.resourceStatusEval() will re-evaluate
@@ -143,6 +144,7 @@ func (t *actor) lockedStatusEval(ctx context.Context) (instance.Status, error) {
 	t.setLastStartedAt(&data)
 	data.UpdatedAt = time.Now()
 	data.FrozenAt = t.Frozen()
+	data.FrozenScope = t.FrozenScope()
 	data.StoppedAt = t.StoppedAt()
 	if err := t.resourceStatusEval(ctx, &data, false); err != nil {
 		return data, fmt.Errorf("resource status eval: %w", err)

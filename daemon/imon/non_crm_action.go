@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/opensvc/om3/v3/core/flagfile"
+	"github.com/opensvc/om3/v3/core/freeze"
 	"github.com/opensvc/om3/v3/daemon/msgbus"
 	"github.com/opensvc/om3/v3/util/file"
 )
@@ -70,30 +71,22 @@ func (t *Manager) isStopped() bool {
 
 // freeze creates missing instance frozen flag file, and publish InstanceFrozenFileUpdated
 // local instance status cache frozen value is updated with value read from file system
+//
+// It is the step of a freeze of the object, which the flag records, so the
+// nodes that miss it adopt it when they come back.
 func (t *Manager) freeze() error {
-	frozen := t.getFrozen()
-
 	t.log.Tracef("daemon action freeze")
-	p := filepath.Join(t.path.VarDir(), "frozen")
+	p := t.path.FrozenFile()
 
-	if !file.Exists(p) {
-		d := filepath.Dir(p)
-		if !file.Exists(d) {
-			if err := os.MkdirAll(d, os.ModePerm); err != nil {
-				t.log.Errorf("freeze: %s", err)
-				return err
-			}
-		}
-		f, err := os.Create(p)
-		if err != nil {
-			t.log.Errorf("freeze: %s", err)
-			return err
-		}
-		_ = f.Close()
+	if err := freeze.FreezeScope(p, freeze.ScopeObject); err != nil {
+		t.log.Errorf("freeze: %s", err)
+		return err
 	}
-	frozen = file.ModTime(p)
+	frozen := freeze.Frozen(p)
+	scope := freeze.ScopeOf(p, freeze.ScopeObject, freeze.ScopeInstance)
 	if instanceStatus, ok := t.instStatus[t.localhost]; ok {
 		instanceStatus.FrozenAt = frozen
+		instanceStatus.FrozenScope = scope
 		t.instStatus[t.localhost] = instanceStatus
 	}
 	if frozen.IsZero() {
@@ -101,7 +94,7 @@ func (t *Manager) freeze() error {
 		t.log.Errorf("freeze: %s", err)
 		return err
 	}
-	t.publisher.Pub(&msgbus.InstanceFrozenFileUpdated{Path: t.path, At: frozen}, t.pubLabels...)
+	t.publisher.Pub(&msgbus.InstanceFrozenFileUpdated{Path: t.path, File: p, At: frozen, Scope: scope}, t.pubLabels...)
 	return nil
 }
 
@@ -121,6 +114,7 @@ func (t *Manager) unfreeze() error {
 	}
 	if instanceStatus, ok := t.instStatus[t.localhost]; ok {
 		instanceStatus.FrozenAt = time.Time{}
+		instanceStatus.FrozenScope = ""
 		t.instStatus[t.localhost] = instanceStatus
 	}
 	t.publisher.Pub(&msgbus.InstanceFrozenFileRemoved{Path: t.path, At: time.Now()}, t.pubLabels...)

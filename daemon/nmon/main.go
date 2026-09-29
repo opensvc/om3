@@ -37,6 +37,7 @@ import (
 	"github.com/prometheus/procfs"
 
 	"github.com/opensvc/om3/v3/core/cluster"
+	"github.com/opensvc/om3/v3/core/freeze"
 	"github.com/opensvc/om3/v3/core/hbsecret"
 	"github.com/opensvc/om3/v3/core/naming"
 	"github.com/opensvc/om3/v3/core/node"
@@ -232,6 +233,7 @@ func (t *Manager) Start(parent context.Context) error {
 	// themselves when they rejoin, so every daemon restart froze the nodes
 	// restarting with it.
 	t.nodeStatus.FrozenAt = file.ModTime(nodeFrozenFile())
+	t.nodeStatus.FrozenScope = nodeFrozenScope()
 	t.frozen = !t.nodeStatus.FrozenAt.IsZero()
 
 	// trigger an initial pool status eval
@@ -558,6 +560,12 @@ func (t *Manager) onLastShutdownFileTouchTicker() {
 // nodeFrozenFile is the flag file of the node frozen state.
 func nodeFrozenFile() string {
 	return filepath.Join(rawconfig.Paths.Var, "node", "frozen")
+}
+
+// nodeFrozenScope is the scope of the freeze of the node, empty when it is
+// not frozen.
+func nodeFrozenScope() freeze.Scope {
+	return freeze.ScopeOf(nodeFrozenFile(), freeze.ScopeCluster, freeze.ScopeNode)
 }
 
 func (t *Manager) nodeFreeze() (bool, error) {

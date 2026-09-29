@@ -5,10 +5,12 @@ import (
 	"fmt"
 	"os"
 	"slices"
+	"sort"
 	"strings"
 	"time"
 
 	"github.com/opensvc/om3/v3/core/clusternode"
+	"github.com/opensvc/om3/v3/core/freeze"
 	"github.com/opensvc/om3/v3/core/network"
 	"github.com/opensvc/om3/v3/core/node"
 	"github.com/opensvc/om3/v3/core/object"
@@ -370,6 +372,7 @@ func (t *Manager) onForgetPeer(c *msgbus.ForgetPeer) {
 func (t *Manager) onNodeFrozenFileRemoved(_ *msgbus.NodeFrozenFileRemoved) {
 	t.frozen = false
 	t.nodeStatus.FrozenAt = time.Time{}
+	t.nodeStatus.FrozenScope = ""
 	t.publisher.Pub(&msgbus.NodeFrozen{Node: t.localhost, Status: t.frozen, FrozenAt: time.Time{}}, t.labelLocalhost)
 	t.publishNodeStatus()
 	t.orchestrate()
@@ -378,6 +381,7 @@ func (t *Manager) onNodeFrozenFileRemoved(_ *msgbus.NodeFrozenFileRemoved) {
 func (t *Manager) onNodeFrozenFileUpdated(m *msgbus.NodeFrozenFileUpdated) {
 	t.frozen = true
 	t.nodeStatus.FrozenAt = m.At
+	t.nodeStatus.FrozenScope = nodeFrozenScope()
 	t.publisher.Pub(&msgbus.NodeFrozen{Node: t.localhost, Status: t.frozen, FrozenAt: m.At}, t.labelLocalhost)
 	t.publishNodeStatus()
 	t.orchestrate()
@@ -457,19 +461,16 @@ func (t *Manager) onNodeRejoin(c *msgbus.NodeRejoin) {
 	if t.state.GlobalExpect == node.MonitorGlobalExpectUnfrozen {
 		return
 	}
-	var frozenPeers []string
+	peerStatus := make(map[string]node.Status)
 	for _, peer := range t.clusterConfig.Nodes {
 		if peer == t.localhost {
 			continue
 		}
-		peerStatus := node.StatusData.GetByNode(peer)
-		if peerStatus == nil {
-			continue
-		}
-		if peerStatus.FrozenAt.After(c.LastShutdownAt) {
-			frozenPeers = append(frozenPeers, peer)
+		if v := node.StatusData.GetByNode(peer); v != nil {
+			peerStatus[peer] = *v
 		}
 	}
+	frozenPeers := clusterFreezeMissedBy(peerStatus, c.LastShutdownAt)
 
 	var msg string
 	switch len(frozenPeers) {
@@ -477,9 +478,9 @@ func (t *Manager) onNodeRejoin(c *msgbus.NodeRejoin) {
 		// no peer frozen while this daemon was shutdown
 		return
 	case 1:
-		msg = fmt.Sprintf("peer %s was frozen while this daemon was down", frozenPeers[0])
+		msg = fmt.Sprintf("the cluster was frozen while this daemon was down (peer %s frozen)", frozenPeers[0])
 	default:
-		msg = fmt.Sprintf("peers %s were frozen while this daemon was down", frozenPeers)
+		msg = fmt.Sprintf("the cluster was frozen while this daemon was down (peers %s frozen)", frozenPeers)
 	}
 
 	changed, err := t.nodeFreeze()
@@ -490,6 +491,27 @@ func (t *Manager) onNodeRejoin(c *msgbus.NodeRejoin) {
 	} else {
 		t.log.Infof("%s: local node is already frozen", msg)
 	}
+}
+
+// clusterFreezeMissedBy returns the peers frozen by a freeze of the cluster
+// after lastShutdownAt, the freeze a node down since then missed and must
+// adopt.
+//
+// Only a freeze of the cluster is adopted. A peer frozen alone, by a drain,
+// at boot, at the end of its rejoin grace period, or by an adoption of its
+// own, stays the only one frozen.
+func clusterFreezeMissedBy(peerStatus map[string]node.Status, lastShutdownAt time.Time) []string {
+	var l []string
+	for peer, v := range peerStatus {
+		if v.FrozenScope != freeze.ScopeCluster {
+			continue
+		}
+		if v.FrozenAt.After(lastShutdownAt) {
+			l = append(l, peer)
+		}
+	}
+	sort.Strings(l)
+	return l
 }
 
 func (t *Manager) onOrchestrate(c cmdOrchestrate) {

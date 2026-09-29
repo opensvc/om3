@@ -13,6 +13,7 @@ import (
 
 	"github.com/google/uuid"
 
+	"github.com/opensvc/om3/v3/core/freeze"
 	"github.com/opensvc/om3/v3/core/instance"
 	"github.com/opensvc/om3/v3/core/naming"
 	"github.com/opensvc/om3/v3/core/nodeselector"
@@ -1250,20 +1251,15 @@ func (t *Manager) mergePeerFrozen() {
 		return
 	}
 	leftAt := t.nodeStatus[t.localhost].LeftAt
-	for peer, peerStatus := range t.instStatus {
-		if peer == t.localhost {
-			continue
+	if peer, frozenAt, ok := objectFreezeMissed(t.instStatus, t.localhost, leftAt, rejoinedAt); ok {
+		msg := fmt.Sprintf("freeze %s instance because the object was frozen while this daemon was down (peer %s instance frozen at %s)", t.path, peer, frozenAt.Format(time.RFC3339))
+		t.isPeerFrozenMerged = true
+		if err := t.queueFreeze(); err != nil {
+			t.log.Errorf("%s: %s", msg, err)
+		} else {
+			t.log.Infof(msg)
 		}
-		if peerStatus.FrozenAt.After(leftAt) && peerStatus.FrozenAt.Before(rejoinedAt) {
-			msg := fmt.Sprintf("freeze %s instance because peer %s instance was frozen while this daemon was down", t.path, peer)
-			t.isPeerFrozenMerged = true
-			if err := t.queueFreeze(); err != nil {
-				t.log.Errorf("%s: %s", msg, err)
-			} else {
-				t.log.Infof(msg)
-			}
-			return
-		}
+		return
 	}
 	if len(t.instStatus) == len(t.scopeNodes) {
 		t.log.Tracef("no peer instances frozen while this daemon was down")
@@ -1275,6 +1271,27 @@ func (t *Manager) mergePeerFrozen() {
 		t.isPeerFrozenMerged = true
 		return
 	}
+}
+
+// objectFreezeMissed finds a peer instance frozen by a freeze of the object
+// while the local daemon was down, between leftAt and rejoinedAt, which the
+// local instance must adopt.
+//
+// Only a freeze of the object is adopted: a peer instance frozen alone, or by
+// an adoption of its own, stays the only one frozen.
+func objectFreezeMissed(instStatus map[string]instance.Status, localhost string, leftAt, rejoinedAt time.Time) (peer string, frozenAt time.Time, ok bool) {
+	for peer, peerStatus := range instStatus {
+		if peer == localhost {
+			continue
+		}
+		if peerStatus.FrozenScope != freeze.ScopeObject {
+			continue
+		}
+		if peerStatus.FrozenAt.After(leftAt) && peerStatus.FrozenAt.Before(rejoinedAt) {
+			return peer, peerStatus.FrozenAt, true
+		}
+	}
+	return "", time.Time{}, false
 }
 
 // mergePeerStopped raises the stopped flag on the local instance when a peer

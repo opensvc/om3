@@ -941,6 +941,14 @@ Where the password is the value of the `þassword` key in `system/sec/relay-v3`.
 
     On upgrade, instances frozen by an older version's stop or create stay frozen, and nothing lifts those freezes any more. Run `om <selector> print status` to find them, and `om <path> unfreeze` on the ones you did not freeze yourself.
 
+* A node coming back from down adopts only a freeze of the cluster or of an object.
+
+    In v2 and in earlier v3, a daemon joining the cluster froze the node when any peer node had been frozen while it was down, and froze an ha instance when any peer instance had. A node frozen alone for its maintenance froze its peers as they rebooted, and a freeze the daemon took on its own, at the end of a rejoin grace period, spread from node to node through their restarts. A daemon restart also published the node as frozen since its start until it had read its frozen flag, so the daemons restarting with it, as `om daemon restart --node='*'` does, froze on a freeze nobody asked for.
+
+    A node now adopts a freeze of the whole cluster, `om cluster freeze`, and an instance a freeze of the whole object, `om <path> freeze`, that a peer took while the node was down. A node or an instance frozen alone, with `om node freeze` or `om <path> instance freeze`, by a drain, at boot, or by the daemon on its own, stays the only one frozen, and so does a freeze adopted. The node and instance statuses say which a freeze is in `frozen_scope`: `cluster` or `node`, `object` or `instance`.
+
+    On upgrade, the flags of the freezes taken before say nothing of their scope, and read as freezes of the node or the instance alone: a node down across the upgrade does not adopt them.
+
 * An orchestration says how it went, and is waited on by its id.
 
     `ObjectOrchestrationEnd` and `NodeOrchestrationEnd` carry `failed` and `error`, and the orchestration table records them: an orchestration ends when every node is done with it, whether it did what was asked or gave up, so the end was not a verdict and every client had to read the states back and judge for itself. Any node answers, the one that accepted the orchestration from what it published and the others from the state each instance monitor drops the orchestration id with.

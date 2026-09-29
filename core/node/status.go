@@ -3,6 +3,7 @@ package node
 import (
 	"time"
 
+	"github.com/opensvc/om3/v3/core/freeze"
 	"github.com/opensvc/om3/v3/core/instance"
 	"github.com/opensvc/om3/v3/core/status"
 )
@@ -27,6 +28,11 @@ type (
 		// This happens either when the rejoin_grace_period expires or when
 		// we received data from all peers.
 		RejoinedAt time.Time `json:"rejoined_at"`
+
+		// FrozenScope is "cluster" when the node was frozen by a freeze
+		// of the cluster, "node" when it was frozen alone, and empty when
+		// it is not frozen.
+		FrozenScope freeze.Scope `json:"frozen_scope,omitempty"`
 	}
 
 	// Instances groups instances configuration digest and status

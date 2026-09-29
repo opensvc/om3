@@ -5,6 +5,7 @@ import (
 	"time"
 
 	"github.com/opensvc/om3/v3/core/env"
+	"github.com/opensvc/om3/v3/core/freeze"
 	"github.com/opensvc/om3/v3/daemon/msgbus"
 	"github.com/opensvc/om3/v3/daemon/proc"
 	"github.com/opensvc/om3/v3/util/command"
@@ -38,12 +39,23 @@ func (t *Manager) crmFreeze() error {
 	return t.crmAction("freeze", "node", "freeze")
 }
 
+// crmFreezeCluster freezes the node as a step of a freeze of the cluster,
+// which the frozen flag records, so the nodes that miss the freeze adopt it
+// when they come back.
+func (t *Manager) crmFreezeCluster() error {
+	return t.crmActionWithEnv("freeze", []string{env.FreezeScopeVar + "=" + string(freeze.ScopeCluster)}, "node", "freeze")
+}
+
 func (t *Manager) crmUnfreeze() error {
 	return t.crmAction("unfreeze", "node", "unfreeze")
 }
 
 func (t *Manager) crmAction(title string, cmdArgs ...string) error {
-	var cmdEnv []string
+	return t.crmActionWithEnv(title, nil, cmdArgs...)
+}
+
+func (t *Manager) crmActionWithEnv(title string, extraEnv []string, cmdArgs ...string) error {
+	cmdEnv := append([]string{}, extraEnv...)
 
 	sessionID := xsession.NewSessionID()
 	execID := xsession.NewExecID()
