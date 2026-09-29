@@ -1,1 +1,1 @@
-Suffix of the array configuration section in cluster.conf (the part after # in array#<suffix>).
+Suffix of the array configuration section in cluster.conf (the part after `#` in `array#<suffix>`).

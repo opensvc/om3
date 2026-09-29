@@ -22,7 +22,7 @@ Where:
   * is the path of the datastore to install keys from, relative to the installing object namespace.
 
 * `key <key>`
-  * `<key>` is the key name or a globbing pattern from <obj_path|obj_relpath>.
+  * `<key>` is the key name or a globbing pattern from `<obj_path|obj_relpath>`.
   * if not specified, defaults to the `<path>` with the leading `/` stripped.
     e.g. `fs#1.install = /a/b from ./sec/sec1` will install `<fs#1 head>/a/b` from the `./sec/sec1` key named `a/b`.
 
@@ -40,6 +40,6 @@ Where:
   * stop installing items if this item install failed.
 
 * `source <uri>`
-  * seed the datastore key with the content of <uri>.
-  * if `template` is also set, treat the <uri> content as a go template, and execute using the [env] section keys as the dataset.
+  * seed the datastore key with the content of `<uri>`.
+  * if `template` is also set, treat the `<uri>` content as a go template, and execute using the [env] section keys as the dataset.
     e.g. {{.foo}} is replaced by the evaluated value of `env.foo`.

@@ -2,7 +2,7 @@ A template key name from config object `system/cfg/drbd` to define alternate
 drbd resource configuration template used during resource provisioning.
 
 When defined: Provision will create resource config file from the template retrieved from
-`om system/cfg/drbd key decode --name <template>.
+`om system/cfg/drbd key decode --name <template>`.
 
 When undefined, the default template is used.
 The default drbd 9 template:
