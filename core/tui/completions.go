@@ -53,7 +53,8 @@ var (
 		},
 		"unfreeze": nil,
 		"unprovision": node{
-			"--leader": nil,
+			"--leader":     nil,
+			"--state-only": nil,
 		},
 	}
 	nodeDoResource = node{
@@ -69,7 +70,9 @@ var (
 		"stop": node{
 			"--force": nil,
 		},
-		"unprovision": nil,
+		"unprovision": node{
+			"--state-only": nil,
+		},
 	}
 	nodeDoTask = node{
 		"abort": nil,

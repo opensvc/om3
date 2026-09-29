@@ -184,6 +184,10 @@ var (
 	dataLostMessage            = "I understand data will be lost."
 	confLostMessage            = "I understand the configuration will be lost."
 	serviceInterruptionMessage = "I understand the selected services may be temporarily interrupted during failover, or durably interrupted if no failover is configured."
+
+	// stateOnlyUnprovisionMessage is what a state only unprovision is
+	// confirmed with: it destroys nothing and stops nothing.
+	stateOnlyUnprovisionMessage = "I understand the selected resources will be marked unprovisioned, and not started on the node until provisioned again."
 )
 
 type Options struct {
@@ -863,8 +867,8 @@ func (t *App) onRuneColumn(event *tcell.EventKey) {
 			t.actionResourceProvision(keys, args[1:])
 		case "unprovision":
 			t.confirmAction(func() {
-				t.actionResourceUnprovision(keys)
-			}, dataLostMessage, serviceInterruptionMessage)
+				t.actionResourceUnprovision(keys, args[1:])
+			}, unprovisionMessages(args[1:])...)
 		case "restart":
 			t.confirmAction(func() {
 				t.actionResourceRestart(keys)
@@ -896,7 +900,7 @@ func (t *App) onRuneColumn(event *tcell.EventKey) {
 		case "unprovision":
 			t.confirmAction(func() {
 				t.actionInstanceUnprovision(keys, args[1:])
-			}, dataLostMessage, serviceInterruptionMessage)
+			}, unprovisionMessages(args[1:])...)
 		case "freeze":
 			t.actionInstanceFreeze(keys)
 		case "unfreeze", "thaw":
@@ -1444,6 +1448,9 @@ func (t *App) actionInstanceUnprovision(keys map[[2]string]any, args []string) {
 			case arg == "--leader":
 				v := true
 				params.Leader = &v
+			case arg == "--state-only":
+				v := true
+				params.StateOnly = &v
 			default:
 				t.errorf("unsupported option: %s", arg)
 				return
@@ -1623,7 +1630,29 @@ func (t *App) actionResourceProvision(keys map[[3]string]any, args []string) {
 	}
 }
 
-func (t *App) actionResourceUnprovision(keys map[[3]string]any) {
+// unprovisionMessages are what the user confirms an unprovision with: a
+// state only one destroys nothing and stops nothing, it only marks the
+// resources unprovisioned.
+func unprovisionMessages(args []string) []string {
+	if slices.Contains(args, "--state-only") {
+		return []string{stateOnlyUnprovisionMessage}
+	}
+	return []string{dataLostMessage, serviceInterruptionMessage}
+}
+
+// actionResourceUnprovision unprovisions the resources selected. With
+// --state-only, it only marks them unprovisioned.
+func (t *App) actionResourceUnprovision(keys map[[3]string]any, args []string) {
+	var stateOnly bool
+	for _, arg := range args {
+		switch arg {
+		case "--state-only":
+			stateOnly = true
+		default:
+			t.errorf("unsupported option: %s", arg)
+			return
+		}
+	}
 	ctx := context.Background()
 	for key, rids := range groupByInstance(keys) {
 		path := key[0]
@@ -1635,6 +1664,9 @@ func (t *App) actionResourceUnprovision(keys map[[3]string]any) {
 
 		rid := strings.Join(rids, ",")
 		params := api.PostInstanceActionUnprovisionParams{Rid: &rid}
+		if stateOnly {
+			params.StateOnly = &stateOnly
+		}
 		_, _ = t.client.PostInstanceActionUnprovisionWithResponse(ctx, node, p.Namespace, p.Kind, p.Name, &params)
 	}
 }
