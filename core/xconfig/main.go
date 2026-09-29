@@ -1479,6 +1479,14 @@ func (t T) dereferenceNodeKey(ref string, impersonate string, count bool) (strin
 		return ref, fmt.Errorf("denied reference to node key %s", ref)
 	}
 
+	// A secret of the node, as the uuid it authenticates to the collector
+	// with, is the node's own: an object referencing it would hand it to
+	// whoever reads the object configuration evaluated, or the files it
+	// renders from it, as an install template does.
+	if kw.RedactSecret {
+		return ref, fmt.Errorf("denied reference to secret node key %s", ref)
+	}
+
 	val, err := t.NodeReferrer.Config().evalStringAs(nodeKey, kw, impersonate, count, newDereferenceTrace())
 	if err != nil {
 		return ref, err
