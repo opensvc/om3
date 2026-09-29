@@ -103,11 +103,12 @@ type (
 		outdatedTimer       *time.Timer
 		outdatedRefreshedAt time.Time
 
-		// peerRefreshTimer fires the refresh of the local instance status
-		// asked by a peer event it depends on: a state file a peer wrote, a
-		// peer instance change. It is not the outdated timer, which every
-		// local status update arms again or stops, and would drop it.
-		peerRefreshTimer *time.Timer
+		// eventRefreshTimer fires the refresh of the local instance status
+		// the events it depends on asked for, and eventRefreshScheduled
+		// says it is armed. It is not the outdated timer, which every local
+		// status update arms again or stops, and would drop it.
+		eventRefreshTimer     *time.Timer
+		eventRefreshScheduled bool
 
 		// waitSyncsTimer fires when a stop has waited long enough for
 		// the syncs running, waiting since waitSyncsSince.
@@ -366,6 +367,7 @@ func (t *Manager) startSubscriptions(qs pubsub.QueueSizer) {
 	sub.AddFilter(&msgbus.FSMounted{}, t.labelLocalhost)
 	sub.AddFilter(&msgbus.FSUmounted{}, t.labelLocalhost)
 	sub.AddFilter(&msgbus.FSRemounted{}, t.labelLocalhost)
+	sub.AddFilter(&msgbus.DrbdResourceUpdated{}, t.labelLocalhost)
 	sub.AddFilter(&msgbus.InstanceStateFileUpdated{}, t.labelPath, t.labelLocalhost)
 	sub.Start()
 	t.sub = sub
@@ -433,8 +435,8 @@ func (t *Manager) worker(initialNodes []string) {
 	}
 	t.outdatedTimer = time.NewTimer(time.Hour)
 	t.outdatedTimer.Stop()
-	t.peerRefreshTimer = time.NewTimer(time.Hour)
-	t.peerRefreshTimer.Stop()
+	t.eventRefreshTimer = time.NewTimer(time.Hour)
+	t.eventRefreshTimer.Stop()
 	t.waitSyncsTimer = time.NewTimer(time.Hour)
 	t.waitSyncsTimer.Stop()
 
@@ -519,6 +521,8 @@ func (t *Manager) worker(initialNodes []string) {
 				t.onNetIPAddrAdded(c)
 			case *msgbus.NetIPAddrDeleted:
 				t.onNetIPAddrDeleted(c)
+			case *msgbus.DrbdResourceUpdated:
+				t.onDrbdResourceUpdated(c)
 			case *msgbus.FSMounted:
 				t.onFSMounted(c)
 			case *msgbus.FSUmounted:
@@ -545,8 +549,8 @@ func (t *Manager) worker(initialNodes []string) {
 			t.onDelayTimer()
 		case <-t.outdatedTimer.C:
 			t.onOutdatedTimer()
-		case <-t.peerRefreshTimer.C:
-			t.onPeerRefreshTimer()
+		case <-t.eventRefreshTimer.C:
+			t.onEventRefreshTimer()
 		case <-t.waitSyncsTimer.C:
 			t.onWaitSyncsTimer()
 		}

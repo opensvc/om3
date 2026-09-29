@@ -16,16 +16,6 @@ const (
 	// by the outdated timer, so a status outdating right away does not
 	// have the daemon refresh it in a loop.
 	outdatedRefreshFloor = 30 * time.Second
-
-	// stateFileRefreshDelay is how long after a state file written by a
-	// peer the status is refreshed, for the files written at once to cause
-	// one refresh.
-	stateFileRefreshDelay = 2 * time.Second
-
-	// peerChangeRefreshDelay is how long after a peer instance status
-	// change a local status depending on it is refreshed, for the changes a
-	// peer action publishes at once to cause one refresh.
-	peerChangeRefreshDelay = 2 * time.Second
 )
 
 // outdatedRefreshDelay is how long from now to refresh a status outdated at,
@@ -56,11 +46,10 @@ func (t *Manager) armOutdatedTimer(at time.Time) {
 // wrote a state file it reads: the source of a sync telling it synced this
 // node, which makes a copy found stale fresh again, with no timer to tell.
 //
-// A sync writes a few state files at once, so the refresh is delayed a little,
-// for them to cause one.
+// A sync writes a few state files at once, which the event refresh coalesces
+// into one.
 func (t *Manager) onInstanceStateFileUpdated(c *msgbus.InstanceStateFileUpdated) {
-	t.log.Debugf("refresh the status in %s, state file %s updated", stateFileRefreshDelay, c.File)
-	t.peerRefreshTimer.Reset(stateFileRefreshDelay)
+	t.scheduleEventRefresh("state file " + c.File + " updated")
 }
 
 // refreshOnPeerChange refreshes the local instance status when a peer
@@ -79,8 +68,7 @@ func (t *Manager) refreshOnPeerChange(peer string, prev, cur instance.Status) {
 		return
 	}
 	if what, changed := peerChangeSeenBy(local, prev, cur); changed {
-		t.log.Debugf("refresh the status in %s, %s changed on %s", peerChangeRefreshDelay, what, peer)
-		t.peerRefreshTimer.Reset(peerChangeRefreshDelay)
+		t.scheduleEventRefresh(what + " changed on " + peer)
 	}
 }
 
@@ -101,17 +89,6 @@ func peerChangeSeenBy(local, prev, cur instance.Status) (string, bool) {
 		return "the availability", true
 	}
 	return "", false
-}
-
-// onPeerRefreshTimer refreshes the local instance status after a peer event
-// it depends on. An action in progress refreshes it when done.
-func (t *Manager) onPeerRefreshTimer() {
-	if t.state.State != instance.MonitorStateIdle {
-		t.log.Tracef("skip the refresh asked by a peer event: state %s", t.state.State)
-		return
-	}
-	t.log.Debugf("refresh the status, asked by a peer event")
-	t.requestStatusRefresh(t.instConfig.Priority)
 }
 
 // onOutdatedTimer refreshes the local instance status gone outdated. An

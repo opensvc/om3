@@ -1475,8 +1475,8 @@ func (t *Manager) checkResourceForIPMatch(ip string, linkName string, eventType 
 			}
 
 			if ipaddrStr == ip {
-				t.log.Infof("IP address %s on link %s, matching resource %s - triggering status refresh", ip, linkName, rid)
-				t.requestStatusRefresh(t.instConfig.Priority)
+				t.log.Infof("IP address %s on link %s, matching resource %s - schedule a status refresh", ip, linkName, rid)
+				t.scheduleEventRefresh(fmt.Sprintf("ip address %s %s", ip, eventType))
 				return
 			}
 		}
@@ -1539,8 +1539,8 @@ func (t *Manager) checkResourceForMountMatch(mountPoint string, fsType string, e
 			}
 
 			if mntStr == mountPoint {
-				t.log.Infof("filesystem %s event on mount point %s, matching resource %s - triggering status refresh", eventType, mountPoint, rid)
-				t.requestStatusRefresh(t.instConfig.Priority)
+				t.log.Infof("filesystem %s event on mount point %s, matching resource %s - schedule a status refresh", eventType, mountPoint, rid)
+				t.scheduleEventRefresh(fmt.Sprintf("mount point %s %s", mountPoint, eventType))
 				return
 			}
 		}
@@ -1589,6 +1589,32 @@ func (t *Manager) onFSRemounted(c *msgbus.FSRemounted) {
 		return
 	}
 	t.checkResourceForMountMatch(c.MountPoint, c.FSType, "remounted")
+}
+
+// onDrbdResourceUpdated is called when the state of a drbd resource changed
+// on the node, as a peer connected or a resync ended. It refreshes the
+// status when a resource of the instance holds that drbd resource.
+func (t *Manager) onDrbdResourceUpdated(c *msgbus.DrbdResourceUpdated) {
+	if c.Node != t.localhost {
+		return
+	}
+	if !t.canRefreshOnEvent() {
+		return
+	}
+	instStatus, ok := t.instStatus[t.localhost]
+	if !ok {
+		return
+	}
+	for rid, rstat := range instStatus.Resources {
+		if rstat.Type != "disk.drbd" {
+			continue
+		}
+		if res, ok := rstat.Info["res"].(string); ok && res == c.Res {
+			t.log.Infof("drbd resource %s changed, matching resource %s - schedule a status refresh", c.Res, rid)
+			t.scheduleEventRefresh("drbd resource " + c.Res + " changed")
+			return
+		}
+	}
 }
 
 func (t *Manager) canRefreshOnEvent() bool {

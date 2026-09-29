@@ -289,6 +289,8 @@ var (
 		"FSMounted":   func() any { return &FSMounted{} },
 		"FSUmounted":  func() any { return &FSUmounted{} },
 		"FSRemounted": func() any { return &FSRemounted{} },
+
+		"DrbdResourceUpdated": func() any { return &DrbdResourceUpdated{} },
 	}
 )
 
@@ -1183,6 +1185,15 @@ type (
 		Source     string `json:"source" yaml:"source"`
 		Options    string `json:"options" yaml:"options"`
 	}
+
+	// DrbdResourceUpdated is published when the state of a drbd resource
+	// changed on the node: a role, a disk or peer disk state, a connection,
+	// a replication state, as a peer connects or a resync ends.
+	DrbdResourceUpdated struct {
+		pubsub.Msg `yaml:",inline"`
+		Node       string `json:"node" yaml:"node"`
+		Res        string `json:"res" yaml:"res"`
+	}
 )
 
 func DropPendingMsg(c <-chan any, duration time.Duration) {
@@ -1788,6 +1799,14 @@ func (e *FSRemounted) Kind() string {
 
 func (e *FSRemounted) Key() string {
 	return fmt.Sprintf("FSRemounted,node=%s,mount_point=%s", e.Node, e.MountPoint)
+}
+
+func (e *DrbdResourceUpdated) Kind() string {
+	return "DrbdResourceUpdated"
+}
+
+func (e *DrbdResourceUpdated) Key() string {
+	return fmt.Sprintf("DrbdResourceUpdated,node=%s,res=%s", e.Node, e.Res)
 }
 
 func NewSetInstanceMonitorWithErr(ctx context.Context, p naming.Path, nodename string, value instance.MonitorUpdate) (*SetInstanceMonitor, errcontext.ErrReceiver) {

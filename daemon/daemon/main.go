@@ -32,6 +32,7 @@ import (
 	"github.com/opensvc/om3/v3/daemon/daemonsys"
 	"github.com/opensvc/om3/v3/daemon/discover"
 	"github.com/opensvc/om3/v3/daemon/dns"
+	"github.com/opensvc/om3/v3/daemon/drbdmon"
 	"github.com/opensvc/om3/v3/daemon/hb"
 	"github.com/opensvc/om3/v3/daemon/hb/hbcrypto"
 	"github.com/opensvc/om3/v3/daemon/hb/hbdedup"
@@ -252,6 +253,7 @@ func (t *T) Start(ctx context.Context) error {
 		nmon.NewManager(daemonenv.DrainChanDuration, qsMedium),
 		netmon.NewManager(daemonenv.DrainChanDuration, qsSmall),
 		mntmon.NewManager(daemonenv.DrainChanDuration, qsSmall),
+		drbdmon.NewManager(daemonenv.DrainChanDuration, qsSmall),
 		hook.NewManager(daemonenv.DrainChanDuration, qsSmall),
 		dns.NewManager(daemonenv.DrainChanDuration, qsMedium),
 		pgmetrics.New(),
