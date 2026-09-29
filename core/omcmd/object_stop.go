@@ -7,6 +7,7 @@ import (
 	"github.com/opensvc/om3/v3/core/actioncontext"
 	"github.com/opensvc/om3/v3/core/client"
 	"github.com/opensvc/om3/v3/core/commoncmd"
+	"github.com/opensvc/om3/v3/core/instance"
 	"github.com/opensvc/om3/v3/core/naming"
 	"github.com/opensvc/om3/v3/core/object"
 	"github.com/opensvc/om3/v3/core/objectaction"
@@ -22,9 +23,10 @@ type (
 		commoncmd.OptsLock
 		commoncmd.OptsResourceSelector
 		commoncmd.OptTo
-		Force        bool
-		Local        bool
-		NodeSelector string
+		Force          bool
+		InterruptSyncs bool
+		Local          bool
+		NodeSelector   string
 	}
 )
 
@@ -44,6 +46,7 @@ func (t *CmdObjectStop) Run(kind string) error {
 		objectaction.WithColor(t.Color),
 		objectaction.WithIgnoreNotFound(t.IgnoreNotFound),
 		objectaction.WithAsyncTarget("stopped"),
+		objectaction.WithAsyncTargetOptions(instance.MonitorGlobalExpectOptionsStopped{InterruptSyncs: t.InterruptSyncs}),
 		objectaction.WithAsyncTime(t.Time),
 		objectaction.WithAsyncWait(t.Wait),
 		objectaction.WithAsyncWatch(t.Watch),
@@ -54,6 +57,9 @@ func (t *CmdObjectStop) Run(kind string) error {
 				return nil, err
 			}
 			params := api.PostInstanceActionStopParams{}
+			if t.InterruptSyncs {
+				params.InterruptSyncs = &t.InterruptSyncs
+			}
 			if t.Force {
 				v := true
 				params.Force = &v
@@ -109,6 +115,7 @@ func (t *CmdObjectStop) Run(kind string) error {
 			ctx = actioncontext.WithLockTimeout(ctx, t.Timeout)
 			ctx = actioncontext.WithTo(ctx, t.To)
 			ctx = actioncontext.WithForce(ctx, t.Force)
+			ctx = actioncontext.WithInterruptSyncs(ctx, t.InterruptSyncs)
 			return nil, o.Stop(ctx)
 		}),
 	).Do()

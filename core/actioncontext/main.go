@@ -19,6 +19,7 @@ const (
 	cronKey
 	envKey
 	forceKey
+	interruptSyncsKey
 	leaderKey
 	lockTimeoutKey
 	lockDisabledKey
@@ -123,6 +124,19 @@ func WithForce(ctx context.Context, v bool) context.Context {
 }
 func IsForce(ctx context.Context) bool {
 	if i := ctx.Value(forceKey); i != nil {
+		return i.(bool)
+	}
+	return false
+}
+
+// WithInterruptSyncs has a stop end the syncs running on the instance before
+// stopping it, instead of waiting for the object lock they hold.
+func WithInterruptSyncs(ctx context.Context, v bool) context.Context {
+	return context.WithValue(ctx, interruptSyncsKey, v)
+}
+
+func IsInterruptSyncs(ctx context.Context) bool {
+	if i := ctx.Value(interruptSyncsKey); i != nil {
 		return i.(bool)
 	}
 	return false

@@ -222,11 +222,21 @@ func (t *Manager) crmStopMoveToFunc(dst string) func() error {
 }
 
 func (t *Manager) crmStopMoveTo(dst string) error {
-	return t.crmAction("stop", t.path.String(), "instance", "stop", "--move-to", dst)
+	return t.crmAction("stop", t.stopArgs("--move-to", dst)...)
 }
 
 func (t *Manager) crmStop() error {
-	return t.crmAction("stop", t.path.String(), "instance", "stop")
+	return t.crmAction("stop", t.stopArgs()...)
+}
+
+// stopArgs is the arguments of the instance stop command, the syncs running
+// interrupted when the orchestration asks it.
+func (t *Manager) stopArgs(extra ...string) []string {
+	args := append([]string{t.path.String(), "instance", "stop"}, extra...)
+	if t.interruptSyncsAsked() {
+		args = append(args, "--interrupt-syncs")
+	}
+	return args
 }
 
 func (t *Manager) crmUnfreeze() error {

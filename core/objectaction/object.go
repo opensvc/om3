@@ -512,7 +512,11 @@ func doPostObjectAction(ctx context.Context, c *client.T, target instance.Monito
 		}
 		return handleStatusCode(resp.StatusCode(), resp.Body, resp.JSON400, resp.JSON401, resp.JSON403, resp.JSON404, resp.JSON408, resp.JSON409, resp.JSON500)
 	case instance.MonitorGlobalExpectStopped:
-		resp, err := c.PostObjectActionStopWithResponse(ctx, p.Namespace, p.Kind, p.Name)
+		params := api.PostObjectActionStopParams{}
+		if options, ok := targetOptions.(instance.MonitorGlobalExpectOptionsStopped); ok && options.InterruptSyncs {
+			params.InterruptSyncs = &options.InterruptSyncs
+		}
+		resp, err := c.PostObjectActionStopWithResponse(ctx, p.Namespace, p.Kind, p.Name, &params)
 		if err != nil {
 			return nil, err
 		}
@@ -542,6 +546,9 @@ func doPostObjectAction(ctx context.Context, c *client.T, target instance.Monito
 		} else {
 			params.Destination = options.Destination
 			params.Live = options.Live
+			if options.InterruptSyncs {
+				params.InterruptSyncs = &options.InterruptSyncs
+			}
 		}
 		resp, err := c.PostObjectActionSwitchWithResponse(ctx, p.Namespace, p.Kind, p.Name, params)
 		if err != nil {

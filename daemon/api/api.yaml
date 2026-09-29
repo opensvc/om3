@@ -3235,6 +3235,7 @@ paths:
         - $ref: '#/components/parameters/inPathName'
         - $ref: '#/components/parameters/inQueryAllSlaves'
         - $ref: '#/components/parameters/inQueryForce'
+        - $ref: '#/components/parameters/inQueryInterruptSyncs'
         - $ref: '#/components/parameters/inQueryMaster'
         - $ref: '#/components/parameters/inQueryMoveTo'
         - $ref: '#/components/parameters/inQuerySessionID'
@@ -4975,6 +4976,7 @@ paths:
         - $ref: '#/components/parameters/inPathNamespace'
         - $ref: '#/components/parameters/inPathKind'
         - $ref: '#/components/parameters/inPathName'
+        - $ref: '#/components/parameters/inQueryInterruptSyncs'
       responses:
         200:
           description: OK
@@ -8556,6 +8558,11 @@ components:
             type: string
         live:
           type: boolean
+        interrupt_syncs:
+          description: |
+            End the syncs running on the instance stopped before stopping
+            it, instead of waiting for them to end.
+          type: boolean
 
     PostRelayMessage:
       type: object
@@ -9846,6 +9853,15 @@ components:
     inQueryForce:
       in: query
       name: force
+      schema:
+        type: boolean
+
+    inQueryInterruptSyncs:
+      in: query
+      name: interrupt_syncs
+      description: |
+        End the syncs running on the instance before stopping it, instead of
+        waiting for them to end.
       schema:
         type: boolean
 

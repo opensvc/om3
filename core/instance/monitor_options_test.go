@@ -9,9 +9,17 @@ import (
 
 func TestMonitorGlobalExpectOptionsRoundTrip(t *testing.T) {
 	for name, mon := range map[string]Monitor{
+		"stopped, syncs interrupted": {
+			GlobalExpect:        MonitorGlobalExpectStopped,
+			GlobalExpectOptions: MonitorGlobalExpectOptionsStopped{InterruptSyncs: true},
+		},
 		"restarted, forced": {
 			GlobalExpect:        MonitorGlobalExpectRestarted,
 			GlobalExpectOptions: MonitorGlobalExpectOptionsRestarted{Force: true},
+		},
+		"switched, syncs interrupted": {
+			GlobalExpect:        MonitorGlobalExpectPlacedAt,
+			GlobalExpectOptions: MonitorGlobalExpectOptionsPlacedAt{Destination: []string{"n2"}, InterruptSyncs: true},
 		},
 	} {
 		t.Run(name, func(t *testing.T) {

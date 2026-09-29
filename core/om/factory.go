@@ -2404,6 +2404,7 @@ func newCmdObjectGroupStop(kind, group string) *cobra.Command {
 	commoncmd.FlagsEncap(flags, &options.OptsEncap)
 	commoncmd.FlagsTo(flags, &options.OptTo)
 	commoncmd.FlagForce(flags, &options.Force)
+	commoncmd.FlagInterruptSyncs(flags, &options.InterruptSyncs)
 	commoncmd.FlagMoveTo(flags, &options.MoveTo)
 	commoncmd.FlagNodeSelector(flags, &options.NodeSelector)
 	cmd.MarkFlagsMutuallyExclusive("no-lock", "node")
@@ -3245,6 +3246,7 @@ func newCmdObjectInstanceStop(kind string) *cobra.Command {
 	commoncmd.FlagsResourceSelector(cmd, &options.OptsResourceSelector)
 	commoncmd.FlagsTo(flags, &options.OptTo)
 	commoncmd.FlagForce(flags, &options.Force)
+	commoncmd.FlagInterruptSyncs(flags, &options.InterruptSyncs)
 	commoncmd.FlagMoveTo(flags, &options.MoveTo)
 	commoncmd.FlagNodeSelector(flags, &options.NodeSelector)
 	cmd.MarkFlagsMutuallyExclusive("no-lock", "node")
@@ -3778,6 +3780,7 @@ func newCmdObjectStop(kind string) *cobra.Command {
 	// hidden (backward compat)
 	hiddenFlagLocal(flags, &options.Local)
 	commoncmd.FlagsAsync(flags, &options.OptsAsync)
+	commoncmd.FlagInterruptSyncs(flags, &options.InterruptSyncs)
 	commoncmd.HiddenFlagsEncap(flags, &options.OptsEncap)
 	commoncmd.HiddenFlagsLock(flags, &options.OptsLock)
 	commoncmd.HiddenFlagsResourceSelectorWithCompletion(cmd, &options.OptsResourceSelector)
@@ -3803,6 +3806,7 @@ func newCmdObjectSwitch(kind string) *cobra.Command {
 	commoncmd.FlagsAsync(flags, &options.OptsAsync)
 	commoncmd.FlagSwitchTo(flags, &options.To)
 	commoncmd.FlagLive(flags, &options.Live)
+	commoncmd.FlagInterruptSyncs(flags, &options.InterruptSyncs)
 	return cmd
 }
 

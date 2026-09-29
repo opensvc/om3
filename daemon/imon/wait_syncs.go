@@ -22,6 +22,20 @@ func (t *Manager) waitSyncsTimeout() time.Duration {
 	return defaultWaitSyncsTimeout
 }
 
+// interruptSyncsAsked says the orchestration asks the stop to interrupt the
+// syncs running, instead of waiting for them: a stop or a switch with
+// --interrupt-syncs.
+func (t *Manager) interruptSyncsAsked() bool {
+	switch options := t.state.GlobalExpectOptions.(type) {
+	case instance.MonitorGlobalExpectOptionsStopped:
+		return options.InterruptSyncs
+	case instance.MonitorGlobalExpectOptionsPlacedAt:
+		return options.InterruptSyncs
+	default:
+		return false
+	}
+}
+
 // runningSyncs is the sync resources of the local instance running now, as
 // their run files say.
 func (t *Manager) runningSyncs() []string {
@@ -43,6 +57,15 @@ func (t *Manager) runningSyncs() []string {
 // syncs state, for DEFAULT.wait_syncs_timeout at most. Past it, the stop fails, and the
 // data the peers hold is left as the syncs make it.
 func (t *Manager) setWaitSyncs() bool {
+	if t.interruptSyncsAsked() {
+		// The stop ends the syncs itself, instead of waiting for them.
+		if t.state.State == instance.MonitorStateWaitSyncs {
+			t.waitSyncsSince = time.Time{}
+			t.waitSyncsTimer.Stop()
+			t.transitionTo(instance.MonitorStateIdle)
+		}
+		return false
+	}
 	rids := t.runningSyncs()
 	if len(rids) == 0 {
 		if t.state.State == instance.MonitorStateWaitSyncs {

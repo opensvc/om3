@@ -20,6 +20,11 @@ func (t *actor) stopWithContext(ctx context.Context) error {
 		return err
 	}
 	t.setenv("stop", false)
+	if actioncontext.IsInterruptSyncs(ctx) {
+		// The syncs running hold the object lock the stop needs: they
+		// are ended instead of waited for.
+		t.interruptSyncs()
+	}
 	unlock, err := t.lockAction(ctx)
 	if err != nil {
 		return err

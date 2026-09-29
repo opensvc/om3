@@ -22,9 +22,10 @@ type (
 		commoncmd.OptsLock
 		commoncmd.OptsResourceSelector
 		commoncmd.OptTo
-		Force        bool
-		MoveTo       string
-		NodeSelector string
+		Force          bool
+		InterruptSyncs bool
+		MoveTo         string
+		NodeSelector   string
 	}
 )
 
@@ -52,6 +53,9 @@ func (t *CmdObjectInstanceStop) Run(kind string) error {
 				return nil, err
 			}
 			params := api.PostInstanceActionStopParams{}
+			if t.InterruptSyncs {
+				params.InterruptSyncs = &t.InterruptSyncs
+			}
 			if t.MoveTo != "" {
 				params.MoveTo = &t.MoveTo
 			}
@@ -110,6 +114,7 @@ func (t *CmdObjectInstanceStop) Run(kind string) error {
 			ctx = actioncontext.WithLockTimeout(ctx, t.Timeout)
 			ctx = actioncontext.WithTo(ctx, t.To)
 			ctx = actioncontext.WithForce(ctx, t.Force)
+			ctx = actioncontext.WithInterruptSyncs(ctx, t.InterruptSyncs)
 			ctx = actioncontext.WithMoveTo(ctx, t.MoveTo)
 			return nil, o.Stop(ctx)
 		}),

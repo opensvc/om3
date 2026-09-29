@@ -219,6 +219,10 @@ func FlagEventWait(flags *pflag.FlagSet, p *bool) {
 	flags.BoolVar(p, "wait", false, "wait for the event reach its target state. This automatically enables the --replay flag")
 }
 
+func FlagInterruptSyncs(flags *pflag.FlagSet, p *bool) {
+	flags.BoolVar(p, "interrupt-syncs", false, "end the syncs running on the instance before stopping it, instead of waiting for them to end")
+}
+
 func FlagForce(flags *pflag.FlagSet, p *bool) {
 	flags.BoolVar(p, "force", false, "allow dangerous operations")
 }

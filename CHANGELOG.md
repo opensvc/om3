@@ -775,6 +775,8 @@ which share the same executor.
     `wait_syncs_timeout` at most, 10 minutes by default. Past it, the stop
     fails and the instance keeps running, its monitoring on. No scheduled
     sync starts while an orchestration is in progress on the object.
+    `--interrupt-syncs` on `stop`, `switch` and `instance stop`, or
+    `interrupt_syncs` in the api, ends the syncs instead of waiting for them.
 
 * **A shutdown, as the one of a drained node, interrupts the syncs:**
     It does not wait for the syncs running on the instance, and does not leave

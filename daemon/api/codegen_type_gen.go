@@ -2229,7 +2229,11 @@ type PostObjectActionRestart struct {
 // PostObjectActionSwitch defines model for PostObjectActionSwitch.
 type PostObjectActionSwitch struct {
 	Destination []string `json:"destination"`
-	Live        bool     `json:"live"`
+
+	// InterruptSyncs End the syncs running on the instance stopped before stopping
+	// it, instead of waiting for them to end.
+	InterruptSyncs *bool `json:"interrupt_syncs,omitempty"`
+	Live           bool  `json:"live"`
 }
 
 // PostPoolClaim defines model for PostPoolClaim.
@@ -2796,6 +2800,9 @@ type InQueryHBA = string
 
 // InQueryImpersonate The node name to impersonate when evaluating a keyword. Setting impersonate without evaluate=true returns a Bad Request error.
 type InQueryImpersonate = string
+
+// InQueryInterruptSyncs defines model for inQueryInterruptSyncs.
+type InQueryInterruptSyncs = bool
 
 // InQueryKeyFilter defines model for inQueryKeyFilter.
 type InQueryKeyFilter = string
@@ -3817,11 +3824,15 @@ type PostInstanceActionStatusParams struct {
 
 // PostInstanceActionStopParams defines parameters for PostInstanceActionStop.
 type PostInstanceActionStopParams struct {
-	Slaves    *InQueryAllSlaves `form:"slaves,omitempty" json:"slaves,omitempty"`
-	Force     *InQueryForce     `form:"force,omitempty" json:"force,omitempty"`
-	Master    *InQueryMaster    `form:"master,omitempty" json:"master,omitempty"`
-	MoveTo    *InQueryMoveTo    `form:"move-to,omitempty" json:"move-to,omitempty"`
-	SessionID *SessionID        `form:"session_id,omitempty" json:"session_id,omitempty"`
+	Slaves *InQueryAllSlaves `form:"slaves,omitempty" json:"slaves,omitempty"`
+	Force  *InQueryForce     `form:"force,omitempty" json:"force,omitempty"`
+
+	// InterruptSyncs End the syncs running on the instance before stopping it, instead of
+	// waiting for them to end.
+	InterruptSyncs *InQueryInterruptSyncs `form:"interrupt_syncs,omitempty" json:"interrupt_syncs,omitempty"`
+	Master         *InQueryMaster         `form:"master,omitempty" json:"master,omitempty"`
+	MoveTo         *InQueryMoveTo         `form:"move-to,omitempty" json:"move-to,omitempty"`
+	SessionID      *SessionID             `form:"session_id,omitempty" json:"session_id,omitempty"`
 
 	// Rid a resource selector expression
 	Rid    *InQueryRid    `form:"rid,omitempty" json:"rid,omitempty"`
@@ -4050,6 +4061,13 @@ type PostObjectActionResizeParams struct {
 	// Optional. Without it the action runs on whatever configuration the node
 	// holds.
 	ConfigUpdatedAt *ConfigUpdatedAt `form:"config_updated_at,omitempty" json:"config_updated_at,omitempty"`
+}
+
+// PostObjectActionStopParams defines parameters for PostObjectActionStop.
+type PostObjectActionStopParams struct {
+	// InterruptSyncs End the syncs running on the instance before stopping it, instead of
+	// waiting for them to end.
+	InterruptSyncs *InQueryInterruptSyncs `form:"interrupt_syncs,omitempty" json:"interrupt_syncs,omitempty"`
 }
 
 // GetObjectConfigParams defines parameters for GetObjectConfig.
