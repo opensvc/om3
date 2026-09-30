@@ -3070,7 +3070,11 @@ func newCmdObjectContainerEnter(kind string) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "enter [PATTERN]...",
 		Short: "open a shell in a container resource",
-		Long:  "Enter any container resource.",
+		Long: `Enter any container resource.
+
+Without --node, the container is entered on the node it runs on, when it runs
+on one node only. A container running on several nodes is entered on the node
+--node names.`,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			commoncmd.SetRIDFromArgs(&options.RID, args, "container", "container")
 			return options.Run(kind)
