@@ -2,9 +2,13 @@ package resfszfs
 
 import (
 	"context"
+	"errors"
 	"fmt"
+	"maps"
+	"math"
 	"os"
 	"path/filepath"
+	"slices"
 	"strconv"
 	"strings"
 	"time"
@@ -304,15 +308,16 @@ func (t *T) createMountPoint(ctx context.Context) error {
 // CurrentSize implements resource.Sizer.
 //
 // A dataset is bounded by its refquota, which is what it may hold of its own
-// and what df reports for it. One with none takes what the pool has, and has
-// no size to report.
+// and what df reports for it, or by its quota when it has no refquota. One
+// with neither takes what the pool has, and has no size to report.
 func (t *T) CurrentSize(ctx context.Context) (int64, error) {
-	size, err := t.datasetProperty("refquota")
+	cur, err := t.datasetSizeProperties()
 	if err != nil {
 		return 0, err
 	}
-	if size == 0 {
-		return 0, fmt.Errorf("%s has no refquota, so it takes what the pool has and has no size of its own", t.Device)
+	size, _, err := datasetSize(cur, t.sizeExpressions())
+	if err != nil {
+		return 0, fmt.Errorf("%s %w", t.Device, err)
 	}
 	return size, nil
 }
@@ -321,45 +326,170 @@ func (t *T) CurrentSize(ctx context.Context) (int64, error) {
 //
 // A dataset takes its space from the pool holding it, which hands out what it
 // has, so there is nothing below to ask a size of. A refquota under what the
-// dataset already holds is refused here: lowering it does not fail, it
-// silently breaks the next write.
+// dataset already holds, or a quota under what it holds with its descendants
+// and snapshots, is refused here: lowering them does not fail, it silently
+// breaks the next write.
 func (t *T) ResizePlan(ctx context.Context, to int64) (int64, error) {
-	if _, err := t.CurrentSize(ctx); err != nil {
-		return 0, err
-	}
-	used, err := t.datasetProperty("referenced")
+	cur, err := t.datasetSizeProperties()
 	if err != nil {
 		return 0, err
 	}
-	if to < used {
-		return 0, fmt.Errorf("%s already holds %s: a refquota under that does not fail, it breaks the next write",
-			t.Device, sizeconv.BSizeCompact(float64(used)))
+	next, err := resizedProperties(cur, t.sizeExpressions(), to)
+	if err != nil {
+		return 0, fmt.Errorf("%s %w", t.Device, err)
+	}
+	for prop, holds := range map[string]string{"refquota": "referenced", "quota": "used"} {
+		v, ok := next[prop]
+		if !ok {
+			continue
+		}
+		used, err := t.datasetProperty(holds)
+		if err != nil {
+			return 0, err
+		}
+		if v < used {
+			return 0, fmt.Errorf("%s already holds %s: a %s under that does not fail, it breaks the next write",
+				t.Device, sizeconv.BSizeCompact(float64(used)), prop)
+		}
 	}
 	return to, nil
 }
 
 // Resize implements resource.Resizer.
 //
-// A refreservation that was guaranteeing the whole refquota is moved with it.
-// Leaving it behind would let a dataset be given a size the pool has not
-// promised it, which is the guarantee the reservation was set for.
+// The properties bounding the dataset move together: a resize moving the
+// refquota alone would leave a quota capping the dataset under the size it
+// was given, and a reservation promising less than it.
 func (t *T) Resize(ctx context.Context, to int64) error {
+	cur, err := t.datasetSizeProperties()
+	if err != nil {
+		return err
+	}
+	next, err := resizedProperties(cur, t.sizeExpressions(), to)
+	if err != nil {
+		return fmt.Errorf("%s %w", t.Device, err)
+	}
+	size, _, err := datasetSize(cur, t.sizeExpressions())
+	if err != nil {
+		return fmt.Errorf("%s %w", t.Device, err)
+	}
 	fs := t.fs()
-	was, err := t.datasetProperty("refquota")
-	if err != nil {
-		return err
-	}
-	reserved, err := t.datasetProperty("refreservation")
-	if err != nil {
-		return err
-	}
-	if err := fs.SetProperty("refquota", fmt.Sprintf("%d", to)); err != nil {
-		return err
-	}
-	if reserved > 0 && reserved == was {
-		return fs.SetProperty("refreservation", fmt.Sprintf("%d", to))
+	for _, prop := range sizePropertiesOrder(to >= size) {
+		v, ok := next[prop]
+		if !ok {
+			continue
+		}
+		if err := fs.SetProperty(prop, fmt.Sprintf("%d", v)); err != nil {
+			return err
+		}
 	}
 	return nil
+}
+
+// sizeProperties are the dataset properties a size bounds, in the order a
+// grow sets them: the caps are raised before what they cap, and a guarantee
+// is raised last, once the cap over it has room for it.
+var sizeProperties = []string{"quota", "refquota", "reservation", "refreservation"}
+
+// sizePropertiesOrder is the order to set the properties in: a shrink lowers
+// them in the reverse order of a grow, so a cap is never under what it caps.
+func sizePropertiesOrder(grow bool) []string {
+	l := slices.Clone(sizeProperties)
+	if !grow {
+		slices.Reverse(l)
+	}
+	return l
+}
+
+// sizeExpressions are the keywords of the size properties, as configured.
+func (t *T) sizeExpressions() map[string]string {
+	return map[string]string{
+		"refquota":       t.refQuotaExpression(),
+		"quota":          t.Quota,
+		"refreservation": t.RefReservation,
+		"reservation":    t.Reservation,
+	}
+}
+
+// datasetSizeProperties reads the size properties of the dataset, 0 for one
+// that is not set.
+func (t *T) datasetSizeProperties() (map[string]int64, error) {
+	cur := make(map[string]int64)
+	for _, prop := range sizeProperties {
+		v, err := t.datasetProperty(prop)
+		if err != nil {
+			return nil, err
+		}
+		cur[prop] = v
+	}
+	return cur, nil
+}
+
+// sizeMultiplier returns the N of a keyword written "xN", a multiplier of
+// the size.
+func sizeMultiplier(expr string) (float64, bool) {
+	if !strings.HasPrefix(expr, "x") {
+		return 0, false
+	}
+	n, err := strconv.ParseFloat(strings.TrimLeft(expr, "x"), 64)
+	if err != nil || n <= 0 {
+		return 0, false
+	}
+	return n, true
+}
+
+// datasetSize returns the size a dataset holds, and the property that says
+// it: the refquota, or the quota of a dataset with no refquota. A property
+// configured as a multiplier of the size says the size divided by it.
+func datasetSize(cur map[string]int64, exprs map[string]string) (int64, string, error) {
+	for _, prop := range []string{"refquota", "quota"} {
+		v := cur[prop]
+		if v == 0 {
+			continue
+		}
+		if n, ok := sizeMultiplier(exprs[prop]); ok {
+			v = int64(math.Round(float64(v) / n))
+		}
+		return v, prop, nil
+	}
+	return 0, "", errors.New("has no refquota and no quota, so it takes what the pool has and has no size of its own")
+}
+
+// resizedProperties returns the properties to set for a dataset to hold the
+// size asked, among the ones it has set.
+//
+// A property configured as a multiplier of the size is that multiple of the
+// new size. One that was the size itself moves with it: a quota capping the
+// dataset and its descendants at the size, a reservation guaranteeing the
+// whole of it. One set to a size of its own is left alone, and the resize is
+// refused if that leaves a quota under the refquota: the dataset would be
+// given a size its quota does not let it reach.
+func resizedProperties(cur map[string]int64, exprs map[string]string, to int64) (map[string]int64, error) {
+	size, anchor, err := datasetSize(cur, exprs)
+	if err != nil {
+		return nil, err
+	}
+	next := make(map[string]int64)
+	final := maps.Clone(cur)
+	for _, prop := range sizeProperties {
+		v := cur[prop]
+		if v == 0 {
+			continue
+		}
+		if n, ok := sizeMultiplier(exprs[prop]); ok {
+			final[prop] = int64(float64(to) * n)
+		} else if prop == anchor || v == size {
+			final[prop] = to
+		}
+		if final[prop] != v {
+			next[prop] = final[prop]
+		}
+	}
+	if quota, refquota := final["quota"], final["refquota"]; quota > 0 && refquota > 0 && quota < refquota {
+		return nil, fmt.Errorf("has a quota of %s, a size of its own under the %s asked: raise it, or configure it as a multiplier of size",
+			sizeconv.BSizeCompact(float64(quota)), sizeconv.BSizeCompact(float64(refquota)))
+	}
+	return next, nil
 }
 
 // datasetProperty reads a byte-valued property, where zfs answers "none" or
@@ -450,8 +580,17 @@ func parseNoneOrFactorOrSize(size *int64, expr string) (*int64, error) {
 	}
 }
 
+// refQuotaExpression is the refquota keyword, x1 when it is not set and the
+// size is: a dataset given a size is bounded by it.
+func (t *T) refQuotaExpression() string {
+	if t.RefQuota == "" && t.Size != nil {
+		return "x1"
+	}
+	return t.RefQuota
+}
+
 func (t *T) refquota() (*int64, error) {
-	return parseNoneOrFactorOrSize(t.Size, t.RefQuota)
+	return parseNoneOrFactorOrSize(t.Size, t.refQuotaExpression())
 }
 
 func (t *T) quota() (*int64, error) {

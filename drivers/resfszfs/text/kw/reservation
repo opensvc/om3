@@ -1,9 +1,15 @@
 The dataset `reservation` property value to set on provision.
 
+The property guarantees the dataset space of the pool for what it holds with its descendants and its snapshots.
+
 The value can be:
 
 * `none`
 
 * A size expression
 
-* A multiplier of the `size` keyword value (ex: `x2`), , the `size` parameter must be explicitly defined.
+* A multiplier of the `size` keyword value (ex: `x2`), the `size` parameter must be explicitly defined.
+
+A resize sets a multiplier again from the new size, and moves with the size
+a property that was equal to it. A property set to a size of its own is left
+alone.

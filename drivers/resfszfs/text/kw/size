@@ -1,4 +1,8 @@
-Used by default as the refquota of the provisioned dataset.
+The size of the dataset.
 
-The quota, refquota, reservation and refreservation values can be expressed
-as a multiplier of size (example: `quota=x2`).
+Used by default as the `refquota` of the provisioned dataset, which bounds
+what the dataset holds of its own.
+
+The `quota`, `refquota`, `reservation` and `refreservation` values can be
+expressed as a multiplier of size (example: `quota=x2`). A resize of the
+volume moves them with the size.
