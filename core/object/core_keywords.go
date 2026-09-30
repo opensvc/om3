@@ -3,6 +3,7 @@ package object
 import (
 	"embed"
 	"fmt"
+	"sort"
 
 	"github.com/opensvc/om3/v3/core/driver"
 	"github.com/opensvc/om3/v3/core/instance"
@@ -1057,13 +1058,27 @@ func keywordLookup(store keywords.Store, k key.T, kind naming.Kind, sectionType 
 	var drivers driver.Registry
 	if k.Section == "*" && driverGroup == driver.GroupUnknown {
 		drivers = driver.All
-	} else if sectionType != "" {
+	} else if sectionType != "" || driver.DefaultDriver[driverGroup] != "" {
+		// A section naming no type is a resource of the default driver
+		// of its group, so its keywords are the ones of that driver:
+		// the drivers of a group do not all give a keyword the same
+		// default, and do not all have it.
 		drivers = driver.All.WithID(driverGroup, sectionType)
 	} else {
 		drivers = driver.All.WithGroup(driverGroup)
 	}
 
-	for _, i := range drivers {
+	// The drivers are asked in a fixed order: a registry is a map, and the
+	// first driver found to have the keyword would otherwise change from
+	// one call to the next, and the keyword with it.
+	ids := make(driver.IDs, 0, len(drivers))
+	for id := range drivers {
+		ids = append(ids, id)
+	}
+	sort.Sort(ids)
+
+	for _, id := range ids {
+		i := drivers[id]
 		allocator, ok := i.Allocator.(func() resource.Driver)
 		if !ok {
 			continue
