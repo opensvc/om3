@@ -6,12 +6,11 @@ import (
 
 	"github.com/labstack/echo/v4"
 
+	"github.com/opensvc/om3/v3/core/configkeywords"
 	"github.com/opensvc/om3/v3/core/instance"
 	"github.com/opensvc/om3/v3/core/naming"
-	"github.com/opensvc/om3/v3/core/object"
 	"github.com/opensvc/om3/v3/core/xconfig"
 	"github.com/opensvc/om3/v3/daemon/api"
-	"github.com/opensvc/om3/v3/util/key"
 )
 
 func (a *DaemonAPI) GetObjectConfig(ctx echo.Context, namespace string, kind naming.Kind, name string, params api.GetObjectConfigParams) error {
@@ -34,87 +33,35 @@ func (a *DaemonAPI) GetObjectConfig(ctx echo.Context, namespace string, kind nam
 	instanceConfigData := instance.ConfigData.GetByPath(p)
 
 	if _, ok := instanceConfigData[a.localhost]; ok {
-		oc, err := object.NewCore(p)
-		if err != nil {
-			return JSONProblemf(ctx, http.StatusInternalServerError, "NewCore", "%s", err)
-		}
 		var (
 			isEvaluated bool
-			evaluatedAs string
+			impersonate string
 		)
 		if params.Evaluate != nil {
 			isEvaluated = *params.Evaluate
 		}
 		if params.Impersonate != nil {
-			evaluatedAs = *params.Impersonate
-		} else if isEvaluated {
-			evaluatedAs = a.localhost
+			impersonate = *params.Impersonate
 		}
-		if !isEvaluated && evaluatedAs != "" {
+		if !isEvaluated && impersonate != "" {
 			return JSONProblemf(ctx, http.StatusBadRequest, "Bad request", "impersonate can only be specified with evaluate=true")
 		}
-		conf := oc.Config()
-		var keys key.L
-
-		// A key selection is a user input, so a key it can not evaluate is an
-		// error. The whole config is not: it can hold keys no keyword declares,
-		// and failing the request on the first one would hide all the others.
-		isWholeConfig := params.Kw == nil
-
-		if isWholeConfig {
-			keys = conf.KeyList()
-		} else {
-			for _, s := range *params.Kw {
-				keys = append(keys, key.Parse(s))
-			}
+		o := configkeywords.Options{
+			Evaluate:    isEvaluated,
+			Impersonate: impersonate,
+			Redact:      redact,
 		}
-		for _, k := range keys {
-			item := api.KeywordItem{
-				Object:  p.String(),
-				Keyword: k.String(),
-			}
-			if s, err := conf.GetStrict(k); err != nil {
-				item.Value = ""
-			} else {
-				item.Value = s
-			}
-
-			// A secret is not shown, raw or evaluated, to a reader not
-			// allowed to see it. The keyword is listed all the same, so
-			// the reader knows it is set.
-			if redact && object.IsSecretKey(kind, k, conf.GetString(key.New(k.Section, "type"))) {
-				item.Value = object.RedactedValue
-				if isEvaluated {
-					var v any = object.RedactedValue
-					text := object.RedactedValue
-					item.Evaluated = &v
-					item.EvaluatedText = &text
-					item.EvaluatedAs = evaluatedAs
-				}
-				r.Items = append(r.Items, item)
-				continue
-			}
-
-			if isEvaluated {
-				i, err := oc.EvalAs(k, evaluatedAs)
-				switch {
-				case err != nil && isWholeConfig:
-					s := err.Error()
-					item.Error = &s
-					item.EvaluatedAs = evaluatedAs
-				case errors.Is(err, xconfig.ErrNoKeyword):
-					return JSONProblemf(ctx, http.StatusBadRequest, "EvalAs", "%s", err)
-				case err != nil:
-					return JSONProblemf(ctx, http.StatusInternalServerError, "EvalAs", "%s", err)
-				default:
-					text := conf.EvaluatedText(k, i)
-					item.Evaluated = &i
-					item.EvaluatedText = &text
-					item.EvaluatedAs = evaluatedAs
-				}
-			}
-			r.Items = append(r.Items, item)
+		if params.Kw != nil {
+			o.Keywords = *params.Kw
 		}
+		items, err := configkeywords.Object(p, o)
+		switch {
+		case errors.Is(err, xconfig.ErrNoKeyword):
+			return JSONProblemf(ctx, http.StatusBadRequest, "EvalAs", "%s", err)
+		case err != nil:
+			return JSONProblemf(ctx, http.StatusInternalServerError, "EvalAs", "%s", err)
+		}
+		r.Items = items
 		return ctx.JSON(http.StatusOK, r)
 	}
 

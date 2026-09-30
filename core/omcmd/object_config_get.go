@@ -6,14 +6,12 @@ import (
 
 	"github.com/opensvc/om3/v3/core/client"
 	"github.com/opensvc/om3/v3/core/commoncmd"
+	"github.com/opensvc/om3/v3/core/configkeywords"
 	"github.com/opensvc/om3/v3/core/naming"
-	"github.com/opensvc/om3/v3/core/object"
-	"github.com/opensvc/om3/v3/core/objectaction"
 	"github.com/opensvc/om3/v3/core/objectselector"
 	"github.com/opensvc/om3/v3/core/output"
 	"github.com/opensvc/om3/v3/core/rawconfig"
 	"github.com/opensvc/om3/v3/daemon/api"
-	"github.com/opensvc/om3/v3/util/key"
 )
 
 type (
@@ -28,12 +26,63 @@ type (
 
 func (t *CmdObjectConfigGet) Run(kind string) error {
 	mergedSelector := commoncmd.MergeSelector("", t.ObjectSelector, kind, "")
+	var (
+		l   api.KeywordItems
+		err error
+	)
 	if t.Local {
-		return t.doObjectAction(mergedSelector)
+		l, err = t.localItems(mergedSelector)
+	} else if l, err = t.daemonItems(mergedSelector); client.IsDaemonDown(err) {
+		// om runs where the configurations are: with the daemon down, it
+		// reads them itself, and answers what the daemon would have.
+		l, err = t.localItems(mergedSelector)
 	}
-	c, err := client.New()
 	if err != nil {
 		return err
+	}
+	return t.render(l)
+}
+
+func (t *CmdObjectConfigGet) options() configkeywords.Options {
+	return configkeywords.Options{
+		Keywords:    t.Keywords,
+		Evaluate:    t.Eval,
+		Impersonate: t.Impersonate,
+	}
+}
+
+// localItems answers the keywords from the configuration files of this node,
+// as the daemon does.
+func (t *CmdObjectConfigGet) localItems(mergedSelector string) (api.KeywordItems, error) {
+	sel := objectselector.New(mergedSelector)
+	var (
+		paths naming.Paths
+		err   error
+	)
+	if t.IgnoreNotFound {
+		paths, err = sel.ExpandRelaxed()
+	} else {
+		paths, err = sel.MustExpand()
+	}
+	if err != nil {
+		return nil, err
+	}
+	l := make(api.KeywordItems, 0)
+	for _, p := range paths {
+		items, err := configkeywords.Object(p, t.options())
+		if err != nil {
+			return nil, fmt.Errorf("%s: %w", p, err)
+		}
+		l = append(l, items...)
+	}
+	return l, nil
+}
+
+// daemonItems asks the daemon for the keywords.
+func (t *CmdObjectConfigGet) daemonItems(mergedSelector string) (api.KeywordItems, error) {
+	c, err := client.New()
+	if err != nil {
+		return nil, err
 	}
 	sel := objectselector.New(mergedSelector, objectselector.WithClient(c))
 	var paths naming.Paths
@@ -43,7 +92,7 @@ func (t *CmdObjectConfigGet) Run(kind string) error {
 		paths, err = sel.MustExpand()
 	}
 	if err != nil {
-		return err
+		return nil, err
 	}
 	l := make(api.KeywordItems, 0)
 	for _, p := range paths {
@@ -60,24 +109,27 @@ func (t *CmdObjectConfigGet) Run(kind string) error {
 		}
 		response, err := c.GetObjectConfigWithResponse(context.Background(), p.Namespace, p.Kind, p.Name, &params)
 		if err != nil {
-			return err
+			return nil, err
 		}
 		switch {
 		case response.JSON200 != nil:
 			l = append(l, response.JSON200.Items...)
 		case response.JSON400 != nil:
-			return fmt.Errorf("%s: %s", p, *response.JSON400)
+			return nil, fmt.Errorf("%s: %s", p, *response.JSON400)
 		case response.JSON401 != nil:
-			return fmt.Errorf("%s: %s", p, *response.JSON401)
+			return nil, fmt.Errorf("%s: %s", p, *response.JSON401)
 		case response.JSON403 != nil:
-			return fmt.Errorf("%s: %s", p, *response.JSON403)
+			return nil, fmt.Errorf("%s: %s", p, *response.JSON403)
 		case response.JSON500 != nil:
-			return fmt.Errorf("%s: %s", p, *response.JSON500)
+			return nil, fmt.Errorf("%s: %s", p, *response.JSON500)
 		default:
-			return fmt.Errorf("%s: unexpected response: %s", p, response.Status())
+			return nil, fmt.Errorf("%s: unexpected response: %s", p, response.Status())
 		}
 	}
+	return l, nil
+}
 
+func (t *CmdObjectConfigGet) render(l api.KeywordItems) error {
 	var defaultOutput string
 	if t.Eval {
 		if hasEvalError(l) {
@@ -103,35 +155,4 @@ func (t *CmdObjectConfigGet) Run(kind string) error {
 		Data:          api.KeywordList{Items: api.WithEvaluatedText(l), Kind: "KeywordList"},
 		Colorize:      rawconfig.Colorize,
 	}.Print()
-}
-
-func (t *CmdObjectConfigGet) doObjectAction(mergedSelector string) error {
-	return objectaction.New(
-		objectaction.LocalFirst(),
-		objectaction.WithLocal(t.Local),
-		objectaction.WithColor(t.Color),
-		objectaction.WithIgnoreNotFound(t.IgnoreNotFound),
-		objectaction.WithOutput(t.Output),
-		objectaction.WithSort(t.Sort),
-		objectaction.WithObjectSelector(mergedSelector),
-		objectaction.WithLocalFunc(func(ctx context.Context, p naming.Path) (interface{}, error) {
-			c, err := object.NewConfigurer(p)
-			if err != nil {
-				return nil, err
-			}
-			for _, s := range t.Keywords {
-				kw := key.Parse(s)
-				if t.Eval {
-					v, err := c.EvalAs(kw, t.Impersonate)
-					if err != nil {
-						return nil, err
-					}
-					return c.Config().NewEvaluated(kw, v), nil
-				} else {
-					return c.Get(kw)
-				}
-			}
-			return nil, nil
-		}),
-	).Do()
 }
