@@ -113,11 +113,11 @@ out:
 	var defaultOutput string
 	if t.Eval {
 		if hasEvalError(l) {
-			defaultOutput = "tab=NODE:node,KEYWORD:keyword,VALUE:value,EVALUATED:evaluated,EVALUATED_AS:evaluated_as,ERROR:error"
+			defaultOutput = "tab=NODE:node,KEYWORD:keyword,VALUE:value,EVALUATED:evaluated_text,EVALUATED_AS:evaluated_as,ERROR:error"
 		} else if len(l) > 1 {
-			defaultOutput = "tab=NODE:node,KEYWORD:keyword,VALUE:value,EVALUATED:evaluated,EVALUATED_AS:evaluated_as"
+			defaultOutput = "tab=NODE:node,KEYWORD:keyword,VALUE:value,EVALUATED:evaluated_text,EVALUATED_AS:evaluated_as"
 		} else {
-			defaultOutput = "tab=evaluated"
+			defaultOutput = "tab=evaluated_text"
 		}
 	} else {
 		if len(l) > 1 {
@@ -132,7 +132,7 @@ out:
 		Output:        t.Output,
 		Sort:          t.Sort,
 		Color:         t.Color,
-		Data:          api.KeywordList{Items: l, Kind: "KeywordList"},
+		Data:          api.KeywordList{Items: api.WithEvaluatedText(l), Kind: "KeywordList"},
 		Colorize:      rawconfig.Colorize,
 	}.Print())
 

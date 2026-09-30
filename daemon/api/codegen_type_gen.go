@@ -1602,13 +1602,22 @@ type KeywordDefinitionListKind string
 // KeywordItem defines model for KeywordItem.
 type KeywordItem struct {
 	// Error The reason the keyword could not be evaluated. Only set when the whole configuration is evaluated, where a single unresolvable key must not fail the request. When a keyword selection is passed, an unresolvable key is reported as a 400 instead.
-	Error       *string `json:"error,omitempty"`
-	Evaluated   *any    `json:"evaluated,omitempty"`
-	EvaluatedAs string  `json:"evaluated_as"`
-	Keyword     string  `json:"keyword"`
-	Node        string  `json:"node"`
-	Object      string  `json:"object"`
-	Value       string  `json:"value"`
+	Error *string `json:"error,omitempty"`
+
+	// Evaluated The evaluated value, converted to the type of the keyword: a
+	// duration as a number of nanoseconds, a size as a number of bytes,
+	// a list as an array.
+	Evaluated   *any   `json:"evaluated,omitempty"`
+	EvaluatedAs string `json:"evaluated_as"`
+
+	// EvaluatedText The evaluated value written the way a configuration writes it: a
+	// duration as 2m, a size as 5g, a list as its words. It converts
+	// back to the same value.
+	EvaluatedText *string `json:"evaluated_text,omitempty"`
+	Keyword       string  `json:"keyword"`
+	Node          string  `json:"node"`
+	Object        string  `json:"object"`
+	Value         string  `json:"value"`
 }
 
 // KeywordItems defines model for KeywordItems.

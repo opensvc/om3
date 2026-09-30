@@ -7439,6 +7439,16 @@ components:
       properties:
         evaluated:
           x-go-type: any
+          description: |
+            The evaluated value, converted to the type of the keyword: a
+            duration as a number of nanoseconds, a size as a number of bytes,
+            a list as an array.
+        evaluated_text:
+          type: string
+          description: |
+            The evaluated value written the way a configuration writes it: a
+            duration as 2m, a size as 5g, a list as its words. It converts
+            back to the same value.
         error:
           type: string
           description: |

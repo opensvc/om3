@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"crypto/md5"
 	"encoding/hex"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"os"
@@ -914,6 +915,48 @@ func (t *T) EvalAs(k key.T, impersonate string) (interface{}, error) {
 		return nil, err
 	}
 	return t.EvalKeywordAs(k, kw, impersonate)
+}
+
+// EvaluatedText writes a value EvalAs answered for the key the way a
+// configuration writes it: a duration as 2m, a size as 5g, a list as its
+// words. The converter of the keyword writes it, so a value computed by an
+// arithmetic, which is a count of bytes before it is converted, reads as a
+// size too.
+func (t *T) EvaluatedText(k key.T, v any) string {
+	kw, err := t.getKeyword(k)
+	if err != nil {
+		return converters.Format(nil, v)
+	}
+	return converters.Format(kw.Converter, v)
+}
+
+// Evaluated is a value EvalAs answered, with its text: printed, it is the
+// text a person reads, and in json the value a program reads.
+type Evaluated struct {
+	Value any
+	Text  string
+}
+
+// NewEvaluated returns the value EvalAs answered for the key, with its text.
+func (t *T) NewEvaluated(k key.T, v any) Evaluated {
+	return Evaluated{Value: v, Text: t.EvaluatedText(k, v)}
+}
+
+func (t Evaluated) String() string {
+	return t.Text
+}
+
+// Render is the text as a command prints it, on a line of its own, and
+// nothing for a value that is not set.
+func (t Evaluated) Render() string {
+	if t.Text == "" {
+		return ""
+	}
+	return t.Text + "\n"
+}
+
+func (t Evaluated) MarshalJSON() ([]byte, error) {
+	return json.Marshal(t.Value)
 }
 
 func (t *T) getKeyword(k key.T) (*keywords.Keyword, error) {

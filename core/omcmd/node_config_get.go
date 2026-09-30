@@ -14,6 +14,7 @@ import (
 	"github.com/opensvc/om3/v3/core/rawconfig"
 	"github.com/opensvc/om3/v3/daemon/api"
 	"github.com/opensvc/om3/v3/util/hostname"
+	"github.com/opensvc/om3/v3/util/key"
 )
 
 type (
@@ -82,11 +83,11 @@ func (t *CmdNodeConfigGet) Run() error {
 	var defaultOutput string
 	if t.Eval {
 		if hasEvalError(l) {
-			defaultOutput = "tab=NODE:node,KEYWORD:keyword,VALUE:value,EVALUATED:evaluated,EVALUATED_AS:evaluated_as,ERROR:error"
+			defaultOutput = "tab=NODE:node,KEYWORD:keyword,VALUE:value,EVALUATED:evaluated_text,EVALUATED_AS:evaluated_as,ERROR:error"
 		} else if len(l) > 1 {
-			defaultOutput = "tab=NODE:node,KEYWORD:keyword,VALUE:value,EVALUATED:evaluated,EVALUATED_AS:evaluated_as"
+			defaultOutput = "tab=NODE:node,KEYWORD:keyword,VALUE:value,EVALUATED:evaluated_text,EVALUATED_AS:evaluated_as"
 		} else {
-			defaultOutput = "tab=evaluated"
+			defaultOutput = "tab=evaluated_text"
 		}
 	} else {
 		if len(l) > 1 {
@@ -101,7 +102,7 @@ func (t *CmdNodeConfigGet) Run() error {
 		Output:        t.Output,
 		Sort:          t.Sort,
 		Color:         t.Color,
-		Data:          api.KeywordList{Items: l, Kind: "KeywordList"},
+		Data:          api.KeywordList{Items: api.WithEvaluatedText(l), Kind: "KeywordList"},
 		Colorize:      rawconfig.Colorize,
 	}.Print()
 }
@@ -122,7 +123,11 @@ func (t *CmdNodeConfigGet) doNodeAction() error {
 			ctx = actioncontext.WithLockTimeout(ctx, t.Timeout)
 			for _, s := range t.Keywords {
 				if t.Eval {
-					return n.EvalAs(ctx, s, t.Impersonate)
+					v, err := n.EvalAs(ctx, s, t.Impersonate)
+					if err != nil {
+						return nil, err
+					}
+					return n.MergedConfig().NewEvaluated(key.Parse(s), v), nil
 				} else {
 					return n.Get(ctx, s)
 				}

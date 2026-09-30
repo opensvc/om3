@@ -82,7 +82,9 @@ func (a *DaemonAPI) GetNodeConfig(ctx echo.Context, nodename string, params api.
 				case err != nil:
 					return JSONProblemf(ctx, http.StatusInternalServerError, "EvalAs", "%s", err)
 				default:
+					text := oc.MergedConfig().EvaluatedText(k, i)
 					item.Evaluated = &i
+					item.EvaluatedText = &text
 					item.EvaluatedAs = evaluatedAs
 				}
 			}

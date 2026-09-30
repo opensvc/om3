@@ -81,11 +81,11 @@ func (t *CmdObjectConfigGet) Run(kind string) error {
 	var defaultOutput string
 	if t.Eval {
 		if hasEvalError(l) {
-			defaultOutput = "tab=OBJECT:object,KEYWORD:keyword,VALUE:value,EVALUATED:evaluated,EVALUATED_AS:evaluated_as,ERROR:error"
+			defaultOutput = "tab=OBJECT:object,KEYWORD:keyword,VALUE:value,EVALUATED:evaluated_text,EVALUATED_AS:evaluated_as,ERROR:error"
 		} else if len(l) > 1 {
-			defaultOutput = "tab=OBJECT:object,KEYWORD:keyword,VALUE:value,EVALUATED:evaluated,EVALUATED_AS:evaluated_as"
+			defaultOutput = "tab=OBJECT:object,KEYWORD:keyword,VALUE:value,EVALUATED:evaluated_text,EVALUATED_AS:evaluated_as"
 		} else {
-			defaultOutput = "tab=evaluated"
+			defaultOutput = "tab=evaluated_text"
 		}
 	} else {
 		if len(l) > 1 {
@@ -100,7 +100,7 @@ func (t *CmdObjectConfigGet) Run(kind string) error {
 		Output:        t.Output,
 		Sort:          t.Sort,
 		Color:         t.Color,
-		Data:          api.KeywordList{Items: l, Kind: "KeywordList"},
+		Data:          api.KeywordList{Items: api.WithEvaluatedText(l), Kind: "KeywordList"},
 		Colorize:      rawconfig.Colorize,
 	}.Print()
 }
@@ -122,7 +122,11 @@ func (t *CmdObjectConfigGet) doObjectAction(mergedSelector string) error {
 			for _, s := range t.Keywords {
 				kw := key.Parse(s)
 				if t.Eval {
-					return c.EvalAs(kw, t.Impersonate)
+					v, err := c.EvalAs(kw, t.Impersonate)
+					if err != nil {
+						return nil, err
+					}
+					return c.Config().NewEvaluated(kw, v), nil
 				} else {
 					return c.Get(kw)
 				}

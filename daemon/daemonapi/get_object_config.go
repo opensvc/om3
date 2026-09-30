@@ -86,7 +86,9 @@ func (a *DaemonAPI) GetObjectConfig(ctx echo.Context, namespace string, kind nam
 				item.Value = object.RedactedValue
 				if isEvaluated {
 					var v any = object.RedactedValue
+					text := object.RedactedValue
 					item.Evaluated = &v
+					item.EvaluatedText = &text
 					item.EvaluatedAs = evaluatedAs
 				}
 				r.Items = append(r.Items, item)
@@ -105,7 +107,9 @@ func (a *DaemonAPI) GetObjectConfig(ctx echo.Context, namespace string, kind nam
 				case err != nil:
 					return JSONProblemf(ctx, http.StatusInternalServerError, "EvalAs", "%s", err)
 				default:
+					text := conf.EvaluatedText(k, i)
 					item.Evaluated = &i
+					item.EvaluatedText = &text
 					item.EvaluatedAs = evaluatedAs
 				}
 			}
