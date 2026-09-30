@@ -27,6 +27,7 @@ func init() {
 		cmdDaemonDNS,
 		cmdDaemonHeartbeat,
 		cmdDaemonListener,
+		newCmdDaemonConsole(),
 		newCmdDaemonJoin(),
 		newCmdDaemonLeave(),
 		cmdDaemonRelay,

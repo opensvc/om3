@@ -2,15 +2,12 @@ package tui
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"io"
 	"net/http"
 	"os"
-	"os/exec"
 	"slices"
 	"sort"
-	"strconv"
 	"strings"
 	"sync"
 	"sync/atomic"
@@ -23,6 +20,7 @@ import (
 	"github.com/opensvc/om3/v3/core/clientcontext"
 	"github.com/opensvc/om3/v3/core/clusterdump"
 	"github.com/opensvc/om3/v3/core/commoncmd"
+	"github.com/opensvc/om3/v3/core/console"
 	"github.com/opensvc/om3/v3/core/event"
 	"github.com/opensvc/om3/v3/core/monitor"
 	"github.com/opensvc/om3/v3/core/naming"
@@ -336,20 +334,6 @@ func (t *App) initApp() {
 		case 't':
 			if t.focus() == viewInstance && strings.HasPrefix(t.viewRID, "container") {
 				t.onRuneT(event)
-			}
-		case 'T':
-			if t.focus() == viewInstance && strings.HasPrefix(t.viewRID, "container") {
-				t.askInput("Enter tty-share", func(inputValues ...string) bool {
-					seatsStr := inputValues[0]
-					seats, err := strconv.Atoi(seatsStr)
-					if err != nil {
-						t.errorf("invalid seats value: %s", err)
-						return false
-					}
-					greetTimeout := inputValues[1]
-					t.onRuneShiftT(event, seats, greetTimeout)
-					return true
-				}, AskInputData{"Seats", "1"}, AskInputData{"Greet timeout", "5s"})
 			}
 		}
 		return event
@@ -1971,92 +1955,22 @@ func (t *App) onRuneC(event *tcell.EventKey) {
 	t.nav(viewConfig)
 }
 
+// onRuneT opens a console session on the container shown, with the terminal
+// of the TUI handed to it for the time it lasts.
 func (t *App) onRuneT(_ *tcell.EventKey) {
-	url, err := t.getTtyTerminalURL(0, "")
-	if err != nil {
-		t.errorf("%s", err)
-		return
-	}
-	t.openTtyTerminal(false, url)
-}
-
-func (t *App) onRuneShiftT(_ *tcell.EventKey, seats int, greetTimeout string) {
-	url, err := t.getTtyTerminalURL(seats, greetTimeout)
-	if err != nil {
-		t.errorf("%s", err)
-		return
-	}
-	t.confirmAction(func() {
-		t.openTtyTerminal(false, url)
-	}, "The URL for the tty-share session is : \n"+url)
-}
-
-func (t *App) getTtyTerminalURL(seats int, greetTimeout string) (string, error) {
-	c, err := client.New()
-	if err != nil {
-		return "", fmt.Errorf("failed to create client: %s", err)
-	}
-
-	params := api.PostInstanceResourceConsoleParams{}
-	params.Rid = &t.viewRID
-
-	if seats > 0 {
-		params.Seats = &seats
-	}
-	if greetTimeout != "" {
-		params.GreetTimeout = &greetTimeout
-	}
-
-	resp, err := c.PostInstanceResourceConsoleWithResponse(context.Background(), t.viewNode, t.viewPath.Namespace, t.viewPath.Kind, t.viewPath.Name, &params)
-	if err != nil {
-		return "", fmt.Errorf("failed to get tty-share URL: %s", err)
-	}
-	if resp.StatusCode() != http.StatusCreated {
-		switch resp.StatusCode() {
-		case 400:
-			return "", fmt.Errorf("%s", resp.JSON400)
-		case 401:
-			return "", fmt.Errorf("%s", resp.JSON401)
-		case 403:
-			return "", fmt.Errorf("%s", resp.JSON403)
-		case 404:
-			return "", fmt.Errorf("%s", resp.JSON404)
-		case 500:
-			return "", fmt.Errorf("%s", resp.JSON500)
-		default:
-			return "", fmt.Errorf("unexpected status code: %d", resp.StatusCode())
-		}
-	}
-	return resp.HTTPResponse.Header.Get("Location"), nil
-}
-
-func (t *App) openTtyTerminal(insecure bool, url string) {
+	var (
+		result console.Result
+		err    error
+	)
 	t.app.Suspend(func() {
-		var args []string
-		if insecure {
-			args = append(args, "-k")
-		}
-		args = append(args, url)
-		cmd := exec.Command("tty-share", args...)
-		cmd.Stdin = os.Stdin
-		cmd.Stdout = os.Stdout
-		cmd.Stderr = os.Stderr
-		if err := cmd.Run(); err != nil {
-			var exitErr *exec.ExitError
-			if errors.As(err, &exitErr) {
-				code := exitErr.ExitCode()
-				if code == 2 && !insecure {
-					t.confirmAction(func() {
-						t.openTtyTerminal(true, url)
-					}, "Invalid certificate, proceed anyway ?")
-				} else if code == 1 {
-					t.errorf("The url may be invalid or the tty-share server is unreachable.")
-				}
-				return
-			}
-			return
-		}
+		result, err = t.client.Console(context.Background(), t.viewNode, t.viewPath, t.viewRID, os.Stdin, os.Stdout)
 	})
+	switch {
+	case err != nil:
+		t.errorf("%s", err)
+	case result.Reason == console.ReasonError:
+		t.errorf("%s", result.Text)
+	}
 }
 
 // configTarget is the configuration the highlighted cell points at.

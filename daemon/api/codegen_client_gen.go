@@ -11367,30 +11367,6 @@ func NewPostInstanceResourceConsoleRequest(server string, nodename InPathNodeNam
 
 		}
 
-		if params.GreetTimeout != nil {
-
-			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "greet_timeout", *params.GreetTimeout, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "string", Format: ""}); err != nil {
-				return nil, err
-			} else {
-				for _, qp := range strings.Split(queryFrag, "&") {
-					rawQueryFragments = append(rawQueryFragments, qp)
-				}
-			}
-
-		}
-
-		if params.Seats != nil {
-
-			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "seats", *params.Seats, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "integer", Format: ""}); err != nil {
-				return nil, err
-			} else {
-				for _, qp := range strings.Split(queryFrag, "&") {
-					rawQueryFragments = append(rawQueryFragments, qp)
-				}
-			}
-
-		}
-
 		if encoded := queryValues.Encode(); encoded != "" {
 			rawQueryFragments = append(rawQueryFragments, encoded)
 		}
@@ -19411,6 +19387,7 @@ func (r GetInstanceConfigFileResponse) ContentType() string {
 type PostInstanceResourceConsoleResponse struct {
 	Body         []byte
 	HTTPResponse *http.Response
+	JSON201      *ConsoleTicket
 	JSON400      *N400
 	JSON401      *N401
 	JSON403      *N403
@@ -29074,6 +29051,13 @@ func ParsePostInstanceResourceConsoleResponse(rsp *http.Response) (*PostInstance
 	}
 
 	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 201:
+		var dest ConsoleTicket
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON201 = &dest
+
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
 		var dest N400
 		if err := json.Unmarshal(bodyBytes, &dest); err != nil {

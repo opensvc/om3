@@ -3709,21 +3709,31 @@ paths:
     post:
       operationId: PostInstanceResourceConsole
       description: |
-        Start a shell in the container resource and expose it through a url that can be opened by a browser or a `tty-share` client.
+        Issue the ticket a console session of the resource is opened with.
+
+        The session is a websocket, opened on the console endpoint with the
+        ticket in the `ticket` query parameter: the `url` of the answer when
+        it has one, the `port` of the node the api is reached on otherwise.
+        Its binary messages are the bytes of the terminal, its text messages
+        are json control messages: `{"type":"resize","cols":80,"rows":24}`
+        from the client, `{"type":"exit","code":0,"reason":"exited"}` from
+        the node when the session ends.
+
+        The ticket opens one session, and is refused once expired. A session
+        lasts until its command or its client connection ends.
       parameters:
         - $ref: '#/components/parameters/inPathNodeName'
         - $ref: '#/components/parameters/inPathNamespace'
         - $ref: '#/components/parameters/inPathKind'
         - $ref: '#/components/parameters/inPathName'
         - $ref: '#/components/parameters/inQueryRid'
-        - $ref: '#/components/parameters/inQueryGreetTimeout'
-        - $ref: '#/components/parameters/inQuerySeats'
       responses:
         201:
           description: Created
-          headers:
-            Location:
-              type: string
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ConsoleTicket'
         400:
           $ref: '#/components/responses/400'
         401:
@@ -6007,6 +6017,32 @@ components:
       properties:
         name:
           type: string
+
+    ConsoleTicket:
+      type: object
+      required:
+        - ticket
+        - port
+        - expired_at
+      properties:
+        ticket:
+          type: string
+          description: |
+            The ticket to open the console session with, in the `ticket`
+            query parameter of the websocket url.
+        url:
+          type: string
+          description: |
+            The url of the console endpoint, when the cluster configures
+            one. When it does not, the endpoint is the console port of the
+            node the api is reached on.
+        port:
+          type: integer
+          description: The console port of the cluster nodes.
+        expired_at:
+          type: string
+          format: date-time
+          description: When the ticket stops being accepted.
 
     CapabilityItem:
       type: object
@@ -9885,14 +9921,6 @@ components:
       schema:
         type: boolean
 
-    inQueryGreetTimeout:
-      in: query
-      name: greet_timeout
-      schema:
-        type: string
-        default: 5s
-        x-go-name: GreetTimeout
-
     inQueryImpersonate:
       in: query
       name: impersonate
@@ -10167,14 +10195,6 @@ components:
       description: a resource selector expression
       schema:
         type: string
-
-    inQuerySeats:
-      in: query
-      name: seats
-      schema:
-        type: integer
-        default: 1
-        x-go-name: Seats
 
     inQuerySection:
       in: query

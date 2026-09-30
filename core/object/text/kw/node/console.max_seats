@@ -1,1 +1,0 @@
-This keyword sets the absolute upper limit that an API user can request via the `seats` query parameter when calling the handler to start a service instance resource console.

@@ -11,6 +11,7 @@ import (
 
 	"github.com/opensvc/om3/v3/core/commoncmd"
 	commands "github.com/opensvc/om3/v3/core/omcmd"
+	daemonconsole "github.com/opensvc/om3/v3/daemon/console"
 	"github.com/opensvc/om3/v3/util/hostname"
 )
 
@@ -103,6 +104,21 @@ func newCmdDaemonRestart() *cobra.Command {
 	commoncmd.FlagCPUProfile(flags, &options.CPUProfile)
 	commoncmd.FlagNodeSelectorOrLocalnode(flags, &options.NodeSelector)
 	return cmd
+}
+
+// newCmdDaemonConsole is the command the daemon hands a console connection
+// to. It is run by the daemon, with the connection as an inherited file
+// descriptor, and is of no use run by hand.
+func newCmdDaemonConsole() *cobra.Command {
+	return &cobra.Command{
+		Use:    "console",
+		Short:  "serve the console session of a connection inherited from the daemon",
+		Hidden: true,
+		Args:   cobra.NoArgs,
+		RunE: func(cmd *cobra.Command, args []string) error {
+			return daemonconsole.ServeInherited()
+		},
+	}
 }
 
 func newCmdDaemonRun() *cobra.Command {

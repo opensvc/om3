@@ -1129,6 +1129,24 @@ type ComputeClaim struct {
 	Reason *string `json:"reason,omitempty"`
 }
 
+// ConsoleTicket defines model for ConsoleTicket.
+type ConsoleTicket struct {
+	// ExpiredAt When the ticket stops being accepted.
+	ExpiredAt time.Time `json:"expired_at"`
+
+	// Port The console port of the cluster nodes.
+	Port int `json:"port"`
+
+	// Ticket The ticket to open the console session with, in the `ticket`
+	// query parameter of the websocket url.
+	Ticket string `json:"ticket"`
+
+	// Url The url of the console endpoint, when the cluster configures
+	// one. When it does not, the endpoint is the console port of the
+	// node the api is reached on.
+	Url *string `json:"url,omitempty"`
+}
+
 // DNSRecord defines model for DNSRecord.
 type DNSRecord struct {
 	Class string `json:"class"`
@@ -2797,9 +2815,6 @@ type States = []string
 // InQueryForce defines model for inQueryForce.
 type InQueryForce = bool
 
-// InQueryGreetTimeout defines model for inQueryGreetTimeout.
-type InQueryGreetTimeout = string
-
 // InQueryHBA defines model for inQueryHBA.
 type InQueryHBA = string
 
@@ -2862,9 +2877,6 @@ type InQueryResourceFileRid = string
 
 // InQueryRid defines model for inQueryRid.
 type InQueryRid = string
-
-// InQuerySeats defines model for inQuerySeats.
-type InQuerySeats = int
 
 // InQuerySection defines model for inQuerySection.
 type InQuerySection = string
@@ -3945,9 +3957,7 @@ type PostInstanceActionUpdateParams struct {
 // PostInstanceResourceConsoleParams defines parameters for PostInstanceResourceConsole.
 type PostInstanceResourceConsoleParams struct {
 	// Rid a resource selector expression
-	Rid          *InQueryRid          `form:"rid,omitempty" json:"rid,omitempty"`
-	GreetTimeout *InQueryGreetTimeout `form:"greet_timeout,omitempty" json:"greet_timeout,omitempty"`
-	Seats        *InQuerySeats        `form:"seats,omitempty" json:"seats,omitempty"`
+	Rid *InQueryRid `form:"rid,omitempty" json:"rid,omitempty"`
 }
 
 // GetInstanceContainerLogParams defines parameters for GetInstanceContainerLog.
