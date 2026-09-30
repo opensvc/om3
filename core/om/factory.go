@@ -3,8 +3,10 @@ package om
 import (
 	// Necessary to use go:embed
 	_ "embed"
+	"errors"
 	"fmt"
 	"os"
+	"os/exec"
 	"time"
 
 	"github.com/spf13/cobra"
@@ -2180,7 +2182,7 @@ func newCmdObjectContainerEnter(kind string) *cobra.Command {
 		Long:  "Enter any container resource.",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			commoncmd.SetRIDFromArgs(&options.RID, args, "container", "container")
-			return options.Run(kind)
+			return quietExitStatus(cmd, options.Run(kind))
 		},
 	}
 	commoncmd.CmdWithArg(cmd, "PATTERN  A fnmatch resource index filter.")
@@ -2188,6 +2190,23 @@ func newCmdObjectContainerEnter(kind string) *cobra.Command {
 	addFlagObject(flags, &options.ObjectSelector)
 	commoncmd.FlagRIDWithCompletion(cmd, &options.RID)
 	return cmd
+}
+
+// quietExitStatus keeps the exit status of the shell a command ran from
+// being reported as an error of the command.
+//
+// A shell exits with the status of the last command typed in it, so leaving
+// one after a command that failed, or was interrupted, is no failure of
+// entering the container. The status is still the exit status of the
+// command, as it is of ssh, and nothing is printed about it. An error that is
+// not the status of the shell, as a container that is not running, is
+// reported as any other.
+func quietExitStatus(cmd *cobra.Command, err error) error {
+	var exitErr *exec.ExitError
+	if errors.As(err, &exitErr) {
+		cmd.SilenceErrors = true
+	}
+	return err
 }
 
 func newCmdObjectContainerLogs(kind string) *cobra.Command {
@@ -4406,7 +4425,7 @@ func newCmdObjectEnter(kind string) *cobra.Command {
 		Short: "open a shell in a container resource",
 		Long:  "Enter any container resource. Use --rid to specify which container to enter.",
 		RunE: func(cmd *cobra.Command, args []string) error {
-			return options.Run(kind)
+			return quietExitStatus(cmd, options.Run(kind))
 		},
 	}
 	flags := cmd.Flags()

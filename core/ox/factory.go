@@ -3,11 +3,13 @@ package ox
 import (
 	// Necessary to use go:embed
 	_ "embed"
+	"errors"
 	"fmt"
 
 	"github.com/spf13/cobra"
 
 	"github.com/opensvc/om3/v3/core/commoncmd"
+	"github.com/opensvc/om3/v3/core/console"
 	commands "github.com/opensvc/om3/v3/core/oxcmd"
 	"github.com/opensvc/om3/v3/core/tui"
 	"github.com/opensvc/om3/v3/util/duration"
@@ -3065,6 +3067,17 @@ func newCmdObjectContainer(kind string) *cobra.Command {
 	return cmd
 }
 
+// quietExitStatus keeps the exit status of the shell of a console session
+// from being reported as an error of the command: it is the exit status of
+// the command, as it is of ssh, and nothing is printed about it.
+func quietExitStatus(cmd *cobra.Command, err error) error {
+	var exitStatus console.ExitStatus
+	if errors.As(err, &exitStatus) {
+		cmd.SilenceErrors = true
+	}
+	return err
+}
+
 func newCmdObjectContainerEnter(kind string) *cobra.Command {
 	var options commands.CmdObjectContainerEnter
 	cmd := &cobra.Command{
@@ -3077,7 +3090,7 @@ on one node only. A container running on several nodes is entered on the node
 --node names.`,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			commoncmd.SetRIDFromArgs(&options.RID, args, "container", "container")
-			return options.Run(kind)
+			return quietExitStatus(cmd, options.Run(kind))
 		},
 	}
 	commoncmd.CmdWithArg(cmd, "PATTERN  A fnmatch resource index filter.")
@@ -4796,7 +4809,7 @@ func newCmdObjectEnter(kind string) *cobra.Command {
 		Short: "open a shell in a container resource",
 		Long:  "Enter any container resource. Use --rid to specify which container to enter.",
 		RunE: func(cmd *cobra.Command, args []string) error {
-			return options.Run(kind)
+			return quietExitStatus(cmd, options.Run(kind))
 		},
 	}
 	flags := cmd.Flags()

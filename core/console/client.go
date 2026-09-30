@@ -138,6 +138,22 @@ func dialError(err error, resp *http.Response) error {
 	return fmt.Errorf("console: %s", resp.Status)
 }
 
+// ExitStatus is the non-zero exit status of the command of a session, as an
+// error a client command exits with.
+//
+// A shell exits with the status of the last command typed in it, so it is
+// the exit status of the client, as it is of ssh, and no failure to report.
+type ExitStatus int
+
+func (t ExitStatus) Error() string {
+	return fmt.Sprintf("exit status %d", int(t))
+}
+
+// ExitCode is the exit code the client command exits with.
+func (t ExitStatus) ExitCode() int {
+	return int(t)
+}
+
 // ErrNoTerminal is returned by the platforms a terminal can not be attached
 // on.
 var ErrNoTerminal = errors.New("console: attaching a terminal is not supported on this platform")

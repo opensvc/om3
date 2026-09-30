@@ -45,6 +45,9 @@ func (t *CmdObjectContainerEnter) Run(kind string) error {
 		if result.Reason == console.ReasonError {
 			return fmt.Errorf("%s: node %s: %s", path, nodename, result.Text)
 		}
+		if result.Code != 0 {
+			return console.ExitStatus(result.Code)
+		}
 	}
 	return nil
 }
